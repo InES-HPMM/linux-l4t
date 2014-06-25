@@ -25,6 +25,7 @@
 #define __TEGRA_FUSE_H
 
 #define FUSE_SKU_USB_CALIB_0	0x1f0
+#define FUSE_USB_CALIB_EXT_0	0x350
 
 unsigned long long tegra_chip_uid(void);
 void tegra_init_fuse(void);

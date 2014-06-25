@@ -25,38 +25,42 @@
  * BIT16 - BIT23 : HSIC ports
  * BIT24 - BIT31 : ULPI ports
  */
+#define XUSB_SS_INDEX	(0)
 #define TEGRA_XUSB_SS_P0	(1 << 0)
 #define TEGRA_XUSB_SS_P1	(1 << 1)
+#define TEGRA_XUSB_SS_P2	(1 << 2)
+#define TEGRA_XUSB_SS_P3	(1 << 3)
+
 #define XUSB_UTMI_INDEX	(8)
-#define XUSB_UTMI_COUNT	(3)
 #define TEGRA_XUSB_USB2_P0	BIT(XUSB_UTMI_INDEX)
 #define TEGRA_XUSB_USB2_P1	BIT(XUSB_UTMI_INDEX + 1)
 #define TEGRA_XUSB_USB2_P2	BIT(XUSB_UTMI_INDEX + 2)
+#define TEGRA_XUSB_USB2_P3	BIT(XUSB_UTMI_INDEX + 3)
+
 #define XUSB_HSIC_INDEX	(16)
 #define XUSB_HSIC_COUNT	(2)
-#define XUSB_SS_PORT_COUNT	(2)
-#define XUSB_UTMI_COUNT		(3)
-#define XUSB_UTMI_INDEX		(8)
 #define TEGRA_XUSB_HSIC_P0	BIT(XUSB_HSIC_INDEX)
 #define TEGRA_XUSB_HSIC_P1	BIT(XUSB_HSIC_INDEX + 1)
+
 #define TEGRA_XUSB_ULPI_P0	(1 << 24)
+#define XUSB_SS_PORT_COUNT	(2)
 #define TEGRA_XUSB_SS_PORT_MAP_USB2_P0 (0x0)
 #define TEGRA_XUSB_SS_PORT_MAP_USB2_P1 (0x1)
 #define TEGRA_XUSB_SS_PORT_MAP_USB2_P2 (0x2)
-#define TEGRA_XUSB_SS0_PORT_MAP	(0xf)
-#define TEGRA_XUSB_SS1_PORT_MAP	(0xf0)
+#define TEGRA_XUSB_SS_PORT_MAP	(0xf0)
 #define TEGRA_XUSB_ULPI_PORT_CAP_MASTER	(0x0)
 #define TEGRA_XUSB_ULPI_PORT_CAP_PHY	(0x1)
 #define TEGRA_XUSB_UTMIP_PMC_PORT0	(0x0)
 #define TEGRA_XUSB_UTMIP_PMC_PORT1	(0x1)
 #define TEGRA_XUSB_UTMIP_PMC_PORT2	(0x2)
+#define TEGRA_XUSB_UTMIP_PMC_PORT3	(0x3)
 
 struct tegra_xusb_regulator_name {
-	const char *utmi_vbuses[XUSB_UTMI_COUNT];
 	const char *s3p3v;
 	const char *s1p8v;
 	const char *vddio_hsic;
 	const char *s1p05v;
+	char **utmi_vbuses;
 };
 
 /* Ensure dt compatiblity when changing order */
@@ -84,6 +88,7 @@ struct tegra_xusb_board_data {
 	bool uses_external_pmic;
 	bool gpio_controls_muxed_ss_lanes;
 	u32 gpio_ss1_sata;
+	u32 portcap;
 	struct tegra_xusb_hsic_config hsic[XUSB_HSIC_COUNT];
 	const char *firmware_file_dt;
 };
@@ -95,25 +100,50 @@ struct tegra_xusb_platform_data {
 };
 
 struct tegra_xusb_chip_calib {
-	u32 hs_curr_level_pad0;
-	u32 hs_curr_level_pad1;
-	u32 hs_curr_level_pad2;
-	u32 hs_iref_cap;
-	u32 hs_term_range_adj;
 	u32 hs_squelch_level;
 };
+
+struct tegra_xusb_padctl_regs {
+	u16 boot_media_0;
+	u16 usb2_pad_mux_0;
+	u16 usb2_port_cap_0;
+	u16 snps_oc_map_0;
+	u16 usb2_oc_map_0;
+	u16 ss_port_map_0;
+	u16 vbus_oc_map;
+	u16 oc_det_0;
+	u16 elpg_program_0;
+	u16 elpg_program_1;
+	u16 uphy_cfg_stb_0;
+	u16 usb2_bchrg_otgpadX_ctlY_0[3][2];
+	u16 usb2_bchrg_bias_pad_0;
+	u16 usb2_bchrg_tdcd_dbnc_timer_0;
+	u16 iophy_pll_p0_ctlY_0[4];
+	u16 iophy_usb3_padX_ctlY_0[2][4];
+	u16 iophy_misc_pad_pX_ctlY_0[5][6];
+	u16 usb2_otg_padX_ctlY_0[3][2];
+	u16 usb2_bias_pad_ctlY_0[2];
+	u16 usb2_hsic_padX_ctlY_0[2][3];
+	u16 ulpi_link_trim_ctl0;
+	u16 ulpi_null_clk_trim_ctl0;
+	u16 hsic_strb_trim_ctl0;
+	u16 wake_ctl0;
+	u16 pm_spare0;
+	u16 usb3_pad_mux_0;
+	u16 iophy_pll_s0_ctlY_0[4];
+	u16 iophy_misc_pad_s0_ctlY_0[6];
+	u16 hsic_pad_trk_ctl_0;
+	u16 uphy_pll_p0_ctlY_0[11];
+	u16 uphy_misc_pad_pX_ctlY_0[7][9];
+	u16 uphy_pll_s0_ctlY_0[11];
+	u16 uphy_misc_pad_s0_ctlY_0[9];
+	u16 uphy_usb3_padX_ectlY_0[4][6];
+	u16 uphy_usb3_padX_ctl_0[4];
+	u16 usb2_vbus_id_0;
+};
+
 struct tegra_xusb_soc_config {
 	struct tegra_xusb_board_data *bdata;
-	u32 rx_wander;
-	u32 rx_eq;
-	u32 cdr_cntl;
-	u32 dfe_cntl;
-	u32 hs_slew;
-	u32 ls_rslew_pad0;
-	u32 ls_rslew_pad1;
-	u32 ls_rslew_pad2;
-	u32 hs_disc_lvl;
-	u32 spare_in;
 	/*
 	 * BIT[0:3] = PMC port # for USB2_P0
 	 * BIT[4:7] = PMC port # for USB2_P1
@@ -122,8 +152,20 @@ struct tegra_xusb_soc_config {
 	u32 pmc_portmap;
 	/* chip specific */
 	unsigned long quirks;
+	u32 utmi_pad_count;
+	u32 ss_pad_count;
 	struct tegra_xusb_regulator_name supply;
 	const char *default_firmware_file;
+	const struct tegra_xusb_padctl_regs *padctl_offsets;
+	void (*check_lane_owner_by_pad) (int pad, u32 lane_owner);
+	u32 rx_wander;
+	u32 rx_eq;
+	u32 cdr_cntl;
+	u32 dfe_cntl;
+	u32 hs_slew;
+	u32 hs_disc_lvl;
+	u32 spare_in;
+	u32 ls_rslew_pad[];
 };
 
 #define TEGRA_XUSB_USE_HS_SRC_CLOCK2 BIT(0)

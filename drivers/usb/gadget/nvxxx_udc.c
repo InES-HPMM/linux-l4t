@@ -3725,10 +3725,10 @@ fpga_hack_setup_vbus_sense_and_termination(struct NV_UDC_S *nvudc)
 	u32 reg;
 
 	reg = 0x00211040;
-	iowrite32(reg, nvudc->padctl + XUSB_VBUS);
+	iowrite32(reg, IO_ADDRESS(0x7009f000 + XUSB_VBUS));
 
 	reg = 0x00215040;
-	iowrite32(reg, nvudc->padctl + XUSB_VBUS);
+	iowrite32(reg, IO_ADDRESS(0x7009f000 + XUSB_VBUS));
 
 	reg = 0x3080;
 	iowrite32(reg, nvudc->base + TERMINATION_2);
@@ -4428,20 +4428,6 @@ static int nvudc_plat_mmio_regs_init(struct NV_UDC_S *nvudc)
 		return -EFAULT;
 	}
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
-	if (!res) {
-		msg_err(dev, "failed to get padctl mmio resources\n");
-		return -ENXIO;
-	}
-	msg_info(dev, "padctl mmio start %pa end %pa\n",
-					&res->start, &res->end);
-
-	nvudc->padctl = devm_request_and_ioremap(dev, res);
-	if (!nvudc->padctl) {
-		msg_err(dev, "failed to request and map padctl mmio\n");
-		return -EFAULT;
-	}
-
 	return 0;
 }
 
@@ -4549,6 +4535,8 @@ static int nvudc_plat_config_pads(struct NV_UDC_S *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device *dev = &pdev->dev;
+	struct device_node *node = pdev->dev.of_node;
+	int ret;
 	/* TODO pad config should come from pdata or dt */
 	struct xusb_usb3_pad_config *usb3 = &usb3_pad_config;
 	struct xusb_usb2_otg_pad_config *usb2 = &usb2_otg_pad_config;
@@ -4636,6 +4624,55 @@ static void __iomem *car_base;
 #define RST_DEVICES_W_0	(0x35c)
 
 
+static int nvudc_get_bdata(struct NV_UDC_S *nvudc)
+{
+	struct platform_device *pdev = nvudc->pdev.plat;
+	struct device_node *node = pdev->dev.of_node;
+	struct device_node *padctl;
+	int ret;
+	int portcap, ss_portmap, lane_owner;
+
+	/* Get common setting for padctl */
+	padctl = of_parse_phandle(node, "nvidia,common_padctl", 0);
+
+	ret = of_property_read_u32(padctl, "nvidia,ss_portmap"
+			, &ss_portmap);
+	if (ret < 0)
+		pr_err("Fail to get ss_portmap, ret (%d)\n", ret);
+	nvudc->bdata.ss_portmap = ss_portmap;
+
+	ret = of_property_read_u32(padctl, "nvidia,lane_owner"
+			, &lane_owner);
+	if (ret < 0)
+		pr_err("Fail to get lane_owner, ret (%d)\n", ret);
+	nvudc->bdata.lane_owner = lane_owner;
+
+	return 0;
+}
+
+static int nvudc_plat_pad_init(struct NV_UDC_S *nvudc)
+{
+	/* VBUS_ID init */
+	usb2_vbus_id_init();
+
+	/* utmi pad init for pad 0 */
+	xusb_utmi_pad_init(0, PORT_CAP(0, PORT_CAP_DEV), false);
+	utmi_phy_pad_enable();
+	utmi_phy_iddq_override(false);
+
+	/* ss pad init for pad 0 */
+	xusb_ss_pad_init(0, (nvudc->bdata.ss_portmap & 0xf)
+			, XUSB_DEVICE_MODE);
+
+	tegra_xhci_ss_wake_signal(TEGRA_XUSB_SS_P0, false);
+	tegra_xhci_ss_vcore(TEGRA_XUSB_SS_P0, false);
+
+	/* ss pad phy enable */
+	usb3_phy_pad_enable(nvudc->bdata.lane_owner);
+
+	return 0;
+}
+
 static void fpga_hack_init(struct platform_device *pdev)
 {
 	car_base = devm_ioremap(&pdev->dev, 0x60006000, 0x1000);
@@ -4696,7 +4733,7 @@ static void fpga_hack_setup_car(struct NV_UDC_S *nvudc)
 	iowrite32(val , car_base + RST_DEVICES_W_0);
 	reg_dump(dev, car_base, RST_DEVICES_W_0);
 
-	fpga_hack_setup_padctl(nvudc);
+	nvudc_plat_pad_init(nvudc);
 
 	reg_dump(dev, car_base, RST_DEVICES_U_0);
 	val = readl(IO_ADDRESS(0x6000600c));
@@ -4740,6 +4777,8 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	nvudc->dev = dev;
 	platform_set_drvdata(pdev, nvudc);
 
+	nvudc_get_bdata(nvudc);
+
 	err = nvudc_plat_regulators_init(nvudc);
 	if (err) {
 		dev_err(dev, "failed to init regulators\n");
@@ -4778,7 +4817,7 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 		goto err_powergate_xusbb;
 	}
 
-	err = nvudc_plat_config_pads(nvudc);
+	err = nvudc_plat_pad_init(nvudc);
 	if (err) {
 		dev_err(dev, "failed to config pads\n");
 		goto err_clocks_disable;

@@ -611,6 +611,11 @@ struct mmio_reg_s {
 	u32 ctrl;
 };
 
+struct xudc_board_data {
+	u32 ss_portmap;
+	u32 lane_owner;
+};
+
 struct NV_UDC_S {
 	struct usb_gadget gadget;
 	struct usb_gadget_driver *driver;
@@ -676,7 +681,6 @@ struct NV_UDC_S {
 	void __iomem *base;
 	void __iomem *ipfs;
 	void __iomem *fpci;
-	void __iomem *padctl;
 
 	/* clocks */
 	struct clk *pll_u_480M;
@@ -686,6 +690,7 @@ struct NV_UDC_S {
 
 	/* regulators */
 	struct regulator_bulk_data *supplies;
+	struct xudc_board_data bdata;
 };
 
 void free_data_struct(struct NV_UDC_S *nvudc);
