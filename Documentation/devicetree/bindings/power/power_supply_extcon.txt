@@ -9,10 +9,9 @@ Required properties:
 -------------------
 - extcon-cables: Extcon device handles.
 - extcon-cable-names: name of power supply cables. Must be:
-		"USB", "TA", "QC2", "MAXIM", "Fast-charger",
-		"Slow-charger", "Charge-downstream"
-		"Apple 500mA-charger", "Apple 1A-charger",
-		 "Apple 2A-charger", "Y-cable"
+		"usb-charger", "ta-charger", "qc2-charger", "maxim-charger",
+		"fast-charger", "slow-charger", "downstream-charger"
+		"apple-500ma", "apple-1a", "apple-2a", "y-cable"
 
 Optional properties:
 -------------------
@@ -23,5 +22,5 @@ Example:
 	psy_extcon {
 		compatible = "power-supply-extcon";
 		extcon-cables = <&ehanlde 0> <&ehandle 1> ...;
-		extcon-cable-names = "USB", "TA", ...;
+		extcon-cable-names = "usb-charger", "ta-charger", ...;
 	};

@@ -50,6 +50,7 @@ struct power_supply_extcon {
 
 struct power_supply_cables {
 	const char *name;
+	const char *dt_cable_name;
 	const char *print_str;
 	int usb_online;
 	int ac_online;
@@ -62,56 +63,67 @@ struct power_supply_cables {
 static struct power_supply_cables psy_cables[] = {
 	{
 		.name	= "USB",
+		.dt_cable_name = "usb-charger",
 		.print_str = "USB charger",
 		.usb_online = 1,
 	},
 	{
 		.name	= "TA",
+		.dt_cable_name = "ta-charger",
 		.print_str = "USB TA",
 		.ac_online = 1,
 	},
 	{
 		.name	= "QC2",
+		.dt_cable_name = "qc2-charger",
 		.print_str = "USB QC2-charger",
 		.ac_online = 1,
 	},
 	{
 		.name	= "MAXIM",
+		.dt_cable_name = "maxim-charger",
 		.print_str = "USB Maxim-charger",
 		.ac_online = 1,
 	},
 	{
 		.name	= "Fast-charger",
+		.dt_cable_name = "fast-charger",
 		.print_str = "USB Fast-charger",
 		.ac_online = 1,
 	},
 	{
 		.name	= "Slow-charger",
+		.dt_cable_name = "slow-charger",
 		.print_str = "USB Slow-charger",
 		.ac_online = 1,
 	},
 	{
 		.name	= "Charge-downstream",
+		.dt_cable_name = "downstream-charger",
 		.print_str = "USB charger downstream",
 		.usb_online = 1,
 	},
 	{
 		.name	= "Apple 500mA-charger",
+		.dt_cable_name = "apple-500ma",
 		.print_str = "USB Apple 500mA-charger",
 		.ac_online = 1,
 	},
 	{
 		.name	= "Apple 1A-charger",
+		.dt_cable_name = "apple-1a",
 		.print_str = "USB Apple 1A charger",
 		.ac_online = 1,
 	},
 	{
 		.name	= "Apple 2A-charger",
+		.dt_cable_name = "apple-2a",
 		.print_str = "USB Apple 2A charger",
 		.ac_online = 1,
 	},
 	{
 		.name	= "Y-cable",
+		.dt_cable_name = "y-cable",
 		.print_str = "Y cable",
 		.ac_online = 1,
 	},
@@ -321,7 +333,7 @@ static int psy_extcon_probe(struct platform_device *pdev)
 		psy_cable->nb.notifier_call = psy_extcon_extcon_notifier;
 
 		psy_cable->ec_cable = extcon_get_extcon_cable(psy_extcon->dev,
-						psy_cable->name);
+						psy_cable->dt_cable_name);
 		if (!IS_ERR(psy_cable->ec_cable))
 			goto register_cable;
 
@@ -330,7 +342,7 @@ static int psy_extcon_probe(struct platform_device *pdev)
 		if (!strcmp(psy_cable->name, "Y-cable"))
 			ext_name = pdata->y_cable_extcon_name;
 		if (!ext_name) {
-			dev_warn(psy_extcon->dev, "No extname for cable %s\n",
+			dev_info(psy_extcon->dev, "No extname for cable %s\n",
 						psy_cable->name);
 			continue;
 		}
