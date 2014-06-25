@@ -899,7 +899,10 @@ static int tegra_otg_conf(struct platform_device *pdev)
 			err = -EINVAL;
 			goto err_vbus_extcon;
 		}
-		tegra->vbus_extcon_dev = extcon_get_extcon_dev(pdata->
+		tegra->vbus_extcon_dev = extcon_get_extcon_dev_by_cable(
+						&pdev->dev, "vbus");
+		if (IS_ERR(tegra->vbus_extcon_dev))
+			tegra->vbus_extcon_dev = extcon_get_extcon_dev(pdata->
 					ehci_pdata->vbus_extcon_dev_name);
 		if (!tegra->vbus_extcon_dev) {
 			dev_err(&pdev->dev, "Cannot get the %s extcon dev\n",
@@ -917,7 +920,10 @@ static int tegra_otg_conf(struct platform_device *pdev)
 			err = -EINVAL;
 			goto err_id_extcon;
 		}
-		tegra->id_extcon_dev = extcon_get_extcon_dev(pdata->
+		tegra->id_extcon_dev = extcon_get_extcon_dev_by_cable(
+						&pdev->dev, "id");
+		if (IS_ERR(tegra->id_extcon_dev))
+			tegra->id_extcon_dev = extcon_get_extcon_dev(pdata->
 					ehci_pdata->id_extcon_dev_name);
 		if (!tegra->id_extcon_dev) {
 			dev_err(&pdev->dev, "Cannot get the %s extcon dev\n",

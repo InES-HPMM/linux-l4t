@@ -3074,9 +3074,13 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		udc->edev = NULL;
 	}
 
-	if (udc->support_pmu_vbus && pdata->vbus_extcon_dev_name)
-		udc->vbus_extcon_dev =
-			extcon_get_extcon_dev(pdata->vbus_extcon_dev_name);
+	if (udc->support_pmu_vbus && pdata->vbus_extcon_dev_name) {
+		udc->vbus_extcon_dev = extcon_get_extcon_dev_by_cable(
+					&pdev->dev, "vbus");
+		if (IS_ERR(udc->vbus_extcon_dev))
+			udc->vbus_extcon_dev =
+				extcon_get_extcon_dev(pdata->vbus_extcon_dev_name);
+	}
 
 	/* Create work for controlling clocks to the phy if otg is disabled */
 	INIT_WORK(&udc->irq_work, tegra_udc_irq_work);
