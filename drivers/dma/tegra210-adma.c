@@ -47,12 +47,10 @@ struct tegra_adma;
 
 /*
  * tegra_adma_chip_data Tegra chip specific ADMA data
- * @nr_channels: Number of channels available in the controller.
  * @channel_reg_size: Channel register size.
  * @max_dma_count: Maximum ADMA transfer count supported by ADMA controller.
  */
 struct tegra_adma_chip_data {
-	int nr_channels;
 	int channel_reg_size;
 	int max_dma_count;
 };
@@ -143,8 +141,10 @@ struct tegra_adma {
 	spinlock_t			global_lock;
 	void __iomem			*base_addr;
 	const struct tegra_adma_chip_data *chip_data;
+	/* number of channels available in the controller */
+	unsigned int			nr_channels;
 
-	/* Some register need to be cache before suspend */
+	/* global register need to be cache before suspend */
 	u32				global_reg;
 
 	/* Last member of the structure */
@@ -1150,7 +1150,6 @@ static struct dma_chan *tegra_dma_of_xlate(struct of_phandle_args *dma_spec,
 }
 
 static const struct tegra_adma_chip_data tegra210_adma_chip_data = {
-	.nr_channels            = 22,
 	.channel_reg_size       = 0x80,
 	.max_dma_count          = 1024UL * 64,
 };
@@ -1177,6 +1176,7 @@ static int tegra_adma_probe(struct platform_device *pdev)
 {
 	struct resource	*res;
 	struct tegra_adma *tdma;
+	unsigned int nr_channels = 0;
 	int ret, i;
 
 	const struct tegra_adma_chip_data *cdata = NULL;
@@ -1195,7 +1195,14 @@ static int tegra_adma_probe(struct platform_device *pdev)
 	}
 	cdata = match->data;
 
-	tdma = devm_kzalloc(&pdev->dev, sizeof(*tdma) + cdata->nr_channels *
+	ret = of_property_read_u32(pdev->dev.of_node, "dma-channels",
+			&nr_channels);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to read dma-channels from DT\n");
+		return -EINVAL;
+	}
+
+	tdma = devm_kzalloc(&pdev->dev, sizeof(*tdma) + nr_channels *
 			sizeof(struct tegra_adma_chan), GFP_KERNEL);
 	if (!tdma) {
 		dev_err(&pdev->dev, "Error: memory allocation failed\n");
@@ -1204,6 +1211,7 @@ static int tegra_adma_probe(struct platform_device *pdev)
 
 	tdma->dev = &pdev->dev;
 	tdma->chip_data = cdata;
+	tdma->nr_channels = nr_channels;
 	platform_set_drvdata(pdev, tdma);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -1249,7 +1257,7 @@ static int tegra_adma_probe(struct platform_device *pdev)
 	global_write(tdma, ADMA_GLOBAL_SOFT_RESET, 0x1);
 
 	INIT_LIST_HEAD(&tdma->dma_dev.channels);
-	for (i = 0; i < cdata->nr_channels; i++) {
+	for (i = 0; i < tdma->nr_channels; i++) {
 		struct tegra_adma_chan *tdc = &tdma->channels[i];
 
 		tdc->chan_base_offset = cdata->channel_reg_size * i;
@@ -1322,7 +1330,7 @@ static int tegra_adma_probe(struct platform_device *pdev)
 	}
 
 	dev_info(&pdev->dev, "Tegra210 ADMA driver register %d channels\n",
-			cdata->nr_channels);
+			tdma->nr_channels);
 	return 0;
 
 err_unregister_dma_dev:
@@ -1349,7 +1357,7 @@ static int tegra_adma_remove(struct platform_device *pdev)
 
 	dma_async_device_unregister(&tdma->dma_dev);
 
-	for (i = 0; i < tdma->chip_data->nr_channels; ++i) {
+	for (i = 0; i < tdma->nr_channels; ++i) {
 		tdc = &tdma->channels[i];
 		tasklet_kill(&tdc->tasklet);
 	}
@@ -1397,7 +1405,7 @@ static int tegra_adma_pm_suspend(struct device *dev)
 		return ret;
 
 	tdma->global_reg = global_read(tdma, ADMA_GLOBAL_CMD);
-	for (i = 0; i < tdma->chip_data->nr_channels; i++) {
+	for (i = 0; i < tdma->nr_channels; i++) {
 		struct tegra_adma_chan *tdc = &tdma->channels[i];
 		struct tegra_adma_chan_regs *ch_reg = &tdc->channel_reg;
 
@@ -1425,7 +1433,7 @@ static int tegra_adma_pm_resume(struct device *dev)
 
 	global_write(tdma, ADMA_GLOBAL_CMD, tdma->global_reg);
 
-	for (i = 0; i < tdma->chip_data->nr_channels; i++) {
+	for (i = 0; i < tdma->nr_channels; i++) {
 		struct tegra_adma_chan *tdc = &tdma->channels[i];
 		struct tegra_adma_chan_regs *ch_reg = &tdc->channel_reg;
 
