@@ -707,12 +707,6 @@ int __init t210_panel_init(void)
 	t210_panel_select();
 #endif
 
-	err = nvmap_init();
-	if (err) {
-		pr_err("nvmap device registration failed\n");
-		return err;
-	}
-
 	phost1x = t210_host1x_init();
 	if (!phost1x) {
 		pr_err("host1x devices registration failed\n");
