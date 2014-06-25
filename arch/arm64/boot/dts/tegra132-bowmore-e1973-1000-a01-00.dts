@@ -124,12 +124,18 @@
 		status = "okay";
 	};
 
-	udc@0x7d000000 {
+	udc@7d000000 {
 		nvidia,port_otg;
 		nvidia,charging_supported;
-		status = "okay";
 		nvidia,support_pmu_vbus;
 		nvidia,vbus_extcon_dev_name = "palmas-extcon";
+		status = "okay";
+	};
+
+	otg@7d000000 {
+		nvidia,support_pmu_vbus;
+		nvidia,vbus_extcon_dev_name = "palmas-extcon";
+		status = "okay";
 	};
 
 	pcie-controller {
