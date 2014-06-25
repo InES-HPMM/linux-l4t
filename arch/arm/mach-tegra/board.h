@@ -167,7 +167,7 @@ void tegra_fb_linear_set(struct iommu_linear_map *map);
 static inline void tegra_fb_linear_set(struct iommu_linear_map *map) {}
 #endif
 
-#ifdef CONFIG_CMA
+#if defined(CONFIG_CMA) && defined(CONFIG_TEGRA_IOMMU_SMMU)
 void carveout_linear_set(struct device *cma_dev);
 #else
 static inline void carveout_linear_set(struct device *cma_dev) {}
