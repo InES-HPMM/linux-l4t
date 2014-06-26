@@ -4289,6 +4289,30 @@ static int hsic_power_create_file(struct tegra_xhci_hcd *tegra)
 	return 0;
 }
 
+static void xusb_tegra_program_registers()
+{
+	/* Clear XUSB_PADCTL_RST D14 */
+	writel(0x190037ff, IO_ADDRESS(0x6000635c));
+
+	writel(0x00001111, IO_ADDRESS(0x7009f008));
+
+	writel(0x00018820, IO_ADDRESS(0x7009f014));
+
+	writel(0x00000000, IO_ADDRESS(0x7009f024));
+
+	writel(0x00040055, IO_ADDRESS(0x7009f004));
+
+	writel(0x008ec5fa, IO_ADDRESS(0x6000600c));
+
+	writel(0x090037ff, IO_ADDRESS(0x6000635c));
+
+	writel(0x800e8e41, IO_ADDRESS(0x70099180));
+
+	writel(0x7, IO_ADDRESS(0x70098004));
+
+	writel(0x70090000, IO_ADDRESS(0x70098010));
+}
+
 /* TODO: we have to refine error handling in tegra_xhci_probe() */
 static int tegra_xhci_probe(struct platform_device *pdev)
 {
@@ -4300,6 +4324,10 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	int irq;
 	const struct tegra_xusb_soc_config *soc_config;
 	const struct of_device_id *match;
+
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	xusb_tegra_program_registers();
+#endif
 
 	BUILD_BUG_ON(sizeof(struct cfgtbl) != 256);
 
