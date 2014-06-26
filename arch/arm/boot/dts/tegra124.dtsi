@@ -41,7 +41,7 @@
 		       0x0 0x70019a88 0x0 0x24>;
 		nvidia,#asids = <128>;
 		dma-window = <0x0 0x0 0x0 0x40000000>;
-		iommu-cells = <10>;
+		#iommu-cells = <10>;
 	};
 
 	timer {
