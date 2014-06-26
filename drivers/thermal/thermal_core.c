@@ -450,7 +450,7 @@ exit:
 }
 EXPORT_SYMBOL_GPL(thermal_zone_get_temp);
 
-static void update_temperature(struct thermal_zone_device *tz)
+static int update_temperature(struct thermal_zone_device *tz)
 {
 	long temp;
 	int ret;
@@ -459,13 +459,15 @@ static void update_temperature(struct thermal_zone_device *tz)
 	if (ret) {
 		dev_warn(&tz->device, "failed to read out thermal zone %d\n",
 			 tz->id);
-		return;
+		return ret;
 	}
 
 	mutex_lock(&tz->lock);
 	tz->last_temperature = tz->temperature;
 	tz->temperature = temp;
 	mutex_unlock(&tz->lock);
+
+	return 0;
 }
 
 void thermal_zone_device_update(struct thermal_zone_device *tz)
@@ -475,7 +477,8 @@ void thermal_zone_device_update(struct thermal_zone_device *tz)
 	if (!tz || !tz->ops->get_temp || !device_is_registered(&tz->device))
 		return;
 
-	update_temperature(tz);
+	if (update_temperature(tz))
+		return;
 
 	for (count = 0; count < tz->trips; count++)
 		handle_thermal_trip(tz, count);
