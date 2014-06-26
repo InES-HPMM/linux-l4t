@@ -8695,7 +8695,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("cap.emc",	"cap.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
 	SHARED_EMC_CLK("cap.vcore.emc",	"cap.vcore.emc", NULL,	&tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
 	SHARED_EMC_CLK("cap.throttle.emc", "cap_throttle", NULL, &tegra_clk_emc, NULL, 0, SHARED_CEILING_BUT_ISO, 0),
-	SHARED_EMC_CLK("3d.emc",	"tegra_gm20b.0",	"emc",	&tegra_clk_emc, NULL, 0, 0,		BIT(EMC_USER_3D)),
+	SHARED_EMC_CLK("3d.emc",	"tegra_gpu.0",	"emc",	&tegra_clk_emc, NULL, 0, 0,		BIT(EMC_USER_3D)),
 	SHARED_EMC_CLK("msenc.emc",	"tegra_msenc",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW,	BIT(EMC_USER_MSENC)),
 	SHARED_EMC_CLK("nvjpg.emc",	"tegra_nvjpg",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW,	BIT(EMC_USER_NVJPG)),
 	SHARED_EMC_CLK("nvdec.emc",	"tegra_nvdec",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
@@ -8862,7 +8862,7 @@ static struct clk tegra_xusb_coupled_clks[] = {
 		.name	= _name,			\
 		.lookup	= {				\
 			.dev_id	= _dev,			\
-			.con_id		= _con,		\
+			.con_id	= _con,			\
 		},					\
 	}
 
@@ -8920,9 +8920,9 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("i2c5", "tegra_cl_dvfs", "i2c"),
 	CLK_DUPLICATE("cpu_g", "tegra_cl_dvfs", "safe_dvfs"),
 	CLK_DUPLICATE("actmon", "tegra_host1x", "actmon"),
-	CLK_DUPLICATE("gpu_ref", "tegra_gm20b.0", "PLLG_ref"),
-	CLK_DUPLICATE("gbus", "tegra_gm20b.0", "PLLG_out"),
-	CLK_DUPLICATE("pll_p_out5", "tegra_gm20b.0", "pwr"),
+	CLK_DUPLICATE("gpu_ref", "tegra_gpu.0", "PLLG_ref"),
+	CLK_DUPLICATE("gbus", "tegra_gpu.0", "PLLG_out"),
+	CLK_DUPLICATE("pll_p_out5", "tegra_gpu.0", "pwr"),
 	CLK_DUPLICATE("ispa.isp.cbus", "tegra_isp", "isp"),
 	CLK_DUPLICATE("ispb.isp.cbus", "tegra_isp.1", "isp"),
 #ifdef CONFIG_VI_ONE_DEVICE

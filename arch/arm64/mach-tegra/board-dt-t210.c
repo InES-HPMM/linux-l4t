@@ -71,7 +71,7 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra210-host1x", TEGRA_HOST1X_BASE, "host1x",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-gm20b", TEGRA_GK20A_BAR0_BASE,
-				"gm20b.0", NULL),
+				"gpu.0", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-nvenc", TEGRA_NVENC_BASE, "msenc",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-vi", TEGRA_VI_BASE, "vi",

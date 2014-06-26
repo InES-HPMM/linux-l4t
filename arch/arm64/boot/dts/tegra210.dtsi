@@ -590,7 +590,7 @@
 
 	};
 
-	gm20b {
+	gpu {
 		compatible = "nvidia,tegra210-gm20b";
 		nvidia,host1x = <&host1x>;
 		reg = <0x0 0x57000000 0x0 0x01000000>,
