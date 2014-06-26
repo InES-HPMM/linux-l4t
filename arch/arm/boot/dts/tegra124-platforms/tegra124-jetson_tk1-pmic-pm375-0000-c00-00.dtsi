@@ -18,7 +18,6 @@
 			ams,major-rev = <1>;
 			ams,minor-rev = <2>;
 			ams,system-power-controller;
-			ams,extcon-name = "as3722-extcon";
 			#extcon-cells = <1>;
 			ams,enable-adc1-continuous-mode;
 			ams,enable-low-voltage-range;

@@ -14,4 +14,10 @@
 			avdd_dsi_csi-supply = <&as3722_ldo2>;
 		};
 	};
+
+	i2c@7000d000 {
+		as3722@40 {
+			ams,extcon-name = "as3722-extcon";
+		};
+	};
 };

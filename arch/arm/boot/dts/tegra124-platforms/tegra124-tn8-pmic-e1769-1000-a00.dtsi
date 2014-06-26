@@ -83,7 +83,6 @@
 
 			palmas_extcon: extcon {
 				compatible = "ti,palmas-usb";
-				extcon-name = "palmas-extcon";
 				#extcon-cells = <1>;
 				ti,wakeup;
 				ti,enable-id-detection;

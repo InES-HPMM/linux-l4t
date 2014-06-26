@@ -90,4 +90,11 @@
 		};
 	};
 
+	i2c@7000d000 {
+		tps65913@58 {
+			extcon {
+				 extcon-name = "palmas-extcon";
+			};
+		};
+	};
 };

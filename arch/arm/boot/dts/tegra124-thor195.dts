@@ -120,6 +120,12 @@
 
 	i2c@7000d000 {
 		nvidia,bit-banging-xfer-after-shutdown;
+
+		tps65913 {
+			extcon {
+				extcon-name = "palmas-extcon";
+			};
+		};
 	};
 
 	spi@7000d400 {

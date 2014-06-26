@@ -16,7 +16,6 @@
 			ams,major-rev = <1>;
 			ams,minor-rev = <1>;
 			system-pmic-power-off;
-			ams,extcon-name = "as3722-extcon";
 			#extcon-cells = <1>;
 
 			ams,enable-adc1-continuous-mode;

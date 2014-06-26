@@ -111,6 +111,10 @@
 
 	i2c@7000d000 {
 		nvidia,bit-banging-xfer-after-shutdown;
+
+		as3722@40 {
+			ams,extcon-name = "as3722-extcon";
+		};
 	};
 
 	memory@0x80000000 {

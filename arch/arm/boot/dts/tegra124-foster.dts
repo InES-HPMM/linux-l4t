@@ -78,6 +78,10 @@
 					ti,enable-shutdown;
 				};
 			};
+
+			extcon {
+				extcon-name = "palmas-extcon";
+			};
 		};
 	};
 
