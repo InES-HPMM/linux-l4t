@@ -841,7 +841,7 @@
 		status = "okay";
 	};
 
-	udc@0x7d000000 {
+	udc@7d000000 {
 		status = "okay";
 	};
 
