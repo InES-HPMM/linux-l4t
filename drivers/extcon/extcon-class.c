@@ -866,6 +866,7 @@ static struct extcon_dev *of_extcon_dev_get_by_cable_name(
 	struct of_phandle_args npspec;
 	int ret;
 	int index = 0;
+	int cindex = -1;
 
 	/*
 	 * For named cable, first look up the name in the "extcon-names"
@@ -883,8 +884,10 @@ static struct extcon_dev *of_extcon_dev_get_by_cable_name(
 
 	mutex_lock(&extcon_dev_list_lock);
 	list_for_each_entry(edev, &extcon_dev_list, entry) {
-		if (edev->node == npspec.np)
+		if (edev->node == npspec.np) {
+			cindex = npspec.args_count ? npspec.args[0] : 0;
 			goto out;
+		}
 	}
 	edev = NULL;
 out:
@@ -900,7 +903,7 @@ out:
 		}
 	}
 
-	*cable_index = index;
+	*cable_index = cindex;
 	return edev;
 }
 
