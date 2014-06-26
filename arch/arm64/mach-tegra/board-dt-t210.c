@@ -34,6 +34,7 @@
 #include "iomap.h"
 #include "board-common.h"
 #include "board-t210.h"
+#include <mach/xusb.h>
 
 #if defined(CONFIG_TEGRA_NVADSP) && \
 		!defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
@@ -54,6 +55,11 @@ static void __init tegra_t210_reserve(void)
 	tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_4M);
 #endif
 }
+
+static struct tegra_xusb_platform_data xusb_pdata = {
+	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_SS_P1 |
+		TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_USB2_P2,
+};
 
 struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra210-sdhci", TEGRA_SDMMC1_BASE,
@@ -154,6 +160,8 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("linux,spdif-dit", 3, "spdif-dit.3", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-dfll", 0x70110000, "tegra_cl_dvfs",
 		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-xhci", 0x70090000, "tegra-xhci",
+				&xusb_pdata),
 	{}
 };
 
