@@ -504,6 +504,10 @@ static void __init tegra_p2360_dt_init(void)
 	tegra_get_display_board_info(&display_board_info);
 
 	tegra_p2360_early_init();
+#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
+	carveout_linear_set(&tegra_generic_cma_dev);
+	carveout_linear_set(&tegra_vpr_cma_dev);
+#endif
 #ifdef CONFIG_USE_OF
 	of_platform_populate(NULL,
 		of_default_bus_match_table, p2360_auxdata_lookup,
