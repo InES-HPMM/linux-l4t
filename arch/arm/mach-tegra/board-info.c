@@ -290,6 +290,31 @@ bool tegra_is_board(const char *bom, const char *project,
 }
 EXPORT_SYMBOL(tegra_is_board);
 
+int tegra_board_get_skurev(const char *project)
+{
+	int i;
+	unsigned int revision;
+
+	if (!project)
+		return -1;
+
+	for (i = 0;
+		(i < TEGRA_MAX_BOARDS && board_info_array[i].valid != 0);
+		i++) {
+		if (!strncmp(board_info_array[i].project, project,
+						MAX_BUFFER)) {
+			if (kstrtouint(
+			(const char *)board_info_array[i].revision,
+			10, &revision) == 0)
+				return revision;
+			else
+				break;
+		}
+	}
+	return -1;
+}
+EXPORT_SYMBOL(tegra_board_get_skurev);
+
 bool is_tegra_diagnostic_mode(void)
 {
 	static bool is_mode_valid;

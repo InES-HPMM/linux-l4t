@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -33,4 +33,7 @@ struct tegra_board_info {
 bool tegra_is_board(const char *bom, const char *project,
 		const char *sku, const char *revision,
 		const char *bom_version);
+
+/* Returns the sku revision of board */
+int tegra_board_get_skurev(const char *project);
 #endif
