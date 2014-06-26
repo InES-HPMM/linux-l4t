@@ -1165,7 +1165,7 @@ static int hsic_power_rail_enable(struct tegra_xhci_hcd *tegra)
 		goto done;
 
 	tegra->vddio_hsic_reg = devm_regulator_get(dev, supply->vddio_hsic);
-	if (IS_ERR_OR_NULL(tegra->vddio_hsic_reg)) {
+	if (IS_ERR(tegra->vddio_hsic_reg)) {
 		dev_err(dev, "%s get vddio_hsic failed\n", __func__);
 		ret = PTR_ERR(tegra->vddio_hsic_reg);
 		goto get_failed;
