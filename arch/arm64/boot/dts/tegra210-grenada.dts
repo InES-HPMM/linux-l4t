@@ -883,4 +883,21 @@
 		wlan-pwr-gpio = <&gpio TEGRA_GPIO(X, 7) 0>;
 		wlan-rst-gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
 	};
+
+	gpio: gpio@6000d000 {
+		gpio-init-names = "default";
+		gpio-init-0 = <&gpio_default>;
+
+		gpio_default: default {
+			gpio-input = <
+				TEGRA_GPIO(U, 5)
+				>;
+			gpio-output-low = <
+				>;
+			gpio-output-high = <
+				TEGRA_GPIO(X, 7)
+				TEGRA_GPIO(CC, 5)
+				>;
+		};
+	};
 };
