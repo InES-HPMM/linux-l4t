@@ -11,6 +11,7 @@
 #include <asm/unistd.h>
 #include <asm/ftrace.h>
 #include <asm/unwind.h>
+#include <asm/cp15.h>
 
 #ifdef CONFIG_NEED_RET_TO_USER
 #include <mach/entry-macro.S>
@@ -402,7 +403,14 @@ ENTRY(vector_swi)
 #ifdef CONFIG_ALIGNMENT_TRAP
 	ldr	ip, __cr_alignment
 	ldr	ip, [ip]
-	mcr	p15, 0, ip, c1, c0		@ update control register
+	/*
+	 * Update alignment bit in control register only if it is different
+	 * from what's expected.
+	 */
+	mrc	p15, 0, r8, c1, c0
+	eor	r8, r8, ip
+	ands	r8, r8, #CR_A
+	mcrne	p15, 0, ip, c1, c0
 #endif
 	enable_irq
 	ct_user_exit
