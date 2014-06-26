@@ -96,12 +96,19 @@ static int spdif_dit_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id spdif_dit_of_match[] = {
+	{ .compatible = "linux,spdif-dit", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, spdif_dit_of_match);
+
 static struct platform_driver spdif_dit_driver = {
 	.probe		= spdif_dit_probe,
 	.remove		= spdif_dit_remove,
 	.driver		= {
 		.name	= DRV_NAME,
 		.owner	= THIS_MODULE,
+		.of_match_table = spdif_dit_of_match,
 	},
 };
 
