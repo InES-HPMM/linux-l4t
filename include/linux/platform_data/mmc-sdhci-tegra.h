@@ -69,6 +69,7 @@ struct tegra_sdhci_platform_data {
 	unsigned int compad_vref_1v8;
 	bool disable_clock_gate; /* no clock gate when true */
 	bool enable_pm_domain; /* enable pm domain when true */
+	bool update_pinctrl_settings;
 	u32 cpu_speedo;
 	unsigned char default_drv_type;
 };
