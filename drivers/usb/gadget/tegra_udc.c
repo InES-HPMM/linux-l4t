@@ -2937,7 +2937,6 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		pdata->phy_intf = soc_data->phy_intf;
 		pdata->op_mode = soc_data->op_mode;
 		pdata->u_cfg.utmi = soc_data->utmi;
-		pdata->u_data.dev.vbus_gpio = -1;
 
 		dev_pdata = dev_get_platdata(&pdev->dev);
 		if (dev_pdata)
