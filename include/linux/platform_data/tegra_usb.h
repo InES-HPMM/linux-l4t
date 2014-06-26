@@ -126,7 +126,6 @@ struct tegra_usb_phy_platform_ops {
  */
 struct tegra_usb_dev_mode_data {
 	int vbus_pmu_irq;
-	int vbus_gpio;
 	int dcp_current_limit_ma;
 	int qc2_current_limit_ma;
 	bool charging_supported;
@@ -138,7 +137,6 @@ struct tegra_usb_dev_mode_data {
  * defines structure for platform dependent host parameters
  */
 struct tegra_usb_host_mode_data {
-	int vbus_gpio;
 	bool hot_plug;
 	bool remote_wakeup_supported;
 	bool power_off_on_suspend;
