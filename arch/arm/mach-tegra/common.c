@@ -155,10 +155,6 @@ phys_addr_t tegra_wb0_params_block_size;
 #ifdef CONFIG_TEGRA_NVDUMPER
 unsigned long nvdumper_reserved;
 #endif
-#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
-unsigned long tegra_tzram_start;
-unsigned long tegra_tzram_size;
-#endif
 bool tegra_lp0_vec_relocate;
 unsigned long tegra_grhost_aperture = ~0ul;
 static   bool is_tegra_debug_uart_hsport;
@@ -1181,19 +1177,6 @@ static int __init tegra_tsec_arg(char *options)
 	return 0;
 }
 early_param("tsec", tegra_tsec_arg);
-
-#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
-static int __init tegra_tzram_arg(char *options)
-{
-	char *p = options;
-
-	tegra_tzram_size = memparse(p, &p);
-	if (*p == '@')
-		tegra_tzram_start = memparse(p + 1, &p);
-	return 0;
-}
-early_param("tzram", tegra_tzram_arg);
-#endif
 
 #ifdef CONFIG_TEGRA_USE_NCT
 static int __init tegra_nck_arg(char *options)
@@ -2311,13 +2294,6 @@ out:
 			nvdumper_reserved,
 			nvdumper_reserved + NVDUMPER_RESERVED_SIZE - 1);
 	}
-#endif
-
-#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
-	pr_info("Tzram:               %08lx - %08lx\n",
-		tegra_tzram_start,
-		tegra_tzram_size ?
-			tegra_tzram_start + tegra_tzram_size - 1 : 0);
 #endif
 
 #ifdef CONFIG_TEGRA_USE_NCT

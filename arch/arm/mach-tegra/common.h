@@ -22,11 +22,6 @@ extern struct smp_operations tegra_smp_ops;
 extern phys_addr_t tegra_tsec_start;
 extern phys_addr_t tegra_tsec_size;
 
-#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
-extern unsigned long tegra_tzram_start;
-extern unsigned long tegra_tzram_size;
-#endif
-
 #ifdef CONFIG_CACHE_L2X0
 void tegra_init_cache(bool init);
 #else

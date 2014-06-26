@@ -124,8 +124,6 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-paz00.o
 obj-y					+= board-common.o
 obj-$(CONFIG_TEGRA_WAKEUP_MONITOR)      += tegra_wakeup_monitor.o
 
-obj-$(CONFIG_TRUSTED_LITTLE_KERNEL)     += tegra_tzram.o
-
 obj-y                                   += board-touch-raydium_spi.o
 obj-y                                   += board-touch-synaptics-spi.o
 obj-y                                   += board-touch-maxim_sti-spi.o
