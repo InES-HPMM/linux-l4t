@@ -879,8 +879,7 @@ sys_stat_read:
 		return IRQ_HANDLED;
 	}
 
-	if (bq2419x->ext_name)
-		bq2419x_extcon_cable_update(bq2419x, val);
+	bq2419x_extcon_cable_update(bq2419x, val);
 
 	if (!bq2419x->battery_presense)
 		return IRQ_HANDLED;
@@ -1418,10 +1417,6 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
 	if (!pdata)
 		return ERR_PTR(-ENOMEM);
 
-	ret = of_property_read_string(np, "extcon-name", &pdata->ext_name);
-	if (ret < 0)
-		pdata->ext_name = NULL;
-
 	batt_reg_node = of_find_node_by_name(np, "charger");
 	if (batt_reg_node) {
 		int temp_range_len, chg_current_lim_len, chg_voltage_lim_len;
@@ -1713,25 +1708,21 @@ static int bq2419x_probe(struct i2c_client *client,
 		return ret;
 	}
 
-	if (bq2419x->ext_name) {
-		bq2419x->edev.supported_cable = bq2419x_extcon_cable;
-		bq2419x->edev.name = bq2419x->ext_name;
-		bq2419x->edev.dev.parent = bq2419x->dev;
+	bq2419x->edev.supported_cable = bq2419x_extcon_cable;
+	bq2419x->edev.name = bq2419x->ext_name;
+	bq2419x->edev.dev.parent = bq2419x->dev;
 
-		ret = extcon_dev_register(&bq2419x->edev);
-		if (ret < 0) {
-			dev_err(bq2419x->dev, "failed to register extcon device\n");
-			return ret;
-		}
-		ret = regmap_read(bq2419x->regmap, BQ2419X_SYS_STAT_REG, &val);
-		if (ret < 0) {
-			dev_err(bq2419x->dev, "SYS_STAT_REG rd failed %d\n",
-									ret);
-			return ret;
-		}
-		ret = bq2419x_extcon_cable_update(bq2419x, val);
-	} else
-		dev_info(bq2419x->dev, "vbus detection NOT enabled\n");
+	ret = extcon_dev_register(&bq2419x->edev);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "failed to register extcon device\n");
+		return ret;
+	}
+	ret = regmap_read(bq2419x->regmap, BQ2419X_SYS_STAT_REG, &val);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "SYS_STAT_REG rd failed %d\n", ret);
+		return ret;
+	}
+	ret = bq2419x_extcon_cable_update(bq2419x, val);
 
 	mutex_init(&bq2419x->mutex);
 
@@ -1834,8 +1825,7 @@ scrub_wq:
 		battery_charger_unregister(bq2419x->bc_dev);
 	}
 scrub_mutex:
-	if (bq2419x->ext_name)
-		extcon_dev_unregister(&bq2419x->edev);
+	extcon_dev_unregister(&bq2419x->edev);
 	mutex_destroy(&bq2419x->mutex);
 	mutex_destroy(&bq2419x->otg_mutex);
 	return ret;
@@ -1849,8 +1839,7 @@ static int bq2419x_remove(struct i2c_client *client)
 		battery_charger_unregister(bq2419x->bc_dev);
 		cancel_delayed_work(&bq2419x->wdt_restart_wq);
 	}
-	if (bq2419x->ext_name)
-		extcon_dev_unregister(&bq2419x->edev);
+	extcon_dev_unregister(&bq2419x->edev);
 
 	mutex_destroy(&bq2419x->mutex);
 	mutex_destroy(&bq2419x->otg_mutex);
