@@ -87,13 +87,11 @@ static void print_usb_plat_data_info(struct tegra_usb_phy *phy)
 	pr_info("qc2_voltage: %d\n", pdata->qc2_voltage);
 	if (pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
 		pr_info("vbus_pmu_irq: %d\n", pdata->u_data.dev.vbus_pmu_irq);
-		pr_info("vbus_gpio: %d\n", pdata->u_data.dev.vbus_gpio);
 		pr_info("charging: %s\n", pdata->u_data.dev.charging_supported ?
 				"enabled" : "disabled");
 		pr_info("remote_wakeup: %s\n", pdata->u_data.dev.remote_wakeup_supported
 				? "enabled" : "disabled");
 	} else {
-		pr_info("vbus_gpio: %d\n", pdata->u_data.host.vbus_gpio);
 		pr_info("hot_plug: %s\n", pdata->u_data.host.hot_plug ?
 				"enabled" : "disabled");
 		pr_info("remote_wakeup: %s\n", pdata->u_data.host.remote_wakeup_supported
@@ -118,16 +116,11 @@ static void usb_host_vbus_enable(struct tegra_usb_phy *phy, bool enable)
 		if (enable) {
 			ret = regulator_enable(phy->vbus_reg);
 			if (ret)
-				ERR("can't enable regulator vbus_reg, err %d\n",
-						ret);
+				ERR("can't enable regulator vbus_reg,err %d\n",
+				ret);
 		}
 		else
 			regulator_disable(phy->vbus_reg);
-	} else {
-		int gpio = phy->pdata->u_data.host.vbus_gpio;
-		if (gpio == -1)
-			return;
-		gpio_set_value_cansleep(gpio, enable ? 1 : 0);
 	}
 }
 
@@ -312,13 +305,6 @@ void tegra_usb_phy_close(struct usb_phy *x)
 
 		if (phy->vbus_reg)
 			regulator_put(phy->vbus_reg);
-		else {
-			int gpio = phy->pdata->u_data.host.vbus_gpio;
-			if (gpio != -1) {
-				gpio_set_value_cansleep(gpio, 0);
-				gpio_free(gpio);
-			}
-		}
 	}
 
 	if (phy->vdd_reg) {
@@ -869,27 +855,13 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 			tegra_clk_prepare_enable(phy->ctrlr_clk);
 		}
 	} else {
-		int gpio = phy->pdata->u_data.host.vbus_gpio;
-		if (gpio != -1) {
-			if (gpio_request(gpio, "usb_host_vbus") < 0) {
-				ERR("inst:[%d] host vbus gpio req failed\n",
-								phy->inst);
-				goto fail_init;
-			}
-			if (gpio_direction_output(gpio, 1) < 0) {
-				ERR("inst:[%d] host vbus gpio dir failed\n",
-								phy->inst);
-				goto fail_init;
-			}
-		} else {
-			phy->vbus_reg = regulator_get(&pdev->dev, "usb_vbus");
-			if (IS_ERR_OR_NULL(phy->vbus_reg)) {
-				ERR("failed to get regulator vdd_vbus_usb:" \
-				"%ld,instance : %d\n", PTR_ERR(phy->vbus_reg),
-				phy->inst);
-				phy->vbus_reg = NULL;
-			}
+		phy->vbus_reg = regulator_get(&pdev->dev, "usb_vbus");
+		if (IS_ERR_OR_NULL(phy->vbus_reg)) {
+			ERR("failed regulator_get vdd_vbus_usb:%ld,inst:%d\n",
+				PTR_ERR(phy->vbus_reg),	phy->inst);
+			phy->vbus_reg = NULL;
 		}
+
 		usb_host_vbus_enable(phy, true);
 		/* Fixme: Need delay to stablize the vbus on USB1
 		   this must be fixed properly */
@@ -933,13 +905,6 @@ fail_init:
 
 		if (phy->vbus_reg)
 			regulator_put(phy->vbus_reg);
-		else {
-			int gpio = phy->pdata->u_data.host.vbus_gpio;
-			if (gpio != -1) {
-				gpio_set_value_cansleep(gpio, 0);
-				gpio_free(gpio);
-			}
-		}
 	}
 
 fail_clk:
