@@ -400,7 +400,7 @@ static u64 tegra_smmu_of_get_swgids(struct device *dev)
 	u64 swgids = 0;
 
 	of_property_for_each_phandle_with_args(iter, dev->of_node, "iommus",
-					       "iommu-cells", 0) {
+					       "#iommu-cells", 0) {
 		if (iter.out_args.np != smmu_handle->dev->of_node)
 			continue;
 
