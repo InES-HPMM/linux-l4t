@@ -107,7 +107,6 @@ config ARCH_TEGRA_12x_SOC
 	select TEGRA_ISOMGR
 	select TEGRA_ISOMGR_SYSFS
 	select PROC_DEVICETREE
-        select TEGRA_USE_SIMON
 	help
 	  Support for NVIDIA Tegra 12x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
@@ -847,7 +846,8 @@ config TEGRA_HDMI_PRIMARY
 
 config TEGRA_USE_SIMON
 	bool "Use Tegra Silicon Monitor"
-	default n
+	depends on ARCH_TEGRA_12x_SOC || ARCH_TEGRA_13x_SOC
+	default y
 	help
 	  Enable Tegra silicon state monitoring, grading, and notification.
 
