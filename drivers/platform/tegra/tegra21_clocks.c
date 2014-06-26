@@ -42,6 +42,7 @@
 #include "sleep.h"
 #include "devices.h"
 #include "tegra_cl_dvfs.h"
+#include "cpu-tegra.h"
 
 /* FIXME: Disable for initial Si bringup */
 #undef USE_PLLE_SS
@@ -561,7 +562,9 @@
 
 static bool tegra21_is_dyn_ramp(struct clk *c,
 				unsigned long rate, bool from_vco_min);
+static void tegra21_dfll_cpu_late_init(struct clk *c);
 static void tegra21_pllp_init_dependencies(unsigned long pllp_rate);
+
 static unsigned long tegra21_clk_shared_bus_update(struct clk *bus,
 	struct clk **bus_top, struct clk **bus_slow, unsigned long *rate_cap);
 static unsigned long tegra21_clk_cap_shared_bus(struct clk *bus,
@@ -3474,7 +3477,7 @@ static struct clk_ops tegra_plle_ops = {
 };
 
 /*
- * Tegra12 includes dynamic frequency lock loop (DFLL) with automatic voltage
+ * Tegra21 includes dynamic frequency lock loop (DFLL) with automatic voltage
  * control as possible CPU clock source. It is included in the Tegra12 clock
  * tree as "complex PLL" with standard Tegra clock framework APIs. However,
  * DFLL locking logic h/w access APIs are separated in the tegra_cl_dvfs.c
@@ -3483,34 +3486,7 @@ static struct clk_ops tegra_plle_ops = {
  */
 
 /* DFLL operations */
-static void __init tegra21_dfll_cpu_late_init(struct clk *c)
-{
-#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
-	int ret;
-	struct clk *cpu = tegra_get_clock_by_name("cpu_g");
-
-	if (!cpu || !cpu->dvfs) {
-		pr_err("%s: CPU dvfs is not present\n", __func__);
-		return;
-	}
-
-	/* release dfll clock source reset, init cl_dvfs control logic, and
-	   move dfll to initialized state, so it can be used as CPU source */
-	tegra_periph_reset_deassert(c);
-	ret = tegra_init_cl_dvfs();
-	if (!ret) {
-		c->state = OFF;
-		c->u.dfll.cl_dvfs = platform_get_drvdata(&tegra_cl_dvfs_device);
-		if (tegra_platform_is_silicon())
-			use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
-		tegra_dvfs_set_dfll_range(cpu->dvfs, use_dfll);
-		tegra_cl_dvfs_debug_init(c);
-		pr_info("Tegra CPU DFLL is initialized with use_dfll = %d\n", use_dfll);
-	}
-#endif
-}
-
-static void tegra21_dfll_clk_init(struct clk *c)
+static void __init tegra21_dfll_clk_init(struct clk *c)
 {
 	c->ops->init = tegra21_dfll_cpu_late_init;
 }
@@ -3579,14 +3555,29 @@ static int tegra21_use_dfll_cb(const char *arg, const struct kernel_param *kp)
 	unsigned long c_flags, p_flags;
 	unsigned int old_use_dfll;
 	struct clk *c = tegra_get_clock_by_name("cpu");
+	struct clk *dfll = tegra_get_clock_by_name("dfll_cpu");
 
 	if (!c->parent || !c->parent->dvfs)
 		return -ENOSYS;
 
+	ret = tegra_cpu_reg_mode_force_normal(true);
+	if (ret) {
+		pr_err("%s: Failed to force regulator normal mode\n", __func__);
+		return ret;
+	}
+
 	clk_lock_save(c, &c_flags);
+	if (dfll->state == UNINITIALIZED) {
+		pr_err("%s: DFLL is not initialized\n", __func__);
+		clk_unlock_restore(c, &c_flags);
+		tegra_cpu_reg_mode_force_normal(false);
+		return -ENOSYS;
+	}
+
 	if (c->parent->u.cpu.mode == MODE_LP) {
 		pr_err("%s: DFLL is not used on LP CPU\n", __func__);
 		clk_unlock_restore(c, &c_flags);
+		tegra_cpu_reg_mode_force_normal(false);
 		return -ENOSYS;
 	}
 
@@ -3610,7 +3601,7 @@ static int tegra21_use_dfll_cb(const char *arg, const struct kernel_param *kp)
 	}
 	clk_unlock_restore(c->parent, &p_flags);
 	clk_unlock_restore(c, &c_flags);
-	tegra_recalculate_cpu_edp_limits();
+	tegra_update_cpu_edp_limits();
 	return ret;
 }
 
@@ -8616,6 +8607,34 @@ static bool tegra21_is_dyn_ramp(
 	}
 #endif
 	return false;
+}
+
+/* DFLL late init called with CPU clock lock taken */
+static void __init tegra21_dfll_cpu_late_init(struct clk *c)
+{
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+	int ret;
+	struct clk *cpu = &tegra_clk_virtual_cpu_g;
+
+	if (!cpu || !cpu->dvfs) {
+		pr_err("%s: CPU dvfs is not present\n", __func__);
+		return;
+	}
+
+	/* release dfll clock source reset, init cl_dvfs control logic, and
+	   move dfll to initialized state, so it can be used as CPU source */
+	tegra_periph_reset_deassert(c);
+	ret = tegra_init_cl_dvfs();
+	if (!ret) {
+		c->state = OFF;
+		if (tegra_platform_is_silicon())
+			use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
+		tegra_dvfs_set_dfll_range(cpu->dvfs, use_dfll);
+		tegra_cl_dvfs_debug_init(c);
+		pr_info("Tegra CPU DFLL is initialized with use_dfll = %d\n",
+			use_dfll);
+	}
+#endif
 }
 
 /*
