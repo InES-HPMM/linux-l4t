@@ -313,9 +313,10 @@ struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	  SWGID(PPCS2), },
 	{ .name = "tegra30-spdif",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
-	{ .name = "tegradc.0", .swgids = SWGID(DC) | SWGID(DCB) | SWGID(DC12),
-	  .linear_map = tegra_fb_linear_map, },
-	{ .name = "tegradc", .swgids = SWGID(DC) | SWGID(DCB) | SWGID(DC12), },
+	{ .name = "tegradc.0", .swgids = SWGID(DC) | SWGID(DCB) |
+	 SWGID(DC12), .linear_map = tegra_fb_linear_map, },
+	{ .name = "tegradc.1", .swgids = SWGID(DC) | SWGID(DCB) |
+	 SWGID(DC12), },
 	{ .name = "tegra_bb",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
 	{ .name = "tegra_dma",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
