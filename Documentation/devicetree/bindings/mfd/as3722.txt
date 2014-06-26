@@ -163,6 +163,29 @@ functionality
 ams,system-power-controller: Boolean, to enable the power off functionality
         through this device.
 
+ADC-Extcon:
+===========
+AS3722 supports 10 bit ADC for measuring several voltages and currents to
+perform function like battery monitoring, temperature supervision, button press
+detection, etc. There are two convertor internally. ADC0 is binded to iio framework
+for all consumers of IIO. ADC1 is configured during boot for threshold setting and
+mode setting. Convertor works time multiplexed.
+Extcon is AS3722 USB comparator used on ADC1 convertor.
+Following are properties which is needed:
+    Required properties:
+    -------------------
+	- #io-channel-cells = Number of cells in an IIO specifier; Its set to 1 as as3722
+                            has multiple adc channels
+
+    Optional properties:
+    -------------------
+        - extcon-name: Name of extcon connection.
+	- ams,enable-adc1-continuous-mode: bool to select continious mode.
+	- ams,enable-low-voltage-range: boot to select low voltage range.
+	- ams,adc-channel: ADC channel to be used.
+	- ams,hi-threshold: higher threshold limit for detection.
+	- ams,low-threshold: lower threshold limit for detection.
+
 Example:
 --------
 #include <dt-bindings/mfd/as3722.h>
