@@ -1012,9 +1012,6 @@ static const struct snd_soc_dapm_route tegra_max98090_audio_map[] = {
 
 	/* AHUB BE connections */
 	{"HiFi Playback", NULL, "I2S1_OUT"},
-
-	{"I2S1_OUT", NULL, "offload-pcm-playback"},
-	{"I2S1_OUT", NULL, "offload-compr-playback"},
 };
 
 static const struct snd_kcontrol_new tegra_max98090_controls[] = {
@@ -1160,7 +1157,7 @@ static struct snd_soc_dai_link tegra_max98090_dai[] = {
 		.dynamic = 1,
 	},
 	[DAI_LINK_I2S_OFFLOAD_BE] = {
-		.name = "offload-audio",
+		.name = "offload-audio-codec",
 		.stream_name = "offload-audio-pcm",
 		.codec_name = "max98090.0-0010",
 		.codec_dai_name = "HiFi",

@@ -929,9 +929,6 @@ static const struct snd_soc_dapm_route ardbeg_audio_map[] = {
 	/*{"IN1P", NULL, "micbias1"},*/
 	/*{"IN1N", NULL, "micbias1"},*/
 	/* AHUB BE connections */
-	{"I2S1_OUT", NULL, "offload-pcm-playback"},
-	{"I2S1_OUT", NULL, "offload-compr-playback"},
-
 	{"AIF1 Playback", NULL, "I2S1_OUT"},
 };
 
@@ -1066,7 +1063,7 @@ static struct snd_soc_dai_link tegra_rt5639_dai[NUM_DAI_LINKS] = {
 		.dynamic = 1,
 	},
 	[DAI_LINK_I2S_OFFLOAD_BE] = {
-		.name = "offload-audio",
+		.name = "offload-audio-codec",
 		.stream_name = "offload-audio-pcm",
 		.codec_name = "rt5639.0-001a",
 		.platform_name = "tegra30-i2s.1",

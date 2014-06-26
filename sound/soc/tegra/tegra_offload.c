@@ -57,6 +57,8 @@ static struct tegra_offload_ops offload_ops;
 static int tegra_offload_init_done;
 static DEFINE_MUTEX(tegra_offload_lock);
 
+static int codec, spk;
+
 static const struct snd_pcm_hardware tegra_offload_pcm_hardware = {
 	.info			= SNDRV_PCM_INFO_MMAP |
 				  SNDRV_PCM_INFO_MMAP_VALID |
@@ -161,32 +163,54 @@ static int tegra_offload_compr_set_params(struct snd_compr_stream *stream,
 	struct snd_soc_pcm_runtime *rtd = stream->device->private_data;
 	struct tegra_pcm_dma_params *dmap;
 	struct tegra_offload_compr_params offl_params;
+	int dir;
 	int ret = 0;
 
 	dev_vdbg(dev, "%s", __func__);
+
+	if (stream->direction == SND_COMPRESS_PLAYBACK)
+		dir = SNDRV_PCM_STREAM_PLAYBACK;
+	else
+		dir = SNDRV_PCM_STREAM_CAPTURE;
 
 	dmap = rtd->cpu_dai->playback_dma_data;
 	if (!dmap) {
 		struct snd_soc_dpcm *dpcm;
 
+		if (list_empty(&rtd->dpcm[dir].be_clients)) {
+			dev_err(dev, "No backend DAIs enabled for %s\n",
+					rtd->dai_link->name);
+			return -EINVAL;
+		}
+
 		list_for_each_entry(dpcm,
-			&rtd->dpcm[SNDRV_PCM_STREAM_PLAYBACK].be_clients,
-			list_be) {
+			&rtd->dpcm[dir].be_clients, list_be) {
 			struct snd_soc_pcm_runtime *be = dpcm->be;
 			struct snd_pcm_substream *be_substream =
-				snd_soc_dpcm_get_substream(be,
-					SNDRV_PCM_STREAM_PLAYBACK);
+				snd_soc_dpcm_get_substream(be, dir);
+			struct snd_soc_dai_link *dai_link = be->dai_link;
 
 			dmap = snd_soc_dai_get_dma_data(be->cpu_dai,
-							be_substream);
-			if (!dmap) {
-				dev_err(dev, "Failed to get DMA params.");
-				return -ENODEV;
+						be_substream);
+
+			if (spk && strstr(dai_link->name, "speaker")) {
+				dmap = snd_soc_dai_get_dma_data(be->cpu_dai,
+						be_substream);
+				break;
+			}
+			if (codec && strstr(dai_link->name, "codec")) {
+				dmap = snd_soc_dai_get_dma_data(be->cpu_dai,
+						be_substream);
+				break;
 			}
 			/* TODO : Multiple BE to single FE not yet supported */
-			break;
 		}
 	}
+	if (!dmap) {
+		dev_err(dev, "Failed to get DMA params.");
+		return -ENODEV;
+	}
+
 	offl_params.codec_type = params->codec.id;
 	offl_params.bits_per_sample = 16;
 	offl_params.rate = snd_pcm_rate_bit_to_rate(params->codec.sample_rate);
@@ -386,22 +410,39 @@ static int tegra_offload_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (!dmap) {
 		struct snd_soc_dpcm *dpcm;
 
+		if (list_empty(&rtd->dpcm[substream->stream].be_clients)) {
+			dev_err(dev, "No backend DAIs enabled for %s\n",
+					rtd->dai_link->name);
+			return -EINVAL;
+		}
+
 		list_for_each_entry(dpcm,
 			&rtd->dpcm[substream->stream].be_clients, list_be) {
 			struct snd_soc_pcm_runtime *be = dpcm->be;
 			struct snd_pcm_substream *be_substream =
 				snd_soc_dpcm_get_substream(be,
 						substream->stream);
+			struct snd_soc_dai_link *dai_link = be->dai_link;
 
 			dmap = snd_soc_dai_get_dma_data(be->cpu_dai,
-							be_substream);
-			if (!dmap) {
-				dev_err(dev, "Failed to get DMA params.");
-				return -ENODEV;
+						be_substream);
+
+			if (spk && strstr(dai_link->name, "speaker")) {
+				dmap = snd_soc_dai_get_dma_data(be->cpu_dai,
+						be_substream);
+				break;
+			}
+			if (codec && strstr(dai_link->name, "codec")) {
+				dmap = snd_soc_dai_get_dma_data(be->cpu_dai,
+						be_substream);
+				break;
 			}
 			/* TODO : Multiple BE to single FE not yet supported */
-			break;
 		}
+	}
+	if (!dmap) {
+		dev_err(dev, "Failed to get DMA params.");
+		return -ENODEV;
 	}
 
 	offl_params.bits_per_sample =
@@ -491,6 +532,59 @@ static int tegra_offload_pcm_ack(struct snd_pcm_substream *substream)
 	return 0;
 }
 
+static int codec_get_mixer(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = codec;
+	return 0;
+}
+
+static int codec_put_switch(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_dapm_widget_list *wlist = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_dapm_widget *widget = wlist->widgets[0];
+
+	if (ucontrol->value.integer.value[0]) {
+		codec = ucontrol->value.integer.value[0];
+		snd_soc_dapm_mixer_update_power(widget, kcontrol, 1);
+	} else {
+		codec = ucontrol->value.integer.value[0];
+		snd_soc_dapm_mixer_update_power(widget, kcontrol, 0);
+	}
+	return 1;
+}
+
+static int spk_get_mixer(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = spk;
+	return 0;
+}
+
+static int spk_put_switch(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_dapm_widget_list *wlist = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_dapm_widget *widget = wlist->widgets[0];
+
+	if (ucontrol->value.integer.value[0]) {
+		spk = ucontrol->value.integer.value[0];
+		snd_soc_dapm_mixer_update_power(widget, kcontrol, 1);
+	} else {
+		spk = ucontrol->value.integer.value[0];
+		snd_soc_dapm_mixer_update_power(widget, kcontrol, 0);
+	}
+	return 1;
+}
+
+static const struct snd_kcontrol_new codec_control =
+	SOC_SINGLE_EXT("Codec Switch", SND_SOC_NOPM, 0, 1, 0,
+			codec_get_mixer, codec_put_switch);
+
+static const struct snd_kcontrol_new spk_control =
+	SOC_SINGLE_EXT("SPK Switch", SND_SOC_NOPM, 1, 1, 0,
+			spk_get_mixer, spk_put_switch);
 
 static const struct snd_soc_dapm_widget tegra_offload_widgets[] = {
 	/* BackEnd DAIs */
@@ -505,6 +599,20 @@ static const struct snd_soc_dapm_widget tegra_offload_widgets[] = {
 	SND_SOC_DAPM_AIF_OUT("I2S4_OUT", "tegra30-i2s.4 Playback", 0,
 		0/*wreg*/, 0/*wshift*/, 0/*winvert*/),
 
+	SND_SOC_DAPM_MIXER("Codec VMixer", SND_SOC_NOPM, 0, 0,
+		&codec_control, 1),
+	SND_SOC_DAPM_MIXER("SPK VMixer", SND_SOC_NOPM, 0, 0,
+		&spk_control, 1),
+};
+
+static const struct snd_soc_dapm_route graph[] = {
+	{"Codec VMixer", "Codec Switch", "offload-pcm-playback"},
+	{"Codec VMixer", "Codec Switch", "offload-compr-playback"},
+	{"I2S1_OUT", NULL, "Codec VMixer"},
+
+	{"SPK VMixer", "SPK Switch", "offload-pcm-playback"},
+	{"SPK VMixer", "SPK Switch", "offload-compr-playback"},
+	{"I2S2_OUT", NULL, "SPK VMixer"},
 };
 
 static struct snd_pcm_ops tegra_pcm_ops = {
@@ -591,10 +699,6 @@ static int tegra_offload_pcm_probe(struct snd_soc_platform *platform)
 {
 	pr_debug("%s", __func__);
 
-	snd_soc_dapm_new_controls(&platform->dapm, tegra_offload_widgets,
-					ARRAY_SIZE(tegra_offload_widgets));
-
-	snd_soc_dapm_new_widgets(&platform->dapm);
 	platform->dapm.idle_bias_off = 1;
 	return 0;
 }
@@ -619,6 +723,11 @@ static struct snd_soc_platform_driver tegra_offload_platform = {
 	.probe		= tegra_offload_pcm_probe,
 	.read		= tegra_offload_pcm_read,
 	.write		= tegra_offload_pcm_write,
+
+	.dapm_widgets	= tegra_offload_widgets,
+	.num_dapm_widgets	= ARRAY_SIZE(tegra_offload_widgets),
+	.dapm_routes	= graph,
+	.num_dapm_routes	= ARRAY_SIZE(graph),
 };
 
 static struct snd_soc_dai_driver tegra_offload_dai[] = {
