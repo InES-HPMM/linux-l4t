@@ -59,7 +59,7 @@
 	do {} while (0)
 #define tegra_xhci_save_ctle_context(hcd, port)	\
 	do {} while (0)
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #define tegra_xhci_restore_ctle_context(hcd, port) \
 	restore_ctle_context(hcd, port)
 #define tegra_xhci_save_ctle_context(hcd, port) \
@@ -68,7 +68,7 @@
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define MISC_PAD_CTL_6_0(_p)			(0x88 + _p * 4)
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #define MISC_PAD_CTL_6_0(_p)			(0x98 + _p * 4)
 #endif
 #define MISC_OUT_SEL(x) ((x & 0xFF) << 16)
@@ -78,7 +78,7 @@
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define USB3_PAD_CTL_4_0(_p)			(0x58 + _p * 4)
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #define USB3_PAD_CTL_4_0(_p)			(0x68 + _p * 4)
 #endif
 #define DFE_CNTL_TAP_VAL(x) ((x & 0x1F) << 24)
@@ -86,7 +86,7 @@
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define USB3_PAD_CTL_2_0(_p)			(0x48 + _p * 4)
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #define USB3_PAD_CTL_2_0(_p)			(0x58 + _p * 4)
 #endif
 #define RX_EQ_G_VAL(x) ((x & 0x3F) << 8)
@@ -95,7 +95,7 @@
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define MISC_PAD_CTL_2_0(_p)			(0x68 + _p * 4)
 #define MISC_PAD_S0_CTL_2_0				(0xffff)
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #define MISC_PAD_CTL_2_0(_p)			(0x78 + _p * 4)
 #define MISC_PAD_S0_CTL_2_0				(0x14c)
 #endif
@@ -103,7 +103,7 @@
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define MISC_PAD_S0_CTL_5_0				(0xffff)
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #define MISC_PAD_S0_CTL_5_0				(0x158)
 #endif
 
@@ -649,7 +649,7 @@
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define HSIC_PAD_CTL_0(_p)			(0xa8 + _p * 4)
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #define HSIC_PAD_CTL_0(_p)			(0xc0 + _p * 4)
 #endif
 #define   TX_RTUNEP(x)				(((x) & 0xf) << 0)
@@ -668,7 +668,7 @@
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define HSIC_PAD_CTL_1(_p)			(0xb0 + _p * 4)
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #define HSIC_PAD_CTL_1(_p)			(0xc8 + _p * 4)
 #endif
 #define   AUTO_TERM_EN				(1 << 0)
@@ -685,7 +685,7 @@
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define HSIC_PAD_CTL_2(_p)			(0xb8 + _p * 4)
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #define HSIC_PAD_CTL_2(_p)			(0xd0 + _p * 4)
 #endif
 #define   RX_DATA_TRIM(x)			(((x) & 0xf) << 0)
@@ -694,7 +694,7 @@
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define HSIC_STRB_TRIM_CONTROL			(0xc8)
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #define HSIC_STRB_TRIM_CONTROL			(0xe0)
 #endif
 #define STRB_TRIM_VAL(x)			(((x) & 0x3f) << 0)
@@ -787,7 +787,7 @@ struct vbus_enable_oc_map {
 	else if (__p == 1)				\
 		_port = 6;				\
 	_port; })
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #define port_to_hsic_pad(_port) ({			\
 	int _pad = -1;					\
 	int __p = _port;				\

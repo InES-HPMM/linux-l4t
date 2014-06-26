@@ -2,6 +2,7 @@
  * xHCI host controller driver
  *
  * Copyright (C) 2008 Intel Corp.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Sarah Sharp
  * Some code borrowed from the Linux EHCI driver.
@@ -4714,6 +4715,14 @@ int xhci_gen_setup(struct usb_hcd *hcd, xhci_get_quirks_t get_quirks)
 		/* xHCI private pointer was set in xhci_pci_probe for the second
 		 * registered roothub.
 		 */
+		u32 temp;
+		xhci = hcd_to_xhci(hcd);
+		temp = xhci_readl(xhci, &xhci->cap_regs->hcc_params);
+		if (HCC_64BIT_ADDR(temp))
+			dma_set_mask(hcd->self.controller, DMA_BIT_MASK(64));
+		else
+			dma_set_mask(hcd->self.controller, DMA_BIT_MASK(32));
+
 		return 0;
 	}
 
