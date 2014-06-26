@@ -234,7 +234,6 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.dfll_tune_data  = {
 			.tune1		= 0x00000099,
 			.droop_rate_min = 1000000,
-			.tune_high_min_millivolts = 900,
 			.min_millivolts = 680,
 			.tune_high_margin_mv = 30,
 		},
@@ -736,13 +735,21 @@ static int round_voltage(int mv, struct rail_alignment *align, bool up)
 static void __init set_cpu_dfll_tuning_data(struct cpu_cvb_dvfs *d, int speedo)
 {
 	if (d->speedo_id >= 1) {
-		if (speedo <= 2336) {
-			d->dfll_tune_data.tune0 = 0x8315FF;
-			d->dfll_tune_data.tune0_high_mv = 0x8340FF;
-			d->dfll_tune_data.tune0_simon_mask = 0x100000;
+		/* Initial (low SiMon grade) settings - same for all parts */
+		d->dfll_tune_data.tune0 = 0x8315FF;
+		d->dfll_tune_data.tune0_high_mv = 0x8340FF;
+
+		if (speedo <= 2180) {
+			/* Toggle SiMOn mask - high grade settings 0x8A....*/
+			d->dfll_tune_data.tune0_simon_mask = 0x090000;
+			d->dfll_tune_data.tune_high_min_millivolts = 950;
+		} else if (speedo < 2336) {
+			/* Toggle SiMOn mask - high grade settings 0x87....*/
+			d->dfll_tune_data.tune0_simon_mask = 0x040000;
+			d->dfll_tune_data.tune_high_min_millivolts = 900;
 		} else {
-			d->dfll_tune_data.tune0 = 0x8315FF;
-			d->dfll_tune_data.tune0_high_mv = 0x8340FF;
+			/* High and low grade settings are the same */
+			d->dfll_tune_data.tune_high_min_millivolts = 900;
 		}
 	}
 }
