@@ -478,6 +478,43 @@
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(ISP2B) &common_as>;
 		};
 
+		dc@54200000 {
+			compatible = "nvidia,tegra210-dc";
+			reg = <0x54200000 0x00040000>;
+			interrupts = <0 73 0x04>;
+			nvidia,memory-clients = <2 3 10>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS3(DC, DCB, DC12)
+				  0x0 0x10000 0x0 0xFFFFFFFF
+				  0xFFFFF 1 1>;
+			status = "disabled";
+
+			rgb {
+				status = "disabled";
+			};
+		};
+
+		dc@54240000 {
+			compatible = "nvidia,tegra210-dc";
+			reg = <0x54240000 0x00040000>;
+			interrupts = <0 74 0x04>;
+			nvidia,memory-clients = <2 3 10>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS3(DC, DCB, DC12)
+				  0x0 0x10000 0x0 0xFFFFFFFF
+				  0xFFFFF 1 1>;
+			status = "disabled";
+
+			rgb {
+				status = "disabled";
+			};
+		};
+
+		dsi {
+			compatible = "nvidia,tegra210-dsi";
+			reg = <0x54300000 0x00040000
+			       0x54400000 0x00040000>;
+			status = "disabled";
+		};
+
 		vic {
 			compatible = "nvidia,tegra210-vic";
 			reg = <0x54340000 0x00040000>;
@@ -520,6 +557,33 @@
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(NVJPG) &common_as>;
 		};
 
+		sor {
+			compatible = "nvidia,tegra210-sor";
+			reg = <0x54540000 0x00040000>;
+			status = "disabled";
+		};
+
+		sor1 {
+			compatible = "nvidia,tegra210-sor1";
+			reg = <0x54580000 0x00040000>;
+			interrupts = <0 76 0x4>; /* INT_SOR_1 */
+			status = "disabled";
+		};
+
+		dpaux {
+			compatible = "nvidia,tegra210-dpaux";
+			reg = <0x545c0000 0x00040000>;
+			interrupts = <0 159 0x4>; /* INT_DPAUX */
+			status = "disabled";
+		};
+
+		dpaux1 {
+			compatible = "nvidia,tegra210-dpaux1";
+			reg = <0x54040000 0x00040000>;
+			interrupts = <0 11 0x4>; /* INT_DPAUX_1 */
+			status = "disabled";
+		};
+
 	};
 
 	gm20b {
@@ -532,6 +596,11 @@
 			    0 158 0x04>;
 		nvidia,memory-clients = <30 31>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS2(GPU, GPUB) &gpu_as>;
+	};
+
+	mipical {
+		compatible = "nvidia,tegra210-mipical";
+		reg = <0x0 0x700e3000 0x0 0x00000100>;
 	};
 
 	pmc@7000e400 {
