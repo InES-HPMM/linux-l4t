@@ -89,6 +89,7 @@ int tegra_nct_read_item(u32 index, union nct_item_type *buf)
 
 	return 0;
 }
+EXPORT_SYMBOL(tegra_nct_read_item);
 
 int tegra_nct_is_init(void)
 {
