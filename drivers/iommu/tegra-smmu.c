@@ -257,6 +257,54 @@ static size_t tegra_smmu_get_offset(int id)
 }
 
 /*
+ * FIX ME: right now this static mapping is enough but in future
+ * we may want to dynamically prepare swgid -> asid (or mapping) table
+ */
+int _tegra_smmu_get_asid(u64 swgids)
+{
+	if (swgids & SWGID(PPCS))
+		return SYSTEM_PROTECTED;
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || \
+	defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	if (swgids & SWGID(PPCS1))
+		return PPCS1_ASID;
+#else
+	if (swgids & SWGID(PPCS1))
+		return SYSTEM_PROTECTED;
+#endif
+
+	if (swgids & SWGID(GPUB))
+		return SYSTEM_GK20A;
+
+#if defined(CONFIG_ARCH_TEGRA_APE)
+	if (swgids & SWGID(APE))
+		return SYSTEM_ADSP;
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	if (swgids & SWGID(DC) ||
+	    swgids & SWGID(DCB))
+		return SYSTEM_DC;
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	if (swgids & SWGID(DC) ||
+	    swgids & SWGID(DC12))
+		return SYSTEM_DC;
+	if (swgids & SWGID(DCB))
+		return SYSTEM_DCB;
+	if (swgids & SWGID(SDMMC1A))
+		return SDMMC1A_ASID;
+	if (swgids & SWGID(SDMMC2A))
+		return SDMMC2A_ASID;
+	if (swgids & SWGID(SDMMC3A))
+		return SDMMC3A_ASID;
+	if (swgids & SWGID(SDMMC4A))
+		return SDMMC4A_ASID;
+#endif
+
+	return SYSTEM_DEFAULT;
+}
+
+/*
  * Per client for address space
  */
 struct smmu_client {

@@ -469,50 +469,6 @@ void tegra_smmu_unmap_misc_device(struct device *dev)
 }
 EXPORT_SYMBOL(tegra_smmu_unmap_misc_device);
 
-static int _tegra_smmu_get_asid(u64 swgids)
-{
-	if (swgids & SWGID(PPCS))
-		return SYSTEM_PROTECTED;
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || \
-	defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	if (swgids & SWGID(PPCS1))
-		return PPCS1_ASID;
-#else
-	if (swgids & SWGID(PPCS1))
-		return SYSTEM_PROTECTED;
-#endif
-
-	if (swgids & SWGID(GPUB))
-		return SYSTEM_GK20A;
-
-#if defined(CONFIG_ARCH_TEGRA_APE)
-	if (swgids & SWGID(APE))
-		return SYSTEM_ADSP;
-#endif
-
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	if (swgids & SWGID(DC) ||
-	    swgids & SWGID(DCB))
-		return SYSTEM_DC;
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
-	if (swgids & SWGID(DC) ||
-	    swgids & SWGID(DC12))
-		return SYSTEM_DC;
-	if (swgids & SWGID(DCB))
-		return SYSTEM_DCB;
-	if (swgids & SWGID(SDMMC1A))
-		return SDMMC1A_ASID;
-	if (swgids & SWGID(SDMMC2A))
-		return SDMMC2A_ASID;
-	if (swgids & SWGID(SDMMC3A))
-		return SDMMC3A_ASID;
-	if (swgids & SWGID(SDMMC4A))
-		return SDMMC4A_ASID;
-#endif
-
-	return SYSTEM_DEFAULT;
-}
-
 int tegra_smmu_get_asid(struct device *dev)
 {
 	u64 swgids = tegra_smmu_fixup_swgids(dev, NULL);
