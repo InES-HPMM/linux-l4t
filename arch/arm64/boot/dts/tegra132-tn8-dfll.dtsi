@@ -2,6 +2,7 @@
 	dfll@70040084 {
 		board-params = <&{/cpu_dfll_board_params}>;
 		i2c-pmic-integration = <&{/cpu_dfll_pmic_integration}>;
+		monitor-data-new-workaround;
 		status = "okay";
 	};
 
