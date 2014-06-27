@@ -56,11 +56,17 @@ struct emc_iso_usage {
 	u8 (*iso_share_calculator)(unsigned long iso_bw);
 };
 
+struct tegra_emc_dvfs_table_ops {
+	u32 (*get_dvfs_clk_change_latency_nsec)(unsigned long emc_freq_khz);
+};
+
 struct clk;
 struct dentry;
 
 void tegra_emc_iso_usage_table_init(struct emc_iso_usage *table, int size);
 int  tegra_emc_iso_usage_debugfs_init(struct dentry *emc_debugfs_root);
+void tegra_emc_dvfs_table_ops_init(
+		struct tegra_emc_dvfs_table_ops *dvfs_table_ops_to_copy);
 unsigned long tegra_emc_apply_efficiency(unsigned long total_bw,
 	unsigned long iso_bw, unsigned long max_rate, u32 usage_flags,
 	unsigned long *iso_bw_min);

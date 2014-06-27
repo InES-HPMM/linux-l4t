@@ -111,6 +111,13 @@ static struct emc_iso_usage tegra12_emc_iso_usage[] = {
 	},
 };
 
+static u32 tegra12_get_dvfs_clk_change_latency_nsec(unsigned long emc_freq_khz);
+
+static struct tegra_emc_dvfs_table_ops tegra12_emc_dvfs_table_ops = {
+	.get_dvfs_clk_change_latency_nsec =
+				tegra12_get_dvfs_clk_change_latency_nsec,
+};
+
 #define MHZ 1000000
 #define TEGRA_EMC_ISO_USE_FREQ_MAX_NUM	12
 #define PLL_C_DIRECT_FLOOR		333500000
@@ -989,7 +996,7 @@ static inline void emc_get_timing(struct tegra12_emc_table *timing)
 	timing->rate = clk_get_rate_locked(emc) / 1000;
 }
 
-u32 tegra12_get_dvfs_clk_change_latency_nsec(unsigned long emc_freq_khz)
+static u32 tegra12_get_dvfs_clk_change_latency_nsec(unsigned long emc_freq_khz)
 {
 	int i;
 
@@ -1723,6 +1730,8 @@ int __init tegra12_emc_init(void)
 		}
 	}
 	tegra12_mc_holdoff_enable();
+
+	tegra_emc_dvfs_table_ops_init(&tegra12_emc_dvfs_table_ops);
 	return ret;
 }
 

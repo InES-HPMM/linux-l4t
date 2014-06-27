@@ -24,28 +24,24 @@
 #include <linux/delay.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
-#include <linux/tegra-soc.h>
 
 #include <mach/tegra_emc.h>
-
-#include "tegra12_emc.h"
 
 u8 tegra_emc_iso_share = 100;
 static unsigned long emc_iso_allocation;
 static unsigned long last_iso_bw;
 
 static struct emc_iso_usage emc_usage_table[TEGRA_EMC_ISO_USE_CASES_MAX_NUM];
+static struct tegra_emc_dvfs_table_ops *dvfs_table_ops;
 
 
 u32 tegra_get_dvfs_clk_change_latency_nsec(unsigned long emc_freq_khz)
 {
-	switch (tegra_get_chipid()) {
-	case TEGRA_CHIPID_TEGRA12:
-	case TEGRA_CHIPID_TEGRA13:
-		return tegra12_get_dvfs_clk_change_latency_nsec(emc_freq_khz);
-	default:
-		return 0;
-	}
+	if (dvfs_table_ops && dvfs_table_ops->get_dvfs_clk_change_latency_nsec)
+		return dvfs_table_ops->get_dvfs_clk_change_latency_nsec(
+								emc_freq_khz);
+
+	return 0;
 }
 
 void __init tegra_emc_iso_usage_table_init(struct emc_iso_usage *table,
@@ -56,6 +52,13 @@ void __init tegra_emc_iso_usage_table_init(struct emc_iso_usage *table,
 	if (size && table)
 		memcpy(emc_usage_table, table,
 		       size * sizeof(struct emc_iso_usage));
+}
+
+void __init tegra_emc_dvfs_table_ops_init(
+			struct tegra_emc_dvfs_table_ops *dvfs_table_ops_to_copy)
+{
+	if (dvfs_table_ops_to_copy)
+		dvfs_table_ops = dvfs_table_ops_to_copy;
 }
 
 static u8 tegra_emc_get_iso_share(u32 usage_flags, unsigned long iso_bw)
