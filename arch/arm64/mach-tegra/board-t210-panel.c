@@ -584,9 +584,10 @@ static __init struct tegra_panel *t210_panel_configure(
 			t210_disp2_fb_data.xres = 720;
 			t210_disp2_fb_data.yres = 480;
 			t210_disp2_fb_data.bits_per_pixel = -1;
-#endif
-		} else
+#elif defined(CONFIG_TEGRA_DSI)
 			panel = &dsi_s_wqxga_10_1;
+#endif
+		}
 	}
 
 	if (dsi_instance_out)
