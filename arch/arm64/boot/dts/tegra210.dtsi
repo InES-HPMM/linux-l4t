@@ -269,6 +269,9 @@
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
 			  0x0 0x80000000 0x0 0x7FF0000
 			  0xFFFFF 1 1>;
+                nvidia,dma-request-selector = <&apbdma 8>;
+                dmas = <&apbdma 8>, <&apbdma 8>;
+                dma-names = "rx", "tx";
 	};
 
 	uartb: serial@70006040 {
@@ -279,6 +282,9 @@
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
 			  0x0 0x80000000 0x0 0x7FF0000
 			  0xFFFFF 1 1>;
+                nvidia,dma-request-selector = <&apbdma 9>;
+                dmas = <&apbdma 9>, <&apbdma 9>;
+                dma-names = "rx", "tx";
 	};
 
 	uartc: serial@70006200 {
