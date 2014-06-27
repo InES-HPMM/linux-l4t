@@ -29,13 +29,13 @@
 					TEGRA_GPIO(S, 3)
 					TEGRA_GPIO(S, 4)
 					TEGRA_GPIO(S, 5)
-					TEGRA_GPIO(R, 2)
 					TEGRA_GPIO(R, 4)
 					TEGRA_GPIO(EE, 1)
 					TEGRA_GPIO(N, 7)>;
 			gpio-output-low = <TEGRA_GPIO(K, 3)
 					TEGRA_GPIO(W, 5)
 					TEGRA_GPIO(R, 3)
+					TEGRA_GPIO(R, 2)
 					TEGRA_GPIO(R, 5)
 					TEGRA_GPIO(R, 6)>;
 			gpio-output-high = <TEGRA_GPIO(R, 0)>;
