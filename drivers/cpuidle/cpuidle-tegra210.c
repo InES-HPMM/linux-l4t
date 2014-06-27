@@ -271,6 +271,19 @@ static int tegra210_enter_cg(struct cpuidle_device *dev,
 	return idx;
 }
 
+/* TODO: remove this WAR */
+static void tegra210_init_usage(int cpu)
+{
+	struct cpuidle_device *dev = per_cpu(cpuidle_devices, cpu);
+	int i;
+
+	if (!dev)
+		return;
+
+	for (i = 0; i < CPUIDLE_STATE_MAX; i++)
+		dev->states_usage[i].disable = 1;
+}
+
 static int __init tegra210_cpuidle_register(int cpu)
 {
 	int ret;
@@ -300,7 +313,6 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->target_residency = 10;
 	state->power_usage = 5000;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
-	state->disabled = true;
 
 	state = &drv->states[2];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "C7");
@@ -310,7 +322,6 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->target_residency = 20;
 	state->power_usage = 500;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
-	state->disabled = true;
 
 	state = &drv->states[3];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "CC6");
@@ -320,7 +331,6 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->target_residency = 30;
 	state->power_usage = 400;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
-	state->disabled = true;
 
 	state = &drv->states[4];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "CC7");
@@ -330,7 +340,6 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->target_residency = 40;
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
-	state->disabled = true;
 
 	state = &drv->states[5];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "SC2");
@@ -340,7 +349,6 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->target_residency = 40;
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
-	state->disabled = true;
 
 	state = &drv->states[6];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "SC3");
@@ -350,7 +358,6 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->target_residency = 40;
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
-	state->disabled = true;
 
 	state = &drv->states[7];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "SC4");
@@ -360,7 +367,6 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->target_residency = 40;
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
-	state->disabled = true;
 
 	state = &drv->states[8];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "SC7");
@@ -370,7 +376,6 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->target_residency = 40;
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
-	state->disabled = true;
 
 	drv->state_count = 9;
 
@@ -380,6 +385,8 @@ static int __init tegra210_cpuidle_register(int cpu)
 		       __func__, ret);
 		return ret;
 	}
+
+	tegra210_init_usage(cpu);
 
 	return 0;
 }
