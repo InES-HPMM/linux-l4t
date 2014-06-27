@@ -62,6 +62,9 @@
 		nvidia,qc2_input_voltage = <1>;
 		nvidia,qc2_current_limit_ma = <1200>;
 		nvidia,dcp_current_limit_ma = <1800>;
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		usb_bat_chg-supply = <&battery_charger>;
 		status = "okay";
 	};
 

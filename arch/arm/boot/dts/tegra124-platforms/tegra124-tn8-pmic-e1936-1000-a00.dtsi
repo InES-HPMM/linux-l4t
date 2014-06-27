@@ -628,7 +628,7 @@
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(J, 0) 0x0>;
 
-			charger {
+			battery_charger: charger {
 				status = "disabled";
 				regulator-name = "batt_regulator";
 				regulator-max-microamp = <3000000>;

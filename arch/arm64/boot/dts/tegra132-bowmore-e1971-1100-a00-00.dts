@@ -128,6 +128,8 @@
 		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
 		extcon-cable-names = "vbus", "id";
 		#extcon-cells = <1>;
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
 		status = "okay";
 	};
 
