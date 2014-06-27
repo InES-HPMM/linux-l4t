@@ -309,6 +309,13 @@
 		status = "disabled";
 	};
 
+	tegra_pwm: pwm@7000a000 {
+		compatible = "nvidia,tegra124-pwm";
+		reg = <0x0 0x7000a000 0x0 0x100>;
+		#pwm-cells = <2>;
+		status = "okay";
+	};
+
 	spi0: spi@7000d400 {
 		compatible = "nvidia,tegra210-spi";
 		reg = <0x0 0x7000d400 0x0 0x200>;
