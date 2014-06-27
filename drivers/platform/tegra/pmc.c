@@ -431,6 +431,10 @@ static void tegra_pmc_parse_dt(void)
 		suspend_mode = TEGRA_SUSPEND_NONE;
 	pmc_pm_data.cpu_off_time = prop;
 
+	if (of_property_read_u32(np, "nvidia,cpu-suspend-freq", &prop))
+		pmc_pm_data.cpu_suspend_freq = 0;
+	pmc_pm_data.cpu_suspend_freq = prop;
+
 	if (of_property_read_u32_array(np, "nvidia,core-pwr-good-time",
 			core_good_time, ARRAY_SIZE(core_good_time)))
 		suspend_mode = TEGRA_SUSPEND_NONE;

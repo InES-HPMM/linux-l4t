@@ -46,6 +46,7 @@ struct tegra_suspend_platform_data {
 	unsigned long cpu_off_timer;	/* CPU power off time us, LP2/LP1 */
 	unsigned long core_timer;  /* core power good time in ticks,  LP0 */
 	unsigned long core_off_timer;	/* core power off time ticks, LP0 */
+	unsigned int cpu_suspend_freq; /* cpu suspend/resume frequency in Hz */
 	bool corereq_high;         /* Core power request active-high */
 	bool sysclkreq_high;       /* System clock request is active-high */
 	bool sysclkreq_gpio;       /* if System clock request is set to gpio */

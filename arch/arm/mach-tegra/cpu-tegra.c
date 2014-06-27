@@ -1034,19 +1034,31 @@ static struct cpufreq_driver tegra_cpufreq_driver = {
 static int __init tegra_cpufreq_init(void)
 {
 	int ret = 0;
+	unsigned int cpu_suspend_freq = 0;
+	unsigned int i;
 
 	struct tegra_cpufreq_table_data *table_data =
 		tegra_cpufreq_table_get();
 	if (IS_ERR_OR_NULL(table_data))
 		return -EINVAL;
 
-	suspend_index = table_data->suspend_index;
+	freq_table = table_data->freq_table;
+
+	cpu_suspend_freq = tegra_cpu_suspend_freq();
+	if (cpu_suspend_freq == 0) {
+		suspend_index = table_data->suspend_index;
+	} else {
+		for (i = 0; freq_table[i].frequency != CPUFREQ_TABLE_END; i++) {
+			if (freq_table[i].frequency >= cpu_suspend_freq)
+				break;
+		}
+		suspend_index = i;
+	}
 
 	ret = tegra_auto_hotplug_init(&tegra_cpu_lock);
 	if (ret)
 		return ret;
 
-	freq_table = table_data->freq_table;
 	mutex_lock(&tegra_cpu_lock);
 	tegra_cpu_edp_init(false);
 	mutex_unlock(&tegra_cpu_lock);

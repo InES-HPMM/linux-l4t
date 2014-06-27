@@ -334,6 +334,13 @@ unsigned long tegra_cpu_lp2_min_residency(void)
 	return pdata->cpu_lp2_min_residency;
 }
 
+unsigned int tegra_cpu_suspend_freq(void)
+{
+	if (WARN_ON_ONCE(!pdata))
+		return 0;
+	return pdata->cpu_suspend_freq;
+}
+
 #define TEGRA_MIN_RESIDENCY_MCLK_STOP	20000
 
 unsigned long tegra_mc_clk_stop_min_residency(void)
@@ -1714,6 +1721,15 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 		} else {
 			pdata->suspend_mode = pm_dat->suspend_mode;
 		}
+		if (pm_dat->cpu_suspend_freq != plat->cpu_suspend_freq) {
+			pr_err("PMC DT attribute cpu_suspend_freq=%d, board value=%d\n",
+				pm_dat->cpu_suspend_freq,
+				plat->cpu_suspend_freq);
+			pdata->cpu_suspend_freq = plat->cpu_suspend_freq;
+		} else {
+			pdata->cpu_suspend_freq = pm_dat->cpu_suspend_freq;
+		}
+
 		/* FIXME: pmc_pm_data fields to be reused
 		 *	core_osc_time, core_pmu_time, core_off_time
 		 *	units of above fields is uSec while

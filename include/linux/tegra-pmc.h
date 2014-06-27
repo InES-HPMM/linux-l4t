@@ -34,6 +34,7 @@ extern bool tegra_is_dpd_mode;
 struct pmc_pm_data {
 	u32 cpu_good_time;	/* CPU power good time in uS */
 	u32 cpu_off_time;	/* CPU power off time in uS */
+	u32 cpu_suspend_freq;	/* CPU suspend frequency in hz */
 	u32 core_osc_time;	/* Core power good osc time in uS */
 	u32 core_pmu_time;	/* Core power good pmu time in uS */
 	u32 core_off_time;	/* Core power off time in uS */

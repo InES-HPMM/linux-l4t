@@ -43,6 +43,11 @@
 		spi-max-frequency = <25000000>;
 	};
 
+	pmc@7000e400 {
+		status = "okay";
+		nvidia,cpu-suspend-freq = <204000>;
+	};
+
 	xusb@70090000 {
 		/* nvidia,uses_external_pmic;
 		nvidia,gpio_controls_muxed_ss_lanes; */

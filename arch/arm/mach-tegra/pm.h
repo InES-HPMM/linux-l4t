@@ -44,6 +44,7 @@ void tegra_bl_io_dpd_cleanup(void);
 
 unsigned long tegra_cpu_power_good_time(void);
 unsigned long tegra_cpu_power_off_time(void);
+unsigned int tegra_cpu_suspend_freq(void);
 unsigned long tegra_cpu_lp2_min_residency(void);
 unsigned long tegra_mc_clk_stop_min_residency(void);
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
