@@ -753,6 +753,26 @@
 		status = "okay";
 	};
 
+	spdif_dit0: spdif-dit@0 {
+		compatible = "linux,spdif-dit";
+		reg = <0x0 0x0 0x0 0x0>;
+	};
+
+	spdif_dit1: spdif-dit@1 {
+		compatible = "linux,spdif-dit";
+		reg = <0x0 0x1 0x0 0x0>;
+	};
+
+	spdif_dit2: spdif-dit@2 {
+		compatible = "linux,spdif-dit";
+		reg = <0x0 0x2 0x0 0x0>;
+	};
+
+	spdif_dit3: spdif-dit@3 {
+		compatible = "linux,spdif-dit";
+		reg = <0x0 0x03 0x0 0x0>;
+	};
+
 	sound {
 		compatible = "nvidia,tegra-audio-grenada";
 		nvidia,model = "tegra-snd-grenada";
@@ -787,10 +807,10 @@
 			nvidia,mvc-2 = <&tegra_mvc2>;
 			nvidia,spdif = <&tegra_spdif>;
 			nvidia,mixer-1 = <&tegra_amixer>;
-			nvidia,audio-codec-x = "spdif-dit.0";
-			nvidia,audio-codec-y = "spdif-dit.1";
-			nvidia,audio-codec-z = "spdif-dit.2";
-			nvidia,audio-codec-s = "spdif-dit.3";
+			nvidia,audio-codec-x = <&spdif_dit0>;
+			nvidia,audio-codec-y = <&spdif_dit1>;
+			nvidia,audio-codec-z = <&spdif_dit2>;
+			nvidia,audio-codec-s = <&spdif_dit3>;
 			nvidia,adsp = <&tegra_adsp_audio>;
 	};
 
