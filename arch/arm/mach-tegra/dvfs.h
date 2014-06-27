@@ -126,6 +126,7 @@ enum dfll_range {
 	DFLL_RANGE_HIGH_RATES,
 };
 
+/* DVFS settings specific for DFLL clock source */
 struct dvfs_dfll_data {
 	u32		tune0;
 	u32		tune0_high_mv;
@@ -142,6 +143,11 @@ struct dvfs_dfll_data {
 	enum dfll_range	range;
 	void (*tune_trimmers)(bool trim_high);
 	unsigned int (*is_bypass_down)(void);
+};
+
+/* DVFS settings specific for PLL clock source */
+struct dvfs_pll_data {
+	int min_millivolts;
 };
 
 struct dvfs {
@@ -196,6 +202,7 @@ struct cvb_dvfs {
 	int process_id;
 
 	struct dvfs_dfll_data dfll_tune_data;
+	struct dvfs_pll_data pll_tune_data;
 	int max_mv;
 	int freqs_mult;
 	int speedo_scale;
