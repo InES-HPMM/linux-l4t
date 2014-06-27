@@ -292,24 +292,14 @@ err:
 	return base;
 }
 
-/**
- * dma_alloc_from_contiguous() - allocate pages from contiguous area
- * @dev:   Pointer to device for which the allocation is performed.
- * @count: Requested number of pages.
- * @align: Requested alignment of pages (in PAGE_SIZE order).
- *
- * This function allocates memory buffer for specified device. It uses
- * device specific contiguous memory area if available or the default
- * global one. Requires architecture specific get_dev_cma_area() helper
- * function.
- */
-struct page *dma_alloc_from_contiguous(struct device *dev, int count,
-				       unsigned int align)
+struct page *dma_alloc_at_from_contiguous(struct device *dev, int count,
+				       unsigned int align, phys_addr_t at_addr)
 {
 	unsigned long mask, pfn, pageno, start = 0;
 	struct cma *cma = dev_get_cma_area(dev);
 	struct page *page = NULL;
 	int ret;
+	unsigned long start_pfn = __phys_to_pfn(at_addr);
 
 	if (!cma || !cma->count)
 		return NULL;
@@ -325,12 +315,16 @@ struct page *dma_alloc_from_contiguous(struct device *dev, int count,
 
 	mask = (1 << align) - 1;
 
+	if (start_pfn && start_pfn < cma->base_pfn)
+		return NULL;
+	start = start_pfn ? start_pfn - cma->base_pfn : start;
+
 	mutex_lock(&cma_mutex);
 
 	for (;;) {
 		pageno = bitmap_find_next_zero_area(cma->bitmap, cma->count,
 						    start, count, mask);
-		if (pageno >= cma->count)
+		if (pageno >= cma->count || (start && start != pageno))
 			break;
 
 		pfn = cma->base_pfn + pageno;
@@ -339,7 +333,7 @@ struct page *dma_alloc_from_contiguous(struct device *dev, int count,
 			bitmap_set(cma->bitmap, pageno, count);
 			page = pfn_to_page(pfn);
 			break;
-		} else if (ret != -EBUSY) {
+		} else if (ret != -EBUSY || start) {
 			break;
 		}
 		pr_debug("%s(): memory range at %p is busy, retrying\n",
@@ -351,6 +345,23 @@ struct page *dma_alloc_from_contiguous(struct device *dev, int count,
 	mutex_unlock(&cma_mutex);
 	pr_debug("%s(): returned %p\n", __func__, page);
 	return page;
+}
+
+/**
+ * dma_alloc_from_contiguous() - allocate pages from contiguous area
+ * @dev:   Pointer to device for which the allocation is performed.
+ * @count: Requested number of pages.
+ * @align: Requested alignment of pages (in PAGE_SIZE order).
+ *
+ * This function allocates memory buffer for specified device. It uses
+ * device specific contiguous memory area if available or the default
+ * global one. Requires architecture specific get_dev_cma_area() helper
+ * function.
+ */
+struct page *dma_alloc_from_contiguous(struct device *dev, int count,
+				       unsigned int align)
+{
+	return dma_alloc_at_from_contiguous(dev, count, align, 0);
 }
 
 /**
