@@ -107,6 +107,9 @@ struct bq27441_chip {
 	/* battery capacity */
 	int capacity_level;
 
+	int temperature;
+	int read_failed;
+
 	int full_capacity;
 	int design_energy;
 	int taper_rate;
@@ -134,20 +137,12 @@ static int bq27441_read_word(struct i2c_client *client, u8 reg)
 
 	struct bq27441_chip *chip = i2c_get_clientdata(client);
 
-	mutex_lock(&chip->mutex);
-	if (chip && chip->shutdown_complete) {
-		mutex_unlock(&chip->mutex);
-		return -ENODEV;
-	}
-
 	ret = regmap_raw_read(chip->regmap, reg, (u8 *) &val, sizeof(val));
 	if (ret < 0) {
 		dev_err(&client->dev, "error reading reg: 0x%x\n", reg);
-		mutex_unlock(&chip->mutex);
 		return ret;
 	}
 
-	mutex_unlock(&chip->mutex);
 	return val;
 }
 
@@ -158,20 +153,12 @@ static int bq27441_read_byte(struct i2c_client *client, u8 reg)
 
 	struct bq27441_chip *chip = i2c_get_clientdata(client);
 
-	mutex_lock(&chip->mutex);
-	if (chip && chip->shutdown_complete) {
-		mutex_unlock(&chip->mutex);
-		return -ENODEV;
-	}
-
 	ret = regmap_raw_read(chip->regmap, reg, (u8 *) &val, sizeof(val));
 	if (ret < 0) {
 		dev_err(&client->dev, "error reading reg: 0x%x\n", reg);
-		mutex_unlock(&chip->mutex);
 		return ret;
 	}
 
-	mutex_unlock(&chip->mutex);
 	return val;
 }
 
@@ -181,18 +168,11 @@ static int bq27441_write_byte(struct i2c_client *client, u8 reg, u8 value)
 	struct bq27441_chip *chip = i2c_get_clientdata(client);
 	int ret;
 
-	mutex_lock(&chip->mutex);
-	if (chip && chip->shutdown_complete) {
-		mutex_unlock(&chip->mutex);
-		return -ENODEV;
-	}
-
 	ret = regmap_write(chip->regmap, reg, value);
 	if (ret < 0)
 		dev_err(&client->dev, "%s(): Failed in writing register"
 					"0x%02x err %d\n", __func__, reg, ret);
 
-	mutex_unlock(&chip->mutex);
 	return ret;
 }
 
@@ -202,6 +182,12 @@ static void bq27441_work(struct work_struct *work)
 	int val;
 
 	chip = container_of(work, struct bq27441_chip, work.work);
+
+	mutex_lock(&chip->mutex);
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return;
+	}
 
 	val = bq27441_read_word(chip->client, BQ27441_VOLTAGE);
 	if (val < 0)
@@ -237,6 +223,7 @@ static void bq27441_work(struct work_struct *work)
 		power_supply_changed(&chip->battery);
 	}
 
+	mutex_unlock(&chip->mutex);
 	schedule_delayed_work(&chip->work, BQ27441_DELAY);
 }
 
@@ -542,13 +529,28 @@ fail:
 static int bq27441_get_temperature(void)
 {
 	int val;
+	int retries = 2;
+	int i;
 
-	val = bq27441_read_word(bq27441_data->client, BQ27441_TEMPERATURE);
-	if (val < 0) {
-		dev_err(&bq27441_data->client->dev, "%s: err %d\n", __func__,
-				val);
-		return -EINVAL;
+	if (bq27441_data->shutdown_complete)
+		return bq27441_data->temperature;
+
+	for (i = 0; i < retries; i++) {
+		val = bq27441_read_word(bq27441_data->client, BQ27441_TEMPERATURE);
+		if (val < 0)
+			continue;
 	}
+
+	if (val < 0) {
+		bq27441_data->read_failed++;
+		dev_err(&bq27441_data->client->dev, "%s: err %d\n", __func__, val);
+		if (bq27441_data->read_failed > 50)
+			return val;
+		return bq27441_data->temperature;
+	}
+	bq27441_data->read_failed = 0;
+	bq27441_data->temperature = val / 100;
+
 	return val / 100;
 }
 
@@ -569,6 +571,9 @@ static int bq27441_get_property(struct power_supply *psy,
 	struct bq27441_chip *chip = container_of(psy,
 				struct bq27441_chip, battery);
 	int temperature;
+	int ret = 0;
+
+	mutex_lock(&chip->mutex);
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
@@ -603,15 +608,24 @@ static int bq27441_get_property(struct power_supply *psy,
 		val->intval = temperature;
 		break;
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
+		break;
 	}
-	return 0;
+
+	mutex_unlock(&chip->mutex);
+	return ret;
 }
 
 static int bq27441_update_battery_status(struct battery_gauge_dev *bg_dev,
 		enum battery_charger_status status)
 {
 	struct bq27441_chip *chip = battery_gauge_get_drvdata(bg_dev);
+
+	mutex_lock(&chip->mutex);
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return 0;
+	}
 
 	if (status == BATTERY_CHARGING) {
 		chip->charge_complete = 0;
@@ -620,13 +634,15 @@ static int bq27441_update_battery_status(struct battery_gauge_dev *bg_dev,
 		chip->charge_complete = 1;
 		chip->soc = BQ27441_BATTERY_FULL;
 		chip->status = POWER_SUPPLY_STATUS_FULL;
-		power_supply_changed(&chip->battery);
-		return 0;
+		goto done;
 	} else {
 		chip->status = POWER_SUPPLY_STATUS_DISCHARGING;
 		chip->charge_complete = 0;
 	}
 	chip->lasttime_status = chip->status;
+
+done:
+	mutex_unlock(&chip->mutex);
 	power_supply_changed(&chip->battery);
 	return 0;
 }
@@ -786,11 +802,11 @@ static void bq27441_shutdown(struct i2c_client *client)
 {
 	struct bq27441_chip *chip = i2c_get_clientdata(client);
 
-	cancel_delayed_work_sync(&chip->work);
 	mutex_lock(&chip->mutex);
 	chip->shutdown_complete = 1;
 	mutex_unlock(&chip->mutex);
 
+	cancel_delayed_work_sync(&chip->work);
 }
 
 #ifdef CONFIG_PM_SLEEP
