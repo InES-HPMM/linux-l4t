@@ -144,25 +144,25 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.voltage_scale = 1000,
 		.cvb_table = {
 			/*f       dfll: c0,     c1,   c2  pll:  c0,   c1,    c2 */
-			{408000 , {2244479,  -117955,  2292}, { 960000,  0,  0}},
-			{510000 , {2279779,  -119575,  2292}, { 960000,  0,  0}},
-			{612000 , {2317504,  -121185,  2292}, { 960000,  0,  0}},
-			{714000 , {2357653,  -122795,  2292}, { 972000,  0,  0}},
-			{816000 , {2400228,  -124415,  2292}, { 984000,  0,  0}},
-			{918000 , {2445228,  -126025,  2292}, { 996000,  0,  0}},
-			{1020000, {2492653,  -127635,  2292}, { 1020000, 0,  0}},
-			{1122000, {2542502,  -129255,  2292}, { 1032000, 0,  0}},
-			{1224000, {2594777,  -130865,  2292}, { 1056000, 0,  0}},
-			{1326000, {2649477,  -132475,  2292}, { 1092000, 0,  0}},
-			{1428000, {2706601,  -134095,  2292}, { 1116000, 0,  0}},
-			{1530000, {2766150,  -135705,  2292}, { 1152000, 0,  0}},
-			{1632000, {2828125,  -137315,  2292}, { 1188000, 0,  0}},
-			{1734000, {2892524,  -138935,  2292}, { 1224000, 0,  0}},
-			{1836000, {2959348,  -140545,  2292}, { 1260000, 0,  0}},
-			{1913000, {3028598,  -142155,  2292}, { 1308000, 0,  0}},
-			{2015000, {3100272,  -143775,  2292}, { 1356000, 0,  0}},
-			{2117000, {3174371,  -145385,  2292}, { 1404000, 0,  0}},
-			{      0, {      0,        0,     0}, {       0, 0,  0}},
+			{408000 , {2244479,  -117955,  2292}, { 960000,  0,  0} },
+			{510000 , {2279779,  -119575,  2292}, { 960000,  0,  0} },
+			{612000 , {2317504,  -121185,  2292}, { 960000,  0,  0} },
+			{714000 , {2357653,  -122795,  2292}, { 972000,  0,  0} },
+			{816000 , {2400228,  -124415,  2292}, { 984000,  0,  0} },
+			{918000 , {2445228,  -126025,  2292}, { 996000,  0,  0} },
+			{1020000, {2492653,  -127635,  2292}, { 1020000, 0,  0} },
+			{1122000, {2542502,  -129255,  2292}, { 1032000, 0,  0} },
+			{1224000, {2594777,  -130865,  2292}, { 1056000, 0,  0} },
+			{1326000, {2649477,  -132475,  2292}, { 1092000, 0,  0} },
+			{1428000, {2706601,  -134095,  2292}, { 1116000, 0,  0} },
+			{1530000, {2766150,  -135705,  2292}, { 1152000, 0,  0} },
+			{1632000, {2828125,  -137315,  2292}, { 1188000, 0,  0} },
+			{1734000, {2892524,  -138935,  2292}, { 1224000, 0,  0} },
+			{1836000, {2959348,  -140545,  2292}, { 1260000, 0,  0} },
+			{1913000, {3028598,  -142155,  2292}, { 1308000, 0,  0} },
+			{2015000, {3100272,  -143775,  2292}, { 1356000, 0,  0} },
+			{2117000, {3174371,  -145385,  2292}, { 1404000, 0,  0} },
+			{      0, {      0,        0,     0}, {       0, 0,  0} },
 		},
 	},
 };
@@ -176,6 +176,43 @@ static struct dvfs cpu_dvfs = {
 	.dfll_millivolts = cpu_dfll_millivolts,
 	.auto_dvfs	= true,
 	.dvfs_rail	= &tegra21_dvfs_rail_vdd_cpu,
+};
+
+/* GPU DVFS tables */
+/* FIXME: fill in actual hw numbers */
+static unsigned long gpu_max_freq[] = {
+/* speedo_id	0	*/
+		652800,
+};
+static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
+	{
+		.speedo_id =  -1,
+		.process_id = -1,
+		.max_mv = 1200,
+		.freqs_mult = KHZ,
+		.speedo_scale = 100,
+		.thermal_scale = 10,
+		.voltage_scale = 1000,
+		.cvb_table = {
+			/*f        dfll  pll:   c0,     c1,   c2 */
+			{  204000, {  }, {  810000,      0,   0}, },
+			{  264000, {  }, {  860000,      0,   0}, },
+			{  351000, {  }, {  900000,      0,   0}, },
+			{  492000, {  }, {  990000,      0,   0}, },
+			{  652800, {  }, { 1080000,      0,   0}, },
+			{       0, {  }, {       0,      0,   0}, },
+		},
+		.vts_trips_table = { 0, 70, },
+	},
+};
+
+static int gpu_vmin[MAX_THERMAL_RANGES];
+static int gpu_peak_millivolts[MAX_DVFS_FREQS];
+static int gpu_millivolts[MAX_THERMAL_RANGES][MAX_DVFS_FREQS];
+static struct dvfs gpu_dvfs = {
+	.clk_name	= "gbus",
+	.auto_dvfs	= true,
+	.dvfs_rail	= &tegra21_dvfs_rail_vdd_gpu,
 };
 
 /* Core DVFS tables */
@@ -278,52 +315,6 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("xusb_fs_src",     -1, -1, 1, KHZ,       0,  48000,  48000,  48000,  48000),
 	CORE_DVFS("xusb_hs_src",     -1, -1, 1, KHZ,       0,  60000,  60000,  60000,  60000),
 };
-
-/* GPU DVFS tables */
-/* FIXME: fill in actual hw numbers */
-static unsigned long gpu_max_freq[] = {
-/* speedo_id	0	*/
-		652800,
-};
-static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
-	{
-		.speedo_id =  -1,
-		.process_id = -1,
-		.max_mv = 1200,
-		.freqs_mult = KHZ,
-		.speedo_scale = 100,
-		.thermal_scale = 10,
-		.voltage_scale = 1000,
-		.cvb_table = {
-			/*f        dfll  pll:   c0,     c1,   c2 */
-			{  204000, {  }, {  810000,      0,   0}, },
-			{  264000, {  }, {  860000,      0,   0}, },
-			{  351000, {  }, {  900000,      0,   0}, },
-			{  492000, {  }, {  990000,      0,   0}, },
-			{  652800, {  }, { 1080000,      0,   0}, },
-			{       0, {  }, {       0,      0,   0}, },
-		},
-		.vts_trips_table = { 0, 70, },
-	},
-};
-
-static int gpu_vmin[MAX_THERMAL_RANGES];
-static int gpu_peak_millivolts[MAX_DVFS_FREQS];
-static int gpu_millivolts[MAX_THERMAL_RANGES][MAX_DVFS_FREQS];
-static struct dvfs gpu_dvfs = {
-	.clk_name	= "gbus",
-	.auto_dvfs	= true,
-	.dvfs_rail	= &tegra21_dvfs_rail_vdd_gpu,
-};
-
-int read_gpu_dvfs_table(const int **millivolts, unsigned long **freqs)
-{
-	*millivolts = gpu_dvfs.millivolts;
-	*freqs = gpu_dvfs.freqs;
-
-	return 0;
-}
-EXPORT_SYMBOL(read_gpu_dvfs_table);
 
 int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)
 {
