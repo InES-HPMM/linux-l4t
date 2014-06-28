@@ -1855,7 +1855,7 @@ static void __init tegra_reserve_ramoops_memory(unsigned long reserve_size)
 	ramoops_data.console_size = reserve_size - FTRACE_MEM_SIZE;
 	ramoops_data.ftrace_size = FTRACE_MEM_SIZE;
 	ramoops_data.dump_oops = 1;
-	memblock_reserve(ramoops_data.mem_address, ramoops_data.mem_size);
+	memblock_remove(ramoops_data.mem_address, ramoops_data.mem_size);
 }
 
 static int __init tegra_register_ramoops_device(void)
@@ -2192,6 +2192,10 @@ out:
 	}
 #endif
 
+#ifdef CONFIG_PSTORE_RAM
+	tegra_reserve_ramoops_memory(RAMOOPS_MEM_SIZE);
+#endif
+
 #ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 	/* Keep these at the end */
 	if (carveout_size) {
@@ -2208,9 +2212,6 @@ out:
 #endif
 
 	tegra_fb_linear_set(map);
-#ifdef CONFIG_PSTORE_RAM
-	tegra_reserve_ramoops_memory(RAMOOPS_MEM_SIZE);
-#endif
 }
 
 void tegra_reserve4(ulong carveout_size, ulong fb_size,
