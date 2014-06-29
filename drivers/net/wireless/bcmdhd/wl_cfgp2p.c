@@ -1076,6 +1076,10 @@ wl_cfgp2p_set_management_ie(struct bcm_cfg80211 *cfg, struct net_device *ndev, s
 	memset(g_mgmt_ie_buf, 0, sizeof(g_mgmt_ie_buf));
 	curr_ie_buf = g_mgmt_ie_buf;
 	CFGP2P_DBG((" bssidx %d, pktflag : 0x%02X\n", bssidx, pktflag));
+
+	if (!cfg)
+		return ERR_PTR(-EINVAL);
+
 	if (cfg->p2p != NULL) {
 		if (wl_cfgp2p_find_type(cfg, bssidx, &type)) {
 			CFGP2P_ERR(("cannot find type from bssidx : %d\n", bssidx));
