@@ -252,6 +252,10 @@ struct tegra_cl_dvfs {
 	struct notifier_block		simon_grade_nb;
 };
 
+struct tegra_cl_dvfs_soc_match_data {
+	u32 flags;
+};
+
 /* Conversion macros (different scales for frequency request, and monitored
    rate is not a typo) */
 #define RATE_STEP(cld)				((cld)->ref_rate / 2)
@@ -2114,6 +2118,15 @@ static int build_direct_vdd_map(struct tegra_cl_dvfs_platform_data *p_data,
 	return 0;
 }
 
+/* cl_dvfs comaptibility tables */
+static struct of_device_id tegra_cl_dvfs_of_match[] = {
+	{ .compatible = "nvidia,tegra114-dfll", },
+	{ .compatible = "nvidia,tegra124-dfll", },
+	{ .compatible = "nvidia,tegra132-dfll", },
+	{ .compatible = "nvidia,tegra148-dfll", },
+	{ },
+};
+
 /* cl_dvfs dt parsing */
 #ifdef CONFIG_OF
 
@@ -2373,6 +2386,7 @@ static int cl_dvfs_dt_parse_pdata(struct platform_device *pdev,
 	u32 flags = 0;
 	struct device_node *dn = pdev->dev.of_node;
 	struct device_node *i2c_dn, *pwm_dn, *b_dn;
+	const struct of_device_id *match;
 
 	ret = of_property_read_string(dn, "out-clock-name",
 				      &p_data->dfll_clk_name);
@@ -2381,6 +2395,12 @@ static int cl_dvfs_dt_parse_pdata(struct platform_device *pdev,
 		return ret;
 	}
 	dev_dbg(&pdev->dev, "DT: target clock: %s\n", p_data->dfll_clk_name);
+
+	match = of_match_node(tegra_cl_dvfs_of_match, dn);
+	if (match && match->data) {
+		const struct tegra_cl_dvfs_soc_match_data *data = match->data;
+		flags |= data->flags;
+	}
 
 	if (of_find_property(dn, "i2c-quiet-output-workaround", NULL))
 		flags |= TEGRA_CL_DVFS_FLAGS_I2C_WAIT_QUIET;
@@ -2596,14 +2616,6 @@ err_out:
 	}
 	return ret;
 }
-
-static struct of_device_id tegra_cl_dvfs_of_match[] = {
-	{ .compatible = "nvidia,tegra114-dfll", },
-	{ .compatible = "nvidia,tegra124-dfll", },
-	{ .compatible = "nvidia,tegra132-dfll", },
-	{ .compatible = "nvidia,tegra148-dfll", },
-	{ },
-};
 
 static struct platform_driver tegra_cl_dvfs_driver = {
 	.driver         = {
