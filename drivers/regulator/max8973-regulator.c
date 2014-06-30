@@ -476,6 +476,7 @@ static int max8973_probe(struct i2c_client *client,
 
 static const struct i2c_device_id max8973_id[] = {
 	{.name = "max8973",},
+	{.name = "max77621",},
 	{},
 };
 
