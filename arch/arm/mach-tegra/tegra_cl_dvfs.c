@@ -143,12 +143,25 @@
 #define CL_DVFS_INTR_MIN_MASK		0x1
 #define CL_DVFS_INTR_MAX_MASK		0x2
 
+#define CL_DVFS_CC4_HVC			0x74
+#define CL_DVFS_CC4_HVC_CTRL_SHIFT	0
+#define CL_DVFS_CC4_HVC_CTRL_MASK	(0x3 << CL_DVFS_CC4_HVC_CTRL_SHIFT)
+#define CL_DVFS_CC4_HVC_FORCE_VAL_SHIFT	2
+#define CL_DVFS_CC4_HVC_FORCE_VAL_MASK \
+	(OUT_MASK << CL_DVFS_CC4_HVC_FORCE_VAL_SHIFT)
+#define CL_DVFS_CC4_HVC_FORCE_EN	(0x1 << 8)
+
+#define CL_DVFS_I2C_CNTRL		0x100
 #define CL_DVFS_I2C_CLK_DIVISOR		0x16c
 #define CL_DVFS_I2C_CLK_DIVISOR_MASK	0xffff
 #define CL_DVFS_I2C_CLK_DIVISOR_FS_SHIFT 16
 #define CL_DVFS_I2C_CLK_DIVISOR_HS_SHIFT 0
 
 #define CL_DVFS_OUTPUT_LUT		0x200
+
+#define IS_I2C_OFFS(offs)		\
+	((((offs) >= CL_DVFS_I2C_CFG) && ((offs) <= CL_DVFS_INTR_EN)) || \
+	((offs) >= CL_DVFS_I2C_CNTRL))
 
 #define CL_DVFS_CALIBR_TIME		40000
 #define CL_DVFS_OUTPUT_PENDING_TIMEOUT	1000
@@ -303,13 +316,13 @@ static inline void cl_dvfs_i2c_wmb(struct tegra_cl_dvfs *cld)
 
 static inline u32 cl_dvfs_readl(struct tegra_cl_dvfs *cld, u32 offs)
 {
-	if (offs >= CL_DVFS_I2C_CFG)
+	if (IS_I2C_OFFS(offs))
 		return cl_dvfs_i2c_readl(cld, offs);
 	return __raw_readl((void *)cld->cl_base + offs);
 }
 static inline void cl_dvfs_writel(struct tegra_cl_dvfs *cld, u32 val, u32 offs)
 {
-	if (offs >= CL_DVFS_I2C_CFG) {
+	if (IS_I2C_OFFS(offs)) {
 		cl_dvfs_i2c_writel(cld, val, offs);
 		return;
 	}
@@ -587,8 +600,16 @@ static noinline int output_disable_flush(struct tegra_cl_dvfs *cld)
 static inline int output_disable_ol_prepare(struct tegra_cl_dvfs *cld)
 {
 	/* PWM output control */
-	if (!is_i2c(cld))
+	if (!is_i2c(cld)) {
+		/*
+		 * Keep PWM running in open loop mode. External idle controller
+		 * would take care of switching PWM output off/on if override
+		 * is supported.
+		 */
+		if (cld->p_data->flags & TEGRA_CL_DVFS_HAS_IDLE_OVERRIDE)
+			return 0;
 		return output_disable_pwm(cld);
+	}
 
 	/*
 	 * If cl-dvfs h/w does not require output to be quiet before disable,
@@ -631,6 +652,17 @@ static inline void set_mode(struct tegra_cl_dvfs *cld,
 {
 	cld->mode = mode;
 	cl_dvfs_writel(cld, mode - 1, CL_DVFS_CTRL);
+
+	if (cld->p_data->flags & TEGRA_CL_DVFS_HAS_IDLE_OVERRIDE) {
+		/* Override mode follows active mode up to open loop */
+		u32 val = cl_dvfs_readl(cld, CL_DVFS_CC4_HVC);
+		val &= ~(CL_DVFS_CC4_HVC_CTRL_MASK | CL_DVFS_CC4_HVC_FORCE_EN);
+		if (mode >= TEGRA_CL_DVFS_OPEN_LOOP) {
+			val |= (TEGRA_CL_DVFS_OPEN_LOOP - 1);
+			val |= CL_DVFS_CC4_HVC_FORCE_EN;
+		}
+		cl_dvfs_writel(cld, val, CL_DVFS_CC4_HVC);
+	}
 	cl_dvfs_wmb(cld);
 }
 
@@ -771,6 +803,16 @@ static void set_output_limits(struct tegra_cl_dvfs *cld, u8 out_min, u8 out_max)
 		} else {
 			cl_dvfs_load_lut(cld);
 		}
+
+		if (vmin_seqcnt &&
+		    (cld->p_data->flags & TEGRA_CL_DVFS_HAS_IDLE_OVERRIDE)) {
+			/* Override mode force value follows active mode Vmin */
+			u32 val = cl_dvfs_readl(cld, CL_DVFS_CC4_HVC);
+			val &= ~CL_DVFS_CC4_HVC_FORCE_VAL_MASK;
+			val |= out_min << CL_DVFS_CC4_HVC_FORCE_VAL_SHIFT;
+			cl_dvfs_writel(cld, val, CL_DVFS_CC4_HVC);
+		}
+		cl_dvfs_wmb(cld);
 
 		/* limits update tracking end */
 		if (vmin_seqcnt)
@@ -1522,6 +1564,10 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 		(out_max << CL_DVFS_OUTPUT_CFG_MAX_SHIFT) |
 		(out_min << CL_DVFS_OUTPUT_CFG_MIN_SHIFT);
 	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+	if (cld->p_data->flags & TEGRA_CL_DVFS_HAS_IDLE_OVERRIDE) {
+		val = out_min << CL_DVFS_CC4_HVC_FORCE_VAL_SHIFT;
+		cl_dvfs_writel(cld, val, CL_DVFS_CC4_HVC);
+	}
 	cl_dvfs_wmb(cld);
 
 	cl_dvfs_writel(cld, 0, CL_DVFS_OUTPUT_FORCE);
@@ -2119,11 +2165,16 @@ static int build_direct_vdd_map(struct tegra_cl_dvfs_platform_data *p_data,
 }
 
 /* cl_dvfs comaptibility tables */
+struct tegra_cl_dvfs_soc_match_data t210_data = {
+	.flags = TEGRA_CL_DVFS_HAS_IDLE_OVERRIDE,
+};
+
 static struct of_device_id tegra_cl_dvfs_of_match[] = {
 	{ .compatible = "nvidia,tegra114-dfll", },
 	{ .compatible = "nvidia,tegra124-dfll", },
 	{ .compatible = "nvidia,tegra132-dfll", },
 	{ .compatible = "nvidia,tegra148-dfll", },
+	{ .compatible = "nvidia,tegra210-dfll", .data = &t210_data, },
 	{ },
 };
 
@@ -3241,6 +3292,13 @@ static int cl_register_show(struct seq_file *s, void *data)
 	seq_printf(s, "[0x%02x] = 0x%08x\n", offs, cl_dvfs_readl(cld, offs));
 	offs = CL_DVFS_INTR_EN;
 	seq_printf(s, "[0x%02x] = 0x%08x\n", offs, cl_dvfs_readl(cld, offs));
+
+	if (cld->p_data->flags & TEGRA_CL_DVFS_HAS_IDLE_OVERRIDE) {
+		seq_printf(s, "\nOVERRIDE REGISTERS:\n");
+		offs = CL_DVFS_CC4_HVC;
+		seq_printf(s, "[0x%02x] = 0x%08x\n", offs,
+			   cl_dvfs_readl(cld, offs));
+	}
 
 	seq_printf(s, "\nLUT:\n");
 	for (offs = CL_DVFS_OUTPUT_LUT;
