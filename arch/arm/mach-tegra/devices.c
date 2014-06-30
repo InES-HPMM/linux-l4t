@@ -1950,11 +1950,6 @@ struct platform_device tegra_pcm_device = {
 	.id = -1,
 };
 
-struct platform_device tegra_tdm_pcm_device = {
-	.name = "tegra-tdm-pcm-audio",
-	.id = -1,
-};
-
 struct platform_device tegra_offload_device = {
 	.name = "tegra-offload",
 	.id = -1,

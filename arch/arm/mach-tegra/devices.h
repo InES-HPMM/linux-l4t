@@ -81,7 +81,6 @@ extern struct platform_device spdif_dit_device;
 extern struct platform_device bluetooth_dit_device;
 extern struct platform_device baseband_dit_device;
 extern struct platform_device tegra_pcm_device;
-extern struct platform_device tegra_tdm_pcm_device;
 extern struct platform_device tegra_offload_device;
 extern struct platform_device tegra30_avp_audio_device;
 extern struct platform_device tegra_w1_device;
