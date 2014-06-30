@@ -533,6 +533,68 @@ static unsigned int tegra_vcm30t124_adx_slot_map[] = {
 	TDM_SLOT_MAP(3, 2, 1),
 };
 
+struct snd_soc_pcm_stream tegra_vcm30t124_amx_input_params[] = {
+	[0] = {
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.rate_min = 48000,
+		.rate_max = 48000,
+		.channels_min = 2,
+		.channels_max = 2,
+	},
+	[1] = {
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.rate_min = 48000,
+		.rate_max = 48000,
+		.channels_min = 2,
+		.channels_max = 2,
+	},
+	[2] = {
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.rate_min = 48000,
+		.rate_max = 48000,
+		.channels_min = 2,
+		.channels_max = 2,
+	},
+	[3] = {
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.rate_min = 48000,
+		.rate_max = 48000,
+		.channels_min = 2,
+		.channels_max = 2,
+	},
+};
+
+struct snd_soc_pcm_stream tegra_vcm30t124_adx_input_params[] = {
+	[0] = {
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.rate_min = 48000,
+		.rate_max = 48000,
+		.channels_min = 2,
+		.channels_max = 2,
+	},
+	[1] = {
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.rate_min = 48000,
+		.rate_max = 48000,
+		.channels_min = 2,
+		.channels_max = 2,
+	},
+	[2] = {
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.rate_min = 48000,
+		.rate_max = 48000,
+		.channels_min = 2,
+		.channels_max = 2,
+	},
+	[3] = {
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.rate_min = 48000,
+		.rate_max = 48000,
+		.channels_min = 2,
+		.channels_max = 2,
+	},
+};
+
 static const struct snd_soc_dapm_route tegra_e1860_a0x_audio_map[] = {
 	{"Headphone-y",	NULL,	"y DAC1OUT"},
 	{"Headphone-y", NULL,	"y DAC2OUT"},
@@ -592,7 +654,7 @@ static const struct snd_soc_dapm_route tegra_voice_call_audio_map[] = {
 
 static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
 	/* initialize DAI link config */
-	.config[0] = {
+	.dai_config[0] = {
 		.cpu_name = "tegra30-i2s.0",
 		.codec_name = "wm8731.0-001a",
 		.codec_dai_name = "wm8731-hifi",
@@ -607,7 +669,7 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
 		.params.channels_min = 2,
 		.params.channels_max = 2,
 	},
-	.config[1] = {
+	.dai_config[1] = {
 		.cpu_name = "tegra30-i2s.4",
 		.codec_name = "ad193x.0-0007",
 		.codec_dai_name = "ad193x-hifi",
@@ -622,7 +684,7 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
 		.params.channels_min = 8,
 		.params.channels_max = 8,
 	},
-	.config[2] = {
+	.dai_config[2] = {
 		.cpu_name = "tegra30-spdif",
 		.codec_name = "spdif-dit.0",
 		.codec_dai_name = "dit-hifi",
@@ -635,24 +697,36 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
 		.params.channels_max = 2,
 	},
 	.dev_num = 3,
+	/* initialize AMX config */
+	.amx_config[0] = {
+		.slot_map = tegra_vcm30t124_amx_slot_map,
+		.params = tegra_vcm30t124_amx_input_params,
+	},
+	.amx_config[1] = {
+		.slot_map = tegra_vcm30t124_amx_slot_map,
+		.params = tegra_vcm30t124_amx_input_params,
+	},
+	.num_amx = 2,
+	/* initialize ADX config */
+	.adx_config[0] = {
+		.slot_map = tegra_vcm30t124_adx_slot_map,
+		.params = tegra_vcm30t124_adx_input_params,
+	},
+	.adx_config[1] = {
+		.slot_map = tegra_vcm30t124_adx_slot_map,
+		.params = tegra_vcm30t124_adx_input_params,
+	},
+	.num_adx = 2,
 	/* initialize DAPM routes */
 	.dapm_routes = tegra_e1860_a0x_audio_map,
 	.num_dapm_routes = ARRAY_SIZE(tegra_e1860_a0x_audio_map),
-	/* initialize AMX slot map */
-	.amx_slot_map[0] = tegra_vcm30t124_amx_slot_map,
-	.amx_slot_map[1] = tegra_vcm30t124_amx_slot_map,
-	.num_amx = 2,
-	/* initialize ADX slot map */
-	.adx_slot_map[0] = tegra_vcm30t124_adx_slot_map,
-	.adx_slot_map[1] = tegra_vcm30t124_adx_slot_map,
-	.num_adx = 2,
 	/* sound card: tegra-wm8731-ad1937 */
 	.card_name = "tegra-wm-ad",
 };
 
 static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 	/* intialize DAI link config */
-	.config[0] = {
+	.dai_config[0] = {
 		.cpu_name = "tegra30-i2s.0",
 		.codec_name = "ak4618.0-0010",
 		.codec_dai_name = "ak4618-hifi",
@@ -667,7 +741,7 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 		.params.channels_min = 8,
 		.params.channels_max = 8,
 	},
-	.config[1] = {
+	.dai_config[1] = {
 		.cpu_name = "tegra30-i2s.4",
 		.codec_name = "ad193x.0-0007",
 		.codec_dai_name = "ad193x-hifi",
@@ -682,7 +756,7 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 		.params.channels_min = 8,
 		.params.channels_max = 8,
 	},
-	.config[2] = {
+	.dai_config[2] = {
 		.cpu_name = "tegra30-spdif",
 		.codec_name = "spdif-dit.0",
 		.codec_dai_name = "dit-hifi",
@@ -695,17 +769,29 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 		.params.channels_max = 2,
 	},
 	.dev_num = 3,
+	/* initialize AMX config */
+	.amx_config[0] = {
+		.slot_map = tegra_vcm30t124_amx_slot_map,
+		.params = tegra_vcm30t124_amx_input_params,
+	},
+	.amx_config[1] = {
+		.slot_map = tegra_vcm30t124_amx_slot_map,
+		.params = tegra_vcm30t124_amx_input_params,
+	},
+	.num_amx = 2,
+	/* initialize ADX config */
+	.adx_config[0] = {
+		.slot_map = tegra_vcm30t124_adx_slot_map,
+		.params = tegra_vcm30t124_adx_input_params,
+	},
+	.adx_config[1] = {
+		.slot_map = tegra_vcm30t124_adx_slot_map,
+		.params = tegra_vcm30t124_adx_input_params,
+	},
+	.num_adx = 2,
 	/* initialize DAPM routes */
 	.dapm_routes = tegra_e1860_b00_audio_map,
 	.num_dapm_routes = ARRAY_SIZE(tegra_e1860_b00_audio_map),
-	/* initialize AMX slot map */
-	.amx_slot_map[0] = tegra_vcm30t124_amx_slot_map,
-	.amx_slot_map[1] = tegra_vcm30t124_amx_slot_map,
-	.num_amx = 2,
-	/* initialize ADX slot map */
-	.adx_slot_map[0] = tegra_vcm30t124_adx_slot_map,
-	.adx_slot_map[1] = tegra_vcm30t124_adx_slot_map,
-	.num_adx = 2,
 	/* sound card: tegra-ak4618-ad1937 */
 	.card_name = "tegra-ak-ad",
 };
@@ -720,7 +806,7 @@ static unsigned int tegra_voice_call_in_srate[2] = {
 
 static struct tegra_vcm30t124_platform_data tegra_voice_call_pdata = {
 	/* initialize DAI link config */
-	.config[0] = {
+	.dai_config[0] = {
 		.cpu_name = "tegra30-i2s.0",
 		.codec_name = "ak4618.0-0010",
 		.codec_dai_name = "ak4618-hifi",
@@ -735,7 +821,7 @@ static struct tegra_vcm30t124_platform_data tegra_voice_call_pdata = {
 		.params.channels_min = 8,
 		.params.channels_max = 8,
 	},
-	.config[1] = {
+	.dai_config[1] = {
 		.cpu_name = "tegra30-i2s.4",
 		.codec_name = "spdif-dit.0",
 		.codec_dai_name = "dit-hifi",

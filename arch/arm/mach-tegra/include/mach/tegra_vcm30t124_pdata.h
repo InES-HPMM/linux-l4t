@@ -17,7 +17,9 @@
 #include <sound/pcm.h>
 #include <sound/soc.h>
 
-#define	MAX_DEVICES		5
+#define	MAX_I2S_DEVICES			5
+#define	MAX_AMX_DEVICES			2
+#define	MAX_ADX_DEVICES			2
 
 /* dai_link_config - configures the necessary DAI link
  */
@@ -29,6 +31,13 @@ struct dai_link_config {
 	const char *cpu_dai_name;
 	unsigned int dai_fmt;
 	struct snd_soc_pcm_stream params;
+};
+
+/* amx_adx_config - configures TDM slot map and params
+ */
+struct amx_adx_config {
+	unsigned int *slot_map;
+	struct snd_soc_pcm_stream *params;
 };
 
 /* tegra_vcm30t124_platform_data - platform specific data
@@ -46,16 +55,16 @@ struct dai_link_config {
  * @card_name: sound card name needed (default: tegra-generic)
  */
 struct tegra_vcm30t124_platform_data {
-	struct dai_link_config config[MAX_DEVICES];
+	struct dai_link_config dai_config[MAX_I2S_DEVICES];
 	unsigned int dev_num;
+	struct amx_adx_config amx_config[MAX_AMX_DEVICES];
+	unsigned int num_amx;
+	struct amx_adx_config adx_config[MAX_ADX_DEVICES];
+	unsigned int num_adx;
 	const struct snd_soc_dapm_route *dapm_routes;
 	unsigned int num_dapm_routes;
 	unsigned int *dam_in_srate;
 	unsigned int num_dam;
-	unsigned int *amx_slot_map[2];
-	unsigned int num_amx;
-	unsigned int *adx_slot_map[2];
-	unsigned int num_adx;
 	void *priv_data;
 	const char *card_name;
 };
