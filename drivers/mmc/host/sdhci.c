@@ -2765,8 +2765,12 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask)
 			SDHCI_INT_INDEX)) {
 		host->cmd->error = -EILSEQ;
 		sdhci_dumpregs(host);
-		pr_err("%s: Command CRC or END bit error, intmask: %x\n",
-				mmc_hostname(host->mmc), intmask);
+		if (intmask & SDHCI_INT_INDEX)
+			pr_err("%s: Command END bit error, intmask: %x Interface clock = %uHz\n",
+			mmc_hostname(host->mmc), intmask, host->max_clk);
+		else
+			pr_err("%s: Command CRC error, intmask: %x Interface clock = %uHz\n",
+			mmc_hostname(host->mmc), intmask, host->max_clk);
 	}
 
 	if (host->cmd->error) {
@@ -2868,19 +2872,19 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 
 	if (intmask & SDHCI_INT_DATA_TIMEOUT) {
 		host->data->error = -ETIMEDOUT;
-		pr_err("%s: Data Timeout error, intmask: %x\n",
-				mmc_hostname(host->mmc), intmask);
+		pr_err("%s: Data Timeout error, intmask: %x Interface clock = %uHz\n",
+			mmc_hostname(host->mmc), intmask, host->max_clk);
 		sdhci_dumpregs(host);
 	} else if (intmask & SDHCI_INT_DATA_END_BIT) {
 		host->data->error = -EILSEQ;
-		pr_err("%s: Data END Bit error, intmask: %x\n",
-				mmc_hostname(host->mmc), intmask);
+		pr_err("%s: Data END Bit error, intmask: %x Interface clock = %uHz\n",
+			mmc_hostname(host->mmc), intmask, host->max_clk);
 	} else if ((intmask & SDHCI_INT_DATA_CRC) &&
 		SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND))
 			!= MMC_BUS_TEST_R) {
 		host->data->error = -EILSEQ;
-		pr_err("%s: Data CRC error, intmask: %x\n",
-				mmc_hostname(host->mmc), intmask);
+		pr_err("%s: Data CRC error, intmask: %x Interface clock = %uHz\n",
+			mmc_hostname(host->mmc), intmask, host->max_clk);
 		sdhci_dumpregs(host);
 	} else if (intmask & SDHCI_INT_ADMA_ERROR) {
 		pr_err("%s: ADMA error\n", mmc_hostname(host->mmc));
