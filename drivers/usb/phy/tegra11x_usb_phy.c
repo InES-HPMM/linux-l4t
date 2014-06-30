@@ -1272,7 +1272,7 @@ static void utmi_phy_restore_end(struct tegra_usb_phy *phy)
 
 		/* Add delay sothat resume will be driven for more than 20 ms */
 		if (phy->port_speed != USB_PHY_PORT_SPEED_FULL) {
-			mdelay(10);
+			usleep_range(10000, 11000);
 			local_irq_save(flags);
 			pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 1);
 			phy->pmc_remote_wakeup = false;
@@ -1284,7 +1284,7 @@ static void utmi_phy_restore_end(struct tegra_usb_phy *phy)
 				"%s: timeout waiting for USB_USBCMD_RS\n",
 				__func__);
 		} else {
-			mdelay(25);
+			usleep_range(25000, 26000);
 			local_irq_save(flags);
 			pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 0);
 			phy->pmc_remote_wakeup = false;
@@ -1683,7 +1683,7 @@ static bool utmi_phy_qc2_charger_detect(struct tegra_usb_phy *phy,
 			__func__, __LINE__, phy->inst);
 
 		/* Wall charger needs time before setting D+/D- */
-		mdelay(25);
+		usleep_range(25000, 26000);
 
 		switch (max_voltage) {
 		case TEGRA_USB_QC2_9V:
@@ -2125,10 +2125,10 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 
 	if (irq_disabled) {
 		local_irq_restore(flags);
-		mdelay(25);
+		usleep_range(25000, 26000);
 		local_irq_save(flags);
 	} else
-		mdelay(10);
+		usleep_range(10000, 11000);
 
 	pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 1);
 	phy->pmc_remote_wakeup = false;
