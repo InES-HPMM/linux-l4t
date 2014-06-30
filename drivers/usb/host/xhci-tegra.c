@@ -3445,7 +3445,6 @@ static int tegra_xhci_request_irq(struct platform_device *pdev,
 }
 
 #ifdef CONFIG_PM
-
 static int tegra_xhci_bus_suspend(struct usb_hcd *hcd)
 {
 	struct tegra_xhci_hcd *tegra = hcd_to_tegra_xhci(hcd);
@@ -4195,9 +4194,34 @@ static const struct tegra_xusb_soc_config tegra124_soc_config = {
 	.default_firmware_file = "tegra_xusb_firmware",
 };
 
+static const struct tegra_xusb_soc_config tegra210_soc_config = {
+	.pmc_portmap = (TEGRA_XUSB_UTMIP_PMC_PORT0 << 0) |
+			(TEGRA_XUSB_UTMIP_PMC_PORT1 << 4) |
+			(TEGRA_XUSB_UTMIP_PMC_PORT2 << 8),
+	.rx_wander = (0xF << 4),
+	.rx_eq = (0xF070 << 8),
+	.cdr_cntl = (0x26 << 24),
+	.dfe_cntl = 0x002008EE,
+	.hs_slew = (0xE << 6),
+	.ls_rslew_pad0 = (0x3 << 14),
+	.ls_rslew_pad1 = (0x0 << 14),
+	.ls_rslew_pad2 = (0x0 << 14),
+	.hs_disc_lvl = (0x7 << 2),
+	.spare_in = 0x1,
+	.supply = {
+		.utmi_vbuses = {"usb_vbus0", "usb_vbus1", "usb_vbus2",},
+		.s3p3v = "hvdd_usb",
+		.s1p8v = "avdd_pll_utmip",
+		.vddio_hsic = "vddio_hsic",
+		.s1p05v = "avddio_usb",
+	},
+	.default_firmware_file = "tegra_xusb_firmware",
+};
+
 static struct of_device_id tegra_xhci_of_match[] = {
 	{ .compatible = "nvidia,tegra114-xhci", .data = &tegra114_soc_config },
 	{ .compatible = "nvidia,tegra124-xhci", .data = &tegra124_soc_config },
+	{ .compatible = "nvidia,tegra210-xhci", .data = &tegra210_soc_config },
 	{ },
 };
 
