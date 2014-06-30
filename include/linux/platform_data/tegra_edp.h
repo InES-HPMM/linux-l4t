@@ -47,14 +47,11 @@ enum tegra_sysedp_corecap_method {
 };
 
 struct tegra_sysedp_platform_data {
-	struct tegra_system_edp_entry *cpufreq_lim;
-	unsigned int cpufreq_lim_size;
 	struct tegra_sysedp_corecap *corecap;
 	unsigned int corecap_size;
 	unsigned int core_gain;
 	unsigned int init_req_watts;
 	unsigned int pthrot_ratio;
-	const char *bbc;
 	unsigned int cap_method;
 };
 

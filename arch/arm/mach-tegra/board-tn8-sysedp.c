@@ -188,13 +188,6 @@ void __init tn8_sysedp_dynamic_capping_init(void)
 	tn8_sysedp_dynamic_capping_platdata.corecap = corecap;
 	tn8_sysedp_dynamic_capping_platdata.corecap_size = corecap_size;
 
-	tn8_sysedp_dynamic_capping_platdata.cpufreq_lim = tegra_get_system_edp_entries(
-		&tn8_sysedp_dynamic_capping_platdata.cpufreq_lim_size);
-	if (!tn8_sysedp_dynamic_capping_platdata.cpufreq_lim) {
-		WARN_ON(1);
-		return;
-	}
-
 	tegra_get_board_info(&board);
 
 	if ((board.board_id == BOARD_P1761 && board.fab >= BOARD_FAB_A02) ||

@@ -177,13 +177,6 @@ void __init shield_sysedp_dynamic_capping_init(void)
 	shield_sysedp_dynamic_capping_platdata.corecap = corecap;
 	shield_sysedp_dynamic_capping_platdata.corecap_size = corecap_size;
 
-	shield_sysedp_dynamic_capping_platdata.cpufreq_lim = tegra_get_system_edp_entries(
-		&shield_sysedp_dynamic_capping_platdata.cpufreq_lim_size);
-	if (!shield_sysedp_dynamic_capping_platdata.cpufreq_lim) {
-		WARN_ON(1);
-		return;
-	}
-
 	r = platform_device_register(&shield_sysedp_dynamic_capping);
 	WARN_ON(r);
 }
