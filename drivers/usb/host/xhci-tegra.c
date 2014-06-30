@@ -3657,9 +3657,11 @@ static const struct hc_driver tegra_plat_xhci_driver = {
 	.hub_control =		xhci_hub_control,
 	.hub_status_data =	xhci_hub_status_data,
 
+#ifdef HUI_XXX
 #ifdef CONFIG_PM
 	.bus_suspend =		tegra_xhci_bus_suspend,
 	.bus_resume =		tegra_xhci_bus_resume,
+#endif
 #endif
 };
 
