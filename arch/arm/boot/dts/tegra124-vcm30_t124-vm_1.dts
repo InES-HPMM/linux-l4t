@@ -164,7 +164,21 @@
 				frame-size = <50>;
 			};
 
-			/* placeholder for serial & net IVC channels */
+			/* guest 0 <-> guest 1 (comm) */
+			ivc1 {
+				reg = <1>;
+				peers = <0 1>;
+				nframes = <4>;
+				frame-size = <16>;
+			};
+
+			/* guest 0 <-> guest 1 (net) */
+			ivc2 {
+				reg = <2>;
+				peers = <0 1>;
+				nframes = <32>;
+				frame-size = <1536>;
+			};
 
 			/* guest 0 <-> guest 0 (loop) */
 			ivc5 {
@@ -181,7 +195,21 @@
 				nframes = <4>;
 				frame-size = <16>;
 			};
-
 		};
+	};
+
+	/* the virtual serial device node */
+	tegra_hv_comm {
+		compatible = "nvidia,tegra-hv-comm";
+		status = "okay";
+		/* ivc channel to use definition (second one in tegra_hv) */
+		ivc = <&tegra_hv 1>;
+	};
+
+	tegra_hv_net {
+		compatible = "nvidia,tegra-hv-net";
+		status = "okay";
+		/* ivc channel to use definition (third one in tegra_hv) */
+		ivc = <&tegra_hv 2>;
 	};
 };
