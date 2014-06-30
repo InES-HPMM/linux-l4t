@@ -462,9 +462,6 @@ static struct platform_device tegra_rtc_device = {
 static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
-#if defined(CONFIG_TEGRA_WAKEUP_MONITOR)
-	&tegratab_tegra_wakeup_monitor_device,
-#endif
 #if !defined(CONFIG_ARM64)
 	&tegra_udc_device,
 #endif

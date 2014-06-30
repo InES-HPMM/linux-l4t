@@ -34,10 +34,6 @@
 #include <mach/tegra-swgid.h>
 #include <linux/dma-contiguous.h>
 
-#ifdef CONFIG_TEGRA_WAKEUP_MONITOR
-#include <mach/tegra_wakeup_monitor.h>
-#endif
-
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 #include <asm/dma-iommu.h>
 #endif
@@ -2471,22 +2467,6 @@ struct platform_device tegra_fuse_device = {
 	.name	= "tegra-fuse",
 	.id	= -1,
 };
-
-#if defined(CONFIG_TEGRA_WAKEUP_MONITOR)
-static struct tegra_wakeup_monitor_platform_data
-			tegratab_tegra_wakeup_monitor_pdata = {
-	.wifi_wakeup_source     = 6,
-	.rtc_wakeup_source      = 18,
-};
-
-struct platform_device tegratab_tegra_wakeup_monitor_device = {
-	.name = "tegra_wakeup_monitor",
-	.id   = -1,
-	.dev  = {
-		.platform_data = &tegratab_tegra_wakeup_monitor_pdata,
-	},
-};
-#endif
 
 static struct resource ptm_resources[] = {
 	{
