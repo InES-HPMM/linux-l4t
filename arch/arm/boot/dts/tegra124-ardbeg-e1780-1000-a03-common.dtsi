@@ -161,9 +161,6 @@
 		};
 		sor {
 			status = "okay";
-		};
-		dpaux {
-			status = "okay";
 			nvidia,hpd-gpio = <&gpio 248 0>; /*PFF0*/
 			panel-a-edp-1080p-14-0 {
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
@@ -171,6 +168,9 @@
 			panel-i-edp-1080p-11-6 {
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
 			};
+		};
+		dpaux {
+			status = "okay";
 		};
 	};
 

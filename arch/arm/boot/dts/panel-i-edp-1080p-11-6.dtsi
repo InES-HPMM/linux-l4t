@@ -22,7 +22,7 @@
 
 / {
 	host1x {
-		dpaux {
+		sor {
 			panel-i-edp-1080p-11-6 {
 				status = "okay";
 				compatible = "i-edp,1080p-11-6";
