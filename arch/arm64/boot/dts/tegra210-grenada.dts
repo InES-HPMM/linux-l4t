@@ -80,6 +80,7 @@
 
 	serial@70006000 {
 		console-port;
+		status = "okay";
 	};
 		
 	serial@70006200 {
