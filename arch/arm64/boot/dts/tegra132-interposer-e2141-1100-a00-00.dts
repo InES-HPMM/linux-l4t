@@ -170,6 +170,19 @@
 		};
 	};
 
+	i2c@7000d000 {
+		max77620@3c {
+			regulators {
+				sd1 {
+					regulator-min-microvolt = <1000000>; /*for max77663 on inter
+poser*/
+					regulator-max-microvolt = <1000000>; /*the real ouput will b
+e 1.2V*/
+				};
+			};
+		};
+	};
+
 	i2c@7000c000 {
 		iqs253@44 {
 			rdy-gpio = <&gpio TEGRA_GPIO(K, 5) GPIO_ACTIVE_LOW>;
