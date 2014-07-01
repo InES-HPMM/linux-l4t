@@ -27,6 +27,8 @@
 #include <linux/init.h>
 #include <linux/err.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
@@ -37,6 +39,9 @@
 #include <linux/i2c.h>
 #include <linux/slab.h>
 #include <linux/regmap.h>
+#include <linux/thermal.h>
+#include <linux/irq.h>
+#include <linux/interrupt.h>
 
 /* Register definitions */
 #define MAX8973_VOUT					0x0
@@ -90,6 +95,17 @@
 #define MAX8973_VOLATGE_STEP				6250
 #define MAX8973_BUCK_N_VOLTAGE				0x80
 
+#define MAX77621_CHIPID_TJINT_S				BIT(0)
+
+#define MAX77621_NORMAL_OPERATING_TEMP			100000
+#define MAX77621_TJINT_WARNING_TEMP			140000
+
+
+enum device_id {
+	MAX8973,
+	MAX77621
+};
+
 /* Maxim 8973 chip information */
 struct max8973_chip {
 	struct device *dev;
@@ -102,6 +118,9 @@ struct max8973_chip {
 	int curr_vout_reg;
 	int curr_gpio_val;
 	struct regulator_ops ops;
+	enum device_id id;
+	int irq;
+	struct thermal_zone_device *tz_device;
 };
 
 /*
@@ -354,6 +373,73 @@ static int max8973_init_dcdc(struct max8973_chip *max,
 	return ret;
 }
 
+static int max8973_thermal_read_temp(void *data, long *temp)
+{
+	struct max8973_chip *mchip = data;
+	unsigned int val;
+	int ret;
+
+	ret = regmap_read(mchip->regmap, MAX8973_CHIPID1, &val);
+	if (ret < 0) {
+		dev_err(mchip->dev, "register CHIPID1 read failed, %d", ret);
+		return ret;
+	}
+
+	/* + 1 to trigger cdev */
+	if (val & MAX77621_CHIPID_TJINT_S)
+		*temp = 140000 + 1000;
+	else
+		*temp = MAX77621_NORMAL_OPERATING_TEMP;
+	return 0;
+}
+
+static irqreturn_t max8973_thermal_irq(int irq, void *data)
+{
+	struct max8973_chip *mchip = data;
+
+	thermal_zone_device_update(mchip->tz_device);
+	return IRQ_HANDLED;
+}
+
+static int max8973_thermal_init(struct max8973_chip *mchip)
+{
+	int ret;
+
+	if (mchip->id != MAX77621)
+		return 0;
+
+	mchip->tz_device = thermal_zone_of_sensor_register(mchip->dev, 0,
+					mchip, max8973_thermal_read_temp, NULL);
+	if (IS_ERR(mchip->tz_device)) {
+		ret = PTR_ERR(mchip->tz_device);
+		dev_err(mchip->dev,
+			"Device can not register as thermal sensor: %d\n", ret);
+		return ret;
+	}
+
+	ret = request_threaded_irq(mchip->irq, NULL, max8973_thermal_irq,
+			IRQF_ONESHOT, dev_name(mchip->dev), mchip);
+	if (ret < 0) {
+		dev_err(mchip->dev, "request irq %d failed: %dn",
+			mchip->irq, ret);
+		goto fail;
+	}
+
+fail:
+	thermal_zone_of_sensor_unregister(mchip->dev, mchip->tz_device);
+	return ret;
+}
+
+static int max8973_thermal_deinit(struct max8973_chip *mchip)
+{
+	if (mchip->id != MAX77621)
+		return 0;
+
+	free_irq(mchip->irq, mchip);
+	thermal_zone_of_sensor_unregister(mchip->dev, mchip->tz_device);
+	return 0;
+}
+
 static const struct regmap_config max8973_regmap_config = {
 	.reg_bits		= 8,
 	.val_bits		= 8,
@@ -387,6 +473,13 @@ static struct max8973_regulator_platform_data *max8973_parse_dt(
 	return pdata;
 }
 
+static const struct of_device_id of_max8973_match_tbl[] = {
+	{ .compatible = "maxim,max8973", .data = (void *)MAX8973, },
+	{ .compatible = "maxim,max77621", .data = (void *)MAX77621, },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, of_max8973_match_tbl);
+
 static int max8973_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
@@ -394,6 +487,7 @@ static int max8973_probe(struct i2c_client *client,
 	struct regulator_config config = { };
 	struct regulator_dev *rdev;
 	struct max8973_chip *max;
+	unsigned int chip_id;
 	int ret;
 
 	pdata = client->dev.platform_data;
@@ -416,7 +510,29 @@ static int max8973_probe(struct i2c_client *client,
 		return ret;
 	}
 
+	ret = regmap_read(max->regmap, MAX8973_CHIPID1, &chip_id);
+	if (ret < 0) {
+		dev_err(max->dev, "register CHIPID1 read failed, %d", ret);
+		return ret;
+	}
+
+	dev_info(&client->dev, "CHIP-ID OTP: 0x%02x ID_M: 0x%02x\n",
+			(chip_id >> 4) & 0xF, (chip_id >> 1) & 0x7);
+
+	if (client->dev.of_node) {
+		const struct of_device_id *match;
+		match = of_match_device(of_match_ptr(of_max8973_match_tbl),
+				&client->dev);
+		if (!match)
+			return -ENODATA;
+		max->id = (u32)((uintptr_t)match->data);
+	} else {
+		max->id = id->driver_data;
+	}
+
+	/* If external control is enabled then disable EN bit */
 	i2c_set_clientdata(client, max);
+	max->irq = client->irq;
 	max->ops = max8973_dcdc_ops;
 	max->dev = &client->dev;
 	max->desc.name = id->name;
@@ -490,23 +606,38 @@ static int max8973_probe(struct i2c_client *client,
 		return ret;
 	}
 
+	ret = max8973_thermal_init(max);
+	if (ret < 0) {
+		dev_err(max->dev, "Thermal initialization failed, %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int max8973_remove(struct i2c_client *i2c)
+{
+	struct max8973_chip *mchip = i2c_get_clientdata(i2c);
+
+	max8973_thermal_deinit(mchip);
 	return 0;
 }
 
 static const struct i2c_device_id max8973_id[] = {
-	{.name = "max8973",},
-	{.name = "max77621",},
+	{.name = "max8973", MAX8973},
+	{.name = "max77621", MAX77621},
 	{},
 };
-
 MODULE_DEVICE_TABLE(i2c, max8973_id);
 
 static struct i2c_driver max8973_i2c_driver = {
 	.driver = {
 		.name = "max8973",
+		.of_match_table = of_max8973_match_tbl,
 		.owner = THIS_MODULE,
 	},
 	.probe = max8973_probe,
+	.remove = max8973_remove,
 	.id_table = max8973_id,
 };
 
