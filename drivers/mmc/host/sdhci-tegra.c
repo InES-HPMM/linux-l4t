@@ -36,6 +36,7 @@
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/pinctrl/pinconf-tegra.h>
+#include <linux/dma-mapping.h>
 #include <mach/pinmux-defines.h>
 
 #ifndef CONFIG_ARM64
@@ -4203,6 +4204,17 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		rc = -ENODEV;
 		goto err_no_plat;
 	}
+
+	/* FIXME: This is for until dma-mask binding is supported in DT.
+	 *        Set coherent_dma_mask for each Tegra SKUs.
+	 *        If dma_mask is NULL, set it to coherent_dma_mask. */
+	if (soc_data == &soc_data_tegra11)
+		pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
+	else
+		pdev->dev.coherent_dma_mask = DMA_BIT_MASK(64);
+
+	if (!pdev->dev.dma_mask)
+		pdev->dev.dma_mask = &pdev->dev.coherent_dma_mask;
 
 	tegra_host = devm_kzalloc(&pdev->dev, sizeof(*tegra_host), GFP_KERNEL);
 	if (!tegra_host) {
