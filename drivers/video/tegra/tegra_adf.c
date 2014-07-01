@@ -525,9 +525,13 @@ static inline dma_addr_t tegra_adf_phys_addr(struct adf_buffer *buf,
 		struct adf_buffer_mapping *mapping,
 		size_t plane)
 {
-	dma_addr_t addr = buf->dma_bufs[plane] ?
-			sg_dma_address(mapping->sg_tables[plane]->sgl) :
-			sg_dma_address(mapping->sg_tables[TEGRA_DC_Y]->sgl);
+	struct scatterlist *sgl = buf->dma_bufs[plane] ?
+			mapping->sg_tables[plane]->sgl :
+			mapping->sg_tables[TEGRA_DC_Y]->sgl;
+
+	dma_addr_t addr = sg_dma_address(sgl);
+	if (!addr)
+		addr = sg_phys(sgl);
 	addr += buf->offset[plane];
 	return addr;
 }
