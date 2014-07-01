@@ -101,19 +101,19 @@
 	};
 
 	regulators {
-		regulator@6 {
+		regulator@3 {
 			gpio = <&gpio TEGRA_GPIO(H, 2) 0>;
 		};
 
-		regulator@7 {
+		regulator@4 {
 			gpio = <&gpio TEGRA_GPIO(R, 0) 0>;
 		};
 
-		regulator@8 {
+		regulator@5 {
 			gpio = <&gpio TEGRA_GPIO(BB, 3) 0>;
 		};
 
-		regulator@10 {
+		regulator@7 {
 			gpio = <&gpio TEGRA_GPIO(K, 6) 0>;
 		};
 
