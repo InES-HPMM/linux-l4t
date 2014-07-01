@@ -1583,7 +1583,52 @@ int __init of_tegra_dvfs_init(const struct of_device_id *matches)
 	}
 	return 0;
 }
+
+static int __init of_rail_align(struct device_node *dn, struct dvfs_rail *rail)
+{
+	u32 vmin, vmax, n;
+	int step, ret = 0;
+	struct device_node *consumer_dn = of_get_parent(dn);
+	struct device_node *reg_dn = of_get_parent(consumer_dn);
+
+	ret |= of_property_read_u32(reg_dn, "regulator-n-voltages", &n);
+	ret |= of_property_read_u32(reg_dn, "regulator-min-microvolt", &vmin);
+	ret |= of_property_read_u32(reg_dn, "regulator-max-microvolt", &vmax);
+	if (ret || (n <= 1)) {
+		ret = -EINVAL;
+		goto _out;
+	}
+
+	step = (vmax - vmin) / (n - 1);
+	if (step <= 0) {
+		ret = -EINVAL;
+		goto _out;
+	}
+
+	rail->alignment.offset_uv = vmin;
+	rail->alignment.step_uv = step;
+
+_out:
+	of_node_put(dn);
+	of_node_put(consumer_dn);
+	of_node_put(reg_dn);
+	return ret;
+}
+
+int __init of_tegra_dvfs_rail_align(struct dvfs_rail *rail)
+{
+	struct device_node *dn;
+	const char *propname = "regulator-consumer-supply";
+
+	for_each_node_with_property(dn, propname) {
+		if (of_property_match_string(dn, propname, rail->reg_id) >= 0)
+			return of_rail_align(dn, rail);
+		of_node_put(dn);
+	}
+	return -ENOENT;
+}
 #endif
+
 int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate)
 {
 	mutex_lock(&dvfs_lock);
