@@ -55,18 +55,6 @@
 							c8 {
 								regulator-consumer-supply = "avdd_pll_cg";
 							};
-							c9 {
-								regulator-consumer-supply = "avdd_pex_pll";
-								regulator-consumer-device = "tegra-pcie";
-							};
-							c10 {
-								regulator-consumer-supply = "avddio_pex";
-								regulator-consumer-device = "tegra-pcie";
-							};
-							c11 {
-								regulator-consumer-supply = "dvddio_pex";
-								regulator-consumer-device = "tegra-pcie";
-							};
 							c12 {
 								regulator-consumer-supply = "avddio_usb";
 								regulator-consumer-device = "tegra-xhci";

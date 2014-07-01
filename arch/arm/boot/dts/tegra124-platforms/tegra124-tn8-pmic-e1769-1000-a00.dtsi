@@ -364,14 +364,6 @@
 								regulator-consumer-supply = "spkvdd";
 								regulator-consumer-device = "tegra-snd-rt5645.0";
 							};
-							c6 {
-								regulator-consumer-supply = "avddio_pex";
-								regulator-consumer-device = "tegra-pcie";
-							};
-							c7 {
-								regulator-consumer-supply = "dvddio_pex";
-								regulator-consumer-device = "tegra-pcie";
-							};
 						};
 					};
 
@@ -409,10 +401,6 @@
 							c9 {
 								regulator-consumer-supply = "avdd_pll_cg";
 							};
-							c10 {
-								regulator-consumer-supply = "avdd_pex_pll";
-								regulator-consumer-device = "tegra-pcie";
-							};
 							c11 {
 								regulator-consumer-supply = "avdd_hdmi_pll";
 								regulator-consumer-device = "tegradc.1";
@@ -425,21 +413,6 @@
 						regulator-name = "vdd-pex";
 						regulator-min-microvolt = <2800000>;
 						regulator-max-microvolt = <3300000>;
-
-						consumers {
-							c1 {
-								regulator-consumer-supply = "hvdd_pex";
-								regulator-consumer-device = "tegra_pcie";
-							};
-							c2 {
-								regulator-consumer-supply = "hvdd_pex_pll_e";
-								regulator-consumer-device = "tegra_pcie";
-							};
-							c3 {
-								regulator-consumer-supply = "vddio_pex_ctl";
-								regulator-consumer-device = "tegra_pcie";
-							};
-						};
 					};
 
 					ldo3 {
@@ -629,10 +602,6 @@
 								regulator-consumer-device = "tegradc.1";
 
 							};
-							c4 {
-								regulator-consumer-supply = "vddio_pex_ctl";
-								regulator-consumer-device = "tegra-pcie";
-							};
 						};
 					};
 
@@ -659,15 +628,6 @@
 								regulator-consumer-supply = "avdd_usb";
 								regulator-consumer-device = "tegra-ehci.2";
 							};
-							c7 {
-								regulator-consumer-supply = "hvdd_pex";
-								regulator-consumer-device = "tegra-pcie";
-							};
-							c8 {
-								regulator-consumer-supply = "hvdd_pex_pll_e";
-								regulator-consumer-device = "tegra-pcie";
-							};
-
 						};
 					};
 					regen1 {

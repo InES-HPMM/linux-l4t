@@ -530,10 +530,6 @@
 								regulator-consumer-device = "tegradc.1";
 
 							};
-							c4 {
-								regulator-consumer-supply = "vddio_pex_ctl";
-								regulator-consumer-device = "tegra-pcie";
-							};
 						};
 					};
 
@@ -559,15 +555,6 @@
 								regulator-consumer-supply = "avdd_usb";
 								regulator-consumer-device = "tegra-ehci.2";
 							};
-							c7 {
-								regulator-consumer-supply = "hvdd_pex";
-								regulator-consumer-device = "tegra-pcie";
-							};
-							c8 {
-								regulator-consumer-supply = "hvdd_pex_pll_e";
-								regulator-consumer-device = "tegra-pcie";
-							};
-
 						};
 					};
 				};
