@@ -151,6 +151,12 @@
 		nvidia,hot-plug-gpio = <&gpio TEGRA_GPIO(O, 1) 0>;
 		nvidia,wake-gpio = <&gpio TEGRA_GPIO(DD, 3) 0>;
 		nvidia,x1-slot-gpio = <&tca6416 8 0>;
+		hvdd-pex-supply = <&reg_3v3_supply>;
+		hvdd-pex-pll-e-supply = <&reg_3v3_supply>;
+		dvddio-pex-supply = <&as3722_sd4>;
+		avddio-pex-supply = <&as3722_sd4>;
+		avdd-pex-pll-supply = <&as3722_sd4>;
+		vddio-pex-ctl-supply = <&as3722_sd4>;
 		status = "okay";
 	};
 

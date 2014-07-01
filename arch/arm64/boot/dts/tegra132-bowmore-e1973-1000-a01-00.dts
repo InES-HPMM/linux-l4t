@@ -162,6 +162,12 @@
 		nvidia,port1_status = <1>;
 		nvidia,hot-plug-gpio = <&gpio TEGRA_GPIO(O, 1) 0>;
 		nvidia,wake-gpio = <&gpio TEGRA_GPIO(DD, 3) 0>;
+		hvdd-pex-supply = <&as3722_gpio2>;
+		hvdd-pex-pll-e-supply = <&as3722_gpio2>;
+		dvddio-pex-supply = <&as3722_sd4>;
+		avddio-pex-supply = <&as3722_sd4>;
+		avdd-pex-pll-supply = <&as3722_sd4>;
+		vddio-pex-ctl-supply = <&as3722_sd4>;
 		status = "okay";
 	};
 

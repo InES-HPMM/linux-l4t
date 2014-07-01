@@ -42,7 +42,7 @@
 	};
 
 	regulators {
-		hvdd-pex-3v3 {
+		hvdd_pex_3v3: regulator@9 {
 			compatible = "regulator-fixed";
 			regulator-name = "reg-3v3-supply";
 			regulator-min-microvolt = <3300000>;
@@ -50,7 +50,7 @@
 			gpio = <&gpio TEGRA_GPIO(P, 0) GPIO_ACTIVE_HIGH>;
 			enable-active-high;
 		};
-		hvdd-pex-1v05 {
+		hvdd_pex_1v05: regulator@10 {
 			compatible = "regulator-fixed";
 			regulator-name = "avdd-pll-pex";
 			regulator-min-microvolt = <1050000>;
@@ -65,6 +65,12 @@
 		nvidia,port1_status = <0>;
 		nvidia,hot-plug-gpio = <&gpio TEGRA_GPIO(O, 1) 0>;
 		nvidia,wake-gpio = <&gpio TEGRA_GPIO(DD, 3) 0>;
+		hvdd-pex-supply = <&hvdd_pex_3v3>;
+		hvdd-pex-pll-e-supply = <&hvdd_pex_3v3>;
+		dvddio-pex-supply = <&hvdd_pex_1v05>;
+		avddio-pex-supply = <&hvdd_pex_1v05>;
+		avdd-pex-pll-supply = <&hvdd_pex_1v05>;
+		vddio-pex-ctl-supply = <&hvdd_pex_1v05>;
 		status = "okay";
 	};
 };
