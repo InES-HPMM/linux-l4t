@@ -180,7 +180,6 @@ struct swgid_fixup tegra_swgid_fixup[] = {
 	{ .name = "tegra-ehci",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra-fuse",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra-i2c",	.swgids = SWGID(PPCS), },
-	{ .name = "tegra-nvmap",	.swgids = SWGID(HC) | SWGID(AVPC), },
 	{ .name = "tegra-carveouts",	.swgids = SWGID(HC) | SWGID(AVPC), },
 	{ .name = "tegra-otg",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra-pcm-audio",	.swgids = SWGID(PPCS), },
@@ -240,7 +239,6 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{ .name = "tegra-ehci",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra-fuse",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra-i2c",	.swgids = SWGID(PPCS), },
-	{ .name = "tegra-nvmap",	.swgids = SWGID(HC) | SWGID(AVPC), },
 	{ .name = "tegra-carveouts",	.swgids = SWGID(HC) | SWGID(AVPC), },
 	/*
 	 * PPCS1 selection for USB2 needs AHB_ARBC register program
@@ -329,7 +327,6 @@ struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	  SWGID(PPCS2), },
 	{ .name = "tegra-i2c",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
-	{ .name = "tegra-nvmap",	.swgids = SWGID(HC) | SWGID(AVPC), },
 	{ .name = "tegra-carveouts",	.swgids = SWGID(HC) | SWGID(AVPC), },
 	{ .name = "tegra-otg",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
