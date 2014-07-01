@@ -2,16 +2,27 @@
 
 Required properties:
 
-- compatible:	must be "maxium,max8973"
+- compatible:	must be one of
+		"maxim,max8973",
+		"maxim,max77621"
 - reg:		the i2c slave address of the regulator. It should be 0x1b.
 
 Any standard regulator properties can be used to configure the single max8973
 DCDC.
 
+Optional properties:
+- maxim,externally-enable: Boolean property which tells whether EN pin control
+	the output enable or not.
+- maxim,dvs-gpio: DVS gpio. GPIO on which DVS pin is connected.
+- maxim,dvs-default-state: Default state of the DVS pin whether it is GPIO
+	control or tied to HIGH or LOW.
+- maxim,control-flags: Control flags. The macros are defined on
+		include/dt-bindings/regulator/max8973.h
+
 Example:
 
 	max8973@1b {
-		compatible = "maxium,max8973";
+		compatible = "maxim,max8973";
 		reg = <0x1b>;
 
 		regulator-min-microvolt = <935000>;
