@@ -1480,7 +1480,6 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 								 0, max_ua);
 	}
 
-
 	if (!udc->vbus_in_lp0) {
 		tegra_udc_set_extcon_state(udc);
 		udc->connect_type_lp0 = CONNECT_TYPE_NONE;
@@ -1576,6 +1575,7 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		spin_unlock_irqrestore(&udc->lock, flags);
 		tegra_usb_phy_power_off(udc->phy);
 		tegra_usb_set_charging_current(udc);
+		udc->current_limit = 0;
 	} else if (!udc->vbus_active && is_active) {
 		tegra_usb_phy_power_on(udc->phy);
 		/* setup the controller in the device mode */
@@ -1613,8 +1613,19 @@ static int tegra_vbus_draw(struct usb_gadget *gadget, unsigned mA)
 
 	udc = container_of(gadget, struct tegra_udc, gadget);
 
-	udc->current_limit = mA;
-	schedule_work(&udc->current_work);
+	/* Some hosts during booting first supply vbus and then
+	   send setup packets after x seconds. In this case we detect
+	   as non-standard. Handle this case by setting to SDP */
+	if (udc->connect_type != CONNECT_TYPE_NONE
+		&& udc->connect_type != CONNECT_TYPE_SDP
+			&& udc->connect_type != CONNECT_TYPE_CDP)
+		tegra_udc_set_charger_type(udc, CONNECT_TYPE_SDP);
+
+	/* Avoid unnecessary work if there is no change in current limit */
+	if (udc->current_limit != mA) {
+		udc->current_limit = mA;
+		schedule_work(&udc->current_work);
+	}
 
 	if (udc->transceiver)
 		return usb_phy_set_power(udc->transceiver, mA);
