@@ -298,7 +298,7 @@ static inline void _dtv_set_hw_params(struct tegra_dtv_context *dtv_ctx)
 		(cfg->clk_mode << DTV_MODE_CLK_MODE_SHIFT);
 	reg = tegra_dtv_readl(dtv_ctx, DTV_MODE);
 	reg &= ~(DTV_MODE_BYTE_SWIZZLE_MASK |
-		 DTV_MODE_BIT_SWIZZLE |
+		 DTV_MODE_BIT_SWIZZLE_MASK |
 		 DTV_MODE_CLK_EDGE_MASK |
 		 DTV_MODE_PRTL_SEL_MASK |
 		 DTV_MODE_CLK_MODE_MASK);
@@ -307,6 +307,7 @@ static inline void _dtv_set_hw_params(struct tegra_dtv_context *dtv_ctx)
 
 	/* program DTV_CTRL */
 	reg = 0;
+	val = 0;
 	val = (cfg->fec_size << DTV_CTRL_FEC_SIZE_SHIFT) |
 		(cfg->body_size << DTV_CTRL_BODY_SIZE_SHIFT) |
 		(cfg->body_valid_sel << DTV_CTRL_BODY_VALID_SEL_SHIFT) |
@@ -335,6 +336,8 @@ static inline void _dtv_get_hw_params(struct tegra_dtv_context *dtv_ctx,
 	u32 reg;
 
 	reg = tegra_dtv_readl(dtv_ctx, DTV_MODE);
+	cfg->bit_swz_enabled = DTV_GET_REG_VAL(reg, DTV_MODE, BIT_SWIZZLE);
+	cfg->byte_swz_enabled = DTV_GET_REG_VAL(reg, DTV_MODE, BYTE_SWIZZLE);
 	cfg->clk_edge = DTV_GET_REG_VAL(reg, DTV_MODE, CLK_EDGE);
 	cfg->protocol_sel = DTV_GET_REG_VAL(reg, DTV_MODE, PRTL_SEL);
 	cfg->clk_mode = DTV_GET_REG_VAL(reg, DTV_MODE, CLK_MODE);
