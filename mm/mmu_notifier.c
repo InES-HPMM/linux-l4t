@@ -185,6 +185,24 @@ void __mmu_notifier_invalidate_range_start(struct vm_area_struct *vma,
 }
 EXPORT_SYMBOL_GPL(__mmu_notifier_invalidate_range_start);
 
+void __mmu_notifier_invalidate_range_free_pages(struct vm_area_struct *vma,
+						unsigned long start,
+						unsigned long end)
+{
+	struct mm_struct *mm = vma->vm_mm;
+	struct mmu_notifier *mn;
+	int id;
+
+	id = srcu_read_lock(&srcu);
+	hlist_for_each_entry_rcu(mn, &mm->mmu_notifier_mm->list, hlist) {
+		if (mn->ops->invalidate_range_free_pages)
+			mn->ops->invalidate_range_free_pages(mn, vma,
+							     start, end);
+	}
+	srcu_read_unlock(&srcu, id);
+}
+EXPORT_SYMBOL_GPL(__mmu_notifier_invalidate_range_free_pages);
+
 void __mmu_notifier_invalidate_range_end(struct vm_area_struct *vma,
 					 unsigned long start,
 					 unsigned long end,
