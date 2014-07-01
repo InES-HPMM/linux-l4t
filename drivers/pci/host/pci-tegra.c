@@ -324,6 +324,11 @@
 #define pin_pex_l1_clkreq	"pex_l1_clkreq_n_pdd6"
 #endif
 
+struct tegra_pcie_chipdata {
+	char			**pcie_regulator_names;
+	int			num_pcie_regulators;
+};
+
 struct tegra_pcie_port {
 	int			index;
 	u8			root_bus_nr;
@@ -339,8 +344,7 @@ struct tegra_pcie_info {
 	int			pcie_power_enabled;
 	struct work_struct	hotplug_detect;
 
-	struct regulator	*regulator_hvdd;
-	struct regulator	*regulator_pexio;
+	struct regulator	**pcie_regulators;
 	struct clk		*pcie_xclk;
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	struct clk		*pex_uphy;
@@ -349,6 +353,7 @@ struct tegra_pcie_info {
 	struct device		*dev;
 	struct tegra_pci_platform_data *plat_data;
 	struct list_head busses;
+	const struct tegra_pcie_chipdata *chipdata;
 } tegra_pcie;
 
 struct tegra_pcie_bus {
@@ -1121,66 +1126,46 @@ static int tegra_pcie_enable_controller(void)
 
 static int tegra_pcie_enable_regulators(void)
 {
-	int err = 0;
-
+	int i;
 	PR_FUNC_LINE;
 	if (tegra_pcie.power_rails_enabled) {
-		pr_debug("PCIE: Already power rails enabled");
+		pr_debug("PCIE: Already power rails enabled\n");
 		return 0;
 	}
 	tegra_pcie.power_rails_enabled = 1;
+	pr_info("PCIE: Enable power rails\n");
 
-	if (tegra_pcie.regulator_hvdd == NULL) {
-		pr_info("PCIE.C: %s : regulator hvdd_pex\n", __func__);
-		tegra_pcie.regulator_hvdd =
-			regulator_get(tegra_pcie.dev, "reg-3v3-supply");
-		if (IS_ERR(tegra_pcie.regulator_hvdd)) {
-			pr_err("%s: unable to get hvdd_pex regulator\n",
-					__func__);
-			tegra_pcie.regulator_hvdd = 0;
-		}
+	for (i = 0; i < tegra_pcie.chipdata->num_pcie_regulators; i++) {
+		if (tegra_pcie.pcie_regulators[i])
+			if (regulator_enable(tegra_pcie.pcie_regulators[i]))
+				pr_err("%s: can't enable regulator %s\n",
+				__func__,
+				tegra_pcie.chipdata->pcie_regulator_names[i]);
 	}
-	if (tegra_pcie.regulator_pexio == NULL) {
-		pr_info("PCIE.C: %s : regulator pexio\n", __func__);
-		tegra_pcie.regulator_pexio =
-			regulator_get(tegra_pcie.dev, "avdd-pll-pex");
-		if (IS_ERR(tegra_pcie.regulator_pexio)) {
-			pr_err("%s: unable to get pexio regulator\n", __func__);
-			tegra_pcie.regulator_pexio = 0;
-		}
-	}
-	if (tegra_pcie.regulator_hvdd)
-		err = regulator_enable(tegra_pcie.regulator_hvdd);
-		if (err)
-			pr_err("%s: can't enable hvdd_pex regulator\n", __func__);
-	if (tegra_pcie.regulator_pexio)
-		err = regulator_enable(tegra_pcie.regulator_pexio);
-		if (err)
-			pr_err("%s: can't enable pexio regulator\n", __func__);
 
 	return 0;
 }
 
 static int tegra_pcie_disable_regulators(void)
 {
-	int err = 0;
-
+	int i;
 	PR_FUNC_LINE;
 	if (tegra_pcie.power_rails_enabled == 0) {
-		pr_debug("PCIE: Already power rails disabled");
-		goto err_exit;
+		pr_debug("PCIE: Already power rails disabled\n");
+		return 0;
 	}
-	if (tegra_pcie.regulator_hvdd)
-		err = regulator_disable(tegra_pcie.regulator_hvdd);
-	if (err)
-		goto err_exit;
-	if (tegra_pcie.regulator_pexio)
-		err = regulator_disable(tegra_pcie.regulator_pexio);
-	if (err)
-		goto err_exit;
+	pr_info("PCIE: Disable power rails\n");
+
+	for (i = 0; i < tegra_pcie.chipdata->num_pcie_regulators; i++) {
+		if (tegra_pcie.pcie_regulators[i] != NULL)
+			if (regulator_disable(tegra_pcie.pcie_regulators[i]))
+				pr_err("%s: can't disable regulator %s\n",
+				__func__,
+				tegra_pcie.chipdata->pcie_regulator_names[i]);
+	}
+
 	tegra_pcie.power_rails_enabled = 0;
-err_exit:
-	return err;
+	return 0;
 }
 
 static int tegra_pcie_power_ungate(void)
@@ -2362,19 +2347,58 @@ static void tegra_pcie_read_plat_data(void)
 		of_property_read_bool(node, "nvidia,has_memtype_lpddr4");
 }
 
+static char *t124_rail_names[] = {"hvdd-pex", "hvdd-pex-pll-e", "dvddio-pex",
+				"avddio-pex", "avdd-pex-pll", "vddio-pex-ctl"};
+
+static char *t210_rail_names[] = {"dvdd-pex-pll", "hvdd-pex-pll-e",
+					"l0-hvddio-pex", "l0-dvddio-pex",
+					"l1-hvddio-pex", "l1-dvddio-pex",
+					"l2-hvddio-pex", "l2-dvddio-pex",
+					"l3-hvddio-pex", "l3-dvddio-pex",
+					"l4-hvddio-pex", "l4-dvddio-pex",
+					"l5-hvddio-pex", "l5-dvddio-pex",
+					"l6-hvddio-pex", "l6-dvddio-pex",
+					"vddio-pex-ctl"};
+
+static struct tegra_pcie_chipdata tegra124_pcie_chipdata = {
+	.pcie_regulator_names = t124_rail_names,
+	.num_pcie_regulators =
+			sizeof(t124_rail_names) / sizeof(t124_rail_names[0]),
+};
+
+static struct tegra_pcie_chipdata tegra210_pcie_chipdata = {
+	.pcie_regulator_names = t210_rail_names,
+	.num_pcie_regulators =
+			sizeof(t210_rail_names) / sizeof(t210_rail_names[0]),
+};
+
 static struct of_device_id tegra_pcie_of_match[] = {
-	{ .compatible = "nvidia,tegra210-pcie", },
-	{ .compatible = "nvidia,tegra124-pcie", },
+	{ .compatible = "nvidia,tegra210-pcie",
+		.data = &tegra210_pcie_chipdata, },
+	{ .compatible = "nvidia,tegra124-pcie",
+		.data = &tegra124_pcie_chipdata, },
 	{ }
 };
 
 static int __init tegra_pcie_probe(struct platform_device *pdev)
 {
 	int ret;
+	int i;
+	const struct of_device_id *match;
+	const struct tegra_pcie_chipdata *chip_data = NULL;
 
 	PR_FUNC_LINE;
 	tegra_pcie.dev = &pdev->dev;
 	if (tegra_pcie.dev->of_node) {
+		match = of_match_device(of_match_ptr(tegra_pcie_of_match),
+								&pdev->dev);
+		if (!match) {
+			dev_err(&pdev->dev, "Device Not matching\n");
+			return -ENODEV;
+		}
+		chip_data = match->data;
+		tegra_pcie.chipdata = match->data;
+
 		/* use DT way to init platform data */
 		tegra_pcie.plat_data = devm_kzalloc(tegra_pcie.dev,
 			sizeof(*tegra_pcie.plat_data), GFP_KERNEL);
@@ -2383,6 +2407,23 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 			return -ENOMEM;
 		}
 		tegra_pcie_read_plat_data();
+
+		tegra_pcie.pcie_regulators = devm_kzalloc(tegra_pcie.dev,
+			chip_data->num_pcie_regulators
+				* sizeof(struct regulator *), GFP_KERNEL);
+
+		for (i = 0; i < tegra_pcie.chipdata->num_pcie_regulators; i++) {
+			tegra_pcie.pcie_regulators[i] =
+						regulator_get(tegra_pcie.dev,
+				tegra_pcie.chipdata->pcie_regulator_names[i]);
+			if (IS_ERR(tegra_pcie.pcie_regulators[i])) {
+				pr_err("%s: unable to get regulator %s\n",
+				__func__,
+				tegra_pcie.chipdata->pcie_regulator_names[i]);
+				tegra_pcie.pcie_regulators[i] = NULL;
+			}
+		}
+
 	}
 	dev_dbg(tegra_pcie.dev, "PCIE.C: %s : _port_status[0] %d\n",
 		__func__, tegra_pcie.plat_data->port_status[0]);
