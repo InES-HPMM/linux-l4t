@@ -97,7 +97,8 @@ struct dtv_stream {
 	char			wake_lock_name[16];
 
 	struct work_struct	cpu_boost_work;
-	int			cpu_boost_flag;
+	u8 boost_cpufreq_work_flag;
+	u8 set_cpufreq_normal_flag;
 };
 
 struct tegra_dtv_context {
@@ -160,15 +161,21 @@ static void dtv_cpu_boost_worker(struct work_struct *work)
 		work, struct dtv_stream, cpu_boost_work);
 	struct tegra_dtv_context *dtv_ctx = to_ctx(s);
 
-	if (s->cpu_boost_flag) {
-		pr_info("%s: Boost CPU frequency to %dMHz.",
+	if (s->set_cpufreq_normal_flag) {
+		pr_info("%s: Release CPU frequency boost.\n", __func__);
+		pm_qos_update_request(&dtv_ctx->min_cpufreq,
+				      PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+		s->boost_cpufreq_work_flag = 1;
+		s->set_cpufreq_normal_flag = 0;
+		return;
+	}
+
+	if (s->boost_cpufreq_work_flag) {
+		pr_info("%s: Boost CPU frequency to %dMHz.\n",
 			__func__, dtv_ctx->profile.cpuboost);
 		pm_qos_update_request(&dtv_ctx->min_cpufreq,
 				      dtv_ctx->profile.cpuboost * 1000);
-	} else {
-		pr_info("%s: Release CPU frequency boost.", __func__);
-		pm_qos_update_request(&dtv_ctx->min_cpufreq,
-				      PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+		s->boost_cpufreq_work_flag = 0;
 	}
 }
 
@@ -394,7 +401,7 @@ static int stop_xfer_unsafe(struct dtv_stream *s)
 	dmaengine_terminate_all(s->dma_chan);
 
 	/* stop CPU boost */
-	s->cpu_boost_flag = 0;
+	s->set_cpufreq_normal_flag = 1;
 	schedule_work(&s->cpu_boost_work);
 
 	/* release restriction on CPU-DMA latency */
@@ -568,7 +575,6 @@ static int start_xfer_unsafe(struct dtv_stream *s, size_t size)
 	dma_async_issue_pending(dma_chan);
 
 	/* set boost cpu enabled */
-	s->cpu_boost_flag = 1;
 	dtv_boost_cpu(s);
 
 	s->last_queued = s->num_bufs - 1;
@@ -1186,6 +1192,8 @@ static int tegra_dtv_probe(struct platform_device *pdev)
 			   PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
 	pm_qos_add_request(&dtv_ctx->cpudma_lat, PM_QOS_CPU_DMA_LATENCY,
 			   PM_QOS_CPU_DMA_LAT_DEFAULT_VALUE);
+	dtv_ctx->stream.boost_cpufreq_work_flag = 1;
+	dtv_ctx->stream.set_cpufreq_normal_flag = 0;
 
 	/* get resource */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
