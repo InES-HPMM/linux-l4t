@@ -880,11 +880,11 @@ static struct sg_table *ion_map_dma_buf(struct dma_buf_attachment *attachment,
 	struct ion_mapping *map_ptr;
 	struct scatterlist *sg;
 
+	ion_buffer_sync_for_device(buffer, attachment->dev, direction);
+
 	iommu_map = to_dma_iommu_mapping(attachment->dev);
-	if (!iommu_map) {
-		ion_buffer_sync_for_device(buffer, attachment->dev, direction);
+	if (!iommu_map)
 		return buffer->sg_table;
-	}
 
 	mutex_lock(&buffer->lock);
 	for (i = 0; i < ARRAY_SIZE(buffer->mapping); i++) {
