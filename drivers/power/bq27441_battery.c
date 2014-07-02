@@ -176,18 +176,9 @@ static int bq27441_write_byte(struct i2c_client *client, u8 reg, u8 value)
 	return ret;
 }
 
-static void bq27441_work(struct work_struct *work)
+static int bq27441_update_soc_voltage(struct bq27441_chip *chip)
 {
-	struct bq27441_chip *chip;
 	int val;
-
-	chip = container_of(work, struct bq27441_chip, work.work);
-
-	mutex_lock(&chip->mutex);
-	if (chip->shutdown_complete) {
-		mutex_unlock(&chip->mutex);
-		return;
-	}
 
 	val = bq27441_read_word(chip->client, BQ27441_VOLTAGE);
 	if (val < 0)
@@ -199,7 +190,10 @@ static void bq27441_work(struct work_struct *work)
 	if (val < 0)
 		dev_err(&chip->client->dev, "%s: err %d\n", __func__, val);
 	else
-		chip->soc = val;
+		chip->soc = battery_gauge_get_adjusted_soc(chip->bg_dev,
+				chip->pdata->threshold_soc,
+				chip->pdata->maximum_soc, val * 100);
+
 	if (chip->soc >= BQ27441_BATTERY_FULL && chip->charge_complete != 1)
 		chip->soc = BQ27441_BATTERY_FULL-1;
 
@@ -216,6 +210,23 @@ static void bq27441_work(struct work_struct *work)
 		chip->health = POWER_SUPPLY_HEALTH_GOOD;
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_NORMAL;
 	}
+
+	return 0;
+}
+
+static void bq27441_work(struct work_struct *work)
+{
+	struct bq27441_chip *chip;
+
+	chip = container_of(work, struct bq27441_chip, work.work);
+
+	mutex_lock(&chip->mutex);
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return;
+	}
+
+	bq27441_update_soc_voltage(chip);
 
 	if (chip->soc != chip->lasttime_soc ||
 		chip->status != chip->lasttime_status) {
@@ -536,14 +547,16 @@ static int bq27441_get_temperature(void)
 		return bq27441_data->temperature;
 
 	for (i = 0; i < retries; i++) {
-		val = bq27441_read_word(bq27441_data->client, BQ27441_TEMPERATURE);
+		val = bq27441_read_word(bq27441_data->client,
+					BQ27441_TEMPERATURE);
 		if (val < 0)
 			continue;
 	}
 
 	if (val < 0) {
 		bq27441_data->read_failed++;
-		dev_err(&bq27441_data->client->dev, "%s: err %d\n", __func__, val);
+		dev_err(&bq27441_data->client->dev,
+					"%s: err %d\n", __func__, val);
 		if (bq27441_data->read_failed > 50)
 			return val;
 		return bq27441_data->temperature;
@@ -683,6 +696,14 @@ static void of_bq27441_parse_platform_data(struct i2c_client *client,
 		pdata->tz_name = pstr;
 	else
 		dev_err(&client->dev, "Failed to read tz-name\n");
+
+	if (!of_property_read_u32(np, "ti,kernel-threshold-soc", &tmp))
+		pdata->threshold_soc = tmp;
+
+	if (!of_property_read_u32(np, "ti,kernel-maximum-soc", &tmp))
+		pdata->maximum_soc = tmp;
+	else
+		pdata->maximum_soc = 100;
 }
 
 static int bq27441_probe(struct i2c_client *client,
@@ -774,8 +795,13 @@ static int bq27441_probe(struct i2c_client *client,
 	if (ret < 0)
 		dev_err(&client->dev, "chip init failed - %d\n", ret);
 
+	bq27441_update_soc_voltage(chip);
+
 	INIT_DEFERRABLE_WORK(&chip->work, bq27441_work);
 	schedule_delayed_work(&chip->work, 0);
+
+	dev_info(&client->dev, "Battery Voltage %dmV and SoC %d%%\n",
+			chip->vcell, chip->soc);
 
 	return 0;
 bg_err:
@@ -807,6 +833,8 @@ static void bq27441_shutdown(struct i2c_client *client)
 	mutex_unlock(&chip->mutex);
 
 	cancel_delayed_work_sync(&chip->work);
+	dev_info(&chip->client->dev, "At shutdown Voltage %dmV and SoC %d%%\n",
+			chip->vcell, chip->soc);
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -814,6 +842,9 @@ static int bq27441_suspend(struct device *dev)
 {
 	struct bq27441_chip *chip = dev_get_drvdata(dev);
 	cancel_delayed_work_sync(&chip->work);
+
+	dev_info(&chip->client->dev, "At suspend Voltage %dmV and SoC %d%%\n",
+			chip->vcell, chip->soc);
 	return 0;
 }
 
