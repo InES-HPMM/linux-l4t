@@ -97,7 +97,7 @@
 #include "tegra-of-dev-auxdata.h"
 
 static struct board_info board_info, display_board_info;
-
+#ifndef CONFIG_USE_OF
 static struct resource ardbeg_bluedroid_pm_resources[] = {
 	[0] = {
 		.name   = "shutdown_gpio",
@@ -149,7 +149,7 @@ static noinline void __init ardbeg_setup_bluedroid_pm(void)
 				gpio_to_irq(TEGRA_GPIO_PU6);
 	platform_device_register(&ardbeg_bluedroid_pm_device);
 }
-
+#endif
 static struct i2c_board_info __initdata rt5639_board_info = {
 	I2C_BOARD_INFO("rt5639", 0x1c),
 };
@@ -1004,6 +1004,8 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-ahci-sata", 0x70027000, "tegra-sata.0",
 		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra-bluedroid_pm", 0, "bluedroid_pm",
+		NULL),
 	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
 	{}
 };
@@ -1506,8 +1508,9 @@ static void __init tegra_ardbeg_late_init(void)
 		ardbeg_sensors_init();
 		ardbeg_soctherm_init();
 	}
-
+#ifndef CONFIG_USE_OF
 	ardbeg_setup_bluedroid_pm();
+#endif
 	ardbeg_sysedp_dynamic_capping_init();
 	ardbeg_sysedp_batmon_init();
 }

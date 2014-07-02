@@ -90,5 +90,16 @@
 				"slow-charger", "apple-500ma", "apple-1a",
 				"apple-2a", "y-cable";
 	};
+
+	bluedroid_pm {
+		compatible = "nvidia,tegra-bluedroid_pm";
+		id = <0>;
+		bluedroid_pm,reset-gpio = <&gpio TEGRA_GPIO(X, 1) 0>;
+		bluedroid_pm,shutdown-gpio = <&gpio TEGRA_GPIO(R, 1) 0>;
+		bluedroid_pm,host-wake-gpio = <&gpio TEGRA_GPIO(U, 6) 0>;
+		bluedroid_pm,ext-wake-gpio = <&gpio TEGRA_GPIO(EE, 1) 0>;
+		interrupt-parent = <&gpio>;
+		interrupts = <166 0x01>;
+	};
 };
 
