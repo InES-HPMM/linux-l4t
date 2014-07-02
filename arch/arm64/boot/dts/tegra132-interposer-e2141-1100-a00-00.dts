@@ -8,6 +8,7 @@
 #include "tegra210-platforms/tegra210-ers-fixed-e2174-1101-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-sensor-e2160-1000-a00.dtsi"
+#include "tegra210-platforms/tegra210-e2141-powermon-e2174-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-extgpio-e2141-1100-a00.dtsi"
 #include "tegra132-bowmore-e1971-emc.dtsi"
 
