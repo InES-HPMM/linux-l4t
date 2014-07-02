@@ -80,7 +80,8 @@
 #define DAI_LINK_HIFI_MAX97236	4
 #define DAI_LINK_PCM_OFFLOAD_FE		5
 #define DAI_LINK_COMPR_OFFLOAD_FE		6
-#define DAI_LINK_I2S_OFFLOAD_BE		7
+#define DAI_LINK_PCM_OFFLOAD_CAPTURE_FE		7
+#define DAI_LINK_I2S_OFFLOAD_BE		8
 
 
 const char *tegra_max98090_i2s_dai_name[TEGRA30_NR_I2S_IFC] = {
@@ -1155,6 +1156,16 @@ static struct snd_soc_dai_link tegra_max98090_dai[] = {
 		.codec_name = "snd-soc-dummy",
 
 		.dynamic = 1,
+	},
+	[DAI_LINK_PCM_OFFLOAD_CAPTURE_FE] = {
+		.name = "offload-pcm-capture",
+		.stream_name = "offload-pcm-capture",
+
+		.platform_name = "tegra-offload",
+		.cpu_dai_name = "tegra-offload-pcm",
+
+		.codec_dai_name =  "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
 	},
 	[DAI_LINK_I2S_OFFLOAD_BE] = {
 		.name = "offload-audio-codec",
