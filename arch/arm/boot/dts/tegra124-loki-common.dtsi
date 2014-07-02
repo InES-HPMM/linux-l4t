@@ -19,6 +19,7 @@
 #include <tegra124-platforms/tegra124-loki-pinmux.dtsi>
 #include <tegra124-platforms/tegra124-loki-camera-a00.dtsi>
 #include "tegra124-platforms/tegra124-loki-pwm-fan.dtsi"
+#include "tegra124-platforms/tegra124-loki-thermal-fan-est.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 Loki";

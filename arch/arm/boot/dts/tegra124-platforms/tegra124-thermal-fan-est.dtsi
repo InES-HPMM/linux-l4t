@@ -11,10 +11,23 @@
  * more details.
  */
 
-#include "tegra124-loki-e2530-a01.dts"
-#include "tegra124-platforms/tegra124-loki-pwm-fan.dtsi"
-#include "tegra124-platforms/tegra124-loki-thermal-fan-est.dtsi"
-
 / {
-	nvidia,dtsfilename = __FILE__;
+	thermal_fan_est_shared_data: tfesd {
+		secret = <37>;
+		toffset = <0>;
+		polling_period = <1100>;
+		ndevs = <2>;
+		cdev_type = "pwm-fan";
+		tzp_governor_name = "pid_thermal_gov";
+
+		dev1 {
+			dev_data = "CPU-therm";
+			coeffs = <50 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+		};
+
+		dev2 {
+			dev_data = "GPU-therm";
+			coeffs = <50 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+		};
+	};
 };

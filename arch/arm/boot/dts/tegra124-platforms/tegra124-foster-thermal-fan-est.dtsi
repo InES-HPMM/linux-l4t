@@ -11,10 +11,18 @@
  * more details.
  */
 
-#include "tegra124-loki-e2530-a01.dts"
-#include "tegra124-platforms/tegra124-loki-pwm-fan.dtsi"
-#include "tegra124-platforms/tegra124-loki-thermal-fan-est.dtsi"
+#include "tegra124-thermal-fan-est.dtsi"
 
 / {
-	nvidia,dtsfilename = __FILE__;
+	thermal-fan-est {
+		compatible = "loki-thermal-est";
+		name = "thermal-fan-est";
+		num_resources = <0>;
+		shared_data = <&thermal_fan_est_shared_data>;
+		trip_length = <10>;
+		active_trip_temps = <0 63000 74000 85000 120000
+				140000 150000 160000 170000 180000>;
+		active_hysteresis = <0 15000 11000 6000 4000
+				0 0 0 0 0>;
+	};
 };
