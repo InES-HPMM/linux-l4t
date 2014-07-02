@@ -916,24 +916,23 @@ static int setup_dma(struct tegra_dtv_context *dtv_ctx)
 {
 	int ret = 0;
 	struct dma_slave_config dma_sconfig;
-	dma_cap_mask_t mask;
 
 	pr_debug("%s called\n", __func__);
 
-	dma_cap_zero(mask);
-	dma_cap_set(DMA_SLAVE, mask);
-	dma_cap_set(DMA_CYCLIC, mask);
-	dtv_ctx->stream.dma_chan = dma_request_channel(mask, NULL, NULL);
-	if (!dtv_ctx->stream.dma_chan) {
-		pr_err("%s:could not allocate DMA chn\n", __func__);
-		return -ENOMEM;
+	dtv_ctx->stream.dma_chan = dma_request_slave_channel_reason(
+			&dtv_ctx->pdev->dev, "rx");
+	if (IS_ERR(dtv_ctx->stream.dma_chan)) {
+		ret = PTR_ERR(dtv_ctx->stream.dma_chan);
+		if (ret != -EPROBE_DEFER)
+			dev_err(&dtv_ctx->pdev->dev,
+				"Dma channel is not available: %d\n", ret);
+		return ret;
 	}
 
 	dma_sconfig.src_addr = dtv_ctx->phys + DTV_RX_FIFO;
 	dma_sconfig.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
 
 	dma_sconfig.src_maxburst = 4;
-	dma_sconfig.slave_id = dtv_ctx->dma_req_sel;
 	ret = dmaengine_slave_config(dtv_ctx->stream.dma_chan, &dma_sconfig);
 
 	return ret;
