@@ -15,7 +15,13 @@ Optional properties :
    voltage of your system. This is the target where the gauge
    typically reports 0% capacity. in mV.
  - ti,v-at-chg-term : Voltage at charge termination. in mV.
-
+ - ti,kernel-threshold-soc: Minimum SoC for kernel read from device.
+        Bootloader jumps to kernel when SoC is more than this value.
+        Driver make this SoC as 0% before reporting it to the framework.
+ - ti,kernel-maximum-soc: Maximum SoC for kernel read from device.
+        Kernel read maximum SoC from device for given battery. Kernel
+        translate the SoC to 100% before reporting to framework if it
+        reads equal/more than this value.
 Example:
 
 	bq27441@55 {
@@ -26,4 +32,6 @@ Example:
 		ti,terminate-voltage = <3150>;
 		ti,v-at-chg-term = <4200>;
 		ti,tz-name = "battery-temp";
+		ti,kernel-threshold-soc = <5>;
+		ti,kernel-maximum-soc = <99>;
 	};
