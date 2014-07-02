@@ -43,6 +43,7 @@
 #include "board-common.h"
 #include "common.h"
 #include "therm-monitor.h"
+#include "board-panel.h"
 
 #include <asm/mach-types.h>
 #include "tegra-of-dev-auxdata.h"
@@ -1043,6 +1044,61 @@ static void __init vcm30_t124_usb_init(void)
 	}
 }
 
+/* Display panel/HDMI */
+static int vcm30_t124_dev_dummy(struct device *dev)
+{
+	return 0;
+}
+
+static int vcm30_t124_dummy(void)
+{
+	return 0;
+}
+
+struct tegra_panel_ops vcm30t124_hdmi_ops = {
+	.enable = vcm30_t124_dev_dummy,
+	.disable = vcm30_t124_dummy,
+	.postsuspend = vcm30_t124_dummy,
+	.hotplug_init = vcm30_t124_dev_dummy,
+};
+
+static int tegra_vcm30t124_notifier_call(struct notifier_block *nb,
+				    unsigned long event, void *data)
+{
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+	struct device *dev = data;
+#endif
+
+	switch (event) {
+	case BUS_NOTIFY_BIND_DRIVER:
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+		if (dev->of_node) {
+			if (of_device_is_compatible(dev->of_node,
+				"pwm-backlight")) {
+				tegra_pwm_bl_ops_register(dev);
+			}
+		}
+#endif
+		break;
+	default:
+		break;
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block platform_nb = {
+	.notifier_call = tegra_vcm30t124_notifier_call,
+};
+
+static void vcm30_t124_panel_init(void)
+{
+	tegra_set_fixed_panel_ops(true,
+		&edp_a_1080p_14_0_ops, "a-edp,1080p-14-0");
+	tegra_set_fixed_panel_ops(false, &vcm30t124_hdmi_ops, "hdmi,display");
+	tegra_set_fixed_pwm_bl_ops(edp_a_1080p_14_0_ops.pwm_bl_ops);
+	bus_register_notifier(&platform_bus_type, &platform_nb);
+}
+
 #ifdef CONFIG_USE_OF
 struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
 	T124_UART_OF_DEV_AUXDATA,
@@ -1080,6 +1136,11 @@ struct of_dev_auxdata vcm30_t124_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", TEGRA_SDMMC2_BASE, "sdhci-tegra.1", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", TEGRA_SDMMC3_BASE, "sdhci-tegra.2", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", TEGRA_SDMMC4_BASE, "sdhci-tegra.3", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY_BASE, "tegradc.0",
+		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY2_BASE, "tegradc.1",
+		NULL),
+	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
 	{}
 };
 #endif
