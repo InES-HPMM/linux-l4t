@@ -1068,6 +1068,26 @@ static  int tegra_spi_cs_low(struct spi_device *spi,
 	return 0;
 }
 
+static void tegra_spi_dump_regs(struct tegra_spi_data *tspi)
+{
+	u32 command1_reg;
+	u32 fifo_status_reg;
+	u32 dma_ctrl_reg;
+	u32 trans_status_reg;
+
+	command1_reg = tegra_spi_readl(tspi, SPI_COMMAND1);
+	fifo_status_reg = tegra_spi_readl(tspi, SPI_FIFO_STATUS);
+	dma_ctrl_reg = tegra_spi_readl(tspi, SPI_DMA_CTL);
+	trans_status_reg = tegra_spi_readl(tspi, SPI_TRANS_STATUS);
+
+	dev_err(tspi->dev,
+			"SPI_ERR: CMD_0: 0x%08x, FIFO_STS: 0x%08x\n",
+			command1_reg, fifo_status_reg);
+	dev_err(tspi->dev,
+			"SPI_ERR: DMA_CTL: 0x%08x, TRANS_STS: 0x%08x\n",
+			dma_ctrl_reg, trans_status_reg);
+}
+
 static int tegra_spi_wait_on_message_xfer(struct tegra_spi_data *tspi)
 {
 	int ret;
@@ -1077,6 +1097,7 @@ static int tegra_spi_wait_on_message_xfer(struct tegra_spi_data *tspi)
 	if (WARN_ON(ret == 0)) {
 		dev_err(tspi->dev,
 				"spi trasfer timeout, err %d\n", ret);
+		tegra_spi_dump_regs(tspi);
 		if (tspi->is_curr_dma_xfer &&
 				(tspi->cur_direction & DATA_DIR_TX))
 			dmaengine_terminate_all(tspi->tx_dma_chan);
@@ -1141,7 +1162,9 @@ static int tegra_spi_handle_message(struct tegra_spi_data *tspi,
 					SPI_DMA_TIMEOUT);
 			if (wait_status <= 0) {
 				dmaengine_terminate_all(tspi->tx_dma_chan);
-				dev_err(tspi->dev, "TxDma Xfer failed\n");
+				dev_err(tspi->dev, "TxDma Xfer failed, wait_status - %ld\n",
+						wait_status);
+				tegra_spi_dump_regs(tspi);
 				ret = -EIO;
 				return ret;
 			}
@@ -1153,7 +1176,9 @@ static int tegra_spi_handle_message(struct tegra_spi_data *tspi,
 			if (wait_status <= 0) {
 				dmaengine_terminate_all(tspi->rx_dma_chan);
 				dev_err(tspi->dev,
-						"RxDma Xfer failed\n");
+						"RxDma Xfer failed, wait_status -  %ld\n",
+						wait_status);
+				tegra_spi_dump_regs(tspi);
 				ret = -EIO;
 				return ret;
 			}
