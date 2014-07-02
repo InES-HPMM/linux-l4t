@@ -1,7 +1,7 @@
 /*
  * Define the OF_DEV_AUXDATA for different Tegra controllers.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -59,6 +59,13 @@
         OF_DEV_AUXDATA("nvidia,tegra20-uart", 0x70006040, "serial8250.1", NULL), \
         OF_DEV_AUXDATA("nvidia,tegra20-uart", 0x70006200, "serial8250.2", NULL), \
         OF_DEV_AUXDATA("nvidia,tegra20-uart", 0x70006300, "serial8250.3", NULL)
+
+#define T124_SDMMC_OF_DEV_AUXDATA \
+        OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0600, "sdhci-tegra.3", NULL),  \
+        OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0400, "sdhci-tegra.2", NULL),  \
+        OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0000, "sdhci-tegra.0", NULL)
+
+
 #endif
 
 #endif /* MACH_TEGRA_OF_DEV_AUXDATA_H__ */
