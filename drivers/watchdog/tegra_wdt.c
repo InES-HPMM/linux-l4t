@@ -255,7 +255,7 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	if ((res_wdt->start & 0xff) < 0x50)
 		tegra_wdt->tmrsrc = 1 + (res_wdt->start & 0xf) / 8;
 	else
-		tegra_wdt->tmrsrc = (3 + ((res_wdt->start & 0xff) - 0x50) / 8) % 10;
+		tegra_wdt->tmrsrc = ((int) (3 + ((res_wdt->start & 0xff) - 0x50) / 8)) % 10;
 	if (!tegra_wdt->wdt_source || !tegra_wdt->wdt_timer) {
 		dev_err(&pdev->dev, "unable to map registers\n");
 		ret = -ENOMEM;
