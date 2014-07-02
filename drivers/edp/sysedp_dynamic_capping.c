@@ -25,6 +25,8 @@
 #include <linux/workqueue.h>
 #include <linux/platform_data/tegra_edp.h>
 #include <linux/debugfs.h>
+#include <linux/slab.h>
+#include <linux/of.h>
 #include <trace/events/sysedp.h>
 
 #include "sysedp_internal.h"
@@ -404,13 +406,114 @@ static int init_clks(void)
 	return 0;
 }
 
+static void of_sysedp_dynamic_capping_get_pdata(struct platform_device *pdev,
+		struct tegra_sysedp_platform_data **pdata)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct tegra_sysedp_platform_data *obj_ptr;
+	u32 val, lenp;
+	int n, i, idx, ret;
+	const void *ptr;
+	u32 *u32_ptr;
+
+	*pdata = NULL;
+
+	obj_ptr = devm_kzalloc(&pdev->dev,
+			       sizeof(struct tegra_sysedp_platform_data),
+			       GFP_KERNEL);
+	if (!obj_ptr)
+		return;
+
+	ptr = of_get_property(np, "nvidia,corecap", &lenp);
+	if (!ptr)
+		return;
+	n = lenp / sizeof(struct tegra_sysedp_corecap);
+	if (!n)
+		return;
+	if (lenp % sizeof(struct tegra_sysedp_corecap))
+		return;
+
+	obj_ptr->corecap = devm_kzalloc(&pdev->dev,
+				sizeof(struct tegra_sysedp_corecap) * n,
+				GFP_KERNEL);
+
+	if (!obj_ptr->corecap)
+		return;
+
+	u32_ptr = kzalloc(lenp, GFP_KERNEL);
+	if (!u32_ptr)
+		return;
+	ret = of_property_read_u32_array(np, "nvidia,corecap",
+					 u32_ptr, (lenp / sizeof(u32)));
+	if (ret) {
+		dev_err(&pdev->dev,
+			"sysedp_dynamic_capping: Fail to read corecap\n");
+		kfree(u32_ptr);
+		return;
+	}
+
+	for (idx = 0, i = 0; idx < n; idx++,
+		i += sizeof(struct tegra_sysedp_corecap)/sizeof(u32)) {
+		obj_ptr->corecap[idx].power            = u32_ptr[i];
+		obj_ptr->corecap[idx].cpupri.cpu_power = u32_ptr[i+1];
+		obj_ptr->corecap[idx].cpupri.gpufreq   = u32_ptr[i+2];
+		obj_ptr->corecap[idx].cpupri.emcfreq   = u32_ptr[i+3];
+		obj_ptr->corecap[idx].gpupri.cpu_power = u32_ptr[i+4];
+		obj_ptr->corecap[idx].gpupri.gpufreq   = u32_ptr[i+5];
+		obj_ptr->corecap[idx].gpupri.emcfreq   = u32_ptr[i+6];
+		obj_ptr->corecap[idx].pthrot           = u32_ptr[i+7];
+	}
+	obj_ptr->corecap_size = n;
+	kfree(u32_ptr);
+
+	ret = of_property_read_u32(np, "nvidia,core_gain", &val);
+	if (!ret)
+		obj_ptr->core_gain = (unsigned int)val;
+	else
+		return;
+
+	ret = of_property_read_u32(np, "nvidia,init_req_watts", &val);
+	if (!ret)
+		obj_ptr->init_req_watts = (unsigned int)val;
+	else
+		return;
+
+	ret = of_property_read_u32(np, "nvidia,throttle_depth", &val);
+	if (!ret) {
+		if (val > 100) {
+			dev_err(&pdev->dev,
+			    "sysedp_dynamic_capping: throttle_depth > 100\n");
+			return;
+		}
+		obj_ptr->pthrot_ratio = (unsigned int)val;
+	} else
+		return;
+
+	ret = of_property_read_u32(np, "nvidia,cap_method", &val);
+	if (!ret)
+		obj_ptr->cap_method = (unsigned int)val;
+	else
+		return;
+
+	*pdata = obj_ptr;
+
+	return;
+}
+
+
 static int sysedp_dynamic_capping_probe(struct platform_device *pdev)
 {
 	int r;
 	struct tegra_sysedp_corecap *cap;
 	int i;
 
-	if (!pdev->dev.platform_data)
+	if (pdev->dev.of_node)
+		of_sysedp_dynamic_capping_get_pdata(pdev,
+						    &capping_device_platdata);
+	else
+		capping_device_platdata = pdev->dev.platform_data;
+
+	if (!capping_device_platdata)
 		return -EINVAL;
 
 	INIT_DELAYED_WORK(&capping_work, capping_worker);
@@ -423,7 +526,6 @@ static int sysedp_dynamic_capping_probe(struct platform_device *pdev)
 
 
 	mutex_lock(&core_lock);
-	capping_device_platdata = pdev->dev.platform_data;
 	avail_power = capping_device_platdata->init_req_watts;
 	cap_method = capping_device_platdata->cap_method;
 	switch (cap_method) {
@@ -458,11 +560,17 @@ static int sysedp_dynamic_capping_probe(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id sysedp_dynamic_capping_of_match[] = {
+	{ .compatible = "nvidia,tegra124-sysedp-dynamic-capping", },
+};
+MODULE_DEVICE_TABLE(of, sysedp_dynamic_capping_of_match);
+
 static struct platform_driver sysedp_dynamic_capping_driver = {
 	.probe = sysedp_dynamic_capping_probe,
 	.driver = {
 		.owner = THIS_MODULE,
-		.name = "sysedp_dynamic_capping"
+		.name = "sysedp_dynamic_capping",
+		.of_match_table = sysedp_dynamic_capping_of_match,
 	}
 };
 
