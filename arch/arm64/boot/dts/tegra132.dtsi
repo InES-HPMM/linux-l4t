@@ -127,4 +127,32 @@
 		nvidia,dma-request-selector = <11>;
 		status = "okay";
 	};
+
+	sdhci@700b0600 {
+		compatible = "nvidia,tegra124-sdhci";
+		reg = <0x0 0x700b0600 0x0 0x200>;
+		interrupts = < 0 31 0x04 >;
+		status = "disabled";
+	};
+
+	sdhci@700b0400 {
+		compatible = "nvidia,tegra124-sdhci";
+		reg = <0x0 0x700b0400 0x0 0x200>;
+		interrupts = < 0 19 0x04 >;
+		status = "disabled";
+	};
+
+	sdhci@700b0200 {
+		compatible = "nvidia,tegra124-sdhci";
+		reg = <0x0 0x700b0200 0x0 0x200>;
+		interrupts = < 0 15 0x04 >;
+		status = "disabled";
+	};
+
+	sdhci@700b0000 {
+		compatible = "nvidia,tegra124-sdhci";
+		reg = <0x0 0x700b0000 0x0 0x200>;
+		interrupts = < 0 14 0x04 >;
+		status = "disabled";
+	};
 };
