@@ -486,6 +486,41 @@ struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev, u64 swgids)
 
 	return smmu_default_map[_tegra_smmu_get_asid(swgids)].map;
 }
+
+/* XXX: Remove this function once all client devices moved to DT */
+struct dma_iommu_mapping *tegra_smmu_map_init_dev(struct device *dev,
+						  u64 swgids)
+{
+	struct dma_iommu_mapping *map;
+	struct tegra_iommu_mapping *m;
+
+	if (!swgids)
+		swgids = tegra_smmu_fixup_swgids(dev, NULL);
+	if (!swgids)
+		return NULL;
+
+	BUG_ON(_tegra_smmu_get_asid(swgids) >= ARRAY_SIZE(smmu_default_map));
+	m = &smmu_default_map[_tegra_smmu_get_asid(swgids)];
+	if (!m->size)
+		return NULL;
+
+	if (m->map)
+		return m->map;
+
+	map = arm_iommu_create_mapping(&platform_bus_type,
+				       m->base, m->size, 0);
+
+	if (IS_ERR(map)) {
+		dev_err(dev,
+			"%s: Failed create IOVA map for ASID[%d]\n",
+			__func__, _tegra_smmu_get_asid(swgids));
+		map = NULL;
+	}
+
+	BUG_ON(cmpxchg(&m->map, NULL, map));
+	return map;
+}
+
 #else
 static inline void tegra_smmu_map_init(struct platform_device *pdev)
 {
