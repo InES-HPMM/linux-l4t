@@ -543,7 +543,7 @@ static void __init tegra_t210ref_late_init(void)
 #endif
 	platform_add_devices(t210ref_devices, ARRAY_SIZE(t210ref_devices));
 	tegra_io_dpd_init();
-	t210ref_sdhci_init();
+	/* FIXME: Assumed all t210ref platforms have sdhci DT support */
 	t210ref_suspend_init();
 
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
