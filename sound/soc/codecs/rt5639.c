@@ -517,6 +517,8 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 	struct rt5639_priv *rt5639 = snd_soc_codec_get_drvdata(codec);
 
 	if (jack_insert) {
+		if (snd_soc_read(codec, RT5639_INT_IRQ_ST) & 0x10)
+			return RT5639_NO_JACK;
 		reg63 = snd_soc_read(codec, RT5639_PWR_ANLG1);
 		reg64 = snd_soc_read(codec, RT5639_PWR_ANLG2);
 		if (SND_SOC_BIAS_OFF == codec->dapm.bias_level) {
@@ -539,7 +541,7 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		rt5639_index_update_bits(codec, 0x15, 0x0300, 0x0300);
 		snd_soc_update_bits(codec, RT5639_GEN_CTRL1,
 			0x1, 0x1);
-		msleep(1000);
+		msleep(500);
 
 		dev_info(codec->dev, "%s RT5639_PWR_ANLG1(0x%x) = 0x%x\n",
 			__func__, RT5639_PWR_ANLG1,
@@ -2929,15 +2931,16 @@ static ssize_t rt5639_codec_show(struct device *dev,
 	unsigned int val;
 	int cnt = 0, i;
 
-	cnt += sprintf(buf, "RT5639 codec register\n");
 	for (i = 0; i <= RT5639_VENDOR_ID2; i++) {
 		if (cnt + RT5639_REG_DISP_LEN >= PAGE_SIZE)
 			break;
-		val = codec->hw_read(codec, i);
-		if (!val)
-			continue;
-		cnt += snprintf(buf + cnt, RT5639_REG_DISP_LEN,
-				"#rng%02x  #rv%04x  #rd0\n", i, val);
+
+		if (rt5639_readable_register(codec, i)) {
+			val = snd_soc_read(codec, i);
+
+			cnt += snprintf(buf + cnt, RT5639_REG_DISP_LEN,
+					"%04x: %04x\n", i, val);
+		}
 	}
 
 	if (cnt >= PAGE_SIZE)
@@ -2992,6 +2995,128 @@ static ssize_t rt5639_codec_store(struct device *dev,
 
 static DEVICE_ATTR(codec_reg, 0644, rt5639_codec_show, rt5639_codec_store);
 
+static ssize_t rt5639_codec_adb_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct rt5639_priv *rt5639 = i2c_get_clientdata(client);
+	struct snd_soc_codec *codec = rt5639->codec;
+	unsigned int val;
+	int cnt = 0, i;
+
+	for (i = 0; i < rt5639->adb_reg_num; i++) {
+		if (cnt + RT5639_REG_DISP_LEN >= PAGE_SIZE)
+			break;
+
+		switch (rt5639->adb_reg_addr[i] & 0x30000) {
+		case 0x10000:
+			val = rt5639_index_read(codec, rt5639->adb_reg_addr[i] & 0xffff);
+			break;
+		case 0x20000:
+
+			break;
+		default:
+			val = snd_soc_read(codec, rt5639->adb_reg_addr[i] & 0xffff);
+		}
+
+		cnt += snprintf(buf + cnt, RT5639_REG_DISP_LEN, "%05x: %04x\n",
+			rt5639->adb_reg_addr[i], val);
+	}
+
+	return cnt;
+}
+
+static ssize_t rt5639_codec_adb_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct rt5639_priv *rt5639 = i2c_get_clientdata(client);
+	struct snd_soc_codec *codec = rt5639->codec;
+	unsigned int value = 0;
+	int i = 2, j = 0;
+
+	if (buf[0] == 'R' || buf[0] == 'r') {
+		while (j < 0x100 && i < count) {
+			rt5639->adb_reg_addr[j] = 0;
+			value = 0;
+			for ( ; i < count; i++) {
+				if (*(buf + i) <= '9' && *(buf + i) >= '0')
+					value = (value << 4) | (*(buf + i) - '0');
+				else if (*(buf + i) <= 'f' && *(buf + i) >= 'a')
+					value = (value << 4) | ((*(buf + i) - 'a')+0xa);
+				else if (*(buf + i) <= 'F' && *(buf + i) >= 'A')
+					value = (value << 4) | ((*(buf + i) - 'A')+0xa);
+				else
+					break;
+			}
+			i++;
+
+			rt5639->adb_reg_addr[j] = value;
+			j++;
+		}
+		rt5639->adb_reg_num = j;
+	} else if (buf[0] == 'W' || buf[0] == 'w') {
+		while (j < 0x100 && i < count) {
+			/* Get address */
+			rt5639->adb_reg_addr[j] = 0;
+			value = 0;
+			for ( ; i < count; i++) {
+				if (*(buf + i) <= '9' && *(buf + i) >= '0')
+					value = (value << 4) | (*(buf + i) - '0');
+				else if (*(buf + i) <= 'f' && *(buf + i) >= 'a')
+					value = (value << 4) | ((*(buf + i) - 'a')+0xa);
+				else if (*(buf + i) <= 'F' && *(buf + i) >= 'A')
+					value = (value << 4) | ((*(buf + i) - 'A')+0xa);
+				else
+					break;
+			}
+			i++;
+			rt5639->adb_reg_addr[j] = value;
+
+			/* Get value */
+			rt5639->adb_reg_value[j] = 0;
+			value = 0;
+			for ( ; i < count; i++) {
+				if (*(buf + i) <= '9' && *(buf + i) >= '0')
+					value = (value << 4) | (*(buf + i) - '0');
+				else if (*(buf + i) <= 'f' && *(buf + i) >= 'a')
+					value = (value << 4) | ((*(buf + i) - 'a')+0xa);
+				else if (*(buf + i) <= 'F' && *(buf + i) >= 'A')
+					value = (value << 4) | ((*(buf + i) - 'A')+0xa);
+				else
+					break;
+			}
+			i++;
+			rt5639->adb_reg_value[j] = value;
+
+			j++;
+		}
+
+		rt5639->adb_reg_num = j;
+
+		for (i = 0; i < rt5639->adb_reg_num; i++) {
+			switch (rt5639->adb_reg_addr[i] & 0x30000) {
+			case 0x10000:
+				rt5639_index_write(codec,
+					rt5639->adb_reg_addr[i] & 0xffff,
+					rt5639->adb_reg_value[i]);
+				break;
+			case 0x20000:
+
+				break;
+			default:
+				snd_soc_write(codec,
+					rt5639->adb_reg_addr[i] & 0xffff,
+					rt5639->adb_reg_value[i]);
+			}
+		}
+
+	}
+
+	return count;
+}
+static DEVICE_ATTR(codec_reg_adb, 0644, rt5639_codec_adb_show, rt5639_codec_adb_store);
+
 static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 			enum snd_soc_bias_level level)
 {
@@ -3023,7 +3148,7 @@ static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 				RT5639_PWR_BG | RT5639_PWR_VREF2,
 				RT5639_PWR_VREF1 | RT5639_PWR_MB |
 				RT5639_PWR_BG | RT5639_PWR_VREF2);
-			mdelay(20);
+			mdelay(100);
 			snd_soc_update_bits(codec, RT5639_PWR_ANLG1,
 				RT5639_PWR_FV1 | RT5639_PWR_FV2,
 				RT5639_PWR_FV1 | RT5639_PWR_FV2);
@@ -3137,6 +3262,20 @@ static int rt5639_probe(struct snd_soc_codec *codec)
 	if (ret != 0) {
 		dev_err(codec->dev,
 			"Failed to create index_reg sysfs files: %d\n", ret);
+		return ret;
+	}
+
+	ret = device_create_file(codec->dev, &dev_attr_codec_reg);
+	if (ret != 0) {
+		dev_err(codec->dev,
+			"Failed to create codec_reg sysfs files: %d\n", ret);
+		return ret;
+	}
+
+	ret = device_create_file(codec->dev, &dev_attr_codec_reg_adb);
+	if (ret != 0) {
+		dev_err(codec->dev,
+			"Failed to create codec_reg_adb sysfs files: %d\n", ret);
 		return ret;
 	}
 

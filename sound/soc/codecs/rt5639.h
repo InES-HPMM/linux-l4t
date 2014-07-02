@@ -2139,6 +2139,10 @@ struct rt5639_priv {
 
 	int dmic_en;
 	int dsp_sw;
+
+	unsigned int adb_reg_addr[0x100];
+	unsigned int adb_reg_value[0x100];
+	unsigned char adb_reg_num;
 };
 
 int rt5639_conn_mux_path(struct snd_soc_codec *codec,
