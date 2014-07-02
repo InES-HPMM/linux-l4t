@@ -420,29 +420,6 @@ static struct tegra_iommu_mapping smmu_default_map[] = {
 #endif
 };
 
-static void tegra_smmu_map_init(struct platform_device *pdev)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(smmu_default_map); i++) {
-		struct tegra_iommu_mapping *m = &smmu_default_map[i];
-		struct dma_iommu_mapping *map;
-		int order = 0;
-
-		if (IS_ENABLED(CONFIG_TEGRA_ERRATA_1053704))
-			order = get_order(SZ_16K);
-
-		map = arm_iommu_create_mapping(&platform_bus_type,
-					       m->base, m->size, 0);
-
-		if (IS_ERR(map))
-			dev_err(&pdev->dev,
-				"Failed create IOVA map for ASID[%d]\n", i);
-
-		m->map = map;
-	}
-}
-
 void tegra_smmu_map_misc_device(struct device *dev)
 {
 	struct dma_iommu_mapping *map = smmu_default_map[SYSTEM_PROTECTED].map;
@@ -531,7 +508,6 @@ static int __init tegra_smmu_init(void)
 {
 	tegra_bpmp_linear_set();
 	platform_device_register(&tegra_smmu_device);
-	tegra_smmu_map_init(&tegra_smmu_device);
 	return 0;
 }
 postcore_initcall(tegra_smmu_init);
