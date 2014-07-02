@@ -25,6 +25,8 @@
 #include <tegra124-platforms/tegra124-vcm30-t124-pinmux.dtsi>
 #include <tegra124-platforms/tegra124-vcm30t124-fixed.dtsi>
 #include <tegra124-platforms/tegra124-1860-b00.dtsi>
+#include <panel-a-edp-1080p-14-0.dtsi>
+#include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
 
 
 / {
@@ -38,24 +40,58 @@
 		nvidia,tegra-hypervisor-mode;
 	};
 
+	host1x {
+		sor {
+			status = "okay";
+			panel-a-edp-1080p-14-0 {
+				disp-default-out {
+					nvidia,out-max-pixclk = <3367>;
+					nvidia,dither = <TEGRA_DC_ORDERED_DITHER>;
+				};
+			};
+		};
+		dpaux {
+			status = "okay";
+		};
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,cmu-enable = <1>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+		};
+	};
+
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+	};
+
 	i2c@7000c400 {
 		nvidia,clock-always-on;
 	};
 
-        serial@70006000 {
-                compatible = "nvidia,tegra114-hsuart";
-                status = "okay";
-        };
+	serial@70006000 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
 
-        serial@70006040 {
-                compatible = "nvidia,tegra114-hsuart";
-                status = "okay";
-        };
+	serial@70006040 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
 
-        serial@70006300 {
-                compatible = "nvidia,tegra114-hsuart";
-                status = "okay";
-        };
+	serial@70006300 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
 
 	spi@7000d400 {
 		status = "okay";
