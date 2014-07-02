@@ -1325,6 +1325,9 @@ static void cl_dvfs_init_tuning_thresholds(struct tegra_cl_dvfs *cld)
 	 */
 	cld->tune_high_out_min = get_output_top(cld);
 	cld->tune_high_out_start = cld->tune_high_out_min;
+	cld->tune_high_dvco_rate_min = ULONG_MAX;
+	cld->tune_high_out_rate_min = ULONG_MAX;
+
 	mv = cld->safe_dvfs->dfll_data.tune_high_min_millivolts;
 	if (mv >= cld->safe_dvfs->dfll_data.min_millivolts) {
 		int margin = cld->safe_dvfs->dfll_data.tune_high_margin_mv ? :
