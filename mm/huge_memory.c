@@ -1085,6 +1085,7 @@ static int do_huge_pmd_wp_page_fallback(struct mm_struct *mm,
 
 	pmdp_clear_flush_notify(vma, haddr, pmd);
 	/* leave pmd empty until pte is filled */
+	mmu_notifier_invalidate_range_free_pages(vma, mmun_start, mmun_end);
 
 	pgtable = pgtable_trans_huge_withdraw(mm);
 	pmd_populate(mm, &_pmd, pgtable);
@@ -1216,6 +1217,8 @@ alloc:
 		pmd_t entry;
 		entry = mk_huge_pmd(new_page, vma);
 		pmdp_clear_flush_notify(vma, haddr, pmd);
+		mmu_notifier_invalidate_range_free_pages(vma, mmun_start,
+							 mmun_end);
 		page_add_new_anon_rmap(new_page, vma, haddr);
 		set_pmd_at(mm, haddr, pmd, entry);
 		update_mmu_cache_pmd(vma, address, pmd);

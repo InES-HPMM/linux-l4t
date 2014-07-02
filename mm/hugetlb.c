@@ -2507,6 +2507,7 @@ again:
 			break;
 	}
 	spin_unlock(&mm->page_table_lock);
+	mmu_notifier_invalidate_range_free_pages(vma, start, address);
 	/*
 	 * mmu_gather ran out of room to batch pages, we break out of
 	 * the PTE lock to avoid doing the potential expensive TLB invalidate
@@ -2720,7 +2721,8 @@ retry_avoidcopy:
 	if (likely(pte_same(huge_ptep_get(ptep), pte))) {
 		/* Break COW */
 		huge_ptep_clear_flush(vma, address, ptep);
-		mmu_notifier_invalidate_range(mm, mmun_start, mmun_end);
+		mmu_notifier_invalidate_range_free_pages(vma, mmun_start,
+							 mmun_end);
 		set_huge_pte_at(mm, address, ptep,
 				make_huge_pte(vma, new_page, 1));
 		page_remove_rmap(old_page);
