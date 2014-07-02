@@ -119,4 +119,13 @@
 			};
 		};
 	};
+	backlight {
+		pwms = <&tegra_pwm 1 1000000>;
+		panel-l-wxga-7-bl {
+			status = "okay";
+			compatible = "lg,wxga-7-bl";
+			max-brightness = <255>;
+			default-brightness = <224>;
+		};
+	};
 };

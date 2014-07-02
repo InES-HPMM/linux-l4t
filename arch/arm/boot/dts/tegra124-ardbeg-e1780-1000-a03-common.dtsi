@@ -191,7 +191,10 @@
 		compatible = "power-supply-extcon";
 		power-supply,extcon-dev = "tegra-udc";
 	};
-
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+	};
 	bluedroid_pm {
 		compatible = "nvidia,tegra-bluedroid_pm";
 		id = <0>;

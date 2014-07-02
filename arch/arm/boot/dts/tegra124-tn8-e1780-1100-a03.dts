@@ -84,5 +84,9 @@
 			vcc-supply = <&palmas_smps9>;
 		};
 	};
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+	};
 };
 
