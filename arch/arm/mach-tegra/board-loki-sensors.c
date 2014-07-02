@@ -463,106 +463,10 @@ static int __init loki_throttle_init(void)
 }
 module_init(loki_throttle_init);
 
-static int loki_fan_est_match(struct thermal_zone_device *thz, void *data)
-{
-	return (strcmp((char *)data, thz->type) == 0);
-}
-
-static int loki_fan_est_get_temp(void *data, long *temp)
-{
-	struct thermal_zone_device *thz;
-
-	thz = thermal_zone_device_find(data, loki_fan_est_match);
-
-	if (!thz || thz->ops->get_temp(thz, temp))
-		*temp = 25000;
-
-	return 0;
-}
-
-static struct thermal_zone_params fan_tzp = {
-	.governor_name = "pid_thermal_gov",
-};
-
-static int active_trip_temps_loki[] = {0, 60000, 68000, 79000, 90000,
-				140000, 150000, 160000, 170000, 180000};
-static int active_hysteresis_loki[] = {0, 20000, 7000, 10000, 10000,
-							0, 0, 0, 0, 0};
-
-static int active_trip_temps_foster[] = {0, 63000, 74000, 85000, 120000,
-				140000, 150000, 160000, 170000, 180000};
-static int active_hysteresis_foster[] = {0, 15000, 11000, 6000, 4000,
-							0, 0, 0, 0, 0};
-/*Fan thermal estimator data for P2548*/
-static struct therm_fan_est_data fan_est_data = {
-	.toffset = 0,
-	.polling_period = 1100,
-	.ndevs = 2,
-	.devs = {
-			{
-				.dev_data = "CPU-therm",
-				.get_temp = loki_fan_est_get_temp,
-				.coeffs = {
-					50, 0, 0, 0,
-					0, 0, 0, 0,
-					0, 0, 0, 0,
-					0, 0, 0, 0,
-					0, 0, 0, 0
-				},
-			},
-			{
-				.dev_data = "GPU-therm",
-				.get_temp = loki_fan_est_get_temp,
-				.coeffs = {
-					50, 0, 0, 0,
-					0, 0, 0, 0,
-					0, 0, 0, 0,
-					0, 0, 0, 0,
-					0, 0, 0, 0
-				},
-			},
-	},
-	.cdev_type = "pwm-fan",
-	.tzp = &fan_tzp,
-};
-
-static struct platform_device loki_fan_therm_est_device = {
-	.name   = "therm-fan-est",
-	.id     = -1,
-	.num_resources  = 0,
-	.dev = {
-		.platform_data = &fan_est_data,
-	},
-};
-
-static int __init loki_fan_est_init(void)
-{
-	if ((board_info.sku == 900) && (board_info.board_id == BOARD_P2530)) {
-		memcpy((&fan_est_data)->active_trip_temps,
-				&active_trip_temps_foster,
-				sizeof(active_trip_temps_foster));
-		memcpy((&fan_est_data)->active_hysteresis,
-				&active_hysteresis_foster,
-				sizeof(active_hysteresis_foster));
-	} else {
-		memcpy((&fan_est_data)->active_trip_temps,
-				&active_trip_temps_loki,
-				sizeof(active_trip_temps_loki));
-		memcpy((&fan_est_data)->active_hysteresis,
-				&active_hysteresis_loki,
-				sizeof(active_hysteresis_loki));
-	}
-
-	platform_device_register(&loki_fan_therm_est_device);
-
-	return 0;
-}
-
 int __init loki_sensors_init(void)
 {
 	tegra_get_board_info(&board_info);
 
-	loki_fan_est_init();
 	if (!(board_info.board_id == BOARD_P2530 &&
 		board_info.sku == BOARD_SKU_FOSTER)) {
 #ifndef CONFIG_USE_OF
