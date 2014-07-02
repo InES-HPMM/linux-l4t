@@ -1950,8 +1950,11 @@ static int tegra_nvavp_release(struct nvavp_clientctx *clientctx,
 
 	if (nvavp->refcount > 0)
 		nvavp->refcount--;
-	if (!nvavp->refcount)
+	if (!nvavp->refcount) {
+		mutex_unlock(&nvavp->open_lock);
 		nvavp_uninit(nvavp);
+		mutex_lock(&nvavp->open_lock);
+	}
 
 	if (IS_VIDEO_CHANNEL_ID(channel_id))
 		nvavp->video_refcnt--;
