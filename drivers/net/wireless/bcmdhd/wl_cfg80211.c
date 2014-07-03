@@ -1210,6 +1210,11 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 		return ERR_PTR(-ENODEV);
 	}
 
+	if (wl_get_drv_status(cfg, CONNECTING, primary_ndev)) {
+		WL_ERR(("Already AP connection going on\n"));
+		return -EBUSY;
+	}
+
 	WL_DBG(("if name: %s, type: %d\n", name, type));
 	switch (type) {
 	case NL80211_IFTYPE_ADHOC:
