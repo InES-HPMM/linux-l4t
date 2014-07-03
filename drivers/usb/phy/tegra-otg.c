@@ -736,6 +736,9 @@ static struct tegra_usb_otg_data *tegra_otg_dt_parse_pdata(
 	pdata->ehci_pdata->u_data.host.turn_off_vbus_on_lp0 =
 		of_property_read_bool(np, "nvidia,turn_off_vbus_on_lp0");
 	pdata->id_det_gpio = of_get_named_gpio(np, "nvidia,id_det_gpio", 0);
+	if (pdata->id_det_gpio < 0)
+		pdata->id_det_gpio = 0;
+
 	of_property_read_u32(np, "nvidia,id_det_type",
 			&pdata->ehci_pdata->id_det_type);
 	status = of_property_read_string(np, "nvidia,vbus_extcon_dev_name",
