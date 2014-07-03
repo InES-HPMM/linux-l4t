@@ -45,11 +45,6 @@
 #define ICTLR_CPU_IEP_FIR_SET	0x18
 #define ICTLR_CPU_IEP_FIR_CLR	0x1c
 
-#define ICTLR_CPU_IER		0x20
-#define ICTLR_CPU_IER_SET	0x24
-#define ICTLR_CPU_IER_CLR	0x28
-#define ICTLR_CPU_IEP_CLASS	0x2C
-
 #define ICTLR_COP_IER		0x30
 #define ICTLR_COP_IER_SET	0x34
 #define ICTLR_COP_IER_CLR	0x38
@@ -63,8 +58,12 @@
 /* max per controller interrupts */
 #define ICTLR_IRQS_PER_LIC	32
 
-#define ARM_VERSION_CORTEX_A15	0xC0F
+static const int IER_OFFSET[4] = {0x20, 0x68, 0x80, 0x98};
 
+#define ICTLR_CPU_IER(cpu)		(IER_OFFSET[cpu])
+#define ICTLR_CPU_IER_SET(cpu)		(IER_OFFSET[cpu] + 0x4)
+#define ICTLR_CPU_IER_CLR(cpu)		(IER_OFFSET[cpu] + 0x8)
+#define ICTLR_CPU_IEP_CLASS(cpu)	(IER_OFFSET[cpu] + 0xc)
 
 static u32 gic_version;
 
@@ -79,12 +78,13 @@ static void __iomem **ictlr_reg_base;
 #ifdef CONFIG_PM_SLEEP
 static u32 cop_ier[MAX_ICTLRS];
 static u32 cop_iep[MAX_ICTLRS];
-static u32 cpu_ier[MAX_ICTLRS];
-static u32 cpu_iep[MAX_ICTLRS];
+static u32 cpu_ier[MAX_ICTLRS][NR_CPUS];
+static u32 cpu_iep[MAX_ICTLRS][NR_CPUS];
 
 static u32 ictlr_wake_mask[MAX_ICTLRS];
 #endif
 
+static u32 ictlr_target_cpu[MAX_ICTLRS * ICTLR_IRQS_PER_LIC / 8];
 static bool manage_cop_irq;
 
 static bool tegra_irq_range_valid(int irq)
@@ -101,7 +101,7 @@ static void tegra_legacy_select_fiq(unsigned int irq, bool fiq)
 
 	irq -= FIRST_LEGACY_IRQ;
 	base = ictlr_reg_base[irq>>5];
-	writel(fiq << (irq & 31), base + ICTLR_CPU_IEP_CLASS);
+	writel(fiq << (irq & 31), base + ICTLR_CPU_IEP_CLASS(0));
 }
 
 static void tegra_fiq_mask(struct irq_data *d)
@@ -114,7 +114,7 @@ static void tegra_fiq_mask(struct irq_data *d)
 
 	leg_irq = d->irq - FIRST_LEGACY_IRQ;
 	base = ictlr_reg_base[leg_irq >> 5];
-	writel(1 << (leg_irq & 31), base + ICTLR_CPU_IER_CLR);
+	writel(1 << (leg_irq & 31), base + ICTLR_CPU_IER_CLR(0));
 }
 
 static void tegra_fiq_unmask(struct irq_data *d)
@@ -127,7 +127,7 @@ static void tegra_fiq_unmask(struct irq_data *d)
 
 	leg_irq = d->irq - FIRST_LEGACY_IRQ;
 	base = ictlr_reg_base[leg_irq >> 5];
-	writel(1 << (leg_irq & 31), base + ICTLR_CPU_IER_SET);
+	writel(1 << (leg_irq & 31), base + ICTLR_CPU_IER_SET(0));
 }
 
 void tegra_fiq_enable(int irq)
@@ -286,20 +286,69 @@ static inline void tegra_irq_write_mask(unsigned int irq, unsigned long reg)
 	__raw_writel(mask, base + reg);
 }
 
+#ifdef CONFIG_SMP
+static int tegra_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
+			    bool force)
+{
+	int cpu;
+	int shift;
+	int index;
+	u32 bit;
+	int irq = d->irq - FIRST_LEGACY_IRQ;
+	int target_cpu = cpumask_first(mask_val);
+
+	if (!tegra_irq_range_valid(d->irq))
+		return -EINVAL;
+
+	shift = ((irq % 8) * 4);
+	index = irq >> 3;
+	bit = (0x1 << target_cpu) << shift;
+	ictlr_target_cpu[index] &= ~(0xf << shift);
+	ictlr_target_cpu[index] |= bit;
+
+	for_each_online_cpu(cpu) {
+		if (cpu == target_cpu)
+			tegra_irq_write_mask(d->irq, ICTLR_CPU_IER_SET(cpu));
+		else
+			tegra_irq_write_mask(d->irq, ICTLR_CPU_IER_CLR(cpu));
+	}
+
+	return 0;
+}
+#endif
+
 static void tegra_mask(struct irq_data *d)
 {
+	int cpu;
+
 	if (!tegra_irq_range_valid(d->irq))
 		return;
 
-	tegra_irq_write_mask(d->irq, ICTLR_CPU_IER_CLR);
+	for_each_online_cpu(cpu)
+		tegra_irq_write_mask(d->irq, ICTLR_CPU_IER_CLR(cpu));
 }
 
 static void tegra_unmask(struct irq_data *d)
 {
+	int target_cpu;
+	int cpu;
+	int shift;
+	int index;
+	int irq = d->irq - FIRST_LEGACY_IRQ;
 	if (!tegra_irq_range_valid(d->irq))
 		return;
 
-	tegra_irq_write_mask(d->irq, ICTLR_CPU_IER_SET);
+	shift = ((irq % 8) * 4);
+	index = irq >> 3;
+	target_cpu = ictlr_target_cpu[index] >> shift;
+	target_cpu &= 0xf;
+
+	for_each_online_cpu(cpu) {
+		if (target_cpu & (0x1 << cpu))
+			tegra_irq_write_mask(d->irq, ICTLR_CPU_IER_SET(cpu));
+		else
+			tegra_irq_write_mask(d->irq, ICTLR_CPU_IER_CLR(cpu));
+	}
 }
 
 static void tegra_ack(struct irq_data *d)
@@ -405,16 +454,18 @@ static int tegra_legacy_irq_suspend(void)
 {
 	unsigned long flags;
 	int i;
+	int cpu;
 
 	local_irq_save(flags);
 	for (i = 0; i < num_ictlrs; i++) {
 		void __iomem *ictlr = ictlr_reg_base[i];
 		/* save interrupt state */
-		cpu_ier[i] = readl(ictlr + ICTLR_CPU_IER);
-		cpu_iep[i] = readl(ictlr + ICTLR_CPU_IEP_CLASS);
-
-		/* disable CPU interrupts */
-		writel(~0, ictlr + ICTLR_CPU_IER_CLR);
+		for_each_present_cpu(cpu) {
+			cpu_ier[i][cpu] = readl(ictlr + ICTLR_CPU_IER(cpu));
+			cpu_iep[i][cpu] = readl(ictlr + ICTLR_CPU_IEP_CLASS(cpu));
+			/* disable CPU interrupts */
+			writel(~0, ictlr + ICTLR_CPU_IER_CLR(cpu));
+		}
 
 		if (manage_cop_irq) {
 			cop_ier[i] = readl(ictlr + ICTLR_COP_IER);
@@ -424,7 +475,7 @@ static int tegra_legacy_irq_suspend(void)
 		}
 
 		/* enable lp1 wake sources */
-		writel(ictlr_wake_mask[i], ictlr + ICTLR_CPU_IER_SET);
+		writel(ictlr_wake_mask[i], ictlr + ICTLR_CPU_IER_SET(0));
 	}
 	local_irq_restore(flags);
 
@@ -435,13 +486,17 @@ static void tegra_legacy_irq_resume(void)
 {
 	unsigned long flags;
 	int i;
+	int cpu;
 
 	local_irq_save(flags);
 	for (i = 0; i < num_ictlrs; i++) {
 		void __iomem *ictlr = ictlr_reg_base[i];
-		writel(cpu_iep[i], ictlr + ICTLR_CPU_IEP_CLASS);
-		writel(~0ul, ictlr + ICTLR_CPU_IER_CLR);
-		writel(cpu_ier[i], ictlr + ICTLR_CPU_IER_SET);
+
+		for_each_present_cpu(cpu) {
+			writel(cpu_iep[i][cpu], ictlr + ICTLR_CPU_IEP_CLASS(cpu));
+			writel(~0ul, ictlr + ICTLR_CPU_IER_CLR(cpu));
+			writel(cpu_ier[i][cpu], ictlr + ICTLR_CPU_IER_SET(cpu));
+		}
 
 		if (manage_cop_irq) {
 			writel(cop_iep[i], ictlr + ICTLR_COP_IEP_CLASS);
@@ -486,6 +541,8 @@ static int __init tegra_gic_of_init(struct device_node *node,
 					struct device_node *parent)
 {
 	int i;
+	int cpu;
+	u32 cpumask;
 	struct device_node *arm_gic_np =
 		of_find_compatible_node(NULL, NULL, "arm,cortex-a15-gic");
 	struct device_node *tegra_gic_np =
@@ -512,10 +569,20 @@ static int __init tegra_gic_of_init(struct device_node *node,
 			pr_info("failed to get the right register\n");
 			return -EINVAL;
 		}
-		writel(~0, ictlr_reg_base[i] + ICTLR_CPU_IER_CLR);
-		writel(0, ictlr_reg_base[i] + ICTLR_CPU_IEP_CLASS);
-		writel(~0, ictlr_reg_base[i] + ICTLR_CPU_IEP_FIR_CLR);
+
+		for_each_possible_cpu(cpu) {
+			writel(~0, ictlr_reg_base[i] + ICTLR_CPU_IER_CLR(cpu));
+			writel(0, ictlr_reg_base[i] + ICTLR_CPU_IEP_CLASS(cpu));
+		}
 	}
+
+	/* Set affinity for all interrupts to CPU0 */
+	cpumask = 0x1;
+	cpumask |= cpumask << 4;
+	cpumask |= cpumask << 8;
+	cpumask |= cpumask << 16;
+	for (i = 0; i < MAX_ICTLRS * ICTLR_IRQS_PER_LIC; i += 8)
+		ictlr_target_cpu[i] = cpumask;
 
 	gic_arch_extn.irq_ack = tegra_ack;
 	gic_arch_extn.irq_eoi = tegra_eoi;
@@ -524,6 +591,9 @@ static int __init tegra_gic_of_init(struct device_node *node,
 	gic_arch_extn.irq_retrigger = tegra_retrigger;
 	gic_arch_extn.irq_set_type = tegra_set_type;
 	gic_arch_extn.irq_set_wake = tegra_set_wake;
+#ifdef CONFIG_SMP
+	gic_arch_extn.irq_set_affinity = tegra_set_affinity;
+#endif
 	gic_arch_extn.flags = IRQCHIP_MASK_ON_SUSPEND;
 
 #ifdef CONFIG_PM_SLEEP
