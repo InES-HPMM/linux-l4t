@@ -366,15 +366,9 @@ static void clear_flow_controller(void)
 
 /*
  * saves pll state for use by restart_plls
- *
- * Must always be called on cpu 0.
  */
 static void save_pll_state(void)
 {
-	int cpu = cpu_logical_map(smp_processor_id());
-
-	BUG_ON(cpu != 0);
-
 	/* switch coresite to clk_m, save off original source */
 	tegra_sctx.clk_csite_src = readl(clk_rst + CLK_RESET_SOURCE_CSITE);
 	writel(3<<30, clk_rst + CLK_RESET_SOURCE_CSITE);
