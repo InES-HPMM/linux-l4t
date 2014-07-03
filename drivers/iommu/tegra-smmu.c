@@ -329,6 +329,8 @@ struct smmu_as {
 
 	struct list_head	client;
 	spinlock_t		client_lock; /* for client list */
+
+	struct dentry		*debugfs_root;
 };
 
 struct smmu_debugfs_info {
@@ -1384,6 +1386,22 @@ char *debug_dma_platformdata(struct device *dev)
 }
 #endif
 
+static const struct file_operations smmu_ptdump_fops;
+
+static void debugfs_create_as(struct smmu_as *as)
+{
+	struct dentry *dent;
+	char name[] = "as000";
+
+	sprintf(name, "as%03d", as->asid);
+	dent = debugfs_create_dir(name, as->smmu->debugfs_root);
+	if (!dent)
+		return;
+	as->debugfs_root = dent;
+	debugfs_create_file("iovainfo", 0400, as->debugfs_root,
+			    as + as->asid, &smmu_ptdump_fops);
+}
+
 static struct smmu_as *smmu_as_alloc(void)
 {
 	int i, err = -EAGAIN;
@@ -1420,6 +1438,7 @@ found:
 
 	spin_unlock_irqrestore(&smmu->lock, flags);
 
+	debugfs_create_as(as);
 	dev_dbg(smmu->dev, "smmu_as@%p\n", as);
 
 	return as;
@@ -1573,6 +1592,8 @@ static void smmu_iommu_domain_destroy(struct iommu_domain *domain)
 	unsigned long flags;
 
 	spin_lock_irqsave(&as->lock, flags);
+
+	debugfs_remove_recursive(as->debugfs_root);
 
 	if (as->pdir_page) {
 		spin_lock(&smmu->lock);
@@ -1910,17 +1931,6 @@ static void smmu_debugfs_create(struct smmu_device *smmu)
 	if (!root)
 		goto err_out;
 	smmu->debugfs_root = root;
-
-	for (i = 0; i < smmu->num_as; i++) {
-		struct dentry *pt;
-		char name[20];
-
-		sprintf(name, "page_tables%03d", i);
-		pt = debugfs_create_file(name, 0400, smmu->debugfs_root,
-					 smmu->as + i, &smmu_ptdump_fops);
-		if (!pt)
-			goto err_out;
-	}
 
 	for (i = 0; i < ARRAY_SIZE(smmu_debugfs_mc); i++) {
 		int j;
