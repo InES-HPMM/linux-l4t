@@ -178,9 +178,6 @@ extern struct platform_device tegra_disp1_device;
 extern struct platform_device tegra_disp2_device;
 extern struct platform_device tegra_nvmap_device;
 extern struct platform_device tegra_xhci_device;
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-extern struct platform_device tegra_cec_device;
-#endif
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 extern struct platform_device tegra_cl_dvfs_device;
 #endif
