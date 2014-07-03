@@ -27,3 +27,10 @@ config TEGRA_BOOTLOADER_DEBUG
 	default n
 	help
 	  When enabled, tegra_bootloader_verify_regs sys-fs is created.
+
+config TEGRA_BPMP_SCLK_SKIP
+	bool "Let bpmp firmware own the sclk skipper h/w"
+	depends on TEGRA_BPMP && ARCH_TEGRA_21x_SOC
+	default n
+	help
+	  When enabled, sclk skipper set rate will be delegated to bpmp firmware
