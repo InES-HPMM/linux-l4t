@@ -167,3 +167,12 @@ int bpmp_init_cpus_present(int nr_cpus)
 {
 	return bpmp_post(MRQ_INIT_NR_CPUS, &nr_cpus, sizeof(nr_cpus));
 }
+
+void tegra_bpmp_sclk_skip_set_rate(unsigned long input_rate,
+		unsigned long rate)
+{
+	uint32_t mb[] = { input_rate, rate };
+	int r;
+	r = __bpmp_rpc(MRQ_SCLK_SKIP_SET_RATE, &mb, sizeof(mb), NULL, 0);
+	WARN_ON(r);
+}

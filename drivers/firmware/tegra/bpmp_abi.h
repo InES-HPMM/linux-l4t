@@ -68,6 +68,7 @@
 #define MRQ_INIT_NR_CPUS	13
 #define MRQ_BPMPIDLE_USAGE	(14 | __MRQ_PUBLIC)
 #define MRQ_HEAP_USAGE		(15 | __MRQ_PUBLIC)
+#define MRQ_SCLK_SKIP_SET_RATE	16
 
 #define NR_MRQS			32
 
