@@ -716,6 +716,9 @@ static int bpmp_connect(void)
 {
 	int i;
 
+	if (connected)
+		return 0;
+
 	/* handshake */
 	if (!readl(RES_SEMA_SHRD_SMP_STA))
 		return -ENODEV;
@@ -780,4 +783,9 @@ int bpmp_ipc_init(struct platform_device *pdev)
 	 * TODO: remove this after POR bootflow is ready
 	 */
 	return 0;
+}
+
+void tegra_bpmp_init_early(void)
+{
+	bpmp_connect();
 }
