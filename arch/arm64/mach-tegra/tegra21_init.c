@@ -18,6 +18,7 @@
 
 #include <linux/kernel.h>
 #include <linux/tegra-fuse.h>
+#include <linux/platform_data/tegra_bpmp.h>
 #include <mach/powergate.h>
 
 #include "reset.h"
@@ -264,6 +265,7 @@ void __init tegra21x_init_early(void)
 	tegra_apb_io_init();
 	tegra_perf_init();
 	tegra_init_fuse();
+	tegra_bpmp_init_early();
 	tegra21x_init_clocks();
 	tegra21x_init_dvfs();
 	tegra_common_init_clock();
