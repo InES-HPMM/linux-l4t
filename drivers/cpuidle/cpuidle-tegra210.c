@@ -186,6 +186,8 @@ static int tegra210_enter_sc4(struct cpuidle_device *dev,
 					TEGRA210_CPUIDLE_CC6, idx);
 }
 
+static bool restore_sc7 = false;
+
 static int tegra210_enter_sc7(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv,
 				int idx)
@@ -203,17 +205,18 @@ static int tegra210_enter_sc7(struct cpuidle_device *dev,
 		.affinity_level = 0,
 	};
 
-	for_each_online_cpu(cpu) {
-		err = tegra210_timer_get_remain(dev->cpu, &next_event);
-		if (err)
-			return err;
-
-		if (next_event < sleep_time)
-			sleep_time = next_event;
-	}
-
 	if (!tegra_bpmp_do_idle(dev->cpu, TEGRA_PM_CC7,
 					TEGRA_PM_SC7)) {
+
+		for_each_online_cpu(cpu) {
+			err = tegra210_timer_get_remain(dev->cpu, &next_event);
+			if (err)
+				continue;
+
+			if (next_event < sleep_time)
+				sleep_time = next_event;
+		}
+
 		/*
 		 * We are the last core standing and bpmp says GO.
 		 * Change to CCx config.
@@ -234,26 +237,34 @@ static int tegra210_enter_sc7(struct cpuidle_device *dev,
 		tegra_smmu_save();
 
 		err = syscore_save();
-		if (err)
-			goto syscore_failed;
 
 		err = tegra_pm_prepare_sc7();
-		if (err)
-			goto prepare_failed;
+
+		restore_sc7 = true;
 	}
+
+	if (ps.id == 0)
+		cpu_pm_enter();
 
 	arg = psci_power_state_pack(ps);
 	cpu_suspend(arg, NULL);
 
+	if (!restore_sc7) {
+		cpu_pm_exit();
+		return err;
+	}
+
+	restore_sc7 = false;
+
 	tegra_pm_post_sc7();
-prepare_failed:
 
 	syscore_restore();
 
-syscore_failed:
 	tegra_smmu_restore();
 
 	tegra_dma_restore();
+
+	tegra_actmon_restore();
 
 	tegra_rtc_set_trigger(0);
 
