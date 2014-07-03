@@ -368,6 +368,8 @@ struct smmu_device {
 	struct dentry *debugfs_root;
 	struct smmu_debugfs_info *debugfs_info;
 
+	struct dma_iommu_mapping **map;
+
 	int		num_as;
 	struct smmu_as	as[0];		/* Run-time allocated array */
 };
@@ -1599,6 +1601,44 @@ static void smmu_iommu_domain_destroy(struct iommu_domain *domain)
 	dev_dbg(smmu->dev, "smmu_as@%p\n", as);
 }
 
+static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev)
+{
+	u64 swgids;
+	if (!smmu_handle)
+		return NULL;
+
+	swgids = tegra_smmu_of_get_swgids(dev);
+	if (!swgids)
+		swgids = tegra_smmu_fixup_swgids(dev, NULL);
+	if (!swgids)
+		return NULL;
+
+	return smmu_handle->map[_tegra_smmu_get_asid(swgids)];
+}
+
+/* try to create new map for dev if required */
+static struct dma_iommu_mapping *tegra_smmu_init_mapping(struct device *dev)
+{
+	struct dma_iommu_mapping *map;
+	u64 swgids;
+
+	if (!smmu_handle)
+		return NULL;
+
+	swgids = tegra_smmu_of_get_swgids(dev);
+	if (!swgids)
+		swgids = tegra_smmu_fixup_swgids(dev, NULL);
+	if (!swgids)
+		return NULL;
+
+	map = tegra_smmu_get_map(dev, tegra_smmu_of_get_swgids(dev));
+	if (!map) {
+		map = tegra_smmu_map_init_dev(dev, swgids);
+		smmu_handle->map[tegra_smmu_get_asid(dev)] = map;
+	}
+	return map;
+}
+
 static struct iommu_ops smmu_iommu_ops = {
 	.domain_init	= smmu_iommu_domain_init,
 	.domain_destroy	= smmu_iommu_domain_destroy,
@@ -1964,14 +2004,17 @@ int tegra_smmu_restore(void)
 
 static int tegra_smmu_probe(struct platform_device *pdev)
 {
+	int err = -ENOMEM;
 	struct smmu_device *smmu;
 	struct resource *regs, *regs2, *window;
 	struct device *dev = &pdev->dev;
 	int i, num_as;
 	size_t bytes;
 
-	if (smmu_handle)
+	if (smmu_handle) {
+		dev_info(dev, "skip %s", __func__);
 		return -EIO;
+	}
 
 	BUILD_BUG_ON(PAGE_SHIFT != SMMU_PAGE_SHIFT);
 
@@ -1993,10 +2036,13 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	bytes = sizeof(*smmu) + num_as * sizeof(*smmu->as);
 	smmu = devm_kzalloc(dev, bytes, GFP_KERNEL);
-	if (!smmu) {
-		dev_err(dev, "failed to allocate smmu_device\n");
-		return -ENOMEM;
-	}
+	if (!smmu)
+		goto no_mem;
+
+	bytes = num_as * sizeof(*smmu->map);
+	smmu->map = devm_kzalloc(dev, bytes, GFP_KERNEL);
+	if (!smmu->map)
+		goto fail_smmu_map;
 
 	smmu->dev = dev;
 	smmu->num_as = num_as;
@@ -2007,8 +2053,8 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	smmu->regs_ahbarb = devm_ioremap(dev, regs2->start,
 					 resource_size(regs2));
 	if (!smmu->regs || !smmu->regs_ahbarb) {
-		dev_err(dev, "failed to remap SMMU registers\n");
-		return -ENXIO;
+		err = -ENXIO;
+		goto fail;
 	}
 
 	smmu->num_translation_enable = 3;
@@ -2039,7 +2085,6 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 		smmu->num_translation_enable = 4;
 		smmu->num_asid_security = 8;
 		smmu->ptc_cache_size = SZ_32K;
-
 	}
 
 	for (i = 0; i < smmu->num_translation_enable; i++)
@@ -2064,7 +2109,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	smmu->avp_vector_page = alloc_page(GFP_KERNEL);
 	if (!smmu->avp_vector_page)
-		return -ENOMEM;
+		goto fail;
 
 	smmu_debugfs_create(smmu);
 	smmu_handle = smmu;
@@ -2072,6 +2117,13 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	dev_info(dev, "Loaded Tegra IOMMU driver\n");
 	return 0;
+fail:
+	devm_kfree(dev, smmu->map);
+fail_smmu_map:
+	devm_kfree(dev, smmu);
+no_mem:
+	dev_err(dev, "tegra smmu probe failed, e=%d", err);
+	return err;
 }
 
 static int tegra_smmu_remove(struct platform_device *pdev)
@@ -2110,16 +2162,12 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 	struct dma_iommu_mapping *map;
 	struct device *dev = _dev;
 
-	map = tegra_smmu_get_map(dev, tegra_smmu_of_get_swgids(dev));
-	if (!map)
-		return NOTIFY_DONE;
+	map = tegra_smmu_get_mapping(dev);
 
 	switch (event) {
 	case BUS_NOTIFY_BIND_DRIVER:
 		if (get_dma_ops(dev) != &arm_dma_ops)
 			break;
-		/* FALLTHROUGH */
-	case BUS_NOTIFY_ADD_DEVICE:
 		if (strncmp(dev_name(dev), "tegra_smmu", 10) == 0)
 			break;
 
@@ -2128,6 +2176,12 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 			break;
 		}
 
+		if (!map)
+			map = tegra_smmu_init_mapping(dev);
+
+		if (!map)
+			break;
+
 		if (arm_iommu_attach_device(dev, map)) {
 			dev_err(dev, "Failed to attach %s\n", dev_name(dev));
 			arm_iommu_release_mapping(map);
@@ -2135,15 +2189,15 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 		}
 		dev_dbg(dev, "Attached %s to map %p\n", dev_name(dev), map);
 		break;
-	case BUS_NOTIFY_DEL_DEVICE:
-		if (dev->driver)
-			break;
-		/* FALLTHROUGH */
 	case BUS_NOTIFY_UNBOUND_DRIVER:
+		if (!map)
+			break;
 		dev_dbg(dev, "Detaching %s from map %p\n", dev_name(dev),
 			to_dma_iommu_mapping(dev));
 		arm_iommu_detach_device(dev);
 		break;
+	case BUS_NOTIFY_ADD_DEVICE:
+	case BUS_NOTIFY_DEL_DEVICE:
 	default:
 		break;
 	}
