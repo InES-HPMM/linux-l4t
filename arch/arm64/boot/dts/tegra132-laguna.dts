@@ -90,7 +90,7 @@
 		status = "okay";
 	};
 
-         xusb@70090000 {
+        xusb@70090000 {
 		/* nvidia,uses_external_pmic; */
 		nvidia,gpio_controls_muxed_ss_lanes;
 		nvidia,gpio_ss1_sata = <&tca6416 9 0>;
@@ -131,5 +131,30 @@
 				"qc2-charger", "downstream-charger","fast-charger",
 				"slow-charger", "apple-500ma", "apple-1a",
 				"apple-2a", "y-cable";
+	};
+
+	dfll@70040084 {
+		board-params = <&{/cpu_dfll_board_params}>;
+		i2c-pmic-integration = <&{/cpu_dfll_pmic_integration}>;
+		monitor-data-new-workaround;
+		status = "okay";
+	};
+
+	cpu_dfll_board_params {
+		sample-rate = <12500>;
+		fixed-output-forcing;
+		cf = <10>;
+		ci = <0>;
+		cg = <2>;
+		droop-cut-value = <0xf>;
+		droop-restore-ramp = <0x0>;
+		scale-out-ramp = <0x0>;
+	};
+
+	cpu_dfll_pmic_integration {
+		pmic-i2c-address = <0x80>;
+		pmic-i2c-voltage-register = <0x00>;
+		i2c-fs-rate = <400000>;
+		sel-conversion-slope = <1>;
 	};
 };

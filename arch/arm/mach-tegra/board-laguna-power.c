@@ -130,8 +130,28 @@ static struct tegra_cl_dvfs_platform_data laguna_cl_dvfs_data = {
 	.cfg_param = &laguna_cl_dvfs_param,
 };
 
+static const struct of_device_id dfll_of_match[] = {
+	{ .compatible	= "nvidia,tegra124-dfll", },
+	{ .compatible	= "nvidia,tegra132-dfll", },
+	{ },
+};
+
 static int __init laguna_cl_dvfs_init(void)
 {
+	struct device_node *dn = of_find_matching_node(NULL, dfll_of_match);
+
+	/*
+	 * Laguna platforms maybe used with different DT variants. Some of them
+	 * include DFLL data in DT, some - not. Check DT here, and continue with
+	 * platform device registration only if DT DFLL node is not present.
+	 */
+	if (dn) {
+		bool available = of_device_is_available(dn);
+		of_node_put(dn);
+		if (available)
+			return 0;
+	}
+
 	fill_reg_map();
 	laguna_cl_dvfs_data.flags = TEGRA_CL_DVFS_DYN_OUTPUT_CFG;
 	tegra_cl_dvfs_device.dev.platform_data = &laguna_cl_dvfs_data;
