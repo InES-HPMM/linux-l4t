@@ -25,28 +25,6 @@
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "../../../arch/arm/mach-tegra/board.h"
 
-static struct resource tegra_smmu_resources[] = {
-	{
-		.name	= "mc",
-		.flags	= IORESOURCE_MEM,
-		.start	= TEGRA_MC_BASE,
-		.end	= TEGRA_MC_BASE + TEGRA_MC_SIZE - 1,
-	},
-	{
-		.name   = "ahbarb",
-		.flags  = IORESOURCE_MEM,
-		.start  = TEGRA_AHB_ARB_BASE,
-		.end    = TEGRA_AHB_ARB_BASE + TEGRA_AHB_ARB_SIZE - 1,
-	},
-};
-
-struct platform_device tegra_smmu_device = {
-	.name		= "tegra_smmu",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(tegra_smmu_resources),
-	.resource	= tegra_smmu_resources
-};
-
 static struct resource tegra_smmu[] = {
 	[0] = {
 		.start	= TEGRA_SMMU_BASE,
@@ -447,20 +425,8 @@ void tegra_smmu_unmap_misc_device(struct device *dev)
 }
 EXPORT_SYMBOL(tegra_smmu_unmap_misc_device);
 
-int tegra_smmu_get_asid(struct device *dev)
-{
-	u64 swgids = tegra_smmu_fixup_swgids(dev, NULL);
-	return _tegra_smmu_get_asid(swgids);
-}
-
 struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev, u64 swgids)
 {
-	if (!swgids)
-		swgids = tegra_smmu_fixup_swgids(dev, NULL);
-
-	if (!swgids)
-		return NULL;
-
 	return smmu_default_map[_tegra_smmu_get_asid(swgids)].map;
 }
 
@@ -470,11 +436,6 @@ struct dma_iommu_mapping *tegra_smmu_map_init_dev(struct device *dev,
 {
 	struct dma_iommu_mapping *map;
 	struct tegra_iommu_mapping *m;
-
-	if (!swgids)
-		swgids = tegra_smmu_fixup_swgids(dev, NULL);
-	if (!swgids)
-		return NULL;
 
 	BUG_ON(_tegra_smmu_get_asid(swgids) >= ARRAY_SIZE(smmu_default_map));
 	m = &smmu_default_map[_tegra_smmu_get_asid(swgids)];
@@ -507,7 +468,6 @@ static inline void tegra_smmu_map_init(struct platform_device *pdev)
 static int __init tegra_smmu_init(void)
 {
 	tegra_bpmp_linear_set();
-	platform_device_register(&tegra_smmu_device);
 	return 0;
 }
 postcore_initcall(tegra_smmu_init);
