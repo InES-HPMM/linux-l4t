@@ -1476,6 +1476,7 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	struct iommu_linear_map *area = NULL;
 	u64 map, temp;
 	int err;
+	bool use_fixup = false;
 
 	map = tegra_smmu_of_get_swgids(dev);
 	temp = tegra_smmu_fixup_swgids(dev, &area);
@@ -1486,8 +1487,10 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	if (map && temp && map != temp)
 		dev_err(dev, "%llx %llx\n", map, temp);
 
-	if (!map)
+	if (!map) {
 		map = temp;
+		use_fixup = true;
+	}
 
 	if (!as) {
 		struct smmu_domain *sd = domain->priv;
@@ -1556,6 +1559,8 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 
 	dev_dbg(smmu->dev, "%s is attached\n", dev_name(dev));
 	debugfs_create_master(client);
+	debugfs_create_bool("fixup",  0400, client->debugfs_root,
+			    (u32 *)&use_fixup);
 	return 0;
 
 err_client:
