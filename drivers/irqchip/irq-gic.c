@@ -94,12 +94,15 @@ static u8 gic_cpu_map[NR_GIC_CPU_IF] __read_mostly;
  * Default make them NULL.
  */
 struct irq_chip gic_arch_extn = {
-	.irq_eoi	= NULL,
-	.irq_mask	= NULL,
-	.irq_unmask	= NULL,
-	.irq_retrigger	= NULL,
-	.irq_set_type	= NULL,
-	.irq_set_wake	= NULL,
+	.irq_eoi		= NULL,
+	.irq_mask		= NULL,
+	.irq_unmask		= NULL,
+	.irq_retrigger		= NULL,
+	.irq_set_type		= NULL,
+	.irq_set_wake		= NULL,
+#ifdef CONFIG_SMP
+	.irq_set_affinity	= NULL,
+#endif
 };
 
 #ifndef MAX_GIC_NR
@@ -410,6 +413,10 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 	}
 #endif
 	writel_relaxed(val, reg);
+
+	if (gic->arch_extn && gic->arch_extn->irq_set_affinity)
+		gic->arch_extn->irq_set_affinity(d, cpumask_of(cpu), force);
+
 	raw_spin_unlock(&irq_controller_lock);
 end:
 	return IRQ_SET_MASK_OK;
