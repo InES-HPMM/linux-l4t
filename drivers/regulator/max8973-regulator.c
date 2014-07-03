@@ -256,7 +256,7 @@ static unsigned int max8973_dcdc_get_mode(struct regulator_dev *rdev)
 	if (ret < 0) {
 		dev_err(max->dev, "register %d read failed, err %d\n",
 				MAX8973_CONTROL1, ret);
-		return ret;
+		return 0;
 	}
 	return (data & MAX8973_FPWM_EN_M) ?
 		REGULATOR_MODE_FAST : REGULATOR_MODE_NORMAL;
