@@ -154,6 +154,7 @@
 		extcon-cables = <&as3722 0>;
 		extcon-cable-names = "id";
 		#extcon-cells = <1>;
+		usb_vbus = <&usb0_vbus>;
 		status = "okay";
 	};
 

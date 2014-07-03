@@ -639,7 +639,7 @@
 				};
 			};
 
-			vbus {
+			usb0_vbus: vbus {
 				regulator-name = "vbus_regulator";
 				ti,otg-iusb-gpio = <&gpio TEGRA_GPIO(I, 4) 0>;
 				consumers {

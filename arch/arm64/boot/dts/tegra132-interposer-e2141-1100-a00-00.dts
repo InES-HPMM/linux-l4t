@@ -270,6 +270,7 @@
 		nvidia,id_det_gpio = <&max77620 0 0>;
 		extcon-cables = <&bq2419x_int 0>;
 		extcon-cable-names = "vbus";
+		usb_vbus-supply = <&usb0_vbus>;
 		status = "okay";
 	};
 

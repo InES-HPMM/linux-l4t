@@ -127,7 +127,6 @@
 		nvidia,id_det_type = <1>;
 		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
 		extcon-cable-names = "vbus", "id";
-
 		#extcon-cells = <1>;
 		avdd_usb-supply = <&ldousb_reg>;
 		avdd_pll_utmip-supply = <&palmas_smps8>;
@@ -142,6 +141,7 @@
 		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
 		extcon-cable-names = "vbus", "id";
 		#extcon-cells = <1>;
+		usb_vbus-supply = <&usb0_vbus>;
 		status = "okay";
 	};
 

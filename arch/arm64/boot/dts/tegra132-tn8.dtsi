@@ -76,6 +76,7 @@
 		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
 		extcon-cable-names = "vbus", "id";
 		#extcon-cells = <1>;
+		usb_vbus-supply = <&usb0_vbus>;
 		status = "okay";
 	};
 
