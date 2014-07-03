@@ -312,6 +312,8 @@ struct smmu_client {
 	struct list_head	list;
 	struct smmu_as		*as;
 	u64			swgids;
+
+	struct dentry		*debugfs_root;
 };
 
 /*
@@ -369,6 +371,7 @@ struct smmu_device {
 
 	struct dentry *debugfs_root;
 	struct smmu_debugfs_info *debugfs_info;
+	struct dentry *masters_root;
 
 	struct dma_iommu_mapping **map;
 
@@ -1444,6 +1447,26 @@ found:
 	return as;
 }
 
+static void debugfs_create_master(struct smmu_client *c)
+{
+	struct dentry *dent;
+	char name[] = "as000";
+	char target[256];
+
+	dent = debugfs_create_dir(dev_name(c->dev), c->as->smmu->masters_root);
+	if (!dent)
+		return;
+	c->debugfs_root = dent;
+
+	sprintf(name, "as%03d", c->as->asid);
+	sprintf(target, "../../as%03d", c->as->asid);
+	debugfs_create_symlink(name, c->debugfs_root, target);
+
+	sprintf(target, "../masters/%s", dev_name(c->dev));
+	dent = debugfs_create_symlink(dev_name(c->dev), c->as->debugfs_root,
+				      target);
+}
+
 static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 				 struct device *dev)
 {
@@ -1532,6 +1555,7 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	}
 
 	dev_dbg(smmu->dev, "%s is attached\n", dev_name(dev));
+	debugfs_create_master(client);
 	return 0;
 
 err_client:
@@ -1553,6 +1577,7 @@ static void smmu_iommu_detach_dev(struct iommu_domain *domain,
 
 	list_for_each_entry(c, &as->client, list) {
 		if (c->dev == dev) {
+			debugfs_remove_recursive(c->debugfs_root);
 			list_del(&c->list);
 			smmu_client_disable_hwgrp(c);
 			devm_kfree(smmu->dev, c);
@@ -1931,6 +1956,11 @@ static void smmu_debugfs_create(struct smmu_device *smmu)
 	if (!root)
 		goto err_out;
 	smmu->debugfs_root = root;
+
+	root = debugfs_create_dir("masters", smmu->debugfs_root);
+	if (!root)
+		goto err_out;
+	smmu->masters_root = root;
 
 	for (i = 0; i < ARRAY_SIZE(smmu_debugfs_mc); i++) {
 		int j;
