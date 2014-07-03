@@ -77,7 +77,7 @@ static inline int tegra_bpmp_request_module_mrq(uint32_t module_base,
 		bpmp_mrq_handler handler, void *data) { return -ENODEV; }
 static inline void tegra_bpmp_cancel_module_mrq(uint32_t module_base) {}
 static inline uint32_t tegra_bpmp_mail_readl(int ch, int offset) { return 0; }
-static inline void tegra_bpmp_mail_return(int ch, int code, int v, int sz) { }
+static inline void tegra_bpmp_mail_return(int ch, int code, int v) {}
 static inline void tegra_bpmp_mail_return_data(int ch, int code,
 		void *data, int sz) { }
 #endif
