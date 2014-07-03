@@ -453,10 +453,12 @@ static u64 tegra_smmu_of_get_swgids(struct device *dev)
 	const __be32 *prop;
 	int i;
 	u64 swgids = 0;
+	struct iommu_linear_map *area = NULL;
 
 	of_property_for_each_phandle_with_args(iter, dev->of_node, "iommus",
 					       "#iommu-cells", 0) {
-		if (iter.out_args.np != smmu_handle->dev->of_node)
+		if (smmu_handle &&
+		    iter.out_args.np != smmu_handle->dev->of_node)
 			continue;
 
 		if (iter.out_args.args_count < 2) {
@@ -468,17 +470,19 @@ static u64 tegra_smmu_of_get_swgids(struct device *dev)
 		memcpy(&swgids, iter.out_args.args, sizeof(u64));
 		pr_debug("swgids=%16llx ops=%p %s\n",
 			 swgids, dev->bus->iommu_ops, dev_name(dev));
-		return swgids;
+		goto fix_up;
 	}
 
 	prop = of_get_property(dev->of_node,
 			       "nvidia,memory-clients", (int *)&bytes);
 	if (!prop || !bytes)
-		return 0;
+		goto fix_up;
 
 	for (i = 0; i < bytes / sizeof(u32); i++, prop++)
 		swgids |= 1ULL << be32_to_cpup(prop);
 
+fix_up:
+	swgids = swgids ? : tegra_smmu_fixup_swgids(dev, &area);
 	return swgids;
 }
 
@@ -1652,41 +1656,31 @@ static void smmu_iommu_domain_destroy(struct iommu_domain *domain)
 	dev_dbg(smmu->dev, "smmu_as@%p\n", as);
 }
 
-static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev)
-{
-	u64 swgids;
-	if (!smmu_handle)
-		return NULL;
-
-	swgids = tegra_smmu_of_get_swgids(dev);
-	if (!swgids)
-		swgids = tegra_smmu_fixup_swgids(dev, NULL);
-	if (!swgids)
-		return NULL;
-
-	return smmu_handle->map[_tegra_smmu_get_asid(swgids)];
-}
-
 /* try to create new map for dev if required */
-static struct dma_iommu_mapping *tegra_smmu_init_mapping(struct device *dev)
+static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev,
+							bool create)
 {
-	struct dma_iommu_mapping *map;
+	int asid;
 	u64 swgids;
-
-	if (!smmu_handle)
-		return NULL;
+	struct dma_iommu_mapping *map = NULL;
 
 	swgids = tegra_smmu_of_get_swgids(dev);
 	if (!swgids)
-		swgids = tegra_smmu_fixup_swgids(dev, NULL);
-	if (!swgids)
-		return NULL;
+		goto end;
 
-	map = tegra_smmu_get_map(dev, tegra_smmu_of_get_swgids(dev));
-	if (!map) {
-		map = tegra_smmu_map_init_dev(dev, swgids);
-		smmu_handle->map[tegra_smmu_get_asid(dev)] = map;
+	asid = _tegra_smmu_get_asid(swgids);
+
+	if (smmu_handle && smmu_handle->map[asid]) {
+		map = smmu_handle->map[asid];
+		goto end;
 	}
+
+	if (create)
+		map = tegra_smmu_map_init_dev(dev, swgids);
+
+	if (smmu_handle && map)
+		smmu_handle->map[asid] = map;
+end:
 	return map;
 }
 
@@ -2049,40 +2043,59 @@ int tegra_smmu_restore(void)
 
 static int tegra_smmu_probe(struct platform_device *pdev)
 {
-	int err = -ENOMEM;
+	int err = -EINVAL;
 	struct smmu_device *smmu;
-	struct resource *regs, *regs2, *window;
+	struct resource *regs, *regs2;
 	struct device *dev = &pdev->dev;
-	int i, num_as;
-	size_t bytes;
+	int i;
+	u32 num_as;
+	dma_addr_t base;
+	size_t size, bytes;
 
 	if (smmu_handle) {
 		dev_info(dev, "skip %s", __func__);
-		return -EIO;
+		return -ENODEV;
 	}
 
 	BUILD_BUG_ON(PAGE_SHIFT != SMMU_PAGE_SHIFT);
 
 	save_smmu_device = dev;
 
+	if (dev->of_node) {
+		if (of_get_dma_window(dev->of_node, NULL, 0, NULL, &base,
+					&size))
+			goto exit_probe;
+
+		if (of_property_read_u32(dev->of_node, "nvidia,#asids",
+					   &num_as))
+			goto exit_probe;
+	} else {
+		struct resource *window = tegra_smmu_window(0);
+		if (!window)
+			goto exit_probe;
+		base = (dma_addr_t) window->start;
+		size = resource_size(window);
+
+		num_as = SMMU_NUM_ASIDS;
+		if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12 ||
+			tegra_get_chipid() == TEGRA_CHIPID_TEGRA13 ||
+			tegra_get_chipid() == TEGRA_CHIPID_TEGRA21)
+			num_as = SMMU_NUM_ASIDS_TEGRA12;
+	}
+	size >>= SMMU_PAGE_SHIFT;
+
 	regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	regs2 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	window = tegra_smmu_window(0);
-	if (!regs || !regs2 || !window) {
+	if (!regs || !regs2 || !size) {
 		dev_err(dev, "No SMMU resources\n");
-		return -ENODEV;
+		goto exit_probe;
 	}
 
-	num_as = SMMU_NUM_ASIDS;
-	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12 ||
-		tegra_get_chipid() == TEGRA_CHIPID_TEGRA13 ||
-		tegra_get_chipid() == TEGRA_CHIPID_TEGRA21)
-		num_as = SMMU_NUM_ASIDS_TEGRA12;
-
+	err = -ENOMEM;
 	bytes = sizeof(*smmu) + num_as * sizeof(*smmu->as);
 	smmu = devm_kzalloc(dev, bytes, GFP_KERNEL);
 	if (!smmu)
-		goto no_mem;
+		goto exit_probe;
 
 	bytes = num_as * sizeof(*smmu->map);
 	smmu->map = devm_kzalloc(dev, bytes, GFP_KERNEL);
@@ -2092,14 +2105,14 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	smmu->dev = dev;
 	smmu->num_as = num_as;
 
-	smmu->iovmm_base = (unsigned long)window->start;
-	smmu->page_count = resource_size(window) >> SMMU_PAGE_SHIFT;
+	smmu->iovmm_base = base;
+	smmu->page_count = size;
 	smmu->regs = devm_ioremap(dev, regs->start, resource_size(regs));
 	smmu->regs_ahbarb = devm_ioremap(dev, regs2->start,
 					 resource_size(regs2));
 	if (!smmu->regs || !smmu->regs_ahbarb) {
 		err = -ENXIO;
-		goto fail;
+		goto fail_cleanup;
 	}
 
 	smmu->num_translation_enable = 3;
@@ -2154,19 +2167,19 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	smmu->avp_vector_page = alloc_page(GFP_KERNEL);
 	if (!smmu->avp_vector_page)
-		goto fail;
+		goto fail_cleanup;
 
 	smmu_debugfs_create(smmu);
-	smmu_handle = smmu;
+	BUG_ON(cmpxchg(&smmu_handle, NULL, smmu));
 	bus_set_iommu(&platform_bus_type, &smmu_iommu_ops);
 
 	dev_info(dev, "Loaded Tegra IOMMU driver\n");
 	return 0;
-fail:
+fail_cleanup:
 	devm_kfree(dev, smmu->map);
 fail_smmu_map:
 	devm_kfree(dev, smmu);
-no_mem:
+exit_probe:
 	dev_err(dev, "tegra smmu probe failed, e=%d", err);
 	return err;
 }
@@ -2191,6 +2204,14 @@ const struct dev_pm_ops tegra_smmu_pm_ops = {
 	.resume		= tegra_smmu_resume,
 };
 
+static struct of_device_id tegra_smmu_of_match[] = {
+	{ .compatible = "nvidia,tegra210-smmu", },
+	{ .compatible = "nvidia,tegra132-smmu", },
+	{ .compatible = "nvidia,tegra124-smmu", },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, tegra_smmu_of_match);
+
 static struct platform_driver tegra_smmu_driver = {
 	.probe		= tegra_smmu_probe,
 	.remove		= tegra_smmu_remove,
@@ -2198,6 +2219,7 @@ static struct platform_driver tegra_smmu_driver = {
 		.owner	= THIS_MODULE,
 		.name	= "tegra_smmu",
 		.pm	= &tegra_smmu_pm_ops,
+		.of_match_table = tegra_smmu_of_match,
 	},
 };
 
@@ -2207,25 +2229,25 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 	struct dma_iommu_mapping *map;
 	struct device *dev = _dev;
 
-	map = tegra_smmu_get_mapping(dev);
-
 	switch (event) {
 	case BUS_NOTIFY_BIND_DRIVER:
 		if (get_dma_ops(dev) != &arm_dma_ops)
 			break;
-		if (strncmp(dev_name(dev), "tegra_smmu", 10) == 0)
+
+		map = tegra_smmu_get_mapping(dev, true);
+		if (!map)
 			break;
 
-		if (!smmu_handle) {
-			dev_warn(dev, "No map yet available\n");
+		if (strstr(dev_name(dev), "smmu") ||
+		    strstr(dev_name(dev), "iommu")) {
+			dev_info(dev, "skip bind_driver notification\n");
 			break;
 		}
 
-		if (!map)
-			map = tegra_smmu_init_mapping(dev);
-
-		if (!map)
+		if (!smmu_handle) {
+			dev_info(dev, "No map availble yet!!!\n");
 			break;
+		}
 
 		if (arm_iommu_attach_device(dev, map)) {
 			dev_err(dev, "Failed to attach %s\n", dev_name(dev));
@@ -2235,14 +2257,13 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 		dev_dbg(dev, "Attached %s to map %p\n", dev_name(dev), map);
 		break;
 	case BUS_NOTIFY_UNBOUND_DRIVER:
+		map = tegra_smmu_get_mapping(dev, false);
 		if (!map)
 			break;
 		dev_dbg(dev, "Detaching %s from map %p\n", dev_name(dev),
 			to_dma_iommu_mapping(dev));
 		arm_iommu_detach_device(dev);
 		break;
-	case BUS_NOTIFY_ADD_DEVICE:
-	case BUS_NOTIFY_DEL_DEVICE:
 	default:
 		break;
 	}
