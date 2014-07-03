@@ -1,0 +1,3 @@
+#include "tegra210.dtsi"
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
