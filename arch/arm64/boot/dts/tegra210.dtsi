@@ -85,6 +85,11 @@
 	};
 
 	smmu: iommu {
+		compatible = "nvidia,tegra210-smmu";
+		reg = <0x0 0x70019000 0x0 0x1000
+		       0x0 0x6000c000 0x0 0x1000>;
+		nvidia,#asids = <128>;
+		dma-window = <0x0 0x80000000 0x0 0x7ff00000>;
 		#iommu-cells = <10>;
 	};
 
