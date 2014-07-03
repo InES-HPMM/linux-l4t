@@ -1621,7 +1621,9 @@ static void tegra_pcie_apply_sw_war(int index, bool enum_done)
 		data |= PCIE2_RP_VEND_CTL0_DSK_RST_PULSE_WIDTH;
 		rp_writel(data, NV_PCIE2_RP_VEND_CTL0, index);
 
-		/* register programming for the 12.8 MHz clk_25m Freq */
+		/* Avoid below register programming for >13 MHz clk_25m Freq */
+		if (clk_get_rate(clk_get_sys(NULL, "clk_m")) > 13000000)
+			return;
 		data = rp_readl(NV_PCIE2_RP_TIMEOUT0, index);
 		data &= ~PCIE2_RP_TIMEOUT0_PAD_PWRUP_MASK;
 		data |= PCIE2_RP_TIMEOUT0_PAD_PWRUP;
