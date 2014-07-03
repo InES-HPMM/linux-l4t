@@ -214,9 +214,9 @@ static void tegra_ehci_boost_cpu_frequency_work(struct work_struct *work)
 		struct tegra_ehci_hcd, boost_cpu_freq_work.work);
 	if (tegra->cpu_boost_in_work) {
 		tegra->boost_requested = true;
-		if (tegra->boost_enable && (tegra_ehci_port_speed(tegra->ehci)
-					== USB_SPEED_HIGH))
-			pm_qos_update_request(&tegra->boost_cpu_freq_req,
+		if (tegra->boost_enable)
+			pm_qos_update_request(
+				&tegra->boost_cpu_freq_req,
 				(s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ * 1000);
 	}
 }
@@ -449,22 +449,21 @@ static int tegra_ehci_bus_resume(struct usb_hcd *hcd)
 	int err = 0;
 	EHCI_DBG("%s() BEGIN\n", __func__);
 
-#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
-	tegra->boost_requested = true;
-	if (pm_qos_request_active(&tegra->boost_cpu_freq_req)
-		&& tegra->boost_enable) {
-		schedule_delayed_work(&tegra->boost_cpu_freq_work, 4000);
-		tegra->cpu_boost_in_work = true;
-	}
-
-#endif
-
 	mutex_lock(&tegra->sync_lock);
 	usb_phy_set_suspend(get_usb_phy(tegra->phy), 0);
 	err = ehci_bus_resume(hcd);
 	mutex_unlock(&tegra->sync_lock);
-	EHCI_DBG("%s() END\n", __func__);
 
+#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+	tegra->boost_requested = true;
+	if (pm_qos_request_active(&tegra->boost_cpu_freq_req)
+	    && tegra->boost_enable
+	    && (tegra_ehci_port_speed(tegra->ehci) == USB_SPEED_HIGH))
+		pm_qos_update_request(&tegra->boost_cpu_freq_req,
+			(s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ * 1000);
+	tegra->cpu_boost_in_work = false;
+#endif
+	EHCI_DBG("%s() END\n", __func__);
 	return err;
 }
 #endif
