@@ -596,19 +596,19 @@ static int bq27441_get_property(struct power_supply *psy,
 		val->intval = chip->status;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		val->intval = chip->vcell;
+		val->intval = 1000 * chip->vcell;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = chip->soc;
 		if (chip->soc == 15)
 			dev_warn(&chip->client->dev,
-			"\nSystem Running low on battery - 15 percent\n");
+			"System Running low on battery - 15 percent\n");
 		if (chip->soc == 10)
 			dev_warn(&chip->client->dev,
-			"\nSystem Running low on battery - 10 percent\n");
+			"System Running low on battery - 10 percent\n");
 		if (chip->soc == 5)
 			dev_warn(&chip->client->dev,
-			"\nSystem Running low on battery - 5 percent\n");
+			"System Running low on battery - 5 percent\n");
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = chip->health;
