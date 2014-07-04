@@ -1003,4 +1003,24 @@
 				>;
 		};
 	};
+
+	regulators {
+		compatible = "simple-bus";
+		device_type = "fixed-regulators";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		regulator@1 {
+			compatible = "regulator-fixed";
+			reg = <1>;
+			regulator-name = "vdd-cpu-fixed";
+			regulator-min-microvolt = <1000000>;
+			regulator-max-microvolt = <1000000>;
+			consumers {
+				c0 {
+					regulator-consumer-supply = "vdd_cpu_fixed";
+				};
+			};
+		};
+	};
 };
