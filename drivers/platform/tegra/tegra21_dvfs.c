@@ -70,10 +70,10 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_cpu = {
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
 	.alignment = {
-		.step_uv = 10000, /* 10mV */
+		.step_uv = 6250, /* 6.25mV */
 	},
 	.stats = {
-		.bin_uV = 10000, /* 10mV */
+		.bin_uV = 6250, /* 6.25mV */
 	},
 	.version = "p4v00",
 };
@@ -990,6 +990,12 @@ void __init tegra21x_init_dvfs(void)
 #ifndef CONFIG_TEGRA_GPU_DVFS
 	tegra_dvfs_gpu_disabled = true;
 #endif
+
+	ret = of_tegra_dvfs_rail_align(&tegra21_dvfs_rail_vdd_cpu);
+	pr_info("tegra dvfs: VDD_CPU %s offset = %d, step = %d\n",
+		ret ? "default" : "DT",
+		tegra21_dvfs_rail_vdd_cpu.alignment.offset_uv,
+		tegra21_dvfs_rail_vdd_cpu.alignment.step_uv);
 
 	/*
 	 * Find nominal voltages for core (1st) and cpu rails before rail
