@@ -8,26 +8,27 @@ Required properties:
 - interrupts: Specify the interrupts IRQ info for device
 
 Optional properties:
-- port_otg: Specify whether given port supports otg or not.
-- charging_supported: Specify whether needs charging through USB.
-- support_pmu_vbus: Specify whether vbus detection is supported from PMU.
-- vbus_extcon_dev_name: If vbus detection is supported from PMU, specify the name of extcon device which gives notifications.
-- id_det_type: Specify how usb id detection type on the platform.
-        TEGRA_USB_ID = 0,
-        TEGRA_USB_PMU_ID = 1,
-        TEGRA_USB_GPIO_ID = 2,
-        TEGRA_USB_VIRTUAL_ID = 3,
-- qc2_voltage: Specify the input voltage needed to support QC2.0 charger.
-        TEGRA_USB_QC2_5V = 0,
-        TEGRA_USB_QC2_9V = 1,
-        TEGRA_USB_QC2_12V = 2,
-        TEGRA_USB_QC2_20V = 3,
-- qc2_current_limit_ma: Specify the QC2.0 charger current limit in milliamperes.
-- dcp_current_limit_ma: If needs to overried standard DCP charger current limit (1.5A), specify the value in milliamperes.
-- is_xhci: Specify whether this port is taken by XUSB.
+- nvidia,port-otg: Specify whether given port supports otg or not.
+- nvidia,charging-supported: Specify whether needs charging through USB.
+- nvidia,enable-pmu-vbus-detection: Specify whether vbus detection is supported from PMU.
+- nvidia,id-detection-type: Specify how usb id detection type on the platform.
+	0 - if detection is through USB controller
+	1 - if detection is through PMU
+	2 - if detection is through GPIO
+	3 - if enable through sysfs interface.
+- nvidia,qc2-voltage: Specify the input voltage needed to support QC2.0 charger.
+	0 - if input voltage is 5V
+	1 - if input voltage is 9V
+	2 - if input voltage is 12V
+	3 - if input voltage is 20V
+- nvidia,qc2-current-limit-ma: Specify the QC2.0 charger current limit in milliamperes.
+- nvidia,dcp-current-limit-ma: If needs to overried standard DCP charger current limit (1.5A), specify the value in milliamperes.
+- nvidia,enable-xhci-host: Specify whether this port is taken by XUSB.
+- nvidia,avdd_usb-supply: Specify the phandle of corresponding regulator device tree node.
+- nvidia,avdd_pll_utmip-supply: Specify the phandle of corresponding regulator device tree node.
+- nvidia,usb_bat_chg-supply: Specify the phandle of corresponding current regulator device tree node.
 - extcon-cables: Specify the phandles and index of different extcon needed.
 - extcon-cable-names: Specify the cable names needed from extcon.
-
 
 Example:
 	udc@0x7d000000 {
@@ -35,13 +36,15 @@ Example:
 		reg = <0x0 0x7d000000 0x0 0x4000>;
 		interrupts = <0 20 0x04>;
 
-		nvidia,port_otg;
-		nvidia,charging_supported;
-		nvidia,support_pmu_vbus;
-		nvidia,vbus_extcon_dev_name = "palmas-extcon";
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		nvidia,enable-pmu-vbus-detection;
 		nvidia,qc2_input_voltage = <1>;
 		nvidia,qc2_current_limit_ma = <1200>;
 		nvidia,dcp_current_limit_ma = <1800>;
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		usb_bat_chg-supply = <&battery_charger>;
 		status = "okay";
 	};
 
