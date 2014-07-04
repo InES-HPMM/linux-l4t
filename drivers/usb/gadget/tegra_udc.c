@@ -2795,8 +2795,6 @@ static struct tegra_usb_platform_data *tegra_udc_dt_parse_pdata(
 {
 	struct tegra_usb_platform_data *pdata;
 	struct device_node *np = pdev->dev.of_node;
-	const char *ext_name = NULL;
-	int status;
 
 	if (!np)
 		return NULL;
@@ -2808,27 +2806,22 @@ static struct tegra_usb_platform_data *tegra_udc_dt_parse_pdata(
 		return ERR_PTR(-ENOMEM);
 	}
 
-	pdata->port_otg = of_property_read_bool(np, "nvidia,port_otg");
+	pdata->port_otg = of_property_read_bool(np, "nvidia,port-otg");
 	pdata->support_pmu_vbus =
-		of_property_read_bool(np, "nvidia,support_pmu_vbus");
+		of_property_read_bool(np, "nvidia,enable-pmu-vbus-detection");
 	pdata->u_data.dev.charging_supported =
-		of_property_read_bool(np, "nvidia,charging_supported");
+		of_property_read_bool(np, "nvidia,charging-supported");
 	pdata->u_data.dev.is_xhci =
-		of_property_read_bool(np, "nvidia,is_xhci");
+		of_property_read_bool(np, "nvidia,enable-xhci-host");
 
-	of_property_read_u32(np, "nvidia,dcp_current_limit_ma",
+	of_property_read_u32(np, "nvidia,dcp-current-limit-ma",
 				&pdata->u_data.dev.dcp_current_limit_ma);
-	of_property_read_u32(np, "nvidia,qc2_current_limit_ma",
+	of_property_read_u32(np, "nvidia,qc2-current-limit-ma",
 				&pdata->u_data.dev.qc2_current_limit_ma);
-	of_property_read_u32(np, "nvidia,qc2_input_voltage",
+	of_property_read_u32(np, "nvidia,qc2-input-voltage",
 				&pdata->qc2_voltage);
-	of_property_read_u32(np, "nvidia,id_det_type", &pdata->id_det_type);
-
-	status = of_property_read_string(np, "nvidia,vbus_extcon_dev_name",
-				&ext_name);
-	if (status < 0)
-		ext_name = NULL;
-	pdata->vbus_extcon_dev_name = ext_name;
+	of_property_read_u32(np, "nvidia,id-detection-type",
+				&pdata->id_det_type);
 
 	DBG("%s(%d) DT parsing done\n", __func__, __LINE__);
 	return pdata;
@@ -3073,12 +3066,14 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		udc->edev = NULL;
 	}
 
-	if (udc->support_pmu_vbus && pdata->vbus_extcon_dev_name) {
-		udc->vbus_extcon_dev = extcon_get_extcon_dev_by_cable(
+	if (udc->support_pmu_vbus) {
+		if (pdev->dev.of_node) {
+			udc->vbus_extcon_dev = extcon_get_extcon_dev_by_cable(
 					&pdev->dev, "vbus");
-		if (IS_ERR(udc->vbus_extcon_dev))
+		} else if (pdata->vbus_extcon_dev_name) {
 			udc->vbus_extcon_dev =
 				extcon_get_extcon_dev(pdata->vbus_extcon_dev_name);
+		}
 	}
 
 	/* Create work for controlling clocks to the phy if otg is disabled */
