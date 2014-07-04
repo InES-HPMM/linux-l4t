@@ -5,11 +5,13 @@
 #ifndef _DT_BINDINGS_MFD_MAX77620_H
 #define _DT_BINDINGS_MFD_MAX77620_H
 
+/* FPS enable -inputs */
 #define FPS_EN_SRC_EN0	0
 #define FPS_EN_SRC_EN1	1
 #define FPS_EN_SRC_SW	2
 #define FPS_EN_SRC_RSVD	3
 
+/* FPS time period */
 #define FPS_TIME_PERIOD_40US	0
 #define FPS_TIME_PERIOD_80US	1
 #define FPS_TIME_PERIOD_160US	2

@@ -1,0 +1,80 @@
+* MAX77620 Power management IC.
+
+Required properties:
+-------------------
+- compatible: Must be "maxim,max77620".
+- reg: I2C device address.
+- interrupt-controller: MAX77620 has internal interrupt controller which takes the
+  interrupt request from internal sub-blocks like RTC, regulators, GPIOs as well
+  as external input.
+- #interrupt-cells: Should be set to 2 for IRQ number and flags.
+  The first cell is the IRQ number. IRQ numbers for different interrupt source
+  of AS3722 are defined at dt-bindings/mfd/max77620.h
+  The second cell is the flags, encoded as the trigger masks from binding document
+	interrupts.txt, using dt-bindings/irq.
+
+Optional properties:
+-------------------
+
+Optional submodule and their properties:
+=======================================
+
+Flexible power sequence configuration
+====================================
+This sub-node configure the FPS of the device. Device has 3 FPS as FPS0, FPS1
+and FPS2. The FPS sub node name is "fps" and their child has register property
+to reprsent FPS number.
+The property for fps child nodes as:
+Required properties:
+	-reg: FPS number like 0, 1, 2 for FPS0, FPS1 and FPS2 respectively.
+Optinal properties:
+	-maxim,fps-time-period: U32 for the FPS time period.
+	-maxim,fps-enable-input: FPS enable source like EN0, EN1 or SW. The
+			macros are defined on dt-bindings/mfd/max77620.h for
+			different enable source.
+				FPS_EN_SRC_EN0 for EN0 enable source.
+				FPS_EN_SRC_EN1 for En1 enable source.
+				FPS_EN_SRC_SW for SW based control.
+	-maxim,fps-sw-enable: Boolean, applicable if enable input is SW.
+			If this property present then enable the FPS else
+			disable FPS.
+
+Example:
+--------
+#include <dt-bindings/mfd/max77620.h>
+...
+max77620@3c {
+	compatible = "maxim,max77620";
+	reg = <0x3c>;
+
+	interrupt-parent = <&intc>;
+	interrupts = <0 86 IRQ_TYPE_NONE>;
+
+	interrupt-controller;
+	#interrupt-cells = <2>;
+
+	gpio-controller;
+	#gpio-cells = <2>;
+
+	fps {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		fps@0 {
+			reg = <0>;
+			maxim,fps-time-period = <100>;
+			maxim,fps-enable-input = <FPS_EN_SRC_EN0>;
+		};
+
+		fps@1 {
+			reg = <1>;
+			maxim,fps-time-period = <100>;
+			maxim,fps-enable-input = <FPS_EN_SRC_EN1>;
+		};
+
+		fps@2 {
+			reg = <2>;
+			maxim,fps-time-period = <100>;
+			maxim,fps-enable-input = <FPS_EN_SRC_SW>;
+		};
+	};
+};
