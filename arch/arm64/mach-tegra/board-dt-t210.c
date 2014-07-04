@@ -66,7 +66,7 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 			"sdhci-tegra.3", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-udc", TEGRA_USB_BASE,
 			"tegra-udc.0", NULL),
-	OF_DEV_AUXDATA("nvidia,tegra210-otg", TEGRA_USB_BASE,
+	OF_DEV_AUXDATA("nvidia,tegra132-otg", TEGRA_USB_BASE,
 			"tegra-otg", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-host1x", TEGRA_HOST1X_BASE, "host1x",
 				NULL),

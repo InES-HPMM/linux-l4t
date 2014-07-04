@@ -146,8 +146,7 @@
 	};
 
 	otg@7d000000 {
-		nvidia,id_det_type = <1>;
-		nvidia,id_extcon_dev_name = "as3722-extcon";
+		nvidia,id-detection-type = <1>;
 		extcon-cables = <&as3722 0>;
 		extcon-cable-names = "id";
 		#extcon-cells = <1>;

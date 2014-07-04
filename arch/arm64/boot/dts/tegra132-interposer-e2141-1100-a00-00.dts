@@ -271,6 +271,7 @@ e 1.2V*/
 		nvidia,id_det_type = <2>;
 		extcon-cables = <&bq2419x_int 0>;
 		extcon-cable-names = "vbus";
+		#extcon-cells = <1>;
 		avdd_usb-supply = <&vdd_3v3>;
 		avdd_pll_utmip-supply = <&max77620_sd3>;
 		usb_bat_chg-supply = <&battery_charger_int>;
@@ -278,12 +279,12 @@ e 1.2V*/
 	};
 
 	otg@7d000000 {
-		nvidia,support_pmu_vbus;
-		nvidia,vbus_extcon_dev_name = "bq2419x-extcon";
-		nvidia,id_det_type = <2>;
-		nvidia,id_det_gpio = <&max77620 0 0>;
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <2>;
+		nvidia,id-detection-gpio = <&max77620 0 0>;
 		extcon-cables = <&bq2419x_int 0>;
 		extcon-cable-names = "vbus";
+		#extcon-cells = <1>;
 		usb_vbus-supply = <&usb0_vbus>;
 		status = "okay";
 	};
