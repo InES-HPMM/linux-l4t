@@ -14,18 +14,31 @@ Optional properties:
 - bus-width: Specify device bus width details
 - tap-delay: Specify number of cycles to delay for reading data from device
 - trim-delay: Specify number of cycles to delay for writing data to device
+- ddr-trim-delay: Specify number of cycles to delay for writing data to device when in DDR mode
 - max-clk-limit: Specify the maximum clock limit for the device
+- ddr-clk-limit: Specify the maximum clock frequency in kHz for device in DDR mode
 - mmc-ocr-mask: Specify OCR register masking details
-- uhs_mask: Specify modes that are masked for the device
+- uhs-mask: Specify modes that are masked for the device
 	Mask HS200 mode: 0x20
 	Mask HS400 mode: 0x40
 	Mask SDR104 mode: 0x10
 	Mask SDR50 mode: 0x4
 	Mask DDR50 mode: 0x8
-- calib_3v3_offsets and calib_1v8_offsets: Specify caliberation settings at 3.3V and at 1.8V
+- calib-3v3-offsets and calib-1v8-offsets: Specify caliberation settings at 3.3V and at 1.8V
 - pll_source: Specify list of clock parents
 - dqs-trim-delay: Specify number of cycles to delay for reading data from device when the device is enumerated in HS400, HS533 or HS667 modes and this value is applicable only for eMMC device.
 - compad-vref-3v3 and compad-vref-1v8: used to control Vref_sel input of calibration pad. Should be set based on pads used for controller before starting pad drive strength calibration.
+- cd-gpios: details of GPIO port used for SD card detect
+- wp-gpios: details of GPIO port used for SD card write protect mode
+- power-gpios: details of GPIO port used to power up SDIO card
+- default-drv-type: Drive strength to select for SDIO devices is encoded as 8-bit char as follows
+	Drive strength Type B: 0x0
+	Drive strength Type A: 0x1
+	Drive strength Type C: 0x2
+	Drive strength Type D: 0x3
+- disable-clock-gate: flag when set disables sdmmc clock gating
+- vddio_sdmmc-supply: regulator with this name
+- vddio_sd_slot-supply: regulator with this name
 
 Example:
 
@@ -37,14 +50,33 @@ Example:
 		trim-delay = <3>;
 		mmc-ocr-mask = <0>;
 		max-clk-limit = <200000000>;
-		uhs_mask = <0x20>; /* Mask HS200 */
+		uhs-mask = <0x20>; /* Mask HS200 */
 		bus-width = <8>;
 		id = <3>;
+		pll_source = "pll_m", "pll_p";
 		built-in;
-		calib_3v3_offsets = <0x0202>;
-		calib_1v8_offsets = <0x0202>;
 		compad-vref-3v3 = <0x7>;
 		compad-vref-1v8 = <0x7>;
+		disable-clock-gate;
+		calib-3v3-offsets = <0x0202>;
+		calib-1v8-offsets = <0x0202>;
+		vddio_sdmmc-supply = <&max77620_sd3>;
+		status = "okay";
+	};
+
+	sdhci@700b0000 {
+		tap-delay = <0>;
+		trim-delay = <2>;
+		mmc-ocr-mask = <3>;
+		max-clk-limit = <136000000>;
+		ddr-clk-limit = <41000000>;
+		uhs-mask = <0x8>;
+		bus-width = <4>;
+		id = <0>;
 		pll_source = "pll_m", "pll_p";
+		calib-3v3-offsets = <0x7676>;
+		calib-1v8-offsets = <0x7676>;
+		default-drive-type = <1>;
+		vddio_sd_slot-supply = <&vdd_1v8>;
 		status = "okay";
 	};
