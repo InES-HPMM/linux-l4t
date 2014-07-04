@@ -1182,7 +1182,8 @@ wl_cfgp2p_set_management_ie(struct bcm_cfg80211 *cfg, struct net_device *ndev, s
 			}
 		}
 
-		if (mgmt_ie_buf != NULL) {
+		if (mgmt_ie_buf != NULL && mgmt_ie_len != NULL &&
+			curr_ie_buf != NULL) {
 			if (parsed_ie_buf_len && (parsed_ie_buf_len == *mgmt_ie_len) &&
 			     (memcmp(mgmt_ie_buf, curr_ie_buf, parsed_ie_buf_len) == 0)) {
 				CFGP2P_INFO(("Previous mgmt IE is equals to current IE"));
