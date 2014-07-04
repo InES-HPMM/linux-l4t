@@ -178,13 +178,43 @@ static void max77620_regmap_config_unlock(void *lock)
 	mutex_unlock(&chip->mutex_config);
 }
 
+static const struct regmap_range max77620_readable_ranges[] = {
+	regmap_reg_range(MAX77620_REG_CNFGGLBL1, MAX77620_REG_DVSSD4),
+};
+
+static const struct regmap_access_table max77620_readable_table = {
+	.yes_ranges = max77620_readable_ranges,
+	.n_yes_ranges = ARRAY_SIZE(max77620_readable_ranges),
+};
+static const struct regmap_range max77620_writable_ranges[] = {
+	regmap_reg_range(MAX77620_REG_CNFGGLBL1, MAX77620_REG_DVSSD4),
+};
+
+static const struct regmap_access_table max77620_writable_table = {
+	.yes_ranges = max77620_writable_ranges,
+	.n_yes_ranges = ARRAY_SIZE(max77620_writable_ranges),
+};
+
+static const struct regmap_range max77620_cacheable_ranges[] = {
+	regmap_reg_range(MAX77620_REG_FPS_CFG0, MAX77620_REG_FPS_SD3),
+};
+
+static const struct regmap_access_table max77620_volatile_table = {
+	.no_ranges = max77620_cacheable_ranges,
+	.n_no_ranges = ARRAY_SIZE(max77620_cacheable_ranges),
+};
+
 static struct regmap_config max77620_regmap_config[] = {
 	[MAX77620_PWR_SLAVE] = {
 		.reg_bits = 8,
 		.val_bits = 8,
-		.max_register = 0x5d,
+		.max_register = MAX77620_REG_DVSSD4 + 1,
 		.lock = max77620_regmap_config_lock,
 		.unlock = max77620_regmap_config_unlock,
+		.cache_type = REGCACHE_RBTREE,
+		.rd_table = &max77620_readable_table,
+		.wr_table = &max77620_writable_table,
+		.volatile_table = &max77620_volatile_table,
 	},
 	[MAX77620_RTC_SLAVE] = {
 		.reg_bits = 8,
