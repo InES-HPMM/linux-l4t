@@ -200,6 +200,77 @@ static int max77620_slave_address[MAX77620_NUM_SLAVES] = {
 	MAX77620_RTC_I2C_ADDR,
 };
 
+static int max77620_initialise_fps(struct device *dev)
+{
+	struct device_node *node;
+	struct device_node *child;
+	u32 reg, pval;
+	int ret;
+	int time_period = 40;
+	int input_enable = 2;
+	bool enable_fps = false;
+	unsigned int mask;
+	unsigned int config;
+
+	node = of_get_child_by_name(dev->of_node, "fps");
+	if (!node)
+		return 0;
+
+	for_each_child_of_node(node, child) {
+		ret = of_property_read_u32(child, "reg", &reg);
+		if (ret) {
+			dev_err(dev, "node %s does not have reg property\n",
+					child->name);
+			continue;
+		}
+		if (reg > 2) {
+			dev_err(dev, "FPS%d is not supported\n", reg);
+			continue;
+		}
+
+		mask = 0;
+		ret = of_property_read_u32(child, "maxim,fps-time-period",
+						&pval);
+		if (!ret) {
+			time_period = min(pval, 5120U);
+			mask |= MAX77620_FPS_TIME_PERIOD_MASK;
+		}
+
+		ret = of_property_read_u32(child, "maxim,fps-enable-input",
+						&pval);
+		if (!ret) {
+			if (pval > 2) {
+				dev_err(dev,
+				    "FPS enable-input %u is not supported\n",
+					pval);
+			} else {
+				input_enable = pval;
+				mask |= MAX77620_FPS_EN_SRC_MASK;
+			}
+		}
+
+		if (input_enable == 2) {
+			enable_fps = of_property_read_bool(child,
+						"maxim,fps-sw-enable");
+			mask |= MAX77620_FPS_ENFPS_MASK;
+		}
+
+		config = (((time_period /40) - 1) & 0x7) <<
+				MAX77620_FPS_TIME_PERIOD_SHIFT;
+		config |= (input_enable & 0x3 ) << MAX77620_FPS_EN_SRC_SHIFT;
+		if (enable_fps)
+			config |= 1;
+		ret = max77620_reg_update(dev, MAX77620_PWR_SLAVE,
+				MAX77620_REG_FPS_CFG0 + reg, mask, config);
+		if (ret < 0) {
+			 dev_err(dev, "Reg 0x%02x write failed, %d\n",
+				MAX77620_REG_FPS_CFG0 + reg, ret);
+			return ret;
+		}
+	}
+	return 0;
+}
+
 static int max77620_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
@@ -258,6 +329,12 @@ static int max77620_probe(struct i2c_client *client,
 	if (ret < 0) {
 		dev_err(chip->dev, "Failed to add top irq_chip %d\n", ret);
 		goto fail_client_reg;
+	}
+
+	ret = max77620_initialise_fps(&client->dev);
+	if (ret < 0) {
+		dev_err(&client->dev, "FPS initialisation failed, %d\n", ret);
+		goto fail_free_irq;
 	}
 
 	ret =  mfd_add_devices(&client->dev, -1, max77620_children,
