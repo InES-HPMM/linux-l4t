@@ -31,6 +31,7 @@
 #include "dev.h"
 #include "os.h"
 #include "ape_actmon.h"
+#include "aram_manager.h"
 
 #ifdef CONFIG_PM_SLEEP
 static int nvadsp_suspend(struct device *dev)
@@ -151,12 +152,20 @@ static int nvadsp_probe(struct platform_device *pdev)
 		goto err;
 
 	ret = nvadsp_app_module_probe(pdev);
+	if (ret)
+		goto err;
+
+	ret = aram_init();
+	if (ret)
+		dev_err(dev, "Failed to init aram\n");
 err:
 	return ret;
 }
 
 static int nvadsp_remove(struct platform_device *pdev)
 {
+	aram_exit();
+
 	return 0;
 }
 
