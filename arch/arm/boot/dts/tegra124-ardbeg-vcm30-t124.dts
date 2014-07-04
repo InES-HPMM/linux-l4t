@@ -36,6 +36,17 @@
 		nvidia,tegra-hypervisor-mode;
 	};
 
+	gpio-keys {
+		compatible = "gpio-keys";
+		pwr_int_n {
+			label = "Power";
+			interrupts = <0 86 IRQ_TYPE_NONE>;
+			linux,code = <KEY_POWER>;
+			gpio-key,wakeup;
+			debounce-interval = <100>;
+		};
+	};
+
 	i2c@7000c400 {
 		nvidia,clock-always-on;
 	};
