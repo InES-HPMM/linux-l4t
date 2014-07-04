@@ -25,6 +25,9 @@ Optional properties:
 - qc2_current_limit_ma: Specify the QC2.0 charger current limit in milliamperes.
 - dcp_current_limit_ma: If needs to overried standard DCP charger current limit (1.5A), specify the value in milliamperes.
 - is_xhci: Specify whether this port is taken by XUSB.
+- extcon-cables: Specify the phandles and index of different extcon needed.
+- extcon-cable-names: Specify the cable names needed from extcon.
+
 
 Example:
 	udc@0x7d000000 {
