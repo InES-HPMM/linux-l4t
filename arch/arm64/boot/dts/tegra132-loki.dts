@@ -182,11 +182,10 @@
 	};
 
 	udc@7d000000 {
-		nvidia,port_otg;
-		nvidia,charging_supported;
-		nvidia,support_pmu_vbus;
-		nvidia,vbus_extcon_dev_name = "palmas-extcon";
-		nvidia,id_det_type = <1>;
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
 		#extcon-cells = <1>;
 		status = "okay";
 	};

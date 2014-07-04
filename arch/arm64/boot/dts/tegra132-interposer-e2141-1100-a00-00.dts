@@ -264,11 +264,10 @@ e 1.2V*/
 	};
 
 	udc@7d000000 {
-		nvidia,port_otg;
-		nvidia,charging_supported;
-		nvidia,support_pmu_vbus;
-		nvidia,vbus_extcon_dev_name = "bq2419x-extcon";
-		nvidia,id_det_type = <2>;
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <2>;
 		extcon-cables = <&bq2419x_int 0>;
 		extcon-cable-names = "vbus";
 		#extcon-cells = <1>;

@@ -139,9 +139,9 @@
 	};
 
 	udc@7d000000 {
-		nvidia,port_otg;
-		nvidia,charging_supported;
-		nvidia,id_det_type = <1>;
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		nvidia,id-detection-type = <1>;
 		#extcon-cells = <1>;
 		avdd_usb-supply = <&as3722_gpio2>;
 		avdd_pll_utmip-supply = <&as3722_sd5>;
