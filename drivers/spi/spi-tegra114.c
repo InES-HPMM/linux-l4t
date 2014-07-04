@@ -178,13 +178,12 @@
 #define SPI_FIFO_DEPTH				64
 #define SPI_FIFO_FLUSH_MAX_DELAY 		2000
 
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 #define SPI_SPEED_TAP_DELAY_MARGIN 35000000
 #define SPI_DEFAULT_RX_TAP_DELAY 10
-#endif
 
 struct tegra_spi_chip_data {
 	bool intr_mask_reg;
+	bool set_rx_tap_delay;
 };
 
 struct tegra_spi_data {
@@ -867,12 +866,12 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 			int rx_clk_tap_delay;
 
 			rx_clk_tap_delay = cdata->rx_clk_tap_delay;
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
-			if (rx_clk_tap_delay == 0)
-				if (speed > SPI_SPEED_TAP_DELAY_MARGIN)
-					rx_clk_tap_delay =
-						SPI_DEFAULT_RX_TAP_DELAY;
-#endif
+			if (tspi->chip_data->set_rx_tap_delay) {
+				if (rx_clk_tap_delay == 0)
+					if (speed > SPI_SPEED_TAP_DELAY_MARGIN)
+						rx_clk_tap_delay =
+							SPI_DEFAULT_RX_TAP_DELAY;
+			}
 			rx_tap_delay = min(rx_clk_tap_delay, 63);
 			tx_tap_delay = min(cdata->tx_clk_tap_delay, 63);
 			command2_reg = SPI_TX_TAP_DELAY(tx_tap_delay) |
@@ -881,15 +880,15 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 		} else {
 			u32 command2_reg;
 			command2_reg = tspi->def_command2_reg;
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
-			if (speed > SPI_SPEED_TAP_DELAY_MARGIN) {
-				command2_reg = command2_reg &
-					(~SPI_RX_TAP_DELAY(63));
-				command2_reg = command2_reg |
-					SPI_RX_TAP_DELAY(
-					SPI_DEFAULT_RX_TAP_DELAY);
+			if (tspi->chip_data->set_rx_tap_delay) {
+				if (speed > SPI_SPEED_TAP_DELAY_MARGIN) {
+					command2_reg = command2_reg &
+						(~SPI_RX_TAP_DELAY(63));
+					command2_reg = command2_reg |
+						SPI_RX_TAP_DELAY(
+								SPI_DEFAULT_RX_TAP_DELAY);
+				}
 			}
-#endif
 			tegra_spi_writel(tspi, command2_reg, SPI_COMMAND2);
 		}
 	} else {
@@ -1374,16 +1373,26 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 
 static struct tegra_spi_chip_data tegra114_spi_chip_data = {
 	.intr_mask_reg = false,
+	.set_rx_tap_delay = false,
+};
+
+static struct tegra_spi_chip_data tegra124_spi_chip_data = {
+	.intr_mask_reg = false,
+	.set_rx_tap_delay = true,
 };
 
 static struct tegra_spi_chip_data tegra210_spi_chip_data = {
 	.intr_mask_reg = true,
+	.set_rx_tap_delay = false,
 };
 
 static struct of_device_id tegra_spi_of_match[] = {
 	{
 		.compatible = "nvidia,tegra114-spi",
 		.data       = &tegra114_spi_chip_data,
+	}, {
+		.compatible = "nvidia,tegra124-spi",
+		.data       = &tegra124_spi_chip_data,
 	}, {
 		.compatible = "nvidia,tegra210-spi",
 		.data       = &tegra210_spi_chip_data,
