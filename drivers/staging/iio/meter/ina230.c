@@ -901,12 +901,18 @@ static int ina230_probe(struct i2c_client *client,
 		goto exit;
 	}
 
-	/* set ina230 to power down mode */
-	ret = i2c_smbus_write_word_data(client, INA230_CONFIG,
-			__constant_cpu_to_be16(INA230_POWER_DOWN));
-	if (ret < 0) {
-		dev_err(&client->dev, "INA power down failed: %d\n", ret);
-		goto exit;
+	/* Power it on once current_threshold defined, or power it down */
+	if (pdata->current_threshold) {
+		ina230_evaluate_state(chip);
+	} else {
+		/* set ina230 to power down mode */
+		ret = i2c_smbus_write_word_data(client, INA230_CONFIG,
+				__constant_cpu_to_be16(INA230_POWER_DOWN));
+		if (ret < 0) {
+			dev_err(&client->dev, "INA power down failed: %d\n",
+				ret);
+			goto exit;
+		}
 	}
 
 	return 0;
