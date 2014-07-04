@@ -541,23 +541,17 @@ static struct regulator *get_fixed_regulator(struct dvfs_rail *rail)
 	return reg;
 }
 
-static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
+static int connect_to_regulator(struct dvfs_rail *rail, bool fixed)
 {
 	struct regulator *reg;
 	int v;
 
 	if (!rail->reg) {
-		reg = regulator_get(NULL, rail->reg_id);
-		if (IS_ERR(reg)) {
-			reg = get_fixed_regulator(rail);
-			if (IS_ERR(reg)) {
-				pr_err("tegra_dvfs: failed to connect %s rail\n",
-				       rail->reg_id);
-				return PTR_ERR(reg);
-			}
-			pr_info("tegra_dvfs: %s rail is fixed in pll mode\n",
-			       rail->reg_id);
-		}
+		reg = fixed ? get_fixed_regulator(rail) :
+			regulator_get(NULL, rail->reg_id);
+
+		if (IS_ERR(reg))
+			return PTR_ERR(reg);
 		rail->reg = reg;
 	}
 
@@ -574,6 +568,29 @@ static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
 		       rail->reg_id);
 		return v;
 	}
+
+	return v;
+}
+
+static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
+{
+	int v;
+
+	/* 1st try to connect rail to variable regulator */
+	v = connect_to_regulator(rail, false);
+	if (v < 0) {
+		/* re-try connection, now - to fixed voltage regulator */
+		rail->reg = NULL;
+		v = connect_to_regulator(rail, true);
+		if (v < 0) {
+			pr_err("tegra_dvfs: failed to connect %s rail\n",
+			       rail->reg_id);
+			return v;
+		}
+		pr_info("tegra_dvfs: %s_fixed found for pll mode\n",
+		       rail->reg_id);
+	}
+
 	rail->millivolts = v / 1000;
 	rail->new_millivolts = rail->millivolts;
 	dvfs_rail_stats_init(rail, rail->millivolts);
@@ -585,7 +602,7 @@ static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
 		rail->boot_millivolts = rail->millivolts;
 	}
 
-	pr_info("tegra_dvfs: %s connected to regulator\n", rail->reg_id);
+	pr_info("tegra_dvfs: %s rail connected to regulator\n", rail->reg_id);
 	return 0;
 }
 
