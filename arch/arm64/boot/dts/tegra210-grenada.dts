@@ -23,6 +23,7 @@
 /memreserve/ 0x80000000 0x00020000;
 
 #include "tegra210.dtsi"
+#include "tegra210-platforms/tegra210-ers-e2174-dfll-pwm.dtsi"
 #include <dt-bindings/pinctrl/pinctrl-tegra.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/gpio/tegra-gpio.h>
