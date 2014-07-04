@@ -307,7 +307,7 @@
 	};
 
 	spi0: spi@7000d400 {
-		compatible = "nvidia,tegra114-spi";
+		compatible = "nvidia,tegra124-spi";
 		reg = <0x0 0x7000d400 0x0 0x200>;
 		interrupts = <0 59 0x04>;
 		nvidia,dma-request-selector = <&apbdma 15>;
@@ -323,7 +323,7 @@
 	};
 
 	spi1: spi@7000d600 {
-		compatible = "nvidia,tegra114-spi";
+		compatible = "nvidia,tegra124-spi";
 		reg = <0x0 0x7000d600 0x0 0x200>;
 		interrupts = <0 82 0x04>;
 		nvidia,dma-request-selector = <&apbdma 16>;
@@ -339,7 +339,7 @@
 	};
 
 	spi2: spi@7000d800 {
-		compatible = "nvidia,tegra114-spi";
+		compatible = "nvidia,tegra124-spi";
 		reg = <0x0 0x7000d800 0x0 0x200>;
 		interrupts = <0 83 0x04>;
 		nvidia,dma-request-selector = <&apbdma 17>;
@@ -355,7 +355,7 @@
 	};
 
 	spi3: spi@7000da00 {
-		compatible = "nvidia,tegra114-spi";
+		compatible = "nvidia,tegra124-spi";
 		reg = <0x0 0x7000da00 0x0 0x200>;
 		interrupts = <0 93 0x04>;
 		nvidia,dma-request-selector = <&apbdma 18>;
@@ -371,7 +371,7 @@
 	};
 
 	spi4: spi@7000dc00 {
-		compatible = "nvidia,tegra114-spi";
+		compatible = "nvidia,tegra124-spi";
 		reg = <0x0 0x7000dc00 0x0 0x200>;
 		interrupts = <0 94 0x04>;
 		nvidia,dma-request-selector = <&apbdma 27>;
@@ -387,7 +387,7 @@
 	};
 
 	spi5: spi@7000de00 {
-		compatible = "nvidia,tegra114-spi";
+		compatible = "nvidia,tegra124-spi";
 		reg = <0x0 0x7000de00 0x0 0x200>;
 		interrupts = <0 79 0x04>;
 		nvidia,dma-request-selector = <&apbdma 28>;
