@@ -713,8 +713,6 @@ static struct tegra_usb_otg_data *tegra_otg_dt_parse_pdata(
 {
 	struct tegra_usb_otg_data *pdata;
 	struct device_node *np = pdev->dev.of_node;
-	const char *ext_name = NULL;
-	int status;
 
 	if (!np)
 		return NULL;
@@ -726,32 +724,23 @@ static struct tegra_usb_otg_data *tegra_otg_dt_parse_pdata(
 		return ERR_PTR(-ENOMEM);
 	}
 
-	pdata->is_xhci = of_property_read_bool(np, "nvidia,is_xhci");
+	pdata->is_xhci = of_property_read_bool(np, "nvidia,enable-xhci-host");
 	pdata->ehci_device = soc_data->ehci_device;
 	pdata->ehci_pdata = soc_data->ehci_pdata;
 	pdata->ehci_pdata->u_data.host.support_y_cable =
-	       of_property_read_bool(np, "nvidia,support_y_cable");
+	       of_property_read_bool(np, "nvidia,enable-y-cable-detection");
 	pdata->ehci_pdata->support_pmu_vbus = of_property_read_bool(np,
-					"nvidia,support_pmu_vbus");
+					"nvidia,enable-pmu-vbus-detection");
 	pdata->ehci_pdata->u_data.host.turn_off_vbus_on_lp0 =
-		of_property_read_bool(np, "nvidia,turn_off_vbus_on_lp0");
-	pdata->id_det_gpio = of_get_named_gpio(np, "nvidia,id_det_gpio", 0);
+		of_property_read_bool(np, "nvidia,turn-off-vbus-in-lp0");
+	pdata->id_det_gpio = of_get_named_gpio(np,
+				"nvidia,id-detection-gpio", 0);
 	if (pdata->id_det_gpio < 0)
 		pdata->id_det_gpio = 0;
-
-	of_property_read_u32(np, "nvidia,id_det_type",
+	of_property_read_u32(np, "nvidia,id-detection-type",
 			&pdata->ehci_pdata->id_det_type);
-	status = of_property_read_string(np, "nvidia,vbus_extcon_dev_name",
-				&ext_name);
-	if (status < 0)
-		ext_name = NULL;
-	pdata->ehci_pdata->vbus_extcon_dev_name = ext_name;
-
-	status = of_property_read_string(np, "nvidia,id_extcon_dev_name",
-				&ext_name);
-	if (status < 0)
-		ext_name = NULL;
-	pdata->ehci_pdata->id_extcon_dev_name = ext_name;
+	pdata->ehci_pdata->vbus_extcon_dev_name = NULL;
+	pdata->ehci_pdata->id_extcon_dev_name = NULL;
 
 	return pdata;
 }
@@ -812,7 +801,6 @@ struct tegra_otg_soc_data tegra_soc_data = {
 };
 
 struct of_device_id tegra_otg_of_match[] = {
-	{.compatible = "nvidia,tegra210-otg", .data = &tegra_soc_data, },
 	{.compatible = "nvidia,tegra132-otg", .data = &tegra_soc_data, },
 };
 MODULE_DEVICE_TABLE(of, tegra_otg_of_match);
@@ -823,7 +811,7 @@ static int tegra_otg_conf(struct platform_device *pdev)
 	struct tegra_otg *tegra;
 	struct tegra_otg_soc_data *soc_data;
 	const struct of_device_id *match;
-	int err;
+	int err = 0;
 
 	if (pdev->dev.of_node) {
 		match = of_match_device(of_match_ptr(tegra_otg_of_match),
@@ -896,20 +884,26 @@ static int tegra_otg_conf(struct platform_device *pdev)
 	tegra->phy.otg->set_peripheral = tegra_otg_set_peripheral;
 
 	if (tegra->support_pmu_vbus) {
-		if (!pdata->ehci_pdata->vbus_extcon_dev_name) {
-			dev_err(&pdev->dev, "Missing vbus_extcon_dev_name!\n");
-			err = -EINVAL;
-			goto err_vbus_extcon;
-		}
-		tegra->vbus_extcon_dev = extcon_get_extcon_dev_by_cable(
-						&pdev->dev, "vbus");
-		if (IS_ERR(tegra->vbus_extcon_dev))
+		if (pdev->dev.of_node) {
+			tegra->vbus_extcon_dev =
+				extcon_get_extcon_dev_by_cable(&pdev->dev,
+						"vbus");
+			if (IS_ERR(tegra->vbus_extcon_dev))
+				err = -ENODEV;
+		} else {
+			if (!pdata->ehci_pdata->vbus_extcon_dev_name) {
+				dev_err(&pdev->dev,
+					"Missing vbus extcon dev name\n");
+				err = -EINVAL;
+				goto err_vbus_extcon;
+			}
 			tegra->vbus_extcon_dev = extcon_get_extcon_dev(pdata->
 					ehci_pdata->vbus_extcon_dev_name);
-		if (!tegra->vbus_extcon_dev) {
-			dev_err(&pdev->dev, "Cannot get the %s extcon dev\n",
-				pdata->ehci_pdata->vbus_extcon_dev_name);
-			err = -ENODEV;
+			if (!tegra->vbus_extcon_dev)
+				err = -ENODEV;
+		}
+		if (err) {
+			dev_err(&pdev->dev, "Cannot get vbus extcon dev\n");
 			goto err_vbus_extcon;
 		}
 		otg_vbus_nb.notifier_call = otg_notifications;
@@ -917,20 +911,25 @@ static int tegra_otg_conf(struct platform_device *pdev)
 	}
 
 	if (tegra->support_pmu_id) {
-		if (!pdata->ehci_pdata->id_extcon_dev_name) {
-			dev_err(&pdev->dev, "Missing id_extcon_dev_name!\n");
-			err = -EINVAL;
-			goto err_id_extcon;
-		}
-		tegra->id_extcon_dev = extcon_get_extcon_dev_by_cable(
+		if (pdev->dev.of_node) {
+			tegra->id_extcon_dev = extcon_get_extcon_dev_by_cable(
 						&pdev->dev, "id");
-		if (IS_ERR(tegra->id_extcon_dev))
+			if (IS_ERR(tegra->id_extcon_dev))
+				err = -ENODEV;
+		} else {
+			if (!pdata->ehci_pdata->id_extcon_dev_name) {
+				dev_err(&pdev->dev,
+					"Missing id extcon dev name\n");
+				err = -EINVAL;
+				goto err_id_extcon;
+			}
 			tegra->id_extcon_dev = extcon_get_extcon_dev(pdata->
 					ehci_pdata->id_extcon_dev_name);
-		if (!tegra->id_extcon_dev) {
-			dev_err(&pdev->dev, "Cannot get the %s extcon dev\n",
-					pdata->ehci_pdata->id_extcon_dev_name);
-			err = -ENODEV;
+			if (!tegra->id_extcon_dev)
+				err = -ENODEV;
+		}
+		if (err) {
+			dev_err(&pdev->dev, "Cannot get id extcon dev\n");
 			goto err_id_extcon;
 		}
 		otg_id_nb.notifier_call = otg_notifications;
