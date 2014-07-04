@@ -914,13 +914,20 @@ static int usbhid_get_raw_report(struct hid_device *hid,
 	int skipped_report_id = 0;
 	int ret;
 
-	if (test_bit(HID_DISCONNECTED, &usbhid->iofl)) {
-		pr_err("hid device disconnected\n");
+	intf = usbhid->intf;
+	if (intf == NULL) {
+		pr_err("%s: no USB intf\n", __func__);
 		return -ESHUTDOWN;
 	}
+	spin_lock_irq(&usbhid->lock);
+	if (test_bit(HID_DISCONNECTED, &usbhid->iofl)) {
+		pr_err("hid device disconnected\n");
+		spin_unlock_irq(&usbhid->lock);
+		return -ESHUTDOWN;
+	}
+	spin_unlock_irq(&usbhid->lock);
 
 	dev = hid_to_usb_dev(hid);
-	intf = usbhid->intf;
 	interface = intf->cur_altsetting;
 
 	/* Byte 0 is the report number. Report data starts at byte 1.*/
@@ -1409,6 +1416,10 @@ static void usbhid_disconnect(struct usb_interface *intf)
 		return;
 
 	usbhid = hid->driver_data;
+	spin_lock_irq(&usbhid->lock);
+	set_bit(HID_DISCONNECTED, &usbhid->iofl);
+	spin_unlock_irq(&usbhid->lock);
+
 	hid_destroy_device(hid);
 	kfree(usbhid);
 }
