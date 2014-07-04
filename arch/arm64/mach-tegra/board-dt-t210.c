@@ -152,6 +152,8 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("linux,spdif-dit", 1, "spdif-dit.1", NULL),
 	OF_DEV_AUXDATA("linux,spdif-dit", 2, "spdif-dit.2", NULL),
 	OF_DEV_AUXDATA("linux,spdif-dit", 3, "spdif-dit.3", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-dfll", 0x70110000, "tegra_cl_dvfs",
+		NULL),
 	{}
 };
 
