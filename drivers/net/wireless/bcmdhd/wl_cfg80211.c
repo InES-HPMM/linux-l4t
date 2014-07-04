@@ -6437,9 +6437,15 @@ wl_cfg80211_change_beacon(
 	if (!check_dev_role_integrity(cfg, dev_role))
 		goto fail;
 
+	if ((dev_role == NL80211_IFTYPE_P2P_GO) && (cfg->p2p_wdev == NULL)) {
+		WL_ERR(("P2P already down status!\n"));
+		err = BCME_ERROR;
+		goto fail;
+	}
+
 	/* Parse IEs */
 	if ((err = wl_cfg80211_parse_ap_ies(dev, info, &ies)) < 0) {
-		WL_ERR(("Parse IEs failed \n"));
+		WL_ERR(("Parse IEs failed\n"));
 		goto fail;
 	}
 
@@ -6501,6 +6507,12 @@ wl_cfg80211_add_set_beacon(struct wiphy *wiphy, struct net_device *dev,
 
 	if (!check_dev_role_integrity(cfg, dev_role))
 		goto fail;
+
+	if ((dev_role == NL80211_IFTYPE_P2P_GO) && (cfg->p2p_wdev == NULL)) {
+		WL_ERR(("P2P already down status!\n"));
+		err = BCME_ERROR;
+		goto fail;
+	}
 
 	ie_offset = DOT11_MGMT_HDR_LEN + DOT11_BCN_PRB_FIXED_LEN;
 	/* find the SSID */
