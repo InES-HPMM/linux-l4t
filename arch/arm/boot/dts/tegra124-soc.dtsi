@@ -161,7 +161,7 @@
 		interrupts = <0 36 0x04>;
 		nvidia,dma-request-selector = <&apbdma 8>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		status = "disabled";
 		dmas = <&apbdma 8>, <&apbdma 8>;
@@ -175,7 +175,7 @@
 		interrupts = <0 37 0x04>;
 		nvidia,dma-request-selector = <&apbdma 9>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		status = "disabled";
 		dmas = <&apbdma 9>, <&apbdma 9>;
@@ -189,7 +189,7 @@
 		interrupts = <0 46 0x04>;
 		nvidia,dma-request-selector = <&apbdma 10>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		status = "disabled";
 		dmas = <&apbdma 10>, <&apbdma 10>;
@@ -203,7 +203,7 @@
 		interrupts = <0 90 0x04>;
 		nvidia,dma-request-selector = <&apbdma 19>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		status = "disabled";
 		dmas = <&apbdma 19>, <&apbdma 19>;
@@ -226,7 +226,7 @@
 		scl-gpio = <&gpio 20 0>; /* gpio PC4 */
 		sda-gpio = <&gpio 21 0>; /* gpio PC5 */
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		status = "okay";
 		clock-frequency = <400000>;
@@ -241,7 +241,7 @@
 		scl-gpio = <&gpio 157 0>; /* gpio PT5 */
 		sda-gpio = <&gpio 158 0>; /* gpio PT6 */
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		status = "okay";
 		clock-frequency = <100000>;
@@ -256,7 +256,7 @@
 		scl-gpio = <&gpio 217 0>; /* gpio PBB1 */
 		sda-gpio = <&gpio 218 0>; /* gpio PBB2 */
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		status = "okay";
 		clock-frequency = <400000>;
@@ -271,7 +271,7 @@
 		scl-gpio = <&gpio 172 0>; /* gpio PV4 */
 		sda-gpio = <&gpio 173 0>; /* gpio PV5 */
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		status = "okay";
 		clock-frequency = <100000>;
@@ -287,7 +287,7 @@
 		scl-gpio = <&gpio 206 0>; /* gpio PZ6 */
 		sda-gpio = <&gpio 207 0>; /* gpio PZ7 */
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		status = "okay";
 		clock-frequency = <400000>;
@@ -300,7 +300,7 @@
 		reg = <0x0 0x7000d100 0x0 0x100>;
 		interrupts = <0 63 0x04>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		status = "okay";
 		clock-frequency = <400000>;
@@ -312,7 +312,7 @@
 		interrupts = <0 59 0x04>;
 		nvidia,dma-request-selector = <&apbdma 15>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -328,7 +328,7 @@
 		interrupts = <0 82 0x04>;
 		nvidia,dma-request-selector = <&apbdma 16>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -344,7 +344,7 @@
 		interrupts = <0 83 0x04>;
 		nvidia,dma-request-selector = <&apbdma 17>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -360,7 +360,7 @@
 		interrupts = <0 93 0x04>;
 		nvidia,dma-request-selector = <&apbdma 18>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -376,7 +376,7 @@
 		interrupts = <0 94 0x04>;
 		nvidia,dma-request-selector = <&apbdma 27>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -392,7 +392,7 @@
 		interrupts = <0 79 0x04>;
 		nvidia,dma-request-selector = <&apbdma 28>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -613,7 +613,7 @@
 		interrupts = <0 65 0x04   /* mpcore syncpt */
 			      0 67 0x04>; /* mpcore general */
 		iommus = <&smmu TEGRA_SWGROUP_CELLS4(EPP, HC, HDA, VDE)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 
 		#address-cells = <1>;
@@ -627,7 +627,7 @@
 			reg = <0x54080000 0x00040000>;
 			interrupts = <0 69 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(VI)
-				  0x0 0x80000000 0x0 0x7FF0000
+				  0x0 0x80000000 0x0 0x7FF00000
 				  0xFFFFF 1 1>;
 		};
 
@@ -636,7 +636,7 @@
 			reg = <0x54600000 0x00040000>;
 			interrupts = <0 71 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS2(ISP, ISP2B)
-				  0x0 0x80000000 0x0 0x7FF0000
+				  0x0 0x80000000 0x0 0x7FF00000
 				  0xFFFFF 1 1>;
 		};
 
@@ -645,7 +645,7 @@
 			reg = <0x54680000 0x00040000>;
 			interrupts = <0 72 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS2(ISP, ISP2B)
-				  0x0 0x80000000 0x0 0x7FF0000
+				  0x0 0x80000000 0x0 0x7FF00000
 				  0xFFFFF 1 1>;
 		};
 
@@ -695,7 +695,7 @@
 			compatible = "nvidia,tegra124-vic";
 			reg = <0x54340000 0x00040000>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(VIC)
-				  0x0 0x80000000 0x0 0x7FF0000
+				  0x0 0x80000000 0x0 0x7FF00000
 				  0xFFFFF 1 1>;
 		};
 
@@ -703,7 +703,7 @@
 			compatible = "nvidia,tegra124-msenc";
 			reg = <0x544c0000 0x00040000>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(MSENC)
-				  0x0 0x80000000 0x0 0x7FF0000
+				  0x0 0x80000000 0x0 0x7FF00000
 				  0xFFFFF 1 1>;
 		};
 
@@ -711,7 +711,7 @@
 			compatible = "nvidia,tegra124-tsec";
 			reg = <0x54500000 0x00040000>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(TSEC)
-				  0x0 0x80000000 0x0 0x7FF0000
+				  0x0 0x80000000 0x0 0x7FF00000
 				  0xFFFFF 1 1>;
 		};
 
@@ -744,7 +744,7 @@
 		interrupts = <0 157 0x04
 			      0 158 0x04>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS2(GPU, GPUB)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 	};
 
@@ -792,7 +792,7 @@
 		reg = <0x0 0x700b0600 0x0 0x200>;
 		interrupts = < 0 31 0x04 >;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(SDMMC4A)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		status = "disabled";
 		id = <3>;
@@ -802,7 +802,7 @@
 		reg = <0x0 0x700b0400 0x0 0x200>;
 		interrupts = < 0 19 0x04 >;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(SDMMC3A)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		status = "disabled";
 		id = <2>;
@@ -812,7 +812,7 @@
 		reg = <0x0 0x700b0200 0x0 0x200>;
 		interrupts = < 0 15 0x04 >;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(SDMMC2A)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		status = "disabled";
 		id = <1>;
@@ -822,7 +822,7 @@
 		reg = <0x0 0x700b0000 0x0 0x200>;
 		interrupts = < 0 14 0x04 >;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(SDMMC1A)
-			  0x0 0x80000000 0x0 0x7FF0000
+			  0x0 0x80000000 0x0 0x7FF00000
 			  0xFFFFF 1 1>;
 		status = "disabled";
 		id = <0>;
