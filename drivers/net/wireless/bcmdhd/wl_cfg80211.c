@@ -6434,6 +6434,12 @@ wl_cfg80211_change_beacon(
 		dev_role = NL80211_IFTYPE_P2P_GO;
 	}
 
+	if (dev_role == 0) {
+		WL_ERR(("Unknown device role!\n"));
+		err = BCME_ERROR;
+		goto fail;
+	}
+
 	if (!check_dev_role_integrity(cfg, dev_role))
 		goto fail;
 
@@ -6503,6 +6509,12 @@ wl_cfg80211_add_set_beacon(struct wiphy *wiphy, struct net_device *dev,
 		(bssidx == wl_to_p2p_bss_bssidx(cfg,
 		P2PAPI_BSSCFG_CONNECTION))) {
 		dev_role = NL80211_IFTYPE_P2P_GO;
+	}
+
+	if (dev_role == 0) {
+		WL_ERR(("Unknown device role!\n"));
+		err = BCME_ERROR;
+		goto fail;
 	}
 
 	if (!check_dev_role_integrity(cfg, dev_role))
