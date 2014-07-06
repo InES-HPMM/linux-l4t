@@ -72,12 +72,12 @@ enum max77620_slew_rate {
 	MAX77620_SD_SLEW_RATE_FASTEST,
 };
 
-struct max77620_regulator_init_data {
+struct max77620_regulator_pdata {
 	bool glpm_enable;
 	bool en2_ctrl_sd0;
 	bool sd_forced_pwm_mode;
 	bool sd_fsrade_disable;
-	struct regulator_init_data *reg_init;
+	struct regulator_init_data *reg_idata;
 	enum max77620_slew_rate slew_rate;
 	enum max77620_regulator_fps_src fps_src;
 	enum max77620_regulator_fps_power_period fps_pd_period;
@@ -85,11 +85,11 @@ struct max77620_regulator_init_data {
 };
 
 struct max77620_regulator {
+	struct device *dev;
 	struct max77620_chip *max77620_chip;
 	struct max77620_regulator_info *rinfo[MAX77620_NUM_REGS];
-	struct max77620_regulator_init_data reg_init_data[MAX77620_NUM_REGS];
+	struct max77620_regulator_pdata reg_pdata[MAX77620_NUM_REGS];
 	struct regulator_dev *rdev[MAX77620_NUM_REGS];
-	struct device *dev;
 	unsigned int regulator_mode[MAX77620_NUM_REGS];
 	u8 power_mode[MAX77620_NUM_REGS];
 	enum max77620_regulator_fps_src fps_src;
@@ -156,8 +156,7 @@ max77620_regulator_set_fps_src(struct max77620_regulator *reg,
 
 static int max77620_regulator_set_fps(struct max77620_regulator *reg, int id)
 {
-	struct max77620_regulator_init_data *rinit_data =
-							&reg->reg_init_data[id];
+	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
 	struct max77620_regulator_info *rinfo = reg->rinfo[id];
 	struct device *dev = reg->max77620_chip->dev;
 	u8 fps_val = 0, fps_mask = 0;
@@ -170,16 +169,16 @@ static int max77620_regulator_set_fps(struct max77620_regulator *reg, int id)
 		return 0;
 
 	/* FPS power up period setting */
-	if (rinit_data->fps_pu_period != FPS_POWER_PERIOD_DEF) {
+	if (rpdata->fps_pu_period != FPS_POWER_PERIOD_DEF) {
 		fps_val |=
-		(rinit_data->fps_pu_period << MAX77620_FPS_PU_PERIOD_SHIFT);
+		(rpdata->fps_pu_period << MAX77620_FPS_PU_PERIOD_SHIFT);
 		fps_mask |= MAX77620_FPS_PU_PERIOD_MASK;
 	}
 
 	/* FPS power down period setting */
-	if (rinit_data->fps_pd_period != FPS_POWER_PERIOD_DEF) {
+	if (rpdata->fps_pd_period != FPS_POWER_PERIOD_DEF) {
 		fps_val |=
-		(rinit_data->fps_pd_period << MAX77620_FPS_PD_PERIOD_SHIFT);
+		(rpdata->fps_pd_period << MAX77620_FPS_PD_PERIOD_SHIFT);
 		fps_mask |=
 			MAX77620_FPS_PD_PERIOD_MASK;
 	}
@@ -245,8 +244,8 @@ static int max77620_regulator_enable(struct regulator_dev *rdev)
 	struct max77620_regulator *reg = rdev_get_drvdata(rdev);
 	int id = rdev_get_id(rdev);
 	struct max77620_regulator_info *rinfo = reg->rinfo[id];
-	struct max77620_regulator_init_data *rdata = &reg->reg_init_data[id];
-	int power_mode = (rdata->glpm_enable) ?
+	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
+	int power_mode = (rpdata->glpm_enable) ?
 			 MAX77620_POWER_MODE_GLPM : MAX77620_POWER_MODE_NORMAL;
 
 	if (reg->fps_src != FPS_SRC_NONE) {
@@ -256,7 +255,7 @@ static int max77620_regulator_enable(struct regulator_dev *rdev)
 	}
 
 	if ((rinfo->id == MAX77620_REGULATOR_ID_SD0)
-			&& rdata->en2_ctrl_sd0) {
+			&& rpdata->en2_ctrl_sd0) {
 		dev_dbg(&rdev->dev,
 			"enable: Regulator %s is controlled by EN2\n",
 			rdev->desc->name);
@@ -276,7 +275,7 @@ static int max77620_regulator_disable(struct regulator_dev *rdev)
 	struct max77620_regulator *reg = rdev_get_drvdata(rdev);
 	int id = rdev_get_id(rdev);
 	struct max77620_regulator_info *rinfo = reg->rinfo[id];
-	struct max77620_regulator_init_data *rdata = &reg->reg_init_data[id];
+	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
 	int power_mode = MAX77620_POWER_MODE_DISABLE;
 
 	if (reg->fps_src != FPS_SRC_NONE) {
@@ -286,7 +285,7 @@ static int max77620_regulator_disable(struct regulator_dev *rdev)
 	}
 
 	if ((rinfo->id == MAX77620_REGULATOR_ID_SD0)
-			&& rdata->en2_ctrl_sd0) {
+			&& rpdata->en2_ctrl_sd0) {
 		dev_dbg(&rdev->dev,
 			"disable: Regulator %s is controlled by EN2\n",
 			rdev->desc->name);
@@ -301,7 +300,7 @@ static int max77620_regulator_is_enabled(struct regulator_dev *rdev)
 	struct max77620_regulator *reg = rdev_get_drvdata(rdev);
 	int id = rdev_get_id(rdev);
 	struct max77620_regulator_info *rinfo = reg->rinfo[id];
-	struct max77620_regulator_init_data *rdata = &reg->reg_init_data[id];
+	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
 	int ret = 1;
 
 	if (reg->fps_src != FPS_SRC_NONE) {
@@ -311,7 +310,7 @@ static int max77620_regulator_is_enabled(struct regulator_dev *rdev)
 	}
 
 	if ((rinfo->id == MAX77620_REGULATOR_ID_SD0)
-			&& rdata->en2_ctrl_sd0) {
+			&& rpdata->en2_ctrl_sd0) {
 		dev_dbg(&rdev->dev,
 			"is_enable: Regulator %s is controlled by EN2\n",
 			rdev->desc->name);
@@ -331,12 +330,12 @@ static int max77620_regulator_set_mode(struct regulator_dev *rdev,
 	struct max77620_regulator *reg = rdev_get_drvdata(rdev);
 	int id = rdev_get_id(rdev);
 	struct max77620_regulator_info *rinfo = reg->rinfo[id];
-	struct max77620_regulator_init_data *rdata = &reg->reg_init_data[id];
+	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
 	u8 power_mode;
 	int ret;
 
 	if (mode == REGULATOR_MODE_NORMAL)
-		power_mode = (rdata->glpm_enable) ?
+		power_mode = (rpdata->glpm_enable) ?
 			MAX77620_POWER_MODE_GLPM :
 			MAX77620_POWER_MODE_NORMAL;
 	else if (mode == REGULATOR_MODE_STANDBY) {
@@ -373,8 +372,7 @@ static struct regulator_ops max77620_regulator_ops = {
 
 static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 {
-	struct max77620_regulator_init_data *rinit_data =
-							&reg->reg_init_data[id];
+	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
 	struct max77620_regulator_info *rinfo = reg->rinfo[id];
 	struct device *dev = reg->max77620_chip->dev;
 	int i;
@@ -410,26 +408,26 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 
 	/* N-Channel LDOs don't support Low-Power mode. */
 	if ((rinfo->type == MAX77620_REGULATOR_TYPE_LDO_N) &&
-			(rinit_data->glpm_enable))
-		rinit_data->glpm_enable = false;
+			(rpdata->glpm_enable))
+		rpdata->glpm_enable = false;
 
 	/* To prevent power rail turn-off when change FPS source,
 	 * it must set power mode to NORMAL before change FPS source to NONE
 	 * from SRC_0, SRC_1 and SRC_2. */
-	if ((rinit_data->fps_src != FPS_SRC_NONE)
-		&& (rinit_data->fps_src == FPS_SRC_NONE)
+	if ((rpdata->fps_src != FPS_SRC_NONE)
+		&& (rpdata->fps_src == FPS_SRC_NONE)
 		&& (reg->power_mode[id] != MAX77620_POWER_MODE_NORMAL)) {
-		val = (rinit_data->glpm_enable) ?
+		val = (rpdata->glpm_enable) ?
 		      MAX77620_POWER_MODE_GLPM : MAX77620_POWER_MODE_NORMAL;
 		ret = max77620_regulator_set_power_mode(reg, val, id);
 		if (ret < 0)
 			return ret;
 	}
 
-	ret = max77620_regulator_set_fps_src(reg, rinit_data->fps_src, id);
+	ret = max77620_regulator_set_fps_src(reg, rpdata->fps_src, id);
 	if (ret < 0) {
 		dev_err(reg->dev, "preinit: Failed to set FPSSRC to %d\n",
-			rinit_data->fps_src);
+			rpdata->fps_src);
 		return ret;
 	}
 
@@ -445,21 +443,21 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 		sr_shift_val =  MAX77620_SD_SR_SHIFT;
 
 		mask |= MAX77620_SD_SR_MASK;
-		if (rinit_data->slew_rate == MAX77620_SD_SLEW_RATE_SLOWEST)
+		if (rpdata->slew_rate == MAX77620_SD_SLEW_RATE_SLOWEST)
 			val |= (MAX77620_SD_SR_13_75 << sr_shift_val);
-		else if (rinit_data->slew_rate == MAX77620_SD_SLEW_RATE_SLOW)
+		else if (rpdata->slew_rate == MAX77620_SD_SLEW_RATE_SLOW)
 			val |= (MAX77620_SD_SR_27_5 << sr_shift_val);
-		else if (rinit_data->slew_rate == MAX77620_SD_SLEW_RATE_FAST)
+		else if (rpdata->slew_rate == MAX77620_SD_SLEW_RATE_FAST)
 			val |= (MAX77620_SD_SR_55 << sr_shift_val);
 		else
 			val |= (MAX77620_SD_SR_100 << sr_shift_val);
 
 		mask |= MAX77620_SD_FPWM_MASK;
-		if (rinit_data->sd_forced_pwm_mode)
+		if (rpdata->sd_forced_pwm_mode)
 			val |= MAX77620_SD_FPWM_MASK;
 
 		mask |= MAX77620_SD_FSRADE_MASK;
-		if (rinit_data->sd_fsrade_disable)
+		if (rpdata->sd_fsrade_disable)
 			val |= MAX77620_SD_FSRADE_MASK;
 
 		ret = max77620_reg_cached_update(dev, MAX77620_PWR_SLAVE,
@@ -472,7 +470,7 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 		}
 
 		if ((rinfo->id == MAX77620_REGULATOR_ID_SD0)
-				&& rinit_data->en2_ctrl_sd0) {
+				&& rpdata->en2_ctrl_sd0) {
 			val = MAX77620_POWER_MODE_DISABLE;
 			ret = max77620_regulator_set_power_mode(reg, val, id);
 			if (ret < 0)
@@ -625,42 +623,42 @@ static int max77620_get_regulator_dt_data(struct platform_device *pdev,
 
 	for (id = 0; id < ARRAY_SIZE(max77620_regulator_matches); ++id) {
 		struct device_node *reg_node;
-		struct max77620_regulator_init_data *reg_init_data =
-					&max77620_regs->reg_init_data[id];
+		struct max77620_regulator_pdata *reg_pdata =
+					&max77620_regs->reg_pdata[id];
 
 		reg_node = max77620_regulator_matches[id].of_node;
-		reg_init_data->reg_init =
+		reg_pdata->reg_idata =
 				max77620_regulator_matches[id].init_data;
-		reg_init_data->glpm_enable =
+		reg_pdata->glpm_enable =
 			of_property_read_bool(reg_node, "maxim,glpm-enable");
-		reg_init_data->en2_ctrl_sd0 =
+		reg_pdata->en2_ctrl_sd0 =
 			of_property_read_bool(reg_node, "maxim,en2_ctrl_sd0");
 
-		reg_init_data->sd_fsrade_disable =
+		reg_pdata->sd_fsrade_disable =
 			of_property_read_bool(reg_node,
 						"maxim,sd-fsrade-disable");
 
-		reg_init_data->sd_forced_pwm_mode =
+		reg_pdata->sd_forced_pwm_mode =
 			of_property_read_bool(reg_node,
 						"maxim,sd-forced-pwm-mode");
 
 		ret = of_property_read_u32(reg_node, "maxim,fps-source", &prop);
 		if (!ret)
-			reg_init_data->fps_src = prop;
+			reg_pdata->fps_src = prop;
 
 		ret = of_property_read_u32(reg_node,
 					"maxim,fps-power-up-period", &prop);
 		if (!ret)
-			reg_init_data->fps_pu_period = prop;
+			reg_pdata->fps_pu_period = prop;
 
 		ret = of_property_read_u32(reg_node,
 					"maxim,fps-power-down-period", &prop);
 		if (!ret)
-			reg_init_data->fps_pd_period = prop;
+			reg_pdata->fps_pd_period = prop;
 
 		ret = of_property_read_u32(reg_node, "maxim,slew-rate", &prop);
 		if (!ret)
-			reg_init_data->slew_rate = prop;
+			reg_pdata->slew_rate = prop;
 	}
 	return 0;
 }
@@ -694,7 +692,7 @@ static int max77620_regulator_probe(struct platform_device *pdev)
 
 		config.regmap = max77620_chip->rmap[MAX77620_PWR_SLAVE];
 		config.dev = &pdev->dev;
-		config.init_data = pmic->reg_init_data[id].reg_init;
+		config.init_data = pmic->reg_pdata[id].reg_idata;
 		config.driver_data = pmic;
 		config.of_node = max77620_regulator_matches[id].of_node;
 
