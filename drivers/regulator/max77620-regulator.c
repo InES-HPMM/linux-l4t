@@ -43,7 +43,6 @@
 enum {
 	VOLT_REG = 0,
 	CFG_REG,
-	FPS_REG,
 };
 
 struct max77620_register {
@@ -59,6 +58,7 @@ struct max77620_regulator_info {
 	u32 step_uV;
 	struct max77620_register regs[3]; /* volt, cfg, fps */
 	struct regulator_desc desc;
+	u8 fps_addr;
 	u8 volt_mask;
 	u8 power_mode_mask;
 	u8 power_mode_shift;
@@ -80,8 +80,8 @@ struct max77620_regulator_pdata {
 	struct regulator_init_data *reg_idata;
 	enum max77620_slew_rate slew_rate;
 	enum max77620_regulator_fps_src fps_src;
-	enum max77620_regulator_fps_power_period fps_pd_period;
-	enum max77620_regulator_fps_power_period fps_pu_period;
+	int fps_pd_period;
+	int fps_pu_period;
 };
 
 struct max77620_regulator {
@@ -92,7 +92,7 @@ struct max77620_regulator {
 	struct regulator_dev *rdev[MAX77620_NUM_REGS];
 	unsigned int regulator_mode[MAX77620_NUM_REGS];
 	u8 power_mode[MAX77620_NUM_REGS];
-	enum max77620_regulator_fps_src fps_src;
+	int fps_src[MAX77620_NUM_REGS];
 };
 
 
@@ -118,78 +118,81 @@ static inline int max77620_reg_cached_update(struct device *dev, int sid,
 	return 0;
 }
 
-static int
-max77620_regulator_set_fps_src(struct max77620_regulator *reg,
-			       enum max77620_regulator_fps_src fps_src, int id)
+static int max77620_regulator_set_fps_src(struct max77620_regulator *reg,
+		       int fps_src, int id)
 {
 	struct max77620_regulator_info *rinfo = reg->rinfo[id];
-	struct device *dev = reg->max77620_chip->dev;
+	struct device *parent = reg->max77620_chip->dev;
+	u8 val;
 	int ret;
-
-	if ((rinfo->regs[FPS_REG].addr == MAX77620_REG_FPS_NONE) ||
-			(reg->fps_src == fps_src))
-		return 0;
 
 	switch (fps_src) {
 	case FPS_SRC_0:
 	case FPS_SRC_1:
 	case FPS_SRC_2:
-		break;
 	case FPS_SRC_NONE:
+		break;
+
 	case FPS_SRC_DEF:
+		ret = max77620_reg_read(parent, MAX77620_PWR_SLAVE,
+			rinfo->fps_addr, &val);
+		if (ret < 0) {
+			dev_err(reg->dev, "Reg 0x%02x read failed %d\n",
+				rinfo->fps_addr, ret);
+			return ret;
+		}
+		ret = (val & MAX77620_FPS_SRC_MASK) >> MAX77620_FPS_SRC_SHIFT;
+		reg->fps_src[id] = ret;
 		return 0;
+
 	default:
+		dev_err(reg->dev, "Invalid FPS %d for regulator %d\n",
+			fps_src, id);
 		return -EINVAL;
 	}
-	ret = max77620_reg_cached_update(dev,
-			MAX77620_PWR_SLAVE,
-			rinfo->regs[FPS_REG].addr,
-			MAX77620_FPS_SRC_MASK,
-			fps_src << MAX77620_FPS_SRC_SHIFT,
-			&rinfo->val[FPS_REG]);
-	if (ret < 0)
+	ret = max77620_reg_update(parent, MAX77620_PWR_SLAVE,
+			rinfo->fps_addr, MAX77620_FPS_SRC_MASK,
+			fps_src << MAX77620_FPS_SRC_SHIFT);
+	if (ret < 0) {
+		dev_err(reg->dev, "Reg 0x%02x update failed %d\n",
+			rinfo->fps_addr, ret);
 		return ret;
-
-	reg->fps_src = fps_src;
+	}
+	reg->fps_src[id] = fps_src;
 	return 0;
 }
 
-static int max77620_regulator_set_fps(struct max77620_regulator *reg, int id)
+static int max77620_regulator_set_fps_slots(struct max77620_regulator *reg,
+			int id)
 {
 	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
 	struct max77620_regulator_info *rinfo = reg->rinfo[id];
-	struct device *dev = reg->max77620_chip->dev;
-	u8 fps_val = 0, fps_mask = 0;
+	struct device *parent = reg->max77620_chip->dev;
+	unsigned int val = 0;
+	unsigned int mask = 0;
 	int ret = 0;
 
-	if (rinfo->regs[FPS_REG].addr == MAX77620_REG_FPS_NONE)
-		return 0;
-
-	if (reg->fps_src == FPS_SRC_NONE)
-		return 0;
-
 	/* FPS power up period setting */
-	if (rpdata->fps_pu_period != FPS_POWER_PERIOD_DEF) {
-		fps_val |=
-		(rpdata->fps_pu_period << MAX77620_FPS_PU_PERIOD_SHIFT);
-		fps_mask |= MAX77620_FPS_PU_PERIOD_MASK;
+	if (rpdata->fps_pu_period >= 0) {
+		val |= (rpdata->fps_pu_period << MAX77620_FPS_PU_PERIOD_SHIFT);
+		mask |= MAX77620_FPS_PU_PERIOD_MASK;
 	}
 
 	/* FPS power down period setting */
-	if (rpdata->fps_pd_period != FPS_POWER_PERIOD_DEF) {
-		fps_val |=
-		(rpdata->fps_pd_period << MAX77620_FPS_PD_PERIOD_SHIFT);
-		fps_mask |=
-			MAX77620_FPS_PD_PERIOD_MASK;
+	if (rpdata->fps_pd_period >= 0) {
+		val |= (rpdata->fps_pd_period << MAX77620_FPS_PD_PERIOD_SHIFT);
+		mask |= MAX77620_FPS_PD_PERIOD_MASK;
 	}
 
-	fps_val |= rinfo->val[FPS_REG];
-	if (fps_val || fps_mask)
-		ret =  max77620_reg_cached_update(dev,
-				MAX77620_PWR_SLAVE,
-				rinfo->regs[FPS_REG].addr,
-				fps_mask,
-				fps_val, &rinfo->val[FPS_REG]);
+	if (mask) {
+		ret =  max77620_reg_update(parent, MAX77620_PWR_SLAVE,
+				rinfo->fps_addr, mask, val);
+		if (ret < 0) {
+			dev_err(reg->dev, "Reg 0x%02x update faild, %d\n",
+				rinfo->fps_addr, ret);
+			return ret;
+		}
+	}
 	return ret;
 }
 
@@ -248,9 +251,9 @@ static int max77620_regulator_enable(struct regulator_dev *rdev)
 	int power_mode = (rpdata->glpm_enable) ?
 			 MAX77620_POWER_MODE_GLPM : MAX77620_POWER_MODE_NORMAL;
 
-	if (reg->fps_src != FPS_SRC_NONE) {
+	if (reg->fps_src[id] != FPS_SRC_NONE) {
 		dev_dbg(&rdev->dev, "enable: Regulator %s using %s\n",
-			rdev->desc->name, fps_src_name(reg->fps_src));
+			rdev->desc->name, fps_src_name(reg->fps_src[id]));
 		return 0;
 	}
 
@@ -278,9 +281,9 @@ static int max77620_regulator_disable(struct regulator_dev *rdev)
 	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
 	int power_mode = MAX77620_POWER_MODE_DISABLE;
 
-	if (reg->fps_src != FPS_SRC_NONE) {
+	if (reg->fps_src[id] != FPS_SRC_NONE) {
 		dev_dbg(&rdev->dev, "disable: Regulator %s using %s\n",
-			rdev->desc->name, fps_src_name(reg->fps_src));
+			rdev->desc->name, fps_src_name(reg->fps_src[id]));
 		return 0;
 	}
 
@@ -303,9 +306,9 @@ static int max77620_regulator_is_enabled(struct regulator_dev *rdev)
 	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
 	int ret = 1;
 
-	if (reg->fps_src != FPS_SRC_NONE) {
+	if (reg->fps_src[id] != FPS_SRC_NONE) {
 		dev_dbg(&rdev->dev, "is_enable: Regulator %s using %s\n",
-			rdev->desc->name, fps_src_name(reg->fps_src));
+			rdev->desc->name, fps_src_name(reg->fps_src[id]));
 		return 1;
 	}
 
@@ -380,7 +383,7 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 	int ret;
 
 	/* Update registers */
-	for (i = 0; i <= FPS_REG; i++) {
+	for (i = 0; i <= CFG_REG; i++) {
 		ret =  max77620_reg_read(dev,
 				MAX77620_PWR_SLAVE,
 				rinfo->regs[i].addr,
@@ -392,16 +395,6 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 			return ret;
 		}
 	}
-
-	/* Update FPS source */
-	if (rinfo->regs[FPS_REG].addr == MAX77620_REG_FPS_NONE)
-		reg->fps_src = FPS_SRC_NONE;
-	else
-		reg->fps_src = (rinfo->val[FPS_REG] & MAX77620_FPS_SRC_MASK)
-				>> MAX77620_FPS_SRC_SHIFT;
-
-	dev_dbg(reg->dev, "preinit: initial fps_src=%s\n",
-		fps_src_name(reg->fps_src));
 
 	/* Update power mode */
 	max77620_regulator_get_power_mode(reg, id);
@@ -431,9 +424,9 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 		return ret;
 	}
 
-	ret = max77620_regulator_set_fps(reg, id);
+	ret = max77620_regulator_set_fps_slots(reg, id);
 	if (ret < 0) {
-		dev_err(reg->dev, "preinit: Failed to set FPS\n");
+		dev_err(reg->dev, "preinit: Failed to set FPS Slots\n");
 		return ret;
 	}
 
@@ -489,7 +482,7 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 	return 0;
 }
 
-#define REGULATOR_SD(_id, _name,_volt_mask, _fps_reg, _min_uV, _max_uV, _step_uV)	\
+#define REGULATOR_SD(_id, _name,_volt_mask, _min_uV, _max_uV, _step_uV)	\
 	[MAX77620_REGULATOR_ID_##_id] = {			\
 		.id = MAX77620_REGULATOR_ID_##_id,		\
 		.type = MAX77620_REGULATOR_TYPE_SD,			\
@@ -501,10 +494,8 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 			[CFG_REG] = {				\
 				.addr = MAX77620_REG_##_id##_CFG, \
 			},					\
-			[FPS_REG] = {				\
-				.addr = MAX77620_REG_FPS_##_fps_reg, \
-			},					\
 		},						\
+		.fps_addr = MAX77620_REG_FPS_##_id,		\
 		.min_uV = _min_uV,				\
 		.max_uV = _max_uV,				\
 		.step_uV = _step_uV,				\
@@ -538,10 +529,8 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 			[CFG_REG] = {				\
 				.addr = MAX77620_REG_##_id##_CFG2, \
 			},					\
-			[FPS_REG] = {				\
-				.addr = MAX77620_REG_FPS_##_id,	\
-			},					\
 		},						\
+		.fps_addr = MAX77620_REG_FPS_##_id,		\
 		.min_uV = _min_uV,				\
 		.max_uV = _max_uV,				\
 		.step_uV = _step_uV,				\
@@ -565,10 +554,10 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 
 static
 struct max77620_regulator_info max77620_regs_info[MAX77620_NUM_REGS] = {
-	REGULATOR_SD(SD0, sd0, SDX, SD0,  600000, 1400000, 12500),
-	REGULATOR_SD(SD1, sd1, SD1, SD1,  600000, 1600000, 12500),
-	REGULATOR_SD(SD2, sd2, SDX, SD2,  600000, 3387500, 12500),
-	REGULATOR_SD(SD3, sd3, SDX, SD3,  600000, 3387500, 12500),
+	REGULATOR_SD(SD0, sd0, SDX, 600000, 1400000, 12500),
+	REGULATOR_SD(SD1, sd1, SD1, 600000, 1600000, 12500),
+	REGULATOR_SD(SD2, sd2, SDX, 600000, 3387500, 12500),
+	REGULATOR_SD(SD3, sd3, SDX, 600000, 3387500, 12500),
 
 	REGULATOR_LDO(LDO0, ldo0, N, 800000, 2350000, 25000),
 	REGULATOR_LDO(LDO1, ldo1, N, 800000, 2350000, 25000),
@@ -645,16 +634,22 @@ static int max77620_get_regulator_dt_data(struct platform_device *pdev,
 		ret = of_property_read_u32(reg_node, "maxim,fps-source", &prop);
 		if (!ret)
 			reg_pdata->fps_src = prop;
+		else
+			reg_pdata->fps_src = FPS_SRC_NONE;
 
 		ret = of_property_read_u32(reg_node,
 					"maxim,fps-power-up-period", &prop);
 		if (!ret)
 			reg_pdata->fps_pu_period = prop;
+		else
+			reg_pdata->fps_pu_period = -1;
 
 		ret = of_property_read_u32(reg_node,
 					"maxim,fps-power-down-period", &prop);
 		if (!ret)
 			reg_pdata->fps_pd_period = prop;
+		else
+			reg_pdata->fps_pd_period = -1;
 
 		ret = of_property_read_u32(reg_node, "maxim,slew-rate", &prop);
 		if (!ret)
