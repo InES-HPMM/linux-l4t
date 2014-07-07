@@ -1653,6 +1653,23 @@ int tegra_clk_set_max(struct clk *c, unsigned long rate)
 	return _max_set(c, rate);
 }
 EXPORT_SYMBOL(tegra_clk_set_max);
+
+static int gbus_pass_thru_set(void *data, u64 val)
+{
+	if (val)
+		tegra_gbus_round_pass_thru_enable(1);
+	else
+		tegra_gbus_round_pass_thru_enable(0);
+	return 0;
+}
+
+static int gbus_pass_thru_get(void *data, u64 *val)
+{
+	*val = (u64)tegra_gbus_round_pass_thru_get();
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(round_pass_thru_fops, gbus_pass_thru_get ,
+	gbus_pass_thru_set, "%llu\n");
 #endif
 
 static int max_set(void *data, u64 val)
@@ -1849,6 +1866,15 @@ static int clk_debugfs_register_one(struct clk *c)
 			goto err_out;
 	}
 
+#ifdef CONFIG_TEGRA_CLOCK_DEBUG_FUNC
+	if (!strcmp(c->name, "gbus")) {
+		d = debugfs_create_file(
+			"round_pass_thru", parent_rate_mode, c->dent, c,
+			&round_pass_thru_fops);
+		if (!d)
+			goto err_out;
+	}
+#endif
 	return 0;
 
 err_out:

@@ -7944,7 +7944,13 @@ void tegra_gbus_round_pass_thru_enable(bool enable)
 	else
 		gbus_round_pass_thru = 0;
 }
+int tegra_gbus_round_pass_thru_get(void)
+{
+	return gbus_round_pass_thru;
+}
+
 EXPORT_SYMBOL(tegra_gbus_round_pass_thru_enable);
+EXPORT_SYMBOL(tegra_gbus_round_pass_thru_get);
 #else
 #define gbus_round_pass_thru	0
 #endif
