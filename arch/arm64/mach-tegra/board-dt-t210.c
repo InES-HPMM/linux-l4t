@@ -158,6 +158,7 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-xudc", 0x700D0000, "tegra-xudc",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
 	{}
 };
 
