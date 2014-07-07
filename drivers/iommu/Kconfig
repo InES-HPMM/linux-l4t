@@ -172,6 +172,15 @@ config TEGRA_IOMMU_SMMU
 	  space through the SMMU (System Memory Management Unit)
 	  hardware included on Tegra SoCs.
 
+config TEGRA_IOMMU_SMMU_HV
+	bool "Tegra SMMU IOMMU virtualization Support"
+	depends on TEGRA_IOMMU_SMMU && TEGRA_HV_MANAGER
+	default y
+	help
+	  Enables support for para-virtualized smmu client driver. Client
+	  driver is written to communicate with smmu server partition by
+	  using IVC (Inter VM Commuication) framework.
+
 config TEGRA_IOMMU_SMMU_LINEAR
 	bool "Physical RAM IOVA Liner Mapping Support"
 	depends on TEGRA_IOMMU_SMMU && !PLATFORM_ENABLE_IOMMU
