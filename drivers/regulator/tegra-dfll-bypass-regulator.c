@@ -154,6 +154,7 @@ static struct regulator_ops tegra_dfll_bypass_rops = {
 static struct of_device_id of_tegra_dfll_bypass_pwm_match_tbl[] = {
 	{ .compatible = "nvidia,tegra124-dfll-pwm", },
 	{ .compatible = "nvidia,tegra132-dfll-pwm", },
+	{ .compatible = "nvidia,tegra210-dfll-pwm", },
 };
 
 static struct of_device_id of_tegra_dfll_bypass_regulator_match_tbl[] = {
