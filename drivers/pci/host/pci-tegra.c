@@ -1112,15 +1112,18 @@ static int tegra_pcie_enable_controller(void)
 
 	/* Disable all execptions */
 	afi_writel(0, AFI_FPCI_ERROR_MASKS);
-	/* Take the PCIe interface module out of reset */
-	tegra_periph_reset_deassert(tegra_pcie.pcie_xclk);
 
+	/* Wait for clock to latch (min of 100us) */
+	udelay(100);
 	/* deassert PEX reset signal */
 	for (i = 0; i < ARRAY_SIZE(pex_controller_registers); i++) {
 		val = afi_readl(pex_controller_registers[i]);
 		val |= AFI_PEX_CTRL_RST;
 		afi_writel(val, pex_controller_registers[i]);
 	}
+	/* Take the PCIe interface module out of reset */
+	tegra_periph_reset_deassert(tegra_pcie.pcie_xclk);
+
 	return ret;
 }
 
