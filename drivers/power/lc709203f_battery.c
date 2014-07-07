@@ -254,13 +254,13 @@ static int lc709203f_get_property(struct power_supply *psy,
 		val->intval = chip->soc;
 		if (chip->soc == 15)
 			dev_warn(&chip->client->dev,
-			"\nSystem Running low on battery - 15 percent\n");
+			"System Running low on battery - 15 percent\n");
 		if (chip->soc == 10)
 			dev_warn(&chip->client->dev,
-			"\nSystem Running low on battery - 10 percent\n");
+			"System Running low on battery - 10 percent\n");
 		if (chip->soc == 5)
 			dev_warn(&chip->client->dev,
-			"\nSystem Running low on battery - 5 percent\n");
+			"System Running low on battery - 5 percent\n");
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = chip->health;
@@ -670,6 +670,9 @@ static int lc709203f_suspend(struct device *dev)
 	if (device_may_wakeup(&chip->client->dev))
 		enable_irq_wake(chip->client->irq);
 
+	dev_info(&chip->client->dev, "At suspend Voltage %dmV and SoC %d%%\n",
+			chip->vcell, chip->soc);
+
 	return 0;
 }
 
@@ -679,6 +682,14 @@ static int lc709203f_resume(struct device *dev)
 
 	if (device_may_wakeup(&chip->client->dev))
 		disable_irq_wake(chip->client->irq);
+
+	mutex_lock(&chip->mutex);
+	lc709203f_update_soc_voltage(chip);
+	power_supply_changed(&chip->battery);
+	mutex_unlock(&chip->mutex);
+
+	dev_info(&chip->client->dev, "At resume Voltage %dmV and SoC %d%%\n",
+			chip->vcell, chip->soc);
 
 	schedule_delayed_work(&chip->work, LC709203F_DELAY);
 	return 0;
