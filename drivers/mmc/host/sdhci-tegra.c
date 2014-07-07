@@ -4013,7 +4013,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra12 = {
 	.t2t_coeffs = t12x_tuning_coeffs,
 	.t2t_coeffs_count = 3,
 	.tap_hole_coeffs = t12x_tap_hole_coeffs,
-	.tap_hole_coeffs_count = 13,
+	.tap_hole_coeffs_count = 14,
 };
 
 static struct sdhci_pltfm_data sdhci_tegra21_pdata = {
