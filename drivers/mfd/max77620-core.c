@@ -196,6 +196,7 @@ static const struct regmap_access_table max77620_writable_table = {
 };
 
 static const struct regmap_range max77620_cacheable_ranges[] = {
+	regmap_reg_range(MAX77620_REG_SD0_CFG, MAX77620_REG_LDO_CFG3),
 	regmap_reg_range(MAX77620_REG_FPS_CFG0, MAX77620_REG_FPS_SD3),
 };
 
