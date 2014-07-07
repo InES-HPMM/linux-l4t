@@ -702,6 +702,7 @@ config TEGRA_USE_DFLL_RANGE
 	int "Default CPU DFLL operating range"
 	depends on ARCH_TEGRA_HAS_CL_DVFS
 	range 0 2
+	default "0" if TEGRA_SILICON_PLATFORM && ARCH_TEGRA_21x_SOC
 	default "1" if TEGRA_SILICON_PLATFORM && ARCH_TEGRA_13x_SOC
 	default "2" if TEGRA_SILICON_PLATFORM && ARCH_TEGRA_11x_SOC
 	default "1"
