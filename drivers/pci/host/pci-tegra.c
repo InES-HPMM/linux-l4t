@@ -273,6 +273,11 @@
 #define PCIE2_RP_L1_PM_SUBSTATES_2_CYA_MICROSECOND_COMP_MASK	(0xF << 21)
 #define PCIE2_RP_L1_PM_SUBSTATES_2_CYA_MICROSECOND_COMP	(0x8 << 21)
 
+#define TEGRA_PCIE_MSELECT_CLK_204				204000000
+#define TEGRA_PCIE_MSELECT_CLK_408				408000000
+#define TEGRA_PCIE_XCLK_500					500000000
+#define TEGRA_PCIE_XCLK_250					250000000
+
 /*
  * AXI address map for the PCIe aperture , defines 1GB in the AXI
  *  address map for PCIe.
@@ -369,6 +374,9 @@ static struct resource pcie_prefetch_mem_space;
 static bool resume_path;
 /* used to avoid successive hotplug disconnect or connect */
 static bool hotplug_event;
+/* pcie mselect & xclk rate */
+static unsigned long tegra_pcie_mselect_rate = TEGRA_PCIE_MSELECT_CLK_204;
+static unsigned long tegra_pcie_xclk_rate = TEGRA_PCIE_XCLK_250;
 
 static inline void afi_writel(u32 value, unsigned long offset)
 {
@@ -1188,13 +1196,12 @@ static int tegra_pcie_power_ungate(void)
 		pr_err("PCIE: mselect clk enable failed: %d\n", err);
 		return err;
 	}
-	clk_set_rate(tegra_pcie.pcie_mselect, 408000000);
-	/* pciex is reset only but need to be enabled for dvfs support */
 	err = clk_enable(tegra_pcie.pcie_xclk);
 	if (err) {
 		pr_err("PCIE: pciex clk enable failed: %d\n", err);
 		return err;
 	}
+
 	return 0;
 }
 
@@ -1435,6 +1442,13 @@ static int tegra_pcie_get_resources(void)
 		pr_err("PCIE: Failed to power on: %d\n", err);
 		goto err_pwr_on;
 	}
+	err = clk_set_rate(tegra_pcie.pcie_mselect, tegra_pcie_mselect_rate);
+	if (err)
+		return err;
+
+	err = clk_set_rate(tegra_pcie.pcie_xclk, tegra_pcie_xclk_rate);
+	if (err)
+		return err;
 	err = request_irq(INT_PCIE_INTR, tegra_pcie_isr,
 			IRQF_SHARED, "PCIE", &tegra_pcie);
 	if (err) {
@@ -1851,24 +1865,37 @@ static int tegra_pcie_conf_gpios(void)
 
 static int tegra_pcie_scale_voltage(bool isGen2)
 {
-	unsigned long rate;
-	int err;
+	int err = 0;
 
 	PR_FUNC_LINE;
 	if (isGen2) {
+		if (tegra_pcie_xclk_rate == TEGRA_PCIE_XCLK_500 &&
+			tegra_pcie_mselect_rate == TEGRA_PCIE_MSELECT_CLK_408)
+			goto skip;
 		/* Scale up voltage for Gen2 speed */
-		rate = 500000000;
+		tegra_pcie_xclk_rate = TEGRA_PCIE_XCLK_500;
+		tegra_pcie_mselect_rate = TEGRA_PCIE_MSELECT_CLK_408;
 	} else {
+		if (tegra_pcie_xclk_rate == TEGRA_PCIE_XCLK_250 &&
+			tegra_pcie_mselect_rate == TEGRA_PCIE_MSELECT_CLK_204)
+			goto skip;
 		/* Scale down voltage for Gen1 speed */
-		rate = 250000000;
+		tegra_pcie_xclk_rate = TEGRA_PCIE_XCLK_250;
+		tegra_pcie_mselect_rate = TEGRA_PCIE_MSELECT_CLK_204;
 	}
-	err = clk_set_rate(tegra_pcie.pcie_xclk, rate);
+	err = clk_set_rate(tegra_pcie.pcie_xclk, tegra_pcie_xclk_rate);
+	if (err)
+		return err;
+	err = clk_set_rate(tegra_pcie.pcie_mselect, tegra_pcie_mselect_rate);
+skip:
 	return err;
+
 }
 
 static bool tegra_pcie_change_link_speed(struct pci_dev *pdev, bool isGen2)
 {
-	u16 val, link_up_spd, link_dn_spd;
+	u16 val, link_sts_up_spd, link_sts_dn_spd;
+	u16 link_cap_up_spd, link_cap_dn_spd;
 	struct pci_dev *up_dev, *dn_dev;
 
 	PR_FUNC_LINE;
@@ -1885,39 +1912,36 @@ static bool tegra_pcie_change_link_speed(struct pci_dev *pdev, bool isGen2)
 	dn_dev = pdev->bus->self;
 
 	/* read link status register to find current speed */
-	pcie_capability_read_word(up_dev, PCI_EXP_LNKSTA, &link_up_spd);
-	link_up_spd &= PCI_EXP_LNKSTA_CLS;
-	pcie_capability_read_word(dn_dev, PCI_EXP_LNKSTA, &link_dn_spd);
-	link_dn_spd &= PCI_EXP_LNKSTA_CLS;
-
-	/* skip if both devices across the link are already trained to gen2 */
-	if (isGen2 &&
-		(link_up_spd == PCI_EXP_LNKSTA_CLS_5_0GB) &&
-		(link_dn_spd == PCI_EXP_LNKSTA_CLS_5_0GB))
-		goto skip;
-	/* skip if both devices across the link are already trained to gen1 */
-	else if (!isGen2 &&
-		((link_up_spd == PCI_EXP_LNKSTA_CLS_2_5GB) ||
-		(link_dn_spd == PCI_EXP_LNKSTA_CLS_2_5GB)))
-		goto skip;
-
+	pcie_capability_read_word(up_dev, PCI_EXP_LNKSTA, &link_sts_up_spd);
+	link_sts_up_spd &= PCI_EXP_LNKSTA_CLS;
+	pcie_capability_read_word(dn_dev, PCI_EXP_LNKSTA, &link_sts_dn_spd);
+	link_sts_dn_spd &= PCI_EXP_LNKSTA_CLS;
 	/* read link capability register to find max speed supported */
-	pcie_capability_read_word(up_dev, PCI_EXP_LNKCAP, &link_up_spd);
-	link_up_spd &= PCI_EXP_LNKCAP_SLS;
-	pcie_capability_read_word(dn_dev, PCI_EXP_LNKCAP, &link_dn_spd);
-	link_dn_spd &= PCI_EXP_LNKCAP_SLS;
+	pcie_capability_read_word(up_dev, PCI_EXP_LNKCAP, &link_cap_up_spd);
+	link_cap_up_spd &= PCI_EXP_LNKCAP_SLS;
+	pcie_capability_read_word(dn_dev, PCI_EXP_LNKCAP, &link_cap_dn_spd);
+	link_cap_dn_spd &= PCI_EXP_LNKCAP_SLS;
+	/* skip if both devices across the link are already trained to gen2 */
+	if (isGen2) {
+		if (((link_cap_up_spd >= PCI_EXP_LNKSTA_CLS_5_0GB) &&
+			(link_cap_dn_spd >= PCI_EXP_LNKSTA_CLS_5_0GB)) &&
+			((link_sts_up_spd != PCI_EXP_LNKSTA_CLS_5_0GB) ||
+			 (link_sts_dn_spd != PCI_EXP_LNKSTA_CLS_5_0GB)))
+			goto change;
+		else
+			goto skip;
+	} else {
+		/* gen1 should be supported by default by all pcie cards */
+		if ((link_sts_up_spd != PCI_EXP_LNKSTA_CLS_2_5GB) ||
+			 (link_sts_dn_spd != PCI_EXP_LNKSTA_CLS_2_5GB))
+			goto change;
+		else
+			goto skip;
+	}
 
-	/* skip if any device across the link is not supporting gen2 speed */
-	if (isGen2 &&
-		((link_up_spd < PCI_EXP_LNKCAP_SLS_5_0GB) ||
-		(link_dn_spd < PCI_EXP_LNKCAP_SLS_5_0GB)))
+change:
+	if (tegra_pcie_scale_voltage(isGen2))
 		goto skip;
-	/* skip if any device across the link is not supporting gen1 speed */
-	else if (!isGen2 &&
-		((link_up_spd < PCI_EXP_LNKCAP_SLS_2_5GB) ||
-		(link_dn_spd < PCI_EXP_LNKCAP_SLS_2_5GB)))
-		goto skip;
-
 	/* Set Link Speed */
 	pcie_capability_read_word(dn_dev, PCI_EXP_LNKCTL2, &val);
 	val &= ~PCI_EXP_LNKSTA_CLS;
@@ -1945,18 +1969,10 @@ bool tegra_pcie_link_speed(bool isGen2)
 	PR_FUNC_LINE;
 	/* Voltage scaling should happen before any device transition */
 	/* to Gen2 or after all devices has transitioned to Gen1 */
-	if (isGen2)
-		if (tegra_pcie_scale_voltage(isGen2))
-			return ret;
-
 	for_each_pci_dev(pdev) {
 		if (tegra_pcie_change_link_speed(pdev, isGen2))
 			ret = true;
 	}
-	if (!isGen2)
-		if (tegra_pcie_scale_voltage(isGen2))
-			ret = false;
-
 	return ret;
 }
 EXPORT_SYMBOL(tegra_pcie_link_speed);
