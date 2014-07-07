@@ -111,6 +111,9 @@ static int devfreq_update_status(struct devfreq *devfreq, unsigned long freq)
 	int lev, prev_lev;
 	unsigned long cur_time;
 
+	if (devfreq->suspended)
+		return 0;
+
 	lev = devfreq_get_freq_level(devfreq, freq);
 	if (lev < 0)
 		return lev;
@@ -558,6 +561,12 @@ int devfreq_suspend_device(struct devfreq *devfreq)
 	if (!devfreq)
 		return -EINVAL;
 
+	/* Last update before suspend */
+	mutex_lock(&devfreq->lock);
+	devfreq_update_status(devfreq, devfreq->previous_freq);
+	devfreq->suspended = true;
+	mutex_unlock(&devfreq->lock);
+
 	if (!devfreq->governor)
 		return 0;
 
@@ -574,6 +583,12 @@ int devfreq_resume_device(struct devfreq *devfreq)
 {
 	if (!devfreq)
 		return -EINVAL;
+
+	/* Update the timestamp before resuming */
+	mutex_lock(&devfreq->lock);
+	devfreq->last_stat_updated = jiffies;
+	devfreq->suspended = false;
+	mutex_unlock(&devfreq->lock);
 
 	if (!devfreq->governor)
 		return 0;
@@ -941,9 +956,11 @@ static ssize_t show_trans_table(struct device *dev, struct device_attribute *att
 	int prev_freq_level;
 	unsigned long prev_freq;
 
+	mutex_lock(&devfreq->lock);
 	err = devfreq_update_status(devfreq, devfreq->previous_freq);
 	if (err)
 		return 0;
+	mutex_unlock(&devfreq->lock);
 
 	/* round the current frequency */
 	prev_freq_level = devfreq_get_freq_level(devfreq,
@@ -963,7 +980,8 @@ static ssize_t show_trans_table(struct device *dev, struct device_attribute *att
 	len += sprintf(buf + len, "   time(ms)\n");
 
 	for (i = 0; i < max_state; i++) {
-		if (devfreq->profile->freq_table[i] == prev_freq) {
+		if (devfreq->profile->freq_table[i] == prev_freq &&
+		    !devfreq->suspended) {
 			len += sprintf(buf + len, "*");
 		} else {
 			len += sprintf(buf + len, " ");
