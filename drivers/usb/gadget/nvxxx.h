@@ -1,0 +1,759 @@
+/*
+* nvxxx.h - Nvidia device mode implementation
+*
+* Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+*
+* This program is free software; you can redistribute it and/or modify it
+* under the terms and conditions of the GNU General Public License,
+* version 2, as published by the Free Software Foundation.
+*
+* This program is distributed in the hope it will be useful, but WITHOUT
+* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+* more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#include <linux/ioctl.h>
+
+/*
+ * Register definitions
+ */
+
+/* Offsets */
+#define SPARAM		0x00000000
+#define SPARAM_ERSTMAX(x)		(((x) & 0x1f) << 16)
+
+#define DB		0x00000004
+#define DB_TARGET(x)	(((x) & 0xff) << 8)
+#define DB_STREAMID(x)	(((x) & 0xffff) << 16)
+
+#define ERSTSZ		0x00000008
+#define ERSTSZ_ERST0SZ(x)	((x) & 0xffff)
+#define ERSTSZ_ERST1SZ(x)	(((x) & 0xffff) << 16)
+
+#define ERST0BALO	0x00000010
+#define ERST0BALO_ADDRLO(x)	((x) & 0xfffffff0)
+
+#define ERST0BAHI	0x00000014
+
+#define ERST1BALO	0x00000018
+#define ERST1BALO_ADDRLO(x)	((x) & 0xfffffff0)
+
+#define ERST1BAHI	0x0000001c
+
+#define ERDPLO		0x00000020
+#define ERDPLO_EHB		(1 << 3)
+#define ERDPLO_ADDRLO(x)	((x) & 0xfffffff0)
+
+#define ERDPHI		0x00000024
+
+#define EREPLO		0x00000028
+#define EREPLO_ECS	1
+#define EREPLO_SEGI	(1 << 1)
+#define EREPLO_ADDRLO(x)	((x) & 0xfffffff0)
+
+#define EREPHI		0x0000002C
+
+#define CTRL		0x00000030
+#define CTRL_RUN	1
+#define CTRL_LSE	(1 << 1)
+#define CTRL_IE		(1 << 4)
+#define CTRL_SMI_EVT	(1 << 5)
+#define CTRL_SMI_DSE	(1 << 6)
+#define CTRL_EWE	(1 << 7)
+#define CTRL_DEVADDR(x)	(((x) & 0x7f) << 24)
+#define CTRL_ENABLE	(1 << 31)
+
+#define ST		0x00000034
+#define ST_RC	1
+#define ST_IP	(1 << 4)
+#define ST_DSE	(1 << 5)
+
+#define RT_IMOD	0x00000038
+#define RT_IMOD_IMODI(x)	((x) & 0xffff)
+#define RT_IMOD_IMODC(x)	(((x) & 0xffff) << 16)
+
+#define PORTSC	0x0000003C
+#define PORTSC_CCS	1
+#define PORTSC_PED	(1 << 1)
+#define PORTSC_LANE_POLARITY_OVRD	(1 << 2)
+#define PORTSC_LANE_POLARITY_OVRD_VALUE	(1 << 3)
+#define PORTSC_PR	(1 << 4)
+#define PORTSC_PLS(x)	(((x) & 0xf) << 5)
+#define PORTSC_PLS_SHIFT	5
+#define PORTSC_PLS_MASK		0xf
+#define PORTSC_LANE_POLARITY_VALUE (1 << 9)
+#define PORTSC_PS(x)	(((x) & 0xf) << 10)
+#define PORTSC_PS_MASK	0xf
+#define PORTSC_PS_SHIFT	10
+#define PORTSC_LWS	(1 << 16)
+#define PORTSC_CSC	(1 << 17)
+#define PORTSC_WRC	(1 << 19)
+#define PORTSC_PRC	(1 << 21)
+#define PORTSC_PLC	(1 << 22)
+#define PORTSC_CEC	(1 << 23)
+#define PORTSC_WPR	(1 << 30)
+
+#define ECPLO		0x00000040
+#define ECPLO_ADDRLO(x)	((x) & 0xffffffc0)
+
+#define ECPHI		0x00000044
+
+#define MFINDEX	0x00000048
+#define MFINDEX_UFRAME(x)	((x) & 0x7)
+#define MFINDEX_FRAME(x)	(((x) & 0x7ff) < 3)
+#define MFINDEX_FRAME_SHIFT	3
+
+#define PORTPM		0x0000004C
+#define PORTPM_L1S(x)	((x) & 0x3)
+#define PORTPM_RWE		(1 << 3)
+#define PORTPM_RWE_SHIFT	3
+#define PORTPM_HIRD(x)	(((x) & 0xf) << 4)
+#define PORTPM_U2TIMEOUT(x)	(((x) & 0xff) << 8)
+#define PORTPM_U1TIMEOUT(x)	(((x) & 0xff) << 16)
+#define PORTPM_FLA	(1 << 24)
+#define PORTPM_VBA	(1 << 25)
+#define PORTPM_WOC	(1 << 26)
+#define PORTPM_WOD	(1 << 27)
+#define PORTPM_U1E	(1 << 28)
+#define PORTPM_U1E_SHIFT	28
+#define PORTPM_U2E	(1 << 29)
+#define PORTPM_U2E_SHIFT	29
+#define PORTPM_FRWE	(1 << 30)
+#define PORTPM_PNG_CYA	(1 << 31)
+
+#define EP_HALT	0x00000050
+
+#define EP_PAUSE	0x00000054
+
+#define EP_RELOAD	0x00000058
+
+#define EP_STCHG	0x0000005C
+
+#define FLOWCNTRL	0x00000060
+#define FLOWCNTRL_IN_THRESH(x)	((x) & 0x7f)
+#define FLOWCNTRL_IN_EN	(1 << 7)
+#define FLOWCNTRL_OUT_THRESH(x)	(((x) & 0x7f) << 8)
+#define FLOWCNTRL_OUT_EN	(1 << 15)
+#define FLOWCNTRL_IDLE_MITS(x)	(((x) & 0xff) << 16)
+
+#define DEVNOTIF_LO	0x00000064
+#define DEVNOTIF_LO_TRIG	1
+#define DEVNOTIF_LO_TYPE(x)	(((x) & 0xf) << 4)
+#define DEVNOTIF_LO_DATA(x)	(((x) & 0xffffff) << 8)
+
+#define DEVNOTIF_HI	0x00000068
+
+#define PORTHALT	0x0000006c
+#define PORTHALT_HALT_LTSSM		1
+#define PORTHALT_HALT_REJECT		(1 << 1)
+#define PORTHALT_STCHG_STATE(x)	(((x) & 0xf) << 16)
+#define PORTHALT_STCHG_REQ	(1 << 20)
+#define PORTHALT_STCHG_INTR_EN	(1 << 24)
+#define PORTHALT_PME_EN	(1 << 25)
+#define PORTHALT_SMI_EN	(1 << 26)
+
+#define PORT_TM	0x00000070
+#define PORT_TM_CTRL(x)	((x) & 0xf)
+
+#define EP_STOPPED	0x00000078
+
+#define HSFSPI_TESTMODE_CTRL        0x0000013C
+
+#define BLCG                        0x00000840
+
+#define CFG_DEV_FE                  0x0000085C
+#define CFG_DEV_FE_PORTREGSEL(x)	((x) & 0x3)
+
+#define CFG_DEV_SSPI_XFER           0x00000858
+
+#define NV_UDC_PLATFORM		"nvudc_platform"
+#define NV_UDC_PCI		"nvudc_pci"
+
+#define NV_BIT(bit_name) (1 << bit_name)
+
+#define XHCI_SETF_VAR(field, var, fieldval) \
+	(var = (((var) & ~(field ## _MASK)) | \
+			(((fieldval) << field ## _SHIFT) & (field ## _MASK))))
+
+#define XHCI_GETF(field, val) \
+		(((val) & (field ## _MASK)) >> (field ## _SHIFT))
+
+#define USB_REQ_SET_ISOCH_DEALY     49
+
+#define PRIME_NOT_RCVD_WAR
+	/*--------------------------------------------*/
+	/*---------global variables-------------------*/
+	/*--------------------------------------------*/
+
+	/*Figure 57*/
+enum EP_STATE_E {
+	EP_STATE_DISABLED = 0,
+	EP_STATE_RUNNING,
+	EP_STATE_HALTED,
+	EP_STATE_PAUSED,
+	EP_STATE_ERROR
+		/*4-7 reserved*/
+};
+
+enum EP_TYPE_E {
+	EP_TYPE_INVALID = 0,
+	EP_TYPE_ISOCH_OUT,
+	EP_TYPE_BULK_OUT,
+	EP_TYPE_INTR_OUT,
+	EP_TYPE_CNTRL,
+	EP_TYPE_ISOCH_IN,
+	EP_TYPE_BULK_IN,
+	EP_TYPE_INTR_IN
+};
+
+/*Frome Table 128 of XHCI spec. */
+enum TRB_TYPE_E {
+	TRB_TYPE_RSVD = 0,
+	TRB_TYPE_XFER_NORMAL,
+	TRB_TYPE_XFER_SETUP_STAGE,
+	TRB_TYPE_XFER_DATA_STAGE,
+	TRB_TYPE_XFER_STATUS_STAGE,
+	TRB_TYPE_XFER_DATA_ISOCH,   /* 5*/
+	/*below applies to both transfer and command ring*/
+	TRB_TYPE_LINK,
+	TRB_TYPE_XFER_DATA_EVENT_DATA,
+	TRB_TYPE_XFER_NOP,
+
+	/* TRB Type 9 - 23 are for command TRBs*/
+	/*
+	   TRB_TYPE_CMD_ENABLE_SLOT,
+	   TRB_TYPE_CMD_DISABLE_SLOT,  // 10
+	   TRB_TYPE_CMD_ADDRESS_DEVICE,
+	   TRB_TYPE_CMD_CONFIGURE_EP,
+	   TRB_TYPE_CMD_EVALUATE_CONTEXT,
+	   TRB_TYPE_CMD_RESET_EP,  TRB_TYPE_CMD_STOP_EP,       // 15
+	   TRB_TYPE_CMD_SET_TR_DEQUEUE_PTR,
+	   TRB_TYPE_CMD_RESET_DEVICE,
+	// Optional:  Applicable to virtualization only.
+	TRB_TYPE_CMD_FORCE_EVENT,
+	// Next two cmd are optional
+	TRB_TYPE_CMD_NEGOTIATE_BANDWIDTH,
+	TRB_TYPE_CMD_SET_LATENCY_TOLERANCE, // 20
+	TRB_TYPE_CMD_GET_PORT_BANDWIDTH,    TRB_TYPE_CMD_FORCE_HEADER,
+	TRB_TYPE_CMD_NOP,
+	 */
+	/* TRB Types 24-31 are reserved.*/
+
+
+	/* TRB_TYPE_EVT_* TRBs are only allowed on event ring.*/
+	TRB_TYPE_EVT_TRANSFER = 32,
+	/*    TRB_TYPE_EVT_CMD_DONE,*/
+	TRB_TYPE_EVT_PORT_STATUS_CHANGE = 34,
+	/*
+	// Optional
+	TRB_TYPE_EVT_BANDWIDTH_REQUEST,
+
+	// Optional:  Applicable to virtualization only.
+	TRB_TYPE_EVT_DOORBELL,          // 36
+	TRB_TYPE_EVT_HOST_CONTROLLER,
+	TRB_TYPE_EVT_DEVICE_NOTIFICATION,
+	TRB_TYPE_EVT_MFINDEX_WRAP,
+
+	// TRB Types 40-47 are reserved.
+	 */
+	/* TRB Types 48-63 are vendor defined and optional.*/
+	TRB_TYPE_EVT_SETUP_PKT = 63,
+};
+
+/*Table 127*/
+enum TRB_CMPL_CODES_E {
+	CMPL_CODE_INVALID       = 0,
+	CMPL_CODE_SUCCESS,
+	CMPL_CODE_DATA_BUFFER_ERR,
+	CMPL_CODE_BABBLE_DETECTED_ERR,
+	CMPL_CODE_USB_TRANS_ERR,
+	CMPL_CODE_TRB_ERR,  /*5*/
+	CMPL_CODE_TRB_STALL,
+	CMPL_CODE_RESOURCE_ERR,
+	CMPL_CODE_BANDWIDTH_ERR,
+	CMPL_CODE_NO_SLOT_AVAILABLE_ERR,
+	CMPL_CODE_INVALID_STREAM_TYPE_ERR,
+	/*10*/
+	CMPL_CODE_SLOT_NOT_ENABLED_ERR,
+	CMPL_CODE_EP_NOT_ENABLED_ERR,
+	CMPL_CODE_SHORT_PKT,
+	CMPL_CODE_RING_UNDERRUN,
+	CMPL_CODE_RING_OVERRUN, /*15*/
+	CMPL_CODE_VF_EVENT_RING_FULL_ERR,
+	CMPL_CODE_PARAM_ERR,
+	CMPL_CODE_BANDWIDTH_OVERRUN_ERR,
+	CMPL_CODE_CONTEXT_STATE_ERR,
+	CMPL_CODE_PORT_RESET_ERR, /*20*/
+	CMPL_CODE_EVENT_RING_FULL_ERR,
+	/* 22 is reserved */
+	CMPL_CODE_MISSED_SERVICE_ERR = 23,
+	CMPL_CODE_CMD_RING_STOPPED,
+	CMPL_CODE_CMD_ABORTED, /*25*/
+	CMPL_CODE_STOPPED,
+	CMPL_CODE_STOPPED_LENGTH_INVALID,
+	CMPL_CODE_CONTROL_ABORT_ERR,
+	CMPL_CODE_MAX_EXIT_LATENCY_TOO_LARGE_ERROR,
+	/* 30 is reserved */
+	CMPL_CODE_ISOCH_BUFFER_OVERRUN = 31,
+	CMPL_CODE_EVENT_LOST_ERR,
+	CMPL_CODE_UNDEFINED_ERR, /*33*/
+	CMPL_CODE_INVALID_STREAM_ID_ERR,
+	CMPL_CODE_SEC_BANDWIDTH_ERR,
+	CMPL_CODE_SPLIT_XFER_ERR,
+	/*37-191 RESERVED*/
+	/*192-224 vendor defined error*/
+	/* Returned if crcr0/1 are not written prior*/
+	/* to ringing cmd ring doorbell.*/
+	CMPL_CODE_NV_CMD_RING_NOT_INITED = 192,
+	CMPL_CODE_SUCCESS_NO_PUT_OUT_CX,
+	/*225-255 vendor defined info*/
+	CMPL_CODE_STREAM_NUMP_ERROR = 219,
+	CMPL_CODE_PRIME_PIPE_RECEIVED = 220,
+	CMPL_CODE_HOST_REJECTED = 221,
+	CMPL_CODE_CTRL_DIR_ERR,
+	CMPL_CODE_CTRL_SEQNUM_ERR,
+	CMPL_CODE_PENDING = 225
+};
+
+
+/* Endpoint Context */
+struct EP_CX_S {
+#define EP_CX_EP_STATE_MASK         0x00000007
+#define EP_CX_EP_STATE_SHIFT                 0
+#define EP_CX_MULT_MASK             0x00000300
+#define EP_CX_MULT_SHIFT                     8
+#define EP_CX_MAX_PSTREAMS_MASK     0x00007C00
+#define EP_CX_MAX_PSTREAMS_SHIFT            10
+#define EP_LINEAR_STRM_ARR_MASK     0x00008000
+#define EP_LINEAR_STRM_ARR_SHIFT            15
+#define EP_CX_INTERVAL_MASK         0x00FF0000
+#define EP_CX_INTERVAL_SHIFT                16
+	__le32 ep_dw0;
+
+#define EP_CX_CERR_MASK             0x00000006
+#define EP_CX_CERR_SHIFT                     2
+#define EP_CX_EP_TYPE_MASK          0x00000038
+#define EP_CX_EP_TYPE_SHIFT                  3
+#define EP_CX_HOST_INIT_DISABLE_MASK 0x00000080
+#define EP_CX_HOST_INIT_DISABLE_SHIFT        7
+#define EP_CX_MAX_BURST_SIZE_MASK   0x0000FF00
+#define EP_CX_MAX_BURST_SIZE_SHIFT           8
+#define EP_CX_MAX_PACKET_SIZE_MASK  0xFFFF0000
+#define EP_CX_MAX_PACKET_SIZE_SHIFT         16
+	__le32 ep_dw1;
+
+#define EP_CX_DEQ_CYC_STATE_MASK    0x00000001
+#define EP_CX_DEQ_CYC_STATE_SHIFT            0
+#define EP_CX_TR_DQPT_LO_MASK       0xFFFFFFF0
+#define EP_CX_TR_DQPT_LO_SHIFT               4
+	__le32 ep_dw2;
+
+#define EP_CX_TR_DQPT_HI_MASK       0xFFFFFFFF
+#define EP_CX_TR_DQPT_HI_SHIFT               0
+	__le32 ep_dw3;
+
+#define EP_CX_AVE_TRB_LEN_MASK      0x0000FFFF
+#define EP_CX_AVE_TRB_LEN_SHIFT              0
+#define EP_CX_MAX_ESIT_PAYLOAD_MASK 0xFFFF0000
+#define EP_CX_MAX_ESIT_PAYLOAD_SHIFT        16
+	__le32 ep_dw4;
+
+#define EP_CX_EDTLA_MASK            0x00FFFFFF
+#define EP_CX_EDTLA_SHIFT                    0
+#define EP_CX_PARTIALTD_MASK        0x02000000
+#define EP_CX_PARTIALTD_SHIFT               25
+#define EP_CX_SPLITXSTATE_MASK      0x04000000
+#define EP_CX_SPLITXSTATE_SHIFT             26
+#define EP_CX_SEQ_NUM_MASK          0xFF000000
+#define EP_CX_SEQ_NUM_SHIFT                 24
+	__le32 ep_dw5;
+
+#define EP_CX_CPROG_MASK       0x000000ff
+#define EP_CX_CPROG_SHIFT               0
+#define EP_CX_SBYTE_MASK       0x00007f00
+#define EP_CX_SBYTE_SHIFT               8
+#define EP_CX_TP_MASK          0x00018000
+#define EP_CX_TP_SHIFT                 15
+#define EP_CX_REC_MASK         0x00020000
+#define EP_CX_REC_SHIFT                17
+#define EP_CX_CERRCNT_MASK     0x000c0000
+#define EP_CX_CERRCNT_SHIFT            18
+#define EP_CX_CED_MASK         0x00100000
+#define EP_CX_CED_SHIFT                20
+#define EP_CX_HSP_MASK         0x00200000
+#define EP_CX_HSP_SHIFT                21
+#define EP_CX_RTY_MASK         0x00400000
+#define EP_CX_RTY_SHIFT                22
+#define EP_CX_STD_MASK              0x00800000
+#define EP_CX_STD_SHIFT                     23
+#define EP_CX_EP_STATUS_MASK        0xff000000
+#define EP_CX_EP_STATUS_SHIFT               24
+	__le32 ep_dw6;
+
+#define EP_CX_DATA_OFFSET_MASK      0x0000ffff
+#define EP_CX_DATA_OFFSET_SHIFT              0
+#define EP_CX_LPA_MASK              0x00200000
+#define EP_CX_LPA_SHIFT                     21
+#define EP_CX_NUMTRBS_MASK          0x07c00000
+#define EP_CX_NUMTRBS_SHIFT                 22
+#define EP_CX_NUMP_MASK             0xf8000000
+#define EP_CX_NUMP_SHIFT                    27
+	__le32 ep_dw7;
+
+	__le32 ep_dw8;
+	__le32 ep_dw9;
+
+#define EP_CX_CPING_MASK            0x000000ff
+#define EP_CX_CPING_SHIFT                    0
+#define EP_CX_SPING_MASK            0x0000ff00
+#define EP_CX_SPING_SHIFT                   8
+#define EP_CX_TC_MASK               0x00030000
+#define EP_CX_TC_SHIFT                      16
+#define EP_CX_NS_MASK               0x00040000
+#define EP_CX_NS_SHIFT                      18
+#define EP_CX_RO_MASK               0x00080000
+#define EP_CX_RO_SHIFT                      19
+#define EP_CX_TLM_MASK              0x00100000
+#define EP_CX_TLM_SHIFT                     20
+#define EP_CX_DLM_MASK              0x00200000
+#define EP_CX_DLM_SHIFT                     21
+#define EP_CX_SRR_MASK              0xff000000
+#define EP_CX_SRR_SHIFT                     24
+	__le32 ep_dw10;
+
+#define EP_CX_DEVADDR_MASK          0x0000007f
+#define EP_CX_DEVADDR_SHIFT                  0
+#define EP_CX_HUBADDR_MASK          0x0000ff00
+#define EP_CX_HUBADDR_SHIFT                  8
+#define EP_CX_RPORTNUM_MASK         0x00ff0000
+#define EP_CX_RPORTNUM_SHIFT                16
+#define EP_CX_SLOTID_MASK           0xff000000
+#define EP_CX_SLOTID_SHIFT                  24
+	__le32 ep_dw11;
+
+#define EP_CX_RSTRING_MASK          0x000fffff
+#define EP_CX_RSTRING_SHIFT                  0
+#define EP_CX_SPEED_MASK            0x00f00000
+#define EP_CX_SPEED_SHIFT                   20
+#define EP_CX_LPU_MASK              0x01000000
+#define EP_CX_LPU_SHIFT                     24
+#define EP_CX_MTT_MASK              0x02000000
+#define EP_CX_MTT_SHIFT                     25
+#define EP_CX_HUB_MASK              0x04000000
+#define EP_CX_HUB_SHIFT                     26
+#define EP_CX_DCI_MASK              0xf8000000
+#define EP_CX_DCI_SHIFT                     27
+	__le32 ep_dw12;
+
+#define EP_CX_TTHSLOTID_MASK        0x000000ff
+#define EP_CX_TTHSLOTID_SHIFT                0
+#define EP_CX_TTPORTNUM_MASK        0x0000ff00
+#define EP_CX_TTPORTNUM_SHIFT                8
+#define EP_CX_SSF_MASK              0x000f0000
+#define EP_CX_SSF_SHIFT                     16
+#define EP_CX_SPS_MASK              0x00300000
+#define EP_CX_SPS_SHIFT                     20
+#define EP_CX_INTRTGT_MASK          0xffc00000
+#define EP_CX_INTRTGT_SHIFT                 22
+	__le32 ep_dw13;
+
+#define EP_CX_FRZ_MASK         0x00000001
+#define EP_CX_FRZ_SHIFT                 0
+#define EP_CX_END_MASK         0x00000002
+#define EP_CX_END_SHIFT                 1
+#define EP_CX_ELM_MASK         0x00000004
+#define EP_CX_ELM_SHIFT                 2
+#define EP_CX_MRK_MASK         0x00000008
+#define EP_CX_MRK_SHIFT                 3
+#define EP_CX_LINKLO_MASK      0xfffffff0
+#define EP_CX_LINKLO_SHIFT              4
+	__le32 ep_dw14;
+
+	__le32 ep_dw15;
+};
+
+
+/* Transfer TRBs*/
+struct TRANSFER_TRB_S {
+	__le32   data_buf_ptr_lo;
+	__le32   data_buf_ptr_hi;
+
+#define TRB_TRANSFER_LEN_MASK       0x0001FFFF
+#define TRB_TRANSFER_LEN_SHIFT               0
+#define TRB_TD_SIZE_MASK            0x003E0000
+#define TRB_TD_SIZE_SHIFT                   17
+#define TRB_INTR_TARGET_MASK        0xFFC00000
+#define TRB_INTR_TARGET_SHIFT               22
+
+	__le32   trb_dword2;
+
+#define TRB_CYCLE_BIT_MASK          0x00000001
+#define TRB_CYCLE_BIT_SHIFT                  0
+#define TRB_LINK_TOGGLE_CYCLE_MASK  0x00000002
+#define TRB_LINK_TOGGLE_CYCLE_SHIFT          1
+#define TRB_INTR_ON_SHORT_PKT_MASK  0x00000004
+#define TRB_INTR_ON_SHORT_PKT_SHIFT          2
+#define TRB_NO_SNOOP_MASK           0x00000008
+#define TRB_NO_SNOOP_SHIFT                   3
+#define TRB_CHAIN_BIT_MASK          0x00000010
+#define TRB_CHAIN_BIT_SHIFT                  4
+#define TRB_INTR_ON_COMPLETION_MASK 0x00000020
+#define TRB_INTR_ON_COMPLETION_SHIFT         5
+#define TRB_IMMEDIATE_DATA_MASK     0x00000040
+#define TRB_IMMEDIATE_DATA_SHIFT             6
+#define ISOC_TRB_TRAN_BURST_CT_MASK 0x00000180
+#define ISOC_TRB_TRAN_BURST_CT_SHIFT         7
+#define TRB_TYPE_MASK               0x0000FC00
+#define TRB_TYPE_SHIFT                      10
+#define DATA_STAGE_TRB_DIR_MASK     0x00010000
+#define DATA_STAGE_TRB_DIR_SHIFT            16
+#define ISOC_TRB_TLBPC_MASK         0x000F0000
+#define ISOC_TRB_TLBPC_SHIFT                16
+#define ISOC_TRB_FRAME_ID_MASK      0x7FF00000
+#define ISOC_TRB_FRAME_ID_SHIFT             20
+#define STREAM_TRB_STREAM_ID_MASK   0xFFFF0000
+#define STREAM_TRB_STREAM_ID_SHIFT	    16
+#define ISOC_TRB_SIA_MASK           0x80000000
+#define ISOC_TRB_SIA_SHIFT                  31
+
+	__le32 trb_dword3;
+};
+
+
+/*Event TRBs*/
+struct EVENT_TRB_S {
+	u32 trb_pointer_lo;
+	u32 trb_pointer_hi;
+
+#define EVE_TRB_TRAN_LEN_MASK       0x00FFFFFF
+#define EVE_TRB_TRAN_LEN_SHIFT               0
+#define EVE_TRB_SEQ_NUM_MASK        0x0000FFFF
+#define EVE_TRB_SEQ_NUM_SHIFT                0
+#define EVE_TRB_COMPL_CODE_MASK     0xFF000000
+#define EVE_TRB_COMPL_CODE_SHIFT            24
+	u32 eve_trb_dword2;
+
+#define EVE_TRB_CYCLE_BIT_MASK      0x00000001
+#define EVE_TRB_CYCLE_BIT_SHIFT              0
+#define EVE_TRB_EVENT_DATA_MASK     0x00000004
+#define EVE_TRB_EVENT_DATA_SHIFT             2
+#define EVE_TRB_TYPE_MASK           0x0000FC00
+#define EVE_TRB_TYPE_SHIFT                  10
+#define EVE_TRB_ENDPOINT_ID_MASK    0x001F0000
+#define EVE_TRB_ENDPOINT_ID_SHIFT           16
+	u32 eve_trb_dword3;
+};
+
+struct NV_UDC_REQUEST {
+	struct usb_request usb_req;
+	struct list_head queue;
+	bool mapped;
+	u64 buff_len_left;
+	u32 trbs_needed;
+	struct TRANSFER_TRB_S *td_start;
+	bool all_trbs_queued;
+	bool short_pkt;
+};
+
+struct nv_setup_packet {
+	struct usb_ctrlrequest usbctrlreq;
+	u16 seqnum;
+};
+
+struct NV_BUFFER_INFO_S {
+	void *vaddr;
+	dma_addr_t dma;
+	u32 len;
+};
+
+struct NV_UDC_EP {
+	struct usb_ep usb_ep;
+#ifdef PRIME_NOT_RCVD_WAR
+	struct delayed_work work;
+#endif
+	struct NV_BUFFER_INFO_S tran_ring_info;
+	union {
+		struct TRANSFER_TRB_S *tran_ring_ptr;
+		struct TRANSFER_TRB_S *first_trb;
+	};
+	union {
+		struct TRANSFER_TRB_S *link_trb;
+		struct TRANSFER_TRB_S *last_trb;
+	};
+	struct TRANSFER_TRB_S *enq_pt;
+	u8 pcs;
+#ifdef PRIME_NOT_RCVD_WAR
+	u8 stream_rejected_retry_count;
+#endif
+	char name[10];
+	u8 DCI;
+	struct list_head queue;
+	const struct usb_endpoint_descriptor *desc;
+	const struct usb_ss_ep_comp_descriptor *comp_desc;
+	bool tran_ring_full;
+	struct NV_UDC_S *nvudc;
+};
+
+struct SEL_VALUE_S {
+	u16 u2_pel_value;
+	u16 u2_sel_value;
+	u8 u1_pel_value;
+	u8 u1_sel_value;
+};
+
+struct mmio_reg_s {
+	u32 device_address;
+	u32 portsc;
+	u32 portpm;
+	u32 ereplo;
+	u32 erephi;
+	u32 ctrl;
+};
+
+struct NV_UDC_S {
+	struct usb_gadget gadget;
+	struct usb_gadget_driver *driver;
+	struct device *dev;
+	struct platform_device *pdev_plat;
+	struct pci_dev *pdev_pci;
+	struct otg_transceiver *transceiver;
+	struct NV_UDC_EP udc_ep[32];
+	u32 irq;
+	struct NV_BUFFER_INFO_S ep_cx;
+	struct EP_CX_S *p_epcx;
+	resource_size_t	mmio_phys_len;
+	resource_size_t	mmio_phys_base;
+
+	void __iomem *mmio_reg_base;
+
+	struct NV_BUFFER_INFO_S event_ring0;
+	struct NV_BUFFER_INFO_S event_ring1;
+	struct EVENT_TRB_S *evt_dq_pt;
+	u8 CCS;
+	bool registered;
+	bool enabled;
+	bool binded;
+	bool pullup;
+	u32 act_bulk_ep;
+	u32 num_enabled_eps;
+	u32 g_isoc_eps;
+	struct NV_UDC_REQUEST *status_req;
+	struct SEL_VALUE_S sel_value;
+	u16 statusbuf;
+
+#define WAIT_FOR_SETUP      0
+#define SETUP_PKT_PROCESS_IN_PROGRESS 1
+#define DATA_STAGE_XFER     2
+#define DATA_STAGE_RECV     3
+#define STATUS_STAGE_XFER   4
+#define STATUS_STAGE_RECV   5
+	u8 setup_status;
+	u8 device_state;
+	u8 resume_state;
+	u16 ctrl_seq_num;
+	spinlock_t lock;
+	struct EVENT_TRB_S *evt_seg0_last_trb;
+	struct EVENT_TRB_S *evt_seg1_last_trb;
+	u32 dbg_cnt1;
+	u32 dbg_cnt2;
+	u32 dbg_cnt3;
+	u32 dbg_cnt4;
+#define CTRL_REQ_QUEUE_DEPTH  5
+	struct nv_setup_packet ctrl_req_queue[CTRL_REQ_QUEUE_DEPTH];
+	u8    ctrl_req_enq_idx;
+	void (*setup_fn_call_back) (struct NV_UDC_S *);
+	u16   dev_addr;
+	u32 num_evts_processed;
+	u32 iso_delay;
+	u32 stream_rejected;
+	struct mmio_reg_s mmio_reg;
+};
+
+void free_data_struct(struct NV_UDC_S *nvudc);
+u32 reset_data_struct(struct NV_UDC_S *nvudc);
+void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
+/*
+ * macro to poll STCHG reg for expected value.  If we exceed polling limit,
+ * a console message is printed.  _fmt must be enclosed * in ""
+ * as it is string identifier into dev_dbg().
+ */
+#define STATECHG_REG_TIMEOUT_IN_USECS 100
+#define poll_stchg(dev, _fmt, _val)					\
+	do {								\
+		u32	_i, _reg;					\
+		for (_i = 0; _i < (STATECHG_REG_TIMEOUT_IN_USECS*20); _i++) {\
+			_reg = ioread32(nvudc->mmio_reg_base + EP_STCHG);\
+			if ((_reg & _val) == _val)			\
+				break;					\
+			ndelay(50);					\
+		}							\
+		if (_i == (STATECHG_REG_TIMEOUT_IN_USECS*20)) {		\
+			msg_dbg(dev, "STCHG Timeout: "_fmt"\n");	\
+			msg_dbg(dev, "STCHG=0x%.8x, EpMask=0x%.8x\n",	\
+					_reg, _val);			\
+		}							\
+	} while (0)
+
+
+/*
+ * macro to poll RELOAD reg for expected value.  If we exceed polling limit,
+ * a console message is printed.  _fmt must be enclosed
+ * in "" as it is string identifier into dev_dbg().
+ */
+#define RELOAD_REG_TIMEOUT_IN_USECS 100
+#define poll_reload(dev, _fmt, _val)					\
+	do {								\
+		u32	_i, _reg;					\
+		for (_i = 0; _i < (RELOAD_REG_TIMEOUT_IN_USECS*20); _i++) {\
+			_reg = ioread32(nvudc->mmio_reg_base + EP_RELOAD);\
+			if ((_reg & _val) == 0)				\
+				break;					\
+			ndelay(50);					\
+		}							\
+		if (_i == (RELOAD_REG_TIMEOUT_IN_USECS*20)) {		\
+			msg_dbg(dev, "RELOAD Timeout: "_fmt"\n");	\
+			msg_dbg(dev, "RELOAD=0x%.8x, EpMask=0x%.8x\n",	\
+					_reg, _val);			\
+		} \
+	} while (0)
+
+/*
+ * macro to poll EP_STOPPED reg for specific endpoint.
+ * If we exceed polling limit, a console message is printed.
+ * _fmt must be enclosed * in ""
+ * as it is string identifier into dev_dbg().
+ */
+#define EP_STOPPED_REG_TIMEOUT_IN_USECS 100
+#define poll_ep_stopped(dev, _fmt, _val)				\
+	do {								\
+		u32	_i, _reg;					\
+		for (_i = 0; _i < (EP_STOPPED_REG_TIMEOUT_IN_USECS*20); _i++) {\
+			_reg = ioread32(nvudc->mmio_reg_base + EP_STOPPED);\
+			if (_reg & _val)			\
+				break;					\
+			ndelay(50);					\
+		}							\
+		if (_i == (EP_STOPPED_REG_TIMEOUT_IN_USECS*20)) {	\
+			msg_dbg(dev, "EP_STOPPED Timeout: "_fmt"\n");	\
+		}							\
+	} while (0)
+
+#define msg_dbg(dev, fmt, args...) \
+	{ dev_dbg(dev, "%s():%d: " fmt, __func__ , __LINE__, ## args); }
+#define msg_info(dev, fmt, args...) \
+	{ dev_dbg(dev, fmt, ## args); }
+#define msg_err(dev, fmt, args...) \
+	{ dev_err(dev, fmt, ## args); }
+#define msg_warn(dev, fmt, args...) \
+	{ dev_warn(dev, fmt, ## args); }
+
+#define msg_entry(dev)  \
+	do { \
+		unsigned int _cpu = smp_processor_id(); \
+		msg_dbg(dev, "enter, cpu=%d\n", _cpu);  \
+	} while (0)
+#define msg_exit(dev) msg_dbg(dev, "exit");
