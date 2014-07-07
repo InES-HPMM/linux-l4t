@@ -8,6 +8,8 @@
  *  Copyright (c) 2004 Takashi Iwai <tiwai@suse.de>
  *                     PeiSen Hou <pshou@realtek.com.tw>
  *
+ *   Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
+ *
  *  This program is free software; you can redistribute it and/or modify it
  *  under the terms of the GNU General Public License as published by the Free
  *  Software Foundation; either version 2 of the License, or (at your option)
@@ -51,6 +53,7 @@
 #include <linux/time.h>
 #include <linux/completion.h>
 #include <linux/clk.h>
+#include <linux/of_device.h>
 
 #ifdef CONFIG_X86
 /* for snoop control */
@@ -4541,11 +4544,37 @@ static struct pci_driver azx_driver = {
 };
 
 #ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
+
+static int hda_driver_data = AZX_DRIVER_NVIDIA_TEGRA | AZX_DCAPS_RIRB_DELAY |
+				AZX_DCAPS_PM_RUNTIME;
+
+static const struct of_device_id hda_device[] = {
+	{.compatible = "nvidia,tegra30-hda", .data = &hda_driver_data},
+	{},
+};
+MODULE_DEVICE_TABLE(of, hda_device);
+
 static int azx_probe_platform(struct platform_device *pdev)
 {
-	const struct platform_device_id *pdev_id = platform_get_device_id(pdev);
+	const struct platform_device_id *pdev_id;
+	const struct of_device_id *match;
+	int driver_data;
 
-	return azx_probe(NULL, pdev, pdev_id->driver_data);
+	if (pdev->dev.of_node) {
+		match = of_match_device(of_match_ptr(hda_device),
+				 &pdev->dev);
+		if (match) {
+			driver_data = *(int *)(match->data);
+		} else {
+			snd_printk(KERN_WARNING "%s matching device not found\n",
+				 __func__);
+			return -EINVAL;
+		}
+	} else {
+		pdev_id = platform_get_device_id(pdev);
+		driver_data = pdev_id->driver_data;
+	}
+	return azx_probe(NULL, pdev, driver_data);
 }
 
 static int azx_remove_platform(struct platform_device *pdev)
@@ -4569,6 +4598,7 @@ static struct platform_driver hda_platform_driver = {
 	.driver = {
 		.name = "hda-platform",
 		.pm = AZX_PM_OPS,
+		.of_match_table = of_match_ptr(hda_device),
 	},
 	.probe = azx_probe_platform,
 	.remove = azx_remove_platform,
