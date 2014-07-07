@@ -401,6 +401,7 @@ static struct regulator_ops max77620_regulator_ops = {
 	.enable = max77620_regulator_enable,
 	.disable = max77620_regulator_disable,
 	.list_voltage = regulator_list_voltage_linear,
+	.map_voltage = regulator_map_voltage_linear,
 	.get_voltage_sel = regulator_get_voltage_sel_regmap,
 	.set_voltage_sel = regulator_set_voltage_sel_regmap,
 	.set_mode = max77620_regulator_set_mode,
@@ -514,7 +515,7 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 			.supply_name = max77620_rails(_name),	\
 			.id = MAX77620_REGULATOR_ID_##_id,	\
 			.ops = &max77620_regulator_ops,		\
-			.n_voltages = ((_max_uV - _min_uV) / _step_uV),	\
+			.n_voltages = ((_max_uV - _min_uV) / _step_uV) + 1, \
 			.min_uV = _min_uV,	\
 			.uV_step = _step_uV,	\
 			.enable_time = 500,	\
@@ -543,7 +544,7 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 			.supply_name = max77620_rails(_name),	\
 			.id = MAX77620_REGULATOR_ID_##_id,	\
 			.ops = &max77620_regulator_ops,		\
-			.n_voltages = ((_max_uV - _min_uV) / _step_uV),	\
+			.n_voltages = ((_max_uV - _min_uV) / _step_uV) + 1, \
 			.min_uV = _min_uV,	\
 			.uV_step = _step_uV,	\
 			.enable_time = 500,	\
@@ -560,8 +561,8 @@ static struct max77620_regulator_info max77620_regs_info[MAX77620_NUM_REGS] = {
 	REGULATOR_SD(SD2, sd2, SDX, 600000, 3387500, 12500),
 	REGULATOR_SD(SD3, sd3, SDX, 600000, 3387500, 12500),
 
-	REGULATOR_LDO(LDO0, ldo0, N, 800000, 2350000, 25000),
-	REGULATOR_LDO(LDO1, ldo1, N, 800000, 2350000, 25000),
+	REGULATOR_LDO(LDO0, ldo0, N, 800000, 2375000, 25000),
+	REGULATOR_LDO(LDO1, ldo1, N, 800000, 2375000, 25000),
 	REGULATOR_LDO(LDO2, ldo2, P, 800000, 3950000, 50000),
 	REGULATOR_LDO(LDO3, ldo3, P, 800000, 3950000, 50000),
 	REGULATOR_LDO(LDO4, ldo4, P, 800000, 1587500, 12500),
