@@ -4,6 +4,7 @@
  * Copyright (C) 2014 NVIDIA CORPORATION. All rights reserved.
  *
  * Author: Mallikarjun Kasoju <mkasoju@nvidia.com>
+ * 	   Laxman Dewangan <ldewangan@nvidia.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -54,19 +55,11 @@ struct max77620_regulator_info {
 	struct regulator_desc desc;
 };
 
-enum max77620_slew_rate {
-	MAX77620_SD_SLEW_RATE_SLOWEST,
-	MAX77620_SD_SLEW_RATE_SLOW,
-	MAX77620_SD_SLEW_RATE_FAST,
-	MAX77620_SD_SLEW_RATE_FASTEST,
-};
-
 struct max77620_regulator_pdata {
 	bool glpm_enable;
 	bool en2_ctrl_sd0;
 	bool sd_fsrade_disable;
 	struct regulator_init_data *reg_idata;
-	enum max77620_slew_rate slew_rate;
 	int fps_src;
 	int fps_pd_period;
 	int fps_pu_period;
@@ -392,6 +385,44 @@ static unsigned int max77620_regulator_get_mode(struct regulator_dev *rdev)
 	return reg_mode;
 }
 
+static int max77620_regulator_set_ramp_delay(struct regulator_dev *rdev,
+				       int ramp_delay)
+{
+	struct max77620_regulator *reg = rdev_get_drvdata(rdev);
+	int id = rdev_get_id(rdev);
+	struct max77620_regulator_info *rinfo = reg->rinfo[id];
+	struct device *parent = reg->max77620_chip->dev;
+	int ret, val;
+	int retval;
+
+	if (rinfo->type != MAX77620_REGULATOR_TYPE_SD)
+		return -EINVAL;
+
+	if (ramp_delay <= 13750) {
+		val = 0;
+		retval = 13750;
+	} else if (ramp_delay <= 27500) {
+		val = 1;
+		retval = 27500;
+	} else if (ramp_delay <= 55000) {
+		val = 2;
+		retval = 55000;
+	} else {
+		val = 3;
+		retval = 100000;
+	}
+
+	ret = max77620_reg_update(parent, MAX77620_PWR_SLAVE,
+			rinfo->cfg_addr, MAX77620_SD_SR_MASK,
+			val << MAX77620_SD_SR_SHIFT);
+	if (ret < 0) {
+		dev_err(reg->dev, "Reg 0x%02x update failed: %d\n",
+			rinfo->cfg_addr, ret);
+		return ret;
+	}
+	return retval;
+}
+
 static struct regulator_ops max77620_regulator_ops = {
 	.is_enabled = max77620_regulator_is_enabled,
 	.enable = max77620_regulator_enable,
@@ -402,6 +433,8 @@ static struct regulator_ops max77620_regulator_ops = {
 	.set_voltage_sel = regulator_set_voltage_sel_regmap,
 	.set_mode = max77620_regulator_set_mode,
 	.get_mode = max77620_regulator_get_mode,
+	.set_ramp_delay = max77620_regulator_set_ramp_delay,
+	.set_voltage_time_sel = regulator_set_voltage_time_sel,
 };
 
 static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
@@ -409,7 +442,7 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
 	struct max77620_regulator_info *rinfo = reg->rinfo[id];
 	struct device *parent = reg->max77620_chip->dev;
-	u8 val, mask, sr_shift_val;
+	u8 val, mask;
 	int ret;
 
 	/* Update power mode */
@@ -448,21 +481,36 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 	}
 
 	if (rinfo->type == MAX77620_REGULATOR_TYPE_SD) {
+		int slew_rate;
+		u8 val_u8;
+
+		ret = max77620_reg_read(parent, MAX77620_PWR_SLAVE,
+				rinfo->cfg_addr, &val_u8);
+		if (ret < 0) {
+			dev_err(reg->dev, "Register 0x%02x read failed: %d\n",
+					rinfo->cfg_addr, ret);
+			return ret;
+		}
+
+		slew_rate = (val_u8 >> MAX77620_SD_SR_SHIFT) & 0x3;
+		switch (slew_rate) {
+		case 0:
+			slew_rate = 13750;
+			break;
+		case 1:
+			slew_rate = 27500;
+			break;
+		case 2:
+			slew_rate = 55000;
+			break;
+		case 3:
+			slew_rate = 100000;
+			break;
+		}
+		rinfo->desc.ramp_delay = slew_rate;
+
+		mask = MAX77620_SD_FSRADE_MASK;
 		val = 0;
-		mask = 0;
-		sr_shift_val =  MAX77620_SD_SR_SHIFT;
-
-		mask |= MAX77620_SD_SR_MASK;
-		if (rpdata->slew_rate == MAX77620_SD_SLEW_RATE_SLOWEST)
-			val |= (MAX77620_SD_SR_13_75 << sr_shift_val);
-		else if (rpdata->slew_rate == MAX77620_SD_SLEW_RATE_SLOW)
-			val |= (MAX77620_SD_SR_27_5 << sr_shift_val);
-		else if (rpdata->slew_rate == MAX77620_SD_SLEW_RATE_FAST)
-			val |= (MAX77620_SD_SR_55 << sr_shift_val);
-		else
-			val |= (MAX77620_SD_SR_100 << sr_shift_val);
-
-		mask |= MAX77620_SD_FSRADE_MASK;
 		if (rpdata->sd_fsrade_disable)
 			val |= MAX77620_SD_FSRADE_MASK;
 
@@ -640,10 +688,6 @@ static int max77620_get_regulator_dt_data(struct platform_device *pdev,
 			reg_pdata->fps_pd_period = prop;
 		else
 			reg_pdata->fps_pd_period = -1;
-
-		ret = of_property_read_u32(reg_node, "maxim,slew-rate", &prop);
-		if (!ret)
-			reg_pdata->slew_rate = prop;
 	}
 	return 0;
 }
@@ -722,6 +766,7 @@ static void __exit max77620_reg_exit(void)
 module_exit(max77620_reg_exit);
 
 MODULE_AUTHOR("Mallikarjun Kasoju <mkasoju@nvidia.com>");
+MODULE_AUTHOR("Laxman Dewangan <ldewangan@nvidia.com>");
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("max77620 regulator driver");
 MODULE_VERSION("1.0");

@@ -28,11 +28,6 @@
 #define FPS_SRC_NONE	3
 #define FPS_SRC_DEF	4
 
-#define SLEW_RATE_SLOWEST	0
-#define SLEW_RATE_SLOW		1
-#define	SLEW_RATE_FAST		2
-#define	SLEW_RATE_FASTEST	3
-
 #define	FPS_POWER_PERIOD_0	0
 #define	FPS_POWER_PERIOD_1	1
 #define	FPS_POWER_PERIOD_2	2
