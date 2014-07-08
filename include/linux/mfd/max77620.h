@@ -381,8 +381,26 @@ static inline int max77620_reg_writes(struct device *dev, int sid,
 		unsigned int reg, int len, void *val)
 {
 	struct max77620_chip *chip = dev_get_drvdata(dev);
+	int ret = 0;
 
-	return regmap_bulk_write(chip->rmap[sid], reg, val, len);
+	if (sid == MAX77620_RTC_SLAVE) {
+		/* RTC registers support sequential writing */
+		ret = regmap_bulk_write(chip->rmap[sid], reg, val, len);
+	} else {
+		/* Power registers support register-data pair writing */
+		u8 *src = (u8 *)val;
+		int i;
+		for (i = 0; i < len; i++) {
+			ret = regmap_write(chip->rmap[sid], reg, *src++);
+			if (ret < 0)
+				break;
+			reg++;
+		}
+	}
+	if (ret < 0)
+		dev_err(chip->dev, "%s() failed, e %d\n", __func__, ret);
+
+	return ret;
 }
 
 static inline int max77620_reg_read(struct device *dev, int sid,
