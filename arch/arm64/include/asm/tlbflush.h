@@ -108,7 +108,8 @@ static inline void flush_tlb_mm(struct mm_struct *mm)
 	dsb();
 	if (cpumask_ran_on_only_one(mm_cpumask(mm)))
 		asm("tlbi	aside1, %0" : : "r" (asid));
-	else
+	barrier();
+	if (!cpumask_ran_on_only_one(mm_cpumask(mm)))
 		asm("tlbi	aside1is, %0" : : "r" (asid));
 	dsb();
 }
@@ -122,7 +123,8 @@ static inline void flush_tlb_page(struct vm_area_struct *vma,
 	dsb();
 	if (cpumask_ran_on_only_one(mm_cpumask(vma->vm_mm)))
 		asm("tlbi	vae1, %0" : : "r" (addr));
-	else
+	barrier();
+	if (!cpumask_ran_on_only_one(mm_cpumask(vma->vm_mm)))
 		asm("tlbi	vae1is, %0" : : "r" (addr));
 	dsb();
 }
@@ -130,16 +132,19 @@ static inline void flush_tlb_page(struct vm_area_struct *vma,
 static inline void flush_tlb_range(struct vm_area_struct *vma,
 					unsigned long start, unsigned long end)
 {
-	if (cpumask_ran_on_only_one(mm_cpumask(vma->vm_mm)))
+	if (cpumask_ran_on_only_one(mm_cpumask(vma->vm_mm))) {
 		if (end - start > FLUSH_TLB_ALL_THRESHOLD)
 			local_flush_tlb_all();
 		else
 			__local_cpu_flush_user_tlb_range(start,end,vma);
-	else
+	}
+	barrier();
+	if (!cpumask_ran_on_only_one(mm_cpumask(vma->vm_mm))) {
 		if (end - start > FLUSH_TLB_ALL_THRESHOLD)
 			flush_tlb_all();
 		else
 			__cpu_flush_user_tlb_range(start,end,vma);
+	}
 }
 
 static inline void flush_tlb_kernel_range(unsigned long start,
