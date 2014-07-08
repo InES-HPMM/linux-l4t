@@ -135,6 +135,8 @@ obj-y                                   += panel-a-1200-800-8-0.o
 obj-y                                   += panel-a-1200-1920-8-0.o
 obj-y					+= panel-a-edp-1080p-14-0.o
 obj-y					+= panel-i-edp-1080p-11-6.o
+obj-y					+= panel-c-lvds-1366-14.o
+obj-y					+= panel-a-1080p-14-0.o
 
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sdhci.o
@@ -146,9 +148,7 @@ obj-${CONFIG_MACH_ARDBEG}               += board-tn8-power.o
 obj-${CONFIG_MACH_ARDBEG}               += board-norrin-power.o
 obj-${CONFIG_MACH_ARDBEG}               += board-norrin-memory.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-a-1080p-11-6.o
-obj-${CONFIG_MACH_ARDBEG}               += panel-s-wqxga-10-1.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-s-edp-uhdtv-15-6.o
-obj-${CONFIG_MACH_ARDBEG}               += panel-c-lvds-1366-14.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-s-edp-wqxgap-15-6.o
 ifeq ($(CONFIG_MACH_ARDBEG),y)
 obj-${CONFIG_SYSEDP_FRAMEWORK}          += board-tn8-sysedp.o
@@ -164,7 +164,6 @@ obj-${CONFIG_MACH_LOKI}               	+= board-loki-power.o
 obj-${CONFIG_MACH_LOKI}               	+= board-tn8-power.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-sdhci.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-a-1080p-11-6.o
-obj-${CONFIG_MACH_LOKI}               	+= panel-s-wqxga-10-1.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-l-720p-5-loki.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-j-1440-810-5-8.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-j-720p-5.o
@@ -175,8 +174,6 @@ obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-sensors.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-panel.o
 obj-${CONFIG_MACH_LAGUNA}               += board-laguna-power.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-11-6.o
-obj-${CONFIG_MACH_LAGUNA}               += panel-s-wqxga-10-1.o
-obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-14-0.o
 
 obj-${CONFIG_MACH_VCM30_T124}           += vcm30_t124.o
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124.o

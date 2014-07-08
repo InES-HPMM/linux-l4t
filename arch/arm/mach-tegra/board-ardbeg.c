@@ -1431,8 +1431,9 @@ static void __init tegra_ardbeg_init_early(void)
 static int tegra_ardbeg_notifier_call(struct notifier_block *nb,
 				    unsigned long event, void *data)
 {
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	struct device *dev = data;
-
+#endif
 	switch (event) {
 	case BUS_NOTIFY_BIND_DRIVER:
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
@@ -1458,6 +1459,13 @@ static void __init tegra_ardbeg_dt_init(void)
 {
 	tegra_get_board_info(&board_info);
 	tegra_get_display_board_info(&display_board_info);
+
+	/* In Ardbeg, zero display_board_id is considered to
+	 * Panasonic wuxga panel one */
+	tegra_set_fixed_panel_ops(true, &dsi_p_wuxga_10_1_ops,
+		"p,wuxga-10-1");
+	tegra_set_fixed_pwm_bl_ops(dsi_p_wuxga_10_1_ops.pwm_bl_ops);
+
 	bus_register_notifier(&platform_bus_type, &platform_nb);
 
 	tegra_ardbeg_early_init();
