@@ -39,6 +39,49 @@ Optinal properties:
 			If this property present then enable the FPS else
 			disable FPS.
 
+Regulators:
+===========
+Device has multiple DCDC(sd[0-3] and LDOs(ld[0-8]). The node "regulators" is
+require if regulator functionality is needed.
+
+Following are properties of regulator subnode.
+
+    Optional properties:
+    -------------------
+	The input supply of regulators are the optional properties on the
+	regulator node. The input supply of these regulators are provided
+	through following properties:
+		in-sd0-supply: Input supply for SD0, INA-SD0 or INB-SD0 pins.
+		in-sd1-supply: Input supply for SD1.
+		in-sd2-supply: Input supply for SD2.
+		in-sd3-supply: Input supply for SD3.
+		in-ldo0-1-supply: Input supply for LDO0 and LDO1.
+		in-ldo2-supply: Input supply for LDO2.
+		in-ldo3-5-supply: Input supply for LDO3 and LDO5
+		in-ldo4-6-supply: Input supply for LDO4 and LDO6.
+		in-ldo7-8-supply: Input supply for LDO7 and LDO8.
+
+
+    Optional sub nodes for regulators:
+    ---------------------------------
+	The subnodes name is the name of regulator and it must be one of:
+	sd[0-3], ldo[0-8]
+
+	Each sub-node should contain the constraints and initialization
+	information for that regulator. See regulator.txt for a description
+	of standard properties for these sub-nodes.
+	Additional optional custom properties  are listed below.
+		maxim,fps-source: FPS source. The macros are defined at
+				dt-bindings/mfd/max77620.h
+		maxim,fps-power-up-period: Power up slot for rail on given FPS.
+		maxim,fps-power-down-period: Power down slot for rail on given
+				FPS.
+		maxim,enable-group-low-power: Enable Group low power mode.
+		maxim,enable-sd0-en2-control: Enable EN2 pincontrol for SD0.
+			This property is only applicable for SD0.
+		maxim,disable-active-discharge: Boolean, disable active
+			discharge.
+
 Example:
 --------
 #include <dt-bindings/mfd/max77620.h>
@@ -75,6 +118,119 @@ max77620@3c {
 			reg = <2>;
 			maxim,fps-time-period = <100>;
 			maxim,fps-enable-input = <FPS_EN_SRC_SW>;
+		};
+	};
+
+	regulators {
+		in-ldo0-1-supply = <&max77620_sd2>;
+		in-ldo7-8-supply = <&max77620_sd2>;
+
+		max77620_sd0: sd0 {
+			regulator-name = "vdd-core";
+			regulator-min-microvolt = <600000>;
+			regulator-max-microvolt = <1400000>;
+			regulator-boot-on;
+			regulator-always-on;
+			maxim,fps-source = <FPS_SRC_1>;
+			regulator-init-mode = <REGULATOR_MODE_NORMAL>;
+		};
+
+		max77620_sd1: sd1 {
+			regulator-name = "vddio-ddr";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-always-on;
+			regulator-boot-on;
+			regulator-init-mode = <REGULATOR_MODE_NORMAL>;
+			maxim,fps-source = <FPS_SRC_0>;
+		};
+
+		max77620_sd2: sd2 {
+			regulator-name = "vdd-pre-reg";
+			regulator-min-microvolt = <1350000>;
+			regulator-max-microvolt = <1350000>;
+			maxim,fps-source = <FPS_SRC_1>;
+		};
+
+		max77620_sd3: sd3 {
+			regulator-name = "vdd-1v8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-always-on;
+			regulator-boot-on;
+			maxim,fps-source = <FPS_SRC_0>;
+			regulator-init-mode = <REGULATOR_MODE_NORMAL>;
+		};
+
+		max77620_ldo0: ldo0 {
+			regulator-name = "avdd-sys";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-always-on;
+			regulator-boot-on;
+			maxim,fps-source = <FPS_SRC_NONE>;
+		};
+
+		max77620_ldo1: ldo1 {
+			regulator-name = "vdd-pex";
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1050000>;
+			maxim,fps-source = <FPS_SRC_NONE>;
+		};
+
+		max77620_ldo2: ldo2 {
+			regulator-name = "vddio-sdmmc3";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <3300000>;
+			maxim,fps-source = <FPS_SRC_NONE>;
+		};
+
+		max77620_ldo3: ldo3 {
+			regulator-name = "vdd-cam-hv";
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			maxim,fps-source = <FPS_SRC_NONE>;
+		};
+
+		max77620_ldo4: ldo4 {
+			regulator-name = "vdd-rtc";
+			regulator-min-microvolt = <1250000>;
+			regulator-max-microvolt = <1250000>;
+			regulator-always-on;
+			regulator-boot-on;
+			maxim,fps-source = <FPS_SRC_0>;
+		};
+
+		max77620_ldo5: ldo5 {
+			regulator-name = "avdd-ts-hv";
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+			maxim,fps-source = <FPS_SRC_NONE>;
+		};
+
+		max77620_ldo6: ldo6 {
+			regulator-name = "vdd-ts";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-always-on;
+			regulator-boot-on;
+			maxim,fps-source = <FPS_SRC_NONE>;
+		};
+
+		max77620_ldo7: ldo7 {
+			regulator-name = "vdd-gen-pll-edp";
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1050000>;
+			regulator-always-on;
+			regulator-boot-on;
+			maxim,fps-source = <FPS_SRC_1>;
+		};
+
+		max77620_ldo8: ldo8 {
+			regulator-name = "vdd-hdmi-dp";
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1050000>;
+			maxim,fps-source = <FPS_SRC_NONE>;
 		};
 	};
 };
