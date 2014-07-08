@@ -1244,6 +1244,8 @@ static int set_machine_constraints(struct regulator_dev *rdev,
 		if (ret < 0) {
 			rdev_err(rdev, "failed to set ramp_delay\n");
 			goto out;
+		} else if (ret > 0) {
+			rdev->constraints->ramp_delay = ret;
 		}
 	}
 
@@ -3694,6 +3696,8 @@ int regulator_set_ramp_delay(struct regulator *regulator, int ramp_delay_uV)
 	}
 
 	ret = rdev->desc->ops->set_ramp_delay(rdev, ramp_delay_uV);
+	if (ret > 0)
+		rdev->constraints->ramp_delay = ret;
 out:
 	mutex_unlock(&rdev->mutex);
 	return ret;
