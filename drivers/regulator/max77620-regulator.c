@@ -41,7 +41,6 @@
 #define MAX77620_FPS_SRC_NUM			3
 
 struct max77620_regulator_info {
-	u8 id;
 	u8 type;
 	u32 min_uV;
 	u32 max_uV;
@@ -218,14 +217,13 @@ static int max77620_regulator_enable(struct regulator_dev *rdev)
 {
 	struct max77620_regulator *reg = rdev_get_drvdata(rdev);
 	int id = rdev_get_id(rdev);
-	struct max77620_regulator_info *rinfo = reg->rinfo[id];
 	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
 	int ret;
 
 	if (reg->fps_src[id] != FPS_SRC_NONE)
 		return 0;
 
-	if ((rinfo->id == MAX77620_REGULATOR_ID_SD0) && rpdata->en2_ctrl_sd0)
+	if ((id == MAX77620_REGULATOR_ID_SD0) && rpdata->en2_ctrl_sd0)
 		return 0;
 
 	ret = max77620_regulator_set_power_mode(reg, reg->enable_power_mode[id],
@@ -242,14 +240,13 @@ static int max77620_regulator_disable(struct regulator_dev *rdev)
 {
 	struct max77620_regulator *reg = rdev_get_drvdata(rdev);
 	int id = rdev_get_id(rdev);
-	struct max77620_regulator_info *rinfo = reg->rinfo[id];
 	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
 	int ret;
 
 	if (reg->fps_src[id] != FPS_SRC_NONE)
 		return 0;
 
-	if ((rinfo->id == MAX77620_REGULATOR_ID_SD0) && rpdata->en2_ctrl_sd0)
+	if ((id == MAX77620_REGULATOR_ID_SD0) && rpdata->en2_ctrl_sd0)
 		return 0;
 
 	ret =  max77620_regulator_set_power_mode(reg,
@@ -266,14 +263,13 @@ static int max77620_regulator_is_enabled(struct regulator_dev *rdev)
 {
 	struct max77620_regulator *reg = rdev_get_drvdata(rdev);
 	int id = rdev_get_id(rdev);
-	struct max77620_regulator_info *rinfo = reg->rinfo[id];
 	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
 	int ret = 1;
 
 	if (reg->fps_src[id] != FPS_SRC_NONE)
 		return 1;
 
-	if ((rinfo->id == MAX77620_REGULATOR_ID_SD0) && rpdata->en2_ctrl_sd0)
+	if ((id == MAX77620_REGULATOR_ID_SD0) && rpdata->en2_ctrl_sd0)
 		return 1;
 
 	ret = max77620_regulator_get_power_mode(reg, id);
@@ -479,7 +475,7 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 		}
 	}
 
-	if ((rinfo->id == MAX77620_REGULATOR_ID_SD0) && rpdata->en2_ctrl_sd0) {
+	if ((id == MAX77620_REGULATOR_ID_SD0) && rpdata->en2_ctrl_sd0) {
 		ret = max77620_regulator_set_power_mode(reg,
 				MAX77620_POWER_MODE_NORMAL, id);
 		if (ret < 0) {
@@ -500,7 +496,6 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 #define REGULATOR_SD(_id, _name, _sname, _volt_mask, _min_uV, _max_uV,	\
 		_step_uV)						\
 	[MAX77620_REGULATOR_ID_##_id] = {			\
-		.id = MAX77620_REGULATOR_ID_##_id,		\
 		.type = MAX77620_REGULATOR_TYPE_SD,			\
 		.volt_mask =  MAX77620_##_volt_mask##_VOLT_MASK,	\
 		.volt_addr = MAX77620_REG_##_id,		\
@@ -529,7 +524,6 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 
 #define REGULATOR_LDO(_id, _name, _sname, _type, _min_uV, _max_uV, _step_uV) \
 	[MAX77620_REGULATOR_ID_##_id] = {			\
-		.id = MAX77620_REGULATOR_ID_##_id,		\
 		.type = MAX77620_REGULATOR_TYPE_LDO_##_type,		\
 		.volt_mask = MAX77620_LDO_VOLT_MASK,			\
 		.volt_addr = MAX77620_REG_##_id##_CFG,		\
