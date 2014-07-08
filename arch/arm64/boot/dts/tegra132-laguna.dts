@@ -1,3 +1,21 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 /dts-v1/;
 
 #include "tegra132.dtsi"
@@ -17,12 +35,6 @@
 		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
-	};
-
-	host1x {
-		vi {
-			avdd_dsi_csi-supply = <&as3722_ldo2>;
-		};
 	};
 
 	serial@70006000 {
@@ -84,12 +96,6 @@
 		nvidia,hot-plug-gpio = <&gpio TEGRA_GPIO(O, 1) 0>;
 		nvidia,wake-gpio = <&gpio TEGRA_GPIO(DD, 3) 0>;
 		nvidia,x1-slot-gpio = <&tca6416 8 0>;
-		hvdd-pex-supply = <&reg_3v3_supply>;
-		hvdd-pex-pll-e-supply = <&reg_3v3_supply>;
-		dvddio-pex-supply = <&as3722_sd4>;
-		avddio-pex-supply = <&as3722_sd4>;
-		avdd-pex-pll-supply = <&as3722_sd4>;
-		vddio-pex-ctl-supply = <&as3722_sd4>;
 		status = "okay";
 
 		pci@1,0 {
@@ -104,11 +110,6 @@
 	sata-controller {
 		nvidia,pexp-gpio = <&tca6416 9 0>;
 		status = "okay";
-		avdd_sata-supply = <&as3722_sd4>;
-		vdd_sata-supply = <&as3722_sd4>;
-		avdd_sata_pll-supply =<&as3722_sd4>;
-		hvdd_sata-supply = <&as3722_gpio2_supply>;
-		vddio_pex_sata-supply = <&vdd_ac_bat>;
 	};
 
         xusb@70090000 {
@@ -127,8 +128,6 @@
 		nvidia,charging-supported;
 		nvidia,id-detection-type = <1>;
 		#extcon-cells = <1>;
-		avdd_usb-supply = <&as3722_gpio2_supply>;
-		avdd_pll_utmip-supply = <&reg_1v8_supply>;
 		status = "okay";
 	};
 
@@ -137,7 +136,6 @@
 		extcon-cables = <&adc_extcon 0>;
 		extcon-cable-names = "id";
 		#extcon-cells = <1>;
-		usb_vbus-supply = <&usb0_vbus>;
 		status = "okay";
 	};
 
