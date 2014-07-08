@@ -41,17 +41,21 @@ static int te_pin_user_pages(void *buffer, size_t size,
 	int ret = 0;
 	unsigned int nr_pages;
 	struct page **pages = NULL;
+	bool writable;
 
-	nr_pages = (((unsigned int)buffer & (PAGE_SIZE - 1)) +
+	nr_pages = (((uintptr_t)buffer & (PAGE_SIZE - 1)) +
 			(size + PAGE_SIZE - 1)) >> PAGE_SHIFT;
 
 	pages = kzalloc(nr_pages * sizeof(struct page *), GFP_KERNEL);
 	if (!pages)
 		return -ENOMEM;
 
+	writable = (buf_type == TE_PARAM_TYPE_MEM_RW ||
+		buf_type == TE_PARAM_TYPE_PERSIST_MEM_RW);
+
 	down_read(&current->mm->mmap_sem);
 	ret = get_user_pages(current, current->mm, (unsigned long)buffer,
-			nr_pages, buf_type == TE_PARAM_TYPE_MEM_RW,
+			nr_pages, writable,
 			0, pages, NULL);
 
 	up_read(&current->mm->mmap_sem);
@@ -61,44 +65,46 @@ static int te_pin_user_pages(void *buffer, size_t size,
 	return ret;
 }
 
-static struct te_shmem_desc *te_add_shmem_desc(void *buffer, size_t size,
-		unsigned int nr_pages, struct page **pages,
+static int te_prep_mem_buffer(uint32_t session_id,
+		void *buffer, size_t size, uint32_t buf_type,
 		struct tlk_context *context)
-{
-	struct te_shmem_desc *shmem_desc = NULL;
-	shmem_desc = kzalloc(sizeof(struct te_shmem_desc), GFP_KERNEL);
-	if (shmem_desc) {
-		INIT_LIST_HEAD(&(shmem_desc->list));
-		shmem_desc->buffer = buffer;
-		shmem_desc->size = size;
-		shmem_desc->nr_pages = nr_pages;
-		shmem_desc->pages = pages;
-		list_add_tail(&shmem_desc->list, &(context->shmem_alloc_list));
-	}
-
-	return shmem_desc;
-}
-
-static int te_pin_mem_buffers(void *buffer, size_t size,
-		struct tlk_context *context, uint32_t buf_type)
 {
 	unsigned long pages = 0;
 	struct te_shmem_desc *shmem_desc = NULL;
 	int ret = 0, nr_pages = 0;
 
-	nr_pages = te_pin_user_pages(buffer, size, &pages, buf_type);
-	if (nr_pages <= 0) {
-		pr_err("%s: te_pin_user_pages Failed (%d)\n", __func__,
-			nr_pages);
+	/* allocate new shmem descriptor */
+	shmem_desc = kzalloc(sizeof(struct te_shmem_desc), GFP_KERNEL);
+	if (!shmem_desc) {
+		pr_err("%s: te_add_shmem_desc failed\n", __func__);
 		ret = OTE_ERROR_OUT_OF_MEMORY;
 		goto error;
 	}
-	shmem_desc = te_add_shmem_desc(buffer, size,
-				nr_pages, (struct page **)pages, context);
-	if (!shmem_desc) {
-		pr_err("%s: te_add_shmem_desc Failed\n", __func__);
+
+	/* pin pages */
+	nr_pages = te_pin_user_pages(buffer, size, &pages, buf_type);
+	if (nr_pages <= 0) {
+		pr_err("%s: te_pin_user_pages failed (%d)\n", __func__,
+			nr_pages);
 		ret = OTE_ERROR_OUT_OF_MEMORY;
+		kfree(shmem_desc);
 		goto error;
+	}
+
+	/* initialize shmem descriptor */
+	INIT_LIST_HEAD(&(shmem_desc->list));
+	shmem_desc->active = false;
+	shmem_desc->buffer = buffer;
+	shmem_desc->size = size;
+	shmem_desc->nr_pages = nr_pages;
+	shmem_desc->pages = (struct page **)(uintptr_t)pages;
+
+	/* add shmem descriptor to proper list */
+	if ((buf_type == TE_PARAM_TYPE_MEM_RO) ||
+		(buf_type == TE_PARAM_TYPE_MEM_RW))
+		list_add_tail(&shmem_desc->list, &context->temp_shmem_list);
+	else {
+		list_add_tail(&shmem_desc->list, &context->persist_shmem_list);
 	}
 
 	return OTE_SUCCESS;
@@ -106,8 +112,8 @@ error:
 	return ret;
 }
 
-static int te_setup_temp_buffers(struct te_request *request,
-		struct tlk_context *context)
+static int te_prep_mem_buffers(struct te_request *request,
+			struct tlk_context *context)
 {
 	uint32_t i;
 	int ret = OTE_SUCCESS;
@@ -121,11 +127,13 @@ static int te_setup_temp_buffers(struct te_request *request,
 			break;
 		case TE_PARAM_TYPE_MEM_RO:
 		case TE_PARAM_TYPE_MEM_RW:
-			ret = te_pin_mem_buffers(
+		case TE_PARAM_TYPE_PERSIST_MEM_RO:
+		case TE_PARAM_TYPE_PERSIST_MEM_RW:
+			ret = te_prep_mem_buffer(request->session_id,
 				params[i].u.Mem.base,
 				params[i].u.Mem.len,
-				context,
-				params[i].type);
+				params[i].type,
+				context);
 			if (ret < 0) {
 				pr_err("%s failed with err (%d)\n",
 					__func__, ret);
@@ -142,8 +150,8 @@ static int te_setup_temp_buffers(struct te_request *request,
 	return ret;
 }
 
-static int te_setup_temp_buffers_compat(struct te_request_compat *request,
-		struct tlk_context *context)
+static int te_prep_mem_buffers_compat(struct te_request_compat *request,
+			struct tlk_context *context)
 {
 	uint32_t i;
 	int ret = OTE_SUCCESS;
@@ -158,11 +166,13 @@ static int te_setup_temp_buffers_compat(struct te_request_compat *request,
 			break;
 		case TE_PARAM_TYPE_MEM_RO:
 		case TE_PARAM_TYPE_MEM_RW:
-			ret = te_pin_mem_buffers(
+		case TE_PARAM_TYPE_PERSIST_MEM_RO:
+		case TE_PARAM_TYPE_PERSIST_MEM_RW:
+			ret = te_prep_mem_buffer(request->session_id,
 				(void *)(uintptr_t)params[i].u.Mem.base,
 				params[i].u.Mem.len,
-				context,
-				params[i].type);
+				params[i].type,
+				context);
 			if (ret < 0) {
 				pr_err("%s failed with err (%d)\n",
 					__func__, ret);
@@ -179,87 +189,72 @@ static int te_setup_temp_buffers_compat(struct te_request_compat *request,
 	return ret;
 }
 
-static void te_del_shmem_desc(void *buffer, struct tlk_context *context,
-			uint32_t buf_type)
+static void te_release_mem_buffer(struct te_shmem_desc *shmem_desc)
+{
+	uint32_t i;
+
+	list_del(&shmem_desc->list);
+	for (i = 0; i < shmem_desc->nr_pages; i++) {
+		if ((shmem_desc->type == TE_PARAM_TYPE_MEM_RW) ||
+			(shmem_desc->type == TE_PARAM_TYPE_PERSIST_MEM_RW))
+			set_page_dirty_lock(shmem_desc->pages[i]);
+		page_cache_release(shmem_desc->pages[i]);
+	}
+	kfree(shmem_desc->pages);
+	kfree(shmem_desc);
+}
+
+static void te_release_temp_mem_buffers(struct tlk_context *context)
 {
 	struct te_shmem_desc *shmem_desc, *tmp_shmem_desc;
-	int i;
+
+	if (list_empty(&context->temp_shmem_list))
+		return;
 
 	list_for_each_entry_safe(shmem_desc, tmp_shmem_desc,
-		&(context->shmem_alloc_list), list) {
-		if (shmem_desc->buffer == buffer) {
-			list_del(&shmem_desc->list);
-			for (i = 0; i < shmem_desc->nr_pages; i++) {
-				if (buf_type == TE_PARAM_TYPE_MEM_RW)
-					set_page_dirty_lock(
-						shmem_desc->pages[i]);
-				page_cache_release(shmem_desc->pages[i]);
-			}
-			kfree(shmem_desc->pages);
-			kfree(shmem_desc);
-		}
+		&context->temp_shmem_list, list) {
+		te_release_mem_buffer(shmem_desc);
 	}
 }
 
-/*
- * Deregister previously initialized shared memory
- */
-void te_unregister_memory(void *buffer,
-	struct tlk_context *context, uint32_t buf_type)
-{
-	if (!(list_empty(&(context->shmem_alloc_list))))
-		te_del_shmem_desc(buffer, context, buf_type);
-	else
-		pr_err("No buffers to unpin\n");
-}
-
-static void te_unpin_temp_buffers(struct te_request *request,
+static void te_release_persist_mem_buffers(uint32_t session_id,
 	struct tlk_context *context)
 {
-	uint32_t i;
-	struct te_oper_param *params = request->params;
+	struct te_shmem_desc *shmem_desc, *tmp_shmem_desc;
 
-	for (i = 0; i < request->params_size; i++) {
-		switch (params[i].type) {
-		case TE_PARAM_TYPE_NONE:
-		case TE_PARAM_TYPE_INT_RO:
-		case TE_PARAM_TYPE_INT_RW:
-			break;
-		case TE_PARAM_TYPE_MEM_RO:
-		case TE_PARAM_TYPE_MEM_RW:
-			te_unregister_memory(params[i].u.Mem.base,
-				context, params[i].type);
-			break;
-		default:
-			pr_err("%s: OTE_ERROR_BAD_PARAMETERS\n", __func__);
-			break;
-		}
+	if (list_empty(&context->persist_shmem_list))
+		return;
+
+	/*
+	 * Release any persistent mem buffers that either belong to
+	 * the specified session_id or are not currently marked active
+	 * (i.e. because the associated open_session or launch_operation
+	 * failed).
+	 */
+	list_for_each_entry_safe(shmem_desc, tmp_shmem_desc,
+		&context->persist_shmem_list, list) {
+		if ((shmem_desc->session_id == session_id) ||
+			(!shmem_desc->active))
+			te_release_mem_buffer(shmem_desc);
 	}
 }
 
-static void te_unpin_temp_buffers_compat(struct te_request_compat *request,
+static void te_update_persist_mem_buffers(uint32_t session_id,
 	struct tlk_context *context)
 {
-	uint32_t i;
-	struct te_oper_param_compat *params;
+	struct te_shmem_desc *shmem_desc, *tmp_shmem_desc;
 
-	params = (struct te_oper_param_compat *)(uintptr_t)request->params;
-	for (i = 0; i < request->params_size; i++) {
-		switch (params[i].type) {
-		case TE_PARAM_TYPE_NONE:
-		case TE_PARAM_TYPE_INT_RO:
-		case TE_PARAM_TYPE_INT_RW:
-			break;
-		case TE_PARAM_TYPE_MEM_RO:
-		case TE_PARAM_TYPE_MEM_RW:
-			te_unregister_memory(
-				(void *)(uintptr_t)params[i].u.Mem.base,
-				context,
-				params[i].type);
-			break;
-		default:
-			pr_err("%s: OTE_ERROR_BAD_PARAMETERS\n", __func__);
-			break;
+	/*
+	 * Assumes any entries that have yet to be marked active belong
+	 * to the session associated with the session_id that has been
+	 * passed in.
+	 */
+	list_for_each_entry_safe(shmem_desc, tmp_shmem_desc,
+		&context->persist_shmem_list, list) {
+
+		if (!shmem_desc->active) {
+			shmem_desc->session_id = session_id;
+			shmem_desc->active = true;
 		}
 	}
 }
@@ -275,14 +270,14 @@ static void switch_cpumask_to_cpu0(void)
 	cpumask_copy(&saved_cpu_mask, tsk_cpus_allowed(current));
 	ret = sched_setaffinity(0, &local_cpu_mask);
 	if (ret)
-		pr_err("sched_setaffinity #1 -> 0x%lX", ret);
+		pr_err("%s: sched_setaffinity #1 -> 0x%lX", __func__, ret);
 }
 
 static void restore_cpumask(void)
 {
 	long ret = sched_setaffinity(0, &saved_cpu_mask);
 	if (ret)
-		pr_err("sched_setaffinity #2 -> 0x%lX", ret);
+		pr_err("%s: sched_setaffinity #2 -> 0x%lX", __func__, ret);
 }
 #else
 static inline void switch_cpumask_to_cpu0(void) {};
@@ -374,7 +369,7 @@ static void do_smc_compat(struct te_request_compat *request,
 
 struct tlk_smc_work_args {
 	uint32_t arg0;
-	uint32_t arg1;
+	uintptr_t arg1;
 	uint32_t arg2;
 };
 
@@ -417,7 +412,7 @@ int te_set_vpr_params(void *vpr_base, size_t vpr_size)
 		int cpu = cpu_logical_map(smp_processor_id());
 
 		work_args.arg0 = TE_SMC_PROGRAM_VPR;
-		work_args.arg1 = (uint32_t)vpr_base;
+		work_args.arg1 = (uintptr_t)vpr_base;
 		work_args.arg2 = vpr_size;
 
 		/* workers don't change CPU. depending on the CPU, execute
@@ -435,12 +430,13 @@ int te_set_vpr_params(void *vpr_base, size_t vpr_size)
 	mutex_unlock(&smc_lock);
 
 	if (retval != OTE_SUCCESS) {
-		pr_err("te_set_vpr_params failed err (0x%x)\n", retval);
+		pr_err("%s: smc failed err (0x%x)\n", __func__, retval);
 		return -EINVAL;
 	}
 	return 0;
 }
 EXPORT_SYMBOL(te_set_vpr_params);
+
 
 /*
  * Open session SMC (supporting client-based te_open_session() calls)
@@ -451,9 +447,12 @@ void te_open_session(struct te_opensession *cmd,
 {
 	int ret;
 
-	ret = te_setup_temp_buffers(request, context);
+	request->type = TE_SMC_OPEN_SESSION;
+
+	ret = te_prep_mem_buffers(request, context);
 	if (ret != OTE_SUCCESS) {
-		pr_err("te_setup_temp_buffers failed err (0x%x)\n", ret);
+		pr_err("%s: te_prep_mem_buffers failed err (0x%x)\n",
+			__func__, ret);
 		SET_RESULT(request, ret, OTE_RESULT_ORIGIN_API);
 		return;
 	}
@@ -468,11 +467,17 @@ void te_open_session(struct te_opensession *cmd,
 		request->dest_uuid[2],
 		request->dest_uuid[3]);
 
-	request->type = TE_SMC_OPEN_SESSION;
-
 	do_smc(request, context->dev);
 
-	te_unpin_temp_buffers(request, context);
+	if (request->result) {
+		/* release any persistent mem buffers if we failed */
+		te_release_persist_mem_buffers(request->session_id, context);
+	} else {
+		/* mark active any persistent mem buffers */
+		te_update_persist_mem_buffers(request->session_id, context);
+	}
+
+	te_release_temp_mem_buffers(context);
 }
 
 /*
@@ -487,7 +492,11 @@ void te_close_session(struct te_closesession *cmd,
 
 	do_smc(request, context->dev);
 	if (request->result)
-		pr_info("Error closing session: %08x\n", request->result);
+		pr_info("%s: error closing session: %08x\n",
+			__func__, request->result);
+
+	/* release any peristent mem buffers */
+	te_release_persist_mem_buffers(request->session_id, context);
 }
 
 /*
@@ -499,20 +508,29 @@ void te_launch_operation(struct te_launchop *cmd,
 {
 	int ret;
 
-	ret = te_setup_temp_buffers(request, context);
-	if (ret != OTE_SUCCESS) {
-		pr_err("te_setup_temp_buffers failed err (0x%x)\n", ret);
-		SET_RESULT(request, ret, OTE_RESULT_ORIGIN_API);
-		return;
-	}
-
 	request->session_id = cmd->session_id;
 	request->command_id = cmd->operation.command;
 	request->type = TE_SMC_LAUNCH_OPERATION;
 
+	ret = te_prep_mem_buffers(request, context);
+	if (ret != OTE_SUCCESS) {
+		pr_err("%s: te_prep_mem_buffers failed err (0x%x)\n",
+			__func__, ret);
+		SET_RESULT(request, ret, OTE_RESULT_ORIGIN_API);
+		return;
+	}
+
 	do_smc(request, context->dev);
 
-	te_unpin_temp_buffers(request, context);
+	if (request->result) {
+		/* release any persistent mem buffers if we failed */
+		te_release_persist_mem_buffers(request->session_id, context);
+	} else {
+		/* mark active any persistent mem buffers */
+		te_update_persist_mem_buffers(request->session_id, context);
+	}
+
+	te_release_temp_mem_buffers(context);
 }
 
 /*
@@ -524,9 +542,12 @@ void te_open_session_compat(struct te_opensession_compat *cmd,
 {
 	int ret;
 
-	ret = te_setup_temp_buffers_compat(request, context);
+	request->type = TE_SMC_OPEN_SESSION;
+
+	ret = te_prep_mem_buffers_compat(request, context);
 	if (ret != OTE_SUCCESS) {
-		pr_err("te_setup_temp_buffers failed err (0x%x)\n", ret);
+		pr_err("%s: te_prep_mem_buffers failed err (0x%x)\n",
+			__func__, ret);
 		SET_RESULT(request, ret, OTE_RESULT_ORIGIN_API);
 		return;
 	}
@@ -541,11 +562,17 @@ void te_open_session_compat(struct te_opensession_compat *cmd,
 		request->dest_uuid[2],
 		request->dest_uuid[3]);
 
-	request->type = TE_SMC_OPEN_SESSION;
-
 	do_smc_compat(request, context->dev);
 
-	te_unpin_temp_buffers_compat(request, context);
+	if (request->result) {
+		/* release any persistent mem buffers if we failed */
+		te_release_persist_mem_buffers(request->session_id, context);
+	} else {
+		/* mark active any persistent mem buffers */
+		te_update_persist_mem_buffers(request->session_id, context);
+	}
+
+	te_release_temp_mem_buffers(context);
 }
 
 /*
@@ -560,7 +587,11 @@ void te_close_session_compat(struct te_closesession_compat *cmd,
 
 	do_smc_compat(request, context->dev);
 	if (request->result)
-		pr_info("Error closing session: %08x\n", request->result);
+		pr_info("%s: error closing session: %08x\n",
+			__func__, request->result);
+
+	/* release any peristent mem buffers */
+	te_release_persist_mem_buffers(request->session_id, context);
 }
 
 /*
@@ -572,20 +603,27 @@ void te_launch_operation_compat(struct te_launchop_compat *cmd,
 {
 	int ret;
 
-	ret = te_setup_temp_buffers_compat(request, context);
-	if (ret != OTE_SUCCESS) {
-		pr_err("te_setup_temp_buffers failed err (0x%x)\n", ret);
-		SET_RESULT(request, ret, OTE_RESULT_ORIGIN_API);
-		return;
-	}
-
 	request->session_id = cmd->session_id;
 	request->command_id = cmd->operation.command;
 	request->type = TE_SMC_LAUNCH_OPERATION;
 
+	ret = te_prep_mem_buffers_compat(request, context);
+	if (ret != OTE_SUCCESS) {
+		pr_err("%s: te_prep_mem_buffers failed err (0x%x)\n",
+			__func__, ret);
+		SET_RESULT(request, ret, OTE_RESULT_ORIGIN_API);
+		return;
+	}
+
 	do_smc_compat(request, context->dev);
 
-	te_unpin_temp_buffers_compat(request, context);
+	if (request->result) {
+		/* release any persistent mem buffers if we failed */
+		te_release_persist_mem_buffers(request->session_id, context);
+	} else {
+		/* mark active any persistent mem buffers */
+		te_update_persist_mem_buffers(request->session_id, context);
+	}
 }
 
 static int __init tlk_register_irq_handler(void)

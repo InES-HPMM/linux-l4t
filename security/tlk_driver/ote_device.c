@@ -277,7 +277,8 @@ static int tlk_device_open(struct inode *inode, struct file *file)
 		goto error;
 	}
 	context->dev = &tlk_dev;
-	INIT_LIST_HEAD(&(context->shmem_alloc_list));
+	INIT_LIST_HEAD(&(context->temp_shmem_list));
+	INIT_LIST_HEAD(&(context->persist_shmem_list));
 
 	file->private_data = context;
 	return 0;
@@ -719,6 +720,7 @@ static long tlk_device_ioctl(struct file *file, unsigned int ioctl_num,
 
 	case TE_IOCTL_SS_NEW_REQ:
 	case TE_IOCTL_SS_REQ_COMPLETE:
+	case TE_IOCTL_SS_CMD:
 		err = te_handle_ss_ioctl(file, ioctl_num, ioctl_param);
 		break;
 

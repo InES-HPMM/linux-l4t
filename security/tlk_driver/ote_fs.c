@@ -109,6 +109,8 @@ arch_initcall(tlk_ss_init_legacy);
 int te_handle_ss_ioctl(struct file *file, unsigned int ioctl_num,
 	unsigned long ioctl_param)
 {
+	int ss_cmd;
+
 	switch (ioctl_num) {
 	case TE_IOCTL_SS_NEW_REQ:
 		/* wait for a new request */
@@ -133,6 +135,24 @@ int te_handle_ss_ioctl(struct file *file, unsigned int ioctl_num,
 		/* signal the producer */
 		complete(&req_complete);
 		break;
+	case TE_IOCTL_SS_CMD:
+		if (copy_from_user(&ss_cmd, (void __user *)ioctl_param,
+					sizeof(ss_cmd))) {
+			pr_err("%s: copy from user space failed\n", __func__);
+			return -EFAULT;
+		}
+
+		if (ss_cmd == TE_IOCTL_SS_CMD_GET_NEW_REQ) {
+			/* wait for a new request */
+			if (wait_for_completion_interruptible(&req_ready))
+				return -ENODATA;
+		} else if (ss_cmd == TE_IOCTL_SS_CMD_REQ_COMPLETE) {
+			/* signal the producer */
+			complete(&req_complete);
+		} else {
+			pr_err("%s: unknown ss_cmd 0x%x\n", __func__, ss_cmd);
+			return -EINVAL;
+		}
 	}
 
 	return 0;

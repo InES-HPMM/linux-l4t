@@ -48,8 +48,15 @@
 #define TE_IOCTL_SS_REQ_COMPLETE \
 	_IOWR(TE_IOCTL_MAGIC_NUMBER, 0x21, struct te_ss_op)
 
+/* secure storage ioctl */
+#define TE_IOCTL_SS_CMD \
+	_IOR(TE_IOCTL_MAGIC_NUMBER,  0x30, int)
+
+#define TE_IOCTL_SS_CMD_GET_NEW_REQ	1
+#define TE_IOCTL_SS_CMD_REQ_COMPLETE	2
+
 #define TE_IOCTL_MIN_NR	_IOC_NR(TE_IOCTL_OPEN_CLIENT_SESSION)
-#define TE_IOCTL_MAX_NR	_IOC_NR(TE_IOCTL_SS_REQ_COMPLETE)
+#define TE_IOCTL_MAX_NR	_IOC_NR(TE_IOCTL_SS_CMD)
 
 /* shared buffer is 2 pages: 1st are requests, 2nd are params */
 #define TE_CMD_DESC_MAX	(PAGE_SIZE / sizeof(struct te_request))
@@ -106,16 +113,19 @@ struct te_cmd_req_desc_compat {
 
 struct te_shmem_desc {
 	struct list_head list;
+	uint32_t type;
+	bool active;
+	uint32_t session_id;
 	void *buffer;
 	size_t size;
-	unsigned int mem_type;
 	struct page **pages;
 	unsigned int nr_pages;
 };
 
 struct tlk_context {
 	struct tlk_device *dev;
-	struct list_head shmem_alloc_list;
+	struct list_head temp_shmem_list;
+	struct list_head persist_shmem_list;
 };
 
 enum {
@@ -138,11 +148,13 @@ enum {
 };
 
 enum {
-	TE_PARAM_TYPE_NONE	= 0,
-	TE_PARAM_TYPE_INT_RO    = 1,
-	TE_PARAM_TYPE_INT_RW    = 2,
-	TE_PARAM_TYPE_MEM_RO    = 3,
-	TE_PARAM_TYPE_MEM_RW    = 4,
+	TE_PARAM_TYPE_NONE		= 0x0,
+	TE_PARAM_TYPE_INT_RO		= 0x1,
+	TE_PARAM_TYPE_INT_RW		= 0x2,
+	TE_PARAM_TYPE_MEM_RO		= 0x3,
+	TE_PARAM_TYPE_MEM_RW		= 0x4,
+	TE_PARAM_TYPE_PERSIST_MEM_RO	= 0x100,
+	TE_PARAM_TYPE_PERSIST_MEM_RW	= 0x101,
 };
 
 struct te_oper_param {
