@@ -46,6 +46,8 @@ NVIDIA TEGRA124 Display Serial Interface
  - nvidia,dsi-bl-name: Backlight device name. It may be same with nvidia,bl-device-name.
  - nvidia,dsi-suspend-aggr: DSI suspend aggressiveness. DSI_HOST_SUSPEND_LV2, DSI_HOST_SUSPEND_LV1,
    DSI_HOST_SUSPEND_LV0 or DSI_NO_SUSPEND can be set.
+ - nvidia,dsi-edp-bridge: Set 1 if dsi to edp bridge is used.
+ - nvidia,dsi-lvds-bridge: Set 1 if dsi to lvds bridge is used.
  - nvidia,dsi-ulpm-not-support: With enabled, do not enter dsi ulpm mode.
  - nvidia,dsi-video-data-type: The DSI operates in two transmission modes: video and host/command.
    Write 0, 1 for TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE, TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE, respectively.
