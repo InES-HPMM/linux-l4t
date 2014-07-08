@@ -353,6 +353,13 @@ config TWL4030_WATCHDOG
 	  Support for TI TWL4030 watchdog.  Say 'Y' here to enable the
 	  watchdog timer support for TWL4030 chips.
 
+config MAX77620_WATCHDOG
+	tristate "Maxim MAX77620 Watchdog Timer"
+	depends on MFD_MAX77620
+	help
+	  Support for Maxim MAX77620 watchdog timer. Say 'Y' here
+	  to enable the watchdog timer support for MAX77620 chips.
+
 config MAX77660_SYSTEM_WATCHDOG
 	tristate "Maxim MAX77660 System Watchdog Timer"
 	depends on MFD_MAX77660
