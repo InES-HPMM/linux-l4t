@@ -618,7 +618,7 @@ config ARCH_TEGRA
 	select USE_OF
 	select FIQ
 	select PCI
-	select CPU_IDLE_MULTIPLE_DRIVERS
+	select CPU_IDLE_MULTIPLE_DRIVERS if CPU_IDLE
 	help
 	  This enables support for NVIDIA Tegra based systems (Tegra APX,
 	  Tegra 6xx and Tegra 2 series).
