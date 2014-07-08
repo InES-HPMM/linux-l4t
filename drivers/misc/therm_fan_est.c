@@ -52,10 +52,6 @@ struct therm_fan_estimator {
 	int active_trip_temps[MAX_ACTIVE_STATES];
 	int active_hysteresis[MAX_ACTIVE_STATES];
 	int active_trip_temps_hyst[(MAX_ACTIVE_STATES << 1) + 1];
-	struct thermal_zone_params *tzp;
-	int num_resources;
-	int trip_length;
-	const char *name;
 };
 
 
@@ -354,259 +350,73 @@ static struct sensor_device_attribute therm_fan_est_nodes[] = {
 #endif
 };
 
-
-static int fan_est_match(struct thermal_zone_device *thz, void *data)
-{
-	return (strcmp((char *)data, thz->type) == 0);
-}
-
-static int fan_est_get_temp_func(void *data, long *temp)
-{
-	struct thermal_zone_device *thz;
-
-	thz = thermal_zone_device_find(data, fan_est_match);
-
-	if (!thz || thz->ops->get_temp(thz, temp))
-		*temp = 25000;
-
-	return 0;
-}
-
-
 static int therm_fan_est_probe(struct platform_device *pdev)
 {
 	int i, j;
 	long temp;
-	int err = 0;
-	int of_err = 0;
-	struct therm_fan_estimator *est_data;
-	struct therm_fan_est_subdevice *subdevs;
+	struct therm_fan_estimator *est;
 	struct therm_fan_est_subdevice *dev;
-	struct thermal_zone_params *tzp;
-	struct device_node *node = NULL;
-	struct device_node *data_node = NULL;
-	int child_count = 0;
-	struct device_node *child = NULL;
-	const char *gov_name;
-	u32 value;
+	struct therm_fan_est_data *data;
 
-	pr_info("THERMAL EST start of therm_fan_est_probe.\n");
-	if (!pdev)
-		return -EINVAL;
-
-	node = pdev->dev.of_node;
-	if (!node) {
-		pr_err("THERMAL EST: dev of_node NULL\n");
-		return -EINVAL;
-	}
-
-	data_node = of_parse_phandle(node, "shared_data", 0);
-	if (!data_node) {
-		pr_err("THERMAL EST shared data node parsing failed\n");
-		return -EINVAL;
-	}
-
-	child_count = of_get_child_count(data_node);
-	of_err |= of_property_read_u32(data_node, "ndevs", &value);
-	if (of_err) {
-		pr_err("THERMAL EST: missing ndevs\n");
-		return -ENXIO;
-	}
-	if (child_count != (int)value) {
-		pr_err("THERMAL EST: ndevs count mismatch\n");
-		return -EINVAL;
-	}
-
-	est_data = devm_kzalloc(&pdev->dev,
+	est = devm_kzalloc(&pdev->dev,
 				sizeof(struct therm_fan_estimator), GFP_KERNEL);
-	if (IS_ERR_OR_NULL(est_data))
+	if (IS_ERR_OR_NULL(est))
 		return -ENOMEM;
 
-	est_data->ndevs = child_count;
-	pr_info("THERMAL EST: found %d subdevs\n", est_data->ndevs);
+	platform_set_drvdata(pdev, est);
 
-	of_err |= of_property_read_string(node, "name", &est_data->name);
-	if (of_err) {
-		pr_err("THERMAL EST: name is missing\n");
-		err = -ENXIO;
-		goto free_est;
-	}
-	pr_info("THERMAL EST name: %s.\n", est_data->name);
+	data = pdev->dev.platform_data;
 
-	of_err |= of_property_read_u32(node, "num_resources", &value);
-	if (of_err) {
-		pr_err("THERMAL EST: num_resources is missing\n");
-		err = -ENXIO;
-		goto free_est;
-	}
-	est_data->num_resources = value;
-	pr_info("THERMAL EST num_resources: %d\n", est_data->num_resources);
+	est->devs = data->devs;
+	est->ndevs = data->ndevs;
+	est->toffset = data->toffset;
+	est->polling_period = data->polling_period;
 
-	of_err |= of_property_read_u32(node, "trip_length", &value);
-	if (of_err) {
-		pr_err("THERMAL EST: missing trip length\n");
-		err = -ENXIO;
-		goto free_est;
+	for (i = 0; i < MAX_ACTIVE_STATES; i++) {
+		est->active_trip_temps[i] = data->active_trip_temps[i];
+		est->active_hysteresis[i] = data->active_hysteresis[i];
 	}
 
-	est_data->trip_length = (int)value;
-	subdevs = devm_kzalloc(&pdev->dev,
-			child_count * sizeof(struct therm_fan_est_subdevice),
-			GFP_KERNEL);
-	if (IS_ERR_OR_NULL(subdevs)) {
-		err = -ENOMEM;
-		goto free_est;
-	}
+	est->active_trip_temps_hyst[0] = data->active_trip_temps[0];
 
-	/* initialize subdevs */
-	j = 0;
-	for_each_child_of_node(data_node, child) {
-		pr_info("[THERMAL EST subdev %d]\n", j);
-		of_err |= of_property_read_string(child, "dev_data",
-						&subdevs[j].dev_data);
-		if (of_err) {
-			pr_err("THERMAL EST subdev[%d] dev_data missed\n", j);
-			err = -ENXIO;
-			goto free_subdevs;
-		}
-		pr_info("THERMAL EST subdev name: %s\n",
-				(char *)subdevs[j].dev_data);
-
-		subdevs[j].get_temp = &fan_est_get_temp_func;
-
-		of_err |= of_property_read_u32_array(child, "coeffs",
-			subdevs[j].coeffs, est_data->trip_length);
-		for (i = 0; i < est_data->trip_length; i++)
-			pr_info("THERMAL EST index %d coeffs %d\n",
-				i, subdevs[j].coeffs[i]);
-		j++;
-	}
-	est_data->devs = subdevs;
-
-	of_err |= of_property_read_u32(data_node, "toffset", &value);
-	if (of_err) {
-		pr_err("THERMAL EST: missing toffset\n");
-		err = -ENXIO;
-		goto free_subdevs;
-	}
-	est_data->toffset = (long)value;
-
-	of_err |= of_property_read_u32(data_node, "polling_period", &value);
-	if (of_err) {
-		pr_err("THERMAL EST: missing polling_period\n");
-		err = -ENXIO;
-		goto free_subdevs;
-	}
-	est_data->polling_period = (long)value;
-
-	of_err |= of_property_read_u32_array(node, "active_trip_temps",
-		est_data->active_trip_temps, (size_t) est_data->trip_length);
-	if (of_err) {
-		pr_err("THERMAL EST: active trip temps failed to parse.\n");
-		err = -ENXIO;
-		goto free_subdevs;
-	}
-
-	of_err |= of_property_read_u32_array(node, "active_hysteresis",
-		est_data->active_hysteresis, (size_t) est_data->trip_length);
-	if (of_err) {
-		pr_err("THERMAL EST: active hysteresis failed to parse.\n");
-		err = -ENXIO;
-		goto free_subdevs;
-	}
-
-	for (i = 0; i < est_data->trip_length; i++)
-		pr_info("THERMAL EST index %d: trip_temp %d, hyst %d\n",
-			i, est_data->active_trip_temps[i],
-			est_data->active_hysteresis[i]);
-
-	est_data->active_trip_temps_hyst[0] = est_data->active_trip_temps[0];
 	for (i = 1; i < MAX_ACTIVE_STATES; i++)
-		fan_set_trip_temp_hyst(est_data, i,
-			est_data->active_hysteresis[i],
-			est_data->active_trip_temps[i]);
-	for (i = 0; i < (MAX_ACTIVE_STATES << 1) + 1; i++)
-		pr_info("THERMAL EST index %d: trip_temps_hyst %d\n",
-			i, est_data->active_trip_temps_hyst[i]);
+		fan_set_trip_temp_hyst(est, i,
+			data->active_hysteresis[i], est->active_trip_temps[i]);
 
-	for (i = 0; i < est_data->ndevs; i++) {
-		dev = &est_data->devs[i];
-		if (dev->get_temp(dev->dev_data, &temp)) {
-			err = -EINVAL;
-			goto free_subdevs;
-		}
+	/* initialize history */
+	for (i = 0; i < data->ndevs; i++) {
+		dev = &est->devs[i];
+
+		if (dev->get_temp(dev->dev_data, &temp))
+			return -EINVAL;
+
 		for (j = 0; j < HIST_LEN; j++)
 			dev->hist[j] = temp;
-		pr_info("THERMAL EST init dev[%d] temp hist to %ld\n",
-			i, temp);
 	}
 
-	of_err |= of_property_read_string(data_node, "cdev_type",
-						&est_data->cdev_type);
-	if (of_err) {
-		pr_err("THERMAL EST: cdev_type is missing\n");
-		err = -EINVAL;
-		goto free_subdevs;
-	}
-	pr_info("THERMAL EST cdev_type: %s.\n", est_data->cdev_type);
-
-	tzp = devm_kzalloc(&pdev->dev, sizeof(struct thermal_zone_params),
-				GFP_KERNEL);
-	if (IS_ERR_OR_NULL(tzp)) {
-		err = -ENOMEM;
-		goto free_subdevs;
-	}
-	memset(tzp, 0, sizeof(struct thermal_zone_params));
-	of_err |= of_property_read_string(data_node, "tzp_governor_name",
-						&gov_name);
-	if (of_err) {
-		pr_err("THERMAL EST: governor name is missing\n");
-		err = -EINVAL;
-		goto free_tzp;
-	}
-	strcpy(tzp->governor_name, gov_name);
-	pr_info("THERMAL EST governor name: %s\n", tzp->governor_name);
-	est_data->tzp = tzp;
-	est_data->thz = thermal_zone_device_register(
-					(char *)dev_name(&pdev->dev),
-					10, 0x3FF, est_data,
-					&therm_fan_est_ops, tzp, 0, 0);
-	if (IS_ERR_OR_NULL(est_data->thz)) {
-		pr_err("THERMAL EST: thz register failed\n");
-		err = -EINVAL;
-		goto free_tzp;
-	}
-	pr_info("THERMAL EST: thz register success.\n");
-
-	/* workqueue related */
-	est_data->workqueue = alloc_workqueue(dev_name(&pdev->dev),
+	est->workqueue = alloc_workqueue(dev_name(&pdev->dev),
 				    WQ_HIGHPRI | WQ_UNBOUND, 1);
-	if (!est_data->workqueue) {
-		err = -ENOMEM;
-		goto free_tzp;
-	}
+	if (!est->workqueue)
+		return -ENOMEM;
 
-	est_data->current_trip_index = 0;
-	INIT_DELAYED_WORK(&est_data->therm_fan_est_work,
-				therm_fan_est_work_func);
-	queue_delayed_work(est_data->workqueue,
-				&est_data->therm_fan_est_work,
-				msecs_to_jiffies(est_data->polling_period));
+	est->current_trip_index = 0;
 
+	INIT_DELAYED_WORK(&est->therm_fan_est_work, therm_fan_est_work_func);
+
+	queue_delayed_work(est->workqueue,
+				&est->therm_fan_est_work,
+				msecs_to_jiffies(est->polling_period));
+	est->cdev_type = data->cdev_type;
+	est->thz = thermal_zone_device_register((char *) dev_name(&pdev->dev),
+					10, 0x3FF, est,
+					&therm_fan_est_ops, data->tzp, 0, 0);
+	if (IS_ERR_OR_NULL(est->thz))
+		return -EINVAL;
 	for (i = 0; i < ARRAY_SIZE(therm_fan_est_nodes); i++)
 		device_create_file(&pdev->dev,
 			&therm_fan_est_nodes[i].dev_attr);
 
-	pr_info("THERMAL EST: end of probe, return err: %d\n", err);
-	return err;
-
-free_tzp:
-	devm_kfree(&pdev->dev, (void *)tzp);
-free_subdevs:
-	devm_kfree(&pdev->dev, (void *)subdevs);
-free_est:
-	devm_kfree(&pdev->dev, (void *)est_data);
-	return err;
+	return 0;
 }
 
 static int therm_fan_est_remove(struct platform_device *pdev)
@@ -617,11 +427,8 @@ static int therm_fan_est_remove(struct platform_device *pdev)
 		return -EINVAL;
 
 	cancel_delayed_work(&est->therm_fan_est_work);
-	destroy_workqueue(est->workqueue);
 	thermal_zone_device_unregister(est->thz);
-	devm_kfree(&pdev->dev, (void *)est->tzp);
-	devm_kfree(&pdev->dev, (void *)est->devs);
-	devm_kfree(&pdev->dev, (void *)est);
+
 	return 0;
 }
 
@@ -656,18 +463,10 @@ static int therm_fan_est_resume(struct platform_device *pdev)
 }
 #endif
 
-static const struct of_device_id of_thermal_est_match[] = {
-	{ .compatible = "loki-thermal-est", },
-	{ .compatible = "foster-thermal-est", },
-	{},
-};
-MODULE_DEVICE_TABLE(of, of_thermal_est_match);
-
 static struct platform_driver therm_fan_est_driver = {
 	.driver = {
-		.name  = "therm-fan-est-driver",
 		.owner = THIS_MODULE,
-		.of_match_table = of_thermal_est_match,
+		.name  = "therm-fan-est",
 	},
 	.probe  = therm_fan_est_probe,
 	.remove = therm_fan_est_remove,
