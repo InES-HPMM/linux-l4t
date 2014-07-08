@@ -562,6 +562,7 @@
 
 static bool tegra21_is_dyn_ramp(struct clk *c,
 				unsigned long rate, bool from_vco_min);
+static void pllc4_set_fixed_rates(unsigned long cf);
 static void tegra21_dfll_cpu_late_init(struct clk *c);
 static void tegra21_pllp_init_dependencies(unsigned long pllp_rate);
 
@@ -2608,6 +2609,10 @@ static void pllc4_set_defaults(struct clk *c, unsigned long input_rate)
 
 static void tegra21_pllc4_vco_init(struct clk *c)
 {
+	unsigned long input_rate = clk_get_rate(c->parent);
+	unsigned long cf = input_rate / pll_get_fixed_mdiv(c, input_rate);
+	pllc4_set_fixed_rates(cf);
+
 	plldss_select_ref(c);
 	tegra_pll_clk_init(c);
 }
@@ -6835,8 +6840,6 @@ static struct clk tegra_pll_e = {
 	},
 };
 
-
-
 static struct clk tegra_cml0_clk = {
 	.name      = "cml0",
 	.parent    = &tegra_pll_e,
@@ -8633,6 +8636,84 @@ static void __init tegra21_dfll_cpu_late_init(struct clk *c)
 			use_dfll);
 	}
 #endif
+}
+
+/*
+ * Tegra21 clock policy: PLLC4 is a fixed frequency PLL with VCO output catered
+ * to maximum eMMC rate. By default PLLC4 VCO is fixed at ~1GHz, that provides
+ * target rates for DDR HS667 mode (PLLC4_OUT1 = VCO/3), DDR HS400 mode, and SDR
+ * HS200 mode (PLLC4_OUT2 = VCO/5). For other possible eMMC rate targets VCO
+ * rate is tabulated below.
+ *
+ * PLLC4 post-divider PLLC_OUT0 and secondary divider PLLC_OUT3 ratios specified
+ * in the table are selected to provide max input frequency to downstream module
+ * dividers (fort better granularity of possible rates) but not above 800 MHz -
+ * maximum rate that can be divided at minimum voltage.
+ *
+ * Commonly PLLC_OUT3 is also used as second clock source (along with PLLP) for
+ * the system bus. However, in default configuration PLLC4_OUT1 = VCO/3 is
+ * selected for system us to provide important target rate in 300-350 MHz range.
+ */
+struct pllc4_sdmmc_map {
+	unsigned long sdmmc_max_rate;
+	unsigned long vco_rate;
+	u32	      out0_ratio;
+	u32	      out3_ratio;
+	struct clk    *bus_source;
+};
+
+static struct pllc4_sdmmc_map  tegra21_pllc4_sdmmc_map[] = {
+	{	  0, 1000000000, 2, 1, &tegra_pll_c4_out1 }, /* default cfg */
+	{ 225000000,  675000000, 1, 1, &tegra_pll_c4_out3 },
+	{ 275000000,  550000000, 1, 1, &tegra_pll_c4_out3 },
+	{ 300000000,  600000000, 1, 1, &tegra_pll_c4_out3 },
+	{ 350000000,  700000000, 1, 1, &tegra_pll_c4_out3 },
+	{ 400000000,  800000000, 1, 1, &tegra_pll_c4_out3 },
+};
+
+static void pllc4_set_fixed_rates(unsigned long cf)
+{
+	int i;
+	u32 val;
+	struct device_node *dn;
+	unsigned long rate, sdmmc_max_rate = 0;
+	struct pllc4_sdmmc_map *pllc4_cfg = &tegra21_pllc4_sdmmc_map[0];
+
+	for_each_compatible_node(dn, NULL, "nvidia,tegra210-sdhci") {
+		if (!of_property_read_u32(dn, "max-clk-limit", &val)
+		    && (sdmmc_max_rate < val))
+			sdmmc_max_rate = val;
+	}
+
+	if (sdmmc_max_rate) {
+		for (i = 1; i < ARRAY_SIZE(tegra21_pllc4_sdmmc_map); i++) {
+			struct pllc4_sdmmc_map *m = &tegra21_pllc4_sdmmc_map[i];
+			if (m->sdmmc_max_rate == sdmmc_max_rate) {
+				pllc4_cfg = m;
+				break;
+			}
+		}
+	}
+
+	/* Align VCO rate on comparison frequency boundary */
+	rate = (pllc4_cfg->vco_rate / cf) * cf;
+	tegra_pll_c4_vco.u.pll.fixed_rate = rate;
+	tegra_pll_c4_vco.flags |= PLL_FIXED;
+
+	rate = DIV_ROUND_UP(rate, pllc4_cfg->out0_ratio);
+	tegra_pll_c4_out0.u.pll.fixed_rate = rate;
+	tegra_pll_c4_out0.flags |= PLL_FIXED;
+
+	rate = DIV_ROUND_UP(rate, pllc4_cfg->out3_ratio);
+	tegra_pll_c4_out3.u.pll_div.default_rate = rate;
+
+	tegra_clk_sbus_cmplx.u.system.sclk_high = pllc4_cfg->bus_source;
+
+	pr_info("pll_c4 rates match %lu max sdmmc: vco=%lu out0=%lu out3=%lu\n",
+		sdmmc_max_rate,
+		tegra_pll_c4_vco.u.pll.fixed_rate,
+		tegra_pll_c4_out0.u.pll.fixed_rate,
+		tegra_pll_c4_out3.u.pll_div.default_rate);
 }
 
 /*
