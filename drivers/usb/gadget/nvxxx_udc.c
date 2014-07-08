@@ -1716,27 +1716,37 @@ nvudc_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 		msg_dbg(nvudc->dev, "head of the request queue\n");
 
 		/* this request is handling by hw or is completed but haven't
-		 * got dequeue yet
-		 update dequeue pointer to next TD. */
+		 * got dequeue yet update dequeue pointer to next TD.
+		 */
 		udc_req->usb_req.actual = actual_data_xfered(udc_ep, udc_req);
-		p_new_udc_req = list_entry(udc_ep->queue.next,
-						struct nv_udc_request, queue);
 
-		if (p_new_udc_req) {
-			msg_dbg(nvudc->dev, " more requests pending\n");
-			new_dq_pt =
-			tran_trb_virt_to_dma(udc_ep, p_new_udc_req->td_start);
-
-			p_ep_cx->ep_dw2 = lower_32_bits(new_dq_pt)
-							& EP_CX_TR_DQPT_LO_MASK;
-			XHCI_SETF_VAR(EP_CX_DEQ_CYC_STATE, p_ep_cx->ep_dw2,
-						   udc_ep->pcs);
-			p_ep_cx->ep_dw3 = upper_32_bits(new_dq_pt);
-
-			XHCI_SETF_VAR(EP_CX_EDTLA, p_ep_cx->ep_dw5, 0);
-			XHCI_SETF_VAR(EP_CX_PARTIALTD, p_ep_cx->ep_dw5, 0);
-			XHCI_SETF_VAR(EP_CX_DATA_OFFSET, p_ep_cx->ep_dw7, 0);
+		if (udc_req->queue.next == &udc_ep->queue) {
+			/* If there is only one request in the queue which
+			 * is being dequeued, we simply point the dequeue
+			 * ptr to the enqueue ptr.
+			 */
+			new_dq_pt = tran_trb_virt_to_dma(udc_ep,
+						udc_ep->enq_pt);
+		} else {
+			/* If there are more requests, then we point to the
+			 * starting of the next requests buffer
+			 */
+			p_new_udc_req = list_entry(udc_req->queue.next,
+					struct nv_udc_request, queue);
+			new_dq_pt = tran_trb_virt_to_dma(udc_ep,
+					p_new_udc_req->td_start);
+			msg_dbg(nvudc->dev, "more requests pending\n");
 		}
+
+		p_ep_cx->ep_dw2 = lower_32_bits(new_dq_pt)
+						& EP_CX_TR_DQPT_LO_MASK;
+		XHCI_SETF_VAR(EP_CX_DEQ_CYC_STATE, p_ep_cx->ep_dw2,
+						   udc_ep->pcs);
+		p_ep_cx->ep_dw3 = upper_32_bits(new_dq_pt);
+
+		XHCI_SETF_VAR(EP_CX_EDTLA, p_ep_cx->ep_dw5, 0);
+		XHCI_SETF_VAR(EP_CX_PARTIALTD, p_ep_cx->ep_dw5, 0);
+		XHCI_SETF_VAR(EP_CX_DATA_OFFSET, p_ep_cx->ep_dw7, 0);
 
 		msg_dbg(nvudc->dev, "complete requests\n");
 		req_done(udc_ep, udc_req, -ECONNRESET);
