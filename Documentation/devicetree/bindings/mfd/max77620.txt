@@ -38,6 +38,10 @@ Optinal properties:
 	-maxim,fps-sw-enable: Boolean, applicable if enable input is SW.
 			If this property present then enable the FPS else
 			disable FPS.
+	-maxim,enable-sleep: Enable sleep when the external control goes from
+			HIGH to LOW.
+	-maxim,enable-global-lpm: Enable global LPM when the external control goes from
+			HIGH to LOW.
 
 Regulators:
 ===========
