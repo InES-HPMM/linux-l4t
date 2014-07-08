@@ -231,7 +231,8 @@ static int max77620_slave_address[MAX77620_NUM_SLAVES] = {
 	MAX77620_RTC_I2C_ADDR,
 };
 
-static int max77620_initialise_fps(struct device *dev)
+static int max77620_initialise_fps(struct max77620_chip *chip,
+			struct device *dev)
 {
 	struct device_node *node;
 	struct device_node *child;
@@ -286,6 +287,13 @@ static int max77620_initialise_fps(struct device *dev)
 			mask |= MAX77620_FPS_ENFPS_MASK;
 		}
 
+		if (!chip->sleep_enable)
+			chip->sleep_enable = of_property_read_bool(child,
+						"maxim,enable-sleep");
+		if (!chip->enable_global_lpm)
+			chip->enable_global_lpm = of_property_read_bool(child,
+						"maxim,enable-global-lpm");
+
 		config = (((time_period /40) - 1) & 0x7) <<
 				MAX77620_FPS_TIME_PERIOD_SHIFT;
 		config |= (input_enable & 0x3 ) << MAX77620_FPS_EN_SRC_SHIFT;
@@ -298,6 +306,15 @@ static int max77620_initialise_fps(struct device *dev)
 				MAX77620_REG_FPS_CFG0 + reg, ret);
 			return ret;
 		}
+	}
+
+	config = chip->enable_global_lpm ? MAX77620_ONOFFCNFG2_SLP_LPM_MSK : 0;
+	ret = max77620_reg_update(chip->dev, MAX77620_PWR_SLAVE,
+			MAX77620_REG_ONOFFCNFG2,
+			MAX77620_ONOFFCNFG2_SLP_LPM_MSK, config);
+	if (ret < 0) {
+		dev_err(dev, "Reg ONOFFCNFG2 update failed: %d\n", ret);
+		return ret;
 	}
 	return 0;
 }
@@ -362,7 +379,7 @@ static int max77620_probe(struct i2c_client *client,
 		goto fail_client_reg;
 	}
 
-	ret = max77620_initialise_fps(&client->dev);
+	ret = max77620_initialise_fps(chip, &client->dev);
 	if (ret < 0) {
 		dev_err(&client->dev, "FPS initialisation failed, %d\n", ret);
 		goto fail_free_irq;
@@ -415,16 +432,43 @@ static void max77620_shutdown(struct i2c_client *i2c)
 	chip->shutdown = true;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int max77620_i2c_suspend(struct device *dev)
+{
+	struct max77620_chip *chip = dev_get_drvdata(dev);
+	unsigned int config;
+	int ret;
+
+	config = (chip->sleep_enable) ? MAX77620_ONOFFCNFG1_SLPEN : 0;
+	ret = max77620_reg_update(chip->dev, MAX77620_PWR_SLAVE,
+			MAX77620_REG_ONOFFCNFG1, MAX77620_ONOFFCNFG1_SLPEN,
+			config);
+	if (ret < 0)
+		dev_err(dev, "Reg ONOFFCNFG1 update failed: %d\n", ret);
+        return 0;
+}
+
+static int max77620_i2c_resume(struct device *dev)
+{
+        return 0;
+}
+#endif
+
 static const struct i2c_device_id max77620_id[] = {
 	{"max77620", 0},
 	{},
 };
 MODULE_DEVICE_TABLE(i2c, max77620_id);
 
+static const struct dev_pm_ops max77620_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(max77620_i2c_suspend, max77620_i2c_resume)
+};
+
 static struct i2c_driver max77620_driver = {
 	.driver = {
 		.name = "max77620",
 		.owner = THIS_MODULE,
+		.pm = &max77620_pm_ops,
 	},
 	.probe = max77620_probe,
 	.remove = max77620_remove,

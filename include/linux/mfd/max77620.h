@@ -231,9 +231,11 @@
 #define MAX77620_CNFG1_32K_OUT0_EN		BIT(2)
 
 #define MAX77620_ONOFFCNFG1_SFT_RST		BIT(7)
+#define MAX77620_ONOFFCNFG1_SLPEN		BIT(2)
 #define MAX77620_ONOFFCNFG1_PWR_OFF		BIT(1)
 
 #define MAX77620_ONOFFCNFG2_SFT_RST_WK		BIT(7)
+#define MAX77620_ONOFFCNFG2_SLP_LPM_MSK		BIT(5)
 
 #define	MAX77620_GLBLM_MASK			BIT(1)
 
@@ -360,6 +362,8 @@ struct max77620_chip {
 
 	struct mutex mutex_config;
 	bool shutdown;
+	bool sleep_enable;
+	bool enable_global_lpm;
 
 	struct regmap_irq_chip_data *top_irq_data;
 	struct regmap_irq_chip_data *gpio_irq_data;
