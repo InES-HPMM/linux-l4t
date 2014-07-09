@@ -119,6 +119,7 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "sdmmc3_ddr",	"pll_p",	48000000,	false},
 	{ "sdmmc4_ddr",	"pll_p",	48000000,	false},
 	{ "sdmmc_legacy",	"pll_p",	48000000,	false},
+	{ "cpu.mselect",	NULL,	102000000,	true},
 	{ "gpu_ref",        NULL,           0,              true},
 	{ "mc_capa",        "mc",           0,              true},
 	{ "mc_cbpa",        "mc",           0,              true},

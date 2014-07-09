@@ -7668,6 +7668,28 @@ static struct clk tegra_clk_host1x = {
 	.rate_change_nh = &host1x_rate_change_nh,
 };
 
+static struct raw_notifier_head mselect_rate_change_nh;
+
+static struct clk tegra_clk_mselect = {
+	.name      = "mselect",
+	.lookup    = {
+		.dev_id = "mselect",
+	},
+	.ops       = &tegra_1xbus_clk_ops,
+	.reg       = 0x3b4,
+	.inputs    = mux_pllp_clkm,
+	.flags     = MUX | DIV_U71 | DIV_U71_INT,
+	.max_rate  = 408000000,
+	.min_rate  = 12000000,
+	.u.periph = {
+		.clk_num   = 99,
+		.pll_low = &tegra_pll_p,
+		.pll_high = &tegra_pll_p,
+		.threshold = 408000000,
+	},
+	.rate_change_nh = &mselect_rate_change_nh,
+};
+
 static struct raw_notifier_head c2bus_rate_change_nh;
 static struct raw_notifier_head c3bus_rate_change_nh;
 
@@ -8190,7 +8212,6 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2cslow",	"i2cslow",		NULL,	81,	0x3fc,	38400000,  mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("pcie",	"tegra-pcie",		"pcie",	70,	0,	250000000, mux_clk_m, 			0),
 	PERIPH_CLK("afi",	"tegra-pcie",		"afi",	72,	0,	250000000, mux_clk_m, 			0),
-	PERIPH_CLK("mselect",	"mselect",		NULL,	99,	0x3b4,	408000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0, MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("cl_dvfs_ref", "tegra_cl_dvfs",	"ref",	155,	0x62c,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
 	PERIPH_CLK("cl_dvfs_soc", "tegra_cl_dvfs",	"soc",	155,	0x630,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
 	PERIPH_CLK("soc_therm",	"soc_therm",		NULL,   78,	0x644,	408000000, mux_pllc_pllp_plla_pllc4,	MUX | DIV_U71 | PERIPH_ON_APB),
@@ -8298,6 +8319,11 @@ struct clk tegra_list_clks[] = {
 	SHARED_LIMIT("cap.vcore.host1x", "cap.vcore.host1x",	NULL,	  &tegra_clk_host1x, NULL,  0, SHARED_CEILING),
 	SHARED_LIMIT("floor.host1x", "floor.host1x",	NULL,	  &tegra_clk_host1x, NULL,  0, 0),
 	SHARED_CLK("override.host1x", "override.host1x", NULL,	  &tegra_clk_host1x, NULL,  0, SHARED_OVERRIDE),
+
+	SHARED_CLK("cpu.mselect",	  "cpu",        "mselect",   &tegra_clk_mselect, NULL,  0, 0),
+	SHARED_CLK("pcie.mselect",	  "tegra_pcie", "mselect",   &tegra_clk_mselect, NULL,  0, 0),
+	SHARED_LIMIT("cap.vcore.mselect", "cap.vcore.mselect", NULL, &tegra_clk_mselect, NULL,  0, SHARED_CEILING),
+	SHARED_CLK("override.mselect",    "override.mselect",  NULL, &tegra_clk_mselect, NULL,  0, SHARED_OVERRIDE),
 };
 
 /* VI, ISP buses */
@@ -8574,6 +8600,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_emc,
 	&tegra_clk_mc,
 	&tegra_clk_host1x,
+	&tegra_clk_mselect,
 	&tegra_clk_c2bus,
 	&tegra_clk_c3bus,
 	&tegra_clk_gpu,
@@ -8990,7 +9017,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 	unsigned long mselect_rate;
 
 	if (!mselect) {
-		mselect = tegra_get_clock_by_name("mselect");
+		mselect = tegra_get_clock_by_name("cpu.mselect");
 		if (!mselect)
 			return -ENODEV;
 	}
@@ -9000,11 +9027,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 	   cpu rate is in kHz, mselect rate is in Hz */
 	mselect_rate = DIV_ROUND_UP(cpu_rate, 2) * 1000;
 	mselect_rate = min(mselect_rate, 102000000UL);
-
-	if (mselect_rate != clk_get_rate(mselect))
-		return clk_set_rate(mselect, mselect_rate);
-
-	return 0;
+	return clk_set_rate(mselect, mselect_rate);
 }
 #endif
 
