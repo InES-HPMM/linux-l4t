@@ -599,10 +599,10 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 	}
 
 static struct max77620_regulator_info max77620_regs_info[MAX77620_NUM_REGS] = {
-	REGULATOR_SD(SD0, sd0, "in-sd0", SDX, 600000, 1400000, 12500),
-	REGULATOR_SD(SD1, sd1, "in-sd1", SD1, 600000, 1600000, 12500),
-	REGULATOR_SD(SD2, sd2, "in-sd2", SDX, 600000, 3387500, 12500),
-	REGULATOR_SD(SD3, sd3, "in-sd3", SDX, 600000, 3387500, 12500),
+	REGULATOR_SD(SD0, sd0, "in-sd0", SD0, 600000, 1400000, 12500),
+	REGULATOR_SD(SD1, sd1, "in-sd1", SD1, 600000, 1550000, 12500),
+	REGULATOR_SD(SD2, sd2, "in-sd2", SDX, 600000, 3787500, 12500),
+	REGULATOR_SD(SD3, sd3, "in-sd3", SDX, 600000, 3787500, 12500),
 
 	REGULATOR_LDO(LDO0, ldo0, "in-ldo0-1", N, 800000, 2375000, 25000),
 	REGULATOR_LDO(LDO1, ldo1, "in-ldo0-1", N, 800000, 2375000, 25000),
