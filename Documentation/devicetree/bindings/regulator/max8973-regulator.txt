@@ -18,6 +18,8 @@ Optional properties:
 	control or tied to HIGH or LOW.
 - maxim,control-flags: Control flags. The macros are defined on
 		include/dt-bindings/regulator/max8973.h
+-maxim,external-enable-gpio: GPIO number if EN pin is connected to one of
+		system GPIO lines.
 
 Example:
 
