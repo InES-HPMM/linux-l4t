@@ -875,6 +875,90 @@ TRACE_EVENT(nvhost_as_ioctl_unmap_buffer,
 	TP_printk("name=%s ",  __entry->name)
 );
 
+TRACE_EVENT(nvhost_module_enable_clk,
+	TP_PROTO(const char *devname, int num_clks),
+
+	TP_ARGS(devname, num_clks),
+
+	TP_STRUCT__entry(
+		__field(const char *, devname)
+		__field(int, num_clks)
+	),
+
+	TP_fast_assign(
+		__entry->devname = devname;
+		__entry->num_clks = num_clks;
+	),
+
+	TP_printk("dev=%s, num_clks=%d",
+		__entry->devname, __entry->num_clks)
+);
+
+TRACE_EVENT(nvhost_module_disable_clk,
+	TP_PROTO(const char *devname, int num_clks),
+
+	TP_ARGS(devname, num_clks),
+
+	TP_STRUCT__entry(
+		__field(const char *, devname)
+		__field(int, num_clks)
+	),
+
+	TP_fast_assign(
+		__entry->devname = devname;
+		__entry->num_clks = num_clks;
+	),
+
+	TP_printk("dev=%s, num_clks=%d",
+		__entry->devname, __entry->num_clks)
+);
+
+TRACE_EVENT(nvhost_module_power_on,
+	TP_PROTO(const char *devname, int powergate_id0,
+				int powergate_id1),
+
+	TP_ARGS(devname, powergate_id0, powergate_id1),
+
+	TP_STRUCT__entry(
+		__field(const char *, devname)
+		__field(int, powergate_id0)
+		__field(int, powergate_id1)
+	),
+
+	TP_fast_assign(
+		__entry->devname = devname;
+		__entry->powergate_id0 = powergate_id0;
+		__entry->powergate_id1 = powergate_id1;
+	),
+
+	TP_printk("dev=%s, powergate_id0=%d, powergate_id1=%d",
+		__entry->devname, __entry->powergate_id0,
+		__entry->powergate_id1)
+);
+
+TRACE_EVENT(nvhost_module_power_off,
+	TP_PROTO(const char *devname, int powergate_id0,
+				int powergate_id1),
+
+	TP_ARGS(devname, powergate_id0, powergate_id1),
+
+	TP_STRUCT__entry(
+		__field(const char *, devname)
+		__field(int, powergate_id0)
+		__field(int, powergate_id1)
+	),
+
+	TP_fast_assign(
+		__entry->devname = devname;
+		__entry->powergate_id0 = powergate_id0;
+		__entry->powergate_id1 = powergate_id1;
+	),
+
+	TP_printk("dev=%s, powergate_id0=%d, powergate_id1=%d",
+		__entry->devname, __entry->powergate_id0,
+		__entry->powergate_id1)
+);
+
 DECLARE_EVENT_CLASS(nvhost_map,
 	TP_PROTO(const char *devname, void *handle, int size,
 		dma_addr_t iova),
