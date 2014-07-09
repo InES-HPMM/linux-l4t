@@ -4004,7 +4004,7 @@ static void tegra21_periph_clk_init(struct clk *c)
 		u32 divu16 = val & PERIPH_CLK_SOURCE_DIVU16_MASK;
 		c->div = divu16 + 1;
 		c->mul = 1;
-	} else {
+	} else if (!c->div || !c->mul) {
 		c->div = 1;
 		c->mul = 1;
 	}
