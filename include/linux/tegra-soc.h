@@ -163,7 +163,8 @@ enum tegra_bondout_dev {
 	BOND_OUT_APE = BOND_OUT_SPARE1 + 6,
 	BOND_OUT_ADSP,
 	BOND_OUT_TSECB = BOND_OUT_SPARE1 + 14,
-	BOND_OUT_NVENC = BOND_OUT_SPARE1 + 27
+	BOND_OUT_NVENC = BOND_OUT_SPARE1 + 27,
+	BOND_OUT_VIC = BOND_OUT_SPARE1 + 18
 };
 
 extern enum tegra_revision tegra_revision;
