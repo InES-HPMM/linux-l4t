@@ -52,6 +52,13 @@
 		clock-frequency = <38400000>;
 	};
 
+	i2c@7000c000 {
+		rt5639: audio-codec@1c {
+			compatible = "realtek,rt5639";
+			reg = <0x1c>;
+		};
+	};
+
 	adma {
 		status = "okay";
 	};
