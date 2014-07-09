@@ -358,15 +358,15 @@ struct smmu_device {
 	char		*name;
 	struct device	*dev;
 	u64		swgids;		/* memory client ID bitmap */
-	size_t		ptc_cache_size;
+	u32		ptc_cache_size;	/* u32 is ok as ptc_cache_size < 4 GB */
 	struct page *avp_vector_page;	/* dummy page shared by all AS's */
 
 	/*
 	 * Register image savers for suspend/resume
 	 */
-	int num_translation_enable;
+	u32 num_translation_enable;
 	u32 translation_enable[4];
-	int num_asid_security;
+	u32 num_asid_security;
 	u32 asid_security[8];
 
 	struct dentry *debugfs_root;
@@ -375,7 +375,7 @@ struct smmu_device {
 
 	struct dma_iommu_mapping **map;
 
-	int		num_as;
+	u32		num_as;
 	struct smmu_as	as[0];		/* Run-time allocated array */
 };
 
@@ -2066,7 +2066,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 		goto exit_probe;
 	size >>= SMMU_PAGE_SHIFT;
 
-	if (of_property_read_u32(dev->of_node, "nvidia,#asids",
+	if (of_property_read_u32(dev->of_node, "#asids",
 				   &num_as))
 		goto exit_probe;
 
@@ -2101,35 +2101,21 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 		goto fail_cleanup;
 	}
 
-	smmu->num_translation_enable = 3;
-	smmu->num_asid_security = 1;
-	smmu->ptc_cache_size = SZ_16K;
+	if (of_property_read_u64(dev->of_node, "swgid-mask",
+				   &smmu->swgids))
+		goto fail_cleanup;
 
-	if (IS_ENABLED(CONFIG_ARCH_TEGRA_3x_SOC) &&
-	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA3))
-		smmu->swgids = 0x00000000000779ff;
-	if (IS_ENABLED(CONFIG_ARCH_TEGRA_11x_SOC) &&
-	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11))
-		smmu->swgids = 0x0000000001b659fe;
-	if (IS_ENABLED(CONFIG_ARCH_TEGRA_14x_SOC) &&
-	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA14))
-		smmu->swgids = 0x0000000001865bfe;
-	if ((IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
-	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) ||
-	    (IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC) &&
-	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA13))) {
-		smmu->swgids = 0x00000001fffecdcf;
-		smmu->num_translation_enable = 4;
-		smmu->num_asid_security = 8;
-		smmu->ptc_cache_size = SZ_32K;
-	}
-	if (IS_ENABLED(CONFIG_ARCH_TEGRA_21x_SOC) &&
-	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA21)) {
-		smmu->swgids = 0x00000ffffffccdcf;
-		smmu->num_translation_enable = 4;
-		smmu->num_asid_security = 8;
-		smmu->ptc_cache_size = SZ_32K;
-	}
+	if (of_property_read_u32(dev->of_node, "#num-translation-enable",
+				   &smmu->num_translation_enable))
+		goto fail_cleanup;
+
+	if (of_property_read_u32(dev->of_node, "#num-asid-security",
+				   &smmu->num_asid_security))
+		goto fail_cleanup;
+
+	if (of_property_read_u32(dev->of_node, "ptc-cache-size",
+				   &smmu->ptc_cache_size))
+		goto fail_cleanup;
 
 	for (i = 0; i < smmu->num_translation_enable; i++)
 		smmu->translation_enable[i] = ~0;
