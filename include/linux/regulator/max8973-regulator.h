@@ -59,6 +59,8 @@
  *		voltage output will be enabled/disabled through EN bit of
  *		device register.
  * @dvs_gpio: GPIO for dvs. It should be -1 if this is tied with fixed logic.
+ * @enable_gpio: GPIO for enable pin if it is connected and gpio controlled.
+ * 		 It should be -1 if this is inot gpio controlled.
  * @dvs_def_state: Default state of dvs. 1 if it is high else 0.
  */
 struct max8973_regulator_platform_data {
@@ -66,6 +68,7 @@ struct max8973_regulator_platform_data {
 	unsigned long control_flags;
 	bool enable_ext_control;
 	int dvs_gpio;
+	int enable_gpio;
 	unsigned dvs_def_state:1;
 };
 

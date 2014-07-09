@@ -114,6 +114,7 @@ struct max8973_chip {
 	struct regmap *regmap;
 	bool enable_external_control;
 	int dvs_gpio;
+	int enable_gpio;
 	int lru_index[MAX8973_MAX_VOUT_REG];
 	int curr_vout_val[MAX8973_MAX_VOUT_REG];
 	int curr_vout_reg;
@@ -490,6 +491,8 @@ static struct max8973_regulator_platform_data *max8973_parse_dt(
 	pdata->enable_ext_control = of_property_read_bool(np,
 						"maxim,externally-enable");
 	pdata->dvs_gpio = of_get_named_gpio(np, "maxim,dvs-gpio", 0);
+	pdata->enable_gpio = of_get_named_gpio(np,
+				"maxim,external-enable-gpio", 0);
 
 	ret = of_property_read_u32(np, "maxim,dvs-default-state", &pval);
 	if (!ret)
@@ -538,15 +541,6 @@ static int max8973_probe(struct i2c_client *client,
 		return ret;
 	}
 
-	ret = regmap_read(max->regmap, MAX8973_CHIPID1, &chip_id);
-	if (ret < 0) {
-		dev_err(max->dev, "register CHIPID1 read failed, %d", ret);
-		return ret;
-	}
-
-	dev_info(&client->dev, "CHIP-ID OTP: 0x%02x ID_M: 0x%02x\n",
-			(chip_id >> 4) & 0xF, (chip_id >> 1) & 0x7);
-
 	if (client->dev.of_node) {
 		const struct of_device_id *match;
 		match = of_match_device(of_match_ptr(of_max8973_match_tbl),
@@ -557,6 +551,15 @@ static int max8973_probe(struct i2c_client *client,
 	} else {
 		max->id = id->driver_data;
 	}
+
+	ret = regmap_read(max->regmap, MAX8973_CHIPID1, &chip_id);
+	if (ret < 0) {
+		dev_err(max->dev, "register CHIPID1 read failed, %d", ret);
+		return ret;
+	}
+
+	dev_info(&client->dev, "CHIP-ID OTP: 0x%02x ID_M: 0x%02x\n",
+			(chip_id >> 4) & 0xF, (chip_id >> 1) & 0x7);
 
 	/* If external control is enabled then disable EN bit */
 	i2c_set_clientdata(client, max);
@@ -578,8 +581,17 @@ static int max8973_probe(struct i2c_client *client,
 		max->ops.enable = regulator_enable_regmap;
 		max->ops.disable = regulator_disable_regmap;
 		max->ops.is_enabled = regulator_is_enabled_regmap;
+	} else if (gpio_is_valid(pdata->enable_gpio)) {
+		config.ena_gpio = pdata->enable_gpio;
+
+		if (pdata->reg_init_data) {
+			if (pdata->reg_init_data->constraints.always_on ||
+				pdata->reg_init_data->constraints.boot_on)
+				config.ena_gpio_flags = GPIOF_OUT_INIT_HIGH;
+		}
 	}
 
+	max->enable_gpio = pdata->enable_gpio;
 	max->dvs_gpio = pdata->dvs_gpio;
 	max->enable_external_control = pdata->enable_ext_control;
 	max->curr_gpio_val = pdata->dvs_def_state;
