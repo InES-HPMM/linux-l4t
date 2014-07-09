@@ -90,11 +90,49 @@
 		       0x0 0x6000c000 0x0 0x1000>;
 		#asids = <128>;
 		dma-window = <0x0 0x80000000 0x0 0x7ff00000>;
-		#iommu-cells = <10>;
+		#iommu-cells = <3>;
 		swgid-mask = <0x00000fff 0xfffccdcf>;
 		#num-translation-enable = <4>;
 		#num-asid-security = <8>;
 		ptc-cache-size = <0x00008000>; /* 32 KB */
+
+		address-space-prop {
+			common_as: common {
+				iova-start = <0x0 0x80000000>;
+				iova-size = <0x0 0x7FF00000>;
+				alignment = <0xFFFFF>;
+				num-pf-page = <0>;
+				gap-page = <1>;
+			};
+			ppcs_as: ppcs {
+				iova-start = <0x0 0x80000000>;
+				iova-size = <0x0 0x7FF00000>;
+				alignment = <0xFFFFF>;
+				num-pf-page = <1>;
+				gap-page = <1>;
+			};
+			dc_as: dc {
+				iova-start = <0x0 0x00010000>;
+				iova-size = <0x0 0xFFFFFFFF>;
+				alignment = <0xFFFFF>;
+				num-pf-page = <0>;
+				gap-page = <1>;
+			};
+			gpu_as: gpu {
+				iova-start = <0x0 0x00100000>;
+				iova-size = <0x0 0xFFFFFFFF>;
+				alignment = <0xFFFFF>;
+				num-pf-page = <0>;
+				gap-page = <0>;
+			};
+			ape_as: ape {
+				iova-start = <0x0 0x70300000>;
+				iova-size = <0x0 0x8FC00000>;
+				alignment = <0xFFFFF>;
+				num-pf-page = <0>;
+				gap-page = <1>;
+			};
+		};
 	};
 
 	bpmp {
@@ -281,9 +319,7 @@
 		reg = <0x0 0x70006000 0x0 0x40>;
 		reg-shift = <2>;
 		interrupts = <0 36 0x04>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
                 nvidia,dma-request-selector = <&apbdma 8>;
                 dmas = <&apbdma 8>, <&apbdma 8>;
                 dma-names = "rx", "tx";
@@ -296,9 +332,7 @@
 		reg = <0x0 0x70006040 0x0 0x40>;
 		reg-shift = <2>;
 		interrupts = <0 37 0x04>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
                 nvidia,dma-request-selector = <&apbdma 9>;
                 dmas = <&apbdma 9>, <&apbdma 9>;
                 dma-names = "rx", "tx";
@@ -313,9 +347,7 @@
 		interrupts = <0 46 0x04>;
 		nvidia,dma-request-selector = <&apbdma 10>;
 		nvidia,memory-clients = <14>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		dmas = <&apbdma 10>, <&apbdma 10>;
 		dma-names = "rx", "tx";
 		status = "disabled";
@@ -328,9 +360,7 @@
 		interrupts = <0 90 0x04>;
 		nvidia,dma-request-selector = <&apbdma 19>;
 		nvidia,memory-clients = <14>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		dmas = <&apbdma 19>, <&apbdma 19>;
 		dma-names = "rx", "tx";
 		status = "disabled";
@@ -349,9 +379,7 @@
 		interrupts = <0 59 0x04>;
 		nvidia,dma-request-selector = <&apbdma 15>;
 		nvidia,memory-clients = <14>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		dmas = <&apbdma 15>, <&apbdma 15>;
@@ -365,9 +393,7 @@
 		interrupts = <0 82 0x04>;
 		nvidia,dma-request-selector = <&apbdma 16>;
 		nvidia,memory-clients = <14>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		dmas = <&apbdma 16>, <&apbdma 16>;
@@ -381,9 +407,7 @@
 		interrupts = <0 83 0x04>;
 		nvidia,dma-request-selector = <&apbdma 17>;
 		nvidia,memory-clients = <14>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		dmas = <&apbdma 17>, <&apbdma 17>;
@@ -397,9 +421,7 @@
 		interrupts = <0 93 0x04>;
 		nvidia,dma-request-selector = <&apbdma 18>;
 		nvidia,memory-clients = <14>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		dmas = <&apbdma 18>, <&apbdma 18>;
@@ -413,9 +435,7 @@
 		interrupts = <0 10 0x04>;
 		nvidia,dma-request-selector = <&apbdma 5>;
 		nvidia,memory-clients = <14>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		status = "disabled";
@@ -427,9 +447,7 @@
 		interrupts = <0 65 0x04   /* mpcore syncpt */
 			      0 67 0x04>; /* mpcore general */
 		nvidia,memory-clients = <6>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS(HC)
-				  0x0 0x80000000 0x0 0x7FF00000
-				  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(HC) &common_as>;
 
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -441,9 +459,7 @@
 			reg = <0x54080000 0x00040000>;
 			interrupts = <0 69 0x04>;
 			nvidia,memory-clients = <18>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS(VI)
-				  0x0 0x80000000 0x0 0x7FF00000
-				  0xFFFFF 1 1>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(VI) &common_as>;
 		};
 
 		isp@54600000 {
@@ -451,9 +467,7 @@
 			reg = <0x54600000 0x00040000>;
 			interrupts = <0 71 0x04>;
 			nvidia,memory-clients = <8>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS(ISP)
-				  0x0 0x80000000 0x0 0x7FF00000
-				  0xFFFFF 1 1>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(ISP) &common_as>;
 		};
 
 		isp@54680000 {
@@ -461,63 +475,49 @@
 			reg = <0x54680000 0x00040000>;
 			interrupts = <0 72 0x04>;
 			nvidia,memory-clients = <29>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS(ISP2B)
-				  0x0 0x80000000 0x0 0x7FF00000
-				  0xFFFFF 1 1>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(ISP2B) &common_as>;
 		};
 
 		vic {
 			compatible = "nvidia,tegra210-vic";
 			reg = <0x54340000 0x00040000>;
 			nvidia,memory-clients = <19>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS(VIC)
-				  0x0 0x80000000 0x0 0x7FF00000
-				  0xFFFFF 1 1>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(VIC) &common_as>;
 		};
 
 		nvenc {
 			compatible = "nvidia,tegra210-nvenc";
 			reg = <0x544c0000 0x00040000>;
 			nvidia,memory-clients = <11>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS(MPE)
-				  0x0 0x80000000 0x0 0x7FF00000
-				  0xFFFFF 1 1>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(MPE) &common_as>;
 		};
 
 		tsec {
 			compatible = "nvidia,tegra210-tsec";
 			reg = <0x54500000 0x00040000>;
 			nvidia,memory-clients = <23>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS(TSEC)
-				  0x0 0x80000000 0x0 0x7FF00000
-				  0xFFFFF 1 1>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(TSEC) &common_as>;
 		};
 
 		tsecb {
 			compatible = "nvidia,tegra210-tsec";
 			reg = <0x54100000 0x00040000>;
 			nvidia,memory-clients = <41>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS(TSECB1)
-				  0x0 0x80000000 0x0 0x7FF00000
-				  0xFFFFF 1 1>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(TSECB1) &common_as>;
 		};
 
 		nvdec {
 			compatible = "nvidia,tegra210-nvdec";
 			reg = <0x54480000 0x00040000>;
 			nvidia,memory-clients = <33>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS(NVDEC)
-				  0x0 0x80000000 0x0 0x7FF00000
-				  0xFFFFF 1 1>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(NVDEC) &common_as>;
 		};
 
 		nvjpg {
 			compatible = "nvidia,tegra210-nvjpg";
 			reg = <0x54380000 0x00040000>;
 			nvidia,memory-clients = <36>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS(NVJPG)
-				  0x0 0x80000000 0x0 0x7FF00000
-				  0xFFFFF 1 1>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(NVJPG) &common_as>;
 		};
 
 	};
@@ -531,9 +531,7 @@
 		    interrupts = <0 157 0x04
 			    0 158 0x04>;
 		nvidia,memory-clients = <30 31>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS2(GPU, GPUB)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS2(GPU, GPUB) &gpu_as>;
 	};
 
 	pmc@7000e400 {
@@ -836,9 +834,7 @@
 	tegra_adsp_audio: adsp_audio {
 		compatible = "nvidia,tegra210-adsp-audio";
 		nvidia,memory-clients = <34>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(APE)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(APE) &ape_as>;
 		status = "disabled";
 	};
 
@@ -849,9 +845,7 @@
 		   <0x0 0x01000000 0x0 0x6f2c0000>, /* DRAM MAP1 */
 		   <0x0 0x70300000 0x0 0x8fd00000>; /* DRAM MAP2 */
 	     nvidia,memory-clients = <34>;
-	     iommus = <&smmu TEGRA_SWGROUP_CELLS(APE)
-		       0x0 0x80000000 0x0 0x7FF00000
-		       0xFFFFF 1 1>;
+	     iommus = <&smmu TEGRA_SWGROUP_CELLS(APE) &ape_as>;
 	     status = "disabled";
 	};
 
@@ -867,9 +861,7 @@
 		reg = <0x0 0x7000c000 0x0 0x100>;
 		interrupts = <0 38 0x04>;
 		nvidia,memory-clients = <14>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
 		clock-frequency = <400000>;
 	};
@@ -881,9 +873,7 @@
 		reg = <0x0 0x7000c400 0x0 0x100>;
 		interrupts = <0 84 0x04>;
 		nvidia,memory-clients = <14>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
 		clock-frequency = <100000>;
 	};
@@ -895,9 +885,7 @@
 		reg = <0x0 0x7000c500 0x0 0x100>;
 		interrupts = <0 92 0x04>;
 		nvidia,memory-clients = <14>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
 		clock-frequency = <400000>;
 	};
@@ -909,9 +897,7 @@
 		reg = <0x0 0x7000c700 0x0 0x100>;
 		interrupts = <0 120 0x04>;
 		nvidia,memory-clients = <14>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
 		clock-frequency = <100000>;
 	};
@@ -924,9 +910,7 @@
 		interrupts = <0 53 0x04>;
 		nvidia,require-cldvfs-clock;
 		nvidia,memory-clients = <14>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
 		clock-frequency = <400000>;
 	};
@@ -938,9 +922,7 @@
 		reg = <0x0 0x7000d100 0x0 0x100>;
 		interrupts = <0 63 0x04>;
 		nvidia,memory-clients = <14>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-			  0x0 0x80000000 0x0 0x7FF00000
-			  0xFFFFF 1 1>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
 		clock-frequency = <400000>;
 	};

@@ -881,6 +881,7 @@
 		compatible = "nvidia,tegra-audio-grenada";
 		nvidia,model = "tegra-snd-grenada";
 		nvidia,memory-clients = <34>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(APE) &ape_as>;
 		nvidia,audio-routing =
 			"x Headphone", 	"x OUT",
 			"y Headphone", 	"y OUT",
