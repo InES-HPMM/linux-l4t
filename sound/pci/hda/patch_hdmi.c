@@ -4,7 +4,7 @@
  *
  *  Copyright(c) 2008-2010 Intel Corporation. All rights reserved.
  *  Copyright (c) 2006 ATI Technologies Inc.
- *  Copyright (c) 2008 NVIDIA Corp.  All rights reserved.
+ *  Copyright (c) 2008-2014, NVIDIA CORPORATION.  All rights reserved.
  *  Copyright (c) 2008 Wei Ni <wni@nvidia.com>
  *
  *  Authors:
@@ -1019,6 +1019,7 @@ static void hdmi_intrinsic_event(struct hda_codec *codec, unsigned int res)
 	if (((codec->preset->id == 0x10de0020) ||
 		(codec->preset->id == 0x10de0022) ||
 		(codec->preset->id == 0x10de0028) ||
+		(codec->preset->id == 0x10de0029) ||
 		(codec->preset->id == 0x10de002a))) {
 		/*
 		 * HDMI sink's ELD info cannot always be retrieved for now, e.g.
@@ -1180,6 +1181,7 @@ static int hdmi_pcm_open(struct hda_pcm_stream *hinfo,
 	if ((((codec->preset->id == 0x10de0020) ||
 		(codec->preset->id == 0x10de0022) ||
 		(codec->preset->id == 0x10de0028) ||
+		(codec->preset->id == 0x10de0029) ||
 		(codec->preset->id == 0x10de002a))) &&
 		(!eld->monitor_present || !eld->info.lpcm_sad_ready)) {
 		if (!eld->monitor_present) {
@@ -1398,6 +1400,7 @@ static void hdmi_repoll_eld(struct work_struct *work)
 	if ((codec->preset->id == 0x10de0020) ||
 		(codec->preset->id == 0x10de0022) ||
 		(codec->preset->id == 0x10de0028) ||
+		(codec->preset->id == 0x10de0029) ||
 		(codec->preset->id == 0x10de002a)) {
 		/*
 		 * HDMI sink's ELD info cannot always be retrieved for now, e.g.
@@ -1530,6 +1533,7 @@ static int hdmi_parse_codec(struct hda_codec *codec)
 		    AC_PWRST_EPSS)) && ((codec->preset->id != 0x10de0020) &&
 					(codec->preset->id != 0x10de0022) &&
 					(codec->preset->id != 0x10de0028) &&
+					(codec->preset->id != 0x10de0029) &&
 					(codec->preset->id != 0x10de002a)))
 		 codec->bus->power_keep_link_on = 1;
 #endif
@@ -1578,6 +1582,7 @@ static int generic_hdmi_playback_pcm_prepare(struct hda_pcm_stream *hinfo,
 	if ((codec->preset->id == 0x10de0020) ||
 		(codec->preset->id == 0x10de0022) ||
 		(codec->preset->id == 0x10de0028) ||
+		(codec->preset->id == 0x10de0029) ||
 		(codec->preset->id == 0x10de002a)) {
 		int err = 0;
 
@@ -1914,6 +1919,7 @@ static int generic_hdmi_init_per_pins(struct hda_codec *codec)
 	case 0x10de0020:
 	case 0x10de0022:
 	case 0x10de0028:
+	case 0x10de0029:
 	case 0x10de002a:
 		snd_hda_codec_write(codec, 4, 0,
 				    AC_VERB_SET_DIGI_CONVERT_1, 0x11);
@@ -2748,6 +2754,7 @@ static const struct hda_codec_preset snd_hda_preset_hdmi[] = {
 { .id = 0x10de0020, .name = "Tegra30 HDMI",	.patch = patch_generic_hdmi },
 { .id = 0x10de0022, .name = "Tegra35 HDMI",	.patch = patch_generic_hdmi },
 { .id = 0x10de002a, .name = "Tegra14x HDMI",	.patch = patch_generic_hdmi },
+{ .id = 0x10de0029, .name = "Tegra21x HDMI",	.patch = patch_generic_hdmi },
 { .id = 0x10de0028, .name = "Tegra12x HDMI",	.patch = patch_generic_hdmi },
 { .id = 0x10de0040, .name = "GPU 40 HDMI/DP",	.patch = patch_nvhdmi},
 { .id = 0x10de0041, .name = "GPU 41 HDMI/DP",	.patch = patch_nvhdmi},
@@ -2805,6 +2812,7 @@ MODULE_ALIAS("snd-hda-codec-id:10de001c");
 MODULE_ALIAS("snd-hda-codec-id:10de0020");
 MODULE_ALIAS("snd-hda-codec-id:10de0022");
 MODULE_ALIAS("snd-hda-codec-id:10de0028");
+MODULE_ALIAS("snd-hda-codec-id:10de0029");
 MODULE_ALIAS("snd-hda-codec-id:10de002a");
 MODULE_ALIAS("snd-hda-codec-id:10de0040");
 MODULE_ALIAS("snd-hda-codec-id:10de0041");
