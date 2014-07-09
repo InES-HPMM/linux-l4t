@@ -36,6 +36,7 @@
 #include <linux/debugfs.h>
 #include <linux/dma-buf.h>
 #include <linux/idr.h>
+#include <asm/cacheflush.h>
 
 #include "ion.h"
 #include "ion_priv.h"
@@ -1412,6 +1413,118 @@ static int ion_sync_for_device(struct ion_client *client, int fd)
 	return 0;
 }
 
+static int ion_cachemaint(struct ion_client *client,
+			  struct ion_cachemaint_data *cachemaint)
+{
+	struct dma_buf *dmabuf;
+	struct ion_buffer *buffer;
+	struct scatterlist *sg;
+	struct vm_area_struct *vma;
+	size_t sg_offset = 0;
+	size_t sync_start, sync_end;
+	int i;
+	int err = 0;
+	const int cacheop =
+		cachemaint->flags & (ION_CACHEMAINT_FOR_DEVICE | ION_CACHEMAINT_FOR_CPU);
+
+	if (!cachemaint->length || !cacheop) {
+		return 0;  /* nothing to do */
+	}
+
+	dmabuf = dma_buf_get(cachemaint->fd);
+	if (IS_ERR(dmabuf))
+		return PTR_ERR(dmabuf);
+
+	/* check whether this memory came from ion */
+	if (!dmabuf_is_ion(dmabuf)) {
+		pr_err("%s: cannot do dmabuf cachemaint for another exporter\n",
+		       __func__);
+		dma_buf_put(dmabuf);
+		return -EINVAL;
+	}
+	buffer = dmabuf->priv;
+
+	/* find buffer sync start offset */
+	down_read(&current->mm->mmap_sem);
+
+	vma = find_vma(current->active_mm, cachemaint->ptr);
+	if (!vma || cachemaint->ptr < vma->vm_start ||
+	    cachemaint->ptr + cachemaint->length > vma->vm_end) {
+		pr_err("%s: requested area not mapped\n", __func__);
+		err = -EADDRNOTAVAIL;
+		goto fail;
+	}
+	sync_start = vma->vm_pgoff * PAGE_SIZE + (cachemaint->ptr - vma->vm_start);
+
+	/* buffer sync end offset */
+	sync_end = sync_start + cachemaint->length;
+
+	if (sync_start > sync_end || sync_end > dmabuf->size) {
+		pr_err("%s: request [%zu,%zu) out of bounds [0,%zu), ptr=%lu vma_start=%lu vma_pgoff=%lu\n",
+		       __func__, sync_start, sync_end, dmabuf->size,
+		       cachemaint->ptr, vma->vm_start, vma->vm_pgoff);
+		err = -EADDRNOTAVAIL;
+		goto fail;
+	}
+
+	/* cache sync */
+	for_each_sg(buffer->sg_table->sgl, sg, buffer->sg_table->nents, i) {
+		const size_t sg_end = sg_offset + sg->length;
+
+		if (sync_start < sg_end && sync_end > sg_offset) {
+			const size_t inbuf_ofs = sync_start <= sg_offset ?
+				0 : sync_start - sg_offset;
+			const size_t inbuf_end = sync_end >= sg_end ?
+				sg_end - sg_offset : sync_end - sg_offset;
+
+			const dma_addr_t dma = sg_dma_address(sg) + inbuf_ofs;
+			const size_t len = inbuf_end - inbuf_ofs;
+
+			/* NOTE: We could optimize this a bit more by taking
+			   into account whether the mapping is for read and/or
+			   write. Now we assume both, which maps to
+			   DMA_BIDIRECTIONAL and flush_dcache_page(). */
+
+			switch (cacheop) {
+			case ION_CACHEMAINT_FOR_DEVICE:
+				dma_sync_single_for_device(NULL, dma, len,
+							   DMA_BIDIRECTIONAL);
+				break;
+
+			case ION_CACHEMAINT_FOR_CPU:
+				dma_sync_single_for_cpu(NULL, dma, len,
+							DMA_BIDIRECTIONAL);
+				break;
+
+			case ION_CACHEMAINT_FOR_DEVICE | ION_CACHEMAINT_FOR_CPU:
+			{
+				unsigned long pfn_off;
+				unsigned long sg_pfn = page_to_pfn(sg_page(sg));
+
+				for (pfn_off = inbuf_ofs / PAGE_SIZE;
+				     pfn_off < (inbuf_end + PAGE_SIZE - 1) / PAGE_SIZE;
+				     ++pfn_off)
+					flush_dcache_page(pfn_to_page(sg_pfn + pfn_off));
+
+				break;
+			}
+			default:
+				WARN(1, "Bad cache op %d\n", cacheop);
+				goto fail;
+			}
+		}
+
+		sg_offset = sg_end;
+		if (sg_offset >= sync_end)
+			break;
+	}
+
+fail:
+	up_read(&current->mm->mmap_sem);
+	dma_buf_put(dmabuf);
+	return err;
+}
+
 /* fix up the cases where the ioctl direction bits are incorrect */
 static unsigned int ion_ioctl_dir(unsigned int cmd)
 {
@@ -1437,6 +1550,7 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		struct ion_fd_data fd;
 		struct ion_allocation_data allocation;
 		struct ion_handle_data handle;
+		struct ion_cachemaint_data cachemaint;
 		struct ion_custom_data custom;
 	} data;
 
@@ -1504,6 +1618,11 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case ION_IOC_SYNC:
 	{
 		ret = ion_sync_for_device(client, data.fd.fd);
+		break;
+	}
+	case ION_IOC_CACHEMAINT:
+	{
+		ret = ion_cachemaint(client, &data.cachemaint);
 		break;
 	}
 	case ION_IOC_CUSTOM:
