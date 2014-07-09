@@ -269,23 +269,29 @@ static int max8973_set_ramp_delay(struct regulator_dev *rdev,
 	struct max8973_chip *max = rdev_get_drvdata(rdev);
 	unsigned int control;
 	int ret;
+	int ret_val;
 
 	/* Set ramp delay */
-	if (ramp_delay < 25000)
+	if (ramp_delay < 25000) {
 		control = MAX8973_RAMP_12mV_PER_US;
-	else if (ramp_delay < 50000)
+		ret_val = 12000;
+	} else if (ramp_delay < 50000) {
 		control = MAX8973_RAMP_25mV_PER_US;
-	else if (ramp_delay < 200000)
+		ret_val = 25000;
+	} else if (ramp_delay < 200000) {
 		control = MAX8973_RAMP_50mV_PER_US;
-	else
+		ret_val = 50000;
+	} else {
 		control = MAX8973_RAMP_200mV_PER_US;
+		ret_val = 200000;
+	}
 
 	ret = regmap_update_bits(max->regmap, MAX8973_CONTROL1,
 			MAX8973_RAMP_MASK, control);
 	if (ret < 0)
 		dev_err(max->dev, "register %d update failed, %d",
 				MAX8973_CONTROL1, ret);
-	return ret;
+	return ret_val;
 }
 
 static const struct regulator_ops max8973_dcdc_ops = {
@@ -304,6 +310,29 @@ static int max8973_init_dcdc(struct max8973_chip *max,
 	int ret;
 	uint8_t	control1 = 0;
 	uint8_t control2 = 0;
+	unsigned int data;
+
+	ret = regmap_read(max->regmap, MAX8973_CONTROL1, &data);
+	if (ret < 0) {
+		dev_err(max->dev, "register %d read failed, err = %d",
+				MAX8973_CONTROL1, ret);
+		return ret;
+	}
+	control1 = data & MAX8973_RAMP_MASK;
+	switch (control1) {
+	case 0:
+		max->desc.ramp_delay = 12000;
+		break;
+	case 1:
+		max->desc.ramp_delay = 252000;
+		break;
+	case 2:
+		max->desc.ramp_delay = 50000;
+		break;
+	case 3:
+		max->desc.ramp_delay = 200000;
+		break;
+	}
 
 	if (pdata->control_flags & MAX8973_CONTROL_REMOTE_SENSE_ENABLE)
 		control1 |= MAX8973_SNS_ENABLE;
@@ -319,22 +348,6 @@ static int max8973_init_dcdc(struct max8973_chip *max,
 
 	if (pdata->control_flags & MAX8973_CONTROL_FREQ_SHIFT_9PER_ENABLE)
 		control1 |= MAX8973_FREQSHIFT_9PER;
-
-	/* Set ramp delay */
-	if (pdata->reg_init_data &&
-			pdata->reg_init_data->constraints.ramp_delay) {
-		if (pdata->reg_init_data->constraints.ramp_delay < 25000)
-			control1 |= MAX8973_RAMP_12mV_PER_US;
-		else if (pdata->reg_init_data->constraints.ramp_delay < 50000)
-			control1 |= MAX8973_RAMP_25mV_PER_US;
-		else if (pdata->reg_init_data->constraints.ramp_delay < 200000)
-			control1 |= MAX8973_RAMP_50mV_PER_US;
-		else
-			control1 |= MAX8973_RAMP_200mV_PER_US;
-	} else {
-		control1 |= MAX8973_RAMP_12mV_PER_US;
-		max->desc.ramp_delay = 12500;
-	}
 
 	if (!(pdata->control_flags & MAX8973_CONTROL_PULL_DOWN_ENABLE))
 		control2 |= MAX8973_DISCH_ENBABLE;
