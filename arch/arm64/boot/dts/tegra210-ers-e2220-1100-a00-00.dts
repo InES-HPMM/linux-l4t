@@ -20,5 +20,20 @@
 	chosen {
 		bootargs ="mem=1024M@2048M console=ttyS0,115200 earlyprintk=uart8250-32bit,0x70006000";
         };
+
+	sdhci@700b0600 {
+		uhs_mask = <0x60>;
+		status = "okay";
+	};
+
+	sdhci@700b0400 {
+		uhs_mask = <0x1c>;
+		status = "okay";
+	};
+
+	sdhci@700b0200 {
+		uhs_mask = <0x60>;
+		status = "okay";
+	};
 };
 

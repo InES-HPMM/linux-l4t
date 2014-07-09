@@ -948,6 +948,13 @@
 		reg = <0x0 0x700b0600 0x0 0x200>;
 		interrupts = < 0 31 0x04 >;
 		nvidia,memory-clients = <28>;
+		tap-delay = <4>;
+		trim-delay = <8>;
+		mmc-ocr-mask = <0>;
+		max-clk-limit = <200000000>;
+		bus-width = <8>;
+		id = <3>;
+		built-in;
 		status = "disabled";
 	};
 
@@ -956,6 +963,13 @@
 		reg = <0x0 0x700b0400 0x0 0x200>;
 		interrupts = < 0 19 0x04 >;
 		nvidia,memory-clients = <27>;
+		tap-delay = <1>;
+		trim-delay = <3>;
+		mmc-ocr-mask = <3>;
+		max-clk-limit = <204000000>;
+		ddr-clk-limit = <48000000>;
+		bus-width = <4>;
+		id = <2>;
 		status = "disabled";
 	};
 
@@ -964,6 +978,13 @@
 		reg = <0x0 0x700b0200 0x0 0x200>;
 		interrupts = < 0 15 0x04 >;
 		nvidia,memory-clients = <26>;
+		tap-delay = <4>;
+		trim-delay = <8>;
+		mmc-ocr-mask = <0>;
+		max-clk-limit = <200000000>;
+		bus-width = <8>;
+		id = <1>;
+		built-in;
 		status = "disabled";
 	};
 
