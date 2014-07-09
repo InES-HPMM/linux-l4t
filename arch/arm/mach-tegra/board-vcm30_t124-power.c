@@ -207,6 +207,8 @@ int __init vcm30_t124_regulator_init(void)
 	int sku_rev;
 	sku_rev = tegra_board_get_skurev("61859");
 
+	tegra_pmc_pmu_interrupt_polarity(true);
+
 	/* C01 boards have tegra gpio for gpu_pwr_req and
 	 *   boards before C01 have PMU gpio for gpu_pwr_req
 	 */
