@@ -24,6 +24,7 @@
 #include <tegra124-platforms/tegra124-vcm30-t124-gpio-default.dtsi>
 #include <tegra124-platforms/tegra124-vcm30-t124-pinmux.dtsi>
 #include <tegra124-platforms/tegra124-vcm30t124-fixed.dtsi>
+#include <tegra124-platforms/tegra124-1860-b00.dtsi>
 
 
 / {
@@ -233,6 +234,13 @@
 		max-clk-limit = <204000000>;
 		pll_source = "pll_m", "pll_p";
 		vmmc-supply = <&vmmc>;
+		status = "okay";
+	};
+	bluedroid_pm {
+		compatible = "nvidia,tegra-bluedroid_pm";
+		id = <0>;
+		bluedroid_pm,reset-gpio = <&pca9539_75 0 1>;
+		bluedroid_pm,shutdown-gpio = <&pca9539_75 5 1>;
 		status = "okay";
 	};
 };
