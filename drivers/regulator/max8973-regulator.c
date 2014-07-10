@@ -592,7 +592,7 @@ static int max8973_probe(struct i2c_client *client,
 
 	ret = regmap_read(max->regmap, MAX8973_CHIPID1, &chip_id);
 	if (ret < 0) {
-		dev_err(max->dev, "register CHIPID1 read failed, %d", ret);
+		dev_err(&client->dev, "register CHIPID1 read failed, %d", ret);
 		return ret;
 	}
 
