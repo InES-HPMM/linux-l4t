@@ -82,7 +82,7 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += wakeups-t12x.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += wakeups-t21x.o
 
 
-obj-y += kfuse.o
+obj-$(CONFIG_TEGRA_KFUSE) += kfuse.o
 obj-y += apbio.o
 obj-$(CONFIG_FIQ) += fiq.o
 
