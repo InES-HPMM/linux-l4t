@@ -155,6 +155,7 @@ struct mmc_host_ops {
 	void	(*dfs_governor_exit)(struct mmc_host *host);
 	int	(*dfs_governor_get_target)(struct mmc_host *host,
 		unsigned long *freq);
+	void	(*post_init)(struct mmc_host *host);
 };
 
 struct mmc_card;
