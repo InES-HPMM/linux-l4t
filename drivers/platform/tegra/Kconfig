@@ -43,6 +43,12 @@ config TEGRA_COMMON
 	help
 	  Enable Tegra common support.
 
+config TEGRA_DEVICES
+	bool "Tegra devices"
+	default y
+	help
+	  Enable misc Tegra devices.
+
 config TEGRA_BOOTLOADER_DEBUG
 	tristate "Creates sys-fs interface dumping registers read by bootloader"
 	default n

@@ -55,7 +55,7 @@ CFLAGS_common.o = -Werror -Wno-unused-function
 #endif
 
 obj-$(CONFIG_TEGRA_COMMON) += common.o
-obj-y += devices.o
+obj-$(CONFIG_TEGRA_DEVICES) += devices.o
 obj-y += io.o
 obj-y += clock.o
 obj-y += tegra_clocks_pll.o
