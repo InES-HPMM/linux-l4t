@@ -586,7 +586,7 @@ struct tegra_dc_out {
 
 	u8			*out_sel_configs;
 	unsigned		n_out_sel_configs;
-	bool			user_needs_vblank;
+	int			user_needs_vblank;
 	struct completion	user_vblank_comp;
 
 	int	(*enable)(struct device *);
