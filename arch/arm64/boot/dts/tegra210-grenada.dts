@@ -383,7 +383,7 @@
 
 			gpio_x1_aud_pbb3 {
 				nvidia,pins = "gpio_x1_aud_pbb3";
-				nvidia,function = "safe";
+				nvidia,function = "rsvd1";
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -391,7 +391,7 @@
 
 			gpio_x3_aud_pbb4 {
 				nvidia,pins = "gpio_x3_aud_pbb4";
-				nvidia,function = "safe";
+				nvidia,function = "rsvd1";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_UP>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -407,7 +407,7 @@
 
 			pz4 {
 				nvidia,pins = "pz4";
-				nvidia,function = "safe";
+				nvidia,function = "rsvd2";
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_UP>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
