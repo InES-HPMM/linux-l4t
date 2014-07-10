@@ -553,7 +553,7 @@ static int palmas_gpadc_start_convertion(struct palmas_gpadc *adc, int adc_chan)
 	if (ret == 0) {
 		dev_err(adc->dev, "ADC conversion not completed\n");
 		ret = -ETIMEDOUT;
-		return ret;
+		goto error;
 	}
 
 	ret = palmas_bulk_read(adc->palmas, PALMAS_GPADC_BASE,
@@ -565,11 +565,15 @@ static int palmas_gpadc_start_convertion(struct palmas_gpadc *adc, int adc_chan)
 
 	ret = (val & 0xFFF);
 	if (ret == 0) {
-		ret = palmas_gpadc_check_status(adc);
-		if (ret < 0)
-			ret = -EAGAIN;
+		ret = -EBUSY;
+		goto error;
 	}
+	return ret;
 
+error:
+	palmas_gpadc_check_status(adc);
+	palmas_gpadc_auto_conv_reset(adc);
+	palmas_gpadc_auto_conv_configure(adc);
 	return ret;
 }
 
