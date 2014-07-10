@@ -55,6 +55,12 @@ config TEGRA_DEVICES
 	help
 	  Enable misc Tegra devices.
 
+config TEGRA3_PM
+	bool "Tegra3 power and cluster management"
+	default y
+	help
+	  Enable Tegra3 power and cluster management.
+
 config TEGRA_BOOTLOADER_DEBUG
 	tristate "Creates sys-fs interface dumping registers read by bootloader"
 	default n

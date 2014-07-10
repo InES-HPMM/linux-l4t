@@ -73,7 +73,7 @@ obj-$(CONFIG_COMMON_CLK) += common_clock.o
 
 obj-$(CONFIG_PM_SLEEP) += tegra-wakeups.o
 
-obj-y += pm-t3.o
+obj-$(CONFIG_TEGRA3_PM) += pm-t3.o
 ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
 obj-$(CONFIG_DEBUG_FS) += clocks_stats.o
 endif
