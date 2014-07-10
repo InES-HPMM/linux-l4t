@@ -62,7 +62,9 @@ struct tegra_function {
  *			drvup, slwr, and slwf parameters.
  * @drv_bank:		Drive fields register bank. 0 if unsupported.
  * @hsm_bit:		High Speed Mode register bit. 0 if unsupported.
+ * @hsm_reg:		High Speed Mode register offset. -1 if unsupported.
  * @schmitt_bit:	Scmitt register bit. 0 if unsupported.
+ * @schmitt_reg:	Schmitt register offset. -1 if unsupported.
  * @lpmd_bit:		Low Power Mode register bit. 0 if unsupported.
  * @drvdn_bit:		Drive Down register bit. 0 if unsupported.
  * @drvdn_width:	Drive Down field width. 0 if unsupported.
@@ -98,6 +100,8 @@ struct tegra_pingroup {
 	s16 ioreset_reg;
 	s16 rcv_sel_reg;
 	s16 e_io_hv_reg;
+	s16 hsm_reg;
+	s16 schmitt_reg;
 	s16 drv_reg;
 	s16 drvtype_reg;
 	int mux_bank;

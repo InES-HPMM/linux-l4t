@@ -2832,6 +2832,11 @@ static const struct tegra_function tegra210_functions[] = {
 			TEGRA_MUX_ ## f3,			\
 		},						\
 		.mux_reg = PINGROUP_REG_Y(r),			\
+		.drvdn_bit = -1,				\
+		.drvup_bit = -1,				\
+		.slwr_bit = -1,					\
+		.slwf_bit = -1,					\
+		.lpmd_bit = -1,					\
 		.mux_bank = 1,					\
 		.mux_bit = 0,					\
 		.pupd_reg = PINGROUP_REG_Y(r),			\
@@ -2857,7 +2862,9 @@ static const struct tegra_function tegra210_functions[] = {
 		.lock_bank = 1,					\
 		.lock_bit = 7,					\
 		.schmitt_bit = schmitt_b,			\
+		.schmitt_reg = PINGROUP_REG_Y(r),		\
 		.hsm_bit = hsm_b,				\
+		.hsm_reg = PINGROUP_REG_Y(r),			\
 		.drv_reg = -1,					\
 		.drvtype_reg = -1,				\
 	}
@@ -2877,6 +2884,7 @@ static const struct tegra_function tegra210_functions[] = {
 		.e_io_hv_reg = -1,				\
 		.odrain_reg = -1,				\
 		.lock_reg = -1,					\
+		.lpmd_bit = -1,					\
 		.drvtype_reg = -1,				\
 		.drv_reg = DRV_PINGROUP_Y(r),		\
 		.drv_bank = 0,					\
