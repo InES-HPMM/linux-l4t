@@ -86,11 +86,13 @@ obj-$(CONFIG_TEGRA_KFUSE) += kfuse.o
 obj-y += apbio.o
 obj-$(CONFIG_FIQ) += fiq.o
 
-obj-y += powergate.o
-obj-y += powergate-ops-txx.o
-obj-y += powergate-ops-t1xx.o
+obj-$(CONFIG_TEGRA_POWERGATE) += powergate.o
+obj-$(CONFIG_TEGRA_POWERGATE) += powergate-ops-txx.o
+obj-$(CONFIG_TEGRA_POWERGATE) += powergate-ops-t1xx.o
+ifeq ($(CONFIG_TEGRA_POWERGATE),y)
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += powergate-t12x.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += powergate-t21x.o
+endif
 
 obj-$(CONFIG_TEGRA_CLK_FRAMEWORK) += dvfs.o
 ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
