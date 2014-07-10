@@ -57,8 +57,9 @@ CFLAGS_common.o = -Werror -Wno-unused-function
 obj-$(CONFIG_TEGRA_COMMON) += common.o
 obj-$(CONFIG_TEGRA_DEVICES) += devices.o
 obj-y += io.o
-obj-y += clock.o
-obj-y += tegra_clocks_pll.o
+obj-$(CONFIG_TEGRA_CLK_FRAMEWORK) += clock.o
+obj-$(CONFIG_TEGRA_CLK_FRAMEWORK) += tegra_clocks_pll.o
+ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_clocks.o
 
 # FIXME: Bug 1211919:
@@ -67,11 +68,15 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_clocks.o
 CFLAGS_tegra21_clocks.o = -Werror -Wno-unused-function -Wno-unused-variable
 
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra21_clocks.o
+endif
+obj-$(CONFIG_COMMON_CLK) += common_clock.o
 
 obj-$(CONFIG_PM_SLEEP) += tegra-wakeups.o
 
 obj-y += pm-t3.o
+ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
 obj-$(CONFIG_DEBUG_FS) += clocks_stats.o
+endif
 obj-y += tegra_core_volt_cap.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += wakeups-t12x.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += wakeups-t21x.o
@@ -87,7 +92,8 @@ obj-y += powergate-ops-t1xx.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += powergate-t12x.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += powergate-t21x.o
 
-obj-y += dvfs.o
+obj-$(CONFIG_TEGRA_CLK_FRAMEWORK) += dvfs.o
+ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra13_dvfs.o
 
 # FIXME: Bug 1211919:
@@ -96,6 +102,7 @@ obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra13_dvfs.o
 CFLAGS_tegra21_dvfs.o = -Werror -Wno-unused-function -Wno-unused-variable
 
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra21_dvfs.o
+endif
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
 ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
 ifeq ($(CONFIG_TEGRA_CPUQUIET),y)
@@ -129,7 +136,9 @@ obj-y += bond_out.o
 obj-y += flowctrl.o
 obj-$(CONFIG_DEBUG_ICEDCC) += sysfs-dcc.o
 obj-$(CONFIG_TEGRA_CLUSTER_CONTROL) += sysfs-cluster.o
+ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
 obj-$(CONFIG_ARCH_TEGRA_HAS_CL_DVFS) += tegra_cl_dvfs.o
+endif
 
 ifeq ($(CONFIG_TEGRA_SOCTHERM),y)
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra_soctherm.o

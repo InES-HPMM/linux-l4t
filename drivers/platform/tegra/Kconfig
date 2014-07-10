@@ -15,6 +15,12 @@
 
 comment "NVIDIA Tegra options"
 
+config TEGRA_CLK_FRAMEWORK
+	bool "Tegra clock framework"
+	default y
+	help
+	  Enable Tegra clock framework.
+
 config TEGRA_MC
 	bool "Tegra MC"
 	default y
