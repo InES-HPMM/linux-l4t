@@ -15,8 +15,15 @@
 
 comment "NVIDIA Tegra options"
 
+config TEGRA_MC
+	bool "Tegra MC"
+	default y
+	help
+	  Enable Tegra MC.
+
 config TEGRA_MC_DOMAINS
 	bool "Enable Tegra MC PM domain"
+	depends on TEGRA_MC
 	depends on PM_GENERIC_DOMAINS
 	default n
 	help

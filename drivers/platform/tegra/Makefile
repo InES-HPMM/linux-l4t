@@ -14,7 +14,7 @@ obj-$(CONFIG_TEGRA_BOOTLOADER_DEBUG)    += tegra_bootloader_debug.o
 obj-$(CONFIG_TEGRA_CAMERA_MIPI_CAL)     += mipi-cal.o
 obj-$(CONFIG_TEGRA_NVADSP)		+= nvadsp/
 
-obj-y += mc/
+obj-$(CONFIG_TEGRA_MC) += mc/
 obj-y += nvdumper/
 obj-$(CONFIG_PM_SLEEP) += pm-irq.o
 obj-y += pmc.o
@@ -103,9 +103,11 @@ obj-$(CONFIG_ARCH_TEGRA_13x_SOC)         += cpuquiet.o
 endif
 endif
 
-obj-y += latency_allowance.o
+obj-$(CONFIG_TEGRA_MC) += latency_allowance.o
+ifeq ($(CONFIG_TEGRA_MC),y)
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12x_la.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += tegra12x_la.o
+endif
 
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC)        += tegra13_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += tegra21_speedo.o
@@ -113,12 +115,14 @@ obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += tegra21_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra3_actmon.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra3_actmon.o
 
+ifeq ($(CONFIG_TEGRA_MC),y)
 obj-y += tegra_emc.o
 
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_emc.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra_emc_dt_parse.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra_emc_dt_parse.o
 obj-y += tegra_emc_therm.o
+endif
 
 obj-$(CONFIG_TEGRA_MC_DOMAINS) += pm_domains.o
 obj-y += bond_out.o
