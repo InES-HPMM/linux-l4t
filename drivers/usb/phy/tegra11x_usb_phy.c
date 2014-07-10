@@ -140,7 +140,7 @@
 #define   UTMIP_XCVR_TERM_RANGE_ADJ(x)	(((x) & 0xf) << 18)
 
 #define UTMIP_XCVR_CFG2		0x854
-#define   UTMIP_XCVR_VREG_MASK		(0x7 << 10)
+#define   UTMIP_XCVR_VREG_MASK		(0x7 << 9)
 #define   UTMIP_XCVR_VREG_LEV_1P5V	(1 << 10)
 #define   UTMIP_XCVR_VREG_FIX18		(1 << 9)
 
