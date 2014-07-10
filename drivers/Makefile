@@ -158,3 +158,8 @@ obj-$(CONFIG_VME_BUS)		+= vme/
 obj-$(CONFIG_IPACK_BUS)		+= ipack/
 obj-$(CONFIG_NTB)		+= ntb/
 obj-$(CONFIG_MIPI_BIF)		+= mipi_bif/
+
+# The wildcard hack is necessary for kernel's make clean.
+ifneq ($(wildcard $(srctree)/../../kernel-t18x/drivers/Makefile),)
+obj-$(CONFIG_ARCH_TEGRA_18x_SOC) += ../../kernel-t18x/drivers
+endif
