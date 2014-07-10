@@ -57,10 +57,6 @@
 							c8 {
 								regulator-consumer-supply = "avdd_pll_cg";
 							};
-							c12 {
-								regulator-consumer-supply = "avddio_usb";
-								regulator-consumer-device = "tegra-xhci";
-							};
 							c13 {
 								regulator-consumer-supply = "vdd_sata";
 								regulator-consumer-device = "tegra-sata.0";

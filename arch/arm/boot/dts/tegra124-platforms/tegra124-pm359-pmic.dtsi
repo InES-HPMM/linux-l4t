@@ -137,10 +137,6 @@
 					    c3 {
 						    regulator-consumer-supply = "dvddio_pex";
 					    };
-					    c8 {
-						    regulator-consumer-supply = "avddio_usb";
-						    regulator-consumer-device = "tegra-xhci";
-					    };
 					    c9 {
 						    regulator-consumer-supply = "avdd_hdmi";
 						    regulator-consumer-device = "tegradc.1";
@@ -282,10 +278,6 @@
 					     c2 {
 						     regulator-consumer-supply = "vddio_hsic";
 						     regulator-consumer-device = "tegra-ehci.2";
-					     };
-					     c3 {
-						     regulator-consumer-supply = "vddio_hsic";
-						     regulator-consumer-device = "tegra-xhci";
 					     };
 					     c4 {
 						     regulator-consumer-supply = "avdd_dsi_csi";

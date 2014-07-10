@@ -197,10 +197,6 @@
 								regulator-consumer-supply = "avdd_pll_utmip";
 								regulator-consumer-device = "tegra-ehci.2";
 							};
-							c19 {
-								regulator-consumer-supply = "avdd_pll_utmip";
-								regulator-consumer-device = "tegra-xhci";
-							};
 							c20 {
 								regulator-consumer-supply = "vddio_audio";
 							};
@@ -286,10 +282,6 @@
 						regulator-init-mode = <REGULATOR_MODE_NORMAL>;
 
 						consumers {
-							c5 {
-								regulator-consumer-supply = "avddio_usb";
-								regulator-consumer-device = "tegra-xhci";
-							};
 							c6 {
 								regulator-consumer-supply = "vddio_pex_sata";
 								regulator-consumer-device = "tegra-sata.0";
@@ -382,10 +374,6 @@
 							c1 {
 								regulator-consumer-supply = "vddio_hsic";
 								regulator-consumer-device = "tegra-ehci.2";
-							};
-							c2 {
-								regulator-consumer-supply = "vddio_hsic";
-								regulator-consumer-device = "tegra-xhci";
 							};
 							c6 {
 								regulator-consumer-supply = "avdd_dsi_csi";
@@ -621,10 +609,6 @@
 							c6 {
 								regulator-consumer-supply = "avdd_usb";
 								regulator-consumer-device = "tegra-ehci.2";
-							};
-							c7 {
-								regulator-consumer-supply = "hvdd_usb";
-								regulator-consumer-device = "tegra-xhci";
 							};
 							c8 {
 								regulator-consumer-supply = "vddio_sd_slot";
