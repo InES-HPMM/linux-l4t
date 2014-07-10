@@ -4590,27 +4590,66 @@ static struct clk_ops tegra_sor0_clk_ops = {
 	.reset			= &tegra21_periph_clk_reset,
 };
 
-static int
-tegra21_sor1_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
+static void tegra21_sor1_clk_init(struct clk *c)
 {
-	if (p == TEGRA_CLK_SOR_CLK_SEL) {
-		u32 val = clk_readl(c->reg);
-		val &= ~PERIPH_CLK_SOR1_CLK_SEL_MASK;
-		val |= (setting << PERIPH_CLK_SOR_CLK_SEL_SHIFT) &
-			PERIPH_CLK_SOR1_CLK_SEL_MASK;
-		clk_writel(val, c->reg);
-		return 0;
+	c->u.periph.src_mask = PERIPH_CLK_SOR1_CLK_SEL_MASK;
+	c->u.periph.src_shift = PERIPH_CLK_SOR_CLK_SEL_SHIFT;
+	tegra21_periph_clk_init(c);
+}
+
+static int tegra21_sor1_clk_set_parent(struct clk *c, struct clk *p)
+{
+	u32 val;
+	unsigned long flags;
+	const struct clk_mux_sel *sel;
+	struct clk *src = c->inputs[2].input;	/* sor1_src entry in sor1 mux */
+
+	for (sel = c->inputs; sel->input != NULL; sel++) {
+		if (sel->input == p) {
+			if (c->refcnt)
+				clk_enable(p);
+			/*
+			 * Since sor1 output mux control setting share the same
+			 * register with source mux/divider switch, use switch
+			 * lock to protect r-m-w of output mux controls
+			 */
+			clk_lock_save(src, &flags);
+			val = clk_readl(c->reg);
+			val &= ~periph_clk_source_mask(c);
+			val |= (sel->value << periph_clk_source_shift(c));
+			clk_writel_delay(val, c->reg);
+			clk_unlock_restore(src, &flags);
+
+			if (c->refcnt)
+				clk_disable(c->parent);
+
+			clk_reparent(c, p);
+			return 0;
+		}
 	}
 	return -EINVAL;
 }
 
+static int
+tegra21_sor1_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
+{
+
+	if ((p != TEGRA_CLK_SOR_CLK_SEL) || (setting > 3))
+		return -EINVAL;
+	/*
+	 * If LSb is set, sor1_brick is selected regardless of MSb. As such
+	 * setting 3 and 1 result in the same clock source. The set parent api
+	 * always selects the 1st match for requested parent, so effectively
+	 * setting 3 is reduced to 1.
+	 */
+	return tegra21_sor1_clk_set_parent(c, c->inputs[setting].input);
+}
+
 static struct clk_ops tegra_sor1_clk_ops = {
-	.init			= &tegra21_periph_clk_init,
+	.init			= &tegra21_sor1_clk_init,
 	.enable			= &tegra21_periph_clk_enable,
 	.disable		= &tegra21_periph_clk_disable,
-	.set_parent		= &tegra21_periph_clk_set_parent,
-	.set_rate		= &tegra21_periph_clk_set_rate,
-	.round_rate		= &tegra21_periph_clk_round_rate,
+	.set_parent		= &tegra21_sor1_clk_set_parent,
 	.clk_cfg_ex		= &tegra21_sor1_clk_cfg_ex,
 	.reset			= &tegra21_periph_clk_reset,
 };
@@ -7567,6 +7606,43 @@ static struct clk_mux_sel mux_pllp_sor_sor0_brick[] = {
 	{ 0, 0},
 };
 
+static struct clk tegra_clk_sor1_src = {
+	.name = "sor1_src",
+	.lookup = {
+		.dev_id = "sor1_src",
+	},
+	.ops = &tegra_periph_clk_ops,
+	.reg = 0x410,
+	.max_rate = 600000000,
+	.inputs = mux_pllp_plld_plld2_clkm,
+	.flags = MUX | DIV_U71 | PERIPH_NO_ENB | PERIPH_NO_RESET,
+};
+
+static struct clk_mux_sel mux_plldp_sor1_src[] = {
+	{ .input = &tegra_pll_dp,  .value = 0},
+	{ .input = &tegra_clk_sor1_src,  .value = 1},
+	{ 0, 0},
+};
+
+static struct clk tegra_clk_sor1_brick = {
+	.name = "sor1_brick",
+	.lookup = {
+		.dev_id = "sor1_brick",
+	},
+	.ops = &tegra_sor_brick_ops,
+	.max_rate = 600000000,
+	.inputs = mux_plldp_sor1_src,
+	.flags = MUX | PERIPH_NO_ENB | PERIPH_NO_RESET,
+};
+
+static struct clk_mux_sel mux_pllp_sor_sor1_brick_sor1_src[] = {
+	{ .input = &tegra_pll_p_out_sor, .value = 0},
+	{ .input = &tegra_clk_sor1_brick, .value = 1},
+	{ .input = &tegra_clk_sor1_src, .value = 2},
+	{ .input = &tegra_clk_sor1_brick, .value = 3},
+	{ 0, 0},
+};
+
 /* Peripheral muxes */
 static struct clk_mux_sel mux_pllp_pllc_clkm[] = {
 	{.input = &tegra_pll_p,     .value = 0},
@@ -8303,7 +8379,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("disp1",	"tegradc.0",		NULL,	27,	0x138,	600000000, mux_pllp_plld_plld2_clkm,	MUX),
 	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c,	600000000, mux_pllp_plld_plld2_clkm,	MUX),
 	PERIPH_CLK_EX("sor0",	"sor0",			NULL,	182,	0x414,	408000000, mux_pllp_sor_sor0_brick,	MUX,		&tegra_sor0_clk_ops),
-	PERIPH_CLK_EX("sor1",	"sor1",			NULL,	183,	0x410,	600000000, mux_pllp_plld_plld2_clkm,	MUX | DIV_U71,	&tegra_sor1_clk_ops),
+	PERIPH_CLK_EX("sor1",	"sor1",			NULL,	183,	0x410,	600000000, mux_pllp_sor_sor1_brick_sor1_src, MUX,	&tegra_sor1_clk_ops),
 	PERIPH_CLK("dpaux",	"dpaux",		NULL,	181,	0,	408000000, mux_pllp,			0),
 	PERIPH_CLK("dpaux1",	"dpaux1",		NULL,	207,	0,	408000000, mux_pllp,			0),
 	PERIPH_CLK("usbd",	"tegra-udc.0",		NULL,	22,	0,	480000000, mux_clk_m,			0),
@@ -8733,7 +8809,9 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_gbus,
 	&tegra_clk_isp,
 	&tegra_clk_cbus,
+	&tegra_clk_sor1_src,
 	&tegra_clk_sor0_brick,
+	&tegra_clk_sor1_brick,
 };
 
 struct clk *tegra_ptr_camera_mclks[] = {
