@@ -25,47 +25,19 @@ static inline int tegra_smmu_save(void) { return 0; }
 static inline int tegra_smmu_restore(void) { return 0; }
 #endif
 
-#if defined(CONFIG_TEGRA_IOMMU_SMMU)
-extern struct resource *tegra_smmu_window(int wnum);
-extern int tegra_smmu_window_count(void);
-#endif
-
 struct iommu_linear_map {
 	dma_addr_t start;
 	size_t size;
 };
 
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
-/*
- * ASID[0] for the system default
- * ASID[1] for PPCS, which has SDMMC
- * ASID[2] for PPCS1
- * ASID[3][4] open for drivers, first come, first served.
- */
-enum {
-	SYSTEM_DEFAULT,
-	SYSTEM_PROTECTED,
-	PPCS1_ASID,
-	SYSTEM_DC,
-	SYSTEM_DCB,
-	SYSTEM_GK20A,
-	SDMMC1A_ASID,
-	SDMMC2A_ASID,
-	SDMMC3A_ASID,
-	SDMMC4A_ASID,
-	SYSTEM_ADSP,
-	NUM_ASIDS,
-};
 
-/* Maximum number of iommu address spaces in the system */
-#define TEGRA_IOMMU_NUM_ASIDS NUM_ASIDS
 extern struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev,
 						    u64 swgids);
 void tegra_smmu_unmap_misc_device(struct device *dev);
 void tegra_smmu_map_misc_device(struct device *dev);
 int tegra_smmu_get_asid(struct device *dev);
 #else
-#define TEGRA_IOMMU_NUM_ASIDS 1
 
 static inline struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev,
 							   u64 swgids)

@@ -25,24 +25,6 @@
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "../../../arch/arm/mach-tegra/board.h"
 
-static struct resource tegra_smmu[] = {
-	[0] = {
-		.start	= TEGRA_SMMU_BASE,
-		.end	= TEGRA_SMMU_BASE + TEGRA_SMMU_SIZE - 1,
-	},
-};
-
-struct resource *tegra_smmu_window(int wnum)
-{
-	return &tegra_smmu[wnum];
-}
-EXPORT_SYMBOL(tegra_smmu_window);
-
-int tegra_smmu_window_count(void)
-{
-	return ARRAY_SIZE(tegra_smmu);
-}
-
 static struct iommu_linear_map tegra_fb_linear_map[16]; /* Terminated with 0 */
 
 #ifdef CONFIG_TEGRA_BPMP

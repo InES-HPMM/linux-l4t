@@ -25,11 +25,6 @@ static inline int tegra_smmu_save(void) { return 0; }
 static inline int tegra_smmu_restore(void) { return 0; }
 #endif
 
-#if defined(CONFIG_TEGRA_IOMMU_SMMU)
-extern struct resource *tegra_smmu_window(int wnum);
-extern int tegra_smmu_window_count(void);
-#endif
-
 struct iommu_linear_map {
 	dma_addr_t start;
 	size_t size;
