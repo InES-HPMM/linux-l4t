@@ -20,6 +20,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/pm_domain.h>
 #include <linux/tegra_pm_domains.h>
+#include <linux/platform_data/tegra_bpmp.h>
 
 #ifdef CONFIG_TEGRA_MC_DOMAINS
 #define TEGRA_PD_DEV_CALLBACK(callback, dev)			\
@@ -144,6 +145,7 @@ struct gpd_dev_ops tegra_pd_ops = {
 	.thaw = tegra_pd_thaw_dev,
 };
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
 static int tegra_mc_clk_power_off(struct generic_pm_domain *genpd)
 {
 	struct tegra_pm_domain *pd = to_tegra_pd(genpd);
@@ -151,10 +153,7 @@ static int tegra_mc_clk_power_off(struct generic_pm_domain *genpd)
 	if (!pd)
 		return -EINVAL;
 
-	if (IS_ERR_OR_NULL(pd->clk))
-		return 0;
-
-	clk_disable_unprepare(pd->clk);
+	tegra_bpmp_scx_enable(true);
 
 	return 0;
 }
@@ -166,17 +165,11 @@ static int tegra_mc_clk_power_on(struct generic_pm_domain *genpd)
 	if (!pd)
 		return -EINVAL;
 
-	if (IS_ERR_OR_NULL(pd->clk))
-		return 0;
-
-	clk_prepare_enable(pd->clk);
+	tegra_bpmp_scx_enable(false);
 
 	return 0;
 }
-
-static struct tegra_pm_domain tegra_nvavp = {
-	.gpd.name = "tegra_nvavp",
-};
+#endif
 
 static void suspend_devices_in_domain(struct generic_pm_domain *genpd)
 {
@@ -247,9 +240,17 @@ static struct tegra_pm_domain tegra_sdhci2 = {
 
 static struct tegra_pm_domain tegra_mc_clk = {
 	.gpd.name = "tegra_mc_clk",
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
 	.gpd.power_off = tegra_mc_clk_power_off,
 	.gpd.power_on = tegra_mc_clk_power_on,
+#endif
 };
+
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
+static struct tegra_pm_domain tegra_nvavp = {
+	.gpd.name = "tegra_nvavp",
+};
+#endif
 
 static struct domain_client client_list[] = {
 	{ .name = "tegradc", .domain = &tegra_mc_clk.gpd },
@@ -259,8 +260,10 @@ static struct domain_client client_list[] = {
 	{ .name = "tegra-ehci", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-xhci", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-host1x", .domain = &tegra_mc_clk.gpd },
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	{ .name = "tegra_nvavp", .domain = &tegra_mc_clk.gpd },
 	{ .name = "nvavp", .domain = &tegra_nvavp.gpd },
+#endif
 	{ .name = "sdhci-tegra.3", .domain = &tegra_sdhci3.gpd },
 	{ .name = "sdhci-tegra.2", .domain = &tegra_sdhci2.gpd },
 	{ .name = "sdhci-tegra", .domain = &tegra_mc_clk.gpd },
@@ -276,8 +279,10 @@ static int __init tegra_init_pm_domain(void)
 {
 	pm_genpd_init(&tegra_mc_clk.gpd, &simple_qos_governor, false);
 
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	pm_genpd_init(&tegra_nvavp.gpd, &simple_qos_governor, false);
 	tegra_pd_add_sd(&tegra_nvavp.gpd);
+#endif
 
 	/*
 	 * Below Autosuspend delay can be increased/decreased based on
