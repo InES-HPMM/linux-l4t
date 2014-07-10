@@ -28,6 +28,7 @@
 			nvidia,hpd-gpio = <&gpio TEGRA_GPIO(N, 7) 1>; /* PN7 */
 			hdmi-display {
 				status = "okay";
+				compatible = "hdmi,display";
 				disp-default-out {
 					nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
 					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_HIGH>;

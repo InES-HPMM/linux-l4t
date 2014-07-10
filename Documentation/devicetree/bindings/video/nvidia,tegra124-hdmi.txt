@@ -24,6 +24,7 @@ NVIDIA TEGRA124 High Definition Multimedia Interface
 
  Required properties
  - name: hdmi-display
+ - compatible: Should contain hdmi,display".
 
  - Child nodes represent tmds configurations, node of modes, output settings,
    smart dimmer settings, color management unit settings.
