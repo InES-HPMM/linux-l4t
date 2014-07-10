@@ -61,6 +61,13 @@ config TEGRA3_PM
 	help
 	  Enable Tegra3 power and cluster management.
 
+config TEGRA_CORE_VOLT_CAP
+	bool "Tegra core voltage cap support."
+	depends on TEGRA_CLK_FRAMEWORK
+	default y
+	help
+	  Enable Tegra core voltage cap support.
+
 config TEGRA_BOARD_COMMON
 	bool "Tegra common board support"
 	default y

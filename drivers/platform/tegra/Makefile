@@ -77,7 +77,7 @@ obj-$(CONFIG_TEGRA3_PM) += pm-t3.o
 ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
 obj-$(CONFIG_DEBUG_FS) += clocks_stats.o
 endif
-obj-y += tegra_core_volt_cap.o
+obj-$(CONFIG_TEGRA_CORE_VOLT_CAP) += tegra_core_volt_cap.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += wakeups-t12x.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += wakeups-t21x.o
 
