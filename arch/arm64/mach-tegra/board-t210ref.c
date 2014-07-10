@@ -309,9 +309,6 @@ static struct platform_device *t210ref_devices[] __initdata = {
 #if !defined(CONFIG_ARM64)
 	&tegra_udc_device,
 #endif
-#if defined(CONFIG_TEGRA_WATCHDOG)
-	&tegra_wdt0_device,
-#endif
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && !defined(CONFIG_USE_OF)
 	&tegra12_se_device,
 #endif
