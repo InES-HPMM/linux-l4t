@@ -1363,19 +1363,26 @@ static void tegra_udc_set_charger_type(struct tegra_udc *udc,
 
 static void tegra_udc_set_extcon_state(struct tegra_udc *udc)
 {
+	struct device *dev = &udc->pdev->dev;
 	const char **cables;
 	struct extcon_dev *edev;
+	u32 old_state, new_state;
 
 	if (udc->edev == NULL || udc->edev->supported_cable == NULL)
 		return;
 	edev = udc->edev;
 	cables = udc->edev->supported_cable;
+	old_state = extcon_get_state(edev);
 	/* set previous cable type to false, then set current type to true */
 	if (udc->prev_connect_type != CONNECT_TYPE_NONE)
 		extcon_set_state(edev, 0x0);
 	if (udc->connect_type != udc->connect_type_lp0
 			&& udc->connect_type != CONNECT_TYPE_NONE)
 		extcon_set_cable_state(edev, cables[udc->connect_type], true);
+	new_state = extcon_get_state(edev);
+	dev_info(dev, "notification status (%d,%d,%d) (0x%x, 0x%x)\n",
+			udc->prev_connect_type, udc->connect_type,
+			udc->connect_type_lp0, old_state, new_state);
 }
 
 static void tegra_udc_notify_event(struct tegra_udc *udc, int event)
