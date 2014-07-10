@@ -773,6 +773,10 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
 	} while (0)
 #define msg_exit(dev) msg_dbg(dev, "exit");
 
+/* xhci dev registers*/
+#define TERMINATION_1				(0x7e4)
+#define TERMINATION_2				(0x7e8)
+
 /* fpci mmio registers */
 #define XUSB_DEV_CFG_1				(0x4)
 #define  IO_SPACE_ENABLED			(1 << 0)
@@ -784,7 +788,7 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
 #define XUSB_DEV_CFG_5				(0x14)
 
 /* ipfs mmio registers */
-#define XUSB_DEV_CONFIGURATION		(0x180)
+#define XUSB_DEV_CONFIGURATION			(0x180)
 #define  EN_FPCI				(1 << 0)
 
 #define XUSB_DEV_INTR_MASK			(0x188)
@@ -811,7 +815,7 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
 #define  MAP_USB2_PORT(p)			((p) % 0x3)
 #define  MAP_DISABLED				(0x7)
 
-#define ELPG_PROGRAM				(0x1c)
+#define ELPG_PROGRAM				(0x24)
 
 #define IOPHY_USB3_PAD0_CTL_2			(0x58)
 #define  CDR_CNTL(x)				(((x) & 0xFF) << 24)
@@ -857,3 +861,5 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
 #define  FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1	(1 << 2)
 #define  PCIE_PAD_LANE0			(((x) & 0x3) << 16)
 #define  PCIE_PAD_LANE1			(((x) & 0x3) << 18)
+
+#define XUSB_VBUS				(0xc60)

@@ -230,6 +230,16 @@ config USB_TEGRA_XUDC
 	   dynamically linked module called "tegra_xudc" and force all
 	   gadget drivers to also be dynamically linked.
 
+config PLAT_FPGA_T210
+	bool "Enable Nvidia USB 3.0 Device Controller on Platform FPGA"
+	depends on USB_TEGRA_XUDC
+	help
+	  Say 'Y' to turn on support for USB 3.0 Device Controller on T210
+	  Platform FPGA.
+	  It is used to add code specific to Platform Emulation.
+
+	  if unsure, say N.
+
 config USB_PXA25X
 	tristate "PXA 25x or IXP 4xx"
 	depends on (ARCH_PXA && PXA25x) || ARCH_IXP4XX
