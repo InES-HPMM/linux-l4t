@@ -58,6 +58,8 @@
  *		control signal from EN input pin. If it is false then
  *		voltage output will be enabled/disabled through EN bit of
  *		device register.
+ * @enable_dvs_sleep_control: Enable sleep control of the rail through the
+ * 		DVS pin.
  * @dvs_gpio: GPIO for dvs. It should be -1 if this is tied with fixed logic.
  * @enable_gpio: GPIO for enable pin if it is connected and gpio controlled.
  * 		 It should be -1 if this is inot gpio controlled.
@@ -67,6 +69,7 @@ struct max8973_regulator_platform_data {
 	struct regulator_init_data *reg_init_data;
 	unsigned long control_flags;
 	bool enable_ext_control;
+	bool enable_dvs_sleep_control;
 	int dvs_gpio;
 	int enable_gpio;
 	unsigned dvs_def_state:1;
