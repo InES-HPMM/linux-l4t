@@ -851,6 +851,14 @@ static int bq27441_suspend(struct device *dev)
 static int bq27441_resume(struct device *dev)
 {
 	struct bq27441_chip *chip = dev_get_drvdata(dev);
+
+	mutex_lock(&chip->mutex);
+	bq27441_update_soc_voltage(chip);
+	power_supply_changed(&chip->battery);
+	mutex_unlock(&chip->mutex);
+
+	dev_info(&chip->client->dev, "At resume Voltage %dmV and SoC %d%%\n",
+			chip->vcell, chip->soc);
 	schedule_delayed_work(&chip->work, BQ27441_DELAY);
 	return 0;
 }
