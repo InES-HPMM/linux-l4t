@@ -37,6 +37,12 @@ config TEGRA_WAKEUP_MONITOR
 	  send out wakeup source and uevents which indicate suspend_prepare and
 	  post_suspend.
 
+config TEGRA_COMMON
+	bool "Tegra common support"
+	default y
+	help
+	  Enable Tegra common support.
+
 config TEGRA_BOOTLOADER_DEBUG
 	tristate "Creates sys-fs interface dumping registers read by bootloader"
 	default n

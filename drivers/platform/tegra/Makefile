@@ -54,7 +54,7 @@ obj-y += ahb.o
 CFLAGS_common.o = -Werror -Wno-unused-function
 #endif
 
-obj-y += common.o
+obj-$(CONFIG_TEGRA_COMMON) += common.o
 obj-y += devices.o
 obj-y += io.o
 obj-y += clock.o
