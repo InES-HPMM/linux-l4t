@@ -147,11 +147,11 @@ obj-$(CONFIG_TEGRA_USE_SIMON)    += tegra_simon.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_edp.o
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra13_edp.o
 
-obj-y += board-common.o
+obj-$(CONFIG_TEGRA_BOARD_COMMON) += board-common.o
 
-obj-y += board-touch-raydium_spi.o
+obj-$(CONFIG_TEGRA_BOARD_COMMON) += board-touch-raydium_spi.o
 
-obj-y += board-panel.o
+obj-$(CONFIG_TEGRA_BOARD_COMMON) += board-panel.o
 
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)      += cluster-control.o
 

@@ -61,6 +61,12 @@ config TEGRA3_PM
 	help
 	  Enable Tegra3 power and cluster management.
 
+config TEGRA_BOARD_COMMON
+	bool "Tegra common board support"
+	default y
+	help
+	  Enable Tegra common board support.
+
 config TEGRA_BOOTLOADER_DEBUG
 	tristate "Creates sys-fs interface dumping registers read by bootloader"
 	default n
