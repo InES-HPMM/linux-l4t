@@ -18,8 +18,11 @@ Optional properties:
 	control or tied to HIGH or LOW.
 - maxim,control-flags: Control flags. The macros are defined on
 		include/dt-bindings/regulator/max8973.h
--maxim,external-enable-gpio: GPIO number if EN pin is connected to one of
+- maxim,external-enable-gpio: GPIO number if EN pin is connected to one of
 		system GPIO lines.
+- maxim,sleep-on-dvs: Boolean, enable sleep control through DVS pin. When
+		this property is available then property dvs-default-state
+		will tell dvs pin state for active state of the rail.
 
 Example:
 
