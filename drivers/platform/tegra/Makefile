@@ -17,7 +17,7 @@ obj-$(CONFIG_TEGRA_NVADSP)		+= nvadsp/
 obj-$(CONFIG_TEGRA_MC) += mc/
 obj-y += nvdumper/
 obj-$(CONFIG_PM_SLEEP) += pm-irq.o
-obj-y += pmc.o
+obj-$(CONFIG_TEGRA_PMC) += pmc.o
 obj-y += pm.o
 
 obj-$(CONFIG_TEGRA_MC_DOMAINS) += pm_domains.o

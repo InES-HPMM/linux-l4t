@@ -61,6 +61,12 @@ config TEGRA3_PM
 	help
 	  Enable Tegra3 power and cluster management.
 
+config TEGRA_PMC
+	bool "Tegra PMC"
+	default y
+	help
+	  Enable Tegra PMC.
+
 config TEGRA_POWERGATE
 	bool "Tegra powergate support"
 	default y
