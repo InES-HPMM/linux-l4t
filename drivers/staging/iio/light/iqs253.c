@@ -569,7 +569,10 @@ static int iqs253_probe(struct i2c_client *client,
 			id->name, __func__);
 		goto err_gpio_request;
 	}
-	iqs253_chip->using_regulator = true;
+	/*
+	 * XXX: leave sensor always on for proper function
+	 * iqs253_chip->using_regulator = true;
+	 */
 
 	ret = iqs253_i2c_read_byte(iqs253_chip, 0);
 	if (ret == IQS253_PROD_ID) {
