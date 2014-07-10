@@ -2061,28 +2061,14 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	save_smmu_device = dev;
 
-	if (dev->of_node) {
-		if (of_get_dma_window(dev->of_node, NULL, 0, NULL, &base,
-					&size))
-			goto exit_probe;
-
-		if (of_property_read_u32(dev->of_node, "nvidia,#asids",
-					   &num_as))
-			goto exit_probe;
-	} else {
-		struct resource *window = tegra_smmu_window(0);
-		if (!window)
-			goto exit_probe;
-		base = (dma_addr_t) window->start;
-		size = resource_size(window);
-
-		num_as = SMMU_NUM_ASIDS;
-		if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12 ||
-			tegra_get_chipid() == TEGRA_CHIPID_TEGRA13 ||
-			tegra_get_chipid() == TEGRA_CHIPID_TEGRA21)
-			num_as = SMMU_NUM_ASIDS_TEGRA12;
-	}
+	if (of_get_dma_window(dev->of_node, NULL, 0, NULL, &base,
+				&size))
+		goto exit_probe;
 	size >>= SMMU_PAGE_SHIFT;
+
+	if (of_property_read_u32(dev->of_node, "nvidia,#asids",
+				   &num_as))
+		goto exit_probe;
 
 	regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	regs2 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
