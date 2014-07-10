@@ -1673,14 +1673,18 @@ static int tegra12_emc_probe(struct platform_device *pdev)
 {
 	struct tegra12_emc_pdata *pdata;
 	struct resource *res;
+	int ret;
 
-	if (tegra_emc_table)
-		return -EINVAL;
+	if (tegra_emc_table) {
+		ret = -EINVAL;
+		goto fail;
+	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(&pdev->dev, "missing register base\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto fail;
 	}
 
 	pdata = pdev->dev.platform_data;
@@ -1691,11 +1695,30 @@ static int tegra12_emc_probe(struct platform_device *pdev)
 
 	if (!pdata) {
 		dev_err(&pdev->dev, "missing platform data\n");
-		return -ENODATA;
+		ret = -ENODATA;
+		goto fail;
 	}
 
-	return init_emc_table(pdata->tables, pdata->tables_derated,
+	ret = init_emc_table(pdata->tables, pdata->tables_derated,
 			      pdata->num_tables);
+
+	if (!ret) {
+		tegra_emc_iso_usage_table_init(tegra12_emc_iso_usage,
+				ARRAY_SIZE(tegra12_emc_iso_usage));
+		if (emc_enable) {
+			unsigned long rate = tegra_emc_round_rate_updown(
+				emc->boot_rate, false);
+			if (!IS_ERR_VALUE(rate))
+				tegra_clk_preset_emc_monitor(rate);
+		}
+	}
+
+fail:
+	/* We need to do this even if rest of the logic fails */
+	tegra12_mc_holdoff_enable();
+	tegra_emc_dvfs_table_ops_init(&tegra12_emc_dvfs_table_ops);
+
+	return ret;
 }
 
 static struct of_device_id tegra12_emc_of_match[] = {
@@ -1713,26 +1736,9 @@ static struct platform_driver tegra12_emc_driver = {
 
 int __init tegra12_emc_init(void)
 {
-	int ret;
-
 	if (!tegra_emc_device.dev.platform_data)
 		tegra12_emc_driver.driver.of_match_table = tegra12_emc_of_match;
-	ret = platform_driver_register(&tegra12_emc_driver);
-
-	if (!ret) {
-		tegra_emc_iso_usage_table_init(tegra12_emc_iso_usage,
-				ARRAY_SIZE(tegra12_emc_iso_usage));
-		if (emc_enable) {
-			unsigned long rate = tegra_emc_round_rate_updown(
-				emc->boot_rate, false);
-			if (!IS_ERR_VALUE(rate))
-				tegra_clk_preset_emc_monitor(rate);
-		}
-	}
-	tegra12_mc_holdoff_enable();
-
-	tegra_emc_dvfs_table_ops_init(&tegra12_emc_dvfs_table_ops);
-	return ret;
+	return platform_driver_register(&tegra12_emc_driver);
 }
 
 void tegra_emc_timing_invalidate(void)
