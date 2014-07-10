@@ -884,6 +884,13 @@ int usb3_phy_pad_enable(u32 lane_owner)
 		writel(val, clk_base + CLK_RST_CONTROLLER_SATA_PLL_CFG0_0);
 	}
 
+	if ((lane_owner & BIT(1)) || (lane_owner & BIT(2))) {
+		val = readl(pad_base + XUSB_PADCTL_IOPHY_PLL_P0_CTL2_0);
+		val &= ~XUSB_PADCTL_IOPHY_PLL_P0_CTL2_PLL0_CP_CNTL_MASK;
+		val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL2_PLL0_CP_CNTL_VAL;
+		writel(val, pad_base + XUSB_PADCTL_IOPHY_PLL_P0_CTL2_0);
+	}
+
 	/*
 	 * program ownership of lanes owned by USB3 based on odmdata[28:30]
 	 * odmdata[28] = 0 (SATA lane owner = SATA),
