@@ -97,9 +97,13 @@
 		compatible = "nvidia,tegra124-smmu";
 		reg = <0x0 0x70019000 0x0 0x1000
 		       0x0 0x6000c000 0x0 0x1000>;
-		nvidia,#asids = <128>;
+		#asids = <128>;
 		dma-window = <0x0 0x80000000 0x0 0x7ff00000>;
 		#iommu-cells = <10>;
+		swgid-mask = <0x1 0xfffecdcf>;
+		#num-translation-enable = <4>;
+		#num-asid-security = <8>;
+		ptc-cache-size = <0x00008000>; /* 32 KB */
 	};
 
 	tegra_car: clock {
