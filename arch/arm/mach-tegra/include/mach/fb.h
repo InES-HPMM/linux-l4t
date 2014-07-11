@@ -41,6 +41,7 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 						  struct fb_videomode *mode));
 int tegra_fb_create_sysfs(struct device *dev);
 void tegra_fb_remove_sysfs(struct device *dev);
+int tegra_fb_update_modelist(struct tegra_dc *dc, int fblistindex);
 #else
 static inline struct tegra_fb_info *tegra_fb_register(
 	struct platform_device *ndev, struct tegra_dc *dc,
