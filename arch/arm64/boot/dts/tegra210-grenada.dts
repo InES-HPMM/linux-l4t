@@ -91,7 +91,7 @@
 
 	gpio_regulator: gpio-regulator {
 		compatible = "regulator-gpio";
-		regulator-name = "vddio_sdmmc";
+		regulator-name = "vddio-sdmmc";
 		regulator-type = "voltage";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <3300000>;
