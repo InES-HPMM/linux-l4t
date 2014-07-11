@@ -137,7 +137,6 @@ MEMORY
 M:	Krishna Reddy <vdumpa@nvidia.com>
 L:	sw-mobile-memory@exchange.nvidia.com
 S:	Supported
-F:	arch/arm64/mach-tegra/tegra21_memory.c
 F:	arch/arm/mach-tegra/board-*-memory.c
 F:	arch/arm/mach-tegra/common.c
 F:	arch/arm/mach-tegra/isomgr.c

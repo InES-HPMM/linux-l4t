@@ -3243,52 +3243,31 @@ static int tegra21_emc_probe(struct platform_device *pdev)
 {
 	struct tegra21_emc_pdata *pdata;
 	struct resource *res;
+	int ret;
 
-	if (tegra_emc_table)
-		return -EINVAL;
+	if (tegra_emc_table) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(&pdev->dev, "missing register base\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto out;
 	}
 
-	pdata = pdev->dev.platform_data;
-
-	if (!pdata) {
-		pdata = tegra_emc_dt_parse_pdata(pdev);
-	}
+	pdata = tegra_emc_dt_parse_pdata(pdev);
 
 	if (!pdata) {
 		dev_err(&pdev->dev, "missing platform data\n");
-		return -ENODATA;
+		ret = -ENODATA;
+		goto out;
 	}
 
 	pr_info("Loading EMC tables...\n");
-	return init_emc_table(pdata->tables, pdata->tables_derated,
+	ret = init_emc_table(pdata->tables, pdata->tables_derated,
 			      pdata->num_tables);
-}
-
-static struct of_device_id tegra21_emc_of_match[] = {
-	{ .compatible = "nvidia,tegra21-emc", },
-	{ },
-};
-
-static struct platform_driver tegra21_emc_driver = {
-	.driver         = {
-		.name   = "tegra-emc",
-		.owner  = THIS_MODULE,
-	},
-	.probe          = tegra21_emc_probe,
-};
-
-int __init tegra21_emc_init(void)
-{
-	int ret;
-
-	if (!tegra_emc_device.dev.platform_data)
-		tegra21_emc_driver.driver.of_match_table = tegra21_emc_of_match;
-	ret = platform_driver_register(&tegra21_emc_driver);
 
 	if (!ret) {
 		tegra_emc_iso_usage_table_init(tegra21_emc_iso_usage,
@@ -3300,8 +3279,28 @@ int __init tegra21_emc_init(void)
 				tegra_clk_preset_emc_monitor(rate);
 		}
 	}
-	tegra21_mc_holdoff_enable();
+
+out:
 	return ret;
+}
+
+static struct of_device_id tegra21_emc_of_match[] = {
+	{ .compatible = "nvidia,tegra21-emc", },
+	{ },
+};
+
+static struct platform_driver tegra21_emc_driver = {
+	.driver         = {
+		.name   = "tegra-emc",
+		.owner  = THIS_MODULE,
+		.of_match_table = tegra21_emc_of_match
+	},
+	.probe          = tegra21_emc_probe,
+};
+
+int __init tegra21_emc_init(void)
+{
+	return platform_driver_register(&tegra21_emc_driver);
 }
 
 void tegra_emc_timing_invalidate(void)

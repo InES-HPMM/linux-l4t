@@ -62,7 +62,6 @@ obj-$(CONFIG_DENVER_CPU)              += denver-hardwood.o
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-t210ref.o
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-t210ref-thermal.o
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-t210ref-camera.o
-obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += tegra21_memory.o
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += tegra21_init.o
 
 ifeq ($(CONFIG_PM_SLEEP),y)
