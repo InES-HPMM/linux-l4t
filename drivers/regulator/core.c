@@ -1990,14 +1990,18 @@ static int _regulator_do_disable(struct regulator_dev *rdev)
 
 	if (rdev->ena_pin) {
 		ret = regulator_ena_gpio_ctrl(rdev, false);
-		if (ret < 0)
+		if (ret < 0) {
+			rdev_err(rdev, "gpio_cntrl failed: %d\n", ret);
 			return ret;
+		}
 		rdev->ena_gpio_state = 0;
 
 	} else if (rdev->desc->ops->disable) {
 		ret = rdev->desc->ops->disable(rdev);
-		if (ret != 0)
+		if (ret != 0) {
+			rdev_err(rdev, "ops->disable failed: %d\n", ret);
 			return ret;
+		}
 	}
 
 	trace_regulator_disable_complete(rdev_get_name(rdev));
@@ -2031,7 +2035,7 @@ static int _regulator_disable(struct regulator_dev *rdev)
 		if (_regulator_can_change_status(rdev)) {
 			ret = _regulator_do_disable(rdev);
 			if (ret < 0) {
-				rdev_err(rdev, "failed to disable\n");
+				rdev_err(rdev, "failed to disable: %d\n", ret);
 				return ret;
 			}
 		}
