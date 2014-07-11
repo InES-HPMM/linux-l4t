@@ -20,6 +20,8 @@
 #include <linux/suspend.h>
 #include <linux/slab.h>
 #include <linux/system-wakeup.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 
 #include <net/ip.h>
 #include <linux/netfilter_ipv4.h>
@@ -865,13 +867,58 @@ static const struct file_operations twm_offender_stat_fops = {
 	.release	= seq_release,
 };
 
+static int of_twm_parse_pdata(struct platform_device *pdev,
+		struct tegra_wakeup_monitor_platform_data *pdata)
+{
+	struct device_node *np = pdev->dev.of_node;
+	u32 value;
+
+	if (!of_property_read_u32(np, "nvidia,wifi-wakeup-source", &value))
+		pdata->wifi_wakeup_source = value;
+	else {
+		dev_err(&pdev->dev,
+			"failed to read wifi-wakeup-source property\n");
+		return -EINVAL;
+	}
+
+	if (!of_property_read_u32(np, "nvidia,rtc-wakeup-source", &value))
+		pdata->rtc_wakeup_source = value;
+	else {
+		dev_err(&pdev->dev,
+			"failed to read rtc-wakeup-source property\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static inline int twm_init(struct tegra_wakeup_monitor *twm,
-					struct platform_device *pdev)
+				struct platform_device *pdev)
 {
 	unsigned int i;
-	struct tegra_wakeup_monitor_platform_data *pdata =
-		pdev->dev.platform_data;
+	struct tegra_wakeup_monitor_platform_data *pdata = NULL;
 	int ret = 0;
+
+	if (pdev->dev.of_node) {
+		pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+		if (!pdata) {
+			dev_err(&pdev->dev,
+				"Memory allocation failed for platform data\n");
+			return -ENOMEM;
+		}
+
+		ret = of_twm_parse_pdata(pdev, pdata);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "failed to parse platform data\n");
+			return ret;
+		}
+	} else {
+		pdata = pdev->dev.platform_data;
+		if (!pdata) {
+			dev_dbg(&pdev->dev, "platform_data not available\n");
+			return -EINVAL;
+		}
+	}
 
 	twm->pdata = pdata;
 	twm->pdev  = pdev;
@@ -912,15 +959,8 @@ error:
 
 static int tegra_wakeup_monitor_probe(struct platform_device *pdev)
 {
-	struct tegra_wakeup_monitor_platform_data *pdata =
-	    pdev->dev.platform_data;
 	struct tegra_wakeup_monitor *twm;
 	int ret = 0;
-
-	if (!pdata) {
-		dev_dbg(&pdev->dev, "platform_data not available\n");
-		return -EINVAL;
-	}
 
 	twm = devm_kzalloc(&pdev->dev,
 		sizeof(struct tegra_wakeup_monitor), GFP_KERNEL);
@@ -1012,12 +1052,18 @@ static int tegra_wakeup_monitor_resume(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id tegra_wakeup_monitor_of_match[] = {
+	{ .compatible = "nvidia,tegra_wakeup_monitor", },
+	{}
+};
+MODULE_DEVICE_TABLE(of, tegra_wakeup_monitor_of_match);
 
 static struct platform_driver tegra_wakeup_monitor_driver = {
 	.driver = {
-		   .name = "tegra_wakeup_monitor",
-		   .owner = THIS_MODULE,
-		   },
+		.name = "tegra_wakeup_monitor",
+		.of_match_table = tegra_wakeup_monitor_of_match,
+		.owner = THIS_MODULE,
+	},
 	.probe = tegra_wakeup_monitor_probe,
 	.remove = __exit_p(tegra_wakeup_monitor_remove),
 #ifdef CONFIG_PM
