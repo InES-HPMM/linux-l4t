@@ -561,8 +561,6 @@
 /* Use PLL_RE as PLLE input (default - OSC via pll reference divider) */
 #define USE_PLLE_INPUT_PLLRE    0
 
-static bool tegra21_is_dyn_ramp(struct clk *c,
-				unsigned long rate, bool from_vco_min);
 static void pllc4_set_fixed_rates(unsigned long cf);
 static void tegra21_dfll_cpu_late_init(struct clk *c);
 static void tegra21_pllp_init_dependencies(unsigned long pllp_rate);
@@ -2253,9 +2251,9 @@ static void pllcx_set_defaults(struct clk *c, unsigned long input_rate)
 	pll_writel_delay(PLLCX_MISC3_DEFAULT_VALUE, c->reg + c->u.pll.misc3);
 }
 
+#if PLLCX_USE_DYN_RAMP
 static int pllcx_dyn_ramp(struct clk *c, struct clk_pll_freq_table *cfg)
 {
-#if PLLCX_USE_DYN_RAMP
 	u32 reg;
 	struct clk_pll_controls *ctrl = c->u.pll.controls;
 	struct clk_pll_div_layout *divs = c->u.pll.div_layout;
@@ -2269,10 +2267,10 @@ static int pllcx_dyn_ramp(struct clk *c, struct clk_pll_freq_table *cfg)
 	tegra_pll_clk_wait_for_lock(c, reg, ctrl->lock_mask);
 
 	return 0;
-#else
-	return -ENOSYS;
-#endif
 }
+#else
+#define pllcx_dyn_ramp NULL
+#endif
 
 static void tegra21_pllcx_clk_init(struct clk *c)
 {
@@ -5220,7 +5218,7 @@ static int cbus_dvfs_set_rate(struct clk *c, unsigned long rate)
 			u.shared_bus_user.node) {
 		struct clk *client =  user->u.shared_bus_user.client;
 		if (client && client->refcnt && (client->parent == c->parent)) {
-			ret = tegra_dvfs_set_rate(c, rate);
+			ret = tegra_dvfs_set_rate(client, rate);
 			if (ret)
 				return ret;
 		}
@@ -5290,7 +5288,7 @@ static int tegra21_clk_cbus_set_rate(struct clk *c, unsigned long rate)
 		return ret;
 	}
 
-	dramp = tegra21_is_dyn_ramp(c->parent, rate * c->div, false);
+	dramp = tegra_pll_can_ramp_to_rate(c->parent, rate * c->div);
 	if (!dramp) {
 		c->shared_bus_backup.value = get_next_backup_div(c, rate);
 		ret = cbus_backup(c);
@@ -8816,29 +8814,6 @@ struct clk *tegra_ptr_camera_mclks[] = {
 	&tegra_camera_mclk,
 	&tegra_camera_mclk2,
 };
-
-/* Return true from this function if the target rate can be locked without
-   switching pll clients to back-up source */
-static bool tegra21_is_dyn_ramp(
-	struct clk *c, unsigned long rate, bool from_vco_min)
-{
-#if PLLCX_USE_DYN_RAMP
-	/* PLLC2, PLLC3 support dynamic ramp only when output divider <= 8 */
-	if ((c == &tegra_pll_c) || (c == &tegra_pll_c2) ||
-	    (c == &tegra_pll_c3) || (c == &tegra_pll_a1)) {
-		struct clk_pll_freq_table cfg, old_cfg;
-		unsigned long input_rate = clk_get_rate(c->parent);
-
-		pll_base_parse_cfg(c, &old_cfg);
-
-		if (!pll_clk_find_cfg(c, &cfg, rate, input_rate, NULL)) {
-			if ((cfg.m == old_cfg.m) && (cfg.p == old_cfg.p))
-				return c->u.pll.defaults_set;
-		}
-	}
-#endif
-	return false;
-}
 
 /* DFLL late init called with CPU clock lock taken */
 static void __init tegra21_dfll_cpu_late_init(struct clk *c)
