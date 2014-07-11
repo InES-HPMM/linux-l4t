@@ -183,6 +183,8 @@ ifdef CONFIG_TEGRA_WIFI_ENABLE
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-sdhci.o
 endif
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-power.o
+obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-audio.o
+
 obj-${CONFIG_MACH_VCM30_T124}           += therm-monitor.o
 
 obj-${CONFIG_MACH_P2360}                += board-p2360.o
