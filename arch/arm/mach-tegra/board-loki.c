@@ -259,7 +259,6 @@ static void __init loki_uart_init(void)
 }
 
 static struct platform_device *loki_devices[] __initdata = {
-	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && !defined(CONFIG_USE_OF)

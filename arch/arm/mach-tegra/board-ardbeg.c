@@ -449,7 +449,6 @@ static void __init loki_pinmux_configure_uart_over_sd(void)
 }
 
 static struct platform_device *ardbeg_devices[] __initdata = {
-	&tegra_pmu_device,
 	&tegra_rtc_device,
 #if !defined(CONFIG_ARM64)
 	&tegra_udc_device,

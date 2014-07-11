@@ -381,7 +381,6 @@ static int __init p2360_gpio_init(void)
 }
 
 static struct platform_device *p2360_devices[] __initdata = {
-	&tegra_pmu_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && !defined(CONFIG_USE_OF)
 	&tegra12_se_device,
 #endif
