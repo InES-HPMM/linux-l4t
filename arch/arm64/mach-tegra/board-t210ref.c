@@ -193,7 +193,6 @@ static struct platform_device *t210ref_devices[] __initdata = {
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&baseband_dit_device,
-	&tegra_hda_device,
 	&tegra_offload_device,
 	&tegra30_avp_audio_device,
 #endif
@@ -453,6 +452,7 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power",
 		&baseband_pdata),
 	OF_DEV_AUXDATA("raydium,rm_ts_spidev", 0, "rm_ts_spidev", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
 	{}
 };
 #endif
