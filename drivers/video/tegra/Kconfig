@@ -1,5 +1,3 @@
-if ARCH_TEGRA
-
 comment "NVIDIA Tegra Display Driver options"
 
 config TEGRA_GRHOST
@@ -8,12 +6,22 @@ config TEGRA_GRHOST
 	  Driver for the Tegra graphics host hardware.
 
 config TEGRA_GRHOST_VI
+	depends on TEGRA_GRHOST
 	tristate "Tegra video input host1x client driver"
-	default y if TEGRA_GRHOST
+	default y
 	help
 	  Driver for the Tegra video input hardware.
 	  To compile this driver as a module, choose M here:
 	  the  module will be called nvhost-vi.
+
+config TEGRA_GRHOST_ISP
+	depends on TEGRA_GRHOST
+	tristate "Tegra image processing pipeline support"
+	default y
+	help
+	  Driver for the Tegra image processing pipeline (ISP)
+	  To compile this driver as a module, choose M here:
+	  the  module will be called nvhost-isp.
 
 config TEGRA_GRHOST_DEFAULT_TIMEOUT
 	depends on TEGRA_GRHOST
@@ -30,6 +38,8 @@ config TEGRA_GRHOST_SYNC
 	help
 	  Add tegra host backend for the cross driver synchronization framework.
 	  Allows creating sync fence file descriptors from Tegra host syncpoints.
+
+if ARCH_TEGRA
 
 config TEGRA_DC
 	tristate "Tegra Display Contoller"
