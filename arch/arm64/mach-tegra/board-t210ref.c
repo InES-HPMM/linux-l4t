@@ -832,6 +832,7 @@ static void __init tegra_t210ref_late_init(void)
 	t210ref_suspend_init();
 
 	tegra12_emc_init();
+	t210ref_edp_init();
 	isomgr_init();
 	t210ref_touch_init();
 	t210ref_panel_init();
