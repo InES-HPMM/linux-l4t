@@ -53,7 +53,6 @@
 #include <asm/tlbflush.h>
 #include <asm/traps.h>
 #include <asm/memblock.h>
-#include <asm/mmu_context.h>
 #include <asm/psci.h>
 
 #include <asm/mach/arch.h>
@@ -201,7 +200,6 @@ bool arch_match_cpu_phys_id(int cpu, u64 phys_id)
 static void __init setup_processor(void)
 {
 	struct cpu_info *cpu_info;
-	u64 reg_value;
 	u64 features, block;
 
 	cpu_info = lookup_processor_type(read_cpuid_id());
@@ -219,17 +217,6 @@ static void __init setup_processor(void)
 	sprintf(init_utsname()->machine, ELF_PLATFORM);
 	elf_hwcap = 0;
 
-	/* Read the number of ASID bits */
-	reg_value = read_cpuid(ID_AA64MMFR0_EL1);
-	features=reg_value;
-	reg_value=reg_value & 0xf0;
-	if (reg_value == 0x00)
-		max_asid_bits = 8;
-	else if (reg_value == 0x20)
-		max_asid_bits = 16;
-	else
-		BUG_ON(1);
-	cpu_last_asid = 1 << max_asid_bits;
 	/*
 	 * ID_AA64ISAR0_EL1 contains 4-bit wide signed feature blocks.
 	 * The blocks we test below represent incremental functionality
