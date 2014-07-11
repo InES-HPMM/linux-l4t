@@ -20,10 +20,9 @@ obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-power.o
 obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-sdhci.o
 obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-sensors.o
 obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-sysedp.o
-obj-${CONFIG_MACH_EXUMA}              += board-norrin-power.o
-obj-${CONFIG_MACH_EXUMA}              += board-norrin64-memory.o
-obj-${CONFIG_MACH_EXUMA}              += board-tn8-power.o
-obj-${CONFIG_MACH_EXUMA}              += board-t132ref-tn8-p1761-powermon.o
+obj-${CONFIG_MACH_EXUMA}              += board-t132ref-norrin-power.o
+obj-${CONFIG_MACH_EXUMA}              += board-t132ref-norrin-memory.o
+obj-${CONFIG_MACH_EXUMA}              += board-t132ref-tn8-power.o
 
 obj-y					+= panel-lgd-wxga-7-0.o
 obj-y					+= panel-p-wuxga-10-1.o
