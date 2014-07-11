@@ -41,12 +41,21 @@
 #include <linux/tegra-fuse.h>
 #include <linux/tegra-pmc.h>
 #include <linux/regulator/consumer.h>
+#include <linux/platform_device.h>
+#include <linux/of.h>
+#include <mach/irqs.h>
+#include <linux/pid_thermal_gov.h>
+#include <linux/tegra-fuse.h>
+#include <mach/edp.h>
 
 #include "iomap.h"
 #include "tegra11_soctherm.h"
 #include "gpio-names.h"
 #include "common.h"
 #include "dvfs.h"
+#include "board.h"
+#include "board-common.h"
+#include "tegra-board-id.h"
 
 static const int MAX_HIGH_TEMP = 127000;
 static const int MIN_LOW_TEMP = -127000;
@@ -453,16 +462,17 @@ static const int precision; /* default 0 -> low precision */
 #define IS_T12X		(tegra_chip_id == TEGRA_CHIPID_TEGRA12)
 #define IS_T13X		(tegra_chip_id == TEGRA_CHIPID_TEGRA13)
 
-static void __iomem *reg_soctherm_base = IOMEM(IO_ADDRESS(TEGRA_SOCTHERM_BASE));
+static void __iomem *reg_soctherm_base;
+
 static void __iomem *clk_reset_base = IOMEM(IO_ADDRESS(TEGRA_CLK_RESET_BASE));
 static void __iomem *clk13_rst_base = IOMEM(IO_ADDRESS(TEGRA_CLK13_RESET_BASE));
 
 static DEFINE_MUTEX(soctherm_suspend_resume_lock);
 
-static int soctherm_suspend(void);
-static int soctherm_resume(void);
+static int soctherm_suspend(struct device *dev);
+static int soctherm_resume(struct device *dev);
 
-static struct soctherm_platform_data plat_data;
+static struct soctherm_platform_data plat_data, *plat_data_ptr;
 
 /*
  * Remove this flag once this "driver" is structured as a platform driver and
@@ -478,6 +488,9 @@ static u32 tegra_chip_id;
 
 static struct clk *soctherm_clk;
 static struct clk *tsensor_clk;
+
+static int thermal_irq_num;
+static int edp_irq_num;
 
 /**
  * soctherm_writel() - Writes a value to a SOC_THERM register
@@ -1898,7 +1911,6 @@ static int __init soctherm_thermal_sys_init(void)
 	soctherm_update();
 	return 0;
 }
-module_init(soctherm_thermal_sys_init);
 
 #else
 static void soctherm_update_zone(int zn)
@@ -2263,13 +2275,16 @@ static bool throttlectl_cpu_level(enum soctherm_throttle_id throt)
 		return false;
 
 	/* Denver:CCROC NV_THERM interface N:3 Mapping */
-	if (!strcmp(dev->throttling_depth, "heavy_throttling")) {
+	if (dev->throttling_depth &&
+		!strcmp(dev->throttling_depth, "heavy_throttling")) {
 		throt_level = THROT_LEVEL_HVY;
 		throt_vect = THROT_VECT_HVY;
-	} else if (!strcmp(dev->throttling_depth, "medium_throttling")) {
+	} else if (dev->throttling_depth &&
+		!strcmp(dev->throttling_depth, "medium_throttling")) {
 		throt_level = THROT_LEVEL_MED;
 		throt_vect = THROT_VECT_MED;
-	} else if (!strcmp(dev->throttling_depth, "low_throttling")) {
+	} else if (dev->throttling_depth &&
+		!strcmp(dev->throttling_depth, "low_throttling")) {
 		throt_level = THROT_LEVEL_LOW;
 		throt_vect = THROT_VECT_LOW;
 	} else {
@@ -2326,9 +2341,11 @@ static bool throttlectl_gpu_gk20a_nv_therm_style(
 	u32 r, throt_vect;
 
 	/* gk20a nv_therm interface N:3 Mapping */
-	if (!strcmp(dev->throttling_depth, "heavy_throttling"))
+	if (dev->throttling_depth &&
+		!strcmp(dev->throttling_depth, "heavy_throttling"))
 		throt_vect = THROT_VECT_HVY;
-	else if (!strcmp(dev->throttling_depth, "medium_throttling"))
+	else if (dev->throttling_depth &&
+		!strcmp(dev->throttling_depth, "medium_throttling"))
 		throt_vect = THROT_VECT_MED;
 	else
 		throt_vect = THROT_VECT_LOW;
@@ -2515,7 +2532,7 @@ static void soctherm_tsense_program(enum soctherm_sense sensor,
  *
  * Return: 0 if successful else %-EINVAL if initialization failed
  */
-static int __init soctherm_clk_init(void)
+static int soctherm_clk_init(void)
 {
 	unsigned long default_soctherm_clk_rate;
 	unsigned long default_tsensor_clk_rate;
@@ -2820,6 +2837,9 @@ static void soctherm_adjust_zone(int tz)
 	int i;
 	long ztemp, pll_temp, diff;
 	bool low_voltage;
+
+	if (!soctherm_init_platform_done)
+		return;
 
 	if (soctherm_suspended)
 		return;
@@ -3135,7 +3155,7 @@ static void soctherm_suspend_locked(void)
  *
  * Return: 0 on success.
  */
-static int soctherm_suspend(void)
+static int soctherm_suspend(struct device *dev)
 {
 	mutex_lock(&soctherm_suspend_resume_lock);
 	soctherm_suspend_locked();
@@ -3170,7 +3190,7 @@ static void soctherm_resume_locked(void)
  *
  * Return: 0
  */
-static int soctherm_resume(void)
+static int soctherm_resume(struct device *dev)
 {
 	mutex_lock(&soctherm_suspend_resume_lock);
 	soctherm_resume_locked();
@@ -3215,7 +3235,7 @@ static int soctherm_pm_suspend(struct notifier_block *nb,
 				unsigned long event, void *data)
 {
 	if (event == PM_SUSPEND_PREPARE) {
-		soctherm_suspend();
+		soctherm_suspend(NULL);
 		pr_info("tegra_soctherm: suspended\n");
 	}
 	return NOTIFY_OK;
@@ -3235,7 +3255,7 @@ static int soctherm_pm_resume(struct notifier_block *nb,
 				unsigned long event, void *data)
 {
 	if (event == PM_POST_SUSPEND) {
-		soctherm_resume();
+		soctherm_resume(NULL);
 		pr_info("tegra_soctherm: resumed\n");
 	}
 	return NOTIFY_OK;
@@ -3387,7 +3407,7 @@ static struct irq_domain_ops soctherm_oc_domain_ops = {
 };
 
 /**
- * tegra11_soctherm_oc_int_init() - Initial enabling of the over
+ * soctherm_oc_int_init() - Initial enabling of the over
  * current interrupts
  * @irq_base:	The interrupt request base number from platform data
  * @num_irqs:	The number of new interrupt requests
@@ -3398,7 +3418,7 @@ static struct irq_domain_ops soctherm_oc_domain_ops = {
  * -ENOMEM (out of memory), or irq_base if the function failed to
  * allocate the irqs
  */
-static int tegra11_soctherm_oc_int_init(int irq_base, int num_irqs)
+static int soctherm_oc_int_init(int irq_base, int num_irqs)
 {
 	if (irq_base <= 0 || !num_irqs) {
 		pr_info("%s(): OC interrupts are not enabled\n", __func__);
@@ -3429,7 +3449,8 @@ static int tegra11_soctherm_oc_int_init(int irq_base, int num_irqs)
 		pr_err("%s: Failed to create IRQ domain\n", __func__);
 		return -ENOMEM;
 	}
-	pr_info("%s(): OC interrupts enabled successful\n", __func__);
+
+	pr_debug("%s(): OC interrupts enabled successful\n", __func__);
 	return 0;
 }
 
@@ -3474,64 +3495,6 @@ static int __init soctherm_core_rail_notify_init(void)
 	return 0;
 }
 late_initcall_sync(soctherm_core_rail_notify_init);
-
-/**
- * tegra11_soctherm_init() - initializes SOC_THERM IP Block
- * @data:       pointer to board-specific information
- *
- * Initialize and enable SOC_THERM clocks, sanitize platform data, configure
- * SOC_THERM according to platform data, and set up interrupt handling for
- * OC events.
- *
- * Return: -1 if initialization failed, 0 otherwise
- */
-int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
-{
-	int ret;
-
-	tegra_chip_id = tegra_get_chip_id();
-	if (!(IS_T11X || IS_T14X || IS_T12X || IS_T13X)) {
-		pr_err("%s: Unknown chip_id %d", __func__, tegra_chip_id);
-		return -1;
-	}
-
-	register_pm_notifier(&soctherm_suspend_nb);
-	register_pm_notifier(&soctherm_resume_nb);
-
-	if (!data)
-		return -1;
-	plat_data = *data;
-
-	if (soctherm_clk_init() < 0)
-		return -1;
-
-	if (soctherm_clk_enable(true) < 0)
-		return -1;
-
-	if (soctherm_init_platform_data() < 0)
-		return -1;
-
-	soctherm_init_platform_done = true;
-
-	ret = tegra11_soctherm_oc_int_init(data->oc_irq_base,
-			data->num_oc_irqs);
-	if (ret < 0) {
-		pr_err("soctherm_oc_int_init failed: %d\n", ret);
-		return ret;
-	}
-
-	if (request_threaded_irq(INT_THERMAL, soctherm_thermal_isr,
-				 soctherm_thermal_thread_func, IRQF_ONESHOT,
-				 "soctherm_thermal", NULL) < 0)
-		return -1;
-
-	if (request_threaded_irq(INT_EDP, soctherm_edp_isr,
-				 soctherm_edp_thread_func, IRQF_ONESHOT,
-				 "soctherm_edp", NULL) < 0)
-		return -1;
-
-	return 0;
-}
 
 /**
  * tegra_soctherm_adjust_cpu_zone() - Adjusts the CPU zone of Tegra soctherm
@@ -4249,6 +4212,9 @@ static int __init soctherm_debug_init(void)
 {
 	struct dentry *tegra_soctherm_root;
 
+	if (!soctherm_init_platform_done)
+		return 0;
+
 	tegra_soctherm_root = debugfs_create_dir("tegra_soctherm", NULL);
 	debugfs_create_file("regs", 0644, tegra_soctherm_root,
 			    NULL, &regs_fops);
@@ -4271,3 +4237,155 @@ static int __init soctherm_debug_init(void)
 late_initcall(soctherm_debug_init);
 
 #endif
+
+static const struct of_device_id tegra_soctherm_match[] = {
+	{
+		.compatible = "nvidia,tegra-soctherm",
+	},
+	{},
+};
+
+/**
+ * tegra_soctherm_probe() - binds a SOC_THERM hardware to a driver
+ * @pdev:	platform device containing board-specific data.
+ *
+ * Initializes and enables SOC_THERM clocks, sanitizes platform data,
+ * configures SOC_THERM according to platform data, and sets up interrupt
+ * handling for OC events.
+ *
+ * Return: %-EINVAL if initialization failed, otherwise 0.
+ */
+static int tegra_soctherm_probe(struct platform_device *pdev)
+{
+	int ret = -EINVAL, i;
+	struct device_node *np = pdev->dev.of_node;
+	struct resource *mem;
+
+	if (!np)
+		goto soctherm_init_err;
+
+	tegra_chip_id = tegra_get_chip_id();
+	if (!(IS_T11X || IS_T14X || IS_T12X || IS_T13X)) {
+		pr_err("%s: Unknown chip_id %d", __func__, tegra_chip_id);
+		return -EINVAL;
+	}
+
+	if (!plat_data_ptr)
+		goto soctherm_init_err;
+
+	ret = soctherm_clk_init();
+	if (ret < 0)
+		goto soctherm_init_err;
+
+	ret = soctherm_clk_enable(true);
+	if (ret < 0)
+		goto soctherm_clk_enable_err;
+
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!mem) {
+		dev_err(&pdev->dev, "platform_get_resource(0) failed\n");
+		goto soctherm_init_err;
+	}
+	reg_soctherm_base = IO_ADDRESS(mem->start);
+
+	ret = soctherm_init_platform_data();
+	if (ret < 0)
+		goto soctherm_init_platform_data_err;
+	soctherm_init_platform_done = true;
+
+	thermal_irq_num = platform_get_irq(pdev, 0);
+	edp_irq_num = platform_get_irq(pdev, 1);
+
+	ret = soctherm_oc_int_init(plat_data.oc_irq_base,
+				   plat_data.num_oc_irqs);
+	if (ret < 0) {
+		dev_err(&pdev->dev,
+			"soctherm_oc_int_init failed: base %d  num %d\n",
+			plat_data.oc_irq_base, plat_data.num_oc_irqs);
+		goto soctherm_oc_int_init_err;
+	}
+
+	ret = request_threaded_irq(thermal_irq_num, soctherm_thermal_isr,
+				 soctherm_thermal_thread_func, IRQF_ONESHOT,
+				 "soctherm_thermal", NULL);
+	if (ret < 0)
+		goto soctherm_thermal_irq_request_err;
+
+	ret = request_threaded_irq(edp_irq_num, soctherm_edp_isr,
+				 soctherm_edp_thread_func, IRQF_ONESHOT,
+				 "soctherm_edp", NULL);
+	if (ret < 0)
+		goto soctherm_edp_irq_request_err;
+
+	soctherm_thermal_sys_init();
+
+	register_pm_notifier(&soctherm_suspend_nb);
+	register_pm_notifier(&soctherm_resume_nb);
+
+	return 0;
+
+soctherm_edp_irq_request_err:
+	free_irq(thermal_irq_num, NULL);
+
+soctherm_thermal_irq_request_err:
+	for (i = plat_data.oc_irq_base; i < plat_data.num_oc_irqs; i++)
+		irq_dispose_mapping(i);
+
+	irq_free_descs(plat_data.oc_irq_base, plat_data.num_oc_irqs);
+	irq_domain_remove(soc_irq_cdata.domain);
+
+	soctherm_suspend(NULL);
+
+soctherm_oc_int_init_err:
+soctherm_init_platform_data_err:
+	soctherm_clk_enable(false);
+	clk_put(soctherm_clk);
+	clk_put(tsensor_clk);
+	soctherm_clk = NULL;
+	tsensor_clk = NULL;
+
+soctherm_clk_enable_err:
+	/* FIXME: This should back out of the effects of clk_get() once it is
+	corverted away from clk_get_sys(). */
+
+soctherm_init_err:
+	pr_err("There was an error initializing SOC_THERM.\n");
+	return ret;
+}
+
+MODULE_DEVICE_TABLE(of, tegra_soctherm_match);
+
+static struct platform_driver tegra_soctherm_driver = {
+	.driver = {
+		.name   = "tegra-soctherm",
+		.owner  = THIS_MODULE,
+		.of_match_table = of_match_ptr(tegra_soctherm_match),
+	},
+	.probe = tegra_soctherm_probe,
+};
+
+module_platform_driver(tegra_soctherm_driver);
+
+/**
+ * tegra11_soctherm_init() - initializes global pointer to board-specific info
+ * @data:       pointer to board-specific information
+ *
+ * Store platform data in global as an intermediate step to moving to DT.
+ *
+ * Return: -1 if data is NULL, 0 (success) otherwise
+ */
+int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
+{
+	if (!data)
+		return -1;
+
+	plat_data = *data;
+	plat_data_ptr = &plat_data;
+
+	return 0;
+}
+
+MODULE_DESCRIPTION("Tegra SOC_THERM Driver");
+MODULE_AUTHOR("NVIDIA");
+MODULE_LICENSE("GPL");
+MODULE_ALIAS("platform:tegra-soctherm");
