@@ -124,6 +124,9 @@ NVIDIA TEGRA124 Display Serial Interface
    If several items are written, bitwise OR is operated for them, internally.
  - nvidia,out-parent-clk: Parent clk for display controller.
  - nvidia,out-max-pixclk: Maximum pixel clock in pico-seconds.
+ - nvidia,dither: Dither option. Should be TEGRA_DC_UNDEFINED_DITHER or
+   TEGRA_DC_DISABLE_DITHER or TEGRA_DC_ORDERED_DITHER or TEGRA_DC_ERRDIFF_DITHER
+   or TEGRA_DC_TEMPORAL_DITHER.
  - nvidia,out-align: Display data alignment. Should be TEGRA_DC_ALIGN_MSB or TEGRA_DC_ALIGN_LSB.
  - nvidia,out-order: Display data order. Should be TEGRA_DC_ORDER_RED_BLUE or
    TEGRA_DC_ORDER_BLUE_RED.
