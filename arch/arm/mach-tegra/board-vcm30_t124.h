@@ -27,10 +27,8 @@
 int vcm30_t124_sdhci_init(void);
 int vcm30_t124_sensors_init(void);
 int vcm30_t124_regulator_init(void);
-int vcm30_t124_suspend_init(void);
 int vcm30_t124_pmon_init(void);
 int vcm30_t124_pca953x_init(void);
-int vcm30_t124_soctherm_init(void);
 void vcm30_t124_audio_init(void);
 
 #define UTMI1_PORT_OWNER_XUSB   0x1

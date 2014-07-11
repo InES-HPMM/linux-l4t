@@ -23,7 +23,6 @@
 #include <linux/gpio.h>
 #include <linux/i2c/pca953x.h>
 #include <linux/tegra-pmc.h>
-#include <linux/pid_thermal_gov.h>
 
 #include "pm.h"
 #include "board.h"
@@ -34,6 +33,7 @@
 #include "devices.h"
 #include "tegra11_soctherm.h"
 #include <mach/board_id.h>
+#include "vcm30_t124.h"
 
 static struct regulator_consumer_supply max77663_ldo5_supply[] = {
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.2"),
@@ -282,73 +282,6 @@ int __init vcm30_t124_regulator_init(void)
 	i2c_register_board_info(4, max15569_vddgpu_boardinfo, 1);
 
 	return 0;
-}
-
-static struct tegra_suspend_platform_data vcm30_t124_suspend_data = {
-	.cpu_timer	= 2000,
-	.cpu_off_timer	= 2000,
-	.suspend_mode	= TEGRA_SUSPEND_LP0,
-	.core_timer	= 0xfefe,
-	.core_off_timer = 2000,
-	.corereq_high	= true,
-	.sysclkreq_high	= true,
-	.cpu_lp2_min_residency = 1000,
-};
-
-int __init vcm30_t124_suspend_init(void)
-{
-	tegra_init_suspend(&vcm30_t124_suspend_data);
-	return 0;
-}
-
-static struct pid_thermal_gov_params soctherm_pid_params = {
-	.max_err_temp = 9000,
-	.max_err_gain = 1000,
-	.gain_p = 1000,
-	.gain_d = 0,
-	.up_compensation = 20,
-	.down_compensation = 20,
-};
-
-static struct thermal_zone_params soctherm_tzp = {
-	.governor_name = "pid_thermal_gov",
-	.governor_params = &soctherm_pid_params,
-};
-
-static struct soctherm_platform_data vcm30_t124_soctherm_data = {
-	.therm = {
-		[THERM_CPU] = {
-			.zone_enable = true,
-			.passive_delay = 1000,
-			.hotspot_offset = 6000,
-			.num_trips = 0,
-			.tzp = &soctherm_tzp,
-		},
-		[THERM_GPU] = {
-			.zone_enable = true,
-			.passive_delay = 1000,
-			.hotspot_offset = 6000,
-			.num_trips = 0,
-			.tzp = &soctherm_tzp,
-		},
-		[THERM_PLL] = {
-			.zone_enable = true,
-		},
-	},
-};
-
-/* FIXME: Needed? */
-int __init vcm30_t124_soctherm_init(void)
-{
-	tegra_add_cpu_clk_switch_trips(
-			vcm30_t124_soctherm_data.therm[THERM_CPU].trips,
-			&vcm30_t124_soctherm_data.therm[THERM_CPU].num_trips);
-
-	tegra_add_tgpu_trips(
-			vcm30_t124_soctherm_data.therm[THERM_GPU].trips,
-			&vcm30_t124_soctherm_data.therm[THERM_GPU].num_trips);
-
-	return tegra11_soctherm_init(&vcm30_t124_soctherm_data);
 }
 
 /*

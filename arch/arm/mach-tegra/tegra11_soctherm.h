@@ -19,6 +19,9 @@
 #ifndef __MACH_TEGRA_11x_SOCTHERM_H
 #define __MACH_TEGRA_11x_SOCTHERM_H
 
+#include <linux/thermal.h>
+#include <linux/platform_data/thermal_sensors.h>
+
 /* This order must match the soc_therm HW register spec */
 enum soctherm_sense {
 	TSENSE_CPU0 = 0,
