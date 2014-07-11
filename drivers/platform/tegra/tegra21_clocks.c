@@ -8434,7 +8434,7 @@ struct clk tegra_list_clks[] = {
 #else
 	PERIPH_CLK_SKIP("se",	"tegra21-se",	NULL,	127,	0x42c,	0x704,	600000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
 #endif
-	PERIPH_CLK_SKIP("tsec",	"tsec",		NULL,	83,	0x1f4,	0x708,	768000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT),
+	PERIPH_CLK("tsec",	"tegra_tsec",	"tsec",	83,	0x1f4,		408000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_SKIP("tsecb", "tsecb",	NULL,	206,	0x6d8,	0x70c,	768000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 
 	SHARED_CLK("avp.sclk",	"nvavp",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
@@ -8496,8 +8496,6 @@ struct clk tegra_list_clks[] = {
 	DUAL_CBUS_CLK("nvjpg.cbus",	"tegra_nvjpg",		"nvjpg", &tegra_clk_c3bus, "nvjpg", 0, 0),
 	DUAL_CBUS_CLK("nvdec.cbus",	"tegra_nvdec",		"nvdec", &tegra_clk_c3bus, "nvdec", 0, 0),
 	DUAL_CBUS_CLK("se.cbus",	"tegra21-se",		NULL,	 &tegra_clk_c3bus, "se",    0, 0),
-	/* FIXME: move tsec out of cbus */
-	DUAL_CBUS_CLK("tsec.cbus",	"tegra_tsec",		"tsec",  &tegra_clk_c3bus,  "tsec", 0, 0),
 	DUAL_CBUS_CLK("tsecb.cbus",	"tegra_tsecb",		"tsecb",  &tegra_clk_c3bus,  "tsecb", 0, 0),
 	SHARED_LIMIT("cap.c3bus",		"cap.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
 	SHARED_LIMIT("cap.vcore.c3bus",		"cap.vcore.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
