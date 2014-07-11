@@ -1,7 +1,7 @@
 /*
  * board-common.h: Common function API declaration for all board files.
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,6 +36,9 @@ void tegra_add_core_vmin_trips(struct thermal_trip_info *trips, int *num_trips);
 void tegra_add_cpu_vmax_trips(struct thermal_trip_info *trips, int *num_trips);
 void tegra_add_core_edp_trips(struct thermal_trip_info *trips, int *num_trips);
 void tegra_add_tgpu_trips(struct thermal_trip_info *trips, int *num_trips);
+void tegra_add_cpu_clk_switch_trips(struct thermal_trip_info *trips,
+					int *num_trips);
+
 void tegra_add_vc_trips(struct thermal_trip_info *trips, int *num_trips);
 void tegra_add_core_vmax_trips(struct thermal_trip_info *trips, int *num_trips);
 struct pinctrl_dev *tegra_get_pinctrl_device_handle(void);
