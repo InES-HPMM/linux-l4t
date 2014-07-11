@@ -35,7 +35,7 @@ static inline int nvhost_vpr_info_fetch(void)
 {
 	return -ENOSYS;
 }
-int gk20a_do_idle(void) { return -ENOSYS; }
-int gk20a_do_unidle(void) { return -ENOSYS; }
+static inline int gk20a_do_idle(void) { return -ENOSYS; }
+static inline int gk20a_do_unidle(void) { return -ENOSYS; }
 #endif
 #endif
