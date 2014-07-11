@@ -119,6 +119,7 @@ extern struct platform_device tegra_wdt_device;
 #else
 extern struct platform_device tegra_wdt0_device;
 #endif
+extern struct platform_device tegra_rtc_device;
 extern struct platform_device tegra_otg_device;
 extern struct platform_device tegra_uarta_device;
 extern struct platform_device tegra_uartb_device;
