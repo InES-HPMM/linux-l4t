@@ -86,6 +86,7 @@ struct clk;
 #define BUS_RATE_LIMIT		(1 << 31)
 
 #define SHARED_BUS_RETENTION	(1 << 0)
+#define SHARED_BUS_USE_SKIPPERS	(1 << 1)
 
 #define PERIPH_DIV		(DIV_U71 | DIV_U151 | DIV_U16)
 

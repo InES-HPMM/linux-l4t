@@ -4359,8 +4359,6 @@ static struct clk_ops tegra_periph_clk_ops = {
 /* Supper skipper ops */
 static void tegra21_clk_super_skip_init(struct clk *c)
 {
-	u32 val = clk_readl(c->reg);
-
 	if (!c->parent)
 		c->parent = c - 1;
 	c->parent->skipper = c;
@@ -4369,15 +4367,10 @@ static void tegra21_clk_super_skip_init(struct clk *c)
 	c->state = ON;
 	c->max_rate = c->parent->max_rate;
 
-	if (val & SUPER_SKIPPER_ENABLE) {
-		c->div = ((val & SUPER_SKIPPER_DIV_MASK) >>
-			  SUPER_SKIPPER_DIV_SHIFT) + 1;
-		c->mul = ((val & SUPER_SKIPPER_MUL_MASK) >>
-			  SUPER_SKIPPER_MUL_SHIFT) + 1;
-	} else {
-		c->div = 1;
-		c->mul = 1;
-	}
+	/* Always set initial 1:1 ratio */
+	clk_writel(0, c->reg);
+	c->div = 1;
+	c->mul = 1;
 }
 
 static int tegra21_clk_super_skip_enable(struct clk *c)
@@ -5365,6 +5358,9 @@ static void cbus_skip(struct clk *c, unsigned long bus_rate)
 	struct clk *user;
 	unsigned long rate;
 
+	if (!(c->shared_bus_flags & SHARED_BUS_USE_SKIPPERS))
+		return;
+
 	list_for_each_entry(user, &c->shared_bus_list,
 			u.shared_bus_user.node) {
 		struct clk *client = user->u.shared_bus_user.client;
@@ -5851,8 +5847,10 @@ static long tegra_clk_shared_bus_user_round_rate(
 			rate = c->parent->max_rate;
 		} else {
 			/* Skippers allow to run below bus minimum */
+			bool use_skip = c->parent->shared_bus_flags &
+				SHARED_BUS_USE_SKIPPERS;
 			struct clk *client = c->u.shared_bus_user.client;
-			int skip = (client && client->skipper) ?
+			int skip = (use_skip && client && client->skipper) ?
 				SUPER_SKIPPER_TERM_SIZE : 0;
 			unsigned long min_rate = c->parent->min_rate >> skip;
 
@@ -8057,6 +8055,9 @@ static struct clk tegra_clk_c2bus = {
 	.shared_bus_backup = {
 		.input = &tegra_pll_p,
 	},
+#ifdef	CONFIG_TEGRA_CBUS_CAN_USE_SKIPPERS
+	.shared_bus_flags = SHARED_BUS_USE_SKIPPERS,
+#endif
 	.rate_change_nh = &c2bus_rate_change_nh,
 };
 static struct clk tegra_clk_c3bus = {
@@ -8070,6 +8071,9 @@ static struct clk tegra_clk_c3bus = {
 	.shared_bus_backup = {
 		.input = &tegra_pll_p,
 	},
+#ifdef	CONFIG_TEGRA_CBUS_CAN_USE_SKIPPERS
+	.shared_bus_flags = SHARED_BUS_USE_SKIPPERS,
+#endif
 	.rate_change_nh = &c3bus_rate_change_nh,
 };
 
@@ -8528,7 +8532,6 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("uartc",	"serial-tegra.2",		NULL,	55,	0x1a0,	800000000, mux_pllp_pllc_pllc4_out0_pllc4_out1_clkm_pllc4_out2,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartd",	"serial-tegra.3",		NULL,	65,	0x1c0,	800000000, mux_pllp_pllc_pllc4_out0_pllc4_out1_clkm_pllc4_out2,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartape",	"uartape",		NULL,	212,	0x710,	50000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_NO_RESET | PERIPH_ON_APB),
-	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	700000000, mux_pllc2_c_c3_pllp_plla1_pllc4,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	 NULL,			"vi_sensor",	164,	0x1a8,	408000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("vi_sensor2", NULL,			"vi_sensor2",	165,	0x658,	408000000, mux_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
@@ -8548,8 +8551,6 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("dsi1-fixed", "tegradc.0",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("dsi2-fixed", "tegradc.1",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("csi",	"vi",			"csi",	52,	0,	480000000, mux_plld,			PLLD),
-	PERIPH_CLK("ispa",	"isp",			"ispa",	23,	0,	700000000, mux_isp,			PERIPH_ON_APB),
-	PERIPH_CLK("ispb",	"isp",			"ispb",	3,	0,	700000000, mux_isp,			PERIPH_ON_APB),
 	PERIPH_CLK("csus",	"vi",			"csus",	92,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
 	PERIPH_CLK("vim2_clk",	"vi",			"vim2_clk",	171,	0,	150000000, mux_clk_m,		PERIPH_NO_RESET),
 	PERIPH_CLK("cilab",	"vi",			"cilab", 144,	0x614,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
@@ -8590,8 +8591,12 @@ struct clk tegra_list_clks[] = {
 #else
 	PERIPH_CLK_SKIP("se",	"tegra21-se",	NULL,	127,	0x42c,	0x704,	600000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
 #endif
-	PERIPH_CLK("tsec",	"tegra_tsec",	"tsec",	83,	0x1f4,		408000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | DIV_U71_INT),
+	PERIPH_CLK_SKIP("tsec",	"tegra_tsec",	"tsec",	83,	0x1f4,	0x708,	408000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_SKIP("tsecb", "tsecb",	NULL,	206,	0x6d8,	0x70c,	768000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT),
+	PERIPH_CLK_SKIP("ispa",	"isp",		"ispa",	23,	0,	0x6f8,	700000000, mux_isp,			PERIPH_ON_APB),
+	PERIPH_CLK_SKIP("ispb",	"isp",		"ispb",	3,	0,	0x6fc,	700000000, mux_isp,			PERIPH_ON_APB),
+	PERIPH_CLK_EX("vi",	"vi",		"vi",	20,	0x148,		700000000, mux_pllc2_c_c3_pllp_plla1_pllc4,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
+	SUPER_SKIP_CLK("vi_skip", "vi",		"skip", 		0x6ec,		   NULL, 0),
 
 	SHARED_CLK("avp.sclk",	"nvavp",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("bsea.sclk",	"tegra-aes",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
