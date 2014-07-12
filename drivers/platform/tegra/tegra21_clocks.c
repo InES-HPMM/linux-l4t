@@ -7537,7 +7537,7 @@ static struct clk tegra_clk_sclk_mux = {
 	.inputs	= mux_sclk,
 	.reg	= 0x28,
 	.ops	= &tegra_super_ops,
-	.max_rate = 600000000,
+	.max_rate = 1200000000,
 	.min_rate = 12000000,
 };
 
@@ -8016,7 +8016,7 @@ static struct clk tegra_clk_host1x = {
 	.u.periph = {
 		.clk_num   = 28,
 		.pll_low = &tegra_pll_p,
-		.pll_high = &tegra_pll_c,
+		.pll_high = &tegra_pll_c4_out0,
 	},
 	.rate_change_nh = &host1x_rate_change_nh,
 };
@@ -9011,12 +9011,10 @@ static void __init tegra21_dfll_cpu_late_init(struct clk *c)
  *
  * PLLC4 post-divider PLLC_OUT0 and secondary divider PLLC_OUT3 ratios specified
  * in the table are selected to provide max input frequency to downstream module
- * dividers (fort better granularity of possible rates) but not above 800 MHz -
- * maximum rate that can be divided at minimum voltage.
+ * dividers (fort better granularity of possible rates).
  *
  * Commonly PLLC_OUT3 is also used as second clock source (along with PLLP) for
- * the system bus. However, in default configuration PLLC4_OUT1 = VCO/3 is
- * selected for system us to provide important target rate in 300-350 MHz range.
+ * the system bus.
  */
 struct pllc4_sdmmc_map {
 	unsigned long sdmmc_max_rate;
@@ -9027,7 +9025,7 @@ struct pllc4_sdmmc_map {
 };
 
 static struct pllc4_sdmmc_map  tegra21_pllc4_sdmmc_map[] = {
-	{	  0, 1000000000, 2, 1, &tegra_pll_c4_out1 }, /* default cfg */
+	{	  0, 1000000000, 1, 1, &tegra_pll_c4_out3 }, /* default cfg */
 	{ 266500000,  799500000, 1, 1, &tegra_pll_c4_out3 },
 	{ 400000000,  800000000, 1, 1, &tegra_pll_c4_out3 },
 };

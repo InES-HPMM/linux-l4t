@@ -320,6 +320,7 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("pll_c",  -1, -1, 1, KHZ,   800000, 800000, 1066000, 1066000, 1066000),
 	CORE_DVFS("pll_c2", -1, -1, 1, KHZ,   800000, 800000, 1066000, 1066000, 1066000),
 	CORE_DVFS("pll_c3", -1, -1, 1, KHZ,   800000, 800000, 1066000, 1066000, 1066000),
+	CORE_DVFS("pll_c4_out0", -1, -1, 1, KHZ, 800000, 800000, 1066000, 1066000, 1066000),
 
 	/* Core voltages (mV):		         810,    860,    900,    990,    1080*/
 	/* Clock limits for I/O peripherals */
