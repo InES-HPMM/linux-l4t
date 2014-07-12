@@ -27,6 +27,7 @@
 #include <linux/cpufreq.h>
 #include <linux/syscore_ops.h>
 #include <linux/platform_device.h>
+#include <linux/platform_data/tegra_bpmp.h>
 
 #include <asm/clkdev.h>
 
@@ -4414,8 +4415,13 @@ static int tegra21_clk_super_skip_set_rate(struct clk *c, unsigned long rate)
 		c->mul = 1;
 	}
 
-	/* FIXME: for SCLK c->reg, this write to be replaced with IPC to BPMP */
-	clk_writel(val, c->reg);
+#ifdef CONFIG_TEGRA_BPMP_SCLK_SKIP
+	/* For SCLK do not touch the register directly - send IPC to BPMP */
+	if (c->flags & DIV_BUS)
+		tegra_bpmp_sclk_skip_set_rate(input_rate, rate);
+	else
+#endif
+		clk_writel(val, c->reg);
 
 	clk_unlock_restore(c->parent, &flags);
 	return 0;
@@ -7556,6 +7562,7 @@ static struct clk tegra_clk_sclk_div = {
 
 static struct clk tegra_clk_sclk = {
 	.name = "sclk",
+	.flags	= DIV_BUS,
 	.ops = &tegra_clk_super_skip_ops,
 	.reg = 0x2c,
 	.parent = &tegra_clk_sclk_div,
