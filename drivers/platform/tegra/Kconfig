@@ -42,3 +42,11 @@ config TEGRA_BPMP_SCLK_SKIP
 	default n
 	help
 	  When enabled, sclk skipper set rate will be delegated to bpmp firmware
+
+config TEGRA_CBUS_CAN_USE_SKIPPERS
+	bool "Allow to use clock skippers on cbus users"
+	depends on ARCH_TEGRA_21x_SOC
+	default n
+	help
+	  When enabled, clock skippers for cbus modules can be used to provide
+	  fine granularity clock rate control
