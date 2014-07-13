@@ -211,20 +211,13 @@ static int setup_frame(int sig, struct k_sigaction *ka, sigset_t *set,
 		       struct pt_regs *regs)
 {
 	struct sigframe __user *frame;
-	int rsig;
 
 	frame = get_sigframe(ka, regs, sizeof(*frame));
 
 	if (!access_ok(VERIFY_WRITE, frame, sizeof(*frame)))
 		goto give_sigsegv;
 
-	rsig = sig;
-	if (sig < 32 &&
-	    current_thread_info()->exec_domain &&
-	    current_thread_info()->exec_domain->signal_invmap)
-		rsig = current_thread_info()->exec_domain->signal_invmap[sig];
-
-	if (__put_user(rsig, &frame->sig) < 0 ||
+	if (__put_user(sig, &frame->sig) < 0 ||
 	    __put_user(&frame->sc, &frame->psc) < 0)
 		goto give_sigsegv;
 
@@ -283,20 +276,13 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka, siginfo_t *info,
 			  sigset_t *set, struct pt_regs *regs)
 {
 	struct rt_sigframe __user *frame;
-	int rsig;
 
 	frame = get_sigframe(ka, regs, sizeof(*frame));
 
 	if (!access_ok(VERIFY_WRITE, frame, sizeof(*frame)))
 		goto give_sigsegv;
 
-	rsig = sig;
-	if (sig < 32 &&
-	    current_thread_info()->exec_domain &&
-	    current_thread_info()->exec_domain->signal_invmap)
-		rsig = current_thread_info()->exec_domain->signal_invmap[sig];
-
-	if (__put_user(rsig, &frame->sig) ||
+	if (__put_user(sig, &frame->sig) ||
 	    __put_user(&frame->info, &frame->pinfo) ||
 	    __put_user(&frame->uc, &frame->puc) ||
 	    copy_siginfo_to_user(&frame->info, info))
