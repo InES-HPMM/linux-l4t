@@ -7263,12 +7263,13 @@ static struct clk_mux_sel mux_sclk[] = {
 	{ 0, 0},
 };
 
+/* ADSP cluster clocks */
 static struct clk_mux_sel mux_aclk_adsp[] = {
-	{ .input = &tegra_pll_a1,	.value = 0},
 	{ .input = &tegra_pll_p_out_adsp, .value = 2},
 	{ .input = &tegra_pll_a_out0,	.value = 3},
 	{ .input = &tegra_clk_m,	.value = 6},
 	{ .input = &tegra_pll_a,	.value = 7},
+	{ .input = &tegra_pll_a1,	.value = 8},
 	{ 0, 0},
 };
 
@@ -7279,14 +7280,14 @@ static void tegra21_adsp_clk_reset(struct clk *c, bool assert)
 		| ADSP_PERIPH | ADSP_INTF | ADSP_CORE;
 
 	pr_debug("%s %s\n", __func__, assert ? "assert" : "deassert");
-	clk_writel(val, reg);
+	clk_writel_delay(val, reg);
 }
 
 static int tegra21_adsp_clk_enable(struct clk *c)
 {
 	u32 val = ADSP_NEON | ADSP_CORE;
 
-	clk_writel(val, CLK_OUT_ENB_SET_Y);
+	clk_writel_delay(val, CLK_OUT_ENB_SET_Y);
 	return 0;
 }
 
@@ -7294,11 +7295,34 @@ static void tegra21_adsp_clk_disable(struct clk *c)
 {
 	u32 val = ADSP_NEON | ADSP_CORE;
 
-	clk_writel(val, CLK_OUT_ENB_CLR_Y);
+	clk_writel_delay(val, CLK_OUT_ENB_CLR_Y);
+}
+
+static void tegra21_adsp_clk_init(struct clk *c)
+{
+	/*
+	 * Check/enforce ADSP clock default configuration:
+	 * - parent clk_m
+	 * - disabled
+	 */
+	tegra21_super_clk_set_parent(c, &tegra_clk_m);
+	tegra21_super_clk_init(c);
+
+	/*
+	 * CPU and system super clocks cannot be disabled, and super clock init
+	 * always marks clock sate ON, which is not true for ADSP. Need explicit
+	 * check here.
+	 */
+	c->state = clk_readl(CLK_OUT_ENB_Y)&(ADSP_NEON | ADSP_CORE) ? ON : OFF;
+	if (c->state == ON) {
+		WARN(1, "Tegra ADSP clock is running on boot: turning Off\n");
+		tegra21_adsp_clk_disable(c);
+		c->state = OFF;
+	}
 }
 
 static struct clk_ops tegra_adsp_ops = {
-	.init		= tegra21_super_clk_init,
+	.init		= tegra21_adsp_clk_init,
 	.enable		= tegra21_adsp_clk_enable,
 	.disable	= tegra21_adsp_clk_disable,
 	.set_parent	= tegra21_super_clk_set_parent,
@@ -7309,14 +7333,15 @@ static struct clk_ops tegra_adsp_ops = {
 static struct raw_notifier_head adsp_rate_change_nh;
 static struct clk tegra_clk_aclk_adsp = {
 	.name   = "adsp",
-	.flags  = DIV_U71 | DIV_U71_INT | MUX,
+	.flags  = DIV_U71 | DIV_U71_INT,
 	.inputs	= mux_aclk_adsp,
 	.reg	= 0x6e0,
 	.ops	= &tegra_adsp_ops,
-	.max_rate = 600000000UL,
+	.max_rate = 1200000000,
 	.rate_change_nh = &adsp_rate_change_nh,
 };
 
+/* CPU clusters clocks */
 static struct clk tegra_clk_cclk_g = {
 	.name	= "cclk_g",
 	.flags  = DIV_U71 | DIV_U71_INT,
@@ -7374,6 +7399,7 @@ static struct clk tegra_clk_cpu_cmplx = {
 	.max_rate  = 3000000000UL,
 };
 
+/* System bus clocks */
 static struct clk tegra_clk_sclk_mux = {
 	.name	= "sclk_mux",
 	.inputs	= mux_sclk,
