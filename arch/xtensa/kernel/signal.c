@@ -336,7 +336,6 @@ static int setup_frame(int sig, struct k_sigaction *ka, siginfo_t *info,
 {
 	struct rt_sigframe *frame;
 	int err = 0;
-	int signal;
 	unsigned long sp, ra, tp;
 
 	sp = regs->areg[1];
@@ -353,12 +352,6 @@ static int setup_frame(int sig, struct k_sigaction *ka, siginfo_t *info,
 	if (!access_ok(VERIFY_WRITE, frame, sizeof(*frame))) {
 		goto give_sigsegv;
 	}
-
-	signal = current_thread_info()->exec_domain
-		&& current_thread_info()->exec_domain->signal_invmap
-		&& sig < 32
-		? current_thread_info()->exec_domain->signal_invmap[sig]
-		: sig;
 
 	if (ka->sa.sa_flags & SA_SIGINFO) {
 		err |= copy_siginfo_to_user(&frame->info, info);
@@ -400,7 +393,7 @@ static int setup_frame(int sig, struct k_sigaction *ka, siginfo_t *info,
 	 * Note: PS.CALLINC is set to one by start_thread
 	 */
 	regs->areg[4] = (((unsigned long) ra) & 0x3fffffff) | 0x40000000;
-	regs->areg[6] = (unsigned long) signal;
+	regs->areg[6] = (unsigned long) sig;
 	regs->areg[7] = (unsigned long) &frame->info;
 	regs->areg[8] = (unsigned long) &frame->uc;
 	regs->threadptr = tp;
@@ -412,7 +405,7 @@ static int setup_frame(int sig, struct k_sigaction *ka, siginfo_t *info,
 
 #if DEBUG_SIG
 	printk("SIG rt deliver (%s:%d): signal=%d sp=%p pc=%08x\n",
-		current->comm, current->pid, signal, frame, regs->pc);
+		current->comm, current->pid, sig, frame, regs->pc);
 #endif
 
 	return 0;
