@@ -7448,11 +7448,9 @@ static struct clk_ops tegra_adsp_ops = {
 	.enable		= tegra21_adsp_clk_enable,
 	.disable	= tegra21_adsp_clk_disable,
 	.set_parent	= tegra21_super_clk_set_parent,
-	.set_rate	= tegra21_super_clk_set_rate,
 	.reset		= tegra21_adsp_clk_reset,
 };
 
-static struct raw_notifier_head adsp_rate_change_nh;
 static struct clk tegra_clk_aclk_adsp = {
 	.name   = "adsp",
 	.flags  = DIV_U71 | DIV_U71_INT,
@@ -7460,7 +7458,6 @@ static struct clk tegra_clk_aclk_adsp = {
 	.reg	= 0x6e0,
 	.ops	= &tegra_adsp_ops,
 	.max_rate = 1200000000,
-	.rate_change_nh = &adsp_rate_change_nh,
 };
 
 static struct raw_notifier_head adsp_cpu_rate_change_nh;

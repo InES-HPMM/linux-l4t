@@ -139,6 +139,7 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "uartb",	"pll_p",	0,		false },
 	{ "uartc",	"pll_p",	0,		false },
 	{ "uartd",	"pll_p",	0,		false },
+	{ "adsp_cpu",	NULL,	600000000,		false },
 	{ NULL,         NULL,           0,              0},
 
 };

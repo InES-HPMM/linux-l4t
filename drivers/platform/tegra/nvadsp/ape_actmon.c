@@ -402,7 +402,7 @@ static int __init actmon_dev_init(struct actmon_dev *dev)
 /* APE activity monitor: Samples ADSP activity */
 static struct actmon_dev actmon_dev_adsp = {
 	.reg = 0x000,
-	.clk_name = "adsp",
+	.clk_name = "adsp_cpu",
 
 	/* ADSP/SCLK suspend activity floor */
 	.suspend_freq = 40000,
