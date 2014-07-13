@@ -475,12 +475,7 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka, siginfo_t *info,
 			  sigset_t *set, struct pt_regs *regs)
 {
 	struct rt_sigframe __user *frame;
-<<<<<<< HEAD
 	int err = 0;
-	int signal;
-=======
-	int err = 0, sig = ksig->sig;
->>>>>>> daea906d... sh: Remove signal translation and exec_domain
 
 	frame = get_sigframe(ka, regs->regs[REG_SP], sizeof(*frame));
 
