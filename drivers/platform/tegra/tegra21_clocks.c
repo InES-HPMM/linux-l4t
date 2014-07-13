@@ -393,7 +393,6 @@
 #define SUPER_STATE_RUN			(0x2 << SUPER_STATE_SHIFT)
 #define SUPER_STATE_IRQ			(0x3 << SUPER_STATE_SHIFT)
 #define SUPER_STATE_FIQ			(0x4 << SUPER_STATE_SHIFT)
-#define SUPER_LP_DIV2_BYPASS		(0x1 << 16)
 #define SUPER_SOURCE_MASK		0xF
 #define	SUPER_FIQ_SOURCE_SHIFT		12
 #define	SUPER_IRQ_SOURCE_SHIFT		8
@@ -766,6 +765,21 @@ static inline bool bus_user_request_is_lower(struct clk *a, struct clk *b)
 		b->u.shared_bus_user.rate;
 }
 
+static void super_clk_set_u71_div_no_skip(struct clk *c)
+{
+	clk_writel_delay(c->u.cclk.div71 << SUPER_CLOCK_DIV_U71_SHIFT,
+			 c->reg + SUPER_CLK_DIVIDER);
+	c->mul = 2;
+	c->div = c->u.cclk.div71 + 2;
+}
+
+static void super_clk_clr_u71_div_no_skip(struct clk *c)
+{
+	clk_writel_delay(0, c->reg + SUPER_CLK_DIVIDER);
+	c->mul = 2;
+	c->div = 2;
+}
+
 /* clk_m functions */
 static unsigned long tegra21_osc_autodetect_rate(struct clk *c)
 {
@@ -973,7 +987,7 @@ static int tegra21_super_clk_set_parent(struct clk *c, struct clk *p)
 			val &= ~(SUPER_SOURCE_MASK << shift);
 			val |= (sel->value & SUPER_SOURCE_MASK) << shift;
 
-			if (c->flags & DIV_U71) {
+			if ((c->flags & DIV_U71) && !c->u.cclk.div71) {
 				/* Make sure 7.1 divider is 1:1 */
 				u32 div = clk_readl(c->reg + SUPER_CLK_DIVIDER);
 				BUG_ON(div & SUPER_CLOCK_DIV_U71_MASK);
@@ -1003,11 +1017,10 @@ static int tegra21_super_clk_set_parent(struct clk *c, struct clk *p)
  */
 static int tegra21_super_clk_set_rate(struct clk *c, unsigned long rate)
 {
-	/* In tegra21_cpu_clk_set_plls() and  tegra21_sbus_cmplx_set_rate()
-	 * this call is skipped by directly setting rate of source plls. If we
-	 * ever use 7.1 divider at other than 1:1 setting, or exercise s/w
-	 * skipper control, not only this function, but cpu and sbus set_rate
-	 * APIs should be changed accordingly.
+	/*
+	 * In tegra21_cpu_clk_set_plls(), tegra21_sbus_cmplx_set_rate(), and
+	 * tegra21_adsp_cpu_clk_set_rate() this interface is skipped by directly
+	 * setting rate of source plls.
 	 */
 	return clk_set_rate(c->parent, rate);
 }
@@ -1985,8 +1998,117 @@ static struct clk_ops tegra_sbus_cmplx_ops = {
 	.shared_bus_update = tegra21_clk_sbus_update,
 };
 
-/* Blink output functions */
+/*
+ * Virtual ADSP CPU clock operations. Used to hide the sequence of changing
+ * and re-locking ADSP source PLLA1 in flight to configure requested ADSP
+ * target rate.
+ */
+static void tegra21_adsp_cpu_clk_init(struct clk *c)
+{
+	c->state = c->parent->state;
+	c->min_rate = c->u.cpu.main->min_rate;
+}
 
+static int tegra21_adsp_cpu_clk_enable(struct clk *c)
+{
+	return 0;
+}
+
+static void tegra21_adsp_cpu_clk_disable(struct clk *c)
+{
+}
+
+static int tegra21_adsp_cpu_clk_set_rate(struct clk *c, unsigned long rate)
+{
+	int ret = 0;
+	struct clk *main_pll = c->u.cpu.main;
+
+	/*
+	 * If ADSP clock is disabled or it is not on main pll (may happen after
+	 * boot), set main pll rate, and make sure it is selected as adsp clock
+	 * source.
+	 */
+	if (!c->refcnt || (c->parent->parent != main_pll)) {
+		ret = clk_set_rate(main_pll, rate);
+		if (ret) {
+			pr_err("Failed to set adsp rate %lu on %s\n",
+			       rate, main_pll->name);
+			return ret;
+		}
+
+		if (c->parent->parent == main_pll)
+			return ret;
+
+		ret = clk_set_parent(c->parent, main_pll);
+		if (ret)
+			pr_err("Failed to switch adsp to %s\n", main_pll->name);
+
+		return ret;
+	}
+
+	/*
+	 * Take an extra reference to the main pll so it doesn't turn off when
+	 * we move the cpu off of it. If possible, use main pll dynamic ramp
+	 * to reach target rate in one shot. Otherwise use backup source while
+	 * re-locking main.
+	 */
+	clk_enable(main_pll);
+
+	if (tegra_pll_can_ramp_to_rate(main_pll, rate)) {
+		ret = clk_set_rate(main_pll, rate);
+		if (ret)
+			pr_err("Failed to ramp %s to adsp rate %lu\n",
+			       main_pll->name, rate);
+		goto out;
+	}
+
+	/* Set backup divider, and switch to backup source */
+	super_clk_set_u71_div_no_skip(c->parent);
+	ret = clk_set_parent(c->parent, c->u.cpu.backup);
+	if (ret) {
+		super_clk_clr_u71_div_no_skip(c->parent);
+		pr_err("Failed to switch adsp to %s\n", c->u.cpu.backup->name);
+		goto out;
+	}
+
+	/* Set main pll rate, switch back to main, and clear backup divider */
+	ret = clk_set_rate(main_pll, rate);
+	if (ret) {
+		pr_err("Failed set adsp rate %lu on %s\n",
+		       rate, main_pll->name);
+		goto out;
+	}
+
+	ret = clk_set_parent(c->parent, main_pll);
+	if (ret) {
+		pr_err("Failed to switch adsp to %s\n", main_pll->name);
+		goto out;
+	}
+	super_clk_clr_u71_div_no_skip(c->parent);
+
+out:
+	clk_disable(main_pll);
+	return ret;
+}
+
+static long tegra21_adsp_cpu_clk_round_rate(struct clk *c, unsigned long rate)
+{
+	if (rate > c->max_rate)
+		rate = c->max_rate;
+	else if (rate < c->min_rate)
+		rate = c->min_rate;
+	return rate;
+}
+
+static struct clk_ops tegra_adsp_cpu_ops = {
+	.init     = tegra21_adsp_cpu_clk_init,
+	.enable   = tegra21_adsp_cpu_clk_enable,
+	.disable  = tegra21_adsp_cpu_clk_disable,
+	.set_rate = tegra21_adsp_cpu_clk_set_rate,
+	.round_rate = tegra21_adsp_cpu_clk_round_rate,
+};
+
+/* Blink output functions */
 static void tegra21_blink_clk_init(struct clk *c)
 {
 	u32 val;
@@ -7341,6 +7463,19 @@ static struct clk tegra_clk_aclk_adsp = {
 	.rate_change_nh = &adsp_rate_change_nh,
 };
 
+static struct raw_notifier_head adsp_cpu_rate_change_nh;
+static struct clk tegra_clk_virtual_adsp_cpu = {
+	.name      = "adsp_cpu",
+	.parent    = &tegra_clk_aclk_adsp,
+	.ops       = &tegra_adsp_cpu_ops,
+	.max_rate  = 1000000000,
+	.u.cpu = {
+		.main      = &tegra_pll_a1,
+		.backup    = &tegra_pll_p_out_adsp,
+	},
+	.rate_change_nh = &adsp_cpu_rate_change_nh,
+};
+
 /* CPU clusters clocks */
 static struct clk tegra_clk_cclk_g = {
 	.name	= "cclk_g",
@@ -8813,6 +8948,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_hclk,
 	&tegra_clk_pclk,
 	&tegra_clk_aclk_adsp,
+	&tegra_clk_virtual_adsp_cpu,
 	&tegra_clk_virtual_cpu_g,
 	&tegra_clk_virtual_cpu_lp,
 	&tegra_clk_cpu_cmplx,
@@ -8970,18 +9106,21 @@ static void tegra21_pllp_init_dependencies(unsigned long pllp_rate)
 		tegra_pll_p_out4.u.pll_div.default_rate = 108000000;
 		tegra_pll_p_out5.u.pll_div.default_rate = 108000000;
 		tegra_clk_host1x.u.periph.threshold = 108000000;
+		tegra_clk_aclk_adsp.u.cclk.div71 = 2; /* reg settings */
 		break;
 	case 408000000:
 		tegra_pll_p_out3.u.pll_div.default_rate = 102000000;
 		tegra_pll_p_out4.u.pll_div.default_rate = 204000000;
 		tegra_pll_p_out5.u.pll_div.default_rate = 204000000;
 		tegra_clk_host1x.u.periph.threshold = 204000000;
+		tegra_clk_aclk_adsp.u.cclk.div71 = 2; /* reg settings */
 		break;
 	case 204000000:
 		tegra_pll_p_out3.u.pll_div.default_rate = 102000000;
 		tegra_pll_p_out4.u.pll_div.default_rate = 204000000;
 		tegra_pll_p_out5.u.pll_div.default_rate = 204000000;
 		tegra_clk_host1x.u.periph.threshold = 204000000;
+		tegra_clk_aclk_adsp.u.cclk.div71 = 0; /* reg settings */
 		break;
 	default:
 		pr_err("tegra: PLLP rate: %lu is not supported\n", pllp_rate);
