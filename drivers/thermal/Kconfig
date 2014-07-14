@@ -229,6 +229,14 @@ config PALMAS_THERMAL
 	 different critical temperature thresholds from which we can notify
 	 thermal core to orderly power off the system.
 
+config MAX77620_THERMAL
+        tristate "Maxim 77620 Thermal driver"
+        depends on MFD_MAX77620
+        help
+         Max77620 pmic chip supports hot die interrupt configurable for two
+         different critical temperature thresholds from which we can notify
+         thermal core to orderly power off the system.
+
 config SENSORS_TMP006
 	tristate "Skin Temperature Sensor"
 	depends on I2C
