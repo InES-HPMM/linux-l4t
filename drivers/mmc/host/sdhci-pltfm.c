@@ -278,7 +278,7 @@ static int sdhci_pltfm_resume(struct device *dev)
 	return ret;
 }
 
-#ifdef CONFIG_PM_RUNTIME
+#if defined(CONFIG_MMC_PM_DOMAIN)
 
 static int sdhci_runtime_suspend(struct device *dev)
 {
@@ -303,9 +303,9 @@ static int sdhci_runtime_idle(struct device *dev)
 
 #else
 
-#define sdhci_acpi_runtime_suspend	NULL
-#define sdhci_acpi_runtime_resume	NULL
-#define sdhci_acpi_runtime_idle		NULL
+#define sdhci_runtime_suspend	NULL
+#define sdhci_runtime_resume	NULL
+#define sdhci_runtime_idle	NULL
 
 #endif
 

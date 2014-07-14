@@ -171,6 +171,7 @@ static int tegra_mc_clk_power_on(struct generic_pm_domain *genpd)
 }
 #endif
 
+#ifdef CONFIG_MMC_PM_DOMAIN
 static void suspend_devices_in_domain(struct generic_pm_domain *genpd)
 {
 	struct pm_domain_data *pdd;
@@ -237,7 +238,7 @@ static struct tegra_pm_domain tegra_sdhci2 = {
 	.gpd.power_on = tegra_core_power_on,
 	.gpd.power_off_delay = 5000,
 };
-
+#endif
 static struct tegra_pm_domain tegra_mc_clk = {
 	.gpd.name = "tegra_mc_clk",
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
@@ -264,10 +265,12 @@ static struct domain_client client_list[] = {
 	{ .name = "tegra_nvavp", .domain = &tegra_mc_clk.gpd },
 	{ .name = "nvavp", .domain = &tegra_nvavp.gpd },
 #endif
+#ifdef CONFIG_MMC_PM_DOMAIN
 	{ .name = "sdhci-tegra.3", .domain = &tegra_sdhci3.gpd },
 	{ .name = "sdhci-tegra.2", .domain = &tegra_sdhci2.gpd },
-	{ .name = "sdhci-tegra", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra_sdhci", .domain = &tegra_mc_clk.gpd },
+#endif
+	{ .name = "sdhci-tegra", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra11-se", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra12-se", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-pcie", .domain = &tegra_mc_clk.gpd },
@@ -284,6 +287,7 @@ static int __init tegra_init_pm_domain(void)
 	tegra_pd_add_sd(&tegra_nvavp.gpd);
 #endif
 
+#ifdef CONFIG_MMC_PM_DOMAIN
 	/*
 	 * Below Autosuspend delay can be increased/decreased based on
 	 * power and perf data
@@ -296,6 +300,7 @@ static int __init tegra_init_pm_domain(void)
 	pm_genpd_init(&tegra_sdhci2.gpd, &simple_qos_governor, false);
 	tegra_pd_add_sd(&tegra_sdhci2.gpd);
 	pm_genpd_set_poweroff_delay(&tegra_sdhci2.gpd, 5000);
+#endif
 
 	return 0;
 }

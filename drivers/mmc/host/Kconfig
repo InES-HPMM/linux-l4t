@@ -655,3 +655,11 @@ config MMC_REALTEK_PCI
 	help
 	  Say Y here to include driver code to support SD/MMC card interface
 	  of Realtek PCI-E card reader
+
+config MMC_PM_DOMAIN
+	bool "Enable PM Domain for SD/MMC devices"
+	depends on PM_RUNTIME
+	default N
+	help
+	  If you say Y here, the MMC layer PM domain will be enabled
+	  for  SD/MMC device.

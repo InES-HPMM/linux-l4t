@@ -1482,6 +1482,9 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+#ifndef CONFIG_MMC_PM_DOMAIN
+	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
+#endif
 	u8 ctrl;
 	int ret = 0;
 
@@ -1490,6 +1493,9 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		mmc_hostname(sdhci->mmc), clock, tegra_host->clk_enabled);
 	if (clock) {
 		if (!tegra_host->clk_enabled) {
+#ifndef CONFIG_MMC_PM_DOMAIN
+			pm_runtime_get_sync(&pdev->dev);
+#endif
 			ret = clk_prepare_enable(pltfm_host->clk);
 			if (ret) {
 				dev_err(mmc_dev(sdhci->mmc),
@@ -1537,6 +1543,9 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		clk_disable_unprepare(pltfm_host->clk);
 		tegra_host->clk_enabled = false;
 		sdhci->is_clk_on = tegra_host->clk_enabled;
+#ifndef CONFIG_MMC_PM_DOMAIN
+		pm_runtime_put_sync(&pdev->dev);
+#endif
 	}
 	mutex_unlock(&tegra_host->set_clock_mutex);
 }
@@ -4445,11 +4454,13 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_pd_add_device(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 	pm_runtime_use_autosuspend(&pdev->dev);
+#ifdef CONFIG_MMC_PM_DOMAIN
 	/*
 	 * Below Autosuspend delay can be increased/decreased based on
 	 * power and perf data
 	 */
 	pm_runtime_set_autosuspend_delay(&pdev->dev, 5000);
+#endif
 
 	/* Get the ddr clock */
 	tegra_host->ddr_clk = clk_get(mmc_dev(host->mmc), "ddr");
@@ -4483,6 +4494,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (clk_get_parent(pltfm_host->clk) == tegra_host->pll_source[0].pll)
 		tegra_host->is_parent_pll_source_1 = true;
 
+#ifndef CONFIG_MMC_PM_DOMAIN
+	pm_runtime_get_sync(&pdev->dev);
+#endif
 	rc = clk_prepare_enable(pltfm_host->clk);
 	if (rc != 0)
 		goto err_clk_put;
@@ -4625,6 +4639,10 @@ err_add_host:
 		clk_disable_unprepare(tegra_host->ddr_clk);
 	else
 		clk_disable_unprepare(tegra_host->sdr_clk);
+
+#ifndef CONFIG_MMC_PM_DOMAIN
+	pm_runtime_put_sync(&pdev->dev);
+#endif
 err_clk_put:
 	if (tegra_host->ddr_clk)
 		clk_put(tegra_host->ddr_clk);
@@ -4682,6 +4700,9 @@ static int sdhci_tegra_remove(struct platform_device *pdev)
 			clk_disable_unprepare(tegra_host->ddr_clk);
 		else
 			clk_disable_unprepare(tegra_host->sdr_clk);
+#ifndef CONFIG_MMC_PM_DOMAIN
+		pm_runtime_put_sync(&pdev->dev);
+#endif
 	}
 
 	if (tegra_host->ddr_clk)
