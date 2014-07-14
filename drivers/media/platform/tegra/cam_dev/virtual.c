@@ -135,28 +135,6 @@ static int virtual_update(
 		}
 		case UPDATE_PINMUX:
 		{
-			u32 *pinmux;
-
-			if (!cdev->pinmux_num) {
-				dev_err(cdev->dev, "NO pinmux available.\n");
-				err = -ENODEV;
-				break;
-			}
-			if (upd[idx].arg >= cdev->pinmux_num) {
-				dev_err(cdev->dev,
-					"pinmux index %u out of range.\n",
-					upd[idx].arg);
-				err = -ENODEV;
-				break;
-			}
-
-			dev_dbg(cdev->dev, "UPDATE_PINMUX: %d %u\n",
-				upd[idx].index, upd[idx].arg);
-			if (!upd[idx].index)
-				pinmux = &cdev->mclk_enable_idx;
-			else
-				pinmux = &cdev->mclk_disable_idx;
-			*pinmux = upd[idx].arg;
 			break;
 		}
 		case UPDATE_GPIO:
@@ -289,8 +267,6 @@ static int virtual_instance_create(struct camera_device *cdev, void *pdata)
 		return -ENOMEM;
 	}
 
-	cdev->pinmux_num = ((struct camera_platform_data *)pdata)->pinmux_num;
-	cdev->pinmux_tbl = ((struct camera_platform_data *)pdata)->pinmux;
 	cdev->num_gpio = c_info->gpio_num;
 	cdev->regs = (void *)cdev->gpios +
 		c_info->gpio_num * sizeof(*cdev->gpios);

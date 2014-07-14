@@ -240,8 +240,6 @@ struct camera_module {
 
 struct camera_platform_data {
 	unsigned cfg;
-	int pinmux_num;
-	struct tegra_pingroup_config **pinmux;
 	struct camera_module *modules;
 	struct camera_data_blob *lut;
 	struct device_node *of_profiles;
@@ -280,8 +278,6 @@ struct camera_device {
 	u32 num_reg;
 	struct nvc_gpio *gpios;
 	u32 num_gpio;
-	struct tegra_pingroup_config **pinmux_tbl;
-	u32 pinmux_num;
 	u32 mclk_enable_idx;
 	u32 mclk_disable_idx;
 	struct regulator *ext_regs;

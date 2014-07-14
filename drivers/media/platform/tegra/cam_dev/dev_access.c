@@ -372,39 +372,8 @@ int camera_dev_parser(
 			"GPIO %d %d\n", val, flag & 0x01);
 		break;
 	case CAMERA_TABLE_PINMUX:
-		if (!cdev->pinmux_num) {
-			dev_dbg(cdev->dev,
-				"%s PINMUX TABLE\n", "no");
-			break;
-		}
-		flag = val & CAMERA_TABLE_PINMUX_FLAG_ON ? 0xff : 0;
-		if (flag) {
-			if (cdev->mclk_enable_idx == CAMDEV_INVALID) {
-				dev_dbg(cdev->dev,
-					"%s enable PINMUX\n", "no");
-				break;
-			}
-			val = cdev->mclk_enable_idx;
-		} else {
-			if (cdev->mclk_disable_idx == CAMDEV_INVALID) {
-				dev_dbg(cdev->dev,
-					"%s disable PINMUX\n", "no");
-				break;
-			}
-			val = cdev->mclk_disable_idx;
-		}
-		tegra_pinmux_config_table(
-			cdev->pinmux_tbl[val], 1);
-		dev_dbg(cdev->dev, "PINMUX %d\n", flag & 0x01);
-		break;
 	case CAMERA_TABLE_INX_PINMUX:
-		if (val >= cdev->pinmux_num) {
-			dev_err(cdev->dev,
-				"pinmux idx %d out of range.\n", val);
-				break;
-		}
-		tegra_pinmux_config_table(cdev->pinmux_tbl[val], 1);
-		dev_dbg(cdev->dev, "PINMUX %d done.\n", val);
+		dev_dbg(cdev->dev, "%s PINMUX CONFIG\n", "no");
 		break;
 	case CAMERA_TABLE_REG_NEW_POWER:
 		break;
