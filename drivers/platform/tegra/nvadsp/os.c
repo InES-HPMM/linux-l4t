@@ -72,12 +72,6 @@
 
 /* Maximum number of LOAD MAPPINGS supported */
 #define NM_LOAD_MAPPINGS 20
-#define SYM_NAME_SZ 128
-
-struct global_sym_info {
-	uint32_t addr;
-	char name[SYM_NAME_SZ];
-};
 
 #define UART_BAUD_RATE	9600
 
@@ -220,13 +214,18 @@ static inline void dump_global_symbol_table(void)
 	int i;
 
 	if (!table) {
-		dev_info(dev, "no table not created\n");
+		dev_err(dev, "no table not created\n");
 		return;
 	}
 	num_ent = table[0].addr;
+	dev_info(dev,
+	    "total number of entries in global symbol table %d\n", num_ent);
 
+	pr_info("NAME ADDRESS TYPE\n");
 	for (i = 1; i < num_ent; i++)
-		pr_info("%s %x\n", table[i].name, table[i].addr);
+		pr_info("%s %x %s\n", table[i].name, table[i].addr,
+				ELF32_ST_TYPE(table[i].info) == STT_FUNC ?
+						    "STT_FUNC" : "STT_OBJECT");
 }
 
 static int
@@ -259,14 +258,14 @@ create_global_symbol_table(const struct firmware *fw)
 	last_sym = sym + num_ent;
 
 	for (i = 1; sym < last_sym; sym++) {
+		unsigned char info = sym->st_info;
+		unsigned char type = ELF32_ST_TYPE(info);
 		if ((ELF32_ST_BIND(sym->st_info) == STB_GLOBAL) &&
-		((ELF32_ST_TYPE(sym->st_info) == STT_OBJECT) ||
-		(ELF32_ST_TYPE(sym->st_info) == STT_FUNC))) {
+		((type == STT_OBJECT) || (type == STT_FUNC))) {
 			char *name = priv.adsp_glo_sym_tbl[i].name;
-			strncpy(name, name_table + sym->st_name,
-							SYM_NAME_SZ);
-			priv.adsp_glo_sym_tbl[i].addr =
-						sym->st_value - 1;
+			strncpy(name, name_table + sym->st_name, SYM_NAME_SZ);
+			priv.adsp_glo_sym_tbl[i].addr = sym->st_value;
+			priv.adsp_glo_sym_tbl[i].info = info;
 			i++;
 		}
 	}
@@ -274,7 +273,7 @@ create_global_symbol_table(const struct firmware *fw)
 	return 0;
 }
 
-uint32_t find_global_symbol(const char *sym_name)
+struct global_sym_info *find_global_symbol(const char *sym_name)
 {
 	struct device *dev = &priv.pdev->dev;
 	struct global_sym_info *table = priv.adsp_glo_sym_tbl;
@@ -288,10 +287,10 @@ uint32_t find_global_symbol(const char *sym_name)
 	num_ent = table[0].addr;
 
 	for (i = 1; i < num_ent; i++) {
-		if (!strcmp(table[i].name, sym_name))
-			return table[i].addr;
+		if (!strncmp(table[i].name, sym_name, SYM_NAME_SZ))
+			return &table[i];
 	}
-	return 0;
+	return NULL;
 }
 
 void *get_mailbox_shared_region(void)

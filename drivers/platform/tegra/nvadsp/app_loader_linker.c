@@ -23,6 +23,7 @@
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/firmware.h>
+#include <linux/kernel.h>
 
 #include "os.h"
 
@@ -137,6 +138,7 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 	Elf32_Shdr *relsec = sechdrs + relindex;
 	Elf32_Shdr *dstsec = sechdrs + relsec->sh_info;
 	Elf32_Rel *rel = (void *)info->hdr + relsec->sh_offset;
+	struct device *dev = info->dev;
 	unsigned int i;
 
 	pr_debug("the relative section is %s dst %s sym %s\n",
@@ -150,6 +152,8 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 		s32 offset;
 		u32 upper, lower, sign, j1, j2;
 		uint32_t adsp_loc;
+		bool switch_mode = false;
+		int h_bit = 0;
 
 		offset = ELF32_R_SYM(rel->r_info);
 		if (offset < 0 || (offset >
@@ -161,9 +165,9 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 
 		sym = ((Elf32_Sym *)(module->module_ptr
 					+ symsec->sh_addr)) + offset;
-		symname = info->secstrings + sym->st_name;
+		symname = info->strtab + sym->st_name;
 
-		pr_debug("%c\n", *symname);
+		dev_dbg(dev, "%s\n", symname);
 
 		if (rel->r_offset < 0 ||
 		rel->r_offset > dstsec->sh_size - sizeof(u32)) {
@@ -202,8 +206,17 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 				offset -= 0x04000000;
 
 			offset += sym->st_value - adsp_loc;
-			if (offset & 3 ||
-			    offset <= (s32)0xfe000000 ||
+			if ((ELF32_ST_TYPE(sym->st_info) == STT_FUNC)
+							    && (offset & 3)) {
+				dev_dbg(dev, "switching the mode from ARM to THUMB\n");
+				switch_mode = true;
+				h_bit = (offset & 2);
+				dev_dbg(dev,
+					"%s offset 0x%x hbit %d",
+						symname, offset, h_bit);
+			}
+
+			if (offset <= (s32)0xfe000000 ||
 			    offset >= (s32)0x02000000) {
 				pr_err("%s: section %u reloc %u sym '%s': relocation %u out of range (%p -> %#x)\n",
 				       module->name, relindex, i, symname,
@@ -216,6 +229,17 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 
 			*(u32 *)loc &= 0xff000000;
 			*(u32 *)loc |= offset & 0x00ffffff;
+			if (switch_mode) {
+				*(u32 *)loc &= ~(0xff000000);
+				if (h_bit)
+					*(u32 *)loc |= 0xfb000000;
+				else
+					*(u32 *)loc |= 0xfa000000;
+			}
+
+			dev_dbg(dev,
+				"%s address 0x%x instruction 0x%x\n",
+					symname, adsp_loc, *(u32 *)loc);
 			break;
 
 		case R_ARM_V4BX:
@@ -289,9 +313,15 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 			 * the branch is resolved under the assumption
 			 * that interworking is not required.
 			 */
-			if ((ELF32_ST_TYPE(sym->st_info) == STT_FUNC &&
-				!(offset & 1)) ||
-			    offset <= (s32)0xff000000 ||
+			if (ELF32_ST_TYPE(sym->st_info) == STT_FUNC &&
+				!(offset & 1)) {
+				dev_dbg(dev,
+				"switching the mode from THUMB to ARM\n");
+				switch_mode = true;
+				offset = ALIGN(offset, 4);
+			}
+
+			if (offset <= (s32)0xff000000 ||
 			    offset >= (s32)0x01000000) {
 				pr_err("%s: section %u reloc %u sym '%s': relocation %u out of range (%p -> %#x)\n",
 				       module->name, relindex, i, symname,
@@ -308,6 +338,19 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 			*(u16 *)(loc + 2) = (u16)((lower & 0xd000) |
 						  (j1 << 13) | (j2 << 11) |
 						  ((offset >> 1) & 0x07ff));
+
+			if (switch_mode) {
+				lower = *(u16 *)(loc + 2);
+				lower &= (~(1 << 12));
+				*(u16 *)(loc + 2) = lower;
+			}
+
+			dev_dbg(dev,
+				"%s address 0x%x upper instruction 0x%x\n",
+					symname, adsp_loc, *(u16 *)loc);
+			dev_dbg(dev,
+				"%s address 0x%x lower instruction 0x%x\n",
+					symname, adsp_loc, *(u16 *)(loc + 2));
 			break;
 
 		case R_ARM_THM_MOVW_ABS_NC:
@@ -391,7 +434,8 @@ simplify_symbols(struct adsp_module *mod,
 	unsigned int secbase;
 	unsigned int i;
 	int ret = 0;
-	int addr;
+	struct global_sym_info *sym_info;
+	struct device *dev = info->dev;
 
 	for (i = 1; i < symsec->sh_size / sizeof(Elf32_Sym); i++) {
 		const char *name = info->strtab + sym[i].st_name;
@@ -414,18 +458,18 @@ simplify_symbols(struct adsp_module *mod,
 			break;
 
 		case SHN_UNDEF:
-			pr_debug("in undefined symbol\n");
-			addr = find_global_symbol(name);
+			sym_info = find_global_symbol(name);
 
 			/* Ok if resolved.  */
-			if (addr != -EINVAL) {
-				pr_debug("SHN_UNDEF sym '%s':0x%x\n",
-							name, addr);
-				sym[i].st_value = addr;
+			if (sym_info) {
+				dev_dbg(dev, "SHN_UNDEF sym '%s':0x%x\n",
+							name, sym_info->addr);
+				sym[i].st_value = sym_info->addr;
+				sym[i].st_info = sym_info->info;
 				break;
 			}
 
-			pr_err("No symbol '%s' found\n", name);
+			dev_err(dev, "No symbol '%s' found\n", name);
 			ret = -ENOEXEC;
 			goto end;
 

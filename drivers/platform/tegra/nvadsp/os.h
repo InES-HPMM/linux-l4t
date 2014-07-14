@@ -22,6 +22,20 @@
 #define CONFIG_USE_STATIC_APP_LOAD	0
 #define CONFIG_SYSTEM_FPGA		1
 
+#define SYM_NAME_SZ 128
+
+/**
+ * struct global_sym_info - Global Symbol information required by app loader.
+ * @name:	Name of the symbol
+ * @addr:	Address of the symbol
+ * @info:	Type and binding attributes
+ */
+struct global_sym_info {
+	char name[SYM_NAME_SZ];
+	uint32_t addr;
+	unsigned char info;
+};
+
 struct app_mem_size {
 	uint64_t dram;
 	uint64_t dram_shared;
@@ -42,7 +56,7 @@ int nvadsp_app_module_probe(struct platform_device *);
 int adsp_add_load_mappings(phys_addr_t, void *, int);
 void *get_mailbox_shared_region(void);
 struct elf32_shdr *nvadsp_get_section(const struct firmware *, char *);
-uint32_t find_global_symbol(const char *);
+struct global_sym_info *find_global_symbol(const char *);
 void update_nvadsp_app_shared_ptr(void *);
 struct adsp_module
 *load_adsp_module(const char *, const char *, struct device *);
