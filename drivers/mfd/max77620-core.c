@@ -46,6 +46,19 @@ static struct resource rtc_resources[] = {
 	}
 };
 
+static struct resource thermal_resources[] = {
+	{
+		.start	= MAX77620_IRQ_LBT_TJALRM1,
+		.end	= MAX77620_IRQ_LBT_TJALRM1,
+		.flags  = IORESOURCE_IRQ,
+	},
+	{
+		.start	= MAX77620_IRQ_LBT_TJALRM2,
+		.end	= MAX77620_IRQ_LBT_TJALRM2,
+		.flags  = IORESOURCE_IRQ,
+	}
+};
+
 static const struct regmap_irq max77620_top_irqs[] = {
 	[MAX77620_IRQ_TOP_GLBL] = {
 		.mask = MAX77620_IRQ_TOP_GLBL_MASK,
@@ -75,6 +88,20 @@ static const struct regmap_irq max77620_top_irqs[] = {
 		.mask = MAX77620_IRQ_TOP_ONOFF_MASK,
 		.reg_offset = 0,
 	},
+
+	[MAX77620_IRQ_LBT_MBATLOW] = {
+		.mask = MAX77620_IRQ_LBM_MASK,
+		.reg_offset = 1,
+	},
+	[MAX77620_IRQ_LBT_TJALRM1] = {
+		.mask = MAX77620_IRQ_TJALRM1_MASK,
+		.reg_offset = 1,
+	},
+	[MAX77620_IRQ_LBT_TJALRM2] = {
+		.mask = MAX77620_IRQ_TJALRM2_MASK,
+		.reg_offset = 1,
+	},
+
 };
 
 enum max77660_ids {
@@ -85,6 +112,7 @@ enum max77660_ids {
 	MAX77620_CLK_ID,
 	MAX77620_POWER_OFF_ID,
 	MAX77620_WDT_ID,
+	MAX77620_THERMAL_ID,
 };
 
 static struct mfd_cell max77620_children[] = {
@@ -120,6 +148,12 @@ static struct mfd_cell max77620_children[] = {
 		.name = "max77620-wdt",
 		.id = MAX77620_WDT_ID,
 	},
+	[MAX77620_THERMAL_ID] = {
+		.name = "max77620-thermal",
+		.num_resources	= ARRAY_SIZE(thermal_resources),
+		.resources	= &thermal_resources[0],
+		.id = MAX77620_POWER_OFF_ID,
+	},
 };
 
 int max77620_top_irq_chip_pre_irq(void *data)
@@ -129,7 +163,7 @@ int max77620_top_irq_chip_pre_irq(void *data)
 
 	ret = max77620_reg_update(chip->dev, MAX77620_PWR_SLAVE,
 		MAX77620_REG_INTENLBT, MAX77620_GLBLM_MASK,
-		MAX77620_REG_INTENLBT);
+		MAX77620_GLBLM_MASK);
 	if (ret < 0)
 		dev_err(chip->dev, "GLBLM masking failed: %d\n", ret);
 
@@ -153,8 +187,7 @@ static struct regmap_irq_chip max77620_top_irq_chip = {
 	.name = "max77620-top",
 	.irqs = max77620_top_irqs,
 	.num_irqs = ARRAY_SIZE(max77620_top_irqs),
-	.num_regs = 1,
-	.irq_reg_stride = 1,
+	.num_regs = 2,
 	.status_base = MAX77620_REG_IRQTOP,
 	.mask_base = MAX77620_REG_IRQTOPM,
 	.pre_irq = max77620_top_irq_chip_pre_irq,
@@ -299,15 +332,15 @@ static int max77620_initialise_fps(struct max77620_chip *chip,
 			chip->enable_global_lpm = of_property_read_bool(child,
 						"maxim,enable-global-lpm");
 
-		config = (((time_period /40) - 1) & 0x7) <<
+		config = (((time_period / 40) - 1) & 0x7) <<
 				MAX77620_FPS_TIME_PERIOD_SHIFT;
-		config |= (input_enable & 0x3 ) << MAX77620_FPS_EN_SRC_SHIFT;
+		config |= (input_enable & 0x3) << MAX77620_FPS_EN_SRC_SHIFT;
 		if (enable_fps)
 			config |= 1;
 		ret = max77620_reg_update(dev, MAX77620_PWR_SLAVE,
 				MAX77620_REG_FPS_CFG0 + reg, mask, config);
 		if (ret < 0) {
-			 dev_err(dev, "Reg 0x%02x write failed, %d\n",
+			dev_err(dev, "Reg 0x%02x write failed, %d\n",
 				MAX77620_REG_FPS_CFG0 + reg, ret);
 			return ret;
 		}
@@ -450,12 +483,12 @@ static int max77620_i2c_suspend(struct device *dev)
 			config);
 	if (ret < 0)
 		dev_err(dev, "Reg ONOFFCNFG1 update failed: %d\n", ret);
-        return 0;
+	return 0;
 }
 
 static int max77620_i2c_resume(struct device *dev)
 {
-        return 0;
+	return 0;
 }
 #endif
 
