@@ -622,7 +622,7 @@ static struct as364x_platform_data ardbeg_as3648_data = {
 		.max_peak_current_mA = 600,
 		.max_torch_current_mA = 600,
 		.vin_low_v_run_mV = 3070,
-		.strobe_type = 1,
+		.strobe_type = 3,
 		},
 	.pinstate	= {
 		.mask	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0),
