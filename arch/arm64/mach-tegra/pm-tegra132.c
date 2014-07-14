@@ -30,6 +30,7 @@
 
 #include "pm.h"
 #include "sleep.h"
+#include "common.h"
 #include "flowctrl.h"
 #include "pm-soc.h"
 #include "common.h"
@@ -184,6 +185,7 @@ static struct notifier_block cpu_notifier_block = {
 	.notifier_call = cpu_notify,
 };
 
+#ifdef CONFIG_SMP
 /*
  * LP0 WAR: Bring all CPUs online before LP0 so that they can be put into C7 on
  * subsequent __cpu_downs otherwise we end up hanging the system by leaving a
@@ -245,12 +247,12 @@ static void tegra132_boot_secondary_cpu(int cpu)
 	flowctrl_write_cpu_halt(cpu, 0);
 	tegra_cpu_car_ops->out_of_reset(cpu);
 }
+#endif
 
 void __init tegra_soc_suspend_init(void)
 {
 	tegra_tear_down_cpu = tegra132_tear_down_cpu;
 	tegra_sleep_core_finish = tegra132_sleep_core_finish;
-	tegra_boot_secondary_cpu = tegra132_boot_secondary_cpu;
 
 	/* Notifier to disable/enable BGALLOW */
 	cpu_pm_register_notifier(&cpu_pm_notifier_block);
@@ -258,9 +260,13 @@ void __init tegra_soc_suspend_init(void)
 	/* Notifier to enable BGALLOW for CPU1-only */
 	register_hotcpu_notifier(&cpu_notifier_block);
 
+#ifdef CONFIG_SMP
+	tegra_boot_secondary_cpu = tegra132_boot_secondary_cpu;
+
 	/* Notifier to wakeup CPU1 to enter C7 before LP0 */
 	if (register_pm_notifier(&suspend_notifier))
 		pr_err("%s: Failed to register suspend notifier\n", __func__);
+#endif
 }
 
 static int tegra132_reset_vector_init(void)
