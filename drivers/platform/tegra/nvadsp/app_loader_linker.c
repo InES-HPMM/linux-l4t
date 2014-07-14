@@ -141,10 +141,11 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 	struct device *dev = info->dev;
 	unsigned int i;
 
-	pr_debug("the relative section is %s dst %s sym %s\n",
+	dev_dbg(dev, "the relative section is %s dst %s sym %s\n",
 				info->secstrings + relsec->sh_name,
 				info->secstrings + dstsec->sh_name,
 				info->secstrings + symsec->sh_name);
+
 	for (i = 0; i < relsec->sh_size / sizeof(Elf32_Rel); i++, rel++) {
 		void *loc;
 		Elf32_Sym *sym;
@@ -158,7 +159,7 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 		offset = ELF32_R_SYM(rel->r_info);
 		if (offset < 0 || (offset >
 			(symsec->sh_size / sizeof(Elf32_Sym)))) {
-			pr_err("%s: section %u reloc %u: bad relocation sym offset\n",
+			dev_err(dev, "%s: section %u reloc %u: bad relocation sym offset\n",
 				module->name, relindex, i);
 			return -ENOEXEC;
 		}
@@ -171,7 +172,8 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 
 		if (rel->r_offset < 0 ||
 		rel->r_offset > dstsec->sh_size - sizeof(u32)) {
-			pr_err("%s: section %u reloc %u sym '%s': out of bounds relocation, offset %d size %u\n",
+			dev_err(dev,
+			"%s: section %u reloc %u sym '%s': out of bounds relocation, offset %d size %u\n",
 			       module->name, relindex, i, symname,
 			       rel->r_offset, dstsec->sh_size);
 			return -ENOEXEC;
@@ -180,19 +182,19 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 		loc = module->module_ptr + dstsec->sh_addr + rel->r_offset;
 		adsp_loc = module->adsp_module_ptr +
 				dstsec->sh_addr + rel->r_offset;
-		pr_debug("%p 0x%x\n", loc, adsp_loc);
+		dev_dbg(dev, "%p 0x%x\n", loc, adsp_loc);
 
 		switch (ELF32_R_TYPE(rel->r_info)) {
 		case R_ARM_NONE:
-			pr_debug("in R_ARM_NONE\n");
+			dev_dbg(dev, "R_ARM_NONE\n");
 			/* ignore */
 			break;
 
 		case R_ARM_ABS32:
 		case R_ARM_TARGET1:
-			pr_debug("in R_ARM_ABS32\n");
+			dev_dbg(dev, "R_ARM_ABS32\n");
 			*(u32 *)loc += sym->st_value;
-			pr_debug("addrs: 0x%x %p  values: 0x%x 0x%x\n",
+			dev_dbg(dev, "addrs: 0x%x %p  values: 0x%x 0x%x\n",
 					adsp_loc, loc, sym->st_value,
 							*(u32 *)loc);
 			break;
@@ -200,7 +202,7 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 		case R_ARM_PC24:
 		case R_ARM_CALL:
 		case R_ARM_JUMP24:
-			pr_debug("in R_ARM_CALL R_ARM_JUMP24\n");
+			dev_dbg(dev, "R_ARM_CALL R_ARM_JUMP24\n");
 			offset = (*(u32 *)loc & 0x00ffffff) << 2;
 			if (offset & 0x02000000)
 				offset -= 0x04000000;
@@ -218,7 +220,8 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 
 			if (offset <= (s32)0xfe000000 ||
 			    offset >= (s32)0x02000000) {
-				pr_err("%s: section %u reloc %u sym '%s': relocation %u out of range (%p -> %#x)\n",
+				dev_err(dev,
+				"%s: section %u reloc %u sym '%s': relocation %u out of range (%p -> %#x)\n",
 				       module->name, relindex, i, symname,
 				       ELF32_R_TYPE(rel->r_info), loc,
 				       sym->st_value);
@@ -243,7 +246,7 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 			break;
 
 		case R_ARM_V4BX:
-			pr_debug("in R_ARM_V4BX\n");
+			dev_dbg(dev, "R_ARM_V4BX\n");
 		       /* Preserve Rm and the condition code. Alter
 			* other bits to re-code instruction as
 			* MOV PC,Rm.
@@ -253,14 +256,14 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 		       break;
 
 		case R_ARM_PREL31:
-			pr_debug("in R_ARM_PREL31\n");
+			dev_dbg(dev, "R_ARM_PREL31\n");
 			offset = *(u32 *)loc + sym->st_value - adsp_loc;
 			*(u32 *)loc = offset & 0x7fffffff;
 			break;
 
 		case R_ARM_MOVW_ABS_NC:
 		case R_ARM_MOVT_ABS:
-			pr_debug("in R_ARM_MOVT_ABS\n");
+			dev_dbg(dev, "R_ARM_MOVT_ABS\n");
 			offset = *(u32 *)loc;
 			offset = ((offset & 0xf0000) >> 4) | (offset & 0xfff);
 			offset = (offset ^ 0x8000) - 0x8000;
@@ -276,7 +279,7 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 
 		case R_ARM_THM_CALL:
 		case R_ARM_THM_JUMP24:
-			pr_debug("in R_ARM_THM_CALL R_ARM_THM_JUMP24\n");
+			dev_dbg(dev, "R_ARM_THM_CALL R_ARM_THM_JUMP24\n");
 			upper = *(u16 *)loc;
 			lower = *(u16 *)(loc + 2);
 
@@ -323,7 +326,8 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 
 			if (offset <= (s32)0xff000000 ||
 			    offset >= (s32)0x01000000) {
-				pr_err("%s: section %u reloc %u sym '%s': relocation %u out of range (%p -> %#x)\n",
+				dev_err(dev,
+				"%s: section %u reloc %u sym '%s': relocation %u out of range (%p -> %#x)\n",
 				       module->name, relindex, i, symname,
 				       ELF32_R_TYPE(rel->r_info), loc,
 				       sym->st_value);
@@ -355,7 +359,7 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 
 		case R_ARM_THM_MOVW_ABS_NC:
 		case R_ARM_THM_MOVT_ABS:
-			pr_debug("in R_ARM_THM_MOVT_ABS\n");
+			dev_dbg(dev, "in R_ARM_THM_MOVT_ABS\n");
 			upper = *(u16 *)loc;
 			lower = *(u16 *)(loc + 2);
 
@@ -387,7 +391,7 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 			break;
 
 		default:
-			pr_err("%s: unknown relocation: %u\n",
+			dev_err(dev, "%s: unknown relocation: %u\n",
 			       module->name, ELF32_R_TYPE(rel->r_info));
 			return -ENOEXEC;
 		}
@@ -439,21 +443,21 @@ simplify_symbols(struct adsp_module *mod,
 
 	for (i = 1; i < symsec->sh_size / sizeof(Elf32_Sym); i++) {
 		const char *name = info->strtab + sym[i].st_name;
-		pr_debug("%s\n", name);
+		dev_dbg(dev, "%s\n", name);
 		switch (sym[i].st_shndx) {
 		case SHN_COMMON:
 			/* We compiled with -fno-common.  These are not
 			   supposed to happen.  */
-			pr_info("Common symbol: '%s'\n", name);
-			pr_err("%s: please compile with -fno-common\n",
-			       mod->name);
-
+			dev_err(dev, "Common symbol: '%s'\n", name);
+			dev_err(dev,
+			    "please compile module %s with -fno-common\n",
+								    mod->name);
 			ret = -ENOEXEC;
 			goto end;
 
 		case SHN_ABS:
 			/* Don't need to do anything */
-			pr_debug("Absolute symbol: 0x%08lx\n",
+			dev_dbg(dev, "Absolute symbol: 0x%08lx\n",
 			       (long)sym[i].st_value);
 			break;
 
@@ -475,10 +479,10 @@ simplify_symbols(struct adsp_module *mod,
 
 		default:
 			/* Divert to percpu allocation if a percpu var. */
-			pr_debug("in default\n");
+			dev_dbg(dev, "default\n");
 			secbase = info->sechdrs[sym[i].st_shndx].sh_addr;
 			sym[i].st_value += secbase + mod->adsp_module_ptr;
-			pr_debug("the value of symbol %s is 0x%x\n",
+			dev_dbg(dev, "symbol %s is 0x%x\n",
 						name, sym[i].st_value);
 			break;
 		}
@@ -491,14 +495,15 @@ static int move_module(struct adsp_module *mod, struct load_info *info)
 {
 	int i;
 	dma_addr_t da;
+	struct device *dev = info->dev;
 
 	mod->module_ptr = nvadsp_alloc_coherent(mod->size, &da,
 							GFP_KERNEL);
 	mod->adsp_module_ptr = (int)da;
-	pr_info("%s Load address %p 0x%x\n", info->name,
-			mod->module_ptr, mod->adsp_module_ptr);
+	dev_info(dev, "module %s Load address %p 0x%x\n", info->name,
+					mod->module_ptr, mod->adsp_module_ptr);
 	/* Transfer each section which specifies SHF_ALLOC */
-	pr_debug("final section addresses:\n");
+	dev_dbg(dev, "final section addresses:\n");
 	for (i = 0; i < info->hdr->e_shnum; i++) {
 		void *dest;
 		struct elf32_shdr *shdr = &info->sechdrs[i];
@@ -507,13 +512,13 @@ static int move_module(struct adsp_module *mod, struct load_info *info)
 			continue;
 
 		if (shdr->sh_entsize & INIT_OFFSET_MASK) {
-			pr_debug("%s %d\n",
+			dev_dbg(dev, "%s %d\n",
 				info->secstrings + shdr->sh_name,
 							shdr->sh_entsize);
 			dest = mod->module_ptr
 				+ (shdr->sh_entsize & ~INIT_OFFSET_MASK);
 		} else {
-			pr_debug("%s %d\n",
+			dev_dbg(dev, "%s %d\n",
 				info->secstrings + shdr->sh_name,
 							shdr->sh_entsize);
 			dest = mod->module_ptr + shdr->sh_entsize;
@@ -525,7 +530,7 @@ static int move_module(struct adsp_module *mod, struct load_info *info)
 							shdr->sh_size);
 		/* Update sh_addr to point to copy in image. */
 		shdr->sh_addr = (uint32_t)(dest - mod->module_ptr);
-		pr_debug("name %s 0x%x %p 0x%x 0x%x\n",
+		dev_dbg(dev, "name %s 0x%x %p 0x%x 0x%x\n",
 			info->secstrings + shdr->sh_name, shdr->sh_addr,
 			dest, shdr->sh_addr + mod->adsp_module_ptr,
 			shdr->sh_size);
@@ -578,11 +583,12 @@ static void layout_sections(struct adsp_module *mod, struct load_info *info)
 		{ ARCH_SHF_SMALL | SHF_ALLOC, 0 }
 	};
 	unsigned int m, i;
+	struct device *dev = info->dev;
 
 	for (i = 0; i < info->hdr->e_shnum; i++)
 		info->sechdrs[i].sh_entsize = ~0U;
 
-	pr_debug("Core section allocation order:\n");
+	dev_dbg(dev, "Core section allocation order:\n");
 	for (m = 0; m < ARRAY_SIZE(masks); ++m) {
 		for (i = 0; i < info->hdr->e_shnum; ++i) {
 			struct elf32_shdr *s = &info->sechdrs[i];
@@ -595,11 +601,11 @@ static void layout_sections(struct adsp_module *mod, struct load_info *info)
 				continue;
 
 			s->sh_entsize = get_offset(mod, &mod->size, s, i);
-			pr_debug("\t%s %d\n", sname, s->sh_entsize);
+			dev_dbg(dev, "\t%s %d\n", sname, s->sh_entsize);
 		}
 	}
 
-	pr_debug("Init section allocation order:\n");
+	dev_dbg(dev, "Init section allocation order:\n");
 	for (m = 0; m < ARRAY_SIZE(masks); ++m) {
 		for (i = 0; i < info->hdr->e_shnum; ++i) {
 			struct elf32_shdr *s = &info->sechdrs[i];
@@ -612,15 +618,15 @@ static void layout_sections(struct adsp_module *mod, struct load_info *info)
 				continue;
 			s->sh_entsize = (get_offset(mod, &mod->size, s, i)
 					 | INIT_OFFSET_MASK);
-			pr_debug("\t%s %d\n", sname, s->sh_entsize);
+			dev_dbg(dev, "\t%s %d\n", sname, s->sh_entsize);
 		}
 	}
 }
 
-
 static int rewrite_section_headers(struct load_info *info)
 {
 	unsigned int i;
+	struct device *dev = info->dev;
 
 	/* This should always be true, but let's be sure. */
 	info->sechdrs[0].sh_addr = 0;
@@ -629,14 +635,13 @@ static int rewrite_section_headers(struct load_info *info)
 		struct elf32_shdr *shdr = &info->sechdrs[i];
 		if (shdr->sh_type != SHT_NOBITS
 		    && info->len < shdr->sh_offset + shdr->sh_size) {
-			pr_err("Module len %lu truncated\n",
-			       info->len);
+			dev_err(dev, "Module len %lu truncated\n", info->len);
 			return -ENOEXEC;
 		}
 
 		/* Mark all sections sh_addr with their address in the
 		   temporary image. */
-		shdr->sh_addr = /* (size_t)info->hdr + */ shdr->sh_offset;
+		shdr->sh_addr = shdr->sh_offset;
 
 	}
 	return 0;
@@ -648,6 +653,7 @@ static struct adsp_module *setup_load_info(struct load_info *info)
 	unsigned int i;
 	int err;
 	struct adsp_module *mod;
+	struct device *dev = info->dev;
 
 	/* Set up the convenience variables */
 	info->sechdrs = (void *)info->hdr + info->hdr->e_shoff;
@@ -672,13 +678,13 @@ static struct adsp_module *setup_load_info(struct load_info *info)
 	/* This is temporary: point mod into copy of data. */
 	mod = kzalloc(sizeof(struct adsp_module), GFP_KERNEL);
 	if (!mod) {
-		pr_info("Unable to create module\n");
-		BUG();
+		dev_err(dev, "Unable to create module\n");
+		return ERR_PTR(-ENOMEM);
 	}
 
 	if (info->index.sym == 0) {
-		pr_warn("%s: module has no symbols (stripped?)\n",
-		       mod->name);
+		dev_warn(dev, "%s: module has no symbols (stripped?)\n",
+								mod->name);
 		return ERR_PTR(-ENOEXEC);
 	}
 
@@ -692,14 +698,14 @@ static void layout_symtab(struct adsp_module *mod, struct load_info *info)
 	struct elf32_shdr *strsect = info->sechdrs + info->index.str;
 	const struct elf32_sym *src;
 	unsigned int i, nsrc, ndst, strtab_size = 0;
+	struct device *dev = info->dev;
 
 	/* Put symbol section at end of init part of module. */
 	symsect->sh_flags |= SHF_ALLOC;
 	symsect->sh_entsize = get_offset(mod, &mod->size, symsect,
 					 info->index.sym) | INIT_OFFSET_MASK;
-	pr_debug("\t%s %d\n",
-			info->secstrings + symsect->sh_name,
-						symsect->sh_entsize);
+	dev_dbg(dev, "\t%s %d\n", info->secstrings + symsect->sh_name,
+							symsect->sh_entsize);
 
 	src = (void *)info->hdr + symsect->sh_offset;
 	nsrc = symsect->sh_size / sizeof(*src);
@@ -722,7 +728,7 @@ static void layout_symtab(struct adsp_module *mod, struct load_info *info)
 	strsect->sh_flags |= SHF_ALLOC;
 	strsect->sh_entsize = get_offset(mod, &mod->size, strsect,
 					 info->index.str) | INIT_OFFSET_MASK;
-	pr_debug("\t%s %d\n",
+	dev_dbg(dev, "\t%s %d\n",
 		info->secstrings + strsect->sh_name,
 					symsect->sh_entsize);
 }
@@ -820,9 +826,9 @@ struct adsp_module
 
 	ret = request_firmware(&fw, appfile, dev);
 	if (ret < 0) {
-		dev_info(dev,
-			"reqest firmware for %s failed with %d\n",
-						appfile, ret);
+		dev_err(dev,
+			"request firmware for %s(%s) failed with %d\n",
+							appname, appfile, ret);
 		return ERR_PTR(ret);
 	}
 
@@ -833,7 +839,7 @@ struct adsp_module
 
 	ret = elf_header_check(&info);
 	if (ret) {
-		dev_info(dev,
+		dev_err(dev,
 			"%s is not an elf file\n", appfile);
 		return ERR_PTR(ret);
 	}
@@ -846,7 +852,7 @@ struct adsp_module
 #else
 	mod = kzalloc(sizeof(struct adsp_module), GFP_KERNEL);
 	if (!mod) {
-		pr_info("Unable to create module\n");
+		dev_err(dev, "Unable to create module\n");
 		return mod;
 	}
 #endif
@@ -859,20 +865,20 @@ struct adsp_module
 	mem_size = (void *)&mod->mem_size;
 
 	if (data_shdr) {
-		dev_info(dev, "mem_size.dram_data %d\n",
+		dev_dbg(dev, "mem_size.dram_data %d\n",
 					data_shdr->sh_size);
 		mem_size->dram = data_shdr->sh_size;
 	}
 
 	if (shared_shdr) {
-		dev_info(dev, "mem_size.dram_shared %d\n",
+		dev_dbg(dev, "mem_size.dram_shared %d\n",
 				shared_shdr->sh_size);
 		mem_size->dram_shared =
 				shared_shdr->sh_size;
 	}
 
 	if (shared_wc_shdr) {
-		dev_info(dev, "shared_wc_shdr->sh_size %d\n",
+		dev_dbg(dev, "shared_wc_shdr->sh_size %d\n",
 				shared_wc_shdr->sh_size);
 		mem_size->dram_shared_wc =
 				shared_wc_shdr->sh_size;
@@ -883,14 +889,15 @@ struct adsp_module
 	/* Fix up syms, so that st_value is a pointer to location. */
 	ret = simplify_symbols(mod, &info);
 	if (ret) {
-		pr_info("Unable to simplify symbols error value %d\n", ret);
+		dev_err(dev,
+			"Unable to simplify symbols error value %d\n", ret);
 		return ERR_PTR(ret);
 	}
 
-	pr_info("applying relocation\n");
+	dev_info(dev, "applying relocation\n");
 	ret = apply_relocations(mod, &info);
 	if (ret) {
-		pr_info("relocation failed\n");
+		dev_err(dev, "relocation failed\n");
 		return ERR_PTR(ret);
 	}
 #endif
