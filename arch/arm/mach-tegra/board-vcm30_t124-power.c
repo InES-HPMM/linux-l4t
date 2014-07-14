@@ -365,28 +365,6 @@ int __init vcm30_t124_soctherm_init(void)
 
 /*
  * GPIO init table for PCA9539 MISC IO GPIOs
- * that have to be brought up to a known good state
- * except for WiFi as it is handled via the
- * WiFi stack.
- */
-static struct gpio vcm30_t124_system_0_gpios[] = {
-	{MISCIO_BT_RST_GPIO,    GPIOF_OUT_INIT_HIGH, "bt_rst"},
-#ifdef CONFIG_TEGRA_PREPOWER_WIFI
-	{MISCIO_WF_EN_GPIO,     GPIOF_OUT_INIT_HIGH, "wifi_en"},
-	{MISCIO_WF_RST_GPIO,    GPIOF_OUT_INIT_HIGH, "wifi_rst"},
-#else
-	{MISCIO_WF_EN_GPIO,     GPIOF_OUT_INIT_LOW,  "wifi_en"},
-	{MISCIO_WF_RST_GPIO,    GPIOF_OUT_INIT_LOW,  "wifi_rst"},
-#endif
-	{MISCIO_BT_EN_GPIO,     GPIOF_OUT_INIT_HIGH, "bt_en"},
-	{MISCIO_BT_WAKEUP_GPIO, GPIOF_OUT_INIT_HIGH, "bt_wk"},
-	{MISCIO_ABB_RST_GPIO,   GPIOF_OUT_INIT_HIGH, "ebb_rst"},
-	{MISCIO_USER_LED2_GPIO, GPIOF_OUT_INIT_LOW,  "usr_led2"},
-	{MISCIO_USER_LED1_GPIO, GPIOF_OUT_INIT_LOW,  "usr_led1"},
-};
-
-/*
- * GPIO init table for PCA9539 MISC IO GPIOs
  * related to DAP_D_SEL and DAP_D_EN.
  */
 static struct gpio vcm30_t124_system_1_gpios[] = {
@@ -399,25 +377,6 @@ static struct gpio vcm30_t124_system_2_gpios[] = {
 	{MISCIO_MDM_COLDBOOT,	GPIOF_IN,		"mdm_coldboot"},
 	{MISCIO_AP_MDM_RESET,	GPIOF_OUT_INIT_HIGH|GPIOF_EXPORT, "ap_mdm_rst"}
 };
-
-static int __init vcm30_t124_system_0_gpio_init(void)
-{
-	int ret, pin_count = 0;
-	struct gpio *gpios_info = NULL;
-	gpios_info = vcm30_t124_system_0_gpios;
-	pin_count = ARRAY_SIZE(vcm30_t124_system_0_gpios);
-
-	/* Set required system GPIOs to initial bootup values */
-	ret = gpio_request_array(gpios_info, pin_count);
-
-	if (ret)
-		pr_err("%s gpio_request_array failed(%d)\r\n",
-				 __func__, ret);
-
-	gpio_free_array(gpios_info, pin_count);
-
-	return ret;
-}
 
 static int __init vcm30_t124_system_1_gpio_init(void)
 {
@@ -476,9 +435,6 @@ static int pca953x_client_setup(struct i2c_client *client,
 	int system = (int)context;
 
 	switch (system) {
-	case 0:
-		ret = vcm30_t124_system_0_gpio_init();
-		break;
 	case 1:
 		ret = vcm30_t124_system_1_gpio_init();
 		break;
@@ -498,13 +454,6 @@ fail:
 	return ret;
 }
 
-
-static struct pca953x_platform_data vcm30_t124_miscio_0_pca9539_data = {
-	.gpio_base  = PCA953X_MISCIO_0_GPIO_BASE,
-	.setup = pca953x_client_setup,
-	.context = (void *)0,
-};
-
 static struct pca953x_platform_data vcm30_t124_miscio_1_pca9539_data = {
 	.gpio_base  = PCA953X_MISCIO_1_GPIO_BASE,
 	.setup = pca953x_client_setup,
@@ -515,11 +464,6 @@ static struct pca953x_platform_data vcm30_t124_miscio_2_pca9539_data = {
 	.gpio_base  = PCA953X_MISCIO_2_GPIO_BASE,
 	.setup = pca953x_client_setup,
 	.context = (void *)2,
-};
-
-static struct i2c_board_info vcm30_t124_i2c2_board_info_pca9539_0 = {
-	I2C_BOARD_INFO("pca9539", PCA953X_MISCIO_0_ADDR),
-	.platform_data = &vcm30_t124_miscio_0_pca9539_data,
 };
 
 static struct i2c_board_info vcm30_t124_i2c2_board_info_pca9539_1 = {
@@ -538,8 +482,6 @@ int __init vcm30_t124_pca953x_init(void)
 
 	is_e1860_b00 = tegra_is_board(NULL, "61860", NULL, "300", NULL);
 
-	i2c_register_board_info(1, &vcm30_t124_i2c2_board_info_pca9539_0, 1);
-
 	if (is_e1860_b00) {
 
 		i2c_register_board_info(1,
@@ -550,6 +492,5 @@ int __init vcm30_t124_pca953x_init(void)
 		i2c_register_board_info(1,
 			&vcm30_t124_i2c2_board_info_pca9539_2, 1);
 	}
-
 	return 0;
 }
