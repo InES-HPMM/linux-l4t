@@ -51,6 +51,12 @@
 		};
 	};
 
+	i2c@7000c400 {
+		pca9546@71 {
+			vcc-supply = <&palmas_ti913_regen1>;
+		};
+	};
+
 	i2c@7000d000 {
 		tps65913@58 {
 			extcon {
