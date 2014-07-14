@@ -17,9 +17,6 @@
 			    c1 {
 				    regulator-consumer-supply = "vdd_sys_bl";
 			    };
-			    c2 {
-				    regulator-consumer-supply = "vddio_pex_sata";
-			    };
 		    };
 	    };
 
@@ -413,9 +410,6 @@
 				     c6 {
 					     regulator-consumer-supply = "vddio_hv";
 					     regulator-consumer-device = "tegradc.1";
-				     };
-				     c8 {
-					     regulator-consumer-supply = "hvdd_sata";
 				     };
 			     };
 		     };

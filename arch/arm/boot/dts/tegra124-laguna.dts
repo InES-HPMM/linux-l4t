@@ -183,6 +183,11 @@
 		status = "okay";
 		nvidia,pexp-gpio = <&tca6416 9 0>;
 		nvidia,enable-sata-port;
+		avdd_sata-supply = <&as3722_sd4>;
+		vdd_sata-supply = <&as3722_sd4>;
+		avdd_sata_pll-supply =<&as3722_sd4>;
+		hvdd_sata-supply = <&as3722_gpio2_supply>;
+		vddio_pex_sata-supply = <&vdd_ac_bat>;
         };
 
 };

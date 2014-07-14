@@ -17,9 +17,6 @@
 			    c1 {
 				    regulator-consumer-supply = "vdd_sys_bl";
 			    };
-			    c2 {
-				    regulator-consumer-supply = "vddio_pex_sata";
-			    };
 		    };
 	    };
 
