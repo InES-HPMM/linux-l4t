@@ -52,6 +52,7 @@
 		cm32181@48 {
 			compatible = "capella,cm32181";
 			reg = <0x48>;
+			vdd-supply = <&vdd_3v3>;
 		};
 	};
 
