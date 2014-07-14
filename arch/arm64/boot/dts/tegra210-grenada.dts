@@ -28,6 +28,7 @@
 #include "tegra210-platforms/tegra210-comms.dtsi"
 #include <dt-bindings/pinctrl/pinctrl-tegra.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/sound/tegra-asoc-alt.h>
 
 / {
 	model = "grenada";
@@ -823,7 +824,15 @@
 			status = "okay";
 		};
 
+		amx@702d3100 {
+			status = "okay";
+		};
+
 		adx@702d3800 {
+			status = "okay";
+		};
+
+		adx@702d3900 {
 			status = "okay";
 		};
 
@@ -868,22 +877,22 @@
 		status = "okay";
 	};
 
-	spdif_dit0: spdif-dit@0 {
+	spdif_dit0: spdif-dit.0@0 {
 		compatible = "linux,spdif-dit";
 		reg = <0x0 0x0 0x0 0x0>;
 	};
 
-	spdif_dit1: spdif-dit@1 {
+	spdif_dit1: spdif-dit.1@1 {
 		compatible = "linux,spdif-dit";
 		reg = <0x0 0x1 0x0 0x0>;
 	};
 
-	spdif_dit2: spdif-dit@2 {
+	spdif_dit2: spdif-dit.2@2 {
 		compatible = "linux,spdif-dit";
 		reg = <0x0 0x2 0x0 0x0>;
 	};
 
-	spdif_dit3: spdif-dit@3 {
+	spdif_dit3: spdif-dit.3@3 {
 		compatible = "linux,spdif-dit";
 		reg = <0x0 0x03 0x0 0x0>;
 	};
@@ -891,6 +900,82 @@
 	sound {
 		compatible = "nvidia,tegra-audio-grenada";
 		nvidia,model = "tegra-snd-grenada";
+		nvidia,num-codec-link = <4>;
+		nvidia,amx-slot-map = <
+			/* jack 0 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 1, 0)
+			TDM_SLOT_MAP(0, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 2, 0)
+			TDM_SLOT_MAP(0, 2, 1)
+			/* jack 1 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 1, 0)
+			TDM_SLOT_MAP(1, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 2, 0)
+			TDM_SLOT_MAP(1, 2, 1)
+			/* jack 2 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 1, 0)
+			TDM_SLOT_MAP(2, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 2, 0)
+			TDM_SLOT_MAP(2, 2, 1)
+			/* jack 3 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 1, 0)
+			TDM_SLOT_MAP(3, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 2, 0)
+			TDM_SLOT_MAP(3, 2, 1)>;
+		nvidia,adx-slot-map = <
+			/* jack 0 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 1, 0)
+			TDM_SLOT_MAP(0, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 2, 0)
+			TDM_SLOT_MAP(0, 2, 1)
+			/* jack 1 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 1, 0)
+			TDM_SLOT_MAP(1, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 2, 0)
+			TDM_SLOT_MAP(1, 2, 1)
+			/* jack 2 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 1, 0)
+			TDM_SLOT_MAP(2, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 2, 0)
+			TDM_SLOT_MAP(2, 2, 1)
+			/* jack 3 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 1, 0)
+			TDM_SLOT_MAP(3, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 2, 0)
+			TDM_SLOT_MAP(3, 2, 1)>;
+
 		nvidia,audio-routing =
 			"x Headphone", 	"x OUT",
 			"y Headphone", 	"y OUT",
@@ -900,35 +985,61 @@
 			"y IN",		"y Mic",
 			"z IN",		"z Mic",
 			"s IN",		"s Mic";
-			nvidia,admaif = <&tegra_admaif>;
-			nvidia,xbar = <&tegra_axbar>;
-			nvidia,i2s-controller-1 = <&tegra_i2s1>;
-			nvidia,i2s-controller-2 = <&tegra_i2s2>;
-			nvidia,i2s-controller-3 = <&tegra_i2s5>;
-			nvidia,amx-1 = <&tegra_amx1>;
-			nvidia,adx-1 = <&tegra_adx1>;
-			nvidia,sfc-1 = <&tegra_sfc1>;
-			nvidia,sfc-2 = <&tegra_sfc2>;
-			nvidia,sfc-3 = <&tegra_sfc3>;
-			nvidia,sfc-4 = <&tegra_sfc4>;
-			nvidia,dmic-1 = <&tegra_dmic1>;
-			nvidia,dmic-2 = <&tegra_dmic2>;
-			nvidia,dmic-3 = <&tegra_dmic3>;
-			nvidia,afc-1 = <&tegra_afc1>;
-			nvidia,afc-2 = <&tegra_afc2>;
-			nvidia,afc-3 = <&tegra_afc3>;
-			nvidia,afc-4 = <&tegra_afc4>;
-			nvidia,afc-5 = <&tegra_afc5>;
-			nvidia,afc-6 = <&tegra_afc6>;
-			nvidia,mvc-1 = <&tegra_mvc1>;
-			nvidia,mvc-2 = <&tegra_mvc2>;
-			nvidia,spdif = <&tegra_spdif>;
-			nvidia,mixer-1 = <&tegra_amixer>;
-			nvidia,audio-codec-x = <&spdif_dit0>;
-			nvidia,audio-codec-y = <&spdif_dit1>;
-			nvidia,audio-codec-z = <&spdif_dit2>;
-			nvidia,audio-codec-s = <&spdif_dit3>;
-			nvidia,adsp = <&tegra_adsp_audio>;
+		nvidia,xbar = <&tegra_axbar>;
+
+		nvidia,dai-link-1 {
+			cpu-dai = <&tegra_i2s1>;
+			codec-dai = <&spdif_dit0>;
+			cpu-dai-name = "I2S1";
+			codec-dai-name = "dit-hifi";
+			format = "i2s";
+			bitclock-slave;
+			frame-slave;
+			bit-format = "s16_le";
+			bclk_ratio = <0>;
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "x";
+		};
+		nvidia,dai-link-2 {
+			cpu-dai = <&tegra_i2s3>;
+			codec-dai = <&spdif_dit1>;
+			cpu-dai-name = "I2S3";
+			codec-dai-name = "dit-hifi";
+			format = "dsp_a";
+			bitclock-slave;
+			frame-slave;
+			bit-format = "s32_le";
+			bclk_ratio = <0>;
+			srate = <48000>;
+			num-channel = <8>;
+			name-prefix = "y";
+		};
+		nvidia,dai-link-3 {
+			cpu-dai = <&tegra_i2s5>;
+			codec-dai = <&spdif_dit2>;
+			cpu-dai-name = "I2S5";
+			codec-dai-name = "dit-hifi";
+			format = "i2s";
+			bitclock-slave;
+			frame-slave;
+			bit-format = "s16_le";
+			bclk_ratio = <0>;
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "z";
+		};
+		nvidia,dai-link-4 {
+			cpu-dai = <&tegra_spdif>;
+			codec-dai = <&spdif_dit3>;
+			cpu-dai-name = "SPDIF1-1";
+			codec-dai-name = "dit-hifi";
+			format = "i2s";
+			bit-format = "s16_le";
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "s";
+		};
 	};
 
 	pcie-controller {
