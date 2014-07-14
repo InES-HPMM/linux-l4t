@@ -32,7 +32,6 @@
 #include <linux/slab.h>
 #include <linux/syscore_ops.h>
 #include <linux/uaccess.h>
-#include <linux/pinctrl/pinctrl-tegra.h>
 
 #include <linux/pinctrl/pinconf-tegra.h>
 
