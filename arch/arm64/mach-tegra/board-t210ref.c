@@ -98,59 +98,7 @@
 #include "tegra12_emc.h"
 
 static struct board_info board_info, display_board_info;
-#ifndef CONFIG_USE_OF
-static struct resource t210ref_bluedroid_pm_resources[] = {
-	[0] = {
-		.name   = "shutdown_gpio",
-		.start  = TEGRA_GPIO_PR1,
-		.end    = TEGRA_GPIO_PR1,
-		.flags  = IORESOURCE_IO,
-	},
-	[1] = {
-		.name = "host_wake",
-		.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
-	},
-	[2] = {
-		.name = "gpio_ext_wake",
-		.start  = TEGRA_GPIO_PEE1,
-		.end    = TEGRA_GPIO_PEE1,
-		.flags  = IORESOURCE_IO,
-	},
-	[3] = {
-		.name = "gpio_host_wake",
-		.start  = TEGRA_GPIO_PU6,
-		.end    = TEGRA_GPIO_PU6,
-		.flags  = IORESOURCE_IO,
-	},
-	[4] = {
-		.name = "reset_gpio",
-		.start  = TEGRA_GPIO_PX1,
-		.end    = TEGRA_GPIO_PX1,
-		.flags  = IORESOURCE_IO,
-	},
-};
 
-static struct platform_device t210ref_bluedroid_pm_device = {
-	.name = "bluedroid_pm",
-	.id             = 0,
-	.num_resources  = ARRAY_SIZE(t210ref_bluedroid_pm_resources),
-	.resource       = t210ref_bluedroid_pm_resources,
-};
-
-static noinline void __init t210ref_setup_bluedroid_pm(void)
-{
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_E2141)
-		t210ref_bluedroid_pm_resources[0].name = "";
-
-	t210ref_bluedroid_pm_resources[1].start =
-		t210ref_bluedroid_pm_resources[1].end =
-				gpio_to_irq(TEGRA_GPIO_PU6);
-	platform_device_register(&t210ref_bluedroid_pm_device);
-}
-#endif
 static struct i2c_board_info __initdata rt5639_board_info = {
 	I2C_BOARD_INFO("rt5639", 0x1c),
 };
@@ -774,18 +722,6 @@ static void __init tegra_t210ref_early_init(void)
 		tegra_soc_device_init("e2141");
 }
 
-#if !defined(CONFIG_ARM64)
-static struct tegra_dtv_platform_data t210ref_dtv_pdata = {
-	.dma_req_selector = 11,
-};
-
-static void __init t210ref_dtv_init(void)
-{
-	tegra_dtv_device.dev.platform_data = &t210ref_dtv_pdata;
-	platform_device_register(&tegra_dtv_device);
-}
-#endif
-
 static struct tegra_io_dpd pexbias_io = {
 	.name			= "PEX_BIAS",
 	.io_dpd_reg_index	= 0,
@@ -826,9 +762,6 @@ static void __init tegra_t210ref_late_init(void)
 	platform_device_register(&t210ref_audio_device_rt5639);
 	tegra_io_dpd_init();
 	t210ref_sdhci_init();
-#if !defined(CONFIG_ARM64)
-	t210ref_dtv_init();
-#endif
 	t210ref_suspend_init();
 
 	tegra12_emc_init();
@@ -849,10 +782,6 @@ static void __init tegra_t210ref_late_init(void)
 
 	t210ref_sensors_init();
 	t210ref_soctherm_init();
-
-#ifndef CONFIG_USE_OF
-	t210ref_setup_bluedroid_pm();
-#endif
 }
 
 static void __init tegra_t210ref_init_early(void)
