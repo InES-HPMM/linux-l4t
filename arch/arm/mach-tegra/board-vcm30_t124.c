@@ -17,19 +17,14 @@
  */
 
 #include <linux/platform_device.h>
-#include <linux/i2c-tegra.h>
 #include <linux/i2c.h>
-#include <linux/platform_data/tegra_ahci.h>
-#include <linux/of_platform.h>
 #include <linux/kernel.h>
 #include <linux/clocksource.h>
 #include <linux/irqchip.h>
 
-#include <mach/io_dpd.h>
 #include <asm/mach/arch.h>
 #include <mach/isomgr.h>
 #include <mach/board_id.h>
-#include <mach/xusb.h>
 
 #include "iomap.h"
 #include "board.h"
@@ -42,7 +37,6 @@
 #include "therm-monitor.h"
 #include "board-panel.h"
 
-#include <asm/mach-types.h>
 #include "tegra-of-dev-auxdata.h"
 
 static int is_e1860_b00;
@@ -206,9 +200,6 @@ static void __init vcm30_t124_i2c_init(void)
 
 static struct platform_device *vcm30_t124_devices[] __initdata = {
 	&tegra_rtc_device,
-#if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && !defined(CONFIG_USE_OF)
-	&tegra12_se_device,
-#endif
 #if defined(CONFIG_TEGRA_WATCHDOG)
 	&tegra_wdt0_device,
 #endif
