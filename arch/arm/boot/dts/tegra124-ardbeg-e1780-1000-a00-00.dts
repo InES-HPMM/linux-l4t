@@ -30,6 +30,15 @@
 	nvidia,proc-boardid = "1780:1000:00:B:3";
 	nvidia,pmu-boardid = "1735:1000:01:D:3";
 	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			avdd_dsi_csi-supply = <&palams_ldo4>;
+			avdd_lcd-supply = <&ti913_gpio3>;
+			dvdd_lcd-supply = <&ti913_gpio7>;
+			vdd_lcd_bl-supply = <&palams_ldo4>;
+			vdd_lcd_bl_en-supply = <&lcd_bl_en>;
+		};
+
 		/* tegradc.1 */
 		dc@54240000 {
 			avdd_hdmi-supply = <&palmas_smps9>;
