@@ -664,7 +664,6 @@ static struct tegra_panel *t210ref_panel_configure(struct board_info *board_out,
 	if (!board_out)
 		board_out = &boardtmp;
 	tegra_get_display_board_info(board_out);
-
 	switch (board_out->board_id) {
 	case BOARD_E1639:
 	case BOARD_E1813:
@@ -687,6 +686,20 @@ static struct tegra_panel *t210ref_panel_configure(struct board_info *board_out,
 			dsi_instance = DSI_INSTANCE_0;
 			break;
 		}
+		break;
+	case BOARD_E2129:
+		switch (board_out->sku) {
+		case 1000:
+			panel = &dsi_j_1440_810_5_8;
+			dsi_instance = DSI_INSTANCE_0;
+			break;
+		default:
+			panel = &dsi_a_1200_1920_8_0;
+			dsi_instance = DSI_INSTANCE_0;
+			break;
+		}
+		tegra_io_dpd_enable(&dsic_io);
+		tegra_io_dpd_enable(&dsid_io);
 		break;
 	case BOARD_PM363:
 	case BOARD_E1824:

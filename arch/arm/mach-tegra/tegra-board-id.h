@@ -71,7 +71,7 @@
 #define    BOARD_E1937    0x0791
 
 #define    BOARD_E1563    0x061b
-
+#define    BOARD_E2129    0x0851
 
 /* PMIC board ID */
 #define BOARD_E1731    0x6c3
