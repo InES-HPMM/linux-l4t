@@ -1493,7 +1493,7 @@ static struct regulator_dev *regulator_dev_lookup(struct device *dev,
 
 	list_for_each_entry(r, &regulator_list, list)
 		if (strcmp(rdev_get_name(r), supply) == 0)
-			return r;
+			goto found;
 
 	list_for_each_entry(map, &regulator_map_list, list) {
 		/* If the mapping has a device set up it must match */
@@ -1501,12 +1501,24 @@ static struct regulator_dev *regulator_dev_lookup(struct device *dev,
 		    (!devname || strcmp(map->dev_name, devname)))
 			continue;
 
-		if (strcmp(map->supply, supply) == 0)
-			return map->regulator;
+		if (strcmp(map->supply, supply) == 0) {
+			r = map->regulator;
+			goto found;
+		}
 	}
 
 
 	return NULL;
+
+found:
+	if (dev) {
+		if (dev->of_node) {
+			dev_warn(dev, "Dev node doesn\'t have %s supply props\n",
+				supply);
+			WARN_ON(1);
+		}
+	}
+	return r;
 }
 
 /* Internal regulator request function */
