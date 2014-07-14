@@ -1264,8 +1264,8 @@ static void sdhci_finish_data(struct sdhci_host *host)
 		 * upon error conditions.
 		 */
 		if (data->error) {
-			sdhci_reset(host, SDHCI_RESET_CMD);
 			sdhci_reset(host, SDHCI_RESET_DATA);
+			sdhci_reset(host, SDHCI_RESET_CMD);
 		}
 
 		sdhci_send_command(host, data->stop);
@@ -2457,8 +2457,8 @@ static void sdhci_card_event(struct mmc_host *mmc)
 		pr_err("%s: Resetting controller.\n",
 			mmc_hostname(host->mmc));
 
-		sdhci_reset(host, SDHCI_RESET_CMD);
 		sdhci_reset(host, SDHCI_RESET_DATA);
+		sdhci_reset(host, SDHCI_RESET_CMD);
 
 		host->mrq->cmd->error = -ENOMEDIUM;
 		tasklet_schedule(&host->finish_tasklet);
@@ -2677,8 +2677,8 @@ static void sdhci_tasklet_finish(unsigned long param)
 
 		/* Spec says we should do both at the same time, but Ricoh
 		   controllers do not like that. */
-		sdhci_reset(host, SDHCI_RESET_CMD);
 		sdhci_reset(host, SDHCI_RESET_DATA);
+		sdhci_reset(host, SDHCI_RESET_CMD);
 	}
 
 	host->mrq = NULL;
