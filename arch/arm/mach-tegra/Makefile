@@ -173,12 +173,12 @@ obj-${CONFIG_MACH_LAGUNA}               += board-laguna-power.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-11-6.o
 
 obj-${CONFIG_MACH_VCM30_T124}           += vcm30_t124.o
-obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124.o
+obj-${CONFIG_MACH_VCM30_T124}           += board-p1859.o
 ifdef CONFIG_TEGRA_WIFI_ENABLE
-obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-wifi.o
+obj-${CONFIG_MACH_VCM30_T124}           += board-p1859-wifi.o
 endif
-obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-power.o
-obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-audio.o
+obj-${CONFIG_MACH_VCM30_T124}           += board-p1859-power.o
+obj-${CONFIG_MACH_VCM30_T124}           += board-p1859-audio.o
 
 obj-${CONFIG_MACH_VCM30_T124}           += therm-monitor.o
 

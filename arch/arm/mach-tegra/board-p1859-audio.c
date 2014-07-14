@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-vcm30t124-audio.c
+ * arch/arm/mach-tegra/board-p1859-audio.c
  *
  * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -24,7 +24,7 @@
 #define TDM_SLOT_MAP(stream_id, nth_channel, nth_byte)	\
 	((stream_id << 16) | (nth_channel << 8) | nth_byte)
 
-static unsigned int tegra_vcm30t124_amx_slot_map[] = {
+static unsigned int tegra_p1859_amx_slot_map[] = {
 	/* jack 0 */
 	TDM_SLOT_MAP(0, 0, 0),
 	TDM_SLOT_MAP(0, 0, 0),
@@ -63,7 +63,7 @@ static unsigned int tegra_vcm30t124_amx_slot_map[] = {
 	TDM_SLOT_MAP(3, 2, 1),
 };
 
-static unsigned int tegra_vcm30t124_adx_slot_map[] = {
+static unsigned int tegra_p1859_adx_slot_map[] = {
 	/* jack 0 */
 	TDM_SLOT_MAP(0, 0, 0),
 	TDM_SLOT_MAP(0, 0, 0),
@@ -102,7 +102,7 @@ static unsigned int tegra_vcm30t124_adx_slot_map[] = {
 	TDM_SLOT_MAP(3, 2, 1),
 };
 
-struct snd_soc_pcm_stream tegra_vcm30t124_amx_input_params[] = {
+static struct snd_soc_pcm_stream tegra_p1859_amx_input_params[] = {
 	[0] = {
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 		.rate_min = 48000,
@@ -133,7 +133,7 @@ struct snd_soc_pcm_stream tegra_vcm30t124_amx_input_params[] = {
 	},
 };
 
-struct snd_soc_pcm_stream tegra_vcm30t124_adx_input_params[] = {
+static struct snd_soc_pcm_stream tegra_p1859_adx_input_params[] = {
 	[0] = {
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 		.rate_min = 48000,
@@ -268,22 +268,22 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
 	.dev_num = 3,
 	/* initialize AMX config */
 	.amx_config[0] = {
-		.slot_map = tegra_vcm30t124_amx_slot_map,
-		.params = tegra_vcm30t124_amx_input_params,
+		.slot_map = tegra_p1859_amx_slot_map,
+		.params = tegra_p1859_amx_input_params,
 	},
 	.amx_config[1] = {
-		.slot_map = tegra_vcm30t124_amx_slot_map,
-		.params = tegra_vcm30t124_amx_input_params,
+		.slot_map = tegra_p1859_amx_slot_map,
+		.params = tegra_p1859_amx_input_params,
 	},
 	.num_amx = 2,
 	/* initialize ADX config */
 	.adx_config[0] = {
-		.slot_map = tegra_vcm30t124_adx_slot_map,
-		.params = tegra_vcm30t124_adx_input_params,
+		.slot_map = tegra_p1859_adx_slot_map,
+		.params = tegra_p1859_adx_input_params,
 	},
 	.adx_config[1] = {
-		.slot_map = tegra_vcm30t124_adx_slot_map,
-		.params = tegra_vcm30t124_adx_input_params,
+		.slot_map = tegra_p1859_adx_slot_map,
+		.params = tegra_p1859_adx_input_params,
 	},
 	.num_adx = 2,
 	/* initialize DAPM routes */
@@ -340,22 +340,22 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 	.dev_num = 3,
 	/* initialize AMX config */
 	.amx_config[0] = {
-		.slot_map = tegra_vcm30t124_amx_slot_map,
-		.params = tegra_vcm30t124_amx_input_params,
+		.slot_map = tegra_p1859_amx_slot_map,
+		.params = tegra_p1859_amx_input_params,
 	},
 	.amx_config[1] = {
-		.slot_map = tegra_vcm30t124_amx_slot_map,
-		.params = tegra_vcm30t124_amx_input_params,
+		.slot_map = tegra_p1859_amx_slot_map,
+		.params = tegra_p1859_amx_input_params,
 	},
 	.num_amx = 2,
 	/* initialize ADX config */
 	.adx_config[0] = {
-		.slot_map = tegra_vcm30t124_adx_slot_map,
-		.params = tegra_vcm30t124_adx_input_params,
+		.slot_map = tegra_p1859_adx_slot_map,
+		.params = tegra_p1859_adx_input_params,
 	},
 	.adx_config[1] = {
-		.slot_map = tegra_vcm30t124_adx_slot_map,
-		.params = tegra_vcm30t124_adx_input_params,
+		.slot_map = tegra_p1859_adx_slot_map,
+		.params = tegra_p1859_adx_input_params,
 	},
 	.num_adx = 2,
 	/* initialize DAPM routes */
@@ -416,7 +416,7 @@ static struct tegra_vcm30t124_platform_data tegra_voice_call_pdata = {
 	.card_name = "tegra-ak-vc",
 };
 
-static struct platform_device tegra_snd_vcm30t124 = {
+static struct platform_device tegra_snd_p1859 = {
 	.name = "tegra-snd-vcm30t124",
 	.id = 0,
 };
@@ -426,14 +426,23 @@ static struct platform_device tegra_spdif_dit = {
 	.id = 0,
 };
 
-void __init vcm30_t124_audio_init(void)
+void __init p1859_audio_init(void)
 {
 	int is_e1860_b00 = tegra_is_board(NULL, "61860", NULL, "300", NULL);
 	int modem_id = tegra_get_modem_id();
 	int is_e1892 = 0;
+	struct tegra_vcm30t124_platform_data *pdata;
 
 	/* check the version of embedded breakout board */
 	is_e1892 = tegra_is_board(NULL, "61892", NULL, NULL, NULL);
+	if (is_e1860_b00) {
+		if (modem_id)
+			pdata = &tegra_voice_call_pdata;
+		else
+			pdata = &tegra_e1860_b00_pdata;
+	} else {
+		pdata = &tegra_e1860_a0x_pdata;
+	}
 
 	/* set max9485 addr as priv data for a0x and b00 */
 	tegra_e1860_a0x_pdata.priv_data =
@@ -442,11 +451,9 @@ void __init vcm30_t124_audio_init(void)
 		(void *)(is_e1892 ? 0x70 : 0x60);
 
 	/* initialize the platform data structure */
-	tegra_snd_vcm30t124.dev.platform_data = is_e1860_b00 ?
-		(modem_id ? &tegra_voice_call_pdata :
-			&tegra_e1860_b00_pdata) : &tegra_e1860_a0x_pdata;
+	tegra_snd_p1859.dev.platform_data = pdata;
 
 	/* register the platform device and dummy codec if any */
-	platform_device_register(&tegra_snd_vcm30t124);
+	platform_device_register(&tegra_snd_p1859);
 	platform_device_register(&tegra_spdif_dit);
 }

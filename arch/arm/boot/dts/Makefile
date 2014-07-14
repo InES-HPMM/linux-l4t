@@ -207,7 +207,7 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-ardbeg-e1780-1000-a03-00-battery.dtb \
 	tegra124-ardbeg-e1780-1000-a03-00-powerconfig.dtb \
 	tegra124-ardbeg-e1780-1000-a03-00-sata.dtb \
-	tegra124-ardbeg-vcm30-t124.dtb \
+	tegra124-ardbeg-p1859.dtb \
 	tegra124-laguna.dtb \
 	tegra124-laguna-pm358.dtb \
 	tegra124-jetson_tk1-pm375-000-c00-00.dtb \
@@ -256,9 +256,9 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-e1782_sku1100.dtb \
 	tegra124-e1791.dtb \
 	tegra124-e1923.dtb \
-	tegra124-vcm30_t124.dtb \
-	tegra124-vcm30_t124-vm_1.dtb \
-	tegra124-vcm30_t124-vm_2.dtb \
+	tegra124-p1859.dtb \
+	tegra124-p1859-vm_1.dtb \
+	tegra124-p1859-vm_2.dtb \
 	tegra124-p2360.dtb
 dtb-$(CONFIG_ARCH_VERSATILE) += versatile-ab.dtb \
 	versatile-pb.dtb

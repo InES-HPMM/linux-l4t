@@ -1,5 +1,5 @@
 /*
- * arch/arm/boot/dts/tegra124-vcm30_t124-lk.dts
+ * arch/arm/boot/dts/tegra124-p1859-lk.dts
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -21,13 +21,13 @@
  /dts-v1/;
 
 #include "tegra124-vcm30_t124.dtsi"
-#include <tegra124-platforms/tegra124-vcm30-t124-gpio-default.dtsi>
-#include <tegra124-platforms/tegra124-vcm30-t124-pinmux.dtsi>
+#include <tegra124-platforms/tegra124-p1859-gpio-default.dtsi>
+#include <tegra124-platforms/tegra124-p1859-pinmux.dtsi>
 
 
 / {
-	model = "NVIDIA Tegra124 vcm30t124";
-	compatible = "nvidia,vcm30t124", "nvidia,tegra124";
+	model = "NVIDIA Tegra124 p1859";
+	compatible = "nvidia,p1859", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 	#address-cells = <2>;
 	#size-cells = <2>;

@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-vcm30_t124-sdhci.c
+ * arch/arm/mach-tegra/board-p1859-wifi.c
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -35,7 +35,7 @@
 #include "iomap.h"
 #include "gpio-names.h"
 #include "board.h"
-#include "board-vcm30_t124.h"
+#include "board-p1859.h"
 #include "devices.h"
 
 /*
@@ -49,22 +49,22 @@
 static void (*wifi_status_cb) (int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
 static int
-vcm30_t124_wifi_status_register(void (*callback) (int, void *), void *);
-static int vcm30_t124_wifi_reset(int on);
-static int vcm30_t124_wifi_power(int on);
-static int vcm30_t124_wifi_set_carddetect(int val);
+p1859_wifi_status_register(void (*callback) (int, void *), void *);
+static int p1859_wifi_reset(int on);
+static int p1859_wifi_power(int on);
+static int p1859_wifi_set_carddetect(int val);
 
-static struct wifi_platform_data vcm30_t124_wifi_control = {
-	.set_power = vcm30_t124_wifi_power,
-	.set_reset = vcm30_t124_wifi_reset,
-	.set_carddetect = vcm30_t124_wifi_set_carddetect,
+static struct wifi_platform_data p1859_wifi_control = {
+	.set_power = p1859_wifi_power,
+	.set_reset = p1859_wifi_reset,
+	.set_carddetect = p1859_wifi_set_carddetect,
 };
 
 static struct platform_device broadcom_wifi_device = {
 	.name = "bcm4329_wlan",
 	.id = 1,
 	.dev = {
-		.platform_data = &vcm30_t124_wifi_control,
+		.platform_data = &p1859_wifi_control,
 	},
 };
 
@@ -87,7 +87,7 @@ static struct embedded_sdio_data embedded_sdio_data1 = {
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data1 = {
 	.mmc_data = {
-		.register_status_notify = vcm30_t124_wifi_status_register,
+		.register_status_notify = p1859_wifi_status_register,
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 		.embedded_sdio = &embedded_sdio_data1,
 #endif
@@ -110,7 +110,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data1 = {
 	.calib_1v8_offsets = 0x7676,
 	.disable_clock_gate = 1,
 };
-static int vcm30_t124_wifi_status_register(
+static int p1859_wifi_status_register(
 			void (*callback) (int card_present, void *dev_id),
 			void *dev_id)
 {
@@ -121,7 +121,7 @@ static int vcm30_t124_wifi_status_register(
 	return 0;
 }
 
-static int vcm30_t124_wifi_set_carddetect(int val)
+static int p1859_wifi_set_carddetect(int val)
 {
 
 	if (wifi_status_cb)
@@ -132,7 +132,7 @@ static int vcm30_t124_wifi_set_carddetect(int val)
 	return 0;
 }
 
-static int vcm30_t124_wifi_power(int on)
+static int p1859_wifi_power(int on)
 {
 	int ret;
 	/* Deassert WiFi RST GPIO */
@@ -154,7 +154,7 @@ fail:
 	pr_err("%s: gpio_request failed(%d)\r\n", __func__, ret);
 	return ret;
 }
-static int vcm30_t124_wifi_reset(int on)
+static int p1859_wifi_reset(int on)
 {
 	/*
 	 * FIXME: Implement wifi reset
@@ -162,7 +162,7 @@ static int vcm30_t124_wifi_reset(int on)
 	return 0;
 }
 
-int __init vcm30_t124_wifi_init(void)
+int __init p1859_wifi_init(void)
 {
 	tegra_sdhci_device1.dev.platform_data = &tegra_sdhci_platform_data1;
 	platform_device_register(&tegra_sdhci_device1);
