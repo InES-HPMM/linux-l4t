@@ -37,7 +37,6 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/pinctrl/pinconf-tegra.h>
 #include <linux/dma-mapping.h>
-#include <mach/pinmux-defines.h>
 
 #ifndef CONFIG_ARM64
 #include <asm/gpio.h>
@@ -51,7 +50,6 @@
 #include <linux/tegra-fuse.h>
 
 #include <linux/platform_data/mmc-sdhci-tegra.h>
-#include <mach/pinmux.h>
 
 #include "sdhci-pltfm.h"
 
@@ -1625,8 +1623,6 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 
 			/* Calculate the pull up codes */
 			pullup_code = pulldown_code + PULLUP_ADJUSTMENT_OFFSET;
-			if (pullup_code >= TEGRA_MAX_PULL)
-				pullup_code = TEGRA_MAX_PULL - 1;
 			pin_config = TEGRA_PINCONF_PACK(
 					TEGRA_PINCONF_PARAM_DRIVE_UP_STRENGTH,
 					pullup_code);
