@@ -456,12 +456,13 @@ static int wifi_platdev_match(struct device *dev, void *data)
 static int wifi_ctrlfunc_register_drv(void)
 {
 	int err = 0;
-	struct device *dev1, *dev2;
+	struct device *dev1, *dev2, *dt_node;
 	wifi_adapter_info_t *adapter;
 
 	dev1 = bus_find_device(&platform_bus_type, NULL, WIFI_PLAT_NAME, wifi_platdev_match);
 	dev2 = bus_find_device(&platform_bus_type, NULL, WIFI_PLAT_NAME2, wifi_platdev_match);
-	if (dev1 == NULL && dev2 == NULL) {
+	dt_node = of_find_compatible_node(NULL, NULL, "nvidia,tegra-bcmdhd-wlan");
+	if (dev1 == NULL && dev2 == NULL && dt_node == NULL) {
 		DHD_ERROR(("no wifi platform data, skip\n"));
 		return -ENXIO;
 	}
@@ -489,7 +490,7 @@ static int wifi_ctrlfunc_register_drv(void)
 			return err;
 		}
 	}
-	if (dev2) {
+	if (dev2 || dt_node) {
 		err = platform_driver_register(&wifi_platform_dev_driver_legacy);
 		if (err) {
 			DHD_ERROR(("%s: failed to register wifi ctrl func legacy driver\n",
@@ -504,17 +505,18 @@ static int wifi_ctrlfunc_register_drv(void)
 
 void wifi_ctrlfunc_unregister_drv(void)
 {
-	struct device *dev1, *dev2;
+	struct device *dev1, *dev2, *dt_node;
 
 	dev1 = bus_find_device(&platform_bus_type, NULL, WIFI_PLAT_NAME, wifi_platdev_match);
 	dev2 = bus_find_device(&platform_bus_type, NULL, WIFI_PLAT_NAME2, wifi_platdev_match);
-	if (dev1 == NULL && dev2 == NULL)
+	dt_node = of_find_compatible_node(NULL, NULL, "nvidia,tegra-bcmdhd-wlan");
+	if (dev1 == NULL && dev2 == NULL && dt_node == NULL)
 		return;
 
 	DHD_ERROR(("unregister wifi platform drivers\n"));
 	if (dev1)
 		platform_driver_unregister(&wifi_platform_dev_driver);
-	if (dev2)
+	if (dev2 || dt_node)
 		platform_driver_unregister(&wifi_platform_dev_driver_legacy);
 	kfree(dhd_wifi_platdata->adapters);
 	dhd_wifi_platdata->adapters = NULL;
