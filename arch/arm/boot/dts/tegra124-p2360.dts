@@ -21,6 +21,7 @@
  /dts-v1/;
 
 #include "tegra124.dtsi"
+#include <tegra124-platforms/tegra124-vcm30t124-fixed.dtsi>
 
 / {
 	model = "NVIDIA Tegra124 p2360";
@@ -89,6 +90,7 @@
 		built-in;
 		ddr-clk-limit = <51000000>;
 		max-clk-limit = <200000000>;
+		vmmc-supply = <&vmmc>;
 		status = "okay";
 	};
 };

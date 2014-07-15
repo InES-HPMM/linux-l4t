@@ -23,6 +23,7 @@
 #include "tegra124.dtsi"
 #include <tegra124-platforms/tegra124-vcm30-t124-gpio-default.dtsi>
 #include <tegra124-platforms/tegra124-vcm30-t124-pinmux.dtsi>
+#include <tegra124-platforms/tegra124-vcm30t124-fixed.dtsi>
 
 
 / {
@@ -143,6 +144,7 @@
 		built-in;
 		ddr-clk-limit = <51000000>;
 		max-clk-limit = <200000000>;
+		vmmc-supply = <&vmmc>;
 		status = "disabled";
 	};
 
@@ -155,6 +157,7 @@
 		built-in;
 		ddr-clk-limit = <30000000>;
 		max-clk-limit = <51000000>;
+		vmmc-supply = <&vmmc>;
 		status = "okay";
 	};
 
@@ -167,6 +170,7 @@
 		uhs_mask = <0x2F>;
 		bus-width = <4>;
 		max-clk-limit = <50000000>;
+		vmmc-supply = <&vmmc>;
 		status = "disabled";
 	};
 
