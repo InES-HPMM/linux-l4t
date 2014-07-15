@@ -1642,8 +1642,13 @@ static void smmu_iommu_detach_dev(struct iommu_domain *domain,
 				  struct device *dev)
 {
 	struct smmu_as *as = to_smmu_domain_as(domain, -1);
-	struct smmu_device *smmu = as->smmu;
+	struct smmu_device *smmu;
 	struct smmu_client *c;
+
+	if (!as)
+		return;
+
+	smmu = as->smmu;
 
 	spin_lock(&as->client_lock);
 
@@ -1685,8 +1690,13 @@ static int smmu_iommu_domain_init(struct iommu_domain *domain)
 static void smmu_iommu_domain_destroy(struct iommu_domain *domain)
 {
 	struct smmu_as *as = to_smmu_domain_as(domain, -1);
-	struct smmu_device *smmu = as->smmu;
+	struct smmu_device *smmu;
 	unsigned long flags;
+
+	if (!as)
+		return;
+
+	smmu = as->smmu;
 
 	spin_lock_irqsave(&as->lock, flags);
 
