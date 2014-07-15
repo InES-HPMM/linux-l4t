@@ -906,7 +906,7 @@ void tegra_init_max_rate(struct clk *c, unsigned long max_rate)
 }
 
 /* Use boot rate as emc monitor output until actual monitoring starts */
-void __init tegra_clk_preset_emc_monitor(unsigned long rate)
+void tegra_clk_preset_emc_monitor(unsigned long rate)
 {
 	struct clk *c = tegra_get_clock_by_name("mon.emc");
 

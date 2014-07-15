@@ -310,7 +310,7 @@ __init void iotable_init(struct map_desc *io_desc, int nr)
  * in head.S as this function is called too early to allocated any memory. The
  * mapping size is 2MB with 4KB pages or 64KB or 64KB pages.
  */
-void __iomem * __init early_io_map(phys_addr_t phys, unsigned long virt)
+void __iomem *early_io_map(phys_addr_t phys, unsigned long virt)
 {
 	unsigned long size, mask;
 	bool page64k = IS_ENABLED(CONFIG_ARM64_64K_PAGES);
