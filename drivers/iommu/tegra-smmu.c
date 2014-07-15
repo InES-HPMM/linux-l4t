@@ -525,6 +525,34 @@ fix_up:
 	return swgids;
 }
 
+/* try to create new map for dev if required */
+static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev,
+							bool create)
+{
+	int asid;
+	u64 swgids;
+	struct dma_iommu_mapping *map = NULL;
+
+	swgids = tegra_smmu_of_get_swgids(dev);
+	if (!swgids)
+		goto end;
+
+	asid = _tegra_smmu_get_asid(swgids);
+
+	if (smmu_handle && smmu_handle->map[asid]) {
+		map = smmu_handle->map[asid];
+		goto end;
+	}
+
+	if (create)
+		map = tegra_smmu_map_init_dev(dev, swgids);
+
+	if (smmu_handle && map)
+		smmu_handle->map[asid] = map;
+end:
+	return map;
+}
+
 static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 {
 	int i;
@@ -1537,7 +1565,6 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	struct dma_iommu_mapping *dma_map;
 	u64 map, temp;
 	int err = -ENOMEM;
-	bool use_fixup = false;
 	int idx;
 	unsigned long as_bitmap[1];
 	unsigned long as_alloc_bitmap = 0;
@@ -1545,18 +1572,12 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	map = tegra_smmu_of_get_swgids(dev);
 	temp = tegra_smmu_fixup_swgids(dev, &area);
 
-	if (!map && !temp)
+	if (!map)
 		return -ENODEV;
-
-	if (map && temp && map != temp)
+	if (temp && map != temp)
 		dev_err(dev, "swgid mismatch dt=%llx fixup=%llx\n", map, temp);
 
-	if (!map) {
-		map = temp;
-		use_fixup = true;
-	}
-
-	dma_map = tegra_smmu_get_map(dev, map);
+	dma_map = dev->archdata.mapping;
 	dma_map_to_as_bitmap(dma_map, as_bitmap);
 	for_each_set_bit(idx, as_bitmap, MAX_AS_PER_DEV) {
 		if (test_and_set_bit(idx, dom->bitmap))
@@ -1632,8 +1653,6 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 
 	dev_dbg(smmu->dev, "%s is attached\n", dev_name(dev));
 	debugfs_create_master(client);
-	debugfs_create_bool("fixup",  0400, client->debugfs_root,
-			    (u32 *)&use_fixup);
 	return 0;
 
 err_client:
@@ -1736,34 +1755,6 @@ static void smmu_iommu_domain_destroy(struct iommu_domain *domain)
 	devm_kfree(smmu->dev, domain->priv);
 	domain->priv = NULL;
 	dev_dbg(smmu->dev, "smmu_as@%p\n", as);
-}
-
-/* try to create new map for dev if required */
-static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev,
-							bool create)
-{
-	int asid;
-	u64 swgids;
-	struct dma_iommu_mapping *map = NULL;
-
-	swgids = tegra_smmu_of_get_swgids(dev);
-	if (!swgids)
-		goto end;
-
-	asid = _tegra_smmu_get_asid(swgids);
-
-	if (smmu_handle && smmu_handle->map[asid]) {
-		map = smmu_handle->map[asid];
-		goto end;
-	}
-
-	if (create)
-		map = tegra_smmu_map_init_dev(dev, swgids);
-
-	if (smmu_handle && map)
-		smmu_handle->map[asid] = map;
-end:
-	return map;
 }
 
 static struct iommu_ops smmu_iommu_ops = {
@@ -2299,7 +2290,7 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 		}
 
 		if (!smmu_handle) {
-			dev_info(dev, "No map availble yet!!!\n");
+			dev_info(dev, "No map available yet!!!\n");
 			break;
 		}
 
