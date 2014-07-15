@@ -31,7 +31,6 @@
 #include "board-vcm30_t124.h"
 #include "tegra_cl_dvfs.h"
 #include "devices.h"
-#include "tegra11_soctherm.h"
 #include <mach/board_id.h>
 #include "vcm30_t124.h"
 

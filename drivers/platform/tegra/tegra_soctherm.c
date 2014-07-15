@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra11_soctherm.c
+ * drivers/platform/tegra/tegra_soctherm.c
  *
  * Copyright (c) 2011-2014, NVIDIA CORPORATION. All rights reserved.
  *
@@ -43,19 +43,17 @@
 #include <linux/regulator/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
-#include <mach/irqs.h>
 #include <linux/pid_thermal_gov.h>
 #include <linux/tegra-fuse.h>
+#include <linux/tegra_soctherm.h>
+
+#include <mach/irqs.h>
 #include <mach/edp.h>
 
 #include "iomap.h"
-#include "tegra11_soctherm.h"
 #include "gpio-names.h"
 #include "common.h"
 #include "dvfs.h"
-#include "board.h"
-#include "board-common.h"
-#include "tegra-board-id.h"
 
 static const int MAX_HIGH_TEMP = 127000;
 static const int MIN_LOW_TEMP = -127000;
@@ -463,9 +461,8 @@ static const int precision; /* default 0 -> low precision */
 #define IS_T13X		(tegra_chip_id == TEGRA_CHIPID_TEGRA13)
 
 static void __iomem *reg_soctherm_base;
-
-static void __iomem *clk_reset_base = IOMEM(IO_ADDRESS(TEGRA_CLK_RESET_BASE));
-static void __iomem *clk13_rst_base = IOMEM(IO_ADDRESS(TEGRA_CLK13_RESET_BASE));
+static void __iomem *clk_reset_base;
+static void __iomem *clk13_rst_base;
 
 static DEFINE_MUTEX(soctherm_suspend_resume_lock);
 
@@ -477,7 +474,7 @@ static struct soctherm_platform_data plat_data, *plat_data_ptr;
 /*
  * Remove this flag once this "driver" is structured as a platform driver and
  * the board files calls platform_device_register instead of directly calling
- * tegra11_soctherm_init(). See nvbug 1206311.
+ * tegra_soctherm_init(). See nvbug 1206311.
  */
 static bool soctherm_init_platform_done;
 static bool read_hw_temp = true;
@@ -1308,7 +1305,8 @@ static int soctherm_get_cpu_throt_state(u16 dividend, u16 divisor,
 		return -EINVAL;
 
 	if (soctherm_has_mn_cpu_pskip_status()) {
-		soctherm_get_mn_cpu_pskip_status(&enabled, &sw_override, &m, &n);
+		soctherm_get_mn_cpu_pskip_status(&enabled,
+						 &sw_override, &m, &n);
 
 		if (enabled && m == dividend && n == divisor)
 			*cur_state |= (1 << THROTTLE_DEV_CPU);
@@ -4376,6 +4374,16 @@ static int tegra_soctherm_probe(struct platform_device *pdev)
 	}
 	reg_soctherm_base = IO_ADDRESS(mem->start);
 
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (!mem) {
+		dev_err(&pdev->dev, "platform_get_resource(1) failed\n");
+		goto soctherm_init_err;
+	}
+	if (IS_T13X)
+		clk13_rst_base = IO_ADDRESS(mem->start);
+	else
+		clk_reset_base = IO_ADDRESS(mem->start);
+
 	ret = soctherm_init_platform_data();
 	if (ret < 0)
 		goto soctherm_init_platform_data_err;
@@ -4455,14 +4463,14 @@ static struct platform_driver tegra_soctherm_driver = {
 module_platform_driver(tegra_soctherm_driver);
 
 /**
- * tegra11_soctherm_init() - initializes global pointer to board-specific info
+ * tegra_soctherm_init() - initializes global pointer to board-specific info
  * @data:       pointer to board-specific information
  *
  * Store platform data in global as an intermediate step to moving to DT.
  *
  * Return: -1 if data is NULL, 0 (success) otherwise
  */
-int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
+int __init tegra_soctherm_init(struct soctherm_platform_data *data)
 {
 	if (!data)
 		return -1;

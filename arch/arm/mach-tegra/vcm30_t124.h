@@ -19,8 +19,8 @@
 #ifndef _TEGRA_MCM_VCM30T124_H
 #define _TEGRA_MCM_VCM30T124_H
 
+#include <linux/tegra_soctherm.h>
 #include "clock.h"
-#include "tegra11_soctherm.h"
 
 /* Thermal monitor I2C bus and address */
 #define I2C_ADDR_TMP411		0x4c

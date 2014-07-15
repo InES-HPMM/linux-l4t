@@ -36,6 +36,7 @@
 #include <linux/pinctrl/pinconf-tegra.h>
 
 #include <asm/mach-types.h>
+#include <linux/tegra_soctherm.h>
 
 #include "pm.h"
 #include "dvfs.h"
@@ -49,7 +50,6 @@
 #include "devices.h"
 #include "iomap.h"
 #include "tegra_cl_dvfs.h"
-#include "tegra11_soctherm.h"
 
 #define E1735_EMULATE_E1767_SKU	1001
 static u32 tegra_chip_id;
@@ -1001,5 +1001,5 @@ int __init ardbeg_soctherm_init(void)
 		break;
 	}
 
-	return tegra11_soctherm_init(&ardbeg_soctherm_data);
+	return tegra_soctherm_init(&ardbeg_soctherm_data);
 }

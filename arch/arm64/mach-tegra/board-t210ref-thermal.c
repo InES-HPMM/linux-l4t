@@ -34,6 +34,7 @@
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
 #include <linux/tegra-fuse.h>
 #include <linux/tegra-pmc.h>
+#include <linux/tegra_soctherm.h>
 #include <linux/pinctrl/pinconf-tegra.h>
 #include <linux/nct1008.h>
 
@@ -52,7 +53,6 @@
 #include "iomap.h"
 #include "tegra_cl_dvfs.h"
 #include "cpu-tegra.h"
-#include "tegra11_soctherm.h"
 
 static u32 tegra_chip_id;
 
@@ -401,7 +401,7 @@ int __init t210ref_soctherm_init(void)
 	       &battery_oc_throttle_t13x,
 	       sizeof(battery_oc_throttle_t13x));
 
-	return tegra11_soctherm_init(&t210ref_soctherm_data);
+	return tegra_soctherm_init(&t210ref_soctherm_data);
 }
 
 static struct pid_thermal_gov_params cpu_pid_params = {

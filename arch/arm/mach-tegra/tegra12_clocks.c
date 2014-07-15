@@ -31,6 +31,7 @@
 #include <linux/platform_device.h>
 #include <linux/tegra-soc.h>
 #include <linux/tegra-fuse.h>
+#include <linux/tegra_soctherm.h>
 
 #include <asm/clkdev.h>
 
@@ -46,7 +47,6 @@
 #include "tegra12_emc.h"
 #include "tegra_cl_dvfs.h"
 #include "cpu-tegra.h"
-#include "tegra11_soctherm.h"
 
 #define RST_DEVICES_L			0x004
 #define RST_DEVICES_H			0x008

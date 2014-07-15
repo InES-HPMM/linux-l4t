@@ -36,6 +36,7 @@
 #include <mach/irqs.h>
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
+#include <linux/tegra_soctherm.h>
 
 #include "cpu-tegra.h"
 #include "pm.h"
@@ -47,7 +48,6 @@
 #include "board-ardbeg.h"
 #include "tegra_cl_dvfs.h"
 #include "devices.h"
-#include "tegra11_soctherm.h"
 #include "iomap.h"
 
 struct bq2471x_platform_data laguna_bq2471x_pdata = {
@@ -342,5 +342,5 @@ int __init laguna_soctherm_init(void)
 	tegra_add_core_vmax_trips(laguna_soctherm_data.therm[THERM_PLL].trips,
 			&laguna_soctherm_data.therm[THERM_PLL].num_trips);
 
-	return tegra11_soctherm_init(&laguna_soctherm_data);
+	return tegra_soctherm_init(&laguna_soctherm_data);
 }

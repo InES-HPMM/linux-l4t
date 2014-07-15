@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra11_soctherm.h
+ * include/linux/tegra_soctherm.h
  *
  * Copyright (c) 2011-2014, NVIDIA CORPORATION. All rights reserved.
  *
@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __MACH_TEGRA_11x_SOCTHERM_H
-#define __MACH_TEGRA_11x_SOCTHERM_H
+#ifndef __MACH_TEGRA_SOCTHERM_H
+#define __MACH_TEGRA_SOCTHERM_H
 
 #include <linux/thermal.h>
 #include <linux/platform_data/thermal_sensors.h>
@@ -176,11 +176,11 @@ struct soctherm_platform_data {
 };
 
 #ifdef CONFIG_TEGRA_SOCTHERM
-int __init tegra11_soctherm_init(struct soctherm_platform_data *data);
+int __init tegra_soctherm_init(struct soctherm_platform_data *data);
 void tegra_soctherm_adjust_cpu_zone(bool high_voltage_range);
 void tegra_soctherm_adjust_core_zone(bool high_voltage_range);
 #else
-static inline int tegra11_soctherm_init(struct soctherm_platform_data *data)
+static inline int tegra_soctherm_init(struct soctherm_platform_data *data)
 {
 	return 0;
 }
@@ -190,4 +190,4 @@ static inline void tegra_soctherm_adjust_core_zone(bool high_voltage_range)
 { }
 #endif
 
-#endif /* __MACH_TEGRA_11x_SOCTHERM_H */
+#endif /* __MACH_TEGRA_SOCTHERM_H */

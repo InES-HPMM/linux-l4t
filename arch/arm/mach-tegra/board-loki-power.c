@@ -39,6 +39,7 @@
 #include <mach/edp.h>
 
 #include <linux/pid_thermal_gov.h>
+#include <linux/tegra_soctherm.h>
 
 #include <asm/mach-types.h>
 
@@ -53,7 +54,6 @@
 #include "tegra-board-id.h"
 #include "dvfs.h"
 #include "tegra_cl_dvfs.h"
-#include "tegra11_soctherm.h"
 
 void tegra13x_vdd_cpu_align(int step_uv, int offset_uv);
 
@@ -480,5 +480,5 @@ int __init loki_soctherm_init(void)
 			&loki_soctherm_data.therm[THERM_PLL].num_trips);
 	}
 
-	return tegra11_soctherm_init(&loki_soctherm_data);
+	return tegra_soctherm_init(&loki_soctherm_data);
 }

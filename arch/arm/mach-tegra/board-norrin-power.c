@@ -32,6 +32,7 @@
 #include <mach/irqs.h>
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
+#include <linux/tegra_soctherm.h>
 
 #include "cpu-tegra.h"
 #include "pm.h"
@@ -42,7 +43,6 @@
 #include "board-ardbeg.h"
 #include "tegra_cl_dvfs.h"
 #include "devices.h"
-#include "tegra11_soctherm.h"
 #include "iomap.h"
 
 static struct tegra_suspend_platform_data norrin_suspend_data = {
@@ -390,5 +390,5 @@ int __init norrin_soctherm_init(void)
 		pr_warn("soctherm THERMTRIP not supported on PMU (BOARD_P%d)\n",
 			pmu_board_info.board_id);
 
-	return tegra11_soctherm_init(&norrin_soctherm_data);
+	return tegra_soctherm_init(&norrin_soctherm_data);
 }

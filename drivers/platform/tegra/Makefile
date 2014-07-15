@@ -26,6 +26,13 @@ obj-$(CONFIG_TEGRA_MC_DOMAINS) += pm_domains.o
 
 obj-$(CONFIG_TEGRA_WAKEUP_MONITOR)      += tegra_wakeup_monitor.o
 
+# tempporarily support soctherm platform driver for T12x with include files
+# from arch/arm/tegra area.
+ifeq ($(CONFIG_TEGRA_SOCTHERM),y)
+ccflags-y += -I$(srctree)/arch/arm/mach-tegra
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra_soctherm.o
+endif
+
 ifneq ($(CONFIG_ARM64),)
 
 ccflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
@@ -121,7 +128,7 @@ obj-$(CONFIG_TEGRA_CLUSTER_CONTROL) += sysfs-cluster.o
 obj-$(CONFIG_ARCH_TEGRA_HAS_CL_DVFS) += tegra_cl_dvfs.o
 
 ifeq ($(CONFIG_TEGRA_SOCTHERM),y)
-obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra11_soctherm.o
+obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra_soctherm.o
 endif
 obj-$(CONFIG_TEGRA_USE_SIMON)    += tegra_simon.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_edp.o

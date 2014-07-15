@@ -21,11 +21,12 @@
 #include <linux/power_supply.h>
 #include <mach/edp.h>
 #include <linux/interrupt.h>
+#include <linux/tegra_soctherm.h>
+
 #include "board-ardbeg.h"
 #include "board.h"
 #include "board-panel.h"
 #include "common.h"
-#include "tegra11_soctherm.h"
 
 /* --- EDP consumers data --- */
 static unsigned int ov5693_states[] = { 0, 300 };

@@ -30,6 +30,7 @@
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/tegra-pmc.h>
 #include <linux/pid_thermal_gov.h>
+#include <linux/tegra_soctherm.h>
 #include <asm/io.h>
 #include "board.h"
 #include "board-common.h"
@@ -38,7 +39,6 @@
 #include "gpio-names.h"
 #include "iomap.h"
 #include "therm-monitor.h"
-#include "tegra11_soctherm.h"
 #include "tegra-of-dev-auxdata.h"
 #include "vcm30_t124.h"
 
@@ -641,7 +641,7 @@ int __init tegra_vcm30_t124_soctherm_init(void)
 	therm = &vcm30_t124_soctherm_data.therm[THERM_GPU];
 	tegra_add_tgpu_trips(therm->trips, &therm->num_trips);
 
-	return tegra11_soctherm_init(&vcm30_t124_soctherm_data);
+	return tegra_soctherm_init(&vcm30_t124_soctherm_data);
 }
 
 /* Set POR value for all clocks given in the table */

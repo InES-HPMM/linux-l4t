@@ -34,6 +34,7 @@
 #include <linux/tegra-soc.h>
 #include <linux/tegra-cpuidle.h>
 #include <linux/tegra-pm.h>
+#include <linux/tegra_soctherm.h>
 
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
@@ -48,7 +49,6 @@
 #include "sleep.h"
 #include "tegra3_emc.h"
 #include "dvfs.h"
-#include "tegra11_soctherm.h"
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/nvpower.h>
