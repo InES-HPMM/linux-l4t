@@ -8,6 +8,7 @@
 #include "tegra210-platforms/tegra210-ers-sensor-e2160-1000-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-gpio-default-e2220-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-pinmux-e2220-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-comms.dtsi"
 
 / {
 	model = "e2220";

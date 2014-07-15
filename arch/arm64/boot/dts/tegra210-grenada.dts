@@ -25,6 +25,7 @@
 #include "tegra210.dtsi"
 #include "tegra210-platforms/tegra210-ers-dfll-e2174-1101-a00.dtsi"
 #include "tegra210-platforms/tegra210-grenada-fixed.dtsi"
+#include "tegra210-platforms/tegra210-comms.dtsi"
 #include <dt-bindings/pinctrl/pinctrl-tegra.h>
 #include <dt-bindings/gpio/gpio.h>
 
@@ -990,32 +991,5 @@
 		/* hsic config values in order defined in structure */
 		nvidia,hsic0 = /bits/8 <0x1 0x1 0x8 0xa 0 0 1 0x22 0>;
 			status = "okay";
-	};
-
-	bluedroid_pm {
-		compatible = "nvidia,tegra-bluedroid_pm";
-		id = <0>;
-		bluedroid_pm,reset-gpio = <&gpio TEGRA_GPIO(X, 1) 0>;
-		bluedroid_pm,host-wake-gpio = <&gpio TEGRA_GPIO(U, 6) 0>;
-		bluedroid_pm,ext-wake-gpio = <&gpio TEGRA_GPIO(EE, 1) 0>;
-		interrupt-parent = <&gpio>;
-		interrupts = <166 0x01>;
-	};
-
-	gpio: gpio@6000d000 {
-		gpio-init-names = "default";
-		gpio-init-0 = <&gpio_default>;
-
-		gpio_default: default {
-			gpio-input = <
-				TEGRA_GPIO(U, 5)
-				>;
-			gpio-output-low = <
-				>;
-			gpio-output-high = <
-				TEGRA_GPIO(X, 7)
-				TEGRA_GPIO(CC, 5)
-				>;
-		};
 	};
 };
