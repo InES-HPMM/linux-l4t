@@ -3208,6 +3208,7 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct tegra_udc *udc = platform_get_drvdata(pdev);
+	struct device *dev = &udc->pdev->dev;
 	unsigned long flags;
 	u32 temp;
 
@@ -3222,8 +3223,15 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 		if (temp & USB_SYS_VBUS_STATUS)
 			udc->vbus_in_lp0 = true;
 	}
-	udc->connect_type_lp0 = udc->connect_type;
 
+	/* During driver resume sometimes connect_type_lp0 is
+	   set to NONE, which means task is finished incomplete,
+	   in this case retain the value */
+	if (udc->connect_type_lp0 == CONNECT_TYPE_NONE)
+		udc->connect_type_lp0 = udc->connect_type;
+
+	dev_info(dev, "tegra_udc_suspend: lp0_connect_type = %d\n",
+					       udc->connect_type_lp0);
 	/* If the controller is in otg mode, return */
 	if (udc->transceiver)
 		return 0;
@@ -3256,6 +3264,7 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 static int tegra_udc_resume(struct platform_device *pdev)
 {
 	struct tegra_udc *udc = platform_get_drvdata(pdev);
+	struct device *dev = &udc->pdev->dev;
 	u32 temp;
 
 	int err = 0;
@@ -3266,6 +3275,9 @@ static int tegra_udc_resume(struct platform_device *pdev)
 	/* Set Current limit to 0 if charger is disconnected in LP0 */
 	if (udc->vbus_reg != NULL) {
 		if (udc->support_pmu_vbus) {
+			dev_info(dev, "tegra_udc_resume: state (%d, %d)\n",
+			       udc->connect_type_lp0, extcon_get_cable_state(
+				       udc->vbus_extcon_dev, "USB"));
 			if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE) &&
 			!extcon_get_cable_state(udc->vbus_extcon_dev, "USB")) {
 				tegra_udc_set_extcon_state(udc);
