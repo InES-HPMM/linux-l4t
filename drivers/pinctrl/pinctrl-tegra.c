@@ -714,6 +714,16 @@ static int tegra_pinconf_group_set(struct pinctrl_dev *pctldev,
 
 	/* Range-check user-supplied value */
 	mask = (1 << width) - 1;
+
+	switch (param) {
+	case TEGRA_PINCONF_PARAM_DRIVE_UP_STRENGTH:
+		if (arg > mask)
+			arg = mask;
+		break;
+	default:
+		break;
+	}
+
 	if (arg & ~mask) {
 		dev_err(pctldev->dev,
 			"group %s config %lx: %x too big for %d bit register\n",
