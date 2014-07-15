@@ -755,27 +755,44 @@ int nvadsp_os_start(void)
 }
 EXPORT_SYMBOL(nvadsp_os_start);
 
+void nvadsp_os_stop(void)
+{
+	const struct firmware *fw = priv.os_firmware;
+	struct clk *adsp_clk;
+	struct device *dev;
+
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
+		return;
+	}
+
+	dev = &priv.pdev->dev;
+	adsp_clk = clk_get_sys(NULL, "adsp");
+	if (IS_ERR_OR_NULL(adsp_clk)) {
+		dev_err(dev, "unable to find adsp clock\n");
+		goto end;
+	}
+	tegra_periph_reset_assert(adsp_clk);
+
+	/* load a fresh copy of adsp.elf */
+	if (nvadsp_os_elf_load(fw))
+		dev_err(dev, "failed to load %s\n", NVADSP_FIRMWARE);
+end:
+	clk_put(adsp_clk);
+}
+EXPORT_SYMBOL(nvadsp_os_stop);
 
 static void nvadsp_os_restart(struct work_struct *work)
 {
 	struct nvadsp_os_data *data =
 		container_of(work, struct nvadsp_os_data, restart_os_work);
-	const struct firmware *fw = data->os_firmware;
 	struct device *dev = &data->pdev->dev;
-	int ret;
 
 	data->adsp_num_crashes++;
 	if (data->adsp_num_crashes >= ALLOWED_CRASHES) {
 		/* making pdev NULL so that externally start is not called */
 		priv.pdev = NULL;
 		dev_crit(dev, "ADSP has crashed too many times\n");
-		return;
-	}
-
-	/* reload a fresh copy of the firmware*/
-	ret = nvadsp_os_elf_load(fw);
-	if (ret) {
-		dev_err(dev, "failed to load %s\n", NVADSP_FIRMWARE);
 		return;
 	}
 
