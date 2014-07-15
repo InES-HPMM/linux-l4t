@@ -27,41 +27,12 @@
 #include <linux/platform_data/tegra_usb.h>
 
 extern struct platform_device tegra_emc_device;
-extern struct platform_device tegra_gpio_device;
-extern struct platform_device tegra114_pinctrl_device;
-extern struct platform_device tegra124_pinctrl_device;
 extern struct platform_device tegra_sdhci_device1;
 extern struct platform_device tegra_sdhci_device2;
 extern struct platform_device tegra_sdhci_device3;
 extern struct platform_device tegra_sdhci_device4;
 extern struct platform_device tegra_kbc_device;
-extern struct platform_device tegra_pci_device;
-extern struct platform_device tegra_apbdma;
-extern struct platform_device tegra_spi_device1;
-extern struct platform_device tegra_spi_device2;
-extern struct platform_device tegra_spi_device3;
-extern struct platform_device tegra_spi_device4;
-extern struct platform_device tegra11_spi_device1;
-extern struct platform_device tegra11_spi_device2;
-extern struct platform_device tegra11_spi_device3;
-extern struct platform_device tegra11_spi_device4;
-extern struct platform_device tegra_spi_slave_device1;
-extern struct platform_device tegra_spi_slave_device2;
-extern struct platform_device tegra_spi_slave_device3;
-extern struct platform_device tegra_spi_slave_device4;
-extern struct platform_device tegra11_spi_slave_device1;
-extern struct platform_device tegra11_spi_slave_device2;
-extern struct platform_device tegra11_spi_slave_device3;
-extern struct platform_device tegra11_spi_slave_device4;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-extern struct platform_device tegra11_spi_device5;
-extern struct platform_device tegra11_spi_device6;
-extern struct platform_device tegra11_spi_slave_device5;
-extern struct platform_device tegra11_spi_slave_device6;
-extern struct platform_device tegra_spi_device5;
-extern struct platform_device tegra_spi_device6;
-extern struct platform_device tegra_spi_slave_device5;
-extern struct platform_device tegra_spi_slave_device6;
 extern struct platform_device tegra_dtv_device;
 #endif
 extern struct platform_device tegra_ehci1_device;
@@ -184,10 +155,6 @@ extern struct platform_device tegra_cl_dvfs_device;
 extern struct platform_device tegra_fuse_device;
 
 extern struct platform_device tegra_ptm_device;
-
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-extern struct platform_device tegra_mipi_bif_device;
-#endif
 
 void __init tegra_init_debug_uart_rate(void);
 
