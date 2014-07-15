@@ -170,6 +170,7 @@
 		built-in;
 		ddr-clk-limit = <51000000>;
 		max-clk-limit = <200000000>;
+		pll_source = "pll_m", "pll_p";
 		vmmc-supply = <&vmmc>;
 		status = "okay";
 	};
@@ -183,6 +184,7 @@
 		built-in;
 		ddr-clk-limit = <30000000>;
 		max-clk-limit = <51000000>;
+		pll_source = "pll_m", "pll_p";
 		vmmc-supply = <&vmmc>;
 		status = "disabled";
 	};
@@ -196,6 +198,7 @@
 		uhs_mask = <0x2F>;
 		bus-width = <4>;
 		max-clk-limit = <50000000>;
+		pll_source = "pll_m", "pll_p";
 		vmmc-supply = <&vmmc>;
 		status = "okay";
 	};
