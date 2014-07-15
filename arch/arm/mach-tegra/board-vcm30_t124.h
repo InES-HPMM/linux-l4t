@@ -24,7 +24,7 @@
 #include <linux/mfd/max77663-core.h>
 #include "gpio-names.h"
 
-int vcm30_t124_sdhci_init(void);
+int vcm30_t124_wifi_init(void);
 int vcm30_t124_sensors_init(void);
 int vcm30_t124_regulator_init(void);
 int vcm30_t124_pmon_init(void);

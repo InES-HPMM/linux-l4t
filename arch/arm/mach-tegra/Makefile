@@ -181,7 +181,7 @@ obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-14-0.o
 obj-${CONFIG_MACH_VCM30_T124}           += vcm30_t124.o
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124.o
 ifdef CONFIG_TEGRA_WIFI_ENABLE
-obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-sdhci.o
+obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-wifi.o
 endif
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-power.o
 obj-${CONFIG_MACH_VCM30_T124}           += board-vcm30_t124-audio.o

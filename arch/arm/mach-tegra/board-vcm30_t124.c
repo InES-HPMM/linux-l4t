@@ -255,7 +255,7 @@ static void __init tegra_vcm30_t124_late_init(void)
 	platform_add_devices(vcm30_t124_devices,
 			ARRAY_SIZE(vcm30_t124_devices));
 #ifdef CONFIG_TEGRA_WIFI_ENABLE
-	vcm30_t124_sdhci_init();
+	vcm30_t124_wifi_init();
 #endif
 	vcm30_t124_regulator_init();
 

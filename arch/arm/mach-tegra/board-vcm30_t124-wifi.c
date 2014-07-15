@@ -151,7 +151,7 @@ static int vcm30_t124_wifi_power(int on)
 	mdelay(100);
 	return 0;
 fail:
-	printk(KERN_ERR "%s: gpio_request failed(%d)\r\n", __func__, ret);
+	pr_err("%s: gpio_request failed(%d)\r\n", __func__, ret);
 	return ret;
 }
 static int vcm30_t124_wifi_reset(int on)
@@ -164,16 +164,10 @@ static int vcm30_t124_wifi_reset(int on)
 
 int __init vcm30_t124_wifi_init(void)
 {
-	platform_device_register(&broadcom_wifi_device);
-	return 0;
-}
-
-int __init vcm30_t124_sdhci_init(void)
-{
 	tegra_sdhci_device1.dev.platform_data = &tegra_sdhci_platform_data1;
-
 	platform_device_register(&tegra_sdhci_device1);
-	vcm30_t124_wifi_init();
+
+	platform_device_register(&broadcom_wifi_device);
 
 	return 0;
 }
