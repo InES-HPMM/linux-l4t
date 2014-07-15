@@ -20,6 +20,12 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 
+	host1x {
+		vi {
+			avdd_dsi_csi-supply = <&as3722_ldo2>;
+		};
+	};
+
 	serial@70006000 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";

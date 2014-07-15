@@ -27,6 +27,12 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 
+	host1x {
+		vi {
+			avdd_dsi_csi-supply = <&as3722_ldo2>;
+		};
+	};
+
 	pinmux@70000868 {
 		pinctrl-names = "default", "drive", "unused", "suspend";
 		pinctrl-3 = <&pinmux_suspend>;
