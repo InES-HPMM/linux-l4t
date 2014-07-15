@@ -97,10 +97,12 @@ struct bq2419x_chip {
 	struct regulator_dev		*chg_rdev;
 	struct regulator_desc		chg_reg_desc;
 	struct regulator_init_data	chg_reg_init_data;
+	struct device_node		*chg_np;
 
 	struct regulator_dev		*vbus_rdev;
 	struct regulator_desc		vbus_reg_desc;
 	struct regulator_init_data	vbus_reg_init_data;
+	struct device_node		*vbus_np;
 
 	struct battery_charger_dev	*bc_dev;
 	int				chg_status;
@@ -956,7 +958,7 @@ static int bq2419x_init_charger_regulator(struct bq2419x_chip *bq2419x,
 						REGULATOR_CHANGE_CURRENT;
 
 	rconfig.dev = bq2419x->dev;
-	rconfig.of_node = NULL;
+	rconfig.of_node =  bq2419x->chg_np;
 	rconfig.init_data = &bq2419x->chg_reg_init_data;
 	rconfig.driver_data = bq2419x;
 	bq2419x->chg_rdev = devm_regulator_register(bq2419x->dev,
@@ -1017,7 +1019,7 @@ static int bq2419x_init_vbus_regulator(struct bq2419x_chip *bq2419x,
 
 	/* Register the regulators */
 	rconfig.dev = bq2419x->dev;
-	rconfig.of_node = NULL;
+	rconfig.of_node =  bq2419x->vbus_np;
 	rconfig.init_data = &bq2419x->vbus_reg_init_data;
 	rconfig.driver_data = bq2419x;
 	bq2419x->vbus_rdev = devm_regulator_register(bq2419x->dev,
@@ -1405,7 +1407,8 @@ static struct battery_charger_info bq2419x_charger_bci = {
 	.bc_ops = &bq2419x_charger_bci_ops,
 };
 
-static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client)
+static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
+		struct device_node **chg_np, struct device_node **vbus_np)
 {
 	struct device_node *np = client->dev.of_node;
 	struct bq2419x_platform_data *pdata;
@@ -1645,6 +1648,8 @@ vbus_node:
 					"ti,otg-iusb-gpio", 0);
 	}
 
+	*chg_np = batt_reg_node;
+	*vbus_np = vbus_reg_node;
 	return pdata;
 }
 
@@ -1653,6 +1658,8 @@ static int bq2419x_probe(struct i2c_client *client,
 {
 	struct bq2419x_chip *bq2419x;
 	struct bq2419x_platform_data *pdata = NULL;
+	struct device_node *chg_np = NULL;
+	struct device_node *vbus_np = NULL;
 	int ret = 0;
 	int val = 0;
 
@@ -1660,7 +1667,7 @@ static int bq2419x_probe(struct i2c_client *client,
 		pdata = client->dev.platform_data;
 
 	if (!pdata && client->dev.of_node) {
-		pdata = bq2419x_dt_parse(client);
+		pdata = bq2419x_dt_parse(client, &chg_np, &vbus_np);
 		if (IS_ERR(pdata)) {
 			ret = PTR_ERR(pdata);
 			dev_err(&client->dev, "Parsing of node failed, %d\n",
@@ -1682,6 +1689,8 @@ static int bq2419x_probe(struct i2c_client *client,
 	bq2419x->charger_pdata = pdata->bcharger_pdata;
 	bq2419x->vbus_pdata = pdata->vbus_pdata;
 	bq2419x->ext_name = pdata->ext_name;
+	bq2419x->chg_np = chg_np;
+	bq2419x->vbus_np = vbus_np;
 
 	bq2419x->regmap = devm_regmap_init_i2c(client, &bq2419x_regmap_config);
 	if (IS_ERR(bq2419x->regmap)) {
