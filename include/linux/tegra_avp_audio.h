@@ -109,6 +109,8 @@ struct stream_data {
 	unsigned int                source_buffer_frames_decoded;
 	unsigned int                stream_notification_offset;
 	unsigned int                stream_notification_request;
+	unsigned int                stream_buffer_samples_consumed;
+	unsigned long long          stream_buffer_read_time_us;
 
 	/* Read-only for mixer */
 	unsigned int                stream_allocated;
@@ -122,6 +124,10 @@ struct stream_data {
 
 	unsigned int                stream_notification_interval;
 	int                         stream_notification_enable;
+
+	unsigned int                fragment_size;
+	unsigned int                fragment_byte_offset;
+	unsigned int                fragments_elapsed;
 
 	struct audio_params         stream_params;
 	enum audio_format           stream_format;
@@ -162,8 +168,11 @@ struct audio_engine_data {
 	enum KSSTATE            device_state_current;
 	unsigned int            device_buffer_write_position;
 	unsigned int            device_buffer_read_position;
+	unsigned long long      device_buffer_read_time_us;
 	unsigned int            chip_id;
 	unsigned int            only_loopback_flag;
+	unsigned int            starvation_count;
+	unsigned int            starvation_frames;
 
 	struct stream_data      stream[RENDERSW_MAX_STREAMS];
 };
