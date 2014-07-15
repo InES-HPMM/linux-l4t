@@ -731,6 +731,7 @@ static int ina219_remove(struct i2c_client *client)
 
 static const struct i2c_device_id ina219_id[] = {
 	{"ina219x", 0 },
+	{"hpa00900x", 0 },
 	{}
 };
 MODULE_DEVICE_TABLE(i2c, ina219_id);
