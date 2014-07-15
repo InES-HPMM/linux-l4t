@@ -26,6 +26,7 @@
 #include <linux/kernel.h>
 
 #include "os.h"
+#include "dram_app_mem_manager.h"
 
 
 #ifdef CONFIG_DEBUG_SET_MODULE_RONX
@@ -494,12 +495,17 @@ end:
 static int move_module(struct adsp_module *mod, struct load_info *info)
 {
 	int i;
-	dma_addr_t da;
 	struct device *dev = info->dev;
+	void *handle;
 
-	mod->module_ptr = nvadsp_alloc_coherent(mod->size, &da,
-							GFP_KERNEL);
-	mod->adsp_module_ptr = (int)da;
+	handle = dram_app_mem_request(info->name, mod->size);
+	if (!handle) {
+		dev_err(dev, "cannot allocate memory for app %s\n", info->name);
+		return -ENOMEM;
+	}
+	mod->adsp_module_ptr = dram_app_mem_get_address(handle);
+	mod->module_ptr = nvadsp_da_to_va_mappings(mod->adsp_module_ptr,
+			mod->size);
 	dev_info(dev, "module %s Load address %p 0x%x\n", info->name,
 					mod->module_ptr, mod->adsp_module_ptr);
 	/* Transfer each section which specifies SHF_ALLOC */

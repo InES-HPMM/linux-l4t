@@ -36,12 +36,15 @@
 
 #include "os.h"
 #include "dev.h"
+#include "dram_app_mem_manager.h"
 
 #define APE_FPGA_MISC_RST_DEVICES 0x702dc800 /*1882048512*/
 #define APE_RESET (1 << 6)
 
 #define ADSP_SMMU_LOAD_ADDR	0x80300000
-#define ADSP_SMMU_SIZE		SZ_8M
+#define ADSP_APP_MEM_SMMU_ADDR	(ADSP_SMMU_LOAD_ADDR + SZ_8M)
+#define ADSP_APP_MEM_SIZE	SZ_8M
+#define ADSP_SMMU_SIZE		SZ_16M
 
 #define AMC_EVP_RESET_VEC_0		0x700
 #define AMC_EVP_UNDEF_VEC_0		0x704
@@ -490,8 +493,15 @@ int nvadsp_os_load(void)
 	update_nvadsp_app_shared_ptr(ptr);
 
 	ret = nvadsp_os_elf_load(fw);
-	if (ret)
+	if (ret) {
 		dev_info(dev, "failed to load %s\n", NVADSP_FIRMWARE);
+		goto end;
+	}
+
+	ret = dram_app_mem_init(ADSP_APP_MEM_SMMU_ADDR, ADSP_APP_MEM_SIZE);
+	if (ret)
+		dev_err(dev,
+			"unable to allocate memory for allocating dynamic apps\n");
 end:
 	return ret;
 }
