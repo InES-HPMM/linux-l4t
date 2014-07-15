@@ -390,7 +390,8 @@ struct tegra_ahci_host_priv {
 	struct clk		*clk_cml1;
 	enum clk_gate_state	clk_state;
 	s16			gen2_rx_eq;
-	int			pexp_gpio;
+	int			pexp_gpio_high;
+	int			pexp_gpio_low;
 };
 
 #ifdef	CONFIG_DEBUG_FS
@@ -464,7 +465,7 @@ static const struct dev_pm_ops tegra_ahci_dev_rt_ops = {
 #endif
 
 static const struct of_device_id of_ahci_tegra_match[] = {
-	{ .compatible = "nvidia,tegra114-ahci-sata", },
+	{ .compatible = "nvidia,tegra124-ahci-sata", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, of_ahci_tegra_match);
@@ -755,7 +756,8 @@ int tegra_ahci_get_rails(struct regulator *regulators[])
 	int ret = 0;
 
 	for (i = 0; i < NUM_SATA_POWER_RAILS; ++i) {
-		reg = regulator_get(g_tegra_hpriv->dev, sata_power_rails[i]);
+		reg = devm_regulator_get(g_tegra_hpriv->dev,
+						sata_power_rails[i]);
 		if (IS_ERR_OR_NULL(reg)) {
 			pr_err("%s: can't get regulator %s\n",
 				__func__, sata_power_rails[i]);
@@ -774,7 +776,7 @@ void tegra_ahci_put_rails(struct regulator *regulators[])
 	int i;
 
 	for (i = 0; i < NUM_SATA_POWER_RAILS; ++i)
-		regulator_put(regulators[i]);
+		devm_regulator_put(regulators[i]);
 }
 
 int tegra_ahci_power_on_rails(struct regulator *regulators[])
@@ -862,6 +864,45 @@ static int tegra_first_level_clk_ungate(void)
 	g_tegra_hpriv->clk_state = CLK_ON;
 
 	return ret;
+}
+
+static int tegra_request_pexp_gpio(struct tegra_ahci_host_priv *tegra_hpriv)
+{
+	u32 val = 0;
+	int err = 0;
+	if (gpio_is_valid(tegra_hpriv->pexp_gpio_high)) {
+		val = gpio_request(tegra_hpriv->pexp_gpio_high,
+				"ahci-tegra");
+		if (val) {
+			pr_err("failed to allocate Port expander gpio\n");
+			err = -ENODEV;
+			goto exit;
+		}
+		gpio_direction_output(tegra_hpriv->pexp_gpio_high, 1);
+	}
+
+	if (gpio_is_valid(tegra_hpriv->pexp_gpio_low)) {
+		val = gpio_request(tegra_hpriv->pexp_gpio_low,
+				"ahci-tegra");
+		if (val) {
+			pr_err("failed to allocate Port expander gpio\n");
+			err = -ENODEV;
+			goto exit;
+		}
+		gpio_direction_output(tegra_hpriv->pexp_gpio_low, 0);
+	}
+
+exit:
+	return err;
+}
+
+static void tegra_free_pexp_gpio(struct tegra_ahci_host_priv *tegra_hpriv)
+{
+	if (gpio_is_valid(tegra_hpriv->pexp_gpio_high))
+		gpio_free(tegra_hpriv->pexp_gpio_high);
+	if (gpio_is_valid(tegra_hpriv->pexp_gpio_low))
+		gpio_free(tegra_hpriv->pexp_gpio_low);
+
 }
 
 static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
@@ -966,15 +1007,12 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 
 	tegra_ahci_clr_clk_rst_cnt_rst_dev();
 
-	if (gpio_is_valid(tegra_hpriv->pexp_gpio)) {
-		val = gpio_request(tegra_hpriv->pexp_gpio,
-				"ahci-tegra");
-		if (val) {
-			pr_err("failed to allocate Port expander gpio\n");
-			err = -ENODEV;
+	if (!lp0) {
+		err = tegra_request_pexp_gpio(tegra_hpriv);
+		if (err < 0) {
+			tegra_free_pexp_gpio(tegra_hpriv);
 			goto exit;
 		}
-		gpio_direction_output(tegra_hpriv->pexp_gpio, 1);
 	}
 
 	val = 0x100;
@@ -1158,6 +1196,7 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	sata_writel(val, SATA_INTR_MASK_0_OFFSET);
 
 exit:
+
 	if (!IS_ERR_OR_NULL(clk_pllp))
 		clk_put(clk_pllp);
 	if (!IS_ERR_OR_NULL(clk_sata))
@@ -1245,8 +1284,6 @@ static int tegra_ahci_controller_suspend(struct platform_device *pdev)
 		}
 	}
 
-	if (gpio_is_valid(tegra_hpriv->pexp_gpio))
-		gpio_free(tegra_hpriv->pexp_gpio);
 	spin_unlock_irqrestore(&host->lock, flags);
 
 	tegra_first_level_clk_gate();
@@ -2497,8 +2534,10 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	if (np) {
 		pdev->dev.coherent_dma_mask = DMA_BIT_MASK(64);
 		pdev->dev.dma_mask = &pdev->dev.coherent_dma_mask;
-		tegra_hpriv->pexp_gpio =
+		tegra_hpriv->pexp_gpio_high =
 			of_get_named_gpio(np, "nvidia,pexp-gpio", 0);
+		tegra_hpriv->pexp_gpio_low =
+			of_get_named_gpio(np, "nvidia,pexp-gpio", 1);
 		if (!of_property_read_bool(np, "nvidia,enable-sata-port")) {
 			dev_err(dev, "Not able to find enable-sata-port property\n");
 			tegra_ahci_sata_clk_gate();
@@ -2506,7 +2545,8 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 		}
 	} else {
 		ahci_pdata = tegra_hpriv->dev->platform_data;
-		tegra_hpriv->pexp_gpio = ahci_pdata->pexp_gpio;
+		tegra_hpriv->pexp_gpio_high = ahci_pdata->pexp_gpio_high;
+		tegra_hpriv->pexp_gpio_low = ahci_pdata->pexp_gpio_low;
 	}
 	g_tegra_hpriv = tegra_hpriv;
 
