@@ -26,4 +26,14 @@
 		pwrdet-uart-supply = <&max77620_sd3>;
 		pwrdet-sdmmc3-supply = <&max77620_ldo2>;
 	};
+
+	udc@7d000000 {
+		avdd_usb-supply = <&vdd_3v3>;
+		avdd_pll_utmip-supply = <&max77620_sd3>;
+		usb_bat_chg-supply = <&battery_charger>;
+	};
+
+	otg@7d000000 {
+		usb_vbus-supply = <&usb0_vbus>;
+	};
 };
