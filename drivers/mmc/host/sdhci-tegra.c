@@ -257,6 +257,7 @@
 #define TUNING_RETRIES	1
 #define DFS_FREQ_COUNT	2
 #define NEG_MAR_CHK_WIN_COUNT	2
+#define PRECISION_FOR_ESTIMATE 100000
 /* Tuning core voltage requirements */
 #define NOMINAL_VCORE_TUN	BIT(0)
 #define BOOT_VCORE_TUN	BIT(1)
@@ -2625,19 +2626,22 @@ static int calculate_estimated_tuning_values(int speedo,
 	} else if (voltage_mv == t2t_coeffs->vmax) {
 		est_values->t2t_vmax = vmax_t2t;
 	} else {
-		vmax_t2t = 1000 / vmax_t2t;
-		vmin_t2t = 1000 / vmin_t2t;
+		vmax_t2t = PRECISION_FOR_ESTIMATE / vmax_t2t;
+		vmin_t2t = PRECISION_FOR_ESTIMATE / vmin_t2t;
 		/*
-		 * For any intermediate voltage between 0.95V and 1.25V,
+		 * For any intermediate voltage between 0.95V and max vcore,
 		 * calculate the slope and intercept from the T2T and tap hole
-		 * values of 0.95V and 1.25V and use them to calculate the
+		 * values of 0.95V and max vcore and use them to calculate the
 		 * actual values. 1/T2T is a linear function of voltage.
 		 */
-		slope = ((vmax_t2t - vmin_t2t) * 1000) /
-			(t2t_coeffs->vmax - t2t_coeffs->vmin);
-		inpt = (vmax_t2t * 1000 - (slope * t2t_coeffs->vmax)) / 1000;
-		est_values->t2t_vmax = (slope * voltage_mv) / 1000 + inpt;
-		est_values->t2t_vmax = (1000 / est_values->t2t_vmax);
+		slope = ((vmax_t2t - vmin_t2t) * PRECISION_FOR_ESTIMATE) /
+					(t2t_coeffs->vmax - t2t_coeffs->vmin);
+		inpt = (vmax_t2t * PRECISION_FOR_ESTIMATE -
+			(slope * t2t_coeffs->vmax)) / PRECISION_FOR_ESTIMATE;
+		est_values->t2t_vmax = ((slope * voltage_mv) /
+					PRECISION_FOR_ESTIMATE + inpt);
+		est_values->t2t_vmax = (PRECISION_FOR_ESTIMATE /
+						est_values->t2t_vmax);
 	}
 
 	/* Est_UI  = (1000000/freq_MHz)/Est_T2T_Vmax */
@@ -2658,15 +2662,17 @@ static int calculate_estimated_tuning_values(int speedo,
 		est_values->vmax_thole = vmax_thole;
 	} else {
 		/*
-		 * For any intermediate voltage between 0.95V and 1.25V,
+		 * For any intermediate voltage between 0.95V and max vcore,
 		 * calculate the slope and intercept from the t2t and tap hole
-		 * values of 0.95V and 1.25V and use them to calculate the
+		 * values of 0.95V and max vcore and use them to calculate the
 		 * actual values. Tap hole is a linear function of voltage.
 		 */
-		slope = ((vmax_thole - vmin_thole) * 1000) /
-			(t2t_coeffs->vmax - t2t_coeffs->vmin);
-		inpt = (vmax_thole * 1000 - (slope * t2t_coeffs->vmax)) / 1000;
-		est_values->vmax_thole = (slope * voltage_mv) / 1000 + inpt;
+		slope = ((vmax_thole - vmin_thole) * PRECISION_FOR_ESTIMATE) /
+					(t2t_coeffs->vmax - t2t_coeffs->vmin);
+		inpt = (vmax_thole * PRECISION_FOR_ESTIMATE -
+			(slope * t2t_coeffs->vmax)) / PRECISION_FOR_ESTIMATE;
+		est_values->vmax_thole = (slope * voltage_mv) /
+					PRECISION_FOR_ESTIMATE + inpt;
 	}
 	est_values->vmin_thole = vmin_thole;
 
