@@ -10,7 +10,7 @@
 #include "tegra210-platforms/tegra210-e2141-powermon-e2174-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-extgpio-e2141-1100-a00.dtsi"
 #include "tegra132-bowmore-e1971-emc.dtsi"
-
+#include "tegra210-platforms/tegra210-ers-touch-e1937-1000-a00.dtsi"
 / {
 	model = "e2141";
 	compatible = "nvidia,e2141", "nvidia,tegra132";
@@ -69,7 +69,11 @@
 
 	spi@7000da00 {
 		status = "okay";
-		spi-max-frequency = <25000000>;
+		spi-max-frequency = <12000000>;
+		spi-touch@0 {
+			interrupts = <TEGRA_GPIO(K, 2) 0x01>; /* GPIO_PX1 */
+			reset-gpio = <&gpio TEGRA_GPIO(R, 1) 0>; /* GPIO_PV6 */
+		};
 	};
 
 	xusb@70090000 {
