@@ -111,6 +111,12 @@ config ARCH_TEGRA_12x_SOC
 	  Support for NVIDIA Tegra 12x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
 
+config ARCH_TEGRA_VCM30T124
+	bool "Enable VCM30 T124 MCM"
+	select ARCH_TEGRA_12x_SOC
+	help
+	  Support for NVIDIA VCM30 T124, based on the Tegra124 SoC
+
 config TEGRA_NO_CARVEOUT
 	bool "Disable Tegra carveout"
 	default n
@@ -174,7 +180,7 @@ config MACH_P2360
 
 config MACH_VCM30_T124
        bool "VCM30_T124(Automotive) board"
-       depends on ARCH_TEGRA_12x_SOC
+       depends on ARCH_TEGRA_VCM30T124
        help
          Support for NVIDIA VCM30_T124 Automotive Development platform
 
