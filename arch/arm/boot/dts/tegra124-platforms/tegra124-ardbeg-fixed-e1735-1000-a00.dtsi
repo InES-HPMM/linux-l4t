@@ -30,13 +30,6 @@
 			regulator-max-microvolt = <5000000>;
 			gpio = <&gpio TEGRA_GPIO(K, 6) 0>;
 			enable-active-high;
-
-			consumers {
-				c0 {
-					regulator-consumer-supply = "vdd_hdmi_5v0";
-					regulator-consumer-device = "tegradc.1";
-				};
-			};
 		};
 
 		usb0_vbus: regulator@2 {
@@ -117,12 +110,6 @@
 			regulator-max-microvolt = <5000000>;
 			gpio = <&gpio TEGRA_GPIO(H, 2) 0>;
 			enable-active-high;
-
-			consumers {
-				c0 {
-					regulator-consumer-supply = "vdd_lcd_bl_en";
-				};
-			};
 		};
 
 		dcdc_1v8: regulator@6 {
@@ -207,12 +194,6 @@
 			regulator-max-microvolt = <3300000>;
 			gpio = <&palmas_gpio 3 0>;
 			enable-active-high;
-
-			consumers {
-				c0 {
-					regulator-consumer-supply = "avdd_lcd";
-				};
-			};
 		};
 
 		ti913_gpio4: regulator@11 {
@@ -258,9 +239,6 @@
 			enable-active-high;
 
 			consumers {
-				c0 {
-					regulator-consumer-supply = "dvdd_lcd";
-				};
 				c1 {
 					regulator-consumer-supply = "vdd_lcd_1v8_s";
 				};

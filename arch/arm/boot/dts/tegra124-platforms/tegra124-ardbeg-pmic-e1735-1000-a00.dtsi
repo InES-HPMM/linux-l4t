@@ -286,14 +286,6 @@
 						regulator-init-mode = <REGULATOR_MODE_NORMAL>;
 
 						consumers {
-							c0 {
-								regulator-consumer-supply = "avdd_hdmi";
-								regulator-consumer-device = "tegradc.1";
-							};
-							c1 {
-								regulator-consumer-supply = "avdd_hdmi_pll";
-								regulator-consumer-device = "tegradc.1";
-							};
 							c5 {
 								regulator-consumer-supply = "avddio_usb";
 								regulator-consumer-device = "tegra-xhci";
@@ -391,18 +383,6 @@
 								regulator-consumer-supply = "vddio_hsic";
 								regulator-consumer-device = "tegra-xhci";
 							};
-							c3 {
-								regulator-consumer-supply = "avdd_dsi_csi";
-								regulator-consumer-device = "tegradc.0";
-							};
-							c4 {
-								regulator-consumer-supply = "avdd_dsi_csi";
-								regulator-consumer-device = "tegradc.1";
-							};
-							c5 {
-								regulator-consumer-supply = "avdd_dsi_csi";
-								regulator-consumer-device = "vi.0";
-							};
 							c6 {
 								regulator-consumer-supply = "avdd_dsi_csi";
 								regulator-consumer-device = "vi.1";
@@ -412,9 +392,6 @@
 							};
 							c9 {
 								regulator-consumer-supply = "avdd_hsic_mdm";
-							};
-							c10 {
-								regulator-consumer-supply = "vdd_lcd_bl";
 							};
 						};
 
@@ -613,10 +590,6 @@
 								regulator-consumer-supply = "micvdd";
 								regulator-consumer-device = "tegra-snd-rt5645.0";
 							};
-							c1 {
-								regulator-consumer-supply = "vddio_hv";
-								regulator-consumer-device = "tegradc.1";
-							};
 							c3 {
 								regulator-consumer-supply = "avdd_usb";
 								regulator-consumer-device = "tegra-udc.0";
@@ -673,33 +646,10 @@
 								regulator-consumer-supply = "vdd";
 								regulator-consumer-device = "1-004d";
 							};
-							c21 {
-								regulator-consumer-supply = "vcc";
-								regulator-consumer-device = "1-0071";
-							};
 						};
 					};
 				};
 			};
 		};
 	};
-
-	/* Populate fuse supply */
-	efuse@7000f800 {
-		vpp_fuse-supply = <&ldousb_reg>;
-	};
-
-	power-detect {
-		pwrdet-nand-supply = <&palmas_smps6>;
-		pwrdet-sdmmc1-supply = <&palmas_smps6>;
-		pwrdet-sdmmc4-supply = <&palmas_smps6>;
-		pwrdet-audio-supply = <&palmas_smps6>;
-		pwrdet-uart-supply = <&palmas_smps6>;
-		pwrdet-bb-supply = <&palmas_smps6>;
-		pwrdet-cam-supply = <&palmas_smps6>;
-		pwrdet-mipi-supply = <&palams_ldo4>;
-		pwrdet-sdmmc3-supply = <&palmas_ldo9>;
-		pwrdet-pex-ctl-supply = <&palmas_ti913_regen1>;
-		pwrdet-hv-supply = <&palmas_ti913_regen1>;
-	};  
 };

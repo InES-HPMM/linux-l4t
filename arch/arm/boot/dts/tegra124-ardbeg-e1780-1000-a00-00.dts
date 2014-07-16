@@ -20,8 +20,7 @@
 /dts-v1/;
 
 #include "tegra124-ardbeg-e1780-1000-a00-common.dtsi"
-#include "tegra124-platforms/tegra124-ardbeg-pmic-e1735-1000-a00.dtsi"
-#include "tegra124-platforms/tegra124-ardbeg-fixed-e1735-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-power-tree-e1735-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-e1780-e1735-dfll.dtsi"
 
 / {
@@ -29,33 +28,6 @@
 	nvidia,dtsfilename = __FILE__;
 	nvidia,proc-boardid = "1780:1000:00:B:3";
 	nvidia,pmu-boardid = "1735:1000:01:D:3";
-	host1x {
-		/* tegradc.0 */
-		dc@54200000 {
-			avdd_dsi_csi-supply = <&palams_ldo4>;
-			avdd_lcd-supply = <&ti913_gpio3>;
-			dvdd_lcd-supply = <&ti913_gpio7>;
-			vdd_lcd_bl-supply = <&palams_ldo4>;
-			vdd_lcd_bl_en-supply = <&lcd_bl_en>;
-		};
-
-		/* tegradc.1 */
-		dc@54240000 {
-			avdd_hdmi-supply = <&palmas_smps9>;
-			avdd_hdmi_pll-supply = <&palmas_smps9>;
-			vdd_hdmi_5v0-supply = <&vdd_hdmi_5v0>;
-		};
-
-		vi {
-			avdd_dsi_csi-supply = <&palams_ldo4>;
-		};
-	};
-
-	i2c@7000c400 {
-		pca9546@71 {
-			vcc-supply = <&palmas_ti913_regen1>;
-		};
-	};
 
 	i2c@7000d000 {
 		tps65913@58 {
