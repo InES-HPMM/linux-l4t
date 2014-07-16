@@ -317,10 +317,61 @@ out1:
 }
 EXPORT_SYMBOL_GPL(utmi_phy_iddq_override);
 
+static void utmi_phy_pad(bool enable)
+{
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	if (enable) {
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0
+			, BIAS_PAD_MASK , BIAS_PAD_XUSB);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1
+			, TRK_START_TIMER_MASK , TRK_START_TIMER);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1
+			, TRK_DONE_RESET_TIMER_MASK , TRK_DONE_RESET_TIMER);
+
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0
+			, PD_MASK , PD);
+
+		udelay(1);
+
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1
+			, PD_TRK_MASK , PD_TRK);
+	} else {
+
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0
+			, BIAS_PAD_MASK , BIAS_PAD_XUSB);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0
+			, PD_MASK , PD_MASK);
+	}
+#else
+	unsigned long val;
+	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
+
+	if (enable) {
+		val = readl(pad_base + UTMIP_BIAS_CFG0);
+		val &= ~(UTMIP_OTGPD | UTMIP_BIASPD);
+		val |= UTMIP_HSSQUELCH_LEVEL(0x2) | UTMIP_HSDISCON_LEVEL(0x3) |
+			UTMIP_HSDISCON_LEVEL_MSB;
+		writel(val, pad_base + UTMIP_BIAS_CFG0);
+
+#if defined(CONFIG_USB_XHCI_HCD)
+	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0
+			, PD_MASK , 0);
+#endif
+	} else {
+		val = readl(pad_base + UTMIP_BIAS_CFG0);
+		val |= UTMIP_OTGPD | UTMIP_BIASPD;
+		val &= ~(UTMIP_HSSQUELCH_LEVEL(~0) | UTMIP_HSDISCON_LEVEL(~0) |
+			UTMIP_HSDISCON_LEVEL_MSB);
+		writel(val, pad_base + UTMIP_BIAS_CFG0);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0
+			, PD_MASK , PD_MASK);
+	}
+#endif
+}
+
 int utmi_phy_pad_enable(void)
 {
-	unsigned long val, flags;
-	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
+	unsigned long flags;
 
 	if (!utmi_pad_clk)
 		utmi_pad_clk = clk_get_sys("utmip-pad", NULL);
@@ -329,16 +380,8 @@ int utmi_phy_pad_enable(void)
 
 	spin_lock_irqsave(&utmip_pad_lock, flags);
 	utmip_pad_count++;
-	val = readl(pad_base + UTMIP_BIAS_CFG0);
-	val &= ~(UTMIP_OTGPD | UTMIP_BIASPD);
-	val |= UTMIP_HSSQUELCH_LEVEL(0x2) | UTMIP_HSDISCON_LEVEL(0x3) |
-		UTMIP_HSDISCON_LEVEL_MSB;
-	writel(val, pad_base + UTMIP_BIAS_CFG0);
 
-#if defined(CONFIG_USB_XHCI_HCD)
-	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0
-			, PD_MASK , 0);
-#endif
+	utmi_phy_pad(true);
 
 	spin_unlock_irqrestore(&utmip_pad_lock, flags);
 
@@ -350,8 +393,7 @@ EXPORT_SYMBOL_GPL(utmi_phy_pad_enable);
 
 int utmi_phy_pad_disable(void)
 {
-	unsigned long val, flags;
-	void __iomem *pad_base = IO_ADDRESS(TEGRA_USB_BASE);
+	unsigned long flags;
 
 	if (!utmi_pad_clk)
 		utmi_pad_clk = clk_get_sys("utmip-pad", NULL);
@@ -363,15 +405,8 @@ int utmi_phy_pad_disable(void)
 		pr_err("%s: utmip pad already powered off\n", __func__);
 		goto out;
 	}
-	if (--utmip_pad_count == 0) {
-		val = readl(pad_base + UTMIP_BIAS_CFG0);
-		val |= UTMIP_OTGPD | UTMIP_BIASPD;
-		val &= ~(UTMIP_HSSQUELCH_LEVEL(~0) | UTMIP_HSDISCON_LEVEL(~0) |
-			UTMIP_HSDISCON_LEVEL_MSB);
-		writel(val, pad_base + UTMIP_BIAS_CFG0);
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0
-			, PD_MASK , PD_MASK);
-	}
+	if (--utmip_pad_count == 0)
+		utmi_phy_pad(false);
 out:
 	spin_unlock_irqrestore(&utmip_pad_lock, flags);
 	clk_disable(utmi_pad_clk);

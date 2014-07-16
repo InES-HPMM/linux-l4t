@@ -245,6 +245,7 @@
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 /* XUSB_PADCTL_USB2_PAD_MUX_0 */
 #define BIAS_PAD_MASK	(0x3 << 18)
+#define BIAS_PAD_XUSB	(0x1 << 18)
 #define HSIC_PAD_TRK	(0x3 << 16)
 
 #define XUSB_PADCTL_USB3_PAD_MUX_0		0x28
@@ -280,9 +281,13 @@
 #define XUSB_PADCTL_USB2_BIAS_PAD_CTL_0		0x284
 #define XUSB_PADCTL_USB2_BIAS_PAD_CTL_1		0x288
 #define PD_MASK			(0x1 << 11)
+#define PD				(0x0 << 11)
 #define PD_TRK_MASK		(0x1 << 26)
+#define PD_TRK			(0x0 << 26)
 #define TRK_START_TIMER_MASK		(0x7F << 12)
+#define TRK_START_TIMER				(0x1E << 12)
 #define TRK_DONE_RESET_TIMER_MASK	(0x7F << 19)
+#define TRK_DONE_RESET_TIMER		(0xA << 19)
 
 #define XUSB_PADCTL_HSIC_PAD_TRK_CTL_0		0x340
 #define HSIC_TRK_START_TIMER_MASK	(0x7F << 5)
