@@ -39,13 +39,6 @@
 			regulator-max-microvolt = <5000000>;
 			gpio = <&gpio TEGRA_GPIO(K, 6) 0>;
 			enable-active-high;
-
-			consumers {
-				c0 {
-					regulator-consumer-supply = "vdd_hdmi_5v0";
-					regulator-consumer-device = "tegradc.1";
-				};
-			};
 		};
 
 		usb0_vbus: regulator@2 {
@@ -126,12 +119,6 @@
 			regulator-max-microvolt = <5000000>;
 			gpio = <&gpio TEGRA_GPIO(H, 2) 0>;
 			enable-active-high;
-
-			consumers {
-				c0 {
-					regulator-consumer-supply = "vdd_lcd_bl_en";
-				};
-			};
 		};
 
 		dcdc_1v8: regulator@6 {
@@ -206,10 +193,6 @@
 					regulator-consumer-supply = "micvdd";
 					regulator-consumer-device = "tegra-snd-rt5645.0";
 				};
-				c1 {
-					regulator-consumer-supply = "vddio_hv";
-					regulator-consumer-device = "tegradc.1";
-				};
 				c3 {
 					regulator-consumer-supply = "avdd_usb";
 					regulator-consumer-device = "tegra-udc.0";
@@ -266,10 +249,6 @@
 					regulator-consumer-supply = "vdd";
 					regulator-consumer-device = "1-004d";
 				};
-				c21 {
-					regulator-consumer-supply = "vcc";
-					regulator-consumer-device = "1-0071";
-				};
 			};
 		};
 
@@ -297,12 +276,6 @@
 			regulator-max-microvolt = <3300000>;
 			gpio = <&as3722 4 0>;
 			enable-active-high;
-
-			consumers {
-				c0 {
-					regulator-consumer-supply = "avdd_lcd";
-				};
-			};
 		};
 
 		tca6408_p0: regulator@12 {
@@ -351,9 +324,6 @@
 			enable-active-high;
 
 			consumers {
-				c0 {
-					regulator-consumer-supply = "dvdd_lcd";
-				};
 				c1 {
 					regulator-consumer-supply = "vdd_lcd_1v8_s";
 				};
@@ -386,10 +356,5 @@
 			gpio = <&gpio TEGRA_GPIO(K, 5) 0>;
 			enable-active-high;
 		};
-	};
-
-	power-detect {
-		pwrdet-hv-supply = <&as3722_gpio2>;
-		pwrdet-pex-ctl-supply = <&as3722_gpio2>;
 	};
 };

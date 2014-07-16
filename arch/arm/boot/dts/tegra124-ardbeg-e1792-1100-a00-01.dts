@@ -20,8 +20,7 @@
 /dts-v1/;
 
 #include "tegra124-ardbeg-e1780-1000-a03-common.dtsi"
-#include "tegra124-platforms/tegra124-ardbeg-pmic-e1733-1000-a00.dtsi"
-#include "tegra124-platforms/tegra124-ardbeg-fixed-e1733-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-power-tree-e1733-1000-a00.dtsi"
 
 / {
 	nvidia,boardids = "1792:1100:00:;1733:1000:00";
@@ -39,15 +38,6 @@
 					regulator-max-microvolt = <1200000>;
 				};
 			};
-		};
-	};
-
-	host1x {
-		/* tegradc.1 */
-		dc@54240000 {
-			avdd_hdmi-supply = <&as3722_sd4>;
-			avdd_hdmi_pll-supply = <&as3722_sd4>;
-			vdd_hdmi_5v0-supply = <&vdd_hdmi_5v0>;
 		};
 	};
 };
