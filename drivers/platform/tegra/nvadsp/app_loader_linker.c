@@ -28,7 +28,6 @@
 #include "os.h"
 #include "dram_app_mem_manager.h"
 
-
 #ifdef CONFIG_DEBUG_SET_MODULE_RONX
 # define debug_align(X) ALIGN(X, PAGE_SIZE)
 #else
@@ -827,6 +826,8 @@ struct adsp_module
 	struct elf32_shdr *data_shdr;
 	struct elf32_shdr *shared_shdr;
 	struct elf32_shdr *shared_wc_shdr;
+	struct elf32_shdr *aram_shdr;
+	struct elf32_shdr *aram_x_shdr;
 	struct app_mem_size *mem_size;
 	int ret;
 
@@ -867,6 +868,8 @@ struct adsp_module
 	data_shdr = nvadsp_get_section(fw, ".dram_data");
 	shared_shdr = nvadsp_get_section(fw, ".dram_shared");
 	shared_wc_shdr = nvadsp_get_section(fw, ".dram_shared_wc");
+	aram_shdr = nvadsp_get_section(fw, ".aram_data");
+	aram_x_shdr = nvadsp_get_section(fw, ".aram_x_data");
 
 	mem_size = (void *)&mod->mem_size;
 
@@ -890,6 +893,16 @@ struct adsp_module
 				shared_wc_shdr->sh_size;
 	}
 
+	if (aram_shdr) {
+		dev_dbg(dev, "aram_shdr->sh_size %d\n", aram_shdr->sh_size);
+		mem_size->aram = aram_shdr->sh_size;
+	}
+
+	if (aram_x_shdr) {
+		dev_dbg(dev,
+			"aram_x_shdr->sh_size %d\n", aram_x_shdr->sh_size);
+		mem_size->aram_x = aram_x_shdr->sh_size;
+	}
 
 #if !CONFIG_USE_STATIC_APP_LOAD
 	/* Fix up syms, so that st_value is a pointer to location. */
@@ -900,7 +913,7 @@ struct adsp_module
 		return ERR_PTR(ret);
 	}
 
-	dev_info(dev, "applying relocation\n");
+	dev_dbg(dev, "applying relocation\n");
 	ret = apply_relocations(mod, &info);
 	if (ret) {
 		dev_err(dev, "relocation failed\n");

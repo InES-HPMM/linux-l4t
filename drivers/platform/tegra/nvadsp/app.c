@@ -27,6 +27,7 @@
 #include <linux/dma-mapping.h>
 
 #include "os.h"
+#include "aram_manager.h"
 
 #define APP_LOADER_MBOX_ID		1
 
@@ -69,6 +70,10 @@ struct app_init_data {
 	uint32_t dram_data_ptr;
 	uint32_t dram_shared_ptr;
 	uint32_t dram_shared_wc_ptr;
+	uint32_t aram_ptr;
+	uint32_t aram_flag;
+	uint32_t aram_x_ptr;
+	uint32_t aram_x_flag;
 	nvadsp_app_args_t app_args;
 } __packed;
 
@@ -83,8 +88,6 @@ struct shared_mem_struct {
 	struct app_load_data app_load;
 	struct app_init_data app_init;
 	struct app_start_data app_start;
-	uint32_t adsp_mem_size;
-	uint32_t adsp_mem_addr;
 } __packed;
 
 enum {
@@ -242,32 +245,65 @@ end:
 EXPORT_SYMBOL(nvadsp_app_load);
 
 static void
-populate_memory(adsp_app_mem_t *mem,
+populate_memory(const char *name, adsp_app_mem_t *mem,
 	const struct app_mem_size *sz, struct app_init_data *data)
 {
 	struct device *dev = &priv.pdev->dev;
 	dma_addr_t da;
+	void *aram_handle;
 
 	mem->dram = nvadsp_alloc_coherent(sz->dram,
 						&da, GFP_KERNEL);
 	data->dram_data_ptr =
 			!mem->dram ? 0 : (int)da;
-	dev_dbg(dev, "mem.dram %p 0x%x", mem->dram,
-				data->dram_data_ptr);
+	dev_dbg(dev, "mem.dram %p 0x%x", mem->dram, data->dram_data_ptr);
 
-	mem->shared = nvadsp_alloc_coherent(sz->dram_shared,
-						&da, GFP_KERNEL);
+	mem->shared = nvadsp_alloc_coherent(sz->dram_shared, &da, GFP_KERNEL);
 	data->dram_shared_ptr =
 			!mem->shared ? 0 : (int)da;
-	dev_dbg(dev, "mem.shared %p 0x%x", mem->shared,
-				data->dram_shared_ptr);
+	dev_dbg(dev, "mem.shared %p 0x%x", mem->shared, data->dram_shared_ptr);
 
-	mem->shared_wc = nvadsp_alloc_coherent(sz->dram_shared_wc,
-						&da, GFP_KERNEL);
+	mem->shared_wc =
+		nvadsp_alloc_coherent(sz->dram_shared_wc, &da, GFP_KERNEL);
 	data->dram_shared_wc_ptr =
 			!mem->shared_wc ? 0 : (int)da;
-	dev_dbg(dev, "mem.shared_wc %p 0x%x", mem->shared_wc,
-			data->dram_shared_wc_ptr);
+	dev_dbg(dev, "mem.shared_wc %p 0x%x",
+			mem->shared_wc, data->dram_shared_wc_ptr);
+
+	if (sz->aram) {
+		aram_handle = aram_request(name, sz->aram);
+		if (!IS_ERR_OR_NULL(aram_handle)) {
+			data->aram_ptr = (u32)aram_get_address(aram_handle);
+			mem->aram = aram_handle;
+			data->aram_flag = mem->aram_flag = 1;
+			dev_dbg(dev, "aram %x\n", data->aram_ptr);
+		} else {
+			dev_info(dev,
+			"No ARAM memory avialable ! allocating from DRAM\n");
+			mem->aram = nvadsp_alloc_coherent(sz->aram,
+					&da, GFP_KERNEL);
+			data->aram_ptr = !mem->aram ? 0 : (uint32_t)da;
+			data->aram_flag = mem->aram_flag = 0;
+			dev_dbg(dev, "mem.aram %p 0x%x",
+					mem->aram, data->aram_ptr);
+		}
+	}
+
+	if (sz->aram_x) {
+		aram_handle = aram_request(name, sz->aram);
+		if (!IS_ERR_OR_NULL(aram_handle)) {
+			data->aram_x_ptr = (u32)aram_get_address(aram_handle);
+			mem->aram_x = aram_handle;
+			data->aram_x_flag = mem->aram_x_flag = 1;
+			dev_dbg(dev, "data->aram_x %x\n", data->aram_x_ptr);
+		} else {
+			data->aram_x_ptr = 0;
+			data->aram_x_flag = mem->aram_x_flag = 0;
+			dev_err(dev,
+			"unable to allocate exclusive memory for app %s\n",
+									name);
+		}
+	}
 }
 
 static uint32_t
@@ -277,7 +313,7 @@ native_adsp_app_init(nvadsp_app_info_t *app,
 {
 	uint32_t token;
 	struct app_init_data *data = &shared->app_init;
-	populate_memory(&app->mem, ser->mem_size, data);
+	populate_memory(app->name, &app->mem, ser->mem_size, data);
 	if (app_args)
 		memcpy(&data->app_args, app_args,
 					sizeof(nvadsp_app_args_t));

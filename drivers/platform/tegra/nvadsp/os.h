@@ -41,6 +41,7 @@ struct app_mem_size {
 	uint64_t dram_shared;
 	uint64_t dram_shared_wc;
 	uint64_t aram;
+	uint64_t aram_x;
 };
 
 struct adsp_module {

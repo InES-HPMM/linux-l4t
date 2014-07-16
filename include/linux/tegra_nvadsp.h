@@ -204,6 +204,10 @@ typedef struct adsp_app_mem {
 	void      *shared_wc;
 	/*  ARAM if available, DRAM OK */
 	void      *aram;
+	/* set to 1 if ARAM allocation succeeded else 0 meaning allocated from
+	 * dram.
+	 */
+	uint32_t   aram_flag;
 	/* ARAM Segment. exclusively */
 	void      *aram_x;
 	/* set to 1 if ARAM allocation succeeded */
