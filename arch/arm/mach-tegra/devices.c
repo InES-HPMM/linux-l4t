@@ -1554,44 +1554,6 @@ struct platform_device nvavp_device = {
 	},
 };
 
-static struct resource tegra_aes_resources[] = {
-	{
-		.start	= TEGRA_VDE_BASE,
-		.end	= TEGRA_VDE_BASE + TEGRA_VDE_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.start	= TEGRA_BSEA_BASE,
-		.end	= TEGRA_BSEA_BASE + TEGRA_BSEA_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
-	{
-		.start	= INT_VDE_BSE_V,
-		.end	= INT_VDE_BSE_V,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.start	= INT_VDE_BSE_A,
-		.end	= INT_VDE_BSE_A,
-		.flags	= IORESOURCE_IRQ,
-	},
-#endif
-};
-
-static u64 tegra_aes_dma_mask = DMA_BIT_MASK(32);
-
-struct platform_device tegra_aes_device = {
-	.name		= "tegra-aes",
-	.id		= -1,
-	.resource	= tegra_aes_resources,
-	.num_resources	= ARRAY_SIZE(tegra_aes_resources),
-	.dev	= {
-		.dma_mask = &tegra_aes_dma_mask,
-		.coherent_dma_mask = DMA_BIT_MASK(32),
-	},
-};
-
 #if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static struct resource tegra_kbc_resources[] = {
 	[0] = {

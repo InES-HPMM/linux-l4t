@@ -196,9 +196,6 @@ static struct platform_device *t210ref_devices[] __initdata = {
 	&tegra_offload_device,
 	&tegra30_avp_audio_device,
 #endif
-#if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
-	&tegra_aes_device,
-#endif
 #if defined(CONFIG_TEGRA_PTM)
 	&tegra_ptm_device,
 #endif
