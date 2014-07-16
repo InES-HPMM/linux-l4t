@@ -485,6 +485,10 @@
 								regulator-consumer-supply = "vin";
 								regulator-consumer-device = "2-0030";
 							};
+							c8 {
+								regulator-consumer-supply = "vana";
+								regulator-consumer-device = "2-0010";
+							};
 						};
 					};
 
