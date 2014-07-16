@@ -1,0 +1,29 @@
+#include "tegra210-ers-pmic-e2174-1101-a00.dtsi"
+#include "tegra210-ers-fixed-e2174-1101-a00.dtsi"
+
+/ {
+
+	efuse@7000f800 {
+		vpp_fuse-supply = <&max77620_sd3>;
+	};
+
+	host1x {
+		vi {
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
+		};
+	};
+
+	i2c@7000c000 {
+		pca9546@71 {
+			vcc-supply = <&vdd_aux_3v3>;
+		};
+	};
+
+	power-detect {
+		pwrdet-sdmmc1-supply = <&max77620_sd3>;
+		pwrdet-sdmmc4-supply = <&max77620_sd3>;
+		pwrdet-audio-supply = <&max77620_sd3>;
+		pwrdet-uart-supply = <&max77620_sd3>;
+		pwrdet-sdmmc3-supply = <&max77620_ldo2>;
+	};
+};
