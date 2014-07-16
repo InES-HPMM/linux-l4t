@@ -656,22 +656,4 @@
 			};
 		};
 	};
-
-	/* Populate fuse supply */
-	efuse@7000f800 {
-		vpp_fuse-supply = <&vpp_fuse>;
-	};
-
-	power-detect {
-		pwrdet-nand-supply = <&palmas_smps8>;
-		pwrdet-sdmmc1-supply = <&palmas_smps8>;
-		pwrdet-sdmmc4-supply = <&palmas_smps8>;
-		pwrdet-audio-supply = <&palmas_smps8>;
-		pwrdet-uart-supply = <&palmas_smps8>;
-		pwrdet-bb-supply = <&palmas_smps8>;
-		pwrdet-mipi-supply = <&ldo5_reg>;
-		pwrdet-sdmmc3-supply = <&palmas_ldo9>;
-		pwrdet-hv-supply = <&ldoln_reg>;
-		pwrdet-pex-ctl-supply = <&ldousb_reg>;
-	};
 };
