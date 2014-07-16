@@ -147,6 +147,11 @@ static int nvadsp_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
+#ifdef CONFIG_TEGRA_EMC_APE_DFS
+	ret = emc_dfs_init(pdev);
+	if (ret)
+		goto err;
+#endif
 	ret = ape_actmon_init(pdev);
 	if (ret)
 		goto err;

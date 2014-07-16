@@ -11,3 +11,7 @@ nvadsp-objs += dev.o os.o app.o app_loader_linker.o\
 ifeq ($(CONFIG_TEGRA_ADSP_DFS),y)
 nvadsp-objs += adsp_dfs.o
 endif
+
+ifeq ($(CONFIG_TEGRA_EMC_APE_DFS),y)
+nvadsp-objs += emc_dfs.o
+endif

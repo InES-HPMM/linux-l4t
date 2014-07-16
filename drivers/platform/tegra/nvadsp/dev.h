@@ -31,6 +31,7 @@
 enum {
 	AMC,
 	AMISC,
+	ABRIDGE,
 	APE_MAX_REG
 };
 
@@ -58,6 +59,10 @@ status_t nvadsp_aram_init(struct platform_device *pdev);
 #ifdef CONFIG_TEGRA_ADSP_DFS
 unsigned long adsp_cpu_set_rate(unsigned long freq);
 int adsp_dfs_core_init(void);
+#endif
+
+#ifdef CONFIG_TEGRA_EMC_APE_DFS
+status_t emc_dfs_init(struct platform_device *pdev);
 #endif
 
 #endif /* __TEGRA_NVADSP_DEV_H */
