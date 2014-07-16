@@ -471,22 +471,4 @@
 			#gpio-cells = <2>;
 		 };
 	};
-
-	/* Populate fuse supply */
-	efuse@7000f800 {
-		vpp_fuse-supply = <&as3722_ldo11>;
-	};
-
-	power-detect {
-		pwrdet-nand-supply = <&as3722_sd5>;
-		pwrdet-sdmmc1-supply = <&as3722_sd5>;
-		pwrdet-sdmmc4-supply = <&as3722_sd5>;
-		pwrdet-audio-supply = <&as3722_sd5>;
-		pwrdet-uart-supply = <&as3722_sd5>;
-		pwrdet-bb-supply = <&as3722_sd5>;
-		pwrdet-cam-supply = <&as3722_ldo1>;
-		pwrdet-mipi-supply = <&as3722_ldo2>;
-		pwrdet-sdmmc3-supply = <&as3722_ldo6>;
-		pwrdet-pex-ctl-supply = <&as3722_sd4>;
-	};
 };
