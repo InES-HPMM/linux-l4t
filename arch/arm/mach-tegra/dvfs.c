@@ -1601,12 +1601,11 @@ int __init of_tegra_dvfs_init(const struct of_device_id *matches)
 	return 0;
 }
 
-static int __init of_rail_align(struct device_node *dn, struct dvfs_rail *rail)
+static int __init of_rail_align(struct device_node *reg_dn,
+				struct dvfs_rail *rail)
 {
 	u32 vmin, vmax, n;
 	int step, ret = 0;
-	struct device_node *consumer_dn = of_get_parent(dn);
-	struct device_node *reg_dn = of_get_parent(consumer_dn);
 
 	ret |= of_property_read_u32(reg_dn, "regulator-n-voltages", &n);
 	ret |= of_property_read_u32(reg_dn, "regulator-min-microvolt", &vmin);
@@ -1626,8 +1625,6 @@ static int __init of_rail_align(struct device_node *dn, struct dvfs_rail *rail)
 	rail->alignment.step_uv = step;
 
 _out:
-	of_node_put(dn);
-	of_node_put(consumer_dn);
 	of_node_put(reg_dn);
 	return ret;
 }
@@ -1635,7 +1632,7 @@ _out:
 int __init of_tegra_dvfs_rail_align(struct dvfs_rail *rail)
 {
 	struct device_node *dn;
-	const char *propname = "regulator-consumer-supply";
+	const char *propname = "regulator-name";
 
 	for_each_node_with_property(dn, propname) {
 		if (of_property_match_string(dn, propname, rail->reg_id) >= 0)
