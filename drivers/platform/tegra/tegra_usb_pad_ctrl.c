@@ -625,6 +625,11 @@ void usb2_vbus_id_init()
 	val &= ~(VBUS_SOURCE_SELECT(~0) | ID_SOURCE_SELECT(~0));
 	val |= (VBUS_SOURCE_SELECT(1) | ID_SOURCE_SELECT(1));
 	writel(val, pad_base + XUSB_PADCTL_USB2_VBUS_ID_0);
+
+	/* clear wrong status change */
+	val = readl(pad_base + XUSB_PADCTL_USB2_VBUS_ID_0);
+	writel(val, pad_base + XUSB_PADCTL_USB2_VBUS_ID_0);
+
 	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
 	pr_debug("[%s] VBUS_ID\n", __func__);
 	pr_debug("XUSB_PADCTL_USB2_VBUS_ID_0 = 0x%x\n"
