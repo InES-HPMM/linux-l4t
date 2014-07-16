@@ -120,7 +120,10 @@
 
 #ifdef CONFIG_PSTORE_RAM
 #define RAMOOPS_MEM_SIZE SZ_2M
-#define FTRACE_MEM_SIZE SZ_1M
+#define RECORD_MEM_SIZE SZ_64K
+#define CONSOLE_MEM_SIZE SZ_512K
+#define FTRACE_MEM_SIZE SZ_512K
+#define RTRACE_MEM_SIZE SZ_512K
 #endif
 
 phys_addr_t tegra_bootloader_fb_start;
@@ -1853,8 +1856,16 @@ static void __init tegra_reserve_ramoops_memory(unsigned long reserve_size)
 {
 	ramoops_data.mem_size = reserve_size;
 	ramoops_data.mem_address = memblock_end_of_4G() - reserve_size;
-	ramoops_data.console_size = reserve_size - FTRACE_MEM_SIZE;
+	ramoops_data.record_size = RECORD_MEM_SIZE;
+#ifdef CONFIG_PSTORE_CONSOLE
+	ramoops_data.console_size = CONSOLE_MEM_SIZE;
+#endif
+#ifdef CONFIG_PSTORE_FTRACE
 	ramoops_data.ftrace_size = FTRACE_MEM_SIZE;
+#endif
+#ifdef CONFIG_PSTORE_RTRACE
+	ramoops_data.rtrace_size = RTRACE_MEM_SIZE;
+#endif
 	ramoops_data.dump_oops = 1;
 	if (memblock_remove(ramoops_data.mem_address, ramoops_data.mem_size))
 		pr_err("Failed to remove carveout %08lx@%08llx from memory map\n",
