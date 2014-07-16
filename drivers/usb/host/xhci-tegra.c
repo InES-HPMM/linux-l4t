@@ -2551,7 +2551,6 @@ static int tegra_xhci_ss_elpg_entry(struct tegra_xhci_hcd *tegra)
 	/* STEP 4: System Power Management driver asserts reset
 	 * to XUSB SuperSpeed partition then disables its clocks
 	 */
-	tegra_periph_reset_assert(tegra->ss_clk);
 	clk_disable(tegra->ss_clk);
 
 	usleep_range(100, 200);
@@ -2696,9 +2695,6 @@ static int tegra_xhci_ss_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 
 	/* Step 4.2: Disable ss wake detection logic */
 	tegra_xhci_ss_wake_signal(host_ports, false);
-
-	/* Step 6 Deassert reset for ss clks */
-	tegra_periph_reset_deassert(tegra->ss_clk);
 
 	xhci_dbg(xhci, "%s: SS ELPG EXIT. ALL DONE\n", __func__);
 	tegra->ss_pwr_gated = false;
@@ -2958,9 +2954,6 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 		goto out;
 	}
 	clk_enable(tegra->host_clk);
-
-	/* Step 4: Deassert reset to host partition clk */
-	tegra_periph_reset_deassert(tegra->host_clk);
 
 	/* Step 6.1: IPFS and XUSB BAR initialization */
 	tegra_xhci_cfg(tegra);
@@ -4548,10 +4541,6 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	/* Perform USB2.0 pad tracking */
 	utmi_phy_pad_enable();
 	utmi_phy_iddq_override(false);
-
-	/* Deassert reset to XUSB host, ss, dev clocks */
-	tegra_periph_reset_deassert(tegra->host_clk);
-	tegra_periph_reset_deassert(tegra->ss_clk);
 
 	platform_set_drvdata(pdev, tegra);
 	fw_log_init(tegra);
