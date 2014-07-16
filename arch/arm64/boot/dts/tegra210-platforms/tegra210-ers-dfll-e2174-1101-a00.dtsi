@@ -33,7 +33,7 @@
 			reg = <0>;
 			compatible = "regulator-pwm";
 			pwms = <&pwm_dfll 0 2500>;
-			regulator-name = "vdd-cpu-pwm-reg";
+			regulator-name = "vdd_cpu";
 			regulator-min-microvolt = <708000>;
 			regulator-max-microvolt = <1322400>;
 			regulator-init-microvolt = <1000000>;
@@ -41,11 +41,6 @@
 			regulator-boot-on;
 			regulator-n-voltages = <33>;
 			voltage-time-sel = <80>;
-			consumers {
-				c1 {
-					regulator-consumer-supply = "vdd_cpu";
-				};
-			};
 		};
 	};
 };
