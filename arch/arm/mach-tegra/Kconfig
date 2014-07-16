@@ -178,11 +178,11 @@ config MACH_P2360
        help
          Support for NVIDIA P2360 Automotive Development platform
 
-config MACH_VCM30_T124
-       bool "VCM30_T124(Automotive) board"
+config MACH_P1859
+       bool "P1859(Automotive) board"
        depends on ARCH_TEGRA_VCM30T124
        help
-         Support for NVIDIA VCM30_T124 Automotive Development platform
+         Support for NVIDIA P1859 Automotive Development platform
 
 config MACH_LAGUNA
 	 bool "LAGUNA board"
@@ -792,7 +792,7 @@ config TEGRA_PLLM_SCALED
 
 config TEGRA_PLLCX_FIXED
 	bool "Run PLLCx at fixed target rate"
-	depends on MACH_VCM30_T124 || MACH_P2360
+	depends on ARCH_TEGRA_VCM30T124
 	default n
 	help
 	  When this option is enabled, PLLC, PLLC2, PLLC3 and PLLC4 will run
