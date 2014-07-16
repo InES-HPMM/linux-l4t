@@ -2,6 +2,7 @@
  * Copyright (C) 2010 Marco Stornelli <marco.stornelli@gmail.com>
  * Copyright (C) 2011 Kees Cook <keescook@chromium.org>
  * Copyright (C) 2011 Google, Inc.
+ * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -81,6 +82,7 @@ struct ramoops_platform_data {
 	unsigned long	record_size;
 	unsigned long	console_size;
 	unsigned long	ftrace_size;
+	unsigned long	rtrace_size;
 	int		dump_oops;
 	struct persistent_ram_ecc_info ecc_info;
 };

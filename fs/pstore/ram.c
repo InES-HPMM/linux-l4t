@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2010 Marco Stornelli <marco.stornelli@gmail.com>
  * Copyright (C) 2011 Kees Cook <keescook@chromium.org>
+ * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -51,6 +52,10 @@ static ulong ramoops_ftrace_size = MIN_MEM_SIZE;
 module_param_named(ftrace_size, ramoops_ftrace_size, ulong, 0400);
 MODULE_PARM_DESC(ftrace_size, "size of ftrace log");
 
+static ulong ramoops_rtrace_size = MIN_MEM_SIZE;
+module_param_named(rtrace_size, ramoops_rtrace_size, ulong, 0400);
+MODULE_PARM_DESC(rtrace_size, "size of rtrace log");
+
 static ulong mem_address;
 module_param(mem_address, ulong, 0400);
 MODULE_PARM_DESC(mem_address,
@@ -77,18 +82,22 @@ struct ramoops_context {
 	struct persistent_ram_zone **przs;
 	struct persistent_ram_zone *cprz;
 	struct persistent_ram_zone *fprz;
+	struct persistent_ram_zone *rprz;
 	phys_addr_t phys_addr;
 	unsigned long size;
 	size_t record_size;
 	size_t console_size;
 	size_t ftrace_size;
+	size_t rtrace_size;
 	int dump_oops;
 	struct persistent_ram_ecc_info ecc_info;
 	unsigned int max_dump_cnt;
 	unsigned int dump_write_cnt;
+	/* _read_cnt need clear on ramoops_pstore_open */
 	unsigned int dump_read_cnt;
 	unsigned int console_read_cnt;
 	unsigned int ftrace_read_cnt;
+	unsigned int rtrace_read_cnt;
 	struct pstore_info pstore;
 };
 
@@ -101,6 +110,8 @@ static int ramoops_pstore_open(struct pstore_info *psi)
 
 	cxt->dump_read_cnt = 0;
 	cxt->console_read_cnt = 0;
+	cxt->ftrace_read_cnt = 0;
+	cxt->rtrace_read_cnt = 0;
 	return 0;
 }
 
@@ -117,13 +128,15 @@ ramoops_get_next_prz(struct persistent_ram_zone *przs[], uint *c, uint max,
 		return NULL;
 
 	prz = przs[i];
+	if (!prz)
+		return NULL;
 
-	if (update) {
-		/* Update old/shadowed buffer. */
+	/* Update old/shadowed buffer. */
+	if (update)
 		persistent_ram_save_old(prz);
-		if (!persistent_ram_old_size(prz))
-			return NULL;
-	}
+
+	if (!persistent_ram_old_size(prz))
+		return NULL;
 
 	*typep = type;
 	*id = i;
@@ -149,6 +162,9 @@ static ssize_t ramoops_pstore_read(u64 *id, enum pstore_type_id *type,
 	if (!prz)
 		prz = ramoops_get_next_prz(&cxt->fprz, &cxt->ftrace_read_cnt,
 					   1, id, type, PSTORE_TYPE_FTRACE, 0);
+	if (!prz)
+		prz = ramoops_get_next_prz(&cxt->rprz, &cxt->rtrace_read_cnt,
+					   1, id, type, PSTORE_TYPE_RTRACE, 0);
 	if (!prz)
 		return 0;
 
@@ -215,6 +231,11 @@ static int notrace ramoops_pstore_write_buf(enum pstore_type_id type,
 			return -ENOMEM;
 		persistent_ram_write(cxt->fprz, buf, size);
 		return 0;
+	} else if (type == PSTORE_TYPE_RTRACE) {
+		if (!cxt->rprz)
+			return -ENOMEM;
+		persistent_ram_write(cxt->rprz, buf, size);
+		return 0;
 	}
 
 	if (type != PSTORE_TYPE_DMESG)
@@ -271,6 +292,9 @@ static int ramoops_pstore_erase(enum pstore_type_id type, u64 id, int count,
 		break;
 	case PSTORE_TYPE_FTRACE:
 		prz = cxt->fprz;
+		break;
+	case PSTORE_TYPE_RTRACE:
+		prz = cxt->rprz;
 		break;
 	default:
 		return -EINVAL;
@@ -402,7 +426,7 @@ static int ramoops_probe(struct platform_device *pdev)
 		goto fail_out;
 
 	if (!pdata->mem_size || (!pdata->record_size && !pdata->console_size &&
-			!pdata->ftrace_size)) {
+			!pdata->ftrace_size && !pdata->rtrace_size)) {
 		pr_err("The memory size and the record/console size must be "
 			"non-zero\n");
 		goto fail_out;
@@ -416,19 +440,22 @@ static int ramoops_probe(struct platform_device *pdev)
 		pdata->console_size = rounddown_pow_of_two(pdata->console_size);
 	if (!is_power_of_2(pdata->ftrace_size))
 		pdata->ftrace_size = rounddown_pow_of_two(pdata->ftrace_size);
+	if (!is_power_of_2(pdata->rtrace_size))
+		pdata->rtrace_size = rounddown_pow_of_two(pdata->rtrace_size);
 
-	cxt->dump_read_cnt = 0;
 	cxt->size = pdata->mem_size;
 	cxt->phys_addr = pdata->mem_address;
 	cxt->record_size = pdata->record_size;
 	cxt->console_size = pdata->console_size;
 	cxt->ftrace_size = pdata->ftrace_size;
+	cxt->rtrace_size = pdata->rtrace_size;
 	cxt->dump_oops = pdata->dump_oops;
 	cxt->ecc_info = pdata->ecc_info;
 
 	paddr = cxt->phys_addr;
 
-	dump_mem_sz = cxt->size - cxt->console_size - cxt->ftrace_size;
+	dump_mem_sz = cxt->size - cxt->console_size - cxt->ftrace_size -
+			cxt->rtrace_size;
 	err = ramoops_init_przs(dev, cxt, &paddr, dump_mem_sz);
 	if (err)
 		goto fail_out;
@@ -443,10 +470,15 @@ static int ramoops_probe(struct platform_device *pdev)
 	if (err)
 		goto fail_init_fprz;
 
-	if (!cxt->przs && !cxt->cprz && !cxt->fprz) {
+	err = ramoops_init_prz(dev, cxt, &cxt->rprz, &paddr,
+			       cxt->rtrace_size, 0);
+	if (err)
+		goto fail_init_rprz;
+
+	if (!cxt->przs && !cxt->cprz && !cxt->fprz && !cxt->rprz) {
 		pr_err("memory size too small, minimum is %zu\n",
 			cxt->console_size + cxt->record_size +
-			cxt->ftrace_size);
+			cxt->ftrace_size + cxt->rtrace_size);
 		err = -EINVAL;
 		goto fail_cnt;
 	}
@@ -496,6 +528,8 @@ fail_clear:
 	cxt->pstore.bufsize = 0;
 	cxt->max_dump_cnt = 0;
 fail_cnt:
+	kfree(cxt->rprz);
+fail_init_rprz:
 	kfree(cxt->fprz);
 fail_init_fprz:
 	kfree(cxt->cprz);
@@ -553,6 +587,7 @@ static void ramoops_register_dummy(void)
 	dummy_data->record_size = record_size;
 	dummy_data->console_size = ramoops_console_size;
 	dummy_data->ftrace_size = ramoops_ftrace_size;
+	dummy_data->rtrace_size = ramoops_rtrace_size;
 	dummy_data->dump_oops = dump_oops;
 	/*
 	 * For backwards compatibility ramoops.ecc=1 means 16 bytes ECC
