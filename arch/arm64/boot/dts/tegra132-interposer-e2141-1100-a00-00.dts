@@ -215,18 +215,13 @@ e 1.2V*/
 				ti,ir-comp-resister-ohm = <70>;
 			};
 
-			vbus {
+			vbus_int: vbus {
 				regulator-name = "vbus_regulator";
 				ti,otg-iusb-gpio = <&gpio TEGRA_GPIO(I, 4) 0>;
 				consumers {
 					c1 {
 						regulator-consumer-supply = "usb_vbus";
 						regulator-consumer-device = "tegra-ehci.0";
-					};
-
-					c2 {
-						regulator-consumer-supply = "usb_vbus";
-						regulator-consumer-device = "tegra-otg";
 					};
 				};
 			};
@@ -283,7 +278,7 @@ e 1.2V*/
 		extcon-cables = <&bq2419x_int 0>;
 		extcon-cable-names = "vbus";
 		#extcon-cells = <1>;
-		usb_vbus-supply = <&usb0_vbus>;
+		usb_vbus-supply = <&vbus_int>;
 		status = "okay";
 	};
 
