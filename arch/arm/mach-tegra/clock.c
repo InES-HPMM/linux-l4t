@@ -261,7 +261,7 @@ void clk_init(struct clk *c)
 	mutex_unlock(&clock_list_lock);
 }
 
-static int clk_enable_locked(struct clk *c)
+int clk_enable_locked(struct clk *c)
 {
 	int ret = 0;
 
@@ -296,7 +296,7 @@ static int clk_enable_locked(struct clk *c)
 	return ret;
 }
 
-static void clk_disable_locked(struct clk *c)
+void clk_disable_locked(struct clk *c)
 {
 	if (c->refcnt == 0) {
 		WARN(1, "Attempting to disable clock %s with refcnt 0", c->name);

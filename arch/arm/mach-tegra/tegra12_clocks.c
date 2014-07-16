@@ -9674,8 +9674,8 @@ static void tegra12_clk_resume(void)
 
 		/* emc switched to the new parent by low level code, but ref
 		   count and s/w state need to be updated */
-		clk_disable(p);
-		clk_enable(tegra_clk_emc.parent);
+		clk_disable_locked(p);
+		clk_enable_locked(tegra_clk_emc.parent);
 	}
 
 	rate = clk_get_rate_all_locked(&tegra_clk_emc);
