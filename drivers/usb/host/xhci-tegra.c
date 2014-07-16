@@ -3118,15 +3118,9 @@ static irqreturn_t tegra_xhci_padctl_irq(int irq, void *ptrdev)
 		tegra->hs_wake_event = true;
 
 	if (tegra->ss_wake_event || tegra->hs_wake_event) {
-		if (tegra->ss_pwr_gated && !tegra->host_pwr_gated) {
-			xhci_err(xhci, "SS gated Host ungated. Should not happen\n");
-			WARN_ON(tegra->ss_pwr_gated && tegra->host_pwr_gated);
-		} else if (tegra->ss_pwr_gated
-				&& tegra->host_pwr_gated) {
-			xhci_dbg(xhci, "[%s] schedule host_elpg_exit_work\n",
-				__func__);
-			schedule_work(&tegra->host_elpg_exit_work);
-		}
+		xhci_dbg(xhci, "[%s] schedule host_elpg_exit_work\n",
+			__func__);
+		schedule_work(&tegra->host_elpg_exit_work);
 	} else {
 		xhci_err(xhci, "error: wake due to no hs/ss event\n");
 		tegra_usb_pad_reg_write(padregs->elpg_program_0, 0xffffffff);
