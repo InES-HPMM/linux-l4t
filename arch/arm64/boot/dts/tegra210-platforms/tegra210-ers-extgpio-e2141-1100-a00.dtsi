@@ -30,14 +30,28 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 
-				pca9539_76: pca9539@76 {
+				pca9539_74: gpio@74 {
+					compatible = "nxp,pca9539";
+					gpio-controller;
+					#gpio-cells = <2>;
+					reg = <0x74>;
+				};
+
+				pca9539_75: gpio@75 {
+					compatible = "nxp,pca9539";
+					gpio-controller;
+					#gpio-cells = <2>;
+					reg = <0x75>;
+				};
+
+				pca9539_76: gpio@76 {
 					compatible = "nxp,pca9539";
 					gpio-controller;
 					#gpio-cells = <2>;
 					reg = <0x76>;
 					gpio-init-names = "default";
-					gpio-init-0 = <&pca9539_default>;
-					pca9539_default: default {
+					gpio-init-0 = <&pca9539_76_default>;
+					pca9539_76_default: default {
 						gpio-output-low = <12 14 15>;
 						gpio-output-high = <5 6 11 13>;
 					};
