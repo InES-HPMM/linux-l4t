@@ -4,8 +4,7 @@
 #include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-jetson_tk1-gpio-pm375-0000-c00-00.dtsi"
 #include "tegra124-platforms/tegra124-jetson_tk1-pinmux-pm375-0000-c00-00.dtsi"
-#include "tegra124-platforms/tegra124-jetson_tk1-pmic-pm375-0000-c00-00.dtsi"
-#include "tegra124-platforms/tegra124-jetson_tk1-fixed-pm375-0000-c00-00.dtsi"
+#include "tegra124-platforms/tegra124-jetson-power-tree-pm375-0000-c00.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 PM375";
