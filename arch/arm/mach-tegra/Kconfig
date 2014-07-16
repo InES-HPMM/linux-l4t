@@ -174,7 +174,7 @@ config MACH_LOKI
 
 config MACH_P2360
        bool "P2360 board"
-       depends on ARCH_TEGRA_12x_SOC
+       depends on ARCH_TEGRA_VCM30T124
        help
          Support for NVIDIA P2360 Automotive Development platform
 

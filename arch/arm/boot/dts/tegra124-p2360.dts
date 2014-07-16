@@ -20,7 +20,6 @@
 
  /dts-v1/;
 
-#include "tegra124.dtsi"
 #include "tegra124-vcm30_t124.dtsi"
 
 / {
@@ -30,10 +29,6 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
-	chosen {
-		nvidia,tegra-hypervisor-mode;
-	};
-
 	serial@70006040 {
 		compatible = "nvidia,tegra20-uart";
 		console-port;
@@ -42,15 +37,6 @@
 
 	spi@7000d400 {
 		status = "okay";
-		spi@0 {
-			compatible = "spidev";
-			reg = <0>;
-			spi-max-frequency = <25000000>;
-			/* spi-cpha;
-			 * spi-cpol;
-			 * spi-cs-high;
-			 */
-		};
 	};
 
 	spi@7000d600 {
@@ -64,40 +50,18 @@
 
 	spi@7000d800 {
 		status = "okay";
-		spi@0 {
-			compatible = "spidev";
-			reg = <0>;
-			spi-max-frequency = <25000000>;
-		};
 	};
 
 	spi@7000dc00 {
 		status = "okay";
-		spi@0 {
-			compatible = "spidev";
-			reg = <0>;
-			spi-max-frequency = <25000000>;
-		};
 	};
 
 	pcie-controller {
-		nvidia,port0_status = <1>;
-		nvidia,port1_status = <1>;
+		nvidia,port1_status = <0>;
 		status = "okay";
 	};
 
 	sdhci@700b0600 {
-		tap-delay = <0x4>;
-		trim-delay = <0x4>;
-		ddr-trim-delay = <0x4>;
-		mmc-ocr-mask = <0>;
-		uhs_mask = <0x40>;
-		bus-width = <8>;
-		built-in;
-		ddr-clk-limit = <51000000>;
-		max-clk-limit = <200000000>;
-		vmmc-supply = <&vmmc_dummy>;
-		pll_source = "pll_m", "pll_p";
 		status = "okay";
 	};
 };

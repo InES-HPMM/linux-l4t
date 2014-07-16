@@ -1,6 +1,6 @@
 /*
  * arch/arm/mach-tegra/board-p2360-power.c
- * Based on arch/arm/mach-tegra/board-vcm30_t124-power.c
+ * Based on arch/arm/mach-tegra/board-p1859-power.c
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -32,6 +32,7 @@
 #include "tegra_cl_dvfs.h"
 #include "devices.h"
 #include <mach/board_id.h>
+#include "vcm30_t124.h"
 
 static struct max77663_gpio_config max77663_gpio_cfgs[] = {
 	{
@@ -167,6 +168,7 @@ static struct regulator_init_data max15569_vddgpu_init_data = {
 		.always_on = 0,
 		.boot_on =  0,
 		.apply_uV = 0,
+		.enable_time = 210, /* for ramp up time in usec */
 	},
 	.num_consumer_supplies = ARRAY_SIZE(max15569_vddgpu_supply),
 	.consumer_supplies = max15569_vddgpu_supply,
@@ -201,22 +203,5 @@ int __init p2360_regulator_init(void)
 	i2c_register_board_info(4, max15569_vddcpu_boardinfo, 1);
 	i2c_register_board_info(4, max15569_vddgpu_boardinfo, 1);
 
-	return 0;
-}
-
-static struct tegra_suspend_platform_data p2360_suspend_data = {
-	.cpu_timer	= 2000,
-	.cpu_off_timer	= 2000,
-	.suspend_mode	= TEGRA_SUSPEND_LP0,
-	.core_timer	= 0xfefe,
-	.core_off_timer = 2000,
-	.corereq_high	= true,
-	.sysclkreq_high	= true,
-	.cpu_lp2_min_residency = 1000,
-};
-
-int __init p2360_suspend_init(void)
-{
-	tegra_init_suspend(&p2360_suspend_data);
 	return 0;
 }
