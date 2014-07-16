@@ -37,7 +37,7 @@
 
 #define RT5639_REG_RW 0 /* for debug */
 #define RT5639_DET_EXT_MIC 0
-#define USE_ONEBIT_DEPOP 1 /* for one bit depop */
+#define USE_ONEBIT_DEPOP 0 /* for one bit depop */
 /* #define USE_EQ */
 #define VERSION "0.8.5 alsa 1.0.24"
 
