@@ -898,6 +898,11 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 	}
 
 
+	if (spi->mode & SPI_LSB_FIRST)
+		command1 |= SPI_LSBIT_FE;
+	else
+		command1 &= ~SPI_LSBIT_FE;
+
 	command1 &=  ~SPI_BOTH_EN_BIT;
 	if ((t->rx_nbits == SPI_NBITS_DUAL) ||
 			(t->tx_nbits == SPI_NBITS_DUAL))
@@ -1016,11 +1021,6 @@ static int tegra_spi_setup(struct spi_device *spi)
 		val &= ~cs_pol_bit[spi->chip_select];
 	else
 		val |= cs_pol_bit[spi->chip_select];
-
-	if (spi->mode & SPI_LSB_FIRST)
-		val |= SPI_LSBIT_FE;
-	else
-		val &= ~SPI_LSBIT_FE;
 
 	tspi->def_command1_reg = val;
 	tegra_spi_writel(tspi, tspi->def_command1_reg, SPI_COMMAND1);
