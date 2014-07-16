@@ -24,9 +24,9 @@
 
 #include "tegra210.dtsi"
 #include "tegra210-platforms/tegra210-ers-e2174-dfll-pwm.dtsi"
+#include "tegra210-platforms/tegra210-grenada-fixed.dtsi"
 #include <dt-bindings/pinctrl/pinctrl-tegra.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/gpio/tegra-gpio.h>
 
 / {
 	model = "grenada";
@@ -94,19 +94,6 @@
 	serial@70006200 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";
-	};
-
-	gpio_regulator: gpio-regulator {
-		compatible = "regulator-gpio";
-		regulator-name = "vddio-sdmmc";
-		regulator-type = "voltage";
-		regulator-min-microvolt = <1800000>;
-		regulator-max-microvolt = <3300000>;
-
-		gpios = <&gpio TEGRA_GPIO(Z, 4) 0>;
-		states = <1800000 0x0
-			3300000 0x1>;
-		enable-active-high;
 	};
 
 	pinmux@700008d4 {
@@ -1024,26 +1011,6 @@
 				TEGRA_GPIO(X, 7)
 				TEGRA_GPIO(CC, 5)
 				>;
-		};
-	};
-
-	regulators {
-		compatible = "simple-bus";
-		device_type = "fixed-regulators";
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		regulator@1 {
-			compatible = "regulator-fixed";
-			reg = <1>;
-			regulator-name = "vdd-cpu-fixed";
-			regulator-min-microvolt = <1000000>;
-			regulator-max-microvolt = <1000000>;
-			consumers {
-				c0 {
-					regulator-consumer-supply = "vdd_cpu_fixed";
-				};
-			};
 		};
 	};
 };
