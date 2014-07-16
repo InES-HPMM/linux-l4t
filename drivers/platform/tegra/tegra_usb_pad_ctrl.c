@@ -443,7 +443,7 @@ static void get_usb_calib_data(int pad, u32 *hs_curr_level_pad,
 void xusb_utmi_pad_init(int pad, u32 cap, bool external_pmic)
 {
 	unsigned long val, flags;
-	u32 ctl0_offset, ctl1_offset;
+	u32 ctl0_offset, ctl1_offset, batry_chg_1;
 	static u32 hs_curr_level_pad, term_range_adj;
 	static u32 rpd_ctl, hs_iref_cap;
 	static u8 utmi_pad_inited = 0x0;
@@ -515,6 +515,16 @@ void xusb_utmi_pad_init(int pad, u32 cap, bool external_pmic)
 		(hs_iref_cap << 9);
 	writel(val, pad_base + ctl1_offset);
 
+	batry_chg_1 = XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL1(pad);
+
+	val = readl(pad_base + batry_chg_1);
+	val &= ~(VREG_FIX18 | VREG_LEV);
+	if ((cap >> (4 * pad)) == XUSB_DEVICE_MODE)
+		val |= VREG_LEV_EN;
+	if ((cap >> (4 * pad)) == XUSB_HOST_MODE)
+		val |= VREG_FIX18;
+	writel(val, pad_base + batry_chg_1);
+
 	utmi_pad_inited |= (1 << pad);
 	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
 
@@ -532,6 +542,8 @@ void xusb_utmi_pad_init(int pad, u32 cap, bool external_pmic)
 			, ctl0_offset , readl(pad_base + ctl0_offset));
 	pr_debug("XUSB_PADCTL_USB2_OTG_PAD_CTL_1 (0x%x) = 0x%x\n"
 			, ctl1_offset, readl(pad_base + ctl1_offset));
+	pr_debug("XUSB_PADCTL_USB2_BATTERY_CHRG_CTL1 (0x%x) = 0x%x\n"
+			, batry_chg_1, readl(pad_base + batry_chg_1));
 }
 EXPORT_SYMBOL_GPL(xusb_utmi_pad_init);
 
