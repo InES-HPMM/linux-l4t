@@ -320,8 +320,8 @@
 
 				as3722_ldo3: ldo3 {
 				     regulator-name = "vdd-rtc";
-				     regulator-min-microvolt = <800000>;
-				     regulator-max-microvolt = <800000>;
+				     regulator-min-microvolt = <960000>;
+				     regulator-max-microvolt = <960000>;
 				     regulator-always-on;
 				     regulator-boot-on;
 				     ams,enable-tracking;
