@@ -23,8 +23,7 @@
 #include "tegra124-platforms/tegra124-tn8-dfll.dtsi"
 #include "tegra124-platforms/tegra124-tn8-emc-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-powermon-e1780-1100-a01.dtsi"
-#include "tegra124-platforms/tegra124-tn8-pmic-e1769-1000-a00.dtsi"
-#include "tegra124-platforms/tegra124-tn8-fixed-e1769-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-power-tree-e1769-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-gpio-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-pinmux-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
@@ -76,12 +75,6 @@
 			panel-l-wxga-7 {
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
 			};
-		};
-	};
-
-	i2c@7000c400 {
-		pca9546@71 {
-			vcc-supply = <&palmas_smps9>;
 		};
 	};
 
