@@ -208,6 +208,7 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-ardbeg-e1780-1000-a03-00-powerconfig.dtb \
 	tegra124-ardbeg-e1780-1000-a03-00-sata.dtb \
 	tegra124-ardbeg-p1859.dtb \
+	tegra124-ardbeg-vcm30-t124.dtb \
 	tegra124-laguna.dtb \
 	tegra124-laguna-pm358.dtb \
 	tegra124-jetson_tk1-pm375-000-c00-00.dtb \
