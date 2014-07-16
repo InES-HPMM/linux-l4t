@@ -167,9 +167,4 @@
 			};
 		};
 	};
-
-	/* Populate fuse supply */
-	efuse@7000f800 {
-		vpp_fuse-supply = <&vpp_fuse>;
-	};
 };
