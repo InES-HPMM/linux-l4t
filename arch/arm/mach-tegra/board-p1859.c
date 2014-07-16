@@ -260,3 +260,22 @@ DT_MACHINE_START(P1859, "p1859")
 	.dt_compat	= p1859_dt_board_compat,
 	.init_late	= tegra_init_late
 MACHINE_END
+
+static const char * const vcm30t124_dt_board_compat[] = {
+	"nvidia,vcm30t124",
+	NULL
+};
+
+DT_MACHINE_START(VCM30T124, "vcm30t124")
+	.atag_offset	= 0x100,
+	.smp		= smp_ops(tegra_smp_ops),
+	.map_io		= tegra_map_common_io,
+	.reserve	= tegra_vcm30_t124_reserve,
+	.init_early	= tegra12x_init_early,
+	.init_irq	= irqchip_init,
+	.init_time	= clocksource_of_init,
+	.init_machine	= tegra_p1859_dt_init,
+	.restart	= tegra_assert_system_reset,
+	.dt_compat	= vcm30t124_dt_board_compat,
+	.init_late	= tegra_init_late
+MACHINE_END
