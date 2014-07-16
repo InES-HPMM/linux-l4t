@@ -1014,8 +1014,6 @@ static int tegra_spi_setup(struct spi_device *spi)
 		spi->mode & SPI_CPHA ? "" : "~",
 		spi->max_speed_hz);
 
-	BUG_ON(spi->chip_select >= MAX_CHIP_SELECT);
-
 	if (!cdata) {
 		cdata = tegra_spi_get_cdata_dt(spi);
 		spi->controller_data = cdata;
@@ -1058,8 +1056,6 @@ static  int tegra_spi_cs_low(struct spi_device *spi,
 			SPI_CS_POL_INACTIVE_2,
 			SPI_CS_POL_INACTIVE_3,
 	};
-
-	BUG_ON(spi->chip_select >= MAX_CHIP_SELECT);
 
 	ret = pm_runtime_get_sync(tspi->dev);
 	if (ret < 0) {
