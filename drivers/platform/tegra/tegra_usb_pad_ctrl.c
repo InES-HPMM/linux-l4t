@@ -615,6 +615,9 @@ static void tegra_xusb_uphy_misc(bool ovrd)
 	writel(val, pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P2_CTL2);
 	writel(val, pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P3_CTL2);
 	writel(val, pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P4_CTL2);
+	writel(val, pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P5_CTL2);
+	writel(val, pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P6_CTL2);
+	writel(val, pad_base + XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2);
 #endif
 }
 
