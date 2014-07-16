@@ -498,8 +498,4 @@
 		     };
 	     };
 	};
-
-	power-detect {
-		pwrdet-hv-supply = <&as3722_gpio2_supply>;
-	};
 };
