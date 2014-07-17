@@ -99,10 +99,6 @@
 
 static struct board_info board_info, display_board_info;
 
-static struct i2c_board_info __initdata rt5639_board_info = {
-	I2C_BOARD_INFO("rt5639", 0x1c),
-};
-
 static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "pll_m",	NULL,		0,		false},
@@ -142,73 +138,12 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-static void t210ref_i2c_init(void)
-{
-	i2c_register_board_info(0, &rt5639_board_info, 1);
-}
 
 static struct tegra_serial_platform_data t210ref_uarta_pdata = {
 	.dma_req_selector = 8,
 	.modem_interrupt = false,
 };
 
-static struct tegra_asoc_platform_data t210ref_audio_pdata_rt5639 = {
-	.gpio_hp_det = TEGRA_GPIO_HP_DET,
-	.gpio_ldo1_en = TEGRA_GPIO_LDO_EN,
-	.gpio_spkr_en = -1,
-	.gpio_int_mic_en = -1,
-	.gpio_ext_mic_en = -1,
-	.gpio_hp_mute = -1,
-	.gpio_codec1 = -1,
-	.gpio_codec2 = -1,
-	.gpio_codec3 = -1,
-	.i2s_param[HIFI_CODEC]       = {
-		.audio_port_id = 1,
-		.is_i2s_master = 1,
-		.i2s_mode = TEGRA_DAIFMT_I2S,
-		.sample_size	= 16,
-		.channels       = 2,
-		.bit_clk	= 1536000,
-	},
-	.i2s_param[BT_SCO] = {
-		.audio_port_id = 3,
-		.is_i2s_master = 1,
-		.i2s_mode = TEGRA_DAIFMT_DSP_A,
-	},
-	.i2s_param[BASEBAND]	= {
-		.audio_port_id	= 0,
-		.is_i2s_master	= 1,
-		.i2s_mode	= TEGRA_DAIFMT_I2S,
-		.sample_size	= 16,
-		.rate		= 16000,
-		.channels	= 2,
-		.bit_clk	= 1024000,
-	},
-};
-
-static void t210ref_audio_init(void)
-{
-	/*T210ref*/
-	t210ref_audio_pdata_rt5639.gpio_hp_det =
-		TEGRA_GPIO_HP_DET;
-	t210ref_audio_pdata_rt5639.use_codec_jd_irq = false;
-
-	t210ref_audio_pdata_rt5639.gpio_hp_det_active_high = 0;
-	t210ref_audio_pdata_rt5639.gpio_ldo1_en = TEGRA_GPIO_LDO_EN;
-
-	t210ref_audio_pdata_rt5639.i2s_param[HIFI_CODEC].audio_port_id = 0;
-	t210ref_audio_pdata_rt5639.i2s_param[BT_SCO].audio_port_id = 1;
-	t210ref_audio_pdata_rt5639.codec_name = "rt5639.0-001c";
-	t210ref_audio_pdata_rt5639.codec_dai_name = "rt5639-aif1";
-}
-
-static struct platform_device t210ref_audio_device_rt5639 = {
-	.name = "tegra-snd-rt5639",
-	.id = 0,
-	.dev = {
-		.platform_data = &t210ref_audio_pdata_rt5639,
-	},
-};
 
 static void __init e2141_uart_init(void)
 {
@@ -611,6 +546,8 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	T124_SPI_OF_DEV_AUXDATA,
 	OF_DEV_AUXDATA("nvidia,tegra124-apbdma", 0x60020000, "tegra-apbdma",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0x0, "tegra-snd-rt5639",
+				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-se", 0x70012000, "tegra12-se", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra132-dtv", 0x7000c300, "dtv", NULL),
 #if defined(CONFIG_ARM64)
@@ -712,7 +649,6 @@ static int __init t210ref_touch_init(void)
 	return 0;
 }
 
-
 static void __init tegra_t210ref_early_init(void)
 {
 	tegra_clk_init_from_table(t210ref_clk_init_table);
@@ -755,10 +691,7 @@ static void __init tegra_t210ref_late_init(void)
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
 	t210ref_xusb_init();
 #endif
-	t210ref_i2c_init();
-	t210ref_audio_init();
 	platform_add_devices(t210ref_devices, ARRAY_SIZE(t210ref_devices));
-	platform_device_register(&t210ref_audio_device_rt5639);
 	tegra_io_dpd_init();
 	t210ref_sdhci_init();
 	t210ref_suspend_init();
