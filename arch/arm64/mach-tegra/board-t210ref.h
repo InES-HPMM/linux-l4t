@@ -116,7 +116,7 @@ GPIO, also the GPIO is same for T114 interposer and T124*/
 #define DSI_PANEL_BL_PWM_GPIO   TEGRA_GPIO_PH1
 
 /* HDMI Hotplug detection pin */
-#define t210ref_hdmi_hpd	TEGRA_GPIO_PN7
+#define t210ref_hdmi_hpd	TEGRA_GPIO_PCC1
 
 /* I2C related GPIOs */
 /* Same for interposer and t124 */

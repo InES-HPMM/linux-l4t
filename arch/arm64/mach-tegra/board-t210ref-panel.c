@@ -436,8 +436,8 @@ struct tmds_config t210ref_tn8_tmds_config2[] = {
 };
 
 struct tegra_hdmi_out t210ref_hdmi_out = {
-	.tmds_config = t210ref_tmds_config,
-	.n_tmds_config = ARRAY_SIZE(t210ref_tmds_config),
+	.tmds_config = t210ref_tn8_tmds_config2,
+	.n_tmds_config = ARRAY_SIZE(t210ref_tn8_tmds_config2),
 };
 
 
@@ -477,7 +477,7 @@ static struct tegra_dc_mode hdmi_panel_modes[] = {
 
 static struct tegra_dc_out t210ref_disp2_out = {
 	.type		= TEGRA_DC_OUT_HDMI,
-	.flags		= TEGRA_DC_OUT_HOTPLUG_HIGH,
+	.flags		= TEGRA_DC_OUT_HOTPLUG_LOW,
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	.parent_clk	= "pll_d2",
 #else
@@ -862,27 +862,8 @@ int __init t210ref_panel_init(void)
 	tegra_get_board_info(&board_info);
 	switch (board_info.board_id) {
 	case BOARD_E2141:
-		t210ref_disp2_out.flags = TEGRA_DC_OUT_HOTPLUG_LOW;
-	case BOARD_E1991:
-		t210ref_hdmi_out.tmds_config = t210ref_tn8_tmds_config2;
+		t210ref_disp2_out.hotplug_gpio = TEGRA_GPIO_PN7;
 		break;
-	case BOARD_P1761:
-		if (board_info.fab == 3)
-			t210ref_hdmi_out.tmds_config = t210ref_tn8_tmds_config2;
-		else
-			t210ref_hdmi_out.tmds_config = t210ref_tn8_tmds_config;
-		break;
-	case BOARD_PM375:
-		t210ref_tmds_config[1].pe_current = 0x08080808;
-		t210ref_tmds_config[1].drive_current = 0x2d2d2d2d;
-		t210ref_tmds_config[1].peak_current = 0x0;
-		t210ref_tmds_config[2].pe_current = 0x0;
-		t210ref_tmds_config[2].drive_current = 0x2d2d2d2d;
-		t210ref_tmds_config[2].peak_current = 0x05050505;
-		break;
-	case BOARD_PM359:
-	case BOARD_E1971:
-	case BOARD_E1973:
 	default:	 /* default is t210ref_tmds_config[] */
 		break;
 	}
