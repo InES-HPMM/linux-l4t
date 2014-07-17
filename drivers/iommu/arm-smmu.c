@@ -1386,7 +1386,7 @@ static void debugfs_create_smmu_cb(struct arm_smmu_domain *smmu_domain,
 	char name[] = "cb000";
 	struct debugfs_regset32	*cb;
 	u8 cbndx = smmu_domain->cfg.cbndx;
-	struct arm_smmu_device *smmu = dev->archdata.iommu;
+	struct arm_smmu_device *smmu = smmu_domain->smmu;
 
 	sprintf(name, "cb%03d", cbndx);
 	dent = debugfs_create_dir(name, smmu->debugfs_root);
@@ -1433,7 +1433,7 @@ static void add_smmu_master_debugfs(struct arm_smmu_domain *smmu_domain,
 				    struct arm_smmu_master *master)
 {
 	struct dentry *dent;
-	struct arm_smmu_device *smmu = dev->archdata.iommu;
+	struct arm_smmu_device *smmu = smmu_domain->smmu;
 	char name[] = "cb000";
 	char target[] = "../../cb000";
 	u8 cbndx = smmu_domain->cfg.cbndx;
@@ -1464,6 +1464,11 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
 		return -ENXIO;
 	}
 
+	if (dev->archdata.iommu) {
+		dev_err(dev, "already attached to IOMMU domain\n");
+		return -EEXIST;
+	}
+
 	/*
 	 * Sanity check the domain. We don't support domains across
 	 * different SMMUs.
@@ -1491,9 +1496,11 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
 		return -ENODEV;
 
 	ret = arm_smmu_domain_add_master(smmu_domain, cfg);
-	if (!ret)
+	if (!ret) {
+		dev->archdata.iommu = domain;
 		add_smmu_master_debugfs(smmu_domain, dev,
 					find_smmu_master(smmu, dev->of_node));
+	}
 	return ret;
 }
 
@@ -1503,10 +1510,12 @@ static void arm_smmu_detach_dev(struct iommu_domain *domain, struct device *dev)
 	struct arm_smmu_master_cfg *cfg;
 
 	cfg = find_smmu_master_cfg(dev);
-	if (cfg) {
-		debugfs_remove_recursive(cfg->debugfs_root);
-		arm_smmu_domain_remove_master(smmu_domain, cfg);
-	}
+	if (!cfg)
+		return;
+
+	debugfs_remove_recursive(cfg->debugfs_root);
+	dev->archdata.iommu = NULL;
+	arm_smmu_domain_remove_master(smmu_domain, cfg);
 }
 
 static bool arm_smmu_pte_is_contiguous_range(unsigned long addr,
@@ -1924,7 +1933,6 @@ out_put_group:
 		goto err_create_mapping;
 	}
 
-	dev->archdata.iommu = smmu;
 	ret = arm_iommu_attach_device(dev, mapping);
 	if (ret)
 		goto err_attach_dev;
