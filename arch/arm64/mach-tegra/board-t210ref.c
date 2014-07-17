@@ -147,7 +147,7 @@ static struct tegra_serial_platform_data t210ref_uarta_pdata = {
 };
 
 
-static void __init e2141_uart_init(void)
+static void __init t210ref_uart_init(void)
 {
 
 	tegra_uarta_device.dev.platform_data = &t210ref_uarta_pdata;
@@ -548,10 +548,9 @@ static void __init tegra_t210ref_late_init(void)
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
 
-#ifndef CONFIG_MACH_EXUMA
 	t210ref_display_init();
-#endif
-	e2141_uart_init();
+
+	t210ref_uart_init();
 	t210ref_usb_init();
 	t210ref_modem_init();
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
@@ -562,13 +561,17 @@ static void __init tegra_t210ref_late_init(void)
 	t210ref_sdhci_init();
 	t210ref_suspend_init();
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	tegra21_emc_init();
+#else
 	tegra12_emc_init();
+#endif
 	t210ref_edp_init();
 	isomgr_init();
 	t210ref_touch_init();
 	t210ref_panel_init();
 
-		/* put PEX pads into DPD mode to save additional power */
+	/* put PEX pads into DPD mode to save additional power */
 	tegra_io_dpd_enable(&pexbias_io);
 	tegra_io_dpd_enable(&pexclk1_io);
 	tegra_io_dpd_enable(&pexclk2_io);
@@ -585,10 +588,14 @@ static void __init tegra_t210ref_late_init(void)
 static void __init tegra_t210ref_init_early(void)
 {
 	t210ref_rail_alignment_init();
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	tegra21x_init_early();
+#else
 	tegra12x_init_early();
+#endif
 }
 
-static int tegra_ardbeg_notifier_call(struct notifier_block *nb,
+static int tegra_t210ref_notifier_call(struct notifier_block *nb,
 				    unsigned long event, void *data)
 {
 	struct device *dev = data;
@@ -611,7 +618,7 @@ static int tegra_ardbeg_notifier_call(struct notifier_block *nb,
 }
 
 static struct notifier_block platform_nb = {
-	.notifier_call = tegra_ardbeg_notifier_call,
+	.notifier_call = tegra_t210ref_notifier_call,
 };
 static void __init tegra_t210ref_dt_init(void)
 {
