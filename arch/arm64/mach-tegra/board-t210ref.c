@@ -521,6 +521,10 @@ static void __init tegra_t210ref_early_init(void)
 	tegra_clk_verify_parents();
 	if (of_machine_is_compatible("nvidia,e2141"))
 		tegra_soc_device_init("e2141");
+	else if (of_machine_is_compatible("nvidia,e2220"))
+		tegra_soc_device_init("e2220");
+	else if (of_machine_is_compatible("nvidia,e2190"))
+		tegra_soc_device_init("e2190");
 }
 
 static struct tegra_io_dpd pexbias_io = {
@@ -672,12 +676,14 @@ static void __init tegra_t210ref_reserve(void)
 	tegra_reserve4(carveout_size, fb1_size, fb2_size, vpr_size);
 }
 
-static const char * const e2141_dt_board_compat[] = {
+static const char * const t210ref_dt_board_compat[] = {
+	"nvidia,e2220",
+	"nvidia,e2190",
 	"nvidia,e2141",
 	NULL
 };
 
-DT_MACHINE_START(E2141, "e2141")
+DT_MACHINE_START(T210REF, "t210ref")
 	.atag_offset	= 0x100,
 	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
@@ -687,6 +693,6 @@ DT_MACHINE_START(E2141, "e2141")
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_t210ref_dt_init,
 	.restart	= tegra_assert_system_reset,
-	.dt_compat	= e2141_dt_board_compat,
-	.init_late      = tegra_init_late
+	.dt_compat	= t210ref_dt_board_compat,
+	.init_late      = tegra_init_late,
 MACHINE_END
