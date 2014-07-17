@@ -69,18 +69,6 @@ static struct tegra_suspend_platform_data ardbeg_suspend_data = {
 	.min_residency_crail = 20000,
 };
 
-static struct regulator_consumer_supply fixed_reg_en_avdd_3v3_dp_supply[] = {
-	REGULATOR_SUPPLY("avdd_3v3_dp", NULL),
-};
-
-FIXED_SYNC_REG(121,	avdd_3v3_dp,	avdd_3v3_dp,
-	NULL,	0,	0,	TEGRA_GPIO_PH3,
-	false,	true,	0,	3300,	0);
-
-static struct platform_device *fixed_reg_devs_e1824[] = {
-	&fixed_reg_en_avdd_3v3_dp_dev,
-};
-
 /************************ ARDBEG CL-DVFS DATA *********************/
 #define E1735_CPU_VDD_MAP_SIZE		33
 #define E1735_CPU_VDD_MIN_UV		675000
@@ -322,23 +310,9 @@ int __init ardbeg_rail_alignment_init(void)
 	return 0;
 }
 
-static int __init ardbeg_display_regulator_init(void)
-{
-	struct board_info display_board_info;
-
-	tegra_get_display_board_info(&display_board_info);
-	if (display_board_info.board_id == BOARD_E1824)
-		platform_add_devices(fixed_reg_devs_e1824,
-			ARRAY_SIZE(fixed_reg_devs_e1824));
-
-	return 0;
-}
-
 int __init ardbeg_regulator_init(void)
 {
 	struct board_info pmu_board_info;
-
-	ardbeg_display_regulator_init();
 
 	tegra_get_pmu_board_info(&pmu_board_info);
 
