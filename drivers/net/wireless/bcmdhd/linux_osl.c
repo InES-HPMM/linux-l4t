@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: linux_osl.c 451649 2014-01-27 17:23:38Z $
+ * $Id: linux_osl.c 490846 2014-07-12 13:08:59Z $
  */
 
 #define LINUX_PORT
@@ -31,9 +31,8 @@
 #include <linuxver.h>
 #include <bcmdefs.h>
 
-#ifdef __ARM_ARCH_7A__
-#include <asm/cacheflush.h>
-#endif /* __ARM_ARCH_7A__ */
+
+#include <linux/random.h>
 
 #include <osl.h>
 #include <bcmutils.h>
@@ -43,6 +42,7 @@
 
 
 #include <linux/fs.h>
+
 
 #define PCI_CFG_RETRY		10
 
@@ -128,6 +128,7 @@ struct osl_info {
 	struct list_head ctrace_list;
 	int ctrace_num;
 #endif /* BCMDBG_CTRACE */
+	uint32  flags;		/* If specific cases to be handled in the OSL */
 };
 
 #define OSL_PKTTAG_CLEAR(p) \
@@ -143,7 +144,8 @@ do { \
 /* PCMCIA attribute space access macros */
 
 /* Global ASSERT type flag */
-uint32 g_assert_type = FALSE;
+uint32 g_assert_type = 0;
+module_param(g_assert_type, int, 0);
 
 static int16 linuxbcmerrormap[] =
 {	0, 			/* 0 */
@@ -301,7 +303,7 @@ osl_attach(void *pdev, uint bustype, bool pkttag)
 
 int osl_static_mem_init(osl_t *osh, void *adapter)
 {
-#if defined(CONFIG_DHD_USE_STATIC_BUF)
+#ifdef CONFIG_DHD_USE_STATIC_BUF
 		if (!bcm_static_buf && adapter) {
 			if (!(bcm_static_buf = (bcm_static_buf_t *)wifi_platform_prealloc(adapter,
 				3, STATIC_BUF_SIZE + STATIC_BUF_TOTAL_LEN))) {
@@ -320,6 +322,7 @@ int osl_static_mem_init(osl_t *osh, void *adapter)
 			bcm_static_buf->buf_ptr = (unsigned char *)bcm_static_buf + STATIC_BUF_SIZE;
 		}
 
+#ifdef BCMSDIO
 		if (!bcm_static_skb && adapter) {
 			int i;
 			void *skb_buff_ptr = 0;
@@ -341,6 +344,7 @@ int osl_static_mem_init(osl_t *osh, void *adapter)
 
 			sema_init(&bcm_static_skb->osl_pkt_sem, 1);
 		}
+#endif /* BCMSDIO */
 #endif /* CONFIG_DHD_USE_STATIC_BUF */
 
 	return 0;
@@ -376,10 +380,12 @@ int osl_static_mem_deinit(osl_t *osh, void *adapter)
 	if (bcm_static_buf) {
 		bcm_static_buf = 0;
 	}
+#ifdef BCMSDIO
 	if (bcm_static_skb) {
 		bcm_static_skb = 0;
 	}
-#endif
+#endif /* BCMSDIO */
+#endif /* CONFIG_DHD_USE_STATIC_BUF */
 	return 0;
 }
 
@@ -543,9 +549,11 @@ osl_ctfpool_stats(osl_t *osh, void *b)
 	if (bcm_static_buf) {
 		bcm_static_buf = 0;
 	}
+#ifdef BCMSDIO
 	if (bcm_static_skb) {
 		bcm_static_skb = 0;
 	}
+#endif /* BCMSDIO */
 #endif /* CONFIG_DHD_USE_STATIC_BUF */
 
 	bb = b;
@@ -621,6 +629,58 @@ osl_pktfastget(osl_t *osh, uint len)
 	return skb;
 }
 #endif /* CTFPOOL */
+
+#if defined(BCM_GMAC3)
+/* Account for a packet delivered to downstream forwarder.
+ * Decrement a GMAC forwarder interface's pktalloced count.
+ */
+void BCMFASTPATH
+osl_pkt_tofwder(osl_t *osh, void *skbs, int skb_cnt)
+{
+
+	atomic_sub(skb_cnt, &osh->cmn->pktalloced);
+}
+
+/* Account for a downstream forwarder delivered packet to a WL/DHD driver.
+ * Increment a GMAC forwarder interface's pktalloced count.
+ */
+#ifdef BCMDBG_CTRACE
+void BCMFASTPATH
+osl_pkt_frmfwder(osl_t *osh, void *skbs, int skb_cnt, int line, char *file)
+#else
+void BCMFASTPATH
+osl_pkt_frmfwder(osl_t *osh, void *skbs, int skb_cnt)
+#endif /* BCMDBG_CTRACE */
+{
+#if defined(BCMDBG_CTRACE)
+	int i;
+	struct sk_buff *skb;
+#endif 
+
+#if defined(BCMDBG_CTRACE)
+	if (skb_cnt > 1) {
+		struct sk_buff **skb_array = (struct sk_buff **)skbs;
+		for (i = 0; i < skb_cnt; i++) {
+			skb = skb_array[i];
+#if defined(BCMDBG_CTRACE)
+			ASSERT(!PKTISCHAINED(skb));
+			ADD_CTRACE(osh, skb, file, line);
+#endif /* BCMDBG_CTRACE */
+		}
+	} else {
+		skb = (struct sk_buff *)skbs;
+#if defined(BCMDBG_CTRACE)
+		ASSERT(!PKTISCHAINED(skb));
+		ADD_CTRACE(osh, skb, file, line);
+#endif /* BCMDBG_CTRACE */
+	}
+#endif 
+
+	atomic_add(skb_cnt, &osh->cmn->pktalloced);
+}
+
+#endif /* BCM_GMAC3 */
+
 /* Convert a driver packet to native(OS) packet
  * In the process, packettag is zeroed out before sending up
  * IP code depends on skb->cb to be setup correctly with various options
@@ -806,16 +866,7 @@ osl_pktfree(osl_t *osh, void *p, bool send)
 		} else
 #endif
 		{
-			if (skb->destructor)
-				/* cannot kfree_skb() on hard IRQ (net/core/skbuff.c) if
-				 * destructor exists
-				 */
-				dev_kfree_skb_any(skb);
-			else
-				/* can free immediately (even in_irq()) if destructor
-				 * does not exist
-				 */
-				dev_kfree_skb(skb);
+			dev_kfree_skb_any(skb);
 		}
 #ifdef CTFPOOL
 next_skb:
@@ -977,7 +1028,11 @@ osl_pci_bus(osl_t *osh)
 {
 	ASSERT(osh && (osh->magic == OS_HANDLE_MAGIC) && osh->pdev);
 
+#if defined(__ARM_ARCH_7A__) && LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 35)
+	return pci_domain_nr(((struct pci_dev *)osh->pdev)->bus);
+#else
 	return ((struct pci_dev *)osh->pdev)->bus->number;
+#endif
 }
 
 /* return slot # for the pci device pointed by osh->pdev */
@@ -991,6 +1046,24 @@ osl_pci_slot(osl_t *osh)
 #else
 	return PCI_SLOT(((struct pci_dev *)osh->pdev)->devfn);
 #endif
+}
+
+/* return domain # for the pci device pointed by osh->pdev */
+uint
+osl_pcie_domain(osl_t *osh)
+{
+	ASSERT(osh && (osh->magic == OS_HANDLE_MAGIC) && osh->pdev);
+
+	return pci_domain_nr(((struct pci_dev *)osh->pdev)->bus);
+}
+
+/* return bus # for the pci device pointed by osh->pdev */
+uint
+osl_pcie_bus(osl_t *osh)
+{
+	ASSERT(osh && (osh->magic == OS_HANDLE_MAGIC) && osh->pdev);
+
+	return ((struct pci_dev *)osh->pdev)->bus->number;
 }
 
 /* return the pci device pointed by osh->pdev */
@@ -1137,7 +1210,7 @@ uint
 osl_malloced(osl_t *osh)
 {
 	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
-		return (atomic_read(&osh->cmn->malloced));
+	return (atomic_read(&osh->cmn->malloced));
 }
 
 uint
@@ -1165,17 +1238,11 @@ osl_dma_alloc_consistent(osl_t *osh, uint size, uint16 align_bits, uint *alloced
 		size += align;
 	*alloced = size;
 
-#ifdef __ARM_ARCH_7A__
-	va = kmalloc(size, GFP_ATOMIC | __GFP_ZERO);
-	if (va)
-		*pap = (ulong)__virt_to_phys((ulong)va);
-#else
 	{
 		dma_addr_t pap_lin;
 		va = pci_alloc_consistent(osh->pdev, size, &pap_lin);
 		*pap = (dmaaddr_t)pap_lin;
 	}
-#endif
 	return va;
 }
 
@@ -1184,11 +1251,7 @@ osl_dma_free_consistent(osl_t *osh, void *va, uint size, dmaaddr_t pa)
 {
 	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
 
-#ifdef __ARM_ARCH_7A__
-	kfree(va);
-#else
 	pci_free_consistent(osh->pdev, size, va, (dma_addr_t)pa);
-#endif
 }
 
 dmaaddr_t BCMFASTPATH
@@ -1243,31 +1306,6 @@ osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction)
 	pci_unmap_single(osh->pdev, (uint32)pa, size, dir);
 }
 
-
-#if defined(__ARM_ARCH_7A__)
-
-inline void BCMFASTPATH
-osl_cache_flush(void *va, uint size)
-{
-	dma_sync_single_for_device(OSH_NULL, virt_to_dma(OSH_NULL, va), size, DMA_TX);
-}
-
-inline void BCMFASTPATH
-osl_cache_inv(void *va, uint size)
-{
-	dma_sync_single_for_cpu(OSH_NULL, virt_to_dma(OSH_NULL, va), size, DMA_RX);
-}
-
-inline void osl_prefetch(const void *ptr)
-{
-	/* Borrowed from linux/linux-2.6/include/asm-arm/processor.h */
-	__asm__ __volatile__(
-		"pld\t%0"
-		:
-		: "o" (*(char *)ptr)
-		: "cc");
-}
-#endif 
 
 #if defined(BCMASSERT_LOG)
 void
@@ -1459,6 +1497,16 @@ osl_pktalloced(osl_t *osh)
 		return 0;
 }
 
+uint32
+osl_rand(void)
+{
+	uint32 rand;
+
+	get_random_bytes(&rand, sizeof(rand));
+
+	return rand;
+}
+
 /* Linux Kernel: File Operations: start */
 void *
 osl_os_open_image(char *filename)
@@ -1518,3 +1566,17 @@ osl_os_image_size(void *image)
 }
 
 /* Linux Kernel: File Operations: end */
+
+
+/* APIs to set/get specific quirks in OSL layer */
+void
+osl_flag_set(osl_t *osh, uint32 mask)
+{
+	osh->flags |= mask;
+}
+
+bool
+osl_is_flag_set(osl_t *osh, uint32 mask)
+{
+	return (osh->flags & mask);
+}
