@@ -546,6 +546,8 @@ int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
 		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA14x;
 	else if (of_machine_is_compatible("nvidia,tegra124"))
 		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA12x;
+	else if (of_machine_is_compatible("nvidia,tegra132"))
+		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA12x;
 	else if (!dev->of_node) {
 		/* non-DT is always Tegra20 */
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)

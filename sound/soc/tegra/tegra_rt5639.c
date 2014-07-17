@@ -1263,12 +1263,21 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 		pdata->i2s_param[HIFI_CODEC].audio_port_id = (int)val32[0];
 		pdata->i2s_param[HIFI_CODEC].is_i2s_master = (int)val32[1];
 		pdata->i2s_param[HIFI_CODEC].i2s_mode = (int)val32[2];
+		pdata->i2s_param[HIFI_CODEC].bit_clk = (int)val32[6];
 
 		of_property_read_u32_array(np, "nvidia,i2s-param-bt", val32,
 							   ARRAY_SIZE(val32));
 		pdata->i2s_param[BT_SCO].audio_port_id = (int)val32[0];
 		pdata->i2s_param[BT_SCO].is_i2s_master = (int)val32[1];
 		pdata->i2s_param[BT_SCO].i2s_mode = (int)val32[2];
+		pdata->i2s_param[BT_SCO].bit_clk = (int)val32[6];
+
+		of_property_read_u32_array(np, "nvidia,i2s-param-baseband",
+						val32, ARRAY_SIZE(val32));
+		pdata->i2s_param[BASEBAND].audio_port_id = (int)val32[0];
+		pdata->i2s_param[BASEBAND].is_i2s_master = (int)val32[1];
+		pdata->i2s_param[BASEBAND].i2s_mode = (int)val32[2];
+		pdata->i2s_param[BASEBAND].bit_clk = (int)val32[6];
 	}
 
 	if (!pdata) {
