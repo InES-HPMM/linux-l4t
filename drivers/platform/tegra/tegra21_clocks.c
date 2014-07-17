@@ -7634,6 +7634,17 @@ static struct clk tegra_clk_blink = {
 	.max_rate	= 32768,
 };
 
+static struct clk_ops tegra_xusb_padctl_ops = {
+	.reset    = tegra21_periph_clk_reset,
+};
+
+static struct clk tegra_clk_xusb_padctl = {
+	.name      = "xusb_padctl",
+	.ops       = &tegra_xusb_padctl_ops,
+	.u.periph  = {
+		.clk_num = 142,
+	},
+};
 
 /* Multimedia modules muxes */
 static struct clk_mux_sel mux_pllc2_c_c3_pllp_plla1_clkm[] = {
@@ -8981,6 +8992,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_sor1_src,
 	&tegra_clk_sor0_brick,
 	&tegra_clk_sor1_brick,
+	&tegra_clk_xusb_padctl,
 };
 
 struct clk *tegra_ptr_camera_mclks[] = {
