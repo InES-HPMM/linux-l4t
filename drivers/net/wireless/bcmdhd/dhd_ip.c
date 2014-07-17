@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_ip.c 457995 2014-02-25 13:53:31Z $
+ * $Id: dhd_ip.c 468932 2014-04-09 06:58:15Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -38,6 +38,7 @@
 
 #ifdef DHDTCPACK_SUPPRESS
 #include <dhd_bus.h>
+#include <dhd_proto.h>
 #include <proto/bcmtcp.h>
 #endif /* DHDTCPACK_SUPPRESS */
 
@@ -286,7 +287,11 @@ int dhd_tcpack_suppress_set(dhd_pub_t *dhdp, uint8 mode)
 		goto exit;
 	}
 
-	if (mode > TCPACK_SUP_DELAYTX) {
+	if (mode >= TCPACK_SUP_LAST_MODE ||
+#ifndef BCMSDIO
+		mode == TCPACK_SUP_DELAYTX ||
+#endif
+		FALSE) {
 		DHD_ERROR(("%s %d: Invalid mode %d\n", __FUNCTION__, __LINE__, mode));
 		ret = BCME_BADARG;
 		goto exit;
@@ -374,7 +379,6 @@ inline int dhd_tcpack_check_xmit(dhd_pub_t *dhdp, void *pkt)
 	tcpack_sup_module_t *tcpack_sup_mod;
 	tcpack_info_t *tcpack_info_tbl;
 	int tbl_cnt;
-	uint pushed_len;
 	int ret = BCME_OK;
 	void *pdata;
 	uint32 pktlen;
@@ -383,10 +387,7 @@ inline int dhd_tcpack_check_xmit(dhd_pub_t *dhdp, void *pkt)
 		goto exit;
 
 	pdata = PKTDATA(dhdp->osh, pkt);
-
-	/* Length of BDC(+WLFC) headers pushed */
-	pushed_len = BDC_HEADER_LEN + (((struct bdc_header *)pdata)->dataOffset * 4);
-	pktlen = PKTLEN(dhdp->osh, pkt) - pushed_len;
+	pktlen = PKTLEN(dhdp->osh, pkt) - dhd_prot_hdrlen(dhdp, pdata);
 
 	if (pktlen < TCPACKSZMIN || pktlen > TCPACKSZMAX) {
 		DHD_TRACE(("%s %d: Too short or long length %d to be TCP ACK\n",
@@ -679,10 +680,16 @@ dhd_tcpack_suppress(dhd_pub_t *dhdp, void *pkt)
 				tack_tbl.cnt[2]++;
 #endif /* DEBUG_COUNTER && DHDTCPACK_SUP_DBG */
 				ret = TRUE;
-			} else
-				DHD_TRACE(("%s %d: lenth mismatch %d != %d || %d != %d\n",
-					__FUNCTION__, __LINE__, new_ip_hdr_len, old_ip_hdr_len,
-					new_tcp_hdr_len, old_tcp_hdr_len));
+			} else {
+#if defined(DEBUG_COUNTER) && defined(DHDTCPACK_SUP_DBG)
+				tack_tbl.cnt[6]++;
+#endif /* DEBUG_COUNTER && DHDTCPACK_SUP_DBG */
+				DHD_TRACE(("%s %d: lenth mismatch %d != %d || %d != %d"
+					" ACK %u -> %u\n", __FUNCTION__, __LINE__,
+					new_ip_hdr_len, old_ip_hdr_len,
+					new_tcp_hdr_len, old_tcp_hdr_len,
+					old_tcpack_num, new_tcp_ack_num));
+			}
 		} else if (new_tcp_ack_num == old_tcpack_num) {
 			set_dotxinrx = TRUE;
 			/* TCPACK retransmission */

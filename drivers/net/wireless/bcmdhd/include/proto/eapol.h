@@ -7,7 +7,7 @@
  *
  * Copyright Open Broadcom Corporation
  *
- * $Id: eapol.h 452678 2014-01-31 19:16:29Z $
+ * $Id: eapol.h 452703 2014-01-31 20:33:06Z $
  */
 
 #ifndef _eapol_h_
@@ -113,6 +113,7 @@ typedef BWL_PRE_PACKED_STRUCT struct {
 #define EAPOL_WPA_KEY_LEN 		95
 
 /* WPA/802.11i/WPA2 KEY KEY_INFO bits */
+#define WPA_KEY_DESC_OSEN	0x0
 #define WPA_KEY_DESC_V1		0x01
 #define WPA_KEY_DESC_V2		0x02
 #define WPA_KEY_DESC_V3		0x03

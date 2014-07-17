@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wldev_common.h 434085 2013-11-05 06:09:49Z $
+ * $Id: wldev_common.h 467328 2014-04-03 01:23:40Z $
  */
 #ifndef __WLDEV_COMMON_H__
 #define __WLDEV_COMMON_H__
@@ -115,10 +115,4 @@ int wldev_get_band(struct net_device *dev, uint *pband);
 
 int wldev_set_band(struct net_device *dev, uint band);
 
-
-int wldev_miracast_tuning(struct net_device *dev, char *command, int total_len);
-int wldev_get_assoc_resp_ie(struct net_device *dev, char *command, int total_len);
-int wldev_get_rx_rate_stats(struct net_device *dev, char *command, int total_len);
-int wldev_get_max_linkspeed(struct net_device *dev, char *command, int total_len);
-extern void dhd_set_ampdu_rx_tid(struct net_device *dev, int ampdu_rx_tid);
 #endif /* __WLDEV_COMMON_H__ */

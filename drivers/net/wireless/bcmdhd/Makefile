@@ -9,8 +9,8 @@ DHDCFLAGS += -Wall -Wstrict-prototypes -Dlinux -DLINUX -DBCMDRIVER            \
 	-DWIFI_ACT_FRAME -DARP_OFFLOAD_SUPPORT                                \
 	-DKEEP_ALIVE -DCSCAN -DPKT_FILTER_SUPPORT                             \
 	-DEMBEDDED_PLATFORM -DPNO_SUPPORT                                     \
-	-DDHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT -DGET_CUSTOM_MAC_ENABLE   \
-	-DCUSTOMER_HW2 -DENABLE_INSMOD_NO_FW_LOAD -DQMONITOR -DTOE
+	-DDHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT                           \
+	-DCUSTOMER_HW2
 
 #################
 # Common feature
@@ -94,24 +94,25 @@ DHDCFLAGS += -DWL_ENABLE_P2P_IF
 ##########################
 DRIVER_TYPE ?= $(CONFIG_BCMDHD)
 
-DHDCFLAGS += -DBCM4339_CHIP -DBCM43241_CHIP -DBCM4354_CHIP
-DHDCFLAGS += -DPROP_TXSTATUS_VSDB
-DHDCFLAGS += -DCUSTOM_DPC_PRIO_SETTING=99
-DHDCFLAGS += -DRXFRAME_THREAD
-DHDCFLAGS += -DDHDTCPACK_SUPPRESS
-
 #########################
-# BCM43241Chip dependent feature
+# Chip dependent feature
 #########################
-DHDCFLAGS += -DMIMO_ANT_SETTING
-DHDCFLAGS += -DCUSTOM_SDIO_F2_BLKSIZE=128
-DHDCFLAGS += -DAMPDU_HOSTREORDER
-DHDCFLAGS += -DCUSTOM_AMPDU_BA_WSIZE=32
-ifeq ($(DRIVER_TYPE),m)
-  DHDCFLAGS += -fno-pic
+ifneq ($(CONFIG_BCM43241),)
+  DHDCFLAGS += -DBCM43241_CHIP -DHW_OOB
+  DHDCFLAGS += -DSDIO_CRC_ERROR_FIX
+  DHDCFLAGS += -DCUSTOM_SDIO_F2_BLKSIZE=256
+  DHDCFLAGS += -DCUSTOM_GLOM_SETTING=8 -DCUSTOM_RXCHAIN=1
+  DHDCFLAGS += -DBCMSDIOH_TXGLOM -DCUSTOM_TXGLOM=1 -DBCMSDIOH_TXGLOM_HIGHSPEED
+  DHDCFLAGS += -DCUSTOM_MAX_TXGLOM_SIZE=32
+  DHDCFLAGS += -DUSE_WL_TXBF
+  DHDCFLAGS += -DUSE_WL_FRAMEBURST
+  DHDCFLAGS += -DDHD_ENABLE_LPC
+  DHDCFLAGS += -DVSDB_BW_ALLOCATE_ENABLE
 endif
 
 ifneq ($(CONFIG_BCM4354),)
+  DHDCFLAGS += -DBCM4354_CHIP -DHW_OOB
+
 # tput enhancement
   DHDCFLAGS += -DCUSTOM_GLOM_SETTING=8 -DCUSTOM_RXCHAIN=1
   DHDCFLAGS += -DUSE_DYNAMIC_F2_BLKSIZE -DDYNAMIC_F2_BLKSIZE_FOR_NONLEGACY=128
@@ -123,6 +124,7 @@ ifneq ($(CONFIG_BCM4354),)
   DHDCFLAGS += -DREPEAT_READFRAME
   DHDCFLAGS += -DCUSTOM_AMPDU_BA_WSIZE=64
   DHDCFLAGS += -DCUSTOM_DPC_CPUCORE=0
+# DHDCFLAGS += -DPROP_TXSTATUS_VSDB
   DHDCFLAGS += -DCUSTOM_MAX_TXGLOM_SIZE=40
   DHDCFLAGS += -DMAX_HDR_READ=128
   DHDCFLAGS += -DDHD_FIRSTREAD=128
@@ -135,6 +137,8 @@ ifneq ($(CONFIG_BCM4354),)
 endif
 
 ifneq ($(CONFIG_BCM4339),)
+  DHDCFLAGS += -DBCM4339_CHIP -DHW_OOB
+
   # tput enhancement
   DHDCFLAGS += -DCUSTOM_GLOM_SETTING=8 -DCUSTOM_RXCHAIN=1
   DHDCFLAGS += -DUSE_DYNAMIC_F2_BLKSIZE -DDYNAMIC_F2_BLKSIZE_FOR_NONLEGACY=128
@@ -145,6 +149,7 @@ ifneq ($(CONFIG_BCM4339),)
   DHDCFLAGS += -DRXFRAME_THREAD
   DHDCFLAGS += -DCUSTOM_AMPDU_BA_WSIZE=64
   DHDCFLAGS += -DCUSTOM_DPC_CPUCORE=0
+# DHDCFLAGS += -DPROP_TXSTATUS_VSDB
   DHDCFLAGS += -DCUSTOM_MAX_TXGLOM_SIZE=32
 
   # New Features
@@ -154,15 +159,10 @@ ifneq ($(CONFIG_BCM4339),)
 endif
 
 ifneq ($(CONFIG_BCMDHD_SDIO),)
-  DHDCFLAGS += -DBDC -DDHD_BCMEVENTS -DMMC_SDIO_ABORT
+  DHDCFLAGS += -DBDC -DOOB_INTR_ONLY -DDHD_BCMEVENTS -DMMC_SDIO_ABORT
   DHDCFLAGS += -DBCMSDIO -DBCMLXSDMMC -DUSE_SDIOFIFO_IOVAR
   DHDCFLAGS += -DPROP_TXSTATUS
-endif
-
-ifeq ($(CONFIG_BCMDHD_HW_OOB),y)
- DHDCFLAGS += -DHW_OOB -DOOB_INTR_ONLY
-else
- DHDCFLAGS += -DSDIO_ISR_THREAD
+  DHDCFLAGS += -DQMONITOR
 endif
 
 ifneq ($(CONFIG_BCMDHD_PCIE),)
@@ -171,25 +171,43 @@ endif
 
 #EXTRA_LDFLAGS += --strip-debug
 
+ifeq ($(CONFIG_BCMDHD_INSMOD_NO_FW_LOAD),y)
+  DHDCFLAGS += -DENABLE_INSMOD_NO_FW_LOAD
+endif
+
 EXTRA_CFLAGS += $(DHDCFLAGS) -DDHD_DEBUG
 EXTRA_CFLAGS += -DSRCBASE=\"$(src)\"
 EXTRA_CFLAGS += -I$(src)/include/ -I$(src)/
-KBUILD_CFLAGS += -I$(LINUXDIR)/include -I$(shell pwd) -Idrivers/net/wireless/bcmdhd -Idrivers/net/wireless/bcmdhd/include
+KBUILD_CFLAGS += -I$(LINUXDIR)/include -I$(shell pwd)
 
 DHDOFILES := dhd_pno.o dhd_common.o dhd_ip.o dhd_custom_gpio.o \
 	dhd_linux.o dhd_linux_sched.o dhd_cfg80211.o dhd_linux_wq.o aiutils.o bcmevent.o \
 	bcmutils.o bcmwifi_channels.o hndpmu.o linux_osl.o sbutils.o siutils.o \
 	wl_android.o wl_cfg80211.o wl_cfgp2p.o wl_cfg_btcoex.o wldev_common.o wl_linux_mon.o  \
-	dhd_linux_platdev.o dhd_pno.o dhd_linux_wq.o wl_cfg_btcoex.o dhd_qmon.o
+	dhd_linux_platdev.o dhd_pno.o dhd_linux_wq.o wl_cfg_btcoex.o \
+	hnd_pktq.o hnd_pktpool.o
 
 ifneq ($(CONFIG_BCMDHD_SDIO),)
   DHDOFILES += bcmsdh.o bcmsdh_linux.o bcmsdh_sdmmc.o bcmsdh_sdmmc_linux.o
-  DHDOFILES += dhd_cdc.o dhd_wlfc.o dhd_sdio.o
+  DHDOFILES += dhd_cdc.o dhd_wlfc.o dhd_sdio.o dhd_qmon.o
 endif
 
 ifneq ($(CONFIG_BCMDHD_PCIE),)
-  DHDOFILES += dhd_pcie.o dhd_pcie_linux.o dhd_msgbuf.o circularbuf.o
+  DHDOFILES += dhd_pcie.o dhd_pcie_linux.o dhd_msgbuf.o dhd_flowring.o
+  DHDOFILES += pcie_core.o
 endif
 
 bcmdhd-objs := $(DHDOFILES)
 obj-$(DRIVER_TYPE)   += bcmdhd.o
+
+all:
+	@echo "$(MAKE) --no-print-directory -C $(KDIR) SUBDIRS=$(CURDIR) modules"
+	@$(MAKE) --no-print-directory -C $(KDIR) SUBDIRS=$(CURDIR) modules
+
+clean:
+	rm -rf *.o *.ko *.mod.c *~ .*.cmd *.o.cmd .*.o.cmd \
+	Module.symvers modules.order .tmp_versions modules.builtin
+
+install:
+	@$(MAKE) --no-print-directory -C $(KDIR) \
+		SUBDIRS=$(CURDIR) modules_install

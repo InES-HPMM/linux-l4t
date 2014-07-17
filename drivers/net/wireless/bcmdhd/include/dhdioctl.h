@@ -25,7 +25,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhdioctl.h 454792 2014-02-11 20:40:19Z $
+ * $Id: dhdioctl.h 438755 2013-11-22 23:20:40Z $
  */
 
 #ifndef _dhdioctl_h_
@@ -40,18 +40,6 @@
 
 
 /* Linux network driver ioctl encoding */
-#ifdef CONFIG_COMPAT
-typedef struct dhd_ioctl_compat {
-	uint cmd;	/* common ioctl definition */
-	u32 buf;        /* pointer to user buffer */
-	uint len;	/* length of user buffer */
-	bool set;	/* get or set request (optional) */
-	uint used;	/* bytes read or written (optional) */
-	uint needed;	/* bytes needed (optional) */
-	uint driver;	/* to identify target driver */
-} dhd_ioctl_compat_t;
-#endif
-
 typedef struct dhd_ioctl {
 	uint cmd;	/* common ioctl definition */
 	void *buf;	/* pointer to user buffer */
