@@ -116,6 +116,9 @@ extern int tegra_agic_irq_get_virq(int irq);
 extern int tegra_agic_route_interrupt(int irq, enum tegra_agic_cpu cpu);
 extern bool tegra_agic_irq_is_active(int irq);
 extern bool tegra_agic_irq_is_pending(int irq);
+
+extern void tegra_agic_save_registers(void);
+extern void tegra_agic_restore_registers(void);
 #else
 static inline int tegra_agic_irq_get_virq(int irq)
 {
@@ -135,6 +138,16 @@ static inline bool tegra_agic_irq_is_active(int irq)
 static inline bool tegra_agic_irq_is_pending(int irq)
 {
 	return true;
+}
+
+static inline void tegra_agic_save_registers(void)
+{
+	return;
+}
+
+static inline void tegra_agic_restore_registers(void)
+{
+	return;
 }
 #endif /* CONFIG_TEGRA_APE_AGIC */
 

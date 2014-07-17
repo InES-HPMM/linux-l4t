@@ -64,6 +64,7 @@ struct gic_chip_data {
 	union gic_base dist_base;
 	union gic_base cpu_base;
 #ifdef CONFIG_CPU_PM
+	struct notifier_block pm_notifier_block;
 	u32 saved_spi_enable[DIV_ROUND_UP(1020, 32)];
 	u32 saved_spi_conf[DIV_ROUND_UP(1020, 16)];
 	u32 saved_spi_target[DIV_ROUND_UP(1020, 4)];
@@ -148,6 +149,7 @@ static inline void gic_set_base_accessor(struct gic_chip_data *data,
 #ifdef CONFIG_TEGRA_APE_AGIC
 
 static struct gic_chip_data *tegra_agic;
+static int gic_notifier(struct notifier_block *, unsigned long, void *);
 
 int tegra_agic_irq_get_virq(int irq)
 {
@@ -220,6 +222,20 @@ int tegra_agic_route_interrupt(int irq, enum tegra_agic_cpu cpu)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(tegra_agic_route_interrupt);
+
+void tegra_agic_save_registers(void)
+{
+	gic_notifier(&tegra_agic->pm_notifier_block,
+			MOD_DOMAIN_POWER_OFF, NULL);
+}
+EXPORT_SYMBOL_GPL(tegra_agic_save_registers);
+
+void tegra_agic_restore_registers(void)
+{
+	gic_notifier(&tegra_agic->pm_notifier_block,
+			MOD_DOMAIN_POWER_ON, NULL);
+}
+EXPORT_SYMBOL_GPL(tegra_agic_restore_registers);
 #endif
 
 static inline void __iomem *gic_dist_base(struct irq_data *d)
@@ -624,31 +640,28 @@ static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
  * this function, no interrupts will be delivered by the GIC, and another
  * platform-specific wakeup source must be enabled.
  */
-static void gic_dist_save(unsigned int gic_nr)
+static void gic_dist_save(struct gic_chip_data *gic)
 {
 	unsigned int gic_irqs;
 	void __iomem *dist_base;
 	int i;
 
-	if (gic_nr >= MAX_GIC_NR)
-		BUG();
-
-	gic_irqs = gic_data[gic_nr].gic_irqs;
-	dist_base = gic_data_dist_base(&gic_data[gic_nr]);
+	gic_irqs = gic->gic_irqs;
+	dist_base = gic_data_dist_base(gic);
 
 	if (!dist_base)
 		return;
 
 	for (i = 0; i < DIV_ROUND_UP(gic_irqs, 16); i++)
-		gic_data[gic_nr].saved_spi_conf[i] =
+		gic->saved_spi_conf[i] =
 			readl_relaxed(dist_base + GIC_DIST_CONFIG + i * 4);
 
 	for (i = 0; i < DIV_ROUND_UP(gic_irqs, 4); i++)
-		gic_data[gic_nr].saved_spi_target[i] =
+		gic->saved_spi_target[i] =
 			readl_relaxed(dist_base + GIC_DIST_TARGET + i * 4);
 
 	for (i = 0; i < DIV_ROUND_UP(gic_irqs, 32); i++)
-		gic_data[gic_nr].saved_spi_enable[i] =
+		gic->saved_spi_enable[i] =
 			readl_relaxed(dist_base + GIC_DIST_ENABLE_SET + i * 4);
 
 	writel_relaxed(0, dist_base + GIC_DIST_CTRL);
@@ -661,17 +674,14 @@ static void gic_dist_save(unsigned int gic_nr)
  * handled normally, but any edge interrupts that occured will not be seen by
  * the GIC and need to be handled by the platform-specific wakeup source.
  */
-static void gic_dist_restore(unsigned int gic_nr)
+static void gic_dist_restore(struct gic_chip_data *gic)
 {
 	unsigned int gic_irqs;
 	unsigned int i;
 	void __iomem *dist_base;
 
-	if (gic_nr >= MAX_GIC_NR)
-		BUG();
-
-	gic_irqs = gic_data[gic_nr].gic_irqs;
-	dist_base = gic_data_dist_base(&gic_data[gic_nr]);
+	gic_irqs = gic->gic_irqs;
+	dist_base = gic_data_dist_base(gic);
 
 	if (!dist_base)
 		return;
@@ -679,7 +689,7 @@ static void gic_dist_restore(unsigned int gic_nr)
 	writel_relaxed(0, dist_base + GIC_DIST_CTRL);
 
 	for (i = 0; i < DIV_ROUND_UP(gic_irqs, 16); i++)
-		writel_relaxed(gic_data[gic_nr].saved_spi_conf[i],
+		writel_relaxed(gic->saved_spi_conf[i],
 			dist_base + GIC_DIST_CONFIG + i * 4);
 
 	for (i = 0; i < DIV_ROUND_UP(gic_irqs, 4); i++)
@@ -687,63 +697,73 @@ static void gic_dist_restore(unsigned int gic_nr)
 			dist_base + GIC_DIST_PRI + i * 4);
 
 	for (i = 0; i < DIV_ROUND_UP(gic_irqs, 4); i++)
-		writel_relaxed(gic_data[gic_nr].saved_spi_target[i],
+		writel_relaxed(gic->saved_spi_target[i],
 			dist_base + GIC_DIST_TARGET + i * 4);
 
 	for (i = 0; i < DIV_ROUND_UP(gic_irqs, 32); i++)
-		writel_relaxed(gic_data[gic_nr].saved_spi_enable[i],
+		writel_relaxed(gic->saved_spi_enable[i],
 			dist_base + GIC_DIST_ENABLE_SET + i * 4);
 
 	writel_relaxed(1, dist_base + GIC_DIST_CTRL);
 }
 
-static void gic_cpu_save(unsigned int gic_nr)
+static void gic_cpu_save(struct gic_chip_data *gic)
 {
 	int i;
 	u32 *ptr;
 	void __iomem *dist_base;
 	void __iomem *cpu_base;
 
-	if (gic_nr >= MAX_GIC_NR)
-		BUG();
-
-	dist_base = gic_data_dist_base(&gic_data[gic_nr]);
-	cpu_base = gic_data_cpu_base(&gic_data[gic_nr]);
+	dist_base = gic_data_dist_base(gic);
+	cpu_base = gic_data_cpu_base(gic);
 
 	if (!dist_base || !cpu_base)
 		return;
 
-	ptr = __this_cpu_ptr(gic_data[gic_nr].saved_ppi_enable);
+	if (gic->is_percpu)
+		ptr = __this_cpu_ptr(gic->saved_ppi_enable);
+	else
+		ptr = per_cpu_ptr(gic->saved_ppi_enable, 0);
+
 	for (i = 0; i < DIV_ROUND_UP(32, 32); i++)
 		ptr[i] = readl_relaxed(dist_base + GIC_DIST_ENABLE_SET + i * 4);
 
-	ptr = __this_cpu_ptr(gic_data[gic_nr].saved_ppi_conf);
+	if (gic->is_percpu)
+		ptr = __this_cpu_ptr(gic->saved_ppi_conf);
+	else
+		ptr = per_cpu_ptr(gic->saved_ppi_conf, 0);
+
 	for (i = 0; i < DIV_ROUND_UP(32, 16); i++)
 		ptr[i] = readl_relaxed(dist_base + GIC_DIST_CONFIG + i * 4);
 
 }
 
-static void gic_cpu_restore(unsigned int gic_nr)
+static void gic_cpu_restore(struct gic_chip_data *gic)
 {
 	int i;
 	u32 *ptr;
 	void __iomem *dist_base;
 	void __iomem *cpu_base;
 
-	if (gic_nr >= MAX_GIC_NR)
-		BUG();
-
-	dist_base = gic_data_dist_base(&gic_data[gic_nr]);
-	cpu_base = gic_data_cpu_base(&gic_data[gic_nr]);
+	dist_base = gic_data_dist_base(gic);
+	cpu_base = gic_data_cpu_base(gic);
 
 	if (!dist_base || !cpu_base)
 		return;
 
-	ptr = __this_cpu_ptr(gic_data[gic_nr].saved_ppi_enable);
+	if (gic->is_percpu)
+		ptr = __this_cpu_ptr(gic->saved_ppi_enable);
+	else
+		ptr = per_cpu_ptr(gic->saved_ppi_enable, 0);
+
 	for (i = 0; i < DIV_ROUND_UP(32, 32); i++)
 		writel_relaxed(ptr[i], dist_base + GIC_DIST_ENABLE_SET + i * 4);
 
-	ptr = __this_cpu_ptr(gic_data[gic_nr].saved_ppi_conf);
+	if (gic->is_percpu)
+		ptr = __this_cpu_ptr(gic->saved_ppi_conf);
+	else
+		ptr = per_cpu_ptr(gic->saved_ppi_conf, 0);
+
 	for (i = 0; i < DIV_ROUND_UP(32, 16); i++)
 		writel_relaxed(ptr[i], dist_base + GIC_DIST_CONFIG + i * 4);
 
@@ -756,47 +776,44 @@ static void gic_cpu_restore(unsigned int gic_nr)
 
 static int gic_notifier(struct notifier_block *self, unsigned long cmd,	void *v)
 {
-	int i;
-
-	for (i = 0; i < MAX_GIC_NR; i++) {
+	struct gic_chip_data *gic =
+		container_of(self, struct gic_chip_data, pm_notifier_block);
 #ifdef CONFIG_GIC_NON_BANKED
 		/* Skip over unused GICs */
-		if (!gic_data[i].get_base)
+		if (!gic->get_base)
 			continue;
 #endif
-		/*
-		 * FIXME:This disables save/restore for gics which
-		 * are not per cpu.Need to provide a mechansim for
-		 * then to save and restore the state of their
-		 * registers
-		 */
-		if (!gic_data[i].is_percpu)
-			continue;
-
-		switch (cmd) {
-		case CPU_PM_ENTER:
-			gic_cpu_save(i);
-			break;
-		case CPU_PM_ENTER_FAILED:
-		case CPU_PM_EXIT:
-			gic_cpu_restore(i);
-			break;
-		case CPU_CLUSTER_PM_ENTER:
-			gic_dist_save(i);
-			break;
-		case CPU_CLUSTER_PM_ENTER_FAILED:
-		case CPU_CLUSTER_PM_EXIT:
-			gic_dist_restore(i);
-			break;
+		if (gic->is_percpu) {
+			switch (cmd) {
+			case CPU_PM_ENTER:
+				gic_cpu_save(gic);
+				break;
+			case CPU_PM_ENTER_FAILED:
+			case CPU_PM_EXIT:
+				gic_cpu_restore(gic);
+				break;
+			case CPU_CLUSTER_PM_ENTER:
+				gic_dist_save(gic);
+				break;
+			case CPU_CLUSTER_PM_ENTER_FAILED:
+			case CPU_CLUSTER_PM_EXIT:
+				gic_dist_restore(gic);
+				break;
+			}
+		} else {
+			switch (cmd) {
+			case MOD_DOMAIN_POWER_ON:
+				gic_dist_restore(gic);
+				gic_cpu_restore(gic);
+				break;
+			case MOD_DOMAIN_POWER_OFF:
+				gic_cpu_save(gic);
+				gic_dist_save(gic);
+				break;
+			}
 		}
-	}
-
 	return NOTIFY_OK;
 }
-
-static struct notifier_block gic_notifier_block = {
-	.notifier_call = gic_notifier,
-};
 
 static void __init gic_pm_init(struct gic_chip_data *gic)
 {
@@ -808,8 +825,10 @@ static void __init gic_pm_init(struct gic_chip_data *gic)
 		sizeof(u32));
 	BUG_ON(!gic->saved_ppi_conf);
 
-	if (gic == &gic_data[0])
-		cpu_pm_register_notifier(&gic_notifier_block);
+	gic->pm_notifier_block.notifier_call = gic_notifier;
+
+	if (gic->is_percpu)
+		cpu_pm_register_notifier(&gic->pm_notifier_block);
 }
 #else
 static void __init gic_pm_init(struct gic_chip_data *gic)

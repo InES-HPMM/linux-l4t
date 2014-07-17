@@ -2,6 +2,7 @@
  *  include/linux/irqchip/arm-gic.h
  *
  *  Copyright (C) 2002 ARM Limited, All Rights Reserved.
+ *  Copyright (C) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -56,6 +57,11 @@
 
 #define GICH_MISR_EOI			(1 << 0)
 #define GICH_MISR_U			(1 << 1)
+
+enum domain_gic_pm_event {
+	MOD_DOMAIN_POWER_ON,
+	MOD_DOMAIN_POWER_OFF
+};
 
 #ifndef __ASSEMBLY__
 
