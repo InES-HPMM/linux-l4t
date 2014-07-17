@@ -1823,58 +1823,6 @@ struct platform_device tegra_fuse_device = {
 	.id	= -1,
 };
 
-static struct resource ptm_resources[] = {
-	{
-		.name  = "ptm",
-		.start = PTM0_BASE,
-		.end   = PTM0_BASE + SZ_4K - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.name  = "ptm",
-		.start = PTM1_BASE,
-		.end   = PTM1_BASE + SZ_4K - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.name  = "ptm",
-		.start = PTM2_BASE,
-		.end   = PTM2_BASE + SZ_4K - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.name  = "ptm",
-		.start = PTM3_BASE,
-		.end   = PTM3_BASE + SZ_4K - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.name  = "etb",
-		.start = ETB_BASE,
-		.end   = ETB_BASE + SZ_4K - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.name  = "funnel",
-		.start = FUNNEL_BASE,
-		.end   = FUNNEL_BASE + SZ_4K - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.name  = "tpiu",
-		.start = TPIU_BASE,
-		.end   = TPIU_BASE + SZ_4K - 1,
-		.flags = IORESOURCE_MEM,
-	},
-};
-
-struct platform_device tegra_ptm_device = {
-	.name          = "ptm",
-	.id            = -1,
-	.num_resources = ARRAY_SIZE(ptm_resources),
-	.resource      = ptm_resources,
-};
-
 void __init tegra_init_debug_uart_rate(void)
 {
 	unsigned int uartclk;

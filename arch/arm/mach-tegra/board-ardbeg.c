@@ -474,9 +474,6 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
 #endif
-#if defined(CONFIG_TEGRA_PTM)
-	&tegra_ptm_device,
-#endif
 };
 
 static struct tegra_usb_platform_data tegra_udc_pdata = {
@@ -914,6 +911,7 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 #endif
 	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power",
 		&baseband_pdata),
+	OF_DEV_AUXDATA("nvidia,ptm", 0x7081c000, "ptm", NULL),
 	{}
 };
 #endif

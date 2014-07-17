@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_ptm.c
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -32,6 +32,7 @@
 #include <linux/cpu.h>
 #include "pm.h"
 #include "tegra_ptm.h"
+#include <linux/of.h>
 
 /*
  * inside ETB trace buffer, each instruction can be identified by the CPU. For
@@ -1194,17 +1195,42 @@ static int ptm_probe(struct platform_device *dev)
 		if (NULL == addr)
 			goto out;
 
-		if (0 == strncmp("ptm", res->name, 3)) {
-			t->ptm_regs[t->ptm_regs_count] = addr;
-			t->ptm_regs_count++;
+		if (dev->dev.of_node) {
+			switch (i) {
+			case 0:
+			case 1:
+			case 2:
+			case 3:
+				t->ptm_regs[t->ptm_regs_count] = addr;
+				t->ptm_regs_count++;
+				break;
+			case 4:
+				t->etb_regs = addr;
+				break;
+			case 5:
+				t->tpiu_regs = addr;
+				break;
+			case 6:
+				t->funnel_regs = addr;
+				break;
+			default:
+				dev_err(&dev->dev, "Unknown resource for the PTM device\n");
+				break;
+			}
+		} else {
+			if (0 == strncmp("ptm", res->name, 3)) {
+				t->ptm_regs[t->ptm_regs_count] = addr;
+				t->ptm_regs_count++;
+			}
+			if (0 == strncmp("etb", res->name, 3))
+				t->etb_regs = addr;
+			if (0 == strncmp("tpiu", res->name, 4))
+				t->tpiu_regs = addr;
+			if (0 == strncmp("funnel", res->name, 6))
+				t->funnel_regs = addr;
 		}
-		if (0 == strncmp("etb", res->name, 3))
-			t->etb_regs = addr;
-		if (0 == strncmp("tpiu", res->name, 4))
-			t->tpiu_regs = addr;
-		if (0 == strncmp("funnel", res->name, 6))
-			t->funnel_regs = addr;
 	}
+
 	/* at least one PTM is required */
 	if (t->ptm_regs[0] == NULL || t->etb_regs == NULL ||
 	    t->tpiu_regs == NULL   || t->funnel_regs == NULL) {
@@ -1280,11 +1306,19 @@ static int ptm_remove(struct platform_device *dev)
 	return 0;
 }
 
+static struct of_device_id ptm_of_match[] = {
+	{ .compatible = "nvidia,ptm", },
+	{   },
+};
+
+MODULE_DEVICE_TABLE(of, ptm_of_match)
+
 static struct platform_driver ptm_driver = {
 	.probe          = ptm_probe,
 	.remove         = ptm_remove,
 	.driver         = {
 		.name	= "ptm",
+		.of_match_table = of_match_ptr(ptm_of_match),
 		.owner	= THIS_MODULE,
 	},
 };

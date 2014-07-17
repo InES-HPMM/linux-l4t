@@ -155,8 +155,6 @@ extern struct platform_device tegra_cl_dvfs_device;
 #endif
 extern struct platform_device tegra_fuse_device;
 
-extern struct platform_device tegra_ptm_device;
-
 void __init tegra_init_debug_uart_rate(void);
 
 #endif
