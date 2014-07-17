@@ -54,10 +54,14 @@ static inline int tegra_actmon_restore(void)
 void tegra_pd_add_device(struct device *dev);
 void tegra_pd_remove_device(struct device *dev);
 void tegra_pd_add_sd(struct generic_pm_domain *sd);
+void tegra_ape_pd_add_device(struct device *dev);
+void tegra_ape_pd_remove_device(struct device *dev);
 #else
 static inline void tegra_pd_add_device(struct device *dev) { }
 static inline void tegra_pd_remove_device(struct device *dev) { }
 static inline void tegra_pd_add_sd(struct generic_pm_domain *sd) { }
+static inline void tegra_ape_pd_add_device(struct device *dev) { }
+static inline void tegra_ape_pd_remove_device(struct device *dev) { }
 #endif /* CONFIG_TEGRA_MC_DOMAINS */
 
 #endif /* _INCLUDE_TEGRA_PM_DOMAINS_H_ */

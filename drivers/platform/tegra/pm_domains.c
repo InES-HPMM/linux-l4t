@@ -20,7 +20,9 @@
 #include <linux/pm_runtime.h>
 #include <linux/pm_domain.h>
 #include <linux/tegra_pm_domains.h>
+#include <linux/tegra-powergate.h>
 #include <linux/platform_data/tegra_bpmp.h>
+#include <linux/irqchip/tegra-agic.h>
 
 #ifdef CONFIG_TEGRA_MC_DOMAINS
 #define TEGRA_PD_DEV_CALLBACK(callback, dev)			\
@@ -224,7 +226,6 @@ static int tegra_core_power_off(struct generic_pm_domain *genpd)
 	return 0;
 }
 
-
 static struct tegra_pm_domain tegra_sdhci3 = {
 	.gpd.name = "tegra_sdhci.3",
 	.gpd.power_off = tegra_core_power_off,
@@ -239,6 +240,7 @@ static struct tegra_pm_domain tegra_sdhci2 = {
 	.gpd.power_off_delay = 5000,
 };
 #endif
+
 static struct tegra_pm_domain tegra_mc_clk = {
 	.gpd.name = "tegra_mc_clk",
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
@@ -250,6 +252,36 @@ static struct tegra_pm_domain tegra_mc_clk = {
 #ifndef CONFIG_ARCH_TEGRA_21x_SOC
 static struct tegra_pm_domain tegra_nvavp = {
 	.gpd.name = "tegra_nvavp",
+};
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+static int tegra_ape_power_on(struct generic_pm_domain *genpd)
+{
+	int ret = 0;
+
+	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_APE);
+	if (ret)
+		return ret;
+
+	tegra_agic_restore_registers();
+	return ret;
+}
+
+static int tegra_ape_power_off(struct generic_pm_domain *genpd)
+{
+	int ret = 0;
+
+	tegra_agic_save_registers();
+
+	ret = tegra_powergate_partition(TEGRA_POWERGATE_APE);
+	return ret;
+}
+
+static struct tegra_pm_domain tegra_ape = {
+	.gpd.name = "tegra_ape",
+	.gpd.power_off = tegra_ape_power_off,
+	.gpd.power_on = tegra_ape_power_on,
 };
 #endif
 
@@ -275,6 +307,9 @@ static struct domain_client client_list[] = {
 	{ .name = "tegra12-se", .domain = &tegra_mc_clk.gpd },
 	{ .name = "tegra-pcie", .domain = &tegra_mc_clk.gpd },
 	{ .name = "gpu", .domain = &tegra_mc_clk.gpd },
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	{ .name = "tegra_ape", .domain = &tegra_mc_clk.gpd },
+#endif
 	{},
 };
 
@@ -302,6 +337,10 @@ static int __init tegra_init_pm_domain(void)
 	pm_genpd_set_poweroff_delay(&tegra_sdhci2.gpd, 5000);
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	pm_genpd_init(&tegra_ape.gpd, &simple_qos_governor, false);
+	tegra_pd_add_sd(&tegra_ape.gpd);
+#endif
 	return 0;
 }
 core_initcall(tegra_init_pm_domain);
@@ -353,6 +392,22 @@ void tegra_pd_add_sd(struct generic_pm_domain *sd)
 	pm_genpd_add_subdomain(master, sd);
 }
 EXPORT_SYMBOL(tegra_pd_add_sd);
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+void tegra_ape_pd_add_device(struct device *dev)
+{
+	pm_genpd_add_device(&tegra_ape.gpd, dev);
+	pm_genpd_dev_need_save(dev, true);
+}
+EXPORT_SYMBOL(tegra_ape_pd_add_device);
+
+void tegra_ape_pd_remove_device(struct device *dev)
+{
+	pm_genpd_remove_device(&tegra_ape.gpd, dev);
+}
+EXPORT_SYMBOL(tegra_ape_pd_remove_device);
+#endif
+
 #else
 struct tegra_pm_domain tegra_mc_clk;
 EXPORT_SYMBOL(tegra_mc_clk);
