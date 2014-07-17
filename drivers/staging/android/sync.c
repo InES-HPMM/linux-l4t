@@ -423,6 +423,12 @@ void sync_fence_put(struct sync_fence *fence)
 }
 EXPORT_SYMBOL(sync_fence_put);
 
+void sync_fence_get(struct sync_fence *fence)
+{
+	get_file(fence->file);
+}
+EXPORT_SYMBOL(sync_fence_get);
+
 void sync_fence_install(struct sync_fence *fence, int fd)
 {
 	fd_install(fd, fence->file);
