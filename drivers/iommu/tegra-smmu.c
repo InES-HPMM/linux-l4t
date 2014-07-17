@@ -524,6 +524,86 @@ fix_up:
 	return swgids;
 }
 
+struct smmu_map_prop {
+	u64 iova_start;
+	u64 iova_size;
+	u32 alignment;
+	u32 num_pf_page;
+	u32 gap_page;
+};
+
+static int tegra_smmu_get_map_prop(struct device *dev,
+				   struct smmu_map_prop *prop)
+{
+	struct of_phandle_iter iter;
+
+	if (!smmu_handle)
+		return -ENODEV;
+
+	of_property_for_each_phandle_with_args(iter, dev->of_node, "iommus",
+					       "#iommu-cells", 0) {
+		struct device_node *np;
+
+		if (iter.out_args.np != smmu_handle->dev->of_node)
+			continue;
+
+		/*
+		 * XXX: assume address space property phandle in iommus property
+		 * is the 3rd element in iter.out_args.args
+		 */
+		if (iter.out_args.args_count < 3) {
+			dev_err(smmu_handle->dev,
+				"address-space-prop is not present for %s",
+				dev_name(dev));
+			break;
+		}
+
+		np = of_find_node_by_phandle(iter.out_args.args[2]);
+		if (np->parent->parent != smmu_handle->dev->of_node) {
+			dev_err(smmu_handle->dev,
+				"address-space-prop phandle invalid for %s",
+				dev_name(dev));
+			break;
+		}
+
+		if (of_property_read_u64(np, "iova-start", &prop->iova_start) ||
+		    of_property_read_u64(np, "iova-size", &prop->iova_size) ||
+		    of_property_read_u32(np, "alignment", &prop->alignment) ||
+		    of_property_read_u32(np, "num-pf-page", &prop->gap_page) ||
+		    of_property_read_u32(np, "gap-page", &prop->num_pf_page)) {
+			dev_err(smmu_handle->dev,
+				"invalid address-space-prop %s for %s",
+				np->name, dev_name(dev));
+			break;
+		}
+
+		dev_dbg(dev,
+			"iova-start:%pad iova-size:%08lx alignment:%x"
+			"num_pf_page:%d gap_page:%d\n",
+			&prop->iova_start, (unsigned long)prop->iova_size,
+			prop->alignment, prop->num_pf_page, prop->gap_page);
+		return 0;
+	}
+	return -EINVAL;
+}
+
+static bool tegra_smmu_map_prop_match(const struct dma_iommu_mapping *map,
+					 const struct smmu_map_prop prop)
+{
+	if (map->base != prop.iova_start)
+		return false;
+	if (map->end - map->base != prop.iova_size)
+		return false;
+	/* XXX: will not be 0 in case map was initialized using iommus prop */
+	if (!map->alignment)
+		return true;
+	if (!map->gap_page && (map->gap_page != !!prop.gap_page))
+		return false;
+	if (!map->num_pf_page && (map->num_pf_page != prop.num_pf_page))
+		return false;
+	return true;
+}
+
 /*
  * XXX: creates new map for dev if required,
  * use it only when dev->archdata.mapping is not present
@@ -531,21 +611,53 @@ fix_up:
 static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev,
 							u64 swgids)
 {
-	int asid;
+	int asid, ret;
 	struct dma_iommu_mapping *map = NULL;
+	struct smmu_map_prop prop;
 
 	asid = _tegra_smmu_get_asid(swgids);
 
+	ret = tegra_smmu_get_map_prop(dev, &prop);
+	if (ret)
+		dev_info(dev, "map properties from iommus is invalid\n");
+
 	if (smmu_handle && smmu_handle->map[asid]) {
 		map = smmu_handle->map[asid];
+		if (!ret && !tegra_smmu_map_prop_match(map, prop)) {
+			dev_err(dev, "incompatible address space properties\n");
+			return NULL;
+		}
+		goto end;
+	}
+
+	if (!ret) {
+		map = arm_iommu_create_mapping(&platform_bus_type,
+					       (dma_addr_t) prop.iova_start,
+					       (size_t) prop.iova_size,
+					       0);
+		if (IS_ERR(map)) {
+			map = NULL;
+			goto end;
+		}
+		map->alignment = prop.alignment;
+		map->gap_page = !!prop.gap_page;
+		map->num_pf_page = prop.num_pf_page;
+		dev_info(dev, "created map using iommus property\n");
 		goto end;
 	}
 
 	map = tegra_smmu_map_init_dev(dev, swgids);
+	dev_info(dev, "created map using system map\n");
+
+end:
+	if (!map)
+		dev_err(dev,
+			"Failed to create/retrieve IOVA map for ASID[%d]",
+			asid);
 
 	if (smmu_handle && map)
 		smmu_handle->map[asid] = map;
-end:
+
 	return map;
 }
 
@@ -1573,8 +1685,9 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	if (temp && map != temp)
 		dev_err(dev, "swgid mismatch dt=%llx fixup=%llx\n", map, temp);
 
-	dma_map = dev->archdata.mapping;
+	dma_map = to_dma_iommu_mapping(dev);
 	dma_map_to_as_bitmap(dma_map, as_bitmap);
+
 	for_each_set_bit(idx, as_bitmap, MAX_AS_PER_DEV) {
 		if (test_and_set_bit(idx, dom->bitmap))
 			continue;
