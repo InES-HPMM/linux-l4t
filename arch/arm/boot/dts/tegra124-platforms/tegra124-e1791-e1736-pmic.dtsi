@@ -677,18 +677,4 @@
 			};
 		};
 	};
-
-        power-detect {
-                pwrdet-nand-supply = <&palmas_smps8>;
-                pwrdet-sdmmc1-supply = <&palmas_smps8>;
-                pwrdet-sdmmc4-supply = <&palmas_smps8>;
-                pwrdet-audio-supply = <&palmas_smps8>;
-                pwrdet-uart-supply = <&palmas_smps8>;
-                pwrdet-bb-supply = <&palmas_smps8>;
-                pwrdet-cam-supply = <&palmas_smps8>;
-                pwrdet-mipi-supply = <&palmas_ldo5>;
-                pwrdet-sdmmc3-supply = <&palmas_ldo9>;
-                pwrdet-hv-supply = <&palmas_ldoln>;
-                pwrdet-pex-ctl-supply = <&palmas_ldousb>;
-        };  
 };

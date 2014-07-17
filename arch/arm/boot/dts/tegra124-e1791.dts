@@ -3,9 +3,8 @@
 #include "tegra124.dtsi"
 #include "tegra124-platforms/tegra124-tn8-dfll.dtsi"
 #include "tegra124-platforms/tegra124-ardbeg-powermon-e1780-1000-a00.dtsi"
-#include "tegra124-platforms/tegra124-e1791-e1736-pmic.dtsi"
+#include "tegra124-platforms/tegra124-1791-power-tree-e1736-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-e1791-emc.dtsi"
-#include "tegra124-platforms/tegra124-tn8-fixed-e1736-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-gpio-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-pinmux-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
@@ -42,12 +41,6 @@
 	memory@0x80000000 {
 		device_type = "memory";
 		reg = <0x0 0x80000000 0x0 0x80000000>;
-	};
-
-	i2c@7000c400 {
-		pca9546@71 {
-			vcc-supply = <&palmas_smps9>;
-		};
 	};
 
 	i2c@7000d000 {
