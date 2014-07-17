@@ -1,3 +1,4 @@
 #include "tegra210.dtsi"
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
+#include "tegra210-platforms/tegra210-ers-dfll-e2174-1101-a00.dtsi"
