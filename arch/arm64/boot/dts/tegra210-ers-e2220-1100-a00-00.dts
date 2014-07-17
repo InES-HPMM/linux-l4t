@@ -161,5 +161,10 @@
 			nvidia,audio-codec-z = <&spdif_dit2>;
 			nvidia,audio-codec-s = <&spdif_dit3>;
 	};
+	spi@7000da00 {
+		spi-touch@0 {
+			platform-id = <RM_PLATFORM_L005>;
+		};
+	};
 };
 
