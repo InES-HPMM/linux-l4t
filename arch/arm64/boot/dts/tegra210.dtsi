@@ -996,6 +996,14 @@
 
 	};
 
+	sata@70020000 {
+		compatible = "nvidia,tegra124-ahci-sata";
+		reg = <0x0 0x70027000 0x0 0x00002000>,
+			<0x0 0x70021000 0x0 0x00001000>;
+		interrupts = <0 23 0x04>;
+		status = "disabled";
+	};
+
 	i2c1: i2c@7000c000 {
 		#address-cells = <1>;
 		#size-cells = <0>;

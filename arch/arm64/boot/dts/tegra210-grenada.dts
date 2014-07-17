@@ -958,6 +958,12 @@
 		calib_1v8_offsets = <0x0707>;
 		status = "okay";
 	};
+
+	sata@70020000 {
+		status = "okay";
+		nvidia,enable-sata-port;
+	};
+
 	sdhci@700b0400 {
 		tap-delay = <1>;
 		trim-delay = <3>;
