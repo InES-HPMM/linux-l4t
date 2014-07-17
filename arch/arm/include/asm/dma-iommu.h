@@ -24,7 +24,7 @@ struct dma_iommu_mapping {
 	struct list_head	list;
 
 	bool			gap_page;
-	int			num_prefetch_page;
+	int			num_pf_page;
 	/* FIXME: currently only alignment of 2^n is supported. */
 	size_t			alignment;
 
