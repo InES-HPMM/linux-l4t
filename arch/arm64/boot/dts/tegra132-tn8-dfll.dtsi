@@ -22,6 +22,5 @@
 		pmic-i2c-voltage-register = <0x23>;
 		i2c-fs-rate = <400000>;
 		sel-conversion-slope = <1>;
-		pmic-undershoot-gb = <100>;
 	};
 };
