@@ -276,7 +276,6 @@ static struct platform_device *loki_devices[] __initdata = {
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&baseband_dit_device,
-	&tegra_hda_device,
 	&tegra_offload_device,
 	&tegra30_avp_audio_device,
 };
@@ -652,6 +651,7 @@ struct of_dev_auxdata loki_auxdata_lookup[] __initdata = {
 #ifdef CONFIG_TEGRA_CEC_SUPPORT
 	OF_DEV_AUXDATA("nvidia,tegra124-cec", 0x70015000, "tegra_cec", NULL),
 #endif
+	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
 	{}
 };
 #endif

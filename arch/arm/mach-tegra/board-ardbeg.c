@@ -437,7 +437,6 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&baseband_dit_device,
-	&tegra_hda_device,
 	&tegra_offload_device,
 	&tegra30_avp_audio_device,
 };
@@ -879,6 +878,7 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power",
 		&baseband_pdata),
 	OF_DEV_AUXDATA("nvidia,ptm", 0x7081c000, "ptm", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
 	{}
 };
 #endif

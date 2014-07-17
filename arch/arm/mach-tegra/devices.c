@@ -849,31 +849,6 @@ struct platform_device tegra_dam_device2 = {
 	.resource      = dam_resource2,
 	.num_resources = ARRAY_SIZE(dam_resource2),
 };
-
-static u64 tegra_hda_dma_mask = DMA_BIT_MASK(32);
-static struct resource hda_platform_resources[] = {
-	[0] = {
-		.start	= TEGRA_HDA_BASE,
-		.end	= TEGRA_HDA_BASE + TEGRA_HDA_SIZE - 1,
-		.flags	= IORESOURCE_MEM
-	},
-	[1] = {
-		.start	= INT_HDA,
-		.end	= INT_HDA,
-		.flags	= IORESOURCE_IRQ
-	},
-};
-
-struct platform_device tegra_hda_device = {
-	.name		= "tegra30-hda",
-	.id		= -1,
-	.dev = {
-		.coherent_dma_mask	= DMA_BIT_MASK(32),
-		.dma_mask		= &tegra_hda_dma_mask,
-	},
-	.resource	= hda_platform_resources,
-	.num_resources	= ARRAY_SIZE(hda_platform_resources),
-};
 #endif
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
