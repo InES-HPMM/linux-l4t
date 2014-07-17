@@ -67,6 +67,7 @@
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/pinctrl/pinconf-tegra.h>
+#include <linux/tegra_nvadsp.h>
 
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
@@ -100,6 +101,11 @@
 static struct board_info board_info, display_board_info;
 static struct tegra_usb_platform_data tegra_udc_pdata;
 static struct tegra_usb_otg_data tegra_otg_pdata;
+
+#if defined(CONFIG_TEGRA_NVADSP) && \
+		!defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
+static struct nvadsp_platform_data nvadsp_plat_data;
+#endif
 
 static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	/* name		parent		rate		enabled */
@@ -386,29 +392,147 @@ static void t210ref_modem_init(void)
 }
 
 #ifdef CONFIG_USE_OF
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
+	OF_DEV_AUXDATA("nvidia,tegra210-sdhci", TEGRA_SDMMC1_BASE,
+			"sdhci-tegra.0", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-sdhci", TEGRA_SDMMC2_BASE,
+			"sdhci-tegra.1", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-sdhci", TEGRA_SDMMC3_BASE,
+			"sdhci-tegra.2", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-sdhci", TEGRA_SDMMC4_BASE,
+			"sdhci-tegra.3", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-udc", TEGRA_USB_BASE,
+			"tegra-udc.0", &tegra_udc_pdata.u_data.dev),
+	OF_DEV_AUXDATA("nvidia,tegra132-otg", TEGRA_USB_BASE,
+			"tegra-otg", &tegra_otg_pdata),
+	OF_DEV_AUXDATA("nvidia,tegra210-host1x", TEGRA_HOST1X_BASE, "host1x",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-gm20b", TEGRA_GK20A_BAR0_BASE,
+			"gm20b.0", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-nvenc", TEGRA_NVENC_BASE, "msenc",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-vi", TEGRA_VI_BASE, "vi",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-isp", TEGRA_ISP_BASE, "isp.0",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-isp", TEGRA_ISPB_BASE, "isp.1",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-tsec", TEGRA_TSEC_BASE, "tsec",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-tsec", TEGRA_TSECB_BASE, "tsecb",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-vic", TEGRA_VIC_BASE, "vic03",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-se", 0x70012000, "tegra21-se",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-dtv", 0x7000c300, "dtv", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-nvdec", TEGRA_NVDEC_BASE, "nvdec",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-nvjpg", TEGRA_NVJPG_BASE, "nvjpg",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-axbar",  TEGRA_AXBAR_BASE,
+			"tegra210-axbar", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-adma",  TEGRA_ADMA_BASE,
+			"tegra210-adma", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2c", 0x7000c000,
+			"tegra21-i2c.0", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2c", 0x7000c400,
+			"tegra21-i2c.1", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2c", 0x7000c500,
+			"tegra21-i2c.2", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2c", 0x7000c700,
+			"tegra21-i2c.3", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2c", 0x7000d000,
+			"tegra21-i2c.4", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2c", 0x7000d100,
+			"tegra21-i2c.5", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-apbdma", 0x60020000, "tegra-apbdma",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-spi", 0x7000d400, "spi-tegra114.0",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-spi", 0x7000d600, "spi-tegra114.1",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-spi", 0x7000d800, "spi-tegra114.2",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-spi", 0x7000da00, "spi-tegra114.3",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-qspi", 0x70410000, "qspi",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-uart", 0x70006000, "serial8250.0",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-uart", 0x70006040, "serial8250.1",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-uart", 0x70006200, "serial8250.2",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-uart", 0x70006300, "serial8250.3",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006000, "serial-tegra.0",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006040, "serial-tegra.1",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006200, "serial-tegra.2",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006300, "serial-tegra.3",
+			NULL),
+#if defined(CONFIG_TEGRA_NVADSP) && \
+		!defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
+	OF_DEV_AUXDATA("nvidia,tegra210-adsp", TEGRA_APE_AMC_BASE,
+			"tegra210-adsp", &nvadsp_plat_data),
+#endif
+	OF_DEV_AUXDATA("nvidia,tegra210-efuse", TEGRA_FUSE_BASE, "tegra-fuse",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra-bluedroid_pm", 0, "bluedroid_pm",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra-bcmdhd-wlan", 0, "bcm4329_wlan",
+			NULL),
+	OF_DEV_AUXDATA("linux,spdif-dit", 0, "spdif-dit.0", NULL),
+	OF_DEV_AUXDATA("linux,spdif-dit", 1, "spdif-dit.1", NULL),
+	OF_DEV_AUXDATA("linux,spdif-dit", 2, "spdif-dit.2", NULL),
+	OF_DEV_AUXDATA("linux,spdif-dit", 3, "spdif-dit.3", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-dfll", 0x70110000, "tegra_cl_dvfs",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-xhci", 0x70090000, "tegra-xhci",
+			&xusb_pdata),
+	OF_DEV_AUXDATA("nvidia,tegra210-xudc", 0x700D0000, "tegra-xudc",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-pwm", 0x7000a000, "tegra-pwm", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-camera", 0, "pcl-generic",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY_BASE, "tegradc.0",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY2_BASE, "tegradc.1",
+			NULL),
+	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
+#ifdef CONFIG_TEGRA_CEC_SUPPORT
+	OF_DEV_AUXDATA("nvidia,tegra210-cec", 0x70015000, "tegra_cec", NULL),
+#endif
+	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0x0, "tegra-snd-rt5639",
+			NULL),
+	{}
+};
+#else
 static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	T124_SPI_OF_DEV_AUXDATA,
 	OF_DEV_AUXDATA("nvidia,tegra124-apbdma", 0x60020000, "tegra-apbdma",
-				NULL),
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0x0, "tegra-snd-rt5639",
-				NULL),
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-se", 0x70012000, "tegra12-se", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra132-dtv", 0x7000c300, "dtv", NULL),
-#if defined(CONFIG_ARM64)
 	OF_DEV_AUXDATA("nvidia,tegra132-udc", 0x7d000000, "tegra-udc.0",
 			&tegra_udc_pdata.u_data.dev),
 	OF_DEV_AUXDATA("nvidia,tegra132-otg", 0x7d000000, "tegra-otg",
 			&tegra_otg_pdata),
-#endif
 	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
-		NULL),
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-gk20a", TEGRA_GK20A_BAR0_BASE,
-		"gk20a.0", NULL),
+			"gk20a.0", NULL),
 #ifdef CONFIG_ARCH_TEGRA_VIC
 	OF_DEV_AUXDATA("nvidia,tegra124-vic", TEGRA_VIC_BASE, "vic03.0", NULL),
 #endif
 	OF_DEV_AUXDATA("nvidia,tegra124-msenc", TEGRA_MSENC_BASE, "msenc",
-		NULL),
+			NULL),
 #ifdef CONFIG_VI_ONE_DEVICE
 	OF_DEV_AUXDATA("nvidia,tegra124-vi", TEGRA_VI_BASE, "vi", NULL),
 #else
@@ -420,29 +544,30 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	T124_UART_OF_DEV_AUXDATA,
 	T124_I2C_OF_DEV_AUXDATA,
 	OF_DEV_AUXDATA("nvidia,tegra124-xhci", 0x70090000, "tegra-xhci",
-				&xusb_pdata),
+			&xusb_pdata),
 	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY_BASE, "tegradc.0",
-		NULL),
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY2_BASE, "tegradc.1",
-		NULL),
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-nvavp", 0x60001000, "nvavp",
-				NULL),
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-pwm", 0x7000a000, "tegra-pwm", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-dfll", 0x70110000, "tegra_cl_dvfs",
-		NULL),
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra132-dfll", 0x70040084, "tegra_cl_dvfs",
-		NULL),
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-efuse", TEGRA_FUSE_BASE, "tegra-fuse",
-		NULL),
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-camera", 0, "pcl-generic",
-				NULL),
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-ahci-sata", 0x70027000, "tegra-sata.0",
-		NULL),
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra-bluedroid_pm", 0, "bluedroid_pm",
-		NULL),
+			NULL),
 	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
 	{}
 };
+#endif
 #endif
 
 
@@ -639,6 +764,12 @@ static void __init tegra_t210ref_reserve(void)
 #endif
 	ulong fb1_size = SZ_16M + SZ_2M;
 	ulong vpr_size = 186 * SZ_1M;
+
+#if defined(CONFIG_TEGRA_NVADSP) && \
+		!defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
+	nvadsp_plat_data.co_pa = tegra_reserve_adsp(SZ_32M);
+	nvadsp_plat_data.co_size = SZ_32M;
+#endif
 
 #ifdef CONFIG_FRAMEBUFFER_CONSOLE
 	/* support FBcon on 4K monitors */
