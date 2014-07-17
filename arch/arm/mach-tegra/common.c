@@ -1910,6 +1910,10 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 #endif
 
 	if (fb2_size) {
+#ifdef CONFIG_MODS
+		if (fb2_size < (70 * SZ_1M))
+			fb2_size = 70 * SZ_1M;
+#endif
 		/*
 		 * Place fb2 below the 4 GB physical address limit because
 		 * IOVAs are only 32 bit wide.
@@ -1927,6 +1931,10 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	}
 
 	if (fb_size) {
+#ifdef CONFIG_MODS
+		if (fb_size < (70 * SZ_1M))
+			fb_size = 70 * SZ_1M;
+#endif
 		/*
 		 * Place fb below the 4 GB physical address limit because
 		 * IOVAs are only 32 bit wide.
