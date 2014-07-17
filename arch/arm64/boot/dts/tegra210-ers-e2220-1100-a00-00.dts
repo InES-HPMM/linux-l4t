@@ -29,6 +29,7 @@
 #include "tegra210-platforms/tegra210-ers-gpio-e2220-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-pinmux-e2220-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-comms.dtsi"
+#include "tegra210-platforms/tegra210-sdhci.dtsi"
 
 / {
 	model = "e2220";
@@ -46,6 +47,7 @@
 
 	sdhci@700b0600 {
 		uhs_mask = <0x60>;
+		built-in;
 		status = "okay";
 	};
 
@@ -56,6 +58,12 @@
 
 	sdhci@700b0200 {
 		uhs_mask = <0x60>;
+		bus-width = <8>;
+		built-in;
+		status = "okay";
+	};
+
+	sdhci@700b0000 {
 		status = "okay";
 	};
 
