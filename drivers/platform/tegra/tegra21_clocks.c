@@ -7823,6 +7823,14 @@ static struct clk_mux_sel mux_pllp_pllc_clkm[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_pllp_pllc_plla_clkm[] = {
+	{.input = &tegra_pll_p,     .value = 0},
+	{.input = &tegra_pll_c,     .value = 2},
+	{.input = &tegra_pll_a_out0,     .value = 4},
+	{.input = &tegra_clk_m,     .value = 6},
+	{ 0, 0},
+};
+
 static struct clk_mux_sel mux_pllp_pllc_pllc4_out0_pllc4_out1_clkm_pllc4_out2[] = {
 	{.input = &tegra_pll_p,     .value = 0},
 	{.input = &tegra_pll_c,     .value = 2},
@@ -8510,7 +8518,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("pwm",	"pwm",			NULL,	17,	0x110,	48000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	D_AUDIO_CLK("d_audio",	"tegra210-axbar",		"ahub",	106,	0x3d0,	48000000,  mux_d_audio_clk,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("hda",	"tegra30-hda",		"hda",   125,	0x428,	108000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("hda2codec_2x",	"tegra30-hda",	"hda2codec",   111,	0x3e4,	910000000,  mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("hda2codec_2x",	"tegra30-hda",	"hda2codec",   111,	0x3e4,	910000000,  mux_pllp_pllc_plla_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("hda2hdmi",	"tegra30-hda",		"hda2hdmi",	128,	0,	408000000,  mux_clk_m, PERIPH_ON_APB),
 	PERIPH_CLK("qspi",	"qspi", 		NULL,	211,	0x6c4, 166000000, mux_pllp_pllc_pllc4_out2_pllc4_out1_clkm_pllc4_out0, MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("vi_i2c",	"vi_i2c", 		NULL,	208,	0x6c8, 136000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | PERIPH_ON_APB),
