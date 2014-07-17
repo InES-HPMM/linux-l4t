@@ -168,32 +168,9 @@ static void __init t210ref_uart_init(void)
 	}
 }
 
-static struct resource tegra_rtc_resources[] = {
-	[0] = {
-		.start = TEGRA_RTC_BASE,
-		.end = TEGRA_RTC_BASE + TEGRA_RTC_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	[1] = {
-		.start = INT_RTC,
-		.end = INT_RTC,
-		.flags = IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device tegra_rtc_device = {
-	.name = "tegra_rtc",
-	.id   = -1,
-	.resource = tegra_rtc_resources,
-	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
-};
-
 static struct platform_device *t210ref_devices[] __initdata = {
 	&tegra_pmu_device,
-	&tegra_rtc_device,
-#if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && !defined(CONFIG_USE_OF)
-	&tegra12_se_device,
-#endif
+#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	&tegra_ahub_device,
 	&tegra_dam_device0,
 	&tegra_dam_device1,
@@ -209,6 +186,7 @@ static struct platform_device *t210ref_devices[] __initdata = {
 	&tegra_hda_device,
 	&tegra_offload_device,
 	&tegra30_avp_audio_device,
+#endif
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
 #endif
