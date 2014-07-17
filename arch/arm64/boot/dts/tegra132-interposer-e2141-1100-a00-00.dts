@@ -143,12 +143,6 @@
 			gpio = <&pca9539_76 9 0>;
 			enable-active-high;
 			startup-delay-us = <250000>;
-
-			consumers {
-				c0 {
-					regulator-consumer-supply = "ldoen";
-				};
-			};
 		};
 	};
 
@@ -187,6 +181,11 @@ e 1.2V*/
 		iqs253@44 {
 			rdy-gpio = <&gpio TEGRA_GPIO(K, 5) GPIO_ACTIVE_LOW>;
 			wake-gpio = <&gpio TEGRA_GPIO(W, 3) GPIO_ACTIVE_LOW>;
+		};
+
+		rt5639: rt5639@1c {
+			compatible = "realtek,rt5639";
+			reg = <0x1c>;
 		};
 
 		/* T210 interposer use I2C0 for Charger & FG */
@@ -317,5 +316,17 @@ e 1.2V*/
 		interrupts = <165 0x14>;
 		wlan-pwr-gpio = <&gpio TEGRA_GPIO(X, 7) 0>;
 		wlan-rst-gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
+	};
+
+	sound {
+		compatible = "nvidia,tegra-audio-rt5639";
+		nvidia,codec_name = "rt5639.0-001c";
+		nvidia,codec_dai_name = "rt5639-aif1";
+		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(R, 2) GPIO_ACTIVE_HIGH>;
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(R, 7) GPIO_ACTIVE_HIGH>;
+		nvidia,i2s-param-hifi = <0 1 2 16 48000 2 1536000>;
+		nvidia,i2s-param-bt = <1 1 0 16 8000 1 512000>;
+		nvidia,i2s-param-baseband = <3 1 2 16 16000 2 1024000>;
+		ldoen-supply = <&vdd_cdc_1v2_aud>;
 	};
 };
