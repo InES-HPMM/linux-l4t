@@ -206,26 +206,4 @@
 		max-clk-limit = <50000000>;
 		status = "okay";
 	};
-
-/* All ardbeg devices are using ttyTHS2 port for BT.
- * So changed the enumerated ordering of uartd from ttyTHS3 to ttyTHS2
- */
-	aliases {
-		i2c0 = &i2c1;
-		i2c1 = &i2c2;
-		i2c2 = &i2c3;
-		i2c3 = &i2c4;
-		i2c4 = &i2c5;
-		i2c5 = &i2c6;
-		serial0 = &uarta;
-		serial1 = &uartb;
-		serial2 = &uartd;
-		serial3 = &uartc;
-		spi0 = &spi0;
-		spi1 = &spi1;
-		spi2 = &spi2;
-		spi3 = &spi3;
-		spi4 = &spi4;
-		spi5 = &spi5;
-	};
 };
