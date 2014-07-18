@@ -755,6 +755,11 @@ struct tegra_dc_win {
 		unsigned ctb_entry;
 	} cde;
 #endif
+	struct {
+		u32			id;
+		u32			min;
+		u32			max;
+	} syncpt;
 };
 
 #define TEGRA_WIN_PPFLAG_CP_ENABLE	(1 << 0) /* enable RGB color lut */
@@ -891,7 +896,7 @@ void tegra_dc_disable(struct tegra_dc *dc);
 int tegra_dc_set_default_videomode(struct tegra_dc *dc);
 
 
-u32 tegra_dc_get_syncpt_id(const struct tegra_dc *dc, int i);
+u32 tegra_dc_get_syncpt_id(struct tegra_dc *dc, int i);
 u32 tegra_dc_incr_syncpt_max(struct tegra_dc *dc, int i);
 void tegra_dc_incr_syncpt_min(struct tegra_dc *dc, int i, u32 val);
 struct sync_fence *tegra_dc_create_fence(struct tegra_dc *dc, int i, u32 val);
