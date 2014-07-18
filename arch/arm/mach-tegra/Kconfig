@@ -693,7 +693,7 @@ config TEGRA_IO_DPD
 config TEGRA_USE_DFLL_RANGE
 	int "Default CPU DFLL operating range"
 	depends on ARCH_TEGRA_HAS_CL_DVFS
-	range 0 2
+	range 0 3
 	default "0" if TEGRA_SILICON_PLATFORM && ARCH_TEGRA_21x_SOC
 	default "1" if TEGRA_SILICON_PLATFORM && ARCH_TEGRA_13x_SOC
 	default "2" if TEGRA_SILICON_PLATFORM && ARCH_TEGRA_11x_SOC
@@ -705,6 +705,7 @@ config TEGRA_USE_DFLL_RANGE
 	  "1" - DFLL is used as a source for all CPU rates
 	  "2" - DFLL is used only for high rates above crossover with
 		PLL dvfs curve
+	  "3" - DFLL usage is controlled by thermal cooling device
 
 config REGULATOR_TEGRA_DFLL_BYPASS
 	bool "Use dfll bypass regulator"
