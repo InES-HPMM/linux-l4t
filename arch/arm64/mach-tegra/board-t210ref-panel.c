@@ -116,51 +116,6 @@ static struct resource t210ref_disp1_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 };
-
-static struct resource t210ref_disp1_edp_resources[] = {
-	{
-		.name	= "irq",
-		.start	= INT_DISPLAY_GENERAL,
-		.end	= INT_DISPLAY_GENERAL,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.name	= "regs",
-		.start	= TEGRA_DISPLAY_BASE,
-		.end	= TEGRA_DISPLAY_BASE + TEGRA_DISPLAY_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.name	= "fbmem",
-		.start	= 0, /* Filled in by t210ref_panel_init() */
-		.end	= 0, /* Filled in by t210ref_panel_init() */
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.name	= "mipi_cal",
-		.start	= TEGRA_MIPI_CAL_BASE,
-		.end	= TEGRA_MIPI_CAL_BASE + TEGRA_MIPI_CAL_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.name   = "sor0",
-		.start  = TEGRA_SOR_BASE,
-		.end    = TEGRA_SOR_BASE + TEGRA_SOR_SIZE - 1,
-		.flags  = IORESOURCE_MEM,
-	},
-	{
-		.name   = "dpaux",
-		.start  = TEGRA_DPAUX_BASE,
-		.end    = TEGRA_DPAUX_BASE + TEGRA_DPAUX_SIZE - 1,
-		.flags  = IORESOURCE_MEM,
-	},
-	{
-		.name	= "irq_dp",
-		.start	= INT_DPAUX,
-		.end	= INT_DPAUX,
-		.flags	= IORESOURCE_IRQ,
-	},
-};
 #endif
 
 static struct resource t210ref_disp2_resources[] = {
@@ -273,14 +228,7 @@ static int t210ref_hdmi_postsuspend(void)
 static int t210ref_hdmi_hotplug_init(struct device *dev)
 {
 	if (!t210ref_hdmi_vddio) {
-#ifdef CONFIG_TEGRA_HDMI_PRIMARY
-		if (of_machine_is_compatible("nvidia,tn8"))
-			t210ref_hdmi_vddio = regulator_get(dev, "vdd-out1-5v0");
-		else
-			t210ref_hdmi_vddio = regulator_get(dev, "vdd_hdmi_5v0");
-#else
 		t210ref_hdmi_vddio = regulator_get(dev, "vdd_hdmi_5v0");
-#endif
 		if (WARN_ON(IS_ERR(t210ref_hdmi_vddio))) {
 			pr_err("%s: couldn't get regulator vdd_hdmi_5v0: %ld\n",
 				__func__, PTR_ERR(t210ref_hdmi_vddio));
@@ -293,7 +241,7 @@ static int t210ref_hdmi_hotplug_init(struct device *dev)
 	return 0;
 }
 
-struct tmds_config t210ref_tmds_config[] = {
+struct tmds_config t210ref_tmds_config0[] = {
 	{ /* 480p/576p / 25.2MHz/27MHz modes */
 	.version = MKDEV(1, 0),
 	.pclk = 27000000,
@@ -340,7 +288,7 @@ struct tmds_config t210ref_tmds_config[] = {
 	},
 };
 
-struct tmds_config t210ref_tn8_tmds_config[] = {
+struct tmds_config t210ref_tmds_config1[] = {
 	{ /* 480p/576p / 25.2MHz/27MHz modes */
 	.version = MKDEV(1, 0),
 	.pclk = 27000000,
@@ -388,7 +336,7 @@ struct tmds_config t210ref_tn8_tmds_config[] = {
 };
 
 /* Equivalent to T132 Bowmore */
-struct tmds_config t210ref_tn8_tmds_config2[] = {
+struct tmds_config t210ref_tmds_config2[] = {
 	{ /* 480p/576p / 25.2MHz/27MHz modes */
 	.version = MKDEV(1, 0),
 	.pclk = 27000000,
@@ -436,8 +384,8 @@ struct tmds_config t210ref_tn8_tmds_config2[] = {
 };
 
 struct tegra_hdmi_out t210ref_hdmi_out = {
-	.tmds_config = t210ref_tn8_tmds_config2,
-	.n_tmds_config = ARRAY_SIZE(t210ref_tn8_tmds_config2),
+	.tmds_config = t210ref_tmds_config2,
+	.n_tmds_config = ARRAY_SIZE(t210ref_tmds_config2),
 };
 
 
@@ -576,82 +524,6 @@ static struct tegra_io_dpd dsid_io = {
 	.io_dpd_bit		= 9,
 };
 
-static struct tegra_dc_dp_lt_settings t210ref_edp_lt_data[] = {
-	{
-		.drive_current = {
-			DRIVE_CURRENT_L0,
-			DRIVE_CURRENT_L0,
-			DRIVE_CURRENT_L0,
-			DRIVE_CURRENT_L0,
-		},
-		.lane_preemphasis = {
-			PRE_EMPHASIS_L0,
-			PRE_EMPHASIS_L0,
-			PRE_EMPHASIS_L0,
-			PRE_EMPHASIS_L0,
-		},
-		.post_cursor = {
-			POST_CURSOR2_L0,
-			POST_CURSOR2_L0,
-			POST_CURSOR2_L0,
-			POST_CURSOR2_L0,
-		},
-		.tx_pu = 0,
-		.load_adj = 0x3,
-	},
-	{
-		.drive_current = {
-			DRIVE_CURRENT_L0,
-			DRIVE_CURRENT_L0,
-			DRIVE_CURRENT_L0,
-			DRIVE_CURRENT_L0,
-		},
-		.lane_preemphasis = {
-			PRE_EMPHASIS_L0,
-			PRE_EMPHASIS_L0,
-			PRE_EMPHASIS_L0,
-			PRE_EMPHASIS_L0,
-		},
-		.post_cursor = {
-			POST_CURSOR2_L0,
-			POST_CURSOR2_L0,
-			POST_CURSOR2_L0,
-			POST_CURSOR2_L0,
-		},
-		.tx_pu = 0,
-		.load_adj = 0x4,
-	},
-	{
-		.drive_current = {
-			DRIVE_CURRENT_L0,
-			DRIVE_CURRENT_L0,
-			DRIVE_CURRENT_L0,
-			DRIVE_CURRENT_L0,
-		},
-		.lane_preemphasis = {
-			PRE_EMPHASIS_L1,
-			PRE_EMPHASIS_L1,
-			PRE_EMPHASIS_L1,
-			PRE_EMPHASIS_L1,
-		},
-		.post_cursor = {
-			POST_CURSOR2_L0,
-			POST_CURSOR2_L0,
-			POST_CURSOR2_L0,
-			POST_CURSOR2_L0,
-		},
-		.tx_pu = 0,
-		.load_adj = 0x6,
-	},
-};
-
-static struct tegra_dp_out dp_settings = {
-	/* Panel can override this with its own LT data */
-	.lt_settings = t210ref_edp_lt_data,
-	.n_lt_settings = ARRAY_SIZE(t210ref_edp_lt_data),
-	.tx_pu_disable = true,
-};
-
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 /* can be called multiple times */
 static struct tegra_panel *t210ref_panel_configure(struct board_info *board_out,
@@ -665,28 +537,6 @@ static struct tegra_panel *t210ref_panel_configure(struct board_info *board_out,
 		board_out = &boardtmp;
 	tegra_get_display_board_info(board_out);
 	switch (board_out->board_id) {
-	case BOARD_E1639:
-	case BOARD_E1813:
-		panel = &dsi_s_wqxga_10_1;
-		break;
-	case BOARD_PM354:
-		panel = &dsi_a_1080p_14_0;
-		break;
-	case BOARD_E1549:
-		panel = &dsi_lgd_wxga_7_0;
-		break;
-	case BOARD_E1937:
-		switch (board_out->sku) {
-		case 1100:
-			panel = &dsi_a_1200_800_8_0;
-			dsi_instance = DSI_INSTANCE_0;
-			break;
-		default:
-			panel = &dsi_a_1200_1920_8_0;
-			dsi_instance = DSI_INSTANCE_0;
-			break;
-		}
-		break;
 	case BOARD_E2129:
 		switch (board_out->sku) {
 		case 1000:
@@ -698,55 +548,17 @@ static struct tegra_panel *t210ref_panel_configure(struct board_info *board_out,
 			dsi_instance = DSI_INSTANCE_0;
 			break;
 		}
-		tegra_io_dpd_enable(&dsic_io);
-		tegra_io_dpd_enable(&dsid_io);
 		break;
-	case BOARD_PM363:
-	case BOARD_E1824:
-		switch (board_out->sku) {
-		case 1200:
-			panel = &edp_i_1080p_11_6;
-			t210ref_disp1_out.type = TEGRA_DC_OUT_NVSR_DP;
-			break;
-		default:
-			panel = &edp_a_1080p_14_0;
-			t210ref_disp1_out.type = TEGRA_DC_OUT_DP;
-			break;
-		}
-
-		t210ref_disp1_out.dp_out = &dp_settings;
-		t210ref_disp1_device.resource = t210ref_disp1_edp_resources;
-		t210ref_disp1_device.num_resources =
-			ARRAY_SIZE(t210ref_disp1_edp_resources);
-		break;
-	case BOARD_PM366:
-		panel = &lvds_c_1366_14;
-		t210ref_disp1_out.type = TEGRA_DC_OUT_LVDS;
-		t210ref_disp1_device.resource = t210ref_disp1_edp_resources;
-		t210ref_disp1_device.num_resources =
-			ARRAY_SIZE(t210ref_disp1_edp_resources);
-		break;
-	case BOARD_E1807:
-		panel = &dsi_a_1200_800_8_0;
-		dsi_instance = DSI_INSTANCE_0;
-		tegra_io_dpd_enable(&dsic_io);
-		tegra_io_dpd_enable(&dsid_io);
-		break;
-	case BOARD_P1761:
-		if (tegra_get_board_panel_id())
-			panel = &dsi_a_1200_1920_8_0;
-		else
-			panel = &dsi_a_1200_800_8_0;
-		dsi_instance = DSI_INSTANCE_0;
-		tegra_io_dpd_enable(&dsic_io);
-		tegra_io_dpd_enable(&dsid_io);
-		break;
+	case BOARD_E1937:
 	default:
-		panel = &dsi_p_wuxga_10_1;
-		tegra_io_dpd_enable(&dsic_io);
-		tegra_io_dpd_enable(&dsid_io);
+		panel = &dsi_a_1200_1920_8_0;
+		dsi_instance = DSI_INSTANCE_0;
 		break;
 	}
+
+	tegra_io_dpd_enable(&dsic_io);
+	tegra_io_dpd_enable(&dsid_io);
+
 	if (dsi_instance_out)
 		*dsi_instance_out = dsi_instance;
 	return panel;
@@ -756,7 +568,6 @@ static void t210ref_panel_select(void)
 {
 	struct tegra_panel *panel = NULL;
 	struct board_info board;
-	struct board_info mainboard;
 	u8 dsi_instance;
 
 	panel = t210ref_panel_configure(&board, &dsi_instance);
@@ -767,20 +578,13 @@ static void t210ref_panel_select(void)
 
 		if (panel->init_dc_out) {
 			panel->init_dc_out(&t210ref_disp1_out);
-			if (t210ref_disp1_out.type == TEGRA_DC_OUT_DSI) {
-				t210ref_disp1_out.dsi->dsi_instance =
-					dsi_instance;
-				t210ref_disp1_out.dsi->dsi_panel_rst_gpio =
-					DSI_PANEL_RST_GPIO;
-				t210ref_disp1_out.dsi->dsi_panel_bl_pwm_gpio =
-					DSI_PANEL_BL_PWM_GPIO;
-				t210ref_disp1_out.dsi->te_gpio = TEGRA_GPIO_PR6;
-			}
-
-			tegra_get_board_info(&mainboard);
-			if ((mainboard.board_id == BOARD_E1784) ||
-				(mainboard.board_id == BOARD_P1761))
-				t210ref_disp1_out.rotation = 180;
+			t210ref_disp1_out.dsi->dsi_instance =
+				dsi_instance;
+			t210ref_disp1_out.dsi->dsi_panel_rst_gpio =
+				DSI_PANEL_RST_GPIO;
+			t210ref_disp1_out.dsi->dsi_panel_bl_pwm_gpio =
+				DSI_PANEL_BL_PWM_GPIO;
+			t210ref_disp1_out.dsi->te_gpio = TEGRA_GPIO_PR6;
 		}
 
 		if (panel->init_fb_data)
@@ -792,19 +596,13 @@ static void t210ref_panel_select(void)
 		if (panel->set_disp_device)
 			panel->set_disp_device(&t210ref_disp1_device);
 
-		if (t210ref_disp1_out.type == TEGRA_DC_OUT_DSI) {
-			tegra_dsi_resources_init(dsi_instance,
-				t210ref_disp1_resources,
-				ARRAY_SIZE(t210ref_disp1_resources));
-		}
+		tegra_dsi_resources_init(dsi_instance,
+			t210ref_disp1_resources,
+			ARRAY_SIZE(t210ref_disp1_resources));
 
 		if (panel->register_bl_dev)
 			panel->register_bl_dev();
-
-		if (panel->register_i2c_bridge)
-			panel->register_i2c_bridge();
 	}
-
 }
 #endif
 
@@ -873,11 +671,12 @@ int __init t210ref_panel_init(void)
 	}
 #endif
 	tegra_get_board_info(&board_info);
+
 	switch (board_info.board_id) {
 	case BOARD_E2141:
 		t210ref_disp2_out.hotplug_gpio = TEGRA_GPIO_PN7;
 		break;
-	default:	 /* default is t210ref_tmds_config[] */
+	default:
 		break;
 	}
 
