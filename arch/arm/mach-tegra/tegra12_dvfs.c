@@ -80,6 +80,11 @@ static struct tegra_cooling_device gpu_vts_cdev = {
 	.cdev_type = "gpu_scaling",
 };
 
+/* Used for CPU clock switch between PLLX and DFLL */
+static struct tegra_cooling_device cpu_clk_switch_cdev = {
+	.cdev_type = "cpu_clk_switch",
+};
+
 static struct dvfs_rail tegra12_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
 	.max_millivolts = 1300,
@@ -148,7 +153,7 @@ void __init tegra12x_vdd_cpu_align(int step_uv, int offset_uv)
 /* CPU DVFS tables */
 static unsigned long cpu_max_freq[] = {
 /* speedo_id	0	 1	  2	   3	    4	     5	     */
-		2014500, 2320500, 2116500, 2524500, 1500000, 2218500,
+		2014500, 2320500, 2116500, 2524500, 1811000, 2218500,
 };
 
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
@@ -157,22 +162,32 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.speedo_id = 4,
 		.process_id = -1,
 		.dfll_tune_data  = {
-			.tune0		= 0x005020FF,
-			.tune0_high_mv	= 0x005040FF,
-			.tune1		= 0x00000060,
+			.tune0		= 0x003C1FFF,
+			.tune0_high_mv	= 0x003C30FF,
+			.tune1		= 0x0000004F,
 			.droop_rate_min = 1000000,
 			.tune_high_min_millivolts = 900,
-			.min_millivolts = 750,
+			.min_millivolts = 850,
 		},
-		.max_mv = 1260,
+		.max_mv = 1220,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 1000,
 		.cvb_table = {
-			/*f       dfll: c0,          c1,    c2  pll:  c0,     c1,    c2 */
-			{1500000,       {6386188, -446467, 9001}, {6386188, -446467, 9001} },
-			{      0,	{   0,      0,      0},	  {    0,      0,      0} },
+			/*f       dfll: c0,     c1,   c2  pll:  c0,   c1,    c2 */
+			{714000,    {1289131, -28752, 198}, {890000,  0, 0}},
+			{1224000,   {1574897, -35677, 198}, {970000,  0, 0}},
+			{1530000,   {1776916, -39829, 198}, {1050000, 0, 0}},
+			{1708000,   {1904975, -42251, 198}, {1130000, 0, 0}},
+			{1811000,   {1981852, -43629, 198}, {1150000, 0, 0}},
+			{      0 ,  {      0,      0,   0}, {      0, 0, 0}},
 		},
+
+		/*
+		 * < 34 : Set CPU clock source as PLLX
+		 * > 34 : Set CPU clock source as DFLL
+		 */
+		.clk_switch_trips = {34,}
 	},
 	{
 		.speedo_id = -1,
@@ -743,6 +758,7 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	struct cpu_cvb_dvfs *d, struct dvfs *cpu_dvfs, int *max_freq_index)
 {
 	int j, mv, dfll_mv, min_dfll_mv;
+	int ret = 0;
 	unsigned long fmax_at_vmin = 0;
 	unsigned long fmax_pll_mode = 0;
 	unsigned long fmin_use_dfll = 0;
@@ -755,6 +771,7 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	min_dfll_mv =  round_voltage(min_dfll_mv, align, true);
 	d->max_mv = round_voltage(d->max_mv, align, false);
 	BUG_ON(min_dfll_mv < rail->min_millivolts);
+
 
 	/*
 	 * Use CVB table to fill in CPU dvfs frequencies and voltages. Each
@@ -853,6 +870,14 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 		vdd_cpu_vmax_trips_table, vdd_cpu_therm_caps_table,
 		rail, &d->dfll_tune_data);
 #endif
+
+	if (cpu_dvfs->speedo_id == 4) {
+		rail->clk_switch_cdev = &cpu_clk_switch_cdev;
+		ret = tegra_dvfs_rail_init_clk_switch_thermal_profile(
+				d->clk_switch_trips, rail);
+		if (ret)
+			return ret;
+	}
 
 	/* Init cpu Vmin SiMon offsets */
 	tegra_dvfs_rail_init_simon_vmin_offsets(cpu_vmin_offsets,
