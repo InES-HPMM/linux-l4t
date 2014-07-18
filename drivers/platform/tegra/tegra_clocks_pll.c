@@ -109,13 +109,14 @@ void pll_base_parse_cfg(struct clk *c, struct clk_pll_freq_table *cfg)
 	}
 	cfg->p = c->u.pll.vco_out ? 1 : divs->pdiv_to_p[cfg->p];
 
-	cfg->sdm_din = 0;
+	cfg->sdm_data = 0;
 	if (ctrl->sdm_en_mask) {
 		u32 reg = pll_reg_idx_to_addr(c, ctrl->sdm_ctrl_reg_idx);
 		if (ctrl->sdm_en_mask & clk_readl(reg)) {
 			reg = pll_reg_idx_to_addr(c, divs->sdm_din_reg_idx);
-			cfg->sdm_din = (clk_readl(reg) & divs->sdm_din_mask) >>
+			cfg->sdm_data = (clk_readl(reg) & divs->sdm_din_mask) >>
 				divs->sdm_din_shift;
+			cfg->sdm_data = SDIN_DIN_TO_DATA(cfg->sdm_data);
 		}
 	}
 }
@@ -125,8 +126,9 @@ void pll_clk_set_gain(struct clk *c, struct clk_pll_freq_table *cfg)
 	c->mul = cfg->n;
 	c->div = cfg->m * cfg->p;
 
-	if (cfg->sdm_din) {
-		c->mul = c->mul*PLL_SDM_COEFF + PLL_SDM_COEFF/2 + cfg->sdm_din;
+	if (cfg->sdm_data) {
+		c->mul = c->mul*PLL_SDM_COEFF + PLL_SDM_COEFF/2 +
+			SDIN_DATA_TO_DIN(cfg->sdm_data);
 		c->div *= PLL_SDM_COEFF;
 	}
 }
@@ -154,16 +156,17 @@ static void pll_sdm_set_din(struct clk *c, struct clk_pll_freq_table *cfg)
 	if (!ctrl->sdm_en_mask)
 		return;
 
-	if (cfg->sdm_din) {
+	if (cfg->sdm_data) {
 		reg = pll_reg_idx_to_addr(c, divs->sdm_din_reg_idx);
 		val = clk_readl(reg) & (~divs->sdm_din_mask);
-		val |= cfg->sdm_din << divs->sdm_din_shift;
+		val |= (SDIN_DATA_TO_DIN(cfg->sdm_data) <<
+			divs->sdm_din_shift) & divs->sdm_din_mask;
 		pll_writel_delay(val, reg);
 	}
 
 	reg = pll_reg_idx_to_addr(c, ctrl->sdm_ctrl_reg_idx);
 	val = clk_readl(reg);
-	if (!cfg->sdm_din != !(val & ctrl->sdm_en_mask)) {
+	if (!cfg->sdm_data != !(val & ctrl->sdm_en_mask)) {
 		val ^= ctrl->sdm_en_mask;
 		pll_writel_delay(val, reg);
 	}
@@ -228,14 +231,14 @@ static int pll_fixed_mdiv_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	cf = input_rate / cfg->m;
 	cfg->n = cfg->output_rate / cf;
 
-	cfg->sdm_din = 0;
+	cfg->sdm_data = 0;
 	if (c->u.pll.controls->sdm_en_mask) {
 		unsigned long rem = cfg->output_rate - cf * cfg->n;
 		if (rem) {
 			u64 s = rem * PLL_SDM_COEFF;
 			do_div(s, cf);
-			cfg->sdm_din = s + PLL_SDM_COEFF / 2;
-			cfg->n--;
+			s -= PLL_SDM_COEFF / 2;
+			cfg->sdm_data = SDIN_DIN_TO_DATA(s);
 		}
 	}
 
@@ -261,7 +264,7 @@ int pll_clk_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 				BUG_ON(sel->m !=
 				       pll_get_fixed_mdiv(c, input_rate));
 			BUG_ON(!c->u.pll.controls->sdm_en_mask &&
-			       sel->sdm_din);
+			       sel->sdm_data);
 			*cfg = *sel;
 			return 0;
 		}
@@ -361,7 +364,7 @@ int tegra_pll_clk_set_rate(struct clk *c, unsigned long rate)
 	pll_base_parse_cfg(c, &old_cfg);
 
 	if ((cfg.m == old_cfg.m) && (cfg.n == old_cfg.n) &&
-	    (cfg.p == old_cfg.p) && (cfg.sdm_din == old_cfg.sdm_din) &&
+	    (cfg.p == old_cfg.p) && (cfg.sdm_data == old_cfg.sdm_data) &&
 	    c->u.pll.defaults_set)
 		return 0;
 

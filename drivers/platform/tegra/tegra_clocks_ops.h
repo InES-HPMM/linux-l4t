@@ -49,8 +49,17 @@ static inline void pll_writel_delay(u32 value, u32 reg)
 #define PLL_BASE_ENABLE			(1<<30)
 #define PLL_BASE_REF_DISABLE		(1<<29)
 
-/* PLL with SDM:  effective n value: ndiv + 1/2 + sdm_din/PLL_SDM_COEFF */
-#define PLL_SDM_COEFF			(1 << 13)
+/*
+ * SDM fractional divisor is 16-bit 2's complement signed number within
+ * (-2^12 ... 2^12-1) range. Represented in PLL data structure as unsigned
+ * 16-bit value, with "0" divisor mapped to 0xFFFF. Data "0" is used to
+ * indicate that SDM is disabled.
+ *
+ * Effective ndiv value when SDM is enabled: ndiv + 1/2 + sdm_din/2^13
+ */
+#define PLL_SDM_COEFF		(1 << 13)
+#define SDIN_DIN_TO_DATA(din)	((u16)((din) ? : 0xFFFFU))
+#define SDIN_DATA_TO_DIN(dat)	(((dat) == 0xFFFFU) ? 0 : (s16)dat)
 
 #define PLL_MISC_CHK_DEFAULT(c, misc_num, default_val, mask)		       \
 do {									       \

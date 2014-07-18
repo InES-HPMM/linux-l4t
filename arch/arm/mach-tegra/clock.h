@@ -113,7 +113,7 @@ struct clk_pll_freq_table {
 	u16		m;
 	u8		p;
 	u8		cpcon;
-	u16		sdm_din;
+	u16		sdm_data;
 };
 
 struct clk_pll_div_layout {
