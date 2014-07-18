@@ -1155,6 +1155,61 @@ int tegra_clk_register_export_ops(struct clk *c,
 }
 EXPORT_SYMBOL(tegra_clk_register_export_ops);
 
+
+/* Change DFLL range : Refer enum dfll_range */
+int tegra_clk_dfll_range_control(enum dfll_range use_dfll)
+{
+	int ret = 0;
+	unsigned long c_flags, p_flags;
+	unsigned int old_use_dfll;
+	struct clk *c = tegra_get_clock_by_name("cpu");
+	struct clk *dfll = tegra_get_clock_by_name("dfll_cpu");
+
+	if (!c || !c->parent || !c->parent->dvfs || !dfll)
+		return -ENOSYS;
+
+	ret = tegra_cpu_reg_mode_force_normal(true);
+	if (ret) {
+		pr_err("%s: Failed to force regulator normal mode\n", __func__);
+		return ret;
+	}
+
+	clk_lock_save(c, &c_flags);
+	if (dfll->state == UNINITIALIZED) {
+		pr_err("%s: DFLL is not initialized\n", __func__);
+		goto error_1;
+	}
+	if (c->parent->u.cpu.mode == MODE_LP) {
+		pr_err("%s: DFLL is not used on LP CPU\n", __func__);
+		goto error_1;
+	}
+
+	clk_lock_save(c->parent, &p_flags);
+	old_use_dfll = tegra_dvfs_get_dfll_range(c->parent->dvfs);
+	ret = tegra_dvfs_set_dfll_range(c->parent->dvfs, use_dfll);
+	if (!ret) {
+		/* Get the current parent clock running rate and
+		   set it to new parent clock */
+		ret = clk_set_rate_locked(c->parent,
+			clk_get_rate_locked(c->parent));
+		if (ret) {
+			tegra_dvfs_set_dfll_range(
+				c->parent->dvfs, old_use_dfll);
+		}
+	}
+
+	clk_unlock_restore(c->parent, &p_flags);
+	clk_unlock_restore(c, &c_flags);
+	tegra_update_cpu_edp_limits();
+	return ret;
+
+error_1:
+	clk_unlock_restore(c, &c_flags);
+	tegra_cpu_reg_mode_force_normal(false);
+	return -ENOSYS;
+}
+
+
 #define OSC_FREQ_DET			0x58
 #define OSC_FREQ_DET_TRIG		BIT(31)
 

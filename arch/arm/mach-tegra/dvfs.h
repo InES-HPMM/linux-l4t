@@ -364,6 +364,14 @@ static inline bool tegra_dvfs_is_dfll_range(struct dvfs *d, unsigned long rate)
 		((d->dfll_data.range == DFLL_RANGE_HIGH_RATES) &&
 		(rate >= d->dfll_data.use_dfll_rate_min));
 }
+
+static inline int tegra_dvfs_get_dfll_range(struct dvfs *d)
+{
+	if (d)
+		return d->dfll_data.range;
+	return -ENOENT;
+}
+
 static inline int tegra_dvfs_set_dfll_range(struct dvfs *d, int range)
 {
 	if (!d->dfll_millivolts)
@@ -375,6 +383,7 @@ static inline int tegra_dvfs_set_dfll_range(struct dvfs *d, int range)
 	d->dfll_data.range = range;
 	return 0;
 }
+
 static inline void tegra_dvfs_rail_mode_updating(struct dvfs_rail *rail,
 						 bool updating)
 {
