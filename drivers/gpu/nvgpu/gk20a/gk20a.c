@@ -1524,6 +1524,7 @@ static int gk20a_probe(struct platform_device *dev)
 					platform->debugfs,
 					&gk20a->timeouts_enabled);
 	gk20a_pmu_debugfs_init(dev);
+	gk20a_cde_debugfs_init(dev);
 #endif
 
 #ifdef CONFIG_INPUT_CFBOOST
