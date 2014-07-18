@@ -2406,6 +2406,13 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 	const struct tegra_pcie_chipdata *chip_data = NULL;
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	if (tegra_bonded_out_dev(BOND_OUT_PCIE)) {
+		dev_err(&pdev->dev, "PCIE instance is not present\n");
+		return -ENODEV;
+	}
+#endif
+
 	PR_FUNC_LINE;
 	tegra_pcie.dev = &pdev->dev;
 	if (tegra_pcie.dev->of_node) {
