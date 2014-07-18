@@ -28,6 +28,7 @@
  * slew_rate_uv_per_us: Slew rate uV/us. The values can be
  *		4 to 44 mV/us.
  * ena_gpio: enable gpio line number of regulator.
+ * vsel_volatile: Voltage selection(VOUT) register is volatile or cached.
  */
 struct max15569_regulator_platform_data {
 	struct regulator_init_data *reg_init_data;
@@ -36,6 +37,7 @@ struct max15569_regulator_platform_data {
 	int base_voltage_uV;
 	unsigned int slew_rate_mv_per_us;
 	int ena_gpio;
+	bool vsel_volatile;
 };
 
 #endif /* __LINUX_REGULATOR_MAX15569_H */

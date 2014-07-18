@@ -112,6 +112,8 @@ struct max15569_chip {
 
 	bool output_enabled;
 	unsigned int change_mv_per_us;
+	bool vsel_volatile; /*  indicates voltage select register is
+				volatile or cached */
 };
 
 static int max15569_get_voltage_sel(struct regulator_dev *rdev)
@@ -272,13 +274,31 @@ static int max15569_init(struct max15569_chip *max15569,
 	return 0;
 }
 
+/* Returns true if register is set as volatile else false */
 static bool is_volatile_reg(struct device *dev, unsigned int reg)
 {
+	struct max15569_chip *max = dev_get_drvdata(dev);
 	switch (reg) {
 	case MAX15569_IMON_REG:
 		return true;
+	case MAX15569_SETVOUT_REG:
+		return max->vsel_volatile;
 	default:
 		return false;
+	}
+}
+
+/* Sets the register as volatile */
+static int max15569_reg_volatile_set(struct device *dev, unsigned int reg,
+				     bool is_volatile)
+{
+	struct max15569_chip *max = dev_get_drvdata(dev);
+	switch (reg) {
+	case MAX15569_SETVOUT_REG:
+		max->vsel_volatile = is_volatile;
+		return 0;
+	default:
+		return -EINVAL;
 	}
 }
 
@@ -310,6 +330,7 @@ static const struct regmap_config max15569_regmap_config = {
 	.writeable_reg		= is_write_reg,
 	.readable_reg		= is_read_reg,
 	.volatile_reg		= is_volatile_reg,
+	.reg_volatile_set       = max15569_reg_volatile_set,
 	.max_register		= MAX15569_MAX_REG - 1,
 	.cache_type		= REGCACHE_RBTREE,
 };
@@ -341,6 +362,8 @@ static int max15569_probe(struct i2c_client *client,
 	max->desc.ops = &max15569_ops;
 	max->desc.type = REGULATOR_VOLTAGE;
 	max->desc.owner = THIS_MODULE;
+	max->desc.vsel_reg = MAX15569_SETVOUT_REG;
+	max->vsel_volatile = pdata->vsel_volatile;
 	max->regmap = devm_regmap_init_i2c(client, &max15569_regmap_config);
 	if (IS_ERR(max->regmap)) {
 		ret = PTR_ERR(max->regmap);
