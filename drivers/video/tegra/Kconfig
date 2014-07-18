@@ -178,8 +178,8 @@ config TEGRA_DC_EXTENSIONS
 	depends on TEGRA_DC
 	default y
 	help
-	  This exposes support for extended capabilities of the Tegra display
-	  controller to userspace drivers.
+	  Provides additional IOCTLs exposing display controller specific features
+	  to user space applications.
 
 config TEGRA_NVMAP
 	bool "Tegra GPU memory management driver (nvmap)"
