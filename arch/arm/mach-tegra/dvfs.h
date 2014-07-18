@@ -124,11 +124,21 @@ struct dvfs_rail {
 	const char *version;
 };
 
+/*
+ * dfll_range -
+ *	DFLL_RANGE_NONE       : DFLL is not used
+ *	DFLL_RANGE_ALL_RATES  : DFLL is is used for all CPU rates
+ *	DFLL_RANGE_HIGH_RATES : DFLL is used only for high rates
+ *				above crossover with PLL dvfs curve
+ */
 enum dfll_range {
 	DFLL_RANGE_NONE = 0,
 	DFLL_RANGE_ALL_RATES,
 	DFLL_RANGE_HIGH_RATES,
 };
+
+/* DFLL usage is under thermal cooling device control */
+#define TEGRA_USE_DFLL_CDEV_CNTRL 3
 
 /* DVFS settings specific for DFLL clock source */
 struct dvfs_dfll_data {
@@ -291,6 +301,7 @@ int tegra_dvfs_replace_voltage_table(struct dvfs *d, const int *new_millivolts);
 
 int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate);
 int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate);
+int tegra_clk_dfll_range_control(enum dfll_range use_dfll);
 
 struct tegra_cooling_device *tegra_dvfs_get_cpu_vmax_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_cpu_vmin_cdev(void);

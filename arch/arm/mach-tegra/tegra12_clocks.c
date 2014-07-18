@@ -4362,56 +4362,19 @@ static struct clk_ops tegra_dfll_ops = {
 static int tegra12_use_dfll_cb(const char *arg, const struct kernel_param *kp)
 {
 	int ret = 0;
-	unsigned long c_flags, p_flags;
 	unsigned int old_use_dfll;
-	struct clk *c = tegra_get_clock_by_name("cpu");
-	struct clk *dfll = tegra_get_clock_by_name("dfll_cpu");
-
-	if (!c->parent || !c->parent->dvfs || !dfll)
-		return -ENOSYS;
-
-	ret = tegra_cpu_reg_mode_force_normal(true);
-	if (ret) {
-		pr_err("%s: Failed to force regulator normal mode\n", __func__);
-		return ret;
-	}
-
-	clk_lock_save(c, &c_flags);
-	if (dfll->state == UNINITIALIZED) {
-		pr_err("%s: DFLL is not initialized\n", __func__);
-		clk_unlock_restore(c, &c_flags);
-		tegra_cpu_reg_mode_force_normal(false);
-		return -ENOSYS;
-	}
-	if (c->parent->u.cpu.mode == MODE_LP) {
-		pr_err("%s: DFLL is not used on LP CPU\n", __func__);
-		clk_unlock_restore(c, &c_flags);
-		tegra_cpu_reg_mode_force_normal(false);
-		return -ENOSYS;
-	}
-
-	clk_lock_save(c->parent, &p_flags);
-	old_use_dfll = use_dfll;
-	param_set_int(arg, kp);
-
-	if (use_dfll != old_use_dfll) {
-		ret = tegra_dvfs_set_dfll_range(c->parent->dvfs, use_dfll);
-		if (ret) {
+	if (CONFIG_TEGRA_USE_DFLL_RANGE != TEGRA_USE_DFLL_CDEV_CNTRL) {
+		old_use_dfll = use_dfll;
+		param_set_int(arg, kp);
+		ret =  tegra_clk_dfll_range_control(use_dfll);
+		if (ret)
 			use_dfll = old_use_dfll;
-		} else {
-			ret = clk_set_rate_locked(c->parent,
-				clk_get_rate_locked(c->parent));
-			if (ret) {
-				use_dfll = old_use_dfll;
-				tegra_dvfs_set_dfll_range(
-					c->parent->dvfs, use_dfll);
-			}
-		}
+		return ret;
+	} else {
+		pr_warn("\n%s: Failed to set use_dfll\n", __func__);
+		pr_warn("DFLL usage is under thermal cooling device control\n");
+		return -EACCES;
 	}
-	clk_unlock_restore(c->parent, &p_flags);
-	clk_unlock_restore(c, &c_flags);
-	tegra_update_cpu_edp_limits();
-	return ret;
 }
 
 static struct kernel_param_ops tegra12_use_dfll_ops = {
@@ -8949,7 +8912,9 @@ static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 	if (!ret) {
 		c->state = OFF;
 		if (tegra_platform_is_silicon()) {
-			use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
+			if (CONFIG_TEGRA_USE_DFLL_RANGE !=
+					TEGRA_USE_DFLL_CDEV_CNTRL)
+				use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
 #ifdef CONFIG_ARCH_TEGRA_13x_SOC
 			if (tegra_cpu_speedo_id() == 0)
 				use_dfll = 0;
