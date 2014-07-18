@@ -5,8 +5,9 @@ This file documents the properties used by the tegra-dtv driver
 Required properties:
 - compatible : Should be similar to "nvidia,tegra210-dtv"
 - reg : Should contain dtv register location and length
-- nvidia,dma-request-selector : The Tegra DMA controller's phandle and
-  request selector for this DTV controller.
+- nvidia,dma-request-selector : Request selector for this DTV controller.
+- dmas : Phandle for apbdma dma controller and request selector.
+- dma-names : "rx" or "tx" based on the direction of transfer.
 
 Example:
 
@@ -14,4 +15,6 @@ Example:
 		compatible = "nvidia,tegra210-dtv";
 		reg = <0x7000c300 0x100>;
 		nvidia,dma-request-selector = <11>;
+		dmas = < &apbdma 11 >;
+		dma-names = "rx";
 	}
