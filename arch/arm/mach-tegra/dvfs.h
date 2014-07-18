@@ -115,6 +115,10 @@ struct dvfs_rail {
 	struct tegra_cooling_device *vmin_cdev;
 	struct tegra_cooling_device *vmax_cdev;
 	struct tegra_cooling_device *vts_cdev;
+
+	/* Used for CPU clock switch between PLLX and DFLL */
+	struct tegra_cooling_device *clk_switch_cdev;
+
 	struct rail_alignment alignment;
 	struct rail_stats stats;
 	const char *version;
@@ -213,6 +217,7 @@ struct cvb_dvfs {
 	int vmin_trips_table[MAX_THERMAL_LIMITS];
 	int therm_floors_table[MAX_THERMAL_LIMITS];
 	int vts_trips_table[MAX_THERMAL_LIMITS];
+	int clk_switch_trips[MAX_THERMAL_LIMITS];
 };
 
 #define cpu_cvb_dvfs	cvb_dvfs
@@ -293,6 +298,7 @@ struct tegra_cooling_device *tegra_dvfs_get_core_vmax_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_core_vmin_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_gpu_vmin_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_gpu_vts_cdev(void);
+struct tegra_cooling_device *tegra_dvfs_get_cpu_clk_switch_cdev(void);
 #ifdef CONFIG_TEGRA_USE_SIMON
 void tegra_dvfs_rail_init_simon_vmin_offsets(
 	int *offsets, int offs_num, struct dvfs_rail *rail);
@@ -307,6 +313,8 @@ void tegra_dvfs_rail_init_vmin_thermal_profile(
 void tegra_dvfs_rail_init_vmax_thermal_profile(
 	int *therm_trips_table, int *therm_caps_table,
 	struct dvfs_rail *rail, struct dvfs_dfll_data *d);
+int __init tegra_dvfs_rail_init_clk_switch_thermal_profile(
+	int *clk_switch_trips, struct dvfs_rail *rail);
 int tegra_dvfs_rail_init_thermal_dvfs_trips(
 	int *therm_trips_table, struct dvfs_rail *rail);
 int tegra_dvfs_init_thermal_dvfs_voltages(int *millivolts,

@@ -131,6 +131,13 @@ static void dvfs_validate_cdevs(struct dvfs_rail *rail)
 		WARN(1, "%s: thermal dvfs is not supported\n", rail->reg_id);
 	}
 
+	/* Thermal clock switch is only supported for CPU */
+	if (rail->clk_switch_cdev && (rail != tegra_cpu_rail)) {
+		rail->clk_switch_cdev = NULL;
+		 WARN(1, "%s: thermal clock switch is not supported\n",
+				rail->reg_id);
+	}
+
 	if (!rail->simon_vmin_offsets != !rail->simon_vmin_offs_num) {
 		rail->simon_vmin_offs_num = 0;
 		rail->simon_vmin_offsets = NULL;
@@ -1726,6 +1733,13 @@ struct tegra_cooling_device *tegra_dvfs_get_gpu_vts_cdev(void)
 	return NULL;
 }
 
+struct tegra_cooling_device *tegra_dvfs_get_cpu_clk_switch_cdev(void)
+{
+	if (tegra_cpu_rail)
+		return tegra_cpu_rail->clk_switch_cdev;
+	return NULL;
+}
+
 static void make_safe_thermal_dvfs(struct dvfs_rail *rail)
 {
 	struct dvfs *d;
@@ -1849,6 +1863,72 @@ void tegra_dvfs_rail_register_vmax_cdev(struct dvfs_rail *rail)
 		       rail->vmax_cdev->cdev_type);
 	}
 }
+
+/* Cooling device to switch the cpu clock source between PLLX and DFLL */
+static int tegra_dvfs_rail_get_clk_switch_cdev_max_state(
+	struct thermal_cooling_device *cdev, unsigned long *max_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	*max_state = rail->clk_switch_cdev->trip_temperatures_num;
+	return 0;
+}
+
+static int tegra_dvfs_rail_get_clk_switch_cdev_cur_state(
+	struct thermal_cooling_device *cdev, unsigned long *cur_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	*cur_state = rail->therm_scale_idx;
+	return 0;
+}
+
+static int tegra_dvfs_rail_set_clk_switch_cdev_state(
+	struct thermal_cooling_device *cdev, unsigned long cur_state)
+{
+	int ret = 0;
+	enum dfll_range use_dfll;
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+
+	if (CONFIG_TEGRA_USE_DFLL_RANGE == TEGRA_USE_DFLL_CDEV_CNTRL) {
+		if (rail->therm_scale_idx != cur_state) {
+			rail->therm_scale_idx = cur_state;
+			if (rail->therm_scale_idx == 0)
+				use_dfll = DFLL_RANGE_NONE;
+			else
+				use_dfll = DFLL_RANGE_ALL_RATES;
+
+			ret = tegra_clk_dfll_range_control(use_dfll);
+		}
+	} else {
+		pr_warn("\n%s: Not Allowed:", __func__);
+		pr_warn("DFLL is not under thermal cooling device control\n");
+		return -EACCES;
+	}
+	return ret;
+}
+
+static struct thermal_cooling_device_ops tegra_dvfs_clk_cooling_ops = {
+	.get_max_state = tegra_dvfs_rail_get_clk_switch_cdev_max_state,
+	.get_cur_state = tegra_dvfs_rail_get_clk_switch_cdev_cur_state,
+	.set_cur_state = tegra_dvfs_rail_set_clk_switch_cdev_state,
+};
+
+static void tegra_dvfs_rail_register_clk_switch_cdev(struct dvfs_rail *rail)
+{
+	struct thermal_cooling_device *dev;
+
+	if (!rail->clk_switch_cdev)
+		return;
+
+	dev = thermal_cooling_device_register(rail->clk_switch_cdev->cdev_type,
+		(void *)rail, &tegra_dvfs_clk_cooling_ops);
+	/* report error & set max limits across thermal ranges as safe dvfs */
+	if (IS_ERR_OR_NULL(dev) || list_empty(&dev->thermal_instances)) {
+		pr_err("tegra cooling device %s failed to register\n",
+		       rail->clk_switch_cdev->cdev_type);
+		make_safe_thermal_dvfs(rail);
+	}
+}
+
 
 /* Cooling device to scale voltage with temperature in pll mode */
 static int tegra_dvfs_rail_get_vts_cdev_max_state(
@@ -2000,6 +2080,33 @@ void __init tegra_dvfs_rail_init_vmax_thermal_profile(
 		rail->vmax_cdev->trip_temperatures_num = i;
 		rail->vmax_cdev->trip_temperatures = therm_trips_table;
 	}
+}
+
+int  __init tegra_dvfs_rail_init_clk_switch_thermal_profile(
+	int *clk_switch_trips, struct dvfs_rail *rail)
+{
+	int i;
+
+	if (!rail->clk_switch_cdev) {
+		WARN(1, "%s: missing thermal dvfs cooling device\n",
+			rail->reg_id);
+		return -ENOENT;
+	}
+
+	for (i = 0; i < MAX_THERMAL_LIMITS - 1; i++) {
+		if (clk_switch_trips[i] >= clk_switch_trips[i+1])
+			break;
+	}
+
+	/*Only one trip point is allowed for this cdev*/
+	if (i != 0) {
+		WARN(1, "%s: Only one trip point allowed\n", __func__);
+		return -EINVAL;
+	}
+
+	rail->clk_switch_cdev->trip_temperatures_num = i + 1;
+	rail->clk_switch_cdev->trip_temperatures = clk_switch_trips;
+	return 0;
 }
 
 void __init tegra_dvfs_rail_init_vmin_thermal_profile(
@@ -2201,6 +2308,8 @@ int __init tegra_dvfs_rail_register_notifiers(void)
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
 			tegra_dvfs_rail_register_vmin_cdev(rail);
 			tegra_dvfs_rail_register_vts_cdev(rail);
+			tegra_dvfs_rail_register_clk_switch_cdev(rail);
+
 	}
 
 	return 0;
