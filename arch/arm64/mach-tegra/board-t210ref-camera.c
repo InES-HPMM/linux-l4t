@@ -30,9 +30,7 @@
 #include <media/as364x.h>
 #include <media/ov5693.h>
 #include <media/ov7695.h>
-#include <media/mt9m114.h>
 #include <media/ad5823.h>
-#include <media/max77387.h>
 
 #include <linux/platform_device.h>
 #include <media/soc_camera.h>
@@ -158,26 +156,14 @@ static int t210ref_ar0261_power_on(struct ar0261_power_rail *pw)
 {
 	int err;
 
-	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd)))
+	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd)))
 		return -EFAULT;
 
 	/* disable CSIE IOs DPD mode to turn on front camera for t210ref */
 	tegra_io_dpd_disable(&csie_io);
 
-	if (t210ref_get_extra_regulators())
-		goto t210ref_ar0261_poweron_fail;
-
 	gpio_set_value(CAM_RSTN, 0);
 	gpio_set_value(CAM_AF_PWDN, 1);
-
-
-	err = regulator_enable(t210ref_vcmvdd);
-	if (unlikely(err))
-		goto ar0261_vcm_fail;
-
-	err = regulator_enable(pw->dvdd);
-	if (unlikely(err))
-		goto ar0261_dvdd_fail;
 
 	err = regulator_enable(pw->avdd);
 	if (unlikely(err))
@@ -193,20 +179,11 @@ static int t210ref_ar0261_power_on(struct ar0261_power_rail *pw)
 	gpio_set_value(CAM_RSTN, 1);
 
 	return 0;
-ar0261_iovdd_fail:
-	regulator_disable(pw->dvdd);
 
-ar0261_dvdd_fail:
+ar0261_iovdd_fail:
 	regulator_disable(pw->avdd);
 
 ar0261_avdd_fail:
-	regulator_disable(t210ref_vcmvdd);
-
-ar0261_vcm_fail:
-	pr_err("%s vcmvdd failed.\n", __func__);
-	return -ENODEV;
-
-t210ref_ar0261_poweron_fail:
 	/* put CSIE IOs into DPD mode to save additional power for t210ref */
 	tegra_io_dpd_enable(&csie_io);
 	pr_err("%s failed.\n", __func__);
@@ -215,8 +192,7 @@ t210ref_ar0261_poweron_fail:
 
 static int t210ref_ar0261_power_off(struct ar0261_power_rail *pw)
 {
-	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd ||
-					!t210ref_vcmvdd))) {
+	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd))) {
 		/* put CSIE IOs into DPD mode to
 		 * save additional power for t210ref
 		 */
@@ -229,9 +205,7 @@ static int t210ref_ar0261_power_off(struct ar0261_power_rail *pw)
 	usleep_range(1, 2);
 
 	regulator_disable(pw->iovdd);
-	regulator_disable(pw->dvdd);
 	regulator_disable(pw->avdd);
-	regulator_disable(t210ref_vcmvdd);
 	/* put CSIE IOs into DPD mode to save additional power for t210ref */
 	tegra_io_dpd_enable(&csie_io);
 	return 0;
@@ -243,31 +217,6 @@ struct ar0261_platform_data t210ref_ar0261_data = {
 	.mclk_name = "mclk2",
 };
 
-static int t210ref_imx135_get_extra_regulators(struct imx135_power_rail *pw)
-{
-	if (!pw->ext_reg1) {
-		pw->ext_reg1 = regulator_get(NULL, "imx135_reg1");
-		if (WARN_ON(IS_ERR(pw->ext_reg1))) {
-			pr_err("%s: can't get regulator imx135_reg1: %ld\n",
-				__func__, PTR_ERR(pw->ext_reg1));
-			pw->ext_reg1 = NULL;
-			return -ENODEV;
-		}
-	}
-
-	if (!pw->ext_reg2) {
-		pw->ext_reg2 = regulator_get(NULL, "imx135_reg2");
-		if (WARN_ON(IS_ERR(pw->ext_reg2))) {
-			pr_err("%s: can't get regulator imx135_reg2: %ld\n",
-				__func__, PTR_ERR(pw->ext_reg2));
-			pw->ext_reg2 = NULL;
-			return -ENODEV;
-		}
-	}
-
-	return 0;
-}
-
 static int t210ref_imx135_power_on(struct imx135_power_rail *pw)
 {
 	int err;
@@ -278,18 +227,6 @@ static int t210ref_imx135_power_on(struct imx135_power_rail *pw)
 	/* disable CSIA/B IOs DPD mode to turn on camera for t210ref */
 	tegra_io_dpd_disable(&csia_io);
 	tegra_io_dpd_disable(&csib_io);
-
-	if (t210ref_imx135_get_extra_regulators(pw))
-		goto imx135_poweron_fail;
-
-	err = regulator_enable(pw->ext_reg1);
-	if (unlikely(err))
-		goto imx135_ext_reg1_fail;
-
-	err = regulator_enable(pw->ext_reg2);
-	if (unlikely(err))
-		goto imx135_ext_reg2_fail;
-
 
 	gpio_set_value(CAM_AF_PWDN, 1);
 	gpio_set_value(CAM1_PWDN, 0);
@@ -303,7 +240,7 @@ static int t210ref_imx135_power_on(struct imx135_power_rail *pw)
 	if (err)
 		goto imx135_iovdd_fail;
 
-	usleep_range(1, 2);
+	usleep_range(2000, 2500);
 	gpio_set_value(CAM1_PWDN, 1);
 
 	usleep_range(300, 310);
@@ -315,16 +252,8 @@ imx135_iovdd_fail:
 	regulator_disable(pw->avdd);
 
 imx135_avdd_fail:
-	if (pw->ext_reg2)
-		regulator_disable(pw->ext_reg2);
-
-imx135_ext_reg2_fail:
-	if (pw->ext_reg1)
-		regulator_disable(pw->ext_reg1);
 	gpio_set_value(CAM_AF_PWDN, 0);
 
-imx135_ext_reg1_fail:
-imx135_poweron_fail:
 	tegra_io_dpd_enable(&csia_io);
 	tegra_io_dpd_enable(&csib_io);
 	pr_err("%s failed.\n", __func__);
@@ -339,76 +268,6 @@ static int t210ref_imx135_power_off(struct imx135_power_rail *pw)
 		return -EFAULT;
 	}
 
-	regulator_disable(pw->iovdd);
-	regulator_disable(pw->avdd);
-
-	regulator_disable(pw->ext_reg1);
-	regulator_disable(pw->ext_reg2);
-
-	/* put CSIA/B IOs into DPD mode to save additional power for t210ref */
-	tegra_io_dpd_enable(&csia_io);
-	tegra_io_dpd_enable(&csib_io);
-	return 0;
-}
-
-static int t210ref_imx179_power_on(struct imx179_power_rail *pw)
-{
-	int err;
-
-	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
-		return -EFAULT;
-
-	/* disable CSIA/B IOs DPD mode to turn on camera for t210ref */
-	tegra_io_dpd_disable(&csia_io);
-	tegra_io_dpd_disable(&csib_io);
-
-	gpio_set_value(CAM_AF_PWDN, 1);
-	gpio_set_value(CAM_RSTN, 0);
-	gpio_set_value(CAM1_PWDN, 0);
-	usleep_range(10, 20);
-
-	err = regulator_enable(pw->avdd);
-	if (err)
-		goto imx179_avdd_fail;
-
-	err = regulator_enable(pw->iovdd);
-	if (err)
-		goto imx179_iovdd_fail;
-
-	err = regulator_enable(pw->dvdd);
-	if (err)
-		goto imx179_dvdd_fail;
-
-	usleep_range(1, 2);
-	gpio_set_value(CAM_RSTN, 1);
-
-	usleep_range(300, 310);
-
-	return 1;
-
-
-imx179_dvdd_fail:
-	regulator_disable(pw->iovdd);
-
-imx179_iovdd_fail:
-	regulator_disable(pw->avdd);
-
-imx179_avdd_fail:
-	tegra_io_dpd_enable(&csia_io);
-	tegra_io_dpd_enable(&csib_io);
-	pr_err("%s failed.\n", __func__);
-	return -ENODEV;
-}
-
-static int t210ref_imx179_power_off(struct imx179_power_rail *pw)
-{
-	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd))) {
-		tegra_io_dpd_enable(&csia_io);
-		tegra_io_dpd_enable(&csib_io);
-		return -EFAULT;
-	}
-
-	regulator_disable(pw->dvdd);
 	regulator_disable(pw->iovdd);
 	regulator_disable(pw->avdd);
 
@@ -428,18 +287,6 @@ struct imx135_platform_data t210ref_imx135_data = {
 	},
 	.power_on = t210ref_imx135_power_on,
 	.power_off = t210ref_imx135_power_off,
-};
-
-struct imx179_platform_data t210ref_imx179_data = {
-	.flash_cap = {
-		.enable = 1,
-		.edge_trig_en = 1,
-		.start_edge = 0,
-		.repeat = 1,
-		.delay_frm = 0,
-	},
-	.power_on = t210ref_imx179_power_on,
-	.power_off = t210ref_imx179_power_off,
 };
 
 static int t210ref_dw9718_power_on(struct dw9718_power_rail *pw)
@@ -596,74 +443,6 @@ struct ov7695_platform_data t210ref_ov7695_pdata = {
 	.power_off = t210ref_ov7695_power_off,
 	.mclk_name = "mclk2",
 };
-
-static int t210ref_mt9m114_power_on(struct mt9m114_power_rail *pw)
-{
-	int err;
-	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
-		return -EFAULT;
-
-	/* disable CSIE IOs DPD mode to turn on front camera for t210ref */
-	tegra_io_dpd_disable(&csie_io);
-
-	gpio_set_value(CAM_RSTN, 0);
-	gpio_set_value(CAM2_PWDN, 1);
-	usleep_range(1000, 1020);
-
-	err = regulator_enable(pw->iovdd);
-	if (unlikely(err))
-		goto mt9m114_iovdd_fail;
-
-	err = regulator_enable(pw->avdd);
-	if (unlikely(err))
-		goto mt9m114_avdd_fail;
-
-	usleep_range(1000, 1020);
-	gpio_set_value(CAM_RSTN, 1);
-	gpio_set_value(CAM2_PWDN, 0);
-	usleep_range(1000, 1020);
-
-	/* return 1 to skip the in-driver power_on swquence */
-	return 1;
-
-mt9m114_avdd_fail:
-	regulator_disable(pw->iovdd);
-
-mt9m114_iovdd_fail:
-	gpio_set_value(CAM_RSTN, 0);
-	/* put CSIE IOs into DPD mode to save additional power for t210ref */
-	tegra_io_dpd_enable(&csie_io);
-	return -ENODEV;
-}
-
-static int t210ref_mt9m114_power_off(struct mt9m114_power_rail *pw)
-{
-	if (unlikely(!pw || !pw->avdd || !pw->iovdd)) {
-		/* put CSIE IOs into DPD mode to
-		 * save additional power for t210ref
-		 */
-		tegra_io_dpd_enable(&csie_io);
-		return -EFAULT;
-	}
-
-	usleep_range(100, 120);
-	gpio_set_value(CAM_RSTN, 0);
-	usleep_range(100, 120);
-	regulator_disable(pw->avdd);
-	usleep_range(100, 120);
-	regulator_disable(pw->iovdd);
-
-	/* put CSIE IOs into DPD mode to save additional power for t210ref */
-	tegra_io_dpd_enable(&csie_io);
-	return 1;
-}
-
-struct mt9m114_platform_data t210ref_mt9m114_pdata = {
-	.power_on = t210ref_mt9m114_power_on,
-	.power_off = t210ref_mt9m114_power_off,
-	.mclk_name = "mclk2",
-};
-
 
 static int t210ref_ov5693_power_on(struct ov5693_power_rail *pw)
 {
@@ -958,12 +737,10 @@ static struct camera_data_blob t210ref_camera_lut[] = {
 	{"t210ref_imx135_pdata", &t210ref_imx135_data},
 	{"t210ref_dw9718_pdata", &t210ref_dw9718_data},
 	{"t210ref_ar0261_pdata", &t210ref_ar0261_data},
-	{"t210ref_mt9m114_pdata", &t210ref_mt9m114_pdata},
 	{"t210ref_ov5693_pdata", &t210ref_ov5693_pdata},
 	{"t210ref_ad5823_pdata", &t210ref_ad5823_pdata},
 	{"t210ref_as3648_pdata", &t210ref_as3648_data},
 	{"t210ref_ov7695_pdata", &t210ref_ov7695_pdata},
-	{"t210ref_imx179_pdata", &t210ref_imx179_data},
 	{"t210ref_ov5693f_pdata", &t210ref_ov5693_front_pdata},
 	{},
 };
