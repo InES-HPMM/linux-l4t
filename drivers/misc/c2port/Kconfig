@@ -23,7 +23,7 @@ if C2PORT
 config C2PORT_LOKI
 	tristate "C2 port support for NVIDIA Loki"
 	default n
-	depends on MACH_LOKI
+	depends on C2PORT
 	help
 	  This option enables C2 support for Joystick micro controller of
 	  NVIDIA Loki platform.

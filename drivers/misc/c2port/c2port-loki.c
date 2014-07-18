@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -31,7 +31,8 @@
 #include <linux/interrupt.h>
 #include <linux/slab.h>
 #include <linux/platform_data/tegra_c2port_platform_data.h>
-#include <asm/system.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 
 struct tegra_c2port_device {
 	struct c2port_device *p_c2dev;
@@ -189,18 +190,21 @@ static struct c2port_ops tegra_c2port_ops = {
 /* mcu_debugger driver functions */
 static int tegra_c2port_probe(struct platform_device *pdev)
 {
-	struct tegra_c2port_platform_data *pdata =
-	    (struct tegra_c2port_platform_data *)pdev->dev.platform_data;
-
-	if (!pdata) {
-		dev_err(&pdev->dev, "no platform_data\n");
-		return -ENOENT;
+	struct tegra_c2port_platform_data *pdata = NULL;
+	u32 value = 0;
+	int error = 0;
+#ifdef CONFIG_OF
+	struct device_node *node = NULL;
+#endif
+	if (!pdev) {
+		pr_err("c2port: pdev NULL.\n");
+		return -EINVAL;
 	}
 
 	if (g_c2port_device) {
 		dev_err(&pdev->dev,
 			"tegra_c2port probe more than one device!\n");
-		return -1;
+		return -EINVAL;
 	}
 
 	g_c2port_device = devm_kzalloc(&pdev->dev,
@@ -211,8 +215,45 @@ static int tegra_c2port_probe(struct platform_device *pdev)
 			"tegra_c2port_device allocated error!\n");
 		return -ENOMEM;
 	}
+
+#ifdef CONFIG_OF
+	node = pdev->dev.of_node;
+
+	if (node) {
+		g_c2port_device->GPIO_C2CK =
+			(int)of_get_named_gpio(node, "gpio_c2ck", 0);
+
+		if (g_c2port_device->GPIO_C2CK < 0) {
+			dev_err(&pdev->dev, "gpio_c2ck not available.\n");
+			error = -ENXIO;
+			goto free_mem;
+		}
+
+		g_c2port_device->GPIO_C2D =
+			(int)of_get_named_gpio(node, "gpio_c2d", 0);
+		if (g_c2port_device->GPIO_C2D < 0) {
+			dev_err(&pdev->dev, "gpio_c2d not available.\n");
+			error = -ENXIO;
+			goto free_mem;
+		}
+		goto reg_dev;
+	}
+#endif
+	pdata = (struct tegra_c2port_platform_data *)pdev->dev.platform_data;
+
+	if (!pdata) {
+		dev_err(&pdev->dev, "No platform_data \n");
+		error = -ENOENT;
+		goto free_mem;
+	}
+
 	g_c2port_device->GPIO_C2CK = pdata->gpio_c2ck;
 	g_c2port_device->GPIO_C2D = pdata->gpio_c2d;
+
+reg_dev:
+	dev_info(&pdev->dev, "gpio_c2ck: %d, gpio_c2d: %d\n",
+		g_c2port_device->GPIO_C2CK,
+		g_c2port_device->GPIO_C2D);
 
 	/* register the device with c2 port core */
 	g_c2port_device->p_c2dev = c2port_device_register("tegra_mcu_c2port",
@@ -222,11 +263,16 @@ static int tegra_c2port_probe(struct platform_device *pdev)
 	if (!g_c2port_device->p_c2dev) {
 		dev_err(&pdev->dev,
 			"tegra_port c2 device register failed!\n");
-		devm_kfree(&pdev->dev, g_c2port_device);
-		g_c2port_device = NULL;
-		return -EBUSY;
+		error = -EBUSY;
+		goto free_mem;
 	}
-	return 0;
+	dev_info(&pdev->dev, "tegra_c2port probe success.\n");
+	return error;
+
+free_mem:
+	devm_kfree(&pdev->dev, g_c2port_device);
+	g_c2port_device = NULL;
+	return error;
 }
 
 static int tegra_c2port_remove(struct platform_device *pdev)
