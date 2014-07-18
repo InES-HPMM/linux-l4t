@@ -1120,6 +1120,9 @@ static struct of_device_id tegra_dtv_of_match[] = {
 	{
 		.compatible = "nvidia,tegra132-dtv",
 	},
+	{
+		.compatible = "nvidia,tegra124-dtv",
+	},
 };
 MODULE_DEVICE_TABLE(of, tegra_dtv_of_match);
 
@@ -1161,7 +1164,6 @@ static int tegra_dtv_probe(struct platform_device *pdev)
 
 	/* for refer back */
 	dtv_ctx->pdev = pdev;
-
 	/* enable clk for dtv */
 	clk = clk_get(&pdev->dev, "dtv");
 	if (!clk) {
@@ -1222,9 +1224,8 @@ static int tegra_dtv_probe(struct platform_device *pdev)
 	dtv_ctx->profile.bufnum = DTV_NUM_BUFS;
 	dtv_ctx->profile.cpuboost = PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE;
 	dtv_ctx->profile.bitrate = DTV_TS_MIN_BITRATE;
-#if defined(CONFIG_ARM64)
 	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(64);
-#endif
+
 	ret = setup_stream(&dtv_ctx->stream, &dtv_ctx->profile);
 	if (ret < 0) {
 		pr_err("%s(%d) : Setup stream failed\n", __func__, __LINE__);
