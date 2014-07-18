@@ -37,7 +37,6 @@
 
 static struct regulator_consumer_supply max77663_ldo5_supply[] = {
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.2"),
-	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.2"),
 	REGULATOR_SUPPLY("pwrdet_sdmmc3", NULL),
 };
 
