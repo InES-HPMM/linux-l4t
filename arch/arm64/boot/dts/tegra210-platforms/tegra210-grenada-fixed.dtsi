@@ -10,9 +10,6 @@
 			reg = <0>;
 			regulator-name = "vdd-ac-bat";
 			consumers {
-				c0 {
-					regulator-consumer-supply = "vdd_cpu_fixed";
-				};
 				c1 {
 					regulator-consumer-supply = "dvdd-pex-pll";
 					regulator-consumer-device = "pcie-controller.3";
@@ -139,6 +136,14 @@
 					regulator-consumer-supply = "vdd_core";
 				};
 			};
+		};
+
+		cpu_fixed_reg: regulator@1 {
+			compatible = "regulator-fixed";
+			reg = <1>;
+			regulator-name = "vdd_cpu_fixed";
+			regulator-min-microvolt = <1000000>;
+			regulator-max-microvolt = <1000000>;
 		};
 	};
 
