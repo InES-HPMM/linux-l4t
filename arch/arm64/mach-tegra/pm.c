@@ -203,6 +203,8 @@ int (*tegra_sleep_core_finish)(unsigned long v2p);
 
 bool tegra_is_dpd_mode = false;
 
+static bool suspend_in_progress;
+
 bool tegra_dvfs_is_dfll_bypass(void)
 {
 #ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
@@ -721,9 +723,6 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		mode = TEGRA_SUSPEND_LP1;
 	}
 
-	if ((mode == TEGRA_SUSPEND_LP0) || (mode == TEGRA_SUSPEND_LP1))
-		tegra_suspend_check_pwr_stats();
-
 	/* turn off VDE partition in LP1 */
 	if (mode == TEGRA_SUSPEND_LP1 &&
 		tegra_powergate_is_powered(TEGRA_POWERGATE_VDEC)) {
@@ -824,6 +823,16 @@ static int tegra_suspend_valid(suspend_state_t state)
 	return valid;
 }
 
+static int tegra_suspend_prepare_late(void)
+{
+	if ((current_suspend_mode == TEGRA_SUSPEND_LP0) ||
+			(current_suspend_mode == TEGRA_SUSPEND_LP1))
+		tegra_suspend_check_pwr_stats();
+
+	suspend_in_progress = true;
+	return 0;
+}
+
 static void tegra_suspend_finish(void)
 {
 	if (pdata && pdata->cpu_resume_boost) {
@@ -834,6 +843,7 @@ static void tegra_suspend_finish(void)
 }
 
 static const struct platform_suspend_ops tegra_suspend_ops = {
+	.prepare_late	= tegra_suspend_prepare_late,
 	.valid		= tegra_suspend_valid,
 	.finish		= tegra_suspend_finish,
 	.enter		= tegra_suspend_enter,
