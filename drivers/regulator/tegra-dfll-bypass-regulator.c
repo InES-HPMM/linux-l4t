@@ -279,6 +279,7 @@ static int tegra_dfll_bypass_probe(struct platform_device *pdev)
 	config.dev = &pdev->dev;
 	config.init_data = pdata->reg_init_data;
 	config.driver_data = tdb;
+	config.of_node = dn;
 
 	rdev = regulator_register(&tdb->desc, &config);
 	if (IS_ERR(rdev)) {
