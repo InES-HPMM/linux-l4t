@@ -86,6 +86,9 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
 	.step_up = 1300,
 	.vmin_cdev = &core_vmin_cdev,
 	.vmax_cdev = &core_vmax_cdev,
+	.alignment = {
+		.step_uv = 6250, /* 6.25mV */
+	},
 	.version = "p4v00",
 };
 
@@ -99,10 +102,10 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_gpu = {
 	.vts_cdev = &gpu_vts_cdev,
 	.vmin_cdev = &gpu_vmin_cdev,
 	.alignment = {
-		.step_uv = 10000, /* 10mV */
+		.step_uv = 6250, /* 6.25mV */
 	},
 	.stats = {
-		.bin_uV = 10000, /* 10mV */
+		.bin_uV = 6250, /* 6.25mV */
 	},
 	.version = "p4v00",
 };
@@ -971,6 +974,23 @@ int tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
 	return 0;
 }
 
+static int __init of_rails_init(struct device_node *dn)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(tegra21_dvfs_rails); i++) {
+		struct dvfs_rail *rail = tegra21_dvfs_rails[i];
+		if (!of_tegra_dvfs_rail_node_parse(dn, rail))
+			return 0;
+	}
+	return -ENOENT;
+}
+
+static __initdata struct of_device_id tegra21_dvfs_rail_of_match[] = {
+	{ .compatible = "nvidia,tegra210-dvfs-rail", .data = of_rails_init, },
+	{ },
+};
+
 void __init tegra21x_init_dvfs(void)
 {
 	int soc_speedo_id = tegra_soc_speedo_id();
@@ -992,11 +1012,7 @@ void __init tegra21x_init_dvfs(void)
 	tegra_dvfs_gpu_disabled = true;
 #endif
 
-	ret = of_tegra_dvfs_rail_align(&tegra21_dvfs_rail_vdd_cpu);
-	pr_info("tegra dvfs: VDD_CPU %s offset = %d, step = %d\n",
-		ret ? "default" : "DT",
-		tegra21_dvfs_rail_vdd_cpu.alignment.offset_uv,
-		tegra21_dvfs_rail_vdd_cpu.alignment.step_uv);
+	of_tegra_dvfs_init(tegra21_dvfs_rail_of_match);
 
 	/*
 	 * Find nominal voltages for core (1st) and cpu rails before rail
@@ -1071,15 +1087,13 @@ void __init tegra21x_init_dvfs(void)
 	if (tegra_dvfs_gpu_disabled)
 		tegra_dvfs_rail_disable(&tegra21_dvfs_rail_vdd_gpu);
 
-	pr_info("tegra dvfs: VDD_CPU nominal %dmV, scaling %s\n",
-		tegra21_dvfs_rail_vdd_cpu.nominal_millivolts,
-		tegra_dvfs_cpu_disabled ? "disabled" : "enabled");
-	pr_info("tegra dvfs: VDD_CORE nominal %dmV, scaling %s\n",
-		tegra21_dvfs_rail_vdd_core.nominal_millivolts,
-		tegra_dvfs_core_disabled ? "disabled" : "enabled");
-	pr_info("tegra dvfs: VDD_GPU nominal %dmV, scaling %s\n",
-		tegra21_dvfs_rail_vdd_gpu.nominal_millivolts,
-		tegra_dvfs_gpu_disabled ? "disabled" : "enabled");
+	for (i = 0; i < ARRAY_SIZE(tegra21_dvfs_rails); i++) {
+		struct dvfs_rail *rail = tegra21_dvfs_rails[i];
+		pr_info("tegra dvfs: %s: nominal %dmV, offset %duV, step %duV, scaling %s\n",
+			rail->reg_id, rail->nominal_millivolts,
+			rail->alignment.offset_uv, rail->alignment.step_uv,
+			rail->disabled ? "disabled" : "enabled");
+	}
 }
 
 int tegra_dvfs_rail_disable_prepare(struct dvfs_rail *rail)

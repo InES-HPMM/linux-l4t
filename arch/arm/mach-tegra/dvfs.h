@@ -251,13 +251,10 @@ struct dvfs_data {
 #ifdef CONFIG_OF
 typedef int (*of_tegra_dvfs_init_cb_t)(struct device_node *);
 int of_tegra_dvfs_init(const struct of_device_id *matches);
-int of_tegra_dvfs_rail_align(struct dvfs_rail *rail);
 int of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
 				  struct dvfs_rail *rail);
 #else
 static inline int of_tegra_dvfs_init(const struct of_device_id *matches)
-{ return -ENODATA; }
-static inline int of_tegra_dvfs_rail_align(struct dvfs_rail *rail)
 { return -ENODATA; }
 static inline int of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
 						struct dvfs_rail *rail)

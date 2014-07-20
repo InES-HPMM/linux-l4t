@@ -1654,19 +1654,6 @@ _out:
 	return ret;
 }
 
-int __init of_tegra_dvfs_rail_align(struct dvfs_rail *rail)
-{
-	struct device_node *dn;
-	const char *propname = "regulator-name";
-
-	for_each_node_with_property(dn, propname) {
-		if (of_property_match_string(dn, propname, rail->reg_id) >= 0)
-			return of_rail_align(dn, rail);
-		of_node_put(dn);
-	}
-	return -ENOENT;
-}
-
 int __init of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
 					 struct dvfs_rail *rail)
 {
