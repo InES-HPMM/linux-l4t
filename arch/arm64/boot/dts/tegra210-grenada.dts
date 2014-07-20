@@ -993,4 +993,17 @@
 		nvidia,hsic0 = /bits/8 <0x1 0x1 0x8 0xa 0 0 1 0x22 0>;
 			status = "okay";
 	};
+
+	dvfs_rails {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		vdd-cpu-rail@0 {
+			reg = <0>;
+			compatible = "nvidia,tegra210-dvfs-rail";
+			vdd_cpu-supply = <&cpu_fixed_reg>;
+			vdd_cpu_dfll-supply = <&cpu_pwm_reg>;
+		};
+	};
 };
