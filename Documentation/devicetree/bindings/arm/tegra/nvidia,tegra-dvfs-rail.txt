@@ -1,0 +1,69 @@
+NVIDIA Tegra DVFS rail data in the board DTS file:
+
+Required properties:
+- compatible : Must be one of the following
+	"nvidia,tegra210-dvfs-rail"
+
+- vdd_cpu-supply : Must contain phandle pointing to the regulator for CPU rail.
+- vdd_gpu-supply : Must contain phandle pointing to the regulator for GPU rail.
+- vdd_core-supply : Must contain phandle pointing to the regulator for SoC rail.
+
+One and only one of the above properties must be specified for each rail node.
+
+Optional properties:
+- vdd_cpu_dfll-supply : Must contain phandle pointing to the regulator for CPU
+rail in DFLL closed loop mode. This property is required if 'vdd_cpu-supply'
+property is pointing to fixed regulator node. Otherwise, it is ignored.
+
+-reg : Can be any number but same as used in the node name
+
+DVFS rail nodes can be placed at root, or included into dvfs-rails parent node.
+In the latter case "reg" property is required, and parent node must be specified
+as simple bus with the following required properties:
+
+- compatible : Must be "simple-bus"
+- #address-cells: Must be 1.
+- #size-cells: Must be 0.
+
+Examples:
+
+dvfs_rails {
+	compatible = "simple-bus";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	vdd-cpu-rail@0 {
+		reg = <0>;
+		compatible = "nvidia,tegra210-dvfs-rail";
+		vdd_cpu-supply = <&pmicxxx_sd0>;
+	};
+
+	vdd-core-rail@1 {
+		reg = <1>;
+		compatible = "nvidia,tegra210-dvfs-rail";
+		vdd_core-supply = <&pmicxxx_sd1>;
+	};
+
+	vdd-gpu-rail@2 {
+		reg = <2>;
+		compatible = "nvidia,tegra210-dvfs-rail";
+		vdd_gpu-supply = <&pmicxxx_sd6>;
+	};
+};
+
+dvfs_rails {
+	compatible = "simple-bus";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	vdd-cpu-rail@0 {
+		reg = <0>;
+		compatible = "nvidia,tegra210-dvfs-rail";
+		vdd_cpu-supply = <&cpu_fixed_reg>;
+		vdd_cpu_dfll-supply = <&cpu_pwm_reg>;
+	};
+
+	vdd-core-rail@1 {
+		reg = <1>;
+	....
+};
