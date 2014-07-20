@@ -35,6 +35,7 @@
 #include <linux/reboot.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-soc.h>
+#include <linux/of_platform.h>
 
 #include "board.h"
 #include "clock.h"
@@ -478,7 +479,8 @@ static int dvfs_rail_update(struct dvfs_rail *rail)
 	return ret;
 }
 
-static struct regulator *get_fixed_regulator(struct dvfs_rail *rail)
+static struct regulator *get_fixed_regulator(struct dvfs_rail *rail,
+					     struct device *dev)
 {
 	struct regulator *reg;
 	char reg_id[80];
@@ -487,8 +489,9 @@ static struct regulator *get_fixed_regulator(struct dvfs_rail *rail)
 	unsigned long dfll_boost;
 
 	strcpy(reg_id, rail->reg_id);
-	strcat(reg_id, "_fixed");
-	reg = regulator_get(NULL, reg_id);
+	if (!dev)
+		strcat(reg_id, "_fixed");
+	reg = regulator_get(dev, reg_id);
 	if (IS_ERR(reg))
 		return reg;
 
@@ -548,14 +551,15 @@ static struct regulator *get_fixed_regulator(struct dvfs_rail *rail)
 	return reg;
 }
 
-static int connect_to_regulator(struct dvfs_rail *rail, bool fixed)
+static int connect_to_regulator(struct dvfs_rail *rail, struct device *dev,
+				bool fixed)
 {
 	struct regulator *reg;
 	int v;
 
 	if (!rail->reg) {
-		reg = fixed ? get_fixed_regulator(rail) :
-			regulator_get(NULL, rail->reg_id);
+		reg = fixed ? get_fixed_regulator(rail, dev) :
+			regulator_get(dev, rail->reg_id);
 
 		if (IS_ERR(reg))
 			return PTR_ERR(reg);
@@ -582,20 +586,32 @@ static int connect_to_regulator(struct dvfs_rail *rail, bool fixed)
 static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
 {
 	int v;
+	struct device *dev = NULL;
+	bool fixed = rail->dt_reg_fixed; /* false, if rail is not in DT */
 
-	/* 1st try to connect rail to variable regulator */
-	v = connect_to_regulator(rail, false);
-	if (v < 0) {
-		/* re-try connection, now - to fixed voltage regulator */
+#ifdef CONFIG_OF
+	/* Find dvfs rail device, if the respective node is present in DT */
+	if (rail->dt_node) {
+		struct platform_device *pdev =
+			of_find_device_by_node(rail->dt_node);
+		if (pdev)
+			dev = &pdev->dev;
+	}
+#endif
+	v = connect_to_regulator(rail, dev, fixed);
+	if ((v < 0) && !dev) {
+		/*
+		 * If connecting just by supply name, re-try fixed voltage
+		 * regulator with "_fixed" suffix.
+		 */
 		rail->reg = NULL;
-		v = connect_to_regulator(rail, true);
-		if (v < 0) {
-			pr_err("tegra_dvfs: failed to connect %s rail\n",
-			       rail->reg_id);
-			return v;
-		}
-		pr_info("tegra_dvfs: %s_fixed found for pll mode\n",
-		       rail->reg_id);
+		fixed = true;
+		v = connect_to_regulator(rail, dev, fixed);
+	}
+
+	if (v < 0) {
+		pr_err("tegra_dvfs: failed to connect %s rail\n", rail->reg_id);
+		return v;
 	}
 
 	rail->millivolts = v / 1000;
@@ -609,7 +625,9 @@ static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
 		rail->boot_millivolts = rail->millivolts;
 	}
 
-	pr_info("tegra_dvfs: %s rail connected to regulator\n", rail->reg_id);
+	pr_info("tegra_dvfs: %s connected to regulator %s\n",
+		dev ? dev_name(dev) : rail->reg_id,
+		fixed ? "in fixed pll mode" : "");
 	return 0;
 }
 
@@ -1600,8 +1618,8 @@ int __init of_tegra_dvfs_init(const struct of_device_id *matches)
 		of_tegra_dvfs_init_cb_t dvfs_init_cb = match->data;
 		ret = dvfs_init_cb(np);
 		if (ret) {
-			pr_err("dt: Failed to read %s tables from DT\n",
-							match->compatible);
+			pr_err("dt: Failed to read %s data from DT\n",
+			       match->compatible);
 			return ret;
 		}
 	}
@@ -1647,6 +1665,46 @@ int __init of_tegra_dvfs_rail_align(struct dvfs_rail *rail)
 		of_node_put(dn);
 	}
 	return -ENOENT;
+}
+
+int __init of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
+					 struct dvfs_rail *rail)
+{
+	struct device_node *reg_dn;
+	char prop_name[80];
+
+	snprintf(prop_name, 80, "%s-supply", rail->reg_id);
+	reg_dn = of_parse_phandle(rail_dn, prop_name, 0);
+	if (!reg_dn)
+		return -ENODEV;
+
+	/*
+	 * This is called in early DVFS init before device tree population.
+	 * Hence, if rail node supply is matching rail regulator id, save rail
+	 * node to be used when DVFS is connected to regulators in late init,
+	 * and align rail to regulator DT data.
+	 *
+	 * If CPU rail supply is specified as fixed regulator on platforms that
+	 * have DFLL clock source with CL-DVFS h/w control, a separate DFLL mode
+	 * regulator node must be present and used for rail alignment.
+	 */
+	rail->dt_node = rail_dn;
+	rail->dt_reg_fixed = of_device_is_compatible(reg_dn, "regulator-fixed");
+
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+	if (rail->dt_reg_fixed && !strcmp("vdd_cpu", rail->reg_id)) {
+		snprintf(prop_name, 80, "%s_dfll-supply", rail->reg_id);
+		reg_dn = of_parse_phandle(rail_dn, prop_name, 0);
+		if (!reg_dn) {
+			pr_err("tegra_dvfs: missed %s DFLL mode supply\n",
+			       rail->reg_id);
+			return -ENODEV;
+		}
+	}
+#endif
+	of_rail_align(reg_dn, rail);
+	return 0;
+
 }
 #endif
 

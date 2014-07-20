@@ -93,7 +93,9 @@ struct dvfs_rail {
 	bool updating;
 	bool resolving_to;
 	bool rate_set;
+	bool dt_reg_fixed;
 
+	struct device_node *dt_node; /* device tree rail node*/
 	struct list_head node;  /* node in dvfs_rail_list */
 	struct list_head dvfs;  /* list head of attached dvfs clocks */
 	struct list_head relationships_to;
@@ -250,11 +252,16 @@ struct dvfs_data {
 typedef int (*of_tegra_dvfs_init_cb_t)(struct device_node *);
 int of_tegra_dvfs_init(const struct of_device_id *matches);
 int of_tegra_dvfs_rail_align(struct dvfs_rail *rail);
+int of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
+				  struct dvfs_rail *rail);
 #else
 static inline int of_tegra_dvfs_init(const struct of_device_id *matches)
 { return -ENODATA; }
 static inline int of_tegra_dvfs_rail_align(struct dvfs_rail *rail)
 { return -ENODATA; }
+static inline int of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
+						struct dvfs_rail *rail)
+{ return -ENODEV; }
 #endif
 
 void tegra11x_init_dvfs(void);
