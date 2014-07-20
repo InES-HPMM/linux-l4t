@@ -3196,7 +3196,7 @@ int sdhci_resume_host(struct sdhci_host *host)
 		disable_irq_wake(host->irq);
 	}
 
-	if ((host->quirks & SDHCI_QUIRK2_PM_DOMAIN) &&
+	if ((host->quirks2 & SDHCI_QUIRK2_PM_DOMAIN) &&
 			(!host->clock || !host->mmc->ios.clock)) {
 		if (host->ops->set_clock)
 			host->ops->set_clock(host, DEFAULT_SDHOST_FREQ);
@@ -3245,7 +3245,7 @@ static int sdhci_runtime_pm_get(struct sdhci_host *host)
 {
 	int present;
 
-	if (!(host->quirks & SDHCI_QUIRK2_PM_DOMAIN))
+	if (!(host->quirks2 & SDHCI_QUIRK2_PM_DOMAIN))
 		return 0;
 
 	present = mmc_gpio_get_cd(host->mmc);
@@ -3274,7 +3274,7 @@ static int sdhci_runtime_pm_put(struct sdhci_host *host)
 {
 	int present;
 
-	if (!(host->quirks & SDHCI_QUIRK2_PM_DOMAIN))
+	if (!(host->quirks2 & SDHCI_QUIRK2_PM_DOMAIN))
 		return 0;
 
 	present = mmc_gpio_get_cd(host->mmc);
@@ -3304,7 +3304,7 @@ int sdhci_runtime_suspend_host(struct sdhci_host *host)
 	unsigned long flags;
 	int ret = 0;
 
-	if (!(host->quirks & SDHCI_QUIRK2_PM_DOMAIN))
+	if (!(host->quirks2 & SDHCI_QUIRK2_PM_DOMAIN))
 		return 0;
 
 	/* Disable tuning since we are suspending */
@@ -3340,7 +3340,7 @@ int sdhci_runtime_resume_host(struct sdhci_host *host)
 	unsigned long flags;
 	int ret = 0, host_flags = host->flags;
 
-	if (!(host->quirks & SDHCI_QUIRK2_PM_DOMAIN))
+	if (!(host->quirks2 & SDHCI_QUIRK2_PM_DOMAIN))
 		return 0;
 
 	if (host->ops->set_clock)
