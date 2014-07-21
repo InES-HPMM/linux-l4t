@@ -3450,9 +3450,40 @@ static int soctherm_oc_irq_map(struct irq_domain *h, unsigned int virq,
 	return 0;
 }
 
+/**
+ * soctherm_irq_domain_xlate_twocell() - xlate for soctherm interrupts
+ * @d:      Interrupt request domain
+ * @intspec:    Array of u32s from DTs "interrupt" property
+ * @intsize:    Number of values inside the intspec array
+ * @out_hwirq:  HW IRQ value associated with this interrupt
+ * @out_type:   The IRQ SENSE type for this interrupt.
+ *
+ * This Device Tree IRQ specifier translation function will translate a
+ * specific "interrupt" as defined by 2 DT values where the cell values map
+ * the hwirq number + 1 and linux irq flags. Since the output is the hwirq
+ * number, this function will subtract 1 from the value listed in DT.
+ *
+ * Return: 0
+ */
+static int soctherm_irq_domain_xlate_twocell(struct irq_domain *d,
+	struct device_node *ctrlr, const u32 *intspec, unsigned int intsize,
+	irq_hw_number_t *out_hwirq, unsigned int *out_type)
+{
+	if (WARN_ON(intsize < 2))
+		return -EINVAL;
+
+	/*
+	 * The HW value is 1 index less than the DT IRQ values.
+	 * i.e. OC4 goes to HW index 3.
+	 */
+	*out_hwirq = intspec[0] - 1;
+	*out_type = intspec[1] & IRQ_TYPE_SENSE_MASK;
+	return 0;
+}
+
 static struct irq_domain_ops soctherm_oc_domain_ops = {
 	.map	= soctherm_oc_irq_map,
-	.xlate	= irq_domain_xlate_twocell,
+	.xlate	= soctherm_irq_domain_xlate_twocell,
 };
 
 /**
@@ -3460,6 +3491,7 @@ static struct irq_domain_ops soctherm_oc_domain_ops = {
  * current interrupts
  * @irq_base:	The interrupt request base number from platform data
  * @num_irqs:	The number of new interrupt requests
+ * @np:	The devicetree node for soctherm
  *
  * Sets the over current interrupt request chip data
  *
@@ -3467,9 +3499,10 @@ static struct irq_domain_ops soctherm_oc_domain_ops = {
  * -ENOMEM (out of memory), or irq_base if the function failed to
  * allocate the irqs
  */
-static int soctherm_oc_int_init(int irq_base, int num_irqs)
+static int soctherm_oc_int_init(int irq_base, int num_irqs,
+		struct device_node *np)
 {
-	if (irq_base <= 0 || !num_irqs) {
+	if (irq_base < 0 || !num_irqs) {
 		pr_info("%s(): OC interrupts are not enabled\n", __func__);
 		return 0;
 	}
@@ -3478,22 +3511,28 @@ static int soctherm_oc_int_init(int irq_base, int num_irqs)
 	soc_irq_cdata.irq_enable = 0;
 
 	soc_irq_cdata.irq_chip.name = "soc_therm_oc";
-	soc_irq_cdata.irq_chip.irq_bus_lock = soctherm_oc_irq_lock,
+	soc_irq_cdata.irq_chip.irq_bus_lock = soctherm_oc_irq_lock;
 	soc_irq_cdata.irq_chip.irq_bus_sync_unlock =
-		soctherm_oc_irq_sync_unlock,
-	soc_irq_cdata.irq_chip.irq_disable = soctherm_oc_irq_disable,
-	soc_irq_cdata.irq_chip.irq_enable = soctherm_oc_irq_enable,
-	soc_irq_cdata.irq_chip.irq_set_type = soctherm_oc_irq_set_type,
-	soc_irq_cdata.irq_chip.irq_set_wake = soctherm_oc_irq_set_wake,
+		soctherm_oc_irq_sync_unlock;
+	soc_irq_cdata.irq_chip.irq_disable = soctherm_oc_irq_disable;
+	soc_irq_cdata.irq_chip.irq_enable = soctherm_oc_irq_enable;
+	soc_irq_cdata.irq_chip.irq_set_type = soctherm_oc_irq_set_type;
+	soc_irq_cdata.irq_chip.irq_set_wake = soctherm_oc_irq_set_wake;
 
-	irq_base = irq_alloc_descs(irq_base, 0, num_irqs, 0);
-	if (irq_base < 0) {
-		pr_err("%s: Failed to allocate IRQs: %d\n", __func__, irq_base);
-		return irq_base;
+	if (irq_base) {
+		irq_base = irq_alloc_descs(irq_base, 0, num_irqs, 0);
+		if (irq_base < 0) {
+			pr_err("%s: Failed to allocate IRQs: %d\n", __func__, irq_base);
+			return irq_base;
+		}
+
+		soc_irq_cdata.domain = irq_domain_add_legacy(np, num_irqs,
+				irq_base, 0, &soctherm_oc_domain_ops, &soc_irq_cdata);
+	} else {
+		soc_irq_cdata.domain = irq_domain_add_linear(np, num_irqs,
+				&soctherm_oc_domain_ops, &soc_irq_cdata);
 	}
 
-	soc_irq_cdata.domain = irq_domain_add_legacy(NULL, num_irqs,
-			irq_base, 0, &soctherm_oc_domain_ops, &soc_irq_cdata);
 	if (!soc_irq_cdata.domain) {
 		pr_err("%s: Failed to create IRQ domain\n", __func__);
 		return -ENOMEM;
@@ -4346,7 +4385,7 @@ static int tegra_soctherm_probe(struct platform_device *pdev)
 	edp_irq_num = platform_get_irq(pdev, 1);
 
 	ret = soctherm_oc_int_init(plat_data.oc_irq_base,
-				   plat_data.num_oc_irqs);
+				   plat_data.num_oc_irqs, np);
 	if (ret < 0) {
 		dev_err(&pdev->dev,
 			"soctherm_oc_int_init failed: base %d  num %d\n",
