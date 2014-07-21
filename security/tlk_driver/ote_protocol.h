@@ -136,12 +136,10 @@ enum {
 
 	/* Trusted OS calls */
 	TE_SMC_REGISTER_REQ_BUF		= 0x32000002,
-	TE_SMC_REGISTER_IRQ_HANDLER	= 0x32000004,
-	TE_SMC_NS_IRQ_DONE		= 0x32000005,
 	TE_SMC_INIT_LOGGER		= 0x32000007,
-	TE_SMC_SS_REGISTER_HANDLER_LEGACY	= 0x32000008,
 	TE_SMC_SS_REQ_COMPLETE		= 0x32000009,
 	TE_SMC_SS_REGISTER_HANDLER	= 0x32000010,
+	TE_SMC_RESTART			= 0x3C000000,
 
 	/* SIP (SOC specific) calls.  */
 	TE_SMC_PROGRAM_VPR		= 0x82000003,
@@ -343,11 +341,7 @@ struct te_ss_op_legacy {
 	uint8_t		data[SS_OP_MAX_DATA_SIZE];
 };
 
-int te_handle_ss_ioctl_legacy(struct file *file, unsigned int ioctl_num,
-		unsigned long ioctl_param);
 int te_handle_ss_ioctl(struct file *file, unsigned int ioctl_num,
-		unsigned long ioctl_param);
-int te_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
 		unsigned long ioctl_param);
 void ote_print_logs(void);
 void tlk_ss_op(void);

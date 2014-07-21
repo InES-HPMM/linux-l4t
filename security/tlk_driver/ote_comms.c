@@ -293,12 +293,9 @@ uint32_t tlk_generic_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2)
 	retval = _tlk_generic_smc(arg0, arg1, arg2);
 	while (retval == TE_ERROR_PREEMPT_BY_IRQ ||
 	       retval == TE_ERROR_PREEMPT_BY_FS) {
-		if (retval == TE_ERROR_PREEMPT_BY_IRQ) {
-			retval = _tlk_generic_smc((60 << 24), 0, 0);
-		} else {
+		if (retval == TE_ERROR_PREEMPT_BY_FS)
 			tlk_ss_op();
-			retval = _tlk_generic_smc(TE_SMC_SS_REQ_COMPLETE, 0, 0);
-		}
+		retval = _tlk_generic_smc(TE_SMC_RESTART, 0, 0);
 	}
 
 	restore_cpumask();
@@ -316,8 +313,8 @@ uint32_t tlk_extended_smc(uintptr_t *regs)
 	switch_cpumask_to_cpu0();
 
 	retval = _tlk_extended_smc(regs);
-	while (retval == 0xFFFFFFFD)
-		retval = _tlk_generic_smc((60 << 24), 0, 0);
+	while (retval == TE_ERROR_PREEMPT_BY_IRQ)
+		retval = _tlk_generic_smc(TE_SMC_RESTART, 0, 0);
 
 	restore_cpumask();
 
@@ -383,8 +380,8 @@ static long tlk_generic_smc_on_cpu0(void *args)
 
 	work = (struct tlk_smc_work_args *)args;
 	retval = _tlk_generic_smc(work->arg0, work->arg1, work->arg2);
-	while (retval == 0xFFFFFFFD)
-		retval = _tlk_generic_smc((60 << 24), 0, 0);
+	while (retval == TE_ERROR_PREEMPT_BY_IRQ)
+		retval = _tlk_generic_smc(TE_SMC_RESTART, 0, 0);
 	return retval;
 }
 
@@ -625,12 +622,3 @@ void te_launch_operation_compat(struct te_launchop_compat *cmd,
 		te_update_persist_mem_buffers(request->session_id, context);
 	}
 }
-
-static int __init tlk_register_irq_handler(void)
-{
-	tlk_generic_smc(TE_SMC_REGISTER_IRQ_HANDLER,
-		(uintptr_t)tlk_irq_handler, 0);
-	return 0;
-}
-
-arch_initcall(tlk_register_irq_handler);

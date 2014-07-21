@@ -16,13 +16,6 @@
 
 #ifdef CONFIG_ARM64
 
-ENTRY(tlk_irq_handler)
-	mov	x0, #0x5
-	movk	x0, #0x3200, lsl #16	// TE_SMC_NS_IRQ_DONE
-	smc	#0
-	ret
-ENDPROC(tlk_irq_handler)
-
 /* uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2) */
 ENTRY(_tlk_generic_smc)
 	smc	#0
@@ -49,14 +42,6 @@ ENTRY(_tlk_extended_smc)
 ENDPROC(_tlk_extended_smc)
 
 #else
-
-ENTRY(tlk_irq_handler)
-	movw	r0, #0x5
-	movt	r0, #0x3200	@ TE_SMC_NS_IRQ_DONE
-	mov	r1, #0
-	mov	r2, #0
-	smc	#0
-ENDPROC(tlk_irq_handler)
 
 ENTRY(_tlk_generic_smc)
 	smc	#0
