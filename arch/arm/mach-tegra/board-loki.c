@@ -248,10 +248,12 @@ static void __init loki_uart_init(void)
 		if (debug_port_id < 0)
 			return;
 
-		platform_device_register(uart_console_debug_device);
+		if (!tegra_is_port_available_from_dt(debug_port_id))
+			platform_device_register(uart_console_debug_device);
 	} else {
 		tegra_uartd_device.dev.platform_data = &loki_uartd_pdata;
-		platform_device_register(&tegra_uartd_device);
+		if (!tegra_is_port_available_from_dt(3))
+			platform_device_register(&tegra_uartd_device);
 	}
 
 }

@@ -400,11 +400,13 @@ static void __init ardbeg_uart_init(void)
 #ifdef CONFIG_TEGRA_FIQ_DEBUGGER
 		tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 #else
-		platform_device_register(uart_console_debug_device);
+		if (!tegra_is_port_available_from_dt(debug_port_id))
+			platform_device_register(uart_console_debug_device);
 #endif
 	} else {
 		tegra_uartd_device.dev.platform_data = &ardbeg_uartd_pdata;
-		platform_device_register(&tegra_uartd_device);
+		if (!tegra_is_port_available_from_dt(3))
+			platform_device_register(&tegra_uartd_device);
 	}
 }
 
@@ -421,11 +423,13 @@ static void __init e2141_uart_init(void)
 		tegra_serial_debug_init(TEGRA_UARTA_BASE,
 				INT_WDT_CPU, NULL, -1, -1);
 #else
-		platform_device_register(uart_console_debug_device);
+		if (!tegra_is_port_available_from_dt(debug_port_id))
+			platform_device_register(uart_console_debug_device);
 #endif
 	} else {
 		tegra_uarta_device.dev.platform_data = &ardbeg_uarta_pdata;
-		platform_device_register(&tegra_uarta_device);
+		if (!tegra_is_port_available_from_dt(0))
+			platform_device_register(&tegra_uarta_device);
 	}
 }
 

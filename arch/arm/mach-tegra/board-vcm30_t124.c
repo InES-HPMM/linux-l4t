@@ -421,11 +421,12 @@ static void __init vcm30_t124_uart_init(void)
 		debug_port_id = uart_console_debug_init(2);
 		if (debug_port_id < 0)
 			return;
-
-		platform_device_register(uart_console_debug_device);
+		if (!tegra_is_port_available_from_dt(debug_port_id))
+			platform_device_register(uart_console_debug_device);
 	} else {
 		tegra_uartc_device.dev.platform_data = &vcm30_t124_uartc_pdata;
-		platform_device_register(&tegra_uartc_device);
+		if (!tegra_is_port_available_from_dt(2))
+			platform_device_register(&tegra_uartc_device);
 	}
 
 }

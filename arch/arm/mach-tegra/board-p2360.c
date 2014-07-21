@@ -325,10 +325,12 @@ static void __init p2360_uart_init(void)
 		if (debug_port_id < 0)
 			return;
 
-		platform_device_register(uart_console_debug_device);
+		if (!tegra_is_port_available_from_dt(debug_port_id))
+			platform_device_register(uart_console_debug_device);
 	} else {
 		tegra_uartb_device.dev.platform_data = &p2360_uartb_pdata;
-		platform_device_register(&tegra_uartb_device);
+		if (!tegra_is_port_available_from_dt(1))
+			platform_device_register(&tegra_uartb_device);
 	}
 }
 
