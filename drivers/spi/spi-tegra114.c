@@ -100,8 +100,8 @@
 		(reg = (((val) & 0x1) << ((cs) * 8 + 5)) |	\
 			((reg) & ~(1 << ((cs) * 8 + 5))))
 #define SPI_SET_CYCLES_BETWEEN_PACKETS(reg, cs, val)		\
-		(reg = (((val) & 0xF) << ((cs) * 8)) |		\
-			((reg) & ~(0xF << ((cs) * 8))))
+		(reg = (((val) & 0x1F) << ((cs) * 8)) |		\
+			((reg) & ~(0x1F << ((cs) * 8))))
 
 #define SPI_TRANS_STATUS			0x010
 #define SPI_BLK_CNT(val)			(((val) >> 0) & 0xFFFF)
@@ -859,6 +859,19 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 			command1 &= ~SPI_CS_SS_VAL;
 		}
 
+		if (cdata && cdata->cs_inactive_cycles) {
+			u32 spi_cs_timing2 = 0;
+			u32 inactive_cycles;
+
+			SPI_SET_CS_ACTIVE_BETWEEN_PACKETS(spi_cs_timing2,
+						spi->chip_select,
+						0);
+			inactive_cycles = min(cdata->cs_inactive_cycles, 32);
+			SPI_SET_CYCLES_BETWEEN_PACKETS(spi_cs_timing2,
+						spi->chip_select,
+						inactive_cycles);
+			tegra_spi_writel(tspi, spi_cs_timing2, SPI_CS_TIMING2);
+		}
 		if (cdata) {
 			u32 command2_reg;
 			u32 rx_tap_delay;
@@ -974,6 +987,8 @@ static struct tegra_spi_device_controller_data
 			&cdata->rx_clk_tap_delay);
 	of_property_read_u32(data_np, "nvidia,tx-clk-tap-delay",
 			&cdata->tx_clk_tap_delay);
+	of_property_read_u32(data_np, "nvidia,cs-inactive-cycles",
+			&cdata->cs_inactive_cycles);
 
 	of_node_put(data_np);
 	return cdata;

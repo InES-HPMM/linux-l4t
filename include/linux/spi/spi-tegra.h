@@ -41,6 +41,7 @@ struct tegra_spi_device_controller_data {
 	int cs_hold_clk_count;
 	int rx_clk_tap_delay;
 	int tx_clk_tap_delay;
+	int cs_inactive_cycles;
 };
 
 typedef int (*spi_callback)(void *client_data);
