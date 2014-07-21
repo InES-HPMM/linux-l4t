@@ -22,6 +22,8 @@ spi-client device controller properties:
   with this tap value.
 - nvidia,cs-setup-clk-count: CS setup timing parameter.
 - nvidia,cs-hold-clk-count: CS hold timing parameter.
+- nvidia,cs-inactive-cycles: Cycles to be inactive between two packets.
+  CS Inactive between packets is disabled if value of this is zero.
 
 Example:
 spi@7000d600 {
