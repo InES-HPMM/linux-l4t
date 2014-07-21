@@ -77,6 +77,8 @@
 #define SPI_M_S					(1 << 30)
 #define SPI_PIO					(1 << 31)
 
+#define SPI_CS_TIMING2				0x00C
+
 #define SPI_TRANS_STATUS			0x010
 #define SPI_BLK_CNT(val)			(((val) >> 0) & 0xFFFF)
 #define SPI_SLV_IDLE_COUNT(val)			(((val) >> 16) & 0xFF)
@@ -153,6 +155,7 @@
 
 struct tegra_spi_chip_data {
 	bool intr_mask_reg;
+	bool mask_cs_inactive_intr;
 };
 
 struct tegra_spi_data {
@@ -1109,6 +1112,19 @@ exit:
 	return ret;
 }
 
+static void reset_controller(struct tegra_spi_data *tspi)
+{
+	tegra_periph_reset_assert(tspi->clk);
+	udelay(2);
+	tegra_periph_reset_deassert(tspi->clk);
+	/* restore default value */
+	tegra_spi_writel(tspi, tspi->def_command1_reg, SPI_COMMAND1);
+	/* set CS inactive b/w packets to mask CS_INACTIVE interrupts */
+	if (tspi->chip_data->mask_cs_inactive_intr) {
+		tegra_spi_writel(tspi, 0, SPI_CS_TIMING2);
+	}
+}
+
 static irqreturn_t handle_cpu_based_xfer(struct tegra_spi_data *tspi)
 {
 	struct spi_transfer *t = tspi->curr_xfer;
@@ -1122,9 +1138,7 @@ static irqreturn_t handle_cpu_based_xfer(struct tegra_spi_data *tspi)
 			tspi->status_reg);
 		dev_err(tspi->dev, "CpuXfer 0x%08x:0x%08x\n",
 			tspi->command1_reg, tspi->dma_control_reg);
-		tegra_periph_reset_assert(tspi->clk);
-		udelay(2);
-		tegra_periph_reset_deassert(tspi->clk);
+		reset_controller(tspi);
 		complete(&tspi->xfer_completion);
 		goto exit;
 	}
@@ -1243,9 +1257,8 @@ static irqreturn_t handle_dma_based_xfer(struct tegra_spi_data *tspi)
 			tspi->status_reg);
 		dev_err(tspi->dev, "DmaXfer 0x%08x:0x%08x\n",
 			tspi->command1_reg, tspi->dma_control_reg);
-		tegra_periph_reset_assert(tspi->clk);
-		udelay(2);
-		tegra_periph_reset_deassert(tspi->clk);
+
+		reset_controller(tspi);
 		complete(&tspi->xfer_completion);
 		spin_unlock_irqrestore(&tspi->lock, flags);
 		return IRQ_HANDLED;
@@ -1305,6 +1318,14 @@ static irqreturn_t tegra_spi_isr(int irq, void *context_data)
 	if (tspi->cur_direction & DATA_DIR_RX)
 		tspi->rx_status = tspi->status_reg &
 					(SPI_RX_FIFO_OVF | SPI_RX_FIFO_UNF);
+	/* cs inactive intr while it is masked, mark as error */
+	if (tspi->chip_data->mask_cs_inactive_intr &&
+			(tspi->status_reg & SPI_CS_INACTIVE)) {
+		dev_err(tspi->dev, "cs inactive intr, status_reg = 0x%x\n",
+				tspi->status_reg);
+		tspi->tx_status = SPI_TX_FIFO_UNF;
+		tspi->rx_status = SPI_RX_FIFO_OVF;
+	}
 
 	if (!(tspi->cur_direction & DATA_DIR_TX) &&
 			!(tspi->cur_direction & DATA_DIR_RX))
@@ -1346,10 +1367,12 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 
 static struct tegra_spi_chip_data tegra114_spi_chip_data = {
 	.intr_mask_reg = false,
+	.mask_cs_inactive_intr = true, /* mask cs intr for T114/T124 */
 };
 
 static struct tegra_spi_chip_data tegra210_spi_chip_data = {
 	.intr_mask_reg = true,
+	.mask_cs_inactive_intr = false,
 };
 
 static struct of_device_id tegra_spi_of_match[] = {
@@ -1508,6 +1531,9 @@ static int tegra_spi_probe(struct platform_device *pdev)
 		SPI_CS_POL_INACTIVE_3 | SPI_CS_SS_VAL | SPI_CONTROL_MODE_1;
 
 	tegra_spi_writel(tspi, tspi->def_command1_reg, SPI_COMMAND1);
+	/* set CS inactive b/w packets to mask CS_INACTIVE interrupts */
+	if (tspi->chip_data->mask_cs_inactive_intr)
+		tegra_spi_writel(tspi, 0, SPI_CS_TIMING2);
 	pm_runtime_put(&pdev->dev);
 
 	master->dev.of_node = pdev->dev.of_node;
