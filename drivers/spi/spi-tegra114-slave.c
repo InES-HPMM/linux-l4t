@@ -823,6 +823,10 @@ static int tegra_spi_validate_request(struct spi_device *spi,
 			return -EINVAL;
 		}
 	}
+	/* Check that the all words are available */
+	if (t->len % tspi->bytes_per_word != 0)
+		return -EINVAL;
+
 	return 0;
 }
 
