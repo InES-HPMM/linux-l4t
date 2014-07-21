@@ -39,4 +39,5 @@ void tegra_add_tgpu_trips(struct thermal_trip_info *trips, int *num_trips);
 void tegra_add_vc_trips(struct thermal_trip_info *trips, int *num_trips);
 void tegra_add_core_vmax_trips(struct thermal_trip_info *trips, int *num_trips);
 struct pinctrl_dev *tegra_get_pinctrl_device_handle(void);
+bool tegra_is_port_available_from_dt(int uart_port);
 #endif

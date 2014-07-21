@@ -20,6 +20,7 @@
  */
 
 #include <linux/clk.h>
+#include <linux/of.h>
 #include <linux/serial_8250.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-soc.h>
@@ -239,4 +240,37 @@ struct pinctrl_dev *tegra_get_pinctrl_device_handle(void)
 		pr_err("%s(): ERROR: No Tegra pincontrol driver\n", __func__);
 
 	return pctl_dev;
+}
+
+static const char *uart_dt_nodes[] = {
+	"/serial@70006000",
+	"/serial@70006040",
+	"/serial@70006200",
+	"/serial@70006300",
+};
+
+bool tegra_is_port_available_from_dt(int uart_port)
+{
+	struct device_node *np;
+
+	if ((uart_port < 0) || (uart_port > 3)) {
+		pr_err("%s(): ERROR: INvalid uart port %d\n",
+			__func__, uart_port);
+		return false;
+	}
+
+	np = of_find_node_by_path(uart_dt_nodes[uart_port]);
+	if (!np) {
+		pr_err("%s(): ERROR: node %s not found\n",
+			__func__, uart_dt_nodes[uart_port]);
+		return false;
+	}
+	if (of_device_is_available(np)) {
+		pr_info("%s(): Node %s enabled from DT\n",
+			__func__, uart_dt_nodes[uart_port]);
+		return true;
+	}
+	pr_info("%s(): Node %s disabled from DT\n",
+			__func__, uart_dt_nodes[uart_port]);
+	return false;
 }
