@@ -2143,6 +2143,7 @@ static int tegra21_blink_clk_enable(struct clk *c)
 
 	val = pmc_readl(PMC_CTRL);
 	pmc_writel(val | PMC_CTRL_BLINK_ENB, PMC_CTRL);
+	pmc_readl(PMC_CTRL);
 
 	return 0;
 }
@@ -2156,6 +2157,7 @@ static void tegra21_blink_clk_disable(struct clk *c)
 
 	val = pmc_readl(PMC_DPD_PADS_ORIDE);
 	pmc_writel(val & ~PMC_DPD_PADS_ORIDE_BLINK_ENB, PMC_DPD_PADS_ORIDE);
+	pmc_readl(PMC_DPD_PADS_ORIDE);
 }
 
 static int tegra21_blink_clk_set_rate(struct clk *c, unsigned long rate)
@@ -2179,6 +2181,7 @@ static int tegra21_blink_clk_set_rate(struct clk *c, unsigned long rate)
 		val |= PMC_BLINK_TIMER_ENB;
 		pmc_writel(val, c->reg);
 	}
+	pmc_readl(c->reg);
 
 	return 0;
 }
@@ -4890,6 +4893,7 @@ static int tegra21_clk_out_enable(struct clk *c)
 	val = pmc_readl(c->reg);
 	val |= (0x1 << c->u.periph.clk_num);
 	pmc_writel(val, c->reg);
+	pmc_readl(c->reg);
 	spin_unlock_irqrestore(&clk_out_lock, flags);
 
 	return 0;
@@ -4906,6 +4910,7 @@ static void tegra21_clk_out_disable(struct clk *c)
 	val = pmc_readl(c->reg);
 	val &= ~(0x1 << c->u.periph.clk_num);
 	pmc_writel(val, c->reg);
+	pmc_readl(c->reg);
 	spin_unlock_irqrestore(&clk_out_lock, flags);
 }
 
@@ -4927,6 +4932,7 @@ static int tegra21_clk_out_set_parent(struct clk *c, struct clk *p)
 			val &= ~periph_clk_source_mask(c);
 			val |= (sel->value << periph_clk_source_shift(c));
 			pmc_writel(val, c->reg);
+			pmc_readl(c->reg);
 			spin_unlock_irqrestore(&clk_out_lock, flags);
 
 			if (c->refcnt && c->parent)
