@@ -505,7 +505,7 @@
 						};
 					};
 
-					ldo6 {
+					ldo6_reg: ldo6 {
 						regulator-name = "vdd-lcd-hv";
 						regulator-min-microvolt = <3300000>;
 						regulator-max-microvolt = <3300000>;

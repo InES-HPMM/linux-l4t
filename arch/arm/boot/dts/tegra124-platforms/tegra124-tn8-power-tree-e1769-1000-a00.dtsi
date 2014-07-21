@@ -1,7 +1,46 @@
+/*
+ * arch/arm/boot/dts/tegra124-platforms/tegra124-tn8-power-tree-e1769-1000-a00.dtsi
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #include "tegra124-tn8-pmic-e1769-1000-a00.dtsi"
 #include "tegra124-tn8-fixed-e1769-1000-a00.dtsi"
 
 / {
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			avdd_dsi_csi-supply = <&ldo5_reg>;
+			avdd_lcd-supply = <&ldo6_reg>;
+			dvdd_lcd-supply = <&vdd_lcd_1v8_s>;
+			vdd_lcd_bl_en-supply = <&en_lcd_bl>;
+			vdd_lcd_bl-supply = <&ldo5_reg>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			avdd_hdmi-supply = <&palmas_ldoln>;
+			avdd_hdmi_pll-supply = <&palmas_ldo1>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+		};
+		vi {
+			avdd_dsi_csi-supply = <&ldo5_reg>;
+		};
+	};
 
 	i2c@7000c400 {
 		pca9546@71 {

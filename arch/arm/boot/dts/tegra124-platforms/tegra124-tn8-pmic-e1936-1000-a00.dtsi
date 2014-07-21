@@ -379,7 +379,7 @@
 						};
 					};
 
-					ldo2 {
+					ldo2_reg: ldo2 {
 						regulator-name = "avdd-lcd";
 						regulator-min-microvolt = <3300000>;
 						regulator-max-microvolt = <3300000>;

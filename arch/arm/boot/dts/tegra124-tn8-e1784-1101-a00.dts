@@ -86,9 +86,6 @@
 			nvidia,emc-clk-rate = <300000000>;
 			nvidia,fb-bpp = <32>; /* bits per pixel */
 			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
-			avdd_hdmi-supply = <&ldoln_reg>;
-			avdd_hdmi_pll-supply = <&vdd_hdmi_n5>;
-			vdd_hdmi_5v0-supply = <&vddio_hdmi_5v0>;
 		};
 		dsi {
 			nvidia,dsi-controller-vs = <DSI_VS_1>;

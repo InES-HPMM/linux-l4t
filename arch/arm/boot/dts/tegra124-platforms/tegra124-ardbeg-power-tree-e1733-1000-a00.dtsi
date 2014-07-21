@@ -1,3 +1,23 @@
+/*
+ * arch/arm/boot/dts/tegra124-platforms/tegra124-ardbeg-power-tree-e1733-1000-a00.dtsi
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #include "tegra124-platforms/tegra124-ardbeg-pmic-e1733-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-ardbeg-fixed-e1733-1000-a00.dtsi"
 
@@ -10,6 +30,7 @@
 			dvdd_lcd-supply = <&tca6408_p6>;
 			vdd_lcd_bl-supply = <&as3722_ldo2>;
 			vdd_lcd_bl_en-supply = <&lcd_bl_en>;
+			vdd_lcd_1v8_s-supply = <&tca6408_p6>;
 		};
 
 		/* tegradc.1 */
@@ -17,8 +38,6 @@
 			avdd_hdmi-supply = <&as3722_sd4>;
 			avdd_hdmi_pll-supply = <&as3722_sd4>;
 			vdd_hdmi_5v0-supply = <&vdd_hdmi_5v0>;
-			avdd_dsi_csi-supply = <&as3722_ldo2>;
-			vddio_hv-supply = <&as3722_gpio2>;
 		};
 		vi {
 			avdd_dsi_csi-supply = <&as3722_ldo2>;
