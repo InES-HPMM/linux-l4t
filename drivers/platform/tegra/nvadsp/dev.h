@@ -55,4 +55,9 @@ struct nvadsp_drv_data {
 status_t nvadsp_mbox_init(struct platform_device *pdev);
 status_t nvadsp_aram_init(struct platform_device *pdev);
 
+#ifdef CONFIG_TEGRA_ADSP_DFS
+unsigned long adsp_cpu_set_rate(unsigned long freq);
+int adsp_dfs_core_init(void);
+#endif
+
 #endif /* __TEGRA_NVADSP_DEV_H */

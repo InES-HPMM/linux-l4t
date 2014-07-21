@@ -24,3 +24,12 @@ config TEGRA_NVADSP_ON_SMMU
 	default y
 	help
 	  Use SMMU to relocate ADSP OS.
+
+config TEGRA_ADSP_DFS
+	bool "Enable ADSP DFS"
+	depends on ARCH_TEGRA_APE
+	default y
+	help
+	  Enable ADSP dynamic frequency scaling.
+
+	  If unsure, say N

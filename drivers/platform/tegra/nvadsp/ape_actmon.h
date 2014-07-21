@@ -67,7 +67,7 @@ struct actmon_dev {
 
 	spinlock_t	lock;
 
-	struct notifier_block	rate_change_nb;
 };
 int ape_actmon_init(struct platform_device *pdev);
+void actmon_rate_change(unsigned long freq);
 #endif

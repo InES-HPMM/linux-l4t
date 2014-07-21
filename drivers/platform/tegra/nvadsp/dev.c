@@ -151,6 +151,11 @@ static int nvadsp_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
+#ifdef CONFIG_TEGRA_ADSP_DFS
+	ret = adsp_dfs_core_init();
+	if (ret)
+		goto err;
+#endif
 	ret = nvadsp_app_module_probe(pdev);
 	if (ret)
 		goto err;

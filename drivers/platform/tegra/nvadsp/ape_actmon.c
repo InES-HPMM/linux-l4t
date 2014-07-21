@@ -72,7 +72,7 @@
  * Here SAMPLE_PERIOD is set to usec mode.
  * SAMPLE_PERIOD = 255 * 256
  */
-#define ACTMON_DEFAULT_SAMPLING_PERIOD		10
+#define ACTMON_DEFAULT_SAMPLING_PERIOD		255
 static unsigned long actmon_sampling_period;
 
 static struct clk *actmon_clk;
@@ -242,30 +242,32 @@ irqreturn_t ape_actmon_dev_fn(int irq, void *dev_id)
 
 	spin_unlock_irqrestore(&dev->lock, flags);
 
-	pr_info("%s.%s(kHz): avg: %lu,  boost: %lu, target: %lu, current: %lu\n",
-	 dev->dev_id, dev->con_id,
-	dev->avg_actv_freq, dev->boost_freq,
-	dev->target_freq, dev->cur_freq);
+	pr_info("%s(kHz): avg: %lu,  boost: %lu, target: %lu, current: %lu\n",
+	dev->clk_name, dev->avg_actv_freq, dev->boost_freq, dev->target_freq,
+	dev->cur_freq);
+
+#if defined(CONFIG_TEGRA_ADSP_DFS)
+	adsp_cpu_set_rate(freq);
+#endif
 
 	return IRQ_HANDLED;
 }
 
-static int actmon_rate_notify_cb(
-	struct notifier_block *nb, unsigned long rate, void *v)
+void actmon_rate_change(unsigned long freq)
 {
 	unsigned long flags;
-	struct actmon_dev *dev = container_of(
-					 nb, struct actmon_dev, rate_change_nb);
+	struct actmon_dev *dev = container_of(&freq, struct actmon_dev,
+		cur_freq);
+
 	spin_lock_irqsave(&dev->lock, flags);
 
-	dev->cur_freq = rate / 1000;
+	dev->cur_freq = freq;
 	if (dev->type == ACTMON_FREQ_SAMPLER) {
 			actmon_dev_wmark_set(dev);
 			actmon_wmb();
 	}
 
 	spin_unlock_irqrestore(&dev->lock, flags);
-	return NOTIFY_OK;
 };
 
 /* Activity monitor configuration and control */
@@ -359,7 +361,7 @@ static int __init actmon_dev_init(struct actmon_dev *dev)
 
 	spin_lock_init(&dev->lock);
 
-	dev->clk = tegra_get_clock_by_name(dev->clk_name);
+	dev->clk = clk_get_sys(NULL, dev->clk_name);
 	if (IS_ERR(dev->clk)) {
 		pr_err("Failed to find %s.%s clock\n",
 			dev->dev_id, dev->con_id);
@@ -371,16 +373,6 @@ static int __init actmon_dev_init(struct actmon_dev *dev)
 	freq = clk_get_rate(dev->clk) / 1000;
 	actmon_dev_configure(dev, freq);
 
-	if (dev->rate_change_nb.notifier_call) {
-		ret = tegra_register_clk_rate_notifier(dev->clk,
-			&dev->rate_change_nb);
-		if (ret) {
-			pr_err("Failed to register rate change notifier for %s\n",
-			dev->clk_name);
-			return ret;
-		}
-	}
-
 	dev->state = ACTMON_OFF;
 	actmon_dev_enable(dev);
 	clk_prepare_enable(dev->clk);
@@ -391,8 +383,6 @@ static int __init actmon_dev_init(struct actmon_dev *dev)
 	if (ret) {
 		pr_err("Failed irq %d request for %s.%s\n",
 		virq, dev->dev_id, dev->con_id);
-		tegra_unregister_clk_rate_notifier(dev->clk,
-			&dev->rate_change_nb);
 		return ret;
 	}
 
@@ -421,10 +411,6 @@ static struct actmon_dev actmon_dev_adsp = {
 
 	.type = ACTMON_FREQ_SAMPLER,
 	.state = ACTMON_UNINITIALIZED,
-
-	.rate_change_nb = {
-		.notifier_call = actmon_rate_notify_cb,
-	},
 };
 
 static struct actmon_dev *actmon_devices[] = {
