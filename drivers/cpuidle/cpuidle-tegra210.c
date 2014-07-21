@@ -100,6 +100,7 @@ static int tegra210_enter_c7(struct cpuidle_device *dev,
 {
 	unsigned long arg;
 	struct psci_power_state ps = {
+		.id = TEGRA210_CPUIDLE_C7,
 		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
 		.affinity_level = 0,
 	};
@@ -120,7 +121,7 @@ static int tegra210_enter_cc_state(struct cpuidle_device *dev,
 
 	/* Assume C7 config by default */
 	struct psci_power_state ps = {
-		.id = 0,
+		.id = TEGRA210_CPUIDLE_C7,
 		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
 		.affinity_level = 0,
 	};
@@ -221,7 +222,7 @@ static int tegra210_enter_sc7(struct cpuidle_device *dev,
 		 * Change to CCx config.
 		 */
 		ps.id = TEGRA210_CPUIDLE_SC7;
-		ps.affinity_level = 1;
+		ps.affinity_level = 2;
 
 		tegra_rtc_set_trigger(sleep_time);
 
