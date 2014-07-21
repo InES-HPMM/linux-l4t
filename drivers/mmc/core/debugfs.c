@@ -282,10 +282,14 @@ static int mmc_set_bus_speed_mode(struct mmc_card *card, u32 speed)
 	mmc_set_timing(card->host, card->host->ios.timing);
 	if (card->host->ios.timing == MMC_TIMING_UHS_DDR50) {
 		mmc_card_set_ddr_mode(card);
-		card->state &= ~MMC_STATE_HIGHSPEED_200;
+		card->state &= ~(MMC_STATE_HIGHSPEED_200
+				 | MMC_STATE_HIGHSPEED_400
+				 | MMC_STATE_HIGHSPEED);
 	} else if (card->host->ios.timing == MMC_TIMING_MMC_HS200) {
 		mmc_card_set_hs200(card);
-		card->state &= ~MMC_STATE_HIGHSPEED_DDR;
+		card->state &= ~(MMC_STATE_HIGHSPEED_DDR
+				 | MMC_STATE_HIGHSPEED_400
+				 | MMC_STATE_HIGHSPEED);
 	}
 	/* Based on bus width selected for card, set host side bus width */
 	switch (bus_width) {
