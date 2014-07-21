@@ -4129,14 +4129,16 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	of_property_read_u32(np, "id", &plat->id);
 	of_property_read_u32(np, "dqs-trim-delay", &plat->dqs_trim_delay);
 
-	of_property_read_u32(np, "uhs_mask", &plat->uhs_mask);
-	of_property_read_u32(np, "calib_3v3_offsets", &plat->calib_3v3_offsets);
-	of_property_read_u32(np, "calib_1v8_offsets", &plat->calib_1v8_offsets);
 	of_property_read_u32(np, "compad-vref-3v3", &plat->compad_vref_3v3);
 	of_property_read_u32(np, "compad-vref-1v8", &plat->compad_vref_1v8);
+	of_property_read_u32(np, "uhs-mask", &plat->uhs_mask);
+	of_property_read_u32(np, "calib-3v3-offsets", &plat->calib_3v3_offsets);
+	of_property_read_u32(np, "calib-1v8-offsets", &plat->calib_1v8_offsets);
 
-	if (of_find_property(np, "built-in", NULL))
-		plat->mmc_data.built_in = 1;
+	plat->mmc_data.built_in = of_property_read_bool(np, "built-in");
+	plat->disable_clock_gate = of_property_read_bool(np,
+		"disable-clock-gate");
+	of_property_read_u8(np, "default-drv-type", &plat->default_drv_type);
 
 	if (!of_property_read_u32(np, "mmc-ocr-mask", &val)) {
 		if (val == 0)
@@ -4270,9 +4272,13 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	plat = pdev->dev.platform_data;
 
-	if (plat == NULL)
+	if (plat == NULL) {
+		pr_err("%s Parsing DT data\n", mmc_hostname(host->mmc));
 		plat = sdhci_tegra_dt_parse_pdata(pdev);
-
+	} else {
+		pr_err("%s using board files instead of DT\n",
+			mmc_hostname(host->mmc));
+	}
 	if (plat == NULL) {
 		dev_err(mmc_dev(host->mmc), "missing platform data\n");
 		rc = -ENXIO;
