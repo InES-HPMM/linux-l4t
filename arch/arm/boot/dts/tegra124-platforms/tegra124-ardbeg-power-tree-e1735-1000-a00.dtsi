@@ -31,6 +31,7 @@
 			vdd_lcd_bl-supply = <&palams_ldo4>;
 			vdd_lcd_bl_en-supply = <&lcd_bl_en>;
 			vdd_lcd_1v8_s-supply = <&ti913_gpio7>;
+			avdd_3v3_dp-supply = <&avdd_3v3_dp>;
 		};
 
 		/* tegradc.1 */
