@@ -84,6 +84,14 @@
 		cpu_suspend = <0xC4000001>;
 	};
 
+	arm-pmu {
+		compatible = "arm,armv8-pmuv3";
+		interrupts = <0 144 0x4>,
+			     <0 145 0x4>,
+			     <0 146 0x4>,
+			     <0 147 0x4>;
+	};
+
 	smmu: iommu {
 		compatible = "nvidia,tegra210-smmu";
 		reg = <0x0 0x70019000 0x0 0x1000
