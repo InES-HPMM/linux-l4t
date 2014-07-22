@@ -1,0 +1,23 @@
+#include "tegra124-loki-pmic-e2545-0000-common.dtsi"
+
+/ {
+	i2c@7000c000 {
+		mpu6050@68 {
+			compatible = "invensense,mpu6xxx";
+			reg = <0x68>;
+			interrupt-parent = <&gpio>;
+			interrupts = <138 0x01>;
+			invensense,orientation = [ff 00 00 00 01 00 00 00 ff];
+			vdd-supply = <&palmas_ldo6>;
+			vlogic-supply = <&palmas_smps8>;
+		};
+
+		ak8975@0c {
+			compatible = "ak,ak8975";
+			reg = <0x0c>;
+			orientation = [01 00 00 00 ff 00 00 00 ff];
+			vdd-supply = <&palmas_ldo6>;
+			vid-supply = <&palmas_smps8>;
+		};
+	};
+};

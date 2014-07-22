@@ -5,6 +5,7 @@
 #include <tegra132-platforms/tegra132-loki-pinmux.dtsi>
 #include <tegra132-platforms/tegra132-loki-gpio-default.dtsi>
 #include <tegra124-platforms/tegra124-loki-camera-a00.dtsi>
+#include <tegra124-platforms/tegra124-loki-sensor.dtsi>
 
 / {
 	model = "t132loki";
@@ -94,26 +95,6 @@
 
 				};
 			};
-		};
-
-		mpu6050@68 {
-			compatible = "invensense,mpu6050";
-			reg = <0x68>;
-			interrupt-parent = <&gpio>;
-			interrupts = <138 0x01>;
-			invensense,int_config = <0x10>;
-			invensense,level_shifter = <0>;
-			invensense,orientation = [ff 00 00 00 01 00 00 00 ff];
-			invensense,sec_slave_type = <0>;
-			invensense,key = [4e cc 7e eb f6 1e 35 22
-					  00 34 0d 65 32 e9 94 89];
-		};
-
-		ak8975@0c {
-			compatible = "ak,ak8975";
-			reg = <0x0c>;
-			orientation = [01 00 00 00 ff 00 00 00 ff];
-			config = "mpu";
 		};
 
 		battery-gauge@55 {
