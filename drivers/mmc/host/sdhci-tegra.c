@@ -166,6 +166,7 @@
 #define NVQUIRK_ENABLE_HS400			BIT(26)
 /* Enable AUTO CMD23 */
 #define NVQUIRK_ENABLE_AUTO_CMD23		BIT(27)
+#define NVQUIRK_SET_SDMEMCOMP_VREF_SEL		BIT(28)
 
 /* Common subset of quirks for Tegra3 and later sdmmc controllers */
 #define TEGRA_SDHCI_NVQUIRKS	(NVQUIRK_ENABLE_PADPIPE_CLKEN | \
@@ -1572,7 +1573,14 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 	val &= ~SDMMC_SDMEMCOMPPADCTRL_VREF_SEL_MASK;
 	if (soc_data->nvquirks & NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD)
 		val |= SDMMC_SDMEMCOMPPADCTRL_PAD_E_INPUT_OR_E_PWRD_MASK;
-	val |= 0x7;
+	if (soc_data->nvquirks & NVQUIRK_SET_SDMEMCOMP_VREF_SEL) {
+		if (signal_voltage == MMC_SIGNAL_VOLTAGE_330)
+			val |= tegra_host->plat->compad_vref_3v3;
+		else if (signal_voltage == MMC_SIGNAL_VOLTAGE_180)
+			val |= tegra_host->plat->compad_vref_1v8;
+	} else {
+		val |= 0x7;
+	}
 	sdhci_writel(sdhci, val, SDMMC_SDMEMCOMPPADCTRL);
 
 	/* Enable Auto Calibration*/
@@ -4073,6 +4081,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 		    NVQUIRK_ENABLE_AUTO_CMD23 |
 		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
 		    NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD |
+		    NVQUIRK_SET_SDMEMCOMP_VREF_SEL |
 		    NVQUIRK_HIGH_FREQ_TAP_PROCEDURE |
 		    NVQUIRK_SET_CALIBRATION_OFFSETS |
 		    NVQUIRK_DISABLE_TIMER_BASED_TUNING |
@@ -4123,6 +4132,8 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	of_property_read_u32(np, "uhs_mask", &plat->uhs_mask);
 	of_property_read_u32(np, "calib_3v3_offsets", &plat->calib_3v3_offsets);
 	of_property_read_u32(np, "calib_1v8_offsets", &plat->calib_1v8_offsets);
+	of_property_read_u32(np, "compad-vref-3v3", &plat->compad_vref_3v3);
+	of_property_read_u32(np, "compad-vref-1v8", &plat->compad_vref_1v8);
 
 	if (of_find_property(np, "built-in", NULL))
 		plat->mmc_data.built_in = 1;
