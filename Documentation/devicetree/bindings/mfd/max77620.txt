@@ -43,6 +43,52 @@ Optinal properties:
 	-maxim,enable-global-lpm: Enable global LPM when the external control goes from
 			HIGH to LOW.
 
+Pinmux and GPIO:
+===============
+Device has 8 GPIO pins which can be configured as GPIO as well as the special IO
+functions.
+
+Please refer to pinctrl-bindings.txt in this directory for details of the
+common pinctrl bindings used by client devices, including the meaning of the
+phrase "pin configuration node".
+
+Following are properties which is needed if GPIO and pinmux functionality
+is required:
+    Required properties:
+    -------------------
+	- gpio-controller: Marks the device node as a GPIO controller.
+	- #gpio-cells: Number of GPIO cells. Refer to binding document
+			gpio/gpio.txt
+
+    Optional properties:
+    --------------------
+	Following properties are require if pin control setting is required
+	at boot.
+	- pinctrl-names: A pinctrl state named "default" be defined, using the
+		bindings in pinctrl/pinctrl-binding.txt.
+	- pinctrl[0...n]: Properties to contain the phandle that refer to
+		different nodes of pin control settings. These nodes represents
+		the pin control setting of state 0 to state n. Each of these
+		nodes contains different subnodes to represents some desired
+		configuration for a list of pins. This configuration can
+		include the mux function to select on those pin(s), and
+		various pin configuration parameters, such as pull-up,
+		open drain.
+
+		Each subnode have following properties:
+		Required properties:
+		    - pins: List of pins. Valid values of pins properties are:
+				gpio0, gpio1, gpio2, gpio3, gpio4, gpio5,
+				gpio6, gpio7
+
+		Optional properties:
+			function, bias-disable, bias-pull-up, bias-pull-down,
+			bias-high-impedance, drive-open-drain.
+
+			Valid values for function properties are:
+				gpio, lpm-control-in, fps-out, 32k-out,
+				sd0-dvs-in, sd1-dvs-in, reference-out
+
 Regulators:
 ===========
 Device has multiple DCDC(sd[0-3] and LDOs(ld[0-8]). The node "regulators" is
