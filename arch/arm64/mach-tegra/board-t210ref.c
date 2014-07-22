@@ -68,6 +68,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/pinctrl/pinconf-tegra.h>
 #include <linux/tegra_nvadsp.h>
+#include <linux/tegra-pm.h>
 
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
@@ -97,6 +98,7 @@
 #include "tegra-board-id.h"
 #include "tegra-of-dev-auxdata.h"
 #include "tegra12_emc.h"
+#include "dvfs.h"
 
 static struct board_info board_info, display_board_info;
 static struct tegra_usb_platform_data tegra_udc_pdata;
@@ -646,6 +648,47 @@ static struct tegra_io_dpd pexclk2_io = {
 	.io_dpd_bit		= 6,
 };
 
+static struct tegra_suspend_platform_data t210ref_suspend_data = {
+	.cpu_timer      = 500,
+	.cpu_off_timer  = 300,
+	.suspend_mode   = TEGRA_SUSPEND_LP0,
+	.core_timer     = 0x157e,
+	.core_off_timer = 10,
+	.corereq_high   = true,
+	.sysclkreq_high = true,
+	.cpu_lp2_min_residency = 1000,
+	.min_residency_vmin_fmin = 1000,
+	.min_residency_ncpu_fast = 8000,
+	.min_residency_ncpu_slow = 5000,
+	.min_residency_mclk_stop = 5000,
+	.min_residency_crail = 20000,
+};
+
+#define E2141_CPU_VDD_MIN_UV		703000
+#define E2141_CPU_VDD_STEP_UV		19200
+
+
+static int __init t210ref_rail_alignment_init(void)
+{
+	int step_uv, offset_uv;
+
+	step_uv = E2141_CPU_VDD_STEP_UV;
+	offset_uv = E2141_CPU_VDD_MIN_UV;
+
+#if defined(CONIFG_ARCH_TEGRA_21x_SOC)
+	tegra21x_vdd_cpu_align(step_uv, offset_uv);
+#else
+	tegra13x_vdd_cpu_align(step_uv, offset_uv);
+#endif
+	return 0;
+}
+
+static int __init t210ref_suspend_init(void)
+{
+	tegra_init_suspend(&t210ref_suspend_data);
+	return 0;
+}
+
 static void __init tegra_t210ref_late_init(void)
 {
 	struct board_info board_info;
@@ -687,8 +730,9 @@ static void __init tegra_t210ref_late_init(void)
 	tegra_wdt_recovery_init();
 #endif
 
+	t210ref_camera_init();
 
-	t210ref_sensors_init();
+	t210ref_thermal_sensors_init();
 	t210ref_soctherm_init();
 }
 
