@@ -4243,9 +4243,7 @@ static int nvudc_plat_clocks_init(struct NV_UDC_S *nvudc)
 		err = PTR_ERR(nvudc->dev_clk);
 		msg_err(dev, "failed to get dev_clk %d\n", err);
 		nvudc->dev_clk = NULL;
-		/* devm_clk_get API does not accept device name "tegra-xudc"
-		wait for clock time to fix it */
-		/* return err; */
+		return err;
 	}
 
 	nvudc->ss_clk = devm_clk_get(dev, "ss");
@@ -4253,7 +4251,7 @@ static int nvudc_plat_clocks_init(struct NV_UDC_S *nvudc)
 		err = PTR_ERR(nvudc->ss_clk);
 		msg_err(dev, "failed to get ss_clk %d\n", err);
 		nvudc->ss_clk = NULL;
-		/* return err; */
+		return err;
 	}
 
 	nvudc->pll_e = devm_clk_get(dev, "pll_e");
