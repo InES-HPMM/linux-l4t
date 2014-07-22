@@ -24,6 +24,7 @@
 #include <linux/completion.h>
 #include <linux/dma-mapping.h>
 #include <linux/list.h>
+#include <linux/completion.h>
 
 struct nvadsp_platform_data {
 	phys_addr_t co_pa;
@@ -193,7 +194,16 @@ void nvadsp_os_stop(void);
 
 #define ARGV_SIZE_IN_WORDS         128
 
+enum {
+	NVADSP_APP_STATE_UNKNOWN,
+	NVADSP_APP_STATE_INITIALIZED,
+	NVADSP_APP_STATE_STARTED,
+	NVADSP_APP_STATE_STOPPED
+};
+
+struct nvadsp_app_info;
 typedef const void *nvadsp_app_handle_t;
+typedef void (*app_complete_status_notifier)(struct nvadsp_app_info *, int32_t);
 
 typedef struct adsp_app_mem {
 	/* DRAM segment*/
@@ -214,21 +224,48 @@ typedef struct adsp_app_mem {
 	uint32_t   aram_x_flag;
 } adsp_app_mem_t;
 
+typedef struct adsp_app_iova_mem {
+	/* DRAM segment*/
+	uint32_t	dram;
+	/* DRAM in shared memory segment. uncached */
+	uint32_t	shared;
+	/* DRAM in shared memory segment. write combined */
+	uint32_t	shared_wc;
+	/*  ARAM if available, DRAM OK */
+	uint32_t	aram;
+	/*
+	 * set to 1 if ARAM allocation succeeded else 0 meaning allocated from
+	 * dram.
+	 */
+	uint32_t	aram_flag;
+	/* ARAM Segment. exclusively */
+	uint32_t	aram_x;
+	/* set to 1 if ARAM allocation succeeded */
+	uint32_t	aram_x_flag;
+} adsp_app_iova_mem_t;
+
 
 typedef struct nvadsp_app_args {
 	 /* number of arguments passed in */
 	int32_t  argc;
-	/* binary representation of arguments,*/
+	/* binary representation of arguments */
 	int32_t  argv[ARGV_SIZE_IN_WORDS];
 } nvadsp_app_args_t;
 
-typedef struct {
+typedef struct nvadsp_app_info {
 	const char *name;
+	const int instance_id;
 	const uint32_t token;
 	const int state;
 	adsp_app_mem_t mem;
+	adsp_app_iova_mem_t iova_mem;
 	struct list_head node;
 	uint32_t stack_size;
+	const void *handle;
+	int return_status;
+	struct completion wait_for_app_complete;
+	app_complete_status_notifier complete_status_notifier;
+	struct work_struct complete_work;
 } nvadsp_app_info_t;
 
 nvadsp_app_handle_t __must_check
@@ -238,8 +275,24 @@ nvadsp_app_info_t __must_check
 void nvadsp_app_unload(nvadsp_app_handle_t);
 int __must_check nvadsp_app_start(nvadsp_app_info_t *);
 int nvadsp_app_stop(nvadsp_app_info_t *);
+int nvadsp_app_deinit(nvadsp_app_info_t *);
 void *nvadsp_alloc_coherent(size_t, dma_addr_t *, gfp_t);
 void nvadsp_free_coherent(size_t, void *, dma_addr_t);
 void *nvadsp_da_to_va_mappings(u64, int);
 
+static inline void
+set_app_complete_notifier(
+		nvadsp_app_info_t *info, app_complete_status_notifier notifier)
+{
+	info->complete_status_notifier = notifier;
+}
+
+static inline void wait_for_nvadsp_app_complete(nvadsp_app_info_t *info)
+{
+	/*
+	 * wait_for_complete must be called only after app has started
+	 */
+	if (info->state == NVADSP_APP_STATE_STARTED)
+		wait_for_completion(&info->wait_for_app_complete);
+}
 #endif /* __LINUX_TEGRA_NVADSP_H */
