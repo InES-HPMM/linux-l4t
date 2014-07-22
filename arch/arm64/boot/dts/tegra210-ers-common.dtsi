@@ -1,4 +1,15 @@
 #include "tegra210.dtsi"
 #include <dt-bindings/interrupt-controller/arm-gic.h>
-
 #include "tegra210-platforms/tegra210-ers-dfll-e2174-1101-a00.dtsi"
+/ {
+
+	serial@70006000 {
+		compatible = "nvidia,tegra210-uart";
+		status = "okay";
+	};
+
+	serial@70006040 {
+		compatible = "nvidia,tegra210-uart";
+		status = "okay";
+	};
+};

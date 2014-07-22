@@ -277,7 +277,7 @@
 	};
 
 	uarta: serial@70006000 {
-		compatible = "nvidia,tegra210-uart";
+		compatible = "nvidia,tegra114-hsuart";
 		reg = <0x0 0x70006000 0x0 0x40>;
 		reg-shift = <2>;
 		interrupts = <0 36 0x04>;
@@ -288,10 +288,11 @@
                 dmas = <&apbdma 8>, <&apbdma 8>;
                 dma-names = "rx", "tx";
 		nvidia,memory-clients = <14>;
+		status = "disabled";
 	};
 
 	uartb: serial@70006040 {
-		compatible = "nvidia,tegra210-uart";
+		compatible = "nvidia,tegra114-hsuart";
 		reg = <0x0 0x70006040 0x0 0x40>;
 		reg-shift = <2>;
 		interrupts = <0 37 0x04>;
@@ -302,10 +303,11 @@
                 dmas = <&apbdma 9>, <&apbdma 9>;
                 dma-names = "rx", "tx";
 		nvidia,memory-clients = <14>;
+		status = "disabled";
 	};
 
 	uartc: serial@70006200 {
-		compatible = "nvidia,tegra114-uart", "nvidia,tegra20-uart";
+		compatible = "nvidia,tegra114-hsuart";
 		reg = <0x0 0x70006200 0x0 0x40>;
 		reg-shift = <2>;
 		interrupts = <0 46 0x04>;
@@ -320,7 +322,7 @@
 	};
 
 	uartd: serial@70006300 {
-		compatible = "nvidia,tegra114-uart", "nvidia,tegra20-uart";
+		compatible = "nvidia,tegra114-hsuart";
 		reg = <0x0 0x70006300 0x0 0x40>;
 		reg-shift = <2>;
 		interrupts = <0 90 0x04>;
