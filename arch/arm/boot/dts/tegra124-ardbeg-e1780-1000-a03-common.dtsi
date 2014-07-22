@@ -64,6 +64,11 @@
                 status = "okay";
         };
 
+        serial@70006300 {
+                compatible = "nvidia,tegra20-uart";
+                console-port;
+        };
+
 	memory@0x80000000 {
 		device_type = "memory";
 		reg = <0x0 0x80000000 0x0 0x80000000>;

@@ -42,6 +42,11 @@
 		status = "okay";
 	};
 
+	serial@70006300 {
+		compatible = "nvidia,tegra20-uart";
+		console-port;
+	};
+
 	i2c@7000c000 {
 		clock-frequency = <100000>;
 

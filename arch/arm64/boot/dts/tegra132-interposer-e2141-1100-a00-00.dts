@@ -27,6 +27,11 @@
 		linux,initrd-end = <0x824B5300>;
 	};
 
+	serial@70006000 {
+		compatible = "nvidia,tegra20-uart";
+		console-port;
+	};
+
 	serial@70006040 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";

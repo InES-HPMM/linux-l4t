@@ -71,6 +71,11 @@
                 status = "okay";
         };
 
+	serial@70006300 {
+		compatible = "nvidia,tegra20-uart";
+		console-port;
+	};
+
 	i2c@7000c000 {
 		pca9546@70 {
 			compatible = "nxp,pca9546";
