@@ -66,19 +66,6 @@ void t210ref_camera_auxdata(void *);
 #define CAM_AF_PWDN TEGRA_GPIO_PBB7
 #define CAM_BOARD_E1806
 
-/* Modem related GPIOs */
-#define MODEM_EN		TEGRA_GPIO_PS4
-#define MDM_RST			TEGRA_GPIO_PS3
-#define MDM_COLDBOOT		TEGRA_GPIO_PO5
-#define MDM_SAR0		TEGRA_GPIO_PG2
-#define MDM_POWER_REPORT	TEGRA_GPIO_PK0
-
-/* Baseband IDs */
-enum tegra_bb_type {
-	TEGRA_BB_BRUCE = 1,
-	TEGRA_BB_HSIC_HUB = 6,
-};
-
 #define UTMI1_PORT_OWNER_XUSB   0x1
 #define UTMI2_PORT_OWNER_XUSB   0x2
 #define HSIC1_PORT_OWNER_XUSB   0x4

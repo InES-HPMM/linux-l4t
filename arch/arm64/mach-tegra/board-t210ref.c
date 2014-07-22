@@ -206,31 +206,12 @@ static struct platform_device *t210ref_devices[] __initdata = {
 #endif
 };
 
-static struct gpio modem_gpios[] = { /* Bruce modem */
-	{MODEM_EN, GPIOF_OUT_INIT_HIGH, "MODEM EN"},
-	{MDM_RST, GPIOF_OUT_INIT_LOW, "MODEM RESET"},
-	{MDM_SAR0, GPIOF_OUT_INIT_LOW, "MODEM SAR0"},
-};
-
 static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
 	.unaligned_dma_buf_supported = true,
 	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
 	.op_mode = TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.hot_plug = false,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
-	},
-};
-
-static struct tegra_usb_platform_data tegra_ehci2_hsic_smsc_hub_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.unaligned_dma_buf_supported = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
-	.op_mode	= TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.hot_plug = false,
 		.remote_wakeup_supported = true,
@@ -283,115 +264,10 @@ static void t210ref_xusb_init(void)
 }
 #endif
 
-static int baseband_init(void)
-{
-	struct pinctrl_dev *pctl_dev;
-	int ret;
-
-	ret = gpio_request_array(modem_gpios, ARRAY_SIZE(modem_gpios));
-	if (ret) {
-		pr_warn("%s:gpio request failed\n", __func__);
-		return ret;
-	}
-
-	/* enable pull-down for MDM_COLD_BOOT */
-	pctl_dev = tegra_get_pinctrl_device_handle();
-	if (pctl_dev) {
-		unsigned long config;
-
-		config = TEGRA_PINCONF_PACK(TEGRA_PINCONF_PARAM_PULL,
-					TEGRA_PIN_PULL_DOWN);
-		ret = pinctrl_set_config_for_group_name(pctl_dev,
-				"ulpi_data4_po5", config);
-		if (ret < 0) {
-			pr_err("ERROR: %s(): ulpi_data4 config failed: %d\n",
-					__func__, ret);
-			return ret;
-		}
-	} else {
-		pr_err("ERROR: %s(): No Tegra pincontrol driver\n", __func__);
-		return -EINVAL;
-	}
-
-	/* Release modem reset to start boot */
-	gpio_set_value(MDM_RST, 1);
-
-	/* export GPIO for user space access through sysfs */
-	gpio_export(MDM_RST, false);
-	gpio_export(MDM_SAR0, false);
-
-	return 0;
-}
-
-static const struct tegra_modem_operations baseband_operations = {
-	.init = baseband_init,
-};
-
 static struct tegra_usb_modem_power_platform_data baseband_pdata = {
-	.ops = &baseband_operations,
-	.regulator_name = "vdd_wwan_mdm",
-	.wake_gpio = -1,
-	.boot_gpio = MDM_COLDBOOT,
-	.boot_irq_flags = IRQF_TRIGGER_RISING |
-				    IRQF_TRIGGER_FALLING |
-				    IRQF_ONESHOT,
-	.autosuspend_delay = 2000,
-	.short_autosuspend_delay = 50,
 	.tegra_ehci_device = &tegra_ehci2_device,
 	.tegra_ehci_pdata = &tegra_ehci2_hsic_baseband_pdata,
-	.mdm_power_report_gpio = MDM_POWER_REPORT,
-	.mdm_power_irq_flags = IRQF_TRIGGER_RISING |
-				IRQF_TRIGGER_FALLING |
-				IRQF_ONESHOT,
 };
-
-static struct platform_device icera_bruce_device = {
-	.name = "tegra_usb_modem_power",
-	.id = -1,
-	.dev = {
-		.platform_data = &baseband_pdata,
-	},
-};
-
-static void t210ref_modem_init(void)
-{
-	int modem_id = tegra_get_modem_id();
-	struct board_info board_info;
-	struct board_info pmu_board_info;
-	int usb_port_owner_info = tegra_get_usb_port_owner_info();
-
-	tegra_get_board_info(&board_info);
-	tegra_get_pmu_board_info(&pmu_board_info);
-	pr_info("%s: modem_id = %d\n", __func__, modem_id);
-
-	switch (modem_id) {
-	case TEGRA_BB_BRUCE:
-		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)) {
-			/* Set specific USB wake source for T210ref */
-			if (board_info.board_id == BOARD_E1780)
-				tegra_set_wake_source(42, INT_USB2);
-			if (pmu_board_info.board_id == BOARD_E1736 ||
-				pmu_board_info.board_id == BOARD_E1769 ||
-				pmu_board_info.board_id == BOARD_E1936)
-				baseband_pdata.regulator_name = NULL;
-			platform_device_register(&icera_bruce_device);
-		}
-		break;
-	case TEGRA_BB_HSIC_HUB: /* HSIC hub */
-		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)) {
-			tegra_ehci2_device.dev.platform_data =
-				&tegra_ehci2_hsic_smsc_hub_pdata;
-			/* Set specific USB wake source for T210ref */
-			if (board_info.board_id == BOARD_E1780)
-				tegra_set_wake_source(42, INT_USB2);
-			platform_device_register(&tegra_ehci2_device);
-		} else
-			xusb_pdata.pretend_connect_0 = true;
-		break;
-	default:
-		return;
-	}
-}
 
 #ifdef CONFIG_USE_OF
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
@@ -567,6 +443,8 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra-bluedroid_pm", 0, "bluedroid_pm",
 			NULL),
 	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
+	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power",
+		&baseband_pdata),
 	{}
 };
 #endif
@@ -702,7 +580,6 @@ static void __init tegra_t210ref_late_init(void)
 
 	t210ref_uart_init();
 	t210ref_usb_init();
-	t210ref_modem_init();
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
 	t210ref_xusb_init();
 #endif

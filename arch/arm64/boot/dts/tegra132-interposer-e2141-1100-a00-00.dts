@@ -328,4 +328,14 @@ e 1.2V*/
 		nvidia,i2s-param-baseband = <3 1 2 16 16000 2 1024000>;
 		ldoen-supply = <&vdd_cdc_1v2_aud>;
 	};
+
+	modem {
+		compatible = "nvidia,icera-i500";
+		nvidia,boot-gpio = <&gpio TEGRA_GPIO(O, 5) GPIO_ACTIVE_LOW>;
+		nvidia,mdm-power-report-gpio = <&gpio TEGRA_GPIO(K, 0) GPIO_ACTIVE_LOW>;
+		nvidia,reset-gpio = <&gpio TEGRA_GPIO(S, 3) GPIO_ACTIVE_LOW>;
+		nvidia,mdm-en-gpio = <&gpio TEGRA_GPIO(S, 4) GPIO_ACTIVE_HIGH>;
+		nvidia,mdm-sar0-gpio = <&gpio TEGRA_GPIO(G, 2) GPIO_ACTIVE_LOW>;
+		status = "disabled";
+	};
 };
