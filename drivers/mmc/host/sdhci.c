@@ -3133,6 +3133,9 @@ int sdhci_suspend_host(struct sdhci_host *host)
 		return ret;
 	}
 
+	/* cancel delayed clk gate work */
+	cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
+
 	/*
 	 * If host clock is disabled but the register access requires host
 	 * clock, then enable the clock, mask the interrupts and disable
@@ -3145,9 +3148,6 @@ int sdhci_suspend_host(struct sdhci_host *host)
 	if (mmc->pm_flags & MMC_PM_KEEP_POWER)
 		host->card_int_set = sdhci_readl(host, SDHCI_INT_ENABLE) &
 			SDHCI_INT_CARD_INT;
-
-	/* cancel delayed clk gate work */
-	cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
 
 	if (!device_may_wakeup(mmc_dev(host->mmc))) {
 		sdhci_mask_irqs(host, SDHCI_INT_ALL_MASK);
