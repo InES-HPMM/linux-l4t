@@ -522,11 +522,18 @@
 #define UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL	(1<<0)
 
 #define PLLU_HW_PWRDN_CFG0			0x530
+#define PLLU_HW_PWRDN_CFG0_IDDQ_PD_INCLUDE	(1<<28)
 #define PLLU_HW_PWRDN_CFG0_SEQ_START_STATE	(1<<25)
 #define PLLU_HW_PWRDN_CFG0_SEQ_ENABLE		(1<<24)
+#define PLLU_HW_PWRDN_CFG0_USE_SWITCH_DETECT	(1<<7)
 #define PLLU_HW_PWRDN_CFG0_USE_LOCKDET		(1<<6)
 #define PLLU_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL	(1<<2)
 #define PLLU_HW_PWRDN_CFG0_CLK_SWITCH_SWCTL	(1<<0)
+
+#define XUSB_PLL_CFG0				0x534
+#define XUSB_PLL_CFG0_PLLU_LOCK_DLY_SHIFT	14
+#define XUSB_PLL_CFG0_PLLU_LOCK_DLY_MASK	\
+	(0x3ff<<XUSB_PLL_CFG0_PLLU_LOCK_DLY_SHIFT)
 
 #define USB_PLLS_SEQ_START_STATE		(1<<25)
 #define USB_PLLS_SEQ_ENABLE			(1<<24)
@@ -2877,6 +2884,7 @@ static void tegra21_pllu_vco_init(struct clk *c)
 		pll_clk_set_gain(c, &cfg);
 
 		pll_clk_verify_fixed_rate(c);
+		pr_info("%s: boot with h/w control already set\n", c->name);
 		return;
 	}
 
@@ -2884,9 +2892,52 @@ static void tegra21_pllu_vco_init(struct clk *c)
 	tegra_pll_clk_init(c);
 }
 
+static void tegra21_pllu_hw_ctrl_set(struct clk *c)
+{
+	u32 val = clk_readl(c->reg);
+
+	/* Put PLLU under h/w control (if not already) */
+	if (val & PLLU_BASE_OVERRIDE) {
+		val &= ~PLLU_BASE_OVERRIDE;
+		pll_writel_delay(val, c->reg);
+
+		val = clk_readl(PLLU_HW_PWRDN_CFG0);
+		val |= PLLU_HW_PWRDN_CFG0_IDDQ_PD_INCLUDE |
+			PLLU_HW_PWRDN_CFG0_USE_SWITCH_DETECT |
+			PLLU_HW_PWRDN_CFG0_USE_LOCKDET;
+		val &= ~(PLLU_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL |
+			 PLLU_HW_PWRDN_CFG0_CLK_SWITCH_SWCTL);
+		clk_writel(val, PLLU_HW_PWRDN_CFG0);
+
+		val = clk_readl(XUSB_PLL_CFG0);
+		val &= ~XUSB_PLL_CFG0_PLLU_LOCK_DLY_MASK;
+		pll_writel_delay(val, XUSB_PLL_CFG0);
+
+		val = clk_readl(PLLU_HW_PWRDN_CFG0);
+		val |= PLLU_HW_PWRDN_CFG0_SEQ_ENABLE;
+		pll_writel_delay(val, PLLU_HW_PWRDN_CFG0);
+	}
+
+
+	/* Put UTMI PLL under h/w control  (if not already) */
+	val = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
+	if (!(val & UTMIPLL_HW_PWRDN_CFG0_SEQ_ENABLE))
+		tegra21_utmi_param_configure(c);
+}
+
+int tegra21_pllu_clk_enable(struct clk *c)
+{
+	int ret = tegra_pll_clk_enable(c);
+	if (ret)
+		return ret;
+
+	tegra21_pllu_hw_ctrl_set(c);
+	return 0;
+}
+
 static struct clk_ops tegra_pllu_vco_ops = {
 	.init			= tegra21_pllu_vco_init,
-	.enable			= tegra_pll_clk_enable,
+	.enable			= tegra21_pllu_clk_enable,
 	.disable		= tegra_pll_clk_disable,
 	.set_rate		= tegra_pll_clk_set_rate,
 };
@@ -3754,35 +3805,6 @@ static struct clk_ops tegra_pll_out_fixed_ops = {
 	.enable			= tegra_pll_out_clk_enable,
 };
 
-static void tegra21_pllu_hw_ctrl_set(struct clk *c)
-{
-	u32 val = clk_readl(c->reg);
-
-	/* Put UTMI PLL under h/w control */
-	tegra21_utmi_param_configure(c);
-
-	/* Put PLLU under h/w control */
-	usb_plls_hw_control_enable(PLLU_HW_PWRDN_CFG0);
-
-	if (val & PLLU_BASE_OVERRIDE) {
-		val &= ~PLLU_BASE_OVERRIDE;
-		pll_writel_delay(val, c->reg);
-	} else {
-		/* FIXME: should it be WARN() ? */
-		pr_info("%s: boot with h/w control already set\n", c->name);
-	}
-
-/* FIXME: Disable for initial Si bringup */
-#if 0
-	/* Set XUSB PLL pad pwr override and iddq */
-	val = xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
-	val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_PWR_OVRD;
-	val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_IDDQ;
-	xusb_padctl_writel(val, XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
-	xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
-#endif
-}
-
 static void tegra21_pllu_out_clk_init(struct clk *c)
 {
 	u32 p, val;
@@ -3811,9 +3833,6 @@ static void tegra21_pllu_out_clk_init(struct clk *c)
 		/* Complete PLLU output s/w controlled initialization */
 		tegra_pll_out_clk_init(c);
 	}
-
-	/* Put USB plls under h/w control */
-	tegra21_pllu_hw_ctrl_set(pll);
 }
 
 static struct clk_ops tegra_pllu_out_ops = {
