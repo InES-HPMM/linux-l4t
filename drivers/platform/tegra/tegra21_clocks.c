@@ -3881,7 +3881,8 @@ static void tegra21_pll_div_clk_init(struct clk *c)
 {
 	if (c->flags & DIV_U71) {
 		u32 val, divu71;
-		if (c->parent->state == OFF)
+		if ((c->parent->state == OFF) || (!c->parent->ops->disable &&
+		     (c->parent->parent->state == OFF)))
 			c->ops->disable(c);
 
 		val = clk_readl(c->reg);
