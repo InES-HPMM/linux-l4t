@@ -204,7 +204,6 @@ static void __init tegra_p1859_late_init(void)
 	tegra_init_board_info();
 
 	/* Initialize the vcm30t124 specific devices */
-	tegra_vcm30_t124_nor_init();
 	tegra_vcm30_t124_therm_mon_init();
 	tegra_vcm30_t124_soctherm_init();
 	tegra_vcm30_t124_usb_init();

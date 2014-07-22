@@ -283,4 +283,8 @@
 		/* ivc channel to use definition (third one in tegra_hv) */
 		ivc = <&tegra_hv 2>;
 	};
+
+	snor {
+		status = "disabled";
+	};
 };

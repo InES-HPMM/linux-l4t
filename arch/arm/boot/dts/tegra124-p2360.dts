@@ -92,4 +92,8 @@
 	sdhci@700b0600 {
 		status = "okay";
 	};
+
+	snor {
+		status = "okay";
+	};
 };

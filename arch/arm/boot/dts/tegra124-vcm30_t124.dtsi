@@ -182,4 +182,25 @@
 		vmmc-supply = <&vmmc_dummy>;
 		status = "disabled";
 	};
+
+	snor {
+		nvidia,timing-default = <0x30300273>, <0x00030302>;
+		nvidia,timing-read = <0x30300273>, <0x00030302>;
+		nvidia,nor-mux-mode = <0x0>;
+		nvidia,nor-read-mode = <0x1>;
+		nvidia,nor-page-length = <0x2>;
+		nvidia,nor-ready-active = <0x0>;
+		nvidia,flash-map-name = "cfi_probe";
+		nvidia,flash-width = <0x2>;
+		nvidia,num-chips = <0x1>;
+		use-advanced-sector-protection;
+		status = "disabled";
+		cs-info@0 {
+			nvidia,cs = <0x0>;
+			nvidia,num_cs_gpio = <0x0>;
+			nvidia,phy_addr = <0x0 0x48000000>;
+			nvidia,phy_size = <0x04000000>;
+		};
+
+	};
 };

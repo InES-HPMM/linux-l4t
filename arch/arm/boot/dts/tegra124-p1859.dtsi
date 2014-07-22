@@ -230,6 +230,10 @@
 		status = "okay";
 	};
 
+	snor {
+		status = "okay";
+	};
+
 	bluedroid_pm {
 		compatible = "nvidia,tegra-bluedroid_pm";
 		id = <0>;

@@ -888,4 +888,11 @@
 		dma-names = "rx";
 		status = "okay";
 	};
+
+	snor {
+		compatible = "nvidia,tegra124-nor";
+		reg = <0x0 0x70009000 0x0 0x1000>;
+		interrupts = <0 96 0x4>;
+		status = "disabled";
+	};
 };

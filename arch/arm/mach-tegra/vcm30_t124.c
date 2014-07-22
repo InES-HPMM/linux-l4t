@@ -197,59 +197,6 @@ static  __initdata struct tegra_clk_init_table
 	SET_FIXED_TARGET_RATE(NULL,		0),
 };
 
-/* NOR flash */
-static struct tegra_nor_platform_data vcm30_t124_nor_data = {
-	.flash = {
-		.map_name = "cfi_probe",
-		.width = 2,
-	},
-	.chip_parms = {
-		.MuxMode = NorMuxMode_ADNonMux,
-		.ReadMode = NorReadMode_Page,
-		.PageLength = NorPageLength_8Word,
-		.ReadyActive = NorReadyActive_WithData,
-
-		/* FIXME: Need to use characterized value */
-		.timing_default = {
-			.timing0 = 0x30300273,
-			.timing1 = 0x00030302,
-		},
-		.timing_read = {
-			.timing0 = 0x30300273,
-			.timing1 = 0x00030302,
-		},
-	},
-};
-
-static struct cs_info vcm30_t124_cs_info[] = {
-	{
-		.cs = CS_0,
-		.num_cs_gpio = 0,
-		.virt = IO_ADDRESS(TEGRA_NOR_FLASH_BASE),
-		.size = SZ_64M,
-		.phys = TEGRA_NOR_FLASH_BASE,
-	},
-};
-
-void __init tegra_vcm30_t124_nor_init(void)
-{
-	tegra_nor_device.resource[2].end = TEGRA_NOR_FLASH_BASE + SZ_64M - 1;
-
-	vcm30_t124_nor_data.info.cs = kzalloc(sizeof(struct cs_info) *
-					ARRAY_SIZE(vcm30_t124_cs_info),
-					GFP_KERNEL);
-        if (!vcm30_t124_nor_data.info.cs)
-                BUG();
-
-        vcm30_t124_nor_data.info.num_chips = ARRAY_SIZE(vcm30_t124_cs_info);
-
-        memcpy(vcm30_t124_nor_data.info.cs, vcm30_t124_cs_info,
-                                sizeof(struct cs_info) * ARRAY_SIZE(vcm30_t124_cs_info));
-
-	tegra_nor_device.dev.platform_data = &vcm30_t124_nor_data;
-	platform_device_register(&tegra_nor_device);
-}
-
 /* Therm Monitor */
 
 /*
@@ -504,7 +451,8 @@ static struct of_dev_auxdata tegra_vcm30_t124_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY2_BASE, "tegradc.1",
 		NULL),
 	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
-
+	OF_DEV_AUXDATA("nvidia,tegra124-nor", TEGRA_SNOR_BASE, "tegra-nor",
+		NULL),
 	{}
 };
 
@@ -558,7 +506,7 @@ static const struct soctherm_therm vcm30t124_therm[] = {
 int __init tegra_vcm30_t124_soctherm_init(void)
 {
 	struct soctherm_therm *therm;
-       
+
 	therm = &vcm30_t124_soctherm_data.therm[THERM_CPU];
 	tegra_add_cpu_clk_switch_trips(therm->trips, &therm->num_trips);
 
