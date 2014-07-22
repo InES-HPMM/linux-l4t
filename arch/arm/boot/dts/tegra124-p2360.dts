@@ -34,6 +34,12 @@
 		nvidia,tegra-hypervisor-mode;
 	};
 
+	serial@70006040 {
+		compatible = "nvidia,tegra20-uart";
+		console-port;
+		status = "okay";
+	};
+
 	spi@7000d400 {
 		status = "okay";
 		spi@0 {

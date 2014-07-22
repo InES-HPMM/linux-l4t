@@ -309,31 +309,6 @@ static void __init p2360_nor_init(void)
 	platform_device_register(&tegra_nor_device);
 }
 
-
-/* Register debug UART in old fashion and use DT for all others */
-static struct tegra_serial_platform_data p2360_uartb_pdata = {
-	.dma_req_selector = 9,
-	.modem_interrupt = false,
-};
-
-static void __init p2360_uart_init(void)
-{
-	int debug_port_id;
-
-	if (!is_tegra_debug_uartport_hs()) {
-		debug_port_id = uart_console_debug_init(1);
-		if (debug_port_id < 0)
-			return;
-
-		if (!tegra_is_port_available_from_dt(debug_port_id))
-			platform_device_register(uart_console_debug_device);
-	} else {
-		tegra_uartb_device.dev.platform_data = &p2360_uartb_pdata;
-		if (!tegra_is_port_available_from_dt(1))
-			platform_device_register(&tegra_uartb_device);
-	}
-}
-
 static int __init p2360_gpio_init(void)
 {
 	int err;
@@ -555,7 +530,6 @@ static void __init tegra_p2360_late_init(void)
 
 	p2360_nor_init();
 
-	p2360_uart_init();
 	platform_add_devices(p2360_devices, ARRAY_SIZE(p2360_devices));
 
 	p2360_regulator_init();
