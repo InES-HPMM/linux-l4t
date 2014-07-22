@@ -503,6 +503,16 @@ static void tegra_pm_sc7_set(void)
 #endif
 
 	pmc_32kwritel(reg, PMC_CTRL);
+
+	/*
+	 * This is to ensure the wake status is correctly captured and held
+	 * correctly for all the wake.  This is necessitated due to a bug in
+	 * the logic which had made the   E_INPUT control for specific pin
+	 * i.e. GPIO_PA6 to Logic0 because of which wake event status didn't
+	 * get latched in some corner cases.  Details are available in the
+	 * bug 1495809
+	 */
+	tegra_pmc_enable_wake_det(true);
 }
 
 int tegra_pm_prepare_sc7(void)

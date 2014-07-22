@@ -46,6 +46,9 @@
 #define PMC_IO_DPD_REQ		0x1B8
 #define PMC_IO_DPD2_REQ		0x1C0
 
+#define PMC_CNTRL2		0x440
+#define PMC_WAKE_DET_EN		BIT(9)
+
 /* pmc register offsets needed for powering off PMU */
 #define PMC_SCRATCH_WRITE_SHIFT			2
 #define PMC_SCRATCH_WRITE_MASK			BIT(2)
@@ -212,6 +215,18 @@ void tegra_pmc_config_thermal_trip(struct tegra_thermtrip_pmic_data *data)
 	WARN(w != v, "PMC_SCRATCH%d value mismatch - chip may not shutdown PMIC correctly upon a thermal trip event", 55);
 }
 EXPORT_SYMBOL(tegra_pmc_config_thermal_trip);
+
+void tegra_pmc_enable_wake_det(bool enable)
+{
+	u32 reg;
+
+	reg = tegra_pmc_readl(PMC_CNTRL2);
+	if (enable)
+		reg |= PMC_WAKE_DET_EN;
+	else
+		reg &= ~PMC_WAKE_DET_EN;
+	tegra_pmc_writel(reg, PMC_CNTRL2);
+}
 
 void tegra_pmc_set_dpd_sample()
 {
