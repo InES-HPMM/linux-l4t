@@ -38,6 +38,16 @@
 #define DTV_STATUS              0x58
 #define DTV_RX_FIFO             0x5c
 
+#define DTV_INTR_EN_0           0x60
+#define UPSTREAM_ERR_INT_EN     BIT(7)
+#define BODY_UNR_ERR_INT_EN     BIT(6)
+#define BODY_OVR_ERR_INT_EN     BIT(5)
+#define PKT_UNR_ERR_INT_EN      BIT(4)
+#define RXF_FULL_INT_EN         BIT(3)
+#define RXF_EMPTY_INT_EN        BIT(2)
+#define RXF_OVF_INT_EN          BIT(1)
+#define RXF_UNR_INT_EN          BIT(0)
+
 /* DTV_SPI_CONTROL */
 #define DTV_SPI_CONTROL_ENABLE_DTV  1
 
@@ -77,14 +87,15 @@
 #define DTV_CTRL_VALID_POLARITY_MASK    (1 << DTV_CTRL_VALID_POLARITY_SHIFT)
 
 /* DTV_INTERRUPT_STATUS_0 */
-#define DTV_INTERRUPT_PACKET_UNDERRUN_ERR 8
-#define DTV_INTERRUPT_BODY_OVERRUN_ERR    4
-#define DTV_INTERRUPT_BODY_UNDERRUN_ERR   2
-#define DTV_INTERRUPT_UPSTREAM_ERR        1
+#define DTV_PACKET_UNDERRUN_ERR BIT(3)
+#define DTV_BODY_OVERRUN_ERR    BIT(2)
+#define DTV_BODY_UNDERRUN_ERR   BIT(1)
+#define DTV_UPSTREAM_ERR        BIT(0)
 
 /* DTV_STATUS_0 */
-#define DTV_STATUS_RXF_UNDERRUN 4
-#define DTV_STATUS_RXF_EMPTY    2
-#define DTV_STATUS_RXF_FULL     1
+#define DTV_RX_FIFO_OVERFLOW BIT(3)
+#define DTV_RX_FIFO_UNDERRUN BIT(2)
+#define DTV_RX_FIFO_EMPTY    BIT(1)
+#define DTV_RX_FIFO_FULL     BIT(0)
 
 #endif /* __DTV_H__ */
