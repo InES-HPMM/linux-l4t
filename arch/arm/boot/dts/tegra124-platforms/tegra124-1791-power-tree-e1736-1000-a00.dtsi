@@ -26,4 +26,14 @@
 		pwrdet-hv-supply = <&palmas_ldoln>;
 		pwrdet-pex-ctl-supply = <&palmas_ldousb>;
 	};
+
+	xusb@70090000 {
+		usb_vbus0-supply = <&usb0_vbus>;
+		usb_vbus1-supply = <&usb1_vbus>;
+		usb_vbus2-supply = <&usb2_vbus>;
+		hvdd_usb-supply = <&palmas_ldousb>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		vddio_hsic-supply = <&palmas_ldo5>;
+		avddio_usb-supply = <&palmas_smps10_out2>;
+	};
 };

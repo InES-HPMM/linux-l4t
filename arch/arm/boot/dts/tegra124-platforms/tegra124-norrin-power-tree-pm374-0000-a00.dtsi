@@ -20,4 +20,13 @@
                 pwrdet-pex-ctl-supply = <&as3722_sd4>;
                 pwrdet-hv-supply = <&as3722_gpio2>;
 	}; 
+	xusb@70090000 {
+		usb_vbus0-supply = <&usb0_vbus>;
+		usb_vbus1-supply = <&usb1_usb2_vbus>;
+		usb_vbus2-supply = <&usb1_usb2_vbus>;
+		hvdd_usb-supply = <&as3722_gpio2>;
+		avdd_pll_utmip-supply = <&dcdc_1v8>;
+		vddio_hsic-supply = <&as3722_ldo2>;
+		avddio_usb-supply = <&as3722_sd4>;
+	};
 };
