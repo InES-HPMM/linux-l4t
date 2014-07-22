@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, NVIDIA Corporation.  All rights reserved.
+ * Copyright (C) 2014, NVIDIA Corporation.  All rights reserved.
  *
  * Author:
  * Bharath H S <bhs@nvidia.com>
@@ -37,6 +37,8 @@
 #include <linux/mtd/concat.h>
 #include <linux/gpio.h>
 #include <linux/tegra_snor.h>
+#include <linux/of_gpio.h>
+#include "../../../arch/arm/mach-tegra/iomap.h"
 
 #ifdef CONFIG_TEGRA_GMI_ACCESS_CONTROL
 #include <linux/tegra_gmi_access.h>
@@ -589,11 +591,87 @@ static int flash_maps_init(struct tegra_nor_info *info, struct resource *res)
 		map->read = tegra_nor_read;
 		map->write = tegra_nor_write;
 		map->copy_from = tegra_nor_copy_from;
+		map->device_node = info->dev->of_node;
 	}
 
 	info->n_maps = num_chips;
 	info->map = map_list;
 	return 0;
+}
+
+static struct tegra_nor_platform_data *tegra_nor_parse_dt(
+		struct platform_device *pdev)
+{
+	struct tegra_nor_platform_data *pdata = NULL;
+	struct device_node *np = pdev->dev.of_node;
+	struct device_node *np_cs_info;
+	struct cs_info nor_cs_info[8];
+	unsigned int i  = 0;
+	enum of_gpio_flags gpio_flags;
+	u64 phy_addr;
+
+	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&pdev->dev, "Memory alloc for pdata failed");
+		return NULL;
+	}
+
+	of_property_read_u32_array(np, "nvidia,timing-default",
+			(unsigned int *) &pdata->chip_parms.timing_default, 2);
+	of_property_read_u32_array(np, "nvidia,timing-read",
+			(unsigned int *) &pdata->chip_parms.timing_read, 2);
+	of_property_read_u32(np, "nvidia,nor-mux-mode",
+			(unsigned int *) &pdata->chip_parms.MuxMode);
+	of_property_read_u32(np, "nvidia,nor-read-mode",
+			(unsigned int *) &pdata->chip_parms.ReadMode);
+	of_property_read_u32(np, "nvidia,nor-page-length",
+			(unsigned int *) &pdata->chip_parms.PageLength);
+	of_property_read_u32(np, "nvidia,nor-ready-active",
+			(unsigned int *) &pdata->chip_parms.ReadyActive);
+	of_property_read_string(np, "nvidia,flash-map-name",
+			&pdata->flash.map_name);
+	of_property_read_u32(np, "nvidia,flash-width",
+			(unsigned int *) &pdata->flash.width);
+	of_property_read_u32(np, "nvidia,num-chips",
+			(unsigned int *) &pdata->info.num_chips);
+
+	for_each_child_of_node(np, np_cs_info) {
+		of_property_read_u32(np_cs_info, "nvidia,cs",
+				(unsigned int *) &nor_cs_info[i].cs);
+		of_property_read_u32(np_cs_info, "nvidia,num_cs_gpio",
+				(unsigned int *) &nor_cs_info[i].num_cs_gpio);
+		if (nor_cs_info[i].num_cs_gpio) {
+			nor_cs_info[i].gpio_cs.gpio_num =
+						of_get_named_gpio_flags(
+						np_cs_info,
+						"nvidia,gpio-cs",
+						0,
+						&gpio_flags);
+			nor_cs_info[i].gpio_cs.value = !(gpio_flags &
+							OF_GPIO_ACTIVE_LOW);
+			nor_cs_info[i].gpio_cs.label = "tegra-nor-cs";
+		}
+		/*Read it as U64 always and then typecast to the required data type*/
+		of_property_read_u64(np_cs_info, "nvidia,phy_addr", &phy_addr);
+		nor_cs_info[i].phys = (resource_size_t)phy_addr;
+		nor_cs_info[i].virt = IO_ADDRESS(nor_cs_info[i].phys);
+		of_property_read_u32(np_cs_info, "nvidia,phy_size",
+				(unsigned int *) &nor_cs_info[i].size);
+		i++;
+	}
+
+	pdata->info.cs = devm_kzalloc(&pdev->dev,
+				sizeof(struct cs_info) * pdata->info.num_chips,
+				GFP_KERNEL);
+
+	if (!pdata->info.cs) {
+		dev_err(&pdev->dev, "Memory alloc for pdata failed");
+		return NULL;
+	}
+	memcpy(pdata->info.cs, nor_cs_info,
+		sizeof(struct cs_info) * pdata->info.num_chips);
+
+	return pdata;
 }
 
 static int tegra_nor_probe(struct platform_device *pdev)
@@ -604,6 +682,9 @@ static int tegra_nor_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct resource *res;
 	int irq;
+
+	if (!plat && pdev->dev.of_node)
+		plat = tegra_nor_parse_dt(pdev);
 
 	if (!plat) {
 		pr_err("%s: no platform device info\n", __func__);
@@ -739,11 +820,18 @@ static int tegra_nor_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id tegra_nor_dt_match[] = {
+	{ .compatible = "nvidia,tegra124-nor", .data = NULL },
+	{}
+};
+MODULE_DEVICE_TABLE(of, tegra_nor_dt_match);
+
 static struct platform_driver __refdata tegra_nor_driver = {
 	.probe = tegra_nor_probe,
 	.remove = tegra_nor_remove,
 	.driver = {
 		   .name = DRV_NAME,
+		   .of_match_table = of_match_ptr(tegra_nor_dt_match),
 		   .owner = THIS_MODULE,
 		   },
 };
