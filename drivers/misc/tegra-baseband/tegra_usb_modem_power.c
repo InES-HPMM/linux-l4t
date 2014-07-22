@@ -46,6 +46,10 @@
 
 #define MAX_MODEM_EDP_STATES 10
 
+/* default autosuspend and short autosuspend delay in ms */
+#define DEFAULT_AUTOSUSPEND		2000
+#define DEFAULT_SHORT_AUTOSUSPEND	50
+
 struct tegra_usb_modem {
 	struct tegra_usb_modem_power_platform_data *pdata;
 	struct platform_device *pdev;
@@ -553,6 +557,9 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	modem->pdata = pdata;
 	modem->pdev = pdev;
 
+	pdata->autosuspend_delay = DEFAULT_AUTOSUSPEND;
+	pdata->short_autosuspend_delay = DEFAULT_SHORT_AUTOSUSPEND;
+
 	/* turn on modem regulator if required */
 	if (pdata->regulator_name) {
 		modem->regulator =
@@ -709,20 +716,20 @@ static int tegra_usb_modem_parse_dt(struct platform_device *pdev,
 	dev_dbg(&pdev->dev, "read platform data from DT\n");
 
 	/* regulator */
-	pdata->regulator_name = of_get_property(node, "regulator", NULL);
+	pdata->regulator_name = of_get_property(node, "nvidia,regulator", NULL);
 
 	/* GPIO */
-	gpio = of_get_named_gpio(node, "wake_gpio", 0);
+	gpio = of_get_named_gpio(node, "nvidia,wake-gpio", 0);
 	pdata->wake_gpio = gpio_is_valid(gpio) ? gpio : -1;
-	dev_info(&pdev->dev, "set wake_gpio:%d\n", pdata->wake_gpio);
+	dev_info(&pdev->dev, "set wake gpio:%d\n", pdata->wake_gpio);
 
-	gpio = of_get_named_gpio(node, "boot_gpio", 0);
+	gpio = of_get_named_gpio(node, "nvidia,boot-gpio", 0);
 	pdata->boot_gpio = gpio_is_valid(gpio) ? gpio : -1;
-	dev_info(&pdev->dev, "set boot_gpio:%d\n", pdata->boot_gpio);
+	dev_info(&pdev->dev, "set boot gpio:%d\n", pdata->boot_gpio);
 
-	gpio = of_get_named_gpio(node, "mdm_power_report_gpio", 0);
+	gpio = of_get_named_gpio(node, "nvidia,mdm-power-report-gpio", 0);
 	pdata->mdm_power_report_gpio = gpio_is_valid(gpio) ? gpio : -1;
-	dev_info(&pdev->dev, "set mdm_power_report_gpio:%d\n",
+	dev_info(&pdev->dev, "set mdm power report gpio:%d\n",
 		pdata->mdm_power_report_gpio);
 
 	/* set GPIO IRQ flags */
@@ -731,7 +738,7 @@ static int tegra_usb_modem_parse_dt(struct platform_device *pdev,
 		IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
 
 	/* initialize necessary GPIO and start modem here */
-	gpio = of_get_named_gpio(node, "mdm_en_gpio", 0);
+	gpio = of_get_named_gpio(node, "nvidia,mdm-en-gpio", 0);
 	if (gpio_is_valid(gpio)) {
 		dev_info(&pdev->dev, "set MODEM EN (%d) to 1\n", gpio);
 		ret = gpio_request(gpio, "MODEM EN");
@@ -742,7 +749,7 @@ static int tegra_usb_modem_parse_dt(struct platform_device *pdev,
 		gpio_direction_output(gpio, 1);
 	}
 
-	gpio = of_get_named_gpio(node, "mdm_sar0_gpio", 0);
+	gpio = of_get_named_gpio(node, "nvidia,mdm-sar0-gpio", 0);
 	if (gpio_is_valid(gpio)) {
 		dev_info(&pdev->dev, "set MODEM SAR0 (%d) to 0\n", gpio);
 		ret = gpio_request(gpio, "MODEM SAR0");
@@ -754,7 +761,7 @@ static int tegra_usb_modem_parse_dt(struct platform_device *pdev,
 		gpio_export(gpio, false);
 	}
 
-	gpio = of_get_named_gpio(node, "reset_gpio", 0);
+	gpio = of_get_named_gpio(node, "nvidia,reset-gpio", 0);
 	if (gpio_is_valid(gpio)) {
 		dev_info(&pdev->dev, "set MODEM RESET (%d) to 1\n", gpio);
 		ret = gpio_request(gpio, "MODEM RESET");
