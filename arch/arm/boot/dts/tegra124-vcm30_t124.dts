@@ -20,10 +20,9 @@
 
  /dts-v1/;
 
-#include "tegra124.dtsi"
+#include "tegra124-vcm30_t124.dtsi"
 #include <tegra124-platforms/tegra124-vcm30-t124-gpio-default.dtsi>
 #include <tegra124-platforms/tegra124-vcm30-t124-pinmux.dtsi>
-#include <tegra124-platforms/tegra124-vcm30t124-fixed.dtsi>
 #include <panel-a-edp-1080p-14-0.dtsi>
 #include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
 
@@ -35,10 +34,6 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
-	chosen {
-		nvidia,tegra-hypervisor-mode;
-	};
-
 	host1x {
 		sor {
 			status = "okay";
@@ -49,22 +44,25 @@
 				};
 			};
 		};
+
 		dpaux {
 			status = "okay";
 		};
+
 		/* tegradc.0 */
 		dc@54200000 {
-			status = "okay";
 			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
 			nvidia,emc-clk-rate = <204000000>;
 			nvidia,fb-bpp = <32>; /* bits per pixel */
 			nvidia,cmu-enable = <1>;
+			status = "okay";
 		};
+
 		/* tegradc.1 */
 		dc@54240000 {
-			status = "okay";
 			nvidia,emc-clk-rate = <300000000>;
 			nvidia,fb-bpp = <32>; /* bits per pixel */
+			status = "okay";
 		};
 	};
 
@@ -90,81 +88,34 @@
 	};
 
 	serial@70006000 {
-		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";
 	};
 
 	serial@70006040 {
-		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";
 	};
 
 	serial@70006300 {
-		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";
 	};
 
 	spi@7000d400 {
 		status = "okay";
-		spi@0 {
-			compatible = "spidev";
-			reg = <0>;
-			spi-max-frequency = <25000000>;
-			/* spi-cpha;
-			 * spi-cpol;
-			 * spi-cs-high;
-			 */
-		};
 	};
 
 	spi@7000d600 {
 		status = "okay";
-		spi@0 {
-			compatible = "spidev";
-			reg = <0>;
-			spi-max-frequency = <25000000>;
-		};
 	};
 
 	spi@7000d800 {
 		status = "okay";
-		spi@0 {
-			compatible = "spidev";
-			reg = <0>;
-			spi-max-frequency = <25000000>;
-		};
 	};
 
 	spi@7000dc00 {
 		status = "okay";
-		spi@0 {
-			compatible = "spidev";
-			reg = <0>;
-			spi-max-frequency = <25000000>;
-		};
 	};
 
 	xusb@70090000 {
-		nvidia,gpio_ss1_sata = <0>;
-
-		/*
-		 * BIT0 - BIT7 : SS ports
-		 * BIT8 - BIT15 : USB2 UTMI ports
-		 * BIT16 - BIT23 : HSIC ports
-		 * BIT24 - BIT31 : ULPI ports
-		 * XXXX XXXP XXXX XXHH XXXX XUUU XXXX XXSS
-		 */
-		nvidia,portmap = <0x402>; /* SSP1, USB2P2 */
-		/* XXXX .. XSSS XSSS */
-		nvidia,ss_portmap = <0x20>; /* SSP1 on USB2P2 */
-
-		/*
-		 * BIT 2 (0/1): PCIE-0/SSP0
-		 * BIT 1 (0/1): PCIE-1/SSP1
-		 * BIT 0 (0/1): SATA/SSP1
-		 */
-		nvidia,lane_owner = <0x2>; /* PCIE-0, SSP1 and SATA */
-		nvidia,ulpicap = <0>; /* No ulpi support */
 		status = "okay";
 	};
 
@@ -231,58 +182,25 @@
 	};
 
 	pcie-controller {
-		nvidia,port0_status = <1>;
-		nvidia,port1_status = <1>;
 		status = "okay";
 	};
 
 	sata@0x70020000 {
 		status = "okay";
-		nvidia,enable-sata-port;
 	};
 
 	sdhci@700b0600 {
-		tap-delay = <0x4>;
-		trim-delay = <0x4>;
-		ddr-trim-delay = <0x4>;
-		mmc-ocr-mask = <0>;
-		uhs_mask = <0x40>;
-		bus-width = <8>;
-		built-in;
-		ddr-clk-limit = <51000000>;
-		max-clk-limit = <200000000>;
-		vmmc-supply = <&vmmc>;
-		pll_source = "pll_m", "pll_p";
 		status = "okay";
 	};
 
 	sdhci@700b0200 {
-		tap-delay = <0x1>;
-		trim-delay = <0x3>;
-		ddr-trim-delay = <0x3>;
-		mmc-ocr-mask = <0>;
-		uhs_mask = <0x20>;
-		built-in;
-		ddr-clk-limit = <30000000>;
-		max-clk-limit = <51000000>;
-		pll_source = "pll_m", "pll_p";
-		vmmc-supply = <&vmmc>;
 		status = "okay";
 	};
 
 	sdhci@700b0400 {
-		cd-gpios = <&gpio 133 0>;
-		wp-gpios = <&gpio 132 0>;
-		tap-delay = <0>;
-		trim-delay = <3>;
-		mmc-ocr-mask = <3>;
-		uhs_mask = <0x28>;
-		bus-width = <4>;
-		max-clk-limit = <204000000>;
-		pll_source = "pll_m", "pll_p";
-		vmmc-supply = <&vmmc>;
 		status = "okay";
 	};
+
 	bluedroid_pm {
 		compatible = "nvidia,tegra-bluedroid_pm";
 		id = <0>;
