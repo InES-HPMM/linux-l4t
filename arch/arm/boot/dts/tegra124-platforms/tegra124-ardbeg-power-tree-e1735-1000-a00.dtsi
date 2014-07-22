@@ -70,4 +70,14 @@
 		pwrdet-pex-ctl-supply = <&palmas_ti913_regen1>;
 		pwrdet-hv-supply = <&palmas_ti913_regen1>;
 	};
+
+	xusb@70090000 {
+		usb_vbus0-supply = <&usb0_vbus>;
+		usb_vbus1-supply = <&usb1_vbus>;
+		usb_vbus2-supply = <&usb2_vbus>;
+		hvdd_usb-supply = <&palmas_ti913_regen1>;
+		avdd_pll_utmip-supply = <&palmas_smps6>;
+		vddio_hsic-supply = <&palams_ldo4>;
+		avddio_usb-supply = <&palmas_smps9>;
+	};
 };
