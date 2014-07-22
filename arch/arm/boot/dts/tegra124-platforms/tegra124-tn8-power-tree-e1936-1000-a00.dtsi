@@ -59,4 +59,12 @@
 		pwrdet-pex-ctl-supply = <&ldousb_reg>;
 		pwrdet-cam-supply = <&vdd_cam_af>;
 	};
+
+	xusb@70090000 {
+		usb_vbus0-supply = <&usb0_vbus>;
+		hvdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		vddio_hsic-supply = <&ldo5_reg>;
+		avddio_usb-supply = <&palmas_smps10_out2>;
+	};
 };
