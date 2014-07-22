@@ -189,6 +189,13 @@ config VIDEO_DW9718
           This is a driver for the DW9718 focuser
           for use with the tegra isp.
 
+config VIDEO_DW9714
+        tristate "DW9714 focuser support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+        This is a driver for the DW9714 focuser
+        for use with the tegra isp.
+
 config VIDEO_AR0833
         tristate "AR0833 camera sensor support"
         depends on I2C && ARCH_TEGRA
@@ -209,6 +216,15 @@ config VIDEO_IMX179
         ---help---
           This is a driver for the IMX179 camera sensor
           for use with the tegra isp.
+
+config VIDEO_IMX214
+        tristate "IMX214 camera sensor support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+        This is a driver for the IMX214 camera sensor
+        for use with the tegra isp.  The sensor has a
+        maximum of 13MP (4208x3120) resolution with HDR
+        capability.
 
 config VIDEO_CAMERA
         tristate "generic camera device support"
