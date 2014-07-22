@@ -38,6 +38,14 @@
 #include "board-vcm30_t124.h"
 #include "devices.h"
 
+/*
+* FIXME: when pca9539 is moved to dt, the GPIO number will be assigned
+* at runtime. For now until BCM driver is enabled with dt this
+* WF_EN and WF_RST GPIO's num are hardcoded in board file.
+*/
+#define WF_EN_GPIO 1011
+#define WF_RST_GPIO 1012
+
 static void (*wifi_status_cb) (int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
 static int
@@ -128,17 +136,17 @@ static int vcm30_t124_wifi_power(int on)
 {
 	int ret;
 	/* Deassert WiFi RST GPIO */
-	ret = gpio_request(MISCIO_WF_EN_GPIO, "wifi_en");
+	ret = gpio_request(WF_EN_GPIO, "wifi_en");
 	if (ret < 0)
 		goto fail;
-	gpio_direction_output(MISCIO_WF_EN_GPIO, on);
-	gpio_free(MISCIO_WF_EN_GPIO);
+	gpio_direction_output(WF_EN_GPIO, on);
+	gpio_free(WF_EN_GPIO);
 
-	ret = gpio_request(MISCIO_WF_RST_GPIO, "wifi_rst");
+	ret = gpio_request(WF_RST_GPIO, "wifi_rst");
 	if (ret < 0)
 		goto fail;
-	gpio_direction_output(MISCIO_WF_RST_GPIO, on);
-	gpio_free(MISCIO_WF_RST_GPIO);
+	gpio_direction_output(WF_RST_GPIO, on);
+	gpio_free(WF_RST_GPIO);
 
 	mdelay(100);
 	return 0;
