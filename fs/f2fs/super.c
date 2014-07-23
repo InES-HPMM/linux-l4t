@@ -52,6 +52,7 @@ enum {
 	Opt_inline_xattr,
 	Opt_inline_data,
 	Opt_flush_merge,
+	Opt_nobarrier,
 	Opt_android_emu,
 	Opt_err_continue,
 	Opt_err_panic,
@@ -73,6 +74,7 @@ static match_table_t f2fs_tokens = {
 	{Opt_inline_xattr, "inline_xattr"},
 	{Opt_inline_data, "inline_data"},
 	{Opt_flush_merge, "flush_merge"},
+	{Opt_nobarrier, "nobarrier"},
 	{Opt_android_emu, "android_emu=%s"},
 	{Opt_err_continue, "errors=continue"},
 	{Opt_err_panic, "errors=panic"},
@@ -381,6 +383,9 @@ static int parse_options(struct super_block *sb, char *options)
 		case Opt_flush_merge:
 			set_opt(sbi, FLUSH_MERGE);
 			break;
+		case Opt_nobarrier:
+			set_opt(sbi, NOBARRIER);
+			break;
 		case Opt_err_continue:
 			clear_opt(sbi, ERRORS_RECOVER);
 			clear_opt(sbi, ERRORS_PANIC);
@@ -619,6 +624,8 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 		seq_puts(seq, ",inline_data");
 	if (!f2fs_readonly(sbi->sb) && test_opt(sbi, FLUSH_MERGE))
 		seq_puts(seq, ",flush_merge");
+	if (test_opt(sbi, NOBARRIER))
+		seq_puts(seq, ",nobarrier");
 
 	if (test_opt(sbi, ANDROID_EMU))
 		seq_printf(seq, ",android_emu=%u:%u:%ho%s",
