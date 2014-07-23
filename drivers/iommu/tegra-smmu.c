@@ -2272,23 +2272,22 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 	struct dma_iommu_mapping *map;
 	struct device *dev = _dev;
 
+	if (!tegra_smmu_of_get_swgids(dev))
+		goto end;
+
 	switch (event) {
 	case BUS_NOTIFY_BIND_DRIVER:
 		if (get_dma_ops(dev) != &arm_dma_ops)
 			break;
 
-		map = tegra_smmu_get_mapping(dev, true);
-		if (!map)
-			break;
-
-		if (strstr(dev_name(dev), "smmu") ||
-		    strstr(dev_name(dev), "iommu")) {
-			dev_info(dev, "skip bind_driver notification\n");
+		if (!smmu_handle) {
+			dev_err(dev, "No map available yet!!!\n");
 			break;
 		}
 
-		if (!smmu_handle) {
-			dev_info(dev, "No map available yet!!!\n");
+		map = tegra_smmu_get_mapping(dev, true);
+		if (!map) {
+			dev_err(dev, "map creation failed!!!\n");
 			break;
 		}
 
@@ -2301,8 +2300,10 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 		break;
 	case BUS_NOTIFY_UNBOUND_DRIVER:
 		map = tegra_smmu_get_mapping(dev, false);
-		if (!map)
+		if (!map) {
+			dev_err(dev, "map does not exist!!!\n");
 			break;
+		}
 		dev_dbg(dev, "Detaching %s from map %p\n", dev_name(dev),
 			to_dma_iommu_mapping(dev));
 		arm_iommu_detach_device(dev);
@@ -2310,6 +2311,8 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 	default:
 		break;
 	}
+
+end:
 	return NOTIFY_DONE;
 }
 
