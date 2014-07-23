@@ -1208,7 +1208,7 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 	int (*fn)(struct smmu_as *as, dma_addr_t iova, phys_addr_t pa,
 		  unsigned long prot);
 
-	dev_dbg(as->smmu->dev, "[%d] %08lx:%pa\n", as->asid, iova, &pa);
+	dev_dbg(as->smmu->dev, "[%d] %pad:%pa\n", as->asid, &iova, &pa);
 
 	switch (bytes) {
 	case SZ_4K:
@@ -1402,7 +1402,7 @@ static size_t smmu_iommu_unmap(struct iommu_domain *domain, unsigned long iova,
 	unsigned long flags;
 	size_t unmapped;
 
-	dev_dbg(as->smmu->dev, "[%d] %08lx\n", as->asid, iova);
+	dev_dbg(as->smmu->dev, "[%d] %pad\n", as->asid, &iova);
 
 	spin_lock_irqsave(&as->lock, flags);
 	unmapped = __smmu_iommu_unmap(as, iova, bytes);
@@ -1435,7 +1435,7 @@ static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
 		pa = pdir[pdn] << SMMU_PDE_SHIFT;
 	}
 
-	dev_dbg(as->smmu->dev, "iova:%pa pfn:%pa asid:%d\n",
+	dev_dbg(as->smmu->dev, "iova:%pad pfn:%pa asid:%d\n",
 		&iova, &pa, as->asid);
 
 	spin_unlock_irqrestore(&as->lock, flags);
@@ -1482,7 +1482,7 @@ static void debugfs_create_as(struct smmu_as *as)
 	if (!dent)
 		return;
 	as->debugfs_root = dent;
-	debugfs_create_file("iovainfo", 0400, as->debugfs_root,
+	debugfs_create_file("iovainfo", S_IRUSR, as->debugfs_root,
 			    as + as->asid, &smmu_ptdump_fops);
 }
 
