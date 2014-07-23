@@ -939,6 +939,8 @@
 		bus-width = <8>;
 		id = <3>;
 		built-in;
+		compad-vref-3v3 = <0x7>;
+		compad-vref-1v8 = <0x7>;
 		status = "disabled";
 	};
 
@@ -954,6 +956,8 @@
 		ddr-clk-limit = <48000000>;
 		bus-width = <4>;
 		id = <2>;
+		compad-vref-3v3 = <0x1>;
+		compad-vref-1v8 = <0x2>;
 		status = "disabled";
 	};
 
@@ -969,6 +973,8 @@
 		bus-width = <8>;
 		id = <1>;
 		built-in;
+		compad-vref-3v3 = <0x7>;
+		compad-vref-1v8 = <0x7>;
 		status = "disabled";
 	};
 
@@ -977,6 +983,8 @@
 		reg = <0x0 0x700b0000 0x0 0x200>;
 		interrupts = < 0 14 0x04 >;
 		nvidia,memory-clients = <25>;
+		compad-vref-3v3 = <0x1>;
+		compad-vref-1v8 = <0x2>;
 		status = "disabled";
 	};
 

@@ -25,6 +25,7 @@ Optional properties:
 - calib_3v3_offsets and calib_1v8_offsets: Specify caliberation settings at 3.3V and at 1.8V
 - pll_source: Specify list of clock parents
 - dqs-trim-delay: Specify number of cycles to delay for reading data from device when the device is enumerated in HS400, HS533 or HS667 modes and this value is applicable only for eMMC device.
+- compad-vref-3v3 and compad-vref-1v8: used to control Vref_sel input of calibration pad. Should be set based on pads used for controller before starting pad drive strength calibration.
 
 Example:
 
@@ -42,6 +43,8 @@ Example:
 		built-in;
 		calib_3v3_offsets = <0x0202>;
 		calib_1v8_offsets = <0x0202>;
+		compad-vref-3v3 = <0x7>;
+		compad-vref-1v8 = <0x7>;
 		pll_source = "pll_m", "pll_p";
 		status = "okay";
 	};
