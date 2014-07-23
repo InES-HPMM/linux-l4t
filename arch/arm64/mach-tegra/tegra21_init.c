@@ -260,12 +260,6 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 
 void __init tegra21x_init_early(void)
 {
-#ifndef CONFIG_SMP
-	/* For SMP system, initializing the reset handler here is too
-	   late. For non-SMP systems, the function that calls the reset
-	   handler initializer is not called, so do it here for non-SMP. */
-	tegra_cpu_reset_handler_init();
-#endif
 	tegra_apb_io_init();
 	tegra_perf_init();
 	tegra_init_fuse();
