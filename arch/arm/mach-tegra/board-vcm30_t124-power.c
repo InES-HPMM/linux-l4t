@@ -315,16 +315,6 @@ static struct thermal_zone_params soctherm_tzp = {
 	.governor_params = &soctherm_pid_params,
 };
 
-static struct tegra_thermtrip_pmic_data tpdata_max77663 = {
-	.reset_tegra = 1,
-	.pmu_16bit_ops = 0,
-	.controller_type = 0,
-	.pmu_i2c_addr = 0x3c,
-	.i2c_controller_id = 4,
-	.poweroff_reg_addr = 0x41,
-	.poweroff_reg_data = 0x80,
-};
-
 static struct soctherm_platform_data vcm30_t124_soctherm_data = {
 	.therm = {
 		[THERM_CPU] = {
@@ -350,8 +340,6 @@ static struct soctherm_platform_data vcm30_t124_soctherm_data = {
 /* FIXME: Needed? */
 int __init vcm30_t124_soctherm_init(void)
 {
-	vcm30_t124_soctherm_data.tshut_pmu_trip_data = &tpdata_max77663;
-
 	tegra_add_cpu_clk_switch_trips(
 			vcm30_t124_soctherm_data.therm[THERM_CPU].trips,
 			&vcm30_t124_soctherm_data.therm[THERM_CPU].num_trips);
