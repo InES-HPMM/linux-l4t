@@ -1,7 +1,7 @@
 /*
  * Power off driver for Maxim MAX77620 device.
  *
- * Copyright (c) 2014, NVIDIA Corporation.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Chaitanya Bandi <bandik@nvidia.com>
  *
@@ -83,6 +83,8 @@ static int max77620_poweroff_probe(struct platform_device *pdev)
 	struct system_pmic_config config;
 	bool use_power_off = false;
 	bool use_power_reset = false;
+	u8 poweroff_event_recorder;
+	int ret;
 
 	if (np) {
 		bool system_pc;
@@ -121,12 +123,24 @@ static int max77620_poweroff_probe(struct platform_device *pdev)
 	max77620_poweroff->system_pmic_dev = system_pmic_register(&pdev->dev,
 				&max77620_pm_ops, &config, max77620_poweroff);
 	if (IS_ERR(max77620_poweroff->system_pmic_dev)) {
-		int ret = PTR_ERR(max77620_poweroff->system_pmic_dev);
+		ret = PTR_ERR(max77620_poweroff->system_pmic_dev);
 
 		dev_err(&pdev->dev, "System PMIC registration failed: %d\n",
 			ret);
 		return ret;
 	}
+
+	ret = max77620_reg_read(max77620_poweroff->max77620->dev,
+		MAX77620_PWR_SLAVE, MAX77620_REG_NVERC,
+		&poweroff_event_recorder);
+	if (ret < 0) {
+		dev_err(max77620_poweroff->dev,
+			"REG_NVERC read failed, %d\n", ret);
+		return ret;
+	} else
+		dev_info(&pdev->dev, "Event recorder REG_NVERC : 0x%x\n",
+				poweroff_event_recorder);
+
 	return 0;
 }
 
