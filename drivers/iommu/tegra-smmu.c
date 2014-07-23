@@ -316,7 +316,6 @@ struct smmu_domain {
 struct smmu_client {
 	struct device		*dev;
 	struct list_head	list;
-	struct smmu_as		*as;
 	struct smmu_domain	*domain;
 	u64			swgids;
 
@@ -1549,7 +1548,7 @@ static void debugfs_create_master(struct smmu_client *c)
 		debugfs_create_symlink(name, c->debugfs_root, target);
 
 		sprintf(target, "../masters/%s", dev_name(c->dev));
-		debugfs_create_symlink(dev_name(c->dev), c->as->debugfs_root,
+		debugfs_create_symlink(dev_name(c->dev), as->debugfs_root,
 					target);
 	}
 }
@@ -1618,7 +1617,6 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	if (!client)
 		goto release_as;
 	client->dev = dev;
-	client->as = as;
 	client->domain = dom;
 
 	err = smmu_client_enable_hwgrp(client, map);
