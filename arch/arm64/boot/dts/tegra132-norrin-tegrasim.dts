@@ -5,8 +5,7 @@
 
 	chosen {
 	        /* other options: debug */
-		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk=uart8250-32bit,0x70006000 gpt board_info=0x0176:0x0001:0x01:0x43:0x00
-displayboard=0xbabe:0x03ea:0x00:0x42:0x00 pmuboard=0x0176:0x0001:0x01:0x43:0x00 no_console_suspend=1";
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk=uart8250-32bit,0x70006300 gpt board_info=0x0176:0x0001:0x01:0x43:0x00 displayboard=0xbabe:0x03ea:0x00:0x42:0x00 pmuboard=0x0176:0x0001:0x01:0x43:0x00 no_console_suspend=1";
 		linux,initrd-start = <0x81680000>;
 	};
 	cpus {
@@ -36,7 +35,9 @@ displayboard=0xbabe:0x03ea:0x00:0x42:0x00 pmuboard=0x0176:0x0001:0x01:0x43:0x00 
 	};
 
 	serial@70006300 {
-		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";
+	};
+	sata@0x70020000 {
+		status="disabled";
 	};
 };
