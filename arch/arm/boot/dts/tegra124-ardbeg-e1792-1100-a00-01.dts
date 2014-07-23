@@ -30,8 +30,10 @@
 
 	i2c@7000d000 {
 		as3722@40 {
+			adc_extcon {
+				ams,extcon-name = "as3722-extcon";
+			};
 
-			ams,extcon-name = "as3722-extcon";
 			regulators {
 				sd2 {
 					regulator-min-microvolt = <1200000>;

@@ -56,8 +56,6 @@
 			};
 
 			adc_extcon: adc_extcon {
-				compatible = "ams,as3722-adc-extcon";
-				ams,extcon-name = "as3722-extcon";
 				ams,enable-adc1-continuous-mode;
 				ams,enable-low-voltage-range;
 				ams,adc-channel = <12>;
@@ -68,7 +66,6 @@
 			};
 
 		     	regulators {
-			     compatible = "ams,as3722";
 			     ldo0-in-supply = <&as3722_sd2>;
 			     ldo2-in-supply = <&as3722_sd5>;
 			     ldo5-in-supply = <&as3722_sd5>;
