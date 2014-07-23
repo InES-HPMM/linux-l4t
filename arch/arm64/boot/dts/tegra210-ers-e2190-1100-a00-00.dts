@@ -1,3 +1,23 @@
+/*
+ * arch/arm64/boot/dts/tegra210-ers-e2190-1100-a00-00.dts
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
 /dts-v1/;
 
 /memreserve/ 0x80000000 0x00020000;
@@ -39,5 +59,82 @@
 		status = "okay";
 	};
 
+	i2c@7000c000 {
+		rt5639: audio-codec@1c {
+			compatible = "realtek,rt5639";
+			reg = <0x1c>;
+		};
+	};
+
+	adma@702e2000  {
+		interrupts = <0 24 0x04
+			      0 25 0x04
+			      0 26 0x04
+			      0 27 0x04
+			      0 28 0x04
+			      0 29 0x04
+			      0 30 0x04
+			      0 31 0x04
+			      0 32 0x04
+			      0 33 0x04>;
+		dma-channels = <10>;
+		status = "okay";
+	};
+
+	ahub {
+		i2s@702d1000 {
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <&dap1_active_state>;
+			pinctrl-1 = <&dap1_inactive_state>;
+		};
+
+		i2s@702d1300 {
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <&dap4_active_state>;
+			pinctrl-1 = <&dap4_inactive_state>;
+		};
+	};
+
+	sound {
+		compatible = "nvidia,tegra-audio-grenada-mobile";
+		nvidia,model = "tegra-snd-grenada-mobile";
+		nvidia,memory-clients = <34>;
+		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(R, 2) GPIO_ACTIVE_HIGH>;
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(R, 7) GPIO_ACTIVE_HIGH>;
+
+		nvidia,audio-routing =
+			"x Headphone Jack", 	"x HPOL",
+			"x Headphone Jack", 	"x HPOR",
+			"x Int Spk", 	"x SPORP",
+			"x Int Spk", 	"x SPORN",
+			"x Int Spk", 	"x SPOLP",
+			"x Int Spk", 	"x SPOLN",
+			"x micbias1",	"x Mic Jack",
+			"x IN2P",		"x Mic Jack",
+			"x IN2P",		"x Mic Jack",
+			"x DMIC L1",	"x Int Mic",
+			"x DMIC L2",	"x Int Mic",
+			"x DMIC R1",	"x Int Mic",
+			"x DMIC R2",	"x Int Mic",
+
+			"y Headphone", 	"y OUT",
+			"z Headphone", 	"z OUT",
+			"s Headphone", 	"s OUT",
+			"y IN",		"y Mic",
+			"z IN",		"z Mic",
+			"s IN",		"s Mic";
+			nvidia,xbar = <&tegra_axbar>;
+			nvidia,i2s-controller-1 = <&tegra_i2s1>;
+			nvidia,i2s-controller-2 = <&tegra_i2s3>;
+			nvidia,i2s-controller-3 = <&tegra_i2s5>;
+			nvidia,dmic-1 = <&tegra_dmic1>;
+			nvidia,dmic-2 = <&tegra_dmic2>;
+			nvidia,dmic-3 = <&tegra_dmic3>;
+			nvidia,spdif = <&tegra_spdif>;
+			nvidia,audio-codec-x = <&rt5639>;
+			nvidia,audio-codec-y = <&spdif_dit1>;
+			nvidia,audio-codec-z = <&spdif_dit2>;
+			nvidia,audio-codec-s = <&spdif_dit3>;
+	};
 };
 

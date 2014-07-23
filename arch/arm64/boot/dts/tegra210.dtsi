@@ -616,7 +616,7 @@
 		reg = <0x0 0x7000e400 0x0 0x400>;
 	};
 
-	adma: dma@702e2000 {
+	adma: adma@702e2000 {
 		compatible = "nvidia,tegra210-adma";
 		reg = <0x0 0x702e2000 0x0 0x2000>;
 		interrupts = <0 24 0x04
@@ -628,9 +628,21 @@
 			      0 30 0x04
 			      0 31 0x04
 			      0 32 0x04
-			      0 33 0x04>;
+			      0 33 0x04
+			      0 34 0x04
+			      0 35 0x04
+			      0 36 0x04
+			      0 37 0x04
+			      0 38 0x04
+			      0 39 0x04
+			      0 40 0x04
+			      0 41 0x04
+			      0 42 0x04
+			      0 43 0x04
+			      0 44 0x04
+			      0 45 0x04>;
 			#dma-cells = <1>;
-			dma-channels = <10>;
+			dma-channels = <22>;
 	};
 
 	se: se@70012000 {
