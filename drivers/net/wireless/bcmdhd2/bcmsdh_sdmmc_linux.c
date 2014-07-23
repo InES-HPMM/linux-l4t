@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_sdmmc_linux.c 434777 2013-11-07 09:30:27Z $
+ * $Id: bcmsdh_sdmmc_linux.c 434724 2013-11-07 05:38:43Z $
  */
 
 #include <typedefs.h>
@@ -230,7 +230,7 @@ static const struct sdio_device_id bcmsdh_sdmmc_ids[] = {
 		.vendor	= SDIO_VENDOR_ID_BROADCOM,
 		.device	= SDIO_ANY_ID
 	},
-#elif 1
+#elif 0
 	/* BCM4354 */
 	{ 	.class	= SDIO_CLASS_NONE,
 		.vendor	= SDIO_VENDOR_ID_BROADCOM,
@@ -261,6 +261,7 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 	struct sdio_func *func = dev_to_sdio_func(pdev);
 	mmc_pm_flag_t sdio_flags;
 
+pr_info("%s(%d)\n", __func__, __LINE__);
 	sd_err(("%s Enter\n", __FUNCTION__));
 	if (func->num != 2)
 		return 0;
@@ -271,6 +272,7 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 		return err;
 
 	sdio_flags = sdio_get_host_pm_caps(func);
+pr_info("%s(%d) sdio_flags %x\n", __func__, __LINE__, sdio_flags);
 	if (!(sdio_flags & MMC_PM_KEEP_POWER)) {
 		sd_err(("%s: can't keep power while host is suspended\n", __FUNCTION__));
 		return  -EINVAL;
@@ -296,6 +298,7 @@ static int bcmsdh_sdmmc_resume(struct device *pdev)
 	sdioh_info_t *sdioh;
 	struct sdio_func *func = dev_to_sdio_func(pdev);
 
+pr_info("%s(%d)\n", __func__, __LINE__);
 	sd_err(("%s Enter\n", __FUNCTION__));
 	if (func->num != 2)
 		return 0;
@@ -359,7 +362,11 @@ void sdio_func_unreg_notify(void)
 static struct sdio_driver bcmsdh_sdmmc_driver = {
 	.probe		= bcmsdh_sdmmc_probe,
 	.remove		= bcmsdh_sdmmc_remove,
+#ifndef BCMDHD2
 	.name		= "bcmsdh_sdmmc",
+#else
+	.name		= "bcmsdh2_sdmmc",
+#endif
 	.id_table	= bcmsdh_sdmmc_ids,
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM)
 	.drv = {
