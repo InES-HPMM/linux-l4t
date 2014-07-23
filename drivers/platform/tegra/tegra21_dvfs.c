@@ -75,7 +75,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_cpu = {
 	.stats = {
 		.bin_uV = 6250, /* 6.25mV */
 	},
-	.version = "p4v00",
+	.version = "Safe p4v08",
 };
 
 static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
@@ -122,11 +122,15 @@ void __init tegra21x_vdd_cpu_align(int step_uv, int offset_uv)
 	tegra21_dvfs_rail_vdd_cpu.alignment.offset_uv = offset_uv;
 }
 
+/* FIXME: Remove after bringup */
+#define BRINGUP_CVB_V_MARGIN	25
+#define BRINGUP_CVB_V_MARGIN_EX	5
+
 /* CPU DVFS tables */
 /* FIXME: real data */
 static unsigned long cpu_max_freq[] = {
 /* speedo_id	0	 */
-		2015000,
+		2040000,
 };
 
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
@@ -134,40 +138,39 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.speedo_id = -1,
 		.process_id = -1,
 		.dfll_tune_data  = {
-			.tune0		= 0x00f0409f,
-			.tune0_high_mv	= 0x00f0409f,
+			.tune0		= 0x00000000,
+			.tune0_high_mv	= 0x00000000,
 			.tune1		= 0x000000a0,
 			.droop_rate_min = 1000000,
-			.min_millivolts = 800,
+			.min_millivolts = 900,
 		},
 		.pll_tune_data = {
-			.min_millivolts = 950,
+			.min_millivolts = 900,
 		},
-		.max_mv = 1260,
+		.max_mv = 1225,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 1000,
 		.cvb_table = {
-			/*f       dfll: c0,     c1,   c2  pll:  c0,   c1,    c2 */
-			{408000 , {2244479,  -117955,  2292}, { 960000,  0,  0} },
-			{510000 , {2279779,  -119575,  2292}, { 960000,  0,  0} },
-			{612000 , {2317504,  -121185,  2292}, { 960000,  0,  0} },
-			{714000 , {2357653,  -122795,  2292}, { 972000,  0,  0} },
-			{816000 , {2400228,  -124415,  2292}, { 984000,  0,  0} },
-			{918000 , {2445228,  -126025,  2292}, { 996000,  0,  0} },
-			{1020000, {2492653,  -127635,  2292}, { 1020000, 0,  0} },
-			{1122000, {2542502,  -129255,  2292}, { 1032000, 0,  0} },
-			{1224000, {2594777,  -130865,  2292}, { 1056000, 0,  0} },
-			{1326000, {2649477,  -132475,  2292}, { 1092000, 0,  0} },
-			{1428000, {2706601,  -134095,  2292}, { 1116000, 0,  0} },
-			{1530000, {2766150,  -135705,  2292}, { 1152000, 0,  0} },
-			{1632000, {2828125,  -137315,  2292}, { 1188000, 0,  0} },
-			{1734000, {2892524,  -138935,  2292}, { 1224000, 0,  0} },
-			{1836000, {2959348,  -140545,  2292}, { 1260000, 0,  0} },
-			{1913000, {3028598,  -142155,  2292}, { 1308000, 0,  0} },
-			{2015000, {3100272,  -143775,  2292}, { 1356000, 0,  0} },
-			{2117000, {3174371,  -145385,  2292}, { 1404000, 0,  0} },
-			{      0, {      0,        0,     0}, {       0, 0,  0} },
+			/*f       dfll:    c0,       c1,      c2  pll:  c0,   c1,    c2 */
+			{408000 , {  0       ,  0      ,  0     }, { 0,  0,  0} },
+			{510000 , {  0       ,  0      ,  0     }, { 0,  0,  0} },
+			{612000 , {  0       ,  0      ,  0     }, { 0,  0,  0} },
+			{714000 , {  0       ,  0      ,  0     }, { 0,  0,  0} },
+			{816000 , {  0       ,  0      ,  0     }, { 0,  0,  0} },
+			{918000 , {  0       ,  0      ,  0     }, { 0,  0,  0} },
+			{1020000, { -2875621 ,  358099 , -8585  }, { 0,  0,  0} },
+			{1122000, { -52225   ,  104159 , -2816  }, { 0,  0,  0} },
+			{1224000, {  1076868 ,  8356   , -727   }, { 0,  0,  0} },
+			{1326000, {  2208191 , -84659  ,  1240  }, { 0,  0,  0} },
+			{1428000, {  2519460 , -105063 ,  1611  }, { 0,  0,  0} },
+			{1530000, {  2639809 , -108729 ,  1626  }, { 0,  0,  0} },
+			{1632000, {  2889664 , -122173 ,  1834  }, { 0,  0,  0} },
+			{1734000, {  3386160 , -154021 ,  2393  }, { 0,  0,  0} },
+			{1836000, {  5100873 , -279186 ,  4747  }, { 0,  0,  0} },
+			{1938000, {  5731085 , -314142 ,  5263  }, { 0,  0,  0} },
+			{2040000, {  15984463, -1051613,  18628 }, { 0,  0,  0} },
+			{      0, {        0,         0,     0  }, { 0,  0,  0} },
 		},
 	},
 };
@@ -187,7 +190,7 @@ static struct dvfs cpu_dvfs = {
 /* FIXME: real data */
 static unsigned long cpu_lp_max_freq[] = {
 /* speedo_id	0	 */
-		700000,
+		1203200,
 };
 
 static struct cpu_cvb_dvfs cpu_lp_cvb_dvfs_table[] = {
@@ -195,20 +198,24 @@ static struct cpu_cvb_dvfs cpu_lp_cvb_dvfs_table[] = {
 		.speedo_id = -1,
 		.process_id = -1,
 		.pll_tune_data = {
-			.min_millivolts = 850,
+			.min_millivolts = 900,
 		},
-		.max_mv = 1260,
+		.max_mv = 1225,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 1000,
 		.cvb_table = {
 			/*f       dfll  pll:  c0,       c1,    c2 */
-			{ 144000, {  }, {  810000,      0,      0} },
-			{ 252000, {  }, {  860000,      0,      0} },
-			{ 288000, {  }, {  900000,      0,      0} },
-			{ 444000, {  }, { 1000000,      0,      0} },
-			{ 624000, {  }, { 1100000,      0,      0} },
-			{      0, {  }, {       0,      0,      0} },
+			{ 384000 , {  }, {  0      ,  0     ,  0    } },
+			{ 486400 , {  }, {  0      ,  0     ,  0    } },
+			{ 588800 , {  }, { -2001927,  282071, -6899 } },
+			{ 691200 , {  }, {  326281 ,  79964 , -2413 } },
+			{ 793600 , {  }, {  2711280, -120592,  1899 } },
+			{ 896000 , {  }, {  2808375, -120304,  1831 } },
+			{ 998400 , {  }, {  3056813, -132036,  2017 } },
+			{ 1100800, {  }, {  4415397, -229955,  3887 } },
+			{ 1203200, {  }, {  4151796, -197768,  3186 } },
+			{       0, {  }, { } },
 		},
 	},
 };
@@ -607,11 +614,17 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 
 		dfll_mv = get_cvb_voltage(
 			speedo, d->speedo_scale, &table->cvb_dfll_param);
+#ifdef BRINGUP_CVB_V_MARGIN
+		dfll_mv = dfll_mv * (100 + BRINGUP_CVB_V_MARGIN) / 100;
+		mv = dfll_mv * (100 + BRINGUP_CVB_V_MARGIN_EX) / 100;
+#endif
 		dfll_mv = round_cvb_voltage(dfll_mv, d->voltage_scale, align);
 		dfll_mv = max(dfll_mv, min_dfll_mv);
 
+#ifndef BRINGUP_CVB_V_MARGIN
 		mv = get_cvb_voltage(
 			speedo, d->speedo_scale, &table->cvb_pll_param);
+#endif
 		mv = round_cvb_voltage(mv, d->voltage_scale, align);
 		mv = max(mv, min_mv);
 
@@ -739,11 +752,14 @@ static int __init set_cpu_lp_dvfs_data(unsigned long max_freq,
 
 		mv = get_cvb_voltage(
 			speedo, d->speedo_scale, &table->cvb_pll_param);
+#ifdef BRINGUP_CVB_V_MARGIN
+		mv = mv * (100 + BRINGUP_CVB_V_MARGIN) / 100;
+#endif
 		mv = round_cvb_voltage(mv, d->voltage_scale, align);
 		mv = max(mv, min_mv);
 
 		if (mv > d->max_mv) {
-			WARN(1, "tegra21_dvfs: %dmV for %s rate %lu above limit %dmV\n",
+			pr_warn("tegra21_dvfs: %dmV for %s rate %lu above limit %dmV\n",
 			     mv, cpu_lp_dvfs->clk_name, table->freq, d->max_mv);
 			break;
 		}
