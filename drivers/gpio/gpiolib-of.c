@@ -244,6 +244,7 @@ void of_gpiochip_init(struct gpio_chip *chip)
 			break;
 		}
 
+		statename = NULL;
 		/* Determine whether gpio-init-names property names the state */
 		of_property_read_string_index(np, "gpio-init-names",
 						    state, &statename);
