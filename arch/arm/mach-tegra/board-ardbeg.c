@@ -868,7 +868,7 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 		NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-camera", 0, "pcl-generic",
 				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-ahci-sata", 0x70027000, "tegra-sata.0",
+	OF_DEV_AUXDATA("nvidia,tegra124-ahci-sata", 0x70027000, "tegra-sata.0",
 		NULL),
 	OF_DEV_AUXDATA("nvidia,tegra-bluedroid_pm", 0, "bluedroid_pm",
 		NULL),

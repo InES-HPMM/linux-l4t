@@ -268,7 +268,7 @@
 		nvidia,i2s-param,0,bit-clk		= <1536000>;
 	};
 
-	sata@0x70020000 {
+	sata@70020000 {
 		status = "okay";
 		nvidia,pexp-gpio = <&tca6416 9 0>;
 		nvidia,enable-sata-port;

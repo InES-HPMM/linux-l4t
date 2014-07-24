@@ -53,7 +53,7 @@
 		vddio-pex-ctl-supply = <&as3722_sd4>;
 	};
 
-	sata@0x70020000 {
+	sata@70020000 {
 		avdd_sata-supply = <&as3722_sd4>;
 		vdd_sata-supply = <&as3722_sd4>;
 		avdd_sata_pll-supply =<&as3722_sd4>;

@@ -98,7 +98,7 @@
 		};
 	};
 
-	sata@0x70020000 {
+	sata@70020000 {
 		status = "disabled";
 	};
 
