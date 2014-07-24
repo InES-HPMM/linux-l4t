@@ -262,7 +262,7 @@ static u64 get_coherent_dma_mask(struct device *dev)
 
 		if ((~mask) & (u64)arm_dma_limit) {
 			dev_warn(dev, "coherent DMA mask %#llx is smaller "
-				 "than system GFP_DMA mask %#llx\n",
+				 "than system GFP_DMA32 mask %#llx\n",
 				 mask, (u64)arm_dma_limit);
 			return 0;
 		}
@@ -715,8 +715,18 @@ static void *__dma_alloc(struct device *dev, size_t size, dma_addr_t *handle,
 	if (!mask)
 		return NULL;
 
-	if (mask < 0xffffffffULL)
-		gfp |= GFP_DMA;
+#ifdef CONFIG_ZONE_DMA32
+	if (mask == (u64)arm_dma_limit) {
+		if ((gfp & GFP_ZONEMASK) != GFP_DMA32 &&
+		    (gfp & GFP_ZONEMASK) != 0) {
+			dev_warn(dev, "Invalid GFP flags(%x) passed. "
+				"GFP_DMA32 should only be set.",
+				 gfp & GFP_ZONEMASK);
+			return NULL;
+		}
+		gfp |= GFP_DMA32;
+	}
+#endif
 
 	/*
 	 * Following is a work-around (a.k.a. hack) to prevent pages

@@ -11,4 +11,8 @@ static inline pmd_t *pmd_off_k(unsigned long virt)
 /* consistent regions used by dma_alloc_attrs() */
 #define VM_ARM_DMA_CONSISTENT  0x20000000
 
+#ifdef CONFIG_ZONE_DMA32
+#define arm_dma_limit (0xffffffff)
+#else
 #define arm_dma_limit ((phys_addr_t)~0)
+#endif
