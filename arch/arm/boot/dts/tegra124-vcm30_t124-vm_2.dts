@@ -164,6 +164,10 @@
 		status = "disabled";
 	};
 
+	soctherm@0x700E2000 {
+		status = "disabled";
+	};
+
 	tegra_hv: hyp {
 		compatible = "nvidia,tegra-hv";
 		status = "okay";
