@@ -943,14 +943,17 @@ static struct i2c_board_info t210ref_i2c_nct72_board_info[] = {
 		.platform_data = &t210ref_nct72_pdata,
 		.irq = -1,
 	},
+};
+
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
+static struct i2c_board_info t210ref_skin_i2c_nct72_board_info[] = {
 	{
 		I2C_BOARD_INFO("nct72", 0x4d),
 		.platform_data = &t210ref_nct72_tskin_pdata,
 		.irq = -1,
 	}
-#endif
 };
+#endif
 
 int t210ref_thermal_sensors_init(void)
 {
@@ -1033,9 +1036,15 @@ int t210ref_thermal_sensors_init(void)
 		t210ref_nct72_pdata.sensors[LOC].shutdown_limit = 95;
 		i2c_register_board_info(0, t210ref_i2c_nct72_board_info,
 					1); /* only register device[0] */
-	} else
-		i2c_register_board_info(1, t210ref_i2c_nct72_board_info,
+	} else {
+	/* E2141 has thermal sensor on GEN1-I2C, skin temp sensor on GEN2-I2C */
+		i2c_register_board_info(0, t210ref_i2c_nct72_board_info,
 			ARRAY_SIZE(t210ref_i2c_nct72_board_info));
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+		i2c_register_board_info(1, t210ref_skin_i2c_nct72_board_info,
+			ARRAY_SIZE(t210ref_skin_i2c_nct72_board_info));
+#endif
+	}
 
 	return ret;
 }
