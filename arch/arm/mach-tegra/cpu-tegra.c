@@ -41,6 +41,7 @@
 #include "clock.h"
 #include "cpu-tegra.h"
 #include "dvfs.h"
+#include "pm.h"
 
 #include <trace/events/sysedp.h>
 
@@ -187,43 +188,24 @@ static struct attribute_group stats_attr_grp = {
 
 #endif /* CONFIG_TEGRA_THERMAL_THROTTLE */
 
-static const struct tegra_edp_limits *cpu_reg_idle_limits;
 static unsigned int reg_mode;
 static bool reg_mode_force_normal;
 
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 
-static const struct tegra_edp_limits *cpu_edp_limits;
-static int cpu_edp_limits_size;
-
 static int edp_thermal_index;
 static cpumask_t edp_cpumask;
-static unsigned int edp_limit;
 static struct pm_qos_request edp_max_cpus;
 
-unsigned int tegra_get_edp_limit(int *get_edp_thermal_index)
+unsigned int tegra_get_cpu_tegra_thermal_index(void)
 {
-	if (get_edp_thermal_index)
-		*get_edp_thermal_index = edp_thermal_index;
-	return edp_limit;
-}
-
-static unsigned int edp_predict_limit(unsigned int cpus)
-{
-	unsigned int limit = 0;
-
-	BUG_ON(cpus == 0);
-	if (cpu_edp_limits) {
-		BUG_ON(edp_thermal_index >= cpu_edp_limits_size);
-		limit = cpu_edp_limits[edp_thermal_index].freq_limits[cpus - 1];
-	}
-
-	return limit;
+	return edp_thermal_index;
 }
 
 static unsigned int get_edp_freq_limit(unsigned int nr_cpus)
 {
-	unsigned int limit = edp_predict_limit(nr_cpus);
+	unsigned int limit = tegra_get_edp_max_freq(edp_thermal_index,
+				nr_cpus, is_lp_cluster() ? MODE_LP : MODE_G);
 #ifndef CONFIG_TEGRA_EDP_EXACT_FREQ
 	unsigned int i;
 	for (i = 0; freq_table[i].frequency != CPUFREQ_TABLE_END; i++) {
@@ -272,15 +254,10 @@ static void edp_update_max_cpus(void)
 		pm_qos_update_request(&edp_max_cpus, max_cpus);
 }
 
-/* Must be called while holding cpu_tegra_lock */
-static void edp_update_limit(void)
+static unsigned int get_edp_limit_speed(unsigned int requested_speed)
 {
-	BUG_ON(!mutex_is_locked(&tegra_cpu_lock));
-	edp_limit = get_edp_freq_limit(cpumask_weight(&edp_cpumask));
-}
+	int edp_limit = get_edp_freq_limit(cpumask_weight(&edp_cpumask));
 
-static unsigned int edp_governor_speed(unsigned int requested_speed)
-{
 	if ((!edp_limit) || (requested_speed <= edp_limit))
 		return requested_speed;
 	else
@@ -290,7 +267,7 @@ static unsigned int edp_governor_speed(unsigned int requested_speed)
 int tegra_edp_get_max_state(struct thermal_cooling_device *cdev,
 				unsigned long *max_state)
 {
-	*max_state = cpu_edp_limits_size - 1;
+	*max_state = tegra_get_edp_max_thermal_index();
 	return 0;
 }
 
@@ -311,7 +288,6 @@ int tegra_edp_set_cur_state(struct thermal_cooling_device *cdev,
 	   alter cpu dvfs table for this thermal zone if necessary */
 	tegra_cpu_dvfs_alter(edp_thermal_index, &edp_cpumask, true, 0);
 	if (target_cpu_speed[0]) {
-		edp_update_limit();
 		tegra_cpu_set_speed_cap_locked(NULL);
 	}
 	tegra_cpu_dvfs_alter(edp_thermal_index, &edp_cpumask, false, 0);
@@ -372,15 +348,14 @@ static int tegra_cpu_edp_notify(
 	case CPU_UP_PREPARE:
 		mutex_lock(&tegra_cpu_lock);
 		cpu_set(cpu, edp_cpumask);
-		edp_update_limit();
 		sysedp_update_limit();
 
 		cpu_speed = tegra_getspeed(0);
-		edp_speed = edp_governor_speed(cpu_speed);
+		edp_speed = get_edp_limit_speed(cpu_speed);
 		new_speed = min_t(unsigned int, cpu_speed, edp_speed);
 		new_speed = min_t(unsigned int, new_speed, cur_cpupwr_freqcap);
 		if (new_speed < cpu_speed ||
-		    (!is_suspended && cpu_reg_idle_limits)) {
+		    (!is_suspended && is_edp_reg_idle_supported())) {
 			ret = tegra_cpu_set_speed_cap_locked(NULL);
 			if (cur_cpupwr_freqcap >= edp_speed) {
 				pr_debug("cpu-tegra:%sforce EDP limit %u kHz\n",
@@ -392,7 +367,6 @@ static int tegra_cpu_edp_notify(
 				edp_thermal_index, &edp_cpumask, false, event);
 		if (ret) {
 			cpu_clear(cpu, edp_cpumask);
-			edp_update_limit();
 			sysedp_update_limit();
 		}
 		mutex_unlock(&tegra_cpu_lock);
@@ -402,7 +376,6 @@ static int tegra_cpu_edp_notify(
 		cpu_clear(cpu, edp_cpumask);
 		tegra_cpu_dvfs_alter(
 			edp_thermal_index, &edp_cpumask, true, event);
-		edp_update_limit();
 		sysedp_update_limit();
 		tegra_cpu_set_speed_cap_locked(NULL);
 		mutex_unlock(&tegra_cpu_lock);
@@ -417,9 +390,7 @@ static struct notifier_block tegra_cpu_edp_notifier = {
 
 static void tegra_cpu_edp_init(bool resume)
 {
-	tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
-
-	if (!cpu_edp_limits) {
+	if (tegra_get_edp_max_thermal_index() <= 0) {
 		if (!resume)
 			pr_info("cpu-tegra: no EDP table is provided\n");
 		return;
@@ -431,19 +402,16 @@ static void tegra_cpu_edp_init(bool resume)
 	 * initialized.
 	 */
 	edp_cpumask = *cpu_online_mask;
-	edp_update_limit();
 
 	if (!resume) {
 		register_hotcpu_notifier(&tegra_cpu_edp_notifier);
-		pr_info("cpu-tegra: init EDP limit: %u MHz\n", edp_limit/1000);
+		pr_info("cpu-tegra: init EDP limit: %u MHz\n",
+			get_edp_freq_limit(cpumask_weight(&edp_cpumask))/1000);
 	}
 }
 
 static void tegra_cpu_edp_exit(void)
 {
-	if (!cpu_edp_limits)
-		return;
-
 	unregister_hotcpu_notifier(&tegra_cpu_edp_notifier);
 }
 
@@ -451,33 +419,20 @@ static unsigned int cpu_reg_mode_predict_idle_limit(void)
 {
 	unsigned int cpus, limit;
 
-	if (!cpu_reg_idle_limits)
+	if (!is_edp_reg_idle_supported())
 		return 0;
 
 	cpus = cpumask_weight(&edp_cpumask);
 	BUG_ON(cpus == 0);
-	BUG_ON(edp_thermal_index >= cpu_edp_limits_size);
-	limit = cpu_reg_idle_limits[edp_thermal_index].freq_limits[cpus - 1];
+	limit = tegra_get_reg_idle_freq(edp_thermal_index, cpus);
 	return limit ? : 1; /* bump 0 to 1kHz to differentiate from no-table */
 }
 
 static int cpu_reg_mode_limits_init(void)
 {
-	int limits_size;
-
-	tegra_get_cpu_reg_mode_limits(&cpu_reg_idle_limits, &limits_size,
-				      REGULATOR_MODE_IDLE);
-
-	if (!cpu_reg_idle_limits) {
+	if (!is_edp_reg_idle_supported()) {
 		reg_mode = -ENOENT;
 		return -ENOENT;
-	}
-
-	if (!cpu_edp_limits || (limits_size != cpu_edp_limits_size)) {
-		pr_err("cpu-tegra: EDP and regulator mode tables mismatch\n");
-		cpu_reg_idle_limits = NULL;
-		reg_mode = -EINVAL;
-		return -EINVAL;
 	}
 
 	reg_mode_force_normal = false;
@@ -489,7 +444,7 @@ int tegra_cpu_reg_mode_force_normal(bool force)
 	int ret = 0;
 
 	mutex_lock(&tegra_cpu_lock);
-	if (cpu_reg_idle_limits) {
+	if (is_edp_reg_idle_supported()) {
 		reg_mode_force_normal = force;
 		ret = tegra_cpu_set_speed_cap_locked(NULL);
 	}
@@ -531,6 +486,15 @@ static int reg_mode_get(void *data, u64 *val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(reg_mode_fops, reg_mode_get, NULL, "0x%llx\n");
 
+static int cpu_edp_limit_get(void *data, u64 *val)
+{
+	*val = (u64)tegra_get_edp_max_freq(edp_thermal_index,
+					   cpumask_weight(&edp_cpumask),
+					   is_lp_cluster() ? MODE_LP : MODE_G);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(cpu_edp_limit_fops, cpu_edp_limit_get, NULL, "%lld\n");
+
 static int __init tegra_edp_debug_init(struct dentry *cpu_tegra_debugfs_root)
 {
 	if (!debugfs_create_file("reg_mode_force_normal", 0644,
@@ -541,12 +505,16 @@ static int __init tegra_edp_debug_init(struct dentry *cpu_tegra_debugfs_root)
 			cpu_tegra_debugfs_root, NULL, &reg_mode_fops))
 		return -ENOMEM;
 
+	if (!debugfs_create_file("cpu_edp_limit", 0444,
+			cpu_tegra_debugfs_root, NULL, &cpu_edp_limit_fops))
+		return -ENOMEM;
+
 	return 0;
 }
 #endif
 
 #else	/* CONFIG_TEGRA_EDP_LIMITS */
-#define edp_governor_speed(requested_speed) (requested_speed)
+#define get_edp_limit_speed(requested_speed) (requested_speed)
 #define tegra_cpu_edp_init(resume)
 #define tegra_cpu_edp_exit()
 #define tegra_edp_debug_init(cpu_tegra_debugfs_root) (0)
@@ -834,15 +802,14 @@ int tegra_cpu_set_speed_cap_locked(unsigned int *speed_cap)
 	int ret = 0;
 	unsigned int new_speed = tegra_cpu_highest_speed();
 	BUG_ON(!mutex_is_locked(&tegra_cpu_lock));
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-	edp_update_limit();
-#endif
 
 	if (is_suspended)
 		return -EBUSY;
 
 	new_speed = tegra_throttle_governor_speed(new_speed);
-	new_speed = edp_governor_speed(new_speed);
+#ifdef CONFIG_TEGRA_EDP_LIMITS
+	new_speed = get_edp_limit_speed(new_speed);
+#endif
 	new_speed = user_cap_speed(new_speed);
 	new_speed = volt_cap_speed(new_speed);
 	new_speed = sysedp_cap_speed(new_speed);
@@ -874,7 +841,7 @@ int tegra_suspended_target(unsigned int target_freq)
 
 	/* apply only "hard" caps */
 	new_speed = tegra_throttle_governor_speed(new_speed);
-	new_speed = edp_governor_speed(new_speed);
+	new_speed = get_edp_limit_speed(new_speed);
 
 	return tegra_update_cpu_speed(new_speed);
 }
@@ -941,8 +908,10 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 
 		mutex_lock(&tegra_cpu_lock);
 		is_suspended = true;
-		if (cpu_reg_idle_limits)
+#ifdef CONFIG_TEGRA_EDP_LIMITS
+		if (is_edp_reg_idle_supported())
 			reg_mode_force_normal = true;
+#endif
 		pr_info("Tegra cpufreq suspend: setting frequency to %d kHz\n",
 			freq_table[suspend_index].frequency);
 		tegra_update_cpu_speed(freq_table[suspend_index].frequency);

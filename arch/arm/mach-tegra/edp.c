@@ -52,6 +52,8 @@ static u32 tegra_chip_id = 0xdeadbeef;
 
 static struct tegra_edp_limits *cpu_edp_limits;
 static int cpu_edp_limits_size;
+static struct tegra_edp_limits *cpulp_edp_limits;
+
 static unsigned int cpu_edp_regulator_cur;
 /* Value to subtract from regulator current limit */
 static unsigned int cpu_edp_reg_override_ma = OVERRIDE_DEFAULT;
@@ -635,6 +637,44 @@ void tegra_get_cpu_edp_limits(const struct tegra_edp_limits **limits, int *size)
 	*size = cpu_edp_limits_size;
 }
 
+int tegra_get_edp_max_thermal_index(void)
+{
+	return cpu_edp_limits_size - 1;
+}
+
+unsigned int tegra_get_edp_max_freq(int thermal_idx, int online_cpus,
+				    int cpu_mode)
+{
+	struct tegra_edp_limits *limits = NULL;
+
+	BUG_ON(thermal_idx >= cpu_edp_limits_size);
+	BUG_ON(online_cpus > num_possible_cpus());
+	BUG_ON(online_cpus <= 0);
+	BUG_ON((cpu_mode != MODE_G) && (cpu_mode != MODE_LP));
+
+	if ((cpu_mode == MODE_LP) && (cpulp_edp_limits))
+		limits = cpulp_edp_limits;
+	else
+		limits = cpu_edp_limits;
+
+	if (limits == NULL)
+		return 0;
+
+	return limits[thermal_idx].freq_limits[online_cpus-1];
+}
+
+unsigned int tegra_get_reg_idle_freq(int thermal_idx, int online_cpus)
+{
+	BUG_ON(reg_idle_edp_limits == NULL);
+
+	return reg_idle_edp_limits[thermal_idx].freq_limits[online_cpus-1];
+}
+
+bool is_edp_reg_idle_supported(void)
+{
+	return (reg_idle_edp_limits != NULL);
+}
+
 void __init tegra_init_cpu_reg_mode_limits(unsigned int regulator_ma,
 					   unsigned int mode)
 {
@@ -1033,12 +1073,6 @@ late_initcall(tegra_gpu_edp_late_init);
 
 #ifdef CONFIG_DEBUG_FS
 
-static int cpu_edp_limit_debugfs_show(struct seq_file *s, void *data)
-{
-	seq_printf(s, "%u\n", tegra_get_edp_limit(NULL));
-	return 0;
-}
-
 static inline void edp_show_4core_cpu_edp_table(struct seq_file *s, int th_idx)
 {
 	int i;
@@ -1113,7 +1147,7 @@ static int cpu_edp_debugfs_show(struct seq_file *s, void *data)
 		return 0;
 	}
 
-	tegra_get_edp_limit(&th_idx);
+	th_idx = tegra_get_cpu_tegra_thermal_index();
 
 	seq_printf(s, "-- VDD_CPU %sEDP table (%umA = %umA - %umA) --\n",
 		   cpu_edp_limits == cpu_edp_default_limits ? "**default** " : "",
@@ -1309,11 +1343,6 @@ static int gpu_edp_reg_override_open(struct inode *inode, struct file *file)
 }
 #endif
 
-static int cpu_edp_limit_debugfs_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, cpu_edp_limit_debugfs_show, inode->i_private);
-}
-
 static int cpu_edp_reg_override_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, cpu_edp_reg_override_show, inode->i_private);
@@ -1349,13 +1378,6 @@ static const struct file_operations gpu_edp_reg_override_debugfs_fops = {
 	.release	= single_release,
 };
 #endif
-
-static const struct file_operations cpu_edp_limit_debugfs_fops = {
-	.open		= cpu_edp_limit_debugfs_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-};
 
 static const struct file_operations cpu_edp_reg_override_debugfs_fops = {
 	.open		= cpu_edp_reg_override_open,
@@ -1490,7 +1512,6 @@ static int __init tegra_edp_debugfs_init(void)
 {
 	struct dentry *d_reg_idle_cur;
 	struct dentry *d_edp;
-	struct dentry *d_edp_limit;
 	struct dentry *d_edp_reg_override;
 	struct dentry *edp_dir;
 	struct dentry *vdd_cpu_dir;
@@ -1512,27 +1533,22 @@ static int __init tegra_edp_debugfs_init(void)
 	if (!d_edp)
 		goto err_1;
 
-	d_edp_limit = debugfs_create_file("cpu_edp_limit", S_IRUGO, vdd_cpu_dir,
-					  NULL, &cpu_edp_limit_debugfs_fops);
-	if (!d_edp_limit)
-		goto err_2;
-
 	d_edp_reg_override = debugfs_create_file("cpu_edp_reg_override",
 					S_IRUGO | S_IWUSR, vdd_cpu_dir, NULL,
 					&cpu_edp_reg_override_debugfs_fops);
 	if (!d_edp_reg_override)
-		goto err_3;
+		goto err_2;
 
 	d_reg_idle_cur = debugfs_create_file("reg_idle_ma",
 					S_IRUGO | S_IWUSR, vdd_cpu_dir, NULL,
 					&reg_idle_cur_debugfs_fops);
 	if (!d_reg_idle_cur)
-		goto err_4;
+		goto err_3;
 
 	d_cpu_caps = debugfs_create_file("cpu_caps", S_IRUGO, vdd_cpu_dir,
 					 cpucaps_show, &longattr_fops);
 	if (!d_cpu_caps)
-		goto err_5;
+		goto err_4;
 
 
 	if (tegra_core_edp_debugfs_init(edp_dir))
@@ -1544,12 +1560,10 @@ static int __init tegra_edp_debugfs_init(void)
 #endif
 
 	return 0;
-err_5:
-	debugfs_remove(d_reg_idle_cur);
 err_4:
-	debugfs_remove(d_edp_reg_override);
+	debugfs_remove(d_reg_idle_cur);
 err_3:
-	debugfs_remove(d_edp_limit);
+	debugfs_remove(d_edp_reg_override);
 err_2:
 	debugfs_remove(d_edp);
 err_1:
