@@ -41,35 +41,6 @@
 
 static int is_e1860_b00;
 
-#if defined(CONFIG_ANDROID) && defined(CONFIG_BLUEDROID_PM)
-static struct resource vcm30_t124_bluedroid_pm_resources[] = {
-	[0] = {
-		.name	= "reset_gpio",
-		.start	= MISCIO_BT_RST_GPIO,
-		.end	= MISCIO_BT_RST_GPIO,
-		.flags	= IORESOURCE_IO,
-	},
-	[1] = {
-		.name	= "shutdown_gpio",
-		.start	= MISCIO_BT_EN_GPIO,
-		.end	= MISCIO_BT_EN_GPIO,
-		.flags	= IORESOURCE_IO,
-	},
-};
-
-static struct platform_device vcm30_t124_bluedroid_pm_device = {
-	.name = "bluedroid_pm",
-	.id             = 0,
-	.num_resources  = ARRAY_SIZE(vcm30_t124_bluedroid_pm_resources),
-	.resource       = vcm30_t124_bluedroid_pm_resources,
-};
-
-static noinline void __init vcm30_t124_setup_bluedroid_pm(void)
-{
-	platform_device_register(&vcm30_t124_bluedroid_pm_device);
-}
-#endif
-
 static __initdata struct tegra_clk_init_table vcm30t124_a0x_i2s_clk_table[] = {
 	{ "i2s4_sync",	NULL,		12288000,	false},
 	{ "audio4",	"i2s4_sync",	12288000,	false},
@@ -266,10 +237,6 @@ static void __init tegra_vcm30_t124_late_init(void)
 	tegra_wdt_recovery_init();
 #endif
 	vcm30_t124_panel_init();
-
-#if defined(CONFIG_ANDROID) && defined(CONFIG_BLUEDROID_PM)
-	vcm30_t124_setup_bluedroid_pm();
-#endif
 }
 
 static void __init tegra_vcm30_t124_dt_init(void)
