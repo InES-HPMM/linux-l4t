@@ -1561,10 +1561,10 @@ char *debug_dma_platformdata(struct device *dev)
 {
 	static char buf[21];
 	struct dma_iommu_mapping *mapping = to_dma_iommu_mapping(dev);
-	struct smmu_domain *dom = mapping->domain->priv;
 	int asid = -1;
 
 	if (mapping) {
+		struct smmu_domain *dom = mapping->domain->priv;
 		int i, len = 0;
 		for_each_set_bit(i, (unsigned long *)&(dom->bitmap),
 				MAX_AS_PER_DEV) {
