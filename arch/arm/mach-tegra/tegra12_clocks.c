@@ -8437,7 +8437,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_LIMIT("floor.cbus", "floor.cbus",	NULL,	&tegra_clk_cbus, NULL,  0, 0),
 	SHARED_CLK("override.cbus", "override.cbus",	NULL,	&tegra_clk_cbus, NULL,  0, SHARED_OVERRIDE),
 #endif
-	SHARED_CLK("gk20a.gbus",	"tegra_gk20a",	"gpu",	&tegra_clk_gbus, NULL,  0, 0),
+	SHARED_CLK("gk20a.gbus",   "tegra_gk20a.0",	"gpu",	&tegra_clk_gbus, NULL,  0, 0),
 	SHARED_LIMIT("cap.gbus",	"cap.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
 	SHARED_LIMIT("edp.gbus",	"edp.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
 	SHARED_LIMIT("battery.gbus",	"battery_edp",	"gpu",	&tegra_clk_gbus, NULL,  0, SHARED_CEILING),
