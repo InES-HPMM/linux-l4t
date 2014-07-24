@@ -7165,11 +7165,13 @@ static struct clk tegra_pciex_clk = {
 	},
 };
 
+static struct clk_ops tegra_pex_uphy_ops = {
+	.reset    = tegra21_periph_clk_reset,
+};
+
 static struct clk tegra_pex_uphy_clk = {
 	.name      = "pex_uphy",
-	.parent    = &tegra_pll_e,
-	.ops       = &tegra_pciex_clk_ops,
-	.max_rate  = 500000000,
+	.ops       = &tegra_pex_uphy_ops,
 	.u.periph  = {
 		.clk_num   = 205,
 	},
