@@ -173,9 +173,9 @@ int wifi_platform_set_power(wifi_adapter_info_t *adapter, bool on, unsigned long
 		err = plat_data->set_power(on);
 	else {
 		if (gpio_is_valid(adapter->wlan_pwr))
-			gpio_set_value(adapter->wlan_pwr, on);
+			gpio_set_value_cansleep(adapter->wlan_pwr, on);
 		if (gpio_is_valid(adapter->wlan_rst))
-			gpio_set_value(adapter->wlan_rst, on);
+			gpio_set_value_cansleep(adapter->wlan_rst, on);
 		msleep(msec);
 	}
 
@@ -351,9 +351,11 @@ static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
 		adapter->wlan_rst = of_get_named_gpio(node, "wlan-rst-gpio", 0);
 
 		adapter->irq_num = platform_get_irq(pdev, 0);
-		irq_data = irq_get_irq_data(adapter->irq_num);
-		irq_flags = irqd_get_trigger_type(irq_data);
-		adapter->intr_flags = irq_flags & IRQF_TRIGGER_MASK;
+		if (adapter->irq_num > -1) {
+			irq_data = irq_get_irq_data(adapter->irq_num);
+			irq_flags = irqd_get_trigger_type(irq_data);
+			adapter->intr_flags = irq_flags & IRQF_TRIGGER_MASK;
+		}
 	} else {
 		resource = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "bcmdhd_wlan_irq");
 		if (resource == NULL)
