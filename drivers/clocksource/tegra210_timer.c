@@ -134,11 +134,13 @@ static void tegra210_timer_setup(struct tegra210_clockevent *tevt)
 		       __func__, tevt->evt.irq, cpu);
 		BUG();
 	}
+#ifdef CONFIG_SMP
 	if (irq_force_affinity(tevt->evt.irq, cpumask_of(cpu))) {
 		pr_err("%s: cannot set irq %d affinity to CPU%d\n",
 		       __func__, tevt->evt.irq, cpu);
 		BUG();
 	}
+#endif
 	clockevents_config_and_register(&tevt->evt, tegra210_timer_freq,
 					1, /* min */
 					0x1fffffff); /* 29 bits */
@@ -275,12 +277,14 @@ static void __init tegra210_timer_init(struct device_node *np)
 
 	/* boot cpu is online */
 	tevt = &per_cpu(tegra210_evt, 0);
+#ifdef CONFIG_SMP
 	ret = irq_set_affinity(tevt->evt.irq, cpumask_of(0));
 	if (ret) {
 		pr_err("%s: set timer IRQ affinity to CPU0: %d\n",
 		       __func__, ret);
 		BUG();
 	}
+#endif
 	tegra210_timer_setup(tevt);
 
 	clocks_calc_mult_shift(&timer_us_mult, &timer_us_shift, 1000000,
