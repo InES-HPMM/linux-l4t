@@ -33,7 +33,6 @@
 #include <linux/syscore_ops.h>
 
 #include <asm/suspend.h>
-#include <asm/smp.h>
 #include <asm/proc-fns.h>
 #include <asm/psci.h>
 
