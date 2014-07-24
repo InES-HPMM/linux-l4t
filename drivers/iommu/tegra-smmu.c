@@ -484,6 +484,8 @@ static void smmu_client_ordered(struct smmu_device *smmu)
  */
 #define FLUSH_SMMU_REGS(smmu)	smmu_read(smmu, SMMU_CONFIG)
 
+static struct of_device_id tegra_smmu_of_match[];
+
 static u64 tegra_smmu_of_get_swgids(struct device *dev)
 {
 	size_t bytes = 0;
@@ -495,18 +497,16 @@ static u64 tegra_smmu_of_get_swgids(struct device *dev)
 
 	of_property_for_each_phandle_with_args(iter, dev->of_node, "iommus",
 					       "#iommu-cells", 0) {
-		if (smmu_handle &&
-		    iter.out_args.np != smmu_handle->dev->of_node)
+		if (!of_match_node(tegra_smmu_of_match, iter.out_args.np))
 			continue;
 
 		if (iter.out_args.args_count < 2) {
-			pr_err("invalid iommus property for %s",
-				dev_name(dev));
-			continue;
+			dev_err(dev, "iommus property does not have swgids!!!");
+			break;
 		}
 
 		memcpy(&swgids, iter.out_args.args, sizeof(u64));
-		pr_debug("swgids=%16llx ops=%p %s\n",
+		pr_debug("swgids=%16llx ops=%pf %s\n",
 			 swgids, dev->bus->iommu_ops, dev_name(dev));
 		goto fix_up;
 	}
