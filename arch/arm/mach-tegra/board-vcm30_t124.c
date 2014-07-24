@@ -205,20 +205,6 @@ static void __init tegra_vcm30_t124_late_init(void)
 	tegra_vcm30_t124_soctherm_init();
 	tegra_vcm30_t124_usb_init();
 
-	/*
-	 * UARTC is only the default (fallback) debug port
-	 *
-	 * debug uart port is selected based on
-	 *  1. debug_uartport=lsport,<port> from kernel command line
-	 *  2. dfl_dbg_port argument if command line is
-	 *    i. debug_uartport=lsport or
-	 *    ii. debug_uartport=lsport,-
-	 *  3. High speed dfl_dbg_port if kernel command line is
-	 *    i. debug_uartport=hsport
-	 */
-	tegra_vcm30_t124_debug_uart_init(UARTC_DEBUG);
-
-
 	/* Initialize VCM30_T124 board specific devcies */
 	vcm30_t124_i2c_init();
 	vcm30_t124_pca953x_init();

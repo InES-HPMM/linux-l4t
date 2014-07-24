@@ -95,6 +95,12 @@
 		status = "okay";
 	};
 
+	serial@70006200 {
+		compatible = "nvidia,tegra20-uart";
+		console-port;
+		status = "okay";
+	};
+
 	serial@70006300 {
 		status = "okay";
 	};

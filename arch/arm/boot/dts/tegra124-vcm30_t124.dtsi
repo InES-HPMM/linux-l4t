@@ -33,12 +33,23 @@
 		nvidia,clock-always-on;
 	};
 
+	/*
+	 * vcm30t124 mcm dtsi assumes all uart ports as high speed
+	 *
+	 * The board file has to update the compatible property to
+	 * "nvidia,tegra20-uart" for debug uart port
+	 */
 	serial@70006000 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "disabled";
 	};
 
 	serial@70006040 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "disabled";
+	};
+
+	serial@70006200 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "disabled";
 	};

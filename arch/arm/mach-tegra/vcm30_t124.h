@@ -32,26 +32,10 @@
 #define UTMI3_PORT_OWNER_XUSB   0x4
 #define HSIC1_PORT_OWNER_XUSB   0x8
 
-/*
- * Do not change the start of enum, this number is passed from the
- * bootloader and it would break the backward compatibility
- *
- * Pass debug_port=lsport,<port number> (from command line) to use the
- * correct uart port for debug
- */
-enum debug_uart_port {
-	UARTA_DEBUG = 0,
-	UARTB_DEBUG = 1,
-	UARTC_DEBUG = 2,
-	UARTD_DEBUG = 3
-};
-
 /* Routines exported by vcm30t124 mcm file */
 extern void __init tegra_vcm30_t124_nor_init(void);
 extern void __init tegra_vcm30_t124_therm_mon_init(void);
 extern void __init tegra_vcm30_t124_usb_init(void);
-extern void __init
-	tegra_vcm30_t124_debug_uart_init(enum debug_uart_port dfl_dbg_port);
 extern void __init
 	tegra_vcm30_t124_set_fixed_rate(struct tegra_clk_init_table *table);
 extern int __init tegra_vcm30_t124_early_init(void);
