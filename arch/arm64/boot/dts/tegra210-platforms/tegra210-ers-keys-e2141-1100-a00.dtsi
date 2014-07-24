@@ -4,7 +4,7 @@
 / {
 	gpio-keys {
 		compatible = "gpio-keys";
-
+		gpio-keys,name = "gpio-keys";
 		home {
 			label = "Home";
 			gpios = <&gpio TEGRA_GPIO(Y, 1) GPIO_ACTIVE_LOW>;
