@@ -98,6 +98,57 @@ static struct i2c_board_info __initdata max15569_vddcpu_boardinfo[] = {
 	},
 };
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+/* board parameters for cpu dfll */
+static struct tegra_cl_dvfs_cfg_param p2360_cl_dvfs_param = {
+	.sample_rate = 12500,
+
+	.force_mode = TEGRA_CL_DVFS_FORCE_FIXED,
+	.cf = 10,
+	.ci = 0,
+	.cg = 2,
+
+	.droop_cut_value = 0xF,
+	.droop_restore_ramp = 0x0,
+	.scale_out_ramp = 0x0,
+};
+
+/* MAX15569: fixed 10mV steps from 600mV to 1400mV, with offset 0x0b */
+#define PMU_CPU_VDD_MAP_SIZE ((1400000 - 600000) / 10000 + 1)
+static struct voltage_reg_map pmu_cpu_vdd_map[PMU_CPU_VDD_MAP_SIZE];
+static inline void fill_reg_map(void)
+{
+	int i;
+	for (i = 0; i < PMU_CPU_VDD_MAP_SIZE; i++) {
+		pmu_cpu_vdd_map[i].reg_value = i + 0x0b;
+		pmu_cpu_vdd_map[i].reg_uV = 600000 + 10000 * i;
+	}
+}
+
+static struct tegra_cl_dvfs_platform_data p2360_cl_dvfs_data = {
+	.dfll_clk_name = "dfll_cpu",
+	.pmu_if = TEGRA_CL_DVFS_PMU_I2C,
+	.u.pmu_i2c = {
+		.fs_rate = 400000,
+		.slave_addr = 0x74,
+		.reg = 0x07,
+	},
+	.vdd_map = pmu_cpu_vdd_map,
+	.vdd_map_size = PMU_CPU_VDD_MAP_SIZE,
+	.flags = TEGRA_CL_DVFS_DYN_OUTPUT_CFG,
+	.cfg_param = &p2360_cl_dvfs_param,
+};
+
+static int __init p2360_cl_dvfs_init(void)
+{
+	fill_reg_map();
+	tegra_cl_dvfs_device.dev.platform_data = &p2360_cl_dvfs_data;
+	platform_device_register(&tegra_cl_dvfs_device);
+
+	return 0;
+}
+#endif
+
 /* MAX15569 switching regulator for vdd_gpu */
 static struct regulator_consumer_supply max15569_vddgpu_supply[] = {
 	REGULATOR_SUPPLY("vdd_gpu", NULL),
@@ -134,30 +185,21 @@ static struct i2c_board_info __initdata max15569_vddgpu_boardinfo[] = {
 	},
 };
 
-static int __init p2360_max77663_regulator_init(void)
+int __init p2360_regulator_init(void)
 {
+	tegra_pmc_pmu_interrupt_polarity(true);
+
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+	p2360_cl_dvfs_init();
+#endif
+
+	max15569_vddgpu_pdata.ena_gpio = TEGRA_GPIO_PR2;
+
 	i2c_register_board_info(4, max77663_regulators,
 				ARRAY_SIZE(max77663_regulators));
 
-	return 0;
-}
-
-int __init p2360_regulator_init(void)
-{
-	int err;
-
-	p2360_max77663_regulator_init();
 	i2c_register_board_info(4, max15569_vddcpu_boardinfo, 1);
 	i2c_register_board_info(4, max15569_vddgpu_boardinfo, 1);
-
-	/* Assert GPU_PWR_REQ_R GPIO */
-	/* FIXME: should rather go to a GPU init callback */
-	err = gpio_request(TEGRA_GPIO_GPUPWR, "gpu_pwr_req");
-	if (err < 0) {
-		pr_err("Err %d: GPU Power GPIO request failed\n", err);
-		return err;
-	}
-	gpio_direction_output(TEGRA_GPIO_GPUPWR, 1);
 
 	return 0;
 }
