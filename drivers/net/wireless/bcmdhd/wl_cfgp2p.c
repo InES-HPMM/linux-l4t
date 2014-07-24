@@ -1061,6 +1061,9 @@ wl_cfgp2p_set_management_ie(struct bcm_cfg80211 *cfg, struct net_device *ndev, s
 	curr_ie_buf = g_mgmt_ie_buf;
 	CFGP2P_DBG((" bssidx %d, pktflag : 0x%02X\n", bssidx, pktflag));
 
+	if (!cfg)
+		return ERR_PTR(-EINVAL);
+
 #ifdef DUAL_STA
 	if ((cfg->p2p != NULL) && (bssidx != cfg->cfgdev_bssidx)) {
 #else
@@ -1173,7 +1176,8 @@ wl_cfgp2p_set_management_ie(struct bcm_cfg80211 *cfg, struct net_device *ndev, s
 			}
 		}
 
-		if (mgmt_ie_buf != NULL) {
+		if (mgmt_ie_buf != NULL && mgmt_ie_len != NULL &&
+			curr_ie_buf != NULL) {
 			if (parsed_ie_buf_len && (parsed_ie_buf_len == *mgmt_ie_len) &&
 			     (memcmp(mgmt_ie_buf, curr_ie_buf, parsed_ie_buf_len) == 0)) {
 				CFGP2P_INFO(("Previous mgmt IE is equals to current IE"));
@@ -1874,6 +1878,12 @@ void
 wl_cfgp2p_generate_bss_mac(struct ether_addr *primary_addr,
             struct ether_addr *out_dev_addr, struct ether_addr *out_int_addr)
 {
+
+	if ((out_dev_addr == NULL) || (out_int_addr == NULL)) {
+		WL_ERR(("Invalid input data\n"));
+		return;
+	}
+
 	memset(out_dev_addr, 0, sizeof(*out_dev_addr));
 	memset(out_int_addr, 0, sizeof(*out_int_addr));
 

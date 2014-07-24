@@ -4556,7 +4556,8 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 
 	dhd_state |= DHD_ATTACH_STATE_THREADS_CREATED;
 
-#if defined(CONFIG_PM_SLEEP)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && (LINUX_VERSION_CODE <= \
+	KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM_SLEEP)
 	if (!dhd_pm_notifier_registered) {
 		dhd_pm_notifier_registered = TRUE;
 		register_pm_notifier(&dhd_pm_notifier);
@@ -5128,6 +5129,9 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	struct ether_addr ea_addr;
 #endif /* GET_CUSTOM_MAC_ENABLE */
 
+#ifdef CUSTOM_AMPDU_BA_WSIZE
+	struct ampdu_tid_control atc;
+#endif
 #ifdef DISABLE_11N
 	uint32 nmode = 0;
 #endif /* DISABLE_11N */
@@ -5446,6 +5450,10 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 				__FUNCTION__, ampdu_ba_wsize, ret));
 		}
 	}
+	atc.tid = 7;
+	atc.enable = 0;
+	bcm_mkiovar("ampdu_rx_tid", (char *)&atc, sizeof(atc), iovbuf, sizeof(iovbuf));
+	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
 #endif 
 
 
@@ -5683,8 +5691,6 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	bcm_mkiovar("ampdu_hostreorder", (char *)&hostreorder, 4, iovbuf, sizeof(iovbuf));
 	if ((ret2 = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0)) < 0) {
 		DHD_ERROR(("%s wl ampdu_hostreorder failed %d\n", __FUNCTION__, ret2));
-		if (ret2 != BCME_UNSUPPORTED)
-			ret = ret2;
 		if (ret2 != BCME_OK)
 			hostreorder = 0;
 	}
@@ -5722,6 +5728,22 @@ done:
 	return ret;
 }
 
+void dhd_set_ampdu_rx_tid(struct net_device *dev, int ampdu_rx_tid)
+{
+	int i, ret = 0;
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+	dhd_pub_t *pub = &dhd->pub;
+	char iovbuf[32];
+	for (i = 0; i < 8; i++) { /* One bit each for traffic class CS7 - CS0 */
+		struct ampdu_tid_control atc;
+		atc.tid = i;
+		atc.enable = (ampdu_rx_tid >> i) & 1;
+		bcm_mkiovar("ampdu_rx_tid", (char *)&atc, sizeof(atc), iovbuf,sizeof(iovbuf));
+		ret = dhd_wl_ioctl_cmd(pub, WLC_SET_VAR, iovbuf, sizeof(iovbuf),TRUE, 0);
+		if (ret < 0)
+			DHD_ERROR(("%s failed %d\n", __func__, ret));
+	}
+}
 
 int
 dhd_iovar(dhd_pub_t *pub, int ifidx, char *name, char *cmd_buf, uint cmd_len, int set)
@@ -6343,7 +6365,8 @@ void dhd_detach(dhd_pub_t *dhdp)
 	if (dhdp->pno_state)
 		dhd_pno_deinit(dhdp);
 #endif
-#if defined(CONFIG_PM_SLEEP)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && (LINUX_VERSION_CODE <= \
+	KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM_SLEEP)
 	if (dhd_pm_notifier_registered) {
 		unregister_pm_notifier(&dhd_pm_notifier);
 		dhd_pm_notifier_registered = FALSE;

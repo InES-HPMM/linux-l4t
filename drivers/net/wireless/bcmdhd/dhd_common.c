@@ -92,6 +92,7 @@ uint32 dhd_conn_event;
 uint32 dhd_conn_status;
 uint32 dhd_conn_reason;
 
+extern int disable_proptx;
 #if defined(SHOW_EVENTS) && defined(SHOW_LOGTRACE)
 static int check_event_log_sequence_number(uint32 seq_no);
 #endif /* defined(SHOW_EVENTS) && defined(SHOW_LOGTRACE) */
@@ -545,6 +546,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		if (bcmerror != BCME_OK)
 			goto exit;
 
+		disable_proptx = int_val ? FALSE : TRUE;
 		/* wlfc is already set as desired */
 		if (wlfc_enab == (int_val == 0 ? FALSE : TRUE))
 			goto exit;

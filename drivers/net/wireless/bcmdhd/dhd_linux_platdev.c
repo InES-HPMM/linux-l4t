@@ -185,7 +185,13 @@ int wifi_platform_set_power(wifi_adapter_info_t *adapter, bool on, unsigned long
 		}
 #endif /* ENABLE_4335BT_WAR */
 
+		if (on)
+			sysedp_set_state(plat_data->sysedpc, on);
+
 		err = plat_data->set_power(on);
+
+		if (!on)
+			sysedp_set_state(plat_data->sysedpc, on);
 	}
 
 	if (msec && !err)
@@ -255,6 +261,8 @@ static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
 {
 	struct resource *resource;
 	wifi_adapter_info_t *adapter;
+	struct wifi_platform_data *wifi_ctrl =
+		(struct wifi_platform_data *)(pdev->dev.platform_data);
 #ifdef CONFIG_DTS
 	int irq, gpio;
 #endif /* CONFIG_DTS */
@@ -275,6 +283,7 @@ static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
 		adapter->intr_flags = resource->flags & IRQF_TRIGGER_MASK;
 	}
 
+	wifi_ctrl->sysedpc = sysedp_create_consumer("wifi", "wifi");
 #ifdef CONFIG_DTS
 	wifi_regulator = regulator_get(&pdev->dev, "wlreg_on");
 	if (wifi_regulator == NULL) {
@@ -308,6 +317,8 @@ static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
 static int wifi_plat_dev_drv_remove(struct platform_device *pdev)
 {
 	wifi_adapter_info_t *adapter;
+	struct wifi_platform_data *wifi_ctrl =
+		(struct wifi_platform_data *)(pdev->dev.platform_data);
 
 	/* Android style wifi platform data device ("bcmdhd_wlan" or "bcm4329_wlan")
 	 * is kept for backward compatibility and supports only 1 adapter
@@ -324,6 +335,9 @@ static int wifi_plat_dev_drv_remove(struct platform_device *pdev)
 		wifi_platform_bus_enumerate(adapter, FALSE);
 #endif /* BCMPCIE */
 	}
+
+	sysedp_free_consumer(wifi_ctrl->sysedpc);
+	wifi_ctrl->sysedpc = NULL;
 
 #ifdef CONFIG_DTS
 	regulator_put(wifi_regulator);
@@ -685,12 +699,14 @@ static int dhd_wifi_platform_load_sdio(void)
 		return -EINVAL;
 
 #if defined(BCMLXSDMMC)
+	sema_init(&dhd_registration_sem, 0);
+#endif
+#if defined(BCMLXSDMMC) && !defined(CONFIG_TEGRA_PREPOWER_WIFI)
 	if (dhd_wifi_platdata == NULL) {
 		DHD_ERROR(("DHD wifi platform data is required for Android build\n"));
 		return -EINVAL;
 	}
 
-	sema_init(&dhd_registration_sem, 0);
 	/* power up all adapters */
 	for (i = 0; i < dhd_wifi_platdata->num_adapters; i++) {
 		bool chip_up = FALSE;
