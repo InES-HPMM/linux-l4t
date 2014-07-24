@@ -524,17 +524,15 @@ fix_up:
 	return swgids;
 }
 
-/* try to create new map for dev if required */
+/*
+ * XXX: creates new map for dev if required,
+ * use it only when dev->archdata.mapping is not present
+ */
 static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev,
-							bool create)
+							u64 swgids)
 {
 	int asid;
-	u64 swgids;
 	struct dma_iommu_mapping *map = NULL;
-
-	swgids = tegra_smmu_of_get_swgids(dev);
-	if (!swgids)
-		goto end;
 
 	asid = _tegra_smmu_get_asid(swgids);
 
@@ -543,8 +541,7 @@ static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev,
 		goto end;
 	}
 
-	if (create)
-		map = tegra_smmu_map_init_dev(dev, swgids);
+	map = tegra_smmu_map_init_dev(dev, swgids);
 
 	if (smmu_handle && map)
 		smmu_handle->map[asid] = map;
@@ -2271,9 +2268,11 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 {
 	struct dma_iommu_mapping *map;
 	struct device *dev = _dev;
+	u64 swgids = tegra_smmu_of_get_swgids(dev);
 
-	if (!tegra_smmu_of_get_swgids(dev))
+	if (!swgids)
 		goto end;
+	/* dev is a smmu client */
 
 	switch (event) {
 	case BUS_NOTIFY_BIND_DRIVER:
@@ -2285,7 +2284,7 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 			break;
 		}
 
-		map = tegra_smmu_get_mapping(dev, true);
+		map = tegra_smmu_get_mapping(dev, swgids);
 		if (!map) {
 			dev_err(dev, "map creation failed!!!\n");
 			break;
@@ -2299,11 +2298,6 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 		dev_dbg(dev, "Attached %s to map %p\n", dev_name(dev), map);
 		break;
 	case BUS_NOTIFY_UNBOUND_DRIVER:
-		map = tegra_smmu_get_mapping(dev, false);
-		if (!map) {
-			dev_err(dev, "map does not exist!!!\n");
-			break;
-		}
 		dev_dbg(dev, "Detaching %s from map %p\n", dev_name(dev),
 			to_dma_iommu_mapping(dev));
 		arm_iommu_detach_device(dev);
