@@ -877,7 +877,7 @@ struct io_dpd_reg_info {
 
 static struct io_dpd_reg_info t3_io_dpd_req_regs[] = {
 	{0x1b8, 30},
-	{0x1c0, 5},
+	{0x1c0, 30},
 };
 
 /* io dpd off request code */
