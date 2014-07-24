@@ -637,7 +637,7 @@ gpio_keys_get_devtree_pdata(struct device *dev)
 
 	of_property_read_string(node, "gpio-keys,name", &pdata->name);
 	if (!pdata->name)
-		pdata->name = "gpio-keys";
+		pdata->name = node->name;
 
 	i = 0;
 	for_each_child_of_node(node, pp) {
