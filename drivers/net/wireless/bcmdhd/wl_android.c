@@ -50,6 +50,9 @@
 #include <wl_cfg80211.h>
 #endif
 
+
+#include <proto/802.1d.h>
+
 /*
  * Android private command strings, PLEASE define new private commands here
  * so they can be updated easily in the future (if needed)
@@ -91,6 +94,12 @@
 #endif /* WL_SUPPORT_AUTO_CHANNEL */
 
 #define CMD_KEEP_ALIVE		"KEEPALIVE"
+
+#define CMD_SETMIRACAST 	"SETMIRACAST"
+#define CMD_ASSOCRESPIE 	"ASSOCRESPIE"
+#define CMD_MAXLINKSPEED	"MAXLINKSPEED"
+#define CMD_RXRATESTATS 	"RXRATESTATS"
+#define CMD_AMPDU_SEND_DELBA	"AMPDU_SEND_DELBA"
 
 /* CCX Private Commands */
 
@@ -1209,6 +1218,46 @@ resume:
 	return ret;
 }
 
+int
+wl_android_ampdu_send_delba(struct net_device *dev, char *command)
+{
+	int error = 0;
+	struct ampdu_ea_tid aet;
+	char smbuf[WLC_IOCTL_SMLEN];
+
+	DHD_ERROR(("%s, %s\n", __FUNCTION__, command));
+
+	/* get tid */
+	aet.tid = bcm_strtoul(command, &command, 10);
+	if (aet.tid > MAXPRIO) {
+		DHD_ERROR(("%s: error: invalid tid %d\n", __FUNCTION__, aet.tid));
+		return BCME_BADARG;
+	}
+	command++;
+
+	/* get mac address, here 17 is strlen("xx:xx:xx:xx:xx:xx") */
+	if ((strlen(command) < 17) || !bcm_ether_atoe(command, &aet.ea)) {
+		DHD_ERROR(("%s: error: invalid MAC address %s\n", __FUNCTION__, command));
+		return BCME_BADARG;
+	}
+	/* skip mac address */
+	command += strlen("xx:xx:xx:xx:xx:xx") + 1;
+
+	/* get initiator */
+	aet.initiator = bcm_strtoul(command, &command, 10);
+	if (aet.initiator > 1) {
+		DHD_ERROR(("%s: error: inivalid initiator %d\n", __FUNCTION__, aet.initiator));
+		return BCME_BADARG;
+	}
+
+	error = wldev_iovar_setbuf(dev, "ampdu_send_delba", &aet, sizeof(aet),
+		smbuf, sizeof(smbuf), NULL);
+	if (error) {
+		DHD_ERROR(("%s: Failed to send delba, error = %d\n", __FUNCTION__, error));
+	}
+
+	return error;
+}
 
 int wl_keep_alive_set(struct net_device *dev, char* extra, int total_len)
 {
@@ -1454,6 +1503,9 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 			priv_cmd.total_len - skip, *(command + skip - 2) - '0');
 	}
 #endif /* WL_CFG80211 */
+	else if (strnicmp(command, CMD_AMPDU_SEND_DELBA, strlen(CMD_AMPDU_SEND_DELBA)) == 0)
+		bytes_written = wl_android_ampdu_send_delba(net,
+			&command[strlen(CMD_AMPDU_SEND_DELBA) + 1]);
 	else if (strnicmp(command, CMD_OKC_SET_PMK, strlen(CMD_OKC_SET_PMK)) == 0)
 		bytes_written = wl_android_set_pmk(net, command, priv_cmd.total_len);
 	else if (strnicmp(command, CMD_OKC_ENABLE, strlen(CMD_OKC_ENABLE)) == 0)
@@ -1485,6 +1537,14 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		int skip = strlen(CMD_KEEP_ALIVE) + 1;
 		bytes_written = wl_keep_alive_set(net, command + skip, priv_cmd.total_len - skip);
 	}
+	else if (strnicmp(command, CMD_SETMIRACAST, strlen(CMD_SETMIRACAST)) == 0)
+		bytes_written = wldev_miracast_tuning(net, command, priv_cmd.total_len);
+	else if (strnicmp(command, CMD_ASSOCRESPIE, strlen(CMD_ASSOCRESPIE)) == 0)
+		bytes_written = wldev_get_assoc_resp_ie(net, command, priv_cmd.total_len);
+	else if (strnicmp(command, CMD_MAXLINKSPEED, strlen(CMD_MAXLINKSPEED))== 0)
+		bytes_written = wldev_get_max_linkspeed(net, command, priv_cmd.total_len);
+	else if (strnicmp(command, CMD_RXRATESTATS, strlen(CMD_RXRATESTATS)) == 0)
+		bytes_written = wldev_get_rx_rate_stats(net, command, priv_cmd.total_len);
 	else if (strnicmp(command, CMD_ROAM_OFFLOAD, strlen(CMD_ROAM_OFFLOAD)) == 0) {
 		int enable = *(command + strlen(CMD_ROAM_OFFLOAD) + 1) - '0';
 		bytes_written = wl_cfg80211_enable_roam_offload(net, enable);

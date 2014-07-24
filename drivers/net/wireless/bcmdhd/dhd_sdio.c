@@ -867,7 +867,7 @@ dhdsdio_clk_kso_enab(dhd_bus_t *bus, bool on)
 		cmp_val = SBSDIO_FUNC1_SLEEPCSR_KSO_MASK |  SBSDIO_FUNC1_SLEEPCSR_DEVON_MASK;
 		bmask = cmp_val;
 
-		OSL_SLEEP(3);
+		OSL_SLEEP(5);
 	} else {
 		/* Put device to sleep, turn off  KSO  */
 		cmp_val = 0;
@@ -5364,7 +5364,7 @@ dhdsdio_readframes(dhd_bus_t *bus, uint maxframes, bool *finished)
 
 			if (delta) {
 				bus->fc_rcvd++;
-				bus->flowcontrol = fcbits;
+				bus->flowcontrol = fcbits & ~(1 << 6);
 			}
 
 			/* Check and update sequence number */
@@ -5533,7 +5533,7 @@ dhdsdio_readframes(dhd_bus_t *bus, uint maxframes, bool *finished)
 
 		if (delta) {
 			bus->fc_rcvd++;
-			bus->flowcontrol = fcbits;
+			bus->flowcontrol = fcbits & ~(1 << 6);
 		}
 
 		/* Check and update sequence number */
@@ -5792,7 +5792,7 @@ dhdsdio_hostmail(dhd_bus_t *bus)
 			bus->fc_xon++;
 
 		bus->fc_rcvd++;
-		bus->flowcontrol = fcbits;
+		bus->flowcontrol = fcbits & ~(1 << 6);
 	}
 
 #ifdef DHD_DEBUG
