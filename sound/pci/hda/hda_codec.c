@@ -3337,12 +3337,14 @@ static struct snd_kcontrol_new dig_mixes[] = {
 		.put = snd_hda_spdif_out_switch_put,
 	},
 	{
+		.access = SNDRV_CTL_ELEM_ACCESS_READ,
 		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
 		.name = "HDA Decode Capability",
 		.info = snd_hda_hdmi_decode_info,
 		.get = snd_hda_hdmi_decode_get,
 	},
 	{
+		.access = SNDRV_CTL_ELEM_ACCESS_READ,
 		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
 		.name = "HDA Maximum PCM Channels",
 		.info = snd_hda_max_pcm_ch_info,

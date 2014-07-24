@@ -332,8 +332,15 @@ static int tegra_set_i2sloopback(struct snd_kcontrol *kcontrol,
 struct snd_kcontrol_new tegra_avp_controls[] = {
 	SOC_SINGLE_EXT("AVP alsa device select", 0, 0, TEGRA_ALSA_MAX_DEVICES, \
 			0, tegra_get_avp_device, tegra_set_avp_device),
-	SOC_SINGLE_EXT("AVP DMA channel id", 0, 0, TEGRA_DMA_MAX_CHANNELS, \
-			0, tegra_get_dma_ch_id, NULL),
+	{
+		.name = "AVP DMA channel id", \
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
+		.info = snd_soc_info_volsw, \
+		.access = SNDRV_CTL_ELEM_ACCESS_READ, \
+		.get = tegra_get_dma_ch_id, \
+		.private_value = SOC_SINGLE_VALUE(0, 0, \
+			TEGRA_DMA_MAX_CHANNELS, 0)
+	},
 	SOC_SINGLE_EXT("AVP DMA address", 0, 0, 0xFFFFFFFF, \
 			0, tegra_get_dma_addr, tegra_set_dma_addr),
 };
