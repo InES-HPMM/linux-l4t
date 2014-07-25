@@ -33,6 +33,16 @@
 #include "ape_actmon.h"
 #include "aram_manager.h"
 
+#ifdef CONFIG_DEBUG_FS
+static int __init adsp_debug_init(struct nvadsp_drv_data *drv_data)
+{
+	drv_data->adsp_debugfs_root = debugfs_create_dir("tegra_ape", NULL);
+	if (!drv_data->adsp_debugfs_root)
+		return -ENOMEM;
+	return 0;
+}
+#endif /* CONFIG_DEBUG_FS */
+
 #ifdef CONFIG_PM_SLEEP
 static int nvadsp_suspend(struct device *dev)
 {
@@ -86,6 +96,12 @@ static int nvadsp_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto err;
 	}
+
+#if CONFIG_DEBUG_FS
+	if (adsp_debug_init(drv_data))
+		dev_err(dev,
+			"unable to create tegra_ape debug fs directory\n");
+#endif
 
 	drv_data->base_regs =
 		devm_kzalloc(dev, sizeof(void *) * APE_MAX_REG,

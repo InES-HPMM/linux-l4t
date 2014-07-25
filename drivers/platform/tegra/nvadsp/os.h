@@ -19,6 +19,7 @@
 #define __TEGRA_NVADSP_OS_H
 #include <linux/firmware.h>
 
+#define CONFIG_ADSP_DRAM_LOG_WITH_TAG	1
 #define CONFIG_USE_STATIC_APP_LOAD	0
 #define CONFIG_SYSTEM_FPGA		1
 

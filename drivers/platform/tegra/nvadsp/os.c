@@ -33,6 +33,9 @@
 #include <linux/clk/tegra.h>
 #include <linux/irqchip/tegra-agic.h>
 #include <linux/interrupt.h>
+#include <linux/slab.h>
+
+#include <asm-generic/uaccess.h>
 
 #include "os.h"
 #include "dev.h"
@@ -71,12 +74,25 @@
 #define NVADSP_ELF "adsp.elf"
 #define NVADSP_FIRMWARE NVADSP_ELF
 
-#define MAILBOX_REGION ".mbox_shared_data"
+#define MAILBOX_REGION		".mbox_shared_data"
+#define DEBUG_RAM_REGION	".debug_mem_logs"
 
 /* Maximum number of LOAD MAPPINGS supported */
 #define NM_LOAD_MAPPINGS 20
 
+#define EOT	0x04 /* End of Transmission */
+#define SOH	0x01 /* Start of Header */
+
+#define ADSP_TAG	"\n[ADSP OS]"
+
 #define UART_BAUD_RATE	9600
+
+struct nvadsp_debug_log {
+	struct device *dev;
+	char *debug_ram_rdr;
+	int debug_ram_sz;
+	int ram_iter;
+};
 
 struct nvadsp_os_data {
 #if !CONFIG_SYSTEM_FPGA
@@ -86,6 +102,7 @@ struct nvadsp_os_data {
 	struct global_sym_info *adsp_glo_sym_tbl;
 	void __iomem *misc_base;
 	struct resource **dram_region;
+	struct nvadsp_debug_log logger;
 };
 
 static struct nvadsp_os_data priv;
@@ -98,6 +115,100 @@ struct nvadsp_mappings {
 
 static struct nvadsp_mappings adsp_map[NM_LOAD_MAPPINGS];
 static int map_idx;
+
+
+#ifdef CONFIG_DEBUG_FS
+
+static int adsp_logger_open(struct inode *inode, struct file *file)
+{
+	char *start;
+	struct nvadsp_debug_log *logger = inode->i_private;
+
+	/* loop till writer is initilized with SOH */
+	do {
+		msleep(20);
+		if (!IS_ERR_OR_NULL(logger->debug_ram_rdr))
+			start = strchr(logger->debug_ram_rdr, SOH);
+	} while (!start);
+
+	/* maxdiff can be 0, therefore valid */
+	logger->ram_iter = start - logger->debug_ram_rdr;
+
+	file->private_data = logger;
+
+	return 0;
+}
+
+static int adsp_logger_release(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static ssize_t adsp_logger_read(struct file *file, char __user *buf,
+			 size_t count, loff_t *ppos)
+{
+	char last_char;
+	ssize_t return_char = 1;
+	struct nvadsp_debug_log *logger = file->private_data;
+	struct device *dev = logger->dev;
+loop:
+	last_char = logger->debug_ram_rdr[logger->ram_iter];
+
+	if ((last_char != EOT) && (last_char != 0)) {
+#if CONFIG_ADSP_DRAM_LOG_WITH_TAG
+		if ((last_char == '\n') || (last_char == '\r')) {
+
+			if (copy_to_user(buf, ADSP_TAG, sizeof(ADSP_TAG) - 1)) {
+				dev_err(dev, "%s failed\n", __func__);
+				return -EFAULT;
+			}
+			return_char = sizeof(ADSP_TAG) - 1;
+
+		} else
+#endif
+		if (copy_to_user(buf, &last_char, 1)) {
+			dev_err(dev, "%s failed\n", __func__);
+			return -EFAULT;
+		}
+
+		logger->ram_iter =
+			(logger->ram_iter + 1) % logger->debug_ram_sz;
+		return return_char;
+	}
+
+	msleep(20);
+	goto loop;
+}
+
+static const struct file_operations adsp_logger_operations = {
+	.read		= adsp_logger_read,
+	.open		= adsp_logger_open,
+	.release	= adsp_logger_release,
+	.llseek		= generic_file_llseek,
+};
+
+static int adsp_create_debug_logger(struct dentry *adsp_debugfs_root)
+{
+	int ret = 0;
+	struct device *dev = &priv.pdev->dev;
+
+	if (IS_ERR_OR_NULL(adsp_debugfs_root)) {
+		ret = -ENOENT;
+		goto err_out;
+	}
+
+	if (!debugfs_create_file("adsp_logger", S_IRUGO,
+					adsp_debugfs_root, &priv.logger,
+					&adsp_logger_operations)) {
+		dev_err(dev,
+		"unable to create adsp logger debug fs file\n");
+		ret = -ENOENT;
+	}
+
+err_out:
+	return ret;
+}
+#endif
 
 bool is_adsp_dram_addr(u64 addr)
 {
@@ -296,6 +407,26 @@ struct global_sym_info *find_global_symbol(const char *sym_name)
 	return NULL;
 }
 
+static void *get_debug_ram(const struct firmware *fw, int *size)
+{
+	struct device *dev = &priv.pdev->dev;
+	struct elf32_shdr *shdr;
+	int addr;
+
+	shdr = nvadsp_get_section(fw, DEBUG_RAM_REGION);
+	if (!shdr) {
+		dev_info(dev, "section %s not found\n", DEBUG_RAM_REGION);
+		return ERR_PTR(-EINVAL);
+	}
+
+	dev_dbg(dev,
+		"the %s is present at 0x%x\n",
+				DEBUG_RAM_REGION, shdr->sh_addr);
+	addr = shdr->sh_addr;
+	*size = shdr->sh_size;
+	return nvadsp_da_to_va_mappings(addr, *size);
+}
+
 void *get_mailbox_shared_region(void)
 {
 	const struct firmware *fw;
@@ -480,6 +611,16 @@ int nvadsp_os_load(void)
 		goto end;
 	}
 
+	priv.logger.debug_ram_rdr =
+		get_debug_ram(fw, &priv.logger.debug_ram_sz);
+	if (IS_ERR_OR_NULL(priv.logger.debug_ram_rdr))
+		dev_err(dev,
+			"Ram debug logging facility not available\n");
+
+	/* hold the pointer to the device */
+	priv.logger.dev = dev;
+
+
 	dev_info(dev, "Loading ADSP OS firmware %s\n",
 						NVADSP_FIRMWARE);
 	clk_ape = clk_get_sys(NULL, "ape");
@@ -584,6 +725,12 @@ int nvadsp_os_probe(struct platform_device *pdev)
 	priv.pdev = pdev;
 	priv.misc_base = drv_data->base_regs[AMISC];
 	priv.dram_region = drv_data->dram_region;
+
+#ifdef CONFIG_DEBUG_FS
+	if (adsp_create_debug_logger(drv_data->adsp_debugfs_root))
+		dev_err(dev,
+			"unable to create adsp debug logger file\n");
+#endif
 
 	ret = request_irq(virq, adsp_wdt_handler,
 			IRQF_TRIGGER_RISING, "adsp watchdog", dev);

@@ -21,6 +21,7 @@
 
 #include <linux/tegra_nvadsp.h>
 #include <linux/ioport.h>
+#include <linux/debugfs.h>
 
 #include "hwmailbox.h"
 
@@ -51,6 +52,9 @@ struct nvadsp_drv_data {
 	struct nvadsp_mbox **mboxes;
 	unsigned long *mbox_ids;
 	spinlock_t mbox_lock;
+#if CONFIG_DEBUG_FS
+	struct dentry *adsp_debugfs_root;
+#endif
 };
 
 status_t nvadsp_mbox_init(struct platform_device *pdev);
