@@ -1099,7 +1099,7 @@ error_free_mem:
 error_free_dma:
 	dma_free_writecombine(&pdev->dev, FW_LOG_RING_SIZE,
 			tegra->log.virt_addr, tegra->log.phys_addr);
-	memset(&tegra->log, sizeof(tegra->log), 0);
+	memset(&tegra->log, 0, sizeof(tegra->log));
 	return rc;
 }
 
