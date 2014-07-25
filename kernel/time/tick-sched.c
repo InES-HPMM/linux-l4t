@@ -864,8 +864,15 @@ static void tick_nohz_restart(struct tick_sched *ts, ktime_t now)
 			hrtimer_start_expires(&ts->sched_timer,
 					      HRTIMER_MODE_ABS_PINNED);
 			/* Check, if the timer was already in the past */
-			if (hrtimer_active(&ts->sched_timer))
-				break;
+			if (hrtimer_active(&ts->sched_timer)) {
+				ktime_t remaining, expire;
+				expire = hrtimer_get_expires(&ts->sched_timer);
+				remaining = ktime_sub(expire, ktime_get());
+				if (remaining.tv64 > 0)
+					break;
+				else
+					hrtimer_cancel(&ts->sched_timer);
+			}
 		} else {
 			if (!tick_program_event(
 				hrtimer_get_expires(&ts->sched_timer), 0))
