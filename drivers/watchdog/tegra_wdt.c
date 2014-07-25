@@ -71,51 +71,6 @@ static inline struct tegra_wdt *to_tegra_wdt(struct watchdog_device *wdt)
 	return container_of(wdt, struct tegra_wdt, wdt);
 }
 
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
-
-#define TIMER_PTV		0x0
- #define TIMER_EN		(1 << 31)
- #define TIMER_PERIODIC		(1 << 30)
-#define TIMER_PCR		0x4
- #define TIMER_PCR_INTR		(1 << 30)
-#define WDT_EN			(1 << 5)
-#define WDT_SEL_TMR1		(0 << 4)
-#define WDT_SYS_RST		(1 << 2)
-
-static int __tegra_wdt_enable(struct tegra_wdt *tegra_wdt)
-{
-	u32 val;
-
-	/* since the watchdog reset occurs when a second interrupt
-	 * is asserted before the first is processed, program the
-	 * timer period to one-half of the watchdog period */
-	val = tegra_wdt->timeout * 1000000ul / 2;
-	val |= (TIMER_EN | TIMER_PERIODIC);
-	writel(val, tegra_wdt->wdt_timer + TIMER_PTV);
-
-	val = WDT_EN | WDT_SEL_TMR1 | WDT_SYS_RST;
-	writel(val, tegra_wdt->wdt_source);
-
-	return 0;
-}
-
-static int __tegra_wdt_disable(struct tegra_wdt *tegra_wdt)
-{
-	writel(0, tegra_wdt->wdt_source);
-	writel(0, tegra_wdt->wdt_timer + TIMER_PTV);
-
-	return 0;
-}
-
-static int __tegra_wdt_ping(struct tegra_wdt *tegra_wdt)
-{
-	writel(TIMER_PCR_INTR, tegra_wdt->wdt_timer + TIMER_PCR);
-	return 0;
-}
-
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC) \
-	|| defined(CONFIG_ARCH_TEGRA_12x_SOC)
-
 #define TIMER_PTV			0
  #define TIMER_EN			(1 << 31)
  #define TIMER_PERIODIC			(1 << 30)
@@ -168,8 +123,6 @@ static int __tegra_wdt_disable(struct tegra_wdt *tegra_wdt)
 
 	return 0;
 }
-
-#endif
 
 static int tegra_wdt_enable(struct watchdog_device *wdt)
 {
