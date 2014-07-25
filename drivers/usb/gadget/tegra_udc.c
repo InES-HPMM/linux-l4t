@@ -3205,14 +3205,11 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
+#ifdef CONFIG_PM
+static int tegra_udc_prepare(struct device *dev)
 {
-	struct tegra_udc *udc = platform_get_drvdata(pdev);
-	struct device *dev = &udc->pdev->dev;
-	unsigned long flags;
+	struct tegra_udc *udc = dev_get_drvdata(dev);
 	u32 temp;
-
-	int err = 0;
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
 	if (udc->support_pmu_vbus) {
@@ -3230,8 +3227,31 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 	if (udc->connect_type_lp0 == CONNECT_TYPE_NONE)
 		udc->connect_type_lp0 = udc->connect_type;
 
-	dev_info(dev, "tegra_udc_suspend: lp0_connect_type = %d\n",
-					       udc->connect_type_lp0);
+	dev_info(dev, "%s: lp0_connect_type = %d\n", __func__,
+		udc->connect_type_lp0);
+
+	DBG("%s(%d) END\n", __func__, __LINE__);
+	return 0;
+}
+
+static void tegra_udc_complete(struct device *dev)
+{
+	struct tegra_udc *udc = dev_get_drvdata(dev);
+
+	/* vbus_in_lp0 flag is and should be cleared in resume callback,
+	   we clear the flag here in case system suspend is aborted after
+	   prepare callback is done but before running suspend callback */
+	udc->vbus_in_lp0 = false;
+}
+
+static int tegra_udc_suspend(struct device *dev)
+{
+	struct tegra_udc *udc = dev_get_drvdata(dev);
+	unsigned long flags;
+
+	int err = 0;
+	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
+
 	/* If the controller is in otg mode, return */
 	if (udc->transceiver)
 		return 0;
@@ -3239,7 +3259,7 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 	if (udc->irq) {
 		err = enable_irq_wake(udc->irq);
 		if (err < 0)
-			dev_err(&pdev->dev,
+			dev_err(dev,
 			"Couldn't enable USB udc mode wakeup,"
 			" irq=%d, error=%d\n", udc->irq, err);
 	}
@@ -3261,10 +3281,9 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 	return 0;
 }
 
-static int tegra_udc_resume(struct platform_device *pdev)
+static int tegra_udc_resume(struct device *dev)
 {
-	struct tegra_udc *udc = platform_get_drvdata(pdev);
-	struct device *dev = &udc->pdev->dev;
+	struct tegra_udc *udc = dev_get_drvdata(dev);
 	u32 temp;
 
 	int err = 0;
@@ -3303,7 +3322,7 @@ static int tegra_udc_resume(struct platform_device *pdev)
 	if (udc->irq) {
 		err = disable_irq_wake(udc->irq);
 		if (err < 0)
-			dev_err(&pdev->dev,
+			dev_err(dev,
 				"Couldn't disable USB udc mode wakeup, "
 				"irq=%d, error=%d\n", udc->irq, err);
 	}
@@ -3321,15 +3340,23 @@ static int tegra_udc_resume(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct dev_pm_ops tegra_udc_pm_ops = {
+	.prepare = tegra_udc_prepare,
+	.complete = tegra_udc_complete,
+	.suspend = tegra_udc_suspend,
+	.resume = tegra_udc_resume,
+};
+#endif /* CONFIG_PM */
 
 static struct platform_driver tegra_udc_driver = {
 	.remove  = __exit_p(tegra_udc_remove),
-	.suspend = tegra_udc_suspend,
-	.resume  = tegra_udc_resume,
 	.driver  = {
 		.name = (char *)driver_name,
 		.owner = THIS_MODULE,
 		.of_match_table = of_match_ptr(tegra_udc_of_match),
+#ifdef CONFIG_PM
+		.pm = &tegra_udc_pm_ops,
+#endif
 	},
 };
 
