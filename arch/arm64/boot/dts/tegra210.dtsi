@@ -491,9 +491,7 @@
 			reg = <0x54200000 0x00040000>;
 			interrupts = <0 73 0x04>;
 			nvidia,memory-clients = <2 3 10>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS3(DC, DCB, DC12)
-				  0x0 0x10000 0x0 0xFFFFFFFF
-				  0xFFFFF 1 1>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS3(DC, DCB, DC12) &dc_as>;
 			status = "disabled";
 
 			rgb {
@@ -506,9 +504,7 @@
 			reg = <0x54240000 0x00040000>;
 			interrupts = <0 74 0x04>;
 			nvidia,memory-clients = <2 3 10>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS3(DC, DCB, DC12)
-				  0x0 0x10000 0x0 0xFFFFFFFF
-				  0xFFFFF 1 1>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS3(DC, DCB, DC12) &dc_as>;
 			status = "disabled";
 
 			rgb {
