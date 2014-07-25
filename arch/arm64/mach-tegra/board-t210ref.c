@@ -145,6 +145,8 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	{ "uartb",	"pll_p",	408000000,	false},
 	{ "uartc",	"pll_p",	408000000,	false},
 	{ "uartd",	"pll_p",	408000000,	false},
+	{ "extern2",	"pll_p",	41000000,	false},
+	{ "clk_out_2",	"extern2",	40800000,	false},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -387,6 +389,7 @@ struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 #endif
 	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0x0, "tegra-snd-rt5639",
 			NULL),
+	OF_DEV_AUXDATA("raydium,rm_ts_spidev", 0, "rm_ts_spidev", NULL),
 	{}
 };
 #else
@@ -449,58 +452,11 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
 	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power",
 		&baseband_pdata),
+	OF_DEV_AUXDATA("raydium,rm_ts_spidev", 0, "rm_ts_spidev", NULL),
 	{}
 };
 #endif
 #endif
-
-
-static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
-	/* name         parent          rate            enabled */
-	{ "extern2",    "pll_p",        41000000,       false},
-	{ "clk_out_2",  "extern2",      40800000,       false},
-	{ NULL,         NULL,           0,              0},
-};
-
-static struct rm_spi_ts_platform_data rm31080ts_e2141_data = {
-	.gpio_reset = E2141_TOUCH_GPIO_RST_RAYDIUM_SPI,
-	.config = 0,
-	.platform_id = RM_PLATFORM_T008_2,
-	.name_of_clock = "clk_out_2",
-	.name_of_clock_con = "extern2",
-};
-
-static struct tegra_spi_device_controller_data dev_cdata = {
-	.rx_clk_tap_delay = 0,
-	.tx_clk_tap_delay = 16,
-};
-
-static struct spi_board_info rm31080a_e2141_spi_board[1] = {
-	{
-		.modalias = "rm_ts_spidev",
-		.bus_num = E2141_TOUCH_SPI_ID,
-		.chip_select = TOUCH_SPI_CS,
-		.max_speed_hz = 12 * 1000 * 1000,
-		.mode = SPI_MODE_0,
-		.controller_data = &dev_cdata,
-		.platform_data = &rm31080ts_e2141_data,
-	},
-};
-
-static int __init t210ref_touch_init(void)
-{
-	pr_info("%s init raydium touch\n", __func__);
-	tegra_clk_init_from_table(touch_clk_init_table);
-	rm31080a_e2141_spi_board[0].irq =
-		gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
-
-	touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
-		E2141_TOUCH_GPIO_RST_RAYDIUM_SPI,
-		&rm31080ts_e2141_data,
-		&rm31080a_e2141_spi_board[0],
-		ARRAY_SIZE(rm31080a_e2141_spi_board));
-	return 0;
-}
 
 static void __init tegra_t210ref_early_init(void)
 {
@@ -600,7 +556,6 @@ static void __init tegra_t210ref_late_init(void)
 #endif
 	t210ref_edp_init();
 	isomgr_init();
-	t210ref_touch_init();
 	t210ref_panel_init();
 
 	/* put PEX pads into DPD mode to save additional power */
