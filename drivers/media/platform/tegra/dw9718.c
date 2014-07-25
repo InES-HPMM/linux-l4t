@@ -331,8 +331,12 @@ static int dw9718_power_put(struct dw9718_power_rail *pw)
 	if (likely(pw->vdd_i2c))
 		regulator_put(pw->vdd_i2c);
 
+	if (likely(pw->vana))
+		regulator_put(pw->vana);
+
 	pw->vdd = NULL;
 	pw->vdd_i2c = NULL;
+	pw->vana = NULL;
 
 	return 0;
 }
@@ -363,6 +367,7 @@ static int dw9718_power_get(struct dw9718_info *info)
 
 	dw9718_regulator_get(info, &pw->vdd, "vdd");
 	dw9718_regulator_get(info, &pw->vdd_i2c, "vdd_i2c");
+	dw9718_regulator_get(info, &pw->vana, "vana");
 
 	return 0;
 }
