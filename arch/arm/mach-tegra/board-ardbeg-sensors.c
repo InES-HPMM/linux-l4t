@@ -674,11 +674,20 @@ static int ardbeg_dw9718_power_on(struct dw9718_power_rail *pw)
 	if (unlikely(err))
 		goto dw9718_i2c_fail;
 
+	if (pw->vana) {
+		err = regulator_enable(pw->vana);
+		if (unlikely(err))
+			goto dw9718_ana_fail;
+	}
+
 	usleep_range(1000, 1020);
 
 	/* return 1 to skip the in-driver power_on sequence */
 	pr_debug("%s --\n", __func__);
 	return 1;
+
+dw9718_ana_fail:
+	regulator_disable(pw->vdd_i2c);
 
 dw9718_i2c_fail:
 	regulator_disable(pw->vdd);
@@ -697,6 +706,9 @@ static int ardbeg_dw9718_power_off(struct dw9718_power_rail *pw)
 
 	regulator_disable(pw->vdd);
 	regulator_disable(pw->vdd_i2c);
+
+	if (pw->vana)
+		regulator_disable(pw->vana);
 
 	return 1;
 }
