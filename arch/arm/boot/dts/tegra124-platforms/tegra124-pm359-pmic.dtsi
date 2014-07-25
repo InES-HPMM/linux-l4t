@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * arch/arm/boot/dts/tegra124-platforms/tegra124-pm359-pmic.dtsi
+ *
+ */
+
 / {
 	i2c@7000d000 {
 		as3722: as3722@40 {
@@ -263,6 +279,10 @@
 						     regulator-consumer-supply = "vdd_i2c";
 						     regulator-consumer-device = "2-000c";
 					     };
+					     c7 {
+						     regulator-consumer-supply = "vdd_i2c";
+						     regulator-consumer-device = "2-0010";
+					     };
 				     };
 			     };
 
@@ -383,6 +403,10 @@
 					     };
 					     c2 {
 						     regulator-consumer-supply = "imx135_reg2";
+					     };
+					     c3 {
+						     regulator-consumer-supply = "vdig_lv";
+						     regulator-consumer-device = "2-0010";
 					     };
 				     };
 			     };
