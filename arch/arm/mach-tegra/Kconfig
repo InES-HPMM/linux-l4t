@@ -179,10 +179,10 @@ config MACH_P2360
          Support for NVIDIA P2360 Automotive Development platform
 
 config MACH_P1859
-       bool "P1859(Automotive) board"
+       bool "P1859-Jetson(Automotive) board"
        depends on ARCH_TEGRA_VCM30T124
        help
-         Support for NVIDIA P1859 Automotive Development platform
+         Support for NVIDIA P1859-Jetson Automotive Development platform
 
 config MACH_LAGUNA
 	 bool "LAGUNA board"
