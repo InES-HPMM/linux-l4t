@@ -32,7 +32,7 @@
 #include <asm/cputime.h>
 
 #include <mach/nct.h>
-#include <mach/nvdumper-footprint.h>
+#include "../nvdumper/nvdumper-footprint.h"
 
 #include "clock.h"
 #include "board.h"

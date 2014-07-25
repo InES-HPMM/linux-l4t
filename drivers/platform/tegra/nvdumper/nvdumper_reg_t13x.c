@@ -20,16 +20,83 @@
 #include <linux/sched.h>
 #include <linux/dma-mapping.h>
 #include <asm/cacheflush.h>
-#include <mach/nvdumper.h>
 
 #define THREAD_INFO(sp) ((struct thread_info *) \
 		((unsigned long)(sp) & ~(THREAD_SIZE - 1)))
 
-#define DEBUG_REGDUMP 0
+/*
+ * This register list is from table Table D1-81 of
+ * ARMv8 architecture reference manual
+ * The table also includes the mapping of AArch64
+ * to AArch32 registers.
+ */
+struct aar64_system_regs_t {
+	u64 ACTLR_EL1;
+	u64 AFSR0_EL1;
+	u64 AFSR1_EL1;
+	u64 AMAIR_EL1;
+	u64 CONTEXTIDR_EL1;
+	u64 CPACR_EL1;
+	u64 CSSELR_EL1;
+	u64 FAR_EL1;
+	u64 ESR_EL1;
+	u64 PAR_EL1;
+	u64 MAIR_EL1;
+	u64 RMR_EL1;
+	u64 SCTLR_EL1;
+	u64 TEECR32_EL1;
+	u64 TEEHBR32_EL1;
+	u64 TPIDR_EL1;
+	u64 TCR_EL1;
+	u64 TTBR0_EL1;
+	u64 TTBR1_EL1;
+	u64 VBAR_EL1;
 
-static int max_cpus;
+	u64 TPIDRRO_EL0;
+	u64 TPIDR_EL0;
+
+	u64 DACR32_EL2;
+	u64 HACR_EL2;
+	u64 ACTLR_EL2;
+	u64 AFSR0_EL2;
+	u64 AFSR1_EL2;
+	u64 AMAIR_EL2;
+	u64 CPTR_EL2;
+	u64 HCR_EL2;
+	u64 MDCR_EL2;
+	u64 FAR_EL2;
+	u64 MAIR_EL2;
+	u64 HPFAR_EL2;
+	u64 SCTLR_EL2;
+	u64 ESR_EL2;
+	u64 HSTR_EL2;
+	u64 TCR_EL2;
+	u64 TPIDR_EL2;
+	u64 TTBR0_EL2;
+	u64 VBAR_EL2;
+	u64 IFSR32_EL2;
+	u64 RMR_EL2;
+	u64 VMPIDR_EL2;
+	u64 VPIDR_EL2;
+	u64 VTCR_EL2;
+	u64 VTTBR_EL2;
+
+	u64 RMR_EL3;
+	u64 SDER32_EL3;
+};
+
+struct nvdumper_cpu_data_t {
+	bool is_online;
+	struct pt_regs pt_regs;
+	struct aar64_system_regs_t aar64_sys_regs;
+	struct task_struct *current_task;
+};
+
 static struct nvdumper_cpu_data_t *nvdumper_cpu_data;
+static int max_cpus;
 static dma_addr_t nvdumper_p;
+extern struct notifier_block nvdumper_panic_notifier;
+extern struct notifier_block nvdumper_die_notifier;
 
 void save_aar64_sys_regs(struct aar64_system_regs_t *aar64_sys_regs)
 {
@@ -217,42 +284,6 @@ void print_cpu_data(int id)
 		pr_info("TPIDR_EL0      = 0x%016llx\n", s_regs->TPIDR_EL0);
 	}
 }
-
-void nvdumper_print_data(void)
-{
-	int id;
-
-	for_each_present_cpu(id)
-		print_cpu_data(id);
-}
-
-int nvdumper_die_handler(struct notifier_block *nb, unsigned long reason,
-					void *data)
-{
-	nvdumper_crash_setup_regs();
-	return NOTIFY_OK;
-}
-
-static int nvdumper_panic_handler(struct notifier_block *this,
-					unsigned long event, void *unused)
-{
-#if DEBUG_REGDUMP
-	nvdumper_print_data();
-#endif
-	flush_cache_all();
-
-	return NOTIFY_OK;
-}
-
-struct notifier_block nvdumper_die_notifier = {
-	.notifier_call = nvdumper_die_handler,
-	.priority      = INT_MAX-1, /* priority: INT_MAX >= x >= 0 */
-};
-
-static struct notifier_block nvdumper_panic_notifier = {
-	.notifier_call = nvdumper_panic_handler,
-	.priority      = INT_MAX-1, /* priority: INT_MAX >= x >= 0 */
-};
 
 int nvdumper_regdump_init(void)
 {

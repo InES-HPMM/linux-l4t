@@ -19,7 +19,7 @@
 #include <linux/string.h>
 #include <linux/cpumask.h>
 #include <asm/ptrace.h>
-#include <mach/nvdumper-footprint.h>
+#include "nvdumper-footprint.h"
 
 struct dbg_footprint_data_cpu dbp_fp_cpu;
 struct dbg_footprint_data_soc dbp_fp_soc;

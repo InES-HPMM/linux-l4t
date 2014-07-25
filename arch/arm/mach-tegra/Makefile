@@ -196,4 +196,3 @@ obj-$(CONFIG_TEGRA_BBC_THERMAL)         += tegra_bbc_thermal.o
 
 obj-${CONFIG_TEGRA_ISOMGR}              += isomgr.o
 
-obj-${CONFIG_TEGRA_NVDUMPER}            += nvdumper.o

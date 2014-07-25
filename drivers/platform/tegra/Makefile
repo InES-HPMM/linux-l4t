@@ -18,6 +18,7 @@ endif
 obj-$(CONFIG_TEGRA_NVADSP)		+= nvadsp/
 
 obj-y += mc/
+obj-y += nvdumper/
 obj-$(CONFIG_PM_SLEEP) += pm-irq.o
 obj-y += pmc.o
 obj-y += pm.o

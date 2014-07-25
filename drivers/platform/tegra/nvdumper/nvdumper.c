@@ -21,12 +21,12 @@
 #include <linux/reboot.h>
 #include <linux/debugfs.h>
 #include <linux/slab.h>
-#include "board.h"
-#include <mach/nvdumper.h>
-#include <mach/nvdumper-footprint.h>
+#include "../../../arch/arm/mach-tegra/board.h"
+#include "nvdumper.h"
+#include "nvdumper-footprint.h"
 
 #ifdef CONFIG_TEGRA_USE_NCT
-#include <mach/nct.h>
+#include "../../../arch/arm/mach-tegra/include/mach/nct.h"
 #endif
 
 #define NVDUMPER_CLEAN 0xf000caf3U

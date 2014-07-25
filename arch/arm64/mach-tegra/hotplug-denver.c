@@ -25,7 +25,7 @@
 
 #include <asm/suspend.h>
 
-#include <mach/nvdumper-footprint.h>
+#include "../../../drivers/platform/tegra/nvdumper/nvdumper-footprint.h"
 
 #include "sleep.h"
 #include "pm-soc.h"

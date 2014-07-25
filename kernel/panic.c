@@ -64,7 +64,7 @@ void __weak panic_smp_self_stop(void)
 }
 
 #ifdef CONFIG_TEGRA_NVDUMPER
-#include <mach/nvdumper.h>
+void nvdumper_crash_setup_regs(void);
 static int is_oops_called;
 #endif /* CONFIG_TEGRA_NVDUMPER */
 
