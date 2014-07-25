@@ -3310,6 +3310,13 @@ static void tegra_xhci_plat_quirks(struct device *dev, struct xhci_hcd *xhci)
 	 */
 	xhci->quirks |= XHCI_PLAT;
 	xhci->quirks &= ~XHCI_SPURIOUS_REBOOT;
+
+	/*
+	 * tegra xhci controller is LPM capable.
+	 * set the below quirks to enable the LPM support.
+	 */
+	xhci->quirks |= XHCI_LPM_SUPPORT;
+	xhci->quirks |= XHCI_INTEL_HOST;
 }
 
 /* called during probe() after chip reset completes */
@@ -3585,6 +3592,8 @@ static const struct hc_driver tegra_plat_xhci_driver = {
 	.bus_suspend =		tegra_xhci_bus_suspend,
 	.bus_resume =		tegra_xhci_bus_resume,
 #endif
+	.enable_usb3_lpm_timeout =	xhci_enable_usb3_lpm_timeout,
+	.disable_usb3_lpm_timeout =	xhci_disable_usb3_lpm_timeout,
 };
 
 #ifdef CONFIG_PM
@@ -4742,6 +4751,9 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 
 	hsic_power_create_file(tegra);
 	tegra->init_done = true;
+
+	if (xhci->quirks & XHCI_LPM_SUPPORT)
+		hcd_to_bus(xhci->shared_hcd)->root_hub->lpm_capable = 1;
 
 	return 0;
 
