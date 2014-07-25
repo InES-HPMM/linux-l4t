@@ -16,9 +16,7 @@
 #include <asm/pgtable.h>
 #include "internal.h"
 
-#if defined(CONFIG_TEGRA_NVMAP)
 #include <linux/nvmap.h>
-#endif
 
 void __attribute__((weak)) arch_report_meminfo(struct seq_file *m)
 {
@@ -49,7 +47,7 @@ long get_available_memory(void)
 	 * Free memory cannot be taken below the low watermark, before the
 	 * system starts swapping.
 	 */
-	available = i.freeram - wmark_low;
+	available = i.freeram - wmark_low + nvmap_page_pool_get_unused_pages();
 
 	/*
 	 * Not all the page cache can be freed, otherwise the system will
