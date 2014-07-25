@@ -922,8 +922,8 @@ static void handle_sb_intr(struct tegra_pcie *pcie)
 	} else
 		afi_writel(pcie, mesg, AFI_MSG_0);
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-		if (mesg & AFI_MSG_RP_INT_MASK)
-			raise_emc_freq(pcie);
+	if (mesg & AFI_MSG_RP_INT_MASK)
+		raise_emc_freq(pcie);
 #endif
 }
 
@@ -952,7 +952,6 @@ static irqreturn_t tegra_pcie_isr(int irq, void *arg)
 	PR_FUNC_LINE;
 	code = afi_readl(pcie, AFI_INTR_CODE) & AFI_INTR_CODE_MASK;
 	signature = afi_readl(pcie, AFI_INTR_SIGNATURE);
-	afi_writel(pcie, 0, AFI_INTR_CODE);
 
 	if (code == AFI_INTR_LEGACY)
 		handle_sb_intr(pcie);
@@ -1287,10 +1286,9 @@ static int tegra_pcie_fpga_phy_init(struct tegra_pcie *pcie)
 	afi_writel(pcie, AFI_WR_SCRATCH_0_RESET_VAL, AFI_WR_SCRATCH_0);
 
 	/* required for gen2 speed support on FPGA */
-	list_for_each_entry(port, &pcie->ports, list) {
+	list_for_each_entry(port, &pcie->ports, list)
 		rp_writel(port,
 			FPGA_GEN2_SPEED_SUPPORT, NV_PCIE2_RP_VEND_XP_BIST);
-	}
 
 	return 0;
 }
@@ -1728,7 +1726,6 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	struct tegra_pcie *pcie = port->pcie;
 	int lane_owner;
-	int up_links = 0;
 #endif
 	struct pci_dev *pdev = NULL;
 
@@ -1737,14 +1734,10 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 	/* T210 WAR for perf bugs required when LPDDR4 */
 	/* memory is used with both ctlrs in X4_X1 config */
 	lane_owner = tegra_get_lane_owner_info() >> 1;
-	t210_war = (pcie->plat_data->has_memtype_lpddr4 &&
-				(lane_owner == PCIE_LANES_X4_X1));
-
-	list_for_each_entry(port, &pcie->ports, list)
-		up_links++;
-	if (up_links != pcie->num_ports)
-		t210_war = 0;
-
+	if (pcie->plat_data->has_memtype_lpddr4 &&
+		(lane_owner == PCIE_LANES_X4_X1) &&
+		(pcie->num_ports == pcie->soc_data->num_ports))
+		t210_war = 1;
 #endif
 	if (enum_done) {
 		/* disable msi for port driver to avoid panic */
@@ -1767,16 +1760,23 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 		/* resize buffers for better perf, bug#1447522 */
 		if (t210_war) {
-			data = rp_readl(port, NV_PCIE2_RP_XP_CTL_1);
-			data |= PCIE2_RP_XP_CTL_1_SPARE_BIT29;
-			rp_writel(port, data, NV_PCIE2_RP_XP_CTL_1);
+			struct tegra_pcie_port *temp_port;
+			list_for_each_entry(temp_port, &pcie->ports, list) {
+				data = rp_readl(temp_port,
+							NV_PCIE2_RP_XP_CTL_1);
+				data |= PCIE2_RP_XP_CTL_1_SPARE_BIT29;
+				rp_writel(temp_port, data,
+					NV_PCIE2_RP_XP_CTL_1);
 
-			data = rp_readl(port, NV_PCIE2_RP_TX_HDR_LIMIT);
-			if (port->index)
-				data |= PCIE2_RP_TX_HDR_LIMIT_NPT_1;
-			else
-				data |= PCIE2_RP_TX_HDR_LIMIT_NPT_0;
-			rp_writel(port, data, NV_PCIE2_RP_TX_HDR_LIMIT);
+				data = rp_readl(temp_port,
+						NV_PCIE2_RP_TX_HDR_LIMIT);
+				if (temp_port->index)
+					data |= PCIE2_RP_TX_HDR_LIMIT_NPT_1;
+				else
+					data |= PCIE2_RP_TX_HDR_LIMIT_NPT_0;
+				rp_writel(temp_port, data,
+					NV_PCIE2_RP_TX_HDR_LIMIT);
+			}
 		}
 		/* Bug#1461732 WAR, set clkreq asserted delay greater than */
 		/* power off time (2us) to avoid RP wakeup in L1.2_ENTRY */
@@ -1897,8 +1897,8 @@ void tegra_pcie_check_ports(struct tegra_pcie *pcie)
 		tegra_pcie_port_enable(port);
 
 		if (tegra_pcie_port_check_link(port)) {
-			tegra_pcie_enable_rp_features(port);
 			pcie->num_ports++;
+			tegra_pcie_enable_rp_features(port);
 			continue;
 		}
 
@@ -2846,13 +2846,6 @@ static int tegra_pcie_parse_dt(struct tegra_pcie *pcie)
 	struct resource res;
 	int err;
 
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
-	if (tegra_bonded_out_dev(BOND_OUT_PCIE)) {
-		dev_err(pcie->dev, "PCIE instance is not present\n");
-		return -ENODEV;
-	}
-#endif
-
 	PR_FUNC_LINE;
 
 	memset(&pcie->all, 0, sizeof(pcie->all));
@@ -2982,7 +2975,15 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 	int i;
 	const struct of_device_id *match;
 	struct tegra_pcie *pcie;
+
 	PR_FUNC_LINE;
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	if (tegra_bonded_out_dev(BOND_OUT_PCIE)) {
+		dev_err(&pdev->dev, "PCIE instance is not present\n");
+		return -ENODEV;
+	}
+#endif
 
 	pcie = devm_kzalloc(&pdev->dev, sizeof(*pcie), GFP_KERNEL);
 	if (!pcie)
