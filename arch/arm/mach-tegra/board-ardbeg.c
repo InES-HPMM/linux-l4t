@@ -251,17 +251,10 @@ static void ardbeg_i2c_init(void)
 	}
 }
 
-static struct tegra_serial_platform_data ardbeg_uarta_pdata = {
-	.dma_req_selector = 8,
-	.modem_interrupt = false,
-};
-
 static struct tegra_serial_platform_data ardbeg_uartd_pdata = {
 	.dma_req_selector = 19,
 	.modem_interrupt = false,
 };
-
-
 
 static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5639 = {
 	.gpio_hp_det = TEGRA_GPIO_HP_DET,
@@ -407,29 +400,6 @@ static void __init ardbeg_uart_init(void)
 		tegra_uartd_device.dev.platform_data = &ardbeg_uartd_pdata;
 		if (!tegra_is_port_available_from_dt(3))
 			platform_device_register(&tegra_uartd_device);
-	}
-}
-
-static void __init e2141_uart_init(void)
-{
-
-	tegra_uarta_device.dev.platform_data = &ardbeg_uarta_pdata;
-	if (!is_tegra_debug_uartport_hs()) {
-		int debug_port_id = uart_console_debug_init(0);
-		if (debug_port_id < 0)
-			return;
-
-#ifdef CONFIG_TEGRA_FIQ_DEBUGGER
-		tegra_serial_debug_init(TEGRA_UARTA_BASE,
-				INT_WDT_CPU, NULL, -1, -1);
-#else
-		if (!tegra_is_port_available_from_dt(debug_port_id))
-			platform_device_register(uart_console_debug_device);
-#endif
-	} else {
-		tegra_uarta_device.dev.platform_data = &ardbeg_uarta_pdata;
-		if (!tegra_is_port_available_from_dt(0))
-			platform_device_register(&tegra_uarta_device);
 	}
 }
 
@@ -1352,10 +1322,7 @@ static void __init tegra_ardbeg_late_init(void)
 #ifndef CONFIG_MACH_EXUMA
 	ardbeg_display_init();
 #endif
-	if (of_machine_is_compatible("nvidia,e2141"))
-		e2141_uart_init();
-	else
-		ardbeg_uart_init();
+	ardbeg_uart_init();
 	ardbeg_usb_init();
 	ardbeg_modem_init();
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
