@@ -2371,10 +2371,9 @@ static void tegra_pcie_config_clkreq(struct tegra_pcie *pcie, bool enable)
 /* Enable ASPM support of all devices based on it's capability */
 static void tegra_pcie_enable_aspm(struct tegra_pcie *pcie)
 {
-	struct pci_dev *pdev = NULL;
-	u16 val = 0;
-	u32 aspm = 0;
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	struct pci_dev *pdev = NULL;
+	u32 aspm = 0;
 	int pos = 0;
 	bool config_l1ss = true;
 #endif
@@ -2383,20 +2382,6 @@ static void tegra_pcie_enable_aspm(struct tegra_pcie *pcie)
 	if (!pcie_aspm_support_enabled()) {
 		dev_info(pcie->dev, "PCIE: ASPM not enabled\n");
 		return;
-	}
-	for_each_pci_dev(pdev) {
-		/* Find ASPM capability */
-		pcie_capability_read_dword(pdev, PCI_EXP_LNKCAP, &aspm);
-		aspm &= PCI_EXP_LNKCAP_ASPMS;
-
-		/* Enable ASPM support as per capability */
-		pcie_capability_read_word(pdev, PCI_EXP_LNKCTL, &val);
-		val |= (u16)aspm >> 10;
-		pcie_capability_write_word(pdev, PCI_EXP_LNKCTL, val);
-#if defined CONFIG_ARCH_TEGRA_12x_SOC
-		pcie_capability_clear_word(pdev, PCI_EXP_LNKCTL,
-				PCI_EXP_LNKCTL_ASPM_L0S);
-#endif
 	}
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	/* L1SS configuration as per IAS */
