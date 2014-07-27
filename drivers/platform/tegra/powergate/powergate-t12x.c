@@ -289,6 +289,10 @@ static struct powergate_partition_info tegra12x_powergate_partition_info[] = {
 
 #define PMC_GPU_RG_CNTRL_0		0x2d4
 
+#define UTMIPLL_HW_PWRDN_CFG0		0x52c
+#define UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE  (1<<1)
+#define UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL     (1<<0)
+
 static DEFINE_SPINLOCK(tegra12x_powergate_lock);
 static DEFINE_MUTEX(tegra12x_powergate_disp_lock);
 
@@ -709,12 +713,30 @@ static int tegra12x_pcie_unpowergate(int id)
 static int tegra12x_xusbc_powergate(int id)
 {
 	int ret = 0;
+	unsigned long val;
+	bool iddq = false;
+	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 
 	if (!TEGRA_IS_XUSBC_POWERGATE_ID(id))
 		return -EINVAL;
+	val = readl(clk_base + UTMIPLL_HW_PWRDN_CFG0);
+	if (val & UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE)
+		iddq = true;
+
+	val &= ~UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
+	val |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL;
+	writel(val, clk_base + UTMIPLL_HW_PWRDN_CFG0);
 
 	CHECK_RET(tegra12x_powergate(id));
 	CHECK_RET(tegra12x_pcie_powergate(TEGRA_POWERGATE_PCIE));
+
+	if (iddq) {
+		val = readl(clk_base + UTMIPLL_HW_PWRDN_CFG0);
+		val |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE |
+			UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL;
+		writel(val, clk_base + UTMIPLL_HW_PWRDN_CFG0);
+	}
+
 
 	return ret;
 }
