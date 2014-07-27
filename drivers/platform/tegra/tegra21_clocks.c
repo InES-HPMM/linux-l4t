@@ -8197,19 +8197,40 @@ static struct clk_ops tegra_clk_gpu_ops = {
 	.reset		= &tegra21_periph_clk_reset,
 };
 
-/* This is a dummy clock for gpu. The enable/disable/reset routine controls
-   input clock of the actual gpu clock. The input clock itself has a fixed
-   frequency. The actual gpu clock's frequency is controlled by gpu driver,
-   not here in clock framework. However, we assoicate this dummy clock with
-   dvfs to control voltage of gpu rail along with frequency change of actual
-   gpu clock. So frequency here and in dvfs are based on the acutal gpu clock. */
-static struct clk tegra_clk_gpu = {
+/*
+ * This clock provides a common gate control for branches of different clocks
+ * supplied to GPU: mselect, memory controller, pll_p_out5, jtag and la. The
+ * mselect and mc clocks are always running; pll_p_out5 is explicitly controlled
+ * by GPU driver; jtag and la clocks are set by debug interface configuration.
+ * Therefore we don't need to propagate refcount to those clocks, and just set
+ * GPU gate clock as OSC child.
+ */
+static struct clk tegra_clk_gpu_gate = {
+	.name      = "gpu_gate",
+	.parent    = &tegra_clk_osc,
+	.ops       = &tegra_clk_gpu_ops,
+	.u.periph  = {
+		.clk_num = 184,
+	},
+	.flags	   = PERIPH_MANUAL_RESET,
+	.max_rate  = 48000000,
+	.min_rate  = 12000000,
+};
+
+/*
+ * This is a reference clock for GPU. The enable/disable routine control input
+ * clock of the GPCPLL. The reference clock itself has a fixed frequency. The
+ * actual GPU clock's frequency is controlled via gbus, which is a child of this
+ * clock.
+ */
+static struct clk tegra_clk_gpu_ref = {
 	.name      = "gpu_ref",
 	.ops       = &tegra_clk_gpu_ops,
 	.parent    = &tegra_pll_ref,
 	.u.periph  = {
-		.clk_num = 184,
+		.clk_num = 189,
 	},
+	.flags	   = PERIPH_NO_RESET,
 	.max_rate  = 48000000,
 	.min_rate  = 12000000,
 };
@@ -8314,7 +8335,7 @@ static struct clk_ops tegra_clk_gbus_ops = {
 static struct clk tegra_clk_gbus = {
 	.name      = "gbus",
 	.ops       = &tegra_clk_gbus_ops,
-	.parent    = &tegra_clk_gpu,
+	.parent    = &tegra_clk_gpu_ref,
 	.max_rate  = 1300000000,
 	.shared_bus_flags = SHARED_BUS_RETENTION,
 };
@@ -9049,7 +9070,8 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_mselect,
 	&tegra_clk_c2bus,
 	&tegra_clk_c3bus,
-	&tegra_clk_gpu,
+	&tegra_clk_gpu_gate,
+	&tegra_clk_gpu_ref,
 	&tegra_clk_gbus,
 	&tegra_clk_isp,
 	&tegra_clk_cbus,
