@@ -107,7 +107,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_gpu = {
 	.stats = {
 		.bin_uV = 6250, /* 6.25mV */
 	},
-	.version = "p4v00",
+	.version = "Safe p4v08",
 };
 
 static struct dvfs_rail *tegra21_dvfs_rails[] = {
@@ -233,7 +233,7 @@ static struct dvfs cpu_lp_dvfs = {
 /* FIXME: fill in actual hw numbers */
 static unsigned long gpu_max_freq[] = {
 /* speedo_id	0	*/
-		652800,
+		1075200,
 };
 static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
@@ -246,13 +246,23 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 		.voltage_scale = 1000,
 		.cvb_table = {
 			/*f        dfll  pll:   c0,     c1,   c2 */
-			{  204000, {  }, {  810000,      0,   0}, },
-			{  264000, {  }, {  860000,      0,   0}, },
-			{  351000, {  }, {  900000,      0,   0}, },
-			{  492000, {  }, {  990000,      0,   0}, },
-			{  652800, {  }, { 1080000,      0,   0}, },
+			{  76800  , {  }, {  0       ,  0      ,  0     }, },
+			{  153600 , {  }, {  0       ,  0      ,  0     }, },
+			{  230400 , {  }, {  0       ,  0      ,  0     }, },
+			{  307200 , {  }, {  0       ,  0      ,  0     }, },
+			{  384000 , {  }, {  0       ,  0      ,  0     }, },
+			{  460800 , {  }, {  0       ,  0      ,  0     }, },
+			{  537600 , {  }, {  0       ,  0      ,  0     }, },
+			{  614400 , {  }, { -4854798 ,  547369 , -13088 }, },
+			{  691200 , {  }, { -1361387 ,  232613 , -5916  }, },
+			{  768000 , {  }, {  220791  ,  99521  , -3041  }, },
+			{  844800 , {  }, {  3566508 , -182722 ,  2991  }, },
+			{  921600 , {  }, {  5028344 , -290112 ,  5021  }, },
+			{  998400 , {  }, {  9165009 , -599835 ,  10880 }, },
+			{  1075200, {  }, {  16040730, -1105038,  20239 }, },
 			{       0, {  }, {       0,      0,   0}, },
 		},
+		.cvb_vmin =  {  0, {  }, { 900000, }, },
 		.vts_trips_table = { 0, 70, },
 	},
 };
@@ -869,7 +879,9 @@ static int __init set_gpu_dvfs_data(unsigned long max_freq,
 
 		mv = get_cvb_voltage(
 			speedo, d->speedo_scale, &table->cvb_pll_param);
-
+#ifdef BRINGUP_CVB_V_MARGIN
+		mv = mv * (100 + BRINGUP_CVB_V_MARGIN) / 100;
+#endif
 		for (j = 0; j < thermal_ranges; j++) {
 			int mvj = mv;
 			int t = rail->vts_cdev->trip_temperatures[j];

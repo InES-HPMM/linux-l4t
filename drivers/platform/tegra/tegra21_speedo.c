@@ -32,7 +32,7 @@
 #include "common.h"
 
 #define TEGRA21_CPU_SPEEDO 2450
-#define TEGRA21_GPU_SPEEDO 2140 /* FIXME: Get Correct Value */
+#define TEGRA21_GPU_SPEEDO 2450
 
 #define CPU_PROCESS_CORNERS_NUM		2
 #define GPU_PROCESS_CORNERS_NUM		2
