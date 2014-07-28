@@ -285,8 +285,9 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	[TEGRA_POWERGATE_GPU] = {
 		.name = "gpu",
 		.clk_info = {
-			[0] = { .clk_name = "gpu_ref", .clk_type = CLK_AND_RST },
-			[1] = { .clk_name = "pll_p_out5", .clk_type = CLK_ONLY },
+			[0] = { .clk_name = "gpu_gate", .clk_type = CLK_AND_RST },
+			[1] = { .clk_name = "gpu_ref", .clk_type = CLK_ONLY },
+			[2] = { .clk_name = "pll_p_out5", .clk_type = CLK_ONLY },
 		},
 	},
 };
@@ -531,7 +532,13 @@ static int tegra210_pg_gpu_unpowergate(int id)
 
 	udelay(10);
 
+	/*
+	 * Make sure all clok branches into GPU, except reference clock are
+	 * gated across resert de-assertion.
+	 */
+	tegra_clk_disable_unprepare(partition->clk_info[0].clk_ptr);
 	powergate_partition_deassert_reset(partition);
+	tegra_clk_prepare_enable(partition->clk_info[0].clk_ptr);
 
 	udelay(10);
 
