@@ -131,6 +131,12 @@ static int __init denver_cpuidle_devices_init(void)
 		if (!of_device_is_compatible(cpu, "nvidia,denver"))
 			continue;
 
+		/*
+		 * Check to see if the cpu is disabled.
+		 */
+		if (!of_device_is_available(cpu))
+			continue;
+
 		of_states = of_parse_phandle(cpu, "power-states", 0);
 		if (!of_states || !of_device_is_compatible(
 				of_states, "nvidia,denver"))
