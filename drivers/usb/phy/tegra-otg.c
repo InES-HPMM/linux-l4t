@@ -45,6 +45,7 @@
 
 #include <mach/tegra_usb_pad_ctrl.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
+#include "../../../arch/arm/mach-tegra/board.h"
 
 #define USB_PHY_WAKEUP		0x408
 #define  USB_ID_INT_EN		(1 << 0)
@@ -59,6 +60,10 @@
 						USB_VBUS_WAKEUP_EN | USB_ID_PIN_WAKEUP_EN)
 #define USB_VBUS_INT_STS_MASK	(0x7 << 8)
 #define USB_ID_INT_STS_MASK	(0x7 << 0)
+
+#if defined(CONFIG_ARM64)
+#define UTMI1_PORT_OWNER_XUSB   0x1
+#endif
 
 #ifdef OTG_DEBUG
 #define DBG(stuff...)	pr_info("tegra-otg: " stuff)
@@ -713,6 +718,9 @@ static struct tegra_usb_otg_data *tegra_otg_dt_parse_pdata(
 {
 	struct tegra_usb_otg_data *pdata;
 	struct device_node *np = pdev->dev.of_node;
+#ifdef CONFIG_ARM64
+	int usb_port_owner_info = tegra_get_usb_port_owner_info();
+#endif
 
 	if (!np)
 		return NULL;
@@ -725,6 +733,10 @@ static struct tegra_usb_otg_data *tegra_otg_dt_parse_pdata(
 	}
 
 	pdata->is_xhci = of_property_read_bool(np, "nvidia,enable-xhci-host");
+#ifdef CONFIG_ARM64
+	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
+		pdata->is_xhci = false;
+#endif
 	pdata->ehci_device = soc_data->ehci_device;
 	pdata->ehci_pdata = soc_data->ehci_pdata;
 	pdata->ehci_pdata->u_data.host.support_y_cable =

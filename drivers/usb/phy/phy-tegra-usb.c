@@ -805,6 +805,9 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 
 	if (pdev->dev.of_node && phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE)
 		phy->inst = of_alias_get_id(pdev->dev.of_node, "udc");
+	else if (pdev->dev.of_node &&
+			phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST)
+		phy->inst = of_alias_get_id(pdev->dev.of_node, "ehci");
 	else
 		phy->inst = pdev->id;
 

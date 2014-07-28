@@ -33,14 +33,22 @@
 #include <linux/tegra_pm_domains.h>
 #include <linux/pm_qos.h>
 #include <linux/wakelock.h>
+#include <linux/irqchip/tegra.h>
 
 /* HACK! This needs to come from DT */
 #include "../../../arch/arm/mach-tegra/iomap.h"
+#include "../../../arch/arm/mach-tegra/board.h"
 
 #if 0
 #define EHCI_DBG(stuff...)	pr_info("ehci-tegra: " stuff)
 #else
 #define EHCI_DBG(stuff...)	do {} while (0)
+#endif
+
+#if defined(CONFIG_ARM64)
+#define UTMI1_PORT_OWNER_XUSB   0x1
+#define UTMI2_PORT_OWNER_XUSB   0x2
+#define HSIC1_PORT_OWNER_XUSB   0x4
 #endif
 
 static const char driver_name[] = "tegra-ehci";
@@ -533,6 +541,120 @@ static DEVICE_ATTR(boost_enable, 0644,
 		   show_boost_enable, store_boost_enable);
 #endif
 
+static struct tegra_usb_platform_data *tegra_ehci_dt_parse_pdata(
+		struct platform_device *pdev)
+{
+#ifdef CONFIG_ARM64
+	struct tegra_usb_platform_data *pdata;
+	struct device_node *np = pdev->dev.of_node;
+	u32 val;
+	bool is_intf_utmi;
+	int err;
+	u32 instance;
+	int modem_id = tegra_get_modem_id();
+	int usb_port_owner_info = tegra_get_usb_port_owner_info();
+
+	if (!np)
+		return NULL;
+
+	pdata = devm_kzalloc(&pdev->dev, sizeof(struct tegra_usb_platform_data),
+			GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&pdev->dev, "Can't allocate platform data\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	pdata->op_mode = TEGRA_USB_OPMODE_HOST;
+	pdata->port_otg = of_property_read_bool(np, "nvidia,port-otg");
+	pdata->has_hostpc = of_property_read_bool(np, "nvidia,has-hostpc");
+	pdata->unaligned_dma_buf_supported =
+		of_property_read_bool(np, "nvidia,unaligned-dma-buf-supported");
+
+	is_intf_utmi = of_property_read_bool(np, "nvidia,is-intf-utmi");
+	instance = of_alias_get_id(pdev->dev.of_node, "ehci");
+
+	if (instance == 1 && modem_id) {
+		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)) {
+			pdata->phy_intf = TEGRA_USB_PHY_INTF_HSIC;
+			tegra_set_wake_source(42, INT_USB2);
+		} else
+			return NULL;
+	} else if (is_intf_utmi) {
+		if (!(usb_port_owner_info &
+			(UTMI1_PORT_OWNER_XUSB ||
+			UTMI2_PORT_OWNER_XUSB)))
+			pdata->phy_intf = TEGRA_USB_PHY_INTF_UTMI;
+		else
+			return NULL;
+	}
+
+	pdata->op_mode = TEGRA_USB_OPMODE_HOST;
+
+	pdata->u_data.host.hot_plug =
+		of_property_read_bool(np, "nvidia,hot-plug");
+	pdata->u_data.host.remote_wakeup_supported =
+		of_property_read_bool(np, "nvidia,remote-wakeup-supported");
+
+	pdata->u_data.host.power_off_on_suspend = of_property_read_bool(np,
+			"nvidia,power-off-on-suspend");
+
+	pdata->u_data.host.turn_off_vbus_on_lp0 =  of_property_read_bool(np,
+			"nvidia,turn-off-vbus-on-lp0");
+
+	val = 0;
+	if (pdata->phy_intf == TEGRA_USB_PHY_INTF_UTMI) {
+		err = of_property_read_u32(np,
+					"nvidia,hssync-start-delay", &val);
+		pdata->u_cfg.utmi.hssync_start_delay = val;
+
+		err = of_property_read_u32(np,
+			"nvidia,idle-wait-delay", &val);
+		pdata->u_cfg.utmi.idle_wait_delay = val;
+
+		err = of_property_read_u32(np, "nvidia,elastic-limit", &val);
+		pdata->u_cfg.utmi.elastic_limit = val;
+
+		err = of_property_read_u32(np,
+					"nvidia,term-range-adj", &val);
+		pdata->u_cfg.utmi.term_range_adj = val;
+
+		err = of_property_read_u32(np, "nvidia,xcvr-setup", &val);
+		pdata->u_cfg.utmi.xcvr_setup = val;
+
+		err = of_property_read_u32(np, "nvidia,xcvr-lsfslew", &val);
+		pdata->u_cfg.utmi.xcvr_lsfslew = val;
+
+		err = of_property_read_u32(np, "nvidia,xcvr-lsrslew", &val);
+		pdata->u_cfg.utmi.xcvr_lsrslew = val;
+
+		err = of_property_read_u32(np,
+					"nvidia,xcvr-setup-offset", &val);
+		pdata->u_cfg.utmi.xcvr_setup_offset = val;
+
+		err = of_property_read_u32(np, "nvidia,xcvr-use-lsb", &val);
+		pdata->u_cfg.utmi.xcvr_use_lsb = val;
+
+		pdata->u_cfg.utmi.xcvr_use_fuses =
+			of_property_read_bool(np, "nvidia,xcvr-use-fuses");
+
+		err = of_property_read_u32(np, "nvidia,vbus-oc-map", &val);
+		pdata->u_cfg.utmi.vbus_oc_map = val;
+
+		err = of_property_read_u32(np,
+				"nvidia,xcvr-hsslew-lsb", &val);
+		pdata->u_cfg.utmi.xcvr_hsslew_lsb = val;
+
+		err = of_property_read_u32(np,
+				"nvidia,xcvr-hsslew-msb", &val);
+		pdata->u_cfg.utmi.xcvr_hsslew_msb = val;
+	}
+
+	return pdata;
+#else
+	return NULL;
+#endif
+}
+
 static int tegra_ehci_probe(struct platform_device *pdev)
 {
 	struct resource *res;
@@ -550,8 +672,20 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	if (!pdev->dev.dma_mask)
 		pdev->dev.dma_mask = &tegra_ehci_dma_mask;
 
-	pdata = dev_get_platdata(&pdev->dev);
+	pdata = pdev->dev.platform_data;
 
+	if (pdata == NULL) {
+		if (pdev->dev.of_node) {
+			pdata = tegra_ehci_dt_parse_pdata(pdev);
+			pdev->dev.platform_data = pdata;
+		}
+	} else
+		pdata = dev_get_platdata(&pdev->dev);
+
+	if (!pdata) {
+		dev_err(&pdev->dev, "Platform data missing\n");
+		return -ENOMEM;
+	}
 	tegra = devm_kzalloc(&pdev->dev, sizeof(struct tegra_ehci_hcd),
 			     GFP_KERNEL);
 	if (!tegra) {
@@ -804,6 +938,7 @@ static void tegra_ehci_hcd_shutdown(struct platform_device *pdev)
 
 static struct of_device_id tegra_ehci_of_match[] = {
 	{ .compatible = "nvidia,tegra20-ehci", },
+	{ .compatible = "nvidia,tegra132-ehci", },
 	{ },
 };
 
