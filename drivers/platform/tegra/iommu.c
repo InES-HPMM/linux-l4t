@@ -263,10 +263,6 @@ struct swgid_fixup tegra_swgid_fixup_t210[] = {
 		.swgids = SWGID(AVPC),
 		.linear_map = tegra_bpmp_linear_map
 	},
-	{ .name = "sdhci-tegra.0",	.swgids = SWGID(SDMMC1A) },
-	{ .name = "sdhci-tegra.1",	.swgids = SWGID(SDMMC2A) },
-	{ .name = "sdhci-tegra.2",	.swgids = SWGID(SDMMC3A) },
-	{ .name = "sdhci-tegra.3",	.swgids = SWGID(SDMMC4A) },
 	{ .name = "serial8250",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
 	{ .name = "serial-tegra",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
