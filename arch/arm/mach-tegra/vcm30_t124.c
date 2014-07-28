@@ -469,6 +469,8 @@ static struct of_dev_auxdata tegra_vcm30_t124_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-nor", TEGRA_SNOR_BASE, "tegra-nor",
 		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-dfll", 0x70110000, "tegra_cl_dvfs",
+		 NULL),
 	{}
 };
 
