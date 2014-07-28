@@ -40,6 +40,9 @@ void tegra_xhci_release_otg_port(bool release)
 	u32 reg;
 	unsigned long flags;
 
+	if (tegra_platform_is_fpga())
+		return;
+
 	spin_lock_irqsave(&xusb_padctl_lock, flags);
 	reg = readl(padctl_base + XUSB_PADCTL_USB2_PAD_MUX_0);
 
@@ -320,6 +323,10 @@ EXPORT_SYMBOL_GPL(utmi_phy_iddq_override);
 static void utmi_phy_pad(bool enable)
 {
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
+
+	if (tegra_platform_is_fpga())
+		return;
+
 	if (enable) {
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0
 			, BIAS_PAD_MASK , BIAS_PAD_XUSB);
