@@ -373,6 +373,12 @@ void __init smp_init_cpus(void)
 		hwid &= MPIDR_HWID_BITMASK;
 
 		/*
+		 * Check to see if the cpu is disabled.
+		 */
+		if (!of_device_is_available(dn))
+			goto next;
+
+		/*
 		 * Duplicate MPIDRs are a recipe for disaster. Scan
 		 * all initialized entries and check for
 		 * duplicates. If any is found just ignore the cpu.
