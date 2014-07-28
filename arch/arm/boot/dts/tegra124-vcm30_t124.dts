@@ -66,11 +66,6 @@
 		};
 	};
 
-	backlight {
-		compatible = "pwm-backlight";
-		status = "okay";
-	};
-
 	i2c@7000c400 {
 		nvidia,clock-always-on;
 
