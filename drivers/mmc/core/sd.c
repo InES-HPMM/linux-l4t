@@ -255,6 +255,7 @@ static int mmc_read_ssr(struct mmc_card *card)
 			card->ssr.erase_timeout = (et * 1000) / es;
 			card->ssr.erase_offset = eo * 1000;
 		}
+		card->speed_class = UNSTUFF_BITS(ssr, 440 - 384, 8);
 	} else {
 		pr_warning("%s: SD Status: Invalid Allocation Unit "
 			"size.\n", mmc_hostname(card->host));
