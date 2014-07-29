@@ -36,7 +36,7 @@
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 #define SS_PAD_COUNT	4
 #define USB3_LANE_NOT_ENABLED	0xF
-#define SATA_LANE	0x8
+#define SATA_LANE	(0x8 << 12)
 
 #define XUSB_PADCTL_UPHY_PLL_P0_CTL1_0	0x360
 #define XUSB_PADCTL_UPHY_PLL_P0_CTL1_PLL0_IDDQ	(1 << 0)
@@ -110,6 +110,8 @@
 #define XUSB_PADCTL_UPHY_PLL_S0_CTL5_PLL0_DCO_CTRL	(0x2a << 16)
 
 #else
+#define SATA_LANE	(0x1)
+
 /* xusb padctl regs for pad programming of t124 usb3 */
 #define XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0			0x138
 #define XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0_PLL0_REFCLK_NDIV_MASK	(0x3 << 20)

@@ -2084,9 +2084,17 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 
 static inline bool xusb_use_sata_lane(struct tegra_xhci_hcd *tegra)
 {
-	return ((XUSB_DEVICE_ID_T114 == tegra->device_id) ? false
-	: ((tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
-		&& (tegra->bdata->lane_owner & BIT(0))));
+	bool ret;
+	if (XUSB_DEVICE_ID_T114 == tegra->device_id)
+		ret = false;
+	if (XUSB_DEVICE_ID_T124 == tegra->device_id)
+		ret = ((tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
+				&& (tegra->bdata->lane_owner & SATA_LANE));
+	if (XUSB_DEVICE_ID_T210 == tegra->device_id)
+		ret = ((tegra->bdata->portmap & TEGRA_XUSB_SS_P3)
+			&& ((tegra->bdata->lane_owner & 0xf000) == SATA_LANE));
+
+	return ret;
 }
 
 static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
@@ -3635,6 +3643,14 @@ tegra_xhci_suspend(struct platform_device *pdev,
 		__func__, tegra->usb2_irq, ret);
 	}
 
+	if (pex_usb_pad_pll_reset_assert())
+		dev_err(&pdev->dev, "error assert pex pll\n");
+
+	if (xusb_use_sata_lane(tegra)) {
+		if (sata_usb_pad_pll_reset_assert())
+			dev_err(&pdev->dev, "error assert sata pll\n");
+	}
+
 	regulator_disable(tegra->xusb_s1p8v_reg);
 	regulator_disable(tegra->xusb_s1p05v_reg);
 	tegra_usb2_clocks_deinit(tegra);
@@ -3669,6 +3685,14 @@ tegra_xhci_resume(struct platform_device *pdev)
 	regulator_enable(tegra->xusb_s1p05v_reg);
 	regulator_enable(tegra->xusb_s1p8v_reg);
 	tegra_usb2_clocks_init(tegra);
+
+	if (pex_usb_pad_pll_reset_deassert())
+		dev_err(&pdev->dev, "error deassert pex pll\n");
+
+	if (xusb_use_sata_lane(tegra)) {
+		if (sata_usb_pad_pll_reset_deassert())
+			dev_err(&pdev->dev, "error deassert sata pll\n");
+	}
 
 	return 0;
 }
@@ -4521,6 +4545,14 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 
 	tegra->padregs = soc_config->padctl_offsets;
 
+	if (pex_usb_pad_pll_reset_deassert())
+		dev_err(&pdev->dev, "error deassert pex pll\n");
+
+	if (xusb_use_sata_lane(tegra)) {
+		if (sata_usb_pad_pll_reset_deassert())
+			dev_err(&pdev->dev, "error deassert sata pll\n");
+	}
+
 	/* calculate rctrl_val and tctrl_val once at boot time */
 	/* Issue is only applicable for T114 */
 	if (XUSB_DEVICE_ID_T114 == tegra->device_id)
@@ -4766,6 +4798,14 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 
 	deinit_firmware(tegra);
 	fw_log_deinit(tegra);
+
+	if (pex_usb_pad_pll_reset_assert())
+		pr_err("error assert pex pll\n");
+
+	if (xusb_use_sata_lane(tegra)) {
+		if (sata_usb_pad_pll_reset_assert())
+			pr_err("error assert sata pll\n");
+	}
 
 	tegra_xusb_regulator_deinit(tegra);
 
