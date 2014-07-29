@@ -238,6 +238,7 @@ int tegra_adf_process_hotplug_connected(struct tegra_adf_info *adf_info,
 
 void tegra_adf_process_hotplug_disconnected(struct tegra_adf_info *adf_info)
 {
+	adf_interface_blank(&adf_info->intf, DRM_MODE_DPMS_OFF);
 	adf_hotplug_notify_disconnected(&adf_info->intf);
 }
 
