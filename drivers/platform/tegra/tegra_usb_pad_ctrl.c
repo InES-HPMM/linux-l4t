@@ -22,6 +22,7 @@
 #include <linux/io.h>
 #include <linux/delay.h>
 #include <linux/tegra-fuse.h>
+#include <linux/clk/tegra.h>
 
 #include <mach/tegra_usb_pad_ctrl.h>
 
@@ -30,6 +31,10 @@
 static DEFINE_SPINLOCK(utmip_pad_lock);
 static DEFINE_SPINLOCK(hsic_pad_lock);
 static DEFINE_SPINLOCK(xusb_padctl_lock);
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+static DEFINE_SPINLOCK(pcie_pad_lock);
+static DEFINE_SPINLOCK(sata_pad_lock);
+#endif
 static int utmip_pad_count;
 static int hsic_pad_count;
 static struct clk *utmi_pad_clk;
@@ -297,6 +302,94 @@ void tegra_xhci_ss_vcore(u32 enabled_port, bool enable)
 	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
 }
 EXPORT_SYMBOL_GPL(tegra_xhci_ss_vcore);
+
+static int pex_usb_pad_pll(bool assert)
+{
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	static struct clk *pex_uphy;
+	static int ref_count;
+	unsigned long flags;
+
+	if (!pex_uphy)
+		pex_uphy = clk_get_sys(NULL, "pex_uphy");
+
+	if (IS_ERR(pex_uphy)) {
+		pr_err("Fail to get pex_uphy clk\n");
+		return PTR_ERR(pex_uphy);
+	}
+
+	spin_lock_irqsave(&pcie_pad_lock, flags);
+
+	if (!assert) {
+		if (ref_count == 0)
+			tegra_periph_reset_deassert(pex_uphy);
+		ref_count++;
+	} else {
+		ref_count--;
+		if (ref_count == 0)
+			tegra_periph_reset_assert(pex_uphy);
+	}
+	spin_unlock_irqrestore(&pcie_pad_lock, flags);
+
+#endif
+	return 0;
+}
+
+static int sata_usb_pad_pll(bool assert)
+{
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	static struct clk *sata_uphy;
+	static int ref_count;
+	unsigned long flags;
+
+	if (!sata_uphy)
+		sata_uphy = clk_get_sys(NULL, "sata_uphy");
+
+	if (IS_ERR(sata_uphy)) {
+		pr_err("Fail to get sata_uphy clk\n");
+		return PTR_ERR(sata_uphy);
+	}
+
+	spin_lock_irqsave(&sata_pad_lock, flags);
+
+	if (!assert) {
+		if (ref_count == 0)
+			tegra_periph_reset_deassert(sata_uphy);
+		ref_count++;
+	} else {
+		ref_count--;
+		if (ref_count == 0)
+			tegra_periph_reset_assert(sata_uphy);
+	}
+	spin_unlock_irqrestore(&sata_pad_lock, flags);
+
+#endif
+	return 0;
+}
+
+int pex_usb_pad_pll_reset_assert(void)
+{
+	return pex_usb_pad_pll(true);
+}
+EXPORT_SYMBOL_GPL(pex_usb_pad_pll_reset_assert);
+
+int pex_usb_pad_pll_reset_deassert(void)
+{
+	return pex_usb_pad_pll(false);
+}
+EXPORT_SYMBOL_GPL(pex_usb_pad_pll_reset_deassert);
+
+int sata_usb_pad_pll_reset_assert(void)
+{
+	return sata_usb_pad_pll(true);
+}
+EXPORT_SYMBOL_GPL(sata_usb_pad_pll_reset_assert);
+
+int sata_usb_pad_pll_reset_deassert(void)
+{
+	return sata_usb_pad_pll(false);
+}
+EXPORT_SYMBOL_GPL(sata_usb_pad_pll_reset_deassert);
 
 int utmi_phy_iddq_override(bool set)
 {

@@ -457,4 +457,9 @@ void xusb_ss_pad_init(int pad, int port_map, u32 cap);
 void usb2_vbus_id_init(void);
 int hsic_trk_enable(void);
 
+int pex_usb_pad_pll_reset_assert(void);
+int pex_usb_pad_pll_reset_deassert(void);
+int sata_usb_pad_pll_reset_assert(void);
+int sata_usb_pad_pll_reset_deassert(void);
+
 #endif
