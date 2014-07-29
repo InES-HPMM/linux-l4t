@@ -16,9 +16,12 @@
 
 #include <linux/types.h>
 #include <linux/clk.h>
+
 #include <asm/io.h>
+
 #include <mach/latency_allowance.h>
 #include <mach/tegra_emc.h>
+
 #include "la_priv.h"
 #include "clock.h"
 #include "iomap.h"

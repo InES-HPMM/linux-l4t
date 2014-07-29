@@ -113,12 +113,6 @@ obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra21_dvfs.o
 endif
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
 
-obj-$(CONFIG_TEGRA_MC) += latency_allowance.o
-ifeq ($(CONFIG_TEGRA_MC),y)
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12x_la.o
-obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += tegra12x_la.o
-endif
-
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC)        += tegra13_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += tegra21_speedo.o
 
