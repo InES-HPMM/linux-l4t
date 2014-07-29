@@ -25,6 +25,9 @@ NVIDIA TEGRA124 Display Serial Interface
  - nvidia,panel-bl-en-gpio: backlight enabling gpio.
  - nvidia,panel-bl-pwm-gpio: gpio for backlight pwm signal.
  - nvidia,dsi-te-gpio: gpio for panel TE(Tearing Effect) signal.
+ - nvidia,dsi-dpd-pads: dpd mode setting for dsi pads.
+   One item or an array of several tuples items can be chosen.
+   List of items is DSI_DPD_EN, DSIB_DPD_EN, DSIC_DPD_EN and DSID_DPD_EN.
  - nvidia,dsi-n-data-lanes: Number of DSI lanes in use. Should be one of 2, 3, 4, and 8
  - nvidia,dsi-video-burst-mode: Video mode. Write 0, 1, 2, 3, 4, 5 and 6 for TEGRA_DSI_VIDEO_NONE_BURST_MODE,
    TEGRA_DSI_VIDEO_NONE_BURST_MODE_WITH_SYNC_END, TEGRA_DSI_VIDEO_BURST_MODE_LOWEST_SPEED,

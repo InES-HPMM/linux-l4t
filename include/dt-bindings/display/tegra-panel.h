@@ -123,6 +123,14 @@
 #define DSI_HOST_SUSPEND_LV1		2
 #define DSI_HOST_SUSPEND_LV2		3
 
+/*
+ * DPD (deep power down) mode for dsi pads.
+ */
+#define DSI_DPD_EN		(1 << 0)
+#define DSIB_DPD_EN		(1 << 1)
+#define DSIC_DPD_EN		(1 << 2)
+#define DSID_DPD_EN		(1 << 3)
+
 #define DRIVE_CURRENT_L0 0
 #define DRIVE_CURRENT_L1 1
 #define DRIVE_CURRENT_L2 2

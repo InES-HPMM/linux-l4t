@@ -281,6 +281,20 @@ enum {
 #define DSI_HOST_SUSPEND_LV1		2
 #define DSI_HOST_SUSPEND_LV2		3
 
+/*
+ * DPD (deep power down) mode for dsi pads.
+ *  - Available for DSI_VS1 and later.
+ *  - Available for Non-DSI_GANGED.
+ * Usually, DSIC/DSID pads' DPD for DSI_INSTANCE_0 and
+   DSI/DSIB pads' DPD for DSI_INSTANCE_1 can be enabled, respectively,
+ * but in SW, sometimes pins from one pad can be used by
+ * more than one module, so it may be dependent on board design.
+ */
+#define DSI_DPD_EN		(1 << 0)
+#define DSIB_DPD_EN		(1 << 1)
+#define DSIC_DPD_EN		(1 << 2)
+#define DSID_DPD_EN		(1 << 3)
+
 struct tegra_dsi_board_info {
 	u32 platform_boardid;
 	u32 platform_boardversion;
@@ -346,6 +360,8 @@ struct tegra_dsi_out {
 	u32		fpga_freq_khz;
 
 	u32		te_gpio;
+
+	u32		dpd_dsi_pads;
 
 	const u32		*pkt_seq;
 
