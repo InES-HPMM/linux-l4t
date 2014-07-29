@@ -77,6 +77,13 @@ config TEGRA_DC_CMU
 	  It is used to make the representation of color match
 	  accross displays.
 
+config TEGRA_NVDISPLAY
+        bool "Tegra NvDisplay Architecture Support"
+	depends on TEGRA_DC
+	help
+	    Enable the support for NvDisplay Architecture
+	    If unsure, say N
+
 config TEGRA_DC_CDE
 	bool "Tegra Color Decompression Engine"
 	depends on TEGRA_DC && ARCH_TEGRA_21x_SOC
