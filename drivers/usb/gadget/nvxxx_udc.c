@@ -121,16 +121,6 @@ module_param(stream_rejected_sleep_msecs, uint, S_IRUGO|S_IWUSR);
 #define reg_dump(_dev, _base, _reg)	do {} while (0)
 #endif
 
-#if 0
-struct xusb_usb3_pad_config {
-	u32 rx_wander;
-	u32 rx_eq;
-	u32 cdr_cntl;
-	u32 dfe_cntl;
-	u32 spare_in;
-};
-#endif
-
 struct xusb_usb2_otg_pad_config {
 	u32 hs_curr_level;
 	u32 hs_squelch_level;
@@ -139,21 +129,6 @@ struct xusb_usb2_otg_pad_config {
 	u32 hs_slew;
 	u32 ls_rslew;
 };
-
-#if 0
-static struct xusb_usb2_otg_pad_config usb2_otg_pad_config = {
-	.hs_slew = 0b1110, /* from BCT */
-	.ls_rslew = 0b11, /* from BCT */
-};
-
-static struct xusb_usb3_pad_config usb3_pad_config = {
-	.rx_wander = 0xF,
-	.rx_eq = 0xF070,
-	.cdr_cntl = 0x26,
-	.dfe_cntl = 0x002008EE,
-	.spare_in = 0x1,
-};
-#endif
 
 #define DEFAULT_MIN_IRQ_INTERVAL	(1000) /* 1 ms */
 static unsigned int min_irq_interval_us = DEFAULT_MIN_IRQ_INTERVAL;
@@ -4508,117 +4483,6 @@ static int nvudc_plat_irqs_init(struct NV_UDC_S *nvudc)
 	return 0;
 }
 
-#if 0
-static void nvudc_plat_read_usb_calib(struct NV_UDC_S *nvudc)
-{
-	struct platform_device *pdev = nvudc->pdev.plat;
-	struct device *dev = &pdev->dev;
-
-	u32 usb_calib0 = tegra_fuse_readl(FUSE_SKU_USB_CALIB_0);
-	msg_info(dev, "usb_calib0 = 0x%08x\n", usb_calib0);
-	/*
-	 * read from usb_calib0 and pass to driver
-	 * set HS_CURR_LEVEL (PAD0)	= usb_calib0[5:0]
-	 * set TERM_RANGE_ADJ		= usb_calib0[10:7]
-	 * set HS_SQUELCH_LEVEL		= usb_calib0[12:11]
-	 * set HS_IREF_CAP		= usb_calib0[14:13]
-	 * set HS_CURR_LEVEL (PAD1)	= usb_calib0[20:15]
-	 */
-
-	usb2_otg_pad_config.hs_curr_level = (usb_calib0 >> 0) & 0x3f;
-	usb2_otg_pad_config.term_range_adj = (usb_calib0 >> 7) & 0xf;
-	usb2_otg_pad_config.hs_squelch_level = (usb_calib0 >> 11) & 0x3;
-	usb2_otg_pad_config.hs_iref_cap = (usb_calib0 >> 13) & 0x3;
-}
-
-static int nvudc_plat_config_pads(struct NV_UDC_S *nvudc)
-{
-	struct platform_device *pdev = nvudc->pdev.plat;
-	struct device *dev = &pdev->dev;
-	struct device_node *node = pdev->dev.of_node;
-	int ret;
-	/* TODO pad config should come from pdata or dt */
-	struct xusb_usb3_pad_config *usb3 = &usb3_pad_config;
-	struct xusb_usb2_otg_pad_config *usb2 = &usb2_otg_pad_config;
-	u32 reg;
-	u8 laneowner = BIT(2);
-
-	/* config usb2 otg pad */
-	nvudc_plat_read_usb_calib(nvudc);
-	utmi_phy_iddq_override(false);
-
-	reg = ioread32(nvudc->padctl + USB2_BIAS_PAD_CTL);
-	reg &= ~(HS_DISCON_LEVEL(~0) | HS_SQUELCH_LEVEL(~0));
-	reg |= HS_DISCON_LEVEL(5);
-	reg |= HS_SQUELCH_LEVEL(usb2->hs_squelch_level);
-	reg &= ~(BIAS_PD | BIAS_PD_TRK);
-	iowrite32(reg, nvudc->padctl + USB2_BIAS_PAD_CTL);
-	reg_dump(dev, nvudc->padctl, USB2_BIAS_PAD_CTL);
-
-	reg = ioread32(nvudc->padctl + USB2_OTG_PAD0_CTL_0);
-	reg &= ~(HS_CURR_LEVEL(~0) | HS_SLEW(~0) | LS_RSLEW(~0));
-	reg |= HS_CURR_LEVEL(usb2->hs_curr_level);
-	reg |= (HS_SLEW(usb2->hs_slew) | LS_RSLEW(usb2->ls_rslew));
-	reg &= ~(PAD_PD | PAD_PD2 | PAD_PD_ZI);
-	iowrite32(reg, nvudc->padctl + USB2_OTG_PAD0_CTL_0);
-	reg_dump(dev, nvudc->padctl, USB2_OTG_PAD0_CTL_0);
-
-	reg = ioread32(nvudc->padctl + USB2_OTG_PAD0_CTL_1);
-	reg &= ~(TERM_RANGE_ADJ(~0) | (HS_IREF_CAP(~0)));
-	reg |= TERM_RANGE_ADJ(usb2->term_range_adj);
-	reg |= HS_IREF_CAP(usb2->hs_iref_cap);
-	reg &= ~PAD_PD_DR;
-	iowrite32(reg, nvudc->padctl + USB2_OTG_PAD0_CTL_1);
-	reg_dump(dev, nvudc->padctl, USB2_OTG_PAD0_CTL_1);
-
-	reg = ioread32(nvudc->padctl + USB2_PORT_CAP);
-	reg &= ~PORT_CAP(0, ~0);
-	reg |= PORT_CAP(0, PORT_CAP_DEV);
-	iowrite32(reg, nvudc->padctl + USB2_PORT_CAP);
-	reg_dump(dev, nvudc->padctl, USB2_PORT_CAP);
-
-	reg = ioread32(nvudc->padctl + USB2_PAD_MUX);
-	reg &= ~(USB2_OTG_PAD(0, ~0));
-	reg |= USB2_OTG_PAD(0, XUSB);
-	iowrite32(reg, nvudc->padctl + USB2_PAD_MUX);
-	reg_dump(dev, nvudc->padctl, USB2_PAD_MUX);
-
-
-	/* config usb3 pad */
-	reg = ioread32(nvudc->padctl + IOPHY_USB3_PAD0_CTL_2);
-	reg &= ~(CDR_CNTL(~0) | RX_EQ(~0) | RX_WANDER(~0));
-	reg |= (CDR_CNTL(usb3->cdr_cntl) |
-			RX_EQ(usb3->rx_eq) | RX_WANDER(usb3->rx_wander));
-	iowrite32(reg, nvudc->padctl + IOPHY_USB3_PAD0_CTL_2);
-	reg_dump(dev, nvudc->padctl, IOPHY_USB3_PAD0_CTL_2);
-
-	reg = ioread32(nvudc->padctl + IOPHY_USB3_PAD0_CTL_4);
-	reg &= ~DFE_CNTL(~0);
-	reg |= DFE_CNTL(usb3->dfe_cntl);
-	iowrite32(reg, nvudc->padctl + IOPHY_USB3_PAD0_CTL_4);
-	reg_dump(dev, nvudc->padctl, IOPHY_USB3_PAD0_CTL_4);
-
-	reg = ioread32(nvudc->padctl + IOPHY_MISC_PAD_P0_CTL_2);
-	reg &= ~(SPARE_IN(~0));
-	reg |= SPARE_IN(usb3->spare_in);
-	iowrite32(reg, nvudc->padctl + IOPHY_MISC_PAD_P0_CTL_2);
-	reg_dump(dev, nvudc->padctl, IOPHY_MISC_PAD_P0_CTL_2);
-
-	reg = ioread32(nvudc->padctl + SS_PORT_MAP);
-	reg &= ~(PORT0_MAP(~0));
-	reg |= (PORT0_MAP(MAP_USB2_PORT(0)));
-	iowrite32(reg, nvudc->padctl + SS_PORT_MAP);
-	reg_dump(dev, nvudc->padctl, SS_PORT_MAP);
-
-	tegra_xhci_ss_wake_signal(TEGRA_XUSB_SS_P0, false);
-	tegra_xhci_ss_vcore(TEGRA_XUSB_SS_P0, false);
-	usb3_phy_pad_enable(laneowner);
-	reg_dump(dev, nvudc->padctl, ELPG_PROGRAM);
-
-	return 0;
-}
-#endif
-
 static void __iomem *car_base;
 #define RST_DEVICES_U_0	(0xc)
 #define RST_DEVICES_W_0	(0x35c)
@@ -4680,42 +4544,6 @@ static void fpga_hack_init(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to map CAR mmio\n");
 }
 
-static void fpga_hack_setup_padctl(struct NV_UDC_S *nvudc)
-{
-	struct platform_device *pdev = nvudc->pdev.plat;
-	struct device *dev = &pdev->dev;
-	u32 reg;
-
-	reg_dump(dev, IO_ADDRESS(0x7009f000), USB2_PORT_CAP);
-	reg = ioread32(IO_ADDRESS(0x7009f000 + USB2_PORT_CAP));
-	reg &= ~PORT_CAP(0, ~0);
-	reg &= ~PORT_CAP(1, ~0);
-	reg &= ~PORT_CAP(2, ~0);
-	reg &= ~PORT_CAP(3, ~0);
-	reg |= PORT_CAP(0, PORT_CAP_DEV);
-	reg |= PORT_CAP(1, PORT_CAP_HOST);
-	reg |= PORT_CAP(2, PORT_CAP_HOST);
-	reg |= PORT_CAP(3, PORT_CAP_HOST);
-	iowrite32(reg, IO_ADDRESS(0x7009f000 + USB2_PORT_CAP));
-	reg_dump(dev, IO_ADDRESS(0x7009f000), USB2_PORT_CAP);
-
-	reg_dump(dev, IO_ADDRESS(0x7009f000), SS_PORT_MAP);
-	reg = 0x00018820;
-
-	iowrite32(reg, IO_ADDRESS(0x7009f000 + SS_PORT_MAP));
-	reg_dump(dev, IO_ADDRESS(0x7009f000), SS_PORT_MAP);
-
-	reg_dump(dev, IO_ADDRESS(0x7009f000), ELPG_PROGRAM);
-	reg = 0;
-	iowrite32(reg, IO_ADDRESS(0x7009f000 + ELPG_PROGRAM));
-	reg_dump(dev, IO_ADDRESS(0x7009f000), ELPG_PROGRAM);
-
-	reg_dump(dev, IO_ADDRESS(0x7009f000), USB2_PAD_MUX);
-	reg = 0x00040055;
-	iowrite32(reg, IO_ADDRESS(0x7009f000 + USB2_PAD_MUX));
-	reg_dump(dev, IO_ADDRESS(0x7009f000), USB2_PAD_MUX);
-}
-
 static void fpga_hack_setup_car(struct NV_UDC_S *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
@@ -4732,8 +4560,6 @@ static void fpga_hack_setup_car(struct NV_UDC_S *nvudc)
 	val &= ~(1 << 14);
 	iowrite32(val , car_base + RST_DEVICES_W_0);
 	reg_dump(dev, car_base, RST_DEVICES_W_0);
-
-	nvudc_plat_pad_init(nvudc);
 
 	reg_dump(dev, car_base, RST_DEVICES_U_0);
 	val = readl(IO_ADDRESS(0x6000600c));
@@ -4816,15 +4642,15 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to enable clocks\n");
 		goto err_powergate_xusbb;
 	}
+#endif
+
+	fpga_hack_setup_car(nvudc);
 
 	err = nvudc_plat_pad_init(nvudc);
 	if (err) {
 		dev_err(dev, "failed to config pads\n");
 		goto err_clocks_disable;
 	}
-#endif
-
-	fpga_hack_setup_car(nvudc);
 
 	nvudc_plat_fpci_ipfs_init(nvudc);
 
