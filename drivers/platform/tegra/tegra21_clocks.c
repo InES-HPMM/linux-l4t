@@ -493,6 +493,7 @@
 #define PLLE_AUX_PLLRE_SEL		(1<<28)
 #define PLLE_AUX_SEQ_STATE_SHIFT	26
 #define PLLE_AUX_SEQ_STATE_MASK		(0x3<<PLLE_AUX_SEQ_STATE_SHIFT)
+#define PLLE_AUX_SS_SEQ_INCLUDE		(1<<31)
 #define PLLE_AUX_SEQ_START_STATE	(1<<25)
 #define PLLE_AUX_SEQ_ENABLE		(1<<24)
 #define PLLE_AUX_SS_SWCTL		(1<<6)
@@ -566,7 +567,7 @@
 #define PLLP_DEFAULT_FIXED_RATE		408000000
 
 /* Use PLL_RE as PLLE input (default - OSC via pll reference divider) */
-#define USE_PLLE_INPUT_PLLRE    0
+#define USE_PLLE_INPUT_PLLRE    1
 
 static void pllc4_set_fixed_rates(unsigned long cf);
 static void tegra21_dfll_cpu_late_init(struct clk *c);
@@ -3462,12 +3463,15 @@ static struct clk_ops tegra_pllmb_ops = {
  * PLLE
  * Analog interpolator based SS PLL (with optional SDM SS - not used).
  */
-static inline void select_pll_e_input(u32 aux_reg)
+static inline void select_pll_e_input(struct clk *c)
 {
+	u32 aux_reg = clk_readl(PLLE_AUX);
 #if USE_PLLE_INPUT_PLLRE
 	aux_reg |= PLLE_AUX_PLLRE_SEL;
+	c->parent = c->inputs[2].input;
 #else
 	aux_reg &= ~(PLLE_AUX_PLLRE_SEL | PLLE_AUX_PLLP_SEL);
+	c->parent = c->inputs[0].input;
 #endif
 	pll_writel_delay(aux_reg, PLLE_AUX);
 }
@@ -3499,9 +3503,6 @@ static void tegra21_plle_clk_init(struct clk *c)
 		if (c->state == ON) {
 			WARN(1, "%s: pll_e is left enabled with %s input\n",
 			     __func__, c->parent->name);
-		} else {
-			c->parent = ref;
-			select_pll_e_input(val);
 		}
 	}
 }
@@ -3544,6 +3545,10 @@ static int tegra21_plle_clk_enable(struct clk *c)
 		pr_warn("%s: pll_e is already enabled\n", __func__);
 		return 0;
 	}
+
+	/* Fixed per prod settings input */
+	select_pll_e_input(c);
+	input_rate = clk_get_rate(c->parent);
 
 	/* PLLE config must be tabulated */
 	for (sel = c->u.pll.freq_table; sel->input_rate != 0; sel++) {
@@ -3614,8 +3619,8 @@ static int tegra21_plle_clk_enable(struct clk *c)
 	clk_writel(val, c->reg + c->u.pll.misc0);
 
 	val = clk_readl(PLLE_AUX);
-	val |= PLLE_AUX_USE_LOCKDET;
-	val &= ~PLLE_AUX_ENABLE_SWCTL;
+	val |= PLLE_AUX_USE_LOCKDET | PLLE_AUX_SS_SEQ_INCLUDE;
+	val &= ~(PLLE_AUX_ENABLE_SWCTL | PLLE_AUX_SS_SWCTL);
 	pll_writel_delay(val, PLLE_AUX);
 	val |= PLLE_AUX_SEQ_ENABLE;
 	pll_writel_delay(val, PLLE_AUX);
@@ -3636,19 +3641,6 @@ static int tegra21_plle_clk_enable(struct clk *c)
 
 	return 0;
 }
-
-#ifdef CONFIG_PM_SLEEP
-static void tegra21_plle_clk_resume(struct clk *c)
-{
-	u32 val = clk_readl(c->reg);
-	if (val & PLLE_BASE_ENABLE)
-		return;		/* already resumed */
-
-	/* Restore parent */
-	val = clk_readl(PLLE_AUX);
-	select_pll_e_input(val);
-}
-#endif
 
 static struct clk_ops tegra_plle_ops = {
 	.init			= tegra21_plle_clk_init,
@@ -7113,12 +7105,21 @@ static struct clk_pll_freq_table tegra_pll_e_freq_table[] = {
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
+static struct clk_mux_sel mux_pll_e_inputs[] = {
+	{ .input = &tegra_pll_ref,	.value = 0},
+	{ .input = &tegra_pll_p,	.value = 1},
+	{ .input = &tegra_pll_re_vco,	.value = 2},
+	{ .input = &tegra_pll_re_vco,	.value = 3},
+	{ 0, 0},
+};
+
 static struct clk tegra_pll_e = {
 	.name      = "pll_e",
 	.flags     = PLL_FIXED,
 	.ops       = &tegra_plle_ops,
 	.reg       = 0xe8,
 	.max_rate  = 100000000,
+	.inputs    = mux_pll_e_inputs,
 	.u.pll = {
 		.input_min = 12000000,
 		.input_max = 800000000,
@@ -9787,7 +9788,6 @@ static void tegra21_clk_resume(void)
 	tegra_emc_timing_invalidate();
 
 	tegra21_pllu_hw_ctrl_set(&tegra_pll_u_vco); /* PLLU, UTMIP h/w ctrl */
-	tegra21_plle_clk_resume(&tegra_pll_e); /* Restore plle parent as pll_re_vco */
 }
 
 static struct syscore_ops tegra_clk_syscore_ops = {
