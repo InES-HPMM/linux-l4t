@@ -4413,33 +4413,17 @@ static void nvudc_plat_fpci_ipfs_init(struct NV_UDC_S *nvudc)
 	u32 reg, addr;
 
 	reg = ioread32(nvudc->ipfs + XUSB_DEV_CONFIGURATION);
-#ifndef CONFIG_PLAT_FPGA_T210
 	reg |= EN_FPCI;
-#else /* hack */
-	reg = 0x80068e01;
-#endif
 	iowrite32(reg, nvudc->ipfs + XUSB_DEV_CONFIGURATION);
 	reg_dump(dev, nvudc->ipfs, XUSB_DEV_CONFIGURATION);
 	usleep_range(10, 30);
 
-#if 0
-	reg = ioread32(nvudc->fpci + XUSB_DEV_CFG_1);
-	reg |= (IO_SPACE_ENABLED | MEMORY_SPACE_ENABLED | BUS_MASTER_ENABLED);
-#else
 	reg = (IO_SPACE_ENABLED | MEMORY_SPACE_ENABLED | BUS_MASTER_ENABLED);
-#endif
 	iowrite32(reg, nvudc->fpci + XUSB_DEV_CFG_1);
 	reg_dump(dev, nvudc->fpci, XUSB_DEV_CFG_1);
 
-#if 0
-	reg = ioread32(nvudc->fpci + XUSB_DEV_CFG_4);
-	reg &= ~(BASE_ADDRESS(~0));
-	addr = lower_32_bits(nvudc->mmio_phys_base);
-	reg |= BASE_ADDRESS((addr >> 16));
-#else
 	addr = lower_32_bits(nvudc->mmio_phys_base);
 	reg = BASE_ADDRESS((addr >> 16));
-#endif
 	iowrite32(reg, nvudc->fpci + XUSB_DEV_CFG_4);
 	reg_dump(dev, nvudc->fpci, XUSB_DEV_CFG_4);
 
