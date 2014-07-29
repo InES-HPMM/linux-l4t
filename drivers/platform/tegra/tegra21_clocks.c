@@ -8332,12 +8332,15 @@ static struct clk_ops tegra_clk_gbus_ops = {
 	.shared_bus_update = tegra21_clk_shared_connector_update, /* re-use */
 };
 
+static struct raw_notifier_head gbus_rate_change_nh;
+
 static struct clk tegra_clk_gbus = {
 	.name      = "gbus",
 	.ops       = &tegra_clk_gbus_ops,
 	.parent    = &tegra_clk_gpu_ref,
 	.max_rate  = 1300000000,
 	.shared_bus_flags = SHARED_BUS_RETENTION,
+	.rate_change_nh = &gbus_rate_change_nh,
 };
 
 static void tegra21_camera_mclk_init(struct clk *c)
@@ -8963,7 +8966,6 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cpu_g", "tegra_cl_dvfs", "safe_dvfs"),
 	CLK_DUPLICATE("actmon", "tegra_host1x", "actmon"),
 	CLK_DUPLICATE("gpu_ref", "tegra_gpu.0", "PLLG_ref"),
-	CLK_DUPLICATE("gbus", "tegra_gpu.0", "PLLG_out"),
 	CLK_DUPLICATE("pll_p_out5", "tegra_gpu.0", "pwr"),
 	CLK_DUPLICATE("ispa.isp.cbus", "tegra_isp", "isp"),
 	CLK_DUPLICATE("ispb.isp.cbus", "tegra_isp.1", "isp"),
