@@ -4240,7 +4240,6 @@ static int nvudc_plat_clocks_init(struct NV_UDC_S *nvudc)
 	return 0;
 }
 
-#if 0
 static int nvudc_plat_clocks_enable(struct NV_UDC_S *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
@@ -4288,7 +4287,6 @@ err_disable_pll_u_480M:
 	clk_disable_unprepare(nvudc->pll_u_480M);
 	return err;
 }
-#endif
 
 static void nvudc_plat_clocks_disable(struct NV_UDC_S *nvudc)
 {
@@ -4433,7 +4431,6 @@ static void nvudc_plat_fpci_ipfs_init(struct NV_UDC_S *nvudc)
 
 	usleep_range(100, 200);
 
-
 	/* enable interrupt assertion */
 	reg = ioread32(nvudc->ipfs + XUSB_DEV_INTR_MASK);
 	reg |= IP_INT_MASK;
@@ -4466,11 +4463,6 @@ static int nvudc_plat_irqs_init(struct NV_UDC_S *nvudc)
 
 	return 0;
 }
-
-static void __iomem *car_base;
-#define RST_DEVICES_U_0	(0xc)
-#define RST_DEVICES_W_0	(0x35c)
-
 
 static int nvudc_get_bdata(struct NV_UDC_S *nvudc)
 {
@@ -4521,6 +4513,9 @@ static int nvudc_plat_pad_init(struct NV_UDC_S *nvudc)
 	return 0;
 }
 
+static void __iomem *car_base;
+#define RST_DEVICES_U_0	(0xc)
+#define HOST_RST	25
 static void fpga_hack_init(struct platform_device *pdev)
 {
 	car_base = devm_ioremap(&pdev->dev, 0x60006000, 0x1000);
@@ -4532,6 +4527,7 @@ static void fpga_hack_setup_car(struct NV_UDC_S *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device *dev = &pdev->dev;
+	struct clock *c = clk_get_sys(NULL, "xusb_padctl");
 	u32 val;
 
 	if (!car_base) {
@@ -4539,23 +4535,13 @@ static void fpga_hack_setup_car(struct NV_UDC_S *nvudc)
 		return;
 	}
 
-	reg_dump(dev, car_base, RST_DEVICES_W_0);
-	val = readl(IO_ADDRESS(0x6000635c));
-	val &= ~(1 << 14);
-	iowrite32(val , car_base + RST_DEVICES_W_0);
-	reg_dump(dev, car_base, RST_DEVICES_W_0);
+	tegra_periph_reset_deassert(c);
 
 	reg_dump(dev, car_base, RST_DEVICES_U_0);
-	val = readl(IO_ADDRESS(0x6000600c));
-	val &= ~((1 << 25) | (1 << 31));
+	val = ioread32(car_base + RST_DEVICES_U_0);
+	val &= ~((1 << HOST_RST));
 	iowrite32(val, car_base + RST_DEVICES_U_0);
 	reg_dump(dev, car_base, RST_DEVICES_U_0);
-
-	reg_dump(dev, car_base, RST_DEVICES_W_0);
-	val = readl(IO_ADDRESS(0x6000635c));
-	val &= ~(1 << 28);
-	iowrite32(val , car_base + RST_DEVICES_W_0);
-	reg_dump(dev, car_base, RST_DEVICES_W_0);
 }
 
 static int tegra_xudc_plat_probe(struct platform_device *pdev)
@@ -4581,13 +4567,16 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	fpga_hack_init(pdev);
-
 	nvudc->pdev.plat = pdev;
 	nvudc->dev = dev;
 	platform_set_drvdata(pdev, nvudc);
 
 	nvudc_get_bdata(nvudc);
+
+	if (tegra_platform_is_fpga()) {
+		fpga_hack_init(pdev);
+		fpga_hack_setup_car(nvudc);
+	}
 
 	err = nvudc_plat_regulators_init(nvudc);
 	if (err) {
@@ -4608,7 +4597,6 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 		goto err_clocks_deinit;
 	}
 
-#if 0
 	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_XUSBA);
 	if (err) {
 		dev_err(dev, "failed to unpowergate XUSBA partition\n");
@@ -4626,9 +4614,6 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to enable clocks\n");
 		goto err_powergate_xusbb;
 	}
-#endif
-
-	fpga_hack_setup_car(nvudc);
 
 	err = nvudc_plat_pad_init(nvudc);
 	if (err) {
@@ -4683,12 +4668,10 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 
 err_clocks_disable:
 	nvudc_plat_clocks_disable(nvudc);
-#if 0
 err_powergate_xusbb:
 	tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
 err_powergate_xusba:
 	tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
-#endif
 err_clocks_deinit:
 	nvudc_plat_clocks_deinit(nvudc);
 err_regulators_deinit:
