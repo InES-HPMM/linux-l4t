@@ -820,6 +820,7 @@ static void tegra21_osc_init(struct clk *c)
 {
 	pr_debug("%s on clock %s\n", __func__, c->name);
 	tegra21_osc_autodetect_rate(c);
+	c->state = ON;
 }
 
 static int tegra21_osc_enable(struct clk *c)
@@ -6882,6 +6883,11 @@ static struct clk tegra_pll_p = {
 	},
 };
 
+static struct clk_mux_sel mux_clk_osc[] = {
+	{ .input = &tegra_clk_osc, .value = 0},
+	{ 0, 0},
+};
+
 static struct clk_mux_sel mux_pllp[] = {
 	{ .input = &tegra_pll_p, .value = 0},
 	{ 0, 0},
@@ -7669,6 +7675,15 @@ static struct clk tegra_clk_xusb_padctl = {
 	},
 };
 
+static struct clk tegra_clk_usb2_hsic_trk = {
+	.name      = "usb2_hsic_trk",
+	.flags     = DIV_U71 | PERIPH_NO_ENB | PERIPH_NO_RESET,
+	.inputs    = mux_clk_osc,
+	.reg       = 0x6cc,
+	.ops       = &tegra_periph_clk_ops,
+	.max_rate  = 38400000,
+};
+
 static struct clk_ops tegra_sata_uphy_ops = {
 	.reset    = tegra21_periph_clk_reset,
 };
@@ -8018,6 +8033,11 @@ static struct clk_mux_sel mux_pllp_out3[] = {
 
 static struct clk_mux_sel mux_clk_32k[] = {
 	{ .input = &tegra_clk_32k, .value = 0},
+	{ 0, 0},
+};
+
+static struct clk_mux_sel mux_clk_usb2_hsic_trk[] = {
+	{ .input = &tegra_clk_usb2_hsic_trk, .value = 0},
 	{ 0, 0},
 };
 
@@ -8605,8 +8625,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("usbd",	"tegra-udc.0",		NULL,	22,	0,	480000000, mux_clk_m,			0),
 	PERIPH_CLK("usb2",	"tegra-ehci.1",		NULL,	58,	0,	480000000, mux_clk_m,			0),
 	PERIPH_CLK("usb3",	"tegra-ehci.2",		NULL,	59,	0,	480000000, mux_clk_m,			0),
-	PERIPH_CLK("hsic_trk",	"hsic_trk",		NULL,	209,	0x6cc,	38400000, mux_clk_m,			PERIPH_NO_RESET),
-	PERIPH_CLK("usb2_trk",	"usb2_trk",		NULL,	210,	0x6cc,	38400000, mux_clk_m,			PERIPH_NO_RESET),
+	PERIPH_CLK("hsic_trk",	NULL,		"hsic_trk",	209,	0,	38400000, mux_clk_usb2_hsic_trk,	PERIPH_NO_RESET),
+	PERIPH_CLK("usb2_trk",	NULL,		"usb2_trk",	210,	0,	38400000, mux_clk_usb2_hsic_trk,	PERIPH_NO_RESET),
 	PERIPH_CLK_EX("dsia",	"tegradc.0",		"dsia",	48,	0xd0,	500000000, mux_plld_out0,		PLLD,	&tegra_dsi_clk_ops),
 	PERIPH_CLK_EX("dsib",	"tegradc.1",		"dsib",	82,	0x4b8,	500000000, mux_plld_out0,		PLLD,	&tegra_dsi_clk_ops),
 	PERIPH_CLK("dsi1-fixed", "tegradc.0",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
@@ -8780,6 +8800,7 @@ static struct clk tegra_clk_xusb_gate = {
 	.name      = "xusb_gate",
 	.flags     = ENABLE_ON_INIT | PERIPH_NO_RESET,
 	.ops       = &tegra_xusb_gate_clk_ops,
+	.parent    = &tegra_clk_osc,
 	.rate      = 12000000,
 	.max_rate  = 48000000,
 	.u.periph = {
@@ -9037,6 +9058,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_sor1_brick,
 	&tegra_clk_xusb_padctl,
 	&tegra_clk_sata_uphy,
+	&tegra_clk_usb2_hsic_trk,
 };
 
 struct clk *tegra_ptr_camera_mclks[] = {
