@@ -8837,7 +8837,7 @@ static struct clk tegra_xusb_source_clks[] = {
 	PERIPH_CLK("xusb_falcon_src",	XUSB_ID, "falcon_src",	143,	0x604,	350000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("xusb_fs_src",	NULL, "fs_src",	143,	0x608,	 48000000, mux_clkm_48M_pllp_480M,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("xusb_ss_src",	NULL, "ss_src",	143,	0x610,	120000000, mux_clkm_pllre_clk32_480M_pllc_ref,	MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK("xusb_dev_src",	XUDC_ID, "dev_src",	95,	0x60c,	120000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
+	PERIPH_CLK("xusb_dev_src",	XUDC_ID, "dev_src",	95,	0x60c,	120000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_ON_APB),
 	SHARED_EMC_CLK("xusb.emc",	XUSB_ID, "emc",	&tegra_clk_emc,	NULL,	0,	SHARED_BW, 0),
 };
 
