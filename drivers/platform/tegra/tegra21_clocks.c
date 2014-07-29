@@ -4112,11 +4112,6 @@ static void tegra21_periph_clk_init(struct clk *c)
 
 		c->parent = mux->input;
 	} else {
-		if (c->flags & PLLU) {
-			/* for xusb_hs clock enforce SS div2 source */
-			val &= ~periph_clk_source_mask(c);
-			clk_writel_delay(val, c->reg);
-		}
 		c->parent = c->inputs[0].input;
 	}
 
@@ -8855,6 +8850,8 @@ static struct clk tegra_xusb_ss_div2 = {
 static struct clk_mux_sel mux_ss_div2_pllu_60M[] = {
 	{ .input = &tegra_xusb_ss_div2, .value = 0},
 	{ .input = &tegra_pll_u_60M,    .value = 1},
+	{ .input = &tegra_xusb_source_clks[3], .value = 2},
+	{ .input = &tegra_xusb_source_clks[3], .value = 3},
 	{ 0, 0},
 };
 
@@ -8867,10 +8864,10 @@ static struct clk tegra_xusb_hs_src = {
 	.ops       = &tegra_periph_clk_ops,
 	.reg       = 0x610,
 	.inputs    = mux_ss_div2_pllu_60M,
-	.flags     = MUX | PLLU | PERIPH_NO_ENB,
-	.max_rate  = 61200000,
+	.flags     = MUX | PLLU | PERIPH_NO_ENB | PERIPH_NO_RESET,
+	.max_rate  = 120000000,
 	.u.periph = {
-		.src_mask  = 0x1 << 25,
+		.src_mask  = 0x3 << 25,
 		.src_shift = 25,
 	},
 };
