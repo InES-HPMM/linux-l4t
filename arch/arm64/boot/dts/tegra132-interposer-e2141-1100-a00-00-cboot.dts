@@ -1,0 +1,23 @@
+#include "tegra132-interposer-e2141-1100-a00-00.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	cpus {
+		cpu@0 {
+			enable-method = "psci";
+
+		};
+		cpu@1 {
+			enable-method = "psci";
+
+		};
+	};
+
+	psci {
+	     compatible = "arm,psci";
+	     method = "smc";
+	     cpu_off = <0xC4000002>;
+	     cpu_on = <0xC4000003>;
+	     cpu_suspend = <0xC4000001>;
+     };
+};

@@ -15,6 +15,7 @@ dtb-$(CONFIG_MACH_T132REF) += tegra132-tn8-p1761-1270-a03-battery.dtb
 dtb-$(CONFIG_MACH_T132REF) += tegra132-tn8-p1761-1270-a03.dtb
 dtb-$(CONFIG_MACH_T132REF) += tegra132-interposer-e2141-1100-a00-00.dtb
 dtb-$(CONFIG_MACH_T132REF) += tegra132-interposer-e2141-1100-a00-00-battery.dtb
+dtb-$(CONFIG_MACH_T132REF) += tegra132-interposer-e2141-1100-a00-00-cboot.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-grenada.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-ers-e2190-1100-a00-00.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-ers-e2220-1100-a00-00.dtb
