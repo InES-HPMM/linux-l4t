@@ -4322,21 +4322,20 @@ static int hsic_power_create_file(struct tegra_xhci_hcd *tegra)
 	return 0;
 }
 
+#define DEV_RST	31
 static void xusb_tegra_program_registers()
 {
+	struct clock *c = clk_get_sys(NULL, "xusb_padctl");
 	u32 val;
-	/* Clear XUSB_PADCTL_RST D14 */
-	val = readl(IO_ADDRESS(0x6000635c));
-	val &= ~(1 << 14);
-	writel(val, IO_ADDRESS(0x6000635c));
 
+	/* Clear XUSB_PADCTL_RST D14 */
+	tegra_periph_reset_deassert(c);
+
+	/* Also dessert dev_rst for FPGA */
 	val = readl(IO_ADDRESS(0x6000600c));
-	val &= ~((1 << 25) | (1 << 31));
+	val &= ~(1 << DEV_RST);
 	writel(val, IO_ADDRESS(0x6000600c));
 
-	val = readl(IO_ADDRESS(0x6000635c));
-	val &= ~(1 << 28);
-	writel(val, IO_ADDRESS(0x6000635c));
 }
 
 /* TODO: we have to refine error handling in tegra_xhci_probe() */
@@ -4351,9 +4350,8 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	const struct tegra_xusb_soc_config *soc_config;
 	const struct of_device_id *match;
 
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-	xusb_tegra_program_registers();
-#endif
+	if (tegra_platform_is_fpga())
+		xusb_tegra_program_registers();
 
 	BUILD_BUG_ON(sizeof(struct cfgtbl) != 256);
 
