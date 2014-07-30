@@ -346,6 +346,7 @@ struct arm_smmu_master {
 	struct device_node		*of_node;
 	struct rb_node			node;
 	struct arm_smmu_master_cfg	cfg;
+	struct dentry			*debugfs_root;
 };
 
 struct arm_smmu_device {
@@ -1184,7 +1185,7 @@ static void arm_smmu_domain_remove_master(struct arm_smmu_domain *smmu_domain,
 static int smmu_ptdump_show(struct seq_file *s, void *unused)
 {
 	struct arm_smmu_domain *smmu_domain = s->private;
-	struct arm_smmu_cfg *root_cfg = &smmu_domain->root_cfg;
+	struct arm_smmu_cfg *cfg = &smmu_domain->cfg;
 	pgd_t *pgd;
 	pud_t *pud;
 	pmd_t *pmd;
@@ -1192,7 +1193,7 @@ static int smmu_ptdump_show(struct seq_file *s, void *unused)
 	int i, j, k, l;
 	unsigned long addr = 0;
 
-	pgd = root_cfg->pgd;
+	pgd = cfg->pgd;
 	for (i = 0; i < PTRS_PER_PGD; ++i, pgd++) {
 		if (pgd_none(*pgd))
 			continue;
@@ -1209,7 +1210,6 @@ static int smmu_ptdump_show(struct seq_file *s, void *unused)
 					phys_addr_t pa;
 
 					pa = *pte;
-					pa &= smmu_domain->output_mask;
 					pa &= PAGE_MASK;
 					if (!pa)
 						continue;
@@ -1264,7 +1264,7 @@ static void debugfs_create_smmu_cb(struct arm_smmu_domain *smmu_domain,
 	struct dentry *dent;
 	char name[] = "cb000";
 	struct debugfs_regset32	*cb;
-	u8 cbndx = smmu_domain->root_cfg.cbndx;
+	u8 cbndx = smmu_domain->cfg.cbndx;
 	struct arm_smmu_device *smmu = dev->archdata.iommu;
 
 	sprintf(name, "cb%03d", cbndx);
@@ -1286,11 +1286,11 @@ static int smmu_master_show(struct seq_file *s, void *unused)
 	int i;
 	struct arm_smmu_master *master = s->private;
 
-	for (i = 0; i < master->num_streamids; i++)
-		seq_printf(s, "streamids: % 3d ", master->streamids[i]);
+	for (i = 0; i < master->cfg.num_streamids; i++)
+		seq_printf(s, "streamids: % 3d ", master->cfg.streamids[i]);
 	seq_printf(s, "\n");
-	for (i = 0; i < master->num_streamids; i++)
-		seq_printf(s, "smrs:      % 3d ", master->smrs[i].idx);
+	for (i = 0; i < master->cfg.num_streamids; i++)
+		seq_printf(s, "smrs:      % 3d ", master->cfg.smrs[i].idx);
 	seq_printf(s, "\n");
 	return 0;
 }
@@ -1315,14 +1315,14 @@ static void add_smmu_master_debugfs(struct arm_smmu_domain *smmu_domain,
 	struct arm_smmu_device *smmu = dev->archdata.iommu;
 	char name[] = "cb000";
 	char target[] = "../../cb000";
-	u8 cbndx = smmu_domain->root_cfg.cbndx;
+	u8 cbndx = smmu_domain->cfg.cbndx;
 
 	dent = debugfs_create_dir(dev_name(dev), smmu->masters_root);
 	if (!dent)
 		return;
 
 	debugfs_create_file("streamids", 0444, dent, master, &smmu_master_fops);
-	debugfs_create_u8("cbndx", 0444, dent, &smmu_domain->root_cfg.cbndx);
+	debugfs_create_u8("cbndx", 0444, dent, &smmu_domain->cfg.cbndx);
 	debugfs_create_smmu_cb(smmu_domain, dev);
 	sprintf(name, "cb%03d", cbndx);
 	sprintf(target, "../../cb%03d", cbndx);
@@ -1370,7 +1370,8 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
 
 	ret = arm_smmu_domain_add_master(smmu_domain, cfg);
 	if (!ret)
-		add_smmu_master_debugfs(smmu_domain, dev, cfg);
+		add_smmu_master_debugfs(smmu_domain, dev,
+					find_smmu_master(smmu, dev->of_node));
 	return ret;
 
 err_unlock:
@@ -1383,10 +1384,11 @@ static void arm_smmu_detach_dev(struct iommu_domain *domain, struct device *dev)
 	struct arm_smmu_domain *smmu_domain = domain->priv;
 	struct arm_smmu_master_cfg *cfg;
 
-	debugfs_remove_recursive(cfg->debugfs_root);
 	cfg = find_smmu_master_cfg(smmu_domain->smmu, dev);
-	if (cfg)
+	if (cfg) {
+		debugfs_remove_recursive(cfg->debugfs_root);
 		arm_smmu_domain_remove_master(smmu_domain, cfg);
+	}
 }
 
 static bool arm_smmu_pte_is_contiguous_range(unsigned long addr,
@@ -1615,10 +1617,10 @@ static int arm_smmu_handle_mapping(struct arm_smmu_domain *smmu_domain,
 		iova = next;
 	} while (pgd++, iova != end);
 
-	if (test_bit(root_cfg->cbndx, smmu->context_filter)) {
+	if (test_bit(cfg->cbndx, smmu->context_filter)) {
 		/* FIXME: add ftrace support */
 		pr_debug("cbndx=%d iova=%pa paddr=%pa size=%zx prot=%x\n",
-			 root_cfg->cbndx, &iova, &paddr, size, prot);
+			 cfg->cbndx, &iova, &paddr, size, prot);
 	}
 
 out_unlock:
@@ -1775,7 +1777,7 @@ static int arm_smmu_add_device(struct device *dev)
 	}
 
 	ret = iommu_group_add_device(group, dev);
-<<<<<<< HEAD
+out_put_group:
 	iommu_group_put(group);
 	if (ret)
 		return ret;
@@ -1798,10 +1800,6 @@ err_attach_dev:
 	dev->archdata.iommu = NULL;
 	arm_iommu_release_mapping(mapping);
 err_create_mapping:
-=======
-
-out_put_group:
->>>>>>> a9a1b0b53d8b... iommu/arm-smmu: add support for PCI master devices
 	iommu_group_put(group);
 	return ret;
 }
