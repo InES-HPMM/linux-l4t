@@ -17,6 +17,7 @@ obj-$(CONFIG_MTD_NAND_OMAP_BCH)	+= elm.o
 obj-$(CONFIG_MTD_SPEAR_SMI)	+= spear_smi.o
 obj-$(CONFIG_MTD_SST25L)	+= sst25l.o
 obj-$(CONFIG_MTD_BCM47XXSFLASH)	+= bcm47xxsflash.o
+obj-$(CONFIG_MTD_QSPI_FLASH)	+= qspi_mtd.o
 CFLAGS_tegra_nand.o		= -Werror
 obj-$(CONFIG_MTD_NAND_TEGRA)	+= tegra_nand.o
 

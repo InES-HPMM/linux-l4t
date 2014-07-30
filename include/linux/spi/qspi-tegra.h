@@ -45,21 +45,6 @@ struct tegra_qspi_device_controller_data {
 	bool x4_is_ddr;
 };
 
-enum qspi_operation_mode {
-	NORMAL_READ,
-	FAST_READ,
-	DUAL_OUT_READ,
-	QUAD_OUT_READ,
-	DUAL_IO_READ,
-	QUAD_IO_READ,
-	DDR_FAST_READ,
-	DDR_DUAL_IO_READ,
-	DDR_QUAD_IO_READ,
-	PAGE_PROGRAM,
-	QUAD_PAGE_PROGRAM,
-	OPERATION_MAX_LIMIT,
-};
-
 enum qspi_bus_width {
 	X1,
 	X2,
