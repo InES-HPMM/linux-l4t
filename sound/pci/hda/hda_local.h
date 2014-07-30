@@ -4,6 +4,7 @@
  * Local helper functions
  *
  * Copyright (c) 2004 Takashi Iwai <tiwai@suse.de>
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  *  This program is free software; you can redistribute it and/or modify it
  *  under the terms of the GNU General Public License as published by the Free
@@ -26,7 +27,7 @@
 /* We abuse kcontrol_new.subdev field to pass the NID corresponding to
  * the given new control.  If id.subdev has a bit flag HDA_SUBDEV_NID_FLAG,
  * snd_hda_ctl_add() takes the lower-bit subdev value as a valid NID.
- * 
+ *
  * Note that the subdevice field is cleared again before the real registration
  * in snd_hda_ctl_add(), so that this value won't appear in the outside.
  */
@@ -105,6 +106,10 @@
 	HDA_CODEC_MUTE_BEEP_MONO(xname, nid, 3, xindex, direction)
 
 extern const char *snd_hda_pcm_type_name[];
+
+#ifdef CONFIG_SND_HDA_VPR
+extern struct device tegra_vpr_dev;
+#endif
 
 int snd_hda_mixer_amp_volume_info(struct snd_kcontrol *kcontrol,
 				  struct snd_ctl_elem_info *uinfo);

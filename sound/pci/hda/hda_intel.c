@@ -54,6 +54,7 @@
 #include <linux/completion.h>
 #include <linux/clk.h>
 #include <linux/of_device.h>
+#include <linux/dma-mapping.h>
 
 #ifdef CONFIG_X86
 /* for snoop control */
@@ -66,6 +67,7 @@
 #include <linux/vga_switcheroo.h>
 #include <linux/firmware.h>
 #include "hda_codec.h"
+#include "hda_local.h"
 
 #ifdef CONFIG_SND_HDA_VPR
 #include <linux/nvmap.h>
@@ -538,11 +540,11 @@ struct azx {
 #endif
 
 #ifdef CONFIG_SND_HDA_VPR
-	struct dma_buf *dmabuf;
 	struct dma_buf_attachment *attach;
 	struct sg_table *sgt;
-	unsigned char *vaddr;
-	phys_addr_t paddr;
+	dma_addr_t iova_addr;
+	struct dma_attrs dmaattrs;
+	unsigned int buf_size;
 #endif
 
 	/* locks */
@@ -2846,37 +2848,27 @@ azx_attach_pcm_stream(struct hda_bus *bus, struct hda_codec *codec,
 	if (size > MAX_PREALLOC_SIZE)
 		size = MAX_PREALLOC_SIZE;
 #ifdef CONFIG_SND_HDA_VPR
+	chip->buf_size = size;
 	for (s = 0; s < 2; s++) {
 		struct snd_pcm_substream *substream;
 		for (substream = pcm->streams[s].substream;
-		  substream; substream = substream->next) {
-			chip->dmabuf = nvmap_alloc_dmabuf(size, 32,
-			  NVMAP_HANDLE_WRITE_COMBINE, NVMAP_HEAP_CARVEOUT_VPR);
-			if (IS_ERR(chip->dmabuf)) {
-				err = (int)chip->dmabuf;
-				goto dmabuf_fail;
-			}
-			chip->vaddr = dma_buf_vmap(chip->dmabuf);
-			if (!chip->vaddr) {
+		     substream; substream = substream->next) {
+
+			DEFINE_DMA_ATTRS(dmaattrs);
+			chip->dmaattrs = dmaattrs;
+			(void)dma_alloc_attrs(&tegra_vpr_dev,
+				chip->buf_size, &chip->iova_addr,
+				DMA_MEMORY_NOMAP, &chip->dmaattrs);
+			if (dma_mapping_error(&tegra_vpr_dev,
+					chip->iova_addr)) {
+				chip->iova_addr = 0;
 				err = -ENOMEM;
-				goto vmap_fail;
+				goto dma_alloc_fail;
 			}
-			chip->attach = dma_buf_attach(chip->dmabuf, chip->dev);
-			if (IS_ERR(chip->attach)) {
-				err = (int)chip->attach;
-				goto attach_fail;
-			}
-			chip->sgt = dma_buf_map_attachment(chip->attach,
-				DMA_BIDIRECTIONAL);
-			if (IS_ERR(chip->sgt)) {
-				err = (int)chip->sgt;
-				goto sgt_fail;
-			}
-			chip->paddr = sg_dma_address(chip->sgt->sgl);
 			snd_printk(KERN_DEBUG SFX
-			  "paddr=%08llx vaddr=%p\n", chip->paddr, chip->vaddr);
-			substream->dma_buffer.area = chip->vaddr;
-			substream->dma_buffer.addr = chip->paddr;
+				"iova_addr=%pad\n", &chip->iova_addr);
+			substream->dma_buffer.area = NULL;
+			substream->dma_buffer.addr = chip->iova_addr;
 			substream->dma_buffer.bytes = size;
 			substream->dma_buffer.dev.dev = chip->dev;
 			if (substream->dma_buffer.bytes > 0)
@@ -2884,14 +2876,7 @@ azx_attach_pcm_stream(struct hda_bus *bus, struct hda_codec *codec,
 				   substream->dma_buffer.bytes;
 			substream->dma_max = MAX_PREALLOC_SIZE;
 			continue;
-sgt_fail:
-			dma_buf_detach(chip->dmabuf, chip->attach);
-attach_fail:
-			dma_buf_vunmap(chip->dmabuf, chip->vaddr);
-vmap_fail:
-			dma_buf_put(chip->dmabuf);
-dmabuf_fail:
-			chip->dmabuf = NULL;
+dma_alloc_fail:
 			return err;
 		}
 	}
@@ -3541,13 +3526,10 @@ static int azx_free(struct azx *chip)
 #endif
 	kfree(chip);
 #ifdef CONFIG_SND_HDA_VPR
-	if (chip->dmabuf) {
-		dma_buf_unmap_attachment(chip->attach, chip->sgt,
-					 DMA_BIDIRECTIONAL);
-		dma_buf_detach(chip->dmabuf, chip->attach);
-		dma_buf_vunmap(chip->dmabuf, chip->vaddr);
-		dma_buf_put(chip->dmabuf);
-		chip->dmabuf = NULL;
+	if (chip->iova_addr) {
+		dma_free_attrs(&tegra_vpr_dev, chip->buf_size,
+				(void *)(uintptr_t)chip->iova_addr,
+				chip->iova_addr, &chip->dmaattrs);
 	}
 #endif
 
