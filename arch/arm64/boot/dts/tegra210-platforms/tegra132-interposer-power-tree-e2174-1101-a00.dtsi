@@ -35,6 +35,34 @@
 		pca9546@71 {
 			vcc-supply = <&vdd_aux_3v3>;
 		};
+
+		icm20628@69 {
+			vlogic-supply = <&max77620_sd3>;
+			vdd-supply = <&vdd_3v3>;
+		};
+
+		ak8963c@0d {
+			vid-supply = <&max77620_sd3>;
+			vdd-supply = <&vdd_3v3>;
+		};
+
+		bmp280@77 {
+			vddio-supply = <&max77620_sd3>;
+			vdd-supply = <&vdd_3v3>;
+		};
+
+		cm3217@10 {
+			vdd-supply = <&vdd_3v3>;
+		};
+
+                ltr659@23 {
+			vdd-supply = <&vdd_3v3>;
+			vled-supply = <&vdd_3v3>;
+		};
+
+		iqs253@44 {
+			vddhi-supply = <&vdd_3v3>;
+		};
 	};
 
 	xusb@70090000 {

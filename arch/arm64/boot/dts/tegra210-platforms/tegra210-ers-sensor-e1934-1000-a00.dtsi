@@ -20,28 +20,23 @@
 
 / {
 	i2c@7000c000 {
-		icm20628@69 {
-			compatible = "invensense,mpu6xxx";
+		mpu6515@69 {
+			compatible = "invensense,mpu6515";
 			reg = <0x69>;
 			interrupt-parent = <&gpio>;
 			interrupts = <144 0x01>;
-			invensense,orientation = [ff 00 00 00 ff 00 00 00 01];
+			invensense,orientation = [01 00 00 00 01 00 00 00 01];
 		};
 
 		ak8963c@0d {
-			compatible = "ak,ak89xx";
+			compatible = "ak,ak8963";
 			reg = <0x0d>;
-			orientation = [ff 00 00 00 ff 00 00 00 01];
+			orientation = [ff 00 00 00 01 00 00 00 ff];
 		};
 
-		bmp280@77 {
-			compatible = "bmp,bmpX80";
-			reg = <0x77>;
-		};
-
-		cm3217@10 {
-			compatible = "capella,cm3217";
-			reg = <0x10>;
+		max44006@44 {
+			compatible = "maxim,max4400x";
+			reg = <0x44>;
 		};
 
 		ltr659@23 {
@@ -49,7 +44,9 @@
 			reg = <0x23>;
 			threshold = <125>;
 		};
+	};
 
+	i2c@7000c400 {
 		iqs253@44 {
 			compatible = "azoteq,iqs253";
 			reg = <0x44>;
