@@ -57,6 +57,7 @@ config ARCH_TEGRA_21x_SOC
 	select PINCTRL_TEGRA210
 	select SYSTEM_PMIC
 	select HAVE_FUNCTION_TRACER
+	select TEGRA_HMP_CLUSTER_CONTROL
 	help
 	  Support for NVIDIA Tegra 21x family of SoCs, based upon the
 	  NVIDIA Denver CPU
@@ -84,3 +85,8 @@ config DENVER_CPU
 	bool "Denver CPU"
 	help
 	  Support for NVIDIA Denver CPU
+
+config TEGRA_HMP_CLUSTER_CONTROL
+	bool "HMP Cluster control"
+	help
+	  Supports a cluster switch model for heterogenous clusters.
