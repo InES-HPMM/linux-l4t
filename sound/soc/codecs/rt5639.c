@@ -65,8 +65,8 @@ static struct rt5639_init_reg init_list[] = {
 	{RT5639_PRIV_DATA	, 0x0aa8},
 	{RT5639_PRIV_INDEX	, 0x0014},/* PR14 = 8aaa'h */
 	{RT5639_PRIV_DATA	, 0x8aaa},
-	{RT5639_PRIV_INDEX	, 0x0020},/* PR20 = 6115'h */
-	{RT5639_PRIV_DATA	, 0x6115},
+	{RT5639_PRIV_INDEX	, 0x0020},/* PR20 = 6110'h */
+	{RT5639_PRIV_DATA	, 0x6110},
 	{RT5639_PRIV_INDEX	, 0x0023},/* PR23 = 0804'h */
 	{RT5639_PRIV_DATA	, 0x0804},
 	/*{RT5639_PRIV_INDEX	, 0x0015},*//* PR15 = ab00'h */
@@ -183,7 +183,7 @@ static const u16 rt5639_reg[RT5639_VENDOR_ID2 + 1] = {
 	[RT5639_SPO_CLSD_RATIO] = 0x0004,
 	[RT5639_MONO_MIXER] = 0xfc00,
 	[RT5639_OUT_L3_MIXER] = 0x01ff,
- 	[RT5639_OUT_R3_MIXER] = 0x01ff,
+	[RT5639_OUT_R3_MIXER] = 0x01ff,
 	[RT5639_LOUT_MIXER] = 0xf000,
 	[RT5639_PWR_ANLG1] = 0x00c0,
 	[RT5639_I2S1_SDP] = 0x8000,
@@ -511,7 +511,6 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 {
 	int jack_type;
 	int sclk_src = RT5639_SCLK_S_MCLK;
-	int reg63, reg64;
 	int i, headphone = 0, headset = 0, previous_state = RT5639_NO_JACK;
 	bool hp_detected = false;
 	struct rt5639_priv *rt5639 = snd_soc_codec_get_drvdata(codec);
@@ -519,8 +518,9 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 	if (jack_insert) {
 		if (snd_soc_read(codec, RT5639_INT_IRQ_ST) & 0x10)
 			return RT5639_NO_JACK;
-		reg63 = snd_soc_read(codec, RT5639_PWR_ANLG1);
-		reg64 = snd_soc_read(codec, RT5639_PWR_ANLG2);
+		snd_soc_dapm_force_enable_pin(&codec->dapm, "LDO2");
+		snd_soc_dapm_force_enable_pin(&codec->dapm, "micbias1");
+		snd_soc_dapm_sync(&codec->dapm);
 		if (SND_SOC_BIAS_OFF == codec->dapm.bias_level) {
 			snd_soc_write(codec, RT5639_PWR_ANLG1, 0xa814);
 			snd_soc_write(codec, RT5639_MICBIAS, 0x3810);
@@ -621,8 +621,9 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		}
 		snd_soc_update_bits(codec, RT5639_GLB_CLK,
 			RT5639_SCLK_SRC_MASK, sclk_src);
-		snd_soc_write(codec, RT5639_PWR_ANLG1, reg63);
-		snd_soc_write(codec, RT5639_PWR_ANLG2, reg64);
+		snd_soc_dapm_disable_pin(&codec->dapm, "micbias1");
+		snd_soc_dapm_disable_pin(&codec->dapm, "LDO2");
+		snd_soc_dapm_sync(&codec->dapm);
 	} else {
 		snd_soc_update_bits(codec, RT5639_MICBIAS,
 			RT5639_MIC1_OVCD_MASK,
@@ -2029,7 +2030,7 @@ static const struct snd_soc_dapm_widget rt5639_dapm_widgets[] = {
 	SND_SOC_DAPM_PGA("IF2 ADC R", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("I2S3", RT5639_PWR_DIG1,
 		RT5639_PWR_I2S3_BIT, 0, NULL, 0),
- 	SND_SOC_DAPM_PGA("IF3 DAC", SND_SOC_NOPM, 0, 0, NULL, 0),
+	SND_SOC_DAPM_PGA("IF3 DAC", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_PGA("IF3 DAC L", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_PGA("IF3 DAC R", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_PGA("IF3 ADC", SND_SOC_NOPM, 0, 0, NULL, 0),
@@ -2570,7 +2571,7 @@ static int rt5639_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 	if (dai_sel & RT5639_U_IF1) {
- 		mask_clk = RT5639_I2S_BCLK_MS1_MASK | RT5639_I2S_PD1_MASK;
+		mask_clk = RT5639_I2S_BCLK_MS1_MASK | RT5639_I2S_PD1_MASK;
 		val_clk = bclk_ms << RT5639_I2S_BCLK_MS1_SFT |
 			pre_div << RT5639_I2S_PD1_SFT;
 		snd_soc_update_bits(codec, RT5639_I2S1_SDP,
@@ -3153,10 +3154,6 @@ static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 				RT5639_PWR_FV1 | RT5639_PWR_FV2,
 				RT5639_PWR_FV1 | RT5639_PWR_FV2);
 			snd_soc_write(codec, RT5639_GEN_CTRL1, 0x3b01);
-			codec->cache_only = false;
-			codec->cache_sync = 1;
-			snd_soc_cache_sync(codec);
-			rt5639_index_sync(codec);
 		}
 		break;
 
@@ -3300,13 +3297,14 @@ static int rt5639_resume(struct snd_soc_codec *codec)
 {
 	int ret = 0 ;
 
+	rt5639_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	codec->cache_sync = 1;
 	ret = snd_soc_cache_sync(codec);
 	if (ret) {
 		dev_err(codec->dev,"Failed to sync cache: %d\n", ret);
 		return ret;
 	}
-	rt5639_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+	rt5639_index_sync(codec);
 	return 0;
 }
 #else
