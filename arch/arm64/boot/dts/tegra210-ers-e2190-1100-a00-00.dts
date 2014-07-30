@@ -108,7 +108,6 @@
 	sound {
 		compatible = "nvidia,tegra-audio-grenada-mobile";
 		nvidia,model = "tegra-snd-grenada-mobile";
-		nvidia,memory-clients = <34>;
 		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(R, 2) GPIO_ACTIVE_HIGH>;
 		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(R, 7) GPIO_ACTIVE_HIGH>;
 
