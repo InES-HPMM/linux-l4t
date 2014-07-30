@@ -1,0 +1,63 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include "tegra210-ers-pmic-e2174-1101-a00.dtsi"
+#include "tegra210-ers-fixed-e2174-1101-a00.dtsi"
+
+/ {
+
+	efuse@7000f800 {
+		vpp_fuse-supply = <&max77620_sd3>;
+	};
+
+	host1x {
+		vi {
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
+		};
+	};
+
+	i2c@7000c000 {
+		pca9546@71 {
+			vcc-supply = <&vdd_aux_3v3>;
+		};
+	};
+
+	power-detect {
+		pwrdet-sdmmc1-supply = <&max77620_sd3>;
+		pwrdet-sdmmc4-supply = <&max77620_sd3>;
+		pwrdet-audio-supply = <&max77620_sd3>;
+		pwrdet-uart-supply = <&max77620_sd3>;
+		pwrdet-sdmmc3-supply = <&max77620_ldo2>;
+		pwrdet-nand-supply = <&max77620_sd3>;
+		pwrdet-cam-supply = <&max77620_sd3>;
+		pwrdet-bb-supply = <&max77620_sd3>;
+		pwrdet-mipi-supply = <&max77620_ldo0>;
+		pwrdet-hv-supply = <&max77620_ldo3>;
+		pwrdet-pex-ctl-supply = <&max77620_ldo1>;
+	};
+
+	udc@7d000000 {
+		avdd_usb-supply = <&vdd_3v3>;
+		avdd_pll_utmip-supply = <&max77620_sd3>;
+		usb_bat_chg-supply = <&battery_charger>;
+	};
+
+	otg@7d000000 {
+		usb_vbus-supply = <&usb0_vbus>;
+	};
+};

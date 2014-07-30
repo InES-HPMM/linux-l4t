@@ -4,7 +4,7 @@
 #include "tegra132-platforms/tegra132-interposer-gpio-e2141-1100-a00.dtsi"
 #include "tegra132-platforms/tegra132-interposer-pinmux-e2141-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-e2141-e2174-dfll.dtsi"
-#include "tegra210-platforms/tegra210-ers-power-tree-e2174-1101-a00.dtsi"
+#include "tegra210-platforms/tegra132-interposer-power-tree-e2174-1101-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-sensor-e2160-1000-a00.dtsi"
 #include "tegra210-platforms/tegra210-e2141-powermon-e2174-1100-a00.dtsi"
