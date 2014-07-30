@@ -35,13 +35,10 @@
 #define MAX15569_SLEW_RATE_REG			0x6
 #define MAX15569_SETVOUT_REG			0x7
 #define MAX15569_IMON_REG			0x8
-
 #define MAX15569_MAX_REG			0x9
 
-#define MAX15569_MIN_VOLTAGE	500000
-#define MAX15569_MAX_VOLTAGE	1520000
+#define MAX15569_MIN_VOLTAGE_UV	500000
 #define MAX15569_VOLTAGE_STEP	10000
-#define MAX15569_MAX_SEL	0x7F
 #define MAX15569_MAX_SLEW_RATE  44
 #define MAX15569_MIN_SLEW_RATE  1
 
@@ -114,6 +111,8 @@ struct max15569_chip {
 	unsigned int change_mv_per_us;
 	bool vsel_volatile; /*  indicates voltage select register is
 				volatile or cached */
+	unsigned int max_voltage_uV;
+	unsigned int max_volt_sel; /* register setting for max voltage */
 };
 
 static int max15569_get_voltage_sel(struct regulator_dev *rdev)
@@ -139,11 +138,11 @@ static int max15569_set_voltage(struct regulator_dev *rdev,
 	int vsel;
 	int ret;
 
-	if ((max_uV < min_uV) || (max_uV < MAX15569_MIN_VOLTAGE) ||
-			(min_uV > MAX15569_MAX_VOLTAGE))
+	if ((max_uV < min_uV) || (max_uV < MAX15569_MIN_VOLTAGE_UV) ||
+			(min_uV > max->max_voltage_uV))
 		return -EINVAL;
 
-	vsel = DIV_ROUND_UP(min_uV - MAX15569_MIN_VOLTAGE,
+	vsel = DIV_ROUND_UP(min_uV - MAX15569_MIN_VOLTAGE_UV,
 			MAX15569_VOLTAGE_STEP) + 0x1;
 	if (selector)
 		*selector = vsel;
@@ -157,10 +156,13 @@ static int max15569_set_voltage(struct regulator_dev *rdev,
 static int max15569_list_voltage(struct regulator_dev *rdev,
 					unsigned selector)
 {
-	if (selector > MAX15569_MAX_SEL)
+	struct max15569_chip *max = rdev_get_drvdata(rdev);
+
+	if (selector > max->max_volt_sel)
 		return -EINVAL;
 
-	return MAX15569_MIN_VOLTAGE + (selector - 0x1) * MAX15569_VOLTAGE_STEP;
+	return MAX15569_MIN_VOLTAGE_UV + (selector - 0x1)
+			* MAX15569_VOLTAGE_STEP;
 }
 
 static int max15569_set_voltage_time_sel(struct regulator_dev *rdev,
@@ -221,7 +223,6 @@ static int max15569_init(struct max15569_chip *max15569,
 	if (max15569->change_mv_per_us < 1)
 		max15569->change_mv_per_us = 1;
 
-
 	vsel = max15569_slewrate_table[max15569->change_mv_per_us].regular_slew_rate;
 
 	ret = regmap_write(max15569->regmap, MAX15569_SLEW_RATE_REG, vsel);
@@ -233,7 +234,7 @@ static int max15569_init(struct max15569_chip *max15569,
 	/* Set base voltage if passed from platform data*/
 	if (pdata->base_voltage_uV) {
 		vsel = DIV_ROUND_UP(pdata->base_voltage_uV -
-				MAX15569_MIN_VOLTAGE, MAX15569_VOLTAGE_STEP) + 0x1;
+			MAX15569_MIN_VOLTAGE_UV, MAX15569_VOLTAGE_STEP) + 0x1;
 		dev_err(max15569->dev, "Setting rail to vsel %x\n", vsel);
 		ret = regmap_write(max15569->regmap, MAX15569_SETVOUT_REG, vsel);
 		if (ret < 0) {
@@ -245,7 +246,7 @@ static int max15569_init(struct max15569_chip *max15569,
 	/* setup max voltage */
 	if (pdata->max_voltage_uV) {
 		vsel = DIV_ROUND_UP(pdata->max_voltage_uV -
-			MAX15569_MIN_VOLTAGE, MAX15569_VOLTAGE_STEP) + 0x1;
+			MAX15569_MIN_VOLTAGE_UV, MAX15569_VOLTAGE_STEP) + 0x1;
 		ret = regmap_write(max15569->regmap, MAX15569_VOUTMAX_REG, vsel);
 		if (ret < 0) {
 			dev_err(max15569->dev, "VMAX write failed, err %d\n", ret);
@@ -258,6 +259,20 @@ static int max15569_init(struct max15569_chip *max15569,
 		dev_err(max15569->dev, "STATUS reg read failed, err %d\n", ret);
 		return ret;
 	}
+
+	ret = regmap_read(max15569->regmap, MAX15569_VOUTMAX_REG,
+				&(max15569->max_volt_sel));
+	if (ret < 0) {
+		dev_err(max15569->dev, "VMAX reg read failed, err %d\n", ret);
+		return ret;
+	}
+	max15569->max_voltage_uV = (MAX15569_MIN_VOLTAGE_UV +
+					(max15569->max_volt_sel - 1)
+					* MAX15569_VOLTAGE_STEP);
+
+	pr_debug("\n%s:%d: max_volt_sel: 0x%x max_voltage:%d\n",
+		__func__, __LINE__,
+		max15569->max_volt_sel, max15569->max_voltage_uV);
 
 	if (status & MAX15569_STATUS_VRHOT)
 		dev_err(max15569->dev, "VRHOT: regulator temperature beyond limit\n");
@@ -377,6 +392,11 @@ static int max15569_probe(struct i2c_client *client,
 		dev_err(max->dev, "Init failed, err = %d\n", ret);
 		return ret;
 	}
+
+	max->desc.n_voltages = max->max_volt_sel + 1;
+	pr_debug("\n%s:%d: max->desc.n_voltages:%d max->max_voltage_uV:%d\n",
+			__func__, __LINE__,
+			max->desc.n_voltages, max->max_voltage_uV);
 
 	/* Register the regulators */
 	rconfig.dev = &client->dev;

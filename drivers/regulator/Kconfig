@@ -283,10 +283,15 @@ config REGULATOR_MAX77620
 	  enable the regulator driver.
 
 config REGULATOR_MAX15569
-	tristate "Maxim 15569 voltage regulator"
+	tristate "Maxim 15569/16989 voltage regulator"
+	depends on I2C
 	help
-	  This driver controls a Maxim 15569 voltage output regulator
-	  via I2C bus.
+	  It is Step-Down Controller.
+	  This driver controls a Maxim 15569/16989 voltage output
+	  regulators via I2C bus. The provided regulator is suitable
+	  for Tegra chip.
+	  Say y here to support Maxim 15569/16989.
+
 
 config REGULATOR_TWL4030
 	bool "TI TWL4030/TWL5030/TWL6030/TPS659x0 PMIC"
