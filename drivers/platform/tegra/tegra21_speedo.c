@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra21_speedo.c
  *
- * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@
 
 #define CPU_PROCESS_CORNERS_NUM		2
 #define GPU_PROCESS_CORNERS_NUM		2
-#define CORE_PROCESS_CORNERS_NUM		2
+#define CORE_PROCESS_CORNERS_NUM	2
 
 #define FUSE_CPU_SPEEDO_0	0x114
 #define FUSE_CPU_SPEEDO_1	0x12c
@@ -54,39 +54,41 @@ static int cpu_process_id;
 static int core_process_id;
 static int gpu_process_id;
 static int cpu_speedo_id;
-static int cpu_speedo_value;
 static int soc_speedo_id;
 static int gpu_speedo_id;
 static int package_id;
+
 static int cpu_iddq_value;
 static int gpu_iddq_value;
 static int soc_iddq_value;
 
 static int cpu_speedo_0_value;
 static int cpu_speedo_1_value;
+static int cpu_speedo_2_value;
 static int soc_speedo_0_value;
 static int soc_speedo_1_value;
 static int soc_speedo_2_value;
 
+static int cpu_speedo_value;
 static int gpu_speedo_value;
 
 static int enable_app_profiles;
 
 static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
 /* proc_id  0,	1 */
-	{2190,	UINT_MAX}, /* [0]: threshold_index 0 */
+	{UINT_MAX, UINT_MAX}, /* [0]: threshold_index 0 */
 	{0,	UINT_MAX}, /* [1]: threshold_index 0 */
 };
 
 static const u32 gpu_process_speedos[][GPU_PROCESS_CORNERS_NUM] = {
 /* proc_id  0,	1 */
-	{1965,	UINT_MAX}, /* [0]: threshold_index 0 */
+	{UINT_MAX, UINT_MAX}, /* [0]: threshold_index 0 */
 	{0,	UINT_MAX}, /* [1]: threshold_index 0 */
 };
 
 static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
 /* proc_id  0,	1 */
-	{2071,	UINT_MAX}, /* [0]: threshold_index 0 */
+	{UINT_MAX, UINT_MAX}, /* [0]: threshold_index 0 */
 	{0,	UINT_MAX}, /* [1]: threshold_index 0 */
 };
 
@@ -94,18 +96,10 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 {
 	switch (sku) {
 	case 0x00: /* Engg sku */
-	case 0x0F:
 		cpu_speedo_id = 0;
 		soc_speedo_id = 0;
 		gpu_speedo_id = 0;
 		threshold_index = 0;
-		break;
-	case 0x07:
-	case 0x81:
-		cpu_speedo_id = 1;
-		soc_speedo_id = 1;
-		gpu_speedo_id = 1;
-		threshold_index = 1;
 		break;
 	default:
 		pr_warn("Tegra21: Unknown SKU %d\n", sku);
@@ -150,9 +144,7 @@ void tegra_init_speedo_data(void)
 
 	cpu_speedo_0_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_0);
 	cpu_speedo_1_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_1);
-
-	/* GPU Speedo is stored in CPU_SPEEDO_2 */
-	gpu_speedo_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_2);
+	cpu_speedo_2_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_2);
 
 	soc_speedo_0_value = tegra_fuse_readl(FUSE_SOC_SPEEDO_0);
 	soc_speedo_1_value = tegra_fuse_readl(FUSE_SOC_SPEEDO_1);
@@ -162,12 +154,24 @@ void tegra_init_speedo_data(void)
 	soc_iddq_value = tegra_fuse_readl(FUSE_SOC_IDDQ);
 	gpu_iddq_value = tegra_fuse_readl(FUSE_GPU_IDDQ);
 
-	/* cpu_speedo_value = TEGRA21_CPU_SPEEDO; */
 	cpu_speedo_value = cpu_speedo_0_value;
+	/* FIXME: remove when fuses ready */
+	cpu_speedo_value = TEGRA21_CPU_SPEEDO;
+
+	/* GPU Speedo is stored in CPU_SPEEDO_2 */
+	gpu_speedo_value = cpu_speedo_2_value;
+	/* FIXME: remove when fuses ready */
+	gpu_speedo_value = TEGRA21_GPU_SPEEDO;
 
 	if (cpu_speedo_value == 0) {
-		cpu_speedo_value = 1900;
-		pr_warn("Tegra21: Warning: Speedo value not fused. PLEASE FIX!!!!!!!!!!!\n");
+		cpu_speedo_value = 2100;
+		pr_warn("Tegra21: Warning: CPU Speedo value not fused. PLEASE FIX!!!!!!!!!!!\n");
+		pr_warn("Tegra21: Warning: PLEASE USE BOARD WITH FUSED SPEEDO VALUE !!!!\n");
+	}
+
+	if (gpu_speedo_value == 0) {
+		gpu_speedo_value = 2100;
+		pr_warn("Tegra21: Warning: GPU Speedo value not fused. PLEASE FIX!!!!!!!!!!!\n");
 		pr_warn("Tegra21: Warning: PLEASE USE BOARD WITH FUSED SPEEDO VALUE !!!!\n");
 	}
 
@@ -202,6 +206,8 @@ void tegra_init_speedo_data(void)
 		cpu_speedo_id, soc_speedo_id, gpu_speedo_id);
 	pr_info("Tegra21: CPU Process ID %d,Soc Process ID %d,Gpu Process ID %d\n",
 		 cpu_process_id, core_process_id, gpu_process_id);
+	pr_info("Tegra21: CPU Speedo value %d, Soc Speedo value %d, Gpu Speedo value %d\n",
+		 cpu_speedo_value, soc_speedo_0_value, gpu_speedo_value);
 }
 
 int tegra_cpu_process_id(void)
