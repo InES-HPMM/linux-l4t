@@ -541,7 +541,9 @@ static void __init tegra_t210ref_init_early(void)
 static int tegra_t210ref_notifier_call(struct notifier_block *nb,
 				    unsigned long event, void *data)
 {
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	struct device *dev = data;
+#endif
 
 	switch (event) {
 	case BUS_NOTIFY_BIND_DRIVER:
@@ -565,8 +567,16 @@ static struct notifier_block platform_nb = {
 };
 static void __init tegra_t210ref_dt_init(void)
 {
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+	/*
+	 * In t210ref, zero display_board_id is considered to
+	 * jdi 1440x810 5.8" one.
+	 */
+	tegra_set_fixed_panel_ops(true, &dsi_j_1440_810_5_8_ops,
+		"j,1440-810-5-8");
+	tegra_set_fixed_pwm_bl_ops(dsi_j_1440_810_5_8_ops.pwm_bl_ops);
+#endif
 	bus_register_notifier(&platform_bus_type, &platform_nb);
-
 	tegra_t210ref_early_init();
 #ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 	carveout_linear_set(&tegra_generic_cma_dev);

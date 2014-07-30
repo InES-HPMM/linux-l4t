@@ -24,15 +24,15 @@ obj-${CONFIG_MACH_EXUMA}              += board-t132ref-norrin-power.o
 obj-${CONFIG_MACH_EXUMA}              += board-t132ref-norrin-memory.o
 obj-${CONFIG_MACH_EXUMA}              += board-t132ref-tn8-power.o
 
-obj-y					+= panel-lgd-wxga-7-0.o
-obj-y					+= panel-p-wuxga-10-1.o
-obj-y					+= panel-s-wqxga-10-1.o
-obj-y					+= panel-a-1200-800-8-0.o
-obj-y					+= panel-a-1200-1920-8-0.o
-obj-y					+= panel-a-edp-1080p-14-0.o
-obj-y					+= panel-i-edp-1080p-11-6.o
-obj-y					+= panel-c-lvds-1366-14.o
-obj-y					+= panel-a-1080p-14-0.o
+obj-y                   += panel-lgd-wxga-7-0.o
+obj-y                   += panel-p-wuxga-10-1.o
+obj-y                   += panel-s-wqxga-10-1.o
+obj-y                   += panel-a-1200-800-8-0.o
+obj-y                   += panel-a-1200-1920-8-0.o
+obj-y                   += panel-a-edp-1080p-14-0.o
+obj-y                   += panel-i-edp-1080p-11-6.o
+obj-y                   += panel-c-lvds-1366-14.o
+obj-y                   += panel-a-1080p-14-0.o
 obj-y                   += panel-j-1440-810-5-8.o
 obj-y                   += panel-c-edp-1366-768-14-0.o
 

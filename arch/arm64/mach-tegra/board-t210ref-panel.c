@@ -565,7 +565,6 @@ static struct platform_device t210ref_disp1_device = {
 		.platform_data = &t210ref_disp1_pdata,
 	},
 };
-#endif
 
 static struct tegra_io_dpd dsic_io = {
 	.name			= "DSIC",
@@ -653,7 +652,7 @@ static struct tegra_dp_out dp_settings = {
 	.n_lt_settings = ARRAY_SIZE(t210ref_edp_lt_data),
 	.tx_pu_disable = true,
 };
-#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+
 /* can be called multiple times */
 static __init struct tegra_panel *t210ref_panel_configure(
 				struct board_info *board_out,
@@ -674,16 +673,8 @@ static __init struct tegra_panel *t210ref_panel_configure(
 		t210ref_disp1_out.dp_out = &dp_settings;
 		break;
 	case BOARD_E2129:
-		switch (board_out->sku) {
-		case 1000:
-			panel = &dsi_j_1440_810_5_8;
-			dsi_instance = DSI_INSTANCE_0;
-			break;
-		default:
-			panel = &dsi_a_1200_1920_8_0;
-			dsi_instance = DSI_INSTANCE_0;
-			break;
-		}
+		panel = &dsi_j_1440_810_5_8;
+		dsi_instance = DSI_INSTANCE_0;
 		tegra_io_dpd_enable(&dsic_io);
 		tegra_io_dpd_enable(&dsid_io);
 		break;
@@ -897,9 +888,11 @@ int __init t210ref_display_init(void)
 {
 	struct clk *disp1_clk = clk_get_sys("tegradc.0", NULL);
 	struct clk *disp2_clk = clk_get_sys("tegradc.1", NULL);
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	struct tegra_panel *panel;
 	struct board_info board;
 	long disp1_rate = 0;
+#endif
 	long disp2_rate = 0;
 
 	/*
