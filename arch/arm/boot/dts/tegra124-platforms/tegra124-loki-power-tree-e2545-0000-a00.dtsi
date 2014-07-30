@@ -1,0 +1,2 @@
+#include "tegra124-platforms/tegra124-loki-pmic-e2545-0000-a00.dtsi"
+#include "tegra124-platforms/tegra124-loki-fixed-e2545-0000-a00.dtsi"

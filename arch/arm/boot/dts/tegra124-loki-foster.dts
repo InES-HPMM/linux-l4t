@@ -17,8 +17,7 @@
 #include <dt-bindings/gpio/tegra-gpio.h>
 #include <tegra124-platforms/tegra124-loki-gpio-default.dtsi>
 #include <tegra124-platforms/tegra124-loki-pinmux.dtsi>
-#include "tegra124-platforms/tegra124-loki-pmic-e2530-0000-a01.dtsi"
-#include "tegra124-platforms/tegra124-loki-fixed-e2530-0000-a00.dtsi"
+#include "tegra124-platforms/tegra124-loki-power-tree-e2530-0000-a01.dtsi"
 #include "tegra124-platforms/tegra124-loki-gpio-pinmux-e2530.dtsi"
 #include "tegra124-platforms/tegra124-loki-thermal-zone-p2530-0000-a01.dtsi"
 #include "tegra124-platforms/tegra124-loki-foster-pwm-fan.dtsi"

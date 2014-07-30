@@ -28,4 +28,15 @@
 		};
 	};
 
+	i2c@7000d000 {
+		tps65913 {
+			pmic {
+				regulators {
+					smps123 {
+						status="disabled";
+					};
+				};
+			};
+		};
+	};
 };

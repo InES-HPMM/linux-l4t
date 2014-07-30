@@ -3,7 +3,6 @@
 #include "tegra124-platforms/tegra124-loki-gpio-p2530-c00.dtsi"
 #include "tegra124-platforms/tegra124-loki-pinmux-p2530-c00.dtsi"
 #include "tegra124-platforms/tegra124-loki-gpuovr-p2530-c00.dtsi"
-#include "tegra124-platforms/tegra124-loki-pmic-p2530-0000-c00.dtsi"
 
 / {
 	nvidia,dtsfilename = __FILE__;

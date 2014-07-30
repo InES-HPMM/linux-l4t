@@ -1,7 +1,6 @@
 #include "tegra124-loki-common.dtsi"
 #include "tegra124-platforms/tegra124-loki-powermon-p2530-a01.dtsi"
-#include "tegra124-platforms/tegra124-loki-pmic-e2530-0000-a01.dtsi"
-#include "tegra124-platforms/tegra124-loki-fixed-e2530-0000-a00.dtsi"
+#include "tegra124-platforms/tegra124-loki-power-tree-e2530-0000-a01.dtsi"
 #include "tegra124-platforms/tegra124-loki-gpio-pinmux-e2530.dtsi"
 #include "tegra124-platforms/tegra124-loki-thermal-zone-p2530-0000-a01.dtsi"
 
