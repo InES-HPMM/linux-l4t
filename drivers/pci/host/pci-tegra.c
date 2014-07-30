@@ -698,30 +698,33 @@ DECLARE_PCI_FIXUP_FINAL(PCI_ANY_ID, PCI_ANY_ID, tegra_pcie_relax_enable);
 
 static int tegra_pcie_setup(int nr, struct pci_sys_data *sys)
 {
-	struct tegra_pcie *pcie = sys->private_data;
+	struct tegra_pcie *pcie = sys_to_pcie(sys);
+	int err;
 
 	PR_FUNC_LINE;
-	if (nr >= pcie->num_ports)
-		return 0;
+	err = devm_request_resource(pcie->dev, &pcie->all, &pcie->mem);
+	if (err < 0)
+		return err;
 
-	pci_ioremap_io(nr * MMIO_SIZE, MMIO_BASE);
-
-	if (request_resource(&pcie->all, &pcie->mem))
-		panic("can't allocate %s\n", pcie->mem.name);
-	if (request_resource(&pcie->all, &pcie->prefetch))
-		panic("can't allocate %s\n", pcie->prefetch.name);
+	err = devm_request_resource(pcie->dev, &pcie->all, &pcie->prefetch);
+	if (err < 0)
+		return err;
 
 	pci_add_resource_offset(
 		&sys->resources, &pcie->mem, sys->mem_offset);
 	pci_add_resource_offset(
 		&sys->resources, &pcie->prefetch, sys->mem_offset);
 	pci_add_resource(&sys->resources, &pcie->busn);
+
+	pci_ioremap_io(nr * MMIO_SIZE, MMIO_BASE);
+
 	return 1;
 }
 
 static int tegra_pcie_map_irq(const struct pci_dev *dev, u8 slot, u8 pin)
 {
-	return INT_PCIE_INTR;
+	struct tegra_pcie *pcie = sys_to_pcie(dev->bus->sysdata);
+	return pcie->irq;
 }
 
 static void tegra_pcie_add_bus(struct pci_bus *bus)
@@ -751,12 +754,18 @@ static struct pci_bus *tegra_pcie_scan_bus(int nr,
 	return bus;
 }
 
+static void tegra_pcie_teardown(int nr, struct pci_sys_data *sys)
+{
+	pci_iounmap_io(nr * MMIO_SIZE);
+}
+
 static struct hw_pci tegra_pcie_hw = {
 	.nr_controllers	= 1,
 	.setup		= tegra_pcie_setup,
 	.scan		= tegra_pcie_scan_bus,
 	.map_irq	= tegra_pcie_map_irq,
 	.add_bus	= tegra_pcie_add_bus,
+	.teardown	= tegra_pcie_teardown,
 };
 
 #ifdef HOTPLUG_ON_SYSTEM_BOOT
@@ -1502,6 +1511,7 @@ static void tegra_pcie_clocks_put(struct tegra_pcie *pcie)
 
 static int tegra_pcie_get_resources(struct tegra_pcie *pcie)
 {
+	struct platform_device *pdev = to_platform_device(pcie->dev);
 	int err;
 
 	PR_FUNC_LINE;
@@ -1528,13 +1538,21 @@ static int tegra_pcie_get_resources(struct tegra_pcie *pcie)
 	if (err)
 		return err;
 
-	err = devm_request_irq(pcie->dev, INT_PCIE_INTR, tegra_pcie_isr,
+	err = platform_get_irq_byname(pdev, "intr");
+	if (err < 0) {
+		dev_err(pcie->dev, "failed to get IRQ: %d\n", err);
+		goto err_pwr_on;
+	}
+
+	pcie->irq = err;
+
+	err = devm_request_irq(&pdev->dev, pcie->irq, tegra_pcie_isr,
 			IRQF_SHARED, "PCIE", pcie);
 	if (err) {
 		dev_err(pcie->dev, "PCIE: Failed to register IRQ: %d\n", err);
 		goto err_pwr_on;
 	}
-	set_irq_flags(INT_PCIE_INTR, IRQF_VALID);
+	set_irq_flags(pcie->irq, IRQF_VALID);
 
 	return 0;
 
@@ -2478,7 +2496,9 @@ static int tegra_pcie_init(struct tegra_pcie *pcie)
 
 	if (pcie->num_ports) {
 		tegra_pcie_hw.private_data = (void **)&pcie;
-		pci_common_init(&tegra_pcie_hw);
+		tegra_pcie_hw.ops = &tegra_pcie_ops;
+		tegra_pcie_hw.sys = &pcie->sys;
+		pci_common_init_dev(pcie->dev, &tegra_pcie_hw);
 	} else {
 		dev_err(pcie->dev, "PCIE: no ports detected\n");
 		err = -EPROBE_DEFER;
@@ -2873,7 +2893,7 @@ static int tegra_pcie_parse_dt(struct tegra_pcie *pcie)
 			pcie->all.end = res.end;
 	}
 
-	err = request_resource(&iomem_resource, &pcie->all);
+	err = devm_request_resource(pcie->dev, &iomem_resource, &pcie->all);
 	if (err < 0)
 		return err;
 
@@ -2959,7 +2979,7 @@ static int tegra_pcie_parse_dt(struct tegra_pcie *pcie)
 
 static int tegra_pcie_probe(struct platform_device *pdev)
 {
-	int ret;
+	int ret = 0;
 	int i;
 	const struct of_device_id *match;
 	struct tegra_pcie *pcie;
@@ -3022,7 +3042,7 @@ static int tegra_pcie_probe(struct platform_device *pdev)
 
 	ret = tegra_pcie_init(pcie);
 	if (ret) {
-		release_resource(&pcie->all);
+		devm_release_resource(pcie->dev, &pcie->all);
 
 		__pm_runtime_disable(pcie->dev, false);
 		tegra_pd_remove_device(pcie->dev);
@@ -3041,6 +3061,7 @@ static int tegra_pcie_remove(struct platform_device *pdev)
 	struct tegra_pcie_bus *bus;
 
 	PR_FUNC_LINE;
+	pci_common_exit(&pcie->sys);
 	list_for_each_entry(bus, &pcie->buses, list) {
 		vunmap(bus->area->addr);
 		kfree(bus);
@@ -3049,6 +3070,7 @@ static int tegra_pcie_remove(struct platform_device *pdev)
 		tegra_pcie_disable_msi(pcie);
 	tegra_pcie_detach(pcie);
 	tegra_pd_remove_device(pcie->dev);
+	tegra_pcie_power_off(pcie, true);
 
 	return 0;
 }
@@ -3160,4 +3182,5 @@ static void __exit_refok tegra_pcie_exit_driver(void)
 
 module_init(tegra_pcie_init_driver);
 module_exit(tegra_pcie_exit_driver);
+MODULE_LICENSE("GPL v2");
 

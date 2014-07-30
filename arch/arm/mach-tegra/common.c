@@ -1726,6 +1726,7 @@ int tegra_get_lane_owner_info(void)
 {
 	return lane_owner_info;
 }
+EXPORT_SYMBOL(tegra_get_lane_owner_info);
 
 __setup("lane_owner_info=", tegra_lane_owner_info);
 
