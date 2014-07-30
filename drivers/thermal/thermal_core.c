@@ -384,8 +384,6 @@ static void handle_thermal_trip(struct thermal_zone_device *tz, int trip)
 {
 	enum thermal_trip_type type;
 
-	trace_thermal_trip(tz->type, tz->temperature/1000);
-
 	tz->ops->get_trip_type(tz, trip, &type);
 
 	if (type == THERMAL_TRIP_CRITICAL || type == THERMAL_TRIP_HOT)
@@ -479,6 +477,8 @@ void thermal_zone_device_update(struct thermal_zone_device *tz)
 
 	if (update_temperature(tz))
 		return;
+
+	trace_thermal_trip(tz->type, tz->temperature/1000);
 
 	for (count = 0; count < tz->trips; count++)
 		handle_thermal_trip(tz, count);
