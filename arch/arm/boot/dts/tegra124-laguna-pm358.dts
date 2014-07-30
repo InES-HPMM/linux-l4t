@@ -31,7 +31,7 @@
 #include "panel-a-1080p-14-0.dtsi"
 #include "panel-c-wxga-14-0.dtsi"
 #include "panel-p-wuxga-10-1.dtsi"
-#include "tegra124-platforms/tegra124-ardbeg-hdmi-e1780-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-laguna-hdmi-pm359-1000-a00.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 Laguna";
