@@ -4585,6 +4585,9 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 		goto err_kfree_nvudc;
 	}
 
+	if (pex_usb_pad_pll_reset_deassert())
+		dev_err(dev, "failed to deassert pex pll\n");
+
 	err = nvudc_plat_clocks_init(nvudc);
 	if (err) {
 		dev_err(dev, "failed to init clocks\n");
@@ -4696,6 +4699,8 @@ static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 		tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
 		tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
 		nvudc_plat_clocks_deinit(nvudc);
+		if (pex_usb_pad_pll_reset_assert())
+			pr_err("Fail to assert pex pll\n");
 		nvudc_plat_regulator_deinit(nvudc);
 		devm_kfree(dev, nvudc);
 		platform_set_drvdata(pdev, NULL);
