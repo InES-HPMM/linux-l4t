@@ -84,6 +84,19 @@
 					platformdata = "ardbeg_as3648_pdata";
 				};
 			};
+			module7: module7@modules {
+				compatible = "sensor,rear";
+				badge_info = "e1833_rear_P13N05B";
+
+				sensor {
+					profile = <&imx214_1>;
+					platformdata = "ardbeg_imx214_pdata";
+				};
+				focuser {
+					profile = <&dw9714_1>;
+					platformdata = "ardbeg_dw9714_pdata";
+				};
+			};
 		};
 
 		profiles {
@@ -415,6 +428,81 @@
 					CAMERA_REGULATOR_OFF(2)
 					CAMERA_REGULATOR_OFF(1)
 					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
+			};
+			imx214_1: imx214@2_001a {
+				index = <10>;
+				chipname = "pcl_IMX214";
+				type = "sensor";
+				guid = "s_IMX214";
+				position = <0>;
+				bustype = "i2c";
+				busnum = <2>;
+				addr = <0x1a>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vdig_lv", "vif";
+				clocks = "mclk";
+				drivername = "imx214";
+				detect = <0x0002 0x0016 0xFFFF 0x0214>;
+				devid = <0x0214>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(219)
+					CAMERA_GPIO_CLR(221)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_ON(2)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_WAITMS(5)
+					CAMERA_GPIO_SET(219)
+					CAMERA_GPIO_SET(221)
+					CAMERA_GPIO_SET(223)
+					CAMERA_WAITUS(300)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(219)
+					CAMERA_GPIO_CLR(221)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(2)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
+			};
+			dw9714_1: dw9714@2_000c {
+				index = <8>;
+				chipname = "pcl_DW9714";
+				type = "focuser";
+				guid = "f_NVCAM0";
+				position = <0>;
+				bustype = "i2c";
+				busnum = <2>;
+				addr = <0xc>;
+				datalen = <1>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <1>;
+				regulators = "vdd", "vdd_i2c";
+				drivername = "dw9714";
+				detect = <0x0000 0x0000 0xFFFF 0x0000>;
+				devid = <0x9714>;
+				poweron = <
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_WAITUS(10)
+					CAMERA_GPIO_SET(223)
+					CAMERA_WAITUS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_GPIO_CLR(223)
+					CAMERA_WAITUS(10)
 					CAMERA_END
 					>;
 			};
