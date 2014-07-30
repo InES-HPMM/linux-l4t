@@ -47,7 +47,7 @@
 		pwrdet-cam-supply = <&max77620_sd3>;
 		pwrdet-bb-supply = <&max77620_sd3>;
 		pwrdet-mipi-supply = <&max77620_ldo0>;
-		pwrdet-hv-supply = <&max77620_ldo3>;
+		pwrdet-hv-supply = <&vdd_hdmi>;
 		pwrdet-pex-ctl-supply = <&max77620_ldo1>;
 	};
 
