@@ -4110,6 +4110,12 @@ void restore_mmio_reg(struct NV_UDC_S *nvudc)
 	until event ring .. has setup
 	*/
 	iowrite32(nvudc->mmio_reg.ctrl, nvudc->mmio_reg_base + CTRL);
+
+	/* restore TIMER for U3 exit */
+	reg = ioread32(nvudc->base + SSPX_CORE_PADCTL4);
+	reg &= ~(RXDAT_VLD_TIMEOUT_U3_MASK);
+	reg |= RXDAT_VLD_TIMEOUT_U3;
+	iowrite32(reg, nvudc->base + SSPX_CORE_PADCTL4);
 }
 
 static int nvudc_suspend_platform(struct platform_device *pdev,
@@ -4436,6 +4442,12 @@ static void nvudc_plat_fpci_ipfs_init(struct NV_UDC_S *nvudc)
 	reg |= IP_INT_MASK;
 	writel(reg, nvudc->ipfs + XUSB_DEV_INTR_MASK);
 	reg_dump(dev, nvudc->ipfs, XUSB_DEV_INTR_MASK);
+
+	reg = ioread32(nvudc->base + SSPX_CORE_PADCTL4);
+	reg &= ~(RXDAT_VLD_TIMEOUT_U3_MASK);
+	reg |= RXDAT_VLD_TIMEOUT_U3;
+	iowrite32(reg, nvudc->base + SSPX_CORE_PADCTL4);
+	reg_dump(dev, nvudc->base, SSPX_CORE_PADCTL4);
 
 }
 

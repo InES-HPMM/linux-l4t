@@ -792,6 +792,10 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
 #define  BASE_ADDRESS(x)			(((x) & 0xFFFF) << 16)
 #define XUSB_DEV_CFG_5				(0x14)
 
+#define SSPX_CORE_PADCTL4			(0x750)
+#define RXDAT_VLD_TIMEOUT_U3_MASK	(0xfffff)
+#define RXDAT_VLD_TIMEOUT_U3		(0x5dc0)
+
 /* ipfs mmio registers */
 #define XUSB_DEV_CONFIGURATION			(0x180)
 #define  EN_FPCI				(1 << 0)
