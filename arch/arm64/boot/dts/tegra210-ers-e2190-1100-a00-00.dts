@@ -57,6 +57,7 @@
 	};
 
 	sdhci@700b0200 {
+		dqs-trim-delay = <17>;
 		uhs_mask = <0x60>;
 		bus-width = <8>;
 		built-in;
