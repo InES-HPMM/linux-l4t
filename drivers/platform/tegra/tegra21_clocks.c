@@ -8724,6 +8724,7 @@ struct clk tegra_list_clks[] = {
 	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc", &tegra_clk_c3bus, "msenc", 0, 0),
 	DUAL_CBUS_CLK("nvdec.cbus",	"tegra_nvdec",		"nvdec", &tegra_clk_c3bus, "nvdec", 0, 0),
 	DUAL_CBUS_CLK("tsecb.cbus",	"tegra_tsecb",		"tsecb", &tegra_clk_c3bus, "tsecb", 0, 0),
+	SHARED_LIMIT("vic_floor.cbus",	"tegra_vic03",		"vic_floor",	&tegra_clk_c3bus, NULL, 0, 0),
 	SHARED_LIMIT("cap.c3bus",	"cap.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
 	SHARED_LIMIT("cap.vcore.c3bus",	"cap.vcore.c3bus",	NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
 	SHARED_LIMIT("cap.throttle.c3bus", "cap_throttle",	NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
