@@ -201,6 +201,8 @@ static int imx214_set_mode(struct imx214_info *info, struct imx214_mode *mode)
 			sensor_mode = IMX214_MODE_1920X1080_HDR;
 		} else if (mode->xres == 1280 && mode->yres == 720) {
 			sensor_mode = IMX214_MODE_1280X720_HS_HDR;
+		} else if (mode->xres == 4208 && mode->yres == 3120) {
+			sensor_mode = IMX214_MODE_4208X3120_HDR;
 		} else if (mode->xres == 2104 && mode->yres == 1184) {
 			sensor_mode = IMX214_MODE_2104X1184_HDR;
 		} else {
@@ -222,6 +224,8 @@ static int imx214_set_mode(struct imx214_info *info, struct imx214_mode *mode)
 			sensor_mode = IMX214_MODE_1052X592_120FPS;
 		} else if (mode->xres == 4208 && mode->yres == 3120) {
 			sensor_mode = IMX214_MODE_4208X3120;
+		} else if (mode->xres == 2104 && mode->yres == 1184) {
+			sensor_mode = IMX214_MODE_2104X1184;
 		} else {
 			pr_err("%s: invalid resolution supplied to set mode %d %d\n",
 				 __func__, mode->xres, mode->yres);
@@ -376,6 +380,7 @@ static int imx214_set_hdr_coarse_time(struct imx214_info *info,
 	imx214_get_coarse_time_regs(reg_list, values->coarse_time_long);
 	imx214_get_coarse_time_short_regs(reg_list_short,
 			values->coarse_time_short);
+
 	/* set to direct mode */
 	ret = imx214_write_reg(info, 0x238, 0x1);
 	if (ret)
