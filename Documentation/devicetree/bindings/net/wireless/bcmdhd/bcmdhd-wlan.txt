@@ -3,7 +3,7 @@
 This file documents the properties used by the bcmdhd-wlan driver.
 
 Required properties:
-- compatible : Must be "nvidia,tegra-bcmdhd-wlan"
+- compatible : Must be "android,tegra-bcmdhd-wlan"
 
 Optional properties:
 - "wlan-pwr-gpio" is a gpio to power on/off wifi chip
@@ -11,8 +11,8 @@ Optional properties:
 - "interrupts" is a wake on wireless gpio interrupt pin
 
 Example:
-bcm4329_wlan {
-	compatible = "nvidia,tegra-bcmdhd-wlan";
+bcmdhd_wlan {
+	compatible = "android,tegra-bcmdhd-wlan";
 	interrupt-parent = <&gpio>;
 	interrupts = <165 0x14>;
 	wlan-pwr-gpio = <&gpio TEGRA_GPIO(X, 7) 0>;
