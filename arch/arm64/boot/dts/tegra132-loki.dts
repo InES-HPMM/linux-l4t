@@ -38,6 +38,8 @@
 	serial@70006300 {
 		compatible = "nvidia,tegra20-uart";
 		console-port;
+		sqa-automation-port;
+		status = "okay";
 	};
 
 	memory@0x80000000 {
