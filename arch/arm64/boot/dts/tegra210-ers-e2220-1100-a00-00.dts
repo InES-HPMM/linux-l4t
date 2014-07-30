@@ -121,12 +121,17 @@
 			pinctrl-names = "dap_active", "dap_inactive";
 			pinctrl-0 = <&dap1_active_state>;
 			pinctrl-1 = <&dap1_inactive_state>;
+			regulator-supplies = "vdd-1v8-audio-hv", "vdd-1v8-audio-hv-bias";
+			vdd-1v8-audio-hv-supply = <&max77620_sd3>;
+			vdd-1v8-audio-hv-bias-supply = <&max77620_sd3>;
 		};
 
 		i2s@702d1300 {
 			pinctrl-names = "dap_active", "dap_inactive";
 			pinctrl-0 = <&dap4_active_state>;
 			pinctrl-1 = <&dap4_inactive_state>;
+			regulator-supplies = "vddio-dmic";
+			vddio-dmic-supply = <&max77620_sd3>;
 		};
 	};
 
