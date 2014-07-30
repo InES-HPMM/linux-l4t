@@ -158,5 +158,3 @@ obj-$(CONFIG_VME_BUS)		+= vme/
 obj-$(CONFIG_IPACK_BUS)		+= ipack/
 obj-$(CONFIG_NTB)		+= ntb/
 obj-$(CONFIG_MIPI_BIF)		+= mipi_bif/
-
-obj-$(CONFIG_ARCH_TEGRA_18x_SOC) += ../../kernel-t18x/drivers/
