@@ -912,7 +912,7 @@ void tegra_clk_preset_emc_monitor(unsigned long rate)
 
 	if (c) {
 		c->u.shared_bus_user.rate = rate;
-		clk_enable(c);
+		tegra_clk_prepare_enable(c);
 	}
 }
 

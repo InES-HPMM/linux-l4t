@@ -989,12 +989,12 @@ static int tegra21_super_clk_set_parent(struct clk *c, struct clk *p)
 			}
 
 			if (c->refcnt)
-				clk_enable(p);
+				tegra_clk_prepare_enable(p);
 
 			clk_writel_delay(val, c->reg);
 
 			if (c->refcnt && c->parent)
-				clk_disable(c->parent);
+				tegra_clk_disable_unprepare(c->parent);
 
 			clk_reparent(c, p);
 			return 0;
@@ -1069,7 +1069,7 @@ static int tegra21_cpu_clk_set_plls(struct clk *c, unsigned long rate,
 	 * backup source.
 	 */
 	if (c->parent->parent == main_pll) {
-		clk_enable(main_pll);
+		tegra_clk_prepare_enable(main_pll);
 		on_main = true;
 		main_rate = rate;
 
@@ -1149,7 +1149,7 @@ static int tegra21_cpu_clk_set_plls(struct clk *c, unsigned long rate,
 
 out:
 	if (on_main)
-		clk_disable(main_pll);
+		tegra_clk_disable_unprepare(main_pll);
 
 	return ret;
 }
@@ -1504,14 +1504,14 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	 * in advanvce before the switch happens. If target p_source is DFLL it
 	 * is switched here to open loop mode.
 	 */
-	clk_enable(p);
+	tegra_clk_prepare_enable(p);
 	if (c_source == dfll)
 		tegra_dvfs_dfll_mode_clear(c->parent->dvfs, rate);
 
 	/* switch CPU mode */
 	ret = tegra_cluster_control(delay, flags);
 	if (ret) {
-		clk_disable(p);
+		tegra_clk_disable_unprepare(p);
 		pr_err("%s: Failed to switch %s mode to %s\n",
 		       __func__, c->name, p->name);
 		goto abort;
@@ -1530,7 +1530,7 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	}
 
 	/* Disabling old parent scales old mode voltage rail */
-	clk_disable(c->parent);
+	tegra_clk_disable_unprepare(c->parent);
 
 	clk_reparent(c, p);
 
@@ -2047,7 +2047,7 @@ static int tegra21_adsp_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 	 * to reach target rate in one shot. Otherwise use backup source while
 	 * re-locking main.
 	 */
-	clk_enable(main_pll);
+	tegra_clk_prepare_enable(main_pll);
 
 	if (tegra_pll_can_ramp_to_rate(main_pll, rate)) {
 		ret = clk_set_rate(main_pll, rate);
@@ -2082,7 +2082,7 @@ static int tegra21_adsp_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 	super_clk_clr_u71_div_no_skip(c->parent);
 
 out:
-	clk_disable(main_pll);
+	tegra_clk_disable_unprepare(main_pll);
 	return ret;
 }
 
@@ -4202,12 +4202,12 @@ static int tegra21_periph_clk_set_parent(struct clk *c, struct clk *p)
 			val |= (sel->value << periph_clk_source_shift(c));
 
 			if (c->refcnt)
-				clk_enable(p);
+				tegra_clk_prepare_enable(p);
 
 			clk_writel_delay(val, c->reg);
 
 			if (c->refcnt && c->parent)
-				clk_disable(c->parent);
+				tegra_clk_disable_unprepare(c->parent);
 
 			clk_reparent(c, p);
 			return 0;
@@ -4620,8 +4620,8 @@ static int tegra21_sor_brick_set_parent(struct clk *c, struct clk *p)
 	for (sel = c->inputs; sel->input != NULL; sel++) {
 		if (sel->input == p) {
 			if (c->refcnt) {
-				clk_enable(p);
-				clk_disable(c->parent);
+				tegra_clk_prepare_enable(p);
+				tegra_clk_disable_unprepare(c->parent);
 			}
 			clk_reparent(c, p);
 			return 0;
@@ -4681,7 +4681,7 @@ static int tegra21_sor1_clk_set_parent(struct clk *c, struct clk *p)
 	for (sel = c->inputs; sel->input != NULL; sel++) {
 		if (sel->input == p) {
 			if (c->refcnt)
-				clk_enable(p);
+				tegra_clk_prepare_enable(p);
 			/*
 			 * Since sor1 output mux control setting share the same
 			 * register with source mux/divider switch, use switch
@@ -4695,7 +4695,7 @@ static int tegra21_sor1_clk_set_parent(struct clk *c, struct clk *p)
 			clk_unlock_restore(src, &flags);
 
 			if (c->refcnt)
-				clk_disable(c->parent);
+				tegra_clk_disable_unprepare(c->parent);
 
 			clk_reparent(c, p);
 			return 0;
@@ -4877,7 +4877,7 @@ static int tegra21_clk_out_set_parent(struct clk *c, struct clk *p)
 	for (sel = c->inputs; sel->input != NULL; sel++) {
 		if (sel->input == p) {
 			if (c->refcnt)
-				clk_enable(p);
+				tegra_clk_prepare_enable(p);
 
 			spin_lock_irqsave(&clk_out_lock, flags);
 			val = pmc_readl(c->reg);
@@ -4888,7 +4888,7 @@ static int tegra21_clk_out_set_parent(struct clk *c, struct clk *p)
 			spin_unlock_irqrestore(&clk_out_lock, flags);
 
 			if (c->refcnt && c->parent)
-				clk_disable(c->parent);
+				tegra_clk_disable_unprepare(c->parent);
 
 			clk_reparent(c, p);
 			return 0;
@@ -4960,7 +4960,7 @@ static int tegra21_emc_clk_set_rate(struct clk *c, unsigned long rate)
 		if (div_value == c->div)
 			return 0;
 	} else if (c->refcnt)
-		clk_enable(p);
+		tegra_clk_prepare_enable(p);
 
 	ret = tegra_emc_set_rate_on_parent(rate, p);
 	if (ret < 0)
@@ -4968,7 +4968,7 @@ static int tegra21_emc_clk_set_rate(struct clk *c, unsigned long rate)
 
 	if (p != c->parent) {
 		if(c->refcnt && c->parent)
-			clk_disable(c->parent);
+			tegra_clk_disable_unprepare(c->parent);
 		clk_reparent(c, p);
 	}
 	c->div = div_value;
@@ -5116,12 +5116,12 @@ static int tegra21_audio_sync_clk_set_parent(struct clk *c, struct clk *p)
 			val |= sel->value;
 
 			if (c->refcnt)
-				clk_enable(p);
+				tegra_clk_prepare_enable(p);
 
 			clk_writel(val, c->reg);
 
 			if (c->refcnt && c->parent)
-				clk_disable(c->parent);
+				tegra_clk_disable_unprepare(c->parent);
 
 			clk_reparent(c, p);
 			return 0;
@@ -5363,7 +5363,7 @@ static int tegra21_clk_cbus_set_rate(struct clk *c, unsigned long rate)
 	if (rate == 0)
 		return 0;
 
-	ret = clk_enable(c->parent);
+	ret = tegra_clk_prepare_enable(c->parent);
 	if (ret) {
 		pr_err("%s: failed to enable %s clock: %d\n",
 		       __func__, c->name, ret);
@@ -5395,16 +5395,16 @@ static int tegra21_clk_cbus_set_rate(struct clk *c, unsigned long rate)
 	cbus_skip(c, rate);
 
 out:
-	clk_disable(c->parent);
+	tegra_clk_disable_unprepare(c->parent);
 	return ret;
 }
 
 static inline void cbus_move_enabled_user(
 	struct clk *user, struct clk *dst, struct clk *src)
 {
-	clk_enable(dst);
+	tegra_clk_prepare_enable(dst);
 	list_move_tail(&user->u.shared_bus_user.node, &dst->shared_bus_list);
-	clk_disable(src);
+	tegra_clk_disable_unprepare(src);
 	clk_reparent(user, dst);
 }
 
@@ -5758,7 +5758,7 @@ static int tegra_clk_shared_bus_user_set_parent(struct clk *c, struct clk *p)
 		return -EINVAL;
 
 	if (c->refcnt)
-		clk_enable(p);
+		tegra_clk_prepare_enable(p);
 
 	list_move_tail(&c->u.shared_bus_user.node, &p->shared_bus_list);
 	ret = tegra_clk_shared_bus_update(p);
@@ -5766,14 +5766,14 @@ static int tegra_clk_shared_bus_user_set_parent(struct clk *c, struct clk *p)
 		list_move_tail(&c->u.shared_bus_user.node,
 			       &c->parent->shared_bus_list);
 		tegra_clk_shared_bus_update(c->parent);
-		clk_disable(p);
+		tegra_clk_disable_unprepare(p);
 		return ret;
 	}
 
 	tegra_clk_shared_bus_update(c->parent);
 
 	if (c->refcnt)
-		clk_disable(c->parent);
+		tegra_clk_disable_unprepare(c->parent);
 
 	clk_reparent(c, p);
 
@@ -5834,7 +5834,7 @@ static int tegra_clk_shared_bus_user_enable(struct clk *c)
 	c->u.shared_bus_user.enabled = true;
 	ret = tegra_clk_shared_bus_update_locked(c->parent);
 	if (!ret && c->u.shared_bus_user.client)
-		ret = clk_enable(c->u.shared_bus_user.client);
+		ret = tegra_clk_prepare_enable(c->u.shared_bus_user.client);
 	clk_unlock_restore(c->parent, &flags);
 
 	if (!ret && c->cross_clk_mutex && clk_cansleep(c))
@@ -5849,7 +5849,7 @@ static void tegra_clk_shared_bus_user_disable(struct clk *c)
 
 	clk_lock_save(c->parent, &flags);
 	if (c->u.shared_bus_user.client)
-		clk_disable(c->u.shared_bus_user.client);
+		tegra_clk_disable_unprepare(c->u.shared_bus_user.client);
 	c->u.shared_bus_user.enabled = false;
 	tegra_clk_shared_bus_update_locked(c->parent);
 	clk_unlock_restore(c->parent, &flags);
@@ -5925,13 +5925,13 @@ static int tegra21_clk_coupled_gate_enable(struct clk *c)
 		if (sel->input == c->parent)
 			continue;
 
-		ret = clk_enable(sel->input);
+		ret = tegra_clk_prepare_enable(sel->input);
 		if (ret) {
 			while (sel != c->inputs) {
 				sel--;
 				if (sel->input == c->parent)
 					continue;
-				clk_disable(sel->input);
+				tegra_clk_disable_unprepare(sel->input);
 			}
 			return ret;
 		}
@@ -5957,7 +5957,7 @@ static void tegra21_clk_coupled_gate_disable(struct clk *c)
 			continue;
 
 		if (sel->input->set)	/* enforce coupling after boot only */
-			clk_disable(sel->input);
+			tegra_clk_disable_unprepare(sel->input);
 	}
 }
 
@@ -9247,13 +9247,13 @@ void __init tegra21x_clk_init_la(void)
 	c = tegra_get_clock_by_name("la");
 	if (WARN(!c, "%s: could not find la clk\n", __func__))
 		return;
-	clk_enable(c);
+	tegra_clk_prepare_enable(c);
 
 	if (reg & MISC_GP_TRANSACTOR_SCRATCH_DP2_ENABLE) {
 		c = tegra_get_clock_by_name("dp2");
 		if (WARN(!c, "%s: could not find dp2 clk\n", __func__))
 			return;
-		clk_enable(c);
+		tegra_clk_prepare_enable(c);
 	}
 }
 
@@ -9812,8 +9812,8 @@ void __init tegra21x_init_clocks(void)
 
 static int __init tegra21x_clk_late_init(void)
 {
-	clk_disable(&tegra_pll_re_vco);
-	clk_disable(tegra_get_clock_by_name("boot.apb.sclk"));
+	tegra_clk_disable_unprepare(&tegra_pll_re_vco);
+	tegra_clk_disable_unprepare(tegra_get_clock_by_name("boot.apb.sclk"));
 	return 0;
 }
 late_initcall(tegra21x_clk_late_init);
