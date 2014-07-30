@@ -536,16 +536,6 @@
 #define XUSB_PLL_CFG0_PLLU_LOCK_DLY_MASK	\
 	(0x3ff<<XUSB_PLL_CFG0_PLLU_LOCK_DLY_SHIFT)
 
-#define USB_PLLS_SEQ_START_STATE		(1<<25)
-#define USB_PLLS_SEQ_ENABLE			(1<<24)
-#define USB_PLLS_USE_LOCKDET			(1<<6)
-#define USB_PLLS_ENABLE_SWCTL			((1<<2) | (1<<0))
-
-/* XUSB PLL PAD controls */
-#define XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0         0x40
-#define XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_PWR_OVRD    (1<<3)
-#define XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_IDDQ        (1<<0)
-
 /* DFLL */
 #define DFLL_BASE				0x2f4
 #define DFLL_BASE_RESET				(1<<0)
@@ -621,7 +611,6 @@ static const struct utmi_clk_param utmi_parameters[] =
 
 static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 static void __iomem *misc_gp_base = IO_ADDRESS(TEGRA_APB_MISC_BASE);
-static void __iomem *reg_xusb_padctl_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 
 #define MISC_GP_HIDREV				0x804
 #define MISC_GP_TRANSACTOR_SCRATCH_0		0x864
@@ -635,10 +624,6 @@ static void __iomem *reg_xusb_padctl_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 	readl(reg_pmc_base + (reg))
 #define chipid_readl() \
 	__raw_readl(misc_gp_base + MISC_GP_HIDREV)
-#define xusb_padctl_writel(value, reg) \
-	 __raw_writel(value, reg_xusb_padctl_base + (reg))
-#define xusb_padctl_readl(reg) \
-	readl(reg_xusb_padctl_base + (reg))
 
 /*
  * Some peripheral clocks share an enable bit, so refcount the enable bits
@@ -2203,18 +2188,6 @@ static struct clk_ops tegra_blink_clk_ops = {
 };
 
 /* UTMIP PLL configuration */
-static void usb_plls_hw_control_enable(u32 reg)
-{
-	u32 val = clk_readl(reg);
-	val |= USB_PLLS_USE_LOCKDET | USB_PLLS_SEQ_START_STATE;
-	val &= ~USB_PLLS_ENABLE_SWCTL;
-	val |= USB_PLLS_SEQ_START_STATE;
-	pll_writel_delay(val, reg);
-
-	val |= USB_PLLS_SEQ_ENABLE;
-	pll_writel_delay(val, reg);
-}
-
 static void tegra21_utmi_param_configure(struct clk *c)
 {
 	u32 reg;
@@ -3520,16 +3493,6 @@ static void tegra21_plle_clk_disable(struct clk *c)
 	val = clk_readl(c->reg + c->u.pll.misc0);
 	val |= PLLE_MISC_IDDQ_SW_CTRL | PLLE_MISC_IDDQ_SW_VALUE;
 	pll_writel_delay(val, c->reg + c->u.pll.misc0);
-
-/* FIXME: Disable for initial Si bringup */
-#if 0
-	/* Set XUSB PLL pad pwr override and iddq */
-	val = xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
-	val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_PWR_OVRD;
-	val |= XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_IDDQ;
-	xusb_padctl_writel(val, XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
-	xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
-#endif
 }
 
 static int tegra21_plle_clk_enable(struct clk *c)
@@ -3625,20 +3588,6 @@ static int tegra21_plle_clk_enable(struct clk *c)
 	val |= PLLE_AUX_SEQ_ENABLE;
 	pll_writel_delay(val, PLLE_AUX);
 #endif
-
-/* FIXME: Disable for initial Si bringup */
-#if 0
-	/* clear XUSB PLL pad pwr override and iddq */
-	val = xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
-	val &= ~XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_PWR_OVRD;
-	val &= ~XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0_PLL_IDDQ;
-	xusb_padctl_writel(val, XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
-	xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
-#endif
-
-	/* enable hw control of xusb brick pll */
-	usb_plls_hw_control_enable(XUSBIO_PLL_CFG0);
-
 	return 0;
 }
 
@@ -7167,18 +7116,6 @@ static struct clk tegra_pciex_clk = {
 	},
 };
 
-static struct clk_ops tegra_pex_uphy_ops = {
-	.reset    = tegra21_periph_clk_reset,
-};
-
-static struct clk tegra_pex_uphy_clk = {
-	.name      = "pex_uphy",
-	.ops       = &tegra_pex_uphy_ops,
-	.u.periph  = {
-		.clk_num   = 205,
-	},
-};
-
 /* Audio sync clocks */
 #define SYNC_SOURCE(_id, _dev)				\
 	{						\
@@ -7671,6 +7608,22 @@ static struct clk tegra_clk_xusb_padctl = {
 	},
 };
 
+static struct clk tegra_clk_sata_uphy = {
+	.name      = "sata_uphy",
+	.ops       = &tegra_xusb_padctl_ops,
+	.u.periph  = {
+		.clk_num = 204,
+	},
+};
+
+static struct clk tegra_pex_uphy_clk = {
+	.name      = "pex_uphy",
+	.ops       = &tegra_xusb_padctl_ops,
+	.u.periph  = {
+		.clk_num   = 205,
+	},
+};
+
 static struct clk tegra_clk_usb2_hsic_trk = {
 	.name      = "usb2_hsic_trk",
 	.flags     = DIV_U71 | PERIPH_NO_ENB | PERIPH_NO_RESET,
@@ -7678,18 +7631,6 @@ static struct clk tegra_clk_usb2_hsic_trk = {
 	.reg       = 0x6cc,
 	.ops       = &tegra_periph_clk_ops,
 	.max_rate  = 38400000,
-};
-
-static struct clk_ops tegra_sata_uphy_ops = {
-	.reset    = tegra21_periph_clk_reset,
-};
-
-static struct clk tegra_clk_sata_uphy = {
-	.name      = "sata_uphy",
-	.ops       = &tegra_sata_uphy_ops,
-	.u.periph  = {
-		.clk_num = 204,
-	},
 };
 
 /* Multimedia modules muxes */
