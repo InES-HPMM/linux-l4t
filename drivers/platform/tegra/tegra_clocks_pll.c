@@ -25,6 +25,8 @@
 #include "clock.h"
 #include "tegra_clocks_ops.h"
 
+#define PLL_LOCKDET_DELAY 2	/* Lock detection safety delays */
+
 /* PLL helper functions */
 u32 pll_reg_idx_to_addr(struct clk *c, int idx)
 {
@@ -54,11 +56,11 @@ int tegra_pll_clk_wait_for_lock(struct clk *c, u32 lock_reg, u32 lock_bits)
 	int i;
 	u32 val = 0;
 
-	for (i = 0; i < (c->u.pll.lock_delay / PLL_PRE_LOCK_DELAY + 1); i++) {
-		udelay(PLL_PRE_LOCK_DELAY);
+	for (i = 0; i < (c->u.pll.lock_delay / PLL_LOCKDET_DELAY + 1); i++) {
+		udelay(PLL_LOCKDET_DELAY);
 		val = clk_readl(lock_reg);
 		if ((val & lock_bits) == lock_bits) {
-			udelay(PLL_POST_LOCK_DELAY);
+			udelay(PLL_LOCKDET_DELAY);
 			return 0;
 		}
 	}
