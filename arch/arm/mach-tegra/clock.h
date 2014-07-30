@@ -55,35 +55,37 @@
 
 struct clk;
 
-#define DIV_BUS			(1 << 0)
-#define DIV_U71			(1 << 1)
-#define DIV_U71_FIXED		(1 << 2)
-#define DIV_2			(1 << 3)
-#define DIV_U16			(1 << 4)
-#define PLL_FIXED		(1 << 5)
-#define PLL_HAS_CPCON		(1 << 6)
-#define MUX			(1 << 7)
-#define PLLD			(1 << 8)
-#define PERIPH_NO_RESET		(1 << 9)
-#define PERIPH_NO_ENB		(1 << 10)
-#define PERIPH_EMC_ENB		(1 << 11)
-#define PERIPH_MANUAL_RESET	(1 << 12)
-#define PLL_ALT_MISC_REG	(1 << 13)
-#define PLLU			(1 << 14)
-#define PLLX			(1 << 15)
-#define MUX_PWM			(1 << 16)
-#define MUX8			(1 << 17)
-#define DIV_U151_UART		(1 << 18)
-#define MUX_CLK_OUT		(1 << 19)
-#define PLLM			(1 << 20)
-#define DIV_U71_INT		(1 << 21)
-#define DIV_U71_IDLE		(1 << 22)
-#define DIV_U151		(1 << 23)
-#define DFLL			(1 << 24)
-#define ENABLE_ON_INIT		(1 << 28)
-#define PERIPH_ON_APB		(1 << 29)
-#define PERIPH_ON_CBUS		(1 << 30)
-#define BUS_RATE_LIMIT		(1 << 31)
+#define DIV_BUS			(1 << 0)	/* system bus clock */
+#define DIV_U71			(1 << 1)	/* divider is U7.1 (N/2 + 1) */
+#define DIV_U71_FIXED		(1 << 2)	/* divider is U7.1 and fixed unless reprogrammed by SW */
+#define DIV_2			(1 << 3)	/* clock output is divided by 2 */
+#define DIV_U16			(1 << 4)	/* divider is (N + 1) */
+#define PLL_FIXED		(1 << 5)	/* PLL runs at fixed rate */
+#define PLL_HAS_CPCON		(1 << 6)	/* PLL has CPCON value in its configuration register */
+#define MUX			(1 << 7)	/* this clock uses a mux to select one of the input sources */
+#define PLLD			(1 << 8)	/* clock is PLLD */
+#define PERIPH_NO_RESET		(1 << 9)	/* doesn't have separate reset bit in the register */
+#define PERIPH_NO_ENB		(1 << 10)	/* does not have clock enable bit in the register */
+#define PERIPH_EMC_ENB		(1 << 11)	/* this peripheral clock is EMC */
+#define PERIPH_MANUAL_RESET	(1 << 12)	/* don't take module out of reset automatically, when enabling clock */
+#define PLL_ALT_MISC_REG	(1 << 13)	/* use alternate offset for PLL misc registers */
+#define PLLU			(1 << 14)	/* PLL is PLLU */
+#define PLLX			(1 << 15)	/* PLL is PLLX */
+#define MUX_PWM			(1 << 16)	/* deprecated for T124 onwards */
+#define MUX8			(1 << 17)	/* used in simulator setting for T124 onwards */
+#define DIV_U151_UART		(1 << 18)	/* 16-bit uart divider with dual CAR/UART control */
+#define MUX_CLK_OUT		(1 << 19)	/* used to locate extperiph clock registers */
+#define PLLM			(1 << 20)	/* PLL is PLLM */
+#define DIV_U71_INT		(1 << 21)	/* fractional divider is not allowed for this clock */
+#define DIV_U71_IDLE		(1 << 22)	/* clock has a  separate idle state divider that is automatically
+						   engaged when module is idle */
+#define DIV_U151		(1 << 23)	/* divider will be U15.1 for this clock */
+#define DFLL			(1 << 24)	/* this clock has closed loop control in h/w */
+#define ENABLE_ON_INIT		(1 << 28)	/* enable during initialization (deprecated) */
+#define PERIPH_ON_APB		(1 << 29)	/* this peripheral is on APB */
+#define PERIPH_ON_CBUS		(1 << 30)	/* this peripheral is on one of the PLLCx bus */
+#define BUS_RATE_LIMIT		(1 << 31)	/* Clock used to apply constraints on shared buses
+						   (don't propagate enable/disable to the bus) */
 
 #define SHARED_BUS_RETENTION	(1 << 0)
 #define SHARED_BUS_USE_SKIPPERS	(1 << 1)
