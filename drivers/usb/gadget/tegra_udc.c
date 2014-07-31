@@ -2866,6 +2866,7 @@ static struct tegra_udc_soc_data tegra_soc_config = {
 static struct of_device_id tegra_udc_of_match[] = {
 	{.compatible = "nvidia,tegra210-udc", .data = &tegra_soc_config, },
 	{.compatible = "nvidia,tegra132-udc", .data = &tegra_soc_config, },
+	{ /* termination */ },
 };
 MODULE_DEVICE_TABLE(of, tegra_udc_of_match);
 
