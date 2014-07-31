@@ -98,6 +98,9 @@
  */
 #define ADSP_CLK_FIX_RATE (APE_CLK_FIX_RATE * ADSP_TO_APE_CLK_RATIO)
 
+/* total number of crashes allowed on adsp */
+#define ALLOWED_CRASHES	2
+
 struct nvadsp_debug_log {
 	struct device *dev;
 	char *debug_ram_rdr;
@@ -107,13 +110,15 @@ struct nvadsp_debug_log {
 
 struct nvadsp_os_data {
 #if !CONFIG_SYSTEM_FPGA
-	void __iomem *reset_reg;
+	void __iomem		*reset_reg;
 #endif
-	struct platform_device *pdev;
-	struct global_sym_info *adsp_glo_sym_tbl;
-	void __iomem *misc_base;
-	struct resource **dram_region;
-	struct nvadsp_debug_log logger;
+	struct platform_device	*pdev;
+	struct global_sym_info	*adsp_glo_sym_tbl;
+	void __iomem		*misc_base;
+	struct resource		**dram_region;
+	struct nvadsp_debug_log	logger;
+	struct work_struct	restart_os_work;
+	int			adsp_num_crashes;
 };
 
 static struct nvadsp_os_data priv;
@@ -726,24 +731,44 @@ int nvadsp_os_start(void)
 EXPORT_SYMBOL(nvadsp_os_start);
 
 
-static  irqreturn_t adsp_wdt_handler(int irq, void *arg)
+static void nvadsp_os_restart(struct work_struct *work)
 {
-	struct device *dev = arg;
-	dev_crit(dev, "ADSP OS crashed .... Restarting ADSP OS\n");
-#if CONFIG_SYSTEM_FPGA
+	struct nvadsp_os_data *data =
+		container_of(work, struct nvadsp_os_data, restart_os_work);
+	struct device *dev = &data->pdev->dev;
+
+	data->adsp_num_crashes++;
+	if (data->adsp_num_crashes >= ALLOWED_CRASHES) {
+		/* making pdev NULL so that externally start is not called */
+		priv.pdev = NULL;
+		dev_crit(dev, "ADSP has crashed too many times\n");
+		return;
+	}
+
 	if (nvadsp_os_start())
 		dev_crit(dev, "Unable to restart ADSP OS\n");
+}
+
+static irqreturn_t adsp_wdt_handler(int irq, void *arg)
+{
+	struct nvadsp_os_data *data = arg;
+	struct device *dev = &data->pdev->dev;
+#if CONFIG_SYSTEM_FPGA
+	dev_crit(dev, "ADSP OS Hanged or Crashed! Restarting...\n");
+	schedule_work(&data->restart_os_work);
+#else
+	dev_crit(dev, "ADSP OS Hanged or Crashed!\n");
 #endif
 	return 0;
 }
 
 int nvadsp_os_probe(struct platform_device *pdev)
 {
-
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
-	int virq = tegra_agic_irq_get_virq(INT_ADSP_WDT);
+	int wdt_virq = tegra_agic_irq_get_virq(INT_ADSP_WDT);
 	struct device *dev = &pdev->dev;
 	int ret = 0;
+
 #if !CONFIG_SYSTEM_FPGA
 	priv.reset_reg = ioremap(APE_FPGA_MISC_RST_DEVICES, 1);
 	if (!priv.reset_reg) {
@@ -762,13 +787,15 @@ int nvadsp_os_probe(struct platform_device *pdev)
 			"unable to create adsp debug logger file\n");
 #endif
 
-	ret = request_irq(virq, adsp_wdt_handler,
-			IRQF_TRIGGER_RISING, "adsp watchdog", dev);
-	if (ret)
+	ret = request_irq(wdt_virq, adsp_wdt_handler,
+			IRQF_TRIGGER_RISING, "adsp watchdog", &priv);
+	if (ret) {
 		dev_err(dev, "failed to get adsp watchdog interrupt\n");
+		goto end;
+	}
 
-#if !CONFIG_SYSTEM_FPGA
+	INIT_WORK(&priv.restart_os_work, nvadsp_os_restart);
+
 end:
-#endif
 	return ret;
 }
