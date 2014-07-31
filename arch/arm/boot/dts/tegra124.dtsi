@@ -22,6 +22,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
 #include "tegra124-soc.dtsi"
+#include "tegra124-platforms/tegra124-bthrot-cdev.dtsi"
 
 / {
 	compatible = "nvidia,tegra124";

@@ -187,4 +187,20 @@
 		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
 		status = "okay";
 	};
+
+	bthrot_cdv {
+		compatible = "nvidia,tegra30-throttle";
+		skin_balanced {
+			status = "disabled";
+		};
+		gpu_balanced {
+			status = "disabled";
+		};
+		cpu_balanced {
+			cdev-type = "tegra-balanced";
+		};
+		emergency_balanced{
+			status = "disabled";
+		};
+	};
 };
