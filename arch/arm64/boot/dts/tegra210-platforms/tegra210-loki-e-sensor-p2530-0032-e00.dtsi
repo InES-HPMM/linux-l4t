@@ -1,0 +1,39 @@
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+        i2c@7000c000 {
+                icm20628@68 {
+                        compatible = "invensense,mpu6xxx";
+                        reg = <0x68>;
+                        interrupt-parent = <&gpio>;
+                        interrupts = <138 0x01>;
+                        invensense,orientation = [ff 00 00 00 01 00 00 00 ff];
+                        vdd = <&max77620_sd3>;
+                        vlogic= <&vdd_3v3>;
+                };
+
+                ak8975@0c {
+                        compatible = "ak,ak8975";
+                        reg = <0x0c>;
+                        orientation = [01 00 00 00 ff 00 00 00 ff];
+                        vdd = <&max77620_sd3>;
+                        vid = <&vdd_3v3>;
+                };
+                jsa1127@39 {
+                        compatible = "solteam-opto,jsa1127";
+                        reg = <0x39>;
+                        solteam-opto,rint = <100>;
+                        solteam-opto,integration-time = <2000>;
+                        solteam-opto,use-internal-integration-timing = <1>;
+                        solteam-opto,tint-coeff = <22>;
+                        solteam-opto,noisy = <1>;
+                };
+
+        };
+	spi@7000da00 {
+		spi-touch@0 {
+			platform-id = <RM_PLATFORM_L005>;
+		};
+	};
+
+};
