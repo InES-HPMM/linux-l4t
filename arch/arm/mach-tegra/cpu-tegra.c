@@ -35,6 +35,7 @@
 #include <linux/cpu.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pm_qos.h>
+#include <linux/tegra_cluster_control.h>
 
 #include <mach/edp.h>
 
@@ -707,6 +708,34 @@ _out:
 
 	return 0;
 }
+
+#ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
+static int tegra_cluster_switch_locked(struct clk *cpu_clk, struct clk *new_clk)
+{
+	int ret;
+
+	ret = clk_set_parent(cpu_clk, new_clk);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+/* Explicitly hold the lock here to protect manual cluster switch requests */
+int tegra_cluster_switch(struct clk *cpu_clk, struct clk *new_clk)
+{
+	int ret;
+
+	mutex_lock(&tegra_cpu_lock);
+	ret = tegra_cluster_switch_locked(cpu_clk, new_clk);
+	mutex_unlock(&tegra_cpu_lock);
+
+	return ret;
+}
+
+void tegra_cluster_switch_prolog(unsigned int flags) {}
+void tegra_cluster_switch_epilog(unsigned int flags) {}
+#endif
 
 unsigned int tegra_count_slow_cpus(unsigned long speed_limit)
 {

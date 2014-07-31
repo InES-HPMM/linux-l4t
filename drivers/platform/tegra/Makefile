@@ -151,7 +151,7 @@ obj-$(CONFIG_TEGRA_BOARD_COMMON) += board-touch-raydium_spi.o
 
 obj-$(CONFIG_TEGRA_BOARD_COMMON) += board-panel.o
 
-obj-$(CONFIG_ARCH_TEGRA_21x_SOC)      += cluster-control.o
+obj-$(CONFIG_TEGRA_HMP_CLUSTER_CONTROL)      += cluster-control.o
 
 obj-${CONFIG_TEGRA_ISOMGR}              += isomgr.o
 obj-$(CONFIG_TEGRA_USE_NCT)             += nct.o nct_sysfs.o

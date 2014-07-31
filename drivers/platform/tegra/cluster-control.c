@@ -19,10 +19,14 @@
 #include <linux/debugfs.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
+#include <linux/notifier.h>
+#include <linux/tegra_cluster_control.h>
 #include <linux/platform_data/tegra_bpmp.h>
 #include <asm/psci.h>
 #include <asm/smp_plat.h>
 #include <asm/suspend.h>
+
+#include "sleep.h"
 
 #define PSCI_NV_CPU_FORCE_SUSPEND 0x84001000
 
@@ -48,15 +52,15 @@ static struct psci_power_state cluster_pg __initdata = {
 
 static inline unsigned int is_slow_cluster(void)
 {
-	int reg;
+	return is_lp_cluster();
+}
 
-	asm("mrs        %0, mpidr_el1\n"
-	    "ubfx       %0, %0, #8, #4"
-	    : "=r" (reg)
-	    :
-	    : "cc", "memory");
+static enum cluster get_current_cluster(void)
+{
+	if (is_slow_cluster())
+		return SLOW_CLUSTER;
 
-	return reg & 1;
+	return FAST_CLUSTER;
 }
 
 static void shutdown_core(void *info)
@@ -79,7 +83,21 @@ static void shutdown_cluster(void)
 	cpu_pm_exit();
 }
 
-static void switch_cluster(int val)
+static BLOCKING_NOTIFIER_HEAD(cluster_switch_chain);
+
+int register_cluster_switch_notifier(struct notifier_block *notifier)
+{
+	return blocking_notifier_chain_register(&cluster_switch_chain,
+						notifier);
+}
+
+int unregister_cluster_switch_notifier(struct notifier_block *notifier)
+{
+	return blocking_notifier_chain_unregister(&cluster_switch_chain,
+						notifier);
+}
+
+static void switch_cluster(enum cluster val)
 {
 	struct cpumask mask;
 	int bpmp_cpu_mask;
@@ -88,6 +106,14 @@ static void switch_cluster(int val)
 
 	mutex_lock(&cluster_switch_lock);
 	target_cluster = val;
+
+	if (target_cluster == get_current_cluster()) {
+		mutex_unlock(&cluster_switch_lock);
+		return;
+	}
+
+	blocking_notifier_call_chain(&cluster_switch_chain,
+			TEGRA_CLUSTER_PRE_SWITCH, &val);
 
 	preempt_disable();
 
@@ -113,7 +139,22 @@ static void switch_cluster(int val)
 
 	preempt_enable();
 
+	blocking_notifier_call_chain(&cluster_switch_chain,
+			TEGRA_CLUSTER_POST_SWITCH, &val);
+
 	mutex_unlock(&cluster_switch_lock);
+}
+
+int tegra_cluster_control(unsigned int us, unsigned int flags)
+{
+	int cluster_flag = flags & TEGRA_POWER_CLUSTER_MASK;
+
+	if (cluster_flag == TEGRA_POWER_CLUSTER_G)
+		switch_cluster(FAST_CLUSTER);
+	else if (cluster_flag == TEGRA_POWER_CLUSTER_LP)
+		switch_cluster(SLOW_CLUSTER);
+
+	return 0;
 }
 
 #ifdef CONFIG_DEBUG_FS

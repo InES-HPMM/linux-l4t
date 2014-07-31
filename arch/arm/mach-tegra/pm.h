@@ -31,6 +31,7 @@
 #include <linux/clkdev.h>
 #include <linux/tegra-pmc.h>
 #include <linux/tegra-pm.h>
+#include <linux/tegra_cluster_control.h>
 
 #include "iomap.h"
 
@@ -130,58 +131,19 @@ static inline bool is_g_cluster_present(void)
 		return false;
 	return true;
 }
-static inline unsigned int is_lp_cluster(void)
-{
-	unsigned int reg;
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	reg = readl(FLOW_CTRL_CLUSTER_CONTROL);
-	return reg & 1; /* 0 == G, 1 == LP*/
-#else
-#ifdef CONFIG_ARM64
-	asm("mrs	%0, mpidr_el1\n"
-	    "ubfx	%0, %0, #8, #4"
-	    : "=r" (reg)
-	    :
-	    : "cc","memory");
-#else
-	asm("mrc	p15, 0, %0, c0, c0, 5\n"
-	    "ubfx	%0, %0, #8, #4"
-	    : "=r" (reg)
-	    :
-	    : "cc","memory");
-#endif
-	return reg & 1; /* 0 == G, 1 == LP*/
-#endif
-}
-int tegra_cluster_control(unsigned int us, unsigned int flags);
-void tegra_cluster_switch_prolog(unsigned int flags);
-void tegra_cluster_switch_epilog(unsigned int flags);
 int tegra_switch_to_g_cluster(void);
 int tegra_switch_to_lp_cluster(void);
-int tegra_cluster_switch(struct clk *cpu_clk, struct clk *new_cluster_clk);
 #else
 #define INSTRUMENT_CLUSTER_SWITCH 0	/* Must be zero for ARCH_TEGRA_2x_SOC */
 #define DEBUG_CLUSTER_SWITCH 0		/* Must be zero for ARCH_TEGRA_2x_SOC */
 #define PARAMETERIZE_CLUSTER_SWITCH 0	/* Must be zero for ARCH_TEGRA_2x_SOC */
 
 static inline bool is_g_cluster_present(void)   { return true; }
-static inline unsigned int is_lp_cluster(void)  { return 0; }
-static inline int tegra_cluster_control(unsigned int us, unsigned int flags)
-{
-	return -EPERM;
-}
-static inline void tegra_cluster_switch_prolog(unsigned int flags) {}
-static inline void tegra_cluster_switch_epilog(unsigned int flags) {}
 static inline int tegra_switch_to_g_cluster(void)
 {
 	return -EPERM;
 }
 static inline int tegra_switch_to_lp_cluster(void)
-{
-	return -EPERM;
-}
-static inline int tegra_cluster_switch(struct clk *cpu_clk,
-				       struct clk *new_cluster_clk)
 {
 	return -EPERM;
 }
