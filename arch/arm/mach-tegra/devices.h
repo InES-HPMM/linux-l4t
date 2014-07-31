@@ -38,11 +38,6 @@ extern struct platform_device tegra_dtv_device;
 extern struct platform_device tegra_ehci1_device;
 extern struct platform_device tegra_ehci2_device;
 extern struct platform_device tegra_ehci3_device;
-extern struct platform_device tegra_uarta_device;
-extern struct platform_device tegra_uartb_device;
-extern struct platform_device tegra_uartc_device;
-extern struct platform_device tegra_uartd_device;
-extern struct platform_device tegra_uarte_device;
 extern struct platform_device tegra_pmu_device;
 extern struct platform_device tegra_i2s_device1;
 extern struct platform_device tegra_i2s_device2;
@@ -120,11 +115,6 @@ extern struct platform_device tegra_wdt0_device;
 #endif
 extern struct platform_device tegra_rtc_device;
 extern struct platform_device tegra_otg_device;
-extern struct platform_device tegra_uarta_device;
-extern struct platform_device tegra_uartb_device;
-extern struct platform_device tegra_uartc_device;
-extern struct platform_device tegra_uartd_device;
-extern struct platform_device tegra_uarte_device;
 extern struct platform_device nvavp_device;
 #if defined(CONFIG_TEGRA_SKIN_THROTTLE)
 extern struct platform_device tegra_skin_therm_est_device;
