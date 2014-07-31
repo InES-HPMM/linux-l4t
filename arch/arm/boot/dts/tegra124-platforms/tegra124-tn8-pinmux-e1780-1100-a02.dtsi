@@ -1644,6 +1644,14 @@
 				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_FASTEST>;
 				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_FASTEST>;
 			};
+			gen1_i2c_scl_pc4 {
+				nvidia,pins = "gen1_i2c_scl_pc4";
+				nvidia,open-drain = <TEGRA_PIN_DISABLE>;
+			};
+			gen1_i2c_sda_pc5 {
+				nvidia,pins = "gen1_i2c_sda_pc5";
+				nvidia,open-drain = <TEGRA_PIN_DISABLE>;
+			};
 		};
 
 		gen2_i2c_hs_drive: gen2_i2c_drive {
@@ -1655,6 +1663,14 @@
 				nvidia,pull-up-strength = <0>;
 				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_FASTEST>;
 				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_FASTEST>;
+			};
+			gen2_i2c_scl_pt5 {
+				nvidia,pins = "gen2_i2c_scl_pt5";
+				nvidia,open-drain = <TEGRA_PIN_DISABLE>;
+			};
+			gen2_i2c_sda_pt6 {
+				nvidia,pins = "gen2_i2c_sda_pt6";
+				nvidia,open-drain = <TEGRA_PIN_DISABLE>;
 			};
 		};
 
@@ -1668,6 +1684,14 @@
 				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_FASTEST>;
 				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_FASTEST>;
 			};
+			cam_i2c_scl_pbb1 {
+				nvidia,pins = "cam_i2c_scl_pbb1";
+				nvidia,open-drain = <TEGRA_PIN_DISABLE>;
+			};
+			cam_i2c_sda_pbb2 {
+				nvidia,pins = "cam_i2c_sda_pbb2";
+				nvidia,open-drain = <TEGRA_PIN_DISABLE>;
+			};
 		};
 
 		ddc_i2c_hs_drive: ddc_i2c_drive {
@@ -1680,6 +1704,14 @@
 				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_FASTEST>;
 				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_FASTEST>;
 			};
+			ddc_scl_pv4 {
+				nvidia,pins = "ddc_scl_pv4";
+				nvidia,open-drain = <TEGRA_PIN_DISABLE>;
+			};
+			ddc_sda_pv5 {
+				nvidia,pins = "ddc_sda_pv5";
+				nvidia,open-drain = <TEGRA_PIN_DISABLE>;
+			};
 		};
 
 		pwr_i2c_hs_drive: pwr_i2c_drive {
@@ -1691,6 +1723,14 @@
 				nvidia,pull-up-strength = <0>;
 				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_FASTEST>;
 				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_FASTEST>;
+			};
+			pwr_i2c_scl_pz6 {
+				nvidia,pins = "pwr_i2c_scl_pz6";
+				nvidia,open-drain = <TEGRA_PIN_DISABLE>;
+			};
+			pwr_i2c_sda_pz7 {
+				nvidia,pins = "pwr_i2c_sda_pz7";
+				nvidia,open-drain = <TEGRA_PIN_DISABLE>;
 			};
 		};
 	};
