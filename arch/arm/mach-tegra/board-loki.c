@@ -186,11 +186,6 @@ static void loki_i2c_init(void)
 	i2c_register_board_info(0, &rt5639_board_info, 1);
 }
 
-static struct tegra_serial_platform_data loki_uartd_pdata = {
-	.dma_req_selector = 19,
-	.modem_interrupt = false,
-};
-
 static struct tegra_asoc_platform_data loki_audio_pdata_rt5639 = {
 	.gpio_hp_det = TEGRA_GPIO_HP_DET,
 	.gpio_ldo1_en = TEGRA_GPIO_LDO_EN,
@@ -242,7 +237,6 @@ static void __init loki_uart_init(void)
 {
 	int debug_port_id;
 
-	tegra_uartd_device.dev.platform_data = &loki_uartd_pdata;
 	if (!is_tegra_debug_uartport_hs()) {
 		debug_port_id = uart_console_debug_init(3);
 		if (debug_port_id < 0)
@@ -250,12 +244,7 @@ static void __init loki_uart_init(void)
 
 		if (!tegra_is_port_available_from_dt(debug_port_id))
 			platform_device_register(uart_console_debug_device);
-	} else {
-		tegra_uartd_device.dev.platform_data = &loki_uartd_pdata;
-		if (!tegra_is_port_available_from_dt(3))
-			platform_device_register(&tegra_uartd_device);
 	}
-
 }
 
 static struct platform_device *loki_devices[] __initdata = {
