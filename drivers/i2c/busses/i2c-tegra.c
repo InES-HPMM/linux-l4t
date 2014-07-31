@@ -670,8 +670,10 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 	if (i2c_dev->is_dvc)
 		tegra_dvc_init(i2c_dev);
 
-	val = I2C_CNFG_NEW_MASTER_FSM |
-		(0x2 << I2C_CNFG_DEBOUNCE_CNT_SHIFT);
+	val = I2C_CNFG_NEW_MASTER_FSM;
+	if (!i2c_dev->is_high_speed_enable)
+		val |= (0x2 << I2C_CNFG_DEBOUNCE_CNT_SHIFT);
+
 	i2c_writel(i2c_dev, val, I2C_CNFG);
 	i2c_writel(i2c_dev, 0, I2C_INT_MASK);
 
@@ -966,8 +968,10 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 
 	spin_lock_irqsave(&i2c_dev->fifo_lock, flags);
 
-	cnfg = I2C_CNFG_NEW_MASTER_FSM | I2C_CNFG_PACKET_MODE_EN
-		| (0x2 << I2C_CNFG_DEBOUNCE_CNT_SHIFT);
+	cnfg = I2C_CNFG_NEW_MASTER_FSM | I2C_CNFG_PACKET_MODE_EN;
+	if (!i2c_dev->is_high_speed_enable)
+		cnfg |= (0x2 << I2C_CNFG_DEBOUNCE_CNT_SHIFT);
+
 	i2c_writel(i2c_dev, cnfg, I2C_CNFG);
 
 	if (i2c_dev->chipdata->has_config_load_reg) {
