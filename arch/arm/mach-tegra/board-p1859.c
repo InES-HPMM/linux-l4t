@@ -41,6 +41,11 @@
 static int is_e1860_b00;
 
 static __initdata struct tegra_clk_init_table e1860_a0x_i2s_clk_table[] = {
+/*
+ * audio clock tables based on baseboard revision. These rates will be set
+ * early on during boot up. Also, they will remain fixed throughout.
+ */
+/*         clock        parent          rate            enable (always-on) */
 	{ "i2s4_sync",	NULL,		12288000,	false},
 	{ "audio4",	"i2s4_sync",	12288000,	false},
 	{ "audio4_2x",	"audio4",	12288000,	false},
@@ -57,6 +62,7 @@ static __initdata struct tegra_clk_init_table e1860_a0x_i2s_clk_table[] = {
 };
 
 static __initdata struct tegra_clk_init_table e1860_b0x_i2s_clk_table[] = {
+/*         clock        parent          rate            enable (always-on) */
 	{ "i2s4_sync",	NULL,		12288000,	false},
 	{ "audio4",	"i2s4_sync",	12288000,	false},
 	{ "audio4_2x",	"audio4",	12288000,	false},

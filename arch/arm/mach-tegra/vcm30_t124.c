@@ -47,6 +47,17 @@
  *
  * If the clock POR values are different for a board, eg for i2s, those
  * would be hanled in the board files
+ *
+ * Use this table to initialize set of clocks during boot up with specified
+ * rate. If enabled, they will remain ON throughout.
+ *
+ * Add clocks here if they've attributes different from the ones in common
+ * clock table (mach-tegra/common.c). Parent=NULL implies the parent will not
+ * be changed by this table; its previous value will be retained.
+ * "rate" specifies only the initial rate for this clock.
+ *
+ * System busses should have clock always on, while individual controllers
+ * clocks can be enabled/disabled by the controller drivers.
  */
 static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 	/* name			parent		rate	enabled (always on)*/
@@ -136,8 +147,11 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
  */
 
 /*
- * Table of fixed target rates for automotive. parent and enable field are
- * don't care for this table.
+ * Table of clocks that have fixed, characterized rates. Entries in this table
+ * are orthagonal to the above table, but the "rate" set in the above table
+ * will be un-used if a clock is made FIXED via this table.
+ *
+ * Parent and enable fields cannot be set thru' this table.
  */
 
 static  __initdata struct tegra_clk_init_table
