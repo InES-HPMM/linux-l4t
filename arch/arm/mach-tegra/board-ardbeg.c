@@ -250,11 +250,6 @@ static void ardbeg_i2c_init(void)
 	}
 }
 
-static struct tegra_serial_platform_data ardbeg_uartd_pdata = {
-	.dma_req_selector = 19,
-	.modem_interrupt = false,
-};
-
 static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5639 = {
 	.gpio_hp_det = TEGRA_GPIO_HP_DET,
 	.gpio_ldo1_en = TEGRA_GPIO_LDO_EN,
@@ -380,27 +375,6 @@ static struct platform_device norrin_audio_device_max98090 = {
 		.platform_data = &norrin_audio_pdata_max98090,
 	},
 };
-
-static void __init ardbeg_uart_init(void)
-{
-	tegra_uartd_device.dev.platform_data = &ardbeg_uartd_pdata;
-	if (!is_tegra_debug_uartport_hs()) {
-		int debug_port_id = uart_console_debug_init(3);
-		if (debug_port_id < 0)
-			return;
-
-#ifdef CONFIG_TEGRA_FIQ_DEBUGGER
-		tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
-#else
-		if (!tegra_is_port_available_from_dt(debug_port_id))
-			platform_device_register(uart_console_debug_device);
-#endif
-	} else {
-		tegra_uartd_device.dev.platform_data = &ardbeg_uartd_pdata;
-		if (!tegra_is_port_available_from_dt(3))
-			platform_device_register(&tegra_uartd_device);
-	}
-}
 
 static void __init loki_pinmux_configure_uart_over_sd(void)
 {
@@ -1307,7 +1281,6 @@ static void __init tegra_ardbeg_late_init(void)
 #ifndef CONFIG_MACH_EXUMA
 	ardbeg_display_init();
 #endif
-	ardbeg_uart_init();
 	ardbeg_usb_init();
 	ardbeg_modem_init();
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM

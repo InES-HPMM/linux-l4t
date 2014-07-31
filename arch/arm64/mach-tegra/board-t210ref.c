@@ -152,34 +152,6 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-
-static struct tegra_serial_platform_data t210ref_uarta_pdata = {
-	.dma_req_selector = 8,
-	.modem_interrupt = false,
-};
-
-
-static void __init t210ref_uart_init(void)
-{
-
-	tegra_uarta_device.dev.platform_data = &t210ref_uarta_pdata;
-	if (!is_tegra_debug_uartport_hs()) {
-		int debug_port_id = uart_console_debug_init(0);
-		if (debug_port_id < 0)
-			return;
-
-#ifdef CONFIG_TEGRA_FIQ_DEBUGGER
-		tegra_serial_debug_init(TEGRA_UARTA_BASE,
-				INT_WDT_CPU, NULL, -1, -1);
-#else
-		platform_device_register(uart_console_debug_device);
-#endif
-	} else {
-		tegra_uarta_device.dev.platform_data = &t210ref_uarta_pdata;
-		platform_device_register(&tegra_uarta_device);
-	}
-}
-
 static struct platform_device *t210ref_devices[] __initdata = {
 	&tegra_pmu_device,
 #if defined(CONFIG_ARCH_TEGRA_13x_SOC)
@@ -538,8 +510,6 @@ static void __init tegra_t210ref_late_init(void)
 
 	t210ref_display_init();
 
-	if (of_machine_is_compatible("nvidia,e2141"))
-		t210ref_uart_init();
 	t210ref_usb_init();
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
 	t210ref_xusb_init();
