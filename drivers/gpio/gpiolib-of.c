@@ -223,7 +223,6 @@ void of_gpiochip_init(struct gpio_chip *chip)
 	struct device_node *np = chip->of_node;
 	struct device_node *np_config;
 	int state;
-	char *propname;
 	const char *statename;
 	const __be32 *gpio_nr;
 	int ngpios;
@@ -235,15 +234,8 @@ void of_gpiochip_init(struct gpio_chip *chip)
 		return;
 
 	/* For each defined state ID */
-	for (state = 0; ; state++) {
-		/* Retrieve the gpio-init-* property */
-		propname = kasprintf(GFP_KERNEL, "gpio-init-%d", state);
-		np_config  = of_parse_phandle(np, propname, 0);
-		if (!np_config) {
-			kfree(propname);
-			break;
-		}
-
+	state = 0;
+	for_each_child_of_node(np, np_config) {
 		if (!of_device_is_available(np_config))
 			continue;
 
@@ -281,9 +273,8 @@ void of_gpiochip_init(struct gpio_chip *chip)
 				chip->direction_output(chip, offset, 1);
 			}
 		}
-
 		of_node_put(np_config);
-		kfree(propname);
+		state++;
 	}
 }
 
