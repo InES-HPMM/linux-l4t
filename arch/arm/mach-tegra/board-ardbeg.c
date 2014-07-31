@@ -444,6 +444,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 	},
 };
 
+#if !defined(CONFIG_ARM64)
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.port_otg = true,
 	.has_hostpc = true,
@@ -520,19 +521,6 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 	},
 };
 
-static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.unaligned_dma_buf_supported = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
-	.op_mode = TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.hot_plug = false,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
-	},
-};
-
 static struct tegra_usb_platform_data tegra_ehci2_hsic_smsc_hub_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
@@ -546,19 +534,25 @@ static struct tegra_usb_platform_data tegra_ehci2_hsic_smsc_hub_pdata = {
 	},
 };
 
-
 static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_device = &tegra_ehci1_device,
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 };
 
+#else
+static struct tegra_usb_otg_data tegra_otg_pdata;
+#endif
+
 static void ardbeg_usb_init(void)
 {
+#if !defined(CONFIG_ARM64)
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 	int modem_id = tegra_get_modem_id();
+#endif
 	struct board_info bi;
 	tegra_get_pmu_board_info(&bi);
 
+#if !defined(CONFIG_ARM64)
 	if (board_info.sku == 1100 || board_info.board_id == BOARD_P1761 ||
 					board_info.board_id == BOARD_E1784)
 		tegra_ehci1_utmi_pdata.u_data.host.turn_off_vbus_on_lp0 = true;
@@ -645,14 +639,13 @@ static void ardbeg_usb_init(void)
 		tegra_udc_pdata.u_data.dev.is_xhci = true;
 	}
 
-#if !defined(CONFIG_ARM64)
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 	platform_device_register(&tegra_otg_device);
 #endif
 
 	/* Setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
-
+#if !defined(CONFIG_ARM64)
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 		if (!modem_id) {
 			if ((bi.board_id != BOARD_P1761) &&
@@ -674,7 +667,7 @@ static void ardbeg_usb_init(void)
 			platform_device_register(&tegra_ehci3_device);
 		}
 	}
-
+#endif
 }
 
 static struct tegra_xusb_platform_data xusb_pdata = {
@@ -756,6 +749,19 @@ static void ardbeg_xusb_init(void)
 }
 #endif
 
+static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+	},
+};
+
 static struct tegra_usb_modem_power_platform_data baseband_pdata = {
 	.tegra_ehci_device = &tegra_ehci2_device,
 	.tegra_ehci_pdata = &tegra_ehci2_hsic_baseband_pdata,
@@ -763,6 +769,7 @@ static struct tegra_usb_modem_power_platform_data baseband_pdata = {
 
 static void ardbeg_modem_init(void)
 {
+#if !defined(CONFIG_ARM64)
 	int modem_id = tegra_get_modem_id();
 	struct board_info board_info;
 	struct board_info pmu_board_info;
@@ -794,6 +801,7 @@ static void ardbeg_modem_init(void)
 	default:
 		return;
 	}
+#endif
 }
 
 #ifdef CONFIG_USE_OF
@@ -809,6 +817,10 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 			&tegra_udc_pdata.u_data.dev),
 	OF_DEV_AUXDATA("nvidia,tegra132-otg", 0x7d000000, "tegra-otg",
 			&tegra_otg_pdata),
+	OF_DEV_AUXDATA("nvidia,tegra132-ehci", 0x7d004000, "tegra-ehci.1",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra132-ehci", 0x7d008000, "tegra-ehci.2",
+			NULL),
 #endif
 	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
 		NULL),

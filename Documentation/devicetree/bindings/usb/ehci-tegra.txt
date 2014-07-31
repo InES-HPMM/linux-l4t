@@ -1,0 +1,57 @@
+* Nvidia USB tegra host controller
+
+This file documents the properties used by the ehci-tegra driver.
+
+Required properties:
+- compatible: Should be similar to "nvidia,tegra132-ehci"
+- reg: Specify start address and registers count details
+- interrupts: Specify the interrupts IRQ info for device
+
+Optional properties:
+- nvidia,has-hostpc: Specifies if the controller supports hostpc property.
+- nvidia,unaligned-dma-buf-supported: Specify if unaligned dma buffer are supported by controller.
+- nvidia,power-off-on-suspend: Specifies the phy to turnoff on bus_suspend.
+- nvidia,is-intf-utmi: Specify the phy type is UTMI, if not specified defaults to HSIC.
+- nvidia,remote-wakeup-supported: Specifies if the controller has support for remote-wakeup.
+- avdd_usb-supply: regulator supply for avdd_usb
+- avdd_pll_utmip-supply: regulator supply for avdd_pll_utmi
+- usb_vbus-supply: regulator supply for vbus supply
+- vddio_hsic-supply: HSIC regulator supply for HSIC rail
+UTMI Phy Parameters:
+- nvidia,hssync-start-delay
+- nvidia,idle-wait-delay
+- nvidia,elastic-limit
+- nvidia,term-range-adj
+- nvidia,xcvr-setup
+- nvidia,xcvr-lsfslew
+- nvidia,xcvr-lsrslew
+- nvidia,xcvr-use-fuses
+- nvidia,vbus-oc-map
+- nvidia,xcvr-setup-offset
+
+Example:
+	ehci@7d004000 {
+		compatible = "nvidia,tegra132-ehci";
+		reg = <0x0 0x7d004000 0x0 0x4000>;
+		interrupts = <0 21 0x04>;
+		nvidia,has-hostpc;
+		nvidia,unaligned-dma-buf-supported;
+		nvidia,power-off-on-suspend;
+		nvidia,is-intf-utmi;
+		nvidia,remote-wakeup-supported;
+		nvidia,hssync-start-delay = <0>;
+		nvidia,idle-wait-delay = <17>;
+		nvidia,elastic-limit = <16>;
+		nvidia,term-range-adj = <6>;
+		nvidia,xcvr-setup = <8>;
+		nvidia,xcvr-lsfslew = <2>;
+		nvidia,xcvr-lsrslew = <2>;
+		nvidia,xcvr-use-fuses;
+		nvidia,vbus-oc-map = <5>;
+		nvidia,xcvr-setup-offset = <0>;
+		status = "disabled";
+		avdd_usb-supply = <&as3722_gpio2>;
+		avdd_pll_utmip-supply = <&dcdc_1v8>;
+		usb_vbus-supply = <&usb1_usb2_vbus>;
+		vddio_hsic-supply = <&as3722_ldo2>;
+	};

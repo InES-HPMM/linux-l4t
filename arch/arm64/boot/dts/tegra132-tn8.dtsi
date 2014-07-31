@@ -107,6 +107,13 @@
 		interrupts = <166 0x01>;
 	};
 
+	ehci@7d004000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		vddio_hsic-supply = <&ldo5_reg>;
+		status = "disabled";
+	};
+
 	modem {
 		compatible = "nvidia,icera-i500";
 		nvidia,boot-gpio = <&gpio TEGRA_GPIO(O, 5) GPIO_ACTIVE_LOW>;

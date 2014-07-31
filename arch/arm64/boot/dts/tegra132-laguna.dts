@@ -131,6 +131,7 @@
 		nvidia,id-detection-type = <1>;
 		#extcon-cells = <1>;
 		status = "okay";
+		nvidia,id-detection-type=<1>;
 	};
 
 	otg@7d000000 {
@@ -139,6 +140,10 @@
 		extcon-cable-names = "id";
 		#extcon-cells = <1>;
 		status = "okay";
+		ehci1: ehci {
+			nvidia,enable-pmu-vbus-detection;
+			nvidia,id-detection-type=<1>;
+		};
 	};
 
 	psy_extcon {
@@ -177,5 +182,20 @@
 		pmic-i2c-voltage-register = <0x00>;
 		i2c-fs-rate = <400000>;
 		sel-conversion-slope = <1>;
+	};
+
+	ehci@7d004000 {
+		avdd_usb-supply = <&as3722_gpio2_supply>;
+		avdd_pll_utmip-supply = <&reg_1v8_supply>;
+		usb_vbus-supply = <&usb1_usb2_vbus>;
+		vddio_hsic-supply = <&as3722_ldo2>;
+		status = "okay";
+	};
+
+	ehci@7d008000 {
+		avdd_usb-supply = <&as3722_gpio2_supply>;
+		avdd_pll_utmip-supply = <&reg_1v8_supply>;
+		usb_vbus-supply = <&usb1_usb2_vbus>;
+		status = "okay";
 	};
 };

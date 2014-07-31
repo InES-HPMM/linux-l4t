@@ -42,6 +42,7 @@
 		serial2 = &uartc;
 		serial3 = &uartd;
 		udc0 = &udc;
+		ehci1 = &ehci2;
 	};
 
 	cpus {
@@ -1127,5 +1128,16 @@
 		reg = <0x0 0x70015000 0x0 0x00001000>;
 		interrupts = <0 3 0x04>;
 		status = "okay";
+	};
+
+	ehci2: ehci@7d004000 {
+		compatible = "nvidia,tegra132-ehci";
+		reg = <0x0 0x7d004000 0x0 0x4000>;
+		interrupts = <0 21 0x04>;
+		nvidia,has-hostpc;
+		nvidia,unaligned-dma-buf-supported;
+		nvidia,power-off-on-suspend;
+		nvidia,remote-wakeup-supported;
+		status = "disabled";
 	};
 };

@@ -149,6 +149,7 @@
 		#extcon-cells = <1>;
 		avdd_pll_utmip-supply = <&dcdc_1v8>;
 		avdd_usb-supply = <&as3722_gpio2>;
+		nvidia,id-detection-type=<1>;
 		status = "okay";
 	};
 
@@ -159,6 +160,9 @@
 		#extcon-cells = <1>;
 		usb_vbus-supply = <&usb0_vbus>;
 		status = "okay";
+		ehci1: ehci {
+			nvidia,id-detection-type=<1>;
+		};
 	};
 
 	psy_extcon {
@@ -177,5 +181,20 @@
 		type = <1>; /* AMS 3722/3723 */
 		retention-voltage = <15>; /* vret = .55V */
 		lock = <0>;
+	};
+
+	ehci@7d004000 {
+		avdd_usb-supply = <&as3722_gpio2>;
+		avdd_pll_utmip-supply = <&dcdc_1v8>;
+		usb_vbus-supply = <&usb1_usb2_vbus>;
+		vddio_hsic-supply = <&as3722_ldo2>;
+		status = "okay";
+	};
+
+	ehci@7d008000 {
+		avdd_usb-supply = <&as3722_gpio2>;
+		avdd_pll_utmip-supply = <&dcdc_1v8>;
+		usb_vbus-supply = <&usb1_usb2_vbus>;
+		status = "okay";
 	};
 };
