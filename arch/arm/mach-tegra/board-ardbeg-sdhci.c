@@ -538,7 +538,8 @@ int __init ardbeg_sdhci_init(void)
 	 */
 
 	platform_device_register(&tegra_sdhci_device3);
-	platform_device_register(&tegra_sdhci_device2);
+	if (!is_uart_over_sd_enabled())
+		platform_device_register(&tegra_sdhci_device2);
 	if (board_info.board_id != BOARD_PM359 &&
 			board_info.board_id != BOARD_PM375) {
 		platform_device_register(&tegra_sdhci_device0);

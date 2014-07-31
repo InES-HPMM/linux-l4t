@@ -55,5 +55,10 @@
 			regulator-disable-parent-after-enable;
 		};
 	};
+
+	serial@70006000 {
+		compatible = "nvidia,tegra20-uart";
+		console-port;
+	};
 };
 
