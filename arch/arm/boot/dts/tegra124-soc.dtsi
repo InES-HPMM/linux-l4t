@@ -737,7 +737,7 @@
 		      <0x0 0x538F0000 0x0 0x00001000>;
 		interrupts = <0 157 0x04
 			      0 158 0x04>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS2(GPU, GPUB) &common_as>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS2(GPU, GPUB) &gpu_as>;
 	};
 
 	xusb@70090000 {
