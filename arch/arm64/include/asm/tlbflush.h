@@ -30,18 +30,6 @@ extern void __cpu_flush_kern_tlb_range(unsigned long, unsigned long);
 
 extern struct cpu_tlb_fns cpu_tlb;
 
-
-/* cpumask_ran_on_only_one()
- *
- * Returns 1 if only one cpu is in mask. Otherwise,
- * return 0. This is a fast check for systems with NR_CPUS <= 64.
-*/
-
-static inline int cpumask_ran_on_only_one(const struct cpumask *mask)
-{
-	return (hweight64(mask->bits[0]) == 1);
-}
-
 #define FLUSH_TLB_ALL_THRESHOLD (PAGE_SIZE * 128)
 
 /*
@@ -105,46 +93,50 @@ static inline void flush_tlb_mm(struct mm_struct *mm)
 {
 	unsigned long asid = (unsigned long)ASID(mm) << 48;
 
+	preempt_disable();
 	dsb();
-	if (cpumask_ran_on_only_one(mm_cpumask(mm)))
+	if (cpumask_equal(mm_cpumask(mm), cpumask_of(smp_processor_id())))
 		asm("tlbi	aside1, %0" : : "r" (asid));
-	barrier();
-	if (!cpumask_ran_on_only_one(mm_cpumask(mm)))
+	else
 		asm("tlbi	aside1is, %0" : : "r" (asid));
 	dsb();
+	preempt_enable();
 }
 
 static inline void flush_tlb_page(struct vm_area_struct *vma,
 				  unsigned long uaddr)
 {
-	unsigned long addr = uaddr >> 12 |
-		((unsigned long)ASID(vma->vm_mm) << 48);
+	struct mm_struct *mm = vma->vm_mm;
+	unsigned long addr = uaddr >> 12 | ((unsigned long)ASID(mm) << 48);
 
+	preempt_disable();
 	dsb();
-	if (cpumask_ran_on_only_one(mm_cpumask(vma->vm_mm)))
+	if (cpumask_equal(mm_cpumask(mm), cpumask_of(smp_processor_id())))
 		asm("tlbi	vae1, %0" : : "r" (addr));
-	barrier();
-	if (!cpumask_ran_on_only_one(mm_cpumask(vma->vm_mm)))
+	else
 		asm("tlbi	vae1is, %0" : : "r" (addr));
 	dsb();
+	preempt_enable();
 }
 
 static inline void flush_tlb_range(struct vm_area_struct *vma,
 					unsigned long start, unsigned long end)
 {
-	if (cpumask_ran_on_only_one(mm_cpumask(vma->vm_mm))) {
+	struct mm_struct *mm = vma->vm_mm;
+
+	preempt_disable();
+	if (cpumask_equal(mm_cpumask(mm), cpumask_of(smp_processor_id()))) {
 		if (end - start > FLUSH_TLB_ALL_THRESHOLD)
 			local_flush_tlb_all();
 		else
 			__local_cpu_flush_user_tlb_range(start,end,vma);
-	}
-	barrier();
-	if (!cpumask_ran_on_only_one(mm_cpumask(vma->vm_mm))) {
+	} else {
 		if (end - start > FLUSH_TLB_ALL_THRESHOLD)
 			flush_tlb_all();
 		else
 			__cpu_flush_user_tlb_range(start,end,vma);
 	}
+	preempt_enable();
 }
 
 static inline void flush_tlb_kernel_range(unsigned long start,
