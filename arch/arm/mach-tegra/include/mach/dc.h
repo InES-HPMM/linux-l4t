@@ -37,6 +37,17 @@
 #define DC_N_WINDOWS		3
 #endif
 
+#define DSI_NODE		"/host1x/dsi"
+#define SOR_NODE		"/host1x/sor"
+#define DPAUX_NODE		"/host1x/dpaux"
+#define SOR1_NODE		"/host1x/sor1"
+#define DPAUX1_NODE		"/host1x/dpaux1"
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+#define HDMI_NODE		SOR1_NODE
+#else
+#define HDMI_NODE		"/host1x/hdmi"
+#endif
+
 #define DEFAULT_FPGA_FREQ_KHZ	160000
 
 #define TEGRA_DC_EXT_FLIP_MAX_WINDOW 6
