@@ -22,7 +22,7 @@
 #define _TEGRA_DVFS_H_
 
 #include <linux/of.h>
-#include <mach/thermal.h>
+#include <linux/tegra_throttle.h>
 
 #define MAX_DVFS_FREQS	40
 #define MAX_DVFS_TABLES	80

@@ -103,9 +103,6 @@ else
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
 endif
 endif
-ifeq ($(CONFIG_TEGRA_THERMAL_THROTTLE),y)
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra3_throttle.o
-endif
 obj-$(CONFIG_DEBUG_ICEDCC)              += sysfs-dcc.o
 obj-$(CONFIG_TEGRA_CLUSTER_CONTROL)     += sysfs-cluster.o
 obj-$(CONFIG_TEGRA_DYNAMIC_PWRDET)      += powerdetect.o

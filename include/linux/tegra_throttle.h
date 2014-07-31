@@ -1,7 +1,7 @@
 /*
- * arch/arm/mach-tegra/thermal.h
+ * include/linux/tegra_throttle.h
  *
- * Copyright (c) 2010-2013 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2010-2014 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -14,8 +14,8 @@
  *
  */
 
-#ifndef __MACH_THERMAL_H
-#define __MACH_THERMAL_H
+#ifndef __TEGRA_THROTTLE_H
+#define __TEGRA_THROTTLE_H
 
 #include <linux/therm_est.h>
 #include <linux/thermal.h>
@@ -59,22 +59,16 @@ struct balanced_throttle {
 };
 
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
-int tegra_throttle_init(struct mutex *cpu_lock);
 struct thermal_cooling_device *balanced_throttle_register(
 		struct balanced_throttle *bthrot,
 		char *type);
-void tegra_throttle_exit(void);
 bool tegra_is_throttling(int *count);
 unsigned long tegra_throttle_governor_speed(unsigned long requested_speed);
 #else
-static inline int tegra_throttle_init(struct mutex *cpu_lock)
-{ return 0; }
 static inline struct thermal_cooling_device *balanced_throttle_register(
 		struct balanced_throttle *bthrot,
 		char *type)
 { return ERR_PTR(-ENODEV); }
-static inline void tegra_throttle_exit(void)
-{}
 static inline bool tegra_is_throttling(int *count)
 { return false; }
 static inline unsigned long tegra_throttle_governor_speed(
@@ -82,4 +76,4 @@ static inline unsigned long tegra_throttle_governor_speed(
 { return requested_speed; }
 #endif /* CONFIG_TEGRA_THERMAL_THROTTLE */
 
-#endif	/* __MACH_THERMAL_H */
+#endif	/* __TEGRA_THROTTLE_H */

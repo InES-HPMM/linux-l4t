@@ -22,7 +22,7 @@
 #define __MACH_TEGRA_CPU_TEGRA_H
 
 #include <linux/fs.h>
-#include <mach/thermal.h>
+#include <linux/tegra_throttle.h>
 
 unsigned int tegra_getspeed(unsigned int cpu);
 int tegra_update_cpu_speed(unsigned long rate);

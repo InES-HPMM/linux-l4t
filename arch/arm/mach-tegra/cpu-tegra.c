@@ -1133,10 +1133,6 @@ static int __init tegra_cpufreq_init(void)
 
 	suspend_index = table_data->suspend_index;
 
-	ret = tegra_throttle_init(&tegra_cpu_lock);
-	if (ret)
-		return ret;
-
 	ret = tegra_auto_hotplug_init(&tegra_cpu_lock);
 	if (ret)
 		return ret;
@@ -1201,7 +1197,6 @@ late_initcall_sync(tegra_cpufreq_governor_init);
 
 static void __exit tegra_cpufreq_exit(void)
 {
-	tegra_throttle_exit();
 	tegra_cpu_edp_exit();
 	tegra_auto_hotplug_exit();
 	cpufreq_unregister_driver(&tegra_cpufreq_driver);

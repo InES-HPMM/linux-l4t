@@ -3,7 +3,7 @@
  *
  * Driver for TMP006, Skin temperature monitoring device
  *
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,8 +27,8 @@
 #include <linux/err.h>
 #include <linux/device.h>
 #include <linux/delay.h>
+#include <linux/tegra_throttle.h>
 #include <linux/thermal.h>
-#include <mach/thermal.h>
 #include <linux/regulator/consumer.h>
 #include <linux/regmap.h>
 

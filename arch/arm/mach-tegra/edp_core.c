@@ -24,7 +24,6 @@
 #include <linux/tegra-soc.h>
 
 #include <mach/edp.h>
-#include <mach/thermal.h>
 
 #include "clock.h"
 #include "common.h"

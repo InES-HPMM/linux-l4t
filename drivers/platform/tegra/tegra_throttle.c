@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra3_throttle.c
+ * drivers/platform/tegra/tegra_throttle.c
  *
  * Copyright (c) 2011-2014, NVIDIA CORPORATION. All rights reserved.
  *
@@ -26,16 +26,18 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include <linux/thermal.h>
+#include <linux/tegra_throttle.h>
+#include <linux/of.h>
 #include <linux/module.h>
-#include <mach/thermal.h>
+#include <linux/platform_device.h>
 
 #include "clock.h"
 #include "cpu-tegra.h"
 
 /* cpu_throttle_lock is tegra_cpu_lock from cpu-tegra.c */
-static struct mutex *cpu_throttle_lock;
 static DEFINE_MUTEX(bthrot_list_lock);
 static LIST_HEAD(bthrot_list);
+static LIST_HEAD(bthrot_cdev_list);
 static int num_throt;
 static struct cpufreq_frequency_table *cpu_freq_table;
 static unsigned long cpu_throttle_lowest_speed;
@@ -60,6 +62,13 @@ static struct {
 };
 
 static bool tegra_throttle_init_failed;
+
+struct tegra_throttle_data {
+	char *cdev_type;
+	struct throttle_table *throt_tab;
+	u32 num_states;
+	struct list_head list;
+};
 
 #define CAP_TBL_CAP_NAME(index)	(cap_freqs_table[index].cap_name)
 #define CAP_TBL_CAP_CLK(index)	(cap_freqs_table[index].cap_clk)
@@ -323,6 +332,16 @@ struct thermal_cooling_device *balanced_throttle_register(
 #ifdef CONFIG_DEBUG_FS
 	char name[32];
 #endif
+
+	bthrot->cdev = thermal_cooling_device_register(
+						type,
+						bthrot,
+						&tegra_throttle_cooling_ops);
+	if (IS_ERR(bthrot->cdev)) {
+		bthrot->cdev = NULL;
+		return ERR_PTR(-ENODEV);
+	}
+
 	mutex_lock(&bthrot_list_lock);
 	num_throt++;
 	list_add(&bthrot->node, &bthrot_list);
@@ -336,19 +355,10 @@ struct thermal_cooling_device *balanced_throttle_register(
 		return ERR_PTR(-ENODEV);
 #endif
 
-	bthrot->cdev = thermal_cooling_device_register(
-						type,
-						bthrot,
-						&tegra_throttle_cooling_ops);
-	if (IS_ERR(bthrot->cdev)) {
-		bthrot->cdev = NULL;
-		return ERR_PTR(-ENODEV);
-	}
-
 	return bthrot->cdev;
 }
 
-int __init tegra_throttle_init(struct mutex *cpu_lock)
+static int tegra_throttle_init(void)
 {
 	int i;
 	struct clk *c;
@@ -361,8 +371,6 @@ int __init tegra_throttle_init(struct mutex *cpu_lock)
 	cpu_freq_table = table_data->freq_table;
 	cpu_throttle_lowest_speed =
 		cpu_freq_table[table_data->throttle_lowest_index].frequency;
-
-	cpu_throttle_lock = cpu_lock;
 
 #ifdef CONFIG_DEBUG_FS
 	throttle_debugfs_root = debugfs_create_dir("tegra_throttle", NULL);
@@ -388,10 +396,158 @@ int __init tegra_throttle_init(struct mutex *cpu_lock)
 	return 0;
 }
 
-void tegra_throttle_exit(void)
+static void tegra_throttle_exit(void)
 {
 #ifdef CONFIG_DEBUG_FS
 	debugfs_remove_recursive(throttle_debugfs_root);
 #endif
 }
 
+
+static struct throttle_table
+	*throttle_parse_dt_thrt_tbl(struct device *dev,
+		struct device_node *np, int num_states)
+{
+	int i, j;
+	u32 *val;
+	int ret = 0;
+	int count = 0;
+	struct throttle_table *throt_tab;
+
+	throt_tab = devm_kzalloc(dev,
+			sizeof(struct throttle_table)*num_states, GFP_KERNEL);
+	if (IS_ERR_OR_NULL(throt_tab))
+		return NULL;
+
+	val = kzalloc(sizeof(u32)*num_states*NUM_OF_CAP_FREQS, GFP_KERNEL);
+	if (IS_ERR_OR_NULL(val))
+		return NULL;
+
+	ret = of_property_read_u32_array(np, "throttle_table",
+					val, num_states*NUM_OF_CAP_FREQS);
+	if (ret) {
+		dev_err(dev,
+			"malformed throttle_table property in %s : no. of entries:%d; return value: %d\n",
+			np->full_name, num_states*NUM_OF_CAP_FREQS, ret);
+		return NULL;
+	}
+
+	for (i = 0; i < num_states; ++i) {
+		for (j = 0; j < NUM_OF_CAP_FREQS; ++j)
+			throt_tab[i].cap_freqs[j] = val[count++];
+	}
+
+	kfree(val);
+	return throt_tab;
+}
+
+static struct tegra_throttle_data
+		*parse_throttle_dt_data(struct device *dev)
+{
+	u32 val;
+	const char *str;
+	struct device_node *child;
+	struct tegra_throttle_data *pdata = NULL;
+	struct device_node *np = dev->of_node;
+
+	for_each_child_of_node(np, child) {
+		/* Check whether child is enabled or not */
+		if (!of_device_is_available(child))
+			continue;
+
+		pdata = devm_kzalloc(dev,
+				sizeof(struct tegra_throttle_data), GFP_KERNEL);
+		if (IS_ERR_OR_NULL(pdata))
+			return NULL;
+
+		if (of_property_read_string(child, "cdev-type", &str) == 0)
+			pdata->cdev_type = (char *)str;
+
+		if (of_property_read_u32(child, "num_states", &val) == 0)
+			pdata->num_states = val;
+
+		pdata->throt_tab =
+			throttle_parse_dt_thrt_tbl(dev, child, val);
+		if  (!pdata->throt_tab)
+			return NULL;
+
+		list_add(&pdata->list, &bthrot_cdev_list);
+
+	}
+
+	return pdata;
+}
+
+static int tegra30_throttle_probe(struct platform_device *pdev)
+{
+	char *type;
+	int ret = 0;
+	struct tegra_throttle_data *pdata;
+	struct balanced_throttle *bthrot;
+
+	ret = tegra_throttle_init();
+	if (ret) {
+		dev_err(&pdev->dev, "tegra throttle init failed\n");
+		return -ENOMEM;
+	}
+
+	pdata = parse_throttle_dt_data(&pdev->dev);
+
+	if (!pdata) {
+		dev_err(&pdev->dev, "No Platform data\n");
+		return -EIO;
+	}
+
+	list_for_each_entry(pdata, &bthrot_cdev_list, list) {
+		bthrot = devm_kzalloc(&pdev->dev,
+			sizeof(struct balanced_throttle), GFP_KERNEL);
+		if (IS_ERR(bthrot))
+			return -ENOMEM;
+
+		bthrot->throt_tab_size
+			= pdata->num_states;
+		bthrot->throt_tab = pdata->throt_tab;
+		type = pdata->cdev_type;
+
+		if (IS_ERR_OR_NULL(balanced_throttle_register(bthrot, type)))
+			dev_err(&pdev->dev, "balanced_throttle_register FAILED\n");
+	}
+
+	return 0;
+}
+
+static int tegra30_throttle_remove(struct platform_device *pdev)
+{
+	struct balanced_throttle *bthrot;
+
+	mutex_lock(&bthrot_list_lock);
+	list_for_each_entry(bthrot, &bthrot_list, node) {
+		thermal_cooling_device_unregister(bthrot->cdev);
+	}
+	mutex_unlock(&bthrot_list_lock);
+
+	tegra_throttle_exit();
+
+	return 0;
+}
+
+static struct of_device_id tegra30_throttle_of_match[] = {
+	{ .compatible = "nvidia,tegra30-throttle", },
+	{ },
+};
+
+static struct platform_driver tegra30_throtlle_driver = {
+	.driver = {
+		.name = "tegra-throttle",
+		.owner = THIS_MODULE,
+		.of_match_table = tegra30_throttle_of_match,
+	},
+	.probe = tegra30_throttle_probe,
+	.remove = tegra30_throttle_remove,
+};
+
+module_platform_driver(tegra30_throtlle_driver);
+
+MODULE_DESCRIPTION("Tegra Balanced Throttle Driver");
+MODULE_AUTHOR("NVIDIA");
+MODULE_LICENSE("GPL");
