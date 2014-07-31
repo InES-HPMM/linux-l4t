@@ -1763,8 +1763,8 @@ static int tegra_pullup(struct usb_gadget *gadget, int is_on)
 /* Release udc structures */
 static void tegra_udc_release(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct tegra_udc *udc = platform_get_drvdata(pdev);
+	struct usb_gadget *gadget = dev_to_usb_gadget(dev);
+	struct tegra_udc *udc = container_of(gadget, struct tegra_udc, gadget);
 
 	complete(udc->done);
 	usb_phy_shutdown(get_usb_phy(udc->phy));
@@ -3323,8 +3323,8 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 		kfree(udc->edev);
 	}
 
-	usb_del_gadget_udc(&udc->gadget);
 	udc->done = &done;
+	usb_del_gadget_udc(&udc->gadget);
 
 	cancel_delayed_work(&udc->non_std_charger_work);
 	cancel_work_sync(&udc->irq_work);
