@@ -63,6 +63,19 @@ static struct {
 
 static bool tegra_throttle_init_failed;
 
+struct throttle_table {
+	unsigned long cap_freqs[NUM_OF_CAP_FREQS];
+};
+
+struct balanced_throttle {
+	struct thermal_cooling_device *cdev;
+	struct list_head node;
+	unsigned long cur_state;
+	int throttle_count;
+	int throt_tab_size;
+	struct throttle_table *throt_tab;
+};
+
 struct tegra_throttle_data {
 	char *cdev_type;
 	struct throttle_table *throt_tab;
@@ -325,7 +338,7 @@ static struct dentry *throttle_debugfs_root;
 #endif /* CONFIG_DEBUG_FS */
 
 
-struct thermal_cooling_device *balanced_throttle_register(
+static struct thermal_cooling_device *balanced_throttle_register(
 		struct balanced_throttle *bthrot,
 		char *type)
 {

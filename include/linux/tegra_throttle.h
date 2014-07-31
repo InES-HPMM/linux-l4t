@@ -45,30 +45,10 @@ struct tegra_cooling_device {
 /* cpu, gpu(0|1), cbus(1|2), sclk, emc */
 #define NUM_OF_CAP_FREQS	(1 + GBUS_CNT + CBUS_CNT + 1 + 1)
 
-struct throttle_table {
-	unsigned long cap_freqs[NUM_OF_CAP_FREQS];
-};
-
-struct balanced_throttle {
-	struct thermal_cooling_device *cdev;
-	struct list_head node;
-	unsigned long cur_state;
-	int throttle_count;
-	int throt_tab_size;
-	struct throttle_table *throt_tab;
-};
-
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
-struct thermal_cooling_device *balanced_throttle_register(
-		struct balanced_throttle *bthrot,
-		char *type);
 bool tegra_is_throttling(int *count);
 unsigned long tegra_throttle_governor_speed(unsigned long requested_speed);
 #else
-static inline struct thermal_cooling_device *balanced_throttle_register(
-		struct balanced_throttle *bthrot,
-		char *type)
-{ return ERR_PTR(-ENODEV); }
 static inline bool tegra_is_throttling(int *count)
 { return false; }
 static inline unsigned long tegra_throttle_governor_speed(
