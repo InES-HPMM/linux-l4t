@@ -507,6 +507,12 @@ static int sysedp_dynamic_capping_probe(struct platform_device *pdev)
 	struct tegra_sysedp_corecap *cap;
 	int i;
 
+	/* only one instance is allowed */
+	if (capping_device_platdata != NULL) {
+		WARN_ON(capping_device_platdata != NULL);
+		return -EINVAL;
+	}
+
 	if (pdev->dev.of_node)
 		of_sysedp_dynamic_capping_get_pdata(pdev,
 						    &capping_device_platdata);
