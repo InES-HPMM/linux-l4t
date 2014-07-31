@@ -1571,10 +1571,8 @@ err_put_utmi_vbus_reg:
 			regulator_disable(reg);
 	}
 	regulator_disable(tegra->xusb_s3p3v_reg);
-err_null_regulator:
-	for (i = 0; i < utmi_pads; i++)
-		tegra->xusb_utmi_vbus_regs[i] = NULL;
 	kzfree(tegra->xusb_utmi_vbus_regs);
+err_null_regulator:
 	tegra->xusb_s1p05v_reg = NULL;
 	tegra->xusb_s3p3v_reg = NULL;
 	tegra->xusb_s1p8v_reg = NULL;
