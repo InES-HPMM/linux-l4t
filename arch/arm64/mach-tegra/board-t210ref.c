@@ -388,6 +388,7 @@ struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0x0, "tegra-snd-rt5639",
 			NULL),
 	OF_DEV_AUXDATA("raydium,rm_ts_spidev", 0, "rm_ts_spidev", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
 	{}
 };
 #else
