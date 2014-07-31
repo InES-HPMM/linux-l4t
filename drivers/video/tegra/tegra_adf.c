@@ -1007,14 +1007,16 @@ static int tegra_adf_intf_blank(struct adf_interface *intf, u8 state)
 		return -ENOTTY;
 	}
 
+#if IS_ENABLED(CONFIG_ADF_TEGRA_FBDEV)
 	if (intf->flags & ADF_INTF_FLAG_PRIMARY) {
 		struct fb_event event;
 		int fb_state = tegra_adf_dpms_to_fb_blank(state);
 
-		event.info = NULL;
+		event.info = adf_info->fbdev.info;
 		event.data = &fb_state;
 		fb_notifier_call_chain(FB_EVENT_BLANK, &event);
 	}
+#endif
 
 	return 0;
 }
