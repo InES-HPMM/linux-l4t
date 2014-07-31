@@ -190,17 +190,6 @@
 				};
 			};
 		};
-
-		vdd_cdc_1v2_aud: regulator@101 {
-			compatible = "regulator-fixed-sync";
-			reg = <101>;
-			regulator-name = "vdd_cdc_1v2_aud";
-			regulator-min-microvolt = <1200000>;
-			regulator-max-microvolt = <1200000>;
-			gpio = <&pca9539_76 9 0>;
-			enable-active-high;
-			startup-delay-us = <250000>;
-		};
 	};
 
 	/* Add regulator for Camera module E2162 */
@@ -411,7 +400,6 @@ e 1.2V*/
 		nvidia,i2s-param-hifi = <0 1 2 16 48000 2 1536000>;
 		nvidia,i2s-param-bt = <1 1 0 16 8000 1 512000>;
 		nvidia,i2s-param-baseband = <3 1 2 16 16000 2 1024000>;
-		ldoen-supply = <&vdd_cdc_1v2_aud>;
 	};
 
 	modem {

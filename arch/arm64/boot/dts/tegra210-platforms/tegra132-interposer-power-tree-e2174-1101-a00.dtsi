@@ -48,6 +48,14 @@
 		dvdd_sata-supply = <&max77620_ldo8>;
 	};
 
+	sound {
+		ldoen-supply = <&vdd_cdc_1v2_aud>;
+		spkvdd-supply = <&vdd_sys_boost>;
+		dbvdd-supply = <&max77620_sd3>;
+		avdd-supply = <&max77620_sd3>;
+		dmicvdd-supply = <&max77620_sd3>;
+	};
+
 	power-detect {
 		pwrdet-sdmmc1-supply = <&max77620_sd3>;
 		pwrdet-sdmmc4-supply = <&max77620_sd3>;
