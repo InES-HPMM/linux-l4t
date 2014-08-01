@@ -81,6 +81,22 @@
 			 };
 		};
 	};
+	regulators {
+		compatible = "simple-bus";
+		device_type = "fixed-regulators";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		vdd_sd: regulator@1 {
+			compatible = "regulator-fixed-sync";
+			regulator-name = "vddio_sd_slot-reg";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&pca9539_75 11 1>;
+			enable-active-high;
+		};
+	};
+
 
 	serial@70006000 {
 		status = "okay";
@@ -207,6 +223,7 @@
 	};
 
 	sdhci@700b0400 {
+		vddio_sd_slot-supply = <&vdd_sd>;
 		status = "okay";
 	};
 
