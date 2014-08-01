@@ -1299,7 +1299,8 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 			AUX_ELPG_VCORE_DOWN);
 		xusb_writel(val, XUSB_PADCTL_ELPG_PROGRAM_0);
 	} else {
-		tegra_ahci_uphy_init();
+		if (tegra_platform_is_silicon())
+			tegra_ahci_uphy_init();
 
 		tegra_periph_reset_deassert(clk_sata);
 		tegra_periph_reset_deassert(clk_sata_oob);
