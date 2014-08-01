@@ -84,11 +84,17 @@ static int __init e1860_fixed_target_rate_init(void)
 	struct tegra_clk_init_table *clk_table = (is_e1860_b00) ?
 			e1860_b0x_i2s_clk_table : e1860_a0x_i2s_clk_table;
 
+	/* Set rate of audio clocks */
+	tegra_clk_init_from_table(clk_table);
+
+	/* Set target fixed rate of audio clocks */
 	tegra_vcm30_t124_set_fixed_rate(clk_table);
 
 	/* For voice call in b0x, set i2s4 clock in master mode */
-	if (is_e1860_b00 && modem_id)
+	if (is_e1860_b00 && modem_id) {
+		tegra_clk_init_from_table(e1860_b0x_i2s4_clk_table);
 		tegra_vcm30_t124_set_fixed_rate(e1860_b0x_i2s4_clk_table);
+	}
 
 	return 0;
 }
