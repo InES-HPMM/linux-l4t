@@ -22,6 +22,18 @@
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/core.h>
 
+/* create empty functions when MMC_BLOCK is disabled */
+#if !defined(CONFIG_MMC_BLOCK_BOUNCE)
+#undef DEFINE_EVENT
+#define DEFINE_EVENT(evt_class, name, proto, ...) \
+static inline void trace_ ## name(proto) {}
+
+#undef DEFINE_EVENT_CONDITION
+#define DEFINE_EVENT_CONDITION(template, name, proto,		\
+			       args, cond)			\
+static inline void trace_ ## name(proto) {}
+#endif /* !CONFIG_MMC_BLOCK_BOUNCE || __CHECKER__ */
+
 /*
  * Unconditional logging of mmc block erase operations,
  * including cmd, address, size
