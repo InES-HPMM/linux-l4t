@@ -62,6 +62,21 @@ static struct module *owner = THIS_MODULE;
 static DEFINE_PER_CPU(struct cpumask, idle_mask);
 static DEFINE_PER_CPU(struct cpuidle_driver, cpuidle_drv);
 
+static int tegra210_enter_hvc(struct cpuidle_device *dev,
+		struct cpuidle_driver *drv, int index)
+{
+	/* TODO: fix the counter */
+	flowctrl_write_cc4_ctrl(dev->cpu, 0xfffffffd);
+	cpu_retention_enable(7);
+
+	cpu_do_idle();
+
+	cpu_retention_enable(0);
+	flowctrl_write_cc4_ctrl(dev->cpu, 0);
+
+	return index;
+}
+
 static int tegra210_enter_retention(struct cpuidle_device *dev,
 		struct cpuidle_driver *drv, int index)
 {
@@ -317,6 +332,15 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
 	state = &drv->states[1];
+	snprintf(state->name, CPUIDLE_NAME_LEN, "C3");
+	snprintf(state->desc, CPUIDLE_DESC_LEN, "HW controlled Vmin");
+	state->enter = tegra210_enter_hvc;
+	state->exit_latency = 10;
+	state->target_residency = 10;
+	state->power_usage = 5000;
+	state->flags = CPUIDLE_FLAG_TIME_VALID;
+
+	state = &drv->states[2];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "C4");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU retention");
 	state->enter = tegra210_enter_retention;
@@ -325,7 +349,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->power_usage = 5000;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
-	state = &drv->states[2];
+	state = &drv->states[3];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "C7");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU Core Powergate");
 	state->enter = tegra210_enter_c7;
@@ -334,7 +358,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->power_usage = 500;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
-	state = &drv->states[3];
+	state = &drv->states[4];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "CC6");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "Cluster power gate");
 	state->enter = tegra210_enter_cc6;
@@ -343,7 +367,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->power_usage = 400;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
-	state = &drv->states[4];
+	state = &drv->states[5];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "CC7");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU rail gate");
 	state->enter = tegra210_enter_cc7;
@@ -352,7 +376,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
-	state = &drv->states[5];
+	state = &drv->states[6];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "SC2");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "DRAM SR + MC CG");
 	state->enter = tegra210_enter_sc2;
@@ -361,7 +385,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
-	state = &drv->states[6];
+	state = &drv->states[7];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "SC3");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "DRAM SR + MC CG + Memory PLL disabled");
 	state->enter = tegra210_enter_sc3;
@@ -370,7 +394,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
-	state = &drv->states[7];
+	state = &drv->states[8];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "SC4");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "DRAM SR + MC CG + Memory PLL & PLLP disabled");
 	state->enter = tegra210_enter_sc4;
@@ -379,7 +403,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
-	state = &drv->states[8];
+	state = &drv->states[9];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "SC7");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "VDD_SOC turned off");
 	state->enter = tegra210_enter_sc7;
@@ -388,7 +412,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
-	drv->state_count = 9;
+	drv->state_count = 10;
 
 	ret = cpuidle_register(drv, NULL);
 	if (ret) {
