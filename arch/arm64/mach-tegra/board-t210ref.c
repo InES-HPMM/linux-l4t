@@ -111,7 +111,9 @@ static struct nvadsp_platform_data nvadsp_plat_data;
 
 static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	/* name		parent		rate		enabled */
+#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	{ "pll_m",	NULL,		0,		false},
+#endif
 	{ "hda",	"pll_p",	108000000,	false},
 	{ "hda2codec_2x", "pll_p",	48000000,	false},
 	{ "pwm",	"pll_p",	48000000,	false},
