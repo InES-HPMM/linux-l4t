@@ -134,6 +134,7 @@ obj-y += bond_out.o
 obj-y += flowctrl.o
 obj-$(CONFIG_DEBUG_ICEDCC) += sysfs-dcc.o
 obj-$(CONFIG_TEGRA_CLUSTER_CONTROL) += sysfs-cluster.o
+obj-$(CONFIG_TEGRA_HMP_CLUSTER_CONTROL) += sysfs-cluster.o
 ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
 obj-$(CONFIG_ARCH_TEGRA_HAS_CL_DVFS) += tegra_cl_dvfs.o
 endif

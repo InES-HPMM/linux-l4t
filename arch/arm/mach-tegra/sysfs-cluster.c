@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/sysfs-cluster.c
  *
- * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -75,6 +75,7 @@
 #include <linux/smp.h>
 #include <linux/io.h>
 #include <linux/clk.h>
+#include <linux/tegra_cluster_control.h>
 
 #include "clock.h"
 #include "iomap.h"
@@ -302,7 +303,7 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 		} else {
 			PRINT_CLUSTER(("cluster/active: '%*.*s' invalid, "
 				" must be g, lp, or toggle\n",
-				count, count, buf));
+				(int)count, (int)count, buf));
 			ret = -EINVAL;
 			break;
 		}
@@ -330,7 +331,8 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 			flags |= TEGRA_POWER_CLUSTER_IMMEDIATE;
 		else {
 			PRINT_CLUSTER(("cluster/immediate: '%*.*s' invalid, "
-				"must be 0 or 1\n", count, count, buf));
+				"must be 0 or 1\n", (int)count, (int)count,
+				buf));
 			ret = -EINVAL;
 			break;
 		}
@@ -345,7 +347,8 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 			flags |= TEGRA_POWER_CLUSTER_FORCE;
 		else {
 			PRINT_CLUSTER(("cluster/force: '%*.*s' invalid, "
-				"must be 0 or 1\n", count, count, buf));
+				"must be 0 or 1\n", (int)count, (int)count,
+				buf));
 			ret = -EINVAL;
 			break;
 		}
@@ -358,7 +361,7 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 		cnt = sscanf(buf, "%d\n", &tmp);
 		if ((cnt != 1) || (tmp < 0)) {
 			PRINT_CLUSTER(("cluster/wake_ms: '%*.*s' is invalid\n",
-				count, count, buf));
+				(int)count, (int)count, buf));
 			ret = -EINVAL;
 			break;
 		}
@@ -374,7 +377,8 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 			power_mode = 1;
 		else {
 			PRINT_CLUSTER(("cluster/power_mode: '%*.*s' invalid, "
-				"must be 2 or 1\n", count, count, buf));
+				"must be 2 or 1\n", (int)count, (int)count,
+				buf));
 			ret = -EINVAL;
 			break;
 		}
