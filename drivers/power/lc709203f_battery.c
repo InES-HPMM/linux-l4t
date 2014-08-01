@@ -133,9 +133,6 @@ static int lc709203f_update_soc_voltage(struct lc709203f_chip *chip)
 				chip->pdata->threshold_soc,
 				chip->pdata->maximum_soc, val * 100);
 
-	if (chip->soc >= LC709203F_BATTERY_FULL && chip->charge_complete != 1)
-		chip->soc = LC709203F_BATTERY_FULL - 1;
-
 	if (chip->status == POWER_SUPPLY_STATUS_FULL && chip->charge_complete) {
 		chip->soc = LC709203F_BATTERY_FULL;
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_FULL;
