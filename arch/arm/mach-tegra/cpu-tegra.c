@@ -645,14 +645,16 @@ static int status_show(struct seq_file *file, void *data)
 	return 0;
 }
 
-static int longattr_open(struct inode *inode, struct file *file)
+static int status_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, inode->i_private, NULL);
+	return single_open(file, status_show, inode->i_private);
 }
 
-static const struct file_operations longattr_fops = {
-	.open = longattr_open,
+static const struct file_operations status_fops = {
+	.open = status_open,
 	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
 };
 
 static struct dentry *cpu_tegra_debugfs_root;
@@ -681,7 +683,7 @@ static int __init tegra_cpu_debug_init(void)
 
 	if (!debugfs_create_file("status", S_IRUGO,
 				 sysedp_capping_dir,
-				 status_show, &longattr_fops))
+				 NULL, &status_fops))
 		goto err_out;
 
 	return 0;
