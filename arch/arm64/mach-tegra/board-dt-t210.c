@@ -144,6 +144,8 @@ struct of_dev_auxdata t210_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra210-adsp", TEGRA_APE_AMC_BASE,
 				"tegra210-adsp", &nvadsp_plat_data),
 #endif
+	OF_DEV_AUXDATA("nvidia,tegra210-adsp-audio", 0x702ef000, "adsp_audio.3",
+		NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-efuse", TEGRA_FUSE_BASE, "tegra-fuse",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra-bluedroid_pm", 0, "bluedroid_pm",
