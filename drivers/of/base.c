@@ -1284,7 +1284,7 @@ void of_phandle_iter_start(struct of_phandle_iter *iter,
 			   const char *list_name, const char *cells_name,
 			   int cell_count)
 {
-	size_t bytes;
+	int bytes;
 
 	iter->cur = of_get_property(np, list_name, &bytes);
 	if (!iter->cur)
@@ -1294,7 +1294,7 @@ void of_phandle_iter_start(struct of_phandle_iter *iter,
 		iter->end += bytes / sizeof(*iter->cur);
 	iter->cells_name = cells_name;
 	iter->cell_count = cell_count;
-of_phandle_iter_next(iter);
+	of_phandle_iter_next(iter);
 }
 EXPORT_SYMBOL_GPL(of_phandle_iter_start);
 
