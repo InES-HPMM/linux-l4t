@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/include/mach/irqs.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2011-2013, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION, All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -650,7 +650,7 @@
 #define INT_HOST1X_MPCORE_GENERAL	(INT_TRI_BASE + 3)
 #define INT_MPE_GENERAL			(INT_TRI_BASE + 4)
 #define INT_VI_GENERAL			(INT_TRI_BASE + 5)
-#define INT_EPP_GENERAL			(INT_TRI_BASE + 6)
+#define INT_ISPB_GENERAL		(INT_TRI_BASE + 6)
 #define INT_ISP_GENERAL			(INT_TRI_BASE + 7)
 #define INT_2D_GENERAL			(INT_TRI_BASE + 8)
 #define INT_DISPLAY_GENERAL		(INT_TRI_BASE + 9)
