@@ -811,7 +811,7 @@ void tick_nohz_idle_enter(void)
 	ts = &__get_cpu_var(tick_cpu_sched);
 	/*
 	 * set ts->inidle unconditionally. even if the system did not
-	 * switch to nohz mode the cpu frequency governers rely on the
+	 * switch to nohz mode the cpu frequency governors rely on the
 	 * update of the idle time accounting in tick_nohz_start_idle().
 	 */
 	ts->inidle = 1;
