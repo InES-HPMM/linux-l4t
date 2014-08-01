@@ -25,8 +25,10 @@
 #include <media/camera.h>
 #include <media/ar0261.h>
 #include <media/imx135.h>
+#include <media/imx214.h>
 #include <media/imx179.h>
 #include <media/dw9718.h>
+#include <media/dw9714.h>
 #include <media/as364x.h>
 #include <media/ov5693.h>
 #include <media/ov7695.h>
@@ -289,6 +291,76 @@ struct imx135_platform_data t210ref_imx135_data = {
 	.power_off = t210ref_imx135_power_off,
 };
 
+static int t210ref_imx214_power_on(struct imx214_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
+		return -EFAULT;
+
+	/* disable CSIA/B IOs DPD mode to turn on camera for t210ref */
+	tegra_io_dpd_disable(&csia_io);
+	tegra_io_dpd_disable(&csib_io);
+
+	gpio_set_value(CAM_RSTN, 0);
+	gpio_set_value(CAM_AF_PWDN, 0);
+	gpio_set_value(CAM1_PWDN, 0);
+	usleep_range(10, 20);
+
+	err = regulator_enable(pw->avdd);
+	if (err)
+		goto imx214_avdd_fail;
+
+	err = regulator_enable(pw->iovdd);
+	if (err)
+		goto imx214_iovdd_fail;
+
+	usleep_range(1, 2);
+	gpio_set_value(CAM_RSTN, 1);
+	gpio_set_value(CAM1_PWDN, 1);
+	gpio_set_value(CAM_AF_PWDN, 1);
+
+	usleep_range(300, 310);
+
+	return 1;
+
+
+imx214_iovdd_fail:
+	regulator_disable(pw->avdd);
+
+imx214_avdd_fail:
+	tegra_io_dpd_enable(&csia_io);
+	tegra_io_dpd_enable(&csib_io);
+	pr_err("%s failed.\n", __func__);
+	return -ENODEV;
+}
+
+static int t210ref_imx214_power_off(struct imx214_power_rail *pw)
+{
+	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd))) {
+		tegra_io_dpd_enable(&csia_io);
+		tegra_io_dpd_enable(&csib_io);
+		return -EFAULT;
+	}
+
+	regulator_disable(pw->iovdd);
+	regulator_disable(pw->avdd);
+
+	gpio_set_value(CAM_RSTN, 0);
+	gpio_set_value(CAM_AF_PWDN, 0);
+	gpio_set_value(CAM1_PWDN, 0);
+
+	/* put CSIA/B IOs into DPD mode to save additional power for t210ref */
+	tegra_io_dpd_enable(&csia_io);
+	tegra_io_dpd_enable(&csib_io);
+	return 0;
+}
+
+struct imx214_platform_data t210ref_imx214_data = {
+	.power_on = t210ref_imx214_power_on,
+	.power_off = t210ref_imx214_power_off,
+};
+
 static int t210ref_dw9718_power_on(struct dw9718_power_rail *pw)
 {
 	int err;
@@ -356,6 +428,66 @@ static struct dw9718_platform_data t210ref_dw9718_data = {
 	.power_on = t210ref_dw9718_power_on,
 	.power_off = t210ref_dw9718_power_off,
 	.detect = t210ref_dw9718_detect,
+};
+
+static int t210ref_dw9714_power_on(struct dw9714_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(WARN_ON(!pw || !pw->vdd || !pw->vdd_i2c)))
+		return -EFAULT;
+
+	err = regulator_enable(pw->vdd_i2c);
+	if (unlikely(err))
+		goto dw9714_vdd_i2c_fail;
+
+	err = regulator_enable(pw->vdd);
+	if (unlikely(err))
+		goto dw9714_vdd_fail;
+
+	gpio_set_value(CAM_AF_PWDN, 1);
+
+	usleep_range(12000, 12500);
+
+	return 0;
+
+dw9714_vdd_fail:
+	regulator_disable(pw->vdd_i2c);
+
+dw9714_vdd_i2c_fail:
+	pr_err("%s FAILED\n", __func__);
+
+	return -ENODEV;
+}
+
+static int t210ref_dw9714_power_off(struct dw9714_power_rail *pw)
+{
+	if (unlikely(WARN_ON(!pw || !pw->vdd || !pw->vdd_i2c)))
+		return -EFAULT;
+
+	gpio_set_value(CAM_AF_PWDN, 0);
+	regulator_disable(pw->vdd);
+	regulator_disable(pw->vdd_i2c);
+
+	return 0;
+}
+
+static struct nvc_focus_cap dw9714_cap = {
+	.settle_time = 30,
+	.slew_rate = 0x3A200C,
+	.focus_macro = 450,
+	.focus_infinity = 200,
+	.focus_hyper = 200,
+};
+
+static struct dw9714_platform_data t210ref_dw9714_data = {
+	.cfg = NVC_CFG_NODEV,
+	.num = 0,
+	.sync = 0,
+	.dev_name = "focuser",
+	.cap = &dw9714_cap,
+	.power_on = t210ref_dw9714_power_on,
+	.power_off = t210ref_dw9714_power_off,
 };
 
 static struct as364x_platform_data t210ref_as3648_data = {
@@ -742,6 +874,8 @@ static struct camera_data_blob t210ref_camera_lut[] = {
 	{"t210ref_as3648_pdata", &t210ref_as3648_data},
 	{"t210ref_ov7695_pdata", &t210ref_ov7695_pdata},
 	{"t210ref_ov5693f_pdata", &t210ref_ov5693_front_pdata},
+	{"t210ref_imx214_pdata", &t210ref_imx214_data},
+	{"t210ref_dw9714_pdata", &t210ref_dw9714_data},
 	{},
 };
 
