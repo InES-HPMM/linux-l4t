@@ -60,6 +60,37 @@
 		status = "okay";
 	};
 
+	i2c@7000c400 {
+		nvidia,clock-always-on;
+
+		pca9539_75: pca9546@75 {
+			compatible = "nxp,pca9539";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0x75>;
+			gpio-init-names = "default";
+			gpio-init-0 = <&pca9539_default>;
+			pca9539_default: default {
+				gpio-output-high = <0 3 4 5 7 9 13 14 15>;
+			};
+		};
+	};
+	regulators {
+		compatible = "simple-bus";
+		device_type = "fixed-regulators";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		vdd_sd: regulator@1 {
+			compatible = "regulator-fixed-sync";
+			regulator-name = "vddio_sd_slot-reg";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&pca9539_75 11 1>;
+			enable-active-high;
+		};
+	};
+
 	ahub {
 		status = "okay";
 
@@ -138,6 +169,7 @@
 	};
 
 	sdhci@700b0400 {
+		vddio_sd_slot-supply = <&vdd_sd>;
 		status = "okay";
 	};
 
