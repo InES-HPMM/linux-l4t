@@ -810,10 +810,6 @@ static void __init tegra_loki_dt_init(void)
 	tegra_get_display_board_info(&display_board_info);
 
 	tegra_loki_early_init();
-#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	carveout_linear_set(&tegra_generic_cma_dev);
-	carveout_linear_set(&tegra_vpr_cma_dev);
-#endif
 #ifdef CONFIG_USE_OF
 	loki_camera_auxdata(loki_auxdata_lookup);
 	of_platform_populate(NULL,

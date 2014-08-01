@@ -582,10 +582,6 @@ static void __init tegra_t210ref_dt_init(void)
 #endif
 	bus_register_notifier(&platform_bus_type, &platform_nb);
 	tegra_t210ref_early_init();
-#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	carveout_linear_set(&tegra_generic_cma_dev);
-	carveout_linear_set(&tegra_vpr_cma_dev);
-#endif
 	t210ref_camera_auxdata(t210ref_auxdata_lookup);
 	of_platform_populate(NULL,
 		of_default_bus_match_table, t210ref_auxdata_lookup,

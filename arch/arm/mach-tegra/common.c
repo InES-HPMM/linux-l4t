@@ -142,6 +142,7 @@ phys_addr_t tegra_tsec_start;
 phys_addr_t tegra_tsec_size;
 phys_addr_t tegra_lp0_vec_start;
 phys_addr_t tegra_lp0_vec_size;
+bool tegra_vpr_resize;
 
 phys_addr_t tegra_bl_debug_data_start = 0;
 EXPORT_SYMBOL(tegra_bl_debug_data_start);
@@ -1153,7 +1154,13 @@ int tegra_get_sku_override(void)
 	return sku_override;
 }
 
-#ifndef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
+static int __init tegra_vpr_resize_arg(char *options)
+{
+	tegra_vpr_resize = true;
+	return 0;
+}
+early_param("vpr_resize", tegra_vpr_resize_arg);
+
 static int __init tegra_vpr_arg(char *options)
 {
 	char *p = options;
@@ -1166,7 +1173,6 @@ static int __init tegra_vpr_arg(char *options)
 	return 0;
 }
 early_param("vpr", tegra_vpr_arg);
-#endif
 
 static int __init tegra_tsec_arg(char *options)
 {
@@ -1901,8 +1907,7 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 {
 	struct iommu_linear_map map[4];
 
-#ifndef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	if (carveout_size) {
+	if (!tegra_vpr_resize && carveout_size) {
 		/*
 		 * Place the carveout below the 4 GB physical address limit
 		 * because IOVAs are only 32 bit wide.
@@ -1918,7 +1923,6 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		} else
 			tegra_carveout_size = carveout_size;
 	}
-#endif
 
 	if (fb2_size) {
 #ifdef CONFIG_MODS
@@ -2152,10 +2156,8 @@ out:
 		"Bootloader framebuffer2: %08llx - %08llx\n"
 		"Framebuffer:            %08llx - %08llx\n"
 		"2nd Framebuffer:        %08llx - %08llx\n"
-#ifndef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 		"Carveout:               %08llx - %08llx\n"
 		"Vpr:                    %08llx - %08llx\n"
-#endif
 		"Tsec:                   %08llx - %08llx\n"
 #ifdef CONFIG_TEGRA_BOOTLOADER_DEBUG
 		"Bootloader Debug Data:  %08llx - %08llx\n"
@@ -2178,14 +2180,12 @@ out:
 		(u64)tegra_fb2_start,
 		(u64)(tegra_fb2_size ?
 			tegra_fb2_start + tegra_fb2_size - 1 : 0),
-#ifndef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 		(u64)tegra_carveout_start,
 		(u64)(tegra_carveout_size ?
 			tegra_carveout_start + tegra_carveout_size - 1 : 0),
 		(u64)tegra_vpr_start,
 		(u64)(tegra_vpr_size ?
 			tegra_vpr_start + tegra_vpr_size - 1 : 0),
-#endif
 		(u64)tegra_tsec_start,
 		(u64)(tegra_tsec_size ?
 			tegra_tsec_start + tegra_tsec_size - 1 : 0)
@@ -2218,20 +2218,18 @@ out:
 	tegra_reserve_ramoops_memory(RAMOOPS_MEM_SIZE);
 #endif
 
-#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 	/* Keep these at the end */
-	if (carveout_size) {
+	if (tegra_vpr_resize && carveout_size) {
 		if (dma_declare_contiguous(&tegra_generic_cma_dev,
 			carveout_size, 0, memblock_end_of_4G()))
 			pr_err("dma_declare_contiguous failed for generic\n");
 		tegra_carveout_size = carveout_size;
 	}
 
-	if (tegra_vpr_size)
+	if (tegra_vpr_resize && tegra_vpr_size)
 		if (dma_declare_contiguous(&tegra_vpr_cma_dev,
 			tegra_vpr_size, 0, memblock_end_of_4G()))
 			pr_err("dma_declare_contiguous failed VPR carveout\n");
-#endif
 
 	tegra_fb_linear_set(map);
 }
@@ -2239,10 +2237,10 @@ out:
 void tegra_reserve4(ulong carveout_size, ulong fb_size,
 		       ulong fb2_size, ulong vpr_size)
 {
-#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	tegra_vpr_start = 0;
-	tegra_vpr_size = vpr_size;
-#endif
+	if (tegra_vpr_resize) {
+		tegra_vpr_start = 0;
+		tegra_vpr_size = vpr_size;
+	}
 	tegra_reserve(carveout_size, fb_size, fb2_size);
 }
 

@@ -1399,10 +1399,6 @@ static void __init tegra_ardbeg_dt_init(void)
 	bus_register_notifier(&platform_bus_type, &platform_nb);
 
 	tegra_ardbeg_early_init();
-#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	carveout_linear_set(&tegra_generic_cma_dev);
-	carveout_linear_set(&tegra_vpr_cma_dev);
-#endif
 #ifdef CONFIG_USE_OF
 	ardbeg_camera_auxdata(ardbeg_auxdata_lookup);
 	of_platform_populate(NULL,

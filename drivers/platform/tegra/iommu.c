@@ -26,6 +26,7 @@
 
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "../../../arch/arm/mach-tegra/board.h"
+#include "../../../arch/arm/mach-tegra/common.h"
 
 struct tegra_iommu_mapping {
 	dma_addr_t base;
@@ -59,25 +60,8 @@ do { \
 	} \
 } while (0)
 
-void tegra_fb_linear_set(struct iommu_linear_map *map)
-{
-	int i = 0;
-
-	map = tegra_fb_linear_map;
-
-	LINEAR_MAP_ADD(tegra_fb);
-	LINEAR_MAP_ADD(tegra_fb2);
-	LINEAR_MAP_ADD(tegra_bootloader_fb);
-	LINEAR_MAP_ADD(tegra_bootloader_fb2);
-#ifndef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	LINEAR_MAP_ADD(tegra_vpr);
-	LINEAR_MAP_ADD(tegra_carveout);
-#endif
-}
-EXPORT_SYMBOL(tegra_fb_linear_set);
-
 #ifdef CONFIG_CMA
-void carveout_linear_set(struct device *cma_dev)
+static void carveout_linear_set(struct device *cma_dev)
 {
 	struct dma_contiguous_stats stats;
 	struct iommu_linear_map *map = &tegra_fb_linear_map[0];
@@ -91,15 +75,34 @@ void carveout_linear_set(struct device *cma_dev)
 	map->start = stats.base;
 	map->size = stats.size;
 }
-EXPORT_SYMBOL(carveout_linear_set);
-
-void tegra_carveout_linear_set(struct device *gen_dev, struct device *vpr_dev)
-{
-	carveout_linear_set(gen_dev);
-	carveout_linear_set(vpr_dev);
-}
-EXPORT_SYMBOL(tegra_carveout_linear_set);
 #endif
+
+static void cma_carveout_linear_set(void)
+{
+#ifdef CONFIG_CMA
+	if (tegra_vpr_resize) {
+		carveout_linear_set(&tegra_generic_cma_dev);
+		carveout_linear_set(&tegra_vpr_cma_dev);
+	}
+#endif
+}
+
+void tegra_fb_linear_set(struct iommu_linear_map *map)
+{
+	int i = 0;
+
+	map = tegra_fb_linear_map;
+
+	LINEAR_MAP_ADD(tegra_fb);
+	LINEAR_MAP_ADD(tegra_fb2);
+	LINEAR_MAP_ADD(tegra_bootloader_fb);
+	LINEAR_MAP_ADD(tegra_bootloader_fb2);
+	if (!tegra_vpr_resize) {
+		LINEAR_MAP_ADD(tegra_vpr);
+		LINEAR_MAP_ADD(tegra_carveout);
+	}
+}
+EXPORT_SYMBOL(tegra_fb_linear_set);
 
 struct swgid_fixup {
 	const char * const name;
@@ -484,6 +487,7 @@ static inline void tegra_smmu_map_init(struct platform_device *pdev)
 static int __init tegra_smmu_init(void)
 {
 	tegra_bpmp_linear_set();
+	cma_carveout_linear_set();
 	return 0;
 }
 postcore_initcall(tegra_smmu_init);

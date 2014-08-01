@@ -145,6 +145,7 @@ extern phys_addr_t tegra_vpr_start;
 extern phys_addr_t tegra_vpr_size;
 extern phys_addr_t tegra_lp0_vec_start;
 extern phys_addr_t tegra_lp0_vec_size;
+extern bool tegra_vpr_resize;
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 extern phys_addr_t tegra_wb0_params_address;
 extern phys_addr_t tegra_wb0_params_instances;
@@ -165,12 +166,6 @@ extern unsigned long tegra_nck_size;
 void tegra_fb_linear_set(struct iommu_linear_map *map);
 #else
 static inline void tegra_fb_linear_set(struct iommu_linear_map *map) {}
-#endif
-
-#if defined(CONFIG_CMA) && defined(CONFIG_TEGRA_IOMMU_SMMU)
-void carveout_linear_set(struct device *cma_dev);
-#else
-static inline void carveout_linear_set(struct device *cma_dev) {}
 #endif
 
 void tegra_init_late(void);

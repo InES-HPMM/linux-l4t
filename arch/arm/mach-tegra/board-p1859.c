@@ -241,11 +241,6 @@ static void __init tegra_p1859_dt_init(void)
 
 	tegra_p1859_early_init();
 
-#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	carveout_linear_set(&tegra_generic_cma_dev);
-	carveout_linear_set(&tegra_vpr_cma_dev);
-#endif
-
 #ifdef CONFIG_USE_OF
 	tegra_vcm30_t124_populate_auxdata();
 #endif
