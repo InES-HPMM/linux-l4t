@@ -224,6 +224,8 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define SATA_SEQ_PADPLL_PD_INPUT_VALUE		(1 << 5)
 #define SATA_SEQ_LANE_PD_INPUT_VALUE		(1 << 6)
 #define SATA_SEQ_RESET_INPUT_VALUE		(1 << 7)
+#define SATA_PADPLL_SLEEP_IDDQ			(1 << 13)
+#define SATA_PADPLL_USE_LOCKDET			(1 << 2)
 
 /* for CLK_RST_SATA_PLL_CFG1_REG */
 #define IDDQ2LANE_SLUMBER_DLY_MASK		(0xffL << 16)
@@ -251,8 +253,13 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 
 #define SSTAT_IPM_STATE_MASK			0xF00
 #define SSTAT_IPM_SLUMBER_STATE			0x600
-#define XUSB_PADCTL_USB3_PAD_MUX_0              0x134
+
+#define XUSB_PADCTL_USB3_PAD_MUX_0_T210		0x28
+#define FORCE_SATA_PAD_IDDQ_DISABLE_MASK0_T210	(1 << 8)
+
+#define XUSB_PADCTL_USB3_PAD_MUX_0		0x134
 #define FORCE_SATA_PAD_IDDQ_DISABLE_MASK0	(1 << 6)
+
 #define XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0		0x138
 #define XUSB_PADCTL_PLL1_MODE			(1 << 24)
 #define XUSB_PADCTL_ELPG_PROGRAM_0		0x01c
@@ -311,6 +318,41 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 
 #define PXSSTS_DEVICE_DETECTED			(1 << 0)
 
+/* T210 UPHY Related changes */
+#define XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0		0x860
+#define PLL0_IDDQ				(1 << 0)
+#define PLL0_SLEEP				(1 << 1)
+#define PLL0_ENABLE				(1 << 3)
+#define PLL0_PWR_OVRD				(1 << 4)
+#define PLL0_LOCKDET_STATUS			(1 << 15)
+#define XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0		0x864
+#define PLL0_CAL_EN				(1 << 0)
+#define PLL0_CAL_DONE				(1 << 1)
+#define PLL0_CAL_OVRD				(1 << 2)
+#define PLL0_CAL_CTRL				(1 << 4)
+#define PLL0_CAL_CTRL_VAL			0x136
+#define XUSB_PADCTL_UPHY_PLL_S0_CTL_5_0		0x870
+#define PLL0_DCO_CTRL				(1 << 16)
+#define PLL0_DCO_CTRL_VAL			0x2a
+#define XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0		0x87c
+#define PLL0_RCAL_EN				(1 << 12)
+#define PLL0_RCAL_CLK_EN			(1 << 13)
+#define PLL0_RCAL_OVRD				(1 << 15)
+#define PLL0_RCAL_DONE				(1 << 31)
+#define XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0	0x960
+#define AUX_RX_MODE_OVRD			(1 << 13)
+#define AUX_RX_IDLE_EN				(1 << 22)
+#define CLK_RST_CONTROLLER_RST_DEV_Y_CLR_0	0x2ac
+#define CLR_SATA_USB_UPHY_RST			(1 << 12)
+#define XUSB_PADCTL_ELPG_PROGRAM_1_0		0x24
+#define AUX_MUX_LP0_VCORE_DOWN			(1 << 31)
+#define AUX_MUX_LP0_CLAMP_EN_EARLY		(1 << 30)
+#define AUX_MUX_LP0_CLAMP_EN			(1 << 29)
+#define XUSB_PADCTL_ELPG_PROGRAM_0_0		0x20
+#define AUX_MUX_LP0_CLAMP_EN_EARLY		(1 << 30)
+
+
+
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
 
 /* create a work for handling the async transfers */
@@ -322,14 +364,6 @@ static struct workqueue_struct *tegra_ahci_work_q;
 #define CLK_RST_CONTROLLER_RST_DEVICES_Y_0	0x2a4
 #define SWR_PEX_USB_UPHY_RST			(0x1 << 13)
 #define SWR_SATA_USB_UPHY_RST			(0x1 << 12)
-
-/* FIXME
- * Remove this define once tegra_id.h has TEGRA_CHIPID_TEGRA210
- */
-
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
-#define TEGRA_CHIPID_TEGRA210 0x210
-#endif
 
 enum {
 	AHCI_PCI_BAR = 5,
@@ -392,6 +426,7 @@ struct tegra_ahci_host_priv {
 	s16			gen2_rx_eq;
 	int			pexp_gpio_high;
 	int			pexp_gpio_low;
+	enum tegra_chipid	cid;
 };
 
 #ifdef	CONFIG_DEBUG_FS
@@ -905,6 +940,157 @@ static void tegra_free_pexp_gpio(struct tegra_ahci_host_priv *tegra_hpriv)
 
 }
 
+static void tegra_ahci_uphy_init(void)
+{
+	u32 val;
+	u32 timeout;
+
+	val = PLL0_DCO_CTRL_VAL << 16;
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_5_0);
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
+	val |= (PLL0_CAL_OVRD | PLL0_CAL_CTRL_VAL << 4);
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
+	val |= PLL0_RCAL_OVRD;
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
+
+	val = clk_readl(CLK_RST_CONTROLLER_RST_DEV_Y_CLR_0);
+	val |= CLR_SATA_USB_UPHY_RST;
+	clk_writel(val, CLK_RST_CONTROLLER_RST_DEV_Y_CLR_0);
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+	val &= ~(PLL0_SLEEP | PLL0_IDDQ);
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+
+	udelay(20);
+
+	/* PLL Calibration */
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
+	val |= PLL0_CAL_EN;
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
+
+	timeout = 200;
+	while (timeout--) {
+		udelay(1);
+		val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
+			if (val & PLL0_CAL_DONE)
+				break;
+	}
+	if (timeout == 0)
+		pr_err("%s: XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0 (0x%x) timedout.\n",
+								__func__, val);
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
+	val &= ~PLL0_CAL_EN;
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
+
+	timeout = 15;
+	while (timeout--) {
+		udelay(1);
+		val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
+		if (val & PLL0_CAL_DONE)
+			break;
+	}
+	if (timeout == 0)
+		pr_err("%s: XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0 (0x%x) timedout.\n",
+								__func__, val);
+
+	/* Register Calibration */
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
+	val |= (PLL0_RCAL_EN | PLL0_RCAL_CLK_EN);
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
+
+	timeout = 15;
+	while (timeout--) {
+		udelay(1);
+		val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
+		if (val & PLL0_RCAL_DONE)
+			break;
+	}
+	if (timeout == 0)
+		pr_err("%s: XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0 (0x%x) timedout.\n",
+								__func__, val);
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
+	val &= ~PLL0_RCAL_EN;
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
+
+	timeout = 15;
+	while (timeout--) {
+		udelay(1);
+		val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
+		if (val & PLL0_RCAL_DONE)
+			break;
+	}
+	if (timeout == 0)
+		pr_err("%s: XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0 (0x%x) timedout\n",
+								__func__, val);
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
+	val &= ~PLL0_RCAL_CLK_EN;
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
+
+	/* Lockdet step */
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+	val |= PLL0_ENABLE;
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+
+	udelay(20);
+
+	timeout = 15;
+	while (timeout--) {
+		udelay(1);
+		val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+		if (val & PLL0_LOCKDET_STATUS)
+			break;
+	}
+	if (timeout == 0)
+		pr_err("%s: XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0 (0x%x) timedout\n",
+								__func__, val);
+
+	/* Misc Programing including Lane AUX IDDQ removal */
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+	val |= (AUX_RX_MODE_OVRD | AUX_RX_IDLE_EN);
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+
+	val = xusb_readl(XUSB_PADCTL_ELPG_PROGRAM_1_0);
+	val &= ~(AUX_MUX_LP0_VCORE_DOWN | AUX_MUX_LP0_CLAMP_EN_EARLY
+						| AUX_MUX_LP0_CLAMP_EN);
+	xusb_writel(val, XUSB_PADCTL_ELPG_PROGRAM_1_0);
+
+	val = xusb_readl(XUSB_PADCTL_USB3_PAD_MUX_0_T210);
+	val |= FORCE_SATA_PAD_IDDQ_DISABLE_MASK0_T210;
+	xusb_writel(val, XUSB_PADCTL_USB3_PAD_MUX_0_T210);
+
+	udelay(200);
+
+	/* SW overrides removal */
+	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
+	val &= ~(PADPLL_RESET_SWCTL_MASK);
+	val |= (SATA_PADPLL_SLEEP_IDDQ | SATA_PADPLL_USE_LOCKDET);
+	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
+	val &= ~PLL0_CAL_OVRD;
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
+	val &= ~PLL0_RCAL_OVRD;
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+	val &= ~PLL0_PWR_OVRD;
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+
+	udelay(1);
+
+	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
+	val |= PLLE_SATA_SEQ_ENABLE;
+	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
+}
+
 static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 		int lp0)
 {
@@ -1001,11 +1187,13 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 		goto exit;
 	}
 
-	tegra_periph_reset_deassert(clk_sata);
-	tegra_periph_reset_deassert(clk_sata_oob);
-	tegra_periph_reset_deassert(clk_sata_cold);
+	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
+		tegra_periph_reset_deassert(clk_sata);
+		tegra_periph_reset_deassert(clk_sata_oob);
+		tegra_periph_reset_deassert(clk_sata_cold);
 
-	tegra_ahci_clr_clk_rst_cnt_rst_dev();
+		tegra_ahci_clr_clk_rst_cnt_rst_dev();
+	}
 
 	if (!lp0) {
 		err = tegra_request_pexp_gpio(tegra_hpriv);
@@ -1018,11 +1206,12 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	val = 0x100;
 	pmc_writel(val, APBDEV_PMC_REMOVE_CLAMPING_CMD_0);
 
-
 	/* SATA_PADPLL_RESET_OVERRIDE_VALUE=1 and SATA_PADPLL_RESET_SWCTL=1 */
-	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
-	val |= (PADPLL_RESET_OVERRIDE_VALUE_ON | PADPLL_RESET_SWCTL_ON);
-	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
+	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
+		val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
+		val |= (PADPLL_RESET_OVERRIDE_VALUE_ON | PADPLL_RESET_SWCTL_ON);
+		clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
+	}
 
 	/* select internal CML ref clk
 	 * select PLLE as input to IO phy */
@@ -1059,17 +1248,18 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	 * Wait for SATA_AUX_PAD_PLL_CNTL_1_0_LOCKDET to turn 1 with a timeout
 	 * of 15 us.
 	 */
-	timeout = 15;
-	while (timeout--) {
-		udelay(1);
-		val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
-		if (val & LOCKDET_FIELD)
-			break;
-	}
-	if (timeout == 0)
-		pr_err("%s: AUX_PAD_PLL_CNTL_1 (0x%x) is not locked in 15us.\n",
+	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
+		timeout = 15;
+		while (timeout--) {
+			udelay(1);
+			val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+			if (val & LOCKDET_FIELD)
+				break;
+		}
+		if (timeout == 0)
+			pr_err("%s: AUX_PAD_PLL_CNTL_1 (0x%x) is not locked in 15us.\n",
 			__func__, val);
-
+	}
 	tegra_ahci_pad_config();
 
 	clk_cml1 = clk_get_sys(NULL, "cml1");
@@ -1098,19 +1288,31 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	val |= CLK_RST_CONTROLLER_PLLE_AUX_0_MASK;
 	clk_writel(val, CLK_RST_CONTROLLER_PLLE_AUX_0);
 
-	/* bring SATA IOPHY out of IDDQ */
-	val = xusb_readl(XUSB_PADCTL_USB3_PAD_MUX_0);
-	val |= FORCE_SATA_PAD_IDDQ_DISABLE_MASK0;
-	xusb_writel(val, XUSB_PADCTL_USB3_PAD_MUX_0);
+	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
+		/* bring SATA IOPHY out of IDDQ */
+		val = xusb_readl(XUSB_PADCTL_USB3_PAD_MUX_0);
+		val |= FORCE_SATA_PAD_IDDQ_DISABLE_MASK0;
+		xusb_writel(val, XUSB_PADCTL_USB3_PAD_MUX_0);
 
-	val = xusb_readl(XUSB_PADCTL_ELPG_PROGRAM_0);
-	val &= ~(AUX_ELPG_CLAMP_EN | AUX_ELPG_CLAMP_EN_EARLY |
-		AUX_ELPG_VCORE_DOWN);
-	xusb_writel(val, XUSB_PADCTL_ELPG_PROGRAM_0);
+		val = xusb_readl(XUSB_PADCTL_ELPG_PROGRAM_0);
+		val &= ~(AUX_ELPG_CLAMP_EN | AUX_ELPG_CLAMP_EN_EARLY |
+			AUX_ELPG_VCORE_DOWN);
+		xusb_writel(val, XUSB_PADCTL_ELPG_PROGRAM_0);
+	} else {
+		tegra_ahci_uphy_init();
 
-	val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
-	val = val | XUSB_PADCTL_PLL1_MODE;
-	xusb_writel(val, XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+		tegra_periph_reset_deassert(clk_sata);
+		tegra_periph_reset_deassert(clk_sata_oob);
+		tegra_periph_reset_deassert(clk_sata_cold);
+
+		tegra_ahci_clr_clk_rst_cnt_rst_dev();
+	}
+
+	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
+		val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+		val = val | XUSB_PADCTL_PLL1_MODE;
+		xusb_writel(val, XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+	}
 
 	/* clear NVA2SATA_OOB_ON_POR in SATA_AUX_MISC_CNTL_1_REG */
 	val = misc_readl(SATA_AUX_MISC_CNTL_1_REG);
@@ -1212,7 +1414,6 @@ exit:
 		/* turn off all SATA power rails; ignore returned status */
 		tegra_ahci_power_off_rails(tegra_hpriv->power_rails);
 		/* return regulators to system */
-		tegra_ahci_put_rails(tegra_hpriv->power_rails);
 	}
 	return err;
 }
@@ -1246,8 +1447,6 @@ static void tegra_ahci_controller_remove(struct platform_device *pdev)
 	tegra_ahci_power_off_rails(tegra_hpriv->power_rails);
 #endif
 
-	/* return system resources */
-	tegra_ahci_put_rails(tegra_hpriv->power_rails);
 }
 
 #ifdef CONFIG_PM
@@ -1256,9 +1455,6 @@ static int tegra_ahci_controller_suspend(struct platform_device *pdev)
 	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	struct tegra_ahci_host_priv *tegra_hpriv;
 	unsigned long flags;
-	enum tegra_chipid cid;
-
-	cid = tegra_get_chipid();
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
 
@@ -1288,19 +1484,13 @@ static int tegra_ahci_controller_suspend(struct platform_device *pdev)
 
 	tegra_first_level_clk_gate();
 
-/* FIXME
- * Remove this define once tegra_id.h has TEGRA_CHIPID_TEGRA210
- */
-
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
-	if (cid == TEGRA_CHIPID_TEGRA210) {
+	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
 		u32 val;
 
 		val = clk_readl(CLK_RST_CONTROLLER_RST_DEVICES_Y_0);
 		val |= (SWR_PEX_USB_UPHY_RST | SWR_SATA_USB_UPHY_RST);
 		clk_writel(val, CLK_RST_CONTROLLER_RST_DEVICES_Y_0);
 	}
-#endif
 
 	return tegra_ahci_power_off_rails(tegra_hpriv->power_rails);
 }
@@ -1311,9 +1501,6 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev)
 	struct tegra_ahci_host_priv *tegra_hpriv;
 	unsigned long flags;
 	int err;
-	enum tegra_chipid cid;
-
-	cid = tegra_get_chipid();
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
 
@@ -1323,18 +1510,22 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev)
 		return err;
 	}
 
-/* FIXME
- * Remove this define once tegra_id.h has TEGRA_CHIPID_TEGRA210
- */
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
-	if (cid == TEGRA_CHIPID_TEGRA210) {
+	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
 		u32 val;
 
 		val = clk_readl(CLK_RST_CONTROLLER_RST_DEVICES_Y_0);
 		val &= ~(SWR_PEX_USB_UPHY_RST | SWR_SATA_USB_UPHY_RST);
 		clk_writel(val, CLK_RST_CONTROLLER_RST_DEVICES_Y_0);
+
+		val = xusb_readl(XUSB_PADCTL_USB3_PAD_MUX_0);
+		val |= FORCE_SATA_PAD_IDDQ_DISABLE_MASK0;
+		xusb_writel(val, XUSB_PADCTL_USB3_PAD_MUX_0);
+
+		val = xusb_readl(XUSB_PADCTL_ELPG_PROGRAM_0_0);
+		val &= ~AUX_MUX_LP0_CLAMP_EN_EARLY;
+		xusb_writel(val, XUSB_PADCTL_ELPG_PROGRAM_0_0);
 	}
-#endif
+
 	err = tegra_first_level_clk_ungate();
 	if (err < 0) {
 		pr_err("%s: flcg ungate failed\n", __func__);
@@ -1909,9 +2100,11 @@ void tegra_ahci_put_sata_in_iddq()
 	dat = (val & IDDQ2LANE_IDDQ_DLY_MASK) >> IDDQ2LANE_IDDQ_DLY_SHIFT;
 	udelay(dat);
 
-	val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
-	val |= (PLL_PWR_OVRD_MASK | PLL_IDDQ_MASK | PLL_RST_MASK);
-	xusb_writel(val, XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+	if (g_tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
+		val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+		val |= (PLL_PWR_OVRD_MASK | PLL_IDDQ_MASK | PLL_RST_MASK);
+		xusb_writel(val, XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+	}
 
 }
 void tegra_ahci_clr_clk_rst_cnt_rst_dev(void)
@@ -1948,15 +2141,17 @@ static void tegra_ahci_pad_config(void)
 
 	/* clear SW control of SATA PADPLL, SATA PHY and PLLE */
 
-	/* for SATA PHY IDDQ */
-	val = xusb_readl(XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
-	val &= ~(IDDQ_OVRD_MASK | IDDQ_MASK);
-	xusb_writel(val, XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
+	if (g_tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
+		/* for SATA PHY IDDQ */
+		val = xusb_readl(XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
+		val &= ~(IDDQ_OVRD_MASK | IDDQ_MASK);
+		xusb_writel(val, XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
 
-	/* for SATA PADPLL IDDQ */
-	val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
-	val &= ~(PLL_PWR_OVRD_MASK | PLL_IDDQ_MASK | PLL_RST_MASK);
-	xusb_writel(val, XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+		/* for SATA PADPLL IDDQ */
+		val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+		val &= ~(PLL_PWR_OVRD_MASK | PLL_IDDQ_MASK | PLL_RST_MASK);
+		xusb_writel(val, XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+	}
 
 	/* PLLE related stuff*/
 
@@ -1998,10 +2193,12 @@ static bool tegra_ahci_power_gate(struct ata_host *host)
 #ifdef TEGRA_AHCI_CONTEXT_RESTORE
 	tegra_ahci_pg_save_registers(host);
 #endif
-	val = xusb_readl(XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
-	val |= XUSB_PADCTL_IOPHY_MISC_IDDQ |
-		XUSB_PADCTL_IOPHY_MISC_IDDQ_OVRD;
-	xusb_writel(val, XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
+	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
+		val = xusb_readl(XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
+		val |= XUSB_PADCTL_IOPHY_MISC_IDDQ |
+			XUSB_PADCTL_IOPHY_MISC_IDDQ_OVRD;
+		xusb_writel(val, XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
+	}
 
 	/*
 	 * Read SATA_AUX_MISC_CNTL_1_0 register L0_RX_IDLE_T_SAX field and
@@ -2097,15 +2294,18 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host)
 	 * Wait for SATA_AUX_PAD_PLL_CNTL_1_0_LOCKDET to turn 1 with a timeout
 	 * of 15 us.
 	 */
-	timeout = 15;
-	while (timeout--) {
-		udelay(1);
-		val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
-		if (val & LOCKDET_FIELD)
-			break;
+	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
+		timeout = 15;
+		while (timeout--) {
+			udelay(1);
+			val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+			if (val & LOCKDET_FIELD)
+				break;
+		}
+		if (timeout == 0)
+			pr_err("%s: SATA_PAD_PLL is not locked in 15us.\n",
+								__func__);
 	}
-	if (timeout == 0)
-		pr_err("%s: SATA_PAD_PLL is not locked in 15us.\n", __func__);
 
 	/*
 	 * During the restoration of the registers, the driver would now need to
@@ -2187,10 +2387,12 @@ static bool tegra_ahci_pad_suspend(struct ata_host *host)
 	val |= PADPLL_RESET_SWCTL_MASK;
 	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
 
-	val = xusb_readl(XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
-	val |= XUSB_PADCTL_IOPHY_MISC_IDDQ |
-		XUSB_PADCTL_IOPHY_MISC_IDDQ_OVRD;
-	xusb_writel(val, XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
+	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
+		val = xusb_readl(XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
+		val |= XUSB_PADCTL_IOPHY_MISC_IDDQ |
+			XUSB_PADCTL_IOPHY_MISC_IDDQ_OVRD;
+		xusb_writel(val, XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
+	}
 
 	/* abort PG if there are errors occurred */
 	if (tegra_ahci_check_errors(host)) {
@@ -2245,20 +2447,29 @@ static bool tegra_ahci_pad_resume(struct ata_host *host)
 	 * Wait for SATA_AUX_PAD_PLL_CNTL_1_0_LOCKDET to turn 1 with a timeout
 	 * of 15 us.
 	 */
-	timeout = 15;
-	while (timeout--) {
-		udelay(1);
-		val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
-		if (val & LOCKDET_FIELD)
-			break;
+	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
+		timeout = 15;
+		while (timeout--) {
+			udelay(1);
+			val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+			if (val & LOCKDET_FIELD)
+				break;
+		}
+		if (timeout == 0)
+			pr_err("%s: SATA_PAD_PLL is not locked in 15us.\n",
+								__func__);
 	}
-	if (timeout == 0)
-		pr_err("%s: SATA_PAD_PLL is not locked in 15us.\n", __func__);
 
 	/* Set the bits in the CAR to allow HW based low power sequencing. */
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
 	val &= ~PADPLL_RESET_SWCTL_MASK;
 	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
+
+	/* Second Level Clock Gating*/
+	val = bar5_readl(AHCI_HBA_PLL_CTRL_0);
+	val |= (CLAMP_TXCLK_ON_SLUMBER | CLAMP_TXCLK_ON_DEVSLP);
+	val &= ~NO_CLAMP_SHUT_DOWN;
+	bar5_writel(val, AHCI_HBA_PLL_CTRL_0);
 
 	return true;
 }
@@ -2480,11 +2691,15 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	int n_ports, i, rc = 0;
 	struct resource *res, *irq_res;
 	void __iomem *mmio;
+	enum tegra_chipid cid;
+
 
 #if defined(TEGRA_AHCI_CONTEXT_RESTORE)
 	u32 save_size;
 #endif
 	irq_handler_t irq_handler = ahci_interrupt;
+
+	cid = tegra_get_chipid();
 
 	VPRINTK("ENTER\n");
 
@@ -2548,6 +2763,7 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 		tegra_hpriv->pexp_gpio_high = ahci_pdata->pexp_gpio_high;
 		tegra_hpriv->pexp_gpio_low = ahci_pdata->pexp_gpio_low;
 	}
+	tegra_hpriv->cid = cid;
 	g_tegra_hpriv = tegra_hpriv;
 
 	/* Call tegra init routine */
