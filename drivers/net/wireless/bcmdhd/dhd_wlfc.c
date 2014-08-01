@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_wlfc.c 481665 2014-05-30 03:02:32Z $
+ * $Id: dhd_wlfc.c 457888 2014-02-25 03:34:39Z $
  *
  */
 
@@ -330,25 +330,6 @@ _dhd_wlfc_hanger_mark_suppressed(void* hanger, uint32 slot_id, uint8 gen)
 		rc = BCME_BADARG;
 
 	return rc;
-}
-
-static void
-_dhd_wlfc_hanger_waitevent_set(void* hanger, uint32 hslot, uint8 waitevent)
-{
-	wlfc_hanger_t* h = (wlfc_hanger_t*)hanger;
-	ASSERT(h && (hslot < (uint32) h->max_items));
-
-	h->items[hslot].waitevent = waitevent;
-}
-
-static uint8
-_dhd_wlfc_hanger_waitevent_decreturn(void* hanger, uint32 hslot)
-{
-	wlfc_hanger_t* h = (wlfc_hanger_t*)hanger;
-	ASSERT(h && (hslot < (uint32) h->max_items));
-
-	h->items[hslot].waitevent--;
-	return h->items[hslot].waitevent;
 }
 
 /* return true if the slot is only waiting for clean */
@@ -1796,8 +1777,6 @@ _dhd_wlfc_handle_packet_commit(athost_wl_status_info_t* ctx, int ac,
 {
 	uint32 hslot;
 	int	rc;
-	dhd_pub_t *dhdp = (dhd_pub_t *)(ctx->dhdp);
-
 	/*
 		if ac_fifo_credit_spent = 0
 
@@ -1821,10 +1800,7 @@ _dhd_wlfc_handle_packet_commit(athost_wl_status_info_t* ctx, int ac,
 		if (rc == BCME_OK) {
 			uint8 gen = WL_TXSTATUS_GET_GENERATION(
 				DHD_PKTTAG_H2DTAG(PKTTAG(commit_info->p)));
-			if (!WLFC_GET_AFQ(dhdp->wlfc_mode)) {
-				_dhd_wlfc_hanger_waitevent_set(ctx->hanger, hslot,
-					WLFC_HANGER_ITEM_WAIT_EVENT_COUNT);
-			}
+
 			ctx->stats.pkt2bus++;
 			if (commit_info->ac_fifo_credit_spent || (ac == AC_COUNT)) {
 				ctx->stats.send_pkts[ac]++;
@@ -1840,6 +1816,8 @@ _dhd_wlfc_handle_packet_commit(athost_wl_status_info_t* ctx, int ac,
 			}
 			commit_info->mac_entry->transit_count++;
 		} else if (commit_info->needs_hdr) {
+			dhd_pub_t *dhdp = (dhd_pub_t *)(ctx->dhdp);
+
 			if (!WLFC_GET_AFQ(dhdp->wlfc_mode)) {
 				void *pout = NULL;
 				/* pop hanger for delayed packet */
@@ -1949,7 +1927,8 @@ _dhd_wlfc_compressed_txstatus_update(dhd_pub_t *dhd, uint8* pkt_info, uint8 len,
 				goto cont;
 			}
 
-			ret = _dhd_wlfc_hanger_poppkt(wlfc->hanger, hslot, &pktbuf, 0);
+			ret = _dhd_wlfc_hanger_poppkt(wlfc->hanger, hslot,
+				&pktbuf, remove_from_hanger);
 		}
 
 		if ((ret != BCME_OK) || !pktbuf) {
@@ -2041,26 +2020,12 @@ _dhd_wlfc_compressed_txstatus_update(dhd_pub_t *dhd, uint8* pkt_info, uint8 len,
 				}
 			}
 		} else {
-			uint8 waitevent = 0;
-			void *pktbuf_tmp = NULL;
 			dhd_txcomplete(dhd, pktbuf, TRUE);
 
 			DHD_WLFC_QMON_COMPLETE(entry);
+			/* free the packet */
+			PKTFREE(wlfc->osh, pktbuf, TRUE);
 			wlfc->stats.pktout++;
-
-			if (!WLFC_GET_AFQ(dhd->wlfc_mode)) {
-				waitevent = _dhd_wlfc_hanger_waitevent_decreturn(wlfc->hanger,
-				        hslot);
-				if (!waitevent) {
-					ret = _dhd_wlfc_hanger_poppkt(wlfc->hanger,
-					        hslot, &pktbuf_tmp, 1);
-					ASSERT((ret == BCME_OK) && (pktbuf == pktbuf_tmp));
-				}
-			}
-			if (!waitevent) {
-				/* free the packet */
-				PKTFREE(wlfc->osh, pktbuf, TRUE);
-			}
 		}
 		/* pkt back from firmware side */
 		entry->transit_count--;
@@ -2342,12 +2307,12 @@ _dhd_wlfc_psmode_update(dhd_pub_t *dhd, uint8* value, uint8 type)
 	table = wlfc->destination_entries.nodes;
 	desc = &table[WLFC_MAC_DESC_GET_LOOKUP_INDEX(mac_handle)];
 	if (desc->occupied) {
+		/* a fresh PS mode should wipe old ps credits? */
+		desc->requested_credit = 0;
 		if (type == WLFC_CTL_TYPE_MAC_OPEN) {
 			desc->state = WLFC_STATE_OPEN;
 			desc->ac_bitmap = 0xff;
 			DHD_WLFC_CTRINC_MAC_OPEN(desc);
-			desc->requested_credit = 0;
-			desc->requested_packet = 0;
 			_dhd_wlfc_remove_requested_entry(wlfc, desc);
 		}
 		else {
@@ -2459,19 +2424,6 @@ _dhd_wlfc_reorderinfo_indicate(uint8 *val, uint8 len, uchar *info_buf, uint *inf
 	}
 }
 
-static void
-_dhd_wlfc_save_rxpath_ac_time(athost_wl_status_info_t* wlfc, uint8 prio)
-{
-	int rx_path_ac = -1;
-
-	if (!wlfc || (prio >= NUMPRIO)) {
-		return;
-	}
-
-	rx_path_ac = prio2fifo[prio];
-	wlfc->rx_timestamp[rx_path_ac] = OSL_SYSUPTIME();
-}
-
 /*
  * public functions
  */
@@ -2539,8 +2491,6 @@ int dhd_wlfc_enable(dhd_pub_t *dhd)
 	}
 
 	dhd->proptxstatus_mode = WLFC_FCMODE_EXPLICIT_CREDIT;
-	/* default to check rx pkt */
-	dhd->wlfc_rxpkt_chk = TRUE;
 
 	/* initialize all interfaces to accept traffic */
 	for (i = 0; i < WLFC_MAX_IFNUM; i++) {
@@ -2560,67 +2510,6 @@ exit:
 
 	return rc;
 }
-#ifdef SUPPORT_P2P_GO_PS
-int
-dhd_wlfc_suspend(dhd_pub_t *dhd)
-{
-
-	uint32 iovbuf[4]; /* Room for "tlv" + '\0' + parameter */
-	uint32 tlv = 0;
-
-	DHD_TRACE(("%s: masking wlfc events\n", __FUNCTION__));
-	if (!dhd->wlfc_enabled)
-		return -1;
-
-	bcm_mkiovar("tlv", NULL, 0, (char*)iovbuf, sizeof(iovbuf));
-	if (dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, iovbuf, sizeof(iovbuf), FALSE, 0) < 0) {
-		DHD_ERROR(("%s: failed to get bdcv2 tlv signaling\n", __FUNCTION__));
-		return -1;
-	}
-	tlv = iovbuf[0];
-	if ((tlv & (WLFC_FLAGS_RSSI_SIGNALS | WLFC_FLAGS_XONXOFF_SIGNALS)) == 0)
-		return 0;
-	tlv &= ~(WLFC_FLAGS_RSSI_SIGNALS | WLFC_FLAGS_XONXOFF_SIGNALS);
-	bcm_mkiovar("tlv", (char *)&tlv, 4, (char*)iovbuf, sizeof(iovbuf));
-	if (dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0) < 0) {
-		DHD_ERROR(("%s: failed to set bdcv2 tlv signaling to 0x%x\n",
-			__FUNCTION__, tlv));
-		return -1;
-	}
-
-	return 0;
-}
-
-	int
-dhd_wlfc_resume(dhd_pub_t *dhd)
-{
-	uint32 iovbuf[4]; /* Room for "tlv" + '\0' + parameter */
-	uint32 tlv = 0;
-
-	DHD_TRACE(("%s: unmasking wlfc events\n", __FUNCTION__));
-	if (!dhd->wlfc_enabled)
-		return -1;
-
-	bcm_mkiovar("tlv", NULL, 0, (char*)iovbuf, sizeof(iovbuf));
-	if (dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, iovbuf, sizeof(iovbuf), FALSE, 0) < 0) {
-		DHD_ERROR(("%s: failed to get bdcv2 tlv signaling\n", __FUNCTION__));
-		return -1;
-	}
-	tlv = iovbuf[0];
-	if ((tlv & (WLFC_FLAGS_RSSI_SIGNALS | WLFC_FLAGS_XONXOFF_SIGNALS)) ==
-		(WLFC_FLAGS_RSSI_SIGNALS | WLFC_FLAGS_XONXOFF_SIGNALS))
-		return 0;
-	tlv |= (WLFC_FLAGS_RSSI_SIGNALS | WLFC_FLAGS_XONXOFF_SIGNALS);
-	bcm_mkiovar("tlv", (char *)&tlv, 4, (char*)iovbuf, sizeof(iovbuf));
-	if (dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, (char*)iovbuf, sizeof(iovbuf), TRUE, 0) < 0) {
-		DHD_ERROR(("%s: failed to set bdcv2 tlv signaling to 0x%x\n",
-			__FUNCTION__, tlv));
-		return -1;
-	}
-
-	return 0;
-}
-#endif /* SUPPORT_P2P_GO_PS */
 
 int
 dhd_wlfc_parse_header_info(dhd_pub_t *dhd, void* pktbuf, int tlv_hdr_len, uchar *reorder_info_buf,
@@ -2647,10 +2536,6 @@ dhd_wlfc_parse_header_info(dhd_pub_t *dhd, void* pktbuf, int tlv_hdr_len, uchar 
 			return WLFC_UNSUPPORTED;
 		}
 		wlfc = (athost_wl_status_info_t*)dhd->wlfc_state;
-	}
-
-	if (dhd->wlfc_rxpkt_chk) {
-		_dhd_wlfc_save_rxpath_ac_time(wlfc, (uint8)PKTPRIO(pktbuf));
 	}
 
 	tmpbuf = (uint8*)PKTDATA(dhd->osh, pktbuf);
@@ -2790,7 +2675,7 @@ dhd_wlfc_commit_packets(dhd_pub_t *dhdp, f_commitpkt_t fcommit, void* commit_ctx
 			uint32 htod = 0;
 			WL_TXSTATUS_SET_FLAGS(htod, WLFC_PKTFLAG_PKTFROMHOST);
 			_dhd_wlfc_pushheader(ctx, pktbuf, FALSE, 0, 0, htod, 0, FALSE);
-			if (fcommit(commit_ctx, pktbuf))
+			if (!fcommit(commit_ctx, pktbuf))
 				PKTFREE(ctx->osh, pktbuf, TRUE);
 			rc = BCME_OK;
 		}
@@ -2823,17 +2708,6 @@ dhd_wlfc_commit_packets(dhd_pub_t *dhdp, f_commitpkt_t fcommit, void* commit_ctx
 	}
 
 	for (ac = AC_COUNT; ac >= 0; ac--) {
-		if (dhdp->wlfc_rxpkt_chk) {
-			/* check rx packet */
-			uint32 curr_t = OSL_SYSUPTIME(), delta;
-
-			delta = curr_t - ctx->rx_timestamp[ac];
-			if (delta < WLFC_RX_DETECTION_THRESHOLD_MS) {
-				traffic_map |= (1 << ac);
-				single_ac = ac + 1;
-			}
-		}
-
 		if (ctx->pkt_cnt_per_ac[ac] == 0) {
 			continue;
 		}
@@ -2910,7 +2784,10 @@ dhd_wlfc_commit_packets(dhd_pub_t *dhdp, f_commitpkt_t fcommit, void* commit_ctx
 				goto exit;
 			}
 			/* same ac traffic, check if it lasts enough time */
-			delta = curr_t - ctx->single_ac_timestamp;
+			if (curr_t > ctx->single_ac_timestamp)
+				delta = curr_t - ctx->single_ac_timestamp;
+			else
+				delta = (~(uint32)0) - ctx->single_ac_timestamp + curr_t;
 
 			if (delta >= WLFC_BORROW_DEFER_PERIOD_MS) {
 				/* wait enough time, can borrow now */
@@ -3001,7 +2878,7 @@ dhd_wlfc_txcomplete(dhd_pub_t *dhd, void *txp, bool success)
 {
 	athost_wl_status_info_t* wlfc;
 	void* pout = NULL;
-	int rtn = BCME_OK;
+
 	if ((dhd == NULL) || (txp == NULL)) {
 		DHD_ERROR(("Error: %s():%d\n", __FUNCTION__, __LINE__));
 		return BCME_BADARG;
@@ -3010,8 +2887,8 @@ dhd_wlfc_txcomplete(dhd_pub_t *dhd, void *txp, bool success)
 	dhd_os_wlfc_block(dhd);
 
 	if (!dhd->wlfc_state || (dhd->proptxstatus_mode == WLFC_FCMODE_NONE)) {
-		rtn = WLFC_UNSUPPORTED;
-		goto EXIT;
+		dhd_os_wlfc_unblock(dhd);
+		return WLFC_UNSUPPORTED;
 	}
 
 	wlfc = (athost_wl_status_info_t*)dhd->wlfc_state;
@@ -3022,7 +2899,8 @@ dhd_wlfc_txcomplete(dhd_pub_t *dhd, void *txp, bool success)
 		/* is this a signal-only packet? */
 		_dhd_wlfc_pullheader(wlfc, txp);
 		PKTFREE(wlfc->osh, txp, TRUE);
-		goto EXIT;
+		dhd_os_wlfc_unblock(dhd);
+		return BCME_OK;
 	}
 
 	if (!success || dhd->proptxstatus_txstatus_ignore) {
@@ -3053,24 +2931,11 @@ dhd_wlfc_txcomplete(dhd_pub_t *dhd, void *txp, bool success)
 		/* bus confirmed pkt went to firmware side */
 		if (WLFC_GET_AFQ(dhd->wlfc_mode)) {
 			_dhd_wlfc_enque_afq(wlfc, txp);
-		} else {
-			int ret;
-			void *pktbuf_tmp = NULL;
-			int hslot = WL_TXSTATUS_GET_HSLOT(DHD_PKTTAG_H2DTAG(PKTTAG(txp)));
-			if (_dhd_wlfc_hanger_waitevent_decreturn(wlfc->hanger, hslot) == 0) {
-				ret = _dhd_wlfc_hanger_poppkt(wlfc->hanger, hslot, &pktbuf_tmp, 1);
-				BCM_REFERENCE(ret);
-				ASSERT((ret == BCME_OK) && pktbuf_tmp && (txp == pktbuf_tmp));
-
-				/* free the packet */
-				PKTFREE(wlfc->osh, txp, TRUE);
-			}
 		}
 	}
 
-EXIT:
 	dhd_os_wlfc_unblock(dhd);
-	return rtn;
+	return BCME_OK;
 }
 
 int
@@ -3202,6 +3067,66 @@ dhd_wlfc_hostreorder_init(dhd_pub_t *dhd)
 	dhd_os_wlfc_unblock(dhd);
 
 	return BCME_OK;
+}
+
+int
+dhd_wlfc_suspend(dhd_pub_t *dhd)
+{
+
+	uint32 iovbuf[4]; /* Room for "tlv" + '\0' + parameter */
+	uint32 tlv = 0;
+
+	DHD_TRACE(("%s: masking wlfc events\n", __FUNCTION__));
+	if (!dhd->wlfc_enabled)
+		return -1;
+
+	bcm_mkiovar("tlv", NULL, 0, (char*)iovbuf, sizeof(iovbuf));
+	if (dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, iovbuf, sizeof(iovbuf), FALSE, 0) < 0) {
+		DHD_ERROR(("%s: failed to get bdcv2 tlv signaling\n", __FUNCTION__));
+		return -1;
+	}
+	tlv = iovbuf[0];
+	if ((tlv & (WLFC_FLAGS_RSSI_SIGNALS | WLFC_FLAGS_XONXOFF_SIGNALS)) == 0)
+		return 0;
+	tlv &= ~(WLFC_FLAGS_RSSI_SIGNALS | WLFC_FLAGS_XONXOFF_SIGNALS);
+	bcm_mkiovar("tlv", (char *)&tlv, 4, (char*)iovbuf, sizeof(iovbuf));
+	if (dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0) < 0) {
+		DHD_ERROR(("%s: failed to set bdcv2 tlv signaling to 0x%x\n",
+			__FUNCTION__, tlv));
+		return -1;
+	}
+
+	return 0;
+}
+
+	int
+dhd_wlfc_resume(dhd_pub_t *dhd)
+{
+	uint32 iovbuf[4]; /* Room for "tlv" + '\0' + parameter */
+	uint32 tlv = 0;
+
+	DHD_TRACE(("%s: unmasking wlfc events\n", __FUNCTION__));
+	if (!dhd->wlfc_enabled)
+		return -1;
+
+	bcm_mkiovar("tlv", NULL, 0, (char*)iovbuf, sizeof(iovbuf));
+	if (dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, iovbuf, sizeof(iovbuf), FALSE, 0) < 0) {
+		DHD_ERROR(("%s: failed to get bdcv2 tlv signaling\n", __FUNCTION__));
+		return -1;
+	}
+	tlv = iovbuf[0];
+	if ((tlv & (WLFC_FLAGS_RSSI_SIGNALS | WLFC_FLAGS_XONXOFF_SIGNALS)) ==
+		(WLFC_FLAGS_RSSI_SIGNALS | WLFC_FLAGS_XONXOFF_SIGNALS))
+		return 0;
+	tlv |= (WLFC_FLAGS_RSSI_SIGNALS | WLFC_FLAGS_XONXOFF_SIGNALS);
+	bcm_mkiovar("tlv", (char *)&tlv, 4, (char*)iovbuf, sizeof(iovbuf));
+	if (dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, (char*)iovbuf, sizeof(iovbuf), TRUE, 0) < 0) {
+		DHD_ERROR(("%s: failed to set bdcv2 tlv signaling to 0x%x\n",
+			__FUNCTION__, tlv));
+		return -1;
+	}
+
+	return 0;
 }
 
 int
@@ -3803,6 +3728,7 @@ int dhd_wlfc_set_mode(dhd_pub_t *dhd, int val)
 
 	dhd_os_wlfc_block(dhd);
 
+	/* two locks for write variable, then read can use any one lock */
 	if (dhd->wlfc_state) {
 		dhd->proptxstatus_mode = val & 0xff;
 	}
@@ -3901,6 +3827,7 @@ int dhd_wlfc_set_module_ignore(dhd_pub_t *dhd, int val)
 	dhd_os_wlfc_block(dhd);
 
 	if ((bool)val != dhd->proptxstatus_module_ignore) {
+		/* two locks for write variable, then read can use any one lock */
 		dhd->proptxstatus_module_ignore = (val != 0);
 		/* force txstatus_ignore sync with proptxstatus_module_ignore */
 		dhd->proptxstatus_txstatus_ignore = dhd->proptxstatus_module_ignore;
@@ -3957,6 +3884,7 @@ int dhd_wlfc_set_credit_ignore(dhd_pub_t *dhd, int val)
 
 	dhd_os_wlfc_block(dhd);
 
+	/* two locks for write variable, then read can use any one lock */
 	dhd->proptxstatus_credit_ignore = (val != 0);
 
 	dhd_os_wlfc_unblock(dhd);
@@ -3989,6 +3917,7 @@ int dhd_wlfc_set_txstatus_ignore(dhd_pub_t *dhd, int val)
 
 	dhd_os_wlfc_block(dhd);
 
+	/* two locks for write variable, then read can use any one lock */
 	dhd->proptxstatus_txstatus_ignore = (val != 0);
 
 	dhd_os_wlfc_unblock(dhd);
@@ -3996,35 +3925,4 @@ int dhd_wlfc_set_txstatus_ignore(dhd_pub_t *dhd, int val)
 	return BCME_OK;
 }
 
-int dhd_wlfc_get_rxpkt_chk(dhd_pub_t *dhd, int *val)
-{
-	if (!dhd || !val) {
-		DHD_ERROR(("Error: %s():%d\n", __FUNCTION__, __LINE__));
-		return BCME_BADARG;
-	}
-
-	dhd_os_wlfc_block(dhd);
-
-	*val = dhd->wlfc_rxpkt_chk;
-
-	dhd_os_wlfc_unblock(dhd);
-
-	return BCME_OK;
-}
-
-int dhd_wlfc_set_rxpkt_chk(dhd_pub_t *dhd, int val)
-{
-	if (!dhd) {
-		DHD_ERROR(("Error: %s():%d\n", __FUNCTION__, __LINE__));
-		return BCME_BADARG;
-	}
-
-	dhd_os_wlfc_block(dhd);
-
-	dhd->wlfc_rxpkt_chk = (val != 0);
-
-	dhd_os_wlfc_unblock(dhd);
-
-	return BCME_OK;
-}
 #endif /* PROP_TXSTATUS */

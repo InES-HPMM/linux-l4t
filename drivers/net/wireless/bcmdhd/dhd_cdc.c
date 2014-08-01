@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_cdc.c 472193 2014-04-23 06:27:38Z $
+ * $Id: dhd_cdc.c 449353 2014-01-16 21:34:16Z $
  *
  * BDC is like CDC, except it includes a header for data packets to convey
  * packet priority over the bus, and flags (e.g. to indicate checksum status
@@ -379,17 +379,6 @@ dhd_prot_hdrpush(dhd_pub_t *dhd, int ifidx, void *PKTBUF)
 }
 #undef PKTBUF	/* Only defined in the above routine */
 
-uint
-dhd_prot_hdrlen(dhd_pub_t *dhd, void *PKTBUF)
-{
-	uint hdrlen = 0;
-#ifdef BDC
-	/* Length of BDC(+WLFC) headers pushed */
-	hdrlen = BDC_HEADER_LEN + (((struct bdc_header *)PKTBUF)->dataOffset * 4);
-#endif
-	return hdrlen;
-}
-
 int
 dhd_prot_hdrpull(dhd_pub_t *dhd, int *ifidx, void *pktbuf, uchar *reorder_buf_info,
 	uint *reorder_info_len)
@@ -509,8 +498,7 @@ dhd_prot_detach(dhd_pub_t *dhd)
 void
 dhd_prot_dstats(dhd_pub_t *dhd)
 {
-	/*  copy bus stats */
-
+/* No stats from dongle added yet, copy bus stats */
 	dhd->dstats.tx_packets = dhd->tx_packets;
 	dhd->dstats.tx_errors = dhd->tx_errors;
 	dhd->dstats.rx_packets = dhd->rx_packets;
@@ -521,7 +509,7 @@ dhd_prot_dstats(dhd_pub_t *dhd)
 }
 
 int
-dhd_sync_with_dongle(dhd_pub_t *dhd)
+dhd_prot_init(dhd_pub_t *dhd)
 {
 	int ret = 0;
 	wlc_rev_info_t revinfo;
@@ -535,23 +523,13 @@ dhd_sync_with_dongle(dhd_pub_t *dhd)
 		goto done;
 
 
-	dhd_process_cid_mac(dhd, TRUE);
-
 	ret = dhd_preinit_ioctls(dhd);
-
-	if (!ret)
-		dhd_process_cid_mac(dhd, FALSE);
 
 	/* Always assumes wl for now */
 	dhd->iswl = TRUE;
 
 done:
 	return ret;
-}
-
-int dhd_prot_init(dhd_pub_t *dhd)
-{
-	return TRUE;
 }
 
 void

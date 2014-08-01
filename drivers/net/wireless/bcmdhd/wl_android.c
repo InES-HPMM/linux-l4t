@@ -21,15 +21,13 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_android.c 470703 2014-04-16 02:25:28Z $
+ * $Id: wl_android.c 457855 2014-02-25 01:27:41Z $
  */
 
 #include <linux/module.h>
 #include <linux/netdevice.h>
-#include <net/netlink.h>
-#ifdef CONFIG_COMPAT
 #include <linux/compat.h>
-#endif
+#include <net/netlink.h>
 
 #include <wl_android.h>
 #include <wldev_common.h>
@@ -49,6 +47,9 @@
 #ifdef WL_CFG80211
 #include <wl_cfg80211.h>
 #endif
+
+
+#include <proto/802.1d.h>
 
 /*
  * Android private command strings, PLEASE define new private commands here
@@ -92,6 +93,12 @@
 
 #define CMD_KEEP_ALIVE		"KEEPALIVE"
 
+#define CMD_SETMIRACAST 	"SETMIRACAST"
+#define CMD_ASSOCRESPIE 	"ASSOCRESPIE"
+#define CMD_MAXLINKSPEED	"MAXLINKSPEED"
+#define CMD_RXRATESTATS 	"RXRATESTATS"
+#define CMD_AMPDU_SEND_DELBA	"AMPDU_SEND_DELBA"
+
 /* CCX Private Commands */
 
 #ifdef PNO_SUPPORT
@@ -106,6 +113,18 @@
 #define CMD_OKC_ENABLE		"OKC_ENABLE"
 
 #define	CMD_HAPD_MAC_FILTER	"HAPD_MAC_FILTER"
+/* hostap mac mode */
+#define MACLIST_MODE_DISABLED   0
+#define MACLIST_MODE_DENY       1
+#define MACLIST_MODE_ALLOW      2
+
+/* max number of assoc list */
+#define MAX_NUM_OF_ASSOCLIST    64
+
+/* max number of mac filter list
+ * restrict max number to 10 as maximum cmd string size is 255
+ */
+#define MAX_NUM_MAC_FILT        10
 
 
 
@@ -140,19 +159,19 @@ struct io_cfg {
 	struct list_head list;
 };
 
-typedef struct _android_wifi_priv_cmd {
-	char *buf;
+#ifdef CONFIG_COMPAT
+typedef struct android_wifi_priv_cmd_compat {
+	u32 bufaddr;
+	int used_len;
+	int total_len;
+} android_wifi_priv_cmd_compat;
+#endif
+
+typedef struct android_wifi_priv_cmd {
+	char *bufaddr;
 	int used_len;
 	int total_len;
 } android_wifi_priv_cmd;
-
-#ifdef CONFIG_COMPAT
-typedef struct _compat_android_wifi_priv_cmd {
-	compat_caddr_t buf;
-	int used_len;
-	int total_len;
-} compat_android_wifi_priv_cmd;
-#endif /* CONFIG_COMPAT */
 
 #if defined(BCMFW_ROAM_ENABLE)
 #define CMD_SET_ROAMPREF	"SET_ROAMPREF"
@@ -314,7 +333,6 @@ static int wl_android_get_band(struct net_device *dev, char *command, int total_
 #ifdef PNO_SUPPORT
 #define PNO_PARAM_SIZE 50
 #define VALUE_SIZE 50
-#define LIMIT_STR_FMT  ("%50s %50s")
 static int
 wls_parse_batching_cmd(struct net_device *dev, char *command, int total_len)
 {
@@ -345,17 +363,17 @@ wls_parse_batching_cmd(struct net_device *dev, char *command, int total_len)
 			if (delim != NULL)
 				*delim = ' ';
 
-			tokens = sscanf(token, LIMIT_STR_FMT, param, value);
-			if (!strncmp(param, PNO_PARAM_SCANFREQ, strlen(PNO_PARAM_SCANFREQ))) {
+			tokens = sscanf(token, "%s %s", param, value);
+			if (!strncmp(param, PNO_PARAM_SCANFREQ, strlen(PNO_PARAM_MSCAN))) {
 				batch_params.scan_fr = simple_strtol(value, NULL, 0);
 				DHD_PNO(("scan_freq : %d\n", batch_params.scan_fr));
-			} else if (!strncmp(param, PNO_PARAM_BESTN, strlen(PNO_PARAM_BESTN))) {
+			} else if (!strncmp(param, PNO_PARAM_BESTN, strlen(PNO_PARAM_MSCAN))) {
 				batch_params.bestn = simple_strtol(value, NULL, 0);
 				DHD_PNO(("bestn : %d\n", batch_params.bestn));
 			} else if (!strncmp(param, PNO_PARAM_MSCAN, strlen(PNO_PARAM_MSCAN))) {
 				batch_params.mscan = simple_strtol(value, NULL, 0);
 				DHD_PNO(("mscan : %d\n", batch_params.mscan));
-			} else if (!strncmp(param, PNO_PARAM_CHANNEL, strlen(PNO_PARAM_CHANNEL))) {
+			} else if (!strncmp(param, PNO_PARAM_CHANNEL, strlen(PNO_PARAM_MSCAN))) {
 				i = 0;
 				pos2 = value;
 				tokens = sscanf(value, "<%s>", value);
@@ -384,7 +402,7 @@ wls_parse_batching_cmd(struct net_device *dev, char *command, int total_len)
 						batch_params.chan_list[i-1]));
 					}
 				 }
-			} else if (!strncmp(param, PNO_PARAM_RTT, strlen(PNO_PARAM_RTT))) {
+			} else if (!strncmp(param, PNO_PARAM_RTT, strlen(PNO_PARAM_MSCAN))) {
 				batch_params.rtt = simple_strtol(value, NULL, 0);
 				DHD_PNO(("rtt : %d\n", batch_params.rtt));
 			} else {
@@ -539,7 +557,7 @@ static int wl_android_get_p2p_dev_addr(struct net_device *ndev, char *command, i
 }
 
 
-int
+static int
 wl_android_set_ap_mac_list(struct net_device *dev, int macmode, struct maclist *maclist)
 {
 	int i, j, match;
@@ -696,12 +714,10 @@ int wl_android_wifi_on(struct net_device *dev)
 			DHD_ERROR(("\nfailed to power up wifi chip, max retry reached **\n\n"));
 			goto exit;
 		}
-#if defined(BCMSDIO) || defined(BCMPCIE)
-		ret = dhd_net_bus_devreset(dev, FALSE);
 #ifdef BCMSDIO
+		ret = dhd_net_bus_devreset(dev, FALSE);
 		dhd_net_bus_resume(dev, 1);
 #endif
-#endif /* BCMSDIO || BCMPCIE */
 		if (!ret) {
 			if (dhd_dev_init_ioctl(dev) < 0)
 				ret = -EFAULT;
@@ -1209,6 +1225,46 @@ resume:
 	return ret;
 }
 
+int
+wl_android_ampdu_send_delba(struct net_device *dev, char *command)
+{
+	int error = 0;
+	struct ampdu_ea_tid aet;
+	char smbuf[WLC_IOCTL_SMLEN];
+
+	DHD_ERROR(("%s, %s\n", __FUNCTION__, command));
+
+	/* get tid */
+	aet.tid = bcm_strtoul(command, &command, 10);
+	if (aet.tid > MAXPRIO) {
+		DHD_ERROR(("%s: error: invalid tid %d\n", __FUNCTION__, aet.tid));
+		return BCME_BADARG;
+	}
+	command++;
+
+	/* get mac address, here 17 is strlen("xx:xx:xx:xx:xx:xx") */
+	if ((strlen(command) < 17) || !bcm_ether_atoe(command, &aet.ea)) {
+		DHD_ERROR(("%s: error: invalid MAC address %s\n", __FUNCTION__, command));
+		return BCME_BADARG;
+	}
+	/* skip mac address */
+	command += strlen("xx:xx:xx:xx:xx:xx") + 1;
+
+	/* get initiator */
+	aet.initiator = bcm_strtoul(command, &command, 10);
+	if (aet.initiator > 1) {
+		DHD_ERROR(("%s: error: inivalid initiator %d\n", __FUNCTION__, aet.initiator));
+		return BCME_BADARG;
+	}
+
+	error = wldev_iovar_setbuf(dev, "ampdu_send_delba", &aet, sizeof(aet),
+		smbuf, sizeof(smbuf), NULL);
+	if (error) {
+		DHD_ERROR(("%s: Failed to send delba, error = %d\n", __FUNCTION__, error));
+	}
+
+	return error;
+}
 
 int wl_keep_alive_set(struct net_device *dev, char* extra, int total_len)
 {
@@ -1272,8 +1328,12 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 #define PRIVATE_COMMAND_MAX_LEN	8192
 	int ret = 0;
 	char *command = NULL;
+	char *buf = NULL;
 	int bytes_written = 0;
 	android_wifi_priv_cmd priv_cmd;
+#ifdef CONFIG_COMPAT
+	android_wifi_priv_cmd_compat priv_cmd_compat;
+#endif
 
 	net_os_wake_lock(net);
 
@@ -1281,28 +1341,29 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		ret = -EINVAL;
 		goto exit;
 	}
-
 #ifdef CONFIG_COMPAT
 	if (is_compat_task()) {
-		compat_android_wifi_priv_cmd compat_priv_cmd;
-		if (copy_from_user(&compat_priv_cmd, ifr->ifr_data,
-			sizeof(compat_android_wifi_priv_cmd))) {
+		if (copy_from_user(&priv_cmd_compat, ifr->ifr_data, sizeof(android_wifi_priv_cmd_compat))) {
 			ret = -EFAULT;
 			goto exit;
-
 		}
-		priv_cmd.buf = compat_ptr(compat_priv_cmd.buf);
-		priv_cmd.used_len = compat_priv_cmd.used_len;
-		priv_cmd.total_len = compat_priv_cmd.total_len;
-	} else
-#endif /* CONFIG_COMPAT */
-	{
+		priv_cmd.bufaddr = (char *)(uintptr_t) priv_cmd_compat.bufaddr;
+		priv_cmd.used_len = priv_cmd_compat.used_len;
+		priv_cmd.total_len = priv_cmd_compat.total_len;
+	} else {
 		if (copy_from_user(&priv_cmd, ifr->ifr_data, sizeof(android_wifi_priv_cmd))) {
 			ret = -EFAULT;
 			goto exit;
 		}
 	}
-	if ((priv_cmd.total_len > PRIVATE_COMMAND_MAX_LEN) || (priv_cmd.total_len < 0)) {
+#else
+	if (copy_from_user(&priv_cmd, ifr->ifr_data, sizeof(android_wifi_priv_cmd))) {
+		ret = -EFAULT;
+		goto exit;
+	}
+#endif
+	if (priv_cmd.total_len > PRIVATE_COMMAND_MAX_LEN)
+	{
 		DHD_ERROR(("%s: too long priavte command\n", __FUNCTION__));
 		ret = -EINVAL;
 		goto exit;
@@ -1314,7 +1375,8 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		ret = -ENOMEM;
 		goto exit;
 	}
-	if (copy_from_user(command, priv_cmd.buf, priv_cmd.total_len)) {
+	buf = (char *)priv_cmd.bufaddr;
+	if (copy_from_user(command, buf, priv_cmd.total_len)) {
 		ret = -EFAULT;
 		goto exit;
 	}
@@ -1454,6 +1516,9 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 			priv_cmd.total_len - skip, *(command + skip - 2) - '0');
 	}
 #endif /* WL_CFG80211 */
+	else if (strnicmp(command, CMD_AMPDU_SEND_DELBA, strlen(CMD_AMPDU_SEND_DELBA)) == 0)
+		bytes_written = wl_android_ampdu_send_delba(net,
+			&command[strlen(CMD_AMPDU_SEND_DELBA) + 1]);
 	else if (strnicmp(command, CMD_OKC_SET_PMK, strlen(CMD_OKC_SET_PMK)) == 0)
 		bytes_written = wl_android_set_pmk(net, command, priv_cmd.total_len);
 	else if (strnicmp(command, CMD_OKC_ENABLE, strlen(CMD_OKC_ENABLE)) == 0)
@@ -1485,11 +1550,18 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		int skip = strlen(CMD_KEEP_ALIVE) + 1;
 		bytes_written = wl_keep_alive_set(net, command + skip, priv_cmd.total_len - skip);
 	}
+	else if (strnicmp(command, CMD_SETMIRACAST, strlen(CMD_SETMIRACAST)) == 0)
+		bytes_written = wldev_miracast_tuning(net, command, priv_cmd.total_len);
+	else if (strnicmp(command, CMD_ASSOCRESPIE, strlen(CMD_ASSOCRESPIE)) == 0)
+		bytes_written = wldev_get_assoc_resp_ie(net, command, priv_cmd.total_len);
+	else if (strnicmp(command, CMD_MAXLINKSPEED, strlen(CMD_MAXLINKSPEED))== 0)
+		bytes_written = wldev_get_max_linkspeed(net, command, priv_cmd.total_len);
+	else if (strnicmp(command, CMD_RXRATESTATS, strlen(CMD_RXRATESTATS)) == 0)
+		bytes_written = wldev_get_rx_rate_stats(net, command, priv_cmd.total_len);
 	else if (strnicmp(command, CMD_ROAM_OFFLOAD, strlen(CMD_ROAM_OFFLOAD)) == 0) {
 		int enable = *(command + strlen(CMD_ROAM_OFFLOAD) + 1) - '0';
 		bytes_written = wl_cfg80211_enable_roam_offload(net, enable);
-	}
-	else {
+	} else {
 		DHD_ERROR(("Unknown PRIVATE command %s - ignored\n", command));
 		snprintf(command, 3, "OK");
 		bytes_written = strlen("OK");
@@ -1505,7 +1577,7 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 			bytes_written++;
 		}
 		priv_cmd.used_len = bytes_written;
-		if (copy_to_user(priv_cmd.buf, command, bytes_written)) {
+		if (copy_to_user(buf, command, bytes_written)) {
 			DHD_ERROR(("%s: failed to copy data to user buffer\n", __FUNCTION__));
 			ret = -EFAULT;
 		}

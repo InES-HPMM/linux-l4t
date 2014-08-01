@@ -23,7 +23,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_ip.h 458522 2014-02-27 02:26:15Z $
+ * $Id: dhd_ip.h 457888 2014-02-25 03:34:39Z $
  */
 
 #ifndef _dhd_ip_h_
@@ -63,7 +63,6 @@ extern int dhd_tcpack_check_xmit(dhd_pub_t *dhdp, void *pkt);
 extern bool dhd_tcpack_suppress(dhd_pub_t *dhdp, void *pkt);
 extern bool dhd_tcpdata_info_get(dhd_pub_t *dhdp, void *pkt);
 
-/* #define DHDTCPACK_SUP_DBG */
 #if defined(DEBUG_COUNTER) && defined(DHDTCPACK_SUP_DBG)
 extern counter_tbl_t tack_tbl;
 #endif /* DEBUG_COUNTER && DHDTCPACK_SUP_DBG */

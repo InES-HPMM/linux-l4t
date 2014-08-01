@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_pcie_linux.c 483434 2014-06-09 19:01:21Z $
+ * $Id: dhd_pcie_linux.c 452261 2014-01-29 19:30:23Z $
  */
 
 
@@ -34,8 +34,8 @@
 #include <hndpmu.h>
 #include <sbchipc.h>
 #if defined(DHD_DEBUG)
-#include <hnd_armtrap.h>
-#include <hnd_cons.h>
+#include <hndrte_armtrap.h>
+#include <hndrte_cons.h>
 #endif /* defined(DHD_DEBUG) */
 #include <dngl_stats.h>
 #include <pcie_core.h>
@@ -46,6 +46,7 @@
 #include <dhdioctl.h>
 #include <bcmmsgbuf.h>
 #include <pcicfg.h>
+#include <circularbuf.h>
 #include <dhd_pcie.h>
 
 
@@ -86,7 +87,6 @@ typedef struct dhdpcie_info
 	struct pcos_info *pcos_info;
 	uint16		last_intrstatus;	/* to cache intrstatus */
 	int	irq;
-	char pciname[32];
 
 } dhdpcie_info_t;
 
@@ -109,13 +109,8 @@ static void __devexit
 dhdpcie_pci_remove(struct pci_dev *pdev);
 static int dhdpcie_init(struct pci_dev *pdev);
 static irqreturn_t dhdpcie_isr(int irq, void *arg);
-/* OS Routine functions for PCI suspend/resume */
-
-static int dhdpcie_pci_suspend(struct pci_dev *dev, pm_message_t state);
-static int dhdpcie_set_suspend_resume(struct pci_dev *dev, bool state);
+static int dhdpcie_pci_suspend(struct pci_dev *dev);
 static int dhdpcie_pci_resume(struct pci_dev *dev);
-static int dhdpcie_resume_dev(struct pci_dev *dev);
-static int dhdpcie_suspend_dev(struct pci_dev *dev);
 static struct pci_device_id dhdpcie_pci_devid[] __devinitdata = {
 	{ vendor: 0x14e4,
 	device: PCI_ANY_ID,
@@ -138,52 +133,11 @@ static struct pci_driver dhdpcie_driver = {
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 	save_state:	NULL,
 #endif
-	suspend:	dhdpcie_pci_suspend,
-	resume:		dhdpcie_pci_resume,
+	suspend:	NULL,
+	resume:		NULL,
 };
 
-int dhdpcie_init_succeeded = FALSE;
-
-static int dhdpcie_set_suspend_resume(struct pci_dev *pdev, bool state)
-{
-	int ret = 0;
-	dhdpcie_info_t *pch = pci_get_drvdata(pdev);
-	dhd_bus_t *bus = NULL;
-
-	if (pch) {
-		bus = pch->bus;
-	}
-
-	/* When firmware is not loaded do the PCI bus */
-	/* suspend/resume only */
-	if (bus && (bus->dhd->busstate == DHD_BUS_DOWN)) {
-		ret = dhdpcie_pci_suspend_resume(bus->dev, state);
-		return ret;
-	}
-
-	if (state == TRUE) {
-		/* This function works only in case of Resume. force return */
-		return ret;
-	}
-
-	if (bus && (bus->dhd->busstate == DHD_BUS_SUSPEND)) {
-		ret = dhdpcie_bus_suspend(bus, state);
-	}
-	return ret;
-}
-
-static int dhdpcie_pci_suspend(struct pci_dev * pdev, pm_message_t state)
-{
-	BCM_REFERENCE(state);
-	return dhdpcie_set_suspend_resume(pdev, TRUE);
-}
-
-static int dhdpcie_pci_resume(struct pci_dev *pdev)
-{
-	return dhdpcie_set_suspend_resume(pdev, FALSE);
-}
-
-static int dhdpcie_suspend_dev(struct pci_dev *dev)
+static int dhdpcie_pci_suspend(struct pci_dev *dev)
 {
 	int ret;
 	pci_save_state(dev);
@@ -193,9 +147,10 @@ static int dhdpcie_suspend_dev(struct pci_dev *dev)
 	return ret;
 }
 
-static int dhdpcie_resume_dev(struct pci_dev *dev)
+static int dhdpcie_pci_resume(struct pci_dev *dev)
 {
 	int err = 0;
+	uint32 val;
 	pci_restore_state(dev);
 	err = pci_enable_device(dev);
 	if (err) {
@@ -214,6 +169,9 @@ static int dhdpcie_resume_dev(struct pci_dev *dev)
 		printf("%s:pci_set_power_state error %d \n", __FUNCTION__, err);
 		return err;
 	}
+	pci_read_config_dword(dev, 0x40, &val);
+	if ((val & 0x0000ff00) != 0)
+		pci_write_config_dword(dev, 0x40, val & 0xffff00ff);
 	return err;
 }
 
@@ -222,32 +180,11 @@ int dhdpcie_pci_suspend_resume(struct pci_dev *dev, bool state)
 	int rc;
 
 	if (state)
-		rc = dhdpcie_suspend_dev(dev);
+		rc = dhdpcie_pci_suspend(dev);
 	else
-		rc = dhdpcie_resume_dev(dev);
+		rc = dhdpcie_pci_resume(dev);
 	return rc;
 }
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
-static int dhdpcie_device_scan(struct device *dev, void *data)
-{
-	struct pci_dev *pcidev;
-	int *cnt = data;
-
-	pcidev = container_of(dev, struct pci_dev, dev);
-	if (pcidev->vendor != 0x14e4)
-		return 0;
-
-	DHD_INFO(("Found Broadcom PCI device 0x%04x\n", pcidev->device));
-	*cnt += 1;
-	if (pcidev->driver && strcmp(pcidev->driver->name, dhdpcie_driver.name))
-		DHD_ERROR(("Broadcom PCI Device 0x%04x has allocated with driver %s\n",
-			pcidev->device, pcidev->driver->name));
-
-	return 0;
-}
-#endif /* LINUX_VERSION >= 2.6.0 */
-
 int
 dhdpcie_bus_register(void)
 {
@@ -257,23 +194,12 @@ dhdpcie_bus_register(void)
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 	if (!(error = pci_module_init(&dhdpcie_driver)))
 		return 0;
+#else
+	if (!(error = pci_register_driver(&dhdpcie_driver)))
+		return 0;
+#endif
 
 	DHD_ERROR(("%s: pci_module_init failed 0x%x\n", __FUNCTION__, error));
-#else
-	if (!(error = pci_register_driver(&dhdpcie_driver))) {
-		bus_for_each_dev(dhdpcie_driver.driver.bus, NULL, &error, dhdpcie_device_scan);
-		if (!error) {
-			DHD_ERROR(("No Broadcom PCI device enumerated!\n"));
-		} else if (!dhdpcie_init_succeeded) {
-			DHD_ERROR(("%s: dhdpcie initialize failed.\n", __FUNCTION__));
-		} else {
-			return 0;
-		}
-
-		pci_unregister_driver(&dhdpcie_driver);
-		error = BCME_ERROR;
-	}
-#endif /* LINUX_VERSION < 2.6.0 */
 
 	return error;
 }
@@ -320,6 +246,7 @@ dhdpcie_detach(dhdpcie_info_t *pch)
 void __devexit
 dhdpcie_pci_remove(struct pci_dev *pdev)
 {
+
 	osl_t *osh = NULL;
 	dhdpcie_info_t *pch = NULL;
 	dhd_bus_t *bus = NULL;
@@ -327,7 +254,6 @@ dhdpcie_pci_remove(struct pci_dev *pdev)
 	DHD_TRACE(("%s Enter\n", __FUNCTION__));
 	pch = pci_get_drvdata(pdev);
 	bus = pch->bus;
-	osh = pch->osh;
 
 	dhdpcie_bus_release(bus);
 	pci_disable_device(pdev);
@@ -336,7 +262,6 @@ dhdpcie_pci_remove(struct pci_dev *pdev)
 	/* osl detach */
 	osl_detach(osh);
 
-	dhdpcie_init_succeeded = FALSE;
 
 	DHD_TRACE(("%s Exit\n", __FUNCTION__));
 
@@ -350,16 +275,10 @@ dhdpcie_request_irq(dhdpcie_info_t *dhdpcie_info)
 	dhd_bus_t *bus = dhdpcie_info->bus;
 	struct pci_dev *pdev = dhdpcie_info->bus->dev;
 
-	snprintf(dhdpcie_info->pciname, sizeof(dhdpcie_info->pciname),
-	    "dhdpcie:%s", pci_name(pdev));
-	if (request_irq(pdev->irq, dhdpcie_isr, IRQF_SHARED,
-	                dhdpcie_info->pciname, bus) < 0) {
+	if (request_irq(pdev->irq, dhdpcie_isr, IRQF_SHARED, "dhdpcie", bus) < 0) {
 			DHD_ERROR(("%s: request_irq() failed\n", __FUNCTION__));
 			return -1;
-	}
-
-	DHD_TRACE(("%s %s\n", __FUNCTION__, dhdpcie_info->pciname));
-
+		}
 
 	return 0; /* SUCCESS */
 }
@@ -512,17 +431,12 @@ int dhdpcie_init(struct pci_dev *pdev)
 				"due to polling mode\n", __FUNCTION__));
 		}
 
-		if (dhd_download_fw_on_driverload) {
-			if (dhd_bus_start(bus->dhd)) {
-				DHD_ERROR(("%s: dhd_bud_start() failed\n", __FUNCTION__));
+		if (dhd_download_fw_on_driverload)
+			if (dhd_bus_start(bus->dhd))
 				break;
-			}
-		}
 
 		/* set private data for pci_dev */
 		pci_set_drvdata(pdev, dhdpcie_info);
-
-		dhdpcie_init_succeeded = TRUE;
 
 		DHD_TRACE(("%s:Exit - SUCCESS \n", __FUNCTION__));
 		return 0;  /* return  SUCCESS  */
@@ -538,8 +452,6 @@ int dhdpcie_init(struct pci_dev *pdev)
 	pci_disable_device(pdev);
 	if (osh)
 		osl_detach(osh);
-
-	dhdpcie_init_succeeded = FALSE;
 
 	DHD_TRACE(("%s:Exit - FAILURE \n", __FUNCTION__));
 

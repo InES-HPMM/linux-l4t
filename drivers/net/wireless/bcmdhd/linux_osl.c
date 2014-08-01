@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: linux_osl.c 474402 2014-05-01 03:50:41Z $
+ * $Id: linux_osl.c 451649 2014-01-27 17:23:38Z $
  */
 
 #define LINUX_PORT
@@ -35,8 +35,6 @@
 #include <asm/cacheflush.h>
 #endif /* __ARM_ARCH_7A__ */
 
-#include <linux/random.h>
-
 #include <osl.h>
 #include <bcmutils.h>
 #include <linux/delay.h>
@@ -45,11 +43,6 @@
 
 
 #include <linux/fs.h>
-
-#ifdef BCM47XX_ACP_WAR
-#include <linux/spinlock.h>
-extern spinlock_t l2x0_reg_lock;
-#endif
 
 #define PCI_CFG_RETRY		10
 
@@ -135,7 +128,6 @@ struct osl_info {
 	struct list_head ctrace_list;
 	int ctrace_num;
 #endif /* BCMDBG_CTRACE */
-	uint32  flags;		/* If specific cases to be handled in the OSL */
 };
 
 #define OSL_PKTTAG_CLEAR(p) \
@@ -151,8 +143,7 @@ do { \
 /* PCMCIA attribute space access macros */
 
 /* Global ASSERT type flag */
-uint32 g_assert_type = 0;
-module_param(g_assert_type, int, 0);
+uint32 g_assert_type = FALSE;
 
 static int16 linuxbcmerrormap[] =
 {	0, 			/* 0 */
@@ -400,7 +391,6 @@ static struct sk_buff *osl_alloc_skb(osl_t *osh, unsigned int len)
 #if defined(CONFIG_SPARSEMEM) && defined(CONFIG_ZONE_DMA)
 	flags |= GFP_ATOMIC;
 #endif
-
 	skb = __dev_alloc_skb(len, flags);
 #else
 	skb = dev_alloc_skb(len);
@@ -631,58 +621,6 @@ osl_pktfastget(osl_t *osh, uint len)
 	return skb;
 }
 #endif /* CTFPOOL */
-
-#if defined(BCM_GMAC3)
-/* Account for a packet delivered to downstream forwarder.
- * Decrement a GMAC forwarder interface's pktalloced count.
- */
-void BCMFASTPATH
-osl_pkt_tofwder(osl_t *osh, void *skbs, int skb_cnt)
-{
-
-	atomic_sub(skb_cnt, &osh->cmn->pktalloced);
-}
-
-/* Account for a downstream forwarder delivered packet to a WL/DHD driver.
- * Increment a GMAC forwarder interface's pktalloced count.
- */
-#ifdef BCMDBG_CTRACE
-void BCMFASTPATH
-osl_pkt_frmfwder(osl_t *osh, void *skbs, int skb_cnt, int line, char *file)
-#else
-void BCMFASTPATH
-osl_pkt_frmfwder(osl_t *osh, void *skbs, int skb_cnt)
-#endif /* BCMDBG_CTRACE */
-{
-#if defined(BCMDBG_CTRACE)
-	int i;
-	struct sk_buff *skb;
-#endif 
-
-#if defined(BCMDBG_CTRACE)
-	if (skb_cnt > 1) {
-		struct sk_buff **skb_array = (struct sk_buff **)skbs;
-		for (i = 0; i < skb_cnt; i++) {
-			skb = skb_array[i];
-#if defined(BCMDBG_CTRACE)
-			ASSERT(!PKTISCHAINED(skb));
-			ADD_CTRACE(osh, skb, file, line);
-#endif /* BCMDBG_CTRACE */
-		}
-	} else {
-		skb = (struct sk_buff *)skbs;
-#if defined(BCMDBG_CTRACE)
-		ASSERT(!PKTISCHAINED(skb));
-		ADD_CTRACE(osh, skb, file, line);
-#endif /* BCMDBG_CTRACE */
-	}
-#endif 
-
-	atomic_add(skb_cnt, &osh->cmn->pktalloced);
-}
-
-#endif /* BCM_GMAC3 */
-
 /* Convert a driver packet to native(OS) packet
  * In the process, packettag is zeroed out before sending up
  * IP code depends on skb->cb to be setup correctly with various options
@@ -1039,11 +977,7 @@ osl_pci_bus(osl_t *osh)
 {
 	ASSERT(osh && (osh->magic == OS_HANDLE_MAGIC) && osh->pdev);
 
-#if defined(__ARM_ARCH_7A__) && LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 35)
-	return pci_domain_nr(((struct pci_dev *)osh->pdev)->bus);
-#else
 	return ((struct pci_dev *)osh->pdev)->bus->number;
-#endif
 }
 
 /* return slot # for the pci device pointed by osh->pdev */
@@ -1057,24 +991,6 @@ osl_pci_slot(osl_t *osh)
 #else
 	return PCI_SLOT(((struct pci_dev *)osh->pdev)->devfn);
 #endif
-}
-
-/* return domain # for the pci device pointed by osh->pdev */
-uint
-osl_pcie_domain(osl_t *osh)
-{
-	ASSERT(osh && (osh->magic == OS_HANDLE_MAGIC) && osh->pdev);
-
-	return pci_domain_nr(((struct pci_dev *)osh->pdev)->bus);
-}
-
-/* return bus # for the pci device pointed by osh->pdev */
-uint
-osl_pcie_bus(osl_t *osh)
-{
-	ASSERT(osh && (osh->magic == OS_HANDLE_MAGIC) && osh->pdev);
-
-	return ((struct pci_dev *)osh->pdev)->bus->number;
 }
 
 /* return the pci device pointed by osh->pdev */
@@ -1221,7 +1137,7 @@ uint
 osl_malloced(osl_t *osh)
 {
 	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
-	return (atomic_read(&osh->cmn->malloced));
+		return (atomic_read(&osh->cmn->malloced));
 }
 
 uint
@@ -1279,9 +1195,6 @@ dmaaddr_t BCMFASTPATH
 osl_dma_map(osl_t *osh, void *va, uint size, int direction, void *p, hnddma_seg_map_t *dmah)
 {
 	int dir;
-#ifdef BCM47XX_ACP_WAR
-	uint pa;
-#endif
 
 	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
 	dir = (direction == DMA_TX)? PCI_DMA_TODEVICE: PCI_DMA_FROMDEVICE;
@@ -1290,33 +1203,18 @@ osl_dma_map(osl_t *osh, void *va, uint size, int direction, void *p, hnddma_seg_
 	if (dmah != NULL) {
 		int32 nsegs, i, totsegs = 0, totlen = 0;
 		struct scatterlist *sg, _sg[MAX_DMA_SEGS * 2];
-#ifdef BCM47XX_ACP_WAR
-		struct scatterlist *s;
-#endif
 		struct sk_buff *skb;
 		for (skb = (struct sk_buff *)p; skb != NULL; skb = PKTNEXT(osh, skb)) {
 			sg = &_sg[totsegs];
 			if (skb_is_nonlinear(skb)) {
 				nsegs = skb_to_sgvec(skb, sg, 0, PKTLEN(osh, skb));
 				ASSERT((nsegs > 0) && (totsegs + nsegs <= MAX_DMA_SEGS));
-#ifdef BCM47XX_ACP_WAR
-				for_each_sg(sg, s, nsegs, i) {
-					if (sg_phys(s) >= ACP_WIN_LIMIT) {
-						dma_map_page(&((struct pci_dev *)osh->pdev)->dev,
-							sg_page(s), s->offset, s->length, dir);
-					}
-				}
-#else
 				pci_map_sg(osh->pdev, sg, nsegs, dir);
-#endif
 			} else {
 				nsegs = 1;
 				ASSERT(totsegs + nsegs <= MAX_DMA_SEGS);
 				sg->page_link = 0;
 				sg_set_buf(sg, PKTDATA(osh, skb), PKTLEN(osh, skb));
-#ifdef BCM47XX_ACP_WAR
-				if (virt_to_phys(PKTDATA(osh, skb)) >= ACP_WIN_LIMIT)
-#endif
 				pci_map_single(osh->pdev, PKTDATA(osh, skb), PKTLEN(osh, skb), dir);
 			}
 			totsegs += nsegs;
@@ -1332,11 +1230,6 @@ osl_dma_map(osl_t *osh, void *va, uint size, int direction, void *p, hnddma_seg_
 	}
 #endif /* __ARM_ARCH_7A__ && BCMDMASGLISTOSL */
 
-#ifdef BCM47XX_ACP_WAR
-	pa = virt_to_phys(va);
-	if (pa < ACP_WIN_LIMIT)
-		return (pa);
-#endif
 	return (pci_map_single(osh->pdev, va, size, dir));
 }
 
@@ -1346,10 +1239,6 @@ osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction)
 	int dir;
 
 	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
-#ifdef BCM47XX_ACP_WAR
-	if (pa < ACP_WIN_LIMIT)
-		return;
-#endif
 	dir = (direction == DMA_TX)? PCI_DMA_TODEVICE: PCI_DMA_FROMDEVICE;
 	pci_unmap_single(osh->pdev, (uint32)pa, size, dir);
 }
@@ -1360,20 +1249,12 @@ osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction)
 inline void BCMFASTPATH
 osl_cache_flush(void *va, uint size)
 {
-#ifdef BCM47XX_ACP_WAR
-	if (virt_to_phys(va) < ACP_WIN_LIMIT)
-		return;
-#endif
 	dma_sync_single_for_device(OSH_NULL, virt_to_dma(OSH_NULL, va), size, DMA_TX);
 }
 
 inline void BCMFASTPATH
 osl_cache_inv(void *va, uint size)
 {
-#ifdef BCM47XX_ACP_WAR
-	if (virt_to_phys(va) < ACP_WIN_LIMIT)
-		return;
-#endif
 	dma_sync_single_for_cpu(OSH_NULL, virt_to_dma(OSH_NULL, va), size, DMA_RX);
 }
 
@@ -1385,15 +1266,6 @@ inline void osl_prefetch(const void *ptr)
 		:
 		: "o" (*(char *)ptr)
 		: "cc");
-}
-
-int osl_arch_is_coherent(void)
-{
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
-	return 0;
-#else
-	return arch_is_coherent();
-#endif
 }
 #endif 
 
@@ -1587,16 +1459,6 @@ osl_pktalloced(osl_t *osh)
 		return 0;
 }
 
-uint32
-osl_rand(void)
-{
-	uint32 rand;
-
-	get_random_bytes(&rand, sizeof(rand));
-
-	return rand;
-}
-
 /* Linux Kernel: File Operations: start */
 void *
 osl_os_open_image(char *filename)
@@ -1656,46 +1518,3 @@ osl_os_image_size(void *image)
 }
 
 /* Linux Kernel: File Operations: end */
-
-#ifdef BCM47XX_ACP_WAR
-inline void osl_pcie_rreg(osl_t *osh, ulong addr, void *v, uint size)
-{
-	uint32 flags;
-	int pci_access = 0;
-
-	if (osh && BUSTYPE(osh->bustype) == PCI_BUS)
-		pci_access = 1;
-
-	if (pci_access)
-		spin_lock_irqsave(&l2x0_reg_lock, flags);
-	switch (size) {
-	case sizeof(uint8):
-		*(uint8*)v = readb((volatile uint8*)(addr));
-		break;
-	case sizeof(uint16):
-		*(uint16*)v = readw((volatile uint16*)(addr));
-		break;
-	case sizeof(uint32):
-		*(uint32*)v = readl((volatile uint32*)(addr));
-		break;
-	case sizeof(uint64):
-		*(uint64*)v = *((volatile uint64*)(addr));
-		break;
-	}
-	if (pci_access)
-		spin_unlock_irqrestore(&l2x0_reg_lock, flags);
-}
-#endif /* BCM47XX_ACP_WAR */
-
-/* APIs to set/get specific quirks in OSL layer */
-void
-osl_flag_set(osl_t *osh, uint32 mask)
-{
-	osh->flags |= mask;
-}
-
-bool
-osl_is_flag_set(osl_t *osh, uint32 mask)
-{
-	return (osh->flags & mask);
-}

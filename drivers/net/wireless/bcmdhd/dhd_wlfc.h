@@ -18,7 +18,7 @@
 *      Notwithstanding the above, under no circumstances may you combine this
 * software in any way with any other Broadcom software provided under a license
 * other than the GPL, without Broadcom's express prior written consent.
-* $Id: dhd_wlfc.h 481157 2014-05-28 19:04:46Z $
+* $Id: dhd_wlfc.h 453829 2014-02-06 12:28:45Z $
 *
 */
 #ifndef __wlfc_host_driver_definitions_h__
@@ -45,9 +45,6 @@
 #define WLFC_HANGER_ITEM_STATE_INUSE_SUPPRESSED		3
 #define WLFC_HANGER_ITEM_STATE_WAIT_CLEAN		4
 
-#define WLFC_HANGER_ITEM_WAIT_EVENT_COUNT		2
-#define WLFC_HANGER_ITEM_WAIT_EVENT_INVALID		255
-
 typedef enum {
 	Q_TYPE_PSQ,
 	Q_TYPE_AFQ
@@ -70,8 +67,7 @@ typedef enum ewlfc_mac_entry_action {
 typedef struct wlfc_hanger_item {
 	uint8	state;
 	uint8   gen;
-	uint8	waitevent;	/* wait txstatus_update and txcomplete before free a packet */
-	uint8	pad;
+	uint8	pad[2];
 	uint32	identifier;
 	void*	pkt;
 #ifdef PROP_TXSTATUS_DEBUG
@@ -244,9 +240,6 @@ typedef struct athost_wl_stat_counters {
 /* How long to defer flow control in milliseconds */
 #define WLFC_FC_DEFER_PERIOD_MS 200
 
-/* How long to detect occurance per AC in miliseconds */
-#define WLFC_RX_DETECTION_THRESHOLD_MS	100
-
 /* Mask to represent available ACs (note: BC/MC is ignored */
 #define WLFC_AC_MASK 0xF
 
@@ -292,7 +285,6 @@ typedef struct athost_wl_status_info {
 	int	pkt_cnt_per_ac[AC_COUNT+1];
 	uint8	allow_fc;
 	uint32  fc_defer_timestamp;
-	uint32	rx_timestamp[AC_COUNT+1];
 	/* ON/OFF state for flow control to the host network interface */
 	uint8	hostif_flow_state[WLFC_MAX_IFNUM];
 	uint8	host_ifidx;
@@ -485,11 +477,9 @@ int dhd_wlfc_commit_packets(dhd_pub_t *dhdp, f_commitpkt_t fcommit,
 	void* commit_ctx, void *pktbuf, bool need_toggle_host_if);
 int dhd_wlfc_txcomplete(dhd_pub_t *dhd, void *txp, bool success);
 int dhd_wlfc_init(dhd_pub_t *dhd);
-#ifdef SUPPORT_P2P_GO_PS
+int dhd_wlfc_hostreorder_init(dhd_pub_t *dhd);
 int dhd_wlfc_suspend(dhd_pub_t *dhd);
 int dhd_wlfc_resume(dhd_pub_t *dhd);
-#endif /* SUPPORT_P2P_GO_PS */
-int dhd_wlfc_hostreorder_init(dhd_pub_t *dhd);
 int dhd_wlfc_cleanup_txq(dhd_pub_t *dhd, f_processpkt_t fn, void *arg);
 int dhd_wlfc_cleanup(dhd_pub_t *dhd, f_processpkt_t fn, void* arg);
 int dhd_wlfc_deinit(dhd_pub_t *dhd);
@@ -512,7 +502,4 @@ int dhd_wlfc_get_credit_ignore(dhd_pub_t *dhd, int *val);
 int dhd_wlfc_set_credit_ignore(dhd_pub_t *dhd, int val);
 int dhd_wlfc_get_txstatus_ignore(dhd_pub_t *dhd, int *val);
 int dhd_wlfc_set_txstatus_ignore(dhd_pub_t *dhd, int val);
-
-int dhd_wlfc_get_rxpkt_chk(dhd_pub_t *dhd, int *val);
-int dhd_wlfc_set_rxpkt_chk(dhd_pub_t *dhd, int val);
 #endif /* __wlfc_host_driver_definitions_h__ */

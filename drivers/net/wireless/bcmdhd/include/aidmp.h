@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: aidmp.h 456346 2014-02-18 16:48:52Z $
+ * $Id: aidmp.h 404499 2013-05-28 01:06:37Z $
  */
 
 #ifndef	_AIDMP_H
@@ -111,7 +111,7 @@
 #define	SD_SZ_ALIGN		0x00000fff
 
 
-#if !defined(_LANGUAGE_ASSEMBLY) && !defined(__ASSEMBLY__)
+#ifndef _LANGUAGE_ASSEMBLY
 
 typedef volatile struct _aidmp {
 	uint32	oobselina30;	/* 0x000 */
@@ -231,7 +231,7 @@ typedef volatile struct _aidmp {
 	uint32	componentid3;	/* 0xffc */
 } aidmp_t;
 
-#endif /* !_LANGUAGE_ASSEMBLY && !__ASSEMBLY__ */
+#endif /* _LANGUAGE_ASSEMBLY */
 
 /* Out-of-band Router registers */
 #define	OOB_BUSCONFIG		0x020
