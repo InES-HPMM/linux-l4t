@@ -250,42 +250,55 @@ EXPORT_SYMBOL(tegra_edp_notify_gpu_load);
 #ifdef CONFIG_DEBUG_FS
 static struct dentry *capping_debugfs_dir;
 
-static int core_set(void *data, u64 val)
-{
-	unsigned int *pdata = data;
-	unsigned int old;
+#define DEFINE_SDC_SIMPLE_ATTR(__name, __var)				     \
+static int __name##_set(void *data, u64 val)				     \
+{									     \
+	if (val != __var) {						     \
+		__var = val;						     \
+		do_cap_control();					     \
+	}								     \
+									     \
+	return 0;							     \
+}									     \
+									     \
+static int __name##_get(void *data, u64 *val)				     \
+{									     \
+	*val = __var;							     \
+	return 0;							     \
+}									     \
+									     \
+DEFINE_SIMPLE_ATTRIBUTE(__name##_fops, __name##_get, __name##_set, "%lld\n");
 
-	old = *pdata;
-	*pdata = val;
+DEFINE_SDC_SIMPLE_ATTR(favor_gpu, force_gpu_pri);
+DEFINE_SDC_SIMPLE_ATTR(gpu_threshold, gpu_high_threshold);
+DEFINE_SDC_SIMPLE_ATTR(force_cpu_power, forced_caps.cpupwr);
+DEFINE_SDC_SIMPLE_ATTR(force_gpu, forced_caps.gpu);
+DEFINE_SDC_SIMPLE_ATTR(force_emc, forced_caps.emc);
+DEFINE_SDC_SIMPLE_ATTR(gpu_window, gpu_window);
+DEFINE_SDC_SIMPLE_ATTR(gpu_high_count, gpu_high_count);
 
-	if (old != *pdata) {
-		/* Changes to core_gain and cap_method require corecap update */
-		if ((pdata == &capping_device_platdata->core_gain) ||
-			(pdata == &cap_method))
-			update_cur_corecap();
-		do_cap_control();
-	}
+#define DEFINE_SDC_UPDATE_ATTR(__name, __var)				     \
+static int __name##_set(void *data, u64 val)				     \
+{									     \
+	if (val != __var) {						     \
+		__var = val;						     \
+		update_cur_corecap();                                        \
+		do_cap_control();					     \
+	}								     \
+									     \
+	return 0;							     \
+}									     \
+									     \
+static int __name##_get(void *data, u64 *val)				     \
+{									     \
+	*val = __var;							     \
+	return 0;							     \
+}									     \
+									     \
+DEFINE_SIMPLE_ATTRIBUTE(__name##_fops, __name##_get, __name##_set, "%lld\n");
 
-	return 0;
-}
-
-static int core_get(void *data, u64 *val)
-{
-	unsigned int *pdata = data;
-	*val = *pdata;
-	return 0;
-}
-
-DEFINE_SIMPLE_ATTRIBUTE(core_fops, core_get, core_set, "%lld\n");
-
-static void create_attr(const char *name, unsigned int *data)
-{
-	struct dentry *d;
-
-	d = debugfs_create_file(name, S_IRUGO | S_IWUSR, capping_debugfs_dir,
-			data, &core_fops);
-	WARN_ON(IS_ERR_OR_NULL(d));
-}
+DEFINE_SDC_UPDATE_ATTR(gain, capping_device_platdata->core_gain);
+DEFINE_SDC_UPDATE_ATTR(cap_method, cap_method);
 
 static int corecaps_show(struct seq_file *file, void *data)
 {
@@ -318,6 +331,18 @@ static int corecaps_show(struct seq_file *file, void *data)
 	return 0;
 }
 
+static int corecaps_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, corecaps_show, inode->i_private);
+}
+
+static const struct file_operations corecaps_fops = {
+	.open = corecaps_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
 static int status_show(struct seq_file *file, void *data)
 {
 	mutex_lock(&core_lock);
@@ -338,29 +363,25 @@ static int status_show(struct seq_file *file, void *data)
 	return 0;
 }
 
-static int longattr_open(struct inode *inode, struct file *file)
+static int status_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, inode->i_private, NULL);
+	return single_open(file, status_show, inode->i_private);
 }
 
-static const struct file_operations longattr_fops = {
-	.open = longattr_open,
+static const struct file_operations status_fops = {
+	.open = status_open,
 	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
 };
 
-static void create_longattr(const char *name,
-		int (*show)(struct seq_file *, void *))
-{
-	struct dentry *d;
-
-	d = debugfs_create_file(name, S_IRUGO, capping_debugfs_dir, show,
-			&longattr_fops);
-	WARN_ON(IS_ERR_OR_NULL(d));
-}
+#define SDC_DEBUGFS_CREATE_FILE(__name)	\
+	debugfs_create_file(#__name, S_IRUGO | S_IWUSR, d, NULL, &__name##_fops)
 
 static void init_debug(void)
 {
 	struct dentry *d;
+	struct dentry *df;
 
 	if (!sysedp_debugfs_dir)
 		return;
@@ -373,19 +394,28 @@ static void init_debug(void)
 
 	capping_debugfs_dir = d;
 
-
-	create_attr("favor_gpu", &force_gpu_pri);
-	create_attr("gpu_threshold", &gpu_high_threshold);
-	create_attr("force_cpu_power", &forced_caps.cpupwr);
-	create_attr("force_gpu", &forced_caps.gpu);
-	create_attr("force_emc", &forced_caps.emc);
-	create_attr("gpu_window", &gpu_window);
-	create_attr("gain", &capping_device_platdata->core_gain);
-	create_attr("gpu_high_count", &gpu_high_count);
-	create_attr("cap_method", &cap_method);
-
-	create_longattr("corecaps", corecaps_show);
-	create_longattr("status", status_show);
+	df = SDC_DEBUGFS_CREATE_FILE(favor_gpu);
+	WARN_ON(!df);
+	df = SDC_DEBUGFS_CREATE_FILE(gpu_threshold);
+	WARN_ON(!df);
+	df = SDC_DEBUGFS_CREATE_FILE(force_cpu_power);
+	WARN_ON(!df);
+	df = SDC_DEBUGFS_CREATE_FILE(force_gpu);
+	WARN_ON(!df);
+	df = SDC_DEBUGFS_CREATE_FILE(force_emc);
+	WARN_ON(!df);
+	df = SDC_DEBUGFS_CREATE_FILE(gpu_window);
+	WARN_ON(!df);
+	df = SDC_DEBUGFS_CREATE_FILE(gpu_high_count);
+	WARN_ON(!df);
+	df = SDC_DEBUGFS_CREATE_FILE(gain);
+	WARN_ON(!df);
+	df = SDC_DEBUGFS_CREATE_FILE(cap_method);
+	WARN_ON(!df);
+	df = SDC_DEBUGFS_CREATE_FILE(corecaps);
+	WARN_ON(!df);
+	df = SDC_DEBUGFS_CREATE_FILE(status);
+	WARN_ON(!df);
 }
 #else
 static inline void init_debug(void) {}

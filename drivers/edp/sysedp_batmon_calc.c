@@ -308,6 +308,18 @@ static int rbat_show(struct seq_file *file, void *data)
 	return 0;
 }
 
+static int rbat_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, rbat_show, NULL);
+}
+
+static const struct file_operations rbat_fops = {
+	.open = rbat_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
 static int ibat_show(struct seq_file *file, void *data)
 {
 	struct sysedp_batmon_ibat_lut *lut = pdata->ibat_lut;
@@ -319,6 +331,18 @@ static int ibat_show(struct seq_file *file, void *data)
 	}
 	return 0;
 }
+
+static int ibat_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, ibat_show, NULL);
+}
+
+static const struct file_operations ibat_fops = {
+	.open = ibat_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
 
 static int ocv_show(struct seq_file *file, void *data)
 {
@@ -333,14 +357,16 @@ static int ocv_show(struct seq_file *file, void *data)
 	return 0;
 }
 
-static int debug_open(struct inode *inode, struct file *file)
+static int ocv_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, inode->i_private, NULL);
+	return single_open(file, ocv_show, NULL);
 }
 
-static const struct file_operations debug_fops = {
-	.open = debug_open,
+static const struct file_operations ocv_fops = {
+	.open = ocv_open,
 	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
 };
 
 static void init_debug(void)
@@ -353,13 +379,13 @@ static void init_debug(void)
 	dd = debugfs_create_dir("batmon", sysedp_debugfs_dir);
 	WARN_ON(IS_ERR_OR_NULL(dd));
 
-	df = debugfs_create_file("rbat", S_IRUGO, dd, rbat_show, &debug_fops);
+	df = debugfs_create_file("rbat", S_IRUGO, dd, NULL, &rbat_fops);
 	WARN_ON(IS_ERR_OR_NULL(df));
 
-	df = debugfs_create_file("ibat", S_IRUGO, dd, ibat_show, &debug_fops);
+	df = debugfs_create_file("ibat", S_IRUGO, dd, NULL, &ibat_fops);
 	WARN_ON(IS_ERR_OR_NULL(df));
 
-	df = debugfs_create_file("ocv", S_IRUGO, dd, ocv_show, &debug_fops);
+	df = debugfs_create_file("ocv", S_IRUGO, dd, NULL, &ocv_fops);
 	WARN_ON(IS_ERR_OR_NULL(df));
 
 	df = debugfs_create_u32("r_const", S_IRUGO, dd, &pdata->r_const);
