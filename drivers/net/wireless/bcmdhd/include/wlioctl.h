@@ -2225,22 +2225,6 @@ typedef struct {
 
 } wl_delta_stats_t;
 
-/* structure to store per-rate rx statistics */
-typedef struct wl_scb_rx_rate_stats {
-	uint32  rx1mbps[2];	/* packets rx at 1Mbps */
-	uint32  rx2mbps[2];	/* packets rx at 2Mbps */
-	uint32  rx5mbps5[2];	/* packets rx at 5.5Mbps */
-	uint32  rx6mbps[2];	/* packets rx at 6Mbps */
-	uint32  rx9mbps[2];	/* packets rx at 9Mbps */
-	uint32  rx11mbps[2];	/* packets rx at 11Mbps */
-	uint32  rx12mbps[2];	/* packets rx at 12Mbps */
-	uint32  rx18mbps[2];	/* packets rx at 18Mbps */
-	uint32  rx24mbps[2];	/* packets rx at 24Mbps */
-	uint32  rx36mbps[2];	/* packets rx at 36Mbps */
-	uint32  rx48mbps[2];	/* packets rx at 48Mbps */
-	uint32  rx54mbps[2];	/* packets rx at 54Mbps */
-} wl_scb_rx_rate_stats_t;
-
 typedef struct {
 	uint32 packets;
 	uint32 bytes;

@@ -1331,7 +1331,7 @@ sdioh_start(sdioh_info_t *sd, int stage)
 		   2.6.27. The implementation prior to that is buggy, and needs broadcom's
 		   patch for it
 		*/
-		if ((ret = mmc_power_restore_host(sd->func[0]->card->host))) {
+		if ((ret = sdio_reset_comm(sd->func[0]->card))) {
 			sd_err(("%s Failed, error = %d\n", __FUNCTION__, ret));
 			return ret;
 		}
@@ -1418,8 +1418,6 @@ sdioh_stop(sdioh_info_t *sd)
 #endif
 		bcmsdh_oob_intr_set(sd->bcmsdh, FALSE);
 #endif /* !defined(OOB_INTR_ONLY) */
-		if (mmc_power_save_host((sd->func[0])->card->host))
-			sd_err(("%s card power save fail\n", __FUNCTION__));
 	}
 	else
 		sd_err(("%s Failed\n", __FUNCTION__));
