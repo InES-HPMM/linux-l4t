@@ -119,7 +119,6 @@ obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += wakeups-t21x.o
 
 obj-$(CONFIG_TEGRA_KFUSE) += kfuse.o
 obj-y += apbio.o
-obj-$(CONFIG_FIQ) += fiq.o
 
 obj-$(CONFIG_TEGRA_POWERGATE) += powergate.o
 obj-$(CONFIG_TEGRA_POWERGATE) += powergate-ops-txx.o
