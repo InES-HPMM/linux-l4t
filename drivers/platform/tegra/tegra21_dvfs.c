@@ -1006,6 +1006,9 @@ static int __init of_rails_init(struct device_node *dn)
 {
 	int i;
 
+	if (!of_device_is_available(dn))
+		return 0;
+
 	for (i = 0; i < ARRAY_SIZE(tegra21_dvfs_rails); i++) {
 		struct dvfs_rail *rail = tegra21_dvfs_rails[i];
 		if (!of_tegra_dvfs_rail_node_parse(dn, rail))

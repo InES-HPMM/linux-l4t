@@ -9094,6 +9094,9 @@ static void pllc4_set_fixed_rates(unsigned long cf)
 	struct pllc4_sdmmc_map *pllc4_cfg = &tegra21_pllc4_sdmmc_map[0];
 
 	for_each_compatible_node(dn, NULL, "nvidia,tegra210-sdhci") {
+		if (!of_device_is_available(dn))
+			continue;
+
 		if (!of_property_read_u32(dn, "max-clk-limit", &val)
 		    && (sdmmc_max_rate < val))
 			sdmmc_max_rate = val;
