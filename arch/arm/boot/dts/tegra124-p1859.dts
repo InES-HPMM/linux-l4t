@@ -1,0 +1,237 @@
+/*
+ * arch/arm/boot/dts/tegra124-p1859.dts
+ *
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+ /dts-v1/;
+
+#include "tegra124-vcm30_t124.dtsi"
+#include <tegra124-platforms/tegra124-p1859-gpio-default.dtsi>
+#include <tegra124-platforms/tegra124-p1859-pinmux.dtsi>
+#include <panel-a-edp-1080p-14-0.dtsi>
+#include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
+
+
+/ {
+	model = "NVIDIA Tegra124 vcm30t124";
+	compatible = "nvidia,vcm30t124", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	host1x {
+		sor {
+			status = "okay";
+			panel-a-edp-1080p-14-0 {
+				disp-default-out {
+					nvidia,out-max-pixclk = <3367>;
+					nvidia,dither = <TEGRA_DC_ORDERED_DITHER>;
+				};
+			};
+		};
+
+		dpaux {
+			status = "okay";
+		};
+
+		/* tegradc.0 */
+		dc@54200000 {
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,cmu-enable = <1>;
+			status = "okay";
+		};
+
+		/* tegradc.1 */
+		dc@54240000 {
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			status = "okay";
+		};
+	};
+
+	i2c@7000c400 {
+		nvidia,clock-always-on;
+
+		pca9539_75: pca9546@75 {
+			compatible = "nxp,pca9539";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0x75>;
+			gpio-init-names = "default";
+			gpio-init-0 = <&pca9539_default>;
+			pca9539_default: default {
+				 gpio-output-high = <0 3 4 5 7 13 14 15>;
+			 };
+		};
+	};
+
+	regulators {
+		compatible = "simple-bus";
+		device_type = "fixed-regulators";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		vdd_sd: regulator@1 {
+			compatible = "regulator-fixed-sync";
+			regulator-name = "vddio_sd_slot-reg";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&pca9539_75 11 1>;
+			enable-active-high;
+		};
+	};
+
+	serial@70006000 {
+		status = "okay";
+	};
+
+	serial@70006040 {
+		status = "okay";
+	};
+
+	serial@70006200 {
+		compatible = "nvidia,tegra20-uart";
+		console-port;
+		status = "okay";
+	};
+
+	serial@70006300 {
+		status = "okay";
+	};
+
+	spi@7000d400 {
+		status = "okay";
+	};
+
+	spi@7000d600 {
+		status = "okay";
+	};
+
+	spi@7000d800 {
+		status = "okay";
+	};
+
+	spi@7000dc00 {
+		status = "okay";
+	};
+
+	xusb@70090000 {
+		status = "okay";
+	};
+
+	ahub {
+		status = "okay";
+
+		i2s@70301000 {
+			status = "okay";
+		};
+		i2s@70301100 {
+			status = "okay";
+		};
+		i2s@70301200 {
+			status = "okay";
+		};
+		i2s@70301300 {
+			status = "okay";
+		};
+		i2s@70301400 {
+			status = "okay";
+		};
+		spdif@70306000 {
+			status = "okay";
+		};
+		amx@70303000 {
+			status = "okay";
+		};
+		adx@70303800 {
+			status = "okay";
+		};
+		amx@70303100 {
+			status = "okay";
+		};
+		adx@70303900 {
+			status = "okay";
+		};
+		dam@70302000 {
+			status = "okay";
+		};
+		dam@70302200 {
+			status = "okay";
+		};
+		dam@70302400 {
+			status = "okay";
+		};
+		afc@70307000 {
+			status = "okay";
+		};
+		afc@70307100 {
+			status = "okay";
+		};
+		afc@70307200 {
+			status = "okay";
+		};
+		afc@70307300 {
+			status = "okay";
+		};
+		afc@70307400 {
+			status = "okay";
+		};
+		afc@70307500 {
+			status = "okay";
+		};
+	};
+
+	pcie-controller {
+		status = "okay";
+
+		pci@1,0 {
+			status = "okay";
+		};
+
+		pci@2,0 {
+			status = "okay";
+		};
+	};
+
+	sata@70020000 {
+		status = "okay";
+	};
+
+	sdhci@700b0600 {
+		status = "okay";
+	};
+
+	sdhci@700b0200 {
+		status = "okay";
+	};
+
+	sdhci@700b0400 {
+		vddio_sd_slot-supply = <&vdd_sd>;
+		status = "okay";
+	};
+
+	bluedroid_pm {
+		compatible = "nvidia,tegra-bluedroid_pm";
+		id = <0>;
+		bluedroid_pm,reset-gpio = <&pca9539_75 0 1>;
+		bluedroid_pm,shutdown-gpio = <&pca9539_75 5 1>;
+		status = "okay";
+	};
+};
