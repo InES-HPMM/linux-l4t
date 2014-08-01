@@ -286,6 +286,15 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 	if (ret < 0)
 		dev_err(wdt->dev, "set wdtslpc failed %d\n", ret);
 
+	if (!wdt->timeout) {
+		ret = max77620_wdt_stop(wdt_dev);
+		if (ret < 0) {
+			dev_err(wdt->dev, "wdt stop failed: %d\n", ret);
+			goto scrub;
+		}
+		return 0;
+	}
+
 	ret = max77620_wdt_set_timeout(wdt_dev, wdt->timeout);
 	if (ret < 0) {
 		dev_err(wdt->dev, "wdt set timeout failed: %d\n", ret);
