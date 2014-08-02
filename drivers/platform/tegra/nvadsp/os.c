@@ -556,37 +556,55 @@ static int allocate_memory_for_adsp_os(void)
 {
 	struct platform_device *pdev = priv.pdev;
 	struct device *dev = &pdev->dev;
+#if defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
+	dma_addr_t addr;
+#else
+	phys_addr_t addr;
+#endif
 	void *dram_va;
 	size_t size;
-#if defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
-	dma_addr_t addr = ADSP_SMMU_LOAD_ADDR;
+	int ret = 0;
 
+#if defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
+	addr = ADSP_SMMU_LOAD_ADDR;
 	size = ADSP_SMMU_SIZE;
 	dram_va = dma_alloc_at_coherent(dev, size, &addr, GFP_KERNEL);
 	if (!dram_va) {
-		dev_info(dev, "unable to allocate SMMU pages\n");
-		return PTR_ERR(dram_va);
+		dev_err(dev, "unable to allocate SMMU pages\n");
+		ret = -ENOMEM;
+		goto end;
 	}
 #else
-	phys_addr_t addr;
 	struct nvadsp_platform_data *plat_data = pdev->dev.platform_data;
 
 	if (IS_ERR_OR_NULL(plat_data)) {
-		dev_info(dev, "carvout is NULL\n");
-		return PTR_ERR(plat_data);
+		dev_err(dev, "carvout is NULL\n");
+		ret = -ENOMEM;
+		goto end;
 	}
 
 	addr = plat_data->co_pa;
 	size = plat_data->co_size;
 	dram_va = ioremap_nocache(addr, plat_data->co_size);
 	if (!dram_va) {
-		dev_info(dev, "remap failed for addr %lx\n",
+		dev_err(dev, "remap failed for addr %lx\n",
 					(long)plat_data->co_pa);
-		return PTR_ERR(dram_va);
+		ret = -ENOMEM;
+		goto end;
 	}
 #endif
 	adsp_add_load_mappings(addr, dram_va, size);
-	return 0;
+end:
+	return ret;
+}
+
+static void deallocate_memory_for_adsp_os(struct device *dev)
+{
+#if defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
+	void *va = nvadsp_da_to_va_mappings(ADSP_SMMU_LOAD_ADDR,
+			ADSP_SMMU_SIZE);
+	dma_free_coherent(dev, ADSP_SMMU_SIZE, va, ADSP_SMMU_LOAD_ADDR);
+#endif
 }
 
 int nvadsp_os_load(void)
@@ -595,7 +613,6 @@ int nvadsp_os_load(void)
 	int ret;
 	struct device *dev;
 	void *ptr;
-	struct clk *clk_ape;
 
 	if (!priv.pdev) {
 		pr_err("ADSP Driver is not initialized\n");
@@ -607,7 +624,7 @@ int nvadsp_os_load(void)
 
 	ret = request_firmware(&fw, NVADSP_FIRMWARE, dev);
 	if (ret < 0) {
-		dev_info(dev,
+		dev_err(dev,
 			"reqest firmware for %s failed with %d\n",
 					NVADSP_FIRMWARE, ret);
 		goto end;
@@ -615,16 +632,16 @@ int nvadsp_os_load(void)
 
 	ret = create_global_symbol_table(fw);
 	if (ret) {
-		dev_info(dev,
+		dev_err(dev,
 			"unable to create global symbol table\n");
-		goto end;
+		goto release_firmware;
 	}
 
 	ret = allocate_memory_for_adsp_os();
-	if (ret < 0) {
-		dev_info(dev,
+	if (ret) {
+		dev_err(dev,
 			"unable to allocate memory for adsp os\n");
-		goto end;
+		goto release_firmware;
 	}
 
 	priv.logger.debug_ram_rdr =
@@ -639,26 +656,28 @@ int nvadsp_os_load(void)
 
 	dev_info(dev, "Loading ADSP OS firmware %s\n",
 						NVADSP_FIRMWARE);
-	clk_ape = clk_get_sys(NULL, "ape");
-	if (IS_ERR_OR_NULL(clk_ape)) {
-		dev_info(dev, "unable to find ape clock\n");
-		goto end;
-	}
-	tegra_periph_reset_deassert(clk_ape);
-
-	ptr = get_mailbox_shared_region();
-	update_nvadsp_app_shared_ptr(ptr);
 
 	ret = nvadsp_os_elf_load(fw);
 	if (ret) {
-		dev_info(dev, "failed to load %s\n", NVADSP_FIRMWARE);
-		goto end;
+		dev_err(dev, "failed to load %s\n", NVADSP_FIRMWARE);
+		goto deallocate_os_memory;
 	}
 
 	ret = dram_app_mem_init(ADSP_APP_MEM_SMMU_ADDR, ADSP_APP_MEM_SIZE);
-	if (ret)
+	if (ret) {
 		dev_err(dev,
 			"unable to allocate memory for allocating dynamic apps\n");
+		goto deallocate_os_memory;
+	}
+	ptr = get_mailbox_shared_region();
+	update_nvadsp_app_shared_ptr(ptr);
+
+	return 0;
+
+deallocate_os_memory:
+	deallocate_memory_for_adsp_os(dev);
+release_firmware:
+	release_firmware(fw);
 end:
 	return ret;
 }
