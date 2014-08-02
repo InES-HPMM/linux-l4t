@@ -70,7 +70,7 @@
 	};
 
 	i2c@7000c000 {
-		rt5639: audio-codec@1c {
+		rt5639: rt5639.0-001c@1c {
 			compatible = "realtek,rt5639";
 			reg = <0x1c>;
 		};
@@ -111,10 +111,11 @@
 	};
 
 	sound {
-		compatible = "nvidia,tegra-audio-grenada-mobile";
-		nvidia,model = "tegra-snd-grenada-mobile";
+		compatible = "nvidia,tegra-audio-t210ref-mobile";
+		nvidia,model = "tegra-snd-t210ref-mobile";
 		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(R, 2) GPIO_ACTIVE_HIGH>;
 		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(R, 7) GPIO_ACTIVE_HIGH>;
+		nvidia,num-codec-link = <2>;
 
 		nvidia,audio-routing =
 			"x Headphone Jack", 	"x HPOL",
@@ -137,18 +138,36 @@
 			"y IN",		"y Mic",
 			"z IN",		"z Mic",
 			"s IN",		"s Mic";
-			nvidia,xbar = <&tegra_axbar>;
-			nvidia,i2s-controller-1 = <&tegra_i2s1>;
-			nvidia,i2s-controller-2 = <&tegra_i2s3>;
-			nvidia,i2s-controller-3 = <&tegra_i2s5>;
-			nvidia,dmic-1 = <&tegra_dmic1>;
-			nvidia,dmic-2 = <&tegra_dmic2>;
-			nvidia,dmic-3 = <&tegra_dmic3>;
-			nvidia,spdif = <&tegra_spdif>;
-			nvidia,audio-codec-x = <&rt5639>;
-			nvidia,audio-codec-y = <&spdif_dit1>;
-			nvidia,audio-codec-z = <&spdif_dit2>;
-			nvidia,audio-codec-s = <&spdif_dit3>;
+		nvidia,xbar = <&tegra_axbar>;
+
+		nvidia,dai-link-1 {
+			cpu-dai = <&tegra_i2s1>;
+			codec-dai = <&rt5639>;
+			cpu-dai-name = "I2S1";
+			codec-dai-name = "rt5639-aif1";
+			format = "i2s";
+			bitclock-slave;
+			frame-slave;
+			bit-format = "s16_le";
+			bclk_ratio = <0>;
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "x";
+		};
+		nvidia,dai-link-2 {
+			cpu-dai = <&tegra_i2s3>;
+			codec-dai = <&spdif_dit1>;
+			cpu-dai-name = "I2S3";
+			codec-dai-name = "dit-hifi";
+			format = "dsp_a";
+			bitclock-slave;
+			frame-slave;
+			bit-format = "s32_le";
+			bclk_ratio = <0>;
+			srate = <8000>;
+			num-channel = <2>;
+			name-prefix = "y";
+		};
 	};
 
         sata@70020000 {
