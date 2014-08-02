@@ -1691,6 +1691,7 @@ int __init of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	if (rail->dt_reg_fixed && !strcmp("vdd_cpu", rail->reg_id)) {
+		of_node_put(reg_dn);
 		snprintf(prop_name, 80, "%s_dfll-supply", rail->reg_id);
 		reg_dn = of_parse_phandle(rail_dn, prop_name, 0);
 		if (!reg_dn) {
