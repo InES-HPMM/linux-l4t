@@ -1016,8 +1016,10 @@ static int __init of_rails_init(struct device_node *dn)
 
 	for (i = 0; i < ARRAY_SIZE(tegra21_dvfs_rails); i++) {
 		struct dvfs_rail *rail = tegra21_dvfs_rails[i];
-		if (!of_tegra_dvfs_rail_node_parse(dn, rail))
+		if (!of_tegra_dvfs_rail_node_parse(dn, rail)) {
+			rail->stats.bin_uV = rail->alignment.step_uv;
 			return 0;
+		}
 	}
 	return -ENOENT;
 }
