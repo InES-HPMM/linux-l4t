@@ -18,6 +18,7 @@
 
 #include "tegra210-ers-pmic-e2174-1101-a00.dtsi"
 #include "tegra210-ers-fixed-e2174-1101-a00.dtsi"
+#include "tegra210-ers-power-dvfs-e2174-1101-a00.dtsi"
 
 / {
 

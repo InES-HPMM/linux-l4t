@@ -1112,13 +1112,6 @@
 		status = "disabled";
 	};
 
-	dfll@70110000 {
-		compatible = "nvidia,tegra210-dfll";
-		reg = <0x0 0x70110000 0x0 0x400>;
-		out-clock-name="dfll_cpu";
-		status = "disabled";
-	};
-
         xudc@700D0000 {
                 compatible = "nvidia,tegra210-xudc";
                 reg = <0x0 0x700D0000 0x0 0x8000>,

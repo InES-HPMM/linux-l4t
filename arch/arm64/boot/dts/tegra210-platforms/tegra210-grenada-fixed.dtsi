@@ -138,7 +138,8 @@
 			};
 		};
 
-		cpu_fixed_reg: regulator@1 {
+		/* "max*" lables just resolve references from disabled devices */
+		max77620: gpu_max77621_reg: cpu_max77621_reg: en_vdd_cpu_fixed: regulator@1 {
 			compatible = "regulator-fixed";
 			reg = <1>;
 			regulator-name = "vdd_cpu_fixed";

@@ -23,8 +23,8 @@
 /memreserve/ 0x80000000 0x00020000;
 
 #include "tegra210.dtsi"
-#include "tegra210-platforms/tegra210-ers-dfll-e2174-1101-a00.dtsi"
 #include "tegra210-platforms/tegra210-grenada-fixed.dtsi"
+#include "tegra210-platforms/tegra210-ers-power-dvfs-e2174-1101-a00.dtsi"
 #include "tegra210-platforms/tegra210-comms.dtsi"
 #include <dt-bindings/pinctrl/pinctrl-tegra.h>
 #include <dt-bindings/gpio/gpio.h>
@@ -1132,18 +1132,5 @@
 	xudc@700D0000 {
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "okay";
-	};
-
-	dvfs_rails {
-		compatible = "simple-bus";
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		vdd-cpu-rail@0 {
-			reg = <0>;
-			compatible = "nvidia,tegra210-dvfs-rail";
-			vdd_cpu-supply = <&cpu_fixed_reg>;
-			vdd_cpu_dfll-supply = <&cpu_pwm_reg>;
-		};
 	};
 };
