@@ -226,5 +226,10 @@
 			status = "okay";
 		};
 	};
-};
 
+	spi@7000da00 {
+		status = "okay";
+		spi-max-frequency = <25000000>;
+	};
+
+};
