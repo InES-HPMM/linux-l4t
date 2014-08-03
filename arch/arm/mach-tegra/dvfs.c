@@ -54,12 +54,12 @@ static DEFINE_MUTEX(rail_disable_lock);
 
 static int dvfs_rail_update(struct dvfs_rail *rail);
 
-static inline int tegra_dvfs_rail_get_disable_level(struct dvfs_rail *rail)
+static int tegra_dvfs_rail_get_disable_level(struct dvfs_rail *rail)
 {
 	return rail->disable_millivolts ? : rail->nominal_millivolts;
 }
 
-static inline int tegra_dvfs_rail_get_suspend_level(struct dvfs_rail *rail)
+static int tegra_dvfs_rail_get_suspend_level(struct dvfs_rail *rail)
 {
 	return rail->suspend_millivolts ? : rail->nominal_millivolts;
 }
@@ -396,7 +396,7 @@ out:
  * the dvfs clocks and any rails that this rail depends on.  Calls
  * dvfs_rail_set_voltage with the new voltage, which will call
  * dvfs_rail_update on any rails that depend on this rail. */
-static inline int dvfs_rail_apply_limits(struct dvfs_rail *rail, int millivolts)
+static int dvfs_rail_apply_limits(struct dvfs_rail *rail, int millivolts)
 {
 	int min_mv = rail->min_millivolts;
 	min_mv = max(min_mv, tegra_dvfs_rail_get_thermal_floor(rail));
@@ -631,7 +631,7 @@ static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
 	return 0;
 }
 
-static inline unsigned long *dvfs_get_freqs(struct dvfs *d)
+static unsigned long *dvfs_get_freqs(struct dvfs *d)
 {
 	return d->alt_freqs && d->use_alt_freqs ? d->alt_freqs : &d->freqs[0];
 }
@@ -645,7 +645,7 @@ static const int *dvfs_get_millivolts_pll(struct dvfs *d)
 	return d->millivolts;
 }
 
-static inline const int *dvfs_get_millivolts(struct dvfs *d, unsigned long rate)
+static const int *dvfs_get_millivolts(struct dvfs *d, unsigned long rate)
 {
 	if (tegra_dvfs_is_dfll_scale(d, rate))
 		return d->dfll_millivolts;
@@ -983,7 +983,7 @@ int tegra_dvfs_get_freqs(struct clk *c, unsigned long **freqs, int *num_freqs)
 }
 EXPORT_SYMBOL(tegra_dvfs_get_freqs);
 
-static inline int dvfs_rail_get_override_floor(struct dvfs_rail *rail)
+static int dvfs_rail_get_override_floor(struct dvfs_rail *rail)
 {
 	return rail->override_unresolved ? rail->nominal_millivolts :
 		rail->min_override_millivolts;
@@ -2116,7 +2116,7 @@ static void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
 #define tegra_dvfs_rail_register_vmin_cdev(rail)
 void tegra_dvfs_rail_register_vmax_cdev(struct dvfs_rail *rail)
 { }
-static inline void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
+static void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
 {
 	make_safe_thermal_dvfs(rail);
 }
