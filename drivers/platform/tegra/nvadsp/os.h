@@ -46,11 +46,12 @@ struct app_mem_size {
 };
 
 struct adsp_module {
-	const char *name;
-	void *module_ptr;
-	uint32_t adsp_module_ptr;
-	size_t size;
-	const struct app_mem_size mem_size;
+	const char			*name;
+	void				*handle;
+	void				*module_ptr;
+	uint32_t			adsp_module_ptr;
+	size_t				size;
+	const struct app_mem_size	mem_size;
 };
 
 int nvadsp_os_probe(struct platform_device *);
@@ -60,8 +61,11 @@ void *get_mailbox_shared_region(void);
 struct elf32_shdr *nvadsp_get_section(const struct firmware *, char *);
 struct global_sym_info *find_global_symbol(const char *);
 void update_nvadsp_app_shared_ptr(void *);
+
 struct adsp_module
 *load_adsp_module(const char *, const char *, struct device *);
+void unload_adsp_module(struct adsp_module *);
+
 int allocate_memory_from_adsp(void **, unsigned int);
 bool is_adsp_dram_addr(u64);
 void wait_for_adsp_os_load_complete(void);

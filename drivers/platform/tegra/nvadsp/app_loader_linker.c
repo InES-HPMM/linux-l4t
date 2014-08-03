@@ -493,16 +493,15 @@ end:
 
 static int move_module(struct adsp_module *mod, struct load_info *info)
 {
-	int i;
 	struct device *dev = info->dev;
-	void *handle;
+	int i;
 
-	handle = dram_app_mem_request(info->name, mod->size);
-	if (!handle) {
+	mod->handle = dram_app_mem_request(info->name, mod->size);
+	if (!mod->handle) {
 		dev_err(dev, "cannot allocate memory for app %s\n", info->name);
 		return -ENOMEM;
 	}
-	mod->adsp_module_ptr = dram_app_mem_get_address(handle);
+	mod->adsp_module_ptr = dram_app_mem_get_address(mod->handle);
 	mod->module_ptr = nvadsp_da_to_va_mappings(mod->adsp_module_ptr,
 			mod->size);
 	dev_info(dev, "module %s Load address %p 0x%x\n", info->name,
@@ -690,6 +689,7 @@ static struct adsp_module *setup_load_info(struct load_info *info)
 	if (info->index.sym == 0) {
 		dev_warn(dev, "%s: module has no symbols (stripped?)\n",
 								mod->name);
+		kfree(mod);
 		return ERR_PTR(-ENOEXEC);
 	}
 
@@ -758,8 +758,11 @@ static struct adsp_module *layout_and_allocate(struct load_info *info)
 
 	/* Allocate and move to the final place */
 	err = move_module(mod, info);
-	if (err)
+	if (err) {
+		/* TODO: need to handle error path more genericly */
+		kfree(mod);
 		return ERR_PTR(err);
+	}
 
 	return mod;
 }
@@ -910,6 +913,7 @@ struct adsp_module
 	if (ret) {
 		dev_err(dev,
 			"Unable to simplify symbols error value %d\n", ret);
+		unload_adsp_module(mod);
 		return ERR_PTR(ret);
 	}
 
@@ -917,8 +921,17 @@ struct adsp_module
 	ret = apply_relocations(mod, &info);
 	if (ret) {
 		dev_err(dev, "relocation failed\n");
+		unload_adsp_module(mod);
 		return ERR_PTR(ret);
 	}
 #endif
 	return mod;
+}
+
+void unload_adsp_module(struct adsp_module *mod)
+{
+#if !CONFIG_USE_STATIC_APP_LOAD
+	dram_app_mem_release(mod->handle);
+#endif
+	kfree(mod);
 }

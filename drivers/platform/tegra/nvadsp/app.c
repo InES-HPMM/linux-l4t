@@ -41,6 +41,8 @@
 #define APP_DEINIT			0x09
 #define APP_DEINIT_STATUS		0x0A
 #define APP_COMPLETE			0x0B
+#define APP_UNLOAD			0x0C
+#define APP_UNLOAD_STATUS		0x0D
 
 struct nvadsp_app_service {
 	char name[NVADSP_NAME_SZ];
@@ -100,12 +102,18 @@ struct app_complete_data {
 	int32_t copy_complete;
 } __packed;
 
+struct app_unload_data {
+	uint32_t	ser;
+	int32_t		status;
+} __packed;
+
 struct shared_mem_struct {
-	struct app_load_data app_load;
-	struct app_init_data app_init;
-	struct app_start_data app_start;
-	struct app_deinit_data app_deinit;
-	struct app_complete_data app_complete;
+	struct app_load_data		app_load;
+	struct app_init_data		app_init;
+	struct app_start_data		app_start;
+	struct app_deinit_data		app_deinit;
+	struct app_complete_data	app_complete;
+	struct app_unload_data		app_unload;
 } __packed;
 
 static struct nvadsp_app_priv_struct priv;
@@ -118,14 +126,18 @@ DECLARE_COMPLETION(load_app_status);
 DECLARE_COMPLETION(app_init_status);
 DECLARE_COMPLETION(app_start_status);
 DECLARE_COMPLETION(app_deinit_status);
+DECLARE_COMPLETION(app_unload_status);
 
 DEFINE_MUTEX(load_app_mutex);
 DEFINE_MUTEX(app_init_mutex);
 DEFINE_MUTEX(app_start_mutex);
 DEFINE_MUTEX(app_deinit_mutex);
+DEFINE_MUTEX(app_unload_mutex);
 
 /* app states need to be changed atomically */
 static DEFINE_SPINLOCK(state_lock);
+
+static DEFINE_MUTEX(service_lock_list);
 
 struct shared_mem_struct *shared;
 
@@ -175,6 +187,11 @@ static void nvadsp_app_receive_thread(struct work_struct *work)
 		case APP_LOAD_RET_STATUS:
 			dev_dbg(dev, "in APP_LOAD_RET_STATUS\n");
 			complete(&load_app_status);
+			break;
+
+		case APP_UNLOAD_STATUS:
+			dev_dbg(dev, "in APP_LOAD_RET_STATUS\n");
+			complete(&app_unload_status);
 			break;
 
 		case APP_INIT_STATUS:
@@ -231,13 +248,16 @@ static struct nvadsp_app_service
 	struct device *dev = &priv.pdev->dev;
 	struct nvadsp_app_service *ser;
 
+	mutex_lock(&service_lock_list);
 	list_for_each_entry(ser, &service_list, node) {
 		if (!strcmp(appname, ser->name)) {
 			dev_info(dev, "module %s already loaded\n",
 							appname);
+			mutex_unlock(&service_lock_list);
 			return ser;
 		}
 	}
+	mutex_unlock(&service_lock_list);
 	dev_dbg(dev, "module %s can be loaded\n", appname);
 	return NULL;
 }
@@ -273,8 +293,8 @@ nvadsp_app_handle_t
 nvadsp_app_load(const char *appname, const char *appfile)
 {
 	struct device *dev = &priv.pdev->dev;
-	struct adsp_module *mod;
 	struct nvadsp_app_service *ser;
+	struct adsp_module *mod;
 	uint32_t *token;
 
 	ser = get_loaded_service(appname);
@@ -301,7 +321,12 @@ nvadsp_app_load(const char *appname, const char *appfile)
 		}
 		spin_lock_init(&ser->lock);
 		INIT_LIST_HEAD(&ser->app_head);
+
+		/* add the app instance service to the list */
+		mutex_lock(&service_lock_list);
 		list_add_tail(&ser->node, &service_list);
+		mutex_unlock(&service_lock_list);
+
 		dev_dbg(dev, "loaded app %s\n", ser->name);
 	}
 end:
@@ -639,10 +664,46 @@ int nvadsp_app_deinit(nvadsp_app_info_t *app)
 }
 EXPORT_SYMBOL(nvadsp_app_deinit);
 
+static int native_adsp_app_unload(struct nvadsp_app_service *ser)
+{
+	struct app_unload_data *data = &shared->app_unload;
+	int32_t status;
+
+	data->ser = ser->token;
+	nvadsp_mbox_send(&mbox, APP_UNLOAD, NVADSP_MBOX_SMSG, true, 100);
+	wait_for_completion(&app_unload_status);
+	status = data->status;
+	memset(data, 0, sizeof(struct app_deinit_data));
+	return status;
+}
+
 void nvadsp_app_unload(nvadsp_app_handle_t handle)
 {
-	return;
+	struct nvadsp_app_service *ser = (struct nvadsp_app_service *)handle;
+	struct device *dev = &priv.pdev->dev;
+	int ret;
+
+	if (ser->instance) {
+		dev_err(dev, "cannot unload app %s, has instances %d\n",
+				ser->name, ser->instance);
+		return;
+	}
+
+	mutex_lock(&service_lock_list);
+	list_del(&ser->node);
+	mutex_unlock(&service_lock_list);
+
+	mutex_lock(&app_unload_mutex);
+	ret = native_adsp_app_unload(ser);
+	mutex_unlock(&app_unload_mutex);
+
+	if (ret)
+		WARN(1, "%s:invalid counts maintained %s", __func__, ser->name);
+
+	unload_adsp_module(ser->mod);
+	kfree(ser);
 }
+EXPORT_SYMBOL(nvadsp_app_unload);
 
 int nvadsp_app_start(nvadsp_app_info_t *app)
 {
