@@ -631,9 +631,33 @@ static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
 	return 0;
 }
 
+/* Get dvfs rail thermal floor helpers in pll and dfll modes */
+static int dvfs_rail_get_thermal_floor_pll(struct dvfs_rail *rail)
+{
+	if (rail->therm_mv_floors &&
+	    (rail->therm_floor_idx < rail->therm_mv_floors_num))
+		return rail->therm_mv_floors[rail->therm_floor_idx];
+	return 0;
+}
+
+static int dvfs_rail_get_thermal_floor_dfll(struct dvfs_rail *rail)
+{
+	if (rail->therm_mv_dfll_floors &&
+	    (rail->therm_floor_idx < rail->therm_mv_floors_num))
+		return rail->therm_mv_dfll_floors[rail->therm_floor_idx];
+	return 0;
+}
+
+
+/* Get dvfs clock V/F curve helpers in pll and dfll modes */
 static unsigned long *dvfs_get_freqs(struct dvfs *d)
 {
 	return d->alt_freqs && d->use_alt_freqs ? d->alt_freqs : &d->freqs[0];
+}
+
+static const int *dvfs_get_millivolts_dfll(struct dvfs *d)
+{
+	return d->dfll_millivolts;
 }
 
 static const int *dvfs_get_millivolts_pll(struct dvfs *d)
@@ -648,7 +672,7 @@ static const int *dvfs_get_millivolts_pll(struct dvfs *d)
 static const int *dvfs_get_millivolts(struct dvfs *d, unsigned long rate)
 {
 	if (tegra_dvfs_is_dfll_scale(d, rate))
-		return d->dfll_millivolts;
+		return dvfs_get_millivolts_dfll(d);
 
 	return dvfs_get_millivolts_pll(d);
 }
@@ -913,7 +937,7 @@ int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
 		return 0;
 
 	millivolts = tegra_dvfs_is_dfll_range(c->dvfs, rate) ?
-		c->dvfs->dfll_millivolts :
+		dvfs_get_millivolts_dfll(c->dvfs) :
 		dvfs_get_millivolts_pll(c->dvfs);
 	return predict_millivolts(c, millivolts, rate);
 }
@@ -928,8 +952,8 @@ int tegra_dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate)
 		return 0;
 
 	millivolts = tegra_dvfs_is_dfll_range(c->dvfs, rate) ?
-			c->dvfs->dfll_millivolts : c->dvfs->peak_millivolts ? :
-			dvfs_get_millivolts_pll(c->dvfs);
+		dvfs_get_millivolts_dfll(c->dvfs) : c->dvfs->peak_millivolts ? :
+		dvfs_get_millivolts_pll(c->dvfs);
 
 	mv = predict_non_alt_millivolts(c, millivolts, rate);
 	if (mv < 0)
@@ -2344,19 +2368,18 @@ int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail,
 	return ret;
 }
 
-/* Get current thermal floor */
+/*
+ * Get current thermal floor. Does not take DVFS lock. Should be called either
+ * with lock already taken or in late suspend/early resume when DVFS operations
+ * are suspended.
+ */
 int tegra_dvfs_rail_get_thermal_floor(struct dvfs_rail *rail)
 {
-	if (rail && rail->therm_mv_floors &&
-	    (rail->therm_floor_idx < rail->therm_mv_floors_num)) {
-		int i = rail->therm_floor_idx;
-		if (rail->dfll_mode) {
-			BUG_ON(!rail->therm_mv_dfll_floors);
-			return rail->therm_mv_dfll_floors[i];
-		}
-		return rail->therm_mv_floors[i];
-	}
-	return 0;
+	if (!rail)
+		return 0;
+
+	return rail->dfll_mode ? dvfs_rail_get_thermal_floor_dfll(rail) :
+		dvfs_rail_get_thermal_floor_pll(rail);
 }
 
 /*
@@ -2781,7 +2804,7 @@ static int dvfs_table_show(struct seq_file *s, void *data)
 		list_for_each_entry(d, &rail->dvfs, reg_node) {
 			bool mv_done = false;
 			v_pll = dvfs_get_millivolts_pll(d);
-			v_dfll = d->dfll_millivolts;
+			v_dfll = dvfs_get_millivolts_dfll(d);
 
 			if (v_pll && (last_v_pll != v_pll)) {
 				if (!mv_done) {
