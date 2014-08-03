@@ -1187,7 +1187,7 @@ int tegra_dvfs_set_fmax_at_vmin(struct clk *c, unsigned long f_max, int v_min)
 EXPORT_SYMBOL(tegra_dvfs_set_fmax_at_vmin);
 
 /* May only be called during clock init, does not take any locks on clock c. */
-int __init tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
+static int __init enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
 {
 	int i;
 
@@ -1239,6 +1239,70 @@ int __init tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
 	mutex_unlock(&dvfs_lock);
 
 	return 0;
+}
+
+static bool __init can_update_max_rate(struct clk *c, struct dvfs *d)
+{
+	/* Don't update manual dvfs, non-shared clocks */
+	if (!d->auto_dvfs && !c->ops->shared_bus_update)
+		return false;
+
+	/*
+	 * Don't update EMC shared bus, since EMC dvfs is board dependent: max
+	 * rate and EMC scaling frequencies are determined by tegra BCT (flashed
+	 * together with the image) and board specific EMC DFS table; we will
+	 * check the scaling ladder against nominal core voltage when the table
+	 * is loaded (and if on particular board the table is not loaded, EMC
+	 * scaling is disabled).
+	 */
+	if (c->ops->shared_bus_update && (c->flags & PERIPH_EMC_ENB))
+		return false;
+
+	/*
+	 * Don't update shared cbus, and don't propagate common cbus dvfs
+	 * limit down to shared users, but set maximum rate for each user
+	 * equal to the respective client limit.
+	 */
+	if (c->ops->shared_bus_update && (c->flags & PERIPH_ON_CBUS)) {
+		struct clk *user;
+		unsigned long rate;
+
+		list_for_each_entry(
+			user, &c->shared_bus_list, u.shared_bus_user.node) {
+			if (user->u.shared_bus_user.client) {
+				rate = user->u.shared_bus_user.client->max_rate;
+				user->max_rate = rate;
+				user->u.shared_bus_user.rate = rate;
+			}
+		}
+		return false;
+	}
+
+	/* Other, than EMC and cbus, auto-dvfs clocks can be updated */
+	return true;
+}
+
+void __init tegra_init_dvfs_one(struct dvfs *d, int max_freq_index)
+{
+	int ret;
+	struct clk *c = tegra_get_clock_by_name(d->clk_name);
+
+	if (!c) {
+		pr_debug("tegra_dvfs: no clock found for %s\n", d->clk_name);
+		return;
+	}
+
+	/* Update max rate for auto-dvfs clocks, with shared bus exceptions */
+	if (can_update_max_rate(c, d)) {
+		BUG_ON(!d->freqs[max_freq_index]);
+		tegra_init_max_rate(
+			c, d->freqs[max_freq_index] * d->freqs_mult);
+	}
+	d->max_millivolts = d->dvfs_rail->nominal_millivolts;
+
+	ret = enable_dvfs_on_clk(c, d);
+	if (ret)
+		pr_err("tegra_dvfs: failed to enable dvfs on %s\n", c->name);
 }
 
 static bool tegra_dvfs_all_rails_suspended(void)
