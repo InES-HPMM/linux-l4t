@@ -636,12 +636,21 @@ static inline unsigned long *dvfs_get_freqs(struct dvfs *d)
 	return d->alt_freqs && d->use_alt_freqs ? d->alt_freqs : &d->freqs[0];
 }
 
+static const int *dvfs_get_millivolts_pll(struct dvfs *d)
+{
+	if (d->therm_dvfs) {
+		int therm_idx = d->dvfs_rail->therm_scale_idx;
+		return d->millivolts + therm_idx * MAX_DVFS_FREQS;
+	}
+	return d->millivolts;
+}
+
 static inline const int *dvfs_get_millivolts(struct dvfs *d, unsigned long rate)
 {
 	if (tegra_dvfs_is_dfll_scale(d, rate))
 		return d->dfll_millivolts;
 
-	return tegra_dvfs_get_millivolts_pll(d);
+	return dvfs_get_millivolts_pll(d);
 }
 
 static int
@@ -905,7 +914,7 @@ int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
 
 	millivolts = tegra_dvfs_is_dfll_range(c->dvfs, rate) ?
 		c->dvfs->dfll_millivolts :
-		tegra_dvfs_get_millivolts_pll(c->dvfs);
+		dvfs_get_millivolts_pll(c->dvfs);
 	return predict_millivolts(c, millivolts, rate);
 }
 EXPORT_SYMBOL(tegra_dvfs_predict_millivolts);
@@ -920,7 +929,7 @@ int tegra_dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate)
 
 	millivolts = tegra_dvfs_is_dfll_range(c->dvfs, rate) ?
 			c->dvfs->dfll_millivolts : c->dvfs->peak_millivolts ? :
-			tegra_dvfs_get_millivolts_pll(c->dvfs);
+			dvfs_get_millivolts_pll(c->dvfs);
 
 	mv = predict_non_alt_millivolts(c, millivolts, rate);
 	if (mv < 0)
@@ -931,15 +940,6 @@ int tegra_dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate)
 	if (c->dvfs->dvfs_rail->therm_mv_dfll_floors)
 		mv = max(mv, c->dvfs->dvfs_rail->therm_mv_dfll_floors[0]);
 	return mv;
-}
-
-const int *tegra_dvfs_get_millivolts_pll(struct dvfs *d)
-{
-	if (d->therm_dvfs) {
-		int therm_idx = d->dvfs_rail->therm_scale_idx;
-		return d->millivolts + therm_idx * MAX_DVFS_FREQS;
-	}
-	return d->millivolts;
 }
 
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)
@@ -1303,6 +1303,9 @@ void __init tegra_init_dvfs_one(struct dvfs *d, int max_freq_index)
 	ret = enable_dvfs_on_clk(c, d);
 	if (ret)
 		pr_err("tegra_dvfs: failed to enable dvfs on %s\n", c->name);
+
+	/* Limit DVFS mapping to maximum frequency */
+	d->num_freqs = min(d->num_freqs, max_freq_index + 1);
 }
 
 static bool tegra_dvfs_all_rails_suspended(void)
@@ -2774,7 +2777,7 @@ static int dvfs_table_show(struct seq_file *s, void *data)
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
 		list_for_each_entry(d, &rail->dvfs, reg_node) {
 			bool mv_done = false;
-			v_pll = tegra_dvfs_get_millivolts_pll(d);
+			v_pll = dvfs_get_millivolts_pll(d);
 			v_dfll = d->dfll_millivolts;
 
 			if (v_pll && (last_v_pll != v_pll)) {

@@ -5191,7 +5191,6 @@ static long tegra21_clk_cbus_round_updown(struct clk *c, unsigned long rate,
 					  bool up)
 {
 	int i;
-	const int *millivolts;
 
 	if (!c->dvfs) {
 		if (!c->min_rate)
@@ -5213,12 +5212,9 @@ static long tegra21_clk_cbus_round_updown(struct clk *c, unsigned long rate,
 	}
 	rate = max(rate, c->min_rate);
 
-	millivolts = tegra_dvfs_get_millivolts_pll(c->dvfs);
 	for (i = 0; ; i++) {
 		unsigned long f = c->dvfs->freqs[i];
-		int mv = millivolts[i];
-		if ((f >= rate) || (mv >= c->dvfs->max_millivolts) ||
-		    ((i + 1) >=  c->dvfs->num_freqs)) {
+		if ((f >= rate) || ((i + 1) >=  c->dvfs->num_freqs)) {
 			if (!up && i && (f > rate))
 				i--;
 			break;
