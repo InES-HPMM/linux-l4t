@@ -337,6 +337,7 @@
                 nvidia,dma-request-selector = <&apbdma 8>;
                 dmas = <&apbdma 8>, <&apbdma 8>;
                 dma-names = "rx", "tx";
+		nvidia,memory-clients = <14>;
 		status = "disabled";
 	};
 
@@ -349,6 +350,7 @@
                 nvidia,dma-request-selector = <&apbdma 9>;
                 dmas = <&apbdma 9>, <&apbdma 9>;
                 dma-names = "rx", "tx";
+		nvidia,memory-clients = <14>;
 		status = "disabled";
 	};
 
@@ -358,6 +360,7 @@
 		reg-shift = <2>;
 		interrupts = <0 46 0x04>;
 		nvidia,dma-request-selector = <&apbdma 10>;
+		nvidia,memory-clients = <14>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		dmas = <&apbdma 10>, <&apbdma 10>;
 		dma-names = "rx", "tx";
@@ -370,14 +373,11 @@
 		reg-shift = <2>;
 		interrupts = <0 90 0x04>;
 		nvidia,dma-request-selector = <&apbdma 19>;
+		nvidia,memory-clients = <14>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		dmas = <&apbdma 19>, <&apbdma 19>;
 		dma-names = "rx", "tx";
 		status = "disabled";
-	};
-
-	sound {
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(APE) &ape_as>;
 	};
 
 	tegra_pwm: pwm@7000a000 {
@@ -392,6 +392,7 @@
 		reg = <0x0 0x7000d400 0x0 0x200>;
 		interrupts = <0 59 0x04>;
 		nvidia,dma-request-selector = <&apbdma 15>;
+		nvidia,memory-clients = <14>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -405,6 +406,7 @@
 		reg = <0x0 0x7000d600 0x0 0x200>;
 		interrupts = <0 82 0x04>;
 		nvidia,dma-request-selector = <&apbdma 16>;
+		nvidia,memory-clients = <14>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -418,6 +420,7 @@
 		reg = <0x0 0x7000d800 0x0 0x200>;
 		interrupts = <0 83 0x04>;
 		nvidia,dma-request-selector = <&apbdma 17>;
+		nvidia,memory-clients = <14>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -431,6 +434,7 @@
 		reg = <0x0 0x7000da00 0x0 0x200>;
 		interrupts = <0 93 0x04>;
 		nvidia,dma-request-selector = <&apbdma 18>;
+		nvidia,memory-clients = <14>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -444,6 +448,7 @@
 		reg = <0x0 0x70410000 0x0 0x1000>;
 		interrupts = <0 10 0x04>;
 		nvidia,dma-request-selector = <&apbdma 5>;
+		nvidia,memory-clients = <14>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -455,6 +460,7 @@
 		reg = <0x0 0x50000000 0x0 0x00034000>;
 		interrupts = <0 65 0x04   /* mpcore syncpt */
 			      0 67 0x04>; /* mpcore general */
+		nvidia,memory-clients = <6>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(HC) &common_as>;
 
 		#address-cells = <1>;
@@ -466,6 +472,7 @@
 			compatible = "nvidia,tegra210-vi";
 			reg = <0x54080000 0x00040000>;
 			interrupts = <0 69 0x04>;
+			nvidia,memory-clients = <18>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(VI) &common_as>;
 		};
 
@@ -473,6 +480,7 @@
 			compatible = "nvidia,tegra210-isp";
 			reg = <0x54600000 0x00040000>;
 			interrupts = <0 71 0x04>;
+			nvidia,memory-clients = <8>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(ISP) &common_as>;
 		};
 
@@ -480,6 +488,7 @@
 			compatible = "nvidia,tegra210-isp";
 			reg = <0x54680000 0x00040000>;
 			interrupts = <0 72 0x04>;
+			nvidia,memory-clients = <29>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(ISP2B) &common_as>;
 		};
 
@@ -487,6 +496,7 @@
 			compatible = "nvidia,tegra210-dc";
 			reg = <0x54200000 0x00040000>;
 			interrupts = <0 73 0x04>;
+			nvidia,memory-clients = <2 3 10>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS3(DC, DCB, DC12) &dc_as>;
 			status = "disabled";
 
@@ -499,6 +509,7 @@
 			compatible = "nvidia,tegra210-dc";
 			reg = <0x54240000 0x00040000>;
 			interrupts = <0 74 0x04>;
+			nvidia,memory-clients = <2 3 10>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS3(DC, DCB, DC12) &dc_as>;
 			status = "disabled";
 
@@ -517,36 +528,42 @@
 		vic {
 			compatible = "nvidia,tegra210-vic";
 			reg = <0x54340000 0x00040000>;
+			nvidia,memory-clients = <19>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(VIC) &common_as>;
 		};
 
 		nvenc {
 			compatible = "nvidia,tegra210-nvenc";
 			reg = <0x544c0000 0x00040000>;
+			nvidia,memory-clients = <11>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(MPE) &common_as>;
 		};
 
 		tsec {
 			compatible = "nvidia,tegra210-tsec";
 			reg = <0x54500000 0x00040000>;
+			nvidia,memory-clients = <23>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(TSEC) &common_as>;
 		};
 
 		tsecb {
 			compatible = "nvidia,tegra210-tsec";
 			reg = <0x54100000 0x00040000>;
+			nvidia,memory-clients = <41>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(TSECB1) &common_as>;
 		};
 
 		nvdec {
 			compatible = "nvidia,tegra210-nvdec";
 			reg = <0x54480000 0x00040000>;
+			nvidia,memory-clients = <33>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(NVDEC) &common_as>;
 		};
 
 		nvjpg {
 			compatible = "nvidia,tegra210-nvjpg";
 			reg = <0x54380000 0x00040000>;
+			nvidia,memory-clients = <36>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(NVJPG) &common_as>;
 		};
 
@@ -587,6 +604,7 @@
 		    <0x0 0x538f0000 0x0 0x00001000>;
 		    interrupts = <0 157 0x04
 			    0 158 0x04>;
+		nvidia,memory-clients = <30 31>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS2(GPU, GPUB) &gpu_as>;
 	};
 
@@ -906,6 +924,7 @@
 
 	tegra_adsp_audio: adsp_audio {
 		compatible = "nvidia,tegra210-adsp-audio";
+		nvidia,memory-clients = <34>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(APE) &ape_as>;
 		status = "disabled";
 	};
@@ -917,6 +936,7 @@
 		   <0x0 0x702ee000 0x0 0x1000>, /* ABRIDGE */
 		   <0x0 0x01000000 0x0 0x6f2c0000>, /* DRAM MAP1 */
 		   <0x0 0x70300000 0x0 0x8fd00000>; /* DRAM MAP2 */
+	     nvidia,memory-clients = <34>;
 	     iommus = <&smmu TEGRA_SWGROUP_CELLS(APE) &ape_as>;
 	     status = "disabled";
 	};
@@ -990,6 +1010,7 @@
 		compatible = "nvidia,tegra210-i2c";
 		reg = <0x0 0x7000c000 0x0 0x100>;
 		interrupts = <0 38 0x04>;
+		nvidia,memory-clients = <14>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
 		clock-frequency = <400000>;
@@ -1001,6 +1022,7 @@
 		compatible = "nvidia,tegra210-i2c";
 		reg = <0x0 0x7000c400 0x0 0x100>;
 		interrupts = <0 84 0x04>;
+		nvidia,memory-clients = <14>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
 		clock-frequency = <100000>;
@@ -1012,6 +1034,7 @@
 		compatible = "nvidia,tegra210-i2c";
 		reg = <0x0 0x7000c500 0x0 0x100>;
 		interrupts = <0 92 0x04>;
+		nvidia,memory-clients = <14>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
 		clock-frequency = <400000>;
@@ -1023,6 +1046,7 @@
 		compatible = "nvidia,tegra210-i2c";
 		reg = <0x0 0x7000c700 0x0 0x100>;
 		interrupts = <0 120 0x04>;
+		nvidia,memory-clients = <14>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
 		clock-frequency = <100000>;
@@ -1035,6 +1059,7 @@
 		reg = <0x0 0x7000d000 0x0 0x100>;
 		interrupts = <0 53 0x04>;
 		nvidia,require-cldvfs-clock;
+		nvidia,memory-clients = <14>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
 		clock-frequency = <400000>;
@@ -1046,6 +1071,7 @@
 		compatible = "nvidia,tegra210-i2c";
 		reg = <0x0 0x7000d100 0x0 0x100>;
 		interrupts = <0 63 0x04>;
+		nvidia,memory-clients = <14>;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
 		clock-frequency = <400000>;
@@ -1055,6 +1081,7 @@
 		compatible = "nvidia,tegra210-sdhci";
 		reg = <0x0 0x700b0600 0x0 0x200>;
 		interrupts = < 0 31 0x04 >;
+		nvidia,memory-clients = <28>;
 		status = "disabled";
 	};
 
@@ -1062,6 +1089,7 @@
 		compatible = "nvidia,tegra210-sdhci";
 		reg = <0x0 0x700b0400 0x0 0x200>;
 		interrupts = < 0 19 0x04 >;
+		nvidia,memory-clients = <27>;
 		status = "disabled";
 	};
 
@@ -1069,6 +1097,7 @@
 		compatible = "nvidia,tegra210-sdhci";
 		reg = <0x0 0x700b0200 0x0 0x200>;
 		interrupts = < 0 15 0x04 >;
+		nvidia,memory-clients = <26>;
 		status = "disabled";
 	};
 
@@ -1076,6 +1105,7 @@
 		compatible = "nvidia,tegra210-sdhci";
 		reg = <0x0 0x700b0000 0x0 0x200>;
 		interrupts = < 0 14 0x04 >;
+		nvidia,memory-clients = <25>;
 		status = "disabled";
 	};
 
