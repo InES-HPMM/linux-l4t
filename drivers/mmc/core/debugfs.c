@@ -479,6 +479,61 @@ static int mmc_dbg_card_speed_class_get(void *data, u64 *val)
 DEFINE_SIMPLE_ATTRIBUTE(mmc_dbg_card_speed_class_fops,
 		mmc_dbg_card_speed_class_get, NULL, "%u\n");
 
+static int mmc_get_ext_csd_byte_val(struct mmc_card *card, u64 *val,
+		unsigned int ext_csd_byte)
+{
+	u8 *ext_csd;
+	int err = 0;
+
+	ext_csd = kmalloc(512, GFP_KERNEL);
+	if (!ext_csd) {
+		err = -ENOMEM;
+		return err;
+	}
+
+	mmc_claim_host(card->host);
+	err = mmc_send_ext_csd(card, ext_csd);
+	mmc_release_host(card->host);
+
+	if (!err)
+		*val = ext_csd[ext_csd_byte];
+
+out_free:
+	kfree(ext_csd);
+	return err;
+}
+
+static int mmc_dbg_ext_csd_eol_get(void *data, u64 *val)
+{
+	struct mmc_card *card = data;
+	return mmc_get_ext_csd_byte_val(card, val, EXT_CSD_PRE_EOL_INFO);
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(mmc_dbg_ext_csd_eol_fops,
+			mmc_dbg_ext_csd_eol_get, NULL, "%llu\n");
+
+
+static int mmc_dbg_ext_csd_life_time_type_a(void *data, u64 *val)
+{
+	struct mmc_card *card = data;
+	return mmc_get_ext_csd_byte_val(card, val,
+			EXT_CSD_DEVICE_LIFE_EST_TYP_A);
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(mmc_dbg_ext_csd_life_time_type_a_fops,
+		mmc_dbg_ext_csd_life_time_type_a, NULL, "%llu\n");
+
+
+static int mmc_dbg_ext_csd_life_time_type_b(void *data, u64 *val)
+{
+	struct mmc_card *card = data;
+	return mmc_get_ext_csd_byte_val(card, val,
+			EXT_CSD_DEVICE_LIFE_EST_TYP_B);
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(mmc_dbg_ext_csd_life_time_type_b_fops,
+		mmc_dbg_ext_csd_life_time_type_b, NULL, "%llu\n");
+
 #define EXT_CSD_STR_LEN 1025
 
 static int mmc_ext_csd_open(struct inode *inode, struct file *filp)
@@ -569,10 +624,20 @@ void mmc_add_card_debugfs(struct mmc_card *card)
 					&mmc_dbg_card_status_fops))
 			goto err;
 
-	if (mmc_card_mmc(card))
+	if (mmc_card_mmc(card)) {
 		if (!debugfs_create_file("ext_csd", S_IRUSR, root, card,
 					&mmc_dbg_ext_csd_fops))
 			goto err;
+		if (!debugfs_create_file("eol_status", S_IRUSR, root, card,
+					&mmc_dbg_ext_csd_eol_fops))
+			goto err;
+		if (!debugfs_create_file("dhs_type_a", S_IRUSR, root, card,
+					&mmc_dbg_ext_csd_life_time_type_a_fops))
+			goto err;
+		if (!debugfs_create_file("dhs_type_b", S_IRUSR, root, card,
+					&mmc_dbg_ext_csd_life_time_type_b_fops))
+			goto err;
+	}
 
 	if (mmc_card_sd(card))
 		if (!debugfs_create_file("speed_class", S_IRUSR, root, card,
