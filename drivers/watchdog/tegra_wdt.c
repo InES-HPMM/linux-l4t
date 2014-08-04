@@ -86,7 +86,21 @@ static inline struct tegra_wdt *to_tegra_wdt(struct watchdog_device *wdt)
 
 static int __tegra_wdt_ping(struct tegra_wdt *tegra_wdt)
 {
+	u32 val;
+
+	/*
+	 * Disable timer, load the timeout value and restart.
+	 */
+	writel(WDT_UNLOCK_PATTERN, tegra_wdt->wdt_source + WDT_UNLOCK);
+	writel(WDT_CMD_DISABLE_COUNTER, tegra_wdt->wdt_source + WDT_CMD);
+
+	writel(TIMER_PCR_INTR, tegra_wdt->wdt_timer + TIMER_PCR);
+	val = (tegra_wdt->wdt.timeout * USEC_PER_SEC) / 4;
+	val |= (TIMER_EN | TIMER_PERIODIC);
+	writel(val, tegra_wdt->wdt_timer + TIMER_PTV);
+
 	writel(WDT_CMD_START_COUNTER, tegra_wdt->wdt_source + WDT_CMD);
+
 	return 0;
 }
 
