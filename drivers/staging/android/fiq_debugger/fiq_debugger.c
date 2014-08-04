@@ -4,6 +4,7 @@
  * Serial Debugger Interface accessed through an FIQ interrupt.
  *
  * Copyright (C) 2008 Google, Inc.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -36,7 +37,7 @@
 #include <linux/wakelock.h>
 
 #ifdef CONFIG_FIQ_GLUE
-#include <asm/fiq_glue.h>
+#include <linux/fiq_glue.h>
 #endif
 
 #include <linux/uaccess.h>

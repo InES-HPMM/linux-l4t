@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -11,8 +12,8 @@
  * GNU General Public License for more details.
  */
 
-#ifndef __ASM_FIQ_GLUE_H
-#define __ASM_FIQ_GLUE_H
+#ifndef _LINUX_FIQ_GLUE_H
+#define _LINUX_FIQ_GLUE_H
 
 struct fiq_glue_handler {
 	void (*fiq)(struct fiq_glue_handler *h, void *regs, void *svc_sp);
