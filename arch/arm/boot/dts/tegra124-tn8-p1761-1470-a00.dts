@@ -74,11 +74,13 @@
 			nvidia,dsi-controller-vs = <DSI_VS_1>;
 			status = "okay";
 			panel-a-wxga-8-0 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
 				nvidia,dsi-boardinfo = <1761 0 0 0>;
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
 			};
 			panel-a-wuxga-8-0 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
 				nvidia,dsi-boardinfo = <1761 0 0 1>;
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */

@@ -105,6 +105,7 @@
 				nvidia,panel-bridge-refclk-en-gpio = <&gpio TEGRA_GPIO(G, 4) 0>; /* PG4 */
 			};
                         panel-p-wuxga-10-1 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
                                 nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
                                 nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
                         };
