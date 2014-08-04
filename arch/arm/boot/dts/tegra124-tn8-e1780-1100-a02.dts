@@ -29,6 +29,7 @@
 #include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-sensor-e1794-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-camera-e1780-a00.dtsi"
+#include "tegra124-platforms/tegra124-tn8-sysedp-e1780-1100-a02.dtsi"
 #include "panel-l-wxga-7.dtsi"
 #include "panel-p-wuxga-10-1.dtsi"
 #include "tegra124-platforms/tegra124-tn8-hdmi-e1780-1100-a00.dtsi"

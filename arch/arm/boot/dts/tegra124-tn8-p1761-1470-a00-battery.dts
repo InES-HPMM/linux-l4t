@@ -1,5 +1,4 @@
 #include "tegra124-tn8-p1761-1470-a00.dts"
-#include "tegra124-platforms/tegra124-tn8-sysedp-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-usb-devices.dtsi"
 
 / {
@@ -15,5 +14,9 @@
 				status = "okay";
 			};
 		};
+	};
+
+	sysedp_batmon_calc {
+		status = "okay";
 	};
 };

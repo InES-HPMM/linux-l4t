@@ -5,6 +5,7 @@
 #include "tegra124-platforms/tegra124-tn8-power-tree-e1936-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-gpio-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-pinmux-e1780-1100-a02.dtsi"
+#include "tegra124-platforms/tegra124-tn8-sysedp-p1761-1270-a02.dtsi"
 #include "tegra132-platforms/tegra132-bowmore-powermon-e1971-1100-a00.dtsi"
 #include "tegra132-tn8-dfll.dtsi"
 #include "tegra132-platforms/tegra132-bowmore-sensor-e1934-1000-a00.dtsi"

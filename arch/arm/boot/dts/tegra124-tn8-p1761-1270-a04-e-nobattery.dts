@@ -49,6 +49,10 @@
 		};
 	};
 
+	sysedp_batmon_calc {
+		status = "okay";
+	};
+
 	regulators {
 		regulator@8  {
 			vin-supply = <&ldo3_reg>;

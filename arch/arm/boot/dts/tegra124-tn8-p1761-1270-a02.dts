@@ -98,6 +98,10 @@
 		};
 	};
 
+	sysedp_batmon_calc {
+		status = "okay";
+	};
+
 	thermal-zones {
 		PMIC-Die {
 			status = "okay";
