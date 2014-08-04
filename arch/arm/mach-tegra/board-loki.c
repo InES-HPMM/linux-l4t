@@ -232,20 +232,6 @@ static struct platform_device loki_audio_device_rt5639 = {
 	},
 };
 
-static void __init loki_uart_init(void)
-{
-	int debug_port_id;
-
-	if (!is_tegra_debug_uartport_hs()) {
-		debug_port_id = uart_console_debug_init(3);
-		if (debug_port_id < 0)
-			return;
-
-		if (!tegra_is_port_available_from_dt(debug_port_id))
-			platform_device_register(uart_console_debug_device);
-	}
-}
-
 static struct platform_device *loki_devices[] __initdata = {
 	&tegra_rtc_device,
 	&tegra_udc_device,
@@ -814,7 +800,6 @@ static void __init tegra_loki_late_init(void)
 	loki_modem_init();
 	loki_xusb_init();
 	loki_i2c_init();
-	loki_uart_init();
 	loki_audio_init();
 	platform_add_devices(loki_devices, ARRAY_SIZE(loki_devices));
 	tegra_io_dpd_init();
