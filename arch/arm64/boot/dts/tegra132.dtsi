@@ -170,7 +170,7 @@
 	/* WDT0 using TMR7 as timing reference */
 	wdt0: watchdog@60005100 {
 		compatible = "nvidia,tegra-wdt";
-		reg = <0x0 0x60005100 0x0 0x20		/* WDT0 registers */
+		reg = <0x0 0x60005180 0x0 0x20		/* WDT4 registers */
 			0x0 0x60005070 0x0 0x8>;	/* TMR7 registers */
 	};
 
