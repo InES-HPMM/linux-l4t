@@ -871,6 +871,16 @@
 		spdif@702d6000 {
 			status = "okay";
 		};
+		iqc@702de000 {
+			timestamp-enable = <0>;
+			data-offset = <1>;
+			status = "okay";
+		};
+		iqc@702de200 {
+			timestamp-enable = <0>;
+			data-offset = <1>;
+			status = "okay";
+		};
 	};
 
 	adsp_audio {
