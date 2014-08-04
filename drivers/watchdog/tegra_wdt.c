@@ -113,7 +113,8 @@ static int __tegra_wdt_enable(struct tegra_wdt *tegra_wdt)
 	val |= (TIMER_EN | TIMER_PERIODIC);
 	writel(val, tegra_wdt->wdt_timer + TIMER_PTV);
 
-	val = tegra_wdt->tmrsrc | WDT_CFG_PERIOD | WDT_CFG_PMC2CAR_RST_EN;
+	val = tegra_wdt->tmrsrc;
+	val |= WDT_CFG_PERIOD | WDT_CFG_INT_EN | WDT_CFG_PMC2CAR_RST_EN;
 	writel(val, tegra_wdt->wdt_source + WDT_CFG);
 	writel(WDT_CMD_START_COUNTER, tegra_wdt->wdt_source + WDT_CMD);
 
