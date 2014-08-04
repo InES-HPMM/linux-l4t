@@ -552,9 +552,10 @@ static int check_and_clear_fifo(struct tegra_spi_data *tspi)
 static int tegra_spi_start_dma_based_transfer(
 		struct tegra_spi_data *tspi, struct spi_transfer *t)
 {
-	unsigned long val;
+	unsigned long val, cmd1;
 	unsigned long intr_mask;
 	unsigned int len;
+	unsigned long flags;
 	int ret = 0;
 
 	/* Make sure that Rx and Tx fifo are empty */
@@ -624,11 +625,20 @@ static int tegra_spi_start_dma_based_transfer(
 			return ret;
 		}
 	}
+	spin_lock_irqsave(&tspi->lock, flags);
+	cmd1 = tegra_spi_readl(tspi, SPI_COMMAND1);
+	if (tspi->cur_direction & DATA_DIR_TX)
+		cmd1 |= SPI_TX_EN;
+	if (tspi->cur_direction & DATA_DIR_RX)
+		cmd1 |= SPI_RX_EN;
+	tegra_spi_writel(tspi, cmd1, SPI_COMMAND1);
+
 	tspi->is_curr_dma_xfer = true;
 	tspi->dma_control_reg = val;
 
 	val |= SPI_DMA_EN;
 	tegra_spi_writel(tspi, val, SPI_DMA_CTL);
+	spin_unlock_irqrestore(&tspi->lock, flags);
 	return ret;
 }
 
@@ -636,6 +646,7 @@ static int tegra_spi_start_cpu_based_transfer(
 		struct tegra_spi_data *tspi, struct spi_transfer *t)
 {
 	unsigned long val;
+	unsigned long flags;
 	unsigned long intr_mask;
 	unsigned cur_words;
 	int ret;
@@ -675,10 +686,17 @@ static int tegra_spi_start_cpu_based_transfer(
 	tegra_spi_writel(tspi, val, SPI_DMA_CTL);
 	tspi->dma_control_reg = val;
 
+	spin_lock_irqsave(&tspi->lock, flags);
 	tspi->is_curr_dma_xfer = false;
 	val = tspi->command1_reg;
+	if (tspi->cur_direction & DATA_DIR_TX)
+		val |= SPI_TX_EN;
+	if (tspi->cur_direction & DATA_DIR_RX)
+		val |= SPI_RX_EN;
+
 	val |= SPI_PIO;
 	tegra_spi_writel(tspi, val, SPI_COMMAND1);
+	spin_unlock_irqrestore(&tspi->lock, flags);
 	return 0;
 }
 
@@ -932,14 +950,11 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 
 	command1 &= ~(SPI_CS_SEL_MASK | SPI_TX_EN | SPI_RX_EN);
 	tspi->cur_direction = 0;
-	if (t->rx_buf) {
-		command1 |= SPI_RX_EN;
+	if (t->rx_buf)
 		tspi->cur_direction |= DATA_DIR_RX;
-	}
-	if (t->tx_buf) {
-		command1 |= SPI_TX_EN;
+	if (t->tx_buf)
 		tspi->cur_direction |= DATA_DIR_TX;
-	}
+
 	command1 |= SPI_CS_SEL(spi->chip_select);
 	tegra_spi_writel(tspi, command1, SPI_COMMAND1);
 	tspi->command1_reg = command1;
@@ -1347,22 +1362,24 @@ static void handle_dma_based_err_xfer(struct tegra_spi_data *tspi)
 static irqreturn_t tegra_spi_isr(int irq, void *context_data)
 {
 	struct tegra_spi_data *tspi = context_data;
+	unsigned cmd1;
 
+	cmd1 = tegra_spi_readl(tspi, SPI_COMMAND1);
 	tspi->status_reg = tegra_spi_readl(tspi, SPI_FIFO_STATUS);
-	if (tspi->cur_direction & DATA_DIR_TX)
+	if (cmd1 & SPI_TX_EN)
 		tspi->tx_status = tspi->status_reg &
 					(SPI_TX_FIFO_UNF | SPI_TX_FIFO_OVF);
 
-	if (tspi->cur_direction & DATA_DIR_RX)
+	if (cmd1 & SPI_RX_EN)
 		tspi->rx_status = tspi->status_reg &
 					(SPI_RX_FIFO_OVF | SPI_RX_FIFO_UNF);
 
-	if (!(tspi->cur_direction & DATA_DIR_TX) &&
-			!(tspi->cur_direction & DATA_DIR_RX))
+	tegra_spi_clear_status(tspi);
+	if (!(cmd1 & SPI_TX_EN) && !(cmd1 & SPI_RX_EN)) {
 		dev_err(tspi->dev, "spurious interrupt, status_reg = 0x%x\n",
 				tspi->status_reg);
-
-	tegra_spi_clear_status(tspi);
+		return IRQ_NONE;
+	}
 	if (!tspi->is_curr_dma_xfer)
 		handle_cpu_based_err_xfer(tspi);
 	else
