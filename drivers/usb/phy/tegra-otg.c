@@ -1290,6 +1290,10 @@ static void tegra_otg_resume(struct device *dev)
 		}
 	}
 
+	/* Hold wakelock for display wake up */
+	if (tegra->int_status & USB_VBUS_STATUS)
+		tegra_otg_notify_event(tegra, USB_EVENT_VBUS);
+
 	/* Call work to set appropriate state */
 	schedule_work(&tegra->work);
 
