@@ -1,4 +1,4 @@
-#include "tegra124-foster.dts"
+#include "tegra124-loki-foster.dts"
 #include "tegra124-platforms/tegra124-loki-powermon-p2530-a01.dtsi"
 #include <dt-bindings/gpio/tegra-gpio.h>
 #include <tegra124-platforms/tegra124-loki-foster-gpio-p2530-c00.dtsi>
