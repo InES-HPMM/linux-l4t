@@ -54,6 +54,7 @@
 #include <linux/tegra-pm.h>
 #include <linux/tegra_pm_domains.h>
 #include <linux/tegra_smmu.h>
+#include <linux/platform_data/tegra_bpmp.h>
 #include <linux/kmemleak.h>
 
 #include <trace/events/power.h>
@@ -639,6 +640,44 @@ static const char *lp_state[TEGRA_MAX_SUSPEND_MODE] = {
 	[TEGRA_SUSPEND_LP0] = "LP0",
 };
 
+int tegra210_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
+{
+	int err = 0;
+	unsigned long arg;
+	int cpu = smp_processor_id();
+	struct psci_power_state ps = {
+		.id = TEGRA210_CPUIDLE_SC7,
+		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
+		.affinity_level = 2,
+	};
+
+	if (WARN_ON(mode <= TEGRA_SUSPEND_NONE ||
+		mode >= TEGRA_MAX_SUSPEND_MODE)) {
+		err = -ENXIO;
+		goto fail;
+	}
+
+	if ((mode == TEGRA_SUSPEND_LP0) && !tegra_pm_irq_lp0_allowed()) {
+		err = -ENXIO;
+		goto fail;
+	}
+
+	if (tegra_bpmp_do_idle(cpu, TEGRA_PM_CC7,
+				TEGRA_PM_SC7) != 0) {
+		err = -ENXIO;
+		goto fail;
+	}
+
+	tegra_pm_prepare_sc7();
+
+	arg = psci_power_state_pack(ps);
+	cpu_suspend(arg, NULL);
+
+	tegra_pm_post_sc7();
+fail:
+	return err;
+}
+
 static int tegra_suspend_enter(suspend_state_t state)
 {
 	int ret = 0;
@@ -651,7 +690,11 @@ static int tegra_suspend_enter(suspend_state_t state)
 
 	read_persistent_clock(&ts_entry);
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	ret = tegra210_suspend_dram(current_suspend_mode, 0);
+#else
 	ret = tegra_suspend_dram(current_suspend_mode, 0);
+#endif
 	if (ret) {
 		pr_info("Aborting suspend, tegra_suspend_dram error=%d\n", ret);
 		goto abort_suspend;
