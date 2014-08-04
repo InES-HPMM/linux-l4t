@@ -556,6 +556,11 @@ static struct tegra_panel *t210ref_panel_configure(struct board_info *board_out,
 		break;
 	}
 
+	/*
+	 * TODO
+	 * dpd enabling for dsi pads in board
+	 * will be deprecated.
+	 */
 	tegra_io_dpd_enable(&dsic_io);
 	tegra_io_dpd_enable(&dsid_io);
 

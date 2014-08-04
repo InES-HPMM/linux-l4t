@@ -465,17 +465,6 @@ static struct platform_device t210_disp1_device = {
 };
 #endif
 
-static __maybe_unused struct tegra_io_dpd dsic_io = {
-	.name			= "DSIC",
-	.io_dpd_reg_index	= 1,
-	.io_dpd_bit		= 8,
-};
-static __maybe_unused struct tegra_io_dpd dsid_io = {
-	.name			= "DSID",
-	.io_dpd_reg_index	= 1,
-	.io_dpd_bit		= 9,
-};
-
 static struct tegra_dc_dp_lt_settings t210_edp_lt_data[] = {
 	{
 		.drive_current = {

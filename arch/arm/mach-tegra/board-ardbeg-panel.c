@@ -565,17 +565,6 @@ static struct platform_device ardbeg_disp1_device = {
 };
 #endif
 
-static struct tegra_io_dpd dsic_io = {
-	.name			= "DSIC",
-	.io_dpd_reg_index	= 1,
-	.io_dpd_bit		= 8,
-};
-static struct tegra_io_dpd dsid_io = {
-	.name			= "DSID",
-	.io_dpd_reg_index	= 1,
-	.io_dpd_bit		= 9,
-};
-
 static struct tegra_dc_dp_lt_settings ardbeg_edp_lt_data[] = {
 	{
 		.drive_current = {
@@ -716,8 +705,6 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 	case BOARD_E1807:
 		panel = &dsi_a_1200_800_8_0;
 		dsi_instance = DSI_INSTANCE_0;
-		tegra_io_dpd_enable(&dsic_io);
-		tegra_io_dpd_enable(&dsid_io);
 		break;
 	case BOARD_P1761:
 		if (tegra_get_board_panel_id())
@@ -725,13 +712,9 @@ static struct tegra_panel *ardbeg_panel_configure(struct board_info *board_out,
 		else
 			panel = &dsi_a_1200_800_8_0;
 		dsi_instance = DSI_INSTANCE_0;
-		tegra_io_dpd_enable(&dsic_io);
-		tegra_io_dpd_enable(&dsid_io);
 		break;
 	default:
 		panel = &dsi_p_wuxga_10_1;
-		tegra_io_dpd_enable(&dsic_io);
-		tegra_io_dpd_enable(&dsid_io);
 		break;
 	}
 	if (dsi_instance_out)
