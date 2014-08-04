@@ -47,6 +47,7 @@
 
 extern struct mutex smc_lock;
 extern struct tlk_device tlk_dev;
+extern void tlk_fiq_glue_aarch64(void);
 
 uint32_t _tlk_generic_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2);
 uint32_t tlk_generic_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2);
@@ -111,6 +112,7 @@ enum {
 
 	/* SIP (SOC specific) calls.  */
 	TE_SMC_PROGRAM_VPR		= 0x82000003,
+	TE_SMC_REGISTER_FIQ_GLUE	= 0x82000005,
 };
 
 enum {

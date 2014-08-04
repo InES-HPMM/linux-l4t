@@ -30,3 +30,4 @@ AFLAGS_ote_asm.o :=-Wa,-march=armv7-a$(plus_sec)
 endif
 
 obj-$(CONFIG_TRUSTED_LITTLE_KERNEL) += tlk_driver.o
+obj-$(CONFIG_ARM64) += ote_fiq_glue.o
