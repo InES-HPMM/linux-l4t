@@ -374,6 +374,23 @@ static struct dvfs core_dvfs_table[] = {
 	OVRRD_DVFS("sdmmc4",         -1, -1, 1, KHZ,      1,      1,  82000,  82000,  136000, 136000, 136000,  136000,  200000),
 };
 
+/*
+ * DVFS table for Automotive platforms.
+ *
+ * auto_dvfs: This flag indicates clock framework to invoke dvfs on this clock
+ * automatically whenever any clock API is called. Also, setting this flag
+ * will cause DVFS framework to mark the clock as sleeping. Disable this flag
+ * only for set of drivers (which includes only display driver currently).
+ *
+ * On Automotive platforms, DVFS is not used for SOC clocks. This table is
+ * used in two cases:
+ *
+ * 1. DVFS framework will refer this table to get the voltage to be set for a
+ *    requested rate. Since vdd_core is fixed for automotive, there is an entry
+ *    corresponding to that voltage only.
+ * 2. This table is also used to determine rate of shared PLLs (PLLCx) and SCPU.
+ */
+
 static struct dvfs core_dvfs_table_automotive[] = {
 	/* Core voltages (mV):		            800,    850,    900,    950,    1000,  1050,    1100, 1110,   1150 */
 	/* Clock limits for internal blocks, PLLs */

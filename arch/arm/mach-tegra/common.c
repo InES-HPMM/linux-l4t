@@ -418,6 +418,10 @@ static __initdata struct tegra_clk_init_table tegra11x_cbus_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 #endif
+/*
+ * Set system level PLLs and common clocks. If for a board, clock rate/parent
+ * is different, it can be overridden in the board specific clock table.
+ */
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
 	/* name		parent		rate		enabled */
