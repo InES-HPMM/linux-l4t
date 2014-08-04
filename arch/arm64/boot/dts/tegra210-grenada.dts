@@ -975,8 +975,7 @@
 			TDM_SLOT_MAP(0, 0, 0)
 			TDM_SLOT_MAP(3, 2, 0)
 			TDM_SLOT_MAP(3, 2, 1)>;
-		nvidia,memory-clients = <34>;
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(APE) &ape_as>;
+
 		nvidia,audio-routing =
 			"x Headphone", 	"x OUT",
 			"y Headphone", 	"y OUT",
