@@ -154,15 +154,34 @@
 #define SPARE_REG_CLK_M_DIVISOR_SHIFT	2
 #define SPARE_REG_CLK_M_DIVISOR_MASK	(3 << SPARE_REG_CLK_M_DIVISOR_SHIFT)
 
-#define PERIPH_CLK_SOURCE_XUSB_HOST	0x600
-#define PERIPH_CLK_SOURCE_VIC		0x678
+#define AUDIO_SYNC_CLK_DMIC1		0x560
+#define AUDIO_SYNC_CLK_DMIC2		0x564
 #define PERIPH_CLK_SOURCE_NUM4 \
-	((PERIPH_CLK_SOURCE_VIC - PERIPH_CLK_SOURCE_XUSB_HOST) / 4 + 1)
+	((AUDIO_SYNC_CLK_DMIC2 - AUDIO_SYNC_CLK_DMIC1) / 4 + 1)
+
+#define PERIPH_CLK_SOURCE_XUSB_HOST	0x600
+#define PERIPH_CLK_SOURCE_EMC_DLL	0x664
+#define PERIPH_CLK_SOURCE_VIC		0x678
+#define PERIPH_CLK_SOURCE_NUM5 \
+	((PERIPH_CLK_SOURCE_VIC - PERIPH_CLK_SOURCE_XUSB_HOST) / 4)
+
+#define PERIPH_CLK_SOURCE_SDMMC_LEGACY	0x694
+#define PERIPH_CLK_SOURCE_NVENC		0x6a0
+#define PERIPH_CLK_SOURCE_NUM6 \
+	((PERIPH_CLK_SOURCE_NVENC - PERIPH_CLK_SOURCE_SDMMC_LEGACY) / 4 + 1)
+
+#define AUDIO_SYNC_CLK_DMIC3		0x6b8
+#define PERIPH_CLK_SOURCE_DBGAPB	0x718
+#define PERIPH_CLK_SOURCE_NUM7 \
+	((PERIPH_CLK_SOURCE_DBGAPB - AUDIO_SYNC_CLK_DMIC3) / 4 + 1)
 
 #define PERIPH_CLK_SOURCE_NUM		(PERIPH_CLK_SOURCE_NUM1 + \
 					 PERIPH_CLK_SOURCE_NUM2 + \
 					 PERIPH_CLK_SOURCE_NUM3 + \
-					 PERIPH_CLK_SOURCE_NUM4)
+					 PERIPH_CLK_SOURCE_NUM4 + \
+					 PERIPH_CLK_SOURCE_NUM5 + \
+					 PERIPH_CLK_SOURCE_NUM6 + \
+					 PERIPH_CLK_SOURCE_NUM7)
 
 #define CPU_SOFTRST_CTRL		0x380
 #define CPU_SOFTRST_CTRL1		0x384
@@ -9442,6 +9461,10 @@ static int tegra21_clk_suspend(void)
 	*ctx++ = clk_readl(CPU_SOFTRST_CTRL1);
 	*ctx++ = clk_readl(CPU_SOFTRST_CTRL2);
 
+	*ctx++ = clk_readl(SPARE_REG);
+	*ctx++ = clk_readl(MISC_CLK_ENB);
+	*ctx++ = clk_readl(CLK_MASK_ARM);
+
 	*ctx++ = clk_readl(tegra_pll_p_out3.reg);
 	*ctx++ = clk_readl(tegra_pll_p_out5.reg);
 	*ctx++ = clk_readl(tegra_pll_p_out_hsio.reg);
@@ -9472,9 +9495,24 @@ static int tegra21_clk_suspend(void)
 	for (off = AUDIO_DLY_CLK; off <= AUDIO_SYNC_CLK_SPDIF; off+=4) {
 		*ctx++ = clk_readl(off);
 	}
-	for (off = PERIPH_CLK_SOURCE_XUSB_HOST;
-		off <= PERIPH_CLK_SOURCE_VIC; off += 4)
+	for (off = AUDIO_SYNC_CLK_DMIC1;
+	      off <= AUDIO_SYNC_CLK_DMIC2; off += 4) {
 		*ctx++ = clk_readl(off);
+	}
+	for (off = PERIPH_CLK_SOURCE_XUSB_HOST;
+		off <= PERIPH_CLK_SOURCE_VIC; off += 4) {
+		if (off == PERIPH_CLK_SOURCE_EMC_DLL)
+			continue;
+		*ctx++ = clk_readl(off);
+	}
+	for (off = PERIPH_CLK_SOURCE_SDMMC_LEGACY;
+	      off <= PERIPH_CLK_SOURCE_NVENC; off += 4) {
+		*ctx++ = clk_readl(off);
+	}
+	for (off = AUDIO_SYNC_CLK_DMIC3;
+	      off <= PERIPH_CLK_SOURCE_DBGAPB; off += 4) {
+		*ctx++ = clk_readl(off);
+	}
 
 	*ctx++ = clk_readl(RST_DEVICES_L);
 	*ctx++ = clk_readl(RST_DEVICES_H);
@@ -9498,10 +9536,9 @@ static int tegra21_clk_suspend(void)
 	*ctx++ = clk_readl(tegra_clk_cclk_lp.reg);
 	*ctx++ = clk_readl(tegra_clk_cclk_lp.reg + SUPER_CLK_DIVIDER);
 
-	*ctx++ = clk_readl(SPARE_REG);
-	*ctx++ = clk_readl(MISC_CLK_ENB);
-	*ctx++ = clk_readl(CLK_MASK_ARM);
-
+	pr_debug("%s: suspend entries: %d, suspend array: %u\n", __func__,
+		(s32)(ctx - clk_rst_suspend), (u32)ARRAY_SIZE(clk_rst_suspend));
+	BUG_ON((ctx - clk_rst_suspend) > ARRAY_SIZE(clk_rst_suspend));
 	return 0;
 }
 
@@ -9526,6 +9563,10 @@ static void tegra21_clk_resume(void)
 	clk_writel(*ctx++, CPU_SOFTRST_CTRL);
 	clk_writel(*ctx++, CPU_SOFTRST_CTRL1);
 	clk_writel(*ctx++, CPU_SOFTRST_CTRL2);
+
+	clk_writel(*ctx++, SPARE_REG);
+	clk_writel(*ctx++, MISC_CLK_ENB);
+	clk_writel(*ctx++, CLK_MASK_ARM);
 
 	/* Since we are going to reset devices and switch clock sources in this
 	 * function, plls and secondary dividers is required to be enabled. The
@@ -9591,8 +9632,7 @@ static void tegra21_clk_resume(void)
 	clk_writel(CLK_OUT_ENB_V_RESET_MASK, CLK_OUT_ENB_V);
 	clk_writel(CLK_OUT_ENB_W_RESET_MASK, CLK_OUT_ENB_W);
 	clk_writel(CLK_OUT_ENB_X_RESET_MASK, CLK_OUT_ENB_X);
-	clk_writel(CLK_OUT_ENB_Y_RESET_MASK, CLK_OUT_ENB_Y);
-	wmb();
+	clk_writel_delay(CLK_OUT_ENB_Y_RESET_MASK, CLK_OUT_ENB_Y);
 
 	for (off = PERIPH_CLK_SOURCE_I2S1; off <= PERIPH_CLK_SOURCE_LA;
 			off += 4) {
@@ -9607,10 +9647,26 @@ static void tegra21_clk_resume(void)
 	for (off = AUDIO_DLY_CLK; off <= AUDIO_SYNC_CLK_SPDIF; off+=4) {
 		clk_writel(*ctx++, off);
 	}
-	for (off = PERIPH_CLK_SOURCE_XUSB_HOST;
-		off <= PERIPH_CLK_SOURCE_VIC; off += 4)
+	for (off = AUDIO_SYNC_CLK_DMIC1;
+	      off <= AUDIO_SYNC_CLK_DMIC2; off += 4) {
 		clk_writel(*ctx++, off);
+	}
+	for (off = PERIPH_CLK_SOURCE_XUSB_HOST;
+		off <= PERIPH_CLK_SOURCE_VIC; off += 4) {
+		if (off == PERIPH_CLK_SOURCE_EMC_DLL)
+			continue;
+		clk_writel(*ctx++, off);
+	}
+	for (off = PERIPH_CLK_SOURCE_SDMMC_LEGACY;
+	      off <= PERIPH_CLK_SOURCE_NVENC; off += 4) {
+		clk_writel(*ctx++, off);
+	}
+	for (off = AUDIO_SYNC_CLK_DMIC3;
+	      off <= PERIPH_CLK_SOURCE_DBGAPB; off += 4) {
+		clk_writel(*ctx++, off);
+	}
 
+	clk_readl(off);
 	udelay(RESET_PROPAGATION_DELAY);
 
 	clk_writel(*ctx++, RST_DEVICES_L);
@@ -9619,8 +9675,7 @@ static void tegra21_clk_resume(void)
 	clk_writel(*ctx++, RST_DEVICES_V);
 	clk_writel(*ctx++, RST_DEVICES_W);
 	clk_writel(*ctx++, RST_DEVICES_X);
-	clk_writel(*ctx++, RST_DEVICES_Y);
-	wmb();
+	clk_writel_delay(*ctx++, RST_DEVICES_Y);
 
 	clk_writel(*ctx++, CLK_OUT_ENB_L);
 	clk_writel(*ctx++, CLK_OUT_ENB_H);
@@ -9644,10 +9699,6 @@ static void tegra21_clk_resume(void)
 	/* CPU LP clock restored after PLLs and pllp_out_cpu branch */
 	clk_writel(*ctx++, tegra_clk_cclk_lp.reg);
 	clk_writel_delay(*ctx++, tegra_clk_cclk_lp.reg + SUPER_CLK_DIVIDER);
-
-	clk_writel(*ctx++, SPARE_REG);
-	clk_writel(*ctx++, MISC_CLK_ENB);
-	clk_writel(*ctx++, CLK_MASK_ARM);
 
 	/* Restore back the actual pll and secondary divider values */
 	clk_writel(pll_p_out34, tegra_pll_p_out3.reg);
