@@ -152,6 +152,9 @@ static void sdhci_dumpregs(struct sdhci_host *host)
 		       readl(host->ioaddr + SDHCI_ADMA_ERROR),
 		       readl(host->ioaddr + SDHCI_ADMA_ADDRESS));
 
+	if (host->ops->dump_host_cust_regs)
+		host->ops->dump_host_cust_regs(host);
+
 	pr_err(DRIVER_NAME ": ===========================================\n");
 }
 

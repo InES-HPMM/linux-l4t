@@ -68,6 +68,8 @@
 #define SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT		24
 #define SDHCI_VNDR_CLK_CTRL_SDR50_TUNING		0x20
 #define SDHCI_VNDR_CLK_CTRL_INTERNAL_CLK		0x2
+#define SDHCI_VNDR_CLK_CTRL_TAP_VALUE_MASK		0xFF
+#define SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_MASK		0x1F
 
 #define SDHCI_VNDR_CAP_OVERRIDES_0			0x10c
 #define SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT	8
@@ -117,6 +119,8 @@
 #define SDMMC_AUTO_CAL_STATUS_AUTO_CAL_ACTIVE	0x80000000
 #define SDMMC_AUTO_CAL_STATUS_PULLDOWN_OFFSET	24
 #define PULLUP_ADJUSTMENT_OFFSET	20
+
+#define SDMMC_VENDOR_ERR_INTR_STATUS_0	0x108
 
 #define SDMMC_IO_SPARE_0	0x1F0
 #define SPARE_OUT_3_OFFSET	19
@@ -614,6 +618,23 @@ static void tegra_sdhci_do_dll_calibration(struct sdhci_host *sdhci);
 static void tegra_sdhci_update_sdmmc_pinctrl_register(struct sdhci_host *sdhci,
 		bool set);
 
+static void tegra_sdhci_dumpregs(struct sdhci_host *sdhci)
+{
+	u32 tap_delay;
+	u32 trim_delay;
+
+	tap_delay = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
+	trim_delay = tap_delay;
+	tap_delay >>= SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT;
+	tap_delay &= SDHCI_VNDR_CLK_CTRL_TAP_VALUE_MASK;
+	trim_delay >>= SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT;
+	trim_delay &= SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_MASK;
+	pr_info("sdhci: Tap value: %u | Trim value: %u\n", tap_delay,
+			trim_delay);
+	pr_info("sdhci: SDMMC Interrupt status: 0x%08x\n", sdhci_readl(sdhci,
+				SDMMC_VENDOR_ERR_INTR_STATUS_0));
+}
+
 static int show_error_stats_dump(struct seq_file *s, void *data)
 {
 	struct sdhci_host *host = s->private;
@@ -1068,7 +1089,7 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 		if (plat->ddr_trim_delay != -1) {
 			trim_delay = plat->ddr_trim_delay;
 			vndr_ctrl = sdhci_readl(host, SDHCI_VNDR_CLK_CTRL);
-			vndr_ctrl &= ~(0x1F <<
+			vndr_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_MASK <<
 				SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
 			vndr_ctrl |= (trim_delay <<
 				SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
@@ -1090,7 +1111,7 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 		best_tap_value = tegra_host->plat->tap_delay;
 	}
 	vndr_ctrl = sdhci_readl(host, SDHCI_VNDR_CLK_CTRL);
-	vndr_ctrl &= ~(0xFF <<
+	vndr_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TAP_VALUE_MASK <<
 		SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
 	vndr_ctrl |= (best_tap_value <<
 		SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
@@ -1224,13 +1245,14 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		} else {
 			best_tap_value = tegra_host->plat->tap_delay;
 		}
-		vendor_ctrl &= ~(0xFF << SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+		vendor_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TAP_VALUE_MASK <<
+				SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
 		vendor_ctrl |= (best_tap_value <<
 			SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
 	}
 
 	if (soc_data->nvquirks & NVQUIRK_SET_TRIM_DELAY) {
-		vendor_ctrl &= ~(0x1F <<
+		vendor_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_MASK <<
 		SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
 		vendor_ctrl |= (plat->trim_delay <<
 		SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
@@ -1893,7 +1915,8 @@ static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
 	}
 
 	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
-	vendor_ctrl &= ~(0xFF << SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+	vendor_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TAP_VALUE_MASK <<
+			SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
 	vendor_ctrl |= (tap_delay << SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
 	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_CLK_CTRL);
 }
@@ -1904,7 +1927,8 @@ static void sdhci_tegra_set_trim_delay(struct sdhci_host *sdhci,
 	u32 vendor_ctrl;
 
 	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
-	vendor_ctrl &= ~(0x1F << SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
+	vendor_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_MASK <<
+			SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
 	vendor_ctrl |= (trim_delay << SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
 	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_CLK_CTRL);
 }
@@ -4105,6 +4129,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 #endif
 	.get_drive_strength	= tegra_sdhci_get_drive_strength,
 	.post_init	= tegra_sdhci_do_dll_calibration,
+	.dump_host_cust_regs	= tegra_sdhci_dumpregs,
 };
 
 static struct sdhci_pltfm_data sdhci_tegra11_pdata = {

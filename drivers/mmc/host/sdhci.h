@@ -385,6 +385,7 @@ struct sdhci_ops {
 	int	(*get_drive_strength)(struct sdhci_host *host,
 		unsigned int max_dtr, int host_drv, int card_drv);
 	void	(*post_init)(struct sdhci_host *host);
+	void	(*dump_host_cust_regs)(struct sdhci_host *host);
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS
