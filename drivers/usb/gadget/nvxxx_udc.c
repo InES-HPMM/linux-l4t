@@ -3700,6 +3700,10 @@ static irqreturn_t nvudc_irq(int irq, void *_udc)
 	return IRQ_HANDLED;
 }
 
+static irqreturn_t nvudc_padctl_irq(int irq, void *_udc)
+{
+	return IRQ_NONE;
+}
 
 void usbep_struct_setup(struct nv_udc_s *nvudc, u32 index, u8 *name)
 {
@@ -4744,6 +4748,22 @@ static int nvudc_plat_irqs_init(struct nv_udc_s *nvudc)
 				dev_name(dev), nvudc);
 	if (err < 0) {
 		msg_err(dev, "failed to claim irq %d\n", err);
+		return err;
+	}
+
+	err = platform_get_irq(pdev, 1);
+	if (err < 0) {
+		msg_err(dev, "failed to get irq resource 1\n");
+		return -ENXIO;
+	}
+	nvudc->padctl_irq = err;
+	msg_info(dev, "irq %u\n", nvudc->padctl_irq);
+
+	err = devm_request_irq(dev, nvudc->padctl_irq, nvudc_padctl_irq
+			, IRQF_SHARED | IRQF_TRIGGER_HIGH
+			, dev_name(dev), nvudc);
+	if (err < 0) {
+		msg_err(dev, "failed to claim padctl_irq %d\n", err);
 		return err;
 	}
 

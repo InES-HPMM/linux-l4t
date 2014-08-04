@@ -554,11 +554,11 @@ struct nv_udc_s {
 	struct otg_transceiver *transceiver;
 	struct nv_udc_ep udc_ep[32];
 	u32 irq;
+	u32 padctl_irq;
 	struct nv_buffer_info_s ep_cx;
 	struct ep_cx_s *p_epcx;
 	resource_size_t	mmio_phys_len;
 	resource_size_t	mmio_phys_base;
-
 	void __iomem *mmio_reg_base;
 
 	struct nv_buffer_info_s event_ring0;
