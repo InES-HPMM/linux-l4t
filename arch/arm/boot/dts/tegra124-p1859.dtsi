@@ -217,6 +217,10 @@
 		status = "okay";
 	};
 
+	sdhci@700b0000 {
+		status = "okay";
+	};
+
 	sdhci@700b0600 {
 		status = "okay";
 	};
@@ -239,6 +243,12 @@
 		id = <0>;
 		bluedroid_pm,reset-gpio = <&pca9539_75 0 1>;
 		bluedroid_pm,shutdown-gpio = <&pca9539_75 5 1>;
+		status = "okay";
+	};
+	bcmdhd_wlan {
+		compatible = "nvidia,tegra-bcmdhd-wlan";
+		wlan-pwr-gpio = <&pca9539_75 3 1>;
+		wlan-rst-gpio = <&pca9539_75 4 1>;
 		status = "okay";
 	};
 };

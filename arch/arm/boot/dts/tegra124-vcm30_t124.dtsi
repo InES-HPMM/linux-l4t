@@ -140,6 +140,22 @@
 		status = "disabled";
 	};
 
+	sdhci@700b0000 {
+		tap-delay = <0x0>;
+		trim-delay = <0x2>;
+		ddr-trim-delay = <0x4>;
+		mmc-ocr-mask = <0>;
+		uhs_mask = <0x40>;
+		bus-width = <4>;
+		built-in;
+		ddr-clk-limit = <51000000>;
+		max-clk-limit = <204000000>;
+		pll_source = "pll_m", "pll_p";
+		vmmc-supply = <&vmmc_dummy>;
+		disable-clock-gate;
+		status = "disabled";
+	};
+
 	sdhci@700b0600 {
 		tap-delay = <0x4>;
 		trim-delay = <0x4>;
