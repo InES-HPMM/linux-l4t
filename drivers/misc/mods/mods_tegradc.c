@@ -283,9 +283,8 @@ int mods_init_tegradc(void)
 		tegra_dc_saved_sd_settings[i] = dc->out->sd_settings;
 		dc->out->sd_settings = &mods_sd_settings[i];
 
-		tegra_dc_io_start(dc);
-		nvsd_init(dc, dc->out->sd_settings);
-		tegra_dc_io_end(dc);
+		if (dc->enabled)
+			nvsd_init(dc, dc->out->sd_settings);
 
 		if (!tegra_dc_saved_sd_settings[i])
 			ret = nvsd_create_sysfs(&dc->ndev->dev);
@@ -305,8 +304,7 @@ void mods_exit_tegradc(void)
 		if (!tegra_dc_saved_sd_settings[i])
 			nvsd_remove_sysfs(&dc->ndev->dev);
 		dc->out->sd_settings = tegra_dc_saved_sd_settings[i];
-		tegra_dc_io_start(dc);
-		nvsd_init(dc, dc->out->sd_settings);
-		tegra_dc_io_end(dc);
+		if (dc->enabled)
+			nvsd_init(dc, dc->out->sd_settings);
 	}
 }
