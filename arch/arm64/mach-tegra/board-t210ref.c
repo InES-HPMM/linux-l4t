@@ -119,8 +119,8 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	{ "i2s3",	"pll_a_out0",	0,		false},
 	{ "i2s4",	"pll_a_out0",	0,		false},
 	{ "spdif_out",	"pll_a_out0",	0,		false},
-#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	{ "d_audio",	"pll_a_out0",	12288000,	false},
+#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	{ "dam0",	"clk_m",	12000000,	false},
 	{ "dam1",	"clk_m",	12000000,	false},
 	{ "dam2",	"clk_m",	12000000,	false},
