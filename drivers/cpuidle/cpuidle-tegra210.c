@@ -46,23 +46,6 @@
 #include "../../arch/arm/mach-tegra/flowctrl.h"
 #include "cpuidle-tegra210.h"
 
-/* Core state 0-9 */
-#define TEGRA210_CPUIDLE_C4	4
-#define TEGRA210_CPUIDLE_C7	7
-
-/* Cluster states 10-19 */
-#define TEGRA210_CPUIDLE_CC4	14
-#define TEGRA210_CPUIDLE_CC6	16
-#define TEGRA210_CPUIDLE_CC7	17
-
-/* SoC states 20-29 */
-#define TEGRA210_CPUIDLE_SC2	22
-#define TEGRA210_CPUIDLE_SC3	23
-#define TEGRA210_CPUIDLE_SC4	24
-#define TEGRA210_CPUIDLE_SC7	27
-
-#define TEGRA210_CLUSTER_SWITCH	31
-
 static const char *driver_name = "tegra210_idle";
 static struct module *owner = THIS_MODULE;
 
