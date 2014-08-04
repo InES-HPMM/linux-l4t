@@ -484,6 +484,32 @@ config SND_SOC_TEGRA_DMIC_REV1
 	  boards using the DMIC_REV1 codec. Currently, only supported board is
 	  E1664 (dolak).
 
+config MACH_HAS_SND_SOC_TEGRA_ES755
+	bool
+	help
+	  Machines that use the SND_SOC_TEGRA_ES755 driver should select this
+	  config options, in order to allow the user to enable
+	  SNS_SOC_TEGRA_ES755.
+
+config SND_SOC_TEGRA_ES755
+	tristate "SoC Audio support for Tegra boards using an ES755 codec"
+	depends on SND_SOC_TEGRA && I2C && TEGRA_DC
+	depends on MACH_HAS_SND_SOC_TEGRA_ES755
+	select SND_SOC_TEGRA30_I2S if !ARCH_TEGRA_2x_SOC
+	select SND_SOC_ES755
+	select SND_SOC_TEGRA30_DAM if !ARCH_TEGRA_2x_SOC
+	select SND_SOC_TAS2552
+	select SND_SOC_SPDIF
+	help
+	  Say Y or M here if you want to add support for SoC audio on Tegra
+	  boards using the combination of Audience ES755 codec and TI tas2552
+	  DAC. The digital control interface may be I2C, UART or SPI for es755.
+	  Define defconfig correctly in order to choose the digital control
+	  interface. The default interface would be I2C. tas2552 should be used
+	  for audio through speaker for its speaker protection functionality.
+	  es755 has its built-in DSP for voice AE and NS functionality.
+	  Currently, only supported board is e1780 (ardbeg).
+
 config SND_SOC_TEGRA_DUMMY
 	tristate "SoC Audio support for Tegra boards that doesn't use codecs"
 	depends on SND_SOC_TEGRA
