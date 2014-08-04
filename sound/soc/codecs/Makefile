@@ -257,6 +257,7 @@ obj-$(CONFIG_SND_SOC_WM_HUBS)	+= snd-soc-wm-hubs.o
 obj-$(CONFIG_SND_SOC_RT5639)	+= snd-soc-rt5639.o
 obj-$(CONFIG_SND_SOC_RT5640)	+= snd-soc-rt5640.o
 obj-$(CONFIG_SND_SOC_RT5645)	+= snd-soc-rt5645.o
+obj-$(CONFIG_SND_SOC_ES755)     += audience/
 
 # Amp
 obj-$(CONFIG_SND_SOC_MAX9877)	+= snd-soc-max9877.o
