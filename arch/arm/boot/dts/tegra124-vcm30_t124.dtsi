@@ -33,6 +33,12 @@
 		nvidia,clock-always-on;
 	};
 
+	/* vcm30t124 mcm doesn't need hda device */
+	hda@70030000 {
+		compatible = "nvidia,tegra30-hda";
+		status = "disabled";
+	};
+
 	/*
 	 * vcm30t124 mcm dtsi assumes all uart ports as high speed
 	 *
