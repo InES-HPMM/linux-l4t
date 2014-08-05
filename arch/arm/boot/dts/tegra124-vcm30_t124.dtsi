@@ -184,6 +184,9 @@
 	};
 
 	snor {
+		pinctrl-names = "pi7_gmi_mode", "pi7_rsvd_mode";
+		pinctrl-0 = <&nor_pi7_gmi>;
+		pinctrl-1 = <&nor_pi7_rsvd>;
 		nvidia,timing-default = <0x30300273>, <0x00030302>;
 		nvidia,timing-read = <0x30300273>, <0x00030302>;
 		nvidia,nor-mux-mode = <0x0>;
@@ -194,6 +197,7 @@
 		nvidia,flash-width = <0x2>;
 		nvidia,num-chips = <0x1>;
 		use-advanced-sector-protection;
+		nvidia,gmi-oe-pin = <&gpio 65 0>; /* gpio PI1 */
 		status = "disabled";
 		cs-info@0 {
 			nvidia,cs = <0x0>;

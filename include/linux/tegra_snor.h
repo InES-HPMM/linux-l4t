@@ -41,6 +41,7 @@
 #define TEGRA_SNOR_TIMING0_REG                  0x10
 #define TEGRA_SNOR_TIMING1_REG                  0x14
 #define TEGRA_SNOR_DMA_CFG_REG                  0x20
+#define TEGRA_SNOR_STA_0						0x04
 
 /* config register */
 #define TEGRA_SNOR_CONFIG_GO                    BIT(31)
@@ -62,6 +63,9 @@
 #define TEGRA_SNOR_CONFIG_CE_FIRST              REG_FIELD(2)
 #define TEGRA_SNOR_CONFIG_DEVICE_MODE(val)      REG_FIELD((val), 0, 2)
 
+/* Status register */
+#define TEGRA_SNOR_DMA_DATA_CNT(val)			REG_FIELD((val), 0, 16)
+
 /* dma config register */
 #define TEGRA_SNOR_DMA_CFG_GO                   BIT(31)
 #define TEGRA_SNOR_DMA_CFG_BSY                  BIT(30)
@@ -70,6 +74,8 @@
 #define TEGRA_SNOR_DMA_CFG_INT_STA              BIT(27)
 #define TEGRA_SNOR_DMA_CFG_BRST_SZ(val)         REG_FIELD((val), 24, 3)
 #define TEGRA_SNOR_DMA_CFG_WRD_CNT(val)         REG_FIELD((val), 2, 14)
+#define MAX_DMA_BURST_SIZE			32
+#define MAX_NOR_DMA_RETRIES			40
 
 /* timing 0 register */
 #define TEGRA_SNOR_TIMING0_PG_RDY(val)          REG_FIELD((val), 28, 4)

@@ -1,0 +1,25 @@
+#include <dt-bindings/pinctrl/pinctrl-tegra.h>
+
+/ {
+	pinmux: pinmux@70000868 {
+		nor_pi7_rsvd: nor_pi7_to_rsvd {
+			pi7 {
+				nvidia,pins = "pi7";
+				nvidia,function = "rsvd1";
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+		};
+
+		nor_pi7_gmi: nor_pi7_to_gmi {
+			pi7 {
+				nvidia,pins = "pi7";
+				nvidia,function = "gmi";
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+		};
+	};
+};
