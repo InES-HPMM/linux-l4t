@@ -45,7 +45,7 @@ void (*tegra_boot_secondary_cpu)(int cpu);
 
 static int tegra_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
-	BUG_ON(cpu == smp_processor_id());
+	BUG_ON(cpu == raw_smp_processor_id());
 
 	if (tegra_boot_secondary_cpu) {
 		cpu = cpu_logical_map(cpu);
