@@ -3913,14 +3913,14 @@ static int azx_first_init(struct azx *chip)
 		switch (chip->driver_type) {
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
 		case AZX_DRIVER_NVIDIA_TEGRA:
-			chip->platform_clk_count = ARRAY_SIZE(tegra_clk_names);
-			for (i = 0; i < chip->platform_clk_count; i++) {
+			for (i = 0; i < ARRAY_SIZE(tegra_clk_names); i++) {
 				tegra_clks[i] = clk_get(&chip->pdev->dev,
 							tegra_clk_names[i]);
 				if (IS_ERR_OR_NULL(tegra_clks[i])) {
 					return PTR_ERR(tegra_clks[i]);
 				}
 			}
+			chip->platform_clk_count = ARRAY_SIZE(tegra_clk_names);
 			chip->platform_clks = tegra_clks;
 			break;
 #endif
@@ -4254,7 +4254,10 @@ static int azx_probe(struct pci_dev *pci,
 
 out_free:
 	snd_card_free(card);
-	pci_set_drvdata(pci, NULL);
+	if (pci)
+		pci_set_drvdata(pci, NULL);
+	else
+		dev_set_drvdata(&pdev->dev, NULL);
 	return err;
 }
 
