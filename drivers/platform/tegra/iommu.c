@@ -25,6 +25,16 @@
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "../../../arch/arm/mach-tegra/board.h"
 
+struct tegra_iommu_mapping {
+	dma_addr_t base;
+	size_t size;
+	int asid;
+	struct dma_iommu_mapping *map;
+};
+
+static struct dma_iommu_mapping *__tegra_smmu_map_init_dev(struct device *dev,
+					   struct tegra_iommu_mapping *info);
+
 static struct iommu_linear_map tegra_fb_linear_map[16]; /* Terminated with 0 */
 
 #ifdef CONFIG_TEGRA_BPMP
@@ -357,12 +367,6 @@ EXPORT_SYMBOL(tegra_smmu_fixup_swgids);
 
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 
-struct tegra_iommu_mapping {
-	dma_addr_t base;
-	size_t size;
-	struct dma_iommu_mapping *map;
-};
-
 static struct tegra_iommu_mapping smmu_default_map[] = {
 	[SYSTEM_DEFAULT] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
 	[SYSTEM_PROTECTED] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
@@ -382,15 +386,28 @@ static struct tegra_iommu_mapping smmu_default_map[] = {
 
 void tegra_smmu_map_misc_device(struct device *dev)
 {
-	struct dma_iommu_mapping *map = smmu_default_map[SYSTEM_PROTECTED].map;
-	if (!strncmp(dummy_name, DUMMY_DEV_NAME, strlen(dummy_name))) {
-		strncpy(dummy_name, dev_name(dev),
-			DUMMY_DEV_MAX_NAME_SIZE);
-		arm_iommu_attach_device(dev, map);
-		dev_info(dev, "Mapped the misc device\n");
+	int err;
+	struct tegra_iommu_mapping *info;
+
+	info = &smmu_default_map[SYSTEM_PROTECTED];
+	if (!info->map) {
+		info->asid = SYSTEM_PROTECTED;
+		info->map = __tegra_smmu_map_init_dev(dev, info);
+	}
+
+	if (strncmp(dummy_name, DUMMY_DEV_NAME, strlen(dummy_name)) != 0) {
+		dev_err(dev, "Can't Map device\n");
 		return;
 	}
-	dev_err(dev, "Can't Map device\n");
+
+	strncpy(dummy_name, dev_name(dev), DUMMY_DEV_MAX_NAME_SIZE);
+	err = arm_iommu_attach_device(dev, info->map);
+	if (err) {
+		dev_err(dev, "failed to attach dev to map %p", info->map);
+		return;
+	}
+
+	dev_info(dev, "Mapped the misc device map=%p\n", info->map);
 }
 EXPORT_SYMBOL(tegra_smmu_map_misc_device);
 
@@ -413,32 +430,45 @@ struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev, u64 swgids)
 }
 
 /* XXX: Remove this function once all client devices moved to DT */
+static struct dma_iommu_mapping *__tegra_smmu_map_init_dev(struct device *dev,
+					   struct tegra_iommu_mapping *info)
+{
+	struct dma_iommu_mapping *map;
+
+	map = arm_iommu_create_mapping(&platform_bus_type,
+				       info->base, info->size, 0);
+	if (IS_ERR(map)) {
+		dev_err(dev, "%s: Failed create IOVA map for ASID[%d]\n",
+			__func__, info->asid);
+		return NULL;
+	}
+
+	BUG_ON(cmpxchg(&info->map, NULL, map));
+	dev_info(dev, "Created a new map %p(asid=%d)\n", map, info->asid);
+	return map;
+}
+
 struct dma_iommu_mapping *tegra_smmu_map_init_dev(struct device *dev,
 						  u64 swgids)
 {
-	struct dma_iommu_mapping *map;
-	struct tegra_iommu_mapping *m;
+	int asid;
+	struct tegra_iommu_mapping *info;
 
 	BUG_ON(_tegra_smmu_get_asid(swgids) >= ARRAY_SIZE(smmu_default_map));
-	m = &smmu_default_map[_tegra_smmu_get_asid(swgids)];
-	if (!m->size)
+
+	asid = _tegra_smmu_get_asid(swgids);
+	info = &smmu_default_map[asid];
+	info->asid = asid;
+	if (!info->size)
 		return NULL;
 
-	if (m->map)
-		return m->map;
-
-	map = arm_iommu_create_mapping(&platform_bus_type,
-				       m->base, m->size, 0);
-
-	if (IS_ERR(map)) {
-		dev_err(dev,
-			"%s: Failed create IOVA map for ASID[%d]\n",
-			__func__, _tegra_smmu_get_asid(swgids));
-		map = NULL;
+	if (info->map) {
+		dev_info(dev, "Use an existing map %p(asid=%d)\n",
+			 info->map, info->asid);
+		return info->map;
 	}
 
-	BUG_ON(cmpxchg(&m->map, NULL, map));
-	return map;
+	return __tegra_smmu_map_init_dev(dev, info);
 }
 
 #else
