@@ -731,7 +731,7 @@ static void tegra_pcie_add_bus(struct pci_bus *bus)
 	}
 }
 
-static struct pci_bus *__init tegra_pcie_scan_bus(int nr,
+static struct pci_bus *tegra_pcie_scan_bus(int nr,
 						  struct pci_sys_data *sys)
 {
 	struct tegra_pcie *pcie = sys_to_pcie(sys);
@@ -749,7 +749,7 @@ static struct pci_bus *__init tegra_pcie_scan_bus(int nr,
 	return bus;
 }
 
-static struct hw_pci __initdata tegra_pcie_hw = {
+static struct hw_pci tegra_pcie_hw = {
 	.nr_controllers	= 1,
 	.setup		= tegra_pcie_setup,
 	.scan		= tegra_pcie_scan_bus,
@@ -2439,7 +2439,7 @@ static void tegra_pcie_enable_features(struct tegra_pcie *pcie)
 static bool tegra_pcie_enable_msi(struct tegra_pcie *, bool);
 static int tegra_pcie_disable_msi(struct tegra_pcie *pcie);
 
-static int __init tegra_pcie_init(struct tegra_pcie *pcie)
+static int tegra_pcie_init(struct tegra_pcie *pcie)
 {
 	int err = 0;
 	struct platform_device *pdev = to_platform_device(pcie->dev);
@@ -2490,6 +2490,7 @@ static int __init tegra_pcie_init(struct tegra_pcie *pcie)
 		pci_common_init(&tegra_pcie_hw);
 	} else {
 		dev_err(pcie->dev, "PCIE: no ports detected\n");
+		err = -EPROBE_DEFER;
 		goto disable_msi;
 	}
 	tegra_pcie_enable_features(pcie);
@@ -2963,7 +2964,7 @@ static int tegra_pcie_parse_dt(struct tegra_pcie *pcie)
 	return 0;
 }
 
-static int __init tegra_pcie_probe(struct platform_device *pdev)
+static int tegra_pcie_probe(struct platform_device *pdev)
 {
 	int ret;
 	int i;
