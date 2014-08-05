@@ -19,7 +19,9 @@
  */
 
 #include <linux/io.h>
-#include <mach/mcerr.h>
+
+#include <tegra/mcerr.h>
+
 #include "../../../../arch/arm/mach-tegra/iomap.h"
 
 #define MC_LA_REG(mod) MC_LATENCY_ALLOWANCE_ ## mod

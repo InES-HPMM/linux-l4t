@@ -31,17 +31,18 @@
 
 #include <asm/cputime.h>
 
+#include <tegra/tegra21_emc.h>
+
 #include <mach/nct.h>
-#include "../nvdumper/nvdumper-footprint.h"
 
 #include "clock.h"
 #include "board.h"
 #include "dvfs.h"
 #include "iomap.h"
-#include "tegra21_emc.h"
 #include "tegra_emc_dt_parse.h"
 #include "devices.h"
 #include "common.h"
+#include "../nvdumper/nvdumper-footprint.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
 static bool emc_enable = true;

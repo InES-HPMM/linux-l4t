@@ -26,24 +26,15 @@
 #include <linux/debugfs.h>
 #include <linux/spinlock.h>
 
-#include <mach/mc.h>
+#include <tegra/mc.h>
 
 /* Pull in chip specific EMC header. */
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
-#include "../../../../arch/arm/mach-tegra/tegra3_emc.h"
-#define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI
-#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
-#include "../../../../arch/arm/mach-tegra/tegra11_emc.h"
-#define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
-#elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
-#include "../../../../arch/arm/mach-tegra/tegra14_emc.h"
-#define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #include "../../../../arch/arm/mach-tegra/tegra12_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
 #define MC_ERR_34BIT_PHYS_ADDR
 #elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
-#include "../../../../drivers/platform/tegra/mc/tegra21_emc.h"
+#include <tegra/tegra21_emc.h>
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI_0
 #define MC_ERR_34BIT_PHYS_ADDR
 #endif

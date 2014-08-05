@@ -45,8 +45,9 @@
 
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/tegra_usb_pmc.h>
-#include <mach/mc.h>
 #include <mach/xusb.h>
+
+#include <tegra/mc.h>
 
 #include "xhci-tegra.h"
 #include "xhci.h"

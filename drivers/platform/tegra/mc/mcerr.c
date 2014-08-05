@@ -35,9 +35,10 @@
 #include <linux/of_irq.h>
 #include <linux/atomic.h>
 
-#include <mach/mc.h>
 #include <mach/irqs.h>
-#include <mach/mcerr.h>
+
+#include <tegra/mc.h>
+#include <tegra/mcerr.h>
 
 static bool mcerr_throttle_enabled = true;
 

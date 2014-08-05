@@ -33,8 +33,9 @@
 
 #include <mach/edp.h>
 #include <mach/hardware.h>
-#include <mach/mc.h>
 #include <mach/tegra_emc.h>
+
+#include <tegra/mc.h>
 
 #include "clock.h"
 #include "tegra_clocks_ops.h"

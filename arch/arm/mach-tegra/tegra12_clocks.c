@@ -36,7 +36,8 @@
 #include <asm/clkdev.h>
 
 #include <mach/edp.h>
-#include <mach/mc.h>
+
+#include <tegra/mc.h>
 
 #include "clock.h"
 #include "dvfs.h"

@@ -20,7 +20,7 @@
 
 #include <linux/io.h>
 
-#include <mach/mcerr.h>
+#include <tegra/mcerr.h>
 
 #include "../../../../arch/arm/mach-tegra/iomap.h"
 

@@ -8,6 +8,7 @@ obj-y				+= cam_dev/
 ccflags-y	+= -Idrivers/video/tegra/camera
 ccflags-y	+= -Idrivers/video/tegra/host
 ccflags-y	+= -Idrivers/video/tegra/host/isp
+ccflags-y	+= -Idrivers/platform/tegra/include
 obj-$(CONFIG_TEGRA_NVAVP)	+= nvavp/
 CFLAGS_tegra_dtv.o       = -Werror
 CFLAGS_tegra_dtv.o       = -DDEBUG

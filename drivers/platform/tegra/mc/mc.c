@@ -29,8 +29,8 @@
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
 
-#include <mach/mc.h>
-#include <mach/mcerr.h>
+#include <tegra/mc.h>
+#include <tegra/mcerr.h>
 
 #include "../../../../arch/arm/mach-tegra/iomap.h"
 

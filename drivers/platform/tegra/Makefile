@@ -3,6 +3,7 @@
 # Tegra Platform-Specific Drivers
 #
 subdir-ccflags-y += -Werror
+subdir-ccflags-y += -I$(srctree)/drivers/platform/tegra/include
 
 obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pmc.o
 obj-$(CONFIG_TEGRA_USB_SHARED_PAD)      += tegra_usb_pad_ctrl.o

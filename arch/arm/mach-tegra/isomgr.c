@@ -38,7 +38,8 @@
 #include <asm/processor.h>
 #include <asm/current.h>
 #include <mach/isomgr.h>
-#include <mach/mc.h>
+
+#include <tegra/mc.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/isomgr.h>

@@ -1,6 +1,4 @@
 /*
- * arch/arm/mach-tegra/include/mach/mc.h
- *
  * Copyright (C) 2010-2012 Google, Inc.
  * Copyright (C) 2013-2014, NVIDIA Corporation.  All rights reserved.
  *
