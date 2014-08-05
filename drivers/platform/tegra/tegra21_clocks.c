@@ -9456,7 +9456,7 @@ static int tegra21_clk_suspend(void)
 	unsigned long off;
 	u32 *ctx = clk_rst_suspend;
 
-	*ctx++ = clk_readl(OSC_CTRL) & OSC_CTRL_MASK;
+	*ctx++ = clk_readl(OSC_CTRL) & OSC_CTRL_OSC_FREQ_MASK;
 	*ctx++ = clk_readl(CPU_SOFTRST_CTRL);
 	*ctx++ = clk_readl(CPU_SOFTRST_CTRL1);
 	*ctx++ = clk_readl(CPU_SOFTRST_CTRL2);
@@ -9556,8 +9556,11 @@ static void tegra21_clk_resume(void)
 		(1 << tegra_pll_u_60M.reg_shift) |
 		(1 << tegra_pll_u_48M.reg_shift);
 
-	/* FIXME: OSC_CTRL already restored by warm boot code? */
-	val = clk_readl(OSC_CTRL) & ~OSC_CTRL_MASK;
+	/*
+	 * OSC frequency selection should be already restored by warm boot
+	 * code, but just in case make sure it does not change across suspend.
+	 */
+	val = clk_readl(OSC_CTRL) & ~OSC_CTRL_OSC_FREQ_MASK;
 	val |= *ctx++;
 	clk_writel(val, OSC_CTRL);
 	clk_writel(*ctx++, CPU_SOFTRST_CTRL);
