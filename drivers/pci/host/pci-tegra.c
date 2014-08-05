@@ -366,6 +366,8 @@ struct tegra_pcie {
 	struct list_head buses;
 	struct list_head sys;
 	struct resource *cs;
+	struct resource *afi_res;
+	struct resource *pads_res;
 
 	struct resource all;
 	struct resource io;
@@ -1215,12 +1217,22 @@ static int tegra_pcie_power_ungate(struct tegra_pcie *pcie)
 static int tegra_pcie_map_resources(struct tegra_pcie *pcie)
 {
 	struct platform_device *pdev = to_platform_device(pcie->dev);
-	struct resource *pads, *afi;
+	struct resource *pads, *afi, *res;
 
 	PR_FUNC_LINE;
 	pads = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pads");
-	pcie->pads = devm_ioremap_nocache(&pdev->dev,
-						pads->start,
+
+	pcie->pads_res = __devm_request_region(&pdev->dev, &pcie->all,
+			pads->start, resource_size(pads),
+			pads->name);
+
+	if (!pcie->pads_res) {
+		dev_err(&pdev->dev,
+			"PCIE: Failed to request region for pad registers\n");
+		return -EBUSY;
+	}
+
+	pcie->pads = devm_ioremap_nocache(&pdev->dev, pads->start,
 						resource_size(pads));
 	if (IS_ERR(pcie->pads)) {
 		dev_err(pcie->dev, "PCIE: Failed to map PAD registers\n");
@@ -1228,13 +1240,34 @@ static int tegra_pcie_map_resources(struct tegra_pcie *pcie)
 	}
 
 	afi = platform_get_resource_byname(pdev, IORESOURCE_MEM, "afi");
-	pcie->afi = devm_ioremap_nocache(&pdev->dev,
-						afi->start,
+
+	pcie->afi_res = __devm_request_region(&pdev->dev, &pcie->all,
+			afi->start, resource_size(afi),
+			afi->name);
+
+	if (!pcie->afi_res) {
+		dev_err(&pdev->dev,
+			"PCIE: Failed to request region for afi registers\n");
+		return -EBUSY;
+	}
+
+	pcie->afi = devm_ioremap_nocache(&pdev->dev, afi->start,
 						resource_size(afi));
 	if (IS_ERR(pcie->afi)) {
 		dev_err(pcie->dev, "PCIE: Failed to map AFI registers\n");
 		return PTR_ERR(pcie->afi);
 	}
+
+	/* request configuration space, but remap later, on demand */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cs");
+
+	pcie->cs = __devm_request_region(&pdev->dev, &pcie->all,
+			res->start, resource_size(res), res->name);
+	if (!pcie->cs) {
+		dev_err(&pdev->dev, "PCIE: Failed to request region for CS registers\n");
+		return -EBUSY;
+	}
+
 	return 0;
 }
 
@@ -1243,6 +1276,19 @@ void tegra_pcie_unmap_resources(struct tegra_pcie *pcie)
 	struct platform_device *pdev = to_platform_device(pcie->dev);
 
 	PR_FUNC_LINE;
+
+	if (pcie->cs)
+		__devm_release_region(&pdev->dev, &pcie->all,
+				pcie->cs->start,
+				resource_size(pcie->cs));
+	if (pcie->afi_res)
+		__devm_release_region(&pdev->dev, &pcie->all,
+				pcie->afi_res->start,
+				resource_size(pcie->afi_res));
+	if (pcie->pads_res)
+		__devm_release_region(&pdev->dev, &pcie->all,
+				pcie->pads_res->start,
+				resource_size(pcie->pads_res));
 
 	if (pcie->pads) {
 		devm_iounmap(&pdev->dev, pcie->pads);
@@ -1457,8 +1503,6 @@ static void tegra_pcie_clocks_put(struct tegra_pcie *pcie)
 static int tegra_pcie_get_resources(struct tegra_pcie *pcie)
 {
 	int err;
-	struct platform_device *pdev = to_platform_device(pcie->dev);
-	struct resource *pads, *afi, *res;
 
 	PR_FUNC_LINE;
 	pcie->power_rails_enabled = 0;
@@ -1484,44 +1528,7 @@ static int tegra_pcie_get_resources(struct tegra_pcie *pcie)
 	if (err)
 		return err;
 
-	pads = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pads");
-	if (!pads) {
-		dev_err(pcie->dev, "PCIE: Failed to get pad registers\n");
-		goto err_pwr_on;
-	}
-	if (!devm_request_mem_region(&pdev->dev, pads->start,
-			resource_size(pads),
-			pads->name ?: dev_name(&pdev->dev))) {
-		dev_err(pcie->dev,
-			"PCIE: Failed to request region for pad registers\n");
-		goto err_pwr_on;
-	}
-
-	afi = platform_get_resource_byname(pdev, IORESOURCE_MEM, "afi");
-	if (!afi) {
-		dev_err(pcie->dev, "PCIE: Failed to get afi registers\n");
-		goto err_pwr_on;
-	}
-	if (!devm_request_mem_region(&pdev->dev, afi->start, resource_size(afi),
-			afi->name ?: dev_name(&pdev->dev))) {
-		dev_err(pcie->dev, "PCIE: Failed to request region for afi registers\n");
-		goto err_pwr_on;
-	}
-
-	/* request configuration space, but remap later, on demand */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cs");
-	if (!res) {
-		dev_err(pcie->dev, "PCIE: Failed to get CS registers\n");
-		goto err_pwr_on;
-	}
-	pcie->cs = devm_request_mem_region(pcie->dev, res->start,
-					   resource_size(res), res->name);
-	if (!pcie->cs) {
-		dev_err(pcie->dev, "PCIE: Failed to request region for CS registers\n");
-		goto err_pwr_on;
-	}
-
-	err = request_irq(INT_PCIE_INTR, tegra_pcie_isr,
+	err = devm_request_irq(pcie->dev, INT_PCIE_INTR, tegra_pcie_isr,
 			IRQF_SHARED, "PCIE", pcie);
 	if (err) {
 		dev_err(pcie->dev, "PCIE: Failed to register IRQ: %d\n", err);
@@ -2463,18 +2470,17 @@ static int __init tegra_pcie_init(struct tegra_pcie *pcie)
 	err = tegra_pcie_enable_pads(pcie, true);
 	if (err) {
 		dev_err(pcie->dev, "PCIE: enable pads failed\n");
-		tegra_pcie_power_off(pcie, false);
-		return err;
+		goto fail_enable_pads;
 	}
 	err = tegra_pcie_enable_controller(pcie);
 	if (err) {
 		dev_err(pcie->dev, "PCIE: enable controller failed\n");
-		goto fail;
+		goto fail_enable_pads;
 	}
 	err = tegra_pcie_conf_gpios(pcie);
 	if (err) {
 		dev_err(pcie->dev, "PCIE: configuring gpios failed\n");
-		goto fail;
+		goto fail_enable_pads;
 	}
 	/* setup the AFI address translations */
 	tegra_pcie_setup_translations(pcie);
@@ -2485,7 +2491,7 @@ static int __init tegra_pcie_init(struct tegra_pcie *pcie)
 			dev_err(&pdev->dev,
 				"failed to enable MSI support: %d\n",
 				err);
-			goto fail;
+			goto fail_enable_pads;
 		}
 	}
 
@@ -2496,7 +2502,7 @@ static int __init tegra_pcie_init(struct tegra_pcie *pcie)
 		pci_common_init(&tegra_pcie_hw);
 	} else {
 		dev_err(pcie->dev, "PCIE: no ports detected\n");
-		goto disable_msi;
+		goto fail_enum;
 	}
 	tegra_pcie_enable_features(pcie);
 	/* register pcie device as wakeup source */
@@ -2504,11 +2510,13 @@ static int __init tegra_pcie_init(struct tegra_pcie *pcie)
 
 	return 0;
 
-disable_msi:
+fail_enum:
 	if (IS_ENABLED(CONFIG_PCI_MSI))
 		tegra_pcie_disable_msi(pcie);
-fail:
+fail_enable_pads:
 	tegra_pcie_power_off(pcie, true);
+	tegra_pcie_clocks_put(pcie);
+
 	return err;
 }
 
@@ -3011,7 +3019,7 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 
 	for (i = 0; i < pcie->soc_data->num_pcie_regulators; i++) {
 		pcie->pcie_regulators[i] =
-					regulator_get(pcie->dev,
+					devm_regulator_get(pcie->dev,
 			pcie->soc_data->pcie_regulator_names[i]);
 		if (IS_ERR(pcie->pcie_regulators[i])) {
 			dev_err(pcie->dev, "%s: unable to get regulator %s\n",
@@ -3033,12 +3041,18 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 	pm_runtime_enable(pcie->dev);
 
 	ret = tegra_pcie_init(pcie);
-	if (ret)
+	if (ret) {
+		release_resource(&pcie->all);
+
+		__pm_runtime_disable(pcie->dev, false);
 		tegra_pd_remove_device(pcie->dev);
+
+		return ret;
+	}
 
 	platform_set_drvdata(pdev, pcie);
 
-	return ret;
+	return 0;
 }
 
 static int tegra_pcie_remove(struct platform_device *pdev)
