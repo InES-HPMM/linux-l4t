@@ -178,19 +178,6 @@ static struct platform_device *t210ref_devices[] __initdata = {
 #endif
 };
 
-static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.unaligned_dma_buf_supported = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
-	.op_mode = TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.hot_plug = false,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
-	},
-};
-
 static void t210ref_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
@@ -235,11 +222,6 @@ static void t210ref_xusb_init(void)
 		xusb_pdata.portmap |= TEGRA_XUSB_HSIC_P1;
 }
 #endif
-
-static struct tegra_usb_modem_power_platform_data baseband_pdata = {
-	.tegra_ehci_device = &tegra_ehci2_device,
-	.tegra_ehci_pdata = &tegra_ehci2_hsic_baseband_pdata,
-};
 
 #ifdef CONFIG_USE_OF
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
@@ -424,8 +406,7 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra-bluedroid_pm", 0, "bluedroid_pm",
 			NULL),
 	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
-	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power",
-		&baseband_pdata),
+	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power", NULL),
 	OF_DEV_AUXDATA("raydium,rm_ts_spidev", 0, "rm_ts_spidev", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
 	{}

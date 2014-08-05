@@ -37,6 +37,8 @@
 #include <linux/sysedp.h>
 #include <mach/gpio-tegra.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
+#include <linux/dma-mapping.h>
+#include "../../../arch/arm/mach-tegra/iomap.h"
 
 #define BOOST_CPU_FREQ_MIN	1200000
 #define BOOST_CPU_FREQ_TIMEOUT	5000
@@ -49,6 +51,45 @@
 /* default autosuspend and short autosuspend delay in ms */
 #define DEFAULT_AUTOSUSPEND		2000
 #define DEFAULT_SHORT_AUTOSUSPEND	50
+
+static u64 tegra_ehci_dmamask = DMA_BIT_MASK(64);
+
+static struct resource tegra_usb2_resources[] = {
+	[0] = {
+		.start  = TEGRA_USB2_BASE,
+		.end    = TEGRA_USB2_BASE + TEGRA_USB2_SIZE - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start  = INT_USB2,
+		.end    = INT_USB2,
+		.flags  = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device tegra_ehci2_device = {
+	.name   = "tegra-ehci",
+	.id     = 1,
+	.dev    = {
+		.dma_mask       = &tegra_ehci_dmamask,
+		.coherent_dma_mask = DMA_BIT_MASK(64),
+	},
+	.resource = tegra_usb2_resources,
+	.num_resources = ARRAY_SIZE(tegra_usb2_resources),
+};
+
+static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+	},
+};
 
 struct tegra_usb_modem {
 	struct tegra_usb_modem_power_platform_data *pdata;
@@ -484,7 +525,7 @@ static struct platform_device *tegra_usb_host_register(
 	pdev->dev.coherent_dma_mask = hc_device->dev.coherent_dma_mask;
 
 	val = platform_device_add_data(pdev, modem->pdata->tegra_ehci_pdata,
-				       sizeof(struct tegra_usb_platform_data));
+					sizeof(struct tegra_usb_platform_data));
 	if (val)
 		goto error;
 
@@ -556,6 +597,10 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 
 	modem->pdata = pdata;
 	modem->pdev = pdev;
+
+	/* WAR to load statically defined ehci device/pdata */
+	pdata->tegra_ehci_device = &tegra_ehci2_device;
+	pdata->tegra_ehci_pdata = &tegra_ehci2_hsic_baseband_pdata;
 
 	pdata->autosuspend_delay = DEFAULT_AUTOSUSPEND;
 	pdata->short_autosuspend_delay = DEFAULT_SHORT_AUTOSUSPEND;
@@ -715,6 +760,18 @@ static int tegra_usb_modem_parse_dt(struct platform_device *pdev,
 
 	dev_dbg(&pdev->dev, "read platform data from DT\n");
 
+	/* allocate platform data if necessary */
+	if (!pdata) {
+		pdata = devm_kzalloc(&pdev->dev,
+			sizeof(struct tegra_usb_modem_power_platform_data),
+			GFP_KERNEL);
+		if (!pdata) {
+			dev_warn(&pdev->dev, "failed to allocate memory\n");
+			return -ENOMEM;
+		}
+		pdev->dev.platform_data = pdata;
+	}
+
 	/* regulator */
 	pdata->regulator_name = of_get_property(node, "nvidia,regulator", NULL);
 
@@ -784,17 +841,12 @@ static int tegra_usb_modem_probe(struct platform_device *pdev)
 	struct tegra_usb_modem *modem;
 	int ret = 0;
 
-	if (!pdata) {
-		dev_dbg(&pdev->dev, "platform_data not available\n");
-		return -EINVAL;
-	}
-
 	/* initialize from device tree */
 	if (pdev->dev.of_node) {
 		ret = tegra_usb_modem_parse_dt(pdev, pdata);
 		if (ret) {
 			dev_err(&pdev->dev, "device tree parsing error\n");
-			return -EINVAL;
+			return ret;
 		}
 	}
 

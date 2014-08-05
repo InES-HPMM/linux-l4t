@@ -749,24 +749,6 @@ static void ardbeg_xusb_init(void)
 }
 #endif
 
-static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.unaligned_dma_buf_supported = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
-	.op_mode = TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.hot_plug = false,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
-	},
-};
-
-static struct tegra_usb_modem_power_platform_data baseband_pdata = {
-	.tegra_ehci_device = &tegra_ehci2_device,
-	.tegra_ehci_pdata = &tegra_ehci2_hsic_baseband_pdata,
-};
-
 static void ardbeg_modem_init(void)
 {
 #if !defined(CONFIG_ARM64)
@@ -866,8 +848,7 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 #ifdef CONFIG_TEGRA_CEC_SUPPORT
 	OF_DEV_AUXDATA("nvidia,tegra124-cec", 0x70015000, "tegra_cec", NULL),
 #endif
-	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power",
-		&baseband_pdata),
+	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power", NULL),
 	OF_DEV_AUXDATA("nvidia,ptm", 0x7081c000, "ptm", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
 	{}
