@@ -1270,6 +1270,7 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			sysfs_remove_group(get_governor_parent_kobj(policy),
 					get_sysfs_attr());
 			common_tunables = NULL;
+			kfree(tunables);
 		}
 
 		policy->governor_data = NULL;
