@@ -314,12 +314,10 @@ static int __init edp_init(void)
 }
 module_init(edp_init);
 
-/* Must be called while holding cpu_tegra_lock */
-static void sysedp_update_limit(void)
+static unsigned int sysedp_cap_speed(unsigned int requested_speed)
 {
-	unsigned int old_cpupwr_freqcap;
+	unsigned int old_cpupwr_freqcap = cur_cpupwr_freqcap;
 
-	old_cpupwr_freqcap = cur_cpupwr_freqcap;
 	if (force_cpupwr_freqcap)
 		cur_cpupwr_freqcap = force_cpupwr_freqcap;
 	else
@@ -335,6 +333,10 @@ static void sysedp_update_limit(void)
 		}
 		trace_sysedp_max_cpu_pwr(cur_cpupwr, cur_cpupwr_freqcap);
 	}
+
+	if (cur_cpupwr_freqcap && requested_speed > cur_cpupwr_freqcap)
+		return cur_cpupwr_freqcap;
+	return requested_speed;
 }
 
 static int tegra_cpu_edp_notify(
@@ -348,12 +350,11 @@ static int tegra_cpu_edp_notify(
 	case CPU_UP_PREPARE:
 		mutex_lock(&tegra_cpu_lock);
 		cpu_set(cpu, edp_cpumask);
-		sysedp_update_limit();
 
 		cpu_speed = tegra_getspeed(0);
 		edp_speed = get_edp_limit_speed(cpu_speed);
 		new_speed = min_t(unsigned int, cpu_speed, edp_speed);
-		new_speed = min_t(unsigned int, new_speed, cur_cpupwr_freqcap);
+		new_speed = sysedp_cap_speed(new_speed);
 		if (new_speed < cpu_speed ||
 		    (!is_suspended && is_edp_reg_idle_supported())) {
 			ret = tegra_cpu_set_speed_cap_locked(NULL);
@@ -365,10 +366,8 @@ static int tegra_cpu_edp_notify(
 		if (!ret)
 			ret = tegra_cpu_dvfs_alter(
 				edp_thermal_index, &edp_cpumask, false, event);
-		if (ret) {
+		if (ret)
 			cpu_clear(cpu, edp_cpumask);
-			sysedp_update_limit();
-		}
 		mutex_unlock(&tegra_cpu_lock);
 		break;
 	case CPU_DEAD:
@@ -376,7 +375,6 @@ static int tegra_cpu_edp_notify(
 		cpu_clear(cpu, edp_cpumask);
 		tegra_cpu_dvfs_alter(
 			edp_thermal_index, &edp_cpumask, true, event);
-		sysedp_update_limit();
 		tegra_cpu_set_speed_cap_locked(NULL);
 		mutex_unlock(&tegra_cpu_lock);
 		break;
@@ -519,7 +517,6 @@ static int __init tegra_edp_debug_init(struct dentry *cpu_tegra_debugfs_root)
 #define tegra_cpu_edp_exit()
 #define tegra_edp_debug_init(cpu_tegra_debugfs_root) (0)
 #define cpu_reg_mode_predict_idle_limit() (0)
-#define sysedp_update_limit()
 #endif	/* CONFIG_TEGRA_EDP_LIMITS */
 
 #ifdef CONFIG_DEBUG_FS
@@ -533,7 +530,6 @@ static int force_cpu_set(void *data, u64 val)
 	force_cpupwr_freqcap = val;
 
 	if (old != force_cpupwr_freqcap) {
-		sysedp_update_limit();
 		tegra_cpu_set_speed_cap_locked(NULL);
 	}
 
@@ -789,13 +785,6 @@ static unsigned int volt_cap_speed(unsigned int requested_speed)
 	return requested_speed;
 }
 
-static unsigned int sysedp_cap_speed(unsigned int requested_speed)
-{
-	if (cur_cpupwr_freqcap && requested_speed > cur_cpupwr_freqcap)
-		return cur_cpupwr_freqcap;
-	return requested_speed;
-}
-
 /* Must be called with tegra_cpu_lock held */
 int tegra_cpu_set_speed_cap_locked(unsigned int *speed_cap)
 {
@@ -812,7 +801,9 @@ int tegra_cpu_set_speed_cap_locked(unsigned int *speed_cap)
 #endif
 	new_speed = user_cap_speed(new_speed);
 	new_speed = volt_cap_speed(new_speed);
+#ifdef CONFIG_TEGRA_EDP_LIMITS
 	new_speed = sysedp_cap_speed(new_speed);
+#endif
 	if (speed_cap)
 		*speed_cap = new_speed;
 
@@ -875,19 +866,14 @@ _out:
 static int max_cpu_power_notify(struct notifier_block *b,
 				unsigned long cpupwr, void *v)
 {
-	unsigned int old_cpupwr_freqcap;
 
 	pr_debug("PM QoS Max CPU Power Notify: %lu\n", cpupwr);
 
 	mutex_lock(&tegra_cpu_lock);
-	old_cpupwr_freqcap = cur_cpupwr_freqcap;
 	/* store the new cpu power*/
 	cur_cpupwr = cpupwr;
-	sysedp_update_limit();
 
-	if (cur_cpupwr_freqcap != old_cpupwr_freqcap)
-		tegra_cpu_set_speed_cap_locked(NULL);
-
+	tegra_cpu_set_speed_cap_locked(NULL);
 	mutex_unlock(&tegra_cpu_lock);
 
 	return NOTIFY_OK;
