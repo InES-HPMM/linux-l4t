@@ -9449,7 +9449,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 
 #ifdef CONFIG_PM_SLEEP
 static u32 clk_rst_suspend[RST_DEVICES_NUM + CLK_OUT_ENB_NUM +
-			   PERIPH_CLK_SOURCE_NUM + 28];
+			   PERIPH_CLK_SOURCE_NUM + 25];
 
 static int tegra21_clk_suspend(void)
 {
@@ -9536,6 +9536,8 @@ static int tegra21_clk_suspend(void)
 	*ctx++ = clk_readl(tegra_clk_cclk_lp.reg);
 	*ctx++ = clk_readl(tegra_clk_cclk_lp.reg + SUPER_CLK_DIVIDER);
 
+	*ctx++ = clk_get_rate_all_locked(&tegra_clk_emc);
+
 	pr_debug("%s: suspend entries: %d, suspend array: %u\n", __func__,
 		(s32)(ctx - clk_rst_suspend), (u32)ARRAY_SIZE(clk_rst_suspend));
 	BUG_ON((ctx - clk_rst_suspend) > ARRAY_SIZE(clk_rst_suspend));
@@ -9544,7 +9546,7 @@ static int tegra21_clk_suspend(void)
 
 static void tegra21_clk_resume(void)
 {
-	unsigned long off;
+	unsigned long off, rate;
 	const u32 *ctx = clk_rst_suspend;
 	u32 val, clk_y, pll_u_mask, pll_u_base, pll_u_out12;
 	u32 pll_p_out_hsio, pll_p_out_mask, pll_p_out34;
@@ -9781,20 +9783,25 @@ static void tegra21_clk_resume(void)
 	if (tegra_pll_mb.state == OFF)
 		tegra_pll_mb.ops->disable(&tegra_pll_mb);
 
-	/* FIXME: implement EMC resume */
 	if (p != tegra_clk_emc.parent) {
 		pr_debug("EMC parent(refcount) across suspend: %s(%d) : %s(%d)",
 			p->name, p->refcnt, tegra_clk_emc.parent->name,
 			tegra_clk_emc.parent->refcnt);
 
-		BUG_ON(!p->refcnt);
-		p->refcnt--;
+		/* emc switched to the new parent by low level code, but ref
+		   count and s/w state need to be updated */
+		clk_disable_locked(p);
+		clk_enable_locked(tegra_clk_emc.parent);
+	}
 
-		/* the new parent is enabled by low level code, but ref count
-		   need to be updated up to the root */
-		p = tegra_clk_emc.parent;
-		while (p && ((p->refcnt++) == 0))
-			p = p->parent;
+	/* update DVFS voltage requirements */
+	rate = clk_get_rate_all_locked(&tegra_clk_emc);
+	if (*ctx != rate) {
+		tegra_dvfs_set_rate(&tegra_clk_emc, rate);
+		if (p == tegra_clk_emc.parent) {
+			rate = clk_get_rate_all_locked(p);
+			tegra_dvfs_set_rate(p, rate);
+		}
 	}
 	tegra_emc_timing_invalidate();
 
