@@ -21,6 +21,7 @@
  /dts-v1/;
 
 #include "tegra124-vcm30_t124.dtsi"
+#include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
 
 / {
 	model = "NVIDIA Tegra124 p2360";
@@ -28,6 +29,26 @@
 	nvidia,dtsfilename = __FILE__;
 	#address-cells = <2>;
 	#size-cells = <2>;
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			status = "okay";
+		};
+		hdmi {
+			nvidia,hpd-gpio = <&gpio 0xFFFFFFFF 1>; /* hotplug less HDMI */
+			nvidia,edid = [00 FF FF FF FF FF FF 00 04 21 00 00 00 00 00 00
+					01 00 01 03 00 00 00 00 00 00 00 00 00 00 00 00
+					00 00 00 00 00 00 01 01 01 01 01 01 01 01 01 01
+					01 01 01 01 01 01 FE 0C 20 00 31 E0 2D 10 40 40
+					43 00 00 00 00 00 00 00 00 00 00 10 00 00 00 00
+					00 00 00 00 00 00 00 00 00 00 00 00 00 10 00 00
+					00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 10
+					00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 61];
+		};
+	};
 
 	serial@70006040 {
 		compatible = "nvidia,tegra20-uart";
