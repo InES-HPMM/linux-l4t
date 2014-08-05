@@ -26,6 +26,8 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/debugfs.h>
+#include <linux/uaccess.h>
 #include <linux/pci.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
@@ -63,6 +65,9 @@
 
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/io_dpd.h>
+
+#define PCI_CFG_SPACE_SIZE		256
+#define PCI_EXT_CFG_SPACE_SIZE	4096
 
 /* register definitions */
 #define AFI_OFFSET							0x3800
@@ -188,6 +193,9 @@
 #define RP_LINK_CONTROL_STATUS					0x00000090
 #define RP_LINK_CONTROL_STATUS_DL_LINK_ACTIVE	0x20000000
 #define RP_LINK_CONTROL_STATUS_LINKSTAT_MASK	0x3fff0000
+#define RP_LINK_CONTROL_STATUS_NEG_LINK_WIDTH	(0x3F << 20)
+#define RP_LINK_CONTROL_STATUS_L0s_ENABLED		0x00000001
+#define RP_LINK_CONTROL_STATUS_L1_ENABLED		0x00000003
 
 #define  PADS_REFCLK_CFG0					0x000000C8
 #define  PADS_REFCLK_CFG1					0x000000CC
@@ -221,6 +229,11 @@
 #define PCIE2_RP_TIMEOUT1_RCVRY_SPD_UNSUCCESS_EIDLE_MASK	(0xFF << 24)
 #define PCIE2_RP_TIMEOUT1_RCVRY_SPD_UNSUCCESS_EIDLE		(0x4E << 24)
 
+#define NV_PCIE2_RP_LTSSM_DBGREG			0x00000E44
+#define PCIE2_RP_LTSSM_DBGREG_LINKFSM15		(1 << 15)
+#define PCIE2_RP_LTSSM_DBGREG_LINKFSM16		(1 << 16)
+#define PCIE2_RP_LTSSM_DBGREG_LINKFSM17		(1 << 17)
+
 #define NV_PCIE2_RP_XP_REF					0x00000F30
 #define PCIE2_RP_XP_REF_MICROSECOND_LIMIT_MASK			(0xFF)
 #define PCIE2_RP_XP_REF_MICROSECOND_LIMIT			(0xD)
@@ -240,6 +253,8 @@
 #define NV_PCIE2_RP_VEND_XP1					0x00000F04
 #define NV_PCIE2_RP_VEND_XP2					0x00000F08
 #define NV_PCIE2_RP_VEND_XP_LINK_PVT_CTL_L1_ASPM_SUPPORT	(1 << 21)
+#define NV_PCIE2_RP_VEND_XP1_RNCTRL_MAXWIDTH_MASK	(0x3F << 0)
+#define NV_PCIE2_RP_VEND_XP1_RNCTRL_EN				(1 << 7)
 
 #define NV_PCIE2_RP_VEND_CTL0					0x00000F44
 #define PCIE2_RP_VEND_CTL0_DSK_RST_PULSE_WIDTH_MASK		(0xF << 12)
@@ -250,6 +265,10 @@
 
 #define NV_PCIE2_RP_VEND_XP_BIST				0x00000F4C
 #define PCIE2_RP_VEND_XP_BIST_GOTO_L1_L2_AFTER_DLLP_DONE	(1 << 28)
+
+#define NV_PCIE2_RP_PRIV_XP_RX_L0S_ENTRY_COUNT	0x00000F8C
+#define NV_PCIE2_RP_PRIV_XP_TX_L0S_ENTRY_COUNT	0x00000F90
+#define NV_PCIE2_RP_PRIV_XP_TX_L1_ENTRY_COUNT	0x00000F94
 
 #define NV_PCIE2_RP_ECTL_1_R2					0x00000FD8
 #define PCIE2_RP_ECTL_1_R2_TX_CMADJ_1C				(0xD << 8)
@@ -359,6 +378,7 @@ struct tegra_pcie {
 
 	struct tegra_pci_platform_data *plat_data;
 	struct tegra_pcie_soc_data *soc_data;
+	struct dentry *debugfs;
 };
 
 struct tegra_pcie_port {
@@ -370,6 +390,7 @@ struct tegra_pcie_port {
 	unsigned int lanes;
 	bool has_clkreq;
 	int status;
+	struct dentry *port_debugfs;
 };
 
 struct tegra_pcie_bus {
@@ -386,6 +407,10 @@ static bool hotplug_event;
 /* pcie mselect & xclk rate */
 static unsigned long tegra_pcie_mselect_rate = TEGRA_PCIE_MSELECT_CLK_204;
 static unsigned long tegra_pcie_xclk_rate = TEGRA_PCIE_XCLK_250;
+static u32 is_gen2_speed;
+static u16 bdf;
+static u16 config_offset;
+static u32 config_val;
 
 static inline struct tegra_pcie *sys_to_pcie(struct pci_sys_data *sys)
 {
@@ -1831,6 +1856,13 @@ static void tegra_pcie_enable_rp_features(struct tegra_pcie_port *port)
 	tegra_pcie_apply_sw_war(port, false);
 }
 
+static void tegra_pcie_update_lane_width(struct tegra_pcie_port *port)
+{
+	port->lanes = rp_readl(port, RP_LINK_CONTROL_STATUS);
+	port->lanes = (port->lanes &
+		RP_LINK_CONTROL_STATUS_NEG_LINK_WIDTH) >> 20;
+}
+
 void tegra_pcie_check_ports(struct tegra_pcie *pcie)
 {
 	struct tegra_pcie_port *port, *tmp;
@@ -1846,6 +1878,7 @@ void tegra_pcie_check_ports(struct tegra_pcie *pcie)
 
 		if (tegra_pcie_port_check_link(port)) {
 			pcie->num_ports++;
+			tegra_pcie_update_lane_width(port);
 			tegra_pcie_enable_rp_features(port);
 			continue;
 		}
@@ -2917,6 +2950,515 @@ static int tegra_pcie_parse_dt(struct tegra_pcie *pcie)
 	return 0;
 }
 
+static int list_devices(struct seq_file *s, void *data)
+{
+	struct pci_dev *pdev = NULL;
+	u16 vendor, device, devclass, speed;
+	bool pass = false;
+	int ret = 0;
+
+	for_each_pci_dev(pdev) {
+		pass = true;
+		ret = pci_read_config_word(pdev, PCI_VENDOR_ID, &vendor);
+		if (ret) {
+			pass = false;
+			break;
+		}
+		ret = pci_read_config_word(pdev, PCI_DEVICE_ID, &device);
+		if (ret) {
+			pass = false;
+			break;
+		}
+		ret = pci_read_config_word(pdev, PCI_CLASS_DEVICE, &devclass);
+		if (ret) {
+			pass = false;
+			break;
+		}
+		pcie_capability_read_word(pdev, PCI_EXP_LNKSTA, &speed);
+
+		seq_printf(s, "%s  Vendor:%04x  Device id:%04x  ",
+				kobject_name(&pdev->dev.kobj), vendor,
+				device);
+		seq_printf(s, "Class:%04x  Speed:%s  Driver:%s(%s)\n", devclass,
+			((speed & PCI_EXP_LNKSTA_CLS_5_0GB) ==
+				PCI_EXP_LNKSTA_CLS_5_0GB) ?
+			"Gen2" : "Gen1",
+			(pdev->driver) ? "enabled" : "disabled",
+			(pdev->driver) ? pdev->driver->name : NULL);
+	}
+	if (!pass)
+		seq_printf(s, "Couldn't read devices\n");
+
+	return ret;
+}
+
+static int apply_link_speed(struct seq_file *s, void *data)
+{
+	bool pass = false;
+	struct tegra_pcie *pcie = (struct tegra_pcie *)(s->private);
+
+	seq_printf(s, "Changing link speed to %s... ",
+		(is_gen2_speed) ? "Gen2" : "Gen1");
+	pass = tegra_pcie_link_speed(pcie, is_gen2_speed);
+
+	if (pass)
+		seq_printf(s, "Done\n");
+	else
+		seq_printf(s, "Failed\n");
+	return 0;
+}
+
+static int check_d3hot(struct seq_file *s, void *data)
+{
+	bool pass = false;
+	u16 val;
+	struct tegra_pcie_port *port = NULL;
+	struct pci_dev *pdev = NULL;
+	struct tegra_pcie *pcie = (struct tegra_pcie *)(s->private);
+
+	/* Force all the devices (including RPs) in d3 hot state */
+	for_each_pci_dev(pdev) {
+		pci_read_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL, &val);
+		val |= PCI_PM_CTRL_STATE_MASK;
+		pci_write_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL, val);
+	}
+
+	mdelay(1000);
+
+	list_for_each_entry(port, &pcie->ports, list) {
+		val = rp_readl(port, NV_PCIE2_RP_LTSSM_DBGREG);
+		if (val & PCIE2_RP_LTSSM_DBGREG_LINKFSM15) {
+			pass = true;
+			continue;
+		} else {
+			pass = false;
+			break;
+		}
+	}
+
+	/* Force all the devices (including RPs) back to D0 state */
+	/* NOTE: Devices go to D0-Uninitialized state */
+	/* Hence it may not work as expected */
+	/* Ideally, this should be the last test to be verified */
+	for_each_pci_dev(pdev) {
+		pci_read_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL, &val);
+		val &= ~PCI_PM_CTRL_STATE_MASK;
+		pci_write_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL, val);
+	}
+
+	if (pass)
+		seq_printf(s, "[pass: transitioned to D3_hot]\n");
+	else
+		seq_printf(s, "[fail: couldn't transition to D3_hot]\n");
+	return 0;
+}
+
+static int dump_config_space(struct seq_file *s, void *data)
+{
+	u8 val;
+	int row, col;
+	struct pci_dev *pdev = NULL;
+
+	for_each_pci_dev(pdev) {
+		int row_cnt = pci_is_pcie(pdev) ?
+			PCI_EXT_CFG_SPACE_SIZE : PCI_CFG_SPACE_SIZE;
+		seq_printf(s, "%s\n", kobject_name(&pdev->dev.kobj));
+		seq_printf(s, "%s\n", "------------");
+
+		for (row = 0; row < (row_cnt / 16); row++) {
+			seq_printf(s, "%02x: ", (row * 16));
+			for (col = 0; col < 16; col++) {
+				pci_read_config_byte(pdev, ((row * 16) + col),
+					&val);
+				seq_printf(s, "%02x ", val);
+			}
+			seq_printf(s, "\n");
+		}
+	}
+	return 0;
+}
+
+static int config_read(struct seq_file *s, void *data)
+{
+	u32 val;
+	struct pci_dev *pdev = NULL;
+
+	pdev = pci_get_bus_and_slot((bdf >> 8), (bdf & 0xFF));
+	if (!pdev) {
+		seq_printf(s, "%02d:%02d.%02d : Doesn't exist\n",
+			(bdf >> 8), PCI_SLOT(bdf), PCI_FUNC(bdf));
+		seq_printf(s,
+			"Enter (bus<<8 | dev<<3 | func) value to bdf file\n");
+		goto end;
+	}
+	if (config_offset >= PCI_EXT_CFG_SPACE_SIZE) {
+		seq_printf(s, "Config offset exceeds max (i.e %d) value\n",
+			PCI_EXT_CFG_SPACE_SIZE);
+		goto end;
+	}
+	if (!(config_offset & 0x3)) {
+		/* read 32 */
+		pci_read_config_dword(pdev, config_offset, &val);
+		seq_printf(s, "%08x\n", val);
+		config_val = val;
+	} else if (!(config_offset & 0x1)) {
+		/* read 16 */
+		pci_read_config_word(pdev, config_offset, (u16 *)&val);
+		seq_printf(s, "%04x\n", (u16)(val & 0xFFFF));
+		config_val = val & 0xFFFF;
+	} else {
+		/* read 8 */
+		pci_read_config_byte(pdev, config_offset, (u8 *)&val);
+		seq_printf(s, "%02x\n", (u8)(val & 0xFF));
+		config_val = val & 0xFF;
+	}
+
+end:
+	return 0;
+}
+
+static int config_write(struct seq_file *s, void *data)
+{
+	struct pci_dev *pdev = NULL;
+
+	pdev = pci_get_bus_and_slot((bdf >> 8), (bdf & 0xFF));
+	if (!pdev) {
+		seq_printf(s, "%02d:%02d.%02d : Doesn't exist\n",
+			(bdf >> 8), PCI_SLOT(bdf), PCI_FUNC(bdf));
+		seq_printf(s,
+			"Enter (bus<<8 | dev<<3 | func) value to bdf file\n");
+		goto end;
+	}
+	if (config_offset >= PCI_EXT_CFG_SPACE_SIZE) {
+		seq_printf(s, "Config offset exceeds max (i.e %d) value\n",
+			PCI_EXT_CFG_SPACE_SIZE);
+		goto end;
+	}
+	if (!(config_offset & 0x3)) {
+		/* write 32 */
+		pci_write_config_dword(pdev, config_offset, config_val);
+	} else if (!(config_offset & 0x1)) {
+		/* write 16 */
+		pci_write_config_word(pdev, config_offset,
+			(u16)(config_val & 0xFFFF));
+	} else {
+		/* write 8 */
+		pci_write_config_byte(pdev, config_offset,
+			(u8)(config_val & 0xFF));
+	}
+
+end:
+	return 0;
+}
+
+static int apply_lane_width(struct seq_file *s, void *data)
+{
+	unsigned int new;
+	struct tegra_pcie_port *port = (struct tegra_pcie_port *)(s->private);
+
+	if (port->lanes > 0x10) {
+		seq_printf(s, "link width cannot be grater than 16\n");
+		new = rp_readl(port, RP_LINK_CONTROL_STATUS);
+		port->lanes = (new &
+			RP_LINK_CONTROL_STATUS_NEG_LINK_WIDTH) >> 20;
+		return 0;
+	}
+	new = rp_readl(port, NV_PCIE2_RP_VEND_XP1);
+	new &= ~NV_PCIE2_RP_VEND_XP1_RNCTRL_MAXWIDTH_MASK;
+	new |= port->lanes | NV_PCIE2_RP_VEND_XP1_RNCTRL_EN;
+	rp_writel(port, new, NV_PCIE2_RP_VEND_XP1);
+	mdelay(1);
+
+	new = rp_readl(port, RP_LINK_CONTROL_STATUS);
+	new = (new & RP_LINK_CONTROL_STATUS_NEG_LINK_WIDTH) >> 20;
+	if (new != port->lanes)
+		seq_printf(s, "can't set link width %u, falling back to %u\n",
+			port->lanes, new);
+	else
+		seq_printf(s, "lane width %d applied\n", new);
+	port->lanes = new;
+	return 0;
+}
+
+static int aspm(struct seq_file *s, void *data)
+{
+	u32 val, cs;
+	struct tegra_pcie_port *port = (struct tegra_pcie_port *)(s->private);
+
+	cs = rp_readl(port, RP_LINK_CONTROL_STATUS);
+	/* check if L0s is enabled on this port */
+	if (cs & RP_LINK_CONTROL_STATUS_L0s_ENABLED) {
+		val = rp_readl(port, NV_PCIE2_RP_PRIV_XP_TX_L0S_ENTRY_COUNT);
+		seq_printf(s, "Tx L0s entry count : %u\n", val);
+	} else
+		seq_printf(s, "Tx L0s entry count : %s\n", "disabled");
+
+	val = rp_readl(port, NV_PCIE2_RP_PRIV_XP_RX_L0S_ENTRY_COUNT);
+	seq_printf(s, "Rx L0s entry count : %u\n", val);
+
+	/* check if L1 is enabled on this port */
+	if (cs & RP_LINK_CONTROL_STATUS_L1_ENABLED) {
+		val = rp_readl(port, NV_PCIE2_RP_PRIV_XP_TX_L1_ENTRY_COUNT);
+		seq_printf(s, "Link L1 entry count : %u\n", val);
+	} else
+		seq_printf(s, "Link L1 entry count : %s\n", "disabled");
+	return 0;
+}
+
+static struct dentry *create_tegra_pcie_debufs_file(char *name,
+		const struct file_operations *ops,
+		struct dentry *parent,
+		void *data)
+{
+	struct dentry *d;
+
+	d = debugfs_create_file(name, S_IRUGO, parent, data, ops);
+	if (!d)
+		debugfs_remove_recursive(parent);
+
+	return d;
+}
+
+#define DEFINE_ENTRY(__name)	\
+static int __name ## _open(struct inode *inode, struct file *file)	\
+{									\
+	return single_open(file, __name, inode->i_private); \
+}									\
+static const struct file_operations __name ## _fops = {	\
+	.open		= __name ## _open,	\
+	.read		= seq_read,	\
+	.llseek		= seq_lseek,	\
+	.release	= single_release,	\
+};
+
+/* common */
+DEFINE_ENTRY(list_devices)
+DEFINE_ENTRY(apply_link_speed)
+DEFINE_ENTRY(check_d3hot)
+DEFINE_ENTRY(dump_config_space)
+DEFINE_ENTRY(config_read)
+DEFINE_ENTRY(config_write)
+
+/* Port specific */
+DEFINE_ENTRY(apply_lane_width)
+DEFINE_ENTRY(aspm)
+
+static int tegra_pcie_port_debugfs_init(struct tegra_pcie_port *port)
+{
+	struct dentry *d;
+	char port_name;
+
+	sprintf(&port_name, "%d", port->index);
+	port->port_debugfs = debugfs_create_dir(&port_name,
+							port->pcie->debugfs);
+	if (!port->port_debugfs)
+		return -ENOMEM;
+
+	d = debugfs_create_u32("lane_width", S_IWUGO | S_IRUGO,
+					port->port_debugfs,
+					&(port->lanes));
+	if (!d)
+		goto remove;
+
+	d = debugfs_create_file("apply_lane_width", S_IRUGO,
+					port->port_debugfs, (void *)port,
+					&apply_lane_width_fops);
+	if (!d)
+		goto remove;
+
+	d = debugfs_create_file("aspm", S_IRUGO,
+					port->port_debugfs, (void *)port,
+					&aspm_fops);
+	if (!d)
+		goto remove;
+
+	return 0;
+
+remove:
+	debugfs_remove_recursive(port->port_debugfs);
+	port->port_debugfs = NULL;
+	return -ENOMEM;
+}
+
+static void *tegra_pcie_ports_seq_start(struct seq_file *s, loff_t *pos)
+{
+	struct tegra_pcie *pcie = s->private;
+
+	if (list_empty(&pcie->ports))
+		return NULL;
+
+	seq_printf(s, "Index  Status\n");
+
+	return seq_list_start(&pcie->ports, *pos);
+}
+
+static void *tegra_pcie_ports_seq_next(struct seq_file *s, void *v, loff_t *pos)
+{
+	struct tegra_pcie *pcie = s->private;
+
+	return seq_list_next(v, &pcie->ports, pos);
+}
+
+static void tegra_pcie_ports_seq_stop(struct seq_file *s, void *v)
+{
+}
+
+static int tegra_pcie_ports_seq_show(struct seq_file *s, void *v)
+{
+	bool up = false, active = false;
+	struct tegra_pcie_port *port;
+	unsigned int value;
+
+	port = list_entry(v, struct tegra_pcie_port, list);
+
+	value = readl(port->base + RP_VEND_XP);
+
+	if (value & RP_VEND_XP_DL_UP)
+		up = true;
+
+	value = readl(port->base + RP_LINK_CONTROL_STATUS);
+
+	if (value & RP_LINK_CONTROL_STATUS_DL_LINK_ACTIVE)
+		active = true;
+
+	seq_printf(s, "%2u     ", port->index);
+
+	if (up)
+		seq_printf(s, "up");
+
+	if (active) {
+		if (up)
+			seq_printf(s, ", ");
+
+		seq_printf(s, "active");
+	}
+
+	seq_printf(s, "\n");
+	return 0;
+}
+
+static const struct seq_operations tegra_pcie_ports_seq_ops = {
+	.start = tegra_pcie_ports_seq_start,
+	.next = tegra_pcie_ports_seq_next,
+	.stop = tegra_pcie_ports_seq_stop,
+	.show = tegra_pcie_ports_seq_show,
+};
+
+static int tegra_pcie_ports_open(struct inode *inode, struct file *file)
+{
+	struct tegra_pcie *pcie = inode->i_private;
+	struct seq_file *s;
+	int err;
+
+	err = seq_open(file, &tegra_pcie_ports_seq_ops);
+	if (err)
+		return err;
+
+	s = file->private_data;
+	s->private = pcie;
+
+	return 0;
+}
+
+static const struct file_operations tegra_pcie_ports_ops = {
+	.owner = THIS_MODULE,
+	.open = tegra_pcie_ports_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = seq_release,
+};
+
+static void tegra_pcie_debugfs_exit(struct tegra_pcie *pcie)
+{
+	debugfs_remove_recursive(pcie->debugfs);
+}
+
+static int tegra_pcie_debugfs_init(struct tegra_pcie *pcie)
+{
+	struct dentry *file, *d;
+	struct tegra_pcie_port *port;
+
+	pcie->debugfs = debugfs_create_dir("pcie", NULL);
+	if (!pcie->debugfs)
+		return -ENOMEM;
+
+	file = debugfs_create_file("ports", S_IFREG | S_IRUGO, pcie->debugfs,
+				   pcie, &tegra_pcie_ports_ops);
+	if (!file)
+		goto remove;
+
+	d = create_tegra_pcie_debufs_file("list_devices",
+					&list_devices_fops, pcie->debugfs,
+					(void *)pcie);
+	if (!d)
+		goto remove;
+
+	d = debugfs_create_bool("is_gen2_speed(WO)", S_IWUSR, pcie->debugfs,
+					&is_gen2_speed);
+	if (!d)
+		goto remove;
+
+	d = create_tegra_pcie_debufs_file("apply_link_speed",
+					&apply_link_speed_fops, pcie->debugfs,
+					(void *)pcie);
+	if (!d)
+		goto remove;
+
+	d = create_tegra_pcie_debufs_file("check_d3hot",
+					&check_d3hot_fops, pcie->debugfs,
+					(void *)pcie);
+	if (!d)
+		goto remove;
+
+	d = create_tegra_pcie_debufs_file("dump_config_space",
+					&dump_config_space_fops, pcie->debugfs,
+					(void *)pcie);
+	if (!d)
+		goto remove;
+
+	d = debugfs_create_u16("bus_dev_func", S_IWUGO | S_IRUGO,
+					pcie->debugfs,
+					&bdf);
+	if (!d)
+		goto remove;
+
+	d = debugfs_create_u16("config_offset", S_IWUGO | S_IRUGO,
+					pcie->debugfs,
+					&config_offset);
+	if (!d)
+		goto remove;
+
+	d = debugfs_create_u32("config_val", S_IWUGO | S_IRUGO,
+					pcie->debugfs,
+					&config_val);
+	if (!d)
+		goto remove;
+
+	d = create_tegra_pcie_debufs_file("config_read",
+					&config_read_fops, pcie->debugfs,
+					(void *)pcie);
+	if (!d)
+		goto remove;
+
+	d = create_tegra_pcie_debufs_file("config_write",
+					&config_write_fops, pcie->debugfs,
+					(void *)pcie);
+	if (!d)
+		goto remove;
+
+	list_for_each_entry(port, &pcie->ports, list) {
+		if (tegra_pcie_port_debugfs_init(port))
+			goto remove;
+	}
+
+	return 0;
+
+remove:
+	tegra_pcie_debugfs_exit(pcie);
+	pcie->debugfs = NULL;
+	return -ENOMEM;
+}
+
 static int tegra_pcie_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -2986,8 +3528,14 @@ static int tegra_pcie_probe(struct platform_device *pdev)
 
 		__pm_runtime_disable(pcie->dev, false);
 		tegra_pd_remove_device(pcie->dev);
-
 		return ret;
+	}
+
+	if (IS_ENABLED(CONFIG_DEBUG_FS)) {
+		int err = tegra_pcie_debugfs_init(pcie);
+		if (err < 0)
+			dev_err(&pdev->dev, "failed to setup debugfs: %d\n",
+				err);
 	}
 
 	platform_set_drvdata(pdev, pcie);
@@ -3001,6 +3549,9 @@ static int tegra_pcie_remove(struct platform_device *pdev)
 	struct tegra_pcie_bus *bus;
 
 	PR_FUNC_LINE;
+	if (IS_ENABLED(CONFIG_DEBUG_FS))
+		tegra_pcie_debugfs_exit(pcie);
+
 	pci_common_exit(&pcie->sys);
 	list_for_each_entry(bus, &pcie->buses, list) {
 		vunmap(bus->area->addr);
