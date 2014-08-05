@@ -197,6 +197,7 @@ struct thermal_governor {
 	void (*stop)(struct thermal_zone_device *tz);
 
 	int (*throttle)(struct thermal_zone_device *tz, int trip);
+	int (*of_parse)(struct thermal_zone_params *tp, struct device_node *np);
 	struct list_head	governor_list;
 };
 
