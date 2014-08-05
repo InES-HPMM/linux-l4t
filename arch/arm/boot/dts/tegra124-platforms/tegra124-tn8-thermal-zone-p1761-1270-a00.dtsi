@@ -184,7 +184,7 @@
 			};
 
 			thermal-zone-params {
-				governer-name = "pid_thermal_gov";
+				governor-name = "pid_thermal_gov";
 			};
 		};
 
