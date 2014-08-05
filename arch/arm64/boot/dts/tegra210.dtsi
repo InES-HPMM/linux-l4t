@@ -132,7 +132,7 @@
 				iova-size = <0x0 0xFFFFFFFF>;
 				alignment = <0xFFFFF>;
 				num-pf-page = <0>;
-				gap-page = <1>;
+				gap-page = <0>;
 			};
 			gpu_as: gpu {
 				iova-start = <0x0 0x00100000>;
