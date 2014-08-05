@@ -4,7 +4,7 @@
 	nvidia,dtsfilename = __FILE__;
 
 	i2c@7000c400 {
-		fg_sensor: battery-gauge@0b {
+		battery-gauge@0b {
 			status = "okay";
 		};
 
@@ -21,9 +21,7 @@
 
 	thermal-zones {
 		Battery {
-			polling-delay = <0>; /* milliseconds */
-			polling-delay-passive = <0>; /* milliseconds */
-			thermal-sensors = <&fg_sensor>;
+			status = "okay";
 		};
 	};
 };

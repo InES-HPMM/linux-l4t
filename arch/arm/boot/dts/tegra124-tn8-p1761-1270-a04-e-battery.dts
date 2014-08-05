@@ -1,5 +1,4 @@
 #include "tegra124-tn8-p1761-1270-a04-e-nobattery.dts"
-#include <dt-bindings/iio/meter/ina3221x.h>
 
 / {
 	nvidia,dtsfilename = __FILE__;
@@ -7,22 +6,11 @@
 	i2c@7000c400 {
 		battery-gauge@0b {
 			status = "okay";
-			onsemi,kernel-threshold-soc = <2>;
-			onsemi,kernel-maximum-soc = <100>;
-			io-channels = <&ina3221x INA3221_CHAN_INDEX(0, CURRENT, NORMAL)>;
-			io-channel-names = "battery-current";
 		};
 
 		battery-charger@6b {
 			charger {
 				status = "okay";
-				ti,charge-voltage-limit-millivolt = <4352>;
-				ti,temp-range = <10 15 25 45 60>;
-				ti,charge-thermal-voltage-limit = <4352 4352 4352 4352 4200>;
-				ti,charge-current-limit = <1040 1040 2600 5200 2600>;
-				ti,soc-range = <94 100>;
-				ti,input-voltage-soc-limit = <4680 4760>;
-				ti,charge-term-current-limit-milliamp = <1>;
 			};
 		};
 	};

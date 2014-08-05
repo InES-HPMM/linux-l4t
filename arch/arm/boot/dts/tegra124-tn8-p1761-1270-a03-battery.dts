@@ -1,34 +1,22 @@
 #include "tegra124-tn8-p1761-1270-a03.dts"
-#include <dt-bindings/iio/meter/ina3221x.h>
-#include "tegra124-platforms/tegra124-tn8-usb-devices.dtsi"
-
 
 / {
 	nvidia,dtsfilename = __FILE__;
 
 	i2c@7000c400 {
-		fg_sensor: battery-gauge@0b {
+		battery-gauge@0b {
 			status = "okay";
-			onsemi,kernel-threshold-soc = <2>;
-			onsemi,kernel-maximum-soc = <100>;
-			io-channels = <&ina3221x INA3221_CHAN_INDEX(0, CURRENT, NORMAL) &palams_gpadc 0>;
-			io-channel-names = "battery-current", "batt_id";
 		};
 
 		battery-charger@6b {
 			charger {
 				status = "okay";
-				ti,charge-voltage-limit-millivolt = <4352>;
-				ti,temp-range = <10 15 25 45 60>;
-				ti,charge-thermal-voltage-limit = <4352 4352 4352 4352 4200>;
-				ti,charge-current-limit = <1040 1040 2600 5200 2600>;
 			};
 		};
 	};
 
 	thermal-zones {
 		Battery {
-			thermal-sensors = <&fg_sensor>;
 			status = "okay";
 		};
 	};

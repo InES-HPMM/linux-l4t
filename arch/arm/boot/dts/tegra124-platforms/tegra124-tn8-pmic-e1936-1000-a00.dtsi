@@ -564,7 +564,7 @@
 
 	i2c@7000c400 {
 
-		battery-gauge@36 {
+		fg_max17048: battery-gauge@36 {
 			compatible = "maxim,max17048";
 			reg = <0x36>;
 			status = "disabled";
@@ -595,7 +595,7 @@
 				0x0D 0x10 0x07 0x90 0x08 0x00 0x08 0x00>;
 		};
 
-		battery-gauge@0b {
+		fg_lc709203f: battery-gauge@0b {
 			compatible = "onsemi,lc709203f";
 			reg = <0x0b>;
 			#thermal-sensor-cells = <0>;

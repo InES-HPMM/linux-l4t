@@ -27,6 +27,12 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 
+	i2c@7000c400 {
+		battery-gauge@0b {
+			onsemi,kernel-threshold-soc = < 2 >;
+		};
+	};
+
 	i2c@7000d000 {
 		tps65913 {
 			thermal {
@@ -38,6 +44,11 @@
 	thermal-zones {
 	       PMIC-Die {
 			status = "okay";
+		};
+
+		Battery {
+			status = "disabled";
+			thermal-sensors = <&fg_lc709203f>;
 		};
 	};
 

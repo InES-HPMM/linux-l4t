@@ -1,11 +1,10 @@
 #include "tegra124-tn8-e1784-1101-a00.dts"
-#include "tegra124-platforms/tegra124-tn8-usb-devices.dtsi"
 
 / {
 	nvidia,dtsfilename = __FILE__;
 
 	i2c@7000c400 {
-		fg_sensor: battery-gauge@0b {
+		battery-gauge@0b {
 			status = "okay";
 		};
 
@@ -22,7 +21,6 @@
 
 	thermal-zones {
 		Battery {
-			thermal-sensors = <&fg_sensor>;
 			status = "okay";
 		};
 	};

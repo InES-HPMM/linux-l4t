@@ -34,6 +34,8 @@
 #include "panel-a-wuxga-8-0.dtsi"
 #include "tegra124-platforms/tegra124-tn8-hdmi-p1761-1270-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-thermal-zone-p1761-1270-a00.dtsi"
+#include <dt-bindings/iio/meter/ina3221x.h>
+#include "tegra124-platforms/tegra124-tn8-usb-devices.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 TN8 FFD";
@@ -83,6 +85,15 @@
 			};
 		};
 	};
+
+	i2c@7000c400 {
+		battery-gauge@0b {
+			onsemi,kernel-threshold-soc = <2>;
+			io-channels = <&ina3221x INA3221_CHAN_INDEX(0, CURRENT, NORMAL) &palams_gpadc 0>;
+			io-channel-names = "battery-current", "batt_id";
+		};
+	};
+
 	i2c@7000c000 {
 		max44006@44 {
 			maxim,gain = <1>;
@@ -105,6 +116,10 @@
 	thermal-zones {
 		PMIC-Die {
 			status = "okay";
+		};
+
+		Battery {
+			 thermal-sensors = <&fg_lc709203f>;
 		};
 	};
 

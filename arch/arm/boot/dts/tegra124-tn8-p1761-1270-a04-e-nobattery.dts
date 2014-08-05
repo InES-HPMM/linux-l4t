@@ -10,6 +10,7 @@
 #include "tegra124-platforms/tegra124-tn8-sysedp-p1761-1270-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-powermon-p1761-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-dfll-p1761-1270-a03.dtsi"
+#include <dt-bindings/iio/meter/ina3221x.h>
 
 / {
 	model = "NVIDIA Tegra124 TN8 FFD";
@@ -23,6 +24,27 @@
 		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
+	};
+
+	i2c@7000c400 {
+		 battery-gauge@0b {
+			onsemi,kernel-threshold-soc = <2>;
+			onsemi,kernel-maximum-soc = <100>;
+			io-channels = <&ina3221x INA3221_CHAN_INDEX(0, CURRENT, NORMAL)>;
+			io-channel-names = "battery-current";
+		};
+
+		battery-charger@6b {
+			charger {
+				ti,charge-voltage-limit-millivolt = <4352>;
+				ti,temp-range = <10 15 25 45 60>;
+				ti,charge-thermal-voltage-limit = <4352 4352 4352 4352 4200>;
+				ti,charge-current-limit = <1040 1040 2600 5200 2600>;
+				ti,soc-range = <94 100>;
+				ti,input-voltage-soc-limit = <4680 4760>;
+				ti,charge-term-current-limit-milliamp = <1>;
+			};
+		};
 	};
 
 	i2c@7000d000 {
