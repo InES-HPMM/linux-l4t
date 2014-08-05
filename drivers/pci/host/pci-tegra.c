@@ -1605,21 +1605,15 @@ static void tegra_pcie_port_enable(struct tegra_pcie_port *port)
 
 static void tegra_pcie_port_disable(struct tegra_pcie_port *port)
 {
-	unsigned long ctrl = tegra_pcie_port_get_pex_ctrl(port);
-	unsigned long value;
+	u32 data;
 
 	PR_FUNC_LINE;
-
-	/* assert port reset */
-	value = afi_readl(port->pcie, ctrl);
-	value &= ~AFI_PEX_CTRL_RST;
-	afi_writel(port->pcie, value, ctrl);
-
-	/* disable reference clock */
-	value = afi_readl(port->pcie, ctrl);
-	value &= ~AFI_PEX_CTRL_CLKREQ_EN;
-	value &= ~AFI_PEX_CTRL_REFCLK_EN;
-	afi_writel(port->pcie, value, ctrl);
+	data = afi_readl(port->pcie, AFI_PCIE_CONFIG);
+	if (port->index)
+		data |= AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE;
+	else
+		data |= AFI_PCIE_CONFIG_PCIEC0_DISABLE_DEVICE;
+	afi_writel(port->pcie, data, AFI_PCIE_CONFIG);
 }
 
 static void tegra_pcie_port_free(struct tegra_pcie_port *port)
