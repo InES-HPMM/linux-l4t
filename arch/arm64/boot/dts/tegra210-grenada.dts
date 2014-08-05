@@ -25,7 +25,6 @@
 #include "tegra210.dtsi"
 #include "tegra210-platforms/tegra210-grenada-fixed.dtsi"
 #include "tegra210-platforms/tegra210-ers-power-dvfs-e2174-1101-a00.dtsi"
-#include "tegra210-platforms/tegra210-comms.dtsi"
 #include <dt-bindings/pinctrl/pinctrl-tegra.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/sound/tegra-asoc-alt.h>
