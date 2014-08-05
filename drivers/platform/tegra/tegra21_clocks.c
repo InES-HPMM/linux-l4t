@@ -89,7 +89,7 @@
 #define CLK_OUT_ENB_U_RESET_MASK	0xf3fed3fa
 #define CLK_OUT_ENB_V_RESET_MASK	0xffc18cfb
 #define CLK_OUT_ENB_W_RESET_MASK	0x793fb7ff
-#define CLK_OUT_ENB_X_RESET_MASK	0x3e66fff
+#define CLK_OUT_ENB_X_RESET_MASK	0x3fe66fff
 #define CLK_OUT_ENB_Y_RESET_MASK	0xfc1fc7ff
 
 #define RST_DEVICES_V_SWR_CPULP_RST_DIS	(0x1 << 1) /* Reserved on Tegra11 */
