@@ -9477,10 +9477,10 @@ static int tegra21_clk_suspend(void)
 	*ctx++ = clk_readl(tegra_pll_c4_out3.reg);
 	*ctx++ = clk_readl(tegra_pll_re_out1.reg);
 
-	*ctx++ = clk_readl(tegra_clk_pclk.reg);
 	*ctx++ = clk_readl(tegra_clk_sclk.reg);
 	*ctx++ = clk_readl(tegra_clk_sclk_div.reg);
 	*ctx++ = clk_readl(tegra_clk_sclk_mux.reg);
+	*ctx++ = clk_readl(tegra_clk_pclk.reg);
 
 	for (off = PERIPH_CLK_SOURCE_I2S1; off <= PERIPH_CLK_SOURCE_LA;
 			off += 4) {
@@ -9622,11 +9622,21 @@ static void tegra21_clk_resume(void)
 	pll_re_out1 = *ctx++;
 	clk_writel(pll_re_out1 | val, tegra_pll_re_out1.reg);
 
-	/* FIXME: the oder here to be checked against boot-rom exit state */
+	/*
+	 * To make sure system bus is not over-clocked during restoration:
+	 * - use fixed safe 1:1:2 SCLK:HCLK:PCLK ratio until SCLK source is set
+	 * - defer SCLK divider restoration after SCLK source is restored if
+	 *   divider set by boot-rom is above saved value.
+	 */
+	clk_writel(0x01, tegra_clk_pclk.reg);
+	clk_writel_delay(*ctx++, tegra_clk_sclk.reg);
+	val = *ctx++;
+	if (val > clk_readl(tegra_clk_sclk_div.reg))
+		clk_writel_delay(val, tegra_clk_sclk_div.reg);
+	clk_writel_delay(*ctx++, tegra_clk_sclk_mux.reg);
+	if (val != clk_readl(tegra_clk_sclk_div.reg))
+		clk_writel_delay(val, tegra_clk_sclk_div.reg);
 	clk_writel(*ctx++, tegra_clk_pclk.reg);
-	clk_writel(*ctx++, tegra_clk_sclk.reg);
-	clk_writel(*ctx++, tegra_clk_sclk_div.reg);
-	clk_writel(*ctx++, tegra_clk_sclk_mux.reg);
 
 	/* enable all clocks before configuring clock sources */
 	clk_writel(CLK_OUT_ENB_L_RESET_MASK, CLK_OUT_ENB_L);
