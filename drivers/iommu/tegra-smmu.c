@@ -569,8 +569,9 @@ static int tegra_smmu_get_map_prop(struct device *dev,
 		if (of_property_read_u64(np, "iova-start", &prop->iova_start) ||
 		    of_property_read_u64(np, "iova-size", &prop->iova_size) ||
 		    of_property_read_u32(np, "alignment", &prop->alignment) ||
-		    of_property_read_u32(np, "num-pf-page", &prop->gap_page) ||
-		    of_property_read_u32(np, "gap-page", &prop->num_pf_page)) {
+		    of_property_read_u32(np, "num-pf-page",
+							&prop->num_pf_page) ||
+		    of_property_read_u32(np, "gap-page", &prop->gap_page)) {
 			dev_err(smmu_handle->dev,
 				"invalid address-space-prop %s for %s",
 				np->name, dev_name(dev));
