@@ -196,9 +196,6 @@ static bool reg_mode_force_normal;
 static const struct tegra_edp_limits *cpu_edp_limits;
 static int cpu_edp_limits_size;
 
-static const unsigned int *system_edp_limits;
-static bool system_edp_alarm;
-
 static int edp_thermal_index;
 static cpumask_t edp_cpumask;
 static unsigned int edp_limit;
@@ -220,8 +217,6 @@ static unsigned int edp_predict_limit(unsigned int cpus)
 		BUG_ON(edp_thermal_index >= cpu_edp_limits_size);
 		limit = cpu_edp_limits[edp_thermal_index].freq_limits[cpus - 1];
 	}
-	if (system_edp_limits && system_edp_alarm)
-		limit = min(limit, system_edp_limits[cpus - 1]);
 
 	return limit;
 }
@@ -343,28 +338,6 @@ static int __init edp_init(void)
 }
 module_init(edp_init);
 
-int tegra_system_edp_alarm(bool alarm)
-{
-	int ret = -ENODEV;
-
-	mutex_lock(&tegra_cpu_lock);
-	system_edp_alarm = alarm;
-
-	/* Update cpu rate if cpufreq (at least on cpu0) is already started
-	   and cancel emergency throttling after either edp limit is applied
-	   or alarm is canceled */
-	if (target_cpu_speed[0]) {
-		edp_update_limit();
-		ret = tegra_cpu_set_speed_cap_locked(NULL);
-	}
-	if (!ret || !alarm)
-		tegra_edp_throttle_cpu_now(0);
-
-	mutex_unlock(&tegra_cpu_lock);
-
-	return ret;
-}
-
 /* Must be called while holding cpu_tegra_lock */
 static void sysedp_update_limit(void)
 {
@@ -444,10 +417,9 @@ static struct notifier_block tegra_cpu_edp_notifier = {
 
 static void tegra_cpu_edp_init(bool resume)
 {
-	tegra_get_system_edp_limits(&system_edp_limits);
 	tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
 
-	if (!(cpu_edp_limits || system_edp_limits)) {
+	if (!cpu_edp_limits) {
 		if (!resume)
 			pr_info("cpu-tegra: no EDP table is provided\n");
 		return;
@@ -469,7 +441,7 @@ static void tegra_cpu_edp_init(bool resume)
 
 static void tegra_cpu_edp_exit(void)
 {
-	if (!(cpu_edp_limits || system_edp_limits))
+	if (!cpu_edp_limits)
 		return;
 
 	unregister_hotcpu_notifier(&tegra_cpu_edp_notifier);
@@ -540,22 +512,6 @@ int tegra_update_cpu_edp_limits(void)
 
 #ifdef CONFIG_DEBUG_FS
 
-static int system_edp_alarm_get(void *data, u64 *val)
-{
-	*val = (u64)system_edp_alarm;
-	return 0;
-}
-static int system_edp_alarm_set(void *data, u64 val)
-{
-	if (val > 1) {	/* emulate emergency throttling */
-		tegra_edp_throttle_cpu_now(val);
-		return 0;
-	}
-	return tegra_system_edp_alarm((bool)val);
-}
-DEFINE_SIMPLE_ATTRIBUTE(system_edp_alarm_fops,
-			system_edp_alarm_get, system_edp_alarm_set, "%llu\n");
-
 static int reg_mode_force_normal_get(void *data, u64 *val)
 {
 	*val = (u64)reg_mode_force_normal;
@@ -577,10 +533,6 @@ DEFINE_SIMPLE_ATTRIBUTE(reg_mode_fops, reg_mode_get, NULL, "0x%llx\n");
 
 static int __init tegra_edp_debug_init(struct dentry *cpu_tegra_debugfs_root)
 {
-	if (!debugfs_create_file("edp_alarm", 0644, cpu_tegra_debugfs_root,
-				 NULL, &system_edp_alarm_fops))
-		return -ENOMEM;
-
 	if (!debugfs_create_file("reg_mode_force_normal", 0644,
 			cpu_tegra_debugfs_root, NULL, &force_normal_fops))
 		return -ENOMEM;

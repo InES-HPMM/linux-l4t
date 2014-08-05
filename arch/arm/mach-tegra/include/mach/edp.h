@@ -133,8 +133,6 @@ void tegra_init_cpu_reg_mode_limits(unsigned int regulator_ma,
 				    unsigned int mode);
 void tegra_get_cpu_reg_mode_limits(const struct tegra_edp_limits **limits,
 				   int *size, unsigned int mode);
-void tegra_get_system_edp_limits(const unsigned int **limits);
-int tegra_system_edp_alarm(bool alarm);
 void tegra_platform_edp_init(struct thermal_trip_info *trips,
 					int *num_trips, int margin);
 struct tegra_system_edp_entry *tegra_get_system_edp_entries(int *size);
@@ -158,10 +156,6 @@ static inline void tegra_get_cpu_reg_mode_limits(
 	const struct tegra_edp_limits **limits, int *size, unsigned int mode)
 {}
 static inline unsigned int tegra_get_edp_limit(int *get_edp_thermal_index)
-{ return -1; }
-static inline void tegra_get_system_edp_limits(unsigned int **limits)
-{}
-static inline int tegra_system_edp_alarm(bool alarm)
 { return -1; }
 static inline void tegra_platform_edp_init(struct thermal_trip_info *trips,
 					   int *num_trips, int margin)
@@ -218,8 +212,6 @@ static inline void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
 					int *num_trips, int margin)
 {}
 #endif
-
-void tegra_edp_throttle_cpu_now(u8 factor);
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC) && !defined(CONFIG_ARCH_TEGRA_13x_SOC)
 struct tegra_edp_cpu_powermodel_params *tegra12x_get_cpu_powermodel_params(

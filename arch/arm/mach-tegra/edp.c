@@ -59,8 +59,6 @@ static unsigned int cpu_edp_reg_override_ma = OVERRIDE_DEFAULT;
 static struct tegra_edp_limits *reg_idle_edp_limits;
 static int reg_idle_cur;
 
-static const unsigned int *system_edp_limits;
-
 static struct tegra_system_edp_entry *power_edp_limits;
 static int power_edp_limits_size;
 
@@ -659,11 +657,6 @@ void tegra_get_cpu_reg_mode_limits(const struct tegra_edp_limits **limits,
 	}
 }
 
-void tegra_get_system_edp_limits(const unsigned int **limits)
-{
-	*limits = system_edp_limits;
-}
-
 void tegra_platform_edp_init(struct thermal_trip_info *trips,
 				int *num_trips, int margin)
 {
@@ -1110,22 +1103,6 @@ static inline void edp_show_2core_reg_mode_table(struct seq_file *s, int th_idx)
 	}
 }
 
-static inline void edp_show_2core_system_table(struct seq_file *s)
-{
-	seq_printf(s, "%10u %10u\n",
-		   system_edp_limits[0],
-		   system_edp_limits[1]);
-}
-
-static inline void edp_show_4core_system_table(struct seq_file *s)
-{
-	seq_printf(s, "%10u %10u %10u %10u\n",
-		   system_edp_limits[0],
-		   system_edp_limits[1],
-		   system_edp_limits[2],
-		   system_edp_limits[3]);
-}
-
 static int cpu_edp_debugfs_show(struct seq_file *s, void *data)
 {
 	unsigned int max_nr_cpus = num_possible_cpus();
@@ -1155,14 +1132,6 @@ static int cpu_edp_debugfs_show(struct seq_file *s, void *data)
 			edp_show_2core_reg_mode_table(s, th_idx);
 		else if (max_nr_cpus == 4)
 			edp_show_4core_reg_mode_table(s, th_idx);
-	}
-
-	if (system_edp_limits) {
-		seq_printf(s, "\n-- System EDP table --\n");
-		if (max_nr_cpus == 2)
-			edp_show_2core_system_table(s);
-		else if (max_nr_cpus == 4)
-			edp_show_4core_system_table(s);
 	}
 
 	return 0;

@@ -9041,12 +9041,6 @@ int tegra12_cpu_lp_idle_rate_exchange(unsigned long *rate)
 	return ret;
 }
 
-void tegra_edp_throttle_cpu_now(u8 factor)
-{
-	/* empty definition for tegra12 */
-	return;
-}
-
 bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 {
 
