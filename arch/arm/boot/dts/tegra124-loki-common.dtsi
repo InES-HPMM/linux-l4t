@@ -189,8 +189,8 @@
 		status = "okay";
 	};
 
-	bthrot_cdv {
-		compatible = "nvidia,tegra30-throttle";
+	bthrot_cdev {
+		compatible = "nvidia,balanced-throttle";
 		skin_balanced {
 			status = "disabled";
 		};
@@ -198,9 +198,9 @@
 			status = "disabled";
 		};
 		cpu_balanced {
-			cdev-type = "tegra-balanced";
+			status = "disabled";
 		};
-		emergency_balanced{
+		emergency_balanced {
 			status = "disabled";
 		};
 	};

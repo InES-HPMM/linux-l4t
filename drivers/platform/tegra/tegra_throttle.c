@@ -545,7 +545,7 @@ static int tegra30_throttle_remove(struct platform_device *pdev)
 }
 
 static struct of_device_id tegra30_throttle_of_match[] = {
-	{ .compatible = "nvidia,tegra30-throttle", },
+	{ .compatible = "nvidia,balanced-throttle", },
 	{ },
 };
 

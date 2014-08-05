@@ -218,8 +218,8 @@
 		nvidia,xcvr-setup-offset = <0>;
 		status = "disabled";
 
-	bthrot_cdv {
-		compatible = "nvidia,tegra30-throttle";
+	bthrot_cdev {
+		compatible = "nvidia,balanced-throttle";
 		skin_balanced {
 			status = "okay";
 		};
@@ -229,7 +229,7 @@
 		cpu_balanced {
 			status = "okay";
 		};
-		emergency_balanced{
+		emergency_balanced {
 			status = "disabled";
 		};
 	};
