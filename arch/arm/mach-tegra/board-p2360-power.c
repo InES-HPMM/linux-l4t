@@ -182,7 +182,7 @@ static struct max15569_regulator_platform_data max15569_vddgpu_pdata = {
 
 static struct i2c_board_info __initdata max15569_vddgpu_boardinfo[] = {
 	{
-		I2C_BOARD_INFO("max15569", 0x3b),
+		I2C_BOARD_INFO("max15569", 0x38),
 		.platform_data  = &max15569_vddgpu_pdata,
 	},
 };

@@ -54,7 +54,7 @@ static int __init p2360_gpio_init(void)
 	gpio_direction_output(TEGRA_GPIO_FPDLINK, 1);
 
 	/* Put the FPDLink in Pwer Down mode */
-	gpio_set_value(TEGRA_GPIO_FPDLINK, 0);
+	/*gpio_set_value(TEGRA_GPIO_FPDLINK, 0);*/
 
 	err = gpio_request(TEGRA_GPIO_TV1ENA, "tv1_ena");
 	if (err < 0) {
@@ -85,6 +85,58 @@ static int __init p2360_gpio_init(void)
 	gpio_direction_output(TEGRA_GPIO_TV4ENA, 1);
 
 	return 0;
+}
+
+/* Display panel/HDMI */
+static int p2360_dev_dummy(struct device *dev)
+{
+	return 0;
+}
+
+static int p2360_dummy(void)
+{
+	return 0;
+}
+
+struct tegra_panel_ops p2360_hdmi_ops = {
+	.enable = p2360_dev_dummy,
+	.disable = p2360_dummy,
+	.postsuspend = p2360_dummy,
+	.hotplug_init = p2360_dev_dummy,
+};
+
+static int tegra_p2360_notifier_call(struct notifier_block *nb,
+				    unsigned long event, void *data)
+{
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+	struct device *dev = data;
+#endif
+
+	switch (event) {
+	case BUS_NOTIFY_BIND_DRIVER:
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+		if (dev->of_node) {
+			if (of_device_is_compatible(dev->of_node,
+				"pwm-backlight")) {
+				tegra_pwm_bl_ops_register(dev);
+			}
+		}
+#endif
+		break;
+	default:
+		break;
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block platform_nb = {
+	.notifier_call = tegra_p2360_notifier_call,
+};
+
+static void p2360_panel_init(void)
+{
+	tegra_set_fixed_panel_ops(true, &p2360_hdmi_ops, "hdmi,display");
+	bus_register_notifier(&platform_bus_type, &platform_nb);
 }
 
 static struct platform_device *p2360_devices[] __initdata = {
@@ -127,7 +179,7 @@ static void __init tegra_p2360_late_init(void)
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
-	/* p2360_panel_init(); */
+	p2360_panel_init();
 
 	if (is_p2360_a01)
 		p2360_gpio_init();
