@@ -1216,8 +1216,8 @@ static void armv8pmu_reset(void *info)
 	/* Initialize & Reset PMNC: C and P bits. */
 	armv8pmu_pmcr_write(ARMV8_PMCR_P | ARMV8_PMCR_C);
 
-	/* Disable access from userspace. */
-	asm volatile("msr pmuserenr_el0, %0" :: "r" (0));
+	/* Enable access from userspace. */
+	asm volatile("msr pmuserenr_el0, %0" :: "r" (0xf));
 }
 
 static int armv8_pmuv3_map_event(struct perf_event *event)
