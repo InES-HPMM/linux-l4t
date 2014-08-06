@@ -53,6 +53,10 @@ void tegra_cpu_die(unsigned int cpu)
 
 		/* 2nd cores must be in C7 for LP0/LP1 */
 		tegra_tear_down_cpu();
+
+		/* Synchronize with CPU0 */
+		while (secondary_holding_pen_release != cpu)
+			cpu_relax();
 	} else {
 		pmstate = T132_CORE_C6;
 

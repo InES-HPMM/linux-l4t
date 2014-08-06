@@ -203,8 +203,6 @@ int (*tegra_sleep_core_finish)(unsigned long v2p);
 
 bool tegra_is_dpd_mode = false;
 
-static bool suspend_in_progress;
-
 bool tegra_dvfs_is_dfll_bypass(void)
 {
 #ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
@@ -829,7 +827,6 @@ static int tegra_suspend_prepare_late(void)
 			(current_suspend_mode == TEGRA_SUSPEND_LP1))
 		tegra_suspend_check_pwr_stats();
 
-	suspend_in_progress = true;
 	return 0;
 }
 

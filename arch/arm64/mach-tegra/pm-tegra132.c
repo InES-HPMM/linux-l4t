@@ -144,6 +144,7 @@ static int cpu_pm_notify(struct notifier_block *self,
 	case CPU_CLUSTER_PM_EXIT:
 		denver_set_bg_allowed(cpu, true);
 		tegra132_reset_vector_init();
+		suspend_in_progress = false;
 		break;
 	}
 
