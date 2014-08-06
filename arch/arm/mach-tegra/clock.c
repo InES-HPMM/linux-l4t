@@ -1847,6 +1847,72 @@ static int use_alt_freq_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(use_alt_freq_fops,
 			use_alt_freq_get, use_alt_freq_set, "%llu\n");
 
+static int dvfs_freq_offset_get(void *data, u64 *val)
+{
+	struct clk *c = (struct clk *)data;
+	*val = (u64)c->dvfs->dbg_hz_offs;
+	return 0;
+}
+static int dvfs_freq_offset_set(void *data, u64 val)
+{
+	unsigned long flags;
+	struct clk *c = (struct clk *)data;
+	struct dvfs *d = c->dvfs;
+
+	int i, ret = -EINVAL;
+	long offs = (long)val - d->dbg_hz_offs;
+	unsigned long unit_rate = 1 * d->freqs_mult;
+
+	if (!offs || !d->num_freqs)
+		return 0;
+
+	clk_lock_save(c, &flags);
+	mutex_lock(d->lock);
+
+	if ((offs > 0) && ((ULONG_MAX - c->max_rate) < offs))
+		goto _out;
+
+	if ((offs < 0) && c->min_rate && (c->min_rate <= unit_rate + (-offs)))
+		goto _out;
+
+	for (i = 0; i < d->num_freqs; i++) {
+		unsigned long rate = d->freqs[i];
+		if (rate <= unit_rate)
+			continue;
+
+		if ((offs < 0) && (rate <= unit_rate + (-offs)))
+			goto _out;
+
+		d->freqs[i] = rate + offs;
+
+	}
+	d->dbg_hz_offs = (long)val;
+	c->max_rate += offs;
+	if (c->min_rate)
+		c->min_rate += offs;
+
+	/* Propagte expnaded rate range to shared users, if any */
+	if (!list_empty(&c->shared_bus_list)) {
+		struct clk *bus_user;
+		list_for_each_entry(bus_user, &c->shared_bus_list,
+				    u.shared_bus_user.node) {
+			bus_user->max_rate = c->max_rate;
+		}
+	}
+	ret = 0;
+
+_out:
+	mutex_unlock(d->lock);
+	clk_unlock_restore(c, &flags);
+	if (ret) {
+		pr_err("Offset %ld is out of range for dvfs on %s\n",
+		       (long)val, c->name);
+	}
+	return ret;
+}
+DEFINE_SIMPLE_ATTRIBUTE(dvfs_freq_offset_fops, dvfs_freq_offset_get,
+	dvfs_freq_offset_set, "%llu\n");
+
 static ssize_t fmax_at_vmin_write(struct file *file,
 	const char __user *userbuf, size_t count, loff_t *ppos)
 {
@@ -1949,6 +2015,17 @@ static int clk_debugfs_register_one(struct clk *c)
 	if (c->dvfs) {
 		d = debugfs_create_file("use_alt_freq", S_IRUGO | S_IWUSR,
 			c->dent, c, &use_alt_freq_fops);
+		if (!d)
+			goto err_out;
+	}
+
+	/*
+	 * Do not install DVFS frequency offset node on CBUS, since it is
+	 * applied to bus only, and that is not compatible with CBUS clients.
+	 */
+	if (c->dvfs && !(c->flags & PERIPH_ON_CBUS)) {
+		d = debugfs_create_file("dvfs_freq_offs", S_IRUGO | S_IWUSR,
+			c->dent, c, &dvfs_freq_offset_fops);
 		if (!d)
 			goto err_out;
 	}

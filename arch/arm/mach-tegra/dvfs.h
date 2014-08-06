@@ -193,6 +193,7 @@ struct dvfs {
 	unsigned long cur_rate;
 	unsigned long *alt_freqs;
 	bool use_alt_freqs;
+	long dbg_hz_offs;
 	struct list_head node;
 	struct list_head debug_node;
 	struct list_head reg_node;
