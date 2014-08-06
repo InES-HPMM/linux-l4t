@@ -1238,6 +1238,9 @@ static int __init enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
 	list_add_tail(&d->reg_node, &d->dvfs_rail->dvfs);
 	mutex_unlock(&dvfs_lock);
 
+	/* Init common DVFS lock pointer */
+	d->lock = &dvfs_lock;
+
 	return 0;
 }
 

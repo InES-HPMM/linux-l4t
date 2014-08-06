@@ -196,6 +196,7 @@ struct dvfs {
 	struct list_head node;
 	struct list_head debug_node;
 	struct list_head reg_node;
+	struct mutex *lock;
 };
 
 struct cvb_dvfs_parameters {
