@@ -3541,6 +3541,17 @@ static irqreturn_t tegra_xhci_irq(struct usb_hcd *hcd)
 	return iret;
 }
 
+int tegra_xhci_update_hub_device(struct usb_hcd *hcd, struct usb_device *hdev,
+			struct usb_tt *tt, gfp_t mem_flags)
+{
+	/* Disable LPM SUPPORT for SS hubs connected to roothub
+	   This is to avoid the Firmware exception seen on host controller */
+	if (hdev->speed == USB_SPEED_SUPER
+				&& (hdev->parent == hdev->bus->root_hub))
+		hdev->lpm_capable = 0;
+
+	return xhci_update_hub_device(hcd, hdev, tt, mem_flags);
+}
 
 static const struct hc_driver tegra_plat_xhci_driver = {
 	.description =		"tegra-xhci",
@@ -3576,7 +3587,7 @@ static const struct hc_driver tegra_plat_xhci_driver = {
 	.check_bandwidth =	xhci_check_bandwidth,
 	.reset_bandwidth =	xhci_reset_bandwidth,
 	.address_device =	xhci_address_device,
-	.update_hub_device =	xhci_update_hub_device,
+	.update_hub_device =	tegra_xhci_update_hub_device,
 	.reset_device =		xhci_discover_or_reset_device,
 
 	/*
