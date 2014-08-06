@@ -1,4 +1,6 @@
 /*
+ * T210 POP
+ *
  * arch/arm64/boot/dts/tegra210-ers-e2190-1100-a00-00.dts
  *
  * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
@@ -37,7 +39,7 @@
 	nvidia,boardids = "2190:1100:00;2174:1101:00";
 	nvidia,dtsfilename = __FILE__;
 	nvidia,proc-boardid = "2190:1100:00";
-	nvidia,pmu-boardid = "2174:1101:00";
+	nvidia,pmu-boardid = "2174:1102:00";
 	#address-cells = <2>;
 	#size-cells = <2>;
 
@@ -181,5 +183,50 @@
                 avdd_sata_pll-supply = <&max77620_ldo8>;
         };
 
+	dfll-ovr@70110000 {
+		status = "disabled";
+	};
+
+	dfll-max77621@70110000 {
+		status = "okay";
+	};
+
+	pwm_regulators {
+		pwm-regulator@0 {
+			status = "disabled";
+		};
+
+		pwm-regulator@1 {
+			status = "disabled";
+		};
+	};
+
+	i2c@7000d000 {
+		max77621@1b {
+			status = "okay";
+		};
+
+		max77621@1c {
+			status = "okay";
+		};
+	};
+
+	dvfs_rails {
+		vdd-cpu-rail-ovr@0 {
+			status = "disabled";
+		};
+
+		vdd-gpu-rail-ovr@1 {
+			status = "disabled";
+		};
+
+		vdd-cpu-rail-max77621@2 {
+			status = "okay";
+		};
+
+		vdd-gpu-rail-max77621@3 {
+			status = "okay";
+		};
+	};
 };
 

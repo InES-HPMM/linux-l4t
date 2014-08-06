@@ -1,4 +1,6 @@
 /*
+ * T210- DSC
+ *
  * arch/arm64/boot/dts/tegra210-ers-e2220-1100-a00-00.dts
  *
  * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
