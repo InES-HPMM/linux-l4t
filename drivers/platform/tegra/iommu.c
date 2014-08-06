@@ -90,6 +90,13 @@ void carveout_linear_set(struct device *cma_dev)
 	map->size = stats.size;
 }
 EXPORT_SYMBOL(carveout_linear_set);
+
+void tegra_carveout_linear_set(struct device *gen_dev, struct device *vpr_dev)
+{
+	carveout_linear_set(gen_dev);
+	carveout_linear_set(vpr_dev);
+}
+EXPORT_SYMBOL(tegra_carveout_linear_set);
 #endif
 
 struct swgid_fixup {
