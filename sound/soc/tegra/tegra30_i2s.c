@@ -67,6 +67,7 @@ static int tegra30_i2s_runtime_suspend(struct device *dev)
 	tegra30_ahub_disable_clocks();
 
 	regcache_cache_only(i2s->regmap, true);
+	regcache_mark_dirty(i2s->regmap);
 
 	clk_disable_unprepare(i2s->clk_i2s);
 
@@ -87,6 +88,7 @@ static int tegra30_i2s_runtime_resume(struct device *dev)
 	}
 
 	regcache_cache_only(i2s->regmap, false);
+	regcache_sync(i2s->regmap);
 
 	return 0;
 }
