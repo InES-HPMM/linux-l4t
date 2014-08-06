@@ -76,15 +76,25 @@ enum soctherm_polarity_id {
 	SOCTHERM_ACTIVE_LOW = 1,
 };
 
-struct soctherm_sensor {
-	bool sensor_enable;
-	int tall;
-	int tiddq;
-	int ten_count;
-	int tsample;
-	int tsamp_ate;
-	u8 pdiv;
-	u8 pdiv_ate;
+struct soctherm_fuse_correction_war {
+	/* both scaled *1000000 */
+	int a;
+	int b;
+};
+
+struct soctherm_sensor_common_params {
+	u32 tall;
+	u32 tiddq;
+	u32 ten_count;
+	u32 tsample;
+	u32 tsamp_ate;
+	u32 pdiv;
+	u32 pdiv_ate;
+};
+
+struct soctherm_sensor_params {
+	struct soctherm_sensor_common_params scp;
+	struct soctherm_fuse_correction_war fuse_war[TSENSE_SIZE];
 };
 
 struct soctherm_therm {
@@ -94,6 +104,7 @@ struct soctherm_therm {
 	int hotspot_offset;
 	struct thermal_trip_info trips[THERMAL_MAX_TRIPS];
 	struct thermal_zone_params *tzp;
+	struct thermal_zone_device *tz;
 };
 
 struct soctherm_throttle_dev {
@@ -136,40 +147,30 @@ struct soctherm_tsensor_pmu_data {
 	u8 pmu_i2c_addr;
 };
 
-struct soctherm_fuse_correction_war {
-	/* both scaled *1000000 */
-	int a;
-	int b;
-};
-
 /**
  * struct soctherm_platform_data - Board specific SOC_THERM info.
- * @oc_irq_base:		Base over-current IRQ number
- * @num_oc_irqs:		Number of over-current IRQs
+ * @thermal_irq_num:		IRQ number for soctherm thermal interrupt.
+ * @edp_irq_num:		IRQ number for soctherm edp interrupt.
+ * @oc_irq_base:		Base over-current IRQ number.
+ * @num_oc_irqs:		Number of over-current IRQs.
  * @soctherm_clk_rate:		Clock rate for the SOC_THERM IP block.
  * @tsensor_clk_rate:		Clock rate for the thermal sensors.
- * @sensor_data:		An array containing the data of each sensor
- *				See struct soctherm_sensor.
- * @therm:			An array contanining the board specific
- *				thermal zones and their respective settings,
- *				such as trip points.
- *				See struct soctherm_therm.
- * @throttle:			static specification for hardware throttle
- *				responses.
- *				See struct soctherm_throttle.
+ * @sensor_params:		Params for the thermal sensors.
+ * @therm:			An array contanining the thermal zone settings.
+ * @throttle:			specification for hardware throttle responses.
  * @tshut_pmu_trip_data:	PMU-specific thermal shutdown settings.
- *				See struct tegra_thermtrip_pmic_data.
- *
- * therm is used for trip point configuration and should be moved out of
- * soctherm_platform_data.
  */
 struct soctherm_platform_data {
+	int thermal_irq_num;
+	int edp_irq_num;
+
 	int oc_irq_base;
 	int num_oc_irqs;
-	unsigned long soctherm_clk_rate;
-	unsigned long tsensor_clk_rate;
 
-	struct soctherm_sensor sensor_data[TSENSE_SIZE];
+	u32 soctherm_clk_rate;
+	u32 tsensor_clk_rate;
+
+	struct soctherm_sensor_params sensor_params;
 	struct soctherm_therm therm[THERM_SIZE];
 	struct soctherm_throttle throttle[THROTTLE_SIZE];
 	struct tegra_thermtrip_pmic_data *tshut_pmu_trip_data;

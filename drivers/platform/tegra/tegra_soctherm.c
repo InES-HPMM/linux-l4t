@@ -53,7 +53,17 @@
 #include "iomap.h"
 #include "gpio-names.h"
 #include "common.h"
+#include "board-ardbeg.h"
 #include "dvfs.h"
+
+/*
+ * In backward-compatibility mode, soctherm registers itself as thermal_zones.
+ * In new mode, it registers itself as thermal_sensors and requires the
+ * thermal_zones registration to happen via of-thermal DT. Once all platforms
+ * have switched over to of-thermal, this and all the code under this ifdef will
+ * disappear. Also cleanup flag 'register_as_sensor' in tegra_soctherm_probe().
+ */
+#define SOCTHERM_BACKWARD_COMPATIBILITY_MODE 1
 
 static const int MAX_HIGH_TEMP = 127000;
 static const int MIN_LOW_TEMP = -127000;
@@ -469,7 +479,7 @@ static DEFINE_MUTEX(soctherm_suspend_resume_lock);
 static int soctherm_suspend(struct device *dev);
 static int soctherm_resume(struct device *dev);
 
-static struct soctherm_platform_data plat_data, *plat_data_ptr;
+static struct soctherm_platform_data plat_data, *pp;
 
 /*
  * Remove this flag once this "driver" is structured as a platform driver and
@@ -485,9 +495,6 @@ static u32 tegra_chip_id;
 
 static struct clk *soctherm_clk;
 static struct clk *tsensor_clk;
-
-static int thermal_irq_num;
-static int edp_irq_num;
 
 /**
  * soctherm_writel() - Writes a value to a SOC_THERM register
@@ -608,9 +615,6 @@ static u32 temp_translate_rev(long temp)
 	return reg;
 }
 
-#ifdef CONFIG_THERMAL
-static struct thermal_zone_device *soctherm_th_zones[THERM_SIZE];
-#endif
 struct soctherm_oc_irq_chip_data {
 	int			irq_base;
 	struct mutex		irq_lock; /* serialize OC IRQs */
@@ -687,44 +691,6 @@ static const enum soctherm_throttle_dev_id therm2dev[] = {
 	[THERM_PLL] = THROTTLE_DEV_NONE,
 };
 
-static const struct soctherm_sensor default_t11x_sensor_params = {
-	.tall      = 16300,
-	.tiddq     = 1,
-	.ten_count = 1,
-	.tsample   = 163,
-	.tsamp_ate = 655,
-	.pdiv      = 10,
-	.pdiv_ate  = 10,
-};
-static const struct soctherm_sensor default_t14x_sensor_params = {
-	.tall      = 16300,
-	.tiddq     = 1,
-	.ten_count = 1,
-	.tsample   = 120,
-	.tsamp_ate = 481,
-	.pdiv      = 8,
-	.pdiv_ate  = 8,
-};
-
-/* Used for T124 and T132 */
-static const struct soctherm_sensor default_t12x_sensor_params = {
-	.tall      = 16300,
-	.tiddq     = 1,
-	.ten_count = 1,
-	.tsample   = 120,
-	.tsamp_ate = 480,
-	.pdiv      = 8,
-	.pdiv_ate  = 8,
-};
-
-static const unsigned long default_t11x_soctherm_clk_rate = 51000000;
-static const unsigned long default_t11x_tsensor_clk_rate = 500000;
-static const unsigned long default_t14x_soctherm_clk_rate = 51000000;
-static const unsigned long default_t14x_tsensor_clk_rate = 400000;
-/* TODO : finalize the default clk rate */
-static const unsigned long default_t12x_soctherm_clk_rate = 51000000;
-static const unsigned long default_t12x_tsensor_clk_rate = 400000;
-
 /* SOC- OCx to theirt GPIO which is wakeup capable. This is T114 specific */
 static int soctherm_ocx_to_wake_gpio[TEGRA_SOC_OC_IRQ_MAX] = {
 	TEGRA_GPIO_PEE3,	/* TEGRA_SOC_OC_IRQ_1 */
@@ -779,8 +745,6 @@ static long temp_translate(int readback)
 	return (abs * LOWER_PRECISION_FOR_CONV(1000) +
 		lsb * LOWER_PRECISION_FOR_CONV(500)) * sign;
 }
-
-#ifdef CONFIG_THERMAL
 
 /**
  * soctherm_read_temp() - reads the temperature for a sensor index
@@ -1025,13 +989,13 @@ static int enforce_temp_range(long trip_temp)
  *
  * Return: No return value (void).
  */
-static void prog_hw_shutdown(struct thermal_trip_info *trip_state, int therm)
+static void prog_hw_shutdown(long crit_temp, int therm)
 {
 	u32 r;
-	int temp;
+	long temp;
 
 	/* Add 1'C to HW shutdown threshold so SW can try to shutdown first */
-	temp = trip_state->trip_temp + LOWER_PRECISION_FOR_CONV(1000);
+	temp = crit_temp + LOWER_PRECISION_FOR_CONV(1000);
 
 	temp = enforce_temp_range(temp) / 1000;
 
@@ -1056,21 +1020,20 @@ static void prog_hw_shutdown(struct thermal_trip_info *trip_state, int therm)
 /**
  * prog_hw_threshold() - updates hardware temperature threshold
  *	of a particular trip point
- * @trip_state:	setting of a trip point to use to update hardware threshold
+ * @trip_temp:	trip temperature to use to update hardware threshold
  * @therm:	soctherm_therm_id specifying the sensor group to update
  * @throt:	soctherm_throttle_id indicating throttling level to update
  *
  * Configure sensor group @therm to engage a hardware throttling response at
  * the threshold indicated by @trip_state.
  */
-static void prog_hw_threshold(struct thermal_trip_info *trip_state, int therm,
-			      int throt)
+static void prog_hw_threshold(long trip_temp, int therm, int throt)
 {
 	u32 r, reg_off;
 	int temp;
 	int cpu_throt, gpu_throt;
 
-	temp = enforce_temp_range(trip_state->trip_temp) / 1000;
+	temp = enforce_temp_range(trip_temp) / 1000;
 
 	/* Hardcode LITE on level-1 and HEAVY on level-2 */
 	reg_off = TS_THERM_REG_OFFSET(CTL_LVL0_CPU0, throt + 1, therm);
@@ -1143,6 +1106,7 @@ static void soctherm_set_limits(enum soctherm_therm_id therm,
 		r = 0;
 		break;
 	}
+
 	soctherm_writel(r, TH_INTR_ENABLE);
 }
 
@@ -1164,12 +1128,13 @@ static void soctherm_update_zone(int zn)
 	long trip_temp, passive_low_temp = MAX_HIGH_TEMP, zone_temp;
 	enum thermal_trip_type trip_type;
 	struct thermal_trip_info *trip_state;
-	struct thermal_zone_device *cur_thz = soctherm_th_zones[zn];
+	struct thermal_zone_device *cur_thz = pp->therm[zn].tz;
 	int count, trips;
 
 	thermal_zone_device_update(cur_thz);
 
 	trips = cur_thz->trips;
+
 	for (count = 0; count < trips; count++) {
 		cur_thz->ops->get_trip_type(cur_thz, count, &trip_type);
 		if (trip_type == THERMAL_TRIP_HOT)
@@ -1177,8 +1142,14 @@ static void soctherm_update_zone(int zn)
 
 		cur_thz->ops->get_trip_temp(cur_thz, count, &trip_temp);
 
-		trip_state = &plat_data.therm[zn].trips[count];
+		trip_state = &pp->therm[zn].trips[count];
 		zone_temp = cur_thz->temperature;
+
+		if (zone_temp >= trip_temp)
+			trip_state->tripped = true;
+		else if (trip_state->tripped)
+			if (zone_temp < trip_temp)
+				trip_state->tripped = false;
 
 		if (!trip_state->tripped) { /* not tripped? update high */
 			if (trip_temp < high_temp)
@@ -1217,7 +1188,7 @@ static void soctherm_update(void)
 		return;
 
 	for (i = 0; i < THERM_SIZE; i++) {
-		if (soctherm_th_zones[i] && soctherm_th_zones[i]->trips)
+		if (pp->therm[i].tz && pp->therm[i].tz->trips)
 			soctherm_update_zone(i);
 	}
 }
@@ -1235,11 +1206,6 @@ static void soctherm_update(void)
 static int soctherm_hw_action_get_max_state(struct thermal_cooling_device *cdev,
 					    unsigned long *max_state)
 {
-	struct thermal_trip_info *trip_state = cdev->devdata;
-
-	if (!trip_state)
-		return 0;
-
 	*max_state = 3; /* bit 1: CPU  bit 2: GPU */
 	return 0;
 }
@@ -1365,10 +1331,10 @@ static int soctherm_hw_action_get_cur_state(struct thermal_cooling_device *cdev,
 	struct soctherm_throttle_dev *devs;
 	int i, r;
 
+	*cur_state = 0;
 	if (!trip_state)
 		return 0;
 
-	*cur_state = 0;
 	if (trip_state->trip_type != THERMAL_TRIP_HOT)
 		return 0;
 
@@ -1377,13 +1343,13 @@ static int soctherm_hw_action_get_cur_state(struct thermal_cooling_device *cdev,
 			     THERMAL_NAME_LENGTH))
 			continue;
 
-		devs = &plat_data.throttle[i].devs[THROTTLE_DEV_CPU];
+		devs = &pp->throttle[i].devs[THROTTLE_DEV_CPU];
 		if (devs->enable)
 			soctherm_get_cpu_throt_state(devs->dividend + 1,
 						     devs->divisor + 1,
 						     cur_state);
 
-		devs = &plat_data.throttle[i].devs[THROTTLE_DEV_GPU];
+		devs = &pp->throttle[i].devs[THROTTLE_DEV_GPU];
 		if (devs->enable) {
 			r = soctherm_get_gpu_throt_state(devs->dividend + 1,
 							 devs->divisor + 1,
@@ -1430,6 +1396,8 @@ static struct thermal_cooling_device_ops soctherm_hw_action_ops = {
 	.get_cur_state = soctherm_hw_action_get_cur_state,
 	.set_cur_state = soctherm_hw_action_set_cur_state,
 };
+
+#if SOCTHERM_BACKWARD_COMPATIBILITY_MODE
 
 /**
  * soctherm_bind() - Binds the given thermal zone's trip
@@ -1559,6 +1527,7 @@ static int soctherm_get_trip_type(struct thermal_zone_device *thz,
 	struct soctherm_therm *therm = thz->devdata;
 
 	*type = therm->trips[trip].trip_type;
+
 	return 0;
 }
 
@@ -1597,6 +1566,7 @@ static int soctherm_get_trip_temp(struct thermal_zone_device *thz,
 	}
 
 	*temp = trip_temp;
+
 	return 0;
 }
 
@@ -1634,10 +1604,12 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
 	if (trip_state->trip_type == THERMAL_TRIP_HOT) {
 		if (strnstr(trip_state->cdev_type,
 			    "heavy", THERMAL_NAME_LENGTH))
-			prog_hw_threshold(trip_state, index, THROTTLE_HEAVY);
+			prog_hw_threshold(trip_state->trip_temp, index,
+					  THROTTLE_HEAVY);
 		else if (strnstr(trip_state->cdev_type,
 				 "light", THERMAL_NAME_LENGTH))
-			prog_hw_threshold(trip_state, index, THROTTLE_LIGHT);
+			prog_hw_threshold(trip_state->trip_temp, index,
+					  THROTTLE_LIGHT);
 	}
 
 	/* Allow SW to shutdown at 'Critical temperature reached' */
@@ -1645,7 +1617,7 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
 
 	/* Reprogram HW thermtrip */
 	if (trip_state->trip_type == THERMAL_TRIP_CRITICAL)
-		prog_hw_shutdown(trip_state, index);
+		prog_hw_shutdown(trip_state->trip_temp, index);
 
 	return 0;
 }
@@ -1830,10 +1802,11 @@ static void __init soctherm_hot_cdev_register(int i, int trip)
  *
  * Return: 0
  */
-static int __init soctherm_thermal_sys_init(void)
+static int soctherm_thermal_sys_init(void)
 {
 	char name[THERMAL_NAME_LENGTH];
 	struct soctherm_therm *therm;
+	struct thermal_zone_device *tz;
 	int i, j;
 
 	if (!soctherm_init_platform_done)
@@ -1867,7 +1840,7 @@ static int __init soctherm_thermal_sys_init(void)
 		}
 
 		snprintf(name, THERMAL_NAME_LENGTH, "%s-therm", therm_names[i]);
-		soctherm_th_zones[i] = thermal_zone_device_register(
+		tz = thermal_zone_device_register(
 						name,
 						therm->num_trips,
 						(1ULL << therm->num_trips) - 1,
@@ -1876,20 +1849,17 @@ static int __init soctherm_thermal_sys_init(void)
 						therm->tzp,
 						therm->passive_delay,
 						0);
+		if (IS_ERR(tz))
+			return -EINVAL;
+		else
+			therm->tz = tz;
 	}
 
 	soctherm_update();
 	return 0;
 }
 
-#else
-static void soctherm_update_zone(int zn)
-{
-}
-static void soctherm_update(void)
-{
-}
-#endif
+#endif /* SOCTHERM_BACKWARD_COMPATIBILITY_MODE */
 
 /**
  * soctherm_thermal_thread_func() - Handles a thermal interrupt request
@@ -2149,6 +2119,7 @@ static irqreturn_t soctherm_thermal_isr(int irq, void *arg)
 	u32 r;
 
 	r = soctherm_readl(TH_INTR_STATUS);
+
 	soctherm_writel(r, TH_INTR_DISABLE);
 
 	return IRQ_WAKE_THREAD;
@@ -2196,7 +2167,7 @@ static irqreturn_t soctherm_edp_isr(int irq, void *arg)
 static bool throttlectl_cpu_mn(enum soctherm_throttle_id throt)
 {
 	u32 r;
-	struct soctherm_throttle *data = &plat_data.throttle[throt];
+	struct soctherm_throttle *data = &pp->throttle[throt];
 	struct soctherm_throttle_dev *dev = &data->devs[THROTTLE_DEV_CPU];
 
 	if (!dev->enable)
@@ -2281,7 +2252,7 @@ static void throttlectl_cpu_level_cfg(int level)
 static bool throttlectl_cpu_level_select(enum soctherm_throttle_id throt)
 {
 	u32 r, throt_vect;
-	struct soctherm_throttle *data = &plat_data.throttle[throt];
+	struct soctherm_throttle *data = &pp->throttle[throt];
 	struct soctherm_throttle_dev *dev = &data->devs[THROTTLE_DEV_CPU];
 
 	if (!dev->enable)
@@ -2324,7 +2295,7 @@ static bool throttlectl_cpu_level_select(enum soctherm_throttle_id throt)
 static bool throttlectl_gpu_mn(enum soctherm_throttle_id throt)
 {
 	u32 r;
-	struct soctherm_throttle *data = &plat_data.throttle[throt];
+	struct soctherm_throttle *data = &pp->throttle[throt];
 	struct soctherm_throttle_dev *dev = &data->devs[THROTTLE_DEV_GPU];
 
 	if (!dev->enable)
@@ -2374,7 +2345,7 @@ static void throttlectl_gpu_level_cfg(int level)
 static bool throttlectl_gpu_level_select(enum soctherm_throttle_id throt)
 {
 	u32 r, throt_vect;
-	struct soctherm_throttle *data = &plat_data.throttle[throt];
+	struct soctherm_throttle *data = &pp->throttle[throt];
 	struct soctherm_throttle_dev *dev = &data->devs[THROTTLE_DEV_GPU];
 
 	if (!dev->enable)
@@ -2417,7 +2388,7 @@ static void soctherm_throttle_program(enum soctherm_throttle_id throt)
 {
 	u32 r;
 	bool throt_enable;
-	struct soctherm_throttle *data = &plat_data.throttle[throt];
+	struct soctherm_throttle *data = &pp->throttle[throt];
 
 	throt_enable = (IS_T13X) ?
 		throttlectl_cpu_level_select(throt) : throttlectl_cpu_mn(throt);
@@ -2502,8 +2473,7 @@ static void soctherm_throttle_program(enum soctherm_throttle_id throt)
  * @sensor:	The temperature sensor. This corresponds to one of the
  *		four CPU sensors, one of the two memory
  *		sensors, or the GPU or PLLX sensor.
- * @data:	Information regarding a sensor. This comes from the platform
- *		data
+ * @scp:	Sensor setup information.
  *
  * This function is called during initialization. It sets two CPU thermal sensor
  * configuration registers (TS_CPU0_CONFIG0 and TS_CPU0_CONFIG1)
@@ -2514,17 +2484,17 @@ static void soctherm_throttle_program(enum soctherm_throttle_id throt)
  * Return: Nothing is returned (void).
  */
 static void soctherm_tsense_program(enum soctherm_sense sensor,
-						struct soctherm_sensor *data)
+				    struct soctherm_sensor_common_params *scp)
 {
 	u32 r;
 
-	r = REG_SET(0, TS_CPU0_CONFIG0_TALL, data->tall);
+	r = REG_SET(0, TS_CPU0_CONFIG0_TALL, scp->tall);
 	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG0, sensor));
 
-	r = REG_SET(0, TS_CPU0_CONFIG1_TIDDQ, data->tiddq);
+	r = REG_SET(0, TS_CPU0_CONFIG1_TIDDQ, scp->tiddq);
 	r = REG_SET(r, TS_CPU0_CONFIG1_EN, 1);
-	r = REG_SET(r, TS_CPU0_CONFIG1_TEN_COUNT, data->ten_count);
-	r = REG_SET(r, TS_CPU0_CONFIG1_TSAMPLE, data->tsample - 1);
+	r = REG_SET(r, TS_CPU0_CONFIG1_TEN_COUNT, scp->ten_count);
+	r = REG_SET(r, TS_CPU0_CONFIG1_TSAMPLE, scp->tsample - 1);
 	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG1, sensor));
 }
 
@@ -2539,9 +2509,6 @@ static void soctherm_tsense_program(enum soctherm_sense sensor,
  */
 static int soctherm_clk_init(void)
 {
-	unsigned long default_soctherm_clk_rate;
-	unsigned long default_tsensor_clk_rate;
-
 	soctherm_clk = clk_get_sys("soc_therm", NULL);
 	tsensor_clk = clk_get_sys("tegra-tsensor", NULL);
 
@@ -2553,31 +2520,12 @@ static int soctherm_clk_init(void)
 		return -EINVAL;
 	}
 
-	/* initialize default clock rates */
-	if (IS_T11X) {
-		default_soctherm_clk_rate = default_t11x_soctherm_clk_rate;
-		default_tsensor_clk_rate = default_t11x_tsensor_clk_rate;
-	} else if (IS_T14X) {
-		default_soctherm_clk_rate = default_t14x_soctherm_clk_rate;
-		default_tsensor_clk_rate = default_t14x_tsensor_clk_rate;
-	} else if ((IS_T12X || IS_T13X)) {
-		default_soctherm_clk_rate = default_t12x_soctherm_clk_rate;
-		default_tsensor_clk_rate = default_t12x_tsensor_clk_rate;
-	} else {
-		BUG();
-	}
-
-	plat_data.soctherm_clk_rate =
-		plat_data.soctherm_clk_rate ?: default_soctherm_clk_rate;
-	plat_data.tsensor_clk_rate =
-		plat_data.tsensor_clk_rate ?: default_tsensor_clk_rate;
-
-	if (clk_get_rate(soctherm_clk) != plat_data.soctherm_clk_rate)
-		if (clk_set_rate(soctherm_clk, plat_data.soctherm_clk_rate))
+	if (clk_get_rate(soctherm_clk) != pp->soctherm_clk_rate)
+		if (clk_set_rate(soctherm_clk, pp->soctherm_clk_rate))
 			return -EINVAL;
 
-	if (clk_get_rate(tsensor_clk) != plat_data.tsensor_clk_rate)
-		if (clk_set_rate(tsensor_clk, plat_data.tsensor_clk_rate))
+	if (clk_get_rate(tsensor_clk) != pp->tsensor_clk_rate)
+		if (clk_set_rate(tsensor_clk, pp->tsensor_clk_rate))
 			return -EINVAL;
 
 	return 0;
@@ -2642,87 +2590,6 @@ static int soctherm_fuse_read_calib_base(void)
 	return 0;
 }
 
-static struct soctherm_fuse_correction_war no_fuse_war[] = {
-	[TSENSE_CPU0] = { 1000000, 0 },
-	[TSENSE_CPU1] = { 1000000, 0 },
-	[TSENSE_CPU2] = { 1000000, 0 },
-	[TSENSE_CPU3] = { 1000000, 0 },
-	[TSENSE_MEM0] = { 1000000, 0 },
-	[TSENSE_MEM1] = { 1000000, 0 },
-	[TSENSE_GPU]  = { 1000000, 0 },
-	[TSENSE_PLLX] = { 1000000, 0 },
-};
-
-static struct soctherm_fuse_correction_war t11x_fuse_war[] = {
-	[TSENSE_CPU0] = { 1196400, -13600000 },
-	[TSENSE_CPU1] = { 1196400, -13600000 },
-	[TSENSE_CPU2] = { 1196400, -13600000 },
-	[TSENSE_CPU3] = { 1196400, -13600000 },
-	[TSENSE_MEM0] = { 1000000,  -1000000 },
-	[TSENSE_MEM1] = { 1000000,  -1000000 },
-	[TSENSE_GPU]  = { 1124500,  -9793100 },
-	[TSENSE_PLLX] = { 1224200, -14665000 },
-};
-
-static struct soctherm_fuse_correction_war t14x_fuse_war[] = {
-	[TSENSE_CPU0] = { 1149000, -16753000 },
-	[TSENSE_CPU1] = { 1148800, -16287000 },
-	[TSENSE_CPU2] = { 1139100, -12552000 },
-	[TSENSE_CPU3] = { 1141800, -11061000 },
-	[TSENSE_MEM0] = { 1082300, -11061000 },
-	[TSENSE_MEM1] = { 1061800,  -7596500 },
-	[TSENSE_GPU]  = { 1078900, -10480000 },
-	[TSENSE_PLLX] = { 1125900, -14736000 },
-};
-
-/* old CP/FT */
-static struct soctherm_fuse_correction_war t12x_fuse_war1[] = {
-	[TSENSE_CPU0] = { 1148300, -6572300 },
-	[TSENSE_CPU1] = { 1126100, -5794600 },
-	[TSENSE_CPU2] = { 1155800, -7462800 },
-	[TSENSE_CPU3] = { 1134900, -6810800 },
-	[TSENSE_MEM0] = { 1062700, -4463200 },
-	[TSENSE_MEM1] = { 1084700, -5603400 },
-	[TSENSE_GPU]  = { 1084300, -5111900 },
-	[TSENSE_PLLX] = { 1134500, -7410700 },
-};
-
-/* new CP1/CP2 */
-static struct soctherm_fuse_correction_war t12x_fuse_war2[] = {
-	[TSENSE_CPU0] = { 1135400, -6266900 },
-	[TSENSE_CPU1] = { 1122220, -5700700 },
-	[TSENSE_CPU2] = { 1127000, -6768200 },
-	[TSENSE_CPU3] = { 1110900, -6232000 },
-	[TSENSE_MEM0] = { 1122300, -5936400 },
-	[TSENSE_MEM1] = { 1145700, -7124600 },
-	[TSENSE_GPU]  = { 1120100, -6000500 },
-	[TSENSE_PLLX] = { 1106500, -6729300 },
-};
-
-/* old ATE pattern */
-static struct soctherm_fuse_correction_war t13x_fuse_war1[] = {
-	[TSENSE_CPU0] = { 1119800,  -6330400 },
-	[TSENSE_CPU1] = { 1094100,  -3751800 },
-	[TSENSE_CPU2] = { 1108800,  -3835200 },
-	[TSENSE_CPU3] = { 1103200,  -5132100 },
-	[TSENSE_MEM0] = { 1168400, -11266000 },
-	[TSENSE_MEM1] = { 1185600, -10861000 },
-	[TSENSE_GPU]  = { 1158500, -10714000 },
-	[TSENSE_PLLX] = { 1150000, -11899000 },
-};
-
-/* new ATE pattern */
-static struct soctherm_fuse_correction_war t13x_fuse_war2[] = {
-	[TSENSE_CPU0] = { 1126600, -9433500 },
-	[TSENSE_CPU1] = { 1110800, -7383000 },
-	[TSENSE_CPU2] = { 1113800, -6215200 },
-	[TSENSE_CPU3] = { 1129600, -8196100 },
-	[TSENSE_MEM0] = { 1132900, -6755300 },
-	[TSENSE_MEM1] = { 1142300, -7374200 },
-	[TSENSE_GPU]  = { 1125100, -6350400 },
-	[TSENSE_PLLX] = { 1118100, -8208800 },
-};
-
 /**
  * soctherm_fuse_read_tsensor() - calculates therm_a and therm_b for a sensor
  * @sensor:	The sensor for which to calculate.
@@ -2742,12 +2609,8 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 	s32 calib, delta_sens, delta_temp;
 	s16 therm_a, therm_b;
 	s32 div, mult, actual_tsensor_ft, actual_tsensor_cp;
-	int fuse_rev;
-	struct soctherm_fuse_correction_war *war;
-
-	fuse_rev = tegra_fuse_calib_base_get_cp(NULL, NULL);
-	if (fuse_rev < 0)
-		return fuse_rev;
+	struct soctherm_sensor_params *sp = &pp->sensor_params;
+	struct soctherm_sensor_common_params *scp = &sp->scp;
 
 	tegra_fuse_get_tsensor_calib(sensor2tsensorcalib[sensor], &value);
 
@@ -2760,10 +2623,8 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 	calib = MAKE_SIGNED32(calib, FUSE_TSENSOR_CALIB_BITS);
 	actual_tsensor_cp = (fuse_calib_base_cp * 64) + calib;
 
-	mult = plat_data.sensor_data[sensor].pdiv *
-		plat_data.sensor_data[sensor].tsamp_ate;
-	div = plat_data.sensor_data[sensor].tsample *
-		plat_data.sensor_data[sensor].pdiv_ate;
+	mult = scp->pdiv * scp->tsamp_ate;
+	div = scp->tsample * scp->pdiv_ate;
 
 	/* first calculate therm_a and therm_b in Hi precision */
 	delta_sens = actual_tsensor_ft - actual_tsensor_cp;
@@ -2777,24 +2638,10 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 				    (s64)delta_sens);
 
 	/* FUSE correction WARs */
-	if (IS_T11X)
-		war = PRECISION_IS_LOWER() ?
-			&t11x_fuse_war[sensor] : &no_fuse_war[sensor];
-	else if (IS_T14X)
-		war = PRECISION_IS_LOWER() ?
-			&t14x_fuse_war[sensor] : &no_fuse_war[sensor];
-	else if (IS_T12X)
-		war = fuse_rev ?
-			&t12x_fuse_war1[sensor] : &t12x_fuse_war2[sensor];
-	else if (IS_T13X)
-		war = fuse_rev == 2 ?
-			&t13x_fuse_war1[sensor] : &t13x_fuse_war2[sensor];
-	else
-		war = &no_fuse_war[sensor];
-
-	therm_a = div64_s64_precise((s64)therm_a * war->a,
+	therm_a = div64_s64_precise((s64)therm_a * sp->fuse_war[sensor].a,
 				    (s64)1000000LL);
-	therm_b = div64_s64_precise((s64)therm_b * war->a + war->b,
+	therm_b = div64_s64_precise(((s64)therm_b * sp->fuse_war[sensor].a) +
+				    sp->fuse_war[sensor].b,
 				    (s64)1000000LL);
 	therm_a = LOWER_PRECISION_FOR_TEMP(therm_a);
 	therm_b = LOWER_PRECISION_FOR_TEMP(therm_b);
@@ -2880,8 +2727,8 @@ static void soctherm_adjust_zone(int tz)
 			diff = 0;
 
 		/* cap hotspot offset to max offset from pdata */
-		if (diff > plat_data.therm[tz].hotspot_offset)
-			diff = plat_data.therm[tz].hotspot_offset;
+		if (diff > pp->therm[tz].hotspot_offset)
+			diff = pp->therm[tz].hotspot_offset;
 
 		/* Program hotspot offsets per <tz> ~ PLL diff */
 		r = soctherm_readl(TS_HOTSPOT_OFF);
@@ -2916,7 +2763,7 @@ static void soctherm_adjust_zone(int tz)
 		}
 
 		/* default to configured offset for <tz> */
-		diff = plat_data.therm[tz].hotspot_offset;
+		diff = pp->therm[tz].hotspot_offset;
 
 		/* Program hotspot offsets per config */
 		r = soctherm_readl(TS_HOTSPOT_OFF);
@@ -2932,6 +2779,7 @@ static void soctherm_adjust_zone(int tz)
 
 /**
  * soctherm_init_platform_data() - Initializes the platform data.
+ * @plat:	pointer to platform data structure
  *
  * Cleans up some platform data in preparation for configuring the
  * hardware and configures the hardware as specified by the cleaned up
@@ -2972,65 +2820,35 @@ static void soctherm_adjust_zone(int tz)
  *
  * Return: 0 on success. -EINVAL is returned otherwise
  */
-static int soctherm_init_platform_data(void)
+static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 {
 	struct soctherm_therm *therm;
-	struct soctherm_sensor *s;
-	struct soctherm_sensor sensor_defaults;
 	int i, j, k;
 	long rem;
 	long gsh = MAX_HIGH_TEMP;
 	u32 r;
+	struct soctherm_sensor_common_params *scp = &pp->sensor_params.scp;
 
-	if (IS_T11X)
-		sensor_defaults = default_t11x_sensor_params;
-	else if (IS_T14X)
-		sensor_defaults = default_t14x_sensor_params;
-	else if (IS_T12X || IS_T13X)
-		sensor_defaults = default_t12x_sensor_params;
-	else
-		BUG();
-
-	/* initialize default values for unspecified params */
-	for (i = 0; i < TSENSE_SIZE; i++) {
-		therm = &plat_data.therm[tsensor2therm_map[i]];
-		s = &plat_data.sensor_data[i];
-		s->sensor_enable = s->sensor_enable ?: therm->zone_enable;
-		s->tall      = s->tall      ?: sensor_defaults.tall;
-		s->tiddq     = s->tiddq     ?: sensor_defaults.tiddq;
-		s->ten_count = s->ten_count ?: sensor_defaults.ten_count;
-		s->tsample   = s->tsample   ?: sensor_defaults.tsample;
-		s->tsamp_ate = s->tsamp_ate ?: sensor_defaults.tsamp_ate;
-		s->pdiv      = s->pdiv      ?: sensor_defaults.pdiv;
-		s->pdiv_ate  = s->pdiv_ate  ?: sensor_defaults.pdiv_ate;
-	}
-
-	/* Pdiv */
+	/* program pdiv register */
 	r = soctherm_readl(TS_PDIV);
-	r = REG_SET(r, TS_PDIV_CPU, plat_data.sensor_data[TSENSE_CPU0].pdiv);
-	r = REG_SET(r, TS_PDIV_GPU, plat_data.sensor_data[TSENSE_GPU].pdiv);
-	r = REG_SET(r, TS_PDIV_MEM, plat_data.sensor_data[TSENSE_MEM0].pdiv);
-	r = REG_SET(r, TS_PDIV_PLLX, plat_data.sensor_data[TSENSE_PLLX].pdiv);
+	r = REG_SET(r, TS_PDIV_CPU, scp->pdiv);
+	r = REG_SET(r, TS_PDIV_GPU, scp->pdiv);
+	r = REG_SET(r, TS_PDIV_MEM, scp->pdiv);
+	r = REG_SET(r, TS_PDIV_PLLX, scp->pdiv);
 	soctherm_writel(r, TS_PDIV);
 
 	/* Thermal Sensing programming */
 	if (soctherm_fuse_read_calib_base() < 0)
 		return -EINVAL;
 	for (i = 0; i < TSENSE_SIZE; i++) {
-		if (plat_data.sensor_data[i].sensor_enable) {
-			soctherm_tsense_program(i, &plat_data.sensor_data[i]);
-			if (soctherm_fuse_read_tsensor(i) < 0)
-				return -EINVAL;
-		}
+		soctherm_tsense_program(i, scp);
+		if (soctherm_fuse_read_tsensor(i) < 0)
+			return -EINVAL;
 	}
-
-	soctherm_adjust_zone(THERM_CPU);
-	soctherm_adjust_zone(THERM_GPU);
-	soctherm_adjust_zone(THERM_MEM);
 
 	/* Sanitize therm trips */
 	for (i = 0; i < THERM_SIZE; i++) {
-		therm = &plat_data.therm[i];
+		therm = &plat->therm[i];
 		if (!therm->zone_enable)
 			continue;
 
@@ -3048,11 +2866,11 @@ static int soctherm_init_platform_data(void)
 
 	/* Program hotspot offsets per THERM */
 	r = REG_SET(0, TS_HOTSPOT_OFF_CPU,
-		    plat_data.therm[THERM_CPU].hotspot_offset / 1000);
+		    plat->therm[THERM_CPU].hotspot_offset / 1000);
 	r = REG_SET(r, TS_HOTSPOT_OFF_GPU,
-		    plat_data.therm[THERM_GPU].hotspot_offset / 1000);
+		    plat->therm[THERM_GPU].hotspot_offset / 1000);
 	r = REG_SET(r, TS_HOTSPOT_OFF_MEM,
-		    plat_data.therm[THERM_MEM].hotspot_offset / 1000);
+		    plat->therm[THERM_MEM].hotspot_offset / 1000);
 	soctherm_writel(r, TS_HOTSPOT_OFF);
 
 	/* configure low, med and heavy levels for CCROC NV_THERM */
@@ -3072,8 +2890,8 @@ static int soctherm_init_platform_data(void)
 	/* Thermal HW throttle programming */
 	for (i = 0; i < THROTTLE_SIZE; i++) {
 		/* Sanitize HW throttle priority for OC1 - OC4 (not OC5) */
-		if ((i != THROTTLE_OC5) && (!plat_data.throttle[i].priority))
-			plat_data.throttle[i].priority = 0xE + i;
+		if ((i != THROTTLE_OC5) && (!plat->throttle[i].priority))
+			plat->throttle[i].priority = 0xE + i;
 
 		/* Setup PSKIP parameters */
 		soctherm_throttle_program(i);
@@ -3081,10 +2899,10 @@ static int soctherm_init_platform_data(void)
 		/* Setup throttle thresholds per THERM */
 		for (j = 0; j < THERM_SIZE; j++) {
 			if ((therm2dev[j] == THROTTLE_DEV_NONE) ||
-			    (!plat_data.throttle[i].devs[therm2dev[j]].enable))
+			    (!plat->throttle[i].devs[therm2dev[j]].enable))
 				continue;
 
-			therm = &plat_data.therm[j];
+			therm = &plat->therm[j];
 			for (k = 0; k < therm->num_trips; k++)
 				if ((therm->trips[k].trip_type ==
 				     THERMAL_TRIP_HOT) &&
@@ -3093,7 +2911,8 @@ static int soctherm_init_platform_data(void)
 					    "light", THERMAL_NAME_LENGTH))
 					break;
 			if (k < therm->num_trips && i <= THROTTLE_HEAVY)
-				prog_hw_threshold(&therm->trips[k], j, i);
+				prog_hw_threshold(
+					therm->trips[k].trip_temp, j, i);
 		}
 	}
 
@@ -3103,8 +2922,8 @@ static int soctherm_init_platform_data(void)
 	else
 		soctherm_writel(r, THROT_GLOBAL_CFG);
 
-	if (plat_data.throttle[THROTTLE_HEAVY].priority <
-	    plat_data.throttle[THROTTLE_LIGHT].priority)
+	if (plat->throttle[THROTTLE_HEAVY].priority <
+	    plat->throttle[THROTTLE_LIGHT].priority)
 		pr_err("soctherm: ERROR: Priority of HEAVY less than LIGHT\n");
 
 	/* initialize stats collection */
@@ -3114,7 +2933,7 @@ static int soctherm_init_platform_data(void)
 	soctherm_writel(OC_STATS_CTL_EN_ALL, OC_STATS_CTL);
 
 	/* Enable PMC to shutdown */
-	soctherm_therm_trip_init(plat_data.tshut_pmu_trip_data);
+	soctherm_therm_trip_init(plat->tshut_pmu_trip_data);
 
 	r = clk_reset_readl(CAR_SUPER_CLK_DIVIDER_REGISTER());
 	r = REG_SET(r, CDIVG_USE_THERM_CONTROLS, 1);
@@ -3122,7 +2941,7 @@ static int soctherm_init_platform_data(void)
 
 	/* Thermtrip */
 	for (i = 0; i < THERM_SIZE; i++) {
-		therm = &plat_data.therm[i];
+		therm = &plat->therm[i];
 		if (!therm->zone_enable)
 			continue;
 
@@ -3137,10 +2956,13 @@ static int soctherm_init_platform_data(void)
 				pr_warn("soctherm: Force TRIP temp: MEM = GPU");
 				therm->trips[j].trip_temp = gsh;
 			}
-			prog_hw_shutdown(&therm->trips[j], i);
+			prog_hw_shutdown(therm->trips[j].trip_temp, i);
 		}
 	}
 
+	soctherm_adjust_zone(THERM_CPU);
+	soctherm_adjust_zone(THERM_GPU);
+	soctherm_adjust_zone(THERM_MEM);
 	return 0;
 }
 
@@ -3193,7 +3015,7 @@ static void soctherm_resume_locked(void)
 	if (soctherm_suspended) {
 		/* soctherm_clk_enable(true);*/
 		soctherm_suspended = false;
-		soctherm_init_platform_data();
+		soctherm_init_platform_data(pp);
 		soctherm_init_platform_done = true;
 		soctherm_update();
 		enable_irq(INT_THERMAL);
@@ -4296,12 +4118,411 @@ late_initcall(soctherm_debug_init);
 
 #endif
 
-static const struct of_device_id tegra_soctherm_match[] = {
+static const struct of_device_id tegra_soctherm_of_match[] = {
 	{
 		.compatible = "nvidia,tegra-soctherm",
 	},
 	{},
 };
+
+static int soctherm_of_get_temp(void *of_data, long *temp)
+{
+	struct soctherm_therm *therm = of_data;
+	ptrdiff_t index = therm - pp->therm;
+	long rtemp = 0;
+	int rv;
+
+	rv = soctherm_read_temp(index, &rtemp);
+	if (rv == 0)
+		*temp = rtemp;
+
+	return rv;
+}
+
+static int soctherm_of_get_trend(void *of_data, long *trend)
+{
+	struct soctherm_therm *therm = of_data;
+
+	if (therm->tz->temperature > therm->tz->last_temperature + 500)
+		*trend = THERMAL_TREND_RAISING;
+	else if (therm->tz->temperature < therm->tz->last_temperature - 500)
+		*trend = THERMAL_TREND_DROPPING;
+	else
+		*trend = THERMAL_TREND_STABLE;
+
+	return 0;
+}
+
+/*
+ * soctherm_of_expose_therm() - Registers the "therm" sensor specified by DT
+ * @dev:	soctherm device driver data from probe function
+ * @therm:	platform local sensor group pointer
+ * @id:		SOC_THERM specific index of the 'therm' in soctherm
+ *
+ * This routine passes the SOC THERM device, the specified sensor's id,
+ * a pointer to the therm[] entry in the platform data, and the call back
+ * functions needed for registration.
+ *
+ * Return: 0 if successful, -1 if there is a failure in building the
+ * thermal_data struct, -ENOMEM otherwise.
+ */
+static int soctherm_of_expose_therm(struct device *dev,
+				    struct soctherm_therm *therm)
+{
+	int i, r;
+	long temp;
+	ptrdiff_t id = therm - pp->therm;
+	enum thermal_trip_type trip_type;
+	struct thermal_zone_device *tz;
+
+	if (id < 0 || id >= THERM_SIZE)
+		return -EINVAL;
+
+	tz = thermal_zone_of_sensor_register(
+					dev, id, therm,
+					soctherm_of_get_temp,
+					soctherm_of_get_trend);
+	if (IS_ERR(tz))
+		return -EINVAL;
+	else
+		therm->tz = tz;
+
+	if (therm->tz->ops && therm->tz->ops->get_crit_temp) {
+		r = therm->tz->ops->get_crit_temp(therm->tz, &temp);
+		if (r == 0)
+			prog_hw_shutdown(temp, id);
+	}
+
+	for (i = 0; i < therm->tz->trips; i++) {
+		if (!therm->tz->ops->get_trip_type)
+			continue;
+		r = therm->tz->ops->get_trip_type(therm->tz, i, &trip_type);
+		if (r || (trip_type != THERMAL_TRIP_HOT))
+			continue;
+
+		if (!therm->tz->ops->get_trip_temp)
+			continue;
+		r = therm->tz->ops->get_trip_temp(therm->tz, i, &temp);
+		if (r)
+			continue;
+		prog_hw_threshold(temp, id, THROTTLE_HEAVY);
+	}
+
+	soctherm_update_zone(id);
+	return 0;
+}
+
+static int soctherm_mem_resources_probe(struct platform_device *pdev)
+{
+	struct resource *mem;
+
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!mem) {
+		dev_err(&pdev->dev, "get SOC_THERM reg-base failed\n");
+		return -EINVAL;
+	}
+	reg_soctherm_base = IO_ADDRESS(mem->start);
+
+	if (IS_T13X) {
+		mem = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+		if (mem) {
+			clk13_rst_base = IO_ADDRESS(mem->start);
+			return 0;
+		}
+	} else {
+		mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+		if (mem) {
+			clk_reset_base = IO_ADDRESS(mem->start);
+			return 0;
+		}
+	}
+
+	dev_err(&pdev->dev, "get CAR/CCROC reg-base failed\n");
+	return -EINVAL;
+}
+
+static void soctherm_clock_frequencies_parse(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+
+	/* initialize to sane default values - in case DT parsing fails */
+	pp->soctherm_clk_rate = 51000000;
+	pp->tsensor_clk_rate = 400000;
+
+	if (of_property_read_u32(np, "soctherm-clock-frequency",
+				 &pp->soctherm_clk_rate))
+		dev_err(&pdev->dev, "no property: 'soctherm-clock-frequency'\n");
+
+	if (of_property_read_u32(np, "tsensor-clock-frequency",
+				 &pp->tsensor_clk_rate))
+		dev_err(&pdev->dev, "no property: 'tsensor-clock-frequency'\n");
+}
+
+static void soctherm_sensor_params_parse(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	/* initialize to sane default values - in case DT parsing fails */
+	struct soctherm_sensor_common_params scp = {
+		.tall       = 16300,
+		.tiddq      = 1,
+		.ten_count  = 1,
+		.tsample    = 120,
+		.pdiv       = 8,
+		.tsamp_ate  = 480,
+		.pdiv_ate   = 8,
+	};
+
+	if (of_property_read_u32(np, "sensor-params-tall", &scp.tall))
+		dev_err(&pdev->dev, "no property: 'sensor-params-tall'\n");
+
+	if (of_property_read_u32(np, "sensor-params-tiddq", &scp.tiddq))
+		dev_err(&pdev->dev, "no property: 'sensor-params-tiddq'\n");
+
+	if (of_property_read_u32(np, "sensor-params-ten-count", &scp.ten_count))
+		dev_err(&pdev->dev, "no property: 'sensor-params-ten-count'\n");
+
+	if (of_property_read_u32(np, "sensor-params-tsample", &scp.tsample))
+		dev_err(&pdev->dev, "no property: 'sensor-params-tsample'\n");
+
+	if (of_property_read_u32(np, "sensor-params-pdiv", &scp.pdiv))
+		dev_err(&pdev->dev, "no property: 'sensor-params-pdiv'\n");
+
+	if (of_property_read_u32(np, "sensor-params-tsamp-ate", &scp.tsamp_ate))
+		dev_err(&pdev->dev, "no property: 'sensor-params-tsamp-ate'\n");
+
+	if (of_property_read_u32(np, "sensor-params-pdiv-ate", &scp.pdiv_ate))
+		dev_err(&pdev->dev, "no property: 'sensor-params-pdiv-ate'\n");
+
+	pp->sensor_params.scp = scp;
+}
+
+static int soctherm_fuse_wars_parse(struct platform_device *pdev)
+{
+	int ret, fuse_rev, val, vals[2];
+	bool found_war = false;
+	struct device_node *np = pdev->dev.of_node;
+	struct soctherm_sensor_params *sp = &pp->sensor_params;
+
+	fuse_rev = tegra_fuse_calib_base_get_cp(NULL, NULL);
+	if (fuse_rev < 0) {
+		dev_err(&pdev->dev, "improper fuse_rev.\n");
+		return -EINVAL;
+	}
+
+	while ((np = of_find_node_by_type(np, "fuse_war"))) {
+		ret = of_property_read_u32_array(np, "match_fuse_rev", vals, 2);
+		if (ret != 0 && ret != -EOVERFLOW) {
+			dev_err(&pdev->dev, "missing 'match_fuse_rev'\n");
+			return -EINVAL;
+		} else if (ret == 0) {
+			if (vals[0] != fuse_rev && vals[1] != fuse_rev)
+				continue; /* try next 'fuse_war' */
+		} else if (ret == -EOVERFLOW) {
+			ret = of_property_read_u32(np, "match_fuse_rev", &val);
+			if (ret) {
+				dev_err(&pdev->dev, "missing 'match_fuse_rev'\n");
+				return -EINVAL;
+			}
+		}
+
+		if (of_property_read_u32_array(np, "cpu0", vals, 2)) {
+			dev_err(&pdev->dev, "missing 'tsense_fuse_war:cpu0'\n");
+			return -EINVAL;
+		}
+		sp->fuse_war[TSENSE_CPU0].a = vals[0];
+		sp->fuse_war[TSENSE_CPU0].b = -vals[1];
+
+		if (of_property_read_u32_array(np, "cpu1", vals, 2)) {
+			dev_err(&pdev->dev, "missing 'tsense_fuse_war:cpu1'\n");
+			return -EINVAL;
+		}
+		sp->fuse_war[TSENSE_CPU1].a = vals[0];
+		sp->fuse_war[TSENSE_CPU1].b = -vals[1];
+
+		if (of_property_read_u32_array(np, "cpu2", vals, 2)) {
+			dev_err(&pdev->dev, "missing 'tsense_fuse_war:cpu2'\n");
+			return -EINVAL;
+		}
+		sp->fuse_war[TSENSE_CPU2].a = vals[0];
+		sp->fuse_war[TSENSE_CPU2].b = -vals[1];
+
+		if (of_property_read_u32_array(np, "cpu3", vals, 2)) {
+			dev_err(&pdev->dev, "missing 'tsense_fuse_war:cpu3'\n");
+			return -EINVAL;
+		}
+		sp->fuse_war[TSENSE_CPU3].a = vals[0];
+		sp->fuse_war[TSENSE_CPU3].b = -vals[1];
+
+		if (of_property_read_u32_array(np, "mem0", vals, 2)) {
+			dev_err(&pdev->dev, "missing 'tsense_fuse_war:mem'\n");
+			return -EINVAL;
+		}
+		sp->fuse_war[TSENSE_MEM0].a = vals[0];
+		sp->fuse_war[TSENSE_MEM0].b = -vals[1];
+
+		if (of_property_read_u32_array(np, "mem1", vals, 2)) {
+			dev_err(&pdev->dev, "missing 'tsense_fuse_war:mem1'\n");
+			return -EINVAL;
+		}
+		sp->fuse_war[TSENSE_MEM1].a = vals[0];
+		sp->fuse_war[TSENSE_MEM1].b = -vals[1];
+
+		if (of_property_read_u32_array(np, "gpu", vals, 2)) {
+			dev_err(&pdev->dev, "missing 'tsense_fuse_war:gpu'\n");
+			return -EINVAL;
+		}
+		sp->fuse_war[TSENSE_GPU].a = vals[0];
+		sp->fuse_war[TSENSE_GPU].b = -vals[1];
+
+		if (of_property_read_u32_array(np, "pllx", vals, 2)) {
+			dev_err(&pdev->dev, "missing 'tsense_fuse_war:pllx'\n");
+			return -EINVAL;
+		}
+		sp->fuse_war[TSENSE_PLLX].a = vals[0];
+		sp->fuse_war[TSENSE_PLLX].b = -vals[1];
+
+		found_war = true; /* found matching war for fuse_rev */
+		break;
+	}
+
+	if (!found_war) {
+		dev_info(&pdev->dev, "missing 'fuse_war' - using no war.\n");
+		/* no fuse war: use [1000000, 0]*/
+		sp->fuse_war[TSENSE_CPU0].a = 1000000;
+		sp->fuse_war[TSENSE_CPU1].a = 1000000;
+		sp->fuse_war[TSENSE_CPU2].a = 1000000;
+		sp->fuse_war[TSENSE_CPU3].a = 1000000;
+		sp->fuse_war[TSENSE_MEM0].a = 1000000;
+		sp->fuse_war[TSENSE_MEM0].a = 1000000;
+		sp->fuse_war[TSENSE_GPU].a  = 1000000;
+		sp->fuse_war[TSENSE_PLLX].a = 1000000;
+	}
+
+	return 0;
+}
+
+static void soctherm_thermctl_parse(struct platform_device *pdev)
+{
+	int id, val;
+	struct device_node *np = pdev->dev.of_node;
+
+	/* register each valid child of type 'thermctl' as thermal-sensor */
+	while ((np = of_find_node_by_type(np, "thermctl"))) {
+		if (!of_device_is_available(np))
+			continue;
+		if (of_property_read_u32(np, "thermal-sensor-id", &id))
+			continue;
+		if (!soctherm_of_expose_therm(&pdev->dev, &pp->therm[id]))
+			continue;
+		if (!of_property_read_u32(np, "hotspot-offset", &val))
+			pp->therm[id].hotspot_offset = val;
+	}
+}
+
+static void soctherm_throttlectl_parse(struct platform_device *pdev)
+{
+	int ocn, len;
+	struct device_node *np = pdev->dev.of_node;
+	struct thermal_cooling_device *cdev, **cdevp = NULL;
+	const char _type[THERMAL_NAME_LENGTH], *type = _type;
+
+	/* register each valid child of type 'throttlectl' as cooling-device */
+	while ((np = of_find_node_by_type(np, "throttlectl"))) {
+		type = NULL;
+		cdevp = NULL;
+		if (!of_device_is_available(np))
+			continue;
+
+		if (strnstr(np->name, "throttle_oc", THERMAL_NAME_LENGTH)) {
+			len = strnlen("throttle_oc", THERMAL_NAME_LENGTH);
+			if (len < 0 || len >= THERMAL_NAME_LENGTH)
+				continue;
+			ocn = np->name[len] - '0';
+			dev_err(&pdev->dev, "node %s: enable OC%d (TODO).\n",
+				np->name, ocn);
+			continue;
+		}
+
+		if (of_property_read_string(np, "cdev-type", &type)) {
+			dev_err(&pdev->dev, "missing 'cdev-type' from %s.\n",
+				np->name);
+			continue;
+		}
+
+		if (!type)
+			continue;
+		else if (strnstr(type, "shutdown", THERMAL_NAME_LENGTH))
+			cdevp = &soctherm_hw_critical_cdev;
+		else if (strnstr(type, "heavy", THERMAL_NAME_LENGTH))
+			cdevp = &soctherm_hw_heavy_cdev;
+		else if (strnstr(type, "light", THERMAL_NAME_LENGTH))
+			cdevp = &soctherm_hw_light_cdev;
+
+		if (!cdevp) {
+			dev_err(&pdev->dev, "unrecognized cdev %s'.\n", type);
+			continue;
+		}
+
+		cdev = thermal_cooling_device_register((char *)type, NULL,
+						       &soctherm_hw_action_ops);
+		if (IS_ERR_OR_NULL(cdev)) {
+			dev_err(&pdev->dev, "cdev-register %s failed.\n", type);
+			continue;
+		}
+		dev_info(&pdev->dev, "Registered cooling_device %s.\n", type);
+		*cdevp = cdev;
+	}
+}
+
+static int soctherm_interrupts_init(struct platform_device *pdev)
+{
+	int ret;
+	struct device_node *np = pdev->dev.of_node;
+
+	ret = soctherm_oc_int_init(pp->oc_irq_base, pp->num_oc_irqs, np);
+	if (ret < 0) {
+		dev_err(&pdev->dev,
+			"soctherm_oc_int_init failed: base %d  num %d\n",
+			pp->oc_irq_base, pp->num_oc_irqs);
+		return ret;
+	}
+
+	pp->thermal_irq_num = platform_get_irq(pdev, 0);
+	if (pp->thermal_irq_num < 0) {
+		dev_err(&pdev->dev, "get 'thermal_irq' failed.\n");
+		return -EINVAL;
+	}
+
+	pp->edp_irq_num = platform_get_irq(pdev, 1);
+	if (pp->edp_irq_num < 0) {
+		dev_err(&pdev->dev, "get 'edp_irq' failed.\n");
+		return -EINVAL;
+	}
+
+	ret = request_threaded_irq(pp->thermal_irq_num,
+				   soctherm_thermal_isr,
+				   soctherm_thermal_thread_func,
+				   IRQF_ONESHOT,
+				   "soctherm_thermal",
+				   NULL);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "request_irq 'thermal_irq' failed.\n");
+		return -EINVAL;
+	}
+
+	ret = request_threaded_irq(pp->edp_irq_num,
+				   soctherm_edp_isr,
+				   soctherm_edp_thread_func,
+				   IRQF_ONESHOT,
+				   "soctherm_edp",
+				   NULL);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "request_irq 'edp_irq' failed.\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
 
 /**
  * tegra_soctherm_probe() - binds a SOC_THERM hardware to a driver
@@ -4312,122 +4533,78 @@ static const struct of_device_id tegra_soctherm_match[] = {
  * handling for OC events.
  *
  * Return: %-EINVAL if initialization failed, otherwise 0.
+ *         Returns 0 if platform data is already initialized with old init().
  */
 static int tegra_soctherm_probe(struct platform_device *pdev)
 {
-	int ret = -EINVAL, i;
+	bool register_as_sensor = true;
+	int ret;
 	struct device_node *np = pdev->dev.of_node;
-	struct resource *mem;
-
-	if (!np)
-		goto soctherm_init_err;
 
 	tegra_chip_id = tegra_get_chip_id();
-	if (!(IS_T11X || IS_T14X || IS_T12X || IS_T13X)) {
-		pr_err("%s: Unknown chip_id %d", __func__, tegra_chip_id);
+	if (!(IS_T12X || IS_T13X)) {
+		dev_err(&pdev->dev, "Unsupported chip_id %d\n", tegra_chip_id);
 		return -EINVAL;
 	}
 
-	if (!plat_data_ptr)
-		goto soctherm_init_err;
-
-	ret = soctherm_clk_init();
-	if (ret < 0)
-		goto soctherm_init_err;
-
-	ret = soctherm_clk_enable(true);
-	if (ret < 0)
-		goto soctherm_clk_enable_err;
-
-	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!mem) {
-		dev_err(&pdev->dev, "platform_get_resource(0) failed\n");
-		goto soctherm_init_err;
-	}
-	reg_soctherm_base = IO_ADDRESS(mem->start);
-
-	mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (!mem) {
-		dev_err(&pdev->dev, "platform_get_resource(1) failed\n");
-		goto soctherm_init_err;
-	}
-	if (IS_T13X)
-		clk13_rst_base = IO_ADDRESS(mem->start);
+	/* Switch to old-mode if pp is initialized by tegra_soctherm_init() */
+	if (pp)
+		register_as_sensor = false;
 	else
-		clk_reset_base = IO_ADDRESS(mem->start);
+		pp = &plat_data;
 
-	ret = soctherm_init_platform_data();
-	if (ret < 0)
-		goto soctherm_init_platform_data_err;
+	if (!np)
+		return -EINVAL;
+
+	pdev->dev.platform_data = pp;
+
+	pp->oc_irq_base = TEGRA_SOC_OC_IRQ_BASE;
+	pp->num_oc_irqs = TEGRA_SOC_OC_NUM_IRQ;
+
+	if (soctherm_mem_resources_probe(pdev))
+		return -EINVAL;
+
+	soctherm_sensor_params_parse(pdev);
+	soctherm_clock_frequencies_parse(pdev);
+
+	if (soctherm_clk_init())
+		return -EINVAL;
+	if (soctherm_clk_enable(true))
+		return -EINVAL;
+
+	if (soctherm_fuse_wars_parse(pdev))
+		return -EINVAL;
+
+	if (register_as_sensor) {
+		soctherm_thermctl_parse(pdev);
+		soctherm_throttlectl_parse(pdev);
+	}
+
+	if (soctherm_init_platform_data(pp))
+		return -EINVAL;
+
+	ret = soctherm_interrupts_init(pdev);
+	if (ret)
+		return ret;
+
 	soctherm_init_platform_done = true;
 
-	thermal_irq_num = platform_get_irq(pdev, 0);
-	edp_irq_num = platform_get_irq(pdev, 1);
-
-	ret = soctherm_oc_int_init(plat_data.oc_irq_base,
-				   plat_data.num_oc_irqs, np);
-	if (ret < 0) {
-		dev_err(&pdev->dev,
-			"soctherm_oc_int_init failed: base %d  num %d\n",
-			plat_data.oc_irq_base, plat_data.num_oc_irqs);
-		goto soctherm_oc_int_init_err;
-	}
-
-	ret = request_threaded_irq(thermal_irq_num, soctherm_thermal_isr,
-				 soctherm_thermal_thread_func, IRQF_ONESHOT,
-				 "soctherm_thermal", NULL);
-	if (ret < 0)
-		goto soctherm_thermal_irq_request_err;
-
-	ret = request_threaded_irq(edp_irq_num, soctherm_edp_isr,
-				 soctherm_edp_thread_func, IRQF_ONESHOT,
-				 "soctherm_edp", NULL);
-	if (ret < 0)
-		goto soctherm_edp_irq_request_err;
-
-	soctherm_thermal_sys_init();
+	if (!register_as_sensor)
+		soctherm_thermal_sys_init();
 
 	register_pm_notifier(&soctherm_suspend_nb);
 	register_pm_notifier(&soctherm_resume_nb);
 
 	return 0;
-
-soctherm_edp_irq_request_err:
-	free_irq(thermal_irq_num, NULL);
-
-soctherm_thermal_irq_request_err:
-	for (i = plat_data.oc_irq_base; i < plat_data.num_oc_irqs; i++)
-		irq_dispose_mapping(i);
-
-	irq_free_descs(plat_data.oc_irq_base, plat_data.num_oc_irqs);
-	irq_domain_remove(soc_irq_cdata.domain);
-
-	soctherm_suspend(NULL);
-
-soctherm_oc_int_init_err:
-soctherm_init_platform_data_err:
-	soctherm_clk_enable(false);
-	clk_put(soctherm_clk);
-	clk_put(tsensor_clk);
-	soctherm_clk = NULL;
-	tsensor_clk = NULL;
-
-soctherm_clk_enable_err:
-	/* FIXME: This should back out of the effects of clk_get() once it is
-	corverted away from clk_get_sys(). */
-
-soctherm_init_err:
-	pr_err("There was an error initializing SOC_THERM.\n");
-	return ret;
 }
 
-MODULE_DEVICE_TABLE(of, tegra_soctherm_match);
+MODULE_DEVICE_TABLE(of, tegra_soctherm_of_match);
 
 static struct platform_driver tegra_soctherm_driver = {
 	.driver = {
 		.name   = "tegra-soctherm",
 		.owner  = THIS_MODULE,
-		.of_match_table = of_match_ptr(tegra_soctherm_match),
+		.of_match_table = of_match_ptr(tegra_soctherm_of_match),
 	},
 	.probe = tegra_soctherm_probe,
 };
@@ -4440,15 +4617,17 @@ module_platform_driver(tegra_soctherm_driver);
  *
  * Store platform data in global as an intermediate step to moving to DT.
  *
- * Return: -1 if data is NULL, 0 (success) otherwise
+ * Return: -EINVAL if data is NULL, 0 (success) otherwise
  */
 int __init tegra_soctherm_init(struct soctherm_platform_data *data)
 {
 	if (!data)
-		return -1;
+		return -EINVAL;
+
+	pr_info("%s: initializing soctherm using deprecated API\n", __func__);
 
 	plat_data = *data;
-	plat_data_ptr = &plat_data;
+	pp = &plat_data;
 
 	return 0;
 }
