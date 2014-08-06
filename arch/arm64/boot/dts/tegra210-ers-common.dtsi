@@ -32,6 +32,16 @@
 		status = "okay";
 	};
 
+	serial@70006200 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006300 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
 	udc@7d000000 {
 		nvidia,port-otg;
 		nvidia,charging-supported;
