@@ -377,7 +377,7 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-camera", 0, "pcl-generic",
 			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-ahci-sata", 0x70027000, "tegra-sata.0",
+	OF_DEV_AUXDATA("nvidia,tegra210-ahci-sata", 0x70020000, "tegra-sata.0",
 			NULL),
 	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
 	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power", NULL),
