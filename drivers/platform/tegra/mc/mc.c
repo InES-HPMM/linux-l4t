@@ -52,6 +52,11 @@
 	((MC_LATENCY_ALLOWANCE_VI_2 - MC_LATENCY_ALLOWANCE_BASE) / 4 + 1)
 #endif
 
+/* Will be removed once proper header setup is done. */
+#define MC_SECURITY_CARVEOUT2_BOM		0xc5c
+#define MC_SECURITY_CARVEOUT2_BOM_HI		0xc60
+#define MC_SECURITY_CARVEOUT2_SIZE_128KB	0xc64
+
 static DEFINE_SPINLOCK(tegra_mc_lock);
 int mc_channels;
 void __iomem *mc;
@@ -61,6 +66,43 @@ void __iomem *mc0;
 void __iomem *mc1;
 
 int mc_intr_count;
+
+/*
+ * Return carveout info for @co in @inf. If @nr is non-NULL then the number of
+ * carveouts are also place in @*nr. If both @inf and @nr are NULL then the
+ * validity of @co is checked and that is it.
+ */
+int mc_get_carveout_info(struct mc_carveout_info *inf, int *nr,
+			 enum carveout_desc co)
+{
+	if (!mc) {
+		WARN(1, "Reading carveout info before MC init'ed!\n");
+		return 0;
+	}
+
+	if (co >= MC_NR_CARVEOUTS)
+		return -EINVAL;
+
+	if (nr)
+		*nr = MC_NR_CARVEOUTS;
+
+	if (!inf)
+		return 0;
+
+	switch (co) {
+	case MC_SECURITY_CARVEOUT2:
+		inf->desc = co;
+		inf->base = mc_readl(MC_SECURITY_CARVEOUT2_BOM) |
+		      ((u64)mc_readl(MC_SECURITY_CARVEOUT2_BOM_HI) & 0x3) << 32;
+		inf->size = mc_readl(MC_SECURITY_CARVEOUT2_SIZE_128KB);
+		inf->size <<= 17; /* Convert to bytes. */
+	default:
+		/* Should never happen. */
+		BUG();
+	}
+
+	return 0;
+}
 
 #ifdef CONFIG_PM_SLEEP
 static u32 mc_boot_timing[MC_TIMING_REG_NUM1 + MC_TIMING_REG_NUM2

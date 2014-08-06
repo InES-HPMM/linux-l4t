@@ -139,6 +139,24 @@ void         tegra21_mc_latency_allowance_save(u32 **pctx);
 void         tegra21_mc_latency_allowance_restore(u32 **pctx);
 #endif
 
+/*
+ * API for reading carveout info.
+ */
+enum carveout_desc {
+	MC_SECURITY_CARVEOUT2 = 0,
+	MC_NR_CARVEOUTS
+};
+
+struct mc_carveout_info {
+	enum carveout_desc desc;
+
+	u64 base;
+	u64 size;
+};
+
+int mc_get_carveout_info(struct mc_carveout_info *inf, int *nr,
+			 enum carveout_desc co);
+
 /* API to get freqency switch latency at given MC freq.
  * freq_khz: Frequncy in KHz.
  * retruns latency in microseconds.
