@@ -39,6 +39,7 @@ Optional properties:
 - disable-clock-gate: flag when set disables sdmmc clock gating
 - vddio_sdmmc-supply: regulator with this name
 - vddio_sd_slot-supply: regulator with this name
+- update-pinctrl-settings: flag when set using pictrl apis for updating sdmmc pins
 
 Example:
 
