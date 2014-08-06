@@ -558,10 +558,11 @@ static ssize_t acc_read(struct file *fp, char __user *buf,
 {
 	struct acc_dev *dev = fp->private_data;
 	struct usb_request *req;
-	int r = count, xfer;
+	ssize_t r = count;
+	unsigned xfer;
 	int ret = 0;
 
-	pr_debug("acc_read(%d)\n", count);
+	pr_debug("acc_read(%zu)\n", count);
 
 	if (dev->disconnected) {
 		pr_debug("acc_read disconnected");
@@ -618,7 +619,7 @@ copy_data:
 		if (req->actual == 0)
 			goto requeue_req;
 
-		pr_debug("rx %p %d\n", req, req->actual);
+		pr_debug("rx %p %u\n", req, req->actual);
 		xfer = (req->actual < count) ? req->actual : count;
 		r = xfer;
 		if (copy_to_user(buf, req->buf, xfer))
@@ -627,7 +628,7 @@ copy_data:
 		r = -EIO;
 
 done:
-	pr_debug("acc_read returning %d\n", r);
+	pr_debug("acc_read returning %zd\n", r);
 	return r;
 }
 
@@ -636,10 +637,11 @@ static ssize_t acc_write(struct file *fp, const char __user *buf,
 {
 	struct acc_dev *dev = fp->private_data;
 	struct usb_request *req = 0;
-	int r = count, xfer;
+	ssize_t r = count;
+	unsigned xfer;
 	int ret;
 
-	pr_debug("acc_write(%d)\n", count);
+	pr_debug("acc_write(%zu)\n", count);
 
 	if (!dev->online || dev->disconnected) {
 		pr_debug("acc_write disconnected or not online");
@@ -662,10 +664,17 @@ static ssize_t acc_write(struct file *fp, const char __user *buf,
 			break;
 		}
 
-		if (count > BULK_BUFFER_SIZE)
+		if (count > BULK_BUFFER_SIZE) {
 			xfer = BULK_BUFFER_SIZE;
-		else
+			/* ZLP, They will be more TX requests so not yet. */
+			req->zero = 0;
+		} else {
 			xfer = count;
+			/* If the data length is a multple of the
+			 * maxpacket size then send a zero length packet(ZLP).
+			*/
+			req->zero = ((xfer % dev->ep_in->maxpacket) == 0);
+		}
 		if (copy_from_user(req->buf, buf, xfer)) {
 			r = -EFAULT;
 			break;
@@ -689,7 +698,7 @@ static ssize_t acc_write(struct file *fp, const char __user *buf,
 	if (req)
 		req_put(dev, &dev->tx_idle, req);
 
-	pr_debug("acc_write returning %d\n", r);
+	pr_debug("acc_write returning %zd\n", r);
 	return r;
 }
 
