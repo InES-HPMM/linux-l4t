@@ -640,7 +640,7 @@ void mmc_add_card_debugfs(struct mmc_card *card)
 	}
 
 	if (mmc_card_sd(card))
-		if (!debugfs_create_file("speed_class", S_IRUSR, root, card,
+		if (!debugfs_create_file("speed_class", S_IROTH, root, card,
 					&mmc_dbg_card_speed_class_fops))
 			goto err;
 
