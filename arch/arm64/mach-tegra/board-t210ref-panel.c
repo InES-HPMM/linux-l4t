@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-t210ref-panel.c
+ * arch/arm64/mach-tegra/board-t210ref-panel.c
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -31,6 +31,7 @@
 #include <linux/dma-contiguous.h>
 #include <linux/clk.h>
 #include <linux/dma-mapping.h>
+#include <linux/tegra-soc.h>
 
 #include <mach/irqs.h>
 #include <mach/dc.h>
@@ -153,6 +154,30 @@ static struct resource t210ref_disp2_resources[] = {
 		.end	= TEGRA_HDMI_BASE + TEGRA_HDMI_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
+	{
+		.name   = "sor0",
+		.start  = TEGRA_SOR_BASE,
+		.end    = TEGRA_SOR_BASE + TEGRA_SOR_SIZE - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.name   = "sor1",
+		.start  = TEGRA_SOR1_BASE,
+		.end    = TEGRA_SOR1_BASE + TEGRA_SOR1_SIZE - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.name   = "dpaux",
+		.start  = TEGRA_DPAUX_BASE,
+		.end    = TEGRA_DPAUX_BASE + TEGRA_DPAUX_SIZE - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.name	= "irq_dp",
+		.start	= INT_DPAUX,
+		.end	= INT_DPAUX,
+		.flags	= IORESOURCE_IRQ,
+	},
 };
 
 
@@ -240,6 +265,41 @@ static int t210ref_hdmi_hotplug_init(struct device *dev)
 
 	return 0;
 }
+
+struct tmds_config t210ref_tmds_config_fpga[] = {
+	{ /* 480p/576p / 25.2MHz/27MHz modes */
+	.pclk = 27000000,
+	.pll0 = 0x01003110,
+	.pll1 = 0x00300F00,
+	.pe_current = 0x00000000,
+	.drive_current = 0xffffffff,
+	.peak_current = 0x00000000,
+	},
+	{ /* 720p / 74.25MHz modes */
+	.pclk = 74250000,
+	.pll0 =  0x01003310,
+	.pll1 = 0x10300F00,
+	.pe_current = 0x08080808,
+	.drive_current = 0x20202020,
+	.peak_current = 0x00000000,
+	},
+	{ /* 1080p / 148.5MHz modes */
+	.pclk = 148500000,
+	.pll0 = 0x01003310,
+	.pll1 = 0x10300F00,
+	.pe_current = 0x08080808,
+	.drive_current = 0x20202020,
+	.peak_current = 0x00000000,
+	},
+	{
+	.pclk = INT_MAX,
+	.pll0 = 0x01003310,
+	.pll1 = 0x10300F00,
+	.pe_current = 0x08080808,
+	.drive_current = 0x3A353536, /* lane3 needs a slightly lower current */
+	.peak_current = 0x00000000,
+	},
+};
 
 struct tmds_config t210ref_tmds_config0[] = {
 	{ /* 480p/576p / 25.2MHz/27MHz modes */
@@ -388,41 +448,37 @@ struct tegra_hdmi_out t210ref_hdmi_out = {
 	.n_tmds_config = ARRAY_SIZE(t210ref_tmds_config2),
 };
 
-
-#if defined(CONFIG_FRAMEBUFFER_CONSOLE)
-static struct tegra_dc_mode hdmi_panel_modes[] = {
+static struct tegra_dc_mode t210ref_hdmi_modes[] = {
 	{
-		.pclk =			25200000,
+		.pclk =			27000000,
 		.h_ref_to_sync =	1,
 		.v_ref_to_sync =	1,
-		.h_sync_width =		96,	/* hsync_len */
-		.v_sync_width =		2,	/* vsync_len */
-		.h_back_porch =		48,	/* left_margin */
-		.v_back_porch =		33,	/* upper_margin */
-		.h_active =		640,	/* xres */
+		.h_sync_width =		62,	/* hsync_len */
+		.v_sync_width =		6,	/* vsync_len */
+		.h_back_porch =		60,	/* left_margin */
+		.v_back_porch =		30,	/* upper_margin */
+		.h_active =		720,	/* xres */
 		.v_active =		480,	/* yres */
 		.h_front_porch =	16,	/* right_margin */
-		.v_front_porch =	10,	/* lower_margin */
+		.v_front_porch =	9,	/* lower_margin */
 	},
 };
-#elif defined(CONFIG_TEGRA_HDMI_PRIMARY)
-static struct tegra_dc_mode hdmi_panel_modes[] = {
+#ifdef CONFIG_TEGRA_HDMI2_0
+static struct tegra_dc_out_pin t210ref_hdmi_out_pins[] = {
 	{
-		.pclk =			148500000,
-		.h_ref_to_sync =	1,
-		.v_ref_to_sync =	1,
-		.h_sync_width =		44,	/* hsync_len */
-		.v_sync_width =		5,	/* vsync_len */
-		.h_back_porch =		148,	/* left_margin */
-		.v_back_porch =		36,	/* upper_margin */
-		.h_active =		1920,	/* xres */
-		.v_active =		1080,	/* yres */
-		.h_front_porch =	88,	/* right_margin */
-		.v_front_porch =	4,	/* lower_margin */
+		.name	= TEGRA_DC_OUT_PIN_H_SYNC,
+		.pol	= TEGRA_DC_OUT_PIN_POL_LOW,
+	},
+	{
+		.name	= TEGRA_DC_OUT_PIN_V_SYNC,
+		.pol	= TEGRA_DC_OUT_PIN_POL_LOW,
+	},
+	{
+		.name   = TEGRA_DC_OUT_PIN_DATA_ENABLE,
+		.pol    = TEGRA_DC_OUT_PIN_POL_HIGH,
 	},
 };
-#endif /* CONFIG_FRAMEBUFFER_CONSOLE || CONFIG_TEGRA_HDMI_PRIMARY*/
-
+#endif
 static struct tegra_dc_out t210ref_disp2_out = {
 	.type		= TEGRA_DC_OUT_HDMI,
 	.flags		= TEGRA_DC_OUT_HOTPLUG_LOW,
@@ -430,7 +486,7 @@ static struct tegra_dc_out t210ref_disp2_out = {
 	.parent_clk	= "pll_d2",
 #else
 	.parent_clk	= "pll_d",
-#endif /* CONFIG_TEGRA_HDMI_PRIMARY */
+#endif
 
 	.ddc_bus	= 3,
 	.hotplug_gpio	= t210ref_hdmi_hpd,
@@ -438,15 +494,13 @@ static struct tegra_dc_out t210ref_disp2_out = {
 
 	/* TODO: update max pclk to POR */
 	.max_pixclock	= KHZ2PICOS(297000),
-#if defined(CONFIG_FRAMEBUFFER_CONSOLE) || defined(CONFIG_TEGRA_HDMI_PRIMARY)
-	.modes = hdmi_panel_modes,
-	.n_modes = ARRAY_SIZE(hdmi_panel_modes),
-	.depth = 24,
-#endif /* CONFIG_FRAMEBUFFER_CONSOLE */
 
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
-
+#ifdef CONFIG_TEGRA_HDMI2_0
+	.out_pins		= t210ref_hdmi_out_pins,
+	.n_out_pins	= ARRAY_SIZE(t210ref_hdmi_out_pins),
+#endif
 	.enable		= t210ref_hdmi_enable,
 	.disable	= t210ref_hdmi_disable,
 	.postsuspend	= t210ref_hdmi_postsuspend,
@@ -524,10 +578,86 @@ static struct tegra_io_dpd dsid_io = {
 	.io_dpd_bit		= 9,
 };
 
+static struct tegra_dc_dp_lt_settings t210ref_edp_lt_data[] = {
+	{
+		.drive_current = {
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+		},
+		.lane_preemphasis = {
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+		},
+		.post_cursor = {
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+		},
+		.tx_pu = 0,
+		.load_adj = 0x3,
+	},
+	{
+		.drive_current = {
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+		},
+		.lane_preemphasis = {
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+			PRE_EMPHASIS_L0,
+		},
+		.post_cursor = {
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+		},
+		.tx_pu = 0,
+		.load_adj = 0x4,
+	},
+	{
+		.drive_current = {
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+			DRIVE_CURRENT_L0,
+		},
+		.lane_preemphasis = {
+			PRE_EMPHASIS_L1,
+			PRE_EMPHASIS_L1,
+			PRE_EMPHASIS_L1,
+			PRE_EMPHASIS_L1,
+		},
+		.post_cursor = {
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+			POST_CURSOR2_L0,
+		},
+		.tx_pu = 0,
+		.load_adj = 0x6,
+	},
+};
+
+static struct tegra_dp_out dp_settings = {
+	/* Panel can override this with its own LT data */
+	.lt_settings = t210ref_edp_lt_data,
+	.n_lt_settings = ARRAY_SIZE(t210ref_edp_lt_data),
+	.tx_pu_disable = true,
+};
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 /* can be called multiple times */
-static struct tegra_panel *t210ref_panel_configure(struct board_info *board_out,
-	u8 *dsi_instance_out)
+static __init struct tegra_panel *t210ref_panel_configure(
+				struct board_info *board_out,
+				u8 *dsi_instance_out)
 {
 	struct tegra_panel *panel = NULL;
 	u8 dsi_instance = DSI_INSTANCE_0;
@@ -536,7 +666,13 @@ static struct tegra_panel *t210ref_panel_configure(struct board_info *board_out,
 	if (!board_out)
 		board_out = &boardtmp;
 	tegra_get_display_board_info(board_out);
+
 	switch (board_out->board_id) {
+	case BOARD_E1824:
+		panel = &edp_a_1080p_14_0;
+		t210ref_disp1_out.type = TEGRA_DC_OUT_DP;
+		t210ref_disp1_out.dp_out = &dp_settings;
+		break;
 	case BOARD_E2129:
 		switch (board_out->sku) {
 		case 1000:
@@ -548,28 +684,46 @@ static struct tegra_panel *t210ref_panel_configure(struct board_info *board_out,
 			dsi_instance = DSI_INSTANCE_0;
 			break;
 		}
+		tegra_io_dpd_enable(&dsic_io);
+		tegra_io_dpd_enable(&dsid_io);
 		break;
 	case BOARD_E1937:
-	default:
 		panel = &dsi_a_1200_1920_8_0;
 		dsi_instance = DSI_INSTANCE_0;
+		tegra_io_dpd_enable(&dsic_io);
+		tegra_io_dpd_enable(&dsid_io);
 		break;
+	case BOARD_E1639: /* fall through */
+	case BOARD_E1813: /* fall through */
+	default:
+		if (tegra_platform_is_fpga()) {
+#ifdef CONFIG_TEGRA_DP
+			/* Fpga eDP is on disp2. Clear all default hdmi data.*/
+			memset(&t210ref_disp2_out, 0,
+				sizeof(t210ref_disp2_out));
+			t210ref_disp2_out.dp_out = &dp_settings;
+			edp_c_1366_768_14_0.init_dc_out(&t210ref_disp2_out);
+#elif defined(CONFIG_TEGRA_HDMI2_0)
+			t210ref_disp2_fb_data.xres = 720;
+			t210ref_disp2_fb_data.yres = 480;
+			t210ref_disp2_fb_data.bits_per_pixel = -1;
+#endif
+			panel = &dsi_s_wqxga_10_1;
+		} else {
+			panel = &dsi_j_1440_810_5_8;
+			dsi_instance = DSI_INSTANCE_0;
+			tegra_io_dpd_enable(&dsic_io);
+			tegra_io_dpd_enable(&dsid_io);
+			break;
+		}
 	}
-
-	/*
-	 * TODO
-	 * dpd enabling for dsi pads in board
-	 * will be deprecated.
-	 */
-	tegra_io_dpd_enable(&dsic_io);
-	tegra_io_dpd_enable(&dsid_io);
 
 	if (dsi_instance_out)
 		*dsi_instance_out = dsi_instance;
 	return panel;
 }
 
-static void t210ref_panel_select(void)
+static __init void t210ref_panel_select(void)
 {
 	struct tegra_panel *panel = NULL;
 	struct board_info board;
@@ -583,13 +737,15 @@ static void t210ref_panel_select(void)
 
 		if (panel->init_dc_out) {
 			panel->init_dc_out(&t210ref_disp1_out);
-			t210ref_disp1_out.dsi->dsi_instance =
-				dsi_instance;
-			t210ref_disp1_out.dsi->dsi_panel_rst_gpio =
-				DSI_PANEL_RST_GPIO;
-			t210ref_disp1_out.dsi->dsi_panel_bl_pwm_gpio =
-				DSI_PANEL_BL_PWM_GPIO;
-			t210ref_disp1_out.dsi->te_gpio = TEGRA_GPIO_PR6;
+			if (t210ref_disp1_out.type == TEGRA_DC_OUT_DSI) {
+				t210ref_disp1_out.dsi->dsi_instance =
+					dsi_instance;
+				t210ref_disp1_out.dsi->dsi_panel_rst_gpio =
+					DSI_PANEL_RST_GPIO;
+				t210ref_disp1_out.dsi->dsi_panel_bl_pwm_gpio =
+					DSI_PANEL_BL_PWM_GPIO;
+				t210ref_disp1_out.dsi->te_gpio = TEGRA_GPIO_PR6;
+			}
 		}
 
 		if (panel->init_fb_data)
@@ -601,25 +757,79 @@ static void t210ref_panel_select(void)
 		if (panel->set_disp_device)
 			panel->set_disp_device(&t210ref_disp1_device);
 
-		tegra_dsi_resources_init(dsi_instance,
-			t210ref_disp1_resources,
-			ARRAY_SIZE(t210ref_disp1_resources));
+		if (t210ref_disp1_out.type == TEGRA_DC_OUT_DSI) {
+			tegra_dsi_resources_init(dsi_instance,
+				t210ref_disp1_resources,
+				ARRAY_SIZE(t210ref_disp1_resources));
+		}
 
 		if (panel->register_bl_dev)
 			panel->register_bl_dev();
+
+		if (panel->register_i2c_bridge)
+			panel->register_i2c_bridge();
 	}
 }
 #endif
 
+static __init int t210ref_fb_init(void)
+{
+	struct resource *res;
+
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+	res = platform_get_resource_byname(&t210ref_disp1_device,
+					 IORESOURCE_MEM, "fbmem");
+#else
+	res = platform_get_resource_byname(&t210ref_disp2_device,
+					 IORESOURCE_MEM, "fbmem");
+#endif
+	res->start = tegra_fb_start;
+	res->end = tegra_fb_start + tegra_fb_size - 1;
+
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+	res = platform_get_resource_byname(&t210ref_disp2_device,
+					IORESOURCE_MEM, "fbmem");
+	res->start = tegra_fb2_start;
+	res->end = tegra_fb2_start + tegra_fb2_size - 1;
+#endif
+	return 0;
+}
+
+static __init int t210ref_fb_copy(void)
+{
+	/* Copy the bootloader fb to the fb. */
+	if (tegra_bootloader_fb_size)
+		__tegra_move_framebuffer(NULL,
+					tegra_fb_start,
+					tegra_bootloader_fb_start,
+					min(tegra_fb_size,
+					tegra_bootloader_fb_size));
+	else
+		__tegra_clear_framebuffer(NULL,
+					  tegra_fb_start,
+					  tegra_fb_size);
+
+	/* Copy the bootloader fb2 to the fb2. */
+	if (tegra_bootloader_fb2_size)
+		__tegra_move_framebuffer(NULL,
+					tegra_fb2_start,
+					tegra_bootloader_fb2_start,
+					min(tegra_fb2_size,
+					tegra_bootloader_fb2_size));
+	else
+		__tegra_clear_framebuffer(NULL,
+					tegra_fb2_start,
+					tegra_fb2_size);
+	return 0;
+}
+
 int __init t210ref_panel_init(void)
 {
 	int err = 0;
-	struct resource __maybe_unused *res;
 	struct platform_device *phost1x = NULL;
-	struct board_info board_info;
-
 	struct device_node *dc1_node = NULL;
 	struct device_node *dc2_node = NULL;
+	struct board_info board_info;
 
 	find_dc_node(&dc1_node, &dc2_node);
 
@@ -633,36 +843,8 @@ int __init t210ref_panel_init(void)
 		return -EINVAL;
 	}
 
-	if (!of_have_populated_dt() || !dc1_node ||
-		!of_device_is_available(dc1_node)) {
-#ifndef CONFIG_TEGRA_HDMI_PRIMARY
-		res = platform_get_resource_byname(&t210ref_disp1_device,
-					 IORESOURCE_MEM, "fbmem");
-#else
-		res = platform_get_resource_byname(&t210ref_disp2_device,
-					 IORESOURCE_MEM, "fbmem");
-#endif
-		res->start = tegra_fb_start;
-		res->end = tegra_fb_start + tegra_fb_size - 1;
-	}
-
-	/* Copy the bootloader fb to the fb. */
-	if (tegra_bootloader_fb_size)
-		__tegra_move_framebuffer(NULL,
-				tegra_fb_start, tegra_bootloader_fb_start,
-				min(tegra_fb_size, tegra_bootloader_fb_size));
-	else
-		__tegra_clear_framebuffer(NULL,
-					  tegra_fb_start, tegra_fb_size);
-
-	/* Copy the bootloader fb2 to the fb2. */
-	if (tegra_bootloader_fb2_size)
-		__tegra_move_framebuffer(NULL,
-				tegra_fb2_start, tegra_bootloader_fb2_start,
-				min(tegra_fb2_size, tegra_bootloader_fb2_size));
-	else
-		__tegra_clear_framebuffer(NULL,
-					tegra_fb2_start, tegra_fb2_size);
+	t210ref_fb_init();
+	t210ref_fb_copy();
 
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	if (!of_have_populated_dt() || !dc1_node ||
@@ -685,14 +867,21 @@ int __init t210ref_panel_init(void)
 		break;
 	}
 
+	if (tegra_platform_is_fpga()) {
+		struct tegra_dc_platform_data *pdata =
+			t210ref_disp2_device.dev.platform_data;
+		pdata->default_out->depth = 24;
+		pdata->default_out->hotplug_state = 1;
+		pdata->default_out->hdmi_out->tmds_config =
+				t210ref_tmds_config_fpga;
+		pdata->default_out->hdmi_out->n_tmds_config =
+				ARRAY_SIZE(t210ref_tmds_config_fpga);
+		pdata->default_out->modes = t210ref_hdmi_modes;
+		pdata->default_out->n_modes = ARRAY_SIZE(t210ref_hdmi_modes);
+	}
+
 	if (!of_have_populated_dt() || !dc2_node ||
 		!of_device_is_available(dc2_node)) {
-#ifndef CONFIG_TEGRA_HDMI_PRIMARY
-		res = platform_get_resource_byname(&t210ref_disp2_device,
-					IORESOURCE_MEM, "fbmem");
-		res->start = tegra_fb2_start;
-		res->end = tegra_fb2_start + tegra_fb2_size - 1;
-#endif
 		t210ref_disp2_device.dev.parent = &phost1x->dev;
 		err = platform_device_register(&t210ref_disp2_device);
 		if (err) {

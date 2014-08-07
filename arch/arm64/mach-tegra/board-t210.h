@@ -19,7 +19,6 @@
 #ifndef _MACH_TEGRA_BOARD_T210_H_
 #define _MACH_TEGRA_BOARD_T210_H_
 
-int t210_panel_init(void);
 int t210_emc_init(void);
 int tegra21_emc_init(void);
 
