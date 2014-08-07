@@ -626,7 +626,7 @@ static const struct utmi_clk_param utmi_parameters[] =
 
 	{19200000,	0x03,		0x4B,		0x06,		0xBB},
 	/* HACK!!! FIXME!!! following entry for 38.4MHz is a stub */
-	{38400000,	0x03,		0x4B,		0x06,		0xBB},
+	{38400000,	0x0,		0x0,		0x06,		0x3},
 };
 
 static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
@@ -2227,34 +2227,16 @@ static void tegra21_utmi_param_configure(struct clk *c)
 	}
 
 	reg = clk_readl(UTMIP_PLL_CFG2);
-
 	/* Program UTMIP PLL stable and active counts */
 	/* [FIXME] arclk_rst.h says WRONG! This should be 1ms -> 0x50 Check! */
 	reg &= ~UTMIP_PLL_CFG2_STABLE_COUNT(~0);
 	reg |= UTMIP_PLL_CFG2_STABLE_COUNT(
 			utmi_parameters[i].stable_count);
-
-	reg &= ~UTMIP_PLL_CFG2_ACTIVE_DLY_COUNT(~0);
-
-	reg |= UTMIP_PLL_CFG2_ACTIVE_DLY_COUNT(
-			utmi_parameters[i].active_delay_count);
-
-	/* Remove power downs from UTMIP PLL control bits */
-	reg |= UTMIP_PLL_CFG2_FORCE_PD_SAMP_A_POWERUP;
-	reg |= UTMIP_PLL_CFG2_FORCE_PD_SAMP_B_POWERUP;
-	reg |= UTMIP_PLL_CFG2_FORCE_PD_SAMP_C_POWERUP;
-	reg |= UTMIP_PLL_CFG2_FORCE_PD_SAMP_D_POWERUP;
-	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_A_POWERDOWN;
-	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_B_POWERDOWN;
-	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_C_POWERDOWN;
-	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_D_POWERDOWN;
-
 	clk_writel(reg, UTMIP_PLL_CFG2);
 
 	/* Program UTMIP PLL delay and oscillator frequency counts */
 	reg = clk_readl(UTMIP_PLL_CFG1);
 	reg &= ~UTMIP_PLL_CFG1_ENABLE_DLY_COUNT(~0);
-
 	reg |= UTMIP_PLL_CFG1_ENABLE_DLY_COUNT(
 		utmi_parameters[i].enable_delay_count);
 
@@ -2263,29 +2245,36 @@ static void tegra21_utmi_param_configure(struct clk *c)
 		utmi_parameters[i].xtal_freq_count);
 
 	/* Remove power downs from UTMIP PLL control bits */
-	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERDOWN;
-	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ACTIVE_POWERDOWN;
-	reg &= ~UTMIP_PLL_CFG1_FORCE_PLLU_POWERUP;
-	reg &= ~UTMIP_PLL_CFG1_FORCE_PLLU_POWERDOWN;
+	reg |= UTMIP_PLL_CFG1_FORCE_PLLU_POWERDOWN;
 	clk_writel(reg, UTMIP_PLL_CFG1);
 
-	/* Setup HW control of UTMIPLL */
-	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
-	reg |= UTMIPLL_HW_PWRDN_CFG0_USE_LOCKDET;
-	reg &= ~UTMIPLL_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL;
-	reg |= UTMIPLL_HW_PWRDN_CFG0_SEQ_START_STATE;
-	clk_writel(reg, UTMIPLL_HW_PWRDN_CFG0);
-
+	/* Enable PLL with SW programming */
 	reg = clk_readl(UTMIP_PLL_CFG1);
-	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERUP;
+	reg |= UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERUP;
 	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERDOWN;
 	pll_writel_delay(reg, UTMIP_PLL_CFG1);
 
-	/* Setup SW override of UTMIPLL assuming USB2.0
-	   ports are assigned to USB2 */
+	/* Enable Samplers for SNPS IP, XUSB_HOST, XUSB_DEV */
+	reg = clk_readl(UTMIP_PLL_CFG2);
+	reg |= UTMIP_PLL_CFG2_FORCE_PD_SAMP_A_POWERUP;
+	reg |= UTMIP_PLL_CFG2_FORCE_PD_SAMP_B_POWERUP;
+	reg |= UTMIP_PLL_CFG2_FORCE_PD_SAMP_D_POWERUP;
+	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_A_POWERDOWN;
+	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_B_POWERDOWN;
+	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_D_POWERDOWN;
+	clk_writel(reg, UTMIP_PLL_CFG2);
+
+	/* Enable HW Power Sequencer */
+	reg = clk_readl(UTMIP_PLL_CFG1);
+	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERUP;
+	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERDOWN;
+	clk_writel(reg, UTMIP_PLL_CFG1);
+
 	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
 	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL;
 	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
+	reg &= ~UTMIPLL_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL;
+	reg |= UTMIPLL_HW_PWRDN_CFG0_USE_LOCKDET;
 	pll_writel_delay(reg, UTMIPLL_HW_PWRDN_CFG0);
 
 	/* Enable HW control UTMIPLL */
