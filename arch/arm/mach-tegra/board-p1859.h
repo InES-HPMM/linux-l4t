@@ -19,7 +19,6 @@
 #ifndef _MACH_TEGRA_BOARD_P1859_H
 #define _MACH_TEGRA_BOARD_P1859_H
 
-#include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
 #include <linux/mfd/max77663-core.h>
 #include "gpio-names.h"

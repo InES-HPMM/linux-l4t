@@ -11,7 +11,6 @@
 #include <linux/switch.h>
 #endif
 #include <mach/tegra_asoc_pdata.h>
-#include <mach/gpio-tegra.h>
 
 #include <sound/core.h>
 #include <sound/jack.h>

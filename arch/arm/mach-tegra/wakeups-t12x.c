@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
 #include <linux/irqchip/tegra.h>
 
 #include <mach/irqs.h>
-#include <mach/gpio-tegra.h>
 
 #include "gpio-names.h"
 #include "iomap.h"

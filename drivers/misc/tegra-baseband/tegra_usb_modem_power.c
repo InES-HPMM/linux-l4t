@@ -35,7 +35,6 @@
 #include <linux/pm_qos.h>
 #include <linux/regulator/consumer.h>
 #include <linux/sysedp.h>
-#include <mach/gpio-tegra.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
 #include <linux/dma-mapping.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"

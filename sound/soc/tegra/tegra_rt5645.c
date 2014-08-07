@@ -1,7 +1,7 @@
 /*
  * tegra_rt5645.c - Tegra machine ASoC driver for boards using ALC5645 codec.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -33,7 +33,6 @@
 #endif
 #include <linux/pm_runtime.h>
 #include <mach/tegra_asoc_pdata.h>
-#include <mach/gpio-tegra.h>
 #include <mach/tegra_rt5640_pdata.h>
 
 #include <sound/core.h>

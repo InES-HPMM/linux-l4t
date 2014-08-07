@@ -77,7 +77,6 @@
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
-#include <mach/gpio-tegra.h>
 #include <mach/xusb.h>
 
 #include "board.h"

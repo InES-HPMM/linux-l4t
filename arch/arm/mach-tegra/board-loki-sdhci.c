@@ -32,7 +32,6 @@
 
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
-#include <mach/gpio-tegra.h>
 
 #include "gpio-names.h"
 #include "board.h"

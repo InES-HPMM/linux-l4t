@@ -19,7 +19,6 @@
 #include <linux/irqchip/tegra.h>
 
 #include <mach/irqs.h>
-#include <mach/gpio-tegra.h>
 
 #include "gpio-names.h"
 #include "iomap.h"

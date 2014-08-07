@@ -35,7 +35,6 @@
 
 #include <mach/irqs.h>
 #include <mach/edp.h>
-#include <mach/gpio-tegra.h>
 #include <linux/tegra_soctherm.h>
 
 #include "cpu-tegra.h"

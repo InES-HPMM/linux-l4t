@@ -74,7 +74,6 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/system_info.h>
-#include <mach/gpio-tegra.h>
 #include <mach/xusb.h>
 
 #include "board-touch-raydium.h"

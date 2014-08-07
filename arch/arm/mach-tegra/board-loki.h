@@ -20,7 +20,6 @@
 #ifndef _MACH_TEGRA_BOARD_LOKI_H
 #define _MACH_TEGRA_BOARD_LOKI_H
 
-#include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
 #include "gpio-names.h"
 

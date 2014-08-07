@@ -3,7 +3,7 @@
  *
  * Author: Vijay Mali <vmali@nvidia.com>
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION. All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -34,7 +34,6 @@
 #include <linux/switch.h>
 #endif
 #include <mach/tegra_asoc_pdata.h>
-#include <mach/gpio-tegra.h>
 
 #include <sound/core.h>
 #include <sound/jack.h>

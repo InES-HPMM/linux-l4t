@@ -27,7 +27,6 @@
 #include <media/camera.h>
 #include <media/mt9m114.h>
 #include <media/ov7695.h>
-#include <mach/gpio-tegra.h>
 #include <mach/edp.h>
 #include <mach/io_dpd.h>
 #include <linux/gpio.h>

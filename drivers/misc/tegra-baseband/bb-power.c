@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-baseband/bb-power.c
  *
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (C) 2012-2014 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -29,7 +29,6 @@
 #include <linux/suspend.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/usb/tegra_usb_phy.h>
-#include <mach/gpio-tegra.h>
 #include <mach/tegra-bb-power.h>
 #include "bb-power.h"
 

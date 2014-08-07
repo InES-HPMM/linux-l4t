@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2011, Google, Inc.
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -22,7 +22,6 @@
 #include <linux/io.h>
 #include <linux/irqchip/tegra.h>
 
-#include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
 
 #include "gpio-names.h"

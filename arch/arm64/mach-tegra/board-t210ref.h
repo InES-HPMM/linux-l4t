@@ -20,7 +20,6 @@
 #ifndef _MACH_TEGRA_BOARD_T210REF_H
 #define _MACH_TEGRA_BOARD_T210REF_H
 
-#include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
 #include "gpio-names.h"
 
