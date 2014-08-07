@@ -52,6 +52,9 @@
 #include <asm/dma-iommu.h>
 #include <asm/pgtable.h>
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/arm_smmu.h>
+
 /* Maximum number of stream IDs assigned to a single device */
 #define MAX_MASTER_STREAMIDS		MAX_PHANDLE_ARGS
 
@@ -1602,6 +1605,12 @@ static int arm_smmu_handle_mapping(struct arm_smmu_domain *smmu_domain,
 	if (paddr & ~output_mask)
 		return -ERANGE;
 
+	if (test_bit(cfg->cbndx, smmu->context_filter)) {
+		trace_smmu_map(cfg->cbndx, iova, paddr, size, prot);
+		pr_debug("cbndx=%d iova=%pa paddr=%pa size=%zx prot=%x\n",
+			 cfg->cbndx, &iova, &paddr, size, prot);
+	}
+
 	spin_lock_irqsave(&smmu_domain->lock, flags);
 	pgd += pgd_index(iova);
 	end = iova + size;
@@ -1616,12 +1625,6 @@ static int arm_smmu_handle_mapping(struct arm_smmu_domain *smmu_domain,
 		paddr += next - iova;
 		iova = next;
 	} while (pgd++, iova != end);
-
-	if (test_bit(cfg->cbndx, smmu->context_filter)) {
-		/* FIXME: add ftrace support */
-		pr_debug("cbndx=%d iova=%pa paddr=%pa size=%zx prot=%x\n",
-			 cfg->cbndx, &iova, &paddr, size, prot);
-	}
 
 out_unlock:
 	spin_unlock_irqrestore(&smmu_domain->lock, flags);
