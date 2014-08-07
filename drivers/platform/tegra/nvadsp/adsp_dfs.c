@@ -66,7 +66,7 @@ static int adsp_dfs_rc_callback(
 };
 
 static struct adsp_dfs_policy dfs_policy =  {
-	.enable = 1,
+	.enable = 0,
 	.clk_name = "adsp_cpu",
 	.max = POLICY_MAX, /* Check for 600MHz for max clock freq */
 	.rate_change_nb = {
@@ -126,9 +126,12 @@ static int policy_min_get(void *data, u64 *val)
 /* Set adsp dfs policy min freq */
 static int policy_min_set(void *data, u64 val)
 {
-	policy->min = verify_policy((unsigned long)val);
-	update_policy(policy->min);
-	return 0;
+	if (policy->enable) {
+		policy->min = verify_policy((unsigned long)val);
+		update_policy(policy->min);
+		return 0;
+	} else
+		return -EINVAL;
 }
 DEFINE_SIMPLE_ATTRIBUTE(min_fops, policy_min_get,
 	policy_min_set, "%llu\n");
@@ -143,9 +146,12 @@ static int policy_max_get(void *data, u64 *val)
 /* Set adsp dfs policy max freq */
 static int policy_max_set(void *data, u64 val)
 {
-	policy->max = verify_policy((unsigned long) val);
-	update_policy(val);
-	return 0;
+	if (policy->enable) {
+		policy->max = verify_policy((unsigned long)val);
+		update_policy(policy->max);
+		return 0;
+	} else
+		return -EINVAL;
 }
 DEFINE_SIMPLE_ATTRIBUTE(max_fops, policy_max_get,
 	policy_max_set, "%llu\n");
@@ -202,10 +208,10 @@ err_out:
 
 void adsp_cpu_set_rate(unsigned long freq)
 {
-	freq = verify_policy(freq);
-
-	if (policy->enable)
+	if (policy->enable) {
+		freq = verify_policy(freq);
 		update_policy(freq);
+	}
 }
 
 int adsp_dfs_core_init(void)

@@ -87,6 +87,17 @@
 
 #define UART_BAUD_RATE	9600
 
+/* Intiialize with FIXED rate, once OS boots up DFS will set required freq */
+#define ADSP_TO_APE_CLK_RATIO	2
+/* 13.5 MHz, should be changed at bringup time */
+#define APE_CLK_FIX_RATE	13500
+/*
+ * ADSP CLK = APE_CLK * ADSP_TO_APE_CLK_RATIO
+ * or
+ * ADSP CLK = APE_CLK >> ADSP_TO_APE_CLK_RATIO
+ */
+#define ADSP_CLK_FIX_RATE (APE_CLK_FIX_RATE * ADSP_TO_APE_CLK_RATIO)
+
 struct nvadsp_debug_log {
 	struct device *dev;
 	char *debug_ram_rdr;
@@ -653,6 +664,7 @@ int nvadsp_os_start(void)
 	struct device *dev;
 	struct clk *adsp_clk;
 	struct clk *ape_uart;
+	struct clk *ape_clk;
 	int val;
 
 	if (!priv.pdev) {
@@ -673,6 +685,24 @@ int nvadsp_os_start(void)
 
 	val = readl(priv.misc_base + ADSP_CONFIG);
 	writel(val | MAXCLKLATENCY, priv.misc_base + ADSP_CONFIG);
+
+	/*
+	 * FIXME:this will be replaced by DFS runtime PM API
+	 * Set ADSP and APE clock in OS start
+	 */
+	ape_clk = clk_get_sys(NULL, "ape");
+	if (IS_ERR_OR_NULL(ape_clk)) {
+		dev_info(dev, "unable to find ape clock\n");
+		return PTR_ERR(ape_clk);
+	}
+
+	pr_info("Setting ape clock(KHz):%u", APE_CLK_FIX_RATE);
+	clk_prepare_enable(ape_clk);
+	clk_set_rate(ape_clk, APE_CLK_FIX_RATE * 1000);
+
+	pr_info("Setting adsp clock(KHz):%u", ADSP_CLK_FIX_RATE);
+	clk_prepare_enable(adsp_clk);
+	clk_set_rate(adsp_clk, ADSP_CLK_FIX_RATE * 1000);
 
 	/* TODO: enable ape2apb clock */
 	ape_uart = clk_get_sys("uartape", NULL);
