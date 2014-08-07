@@ -14,6 +14,7 @@
 #ifndef __MACH_TEGRA_MC_REGS_T21X_H__
 #define __MACH_TEGRA_MC_REGS_T21X_H__
 
+/* Auto generated. Do not edit. */
 #define MC_INTSTATUS                                            0x0
 #define MC_INTMASK                                              0x4
 #define MC_ERR_STATUS                                           0x8
@@ -267,6 +268,7 @@
 #define MC_FTOP_PTSA_MIN                                        0x510
 #define MC_SDM_PTSA_RATE                                        0x61c
 #define MC_AHB_PTSA_RATE                                        0x4dc
+#define MC_SMMU_SMMU_PTSA_MAX                                   0x460
 #define MC_RING2_PTSA_MIN                                       0x444
 #define MC_SDM_PTSA_MIN                                         0x620
 #define MC_APB_PTSA_RATE                                        0x4e8
@@ -275,6 +277,7 @@
 #define MC_VE_PTSA_RATE                                         0x434
 #define MC_AHB_PTSA_MAX                                         0x4e4
 #define MC_SAX_PTSA_MIN                                         0x4bc
+#define MC_SMMU_SMMU_PTSA_MIN                                   0x45c
 #define MC_ISP_PTSA_MIN                                         0x4a4
 #define MC_HOST_PTSA_MAX                                        0x520
 #define MC_SAX_PTSA_MAX                                         0x4c0
@@ -283,6 +286,7 @@
 #define MC_MSE_PTSA_MAX                                         0x4cc
 #define MC_DISB_PTSA_MAX                                        0x430
 #define MC_DISB_PTSA_MIN                                        0x42c
+#define MC_SMMU_SMMU_PTSA_RATE                                  0x458
 #define MC_VE2_PTSA_RATE                                        0x494
 #define MC_GK_PTSA_RATE                                         0x53c
 #define MC_PTSA_GRANT_DECREMENT                                 0x960
@@ -460,6 +464,6 @@
 #define MC_ERR_APB_ASID_UPDATE_STATUS                           0x9d0
 #define MC_DA_CONFIG0                                           0x9dc
 
-#define T21X_MC_LATENCY_ALLOWANCE_NUM_REGS      41
+#define T21X_MC_LATENCY_ALLOWANCE_NUM_REGS			41
 
 #endif
