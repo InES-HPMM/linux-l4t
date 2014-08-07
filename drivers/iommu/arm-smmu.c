@@ -1217,7 +1217,7 @@ static int smmu_ptdump_show(struct seq_file *s, void *unused)
 					if (!pa)
 						continue;
 					seq_printf(s,
-						   "va=0x%016lx pa=%pa *pte=%pa\n",
+						   "va=0x%016lx pa=%pap *pte=%pad\n",
 						   addr, &pa, &(*pte));
 					addr += PAGE_SIZE;
 				}
@@ -1607,7 +1607,7 @@ static int arm_smmu_handle_mapping(struct arm_smmu_domain *smmu_domain,
 
 	if (test_bit(cfg->cbndx, smmu->context_filter)) {
 		trace_smmu_map(cfg->cbndx, iova, paddr, size, prot);
-		pr_debug("cbndx=%d iova=%pa paddr=%pa size=%zx prot=%x\n",
+		pr_debug("cbndx=%d iova=%pad paddr=%pap size=%zx prot=%x\n",
 			 cfg->cbndx, &iova, &paddr, size, prot);
 	}
 
@@ -1644,8 +1644,8 @@ static int arm_smmu_map_sg(struct iommu_domain *domain, unsigned long iova,
 		phys_addr_t pa = sg_phys(sg) & PAGE_MASK;
 		unsigned int len = PAGE_ALIGN(sg->offset + sg->length);
 
-		pr_debug("%s() iova=%lx pa=%pa size=%x\n",
-			__func__, iova, &pa, len);
+		pr_debug("%s() iova=%pad pa=%pap size=%x\n",
+			__func__, &iova, &pa, len);
 		err = arm_smmu_handle_mapping(smmu_domain, iova, pa, len, prot);
 		if (err)
 			return err;
