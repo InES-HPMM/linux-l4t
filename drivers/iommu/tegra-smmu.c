@@ -51,6 +51,9 @@
 /* HACK! This needs to come from device tree */
 #include "../../arch/arm/mach-tegra/iomap.h"
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/tegra_smmu.h>
+
 /* bitmap of the page sizes currently supported */
 #define SMMU_IOMMU_PGSIZES	(SZ_4K | SZ_4M)
 
@@ -1213,12 +1216,17 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 		dev_dbg(as->smmu->dev, "unmapping %d pages at once\n", count);
 
 		if (pte) {
+			int i;
 			unsigned int *rest = &as->pte_count[pdn];
 			size_t bytes = sizeof(*pte) * count;
 
 			memset(pte, 0, bytes);
 			FLUSH_CPU_DCACHE(pte, page, bytes);
 
+			for (i = 0; i < count; i++)
+				trace_smmu_set_pte(as->asid,
+						   iova + i * PAGE_SIZE, 0,
+						   PAGE_SIZE, 0);
 			*rest -= count;
 			if (!*rest)
 				free_ptbl(as, iova, !flush_all);
@@ -1245,6 +1253,8 @@ static size_t __smmu_iommu_unmap_largepage(struct smmu_as *as, dma_addr_t iova)
 	u32 *pdir = (u32 *)page_address(as->pdir_page);
 
 	pdir[pdn] = _PDE_VACANT(pdn);
+	trace_smmu_set_pte(as->asid, iova, 0, SZ_4M, 0);
+
 	FLUSH_CPU_DCACHE(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
 	flush_ptc_and_tlb(as->smmu, as, iova, &pdir[pdn], as->pdir_page, 1);
 	return SZ_4M;
@@ -1272,6 +1282,8 @@ static int __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
 		attrs &= ~_READABLE;
 
 	*pte = SMMU_PFN_TO_PTE(pfn, attrs);
+	trace_smmu_set_pte(as->asid, iova, PFN_PHYS(pfn), PAGE_SIZE, attrs);
+
 	FLUSH_CPU_DCACHE(pte, page, sizeof(*pte));
 	flush_ptc_and_tlb(smmu, as, iova, pte, page, 0);
 	put_signature(as, iova, pfn);
@@ -1302,6 +1314,8 @@ static int __smmu_iommu_map_largepage(struct smmu_as *as, dma_addr_t iova,
 		attrs &= ~_READABLE;
 
 	pdir[pdn] = SMMU_ADDR_TO_PDN(pa) << 10 | attrs;
+	trace_smmu_set_pte(as->asid, iova, pa, SZ_4M, attrs);
+
 	FLUSH_CPU_DCACHE(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
 	flush_ptc_and_tlb(as->smmu, as, iova, &pdir[pdn], as->pdir_page, 1);
 
@@ -1386,6 +1400,8 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 				(*rest)++;
 
 			*pte = SMMU_PFN_TO_PTE(page_to_pfn(pages[i]), attrs);
+			trace_smmu_set_pte(as->asid, iova, page_to_phys(pages[i]),
+					   PAGE_SIZE, attrs);
 		}
 
 		pte = &ptbl[ptn];
@@ -1462,7 +1478,10 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 			if (*pte == _PTE_VACANT(iova + i * PAGE_SIZE))
 				(*rest)++;
 
-			*pte = SMMU_PFN_TO_PTE(sg_pfn++, attrs);
+			*pte = SMMU_PFN_TO_PTE(sg_pfn, attrs);
+			trace_smmu_set_pte(as->asid, iova, PFN_PHYS(sg_pfn),
+					   PAGE_SIZE, attrs);
+			sg_pfn++;
 			if (--sg_remaining)
 				continue;
 
