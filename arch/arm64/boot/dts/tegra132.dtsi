@@ -217,6 +217,7 @@
 		nvidia,vbus-oc-map = <5>;
 		nvidia,xcvr-setup-offset = <0>;
 		status = "disabled";
+	};
 
 	bthrot_cdev {
 		compatible = "nvidia,balanced-throttle";
