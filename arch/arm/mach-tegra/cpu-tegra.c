@@ -688,6 +688,8 @@ int tegra_update_cpu_speed(unsigned long rate)
 		return ret;
 	}
 
+	freqs.new = tegra_getspeed(0);
+
 	for_each_online_cpu(freqs.cpu)
 		cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 
