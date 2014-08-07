@@ -50,6 +50,7 @@
 #include <linux/tegra-powergate.h>
 #include <linux/platform_data/tegra_ahci.h>
 #include <linux/tegra-soc.h>
+#include <linux/of_device.h>
 #include "../../arch/arm/mach-tegra/iomap.h"
 
 #define DRV_NAME	"tegra-sata"
@@ -412,7 +413,7 @@ char *sata_power_rails[] = {
  */
 struct tegra_ahci_host_priv {
 	struct ahci_host_priv	ahci_host_priv;
-	struct regulator	*power_rails[NUM_SATA_POWER_RAILS];
+	struct regulator	**power_rails;
 	void __iomem		*bars_table[6];
 	struct ata_host		*host;
 	struct timer_list	idle_timer;
@@ -429,6 +430,7 @@ struct tegra_ahci_host_priv {
 	int			pexp_gpio_high;
 	int			pexp_gpio_low;
 	enum tegra_chipid	cid;
+	struct tegra_sata_soc_data *soc_data;
 };
 
 #ifdef	CONFIG_DEBUG_FS
@@ -505,10 +507,34 @@ static const struct dev_pm_ops tegra_ahci_dev_rt_ops = {
 };
 #endif
 
+static char * const t124_rail_names[] = {"avdd_sata", "vdd_sata",
+				"hvdd_sata", "avdd_sata_pll", "vddio_pex_sata"};
+
+static char * const t210_rail_names[] = {"dvdd_sata_pll", "hvdd_sata",
+			"l0_hvddio_sata", "l0_dvddio_sata", "hvdd_pex_pll_e"};
+
+static const struct tegra_sata_soc_data tegra210_sata_data = {
+	.sata_regulator_names = t210_rail_names,
+	.num_sata_regulators = ARRAY_SIZE(t210_rail_names),
+};
+
+static const struct tegra_sata_soc_data tegra124_sata_data = {
+	.sata_regulator_names = t124_rail_names,
+	.num_sata_regulators = ARRAY_SIZE(t124_rail_names),
+};
+
 static const struct of_device_id of_ahci_tegra_match[] = {
-	{ .compatible = "nvidia,tegra124-ahci-sata", },
+	{
+		.compatible = "nvidia,tegra124-ahci-sata",
+		.data = &tegra124_sata_data,
+	},
+	{
+		.compatible = "nvidia,tegra210-ahci-sata",
+		.data = &tegra210_sata_data,
+	},
 	{},
 };
+
 MODULE_DEVICE_TABLE(of, of_ahci_tegra_match);
 
 static struct platform_driver tegra_platform_ahci_driver = {
@@ -796,73 +822,73 @@ static void tegra_ahci_set_pad_cntrl_regs(
 	scfg_writel(SATA0_NONE_SELECTED, T_SATA0_INDEX_OFFSET);
 }
 
-int tegra_ahci_get_rails(struct regulator *regulators[])
+int tegra_ahci_get_rails(struct tegra_ahci_host_priv *tegra_hpriv)
 {
 	struct regulator *reg;
 	int i;
 	int ret = 0;
 
-	for (i = 0; i < NUM_SATA_POWER_RAILS; ++i) {
-		reg = devm_regulator_get(g_tegra_hpriv->dev,
-						sata_power_rails[i]);
-		if (IS_ERR_OR_NULL(reg)) {
-			pr_err("%s: can't get regulator %s\n",
-				__func__, sata_power_rails[i]);
+	tegra_hpriv->power_rails = devm_kzalloc(tegra_hpriv->dev,
+			tegra_hpriv->soc_data->num_sata_regulators
+			* sizeof(struct regulator *), GFP_KERNEL);
+
+	for (i = 0; i < tegra_hpriv->soc_data->num_sata_regulators; ++i) {
+		reg = devm_regulator_get(tegra_hpriv->dev,
+				tegra_hpriv->soc_data->sata_regulator_names[i]);
+		if (IS_ERR(reg)) {
+			dev_err(tegra_hpriv->dev, "%s:can't get regulator %s\n",
+				__func__,
+				tegra_hpriv->soc_data->sata_regulator_names[i]);
 			WARN_ON(1);
 			ret = PTR_ERR(reg);
+			tegra_hpriv->power_rails[i] = NULL;
 			goto exit;
 		}
-		regulators[i] = reg;
+		tegra_hpriv->power_rails[i] = reg;
 	}
 exit:
 	return ret;
 }
 
-void tegra_ahci_put_rails(struct regulator *regulators[])
-{
-	int i;
-
-	for (i = 0; i < NUM_SATA_POWER_RAILS; ++i)
-		devm_regulator_put(regulators[i]);
-}
-
-int tegra_ahci_power_on_rails(struct regulator *regulators[])
+int tegra_ahci_power_off_rails(struct tegra_ahci_host_priv *tegra_hpriv,
+		int num_reg)
 {
 	struct regulator *reg;
 	int i;
 	int ret = 0;
+	int rc = 0;
 
-	for (i = 0; i < NUM_SATA_POWER_RAILS; ++i) {
-		reg = regulators[i];
-		ret = regulator_enable(reg);
-		if (ret) {
-			pr_err("%s: can't enable regulator[%d]\n",
-				__func__, i);
-			WARN_ON(1);
-			goto exit;
-		}
-	}
-
-exit:
-	return ret;
-}
-
-int tegra_ahci_power_off_rails(struct regulator *regulators[])
-{
-	struct regulator *reg;
-	int i;
-	int ret = 0;
-
-	for (i = 0; i < NUM_SATA_POWER_RAILS; ++i) {
-		reg = regulators[i];
-		if (!IS_ERR_OR_NULL(reg)) {
+	for (i = 0; i < num_reg; ++i) {
+		reg = tegra_hpriv->power_rails[i];
+		if (!IS_ERR(reg)) {
 			ret = regulator_disable(reg);
 			if (ret) {
-				pr_err("%s: can't disable regulator[%d]\n",
+				dev_err(tegra_hpriv->dev,
+				"%s: can't disable regulator[%d]\n",
 					__func__, i);
 				WARN_ON(1);
-				goto exit;
+				rc = ret;
 			}
+		}
+	}
+
+	return rc;
+}
+
+int tegra_ahci_power_on_rails(struct tegra_ahci_host_priv *tegra_hpriv)
+{
+	int i;
+	int ret = 0;
+
+	for (i = 0; i < tegra_hpriv->soc_data->num_sata_regulators; ++i) {
+		ret = regulator_enable(tegra_hpriv->power_rails[i]);
+		if (ret) {
+			dev_err(tegra_hpriv->dev,
+				"%s: can't enable regulator[%d]\n",
+				__func__, i);
+			WARN_ON(1);
+			tegra_ahci_power_off_rails(tegra_hpriv, i);
+			goto exit;
 		}
 	}
 
@@ -1120,14 +1146,14 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	u32 timeout;
 
 	if (!lp0) {
-		err = tegra_ahci_get_rails(tegra_hpriv->power_rails);
+		err = tegra_ahci_get_rails(tegra_hpriv);
 		if (err) {
 			pr_err("%s: fails to get rails (%d)\n", __func__, err);
 			goto exit;
 		}
 
 	}
-	err = tegra_ahci_power_on_rails(tegra_hpriv->power_rails);
+	err = tegra_ahci_power_on_rails(tegra_hpriv);
 	if (err) {
 		pr_err("%s: fails to power on rails (%d)\n", __func__, err);
 		goto exit;
@@ -1444,8 +1470,8 @@ exit:
 
 	if (err) {
 		/* turn off all SATA power rails; ignore returned status */
-		tegra_ahci_power_off_rails(tegra_hpriv->power_rails);
-		/* return regulators to system */
+		tegra_ahci_power_off_rails(tegra_hpriv,
+			tegra_hpriv->soc_data->num_sata_regulators);
 	}
 	return err;
 }
@@ -1476,7 +1502,8 @@ static void tegra_ahci_controller_remove(struct platform_device *pdev)
 	if (status)
 		dev_err(host->dev, "remove: error turn-off SATA (0x%x)\n",
 				   status);
-	tegra_ahci_power_off_rails(tegra_hpriv->power_rails);
+	tegra_ahci_power_off_rails(tegra_hpriv,
+		tegra_hpriv->soc_data->num_sata_regulators);
 #endif
 
 }
@@ -1524,7 +1551,8 @@ static int tegra_ahci_controller_suspend(struct platform_device *pdev)
 		clk_writel(val, CLK_RST_CONTROLLER_RST_DEVICES_Y_0);
 	}
 
-	return tegra_ahci_power_off_rails(tegra_hpriv->power_rails);
+	return tegra_ahci_power_off_rails(tegra_hpriv,
+		tegra_hpriv->soc_data->num_sata_regulators);
 }
 
 static int tegra_ahci_controller_resume(struct platform_device *pdev)
@@ -1536,7 +1564,7 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev)
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
 
-	err = tegra_ahci_power_on_rails(tegra_hpriv->power_rails);
+	err = tegra_ahci_power_on_rails(tegra_hpriv);
 	if (err) {
 		pr_err("%s: fails to power on rails (%d)\n", __func__, err);
 		return err;
@@ -2607,6 +2635,7 @@ void tegra_ahci_sata_clk_gate(void)
 static int tegra_ahci_init_one(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
+	const struct of_device_id *match;
 	struct ata_port_info pi = ahci_port_info;
 	const struct ata_port_info *ppi[] = { &pi, NULL };
 	struct device *dev = &pdev->dev;
@@ -2664,6 +2693,12 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	tegra_hpriv = (struct tegra_ahci_host_priv *)hpriv;
 	tegra_hpriv->dev = dev;
 	if (np) {
+		match = of_match_device(of_match_ptr(of_ahci_tegra_match),
+						&pdev->dev);
+		if (!match)
+			return -ENODEV;
+		tegra_hpriv->soc_data =
+				(struct tegra_sata_soc_data *)match->data;
 		pdev->dev.coherent_dma_mask = DMA_BIT_MASK(64);
 		pdev->dev.dma_mask = &pdev->dev.coherent_dma_mask;
 		tegra_hpriv->pexp_gpio_high =

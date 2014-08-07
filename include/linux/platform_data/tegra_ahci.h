@@ -24,4 +24,9 @@ struct tegra_ahci_platform_data {
 	int pexp_gpio_low;
 };
 
+struct tegra_sata_soc_data {
+	char	* const *sata_regulator_names;
+	int	num_sata_regulators;
+};
+
 #endif
