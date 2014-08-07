@@ -1331,7 +1331,7 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 	int (*fn)(struct smmu_as *as, dma_addr_t iova, phys_addr_t pa,
 		  unsigned long prot);
 
-	dev_dbg(as->smmu->dev, "[%d] %pad:%pa\n", as->asid, &iova, &pa);
+	dev_dbg(as->smmu->dev, "[%d] %pad:%pap\n", as->asid, &iova, &pa);
 
 	switch (bytes) {
 	case SZ_4K:
@@ -1563,7 +1563,7 @@ static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
 		pa = pdir[pdn] << SMMU_PDE_SHIFT;
 	}
 
-	dev_dbg(as->smmu->dev, "iova:%pad pfn:%pa asid:%d\n",
+	dev_dbg(as->smmu->dev, "iova:%pad pfn:%pap asid:%d\n",
 		&iova, &pa, as->asid);
 
 	spin_unlock_irqrestore(&as->lock, flags);
@@ -1733,10 +1733,10 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
 		err = dma_map_linear_attrs(dev, area->start, size, 0, &attrs);
 		if (err == DMA_ERROR_CODE)
-			dev_err(dev, "Failed IOVA linear map %pa(%zx)\n",
+			dev_err(dev, "Failed IOVA linear map %pad(%zx)\n",
 				&area->start, size);
 		else
-			dev_info(dev, "IOVA linear map %pa(%zx)\n",
+			dev_info(dev, "IOVA linear map %pad(%zx)\n",
 				 &area->start, size);
 		area++;
 	}
