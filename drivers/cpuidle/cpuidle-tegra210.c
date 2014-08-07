@@ -62,6 +62,15 @@ static struct module *owner = THIS_MODULE;
 static DEFINE_PER_CPU(struct cpumask, idle_mask);
 static DEFINE_PER_CPU(struct cpuidle_driver, cpuidle_drv);
 
+static int csite_dbg_nopwrdown(void)
+{
+	u64 csite_dbg;
+
+	asm volatile("mrs %0, dbgprcr_el1" : "=r" (csite_dbg));
+
+	return csite_dbg & 0x1;
+}
+
 static int tegra210_enter_hvc(struct cpuidle_device *dev,
 		struct cpuidle_driver *drv, int index)
 {
@@ -197,6 +206,9 @@ static int tegra210_enter_sc4(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv,
 				int idx)
 {
+	if (csite_dbg_nopwrdown())
+		return 0;
+
 	return tegra210_enter_cc_state(dev, TEGRA_PM_CC6, TEGRA_PM_SC4,
 					TEGRA210_CPUIDLE_CC6, idx);
 }
@@ -219,6 +231,9 @@ static int tegra210_enter_sc7(struct cpuidle_device *dev,
 		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
 		.affinity_level = 0,
 	};
+
+	if (csite_dbg_nopwrdown())
+		return 0;
 
 	if (!tegra_bpmp_do_idle(dev->cpu, TEGRA_PM_CC7,
 					TEGRA_PM_SC7)) {
