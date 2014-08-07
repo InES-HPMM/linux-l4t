@@ -160,6 +160,7 @@ int tegra_dvfs_get_freqs(struct clk *c, unsigned long **freqs, int *num_freqs);
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate);
 int tegra_dvfs_override_core_voltage(struct clk *c, int override_mv);
 int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate);
+int tegra_dvfs_predict_millivolts_t(struct clk *c, unsigned long rate);
 int tegra_dvfs_set_fmax_at_vmin(struct clk *c, unsigned long f_max, int v_min);
 int tegra_dvfs_get_core_override_floor(void);
 int tegra_dvfs_get_core_nominal_millivolts(void);

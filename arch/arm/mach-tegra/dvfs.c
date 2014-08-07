@@ -648,7 +648,6 @@ static int dvfs_rail_get_thermal_floor_dfll(struct dvfs_rail *rail)
 	return 0;
 }
 
-
 /* Get dvfs clock V/F curve helpers in pll and dfll modes */
 static unsigned long *dvfs_get_freqs(struct dvfs *d)
 {
@@ -929,21 +928,13 @@ static int predict_millivolts(struct clk *c, const int *millivolts,
 	return predict_non_alt_millivolts(c, millivolts, rate);
 }
 
+/*
+ * Predict minimum voltage required to run specified clock at target rate.
+ * Evaluate individual clock domain V/F relation; does not apply thermal
+ * floor. Should be used for core domains to evaluate per-clock voltage
+ * requirements.
+ */
 int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
-{
-	const int *millivolts;
-
-	if (!rate || !c->dvfs)
-		return 0;
-
-	millivolts = tegra_dvfs_is_dfll_range(c->dvfs, rate) ?
-		dvfs_get_millivolts_dfll(c->dvfs) :
-		dvfs_get_millivolts_pll(c->dvfs);
-	return predict_millivolts(c, millivolts, rate);
-}
-EXPORT_SYMBOL(tegra_dvfs_predict_millivolts);
-
-int tegra_dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate)
 {
 	int mv;
 	const int *millivolts;
@@ -951,21 +942,96 @@ int tegra_dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate)
 	if (!rate || !c->dvfs)
 		return 0;
 
+	if ((c->dvfs->dvfs_rail == tegra_gpu_rail) ||
+	    (c->dvfs->dvfs_rail == tegra_cpu_rail)) {
+		pr_warn("%s does not apply thermal floors - use %s\n",
+			 __func__, "tegra_dvfs_predict_millivolts_t");
+	}
+
+	mutex_lock(&dvfs_lock);
 	millivolts = tegra_dvfs_is_dfll_range(c->dvfs, rate) ?
-		dvfs_get_millivolts_dfll(c->dvfs) : c->dvfs->peak_millivolts ? :
+		dvfs_get_millivolts_dfll(c->dvfs) :
 		dvfs_get_millivolts_pll(c->dvfs);
+	mv = predict_millivolts(c, millivolts, rate);
+	mutex_unlock(&dvfs_lock);
+
+	return mv;
+}
+EXPORT_SYMBOL(tegra_dvfs_predict_millivolts);
+
+/*
+ * Predict minimum voltage required to run specified clock at target rate
+ * including effect of thermal floor at current temperature.
+ */
+int tegra_dvfs_predict_millivolts_t(struct clk *c, unsigned long rate)
+{
+	int mv;
+	const int *millivolts;
+	struct dvfs_rail *rail;
+
+	if (!rate || !c->dvfs)
+		return 0;
+
+	rail = c->dvfs->dvfs_rail;
+
+	mutex_lock(&dvfs_lock);
+	if (tegra_dvfs_is_dfll_range(c->dvfs, rate)) {
+		millivolts = dvfs_get_millivolts_dfll(c->dvfs);
+		mv = predict_millivolts(c, millivolts, rate);
+		if (mv >= 0)
+			mv = max(mv, dvfs_rail_get_thermal_floor_dfll(rail));
+	} else {
+		millivolts = dvfs_get_millivolts_pll(c->dvfs);
+		mv = predict_millivolts(c, millivolts, rate);
+		if (mv >= 0)
+			mv = max(mv, dvfs_rail_get_thermal_floor_pll(rail));
+	}
+	mutex_unlock(&dvfs_lock);
+
+	return mv;
+}
+EXPORT_SYMBOL(tegra_dvfs_predict_millivolts_t);
+
+/*
+ * Predict minimum voltage required to run specified clock at target rate
+ * including effect of thermal floors across all temperature ranges.
+ */
+static int dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate)
+{
+	int mv;
+	const int *millivolts;
+	bool dfll_range;
+
+	if (!rate || !c->dvfs)
+		return 0;
+
+	dfll_range = tegra_dvfs_is_dfll_range(c->dvfs, rate);
+	millivolts = dfll_range ? dvfs_get_millivolts_dfll(c->dvfs) :
+		c->dvfs->peak_millivolts ? : dvfs_get_millivolts_pll(c->dvfs);
 
 	mv = predict_non_alt_millivolts(c, millivolts, rate);
 	if (mv < 0)
 		return mv;
 
-	if (c->dvfs->dvfs_rail->therm_mv_floors)
+	if (!dfll_range && c->dvfs->dvfs_rail->therm_mv_floors)
 		mv = max(mv, c->dvfs->dvfs_rail->therm_mv_floors[0]);
-	if (c->dvfs->dvfs_rail->therm_mv_dfll_floors)
+	if (dfll_range && c->dvfs->dvfs_rail->therm_mv_dfll_floors)
 		mv = max(mv, c->dvfs->dvfs_rail->therm_mv_dfll_floors[0]);
 	return mv;
 }
 
+int tegra_dvfs_predict_peak_millivolts(struct clk *c, unsigned long rate)
+{
+	int mv;
+
+	mutex_lock(&dvfs_lock);
+	mv = dvfs_predict_peak_millivolts(c, rate);
+	mutex_unlock(&dvfs_lock);
+
+	return mv;
+}
+
+/* Set DVFS rate and update voltage accordingly */
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)
 {
 	int ret;
@@ -1096,7 +1162,7 @@ int tegra_dvfs_resolve_override(struct clk *c, unsigned long max_rate)
 	if (d->defer_override && rail->override_unresolved) {
 		d->defer_override = false;
 
-		mv = tegra_dvfs_predict_peak_millivolts(c, max_rate);
+		mv = dvfs_predict_peak_millivolts(c, max_rate);
 		if (rail->min_override_millivolts < mv)
 			rail->min_override_millivolts = mv;
 
@@ -1249,7 +1315,7 @@ static int __init enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
 	 */
 	if (i && c->ops && !c->ops->shared_bus_update &&
 	    !(c->flags & PERIPH_ON_CBUS) && !d->can_override) {
-		int mv = tegra_dvfs_predict_peak_millivolts(c, d->freqs[i-1]);
+		int mv = dvfs_predict_peak_millivolts(c, d->freqs[i-1]);
 		struct dvfs_rail *rail = d->dvfs_rail;
 		if (d->defer_override)
 			rail->override_unresolved++;
