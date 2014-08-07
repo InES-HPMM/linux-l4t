@@ -22,6 +22,7 @@
 
 #include "denver.dtsi"
 #include "tegra124-soc.dtsi"
+#include "tegra124-platforms/tegra124-bthrot-cdev.dtsi"
 
 / {
 	compatible = "nvidia,tegra132";
@@ -216,5 +217,20 @@
 		nvidia,vbus-oc-map = <5>;
 		nvidia,xcvr-setup-offset = <0>;
 		status = "disabled";
+
+	bthrot_cdv {
+		compatible = "nvidia,tegra30-throttle";
+		skin_balanced {
+			status = "okay";
+		};
+		gpu_balanced {
+			status = "okay";
+		};
+		cpu_balanced {
+			status = "okay";
+		};
+		emergency_balanced{
+			status = "disabled";
+		};
 	};
 };
