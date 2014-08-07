@@ -72,6 +72,7 @@ struct tegra_sdhci_platform_data {
 	bool update_pinctrl_settings;
 	u32 cpu_speedo;
 	unsigned char default_drv_type;
+	bool dll_calib_needed;
 };
 
 #endif

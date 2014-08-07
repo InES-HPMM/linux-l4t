@@ -40,6 +40,8 @@ Optional properties:
 - vddio_sdmmc-supply: regulator with this name
 - vddio_sd_slot-supply: regulator with this name
 - update-pinctrl-settings: flag when set using pictrl apis for updating sdmmc pins
+- nvidia,dll-calib-needed: DLL calibration is needed for SDMMC4 and SDMMC2 devices if they are enumerated
+in HS400 mode.
 
 Example:
 
@@ -62,6 +64,7 @@ Example:
 		calib-3v3-offsets = <0x0202>;
 		calib-1v8-offsets = <0x0202>;
 		vddio_sdmmc-supply = <&max77620_sd3>;
+		nvidia,dll-calib-needed;
 		status = "okay";
 	};
 
