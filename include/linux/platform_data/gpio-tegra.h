@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/include/mach/gpio.h
+ * include/linux/platform_data/gpio-tegra.h
  *
  * Copyright (C) 2010 Google, Inc.
  *

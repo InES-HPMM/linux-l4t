@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/include/mach/gpio-names.h
  *
  * Copyright (c) 2010 Google, Inc
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -20,7 +20,7 @@
 #ifndef __MACH_TEGRA_GPIO_NAMES_H
 #define __MACH_TEGRA_GPIO_NAMES_H
 
-#include <mach/gpio-tegra.h>
+#include <linux/platform_data/gpio-tegra.h>
 
 #define TEGRA_GPIO_INVALID	-1
 #define TEGRA_GPIO_PA0		0

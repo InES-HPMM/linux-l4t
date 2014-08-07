@@ -1,7 +1,7 @@
 /*
  * Tegra Wakeups for NVIDIA SoCs Tegra
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -29,7 +29,7 @@
 #include <linux/system-wakeup.h>
 
 #include <mach/irqs.h>
-#include <mach/gpio-tegra.h>
+#include <linux/platform_data/gpio-tegra.h>
 
 int *tegra_gpio_wake_table;
 EXPORT_SYMBOL_GPL(tegra_gpio_wake_table);
