@@ -894,7 +894,7 @@
 	sound {
 		compatible = "nvidia,tegra-audio-grenada";
 		nvidia,model = "tegra-snd-grenada";
-		nvidia,num-codec-link = <4>;
+		nvidia,num-codec-link = <7>;
 		nvidia,amx-slot-map = <
 			/* jack 0 */
 			TDM_SLOT_MAP(0, 0, 0)
@@ -1033,6 +1033,39 @@
 			srate = <48000>;
 			num-channel = <2>;
 			name-prefix = "s";
+		};
+		nvidia,dai-link-5 {
+			cpu-dai = <&tegra_dmic1>;
+			codec-dai = <&spdif_dit0>;
+			cpu-dai-name = "DMIC1";
+			codec-dai-name = "dit-hifi";
+			format = "i2s";
+			bit-format = "s16_le";
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "dmic-x";
+		};
+		nvidia,dai-link-6 {
+			cpu-dai = <&tegra_dmic2>;
+			codec-dai = <&spdif_dit1>;
+			cpu-dai-name = "DMIC2";
+			codec-dai-name = "dit-hifi";
+			format = "i2s";
+			bit-format = "s16_le";
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "dmic-y";
+		};
+		nvidia,dai-link-7 {
+			cpu-dai = <&tegra_dmic3>;
+			codec-dai = <&spdif_dit2>;
+			cpu-dai-name = "DMIC3";
+			codec-dai-name = "dit-hifi";
+			format = "i2s";
+			bit-format = "s16_le";
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "dmic-z";
 		};
 	};
 
