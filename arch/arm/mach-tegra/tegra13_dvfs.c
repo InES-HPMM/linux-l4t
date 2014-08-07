@@ -83,7 +83,7 @@ static struct tegra_cooling_device gpu_vts_cdev = {
 
 static struct dvfs_rail tegra13_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
-	.version = "p4v17",
+	.version = "p4v18",
 	.max_millivolts = 1300,
 	.min_millivolts = 680,
 	.simon_domain = TEGRA_SIMON_DOMAIN_CPU,
@@ -272,7 +272,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		},
 		.cvb_vmin =  {  0, { 2877000, -174300, 3600, -357,  -339,  53}, },
 		.vmin_trips_table = { 15, 30, 50, 70, 120, },
-		.therm_floors_table = { 890, 760, 740, 720, 700, },
+		.therm_floors_table = { 890, 800, 800, 800, 800, },
 	},
 };
 
