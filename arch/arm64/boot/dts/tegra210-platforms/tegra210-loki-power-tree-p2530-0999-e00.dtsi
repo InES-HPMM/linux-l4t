@@ -1,0 +1,80 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "tegra210-ers-pmic-e2174-1101-a00.dtsi"
+#include "tegra210-ers-fixed-e2174-1101-a00.dtsi"
+#include "tegra210-ers-power-dvfs-e2174-1101-a00.dtsi"
+
+/ {
+
+	i2c@7000d000 {
+		max77620: max77620@3c {
+			maxim,wdt-timeout = <0>;
+
+			regulators {
+				sd1 {
+					regulator-min-microvolt = <1100000>;
+					regulator-max-microvolt = <1100000>;
+				};
+				ldo4 {
+					regulator-min-microvolt = <3200000>;
+					regulator-max-microvolt = <3200000>;
+				};
+			};
+		};
+	};
+
+	regulators {
+		regulator@2 {
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+		};
+		regulator@11 {
+			status = "disabled";
+		};
+		regulator@101 {
+			status = "disabled";
+		};
+	};
+
+	efuse@7000f800 {
+		vpp_fuse-supply = <&max77620_sd3>;
+	};
+
+	host1x {
+		vi {
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
+		};
+	};
+
+	sound {
+		ldoen-supply = <&vdd_sys_boost>;
+		spkvdd-supply = <&vdd_sys_boost>;
+		dbvdd-supply = <&vdd_sys_boost>;
+		dmicvdd-supply = <&max77620_sd3>;
+	};
+
+	udc@7d000000 {
+		avdd_usb-supply = <&vdd_3v3>;
+		avdd_pll_utmip-supply = <&max77620_sd3>;
+		usb_bat_chg-supply = <&battery_charger>;
+	};
+
+	otg@7d000000 {
+		usb_vbus-supply = <&usb0_vbus>;
+	};
+};
