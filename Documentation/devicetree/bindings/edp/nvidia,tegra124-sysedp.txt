@@ -1,10 +1,16 @@
-System-EDP Consumers:
+System-EDP
 
 Required properties:
 - compatible: "nvidia,tegra124-sysedp"
+
+Optional properties:
 - nvidia,margin: This defines the margin when calculating the budget
   for dynamic capping.
 - nvidia,min_budget: This defines the minimum budget for dynamic capping.
+- nvidia,initial_budget: This is the initial power budget listed in milliwatts.
+  If the system does not include sysedp_batmon_calc device, this budget will
+  be used as a fixed budget for the system.  If this option is not present,
+  the initial budget will be set to 1000000 mW.
 
 Required nodes:
 - consumers: This node contains a set of subnodes describing different
@@ -26,6 +32,7 @@ Example:
 		compatible = "nvidia,tegra124-sysedp";
 		nvidia,margin = <0>;
 		nvidia,min_budget = <0>;
+		nvidia,initial_budget = <30000>;
 
 		consumers {
 			consumer1 {

@@ -328,6 +328,10 @@ static void of_sysedp_get_pdata(struct platform_device *pdev,
 	if (!ret)
 		obj_ptr->min_budget = (s32)val;
 
+	ret = of_property_read_u32(np, "nvidia,initial_budget", &val);
+	if (!ret)
+		avail_budget = (s32)val;
+
 	*pdata = obj_ptr;
 
 	return;
