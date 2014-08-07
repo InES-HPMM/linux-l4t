@@ -31,6 +31,8 @@
 #include <linux/tegra_smmu.h>
 #include <linux/tegra-timer.h>
 #include <linux/syscore_ops.h>
+#include <linux/debugfs.h>
+#include <linux/uaccess.h>
 
 #include <asm/suspend.h>
 #include <asm/proc-fns.h>
@@ -61,6 +63,18 @@ static struct module *owner = THIS_MODULE;
 
 static DEFINE_PER_CPU(struct cpumask, idle_mask);
 static DEFINE_PER_CPU(struct cpuidle_driver, cpuidle_drv);
+
+struct t210_idle_state_params {
+	unsigned int residency;
+	unsigned int latency;
+	bool enabled;
+};
+
+struct t210_idle_state {
+	struct t210_idle_state_params cluster[2];
+	int (*enter) (struct cpuidle_device *dev, struct cpuidle_driver *drv,
+			int index);
+};
 
 static int csite_dbg_nopwrdown(void)
 {
@@ -312,6 +326,179 @@ static int tegra210_enter_cg(struct cpuidle_device *dev,
 	return idx;
 }
 
+/* Assuming this array and the states array in the driver are kept in sync */
+static struct t210_idle_state t210_idle_states[CPUIDLE_STATE_MAX] = {
+	[0] = {
+		.cluster = {
+			[0] = {
+				.residency = 1,
+				.latency = 1,
+				.enabled = true,
+			},
+			[1] = {
+				.residency = 1,
+				.latency = 1,
+				.enabled = true,
+			},
+		},
+		.enter = tegra210_enter_cg,
+	},
+	[1] = {
+		.cluster = {
+			[0] = {
+				.residency = 10,
+				.latency = 10,
+			},
+			[1] = {
+				.residency = 10,
+				.latency = 10,
+			},
+		},
+		.enter = tegra210_enter_hvc,
+	},
+	[2] = {
+		.cluster = {
+			[0] = {
+				.residency = 10,
+				.latency = 10,
+			},
+			[1] = {
+				.residency = 10,
+				.latency = 10,
+			},
+		},
+		.enter = tegra210_enter_retention,
+	},
+	[3] = {
+		.cluster = {
+			[0] = {
+				.residency = 20,
+				.latency = 10,
+			},
+			[1] = {
+				.residency = 20,
+				.latency = 10,
+			},
+		},
+		.enter = tegra210_enter_c7,
+	},
+	[4] = {
+		.cluster = {
+			[0] = {
+				.residency = 30,
+				.latency = 20,
+			},
+			[1] = {
+				.residency = 30,
+				.latency = 20,
+			},
+		},
+		.enter = tegra210_enter_cc6,
+	},
+	[5] = {
+		.cluster = {
+			[0] = {
+				.residency = 40,
+				.latency = 30,
+			},
+			[1] = {
+				.residency = 40,
+				.latency = 30,
+			},
+		},
+		.enter = tegra210_enter_cc7,
+	},
+	[6] = {
+		.cluster = {
+			[0] = {
+				.residency = 40,
+				.latency = 30,
+			},
+			[1] = {
+				.residency = 40,
+				.latency = 30,
+			},
+		},
+		.enter = tegra210_enter_sc2,
+	},
+	[7] = {
+		.cluster = {
+			[0] = {
+				.residency = 40,
+				.latency = 30,
+			},
+			[1] = {
+				.residency = 40,
+				.latency = 30,
+			},
+		},
+		.enter = tegra210_enter_sc3,
+	},
+	[8] = {
+		.cluster = {
+			[0] = {
+				.residency = 40,
+				.latency = 30,
+			},
+			[1] = {
+				.residency = 40,
+				.latency = 30,
+			},
+		},
+		.enter = tegra210_enter_sc4,
+	},
+	[9] = {
+		.cluster = {
+			[0] = {
+				.residency = 40,
+				.latency = 30,
+			},
+			[1] = {
+				.residency = 40,
+				.latency = 30,
+			},
+		},
+		.enter = tegra210_enter_sc7,
+	},
+};
+
+/* XXX: Call on cluster switch */
+static void tegra210_set_idle_state_params(int cpu)
+{
+	int i;
+	unsigned int target_residency, exit_latency;
+	struct cpuidle_driver *drv = &per_cpu(cpuidle_drv, cpu);
+	/* XXX: Replace with an actual call to check cluster */
+	bool is_slow_cluster = false;
+
+	for (i = 0; i < drv->state_count; i++) {
+		target_residency =
+			t210_idle_states[i].cluster[is_slow_cluster].residency;
+		exit_latency =
+			t210_idle_states[i].cluster[is_slow_cluster].latency;
+		drv->states[i].target_residency = target_residency;
+		drv->states[i].exit_latency = exit_latency;
+	}
+}
+
+static int tegra210_enter_state(struct cpuidle_device *dev,
+				struct cpuidle_driver *drv, int index)
+{
+	/* XXX: Replace with call to actually check cluster */
+	bool is_slow_cluster = false;
+	bool enabled = false;
+	int i;
+
+	for (i = index; i > 0; i--) {
+		enabled = t210_idle_states[i].cluster[is_slow_cluster].enabled;
+		if (enabled && !dev->states_usage[i].disable &&
+		    !drv->states[i].disabled)
+			break;
+	}
+
+	return t210_idle_states[i].enter(dev, drv, i);
+}
+
 /* TODO: remove this WAR */
 static void tegra210_init_usage(int cpu)
 {
@@ -340,94 +527,76 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state = &drv->states[0];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "C1");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU clock gated");
-	state->enter = tegra210_enter_cg;
-	state->exit_latency = 1;
-	state->target_residency = 1;
+	state->enter = tegra210_enter_state;
 	state->power_usage = UINT_MAX;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
 	state = &drv->states[1];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "C3");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "HW controlled Vmin");
-	state->enter = tegra210_enter_hvc;
-	state->exit_latency = 10;
-	state->target_residency = 10;
+	state->enter = tegra210_enter_state;
 	state->power_usage = 5000;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
 	state = &drv->states[2];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "C4");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU retention");
-	state->enter = tegra210_enter_retention;
-	state->exit_latency = 10;
-	state->target_residency = 10;
+	state->enter = tegra210_enter_state;
 	state->power_usage = 5000;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
 	state = &drv->states[3];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "C7");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU Core Powergate");
-	state->enter = tegra210_enter_c7;
-	state->exit_latency = 10;
-	state->target_residency = 20;
+	state->enter = tegra210_enter_state;
 	state->power_usage = 500;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
 	state = &drv->states[4];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "CC6");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "Cluster power gate");
-	state->enter = tegra210_enter_cc6;
-	state->exit_latency = 20;
-	state->target_residency = 30;
+	state->enter = tegra210_enter_state;
 	state->power_usage = 400;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
 	state = &drv->states[5];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "CC7");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU rail gate");
-	state->enter = tegra210_enter_cc7;
-	state->exit_latency = 30;
-	state->target_residency = 40;
+	state->enter = tegra210_enter_state;
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
 	state = &drv->states[6];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "SC2");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "DRAM SR + MC CG");
-	state->enter = tegra210_enter_sc2;
-	state->exit_latency = 30;
-	state->target_residency = 40;
+	state->enter = tegra210_enter_state;
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
 	state = &drv->states[7];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "SC3");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "DRAM SR + MC CG + Memory PLL disabled");
-	state->enter = tegra210_enter_sc3;
-	state->exit_latency = 30;
-	state->target_residency = 40;
+	state->enter = tegra210_enter_state;
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
 	state = &drv->states[8];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "SC4");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "DRAM SR + MC CG + Memory PLL & PLLP disabled");
-	state->enter = tegra210_enter_sc4;
-	state->exit_latency = 30;
-	state->target_residency = 40;
+	state->enter = tegra210_enter_state;
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
 	state = &drv->states[9];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "SC7");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "VDD_SOC turned off");
-	state->enter = tegra210_enter_sc7;
-	state->exit_latency = 30;
-	state->target_residency = 40;
+	state->enter = tegra210_enter_state;
 	state->power_usage = 300;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 
 	drv->state_count = 10;
+
+	tegra210_set_idle_state_params(cpu);
 
 	ret = cpuidle_register(drv, NULL);
 	if (ret) {
@@ -463,6 +632,132 @@ static struct notifier_block tegra210_cpu_nb = {
 	.notifier_call = tegra210_cpu_notify
 };
 
+#ifdef CONFIG_DEBUG_FS
+
+static struct dentry *cpuidle_debugfs_root;
+static unsigned int fast_enable = 1;
+static unsigned int slow_enable = 1;
+
+static void set_state_enable(bool slow_cluster)
+{
+	int i;
+	bool enabled;
+
+	for (i = 1; i < ARRAY_SIZE(t210_idle_states); i++) {
+		enabled = (fast_enable >> i) & 0x1;
+		if (slow_cluster)
+			enabled = (slow_enable >> i) & 0x1;
+		t210_idle_states[i].cluster[slow_cluster].enabled = enabled;
+	}
+}
+
+static int fast_enable_show(struct seq_file *s, void *data)
+{
+	seq_printf(s, "%u\n", fast_enable);
+
+	return 0;
+}
+
+static int fast_enable_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, fast_enable_show, inode->i_private);
+}
+
+static ssize_t fast_enable_write(struct file *fp, const char __user *ubuf,
+					size_t count, loff_t *pos)
+{
+	char buf[20];
+	size_t res;
+
+	res = min(count, sizeof(buf) - 1);
+
+	if (copy_from_user(buf, ubuf, res))
+		return -EFAULT;
+
+	buf[res] = '\0';
+
+	if (kstrtouint(buf, 10, &fast_enable) < 0)
+		return -EINVAL;
+
+	set_state_enable(false);
+
+	return res;
+}
+
+static const struct file_operations fast_cluster_enable_fops = {
+	.open	=	fast_enable_open,
+	.read	=	seq_read,
+	.llseek	=	seq_lseek,
+	.write	=	fast_enable_write,
+};
+
+static int slow_enable_show(struct seq_file *s, void *data)
+{
+	seq_printf(s, "%u\n", fast_enable);
+
+	return 0;
+}
+
+static int slow_enable_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, slow_enable_show, inode->i_private);
+}
+
+static ssize_t slow_enable_write(struct file *fp, const char __user *ubuf,
+					size_t count, loff_t *pos)
+{
+	char buf[20];
+	size_t res;
+
+	res = min(count, sizeof(buf) - 1);
+
+	if (copy_from_user(buf, ubuf, res))
+		return -EFAULT;
+
+	buf[res] = '\0';
+
+	if (kstrtouint(buf, 10, &slow_enable) < 0)
+		return -EINVAL;
+
+	set_state_enable(true);
+
+	return res;
+}
+
+static const struct file_operations slow_cluster_enable_fops = {
+	.open	=	slow_enable_open,
+	.read	=	seq_read,
+	.llseek	=	seq_lseek,
+	.write	=	slow_enable_write,
+};
+
+static int __init debugfs_init(void)
+{
+	struct dentry *dfs_file;
+
+	cpuidle_debugfs_root = debugfs_create_dir("cpuidle_t210", 0);
+
+	if (!cpuidle_debugfs_root)
+		return -ENOMEM;
+
+	dfs_file = debugfs_create_file("fast_cluster_states_enable", 0644,
+			cpuidle_debugfs_root, NULL, &fast_cluster_enable_fops);
+	if (!dfs_file)
+		goto err_out;
+
+	dfs_file = debugfs_create_file("slow_cluster_states_enable", 0644,
+			cpuidle_debugfs_root, NULL, &slow_cluster_enable_fops);
+	if (!dfs_file)
+		goto err_out;
+
+	return 0;
+
+err_out:
+	debugfs_remove_recursive(cpuidle_debugfs_root);
+	return -ENOMEM;
+}
+#endif
+
 /*
  * t210_idle_init
  *
@@ -485,6 +780,10 @@ int __init tegra210_idle_init(void)
 		if (ret)
 			return ret;
 	}
+
+#ifdef CONFIG_DEBUG_FS
+	debugfs_init();
+#endif
 
 	return register_cpu_notifier(&tegra210_cpu_nb);
 }
