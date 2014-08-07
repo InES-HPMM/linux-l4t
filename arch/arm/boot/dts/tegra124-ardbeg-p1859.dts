@@ -24,6 +24,10 @@
 #include "tegra124-p1859.dtsi"
 
 / {
+        model = "NVIDIA Tegra124 p1859";
+        compatible = "nvidia,p1859", "nvidia,tegra124";
+        nvidia,dtsfilename = __FILE__;
+
 	gpio-keys {
 		compatible = "gpio-keys";
 		pwr_int_n {
