@@ -56,6 +56,7 @@ config ARCH_TEGRA_21x_SOC
 	select PM_GENERIC_DOMAINS if PM
 	select PINCTRL
 	select PINCTRL_TEGRA210
+	select SYSTEM_PMIC
 	select HAVE_FUNCTION_TRACER
 	help
 	  Support for NVIDIA Tegra 21x family of SoCs, based upon the
