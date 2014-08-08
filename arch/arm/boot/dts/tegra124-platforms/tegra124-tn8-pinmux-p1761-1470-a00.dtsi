@@ -1003,6 +1003,25 @@
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,open-drain = <TEGRA_PIN_DISABLE>;
 			};
+
+			sdmmc3_cmd_pa7_uart_sd {
+				nvidia,pins = "sdmmc3_cmd_pa7";
+				nvidia,function = "uarta";
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				status = "disabled";
+				dt-override-status-odm-data = <0x00038000 0x00028000>;
+			};
+			sdmmc3_dat1_pb6_uart_sd {
+				nvidia,pins = "sdmmc3_dat1_pb6";
+				nvidia,function = "uarta";
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				status = "disabled";
+				dt-override-status-odm-data = <0x00038000 0x00028000>;
+			};
 		};
 
 		pinmux_unused_lowpower: unused_lowpower {
