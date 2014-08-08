@@ -592,20 +592,38 @@ static int tegra_smmu_get_map_prop(struct device *dev,
 }
 
 static bool tegra_smmu_map_prop_match(const struct dma_iommu_mapping *map,
-					 const struct smmu_map_prop prop)
+					 const struct smmu_map_prop *prop)
 {
-	if (map->base != prop.iova_start)
+	if (map->base != prop->iova_start)
 		return false;
-	if (map->end - map->base != prop.iova_size)
+	if (map->end - map->base != prop->iova_size)
 		return false;
 	/* XXX: will not be 0 in case map was initialized using iommus prop */
 	if (!map->alignment)
 		return true;
-	if (!map->gap_page && (map->gap_page != !!prop.gap_page))
+	if (!map->gap_page && (map->gap_page != !!prop->gap_page))
 		return false;
-	if (!map->num_pf_page && (map->num_pf_page != prop.num_pf_page))
+	if (!map->num_pf_page && (map->num_pf_page != prop->num_pf_page))
 		return false;
 	return true;
+}
+
+static struct dma_iommu_mapping *tegra_smmu_create_map_by_prop(
+	struct smmu_map_prop *prop)
+{
+	struct dma_iommu_mapping *map;
+
+	map = arm_iommu_create_mapping(&platform_bus_type,
+				       (dma_addr_t)prop->iova_start,
+				       (size_t)prop->iova_size,
+				       0);
+	if (IS_ERR(map))
+		return NULL;
+
+	map->alignment = prop->alignment;
+	map->gap_page = !!prop->gap_page;
+	map->num_pf_page = prop->num_pf_page;
+	return map;
 }
 
 /*
@@ -615,54 +633,45 @@ static bool tegra_smmu_map_prop_match(const struct dma_iommu_mapping *map,
 static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev,
 							u64 swgids)
 {
-	int asid, ret;
-	struct dma_iommu_mapping *map = NULL;
-	struct smmu_map_prop prop;
+	int asid, err;
+	struct dma_iommu_mapping *map;
+	struct smmu_map_prop prop, *pprop = NULL;
+
+	err = tegra_smmu_get_map_prop(dev, &prop);
+	if (err)
+		dev_info(dev, "no valid iommu map property\n");
+	else
+		pprop = &prop;
 
 	asid = _tegra_smmu_get_asid(swgids);
+	map = smmu_handle->map[asid];
+	if (map)
+		goto found;
 
-	ret = tegra_smmu_get_map_prop(dev, &prop);
-	if (ret)
-		dev_info(dev, "map properties from iommus is invalid\n");
+	if (pprop)
+		map = tegra_smmu_create_map_by_prop(pprop);
+	else
+		map = tegra_smmu_map_init_dev(dev, swgids);
 
-	if (smmu_handle && smmu_handle->map[asid]) {
-		map = smmu_handle->map[asid];
-		if (!ret && !tegra_smmu_map_prop_match(map, prop)) {
-			dev_err(dev, "incompatible address space properties\n");
-			return NULL;
-		}
-		goto end;
-	}
-
-	if (!ret) {
-		map = arm_iommu_create_mapping(&platform_bus_type,
-					       (dma_addr_t) prop.iova_start,
-					       (size_t) prop.iova_size,
-					       0);
-		if (IS_ERR(map)) {
-			map = NULL;
-			goto end;
-		}
-		map->alignment = prop.alignment;
-		map->gap_page = !!prop.gap_page;
-		map->num_pf_page = prop.num_pf_page;
-		dev_info(dev, "created map using iommus property\n");
-		goto end;
-	}
-
-	map = tegra_smmu_map_init_dev(dev, swgids);
-	dev_info(dev, "created map using system map\n");
-
-end:
 	if (!map)
-		dev_err(dev,
-			"Failed to create/retrieve IOVA map for ASID[%d]",
-			asid);
+		goto err_out;
 
-	if (smmu_handle && map)
-		smmu_handle->map[asid] = map;
+	smmu_handle->map[asid] = map;
+
+found:
+	if  (pprop && !tegra_smmu_map_prop_match(map, pprop))
+		goto err_out;
 
 	return map;
+
+err_out:
+	if (map)
+		dev_err(dev, "iommu map(%p) incompatible with prop(asid=%d)\n",
+			map, asid);
+	else
+		dev_err(dev, "fail to create iommu map by %s(asid=%d)\n",
+			pprop ? "property" : "system", asid);
+	return NULL;
 }
 
 static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
