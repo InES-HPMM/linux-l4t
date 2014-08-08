@@ -24,8 +24,11 @@
 #include <linux/cpumask.h>
 #include <linux/kernel.h>
 #include <linux/of_platform.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
 
 #include <asm/traps.h>
+#include <asm/cputype.h>
 
 #include <mach/hardware.h>
 
@@ -531,6 +534,44 @@ static void check_backdoor(void)
 	backdoor_enabled ? "" : "NOT ");
 }
 
+static u32 mts_version;
+
+static int mts_version_cpu_notify(struct notifier_block *nb,
+					 unsigned long action, void *pcpu)
+{
+	/* Record MTS version if the current CPU is Denver */
+	if (!mts_version && ((read_cpuid_id() >> 24) == 'N'))
+		asm volatile ("mrs %0, AIDR_EL1" : "=r" (mts_version));
+	return NOTIFY_OK;
+}
+
+static struct notifier_block mts_version_cpu_nb = {
+	.notifier_call = mts_version_cpu_notify,
+};
+
+static int __init denver_knobs_init_early(void)
+{
+	return register_cpu_notifier(&mts_version_cpu_nb);
+}
+early_initcall(denver_knobs_init_early);
+
+static int mts_version_show(struct seq_file *m, void *v)
+{
+	return seq_printf(m, "%u\n", mts_version);
+}
+
+static int mts_version_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mts_version_show, NULL);
+}
+
+static const struct file_operations mts_version_fops = {
+	.open		= mts_version_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int __init denver_knobs_init(void)
 {
 	int error;
@@ -557,6 +598,14 @@ static int __init denver_knobs_init(void)
 		error = create_denver_cregs();
 		if (error)
 			return error;
+	}
+
+	/* Cancel the notifier as mts_version should be set now. */
+	unregister_cpu_notifier(&mts_version_cpu_nb);
+
+	if (mts_version && !proc_create("mts_version", 0, NULL, &mts_version_fops)) {
+		pr_err("Failed to create /proc/mts_version!\n");
+		return -1;
 	}
 
 	return 0;
