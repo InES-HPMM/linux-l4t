@@ -1070,7 +1070,6 @@ static void arm_smmu_free_ptes(pmd_t *pmd)
 {
 	pgtable_t table = pmd_pgtable(*pmd);
 
-	pgtable_page_dtor(table);
 	__free_page(table);
 }
 
@@ -1510,7 +1509,6 @@ static int arm_smmu_alloc_init_pte(struct arm_smmu_device *smmu, pmd_t *pmd,
 			return -ENOMEM;
 
 		arm_smmu_flush_pgtable(smmu, page_address(table), PAGE_SIZE);
-		pgtable_page_ctor(table);
 		pmd_populate(NULL, pmd, table);
 		arm_smmu_flush_pgtable(smmu, pmd, sizeof(*pmd));
 	}
