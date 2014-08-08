@@ -220,7 +220,8 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 	struct watchdog_device *wdt_dev;
 	int ret;
 	u32 prop;
-	struct device_node *np = pdev->dev.parent->of_node;
+	struct device_node *pnode = pdev->dev.parent->of_node;
+	struct device_node *np= NULL;
 
 	wdt = devm_kzalloc(&pdev->dev, sizeof(*wdt), GFP_KERNEL);
 	if (!wdt) {
@@ -228,7 +229,19 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	if (np) {
+	if (pnode) {
+		np = of_get_child_by_name(pnode, "watchdog");
+		if (!np) {
+			dev_err(&pdev->dev,
+				"Device is not having watcdog node\n");
+			return -ENODEV;
+		}
+		ret = of_device_is_available(np);
+		if (!ret) {
+			dev_info(&pdev->dev, "WDT is disabled\n");
+			goto pdata_done;
+		}
+
 		ret =	of_property_read_u32(np, "maxim,wdt-timeout", &prop);
 		if (!ret)
 			wdt->timeout = prop;
@@ -245,6 +258,7 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 		wdt->otp_wdten = 0;
 	}
 
+pdata_done:
 	wdt->dev = &pdev->dev;
 	wdt_dev = &wdt->wdt_dev;
 	wdt->chip = dev_get_drvdata(pdev->dev.parent);
