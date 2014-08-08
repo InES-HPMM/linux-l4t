@@ -133,6 +133,7 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	{ "cilab",	"pll_p",	150000000,	false},
 	{ "cilcd",	"pll_p",	150000000,	false},
 	{ "cile",	"pll_p",	150000000,	false},
+	{ "extern3",	"pll_p",	150000000,	false},
 	{ "i2c1",	"pll_p",	3200000,	false},
 	{ "i2c2",	"pll_p",	3200000,	false},
 	{ "i2c3",	"pll_p",	3200000,	false},
