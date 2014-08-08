@@ -267,13 +267,13 @@ static inline struct pinctrl_dev *pinctrl_get_dev_from_of_property(
 	return NULL;
 }
 
-static inline truct pinctrl_dev *pinctrl_get_dev_from_gpio(int gpio)
+static inline struct pinctrl_dev *pinctrl_get_dev_from_gpio(int gpio)
 {
 	return NULL;
 }
 
 static inline int pinctrl_get_dev_n_pin_from_gpio(int gpio,
-	struct pinctrl_dev **pinctrl_dev, int *pin);
+	struct pinctrl_dev **pinctrl_dev, int *pin)
 {
 	return -EINVAL;
 }
