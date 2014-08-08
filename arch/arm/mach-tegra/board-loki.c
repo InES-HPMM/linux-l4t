@@ -765,27 +765,6 @@ static void __init tegra_loki_mcu_debugger_init(void)
 }
 #endif
 
-static void __init loki_pinmux_configure_uart_over_sd(void)
-{
-	struct pinctrl_dev *pin_dev;
-	int ret;
-
-	if (!is_uart_over_sd_enabled())
-		return;
-
-	pin_dev = tegra_get_pinctrl_device_handle();
-	if (!pin_dev)
-		return;
-
-	ret = pinctrl_configure_user_state(pin_dev, "uart-over-sd");
-	if (!ret) {
-		pr_info("Pinmux for UART over SD status PASSED\n");
-		set_sd_uart_port_id(0);
-	} else {
-		pr_info("Pinmux for UART over SD status FAILED: %d\n", ret);
-	}
-}
-
 static void __init tegra_loki_late_init(void)
 {
 	struct board_info board_info;
@@ -795,7 +774,6 @@ static void __init tegra_loki_late_init(void)
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
 	loki_revision_init(&board_info);
-	loki_pinmux_configure_uart_over_sd();
 	loki_usb_init();
 	loki_modem_init();
 	loki_xusb_init();

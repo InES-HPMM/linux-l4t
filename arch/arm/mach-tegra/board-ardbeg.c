@@ -375,26 +375,6 @@ static struct platform_device norrin_audio_device_max98090 = {
 	},
 };
 
-static void __init t124_pinmux_configure_uart_over_sd(void)
-{
-	struct pinctrl_dev *pin_dev;
-	int ret;
-
-	if (!is_uart_over_sd_enabled())
-		return;
-
-	pin_dev = tegra_get_pinctrl_device_handle();
-	if (!pin_dev)
-		return;
-
-	ret = pinctrl_configure_user_state(pin_dev, "uart-over-sd");
-	if (!ret) {
-		pr_info("Pinmux for UART over SD status PASSED\n");
-		set_sd_uart_port_id(0);
-	} else
-		pr_info("Pinmux for UART over SD status FAILED: %d\n", ret);
-}
-
 static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_rtc_device,
 #if !defined(CONFIG_ARM64)
@@ -1272,10 +1252,6 @@ static void __init tegra_ardbeg_late_init(void)
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
 
-	if (board_info.board_id == BOARD_P1761 ||
-			board_info.board_id == BOARD_E2548 ||
-			board_info.board_id == BOARD_P2530)
-		t124_pinmux_configure_uart_over_sd();
 #ifndef CONFIG_MACH_EXUMA
 	ardbeg_display_init();
 #endif
