@@ -1521,7 +1521,7 @@ static int tegra_pcie_get_resources(struct tegra_pcie *pcie)
 		goto err_pwr_on;
 	}
 
-	err = devm_request_irq(pcie->dev, INT_PCIE_INTR, tegra_pcie_isr,
+	err = request_irq(INT_PCIE_INTR, tegra_pcie_isr,
 			IRQF_SHARED, "PCIE", pcie);
 	if (err) {
 		dev_err(pcie->dev, "PCIE: Failed to register IRQ: %d\n", err);
@@ -3005,7 +3005,7 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 
 	for (i = 0; i < pcie->soc_data->num_pcie_regulators; i++) {
 		pcie->pcie_regulators[i] =
-					devm_regulator_get(pcie->dev,
+					regulator_get(pcie->dev,
 			pcie->soc_data->pcie_regulator_names[i]);
 		if (IS_ERR(pcie->pcie_regulators[i])) {
 			dev_err(pcie->dev, "%s: unable to get regulator %s\n",
@@ -3027,10 +3027,8 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 	pm_runtime_enable(pcie->dev);
 
 	ret = tegra_pcie_init(pcie);
-	if (ret) {
+	if (ret)
 		tegra_pd_remove_device(pcie->dev);
-		__pm_runtime_disable(pcie->dev, false);
-	}
 
 	platform_set_drvdata(pdev, pcie);
 
