@@ -7145,7 +7145,7 @@ static struct clk tegra_pciex_clk = {
 		.ops       = &tegra_sync_source_ops	\
 	}
 static struct clk tegra_sync_source_list[] = {
-	SYNC_SOURCE(spdif_in, tegra30-spdif),
+	SYNC_SOURCE(spdif_in, tegra210-spdif),
 	SYNC_SOURCE(i2s0, tegra210-i2s.0),
 	SYNC_SOURCE(i2s1, tegra210-i2s.1),
 	SYNC_SOURCE(i2s2, tegra210-i2s.2),
@@ -7200,7 +7200,7 @@ static struct clk tegra_clk_audio_list[] = {
 	AUDIO_SYNC_CLK(audio2, tegra210-i2s.2, 2),
 	AUDIO_SYNC_CLK(audio3, tegra210-i2s.3, 3),
 	AUDIO_SYNC_CLK(audio4, tegra210-i2s.4, 4),
-	AUDIO_SYNC_CLK(audio, tegra30-spdif, 5),	/* SPDIF */
+	AUDIO_SYNC_CLK(audio, tegra210-spdif, 5),	/* SPDIF */
 };
 
 #define AUDIO_SYNC_2X_CLK(_id, _dev, _index)				\
@@ -7226,7 +7226,7 @@ static struct clk tegra_clk_audio_2x_list[] = {
 	AUDIO_SYNC_2X_CLK(audio2, tegra210-i2s.2, 2),
 	AUDIO_SYNC_2X_CLK(audio3, tegra210-i2s.3, 3),
 	AUDIO_SYNC_2X_CLK(audio4, tegra210-i2s.4, 4),
-	AUDIO_SYNC_2X_CLK(audio, tegra30-spdif, 5),	/* SPDIF */
+	AUDIO_SYNC_2X_CLK(audio, tegra210-spdif, 5),	/* SPDIF */
 };
 
 #define MUX_I2S_SPDIF(_id, _index)					\
@@ -7259,9 +7259,9 @@ MUX_I2S_SPDIF(audio, 5);		/* SPDIF */
 	}
 
 static struct clk tegra_clk_audio_dmic_list[] = {
-	AUDIO_SYNC_DMIC_CLK(audio0, tegra30-i2s.0, 0x560),
-	AUDIO_SYNC_DMIC_CLK(audio1, tegra30-i2s.1, 0x564),
-	AUDIO_SYNC_DMIC_CLK(audio2, tegra30-i2s.2, 0x6b8),
+	AUDIO_SYNC_DMIC_CLK(audio0, tegra210-i2s.0, 0x560),
+	AUDIO_SYNC_DMIC_CLK(audio1, tegra210-i2s.1, 0x564),
+	AUDIO_SYNC_DMIC_CLK(audio2, tegra210-i2s.2, 0x6b8),
 };
 
 #define MUX_AUDIO_DMIC(_id, _index)					\
@@ -8540,8 +8540,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2s2",	"tegra210-i2s.2",	NULL,	18,	0x104,	204000000,  mux_pllaout0_audio2_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("i2s3",	"tegra210-i2s.3",	NULL,	101,	0x3bc,	204000000,  mux_pllaout0_audio3_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("i2s4",	"tegra210-i2s.4",	NULL,	102,	0x3c0,	204000000,  mux_pllaout0_audio4_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
-	PERIPH_CLK("spdif_out",	"tegra30-spdif", "spdif_out",	10,	0x108,	 24576000, mux_pllaout0_audio_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
-	PERIPH_CLK("spdif_in",	"tegra30-spdif",  "spdif_in",	10,	0x10c,	408000000, mux_pllp_pllc,			MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
+	PERIPH_CLK("spdif_out",	"tegra210-spdif", "spdif_out",	10,	0x108,	 24576000, mux_pllaout0_audio_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
+	PERIPH_CLK("spdif_in",	"tegra210-spdif",  "spdif_in",	10,	0x10c,	408000000, mux_pllp_pllc,			MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("dmic1",	"tegra210-dmic.0",	NULL,	161,	0x64c,	24576000, mux_pllaout0_audio0_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("dmic2",	"tegra210-dmic.1",	NULL,	162,	0x650,	24576000, mux_pllaout0_audio1_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("dmic3",	"tegra210-dmic.2",	NULL,	197,	0x6bc,	24576000, mux_pllaout0_audio2_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
@@ -8956,6 +8956,23 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("dmic2", "tegra-dmic.1", NULL),
 	CLK_DUPLICATE("dmic3", "tegra-dmic.2", NULL),
 	CLK_DUPLICATE("d_audio", "tegra210-adma", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-amx.0", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-amx.1", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-adx.0", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-adx.1", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-afc.0", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-afc.1", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-afc.2", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-afc.3", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-afc.4", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-afc.5", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-sfc.0", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-sfc.1", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-sfc.2", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-sfc.3", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-mvc.0", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-mvc.1", NULL),
+	CLK_DUPLICATE("d_audio", "tegra210-mixer", NULL),
 	CLK_DUPLICATE("mclk", NULL, "default_mclk"),
 	CLK_DUPLICATE("uart_mipi_cal", "clk72mhz", NULL),
 };
