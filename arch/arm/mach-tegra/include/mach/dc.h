@@ -33,8 +33,10 @@
 #define DC_N_WINDOWS		6
 #elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #define DC_N_WINDOWS		5
-#else
+#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define DC_N_WINDOWS		3
+#else  /* Max of all chips */
+#define DC_N_WINDOWS		6
 #endif
 
 #define DSI_NODE		"/host1x/dsi"
