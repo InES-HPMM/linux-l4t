@@ -150,6 +150,32 @@ Optinal properties:
 			to nearest lower side if other than above is configured.
 	-maxim,backup-battery-output-resister: Output resistor on Ohm.
 			Device supports 100/1000/3000/6000 Ohms.
+Watchdog:
+==============
+This sub-node configure watchdog timer of the device. Device has watchdog
+for monitoring system health. If WDT expire, system get reset.
+
+Optinal properties:
+	-maxim,wdt-timeout: Watchdog timeout.
+	-maxim,wdt-clear-time: Watch dog clear time, should be less than
+			timeout.
+	-maxim,otp-wdtt: Boolean, OTP wdt.
+	-maxim,otp-wdten: Boolean, OTP WDT enable.
+
+	This node status can be disabled and if it is disabled then WDT will
+be OFF on system.
+
+Example:
+--------
+#include <dt-bindings/mfd/max77620.h>
+...
+max77620@3c {
+	compatible = "maxim,max77620";
+	reg = <0x3c>;
+
+	interrupt-parent = <&intc>;
+	interrupts = <0 86 IRQ_TYPE_NONE>;
+
 
 Example:
 --------
@@ -194,6 +220,11 @@ max77620@3c {
 			maxim,fps-time-period = <100>;
 			maxim,fps-enable-input = <FPS_EN_SRC_SW>;
 		};
+	};
+
+	watchdog {
+		maxim,wdt-timeout = <16>;
+		maxim,wdt-clear-time = <13>;
 	};
 
 	regulators {
