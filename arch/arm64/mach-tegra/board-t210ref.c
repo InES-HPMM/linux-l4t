@@ -98,8 +98,8 @@
 #include "tegra-of-dev-auxdata.h"
 #include "tegra12_emc.h"
 #include "dvfs.h"
+#include "board-t210.h"
 
-static struct board_info board_info, display_board_info;
 static struct tegra_usb_platform_data tegra_udc_pdata;
 static struct tegra_usb_otg_data tegra_otg_pdata;
 
@@ -155,8 +155,8 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 };
 
 static struct platform_device *t210ref_devices[] __initdata = {
-	&tegra_pmu_device,
 #if defined(CONFIG_ARCH_TEGRA_13x_SOC)
+	&tegra_pmu_device,
 	&tegra_ahub_device,
 	&tegra_dam_device0,
 	&tegra_dam_device1,
@@ -206,8 +206,6 @@ static void t210ref_xusb_init(void)
 	xusb_pdata.lane_owner = (u8) tegra_get_lane_owner_info();
 
 
-	pr_info("Shield ERS 0x%x\n", board_info.board_id);
-	/* Shield ERS */
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
 		xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
 			TEGRA_XUSB_SS_P0);
@@ -225,7 +223,6 @@ static void t210ref_xusb_init(void)
 }
 #endif
 
-#ifdef CONFIG_USE_OF
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra210-sdhci", TEGRA_SDMMC1_BASE,
@@ -415,7 +412,6 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	{}
 };
 #endif
-#endif
 
 static void __init tegra_t210ref_early_init(void)
 {
@@ -453,12 +449,14 @@ static struct tegra_suspend_platform_data t210ref_suspend_data = {
 	.core_off_timer = 10,
 	.corereq_high   = true,
 	.sysclkreq_high = true,
+#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	.cpu_lp2_min_residency = 1000,
 	.min_residency_vmin_fmin = 1000,
 	.min_residency_ncpu_fast = 8000,
 	.min_residency_ncpu_slow = 5000,
 	.min_residency_mclk_stop = 5000,
 	.min_residency_crail = 20000,
+#endif
 };
 
 #define E2141_CPU_VDD_MIN_UV		703000
@@ -472,7 +470,7 @@ static int __init t210ref_rail_alignment_init(void)
 	step_uv = E2141_CPU_VDD_STEP_UV;
 	offset_uv = E2141_CPU_VDD_MIN_UV;
 
-#if defined(CONIFG_ARCH_TEGRA_21x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	tegra21x_vdd_cpu_align(step_uv, offset_uv);
 #else
 	tegra13x_vdd_cpu_align(step_uv, offset_uv);
@@ -567,8 +565,6 @@ static struct notifier_block platform_nb = {
 };
 static void __init tegra_t210ref_dt_init(void)
 {
-	tegra_get_board_info(&board_info);
-	tegra_get_display_board_info(&display_board_info);
 	bus_register_notifier(&platform_bus_type, &platform_nb);
 
 	tegra_t210ref_early_init();
@@ -576,12 +572,10 @@ static void __init tegra_t210ref_dt_init(void)
 	carveout_linear_set(&tegra_generic_cma_dev);
 	carveout_linear_set(&tegra_vpr_cma_dev);
 #endif
-#ifdef CONFIG_USE_OF
 	t210ref_camera_auxdata(t210ref_auxdata_lookup);
 	of_platform_populate(NULL,
 		of_default_bus_match_table, t210ref_auxdata_lookup,
 		&platform_bus);
-#endif
 
 	tegra_t210ref_late_init();
 }
@@ -632,14 +626,20 @@ static const char * const t210ref_dt_board_compat[] = {
 
 DT_MACHINE_START(T210REF, "t210ref")
 	.atag_offset	= 0x100,
-	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_t210ref_reserve,
 	.init_early	= tegra_t210ref_init_early,
+#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
+	.smp		= smp_ops(tegra_smp_ops),
 	.init_irq	= irqchip_init,
+#endif
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_t210ref_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= t210ref_dt_board_compat,
 	.init_late      = tegra_init_late,
 MACHINE_END
+
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+void tegra_pd_in_idle(bool enable) {}
+#endif
