@@ -324,7 +324,7 @@ static int tegra_pinctrl_dt_node_to_map(struct pinctrl_dev *pctldev,
 
 	for_each_child_of_node(np_config, np) {
 		/* If node status is disabled then ignore the node */
-		if (!of_device_is_available(np_config))
+		if (!of_device_is_available(np))
 			continue;
 
 		ret = tegra_pinctrl_dt_subnode_to_map(pctldev->dev, np, map,
