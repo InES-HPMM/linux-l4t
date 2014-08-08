@@ -51,12 +51,40 @@ void *tegra_emc_dt_parse_pdata_comp(const char *emc_mode,
 				    struct platform_device *pdev,
 				    int num_tables, int *table_count)
 {
+#define PNE_U32(node, entry, tbl_entry)					\
+	do {								\
+		int __ret__;						\
+		u32 __tmp__;						\
+									\
+		__ret__ = of_property_read_u32((node), (entry), &__tmp__); \
+		if (__ret__) {						\
+			dev_err(&pdev->dev, "Failed to parse %s in %s: %d\n", \
+				(entry), (node)->full_name, __ret__);	\
+			continue;					\
+		}							\
+									\
+		tables[i].tbl_entry = __tmp__;				\
+	} while (0)
+
+#define PNE_U32_ARRAY(node, entry, tbl_entry, length)			\
+	do {								\
+		int __ret__;						\
+									\
+		__ret__ = of_property_read_u32_array((node), (entry),	\
+						     (tbl_entry), (length)); \
+		if (__ret__) {						\
+			dev_err(&pdev->dev, "Failed to parse %s in %s: %d\n", \
+				(entry), (node)->full_name, __ret__);	\
+			continue;					\
+		}							\
+	} while (0)
+
 	int i = 0, ret = 0;
 	struct device_node *iter;
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	struct tegra12_emc_table *tables;
-#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	struct tegra11_emc_table *tables;
+#elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	struct tegra21_emc_table *tables;
 #endif
 
 	tables = devm_kzalloc(&pdev->dev,
@@ -69,37 +97,8 @@ void *tegra_emc_dt_parse_pdata_comp(const char *emc_mode,
 
 	for_each_child_of_node(tnp, iter) {
 		if (of_device_is_compatible(iter, comp)) {
-			u32 u;
 			const char *source_name;
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 			const char *dvfs_ver;
-#endif
-
-			ret = of_property_read_u32(iter, "nvidia,revision", &u);
-			if (ret) {
-				dev_err(&pdev->dev, "no revision in %s\n",
-						iter->full_name);
-				continue;
-			}
-			tables[i].rev = u;
-
-			ret = of_property_read_u32(iter, "clock-frequency", &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"no clock-frequency in %s\n",
-					iter->full_name);
-				continue;
-			}
-			tables[i].rate = u;
-
-			ret = of_property_read_u32(iter, "nvidia,emc-min-mv",
-						   &u);
-			if (ret) {
-				dev_err(&pdev->dev, "no emc-min-mv in %s\n",
-						iter->full_name);
-				continue;
-			}
-			tables[i].emc_min_mv = u;
 
 			ret = of_property_read_string(iter,
 					"nvidia,source", &source_name);
@@ -108,143 +107,11 @@ void *tegra_emc_dt_parse_pdata_comp(const char *emc_mode,
 						iter->full_name);
 				continue;
 			}
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
-			strncpy(tables[i].src_name, source_name, 16);
-#else
-			tables[i].src_name = source_name;
-#endif
-			ret = of_property_read_u32(iter, "nvidia,src-sel-reg",
-						   &u);
-			if (ret) {
-				dev_err(&pdev->dev, "no src-sel-reg in %s\n",
-						iter->full_name);
-				continue;
-			}
-			tables[i].src_sel_reg = u;
-
-			ret = of_property_read_u32(iter,
-						   "nvidia,burst-regs-num", &u);
-			if (ret) {
-				dev_err(&pdev->dev, "no burst-regs-num in %s\n",
-						iter->full_name);
-				continue;
-			}
-			tables[i].burst_regs_num = u;
-
-			ret = of_property_read_u32(iter,
-					"nvidia,burst-up-down-regs-num", &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"no burst-up-down-regs-num in %s\n",
-					iter->full_name);
-				continue;
-			}
-			tables[i].burst_up_down_regs_num = u;
-
-			ret = of_property_read_u32_array(iter,
-					"nvidia,emc-registers",
-					tables[i].burst_regs,
-					tables[i].burst_regs_num);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-registers property "
-					"in %s\n", iter->full_name);
-				continue;
-			}
-
-			ret = of_property_read_u32_array(iter,
-					"nvidia,emc-burst-up-down-regs",
-					tables[i].burst_up_down_regs,
-					tables[i].burst_up_down_regs_num);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-burst-up-down-regs "
-					"property in %s\n",
-					iter->full_name);
-				continue;
-			}
-
-			ret = of_property_read_u32(iter,
-					"nvidia,emc-zcal-cnt-long", &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-zcal-cnt-long property "
-					"in %s\n",
-					iter->full_name);
-				continue;
-			}
-			tables[i].emc_zcal_cnt_long = u;
-
-			ret = of_property_read_u32(iter,
-					"nvidia,emc-acal-interval", &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-acal-interval property "
-					"in %s\n",
-					iter->full_name);
-				continue;
-			}
-			tables[i].emc_acal_interval = u;
-
-			ret = of_property_read_u32(iter, "nvidia,emc-cfg", &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-cfg property in %s\n",
-					iter->full_name);
-				continue;
-			}
-			tables[i].emc_cfg = u;
-
-			ret = of_property_read_u32(iter, emc_mode, &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed %s property in %s\n",
-					emc_mode, iter->full_name);
-				continue;
-			}
-			tables[i].emc_mode_reset = u;
-
-			ret = of_property_read_u32(iter, "nvidia,emc-mode-1",
-						   &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-mode-1 property in %s\n",
-					iter->full_name);
-				continue;
-			}
-			tables[i].emc_mode_1 = u;
-
-			ret = of_property_read_u32(iter, "nvidia,emc-mode-2",
-						   &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-mode-2 property in %s\n",
-					iter->full_name);
-				continue;
-			}
-			tables[i].emc_mode_2 = u;
-
-			ret = of_property_read_u32(iter, "nvidia,emc-mode-4",
-						   &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-mode-4 property in %s\n",
-					iter->full_name);
-				continue;
-			}
-			tables[i].emc_mode_4 = u;
-
-			ret = of_property_read_u32(iter,
-					"nvidia,emc-clock-latency-change", &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-clock-latency-change "
-					"in %s\n",
-					iter->full_name);
-				continue;
-			}
-			tables[i].clock_change_latency = u;
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+			strncpy(tables[i].src_name, source_name, 16);
+#elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
+			strncpy(tables[i].src_name, source_name, 32);
+#endif
 
 			ret = of_property_read_string(iter,
 					"nvidia,dvfs-version", &dvfs_ver);
@@ -256,130 +123,118 @@ void *tegra_emc_dt_parse_pdata_comp(const char *emc_mode,
 			strncpy(tables[i].table_id, dvfs_ver,
 					TEGRA12_MAX_TABLE_ID_LEN);
 
-			ret = of_property_read_u32(iter, "nvidia,gk20a-min-mv",
-						   &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed gk20a-min-mv property "
-					"in %s\n",
-					iter->full_name);
-				continue;
-			}
-			tables[i].gk20a_min_mv = u;
+			PNE_U32(iter, "nvidia,revision", rev);
+			PNE_U32(iter, "clock-frequency", rate);
+			PNE_U32(iter, "nvidia,emc-min-mv", emc_min_mv);
+			PNE_U32(iter, "nvidia,gk20a-min-mv", gk20a_min_mv);
+			PNE_U32(iter, "nvidia,src-sel-reg", src_sel_reg);
+			PNE_U32(iter, "nvidia,burst-regs-num", burst_regs_num);
+			PNE_U32(iter, "nvidia,emc-cfg-2", emc_cfg_2);
+			PNE_U32(iter, "nvidia,emc-sel-dpd-ctrl",
+				emc_sel_dpd_ctrl);
+			PNE_U32(iter, "nvidia,emc-auto-cal-config",
+				emc_auto_cal_config);
+			PNE_U32(iter, "nvidia,emc-auto-cal-config2",
+				emc_auto_cal_config2);
+			PNE_U32(iter, "nvidia,emc-auto-cal-config3",
+				emc_auto_cal_config3);
+			PNE_U32(iter, "nvidia,emc-clock-latency-change",
+				clock_change_latency);
+			PNE_U32_ARRAY(iter, "nvidia,emc-registers",
+				      tables[i].burst_regs,
+				      tables[i].burst_regs_num);
 
-			ret = of_property_read_u32(iter,
-					"nvidia,emc-ctt-term_ctrl", &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-ctt-term_ctrl property "
-					"in %s\n", iter->full_name);
-				continue;
-			}
-			tables[i].emc_ctt_term_ctrl = u;
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+			PNE_U32(iter, "nvidia,burst-up-down-regs-num",
+				burst_up_down_regs_num);
+			PNE_U32(iter, "nvidia,emc-zcal-cnt-long",
+				emc_zcal_cnt_long);
+			PNE_U32(iter, "nvidia,emc-ctt-term-ctrl",
+				emc_ctt_term_ctrl);
+			PNE_U32(iter, "nvidia,emc-cfg", emc_cfg);
+			PNE_U32(iter, "nvidia,emc-cfg-dig-dll",
+				emc_cfg_dig_dll);
+			PNE_U32(iter, "nvidia,emc-bgbias-ctl0",
+				emc_bgbias_ctl0);
+			PNE_U32(iter, "nvidia,emc-acal-interval",
+				emc_acal_interval);
+			PNE_U32(iter, emc_mode, emc_mode_reset);
+			PNE_U32(iter, "nvidia,emc-mode-1", emc_mode_1);
+			PNE_U32(iter, "nvidia,emc-mode-2", emc_mode_2);
+			PNE_U32(iter, "nvidia,emc-mode-4", emc_mode_4);
+			PNE_U32_ARRAY(iter, "nvidia,emc-burst-up-down-regs",
+				      tables[i].burst_up_down_regs,
+				      tables[i].burst_up_down_regs_num);
+#elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
+			PNE_U32(iter, "nvidia,needs-training", needs_training);
+			PNE_U32(iter, "nvidia,trained", trained);
+			PNE_U32(iter, "nvidia,burst-regs-per-ch-num",
+				burst_regs_per_ch_num);
+			PNE_U32(iter, "nvidia,trim-regs-num", trim_regs_num);
+			PNE_U32(iter, "nvidia,trim-regs-per-ch-num",
+				trim_regs_per_ch_num);
+			PNE_U32(iter, "nvidia,burst-mc-regs-num",
+				burst_mc_regs_num);
+			PNE_U32(iter, "nvidia,la-scale-regs-num",
+				la_scale_regs_num);
+			PNE_U32(iter, "nvidia,vref-regs-num", vref_regs_num);
+			PNE_U32(iter, "nvidia,dram-timing-regs-num",
+				dram_timing_regs_num);
+			PNE_U32(iter, "nvidia,min-mrs-wait", min_mrs_wait);
+			PNE_U32(iter, "nvidia,emc-mrw", emc_mrw);
+			PNE_U32(iter, "nvidia,emc-mrw2", emc_mrw2);
+			PNE_U32(iter, "nvidia,emc-mrw3", emc_mrw3);
+			PNE_U32(iter, "nvidia,emc-mrw4", emc_mrw4);
+			PNE_U32(iter, "nvidia,emc-mrw9", emc_mrw9);
+			PNE_U32(iter, "nvidia,emc-mrs", emc_mrs);
+			PNE_U32(iter, "nvidia,emc-emrs", emc_emrs);
+			PNE_U32(iter, "nvidia,emc-emrs2", emc_emrs2);
+			PNE_U32(iter, "nvidia,emc-auto-cal-config4",
+				emc_auto_cal_config4);
+			PNE_U32(iter, "nvidia,emc-auto-cal-config5",
+				emc_auto_cal_config5);
+			PNE_U32(iter, "nvidia,emc-auto-cal-config6",
+				emc_auto_cal_config6);
+			PNE_U32(iter, "nvidia,emc-auto-cal-config7",
+				emc_auto_cal_config7);
+			PNE_U32(iter, "nvidia,emc-auto-cal-config8",
+				emc_auto_cal_config8);
+			PNE_U32(iter, "nvidia,emc-fdpd-ctrl-cmd-no-ramp",
+				emc_fdpd_ctrl_cmd_no_ramp);
+			PNE_U32(iter, "nvidia,dll-clk-src", dll_clk_src);
+			PNE_U32(iter, "nvidia,clk-out-enb-x-0-clk-enb-emc-dll",
+				clk_out_enb_x_0_clk_enb_emc_dll);
 
-			ret = of_property_read_u32(iter,
-						   "nvidia,emc-cfg-2", &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-cfg-2 property in %s\n",
-					iter->full_name);
-				continue;
-			}
-			tables[i].emc_cfg_2 = u;
-
-			ret = of_property_read_u32(iter,
-						 "nvidia,emc-sel-dpd-ctrl", &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-sel-dpd-ctrl property "
-					"in %s\n", iter->full_name);
-				continue;
-			}
-			tables[i].emc_sel_dpd_ctrl = u;
-
-			ret = of_property_read_u32(iter,
-						  "nvidia,emc-cfg-dig-dll", &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-cfg-dig-dll property "
-					"in %s\n", iter->full_name);
-				continue;
-			}
-			tables[i].emc_cfg_dig_dll = u;
-
-			ret = of_property_read_u32(iter,
-						  "nvidia,emc-bgbias-ctl0", &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-bgbias-ctl0 property "
-					"in %s\n", iter->full_name);
-				continue;
-			}
-			tables[i].emc_bgbias_ctl0 = u;
-
-			ret = of_property_read_u32(iter,
-					"nvidia,emc-auto-cal-config2", &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-auto-cal-config2 "
-					"property in %s\n", iter->full_name);
-				continue;
-			}
-			tables[i].emc_auto_cal_config2 = u;
-
-			ret = of_property_read_u32(iter,
-						  "nvidia,emc-auto-cal-config3",
-						  &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-auto-cal-config3 "
-					"property in %s\n", iter->full_name);
-				continue;
-			}
-			tables[i].emc_auto_cal_config3 = u;
-
-			ret = of_property_read_u32(iter,
-					"nvidia,emc-auto-cal-config", &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-auto-cal-config "
-					"property in %s\n", iter->full_name);
-				continue;
-			}
-			tables[i].emc_auto_cal_config = u;
-#endif
-
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-			ret = of_property_read_u32(iter,
-						 "nvidia,emc-trimmers-num", &u);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"no emc-trimmers-num in %s\n",
-					 iter->full_name);
-				continue;
-			}
-			tables[i].emc_trimmers_num = u;
-
-			ret = of_property_read_u32_array(iter,
-					"nvidia,emc-trimmers-0",
-					tables[i].emc_trimmers_0,
-					tables[i].emc_trimmers_num);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-trimmers-0 property "
-					"in %s\n", iter->full_name);
-				continue;
-			}
-			ret = of_property_read_u32_array(iter,
-					"nvidia,emc-trimmers-1",
-					tables[i].emc_trimmers_1,
-					tables[i].emc_trimmers_num);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"malformed emc-trimmers-1 property "
-					"in %s\n", iter->full_name);
-				continue;
-			}
+			PNE_U32_ARRAY(iter, "nvidia,emc-burst-regs-per-ch",
+				      tables[i].burst_regs_per_ch,
+				      tables[i].burst_regs_per_ch_num);
+			PNE_U32_ARRAY(iter, "nvidia,emc-shadow-regs-ca-train",
+				      tables[i].shadow_regs_ca_train,
+				      tables[i].burst_regs_num);
+			PNE_U32_ARRAY(iter, "nvidia,emc-shadow-regs-quse-train",
+				      tables[i].shadow_regs_quse_train,
+				      tables[i].burst_regs_num);
+			PNE_U32_ARRAY(iter, "nvidia,emc-shadow-regs-rdwr-train",
+				      tables[i].shadow_regs_rdwr_train,
+				      tables[i].burst_regs_num);
+			PNE_U32_ARRAY(iter, "nvidia,emc-trim-regs",
+				      tables[i].trim_regs,
+				      tables[i].trim_regs_num);
+			PNE_U32_ARRAY(iter, "nvidia,emc-trim-regs-per-ch",
+				      tables[i].trim_regs_per_ch,
+				      tables[i].trim_regs_per_ch_num);
+			PNE_U32_ARRAY(iter, "nvidia,emc-vref-regs",
+				      tables[i].vref_regs,
+				      tables[i].vref_regs_num);
+			PNE_U32_ARRAY(iter, "nvidia,emc-dram-timing-regs",
+				      tables[i].dram_timing_regs,
+				      tables[i].dram_timing_regs_num);
+			PNE_U32_ARRAY(iter, "nvidia,emc-burst-mc-regs",
+				      tables[i].burst_mc_regs,
+				      tables[i].burst_mc_regs_num);
+			PNE_U32_ARRAY(iter, "nvidia,emc-la-scale-regs",
+				      tables[i].la_scale_regs,
+				      tables[i].la_scale_regs_num);
 #endif
 			i++;
 		}
@@ -394,15 +249,16 @@ void *tegra_emc_dt_parse_pdata(struct platform_device *pdev)
 	struct device_node *tnp, *iter;
 	int num_tables, table_count;
 	u32 tegra_bct_strapping;
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	const char *emc_mode = "nvidia,emc-mode-0";
+
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	struct tegra12_emc_pdata *pdata = NULL;
 	const char *comp = "nvidia,tegra12-emc-table";
 	const char *comp_derated = "nvidia,tegra12-emc-table-derated";
-	const char *emc_mode = "nvidia,emc-mode-0";
-#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	struct tegra11_emc_pdata *pdata = NULL;
-	const char *comp = "nvidia,tegra11-emc-table";
-	const char *emc_mode = "nvidia,emc-mode-reset";
+#elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	struct tegra21_emc_pdata *pdata = NULL;
+	const char *comp = "nvidia,tegra21-emc-table";
+	const char *comp_derated = "nvidia,tegra21-emc-table-derated";
 #endif
 
 	if (!np) {
@@ -438,18 +294,10 @@ void *tegra_emc_dt_parse_pdata(struct platform_device *pdev)
 
 	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
-	pdata->tables = (struct tegra12_emc_table *)
-			tegra_emc_dt_parse_pdata_comp(emc_mode, comp,
+	pdata->tables =	tegra_emc_dt_parse_pdata_comp(emc_mode, comp,
 			pdata, tnp, pdev, num_tables, &table_count);
-#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	pdata->tables = (struct tegra11_emc_table *)
-			tegra_emc_dt_parse_pdata_comp(emc_mode, comp,
-			pdata, tnp, pdev, num_tables, &table_count);
-#endif
 	pdata->num_tables = table_count;
 
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	/* populate the derated tables */
 	num_tables = 0;
 	for_each_child_of_node(tnp, iter) {
@@ -462,11 +310,9 @@ void *tegra_emc_dt_parse_pdata(struct platform_device *pdev)
 		goto out;
 	}
 
-	pdata->tables_derated = (struct tegra12_emc_table *)
-				tegra_emc_dt_parse_pdata_comp(emc_mode,
+	pdata->tables_derated =	tegra_emc_dt_parse_pdata_comp(emc_mode,
 				comp_derated, pdata, tnp, pdev, num_tables,
 				&table_count);
-#endif
 
 out:
 	of_node_put(tnp);
