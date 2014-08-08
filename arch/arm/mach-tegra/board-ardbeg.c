@@ -574,8 +574,8 @@ static void ardbeg_usb_init(void)
 			tegra_udc_pdata.qc2_voltage = TEGRA_USB_QC2_9V;
 			tegra_udc_pdata.u_data.dev.qc2_current_limit_ma = 1200;
 
-			/* charger needs to be set to 2A - h/w will do 1.8A */
-			tegra_udc_pdata.u_data.dev.dcp_current_limit_ma = 2000;
+			/* charger needs to be set to 3A - h/w will do 2A */
+			tegra_udc_pdata.u_data.dev.dcp_current_limit_ma = 3000;
 		}
 
 		switch (bi.board_id) {
