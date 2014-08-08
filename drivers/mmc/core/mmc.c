@@ -561,6 +561,10 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 			ext_csd[EXT_CSD_MAX_PACKED_WRITES];
 		card->ext_csd.max_packed_reads =
 			ext_csd[EXT_CSD_MAX_PACKED_READS];
+
+		/* Check whether the eMMC card supports STROBE */
+		if (ext_csd[EXT_CSD_STROBE_SUPPORT] & 0x1)
+			card->ext_csd.strobe_support = 1;
 	} else {
 		card->ext_csd.data_sector_size = 512;
 	}
@@ -1191,6 +1195,8 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	if (mmc_card_hs200(card)) {
 		u32 ext_csd_bits;
 		u32 bus_width = card->host->ios.bus_width;
+		bool strobe_en = (host->caps2 & MMC_CAP2_EN_STROBE) ?
+			(card->ext_csd.strobe_support) : false;
 
 		/*
 		 * For devices supporting HS200 mode, the bus width has
@@ -1204,16 +1210,16 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		 * 4. execute tuning for HS200
 		 */
 		if ((host->caps2 & MMC_CAP2_HS200) &&
-		    card->host->ops->execute_tuning) {
+			!strobe_en && card->host->ops->execute_tuning) {
 			mmc_host_clk_hold(card->host);
 			err = card->host->ops->execute_tuning(card->host,
 				MMC_SEND_TUNING_BLOCK_HS200);
 			mmc_host_clk_release(card->host);
-		}
-		if (err) {
-			pr_warning("%s: tuning execution failed\n",
-				   mmc_hostname(card->host));
-			goto err;
+			if (err) {
+				pr_warning("%s: tuning execution failed\n",
+						mmc_hostname(card->host));
+				goto err;
+			}
 		}
 
 		ext_csd_bits = (bus_width == MMC_BUS_WIDTH_8) ?
@@ -1243,14 +1249,33 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 
 		pr_info("%s: switch to HS400 mode is successful\n",
 				mmc_hostname(card->host));
+
+		if (card->ext_csd.strobe_support &&
+			(host->caps2 & MMC_CAP2_EN_STROBE)) {
+			err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+				EXT_CSD_BUS_WIDTH, EXT_CSD_STROBE_MODE,
+				card->ext_csd.generic_cmd6_time);
+			if (err) {
+				dev_err(mmc_dev(host), "switch to enhanced strobe mode is failed%d\n",
+						err);
+			} else {
+				pr_info("%s: switch to enhanced strobe mode is successful\n",
+						mmc_hostname(card->host));
+				if (card->host->ops->en_strobe) {
+					mmc_host_clk_hold(card->host);
+					card->host->ops->en_strobe(card->host);
+					mmc_host_clk_release(card->host);
+				}
+			}
+		}
+
 		mmc_card_set_hs400(card);
 		mmc_card_clr_highspeed(card);
 		mmc_set_clock(host, MMC_HS400_MAX_DTR);
 		err = mmc_select_powerclass(card, EXT_CSD_DDR_BUS_WIDTH_8,
 				ext_csd);
 		if (err) {
-			dev_err(mmc_dev(host), "power class selection failed "\
-					"for HS400 mode\n");
+			dev_err(mmc_dev(host), "power class selection failed for HS400 mode\n");
 			goto err;
 		}
 	}

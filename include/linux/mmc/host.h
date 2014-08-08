@@ -156,6 +156,7 @@ struct mmc_host_ops {
 	int	(*dfs_governor_get_target)(struct mmc_host *host,
 		unsigned long *freq);
 	void	(*post_init)(struct mmc_host *host);
+	void	(*en_strobe)(struct mmc_host *host);
 };
 
 struct mmc_card;
@@ -317,6 +318,7 @@ struct mmc_host {
 #define MMC_CAP2_HS400_1_2V_DDR	(1 << 18)        /* can support HS400*/
 #define MMC_CAP2_HS400		(MMC_CAP2_HS400_1_8V_DDR | \
 				 MMC_CAP2_HS400_1_2V_DDR)
+#define MMC_CAP2_EN_STROBE	(1 << 19)       /* can support enhanced strobe*/
 	mmc_pm_flag_t		pm_caps;	/* supported pm features */
 
 #ifdef CONFIG_MMC_CLKGATE

@@ -74,6 +74,7 @@
 
 #define SDHCI_VNDR_SYS_SW_CTRL				0x104
 #define SDHCI_VNDR_SYS_SW_CTRL_WR_CRC_USE_TMCLK		0x40000000
+#define SDHCI_VNDR_SYS_SW_CTRL_STROBE_SHIFT		31
 
 #define SDHCI_VNDR_CAP_OVERRIDES_0			0x10c
 #define SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT	8
@@ -133,9 +134,6 @@
 
 #define SDMMC_IO_SPARE_0	0x1F0
 #define SPARE_OUT_3_OFFSET	19
-
-#define SDMMC_VENDOR_IO_TRIM_CNTRL_0	0x1AC
-#define SDMMC_VENDOR_IO_TRIM_CNTRL_0_SEL_VREG_MASK	0x4
 
 #define SDMMC_VNDR_IO_TRIM_CNTRL_0	0x1AC
 #define SDMMC_VNDR_IO_TRIM_CNTRL_0_SEL_VREG	0x4
@@ -204,6 +202,8 @@
 #define NVQUIRK2_CONFIG_PWR_DET			BIT(0)
 /* Enable T210 specific SDMMC WAR - Tuning Step Size, Tuning Iterations*/
 #define NVQUIRK2_UPDATE_HW_TUNING_CONFG		BIT(1)
+/* Enable Enhanced strobe mode support */
+#define NVQUIRK2_EN_STROBE_SUPPORT		BIT(2)
 
 /* Common subset of quirks for Tegra3 and later sdmmc controllers */
 #define TEGRA_SDHCI_NVQUIRKS	(NVQUIRK_ENABLE_PADPIPE_CLKEN | \
@@ -673,6 +673,7 @@ struct sdhci_tegra {
 	struct pinctrl_state *schmitt_disable[2];
 	int drive_group_sel;
 	u32 dll_calib;
+	bool en_strobe;
 };
 
 static unsigned int boot_volt_req_refcount;
@@ -691,6 +692,7 @@ static void sdhci_tegra_set_trim_delay(struct sdhci_host *sdhci,
 static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 	unsigned char signal_voltage);
 static void tegra_sdhci_do_dll_calibration(struct sdhci_host *sdhci);
+static void tegra_sdhci_en_strobe(struct sdhci_host *sdhci);
 static void tegra_sdhci_update_sdmmc_pinctrl_register(struct sdhci_host *sdhci,
 		bool set);
 static int get_tuning_tap_hole_margins(struct sdhci_host *sdhci,
@@ -1394,9 +1396,9 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		misc_ctrl |= (1 << SPARE_OUT_3_OFFSET);
 		sdhci_writel(host, misc_ctrl, SDMMC_IO_SPARE_0);
 
-		vendor_ctrl = sdhci_readl(host, SDMMC_VENDOR_IO_TRIM_CNTRL_0);
-		vendor_ctrl &= ~(SDMMC_VENDOR_IO_TRIM_CNTRL_0_SEL_VREG_MASK);
-		sdhci_writel(host, vendor_ctrl, SDMMC_VENDOR_IO_TRIM_CNTRL_0);
+		vendor_ctrl = sdhci_readl(host, SDMMC_VNDR_IO_TRIM_CNTRL_0);
+		vendor_ctrl &= ~(SDMMC_VNDR_IO_TRIM_CNTRL_0_SEL_VREG);
+		sdhci_writel(host, vendor_ctrl, SDMMC_VNDR_IO_TRIM_CNTRL_0);
 	}
 
 	if (soc_data->nvquirks & NVQUIRK_DISABLE_AUTO_CMD23)
@@ -1418,8 +1420,10 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	if (plat->uhs_mask & MMC_UHS_MASK_SDR12)
 		host->mmc->caps &= ~MMC_CAP_UHS_SDR12;
 
-	if (plat->uhs_mask & MMC_MASK_HS400)
+	if (plat->uhs_mask & MMC_MASK_HS400) {
 		host->mmc->caps2 &= ~MMC_CAP2_HS400;
+		host->mmc->caps2 &= ~MMC_CAP2_EN_STROBE;
+	}
 
 #ifdef CONFIG_MMC_SDHCI_TEGRA_HS200_DISABLE
 	host->mmc->caps2 &= ~MMC_CAP2_HS200;
@@ -1461,6 +1465,8 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	misc_ctrl &= ~(SDMMC_VNDR_IO_TRIM_CNTRL_0_SEL_VREG);
 	sdhci_writel(host, misc_ctrl, SDMMC_VNDR_IO_TRIM_CNTRL_0);
 	udelay(3);
+	if (tegra_host->en_strobe)
+		tegra_sdhci_en_strobe(host);
 #endif
 
 	/* Use timeout clk data timeout counter for generating wr crc status */
@@ -1725,6 +1731,19 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 #endif
 	}
 	mutex_unlock(&tegra_host->set_clock_mutex);
+}
+
+static void tegra_sdhci_en_strobe(struct sdhci_host *host)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	u32 vndr_ctrl;
+
+	vndr_ctrl = sdhci_readl(host, SDHCI_VNDR_SYS_SW_CTRL);
+	vndr_ctrl |= (1 <<
+		SDHCI_VNDR_SYS_SW_CTRL_STROBE_SHIFT);
+	sdhci_writel(host, vndr_ctrl, SDHCI_VNDR_SYS_SW_CTRL);
+	tegra_host->en_strobe = true;
 }
 
 static void tegra_sdhci_do_dll_calibration(struct sdhci_host *sdhci)
@@ -4308,6 +4327,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 #endif
 	.get_drive_strength	= tegra_sdhci_get_drive_strength,
 	.post_init	= tegra_sdhci_do_dll_calibration,
+	.en_strobe	= tegra_sdhci_en_strobe,
 	.dump_host_cust_regs	= tegra_sdhci_dumpregs,
 	.get_max_tuning_loop_counter = sdhci_tegra_get_max_tuning_loop_counter,
 };
@@ -4961,6 +4981,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	if (soc_data->nvquirks & NVQUIRK_ENABLE_AUTO_CMD23)
 		host->mmc->caps |= MMC_CAP_CMD23;
+
+	if (soc_data->nvquirks2 & NVQUIRK2_EN_STROBE_SUPPORT)
+		host->mmc->caps2 |= MMC_CAP2_EN_STROBE;
 
 	host->mmc->caps2 |= MMC_CAP2_CACHE_CTRL;
 	host->mmc->caps2 |= MMC_CAP2_PACKED_CMD;
