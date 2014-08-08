@@ -572,9 +572,7 @@ static void tegra_get_tegraid_from_hw(void)
 	extern bool iotable_init_done;
 	if (!iotable_init_done) {
 		/* Map in APB_BASE in case earlyprintk is not enabled */
-		early_io_map(TEGRA_APB_MISC_BASE, EARLYCON_IOBASE);
-		early_base = (void __iomem *) (EARLYCON_IOBASE &
-					       ~(SECTION_SIZE - 1));
+		early_base = early_io_map(TEGRA_APB_MISC_BASE, EARLYCON_IOBASE);
 		chip_id = early_base + 0x804;
 		netlist = early_base + 0x860;
 		cid = readl(chip_id);
