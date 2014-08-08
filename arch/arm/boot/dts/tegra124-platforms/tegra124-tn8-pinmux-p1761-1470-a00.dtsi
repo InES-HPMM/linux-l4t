@@ -20,11 +20,10 @@
 
 / {
 	pinmux: pinmux@70000868 {
-		pinctrl-names = "default", "drive", "unused", "uart-over-sd";
+		pinctrl-names = "default", "drive", "unused";
 		pinctrl-0 = <&pinmux_default>;
 		pinctrl-1 = <&drive_default>;
 		pinctrl-2 = <&pinmux_unused_lowpower>;
-		pinctrl-3 = <&pinmux_uart_over_sd>;
 
 		pinmux_default: common {
 			dap_mclk1_pw4 {
@@ -1616,22 +1615,6 @@
 				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_FASTEST>;
 				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_FASTEST>;
 				nvidia,drive-type = <1>;
-			};
-		};
-		pinmux_uart_over_sd: pinmux_uart_over_sd_pins {
-			sdmmc3_cmd_pa7 {
-				nvidia,pins = "sdmmc3_cmd_pa7";
-				nvidia,function = "uarta";
-				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
-				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
-				nvidia,tristate = <TEGRA_PIN_DISABLE>;
-			};
-			sdmmc3_dat1_pb6 {
-				nvidia,pins = "sdmmc3_dat1_pb6";
-				nvidia,function = "uarta";
-				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
-				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
-				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 			};
 		};
 	};
