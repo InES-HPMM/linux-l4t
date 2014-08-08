@@ -41,11 +41,9 @@ config TEGRA_GRHOST_SYNC
 
 source "drivers/video/tegra/nvmap/Kconfig"
 
-if ARCH_TEGRA
-
 config TEGRA_DC
 	tristate "Tegra Display Contoller"
-	depends on ARCH_TEGRA && TEGRA_GRHOST && I2C
+	depends on (ARCH_TEGRA || PLATFORM_TEGRA) && TEGRA_GRHOST && I2C
 	select BACKLIGHT_CLASS_DEVICE
 	select FB_MODE_HELPERS
 	help
@@ -288,8 +286,6 @@ config TEGRA_HDMI_74MHZ_LIMIT
 	help
 	  Say Y here to make kernel report only low bandwidth modes.
 	  Useful only for boards which can't deliver 148.50 MHz.
-
-endif
 
 config TEGRA_CAMERA
 	bool "Enable support for tegra camera/isp hardware"
