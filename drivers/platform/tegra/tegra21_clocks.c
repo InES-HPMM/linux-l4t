@@ -4202,9 +4202,6 @@ static void tegra21_periph_clk_reset(struct clk *c, bool assert)
 	pr_debug("%s %s on clock %s\n", __func__,
 		 assert ? "assert" : "deassert", c->name);
 
-	if (c->flags & PERIPH_NO_ENB)
-		return;
-
 	if (!(c->flags & PERIPH_NO_RESET)) {
 		if (assert) {
 			/* If peripheral is in the APB bus then read the APB
@@ -8622,14 +8619,14 @@ struct clk tegra_list_clks[] = {
 
 	PERIPH_CLK("usbd",	"tegra-udc.0",		NULL,	22,	0,	480000000, mux_clk_m,			0),
 	PERIPH_CLK("usb2",	"tegra-ehci.1",		NULL,	58,	0,	480000000, mux_clk_m,			0),
-	PERIPH_CLK("usb3",	"tegra-ehci.2",		NULL,	59,	0,	480000000, mux_clk_m,			PERIPH_NO_ENB),
+	PERIPH_CLK("usb3",	"tegra-ehci.2",		NULL,	59,	0,	480000000, mux_clk_m,			PERIPH_NO_ENB | PERIPH_NO_RESET),
 	PERIPH_CLK("hsic_trk",	NULL,		  "hsic_trk",	209,	0,	38400000, mux_clk_usb2_hsic_trk,	PERIPH_NO_RESET),
 	PERIPH_CLK("usb2_trk",	NULL,		  "usb2_trk",	210,	0,	38400000, mux_clk_usb2_hsic_trk,	PERIPH_NO_RESET),
 
 	PERIPH_CLK_EX("dsia",	"tegradc.0",	      "dsia",	48,	0xd0,  1500000000, mux_plld_out0,		PLLD,	&tegra_dsi_clk_ops),
 	PERIPH_CLK_EX("dsib",	"tegradc.1",	      "dsib",	82,	0x4b8, 1500000000, mux_plld_out0,		PLLD,	&tegra_dsi_clk_ops),
-	PERIPH_CLK("dsi1-fixed", "tegradc.0",    "dsi-fixed",	0,	0,	108000000, mux_pllp_out3,		PERIPH_NO_ENB),
-	PERIPH_CLK("dsi2-fixed", "tegradc.1",    "dsi-fixed",	0,	0,	108000000, mux_pllp_out3,		PERIPH_NO_ENB),
+	PERIPH_CLK("dsi1-fixed", "tegradc.0",    "dsi-fixed",	0,	0,	108000000, mux_pllp_out3,		PERIPH_NO_ENB | PERIPH_NO_RESET),
+	PERIPH_CLK("dsi2-fixed", "tegradc.1",    "dsi-fixed",	0,	0,	108000000, mux_pllp_out3,		PERIPH_NO_ENB | PERIPH_NO_RESET),
 	PERIPH_CLK("csi",	"vi",		       "csi",	52,	0,     1000000000, mux_plld,			PLLD),
 	PERIPH_CLK("csus",	"vi",		      "csus",	92,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
 	PERIPH_CLK("vim2_clk",	"vi",		  "vim2_clk",	171,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
