@@ -14,6 +14,7 @@
 #ifndef __MACH_TEGRA_MC_REGS_T12X_H__
 #define __MACH_TEGRA_MC_REGS_T12X_H__
 
+/* Auto generated. Do not edit. */
 #define MC_INTSTATUS                                            0x0
 #define MC_INTMASK                                              0x4
 #define MC_ERR_STATUS                                           0x8
@@ -225,6 +226,7 @@
 #define MC_SD_PTSA_RATE                                         0x4d0
 #define MC_AHB_PTSA_RATE                                        0x4dc
 #define MC_FTOP_PTSA_MIN                                        0x510
+#define MC_SMMU_SMMU_PTSA_MAX                                   0x460
 #define MC_RING2_PTSA_MIN                                       0x444
 #define MC_APB_PTSA_RATE                                        0x4e8
 #define MC_MSE_PTSA_MIN                                         0x4c8
@@ -232,6 +234,7 @@
 #define MC_VE_PTSA_RATE                                         0x434
 #define MC_AHB_PTSA_MAX                                         0x4e4
 #define MC_SAX_PTSA_MIN                                         0x4bc
+#define MC_SMMU_SMMU_PTSA_MIN                                   0x45c
 #define MC_ISP_PTSA_MIN                                         0x4a4
 #define MC_HOST_PTSA_MAX                                        0x520
 #define MC_R0_DISB_PTSA_RATE                                    0x470
@@ -241,6 +244,7 @@
 #define MC_MSE_PTSA_MAX                                         0x4cc
 #define MC_DISB_PTSA_MAX                                        0x430
 #define MC_DISB_PTSA_MIN                                        0x42c
+#define MC_SMMU_SMMU_PTSA_RATE                                  0x458
 #define MC_VE2_PTSA_RATE                                        0x494
 #define MC_VD_PTSA_MIN                                          0x504
 #define MC_VD_PTSA_MAX                                          0x508
@@ -344,6 +348,7 @@
 #define MC_EMEM_BANK_SWIZZLE_CFG2                               0x9c8
 #define MC_EMEM_BANK_SWIZZLE_CFG3                               0x9cc
 #define MC_ERR_APB_ASID_UPDATE_STATUS                           0x9d0
+
 
 #define HYST_SATAR				(0x1 << 31)
 #define HYST_PPCSAHBSLVR			(0x1 << 30)
