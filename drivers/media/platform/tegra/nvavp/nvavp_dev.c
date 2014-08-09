@@ -1269,6 +1269,7 @@ err_exit:
 #define TIMER_PCR	0x4
 #define TIMER_PCR_INTR	(1 << 30)
 
+/* This should be called with the open_lock held */
 static void nvavp_uninit(struct nvavp_info *nvavp)
 {
 	int video_initialized, audio_initialized = 0;
@@ -1291,7 +1292,9 @@ static void nvavp_uninit(struct nvavp_info *nvavp)
 
 	if (video_initialized) {
 		pr_debug("nvavp_uninit nvavp->video_initialized\n");
+		mutex_unlock(&nvavp->open_lock);
 		cancel_work_sync(&nvavp->clock_disable_work);
+		mutex_lock(&nvavp->open_lock);
 		nvavp_halt_vde(nvavp);
 		nvavp_set_video_init_status(nvavp, 0);
 		video_initialized = 0;
@@ -1950,11 +1953,8 @@ static int tegra_nvavp_release(struct nvavp_clientctx *clientctx,
 
 	if (nvavp->refcount > 0)
 		nvavp->refcount--;
-	if (!nvavp->refcount) {
-		mutex_unlock(&nvavp->open_lock);
+	if (!nvavp->refcount)
 		nvavp_uninit(nvavp);
-		mutex_lock(&nvavp->open_lock);
-	}
 
 	if (IS_VIDEO_CHANNEL_ID(channel_id))
 		nvavp->video_refcnt--;
@@ -2545,6 +2545,8 @@ static int tegra_nvavp_runtime_suspend(struct device *dev)
 	struct nvavp_info *nvavp = platform_get_drvdata(pdev);
 	int ret = 0;
 
+	mutex_lock(&nvavp->open_lock);
+
 	if (nvavp->refcount) {
 		if (!nvavp->clk_enabled) {
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
@@ -2560,6 +2562,8 @@ static int tegra_nvavp_runtime_suspend(struct device *dev)
 			ret = -EBUSY;
 		}
 	}
+
+	mutex_unlock(&nvavp->open_lock);
 
 	return ret;
 }
@@ -2602,20 +2606,14 @@ static int tegra_nvavp_suspend(struct device *dev)
 	struct nvavp_info *nvavp = platform_get_drvdata(pdev);
 	int ret = 0;
 
-	mutex_lock(&nvavp->open_lock);
-
 	ret = tegra_nvavp_runtime_suspend(dev);
-	if (ret) {
-		mutex_unlock(&nvavp->open_lock);
+	if (ret)
 		return ret;
-	}
 
 	/* WAR: Leave partition vde on before suspend so that access
 	 * to BSEV registers immediatly after LP0 exit won't fail.
 	 */
 	nvavp_unpowergate_vde(nvavp);
-
-	mutex_unlock(&nvavp->open_lock);
 
 	return 0;
 }
