@@ -43,8 +43,13 @@ static bool tegra_dvfs_gpu_disabled;
 
 #define VDD_SAFE_STEP			100
 
-static int cpu_vmin_offsets[] = { 0, -20, };
-static int gpu_vmin_offsets[] = { 0, -20, };
+/*
+ * Effectivly no offsets. We still need DFLL tuning adjustment according to
+ * SiMon grade, but SiMon call-backs are enabled only if offsets are installed.
+ * So, just make them "0".
+ */
+static int cpu_vmin_offsets[2];
+static int gpu_vmin_offsets[2];
 
 static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS] = { 20, };
 static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 950, };
@@ -234,7 +239,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.dfll_tune_data  = {
 			.tune1		= 0x00000095,
 			.droop_rate_min = 1000000,
-			.min_millivolts = 680,
+			.min_millivolts = 800,
 			.tune_high_margin_mv = 30,
 		},
 		.max_mv = 1260,
