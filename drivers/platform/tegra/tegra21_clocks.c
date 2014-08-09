@@ -9139,8 +9139,7 @@ struct pllc4_sdmmc_map {
 
 static struct pllc4_sdmmc_map  tegra21_pllc4_sdmmc_map[] = {
 	{	  0, 1000000000, 1, 1, &tegra_pll_c4_out3 }, /* default cfg */
-	{ 266500000,  799500000, 1, 1, &tegra_pll_c4_out3 },
-	{ 400000000,  800000000, 1, 1, &tegra_pll_c4_out3 },
+	{ 266000000,  798000000, 4, 1, &tegra_pll_c4_out1 },
 };
 
 static void pllc4_set_fixed_rates(unsigned long cf)
