@@ -34,6 +34,7 @@
 		i2c3 = &i2c4;
 		i2c4 = &i2c5;
 		i2c5 = &i2c6;
+		i2c6 = &i2c7;
 		spi0 = &spi0;
 		spi1 = &spi1;
 		spi2 = &spi2;
@@ -480,6 +481,12 @@
 			reg = <0x0 0x54080000 0x0 0x00040000>;
 			interrupts = <0 70 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(VI) &common_as>;
+		};
+
+		vii2c {
+			compatible = "nvidia,tegra210-vi-i2c";
+			reg = <0x546C0000 0x00034000>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(VII2C) &common_as>;
 		};
 
 		isp@54600000 {
@@ -1048,6 +1055,13 @@
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
 		clock-frequency = <400000>;
+	};
+
+	i2c7: i2c@546c0000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra210-vii2c";
+		status = "okay";
 	};
 
 	sdhci@700b0600 {

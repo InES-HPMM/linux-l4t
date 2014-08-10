@@ -35,6 +35,7 @@
 #include "panel-j-1440-810-5-8.dtsi"
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-camera-e2249-1002-a00.dtsi"
 
 / {
 	model = "e2220";
@@ -107,6 +108,9 @@
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
 				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
 			};
+		};
+		vii2c {
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
 		};
 	};
 
@@ -293,5 +297,34 @@
 		status = "okay";
 	};
 
+	camera-pcl {
+		profiles {
+			imx214@6_001a {
+				use_of_node = "yes";
+				vana-supply = <&max77620_ldo3>;
+				vdig-supply = <&vdd_sys_boost>;
+				vif-supply = <&en_vdd_cam>;
+				af-gpios = <&gpio 149 0>;
+				reset-gpios = <&gpio 148 0>;
+				cam1-gpios = <&gpio 151 0>;
+			};
+			dw9714@6_000c {
+				use_of_node = "yes";
+				vdd-supply = <&max77620_ldo3>;
+				vdd_i2c-supply = <&en_vdd_cam>;
+			};
+			as3648@6_0030 {
+				use_of_node = "yes";
+				vin-supply = <&vdd_sys_boost>;
+				vi2c-supply = <&en_vdd_cam>;
+			};
+			ov5693@6_0036 {
+				use_of_node = "yes";
+				vana-supply = <&max77620_ldo3>;
+				vif-supply = <&en_vdd_cam>;
+				reset-gpios = <&gpio 221 0>;
+			};
+		};
+	};
 };
 
