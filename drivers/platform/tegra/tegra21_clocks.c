@@ -9084,6 +9084,25 @@ struct clk *tegra_ptr_camera_mclks[] = {
 	&tegra_camera_mclk2,
 };
 
+/*
+ * Handle special clocks to check if they can be set to safe rate
+ */
+static void check_isp_reset(void)
+{
+	struct clk *isp = &tegra_clk_isp;
+	struct clk *ispa = tegra_get_clock_by_name("ispa");
+	struct clk *ispb = tegra_get_clock_by_name("ispb");
+
+	if (periph_clk_can_force_safe_rate(ispa) &&
+	    periph_clk_can_force_safe_rate(ispb))
+		tegra_periph_clk_safe_rate_init(isp);
+}
+
+static void tegra21_periph_check_special_reset(void)
+{
+	check_isp_reset();
+}
+
 /* DFLL late init called with CPU clock lock taken */
 static void __init tegra21_dfll_cpu_late_init(struct clk *c)
 {
@@ -9907,6 +9926,9 @@ void __init tegra21x_init_clocks(void)
 		tegra_clk_duplicates[i].lookup.clk = c;
 		clkdev_add(&tegra_clk_duplicates[i].lookup);
 	}
+
+	/* Check/apply safe rate to clocks with reset dependency on others */
+	tegra21_periph_check_special_reset();
 
 	/* Initialize to default */
 	tegra_init_cpu_edp_limits(0);
