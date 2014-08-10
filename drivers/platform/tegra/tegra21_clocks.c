@@ -4844,8 +4844,109 @@ static struct clk_ops tegra_pciex_clk_ops = {
 	.reset    = tegra21_periph_clk_reset,
 };
 
-/* Output clock ops */
 
+/* SDMMC2 and SDMMC4 ops */
+static u32 sdmmc24_input_to_lj[] = {
+	/* 0, 1, 2, 3, 4, 5, 6, 7 */
+	   0, 1, 2, 1, 5, 5, 6, 2
+};
+
+static u32 sdmmc24_input_from_lj[] = {
+	/* 0, 1, 2, 3, 4, 5, 6, 7 */
+	   0, 3, 7, 3, 4, 4, 6, 7
+};
+
+/*
+ * The same PLLC4 output branches connected to the low jitter (LJ) and divided
+ * inputs of the SDMMC2/4 source selection mux. The difference is that clock
+ * from LJ input does not go through SDMMC2/4 divider. Although it is possible
+ * to run output clock at the same rate as source from divided input (with
+ * divider 1:1 setting), the implementation below automatically switches to LJ
+ * input when SDMMC2/4 clock rate is set equal to the source rate, and one of
+ * PLLC4 branches is used as a source. Changing SDMMC rate-to-source ratio
+ * from 1:1 automatically selects divided input. This switching mechanism has
+ * no effect when PLLP or CLK_M is used as clock source.
+ *
+ * See also mux_pllp_clk_m_pllc4_out2_out1_out0_lj definition for detailed list
+ * of LJ and divided inputs.
+*/
+
+static void sdmmc24_remap_inputs(struct clk *c)
+{
+	u32 sel_out, sel_in;
+	u32 val = clk_readl(c->reg);
+
+	sel_in = (val & periph_clk_source_mask(c)) >>
+		periph_clk_source_shift(c);
+
+	sel_out = (c->mul == c->div) ? sdmmc24_input_to_lj[sel_in] :
+		sdmmc24_input_from_lj[sel_in];
+
+	if (sel_out != sel_in) {
+		val &= ~periph_clk_source_mask(c);
+		val |= (sel_out << periph_clk_source_shift(c));
+
+		clk_writel_delay(val, c->reg);
+	}
+
+}
+
+static void tegra21_sdmmc24_clk_init(struct clk *c)
+{
+	tegra21_periph_clk_init(c);
+	sdmmc24_remap_inputs(c);
+}
+
+static int tegra21_sdmmc24_clk_set_rate(struct clk *c, unsigned long rate)
+{
+	int ret = tegra21_periph_clk_set_rate(c, rate);
+	if (!ret)
+		sdmmc24_remap_inputs(c);
+	return ret;
+}
+
+static int tegra21_sdmmc24_clk_set_parent(struct clk *c, struct clk *p)
+{
+	u32 val, sel_val;
+	const struct clk_mux_sel *sel;
+	pr_debug("%s: %s %s\n", __func__, c->name, p->name);
+
+	for (sel = c->inputs; sel->input != NULL; sel++) {
+		if (sel->input == p) {
+			sel_val = (c->mul == c->div) ?
+				sdmmc24_input_to_lj[sel->value] :
+				sdmmc24_input_from_lj[sel->value];
+
+			val = clk_readl(c->reg);
+			val &= ~periph_clk_source_mask(c);
+			val |= (sel_val << periph_clk_source_shift(c));
+
+			if (c->refcnt)
+				tegra_clk_prepare_enable(p);
+
+			clk_writel_delay(val, c->reg);
+
+			if (c->refcnt && c->parent)
+				tegra_clk_disable_unprepare(c->parent);
+
+			clk_reparent(c, p);
+			return 0;
+		}
+	}
+	return -EINVAL;
+}
+
+static struct clk_ops tegra_sdmmc24_clk_ops = {
+	.init			= &tegra21_sdmmc24_clk_init,
+	.enable			= &tegra21_periph_clk_enable,
+	.disable		= &tegra21_periph_clk_disable,
+	.set_parent		= &tegra21_sdmmc24_clk_set_parent,
+	.set_rate		= &tegra21_sdmmc24_clk_set_rate,
+	.round_rate		= &tegra21_periph_clk_round_rate,
+	.reset			= &tegra21_periph_clk_reset,
+};
+
+/* Output clock ops */
 static DEFINE_SPINLOCK(clk_out_lock);
 
 static void tegra21_clk_out_init(struct clk *c)
@@ -7876,6 +7977,18 @@ static struct clk_mux_sel mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_pllp_clk_m_pllc4_out2_out1_out0_lj[] = {
+	{.input = &tegra_pll_p,             .value = 0},
+	{.input = &tegra_pll_c4_out2,       .value = 1},  /* LJ input */
+	{.input = &tegra_pll_c4_out0,       .value = 2},  /* LJ input */
+	{.input = &tegra_pll_c4_out2,       .value = 3},
+	{.input = &tegra_pll_c4_out1,       .value = 4},
+	{.input = &tegra_pll_c4_out1,       .value = 5},  /* LJ input */
+	{.input = &tegra_clk_m,             .value = 6},
+	{.input = &tegra_pll_c4_out0,       .value = 7},
+	{ 0, 0},
+};
+
 static struct clk_mux_sel mux_pllp_pllc2_c_c3_clkm[] = {
 	{ .input = &tegra_pll_p,  .value = 0},
 	{ .input = &tegra_pll_c2, .value = 1},
@@ -8575,14 +8688,14 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("sata_oob",	"tegra_sata_oob",	NULL,	123,	0x420,	216000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sata",	"tegra_sata",		NULL,	124,	0x424,	216000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sata_cold",	"tegra_sata_cold",	NULL,	129,	0,	48000000,  mux_clk_m,		PERIPH_ON_APB),
-	PERIPH_CLK("sdmmc1",	"sdhci-tegra.0",	NULL,	14,	0x150,	208000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,		MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sdmmc2",	"sdhci-tegra.1",	NULL,	9,	0x154,	333000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,		MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sdmmc3",	"sdhci-tegra.2",	NULL,	69,	0x1bc,	208000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,		MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sdmmc4",	"sdhci-tegra.3",	NULL,	15,	0x164,	333000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,		MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("sdmmc1",	"sdhci-tegra.0",	NULL,	14,	0x150,	208000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("sdmmc3",	"sdhci-tegra.2",	NULL,	69,	0x1bc,	208000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sdmmc1_ddr", "sdhci-tegra.0",	"ddr",	14,	0x150,	100000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
-	PERIPH_CLK("sdmmc2_ddr", "sdhci-tegra.1",	"ddr",	9,	0x154,	333000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
 	PERIPH_CLK("sdmmc3_ddr", "sdhci-tegra.2",	"ddr",	69,	0x1bc,	100000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
-	PERIPH_CLK("sdmmc4_ddr", "sdhci-tegra.3",	"ddr",	15,	0x164,	333000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
+	PERIPH_CLK_EX("sdmmc2",	"sdhci-tegra.1",	NULL,	9,	0x154,	333000000, mux_pllp_clk_m_pllc4_out2_out1_out0_lj,	MUX | DIV_U71 | PERIPH_ON_APB, &tegra_sdmmc24_clk_ops),
+	PERIPH_CLK_EX("sdmmc4",	"sdhci-tegra.3",	NULL,	15,	0x164,	333000000, mux_pllp_clk_m_pllc4_out2_out1_out0_lj,	MUX | DIV_U71 | PERIPH_ON_APB, &tegra_sdmmc24_clk_ops),
+	PERIPH_CLK_EX("sdmmc2_ddr", "sdhci-tegra.1",	"ddr",	9,	0x154,	333000000, mux_pllp_clk_m_pllc4_out2_out1_out0_lj,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB, &tegra_sdmmc24_clk_ops),
+	PERIPH_CLK_EX("sdmmc4_ddr", "sdhci-tegra.3",	"ddr",	15,	0x164,	333000000, mux_pllp_clk_m_pllc4_out2_out1_out0_lj,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB, &tegra_sdmmc24_clk_ops),
 	PERIPH_CLK("sdmmc_legacy", "sdmmc_legacy",	NULL,	193,	0x694,	208000000, mux_pllp_out3_clkm_pllp_pllc4, MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 
 	PERIPH_CLK("vcp",	"nvavp",		"vcp",	29,	0,	250000000, mux_clk_m, 			0),
