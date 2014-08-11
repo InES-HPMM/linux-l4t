@@ -964,8 +964,12 @@ static void __init tegra_clk_verify_rates(void)
 	mutex_lock(&clock_list_lock);
 
 	list_for_each_entry(c, &clocks, node) {
+		bool bus_user = c->parent && c->parent->ops &&
+			c->parent->ops->shared_bus_update;
 		rate = clk_get_rate(c);
-		if (rate > clk_get_max_rate(c))
+
+		/* Over-clock warning (skip virtual shared bus user clocks) */
+		if (!bus_user && (rate > clk_get_max_rate(c)))
 			WARN(1, "tegra: %s boot rate %lu exceeds max rate %lu\n",
 			     c->name, rate, clk_get_max_rate(c));
 		c->boot_rate = rate;
