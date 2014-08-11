@@ -27,7 +27,6 @@
 int p2360_regulator_init(void);
 
 /* Tegra GPIOs */
-#define TEGRA_GPIO_FPDLINK		TEGRA_GPIO_PR4
 #define TEGRA_GPIO_GPUPWR		TEGRA_GPIO_PR2
 
 #define TEGRA_GPIO_TV1ENA		TEGRA_GPIO_PI5
