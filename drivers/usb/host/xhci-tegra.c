@@ -107,6 +107,12 @@
 
 #define PMC_UTMIP_UHSIC_SLEEP_CFG_0		0x1fc
 
+/* XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPADX_CTLY_0 register */
+#define PD_CHG					(1 << 0)
+#define ON_SRC_EN				(1 << 12)
+/* XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPADX_CTLY_0 register */
+#define PD2						(1 << 20)
+
 /* private data types */
 /* command requests from the firmware */
 enum MBOX_CMD_TYPE {
@@ -3513,6 +3519,86 @@ xhci_bus_resume_failed:
 }
 #endif
 
+#ifdef CONFIG_TEGRA_XHCI_ENABLE_CDP_PORT
+void set_port_cdp(struct tegra_xhci_hcd *tegra, bool enable, int pad)
+{
+	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	void __iomem *bchrg_otgpad_reg =
+				padregs->usb2_bchrg_otgpadX_ctlY_0[pad][0];
+	void __iomem *otg_pad_reg = padregs->usb2_otg_padX_ctlY_0[pad][0];
+	long val;
+
+	if (enable) {
+		val = tegra_usb_pad_reg_read(bchrg_otgpad_reg);
+		val &= ~(PD_CHG);
+		tegra_usb_pad_reg_write(bchrg_otgpad_reg, val);
+		val = tegra_usb_pad_reg_read(otg_pad_reg);
+		val |= (PD2);
+		tegra_usb_pad_reg_write(otg_pad_reg, val);
+		val = tegra_usb_pad_reg_read(bchrg_otgpad_reg);
+		val |= (ON_SRC_EN);
+		tegra_usb_pad_reg_write(bchrg_otgpad_reg, val);
+	} else {
+		val = tegra_usb_pad_reg_read(bchrg_otgpad_reg);
+		val |= (PD_CHG);
+		tegra_usb_pad_reg_write(bchrg_otgpad_reg, val);
+		val = tegra_usb_pad_reg_read(otg_pad_reg);
+		val &= ~(PD2);
+		tegra_usb_pad_reg_write(otg_pad_reg, val);
+		val = tegra_usb_pad_reg_read(bchrg_otgpad_reg);
+		val &= ~(ON_SRC_EN);
+		tegra_usb_pad_reg_write(bchrg_otgpad_reg, val);
+	}
+}
+
+void tegra_xhci_free_dev(struct usb_hcd *hcd, struct usb_device *udev)
+{
+	struct tegra_xhci_hcd *tegra = hcd_to_tegra_xhci(hcd);
+	int pad;
+
+	pad = udev->portnum - 1;
+	xhci_free_dev(hcd, udev);
+	set_port_cdp(tegra, true, pad);
+}
+
+int tegra_xhci_alloc_dev(struct usb_hcd *hcd, struct usb_device *udev)
+{
+	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
+	struct tegra_xhci_hcd *tegra = hcd_to_tegra_xhci(hcd);
+	int usb2_utmi_port_start, usb2_utmi_port_end;
+	int port; int pad;
+	u32 reg;
+
+	usb2_utmi_port_start = XUSB_SS_PORT_COUNT;
+	usb2_utmi_port_end = XUSB_SS_PORT_COUNT + XUSB_UTMI_COUNT - 1;
+
+	for (port = usb2_utmi_port_start; port <= usb2_utmi_port_end; port++) {
+		reg = xhci_read_portsc(xhci, port);
+		pad = port - XUSB_SS_PORT_COUNT;
+		if (reg & PORT_CONNECT)
+			set_port_cdp(tegra, false, pad);
+	}
+
+	return xhci_alloc_dev(hcd, udev);
+}
+
+#else
+void set_port_cdp(struct tegra_xhci_hcd *tegra, bool enable, int pad)
+{
+	return;
+}
+
+void tegra_xhci_free_dev(struct usb_hcd *hcd, struct usb_device *udev)
+{
+		xhci_free_dev(hcd, udev);
+}
+
+int tegra_xhci_alloc_dev(struct usb_hcd *hcd, struct usb_device *udev)
+{
+	return xhci_alloc_dev(hcd, udev);
+}
+#endif
+
 static irqreturn_t tegra_xhci_irq(struct usb_hcd *hcd)
 {
 	struct tegra_xhci_hcd *tegra = hcd_to_tegra_xhci(hcd);
@@ -3577,8 +3663,8 @@ static const struct hc_driver tegra_plat_xhci_driver = {
 	 */
 	.urb_enqueue =		xhci_urb_enqueue,
 	.urb_dequeue =		xhci_urb_dequeue,
-	.alloc_dev =		xhci_alloc_dev,
-	.free_dev =		xhci_free_dev,
+	.alloc_dev =		tegra_xhci_alloc_dev,
+	.free_dev =		tegra_xhci_free_dev,
 	.alloc_streams =	xhci_alloc_streams,
 	.free_streams =		xhci_free_streams,
 	.add_endpoint =		xhci_add_endpoint,
@@ -3680,6 +3766,7 @@ tegra_xhci_resume(struct platform_device *pdev)
 {
 	struct tegra_xhci_hcd *tegra = platform_get_drvdata(pdev);
 	struct xhci_hcd *xhci = tegra->xhci;
+	int pad;
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 
@@ -3710,6 +3797,9 @@ tegra_xhci_resume(struct platform_device *pdev)
 		if (sata_usb_pad_pll_reset_deassert())
 			dev_err(&pdev->dev, "error deassert sata pll\n");
 	}
+
+	for (pad = 0; pad < XUSB_UTMI_COUNT; pad++)
+		set_port_cdp(tegra, true, pad);
 
 	return 0;
 }
@@ -4597,6 +4687,9 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		ret = -ENODEV;
 		goto err_deinit_firmware_log;
 	}
+
+	for (pad = 0; pad < XUSB_UTMI_COUNT; pad++)
+		set_port_cdp(tegra, true, pad);
 
 	return 0;
 

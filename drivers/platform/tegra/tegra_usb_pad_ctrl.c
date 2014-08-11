@@ -459,12 +459,21 @@ static void utmi_phy_pad(bool enable)
 #endif
 	} else {
 		val = readl(pad_base + UTMIP_BIAS_CFG0);
-		val |= UTMIP_OTGPD | UTMIP_BIASPD;
+		val |= UTMIP_OTGPD;
+#if !defined(CONFIG_TEGRA_XHCI_ENABLE_CDP_PORT)
+		val |= UTMIP_BIASPD;
+#endif
 		val &= ~(UTMIP_HSSQUELCH_LEVEL(~0) | UTMIP_HSDISCON_LEVEL(~0) |
 			UTMIP_HSDISCON_LEVEL_MSB);
 		writel(val, pad_base + UTMIP_BIAS_CFG0);
+
+#if defined(CONFIG_TEGRA_XHCI_ENABLE_CDP_PORT)
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0
+			, PD_MASK , 0);
+#else
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0
 			, PD_MASK , PD_MASK);
+#endif
 	}
 #endif
 }

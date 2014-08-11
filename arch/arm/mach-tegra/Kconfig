@@ -476,6 +476,14 @@ config TEGRA_EHCI_BOOST_CPU_FREQ
           to be boosted. If it is zero boosting frequency will not
           be enabled. This value will be used only by usb ehci driver.
 
+config TEGRA_XHCI_ENABLE_CDP_PORT
+	bool "Enable the CDP detection on USB 2.0 utmi ports"
+	default n
+	help
+	 Setting this variable will enable the CDP declaration
+	 of the USB 2.0 utmi ports which are under the ownership
+	 of xhci controller.
+
 config TEGRA_CPU_FREQ_GOVERNOR_KERNEL_START
 	bool "Initialize CPU governor to a performance after DVFS initialization"
 	default 0
