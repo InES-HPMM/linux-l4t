@@ -51,6 +51,14 @@
 		};
 	};
 
+	i2c@7000c700 {
+		fpd-serializer@0c {
+			compatible = "ti,ds90uh949";
+			reg = <0x0c>;
+			ti,enable-gpio = <&gpio TEGRA_GPIO(R, 4) 0>; /*PR4*/
+			ti,power-on-delay = <4>;
+		};
+	};
 	serial@70006040 {
 		compatible = "nvidia,tegra20-uart";
 		console-port;
