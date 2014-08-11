@@ -156,6 +156,9 @@
 	sdhci@700b0600 {
 		status = "disabled";
 	};
+	sdhci@700b0000 {
+		status = "disabled";
+	};
 
 	sdhci@700b0400 {
 		status = "disabled";
