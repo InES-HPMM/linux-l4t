@@ -703,8 +703,8 @@ static char *driver_short_names[] = {
 	[AZX_DRIVER_ULI] = "HDA ULI M5461",
 	[AZX_DRIVER_NVIDIA] = "HDA NVidia",
 	[AZX_DRIVER_NVIDIA_TEGRA] = "HDA NVIDIA Tegra",
-	[AZX_DRIVER_TERA] = "HDA Teradici", 
-	[AZX_DRIVER_CTX] = "HDA Creative", 
+	[AZX_DRIVER_TERA] = "HDA Teradici",
+	[AZX_DRIVER_CTX] = "HDA Creative",
 	[AZX_DRIVER_CTHDA] = "HDA Creative",
 	[AZX_DRIVER_GENERIC] = "HD-Audio Generic",
 };
@@ -3496,8 +3496,16 @@ static int azx_free(struct azx *chip)
 		free_irq(chip->irq, (void*)chip);
 	if (chip->pci && chip->msi)
 		pci_disable_msi(chip->pci);
-	if (chip->remap_addr)
-		iounmap(chip->remap_addr);
+	if (chip->remap_addr) {
+		void __iomem *addr2unmap;
+		if (chip->driver_type == AZX_DRIVER_NVIDIA_TEGRA) {
+			addr2unmap = chip->remap_config_addr;
+		} else {
+			addr2unmap = chip->remap_addr;
+		}
+		iounmap(addr2unmap);
+	}
+
 
 	if (chip->azx_dev) {
 		for (i = 0; i < chip->num_streams; i++)
