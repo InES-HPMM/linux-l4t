@@ -5040,6 +5040,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	char eventmask[WL_EVENTING_MASK_LEN];
 	char iovbuf[WL_EVENTING_MASK_LEN + 12];	/*  Room for "event_msgs" + '\0' + bitvec  */
 	uint32 buf_key_b4_m4 = 1;
+	uint32 rpt_hitxrate = 1;
 	uint8 msglen;
 	eventmsgs_ext_t *eventmask_msg;
 	char iov_buf[WLC_IOCTL_SMLEN];
@@ -5491,6 +5492,21 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 			__FUNCTION__, ret));
 	}
 #endif
+
+	/* Set the rpt_hitxrate to 1 so that link speed updated by WLC_GET_RATE
+	*  is the maximum trasnmit rate
+	*  rpt_hitxrate 0 : Here the rate reported is the most used rate in
+	*			the link.
+	*  rpt_hitxrate 1 : Here the rate reported is the highest used rate
+	*			in the link.
+	*/
+	bcm_mkiovar("rpt_hitxrate", (char *)&rpt_hitxrate, 4, iovbuf,
+			sizeof(iovbuf));
+	ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf,
+				sizeof(iovbuf), TRUE, 0);
+	if (ret < 0) {
+		DHD_ERROR(("%s Set rpt_hitxrate failed  %d\n", __FUNCTION__, ret));
+	}
 
 	bcm_mkiovar("buf_key_b4_m4", (char *)&buf_key_b4_m4, 4, iovbuf, sizeof(iovbuf));
 	if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf,
