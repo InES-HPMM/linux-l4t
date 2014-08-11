@@ -7070,7 +7070,7 @@ struct clk_pll_controls pllu_controls = {
 };
 
 static struct clk tegra_pll_u_vco = {
-	.name      = "pll_u_vco",
+	.name      = "pll_u",
 	.flags     = PLLU | PLL_FIXED,
 	.ops       = &tegra_pllu_vco_ops,
 	.reg       = 0xc0,
@@ -9005,7 +9005,6 @@ static struct clk tegra_xusb_coupled_clks[] = {
  * table under two names.
  */
 struct clk_duplicate tegra_clk_duplicates[] = {
-	CLK_DUPLICATE("pll_u_vco",  NULL, "pll_u"),
 	CLK_DUPLICATE("uarta",  "serial8250.0", NULL),
 	CLK_DUPLICATE("uartb",  "serial8250.1", NULL),
 	CLK_DUPLICATE("uartc",  "serial8250.2", NULL),
