@@ -751,7 +751,7 @@ int bpmp_attach(void)
 
 	WARN_ON(connected);
 
-	for (i = 0; i < MSEC_PER_SEC * 60; i++) {
+	for (i = 0; i < MSEC_PER_SEC * 60; i += 20) {
 		if (!bpmp_connect())
 			return 0;
 		msleep(20);
