@@ -491,10 +491,7 @@ static struct of_device_id tegra_smmu_of_match[];
 
 static u64 tegra_smmu_of_get_swgids(struct device *dev)
 {
-	size_t bytes = 0;
 	struct of_phandle_iter iter;
-	const __be32 *prop;
-	int i;
 	u64 swgids = 0;
 	struct iommu_linear_map *area = NULL;
 
@@ -511,20 +508,10 @@ static u64 tegra_smmu_of_get_swgids(struct device *dev)
 		memcpy(&swgids, iter.out_args.args, sizeof(u64));
 		pr_debug("swgids=%16llx ops=%pf %s\n",
 			 swgids, dev->bus->iommu_ops, dev_name(dev));
-		goto fix_up;
+		break;
 	}
 
-	prop = of_get_property(dev->of_node,
-			       "nvidia,memory-clients", (int *)&bytes);
-	if (!prop || !bytes)
-		goto fix_up;
-
-	for (i = 0; i < bytes / sizeof(u32); i++, prop++)
-		swgids |= 1ULL << be32_to_cpup(prop);
-
-fix_up:
-	swgids = swgids ? : tegra_smmu_fixup_swgids(dev, &area);
-	return swgids;
+	return swgids ? : tegra_smmu_fixup_swgids(dev, &area);
 }
 
 struct smmu_map_prop {
