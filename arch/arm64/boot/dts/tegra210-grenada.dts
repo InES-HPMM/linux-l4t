@@ -717,30 +717,6 @@
 			status = "okay";
 		};
 
-		ope@702d8000 {
-			status = "okay";
-
-			peq@702d8100 {
-				status = "okay";
-			};
-
-			mbdrc@702d8200 {
-				status = "okay";
-			};
-		};
-
-		ope@702d8400 {
-			status = "okay";
-
-			peq@702d8500 {
-				status = "okay";
-			};
-
-			mbdrc@702d8600 {
-				status = "okay";
-			};
-		};
-
 		sfc@702d2000 {
 			status = "okay";
 		};
@@ -879,6 +855,14 @@
 		iqc@702de200 {
 			timestamp-enable = <0>;
 			data-offset = <1>;
+                        status = "okay";
+                };
+
+		ope@702d8000 {
+			status = "okay";
+		};
+
+		ope@702d8400 {
 			status = "okay";
 		};
 	};
