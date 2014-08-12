@@ -4349,7 +4349,8 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 		    NVQUIRK_UPDATE_PAD_CNTRL_REG |
 		    NVQUIRK_USE_TMCLK_WR_CRC_TIMEOUT,
 	.nvquirks2 = NVQUIRK2_UPDATE_HW_TUNING_CONFG |
-		     NVQUIRK2_CONFIG_PWR_DET,
+		     NVQUIRK2_CONFIG_PWR_DET |
+		     NVQUIRK_UPDATE_PIN_CNTRL_REG,
 };
 
 static const struct of_device_id sdhci_tegra_dt_match[] = {
