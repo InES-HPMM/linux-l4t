@@ -129,6 +129,9 @@
 
 	spi@7000d800 {
 		status = "okay";
+		spi@0 {
+			reg = <1>;
+		};
 	};
 
 	spi@7000dc00 {
