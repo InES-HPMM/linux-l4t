@@ -592,6 +592,7 @@ bool tegra_usb_phy_charger_detected(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_charger_detected);
 
 bool tegra_usb_phy_cdp_charger_detected(struct tegra_usb_phy *phy)
 {
@@ -603,6 +604,7 @@ bool tegra_usb_phy_cdp_charger_detected(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_cdp_charger_detected);
 
 bool tegra_usb_phy_qc2_charger_detected(struct tegra_usb_phy *phy,
 			int max_voltage)
@@ -616,6 +618,7 @@ bool tegra_usb_phy_qc2_charger_detected(struct tegra_usb_phy *phy,
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_qc2_charger_detected);
 
 bool tegra_usb_phy_maxim_charger_detected(struct tegra_usb_phy *phy)
 {
@@ -627,6 +630,7 @@ bool tegra_usb_phy_maxim_charger_detected(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_maxim_charger_detected);
 
 bool tegra_usb_phy_nv_charger_detected(struct tegra_usb_phy *phy)
 {
@@ -638,6 +642,7 @@ bool tegra_usb_phy_nv_charger_detected(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_nv_charger_detected);
 
 bool tegra_usb_phy_apple_1000ma_charger_detected(struct tegra_usb_phy *phy)
 {
@@ -648,6 +653,7 @@ bool tegra_usb_phy_apple_1000ma_charger_detected(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_apple_1000ma_charger_detected);
 
 bool tegra_usb_phy_apple_2000ma_charger_detected(struct tegra_usb_phy *phy)
 {
@@ -658,6 +664,7 @@ bool tegra_usb_phy_apple_2000ma_charger_detected(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_apple_2000ma_charger_detected);
 
 bool tegra_usb_phy_apple_500ma_charger_detected(struct tegra_usb_phy *phy)
 {
@@ -668,6 +675,7 @@ bool tegra_usb_phy_apple_500ma_charger_detected(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_apple_500ma_charger_detected);
 
 bool tegra_usb_phy_hw_accessible(struct tegra_usb_phy *phy)
 {
@@ -699,6 +707,7 @@ void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy)
 		ahb_gizmo_writel(val, ahb_gizmo + AHB_MEM_PREFETCH_CFG2);
 	}
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_memory_prefetch_on);
 
 void tegra_usb_phy_memory_prefetch_off(struct tegra_usb_phy *phy)
 {
@@ -714,6 +723,7 @@ void tegra_usb_phy_memory_prefetch_off(struct tegra_usb_phy *phy)
 		ahb_gizmo_writel(val, ahb_gizmo + AHB_MEM_PREFETCH_CFG2);
 	}
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_memory_prefetch_off);
 
 int tegra_usb_phy_set_suspend(struct usb_phy *x, int suspend)
 {
