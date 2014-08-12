@@ -718,6 +718,11 @@ static const struct file_operations slow_cluster_enable_fops = {
 	.release =	single_release,
 };
 
+static bool is_timer_irq(struct irq_desc *desc)
+{
+	return desc && desc->action && (desc->action->flags & IRQF_TIMER);
+}
+
 static void suspend_all_device_irqs(void)
 {
 	struct irq_desc *desc;
@@ -726,15 +731,23 @@ static void suspend_all_device_irqs(void)
 	for_each_irq_desc(irq, desc) {
 		unsigned long flags;
 
+		/* Don't disable the 'wakeup' interrupt */
+		if (is_timer_irq(desc))
+			continue;
+
 		raw_spin_lock_irqsave(&desc->lock, flags);
 		__disable_irq(desc, irq, false);
 		desc->istate |= IRQS_SUSPENDED;
 		raw_spin_unlock_irqrestore(&desc->lock, flags);
 	}
 
-	for_each_irq_desc(irq, desc)
+	for_each_irq_desc(irq, desc) {
+		if (is_timer_irq(desc))
+			continue;
+
 		if (desc->istate & IRQS_SUSPENDED)
 			synchronize_irq(irq);
+	}
 }
 
 static void resume_all_device_irqs(void)
@@ -744,6 +757,9 @@ static void resume_all_device_irqs(void)
 
 	for_each_irq_desc(irq, desc) {
 		unsigned long flags;
+
+		if (is_timer_irq(desc))
+			continue;
 
 		raw_spin_lock_irqsave(&desc->lock, flags);
 		__enable_irq(desc, irq, true);
