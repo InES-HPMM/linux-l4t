@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -244,6 +245,10 @@
 
 	i2c@7000d000 {
 		max77620@3c {
+			watchdog {
+				status = "okay";
+			};
+
 			regulators {
 				sd1 {
 					regulator-min-microvolt = <1000000>; /*for max77663 on inter
