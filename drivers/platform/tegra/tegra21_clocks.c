@@ -6431,7 +6431,7 @@ static struct clk tegra_pll_a_out0 = {
 	.parent    = &tegra_pll_a,
 	.reg       = 0xb4,
 	.reg_shift = 0,
-	.max_rate  = 100000000,
+	.max_rate  = 600000000,
 };
 
 static struct clk_pll_freq_table tegra_pll_d_freq_table[] = {
