@@ -684,6 +684,7 @@ static const struct file_operations fast_cluster_enable_fops = {
 	.read	=	seq_read,
 	.llseek	=	seq_lseek,
 	.write	=	fast_enable_write,
+	.release =	single_release,
 };
 
 static int slow_enable_show(struct seq_file *s, void *data)
@@ -714,6 +715,7 @@ static const struct file_operations slow_cluster_enable_fops = {
 	.read	=	seq_read,
 	.llseek	=	seq_lseek,
 	.write	=	slow_enable_write,
+	.release =	single_release,
 };
 
 static void suspend_all_device_irqs(void)
