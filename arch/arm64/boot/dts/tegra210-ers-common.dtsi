@@ -23,7 +23,9 @@
 / {
 
 	serial@70006000 {
-		compatible = "nvidia,tegra210-uart";
+		compatible = "nvidia,tegra210-uart", "nvidia,tegra114-hsuart";
+		console-port;
+		sqa-automation-port;
 		status = "okay";
 	};
 
