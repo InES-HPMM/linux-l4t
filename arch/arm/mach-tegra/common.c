@@ -2483,6 +2483,34 @@ void __init display_tegra_dt_info(void)
 		pr_info("DTS File Name: <unknown>\n");
 }
 
+static void tegra_get_bl_reset_status(void)
+{
+	struct device_node *reset_info;
+	u32 prop_val;
+	int err;
+
+	reset_info = of_find_node_by_path("/chosen/reset");
+	if (reset_info) {
+		err = of_property_read_u32(reset_info, "pmc_reset_status",
+				&prop_val);
+		if (err < 0)
+			goto out;
+		else
+			pr_info("BL: PMC reset status reg: 0x%x\n",
+					prop_val);
+
+		err = of_property_read_u32(reset_info, "pmic_reset_status",
+				&prop_val);
+		if (err < 0)
+			goto out;
+		else
+			pr_info("BL: PMIC poweroff Event Recorder: 0x%x\n",
+					prop_val);
+	}
+out:
+	return;
+}
+
 static int __init tegra_get_last_reset_reason(void)
 {
 #define PMC_RST_STATUS 0x1b4
@@ -2498,8 +2526,12 @@ static int __init tegra_get_last_reset_reason(void)
 	u32 val = readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_RST_STATUS) & 0x7;
 	if (val >= ARRAY_SIZE(reset_reason))
 		pr_info("last reset value is invalid 0x%x\n", val);
-	else
+	else {
 		pr_info("%s\n", reset_reason[val]);
+		pr_info("KERNEL: PMC reset status reg: 0x%x\n", val);
+	}
+
+	tegra_get_bl_reset_status();
 	return 0;
 }
 late_initcall(tegra_get_last_reset_reason);
