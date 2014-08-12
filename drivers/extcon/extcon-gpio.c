@@ -189,6 +189,7 @@ static int gpio_extcon_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, extcon_data);
 	/* Perform initial detection */
 	gpio_extcon_work(&extcon_data->work.work);
+	device_set_wakeup_capable(extcon_data->dev, true);
 
 	return 0;
 
@@ -209,6 +210,32 @@ static int gpio_extcon_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int gpio_extcon_suspend(struct device *dev)
+{
+	struct gpio_extcon_data *extcon_data = dev_get_drvdata(dev);
+
+	cancel_delayed_work_sync(&extcon_data->work);
+	if (device_may_wakeup(extcon_data->dev))
+		enable_irq_wake(extcon_data->irq);
+
+	return 0;
+}
+
+static int gpio_extcon_resume(struct device *dev)
+{
+	struct gpio_extcon_data *extcon_data = dev_get_drvdata(dev);
+
+	if (device_may_wakeup(extcon_data->dev))
+		disable_irq_wake(extcon_data->irq);
+
+	return 0;
+}
+#endif /* CONFIG_PM_SLEEP */
+
+static SIMPLE_DEV_PM_OPS(gpio_extcon_pm_ops, gpio_extcon_suspend,
+						gpio_extcon_resume);
+
 static struct of_device_id of_extcon_gpio_tbl[] = {
 	{ .compatible = "extcon-gpio", },
 	{ /* end */ }
@@ -222,6 +249,7 @@ static struct platform_driver gpio_extcon_driver = {
 		.name	= "extcon-gpio",
 		.owner	= THIS_MODULE,
 		.of_match_table = of_extcon_gpio_tbl,
+		.pm = &gpio_extcon_pm_ops,
 	},
 };
 
