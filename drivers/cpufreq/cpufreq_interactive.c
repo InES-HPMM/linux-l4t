@@ -1340,9 +1340,9 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		for_each_cpu(j, policy->cpus) {
 			pcpu = &per_cpu(cpuinfo, j);
 
-			down_read(&pcpu->enable_sem);
+			down_write(&pcpu->enable_sem);
 			if (pcpu->governor_enabled == 0) {
-				up_read(&pcpu->enable_sem);
+				up_write(&pcpu->enable_sem);
 				continue;
 			}
 
@@ -1353,7 +1353,6 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 				pcpu->target_freq = policy->min;
 
 			spin_unlock_irqrestore(&pcpu->target_freq_lock, flags);
-			up_read(&pcpu->enable_sem);
 
 			/* Reschedule timer only if policy->max is raised.
 			 * Delete the timers, else the timer callback may
@@ -1363,14 +1362,13 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			 */
 
 			if (policy->max > pcpu->max_freq) {
-				down_write(&pcpu->enable_sem);
 				del_timer_sync(&pcpu->cpu_timer);
 				del_timer_sync(&pcpu->cpu_slack_timer);
 				cpufreq_interactive_timer_start(tunables, j);
-				up_write(&pcpu->enable_sem);
 			}
 
 			pcpu->max_freq = policy->max;
+			up_write(&pcpu->enable_sem);
 		}
 		break;
 	}
