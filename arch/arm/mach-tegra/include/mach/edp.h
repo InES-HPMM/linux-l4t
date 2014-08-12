@@ -140,8 +140,8 @@ void tegra_get_cpu_reg_mode_limits(const struct tegra_edp_limits **limits,
 				   int *size, unsigned int mode);
 void tegra_platform_edp_init(struct thermal_trip_info *trips,
 					int *num_trips, int margin);
-struct tegra_system_edp_entry *tegra_get_system_edp_entries(int *size);
-unsigned int tegra_get_sysedp_max_freq(int cpupwr, int online_cpus);
+unsigned int tegra_get_sysedp_max_freq(int cpupwr, int online_cpus,
+				       int cpu_mode);
 unsigned int tegra_edp_find_maxf(int volt);
 #else /* CONFIG_TEGRA_EDP_LIMITS */
 static inline struct thermal_cooling_device *edp_cooling_device_create(
@@ -163,8 +163,6 @@ static inline void tegra_get_cpu_reg_mode_limits(
 static inline void tegra_platform_edp_init(struct thermal_trip_info *trips,
 					   int *num_trips, int margin)
 {}
-static inline struct tegra_system_edp_entry
-		*tegra_get_system_edp_entries(int *size) { return NULL; }
 static inline unsigned int tegra_edp_find_maxf(int volt)
 { return -1; }
 #endif

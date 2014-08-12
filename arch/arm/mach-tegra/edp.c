@@ -62,6 +62,7 @@ static struct tegra_edp_limits *reg_idle_edp_limits;
 static int reg_idle_cur;
 
 static struct tegra_system_edp_entry *power_edp_limits;
+static struct tegra_system_edp_entry *powerlp_edp_limits;
 static int power_edp_limits_size;
 
 /*
@@ -749,12 +750,6 @@ void tegra_platform_edp_init(struct thermal_trip_info *trips,
 	}
 }
 
-struct tegra_system_edp_entry *tegra_get_system_edp_entries(int *size)
-{
-	*size = power_edp_limits_size;
-	return power_edp_limits;
-}
-
 /* To save some cycles from a linear search */
 static unsigned int cpu_lut_match(unsigned int power,
 		struct tegra_system_edp_entry *lut, unsigned int lutlen)
@@ -780,13 +775,22 @@ static unsigned int cpu_lut_match(unsigned int power,
 	return lutlen - 1;
 }
 
-unsigned int tegra_get_sysedp_max_freq(int cpupwr, int online_cpus)
+unsigned int tegra_get_sysedp_max_freq(int cpupwr, int online_cpus,
+				       int cpu_mode)
 {
+	struct tegra_system_edp_entry *limits;
 	struct tegra_system_edp_entry *p;
 	int i;
 
-	i = cpu_lut_match(cpupwr, power_edp_limits, power_edp_limits_size);
-	p = power_edp_limits + i;
+	limits = power_edp_limits;
+	if (powerlp_edp_limits && (cpu_mode == MODE_LP))
+		limits = powerlp_edp_limits;
+
+	if (limits == NULL)
+		return 0;
+
+	i = cpu_lut_match(cpupwr, limits, power_edp_limits_size);
+	p = limits + i;
 
 	for (; i > 0; i--, p--) {
 		if (p->power_limit_100mW * 100 <= cpupwr)

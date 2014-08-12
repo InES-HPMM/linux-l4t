@@ -314,7 +314,11 @@ static unsigned int sysedp_cap_speed(unsigned int requested_speed)
 	else
 		/* get the max freq given the power and online cpu count */
 		cur_cpupwr_freqcap = tegra_get_sysedp_max_freq(cur_cpupwr,
-					  cpumask_weight(&edp_cpumask));
+					  cpumask_weight(&edp_cpumask),
+					  is_lp_cluster() ? MODE_LP : MODE_G);
+
+	if (cur_cpupwr_freqcap == 0)
+		return requested_speed;
 
 	if (cur_cpupwr_freqcap != old_cpupwr_freqcap) {
 		if (IS_ENABLED(CONFIG_DEBUG_KERNEL)) {
