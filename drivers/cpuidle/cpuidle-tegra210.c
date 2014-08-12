@@ -698,7 +698,7 @@ static const struct file_operations fast_cluster_enable_fops = {
 
 static int slow_enable_show(struct seq_file *s, void *data)
 {
-	seq_printf(s, "%u\n", fast_enable);
+	seq_printf(s, "%u\n", slow_enable);
 
 	return 0;
 }
