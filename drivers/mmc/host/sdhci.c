@@ -3226,12 +3226,13 @@ int sdhci_resume_host(struct sdhci_host *host)
 		disable_irq_wake(host->irq);
 	}
 
-	if ((host->quirks2 & SDHCI_QUIRK2_PM_DOMAIN) &&
-			(!host->clock || !host->mmc->ios.clock)) {
+#if defined(CONFIG_MMC_RTPM)
+	if (!host->clock || !host->mmc->ios.clock) {
 		if (host->ops->set_clock)
 			host->ops->set_clock(host, DEFAULT_SDHOST_FREQ);
 		sdhci_set_clock(host, DEFAULT_SDHOST_FREQ);
 	}
+#endif
 
 	if ((host->mmc->pm_flags & MMC_PM_KEEP_POWER) &&
 	    (host->quirks2 & SDHCI_QUIRK2_HOST_OFF_CARD_ON)) {
@@ -3275,8 +3276,14 @@ static int sdhci_runtime_pm_get(struct sdhci_host *host)
 {
 	int present;
 
+#if !defined(CONFIG_MMC_RTPM)
 	if (!(host->quirks2 & SDHCI_QUIRK2_PM_DOMAIN))
 		return 0;
+#else
+	/* MMC_RTPM enabled but disable_clock_gate is false */
+	if (IS_DELAYED_CLK_GATE(host))
+		return 0;
+#endif
 
 	present = mmc_gpio_get_cd(host->mmc);
 	if (present < 0) {
@@ -3304,8 +3311,14 @@ static int sdhci_runtime_pm_put(struct sdhci_host *host)
 {
 	int present;
 
+#if !defined(CONFIG_MMC_RTPM)
 	if (!(host->quirks2 & SDHCI_QUIRK2_PM_DOMAIN))
 		return 0;
+#else
+	/* MMC_RTPM enabled but disable_clock_gate is false */
+	if (IS_DELAYED_CLK_GATE(host))
+		return 0;
+#endif
 
 	present = mmc_gpio_get_cd(host->mmc);
 	if (present < 0) {
@@ -3334,8 +3347,14 @@ int sdhci_runtime_suspend_host(struct sdhci_host *host)
 	unsigned long flags;
 	int ret = 0;
 
+#if !defined(CONFIG_MMC_RTPM)
 	if (!(host->quirks2 & SDHCI_QUIRK2_PM_DOMAIN))
 		return 0;
+#else
+	/* MMC_RTPM enabled but disable_clock_gate is false */
+	if (IS_DELAYED_CLK_GATE(host))
+		return 0;
+#endif
 
 	/* Disable tuning since we are suspending */
 	if (host->flags & SDHCI_USING_RETUNING_TIMER) {
@@ -3370,8 +3389,14 @@ int sdhci_runtime_resume_host(struct sdhci_host *host)
 	unsigned long flags;
 	int ret = 0, host_flags = host->flags;
 
+#if !defined(CONFIG_MMC_RTPM)
 	if (!(host->quirks2 & SDHCI_QUIRK2_PM_DOMAIN))
 		return 0;
+#else
+	/* MMC_RTPM enabled but disable_clock_gate is false */
+	if (IS_DELAYED_CLK_GATE(host))
+		return 0;
+#endif
 
 	if (host->ops->set_clock)
 		host->ops->set_clock(host, host->mmc->f_min);
