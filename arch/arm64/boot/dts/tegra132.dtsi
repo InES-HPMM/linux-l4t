@@ -79,6 +79,14 @@
 		      <0x0 0x60004400 0x0 0x40>;
 	};
 
+	smmu: iommu {
+		domains = <
+			&ppcs_as TEGRA_SWGROUP_CELLS2(PPCS, PPCS1)
+			&gpu_as TEGRA_SWGROUP_CELLS(GPUB)
+			&common_as TEGRA_SWGROUP_CELLS(AFI)
+			&common_as 0xFFFFFFFF 0xFFFFFFFF>;
+	};
+
 	timer {
 		compatible = "arm,armv8-timer";
 		interrupts = <1 13 0xff01>,

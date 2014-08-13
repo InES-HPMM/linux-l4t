@@ -116,6 +116,13 @@
 		#num-asid-security = <8>;
 		ptc-cache-size = <0x00008000>; /* 32 KB */
 
+		domains = <&ppcs_as TEGRA_SWGROUP_CELLS2(PPCS, PPCS1)
+			   &gpu_as TEGRA_SWGROUP_CELLS(GPUB)
+			   &ape_as TEGRA_SWGROUP_CELLS(APE)
+			   &dc_as TEGRA_SWGROUP_CELLS3(DC, DC12, DCB)
+			   &common_as TEGRA_SWGROUP_CELLS(AFI)
+			   &common_as 0xFFFFFFFF 0xFFFFFFFF>;
+
 		address-space-prop {
 			common_as: common {
 				iova-start = <0x0 0x80000000>;
