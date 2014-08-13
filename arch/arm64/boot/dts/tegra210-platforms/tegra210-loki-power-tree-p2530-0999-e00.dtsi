@@ -22,14 +22,8 @@
 / {
 
 	i2c@7000d000 {
-		max77620: max77620@3c {
-			maxim,wdt-timeout = <0>;
-
+		max77620@3c {
 			regulators {
-				sd1 {
-					regulator-min-microvolt = <1100000>;
-					regulator-max-microvolt = <1100000>;
-				};
 				ldo4 {
 					regulator-min-microvolt = <3200000>;
 					regulator-max-microvolt = <3200000>;

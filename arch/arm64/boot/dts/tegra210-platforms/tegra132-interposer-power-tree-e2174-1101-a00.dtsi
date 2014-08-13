@@ -21,6 +21,17 @@
 
 / {
 
+	i2c@7000d000 {
+		max77620@3c {
+			regulators {
+				sd1 {
+					regulator-min-microvolt = <1200000>;
+					regulator-max-microvolt = <1200000>;
+				};
+			};
+		};
+	};
+
 	efuse@7000f800 {
 		vpp_fuse-supply = <&max77620_sd3>;
 	};
