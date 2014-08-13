@@ -111,10 +111,17 @@ static unsigned long clip_to_table(unsigned long cpu_freq)
 
 unsigned long tegra_throttle_governor_speed(unsigned long requested_speed)
 {
+	unsigned long ret;
+
 	if (cpu_cap_freq == NO_CAP ||
 			cpu_cap_freq == 0)
 		return requested_speed;
-	return min(requested_speed, cpu_cap_freq);
+	ret = min(requested_speed, cpu_cap_freq);
+
+	if (ret != requested_speed)
+		pr_debug("%s: Thermal throttling %lu kHz down to %lu kHz\n",
+				__func__, requested_speed, ret);
+	return ret;
 }
 
 bool tegra_is_throttling(int *count)
