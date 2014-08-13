@@ -149,8 +149,11 @@ module_param_cb(cpu_user_cap, &cap_ops, &cpu_user_cap, 0644);
 
 static unsigned int user_cap_speed(unsigned int requested_speed)
 {
-	if ((cpu_user_cap) && (requested_speed > cpu_user_cap))
+	if ((cpu_user_cap) && (requested_speed > cpu_user_cap)) {
+		pr_debug("%s: User cap throttling. %u khz to %u khz\n",
+				__func__, requested_speed, cpu_user_cap);
 		return cpu_user_cap;
+	}
 	return requested_speed;
 }
 
@@ -260,8 +263,11 @@ static unsigned int get_edp_limit_speed(unsigned int requested_speed)
 
 	if ((!edp_limit) || (requested_speed <= edp_limit))
 		return requested_speed;
-	else
+	else {
+		pr_debug("%s: Edp throttling. %u khz down to %u khz\n",
+				__func__, requested_speed, edp_limit);
 		return edp_limit;
+	}
 }
 
 int tegra_edp_get_max_state(struct thermal_cooling_device *cdev,
@@ -780,8 +786,11 @@ void tegra_cpu_set_volt_cap(unsigned int cap)
 
 static unsigned int volt_cap_speed(unsigned int requested_speed)
 {
-	if (volt_capped_speed && requested_speed > volt_capped_speed)
+	if (volt_capped_speed && requested_speed > volt_capped_speed) {
+		pr_debug("%s: Volt cap throttling %u khz to %u khz\n",
+				__func__, requested_speed, volt_capped_speed);
 		return volt_capped_speed;
+	}
 	return requested_speed;
 }
 
