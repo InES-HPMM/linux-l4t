@@ -112,6 +112,7 @@ struct nvadsp_os_data {
 #if !CONFIG_SYSTEM_FPGA
 	void __iomem		*reset_reg;
 #endif
+	const struct firmware	*os_firmware;
 	struct platform_device	*pdev;
 	struct global_sym_info	*adsp_glo_sym_tbl;
 	void __iomem		*misc_base;
@@ -671,6 +672,7 @@ int nvadsp_os_load(void)
 	}
 	ptr = get_mailbox_shared_region();
 	update_nvadsp_app_shared_ptr(ptr);
+	priv.os_firmware = fw;
 
 	return 0;
 
@@ -754,13 +756,22 @@ static void nvadsp_os_restart(struct work_struct *work)
 {
 	struct nvadsp_os_data *data =
 		container_of(work, struct nvadsp_os_data, restart_os_work);
+	const struct firmware *fw = data->os_firmware;
 	struct device *dev = &data->pdev->dev;
+	int ret;
 
 	data->adsp_num_crashes++;
 	if (data->adsp_num_crashes >= ALLOWED_CRASHES) {
 		/* making pdev NULL so that externally start is not called */
 		priv.pdev = NULL;
 		dev_crit(dev, "ADSP has crashed too many times\n");
+		return;
+	}
+
+	/* reload a fresh copy of the firmware*/
+	ret = nvadsp_os_elf_load(fw);
+	if (ret) {
+		dev_err(dev, "failed to load %s\n", NVADSP_FIRMWARE);
 		return;
 	}
 
