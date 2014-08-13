@@ -40,6 +40,7 @@
  * @chan:		iio channel being queried.
  */
 struct adc_jack_data {
+	struct device *dev;
 	struct extcon_dev edev;
 
 	const char **cable_names;
@@ -197,6 +198,7 @@ static int adc_jack_probe(struct platform_device *pdev)
 		goto out;
 	}
 
+	data->dev = &pdev->dev;
 	data->edev.dev.parent = &pdev->dev;
 	data->edev.supported_cable = pdata->cable_names;
 
@@ -255,6 +257,8 @@ static int adc_jack_probe(struct platform_device *pdev)
 		goto err_irq;
 	}
 
+	device_set_wakeup_capable(data->dev, true);
+
 	return 0;
 
 err_irq:
@@ -274,6 +278,31 @@ static int adc_jack_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int adc_jack_suspend(struct device *dev)
+{
+	struct adc_jack_data *data = dev_get_drvdata(dev);
+
+	cancel_delayed_work_sync(&data->handler);
+	if (device_may_wakeup(data->dev))
+		enable_irq_wake(data->irq);
+
+	return 0;
+}
+
+static int adc_jack_resume(struct device *dev)
+{
+	struct adc_jack_data *data = dev_get_drvdata(dev);
+
+	if (device_may_wakeup(data->dev))
+		disable_irq_wake(data->irq);
+
+	return 0;
+}
+#endif /* CONFIG_PM_SLEEP */
+
+static SIMPLE_DEV_PM_OPS(adc_jack_pm_ops, adc_jack_suspend, adc_jack_resume);
+
 static struct of_device_id of_adc_jack_tbl[] = {
 	{ .compatible = "extcon-adc-jack", },
 	{ /* end */ }
@@ -287,6 +316,7 @@ static struct platform_driver adc_jack_driver = {
 		.name   = "adc-jack",
 		.owner  = THIS_MODULE,
 		.of_match_table = of_adc_jack_tbl,
+		.pm = &adc_jack_pm_ops,
 	},
 };
 
