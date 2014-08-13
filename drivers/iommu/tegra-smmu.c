@@ -332,10 +332,13 @@ struct smmu_domain {
  * Per client for address space
  */
 struct smmu_client {
+	struct rb_node		node;
 	struct device		*dev;
 	struct list_head	list;
 	struct smmu_domain	*domain;
 	u64			swgids;
+
+	struct smmu_map_prop	prop;
 
 	struct dentry		*debugfs_root;
 };
@@ -377,6 +380,9 @@ struct smmu_device {
 	struct device	*dev;
 	u64		swgids;		/* memory client ID bitmap */
 	u32		ptc_cache_size;	/* u32 is ok as ptc_cache_size < 4 GB */
+
+	struct rb_root	clients;
+
 	struct page *avp_vector_page;	/* dummy page shared by all AS's */
 
 	/*
@@ -534,7 +540,7 @@ static int tegra_smmu_of_get_asprops(struct device *dev, phandle phandle,
 	return 0;
 }
 
-static u64 tegra_smmu_of_get_swgids(struct device *dev,
+static u64 __tegra_smmu_of_get_swgids(struct device *dev,
 				    struct smmu_map_prop *prop)
 {
 	struct of_phandle_iter iter;
@@ -584,6 +590,116 @@ static u64 tegra_smmu_of_get_swgids(struct device *dev,
 			   fixup, swgids);
 		return fixup;
 	}
+
+	return swgids;
+}
+
+static struct smmu_client *tegra_smmu_find_client(struct smmu_device *smmu,
+						  struct device *dev)
+{
+	struct rb_node *node = smmu->clients.rb_node;
+
+	while (node) {
+		struct smmu_client *client;
+
+		client = container_of(node, struct smmu_client, node);
+		if (dev < client->dev)
+			node = node->rb_left;
+		else if (dev > client->dev)
+			node = node->rb_right;
+		else
+			return client;
+	}
+
+	return NULL;
+}
+
+static int tegra_smmu_insert_client(struct smmu_device *smmu,
+				    struct smmu_client *client)
+{
+	struct rb_node **new, *parent;
+
+	new = &smmu->clients.rb_node;
+	parent = NULL;
+	while (*new) {
+		struct smmu_client *this;
+
+		this = container_of(*new, struct smmu_client, node);
+		parent = *new;
+		if (client->dev < this->dev)
+			new = &((*new)->rb_left);
+		else if (client->dev > this->dev)
+			new = &((*new)->rb_right);
+		else
+			return -EEXIST;
+	}
+
+	rb_link_node(&client->node, parent, new);
+	rb_insert_color(&client->node, &smmu->clients);
+	return 0;
+}
+
+static struct smmu_client *tegra_smmu_register_client(struct smmu_device *smmu,
+					      struct device *dev, u64 swgids,
+					      struct smmu_map_prop *prop)
+{
+	int err;
+	struct smmu_client *client;
+
+	client = tegra_smmu_find_client(smmu, dev);
+	if (client) {
+		dev_err(dev,
+			"rejecting multiple registrations for client device %s\n",
+			dev->of_node->full_name);
+		return NULL;
+	}
+
+	client = devm_kzalloc(smmu->dev, sizeof(*client), GFP_KERNEL);
+	if (!client)
+		return NULL;
+
+	client->dev = dev;
+	client->swgids = swgids;
+	memcpy(&client->prop, prop, sizeof(*prop));
+
+	err = tegra_smmu_insert_client(smmu, client);
+	if (err) {
+		devm_kfree(smmu->dev, client);
+		return NULL;
+	}
+
+	return client;
+}
+
+static u64 tegra_smmu_of_get_swgids(struct device *dev,
+				    struct smmu_map_prop *out_prop)
+{
+	u64 swgids;
+	struct smmu_client *client;
+	struct smmu_map_prop *prop, _prop = { .valid = false, };
+
+	prop = &_prop;
+
+	if (!smmu_handle)
+		return 0;
+
+	client = tegra_smmu_find_client(smmu_handle, dev);
+	if (client) {
+		swgids = client->swgids;
+		prop = &client->prop;
+		goto out;
+	}
+
+	swgids = __tegra_smmu_of_get_swgids(dev, prop);
+	if (!swgids)
+		goto out;
+
+	client = tegra_smmu_register_client(smmu_handle, dev, swgids, prop);
+	if (!client)
+		swgids = 0;
+out:
+	if (out_prop)
+		memcpy(out_prop, prop, sizeof(*prop));
 
 	return swgids;
 }
@@ -1679,17 +1795,18 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	struct smmu_as *as;
 	struct smmu_device *smmu;
 	struct smmu_client *client, *c;
-	struct iommu_linear_map *area = NULL;
+	struct iommu_linear_map *area;
 	struct dma_iommu_mapping *dma_map;
-	u64 map;
+	u64 swgids;
 	int err = -ENOMEM;
 	int idx;
 	unsigned long as_bitmap[1];
 	unsigned long as_alloc_bitmap = 0;
-	struct smmu_map_prop prop;
 
-	map = tegra_smmu_of_get_swgids(dev, &prop); /* FIXME: don't query */
-	area = prop.area;
+	client = tegra_smmu_find_client(smmu_handle, dev);
+	if (!client)
+		return -ENOMEM;
+
 	dma_map = to_dma_iommu_mapping(dev);
 	dma_map_to_as_bitmap(dma_map, as_bitmap);
 
@@ -1710,6 +1827,7 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	as = dom->as[idx];
 	smmu = as->smmu;
 
+	area = client->prop.area;
 	while (area && area->size) {
 		DEFINE_DMA_ATTRS(attrs);
 		size_t size = PAGE_ALIGN(area->size);
@@ -1726,15 +1844,11 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		area++;
 	}
 
-	map &= smmu->swgids;
-
-	client = devm_kzalloc(smmu->dev, sizeof(*c), GFP_KERNEL);
-	if (!client)
-		goto release_as;
-	client->dev = dev;
 	client->domain = dom;
 
-	err = smmu_client_enable_hwgrp(client, map);
+	swgids = client->swgids;
+	swgids &= smmu_handle->swgids;
+	err = smmu_client_enable_hwgrp(client, swgids);
 	if (err)
 		goto err_hwgrp;
 
@@ -1754,7 +1868,7 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	 * Reserve "page zero" for AVP vectors using a common dummy
 	 * page.
 	 */
-	if (map & SWGID(AVPC)) {
+	if (swgids & SWGID(AVPC)) {
 		struct page *page;
 
 		page = as->smmu->avp_vector_page;
@@ -1799,7 +1913,6 @@ static void smmu_iommu_detach_dev(struct iommu_domain *domain,
 			debugfs_remove_recursive(c->debugfs_root);
 			list_del(&c->list);
 			smmu_client_disable_hwgrp(c);
-			devm_kfree(smmu->dev, c);
 			dev_dbg(smmu->dev,
 				"%s is detached\n", dev_name(c->dev));
 			goto out;
@@ -2276,6 +2389,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	smmu->dev = dev;
 	smmu->num_as = num_as;
+	smmu->clients = RB_ROOT;
 
 	smmu->iovmm_base = base;
 	smmu->page_count = size;
