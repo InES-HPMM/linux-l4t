@@ -34,6 +34,7 @@
  *			If NULL, default method of extcon class is used.
  * @state_off:		print_state is overriden with state_on if detached.
  *			If NUll, default method of extcon class is used.
+ * @cable_name		Extcon cable name.
  *
  * Note that in order for state_on or state_off to be valid, both state_on
  * and state_off should be not NULL. If at least one of them is NULL,
@@ -49,6 +50,7 @@ struct gpio_extcon_platform_data {
 	/* if NULL, "0" or "1" will be printed */
 	const char *state_on;
 	const char *state_off;
+	const char *cable_name;
 };
 
 #endif /* __EXTCON_GPIO_H__ */
