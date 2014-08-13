@@ -7335,18 +7335,13 @@ static struct clk tegra_clk_audio_list[] = {
 		},						\
 	}
 static struct clk tegra_clk_audio_2x_list[] = {
-	AUDIO_SYNC_2X_CLK(audio0, tegra210-i2s.0, 0),
-	AUDIO_SYNC_2X_CLK(audio1, tegra210-i2s.1, 1),
-	AUDIO_SYNC_2X_CLK(audio2, tegra210-i2s.2, 2),
-	AUDIO_SYNC_2X_CLK(audio3, tegra210-i2s.3, 3),
-	AUDIO_SYNC_2X_CLK(audio4, tegra210-i2s.4, 4),
 	AUDIO_SYNC_2X_CLK(audio, tegra210-spdif, 5),	/* SPDIF */
 };
 
 #define MUX_I2S_SPDIF(_id, _index)					\
-static struct clk_mux_sel mux_pllaout0_##_id##_2x_pllp_clkm[] = {	\
+static struct clk_mux_sel mux_pllaout0_##_id##_pllp_clkm[] = {		\
 	{.input = &tegra_pll_a_out0, .value = 0},			\
-	{.input = &tegra_clk_audio_2x_list[(_index)], .value = 2},	\
+	{.input = &tegra_clk_audio_list[(_index)], .value = 2},		\
 	{.input = &tegra_pll_p, .value = 4},				\
 	{.input = &tegra_clk_m, .value = 6},				\
 	{ 0, 0},							\
@@ -7356,7 +7351,15 @@ MUX_I2S_SPDIF(audio1, 1);
 MUX_I2S_SPDIF(audio2, 2);
 MUX_I2S_SPDIF(audio3, 3);
 MUX_I2S_SPDIF(audio4, 4);
-MUX_I2S_SPDIF(audio, 5);		/* SPDIF */
+
+/* SPDIF */
+static struct clk_mux_sel mux_pllaout0_audio_2x_pllp_clkm[] = {
+	{.input = &tegra_pll_a_out0, .value = 0},
+	{.input = &tegra_clk_audio_2x_list[0], .value = 2},
+	{.input = &tegra_pll_p, .value = 4},
+	{.input = &tegra_clk_m, .value = 6},
+	{ 0, 0},
+};
 
 /* Audio sync dmic clocks */
 #define AUDIO_SYNC_DMIC_CLK(_id, _dev, _reg)		\
@@ -7381,7 +7384,7 @@ static struct clk tegra_clk_audio_dmic_list[] = {
 #define MUX_AUDIO_DMIC(_id, _index)					\
 static struct clk_mux_sel mux_pllaout0_##_id##_dmic_pllp_clkm[] = {	\
 	{.input = &tegra_pll_a_out0, .value = 0},			\
-	{.input = &tegra_clk_audio_2x_list[(_index)], .value = 1},	\
+	{.input = &tegra_clk_audio_list[(_index)], .value = 1},		\
 	{.input = &tegra_pll_p, .value = 2},				\
 	{.input = &tegra_clk_m, .value = 3},				\
 	{ 0, 0},							\
@@ -8661,11 +8664,11 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("fuse_burn",	"fuse-tegra",	 "fuse_burn",	39,	0,	38400000,  mux_clk_m,			PERIPH_ON_APB),
 
 	PERIPH_CLK("apbif",	"tegra210-admaif",	NULL,   107,	0,	38400000,  mux_clk_m,			PERIPH_NO_RESET | PERIPH_ON_APB),
-	PERIPH_CLK("i2s0",	"tegra210-i2s.0",	NULL,	30,	0x1d8,	204000000,  mux_pllaout0_audio0_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
-	PERIPH_CLK("i2s1",	"tegra210-i2s.1",	NULL,	11,	0x100,	204000000,  mux_pllaout0_audio1_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
-	PERIPH_CLK("i2s2",	"tegra210-i2s.2",	NULL,	18,	0x104,	204000000,  mux_pllaout0_audio2_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
-	PERIPH_CLK("i2s3",	"tegra210-i2s.3",	NULL,	101,	0x3bc,	204000000,  mux_pllaout0_audio3_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
-	PERIPH_CLK("i2s4",	"tegra210-i2s.4",	NULL,	102,	0x3c0,	204000000,  mux_pllaout0_audio4_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
+	PERIPH_CLK("i2s0",	"tegra210-i2s.0",	NULL,	30,	0x1d8,	204000000,  mux_pllaout0_audio0_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
+	PERIPH_CLK("i2s1",	"tegra210-i2s.1",	NULL,	11,	0x100,	204000000,  mux_pllaout0_audio1_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
+	PERIPH_CLK("i2s2",	"tegra210-i2s.2",	NULL,	18,	0x104,	204000000,  mux_pllaout0_audio2_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
+	PERIPH_CLK("i2s3",	"tegra210-i2s.3",	NULL,	101,	0x3bc,	204000000,  mux_pllaout0_audio3_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
+	PERIPH_CLK("i2s4",	"tegra210-i2s.4",	NULL,	102,	0x3c0,	204000000,  mux_pllaout0_audio4_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("spdif_out",	"tegra210-spdif", "spdif_out",	10,	0x108,	 49152000, mux_pllaout0_audio_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("spdif_in",	"tegra210-spdif",  "spdif_in",	10,	0x10c,	408000000, mux_pllp_pllc,			MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("dmic1",	"tegra210-dmic.0",	NULL,	161,	0x64c,	24576000, mux_pllaout0_audio0_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
