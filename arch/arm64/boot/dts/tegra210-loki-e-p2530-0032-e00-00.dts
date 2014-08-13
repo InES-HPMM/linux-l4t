@@ -31,7 +31,7 @@
 #include "tegra210-platforms/tegra210-loki-e-pinmux-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-comms.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-pwm-fan.dtsi"
-
+#include "tegra210-platforms/tegra210-loki-sdhci.dtsi"
 / {
 	model = "NVIDIA Tegra210 Loki-E";
 	compatible = "nvidia,loki-e", "nvidia,tegra210";
@@ -46,5 +46,27 @@
 	sound {
 		nvidia,audio-codec-x = <&rt5639>;
 	};
+
+	sdhci@700b0600 {
+		uhs_mask = <0x60>;
+		built-in;
+		status = "okay";
+	};
+
+	sdhci@700b0400 {
+		uhs_mask = <0x1c>;
+		status = "okay";
+	};
+
+	sdhci@700b0200 {
+		uhs_mask = <0x60>;
+		status = "okay";
+	};
+
+	sdhci@700b0000 {
+		uhs_mask = <0x1c>;
+		status = "okay";
+	};
+
 };
 
