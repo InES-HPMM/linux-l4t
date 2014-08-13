@@ -214,6 +214,9 @@
 	vic {
 		status = "disabled";
 	};
+	dfll@70110000 {
+			status = "disabled";
+	};
 
 	soctherm@0x700E2000 {
 		status = "disabled";

@@ -32,7 +32,6 @@
 #include <panel-a-edp-1080p-14-0.dtsi>
 #include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
 
-
 / {
 	#address-cells = <2>;
 	#size-cells = <2>;
@@ -253,5 +252,12 @@
 		wlan-pwr-gpio = <&pca9539_75 3 1>;
 		wlan-rst-gpio = <&pca9539_75 4 1>;
 		status = "okay";
+	};
+
+	cpu_dfll_pmic_integration {
+		pmic-i2c-address = <0x74>;
+		pmic-i2c-voltage-register = <0x07>;
+		i2c-fs-rate = <400000>;
+		sel-conversion-slope = <1>;
 	};
 };
