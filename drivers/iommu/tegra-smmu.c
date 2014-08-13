@@ -504,7 +504,7 @@ static void smmu_client_ordered(struct smmu_device *smmu)
 
 static struct of_device_id tegra_smmu_of_match[];
 
-static int of_tegra_smmu_get_as_props(struct device *dev, phandle phandle,
+static int tegra_smmu_of_get_asprops(struct device *dev, phandle phandle,
 				      struct smmu_map_prop *prop)
 {
 	int err;
@@ -562,7 +562,7 @@ static u64 tegra_smmu_of_get_swgids(struct device *dev,
 		if (!prop)
 			break;
 
-		err = of_tegra_smmu_get_as_props(dev,
+		err = tegra_smmu_of_get_asprops(dev,
 						 ret->args[IOMMUS_PROPS_AS],
 						 prop);
 		if (!err)
