@@ -232,22 +232,6 @@ static struct device *save_smmu_device;
 
 static size_t smmu_flush_all_th_pages = SZ_512; /* number of threshold pages */
 
-enum {
-	IOMMMS_PROPS_SWGID_HI = 0,
-	IOMMMS_PROPS_SWGID_LO = 1,
-	IOMMUS_PROPS_AS = 2,
-};
-
-struct smmu_map_prop {
-	bool valid;
-	u64 iova_start;
-	u64 iova_size;
-	u32 alignment;
-	u32 num_pf_page;
-	u32 gap_page;
-	struct iommu_linear_map *area;
-};
-
 static const u32 smmu_asid_security_ofs[] = {
 	SMMU_ASID_SECURITY,
 	SMMU_ASID_SECURITY_1,
@@ -505,82 +489,93 @@ static void smmu_client_ordered(struct smmu_device *smmu)
 
 static struct of_device_id tegra_smmu_of_match[];
 
-static int of_tegra_smmu_get_as_props(struct device *dev, phandle phandle,
-				      struct smmu_map_prop *prop)
-{
-	int err;
-	struct device_node *np;
-
-	np = of_find_node_by_phandle(phandle);
-	if (!np || (np->parent->parent != smmu_handle->dev->of_node)) {
-		dev_err(smmu_handle->dev,
-			"address-space-prop phandle invalid for %s",
-			dev_name(dev));
-		return -EINVAL;
-	}
-
-	err = of_property_read_u64(np, "iova-start", &prop->iova_start);
-	err |= of_property_read_u64(np, "iova-size", &prop->iova_size);
-	err |= of_property_read_u32(np, "alignment", &prop->alignment);
-	err |= of_property_read_u32(np, "num-pf-page", &prop->num_pf_page);
-	err |= of_property_read_u32(np, "gap-page", &prop->gap_page);
-	if (err) {
-		dev_err(smmu_handle->dev,
-			"invalid address-space-prop %s for %s",
-			np->name, dev_name(dev));
-		return -EINVAL;
-	}
-
-	prop->valid = true;
-	return 0;
-}
-
-static u64 tegra_smmu_of_get_swgids(struct device *dev,
-				    struct smmu_map_prop *prop)
+static u64 tegra_smmu_of_get_swgids(struct device *dev)
 {
 	struct of_phandle_iter iter;
-	u64 temp, swgids = 0;
-	int err = -EINVAL;
-
-	if (prop)
-		memset(prop, 0, sizeof(*prop));
+	u64 swgids = 0;
+	struct iommu_linear_map *area = NULL;
 
 	of_property_for_each_phandle_with_args(iter, dev->of_node, "iommus",
 					       "#iommu-cells", 0) {
-		struct of_phandle_args *ret = &iter.out_args;
-
-		if (!of_match_node(tegra_smmu_of_match, ret->np))
+		if (!of_match_node(tegra_smmu_of_match, iter.out_args.np))
 			continue;
 
-		if (ret->args_count < 3) {
-			dev_err(dev, "iommus expects 3 params but %d\n",
-				ret->args_count);
+		if (iter.out_args.args_count < 2) {
+			dev_err(dev, "iommus property does not have swgids!!!");
 			break;
 		}
 
-		memcpy(&swgids, ret->args, sizeof(u64));
-
-		if (!prop)
-			break;
-
-		err = of_tegra_smmu_get_as_props(dev,
-						 ret->args[IOMMUS_PROPS_AS],
-						 prop);
-		if (!err)
-			break;
+		memcpy(&swgids, iter.out_args.args, sizeof(u64));
+		pr_debug("swgids=%16llx ops=%pf %s\n",
+			 swgids, dev->bus->iommu_ops, dev_name(dev));
+		break;
 	}
 
-	/* fixup table overwrites swgids if any */
-	temp = tegra_smmu_fixup_swgids(dev, prop ? &prop->area : NULL);
-	if (temp && (swgids != temp)) {
-		if (swgids)
-			dev_notice(dev,
-				   "fixup(%llx) is different from DT(%llx)\n",
-				   temp, swgids);
-		swgids = temp;
-	}
+	return swgids ? : tegra_smmu_fixup_swgids(dev, &area);
+}
 
-	return swgids;
+struct smmu_map_prop {
+	u64 iova_start;
+	u64 iova_size;
+	u32 alignment;
+	u32 num_pf_page;
+	u32 gap_page;
+};
+
+static int tegra_smmu_get_map_prop(struct device *dev,
+				   struct smmu_map_prop *prop)
+{
+	struct of_phandle_iter iter;
+
+	if (!smmu_handle)
+		return -ENODEV;
+
+	of_property_for_each_phandle_with_args(iter, dev->of_node, "iommus",
+					       "#iommu-cells", 0) {
+		struct device_node *np;
+
+		if (iter.out_args.np != smmu_handle->dev->of_node)
+			continue;
+
+		/*
+		 * XXX: assume address space property phandle in iommus property
+		 * is the 3rd element in iter.out_args.args
+		 */
+		if (iter.out_args.args_count < 3) {
+			dev_err(smmu_handle->dev,
+				"address-space-prop is not present for %s",
+				dev_name(dev));
+			break;
+		}
+
+		np = of_find_node_by_phandle(iter.out_args.args[2]);
+		if (np->parent->parent != smmu_handle->dev->of_node) {
+			dev_err(smmu_handle->dev,
+				"address-space-prop phandle invalid for %s",
+				dev_name(dev));
+			break;
+		}
+
+		if (of_property_read_u64(np, "iova-start", &prop->iova_start) ||
+		    of_property_read_u64(np, "iova-size", &prop->iova_size) ||
+		    of_property_read_u32(np, "alignment", &prop->alignment) ||
+		    of_property_read_u32(np, "num-pf-page",
+							&prop->num_pf_page) ||
+		    of_property_read_u32(np, "gap-page", &prop->gap_page)) {
+			dev_err(smmu_handle->dev,
+				"invalid address-space-prop %s for %s",
+				np->name, dev_name(dev));
+			break;
+		}
+
+		dev_dbg(dev,
+			"iova-start:%pad iova-size:%08lx alignment:%x"
+			"num_pf_page:%d gap_page:%d\n",
+			&prop->iova_start, (unsigned long)prop->iova_size,
+			prop->alignment, prop->num_pf_page, prop->gap_page);
+		return 0;
+	}
+	return -EINVAL;
 }
 
 static bool tegra_smmu_map_prop_match(const struct dma_iommu_mapping *map,
@@ -623,14 +618,17 @@ static struct dma_iommu_mapping *tegra_smmu_create_map_by_prop(
  * use it only when dev->archdata.mapping is not present
  */
 static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev,
-					u64 swgids, struct smmu_map_prop *_prop)
+							u64 swgids)
 {
-	int asid;
+	int asid, err;
 	struct dma_iommu_mapping *map;
-	struct smmu_map_prop *pprop = NULL;
+	struct smmu_map_prop prop, *pprop = NULL;
 
-	if (_prop && _prop->valid)
-		pprop = _prop;
+	err = tegra_smmu_get_map_prop(dev, &prop);
+	if (err)
+		dev_info(dev, "no valid iommu map property\n");
+	else
+		pprop = &prop;
 
 	asid = _tegra_smmu_get_asid(swgids);
 	map = smmu_handle->map[asid];
@@ -1689,15 +1687,20 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	struct smmu_client *client, *c;
 	struct iommu_linear_map *area = NULL;
 	struct dma_iommu_mapping *dma_map;
-	u64 map;
+	u64 map, temp;
 	int err = -ENOMEM;
 	int idx;
 	unsigned long as_bitmap[1];
 	unsigned long as_alloc_bitmap = 0;
-	struct smmu_map_prop prop;
 
-	map = tegra_smmu_of_get_swgids(dev, &prop); /* FIXME: don't query */
-	area = prop.area;
+	map = tegra_smmu_of_get_swgids(dev);
+	temp = tegra_smmu_fixup_swgids(dev, &area);
+
+	if (!map)
+		return -ENODEV;
+	if (temp && map != temp)
+		dev_err(dev, "swgid mismatch dt=%llx fixup=%llx\n", map, temp);
+
 	dma_map = to_dma_iommu_mapping(dev);
 	dma_map_to_as_bitmap(dma_map, as_bitmap);
 
@@ -2394,10 +2397,8 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 {
 	struct dma_iommu_mapping *map;
 	struct device *dev = _dev;
-	struct smmu_map_prop prop;
-	u64 swgids;
+	u64 swgids = tegra_smmu_of_get_swgids(dev);
 
-	swgids = tegra_smmu_of_get_swgids(dev, &prop);
 	if (!swgids)
 		goto end;
 	/* dev is a smmu client */
@@ -2412,7 +2413,7 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 			break;
 		}
 
-		map = tegra_smmu_get_mapping(dev, swgids, &prop);
+		map = tegra_smmu_get_mapping(dev, swgids);
 		if (!map) {
 			dev_err(dev, "map creation failed!!!\n");
 			break;
