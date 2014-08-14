@@ -25,8 +25,8 @@
 		max77620@3c {
 			regulators {
 				ldo4 {
-					regulator-min-microvolt = <3200000>;
-					regulator-max-microvolt = <3200000>;
+					regulator-min-microvolt = <900000>;
+					regulator-max-microvolt = <900000>;
 				};
 			};
 		};
