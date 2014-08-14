@@ -31,6 +31,8 @@
 #define OFFSET_BOND_OUT_X 0x398
 #define OFFSET_BOND_OUT_Y 0x39c
 
+EXPORT_SYMBOL(tegra_bonded_out_dev);
+
 bool tegra_bonded_out_dev(enum tegra_bondout_dev dev)
 {
 	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
