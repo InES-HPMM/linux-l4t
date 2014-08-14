@@ -253,7 +253,7 @@
 
 			pwr_i2c_scl_py3 {
 				nvidia,pins = "pwr_i2c_scl_py3";
-				nvidia,function = "i2cpwr";
+				nvidia,function = "i2cpmu";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -262,7 +262,7 @@
 
 			pwr_i2c_sda_py4 {
 				nvidia,pins = "pwr_i2c_sda_py4";
-				nvidia,function = "i2cpwr";
+				nvidia,function = "i2cpmu";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -331,7 +331,7 @@
 
 			uart3_cts_pd4 {
 				nvidia,pins = "uart3_cts_pd4";
-				nvidia,function = "uc3";
+				nvidia,function = "uartc";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -339,7 +339,7 @@
 
 			uart3_rts_pd3 {
 				nvidia,pins = "uart3_rts_pd3";
-				nvidia,function = "uc3";
+				nvidia,function = "uartc";
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -347,7 +347,7 @@
 
 			uart3_rx_pd2 {
 				nvidia,pins = "uart3_rx_pd2";
-				nvidia,function = "uc3";
+				nvidia,function = "uartc";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -355,7 +355,7 @@
 
 			uart3_tx_pd1 {
 				nvidia,pins = "uart3_tx_pd1";
-				nvidia,function = "uc3";
+				nvidia,function = "uartc";
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -363,7 +363,7 @@
 
 			uart4_cts_pi7 {
 				nvidia,pins = "uart4_cts_pi7";
-				nvidia,function = "uart_ape";
+				nvidia,function = "uart";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -371,7 +371,7 @@
 
 			uart4_rts_pi6 {
 				nvidia,pins = "uart4_rts_pi6";
-				nvidia,function = "uart_ape";
+				nvidia,function = "uart";
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -379,7 +379,7 @@
 
 			uart4_rx_pi5 {
 				nvidia,pins = "uart4_rx_pi5";
-				nvidia,function = "uart_ape";
+				nvidia,function = "uart";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -387,7 +387,7 @@
 
 			uart4_tx_pi4 {
 				nvidia,pins = "uart4_tx_pi4";
-				nvidia,function = "uart_ape";
+				nvidia,function = "uart";
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -551,7 +551,7 @@
 
 			uart1_tx_pu0 {
 				nvidia,pins = "uart1_tx_pu0";
-				nvidia,function = "ua3";
+				nvidia,function = "uarta";
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -559,7 +559,7 @@
 
 			uart1_rx_pu1 {
 				nvidia,pins = "uart1_rx_pu1";
-				nvidia,function = "ua3";
+				nvidia,function = "uarta";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -567,7 +567,7 @@
 
 			uart1_rts_pu2 {
 				nvidia,pins = "uart1_rts_pu2";
-				nvidia,function = "ua3";
+				nvidia,function = "uarta";
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -575,7 +575,7 @@
 
 			uart1_cts_pu3 {
 				nvidia,pins = "uart1_cts_pu3";
-				nvidia,function = "ua3";
+				nvidia,function = "uarta";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -671,7 +671,7 @@
 			i2s4 {
 				nvidia,pins = "dap4_fs_pj4", "dap4_din_pj5",
 								"dap4_dout_pj6", "dap4_sclk_pj7";
-				nvidia,function = "i2s4";
+				nvidia,function = "i2s4b";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -682,7 +682,7 @@
 			i2s4 {
 				nvidia,pins = "dap4_fs_pj4", "dap4_din_pj5",
 								"dap4_dout_pj6", "dap4_sclk_pj7";
-				nvidia,function = "i2s4";
+				nvidia,function = "i2s4b";
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_ENABLE>;
