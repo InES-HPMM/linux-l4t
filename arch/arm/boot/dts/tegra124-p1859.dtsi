@@ -223,10 +223,12 @@
 	};
 
 	sdhci@700b0600 {
+		pwr-off-during-lp0 = <1>;
 		status = "okay";
 	};
 
 	sdhci@700b0200 {
+		pwr-off-during-lp0 = <1>;
 		status = "okay";
 	};
 
