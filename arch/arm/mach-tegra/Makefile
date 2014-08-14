@@ -42,7 +42,6 @@ endif
 
 obj-y                                   += delay.o
 obj-y                                   += pm.o
-obj-$(CONFIG_TEGRA_WDT_RECOVERY)        += wdt-recovery.o
 
 obj-y                                   += sleep.o
 obj-$(CONFIG_TEGRA_USE_NCT)             += nct.o nct_sysfs.o

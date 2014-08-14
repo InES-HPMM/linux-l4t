@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/wdt-recovery.c
+ * drivers/platform/tegra/wdt-recovery.c
  *
  * Copyright (c) 2012-2014, NVIDIA CORPORATION. All rights reserved.
  *
@@ -35,7 +35,7 @@
 
 static int wdt_heartbeat = 30;
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 #define TIMER_PTV			0
  #define TIMER_EN			(1 << 31)
  #define TIMER_PERIODIC			(1 << 30)
@@ -83,7 +83,7 @@ static int tegra_wdt_reset_disable(void)
 
 	return 0;
 }
-#elif defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#else
 
 static void tegra_wdt_reset_enable(void)
 {
@@ -118,11 +118,15 @@ static struct syscore_ops tegra_wdt_syscore_ops = {
 	.resume =	tegra_wdt_reset_enable,
 };
 
-void __init tegra_wdt_recovery_init(void)
+static int __init tegra_wdt_recovery_init(void)
 {
 #ifdef CONFIG_PM
 	/* Register PM notifier. */
 	register_pm_notifier(&tegra_wdt_notify);
 #endif
 	register_syscore_ops(&tegra_wdt_syscore_ops);
+
+	return 0;
 }
+
+subsys_initcall(tegra_wdt_recovery_init);

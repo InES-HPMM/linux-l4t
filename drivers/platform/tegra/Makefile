@@ -170,3 +170,5 @@ endif
 
 obj-y					+= asim.o
 obj-y					+= hier_ictlr/
+
+obj-$(CONFIG_TEGRA_WDT_RECOVERY)        += wdt-recovery.o

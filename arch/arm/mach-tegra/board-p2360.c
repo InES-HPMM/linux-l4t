@@ -175,9 +175,6 @@ static void __init tegra_p2360_late_init(void)
 	tegra_vcm30_t124_suspend_init();
 
 	isomgr_init();
-#ifdef CONFIG_TEGRA_WDT_RECOVERY
-	tegra_wdt_recovery_init();
-#endif
 	p2360_panel_init();
 
 	if (is_p2360_a01)

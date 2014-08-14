@@ -522,10 +522,6 @@ static void __init tegra_t210ref_late_init(void)
 	tegra_io_dpd_enable(&pexclk1_io);
 	tegra_io_dpd_enable(&pexclk2_io);
 
-#ifdef CONFIG_TEGRA_WDT_RECOVERY
-	tegra_wdt_recovery_init();
-#endif
-
 	t210ref_camera_init();
 
 	t210ref_thermal_sensors_init();

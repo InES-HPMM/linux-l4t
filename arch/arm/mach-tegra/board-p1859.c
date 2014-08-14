@@ -229,9 +229,6 @@ static void __init tegra_p1859_late_init(void)
 	tegra_vcm30_t124_suspend_init();
 
 	isomgr_init();
-#ifdef CONFIG_TEGRA_WDT_RECOVERY
-	tegra_wdt_recovery_init();
-#endif
 	p1859_panel_init();
 }
 

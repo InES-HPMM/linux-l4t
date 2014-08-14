@@ -790,9 +790,6 @@ static void __init tegra_loki_late_init(void)
 	loki_touch_init();
 	loki_panel_init();
 	loki_kbc_init();
-#ifdef CONFIG_TEGRA_WDT_RECOVERY
-	tegra_wdt_recovery_init();
-#endif
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	loki_sensors_init();
 
