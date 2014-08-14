@@ -227,8 +227,8 @@ struct camera_data_blob {
 
 struct camera_board {
 	int busnum;
+	const char *chipname;
 	struct i2c_board_info *bi;
-	struct device_node *of_node;
 };
 
 struct camera_module {
@@ -383,6 +383,7 @@ int camera_debugfs_remove(void);
 int of_camera_init(struct camera_platform_info *);
 int of_camera_get_property(struct camera_info *, unsigned long);
 struct camera_platform_data *of_camera_create_pdata(struct platform_device *);
+int of_camera_find_node(struct camera_info *, int, struct i2c_board_info *);
 
 #endif
 

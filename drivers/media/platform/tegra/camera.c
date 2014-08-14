@@ -482,6 +482,7 @@ static int camera_new_device(struct camera_info *cam, unsigned long arg)
 		}
 	}
 
+	of_camera_find_node(cam, adap->nr, &brd);
 	/* device is not present in the dev_list, add it */
 	client = i2c_new_device(adap, &brd);
 	if (!client) {
@@ -666,18 +667,23 @@ static int camera_add_dev_drv(
 	struct camera_board *cb)
 {
 	struct i2c_client *client = NULL;
-	struct i2c_board_info *bi = NULL;
+	struct i2c_board_info brd;
 
-	bi = cb->bi;
-	if (bi && strlen(bi->type)) {
-		if (!adap)
-			adap = i2c_get_adapter(cb->busnum);
+	if (!cb || !cb->bi)
+		return 0;
+
+	brd = *cb->bi;
+	if (!adap)
+		adap = i2c_get_adapter(cb->busnum);
+	/* validate board of_node */
+	of_camera_find_node(cam, adap->nr, &brd);
+	if (strlen(brd.type)) {
 		dev_dbg(cam->dev, "%s: installing %s @ %d-%04x\n",
-			__func__, bi->type, adap->nr, bi->addr);
-		client = i2c_new_device(adap, bi);
+			__func__, brd.type, adap->nr, brd.addr);
+		client = i2c_new_device(adap, &brd);
 		if (!client) {
 			dev_err(cam->dev, "%s add driver %s fail\n",
-				__func__, bi->type);
+				__func__, brd.type);
 			return -EFAULT;
 		}
 	}

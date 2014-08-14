@@ -97,9 +97,9 @@ struct imx135_power_rail {
 struct imx135_platform_data {
 	struct imx135_flash_control flash_cap;
 	const char *mclk_name; /* NULL for default default_mclk */
-	unsigned int cam1_gpio;
-	unsigned int reset_gpio;
-	unsigned int af_gpio;
+	int cam1_gpio;
+	int reset_gpio;
+	int af_gpio;
 	bool ext_reg;
 	int (*power_on)(struct imx135_power_rail *pw);
 	int (*power_off)(struct imx135_power_rail *pw);

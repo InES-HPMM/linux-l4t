@@ -195,7 +195,8 @@ static uint of_camera_profile_statistic(
 
 int of_camera_get_property(struct camera_info *cam, unsigned long arg)
 {
-	struct device_node *np;
+	struct camera_platform_data *pdata = cam_desc->pdata;
+	struct device_node *np = NULL;
 	struct nvc_param param;
 	char *ref_name = NULL;
 	const void *prop;
@@ -234,52 +235,55 @@ int of_camera_get_property(struct camera_info *cam, unsigned long arg)
 	switch (param.param & CAMERA_DT_HANDLE_MASK) {
 	case CAMERA_DT_HANDLE_PROFILE:
 		/* looking for a profile */
-		if (!cam_desc->pdata->of_profiles) {
+		if (!pdata->of_profiles) {
 			dev_dbg(cam->dev, "%s DT has no profile node.\n",
 				__func__);
 			return -EEXIST;
 		}
 		np = of_camera_child_by_index(
-			cam_desc->pdata->of_profiles, param.variant);
+			pdata->of_profiles, param.variant);
 		break;
 	case CAMERA_DT_HANDLE_PHANDLE:
 		np = of_find_node_by_phandle(param.variant);
 		break;
 	case CAMERA_DT_HANDLE_MODULE:
 		/* module of_node */
-		if (param.variant >= cam_desc->pdata->mod_num) {
+		if (param.variant >= pdata->mod_num) {
 			dev_err(cam->dev, "%s has no sub module node %d\n",
 				__func__, param.variant);
 			return -EEXIST;
 		}
-		np = cam_desc->pdata->modules[param.variant].of_node;
+		np = pdata->modules[param.variant].of_node;
 		break;
 	case CAMERA_DT_HANDLE_SENSOR:
 		/* sensor of_node */
-		if (param.variant >= cam_desc->pdata->mod_num) {
+		if (param.variant >= pdata->mod_num) {
 			dev_err(cam->dev, "%s has no sub module node %d\n",
 				__func__, param.variant);
 			return -EEXIST;
 		}
-		np = cam_desc->pdata->modules[param.variant].sensor.of_node;
+		if (pdata->modules[param.variant].sensor.bi)
+			np = pdata->modules[param.variant].sensor.bi->of_node;
 		break;
 	case CAMERA_DT_HANDLE_FOCUSER:
 		/* focuser of_node */
-		if (param.variant >= cam_desc->pdata->mod_num) {
+		if (param.variant >= pdata->mod_num) {
 			dev_err(cam->dev, "%s has no sub module node %d\n",
 				__func__, param.variant);
 			return -EEXIST;
 		}
-		np = cam_desc->pdata->modules[param.variant].focuser.of_node;
+		if (pdata->modules[param.variant].focuser.bi)
+			np = pdata->modules[param.variant].focuser.bi->of_node;
 		break;
 	case CAMERA_DT_HANDLE_FLASH:
 		/* flash of_node */
-		if (param.variant >= cam_desc->pdata->mod_num) {
+		if (param.variant >= pdata->mod_num) {
 			dev_err(cam->dev, "%s has no sub module node %d\n",
 				__func__, param.variant);
 			return -EEXIST;
 		}
-		np = cam_desc->pdata->modules[param.variant].flash.of_node;
+		if (pdata->modules[param.variant].flash.bi)
+			np = pdata->modules[param.variant].flash.bi->of_node;
 		break;
 	default:
 		dev_err(cam->dev, "%s unsupported handle type %x\n",
@@ -422,7 +426,61 @@ get_property_end:
 	}
 
 	kfree(pbuf);
+	dev_dbg(cam->dev, "%s %d\n", __func__, err);
 	return err;
+}
+
+static struct device_node *of_camera_node_lookup(
+	struct camera_board *cb, struct i2c_board_info *bi, int bus_num)
+{
+	if (!cb->bi || !cb->bi->of_node)
+		return NULL;
+
+	if ((bus_num == cb->busnum) &&
+		(bi->addr == cb->bi->addr) &&
+		!strcmp(bi->type, cb->chipname))
+		return cb->bi->of_node;
+
+	return NULL;
+}
+
+int of_camera_find_node(
+	struct camera_info *cam, int bus_num, struct i2c_board_info *bi)
+{
+	struct camera_platform_data *pdata = cam_desc->pdata;
+	struct camera_module *md;
+	int i;
+
+	dev_dbg(cam->dev, "%s: %s %x %x @ %d\n", __func__,
+		bi->type, bi->addr, bi->flags, bus_num);
+	if (!pdata || !pdata->modules || !bi)
+		return 0;
+
+	if (bi->of_node)
+		goto node_validation;
+
+	md = pdata->modules;
+	for (i = 0; i < pdata->mod_num; i++, md++) {
+		bi->of_node = of_camera_node_lookup(&md->sensor, bi, bus_num);
+		if (bi->of_node)
+			break;
+
+		bi->of_node = of_camera_node_lookup(&md->focuser, bi, bus_num);
+		if (bi->of_node)
+			break;
+
+		bi->of_node = of_camera_node_lookup(&md->flash, bi, bus_num);
+		if (bi->of_node)
+			break;
+	}
+
+node_validation:
+	/* only attach device of_node when keyword compatible presents */
+	if (bi->of_node &&
+		!of_get_property(bi->of_node, "use_of_node", NULL))
+		bi->of_node = NULL;
+
+	return 0;
 }
 
 static struct device_node *of_camera_get_brdinfo(
@@ -523,26 +581,31 @@ struct camera_platform_data *of_camera_create_pdata(
 					cb++;
 				}
 			}
-			sname = of_get_property(subdev, "use-of-node", NULL);
-			if (sname && !strcmp(sname, "yes"))
-				bi->of_node = subdev;
+			bi->of_node = pdev;
+
+			sname = of_get_property(pdev, "chipname", NULL);
+			if (!sname) {
+				dev_err(&dev->dev, "%s no chipname in %s\n",
+					__func__, pdev->name);
+				break;
+			}
 
 			dev_dbg(&dev->dev,
-				"    device %s, subdev %s @ %d-%04x %p\n",
+				"    device %s, subdev %s @ %d-%04x %p, %s\n",
 				subdev->name, bi->type, nr,
-				bi->addr, bi->platform_data);
+				bi->addr, bi->platform_data, sname);
 			if (!strcmp(subdev->name, "sensor")) {
 				pd->modules[num].sensor.bi = bi;
+				pd->modules[num].sensor.chipname = sname;
 				pd->modules[num].sensor.busnum = nr;
-				pd->modules[num].sensor.of_node = pdev;
 			} else if (!strcmp(subdev->name, "focuser")) {
 				pd->modules[num].focuser.bi = bi;
+				pd->modules[num].focuser.chipname = sname;
 				pd->modules[num].focuser.busnum = nr;
-				pd->modules[num].focuser.of_node = pdev;
 			} else if (!strcmp(subdev->name, "flash")) {
 				pd->modules[num].flash.bi = bi;
+				pd->modules[num].flash.chipname = sname;
 				pd->modules[num].flash.busnum = nr;
-				pd->modules[num].flash.of_node = pdev;
 			}
 			bi++;
 		}

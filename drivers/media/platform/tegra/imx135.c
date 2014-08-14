@@ -4012,9 +4012,12 @@ static int imx135_power_on(struct imx135_power_rail *pw)
 
 	}
 
-	gpio_set_value(info->pdata->reset_gpio, 0);
-	gpio_set_value(info->pdata->af_gpio, 1);
-	gpio_set_value(info->pdata->cam1_gpio, 0);
+	if (info->pdata->reset_gpio > 0)
+		gpio_set_value(info->pdata->reset_gpio, 0);
+	if (info->pdata->af_gpio > 0)
+		gpio_set_value(info->pdata->af_gpio, 1);
+	if (info->pdata->cam1_gpio > 0)
+		gpio_set_value(info->pdata->cam1_gpio, 0);
 	usleep_range(10, 20);
 
 	err = regulator_enable(pw->avdd);
@@ -4026,8 +4029,10 @@ static int imx135_power_on(struct imx135_power_rail *pw)
 		goto imx135_iovdd_fail;
 
 	usleep_range(1, 2);
-	gpio_set_value(info->pdata->reset_gpio, 1);
-	gpio_set_value(info->pdata->cam1_gpio, 1);
+	if (info->pdata->reset_gpio > 0)
+		gpio_set_value(info->pdata->reset_gpio, 1);
+	if (info->pdata->cam1_gpio > 0)
+		gpio_set_value(info->pdata->cam1_gpio, 1);
 
 	usleep_range(300, 310);
 
@@ -4146,8 +4151,8 @@ static int imx135_regulator_get(struct imx135_info *info,
 		err = PTR_ERR(reg);
 		reg = NULL;
 	} else
-		dev_dbg(&info->i2c_client->dev, "%s: %s\n",
-			__func__, vreg_name);
+		dev_dbg(&info->i2c_client->dev, "%s: %s %p\n",
+			__func__, vreg_name, reg);
 
 	*vreg = reg;
 	return err;
@@ -4159,7 +4164,7 @@ static int imx135_power_get(struct imx135_info *info)
 	int err = 0;
 
 	err |= imx135_regulator_get(info, &pw->avdd, "vana"); /* ananlog 2.7v */
-	err |= imx135_regulator_get(info, &pw->dvdd, "vdig"); /* digital 1.2v */
+	err |= imx135_regulator_get(info, &pw->dvdd, "vdig_lv"); /* dig 1.05v */
 	err |= imx135_regulator_get(info, &pw->iovdd, "vif"); /* IO 1.8v */
 
 	return err;
@@ -4207,6 +4212,7 @@ static struct imx135_platform_data *imx135_parse_dt(struct i2c_client *client)
 		return NULL;
 	}
 
+	of_property_read_string(np, "clocks", &board_info_pdata->mclk_name);
 	board_info_pdata->cam1_gpio = of_get_named_gpio(np, "cam1-gpios", 0);
 	board_info_pdata->reset_gpio = of_get_named_gpio(np, "reset-gpios", 0);
 	board_info_pdata->af_gpio = of_get_named_gpio(np, "af-gpios", 0);

@@ -1020,24 +1020,10 @@ static struct miscdevice imx214_device = {
 	.fops = &imx214_fileops,
 };
 
-static struct of_device_id imx214_of_match[] = {
-	{ .compatible = "nvidia,imx214", },
-	{ },
-};
-
-MODULE_DEVICE_TABLE(of, imx214_of_match);
-
 static struct imx214_platform_data *imx214_parse_dt(struct i2c_client *client)
 {
 	struct device_node *np = client->dev.of_node;
 	struct imx214_platform_data *board_info_pdata;
-	const struct of_device_id *match;
-
-	match = of_match_device(imx214_of_match, &client->dev);
-	if (!match) {
-		dev_err(&client->dev, "Failed to find matching dt id\n");
-		return NULL;
-	}
 
 	board_info_pdata = devm_kzalloc(&client->dev, sizeof(*board_info_pdata),
 			GFP_KERNEL);
@@ -1046,6 +1032,7 @@ static struct imx214_platform_data *imx214_parse_dt(struct i2c_client *client)
 		return NULL;
 	}
 
+	of_property_read_string(np, "clocks", &board_info_pdata->mclk_name);
 	board_info_pdata->cam1_gpio = of_get_named_gpio(np, "cam1-gpios", 0);
 	board_info_pdata->reset_gpio = of_get_named_gpio(np, "reset-gpios", 0);
 	board_info_pdata->af_gpio = of_get_named_gpio(np, "af-gpios", 0);

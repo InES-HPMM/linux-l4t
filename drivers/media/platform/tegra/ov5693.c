@@ -89,7 +89,12 @@ struct ov5693_mode_data {
 static struct ov5693_platform_data ov5693_dflt_pdata = {
 	.cfg		= 0,
 	.num		= 0,
-	.dev_name	= "camera",
+	.dev_name	= "ov5693",
+	.regulators = {
+			.avdd = "avdd",
+			.dvdd = "dvdd",
+			.dovdd = "dovdd",
+	},
 };
 
 /*
@@ -2716,6 +2721,9 @@ static void ov5693_regulator_get(struct ov5693_info *info,
 	struct regulator *reg = NULL;
 	int err = 0;
 
+	if (vreg_name == NULL)
+		return;
+
 	reg = devm_regulator_get(&info->i2c_client->dev, vreg_name);
 	if (IS_ERR(reg)) {
 		dev_err(&info->i2c_client->dev, "%s %s ERR: %d\n",
@@ -3371,6 +3379,9 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 	struct device_node *np = client->dev.of_node;
 	struct ov5693_platform_data *pdata;
 	struct nvc_gpio_pdata *gpio_pdata = NULL;
+	const char *sname;
+	int ret;
+	int num;
 
 	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
@@ -3385,15 +3396,42 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 		return ERR_PTR(-ENOMEM);
 	}
 
-	/* init with default platform data values */
-	memcpy(pdata, &ov5693_dflt_pdata, sizeof(*pdata));
+	/* init with default platform data values in board file or driver */
+	if (client->dev.platform_data)
+		memcpy(pdata, client->dev.platform_data, sizeof(*pdata));
+	else
+		memcpy(pdata, &ov5693_dflt_pdata, sizeof(*pdata));
+
+	num = 0;
+	do {
+		ret = of_property_read_string_index(
+			np, "regulators", num, &sname);
+		if (ret < 0)
+			break;
+		switch (num) {
+		case 0:
+			pdata->regulators.avdd = sname;
+			pdata->regulators.dvdd = NULL;
+			pdata->regulators.dovdd = NULL;
+			break;
+		case 1:
+			pdata->regulators.dvdd = sname;
+			break;
+		case 2:
+			pdata->regulators.dovdd = sname;
+			break;
+		default:
+			break;
+		}
+		num++;
+	} while (num < 3);
 
 	/* extra regulators info */
-	pdata->use_vcm_vdd = of_property_read_bool(np, "nvidia,use-vcm-vdd");
+	pdata->use_vcm_vdd = of_property_read_bool(np, "use-vcm-vdd");
 
 	/* generic info */
-	of_property_read_u32(np, "nvidia,num", &pdata->num);
-	of_property_read_string(np, "nvidia,dev-name", &pdata->dev_name);
+	of_property_read_u32(np, "num", &pdata->num);
+	of_property_read_string(np, "dev_name", &pdata->dev_name);
 
 	/* ov5693 gpios */
 	pdata->gpio_count = 0;
@@ -3403,8 +3441,7 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 	pdata->gpio = gpio_pdata;
 
 	/* MCLK clock info */
-	of_property_read_string(np, "nvidia,mclk_name",
-				&pdata->mclk_name);
+	of_property_read_string(np, "clocks", &pdata->mclk_name);
 
 	/* ov5693 power functions */
 	pdata->power_on = ov5693_platform_power_on;
@@ -3491,10 +3528,8 @@ static int ov5693_probe(
 
 	i2c_set_clientdata(client, info);
 	ov5693_pm_init(info);
-	if (IS_ERR(info->regulators.avdd) || IS_ERR(info->regulators.dovdd))
-			return -EFAULT;
-
 	ov5693_sdata_init(info);
+
 	if (info->pdata->cfg & (NVC_CFG_NODEV | NVC_CFG_BOOT_INIT)) {
 		if (info->pdata->probe_clock) {
 			clock_probe_rate = 6000;  /* initial_clcok*/

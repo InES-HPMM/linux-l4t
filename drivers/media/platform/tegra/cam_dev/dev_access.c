@@ -295,11 +295,16 @@ int camera_dev_parser(
 					err = clk_set_rate(ck, val * 1000);
 				if (!err)
 					err = clk_prepare_enable(ck);
+				else
+					dev_err(cdev->dev,
+						"clk set rate ERR: %d\n", err);
 			} else
 				clk_disable_unprepare(ck);
 		}
-		if (err)
+		if (err) {
+			dev_err(cdev->dev, "clock enable ERR: %d\n", err);
 			return err;
+		}
 		break;
 	}
 	case CAMERA_TABLE_PWR:
@@ -392,8 +397,10 @@ int camera_dev_parser(
 			regs[0].addr = command & ~CAMERA_INT_MASK;
 			regs[1].addr = CAMERA_TABLE_END;
 			err = camera_dev_rd_table(cdev, regs);
-			if (err < 0)
+			if (err) {
+				dev_err(cdev->dev, "read table ERR: %d\n", err);
 				return err;
+			}
 			*pdat = regs[0].val;
 			if (pst)
 				pst->status = command;
