@@ -1096,7 +1096,7 @@
 	};
 
 	sata@70020000 {
-		status = "okay";
+		status = "disabled";
 		nvidia,enable-sata-port;
 	};
 
