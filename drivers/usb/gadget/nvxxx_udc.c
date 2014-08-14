@@ -1981,8 +1981,10 @@ static void nvudc_resume_state(struct NV_UDC_S *nvudc)
 
 	iowrite32(u_temp2, nvudc->mmio_reg_base + PORTSC);
 
-	nvudc->device_state = nvudc->resume_state;
-	nvudc->resume_state = 0;
+	if (nvudc->device_state == USB_STATE_SUSPENDED) {
+		nvudc->device_state = nvudc->resume_state;
+		nvudc->resume_state = 0;
+	}
 
 	/* ring door bell for the paused endpoints */
 	doorbell_for_unpause(nvudc, ep_paused);
