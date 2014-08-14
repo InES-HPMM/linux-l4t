@@ -2509,16 +2509,8 @@ static void soctherm_tsense_program(enum soctherm_sense sensor,
  */
 static int soctherm_clk_init(void)
 {
-	soctherm_clk = clk_get_sys("soc_therm", NULL);
-	tsensor_clk = clk_get_sys("tegra-tsensor", NULL);
-
-	if (IS_ERR(tsensor_clk) || IS_ERR(soctherm_clk)) {
-		clk_put(soctherm_clk);
-		clk_put(tsensor_clk);
-		soctherm_clk = NULL;
-		tsensor_clk = NULL;
+	if (!soctherm_clk || !tsensor_clk)
 		return -EINVAL;
-	}
 
 	if (clk_get_rate(soctherm_clk) != pp->soctherm_clk_rate)
 		if (clk_set_rate(soctherm_clk, pp->soctherm_clk_rate))
@@ -2528,6 +2520,33 @@ static int soctherm_clk_init(void)
 		if (clk_set_rate(tsensor_clk, pp->tsensor_clk_rate))
 			return -EINVAL;
 
+	return 0;
+}
+
+/**
+ * soctherm_clk_pre_init() - Pre-init SOC_THERM clock.
+ *
+ * The initialization will 'get' clocks for SOC_THERM and TSENSE and also enable
+ * the soc_therm clock to the default rate.
+ *
+ * Return: 0 if successful else %-EINVAL if get-clock failed.
+ */
+static int soctherm_clk_pre_init(void)
+{
+	soctherm_clk = clk_get_sys("soc_therm",	NULL);
+	tsensor_clk  = clk_get_sys("tegra-tsensor", NULL);
+
+	if (IS_ERR(tsensor_clk) || IS_ERR(soctherm_clk)) {
+		clk_put(soctherm_clk);
+		clk_put(tsensor_clk);
+		soctherm_clk = NULL;
+		tsensor_clk = NULL;
+		return -EINVAL;
+	}
+
+	/* On T132 init soctherm clock so MTS can access registers */
+	if (IS_T13X)
+		clk_enable(soctherm_clk);
 	return 0;
 }
 
@@ -2542,8 +2561,13 @@ static int soctherm_clk_init(void)
  */
 static int soctherm_clk_enable(bool enable)
 {
-	if (soctherm_clk == NULL || tsensor_clk == NULL)
-		return -EINVAL;
+
+	if (soctherm_clk == NULL || tsensor_clk == NULL) {
+		if (enable)
+			return -EINVAL;
+		else
+			return 0; /* idempotent: disable w/o 'get-clocks' ok */
+	}
 
 	if (enable) {
 		clk_enable(soctherm_clk);
@@ -4546,6 +4570,9 @@ static int tegra_soctherm_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Unsupported chip_id %d\n", tegra_chip_id);
 		return -EINVAL;
 	}
+
+	if (soctherm_clk_pre_init())
+		return -EINVAL;
 
 	/* Switch to old-mode if pp is initialized by tegra_soctherm_init() */
 	if (pp)
