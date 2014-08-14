@@ -4337,6 +4337,9 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	of_property_read_u32(np, "calib-3v3-offsets", &plat->calib_3v3_offsets);
 	of_property_read_u32(np, "calib-1v8-offsets", &plat->calib_1v8_offsets);
 
+	plat->pwr_off_during_lp0 = of_property_read_bool(np,
+						"pwr-off-during-lp0");
+
 	plat->mmc_data.built_in = of_property_read_bool(np, "built-in");
 	plat->update_pinctrl_settings = of_property_read_bool(np,
 			"nvidia,update-pinctrl-settings");
@@ -4842,6 +4845,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	if (plat->disable_clock_gate && plat->enable_pm_domain)
 		host->quirks2 |= SDHCI_QUIRK2_PM_DOMAIN;
+
+	if (plat->pwr_off_during_lp0)
+		host->mmc->caps2 |= MMC_CAP2_NO_SLEEP_CMD;
 
 	tegra_host->nominal_vcore_mv =
 		tegra_dvfs_get_core_nominal_millivolts();

@@ -73,6 +73,7 @@ struct tegra_sdhci_platform_data {
 	u32 cpu_speedo;
 	unsigned char default_drv_type;
 	bool dll_calib_needed;
+	bool pwr_off_during_lp0;
 };
 
 #endif
