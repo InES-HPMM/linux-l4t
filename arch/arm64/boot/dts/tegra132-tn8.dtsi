@@ -119,4 +119,18 @@
 		nvidia,mdm-sar0-gpio = <&gpio TEGRA_GPIO(G, 2) GPIO_ACTIVE_LOW>;
 		status = "disabled";
 	};
+
+	therm_est_sensor {
+		toffset = <4034>;
+		subdevs@0 {
+			device_type = "therm-est-subdev";
+			dev-data = "Tdiode";
+			coeffs = "3 0 0 0 1 0 -1 0 1 0 0 1 1 0 0 0 0 1 2 2";
+		};
+		subdevs@1 {
+			device_type = "therm-est-subdev";
+			dev-data = "Tboard";
+			coeffs = "1 1 2 8 6 -8 -13 -9 -9 -8 -17 -18 -18 -16 2 17 15 27 42 60";
+		};
+	};
 };

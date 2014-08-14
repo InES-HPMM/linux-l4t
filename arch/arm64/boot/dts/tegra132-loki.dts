@@ -196,4 +196,14 @@
 				"slow-charger", "apple-500ma", "apple-1a",
 				"apple-2a", "y-cable";
 	};
+
+	therm_est_sensor {
+		status = "disabled";
+	};
+
+	thermal-zones {
+		therm_est {
+			status = "disabled";
+		};
+	};
 };

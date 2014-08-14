@@ -1306,123 +1306,6 @@ static struct thermal_zone_params board_tzp = {
 	.governor_name = "pid_thermal_gov"
 };
 
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-static struct thermal_trip_info skin_trips[] = {
-	{
-		.cdev_type = "skin-balanced",
-		.trip_temp = 43000,
-		.trip_type = THERMAL_TRIP_PASSIVE,
-		.upper = THERMAL_NO_LIMIT,
-		.lower = THERMAL_NO_LIMIT,
-		.hysteresis = 0,
-	}
-};
-
-static struct therm_est_subdevice skin_devs[] = {
-	{
-		.dev_data = "Tdiode_tegra",
-		.coeffs = {
-			2, 1, 1, 1,
-			1, 1, 1, 1,
-			1, 1, 1, 0,
-			1, 1, 0, 0,
-			0, 0, -1, -7
-		},
-	},
-	{
-		.dev_data = "Tboard_tegra",
-		.coeffs = {
-			-11, -7, -5, -3,
-			-3, -2, -1, 0,
-			0, 0, 1, 1,
-			1, 2, 2, 3,
-			4, 6, 11, 18
-		},
-	},
-};
-
-static struct therm_est_subdevice tn8ffd_skin_devs[] = {
-	{
-		.dev_data = "Tdiode",
-		.coeffs = {
-			3, 0, 0, 0,
-			1, 0, -1, 0,
-			1, 0, 0, 1,
-			1, 0, 0, 0,
-			0, 1, 2, 2
-		},
-	},
-	{
-		.dev_data = "Tboard",
-		.coeffs = {
-			1, 1, 2, 8,
-			6, -8, -13, -9,
-			-9, -8, -17, -18,
-			-18, -16, 2, 17,
-			15, 27, 42, 60
-		},
-	},
-};
-
-static struct pid_thermal_gov_params skin_pid_params = {
-	.max_err_temp = 4000,
-	.max_err_gain = 1000,
-
-	.gain_p = 1000,
-	.gain_d = 0,
-
-	.up_compensation = 15,
-	.down_compensation = 15,
-};
-
-static struct thermal_zone_params skin_tzp = {
-	.governor_name = "pid_thermal_gov",
-	.governor_params = &skin_pid_params,
-};
-
-static struct therm_est_data skin_data = {
-	.num_trips = ARRAY_SIZE(skin_trips),
-	.trips = skin_trips,
-	.polling_period = 1100,
-	.passive_delay = 15000,
-	.tc1 = 10,
-	.tc2 = 1,
-	.tzp = &skin_tzp,
-	.use_activator = 1,
-};
-
-static int __init ardbeg_skin_init(void)
-{
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-
-
-	if (of_machine_is_compatible("nvidia,e2141"))
-		return 0;
-
-	if (board_info.board_id == BOARD_P1761 ||
-			board_info.board_id == BOARD_E1784 ||
-			board_info.board_id == BOARD_E1991 ||
-			board_info.board_id == BOARD_E1971 ||
-			board_info.board_id == BOARD_E1922) {
-		skin_data.ndevs = ARRAY_SIZE(tn8ffd_skin_devs);
-		skin_data.devs = tn8ffd_skin_devs;
-		skin_data.toffset = 4034;
-	} else {
-		skin_data.ndevs = ARRAY_SIZE(skin_devs);
-		skin_data.devs = skin_devs;
-		skin_data.toffset = 9793;
-	}
-
-	tegra_skin_therm_est_device.dev.platform_data = &skin_data;
-	platform_device_register(&tegra_skin_therm_est_device);
-
-	return 0;
-}
-late_initcall(ardbeg_skin_init);
-#endif
-
 static struct nct1008_platform_data ardbeg_nct72_pdata = {
 	.loc_name = "tegra",
 	.supported_hwrev = true,
@@ -1477,6 +1360,22 @@ static struct nct1008_platform_data ardbeg_nct72_pdata = {
 };
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
+static struct pid_thermal_gov_params skin_pid_params = {
+	.max_err_temp = 4000,
+	.max_err_gain = 1000,
+
+	.gain_p = 1000,
+	.gain_d = 0,
+
+	.up_compensation = 15,
+	.down_compensation = 15,
+};
+
+static struct thermal_zone_params skin_tzp = {
+	.governor_name = "pid_thermal_gov",
+	.governor_params = &skin_pid_params,
+};
+
 static struct nct1008_platform_data ardbeg_nct72_tskin_pdata = {
 	.loc_name = "skin",
 

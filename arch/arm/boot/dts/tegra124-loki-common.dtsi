@@ -205,4 +205,14 @@
 			status = "disabled";
 		};
 	};
+
+	therm_est_sensor {
+		status = "disabled";
+	};
+
+	thermal-zones {
+		therm_est {
+			status = "disabled";
+		};
+	};
 };
