@@ -263,4 +263,11 @@ config TEGRA_AOTAG
 	help
 	  Support for Tegra Always-On thermal Alert Generator
 
+config MODEM_THERMAL
+	bool "Modem thermal driver support"
+	default n
+	help
+	  Thermal zone driver that user space communicates with to relay modem
+	  temperature sensor information.
+
 endif

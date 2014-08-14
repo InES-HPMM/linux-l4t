@@ -43,6 +43,7 @@
 #include <linux/fs.h>
 #include <asm/segment.h>
 #include <asm/uaccess.h>
+#include <linux/platform_data/modem_thermal.h>
 
 #define BOOST_CPU_FREQ_MIN	1200000
 #define BOOST_CPU_FREQ_TIMEOUT	5000
@@ -161,6 +162,7 @@ struct tegra_usb_modem {
 	int sysedp_prev_request;	/* previous modem request */
 	int sysedp_file_created;	/* sysedp state file created */
 	bool use_xhci_hsic;             /* indicate if we use XHCI HSIC */
+	struct platform_device *modem_thermal_pdev;
 };
 
 
@@ -694,6 +696,19 @@ static struct tegra_usb_phy_platform_ops tegra_usb_modem_platform_ops = {
 	.post_remote_wakeup = tegra_usb_modem_post_remote_wakeup,
 };
 
+static struct modem_thermal_platform_data thermdata = {
+	.num_zones = 0,
+};
+
+static struct platform_device modem_thermal_device = {
+	.name = "modem-thermal",
+	.id = -1,
+	.num_resources = 0,
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
 static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 {
 	struct tegra_usb_modem_power_platform_data *pdata =
@@ -816,6 +831,13 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	usb_register_notify(&modem->usb_notifier);
 	register_pm_notifier(&modem->pm_notifier);
 
+	if (pdata->num_temp_sensors) {
+		thermdata.num_zones = pdata->num_temp_sensors;
+		modem_thermal_device.dev.platform_data = &thermdata;
+		modem->modem_thermal_pdev = &modem_thermal_device;
+		platform_device_register(modem->modem_thermal_pdev);
+	}
+
 	/* start modem */
 	if (modem->ops && modem->ops->start)
 		modem->ops->start();
@@ -846,6 +868,7 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 	struct tegra_usb_modem_power_platform_data *pdata =
 		pdev->dev.platform_data;
 	struct device_node *node = pdev->dev.of_node;
+	const unsigned int *prop;
 	int gpio;
 	int ret;
 	u32 use_xhci = 0;
@@ -891,6 +914,10 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 	modem->use_xhci_hsic = (ret == 0 && use_xhci) ? 1 : 0;
 	dev_info(&pdev->dev, "using %s HSIC\n",
 		modem->use_xhci_hsic ? "XHCI" : "EHCI");
+
+	prop = of_get_property(node, "nvidia,num-temp-sensors", NULL);
+	if (prop)
+		pdata->num_temp_sensors = be32_to_cpup(prop);
 
 	/* GPIO */
 	gpio = of_get_named_gpio(node, "nvidia,wake-gpio", 0);
