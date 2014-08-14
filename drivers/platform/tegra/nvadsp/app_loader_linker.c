@@ -184,6 +184,12 @@ apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 				dstsec->sh_addr + rel->r_offset;
 		dev_dbg(dev, "%p 0x%x\n", loc, adsp_loc);
 
+		if (ELF_ST_BIND(sym->st_info) == STB_WEAK
+				&& sym->st_shndx == SHN_UNDEF) {
+			dev_dbg(dev, "STB_WEAK %s\n", symname);
+			continue;
+		}
+
 		switch (ELF32_R_TYPE(rel->r_info)) {
 		case R_ARM_NONE:
 			dev_dbg(dev, "R_ARM_NONE\n");
@@ -470,6 +476,12 @@ simplify_symbols(struct adsp_module *mod,
 							name, sym_info->addr);
 				sym[i].st_value = sym_info->addr;
 				sym[i].st_info = sym_info->info;
+				break;
+			}
+
+			if (ELF_ST_BIND(sym[i].st_info) == STB_WEAK) {
+				dev_dbg(dev, "WEAK SYM %s not resolved\n",
+						name);
 				break;
 			}
 
