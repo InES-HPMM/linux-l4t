@@ -225,18 +225,15 @@
 		      <0x0 0x60004500 0x0 0x40>;
 	};
 
-/* The interrupt controller parser does not support the	*/
-/* property "status", hence is commented		*/
-/*							*/
-/*	agic-controller {				*/
-/*		compatible = "nvidia,tegra210-agic";	*/
-/*		interrupt-controller;			*/
-/*		no-gic-extension;			*/
-/*		not-per-cpu;				*/
-/*		reg = <0x0 0x702f9000 0x0 0x2000>,	*/
-/*		      <0x0 0x702fa000 0x0 0x2000>;	*/
-/*		interrupts = <0 102 0xf04>;		*/
-/*	};						*/
+	agic-controller {
+		compatible = "nvidia,tegra210-agic";
+		interrupt-controller;
+		no-gic-extension;
+		not-per-cpu;
+		reg = <0x0 0x702f9000 0x0 0x2000>,
+		      <0x0 0x702fa000 0x0 0x2000>;
+		interrupts = <0 102 0xf04>;
+	};
 
 	timer {
 		compatible = "arm,armv8-timer";
@@ -922,7 +919,7 @@
 		   <0x0 0x01000000 0x0 0x6f2c0000>, /* DRAM MAP1 */
 		   <0x0 0x70300000 0x0 0x8fd00000>; /* DRAM MAP2 */
 	     iommus = <&smmu TEGRA_SWGROUP_CELLS(APE) &ape_as>;
-	     status = "disabled";
+	     status = "okay";
 	};
 
 	pcie-controller {
