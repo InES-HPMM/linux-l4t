@@ -164,6 +164,26 @@ static inline unsigned int cpu_edp_apply_fixed_limits(
 #define cpu_edp_apply_fixed_limits(freq, unused...)	(freq)
 #endif
 
+static struct thermal_cooling_device_ops tegra_cpu_edp_cooling_ops = {
+	.get_max_state = tegra_cpu_edp_get_max_state,
+	.get_cur_state = tegra_cpu_edp_get_cur_state,
+	.set_cur_state = tegra_cpu_edp_set_cur_state,
+};
+
+static int __init cpu_edp_cdev_init(void)
+{
+	struct thermal_cooling_device *cpu_edp_cdev;
+
+	cpu_edp_cdev = thermal_cooling_device_register("cpu_edp", NULL,
+					&tegra_cpu_edp_cooling_ops);
+	if (IS_ERR_OR_NULL(cpu_edp_cdev))
+		pr_err("Failed to register 'cpu_edp' cooling device\n");
+
+	return 0;
+}
+module_init(cpu_edp_cdev_init);
+
+
 /* Calculate incremental leakage current: common for cpu and gpu */
 static s64 common_edp_calculate_leakage_calc_step(
 			struct tegra_edp_common_powermodel_params *common,
@@ -1059,15 +1079,18 @@ static struct thermal_cooling_device_ops gpu_edp_cooling_ops = {
 	.set_cur_state = gpu_edp_set_cdev_state,
 };
 
-static int __init tegra_gpu_edp_late_init(void)
+static int __init gpu_edp_cdev_init(void)
 {
-	if (IS_ERR_OR_NULL(thermal_cooling_device_register(
-		"gpu_edp", NULL, &gpu_edp_cooling_ops)))
-		pr_err("%s: failed to register edp cooling device\n", __func__);
+	struct thermal_cooling_device *gpu_edp_cdev;
+
+	gpu_edp_cdev = thermal_cooling_device_register("gpu_edp", NULL,
+					&gpu_edp_cooling_ops);
+	if (IS_ERR_OR_NULL(gpu_edp_cdev))
+		pr_err("Failed to register 'gpu_edp' cooling device\n");
 
 	return 0;
 }
-late_initcall(tegra_gpu_edp_late_init);
+module_init(gpu_edp_cdev_init);
 
 #endif
 

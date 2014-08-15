@@ -270,21 +270,22 @@ static unsigned int get_edp_limit_speed(unsigned int requested_speed)
 	}
 }
 
-int tegra_edp_get_max_state(struct thermal_cooling_device *cdev,
+/* used in struct thermal_cooling_device_ops edp.c::tegra_cpu_edp_cooling_ops */
+int tegra_cpu_edp_get_max_state(struct thermal_cooling_device *cdev,
 				unsigned long *max_state)
 {
 	*max_state = tegra_get_edp_max_thermal_index();
 	return 0;
 }
 
-int tegra_edp_get_cur_state(struct thermal_cooling_device *cdev,
+int tegra_cpu_edp_get_cur_state(struct thermal_cooling_device *cdev,
 				unsigned long *cur_state)
 {
 	*cur_state = edp_thermal_index;
 	return 0;
 }
 
-int tegra_edp_set_cur_state(struct thermal_cooling_device *cdev,
+int tegra_cpu_edp_set_cur_state(struct thermal_cooling_device *cdev,
 				unsigned long cur_state)
 {
 	mutex_lock(&tegra_cpu_lock);
@@ -303,22 +304,6 @@ int tegra_edp_set_cur_state(struct thermal_cooling_device *cdev,
 
 	return 0;
 }
-
-static struct thermal_cooling_device_ops tegra_edp_cooling_ops = {
-	.get_max_state = tegra_edp_get_max_state,
-	.get_cur_state = tegra_edp_get_cur_state,
-	.set_cur_state = tegra_edp_set_cur_state,
-};
-
-static int __init edp_init(void)
-{
-	thermal_cooling_device_register(
-				"cpu_edp",
-				NULL,
-				&tegra_edp_cooling_ops);
-	return 0;
-}
-module_init(edp_init);
 
 static unsigned int sysedp_cap_speed(unsigned int requested_speed)
 {
@@ -394,6 +379,9 @@ static struct notifier_block tegra_cpu_edp_notifier = {
 
 static void tegra_cpu_edp_init(bool resume)
 {
+	if (!cpumask_weight(&edp_cpumask))
+		edp_cpumask = *cpu_online_mask;
+
 	if (tegra_get_edp_max_thermal_index() <= 0) {
 		if (!resume)
 			pr_info("cpu-tegra: no EDP table is provided\n");
@@ -405,7 +393,6 @@ static void tegra_cpu_edp_init(bool resume)
 	 * Boot frequency allowed SoC to get here, should work till sensor is
 	 * initialized.
 	 */
-	edp_cpumask = *cpu_online_mask;
 
 	if (!resume) {
 		register_hotcpu_notifier(&tegra_cpu_edp_notifier);
