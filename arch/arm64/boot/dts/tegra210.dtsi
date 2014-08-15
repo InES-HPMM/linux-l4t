@@ -459,35 +459,35 @@
 			      0 67 0x04>; /* mpcore general */
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(HC) &common_as>;
 
-		#address-cells = <1>;
-		#size-cells = <1>;
+		#address-cells = <2>;
+		#size-cells = <2>;
 
 		ranges;
 
 		vi {
 			compatible = "nvidia,tegra210-vi";
-			reg = <0x54080000 0x00040000>;
+			reg = <0x0 0x54080000 0x0 0x00040000>;
 			interrupts = <0 70 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(VI) &common_as>;
 		};
 
 		isp@54600000 {
 			compatible = "nvidia,tegra210-isp";
-			reg = <0x54600000 0x00040000>;
+			reg = <0x0 0x54600000 0x0 0x00040000>;
 			interrupts = <0 71 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(ISP) &common_as>;
 		};
 
 		isp@54680000 {
 			compatible = "nvidia,tegra210-isp";
-			reg = <0x54680000 0x00040000>;
+			reg = <0x0 0x54680000 0x0 0x00040000>;
 			interrupts = <0 72 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(ISP2B) &common_as>;
 		};
 
 		dc@54200000 {
 			compatible = "nvidia,tegra210-dc";
-			reg = <0x54200000 0x00040000>;
+			reg = <0x0 0x54200000 0x0 0x00040000>;
 			interrupts = <0 73 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS3(DC, DCB, DC12) &dc_as>;
 			status = "disabled";
@@ -499,7 +499,7 @@
 
 		dc@54240000 {
 			compatible = "nvidia,tegra210-dc";
-			reg = <0x54240000 0x00040000>;
+			reg = <0x0 0x54240000 0x0 0x00040000>;
 			interrupts = <0 74 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS3(DC, DCB, DC12) &dc_as>;
 			status = "disabled";
@@ -511,70 +511,70 @@
 
 		dsi {
 			compatible = "nvidia,tegra210-dsi";
-			reg = <0x54300000 0x00040000
-			       0x54400000 0x00040000>;
+			reg = <0x0 0x54300000 0x0 0x00040000
+			       0x0 0x54400000 0x0 0x00040000>;
 			status = "disabled";
 		};
 
 		vic {
 			compatible = "nvidia,tegra210-vic";
-			reg = <0x54340000 0x00040000>;
+			reg = <0x0 0x54340000 0x0 0x00040000>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(VIC) &common_as>;
 		};
 
 		nvenc {
 			compatible = "nvidia,tegra210-nvenc";
-			reg = <0x544c0000 0x00040000>;
+			reg = <0x0 0x544c0000 0x0 0x00040000>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(MPE) &common_as>;
 		};
 
 		tsec {
 			compatible = "nvidia,tegra210-tsec";
-			reg = <0x54500000 0x00040000>;
+			reg = <0x0 0x54500000 0x0 0x00040000>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(TSEC) &common_as>;
 		};
 
 		tsecb {
 			compatible = "nvidia,tegra210-tsec";
-			reg = <0x54100000 0x00040000>;
+			reg = <0x0 0x54100000 0x0 0x00040000>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(TSECB1) &common_as>;
 		};
 
 		nvdec {
 			compatible = "nvidia,tegra210-nvdec";
-			reg = <0x54480000 0x00040000>;
+			reg = <0x0 0x54480000 0x0 0x00040000>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(NVDEC) &common_as>;
 		};
 
 		nvjpg {
 			compatible = "nvidia,tegra210-nvjpg";
-			reg = <0x54380000 0x00040000>;
+			reg = <0x0 0x54380000 0x0 0x00040000>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(NVJPG) &common_as>;
 		};
 
 		sor {
 			compatible = "nvidia,tegra210-sor";
-			reg = <0x54540000 0x00040000>;
+			reg = <0x0 0x54540000 0x0 0x00040000>;
 			status = "disabled";
 		};
 
 		sor1 {
 			compatible = "nvidia,tegra210-sor1";
-			reg = <0x54580000 0x00040000>;
+			reg = <0x0 0x54580000 0x0 0x00040000>;
 			interrupts = <0 76 0x4>; /* INT_SOR_1 */
 			status = "disabled";
 		};
 
 		dpaux {
 			compatible = "nvidia,tegra210-dpaux";
-			reg = <0x545c0000 0x00040000>;
+			reg = <0x0 0x545c0000 0x0 0x00040000>;
 			interrupts = <0 159 0x4>; /* INT_DPAUX */
 			status = "disabled";
 		};
 
 		dpaux1 {
 			compatible = "nvidia,tegra210-dpaux1";
-			reg = <0x54040000 0x00040000>;
+			reg = <0x0 0x54040000 0x0 0x00040000>;
 			interrupts = <0 11 0x4>; /* INT_DPAUX_1 */
 			status = "disabled";
 		};
