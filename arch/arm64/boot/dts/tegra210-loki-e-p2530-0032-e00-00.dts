@@ -33,7 +33,7 @@
 #include "tegra210-platforms/tegra210-loki-e-pwm-fan.dtsi"
 #include "tegra210-platforms/tegra210-loki-sdhci.dtsi"
 / {
-	model = "NVIDIA Tegra210 Loki-E";
+	model = "loki_e";
 	compatible = "nvidia,loki-e", "nvidia,tegra210";
 	nvidia,dtsfilename = __FILE__;
 

@@ -32,7 +32,7 @@
 #include "tegra210-platforms/tegra210-foster-e-pwm-fan.dtsi"
 
 / {
-	model = "NVIDIA Tegra210 Foster-E";
+	model = "foster_e";
 	compatible = "nvidia,foster-e", "nvidia,tegra210";
 	nvidia,dtsfilename = __FILE__;
 };
