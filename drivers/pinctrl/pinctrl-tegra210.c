@@ -1647,6 +1647,9 @@ enum tegra_mux_dt {
 	TEGRA_MUX_I2S5,
 	TEGRA_MUX_IQC0,
 	TEGRA_MUX_IQC1,
+	TEGRA_MUX_PWM0,
+	TEGRA_MUX_PWM1,
+	TEGRA_MUX_PWM2,
 	TEGRA_MUX_PWM3,
 	TEGRA_MUX_PMI,
 	TEGRA_MUX_UARTA,
@@ -1815,11 +1818,20 @@ static const char * const iqc1_groups[] = {
 	"pk7",
 };
 
-static const char * const pwm3_groups[] = {
-	"pe6",
-	"pe7",
+static const char * const pwm0_groups[] = {
 	"lcd_bl_pwm_pv0",
+};
+
+static const char * const pwm1_groups[] = {
 	"lcd_gpio2_pv4",
+};
+
+static const char * const pwm2_groups[] = {
+	"pe6",
+};
+
+static const char * const pwm3_groups[] = {
+	"pe7",
 };
 
 static const char * const pmi_groups[] = {
@@ -2528,7 +2540,7 @@ static const char * const ccla_groups[] = {
 	"pz2",
 };
 
-static const char * const rtck_groups[] = {
+static const char * const jtag_groups[] = {
 	"jtag_rtck",
 };
 
@@ -2767,6 +2779,9 @@ static const struct tegra_function tegra210_functions[] = {
 	FUNCTION(i2s5),
 	FUNCTION(iqc0),
 	FUNCTION(iqc1),
+	FUNCTION(pwm0),
+	FUNCTION(pwm1),
+	FUNCTION(pwm2),
 	FUNCTION(pwm3),
 	FUNCTION(pmi),
 	FUNCTION(uarta),
@@ -2808,7 +2823,7 @@ static const struct tegra_function tegra210_functions[] = {
 	FUNCTION(vimclk2_alt3),
 	FUNCTION(sata),
 	FUNCTION(ccla),
-	FUNCTION(rtck),
+	FUNCTION(jtag),
 	FUNCTION(sys),
 	FUNCTION(pe),
 	FUNCTION(pe0),
@@ -3033,11 +3048,11 @@ static const struct tegra_pingroup tegra210_groups[] = {
 	PINGROUP(cam2_pwdn_pt0,		VGP5,		RSVD2,		RSVD3,		RSVD4,		0x31f0,  Y,	12,	-1,	N,	N),
 	PINGROUP(cam1_strobe_pt1,	VGP6,		RSVD2,		RSVD3,		RSVD4,		0x31f4,  Y,	12,	-1,	N,	N),
 	PINGROUP(lcd_te_py2,		DISPLAYA,	RSVD2,		RSVD3,		RSVD4,		0x31f8,  Y,	12,	-1,	N,	N),
-	PINGROUP(lcd_bl_pwm_pv0,	DISPLAYA,	PWM3,		SOR0,		RSVD4,		0x31fc,  Y,	12,	-1,	N,	N),
+	PINGROUP(lcd_bl_pwm_pv0,	DISPLAYA,	PWM0,		SOR0,		RSVD4,		0x31fc,  Y,	12,	-1,	N,	N),
 	PINGROUP(lcd_bl_en_pv1,		RSVD1,		RSVD2,		RSVD3,		RSVD4,		0x3200,  Y,	12,	-1,	N,	N),
 	PINGROUP(lcd_rst_pv2,		RSVD1,		RSVD2,		RSVD3,		RSVD4,		0x3204,  Y,	12,	-1,	N,	N),
 	PINGROUP(lcd_gpio1_pv3,		DCB,		RSVD2,		RSVD3,		RSVD4,		0x3208,  Y,	12,	-1,	N,	N),
-	PINGROUP(lcd_gpio2_pv4,		DCB,		PWM3,		RSVD3,		SOR1,		0x320c,  Y,	12,	-1,	N,	N),
+	PINGROUP(lcd_gpio2_pv4,		DCB,		PWM1,		RSVD3,		SOR1,		0x320c,  Y,	12,	-1,	N,	N),
 	PINGROUP(ap_ready_pv5,		RSVD1,		RSVD2,		RSVD3,		RSVD4,		0x3210,  Y,	12,	-1,	N,	N),
 	PINGROUP(touch_rst_pv6,		RSVD1,		RSVD2,		RSVD3,		RSVD4,		0x3214,  Y,	12,	-1,	N,	N),
 	PINGROUP(touch_clk_pv7,		TOUCH,		RSVD2,		RSVD3,		RSVD4,		0x3218,  Y,	12,	-1,	N,	N),
@@ -3052,7 +3067,7 @@ static const struct tegra_pingroup tegra210_groups[] = {
 	PINGROUP(button_slide_sw_py0,	RSVD1,		RSVD2,		RSVD3,		RSVD4,		0x323c,  Y,	12,	-1,	N,	N),
 	PINGROUP(button_home_py1,	RSVD1,		RSVD2,		RSVD3,		RSVD4,		0x3240,  Y,	12,	-1,	N,	N),
 	PINGROUP(pa6,			SATA,		RSVD2,		RSVD3,		RSVD4,		0x3244,  Y,	12,	-1,	N,	N),
-	PINGROUP(pe6,			RSVD1,		I2S5,		PWM3,		RSVD4,		0x3248,  Y,	12,	-1,	N,	N),
+	PINGROUP(pe6,			RSVD1,		I2S5,		PWM2,		RSVD4,		0x3248,  Y,	12,	-1,	N,	N),
 	PINGROUP(pe7,			RSVD1,		I2S5,		PWM3,		RSVD4,		0x324c,  Y,	12,	-1,	N,	N),
 	PINGROUP(ph6,			RSVD1,		RSVD2,		RSVD3,		RSVD4,		0x3250,  Y,	12,	-1,	N,	N),
 	PINGROUP(pk5,			IQC1,		RSVD2,		RSVD3,		RSVD4,		0x3268,  Y,	12,	 9,	Y,	N),
