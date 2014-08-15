@@ -145,7 +145,7 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	{ "sbc4",	"pll_p",	25000000,	false},
 	{ "sbc5",	"pll_p",	25000000,	false},
 	{ "sbc6",	"pll_p",	25000000,	false},
-	{ "uarta",	"pll_p",	408000000,	false},
+	{ "uarta",	"pll_p",	408000000,	true},
 	{ "uartb",	"pll_p",	408000000,	false},
 	{ "uartc",	"pll_p",	408000000,	false},
 	{ "uartd",	"pll_p",	408000000,	false},
