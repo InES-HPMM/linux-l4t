@@ -21,14 +21,14 @@ config TEGRA_APE_AGIC
 config TEGRA_NVADSP_ON_SMMU
 	bool "Use SMMU to relocate ADSP"
 	depends on TEGRA_IOMMU_SMMU && TEGRA_NVADSP
-	default y
+	default n
 	help
 	  Use SMMU to relocate ADSP OS.
 
 config TEGRA_ADSP_DFS
 	bool "Enable ADSP DFS"
 	depends on ARCH_TEGRA_APE
-	default y
+	default n
 	help
 	  Enable ADSP dynamic frequency scaling.
 
@@ -37,7 +37,7 @@ config TEGRA_ADSP_DFS
 config TEGRA_EMC_APE_DFS
 	bool "Enable emc dfs due to APE"
 	depends on ARCH_TEGRA_APE
-	default y
+	default n
 	help
 	  Enable emc dfs due to APE DRAM access
 
