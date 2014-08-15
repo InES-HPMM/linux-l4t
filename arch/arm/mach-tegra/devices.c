@@ -1634,20 +1634,3 @@ struct platform_device tegra_fuse_device = {
 	.name	= "tegra-fuse",
 	.id	= -1,
 };
-
-void __init tegra_init_debug_uart_rate(void)
-{
-	unsigned int uartclk;
-	struct clk *debug_uart_parent = clk_get_sys(NULL, "pll_p");
-
-	BUG_ON(IS_ERR(debug_uart_parent));
-	uartclk = clk_get_rate(debug_uart_parent);
-
-	debug_uarta_platform_data[0].uartclk = uartclk;
-	debug_uartb_platform_data[0].uartclk = uartclk;
-	debug_uartc_platform_data[0].uartclk = uartclk;
-	debug_uartd_platform_data[0].uartclk = uartclk;
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_21x_SOC)
-	debug_uarte_platform_data[0].uartclk = uartclk;
-#endif
-}

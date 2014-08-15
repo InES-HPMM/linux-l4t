@@ -277,6 +277,5 @@ void __init tegra21x_init_early(void)
 	tegra_powergate_init();
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
-	tegra_init_debug_uart_rate();
 }
 #endif

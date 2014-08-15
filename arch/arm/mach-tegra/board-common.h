@@ -26,8 +26,6 @@
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/consumer.h>
 
-extern struct platform_device *uart_console_debug_device;
-int  uart_console_debug_init(int defaul_debug_port);
 int tegra_vibrator_init(void);
 void tegra_add_all_vmin_trips(struct thermal_trip_info *trips, int *num_trips);
 void tegra_add_cpu_vmin_trips(struct thermal_trip_info *trips, int *num_trips);
