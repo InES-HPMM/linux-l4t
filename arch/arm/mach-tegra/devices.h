@@ -123,15 +123,10 @@ extern struct platform_device tegra_skin_therm_est_device;
 extern struct platform_device tegra_tsensor_device;
 #endif
 extern struct platform_device tegra_nor_device;
-extern struct platform_device debug_uarta_device;
-extern struct platform_device debug_uartb_device;
-extern struct platform_device debug_uartc_device;
-extern struct platform_device debug_uartd_device;
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 extern struct platform_device tegra_se_device;
 extern struct platform_device tegra11_se_device;
 extern struct platform_device tegra12_se_device;
-extern struct platform_device debug_uarte_device;
 #endif
 
 extern struct platform_device tegra_disp1_device;
@@ -142,7 +137,5 @@ extern struct platform_device tegra_xhci_device;
 extern struct platform_device tegra_cl_dvfs_device;
 #endif
 extern struct platform_device tegra_fuse_device;
-
-void __init tegra_init_debug_uart_rate(void);
 
 #endif
