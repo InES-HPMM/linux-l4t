@@ -867,4 +867,16 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
 #define  PCIE_PAD_LANE0			(((x) & 0x3) << 16)
 #define  PCIE_PAD_LANE1			(((x) & 0x3) << 18)
 
+#define UPHY_USB3_PAD0_ECTL_1			(0xa60)
+#define TX_TERM_CTRL(x)			(((x) & 0x3) << 16)
+
+#define UPHY_USB3_PAD0_ECTL_2			(0xa64)
+#define RX_CTLE(x)				(((x) & 0xffff) << 0)
+
+#define UPHY_USB3_PAD0_ECTL_3			(0xa68)
+#define RX_DFE(x)				(((x) & 0xffffffff) << 0)
+
+#define UPHY_USB3_PAD0_ECTL_6			(0xa74)
+#define RX_EQ_CTRL_H(x)			(((x) & 0xffffffff) << 0)
+
 #define XUSB_VBUS				(0xc60)

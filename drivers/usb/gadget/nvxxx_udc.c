@@ -4502,6 +4502,21 @@ static int nvudc_get_bdata(struct NV_UDC_S *nvudc)
 	return 0;
 }
 
+static void t210_program_ss_pad()
+{
+	tegra_usb_pad_reg_update(UPHY_USB3_PAD0_ECTL_1,
+			TX_TERM_CTRL(~0), TX_TERM_CTRL(0x2));
+
+	tegra_usb_pad_reg_update(UPHY_USB3_PAD0_ECTL_2,
+			RX_CTLE(~0), RX_CTLE(0xfb));
+
+	tegra_usb_pad_reg_update(UPHY_USB3_PAD0_ECTL_3,
+			RX_DFE(~0), RX_DFE(0x77f1f));
+
+	tegra_usb_pad_reg_update(UPHY_USB3_PAD0_ECTL_6,
+			RX_EQ_CTRL_H(~0), RX_EQ_CTRL_H(0xfcf01368));
+}
+
 static int nvudc_plat_pad_init(struct NV_UDC_S *nvudc)
 {
 	/* VBUS_ID init */
@@ -4515,6 +4530,8 @@ static int nvudc_plat_pad_init(struct NV_UDC_S *nvudc)
 	/* ss pad init for pad 0 */
 	xusb_ss_pad_init(0, (nvudc->bdata.ss_portmap & 0xf)
 			, XUSB_DEVICE_MODE);
+
+	t210_program_ss_pad();
 
 	tegra_xhci_ss_wake_signal(TEGRA_XUSB_SS_P0, false);
 	tegra_xhci_ss_vcore(TEGRA_XUSB_SS_P0, false);
