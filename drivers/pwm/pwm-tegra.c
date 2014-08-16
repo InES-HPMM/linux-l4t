@@ -191,14 +191,18 @@ static int tegra_pwm_probe(struct platform_device *pdev)
 	}
 
 	pwm->mmio_base = devm_ioremap_resource(&pdev->dev, r);
-	if (IS_ERR(pwm->mmio_base))
+	if (IS_ERR(pwm->mmio_base)) {
+		dev_err(&pdev->dev, "PWM io mapping failed\n");
 		return PTR_ERR(pwm->mmio_base);
+	}
 
 	platform_set_drvdata(pdev, pwm);
 
 	pwm->clk = devm_clk_get(&pdev->dev, NULL);
-	if (IS_ERR(pwm->clk))
+	if (IS_ERR(pwm->clk)) {
+		dev_err(&pdev->dev, "PWM clock get failed\n");
 		return PTR_ERR(pwm->clk);
+	}
 
 	pwm->chip.dev = &pdev->dev;
 	pwm->chip.ops = &tegra_pwm_ops;
