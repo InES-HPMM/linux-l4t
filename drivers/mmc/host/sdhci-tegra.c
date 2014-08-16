@@ -1360,7 +1360,10 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		sdhci_writel(host, tegra_host->dll_calib,
 				SDHCI_VNDR_DLLCAL_CFG);
 	if (plat->dqs_trim_delay) {
-		misc_ctrl = ((plat->dqs_trim_delay &
+		misc_ctrl = sdhci_readl(host, SDHCI_VNDR_CAP_OVERRIDES_0);
+		misc_ctrl &= ~(SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_MASK <<
+			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT);
+		misc_ctrl |= ((plat->dqs_trim_delay &
 			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_MASK) <<
 			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT);
 		sdhci_writel(host, misc_ctrl, SDHCI_VNDR_CAP_OVERRIDES_0);
