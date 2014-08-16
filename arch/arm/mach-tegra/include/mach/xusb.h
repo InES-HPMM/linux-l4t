@@ -19,6 +19,8 @@
 #ifndef _XUSB_H
 #define _XUSB_H
 
+#include <linux/types.h>
+
 /*
  * BIT0 - BIT7 : SS ports
  * BIT8 - BIT15 : USB2 UTMI ports
@@ -159,6 +161,14 @@ struct tegra_xusb_soc_config {
 	const char *default_firmware_file;
 	const struct tegra_xusb_padctl_regs *padctl_offsets;
 	void (*check_lane_owner_by_pad) (int pad, u32 lane_owner);
+
+	/* applicable to T210 */
+	u32 tx_term_ctrl;
+	u32 rx_ctle;
+	u32 rx_dfe;
+	u32 rx_eq_ctrl_h;
+
+	/* applicable to T114/T124/T132 */
 	u32 rx_wander;
 	u32 rx_eq;
 	u32 cdr_cntl;
