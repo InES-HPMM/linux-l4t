@@ -5,7 +5,7 @@
  * Author: Dara Ramesh <dramesh@nvidia.com>
  * Based on code by Stephen Warren <swarren@nvidia.com>
  *
- * Copyright (C) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -54,6 +54,7 @@
 #define TEGRA210_ADMAIF_XBAR_RX_FIFO_READ				0x2c
 
 #define TEGRA210_ADMAIF_GLOBAL_ENABLE					0x700
+#define TEGRA210_ADMAIF_GLOBAL_CG_0						0x708
 
 #define TEGRA210_ADMAIF_XBAR_DMA_FIFO_START_ADDR_SHIFT		0
 #define TEGRA210_ADMAIF_XBAR_DMA_FIFO_START_ADDR_MASK	(0x1f << TEGRA210_ADMAIF_XBAR_DMA_FIFO_START_ADDR_SHIFT)

@@ -614,6 +614,9 @@ static int tegra210_mixer_platform_probe(struct platform_device *pdev)
 		ret = PTR_ERR(mixer->regmap);
 		goto err_clk_put;
 	}
+
+	 /* Disable SLGC */
+	regmap_write(mixer->regmap, TEGRA210_MIXER_CG, 0);
 	regcache_cache_only(mixer->regmap, true);
 
 	if (of_property_read_u32(pdev->dev.of_node,

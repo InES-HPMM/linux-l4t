@@ -713,6 +713,8 @@ static int tegra210_amixer_probe(struct platform_device *pdev)
 		ret = PTR_ERR(amixer->regmap);
 		goto err_free;
 	}
+	/* Disable SLCG */
+	regmap_write(amixer->regmap, TEGRA210_AMIXER_CG, 0);
 	regcache_cache_only(amixer->regmap, true);
 
 	pm_runtime_enable(&pdev->dev);
