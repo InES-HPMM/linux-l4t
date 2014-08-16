@@ -272,6 +272,7 @@
                                 "qc2-charger", "downstream-charger","fast-charger",
                                 "slow-charger", "apple-500ma", "apple-1a",
                                 "apple-2a", "y-cable";
+				status = "disabled";
         };
 
 	ehci@7d004000 {
