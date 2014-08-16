@@ -235,6 +235,15 @@
 /*		interrupts = <0 102 0xf04>;		*/
 /*	};						*/
 
+	timer {
+		compatible = "arm,armv8-timer";
+		interrupts = <1 13 0xf01
+			      1 14 0xf01
+			      1 11 0xf01
+			      1 10 0xf01>;
+		clock-frequency = <38400000>;
+	};
+
 	timer@60005000 {
 		compatible = "nvidia,tegra210-timer";
 		reg = <0x0 0x60005000 0x0 0x400>;
