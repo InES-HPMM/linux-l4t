@@ -46,6 +46,8 @@
 struct tegra210_axbar_ctx {
 	struct device		*dev;
 	struct clk		*clk;
+	struct clk		*clk_parent;
+	struct clk		*clk_ape;
 	void __iomem		*regs;
 	struct regmap		*regmap;
 };
@@ -293,6 +295,18 @@ struct of_dev_auxdata axbar_auxdata[] = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-sfc", 0x702D2600, "tegra210-sfc.3",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-admaif", 0x702D0000,
+			"tegra210-admaif", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2s", 0x702D1000, "tegra210-i2s.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2s", 0x702D1100, "tegra210-i2s.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2s", 0x702D1200, "tegra210-i2s.2",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2s", 0x702D1300, "tegra210-i2s.3",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra210-i2s", 0x702D1400, "tegra210-i2s.4",
+				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-spkprot", 0x702D8C00,
 			"tegra210-spkprot.0", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-amixer", 0x702DBB00,
@@ -349,20 +363,56 @@ static int tegra210_axbar_probe(struct platform_device *pdev)
 	axbar = tegra210_axbar;
 	dev_set_drvdata(&pdev->dev, axbar);
 
-	/*
-	axbar->clk = clk_get(&pdev->dev, "d_audio");
+	axbar->clk = clk_get(&pdev->dev, "ahub");
 	if (IS_ERR(axbar->clk)) {
 		dev_err(&pdev->dev, "Can't retrieve ahub clock\n");
 		ret = PTR_ERR(axbar->clk);
 		goto err_free;
 	}
-	*/
+
+	axbar->clk_parent = clk_get_sys(NULL, "pll_a_out0");
+	if (IS_ERR(axbar->clk)) {
+		dev_err(&pdev->dev, "Can't retrieve pll_a_out0 clock\n");
+		ret = PTR_ERR(axbar->clk_parent);
+		goto err_clk_put_axbar;
+	}
+
+	axbar->clk_ape = clk_get_sys(NULL, "ape");
+	if (IS_ERR(axbar->clk_ape)) {
+		dev_err(&pdev->dev, "Can't retrieve ape clock\n");
+		ret = PTR_ERR(axbar->clk_ape);
+		goto err_clk_put_pll_a_out0;
+	}
+
+	ret = clk_set_rate(axbar->clk_parent, 24560000);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to set clock rate of pll_a_out0\n");
+		goto err_clk_put_ape;
+	}
+
+	ret = clk_set_parent(axbar->clk, axbar->clk_parent);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to set parent clock with pll_a_out0\n");
+		goto err_clk_put_ape;
+	}
+
+	ret = clk_enable(axbar->clk);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to enable xbar clock: %d\n", ret);
+		goto err_clk_put_ape;
+	}
+
+	ret = clk_enable(axbar->clk_ape);
+	if (ret) {
+		dev_err(&pdev->dev, "APE clk_enable failed: %d\n", ret);
+		goto err_clk_put_ape;
+	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(&pdev->dev, "No memory 0 resource\n");
 		ret = -ENODEV;
-		goto err_clk_put_axbar;
+		goto err_clk_put_ape;
 	}
 
 	region = devm_request_mem_region(&pdev->dev, res->start,
@@ -370,14 +420,14 @@ static int tegra210_axbar_probe(struct platform_device *pdev)
 	if (!region) {
 		dev_err(&pdev->dev, "Memory region 0 already claimed\n");
 		ret = -EBUSY;
-		goto err_clk_put_axbar;
+		goto err_clk_put_ape;
 	}
 
 	axbar->regs = devm_ioremap(&pdev->dev, res->start, resource_size(res));
 	if (!axbar->regs) {
 		dev_err(&pdev->dev, "ioremap 0 failed\n");
 		ret = -ENOMEM;
-		goto err_clk_put_axbar;
+		goto err_clk_put_ape;
 	}
 
 	axbar->regmap = devm_regmap_init_mmio(&pdev->dev, axbar->regs,
@@ -385,7 +435,7 @@ static int tegra210_axbar_probe(struct platform_device *pdev)
 	if (IS_ERR(axbar->regmap)) {
 		dev_err(&pdev->dev, "regmap init failed\n");
 		ret = PTR_ERR(axbar->regmap);
-		goto err_clk_put_axbar;
+		goto err_clk_put_ape;
 	}
 
 	pm_runtime_enable(&pdev->dev);
@@ -394,7 +444,6 @@ static int tegra210_axbar_probe(struct platform_device *pdev)
 		if (ret)
 			goto err_pm_disable;
 	}
-
 
 	if (pdev->dev.of_node)
 		of_platform_populate(pdev->dev.of_node, NULL, axbar_auxdata,
@@ -406,9 +455,13 @@ static int tegra210_axbar_probe(struct platform_device *pdev)
 
 err_pm_disable:
 	pm_runtime_disable(&pdev->dev);
+err_clk_put_ape:
+	clk_put(axbar->clk_ape);
+err_clk_put_pll_a_out0:
+	clk_put(axbar->clk_parent);
 err_clk_put_axbar:
-	/*clk_put(axbar->clk);
-err_free:*/
+	clk_put(axbar->clk);
+err_free:
 	tegra210_axbar = NULL;
 exit:
 	dev_dbg(&pdev->dev, "AXBAR probe failed with %d", ret);

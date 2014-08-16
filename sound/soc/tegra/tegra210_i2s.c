@@ -671,7 +671,7 @@ static int tegra210_i2s_platform_probe(struct platform_device *pdev)
 	struct resource *mem, *memregion;
 	void __iomem *regs;
 	int ret = 0;
-	int id = 0;
+	int id = 0, srate = 48000, channels = 2, bps = 16;
 
 	if (!pdev->dev.of_node) {
 		dev_err(&pdev->dev, " %s failed, no DT node for I2S ",
@@ -705,6 +705,38 @@ static int tegra210_i2s_platform_probe(struct platform_device *pdev)
 	}
 
 	tegra210_i2s[i2s->id] = i2s;
+
+	i2s->clk_i2s = clk_get(&pdev->dev, NULL);
+	if (IS_ERR(i2s->clk_i2s)) {
+		dev_err(&pdev->dev, "Can't retrieve I2S %d clock\n", i2s->id);
+		ret = PTR_ERR(i2s->clk_i2s);
+		goto err;
+	}
+
+	i2s->clk_pll_a_out0 = clk_get_sys(NULL, "pll_a_out0");
+	if (IS_ERR(i2s->clk_pll_a_out0)) {
+		dev_err(&pdev->dev, "Can't retrieve pll_a_out0 clock\n");
+		ret = PTR_ERR(i2s->clk_pll_a_out0);
+		goto err_i2s_clk_put;
+	}
+
+	ret = clk_set_parent(i2s->clk_i2s, i2s->clk_pll_a_out0);
+	if (ret) {
+		dev_err(&pdev->dev, "Can't set parent of I2S clock\n");
+		goto err_pll_a_out0_clk_put;
+	}
+
+	ret = clk_set_rate(i2s->clk_i2s, srate * channels * bps);
+	if (ret) {
+		dev_err(&pdev->dev, "Can't set I2S clock rate: %d\n", ret);
+		goto err_pll_a_out0_clk_put;
+	}
+
+	ret = clk_prepare_enable(i2s->clk_i2s);
+	if (ret) {
+		dev_err(&pdev->dev, "clk_enable failed: %d\n", ret);
+		goto err_pll_a_out0_clk_put;
+	}
 
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!mem) {
@@ -750,6 +782,9 @@ static int tegra210_i2s_platform_probe(struct platform_device *pdev)
 err_pm_disable:
 	pm_runtime_disable(&pdev->dev);
 err_pll_a_out0_clk_put:
+	clk_put(i2s->clk_pll_a_out0);
+err_i2s_clk_put:
+	clk_put(i2s->clk_i2s);
 err:
 	return ret;
 }
