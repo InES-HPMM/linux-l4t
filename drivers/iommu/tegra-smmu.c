@@ -289,7 +289,7 @@ int _tegra_smmu_get_asid(u64 swgids)
 	if (swgids & SWGID(DC) ||
 	    swgids & SWGID(DCB))
 		return SYSTEM_DC;
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#else
 	if (swgids & SWGID(DC) ||
 	    swgids & SWGID(DC12))
 		return SYSTEM_DC;
