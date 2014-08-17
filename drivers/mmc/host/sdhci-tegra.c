@@ -71,6 +71,9 @@
 #define SDHCI_VNDR_CLK_CTRL_TAP_VALUE_MASK		0xFF
 #define SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_MASK		0x1F
 
+#define SDHCI_VNDR_SYS_SW_CTRL				0x104
+#define SDHCI_VNDR_SYS_SW_CTRL_WR_CRC_USE_TMCLK		0x40000000
+
 #define SDHCI_VNDR_CAP_OVERRIDES_0			0x10c
 #define SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT	8
 #define SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_MASK	0x3F
@@ -189,6 +192,8 @@
 /* Special PAD control register settings are needed for T210 */
 #define NVQUIRK_UPDATE_PAD_CNTRL_REG		BIT(29)
 #define NVQUIRK_UPDATE_PIN_CNTRL_REG		BIT(30)
+/* Use timeout clk for write crc status data timeout counter */
+#define NVQUIRK_USE_TMCLK_WR_CRC_TIMEOUT	BIT(31)
 
 /* Common subset of quirks for Tegra3 and later sdmmc controllers */
 #define TEGRA_SDHCI_NVQUIRKS	(NVQUIRK_ENABLE_PADPIPE_CLKEN | \
@@ -1378,6 +1383,14 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	sdhci_writel(host, misc_ctrl, SDMMC_VNDR_IO_TRIM_CNTRL_0);
 	udelay(3);
 #endif
+
+	/* Use timeout clk data timeout counter for generating wr crc status */
+	if (soc_data->nvquirks &
+		NVQUIRK_USE_TMCLK_WR_CRC_TIMEOUT) {
+		vendor_ctrl = sdhci_readl(host, SDHCI_VNDR_SYS_SW_CTRL);
+		vendor_ctrl |= SDHCI_VNDR_SYS_SW_CTRL_WR_CRC_USE_TMCLK;
+		sdhci_writel(host, vendor_ctrl, SDHCI_VNDR_SYS_SW_CTRL);
+	}
 }
 
 static int tegra_sdhci_buswidth(struct sdhci_host *sdhci, int bus_width)
@@ -4243,7 +4256,8 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 		    NVQUIRK_SET_CALIBRATION_OFFSETS |
 		    NVQUIRK_DISABLE_TIMER_BASED_TUNING |
 		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK |
-		    NVQUIRK_UPDATE_PAD_CNTRL_REG,
+		    NVQUIRK_UPDATE_PAD_CNTRL_REG |
+		    NVQUIRK_USE_TMCLK_WR_CRC_TIMEOUT,
 	.parent_clk_list = {"pll_p"},
 };
 
