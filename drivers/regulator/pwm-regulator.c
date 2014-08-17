@@ -295,6 +295,7 @@ static int pwm_regulator_probe(struct platform_device *pdev)
 	config.dev = &pdev->dev;
 	config.init_data = preg->rinit_data;
 	config.driver_data = preg;
+	config.of_node = pdev->dev.of_node;
 
 	preg->rdev = devm_regulator_register(&pdev->dev, &preg->desc, &config);
 	if (IS_ERR(preg->rdev)) {
