@@ -333,9 +333,9 @@ struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-pwm", 0x7000a000, "tegra-pwm", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-camera", 0, "pcl-generic",
 			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY_BASE, "tegradc.0",
+	OF_DEV_AUXDATA("nvidia,tegra210-dc", TEGRA_DISPLAY_BASE, "tegradc.0",
 			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY2_BASE, "tegradc.1",
+	OF_DEV_AUXDATA("nvidia,tegra210-dc", TEGRA_DISPLAY2_BASE, "tegradc.1",
 			NULL),
 	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
 #ifdef CONFIG_TEGRA_CEC_SUPPORT
