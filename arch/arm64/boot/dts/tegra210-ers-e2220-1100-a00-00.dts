@@ -94,6 +94,8 @@
 		l6-hvddio-pex-supply = <&max77620_sd3>;
 		vddio-pex-ctl-supply = <&max77620_sd3>;
 		status = "okay";
+	};
+
 	host1x {
 		/* tegradc.0 */
 		dc@54200000 {
