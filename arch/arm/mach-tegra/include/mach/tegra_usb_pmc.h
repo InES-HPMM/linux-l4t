@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -212,6 +212,15 @@
 
 #define PMC_UTMIP_MASTER_CONFIG		0x274
 #define UTMIP_PWR(inst)		(1 << (inst))
+
+#define UTMIP_BIAS_TRK_START_COUNT(x) (((x) & 0xff) << 14)
+
+#define UTMIP_BIAS_CFG0			0x80c
+#define   UTMIP_BIASPD			(1 << 10)
+#define   UTMIP_HSSQUELCH_LEVEL(x)	(((x) & 0x3) << 0)
+
+#define UTMIP_BIAS_CFG2			0x850
+#define   UTMIP_HSSQUELCH_LEVEL_NEW(x)	(((x) & 0x7) << 0)
 
 #ifdef DEBUG
 #define DBG(stuff...)	pr_info("\n"stuff)

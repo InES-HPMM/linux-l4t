@@ -167,6 +167,7 @@
 #define UTMIP_SPARE_CFG0	0x834
 #define   FUSE_SETUP_SEL		(1 << 3)
 #define   FUSE_ATERM_SEL		(1 << 4)
+#define   FUSE_SQUELCH_SEL		(1 << 7)
 
 #define UHSIC_PLL_CFG1				0xc04
 #define   UHSIC_XTAL_FREQ_COUNT(x)		(((x) & 0xfff) << 0)
@@ -332,6 +333,15 @@ static struct tegra_xtal_freq utmip_freq_table[] = {
 		.xtal_freq_count = 0xFE,
 		.debounce = 0xFDE8,
 		.pdtrk_count = 9,
+	},
+	{
+		.freq = 38400000,
+		.enable_delay = 0x00,
+		.stable_count = 0x00,
+		.active_delay = 0x18,
+		.xtal_freq_count = 0x177,
+		.debounce = 0xBB80,
+		.pdtrk_count = 0xA,
 	},
 };
 
@@ -1110,10 +1120,20 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val |= UTMIP_XCVR_TERM_RANGE_ADJ(config->term_range_adj);
 	writel(val, base + UTMIP_XCVR_CFG1);
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	val = readl(base + UTMIP_BIAS_CFG0);
+	val &= ~UTMIP_HSSQUELCH_LEVEL(~0);
+	val |= UTMIP_HSSQUELCH_LEVEL(2);
+	writel(val, base + UTMIP_BIAS_CFG0);
+
+	val = readl(base + UTMIP_BIAS_CFG2);
+	val &= ~UTMIP_HSSQUELCH_LEVEL_NEW(~0);
+	val |= UTMIP_HSSQUELCH_LEVEL_NEW(3);
+	writel(val, base + UTMIP_BIAS_CFG2);
+
 	/* 20soc process is not tolerant to 3.3v
 	 * activate protection circuits for usb2 pads
 	 */
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
 	val = readl(base + UTMIP_XCVR_CFG2);
 	val &= ~UTMIP_XCVR_VREG_MASK;
 	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE)
@@ -1132,6 +1152,9 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val = readl(base + UTMIP_SPARE_CFG0);
 	val &= ~FUSE_SETUP_SEL;
 	val |= FUSE_ATERM_SEL;
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	val &= ~FUSE_SQUELCH_SEL;
+#endif
 	writel(val, base + UTMIP_SPARE_CFG0);
 
 	val = readl(base + USB_SUSP_CTRL);
