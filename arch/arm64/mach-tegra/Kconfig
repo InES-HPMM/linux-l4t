@@ -26,7 +26,6 @@ config ARCH_TEGRA_13x_SOC
 	select PM_GENERIC_DOMAINS if PM
 	select MACH_HAS_SND_SOC_TEGRA_MAX98090 if SND_SOC
 	select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
-	select ARM64_SIMPLE_SPINLOCK
 	select ZONE_DMA32 if !TEGRA_IOMMU_SMMU
 	help
 	  Support for NVIDIA Tegra 13x family of SoCs, based upon the
