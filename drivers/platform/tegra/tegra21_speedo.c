@@ -296,7 +296,7 @@ int tegra_core_speedo_mv(void)
 	switch (soc_speedo_id) {
 	case 0:
 	case 1:
-		return 1150; //1225;
+		return 1225;
 	default:
 		BUG();
 	}
