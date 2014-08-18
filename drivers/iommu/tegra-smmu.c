@@ -2504,11 +2504,24 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 	struct device *dev = _dev;
 	struct smmu_map_prop prop;
 	u64 swgids;
+	const char * const event_to_string[] = {
+		"-----",
+		"ADD_DEVICE",
+		"DEL_DEVICE",
+		"BIND_DRIVER",
+		"BOUND_DRIVER",
+		"UNBIND_DRIVER",
+		"UNBOUND_DRIVER",
+	};
 
 	swgids = tegra_smmu_of_get_swgids(dev, &prop);
 	if (swgids_is_error(swgids))
 		goto end;
 	/* dev is a smmu client */
+
+	pr_debug("%s() dev=%s swgids=%llx event=%s ops=%p\n",
+		__func__, dev_name(dev), swgids,
+		event_to_string[event], get_dma_ops(dev));
 
 	switch (event) {
 	case BUS_NOTIFY_BIND_DRIVER:
