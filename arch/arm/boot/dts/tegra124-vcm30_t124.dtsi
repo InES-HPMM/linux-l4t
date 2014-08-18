@@ -89,9 +89,9 @@
 
 	spi@7000d800 {
 		status = "disabled";
-		spi@0 {
+		spi@1 {
 			compatible = "spidev";
-			reg = <0>;
+			reg = <1>;
 			spi-max-frequency = <25000000>;
 		};
 	};
