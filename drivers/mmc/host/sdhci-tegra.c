@@ -88,10 +88,10 @@
 #define SDHCI_VNDR_MISC_CTRL_EN_EXT_LOOPBACK_SHIFT	17
 
 #define SDHCI_VNDR_DLLCAL_CFG				0x1b0
-#define SDHCI_VNDR_DLLCAL_CFG_EN_CALIBRATE		0x10000000
+#define SDHCI_VNDR_DLLCAL_CFG_EN_CALIBRATE		0x80000000
 
 #define SDHCI_VNDR_DLLCAL_CFG_STATUS			0x1bc
-#define SDHCI_VNDR_DLLCAL_CFG_STATUS_DLL_ACTIVE		0x10000000
+#define SDHCI_VNDR_DLLCAL_CFG_STATUS_DLL_ACTIVE		0x80000000
 
 #define SDHCI_VNDR_TUN_CTRL				0x1c0
 /* Enable Re-tuning request only when CRC error is detected
@@ -4310,8 +4310,8 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 
 	plat->mmc_data.built_in = of_property_read_bool(np, "built-in");
 	plat->update_pinctrl_settings = of_property_read_bool(np,
-			"update-pinctrl-settings");
-	plat->dll_calib_needed = of_property_read_bool(np, "dll-calib-needed");
+			"nvidia,update-pinctrl-settings");
+	plat->dll_calib_needed = of_property_read_bool(np, "nvidia,dll-calib-needed");
 	plat->disable_clock_gate = of_property_read_bool(np,
 		"disable-clock-gate");
 	of_property_read_u8(np, "default-drv-type", &plat->default_drv_type);
@@ -4394,6 +4394,8 @@ static int sdhci_tegra_init_pinctrl_info(struct device *dev,
 {
 	struct device_node *np = dev->of_node;
 	const char *drive_gname;
+	int i = 0;
+	int ret = 0;
 
 	if (!np)
 		return 0;
@@ -4428,6 +4430,12 @@ static int sdhci_tegra_init_pinctrl_info(struct device *dev,
 			"sdmmc_clk_schmitt_disable");
 		if (IS_ERR(tegra_host->schmitt_disable[1]))
 			dev_warn(dev, "Missing clk schmitt disable state\n");
+		for (i = 0; i < 2; i++) {
+			ret = pinctrl_select_state(tegra_host->pinctrl_sdmmc,
+						tegra_host->schmitt_disable[i]);
+			if (ret < 0)
+				dev_warn(dev, "setting schmitt state failed\n");
+		}
 	}
 
 	tegra_host->pinctrl = pinctrl_get_dev_from_of_property(np,
