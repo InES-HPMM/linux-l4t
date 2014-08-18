@@ -1231,11 +1231,8 @@ static int tegra_adma_probe(struct platform_device *pdev)
 	}
 
 	/* Enable clock before accessing registers */
-	ret = clk_prepare_enable(tdma->dma_clk);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "clk_prepare_enable failed: %d\n", ret);
-		goto err_pm_disable;
-	}
+	pm_runtime_get_sync(&pdev->dev);
+
 	/* Reset ADMA controller */
 	global_write(tdma, ADMA_GLOBAL_INT_CLEAR, 0x1);
 	global_write(tdma, ADMA_GLOBAL_INT_SET, 0x1);
@@ -1299,6 +1296,9 @@ static int tegra_adma_probe(struct platform_device *pdev)
 	tdma->dma_dev.device_issue_pending = tegra_adma_issue_pending;
 	/* Enable global ADMA registers */
 	global_write(tdma, ADMA_GLOBAL_CMD, 1);
+
+	pm_runtime_put_sync(&pdev->dev);
+
 	ret = dma_async_device_register(&tdma->dma_dev);
 	if (ret < 0) {
 		dev_err(&pdev->dev,
