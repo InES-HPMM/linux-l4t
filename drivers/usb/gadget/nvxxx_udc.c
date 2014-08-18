@@ -3120,7 +3120,7 @@ static ssize_t debug_store(struct device *_dev, struct device_attribute *attr,
 
 	return size;
 }
-static DEVICE_ATTR(debug, S_IRUGO|S_IWUSR, NULL, debug_store);
+static DEVICE_ATTR(debug, S_IWUSR, NULL, debug_store);
 
 static void portpm_config_war(struct NV_UDC_S *nvudc)
 {
