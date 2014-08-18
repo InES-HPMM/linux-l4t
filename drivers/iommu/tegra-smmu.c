@@ -48,6 +48,8 @@
 
 #include <mach/tegra-swgid.h>
 
+#include <dt-bindings/memory/tegra-swgroup.h>
+
 /* HACK! This needs to come from device tree */
 #include "../../arch/arm/mach-tegra/iomap.h"
 
@@ -544,7 +546,7 @@ static u64 __tegra_smmu_of_get_swgids(struct device *dev,
 				    struct smmu_map_prop *prop)
 {
 	struct of_phandle_iter iter;
-	u64 fixup, swgids = 0;
+	u64 fixup, swgids = SWGIDS_ERROR_CODE;
 	int err = -EINVAL;
 
 	if (prop)
@@ -576,10 +578,10 @@ static u64 __tegra_smmu_of_get_swgids(struct device *dev,
 	}
 
 	fixup = tegra_smmu_fixup_swgids(dev, prop ? &prop->area : NULL);
-	if (!fixup)
+	if (swgids_is_error(fixup))
 		return swgids;
 
-	if (!swgids) {
+	if (swgids_is_error(swgids)) {
 		dev_notice(dev,
 			   "No DT found, got swgids from fixup(%llx)\n", fixup);
 		return fixup;
@@ -674,14 +676,14 @@ static struct smmu_client *tegra_smmu_register_client(struct smmu_device *smmu,
 static u64 tegra_smmu_of_get_swgids(struct device *dev,
 				    struct smmu_map_prop *out_prop)
 {
-	u64 swgids;
+	u64 swgids = SWGIDS_ERROR_CODE;
 	struct smmu_client *client;
 	struct smmu_map_prop *prop, _prop = { .valid = false, };
 
 	prop = &_prop;
 
 	if (!smmu_handle)
-		return 0;
+		goto out;
 
 	client = tegra_smmu_find_client(smmu_handle, dev);
 	if (client) {
@@ -691,12 +693,12 @@ static u64 tegra_smmu_of_get_swgids(struct device *dev,
 	}
 
 	swgids = __tegra_smmu_of_get_swgids(dev, prop);
-	if (!swgids)
+	if (swgids_is_error(swgids))
 		goto out;
 
 	client = tegra_smmu_register_client(smmu_handle, dev, swgids, prop);
 	if (!client)
-		swgids = 0;
+		swgids = SWGIDS_ERROR_CODE;
 out:
 	if (out_prop)
 		memcpy(out_prop, prop, sizeof(*prop));
@@ -2504,7 +2506,7 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 	u64 swgids;
 
 	swgids = tegra_smmu_of_get_swgids(dev, &prop);
-	if (!swgids)
+	if (swgids_is_error(swgids))
 		goto end;
 	/* dev is a smmu client */
 

@@ -82,4 +82,7 @@
 
 #define TEGRA_SWGROUP_MAX	64
 
+#define SWGIDS_ERROR_CODE	(~0ULL)
+#define swgids_is_error(x)	((x) == SWGIDS_ERROR_CODE)
+
 #endif /* _DT_BINDINGS_MEMORY_TEGRA_SWGROUP_H */

@@ -22,6 +22,8 @@
 
 #include <mach/tegra-swgid.h>
 
+#include <dt-bindings/memory/tegra-swgroup.h>
+
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "../../../arch/arm/mach-tegra/board.h"
 
@@ -338,7 +340,7 @@ u64 tegra_smmu_fixup_swgids(struct device *dev, struct iommu_linear_map **map)
 	struct swgid_fixup *table;
 
 	if (!dev)
-		return 0;
+		return SWGIDS_ERROR_CODE;
 
 	switch (tegra_get_chipid()) {
 	case TEGRA_CHIPID_TEGRA12:
@@ -363,7 +365,7 @@ u64 tegra_smmu_fixup_swgids(struct device *dev, struct iommu_linear_map **map)
 		table++;
 	}
 
-	return 0;
+	return SWGIDS_ERROR_CODE;
 }
 EXPORT_SYMBOL(tegra_smmu_fixup_swgids);
 
