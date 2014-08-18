@@ -771,12 +771,8 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
 #define msg_warn(dev, fmt, args...) \
 	{ dev_warn(dev, fmt, ## args); }
 
-#define msg_entry(dev)  \
-	do { \
-		unsigned int _cpu = smp_processor_id(); \
-		msg_dbg(dev, "enter, cpu=%d\n", _cpu);  \
-	} while (0)
-#define msg_exit(dev) msg_dbg(dev, "exit");
+#define msg_entry(dev) msg_dbg(dev, "enter\n")
+#define msg_exit(dev) msg_dbg(dev, "exit\n")
 
 /* xhci dev registers*/
 #define TERMINATION_1				(0x7e4)
