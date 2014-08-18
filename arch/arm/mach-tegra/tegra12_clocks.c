@@ -9048,7 +9048,7 @@ bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 	 *  Ideally, this function should be a look-up table for permissions
 	 *  based on SKU. For now, allowing all combinations for Automotive SKU.
 	 */
-	if (tegra_soc_speedo_id() == 2)
+	if (tegra_is_soc_automotive_speedo())
 		return true;
 
 	/*
@@ -9770,7 +9770,7 @@ void __init tegra12x_init_clocks(void)
 	struct clk *c;
 
 	/* Allow host1x fractional divider for Automotive SKUs */
-	if (tegra_soc_speedo_id() != 2)
+	if (!tegra_is_soc_automotive_speedo())
 		tegra_clk_host1x.flags |= DIV_U71_INT;
 
 	for (i = 0; i < ARRAY_SIZE(tegra_ptr_clks); i++)

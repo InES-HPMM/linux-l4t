@@ -342,6 +342,11 @@ static int get_enable_app_profiles(char *val, const struct kernel_param *kp)
 {
 	return param_get_uint(val, kp);
 }
+bool tegra_is_soc_automotive_speedo(void)
+{
+	return (tegra_soc_speedo_id() == 2);
+}
+EXPORT_SYMBOL(tegra_is_soc_automotive_speedo);
 
 static struct kernel_param_ops tegra_profiles_ops = {
 	.get = get_enable_app_profiles,
