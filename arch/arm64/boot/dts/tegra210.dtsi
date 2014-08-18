@@ -1123,9 +1123,9 @@
 		status = "disabled";
 	};
 
-        xudc@700D0000 {
+        xudc@700d0000 {
                 compatible = "nvidia,tegra210-xudc";
-                reg = <0x0 0x700D0000 0x0 0x8000>,
+                reg = <0x0 0x700d0000 0x0 0x8000>,
                       <0x0 0x700d8000 0x0 0x1000>,
                       <0x0 0x700d9000 0x0 0x1000>,
                       <0x0 0x7009f000 0x0 0x1000>;
