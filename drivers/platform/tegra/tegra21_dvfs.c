@@ -239,7 +239,7 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id =  -1,
 		.process_id = -1,
-		.max_mv = 1225,
+		.max_mv = 1000, /* 1225, */
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.thermal_scale = 10,
