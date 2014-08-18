@@ -120,6 +120,7 @@
 
 	spi@7000d400 {
 		status = "okay";
+		compatible = "nvidia,tegra114-spi-slave";
 	};
 
 	spi@7000d600 {

@@ -40,7 +40,22 @@
 		OF_DEV_AUXDATA("nvidia,tegra124-spi", 0x7000d800, "spi-tegra114.2", NULL),  \
 		OF_DEV_AUXDATA("nvidia,tegra124-spi", 0x7000da00, "spi-tegra114.3", NULL),  \
 		OF_DEV_AUXDATA("nvidia,tegra124-spi", 0x7000dc00, "spi-tegra114.4", NULL),  \
-		OF_DEV_AUXDATA("nvidia,tegra124-spi", 0x7000de00, "spi-tegra114.5", NULL)
+		OF_DEV_AUXDATA("nvidia,tegra124-spi", 0x7000de00, \
+				"spi-tegra114.5", NULL),  \
+		/* slave */ \
+		OF_DEV_AUXDATA("nvidia,tegra114-spi-slave", 0x7000d400, \
+				"spi-tegra114-slave.0", NULL),  \
+		OF_DEV_AUXDATA("nvidia,tegra114-spi-slave", 0x7000d600, \
+				"spi-tegra114-slave.1", NULL),  \
+		OF_DEV_AUXDATA("nvidia,tegra114-spi-slave", 0x7000d800, \
+				"spi-tegra114-slave.2", NULL),  \
+		OF_DEV_AUXDATA("nvidia,tegra114-spi-slave", 0x7000da00, \
+				"spi-tegra114-slave.3", NULL),  \
+		OF_DEV_AUXDATA("nvidia,tegra114-spi-slave", 0x7000dc00, \
+				"spi-tegra114-slave.4", NULL),  \
+		OF_DEV_AUXDATA("nvidia,tegra114-spi-slave", 0x7000de00, \
+				"spi-tegra114-slave.5", NULL)
+
 
 #define T124_I2C_OF_DEV_AUXDATA \
         OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000c000, "tegra12-i2c.0", NULL),  \
