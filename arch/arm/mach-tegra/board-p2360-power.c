@@ -137,6 +137,10 @@ static struct i2c_board_info __initdata max15569_vddgpu_boardinfo[] = {
 
 int __init p2360_regulator_init(void)
 {
+	/* Use the address 0x3b for gpu regulator on A00 board */
+	if (tegra_is_board(NULL, "62360", NULL, "000", NULL))
+		max15569_vddgpu_boardinfo[0].addr = 0x3b;
+
 	tegra_pmc_pmu_interrupt_polarity(true);
 
 	max15569_vddgpu_pdata.ena_gpio = TEGRA_GPIO_PR2;

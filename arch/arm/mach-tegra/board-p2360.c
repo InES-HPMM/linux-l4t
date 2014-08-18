@@ -39,7 +39,7 @@
 #include "board-panel.h"
 #include "tegra-of-dev-auxdata.h"
 
-static int is_p2360_a01;
+static int is_p2360_a00;
 
 static int __init p2360_gpio_init(void)
 {
@@ -177,13 +177,14 @@ static void __init tegra_p2360_late_init(void)
 	isomgr_init();
 	p2360_panel_init();
 
-	if (is_p2360_a01)
+	/* Initialize TV Enable GPIOs for all boards later than A00 */
+	if (!is_p2360_a00)
 		p2360_gpio_init();
 }
 
 static void __init tegra_p2360_dt_init(void)
 {
-	is_p2360_a01 = tegra_is_board(NULL, "62360", NULL, "100", NULL);
+	is_p2360_a00 = tegra_is_board(NULL, "62360", NULL, "000", NULL);
 
 	tegra_p2360_early_init();
 
