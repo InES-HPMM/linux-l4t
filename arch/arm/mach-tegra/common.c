@@ -2385,56 +2385,6 @@ void __init tegra_init_late(void)
 	tegra_powergate_debugfs_init();
 }
 
-#define ASIM_SHUTDOWN_REG	0x538f0ffc
-
-static void asim_power_off(void)
-{
-	pr_err("ASIM Powering off the device\n");
-	writel(1, IO_ADDRESS(ASIM_SHUTDOWN_REG));
-	while (1)
-		;
-}
-
-static int __init asim_power_off_init(void)
-{
-	if (tegra_cpu_is_asim())
-		pm_power_off = asim_power_off;
-	return 0;
-}
-
-arch_initcall(asim_power_off_init);
-
-#if defined(CONFIG_SMC91X)
-static struct resource tegra_asim_smc91x_resources[] = {
-	[0] = {
-		.start		= TEGRA_SIM_ETH_BASE,
-		.end		= TEGRA_SIM_ETH_BASE + TEGRA_SIM_ETH_SIZE - 1,
-		.flags		= IORESOURCE_MEM,
-	},
-	[1] = {
-		.start		= IRQ_ETH,
-		.end		= IRQ_ETH,
-		.flags		= IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device tegra_asim_smc91x_device = {
-	.name		= "smc91x",
-	.id		= 0,
-	.num_resources	= ARRAY_SIZE(tegra_asim_smc91x_resources),
-	.resource	= tegra_asim_smc91x_resources,
-};
-
-static int __init asim_enet_smc91x_init(void)
-{
-	if (tegra_cpu_is_asim() && !tegra_cpu_is_dsim())
-		platform_device_register(&tegra_asim_smc91x_device);
-	return 0;
-}
-
-rootfs_initcall(asim_enet_smc91x_init);
-#endif
-
 #if defined(CONFIG_SMSC911X)
 static struct resource tegra_smsc911x_resources[] = {
 	[0] = {
