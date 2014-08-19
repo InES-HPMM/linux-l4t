@@ -23,6 +23,7 @@
 #include "tegra124-vcm30_t124.dtsi"
 #include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
 #include <tegra124-platforms/tegra124-p2360-pinmux.dtsi>
+#include <panel-a-lvds-800-480-14-0.dtsi>
 
 / {
 	model = "NVIDIA Tegra124 p2360";
@@ -32,8 +33,18 @@
 	#size-cells = <2>;
 
 	host1x {
+		sor {
+			status = "okay";
+		};
 		/* tegradc.0 */
 		dc@54200000 {
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			status = "okay";
+		};
+		/* tegradc.1 */
+		dc@54240000 {
 			nvidia,emc-clk-rate = <300000000>;
 			nvidia,fb-bpp = <32>; /* bits per pixel */
 			status = "okay";
