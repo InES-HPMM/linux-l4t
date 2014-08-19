@@ -45,6 +45,10 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
+	pmc@7000e400 {
+		nvidia,invert-interrupt;
+	};
+
 	chosen {
 		bootargs ="mem=1024M@2048M console=ttyS0,115200 earlyprintk=uart8250-32bit,0x70006000";
         };
