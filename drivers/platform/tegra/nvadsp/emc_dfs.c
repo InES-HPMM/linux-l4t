@@ -204,43 +204,44 @@ static int period_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(period_fops, period_get, period_set, "%llu\n");
 
 
-static int __init emc_dfs_debugfs_init(void)
+static int __init emc_dfs_debugfs_init(struct nvadsp_drv_data *drv)
 {
 	int ret = -ENOMEM;
-	struct dentry *d, *parent;
+	struct dentry *d;
 
-	parent = debugfs_create_dir("tegra_ape", NULL);
-	if (!parent)
+	if (!drv->adsp_debugfs_root)
 		return ret;
 
-	emc_dfs_root  = debugfs_create_dir("emc_dfs", parent);
+	emc_dfs_root  = debugfs_create_dir("emc_dfs", drv->adsp_debugfs_root);
 	if (!emc_dfs_root)
 		goto err_out;
 
 	d = debugfs_create_file("enable", RW_MODE, emc_dfs_root, NULL,
 		&enable_fops);
 	if (!d)
-		goto err_out;
+		goto err_root;
 
 	d = debugfs_create_file("boost_step", RW_MODE, emc_dfs_root, NULL,
 		&boost_fops);
 	if (!d)
-		goto err_out;
+		goto err_root;
 
 	d = debugfs_create_file("min_scale_down_time", RW_MODE, emc_dfs_root,
 		NULL, &down_fops);
 	if (!d)
-		goto err_out;
+		goto err_root;
 
 	d = debugfs_create_file("period", RW_MODE, emc_dfs_root, NULL,
 		&period_fops);
 	if (!d)
-		goto err_out;
+		goto err_root;
 
 	return 0;
 
+err_root:
+	debugfs_remove_recursive(emc_dfs_root);
+
 err_out:
-	debugfs_remove_recursive(parent);
 	return ret;
 }
 
@@ -268,7 +269,7 @@ status_t emc_dfs_init(struct platform_device *pdev)
 	pr_info("EMC DFS is initialized\n");
 
 #ifdef CONFIG_DEBUG_FS
-	emc_dfs_debugfs_init();
+	emc_dfs_debugfs_init(drv);
 #endif
 
 	return ret;

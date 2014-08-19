@@ -24,15 +24,17 @@ obj-${CONFIG_MACH_EXUMA}              += board-t132ref-norrin-power.o
 obj-${CONFIG_MACH_EXUMA}              += board-t132ref-norrin-memory.o
 obj-${CONFIG_MACH_EXUMA}              += board-t132ref-tn8-power.o
 
-obj-y					+= panel-lgd-wxga-7-0.o
-obj-y					+= panel-p-wuxga-10-1.o
-obj-y					+= panel-s-wqxga-10-1.o
-obj-y					+= panel-a-1200-800-8-0.o
-obj-y					+= panel-a-1200-1920-8-0.o
-obj-y					+= panel-a-edp-1080p-14-0.o
-obj-y					+= panel-i-edp-1080p-11-6.o
-obj-y					+= panel-c-lvds-1366-14.o
-obj-y					+= panel-a-1080p-14-0.o
+obj-y                   += panel-lgd-wxga-7-0.o
+obj-y                   += panel-p-wuxga-10-1.o
+obj-y                   += panel-s-wqxga-10-1.o
+obj-y                   += panel-a-1200-800-8-0.o
+obj-y                   += panel-a-1200-1920-8-0.o
+obj-y                   += panel-a-edp-1080p-14-0.o
+obj-y                   += panel-i-edp-1080p-11-6.o
+obj-y                   += panel-c-lvds-1366-14.o
+obj-y                   += panel-a-1080p-14-0.o
+obj-y                   += panel-j-1440-810-5-8.o
+obj-y                   += panel-c-edp-1366-768-14-0.o
 
 obj-${CONFIG_MACH_LOKI}               += board-loki-power.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-memory.o
@@ -41,7 +43,6 @@ obj-${CONFIG_MACH_LOKI}               += board-loki-sensors.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-kbc.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-panel.o
 obj-${CONFIG_MACH_LOKI}               += panel-l-720p-5-loki.o
-obj-${CONFIG_MACH_LOKI}               += panel-j-1440-810-5-8.o
 obj-${CONFIG_MACH_LOKI}               += panel-j-720p-5.o
 
 
@@ -74,9 +75,10 @@ endif
 obj-$(CONFIG_DENVER_CPU)              += denver-knobs.o
 obj-$(CONFIG_DENVER_CPU)              += denver-hardwood.o
 
-obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-t210-panel.o
-obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += panel-c-edp-1366-768-14-0.o
-obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-dt-t210.o
+obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-t210ref.o
+obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-t210ref-thermal.o
+obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-t210ref-panel.o
+obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-t210ref-camera.o
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += tegra21_memory.o
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += tegra21_init.o
 

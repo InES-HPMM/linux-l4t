@@ -2863,8 +2863,26 @@ static struct tegra_udc_soc_data tegra_soc_config = {
 	.op_mode = TEGRA_USB_OPMODE_DEVICE,
 };
 
+static struct tegra_udc_soc_data tegra21x_soc_config = {
+	.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 8,
+		.xcvr_setup = 8,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+	},
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = false,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_DEVICE,
+};
+
 static struct of_device_id tegra_udc_of_match[] = {
-	{.compatible = "nvidia,tegra210-udc", .data = &tegra_soc_config, },
+	{.compatible = "nvidia,tegra210-udc", .data = &tegra21x_soc_config, },
 	{.compatible = "nvidia,tegra132-udc", .data = &tegra_soc_config, },
 	{ /* termination */ },
 };

@@ -34,6 +34,7 @@
 #include "iomap.h"
 #include "board-common.h"
 #include "board-t210.h"
+#include "board-t210ref.h"
 
 #if defined(CONFIG_TEGRA_NVADSP) && \
 		!defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
@@ -184,7 +185,7 @@ static void __init tegra210_dt_init(void)
 			&platform_bus);
 
 	t210_emc_init();
-	t210_panel_init();
+	t210ref_panel_init();
 
 	tegra_init_suspend(&tegra21_suspend_data);
 }

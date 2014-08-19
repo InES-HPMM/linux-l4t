@@ -32,6 +32,8 @@
 #include "tegra210-platforms/tegra210-ers-pinmux-e2220-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-comms.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
+#include "panel-j-1440-810-5-8.dtsi"
+#include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 
 / {
 	model = "e2220";
@@ -55,6 +57,8 @@
 
 	sdhci@700b0400 {
 		uhs_mask = <0x1c>;
+		vddio_sdmmc-supply = <&max77620_sd3>;
+		vddio_sd_slot-supply = <&en_vdd_sd3>;
 		status = "okay";
 	};
 
@@ -66,32 +70,38 @@
 
 	sdhci@700b0000 {
 		uhs_mask = <0x1c>;
+		cd-gpios = <&gpio TEGRA_GPIO_PZ1 0>;
 		status = "okay";
 	};
 
-	pcie-controller {
-		nvidia,port0_status = <1>;
-		nvidia,port1_status = <1>;
-		nvidia,hot-plug-gpio = <&pca9539_76 1 0>;
-		nvidia,wake-gpio = <&gpio TEGRA_GPIO(A, 2) 0>;
-		dvdd-pex-pll-supply = <&max77620_ldo1>;
-		l0-dvddio-pex-supply = <&max77620_ldo1>;
-		l1-dvddio-pex-supply = <&max77620_ldo1>;
-		l2-dvddio-pex-supply = <&max77620_ldo1>;
-		l3-dvddio-pex-supply = <&max77620_ldo1>;
-		l4-dvddio-pex-supply = <&max77620_ldo1>;
-		l5-dvddio-pex-supply = <&max77620_ldo1>;
-		l6-dvddio-pex-supply = <&max77620_ldo1>;
-		hvdd-pex-pll-e-supply = <&max77620_sd3>;
-		l0-hvddio-pex-supply = <&max77620_sd3>;
-		l1-hvddio-pex-supply = <&max77620_sd3>;
-		l2-hvddio-pex-supply = <&max77620_sd3>;
-		l3-hvddio-pex-supply = <&max77620_sd3>;
-		l4-hvddio-pex-supply = <&max77620_sd3>;
-		l5-hvddio-pex-supply = <&max77620_sd3>;
-		l6-hvddio-pex-supply = <&max77620_sd3>;
-		vddio-pex-ctl-supply = <&max77620_sd3>;
-		status = "okay";
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		dsi {
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-j-1440-810-5-8 {
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
+				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
+			};
+		};
 	};
 
 	i2c@7000c000 {
@@ -210,6 +220,11 @@
 		};
 	};
 
+	memory@80000000 {
+		device_type = "memory";
+		reg = < 0x0 0x80000000 0x0 0x80000000>;
+	};
+
         sata@70020000 {
                 status = "okay";
                 nvidia,pexp-gpio = <&pca9539_76 11 0>, <&pca9539_76 12 0>;
@@ -220,6 +235,22 @@
                 vdd_sata-supply = <&max77620_ldo8>;
                 avdd_sata_pll-supply = <&max77620_ldo8>;
         };
+	regulators {
+		en_vdd_sd3: regulator@12 {
+			compatible = "regulator-fixed-sync";
+			reg = <12>;
+			regulator-name = "en-vdd-sd3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&gpio TEGRA_GPIO(H, 6) 0>;
+			enable-active-high;
+		};
+	};
+
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+	};
 
 };
 

@@ -71,8 +71,12 @@
 #define SDHCI_VNDR_CLK_CTRL_TAP_VALUE_MASK		0xFF
 #define SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_MASK		0x1F
 
+#define SDHCI_VNDR_SYS_SW_CTRL				0x104
+#define SDHCI_VNDR_SYS_SW_CTRL_WR_CRC_USE_TMCLK		0x40000000
+
 #define SDHCI_VNDR_CAP_OVERRIDES_0			0x10c
 #define SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT	8
+#define SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_MASK	0x3F
 
 #define SDHCI_VNDR_MISC_CTRL				0x120
 #define SDHCI_VNDR_MISC_CTRL_ENABLE_SDR104_SUPPORT	0x8
@@ -84,10 +88,10 @@
 #define SDHCI_VNDR_MISC_CTRL_EN_EXT_LOOPBACK_SHIFT	17
 
 #define SDHCI_VNDR_DLLCAL_CFG				0x1b0
-#define SDHCI_VNDR_DLLCAL_CFG_EN_CALIBRATE		0x10000000
+#define SDHCI_VNDR_DLLCAL_CFG_EN_CALIBRATE		0x80000000
 
 #define SDHCI_VNDR_DLLCAL_CFG_STATUS			0x1bc
-#define SDHCI_VNDR_DLLCAL_CFG_STATUS_DLL_ACTIVE		0x10000000
+#define SDHCI_VNDR_DLLCAL_CFG_STATUS_DLL_ACTIVE		0x80000000
 
 #define SDHCI_VNDR_TUN_CTRL				0x1c0
 /* Enable Re-tuning request only when CRC error is detected
@@ -128,6 +132,8 @@
 #define SDMMC_VENDOR_IO_TRIM_CNTRL_0	0x1AC
 #define SDMMC_VENDOR_IO_TRIM_CNTRL_0_SEL_VREG_MASK	0x4
 
+#define SDMMC_VNDR_IO_TRIM_CNTRL_0	0x1AC
+#define SDMMC_VNDR_IO_TRIM_CNTRL_0_SEL_VREG	0x4
 /* Erratum: Version register is invalid in HW */
 #define NVQUIRK_FORCE_SDHCI_SPEC_200		BIT(0)
 /* Erratum: Enable block gap interrupt detection */
@@ -186,6 +192,8 @@
 /* Special PAD control register settings are needed for T210 */
 #define NVQUIRK_UPDATE_PAD_CNTRL_REG		BIT(29)
 #define NVQUIRK_UPDATE_PIN_CNTRL_REG		BIT(30)
+/* Use timeout clk for write crc status data timeout counter */
+#define NVQUIRK_USE_TMCLK_WR_CRC_TIMEOUT	BIT(31)
 
 /* Common subset of quirks for Tegra3 and later sdmmc controllers */
 #define TEGRA_SDHCI_NVQUIRKS	(NVQUIRK_ENABLE_PADPIPE_CLKEN | \
@@ -597,6 +605,7 @@ struct sdhci_tegra {
 	struct pinctrl_state *schmitt_enable[2];
 	struct pinctrl_state *schmitt_disable[2];
 	int drive_group_sel;
+	u32 dll_calib;
 };
 
 static unsigned int boot_volt_req_refcount;
@@ -1072,9 +1081,10 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 
 	if (uhs == MMC_TIMING_MMC_HS400) {
 		ctrl_2 = sdhci_readl(host, SDHCI_VNDR_CAP_OVERRIDES_0);
-		ctrl_2 &= ~(0x3F <<
+		ctrl_2 &= ~(SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_MASK <<
 			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT);
-		ctrl_2 |= ((plat->dqs_trim_delay & 0x3F) <<
+		ctrl_2 |= ((plat->dqs_trim_delay &
+			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_MASK) <<
 			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT);
 		sdhci_writel(host, ctrl_2, SDHCI_VNDR_CAP_OVERRIDES_0);
 	}
@@ -1350,6 +1360,37 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		vendor_ctrl |= SDHCI_VNDR_TUN_CTRL_RETUNE_REQ_EN;
 		sdhci_writel(host, vendor_ctrl, SDHCI_VNDR_TUN_CTRL);
 	}
+	/* Restore DLL calibration and DQS Trim delay values */
+	if (plat->dll_calib_needed && tegra_host->dll_calib)
+		sdhci_writel(host, tegra_host->dll_calib,
+				SDHCI_VNDR_DLLCAL_CFG);
+	if (plat->dqs_trim_delay) {
+		misc_ctrl = sdhci_readl(host, SDHCI_VNDR_CAP_OVERRIDES_0);
+		misc_ctrl &= ~(SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_MASK <<
+			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT);
+		misc_ctrl |= ((plat->dqs_trim_delay &
+			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_MASK) <<
+			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT);
+		sdhci_writel(host, misc_ctrl, SDHCI_VNDR_CAP_OVERRIDES_0);
+	}
+
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	/* Enable Band Gap trimmers and VIO supply.
+	 * Wait for 3usec after enabling the trimmers.
+	 */
+	misc_ctrl = sdhci_readl(host, SDMMC_VNDR_IO_TRIM_CNTRL_0);
+	misc_ctrl &= ~(SDMMC_VNDR_IO_TRIM_CNTRL_0_SEL_VREG);
+	sdhci_writel(host, misc_ctrl, SDMMC_VNDR_IO_TRIM_CNTRL_0);
+	udelay(3);
+#endif
+
+	/* Use timeout clk data timeout counter for generating wr crc status */
+	if (soc_data->nvquirks &
+		NVQUIRK_USE_TMCLK_WR_CRC_TIMEOUT) {
+		vendor_ctrl = sdhci_readl(host, SDHCI_VNDR_SYS_SW_CTRL);
+		vendor_ctrl |= SDHCI_VNDR_SYS_SW_CTRL_WR_CRC_USE_TMCLK;
+		sdhci_writel(host, vendor_ctrl, SDHCI_VNDR_SYS_SW_CTRL);
+	}
 }
 
 static int tegra_sdhci_buswidth(struct sdhci_host *sdhci, int bus_width)
@@ -1611,6 +1652,8 @@ static void tegra_sdhci_do_dll_calibration(struct sdhci_host *sdhci)
 {
 	u32 dll_cfg;
 	unsigned timeout = 5;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 
 	dll_cfg = sdhci_readl(sdhci, SDHCI_VNDR_DLLCAL_CFG);
 	dll_cfg |= SDHCI_VNDR_DLLCAL_CFG_EN_CALIBRATE;
@@ -1631,6 +1674,7 @@ static void tegra_sdhci_do_dll_calibration(struct sdhci_host *sdhci)
 	if (!timeout) {
 		dev_err(mmc_dev(sdhci->mmc), "DLL calibration is failed\n");
 	}
+	tegra_host->dll_calib = sdhci_readl(sdhci, SDHCI_VNDR_DLLCAL_CFG);
 }
 
 static void tegra_sdhci_update_sdmmc_pinctrl_register(struct sdhci_host *sdhci,
@@ -4193,6 +4237,8 @@ static struct sdhci_pltfm_data sdhci_tegra21_pdata = {
 		   SDHCI_QUIRK2_NON_STD_VOLTAGE_SWITCHING |
 		   SDHCI_QUIRK2_NO_CALC_MAX_DISCARD_TO |
 		   SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK |
+		   SDHCI_QUIRK2_HOST_OFF_CARD_ON |
+		   SDHCI_QUIRK2_USE_64BIT_ADDR |
 		   SDHCI_QUIRK2_SUPPORT_64BIT_DMA,
 	.ops  = &tegra_sdhci_ops,
 };
@@ -4210,7 +4256,8 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 		    NVQUIRK_SET_CALIBRATION_OFFSETS |
 		    NVQUIRK_DISABLE_TIMER_BASED_TUNING |
 		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK |
-		    NVQUIRK_UPDATE_PAD_CNTRL_REG,
+		    NVQUIRK_UPDATE_PAD_CNTRL_REG |
+		    NVQUIRK_USE_TMCLK_WR_CRC_TIMEOUT,
 	.parent_clk_list = {"pll_p"},
 };
 
@@ -4263,7 +4310,8 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 
 	plat->mmc_data.built_in = of_property_read_bool(np, "built-in");
 	plat->update_pinctrl_settings = of_property_read_bool(np,
-			"update-pinctrl-settings");
+			"nvidia,update-pinctrl-settings");
+	plat->dll_calib_needed = of_property_read_bool(np, "nvidia,dll-calib-needed");
 	plat->disable_clock_gate = of_property_read_bool(np,
 		"disable-clock-gate");
 	of_property_read_u8(np, "default-drv-type", &plat->default_drv_type);
@@ -4346,6 +4394,8 @@ static int sdhci_tegra_init_pinctrl_info(struct device *dev,
 {
 	struct device_node *np = dev->of_node;
 	const char *drive_gname;
+	int i = 0;
+	int ret = 0;
 
 	if (!np)
 		return 0;
@@ -4380,6 +4430,12 @@ static int sdhci_tegra_init_pinctrl_info(struct device *dev,
 			"sdmmc_clk_schmitt_disable");
 		if (IS_ERR(tegra_host->schmitt_disable[1]))
 			dev_warn(dev, "Missing clk schmitt disable state\n");
+		for (i = 0; i < 2; i++) {
+			ret = pinctrl_select_state(tegra_host->pinctrl_sdmmc,
+						tegra_host->schmitt_disable[i]);
+			if (ret < 0)
+				dev_warn(dev, "setting schmitt state failed\n");
+		}
 	}
 
 	tegra_host->pinctrl = pinctrl_get_dev_from_of_property(np,

@@ -22,17 +22,11 @@
 / {
 
 	i2c@7000d000 {
-		max77620: max77620@3c {
-			maxim,wdt-timeout = <0>;
-
+		max77620@3c {
 			regulators {
-				sd1 {
-					regulator-min-microvolt = <1100000>;
-					regulator-max-microvolt = <1100000>;
-				};
 				ldo4 {
-					regulator-min-microvolt = <3200000>;
-					regulator-max-microvolt = <3200000>;
+					regulator-min-microvolt = <900000>;
+					regulator-max-microvolt = <900000>;
 				};
 			};
 		};
@@ -76,5 +70,25 @@
 
 	otg@7d000000 {
 		usb_vbus-supply = <&usb0_vbus>;
+	};
+
+	sdhci@700b0600 {
+		vddio_sdmmc-supply = <&max77620_sd3>; /* SDMMC4 for EMMC on loki */
+		vddio_sd_slot-supply = <&vdd_3v3>;
+	};
+
+	sdhci@700b0400 {
+		vddio_sdmmc-supply = <&max77620_sd3>; /* SDMMC3 for 2nd Wifi on loki */
+		vddio_sd_slot-supply = <&vdd_3v3>; /* SDMMC3 no stuff for full size SD on foster */
+	};
+
+	sdhci@700b0200 {
+		vddio_sdmmc-supply = <&max77620_sd3>; /* SDMMC2 for Wifi on loki */
+		vddio_sd_slot-supply = <&vdd_3v3>;
+	};
+
+	sdhci@700b0000 {
+		vddio_sdmmc-supply = <&max77620_ldo2>; /* SDMMC1 for SD card on loki */
+		vddio_sd_slot-supply = <&vdd_3v3>;
 	};
 };

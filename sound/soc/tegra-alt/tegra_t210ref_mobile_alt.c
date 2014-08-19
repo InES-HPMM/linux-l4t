@@ -39,12 +39,9 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include "../codecs/rt5639.h"
-#include "../codecs/wm8731.h"
-#include "../codecs/ad193x.h"
 
 #include "tegra_asoc_utils_alt.h"
 #include "tegra_asoc_machine_alt.h"
-#include "ahub_unit_fpga_clock.h"
 
 #define DRV_NAME "tegra-snd-t210ref-mobile"
 
@@ -167,13 +164,13 @@ static int tegra_t210ref_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_codec *codec = codec_dai->codec;
 	struct snd_soc_card *card = codec->card;
+	struct tegra_t210ref *machine = snd_soc_card_get_drvdata(card);
 	unsigned int idx =  tegra_machine_get_codec_dai_link_idx("rt5639");
 	struct snd_soc_pcm_stream *dai_params;
 	unsigned int fmt;
 	int srate;
-	unsigned int mclk;
+	int mclk, clk_out_rate;
 	int err;
-
 
 	/* check if idx has valid number */
 	if (idx == -EINVAL)
@@ -190,24 +187,60 @@ static int tegra_t210ref_hw_params(struct snd_pcm_substream *substream,
 	dai_params->channels_min = params_channels(params);
 	dai_params->formats = (1ULL << (params_format(params)));
 
-	mclk = (256 * 48000);
+	switch (dai_params->rate_min) {
+	case 11025:
+	case 22050:
+	case 44100:
+	case 88200:
+	case 176000:
+		clk_out_rate = 11289600; /* Codec rate */
+		mclk = 11289600 * 2; /* PLL_A rate */
+		break;
+	case 8000:
+	case 16000:
+	case 32000:
+	case 48000:
+	case 64000:
+	case 96000:
+	case 192000:
+	default:
+		clk_out_rate = 12288000;
+		mclk = 12288000 * 2;
+		break;
+	}
 
-	/* I2S1: 23 for 8Khz, 3 for 48Khz */
-	if (srate == 8000)
-		i2s_clk_divider(I2S1, 23);
-	else
-		i2s_clk_divider(I2S1, 3);
+	pr_info("Setting pll_a = %d Hz clk_out = %d Hz\n", mclk, clk_out_rate);
+	err = tegra_alt_asoc_utils_set_rate(&machine->audio_clock,
+				dai_params->rate_min, mclk, clk_out_rate);
+	if (err < 0) {
+		dev_err(card->dev, "Can't configure clocks\n");
+		return err;
+	}
 
 	err = snd_soc_dai_set_sysclk(card->rtd[idx].codec_dai,
-				RT5639_SCLK_S_MCLK, mclk, SND_SOC_CLOCK_IN);
+			RT5639_SCLK_S_MCLK, clk_out_rate, SND_SOC_CLOCK_IN);
 	if (err < 0) {
 		dev_err(card->dev, "codec_dai clock not set\n");
+		return err;
+	}
+
+	err = snd_soc_dai_set_sysclk(card->rtd[idx].cpu_dai, 0,
+			dai_params->rate_min, SND_SOC_CLOCK_IN);
+	if (err < 0) {
+		dev_err(card->dev, "cpu_dai clock not set\n");
 		return err;
 	}
 
 	err = snd_soc_dai_set_fmt(card->rtd[idx].codec_dai, fmt);
 	if (err < 0) {
 		dev_err(card->dev, "codec_dai fmt not set\n");
+		return err;
+	}
+
+	err = snd_soc_dai_set_bclk_ratio(card->rtd[idx].cpu_dai,
+		tegra_machine_get_bclk_ratio(&card->rtd[idx]));
+	if (err < 0) {
+		dev_err(card->dev, "Failed to set cpu dai bclk ratio\n");
 		return err;
 	}
 
@@ -244,30 +277,12 @@ static int tegra_t210ref_init(struct snd_soc_pcm_runtime *rtd)
 		return err;
 	}
 
-#if SYSTEM_FPGA
-	i2c_pinmux_setup();
-	i2c_clk_setup(10 - 1);
-	program_cdc_pll(2, CLK_OUT_12_2888_MHZ);
-	program_io_expander();
-	i2s_clk_setup(I2S1, 0, 23);
-	i2s_clk_setup(I2S3, 0, 0);
-	i2s_clk_setup(I2S5, 0, 3);
-
-	i2s_pinmux_setup(I2S1, 0);
-	i2s_pinmux_setup(I2S3, 0);
-	i2s_pinmux_setup(I2S5, 1);
-
-#else
-	/* PLL, I2S and Codec programming */
-	program_cdc_pll(2, CLK_OUT_12_2888_MHZ);
-	program_io_expander();
-	i2c_clk_divider(10 - 1);
-
-	/* I2S1: 23 for 8Khz, 3 for 48Khz */
-	i2s_clk_divider(I2S1, 23);
-	i2s_clk_divider(I2S3, 0);
-	i2s_clk_divider(I2S5, 3);
-#endif
+	err = tegra_alt_asoc_utils_set_extern_parent(&machine->audio_clock,
+							"pll_a_out0");
+	if (err < 0) {
+		dev_err(card->dev, "Failed to set extern clk parent\n");
+		return err;
+	}
 
 	if (gpio_is_valid(pdata->gpio_hp_det)) {
 		tegra_t210ref_hp_jack_gpio.gpio = pdata->gpio_hp_det;
@@ -571,7 +586,7 @@ static int tegra_t210ref_driver_probe(struct platform_device *pdev)
 
 
 	if (gpio_is_valid(pdata->gpio_ldo1_en)) {
-		ret = gpio_request(pdata->gpio_ldo1_en, "rt5639");
+		ret = gpio_request(pdata->gpio_ldo1_en, "audio_ldo1");
 		if (ret)
 			dev_err(&pdev->dev, "Fail gpio_request AUDIO_LDO1\n");
 		else {
@@ -633,6 +648,12 @@ static int tegra_t210ref_driver_probe(struct platform_device *pdev)
 	machine->pdata = pdata;
 	machine->pcard = card;
 
+	ret = tegra_alt_asoc_utils_init(&machine->audio_clock,
+					&pdev->dev,
+					card);
+	if (ret)
+		goto err_alloc_dai_link;
+
 	ret = snd_soc_register_card(card);
 	if (ret) {
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
@@ -660,9 +681,7 @@ static int tegra_t210ref_driver_remove(struct platform_device *pdev)
 	tegra_machine_remove_extra_mem_alloc(machine->num_codec_links);
 	tegra_machine_remove_dai_link();
 	tegra_machine_remove_codec_conf();
-#ifndef CONFIG_MACH_t210ref
 	tegra_alt_asoc_utils_fini(&machine->audio_clock);
-#endif
 
 	return 0;
 }

@@ -239,7 +239,11 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id =  -1,
 		.process_id = -1,
+#ifdef CONFIG_TEGRA_GPU_DVFS
 		.max_mv = 1225,
+#else
+		.max_mv = 1000,
+#endif
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.thermal_scale = 10,
@@ -959,7 +963,9 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 		core_edp_voltage = 1225;	/* default 1.225V EDP limit */
 
 	mv = min(mv, core_edp_voltage);
-
+#ifndef CONFIG_TEGRA_CORE_DVFS
+	mv = min(mv, 1000);		/* Vmax if scaling is disabled */
+#endif
 	/* Round nominal level down to the nearest core scaling step */
 	for (i = 0; i < MAX_DVFS_FREQS; i++) {
 		if ((core_millivolts[i] == 0) || (mv < core_millivolts[i]))

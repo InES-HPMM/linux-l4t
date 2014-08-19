@@ -77,8 +77,7 @@ enum {
 
 #define SMMU_TLB_CONFIG_HIT_UNDER_MISS__ENABLE	(1 << 29)
 #define SMMU_TLB_CONFIG_ACTIVE_LINES__VALUE	0x10
-#define SMMU_TLB_CONFIG_RESET_VAL		0x20000000
-#define SMMU_TLB_RR_ARB				(1 << 28)
+#define SMMU_TLB_CONFIG_RESET_VAL		0x30000000
 
 #define SMMU_PTC_CONFIG_CACHE__ENABLE		(1 << 29)
 #define SMMU_PTC_CONFIG_INDEX_MAP__PATTERN	0x3f
@@ -289,7 +288,7 @@ int _tegra_smmu_get_asid(u64 swgids)
 	if (swgids & SWGID(DC) ||
 	    swgids & SWGID(DCB))
 		return SYSTEM_DC;
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#else
 	if (swgids & SWGID(DC) ||
 	    swgids & SWGID(DC12))
 		return SYSTEM_DC;
@@ -769,29 +768,22 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 			   smmu->asid_security[i], smmu_asid_security_ofs[i]);
 
 	val = SMMU_PTC_CONFIG_RESET_VAL;
-	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
-	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12))
-		val |= SMMU_PTC_REQ_LIMIT;
+	val |= SMMU_PTC_REQ_LIMIT;
 
 	smmu_write(smmu, val, SMMU_CACHE_CONFIG(_PTC));
 
 	val = SMMU_TLB_CONFIG_RESET_VAL;
-	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
-	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) {
-		val |= SMMU_TLB_RR_ARB;
+	if ((IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
+	     (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) ||
+	    (IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC) &&
+	     (tegra_get_chipid() == TEGRA_CHIPID_TEGRA13)))
 		val |= SMMU_TLB_CONFIG_ACTIVE_LINES__VALUE << 1;
-	} else {
-		val |= SMMU_TLB_CONFIG_ACTIVE_LINES__VALUE;
-	}
+	else  /* T210. */
+		val |= (SMMU_TLB_CONFIG_ACTIVE_LINES__VALUE * 3);
 
 	smmu_write(smmu, val, SMMU_CACHE_CONFIG(_TLB));
 
-	if ((IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
-	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) ||
-		(IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC) &&
-	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA13)))
-		smmu_client_ordered(smmu);
-
+	smmu_client_ordered(smmu);
 	smmu_flush_regs(smmu, 1);
 
 	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA3
@@ -818,14 +810,8 @@ static void __smmu_flush_ptc(struct smmu_device *smmu, u32 *pte,
 		return;
 	}
 
-	if ((IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
-		(tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) ||
-		(IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC) &&
-		(tegra_get_chipid() == TEGRA_CHIPID_TEGRA13))) {
-		val = VA_PAGE_TO_PA_HI(pte, page);
-		smmu_write(smmu, val, SMMU_PTC_FLUSH_1);
-	}
-
+	val = VA_PAGE_TO_PA_HI(pte, page);
+	smmu_write(smmu, val, SMMU_PTC_FLUSH_1);
 	val = SMMU_PTC_FLUSH_TYPE_ADR |
 		(VA_PAGE_TO_PA(pte, page) & SMMU_PTC_FLUSH_ADR_MASK);
 

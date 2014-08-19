@@ -5,6 +5,9 @@
 		compatible = "simple-bus";
 		device_type = "fixed-regulators";
 
+		#address-cells = <1>;
+		#size-cells = <0>;
+
 		battery_reg: regulator@0 {
 			compatible = "regulator-fixed";
 			reg = <0>;

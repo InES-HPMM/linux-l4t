@@ -52,10 +52,11 @@
 #define AHB_MEM_PREFETCH_CFG2		0xf0
 #define PREFETCH_ENB			(1 << 31)
 
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
-#define USB_PLL_REG "avdd_pll_utmip"
-#else
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)  || defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
+	defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #define USB_PLL_REG "avdd_usb_pll"
+#else
+#define USB_PLL_REG "avdd_pll_utmip"
 #endif
 
 #ifdef DEBUG

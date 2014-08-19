@@ -408,9 +408,16 @@ void nvhost_flcn_deinit(struct platform_device *dev)
 
 int nvhost_flcn_finalize_poweron(struct platform_device *pdev)
 {
+	struct nvhost_device_data *pdata = platform_get_drvdata(pdev);
+
 	nvhost_dbg_fn("");
 
 	nvhost_module_reset(pdev, false);
+
+	if (!pdata->can_slcg) {
+		host1x_writel(pdev, flcn_slcg_override_high_a_r(), 0xff);
+		host1x_writel(pdev, flcn_slcg_override_low_a_r(), 0xffffffff);
+	}
 
 	return nvhost_flcn_boot(pdev);
 }
@@ -552,15 +559,23 @@ struct nvhost_hwctx_handler *nvhost_vic03_alloc_hwctx_handler(u32 syncpt,
 
 int nvhost_vic_finalize_poweron(struct platform_device *pdev)
 {
+	struct nvhost_device_data *pdata = platform_get_drvdata(pdev);
+
 	nvhost_dbg_fn("");
 
 	nvhost_module_reset(pdev, false);
 
-	host1x_writel(pdev, flcn_slcg_override_high_a_r(), 0);
-	host1x_writel(pdev, flcn_cg_r(),
-		     flcn_cg_idle_cg_dly_cnt_f(4) |
-		     flcn_cg_idle_cg_en_f(1) |
-		     flcn_cg_wakeup_dly_cnt_f(4));
+	if (!pdata->can_slcg) {
+		host1x_writel(pdev, flcn_slcg_override_high_a_r(), 0xff);
+		host1x_writel(pdev, flcn_slcg_override_low_a_r(), 0xffffffff);
+	} else {
+		host1x_writel(pdev, flcn_cg_r(),
+			     flcn_cg_idle_cg_dly_cnt_f(4) |
+			     flcn_cg_idle_cg_en_f(1) |
+			     flcn_cg_wakeup_dly_cnt_f(4));
+	}
+
+
 	return nvhost_flcn_boot(pdev);
 }
 

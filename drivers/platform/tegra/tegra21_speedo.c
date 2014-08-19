@@ -151,8 +151,8 @@ void tegra_init_speedo_data(void)
 	soc_speedo_2_value = tegra_fuse_readl(FUSE_SOC_SPEEDO_2);
 
 	cpu_iddq_value = tegra_fuse_readl(FUSE_CPU_IDDQ);
-	soc_iddq_value = tegra_fuse_readl(FUSE_SOC_IDDQ);
-	gpu_iddq_value = tegra_fuse_readl(FUSE_GPU_IDDQ);
+	soc_iddq_value = tegra_fuse_readl(FUSE_SOC_IDDQ) * 4;
+	gpu_iddq_value = tegra_fuse_readl(FUSE_GPU_IDDQ) * 5;
 
 	cpu_speedo_value = cpu_speedo_0_value;
 	/* FIXME: remove when fuses ready */

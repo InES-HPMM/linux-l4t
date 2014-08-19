@@ -98,6 +98,9 @@
  */
 #define ADSP_CLK_FIX_RATE (APE_CLK_FIX_RATE * ADSP_TO_APE_CLK_RATIO)
 
+/* total number of crashes allowed on adsp */
+#define ALLOWED_CRASHES	2
+
 struct nvadsp_debug_log {
 	struct device *dev;
 	char *debug_ram_rdr;
@@ -107,13 +110,16 @@ struct nvadsp_debug_log {
 
 struct nvadsp_os_data {
 #if !CONFIG_SYSTEM_FPGA
-	void __iomem *reset_reg;
+	void __iomem		*reset_reg;
 #endif
-	struct platform_device *pdev;
-	struct global_sym_info *adsp_glo_sym_tbl;
-	void __iomem *misc_base;
-	struct resource **dram_region;
-	struct nvadsp_debug_log logger;
+	const struct firmware	*os_firmware;
+	struct platform_device	*pdev;
+	struct global_sym_info	*adsp_glo_sym_tbl;
+	void __iomem		*misc_base;
+	struct resource		**dram_region;
+	struct nvadsp_debug_log	logger;
+	struct work_struct	restart_os_work;
+	int			adsp_num_crashes;
 };
 
 static struct nvadsp_os_data priv;
@@ -551,37 +557,55 @@ static int allocate_memory_for_adsp_os(void)
 {
 	struct platform_device *pdev = priv.pdev;
 	struct device *dev = &pdev->dev;
+#if defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
+	dma_addr_t addr;
+#else
+	phys_addr_t addr;
+#endif
 	void *dram_va;
 	size_t size;
-#if defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
-	dma_addr_t addr = ADSP_SMMU_LOAD_ADDR;
+	int ret = 0;
 
+#if defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
+	addr = ADSP_SMMU_LOAD_ADDR;
 	size = ADSP_SMMU_SIZE;
 	dram_va = dma_alloc_at_coherent(dev, size, &addr, GFP_KERNEL);
 	if (!dram_va) {
-		dev_info(dev, "unable to allocate SMMU pages\n");
-		return PTR_ERR(dram_va);
+		dev_err(dev, "unable to allocate SMMU pages\n");
+		ret = -ENOMEM;
+		goto end;
 	}
 #else
-	phys_addr_t addr;
 	struct nvadsp_platform_data *plat_data = pdev->dev.platform_data;
 
 	if (IS_ERR_OR_NULL(plat_data)) {
-		dev_info(dev, "carvout is NULL\n");
-		return PTR_ERR(plat_data);
+		dev_err(dev, "carvout is NULL\n");
+		ret = -ENOMEM;
+		goto end;
 	}
 
 	addr = plat_data->co_pa;
 	size = plat_data->co_size;
 	dram_va = ioremap_nocache(addr, plat_data->co_size);
 	if (!dram_va) {
-		dev_info(dev, "remap failed for addr %lx\n",
+		dev_err(dev, "remap failed for addr %lx\n",
 					(long)plat_data->co_pa);
-		return PTR_ERR(dram_va);
+		ret = -ENOMEM;
+		goto end;
 	}
 #endif
 	adsp_add_load_mappings(addr, dram_va, size);
-	return 0;
+end:
+	return ret;
+}
+
+static void deallocate_memory_for_adsp_os(struct device *dev)
+{
+#if defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
+	void *va = nvadsp_da_to_va_mappings(ADSP_SMMU_LOAD_ADDR,
+			ADSP_SMMU_SIZE);
+	dma_free_coherent(dev, ADSP_SMMU_SIZE, va, ADSP_SMMU_LOAD_ADDR);
+#endif
 }
 
 int nvadsp_os_load(void)
@@ -590,7 +614,6 @@ int nvadsp_os_load(void)
 	int ret;
 	struct device *dev;
 	void *ptr;
-	struct clk *clk_ape;
 
 	if (!priv.pdev) {
 		pr_err("ADSP Driver is not initialized\n");
@@ -602,7 +625,7 @@ int nvadsp_os_load(void)
 
 	ret = request_firmware(&fw, NVADSP_FIRMWARE, dev);
 	if (ret < 0) {
-		dev_info(dev,
+		dev_err(dev,
 			"reqest firmware for %s failed with %d\n",
 					NVADSP_FIRMWARE, ret);
 		goto end;
@@ -610,16 +633,16 @@ int nvadsp_os_load(void)
 
 	ret = create_global_symbol_table(fw);
 	if (ret) {
-		dev_info(dev,
+		dev_err(dev,
 			"unable to create global symbol table\n");
-		goto end;
+		goto release_firmware;
 	}
 
 	ret = allocate_memory_for_adsp_os();
-	if (ret < 0) {
-		dev_info(dev,
+	if (ret) {
+		dev_err(dev,
 			"unable to allocate memory for adsp os\n");
-		goto end;
+		goto release_firmware;
 	}
 
 	priv.logger.debug_ram_rdr =
@@ -634,26 +657,29 @@ int nvadsp_os_load(void)
 
 	dev_info(dev, "Loading ADSP OS firmware %s\n",
 						NVADSP_FIRMWARE);
-	clk_ape = clk_get_sys(NULL, "ape");
-	if (IS_ERR_OR_NULL(clk_ape)) {
-		dev_info(dev, "unable to find ape clock\n");
-		goto end;
-	}
-	tegra_periph_reset_deassert(clk_ape);
-
-	ptr = get_mailbox_shared_region();
-	update_nvadsp_app_shared_ptr(ptr);
 
 	ret = nvadsp_os_elf_load(fw);
 	if (ret) {
-		dev_info(dev, "failed to load %s\n", NVADSP_FIRMWARE);
-		goto end;
+		dev_err(dev, "failed to load %s\n", NVADSP_FIRMWARE);
+		goto deallocate_os_memory;
 	}
 
 	ret = dram_app_mem_init(ADSP_APP_MEM_SMMU_ADDR, ADSP_APP_MEM_SIZE);
-	if (ret)
+	if (ret) {
 		dev_err(dev,
 			"unable to allocate memory for allocating dynamic apps\n");
+		goto deallocate_os_memory;
+	}
+	ptr = get_mailbox_shared_region();
+	update_nvadsp_app_shared_ptr(ptr);
+	priv.os_firmware = fw;
+
+	return 0;
+
+deallocate_os_memory:
+	deallocate_memory_for_adsp_os(dev);
+release_firmware:
+	release_firmware(fw);
 end:
 	return ret;
 }
@@ -726,24 +752,53 @@ int nvadsp_os_start(void)
 EXPORT_SYMBOL(nvadsp_os_start);
 
 
-static  irqreturn_t adsp_wdt_handler(int irq, void *arg)
+static void nvadsp_os_restart(struct work_struct *work)
 {
-	struct device *dev = arg;
-	dev_crit(dev, "ADSP OS crashed .... Restarting ADSP OS\n");
-#if CONFIG_SYSTEM_FPGA
+	struct nvadsp_os_data *data =
+		container_of(work, struct nvadsp_os_data, restart_os_work);
+	const struct firmware *fw = data->os_firmware;
+	struct device *dev = &data->pdev->dev;
+	int ret;
+
+	data->adsp_num_crashes++;
+	if (data->adsp_num_crashes >= ALLOWED_CRASHES) {
+		/* making pdev NULL so that externally start is not called */
+		priv.pdev = NULL;
+		dev_crit(dev, "ADSP has crashed too many times\n");
+		return;
+	}
+
+	/* reload a fresh copy of the firmware*/
+	ret = nvadsp_os_elf_load(fw);
+	if (ret) {
+		dev_err(dev, "failed to load %s\n", NVADSP_FIRMWARE);
+		return;
+	}
+
 	if (nvadsp_os_start())
 		dev_crit(dev, "Unable to restart ADSP OS\n");
+}
+
+static irqreturn_t adsp_wdt_handler(int irq, void *arg)
+{
+	struct nvadsp_os_data *data = arg;
+	struct device *dev = &data->pdev->dev;
+#if CONFIG_SYSTEM_FPGA
+	dev_crit(dev, "ADSP OS Hanged or Crashed! Restarting...\n");
+	schedule_work(&data->restart_os_work);
+#else
+	dev_crit(dev, "ADSP OS Hanged or Crashed!\n");
 #endif
 	return 0;
 }
 
 int nvadsp_os_probe(struct platform_device *pdev)
 {
-
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
-	int virq = tegra_agic_irq_get_virq(INT_ADSP_WDT);
+	int wdt_virq = tegra_agic_irq_get_virq(INT_ADSP_WDT);
 	struct device *dev = &pdev->dev;
 	int ret = 0;
+
 #if !CONFIG_SYSTEM_FPGA
 	priv.reset_reg = ioremap(APE_FPGA_MISC_RST_DEVICES, 1);
 	if (!priv.reset_reg) {
@@ -762,13 +817,15 @@ int nvadsp_os_probe(struct platform_device *pdev)
 			"unable to create adsp debug logger file\n");
 #endif
 
-	ret = request_irq(virq, adsp_wdt_handler,
-			IRQF_TRIGGER_RISING, "adsp watchdog", dev);
-	if (ret)
+	ret = request_irq(wdt_virq, adsp_wdt_handler,
+			IRQF_TRIGGER_RISING, "adsp watchdog", &priv);
+	if (ret) {
 		dev_err(dev, "failed to get adsp watchdog interrupt\n");
+		goto end;
+	}
 
-#if !CONFIG_SYSTEM_FPGA
+	INIT_WORK(&priv.restart_os_work, nvadsp_os_restart);
+
 end:
-#endif
 	return ret;
 }

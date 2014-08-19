@@ -129,14 +129,14 @@
 			};
 			dc_as: dc {
 				iova-start = <0x0 0x00010000>;
-				iova-size = <0x0 0xFFFFFFFF>;
+				iova-size = <0x0 0xFFFEFFFF>;
 				alignment = <0xFFFFF>;
 				num-pf-page = <0>;
 				gap-page = <0>;
 			};
 			gpu_as: gpu {
 				iova-start = <0x0 0x00100000>;
-				iova-size = <0x0 0xFFFFFFFF>;
+				iova-size = <0x0 0xFFEFFFFF>;
 				alignment = <0xFFFFF>;
 				num-pf-page = <0>;
 				gap-page = <0>;
@@ -234,6 +234,15 @@
 /*		      <0x0 0x702fa000 0x0 0x2000>;	*/
 /*		interrupts = <0 102 0xf04>;		*/
 /*	};						*/
+
+	timer {
+		compatible = "arm,armv8-timer";
+		interrupts = <1 13 0xf01
+			      1 14 0xf01
+			      1 11 0xf01
+			      1 10 0xf01>;
+		clock-frequency = <38400000>;
+	};
 
 	timer@60005000 {
 		compatible = "nvidia,tegra210-timer";
@@ -489,7 +498,7 @@
 			compatible = "nvidia,tegra210-dc";
 			reg = <0x0 0x54200000 0x0 0x00040000>;
 			interrupts = <0 73 0x04>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS3(DC, DCB, DC12) &dc_as>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS2(DC, DC12) &dc_as>;
 			status = "disabled";
 
 			rgb {
@@ -501,7 +510,7 @@
 			compatible = "nvidia,tegra210-dc";
 			reg = <0x0 0x54240000 0x0 0x00040000>;
 			interrupts = <0 74 0x04>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS3(DC, DCB, DC12) &dc_as>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(DCB) &dc_as>;
 			status = "disabled";
 
 			rgb {

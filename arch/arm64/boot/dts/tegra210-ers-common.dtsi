@@ -23,7 +23,9 @@
 / {
 
 	serial@70006000 {
-		compatible = "nvidia,tegra210-uart";
+		compatible = "nvidia,tegra210-uart", "nvidia,tegra114-hsuart";
+		console-port;
+		sqa-automation-port;
 		status = "okay";
 	};
 
@@ -270,6 +272,7 @@
                                 "qc2-charger", "downstream-charger","fast-charger",
                                 "slow-charger", "apple-500ma", "apple-1a",
                                 "apple-2a", "y-cable";
+				status = "disabled";
         };
 
 	ehci@7d004000 {

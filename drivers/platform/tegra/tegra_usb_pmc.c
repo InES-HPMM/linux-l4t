@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -123,11 +123,24 @@ int utmi_phy_set_snps_trking_data(void)
 	val |= BIAS_MASTER_PROG_VAL;
 	writel(val, pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	val = readl(base + UTMIP_BIAS_CFG1);
+	val &= ~UTMIP_BIAS_PDTRK_COUNT(~0);
+	val |= UTMIP_BIAS_PDTRK_COUNT(0xA);
+	val &= ~UTMIP_BIAS_TRK_START_COUNT(~0);
+	val |= UTMIP_BIAS_TRK_START_COUNT(0x1E);
+	writel(val, base + UTMIP_BIAS_CFG1);
+
+	val = readl(base + UTMIP_BIAS_CFG0);
+	val &= ~UTMIP_BIASPD;
+	writel(val, base + UTMIP_BIAS_CFG0);
+#else
 	/* Setting the tracking length time */
 	val = readl(base + UTMIP_BIAS_CFG1);
 	val &= ~UTMIP_BIAS_PDTRK_COUNT(~0);
 	val |= UTMIP_BIAS_PDTRK_COUNT(5);
 	writel(val, base + UTMIP_BIAS_CFG1);
+#endif
 
 	/* Bias PDTRK is Shared and MUST be done from USB1 ONLY, PD_TRK=0 */
 	val = readl(base + UTMIP_BIAS_CFG1);

@@ -340,8 +340,13 @@ int __init t210ref_soctherm_init(void)
 	tegra_get_board_info(&board_info);
 	tegra_chip_id = tegra_get_chip_id();
 
+#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	cp_rev = tegra_fuse_calib_base_get_cp(NULL, NULL);
 	ft_rev = tegra_fuse_calib_base_get_ft(NULL, NULL);
+#else
+	cp_rev = -EINVAL;
+	ft_rev = -EINVAL;
+#endif
 
 	cpu_edp_temp_margin = t13x_cpu_edp_temp_margin;
 	gpu_edp_temp_margin = t13x_gpu_edp_temp_margin;
@@ -650,12 +655,15 @@ int t210ref_thermal_sensors_init(void)
 {
 	int nct72_port = TEGRA_GPIO_PI6;
 	int ret = 0;
+#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	int i;
 	struct thermal_trip_info *trip_state;
+#endif
 	struct board_info board_info;
 
 	tegra_get_board_info(&board_info);
 	/* raise NCT's thresholds if soctherm CP,FT fuses are ok */
+#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	if ((tegra_fuse_calib_base_get_cp(NULL, NULL) >= 0) &&
 	    (tegra_fuse_calib_base_get_ft(NULL, NULL) >= 0)) {
 		t210ref_nct72_pdata.sensors[EXT].shutdown_limit += 20;
@@ -669,6 +677,7 @@ int t210ref_thermal_sensors_init(void)
 			}
 		}
 	} else {
+#endif
 		tegra_platform_edp_init(
 			t210ref_nct72_pdata.sensors[EXT].trips,
 			&t210ref_nct72_pdata.sensors[EXT].num_trips,
@@ -685,7 +694,9 @@ int t210ref_thermal_sensors_init(void)
 		tegra_add_core_vmax_trips(
 			t210ref_nct72_pdata.sensors[EXT].trips,
 			&t210ref_nct72_pdata.sensors[EXT].num_trips);
+#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	}
+#endif
 
 	/* vmin trips are bound to soctherm on norrin and bowmore */
 	if (!(board_info.board_id == BOARD_PM374 ||

@@ -128,6 +128,7 @@ NVIDIA TEGRA124 Display Serial Interface
    TEGRA_DC_OUT_INITIALIZED_MODE and TEGRA_DC_OUT_HOTPLUG_WAKE_LP0.
    If several items are written, bitwise OR is operated for them, internally.
  - nvidia,out-parent-clk: Parent clk for display controller.
+   If this is not specified, driver will select default clock source.
  - nvidia,out-max-pixclk: Maximum pixel clock in pico-seconds.
  - nvidia,dither: Dither option. Should be TEGRA_DC_UNDEFINED_DITHER or
    TEGRA_DC_DISABLE_DITHER or TEGRA_DC_ORDERED_DITHER or TEGRA_DC_ERRDIFF_DITHER

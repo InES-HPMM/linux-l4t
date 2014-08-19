@@ -671,22 +671,12 @@ static int fast_enable_open(struct inode *inode, struct file *file)
 static ssize_t fast_enable_write(struct file *fp, const char __user *ubuf,
 					size_t count, loff_t *pos)
 {
-	char buf[20];
-	size_t res;
-
-	res = min(count, sizeof(buf) - 1);
-
-	if (copy_from_user(buf, ubuf, res))
-		return -EFAULT;
-
-	buf[res] = '\0';
-
-	if (kstrtouint(buf, 10, &fast_enable) < 0)
+	if (kstrtouint_from_user(ubuf, count, 0, &fast_enable) < 0)
 		return -EINVAL;
 
 	set_state_enable(false);
 
-	return res;
+	return count;
 }
 
 static const struct file_operations fast_cluster_enable_fops = {
@@ -694,6 +684,7 @@ static const struct file_operations fast_cluster_enable_fops = {
 	.read	=	seq_read,
 	.llseek	=	seq_lseek,
 	.write	=	fast_enable_write,
+	.release =	single_release,
 };
 
 static int slow_enable_show(struct seq_file *s, void *data)
@@ -711,22 +702,12 @@ static int slow_enable_open(struct inode *inode, struct file *file)
 static ssize_t slow_enable_write(struct file *fp, const char __user *ubuf,
 					size_t count, loff_t *pos)
 {
-	char buf[20];
-	size_t res;
-
-	res = min(count, sizeof(buf) - 1);
-
-	if (copy_from_user(buf, ubuf, res))
-		return -EFAULT;
-
-	buf[res] = '\0';
-
-	if (kstrtouint(buf, 10, &slow_enable) < 0)
+	if (kstrtouint_from_user(ubuf, count, 0, &slow_enable) < 0)
 		return -EINVAL;
 
 	set_state_enable(true);
 
-	return res;
+	return count;
 }
 
 static const struct file_operations slow_cluster_enable_fops = {
@@ -734,6 +715,7 @@ static const struct file_operations slow_cluster_enable_fops = {
 	.read	=	seq_read,
 	.llseek	=	seq_lseek,
 	.write	=	slow_enable_write,
+	.release =	single_release,
 };
 
 static void suspend_all_device_irqs(void)

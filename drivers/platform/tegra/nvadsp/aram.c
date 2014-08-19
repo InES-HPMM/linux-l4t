@@ -50,7 +50,7 @@ static irqreturn_t nvadsp_amc_error_int_handler(int irq, void *devid)
 {
 	u32 val;
 
-	pr_info("nvadsp: in AMC error interrupt handler. Address: 0x%x\n",
+	WARN_ONCE(1, "nvadsp: in AMC error interrupt handler. Address: 0x%x\n",
 		(uint)amc_readl(AMC_ERROR_ADDR));
 
 	val = amc_readl(AMC_INT_CLR);
