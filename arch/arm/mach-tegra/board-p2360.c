@@ -87,7 +87,7 @@ static int p2360_dummy(void)
 	return 0;
 }
 
-struct tegra_panel_ops p2360_hdmi_ops = {
+struct tegra_panel_ops p2360_panel_ops = {
 	.enable = p2360_dev_dummy,
 	.disable = p2360_dummy,
 	.postsuspend = p2360_dummy,
@@ -124,7 +124,8 @@ static struct notifier_block platform_nb = {
 
 static void p2360_panel_init(void)
 {
-	tegra_set_fixed_panel_ops(true, &p2360_hdmi_ops, "hdmi,display");
+	tegra_set_fixed_panel_ops(true, &p2360_panel_ops, "lvds,display");
+	tegra_set_fixed_panel_ops(false, &p2360_panel_ops, "hdmi,display");
 	bus_register_notifier(&platform_bus_type, &platform_nb);
 }
 
