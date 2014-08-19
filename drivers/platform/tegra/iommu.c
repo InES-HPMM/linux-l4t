@@ -329,7 +329,6 @@ struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	{ .name = dummy_name,	.swgids = SWGID(PPCS) },
 #endif
 	{ .name = "tegra-xhci",	.swgids = SWGID(XUSB_HOST), },
-	{ .name = "vi",		.swgids = SWGID(VI) },
 	{},
 };
 
