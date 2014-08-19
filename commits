@@ -1,0 +1,496 @@
+007833e firmware: Add vendor specific path to search paths
+00baef7 gpu: nvgpu: clear sparse in space free
+0885749 arm64: dts: t210: add console properties to UartA
+08a7fb2 gpu: nvgpu: gm20b: add pm callbacks
+0c31037 arm64: dts: tegra132-interposer display dt
+0c742bf arm64: tegra: Merge t210 panel file with t210ref
+11b3e49 tegra: added support for HDCP2.2 in kernel
+ 12 files changed, 28 insertions(+), 2 deletions(-)
+13636a8 ARM: tegra: fix build warning with register address cells of regulator
+ 16 files changed, 206 deletions(-)
+1708c43 arm64: tegra: T210: Enable USB host, otg configs
+17d63fa ARM64: tegra21:add system pmic flag for T210
+1eed754 dts: add missing closing brace
+1f83ab8 arm64: tegra21: disable CONFIG_TEFEA_DP temporarily
+ 1 file changed, 10 insertions(+)
+ 1 file changed, 10 insertions(+), 20 deletions(-)
+ 1 file changed, 10 insertions(+), 21 deletions(-)
+ 1 file changed, 11 insertions(+)
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+ 1 file changed, 120 insertions(+), 7 deletions(-)
+ 1 file changed, 12 insertions(+), 11 deletions(-)
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+ 1 file changed, 12 insertions(+), 4 deletions(-)
+ 1 file changed, 134 insertions(+)
+ 1 file changed, 13 insertions(+), 3 deletions(-)
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+ 1 file changed, 16 insertions(+)
+ 1 file changed, 17 insertions(+), 14 deletions(-)
+ 1 file changed, 1 deletion(-)
+ 1 file changed, 1 insertion(+)
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+ 1 file changed, 21 insertions(+), 32 deletions(-)
+ 1 file changed, 22 insertions(+)
+ 1 file changed, 23 insertions(+), 8 deletions(-)
+ 1 file changed, 28 insertions(+)
+ 1 file changed, 2 deletions(-)
+ 1 file changed, 2 insertions(+)
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+ 1 file changed, 312 insertions(+), 95 deletions(-)
+ 1 file changed, 33 insertions(+), 1 deletion(-)
+ 1 file changed, 3 insertions(+)
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+ 1 file changed, 3 insertions(+), 6 deletions(-)
+ 1 file changed, 44 insertions(+), 17 deletions(-)
+ 1 file changed, 46 deletions(-)
+ 1 file changed, 48 insertions(+), 29 deletions(-)
+ 1 file changed, 4 deletions(-)
+ 1 file changed, 4 insertions(+)
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+ 1 file changed, 4 insertions(+), 24 deletions(-)
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+ 1 file changed, 59 insertions(+), 59 deletions(-)
+ 1 file changed, 5 insertions(+)
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+ 1 file changed, 6 insertions(+)
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+ 1 file changed, 7 insertions(+), 9 deletions(-)
+ 1 file changed, 8 deletions(-)
+ 1 file changed, 8 insertions(+)
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+ 1 file changed, 9 insertions(+)
+22e383d arm64: dts: tegra210-ers: add display dt
+2346fd9 DNI: ARM64: tegra21: config: disable gpmu
+2379732 arm64: tegra: t210ref: clean board-t210ref.c
+25c9f06 usb: gadget: tegra: update T210 phy settings
+2695419 ARM64: tegra21: Fix PWM channel assignment
+2c416d5 ASoC: tegra-alt: mobile: fix codec clock
+2ce2499 DNI: arm64: t210: workaround for unknown timer problem
+ 2 files changed, 0 insertions(+), 0 deletions(-)
+ 2 files changed, 105 insertions(+), 3 deletions(-)
+ 2 files changed, 15 insertions(+), 2 deletions(-)
+ 2 files changed, 15 insertions(+), 5 deletions(-)
+ 2 files changed, 16 insertions(+), 2 deletions(-)
+ 2 files changed, 1 insertion(+), 30 deletions(-)
+ 2 files changed, 1 insertion(+), 5 deletions(-)
+ 2 files changed, 20 insertions(+)
+ 2 files changed, 239 insertions(+), 18 deletions(-)
+ 2 files changed, 24 insertions(+), 6 deletions(-)
+ 2 files changed, 2 deletions(-)
+ 2 files changed, 2 insertions(+), 27 deletions(-)
+ 2 files changed, 4 insertions(+)
+ 2 files changed, 71 insertions(+), 14 deletions(-)
+ 2 files changed, 74 insertions(+), 69 deletions(-)
+ 2 files changed, 75 insertions(+), 1 deletion(-)
+ 2 files changed, 79 insertions(+)
+ 2 files changed, 99 insertions(+), 11 deletions(-)
+ 2 files changed, 9 insertions(+), 3 deletions(-)
+3080ab2 ASoC: tegra-alt: Add tegra audio clock config support
+327bd76 include: audience: tegra: fix gpio variables
+32a0abf arm64: dts: rename rsvd functions in pinmux DT
+33c26d0 gpu: nvgpu: cde: Allow large surfaces
+35f46762 platform: adsp: os load error flows & print level
+3668d77 clock: tegra21: Add support for SDMMC2/4 LJ inputs
+39c6a9d regulator: pwm: Pass regulator DT node to core
+3b05c73 arm64: dts: t210: move arch timer to base dtsi
+3cc6996 clock: tegra21: Increase pll_a_out0 max limits
+3ea1edf ARM: tegra: xhci: add regulator handles for loki
+3fe2138 ARM64: configs: Disable ISP and VI
+ 3 files changed, 12 insertions(+), 9 deletions(-)
+ 3 files changed, 15 insertions(+)
+ 3 files changed, 168 insertions(+)
+ 3 files changed, 21 insertions(+), 3 deletions(-)
+ 3 files changed, 24 insertions(+), 1 deletion(-)
+ 3 files changed, 290 insertions(+), 290 deletions(-)
+ 3 files changed, 35 insertions(+), 6 deletions(-)
+453d736 iommu/tegra: smmu: Make if conditions t21x and future compatible
+45e810a gpu: nvgpu: Disable GM20b GPCPLL SYNC mode
+45fbb14 extcon: gpio:schedule workqueue only when debounce time non zero
+470148e ata: ahci: T210 Specific changes to ahci-tegra
+470341d mmc: tegra: Update vendor IO trim control reg
+4853255 gpu: disable cyclestats whitelist in debug mode
+48b4a2d iommu: tegra: fix dc address space creation on t21x
+4cbc4ca video: tegra: host: vic: Disable power features
+4cc37cf arm64: tegra21: dc: fix compatible name for tegradc
+4cf729b arm64: tegra21: limit dc and gpu iova window to 4GB
+4d02566 gpu: sysfs mode for allowing access to registers
+4d1ca9c clock: tegra21: Update UART initialization
+4d5ae25 arm64: tegra21: dts: fix dc nodes iommus property
+ 4 files changed, 106 insertions(+), 24 deletions(-)
+ 4 files changed, 10 insertions(+)
+ 4 files changed, 113 insertions(+), 1 deletion(-)
+ 4 files changed, 188 insertions(+), 192 deletions(-)
+ 4 files changed, 38 insertions(+)
+ 4 files changed, 39 insertions(+), 2 deletions(-)
+ 4 files changed, 43 insertions(+), 1 deletion(-)
+ 4 files changed, 5 insertions(+), 5 deletions(-)
+ 4 files changed, 65 insertions(+), 5 deletions(-)
+ 4 files changed, 67 insertions(+), 4 deletions(-)
+ 4 files changed, 722 insertions(+)
+50617d8 ARM: tegra: enable PWM regulator
+50c0e65 Arm: tegra: xhci: add regulator handles
+542e6d1 mmc: tegra: Dump more regs when SDMMC errors seen
+555c156 arm64: t210: Enable config PCA953x GPIO Expander
+5676e79 gpu: nvgpu: gk20a: cde: Add base_post_divide param
+5757129 arm64: t210: dts: disable power supply extcon
+5845ae5 pinctrl210: tegra: rename functions as per pinmux sheet
+5a780db asoc: tegra-alt: t210: remove system fpga code
+5c172b3 gpu: nvpug: add hal func get_gpc_tpc_mask
+5da00d5 ARM64: tegra21x: loki: power tree enable
+5de8c74 ARM: tegra: t210ref: Add IMX214 and DW9714 support
+5e7cc69 clock: tegra: Skip over-clock warning on bus users
+ 5 files changed, 17 insertions(+), 11 deletions(-)
+ 5 files changed, 180 insertions(+), 21 deletions(-)
+ 5 files changed, 28 insertions(+), 8 deletions(-)
+ 5 files changed, 442 insertions(+)
+648b85a TEMP: asoc: tegra-alt: disable SLGC
+6ba29b3 ARM64: dts:fix correct dtb names for loki-e and foster-e
+6ba6316 arm64: tegra:initial dt files for loki-e, foster-e
+6cad8dd ARM: tegra: remove DDR voltage setting
+6d9a36e arm: tegra: panel-j-1440-810-5-8: to move DT
+6e5a0b8 video: tegra: dc: smartdimmer, cmu node bug fix
+ 6 files changed, 142 insertions(+), 64 deletions(-)
+ 6 files changed, 290 insertions(+), 834 deletions(-)
+73c6537 arm64: dts: t210: clean up regulator for sensors
+76c9f25 arm64: t210: e2190: enable spi4 dt node
+780071c platform: tegra: adsp: fix emc dfs debugfs node
+785c45d TEMP: dvfs: tegra21: Set Vmax for GPU voltage at 1.0V
+7b49728 pinctrl210: tegra: rename some more funcs as per pinmux sheet
+80b7833 arm64: tegra: disable pcie for t210
+86118e6 mmc: tegra: Set default pinctrl state for SD/SDIO
+8d97c66 video: tegra: dc: CONFIG_USE_OF to CONFIG_OF
+8e62e51 clock: tegra21: Split PERIPH_NO_RESET / PERIPH_NO_ENB
+8eb8bf9 clock: tegra21: correct pwm clock dev name
+8fb792a ARM64: tegra21:enable BC, FG and extcon config
+ 8 files changed, 2472 insertions(+), 3 deletions(-)
+9122f33 pinctrl210: tegra: change rsvd numbering to 0-3
+94ecd1e0 clock: tegra21: Remove audio sync clock doubler for I2S
+9579157 extcon: gpio: support for DT
+95fa023 pinctrl: max77620: correct pinmux option for clk-out
+97a4605 mmc: tegra: Update pad control register settings
+98f06d1 power: tegra21: Add IDDQ fuse scale
+9b8fd9c gpu: nvgpu: gm20b: support TPC floorsweeping
+ 9 files changed, 117 insertions(+), 49 deletions(-)
+ 9 files changed, 2026 insertions(+)
+ 9 files changed, 64 insertions(+), 1 deletion(-)
+a074907 ASoC: tegra-alt: Add ape clock support
+a31382f video: tegra: host: Add flag to SLCG override
+a31b03d usb: gadget: enable tegra_udc to compile as module
+a4d46c6 arm: tegra: Increase FB sizes with CONFIG_MODS
+a87fe26 media: platform: tegra: Modify modes for IMX214
+aac4486 ARM: tegra: enable GPIO and ADC_JACK extcon
+aaca3e4 asoc: tegra: Add T210 test driver missing clocks
+ac61289 ARM: tegra: remove unused ers-2174-dfll dtsi file
+aee7fee Revert "arm64: tegra: T210: Add SATA support"
+ arch/arm64/boot/dts/Makefile                       |    2 +
+ arch/arm64/boot/dts/Makefile | 4 ++--
+ arch/arm64/boot/dts/tegra132-interposer-e2141-1100-a00-00.dts | 4 +++-
+ arch/arm64/boot/dts/tegra132-interposer-e2141-1100-a00-00.dts | 4 ++++
+ arch/arm64/boot/dts/tegra132-tn8.dtsi                          |  4 ----
+ arch/arm64/boot/dts/tegra210.dtsi    |  2 +-
+ arch/arm64/boot/dts/tegra210.dtsi | 4 ++--
+ arch/arm64/boot/dts/tegra210.dtsi | 9 +++++++++
+ arch/arm64/boot/dts/tegra210-ers-common.dtsi | 1 +
+ arch/arm64/boot/dts/tegra210-ers-common.dtsi | 4 +++-
+ arch/arm64/boot/dts/tegra210-ers-common.dtsi | 8 --------
+ arch/arm64/boot/dts/tegra210-ers-common.dtsi | 8 ++++++++
+ arch/arm64/boot/dts/tegra210-ers-e2190-1100-a00-00.dts | 7 ++++++-
+ arch/arm64/boot/dts/tegra210-ers-e2220-1100-a00-00.dts     | 14 ++++++++++++++
+ arch/arm64/boot/dts/tegra210-ers-e2220-1100-a00-00.dts | 2 +-
+ arch/arm64/boot/dts/tegra210-ers-e2220-1100-a00-00.dts | 2 ++
+ arch/arm64/boot/dts/tegra210-ers-e2220-1100-a00-00.dts | 5 +++++
+ arch/arm64/boot/dts/tegra210-grenada.dts | 2 +-
+ arch/arm64/boot/dts/tegra210-grenada.dts |  32 ++++-----
+ arch/arm64/boot/dts/tegra210-loki-e-p2530-0032-e00-00.dts | 2 +-
+ arch/arm64/boot/dts/tegra210-platforms/tegra210-grenada-fixed.dtsi | 3 +++
+ arch/arm64/boot/dts/tegra210-platforms/tegra210-sdhci.dtsi |  4 ++--
+ arch/arm64/configs/tegra13_android_defconfig | 2 ++
+ arch/arm64/configs/tegra21_android_defconfig | 1 -
+ arch/arm64/configs/tegra21_android_defconfig | 1 +
+ arch/arm64/configs/tegra21_android_defconfig | 13 ++++++++++++-
+ arch/arm64/configs/tegra21_android_defconfig | 16 +++++++---------
+ arch/arm64/configs/tegra21_android_defconfig |   2 +
+ arch/arm64/configs/tegra21_android_defconfig | 2 --
+ arch/arm64/configs/tegra21_android_defconfig | 2 +-
+ arch/arm64/configs/tegra21_android_defconfig | 2 ++
+ arch/arm64/configs/tegra21_android_defconfig | 4 ++++
+ arch/arm64/configs/tegra21_android_defconfig       |  4 ++--
+ arch/arm64/configs/tegra21_defconfig         | 1 -
+ arch/arm64/configs/tegra21_defconfig | 13 +++++++++++--
+ arch/arm64/mach-tegra/board-dt-t210.c        |   3 +-
+ arch/arm64/mach-tegra/board-t210.h           |   1 -
+ arch/arm64/mach-tegra/board-t210-panel.c     | 735 ---------------------------
+ arch/arm64/mach-tegra/board-t210ref.c | 1 +
+ arch/arm64/mach-tegra/board-t210ref.c       | 12 +++-
+ arch/arm64/mach-tegra/board-t210ref.c | 2 +-
+ arch/arm64/mach-tegra/board-t210ref.c | 24 ++++++++++++------------
+ arch/arm64/mach-tegra/board-t210ref.c | 4 ++--
+ arch/arm64/mach-tegra/board-t210ref.c         |  9 +++++++--
+ arch/arm64/mach-tegra/board-t210ref-camera.c | 134 +++++++++++++++++++++++++++
+ arch/arm64/mach-tegra/board-t210ref-panel.c | 17 ++----
+ arch/arm64/mach-tegra/board-t210ref-panel.c  | 377 ++++++++++----
+ arch/arm64/mach-tegra/board-t210ref-thermal.c | 11 +++++++++++
+ arch/arm64/mach-tegra/Kconfig | 1 -
+ arch/arm64/mach-tegra/Kconfig | 1 +
+ arch/arm64/mach-tegra/Makefile              | 18 +++---
+ arch/arm64/mach-tegra/Makefile                |  4 +++-
+ arch/arm64/mach-tegra/Makefile               |   6 +-
+ arch/arm64/mach-tegra/tegra21_init.c  | 4 ----
+ arch/arm/boot/dts/panel-j-1440-810-5-8.dtsi        | 279 +++++++++++++++++++++
+ arch/arm/boot/dts/tegra124-loki-common.dtsi                   |  3 ++-
+ arch/arm/boot/dts/tegra124-tn8.dtsi                            |  4 ----
+ arch/arm/mach-tegra/board-ardbeg.c          |  3 +-
+ arch/arm/mach-tegra/board-ardbeg-panel.c    |  4 +-
+ arch/arm/mach-tegra/board-panel.c           | 16 +++++
+ arch/arm/mach-tegra/board-panel.h           |  4 +-
+ arch/arm/mach-tegra/clock.c | 6 +++++-
+ arch/arm/mach-tegra/common.c | 34 +++++++++++++++++++++++++++++++++-
+ arch/arm/mach-tegra/common.c | 8 ++++++++
+ arch/arm/mach-tegra/include/mach/tegra_usb_pmc.h | 11 ++++++++++-
+ arch/arm/mach-tegra/Makefile                |  2 +-
+ arch/arm/mach-tegra/panel-j-1440-810-5-8.c  | 90 ++++++++++++++++++++++-------
+b32de62 cpuidle: tegra210: fix debugfs attr radix
+b338575 arm: tegra64: use unified boardfiles for fpga and silicon
+b43201d dvfs: tegra21: Update max voltage limits
+b8bf3fc vi: support vi watchdog
+bad91fc ARM64: tegra: Disable CPU DVFS on Tegra21
+bbad7d0 ARM64: configs: Enable CONFIG_TEGRA_PREPOWER_WIFI config
+bc135d4 gpu: nvgpu: Set error notifier on PBDMA error
+bd1ff24 ARM64: DT: tegra210: Update pinctrl settings for SDMMC
+bdac155 arm64: tegra: remove TEGRA_BPMP config
+bf01da5 clock: tegra21: Apply safe rate to ISP
+bf26f12 Arm: tegra: xhci: add regulator handles for ardbeg
+bf9954d TEMP: dvfs: tegra21: Set Vmax for core voltage at 1.15V
+ .../bindings/video/nvidia,tegra114-dsi.txt         |  1 +
+ .../bindings/video/nvidia,tegra114-hdmi.txt        |  1 +
+ .../bindings/video/nvidia,tegra124-dsi.txt         |  1 +
+ .../bindings/video/nvidia,tegra124-hdmi.txt        |  1 +
+ .../bindings/video/nvidia,tegra210-dc.txt          |  61 +++
+ .../bindings/video/nvidia,tegra210-dsi.txt         | 415 +++++++++++++++++++++
+ .../bindings/video/nvidia,tegra210-hdmi.txt        | 245 ++++++++++++
+ .../boot/dts/tegra210-ers-e2190-1100-a00-00.dts    | 36 ++++++++
+ .../boot/dts/tegra210-ers-e2220-1100-a00-00.dts    | 25 ----------------------
+ .../boot/dts/tegra210-ers-e2220-1100-a00-00.dts    | 35 ++++++++
+ .../boot/dts/tegra210-loki-e-p2530-0032-e00-00.dts | 24 +++++++-
+ .../boot/dts/tegra210-loki-e-p2530-0032-e00-00.dts |   50 +
+c3ccb9c iommu/tegra: smmu: Update TLB reset value to enable RR arbitration
+c57647f Tegra12x: configs: Disable dummy regulator
+c6f7685 firmware: audience: update es755 firmwares
+c7531d3 DNI: ARM64: tegra21: config: disable gpu
+c895d06 mmc: tegra: Use TMCLK for generating WR CRC status
+c9332fa clock: tegra21: Expand PLLM frequencies table
+c9fab3a clock: tegra21: update UTMIPLL register programming
+cd10a93 arm64: tegra: t210: add icera modem dt aux lookup entry
+cd6cb7a ARM: tegra: Set correct voltage for ldo4
+d62adc2 platform: nvadsp: Fix ADSP watchdog handler
+d91d41f arm64: tegra: fix regulators and card detect for sdmmc on e2220
+d947678 mmc: tegra: Correctly update override caps reg
+dbd8a86 drivers: cpuidle: Added release for file ops
+de43e97 video: tegra: dc: consider clk src prop's absence
+ .../devicetree/bindings/mmc/sdhci-tegra.txt        |   1 +
+ .../devicetree/bindings/mmc/sdhci-tegra.txt        |  3 ++
+ Documentation/devicetree/bindings/extcon/extcon-gpio.txt | 16 ++++++++++++++++
+ drivers/ata/ahci-tegra.c | 407 ++++++++++++++++++++++++++++++++++++-----------
+ drivers/base/firmware_class.c | 1 +
+ drivers/clocksource/tegra210_timer.c | 4 ++--
+ drivers/cpuidle/cpuidle-tegra210.c | 2 +-
+ drivers/cpuidle/cpuidle-tegra210.c | 2 ++
+ drivers/cpuidle/cpuidle-tegra210.c | 28 ++++------------------------
+ drivers/dma/tegra210-adma.c                    | 4 +++-
+ drivers/extcon/extcon-gpio.c | 28 ++++++++++++++++++++++++++++
+ drivers/extcon/extcon-gpio.c       | 74 +++++++++++++++++++++++++++++++++++++-
+ drivers/extcon/extcon-gpio.c | 9 +++++++--
+ drivers/gpu/nvgpu/gk20a/cde_gk20a.c  | 3 +++
+ drivers/gpu/nvgpu/gk20a/cde_gk20a.c | 7 +++----
+ drivers/gpu/nvgpu/gk20a/cde_gk20a.h  | 1 +
+ drivers/gpu/nvgpu/gk20a/fifo_gk20a.c | 3 +++
+ drivers/gpu/nvgpu/gk20a/gk20a.h    |  1 +
+ drivers/gpu/nvgpu/gk20a/gk20a.h               |  1 +
+ drivers/gpu/nvgpu/gk20a/gk20a.h    |  4 +++
+ drivers/gpu/nvgpu/gk20a/gk20a_sysfs.c         | 32 +++++++++++++++++++++++++++
+ drivers/gpu/nvgpu/gk20a/gk20a_sysfs.c | 39 +++++++++++++++++++++++++++++
+ drivers/gpu/nvgpu/gk20a/gr_gk20a.c | 13 +++++++++++++
+ drivers/gpu/nvgpu/gk20a/gr_gk20a.c | 4 ++++
+ drivers/gpu/nvgpu/gk20a/gr_gk20a.c            |  7 +++++-
+ drivers/gpu/nvgpu/gk20a/gr_gk20a.h |  1 +
+ drivers/gpu/nvgpu/gk20a/hw_ctxsw_prog_gk20a.h |  4 ++++
+ drivers/gpu/nvgpu/gk20a/ltc_common.c | 2 ++
+ drivers/gpu/nvgpu/gk20a/mm_gk20a.c | 52 ++++++++++++++++++++---------
+ drivers/gpu/nvgpu/gk20a/mm_gk20a.h   | 4 ++++
+ drivers/gpu/nvgpu/gk20a/mm_gk20a.h |  6 ++++
+ drivers/gpu/nvgpu/gk20a/platform_gk20a_tegra.c | 3 +++
+ drivers/gpu/nvgpu/gm20b/clk_gm20b.c | 6 ++++++
+ drivers/gpu/nvgpu/gm20b/gr_gm20b.c    | 46 ++++++++++++++++++++++++-----------
+ drivers/gpu/nvgpu/gm20b/mm_gm20b.c | 68 +++++++++++++++++++++++++++++++++-----
+ drivers/iommu/tegra-smmu.c | 2 +-
+ drivers/iommu/tegra-smmu.c | 31 ++++++++++---------------------
+ drivers/iommu/tegra-smmu.c | 9 +++------
+ drivers/media/platform/tegra/imx214.c           |   5 +
+ drivers/media/platform/tegra/imx214_mode_tbls.h | 252 ++++++++++++++++++++++--
+ drivers/mmc/host/sdhci.c       |  3 +++
+ drivers/mmc/host/sdhci.h       |  1 +
+ drivers/mmc/host/sdhci-tegra.c                | 107 +++++++++++++++++++++++++-
+ drivers/mmc/host/sdhci-tegra.c | 16 ++++++++++++----
+ drivers/mmc/host/sdhci-tegra.c | 16 +++++++++++++++-
+ drivers/mmc/host/sdhci-tegra.c                     | 35 ++++++++++++++++++++--
+ drivers/mmc/host/sdhci-tegra.c | 37 +++++++++++++++++++++++++++++++------
+ drivers/mmc/host/sdhci-tegra.c | 5 ++++-
+ drivers/pinctrl/pinctrl-max77620.c | 2 +-
+ drivers/pinctrl/pinctrl-tegra210.c       | 111 ++++++++++++++++---------------
+ drivers/pinctrl/pinctrl-tegra210.c | 31 +++++++++++++++++++++++--------
+ drivers/pinctrl/pinctrl-tegra210.c                 | 332 ++++++++++-----------
+ drivers/platform/tegra/iommu.c | 4 ----
+ drivers/platform/tegra/nvadsp/aram.c | 2 +-
+ drivers/platform/tegra/nvadsp/emc_dfs.c | 23 ++++++++++++-----------
+ drivers/platform/tegra/nvadsp/os.c | 11 +++++++++++
+ drivers/platform/tegra/nvadsp/os.c | 61 +++++++++++++++++++++++++++-----------
+ drivers/platform/tegra/nvadsp/os.c | 77 ++++++++++++++++++++++++--------------
+ drivers/platform/tegra/tegra21_clocks.c | 127 ++++++++++++++++++++++++++++++--
+ drivers/platform/tegra/tegra21_clocks.c | 16 +++++++++++++---
+ drivers/platform/tegra/tegra21_clocks.c | 2 +-
+ drivers/platform/tegra/tegra21_clocks.c | 22 ++++++++++++++++++++++
+ drivers/platform/tegra/tegra21_clocks.c | 3 +--
+ drivers/platform/tegra/tegra21_clocks.c | 31 +++++++++++++++++--------------
+ drivers/platform/tegra/tegra21_clocks.c | 53 +++++++++++++--------------------
+ drivers/platform/tegra/tegra21_clocks.c | 9 +++------
+ drivers/platform/tegra/tegra21_dvfs.c   | 10 ++++++++--
+ drivers/platform/tegra/tegra21_dvfs.c | 2 +-
+ drivers/platform/tegra/tegra21_speedo.c |  2 +-
+ drivers/platform/tegra/tegra21_speedo.c | 2 +-
+ drivers/platform/tegra/tegra21_speedo.c | 4 ++--
+ drivers/platform/tegra/tegra_usb_pmc.c           | 15 +++++++++++++-
+ drivers/pwm/pwm-tegra.c | 8 ++++++--
+ drivers/regulator/pwm-regulator.c | 1 +
+ drivers/usb/gadget/tegra_udc.c                   | 20 ++++++++++++++++++-
+ drivers/usb/phy/phy-tegra-usb.c | 10 ++++++++++
+ drivers/usb/phy/phy-tegra-usb.c | 7 ++++---
+ drivers/usb/phy/tegra11x_usb_phy.c               | 25 +++++++++++++++++++++++-
+ drivers/video/tegra/dc/dc.c                        |   1 +
+ drivers/video/tegra/dc/dsi.c        | 2 +-
+ drivers/video/tegra/dc/fake_panel.c | 2 +-
+ drivers/video/tegra/dc/hdmi.c       | 2 +-
+ drivers/video/tegra/dc/hdmihdcp.c              | 367 +++++++++-
+ drivers/video/tegra/dc/Makefile                |   1 +
+ drivers/video/tegra/dc/mipi_cal.c   | 4 ++--
+ drivers/video/tegra/dc/nvhdcp_hdcp22_methods.c | 495 +++++++++++++
+ drivers/video/tegra/dc/nvhdcp_hdcp22_methods.h |  38 +
+ drivers/video/tegra/dc/of_dc.c                     | 24 ++++++++++++----------
+ drivers/video/tegra/dc/of_dc.c | 30 ++++++++++--------------------
+ drivers/video/tegra/dc/tsec_drv.h              | 919 +++++++++++++++++++++++++
+ drivers/video/tegra/host/flcn/flcn.c      | 11 ++++++++++-
+ drivers/video/tegra/host/flcn/flcn.c    | 16 +++++++++++-----
+ drivers/video/tegra/host/flcn/hw_flcn.h |  4 ++++
+ drivers/video/tegra/host/isp/isp.h | 13 ++++++++++++-
+ drivers/video/tegra/host/nvdec/hw_nvdec.h |  8 ++++++++
+ drivers/video/tegra/host/nvdec/nvdec.c    |  8 ++++++++
+ drivers/video/tegra/host/nvjpg/hw_nvjpg.h |  8 ++++++++
+ drivers/video/tegra/host/nvjpg/nvjpg.c    |  9 +++++++++
+ drivers/video/tegra/host/t124/t124.c      |  4 ++++
+ drivers/video/tegra/host/tsec/hw_tsec.h   |  8 ++++++++
+ drivers/video/tegra/host/tsec/Makefile         |   1 +
+ drivers/video/tegra/host/tsec/tsec.c           | 425 +++++++++++-
+ drivers/video/tegra/host/tsec/tsec.c      |  8 ++++++++
+ drivers/video/tegra/host/tsec/tsec_methods.h   | 229 ++++++
+ drivers/video/tegra/host/vi/vi.c     |  3 ---
+ drivers/video/tegra/host/vi/vi.h     | 17 +++++++++++++
+ drivers/video/tegra/host/vi/vi_irq.c | 48 +++++++++++++++++++++++++++++++++++-
+ .../dts/tegra124-platforms/tegra124-pm358-fixed.dtsi | 20 --------------------
+ .../dts/tegra124-platforms/tegra124-pm359-fixed.dtsi | 20 --------------------
+ .../dts/tegra124-platforms/tegra124-pm359-pmic.dtsi  |  8 --------
+ .../dts/tegra132-interposer-e2141-1100-a00-00.dts  |  43 ++++
+ .../dts/tegra210-foster-e-p2530-0032-e00-00.dts    |   39 +
+ .../dts/tegra210-platforms/tegra210-ers-power-dvfs-e2174-1101-a00.dtsi  | 2 +-
+ .../dts/tegra210-platforms/tegra210-sdhci.dtsi     |  12 ++
+ .../dts/tegra210-platforms/tegra210-sdhci.dtsi     |  2 ++
+ firmware/audience/es755/audience-es755-fw.bin | Bin 294268 -> 308132 bytes
+ firmware/audience/es755/audience-es755-vs.bin | Bin 112772 -> 112908 bytes
+ include/dt-bindings/gpio/gpio.h                    |  1 +
+ include/linux/esxxx.h | 16 ++++++++--------
+ include/linux/extcon/extcon-gpio.h |  2 ++
+ include/linux/nvhost.h               | 1 +
+ include/linux/nvhost.h                    |  1 +
+ include/linux/platform_data/mmc-sdhci-tegra.h |   1 +
+ include/linux/platform_data/mmc-sdhci-tegra.h      |  1 +
+ ...ra132-interposer-power-tree-e2174-1101-a00.dtsi |  13 +
+ ...ra132-interposer-power-tree-e2174-1101-a00.dtsi | 28 ++++++++++
+ sound/soc/tegra-alt/Makefile                   |  1 +
+ sound/soc/tegra-alt/tegra210_admaif_alt.c      | 3 +++
+ sound/soc/tegra-alt/tegra210_admaif_alt.h      | 1 +
+ sound/soc/tegra-alt/tegra210_i2s_alt.c         | 3 +++
+ sound/soc/tegra-alt/tegra210_i2s_alt.c         | 9 ++++++++-
+ sound/soc/tegra-alt/tegra210_mixer_alt.c       | 3 +++
+ sound/soc/tegra-alt/tegra210_sfc_alt.c         | 3 +++
+ sound/soc/tegra-alt/tegra210_xbar_alt.c | 29 +++++++++++++++++++++++------
+ sound/soc/tegra-alt/tegra210_xbar_alt.h |  1 +
+ sound/soc/tegra-alt/tegra_asoc_machine_alt.c   |  3 +
+ sound/soc/tegra-alt/tegra_asoc_utils_alt.c     | 52 +++++++++++++---
+ sound/soc/tegra-alt/tegra_asoc_utils_alt.h     |  3 +
+ sound/soc/tegra-alt/tegra_grenada_alt.c        | 83 ++++++++++++++++++++++++--
+ sound/soc/tegra-alt/tegra_t210ref_mobile_alt.c | 1 +
+ sound/soc/tegra-alt/tegra_t210ref_mobile_alt.c | 30 --------------------------
+ sound/soc/tegra-alt/tegra_t210ref_mobile_alt.c | 60 ++++++++++++++++---
+ sound/soc/tegra-alt/tegra_t210ref_mobile_alt.c | 8 +++++++-
+ sound/soc/tegra/tegra210_admaif.c              | 3 +++
+ sound/soc/tegra/tegra210_admaif.h              | 3 ++-
+ sound/soc/tegra/tegra210_amixer.c              | 2 ++
+ sound/soc/tegra/tegra210_axbar.c | 73 ++++++++++++++++++++++++++++++++++------
+ sound/soc/tegra/tegra210_dmic.c                | 2 ++
+ sound/soc/tegra/tegra210_i2s.c                 | 2 ++
+ sound/soc/tegra/tegra210_i2s.c   | 37 +++++++++++++++++++-
+ .../tegra124-1791-power-tree-e1736-1000-a00.dtsi               | 10 ++++++++++
+ .../tegra124-ardbeg-fixed-e1733-1000-a00.dtsi        | 16 ----------------
+ .../tegra124-ardbeg-fixed-e1735-1000-a00.dtsi        | 12 ------------
+ .../tegra124-ardbeg-pmic-e1733-1000-a00.dtsi         | 12 ------------
+ .../tegra124-ardbeg-pmic-e1735-1000-a00.dtsi         | 16 ----------------
+ .../tegra124-ardbeg-power-tree-e1733-1000-a00.dtsi             | 10 ++++++++++
+ .../tegra124-ardbeg-power-tree-e1735-1000-a00.dtsi             | 10 ++++++++++
+ .../tegra124-e1791-e1736-pmic.dtsi                   | 18 ------------------
+ .../tegra124-jetson-power-tree-pm375-0000-c00.dtsi             |  9 +++++++++
+ .../tegra124-jetson_tk1-fixed-pm375-0000-c00-00.dtsi | 20 --------------------
+ .../tegra124-jetson_tk1-pmic-pm375-0000-c00-00.dtsi  |  8 --------
+ .../tegra124-laguna-power-tree-pm359-0000-a00.dtsi             | 10 ++++++++++
+ .../tegra124-loki-fixed-e2545-0000-common.dtsi       |  8 --------
+ .../tegra124-loki-pmic-e2530-0000-a01.dtsi           |  4 ----
+ .../tegra124-loki-pmic-e2545-0000-a00.dtsi           |  4 ----
+ .../tegra124-loki-pmic-e2545-0000-common.dtsi        | 12 ------------
+ .../tegra124-loki-power-tree-e2530-0000-a01.dtsi              | 11 +++++++++++
+ .../tegra124-loki-power-tree-e2545-0000-a00.dtsi              | 11 +++++++++++
+ .../tegra124-norrin-fixed-pm374-0000-a00.dtsi        | 20 --------------------
+ .../tegra124-norrin-pmic-pm374-0000-a00.dtsi         |  8 --------
+ .../tegra124-norrin-power-tree-pm374-0000-a00.dtsi             |  9 +++++++++
+ .../tegra124-tn8-power-tree-e1736-1000-a00.dtsi                | 10 ++++++++++
+ .../tegra124-tn8-power-tree-e1769-1000-a00.dtsi                | 10 ++++++++++
+ .../tegra124-tn8-power-tree-e1936-1000-a00.dtsi                |  8 ++++++++
+ .../tegra132-interposer-hdmi-e2141-1100-a00.dtsi   |  94 +++++++
+ .../tegra132-interposer-power-tree-e2174-1101-a00.dtsi        | 11 +++++++++++
+ .../tegra210-ers-dfll-e2174-1101-a00.dtsi          | 46 ----------------------
+ .../tegra210-ers-fixed-e2174-1101-a00.dtsi         | 24 ---------
+ .../tegra210-ers-hdmi-e2190-1100-a00.dtsi          | 97 ++++++++++++++++++++++
+ .../tegra210-ers-pinmux-e2190-1100-a00.dtsi        | 130 ++++----
+ .../tegra210-ers-pinmux-e2190-1100-a00.dtsi        | 183 ++++++++++----------
+ .../tegra210-ers-pinmux-e2190-1100-a00.dtsi        | 39 +++++++++++++++++++++
+ .../tegra210-ers-pinmux-e2220-1100-a00.dtsi        | 118 ++++----
+ .../tegra210-ers-pinmux-e2220-1100-a00.dtsi        | 118 ++++++++++-----------
+ .../tegra210-ers-pinmux-e2220-1100-a00.dtsi        | 184 ++++++++++-----------
+ .../tegra210-ers-pinmux-e2220-1100-a00.dtsi        | 40 ++++++++++++++++++++++
+ .../tegra210-ers-pmic-e2174-1101-a00.dtsi          | 12 -----
+ .../tegra210-ers-power-tree-e2174-1101-a00.dtsi    |  13 +
+ .../tegra210-ers-power-tree-e2174-1101-a00.dtsi    | 28 ++++++++++
+ .../tegra210-ers-sensor-e1934-1000-a00.dtsi        | 62 ++++++++++++++++++++++
+ .../tegra210-ers-sensor-e2160-1000-a00.dtsi        | 52 +++++++++---------
+ .../tegra210-foster-e-pwm-fan.dtsi                 |   23 +
+ .../tegra210-loki-e-gpio-p2530-0032-e00.dtsi       |   94 ++
+ .../tegra210-loki-e-p2530-common.dtsi              |  114 ++
+ .../tegra210-loki-e-pinmux-p2530-0032-e00.dtsi     | 1627 ++++++++++++++++++++
+ .../tegra210-loki-e-pwm-fan.dtsi                   |   38 +
+ .../tegra210-loki-e-sensor-p2530-0032-e00.dtsi     |   39 +
+ .../tegra210-loki-power-tree-p2530-0999-e00.dtsi   | 20 +++++++
+ .../tegra210-loki-power-tree-p2530-0999-e00.dtsi              |  8 +-------
+ .../tegra210-platforms/tegra210-ers-pmic-e2174-1101-a00.dtsi  |  2 --
+ .../tegra210-platforms/tegra210-loki-power-tree-p2530-0999-e00.dtsi   | 4 ++--
+ .../tegra210-platforms/tegra210-loki-sdhci.dtsi    | 69 ++++++++++++++++++++++
