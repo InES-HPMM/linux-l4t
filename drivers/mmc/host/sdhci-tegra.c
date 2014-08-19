@@ -4258,7 +4258,6 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK |
 		    NVQUIRK_UPDATE_PAD_CNTRL_REG |
 		    NVQUIRK_USE_TMCLK_WR_CRC_TIMEOUT,
-	.parent_clk_list = {"pll_p"},
 };
 
 static const struct of_device_id sdhci_tegra_dt_match[] = {
