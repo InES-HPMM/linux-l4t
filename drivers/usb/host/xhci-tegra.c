@@ -2089,9 +2089,7 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 
 static inline bool xusb_use_sata_lane(struct tegra_xhci_hcd *tegra)
 {
-	bool ret;
-	if (XUSB_DEVICE_ID_T114 == tegra->device_id)
-		ret = false;
+	bool ret = false;
 	if (XUSB_DEVICE_ID_T124 == tegra->device_id)
 		ret = ((tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
 				&& (tegra->bdata->lane_owner & SATA_LANE));
