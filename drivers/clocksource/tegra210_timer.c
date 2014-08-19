@@ -300,5 +300,5 @@ static void __init tegra210_timer_init(struct device_node *np)
 	of_node_put(np);
 }
 
-//CLOCKSOURCE_OF_DECLARE(tegra210_timer, "nvidia,tegra210-timer",
-//		       tegra210_timer_init);
+CLOCKSOURCE_OF_DECLARE(tegra210_timer, "nvidia,tegra210-timer",
+		       tegra210_timer_init);
