@@ -1071,7 +1071,7 @@
 
 			uart2_tx_pg0 {
 				nvidia,pins = "uart2_tx_pg0";
-				nvidia,function = "";
+				nvidia,function = "uartb";
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
@@ -1299,7 +1299,6 @@
 
 		drive_default: drive {
 		};
-
 		dap1_active_state: dap1_active {
 			i2s1 {
 				nvidia,pins = "dap1_fs_pb0", "dap1_din_pb1",
