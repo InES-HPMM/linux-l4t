@@ -48,6 +48,7 @@ static const char * const udc_regulator_names[] = {
 	"hvdd_usb",		/* TODO 3.3V */
 	"avddio_usb",		/* TODO 1.05V */
 	"avdd_pll_utmip",	/* TODO 1.8V */
+	"avddio_pll_uerefe",	/* TODO 1.05V */
 };
 
 static const int udc_regulator_count = ARRAY_SIZE(udc_regulator_names);
