@@ -40,7 +40,6 @@ void t210ref_camera_auxdata(void *);
 
 /* Invensense MPU Definitions */
 #define MPU_GYRO_NAME			"mpu9250"
-#define MPU_GYRO_IRQ_GPIO		TEGRA_GPIO_PS0
 #define MPU_GYRO_ADDR			0x69
 #define MPU_GYRO_BUS_NUM		0
 #define MPU_GYRO_ORIENTATION		MTMAT_TOP_CCW_0
@@ -58,11 +57,11 @@ void t210ref_camera_auxdata(void *);
 
 /* External peripheral act as interrupt controller */
 
-#define CAM_RSTN TEGRA_GPIO_PBB3
-#define CAM_FLASH_STROBE TEGRA_GPIO_PBB4
-#define CAM2_PWDN TEGRA_GPIO_PBB6
-#define CAM1_PWDN TEGRA_GPIO_PBB5
-#define CAM_AF_PWDN TEGRA_GPIO_PBB7
+#define CAM_RSTN TEGRA_GPIO_PS4
+#define CAM_FLASH_STROBE TEGRA_GPIO_PS6
+#define CAM2_PWDN TEGRA_GPIO_PT0
+#define CAM1_PWDN TEGRA_GPIO_PS7
+#define CAM_AF_PWDN TEGRA_GPIO_PS5
 #define CAM_BOARD_E1806
 
 #define UTMI1_PORT_OWNER_XUSB   0x1

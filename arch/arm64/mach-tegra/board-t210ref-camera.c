@@ -216,7 +216,7 @@ static int t210ref_ar0261_power_off(struct ar0261_power_rail *pw)
 struct ar0261_platform_data t210ref_ar0261_data = {
 	.power_on = t210ref_ar0261_power_on,
 	.power_off = t210ref_ar0261_power_off,
-	.mclk_name = "mclk2",
+	.mclk_name = "clk_out_3",
 };
 
 static int t210ref_imx135_power_on(struct imx135_power_rail *pw)
@@ -500,8 +500,8 @@ static struct as364x_platform_data t210ref_as3648_data = {
 		.strobe_type = 1,
 		},
 	.pinstate	= {
-		.mask	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0),
-		.values	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0)
+		.mask	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PS2),
+		.values	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PS2)
 		},
 	.dev_name	= "torch",
 	.type		= AS3648,
@@ -573,7 +573,7 @@ static int t210ref_ov7695_power_off(struct ov7695_power_rail *pw)
 struct ov7695_platform_data t210ref_ov7695_pdata = {
 	.power_on = t210ref_ov7695_power_on,
 	.power_off = t210ref_ov7695_power_off,
-	.mclk_name = "mclk2",
+	.mclk_name = "clk_out_3",
 };
 
 static int t210ref_ov5693_power_on(struct ov5693_power_rail *pw)
@@ -784,11 +784,6 @@ static int t210ref_ov5693_front_power_off(struct ov5693_power_rail *pw)
 	return 0;
 }
 
-static struct nvc_gpio_pdata ov5693_front_gpio_pdata[] = {
-	{ OV5693_GPIO_TYPE_PWRDN, CAM2_PWDN, true, 0, },
-	{ OV5693_GPIO_TYPE_PWRDN, CAM_RSTN, true, 0, },
-};
-
 static struct nvc_imager_cap ov5693_front_cap = {
 	.identifier				= "OV5693.1",
 	.sensor_nvc_interface	= 4,
@@ -824,19 +819,10 @@ static struct nvc_imager_cap ov5693_front_cap = {
 };
 
 static struct ov5693_platform_data t210ref_ov5693_front_pdata = {
-	.gpio_count	= ARRAY_SIZE(ov5693_front_gpio_pdata),
-	.gpio		= ov5693_front_gpio_pdata,
 	.power_on	= t210ref_ov5693_front_power_on,
 	.power_off	= t210ref_ov5693_front_power_off,
 	.dev_name	= "ov5693.1",
-	.mclk_name	= "mclk2",
 	.cap		= &ov5693_front_cap,
-	.regulators = {
-			.avdd = "vana",
-			.dvdd = "vdig",
-			.dovdd = "vif",
-	},
-	.has_eeprom = 0,
 };
 
 static int t210ref_ad5823_power_on(struct ad5823_platform_data *pdata)
@@ -883,7 +869,7 @@ void __init t210ref_camera_auxdata(void *data)
 {
 	struct of_dev_auxdata *aux_lut = data;
 	while (aux_lut && aux_lut->compatible) {
-		if (!strcmp(aux_lut->compatible, "nvidia,tegra124-camera")) {
+		if (!strcmp(aux_lut->compatible, "nvidia,tegra210-camera")) {
 			pr_info("%s: update camera lookup table.\n", __func__);
 			aux_lut->platform_data = t210ref_camera_lut;
 		}
@@ -898,12 +884,12 @@ int t210ref_camera_init(void)
 	pr_debug("%s: ++\n", __func__);
 	tegra_get_board_info(&board_info);
 
-	/* put CSIA/B/C/D/E IOs into DPD mode to
-	 * save additional power for t210ref
+	/* TODO: DPD mode is temarary turned off, need to put CSIA/B/C/D/E IOs
+	 * into DPD mode to save additional power for t210ref later
 	 */
-	tegra_io_dpd_enable(&csia_io);
-	tegra_io_dpd_enable(&csib_io);
-	tegra_io_dpd_enable(&csie_io);
+	tegra_io_dpd_disable(&csia_io);
+	tegra_io_dpd_disable(&csib_io);
+	tegra_io_dpd_disable(&csie_io);
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_PLATFORM)
 	platform_device_register(&t210ref_soc_camera_device);
