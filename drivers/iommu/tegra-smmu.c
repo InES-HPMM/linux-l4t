@@ -77,8 +77,7 @@ enum {
 
 #define SMMU_TLB_CONFIG_HIT_UNDER_MISS__ENABLE	(1 << 29)
 #define SMMU_TLB_CONFIG_ACTIVE_LINES__VALUE	0x10
-#define SMMU_TLB_CONFIG_RESET_VAL		0x20000000
-#define SMMU_TLB_RR_ARB				(1 << 28)
+#define SMMU_TLB_CONFIG_RESET_VAL		0x30000000
 
 #define SMMU_PTC_CONFIG_CACHE__ENABLE		(1 << 29)
 #define SMMU_PTC_CONFIG_INDEX_MAP__PATTERN	0x3f
@@ -777,12 +776,10 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 	if ((IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
 	     (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) ||
 	    (IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC) &&
-	     (tegra_get_chipid() == TEGRA_CHIPID_TEGRA13))) {
-		val |= SMMU_TLB_RR_ARB;
+	     (tegra_get_chipid() == TEGRA_CHIPID_TEGRA13)))
 		val |= SMMU_TLB_CONFIG_ACTIVE_LINES__VALUE << 1;
-	} else { /* T210. */
+	else  /* T210. */
 		val |= (SMMU_TLB_CONFIG_ACTIVE_LINES__VALUE * 3);
-	}
 
 	smmu_write(smmu, val, SMMU_CACHE_CONFIG(_TLB));
 
