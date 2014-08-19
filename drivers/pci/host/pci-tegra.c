@@ -413,6 +413,9 @@ struct tegra_pcie_bus {
 	unsigned int nr;
 };
 
+/* Maximum number of times probe can be deferred */
+static int tegra_pcie_max_deferrals = 3;
+
 /* used to avoid successive hotplug disconnect or connect */
 static bool hotplug_event;
 /* pcie mselect & xclk rate */
@@ -2500,8 +2503,14 @@ static int tegra_pcie_init(struct tegra_pcie *pcie)
 		tegra_pcie_hw.sys = &pcie->sys;
 		pci_common_init_dev(pcie->dev, &tegra_pcie_hw);
 	} else {
-		dev_err(pcie->dev, "PCIE: no ports detected\n");
 		err = -EPROBE_DEFER;
+
+		/* Defer the probe only a certain number of times */
+		if (tegra_pcie_max_deferrals-- <= 0) {
+			dev_err(pcie->dev, "PCIE: no ports detected\n");
+			err = 0;
+		}
+
 		goto fail_enum;
 	}
 	tegra_pcie_enable_features(pcie);
