@@ -338,7 +338,8 @@
 			      0 97 0x04
 			      0 21 0x04>;
 		nvidia,hsic0 = /bits/8 <0x1 0x1 0x8 0xa 0 0 1 0x1c 0>;
-		status = "ok";
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(XUSB_HOST) &common_as>;
+		status = "okay";
 	};
 
 	uarta: serial@70006000 {
