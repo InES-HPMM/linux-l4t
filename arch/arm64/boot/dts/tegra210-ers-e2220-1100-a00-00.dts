@@ -114,6 +114,41 @@
 			compatible = "realtek,rt5639";
 			reg = <0x1c>;
 		};
+		earSmart: earSmart-codec.0-003e@3e {
+			compatible = "adnc,earSmart";
+			reg = <0x3e>;
+
+			adnc,reset-gpio = <&gpio TEGRA_GPIO(BB, 3) GPIO_ACTIVE_HIGH>;
+			adnc,gpiob-gpio = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
+			adnc,wakeup-gpio = <&gpio TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH>;
+			adnc,int-gpio = <(-1)>;
+			adnc,gpioa-gpio = <(-1)>;
+			adnc,enable_hs_uart_intf = <3>;
+			adnc,ext_clk_rate = <0>;
+			adnc,debounce_timer = <3>;
+			adnc,plug_det_enabled = <1>;
+			adnc,mic_det_enabled = <1>;
+
+			adnc,gpio_b_irq_type = <4>;
+			adnc,cmd_comp_mode = <0>;
+
+			/* Button Control 1 */
+			adnc,btn_press_settling_time = <4>;
+			adnc,btn_press_polling_rate = <1>;
+			adnc,btn_press_det_act = <1>;
+
+			/* Button Control 2 */
+			adnc,double_btn_timer = <(-1)>;
+			adnc,mic_det_settling_timer = <(-1)>;
+
+			/* Button Control 3 */
+			adnc,long_btn_timer = <(-1)>;
+			adnc,adc_btn_mute = <(-1)>;
+
+			/* Button Control 4 */
+			adnc,valid_levels = <31>;
+			adnc,impd_det_timer = <0>;
+		};
 	};
 
 	i2c@7000d000 {
@@ -142,8 +177,8 @@
 	ahub {
 		i2s@702d1000 {
 			pinctrl-names = "dap_active", "dap_inactive";
-			pinctrl-0 = <&dap1_active_state>;
-			pinctrl-1 = <&dap1_inactive_state>;
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
 			regulator-supplies = "vdd-1v8-audio-hv", "vdd-1v8-audio-hv-bias";
 			vdd-1v8-audio-hv-supply = <&max77620_sd3>;
 			vdd-1v8-audio-hv-bias-supply = <&max77620_sd3>;
@@ -151,8 +186,8 @@
 
 		i2s@702d1300 {
 			pinctrl-names = "dap_active", "dap_inactive";
-			pinctrl-0 = <&dap4_active_state>;
-			pinctrl-1 = <&dap4_inactive_state>;
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
 			regulator-supplies = "vddio-dmic";
 			vddio-dmic-supply = <&max77620_sd3>;
 		};
@@ -161,8 +196,8 @@
 	sound {
 		compatible = "nvidia,tegra-audio-t210ref-mobile";
 		nvidia,model = "tegra-snd-t210ref-mobile";
-		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(R, 2) GPIO_ACTIVE_HIGH>;
-		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(R, 7) GPIO_ACTIVE_HIGH>;
+		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(BB, 3) GPIO_ACTIVE_HIGH>;
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
 		nvidia,num-codec-link = <2>;
 
 		nvidia,audio-routing =
