@@ -3445,17 +3445,27 @@ static struct clk_ops tegra_pllmb_ops = {
  * PLLE
  * Analog interpolator based SS PLL (with optional SDM SS - not used).
  */
-static inline void select_pll_e_input(struct clk *c)
+static void select_pll_e_input(struct clk *c)
 {
+	struct clk *p;
 	u32 aux_reg = clk_readl(PLLE_AUX);
+
 #if USE_PLLE_INPUT_PLLRE
 	aux_reg |= PLLE_AUX_PLLRE_SEL;
-	c->parent = c->inputs[2].input;
+	p = c->inputs[2].input;
 #else
 	aux_reg &= ~(PLLE_AUX_PLLRE_SEL | PLLE_AUX_PLLP_SEL);
-	c->parent = c->inputs[0].input;
+	p = c->inputs[0].input;
 #endif
+	if (p != c->parent)
+		clk_prepare_enable(p);
+
 	pll_writel_delay(aux_reg, PLLE_AUX);
+
+	if (p != c->parent) {
+		tegra_clk_disable_unprepare(c->parent);
+		clk_reparent(c, p);
+	}
 }
 
 static void tegra21_plle_clk_init(struct clk *c)
