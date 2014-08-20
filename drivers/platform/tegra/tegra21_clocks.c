@@ -9067,7 +9067,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("actmon", "tegra_host1x", "actmon"),
 	CLK_DUPLICATE("gpu_ref", "tegra_gpu.0", "PLLG_ref"),
 	CLK_DUPLICATE("pll_p_out5", "tegra_gpu.0", "pwr"),
-	CLK_DUPLICATE("ispa.isp.cbus", "tegra_isp", "isp"),
+	CLK_DUPLICATE("ispa.isp.cbus", "tegra_isp.0", "isp"),
 	CLK_DUPLICATE("ispb.isp.cbus", "tegra_isp.1", "isp"),
 #ifdef CONFIG_VI_ONE_DEVICE
 	CLK_DUPLICATE("vi.cbus", "tegra_vi", "vi"),
