@@ -213,7 +213,7 @@ static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 		if (IS_ERR_OR_NULL(phy->pllu_reg)) {
 			ERR("Couldn't get regulator %s: %ld\n", USB_PLL_REG,
 				PTR_ERR(phy->pllu_reg));
-			err = PTR_ERR(phy->pllu_reg);
+			err = phy->pllu_reg ? PTR_ERR(phy->pllu_reg) : -ENODEV;
 			phy->pllu_reg = NULL;
 			return err;
 		}
