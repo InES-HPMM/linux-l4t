@@ -456,13 +456,13 @@ static struct nct1008_platform_data t210ref_nct72_pdata = {
 		},
 		[EXT] = {
 			.tzp = &cpu_tzp,
-			.shutdown_limit = 95, /* C */
+			.shutdown_limit = 92, /* C */
 			.passive_delay = 1000,
 			.num_trips = 2,
 			.trips = {
 				{
 					.cdev_type = "shutdown_warning",
-					.trip_temp = 93000,
+					.trip_temp = 85000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
@@ -554,7 +554,7 @@ static struct i2c_board_info t210ref_skin_i2c_nct72_board_info[] = {
 
 int t210ref_thermal_sensors_init(void)
 {
-	int nct72_port = TEGRA_GPIO_PI6;
+	int nct72_port = TEGRA_GPIO_PX4;
 	int ret = 0;
 #if defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	int i;
@@ -599,14 +599,6 @@ int t210ref_thermal_sensors_init(void)
 	}
 #endif
 
-	/* vmin trips are bound to soctherm on norrin and bowmore */
-	if (!(board_info.board_id == BOARD_PM374 ||
-		board_info.board_id == BOARD_E2141 ||
-		board_info.board_id == BOARD_E1971 ||
-		board_info.board_id == BOARD_E1991))
-		tegra_add_all_vmin_trips(t210ref_nct72_pdata.sensors[EXT].trips,
-			&t210ref_nct72_pdata.sensors[EXT].num_trips);
-
 	/* T210_interposer use GPIO_PC7 for alert*/
 	if (board_info.board_id == BOARD_E2141)
 		nct72_port = TEGRA_GPIO_PC7;
@@ -623,23 +615,9 @@ int t210ref_thermal_sensors_init(void)
 		gpio_free(nct72_port);
 	}
 
-	/* norrin has thermal sensor on GEN1-I2C i.e. instance 0 */
-	if (board_info.board_id == BOARD_PM374)
-		i2c_register_board_info(0, t210ref_i2c_nct72_board_info,
-					1); /* only register device[0] */
 	/* t210ref has thermal sensor on GEN2-I2C i.e. instance 1 */
-	else if (board_info.board_id == BOARD_PM358 ||
-			board_info.board_id == BOARD_PM359 ||
-			board_info.board_id == BOARD_PM370 ||
-			board_info.board_id == BOARD_PM363)
-		i2c_register_board_info(1, t210ref_i2c_nct72_board_info,
-		ARRAY_SIZE(t210ref_i2c_nct72_board_info));
-	else if (board_info.board_id == BOARD_PM375) {
-		t210ref_nct72_pdata.sensors[EXT].shutdown_limit = 100;
-		t210ref_nct72_pdata.sensors[LOC].shutdown_limit = 95;
-		i2c_register_board_info(0, t210ref_i2c_nct72_board_info,
-					1); /* only register device[0] */
-	} else {
+
+	if (board_info.board_id == BOARD_E2141) {
 	/* E2141 has thermal sensor on GEN1-I2C, skin temp sensor on GEN2-I2C */
 		i2c_register_board_info(0, t210ref_i2c_nct72_board_info,
 			ARRAY_SIZE(t210ref_i2c_nct72_board_info));
@@ -647,6 +625,10 @@ int t210ref_thermal_sensors_init(void)
 		i2c_register_board_info(1, t210ref_skin_i2c_nct72_board_info,
 			ARRAY_SIZE(t210ref_skin_i2c_nct72_board_info));
 #endif
+	} else {
+	/* E2220 has thermal sensor on GEN3-I2C i.e. instance 2 */
+		i2c_register_board_info(2, t210ref_i2c_nct72_board_info,
+				ARRAY_SIZE(t210ref_i2c_nct72_board_info));
 	}
 
 	return ret;
