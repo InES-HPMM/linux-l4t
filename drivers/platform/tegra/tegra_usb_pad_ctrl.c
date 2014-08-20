@@ -421,26 +421,29 @@ static void utmi_phy_pad(bool enable)
 		return;
 
 	if (enable) {
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0
-			, BIAS_PAD_MASK , BIAS_PAD_XUSB);
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1
-			, TRK_START_TIMER_MASK , TRK_START_TIMER);
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1
-			, TRK_DONE_RESET_TIMER_MASK , TRK_DONE_RESET_TIMER);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0,
+			BIAS_PAD_MASK, BIAS_PAD_XUSB);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1,
+			TRK_START_TIMER_MASK, TRK_START_TIMER);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1,
+			TRK_DONE_RESET_TIMER_MASK, TRK_DONE_RESET_TIMER);
 
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0
-			, PD_MASK , PD);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
+			HS_SQUELCH_LEVEL(~0), HS_SQUELCH_LEVEL(2));
+
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
+			PD_MASK, 0);
 
 		udelay(1);
 
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1
-			, PD_TRK_MASK , PD_TRK);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1,
+			PD_TRK_MASK, 0);
 	} else {
 
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0
-			, BIAS_PAD_MASK , BIAS_PAD_XUSB);
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0
-			, PD_MASK , PD_MASK);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0,
+			BIAS_PAD_MASK, BIAS_PAD_XUSB);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
+			PD_MASK, PD_MASK);
 	}
 #else
 	unsigned long val;
