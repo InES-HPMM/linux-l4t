@@ -226,7 +226,7 @@ static void __init tegra210_timer_init(struct device_node *np)
 		BUG();
 	}
 
-	for (cpu = 0; cpu < 4; ++cpu) {
+	for_each_possible_cpu(cpu) {
 		tevt = &per_cpu(tegra210_evt, cpu);
 		tevt->reg_base = tegra210_timer_reg_base + TIMER_FOR_CPU(cpu);
 		tevt->evt.irq = irq_of_parse_and_map(np, cpu);
@@ -300,5 +300,5 @@ static void __init tegra210_timer_init(struct device_node *np)
 	of_node_put(np);
 }
 
-//CLOCKSOURCE_OF_DECLARE(tegra210_timer, "nvidia,tegra210-timer",
-//		       tegra210_timer_init);
+CLOCKSOURCE_OF_DECLARE(tegra210_timer, "nvidia,tegra210-timer",
+		       tegra210_timer_init);
