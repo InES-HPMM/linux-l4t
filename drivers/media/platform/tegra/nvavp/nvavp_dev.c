@@ -1292,9 +1292,6 @@ static void nvavp_uninit(struct nvavp_info *nvavp)
 
 	if (video_initialized) {
 		pr_debug("nvavp_uninit nvavp->video_initialized\n");
-		mutex_unlock(&nvavp->open_lock);
-		cancel_work_sync(&nvavp->clock_disable_work);
-		mutex_lock(&nvavp->open_lock);
 		nvavp_halt_vde(nvavp);
 		nvavp_set_video_init_status(nvavp, 0);
 		video_initialized = 0;
