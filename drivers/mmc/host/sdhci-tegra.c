@@ -48,6 +48,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/tegra-soc.h>
 #include <linux/tegra-fuse.h>
+#include <linux/tegra-pmc.h>
 
 #include <linux/platform_data/mmc-sdhci-tegra.h>
 
@@ -195,6 +196,9 @@
 /* Use timeout clk for write crc status data timeout counter */
 #define NVQUIRK_USE_TMCLK_WR_CRC_TIMEOUT	BIT(31)
 
+/* Enable T210 specific SDMMC WAR - sd card voltage switch */
+#define NVQUIRK2_CONFIG_PWR_DET			BIT(0)
+
 /* Common subset of quirks for Tegra3 and later sdmmc controllers */
 #define TEGRA_SDHCI_NVQUIRKS	(NVQUIRK_ENABLE_PADPIPE_CLKEN | \
 		  NVQUIRK_DISABLE_SPI_MODE_CLKEN | \
@@ -273,6 +277,7 @@
 struct sdhci_tegra_soc_data {
 	const struct sdhci_pltfm_data *pdata;
 	u32 nvquirks;
+	u32 nvquirks2;
 	const char *parent_clk_list[TEGRA_SDHCI_MAX_PLL_SOURCE];
 	unsigned int tuning_freq_list[TUNING_FREQ_COUNT];
 	u8 t2t_coeffs_count;
@@ -292,6 +297,13 @@ enum tegra_tuning_freq {
 	TUNING_LOW_FREQ,
 	TUNING_HIGH_FREQ,
 	TUNING_MAX_FREQ,
+};
+
+enum sdmmc_instance {
+	SDMMC1_INSTANCE = 0,
+	SDMMC2_INSTANCE,
+	SDMMC3_INSTANCE,
+	SDMMC4_instance
 };
 
 struct tuning_t2t_coeffs {
@@ -1839,9 +1851,21 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 		ctrl |= SDHCI_CTRL_VDD_180;
 		min_uV = SDHOST_LOW_VOLT_MIN;
 		max_uV = SDHOST_LOW_VOLT_MAX;
+		if (soc_data->nvquirks2 & NVQUIRK2_CONFIG_PWR_DET) {
+			if (tegra_host->instance == SDMMC1_INSTANCE)
+				pwr_detect_bit_write(SDMMC1_PWR_DET, false);
+			else if (tegra_host->instance == SDMMC3_INSTANCE)
+				pwr_detect_bit_write(SDMMC3_PWR_DET, false);
+		}
 	} else if (signal_voltage == MMC_SIGNAL_VOLTAGE_330) {
 		if (ctrl & SDHCI_CTRL_VDD_180)
 			ctrl &= ~SDHCI_CTRL_VDD_180;
+		if (soc_data->nvquirks2 & NVQUIRK2_CONFIG_PWR_DET) {
+			if (tegra_host->instance == SDMMC1_INSTANCE)
+				pwr_detect_bit_write(SDMMC1_PWR_DET, true);
+			else if (tegra_host->instance == SDMMC3_INSTANCE)
+				pwr_detect_bit_write(SDMMC3_PWR_DET, true);
+		}
 	}
 
 	/* Check if the slot can support the required voltage */
@@ -4258,6 +4282,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK |
 		    NVQUIRK_UPDATE_PAD_CNTRL_REG |
 		    NVQUIRK_USE_TMCLK_WR_CRC_TIMEOUT,
+	.nvquirks2 = NVQUIRK2_CONFIG_PWR_DET,
 };
 
 static const struct of_device_id sdhci_tegra_dt_match[] = {
