@@ -94,6 +94,11 @@ static bool tegra_pmc_invert_interrupt;
 static struct clk *tegra_pclk;
 #endif
 
+#ifndef CONFIG_TEGRA_DYNAMIC_PWRDET
+void pwr_detect_bit_write(u32 pwrdet_bit, bool enable) { }
+EXPORT_SYMBOL(pwr_detect_bit_write);
+#endif
+
 #ifdef CONFIG_OF
 static struct pmc_pm_data pmc_pm_data;
 #endif
