@@ -1644,7 +1644,8 @@ enum tegra_mux_dt {
 	TEGRA_MUX_I2S3,
 	TEGRA_MUX_I2S4A,
 	TEGRA_MUX_I2S4B,
-	TEGRA_MUX_I2S5,
+	TEGRA_MUX_I2S5A,
+	TEGRA_MUX_I2S5B,
 	TEGRA_MUX_IQC0,
 	TEGRA_MUX_IQC1,
 	TEGRA_MUX_PWM0,
@@ -1653,7 +1654,7 @@ enum tegra_mux_dt {
 	TEGRA_MUX_PWM3,
 	TEGRA_MUX_PMI,
 	TEGRA_MUX_UARTA,
-	TEGRA_MUX_UB3,
+	TEGRA_MUX_UARTB,
 	TEGRA_MUX_UARTC,
 	TEGRA_MUX_UARTD,
 	TEGRA_MUX_UART,
@@ -1661,7 +1662,7 @@ enum tegra_mux_dt {
 	TEGRA_MUX_DMIC2,
 	TEGRA_MUX_DMIC3,
 	TEGRA_MUX_DISPLAYA,
-	TEGRA_MUX_DCB,
+	TEGRA_MUX_DISPLAYB,
 	TEGRA_MUX_RSVD0,
 	TEGRA_MUX_RSVD1,
 	TEGRA_MUX_RSVD2,
@@ -1687,8 +1688,8 @@ enum tegra_mux_dt {
 	TEGRA_MUX_VGP4,
 	TEGRA_MUX_VGP5,
 	TEGRA_MUX_VGP6,
-	TEGRA_MUX_VIMCLK_ALT3,
-	TEGRA_MUX_VIMCLK2_ALT3,
+	TEGRA_MUX_VIMCLK,
+	TEGRA_MUX_VIMCLK2,
 	TEGRA_MUX_SATA,
 	TEGRA_MUX_CCLA,
 	TEGRA_MUX_JTAG,
@@ -1793,11 +1794,14 @@ static const char * const i2s4b_groups[] = {
 	"dap4_sclk_pj7",
 };
 
-static const char * const i2s5_groups[] = {
+static const char * const i2s5a_groups[] = {
 	"dmic3_clk_pe4",
 	"dmic3_dat_pe5",
 	"pe6",
 	"pe7",
+};
+
+static const char * const i2s5b_groups[] = {
 	"pk0",
 	"pk1",
 	"pk2",
@@ -1859,7 +1863,7 @@ static const char * const uarta_groups[] = {
 	"uart1_cts_pu3",
 };
 
-static const char * const ub3_groups[] = {
+static const char * const uartb_groups[] = {
 	"uart2_tx_pg0",
 	"uart2_rx_pg1",
 	"uart2_rts_pg2",
@@ -1899,7 +1903,7 @@ static const char * const displaya_groups[] = {
 	"lcd_te_py2",
 };
 
-static const char * const dcb_groups[] = {
+static const char * const displayb_groups[] = {
 	"lcd_gpio1_pv3",
 	"lcd_gpio2_pv4",
 };
@@ -2521,12 +2525,12 @@ static const char * const vgp6_groups[] = {
 	"cam1_strobe_pt1",
 };
 
-static const char * const vimclk_alt3_groups[] = {
+static const char * const vimclk_groups[] = {
 	"cam_af_en_ps5",
 	"cam_flash_en_ps6",
 };
 
-static const char * const vimclk2_alt3_groups[] = {
+static const char * const vimclk2_groups[] = {
 	"pz0",
 	"pz1",
 };
@@ -2776,7 +2780,8 @@ static const struct tegra_function tegra210_functions[] = {
 	FUNCTION(i2s3),
 	FUNCTION(i2s4a),
 	FUNCTION(i2s4b),
-	FUNCTION(i2s5),
+	FUNCTION(i2s5a),
+	FUNCTION(i2s5b),
 	FUNCTION(iqc0),
 	FUNCTION(iqc1),
 	FUNCTION(pwm0),
@@ -2785,7 +2790,7 @@ static const struct tegra_function tegra210_functions[] = {
 	FUNCTION(pwm3),
 	FUNCTION(pmi),
 	FUNCTION(uarta),
-	FUNCTION(ub3),
+	FUNCTION(uartb),
 	FUNCTION(uartc),
 	FUNCTION(uartd),
 	FUNCTION(uart),
@@ -2793,7 +2798,7 @@ static const struct tegra_function tegra210_functions[] = {
 	FUNCTION(dmic2),
 	FUNCTION(dmic3),
 	FUNCTION(displaya),
-	FUNCTION(dcb),
+	FUNCTION(displayb),
 	FUNCTION(rsvd0),
 	FUNCTION(rsvd1),
 	FUNCTION(rsvd2),
@@ -2819,8 +2824,8 @@ static const struct tegra_function tegra210_functions[] = {
 	FUNCTION(vgp4),
 	FUNCTION(vgp5),
 	FUNCTION(vgp6),
-	FUNCTION(vimclk_alt3),
-	FUNCTION(vimclk2_alt3),
+	FUNCTION(vimclk),
+	FUNCTION(vimclk2),
 	FUNCTION(sata),
 	FUNCTION(ccla),
 	FUNCTION(jtag),
@@ -2927,10 +2932,10 @@ static const struct tegra_pingroup tegra210_groups[] = {
 	PINGROUP(sdmmc1_dat2_pm3,	SDMMC1,		SPI3,		RSVD2,		RSVD3,		0x300c,  Y,	12,	 9,	Y,	N),
 	PINGROUP(sdmmc1_dat1_pm4,	SDMMC1,		SPI3,		RSVD2,		RSVD3,		0x3010,  Y,	12,	 9,	Y,	N),
 	PINGROUP(sdmmc1_dat0_pm5,	SDMMC1,		RSVD1,		RSVD2,		RSVD3,		0x3014,  Y,	12,	 9,	Y,	N),
-	PINGROUP(uart2_rx_pg1,		UB3,		I2S4A,		SPDIF,		UART,		0x30f8,  Y,	12,	-1,	N,	N),
-	PINGROUP(uart2_tx_pg0,		UB3,		I2S4A,		SPDIF,		UART,		0x30f4,  Y,	12,	-1,	N,	N),
-	PINGROUP(uart2_rts_pg2,		UB3,		I2S4A,		RSVD2,		UART,		0x30fc,  Y,	12,	-1,	N,	N),
-	PINGROUP(uart2_cts_pg3,		UB3,		I2S4A,		RSVD2,		UART,		0x3100,  Y,	12,	-1,	N,	N),
+	PINGROUP(uart2_rx_pg1,		UARTB,		I2S4A,		SPDIF,		UART,		0x30f8,  Y,	12,	-1,	N,	N),
+	PINGROUP(uart2_tx_pg0,		UARTB,		I2S4A,		SPDIF,		UART,		0x30f4,  Y,	12,	-1,	N,	N),
+	PINGROUP(uart2_rts_pg2,		UARTB,		I2S4A,		RSVD2,		UART,		0x30fc,  Y,	12,	-1,	N,	N),
+	PINGROUP(uart2_cts_pg3,		UARTB,		I2S4A,		RSVD2,		UART,		0x3100,  Y,	12,	-1,	N,	N),
 	PINGROUP(uart3_tx_pd1,		UARTC,		SPI4,		RSVD2,		RSVD3,		0x3104,  Y,	12,	-1,	N,	N),
 	PINGROUP(uart3_rx_pd2,		UARTC,		SPI4,		RSVD2,		RSVD3,		0x3108,  Y,	12,	-1,	N,	N),
 	PINGROUP(uart3_cts_pd4,		UARTC,		SPI4,		RSVD2,		RSVD3,		0x3110,  Y,	12,	-1,	N,	N),
@@ -2941,11 +2946,11 @@ static const struct tegra_pingroup tegra210_groups[] = {
 	PINGROUP(dap4_din_pj5,		I2S4B,		RSVD1,		RSVD2,		RSVD3,		0x3148,  Y,	12,	-1,	N,	N),
 	PINGROUP(dap4_dout_pj6,		I2S4B,		RSVD1,		RSVD2,		RSVD3,		0x314c,  Y,	12,	-1,	N,	N),
 	PINGROUP(dap4_sclk_pj7,		I2S4B,		RSVD1,		RSVD2,		RSVD3,		0x3150,  Y,	12,	-1,	N,	N),
-	PINGROUP(pk0,			IQC0,		I2S5,		RSVD2,		RSVD3,		0x3254,  Y,	12,	 9,	Y,	N),
-	PINGROUP(pk1,			IQC0,		I2S5,		RSVD2,		RSVD3,		0x3258,  Y,	12,	 9,	Y,	N),
-	PINGROUP(pk3,			IQC0,		I2S5,		RSVD2,		RSVD3,		0x3260,  Y,	12,	 9,	Y,	N),
+	PINGROUP(pk0,			IQC0,		I2S5B,		RSVD2,		RSVD3,		0x3254,  Y,	12,	 9,	Y,	N),
+	PINGROUP(pk1,			IQC0,		I2S5B,		RSVD2,		RSVD3,		0x3258,  Y,	12,	 9,	Y,	N),
+	PINGROUP(pk3,			IQC0,		I2S5B,		RSVD2,		RSVD3,		0x3260,  Y,	12,	 9,	Y,	N),
 	PINGROUP(pk4,			IQC1,		RSVD1,		RSVD2,		RSVD3,		0x3264,  Y,	12,	 9,	Y,	N),
-	PINGROUP(pk2,			IQC0,		I2S5,		RSVD2,		RSVD3,		0x325c,  Y,	12,	 9,	Y,	N),
+	PINGROUP(pk2,			IQC0,		I2S5B,		RSVD2,		RSVD3,		0x325c,  Y,	12,	 9,	Y,	N),
 	PINGROUP(pk7,			IQC1,		RSVD1,		RSVD2,		RSVD3,		0x3270,  Y,	12,	 9,	Y,	N),
 	PINGROUP(gen2_i2c_scl_pj2,	I2C2,		RSVD1,		RSVD2,		RSVD3,		0x30c4,  Y,	12,	-1,	N,	Y),
 	PINGROUP(gen2_i2c_sda_pj3,	I2C2,		RSVD1,		RSVD2,		RSVD3,		0x30c8,  Y,	12,	-1,	N,	Y),
@@ -3012,8 +3017,8 @@ static const struct tegra_pingroup tegra210_groups[] = {
 	PINGROUP(dmic1_dat_pe1,		DMIC1,		I2S3,		RSVD2,		RSVD3,		0x30a8,  Y,	12,	-1,	N,	N),
 	PINGROUP(dmic2_clk_pe2,		DMIC2,		I2S3,		RSVD2,		RSVD3,		0x30ac,  Y,	12,	-1,	N,	N),
 	PINGROUP(dmic2_dat_pe3,		DMIC2,		I2S3,		RSVD2,		RSVD3,		0x30b0,  Y,	12,	-1,	N,	N),
-	PINGROUP(dmic3_clk_pe4,		DMIC3,		I2S5,		RSVD2,		RSVD3,		0x30b4,  Y,	12,	-1,	N,	N),
-	PINGROUP(dmic3_dat_pe5,		DMIC3,		I2S5,		RSVD2,		RSVD3,		0x30b8,  Y,	12,	-1,	N,	N),
+	PINGROUP(dmic3_clk_pe4,		DMIC3,		I2S5A,		RSVD2,		RSVD3,		0x30b4,  Y,	12,	-1,	N,	N),
+	PINGROUP(dmic3_dat_pe5,		DMIC3,		I2S5A,		RSVD2,		RSVD3,		0x30b8,  Y,	12,	-1,	N,	N),
 	PINGROUP(gen3_i2c_scl_pf0,	I2C3,		RSVD1,		RSVD2,		RSVD3,		0x30cc,  Y,	12,	-1,	N,	Y),
 	PINGROUP(gen3_i2c_sda_pf1,	I2C3,		RSVD1,		RSVD2,		RSVD3,		0x30d0,  Y,	12,	-1,	N,	Y),
 	PINGROUP(uart1_tx_pu0,		UARTA,		RSVD1,		RSVD2,		RSVD3,		0x30e4,  Y,	12,	-1,	N,	N),
@@ -3033,8 +3038,8 @@ static const struct tegra_pingroup tegra210_groups[] = {
 	PINGROUP(wifi_en_ph0,		RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x31b4,  Y,	12,	-1,	N,	N),
 	PINGROUP(wifi_rst_ph1,		RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x31b8,  Y,	12,	-1,	N,	N),
 	PINGROUP(wifi_wake_ap_ph2,	RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x31bc,  Y,	12,	-1,	N,	N),
-	PINGROUP(ap_wake_bt_ph3,	RSVD0,		UB3,		SPDIF,		RSVD3,		0x31c0,  Y,	12,	-1,	N,	N),
-	PINGROUP(bt_rst_ph4,		RSVD0,		UB3,		SPDIF,		RSVD3,		0x31c4,  Y,	12,	-1,	N,	N),
+	PINGROUP(ap_wake_bt_ph3,	RSVD0,		UARTB,		SPDIF,		RSVD3,		0x31c0,  Y,	12,	-1,	N,	N),
+	PINGROUP(bt_rst_ph4,		RSVD0,		UARTB,		SPDIF,		RSVD3,		0x31c4,  Y,	12,	-1,	N,	N),
 	PINGROUP(bt_wake_ap_ph5,	RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x31c8,  Y,	12,	-1,	N,	N),
 	PINGROUP(ap_wake_nfc_ph7,	RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x31cc,  Y,	12,	-1,	N,	N),
 	PINGROUP(nfc_en_pi0,		RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x31d0,  Y,	12,	-1,	N,	N),
@@ -3042,8 +3047,8 @@ static const struct tegra_pingroup tegra210_groups[] = {
 	PINGROUP(gps_en_pi2,		RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x31d8,  Y,	12,	-1,	N,	N),
 	PINGROUP(gps_rst_pi3,		RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x31dc,  Y,	12,	-1,	N,	N),
 	PINGROUP(cam_rst_ps4,		VGP1,		RSVD1,		RSVD2,		RSVD3,		0x31e0,  Y,	12,	-1,	N,	N),
-	PINGROUP(cam_af_en_ps5,	 	VIMCLK_ALT3,	VGP2,		RSVD2,		RSVD3,		0x31e4,  Y,	12,	-1,	N,	N),
-	PINGROUP(cam_flash_en_ps6,	VIMCLK_ALT3,	VGP3,		RSVD2,		RSVD3,		0x31e8,  Y,	12,	-1,	N,	N),
+	PINGROUP(cam_af_en_ps5,	 	VIMCLK,		VGP2,		RSVD2,		RSVD3,		0x31e4,  Y,	12,	-1,	N,	N),
+	PINGROUP(cam_flash_en_ps6,	VIMCLK,		VGP3,		RSVD2,		RSVD3,		0x31e8,  Y,	12,	-1,	N,	N),
 	PINGROUP(cam1_pwdn_ps7,		VGP4,		RSVD1,		RSVD2,		RSVD3,		0x31ec,  Y,	12,	-1,	N,	N),
 	PINGROUP(cam2_pwdn_pt0,		VGP5,		RSVD1,		RSVD2,		RSVD3,		0x31f0,  Y,	12,	-1,	N,	N),
 	PINGROUP(cam1_strobe_pt1,	VGP6,		RSVD1,		RSVD2,		RSVD3,		0x31f4,  Y,	12,	-1,	N,	N),
@@ -3051,8 +3056,8 @@ static const struct tegra_pingroup tegra210_groups[] = {
 	PINGROUP(lcd_bl_pwm_pv0,	DISPLAYA,	PWM0,		SOR0,		RSVD3,		0x31fc,  Y,	12,	-1,	N,	N),
 	PINGROUP(lcd_bl_en_pv1,		RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x3200,  Y,	12,	-1,	N,	N),
 	PINGROUP(lcd_rst_pv2,		RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x3204,  Y,	12,	-1,	N,	N),
-	PINGROUP(lcd_gpio1_pv3,		DCB,		RSVD1,		RSVD2,		RSVD3,		0x3208,  Y,	12,	-1,	N,	N),
-	PINGROUP(lcd_gpio2_pv4,		DCB,		PWM1,		RSVD2,		SOR1,		0x320c,  Y,	12,	-1,	N,	N),
+	PINGROUP(lcd_gpio1_pv3,		DISPLAYB,	RSVD1,		RSVD2,		RSVD3,		0x3208,  Y,	12,	-1,	N,	N),
+	PINGROUP(lcd_gpio2_pv4,		DISPLAYB,	PWM1,		RSVD2,		SOR1,		0x320c,  Y,	12,	-1,	N,	N),
 	PINGROUP(ap_ready_pv5,		RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x3210,  Y,	12,	-1,	N,	N),
 	PINGROUP(touch_rst_pv6,		RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x3214,  Y,	12,	-1,	N,	N),
 	PINGROUP(touch_clk_pv7,		TOUCH,		RSVD1,		RSVD2,		RSVD3,		0x3218,  Y,	12,	-1,	N,	N),
@@ -3067,15 +3072,15 @@ static const struct tegra_pingroup tegra210_groups[] = {
 	PINGROUP(button_slide_sw_py0,	RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x323c,  Y,	12,	-1,	N,	N),
 	PINGROUP(button_home_py1,	RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x3240,  Y,	12,	-1,	N,	N),
 	PINGROUP(pa6,			SATA,		RSVD1,		RSVD2,		RSVD3,		0x3244,  Y,	12,	-1,	N,	N),
-	PINGROUP(pe6,			RSVD0,		I2S5,		PWM2,		RSVD3,		0x3248,  Y,	12,	-1,	N,	N),
-	PINGROUP(pe7,			RSVD0,		I2S5,		PWM3,		RSVD3,		0x324c,  Y,	12,	-1,	N,	N),
+	PINGROUP(pe6,			RSVD0,		I2S5A,		PWM2,		RSVD3,		0x3248,  Y,	12,	-1,	N,	N),
+	PINGROUP(pe7,			RSVD0,		I2S5A,		PWM3,		RSVD3,		0x324c,  Y,	12,	-1,	N,	N),
 	PINGROUP(ph6,			RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x3250,  Y,	12,	-1,	N,	N),
 	PINGROUP(pk5,			IQC1,		RSVD1,		RSVD2,		RSVD3,		0x3268,  Y,	12,	 9,	Y,	N),
 	PINGROUP(pk6,			IQC1,		RSVD1,		RSVD2,		RSVD3,		0x326c,  Y,	12,	 9,	Y,	N),
 	PINGROUP(pl0,			RSVD0,		RSVD1,		RSVD2,		RSVD3,		0x3274,  Y,	12,	 9,	Y,	N),
 	PINGROUP(pl1,			SOC,		RSVD1,		RSVD2,		RSVD3,		0x3278,  Y,	12,	 9,	Y,	N),
-	PINGROUP(pz0,			VIMCLK2_ALT3,	RSVD1,		RSVD2,		RSVD3,		0x327c,  Y,	12,	-1,	N,	N),
-	PINGROUP(pz1,			VIMCLK2_ALT3,	SDMMC1,		RSVD2,		RSVD3,		0x3280,  Y,	12,	-1,	N,	N),
+	PINGROUP(pz0,			VIMCLK2,	RSVD1,		RSVD2,		RSVD3,		0x327c,  Y,	12,	-1,	N,	N),
+	PINGROUP(pz1,			VIMCLK2,	SDMMC1,		RSVD2,		RSVD3,		0x3280,  Y,	12,	-1,	N,	N),
 	PINGROUP(pz2,			SDMMC3,		CCLA,		RSVD2,		RSVD3,		0x3284,  Y,	12,	-1,	N,	N),
 	PINGROUP(pz3,			SDMMC3,		RSVD1,		RSVD2,		RSVD3,		0x3288,  Y,	12,	-1,	N,	N),
 	PINGROUP(pz4,			SDMMC1,		RSVD1,		RSVD2,		RSVD3,		0x328c,  Y,	12,	-1,	N,	N),
