@@ -293,8 +293,6 @@ static int max77620_rtc_alarm_irq_enable(struct device *dev,
 	if (rtc->irq < 0)
 		return -ENXIO;
 
-	mutex_lock(&rtc->io_lock);
-
 	/* Handle pending interrupt */
 	ret = max77620_rtc_do_irq(rtc);
 	if (ret < 0)
@@ -311,7 +309,6 @@ static int max77620_rtc_alarm_irq_enable(struct device *dev,
 			goto out;
 	}
 out:
-	mutex_unlock(&rtc->io_lock);
 	return ret;
 }
 
