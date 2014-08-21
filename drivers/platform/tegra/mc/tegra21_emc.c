@@ -57,54 +57,62 @@ static int pasr_enable;
 
 u8 tegra_emc_bw_efficiency = 80;
 
-static u32 bw_calc_freqs[] = {
-	5, 10, 20, 30, 40, 60, 80, 100, 120, 140, 160, 180
+static u32 iso_bw_table[] = {
+	5, 10, 20, 30, 40, 60, 80, 100, 120, 140, 160, 180,
+	200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700
 };
 
-/* LPDDR3 table */
-static u32 tegra21_lpddr3_emc_usage_shared_os_idle[] = {
-	18, 29, 43, 48, 51, 61, 62, 66, 71, 74, 70, 60, 50
+/*
+ * These tables list the ISO efficiency (in percent) at the corresponding entry
+ * in the iso_bw_table. iso_bw_table is in MHz.
+ */
+static u32 tegra21_lpddr3_iso_efficiency_os_idle[] = {
+	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+	64, 63, 60, 54, 45, 45, 45, 45, 45, 45, 45
 };
-static u32 tegra21_lpddr3_emc_usage_shared_general[] = {
-	17, 25, 35, 43, 50, 50, 50, 50, 50, 50, 50, 50, 45
-};
-
-/* the following is for DDR3: */
-static u32 tegra21_ddr3_emc_usage_shared_os_idle[] = {
-	21, 30, 43, 48, 51, 61, 62, 66, 71, 74, 70, 60, 60
-};
-static u32 tegra21_ddr3_emc_usage_shared_general[] = {
-	20, 26, 35, 43, 50, 50, 50, 50, 50, 50, 50, 50, 50
+static u32 tegra21_lpddr3_iso_efficiency_general[] = {
+	60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60,
+	60, 59, 54, 43, 43, 43, 43, 43, 43, 43, 43
 };
 
-/* LPDDR3 4x refresh temp derating table */
-static u32 tegra21_lpddr3_4x_emc_usage_shared_os_idle[] = {
-	15, 24, 38, 42, 46, 54, 62, 66, 71, 71, 64, 50, 40
+static u32 tegra21_lpddr4_iso_efficiency_os_idle[] = {
+	56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
+	56, 56, 56, 56, 56, 56, 56, 56, 56, 51, 46
 };
-static u32 tegra21_lpddr3_4x_emc_usage_shared_general[] = {
-	15, 20, 30, 40, 45, 50, 50, 50, 50, 48, 44, 40, 35
+static u32 tegra21_lpddr4_iso_efficiency_general[] = {
+	56, 56, 56, 55, 55, 54, 54, 53, 52, 51, 50, 49,
+	48, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45
 };
 
-static u8 iso_share_calc_t124_os_idle(unsigned long iso_bw);
-static u8 iso_share_calc_t124_general(unsigned long iso_bw);
+static u32 tegra21_ddr3_iso_efficiency_os_idle[] = {
+	65, 65, 65, 65, 65, 65, 65, 65, 65, 65, 65, 65,
+	65, 65, 65, 65, 65, 65, 65, 65, 65, 65, 65
+};
+static u32 tegra21_ddr3_iso_efficiency_general[] = {
+	60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60,
+	60, 59, 59, 58, 57, 56, 55, 54, 54, 54, 54
+};
+
+static u8 get_iso_bw_os_idle(unsigned long iso_bw);
+static u8 get_iso_bw_general(unsigned long iso_bw);
 
 
 static struct emc_iso_usage tegra21_emc_iso_usage[] = {
 	{
 		BIT(EMC_USER_DC1),
-		80, iso_share_calc_t124_os_idle
+		80, get_iso_bw_os_idle
 	},
 	{
 		BIT(EMC_USER_DC1) | BIT(EMC_USER_DC2),
-		50, iso_share_calc_t124_general
+		50, get_iso_bw_general
 	},
 	{
 		BIT(EMC_USER_DC1) | BIT(EMC_USER_VI),
-		50, iso_share_calc_t124_general
+		50, get_iso_bw_general
 	},
 	{
 		BIT(EMC_USER_DC1) | BIT(EMC_USER_DC2) | BIT(EMC_USER_VI),
-		50, iso_share_calc_t124_general
+		50, get_iso_bw_general
 	},
 };
 
@@ -1641,6 +1649,7 @@ static int tegra21_emc_probe(struct platform_device *pdev)
 		return -ENODATA;
 	}
 
+	pr_info("Loading EMC tables...\n");
 	return init_emc_table(pdata->tables, pdata->tables_derated,
 			      pdata->num_tables);
 }
@@ -1890,48 +1899,75 @@ done:
 }
 #endif
 
-static inline int bw_calc_get_freq_idx(unsigned long bw)
+/*
+ * Given the passed ISO BW find the index into the table of ISO efficiencies.
+ */
+static inline int get_iso_bw_table_idx(unsigned long iso_bw)
 {
-	int idx = 0;
+	int i = ARRAY_SIZE(iso_bw_table);
 
-	if (bw > bw_calc_freqs[TEGRA_EMC_ISO_USE_FREQ_MAX_NUM-1] * MHZ)
-		idx = TEGRA_EMC_ISO_USE_FREQ_MAX_NUM;
+	while (i >= 0 && iso_bw_table[i] > iso_bw)
+		i--;
 
-	for (; idx < TEGRA_EMC_ISO_USE_FREQ_MAX_NUM; idx++) {
-		u32 freq = bw_calc_freqs[idx] * MHZ;
-		if (bw < freq) {
-			if (idx)
-				idx--;
-			break;
-		} else if (bw == freq)
-			break;
+	return i;
+}
+
+/*
+ * Return the ISO BW efficiency for the attached DRAM type at the passed ISO BW.
+ * This is used for when only the display is active - OS IDLE.
+ *
+ * For now when the DRAM is being temperature throttled return the normal ISO
+ * efficiency. This will have to change once the throttling efficiency data
+ * becomes available.
+ */
+static u8 get_iso_bw_os_idle(unsigned long iso_bw)
+{
+	int freq_idx = get_iso_bw_table_idx(iso_bw);
+
+	/* On T21- LPDDR2 means LPDDR3. */
+	if (dram_type == DRAM_TYPE_LPDDR2) {
+		if (dram_over_temp_state == DRAM_OVER_TEMP_THROTTLE)
+			return tegra21_lpddr3_iso_efficiency_os_idle[freq_idx];
+		else
+			return tegra21_lpddr3_iso_efficiency_os_idle[freq_idx];
+	} else if (dram_type == DRAM_TYPE_DDR3) {
+		if (dram_over_temp_state == DRAM_OVER_TEMP_THROTTLE)
+			return tegra21_ddr3_iso_efficiency_os_idle[freq_idx];
+		else
+			return tegra21_ddr3_iso_efficiency_os_idle[freq_idx];
+	} else { /* LPDDR4 */
+		if (dram_over_temp_state == DRAM_OVER_TEMP_THROTTLE)
+			return tegra21_lpddr4_iso_efficiency_os_idle[freq_idx];
+		else
+			return tegra21_lpddr4_iso_efficiency_os_idle[freq_idx];
 	}
-
-	return idx;
 }
 
-static u8 iso_share_calc_t124_os_idle(unsigned long iso_bw)
+/*
+ * Same as get_iso_bw_os_idle() only this is used for when there are other
+ * engines aside from display running.
+ */
+static u8 get_iso_bw_general(unsigned long iso_bw)
 {
-	int freq_idx = bw_calc_get_freq_idx(iso_bw);
+	int freq_idx = get_iso_bw_table_idx(iso_bw);
 
-	if (dram_type == DRAM_TYPE_DDR3)
-		return tegra21_ddr3_emc_usage_shared_os_idle[freq_idx];
-	else if (dram_over_temp_state == DRAM_OVER_TEMP_THROTTLE)
-		return tegra21_lpddr3_4x_emc_usage_shared_os_idle[freq_idx];
-	else
-		return tegra21_lpddr3_emc_usage_shared_os_idle[freq_idx];
-}
-
-static u8 iso_share_calc_t124_general(unsigned long iso_bw)
-{
-	int freq_idx = bw_calc_get_freq_idx(iso_bw);
-
-	if (dram_type == DRAM_TYPE_DDR3)
-		return tegra21_ddr3_emc_usage_shared_general[freq_idx];
-	else if (dram_over_temp_state == DRAM_OVER_TEMP_THROTTLE)
-		return tegra21_lpddr3_4x_emc_usage_shared_general[freq_idx];
-	else
-		return tegra21_lpddr3_emc_usage_shared_general[freq_idx];
+	/* On T21- LPDDR2 means LPDDR3. */
+	if (dram_type == DRAM_TYPE_LPDDR2) {
+		if (dram_over_temp_state == DRAM_OVER_TEMP_THROTTLE)
+			return tegra21_lpddr3_iso_efficiency_general[freq_idx];
+		else
+			return tegra21_lpddr3_iso_efficiency_general[freq_idx];
+	} else if (dram_type == DRAM_TYPE_DDR3) {
+		if (dram_over_temp_state == DRAM_OVER_TEMP_THROTTLE)
+			return tegra21_ddr3_iso_efficiency_general[freq_idx];
+		else
+			return tegra21_ddr3_iso_efficiency_general[freq_idx];
+	} else { /* LPDDR4 */
+		if (dram_over_temp_state == DRAM_OVER_TEMP_THROTTLE)
+			return tegra21_lpddr4_iso_efficiency_general[freq_idx];
+		else
+			return tegra21_lpddr4_iso_efficiency_general[freq_idx];
+	}
 }
 
 
