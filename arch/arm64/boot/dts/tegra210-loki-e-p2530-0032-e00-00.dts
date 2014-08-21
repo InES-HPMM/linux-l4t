@@ -26,7 +26,6 @@
 #include "tegra210-platforms/tegra210-loki-e-p2530-common.dtsi"
 #include "tegra210-platforms/tegra210-ers-extgpio-e2141-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-loki-power-tree-p2530-0999-e00.dtsi"
-#include "tegra210-platforms/tegra210-ers-sensor-e2160-1000-a00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-gpio-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-pinmux-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-comms.dtsi"

@@ -34,6 +34,7 @@
 
 	regulators {
 		regulator@2 {
+			regulator-always-on;
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1200000>;
 		};
@@ -51,7 +52,7 @@
 			regulator-min-microvolt = <3000000>;
 			regulator-max-microvolt = <3000000>;
 			gpio = <&gpio TEGRA_GPIO(I, 3) 0>;
-			regulator-boot-on;
+			regulator-always-on;
 			enable-active-high;
 		};
 
