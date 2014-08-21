@@ -409,6 +409,7 @@ int __init t210ref_soctherm_init(void)
 	return tegra_soctherm_init(&t210ref_soctherm_data);
 }
 
+#if 0 /* SW-throttling NOT YET ENABLED on T210 */
 static struct pid_thermal_gov_params cpu_pid_params = {
 	.max_err_temp = 4000,
 	.max_err_gain = 1000,
@@ -424,10 +425,13 @@ static struct thermal_zone_params cpu_tzp = {
 	.governor_name = "pid_thermal_gov",
 	.governor_params = &cpu_pid_params,
 };
+#endif
 
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
 static struct thermal_zone_params board_tzp = {
 	.governor_name = "pid_thermal_gov"
 };
+#endif
 
 static struct nct1008_platform_data t210ref_nct72_pdata = {
 	.loc_name = "tegra",
@@ -438,8 +442,9 @@ static struct nct1008_platform_data t210ref_nct72_pdata = {
 
 	.sensors = {
 		[LOC] = {
-			.tzp = &board_tzp,
 			.shutdown_limit = 120, /* C */
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+			.tzp = &board_tzp,
 			.passive_delay = 1000,
 			.num_trips = 1,
 			.trips = {
@@ -453,12 +458,15 @@ static struct nct1008_platform_data t210ref_nct72_pdata = {
 					.mask = 1,
 				},
 			},
+#endif
 		},
 		[EXT] = {
+#if 0 /* pid-governor NOT YET ENABLED on T210 */
 			.tzp = &cpu_tzp,
+#endif
 			.shutdown_limit = 92, /* C */
 			.passive_delay = 1000,
-			.num_trips = 2,
+			.num_trips = 1,
 			.trips = {
 				{
 					.cdev_type = "shutdown_warning",
@@ -468,6 +476,7 @@ static struct nct1008_platform_data t210ref_nct72_pdata = {
 					.lower = THERMAL_NO_LIMIT,
 					.mask = 0,
 				},
+#if 0 /* SW-throttling NOT YET ENABLED on T210 */
 				{
 					.cdev_type = "cpu-balanced",
 					.trip_temp = 83000,
@@ -477,6 +486,7 @@ static struct nct1008_platform_data t210ref_nct72_pdata = {
 					.hysteresis = 1000,
 					.mask = 1,
 				},
+#endif
 			}
 		}
 	}
@@ -579,6 +589,7 @@ int t210ref_thermal_sensors_init(void)
 		}
 	} else {
 #endif
+#if 0 /* EDP and DVFS thermals NOT YET ENABLED on T210 */
 		tegra_platform_edp_init(
 			t210ref_nct72_pdata.sensors[EXT].trips,
 			&t210ref_nct72_pdata.sensors[EXT].num_trips,
@@ -595,6 +606,7 @@ int t210ref_thermal_sensors_init(void)
 		tegra_add_core_vmax_trips(
 			t210ref_nct72_pdata.sensors[EXT].trips,
 			&t210ref_nct72_pdata.sensors[EXT].num_trips);
+#endif
 #if defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	}
 #endif
