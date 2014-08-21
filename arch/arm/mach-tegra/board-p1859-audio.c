@@ -224,11 +224,13 @@ static const struct snd_soc_dapm_route tegra_voice_call_audio_map[] = {
 static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
 	/* initialize DAI link config */
 	.dai_config[0] = {
+		.link_name = "wm-playback",
 		.cpu_name = "tegra30-i2s.0",
 		.codec_name = "wm8731.0-001a",
 		.codec_dai_name = "wm8731-hifi",
 		.cpu_dai_name = "I2S0",
 		.codec_prefix = "x",
+		.bclk_ratio = 2,
 		.dai_fmt = SND_SOC_DAIFMT_I2S |
 			SND_SOC_DAIFMT_NB_NF |
 			SND_SOC_DAIFMT_CBS_CFS,
@@ -239,11 +241,15 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
 		.params.channels_max = 2,
 	},
 	.dai_config[1] = {
+		.link_name = "ad-playback",
 		.cpu_name = "tegra30-i2s.4",
 		.codec_name = "ad193x.0-0007",
 		.codec_dai_name = "ad193x-hifi",
 		.cpu_dai_name = "I2S4",
 		.codec_prefix = "y",
+		.bclk_ratio = 1,
+		.tx_mask = (1 << 8) - 1,
+		.rx_mask = (1 << 8) - 1,
 		.dai_fmt = SND_SOC_DAIFMT_DSP_A |
 			SND_SOC_DAIFMT_NB_NF |
 			SND_SOC_DAIFMT_CBM_CFM,
@@ -254,6 +260,7 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
 		.params.channels_max = 8,
 	},
 	.dai_config[2] = {
+		.link_name = "spdif-playback",
 		.cpu_name = "tegra30-spdif",
 		.codec_name = "spdif-dit.0",
 		.codec_dai_name = "dit-hifi",
@@ -296,11 +303,15 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
 static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 	/* intialize DAI link config */
 	.dai_config[0] = {
+		.link_name = "ak-playback",
 		.cpu_name = "tegra30-i2s.0",
 		.codec_name = "ak4618.0-0010",
 		.codec_dai_name = "ak4618-hifi",
 		.cpu_dai_name = "I2S0",
 		.codec_prefix = "x",
+		.bclk_ratio = 1,
+		.tx_mask = (1 << 8) - 1,
+		.rx_mask = (1 << 8) - 1,
 		.dai_fmt = SND_SOC_DAIFMT_DSP_A |
 			SND_SOC_DAIFMT_NB_NF |
 			SND_SOC_DAIFMT_CBS_CFS,
@@ -311,11 +322,15 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 		.params.channels_max = 8,
 	},
 	.dai_config[1] = {
+		.link_name = "ad-playback",
 		.cpu_name = "tegra30-i2s.4",
 		.codec_name = "ad193x.0-0007",
 		.codec_dai_name = "ad193x-hifi",
 		.cpu_dai_name = "I2S4",
 		.codec_prefix = "y",
+		.bclk_ratio = 1,
+		.tx_mask = (1 << 8) - 1,
+		.rx_mask = (1 << 8) - 1,
 		.dai_fmt = SND_SOC_DAIFMT_DSP_A |
 			SND_SOC_DAIFMT_NB_NF |
 			SND_SOC_DAIFMT_CBM_CFM,
@@ -326,6 +341,7 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 		.params.channels_max = 8,
 	},
 	.dai_config[2] = {
+		.link_name = "spdif-playback",
 		.cpu_name = "tegra30-spdif",
 		.codec_name = "spdif-dit.0",
 		.codec_dai_name = "dit-hifi",
@@ -376,11 +392,15 @@ static unsigned int tegra_voice_call_in_srate[2] = {
 static struct tegra_vcm30t124_platform_data tegra_voice_call_pdata = {
 	/* initialize DAI link config */
 	.dai_config[0] = {
+		.link_name = "ak-playback",
 		.cpu_name = "tegra30-i2s.0",
 		.codec_name = "ak4618.0-0010",
 		.codec_dai_name = "ak4618-hifi",
 		.cpu_dai_name = "I2S0",
 		.codec_prefix = "x",
+		.bclk_ratio = 1,
+		.tx_mask = (1 << 8) - 1,
+		.rx_mask = (1 << 8) - 1,
 		.dai_fmt = SND_SOC_DAIFMT_DSP_A |
 			SND_SOC_DAIFMT_NB_NF |
 			SND_SOC_DAIFMT_CBS_CFS,
@@ -391,11 +411,13 @@ static struct tegra_vcm30t124_platform_data tegra_voice_call_pdata = {
 		.params.channels_max = 8,
 	},
 	.dai_config[1] = {
+		.link_name = "vc-playback",
 		.cpu_name = "tegra30-i2s.4",
 		.codec_name = "spdif-dit.0",
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "I2S4",
 		.codec_prefix = "y",
+		.bclk_ratio = 2,
 		.dai_fmt = SND_SOC_DAIFMT_I2S |
 			SND_SOC_DAIFMT_NB_NF |
 			SND_SOC_DAIFMT_CBS_CFS,

@@ -24,12 +24,16 @@
 /* dai_link_config - configures the necessary DAI link
  */
 struct dai_link_config {
+	const char *link_name;
 	const char *cpu_name;
 	const char *codec_name;
 	const char *codec_prefix;
 	const char *codec_dai_name;
 	const char *cpu_dai_name;
 	unsigned int dai_fmt;
+	unsigned int bclk_ratio;
+	unsigned int tx_mask;
+	unsigned int rx_mask;
 	struct snd_soc_pcm_stream params;
 };
 
