@@ -211,12 +211,10 @@ static inline int max77620_rtc_tm_to_reg(struct max77620_rtc *rtc, u8 *buf,
 
 static inline int max77620_rtc_irq_mask(struct max77620_rtc *rtc, u8 irq)
 {
-	struct device *parent = _to_parent(rtc);
 	u8 irq_mask = rtc->irq_mask | irq;
 	int ret = 0;
 
-	ret = max77620_reg_write(parent, MAX77620_RTC_SLAVE,
-					MAX77620_REG_RTCINTM, irq_mask);
+	ret = max77620_rtc_write(rtc, MAX77620_REG_RTCINTM, &irq_mask, 1, 1);
 	if (ret < 0) {
 		dev_err(rtc->dev, "rtc_irq_mask: Failed to set rtc irq mask\n");
 		goto out;
@@ -229,12 +227,10 @@ out:
 
 static inline int max77620_rtc_irq_unmask(struct max77620_rtc *rtc, u8 irq)
 {
-	struct device *parent = _to_parent(rtc);
 	u8 irq_mask = rtc->irq_mask & ~irq;
 	int ret = 0;
 
-	ret = max77620_reg_write(parent, MAX77620_RTC_SLAVE,
-					MAX77620_REG_RTCINTM, irq_mask);
+	ret = max77620_rtc_write(rtc, MAX77620_REG_RTCINTM, &irq_mask, 1, 1);
 	if (ret < 0) {
 		dev_err(rtc->dev,
 			"rtc_irq_unmask: Failed to set rtc irq mask\n");
@@ -482,15 +478,17 @@ static int max77620_rtc_preinit(struct max77620_rtc *rtc)
 	/* Mask all interrupts */
 	rtc->irq_mask = 0xFF;
 	ret = max77620_rtc_write(rtc, MAX77620_REG_RTCINTM,
-						&rtc->irq_mask, 1, 0);
+						&rtc->irq_mask, 1, 1);
 	if (ret < 0) {
 		dev_err(rtc->dev, "preinit: Failed to set rtc irq mask\n");
 		return ret;
 	}
 
+	max77620_rtc_read(rtc, MAX77620_REG_RTCINT, &val, 1, 1);
+
 	/* Configure Binary mode and 24hour mode */
 	val = MAX77620_HRMODEM_MASK;
-	ret = max77620_rtc_write(rtc, MAX77620_REG_RTCCNTL, &val, 1, 0);
+	ret = max77620_rtc_write(rtc, MAX77620_REG_RTCCNTL, &val, 1, 1);
 	if (ret < 0) {
 		dev_err(rtc->dev, "preinit: Failed to set rtc control\n");
 		return ret;
