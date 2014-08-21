@@ -980,13 +980,6 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 	return i - 1;
 }
 
-int tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
-			 bool before_clk_update, int cpu_event)
-{
-	/* empty definition for tegra21 */
-	return 0;
-}
-
 static int __init of_rails_init(struct device_node *dn)
 {
 	int i;

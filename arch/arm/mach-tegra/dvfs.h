@@ -301,8 +301,6 @@ int tegra_dvfs_therm_vmax_core_cap_apply(int *cap_idx, int new_idx, int level);
 
 int tegra_dvfs_alt_freqs_install(struct dvfs *d, unsigned long *alt_freqs);
 int tegra_dvfs_alt_freqs_set(struct dvfs *d, unsigned long *alt_freqs);
-int tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
-			 bool before_clk_update, int cpu_event);
 int tegra_dvfs_replace_voltage_table(struct dvfs *d, const int *new_millivolts);
 
 int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate);

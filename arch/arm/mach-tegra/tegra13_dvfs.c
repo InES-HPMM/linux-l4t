@@ -1109,13 +1109,6 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 		}							       \
 	} while (0)
 
-int tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
-			 bool before_clk_update, int cpu_event)
-{
-	/* empty definition for tegra13 */
-	return 0;
-}
-
 void __init tegra13x_init_dvfs(void)
 {
 	int cpu_speedo_id = tegra_cpu_speedo_id();

@@ -291,13 +291,10 @@ int tegra_cpu_edp_set_cur_state(struct thermal_cooling_device *cdev,
 	mutex_lock(&tegra_cpu_lock);
 	edp_thermal_index = cur_state;
 
-	/* Update cpu rate if cpufreq (at least on cpu0) is already started;
-	   alter cpu dvfs table for this thermal zone if necessary */
-	tegra_cpu_dvfs_alter(edp_thermal_index, &edp_cpumask, true, 0);
+	/* Update cpu rate if cpufreq (at least on cpu0) is already started*/
 	if (target_cpu_speed[0]) {
 		tegra_cpu_set_speed_cap_locked(NULL);
 	}
-	tegra_cpu_dvfs_alter(edp_thermal_index, &edp_cpumask, false, 0);
 	mutex_unlock(&tegra_cpu_lock);
 
 	edp_update_max_cpus();
@@ -358,9 +355,6 @@ static int tegra_cpu_edp_notify(
 					 ret ? " failed to " : " ", new_speed);
 			}
 		}
-		if (!ret)
-			ret = tegra_cpu_dvfs_alter(
-				edp_thermal_index, &edp_cpumask, false, event);
 		if (ret)
 			cpu_clear(cpu, edp_cpumask);
 		mutex_unlock(&tegra_cpu_lock);
@@ -368,8 +362,6 @@ static int tegra_cpu_edp_notify(
 	case CPU_DEAD:
 		mutex_lock(&tegra_cpu_lock);
 		cpu_clear(cpu, edp_cpumask);
-		tegra_cpu_dvfs_alter(
-			edp_thermal_index, &edp_cpumask, true, event);
 		tegra_cpu_set_speed_cap_locked(NULL);
 		mutex_unlock(&tegra_cpu_lock);
 		break;
