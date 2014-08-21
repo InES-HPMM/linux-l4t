@@ -1913,6 +1913,7 @@ static void smmu_iommu_detach_dev(struct iommu_domain *domain,
 	list_for_each_entry(c, &as->client, list) {
 		if (c->dev == dev) {
 			debugfs_remove_recursive(c->debugfs_root);
+			c->debugfs_root = NULL;
 			list_del(&c->list);
 			smmu_client_disable_hwgrp(c);
 			dev_dbg(smmu->dev,
