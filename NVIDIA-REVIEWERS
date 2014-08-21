@@ -57,9 +57,8 @@ M:	Laxman Dewangan <ldewangan@nvidia.com>
 L:	sw-mobile-kernel-bus@exchange.nvidia.com
 S:	Supported
 F:	arch/arm/mach-tegra/devices.c
-F:	arch/arm/mach-tegra/i2c_error_recovery.c
 F:	arch/arm/mach-tegra/io.c
-F:	arch/arm/mach-tegra/pcie.c
+F:	drivers/pci/host/pci-tegra.c
 F:	drivers/base/regmap/regmap-mmio.c
 F:	drivers/i2c/*
 F:	drivers/i2c/busses/*
@@ -67,6 +66,9 @@ F:	drivers/mfd/aat2870-core.c
 F:	drivers/mfd/max77663-core.c
 F:	drivers/mfd/max8831.c
 F:	drivers/mfd/max8907c-irq.c
+F:	drivers/rtc/rtc-as3722.c
+F:	drivers/rtc/rtc-palmas.c
+F:	drivers/rtc/rtc-tps6591x.c
 F:	drivers/spi/*
 F:	drivers/tty/serial/*
 
@@ -74,89 +76,71 @@ CPU
 M:	Bo Yan <byan@nvidia.com>
 L:	sw-mobile-cpu@exchange.nvidia.com
 S:	Supported
-F:	arch/arm/mach-tegra/cpu-tegra.c
+F:	arch/arm64/mach-tegra/denver-hardwood.c
+F:	arch/arm64/mach-tegra/denver-knobs.c
+F:	arch/arm64/mach-tegra/platsmp.c
 F:	arch/arm/mach-tegra/cpu-tegra3.c
-F:	arch/arm/mach-tegra/fiq.c
+F:	arch/arm/mach-tegra/cpu-tegra.c
 F:	arch/arm/mach-tegra/flowctrl.c
-F:	arch/arm/mach-tegra/gic.c
 F:	arch/arm/mach-tegra/hotplug.c
-F:	arch/arm/mach-tegra/irq.c
 F:	arch/arm/mach-tegra/platsmp.c
 F:	arch/arm/mach-tegra/reset.c
-F:	arch/arm/mach-tegra/tegra_fiq_debugger.c
-F:	arch/arm/mach-tegra/timer-t3.c
-F:	arch/arm/mach-tegra/timer.c
-F:	arch/arm/mach-tegra/timerinfo.c
-F:	drivers/rtc/rtc-palmas.c
-F:	drivers/rtc/rtc-tps6591x.c
+F:	drivers/clocksource/tegra-nvtimers.c
+F:	drivers/irqchip/irq-tegra.c
+F:	drivers/misc/tegra_timerinfo.c
+F:	drivers/platform/tegra/tegra_fiq_debugger.c
 
 DISPLAY
 M:	Jon Mayo <jmayo@nvidia.com>
 L:	sw-mobile-display@exchange.nvidia.com
 S:	Supported
-F:	arch/arm/mach-tegra/board-cardhu-panel.c
-F:	arch/arm/mach-tegra/board-pluto-panel.c
-F:	arch/arm/mach-tegra/csi.c
-F:	arch/arm/mach-tegra/panel-p-wuxga-10-1.c
-F:	drivers/input/touchscreen/*
+F:	arch/arm/mach-tegra/panel-*.c
+F:	arch/arm64/mach-tegra/panel-*.c
 F:	drivers/misc/tegra-cec/tegra_cec.c
 F:	drivers/video/tegra/fb.c
-F:	drivers/video/tegra/dc/*
-F:	drivers/video/tegra/dc/ext/*
+F:	drivers/video/tegra/dc/
 
-HOST
+GPU
 M:	Terje Bergstrom <tbergstrom@nvidia.com>
 L:	sw-mobile-host1x@exchange.nvidia.com
 S:	Supported
+F:	drivers/gpu/nvgpu/gk20a/
+F:	drivers/gpu/nvgpu/gm20b/
+
+HOST
+M:	Arto Merilainen <amerilainen@nvidia.com>
+L:	sw-mobile-host1x@exchange.nvidia.com
+S:	Supported
 F:	drivers/misc/tegra-throughput.c
-F:	drivers/video/tegra/host/*
-F:	drivers/video/tegra/host/gk20a/*
-F:	drivers/video/tegra/host/gr2d/*
-F:	drivers/video/tegra/host/gr3d/*
-F:	drivers/video/tegra/host/host1x/*
-F:	drivers/video/tegra/host/isp/*
-F:	drivers/video/tegra/host/msenc/*
-F:	drivers/video/tegra/host/t114/*
-F:	drivers/video/tegra/host/t124/*
-F:	drivers/video/tegra/host/t148/*
-F:	drivers/video/tegra/host/tsec/*
-F:	drivers/video/tegra/host/vi/*
-F:	drivers/video/tegra/host/vic03/*
+F:	drivers/video/tegra/host/
 
 MEMORY
-M:	Krishna Reddy <krireddy@nvidia.com>
+M:	Krishna Reddy <vdumpa@nvidia.com>
 L:	sw-mobile-memory@exchange.nvidia.com
 S:	Supported
-F:	arch/arm/mach-tegra/board-cardhu-memory.c
-F:	arch/arm/mach-tegra/board-pluto-memory.c
-F:	arch/arm/mach-tegra/common-t3.c
+F:	arch/arm64/mach-tegra/tegra21_memory.c
 F:	arch/arm/mach-tegra/common.c
-F:	arch/arm/mach-tegra/iovmm-gart.c
-F:	arch/arm/mach-tegra/iovmm-smmu.c
-F:	arch/arm/mach-tegra/iovmm.c
 F:	arch/arm/mach-tegra/isomgr.c
 F:	arch/arm/mach-tegra/latency_allowance.c
-F:	arch/arm/mach-tegra/mc.c
-F:	arch/arm/mach-tegra/mcerr-t11.c
-F:	arch/arm/mach-tegra/mcerr-t3.c
-F:	arch/arm/mach-tegra/mcerr.c
-F:	arch/arm/mach-tegra/tegra-smmu.c
-F:	arch/arm/mach-tegra/tegra11_emc.c
+F:	arch/arm/mach-tegra/tegra12_emc.c
 F:	arch/arm/mach-tegra/tegra2_emc.c
 F:	arch/arm/mach-tegra/tegra3_emc.c
-F:	drivers/gpu/ion/*
-F:	drivers/gpu/ion/tegra/*
-F:	drivers/video/tegra/nvmap/*
+F:	arch/arm/mach-tegra/tegra_emc_dt_parse.c
 F:	drivers/iommu/of_iommu.c
+F:	drivers/iommu/tegra-gart.c
 F:	drivers/iommu/tegra-smmu.c
+F:	drivers/platform/tegra/mc/mc.c
+F:	drivers/platform/tegra/mc/mcerr.c
+F:	drivers/staging/android/ion/*
+F:	drivers/staging/android/ion/tegra/*
+F:	drivers/video/tegra/nvmap/*
 
 MULTIMEDIA
-M:	Scott Peterson <speterson@nvidia.com>
+M:	Niranjan Wartikar <nwartikar@nvidia.com>
 S:	Supported
-F:	drivers/media/video/tegra/*
-F:	drivers/media/video/tegra/avp/*
-F:	drivers/media/video/tegra/mediaserver/*
-F:	drivers/media/video/tegra/nvavp/*
+F:	drivers/media/platform/tegra/*
+F:	drivers/media/platform/tegra/nvavp/*
+F:	drivers/platform/tegra/nvadsp/*
 F:	sound/soc/tegra/*
 
 PLATFORM
@@ -164,22 +148,10 @@ M:	Mallikarjun Kasoju <mkasoju@nvidia.com>
 L:	sw-mobile-kernel-platform@exchange.nvidia.com
 S:	Supported
 F:	arch/arm/mach-tegra/arb_sema.c
-F:	arch/arm/mach-tegra/board-cardhu-pinmux.c
-F:	arch/arm/mach-tegra/board-cardhu.c
 F:	arch/arm/mach-tegra/board-common.c
-F:	arch/arm/mach-tegra/board-pluto-pinmux.c
-F:	arch/arm/mach-tegra/board-pluto.c
 F:	arch/arm/mach-tegra/board-info.c
-F:	arch/arm/mach-tegra/board-pinmux.c
-F:	arch/arm/mach-tegra/fuse.c
 F:	arch/arm/mach-tegra/kfuse.c
-F:	arch/arm/mach-tegra/pinmux-t11-tables.c
-F:	arch/arm/mach-tegra/pinmux-tegra30-tables.c
-F:	arch/arm/mach-tegra/pinmux.c
-F:	arch/arm/mach-tegra/tegra_fuse.c
-F:	arch/arm/mach-tegra/tegra_odm_fuses.c
-F:	arch/arm/mach-tegra/wakeups-t11x.c
-F:	arch/arm/mach-tegra/wakeups-t3.c
+F:	drivers/misc/tegra-fuse/tegra_fuse.c
 F:	drivers/gpio/gpio-palmas.c
 F:	drivers/gpio/gpio-tegra.c
 F:	drivers/hwmon/*
@@ -187,65 +159,69 @@ F:	drivers/leds/leds-max8831.c
 F:	drivers/misc/bcm4329_rfkill.c
 F:	drivers/misc/max1749.c
 F:	drivers/misc/nct1008.c
-F:	drivers/misc/tegra-baseband/bb-m7400.c
+F:	drivers/misc/tegra-baseband/bb-oem2.c
 F:	drivers/misc/tegra-baseband/bb-power.c
 F:	drivers/pinctrl/pinctrl-tegra.c
 F:	drivers/pinctrl/pinctrl-tegra30.c
 F:	drivers/usb/serial/baseband_usb_chr.c
+F:	drivers/regulator/as3722-regulator.c
+
+PLATFORM POWER DELIVERY
+M:	Laxman Dewangan <ldewangan@nvidia.com>
+L:	sw-mobile-pmic@exchange.nvidia.com
+S:	Supported
 
 POWER AND PERF
 M:	Matt Longnecker <mlongnecker@nvidia.com>
 L:	sw-mobile-power@exchange.nvidia.com
 S:	Supported
+F:	arch/arm64/mach-tegra/pm.c
+F:	arch/arm64/mach-tegra/pm-tegra132.c
+F:	arch/arm64/mach-tegra/powerdetect.c
 F:	arch/arm/mach-tegra/baseband-xmm-power.c
-F:	arch/arm/mach-tegra/board-cardhu-power.c
-F:	arch/arm/mach-tegra/board-cardhu-powermon.c
-F:	arch/arm/mach-tegra/board-pluto-power.c
-F:	arch/arm/mach-tegra/board-pluto-powermon.c
-F:	arch/arm/mach-tegra/clock.c
-F:	arch/arm/mach-tegra/clocks_stats.c
-F:	arch/arm/mach-tegra/cpuidle-t11.c
-F:	arch/arm/mach-tegra/cpuidle-t11x.c
-F:	arch/arm/mach-tegra/cpuidle-t3.c
 F:	arch/arm/mach-tegra/cpuidle.c
+F:	arch/arm/mach-tegra/cpuidle-t11x.c
 F:	arch/arm/mach-tegra/cpuquiet.c
-F:	arch/arm/mach-tegra/dvfs.c
 F:	arch/arm/mach-tegra/edp.c
-F:	arch/arm/mach-tegra/pm-irq.c
-F:	arch/arm/mach-tegra/pm-t3.c
 F:	arch/arm/mach-tegra/pm.c
-F:	arch/arm/mach-tegra/pmc.c
 F:	arch/arm/mach-tegra/powerdetect.c
-F:	arch/arm/mach-tegra/powergate-ops-t1xx.c
-F:	arch/arm/mach-tegra/powergate-ops-txx.c
-F:	arch/arm/mach-tegra/powergate-t11x.c
 F:	arch/arm/mach-tegra/powergate-t30.c
-F:	arch/arm/mach-tegra/powergate.c
-F:	arch/arm/mach-tegra/sysfs-cluster.c
-F:	arch/arm/mach-tegra/tegra11_clocks.c
-F:	arch/arm/mach-tegra/tegra11_dvfs.c
-F:	arch/arm/mach-tegra/tegra11_speedo.c
-F:	arch/arm/mach-tegra/tegra30_clocks.c
 F:	arch/arm/mach-tegra/tegra3_actmon.c
-F:	arch/arm/mach-tegra/tegra3_dvfs.c
-F:	arch/arm/mach-tegra/tegra3_speedo.c
-F:	arch/arm/mach-tegra/tegra3_thermal.c
-F:	arch/arm/mach-tegra/tegra3_throttle.c
-F:	arch/arm/mach-tegra/tegra_cl_dvfs.c
+F:	arch/arm/mach-tegra/tegra_simon.c
 F:	arch/arm/mach-tegra/wdt-recovery.c
 F:	drivers/cpufreq/cpufreq_interactive.c
 F:	drivers/cpuquiet/*
 F:	drivers/cpuquiet/governors/*
 F:	drivers/edp/*
+F:	drivers/firmware/tegra/
 F:	drivers/input/input-cfboost.c
 F:	drivers/mfd/tps65090.c
 F:	drivers/mfd/tps6591x.c
+F:	drivers/platform/tegra/clock.c
+F:	drivers/platform/tegra/clocks_stats.c
+F:	drivers/platform/tegra/dvfs.c
+F:	drivers/platform/tegra/pm.c
+F:	drivers/platform/tegra/pmc.c
+F:	drivers/platform/tegra/pm-irq.c
+F:	drivers/platform/tegra/pm-t3.c
+F:	drivers/platform/tegra/powergate.c
+F:	drivers/platform/tegra/powergate-ops-t1xx.c
+F:	drivers/platform/tegra/powergate-ops-txx.c
+F:	drivers/platform/tegra/sysfs-cluster.c
+F:	drivers/platform/tegra/tegra_cl_dvfs.c
+F:	drivers/platform/tegra/tegra_throttle.c
 F:	drivers/power/bq27x00_battery.c
 F:	drivers/power/sbs-battery.c
 F:	drivers/power/tps65090-charger.c
 F:	drivers/regulator/tps51632-regulator.c
 F:	drivers/regulator/tps65090-regulator.c
 F:	drivers/regulator/tps6591x-regulator.c
+F:	drivers/thermal/
+
+SECURE OS:
+M:	Dennis Huang <denhuang@nvidia.com>
+L:	TMK@exchange.nvidia.com
+S:	Supported
 
 SECURITY
 M:	Venkat Moganty <vmoganty@nvidia.com>
@@ -254,15 +230,12 @@ S:	Supported
 F:	drivers/crypto/*
 F:	drivers/misc/tegra-cryptodev.c
 
-SENSORS:
-M:	Sachin Nikam <snikam@nvidia.com>
+SENSORS, INPUT AND TOUCHSCREEN:
+M:	Robert Collins <rcollins@nvidia.com>
 L:	sw-mobile-sensors@exchange.nvidia.com
 S:	Supported
-F:	arch/arm/mach-tegra/board-cardhu-irda.c
-F:	arch/arm/mach-tegra/board-cardhu-sensors.c
-F:	arch/arm/mach-tegra/board-pluto-sensors.c
-F:	arch/arm/mach-tegra/tegra11_soctherm.c
-F:	arch/arm/mach-tegra/tegra3_tsensor.c
+F:	drivers/input/touchscreen/*
+F:	drivers/video/tegra/camera/
 F:	drivers/misc/therm_est.c
 F:	drivers/staging/iio/light/*
 F:	drivers/staging/iio/magnetometer/*
@@ -272,8 +245,6 @@ STORAGE
 M:	Venu Byravarasu <vbyravarasu@nvidia.com>
 L:	sw-mobile-system@exchange.nvidia.com
 S:	Supported
-F:	arch/arm/mach-tegra/board-cardhu-sdhci.c
-F:	arch/arm/mach-tegra/board-pluto-sdhci.c
 F:	drivers/mmc/host/*
 
 SYSTEM
@@ -282,11 +253,9 @@ L:	sw-mobile-system@exchange.nvidia.com
 S:	Supported
 F:	arch/arm/mach-tegra/ahb.c
 F:	arch/arm/mach-tegra/apbio.c
-F:	arch/arm/mach-tegra/board-cardhu-kbc.c
-F:	arch/arm/mach-tegra/board-pluto-kbc.c
-F:	arch/arm/mach-tegra/dma.c
-F:	arch/arm/mach-tegra/pwm.c
+F:	drivers/dma/tegra*
 F:	drivers/input/keyboard/tegra-kbc.c
+F:	drivers/pwm/pwm-tegra.c
 F:	drivers/watchdog/*
 
 USB
@@ -294,10 +263,9 @@ M:	Venkat Moganty <vmoganty@nvidia.com>
 M:	Ashu Jha <ajha@nvidia.com>
 L:	sw-mobile-usb@exchange.nvidia.com
 S:	Supported
-F:	arch/arm/mach-tegra/tegra11x_usb_phy.c
-F:	arch/arm/mach-tegra/tegra3_usb_phy.c
-F:	arch/arm/mach-tegra/tegra_usb_modem_power.c
-F:	arch/arm/mach-tegra/usb_phy.c
+F:	drivers/misc/tegra-baseband/tegra_usb_modem_power.c
 F:	drivers/usb/gadget/tegra_udc.c
 F:	drivers/usb/host/ehci-tegra.c
-F:	drivers/usb/otg/tegra-otg.c
+F:	drivers/usb/host/xhci-tegra*
+F:	drivers/usb/phy/tegra-otg.c
+F:	drivers/usb/phy/tegra*usb_phy.c
