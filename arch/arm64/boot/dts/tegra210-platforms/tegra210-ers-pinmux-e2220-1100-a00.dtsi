@@ -941,6 +941,11 @@
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
 
+			pwr_int_n {
+				nvidia,pins = "pwr_int_n";
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+			};
+
 			wifi_en_ph0 {
 				nvidia,pins = "wifi_en_ph0";
 				nvidia,function = "rsvd0";
