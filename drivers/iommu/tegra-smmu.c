@@ -343,6 +343,7 @@ struct smmu_client {
 	struct smmu_map_prop	prop;
 
 	struct dentry		*debugfs_root;
+	struct dentry		*as_link[MAX_AS_PER_DEV];
 };
 
 /*
@@ -1772,6 +1773,7 @@ static void debugfs_create_master(struct smmu_client *c)
 		char name[] = "as000";
 		char target[256];
 		struct smmu_as *as = c->domain->as[i];
+		struct dentry *dent;
 
 		if (!as)
 			continue;
@@ -1785,8 +1787,9 @@ static void debugfs_create_master(struct smmu_client *c)
 		debugfs_create_symlink(name, c->debugfs_root, target);
 
 		sprintf(target, "../masters/%s", dev_name(c->dev));
-		debugfs_create_symlink(dev_name(c->dev), as->debugfs_root,
-					target);
+		dent = debugfs_create_symlink(dev_name(c->dev), as->debugfs_root,
+					      target);
+		c->as_link[i] = dent;
 	}
 }
 
@@ -1903,7 +1906,8 @@ static void smmu_iommu_detach_dev(struct iommu_domain *domain,
 	struct smmu_as *as = domain_to_as(domain, -1);
 	struct smmu_device *smmu;
 	struct smmu_client *c;
-	struct dentry *temp;
+	struct dentry *temp, **as_link;
+	int i;
 
 	if (!as)
 		return;
@@ -1914,6 +1918,7 @@ static void smmu_iommu_detach_dev(struct iommu_domain *domain,
 	list_for_each_entry(c, &as->client, list) {
 		if (c->dev == dev) {
 			temp = c->debugfs_root;
+			as_link = c->as_link;
 			c->debugfs_root = NULL;
 			list_del(&c->list);
 			smmu_client_disable_hwgrp(c);
@@ -1927,6 +1932,8 @@ static void smmu_iommu_detach_dev(struct iommu_domain *domain,
 	return;
 out:
 	spin_unlock(&as->client_lock);
+	for (i = 0; i < MAX_AS_PER_DEV; i++)
+		debugfs_remove(as_link[i]);
 	debugfs_remove_recursive(temp);
 }
 
