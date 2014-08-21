@@ -39,6 +39,8 @@
 		spi2 = &spi2;
 		spi3 = &spi3;
 		qspi6 = &qspi6;
+		serial0 = &uarta;
+		serial1 = &uartb;
 		serial2 = &uartc;
 		serial3 = &uartd;
 		udc0 = &udc;
