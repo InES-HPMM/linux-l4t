@@ -1903,6 +1903,7 @@ static void smmu_iommu_detach_dev(struct iommu_domain *domain,
 	struct smmu_as *as = domain_to_as(domain, -1);
 	struct smmu_device *smmu;
 	struct smmu_client *c;
+	struct dentry *temp;
 
 	if (!as)
 		return;
@@ -1912,7 +1913,7 @@ static void smmu_iommu_detach_dev(struct iommu_domain *domain,
 
 	list_for_each_entry(c, &as->client, list) {
 		if (c->dev == dev) {
-			debugfs_remove_recursive(c->debugfs_root);
+			temp = c->debugfs_root;
 			c->debugfs_root = NULL;
 			list_del(&c->list);
 			smmu_client_disable_hwgrp(c);
@@ -1922,8 +1923,11 @@ static void smmu_iommu_detach_dev(struct iommu_domain *domain,
 		}
 	}
 	dev_err(smmu->dev, "Couldn't find %s\n", dev_name(dev));
+	spin_unlock(&as->client_lock);
+	return;
 out:
 	spin_unlock(&as->client_lock);
+	debugfs_remove_recursive(temp);
 }
 
 static int smmu_iommu_domain_init(struct iommu_domain *domain)
