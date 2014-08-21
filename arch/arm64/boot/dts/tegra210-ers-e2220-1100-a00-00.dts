@@ -64,7 +64,7 @@
 		uhs-mask = <0x1c>;
 		vddio_sdmmc-supply = <&max77620_sd3>;
 		vddio_sd_slot-supply = <&en_vdd_sd3>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	sdhci@700b0200 {

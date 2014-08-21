@@ -87,7 +87,7 @@
 
 	sdhci@700b0400 {
 		uhs-mask = <0x1c>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	sdhci@700b0200 {
