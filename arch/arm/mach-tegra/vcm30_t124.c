@@ -62,21 +62,21 @@
 static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 	/* name			parent		rate	enabled (always on)*/
 
-	{ "automotive.sclk",	NULL,		264000000,	true},
-	{ "automotive.hclk",	NULL,		264000000,	true},
-	{ "automotive.pclk",	NULL,		132000000,	true},
+	{ "automotive.sclk",	NULL,		282000000,	true},
+	{ "automotive.hclk",	NULL,		282000000,	true},
+	{ "automotive.pclk",	NULL,		141000000,	true},
 
-	{ "mselect",		"pll_p",	408000000,	true},
-	{ "automotive.mselect",	NULL,		408000000,	true},
+	{ "mselect",		"pll_p",	204000000,	true},
+	{ "automotive.mselect",	NULL,		204000000,	true},
 
-	{ "se.cbus",		NULL,		432000000,	false},
-	{ "msenc.cbus",		NULL,		432000000,	false},
-	{ "vde.cbus",		NULL,		432000000,	false},
+	{ "se.cbus",		NULL,		372000000,	false},
+	{ "msenc.cbus",		NULL,		372000000,	false},
+	{ "vde",		"pll_c3",	450000000,	false},
 
-	{ "vic03.cbus",		NULL,		660000000,      false},
-	{ "tsec.cbus",		NULL,		660000000,      false},
-	{ "tsec",		"pll_c",	660000000,	false},
-	{ "vic03",		"pll_c",	660000000,	false},
+	{ "vic03.cbus",		NULL,		564000000,      false},
+	{ "tsec.cbus",		NULL,		564000000,      false},
+	{ "tsec",		"pll_c",	564000000,	false},
+	{ "vic03",		"pll_c",	564000000,	false},
 
 	{ "vi.c4bus",		NULL,		600000000,      false},
 	{ "isp.c4bus",		NULL,		600000000,      false},
@@ -123,7 +123,7 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 	{ "vi_sensor",		"pll_p",	68000000,	false},
 	{ "vi_sensor2",		"pll_p",	68000000,	false},
 
-	{ "automotive.host1x",	NULL,		264000000,	true},
+	{ "automotive.host1x",	NULL,		282000000,	true},
 
 	{ "i2c1",		"pll_p",	408000000,	false},
 	{ "i2c2",		"pll_p",	408000000,	false},
@@ -159,41 +159,41 @@ static  __initdata struct tegra_clk_init_table
 
 	/*			name,		fixed target rate*/
 	SET_FIXED_TARGET_RATE("pll_m",		792000000),
-	SET_FIXED_TARGET_RATE("sbus",		264000000),
+	SET_FIXED_TARGET_RATE("sbus",		282000000),
 
 #ifdef CONFIG_TEGRA_PLLCX_FIXED
 #ifdef CONFIG_TEGRA_DUAL_CBUS
-	SET_FIXED_TARGET_RATE("pll_c2",		432000000),
-	SET_FIXED_TARGET_RATE("c2bus",		432000000),
-	SET_FIXED_TARGET_RATE("pll_c3",		660000000),
-	SET_FIXED_TARGET_RATE("c3bus",		660000000),
+	SET_FIXED_TARGET_RATE("pll_c2",		372000000),
+	SET_FIXED_TARGET_RATE("c2bus",		372000000),
+	SET_FIXED_TARGET_RATE("pll_c3",		450000000),
+	SET_FIXED_TARGET_RATE("c3bus",		450000000),
 #endif
-	SET_FIXED_TARGET_RATE("pll_c",		660000000),
+	SET_FIXED_TARGET_RATE("pll_c",		564000000),
 	SET_FIXED_TARGET_RATE("pll_c4",		600000000),
 	SET_FIXED_TARGET_RATE("c4bus",		600000000),
-	SET_FIXED_TARGET_RATE("pll_c_out1",	264000000),
+	SET_FIXED_TARGET_RATE("pll_c_out1",	282000000),
 #endif
 	SET_FIXED_TARGET_RATE("pll_p",		408000000),
 
-	SET_FIXED_TARGET_RATE("sclk",		264000000),
-	SET_FIXED_TARGET_RATE("hclk",		264000000),
-	SET_FIXED_TARGET_RATE("ahb.sclk",	264000000),
-	SET_FIXED_TARGET_RATE("pclk",		132000000),
-	SET_FIXED_TARGET_RATE("apb.sclk",	132000000),
-	SET_FIXED_TARGET_RATE("cpu_lp",		1044000000),
+	SET_FIXED_TARGET_RATE("sclk",		282000000),
+	SET_FIXED_TARGET_RATE("hclk",		282000000),
+	SET_FIXED_TARGET_RATE("ahb.sclk",	282000000),
+	SET_FIXED_TARGET_RATE("pclk",		141000000),
+	SET_FIXED_TARGET_RATE("apb.sclk",	141000000),
+	SET_FIXED_TARGET_RATE("cpu_lp",		948000000),
 
-	SET_FIXED_TARGET_RATE("vde",		432000000),
-	SET_FIXED_TARGET_RATE("se",		432000000),
-	SET_FIXED_TARGET_RATE("msenc",		432000000),
+	SET_FIXED_TARGET_RATE("vde",		450000000),
+	SET_FIXED_TARGET_RATE("se",		372000000),
+	SET_FIXED_TARGET_RATE("msenc",		372000000),
 
-	SET_FIXED_TARGET_RATE("tsec",		660000000),
-	SET_FIXED_TARGET_RATE("vic03",		660000000),
+	SET_FIXED_TARGET_RATE("tsec",		564000000),
+	SET_FIXED_TARGET_RATE("vic03",		564000000),
 
 	SET_FIXED_TARGET_RATE("vi",		600000000),
 	SET_FIXED_TARGET_RATE("isp",		600000000),
 
-	SET_FIXED_TARGET_RATE("host1x",		264000000),
-	SET_FIXED_TARGET_RATE("mselect",	408000000),
+	SET_FIXED_TARGET_RATE("host1x",		282000000),
+	SET_FIXED_TARGET_RATE("mselect",	204000000),
 
 	SET_FIXED_TARGET_RATE("pll_a_out0",	24576000),
 	SET_FIXED_TARGET_RATE("spdif_in",	48000000),
