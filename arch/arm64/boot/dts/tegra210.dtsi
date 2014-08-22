@@ -248,7 +248,7 @@
 			      1 14 0xf01
 			      1 11 0xf01
 			      1 10 0xf01>;
-		clock-frequency = <38400000>;
+		clock-frequency = <12800000>;
 	};
 
 	timer@60005000 {
@@ -258,7 +258,7 @@
 			     <0 177 4>,
 			     <0 178 4>,
 			     <0 179 4>;
-		clock-frequency = <38400000>;
+		clock-frequency = <12800000>;
 	};
 
 	rtc {
