@@ -56,6 +56,17 @@
 			enable-active-high;
 		};
 
+		vdd_fan: regulator@13 {
+			compatible = "regulator-fixed-sync";
+			reg = <13>;
+			regulator-name = "vdd-fan";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(E, 4) 0>;
+			regulator-always-on;
+			enable-active-high;
+		};
+
 	};
 
 	efuse@7000f800 {
