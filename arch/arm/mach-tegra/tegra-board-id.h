@@ -69,6 +69,7 @@
 #define    BOARD_E1549    0x060D
 #define    BOARD_E1797    0x0705
 #define    BOARD_E1937    0x0791
+#define    BOARD_E2534    0x09e6
 
 #define    BOARD_E1563    0x061b
 #define    BOARD_E2129    0x0851

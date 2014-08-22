@@ -34,6 +34,8 @@ obj-y                   += panel-c-lvds-1366-14.o
 obj-y                   += panel-a-1080p-14-0.o
 obj-y                   += panel-j-1440-810-5-8.o
 obj-y                   += panel-c-edp-1366-768-14-0.o
+obj-y                   += panel-l-720p-5-loki.o
+obj-y                   += panel-j-720p-5.o
 
 obj-${CONFIG_MACH_LOKI}               += board-loki-power.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-memory.o
@@ -41,9 +43,6 @@ obj-${CONFIG_MACH_LOKI}               += board-loki-sdhci.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-sensors.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-kbc.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-panel.o
-obj-${CONFIG_MACH_LOKI}               += panel-l-720p-5-loki.o
-obj-${CONFIG_MACH_LOKI}               += panel-j-720p-5.o
-
 
 obj-${CONFIG_MACH_T132REF}              += board-t132ref.o
 obj-${CONFIG_MACH_T132REF}              += board-t210ref.o
