@@ -61,7 +61,7 @@
 #define XUSB_IS_T114_OR_T124(t)			\
 	((t->device_id == XUSB_DEVICE_ID_T114) ||	\
 		(t->device_id == XUSB_DEVICE_ID_T124))
-#define XUSB_IS_T210(t)	(t->device_id == XUSB_DEVICE_ID_T114)
+#define XUSB_IS_T210(t)	(t->device_id == XUSB_DEVICE_ID_T210)
 
 /* TODO: Do not have the definitions of below
  * registers.
