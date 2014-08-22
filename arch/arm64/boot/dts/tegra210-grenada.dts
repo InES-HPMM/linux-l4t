@@ -44,15 +44,6 @@
 		reg = < 0x0 0x80000000 0x0 0x40000000 >;
 	};
 
-	timer {
-		compatible = "arm,armv8-timer";
-		interrupts = <1 13 0xf01
-			      1 14 0xf01
-			      1 11 0xf01
-			      1 10 0xf01>;
-		clock-frequency = <38400000>;
-	};
-
 	i2c@7000c000 {
 		rt5639: rt5639.0-001c@1c {
 			compatible = "realtek,rt5639";
