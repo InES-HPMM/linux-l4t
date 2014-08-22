@@ -37,6 +37,7 @@
 #include <linux/sysedp.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
 #include <linux/dma-mapping.h>
+#include <linux/tegra-pmc.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
 
 #define BOOST_CPU_FREQ_MIN	1200000
@@ -619,6 +620,9 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 			goto error;
 		}
 	}
+
+	/* Clear PWR_DET bit */
+	pwr_detect_bit_write(GPIO_PWR_DET, false);
 
 	/* get modem operations from platform data */
 	modem->ops = (const struct tegra_modem_operations *)pdata->ops;
