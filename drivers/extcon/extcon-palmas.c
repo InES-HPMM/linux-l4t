@@ -7,7 +7,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Graeme Gregory <gg@slimlogic.co.uk>
  * Author: Kishon Vijay Abraham I <kishon@ti.com>
@@ -52,8 +52,6 @@ static char const *palmas_extcon_cable[] = {
 	[4] = "USB-ID-C",
 	NULL,
 };
-
-static const int mutually_exclusive[] = {0x3, 0x0};
 
 static void palmas_usb_wakeup(struct palmas *palmas, int enable)
 {
@@ -340,7 +338,6 @@ static int palmas_usb_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, palmas_usb);
 
 	palmas_usb->edev.supported_cable = palmas_extcon_cable;
-	palmas_usb->edev.mutually_exclusive = mutually_exclusive;
 	palmas_usb->edev.name = ext_name;
 	palmas_usb->edev.dev.parent = palmas_usb->dev;
 
