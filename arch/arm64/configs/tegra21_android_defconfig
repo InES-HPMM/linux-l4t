@@ -127,6 +127,8 @@ CONFIG_IP6_NF_RAW=y
 CONFIG_DNS_RESOLVER=y
 CONFIG_CFG80211=y
 # CONFIG_FIRMWARE_IN_KERNEL is not set
+CONFIG_EXTRA_FIRMWARE="audience/es755/audience-es755-fw.bin audience/es755/audience-es755-vs.bin audience/cvqmodels/adnc_cvq_detection_bkg_w_hdrs.bin"
+CONFIG_EXTRA_FIRMWARE_DIR="firmware"
 CONFIG_PLATFORM_ENABLE_IOMMU=y
 CONFIG_PROC_DEVICETREE=y
 CONFIG_BLK_DEV_LOOP=y
