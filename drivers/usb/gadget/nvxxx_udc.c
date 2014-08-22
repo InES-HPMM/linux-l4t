@@ -3861,9 +3861,8 @@ u32 reset_data_struct(struct NV_UDC_S *nvudc)
 	nvudc->ctrl_seq_num = 0;
 	nvudc->dev_addr = 0;
 
-#ifdef CONFIG_PLAT_FPGA_T210
-	fpga_hack_setup_vbus_sense_and_termination(nvudc);
-#endif
+	if (tegra_platform_is_fpga())
+		fpga_hack_setup_vbus_sense_and_termination(nvudc);
 
 	/* select HS/FS PI */
 	u_temp = ioread32(nvudc->mmio_reg_base + CFG_DEV_FE);
