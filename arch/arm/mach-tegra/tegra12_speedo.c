@@ -317,7 +317,7 @@ int tegra_core_speedo_mv(void)
 	case 1:
 		return 1150;
 	case 2:
-		return 1110;
+		return 1040;
 	default:
 		BUG();
 	}
