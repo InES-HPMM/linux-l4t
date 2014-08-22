@@ -730,7 +730,8 @@ static int bpmp_connect(void)
 	}
 
 	connected = 1;
-	return bpmp_init_cpus_present(num_present_cpus());
+
+	return 0;
 }
 
 void bpmp_detach(void)
