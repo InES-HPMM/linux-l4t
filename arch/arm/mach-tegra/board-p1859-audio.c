@@ -177,6 +177,8 @@ static const struct snd_soc_dapm_route tegra_e1860_a0x_audio_map[] = {
 	{"x RLINEIN",	NULL,	"LineIn-x"},
 	{"Spdif-out",	NULL,	"z OUT"},
 	{"z IN",	NULL,	"Spdif-in"},
+	{"BT-out",	NULL,	"b OUT"},
+	{"b IN",	NULL,	"BT-in"},
 };
 
 static const struct snd_soc_dapm_route tegra_e1860_b00_audio_map[] = {
@@ -262,7 +264,7 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
 	.dai_config[2] = {
 		.link_name = "spdif-playback",
 		.cpu_name = "tegra30-spdif",
-		.codec_name = "spdif-dit.0",
+		.codec_name = "spdif-dit",
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "SPDIF",
 		.codec_prefix = "z",
@@ -343,7 +345,7 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 	.dai_config[2] = {
 		.link_name = "spdif-playback",
 		.cpu_name = "tegra30-spdif",
-		.codec_name = "spdif-dit.0",
+		.codec_name = "spdif-dit",
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "SPDIF",
 		.codec_prefix = "z",
@@ -353,7 +355,26 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 		.params.channels_min = 2,
 		.params.channels_max = 2,
 	},
-	.dev_num = 3,
+	.dai_config[3] = {
+		.link_name = "bt-playback",
+		.cpu_name = "tegra30-i2s.2",
+		.codec_name = "spdif-dit",
+		.codec_dai_name = "dit-hifi",
+		.cpu_dai_name = "I2S2",
+		.codec_prefix = "b",
+		.bclk_ratio = 4,
+		.tx_mask = 1,
+		.rx_mask = 1,
+		.dai_fmt = SND_SOC_DAIFMT_DSP_A |
+			SND_SOC_DAIFMT_IB_IF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.params.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.params.rate_min = 8000,
+		.params.rate_max = 8000,
+		.params.channels_min = 1,
+		.params.channels_max = 1,
+	},
+	.dev_num = 4,
 	/* initialize AMX config */
 	.amx_config[0] = {
 		.slot_map = tegra_p1859_amx_slot_map,
@@ -413,7 +434,7 @@ static struct tegra_vcm30t124_platform_data tegra_voice_call_pdata = {
 	.dai_config[1] = {
 		.link_name = "vc-playback",
 		.cpu_name = "tegra30-i2s.4",
-		.codec_name = "spdif-dit.0",
+		.codec_name = "spdif-dit",
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "I2S4",
 		.codec_prefix = "y",
@@ -445,7 +466,7 @@ static struct platform_device tegra_snd_p1859 = {
 
 static struct platform_device tegra_spdif_dit = {
 	.name = "spdif-dit",
-	.id = 0,
+	.id = -1,
 };
 
 void __init p1859_audio_init(void)
