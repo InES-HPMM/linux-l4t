@@ -316,6 +316,8 @@ static int mmc_speed_opt_set(void *data, u64 val)
 	int err = 0;
 	struct mmc_host *host = data;
 	u32 prev_timing, prev_maxdtr;
+	u32 timing_req = 0;
+	u32 maxdtr_req = 0;
 
 	if (host->card->type != MMC_TYPE_MMC) {
 		pr_warn("%s: usage error, only MMC device is supported\n",
@@ -328,20 +330,25 @@ static int mmc_speed_opt_set(void *data, u64 val)
 	/* Currently supporting only DDR50 and HS200 speeds */
 	switch (val) {
 	case UHS_SDR104_BUS_SPEED:
-		host->ios.timing = MMC_TIMING_MMC_HS200;
-		host->card->sw_caps.uhs_max_dtr = MMC_HS200_MAX_DTR;
+		timing_req = MMC_TIMING_MMC_HS200;
+		maxdtr_req = MMC_HS200_MAX_DTR;
 		break;
 	case UHS_DDR50_BUS_SPEED:
-		host->ios.timing = MMC_TIMING_UHS_DDR50;
-		host->card->sw_caps.uhs_max_dtr = UHS_DDR50_MAX_DTR;
+		timing_req = MMC_TIMING_UHS_DDR50;
+		maxdtr_req = UHS_DDR50_MAX_DTR;
 		break;
 	default:
 		pr_warn("%s: usage error, set only 3 for HS200 or 4 for DDR50\n",
 			mmc_hostname(host));
 		return 0;
 	}
+
 	/* Set bus speed mode of the card */
 	mmc_claim_host(host);
+
+	host->ios.timing = timing_req;
+	host->card->sw_caps.uhs_max_dtr = maxdtr_req;
+
 	err = mmc_set_bus_speed_mode(host->card, val);
 	if (err) {
 		/* Restore to previous values in case of err*/
