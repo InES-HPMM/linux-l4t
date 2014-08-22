@@ -149,6 +149,7 @@
 			status = "okay";
 		};
 		i2s@70301200 {
+			fsync-width = <0>;
 			status = "okay";
 		};
 		i2s@70301300 {
