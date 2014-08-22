@@ -978,7 +978,7 @@ static int tegra_nor_probe(struct platform_device *pdev)
 	return 0;
 
 out_dma_free_coherent:
-	dma_free_coherent(dev, TEGRA_SNOR_DMA_LIMIT,
+	dma_free_coherent(dev, TEGRA_SNOR_DMA_LIMIT + MAX_DMA_BURST_SIZE,
 				info->dma_virt_buffer, info->dma_phys_buffer);
 out_clk_disable:
 	clk_disable_unprepare(info->clk);
@@ -993,7 +993,7 @@ static int tegra_nor_remove(struct platform_device *pdev)
 
 	mtd_device_unregister(info->concat_mtd);
 	kfree(info->parts);
-	dma_free_coherent(&pdev->dev, TEGRA_SNOR_DMA_LIMIT,
+	dma_free_coherent(&pdev->dev, TEGRA_SNOR_DMA_LIMIT + MAX_DMA_BURST_SIZE,
 				info->dma_virt_buffer, info->dma_phys_buffer);
 	map_destroy(info->concat_mtd);
 	clk_disable_unprepare(info->clk);
