@@ -9010,6 +9010,7 @@ static struct clk_mux_sel mux_xusb_dev[] = {
 	{ .input = &tegra_xusb_source_clks[4], .value = 4},
 	{ .input = &tegra_xusb_source_clks[2], .value = 2},
 	{ .input = &tegra_xusb_source_clks[3], .value = 3},
+	{ .input = &tegra_xusb_hs_src,         .value = 5},
 	{ 0, 0},
 };
 
