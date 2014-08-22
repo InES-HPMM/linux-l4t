@@ -68,6 +68,18 @@
 		};
 
 	};
+	i2c@7000c000 {
+		icm20628@68 {
+			vlogic-supply = <&max77620_ldo3>;
+			vdd-supply = <&vdd_3v3>;
+		};
+
+		ak8975@0c {
+			vid = <&max77620_ldo3>;
+			vdd = <&vdd_3v3>;
+		};
+
+	};
 
 	efuse@7000f800 {
 		vpp_fuse-supply = <&max77620_sd3>;

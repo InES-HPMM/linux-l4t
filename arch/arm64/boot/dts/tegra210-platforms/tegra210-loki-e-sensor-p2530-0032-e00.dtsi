@@ -6,18 +6,14 @@
                         compatible = "invensense,mpu6xxx";
                         reg = <0x68>;
                         interrupt-parent = <&gpio>;
-                        interrupts = <138 0x01>;
+                        interrupts = <&gpio TEGRA_GPIO(X, 2) 0x01>;
                         invensense,orientation = [ff 00 00 00 01 00 00 00 ff];
-                        vdd = <&max77620_sd3>;
-                        vlogic= <&vdd_3v3>;
                 };
 
                 ak8975@0c {
                         compatible = "ak,ak8975";
                         reg = <0x0c>;
                         orientation = [01 00 00 00 ff 00 00 00 ff];
-                        vdd = <&max77620_sd3>;
-                        vid = <&vdd_3v3>;
                 };
                 jsa1127@39 {
                         compatible = "solteam-opto,jsa1127";
