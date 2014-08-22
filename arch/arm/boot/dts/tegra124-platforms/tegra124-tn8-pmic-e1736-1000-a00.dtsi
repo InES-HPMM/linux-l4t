@@ -736,9 +736,6 @@
 			compatible = "ti,bq2419x";
 			reg = <0x6b>;
 
-			interrupt-parent = <&gpio>;
-			interrupts = <TEGRA_GPIO(J, 0) 0x0>;
-
 			charger {
 				status = "disabled";
 				regulator-name = "batt_regulator";
