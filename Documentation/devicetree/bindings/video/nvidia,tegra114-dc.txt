@@ -17,7 +17,6 @@ NVIDIA Tegra114 Display Controller
  - nvidia,cmu-enable: Toggle switch for color management unit.
  - nvidia,low-v-win: If low_v_win is set, we can lower vdd_core when that windows
    is the only one active.
- - nvidia,out-rotation: It specifies panel rotation in degree.
  - nvidia,fb-bpp: Bits per pixel of fb.
  - nvidia,fb-flags: Window is updated in display controller device probe. Should be TEGRA_FB_FLIP_ON_PROBE,
    or 0
