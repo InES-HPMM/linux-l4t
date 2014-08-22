@@ -258,6 +258,7 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 
 void __init tegra21x_init_early(void)
 {
+	display_tegra_dt_info();
 	tegra_apb_io_init();
 	tegra_perf_init();
 	tegra_init_fuse();
