@@ -691,6 +691,11 @@ struct NV_UDC_S {
 	/* regulators */
 	struct regulator_bulk_data *supplies;
 	struct xudc_board_data bdata;
+
+	/* extcon */
+	bool vbus_detected;
+	struct extcon_dev *vbus_extcon_dev;
+	struct notifier_block vbus_extcon_nb;
 };
 
 void free_data_struct(struct NV_UDC_S *nvudc);
@@ -765,7 +770,7 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
 #define msg_dbg(dev, fmt, args...) \
 	{ dev_dbg(dev, "%s():%d: " fmt, __func__ , __LINE__, ## args); }
 #define msg_info(dev, fmt, args...) \
-	{ dev_dbg(dev, fmt, ## args); }
+	{ dev_info(dev, fmt, ## args); }
 #define msg_err(dev, fmt, args...) \
 	{ dev_err(dev, fmt, ## args); }
 #define msg_warn(dev, fmt, args...) \
@@ -815,11 +820,6 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
 #define PORT_INTERNAL(x)			(1 << ((x) * 4 + 2))
 #define PORT_REVERSE_ID(x)			(1 << ((x) * 4 + 3))
 
-#define SS_PORT_MAP				(0x14)
-#define PORT0_MAP(x)				(((x) & 0x7) << 0)
-#define  MAP_USB2_PORT(p)			((p) % 0x3)
-#define  MAP_DISABLED				(0x7)
-
 #define ELPG_PROGRAM				(0x24)
 
 #define IOPHY_USB3_PAD0_CTL_2			(0x58)
@@ -850,16 +850,6 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
 #define  PAD_PD_DR				(1 << 2)
 #define  TERM_RANGE_ADJ(x)			(((x) & 0xf) << 3)
 #define  HS_IREF_CAP(x)			(((x) & 0x3) << 9)
-
-#define USB2_BIAS_PAD_CTL			(0xb8)
-#define  HS_SQUELCH_LEVEL(x)			(((x) & 0x3) << 0)
-#define  HS_DISCON_LEVEL(x)			(((x) & 0x7) << 2)
-#define  HS_CHIRP_LEVEL(x)			(((x) & 0x3) << 5)
-#define  VBUS_LEVEL(x)				(((x) & 0x3) << 7)
-#define  TERM_OFFSET(x)			(((x) & 0x3) << 9)
-#define  BIAS_PD				(1 << 12)
-#define  BIAS_PD_TRK				(1 << 13)
-#define  ADJRPU(x)				(((x) & 0x7) << 14)
 
 #define USB3_PAD_MUX				(0x134)
 #define  FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0	(1 << 1)
