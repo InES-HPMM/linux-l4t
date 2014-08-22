@@ -30,6 +30,7 @@
 #include <linux/platform_data/tegra_bpmp.h>
 
 #include <asm/clkdev.h>
+#include <asm/arch_timer.h>
 
 #include <mach/edp.h>
 #include <mach/hardware.h>
@@ -9116,10 +9117,14 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("uart_mipi_cal", "clk72mhz", NULL),
 };
 
-struct clk *tegra_ptr_clks[] = {
+
+struct clk *tegra_main_clks[] = {
 	&tegra_clk_32k,
 	&tegra_clk_osc,
 	&tegra_clk_m,
+};
+
+struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_m_div2,
 	&tegra_clk_m_div4,
 	&tegra_pll_ref,
@@ -10006,6 +10011,24 @@ static void tegra21_init_xusb_clocks(void)
 		tegra21_init_one_clock(&tegra_xusb_coupled_clks[i]);
 }
 
+/*
+ * The udelay() is implemented based on arch timers, using loops_per_jiffy as
+ * scaling factor. To make it functional during early clock initialization -
+ *  before timers are initialized - set loops_per_jiffy here.
+ */
+static void tegra21_init_main_clock(void)
+{
+	int i;
+	unsigned long clk_m_rate;
+
+	for (i = 0; i < ARRAY_SIZE(tegra_main_clks); i++)
+		tegra21_init_one_clock(tegra_main_clks[i]);
+
+	clk_m_rate = clk_get_rate_all_locked(&tegra_clk_m);
+
+	loops_per_jiffy = clk_m_rate / HZ;
+}
+
 void __init tegra21x_init_clocks(void)
 {
 	int i;
@@ -10014,6 +10037,8 @@ void __init tegra21x_init_clocks(void)
 #ifndef	CONFIG_TEGRA_DUAL_CBUS
 	BUILD_BUG()
 #endif
+	tegra21_init_main_clock();
+
 	for (i = 0; i < ARRAY_SIZE(tegra_ptr_clks); i++)
 		tegra21_init_one_clock(tegra_ptr_clks[i]);
 
