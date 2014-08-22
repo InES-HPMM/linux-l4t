@@ -347,6 +347,7 @@
 #define XUSB_PADCTL_USB2_VBUS_ID_0	0xc60
 #define VBUS_SOURCE_SELECT(val)	((val & 0x3) << 12)
 #define ID_SOURCE_SELECT(val)	((val & 0x3) << 16)
+#define USB2_VBUS_ID_0_VBUS_OVERRIDE    (1 << 14)
 #define IDDIG_CHNG_INTR_EN		(1 << 11)
 
 #else

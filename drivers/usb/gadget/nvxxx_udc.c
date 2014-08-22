@@ -37,6 +37,7 @@
 #include <linux/clk.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-fuse.h>
+#include <linux/extcon.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 #include "nvxxx.h"
 #include "../../../arch/arm/mach-tegra/iomap.h"
@@ -137,6 +138,55 @@ module_param(min_irq_interval_us, uint, S_IRUGO);
 MODULE_PARM_DESC(min_irq_interval_us, "minimum irq interval in microseconds");
 
 static int nvudc_ep_disable(struct usb_ep *_ep);
+
+/* must hold nvudc->lock */
+static inline void vbus_detected(struct NV_UDC_S *nvudc)
+{
+	if (nvudc->vbus_detected)
+		return; /* nothing to do */
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+		USB2_VBUS_ID_0_VBUS_OVERRIDE, USB2_VBUS_ID_0_VBUS_OVERRIDE);
+
+	nvudc->vbus_detected = true;
+}
+
+/* must hold nvudc->lock */
+static inline void vbus_not_detected(struct NV_UDC_S *nvudc)
+{
+	if (!nvudc->vbus_detected)
+		return; /* nothing to do */
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+		USB2_VBUS_ID_0_VBUS_OVERRIDE, 0);
+
+	nvudc->vbus_detected = false;
+}
+
+static int extcon_notifications(struct notifier_block *nb,
+				   unsigned long event, void *unused)
+{
+	struct NV_UDC_S *nvudc =
+			container_of(nb, struct NV_UDC_S, vbus_extcon_nb);
+	struct device *dev = nvudc->dev;
+	unsigned long flags;
+
+	spin_lock_irqsave(&nvudc->lock, flags);
+
+	if (!nvudc->pullup) {
+		msg_info(dev, "%s: gadget is not ready yet\n", __func__);
+		goto exit;
+	}
+
+	if (extcon_get_cable_state(nvudc->vbus_extcon_dev, "USB"))
+		vbus_detected(nvudc);
+	else
+		vbus_not_detected(nvudc);
+
+exit:
+	spin_unlock_irqrestore(&nvudc->lock, flags);
+	return NOTIFY_DONE;
+}
 
 static void set_interrupt_moderation(struct NV_UDC_S *nvudc, unsigned us)
 {
@@ -1869,6 +1919,8 @@ static int nvudc_gadget_pullup(struct usb_gadget *gadget, int is_on)
 	}
 	spin_unlock_irqrestore(&nvudc->lock, flags);
 
+	/* update vbus status */
+	extcon_notifications(&nvudc->vbus_extcon_nb, 0, NULL);
 	return 0;
 }
 
@@ -3569,6 +3621,9 @@ static int nvudc_gadget_start(struct usb_gadget *gadget,
 		iowrite32(u_temp, nvudc->mmio_reg_base + CTRL);
 	}
 
+	/* update vbus status */
+	extcon_notifications(&nvudc->vbus_extcon_nb, 0, NULL);
+
 #ifdef OTG
 	if (nvudc->transceiver)
 		retval = otg_set_peripheral(nvudc->transceiver, &nvudc->gadget);
@@ -4697,6 +4752,17 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	}
 
 	the_controller = nvudc; /* TODO support device context */
+
+	/* TODO: support non-dt ?*/
+	nvudc->vbus_extcon_dev =
+		extcon_get_extcon_dev_by_cable(&pdev->dev, "vbus");
+	if (IS_ERR(nvudc->vbus_extcon_dev))
+		err = -ENODEV;
+
+	nvudc->vbus_extcon_nb.notifier_call = extcon_notifications;
+	extcon_register_notifier(nvudc->vbus_extcon_dev,
+						&nvudc->vbus_extcon_nb);
+
 	return 0;
 
 err_clocks_disable:
