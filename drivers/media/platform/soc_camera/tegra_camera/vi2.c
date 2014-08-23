@@ -226,6 +226,66 @@
 #define TEGRA_CSI_DEBUG_COUNTER_1			0xb00
 #define TEGRA_CSI_DEBUG_COUNTER_2			0xb04
 
+/* These go into the TEGRA_VI_CSI_n_IMAGE_DEF registers bits 23:16 */
+#define TEGRA_IMAGE_FORMAT_T_L8				16
+#define TEGRA_IMAGE_FORMAT_T_R16_I			32
+#define TEGRA_IMAGE_FORMAT_T_B5G6R5			33
+#define TEGRA_IMAGE_FORMAT_T_R5G6B5			34
+#define TEGRA_IMAGE_FORMAT_T_A1B5G5R5			35
+#define TEGRA_IMAGE_FORMAT_T_A1R5G5B5			36
+#define TEGRA_IMAGE_FORMAT_T_B5G5R5A1			37
+#define TEGRA_IMAGE_FORMAT_T_R5G5B5A1			38
+#define TEGRA_IMAGE_FORMAT_T_A4B4G4R4			39
+#define TEGRA_IMAGE_FORMAT_T_A4R4G4B4			40
+#define TEGRA_IMAGE_FORMAT_T_B4G4R4A4			41
+#define TEGRA_IMAGE_FORMAT_T_R4G4B4A4			42
+#define TEGRA_IMAGE_FORMAT_T_A8B8G8R8			64
+#define TEGRA_IMAGE_FORMAT_T_A8R8G8B8			65
+#define TEGRA_IMAGE_FORMAT_T_B8G8R8A8			66
+#define TEGRA_IMAGE_FORMAT_T_R8G8B8A8			67
+#define TEGRA_IMAGE_FORMAT_T_A2B10G10R10		68
+#define TEGRA_IMAGE_FORMAT_T_A2R10G10B10		69
+#define TEGRA_IMAGE_FORMAT_T_B10G10R10A2		70
+#define TEGRA_IMAGE_FORMAT_T_R10G10B10A2		71
+#define TEGRA_IMAGE_FORMAT_T_A8Y8U8V8			193
+#define TEGRA_IMAGE_FORMAT_T_V8U8Y8A8			194
+#define TEGRA_IMAGE_FORMAT_T_A2Y10U10V10		197
+#define TEGRA_IMAGE_FORMAT_T_V10U10Y10A2		198
+#define TEGRA_IMAGE_FORMAT_T_Y8_U8__Y8_V8		200
+#define TEGRA_IMAGE_FORMAT_T_Y8_V8__Y8_U8		201
+#define TEGRA_IMAGE_FORMAT_T_U8_Y8__V8_Y8		202
+#define TEGRA_IMAGE_FORMAT_T_T_V8_Y8__U8_Y8		203
+#define TEGRA_IMAGE_FORMAT_T_T_Y8__U8__V8_N444		224
+#define TEGRA_IMAGE_FORMAT_T_Y8__U8V8_N444		225
+#define TEGRA_IMAGE_FORMAT_T_Y8__V8U8_N444		226
+#define TEGRA_IMAGE_FORMAT_T_Y8__U8__V8_N422		227
+#define TEGRA_IMAGE_FORMAT_T_Y8__U8V8_N422		228
+#define TEGRA_IMAGE_FORMAT_T_Y8__V8U8_N422		229
+#define TEGRA_IMAGE_FORMAT_T_Y8__U8__V8_N420		230
+#define TEGRA_IMAGE_FORMAT_T_Y8__U8V8_N420		231
+#define TEGRA_IMAGE_FORMAT_T_Y8__V8U8_N420		232
+#define TEGRA_IMAGE_FORMAT_T_X2Lc10Lb10La10		233
+#define TEGRA_IMAGE_FORMAT_T_A2R6R6R6R6R6		234
+
+/* These go into the TEGRA_VI_CSI_n_CSI_IMAGE_DT registers bits 7:0 */
+#define TEGRA_IMAGE_DT_YUV420_8				24
+#define TEGRA_IMAGE_DT_YUV420_10			25
+#define TEGRA_IMAGE_DT_YUV420CSPS_8			28
+#define TEGRA_IMAGE_DT_YUV420CSPS_10			29
+#define TEGRA_IMAGE_DT_YUV422_8				30
+#define TEGRA_IMAGE_DT_YUV422_10			31
+#define TEGRA_IMAGE_DT_RGB444				32
+#define TEGRA_IMAGE_DT_RGB555				33
+#define TEGRA_IMAGE_DT_RGB565				34
+#define TEGRA_IMAGE_DT_RGB666				35
+#define TEGRA_IMAGE_DT_RGB888				36
+#define TEGRA_IMAGE_DT_RAW6				40
+#define TEGRA_IMAGE_DT_RAW7				41
+#define TEGRA_IMAGE_DT_RAW8				42
+#define TEGRA_IMAGE_DT_RAW10				43
+#define TEGRA_IMAGE_DT_RAW12				44
+#define TEGRA_IMAGE_DT_RAW14				45
+
 static int vi2_port_is_valid(int port)
 {
 	return (((port) >= TEGRA_CAMERA_PORT_CSI_A) &&
@@ -481,6 +541,7 @@ static int vi2_capture_setup_csi_0(struct tegra_camera_dev *cam,
 {
 	struct soc_camera_subdev_desc *ssdesc = &icd->sdesc->subdev_desc;
 	struct tegra_camera_platform_data *pdata = ssdesc->drv_priv;
+	int format = 0, data_type = 0, image_size = 0;
 
 	TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND, 0xf007);
 	TC_VI_REG_WT(cam, TEGRA_CSI_CSI_PIXEL_PARSER_A_INTERRUPT_MASK, 0x0);
@@ -508,22 +569,31 @@ static int vi2_capture_setup_csi_0(struct tegra_camera_dev *cam,
 		TC_VI_REG_WT(cam, TEGRA_CSI_PG_BLUE_FREQ_RATE_A, 0x0);
 		TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CIL_COMMAND, 0x22020202);
 
-		/* output format A8B8G8R8, only support direct to mem */
-		TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_IMAGE_DEF, (64 << 16) | 0x1);
-		/* input format is RGB888 */
-		TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_CSI_IMAGE_DT, 36);
-
-		TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_CSI_IMAGE_SIZE_WC,
-				icd->user_width * 3);
-	} else {
-		/* output format RAW10 T_R16_I, only support direct to mem */
-		TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_IMAGE_DEF, (32 << 16) | 0x1);
-		/* input format is RAW10 */
-		TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_CSI_IMAGE_DT, 43);
-
-		TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_CSI_IMAGE_SIZE_WC,
-				icd->user_width * 10 / 8);
+		format = TEGRA_IMAGE_FORMAT_T_A8B8G8R8;
+		data_type = TEGRA_IMAGE_DT_RGB888;
+		image_size = icd->user_width * 3;
+	} else if ((icd->current_fmt->code == V4L2_MBUS_FMT_UYVY8_2X8) ||
+		   (icd->current_fmt->code == V4L2_MBUS_FMT_VYUY8_2X8) ||
+		   (icd->current_fmt->code == V4L2_MBUS_FMT_YUYV8_2X8) ||
+		   (icd->current_fmt->code == V4L2_MBUS_FMT_YVYU8_2X8)) {
+		/* TBD */
+	} else if ((icd->current_fmt->code == V4L2_MBUS_FMT_SBGGR8_1X8) ||
+		   (icd->current_fmt->code == V4L2_MBUS_FMT_SGBRG8_1X8)) {
+		format = TEGRA_IMAGE_FORMAT_T_L8;
+		data_type = TEGRA_IMAGE_DT_RAW8;
+		image_size = icd->user_width;
+	} else if ((icd->current_fmt->code == V4L2_MBUS_FMT_SBGGR10_1X10) ||
+		   (icd->current_fmt->code == V4L2_MBUS_FMT_SRGGB10_1X10)) {
+		format = TEGRA_IMAGE_FORMAT_T_R16_I;
+		data_type = TEGRA_IMAGE_DT_RAW10;
+		image_size = (icd->user_width * 10) >> 3;
 	}
+
+	TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_IMAGE_DEF, (format << 16) | 0x1);
+
+	TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_CSI_IMAGE_DT, data_type);
+
+	TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_CSI_IMAGE_SIZE_WC, image_size);
 
 	TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_CSI_IMAGE_SIZE,
 			(icd->user_height << 16) | icd->user_width);
@@ -536,6 +606,7 @@ static int vi2_capture_setup_csi_1(struct tegra_camera_dev *cam,
 {
 	struct soc_camera_subdev_desc *ssdesc = &icd->sdesc->subdev_desc;
 	struct tegra_camera_platform_data *pdata = ssdesc->drv_priv;
+	int format = 0, data_type = 0, image_size = 0;
 
 	TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND, 0xf007);
 	TC_VI_REG_WT(cam, TEGRA_CSI_CSI_PIXEL_PARSER_B_INTERRUPT_MASK, 0x0);
@@ -565,17 +636,31 @@ static int vi2_capture_setup_csi_1(struct tegra_camera_dev *cam,
 		TC_VI_REG_WT(cam, TEGRA_CSI_PG_BLUE_FREQ_RATE_B, 0x0);
 		TC_VI_REG_WT(cam, TEGRA_CSI_PHY_CIL_COMMAND, 0x22020202);
 
-		/* output format A8B8G8R8, only support direct to mem */
-		TC_VI_REG_WT(cam, TEGRA_VI_CSI_1_IMAGE_DEF, (64 << 16) | 0x1);
-		/* input format is RGB888 */
-		TC_VI_REG_WT(cam, TEGRA_VI_CSI_1_CSI_IMAGE_DT, 36);
+		format = TEGRA_IMAGE_FORMAT_T_A8B8G8R8;
+		data_type = TEGRA_IMAGE_DT_RGB888;
+		image_size = icd->user_width * 3;
+	} else if ((icd->current_fmt->code == V4L2_MBUS_FMT_UYVY8_2X8) ||
+		   (icd->current_fmt->code == V4L2_MBUS_FMT_VYUY8_2X8) ||
+		   (icd->current_fmt->code == V4L2_MBUS_FMT_YUYV8_2X8) ||
+		   (icd->current_fmt->code == V4L2_MBUS_FMT_YVYU8_2X8)) {
+		/* TBD */
+	} else if ((icd->current_fmt->code == V4L2_MBUS_FMT_SBGGR8_1X8) ||
+		   (icd->current_fmt->code == V4L2_MBUS_FMT_SGBRG8_1X8)) {
+		format = TEGRA_IMAGE_FORMAT_T_L8;
+		data_type = TEGRA_IMAGE_DT_RAW8;
+		image_size = icd->user_width;
+	} else if ((icd->current_fmt->code == V4L2_MBUS_FMT_SBGGR10_1X10) ||
+		   (icd->current_fmt->code == V4L2_MBUS_FMT_SRGGB10_1X10)) {
+		format = TEGRA_IMAGE_FORMAT_T_R16_I;
+		data_type = TEGRA_IMAGE_DT_RAW10;
+		image_size = icd->user_width * 10 / 8;
 	}
 
-	TC_VI_REG_WT(cam, TEGRA_VI_CSI_1_CSI_IMAGE_SIZE,
-		     (icd->user_height << 16) | icd->user_width);
+	TC_VI_REG_WT(cam, TEGRA_VI_CSI_1_IMAGE_DEF, (format << 16) | 0x1);
 
-	TC_VI_REG_WT(cam, TEGRA_VI_CSI_1_CSI_IMAGE_SIZE_WC,
-		     icd->user_width * 3);
+	TC_VI_REG_WT(cam, TEGRA_VI_CSI_1_CSI_IMAGE_DT, data_type);
+
+	TC_VI_REG_WT(cam, TEGRA_VI_CSI_1_CSI_IMAGE_SIZE_WC, image_size);
 
 	return 0;
 }
@@ -706,41 +791,30 @@ static int vi2_capture_buffer_setup(struct tegra_camera_dev *cam,
 	return 0;
 }
 
-static int vi2_capture_error_status(struct tegra_camera_dev *cam)
+static void vi2_capture_error_status(struct tegra_camera_dev *cam)
 {
-	int err;
+	u32 val;
 
 #ifdef DEBUG
-	err = TC_VI_REG_RD(cam, TEGRA_CSI_DEBUG_COUNTER_0);
-	if (err)
-		pr_err("TEGRA_CSI_DEBUG_COUNTER_0 0x%08x\n", err);
+	val = TC_VI_REG_RD(cam, TEGRA_CSI_DEBUG_COUNTER_0);
+	pr_err("TEGRA_CSI_DEBUG_COUNTER_0 0x%08x\n", val);
 #endif
-	err = TC_VI_REG_RD(cam, TEGRA_CSI_CSI_CIL_A_STATUS);
-	if (err)
-		pr_err("TEGRA_CSI_CSI_CIL_A_STATUS 0x%08x\n", err);
-	err = TC_VI_REG_RD(cam, TEGRA_CSI_CSI_CILA_STATUS);
-	if (err)
-		pr_err("TEGRA_CSI_CSI_CILA_STATUS 0x%08x\n", err);
-	err = TC_VI_REG_RD(cam, TEGRA_CSI_CSI_CIL_B_STATUS);
-	if (err)
-		pr_err("TEGRA_CSI_CSI_CIL_B_STATUS 0x%08x\n", err);
-	err = TC_VI_REG_RD(cam, TEGRA_CSI_CSI_CIL_C_STATUS);
-	if (err)
-		pr_err("TEGRA_CSI_CSI_CIL_C_STATUS 0x%08x\n", err);
-	err = TC_VI_REG_RD(cam, TEGRA_CSI_CSI_CIL_D_STATUS);
-	if (err)
-		pr_err("TEGRA_CSI_CSI_CIL_D_STATUS 0x%08x\n", err);
-	err = TC_VI_REG_RD(cam, TEGRA_CSI_CSI_CIL_E_STATUS);
-	if (err)
-		pr_err("TEGRA_CSI_CSI_CIL_E_STATUS 0x%08x\n", err);
-	err = TC_VI_REG_RD(cam, TEGRA_CSI_CSI_PIXEL_PARSER_A_STATUS);
-	if (err)
-		pr_err("TEGRA_CSI_CSI_PIXEL_PARSER_A_STATUS 0x%08x\n", err);
-	err = TC_VI_REG_RD(cam, TEGRA_VI_CSI_0_ERROR_STATUS);
-	if (err)
-		pr_err("TEGRA_VI_CSI_0_ERROR_STATUS 0x%08x\n", err);
-
-	return err;
+	val = TC_VI_REG_RD(cam, TEGRA_CSI_CSI_CIL_A_STATUS);
+	pr_err("TEGRA_CSI_CSI_CIL_A_STATUS 0x%08x\n", val);
+	val = TC_VI_REG_RD(cam, TEGRA_CSI_CSI_CILA_STATUS);
+	pr_err("TEGRA_CSI_CSI_CILA_STATUS 0x%08x\n", val);
+	val = TC_VI_REG_RD(cam, TEGRA_CSI_CSI_CIL_B_STATUS);
+	pr_err("TEGRA_CSI_CSI_CIL_B_STATUS 0x%08x\n", val);
+	val = TC_VI_REG_RD(cam, TEGRA_CSI_CSI_CIL_C_STATUS);
+	pr_err("TEGRA_CSI_CSI_CIL_C_STATUS 0x%08x\n", val);
+	val = TC_VI_REG_RD(cam, TEGRA_CSI_CSI_CIL_D_STATUS);
+	pr_err("TEGRA_CSI_CSI_CIL_D_STATUS 0x%08x\n", val);
+	val = TC_VI_REG_RD(cam, TEGRA_CSI_CSI_CIL_E_STATUS);
+	pr_err("TEGRA_CSI_CSI_CIL_E_STATUS 0x%08x\n", val);
+	val = TC_VI_REG_RD(cam, TEGRA_CSI_CSI_PIXEL_PARSER_A_STATUS);
+	pr_err("TEGRA_CSI_CSI_PIXEL_PARSER_A_STATUS 0x%08x\n", val);
+	val = TC_VI_REG_RD(cam, TEGRA_VI_CSI_0_ERROR_STATUS);
+	pr_err("TEGRA_VI_CSI_0_ERROR_STATUS 0x%08x\n", val);
 }
 
 static int vi2_capture_start(struct tegra_camera_dev *cam,
@@ -788,8 +862,17 @@ static int vi2_capture_start(struct tegra_camera_dev *cam,
 		cam->sof = 0;
 
 	/* Capture syncpt timeout err, then dump error status */
-	if (err)
-		err = vi2_capture_error_status(cam);
+	if (err) {
+		if (port == TEGRA_CAMERA_PORT_CSI_A)
+			dev_err(&cam->ndev->dev,
+				"CSI_A syncpt timeout, syncpt = %d, err = %d\n",
+				cam->syncpt_csi_a, err);
+		else if (port == TEGRA_CAMERA_PORT_CSI_B)
+			dev_err(&cam->ndev->dev,
+				"CSI_B syncpt timeout, syncpt = %d, err = %d\n",
+				cam->syncpt_csi_b, err);
+		vi2_capture_error_status(cam);
+	}
 
 	return err;
 }

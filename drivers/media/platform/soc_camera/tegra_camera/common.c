@@ -46,7 +46,7 @@ module_param(tpg_mode, int, 0644);
 
 #define TEGRA_SYNCPT_RETRY_COUNT	10
 
-static const struct soc_mbus_pixelfmt tegra_camera_formats[] = {
+static const struct soc_mbus_pixelfmt tegra_camera_yuv_formats[] = {
 	{
 		.fourcc			= V4L2_PIX_FMT_UYVY,
 		.name			= "YUV422 (UYVY) packed",
@@ -89,6 +89,9 @@ static const struct soc_mbus_pixelfmt tegra_camera_formats[] = {
 		.packing		= SOC_MBUS_PACKING_NONE,
 		.order			= SOC_MBUS_ORDER_LE,
 	},
+};
+
+static const struct soc_mbus_pixelfmt tegra_camera_bayer_formats[] = {
 	{
 		.fourcc			= V4L2_PIX_FMT_SBGGR8,
 		.name			= "Bayer 8 BGBG.. GRGR..",
@@ -117,6 +120,9 @@ static const struct soc_mbus_pixelfmt tegra_camera_formats[] = {
 		.packing		= SOC_MBUS_PACKING_EXTEND16,
 		.order			= SOC_MBUS_ORDER_LE,
 	},
+};
+
+static const struct soc_mbus_pixelfmt tegra_camera_rgb_formats[] = {
 	{
 		.fourcc			= V4L2_PIX_FMT_RGB32,
 		.name			= "RGBA 8-8-8-8",
@@ -605,44 +611,62 @@ static int tegra_camera_get_formats(struct soc_camera_device *icd,
 {
 	struct v4l2_subdev *sd = soc_camera_to_subdev(icd);
 	struct device *dev = icd->parent;
-	int formats = 0;
+	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
+	struct tegra_camera_dev *cam = ici->priv;
+	int num_formats;
+	const struct soc_mbus_pixelfmt *formats;
 	int ret;
 	enum v4l2_mbus_pixelcode code;
 	int k;
 
-	ret = v4l2_subdev_call(sd, video, enum_mbus_fmt, idx, &code);
-	if (ret != 0)
-		/* No more formats */
-		return 0;
+	/*
+	 * If we're in test pattern mode, ignore the subdev's formats, and
+	 * pick a format that the test pattern mode can handle.
+	 */
+	if (!cam->tpg_mode) {
+		ret = v4l2_subdev_call(sd, video, enum_mbus_fmt, idx, &code);
+		if (ret != 0)
+			/* No more formats */
+			return 0;
+	} else
+		code = V4L2_MBUS_FMT_RGBA8888_4X8_LE;
 
 	switch (code) {
 	case V4L2_MBUS_FMT_UYVY8_2X8:
 	case V4L2_MBUS_FMT_VYUY8_2X8:
 	case V4L2_MBUS_FMT_YUYV8_2X8:
 	case V4L2_MBUS_FMT_YVYU8_2X8:
+		formats = tegra_camera_yuv_formats;
+		num_formats = ARRAY_SIZE(tegra_camera_yuv_formats);
+		break;
 	case V4L2_MBUS_FMT_SBGGR8_1X8:
 	case V4L2_MBUS_FMT_SGBRG8_1X8:
 	case V4L2_MBUS_FMT_SBGGR10_1X10:
 	case V4L2_MBUS_FMT_SRGGB10_1X10:
+		formats = tegra_camera_bayer_formats;
+		num_formats = ARRAY_SIZE(tegra_camera_bayer_formats);
+		break;
 	case V4L2_MBUS_FMT_RGBA8888_4X8_LE:
-		formats += ARRAY_SIZE(tegra_camera_formats);
-		for (k = 0;
-		     xlate && (k < ARRAY_SIZE(tegra_camera_formats));
-		     k++) {
-			xlate->host_fmt	= &tegra_camera_formats[k];
-			xlate->code	= code;
-			xlate++;
-
-			dev_dbg(dev, "Providing format %s using code %d\n",
-				 tegra_camera_formats[k].name, code);
-		}
+		formats = tegra_camera_rgb_formats;
+		num_formats = ARRAY_SIZE(tegra_camera_rgb_formats);
 		break;
 	default:
-		dev_err(dev, "Not supporting %d\n", code);
-		return 0;
+		dev_notice(dev, "Not supporting mbus format code 0x%04x\n",
+			   code);
+		formats = NULL;
+		num_formats = 0;
 	}
 
-	return formats;
+	for (k = 0; xlate && (k < num_formats); k++) {
+		xlate->host_fmt	= &formats[k];
+		xlate->code	= code;
+		xlate++;
+
+		dev_notice(dev, "Supporting mbus format code 0x%04x using %s\n",
+			   code, formats[k].name);
+	}
+
+	return num_formats;
 }
 
 static void tegra_camera_put_formats(struct soc_camera_device *icd)
@@ -657,12 +681,11 @@ static int tegra_camera_set_fmt(struct soc_camera_device *icd,
 	struct device *dev = icd->parent;
 	struct soc_camera_host *ici = to_soc_camera_host(dev);
 	struct tegra_camera_dev *cam = ici->priv;
-
 	struct v4l2_subdev *sd = soc_camera_to_subdev(icd);
 	const struct soc_camera_format_xlate *xlate = NULL;
 	struct v4l2_pix_format *pix = &f->fmt.pix;
 	struct v4l2_mbus_framefmt mf;
-	int ret;
+	int ret = 0;
 
 	xlate = soc_camera_xlate_by_fourcc(icd, pix->pixelformat);
 	if (!xlate) {
@@ -676,17 +699,20 @@ static int tegra_camera_set_fmt(struct soc_camera_device *icd,
 	mf.colorspace	= pix->colorspace;
 	mf.code		= xlate->code;
 
-	ret = v4l2_subdev_call(sd, video, s_mbus_fmt, &mf);
-	if (IS_ERR_VALUE(ret)) {
-		dev_warn(dev, "Failed to configure for format %x\n",
-			 pix->pixelformat);
-		return ret;
-	}
+	if (!cam->tpg_mode) {
+		ret = v4l2_subdev_call(sd, video, s_mbus_fmt, &mf);
+		if (IS_ERR_VALUE(ret)) {
+			dev_warn(dev, "Failed to configure for format %x\n",
+				 pix->pixelformat);
+			return ret;
+		}
 
-	if (mf.code != xlate->code) {
-		dev_warn(dev, "mf.code = %d, xlate->code = %d, mismatch\n",
-			mf.code, xlate->code);
-		return -EINVAL;
+		if (mf.code != xlate->code) {
+			dev_warn(dev,
+				 "mf.code = 0x%04x, xlate->code = 0x%04x, "
+				 "mismatch\n", mf.code, xlate->code);
+			return -EINVAL;
+		}
 	}
 
 	icd->user_width		= mf.width;
@@ -701,12 +727,15 @@ static int tegra_camera_set_fmt(struct soc_camera_device *icd,
 static int tegra_camera_try_fmt(struct soc_camera_device *icd,
 				struct v4l2_format *f)
 {
+	struct device *dev = icd->parent;
+	struct soc_camera_host *ici = to_soc_camera_host(dev);
+	struct tegra_camera_dev *cam = ici->priv;
 	struct v4l2_subdev *sd = soc_camera_to_subdev(icd);
 	const struct soc_camera_format_xlate *xlate;
 	struct v4l2_pix_format *pix = &f->fmt.pix;
 	struct v4l2_mbus_framefmt mf;
 	__u32 pixfmt = pix->pixelformat;
-	int ret;
+	int ret = 0;
 
 	xlate = soc_camera_xlate_by_fourcc(icd, pixfmt);
 	if (!xlate) {
@@ -727,9 +756,11 @@ static int tegra_camera_try_fmt(struct soc_camera_device *icd,
 	mf.colorspace	= pix->colorspace;
 	mf.code		= xlate->code;
 
-	ret = v4l2_subdev_call(sd, video, try_mbus_fmt, &mf);
-	if (IS_ERR_VALUE(ret))
-		return ret;
+	if (!cam->tpg_mode) {
+		ret = v4l2_subdev_call(sd, video, try_mbus_fmt, &mf);
+		if (IS_ERR_VALUE(ret))
+			return ret;
+	}
 
 	pix->width	= mf.width;
 	pix->height	= mf.height;
