@@ -31,6 +31,8 @@
 
 #define APP_LOADER_MBOX_ID		1
 
+#define ADSP_OS_LOAD_TIMEOUT		5000 /* 5000 ms */
+
 #define OS_LOAD_COMPLETE		0x01
 #define LOAD_APP			0x03
 #define APP_LOAD_RET_STATUS		0x04
@@ -221,9 +223,21 @@ static void nvadsp_app_receive_thread(struct work_struct *work)
 	}
 }
 
-void wait_for_adsp_os_load_complete(void)
+int wait_for_adsp_os_load_complete(void)
 {
-	wait_for_completion(&os_load);
+	struct device *dev = &priv.pdev->dev;
+	unsigned long timeout;
+	int ret;
+
+	timeout = msecs_to_jiffies(ADSP_OS_LOAD_TIMEOUT);
+	ret = wait_for_completion_timeout(&os_load, timeout);
+	if (!ret) {
+		dev_err(dev, "ADSP OS loading timed out\n");
+		ret = -ETIMEDOUT;
+	} else
+		ret = 0;
+
+	return ret;
 }
 
 static int native_adsp_app_start(nvadsp_app_info_t *app)

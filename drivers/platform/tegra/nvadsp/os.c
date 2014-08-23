@@ -691,7 +691,7 @@ int nvadsp_os_start(void)
 	struct clk *adsp_clk;
 	struct clk *ape_uart;
 	struct clk *ape_clk;
-	int val;
+	int val, ret;
 
 	if (!priv.pdev) {
 		pr_err("ADSP Driver is not initialized\n");
@@ -746,8 +746,10 @@ int nvadsp_os_start(void)
 #if !CONFIG_SYSTEM_FPGA
 	writel(APE_RESET, priv.reset_reg);
 #endif
-	wait_for_adsp_os_load_complete();
-	return 0;
+	dev_info(dev, "waiting for ADSP OS to boot up...\n");
+	ret = wait_for_adsp_os_load_complete();
+	dev_info(dev, "waiting for ADSP OS to boot up...Done.\n");
+	return ret;
 }
 EXPORT_SYMBOL(nvadsp_os_start);
 
