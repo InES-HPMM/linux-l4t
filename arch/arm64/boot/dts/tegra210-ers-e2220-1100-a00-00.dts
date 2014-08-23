@@ -77,7 +77,6 @@
 	sdhci@700b0000 {
 		uhs-mask = <0x1c>;
 		cd-gpios = <&gpio TEGRA_GPIO_PZ1 0>;
-		wp-gpios = <&gpio TEGRA_GPIO_PZ3 0>;
 		status = "okay";
 	};
 
