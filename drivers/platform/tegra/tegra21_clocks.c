@@ -8429,6 +8429,12 @@ static void tegra21_camera_mclk_init(struct clk *c)
 	} else if (!strcmp(c->name, "mclk2")) {
 		c->parent = tegra_get_clock_by_name("vi_sensor2");
 		c->max_rate = c->parent->max_rate;
+	} else if (!strcmp(c->name, "mclk3")) {
+		c->parent = tegra_get_clock_by_name("extern3");
+		c->max_rate = c->parent->max_rate;
+	} else if (!strcmp(c->name, "cam-mipi-cal")) {
+		c->parent = tegra_get_clock_by_name("uart_mipi_cal");
+		c->max_rate = c->parent->max_rate;
 	}
 }
 
@@ -8460,6 +8466,32 @@ static struct clk tegra_camera_mclk2 = {
 		.clk_num = 171, /* vim2_clk */
 	},
 	.flags = PERIPH_NO_RESET,
+};
+
+static struct clk tegra_camera_mipical = {
+	.name = "cam-mipi-cal",
+	.ops = &tegra_camera_mclk_ops,
+	.u.periph = {
+		.clk_num = 56, /* mipi_cal */
+	},
+	.flags = PERIPH_NO_RESET,
+};
+
+static struct clk_ops tegra_camera_mclk3_ops = {
+	.init		= &tegra21_camera_mclk_init,
+	.enable		= &tegra21_clk_out_enable,
+	.disable	= &tegra21_clk_out_disable,
+	.set_rate	= &tegra21_camera_mclk_set_rate,
+};
+
+static struct clk tegra_camera_mclk3 = {
+	.name = "mclk3",
+	.ops = &tegra_camera_mclk3_ops,
+	.reg = 0x1a8,
+	.flags = MUX_CLK_OUT,
+	.u.periph = {
+		.clk_num   = (3 - 1) * 8 + 2,
+	},
 };
 
 static struct clk tegra_clk_isp = {
@@ -8676,7 +8708,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("hda2hdmi",	"tegra30-hda",	   "hda2hdmi",	128,	0,	408000000,  mux_clk_m,				PERIPH_ON_APB),
 
 	PERIPH_CLK("qspi",	"qspi", 		NULL,	211,	0x6c4, 166000000, mux_pllp_pllc_pllc4_out2_pllc4_out1_clkm_pllc4_out0, MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("vi_i2c",	"vi_i2c", 		NULL,	208,	0x6c8, 136000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | PERIPH_ON_APB),
+	PERIPH_CLK("vii2c",	"vii2c",		NULL,	208,	0x6c8, 136000000, mux_pllp_pllc_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc1",	"spi-tegra114.0",	NULL,	41,	0x134,  51000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc2",	"spi-tegra114.1",	NULL,	44,	0x118,  51000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc3",	"spi-tegra114.2",	NULL,	46,	0x11c,  51000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
@@ -8746,7 +8778,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("dsiblp",	"tegradc.1",	    "dsiblp",	148,	0x624,	204000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
 
 	PERIPH_CLK("entropy",	"entropy",		NULL,	149,	0x628,	102000000, mux_pllp_clkm_1,		MUX | DIV_U71),
-	PERIPH_CLK("uart_mipi_cal", "uart_mipi_cal",	NULL,	177,	0x66c,	102000000, mux_pllp_out3_pllp_pllc_clkm, MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("uart_mipi_cal", "uart_mipi_cal",	NULL,	177,	0x66c,	102000000, mux_pllp_out3_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("dbgapb",	"dbgapb",		NULL,	185,	0x718,	136000000, mux_pllp_clkm_2,		MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("tsensor",	"tegra-tsensor",	NULL,	100,	0x3b8,	216000000, mux_pllp_pllc_clkm_clk32,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("actmon",	"actmon",		NULL,	119,	0x3e8,	216000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71),
@@ -9053,6 +9085,11 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("pll_p_out5", "tegra_gpu.0", "pwr"),
 	CLK_DUPLICATE("ispa.isp.cbus", "tegra_isp.0", "isp"),
 	CLK_DUPLICATE("ispb.isp.cbus", "tegra_isp.1", "isp"),
+	CLK_DUPLICATE("vii2c", "tegra_vi-i2c", "vii2c"),
+	CLK_DUPLICATE("i2cslow", "tegra_vi-i2c", "i2cslow"),
+	CLK_DUPLICATE("mclk3", NULL, "cam_mclk1"),
+	CLK_DUPLICATE("mclk1", NULL, "cam_mclk2"),
+	CLK_DUPLICATE("mclk2", NULL, "cam_mclk3"),
 #ifdef CONFIG_VI_ONE_DEVICE
 	CLK_DUPLICATE("vi.cbus", "tegra_vi", "vi"),
 	CLK_DUPLICATE("csi", "tegra_vi", "csi"),
@@ -9196,6 +9233,8 @@ struct clk *tegra_ptr_clks[] = {
 struct clk *tegra_ptr_camera_mclks[] = {
 	&tegra_camera_mclk,
 	&tegra_camera_mclk2,
+	&tegra_camera_mclk3,
+	&tegra_camera_mipical,
 };
 
 /*
