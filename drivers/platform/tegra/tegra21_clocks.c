@@ -9995,6 +9995,41 @@ static void tegra21_init_xusb_clocks(void)
 }
 
 /*
+ * Check if arch timer frequency specified either in DT or in CNTFRQ register is
+ * matching actual clk_m rate.
+ */
+static void tegra21_check_timer_clock(u32 clk_m_rate)
+{
+
+	struct device_node *dn;
+	u32 dt_rate = 0;
+	u32 timer_rate = 0;
+
+	for_each_compatible_node(dn, NULL, "arm,armv8-timer") {
+		if (!of_device_is_available(dn))
+			continue;
+
+		if (!of_property_read_u32(dn, "clock-frequency", &dt_rate))
+			timer_rate = dt_rate;
+		break;
+	}
+
+	if (!dn) {
+		WARN(1, "No arch timer node in DT\n");
+		return;
+	}
+
+	if (!timer_rate)
+		timer_rate = arch_timer_get_cntfrq();
+
+	if (timer_rate == clk_m_rate)
+		return;
+
+	WARN(1, "Arch timer %s rate %u doesn't match clk_m %u - kernel timing is broken\n",
+		dt_rate ? "DT" : "CNTFRQ", timer_rate, clk_m_rate);
+}
+
+/*
  * The udelay() is implemented based on arch timers, using loops_per_jiffy as
  * scaling factor. To make it functional during early clock initialization -
  *  before timers are initialized - set loops_per_jiffy here.
@@ -10010,6 +10045,8 @@ static void tegra21_init_main_clock(void)
 	clk_m_rate = clk_get_rate_all_locked(&tegra_clk_m);
 
 	loops_per_jiffy = clk_m_rate / HZ;
+
+	tegra21_check_timer_clock(clk_m_rate);
 }
 
 void __init tegra21x_init_clocks(void)
