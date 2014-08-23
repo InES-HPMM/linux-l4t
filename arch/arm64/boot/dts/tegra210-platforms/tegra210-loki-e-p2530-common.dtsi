@@ -48,6 +48,11 @@
 		status = "okay";
 	};
 
+	memory@80000000 {
+		device_type = "memory";
+		reg = < 0x0 0x80000000 0x0 0x80000000 >;
+	};
+
 	adma@702e2000  {
 		interrupts = <0 24 0x04
 			      0 25 0x04
