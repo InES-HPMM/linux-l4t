@@ -553,7 +553,7 @@
 		tsecb {
 			compatible = "nvidia,tegra210-tsec";
 			reg = <0x0 0x54100000 0x0 0x00040000>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS(TSECB1) &common_as>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(TSECB) &common_as>;
 		};
 
 		nvdec {
