@@ -134,4 +134,18 @@
 			status = "disabled";
 		};
 	};
+	bthrot_cdev {
+			skin_balanced {
+				status = "disabled";
+			};
+			gpu_balanced {
+				status = "disabled";
+			};
+			cpu_balanced {
+				cdev-type = "tegra-balanced";
+			};
+			emergency_balanced{
+				status = "disabled";
+			};
+	};
 };
