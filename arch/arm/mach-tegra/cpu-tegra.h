@@ -34,7 +34,7 @@ unsigned int tegra_get_slowest_cpu_n(void);
 unsigned long tegra_cpu_lowest_speed(void);
 unsigned long tegra_cpu_highest_speed(void);
 
-#if defined(CONFIG_TEGRA_AUTO_HOTPLUG) && !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#ifdef CONFIG_TEGRA_CPUQUIET
 int tegra_auto_hotplug_init(struct mutex *cpulock);
 void tegra_auto_hotplug_exit(void);
 void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend);

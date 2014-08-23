@@ -106,10 +106,8 @@ CFLAGS_tegra21_dvfs.o = -Werror -Wno-unused-function -Wno-unused-variable
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra21_dvfs.o
 endif
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
-ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
 ifeq ($(CONFIG_TEGRA_CPUQUIET),y)
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC)         += cpuquiet.o
-endif
 endif
 
 obj-$(CONFIG_TEGRA_MC) += latency_allowance.o
