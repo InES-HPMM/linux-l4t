@@ -18,3 +18,24 @@ bcmdhd_wlan {
 	wlan-pwr-gpio = <&gpio TEGRA_GPIO(X, 7) 0>;
 	wlan-rst-gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
 };
+===============================================================================
+* bcmdhd2-wlan devicetree bindings
+
+This file documents the properties used by the bcmdhd2-wlan driver.
+
+Required properties:
+- compatible : Must be "nvidia,tegra-bcmdhd2-wlan"
+
+Optional properties:
+- "wlan-pwr-gpio" is a gpio to power on/off wifi chip
+- "wlan-rst-gpio" is a gpio to reset wifi chip
+- "interrupts" is a wake on wireless gpio interrupt pin
+
+Example:
+bcm4329_wlan2_ {
+	compatible = "nvidia,tegra-bcmdhd2-wlan";
+	interrupt-parent = <&gpio>;
+	interrupts = <165 0x14>;
+	wlan-pwr-gpio = <&gpio TEGRA_GPIO(X, 7) 0>;
+	wlan-rst-gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
+};
