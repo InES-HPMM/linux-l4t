@@ -959,8 +959,7 @@ static void tegra_ahci_uphy_init(void)
 	val |= PLL0_RCAL_OVRD;
 	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
 
-	val = clk_readl(CLK_RST_CONTROLLER_RST_DEV_Y_CLR_0);
-	val |= CLR_SATA_USB_UPHY_RST;
+	val = CLR_SATA_USB_UPHY_RST;
 	clk_writel(val, CLK_RST_CONTROLLER_RST_DEV_Y_CLR_0);
 
 	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
