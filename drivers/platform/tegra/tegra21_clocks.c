@@ -2265,23 +2265,6 @@ static void tegra21_utmi_param_configure(struct clk *c)
 	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_D_POWERDOWN;
 	clk_writel(reg, UTMIP_PLL_CFG2);
 
-	/* Enable HW Power Sequencer */
-	reg = clk_readl(UTMIP_PLL_CFG1);
-	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERUP;
-	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERDOWN;
-	clk_writel(reg, UTMIP_PLL_CFG1);
-
-	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
-	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL;
-	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
-	reg &= ~UTMIPLL_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL;
-	reg |= UTMIPLL_HW_PWRDN_CFG0_USE_LOCKDET;
-	pll_writel_delay(reg, UTMIPLL_HW_PWRDN_CFG0);
-
-	/* Enable HW control UTMIPLL */
-	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
-	reg |= UTMIPLL_HW_PWRDN_CFG0_SEQ_ENABLE;
-	pll_writel_delay(reg, UTMIPLL_HW_PWRDN_CFG0);
 }
 
 /*

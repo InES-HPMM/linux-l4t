@@ -1015,7 +1015,9 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 	}
 
 	utmi_phy_pad_disable();
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	utmi_phy_iddq_override(true);
+#endif
 
 	phy->phy_clk_on = false;
 	phy->hw_accessible = false;
@@ -1170,7 +1172,9 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	writel(val, base + USB_SUSP_CTRL);
 
 	/* Bring UTMIPLL out of IDDQ mode while exiting from reset/suspend */
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	utmi_phy_iddq_override(false);
+#endif
 
 	if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
 		USB_PHY_CLK_VALID, USB_PHY_CLK_VALID, 2600))
