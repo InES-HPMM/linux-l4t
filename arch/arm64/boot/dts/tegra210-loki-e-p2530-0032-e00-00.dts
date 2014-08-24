@@ -44,6 +44,22 @@
 	compatible = "nvidia,loki-e", "nvidia,tegra210";
 	nvidia,dtsfilename = __FILE__;
 
+	i2c@7000c500 {
+		battery-charger@6b {
+			charger {
+				status = "okay";
+				ti,watchdog-timeout = <160>;
+				ti,pre-charge-current-limit-milliamp = <768>;
+				ti,charge-term-current-limit-milliamp = <384>;
+				ti,ir-comp-voltage-millivolt = <112>;
+			};
+		};
+
+		battery-gauge@55 {
+			status = "okay";
+		};
+	};
+
 	sdhci@700b0600 {
 		uhs-mask = <0x60>;
 		built-in;
