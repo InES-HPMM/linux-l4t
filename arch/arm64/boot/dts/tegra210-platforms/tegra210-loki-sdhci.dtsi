@@ -49,8 +49,9 @@
 		max-clk-limit = <200000000>;
 		bus-width = <4>;
 		id = <1>;
-		compad-vref-3v3 = <0x1>;
-		compad-vref-1v8 = <0x2>;
+		compad-vref-3v3 = <0x7>;
+		compad-vref-1v8 = <0x7>;
+		default-drive-type = <1>;
 	};
 
 	sdhci@700b0000 { /* SDMMC1 for uSD card on loki */
