@@ -316,9 +316,9 @@
 				vana-supply = <&max77620_ldo3>;
 				vdig-supply = <&vdd_sys_boost>;
 				vif-supply = <&en_vdd_cam>;
-				af-gpios = <&gpio 149 0>;
-				reset-gpios = <&gpio 148 0>;
-				cam1-gpios = <&gpio 151 0>;
+				af-gpios = <&gpio TEGRA_GPIO(S, 5) 0>;
+				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
+				cam1-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
 			};
 			dw9714@6_000c {
 				use_of_node = "yes";
@@ -334,7 +334,8 @@
 				use_of_node = "yes";
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
-				reset-gpios = <&gpio 221 0>;
+				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
+				cam2-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
 			};
 		};
 	};
