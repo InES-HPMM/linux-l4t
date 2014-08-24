@@ -1561,7 +1561,7 @@ static struct notifier_block tegra_dvfs_reboot_nb = {
 };
 
 /* must be called with dvfs lock held */
-static void __tegra_dvfs_rail_disable(struct dvfs_rail *rail)
+static void dvfs_rail_disable(struct dvfs_rail *rail, bool force)
 {
 	int ret = -EPERM;
 	int mv;
@@ -1580,8 +1580,8 @@ static void __tegra_dvfs_rail_disable(struct dvfs_rail *rail)
 		mv = dvfs_rail_apply_limits(rail, mv);
 	}
 
-	/* apply detach mode limit provided it is above current volatge */
-	if (mv >= rail->millivolts)
+	/* apply detach mode limit if it is enforced or above current volatge */
+	if (force || (mv >= rail->millivolts))
 		ret = dvfs_rail_set_voltage(rail, mv);
 	if (ret) {
 		pr_err("tegra_dvfs: failed to disable %s at %d\n",
@@ -1589,6 +1589,16 @@ static void __tegra_dvfs_rail_disable(struct dvfs_rail *rail)
 		return;
 	}
 	rail->disabled = true;
+}
+
+static void __tegra_dvfs_rail_disable(struct dvfs_rail *rail)
+{
+	dvfs_rail_disable(rail, false);
+}
+
+static void __tegra_dvfs_rail_force_disable(struct dvfs_rail *rail)
+{
+	dvfs_rail_disable(rail, true);
 }
 
 /* must be called with dvfs lock held */
@@ -2477,7 +2487,7 @@ int __init tegra_dvfs_rail_connect_regulators(void)
 			/* Don't rely on boot level - force disabled voltage */
 			rail->disabled = false;
 		}
-		__tegra_dvfs_rail_disable(rail);
+		__tegra_dvfs_rail_force_disable(rail);
 	}
 	mutex_unlock(&dvfs_lock);
 
@@ -2504,7 +2514,7 @@ int __init tegra_dvfs_rail_connect_regulators(void)
 			/* Don't rely on boot level - force disabled voltage */
 			rail->disabled = false;
 		}
-		__tegra_dvfs_rail_disable(rail);
+		__tegra_dvfs_rail_force_disable(rail);
 	}
 
 	mutex_unlock(&dvfs_lock);
