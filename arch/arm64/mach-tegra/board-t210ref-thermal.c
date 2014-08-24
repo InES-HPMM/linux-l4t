@@ -639,6 +639,10 @@ int t210ref_thermal_sensors_init(void)
 		i2c_register_board_info(1, t210ref_skin_i2c_nct72_board_info,
 			ARRAY_SIZE(t210ref_skin_i2c_nct72_board_info));
 #endif
+	} else if (board_info.board_id == BOARD_P2530) {
+	/* E2530 has thermal sensor on GEN1-I2C i.e. instance 0 */
+		i2c_register_board_info(0, t210ref_i2c_nct72_board_info,
+				ARRAY_SIZE(t210ref_i2c_nct72_board_info));
 	} else {
 	/* E2220 has thermal sensor on GEN3-I2C i.e. instance 2 */
 		i2c_register_board_info(2, t210ref_i2c_nct72_board_info,
