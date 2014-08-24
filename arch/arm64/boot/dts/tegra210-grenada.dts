@@ -1078,7 +1078,7 @@
 		dqs-trim-delay = <17>;
 		mmc-ocr-mask = <0>;
 		max-clk-limit = <200000000>;
-		uhs_mask = <0x0>;
+		uhs-mask = <0x0>;
 		bus-width = <8>;
 		id = <3>;
 		built-in;
@@ -1111,7 +1111,7 @@
 		dqs-trim-delay = <17>;
 		mmc-ocr-mask = <0>;
 		max-clk-limit = <200000000>;
-		uhs_mask = <0x0>;
+		uhs-mask = <0x0>;
 		bus-width = <8>;
 		id = <1>;
 		built-in;
