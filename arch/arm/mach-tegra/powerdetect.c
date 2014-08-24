@@ -98,6 +98,7 @@ void pwr_detect_bit_write(u32 pwrdet_bit, bool enable)
 	unsigned int pwrdet_mask;
 	pwrdet_mask = pmc_readl(PMC_PWR_DET_ENABLE);
 	switch (pwrdet_bit) {
+	case AUDIO_HV_PWR_DET:
 	case SDMMC1_PWR_DET:
 	case SDMMC3_PWR_DET:
 		if (!(pwrdet_mask & (BIT(pwrdet_bit)))) {
