@@ -275,4 +275,9 @@
 		status = "okay";
 		dt-override-status-odm-data = <0x00010000 0x00010000>;
 	};
+
+	tegra-supply-tests {
+		compatible = "nvidia,tegra-supply-tests";
+		vdd-core-supply=<&max77620_sd0>;
+	};
 };
