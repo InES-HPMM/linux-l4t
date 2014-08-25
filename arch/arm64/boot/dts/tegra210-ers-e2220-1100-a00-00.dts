@@ -36,6 +36,7 @@
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-camera-e2249-1002-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-e2220-thermal-zone.dtsi"
 
 / {
 	model = "e2220";
@@ -323,6 +324,12 @@
 				vif-supply = <&en_vdd_cam>;
 				reset-gpios = <&gpio 221 0>;
 			};
+		};
+	};
+
+	thermal-zones {
+		PMIC-Die {
+			thermal-sensors = <&max77620>;
 		};
 	};
 };
