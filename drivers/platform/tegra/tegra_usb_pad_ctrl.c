@@ -1111,6 +1111,16 @@ static int tegra_xusb_padctl_phy_enable(void)
 
 	/* Enable overrides to enable SW control over PLL */
 	/* init UPHY, Set PWR/CAL/RCAL OVRD */
+	val = readl(pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL2_0);
+	val &= ~XUSB_PADCTL_UPHY_PLL_P0_CTL2_CAL_CTRL_MASK;
+	val |= XUSB_PADCTL_UPHY_PLL_P0_CTL2_PLL0_CAL_CTRL;
+	writel(val, pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL2_0);
+
+	val = readl(pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL5_0);
+	val &= ~XUSB_PADCTL_UPHY_PLL_P0_CTL5_DCO_CTRL_MASK;
+	val |= XUSB_PADCTL_UPHY_PLL_P0_CTL5_PLL0_DCO_CTRL;
+	writel(val, pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL5_0);
+
 	val = readl(pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL1_0);
 	val |= XUSB_PADCTL_UPHY_PLL_P0_CTL1_PLL0_PWR_OVRD;
 	writel(val, pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL1_0);
@@ -1146,6 +1156,10 @@ static int tegra_xusb_padctl_phy_enable(void)
 	val &= ~XUSB_PADCTL_UPHY_PLL_P0_CTL1_PLL0_SLEEP;
 	writel(val, pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL1_0);
 	udelay(1);
+
+	val = readl(pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL4_0);
+	val |= XUSB_PADCTL_UPHY_PLL_P0_CTL4_PLL0_REFCLKBUF_EN;
+	writel(val, pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL4_0);
 
 	/* Perform PLL calibration */
 	/* Set PLL0_CAL_EN and wait for PLL0_CAL_DONE being set */
@@ -1195,7 +1209,6 @@ static int tegra_xusb_padctl_phy_enable(void)
 	/* Perform register calibration */
 	/* Set PLL0_RCAL_EN and wait for PLL0_RCAL_DONE being set */
 	val = readl(pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL8_0);
-	val |= XUSB_PADCTL_UPHY_PLL_P0_CTL8_PLL0_RCAL_OVRD;
 	val |= XUSB_PADCTL_UPHY_PLL_P0_CTL8_PLL0_RCAL_EN;
 	val |= XUSB_PADCTL_UPHY_PLL_P0_CTL8_PLL0_RCAL_CLK_EN;
 	writel(val, pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL8_0);
@@ -1305,39 +1318,99 @@ static int tegra_pcie_lane_iddq(bool enable, int lane_owner)
 	unsigned long val;
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 
-	/* disable IDDQ for all lanes based on odmdata */
-	/* in same way as for lane ownership done below */
 	val = readl(pad_base + XUSB_PADCTL_USB3_PAD_MUX_0);
 	switch (lane_owner) {
-		case PCIE_LANES_X4_X1:
-		if (enable)
-			val |=
-			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
-		else
-			val &=
-			~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
-		case PCIE_LANES_X4_X0:
-		if (enable)
-			val |=
-			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1;
-		else
-			val &=
-			~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1;
-		case PCIE_LANES_X2_X1:
-		if (enable)
-			val |=
-			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK2 |
-			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK3 |
-			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK4;
-		else
-			val &=
-			~(XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK2 |
-			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK3 |
-			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK4);
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	case PCIE_LANES_X4_X1:
+	if (enable)
+		val |=
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
+	else
+		val &=
+		~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
+	case PCIE_LANES_X4_X0:
+	if (enable)
+		val |=
+		(XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1 |
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK2 |
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK3 |
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK4);
+	else
+		val &=
+		~(XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1 |
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK2 |
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK3 |
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK4);
 		break;
-		default:
-			pr_err("Tegra PCIe error: wrong lane config\n");
-			return -ENXIO;
+	case PCIE_LANES_X2_X1:
+	if (enable)
+		val |=
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
+	else
+		val &=
+		~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
+	case PCIE_LANES_X2_X0:
+	if (enable)
+		val |=
+		(XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1 |
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK2);
+	else
+		val &=
+		~(XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1 |
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK2);
+		break;
+	case PCIE_LANES_X0_X1:
+	if (enable)
+		val |=
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
+	else
+		val &=
+		~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
+		break;
+#else
+	case PCIE_LANES_X4_X1:
+	if (enable)
+		val |=
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
+	else
+		val &=
+		~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
+	case PCIE_LANES_X4_X0:
+	if (enable)
+		val |=
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1;
+	else
+		val &=
+		~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1;
+	case PCIE_LANES_X2_X1:
+	if (enable)
+		val |=
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK2;
+	else
+		val &=
+		~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK2;
+	case PCIE_LANES_X2_X0:
+	if (enable)
+		val |=
+		(XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK3 |
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK4);
+	else
+		val &=
+		~(XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK3 |
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK4);
+		break;
+	case PCIE_LANES_X0_X1:
+	if (enable)
+		val |=
+		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK2;
+	else
+		val &=
+		~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK2;
+		break;
+#endif
+	default:
+		pr_err("Tegra PCIe IDDQ error: wrong lane config\n");
+		return -ENXIO;
 	}
 	writel(val, pad_base + XUSB_PADCTL_USB3_PAD_MUX_0);
 	return 0;
@@ -1364,6 +1437,18 @@ int pcie_phy_pad_enable(bool enable, int lane_owner)
 	}
 
 	/* clear AUX_MUX_LP0 related bits in ELPG_PROGRAM */
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	val = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_1);
+	val &= ~XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_CLAMP_EN;
+	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_1);
+	udelay(1);
+	val &= ~XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_CLAMP_EN_EARLY;
+	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_1);
+	udelay(100);
+	val &= ~XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_VCORE_DOWN;
+	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_1);
+	udelay(100);
+#else
 	val = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
 	val &= ~XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_CLAMP_EN;
 	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
@@ -1374,27 +1459,48 @@ int pcie_phy_pad_enable(bool enable, int lane_owner)
 	val &= ~XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_VCORE_DOWN;
 	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
 	udelay(100);
-
+#endif
 	tegra_xusb_uphy_misc(true);
-	/* program ownership of all lanes based on odmdata as below */
-	/* odm = 0x0, all 5 lanes owner = PCIe */
-	/* odm = 0x2, 1st lane owner = USB3 else all lanes owner = PCIe */
-	/* odm = 0x3, 1st 2 lane owner = USB3 else all lanes owner = PCIe */
+
 	val = readl(pad_base + XUSB_PADCTL_USB3_PAD_MUX_0);
 	switch (lane_owner) {
-		case PCIE_LANES_X4_X1:
-			val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE0;
-		case PCIE_LANES_X4_X0:
-			val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE1;
-		case PCIE_LANES_X2_X1:
-			val &= ~(XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE2 |
-				XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE3 |
-				XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE4);
-			break;
-		default:
-			pr_err("Tegra PCIe error: wrong lane config\n");
-			ret = -ENXIO;
-			goto exit;
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	case PCIE_LANES_X4_X1:
+		val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE0;
+	case PCIE_LANES_X4_X0:
+		val |= (XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE1 |
+			XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE2 |
+			XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE3 |
+			XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE4);
+		break;
+	case PCIE_LANES_X2_X1:
+		val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE0;
+	case PCIE_LANES_X2_X0:
+		val |= (XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE1 |
+			XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE2);
+		break;
+	case PCIE_LANES_X0_X1:
+		val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE0;
+		break;
+#else
+	case PCIE_LANES_X4_X1:
+		val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE0;
+	case PCIE_LANES_X4_X0:
+		val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE1;
+	case PCIE_LANES_X2_X1:
+		val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE2;
+	case PCIE_LANES_X2_X0:
+		val &= ~(XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE3 |
+			XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE4);
+		break;
+	case PCIE_LANES_X0_X1:
+		val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE2;
+		break;
+#endif
+	default:
+		pr_err("Tegra PCIe error: wrong lane config\n");
+		ret = -ENXIO;
+		goto exit;
 	}
 	writel(val, pad_base + XUSB_PADCTL_USB3_PAD_MUX_0);
 	tegra_xusb_uphy_misc(false);
