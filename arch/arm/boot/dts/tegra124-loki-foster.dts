@@ -21,6 +21,7 @@
 #include "tegra124-platforms/tegra124-loki-gpio-pinmux-e2530.dtsi"
 #include "tegra124-platforms/tegra124-loki-thermal-zone-p2530-0000-a01.dtsi"
 #include "tegra124-platforms/tegra124-loki-foster-pwm-fan.dtsi"
+#include "tegra124-platforms/tegra124-foster-thermal-fan-est.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 Foster";
