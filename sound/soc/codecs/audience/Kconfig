@@ -279,7 +279,7 @@ if SND_SOC_ES755 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE
 
 choice
         prompt "Runtime Power Management mode"
-	default SND_SOC_ES_RUNTIME_SUSPEND_MODE_CVQ
+	default SND_SOC_ES_RUNTIME_SUSPEND_MODE_SLEEP
 	---help---
 	There are two configuration modes for
 	runtime suspend case.

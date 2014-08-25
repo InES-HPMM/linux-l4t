@@ -1121,7 +1121,7 @@ int escore_probe(struct escore_priv *escore, struct device *dev, int curr_intf,
 #else
 	complete(&escore->fw_download);
 #endif
-	escore_pm_enable();
+	/*escore_pm_enable();*/
 
 out:
 	return rc;
