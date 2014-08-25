@@ -35,6 +35,7 @@
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-touch-e1937-1000-a00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-sensor-p2530-0032-e00.dtsi"
+#include "tegra210-platforms/tegra210-loki-e-thermal-fan-est.dtsi"
 
 / {
 	model = "loki_e_lte";
