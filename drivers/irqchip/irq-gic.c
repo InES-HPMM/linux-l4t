@@ -614,7 +614,16 @@ static void __init gic_dist_init(struct gic_chip_data *gic)
 	for (i = 32; i < gic_irqs; i += 32)
 		writel_relaxed(0xffffffff, base + GIC_DIST_ENABLE_CLEAR + i * 4 / 32);
 
-	writel_relaxed(1, base + GIC_DIST_CTRL);
+	/* make all interrupts as group 1 interrupts */
+	if (!gic->is_percpu)
+		for (i = 0; i < gic_irqs; i += 32)
+			writel_relaxed(0xffffffff,
+					base + GIC_DIST_IGROUP + i * 4 / 32);
+
+	if (gic->is_percpu)
+		writel_relaxed(1, base + GIC_DIST_CTRL);
+	else
+		writel_relaxed(3, base + GIC_DIST_CTRL);
 }
 
 static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
@@ -653,7 +662,12 @@ static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
 		writel_relaxed(0xa0a0a0a0, dist_base + GIC_DIST_PRI + i * 4 / 4);
 
 	writel_relaxed(0xf0, base + GIC_CPU_PRIMASK);
-	writel_relaxed(1, base + GIC_CPU_CTRL);
+
+	if (gic->is_percpu)
+		writel_relaxed(1, base + GIC_CPU_CTRL);
+	else
+		writel_relaxed((1 << 0) | (1 << 1) | (1 << 2),
+				base + GIC_CPU_CTRL);
 }
 
 #ifdef CONFIG_CPU_PM
