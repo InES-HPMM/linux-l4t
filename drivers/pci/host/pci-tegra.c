@@ -153,9 +153,9 @@
 #define AFI_PCIE_CONFIG						0x0f8
 #define AFI_PCIE_CONFIG_PCIEC0_DISABLE_DEVICE			(1 << 1)
 #define AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE			(1 << 2)
-#define AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_MASK		(0xf << 20)
-#define AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1		(0x0 << 20)
-#define AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X4_X1		(0x1 << 20)
+#define AFI_PCIE_CONFIG_XBAR_CONFIG_MASK			(0xf << 20)
+#define AFI_PCIE_CONFIG_XBAR_CONFIG_X2_X1			(0x0 << 20)
+#define AFI_PCIE_CONFIG_XBAR_CONFIG_X4_X1			(0x1 << 20)
 
 #define AFI_FUSE							0x104
 #define AFI_FUSE_PCIE_T0_GEN2_DIS				(1 << 2)
@@ -193,7 +193,7 @@
 #define  PADS_REFCLK_CFG1					0x000000CC
 #define  PADS_REFCLK_BIAS					0x000000D0
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-#define REFCLK_POR_SETTINGS					0x409c409c
+#define REFCLK_POR_SETTINGS					0x40ac40ac
 #else
 #define REFCLK_POR_SETTINGS					0x44ac44ac
 #endif
@@ -285,38 +285,6 @@
 #define TEGRA_PCIE_XCLK_500					500000000
 #define TEGRA_PCIE_XCLK_250					250000000
 
-/*
- * AXI address map for the PCIe aperture , defines 1GB in the AXI
- *  address map for PCIe.
- *
- *  That address space is split into different regions, with sizes and
- *  offsets as follows. Except for the Register space, SW is free to slice the
- *  regions as it chooces.
- *
- *  The split below seems to work fine for now.
- *
- *  0x0100_0000 to 0x01ff_ffff - Register space           16MB.
- *  0x0200_0000 to 0x11ff_ffff - Config space             256MB.
- *  0x1200_0000 to 0x1200_ffff - Downstream IO space
- *   ... Will be filled with other BARS like MSI/upstream IO etc.
- *  0x1210_0000 to 0x320f_ffff - Prefetchable memory aperture
- *  0x3210_0000 to 0x3fff_ffff - non-prefetchable memory aperture
- */
-#define TEGRA_PCIE_BASE	0x01000000
-
-#define PCIE_REGS_SZ		SZ_16M
-#define PCIE_CFG_OFF		(TEGRA_PCIE_BASE + PCIE_REGS_SZ)
-#define PCIE_CFG_SZ		SZ_256M
-/* During the boot only registers/config and extended config apertures are
- * mapped. Rest are mapped on demand by the PCI device drivers.
- */
-#define MMIO_BASE		(PCIE_CFG_OFF + PCIE_CFG_SZ)
-#define MMIO_SIZE		SZ_64K
-#define PREFETCH_MEM_BASE_0	(MMIO_BASE + SZ_1M)
-#define PREFETCH_MEM_SIZE_0	SZ_512M
-#define MEM_BASE_0		(PREFETCH_MEM_BASE_0 + PREFETCH_MEM_SIZE_0)
-#define MEM_SIZE_0		(SZ_1G - MEM_BASE_0)
-
 
 #define DEBUG 0
 #if DEBUG
@@ -378,9 +346,6 @@ struct tegra_pcie {
 	struct tegra_msi msi;
 
 	struct clk		*pcie_xclk;
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-	struct clk		*pex_uphy;
-#endif
 	struct clk		*pcie_mselect;
 
 	struct list_head ports;
@@ -560,8 +525,6 @@ static void __iomem *tegra_pcie_bus_map(struct tegra_pcie *pcie,
 {
 	struct tegra_pcie_bus *bus;
 
-	PR_FUNC_LINE;
-
 	list_for_each_entry(bus, &pcie->buses, list)
 		if (bus->nr == busnr)
 			return bus->area->addr;
@@ -582,8 +545,6 @@ static void __iomem *tegra_pcie_conf_address(struct pci_bus *bus,
 {
 	struct tegra_pcie *pcie = sys_to_pcie(bus->sysdata);
 	void __iomem *addr = NULL;
-
-	PR_FUNC_LINE;
 
 	if (bus->number == 0) {
 		unsigned int slot = PCI_SLOT(devfn);
@@ -615,8 +576,6 @@ int tegra_pcie_read_conf(struct pci_bus *bus, unsigned int devfn,
 {
 	void __iomem *addr;
 
-	PR_FUNC_LINE;
-
 	addr = tegra_pcie_conf_address(bus, devfn, where);
 	if (!addr) {
 		*value = 0xffffffff;
@@ -639,8 +598,6 @@ static int tegra_pcie_write_conf(struct pci_bus *bus, unsigned int devfn,
 {
 	void __iomem *addr;
 	u32 mask, tmp;
-
-	PR_FUNC_LINE;
 
 	addr = tegra_pcie_conf_address(bus, devfn, where);
 	if (!addr)
@@ -719,7 +676,7 @@ static int tegra_pcie_setup(int nr, struct pci_sys_data *sys)
 		&sys->resources, &pcie->prefetch, sys->mem_offset);
 	pci_add_resource(&sys->resources, &pcie->busn);
 
-	pci_ioremap_io(nr * MMIO_SIZE, MMIO_BASE);
+	pci_ioremap_io(nr * resource_size(&pcie->io), pcie->io.start);
 
 	return 1;
 }
@@ -759,7 +716,8 @@ static struct pci_bus *tegra_pcie_scan_bus(int nr,
 
 static void tegra_pcie_teardown(int nr, struct pci_sys_data *sys)
 {
-	pci_iounmap_io(nr * MMIO_SIZE);
+	struct tegra_pcie *pcie = sys_to_pcie(sys);
+	pci_iounmap_io(nr * resource_size(&pcie->io));
 }
 
 static struct hw_pci tegra_pcie_hw = {
@@ -989,48 +947,50 @@ static irqreturn_t tegra_pcie_isr(int irq, void *arg)
 }
 
 /*
- *  PCIe support functions
+ * FPCI map is as follows:
+ * - 0xfdfc000000: I/O space
+ * - 0xfdfe000000: type 0 configuration space
+ * - 0xfdff000000: type 1 configuration space
+ * - 0xfe00000000: type 0 extended configuration space
+ * - 0xfe10000000: type 1 extended configuration space
  */
 static void tegra_pcie_setup_translations(struct tegra_pcie *pcie)
 {
-	u32 fpci_bar;
-	u32 size;
-	u32 axi_address;
+	u32 fpci_bar, size, axi_address;
 
-	PR_FUNC_LINE;
 	/* Bar 0: type 1 extended configuration space */
 	fpci_bar = 0xfe100000;
-	size = PCIE_CFG_SZ;
-	axi_address = PCIE_CFG_OFF;
+	size = resource_size(pcie->cs);
+	axi_address = pcie->cs->start;
 	afi_writel(pcie, axi_address, AFI_AXI_BAR0_START);
 	afi_writel(pcie, size >> 12, AFI_AXI_BAR0_SZ);
 	afi_writel(pcie, fpci_bar, AFI_FPCI_BAR0);
 
 	/* Bar 1: downstream IO bar */
 	fpci_bar = 0xfdfc0000;
-	size = MMIO_SIZE;
-	axi_address = MMIO_BASE;
+	size = resource_size(&pcie->io);
+	axi_address = pcie->io.start;
 	afi_writel(pcie, axi_address, AFI_AXI_BAR1_START);
 	afi_writel(pcie, size >> 12, AFI_AXI_BAR1_SZ);
 	afi_writel(pcie, fpci_bar, AFI_FPCI_BAR1);
 
 	/* Bar 2: prefetchable memory BAR */
-	fpci_bar = (((PREFETCH_MEM_BASE_0 >> 12) & 0xfffff) << 4) | 0x1;
-	size =  PREFETCH_MEM_SIZE_0;
-	axi_address = PREFETCH_MEM_BASE_0;
+	fpci_bar = (((pcie->prefetch.start >> 12) & 0x0fffffff) << 4) | 0x1;
+	size = resource_size(&pcie->prefetch);
+	axi_address = pcie->prefetch.start;
 	afi_writel(pcie, axi_address, AFI_AXI_BAR2_START);
 	afi_writel(pcie, size >> 12, AFI_AXI_BAR2_SZ);
 	afi_writel(pcie, fpci_bar, AFI_FPCI_BAR2);
 
 	/* Bar 3: non prefetchable memory BAR */
-	fpci_bar = (((MEM_BASE_0 >> 12) & 0xfffff) << 4) | 0x1;
-	size = MEM_SIZE_0;
-	axi_address = MEM_BASE_0;
+	fpci_bar = (((pcie->mem.start >> 12) & 0x0fffffff) << 4) | 0x1;
+	size = resource_size(&pcie->mem);
+	axi_address = pcie->mem.start;
 	afi_writel(pcie, axi_address, AFI_AXI_BAR3_START);
 	afi_writel(pcie, size >> 12, AFI_AXI_BAR3_SZ);
 	afi_writel(pcie, fpci_bar, AFI_FPCI_BAR3);
 
-	/* NULL out the remaining BAR as it is not used */
+	/* NULL out the remaining BARs as they are not used */
 	afi_writel(pcie, 0, AFI_AXI_BAR4_START);
 	afi_writel(pcie, 0, AFI_AXI_BAR4_SZ);
 	afi_writel(pcie, 0, AFI_FPCI_BAR4);
@@ -1045,7 +1005,7 @@ static void tegra_pcie_setup_translations(struct tegra_pcie *pcie)
 	afi_writel(pcie, 0, AFI_CACHE_BAR1_ST);
 	afi_writel(pcie, 0, AFI_CACHE_BAR1_SZ);
 
-	/* No MSI */
+	/* MSI translations are setup only when needed */
 	afi_writel(pcie, 0, AFI_MSI_FPCI_BAR_ST);
 	afi_writel(pcie, 0, AFI_MSI_BAR_SZ);
 	afi_writel(pcie, 0, AFI_MSI_AXI_BAR_ST);
@@ -1058,23 +1018,15 @@ static int tegra_pcie_enable_pads(struct tegra_pcie *pcie, bool enable)
 
 	PR_FUNC_LINE;
 	if (!tegra_platform_is_fpga()) {
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-		if (!enable)
-			tegra_periph_reset_assert(pcie->pex_uphy);
-#endif
 		/* WAR for Eye diagram failure */
 		pads_writel(pcie, REFCLK_POR_SETTINGS, PADS_REFCLK_CFG0);
 		pads_writel(pcie, 0x00000028, PADS_REFCLK_BIAS);
 		/* PCIe pad programming is moved to XUSB_PADCTL space */
 		err = pcie_phy_pad_enable(enable,
-				tegra_get_lane_owner_info() >> 1);
+				pcie->plat_data->lane_map);
 		if (err)
 			dev_err(pcie->dev,
 				"%s unable to initalize pads\n", __func__);
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-		if (enable)
-			tegra_periph_reset_deassert(pcie->pex_uphy);
-#endif
 	}
 	return err;
 }
@@ -1096,31 +1048,19 @@ static int tegra_pcie_enable_controller(struct tegra_pcie *pcie)
 	/* Enable all PCIE controller and */
 	/* system management configuration of PCIE crossbar */
 	val = afi_readl(pcie, AFI_PCIE_CONFIG);
-	val &= ~(AFI_PCIE_CONFIG_PCIEC0_DISABLE_DEVICE |
-		 AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_MASK);
+	val &= ~AFI_PCIE_CONFIG_PCIEC0_DISABLE_DEVICE;
 	if (tegra_platform_is_fpga()) {
 		/* FPGA supports only x2_x1 bar config */
-		val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1;
+		val &= ~AFI_PCIE_CONFIG_XBAR_CONFIG_MASK;
+		val |= AFI_PCIE_CONFIG_XBAR_CONFIG_X2_X1;
 	} else {
-		struct tegra_pcie_port *port;
-		int lane_owner = 0;
-		lane_owner = tegra_get_lane_owner_info() >> 1;
-		list_for_each_entry(port, &pcie->ports, list) {
-			if (lane_owner == PCIE_LANES_X2_X1) {
-				val |=
-				 AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1;
-				if (port->status && port->index == 1)
-					val &=
-					~AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE;
-			} else {
-				val |=
-				 AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X4_X1;
-				if ((port->status && port->index == 1)
-					&& (lane_owner == PCIE_LANES_X4_X1))
-					val &=
-					~AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE;
-			}
-		}
+		if (pcie->plat_data->lane_map & PCIE_LANES_X0_X1)
+			val &= ~AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE;
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
+		val &= ~AFI_PCIE_CONFIG_XBAR_CONFIG_MASK;
+		if (pcie->plat_data->lane_map & PCIE_LANES_X4_X0)
+			val |= AFI_PCIE_CONFIG_XBAR_CONFIG_X4_X1;
+#endif
 	}
 	afi_writel(pcie, val, AFI_PCIE_CONFIG);
 
@@ -1482,14 +1422,6 @@ static int tegra_pcie_clocks_get(struct tegra_pcie *pcie)
 		dev_err(pcie->dev, "%s: unable to get PCIE Xclock\n", __func__);
 		return -EINVAL;
 	}
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-	pcie->pex_uphy = clk_get_sys("tegra_pcie", "pex_uphy");
-	if (IS_ERR_OR_NULL(pcie->pex_uphy)) {
-		dev_err(pcie->dev,
-			"%s: unable to get PCIE pex_uphy clock\n", __func__);
-		return -EINVAL;
-	}
-#endif
 	pcie->pcie_mselect = clk_get_sys("tegra_pcie", "mselect");
 	if (IS_ERR_OR_NULL(pcie->pcie_mselect)) {
 		dev_err(pcie->dev,
@@ -1504,10 +1436,6 @@ static void tegra_pcie_clocks_put(struct tegra_pcie *pcie)
 	PR_FUNC_LINE;
 	if (pcie->pcie_xclk)
 		clk_put(pcie->pcie_xclk);
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-	if (pcie->pex_uphy)
-		clk_put(pcie->pex_uphy);
-#endif
 	if (pcie->pcie_mselect)
 		clk_put(pcie->pcie_mselect);
 }
@@ -1747,7 +1675,6 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 	unsigned int data;
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	struct tegra_pcie *pcie = port->pcie;
-	int lane_owner;
 #endif
 	struct pci_dev *pdev = NULL;
 
@@ -1755,9 +1682,8 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	/* T210 WAR for perf bugs required when LPDDR4 */
 	/* memory is used with both ctlrs in X4_X1 config */
-	lane_owner = tegra_get_lane_owner_info() >> 1;
 	if (pcie->plat_data->has_memtype_lpddr4 &&
-		(lane_owner == PCIE_LANES_X4_X1) &&
+		(pcie->plat_data->lane_map == PCIE_LANES_X4_X1) &&
 		(pcie->num_ports == pcie->soc_data->num_ports))
 		t210_war = 1;
 #endif
@@ -1913,8 +1839,8 @@ void tegra_pcie_check_ports(struct tegra_pcie *pcie)
 	pcie->num_ports = 0;
 
 	list_for_each_entry_safe(port, tmp, &pcie->ports, list) {
-		dev_info(pcie->dev, "probing port %u, using %u lanes\n",
-			 port->index, port->lanes);
+		dev_info(pcie->dev, "probing port %u, using %u lanes and lane map as 0x%x\n",
+			 port->index, port->lanes, pcie->plat_data->lane_map);
 
 		tegra_pcie_port_enable(port);
 
@@ -2460,7 +2386,6 @@ static int tegra_pcie_init(struct tegra_pcie *pcie)
 	pcibios_min_io = 0x1000ul;
 
 	PR_FUNC_LINE;
-
 	INIT_WORK(&pcie->hotplug_detect, work_hotplug_handler);
 	err = tegra_pcie_get_resources(pcie);
 	if (err) {
@@ -2816,6 +2741,12 @@ static void tegra_pcie_read_plat_data(struct tegra_pcie *pcie)
 		of_get_named_gpio(node, "nvidia,x1-slot-gpio", 0);
 	pcie->plat_data->has_memtype_lpddr4 =
 		of_property_read_bool(node, "nvidia,has_memtype_lpddr4");
+	if (of_property_read_u32(node, "nvidia,lane-map",
+			&pcie->plat_data->lane_map)) {
+		dev_info(pcie->dev,
+			"PCIE lane map attribute missing, use x4_x1 as default\n");
+		pcie->plat_data->lane_map = PCIE_LANES_X4_X1;
+	}
 }
 
 static char *t124_rail_names[] = {"hvdd-pex", "hvdd-pex-pll-e", "dvddio-pex",
@@ -3192,4 +3123,3 @@ static void __exit_refok tegra_pcie_exit_driver(void)
 module_init(tegra_pcie_init_driver);
 module_exit(tegra_pcie_exit_driver);
 MODULE_LICENSE("GPL v2");
-
