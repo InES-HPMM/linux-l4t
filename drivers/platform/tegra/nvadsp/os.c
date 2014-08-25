@@ -101,6 +101,9 @@
 /* total number of crashes allowed on adsp */
 #define ALLOWED_CRASHES	2
 
+#define DISABLE_MBOX2_EMPTY_INT	0xFFFFFFFF
+#define ENABLE_MBOX2_EMPTY_INT	0x0
+
 struct nvadsp_debug_log {
 	struct device *dev;
 	char *debug_ram_rdr;
@@ -134,6 +137,7 @@ static struct nvadsp_mappings adsp_map[NM_LOAD_MAPPINGS];
 static int map_idx;
 
 
+DECLARE_COMPLETION(entered_wfe);
 #ifdef CONFIG_DEBUG_FS
 
 static int adsp_logger_open(struct inode *inode, struct file *file)
@@ -755,7 +759,7 @@ int nvadsp_os_start(void)
 }
 EXPORT_SYMBOL(nvadsp_os_start);
 
-void nvadsp_os_stop(void)
+static void __nvadsp_os_stop(bool reload)
 {
 	const struct firmware *fw = priv.os_firmware;
 	struct clk *adsp_clk;
@@ -772,13 +776,26 @@ void nvadsp_os_stop(void)
 		dev_err(dev, "unable to find adsp clock\n");
 		goto end;
 	}
+
+	writel(ENABLE_MBOX2_EMPTY_INT, priv.misc_base + HWMBOX2_REG);
+	wait_for_completion(&entered_wfe);
+	writel(DISABLE_MBOX2_EMPTY_INT, priv.misc_base + HWMBOX2_REG);
+
 	tegra_periph_reset_assert(adsp_clk);
 
 	/* load a fresh copy of adsp.elf */
-	if (nvadsp_os_elf_load(fw))
-		dev_err(dev, "failed to load %s\n", NVADSP_FIRMWARE);
+	if (reload) {
+		if (nvadsp_os_elf_load(fw))
+			dev_err(dev, "failed to load %s\n", NVADSP_FIRMWARE);
+	}
 end:
 	clk_put(adsp_clk);
+}
+
+
+void nvadsp_os_stop(void)
+{
+	__nvadsp_os_stop(true);
 }
 EXPORT_SYMBOL(nvadsp_os_stop);
 
@@ -788,6 +805,7 @@ static void nvadsp_os_restart(struct work_struct *work)
 		container_of(work, struct nvadsp_os_data, restart_os_work);
 	struct device *dev = &data->pdev->dev;
 
+	nvadsp_os_stop();
 	data->adsp_num_crashes++;
 	if (data->adsp_num_crashes >= ALLOWED_CRASHES) {
 		/* making pdev NULL so that externally start is not called */
@@ -800,10 +818,22 @@ static void nvadsp_os_restart(struct work_struct *work)
 		dev_crit(dev, "Unable to restart ADSP OS\n");
 }
 
+static  irqreturn_t wfe_handler(int irq, void *arg)
+{
+	struct nvadsp_os_data *data = arg;
+	struct device *dev = &data->pdev->dev;
+
+	dev_dbg(dev, "%s\n", __func__);
+	complete(&entered_wfe);
+
+	return 0;
+}
+
 static irqreturn_t adsp_wdt_handler(int irq, void *arg)
 {
 	struct nvadsp_os_data *data = arg;
 	struct device *dev = &data->pdev->dev;
+
 #if CONFIG_SYSTEM_FPGA
 	dev_crit(dev, "ADSP OS Hanged or Crashed! Restarting...\n");
 	schedule_work(&data->restart_os_work);
@@ -817,6 +847,7 @@ int nvadsp_os_probe(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
 	int wdt_virq = tegra_agic_irq_get_virq(INT_ADSP_WDT);
+	int wfe_virq = tegra_agic_irq_get_virq(INT_WFE);
 	struct device *dev = &pdev->dev;
 	int ret = 0;
 
@@ -838,12 +869,28 @@ int nvadsp_os_probe(struct platform_device *pdev)
 			"unable to create adsp debug logger file\n");
 #endif
 
-	ret = request_irq(wdt_virq, adsp_wdt_handler,
+	ret = devm_request_irq(dev, wdt_virq, adsp_wdt_handler,
 			IRQF_TRIGGER_RISING, "adsp watchdog", &priv);
 	if (ret) {
 		dev_err(dev, "failed to get adsp watchdog interrupt\n");
 		goto end;
 	}
+
+	ret = devm_request_irq(dev, wfe_virq, wfe_handler,
+			IRQF_TRIGGER_RISING, "wfe handler", &priv);
+	if (ret) {
+		dev_err(dev, "cannot request for wfe interrupt\n");
+		goto end;
+	}
+
+	ret = tegra_agic_route_interrupt(INT_AMISC_MBOX_EMPTY2,
+			TEGRA_AGIC_ADSP);
+	if (ret) {
+		dev_err(dev, "failed to route fiq interrupt\n");
+		goto end;
+	}
+
+	writel(DISABLE_MBOX2_EMPTY_INT, priv.misc_base + HWMBOX2_REG);
 
 	INIT_WORK(&priv.restart_os_work, nvadsp_os_restart);
 
