@@ -151,6 +151,8 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	{ "uartd",	"pll_p",	408000000,	false},
 	{ "extern2",	"pll_p",	41000000,	false},
 	{ "clk_out_2",	"extern2",	40800000,	false},
+	{ "extern1",	"clk_m",	19200000,	true},
+	{ "clk_out_1",	"extern1",	19200000,	true},
 	{ NULL,		NULL,		0,		0},
 };
 
