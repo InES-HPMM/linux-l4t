@@ -168,11 +168,12 @@ static int nvadsp_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 #endif
+
+#ifdef CONFIG_TEGRA_ADSP_DFS
 	ret = ape_actmon_init(pdev);
 	if (ret)
 		goto err;
 
-#ifdef CONFIG_TEGRA_ADSP_DFS
 	ret = adsp_dfs_core_init();
 	if (ret)
 		goto err;
