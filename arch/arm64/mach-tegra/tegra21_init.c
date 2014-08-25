@@ -200,6 +200,9 @@ static inline void gizmo_writel(unsigned long value, unsigned long offset)
 static void __init tegra_init_power(void)
 {
    /* TODO : Do the required power initilizations here */
+#ifdef CONFIG_ARCH_TEGRA_HAS_PCIE
+	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
+#endif
 }
 
 static void __init tegra_init_ahb_gizmo_settings(void)
