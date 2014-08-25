@@ -174,6 +174,11 @@
 #define MAX77620_CID_DIDM_MASK		0xF0
 #define MAX77620_CID_DIDM_SHIFT		4
 
+/* Device Identification Metal */
+#define MAX77620_CID5_DIDM(n)			(((n) >> 4) & 0xF)
+/* Device Indentification OTP */
+#define MAX77620_CID5_DIDO(n)			((n) & 0xF)
+
 #define MAX77620_SD_FSRADE_MASK		0x01
 #define MAX77620_SD_FSRADE_SHIFT	0
 #define MAX77620_SD_FSRADE_DISABLE	0x40
@@ -387,6 +392,9 @@ struct max77620_chip {
 	bool shutdown;
 	bool sleep_enable;
 	bool enable_global_lpm;
+
+	int es_minor_version;
+	int es_major_version;
 
 	struct regmap_irq_chip_data *top_irq_data;
 	struct regmap_irq_chip_data *gpio_irq_data;

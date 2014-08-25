@@ -434,6 +434,37 @@ static int max77620_init_backup_battery_charging(struct max77620_chip *chip,
 	return 0;
 }
 
+static int max77620_read_es_version(struct max77620_chip *chip)
+{
+	int ret;
+	u8 val;
+	u8 cid;
+	int i;
+
+	for (i = MAX77620_REG_CID0; i <= MAX77620_REG_CID5; ++i) {
+		ret = max77620_reg_read(chip->dev, MAX77620_PWR_SLAVE,
+				i, &cid);
+		if (ret < 0) {
+			dev_err(chip->dev, "CID%d register read failed: %d\n",
+					i - MAX77620_REG_CID0, ret);
+			return ret;
+		}
+		dev_info(chip->dev, "CID%d: 0x%02x\n",
+			i - MAX77620_REG_CID0, cid);
+	}
+
+	/* Read ES version */
+	ret = max77620_reg_read(chip->dev, MAX77620_PWR_SLAVE,
+			MAX77620_REG_CID5, &val);
+	if (ret < 0) {
+		dev_err(chip->dev, "CID5 read failed: %d\n", ret);
+		return ret;
+	}
+	chip->es_minor_version = MAX77620_CID5_DIDM(val);
+	chip->es_major_version = 1;
+	return ret;
+}
+
 static int max77620_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
@@ -482,6 +513,12 @@ static int max77620_probe(struct i2c_client *client,
 				"regmap %d init failed, err %d\n", i, ret);
 			goto fail_client_reg;
 		}
+	}
+
+	ret = max77620_read_es_version(chip);
+	if (ret < 0) {
+		dev_err(chip->dev, "Chip revision init failed: %d\n", ret);
+		goto fail_client_reg;
 	}
 
 	max77620_top_irq_chip.pre_post_irq_data = chip;
