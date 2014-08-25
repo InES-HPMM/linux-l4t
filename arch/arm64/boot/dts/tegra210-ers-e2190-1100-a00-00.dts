@@ -115,7 +115,7 @@
 			adnc,wakeup-gpio = <&gpio TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH>;
 			adnc,int-gpio = <(-1)>;
 			adnc,gpioa-gpio = <(-1)>;
-			adnc,enable_hs_uart_intf = <3>;
+			adnc,enable_hs_uart_intf = <0>;
 			adnc,ext_clk_rate = <0>;
 			adnc,debounce_timer = <3>;
 			adnc,plug_det_enabled = <1>;
@@ -186,8 +186,8 @@
 	};
 
 	sound {
-		compatible = "nvidia,tegra-audio-t210ref-mobile";
-		nvidia,model = "tegra-snd-t210ref-mobile";
+		compatible = "nvidia,tegra-audio-t210ref-mobile-es755";
+		nvidia,model = "tegra-snd-t210ref-mobile-es755";
 		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
 		nvidia,num-codec-link = <2>;
 

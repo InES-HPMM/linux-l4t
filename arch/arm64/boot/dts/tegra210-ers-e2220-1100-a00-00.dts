@@ -128,7 +128,7 @@
 			adnc,wakeup-gpio = <&gpio TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH>;
 			adnc,int-gpio = <(-1)>;
 			adnc,gpioa-gpio = <(-1)>;
-			adnc,enable_hs_uart_intf = <3>;
+			adnc,enable_hs_uart_intf = <0>;
 			adnc,ext_clk_rate = <0>;
 			adnc,debounce_timer = <3>;
 			adnc,plug_det_enabled = <1>;
@@ -199,40 +199,22 @@
 	};
 
 	sound {
-		compatible = "nvidia,tegra-audio-t210ref-mobile";
-		nvidia,model = "tegra-snd-t210ref-mobile";
-		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(BB, 3) GPIO_ACTIVE_HIGH>;
+		compatible = "nvidia,tegra-audio-t210ref-mobile-es755";
+		nvidia,model = "tegra-snd-t210ref-mobile-es755";
 		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
 		nvidia,num-codec-link = <2>;
 
 		nvidia,audio-routing =
-			"x Headphone Jack", 	"x HPOL",
-			"x Headphone Jack", 	"x HPOR",
-			"x Int Spk", 	"x SPORP",
-			"x Int Spk", 	"x SPORN",
-			"x Int Spk", 	"x SPOLP",
-			"x Int Spk", 	"x SPOLN",
-			"x micbias1",	"x Mic Jack",
-			"x IN2P",		"x Mic Jack",
-			"x IN2P",		"x Mic Jack",
-			"x DMIC L1",	"x Int Mic",
-			"x DMIC L2",	"x Int Mic",
-			"x DMIC R1",	"x Int Mic",
-			"x DMIC R2",	"x Int Mic",
-
 			"y Headphone", 	"y OUT",
-			"z Headphone", 	"z OUT",
-			"s Headphone", 	"s OUT",
-			"y IN",		"y Mic",
-			"z IN",		"z Mic",
-			"s IN",		"s Mic";
+			"y IN",		"y Mic";
+
 		nvidia,xbar = <&tegra_axbar>;
 
 		nvidia,dai-link-1 {
 			cpu-dai = <&tegra_i2s1>;
-			codec-dai = <&rt5639>;
+			codec-dai = <&earSmart>;
 			cpu-dai-name = "I2S1";
-			codec-dai-name = "rt5639-aif1";
+			codec-dai-name = "earSmart-porta";
 			format = "i2s";
 			bitclock-slave;
 			frame-slave;
