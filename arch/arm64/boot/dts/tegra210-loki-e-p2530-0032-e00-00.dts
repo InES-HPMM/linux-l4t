@@ -42,16 +42,6 @@
 	compatible = "nvidia,loki-e", "nvidia,tegra210";
 	nvidia,dtsfilename = __FILE__;
 
-	i2c@7000c000 {
-		rt5639: audio-codec@1c {
-			compatible = "realtek,rt5639";
-			reg = <0x1c>;
-		};
-	};
-	sound {
-		nvidia,audio-codec-x = <&rt5639>;
-	};
-
 	sdhci@700b0600 {
 		uhs-mask = <0x60>;
 		built-in;
@@ -103,5 +93,85 @@
 		};
 	};
 
+	i2c@7000c000 {
+
+		earSmart: earSmart-codec.0-003e@3e {
+			compatible = "adnc,earSmart";
+			reg = <0x3e>;
+
+			adnc,reset-gpio = <&gpio TEGRA_GPIO(BB, 3) GPIO_ACTIVE_HIGH>;
+			adnc,gpiob-gpio = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
+			adnc,wakeup-gpio = <&gpio TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH>;
+			adnc,int-gpio = <(-1)>;
+			adnc,gpioa-gpio = <(-1)>;
+			adnc,enable_hs_uart_intf = <0>;
+			adnc,ext_clk_rate = <0>;
+			adnc,debounce_timer = <3>;
+			adnc,plug_det_enabled = <1>;
+			adnc,mic_det_enabled = <1>;
+
+			adnc,gpio_b_irq_type = <4>;
+			adnc,cmd_comp_mode = <0>;
+
+			/* Button Control 1 */
+			adnc,btn_press_settling_time = <4>;
+			adnc,btn_press_polling_rate = <1>;
+			adnc,btn_press_det_act = <1>;
+
+			/* Button Control 2 */
+			adnc,double_btn_timer = <(-1)>;
+			adnc,mic_det_settling_timer = <(-1)>;
+
+			/* Button Control 3 */
+			adnc,long_btn_timer = <(-1)>;
+			adnc,adc_btn_mute = <(-1)>;
+
+			/* Button Control 4 */
+			adnc,valid_levels = <31>;
+			adnc,impd_det_timer = <0>;
+		};
+	};
+
+	sound {
+		compatible = "nvidia,tegra-audio-t210ref-mobile-es755";
+		nvidia,model = "tegra-snd-t210ref-mobile-es755";
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
+		nvidia,num-codec-link = <2>;
+
+		nvidia,audio-routing =
+			"y Headphone", 	"y OUT",
+			"y IN",		"y Mic";
+
+		nvidia,xbar = <&tegra_axbar>;
+
+		nvidia,dai-link-1 {
+			cpu-dai = <&tegra_i2s1>;
+			codec-dai = <&earSmart>;
+			cpu-dai-name = "I2S1";
+			codec-dai-name = "earSmart-porta";
+			format = "i2s";
+			bitclock-slave;
+			frame-slave;
+			bit-format = "s16_le";
+			bclk_ratio = <0>;
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "x";
+		};
+		nvidia,dai-link-2 {
+			cpu-dai = <&tegra_i2s3>;
+			codec-dai = <&spdif_dit1>;
+			cpu-dai-name = "I2S3";
+			codec-dai-name = "dit-hifi";
+			format = "dsp_a";
+			bitclock-slave;
+			frame-slave;
+			bit-format = "s32_le";
+			bclk_ratio = <0>;
+			srate = <8000>;
+			num-channel = <2>;
+			name-prefix = "y";
+		};
+	};
 };
 
