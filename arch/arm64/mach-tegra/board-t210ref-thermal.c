@@ -409,23 +409,21 @@ int __init t210ref_soctherm_init(void)
 	return tegra_soctherm_init(&t210ref_soctherm_data);
 }
 
-#if 0 /* SW-throttling NOT YET ENABLED on T210 */
 static struct pid_thermal_gov_params cpu_pid_params = {
-	.max_err_temp = 4000,
+	.max_err_temp = 10000,
 	.max_err_gain = 1000,
 
 	.gain_p = 1000,
 	.gain_d = 0,
 
-	.up_compensation = 15,
-	.down_compensation = 15,
+	.up_compensation = 20,
+	.down_compensation = 20,
 };
 
 static struct thermal_zone_params cpu_tzp = {
 	.governor_name = "pid_thermal_gov",
 	.governor_params = &cpu_pid_params,
 };
-#endif
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 static struct thermal_zone_params board_tzp = {
@@ -461,13 +459,19 @@ static struct nct1008_platform_data t210ref_nct72_pdata = {
 #endif
 		},
 		[EXT] = {
-#if 0 /* pid-governor NOT YET ENABLED on T210 */
 			.tzp = &cpu_tzp,
-#endif
-			.shutdown_limit = 92, /* C */
+			.shutdown_limit = 93, /* C */
 			.passive_delay = 1000,
-			.num_trips = 1,
+			.num_trips = 3,
 			.trips = {
+				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 92000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+					.mask = 0,
+				},
 				{
 					.cdev_type = "shutdown_warning",
 					.trip_temp = 85000,
@@ -476,17 +480,15 @@ static struct nct1008_platform_data t210ref_nct72_pdata = {
 					.lower = THERMAL_NO_LIMIT,
 					.mask = 0,
 				},
-#if 0 /* SW-throttling NOT YET ENABLED on T210 */
 				{
 					.cdev_type = "cpu-balanced",
-					.trip_temp = 83000,
+					.trip_temp = 82000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 					.hysteresis = 1000,
 					.mask = 1,
 				},
-#endif
 			}
 		}
 	}
