@@ -4191,7 +4191,7 @@ static const struct tegra_xusb_soc_config tegra210_soc_config = {
 		.vddio_hsic = "vddio_hsic",
 		.s1p05v = "avddio_usb",
 	},
-	.default_firmware_file = "tegra_xusb_firmware",
+	.default_firmware_file = "tegra21x_xusb_firmware",
 	.utmi_pad_count = 4,
 	.ss_pad_count = 4,
 	.padctl_offsets = &tegra210_padctl_offsets,
