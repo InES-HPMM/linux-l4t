@@ -34,6 +34,7 @@ endif
 ifeq ($(CONFIG_TEGRA_THERMAL_THROTTLE),y)
 ccflags-y += -I$(srctree)/arch/arm/mach-tegra
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra_throttle.o
+obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += tegra_throttle.o
 endif
 
 ifneq ($(CONFIG_ARM64),)
