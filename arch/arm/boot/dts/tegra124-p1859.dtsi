@@ -259,4 +259,15 @@
 		i2c-fs-rate = <400000>;
 		sel-conversion-slope = <1>;
 	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		pwr_int_n {
+			label = "Power";
+			interrupts = <0 86 IRQ_TYPE_NONE>;
+			linux,code = <KEY_POWER>;
+			gpio-key,wakeup;
+			debounce-interval = <100>;
+		};
+	};
 };
