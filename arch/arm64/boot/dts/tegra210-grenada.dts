@@ -858,8 +858,24 @@
 		};
 	};
 
+	agic-controller {
+		compatible = "nvidia,tegra210-agic";
+		interrupt-controller;
+		no-gic-extension;
+		not-per-cpu;
+		reg = <0x0 0x702f9000 0x0 0x2000>,
+		      <0x0 0x702fa000 0x0 0x2000>;
+		interrupts = <0 102 0xf04>;
+		status = "disabled";
+	};
+
 	adsp_audio {
 		status = "okay";
+	};
+
+	adsp {
+		compatible = "nvidia,tegra210-adsp";
+		status = "disabled";
 	};
 
 	spdif_dit0: spdif-dit.0@0 {
