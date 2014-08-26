@@ -48,7 +48,7 @@ static struct {
 	struct clk *cap_clk;
 	unsigned long cap_freq;
 } cap_freqs_table[] = {
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	{ .cap_name = "cap.throttle.gbus" },
 #endif
 #ifdef CONFIG_TEGRA_GPU_DVFS
@@ -62,6 +62,7 @@ static struct {
 };
 
 static bool tegra_throttle_init_failed;
+static const int NUM_OF_CAP_FREQS_DT = 6; /* fixed at 6 by DT format */
 
 struct throttle_table {
 	unsigned long cap_freqs[NUM_OF_CAP_FREQS];
@@ -269,13 +270,10 @@ static int table_show(struct seq_file *s, void *data)
 	int i, j;
 
 	for (i = 0; i < bthrot->throt_tab_size; i++) {
-		/* CPU FREQ */
-		seq_printf(s, "%s[%d] = %7lu", i < 10 ? " " : "",
-			i, bthrot->throt_tab[i].cap_freqs[0]);
-
-		/* OTHER DVFS MODULE FREQS */
-		for (j = 1; j <= ARRAY_SIZE(cap_freqs_table); j++)
-			if (bthrot->throt_tab[i].cap_freqs[j] == NO_CAP)
+		seq_printf(s, "%s[%d] =", i < 10 ? " " : "", i);
+		for (j = 0; j <= ARRAY_SIZE(cap_freqs_table); j++)
+			if ((bthrot->throt_tab[i].cap_freqs[j] == NO_CAP) ||
+			    (bthrot->throt_tab[i].cap_freqs[j] > 9000000ULL))
 				seq_puts(s, "  NO CAP");
 			else
 				seq_printf(s, " %7lu",
@@ -351,6 +349,7 @@ static struct thermal_cooling_device *balanced_throttle_register(
 {
 #ifdef CONFIG_DEBUG_FS
 	char name[32];
+	struct dentry *rv;
 #endif
 
 	bthrot->cdev = thermal_cooling_device_register(
@@ -368,11 +367,16 @@ static struct thermal_cooling_device *balanced_throttle_register(
 	mutex_unlock(&bthrot_list_lock);
 
 #ifdef CONFIG_DEBUG_FS
-	sprintf(name, "throttle_table%d", num_throt);
-	if (!throttle_debugfs_root || IS_ERR_OR_NULL(
-		debugfs_create_file(name, 0644, throttle_debugfs_root,
-					bthrot, &table_fops)))
-		return ERR_PTR(-ENODEV);
+	if (throttle_debugfs_root) {
+		sprintf(name, "throttle_table%d", num_throt);
+		rv = debugfs_create_file(name, 0644, throttle_debugfs_root,
+					 bthrot, &table_fops);
+		if (IS_ERR_OR_NULL(rv))
+			return ERR_PTR(-ENODEV);
+		rv = debugfs_create_symlink(type, throttle_debugfs_root, name);
+		if (IS_ERR_OR_NULL(rv))
+			return ERR_PTR(-ENODEV);
+	}
 #endif
 
 	return bthrot->cdev;
@@ -434,27 +438,37 @@ static struct throttle_table
 	int count = 0;
 	struct throttle_table *throt_tab;
 
+#if !(defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC))
+	dev_err(dev,
+		"ERROR: throttle_table DT not supported for this ARCH\n");
+	return NULL;
+#endif
+	pr_info("%s: NUM_OF_CAP_FREQS_DT is %d.\n", __func__, NUM_OF_CAP_FREQS_DT);
+	pr_info("%s: NUM_OF_CAP_FREQS is %d.\n", __func__, NUM_OF_CAP_FREQS);
+
 	throt_tab = devm_kzalloc(dev,
 			sizeof(struct throttle_table)*num_states, GFP_KERNEL);
 	if (IS_ERR_OR_NULL(throt_tab))
 		return NULL;
 
-	val = kzalloc(sizeof(u32)*num_states*NUM_OF_CAP_FREQS, GFP_KERNEL);
+	val = kzalloc(sizeof(u32)*num_states*NUM_OF_CAP_FREQS_DT, GFP_KERNEL);
 	if (IS_ERR_OR_NULL(val))
 		return NULL;
 
 	ret = of_property_read_u32_array(np, "throttle_table",
-					val, num_states*NUM_OF_CAP_FREQS);
+					val, num_states*NUM_OF_CAP_FREQS_DT);
 	if (ret) {
 		dev_err(dev,
 			"malformed throttle_table property in %s : no. of entries:%d; return value: %d\n",
-			np->full_name, num_states*NUM_OF_CAP_FREQS, ret);
+			np->full_name, num_states*NUM_OF_CAP_FREQS_DT, ret);
 		return NULL;
 	}
 
 	for (i = 0; i < num_states; ++i) {
-		for (j = 0; j < NUM_OF_CAP_FREQS; ++j)
+		for (j = 0; j < NUM_OF_CAP_FREQS_DT; ++j)
 			throt_tab[i].cap_freqs[j] = val[count++];
+		for (; j < NUM_OF_CAP_FREQS_DT; j++)
+			count++; /* eat the rest of DT entries */
 	}
 
 	kfree(val);

@@ -30,13 +30,13 @@ struct tegra_cooling_device {
 #define NO_CAP			(ULONG_MAX) /* no cap */
 #define CPU_THROT_LOW		0 /* lowest throttle freq. only used for CPU */
 
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #define GBUS_CNT		1
 #else
 #define GBUS_CNT		0
 #endif
 
-#ifdef CONFIG_TEGRA_DUAL_CBUS
+#ifdef CONFIG_TEGRA_GPU_DVFS
 #define CBUS_CNT		2
 #else
 #define CBUS_CNT		1
