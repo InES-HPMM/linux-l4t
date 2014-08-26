@@ -46,8 +46,6 @@
 #include <asm/outercache.h>
 #include <asm/dma-iommu.h>
 
-#include <mach/tegra-swgid.h>
-
 #include <dt-bindings/memory/tegra-swgroup.h>
 
 /* HACK! This needs to come from device tree */
@@ -234,8 +232,8 @@ static struct device *save_smmu_device;
 static size_t smmu_flush_all_th_pages = SZ_512; /* number of threshold pages */
 
 enum {
-	IOMMMS_PROPS_SWGID_HI = 0,
-	IOMMMS_PROPS_SWGID_LO = 1,
+	IOMMMS_PROPS_TEGRA_SWGROUP_BIT_HI = 0,
+	IOMMMS_PROPS_TEGRA_SWGROUP_BIT_LO = 1,
 	IOMMUS_PROPS_AS = 2,
 };
 
@@ -263,15 +261,15 @@ static const u32 smmu_asid_security_ofs[] = {
 static size_t tegra_smmu_get_offset(int id)
 {
 	switch (id) {
-	case SWGID_DC14:
+	case TEGRA_SWGROUP_DC14:
 		return 0x490;
-	case SWGID_DC12:
+	case TEGRA_SWGROUP_DC12:
 		return 0xa88;
-	case SWGID_AFI...SWGID_ISP:
-	case SWGID_MPE...SWGID_PPCS1:
-		return (id - SWGID_AFI) * sizeof(u32) + SMMU_AFI_ASID;
-	case SWGID_SDMMC1A...63:
-		return (id - SWGID_SDMMC1A) * sizeof(u32) + 0xa94;
+	case TEGRA_SWGROUP_AFI...TEGRA_SWGROUP_ISP:
+	case TEGRA_SWGROUP_MPE...TEGRA_SWGROUP_PPCS1:
+		return (id - TEGRA_SWGROUP_AFI) * sizeof(u32) + SMMU_AFI_ASID;
+	case TEGRA_SWGROUP_SDMMC1A...63:
+		return (id - TEGRA_SWGROUP_SDMMC1A) * sizeof(u32) + 0xa94;
 	};
 
 	BUG();
@@ -283,42 +281,42 @@ static size_t tegra_smmu_get_offset(int id)
  */
 int _tegra_smmu_get_asid(u64 swgids)
 {
-	if (swgids & SWGID(PPCS))
+	if (swgids & TEGRA_SWGROUP_BIT(PPCS))
 		return SYSTEM_PROTECTED;
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC) || \
 	defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	if (swgids & SWGID(PPCS1))
+	if (swgids & TEGRA_SWGROUP_BIT(PPCS1))
 		return PPCS1_ASID;
 #else
-	if (swgids & SWGID(PPCS1))
+	if (swgids & TEGRA_SWGROUP_BIT(PPCS1))
 		return SYSTEM_PROTECTED;
 #endif
 
-	if (swgids & SWGID(GPUB))
+	if (swgids & TEGRA_SWGROUP_BIT(GPUB))
 		return SYSTEM_GK20A;
 
 #if defined(CONFIG_ARCH_TEGRA_APE)
-	if (swgids & SWGID(APE))
+	if (swgids & TEGRA_SWGROUP_BIT(APE))
 		return SYSTEM_ADSP;
 #endif
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	if (swgids & SWGID(DC) ||
-	    swgids & SWGID(DCB))
+	if (swgids & TEGRA_SWGROUP_BIT(DC) ||
+	    swgids & TEGRA_SWGROUP_BIT(DCB))
 		return SYSTEM_DC;
 #else
-	if (swgids & SWGID(DC) ||
-	    swgids & SWGID(DC12))
+	if (swgids & TEGRA_SWGROUP_BIT(DC) ||
+	    swgids & TEGRA_SWGROUP_BIT(DC12))
 		return SYSTEM_DC;
-	if (swgids & SWGID(DCB))
+	if (swgids & TEGRA_SWGROUP_BIT(DCB))
 		return SYSTEM_DCB;
-	if (swgids & SWGID(SDMMC1A))
+	if (swgids & TEGRA_SWGROUP_BIT(SDMMC1A))
 		return SDMMC1A_ASID;
-	if (swgids & SWGID(SDMMC2A))
+	if (swgids & TEGRA_SWGROUP_BIT(SDMMC2A))
 		return SDMMC2A_ASID;
-	if (swgids & SWGID(SDMMC3A))
+	if (swgids & TEGRA_SWGROUP_BIT(SDMMC3A))
 		return SDMMC3A_ASID;
-	if (swgids & SWGID(SDMMC4A))
+	if (swgids & TEGRA_SWGROUP_BIT(SDMMC4A))
 		return SDMMC4A_ASID;
 #endif
 
@@ -808,7 +806,7 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 	for_each_set_bit(i, (unsigned long *)&map, HWGRP_COUNT) {
 
 		/* FIXME: PCIe client hasn't been registered as IOMMU */
-		if (i == SWGID_AFI)
+		if (i == TEGRA_SWGROUP_AFI)
 			continue;
 
 		offs = tegra_smmu_get_offset(i);
@@ -1873,7 +1871,7 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	 * Reserve "page zero" for AVP vectors using a common dummy
 	 * page.
 	 */
-	if (swgids & SWGID(AVPC)) {
+	if (swgids & TEGRA_SWGROUP_BIT(AVPC)) {
 		struct page *page;
 
 		page = as->smmu->avp_vector_page;
