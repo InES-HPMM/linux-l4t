@@ -31,7 +31,6 @@
 #include <mach/irqs.h>
 #include <linux/usb/tegra_usb_phy.h>
 #include <linux/tegra_smmu.h>
-#include <mach/tegra-swgid.h>
 #include <linux/dma-contiguous.h>
 
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
