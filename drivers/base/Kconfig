@@ -202,6 +202,15 @@ config DMA_SHARED_BUFFER
 	  APIs extension; the file's descriptor can then be passed on to other
 	  driver.
 
+config DMABUF_LAZY_UNMAPPING
+	bool "Lazy unmapping for shared DMA buffer"
+	depends on DMA_SHARED_BUFFER
+	help
+	  This option enables the buffer-sharing framework to use lazy unmapping.
+	  Buffer mappings would be reused and kept repeatedly until dmabuf refcount
+	  rearchs zero. Currently this is configured statically only by this kernel
+	  config.
+
 config CMA
 	bool "Contiguous Memory Allocator"
 	depends on HAVE_DMA_CONTIGUOUS && HAVE_MEMBLOCK

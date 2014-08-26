@@ -39,6 +39,14 @@ struct dma_buf_list {
 
 static struct dma_buf_list db_list;
 
+static bool dmabuf_lazy_unmapping; /* Set if lazy unmapping for iommu'ed */
+
+static void ____dma_buf_detach(struct dma_buf *dmabuf,
+			     struct dma_buf_attachment *attach);
+static void __dma_buf_unmap_attachment(struct dma_buf_attachment *attach,
+				       struct sg_table *sg_table,
+				       enum dma_data_direction direction);
+
 /**
  * dma_buf_set_drvdata - Set driver specific data to dmabuf. The data
  * will remain even if the device is detached from the device. This is useful
@@ -88,6 +96,53 @@ void *dma_buf_get_drvdata(struct dma_buf *dmabuf, struct device *device)
 }
 EXPORT_SYMBOL(dma_buf_get_drvdata);
 
+static void dma_buf_release_cached(struct dma_buf *dmabuf)
+{
+	struct dma_buf_attachment *attach, *temp;
+
+	mutex_lock(&dmabuf->lock);
+
+	/* Iterate over to unmap all mapped buffers */
+	list_for_each_entry_safe(attach, temp, &dmabuf->attachments, node) {
+		struct dma_iommu_mapping *map;
+
+		if (WARN_ON(!attach))
+			continue;
+
+		if (WARN_ON(!attach->dev))
+			continue;
+
+		map = to_dma_iommu_mapping(attach->dev);
+		if (map) {
+			int i;
+			struct dma_buf_mapping *obj;
+
+			for (i = 0; i < ARRAY_SIZE(dmabuf->mapping); i++) {
+				obj = &dmabuf->mapping[i];
+				if (!obj->map)
+					continue;
+
+				if (obj->map != map)
+					continue;
+
+				dev_dbg(attach->dev,
+					"dmabuf=%p unmapping sgt=%p\n",
+					dmabuf, obj->sgt);
+
+				__dma_buf_unmap_attachment(attach, obj->sgt,
+							   DMA_BIDIRECTIONAL);
+				memset(obj, 0, sizeof(*obj));
+			}
+		}
+
+		dev_dbg(attach->dev, "dmabuf=%p detaching attach=%p\n",
+			dmabuf, attach);
+
+		____dma_buf_detach(dmabuf, attach);
+	}
+
+	mutex_unlock(&dmabuf->lock);
+}
 
 static int dma_buf_release(struct inode *inode, struct file *file)
 {
@@ -97,6 +152,9 @@ static int dma_buf_release(struct inode *inode, struct file *file)
 		return -EINVAL;
 
 	dmabuf = file->private_data;
+
+	if (dmabuf_lazy_unmapping)
+		dma_buf_release_cached(dmabuf);
 
 	BUG_ON(dmabuf->vmapping_counter);
 
@@ -282,14 +340,31 @@ struct dma_buf_attachment *dma_buf_attach(struct dma_buf *dmabuf,
 	if (WARN_ON(!dmabuf || !dev))
 		return ERR_PTR(-EINVAL);
 
+	mutex_lock(&dmabuf->lock);
+
+	/* Don't allow multiple attachment between */
+	if (dmabuf_lazy_unmapping) {
+		list_for_each_entry(attach, &dmabuf->attachments, node) {
+			if (attach->dev != dev)
+				continue;
+
+			dev_dbg(dev,
+				"dmabuf=%p found cached atatchment=%p\n",
+				dmabuf, attach);
+
+			mutex_unlock(&dmabuf->lock);
+			return attach;
+		}
+	}
+
 	attach = kzalloc(sizeof(struct dma_buf_attachment), GFP_KERNEL);
-	if (attach == NULL)
+	if (attach == NULL) {
+		mutex_unlock(&dmabuf->lock);
 		return ERR_PTR(-ENOMEM);
+	}
 
 	attach->dev = dev;
 	attach->dmabuf = dmabuf;
-
-	mutex_lock(&dmabuf->lock);
 
 	if (dmabuf->ops->attach) {
 		ret = dmabuf->ops->attach(dmabuf, dev, attach);
@@ -308,6 +383,20 @@ err_attach:
 }
 EXPORT_SYMBOL_GPL(dma_buf_attach);
 
+/* unlocked version of __dma_buf_detach() */
+static void ____dma_buf_detach(struct dma_buf *dmabuf,
+			     struct dma_buf_attachment *attach)
+{
+	if (WARN_ON(!dmabuf || !attach))
+		return;
+
+	list_del(&attach->node);
+	if (dmabuf->ops->detach)
+		dmabuf->ops->detach(dmabuf, attach);
+
+	kfree(attach);
+}
+
 /**
  * dma_buf_detach - Remove the given attachment from dmabuf's attachments list;
  * optionally calls detach() of dma_buf_ops for device-specific detach
@@ -315,11 +404,9 @@ EXPORT_SYMBOL_GPL(dma_buf_attach);
  * @attach:	[in]	attachment to be detached; is free'd after this call.
  *
  */
-void dma_buf_detach(struct dma_buf *dmabuf, struct dma_buf_attachment *attach)
+static void __dma_buf_detach(struct dma_buf *dmabuf,
+			     struct dma_buf_attachment *attach)
 {
-	if (WARN_ON(!dmabuf || !attach))
-		return;
-
 	mutex_lock(&dmabuf->lock);
 	list_del(&attach->node);
 	if (dmabuf->ops->detach)
@@ -328,7 +415,88 @@ void dma_buf_detach(struct dma_buf *dmabuf, struct dma_buf_attachment *attach)
 	mutex_unlock(&dmabuf->lock);
 	kfree(attach);
 }
+
+void dma_buf_detach(struct dma_buf *dmabuf, struct dma_buf_attachment *attach)
+{
+	if (WARN_ON(!dmabuf || !attach))
+		return;
+
+	if (dmabuf_lazy_unmapping) {
+		struct dma_iommu_mapping *map;
+
+		map = to_dma_iommu_mapping(attach->dev);
+		if (map)
+			return; /* leave attachment if iommu mapped */
+	}
+
+	__dma_buf_detach(dmabuf, attach);
+}
 EXPORT_SYMBOL_GPL(dma_buf_detach);
+
+struct sg_table *dma_buf_map_attachment_cached(
+	struct dma_buf_attachment *attach, enum dma_data_direction direction)
+{
+	struct dma_iommu_mapping *map;
+	struct dma_buf_mapping *obj = NULL;
+	struct dma_buf *dmabuf = attach->dmabuf;
+	struct sg_table *sg_table;
+	int empty_idx = -1;
+
+	if (WARN_ON(!attach->dev))
+		return ERR_PTR(-EINVAL);
+
+	mutex_lock(&dmabuf->lock);
+
+	map = to_dma_iommu_mapping(attach->dev);
+	if (map) {
+		int i;
+
+		for (i = 0; i < ARRAY_SIZE(dmabuf->mapping); i++) {
+			obj = &dmabuf->mapping[i];
+			if (!obj->map) {
+				if (empty_idx == -1)
+					empty_idx = i;
+				continue;
+			}
+
+			if (obj->map != map)
+				continue;
+
+			dev_dbg(attach->dev,
+				"dmabuf=%p found cached sgt=%p(i==%d)\n",
+				dmabuf, obj->sgt, i);
+
+			dma_sync_sg_for_device(attach->dev, obj->sgt->sgl,
+					       obj->sgt->nents, direction);
+
+			sg_table = obj->sgt;
+			goto out;
+		}
+	}
+
+	sg_table = dmabuf->ops->map_dma_buf(attach, direction);
+
+	if (!map)
+		goto out;
+
+	if (empty_idx == -1) {
+		dev_err(attach->dev,
+			"No space to add mapping to dmabuf=%p\n", dmabuf);
+		goto out;
+	}
+
+	obj = &dmabuf->mapping[empty_idx];
+	obj->map = map;
+	obj->sgt = sg_table;
+
+	dev_dbg(attach->dev,
+		"dmabuf=%p mapping new sgt=%p(i==%d)\n",
+		dmabuf, obj->sgt, empty_idx);
+
+out:
+	mutex_unlock(&dmabuf->lock);
+	return sg_table;
+}
 
 /**
  * dma_buf_map_attachment - Returns the scatterlist table of the attachment;
@@ -351,6 +519,9 @@ struct sg_table *dma_buf_map_attachment(struct dma_buf_attachment *attach,
 	if (WARN_ON(!attach || !attach->dmabuf))
 		return ERR_PTR(-EINVAL);
 
+	if (dmabuf_lazy_unmapping)
+		return dma_buf_map_attachment_cached(attach, direction);
+
 	sg_table = attach->dmabuf->ops->map_dma_buf(attach, direction);
 
 	return sg_table;
@@ -366,7 +537,7 @@ EXPORT_SYMBOL_GPL(dma_buf_map_attachment);
  * @direction:  [in]    direction of DMA transfer
  *
  */
-void dma_buf_unmap_attachment(struct dma_buf_attachment *attach,
+static void __dma_buf_unmap_attachment(struct dma_buf_attachment *attach,
 				struct sg_table *sg_table,
 				enum dma_data_direction direction)
 {
@@ -377,6 +548,24 @@ void dma_buf_unmap_attachment(struct dma_buf_attachment *attach,
 
 	attach->dmabuf->ops->unmap_dma_buf(attach, sg_table,
 						direction);
+}
+
+void dma_buf_unmap_attachment(struct dma_buf_attachment *attach,
+				struct sg_table *sg_table,
+				enum dma_data_direction direction)
+{
+	if (WARN_ON(!attach || !attach->dmabuf || !sg_table))
+		return;
+
+	if (dmabuf_lazy_unmapping) {
+		struct dma_iommu_mapping *map;
+
+		map = to_dma_iommu_mapping(attach->dev);
+		if (map)
+			return; /* leave mapping if iommu mapped */
+	}
+
+	__dma_buf_unmap_attachment(attach, sg_table, direction);
 }
 EXPORT_SYMBOL_GPL(dma_buf_unmap_attachment);
 
@@ -750,6 +939,10 @@ static int __init dma_buf_init(void)
 	mutex_init(&db_list.lock);
 	INIT_LIST_HEAD(&db_list.head);
 	dma_buf_init_debugfs();
+
+	if (config_enabled(CONFIG_DMABUF_LAZY_UNMAPPING))
+		dmabuf_lazy_unmapping = true;
+
 	return 0;
 }
 subsys_initcall(dma_buf_init);
