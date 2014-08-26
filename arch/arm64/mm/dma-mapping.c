@@ -1234,15 +1234,9 @@ static inline int iommu_get_num_pf_pages(struct dma_iommu_mapping *mapping,
 {
 	int count = 0;
 
-	/*
-	 * XXX: assume alignment property's presence <=> prefetch and gap
-	 * properties are correctly filled
-	 */
-	if (!mapping->alignment) {
-		if (!dma_get_attr(DMA_ATTR_SKIP_IOVA_GAP, attrs))
-			return PG_PAGES;
+	/* XXX: give priority to DMA_ATTR_SKIP_IOVA_GAP */
+	if (dma_get_attr(DMA_ATTR_SKIP_IOVA_GAP, attrs))
 		return 0;
-	}
 
 	/* XXX: currently we support only 1 prefetch page */
 	WARN_ON(mapping->num_pf_page > prefetch_page_count);
