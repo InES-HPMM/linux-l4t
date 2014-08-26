@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@
 #include <asm/segment.h>
 #include <asm/uaccess.h>
 #include <linux/platform_data/modem_thermal.h>
+#include <linux/platform_data/sysedp_modem.h>
 
 #define BOOST_CPU_FREQ_MIN	1200000
 #define BOOST_CPU_FREQ_TIMEOUT	5000
@@ -158,17 +159,13 @@ struct tegra_usb_modem {
 	int short_autosuspend_enabled;
 	struct platform_device *hc;	/* USB host controller */
 	struct mutex hc_lock;
-	struct mutex sysedp_lock;
-	unsigned int mdm_power_irq;	/* modem power increase irq */
-	bool mdm_power_irq_wakeable;	/* not used for LP0 wakeup */
-	int sysedp_prev_request;	/* previous modem request */
-	int sysedp_file_created;	/* sysedp state file created */
 	enum { EHCI_HSIC = 0, XHCI_HSIC, XHCI_UTMI } phy_type;
 	struct platform_device *modem_thermal_pdev;
 	int pre_boost_gpio;		/* control regulator output voltage */
 	int modem_state_file_created;	/* modem_state sysfs created */
 	enum { AIRPLANE = 0, RAT_3G_LTE, RAT_2G} modem_power_state;
 	struct mutex modem_state_lock;
+	struct platform_device *modem_edp_pdev;
 };
 
 
@@ -250,45 +247,6 @@ static irqreturn_t tegra_usb_modem_wake_thread(int irq, void *data)
 
 	return IRQ_HANDLED;
 }
-static irqreturn_t tegra_usb_modem_sysedp_thread(int irq, void *data)
-{
-	struct tegra_usb_modem *modem = (struct tegra_usb_modem *)data;
-
-	mutex_lock(&modem->sysedp_lock);
-	if (gpio_get_value(modem->pdata->mdm_power_report_gpio))
-		sysedp_set_state_by_name("icemdm", 0);
-	else
-		sysedp_set_state_by_name("icemdm", modem->sysedp_prev_request);
-	mutex_unlock(&modem->sysedp_lock);
-
-	return IRQ_HANDLED;
-}
-
-static ssize_t store_sysedp_state(struct device *dev,
-			       struct device_attribute *attr,
-			       const char *buf, size_t count)
-{
-	struct tegra_usb_modem *modem = dev_get_drvdata(dev);
-	int state;
-
-	if (sscanf(buf, "%d", &state) != 1)
-		return -EINVAL;
-
-	mutex_lock(&modem->sysedp_lock);
-	/*
-	 * If the GPIO is low we set the state, otherwise the threaded
-	 * interrupt handler will set it.
-	 */
-	if (!gpio_get_value(modem->pdata->mdm_power_report_gpio))
-		sysedp_set_state_by_name("icemdm", state);
-
-	/* store state for threaded interrupt handler */
-	modem->sysedp_prev_request = state;
-	mutex_unlock(&modem->sysedp_lock);
-
-	return count;
-}
-static DEVICE_ATTR(sysedp_state, S_IWUSR, NULL, store_sysedp_state);
 
 static irqreturn_t tegra_usb_modem_boot_thread(int irq, void *data)
 {
@@ -802,6 +760,15 @@ static ssize_t set_modem_state(struct device *dev,
 static DEVICE_ATTR(modem_state, S_IRUSR | S_IWUSR, show_modem_state,
 			set_modem_state);
 
+static ssize_t store_sysedp_state(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	dev_dbg(dev, "%s: disabled\n", __func__);
+
+	return count;
+}
+static DEVICE_ATTR(sysedp_state, S_IWUSR, NULL, store_sysedp_state);
 
 static struct tegra_usb_phy_platform_ops tegra_usb_modem_platform_ops = {
 	.post_remote_wakeup = tegra_usb_modem_post_remote_wakeup,
@@ -817,6 +784,20 @@ static struct platform_device modem_thermal_device = {
 	.num_resources = 0,
 	.dev = {
 		.platform_data = NULL,
+	},
+};
+
+static struct modem_edp_platform_data edpdata = {
+	.mdm_power_report = -1,
+	.consumer_name = "icemdm",
+};
+
+static struct platform_device modem_edp_device = {
+	.name = "sysedp_modem",
+	.id = -1,
+	.num_resources = 0,
+	.dev = {
+		.platform_data = 0,
 	},
 };
 
@@ -885,31 +866,6 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	} else
 		dev_warn(&pdev->dev, "boot irq not specified\n");
 
-	if (gpio_is_valid(pdata->mdm_power_report_gpio)) {
-		ret = mdm_request_irq(modem,
-				      tegra_usb_modem_sysedp_thread,
-				      pdata->mdm_power_report_gpio,
-				      pdata->mdm_power_irq_flags,
-				      "mdm_power_report",
-				      &modem->mdm_power_irq,
-				      &modem->mdm_power_irq_wakeable);
-		if (ret) {
-			dev_err(&pdev->dev, "request power irq error\n");
-			goto error;
-		}
-
-		disable_irq_wake(modem->mdm_power_irq);
-		modem->mdm_power_irq_wakeable = false;
-
-		ret = device_create_file(&pdev->dev, &dev_attr_sysedp_state);
-		if (ret) {
-			dev_err(&pdev->dev, "can't create edp sysfs file\n");
-			goto error;
-		}
-		modem->sysedp_file_created = 1;
-		mutex_init(&modem->sysedp_lock);
-	}
-
 	/* create sysfs node to load/unload host controller */
 	ret = device_create_file(&pdev->dev, &dev_attr_load_host);
 	if (ret) {
@@ -962,6 +918,20 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 		platform_device_register(modem->modem_thermal_pdev);
 	}
 
+	if (pdata->mdm_power_report_gpio) {
+		edpdata.mdm_power_report = pdata->mdm_power_report_gpio;
+		modem_edp_device.dev.platform_data = &edpdata;
+		modem->modem_edp_pdev = &modem_edp_device;
+		platform_device_register(modem->modem_edp_pdev);
+		/* to be removed once RIL uses new path */
+		ret = device_create_file(&pdev->dev, &dev_attr_sysedp_state);
+		if (ret) {
+			dev_err(&pdev->dev,
+			"can't create modem state sysfs file\n");
+			goto error;
+		}
+	}
+
 	/* start modem */
 	if (modem->ops && modem->ops->start)
 		modem->ops->start();
@@ -976,12 +946,6 @@ error:
 
 	if (modem->boot_irq)
 		free_irq(modem->boot_irq, modem);
-
-	if (modem->sysedp_file_created)
-		device_remove_file(&pdev->dev, &dev_attr_sysedp_state);
-
-	if (modem->mdm_power_irq)
-		free_irq(modem->mdm_power_irq, modem);
 
 	if (modem->modem_state_file_created)
 		device_remove_file(&pdev->dev, &dev_attr_modem_state);
@@ -1192,17 +1156,14 @@ static int __exit tegra_usb_modem_remove(struct platform_device *pdev)
 	unregister_pm_notifier(&modem->pm_notifier);
 	usb_unregister_notify(&modem->usb_notifier);
 
+	if (modem->modem_edp_pdev)
+		platform_device_unregister(modem->modem_edp_pdev);
+
 	if (modem->wake_irq)
 		free_irq(modem->wake_irq, modem);
 
 	if (modem->boot_irq)
 		free_irq(modem->boot_irq, modem);
-
-	if (modem->mdm_power_irq)
-		free_irq(modem->mdm_power_irq, modem);
-
-	if (modem->sysedp_file_created)
-		device_remove_file(&pdev->dev, &dev_attr_sysedp_state);
 
 	if (modem->sysfs_file_created)
 		device_remove_file(&pdev->dev, &dev_attr_load_host);
