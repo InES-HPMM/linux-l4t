@@ -112,5 +112,22 @@
 			name-prefix = "y";
 		};
 	};
+
+	udc@7d000000 {
+		nvidia,port-otg;
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <3>;
+		#extcon-cells = <1>;
+		status = "okay";
+	};
+
+        otg@7d000000 {
+		nvidia,id-detection-type = <3>;
+		extcon-cables = <&gpio_extcon 0>;
+		extcon-cable-names = "id";
+		#extcon-cells = <1>;
+		usb_vbus-supply = <&battery_reg>;
+		status = "okay";
+	};
 };
 

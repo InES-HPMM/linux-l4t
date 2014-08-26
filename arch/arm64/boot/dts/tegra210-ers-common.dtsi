@@ -44,26 +44,6 @@
 		status = "okay";
 	};
 
-	udc@7d000000 {
-		nvidia,port-otg;
-		nvidia,charging-supported;
-		nvidia,enable-pmu-vbus-detection;
-		nvidia,id-detection-type = <1>;
-		extcon-cables = <&bq2419x 0>;
-		extcon-cable-names = "vbus";
-		#extcon-cells = <1>;
-		status = "okay";
-	};
-
-	otg@7d000000 {
-		nvidia,enable-pmu-vbus-detection;
-		nvidia,id-detection-type = <1>;
-		extcon-cables = <&bq2419x 0 &gpio_extcon 0>;
-		extcon-cable-names = "vbus", "id";
-		#extcon-cells = <1>;
-		status = "okay";
-	};
-
 	gpio_extcon: extcon-gpio {
 		compatible = "extcon-gpio";
 		gpio = <&max77620 0 0>;
