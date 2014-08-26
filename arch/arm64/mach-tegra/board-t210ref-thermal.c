@@ -109,6 +109,7 @@ static struct soctherm_platform_data t210ref_soctherm_data = {
 			.zone_enable = true,
 			.passive_delay = 1000,
 			.hotspot_offset = 6000,
+#if 0 /* no trip points yet */
 			.num_trips = 3,
 			.trips = {
 				{
@@ -134,11 +135,13 @@ static struct soctherm_platform_data t210ref_soctherm_data = {
 				},
 			},
 			.tzp = &soctherm_tzp,
+#endif
 		},
 		[THERM_GPU] = {
 			.zone_enable = true,
 			.passive_delay = 1000,
 			.hotspot_offset = 6000,
+#if 0 /* no trip points yet */
 			.num_trips = 3,
 			.trips = {
 				{
@@ -164,9 +167,11 @@ static struct soctherm_platform_data t210ref_soctherm_data = {
 				},
 			},
 			.tzp = &soctherm_tzp,
+#endif
 		},
 		[THERM_MEM] = {
 			.zone_enable = true,
+#if 0 /* no trip points yet */
 			.num_trips = 1,
 			.trips = {
 				{
@@ -178,6 +183,7 @@ static struct soctherm_platform_data t210ref_soctherm_data = {
 				},
 			},
 			.tzp = &soctherm_tzp,
+#endif
 		},
 		[THERM_PLL] = {
 			.zone_enable = true,
@@ -185,6 +191,7 @@ static struct soctherm_platform_data t210ref_soctherm_data = {
 		},
 	},
 	.throttle = {
+#if 0 /* no HW heavy throttling yet */
 		[THROTTLE_HEAVY] = {
 			.priority = 100,
 			.devs = {
@@ -199,212 +206,25 @@ static struct soctherm_platform_data t210ref_soctherm_data = {
 				},
 			},
 		},
-	},
-};
-
-/* Only the diffs from t210ref_soctherm_data structure */
-static struct soctherm_platform_data t132ref_v1_soctherm_data = {
-	.therm = {
-		[THERM_CPU] = {
-			.zone_enable = true,
-			.passive_delay = 1000,
-			.hotspot_offset = 10000,
-		},
-		[THERM_PLL] = {
-			.zone_enable = true,
-			.passive_delay = 1000,
-			.num_trips = 3,
-			.trips = {
-				{
-					.cdev_type = "tegra-shutdown",
-					.trip_temp = 97000,
-					.trip_type = THERMAL_TRIP_CRITICAL,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "tegra-heavy",
-					.trip_temp = 94000,
-					.trip_type = THERMAL_TRIP_HOT,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "cpu-balanced",
-					.trip_temp = 84000,
-					.trip_type = THERMAL_TRIP_PASSIVE,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-			},
-			.tzp = &soctherm_tzp,
-		},
-	},
-};
-
-/* Only the diffs from t210ref_soctherm_data structure */
-static struct soctherm_platform_data t132ref_v2_soctherm_data = {
-	.therm = {
-		[THERM_CPU] = {
-			.zone_enable = true,
-			.passive_delay = 1000,
-			.hotspot_offset = 10000,
-			.num_trips = 3,
-			.trips = {
-				{
-					.cdev_type = "tegra-shutdown",
-					.trip_temp = 105000,
-					.trip_type = THERMAL_TRIP_CRITICAL,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "tegra-heavy",
-					.trip_temp = 102000,
-					.trip_type = THERMAL_TRIP_HOT,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "cpu-balanced",
-					.trip_temp = 92000,
-					.trip_type = THERMAL_TRIP_PASSIVE,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-			},
-			.tzp = &soctherm_tzp,
-		},
-		[THERM_GPU] = {
-			.zone_enable = true,
-			.passive_delay = 1000,
-			.hotspot_offset = 5000,
-			.num_trips = 3,
-			.trips = {
-				{
-					.cdev_type = "tegra-shutdown",
-					.trip_temp = 101000,
-					.trip_type = THERMAL_TRIP_CRITICAL,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "tegra-heavy",
-					.trip_temp = 99000,
-					.trip_type = THERMAL_TRIP_HOT,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "gpu-balanced",
-					.trip_temp = 89000,
-					.trip_type = THERMAL_TRIP_PASSIVE,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-			},
-			.tzp = &soctherm_tzp,
-		},
-	},
-};
-
-static struct soctherm_throttle battery_oc_throttle_t13x = {
-	.throt_mode = BRIEF,
-	.polarity = SOCTHERM_ACTIVE_LOW,
-	.priority = 50,
-	.intr = true,
-	.alarm_cnt_threshold = 15,
-	.alarm_filter = 5100000,
-	.devs = {
-		[THROTTLE_DEV_CPU] = {
-			.enable = true,
-			.depth = 50,
-			.throttling_depth = "low_throttling",
-		},
-		[THROTTLE_DEV_GPU] = {
-			.enable = true,
-			.throttling_depth = "medium_throttling",
-		},
+#endif
 	},
 };
 
 int __init t210ref_soctherm_init(void)
 {
-	const int t13x_cpu_edp_temp_margin = 5000,
-		t13x_gpu_edp_temp_margin = 6000;
-	int cpu_edp_temp_margin, gpu_edp_temp_margin;
-	int cp_rev, ft_rev;
+	int cp_rev;
 	struct board_info board_info;
-	enum soctherm_therm_id therm_cpu = THERM_CPU;
 
 	tegra_get_board_info(&board_info);
 	tegra_chip_id = tegra_get_chip_id();
 
-#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	cp_rev = tegra_fuse_calib_base_get_cp(NULL, NULL);
-	ft_rev = tegra_fuse_calib_base_get_ft(NULL, NULL);
-#else
-	cp_rev = -EINVAL;
-	ft_rev = -EINVAL;
-#endif
-
-	cpu_edp_temp_margin = t13x_cpu_edp_temp_margin;
-	gpu_edp_temp_margin = t13x_gpu_edp_temp_margin;
-	if (!cp_rev) {
-		/* ATE rev is NEW: use v2 table */
-		t210ref_soctherm_data.therm[THERM_CPU] =
-			t132ref_v2_soctherm_data.therm[THERM_CPU];
-		t210ref_soctherm_data.therm[THERM_GPU] =
-			t132ref_v2_soctherm_data.therm[THERM_GPU];
-	} else {
-		/* ATE rev is Old or Mid: use PLLx sensor only */
-		t210ref_soctherm_data.therm[THERM_CPU] =
-			t132ref_v1_soctherm_data.therm[THERM_CPU];
-		t210ref_soctherm_data.therm[THERM_PLL] =
-			t132ref_v1_soctherm_data.therm[THERM_PLL];
-		therm_cpu = THERM_PLL; /* override CPU with PLL zone */
+	if (cp_rev) {
+		pr_info("%s: ERROR: cp_rev %d.\n", __func__, cp_rev);
+		return -EINVAL;
 	}
-
-	/* do this only for supported CP,FT fuses */
-	if ((cp_rev >= 0) && (ft_rev >= 0)) {
-		tegra_platform_edp_init(
-			t210ref_soctherm_data.therm[therm_cpu].trips,
-			&t210ref_soctherm_data.therm[therm_cpu].num_trips,
-			cpu_edp_temp_margin);
-		tegra_platform_gpu_edp_init(
-			t210ref_soctherm_data.therm[THERM_GPU].trips,
-			&t210ref_soctherm_data.therm[THERM_GPU].num_trips,
-			gpu_edp_temp_margin);
-		tegra_add_cpu_vmax_trips(
-			t210ref_soctherm_data.therm[therm_cpu].trips,
-			&t210ref_soctherm_data.therm[therm_cpu].num_trips);
-		tegra_add_tgpu_trips(
-			t210ref_soctherm_data.therm[THERM_GPU].trips,
-			&t210ref_soctherm_data.therm[THERM_GPU].num_trips);
-		tegra_add_vc_trips(
-			t210ref_soctherm_data.therm[therm_cpu].trips,
-			&t210ref_soctherm_data.therm[therm_cpu].num_trips);
-		tegra_add_core_vmax_trips(
-			t210ref_soctherm_data.therm[THERM_PLL].trips,
-			&t210ref_soctherm_data.therm[THERM_PLL].num_trips);
-	}
-
-	tegra_add_cpu_vmin_trips(
-		t210ref_soctherm_data.therm[therm_cpu].trips,
-		&t210ref_soctherm_data.therm[therm_cpu].num_trips);
-	tegra_add_gpu_vmin_trips(
-		t210ref_soctherm_data.therm[THERM_GPU].trips,
-		&t210ref_soctherm_data.therm[THERM_GPU].num_trips);
-	tegra_add_core_vmin_trips(
-		t210ref_soctherm_data.therm[THERM_PLL].trips,
-		&t210ref_soctherm_data.therm[THERM_PLL].num_trips);
 
 	t210ref_soctherm_data.tshut_pmu_trip_data = &tpdata_max77620;
-	/* Enable soc_therm OC throttling on selected platforms */
-
-	memcpy(&t210ref_soctherm_data.throttle[THROTTLE_OC4],
-	       &battery_oc_throttle_t13x,
-	       sizeof(battery_oc_throttle_t13x));
 
 	return tegra_soctherm_init(&t210ref_soctherm_data);
 }
