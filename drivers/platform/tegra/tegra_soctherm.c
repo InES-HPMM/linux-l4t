@@ -76,43 +76,79 @@ static const int MIN_LOW_TEMP = -127000;
 #define TS_THERM_REG_OFFSET(rg, lv, gr)	((rg) + ((lv) * TS_THERM_LVL_REGS_SIZE)\
 					+ ((gr) * TS_THERM_GRP_REGS_SIZE))
 
-#define CTL_LVL0_CPU0			0x0
-#define CTL_LVL0_CPU0_UP_THRESH_SHIFT	17
-#define CTL_LVL0_CPU0_UP_THRESH_MASK	0xff
-#define CTL_LVL0_CPU0_DN_THRESH_SHIFT	9
-#define CTL_LVL0_CPU0_DN_THRESH_MASK	0xff
-#define CTL_LVL0_CPU0_EN_SHIFT		8
-#define CTL_LVL0_CPU0_EN_MASK		0x1
-#define CTL_LVL0_CPU0_CPU_THROT_SHIFT	5
-#define CTL_LVL0_CPU0_CPU_THROT_MASK	0x3
-#define CTL_LVL0_CPU0_CPU_THROT_LIGHT	0x1
-#define CTL_LVL0_CPU0_CPU_THROT_HEAVY	0x2
-#define CTL_LVL0_CPU0_GPU_THROT_SHIFT	3
-#define CTL_LVL0_CPU0_GPU_THROT_MASK	0x3
-#define CTL_LVL0_CPU0_GPU_THROT_LIGHT	0x1
-#define CTL_LVL0_CPU0_GPU_THROT_HEAVY	0x2
-#define CTL_LVL0_CPU0_MEM_THROT_SHIFT	2
-#define CTL_LVL0_CPU0_MEM_THROT_MASK	0x1
-#define CTL_LVL0_CPU0_STATUS_SHIFT	0
-#define CTL_LVL0_CPU0_STATUS_MASK	0x3
+#define BPTT				(bits_per_temp_threshold)
+#define BPTT_MASK			((1 << BPTT) - 1)
 
-#define THERMTRIP			0x80
-#define THERMTRIP_ANY_EN_SHIFT		28
-#define THERMTRIP_ANY_EN_MASK		0x1
-#define THERMTRIP_MEM_EN_SHIFT		27
-#define THERMTRIP_MEM_EN_MASK		0x1
-#define THERMTRIP_GPU_EN_SHIFT		26
-#define THERMTRIP_GPU_EN_MASK		0x1
-#define THERMTRIP_CPU_EN_SHIFT		25
-#define THERMTRIP_CPU_EN_MASK		0x1
-#define THERMTRIP_TSENSE_EN_SHIFT	24
-#define THERMTRIP_TSENSE_EN_MASK	0x1
-#define THERMTRIP_GPUMEM_THRESH_SHIFT	16
-#define THERMTRIP_GPUMEM_THRESH_MASK	0xff
-#define THERMTRIP_CPU_THRESH_SHIFT	8
-#define THERMTRIP_CPU_THRESH_MASK	0xff
+#define CTL_LVL0_CPU0			0x0
+#define CTL_LVL0_CPU0_STATUS_MASK	0x3
+#define CTL_LVL0_CPU0_STATUS_SHIFT	0
+#define CTL_LVL0_CPU0_MEM_THROT_MASK	0x1
+#define CTL_LVL0_CPU0_MEM_THROT_SHIFT	2
+#define CTL_LVL0_CPU0_GPU_THROT_HEAVY	0x2
+#define CTL_LVL0_CPU0_GPU_THROT_LIGHT	0x1
+#define CTL_LVL0_CPU0_GPU_THROT_MASK	0x3
+#define CTL_LVL0_CPU0_GPU_THROT_SHIFT	3
+#define CTL_LVL0_CPU0_CPU_THROT_HEAVY	0x2
+#define CTL_LVL0_CPU0_CPU_THROT_LIGHT	0x1
+#define CTL_LVL0_CPU0_CPU_THROT_MASK	0x3
+#define CTL_LVL0_CPU0_CPU_THROT_SHIFT	5
+#define CTL_LVL0_CPU0_EN_MASK		0x1
+#define CTL_LVL0_CPU0_EN_SHIFT		8
+#define CTL_LVL0_CPU0_DN_THRESH_MASK	BPTT_MASK
+#define CTL_LVL0_CPU0_DN_THRESH_SHIFT	9
+#define CTL_LVL0_CPU0_UP_THRESH_MASK	BPTT_MASK
+#define CTL_LVL0_CPU0_UP_THRESH_SHIFT	(CTL_LVL0_CPU0_DN_THRESH_SHIFT + BPTT)
+
+#define THERMTRIP_TSENSE_THRESH_MASK	BPTT_MASK
 #define THERMTRIP_TSENSE_THRESH_SHIFT	0
-#define THERMTRIP_TSENSE_THRESH_MASK	0xff
+#define THERMTRIP_CPU_THRESH_MASK	BPTT_MASK
+#define THERMTRIP_CPU_THRESH_SHIFT	(THERMTRIP_TSENSE_THRESH_SHIFT + BPTT)
+#define THERMTRIP_GPUMEM_THRESH_MASK	BPTT_MASK
+#define THERMTRIP_GPUMEM_THRESH_SHIFT	(THERMTRIP_CPU_THRESH_SHIFT + BPTT)
+#define THERMTRIP_TSENSE_EN_MASK	0x1
+#define THERMTRIP_TSENSE_EN_SHIFT	(THERMTRIP_GPUMEM_THRESH_SHIFT + BPTT)
+#define THERMTRIP_CPU_EN_MASK		0x1
+#define THERMTRIP_CPU_EN_SHIFT		(THERMTRIP_TSENSE_EN_SHIFT + 1)
+#define THERMTRIP_GPU_EN_MASK		0x1
+#define THERMTRIP_GPU_EN_SHIFT		(THERMTRIP_CPU_EN_SHIFT + 1)
+#define THERMTRIP_MEM_EN_MASK		0x1
+#define THERMTRIP_MEM_EN_SHIFT		(THERMTRIP_GPU_EN_SHIFT + 1)
+#define THERMTRIP_ANY_EN_MASK		0x1
+#define THERMTRIP_ANY_EN_SHIFT		(THERMTRIP_MEM_EN_SHIFT + 1)
+#define THERMTRIP			0x80
+
+#define LOCK_CTL			0x90
+#define LOCK_CTL_TSENSE_LOCK_EN_SHIFT	5
+#define LOCK_CTL_THTRIP_LOCK_EN_SHIFT	4
+#define LOCK_CTL_LEVEL3_LOCK_EN_SHIFT	3
+#define LOCK_CTL_LEVEL2_LOCK_EN_SHIFT	2
+#define LOCK_CTL_LEVEL1_LOCK_EN_SHIFT	1
+#define LOCK_CTL_LEVEL0_LOCK_EN_SHIFT	0
+
+#define STATS_CTL		0x94
+#define STATS_CTL_CLR_DN	0x8
+#define STATS_CTL_EN_DN		0x4
+#define STATS_CTL_CLR_UP	0x2
+#define STATS_CTL_EN_UP		0x1
+
+#define THERM_SLOWDOWN_THRESH			0x98
+#define THERM_SLOWDOWN_THRESH_MEM_SHIFT		24
+#define THERM_SLOWDOWN_THRESH_MEM_MASK		0xff
+#define THERM_SLOWDOWN_THRESH_GPU_SHIFT		16
+#define THERM_SLOWDOWN_THRESH_GPU_MASK		0xff
+#define THERM_SLOWDOWN_THRESH_CPU_SHIFT		8
+#define THERM_SLOWDOWN_THRESH_CPU_MASK		0xff
+#define THERM_SLOWDOWN_THRESH_TSENSE_SHIFT	0
+#define THERM_SLOWDOWN_THRESH_TSENSE_MASK	0xff
+
+#define THERM_SLOWDOWN_CTL				0x9c
+#define THERM_SLOWDOWN_CTL_SLOWDOWN_SELECT_SHIFT	30
+#define THERM_SLOWDOWN_CTL_SLOWDOWN_SELECT_MASK		0x3
+#define THERM_SLOWDOWN_CTL_ANY_EN_SHIFT			4
+#define THERM_SLOWDOWN_CTL_MEM_EN_SHIFT			3
+#define THERM_SLOWDOWN_CTL_GPU_EN_SHIFT			2
+#define THERM_SLOWDOWN_CTL_CPU_EN_SHIFT			1
+#define THERM_SLOWDOWN_CTL_TSENSE_EN_SHIFT		0
 
 #define TS_CPU0_CONFIG0				0xc0
 #define TS_CPU0_CONFIG0_TALL_SHIFT		8
@@ -147,6 +183,9 @@ static const int MIN_LOW_TEMP = -127000;
 #define TS_CPU0_STATUS0_VALID_MASK	0x1
 #define TS_CPU0_STATUS0_CAPTURE_SHIFT	0
 #define TS_CPU0_STATUS0_CAPTURE_MASK	0xffff
+
+#define UP_STATS_L0			0x10
+#define DN_STATS_L0			0x14
 
 #define TS_CPU0_STATUS1				0xd0
 #define TS_CPU0_STATUS1_TEMP_VALID_SHIFT	31
@@ -186,13 +225,21 @@ static const int MIN_LOW_TEMP = -127000;
 #define TS_TEMP2_PLLX_TEMP_SHIFT	0
 #define TS_TEMP2_PLLX_TEMP_MASK		0xffff
 
+#define TS_TSENSOR_CLKEN		0x1d4
+#define TS_TSENSOR_CLKEN_CPU0_SHIFT	7
+#define TS_TSENSOR_CLKEN_CPU1_SHIFT	6
+#define TS_TSENSOR_CLKEN_CPU2_SHIFT	5
+#define TS_TSENSOR_CLKEN_CPU3_SHIFT	4
+#define TS_TSENSOR_CLKEN_GPU_SHIFT	3
+#define TS_TSENSOR_CLKEN_MEM0_SHIFT	2
+#define TS_TSENSOR_CLKEN_MEM1_SHIFT	1
+#define TS_TSENSOR_CLKEN_PLLX_SHIFT	0
+
 #define TS_TEMP_SW_OVERRIDE		0x1d8
 
 #define TH_INTR_STATUS			0x84
 #define TH_INTR_ENABLE			0x88
 #define TH_INTR_DISABLE			0x8c
-
-#define LOCK_CTL			0x90
 
 #define TH_INTR_POS_MD3_SHIFT		31
 #define TH_INTR_POS_MD3_MASK		0x1
@@ -259,21 +306,6 @@ static const int MIN_LOW_TEMP = -127000;
 #define TH_INTR_POS_PU0_SHIFT		0
 #define TH_INTR_POS_PU0_MASK		0x1
 
-
-#define UP_STATS_L0		0x10
-#define DN_STATS_L0		0x14
-
-#define STATS_CTL		0x94
-#define STATS_CTL_CLR_DN	0x8
-#define STATS_CTL_EN_DN		0x4
-#define STATS_CTL_CLR_UP	0x2
-#define STATS_CTL_EN_UP		0x1
-
-#define THROT_GLOBAL_CFG	0x400
-#define THROT13_GLOBAL_CFG	0x148
-#define THROT_GLOBAL_ENB_SHIFT	0
-#define THROT_GLOBAL_ENB_MASK	0x1
-
 #define OC1_CFG				0x310
 #define OC1_CFG_LONG_LATENCY_SHIFT	6
 #define OC1_CFG_LONG_LATENCY_MASK	0x1
@@ -293,8 +325,6 @@ static const int MIN_LOW_TEMP = -127000;
 #define OC1_ALARM_COUNT			0x31c
 #define OC1_FILTER			0x320
 
-#define OC1_STATS			0x3a8
-
 #define OC_INTR_STATUS			0x39c
 #define OC_INTR_ENABLE			0x3a0
 #define OC_INTR_DISABLE			0x3a4
@@ -309,12 +339,21 @@ static const int MIN_LOW_TEMP = -127000;
 #define OC_INTR_POS_OC5_SHIFT		4
 #define OC_INTR_POS_OC5_MASK		0x1
 
+#define OC1_STATS			0x3a8
+
 #define OC_STATS_CTL			0x3c4
 #define OC_STATS_CTL_CLR_ALL		0x2
 #define OC_STATS_CTL_EN_ALL		0x1
 
+#define THROT_GLOBAL_CFG			0x400
+#define THROT13_GLOBAL_CFG			0x148
+#define THROT_GLOBAL_ENB_SHIFT			0
+#define THROT_GLOBAL_ENB_MASK			0x1
+
 #define CPU_PSKIP_STATUS			0x418
 #define GPU_PSKIP_STATUS			0x41c
+#define XPU_PSKIP_THROTTLE_DEPTH_SHIFT		20	 /* GPU_PSKIP_STATUS */
+#define XPU_PSKIP_THROTTLE_DEPTH_MASK		0x3
 #define XPU_PSKIP_STATUS_M_SHIFT		12
 #define XPU_PSKIP_STATUS_M_MASK			0xff
 #define XPU_PSKIP_STATUS_N_SHIFT		4
@@ -452,6 +491,7 @@ static const int MIN_LOW_TEMP = -127000;
 
 #define IS_T12X		(tegra_chip_id == TEGRA_CHIPID_TEGRA12)
 #define IS_T13X		(tegra_chip_id == TEGRA_CHIPID_TEGRA13)
+#define IS_T21X		(tegra_chip_id == TEGRA_CHIPID_TEGRA21)
 
 static void __iomem *reg_soctherm_base;
 static void __iomem *clk_reset_base;
@@ -475,6 +515,8 @@ static bool soctherm_suspended;
 static bool vdd_cpu_low_voltage;
 static bool vdd_core_low_voltage;
 static u32 tegra_chip_id;
+static int bits_per_temp_threshold;
+static int thresh_grain;
 
 static struct clk *soctherm_clk;
 static struct clk *tsensor_clk;
@@ -565,7 +607,7 @@ static long temp_convert(int cap, int a, int b)
 }
 
 /**
- * temp_translate_rev() - Translates the given temperature from two's
+ * temp_translate_reverse() - Translates the given temperature from two's
  * complement to the signed magnitude form used in SOC_THERM registers
  * @temp:	The temperature to be translated
  *
@@ -577,7 +619,7 @@ static long temp_convert(int cap, int a, int b)
  *
  * Return: The register value.
  */
-static u32 temp_translate_rev(long temp)
+static u32 temp_translate_reverse(long temp)
 {
 	int sign;
 	int low_bit;
@@ -715,7 +757,7 @@ static s64 div64_s64_precise(s64 a, s32 b)
  *			register
  *
  * Converts temperature from the format used in registers to a (signed)
- * long. This function is the inverse of temp_translate_rev().
+ * long. This function is the inverse of temp_translate_reverse().
  *
  * Return: the translated temperature in millicelsius
  */
@@ -814,7 +856,7 @@ static int soctherm_read_temp(u8 index, unsigned long *temp)
  */
 static int soctherm_has_mn_cpu_pskip_status(void)
 {
-	return IS_T12X;
+	return IS_T12X || IS_T21X;
 }
 
 /**
@@ -952,9 +994,9 @@ static void prog_hw_shutdown(long crit_temp, int therm)
 	u32 r;
 	long temp;
 
-	/* Add 1'C to HW shutdown threshold so SW can try to shutdown first */
-	temp = crit_temp + 1000;
-	temp = enforce_temp_range(temp) / 1000;
+	/* Add min-grain to HW shutdown threshold so SW can shutdown first */
+	temp = crit_temp + thresh_grain;
+	temp = enforce_temp_range(temp) / thresh_grain;
 
 	r = soctherm_readl(THERMTRIP);
 	if (therm == THERM_CPU) {
@@ -990,7 +1032,7 @@ static void prog_hw_threshold(long trip_temp, int therm, int throt)
 	int temp;
 	int cpu_throt, gpu_throt;
 
-	temp = enforce_temp_range(trip_temp) / 1000;
+	temp = enforce_temp_range(trip_temp) / thresh_grain;
 
 	/* Hardcode LITE on level-1 and HEAVY on level-2 */
 	reg_off = TS_THERM_REG_OFFSET(CTL_LVL0_CPU0, throt + 1, therm);
@@ -1031,8 +1073,8 @@ static void soctherm_set_limits(enum soctherm_therm_id therm,
 	u32 r, reg_off;
 	int rlo_limit, rhi_limit;
 
-	rlo_limit = lo_limit / 1000;
-	rhi_limit = hi_limit / 1000;
+	rlo_limit = lo_limit / thresh_grain;
+	rhi_limit = hi_limit / thresh_grain;
 
 	reg_off = TS_THERM_REG_OFFSET(CTL_LVL0_CPU0, 0, therm);
 
@@ -1543,7 +1585,7 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
 	trip_state = &therm->trips[trip];
 	trip_state->trip_temp = enforce_temp_range(temp);
 
-	rem = trip_state->trip_temp % 1000;
+	rem = trip_state->trip_temp % thresh_grain;
 	if (rem) {
 		pr_warn("soctherm: zone%d/trip_point%d %ld mC rounded down\n",
 			thz->id, trip, trip_state->trip_temp);
@@ -1562,7 +1604,7 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
 	}
 
 	/* Allow SW to shutdown at 'Critical temperature reached' */
-	thermal_notify_framework(thz, trip);
+	soctherm_update_zone(index);
 
 	/* Reprogram HW thermtrip */
 	if (trip_state->trip_type == THERMAL_TRIP_CRITICAL)
@@ -2519,6 +2561,9 @@ static int soctherm_fuse_read_calib_base(void)
 	actual_temp_cp = 2 * nominal_calib_cp + calib_cp;
 	actual_temp_ft = 2 * nominal_calib_ft + calib_ft;
 
+	pr_debug("%s: ACTUAL_TEMP_CP %d (0.5mC)  ACTUAL_TEMP_FT %d (0.5mC)\n",
+		__func__, actual_temp_cp, actual_temp_ft);
+
 	return 0;
 }
 
@@ -2774,6 +2819,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 	/* Thermal Sensing programming */
 	if (soctherm_fuse_read_calib_base() < 0)
 		return -EINVAL;
+
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		soctherm_tsense_program(i, scp);
 		if (soctherm_fuse_read_tsensor(i) < 0)
@@ -2787,7 +2833,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 			continue;
 
 		for (j = 0; j < therm->num_trips; j++) {
-			rem = therm->trips[j].trip_temp % 1000;
+			rem = therm->trips[j].trip_temp % thresh_grain;
 			if (rem) {
 				pr_warn(
 			"soctherm: zone%d/trip_point%d %ld mC rounded down\n",
@@ -3272,7 +3318,7 @@ static int core_rail_regulator_notifier_cb(
 	int rv = NOTIFY_DONE;
 	int core_vmin_limit_uv;
 
-	if (IS_T12X) {
+	if (IS_T12X || IS_T21X) {
 		core_vmin_limit_uv = 900000;
 		if (event & REGULATOR_EVENT_OUT_POSTCHANGE) {
 			if (uv >= core_vmin_limit_uv) {
@@ -3437,9 +3483,10 @@ static int regs_show(struct seq_file *s, void *data)
 			r = soctherm_readl(TS_THERM_REG_OFFSET(CTL_LVL0_CPU0,
 								level, i));
 			state = REG_GET(r, CTL_LVL0_CPU0_UP_THRESH);
-			seq_printf(s, "   %d: Up/Dn(%d/", level, state);
+			seq_printf(s, "   %d: Up/Dn(%d mC/", level,
+				   state * thresh_grain);
 			state = REG_GET(r, CTL_LVL0_CPU0_DN_THRESH);
-			seq_printf(s, "%d) ", state);
+			seq_printf(s, "%d mC) ", state * thresh_grain);
 			state = REG_GET(r, CTL_LVL0_CPU0_EN);
 			seq_printf(s, "En(%d) ", state);
 
@@ -3483,22 +3530,22 @@ static int regs_show(struct seq_file *s, void *data)
 	state = REG_GET(r, THERMTRIP_CPU_EN);
 	seq_printf(s, "     CPU En(%d) ", state);
 	state = REG_GET(r, THERMTRIP_CPU_THRESH);
-	seq_printf(s, "Thresh(%d)\n", state);
+	seq_printf(s, "Thresh(%d mC)\n", state * thresh_grain);
 
 	state = REG_GET(r, THERMTRIP_GPU_EN);
 	seq_printf(s, "     GPU En(%d) ", state);
 	state = REG_GET(r, THERMTRIP_GPUMEM_THRESH);
-	seq_printf(s, "Thresh(%d)\n", state);
+	seq_printf(s, "Thresh(%d mC)\n", state * thresh_grain);
 
 	state = REG_GET(r, THERMTRIP_MEM_EN);
 	seq_printf(s, "     MEM En(%d) ", state);
 	state = REG_GET(r, THERMTRIP_GPUMEM_THRESH);
-	seq_printf(s, "Thresh(%d)\n", state);
+	seq_printf(s, "Thresh(%d mC)\n", state * thresh_grain);
 
 	state = REG_GET(r, THERMTRIP_TSENSE_EN);
 	seq_printf(s, "    PLLX En(%d) ", state);
 	state = REG_GET(r, THERMTRIP_TSENSE_THRESH);
-	seq_printf(s, "Thresh(%d)\n", state);
+	seq_printf(s, "Thresh(%d mC)\n", state * thresh_grain);
 
 	r = soctherm_readl(THROT_GLOBAL_CFG);
 	seq_printf(s, "GLOBAL THROTTLE CONFIG: 0x%08x\n", r);
@@ -3804,7 +3851,7 @@ static int cputemp_get(void *data, u64 *val)
  */
 static int cputemp_set(void *data, u64 temp)
 {
-	u32 reg_val = temp_translate_rev(temp);
+	u32 reg_val = temp_translate_reverse(temp);
 	u32 reg_orig = soctherm_readl(TS_TEMP1);
 
 	reg_val = (reg_val << 16) | (reg_orig & 0xffff);
@@ -3847,7 +3894,7 @@ static int gputemp_get(void *data, u64 *val)
  */
 static int gputemp_set(void *data, u64 temp)
 {
-	u32 reg_val = temp_translate_rev(temp);
+	u32 reg_val = temp_translate_reverse(temp);
 	u32 reg_orig = soctherm_readl(TS_TEMP1);
 
 	reg_val = reg_val | (reg_orig & 0xffff0000);
@@ -3891,7 +3938,7 @@ static int memtemp_get(void *data, u64 *val)
  */
 static int memtemp_set(void *data, u64 temp)
 {
-	u32 reg_val = temp_translate_rev(temp);
+	u32 reg_val = temp_translate_reverse(temp);
 	u32 reg_orig = soctherm_readl(TS_TEMP2);
 
 	reg_val = (reg_val << 16) | (reg_orig & 0xffff);
@@ -3935,7 +3982,7 @@ static int plltemp_get(void *data, u64 *val)
  */
 static int plltemp_set(void *data, u64 temp)
 {
-	u32 reg_val = temp_translate_rev(temp);
+	u32 reg_val = temp_translate_reverse(temp);
 	u32 reg_orig = soctherm_readl(TS_TEMP2);
 
 	reg_val = reg_val | (reg_orig & 0xffff0000);
@@ -4401,10 +4448,14 @@ static int tegra_soctherm_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 
 	tegra_chip_id = tegra_get_chip_id();
-	if (!(IS_T12X || IS_T13X)) {
+	if (!(IS_T12X || IS_T13X || IS_T21X)) {
 		dev_err(&pdev->dev, "Unsupported chip_id %d\n", tegra_chip_id);
 		return -EINVAL;
 	}
+
+	/* Initialize "bits per temp threshold" per chip type */
+	bits_per_temp_threshold	= IS_T21X ? 9 : 8;
+	thresh_grain		= IS_T21X ? 500 : 1000;
 
 	if (soctherm_clk_pre_init())
 		return -EINVAL;

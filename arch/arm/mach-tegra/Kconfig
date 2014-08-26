@@ -728,13 +728,6 @@ config TEGRA_TIMER_HZ
 	int "Kernel HZ (jiffies per second)"
 	default "1000"
 
-config TEGRA_SOCTHERM
-	bool "Enable soctherm"
-	depends on ARCH_TEGRA_11x_SOC || ARCH_TEGRA_14x_SOC || ARCH_TEGRA_12x_SOC
-	default y
-        help
-	  Enables use of soctherm for thermal management.
-
 config TEGRA_USE_SECURE_KERNEL
 	bool "Boot the linux kernel in non-secure mode"
 	help

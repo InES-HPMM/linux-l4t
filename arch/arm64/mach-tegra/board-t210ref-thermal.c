@@ -219,7 +219,7 @@ int __init t210ref_soctherm_init(void)
 	tegra_chip_id = tegra_get_chip_id();
 
 	cp_rev = tegra_fuse_calib_base_get_cp(NULL, NULL);
-	if (cp_rev) {
+	if (cp_rev < 0) {
 		pr_info("%s: ERROR: cp_rev %d.\n", __func__, cp_rev);
 		return -EINVAL;
 	}

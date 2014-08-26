@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __MACH_TEGRA_SOCTHERM_H
-#define __MACH_TEGRA_SOCTHERM_H
+#ifndef __TEGRA_SOCTHERM_H
+#define __TEGRA_SOCTHERM_H
 
 #include <linux/thermal.h>
 #include <linux/platform_data/thermal_sensors.h>
@@ -191,4 +191,4 @@ static inline void tegra_soctherm_adjust_core_zone(bool high_voltage_range)
 { }
 #endif
 
-#endif /* __MACH_TEGRA_SOCTHERM_H */
+#endif /* __TEGRA_SOCTHERM_H */
