@@ -525,6 +525,8 @@
 #define PLLE_AUX_CML_SATA_ENABLE	(1<<1)
 #define PLLE_AUX_CML_PCIE_ENABLE	(1<<0)
 
+#define SOURCE_SATA			0x424
+
 /* USB PLLs PD HW controls */
 #define XUSBIO_PLL_CFG0				0x51c
 #define XUSBIO_PLL_CFG0_SEQ_START_STATE		(1<<25)
@@ -5283,7 +5285,6 @@ static struct clk_ops tegra_cml_clk_ops = {
 	.disable		= &tegra21_cml_clk_disable,
 };
 
-
 /* cbus ops */
 /*
  * Some clocks require dynamic re-locking of source PLL in order to
@@ -8129,6 +8130,32 @@ static struct clk_mux_sel mux_plld[] = {
 
 static struct raw_notifier_head emc_rate_change_nh;
 
+static struct clk tegra_clk_sata = {
+	.name      = "sata",
+	.lookup    = {
+		.dev_id = "tegra_sata",
+	},
+	.ops       = &tegra_periph_clk_ops,
+	.reg       = SOURCE_SATA,
+	.max_rate  = 216000000,
+	.u.periph  = {
+		.clk_num = 124,
+	},
+	.inputs	   = mux_pllp_pllc_clkm,
+	.flags	   = MUX | DIV_U71 | PERIPH_ON_APB,
+};
+
+static struct clk tegra_sata_aux_clk = {
+	.name      = "sata_aux",
+	.parent    = &tegra_clk_sata,
+	.ops       = &tegra_cml_clk_ops,
+	.reg       = SOURCE_SATA,
+	.max_rate  = 216000000,
+	.u.periph  = {
+		.clk_num = 24,
+	},
+};
+
 static struct clk tegra_clk_emc = {
 	.name = "emc",
 	.ops = &tegra_emc_clk_ops,
@@ -8714,7 +8741,6 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("sbc3",	"spi-tegra114.2",	NULL,	46,	0x11c,  51000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc4",	"spi-tegra114.3",	NULL,	68,	0x1b4,  51000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sata_oob",	"tegra_sata_oob",	NULL,	123,	0x420,	216000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sata",	"tegra_sata",		NULL,	124,	0x424,	216000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sata_cold",	"tegra_sata_cold",	NULL,	129,	0,	48000000,  mux_clk_m,		PERIPH_ON_APB),
 	PERIPH_CLK("sdmmc1",	"sdhci-tegra.0",	NULL,	14,	0x150,	208000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sdmmc3",	"sdhci-tegra.2",	NULL,	69,	0x1bc,	208000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | PERIPH_ON_APB),
@@ -9227,6 +9253,8 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_sor0_brick,
 	&tegra_clk_sor1_brick,
 	&tegra_clk_xusb_padctl,
+	&tegra_clk_sata,
+	&tegra_sata_aux_clk,
 	&tegra_clk_sata_uphy,
 	&tegra_clk_usb2_hsic_trk,
 };
