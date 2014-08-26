@@ -366,7 +366,7 @@
 
 			lcd_bl_pwm_pv0 {
 				nvidia,pins = "lcd_bl_pwm_pv0";
-				nvidia,function = "displaya";
+				nvidia,function = "pwm0";
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;

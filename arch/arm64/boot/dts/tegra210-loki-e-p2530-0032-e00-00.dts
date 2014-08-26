@@ -95,7 +95,6 @@
 		};
 	};
 
-
 	spi@7000d400 {
 		status = "okay";
 		earSmart: earSmart-codec@0 {
@@ -227,5 +226,12 @@
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "okay";
 	};
+
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+		pwms = <&tegra_pwm 0 29334>;
+	};
+
 };
 
