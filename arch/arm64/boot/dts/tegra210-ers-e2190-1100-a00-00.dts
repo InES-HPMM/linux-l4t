@@ -294,4 +294,9 @@
 		status = "okay";
 	};
 
+	gpio-keys {
+		home {
+			status = "disabled";
+		};
+	};
 };

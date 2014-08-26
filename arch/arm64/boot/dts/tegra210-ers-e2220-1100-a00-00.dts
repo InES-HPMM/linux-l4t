@@ -344,5 +344,10 @@
 			thermal-sensors = <&max77620>;
 		};
 	};
-};
 
+	gpio-keys {
+		home {
+			status = "disabled";
+		};
+	};
+};
