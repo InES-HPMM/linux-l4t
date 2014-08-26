@@ -387,6 +387,7 @@ struct max77620_chip {
 
 	int chip_irq;
 	int irq_base;
+	int irq_mbattlow;
 
 	struct mutex mutex_config;
 	bool shutdown;
@@ -399,6 +400,13 @@ struct max77620_chip {
 	struct regmap_irq_chip_data *top_irq_data;
 	struct regmap_irq_chip_data *gpio_irq_data;
 };
+
+static inline int max77620_irq_get_virq(struct device *dev, int irq)
+{
+	struct max77620_chip *chip = dev_get_drvdata(dev);
+
+	return regmap_irq_get_virq(chip->top_irq_data, irq);
+}
 
 static inline int max77620_reg_write(struct device *dev, int sid,
 		unsigned int reg, u8 val)

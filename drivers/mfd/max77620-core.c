@@ -152,7 +152,7 @@ static struct mfd_cell max77620_children[] = {
 		.name = "max77620-thermal",
 		.num_resources	= ARRAY_SIZE(thermal_resources),
 		.resources	= &thermal_resources[0],
-		.id = MAX77620_POWER_OFF_ID,
+		.id = MAX77620_THERMAL_ID,
 	},
 };
 
@@ -465,6 +465,15 @@ static int max77620_read_es_version(struct max77620_chip *chip)
 	return ret;
 }
 
+static irqreturn_t max77620_mbattlow_irq(int irq, void *data)
+{
+	struct max77620_chip *max77620 = data;
+
+	dev_info(max77620->dev, "MBATTLOW interrupt occurred\n");
+
+	return IRQ_HANDLED;
+}
+
 static int max77620_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
@@ -550,6 +559,18 @@ static int max77620_probe(struct i2c_client *client,
 	if (ret < 0) {
 		dev_err(&client->dev, "mfd add dev fail %d\n", ret);
 		goto fail_free_irq;
+	}
+
+	chip->irq_mbattlow = max77620_irq_get_virq(chip->dev,
+					MAX77620_IRQ_LBT_MBATLOW);
+	if (chip->irq_mbattlow) {
+		ret = devm_request_threaded_irq(chip->dev, chip->irq_mbattlow,
+			NULL, max77620_mbattlow_irq,
+			IRQF_ONESHOT, dev_name(chip->dev),
+			chip);
+		if (ret < 0)
+			dev_err(&client->dev, "request irq %d failed: %d\n",
+			chip->irq_mbattlow, ret);
 	}
 
 	dev_info(&client->dev, "max77620 probe successfully\n");
