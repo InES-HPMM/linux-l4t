@@ -248,17 +248,17 @@ static int dw9714_pm_wr(struct dw9714_info *info, int pwr)
 	switch (pwr) {
 	case NVC_PWR_OFF_FORCE:
 	case NVC_PWR_OFF:
-		if (info->pdata && info->pdata->power_off)
+		if (info->pdata->power_off)
 			info->pdata->power_off(&info->power);
 		break;
 	case NVC_PWR_STDBY_OFF:
 	case NVC_PWR_STDBY:
-		if (info->pdata && info->pdata->power_off)
+		if (info->pdata->power_off)
 			info->pdata->power_off(&info->power);
 		break;
 	case NVC_PWR_COMM:
 	case NVC_PWR_ON:
-		if (info->pdata && info->pdata->power_on)
+		if (info->pdata->power_on)
 			info->pdata->power_on(&info->power);
 		break;
 	default:
