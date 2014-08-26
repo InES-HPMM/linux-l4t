@@ -1482,7 +1482,7 @@ static int tegra_ahci_controller_init(void *hpriv, int lp0)
 			SATA_FPCI_BAR5_0_OFFSET);
 
 	val = scfg_readl(T_SATA0_AHCI_HBA_CAP_BKDR);
-	val |= (HOST_CAP_ALPM | HOST_CAP_SSC | HOST_CAP_PART);
+	val |= (HOST_CAP_ALPM | HOST_CAP_SSC | HOST_CAP_PART | HOST_CAP_PMP);
 	scfg_writel(val, T_SATA0_AHCI_HBA_CAP_BKDR);
 
 	/* Second Level Clock Gating*/
@@ -1802,7 +1802,7 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 			SATA_FPCI_BAR5_0_OFFSET);
 
 	val = scfg_readl(T_SATA0_AHCI_HBA_CAP_BKDR);
-	val |= (HOST_CAP_ALPM | HOST_CAP_SSC | HOST_CAP_PART);
+	val |= (HOST_CAP_ALPM | HOST_CAP_SSC | HOST_CAP_PART | HOST_CAP_PMP);
 	scfg_writel(val, T_SATA0_AHCI_HBA_CAP_BKDR);
 
 	val = bar5_readl(AHCI_HBA_PLL_CTRL_0);
@@ -3225,6 +3225,8 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 		pi.flags |= ATA_FLAG_NCQ;
 		pi.flags |= ATA_FLAG_FPDMA_AA;
 	}
+	if (hpriv->cap & HOST_CAP_PMP)
+		pi.flags |= ATA_FLAG_PMP;
 
 	/*
 	 * CAP.NP sometimes indicate the index of the last enabled
