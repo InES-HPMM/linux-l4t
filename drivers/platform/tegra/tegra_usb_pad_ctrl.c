@@ -391,6 +391,15 @@ int sata_usb_pad_pll_reset_deassert(void)
 }
 EXPORT_SYMBOL_GPL(sata_usb_pad_pll_reset_deassert);
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+/* Disable SW control of UTMIPLL IDDQ temporarily. */
+int utmi_phy_iddq_override(bool set)
+{
+	pr_info("skip utmi_phy_iddq_override(%d)\n", set);
+
+	return 0;
+}
+#else
 int utmi_phy_iddq_override(bool set)
 {
 	unsigned long val, flags;
@@ -411,6 +420,7 @@ out1:
 	spin_unlock_irqrestore(&utmip_pad_lock, flags);
 	return 0;
 }
+#endif
 EXPORT_SYMBOL_GPL(utmi_phy_iddq_override);
 
 static void utmi_phy_pad(bool enable)
