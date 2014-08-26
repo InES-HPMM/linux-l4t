@@ -623,9 +623,11 @@ static int tegra210_cpu_notify(struct notifier_block *nb, unsigned long action,
 
 	switch (action) {
 	case CPU_POST_DEAD:
+	case CPU_DEAD_FROZEN:
 		tegra_bpmp_tolerate_idle(cpu, TEGRA_PM_CC7);
 		break;
 	case CPU_UP_PREPARE:
+	case CPU_UP_PREPARE_FROZEN:
 		tegra_bpmp_tolerate_idle(cpu, TEGRA_PM_CC1);
 		break;
 	}
