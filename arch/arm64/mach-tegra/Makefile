@@ -49,7 +49,6 @@ obj-${CONFIG_MACH_LOKI}               += panel-j-720p-5.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref.o
 obj-${CONFIG_MACH_T132REF}              += board-t210ref.o
 obj-${CONFIG_MACH_T132REF}              += board-t210ref-thermal.o
-obj-${CONFIG_MACH_T132REF}              += board-t210ref-panel.o
 obj-${CONFIG_MACH_T132REF}              += board-t210ref-camera.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-laguna-power.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-memory.o
@@ -77,7 +76,6 @@ obj-$(CONFIG_DENVER_CPU)              += denver-hardwood.o
 
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-t210ref.o
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-t210ref-thermal.o
-obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-t210ref-panel.o
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += board-t210ref-camera.o
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += tegra21_memory.o
 obj-${CONFIG_ARCH_TEGRA_21x_SOC}      += tegra21_init.o
