@@ -44,8 +44,10 @@
 		status = "okay";
 	};
 
-	gpio_extcon: extcon-gpio {
+	id_gpio_extcon: extcon@0 {
 		compatible = "extcon-gpio";
+		reg = <0x0>;
+		extcon-gpio,name = "ID";
 		gpio = <&max77620 0 0>;
 		extcon-gpio,connection-state-low;
 		extcon-gpio,cable-name = "USB-Host";
