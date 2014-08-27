@@ -113,10 +113,10 @@ static struct gpio_extcon_platform_data *of_get_platform_data(
 		pdata->name = np->name;
 
 	gpio = of_get_named_gpio(np, "gpio", 0);
-	if ((gpio < 0) && (gpio != -EINVAL))
+	if ((gpio < 0) && (gpio != -ENOENT))
 		return ERR_PTR(gpio);
 
-	if (gpio == -EINVAL)
+	if (gpio == -ENOENT)
 		pdata->gpio = -1;
 	else
 		pdata->gpio = gpio;

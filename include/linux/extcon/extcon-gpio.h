@@ -43,7 +43,7 @@
  */
 struct gpio_extcon_platform_data {
 	const char *name;
-	unsigned gpio;
+	int gpio;
 	unsigned long debounce;
 	unsigned long irq_flags;
 	bool connection_state_low;
