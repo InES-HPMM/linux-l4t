@@ -7492,9 +7492,12 @@ static void tegra21_adsp_clk_reset(struct clk *c, bool assert)
 {
 	unsigned long reg = assert ? RST_DEVICES_SET_Y : RST_DEVICES_CLR_Y;
 	u32 val = ADSP_NEON | ADSP_SCU | ADSP_WDT | ADSP_DBG
-		| ADSP_PERIPH | ADSP_INTF | ADSP_CORE;
+		| ADSP_PERIPH | ADSP_CORE;
 
 	pr_debug("%s %s\n", __func__, assert ? "assert" : "deassert");
+
+	clk_writel_delay(ADSP_INTF, reg);
+	udelay(50);
 	clk_writel_delay(val, reg);
 }
 
