@@ -153,6 +153,8 @@ static int gic_notifier(struct notifier_block *, unsigned long, void *);
 
 int tegra_agic_irq_get_virq(int irq)
 {
+	BUG_ON(!tegra_agic);
+
 	return irq_create_mapping(tegra_agic->domain, irq);
 }
 EXPORT_SYMBOL_GPL(tegra_agic_irq_get_virq);
@@ -160,8 +162,13 @@ EXPORT_SYMBOL_GPL(tegra_agic_irq_get_virq);
 bool tegra_agic_irq_is_pending(int irq)
 {
 	int value;
-	void __iomem *dist_base = gic_data_dist_base(tegra_agic);
-	u32 pending = GIC_DIST_PENDING_SET + (irq / 32 * 4);
+	void __iomem *dist_base;
+	u32 pending;
+
+	BUG_ON(!tegra_agic);
+
+	dist_base = gic_data_dist_base(tegra_agic);
+	pending = GIC_DIST_PENDING_SET + (irq / 32 * 4);
 
 	value = readl_relaxed(dist_base + pending);
 	/* checks the irq bit is set */
@@ -171,9 +178,14 @@ EXPORT_SYMBOL_GPL(tegra_agic_irq_is_pending);
 
 bool tegra_agic_irq_is_active(int irq)
 {
+	void __iomem *dist_base;
 	int value;
-	void __iomem *dist_base = gic_data_dist_base(tegra_agic);
-	u32 active = GIC_DIST_ACTIVE_SET + (irq / 32 * 4);
+	u32 active;
+
+	BUG_ON(!tegra_agic);
+
+	dist_base = gic_data_dist_base(tegra_agic);
+	active = GIC_DIST_ACTIVE_SET + (irq / 32 * 4);
 
 	value = readl_relaxed(dist_base + active);
 	/* checks the irq bit is set */
@@ -183,14 +195,21 @@ EXPORT_SYMBOL_GPL(tegra_agic_irq_is_active);
 
 int tegra_agic_route_interrupt(int irq, enum tegra_agic_cpu cpu)
 {
-	void __iomem *dist_base = gic_data_dist_base(tegra_agic);
-	u32 irq_target = GIC_DIST_TARGET + (irq & ~3);
-	u32 shift = (irq % 4) * 8;
-	u32 irq_clear_enable = GIC_DIST_ENABLE_CLEAR + (irq / 32) * 4;
+	void __iomem *dist_base;
+	u32 irq_target;
+	u32 shift;
+	u32 irq_clear_enable;
 	u32 val32;
 	u32 irq_aff;
 	u8 routing_cpu = 1 << (u32)cpu;
 	unsigned long flags;
+
+	BUG_ON(!tegra_agic);
+
+	dist_base = gic_data_dist_base(tegra_agic);
+	irq_target = GIC_DIST_TARGET + (irq & ~3);
+	shift = (irq % 4) * 8;
+	irq_clear_enable = GIC_DIST_ENABLE_CLEAR + (irq / 32) * 4;
 
 	raw_spin_lock_irqsave(&irq_controller_lock, flags);
 	irq_aff = readl_relaxed(dist_base + irq_target);
@@ -225,6 +244,8 @@ EXPORT_SYMBOL_GPL(tegra_agic_route_interrupt);
 
 void tegra_agic_save_registers(void)
 {
+	BUG_ON(!tegra_agic);
+
 	gic_notifier(&tegra_agic->pm_notifier_block,
 			MOD_DOMAIN_POWER_OFF, NULL);
 }
@@ -232,6 +253,8 @@ EXPORT_SYMBOL_GPL(tegra_agic_save_registers);
 
 void tegra_agic_restore_registers(void)
 {
+	BUG_ON(!tegra_agic);
+
 	gic_notifier(&tegra_agic->pm_notifier_block,
 			MOD_DOMAIN_POWER_ON, NULL);
 }
