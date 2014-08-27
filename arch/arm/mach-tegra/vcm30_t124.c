@@ -80,6 +80,8 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 
 	{ "vi.c4bus",		NULL,		600000000,      false},
 	{ "isp.c4bus",		NULL,		600000000,      false},
+	{ "vi",			"pll_c4",	600000000,	false},
+	{ "isp",		"pll_c4",	600000000,	false},
 
 	{ "pll_d_out0",		"pll_d",	474000000,	true},
 	{ "disp2",		"pll_d_out0",	474000000,	false},
