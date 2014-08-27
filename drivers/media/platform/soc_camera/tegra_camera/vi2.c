@@ -273,7 +273,7 @@ static struct tegra_camera_clk vi2_clks0[] = {
 	/* Always put "p11_d" at the end */
 	{
 		.name = "pll_d",
-		.freq = 0,
+		.freq = 927000000,
 	},
 };
 
@@ -317,7 +317,7 @@ static struct tegra_camera_clk vi2_clks1[] = {
 	/* Always put "p11_d" at the end */
 	{
 		.name = "pll_d",
-		.freq = 0,
+		.freq = 927000000,
 	},
 };
 
@@ -358,9 +358,6 @@ static int vi2_clks_init(struct tegra_camera_dev *cam)
 				clks->name);
 			return PTR_ERR(clks->clk);
 		}
-
-		if (clks->freq > 0)
-			clk_set_rate(clks->clk, clks->freq);
 	}
 
 	return 0;
@@ -387,12 +384,16 @@ static void vi2_clks_enable(struct tegra_camera_dev *cam)
 		clks = &cam->clks[i];
 		if (clks->clk)
 			clk_prepare_enable(clks->clk);
+		if (clks->freq > 0)
+			clk_set_rate(clks->clk, clks->freq);
 	}
 
 	if (cam->tpg_mode) {
 		clks = &cam->clks[i];
 		if (clks->clk) {
 			clk_prepare_enable(clks->clk);
+			if (clks->freq > 0)
+				clk_set_rate(clks->clk, clks->freq);
 			tegra_clk_cfg_ex(clks->clk,
 					 TEGRA_CLK_PLLD_CSI_OUT_ENB, 1);
 			tegra_clk_cfg_ex(clks->clk,
