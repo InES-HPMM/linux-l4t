@@ -95,7 +95,7 @@ static bool u1_u2_enable = true;
 module_param(u1_u2_enable, bool, S_IRUGO|S_IWUSR);
 
 /* T210 workaround. Disable LPM for HS and FS by default */
-static bool disable_lpm = true;
+static bool disable_lpm = false;
 module_param(disable_lpm, bool, S_IRUGO|S_IWUSR);
 
 #ifdef PRIME_NOT_RCVD_WAR
