@@ -40,6 +40,7 @@
 		id = <2>;
 		compad-vref-3v3 = <0x1>;
 		compad-vref-1v8 = <0x2>;
+		default-drive-type = <1>;
 	};
 
 	sdhci@700b0200 { /* SDMMC2 for Wifi on loki */
