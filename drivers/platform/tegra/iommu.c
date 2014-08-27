@@ -117,91 +117,10 @@ static char dummy_name[DUMMY_DEV_MAX_NAME_SIZE] = DUMMY_DEV_NAME;
 /*
  * FIXME: They should have a DT entry with swgroup IDs.
  */
-struct swgid_fixup tegra_swgid_fixup[] = {
-	{ .name = "540c0000.epp",	.swgids = TEGRA_SWGROUP_BIT(EPP), },
-	{ .name = "epp",	.swgids = TEGRA_SWGROUP_BIT(EPP), },
-	{ .name = "54200000.dc",	.swgids = TEGRA_SWGROUP_BIT(DC),
-	  .linear_map = tegra_fb_linear_map, },
-	{ .name = "54240000.dc",	.swgids = TEGRA_SWGROUP_BIT(DCB), },
-	{ .name = "dc",	.swgids = TEGRA_SWGROUP_BIT(DC) |
-				  TEGRA_SWGROUP_BIT(DCB) },
-	{ .name = "gr2d",	.swgids = TEGRA_SWGROUP_BIT(G2), },
-	{ .name = "gr3d",	.swgids = TEGRA_SWGROUP_BIT(NV) |
-					  TEGRA_SWGROUP_BIT(NV2), },
-	{ .name = "host1x",	.swgids = TEGRA_SWGROUP_BIT(HC) |
-					  TEGRA_SWGROUP_BIT(VDE) |
-					  TEGRA_SWGROUP_BIT(EPP) |
-					  TEGRA_SWGROUP_BIT(HDA), },
-	{ .name = "isp",	.swgids = TEGRA_SWGROUP_BIT(ISP), },
-	{ .name = "max77660",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "max8831",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "msenc",	.swgids = TEGRA_SWGROUP_BIT(MSENC), },
-	{ .name = "mpe",	.swgids = TEGRA_SWGROUP_BIT(MPE), },
-	{ .name = "tegra-aes",	.swgids = TEGRA_SWGROUP_BIT(VDE), },
-	{ .name = "nvavp",	.swgids = TEGRA_SWGROUP_BIT(AVPC), },
-	{ .name = "sdhci-tegra.0",	.swgids = TEGRA_SWGROUP_BIT(PPCS1) },
-	{ .name = "sdhci-tegra.1",	.swgids = TEGRA_SWGROUP_BIT(PPCS1) },
-	{ .name = "sdhci-tegra.2",	.swgids = TEGRA_SWGROUP_BIT(PPCS1) },
-	{ .name = "sdhci-tegra.3",	.swgids = TEGRA_SWGROUP_BIT(PPCS1) },
-	{ .name = "serial8250",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "serial-tegra",      .swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "snd-soc-dummy",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "spdif-dit",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra11-se",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra11-spi",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra14-i2c",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra30-ahub",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra30-dam",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra30-hda",	.swgids = TEGRA_SWGROUP_BIT(HDA), },
-	{ .name = "tegra30-i2s",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra30-spdif",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra30-avp-audio",	.swgids = TEGRA_SWGROUP_BIT(AVPC), },
-	{ .name = "tegradc.0", .swgids = TEGRA_SWGROUP_BIT(DC),
-	  .linear_map = tegra_fb_linear_map},
-	{ .name = "tegradc.1", .swgids = TEGRA_SWGROUP_BIT(DCB), },
-	{ .name = "tegra_bb",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra_dma",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-ehci",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-fuse",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-i2c",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-carveouts",	.swgids = TEGRA_SWGROUP_BIT(HC) |
-						  TEGRA_SWGROUP_BIT(AVPC), },
-	{ .name = "tegra-otg",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-pcm-audio",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-rtc",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-sata",	.swgids = TEGRA_SWGROUP_BIT(SATA), },
-	{ .name = "tegra-se",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-snd",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-tzram",	.swgids = TEGRA_SWGROUP_BIT(VDE), },
-	{ .name = "tegra_uart",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-udc",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra_usb_modem_power",
-				.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tsec",	.swgids = TEGRA_SWGROUP_BIT(TSEC), },
-	{ .name = "vi",	.swgids = TEGRA_SWGROUP_BIT(VI), },
-	{ .name = "therm_est",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-xhci",	.swgids = TEGRA_SWGROUP_BIT(XUSB_HOST), },
-#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
-	{ .name = dummy_name,	.swgids = TEGRA_SWGROUP_BIT(PPCS) },
-#endif
-	{},
-};
-
 struct swgid_fixup tegra_swgid_fixup_t124[] = {
-	{ .name = "54200000.dc",	.swgids = TEGRA_SWGROUP_BIT(DC), },
-	{ .name = "54240000.dc",	.swgids = TEGRA_SWGROUP_BIT(DCB), },
-	{ .name = "dc",	.swgids = TEGRA_SWGROUP_BIT(DC) |
-				  TEGRA_SWGROUP_BIT(DCB) },
-	{ .name = "host1x",	.swgids = TEGRA_SWGROUP_BIT(HC) |
-					  TEGRA_SWGROUP_BIT(VDE) |
-	  TEGRA_SWGROUP_BIT(EPP) | TEGRA_SWGROUP_BIT(HDA), },
 	{ .name = "isp",	.swgids = TEGRA_SWGROUP_BIT(ISP2) |
 					  TEGRA_SWGROUP_BIT(ISP2B), },
-	{ .name = "max77660",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "max8831",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "msenc",	.swgids = TEGRA_SWGROUP_BIT(MSENC), },
-	{ .name = "mpe",	.swgids = TEGRA_SWGROUP_BIT(MPE), },
-	{ .name = "tegra-aes",	.swgids = TEGRA_SWGROUP_BIT(VDE), },
 	{ .name = "nvavp",	.swgids = TEGRA_SWGROUP_BIT(AVPC) |
 					  TEGRA_SWGROUP_BIT(A9AVP), },
 	{ .name = "sdhci-tegra.1",	.swgids = TEGRA_SWGROUP_BIT(SDMMC2A) },
@@ -213,7 +132,6 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{ .name = "spdif-dit",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra12-se",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "spi-tegra114",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra14-i2c",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra30-ahub",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra30-dam",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra30-hda",	.swgids = TEGRA_SWGROUP_BIT(HDA), },
@@ -230,7 +148,6 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{ .name = "tegra_dma",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra-ehci",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra-fuse",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-i2c",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra-carveouts",	.swgids = TEGRA_SWGROUP_BIT(HC) |
 						  TEGRA_SWGROUP_BIT(AVPC), },
 	/*
@@ -254,8 +171,6 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{ .name = "vic",	.swgids = TEGRA_SWGROUP_BIT(VIC), },
 	{ .name = "vi",	.swgids = TEGRA_SWGROUP_BIT(VI), },
 	{ .name = "therm_est",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "gk20a",	.swgids = TEGRA_SWGROUP_BIT(GPU) |
-					  TEGRA_SWGROUP_BIT(GPUB), },
 	{ .name = "tegra124-apbdma",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra-nor",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
@@ -266,16 +181,6 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 };
 
 struct swgid_fixup tegra_swgid_fixup_t210[] = {
-	{ .name = "54200000.dc",	.swgids = TEGRA_SWGROUP_BIT(DC), },
-	{ .name = "54240000.dc",	.swgids = TEGRA_SWGROUP_BIT(DCB), },
-	{ .name = "dc",	.swgids = TEGRA_SWGROUP_BIT(DC) | TEGRA_SWGROUP_BIT(DCB) },
-	{ .name = "max77660",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-					  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "max8831",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-					  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "ape",	.swgids = TEGRA_SWGROUP_BIT(APE), },
 	{ .name = "tegra-aes",	.swgids = TEGRA_SWGROUP_BIT(NVDEC), },
 	{ .name = "nvavp",	.swgids = TEGRA_SWGROUP_BIT(AVPC), },
 	{
@@ -299,9 +204,6 @@ struct swgid_fixup tegra_swgid_fixup_t210[] = {
 					  TEGRA_SWGROUP_BIT(SE) |
 	  TEGRA_SWGROUP_BIT(SE1), },
 	{ .name = "spi-tegra114",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-						  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra14-i2c",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 						  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
 	{ .name = "tegra30-ahub",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
@@ -333,9 +235,6 @@ struct swgid_fixup tegra_swgid_fixup_t210[] = {
 					  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
 	{ .name = "tegra-fuse",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-					  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra-i2c",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
 	{ .name = "tegra-carveouts",	.swgids = TEGRA_SWGROUP_BIT(HC) |
@@ -371,8 +270,6 @@ struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	{ .name = "therm_est",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "gk20a",	.swgids = TEGRA_SWGROUP_BIT(GPU) |
-					  TEGRA_SWGROUP_BIT(GPUB), },
 	{ .name = "tegra124-apbdma",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
@@ -400,8 +297,7 @@ u64 tegra_smmu_fixup_swgids(struct device *dev, struct iommu_linear_map **map)
 		table = tegra_swgid_fixup_t210;
 		break;
 	default:
-		table = tegra_swgid_fixup;
-		break;
+		return SWGIDS_ERROR_CODE;
 	}
 
 	while ((s = table->name) != NULL) {
