@@ -50,7 +50,8 @@
 #define OV5693_FUSE_ID_SIZE		8
 
 static struct nvc_gpio_init ov5693_gpio[] = {
-	{ OV5693_GPIO_TYPE_PWRDN, GPIOF_OUT_INIT_LOW, "pwrdn", false, true, },
+	{ OV5693_GPIO_TYPE_PWRDN, GPIOF_OUT_INIT_LOW, "pwrdn", true, true, },
+	{ OV5693_GPIO_TYPE_RESET, GPIOF_OUT_INIT_LOW, "reset", true, true, },
 };
 
 struct ov5693_info {
@@ -2514,6 +2515,20 @@ static void ov5693_gpio_pwrdn(struct ov5693_info *info, int val)
 		msleep(50);
 }
 
+static void ov5693_gpio_reset(struct ov5693_info *info, int val)
+{
+	int prev_val;
+
+	prev_val = ov5693_gpio_rd(info, OV5693_GPIO_TYPE_RESET);
+	if ((prev_val < 0) || (val == prev_val))
+		return;
+
+	ov5693_gpio_wr(info, OV5693_GPIO_TYPE_RESET, val);
+	if (!val && prev_val)
+		/* if transition from assert to deassert then delay for I2C */
+		msleep(50);
+}
+
 static void ov5693_gpio_exit(struct ov5693_info *info)
 {
 	unsigned int i;
@@ -3312,6 +3327,7 @@ static int ov5693_platform_power_on(struct ov5693_power_rail *pw)
 	}
 
 	ov5693_gpio_pwrdn(info, 0);
+	ov5693_gpio_reset(info, 0);
 	usleep_range(10, 20);
 
 	err = regulator_enable(pw->avdd);
@@ -3324,6 +3340,7 @@ static int ov5693_platform_power_on(struct ov5693_power_rail *pw)
 
 	usleep_range(1, 2);
 	ov5693_gpio_pwrdn(info, 1);
+	ov5693_gpio_reset(info, 1);
 
 	usleep_range(300, 310);
 
@@ -3348,6 +3365,7 @@ static int ov5693_platform_power_off(struct ov5693_power_rail *pw)
 
 	usleep_range(21, 25);
 	ov5693_gpio_pwrdn(info, 0);
+	ov5693_gpio_reset(info, 0);
 	usleep_range(1, 2);
 
 	regulator_disable(pw->dovdd);
@@ -3415,10 +3433,10 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 			pdata->regulators.dovdd = NULL;
 			break;
 		case 1:
-			pdata->regulators.dvdd = sname;
+			pdata->regulators.dovdd = sname;
 			break;
 		case 2:
-			pdata->regulators.dovdd = sname;
+			pdata->regulators.dvdd = sname;
 			break;
 		default:
 			break;
@@ -3436,7 +3454,10 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 	/* ov5693 gpios */
 	pdata->gpio_count = 0;
 	pdata->gpio_count += ov5693_parse_dt_gpio(np,
-				"reset-gpios", OV5693_GPIO_TYPE_PWRDN,
+				"cam2-gpios", OV5693_GPIO_TYPE_PWRDN,
+				&gpio_pdata[pdata->gpio_count]);
+	pdata->gpio_count += ov5693_parse_dt_gpio(np,
+				"reset-gpios", OV5693_GPIO_TYPE_RESET,
 				&gpio_pdata[pdata->gpio_count]);
 	pdata->gpio = gpio_pdata;
 
