@@ -578,7 +578,7 @@
 #define PLLP_DEFAULT_FIXED_RATE		408000000
 
 /* Use PLL_RE as PLLE input (default - OSC via pll reference divider) */
-#define USE_PLLE_INPUT_PLLRE    1
+#define USE_PLLE_INPUT_PLLRE    0
 
 static void pllc4_set_fixed_rates(unsigned long cf);
 static void tegra21_dfll_cpu_late_init(struct clk *c);
