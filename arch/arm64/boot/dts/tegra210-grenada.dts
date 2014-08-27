@@ -869,6 +869,13 @@
 		status = "disabled";
 	};
 
+	hda@70030000 {
+		compatible = "nvidia,tegra30-hda";
+		reg = <0x0 0x70030000 0x0 0x10000>;
+		interrupts = <0 81 0x04>;
+		status = "disabled";
+	};
+
 	adsp_audio {
 		status = "disabled";
 	};
