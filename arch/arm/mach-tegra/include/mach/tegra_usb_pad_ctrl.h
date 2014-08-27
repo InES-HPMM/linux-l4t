@@ -286,6 +286,7 @@
 
 #define XUSB_PADCTL_USB2_BIAS_PAD_CTL_0		0x284
 #define HS_SQUELCH_LEVEL(x)		((x & 0x7) << 0)
+#define HS_DISCON_LEVEL(x)				(((x) & 0x7) << 3)
 #define XUSB_PADCTL_USB2_BIAS_PAD_CTL_1		0x288
 #define PD_MASK			(0x1 << 11)
 #define PD				(0x0 << 11)
