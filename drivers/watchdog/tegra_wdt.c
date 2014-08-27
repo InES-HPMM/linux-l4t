@@ -59,11 +59,6 @@ struct tegra_wdt {
  * for cases where the spinlock disabled irqs.
  */
 static int heartbeat = 120; /* must be greater than MIN_WDT_PERIOD and lower than MAX_WDT_PERIOD */
-#ifdef CONFIG_TEGRA_WATCHDOG_ENABLE_ON_PROBE
-static bool enable_on_probe = true;
-#else
-static bool enable_on_probe;
-#endif
 
 static inline struct tegra_wdt *to_tegra_wdt(struct watchdog_device *wdt)
 {
@@ -168,12 +163,17 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 {
 	struct resource *res_src, *res_wdt;
 	struct tegra_wdt *tegra_wdt;
+	struct device_node *np = pdev->dev.of_node;
 	int ret = 0;
+	bool enable_on_init = 0;
 
 	if (!tegra_platform_is_silicon()) {
 		dev_info(&pdev->dev, "no watchdog support in pre-silicon");
 		return -EPERM;
 	}
+
+	if (of_find_property(np, "nvidia,enable-on-init", NULL))
+		enable_on_init = true;
 
 	tegra_wdt = devm_kzalloc(&pdev->dev, sizeof(*tegra_wdt), GFP_KERNEL);
 	if (!tegra_wdt) {
@@ -223,14 +223,12 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	tegra_wdt_disable(&tegra_wdt->wdt);
 	writel(TIMER_PCR_INTR, tegra_wdt->wdt_timer + TIMER_PCR);
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	/* Init and enable watchdog on WDT0 with timer 8 during probe */
-	if (enable_on_probe) {
+	if (enable_on_init) {
 		set_bit(WDOG_ACTIVE, &tegra_wdt->wdt.status);
 		tegra_wdt_enable(&tegra_wdt->wdt);
 		pr_info("WDT heartbeat enabled on probe\n");
 	}
-#endif
 
 	watchdog_init_timeout(&tegra_wdt->wdt, heartbeat,  &pdev->dev);
 
@@ -317,10 +315,6 @@ MODULE_DESCRIPTION("Tegra Watchdog Driver");
 module_param(heartbeat, int, 0);
 MODULE_PARM_DESC(heartbeat,
 		 "Watchdog heartbeat period in seconds");
-
-module_param(enable_on_probe, bool, 0);
-MODULE_PARM_DESC(enable_on_probe,
-		 "Start watchdog during boot");
 
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:tegra_wdt");
