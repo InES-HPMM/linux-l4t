@@ -786,7 +786,7 @@ static int t210ref_ov5693_front_power_off(struct ov5693_power_rail *pw)
 
 static struct nvc_imager_cap ov5693_front_cap = {
 	.identifier				= "OV5693.1",
-	.sensor_nvc_interface	= 4,
+	.sensor_nvc_interface	= 5,
 	.pixel_types[0]			= 0x101,
 	.orientation			= 0,
 	.direction				= 1,
