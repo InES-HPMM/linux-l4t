@@ -125,6 +125,8 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	{ "dam0",	"clk_m",	12000000,	false},
 	{ "dam1",	"clk_m",	12000000,	false},
 	{ "dam2",	"clk_m",	12000000,	false},
+	{ "sbc5",	"pll_p",	25000000,	false},
+	{ "sbc6",	"pll_p",	25000000,	false},
 #endif
 	{ "audio1",	"i2s1_sync",	0,		false},
 	{ "audio3",	"i2s3_sync",	0,		false},
@@ -146,8 +148,6 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	{ "sbc2",	"pll_p",	25000000,	false},
 	{ "sbc3",	"pll_p",	25000000,	false},
 	{ "sbc4",	"pll_p",	25000000,	false},
-	{ "sbc5",	"pll_p",	25000000,	false},
-	{ "sbc6",	"pll_p",	25000000,	false},
 	{ "uarta",	"pll_p",	408000000,	true},
 	{ "uartb",	"pll_p",	408000000,	false},
 	{ "uartc",	"pll_p",	408000000,	false},
