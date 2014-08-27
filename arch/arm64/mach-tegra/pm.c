@@ -120,7 +120,9 @@ struct suspend_context {
 #ifdef CONFIG_PM_SLEEP
 static void __iomem *clk_rst = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 static int tegra_last_pclk;
+#endif
 static u64 resume_time;
 static u64 resume_entry_time;
 static u64 suspend_time;
@@ -325,6 +327,15 @@ static void pmc_32kwritel(u32 val, unsigned long offs)
 }
 
 #if !defined(CONFIG_OF) || !defined(CONFIG_COMMON_CLK)
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+static void set_power_timers(unsigned long us_on, unsigned long us_off,
+			     long rate)
+{
+	writel(0, pmc + PMC_CPUPWRGOOD_TIMER);
+	writel(0, pmc + PMC_CPUPWROFF_TIMER);
+	wmb();
+}
+#else
 static void set_power_timers(unsigned long us_on, unsigned long us_off,
 			     long rate)
 {
@@ -350,6 +361,7 @@ static void set_power_timers(unsigned long us_on, unsigned long us_off,
 	tegra_last_pclk = pclk;
 	last_us_off = us_off;
 }
+#endif
 #endif
 
 /*
