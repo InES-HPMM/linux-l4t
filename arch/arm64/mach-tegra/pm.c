@@ -213,6 +213,19 @@ bool tegra_dvfs_is_dfll_bypass(void)
 #endif
 }
 
+static inline unsigned int is_slow_cluster(void)
+{
+	int reg;
+
+	asm("mrs        %0, mpidr_el1\n"
+	    "ubfx       %0, %0, #8, #4"
+	    : "=r" (reg)
+	    :
+	    : "cc", "memory");
+
+	return reg & 1;
+}
+
 #ifdef CONFIG_PM_SLEEP
 
 static const char *tegra_suspend_name[TEGRA_MAX_SUSPEND_MODE] = {
@@ -459,10 +472,18 @@ static inline void tegra_sleep_cpu(unsigned long v2p)
 static int tegra_common_suspend(void)
 {
 	void __iomem *mc = IO_ADDRESS(TEGRA_MC_BASE);
+	u32 reg;
 
 	tegra_sctx.mc[0] = readl(mc + MC_SECURITY_START);
 	tegra_sctx.mc[1] = readl(mc + MC_SECURITY_SIZE);
 	tegra_sctx.mc[2] = readl(mc + MC_SECURITY_CFG2);
+
+	reg = readl(pmc + PMC_SCRATCH4);
+	if (is_slow_cluster())
+		reg |= PMC_SCRATCH4_WAKE_CLUSTER_MASK;
+	else
+		reg &= (~PMC_SCRATCH4_WAKE_CLUSTER_MASK);
+	writel(reg, pmc + PMC_SCRATCH4);
 
 	return 0;
 }
