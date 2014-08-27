@@ -1207,12 +1207,13 @@ out:
 	/* Initialize SOC-specific data */
 #ifdef CONFIG_ARCH_TEGRA_13x_SOC
 	tegra_soc_suspend_init();
-#endif
+
 	if (!tegra_tear_down_cpu || !tegra_sleep_core_finish) {
 		pr_err("%s: unable to obtain suspend info -- "
 				"disabling LP0\n", __func__);
 		current_suspend_mode = TEGRA_SUSPEND_LP2;
 	}
+#endif
 
 	/* Always enable CPU power request; just normal polarity is supported */
 	reg = readl(pmc + PMC_CTRL);
