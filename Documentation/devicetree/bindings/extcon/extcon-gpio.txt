@@ -9,6 +9,8 @@ Optional Properties:
  - extcon-gpio,debounce: Debounce time in ms.
  - extcon-gpio,connection-state-low: boolean, Connection state with
 		gpio state. True if gpio low means connected.
+ - extcon-gpio,default-connected: Tells whether the connection is
+		default there or not when gpio is not provided.
 
 extcon-gpio {
 	compatible = "extcon-gpio";
