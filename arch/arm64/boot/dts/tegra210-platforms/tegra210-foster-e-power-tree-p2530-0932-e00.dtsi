@@ -1,0 +1,154 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "tegra210-ers-pmic-e2174-1101-a00.dtsi"
+#include "tegra210-ers-fixed-e2174-1101-a00.dtsi"
+#include "tegra210-ers-power-dvfs-e2174-1101-a00.dtsi"
+
+/ {
+
+	i2c@7000d000 {
+		max77620@3c {
+			regulators {
+				ldo4 {
+					regulator-min-microvolt = <900000>;
+					regulator-max-microvolt = <900000>;
+				};
+			};
+		};
+	};
+
+	regulators {
+		regulator@2 {
+			regulator-always-on;
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+		};
+		regulator@11 {
+			status = "disabled";
+		};
+		regulator@101 {
+			status = "disabled";
+		};
+
+		vdd_disp_3v0: regulator@12 {
+			compatible = "regulator-fixed-sync";
+			reg = <12>;
+			regulator-name = "vdd-disp-3v0";
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+			gpio = <&gpio TEGRA_GPIO(I, 3) 0>;
+			regulator-always-on;
+			enable-active-high;
+		};
+
+		vdd_fan: regulator@13 {
+			compatible = "regulator-fixed-sync";
+			reg = <13>;
+			regulator-name = "vdd-fan";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(E, 4) 0>;
+			regulator-always-on;
+			enable-active-high;
+		};
+
+	};
+	i2c@7000c000 {
+		icm20628@68 {
+			vlogic-supply = <&max77620_ldo3>;
+			vdd-supply = <&vdd_3v3>;
+		};
+
+		ak8975@0c {
+			vid = <&max77620_ldo3>;
+			vdd = <&vdd_3v3>;
+		};
+
+	};
+
+	efuse@7000f800 {
+		vpp_fuse-supply = <&max77620_sd3>;
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
+			avdd_lcd-supply = <&vdd_disp_3v0>;
+			dvdd_lcd-supply = <&max77620_sd3>;
+			vdd_lcd_bl_en-supply = <&lcd_bl_en>;
+		};
+
+		/* tegradc.1 */
+		dc@54240000 {
+			avdd_hdmi-supply = <&max77620_ldo8>;
+			avdd_hdmi_pll-supply = <&max77620_sd3>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+		};
+
+		vi {
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
+		};
+	};
+
+	sound {
+		ldoen-supply = <&vdd_sys_boost>;
+		spkvdd-supply = <&vdd_sys_boost>;
+		dbvdd-supply = <&vdd_sys_boost>;
+		dmicvdd-supply = <&max77620_sd3>;
+	};
+
+	udc@7d000000 {
+		avdd_usb-supply = <&vdd_3v3>;
+		avdd_pll_utmip-supply = <&max77620_sd3>;
+		usb_bat_chg-supply = <&battery_charger>;
+	};
+
+	otg@7d000000 {
+		usb_vbus-supply = <&usb0_vbus>;
+	};
+
+	sdhci@700b0600 {
+		vddio_sdmmc-supply = <&max77620_sd3>; /* SDMMC4 for EMMC on loki */
+		vddio_sd_slot-supply = <&vdd_3v3>;
+	};
+
+	sdhci@700b0400 {
+		vddio_sdmmc-supply = <&max77620_sd3>; /* SDMMC3 for 2nd Wifi on loki */
+		vddio_sd_slot-supply = <&vdd_3v3>; /* SDMMC3 no stuff for full size SD on foster */
+	};
+
+	sdhci@700b0200 {
+		vddio_sdmmc-supply = <&max77620_sd3>; /* SDMMC2 for Wifi on loki */
+		vddio_sd_slot-supply = <&vdd_3v3>;
+	};
+
+	sdhci@700b0000 {
+		vddio_sdmmc-supply = <&max77620_ldo2>; /* SDMMC1 for SD card on loki */
+		vddio_sd_slot-supply = <&en_vdd_sd>;
+	};
+
+	sata@70020000 {
+		hvdd_sata-supply = <&max77620_sd3>;
+		vddio_pex_sata-supply = <&max77620_sd3>;
+		avdd_sata-supply = <&max77620_sd3>;
+		vdd_sata-supply = <&max77620_ldo8>;
+		avdd_sata_pll-supply = <&max77620_ldo8>;
+	};
+
+};

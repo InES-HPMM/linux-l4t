@@ -25,7 +25,7 @@
 #include "tegra210-ers-common.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-p2530-common.dtsi"
 #include "tegra210-platforms/tegra210-ers-extgpio-e2141-1100-a00.dtsi"
-#include "tegra210-platforms/tegra210-loki-power-tree-p2530-0999-e00.dtsi"
+#include "tegra210-platforms/tegra210-foster-e-power-tree-p2530-0932-e00.dtsi"
 
 #include "tegra210-platforms/tegra210-loki-e-gpio-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-pinmux-p2530-0032-e00.dtsi"
@@ -113,7 +113,12 @@
 		};
 	};
 
-       vbus_gpio_extcon: extcon@1 {
+	sata@70020000 {
+		status = "okay";
+		nvidia,enable-sata-port;
+	};
+
+        vbus_gpio_extcon: extcon@1 {
                 compatible = "extcon-gpio";
                 reg = <0x1>;
 		extcon-gpio,name = "VBUS";
