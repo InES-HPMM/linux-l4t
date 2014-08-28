@@ -152,7 +152,7 @@ static int iter_init(void)
 
 	/* Disable tracing */
 	for_each_tracing_cpu(cpu) {
-		atomic_inc(&iter.tr->data[cpu]->disabled);
+		atomic_inc(&iter.tr->trace_buffer.data[cpu].disabled);
 	}
 
 	/* Save flags */
@@ -164,7 +164,7 @@ static int iter_init(void)
 	/* Prepare ring buffer iter */
 	for_each_tracing_cpu(cpu) {
 		iter.buffer_iter[cpu] =
-		 ring_buffer_read_prepare(iter.tr->buffer, cpu);
+		 ring_buffer_read_prepare(iter.tr->trace_buffer.buffer, cpu);
 	}
 	ring_buffer_read_prepare_sync();
 	for_each_tracing_cpu(cpu) {
@@ -206,7 +206,7 @@ static int iter_deinit(void)
 		ring_buffer_read_finish(iter.buffer_iter[cpu]);
 	}
 	for_each_tracing_cpu(cpu) {
-		atomic_dec(&iter.tr->data[cpu]->disabled);
+		atomic_dec(&iter.tr->trace_buffer.data[cpu].disabled);
 	}
 
 	/* Restore flags */
@@ -224,7 +224,7 @@ static int pager_init(void)
 
 	/* Turn off tracing */
 	for_each_tracing_cpu(cpu) {
-		atomic_inc(&iter.tr->data[cpu]->disabled);
+		atomic_inc(&iter.tr->trace_buffer.data[cpu].disabled);
 	}
 
 	memset(&pager, 0, sizeof(pager));
@@ -258,13 +258,13 @@ static ssize_t pager_next(void)
 		return 0;
 
 	if (!pager.spare)
-		pager.spare = ring_buffer_alloc_read_page(pager.tr->buffer, pager.cpu);
+		pager.spare = ring_buffer_alloc_read_page(pager.tr->trace_buffer.buffer, pager.cpu);
 	if (!pager.spare) {
 		printk(TAG "ring_buffer_alloc_read_page failed!");
 		return -ENOMEM;
 	}
 
-	ret = ring_buffer_read_page(pager.tr->buffer,
+	ret = ring_buffer_read_page(pager.tr->trace_buffer.buffer,
 				    &pager.spare,
 				    pager.len,
 				    pager.cpu, 0);
@@ -278,10 +278,10 @@ static int pager_deinit(void)
 {
 	int cpu;
 	if (pager.spare != NULL)
-		ring_buffer_free_read_page(pager.tr->buffer, pager.spare);
+		ring_buffer_free_read_page(pager.tr->trace_buffer.buffer, pager.spare);
 
 	for_each_tracing_cpu(cpu) {
-		atomic_dec(&iter.tr->data[cpu]->disabled);
+		atomic_dec(&iter.tr->trace_buffer.data[cpu].disabled);
 	}
 	return 0;
 }
@@ -317,7 +317,7 @@ static int consume_events(size_t num)
 	TRY(iter_init());
 	for (; num > 0 && !trace_empty(&iter); num--) {
 		trace_find_next_entry_inc(&iter);
-		ring_buffer_consume(iter.tr->buffer, iter.cpu, &iter.ts,
+		ring_buffer_consume(iter.tr->trace_buffer.buffer, iter.cpu, &iter.ts,
 				    &iter.lost_events);
 	}
 	TRY(iter_deinit());
