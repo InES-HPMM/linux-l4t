@@ -1402,26 +1402,8 @@ static int tegra_xusb_regulator_init(struct tegra_xhci_hcd *tegra,
 		}
 	}
 
-	tegra->avddio_plle_reg =
-			devm_regulator_get(&pdev->dev, "avddio_pll_uerefe");
-	if (IS_ERR(tegra->avddio_plle_reg)) {
-		dev_err(&pdev->dev, "1p05v plle: regulator not found: %ld."
-			, PTR_ERR(tegra->avddio_plle_reg));
-		err = PTR_ERR(tegra->avddio_plle_reg);
-		goto err_put_s1p05v_reg;
-	} else {
-		err = regulator_enable(tegra->avddio_plle_reg);
-		if (err < 0) {
-			dev_err(&pdev->dev,
-			"1p05v plle: regulator enable failed:%d\n", err);
-			goto err_put_s1p05v_reg;
-		}
-	}
-
 	return err;
 
-err_put_s1p05v_reg:
-	regulator_disable(tegra->xusb_s1p05v_reg);
 err_put_s1p8v_reg:
 	regulator_disable(tegra->xusb_s1p8v_reg);
 err_put_utmi_vbus_reg:
@@ -1443,7 +1425,6 @@ static void tegra_xusb_regulator_deinit(struct tegra_xhci_hcd *tegra)
 {
 	int i, utmi_pads;
 
-	regulator_disable(tegra->avddio_plle_reg);
 	regulator_disable(tegra->xusb_s1p05v_reg);
 	regulator_disable(tegra->xusb_s1p8v_reg);
 
@@ -1459,7 +1440,6 @@ static void tegra_xusb_regulator_deinit(struct tegra_xhci_hcd *tegra)
 	kzfree(tegra->xusb_utmi_vbus_regs);
 	regulator_disable(tegra->xusb_s3p3v_reg);
 
-	tegra->avddio_plle_reg = NULL;
 	tegra->xusb_s1p05v_reg = NULL;
 	tegra->xusb_s1p8v_reg = NULL;
 	tegra->xusb_s3p3v_reg = NULL;

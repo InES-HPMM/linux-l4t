@@ -357,7 +357,6 @@ struct tegra_xhci_hcd {
 	struct regulator *xusb_s3p3v_reg;
 	struct regulator *xusb_s1p8v_reg;
 	struct regulator *vddio_hsic_reg;
-	struct regulator *avddio_plle_reg;
 	int vddio_hsic_refcnt;
 
 	struct work_struct mbox_work;
