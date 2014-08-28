@@ -61,6 +61,35 @@
 			enable-active-high;
 		};
 
+		usb_vbus1: regulator@14 {
+			compatible = "regulator-fixed-sync";
+			reg = <14>;
+			regulator-name = "usb-vbus1";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(CC, 4) 0>;
+			enable-active-high;
+		};
+
+		usb_vbus2: regulator@15 {
+			compatible = "regulator-fixed-sync";
+			reg = <15>;
+			regulator-name = "usb-vbus2";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
+			enable-active-high;
+		};
+
+		usb_vbus3: regulator@16 {
+			compatible = "regulator-fixed-sync";
+			reg = <16>;
+			regulator-name = "usb-vbus3";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(D, 4) 0>;
+			enable-active-high;
+		};
 	};
 	i2c@7000c000 {
 		icm20628@68 {
@@ -72,7 +101,12 @@
 			vid = <&max77620_ldo3>;
 			vdd = <&vdd_3v3>;
 		};
+	};
 
+	i2c@7000c500 {
+		battery-charger@6b {
+			status = "disabled";
+		};
 	};
 
 	efuse@7000f800 {
@@ -113,8 +147,21 @@
 		usb_bat_chg-supply = <&battery_charger>;
 	};
 
+	xusb@70090000 {
+		usb_vbus0-supply = <&battery_reg>;
+		usb_vbus1-supply = <&usb_vbus1>;
+		usb_vbus2-supply = <&usb_vbus2>;
+		usb_vbus3-supply = <&usb_vbus3>;
+		hvdd_usb-supply = <&vdd_3v3>;
+		avdd_pll_utmip-supply = <&max77620_sd3>;
+		vddio_hsic-supply = <&max77620_ldo0>;
+		avddio_usb-supply = <&vdd_3v3>;
+		dvdd_sata-supply = <&max77620_ldo8>;
+		avddio_pll_uerefe-supply = <&max77620_ldo7>;
+	};
+
 	otg@7d000000 {
-		usb_vbus-supply = <&usb0_vbus>;
+		usb_vbus-supply = <&battery_reg>;
 	};
 
 	sdhci@700b0600 {
