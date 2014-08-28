@@ -163,6 +163,31 @@ static inline void vbus_not_detected(struct NV_UDC_S *nvudc)
 	nvudc->vbus_detected = false;
 }
 
+static int extcon_id_notifications(struct notifier_block *nb,
+				   unsigned long event, void *unused)
+{
+	struct NV_UDC_S *nvudc =
+			container_of(nb, struct NV_UDC_S, id_extcon_nb);
+	struct device *dev = nvudc->dev;
+	unsigned long flags;
+
+	spin_lock_irqsave(&nvudc->lock, flags);
+	if (extcon_get_cable_state(nvudc->id_extcon_dev, "USB-Host")) {
+		msg_info(dev, "%s: USB_ID pin grounded\n", __func__);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+			USB2_VBUS_ID_0_ID_OVERRIDE,
+			USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND);
+	} else {
+		msg_info(dev, "%s: USB_ID pin floating\n", __func__);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+			USB2_VBUS_ID_0_ID_OVERRIDE,
+			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
+	}
+
+	spin_unlock_irqrestore(&nvudc->lock, flags);
+	return NOTIFY_DONE;
+}
+
 static int extcon_notifications(struct notifier_block *nb,
 				   unsigned long event, void *unused)
 {
@@ -1924,6 +1949,10 @@ static int nvudc_gadget_pullup(struct usb_gadget *gadget, int is_on)
 
 	/* update vbus status */
 	extcon_notifications(&nvudc->vbus_extcon_nb, 0, NULL);
+
+	/* update id status */
+	extcon_id_notifications(&nvudc->id_extcon_nb, 0, NULL);
+
 	return 0;
 }
 
@@ -3625,6 +3654,9 @@ static int nvudc_gadget_start(struct usb_gadget *gadget,
 	/* update vbus status */
 	extcon_notifications(&nvudc->vbus_extcon_nb, 0, NULL);
 
+	/* update id status */
+	extcon_id_notifications(&nvudc->id_extcon_nb, 0, NULL);
+
 #ifdef OTG
 	if (nvudc->transceiver)
 		retval = otg_set_peripheral(nvudc->transceiver, &nvudc->gadget);
@@ -4766,6 +4798,14 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	extcon_register_notifier(nvudc->vbus_extcon_dev,
 						&nvudc->vbus_extcon_nb);
 
+	nvudc->id_extcon_dev =
+		extcon_get_extcon_dev_by_cable(&pdev->dev, "id");
+	if (IS_ERR(nvudc->id_extcon_dev))
+		err = -ENODEV;
+
+	nvudc->id_extcon_nb.notifier_call = extcon_id_notifications;
+	extcon_register_notifier(nvudc->id_extcon_dev,
+						&nvudc->id_extcon_nb);
 	return 0;
 
 err_clocks_disable:
@@ -4801,6 +4841,10 @@ static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 		if (pex_usb_pad_pll_reset_assert())
 			pr_err("Fail to assert pex pll\n");
 		nvudc_plat_regulator_deinit(nvudc);
+		extcon_unregister_notifier(nvudc->vbus_extcon_dev,
+			&nvudc->vbus_extcon_nb);
+		extcon_unregister_notifier(nvudc->id_extcon_dev,
+			&nvudc->id_extcon_nb);
 		devm_kfree(dev, nvudc);
 		platform_set_drvdata(pdev, NULL);
 	}

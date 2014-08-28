@@ -696,6 +696,8 @@ struct NV_UDC_S {
 	bool vbus_detected;
 	struct extcon_dev *vbus_extcon_dev;
 	struct notifier_block vbus_extcon_nb;
+	struct extcon_dev *id_extcon_dev;
+	struct notifier_block id_extcon_nb;
 };
 
 void free_data_struct(struct NV_UDC_S *nvudc);

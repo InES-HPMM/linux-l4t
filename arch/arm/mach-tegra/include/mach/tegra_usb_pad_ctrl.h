@@ -350,6 +350,10 @@
 #define ID_SOURCE_SELECT(val)	((val & 0x3) << 16)
 #define USB2_VBUS_ID_0_VBUS_OVERRIDE    (1 << 14)
 #define IDDIG_CHNG_INTR_EN		(1 << 11)
+#define USB2_VBUS_ID_0_ID_SRC_OVERRIDE		(0x1 << 16)
+#define USB2_VBUS_ID_0_ID_OVERRIDE		(0xf << 18)
+#define USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT	(0x8 << 18)
+#define USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND	(0x0 << 18)
 
 #else
 #define XUSB_PADCTL_USB3_PAD_MUX_0		0x134
