@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_volt_cap.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,8 +19,12 @@
 #include <linux/kernel.h>
 #include <linux/hrtimer.h>
 #include <linux/module.h>
-#include <mach/edp.h>
+#include <linux/slab.h>
+#include <linux/debugfs.h>
+#include "dvfs.h"
 #include "cpu-tegra.h"
+#include "clock.h"
+
 
 #define WATCHDOG_TIMER_RATE		3900000 /* 1hr5min in msecs */
 #define CPU_THERMAL_ZONE_TYPE		"CPU-therm"
@@ -60,6 +64,56 @@ DEFINE_MUTEX(cpu_volt_cap_lock);
 
 static struct kobject *volt_cap_kobj;
 
+struct vf_node {
+	int fmax;
+	int mv;
+	struct list_head peers;
+};
+LIST_HEAD(vf_lut);
+
+static int vf_lut_init(struct clk *c, struct list_head *head)
+{
+	int f, min_rate, max_rate;
+	struct vf_node *node = NULL;
+
+	max_rate = clk_get_max_rate(c);
+	min_rate = clk_get_min_rate(c);
+
+	for (f = max_rate; f >= min_rate; f -= 1000) {
+		int mv = tegra_dvfs_predict_peak_millivolts(c, f);
+		if (mv < 0) {
+			pr_err("%s: couldn't predict voltage: freq %u; err %d\n",
+			       __FILE__ , f, mv);
+			return mv;
+		}
+
+		if (node && mv == node->mv)
+			continue;
+
+		node = kmalloc(sizeof(*node), GFP_KERNEL);
+		if (IS_ERR_OR_NULL(node))
+			return -ENOMEM;
+
+		node->fmax = f;
+		node->mv = mv;
+		list_add(&node->peers, head);
+	}
+
+	return 0;
+}
+
+#define to_vf(p) container_of(p, struct vf_node, peers)
+
+static unsigned int find_maxf(int volt)
+{
+	struct list_head *pos;
+
+	list_for_each_prev(pos, &vf_lut)
+		if (volt >= to_vf(pos)->mv)
+			return to_vf(pos)->fmax;
+	return to_vf(vf_lut.next)->fmax;
+}
+
 static ssize_t tegra_cpu_volt_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
@@ -79,9 +133,9 @@ static ssize_t tegra_cpu_volt_store(struct kobject *kobj,
 	freq = 0;
 	if (cpu_voltage_cap != val) {
 		if (val)
-			freq = tegra_edp_find_maxf(val) / 1000;
+			freq = find_maxf(val) / 1000;
 		else
-			freq = tegra_edp_find_maxf(DEFAULT_CPU_VMAX_CAP) / 1000;
+			freq = find_maxf(DEFAULT_CPU_VMAX_CAP) / 1000;
 		tegra_cpu_set_volt_cap(freq);
 	}
 	cpu_voltage_cap = val;
@@ -125,6 +179,23 @@ static int volt_cap_sysfs_init(void)
 	}
 
 	return 0;
+}
+
+static int get_freq_cap(void *data, u64 *val)
+{
+	*val = find_maxf(cpu_voltage_cap ?: DEFAULT_CPU_VMAX_CAP) / 1000;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(capped_freq_fops, get_freq_cap, NULL, "%lld\n");
+
+static void volt_cap_debugfs_init(void)
+{
+	struct dentry *parent = debugfs_create_dir("tegra_volt_cap", NULL);
+	if (IS_ERR_OR_NULL(parent))
+		return;
+
+	debugfs_create_file("capped_freq", S_IRUGO, parent, NULL,
+			    &capped_freq_fops);
 }
 
 static struct thermal_zone_device *get_cpu_tz(void)
@@ -201,7 +272,7 @@ static void reset_cpu_volt_cap(struct work_struct *work)
 	unsigned int freq;
 	mutex_lock(&cpu_volt_cap_lock);
 	cpu_voltage_cap = 0;
-	freq = tegra_edp_find_maxf(DEFAULT_CPU_VMAX_CAP) / 1000;
+	freq = find_maxf(DEFAULT_CPU_VMAX_CAP) / 1000;
 	tegra_cpu_set_volt_cap(freq);
 	mutex_unlock(&cpu_volt_cap_lock);
 	pr_warn("tegra_volt_cap:Timeout. Setting default Vmax-vdd_cpu to: %d\n",
@@ -216,8 +287,14 @@ static void watchdog_timeout(unsigned long data)
 static int __init tegra_volt_cap_init(void)
 {
 	struct thermal_cooling_device *tcd;
+	int ret = 0;
+
+	ret = vf_lut_init(tegra_get_clock_by_name("cpu_g"), &vf_lut);
+	if (ret)
+		return ret;
 
 	volt_cap_sysfs_init();
+	volt_cap_debugfs_init();
 
 	/* Register cpu voltage capping related cooling device */
 	tcd = thermal_cooling_device_register("tegra_cpu_vc",

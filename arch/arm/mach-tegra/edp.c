@@ -90,8 +90,6 @@ static const int power_cap_levels[] = { /* milliwatts (mW) */
 	14500, 15000, 15500, 16000, 16500, 17000
 };
 
-static struct tegra_edp_freq_voltage_table *freq_voltage_lut_saved;
-static unsigned int freq_voltage_lut_size_saved;
 static struct tegra_edp_freq_voltage_table *freq_voltage_lut;
 static unsigned int freq_voltage_lut_size;
 
@@ -332,7 +330,6 @@ static unsigned int cpu_edp_calculate_maxf(
 }
 
 static int edp_relate_freq_voltage(struct clk *clk_cpu_g,
-			unsigned int cpu_speedo_idx,
 			unsigned int freq_volt_lut_size,
 			struct tegra_edp_freq_voltage_table *freq_volt_lut)
 {
@@ -358,25 +355,6 @@ static int edp_relate_freq_voltage(struct clk *clk_cpu_g,
 	}
 	return 0;
 }
-
-/*
- * Finds the maximum frequency whose corresponding voltage is <= volt
- * If no such frequency is found, the least possible frequency is returned
- */
-unsigned int tegra_edp_find_maxf(int volt)
-{
-	unsigned int i;
-
-	for (i = 0; i < freq_voltage_lut_size_saved; i++) {
-		if (freq_voltage_lut_saved[i].voltage_mv > volt) {
-			if (!i)
-				return freq_voltage_lut_saved[i].freq;
-			break;
-		}
-	}
-	return freq_voltage_lut_saved[i - 1].freq;
-}
-
 
 static int edp_find_speedo_idx(int cpu_speedo_id, unsigned int *cpu_speedo_idx)
 {
@@ -459,30 +437,10 @@ static int init_cpu_edp_limits_calculated(void)
 		goto err;
 	}
 
-	ret = edp_relate_freq_voltage(clk_cpu_g, cpu_speedo_idx,
+	ret = edp_relate_freq_voltage(clk_cpu_g,
 				freq_voltage_lut_size, freq_voltage_lut);
 	if (ret)
 		goto err;
-
-	if (freq_voltage_lut_size != freq_voltage_lut_size_saved) {
-		/* release previous table if present */
-		kfree(freq_voltage_lut_saved);
-		/* create table to save */
-		freq_voltage_lut_saved =
-			kmalloc(sizeof(struct tegra_edp_freq_voltage_table) *
-			freq_voltage_lut_size, GFP_KERNEL);
-		if (!freq_voltage_lut_saved) {
-			pr_err("%s: failed alloc mem for freq/voltage LUT\n",
-				__func__);
-			ret = -ENOMEM;
-			goto err;
-		}
-		freq_voltage_lut_size_saved = freq_voltage_lut_size;
-	}
-	memcpy(freq_voltage_lut_saved,
-		freq_voltage_lut,
-		sizeof(struct tegra_edp_freq_voltage_table) *
-			freq_voltage_lut_size);
 
 	/* Calculate EDP table */
 	for (n_cores_idx = 0; n_cores_idx < max_nr_cpus; n_cores_idx++) {
@@ -602,8 +560,6 @@ static int init_cpu_edp_limits_calculated(void)
 	reg_idle_calc_limits = NULL;
 	kfree(power_edp_calc_limits);
 	power_edp_calc_limits = NULL;
-	kfree(freq_voltage_lut_saved);
-	freq_voltage_lut_saved = NULL;
 
 	return ret;
 }
