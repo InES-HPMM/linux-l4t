@@ -56,6 +56,8 @@
 #define  USB_VBUS_INT_EN	(1 << 8)
 #define  USB_VBUS_INT_STATUS	(1 << 9)
 #define  USB_VBUS_STATUS	(1 << 10)
+#define  USB_ID_SW_EN		(1 << 3)
+#define  USB_ID_SW_VALUE	(1 << 4)
 #define  USB_INT_EN		(USB_VBUS_INT_EN | USB_ID_INT_EN | \
 						USB_VBUS_WAKEUP_EN | USB_ID_PIN_WAKEUP_EN)
 #define USB_VBUS_INT_STS_MASK	(0x7 << 8)
@@ -119,6 +121,18 @@ enum tegra_connect_type {
 	CONNECT_TYPE_Y_CABLE
 };
 
+static inline unsigned long otg_readl(struct tegra_otg *tegra,
+				      unsigned int offset)
+{
+	return readl(tegra->regs + offset);
+}
+
+static inline void otg_writel(struct tegra_otg *tegra, unsigned long val,
+			      unsigned int offset)
+{
+	writel(val, tegra->regs + offset);
+}
+
 static char *const tegra_otg_extcon_cable[] = {
 	[CONNECT_TYPE_Y_CABLE] = "Y-cable",
 	NULL,
@@ -147,7 +161,7 @@ static int otg_notifications(struct notifier_block *nb,
 				   unsigned long event, void *unused)
 {
 	struct tegra_otg *tegra = tegra_clone;
-	unsigned long flags;
+	unsigned long flags, val;
 	DBG("%s(%d) Begin\n", __func__, __LINE__);
 
 	spin_lock_irqsave(&tegra->lock, flags);
@@ -163,8 +177,17 @@ static int otg_notifications(struct notifier_block *nb,
 		if (extcon_get_cable_state(tegra->id_extcon_dev, "USB-Host")) {
 			tegra->int_status &= ~USB_ID_STATUS;
 			tegra->int_status |= USB_ID_INT_EN;
-		 } else
+
+			val = otg_readl(tegra, USB_PHY_WAKEUP);
+			val |= USB_ID_SW_EN;
+			val &= ~USB_ID_SW_VALUE;
+			otg_writel(tegra, val, USB_PHY_WAKEUP);
+		 } else {
 			tegra->int_status |= USB_ID_STATUS;
+			val = otg_readl(tegra, USB_PHY_WAKEUP);
+			val |= USB_ID_SW_VALUE;
+			otg_writel(tegra, val, USB_PHY_WAKEUP);
+		}
 	}
 
 	spin_unlock_irqrestore(&tegra->lock, flags);
@@ -210,18 +233,6 @@ static irqreturn_t tegra_otg_id_detect_gpio_thr(int irq, void *data)
 	struct tegra_otg *tegra = data;
 	check_host_cable_connection(tegra);
 	return IRQ_HANDLED;
-}
-
-static inline unsigned long otg_readl(struct tegra_otg *tegra,
-				      unsigned int offset)
-{
-	return readl(tegra->regs + offset);
-}
-
-static inline void otg_writel(struct tegra_otg *tegra, unsigned long val,
-			      unsigned int offset)
-{
-	writel(val, tegra->regs + offset);
 }
 
 static const char *tegra_state_name(enum usb_otg_state state)
