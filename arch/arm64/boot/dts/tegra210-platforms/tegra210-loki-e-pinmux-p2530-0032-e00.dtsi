@@ -40,7 +40,7 @@
 				nvidia,pins = "dvfs_pwm_pbb1";
 				nvidia,function = "cldvfs";
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
-				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,tristate = <TEGRA_PIN_ENABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
 
