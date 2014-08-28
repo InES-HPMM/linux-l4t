@@ -30,12 +30,15 @@
 /* UPHY_USB3_PADx_ECTL_3 */
 #define RX_DFE(x)		(((x) & 0xffffffff) << 0)
 
+/* UPHY_USB3_PADx_ECTL_4 */
+#define RX_CDR_CTRL(x)		(((x) & 0xffff) << 16)
+
 /* UPHY_USB3_PADx_ECTL_6 */
 #define RX_EQ_CTRL_H(x)	(((x) & 0xffffffff) << 0)
 
 void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port)
 {
-	u32 ctl1, ctl2, ctl3, ctl6, val;
+	u32 ctl1, ctl2, ctl3, ctl4, ctl6, val;
 
 	xusb_ss_pad_init(port, GET_SS_PORTMAP(tegra->bdata->ss_portmap, port)
 			, XUSB_HOST_MODE);
@@ -43,6 +46,7 @@ void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port)
 	ctl1 = tegra->padregs->uphy_usb3_padX_ectlY_0[port][0];
 	ctl2 = tegra->padregs->uphy_usb3_padX_ectlY_0[port][1];
 	ctl3 = tegra->padregs->uphy_usb3_padX_ectlY_0[port][2];
+	ctl4 = tegra->padregs->uphy_usb3_padX_ectlY_0[port][3];
 	ctl6 = tegra->padregs->uphy_usb3_padX_ectlY_0[port][5];
 
 	val = padctl_readl(tegra, ctl1);
@@ -59,6 +63,11 @@ void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port)
 	val &= ~RX_DFE(~0);
 	val |= RX_DFE(tegra->soc_config->rx_dfe);
 	padctl_writel(tegra, val, ctl3);
+
+	val = padctl_readl(tegra, ctl4);
+	val &= ~RX_CDR_CTRL(~0);
+	val |= RX_CDR_CTRL(tegra->soc_config->rx_cdr_ctrl);
+	padctl_writel(tegra, val, ctl4);
 
 	val = padctl_readl(tegra, ctl6);
 	val &= ~RX_EQ_CTRL_H(~0);

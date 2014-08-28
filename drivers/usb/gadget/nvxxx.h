@@ -866,6 +866,9 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
 #define UPHY_USB3_PAD0_ECTL_3			(0xa68)
 #define RX_DFE(x)				(((x) & 0xffffffff) << 0)
 
+#define UPHY_USB3_PAD0_ECTL_4			(0xa6c)
+#define RX_CDR_CTRL(x)				(((x) & 0xffff) << 16)
+
 #define UPHY_USB3_PAD0_ECTL_6			(0xa74)
 #define RX_EQ_CTRL_H(x)			(((x) & 0xffffffff) << 0)
 

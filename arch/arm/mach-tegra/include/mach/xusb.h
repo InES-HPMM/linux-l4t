@@ -166,6 +166,7 @@ struct tegra_xusb_soc_config {
 	u32 tx_term_ctrl;
 	u32 rx_ctle;
 	u32 rx_dfe;
+	u32 rx_cdr_ctrl;
 	u32 rx_eq_ctrl_h;
 
 	/* applicable to T114/T124/T132 */
