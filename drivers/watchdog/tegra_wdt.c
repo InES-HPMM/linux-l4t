@@ -34,6 +34,7 @@
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
 #include <linux/watchdog.h>
+#include <linux/tegra-soc.h>
 
 /* minimum and maximum watchdog trigger periods, in seconds */
 #define MIN_WDT_PERIOD	5
@@ -177,6 +178,11 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	if (!res_src || !res_wdt) {
 		dev_err(&pdev->dev, "incorrect resources\n");
 		return -ENOENT;
+	}
+
+	if (!tegra_platform_is_silicon()) {
+		dev_info(&pdev->dev, "no watchdog support in pre-silicon");
+		return -EPERM;
 	}
 
 	tegra_wdt = kzalloc(sizeof(*tegra_wdt), GFP_KERNEL);

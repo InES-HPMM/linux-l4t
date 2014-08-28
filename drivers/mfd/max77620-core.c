@@ -152,7 +152,7 @@ static struct mfd_cell max77620_children[] = {
 		.name = "max77620-thermal",
 		.num_resources	= ARRAY_SIZE(thermal_resources),
 		.resources	= &thermal_resources[0],
-		.id = MAX77620_POWER_OFF_ID,
+		.id = MAX77620_THERMAL_ID,
 	},
 };
 
@@ -434,6 +434,46 @@ static int max77620_init_backup_battery_charging(struct max77620_chip *chip,
 	return 0;
 }
 
+static int max77620_read_es_version(struct max77620_chip *chip)
+{
+	int ret;
+	u8 val;
+	u8 cid;
+	int i;
+
+	for (i = MAX77620_REG_CID0; i <= MAX77620_REG_CID5; ++i) {
+		ret = max77620_reg_read(chip->dev, MAX77620_PWR_SLAVE,
+				i, &cid);
+		if (ret < 0) {
+			dev_err(chip->dev, "CID%d register read failed: %d\n",
+					i - MAX77620_REG_CID0, ret);
+			return ret;
+		}
+		dev_info(chip->dev, "CID%d: 0x%02x\n",
+			i - MAX77620_REG_CID0, cid);
+	}
+
+	/* Read ES version */
+	ret = max77620_reg_read(chip->dev, MAX77620_PWR_SLAVE,
+			MAX77620_REG_CID5, &val);
+	if (ret < 0) {
+		dev_err(chip->dev, "CID5 read failed: %d\n", ret);
+		return ret;
+	}
+	chip->es_minor_version = MAX77620_CID5_DIDM(val);
+	chip->es_major_version = 1;
+	return ret;
+}
+
+static irqreturn_t max77620_mbattlow_irq(int irq, void *data)
+{
+	struct max77620_chip *max77620 = data;
+
+	dev_info(max77620->dev, "MBATTLOW interrupt occurred\n");
+
+	return IRQ_HANDLED;
+}
+
 static int max77620_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
@@ -484,6 +524,12 @@ static int max77620_probe(struct i2c_client *client,
 		}
 	}
 
+	ret = max77620_read_es_version(chip);
+	if (ret < 0) {
+		dev_err(chip->dev, "Chip revision init failed: %d\n", ret);
+		goto fail_client_reg;
+	}
+
 	max77620_top_irq_chip.pre_post_irq_data = chip;
 
 	ret = regmap_add_irq_chip(chip->rmap[MAX77620_PWR_SLAVE],
@@ -513,6 +559,18 @@ static int max77620_probe(struct i2c_client *client,
 	if (ret < 0) {
 		dev_err(&client->dev, "mfd add dev fail %d\n", ret);
 		goto fail_free_irq;
+	}
+
+	chip->irq_mbattlow = max77620_irq_get_virq(chip->dev,
+					MAX77620_IRQ_LBT_MBATLOW);
+	if (chip->irq_mbattlow) {
+		ret = devm_request_threaded_irq(chip->dev, chip->irq_mbattlow,
+			NULL, max77620_mbattlow_irq,
+			IRQF_ONESHOT, dev_name(chip->dev),
+			chip);
+		if (ret < 0)
+			dev_err(&client->dev, "request irq %d failed: %d\n",
+			chip->irq_mbattlow, ret);
 	}
 
 	dev_info(&client->dev, "max77620 probe successfully\n");

@@ -152,6 +152,7 @@
 	pcie-controller {
 		nvidia,hot-plug-gpio = <&gpio TEGRA_GPIO(O, 1) 0>; /* Fix me! */
 		nvidia,wake-gpio = <&gpio TEGRA_GPIO(DD, 3) 0>;
+		nvidia,lane-map = <0x14>;
 		status = "okay";
 
 		pci@1,0 {

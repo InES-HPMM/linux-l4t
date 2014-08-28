@@ -51,6 +51,7 @@ config ARCH_TEGRA_21x_SOC
 	select ARCH_TEGRA_APE
 	select SOC_BUS
 	select THERMAL
+	select TEGRA_BPMP
 	select PM_GENERIC_DOMAINS if PM
 	select PINCTRL
 	select PINCTRL_TEGRA210

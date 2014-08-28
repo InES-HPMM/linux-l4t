@@ -30,6 +30,7 @@
 #include <linux/platform_data/tegra_bpmp.h>
 
 #include <asm/clkdev.h>
+#include <asm/arch_timer.h>
 
 #include <mach/edp.h>
 #include <mach/hardware.h>
@@ -242,7 +243,7 @@
 #define PLLA_MISC2_EN_SDM		(1 << 26)
 #define PLLA_MISC2_EN_DYNRAMP		(1 << 25)
 
-#define PLLA_MISC0_DEFAULT_VALUE	0x12000000
+#define PLLA_MISC0_DEFAULT_VALUE	0x12000020
 #define PLLA_MISC0_WRITE_MASK		0x7fffffff
 #define PLLA_MISC2_DEFAULT_VALUE	0x0
 #define PLLA_MISC2_WRITE_MASK		0x06ffffff
@@ -261,7 +262,7 @@
 
 #define PLLD_MISC0_DEFAULT_VALUE	0x00140000
 #define PLLD_MISC0_WRITE_MASK		0x3ff7ffff
-#define PLLD_MISC1_DEFAULT_VALUE	0x0
+#define PLLD_MISC1_DEFAULT_VALUE	0x20
 #define PLLD_MISC1_WRITE_MASK		0x00ffffff
 
 /* PLLD2 and PLLDP  and PLLC4 */
@@ -276,12 +277,12 @@
 #define PLLDSS_MISC1_CFG_EN_SDM		(1 << 31)
 #define PLLDSS_MISC1_CFG_EN_SSC		(1 << 30)
 
-#define PLLD2_MISC0_DEFAULT_VALUE	0x40000000
+#define PLLD2_MISC0_DEFAULT_VALUE	0x40000020
 #define PLLD2_MISC1_CFG_DEFAULT_VALUE	0x10000000
 #define PLLD2_MISC2_CTRL1_DEFAULT_VALUE	0x0
 #define PLLD2_MISC3_CTRL2_DEFAULT_VALUE	0x0
 
-#define PLLDP_MISC0_DEFAULT_VALUE	0x40000000
+#define PLLDP_MISC0_DEFAULT_VALUE	0x40000020
 #define PLLDP_MISC1_CFG_DEFAULT_VALUE	0xc0000000
 #define PLLDP_MISC2_CTRL1_DEFAULT_VALUE	0xf000e5ec
 #define PLLDP_MISC3_CTRL2_DEFAULT_VALUE	0x101BF000
@@ -359,7 +360,7 @@
 
 #define PLLX_MISC0_DEFAULT_VALUE	PLLX_MISC0_LOCK_ENABLE
 #define PLLX_MISC0_WRITE_MASK		0x10c40000
-#define PLLX_MISC1_DEFAULT_VALUE	0x0
+#define PLLX_MISC1_DEFAULT_VALUE	0x20
 #define PLLX_MISC1_WRITE_MASK		0x00ffffff
 #define PLLX_MISC2_DEFAULT_VALUE	0x0
 #define PLLX_MISC2_WRITE_MASK		0xffffff11
@@ -577,7 +578,7 @@
 #define PLLP_DEFAULT_FIXED_RATE		408000000
 
 /* Use PLL_RE as PLLE input (default - OSC via pll reference divider) */
-#define USE_PLLE_INPUT_PLLRE    1
+#define USE_PLLE_INPUT_PLLRE    0
 
 static void pllc4_set_fixed_rates(unsigned long cf);
 static void tegra21_dfll_cpu_late_init(struct clk *c);
@@ -626,7 +627,7 @@ static const struct utmi_clk_param utmi_parameters[] =
 
 	{19200000,	0x03,		0x4B,		0x06,		0xBB},
 	/* HACK!!! FIXME!!! following entry for 38.4MHz is a stub */
-	{38400000,	0x0,		0x0,		0x06,		0x3},
+	{38400000,	0x0,		0x50,		0x06,		0x3},
 };
 
 static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
@@ -2264,23 +2265,6 @@ static void tegra21_utmi_param_configure(struct clk *c)
 	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_D_POWERDOWN;
 	clk_writel(reg, UTMIP_PLL_CFG2);
 
-	/* Enable HW Power Sequencer */
-	reg = clk_readl(UTMIP_PLL_CFG1);
-	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERUP;
-	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERDOWN;
-	clk_writel(reg, UTMIP_PLL_CFG1);
-
-	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
-	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL;
-	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
-	reg &= ~UTMIPLL_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL;
-	reg |= UTMIPLL_HW_PWRDN_CFG0_USE_LOCKDET;
-	pll_writel_delay(reg, UTMIPLL_HW_PWRDN_CFG0);
-
-	/* Enable HW control UTMIPLL */
-	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
-	reg |= UTMIPLL_HW_PWRDN_CFG0_SEQ_ENABLE;
-	pll_writel_delay(reg, UTMIPLL_HW_PWRDN_CFG0);
 }
 
 /*
@@ -3445,17 +3429,27 @@ static struct clk_ops tegra_pllmb_ops = {
  * PLLE
  * Analog interpolator based SS PLL (with optional SDM SS - not used).
  */
-static inline void select_pll_e_input(struct clk *c)
+static void select_pll_e_input(struct clk *c)
 {
+	struct clk *p;
 	u32 aux_reg = clk_readl(PLLE_AUX);
+
 #if USE_PLLE_INPUT_PLLRE
 	aux_reg |= PLLE_AUX_PLLRE_SEL;
-	c->parent = c->inputs[2].input;
+	p = c->inputs[2].input;
 #else
 	aux_reg &= ~(PLLE_AUX_PLLRE_SEL | PLLE_AUX_PLLP_SEL);
-	c->parent = c->inputs[0].input;
+	p = c->inputs[0].input;
 #endif
+	if (p != c->parent)
+		clk_prepare_enable(p);
+
 	pll_writel_delay(aux_reg, PLLE_AUX);
+
+	if (p != c->parent) {
+		tegra_clk_disable_unprepare(c->parent);
+		clk_reparent(c, p);
+	}
 }
 
 static void tegra21_plle_clk_init(struct clk *c)
@@ -8435,6 +8429,12 @@ static void tegra21_camera_mclk_init(struct clk *c)
 	} else if (!strcmp(c->name, "mclk2")) {
 		c->parent = tegra_get_clock_by_name("vi_sensor2");
 		c->max_rate = c->parent->max_rate;
+	} else if (!strcmp(c->name, "mclk3")) {
+		c->parent = tegra_get_clock_by_name("extern3");
+		c->max_rate = c->parent->max_rate;
+	} else if (!strcmp(c->name, "cam-mipi-cal")) {
+		c->parent = tegra_get_clock_by_name("uart_mipi_cal");
+		c->max_rate = c->parent->max_rate;
 	}
 }
 
@@ -8466,6 +8466,32 @@ static struct clk tegra_camera_mclk2 = {
 		.clk_num = 171, /* vim2_clk */
 	},
 	.flags = PERIPH_NO_RESET,
+};
+
+static struct clk tegra_camera_mipical = {
+	.name = "cam-mipi-cal",
+	.ops = &tegra_camera_mclk_ops,
+	.u.periph = {
+		.clk_num = 56, /* mipi_cal */
+	},
+	.flags = PERIPH_NO_RESET,
+};
+
+static struct clk_ops tegra_camera_mclk3_ops = {
+	.init		= &tegra21_camera_mclk_init,
+	.enable		= &tegra21_clk_out_enable,
+	.disable	= &tegra21_clk_out_disable,
+	.set_rate	= &tegra21_camera_mclk_set_rate,
+};
+
+static struct clk tegra_camera_mclk3 = {
+	.name = "mclk3",
+	.ops = &tegra_camera_mclk3_ops,
+	.reg = 0x1a8,
+	.flags = MUX_CLK_OUT,
+	.u.periph = {
+		.clk_num   = (3 - 1) * 8 + 2,
+	},
 };
 
 static struct clk tegra_clk_isp = {
@@ -8682,7 +8708,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("hda2hdmi",	"tegra30-hda",	   "hda2hdmi",	128,	0,	408000000,  mux_clk_m,				PERIPH_ON_APB),
 
 	PERIPH_CLK("qspi",	"qspi", 		NULL,	211,	0x6c4, 166000000, mux_pllp_pllc_pllc4_out2_pllc4_out1_clkm_pllc4_out0, MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("vi_i2c",	"vi_i2c", 		NULL,	208,	0x6c8, 136000000, mux_pllp_pllc_clkm,	MUX | DIV_U151 | PERIPH_ON_APB),
+	PERIPH_CLK("vii2c",	"vii2c",		NULL,	208,	0x6c8, 136000000, mux_pllp_pllc_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc1",	"spi-tegra114.0",	NULL,	41,	0x134,  51000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc2",	"spi-tegra114.1",	NULL,	44,	0x118,  51000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc3",	"spi-tegra114.2",	NULL,	46,	0x11c,  51000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
@@ -8752,7 +8778,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("dsiblp",	"tegradc.1",	    "dsiblp",	148,	0x624,	204000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
 
 	PERIPH_CLK("entropy",	"entropy",		NULL,	149,	0x628,	102000000, mux_pllp_clkm_1,		MUX | DIV_U71),
-	PERIPH_CLK("uart_mipi_cal", "uart_mipi_cal",	NULL,	177,	0x66c,	102000000, mux_pllp_out3_pllp_pllc_clkm, MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("uart_mipi_cal", "uart_mipi_cal",	NULL,	177,	0x66c,	102000000, mux_pllp_out3_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("dbgapb",	"dbgapb",		NULL,	185,	0x718,	136000000, mux_pllp_clkm_2,		MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("tsensor",	"tegra-tsensor",	NULL,	100,	0x3b8,	216000000, mux_pllp_pllc_clkm_clk32,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("actmon",	"actmon",		NULL,	119,	0x3e8,	216000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71),
@@ -8984,6 +9010,7 @@ static struct clk_mux_sel mux_xusb_dev[] = {
 	{ .input = &tegra_xusb_source_clks[4], .value = 4},
 	{ .input = &tegra_xusb_source_clks[2], .value = 2},
 	{ .input = &tegra_xusb_source_clks[3], .value = 3},
+	{ .input = &tegra_xusb_hs_src,         .value = 5},
 	{ 0, 0},
 };
 
@@ -9057,8 +9084,13 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("actmon", "tegra_host1x", "actmon"),
 	CLK_DUPLICATE("gpu_ref", "tegra_gpu.0", "PLLG_ref"),
 	CLK_DUPLICATE("pll_p_out5", "tegra_gpu.0", "pwr"),
-	CLK_DUPLICATE("ispa.isp.cbus", "tegra_isp", "isp"),
+	CLK_DUPLICATE("ispa.isp.cbus", "tegra_isp.0", "isp"),
 	CLK_DUPLICATE("ispb.isp.cbus", "tegra_isp.1", "isp"),
+	CLK_DUPLICATE("vii2c", "tegra_vi-i2c", "vii2c"),
+	CLK_DUPLICATE("i2cslow", "tegra_vi-i2c", "i2cslow"),
+	CLK_DUPLICATE("mclk3", NULL, "cam_mclk1"),
+	CLK_DUPLICATE("mclk1", NULL, "cam_mclk2"),
+	CLK_DUPLICATE("mclk2", NULL, "cam_mclk3"),
 #ifdef CONFIG_VI_ONE_DEVICE
 	CLK_DUPLICATE("vi.cbus", "tegra_vi", "vi"),
 	CLK_DUPLICATE("csi", "tegra_vi", "csi"),
@@ -9106,10 +9138,14 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("uart_mipi_cal", "clk72mhz", NULL),
 };
 
-struct clk *tegra_ptr_clks[] = {
+
+struct clk *tegra_main_clks[] = {
 	&tegra_clk_32k,
 	&tegra_clk_osc,
 	&tegra_clk_m,
+};
+
+struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_m_div2,
 	&tegra_clk_m_div4,
 	&tegra_pll_ref,
@@ -9198,6 +9234,8 @@ struct clk *tegra_ptr_clks[] = {
 struct clk *tegra_ptr_camera_mclks[] = {
 	&tegra_camera_mclk,
 	&tegra_camera_mclk2,
+	&tegra_camera_mclk3,
+	&tegra_camera_mipical,
 };
 
 /*
@@ -9996,6 +10034,61 @@ static void tegra21_init_xusb_clocks(void)
 		tegra21_init_one_clock(&tegra_xusb_coupled_clks[i]);
 }
 
+/*
+ * Check if arch timer frequency specified either in DT or in CNTFRQ register is
+ * matching actual clk_m rate.
+ */
+static void tegra21_check_timer_clock(u32 clk_m_rate)
+{
+
+	struct device_node *dn;
+	u32 dt_rate = 0;
+	u32 timer_rate = 0;
+
+	for_each_compatible_node(dn, NULL, "arm,armv8-timer") {
+		if (!of_device_is_available(dn))
+			continue;
+
+		if (!of_property_read_u32(dn, "clock-frequency", &dt_rate))
+			timer_rate = dt_rate;
+		break;
+	}
+
+	if (!dn) {
+		WARN(1, "No arch timer node in DT\n");
+		return;
+	}
+
+	if (!timer_rate)
+		timer_rate = arch_timer_get_cntfrq();
+
+	if (timer_rate == clk_m_rate)
+		return;
+
+	WARN(1, "Arch timer %s rate %u doesn't match clk_m %u - kernel timing is broken\n",
+		dt_rate ? "DT" : "CNTFRQ", timer_rate, clk_m_rate);
+}
+
+/*
+ * The udelay() is implemented based on arch timers, using loops_per_jiffy as
+ * scaling factor. To make it functional during early clock initialization -
+ *  before timers are initialized - set loops_per_jiffy here.
+ */
+static void tegra21_init_main_clock(void)
+{
+	int i;
+	unsigned long clk_m_rate;
+
+	for (i = 0; i < ARRAY_SIZE(tegra_main_clks); i++)
+		tegra21_init_one_clock(tegra_main_clks[i]);
+
+	clk_m_rate = clk_get_rate_all_locked(&tegra_clk_m);
+
+	loops_per_jiffy = clk_m_rate / HZ;
+
+	tegra21_check_timer_clock(clk_m_rate);
+}
+
 void __init tegra21x_init_clocks(void)
 {
 	int i;
@@ -10004,6 +10097,8 @@ void __init tegra21x_init_clocks(void)
 #ifndef	CONFIG_TEGRA_DUAL_CBUS
 	BUILD_BUG()
 #endif
+	tegra21_init_main_clock();
+
 	for (i = 0; i < ARRAY_SIZE(tegra_ptr_clks); i++)
 		tegra21_init_one_clock(tegra_ptr_clks[i]);
 

@@ -53,11 +53,15 @@ static int max77620_wdt_start(struct watchdog_device *wdt_dev)
 	struct max77620_wdt *wdt = watchdog_get_drvdata(wdt_dev);
 	int ret;
 
+	if (!wdt->timeout) {
+		dev_err(wdt->dev, "WDT disabled from DT, can not start\n");
+		return -EINVAL;
+	}
 	ret = max77620_reg_update(wdt->chip->dev, MAX77620_PWR_SLAVE,
 			MAX77620_REG_CNFGGLBL2, MAX77620_WDTEN,
 						MAX77620_WDTEN);
 	if (ret < 0) {
-		dev_err(wdt->dev, "clear wdten failed %d\n", ret);
+		dev_err(wdt->dev, "wdt enable failed %d\n", ret);
 		return ret;
 	}
 
@@ -378,7 +382,7 @@ static int __init max77620_wdt_init(void)
 {
 	return platform_driver_register(&max77620_wdt_driver);
 }
-subsys_initcall(max77620_wdt_init);
+subsys_initcall_sync(max77620_wdt_init);
 
 static void __exit max77620_wdt_exit(void)
 {

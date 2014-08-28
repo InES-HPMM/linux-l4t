@@ -63,6 +63,7 @@
 	pcie-controller {
 		nvidia,hot-plug-gpio = <&gpio TEGRA_GPIO(O, 1) 0>;
 		nvidia,wake-gpio = <&gpio TEGRA_GPIO(DD, 3) 0>;
+		nvidia,lane-map = <0x04>;
 		hvdd-pex-supply = <&hvdd_pex_3v3>;
 		hvdd-pex-pll-e-supply = <&hvdd_pex_3v3>;
 		dvddio-pex-supply = <&hvdd_pex_1v05>;

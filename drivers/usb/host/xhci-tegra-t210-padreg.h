@@ -1,5 +1,7 @@
+#ifndef _XHCI_TEGRA_T210_PADCTL_H
+#define _XHCI_TEGRA_T210_PADCTL_H
 /*
- * xhci-tegra-T210-padreg.h - Nvidia xHCI host controller related data
+ * xhci-tegra-t210-padreg.h - Nvidia xHCI host controller related data
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -171,3 +173,8 @@
 
 /* XUSB_PADCTL_HSIC_STRB_TRIM_CONTROL_0 0x344*/
 #define STRB_TRIM_VAL(x)	0x0
+
+void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port);
+
+
+#endif /* _XHCI_TEGRA_T210_PADCTL_H */

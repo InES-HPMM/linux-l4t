@@ -69,6 +69,9 @@ Required properties:
 - nvidia,hot-plug-gpio: Generic Tegra GPIO number used for hotplug event
 - nvidia,wake-gpio: Part of connector, used for wake up from LP0
 - nvidia,x1-slot-gpio: Board specific, used to enable port1 slot.
+- nvidia,lane-map: Each nibble represent lane width starting from lowest
+  nibble being RP0. Example:- 0x14 has lane width=4 for RP0 and width=1 for RP1
+  valid values: 0xYZ, Y={0,1}, Z={0,1,2,4}
 
 Example:
 

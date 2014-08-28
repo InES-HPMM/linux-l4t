@@ -44,15 +44,6 @@
 		reg = < 0x0 0x80000000 0x0 0x40000000 >;
 	};
 
-	timer {
-		compatible = "arm,armv8-timer";
-		interrupts = <1 13 0xf01
-			      1 14 0xf01
-			      1 11 0xf01
-			      1 10 0xf01>;
-		clock-frequency = <38400000>;
-	};
-
 	i2c@7000c000 {
 		rt5639: rt5639.0-001c@1c {
 			compatible = "realtek,rt5639";
@@ -867,8 +858,24 @@
 		};
 	};
 
+	agic-controller {
+		compatible = "nvidia,tegra210-agic";
+		interrupt-controller;
+		no-gic-extension;
+		not-per-cpu;
+		reg = <0x0 0x702f9000 0x0 0x2000>,
+		      <0x0 0x702fa000 0x0 0x2000>;
+		interrupts = <0 102 0xf04>;
+		status = "disabled";
+	};
+
 	adsp_audio {
 		status = "okay";
+	};
+
+	adsp {
+		compatible = "nvidia,tegra210-adsp";
+		status = "disabled";
 	};
 
 	spdif_dit0: spdif-dit.0@0 {
@@ -1087,7 +1094,7 @@
 		dqs-trim-delay = <17>;
 		mmc-ocr-mask = <0>;
 		max-clk-limit = <200000000>;
-		uhs_mask = <0x0>;
+		uhs-mask = <0x0>;
 		bus-width = <8>;
 		id = <3>;
 		built-in;
@@ -1120,7 +1127,7 @@
 		dqs-trim-delay = <17>;
 		mmc-ocr-mask = <0>;
 		max-clk-limit = <200000000>;
-		uhs_mask = <0x0>;
+		uhs-mask = <0x0>;
 		bus-width = <8>;
 		id = <1>;
 		built-in;

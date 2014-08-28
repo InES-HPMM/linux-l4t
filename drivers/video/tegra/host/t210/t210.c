@@ -81,6 +81,8 @@ struct nvhost_device_data t21_isp_info = {
 #endif
 	NVHOST_DEFAULT_CLOCKGATE_DELAY,
 	.clocks			= {{ "isp", UINT_MAX, 0, TEGRA_MC_CLIENT_ISP }},
+	.finalize_poweron	= nvhost_isp_t210_finalize_poweron,
+	.prepare_poweroff	= nvhost_isp_t124_prepare_poweroff,
 	.moduleid		= NVHOST_MODULE_ISP,
 	.ctrl_ops		= &tegra_isp_ctrl_ops,
 	.bond_out_id		= BOND_OUT_ISP,
@@ -101,6 +103,8 @@ struct nvhost_device_data t21_ispb_info = {
 #endif
 	NVHOST_DEFAULT_CLOCKGATE_DELAY,
 	.clocks			= {{ "isp", UINT_MAX, 0, TEGRA_MC_CLIENT_ISP }},
+	.finalize_poweron	= nvhost_isp_t210_finalize_poweron,
+	.prepare_poweroff	= nvhost_isp_t124_prepare_poweroff,
 	.ctrl_ops		= &tegra_isp_ctrl_ops,
 	.bond_out_id		= BOND_OUT_ISP,
 };
@@ -173,6 +177,7 @@ struct nvhost_device_data t21_vi_info = {
 	.moduleid		= NVHOST_MODULE_VI,
 	.clocks = {
 		{"vi", UINT_MAX},
+		{"cam-mipi-cal", 68000000},
 		{"csi", 0},
 		{"cilab", 102000000} },
 	.ctrl_ops		= &tegra_vi_ctrl_ops,
@@ -182,6 +187,22 @@ struct nvhost_device_data t21_vi_info = {
 };
 #endif
 
+#endif
+
+#if defined(CONFIG_TEGRA_GRHOST_VII2C)
+struct nvhost_device_data t21_vii2c_info = {
+	.class		= NV_VIDEO_STREAMING_VII2C_CLASS_ID,
+	.exclusive	= true,
+	.keepalive	= true,
+	NVHOST_MODULE_NO_POWERGATE_IDS,
+	NVHOST_DEFAULT_CLOCKGATE_DELAY,
+	.moduleid	= NVHOST_MODULE_VII2C,
+	.clocks = {
+		{"vii2c", 86400000},
+		{"i2cslow", 1000000},
+	},
+	.num_channels	= 1,
+};
 #endif
 
 struct nvhost_device_data t21_msenc_info = {
@@ -308,6 +329,10 @@ struct nvhost_device_data t21_vic_info = {
 	.deinit			= nvhost_flcn_deinit,
 	.alloc_hwctx_handler	= nvhost_vic03_alloc_hwctx_handler,
 	.finalize_poweron	= nvhost_vic_finalize_poweron,
+	.scaling_init           = nvhost_scale_init,
+	.scaling_deinit         = nvhost_scale_deinit,
+	.actmon_regs            = HOST1X_CHANNEL_ACTMON2_REG_BASE,
+	.actmon_enabled         = true,
 	.firmware_name		= "vic04_ucode.bin",
 	.bond_out_id		= BOND_OUT_VIC,
 	.aggregate_constraints	= nvhost_vic_aggregate_constraints,
@@ -340,6 +365,7 @@ static void t210_remove_support(struct nvhost_chip_support *op)
 #include "host1x/host1x_cdma.c"
 #include "host1x/host1x_syncpt.c"
 #include "host1x/host1x_intr.c"
+#define NVHOST_T210_ACTMON
 #include "host1x/host1x_actmon_t124.c"
 #include "host1x/host1x_debug.c"
 

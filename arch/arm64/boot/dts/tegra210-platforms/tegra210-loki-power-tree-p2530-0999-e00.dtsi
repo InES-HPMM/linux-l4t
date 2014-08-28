@@ -34,6 +34,7 @@
 
 	regulators {
 		regulator@2 {
+			regulator-always-on;
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1200000>;
 		};
@@ -43,6 +44,41 @@
 		regulator@101 {
 			status = "disabled";
 		};
+
+		vdd_disp_3v0: regulator@12 {
+			compatible = "regulator-fixed-sync";
+			reg = <12>;
+			regulator-name = "vdd-disp-3v0";
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+			gpio = <&gpio TEGRA_GPIO(I, 3) 0>;
+			regulator-always-on;
+			enable-active-high;
+		};
+
+		vdd_fan: regulator@13 {
+			compatible = "regulator-fixed-sync";
+			reg = <13>;
+			regulator-name = "vdd-fan";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(E, 4) 0>;
+			regulator-always-on;
+			enable-active-high;
+		};
+
+	};
+	i2c@7000c000 {
+		icm20628@68 {
+			vlogic-supply = <&max77620_ldo3>;
+			vdd-supply = <&vdd_3v3>;
+		};
+
+		ak8975@0c {
+			vid = <&max77620_ldo3>;
+			vdd = <&vdd_3v3>;
+		};
+
 	};
 
 	efuse@7000f800 {
@@ -50,6 +86,21 @@
 	};
 
 	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
+			avdd_lcd-supply = <&vdd_disp_3v0>;
+			dvdd_lcd-supply = <&max77620_sd3>;
+			vdd_lcd_bl_en-supply = <&lcd_bl_en>;
+		};
+
+		/* tegradc.1 */
+		dc@54240000 {
+			avdd_hdmi-supply = <&max77620_ldo8>;
+			avdd_hdmi_pll-supply = <&max77620_sd3>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+		};
+
 		vi {
 			avdd_dsi_csi-supply = <&max77620_gpio7>;
 		};
@@ -89,6 +140,6 @@
 
 	sdhci@700b0000 {
 		vddio_sdmmc-supply = <&max77620_ldo2>; /* SDMMC1 for SD card on loki */
-		vddio_sd_slot-supply = <&vdd_3v3>;
+		vddio_sd_slot-supply = <&en_vdd_sd>;
 	};
 };

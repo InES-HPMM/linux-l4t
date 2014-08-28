@@ -27,6 +27,7 @@
 #include <linux/percpu.h>
 #include <linux/syscore_ops.h>
 #include <linux/tick.h>
+#include <linux/clk.h>
 
 static u32 tegra210_timer_freq;
 static void __iomem *tegra210_timer_reg_base;
@@ -212,6 +213,7 @@ static void __init tegra210_timer_init(struct device_node *np)
 {
 	int cpu;
 	struct tegra210_clockevent *tevt;
+	struct clk *clk;
 	int ret;
 
 	tegra210_timer_reg_base = of_iomap(np, 0);
@@ -220,10 +222,13 @@ static void __init tegra210_timer_init(struct device_node *np)
 		BUG();
 	}
 
-	if (of_property_read_u32(np, "clock-frequency",
-				 &tegra210_timer_freq)) {
-		pr_err("%s: can't read clock frequency\n", __func__);
-		BUG();
+	clk = clk_get_sys("timer", NULL);
+	if (IS_ERR(clk)) {
+		pr_warn("Unable to get timer clock. Assuming 12.8Mhz input clock.\n");
+		tegra210_timer_freq = 12800000;
+	} else {
+		clk_prepare_enable(clk);
+		tegra210_timer_freq = clk_get_rate(clk);
 	}
 
 	for_each_possible_cpu(cpu) {
@@ -245,6 +250,10 @@ static void __init tegra210_timer_init(struct device_node *np)
 	switch (tegra210_timer_freq) {
 	case 12000000:
 		__raw_writel(0x000b, /* (11+1)/(0+1) */
+			     tegra210_timer_reg_base + TIMERUS_USEC_CFG);
+		break;
+	case 12800000:
+		__raw_writel(0x043f, /* (63+1)/(4+1) */
 			     tegra210_timer_reg_base + TIMERUS_USEC_CFG);
 		break;
 	case 13000000:

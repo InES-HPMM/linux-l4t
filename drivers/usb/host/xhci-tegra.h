@@ -19,6 +19,15 @@
 #ifndef __XUSB_H
 #define __XUSB_H
 
+#include <linux/spinlock.h>
+#include <linux/mutex.h>
+#include <linux/workqueue.h>
+#include <linux/circ_buf.h>
+#include <linux/device.h>
+#include <linux/notifier.h>
+
+#include <mach/xusb.h>
+
 #define XUSB_CSB_MP_L2IMEMOP_TRIG				0x00101A14
 #define XUSB_CSB_MP_APMAP					0x0010181C
 #define XUSB_CSB_ARU_SCRATCH0				0x00100100
@@ -49,6 +58,10 @@
 #define XUSB_DEVICE_ID_T114				0x0E16
 #define XUSB_DEVICE_ID_T124				0x0FA3
 #define XUSB_DEVICE_ID_T210				0x0FAC
+#define XUSB_IS_T114_OR_T124(t)			\
+	((t->device_id == XUSB_DEVICE_ID_T114) ||	\
+		(t->device_id == XUSB_DEVICE_ID_T124))
+#define XUSB_IS_T210(t)	(t->device_id == XUSB_DEVICE_ID_T210)
 
 /* TODO: Do not have the definitions of below
  * registers.
@@ -176,6 +189,8 @@
 #define ARU_ULPI_REGACCESS_CMD_MASK		0x1
 #define ARU_ULPI_REGACCESS_DATA_MASK	0xff0000
 
+#define GET_SS_PORTMAP(map, p)		(((map) >> 4*(p)) & 0xF)
+
 /*
  * FIXME: looks like no any .c requires below structure types
  * revisit and decide whether we can delete or not
@@ -240,6 +255,170 @@ struct vbus_enable_oc_map {
 	u32 vbus_en0;
 	u32 vbus_en1;
 };
+
+struct xusb_save_regs {
+	u32 msi_bar_sz;
+	u32 msi_axi_barst;
+	u32 msi_fpci_barst;
+	u32 msi_vec0;
+	u32 msi_en_vec0;
+	u32 fpci_error_masks;
+	u32 intr_mask;
+	u32 ipfs_intr_enable;
+	u32 ufpci_config;
+	u32 clkgate_hysteresis;
+	u32 xusb_host_mccif_fifo_cntrl;
+
+	/* PG does not mention below */
+	u32 hs_pls;
+	u32 fs_pls;
+	u32 hs_fs_speed;
+	u32 hs_fs_pp;
+	u32 cfg_aru;
+	u32 cfg_order;
+	u32 cfg_fladj;
+	u32 cfg_sid;
+	/* DFE and CTLE */
+	u32 tap1_val[XUSB_SS_PORT_COUNT];
+	u32 amp_val[XUSB_SS_PORT_COUNT];
+	u32 ctle_z_val[XUSB_SS_PORT_COUNT];
+	u32 ctle_g_val[XUSB_SS_PORT_COUNT];
+};
+
+struct tegra_xhci_firmware {
+	void *data; /* kernel virtual address */
+	size_t size; /* firmware size */
+	dma_addr_t dma; /* dma address for controller */
+};
+
+struct tegra_xhci_firmware_log {
+	dma_addr_t phys_addr;		/* dma-able address */
+	void *virt_addr;		/* kernel va of the shared log buffer */
+	struct log_entry *dequeue;	/* current dequeue pointer (va) */
+	struct circ_buf circ;		/* big circular buffer */
+	u32 seq;			/* log sequence number */
+
+	struct task_struct *thread;	/* a thread to consume log */
+	struct mutex mutex;
+	wait_queue_head_t read_wait;
+	wait_queue_head_t write_wait;
+	wait_queue_head_t intr_wait;
+	struct dentry *path;
+	struct dentry *log_file;
+	unsigned long flags;
+};
+
+struct tegra_xhci_hcd {
+	struct platform_device *pdev;
+	struct xhci_hcd *xhci;
+	u16 device_id;
+
+	spinlock_t lock;
+	struct mutex sync_lock;
+
+	int smi_irq;
+	int padctl_irq;
+	int usb3_irq;
+	int usb2_irq;
+
+	bool ss_wake_event;
+	bool ss_pwr_gated;
+	bool host_pwr_gated;
+	bool hs_wake_event;
+	bool host_resume_req;
+	bool lp0_exit;
+	u32 dfe_ctx_saved;
+	u32 ctle_ctx_saved;
+	unsigned long last_jiffies;
+	unsigned long host_phy_base;
+	unsigned long host_phy_size;
+	void __iomem *host_phy_virt_base;
+
+	void __iomem *padctl_base;
+	void __iomem *fpci_base;
+	void __iomem *ipfs_base;
+
+	struct tegra_xusb_platform_data *pdata;
+	struct tegra_xusb_board_data *bdata;
+	struct tegra_xusb_chip_calib *cdata;
+	struct tegra_xusb_padctl_regs *padregs;
+	const struct tegra_xusb_soc_config *soc_config;
+	u64 tegra_xusb_dmamask;
+
+	/* mailbox variables */
+	struct mutex mbox_lock;
+	u32 mbox_owner;
+	u32 cmd_type;
+	u32 cmd_data;
+
+	struct regulator **xusb_utmi_vbus_regs;
+
+	struct regulator *xusb_s1p05v_reg;
+	struct regulator *xusb_s3p3v_reg;
+	struct regulator *xusb_s1p8v_reg;
+	struct regulator *vddio_hsic_reg;
+	struct regulator *avddio_plle_reg;
+	int vddio_hsic_refcnt;
+
+	struct work_struct mbox_work;
+	struct work_struct ss_elpg_exit_work;
+	struct work_struct host_elpg_exit_work;
+
+	struct clk *host_clk;
+	struct clk *ss_clk;
+
+	/* XUSB Falcon SuperSpeed Clock */
+	struct clk *falc_clk;
+
+	/* EMC Clock */
+	struct clk *emc_clk;
+	/* XUSB SS PI Clock */
+	struct clk *ss_src_clk;
+	/* PLLE Clock */
+	struct clk *plle_clk;
+	struct clk *pll_u_480M;
+	struct clk *clk_m;
+	/* refPLLE clk */
+	struct clk *pll_re_vco_clk;
+	/*
+	 * XUSB/IPFS specific registers these need to be saved/restored in
+	 * addition to spec defined registers
+	 */
+	struct xusb_save_regs sregs;
+	bool usb2_rh_suspend;
+	bool usb3_rh_suspend;
+	bool hc_in_elpg;
+
+	/* otg transceiver */
+	struct usb_phy *transceiver;
+	struct notifier_block otgnb;
+
+	unsigned long usb2_rh_remote_wakeup_ports; /* one bit per port */
+	unsigned long usb3_rh_remote_wakeup_ports; /* one bit per port */
+	/* firmware loading related */
+	struct tegra_xhci_firmware firmware;
+
+	struct tegra_xhci_firmware_log log;
+	struct device_attribute hsic_power_attr[XUSB_HSIC_COUNT];
+
+	bool init_done;
+};
+
+#define NOT_SUPPORTED	0xFFFFFFFF
+#define PADCTL_REG_NONE	0xffff
+static inline u32 padctl_readl(struct tegra_xhci_hcd *tegra, u32 reg)
+{
+	if (reg == PADCTL_REG_NONE)
+		return PADCTL_REG_NONE;
+	return readl(tegra->padctl_base + reg);
+}
+
+static inline void padctl_writel(struct tegra_xhci_hcd *tegra, u32 val, u32 reg)
+{
+	if (reg == PADCTL_REG_NONE)
+		return;
+	writel(val, tegra->padctl_base + reg);
+}
 
 /**
  * port_to_hsic_pad - given "port number", return with hsic pad number

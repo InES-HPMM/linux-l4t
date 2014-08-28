@@ -106,6 +106,9 @@ int utmi_phy_set_snps_trking_data(void)
 	void __iomem *base = IO_ADDRESS(TEGRA_USB_BASE);
 	u32 val;
 	struct clk *utmi_pad_clk;
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	void __iomem *car_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+#endif
 
 	utmi_pad_clk = clk_get_sys("utmip-pad", NULL);
 	if (IS_ERR(utmi_pad_clk)) {
@@ -124,6 +127,15 @@ int utmi_phy_set_snps_trking_data(void)
 	writel(val, pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
 
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	val = readl(car_base + CLK_RST_CONTROLLER_CLK_OUT_ENB_Y);
+	val |= CLK_ENB_USB2_TRK;
+	writel(val, car_base + CLK_RST_CONTROLLER_CLK_OUT_ENB_Y);
+
+	val = readl(car_base + CLK_RST_CONTROLLER_CLK_SOURCE_USB2_HSIC_TRK);
+	val &= ~USB2_HSIC_TRK_CLK_DIVISOR(~0);
+	val |= USB2_HSIC_TRK_CLK_DIVISOR(0x6);
+	writel(val, car_base + CLK_RST_CONTROLLER_CLK_SOURCE_USB2_HSIC_TRK);
+
 	val = readl(base + UTMIP_BIAS_CFG1);
 	val &= ~UTMIP_BIAS_PDTRK_COUNT(~0);
 	val |= UTMIP_BIAS_PDTRK_COUNT(0xA);
@@ -134,6 +146,8 @@ int utmi_phy_set_snps_trking_data(void)
 	val = readl(base + UTMIP_BIAS_CFG0);
 	val &= ~UTMIP_BIASPD;
 	writel(val, base + UTMIP_BIAS_CFG0);
+
+	udelay(2);
 #else
 	/* Setting the tracking length time */
 	val = readl(base + UTMIP_BIAS_CFG1);
@@ -151,6 +165,37 @@ int utmi_phy_set_snps_trking_data(void)
 	val |= UTMIP_BIAS_PDTRK_POWERUP;
 	writel(val, base + UTMIP_BIAS_CFG1);
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	udelay(100);
+
+	val = readl(base + UTMIP_BIAS_CFG1);
+	val |= UTMIP_BIAS_PDTRK_POWERDOWN;
+	writel(val, base + UTMIP_BIAS_CFG1);
+
+	val = readl(base + UTMIP_BIAS_CFG1);
+	val &= ~UTMIP_BIAS_TRK_DONE;
+	writel(val, base + UTMIP_BIAS_CFG1);
+
+	udelay(5);
+
+	val = readl(base + UTMIP_BIAS_CFG1);
+	val &= ~UTMIP_BIAS_PDTRK_POWERDOWN;
+	writel(val, base + UTMIP_BIAS_CFG1);
+
+	udelay(100);
+
+	val = readl(base + UTMIP_BIAS_CFG1);
+	val |= UTMIP_BIAS_PDTRK_POWERDOWN;
+	writel(val, base + UTMIP_BIAS_CFG1);
+
+	val = readl(base + UTMIP_BIAS_CFG1);
+	val &= ~UTMIP_BIAS_TRK_DONE;
+	writel(val, base + UTMIP_BIAS_CFG1);
+
+	val = readl(car_base + CLK_RST_CONTROLLER_CLK_OUT_ENB_Y);
+	val &= ~CLK_ENB_USB2_TRK;
+	writel(val, car_base + CLK_RST_CONTROLLER_CLK_OUT_ENB_Y);
+#else
 	/* Wait for 25usec */
 	udelay(25);
 
@@ -182,6 +227,7 @@ int utmi_phy_set_snps_trking_data(void)
 	val = PMC_TCTRL_VAL(utmip_tctrl_val) |
 		PMC_RCTRL_VAL(utmip_rctrl_val);
 	writel(val, pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+#endif
 	spin_unlock_irqrestore(&pmc_lock, flags);
 	clk_disable(utmi_pad_clk);
 	clk_put(utmi_pad_clk);

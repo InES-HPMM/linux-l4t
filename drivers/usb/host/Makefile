@@ -21,6 +21,10 @@ xhci-hcd-y := xhci.o xhci-mem.o
 xhci-hcd-y += xhci-ring.o xhci-hub.o xhci-dbg.o
 xhci-hcd-$(CONFIG_PCI)	+= xhci-pci.o
 
+ifeq ($(CONFIG_ARCH_TEGRA_21x_SOC),y)
+	xhci-hcd-y 		+= xhci-tegra-t210-padctl.o
+endif
+
 ifneq ($(CONFIG_USB_XHCI_PLATFORM), )
 	xhci-hcd-y		+= xhci-plat.o
 endif

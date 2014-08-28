@@ -205,6 +205,7 @@
 #define   UTMIP_BIAS_PDTRK_COUNT(x) (((x) & 0x1f) << 3)
 #define   UTMIP_BIAS_PDTRK_POWERDOWN	(1 << 0)
 #define   UTMIP_BIAS_PDTRK_POWERUP	(1 << 1)
+#define   UTMIP_BIAS_TRK_DONE		(1 << 23)
 
 #define UTMIP_BIAS_STS0			0x840
 #define   UTMIP_RCTRL_VAL(x)		(((x) & 0xffff) << 0)
@@ -221,6 +222,12 @@
 
 #define UTMIP_BIAS_CFG2			0x850
 #define   UTMIP_HSSQUELCH_LEVEL_NEW(x)	(((x) & 0x7) << 0)
+
+#define CLK_RST_CONTROLLER_CLK_OUT_ENB_Y	0x298
+#define   CLK_ENB_USB2_TRK			(1 << 18)
+
+#define CLK_RST_CONTROLLER_CLK_SOURCE_USB2_HSIC_TRK	0x6cc
+#define   USB2_HSIC_TRK_CLK_DIVISOR(x)		(((x) & 0xff) << 0)
 
 #ifdef DEBUG
 #define DBG(stuff...)	pr_info("\n"stuff)

@@ -26,47 +26,172 @@
 #include "tegra210-platforms/tegra210-loki-e-p2530-common.dtsi"
 #include "tegra210-platforms/tegra210-ers-extgpio-e2141-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-loki-power-tree-p2530-0999-e00.dtsi"
-#include "tegra210-platforms/tegra210-ers-sensor-e2160-1000-a00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-gpio-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-pinmux-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-comms.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-pwm-fan.dtsi"
 #include "tegra210-platforms/tegra210-loki-sdhci.dtsi"
+#include "panel-j-1440-810-5-8.dtsi"
+#include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-touch-e1937-1000-a00.dtsi"
+#include "tegra210-platforms/tegra210-loki-e-sensor-p2530-0032-e00.dtsi"
+#include "tegra210-platforms/tegra210-loki-e-thermal-fan-est.dtsi"
+
 / {
-	model = "NVIDIA Tegra210 Loki-E";
+	model = "loki_e_lte";
 	compatible = "nvidia,loki-e", "nvidia,tegra210";
 	nvidia,dtsfilename = __FILE__;
 
-	i2c@7000c000 {
-		rt5639: audio-codec@1c {
-			compatible = "realtek,rt5639";
-			reg = <0x1c>;
-		};
-	};
-	sound {
-		nvidia,audio-codec-x = <&rt5639>;
-	};
-
 	sdhci@700b0600 {
-		uhs_mask = <0x60>;
+		uhs-mask = <0x60>;
 		built-in;
 		status = "okay";
 	};
 
 	sdhci@700b0400 {
-		uhs_mask = <0x1c>;
+		uhs-mask = <0x1c>;
 		status = "okay";
 	};
 
 	sdhci@700b0200 {
-		uhs_mask = <0x60>;
+		uhs-mask = <0x60>;
 		status = "okay";
 	};
 
 	sdhci@700b0000 {
-		uhs_mask = <0x1c>;
+		uhs-mask = <0x1c>;
 		status = "okay";
 	};
 
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		dsi {
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-j-1440-810-5-8 {
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
+				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
+			};
+		};
+	};
+
+	i2c@7000c000 {
+
+		earSmart: earSmart-codec.0-003e@3e {
+			compatible = "adnc,earSmart";
+			reg = <0x3e>;
+
+			adnc,reset-gpio = <&gpio TEGRA_GPIO(BB, 3) GPIO_ACTIVE_HIGH>;
+			adnc,gpiob-gpio = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
+			adnc,wakeup-gpio = <&gpio TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH>;
+			adnc,int-gpio = <(-1)>;
+			adnc,gpioa-gpio = <(-1)>;
+			adnc,enable_hs_uart_intf = <0>;
+			adnc,ext_clk_rate = <0>;
+			adnc,debounce_timer = <3>;
+			adnc,plug_det_enabled = <1>;
+			adnc,mic_det_enabled = <1>;
+
+			adnc,gpio_b_irq_type = <4>;
+			adnc,cmd_comp_mode = <0>;
+
+			/* Button Control 1 */
+			adnc,btn_press_settling_time = <4>;
+			adnc,btn_press_polling_rate = <1>;
+			adnc,btn_press_det_act = <1>;
+
+			/* Button Control 2 */
+			adnc,double_btn_timer = <(-1)>;
+			adnc,mic_det_settling_timer = <(-1)>;
+
+			/* Button Control 3 */
+			adnc,long_btn_timer = <(-1)>;
+			adnc,adc_btn_mute = <(-1)>;
+
+			/* Button Control 4 */
+			adnc,valid_levels = <31>;
+			adnc,impd_det_timer = <0>;
+		};
+	};
+
+	sound {
+		compatible = "nvidia,tegra-audio-t210ref-mobile-es755";
+		nvidia,model = "tegra-snd-t210ref-mobile-es755";
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
+		nvidia,num-codec-link = <2>;
+
+		nvidia,audio-routing =
+			"y Headphone", 	"y OUT",
+			"y IN",		"y Mic";
+
+		nvidia,xbar = <&tegra_axbar>;
+
+		nvidia,dai-link-1 {
+			cpu-dai = <&tegra_i2s1>;
+			codec-dai = <&earSmart>;
+			cpu-dai-name = "I2S1";
+			codec-dai-name = "earSmart-porta";
+			format = "i2s";
+			bitclock-slave;
+			frame-slave;
+			bit-format = "s16_le";
+			bclk_ratio = <0>;
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "x";
+		};
+		nvidia,dai-link-2 {
+			cpu-dai = <&tegra_i2s3>;
+			codec-dai = <&spdif_dit1>;
+			cpu-dai-name = "I2S3";
+			codec-dai-name = "dit-hifi";
+			format = "dsp_a";
+			bitclock-slave;
+			frame-slave;
+			bit-format = "s32_le";
+			bclk_ratio = <0>;
+			srate = <8000>;
+			num-channel = <2>;
+			name-prefix = "y";
+		};
+	};
+
+	udc@7d000000 {
+                nvidia,port-otg;
+                nvidia,charging-supported;
+                nvidia,enable-pmu-vbus-detection;
+                nvidia,id-detection-type = <1>;
+                extcon-cables = <&bq2419x 0>;
+                extcon-cable-names = "vbus";
+                #extcon-cells = <1>;
+                status = "okay";
+        };
+
+        otg@7d000000 {
+                nvidia,enable-pmu-vbus-detection;
+                nvidia,id-detection-type = <1>;
+                extcon-cables = <&bq2419x 0 &id_gpio_extcon 0>;
+                extcon-cable-names = "vbus", "id";
+                #extcon-cells = <1>;
+                status = "okay";
+        };
 };
 

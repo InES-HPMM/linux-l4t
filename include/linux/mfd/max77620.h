@@ -174,6 +174,11 @@
 #define MAX77620_CID_DIDM_MASK		0xF0
 #define MAX77620_CID_DIDM_SHIFT		4
 
+/* Device Identification Metal */
+#define MAX77620_CID5_DIDM(n)			(((n) >> 4) & 0xF)
+/* Device Indentification OTP */
+#define MAX77620_CID5_DIDO(n)			((n) & 0xF)
+
 #define MAX77620_SD_FSRADE_MASK		0x01
 #define MAX77620_SD_FSRADE_SHIFT	0
 #define MAX77620_SD_FSRADE_DISABLE	0x40
@@ -382,15 +387,26 @@ struct max77620_chip {
 
 	int chip_irq;
 	int irq_base;
+	int irq_mbattlow;
 
 	struct mutex mutex_config;
 	bool shutdown;
 	bool sleep_enable;
 	bool enable_global_lpm;
 
+	int es_minor_version;
+	int es_major_version;
+
 	struct regmap_irq_chip_data *top_irq_data;
 	struct regmap_irq_chip_data *gpio_irq_data;
 };
+
+static inline int max77620_irq_get_virq(struct device *dev, int irq)
+{
+	struct max77620_chip *chip = dev_get_drvdata(dev);
+
+	return regmap_irq_get_virq(chip->top_irq_data, irq);
+}
 
 static inline int max77620_reg_write(struct device *dev, int sid,
 		unsigned int reg, u8 val)

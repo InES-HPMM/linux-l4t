@@ -730,7 +730,8 @@ static int bpmp_connect(void)
 	}
 
 	connected = 1;
-	return bpmp_init_cpus_present(num_present_cpus());
+
+	return 0;
 }
 
 void bpmp_detach(void)
@@ -750,7 +751,7 @@ int bpmp_attach(void)
 
 	WARN_ON(connected);
 
-	for (i = 0; i < MSEC_PER_SEC * 60; i++) {
+	for (i = 0; i < MSEC_PER_SEC * 60; i += 20) {
 		if (!bpmp_connect())
 			return 0;
 		msleep(20);

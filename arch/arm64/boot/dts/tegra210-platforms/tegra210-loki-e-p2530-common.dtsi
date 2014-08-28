@@ -34,18 +34,29 @@
 	};
 
 	sdhci@700b0600 {
-		uhs_mask = <0x60>;
+		uhs-mask = <0x60>;
+		built-in;
 		status = "okay";
 	};
 
 	sdhci@700b0400 {
-		uhs_mask = <0x1c>;
+		uhs-mask = <0x1c>;
 		status = "okay";
 	};
 
 	sdhci@700b0200 {
-		uhs_mask = <0x60>;
+		uhs-mask = <0x60>;
 		status = "okay";
+	};
+
+	sdhci@700b0000 {
+		uhs-mask = <0x1c>;
+		status = "okay";
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = < 0x0 0x80000000 0x0 0x80000000 >;
 	};
 
 	adma@702e2000  {
@@ -63,56 +74,25 @@
 		status = "okay";
 	};
 
+
 	ahub {
 		i2s@702d1000 {
 			pinctrl-names = "dap_active", "dap_inactive";
-			pinctrl-0 = <&dap1_active_state>;
-			pinctrl-1 = <&dap1_inactive_state>;
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			regulator-supplies = "vdd-1v8-audio-hv", "vdd-1v8-audio-hv-bias";
+			vdd-1v8-audio-hv-supply = <&max77620_sd3>;
+			vdd-1v8-audio-hv-bias-supply = <&max77620_sd3>;
 		};
 
 		i2s@702d1300 {
 			pinctrl-names = "dap_active", "dap_inactive";
-			pinctrl-0 = <&dap4_active_state>;
-			pinctrl-1 = <&dap4_inactive_state>;
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			regulator-supplies = "vddio-dmic";
+			vddio-dmic-supply = <&max77620_sd3>;
 		};
 	};
 
-	sound {
-		compatible = "nvidia,tegra-audio-grenada-mobile";
-		nvidia,model = "tegra-snd-grenada-mobile";
-		nvidia,memory-clients = <34>;
-		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(R, 2) GPIO_ACTIVE_HIGH>;
-		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(R, 7) GPIO_ACTIVE_HIGH>;
-
-		nvidia,audio-routing =
-			"x Headphone Jack", 	"x HPOL",
-			"x Headphone Jack", 	"x HPOR",
-			"x Int Spk", 	"x SPORP",
-			"x Int Spk", 	"x SPORN",
-			"x Int Spk", 	"x SPOLP",
-			"x Int Spk", 	"x SPOLN",
-			"x micbias1",	"x Mic Jack",
-			"x IN2P",		"x Mic Jack",
-			"x IN2P",		"x Mic Jack",
-			"x DMIC L1",	"x Int Mic",
-			"x DMIC L2",	"x Int Mic",
-			"x DMIC R1",	"x Int Mic",
-			"x DMIC R2",	"x Int Mic",
-
-			"y Headphone", 	"y OUT",
-			"z Headphone", 	"z OUT",
-			"s Headphone", 	"s OUT",
-			"y IN",		"y Mic",
-			"z IN",		"z Mic",
-			"s IN",		"s Mic";
-		nvidia,xbar = <&tegra_axbar>;
-		nvidia,i2s-controller-1 = <&tegra_i2s1>;
-		nvidia,i2s-controller-2 = <&tegra_i2s3>;
-		nvidia,i2s-controller-3 = <&tegra_i2s5>;
-		nvidia,dmic-1 = <&tegra_dmic1>;
-		nvidia,dmic-2 = <&tegra_dmic2>;
-		nvidia,dmic-3 = <&tegra_dmic3>;
-		nvidia,spdif = <&tegra_spdif>;
-	};
 };
 

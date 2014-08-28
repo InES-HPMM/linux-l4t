@@ -108,4 +108,12 @@ extern void tegra_pmc_config_thermal_trip(struct tegra_thermtrip_pmic_data *data
 
 extern void tegra_pmc_enable_thermal_trip(void);
 
+enum pwrdet_bit {
+	AUDIO_HV_PWR_DET = 18,
+	SDMMC1_PWR_DET = 12,
+	SDMMC3_PWR_DET = 13
+};
+
+extern void pwr_detect_bit_write(u32 pwrdet_bit, bool enable);
+
 #endif	/* __LINUX_TEGRA_PMC_H__ */

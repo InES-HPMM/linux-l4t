@@ -36,7 +36,8 @@ struct max77620_therm_zone {
 	struct device			*dev;
 	struct max77620_chip			*max77620;
 	struct thermal_zone_device	*tz_device;
-	int				irq;
+	int				irq_tjalarm1;
+	int				irq_tjalarm2;
 	long				hd_threshold_temp;
 };
 
@@ -46,22 +47,19 @@ static int max77620_thermal_read_temp(void *data, long *temp)
 	u8 val;
 	int ret;
 
-	ret = max77620_reg_read(ptherm_zone->max77620->dev,
-				MAX77620_PWR_SLAVE,
+	ret = max77620_reg_read(ptherm_zone->max77620->dev, MAX77620_PWR_SLAVE,
 				MAX77620_REG_STATLBT, &val);
 	if (ret < 0) {
-		dev_err(ptherm_zone->dev,
-			"%s: Failed to read STATLBT, %d\n",
-			__func__, ret);
+		dev_err(ptherm_zone->dev, "Failed to read STATLBT, %d\n", ret);
 		return -EINVAL;
 	}
 
-	if ((val & MAX77620_IRQ_TJALRM1_MASK) ||
-		(val & MAX77620_IRQ_TJALRM2_MASK))
-		*temp = ptherm_zone->hd_threshold_temp + 1;
+	if (val & MAX77620_IRQ_TJALRM2_MASK)
+		*temp = 145000;
+	else if (val & MAX77620_IRQ_TJALRM1_MASK)
+		*temp = 125000;
 	else
 		*temp = MAX77620_NORMAL_OPERATING_TEMP;
-
 	return 0;
 }
 
@@ -81,6 +79,9 @@ static int max77620_thermal_probe(struct platform_device *pdev)
 	u32 hd_threshold_temp = 0;
 	u32 pval;
 	int ret;
+
+	if (!pdev->dev.of_node)
+		pdev->dev.of_node = np;
 
 	if (np) {
 		ret = of_property_read_u32(np,
@@ -116,24 +117,33 @@ static int max77620_thermal_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	if (hd_threshold_temp <= 120000UL)
-		ptherm_zone->irq = platform_get_irq(pdev, 0);
-	else
-		ptherm_zone->irq = platform_get_irq(pdev, 1);
+	ptherm_zone->irq_tjalarm1 = platform_get_irq(pdev, 0);
+	ptherm_zone->irq_tjalarm2 = platform_get_irq(pdev, 1);
 
-	ret = request_threaded_irq(ptherm_zone->irq, NULL,
+	ret = request_threaded_irq(ptherm_zone->irq_tjalarm1, NULL,
 			max77620_thermal_irq,
 			IRQF_ONESHOT, dev_name(&pdev->dev),
 			ptherm_zone);
 	if (ret < 0) {
-		dev_err(&pdev->dev,
-			"request irq %d failed: %dn", ptherm_zone->irq, ret);
-		goto int_req_failed;
+		dev_err(&pdev->dev, "request irq1 %d failed: %dn",
+			ptherm_zone->irq_tjalarm1, ret);
+		goto int_req_failed1;
 	}
 
+	ret = request_threaded_irq(ptherm_zone->irq_tjalarm2, NULL,
+			max77620_thermal_irq,
+			IRQF_ONESHOT, dev_name(&pdev->dev),
+			ptherm_zone);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "request irq2 %d failed: %dn",
+			ptherm_zone->irq_tjalarm2, ret);
+		goto int_req_failed2;
+	}
 	return 0;
 
-int_req_failed:
+int_req_failed2:
+	free_irq(ptherm_zone->irq_tjalarm1, ptherm_zone);
+int_req_failed1:
 	thermal_zone_of_sensor_unregister(&pdev->dev, ptherm_zone->tz_device);
 	return ret;
 }
@@ -142,7 +152,8 @@ static int max77620_thermal_remove(struct platform_device *pdev)
 {
 	struct max77620_therm_zone *ptherm_zone = platform_get_drvdata(pdev);
 
-	free_irq(ptherm_zone->irq, ptherm_zone);
+	free_irq(ptherm_zone->irq_tjalarm1, ptherm_zone);
+	free_irq(ptherm_zone->irq_tjalarm2, ptherm_zone);
 	thermal_zone_of_sensor_unregister(&pdev->dev, ptherm_zone->tz_device);
 	return 0;
 }

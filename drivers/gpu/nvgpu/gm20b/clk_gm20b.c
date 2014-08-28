@@ -20,11 +20,13 @@
 #include <linux/delay.h>	/* for mdelay */
 #include <linux/module.h>
 #include <linux/debugfs.h>
+#include <linux/uaccess.h>
 #include <linux/clk/tegra.h>
 
 #include "gk20a/gk20a.h"
 #include "hw_trim_gm20b.h"
 #include "hw_timer_gm20b.h"
+#include "hw_therm_gm20b.h"
 #include "clk_gm20b.h"
 
 #define gk20a_dbg_clk(fmt, arg...) \
@@ -214,10 +216,10 @@ static void clk_setup_slide(struct gk20a *g, u32 clk_u)
 	gk20a_writel(g, trim_sys_gpcpll_cfg3_r(), data);
 }
 
-static int clk_slide_gpc_pll(struct gk20a *g, u32 n)
+static int clk_slide_gpc_pll(struct gk20a *g, struct pll *gpll)
 {
 	u32 data, coeff;
-	u32 nold, m;
+	u32 nold;
 	int ramp_timeout = 500;
 
 	/* get old coefficients */
@@ -225,12 +227,11 @@ static int clk_slide_gpc_pll(struct gk20a *g, u32 n)
 	nold = trim_sys_gpcpll_coeff_ndiv_v(coeff);
 
 	/* do nothing if NDIV is same */
-	if (n == nold)
+	if (gpll->N == nold)
 		return 0;
 
 	/* dynamic ramp setup based on update rate */
-	m = trim_sys_gpcpll_coeff_mdiv_v(coeff);
-	clk_setup_slide(g, g->clk.gpc_pll.clk_in / m);
+	clk_setup_slide(g, gpll->clk_in / gpll->M);
 
 	/* pll slowdown mode */
 	data = gk20a_readl(g, trim_sys_gpcpll_ndiv_slowdown_r());
@@ -242,7 +243,7 @@ static int clk_slide_gpc_pll(struct gk20a *g, u32 n)
 	/* new ndiv ready for ramp */
 	coeff = gk20a_readl(g, trim_sys_gpcpll_coeff_r());
 	coeff = set_field(coeff, trim_sys_gpcpll_coeff_ndiv_m(),
-			trim_sys_gpcpll_coeff_ndiv_f(n));
+			trim_sys_gpcpll_coeff_ndiv_f(gpll->N));
 	udelay(1);
 	gk20a_writel(g, trim_sys_gpcpll_coeff_r(), coeff);
 
@@ -281,7 +282,7 @@ static int clk_slide_gpc_pll(struct gk20a *g, u32 n)
 	return 0;
 }
 
-static int clk_lock_gpc_pll_under_bypass(struct gk20a *g, u32 m, u32 n, u32 pl)
+static int clk_lock_gpc_pll_under_bypass(struct gk20a *g, struct pll *gpll)
 {
 	u32 data, cfg, coeff, timeout;
 
@@ -314,9 +315,9 @@ static int clk_lock_gpc_pll_under_bypass(struct gk20a *g, u32 m, u32 n, u32 pl)
 	}
 
 	/* change coefficients */
-	coeff = trim_sys_gpcpll_coeff_mdiv_f(m) |
-		trim_sys_gpcpll_coeff_ndiv_f(n) |
-		trim_sys_gpcpll_coeff_pldiv_f(pl);
+	coeff = trim_sys_gpcpll_coeff_mdiv_f(gpll->M) |
+		trim_sys_gpcpll_coeff_ndiv_f(gpll->N) |
+		trim_sys_gpcpll_coeff_pldiv_f(gpll->PL);
 	gk20a_writel(g, trim_sys_gpcpll_coeff_r(), coeff);
 
 	/* enable PLL after changing coefficients */
@@ -365,15 +366,17 @@ pll_locked:
 	return 0;
 }
 
-static int clk_program_gpc_pll(struct gk20a *g, struct clk_gk20a *clk,
+static int clk_program_gpc_pll(struct gk20a *g, struct pll *gpll_new,
 			int allow_slide)
 {
-#if !PLDIV_GLITCHLESS
+#if PLDIV_GLITCHLESS
+	bool skip_bypass;
+#else
 	u32 data;
 #endif
 	u32 cfg, coeff;
-	u32 m, n, pl, nlo;
 	bool can_slide;
+	struct pll gpll;
 
 	gk20a_dbg_fn("");
 
@@ -382,21 +385,24 @@ static int clk_program_gpc_pll(struct gk20a *g, struct clk_gk20a *clk,
 
 	/* get old coefficients */
 	coeff = gk20a_readl(g, trim_sys_gpcpll_coeff_r());
-	m = trim_sys_gpcpll_coeff_mdiv_v(coeff);
-	n = trim_sys_gpcpll_coeff_ndiv_v(coeff);
-	pl = trim_sys_gpcpll_coeff_pldiv_v(coeff);
+	gpll.M = trim_sys_gpcpll_coeff_mdiv_v(coeff);
+	gpll.N = trim_sys_gpcpll_coeff_ndiv_v(coeff);
+	gpll.PL = trim_sys_gpcpll_coeff_pldiv_v(coeff);
+	gpll.clk_in = gpll_new->clk_in;
 
 	/* do NDIV slide if there is no change in M and PL */
 	cfg = gk20a_readl(g, trim_sys_gpcpll_cfg_r());
 	can_slide = allow_slide && trim_sys_gpcpll_cfg_enable_v(cfg);
 
-	if (can_slide && (clk->gpc_pll.M == m) && (clk->gpc_pll.PL == pl))
-		return clk_slide_gpc_pll(g, clk->gpc_pll.N);
+	if (can_slide && (gpll_new->M == gpll.M) && (gpll_new->PL == gpll.PL))
+		return clk_slide_gpc_pll(g, gpll_new);
 
 	/* slide down to NDIV_LO */
-	nlo = DIV_ROUND_UP(m * gpc_pll_params.min_vco, clk->gpc_pll.clk_in);
 	if (can_slide) {
-		int ret = clk_slide_gpc_pll(g, nlo);
+		int ret;
+		gpll.N = DIV_ROUND_UP(gpll.M * gpc_pll_params.min_vco,
+				      gpll.clk_in);
+		ret = clk_slide_gpc_pll(g, &gpll);
 		if (ret)
 			return ret;
 	}
@@ -406,9 +412,10 @@ static int clk_program_gpc_pll(struct gk20a *g, struct clk_gk20a *clk,
 	 * Limit either FO-to-FO (path A below) or FO-to-bypass (path B below)
 	 * jump to min_vco/2 by setting post divider >= 1:2.
 	 */
+	skip_bypass = can_slide && (gpll_new->M == gpll.M);
 	coeff = gk20a_readl(g, trim_sys_gpcpll_coeff_r());
-	if ((clk->gpc_pll.PL < 2) || (pl < 2)) {
-		if (pl != 2) {
+	if ((skip_bypass && (gpll_new->PL < 2)) || (gpll.PL < 2)) {
+		if (gpll.PL != 2) {
 			coeff = set_field(coeff,
 				trim_sys_gpcpll_coeff_pldiv_m(),
 				trim_sys_gpcpll_coeff_pldiv_f(2));
@@ -418,7 +425,7 @@ static int clk_program_gpc_pll(struct gk20a *g, struct clk_gk20a *clk,
 		}
 	}
 
-	if (can_slide && (clk->gpc_pll.M == m))
+	if (skip_bypass)
 		goto set_pldiv;	/* path A: no need to bypass */
 
 	/* path B: bypass if either M changes or PLL is disabled */
@@ -438,16 +445,15 @@ static int clk_program_gpc_pll(struct gk20a *g, struct clk_gk20a *clk,
 	 * is effectively NOP). PL is preserved (not set to target) of post
 	 * divider is glitchless. Otherwise it is at PL target.
 	 */
-	m = clk->gpc_pll.M;
-	nlo = DIV_ROUND_UP(m * gpc_pll_params.min_vco, clk->gpc_pll.clk_in);
-	n = allow_slide ? nlo : clk->gpc_pll.N;
+	gpll = *gpll_new;
+	if (allow_slide)
+		gpll.N = DIV_ROUND_UP(gpll_new->M * gpc_pll_params.min_vco,
+				      gpll_new->clk_in);
 #if PLDIV_GLITCHLESS
-	pl = trim_sys_gpcpll_coeff_pldiv_v(coeff);
-#else
-	pl = clk->gpc_pll.PL;
+	gpll.PL = (gpll_new->PL < 2) ? 2 : gpll_new->PL;
 #endif
-	clk_lock_gpc_pll_under_bypass(g, m, n, pl);
-	clk->gpc_pll.enabled = true;
+	clk_lock_gpc_pll_under_bypass(g, &gpll);
+	gpll_new->enabled = true;
 
 #if PLDIV_GLITCHLESS
 	coeff = gk20a_readl(g, trim_sys_gpcpll_coeff_r());
@@ -455,9 +461,9 @@ static int clk_program_gpc_pll(struct gk20a *g, struct clk_gk20a *clk,
 
 set_pldiv:
 	/* coeff must be current from either path A or B */
-	if (trim_sys_gpcpll_coeff_pldiv_v(coeff) != clk->gpc_pll.PL) {
+	if (trim_sys_gpcpll_coeff_pldiv_v(coeff) != gpll_new->PL) {
 		coeff = set_field(coeff, trim_sys_gpcpll_coeff_pldiv_m(),
-			trim_sys_gpcpll_coeff_pldiv_f(clk->gpc_pll.PL));
+			trim_sys_gpcpll_coeff_pldiv_f(gpll_new->PL));
 		gk20a_writel(g, trim_sys_gpcpll_coeff_r(), coeff);
 	}
 #else
@@ -469,22 +475,23 @@ set_pldiv:
 	gk20a_writel(g, trim_sys_gpc2clk_out_r(), data);
 #endif
 	/* slide up to target NDIV */
-	return clk_slide_gpc_pll(g, clk->gpc_pll.N);
+	return clk_slide_gpc_pll(g, gpll_new);
 }
 
 static int clk_disable_gpcpll(struct gk20a *g, int allow_slide)
 {
-	u32 cfg, coeff, m, nlo;
+	u32 cfg, coeff;
 	struct clk_gk20a *clk = &g->clk;
+	struct pll gpll = clk->gpc_pll;
 
 	/* slide to VCO min */
 	cfg = gk20a_readl(g, trim_sys_gpcpll_cfg_r());
 	if (allow_slide && trim_sys_gpcpll_cfg_enable_v(cfg)) {
 		coeff = gk20a_readl(g, trim_sys_gpcpll_coeff_r());
-		m = trim_sys_gpcpll_coeff_mdiv_v(coeff);
-		nlo = DIV_ROUND_UP(m * gpc_pll_params.min_vco,
-				   clk->gpc_pll.clk_in);
-		clk_slide_gpc_pll(g, nlo);
+		gpll.M = trim_sys_gpcpll_coeff_mdiv_v(coeff);
+		gpll.N = DIV_ROUND_UP(gpll.M * gpc_pll_params.min_vco,
+				      gpll.clk_in);
+		clk_slide_gpc_pll(g, &gpll);
 	}
 
 	/* put PLL in bypass before disabling it */
@@ -608,6 +615,13 @@ static int gm20b_init_clk_setup_hw(struct gk20a *g)
 			 trim_sys_bypassctrl_gpcpll_vco_f());
 	gk20a_writel(g, trim_sys_bypassctrl_r(), data);
 
+	/* Disable idle slow down */
+	data = gk20a_readl(g, therm_clk_slowdown_r(0));
+	data = set_field(data, therm_clk_slowdown_idle_factor_m(),
+			 therm_clk_slowdown_idle_factor_disabled_f());
+	gk20a_writel(g, therm_clk_slowdown_r(0), data);
+	gk20a_readl(g, therm_clk_slowdown_r(0));
+
 	return 0;
 }
 
@@ -644,9 +658,9 @@ static int set_pll_freq(struct gk20a *g, u32 freq, u32 old_freq)
 
 	/* change frequency only if power is on */
 	if (g->clk.clk_hw_on) {
-		err = clk_program_gpc_pll(g, clk, 1);
+		err = clk_program_gpc_pll(g, &clk->gpc_pll, 1);
 		if (err)
-			err = clk_program_gpc_pll(g, clk, 0);
+			err = clk_program_gpc_pll(g, &clk->gpc_pll, 0);
 	}
 
 	/* Just report error but not restore PLL since dvfs could already change
@@ -870,10 +884,92 @@ static const struct file_operations pll_reg_fops = {
 	.release	= single_release,
 };
 
+static int pll_reg_raw_show(struct seq_file *s, void *data)
+{
+	struct gk20a *g = s->private;
+	u32 reg;
+
+	mutex_lock(&g->clk.clk_mutex);
+	if (!g->clk.clk_hw_on) {
+		seq_puts(s, "gk20a powered down - no access to registers\n");
+		mutex_unlock(&g->clk.clk_mutex);
+		return 0;
+	}
+
+	seq_puts(s, "GPCPLL REGISTERS:\n");
+	for (reg = trim_sys_gpcpll_cfg_r(); reg <= trim_sys_gpcpll_dvfs2_r();
+	      reg += sizeof(u32))
+		seq_printf(s, "[0x%02x] = 0x%08x\n", reg, gk20a_readl(g, reg));
+
+	seq_puts(s, "\nGPC CLK OUT REGISTERS:\n");
+
+	reg = trim_sys_sel_vco_r();
+	seq_printf(s, "[0x%02x] = 0x%08x\n", reg, gk20a_readl(g, reg));
+	reg = trim_sys_gpc2clk_out_r();
+	seq_printf(s, "[0x%02x] = 0x%08x\n", reg, gk20a_readl(g, reg));
+	reg = trim_sys_bypassctrl_r();
+	seq_printf(s, "[0x%02x] = 0x%08x\n", reg, gk20a_readl(g, reg));
+
+	mutex_unlock(&g->clk.clk_mutex);
+	return 0;
+}
+
+static int pll_reg_raw_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, pll_reg_raw_show, inode->i_private);
+}
+
+static ssize_t pll_reg_raw_write(struct file *file,
+	const char __user *userbuf, size_t count, loff_t *ppos)
+{
+	struct gk20a *g = file->f_path.dentry->d_inode->i_private;
+	char buf[80];
+	u32 reg, val;
+
+	if (sizeof(buf) <= count)
+		return -EINVAL;
+
+	if (copy_from_user(buf, userbuf, count))
+		return -EFAULT;
+
+	/* terminate buffer and trim - white spaces may be appended
+	 *  at the end when invoked from shell command line */
+	buf[count] = '\0';
+	strim(buf);
+
+	if (sscanf(buf, "[0x%x] = 0x%x", &reg, &val) != 2)
+		return -EINVAL;
+
+	if (((reg < trim_sys_gpcpll_cfg_r()) ||
+	    (reg > trim_sys_gpcpll_dvfs2_r())) &&
+	    (reg != trim_sys_sel_vco_r()) &&
+	    (reg != trim_sys_gpc2clk_out_r()) &&
+	    (reg != trim_sys_bypassctrl_r()))
+		return -EPERM;
+
+	mutex_lock(&g->clk.clk_mutex);
+	if (!g->clk.clk_hw_on) {
+		mutex_unlock(&g->clk.clk_mutex);
+		return -EBUSY;
+	}
+	gk20a_writel(g, reg, val);
+	mutex_unlock(&g->clk.clk_mutex);
+	return count;
+}
+
+static const struct file_operations pll_reg_raw_fops = {
+	.open		= pll_reg_raw_open,
+	.read		= seq_read,
+	.write		= pll_reg_raw_write,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int monitor_get(void *data, u64 *val)
 {
 	struct gk20a *g = (struct gk20a *)data;
 	struct clk_gk20a *clk = &g->clk;
+	u32 clk_slowdown, clk_slowdown_save;
 	int err;
 
 	u32 ncycle = 100; /* count GPCCLK for ncycle of clkin */
@@ -884,6 +980,16 @@ static int monitor_get(void *data, u64 *val)
 	if (err)
 		return err;
 
+	mutex_lock(&g->clk.clk_mutex);
+
+	/* Disable clock slowdown during measurements */
+	clk_slowdown_save = gk20a_readl(g, therm_clk_slowdown_r(0));
+	clk_slowdown = set_field(clk_slowdown_save,
+				 therm_clk_slowdown_idle_factor_m(),
+				 therm_clk_slowdown_idle_factor_disabled_f());
+	gk20a_writel(g, therm_clk_slowdown_r(0), clk_slowdown);
+	gk20a_readl(g, therm_clk_slowdown_r(0));
+
 	gk20a_writel(g, trim_gpc_clk_cntr_ncgpcclk_cfg_r(0),
 		     trim_gpc_clk_cntr_ncgpcclk_cfg_reset_asserted_f());
 	gk20a_writel(g, trim_gpc_clk_cntr_ncgpcclk_cfg_r(0),
@@ -892,10 +998,10 @@ static int monitor_get(void *data, u64 *val)
 		     trim_gpc_clk_cntr_ncgpcclk_cfg_noofipclks_f(ncycle));
 	/* start */
 
-	/* It should take about 8us to finish 100 cycle of 12MHz.
+	/* It should take less than 5us to finish 100 cycle of 38.4MHz.
 	   But longer than 100us delay is required here. */
 	gk20a_readl(g, trim_gpc_clk_cntr_ncgpcclk_cfg_r(0));
-	udelay(2000);
+	udelay(200);
 
 	count1 = gk20a_readl(g, trim_gpc_clk_cntr_ncgpcclk_cnt_r(0));
 	udelay(100);
@@ -903,6 +1009,10 @@ static int monitor_get(void *data, u64 *val)
 	freq *= trim_gpc_clk_cntr_ncgpcclk_cnt_value_v(count2);
 	do_div(freq, ncycle);
 	*val = freq;
+
+	/* Restore clock slowdown */
+	gk20a_writel(g, therm_clk_slowdown_r(0), clk_slowdown_save);
+	mutex_unlock(&g->clk.clk_mutex);
 
 	gk20a_idle(g->dev);
 
@@ -924,6 +1034,11 @@ static int clk_gm20b_debugfs_init(struct gk20a *g)
 
 	d = debugfs_create_file(
 		"pll_reg", S_IRUGO, platform->debugfs, g, &pll_reg_fops);
+	if (!d)
+		goto err_out;
+
+	d = debugfs_create_file("pll_reg_raw",
+		S_IRUGO, platform->debugfs, g, &pll_reg_raw_fops);
 	if (!d)
 		goto err_out;
 

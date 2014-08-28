@@ -69,6 +69,7 @@
 			maxim,system-pmic-power-reset;
 
 			maxim,hot-die-threshold-temp = <110000>;
+			#thermal-sensor-cells = <0>;
 
 			pinctrl-names = "default";
 			pinctrl-0 = <&max77620_default>;
@@ -198,6 +199,10 @@
 							regulator-consumer-supply = "avdd_pll_utmip";
 							regulator-consumer-device = "tegra-ehci.2";
 						};
+						c10 {
+							regulator-consumer-supply = "avdd_pll_utmip";
+							regulator-consumer-device = "tegra-xudc";
+						};
 						c11 {
 							regulator-consumer-supply = "vddio_audio";
 						};
@@ -210,7 +215,7 @@
 						};
 						c18 {
 							regulator-consumer-supply = "vdd";
-							regulator-consumer-device = "0-004c";
+							regulator-consumer-device = "2-004c";
 						};
 					};
 				};
@@ -245,6 +250,12 @@
 					regulator-min-microvolt = <1050000>;
 					regulator-max-microvolt = <1050000>;
 					maxim,fps-source = <FPS_SRC_NONE>;
+					consumers {
+						c0 {
+							regulator-consumer-supply = "avddio_usb";
+							regulator-consumer-device = "tegra-xudc";
+						};
+					};
 				};
 
 				max77620_ldo2: ldo2 {
@@ -365,15 +376,6 @@
 			ti,terminate-voltage = <3150>;
 			ti,v-at-chg-term = <4200>;
 			ti,tz-name = "battery-temp";
-		};
-
-		imx135@10 {
-			compatible = "nvidia,imx135";
-			reg = <0x10>;
-			vana-supply = <&max77620_ldo3>;
-			vdig-supply = <&max77620_ldo1>;
-			vif-supply = <&max77620_sd3>;
-			cam1-gpios = <&gpio 221 0>;
 		};
 	};
 };

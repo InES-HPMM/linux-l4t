@@ -647,6 +647,14 @@ gpio_keys_get_devtree_pdata(struct device *dev)
 		bool gpio_props = false;
 		bool irq_prop = false;
 
+		/* Ignore the button if it is disabled. */
+		error = of_device_is_available(pp);
+		if (!error) {
+			dev_info(dev, "Button %s is ignored\n", pp->name);
+			pdata->nbuttons--;
+			continue;
+		}
+
 		if (of_find_property(pp, "gpios", NULL))
 			gpio_props = true;
 

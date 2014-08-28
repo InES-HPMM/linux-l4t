@@ -273,6 +273,21 @@ int tegra_update_lp1_irq_wake(unsigned int irq, bool enable)
 	return 0;
 }
 
+static int tegra_irq_read_mask(unsigned int irq, unsigned long reg)
+{
+	void __iomem *base;
+	u32 mask;
+	u32 val;
+
+	BUG_ON(!tegra_irq_range_valid(irq));
+
+	base = ictlr_reg_base[(irq - FIRST_LEGACY_IRQ) / 32];
+	mask = BIT((irq - FIRST_LEGACY_IRQ) % 32);
+
+	val = __raw_readl(base + reg);
+	return (val & mask);
+}
+
 static inline void tegra_irq_write_mask(unsigned int irq, unsigned long reg)
 {
 	void __iomem *base;
@@ -296,15 +311,24 @@ static int tegra_set_affinity(struct irq_data *d, const struct cpumask *mask_val
 	u32 bit;
 	int irq = d->irq - FIRST_LEGACY_IRQ;
 	int target_cpu = cpumask_first(mask_val);
+	int irq_enabled = 0;
 
 	if (!tegra_irq_range_valid(d->irq))
 		return -EINVAL;
 
 	shift = ((irq % 8) * 4);
 	index = irq >> 3;
+
 	bit = (0x1 << target_cpu) << shift;
 	ictlr_target_cpu[index] &= ~(0xf << shift);
 	ictlr_target_cpu[index] |= bit;
+
+	for_each_present_cpu(cpu)
+		if (tegra_irq_read_mask(d->irq, ICTLR_CPU_IER(cpu)))
+			irq_enabled = 1;
+
+	if (!irq_enabled)
+		return -EINVAL;
 
 	for_each_online_cpu(cpu) {
 		if (cpu == target_cpu)
@@ -581,7 +605,7 @@ static int __init tegra_gic_of_init(struct device_node *node,
 	cpumask |= cpumask << 4;
 	cpumask |= cpumask << 8;
 	cpumask |= cpumask << 16;
-	for (i = 0; i < MAX_ICTLRS * ICTLR_IRQS_PER_LIC; i += 8)
+	for (i = 0; i < (MAX_ICTLRS * ICTLR_IRQS_PER_LIC / 8); i++)
 		ictlr_target_cpu[i] = cpumask;
 
 	gic_arch_extn.irq_ack = tegra_ack;

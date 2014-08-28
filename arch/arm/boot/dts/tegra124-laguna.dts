@@ -241,6 +241,7 @@
 		nvidia,hot-plug-gpio = <&gpio TEGRA_GPIO(O, 1) 0>;
 		nvidia,wake-gpio = <&gpio TEGRA_GPIO(DD, 3) 0>;
 		nvidia,x1-slot-gpio = <&tca6416 8 0>;
+		nvidia,lane-map = <0x12>;
 		status = "okay";
 
 		pci@1,0 {

@@ -439,6 +439,9 @@ static void dr_controller_run(struct tegra_udc *udc)
 	udc_writel(udc, temp, USB_CMD_REG_OFFSET);
 
 	if (can_pullup(udc)) {
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+		udelay(200);
+#endif
 		/* Wait for controller to start */
 		timeout = jiffies + UDC_RUN_TIMEOUT_MS;
 		while ((udc_readl(udc, USB_CMD_REG_OFFSET) & USB_CMD_RUN_STOP)
@@ -1661,6 +1664,9 @@ static int tegra_pullup(struct usb_gadget *gadget, int is_on)
 	tmp |= USB_CMD_ITC_1_MICRO_FRM;
 	if (can_pullup(udc)) {
 		udc_writel(udc, tmp | USB_CMD_RUN_STOP, USB_CMD_REG_OFFSET);
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+		udelay(200);
+#endif
 		/*
 		 * We cannot tell difference between a SDP and non-standard
 		 * charger (which has D+/D- line floating) based on line status
@@ -2868,12 +2874,12 @@ static struct tegra_udc_soc_data tegra21x_soc_config = {
 		.hssync_start_delay = 0,
 		.elastic_limit = 16,
 		.idle_wait_delay = 17,
-		.term_range_adj = 8,
+		.term_range_adj = 6,
 		.xcvr_setup = 8,
 		.xcvr_lsfslew = 2,
 		.xcvr_lsrslew = 2,
 		.xcvr_setup_offset = 0,
-		.xcvr_use_fuses = 1,
+		.xcvr_use_fuses = 0,
 	},
 	.has_hostpc = true,
 	.unaligned_dma_buf_supported = false,
@@ -3232,7 +3238,8 @@ static int tegra_udc_prepare(struct device *dev)
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
 	if (udc->support_pmu_vbus) {
-		if (extcon_get_cable_state(udc->vbus_extcon_dev, "USB"))
+		if (udc->vbus_extcon_dev != NULL &&
+			extcon_get_cable_state(udc->vbus_extcon_dev, "USB"))
 			udc->vbus_in_lp0 = true;
 	} else {
 		temp = udc_readl(udc, VBUS_WAKEUP_REG_OFFSET);
@@ -3313,11 +3320,13 @@ static int tegra_udc_resume(struct device *dev)
 	/* Set Current limit to 0 if charger is disconnected in LP0 */
 	if (udc->vbus_reg != NULL) {
 		if (udc->support_pmu_vbus) {
-			dev_info(dev, "tegra_udc_resume: state (%d, %d)\n",
-			       udc->connect_type_lp0, extcon_get_cable_state(
-				       udc->vbus_extcon_dev, "USB"));
+			dev_info(dev, "%s: state (%d, %d)\n", __func__,
+			       udc->connect_type_lp0,
+			       udc->vbus_extcon_dev != NULL ?
+			       extcon_get_cable_state(udc->vbus_extcon_dev, "USB"):-1);
 			if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE) &&
-			!extcon_get_cable_state(udc->vbus_extcon_dev, "USB")) {
+				udc->vbus_extcon_dev != NULL &&
+				!extcon_get_cable_state(udc->vbus_extcon_dev, "USB")) {
 				tegra_udc_set_extcon_state(udc);
 				udc->connect_type_lp0 = CONNECT_TYPE_NONE;
 				regulator_set_current_limit(udc->vbus_reg,

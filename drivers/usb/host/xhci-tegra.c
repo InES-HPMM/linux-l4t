@@ -58,8 +58,6 @@
 #else
 #include "xhci-tegra-t124-padreg.h"
 #endif
-#define NOT_SUPPORTED	0xFFFFFFFF
-#define PADCTL_REG_NONE	0xffff
 
 /* macros */
 #define FW_IOCTL_LOG_DEQUEUE_LOW	(4)
@@ -99,7 +97,6 @@
 		_reg, readl(_base + _reg))
 
 #define PMC_PORTMAP_MASK(map, pad)	(((map) >> 4*(pad)) & 0xF)
-#define GET_SS_PORTMAP(map, p)		(((map) >> 4*(p)) & 0xF)
 
 #define PMC_USB_DEBOUNCE_DEL_0			0xec
 #define   UTMIP_LINE_DEB_CNT(x)		(((x) & 0xf) << 16)
@@ -199,153 +196,6 @@ struct cfgtbl {
 	u8 padding[138]; /* padding bytes to makeup 256-bytes cfgtbl */
 };
 
-struct xusb_save_regs {
-	u32 msi_bar_sz;
-	u32 msi_axi_barst;
-	u32 msi_fpci_barst;
-	u32 msi_vec0;
-	u32 msi_en_vec0;
-	u32 fpci_error_masks;
-	u32 intr_mask;
-	u32 ipfs_intr_enable;
-	u32 ufpci_config;
-	u32 clkgate_hysteresis;
-	u32 xusb_host_mccif_fifo_cntrl;
-
-	/* PG does not mention below */
-	u32 hs_pls;
-	u32 fs_pls;
-	u32 hs_fs_speed;
-	u32 hs_fs_pp;
-	u32 cfg_aru;
-	u32 cfg_order;
-	u32 cfg_fladj;
-	u32 cfg_sid;
-	/* DFE and CTLE */
-	u32 tap1_val[XUSB_SS_PORT_COUNT];
-	u32 amp_val[XUSB_SS_PORT_COUNT];
-	u32 ctle_z_val[XUSB_SS_PORT_COUNT];
-	u32 ctle_g_val[XUSB_SS_PORT_COUNT];
-};
-
-struct tegra_xhci_firmware {
-	void *data; /* kernel virtual address */
-	size_t size; /* firmware size */
-	dma_addr_t dma; /* dma address for controller */
-};
-
-struct tegra_xhci_firmware_log {
-	dma_addr_t phys_addr;		/* dma-able address */
-	void *virt_addr;		/* kernel va of the shared log buffer */
-	struct log_entry *dequeue;	/* current dequeue pointer (va) */
-	struct circ_buf circ;		/* big circular buffer */
-	u32 seq;			/* log sequence number */
-
-	struct task_struct *thread;	/* a thread to consume log */
-	struct mutex mutex;
-	wait_queue_head_t read_wait;
-	wait_queue_head_t write_wait;
-	wait_queue_head_t intr_wait;
-	struct dentry *path;
-	struct dentry *log_file;
-	unsigned long flags;
-};
-
-struct tegra_xhci_hcd {
-	struct platform_device *pdev;
-	struct xhci_hcd *xhci;
-	u16 device_id;
-
-	spinlock_t lock;
-	struct mutex sync_lock;
-
-	int smi_irq;
-	int padctl_irq;
-	int usb3_irq;
-	int usb2_irq;
-
-	bool ss_wake_event;
-	bool ss_pwr_gated;
-	bool host_pwr_gated;
-	bool hs_wake_event;
-	bool host_resume_req;
-	bool lp0_exit;
-	u32 dfe_ctx_saved;
-	u32 ctle_ctx_saved;
-	unsigned long last_jiffies;
-	unsigned long host_phy_base;
-	unsigned long host_phy_size;
-	void __iomem *host_phy_virt_base;
-
-	void __iomem *padctl_base;
-	void __iomem *fpci_base;
-	void __iomem *ipfs_base;
-
-	struct tegra_xusb_platform_data *pdata;
-	struct tegra_xusb_board_data *bdata;
-	struct tegra_xusb_chip_calib *cdata;
-	struct tegra_xusb_padctl_regs *padregs;
-	const struct tegra_xusb_soc_config *soc_config;
-	u64 tegra_xusb_dmamask;
-
-	/* mailbox variables */
-	struct mutex mbox_lock;
-	u32 mbox_owner;
-	u32 cmd_type;
-	u32 cmd_data;
-
-	struct regulator **xusb_utmi_vbus_regs;
-
-	struct regulator *xusb_s1p05v_reg;
-	struct regulator *xusb_s3p3v_reg;
-	struct regulator *xusb_s1p8v_reg;
-	struct regulator *vddio_hsic_reg;
-	int vddio_hsic_refcnt;
-
-	struct work_struct mbox_work;
-	struct work_struct ss_elpg_exit_work;
-	struct work_struct host_elpg_exit_work;
-
-	struct clk *host_clk;
-	struct clk *ss_clk;
-
-	/* XUSB Falcon SuperSpeed Clock */
-	struct clk *falc_clk;
-
-	/* EMC Clock */
-	struct clk *emc_clk;
-	/* XUSB SS PI Clock */
-	struct clk *ss_src_clk;
-	/* PLLE Clock */
-	struct clk *plle_clk;
-	struct clk *pll_u_480M;
-	struct clk *clk_m;
-	/* refPLLE clk */
-	struct clk *pll_re_vco_clk;
-	/*
-	 * XUSB/IPFS specific registers these need to be saved/restored in
-	 * addition to spec defined registers
-	 */
-	struct xusb_save_regs sregs;
-	bool usb2_rh_suspend;
-	bool usb3_rh_suspend;
-	bool hc_in_elpg;
-
-	/* otg transceiver */
-	struct usb_phy *transceiver;
-	struct notifier_block otgnb;
-
-	unsigned long usb2_rh_remote_wakeup_ports; /* one bit per port */
-	unsigned long usb3_rh_remote_wakeup_ports; /* one bit per port */
-	/* firmware loading related */
-	struct tegra_xhci_firmware firmware;
-
-	struct tegra_xhci_firmware_log log;
-	struct device_attribute hsic_power_attr[XUSB_HSIC_COUNT];
-
-	bool init_done;
-};
-
 static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra);
 static int tegra_xhci_remove(struct platform_device *pdev);
 static void init_filesystem_firmware_done(const struct firmware *fw,
@@ -364,20 +214,6 @@ module_param(firmware_file, charp, S_IRUGO);
 MODULE_PARM_DESC(firmware_file, FIRMWARE_FILE_HELP);
 
 /* functions */
-static inline u32 padctl_readl(struct tegra_xhci_hcd *tegra, u32 reg)
-{
-	if (reg == PADCTL_REG_NONE)
-		return PADCTL_REG_NONE;
-	return readl(tegra->padctl_base + reg);
-}
-
-static inline void padctl_writel(struct tegra_xhci_hcd *tegra, u32 val, u32 reg)
-{
-	if (reg == PADCTL_REG_NONE)
-		return;
-	writel(val, tegra->padctl_base + reg);
-}
-
 static inline struct tegra_xhci_hcd *hcd_to_tegra_xhci(struct usb_hcd *hcd)
 {
 	return (struct tegra_xhci_hcd *) dev_get_drvdata(hcd->self.controller);
@@ -1566,8 +1402,26 @@ static int tegra_xusb_regulator_init(struct tegra_xhci_hcd *tegra,
 		}
 	}
 
+	tegra->avddio_plle_reg =
+			devm_regulator_get(&pdev->dev, "avddio_pll_uerefe");
+	if (IS_ERR(tegra->avddio_plle_reg)) {
+		dev_err(&pdev->dev, "1p05v plle: regulator not found: %ld."
+			, PTR_ERR(tegra->avddio_plle_reg));
+		err = PTR_ERR(tegra->avddio_plle_reg);
+		goto err_put_s1p05v_reg;
+	} else {
+		err = regulator_enable(tegra->avddio_plle_reg);
+		if (err < 0) {
+			dev_err(&pdev->dev,
+			"1p05v plle: regulator enable failed:%d\n", err);
+			goto err_put_s1p05v_reg;
+		}
+	}
+
 	return err;
 
+err_put_s1p05v_reg:
+	regulator_disable(tegra->xusb_s1p05v_reg);
 err_put_s1p8v_reg:
 	regulator_disable(tegra->xusb_s1p8v_reg);
 err_put_utmi_vbus_reg:
@@ -1589,6 +1443,7 @@ static void tegra_xusb_regulator_deinit(struct tegra_xhci_hcd *tegra)
 {
 	int i, utmi_pads;
 
+	regulator_disable(tegra->avddio_plle_reg);
 	regulator_disable(tegra->xusb_s1p05v_reg);
 	regulator_disable(tegra->xusb_s1p8v_reg);
 
@@ -1604,6 +1459,7 @@ static void tegra_xusb_regulator_deinit(struct tegra_xhci_hcd *tegra)
 	kzfree(tegra->xusb_utmi_vbus_regs);
 	regulator_disable(tegra->xusb_s3p3v_reg);
 
+	tegra->avddio_plle_reg = NULL;
 	tegra->xusb_s1p05v_reg = NULL;
 	tegra->xusb_s1p8v_reg = NULL;
 	tegra->xusb_s3p3v_reg = NULL;
@@ -2100,6 +1956,8 @@ static inline bool xusb_use_sata_lane(struct tegra_xhci_hcd *tegra)
 	return ret;
 }
 
+
+
 static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
@@ -2184,7 +2042,11 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 		if (tegra->bdata->portmap & (1 << pad)) {
 			tegra->soc_config->check_lane_owner_by_pad(pad
 					, tegra->bdata->lane_owner);
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+			t210_program_ss_pad(tegra, pad);
+#else
 			tegra_xhci_program_ss_pad(tegra, pad);
+#endif
 		} else {
 			reg = padctl_readl(tegra
 				, padregs->iophy_misc_pad_pX_ctlY_0[pad][2]);
@@ -4354,6 +4216,11 @@ static const struct tegra_xusb_soc_config tegra210_soc_config = {
 	.ss_pad_count = 4,
 	.padctl_offsets = &tegra210_padctl_offsets,
 	.check_lane_owner_by_pad = t210_chk_lane_owner_by_pad,
+
+	.tx_term_ctrl = 0x2,
+	.rx_ctle = 0xfb,
+	.rx_dfe = 0x77f1f,
+	.rx_eq_ctrl_h = 0xfcf01368,
 };
 
 static struct of_device_id tegra_xhci_of_match[] = {

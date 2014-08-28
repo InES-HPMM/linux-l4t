@@ -37,6 +37,7 @@
 #define TEGRA_SWGROUP_SATA	16	/* 0x278 */
 #define TEGRA_SWGROUP_VDE	17	/* 0x27c */
 #define TEGRA_SWGROUP_VI	18	/* 0x280 */
+#define TEGRA_SWGROUP_VII2C	18	/* 0x280 */
 #define TEGRA_SWGROUP_VIC	19	/* 0x284 */
 #define TEGRA_SWGROUP_XUSB_HOST	20	/* 0x288 */
 #define TEGRA_SWGROUP_XUSB_DEV	21	/* 0x28c */

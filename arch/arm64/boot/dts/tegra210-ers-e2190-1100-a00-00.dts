@@ -34,6 +34,7 @@
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
 #include "panel-a-wuxga-8-0.dtsi"
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
 
 / {
 	model = "e2190";
@@ -79,24 +80,24 @@
 	};
 
 	sdhci@700b0600 {
-		uhs_mask = <0x60>;
+		uhs-mask = <0x60>;
 		built-in;
 		status = "okay";
 	};
 
 	sdhci@700b0400 {
-		uhs_mask = <0x1c>;
-		status = "okay";
+		uhs-mask = <0x1c>;
+		status = "disabled";
 	};
 
 	sdhci@700b0200 {
-		uhs_mask = <0x60>;
+		uhs-mask = <0x1C>;
 		bus-width = <4>;
 		status = "okay";
 	};
 
 	sdhci@700b0000 {
-		uhs_mask = <0x1c>;
+		uhs-mask = <0x1c>;
 		status = "okay";
 	};
 
@@ -104,6 +105,41 @@
 		rt5639: rt5639.0-001c@1c {
 			compatible = "realtek,rt5639";
 			reg = <0x1c>;
+		};
+		earSmart: earSmart-codec.0-003e@3e {
+			compatible = "adnc,earSmart";
+			reg = <0x3e>;
+
+			adnc,reset-gpio = <&gpio TEGRA_GPIO(BB, 3) GPIO_ACTIVE_HIGH>;
+			adnc,gpiob-gpio = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
+			adnc,wakeup-gpio = <&gpio TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH>;
+			adnc,int-gpio = <(-1)>;
+			adnc,gpioa-gpio = <(-1)>;
+			adnc,enable_hs_uart_intf = <0>;
+			adnc,ext_clk_rate = <0>;
+			adnc,debounce_timer = <3>;
+			adnc,plug_det_enabled = <1>;
+			adnc,mic_det_enabled = <1>;
+
+			adnc,gpio_b_irq_type = <4>;
+			adnc,cmd_comp_mode = <0>;
+
+			/* Button Control 1 */
+			adnc,btn_press_settling_time = <4>;
+			adnc,btn_press_polling_rate = <1>;
+			adnc,btn_press_det_act = <1>;
+
+			/* Button Control 2 */
+			adnc,double_btn_timer = <(-1)>;
+			adnc,mic_det_settling_timer = <(-1)>;
+
+			/* Button Control 3 */
+			adnc,long_btn_timer = <(-1)>;
+			adnc,adc_btn_mute = <(-1)>;
+
+			/* Button Control 4 */
+			adnc,valid_levels = <31>;
+			adnc,impd_det_timer = <0>;
 		};
 	};
 
@@ -133,57 +169,39 @@
 	ahub {
 		i2s@702d1000 {
 			pinctrl-names = "dap_active", "dap_inactive";
-			pinctrl-0 = <&dap1_active_state>;
-			pinctrl-1 = <&dap1_inactive_state>;
-			regulator-supplies = "vdd-1v8-audio-hv", "vdd_1v8-audio-hv-bias";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			regulator-supplies = "vdd-1v8-audio-hv", "vdd-1v8-audio-hv-bias";
 			vdd-1v8-audio-hv-supply = <&max77620_sd3>;
-			vdd_1v8-audio-hv-bias-supply = <&max77620_sd3>;
+			vdd-1v8-audio-hv-bias-supply = <&max77620_sd3>;
 		};
 
 		i2s@702d1300 {
 			pinctrl-names = "dap_active", "dap_inactive";
-			pinctrl-0 = <&dap4_active_state>;
-			pinctrl-1 = <&dap4_inactive_state>;
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
 			regulator-supplies = "vddio-dmic";
 			vddio-dmic-supply = <&max77620_sd3>;
 		};
 	};
 
 	sound {
-		compatible = "nvidia,tegra-audio-t210ref-mobile";
-		nvidia,model = "tegra-snd-t210ref-mobile";
-		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(R, 2) GPIO_ACTIVE_HIGH>;
-		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(R, 7) GPIO_ACTIVE_HIGH>;
+		compatible = "nvidia,tegra-audio-t210ref-mobile-es755";
+		nvidia,model = "tegra-snd-t210ref-mobile-es755";
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
 		nvidia,num-codec-link = <2>;
 
 		nvidia,audio-routing =
-			"x Headphone Jack", 	"x HPOL",
-			"x Headphone Jack", 	"x HPOR",
-			"x Int Spk", 	"x SPORP",
-			"x Int Spk", 	"x SPORN",
-			"x Int Spk", 	"x SPOLP",
-			"x Int Spk", 	"x SPOLN",
-			"x micbias1",	"x Mic Jack",
-			"x IN2P",		"x Mic Jack",
-			"x IN2P",		"x Mic Jack",
-			"x DMIC L1",	"x Int Mic",
-			"x DMIC L2",	"x Int Mic",
-			"x DMIC R1",	"x Int Mic",
-			"x DMIC R2",	"x Int Mic",
-
 			"y Headphone", 	"y OUT",
-			"z Headphone", 	"z OUT",
-			"s Headphone", 	"s OUT",
-			"y IN",		"y Mic",
-			"z IN",		"z Mic",
-			"s IN",		"s Mic";
+			"y IN",		"y Mic";
+
 		nvidia,xbar = <&tegra_axbar>;
 
 		nvidia,dai-link-1 {
 			cpu-dai = <&tegra_i2s1>;
-			codec-dai = <&rt5639>;
+			codec-dai = <&earSmart>;
 			cpu-dai-name = "I2S1";
-			codec-dai-name = "rt5639-aif1";
+			codec-dai-name = "earSmart-porta";
 			format = "i2s";
 			bitclock-slave;
 			frame-slave;
@@ -275,5 +293,31 @@
 		compatible = "pwm-backlight";
 		status = "okay";
 	};
+
+	gpio-keys {
+		home {
+			status = "disabled";
+		};
+	};
+
+	udc@7d000000 {
+                nvidia,port-otg;
+                nvidia,charging-supported;
+                nvidia,enable-pmu-vbus-detection;
+                nvidia,id-detection-type = <1>;
+                extcon-cables = <&bq2419x 0>;
+                extcon-cable-names = "vbus";
+                #extcon-cells = <1>;
+                status = "okay";
+        };
+
+        otg@7d000000 {
+                nvidia,enable-pmu-vbus-detection;
+                nvidia,id-detection-type = <1>;
+                extcon-cables = <&bq2419x 0 &id_gpio_extcon 0>;
+                extcon-cable-names = "vbus", "id";
+                #extcon-cells = <1>;
+                status = "okay";
+        };
 
 };

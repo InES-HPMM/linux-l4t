@@ -34,11 +34,14 @@
 		i2c3 = &i2c4;
 		i2c4 = &i2c5;
 		i2c5 = &i2c6;
+		i2c6 = &i2c7;
 		spi0 = &spi0;
 		spi1 = &spi1;
 		spi2 = &spi2;
 		spi3 = &spi3;
 		qspi6 = &qspi6;
+		serial0 = &uarta;
+		serial1 = &uartb;
 		serial2 = &uartc;
 		serial3 = &uartd;
 		udc0 = &udc;
@@ -222,18 +225,15 @@
 		      <0x0 0x60004500 0x0 0x40>;
 	};
 
-/* The interrupt controller parser does not support the	*/
-/* property "status", hence is commented		*/
-/*							*/
-/*	agic-controller {				*/
-/*		compatible = "nvidia,tegra210-agic";	*/
-/*		interrupt-controller;			*/
-/*		no-gic-extension;			*/
-/*		not-per-cpu;				*/
-/*		reg = <0x0 0x702f9000 0x0 0x2000>,	*/
-/*		      <0x0 0x702fa000 0x0 0x2000>;	*/
-/*		interrupts = <0 102 0xf04>;		*/
-/*	};						*/
+	agic-controller {
+		compatible = "nvidia,tegra210-agic";
+		interrupt-controller;
+		no-gic-extension;
+		not-per-cpu;
+		reg = <0x0 0x702f9000 0x0 0x2000>,
+		      <0x0 0x702fa000 0x0 0x2000>;
+		interrupts = <0 102 0xf04>;
+	};
 
 	timer {
 		compatible = "arm,armv8-timer";
@@ -241,7 +241,7 @@
 			      1 14 0xf01
 			      1 11 0xf01
 			      1 10 0xf01>;
-		clock-frequency = <38400000>;
+		clock-frequency = <19200000>;
 	};
 
 	timer@60005000 {
@@ -251,7 +251,6 @@
 			     <0 177 4>,
 			     <0 178 4>,
 			     <0 179 4>;
-		clock-frequency = <38400000>;
 	};
 
 	rtc {
@@ -336,7 +335,8 @@
 			      0 97 0x04
 			      0 21 0x04>;
 		nvidia,hsic0 = /bits/8 <0x1 0x1 0x8 0xa 0 0 1 0x1c 0>;
-		status = "ok";
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(XUSB_HOST) &common_as>;
+		status = "okay";
 	};
 
 	uarta: serial@70006000 {
@@ -476,8 +476,14 @@
 		vi {
 			compatible = "nvidia,tegra210-vi";
 			reg = <0x0 0x54080000 0x0 0x00040000>;
-			interrupts = <0 70 0x04>;
+			interrupts = <0 69 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(VI) &common_as>;
+		};
+
+		vii2c {
+			compatible = "nvidia,tegra210-vi-i2c";
+			reg = <0x546C0000 0x00034000>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(VII2C) &common_as>;
 		};
 
 		isp@54600000 {
@@ -490,7 +496,7 @@
 		isp@54680000 {
 			compatible = "nvidia,tegra210-isp";
 			reg = <0x0 0x54680000 0x0 0x00040000>;
-			interrupts = <0 72 0x04>;
+			interrupts = <0 70 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(ISP2B) &common_as>;
 		};
 
@@ -546,7 +552,7 @@
 		tsecb {
 			compatible = "nvidia,tegra210-tsec";
 			reg = <0x0 0x54100000 0x0 0x00040000>;
-			iommus = <&smmu TEGRA_SWGROUP_CELLS(TSECB1) &common_as>;
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(TSECB) &common_as>;
 		};
 
 		nvdec {
@@ -913,7 +919,7 @@
 		   <0x0 0x01000000 0x0 0x6f2c0000>, /* DRAM MAP1 */
 		   <0x0 0x70300000 0x0 0x8fd00000>; /* DRAM MAP2 */
 	     iommus = <&smmu TEGRA_SWGROUP_CELLS(APE) &ape_as>;
-	     status = "disabled";
+	     status = "okay";
 	};
 
 	pcie-controller {
@@ -1029,6 +1035,8 @@
 		compatible = "nvidia,tegra210-i2c";
 		reg = <0x0 0x7000d000 0x0 0x100>;
 		interrupts = <0 53 0x04>;
+		scl-gpio = <&gpio 195 0>;
+		sda-gpio = <&gpio 196 0>;
 		nvidia,require-cldvfs-clock;
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
@@ -1044,6 +1052,13 @@
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS) &ppcs_as>;
 		status = "okay";
 		clock-frequency = <400000>;
+	};
+
+	i2c7: i2c@546c0000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "nvidia,tegra210-vii2c";
+		status = "okay";
 	};
 
 	sdhci@700b0600 {
@@ -1106,9 +1121,9 @@
 		status = "disabled";
 	};
 
-        xudc@700D0000 {
+        xudc@700d0000 {
                 compatible = "nvidia,tegra210-xudc";
-                reg = <0x0 0x700D0000 0x0 0x8000>,
+                reg = <0x0 0x700d0000 0x0 0x8000>,
                       <0x0 0x700d8000 0x0 0x1000>,
                       <0x0 0x700d9000 0x0 0x1000>,
                       <0x0 0x7009f000 0x0 0x1000>;
@@ -1132,5 +1147,11 @@
 		nvidia,power-off-on-suspend;
 		nvidia,remote-wakeup-supported;
 		status = "disabled";
+	};
+
+	watchdog@60005100 {
+		compatible = "nvidia,tegra-wdt";
+		reg = <0x0 0x60005100 0x0 0x20              /* WDT0 registers */
+		0x0 0x60005070 0x0 0x8>;              /* TMR7 registers */
 	};
 };

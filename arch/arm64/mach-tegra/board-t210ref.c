@@ -151,6 +151,8 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	{ "uartd",	"pll_p",	408000000,	false},
 	{ "extern2",	"pll_p",	41000000,	false},
 	{ "clk_out_2",	"extern2",	40800000,	false},
+	{ "extern1",	"clk_m",	19200000,	true},
+	{ "clk_out_1",	"extern1",	19200000,	true},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -427,6 +429,10 @@ static void __init tegra_t210ref_early_init(void)
 		tegra_soc_device_init("e2190");
 	else if (of_machine_is_compatible("nvidia,grenada"))
 		tegra_soc_device_init("grenada");
+	else if (of_machine_is_compatible("nvidia,loki-e"))
+		tegra_soc_device_init("loki_e");
+	else if (of_machine_is_compatible("nvidia,foster-e"))
+		tegra_soc_device_init("foster_e");
 }
 
 static struct tegra_io_dpd pexbias_io = {
@@ -628,6 +634,8 @@ static const char * const t210ref_dt_board_compat[] = {
 	"nvidia,e2190",
 	"nvidia,e2141",
 	"nvidia,grenada",
+	"nvidia,loki-e",
+	"nvidia,foster-e",
 	NULL
 };
 

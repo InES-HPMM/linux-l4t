@@ -138,6 +138,7 @@
 #define   UTMIP_FORCE_PDCHRP_POWERDOWN	(1 << 2)
 #define   UTMIP_FORCE_PDDR_POWERDOWN	(1 << 4)
 #define   UTMIP_XCVR_TERM_RANGE_ADJ(x)	(((x) & 0xf) << 18)
+#define   UTMIP_XCVR_HS_IREF_CAP(x) (((x) & 0x3) << 24)
 
 #define UTMIP_XCVR_CFG2		0x854
 #define   UTMIP_XCVR_VREG_MASK		(0x7 << 9)
@@ -1014,7 +1015,9 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 	}
 
 	utmi_phy_pad_disable();
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	utmi_phy_iddq_override(true);
+#endif
 
 	phy->phy_clk_on = false;
 	phy->hw_accessible = false;
@@ -1099,7 +1102,8 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val &= ~(UTMIP_XCVR_LSBIAS_SEL | UTMIP_FORCE_PD_POWERDOWN |
 		 UTMIP_FORCE_PD2_POWERDOWN | UTMIP_FORCE_PDZI_POWERDOWN |
 		 UTMIP_XCVR_SETUP(~0) | UTMIP_XCVR_LSFSLEW(~0) |
-		 UTMIP_XCVR_LSRSLEW(~0) | UTMIP_XCVR_HSSLEW_MSB(~0));
+		 UTMIP_XCVR_LSRSLEW(~0) | UTMIP_XCVR_HSSLEW_MSB(~0) |
+		 UTMIP_XCVR_SETUP_MSB(~0));
 	val |= UTMIP_XCVR_SETUP(phy->utmi_xcvr_setup);
 	val |= UTMIP_XCVR_SETUP_MSB(XCVR_SETUP_MSB_CALIB(phy->utmi_xcvr_setup));
 	val |= UTMIP_XCVR_LSFSLEW(config->xcvr_lsfslew);
@@ -1128,7 +1132,7 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 
 	val = readl(base + UTMIP_BIAS_CFG2);
 	val &= ~UTMIP_HSSQUELCH_LEVEL_NEW(~0);
-	val |= UTMIP_HSSQUELCH_LEVEL_NEW(3);
+	val |= UTMIP_HSSQUELCH_LEVEL_NEW(2);
 	writel(val, base + UTMIP_BIAS_CFG2);
 
 	/* 20soc process is not tolerant to 3.3v
@@ -1151,9 +1155,11 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 
 	val = readl(base + UTMIP_SPARE_CFG0);
 	val &= ~FUSE_SETUP_SEL;
-	val |= FUSE_ATERM_SEL;
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 	val &= ~FUSE_SQUELCH_SEL;
+	val &= ~FUSE_ATERM_SEL;
+#else
+	val |= FUSE_ATERM_SEL;
 #endif
 	writel(val, base + UTMIP_SPARE_CFG0);
 
@@ -1166,7 +1172,9 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	writel(val, base + USB_SUSP_CTRL);
 
 	/* Bring UTMIPLL out of IDDQ mode while exiting from reset/suspend */
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	utmi_phy_iddq_override(false);
+#endif
 
 	if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
 		USB_PHY_CLK_VALID, USB_PHY_CLK_VALID, 2600))

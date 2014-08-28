@@ -109,7 +109,7 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "xusb_host_src",      "pll_p_out_xusb",   102000000,      false},
 	{ "xusb_dev_src",       "pll_p_out_xusb",   102000000,      false},
 	{ "xusb_ss_src",        "pll_u_480M",   120000000,      false},
-	{ "xusb_hs_src",        "pll_u_60M",    60000000,       false},
+	{ "xusb_hs_src",        "xusb_ss_src",  120000000,       false},
 	{ "xusb_fs_src",        "pll_u_48M",    48000000,       false},
 	{ "sdmmc1",     "pll_p",        46000000,       false},
 	{ "sdmmc2",     "pll_p",        46000000,       false},
@@ -124,7 +124,7 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "cpu.mselect",	NULL,	102000000,	true},
 	{ "gpu_gate",       NULL,           0,              true},
 	{ "gpu_ref",        NULL,           0,              true},
-	{ "gm20b.gbus",     NULL,           307200000,      false},
+	{ "gm20b.gbus",     NULL,           384000000,      false},
 	{ "mc_capa",        "mc",           0,              true},
 	{ "mc_cbpa",        "mc",           0,              true},
 	{ "mc_ccpa",        "mc",           0,              true},
@@ -200,6 +200,9 @@ static inline void gizmo_writel(unsigned long value, unsigned long offset)
 static void __init tegra_init_power(void)
 {
    /* TODO : Do the required power initilizations here */
+#ifdef CONFIG_ARCH_TEGRA_HAS_PCIE
+	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
+#endif
 }
 
 static void __init tegra_init_ahb_gizmo_settings(void)
@@ -258,6 +261,7 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 
 void __init tegra21x_init_early(void)
 {
+	display_tegra_dt_info();
 	tegra_apb_io_init();
 	tegra_perf_init();
 	tegra_init_fuse();

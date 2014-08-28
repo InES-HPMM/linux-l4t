@@ -72,6 +72,7 @@ obj-$(CONFIG_I2C_SIRF)		+= i2c-sirf.o
 obj-$(CONFIG_I2C_STU300)	+= i2c-stu300.o
 CFLAGS_i2c-tegra.o		 = -Werror
 obj-$(CONFIG_I2C_TEGRA)		+= i2c-tegra.o
+obj-$(CONFIG_VII2C_TEGRA)	+= vii2c-tegra.o
 CFLAGS_i2c-slave-tegra.o	 = -Werror
 obj-$(CONFIG_I2C_SLAVE_TEGRA)   += i2c-slave-tegra.o
 obj-$(CONFIG_I2C_VERSATILE)	+= i2c-versatile.o

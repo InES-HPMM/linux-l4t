@@ -198,6 +198,7 @@
 	pcie-controller {
 		nvidia,hot-plug-gpio = <&gpio TEGRA_GPIO(O, 1) 0>;
 		nvidia,wake-gpio = <&gpio TEGRA_GPIO(DD, 3) 0>;
+		nvidia,lane-map = <0x04>;
 		status = "okay";
 
 		pci@1,0 {

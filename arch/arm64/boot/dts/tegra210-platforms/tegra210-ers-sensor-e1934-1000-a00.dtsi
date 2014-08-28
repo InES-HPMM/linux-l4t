@@ -24,7 +24,7 @@
 			compatible = "invensense,mpu6515";
 			reg = <0x69>;
 			interrupt-parent = <&gpio>;
-			interrupts = <144 0x01>;
+			interrupts = <TEGRA_GPIO(X, 2) 0x01>;
 			invensense,orientation = [01 00 00 00 01 00 00 00 01];
 		};
 
