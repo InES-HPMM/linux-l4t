@@ -1106,6 +1106,9 @@ static int tegra_spi_wait_on_message_xfer(struct tegra_spi_data *tspi)
 		dev_err(tspi->dev,
 				"spi trasfer timeout, err %d\n", ret);
 		tegra_spi_dump_regs(tspi);
+		tegra_periph_reset_assert(tspi->clk);
+		udelay(2);
+		tegra_periph_reset_deassert(tspi->clk);
 		if (tspi->is_curr_dma_xfer &&
 				(tspi->cur_direction & DATA_DIR_TX))
 			dmaengine_terminate_all(tspi->tx_dma_chan);
@@ -1173,6 +1176,9 @@ static int tegra_spi_handle_message(struct tegra_spi_data *tspi,
 				dev_err(tspi->dev, "TxDma Xfer failed, wait_status - %ld\n",
 						wait_status);
 				tegra_spi_dump_regs(tspi);
+				tegra_periph_reset_assert(tspi->clk);
+				udelay(2);
+				tegra_periph_reset_deassert(tspi->clk);
 				ret = -EIO;
 				return ret;
 			}
@@ -1187,6 +1193,9 @@ static int tegra_spi_handle_message(struct tegra_spi_data *tspi,
 						"RxDma Xfer failed, wait_status -  %ld\n",
 						wait_status);
 				tegra_spi_dump_regs(tspi);
+				tegra_periph_reset_assert(tspi->clk);
+				udelay(2);
+				tegra_periph_reset_deassert(tspi->clk);
 				ret = -EIO;
 				return ret;
 			}
@@ -1289,6 +1298,7 @@ static void handle_cpu_based_err_xfer(struct tegra_spi_data *tspi)
 			tspi->status_reg);
 		dev_err(tspi->dev, "CpuXfer 0x%08x:0x%08x\n",
 			tspi->command1_reg, tspi->dma_control_reg);
+		tegra_spi_dump_regs(tspi);
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
@@ -1322,6 +1332,7 @@ static void handle_dma_based_err_xfer(struct tegra_spi_data *tspi)
 			tspi->status_reg);
 		dev_err(tspi->dev, "DmaXfer 0x%08x:0x%08x\n",
 			tspi->command1_reg, tspi->dma_control_reg);
+		tegra_spi_dump_regs(tspi);
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
@@ -1520,19 +1531,12 @@ static int tegra_spi_probe(struct platform_device *pdev)
 
 	spi_irq = platform_get_irq(pdev, 0);
 	tspi->irq = spi_irq;
-	ret = request_irq(tspi->irq, tegra_spi_isr, 0,
-			dev_name(&pdev->dev), tspi);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "Failed to register ISR for IRQ %d\n",
-					tspi->irq);
-		goto exit_free_master;
-	}
 
 	tspi->clk = devm_clk_get(&pdev->dev, "spi");
 	if (IS_ERR(tspi->clk)) {
 		dev_err(&pdev->dev, "can not get clock\n");
 		ret = PTR_ERR(tspi->clk);
-		goto exit_free_irq;
+		goto exit_free_master;
 	}
 
 	tspi->max_buf_size = SPI_FIFO_DEPTH << 2;
@@ -1541,7 +1545,7 @@ static int tegra_spi_probe(struct platform_device *pdev)
 
 	ret = tegra_spi_init_dma_param(tspi, true);
 	if (ret < 0)
-		goto exit_free_irq;
+		goto exit_free_master;
 	ret = tegra_spi_init_dma_param(tspi, false);
 	if (ret < 0)
 		goto exit_rx_dma_free;
@@ -1570,11 +1574,24 @@ static int tegra_spi_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "pm runtime get failed, e = %d\n", ret);
 		goto exit_pm_disable;
 	}
+
+	tegra_periph_reset_assert(tspi->clk);
+	udelay(2);
+	tegra_periph_reset_deassert(tspi->clk);
+
 	tspi->def_command1_reg  = SPI_M_S | SPI_LSBYTE_FE;
 	tspi->def_command1_reg |= SPI_CS_SEL(tspi->def_chip_select);
 	tegra_spi_writel(tspi, tspi->def_command1_reg, SPI_COMMAND1);
 	tspi->def_command2_reg = tegra_spi_readl(tspi, SPI_COMMAND2);
 	pm_runtime_put(&pdev->dev);
+
+	ret = devm_request_irq(&pdev->dev, tspi->irq, tegra_spi_isr, 0,
+			dev_name(&pdev->dev), tspi);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Failed to register ISR for IRQ %d\n",
+					tspi->irq);
+		goto exit_free_master;
+	}
 
 	master->dev.of_node = pdev->dev.of_node;
 	ret = spi_register_master(master);
@@ -1594,8 +1611,6 @@ exit_deinit_dma:
 	tegra_spi_deinit_dma_param(tspi, false);
 exit_rx_dma_free:
 	tegra_spi_deinit_dma_param(tspi, true);
-exit_free_irq:
-	free_irq(spi_irq, tspi);
 exit_free_master:
 	spi_master_put(master);
 	return ret;
@@ -1606,7 +1621,6 @@ static int tegra_spi_remove(struct platform_device *pdev)
 	struct spi_master *master = dev_get_drvdata(&pdev->dev);
 	struct tegra_spi_data	*tspi = spi_master_get_devdata(master);
 
-	free_irq(tspi->irq, tspi);
 	spi_unregister_master(master);
 
 	if (tspi->tx_dma_chan)
