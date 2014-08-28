@@ -284,6 +284,18 @@ static void tls_thread_switch(struct task_struct *next)
 	"	msr	tpidr_el0, %0\n"
 	"	msr	tpidrro_el0, %1"
 	: : "r" (tpidr), "r" (tpidrro));
+
+#ifdef CONFIG_ARMV7_COMPAT
+	if (task_thread_info(next)->deprecated_flags !=
+		task_thread_info(current)->deprecated_flags) {
+		int sctlr_el1;
+		asm volatile("mrs %0, sctlr_el1" : "=r" (sctlr_el1));
+		sctlr_el1 = (sctlr_el1 & ~DEPRECATED_TRAP_MASK) |
+			task_thread_info(next)->deprecated_flags;
+		asm volatile("msr sctlr_el1, %0" : : "r" (sctlr_el1));
+	}
+#endif
+
 }
 
 /*

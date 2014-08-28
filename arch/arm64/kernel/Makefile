@@ -30,6 +30,7 @@ arm64-obj-$(CONFIG_KGDB)                += kgdb.o
 
 obj-$(CONFIG_PCI)               += bios32.o
 obj-$(CONFIG_SWP_EMULATE)	+= swp_emulate.o
+obj-$(CONFIG_ARMV7_COMPAT)	+= deprecated.o
 
 obj-y					+= $(arm64-obj-y) vdso/
 obj-m					+= $(arm64-obj-m)

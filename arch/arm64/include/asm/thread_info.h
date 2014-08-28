@@ -37,6 +37,10 @@ struct exec_domain;
 
 #include <asm/types.h>
 
+#ifdef CONFIG_ARMV7_COMPAT
+#include <asm/deprecated.h>
+#endif
+
 typedef unsigned long mm_segment_t;
 
 /*
@@ -51,7 +55,17 @@ struct thread_info {
 	struct restart_block	restart_block;
 	int			preempt_count;	/* 0 => preemptable, <0 => bug */
 	int			cpu;		/* cpu */
+#ifdef CONFIG_ARMV7_COMPAT
+	unsigned int	deprecated_flags;	/* deprecated instructions */
+#endif
 };
+
+
+#ifdef CONFIG_ARMV7_COMPAT
+#define DEPRECATED_FLAGS .deprecated_flags = INIT_DEPRECATED_FLAGS,
+#else
+#define DEPRECATED_FLAGS
+#endif
 
 #define INIT_THREAD_INFO(tsk)						\
 {									\
@@ -63,6 +77,7 @@ struct thread_info {
 	.restart_block	= {						\
 		.fn	= do_no_restart_syscall,			\
 	},								\
+	DEPRECATED_FLAGS					\
 }
 
 #define init_thread_info	(init_thread_union.thread_info)
