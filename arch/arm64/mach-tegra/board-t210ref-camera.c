@@ -518,7 +518,7 @@ static int t210ref_ov7695_power_on(struct ov7695_power_rail *pw)
 	/* disable CSIE IOs DPD mode to turn on front camera for t210ref */
 	tegra_io_dpd_disable(&csie_io);
 
-	gpio_set_value(CAM2_PWDN, 0);
+	gpio_set_value(CAM1_PWDN, 0);
 	usleep_range(1000, 1020);
 
 	err = regulator_enable(pw->avdd);
@@ -531,7 +531,7 @@ static int t210ref_ov7695_power_on(struct ov7695_power_rail *pw)
 		goto ov7695_iovdd_fail;
 	usleep_range(1000, 1020);
 
-	gpio_set_value(CAM2_PWDN, 1);
+	gpio_set_value(CAM1_PWDN, 1);
 	usleep_range(1000, 1020);
 
 	return 0;
@@ -557,7 +557,7 @@ static int t210ref_ov7695_power_off(struct ov7695_power_rail *pw)
 	}
 	usleep_range(100, 120);
 
-	gpio_set_value(CAM2_PWDN, 0);
+	gpio_set_value(CAM1_PWDN, 0);
 	usleep_range(100, 120);
 
 	regulator_disable(pw->iovdd);
@@ -573,7 +573,7 @@ static int t210ref_ov7695_power_off(struct ov7695_power_rail *pw)
 struct ov7695_platform_data t210ref_ov7695_pdata = {
 	.power_on = t210ref_ov7695_power_on,
 	.power_off = t210ref_ov7695_power_off,
-	.mclk_name = "clk_out_3",
+	.mclk_name = "cam_mclk1",
 };
 
 static int t210ref_ov5693_power_on(struct ov5693_power_rail *pw)
