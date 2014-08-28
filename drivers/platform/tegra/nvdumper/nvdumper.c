@@ -48,6 +48,7 @@ static uint32_t get_dirty_state(void)
 
 static void set_dirty_state(uint32_t state)
 {
+	pr_info("nvdumper: set_dirty_state 0x%x\n", state);
 	iowrite32(state, nvdumper_ptr);
 }
 
@@ -119,7 +120,8 @@ static int __init nvdumper_init(void)
 	if (ret < 0) {
 		pr_err("%s: NCT read failure\n", __func__);
 		kfree(item);
-		goto err_out3;
+		set_dirty_state(NVDUMPER_CLEAN);
+		goto err_out0;
 	}
 
 	pr_info("%s: RAMDUMP flag(%d) from NCT\n",
@@ -147,6 +149,10 @@ err_out2:
 err_out1:
 	iounmap(nvdumper_ptr);
 
+#ifdef CONFIG_TEGRA_USE_NCT /* avoid build error if NCT is not enabled*/
+err_out0:
+#endif
+
 	return ret;
 
 }
@@ -162,12 +168,15 @@ static void __exit nvdumper_exit(void)
 }
 
 #ifdef CONFIG_DEBUG_FS
+
 static struct dentry *nvdumper_dbg_dentry;
-static char *nvdumper_last_reboot_str = "unknown\n";
+static struct dentry *nvdumper_set_dbg_dentry;
+static char *nvdumper_set_str = "dirty_dump";
 
 static int nvdumper_reboot_state_show(struct seq_file *s, void *data)
 {
-	seq_puts(s, nvdumper_last_reboot_str);
+	seq_puts(s, nvdumper_set_str);
+	seq_puts(s, "\n");
 	return 0;
 }
 
@@ -183,9 +192,52 @@ static const struct file_operations nvdumper_dbg_fops = {
 	.release	= single_release,
 };
 
+static int nvdumper_set_state_show(struct seq_file *s, void *data)
+{
+	seq_puts(s, nvdumper_set_str);
+	seq_puts(s, "\n");
+	return 0;
+}
+
+static int nvdumper_set_dbg_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, nvdumper_set_state_show, inode->i_private);
+}
+
+static ssize_t nvdumper_write_set(struct file *file, const char __user *buf,
+				size_t count, loff_t *ppos)
+{
+	if (count < 1)
+		return 0;
+
+	strcpy(nvdumper_set_str, buf);
+	nvdumper_set_str[count-1] = '\0';
+
+	if (!strcmp(nvdumper_set_str, "clean"))
+		set_dirty_state(NVDUMPER_CLEAN);
+	else if (!strcmp(nvdumper_set_str, "dirty"))
+		set_dirty_state(NVDUMPER_DIRTY);
+	else if (!strcmp(nvdumper_set_str, "dirty_dump"))
+		set_dirty_state(NVDUMPER_DIRTY_DUMP);
+	else
+		strcpy(nvdumper_set_str, "unknown");
+
+	pr_err("nvdumper_set was updated to %s\n", nvdumper_set_str);
+
+	return count;
+}
+
+static const struct file_operations nvdumper_set_dbg_fops = {
+	.open		= nvdumper_set_dbg_open,
+	.read		= seq_read,
+	.write		= nvdumper_write_set,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static void __init nvdumper_debugfs_init(void)
 {
-	nvdumper_dbg_dentry = debugfs_create_file("last_reboot", S_IRUGO,
+	nvdumper_dbg_dentry = debugfs_create_file("nvdumper_prev", S_IRUGO,
 			NULL, NULL, &nvdumper_dbg_fops);
 
 	if (!nvdumper_dbg_dentry)
@@ -193,20 +245,28 @@ static void __init nvdumper_debugfs_init(void)
 
 	switch (nvdumper_last_reboot) {
 	case NVDUMPER_CLEAN:
-		nvdumper_last_reboot_str = "clean\n";
+		nvdumper_set_str = "clean\n";
 		break;
 	case NVDUMPER_DIRTY:
+		nvdumper_set_str = "dirty\n";
+		break;
 	case NVDUMPER_DIRTY_DUMP:
-		nvdumper_last_reboot_str = "dirty\n";
+		nvdumper_set_str = "dirty_dump\n";
 		break;
 	default:
 		break;
 	}
+
+	nvdumper_set_dbg_dentry = debugfs_create_file("nvdumper_set",
+			S_IRUGO | S_IWUGO, NULL, NULL, &nvdumper_set_dbg_fops);
+	if (!nvdumper_set_dbg_dentry)
+		return;
 }
 
 static void __exit nvdumper_debugfs_exit(void)
 {
 	debugfs_remove(nvdumper_dbg_dentry);
+	debugfs_remove(nvdumper_set_dbg_dentry);
 }
 
 #else
