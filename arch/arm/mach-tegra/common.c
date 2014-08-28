@@ -208,12 +208,22 @@ static int tegra_update_resize_cfg(phys_addr_t base , size_t size)
 {
 	int err = 0;
 #ifdef CONFIG_TRUSTED_LITTLE_KERNEL
+#define MAX_RETRIES 6
+	int retries = MAX_RETRIES;
 
+retry:
 	err = gk20a_do_idle();
 	if (!err) {
 		/* Config VPR_BOM/_SIZE in MC */
 		err = te_set_vpr_params((void *)(uintptr_t)base, size);
 		gk20a_do_unidle();
+	} else {
+		if (retries--) {
+			pr_err("%s:%d: fail retry=%d",
+				__func__, __LINE__, MAX_RETRIES - retries);
+			msleep(1);
+			goto retry;
+		}
 	}
 #endif
 	return err;
