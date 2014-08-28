@@ -453,7 +453,7 @@ static int ov7695_power_get(struct ov7695_info *info)
 	 * ov7695: need to get 1.8v first
 	 */
 	/* interface 1.8v */
-	err = ov7695_regulator_get(info, &pw->iovdd, "vif2");
+	err = ov7695_regulator_get(info, &pw->iovdd, "vif");
 	if (unlikely(IS_ERR(ERR_PTR(err))))
 		return err;
 
