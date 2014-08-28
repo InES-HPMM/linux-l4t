@@ -58,6 +58,8 @@
 #define XUSB_DEVICE_ID_T114				0x0E16
 #define XUSB_DEVICE_ID_T124				0x0FA3
 #define XUSB_DEVICE_ID_T210				0x0FAC
+#define XUSB_IS_T114(t)	(t->device_id == XUSB_DEVICE_ID_T114)
+#define XUSB_IS_T124(t)	(t->device_id == XUSB_DEVICE_ID_T124)
 #define XUSB_IS_T114_OR_T124(t)			\
 	((t->device_id == XUSB_DEVICE_ID_T114) ||	\
 		(t->device_id == XUSB_DEVICE_ID_T124))

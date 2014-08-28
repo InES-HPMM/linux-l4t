@@ -2949,6 +2949,18 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 		goto send_sw_response;
 	case MBOX_CMD_INC_SSPI_CLOCK:
 	case MBOX_CMD_DEC_SSPI_CLOCK:
+		if (XUSB_IS_T210(tegra)) {
+			/*
+			 * TODO: temporarily skip SSPI clock changing for T210.
+			 * Hardware group will provide proper sequence.
+			 */
+			pr_warn("%s: ignore SSPI clock request.\n", __func__);
+			sw_resp = CMD_DATA(tegra->cmd_data) |
+						CMD_TYPE(MBOX_CMD_ACK);
+			goto send_sw_response;
+
+		}
+
 		ret = tegra_xusb_request_clk_rate(
 				tegra,
 				tegra->ss_src_clk,
@@ -3228,6 +3240,11 @@ static int tegra_xhci_bus_suspend(struct usb_hcd *hcd)
 	int err = 0;
 	u32 host_ports = get_host_controlled_ports(tegra);
 	unsigned long flags;
+
+	if (XUSB_IS_T210(tegra)) {
+		pr_debug("%s T210 ELPG is not verified yet\n", __func__);
+		return -EBUSY;
+	}
 
 	mutex_lock(&tegra->sync_lock);
 
@@ -4493,7 +4510,8 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra->device_id = (val >> 16) & 0xffff;
 
 	dev_info(&pdev->dev, "XUSB device id = 0x%x (%s)\n", tegra->device_id,
-		(XUSB_DEVICE_ID_T114 == tegra->device_id) ? "T114" : "T124+");
+		XUSB_IS_T114(tegra) ? "T114" : XUSB_IS_T124(tegra) ? "T124" :
+		XUSB_IS_T210(tegra) ? "T210" : "UNKNOWN");
 
 	tegra->padregs = soc_config->padctl_offsets;
 
