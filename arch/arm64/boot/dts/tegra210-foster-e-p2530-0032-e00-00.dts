@@ -118,12 +118,18 @@
 		nvidia,enable-sata-port;
 	};
 
+	extcon@0 {
+		status = "disabled";
+	};
+
         vbus_gpio_extcon: extcon@1 {
-                compatible = "extcon-gpio";
-                reg = <0x1>;
+		compatible = "extcon-gpio-states";
+		reg = <0x0 0x1>;
 		extcon-gpio,name = "VBUS";
-		extcon-gpio,default-connected;
-                extcon-gpio,cable-name = "USB";
+		extcon-gpio,cable-states = <0x0 0x02
+					    0x1  0x1>;
+		gpio = <&max77620 0 0>;
+		extcon-gpio,cable-name = "USB", "USB-Host";
                 #extcon-cells = <1>;
         };
 
@@ -141,7 +147,7 @@
         otg@7d000000 {
                 nvidia,enable-pmu-vbus-detection;
 		nvidia,id-detection-type = <1>;
-                extcon-cables = <&vbus_gpio_extcon 0 &id_gpio_extcon 0>;
+                extcon-cables = <&vbus_gpio_extcon 0 &vbus_gpio_extcon 1>;
                 extcon-cable-names = "vbus", "id";
 		#extcon-cells = <1>;
 		status = "okay";
