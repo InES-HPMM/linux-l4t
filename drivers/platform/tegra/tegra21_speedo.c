@@ -31,7 +31,7 @@
 #include "iomap.h"
 #include "common.h"
 
-#define TEGRA21_CPU_SPEEDO 2450
+#define TEGRA21_CPU_SPEEDO 2275
 #define TEGRA21_GPU_SPEEDO 2450
 
 #define CPU_PROCESS_CORNERS_NUM		2
