@@ -379,7 +379,7 @@
 		nvidia,gpio_controls_muxed_ss_lanes; */
 		nvidia,gpio_ss1_sata = <0>;
 		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
-		nvidia,portmap = <0xe0e>;
+		nvidia,portmap = <0x0101>;
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "okay";
 	};
@@ -388,6 +388,7 @@
 		extcon-cables = <&bq2419x 0>;
 		extcon-cable-names = "vbus";
 		#extcon-cells = <1>;
+		status = "disabled";
 	};
 
 	gpio-keys {
