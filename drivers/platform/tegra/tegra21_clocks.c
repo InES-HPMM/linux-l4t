@@ -5266,17 +5266,30 @@ static void tegra21_cml_clk_init(struct clk *c)
 
 static int tegra21_cml_clk_enable(struct clk *c)
 {
-	u32 val = clk_readl(c->reg);
+	u32 val;
+	unsigned long flags;
+	struct clk *parent = c->parent;
+
+	clk_lock_save(parent, &flags);
+	val = clk_readl(c->reg);
 	val |= (0x1 << c->u.periph.clk_num);
 	clk_writel(val, c->reg);
+	clk_unlock_restore(parent, &flags);
+
 	return 0;
 }
 
 static void tegra21_cml_clk_disable(struct clk *c)
 {
-	u32 val = clk_readl(c->reg);
+	u32 val;
+	unsigned long flags;
+	struct clk *parent = c->parent;
+
+	clk_lock_save(parent, &flags);
+	val = clk_readl(c->reg);
 	val &= ~(0x1 << c->u.periph.clk_num);
 	clk_writel(val, c->reg);
+	clk_unlock_restore(parent, &flags);
 }
 
 static struct clk_ops tegra_cml_clk_ops = {
