@@ -109,6 +109,7 @@ endif
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
 ifeq ($(CONFIG_TEGRA_CPUQUIET),y)
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC)         += cpuquiet.o
+obj-$(CONFIG_ARCH_TEGRA_21x_SOC)         += cpuquiet.o
 endif
 
 obj-$(CONFIG_TEGRA_MC) += latency_allowance.o
