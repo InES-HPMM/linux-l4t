@@ -72,6 +72,10 @@
 			vdd = <&vdd_3v3>;
 		};
 
+		jsa1127@39 {
+			vdd-supply = <&vdd_disp_3v0>;
+		};
+
 	};
 
 	efuse@7000f800 {
