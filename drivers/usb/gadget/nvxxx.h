@@ -332,7 +332,7 @@ struct EP_CX_S {
 	__le32 ep_dw0;
 
 #define EP_CX_CERR_MASK             0x00000006
-#define EP_CX_CERR_SHIFT                     2
+#define EP_CX_CERR_SHIFT                     1
 #define EP_CX_EP_TYPE_MASK          0x00000038
 #define EP_CX_EP_TYPE_SHIFT                  3
 #define EP_CX_HOST_INIT_DISABLE_MASK 0x00000080
