@@ -241,6 +241,7 @@
 #define PAD_PORT_MASK(_p)	(0x3 << (_p * 2))
 #define PAD_PORT_SNPS(_p)	(0x0 << (_p * 2))
 #define PAD_PORT_XUSB(_p)	(0x1 << (_p * 2))
+#define XUSB_OTG_MODE		3
 #define XUSB_DEVICE_MODE	2
 #define XUSB_HOST_MODE		1
 

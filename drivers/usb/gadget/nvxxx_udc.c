@@ -4614,13 +4614,13 @@ static int nvudc_plat_pad_init(struct NV_UDC_S *nvudc)
 	usb2_vbus_id_init();
 
 	/* utmi pad init for pad 0 */
-	xusb_utmi_pad_init(0, PORT_CAP(0, PORT_CAP_DEV), false);
+	xusb_utmi_pad_init(0, PORT_CAP(0, PORT_CAP_OTG), false);
 	utmi_phy_pad_enable();
 	utmi_phy_iddq_override(false);
 
 	/* ss pad init for pad 0 */
 	xusb_ss_pad_init(0, (nvudc->bdata.ss_portmap & 0xf)
-			, XUSB_DEVICE_MODE);
+			, XUSB_OTG_MODE);
 
 	t210_program_ss_pad();
 
