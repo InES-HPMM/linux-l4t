@@ -85,6 +85,11 @@ static int minor_map[N_CPU] = { -1 };
 
 static int TRACER_IRQS[] = { 48, 54 };
 
+static u64 osdump_version;
+
+static char *tracer_names;
+static u64 tracer_names_size;
+
 static bool hardwood_supported;
 static bool hardwood_init_done;
 static DEFINE_MUTEX(hardwood_init_lock);
@@ -199,6 +204,7 @@ long hardwood_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case HARDWOOD_GET_BYTES_USED:
 	case HARDWOOD_RELEASE_BUFFER:
 	case HARDWOOD_OVERFLOW_COUNT:
+	case HARDWOOD_GET_OSDUMP_VER:
 		hw_run_cmd(trace_cmd);
 		hw_get_data(&op.data);
 		if (copy_to_user((void __user *)arg, &op, sizeof(op)))
@@ -218,12 +224,8 @@ long hardwood_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	case HARDWOOD_SET_TRACER_MASK:
 	case HARDWOOD_CLR_TRACER_MASK:
-		/* lower 64bits */
 		hw_set_data(op.data);
-		hw_run_cmd(HW_CMD(0, 0, cmd));
-		/* upper 64bits */
-		hw_set_data(op.data2);
-		hw_run_cmd(HW_CMD(0, 1, cmd));
+		hw_run_cmd(HW_CMD(0, op.buffer_id, cmd));
 		break;
 
 	/* SW-only CMD */
@@ -240,6 +242,18 @@ long hardwood_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		check_buffers(dev, true);
 		dev->signaled = 1;
 		wake_up_interruptible(&dev->wait_q);
+		break;
+
+	case HARDWOOD_GET_TR_NAMES_SZ:
+		op.data = tracer_names_size;
+		if (copy_to_user((void __user *)arg, &op, sizeof(op)))
+			return -EFAULT;
+		break;
+
+	case HARDWOOD_GET_TR_NAMES:
+		if (copy_to_user((void __user *)op.data, tracer_names,
+			tracer_names_size))
+			return -EFAULT;
 		break;
 
 	default:
@@ -437,6 +451,35 @@ static __init void init_one_buffer(int cpu, int buf_id)
 		*ptr++ = 0xdeadbeef;
 }
 
+static void query_tracer_names(void)
+{
+	u32 trace_cmd;
+	u64 ret;
+
+	trace_cmd = HW_CMD(0, 0, HARDWOOD_GET_TR_NAMES_SZ);
+	hw_run_cmd(trace_cmd);
+	hw_get_data(&tracer_names_size);
+
+	tracer_names = kmalloc(tracer_names_size, GFP_KERNEL);
+	if (!tracer_names) {
+		DBG_PRINT("failed to allocate %d bytes for tracer names\n",
+			tracer_names_size);
+		return;
+	}
+	BUG_ON(((u64)tracer_names) & 0x7); /* Must be 8-bytes aligned */
+
+	trace_cmd = HW_CMD(0, 0, HARDWOOD_GET_TR_NAMES);
+	hw_set_data((u64)tracer_names);
+	hw_run_cmd(trace_cmd);
+	hw_get_data(&ret);
+
+	if (!ret) {
+		DBG_PRINT("failed to query tracer names\n");
+		tracer_names = NULL;
+		return;
+	}
+}
+
 static inline void hardwood_late_init(void)
 {
 	int i, j;
@@ -455,6 +498,10 @@ static inline void hardwood_late_init(void)
 
 		hardwood_init_done = 1;
 	}
+
+	if (osdump_version >= OSDUMP_VER_TRACER_NAMES)
+		query_tracer_names();
+
 	mutex_unlock(&hardwood_init_lock);
 }
 
@@ -494,7 +541,7 @@ static void hardwood_init_agent(void)
 	agent_thread = kthread_create(agent_thread_fn, 0, "hardwood-agent");
 }
 
-static void init_one_cpu(int cpu)
+static __init void init_one_cpu(int cpu)
 {
 	struct irqaction *irq;
 	struct hardwood_device *hdev;
@@ -528,6 +575,12 @@ static void init_one_cpu(int cpu)
 	spin_lock_init(&hdev->buf_status_lock);
 }
 
+static __init void init_osdump_version(void)
+{
+	hw_run_cmd(HW_CMD(0, 0, HARDWOOD_GET_OSDUMP_VER));
+	hw_get_data(&osdump_version);
+}
+
 static __init int hardwood_init(void)
 {
 	int cpu;
@@ -537,9 +590,12 @@ static __init int hardwood_init(void)
 	pr_info("Denver: hardwood is %ssupported.\n",
 		hardwood_supported ? "" : "NOT ");
 
-	if (hardwood_supported)
+	if (hardwood_supported) {
 		for (cpu = 0; cpu < N_CPU; ++cpu)
 			init_one_cpu(cpu);
+
+		init_osdump_version();
+	}
 
 	return 0;
 }

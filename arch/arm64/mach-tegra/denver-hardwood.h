@@ -21,6 +21,8 @@
 #define N_BUFFER 4
 #define BUFFER_SIZE (1 << 22)
 
+#define OSDUMP_VER_TRACER_NAMES 101
+
 struct hardwood_cmd {
 	__u8 core_id;
 	__u8 buffer_id;
@@ -38,6 +40,9 @@ struct hardwood_cmd {
 #define HARDWOOD_SET_TRACER_MASK	0x05
 #define HARDWOOD_CLR_TRACER_MASK	0x06
 #define HARDWOOD_SET_IRQ_TARGET		0x07
+#define HARDWOOD_GET_OSDUMP_VER		0x09
+#define HARDWOOD_GET_TR_NAMES		0x0a
+#define HARDWOOD_GET_TR_NAMES_SZ	0x0b
 
 #define HARDWOOD_GET_STATUS			0x10
 #define HARDWOOD_GET_BYTES_USED		0x11
