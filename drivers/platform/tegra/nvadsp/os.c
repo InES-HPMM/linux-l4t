@@ -104,6 +104,8 @@
 #define DISABLE_MBOX2_EMPTY_INT	0xFFFFFFFF
 #define ENABLE_MBOX2_EMPTY_INT	0x0
 
+#define LOGGER_TIMEOUT	20 /* in ms */
+
 struct nvadsp_debug_log {
 	struct device *dev;
 	char *debug_ram_rdr;
@@ -197,7 +199,7 @@ loop:
 		return return_char;
 	}
 
-	msleep(20);
+	schedule_timeout_interruptible(msecs_to_jiffies(LOGGER_TIMEOUT));
 	goto loop;
 }
 
@@ -783,10 +785,16 @@ static void __nvadsp_os_stop(bool reload)
 
 	tegra_periph_reset_assert(adsp_clk);
 
-	/* load a fresh copy of adsp.elf */
 	if (reload) {
+		/*
+		 * move ram iterator to 0, since after restart the iterator
+		 * will be pointing to initial position of start.
+		 */
+		priv.logger.debug_ram_rdr[0] = EOT;
+		priv.logger.ram_iter = 0;
+		/* load a fresh copy of adsp.elf */
 		if (nvadsp_os_elf_load(fw))
-			dev_err(dev, "failed to load %s\n", NVADSP_FIRMWARE);
+			dev_err(dev, "failed to reload %s\n", NVADSP_FIRMWARE);
 	}
 end:
 	clk_put(adsp_clk);
