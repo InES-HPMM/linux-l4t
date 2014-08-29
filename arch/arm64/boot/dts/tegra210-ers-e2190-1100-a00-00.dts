@@ -40,7 +40,7 @@
 / {
 	model = "e2190";
 	compatible = "nvidia,e2190", "nvidia,tegra210";
-	nvidia,boardids = "2190:1100:00;2174:1101:00";
+	nvidia,boardids = "2190:1100:00;2174:1102:00";
 	nvidia,dtsfilename = __FILE__;
 	nvidia,proc-boardid = "2190:1100:00";
 	nvidia,pmu-boardid = "2174:1102:00";
@@ -230,6 +230,10 @@
 			num-channel = <2>;
 			name-prefix = "y";
 		};
+	};
+	memory@80000000 {
+		device_type = "memory";
+		reg = < 0x0 0x80000000 0x0 0x80000000>;
 	};
 
 	thermal-zones {
