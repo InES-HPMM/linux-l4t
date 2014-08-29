@@ -2227,6 +2227,7 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	unsigned long timeout;
 	int err = 0;
 	bool requires_tuning_nonuhs = false;
+	u16 clk = 0;
 
 	host = mmc_priv(mmc);
 
@@ -2302,6 +2303,12 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		mrq.cmd = &cmd;
 		host->mrq = &mrq;
 
+		if (host->quirks2 & SDHCI_QUIRK2_NON_STD_TUN_CARD_CLOCK) {
+			clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
+			clk &= ~SDHCI_CLOCK_CARD_EN;
+			sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+		}
+
 		/*
 		 * In response to CMD19, the card sends 64 bytes of tuning
 		 * block to the Host Controller. So we set the block size
@@ -2337,6 +2344,13 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 
 		spin_unlock(&host->lock);
 		enable_irq(host->irq);
+
+		if (host->quirks2 & SDHCI_QUIRK2_NON_STD_TUN_CARD_CLOCK) {
+			udelay(1);
+			clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
+			clk |= SDHCI_CLOCK_CARD_EN;
+			sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+		}
 
 		/* Wait for Buffer Read Ready interrupt */
 		wait_event_interruptible_timeout(host->buf_ready_int,

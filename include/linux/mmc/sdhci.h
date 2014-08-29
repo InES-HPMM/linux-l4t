@@ -153,6 +153,8 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_DELAYED_CLK_GATE			(1<<11)
 /* Enable pm domain */
 #define SDHCI_QUIRK2_PM_DOMAIN				(1<<12)
+/* Turn off/on card clock before sending/after tuning command*/
+#define SDHCI_QUIRK2_NON_STD_TUN_CARD_CLOCK		(1<<13)
 
 	unsigned int  acmd12_ctrl;
 	unsigned int  ier;
