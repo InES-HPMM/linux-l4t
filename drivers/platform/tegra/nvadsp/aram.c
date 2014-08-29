@@ -48,13 +48,31 @@ static inline void amc_writel(u32 val, u32 reg)
 
 static irqreturn_t nvadsp_amc_error_int_handler(int irq, void *devid)
 {
-	u32 val;
+	u32 val, addr, status, intr = 0;
 
-	WARN_ONCE(1, "nvadsp: in AMC error interrupt handler. Address: 0x%x\n",
-		(uint)amc_readl(AMC_ERROR_ADDR));
+	status = amc_readl(AMC_INT_STATUS);
+	addr = amc_readl(AMC_ERROR_ADDR);
+
+	if (status & AMC_INT_STATUS_ARAM) {
+		/*
+		 * Ignore addresses lesser than AMC_ERROR_ADDR_IGNORE (4k)
+		 * as those are spurious ones due a hardware issue.
+		 */
+		if (addr > AMC_ERROR_ADDR_IGNORE)
+			pr_info("nvadsp: invalid ARAM access. address: 0x%x\n",
+				addr);
+
+		intr |= AMC_INT_INVALID_ARAM_ACCESS;
+	}
+
+	if (status & AMC_INT_STATUS_REG) {
+		pr_info("nvadsp: invalid AMC reg access. address: 0x%x\n",
+			addr);
+		intr |= AMC_INT_INVALID_REG_ACCESS;
+	}
 
 	val = amc_readl(AMC_INT_CLR);
-	val |= AMC_INT_INVALID_ARAM_ACCESS;
+	val |= intr;
 	amc_writel(val, AMC_INT_CLR);
 
 	return IRQ_HANDLED;
