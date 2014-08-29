@@ -506,6 +506,7 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MICHS ON", "Switch", "MICHS"},
 
 	{"MIC0 PGA", NULL, "MIC0"},
+	{"MIC0 PGA", NULL, "MICHS ON"},
 	{"MIC1 PGA", NULL, "MIC1"},
 	{"MIC1 PGA", NULL, "MICHS ON"},
 	{"MIC2 PGA", NULL, "MIC2"},
