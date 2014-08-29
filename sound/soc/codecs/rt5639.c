@@ -132,6 +132,7 @@ int rt5639_irq_jd_reg_init(struct snd_soc_codec *codec)
 
    return 0;
 }
+EXPORT_SYMBOL(rt5639_irq_jd_reg_init);
 
 static int rt5639_reg_init(struct snd_soc_codec *codec)
 {

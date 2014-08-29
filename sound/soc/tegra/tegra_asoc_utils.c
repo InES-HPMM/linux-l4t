@@ -38,8 +38,10 @@
 #include "tegra_asoc_utils.h"
 
 int g_is_call_mode;
+EXPORT_SYMBOL(g_is_call_mode);
 static atomic_t dap_ref_count[5];
 int tegra_i2sloopback_func;
+EXPORT_SYMBOL(tegra_i2sloopback_func);
 
 static const char * const loopback_function[] = {
 	"Off",
