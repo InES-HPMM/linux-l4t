@@ -288,7 +288,7 @@
 		/* nvidia,gpio_controls_muxed_ss_lanes; */
 		nvidia,gpio_ss1_sata = <0>;
 		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
-		nvidia,portmap = <0x0100>;
+		nvidia,portmap = <0x0500>;
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "okay";
 	};

@@ -118,6 +118,7 @@
 
 	xusb@70090000 {
 		hvdd_usb-supply = <&vdd_3v3>;
+		usb_vbus2-supply = <&battery_reg>;
 		avdd_pll_utmip-supply = <&max77620_sd3>;
 		vddio_hsic-supply = <&max77620_ldo0>;
 		avddio_usb-supply = <&vdd_3v3>;
