@@ -447,16 +447,23 @@ static struct tegra_suspend_platform_data t210ref_suspend_data = {
 #endif
 };
 
-#define E2141_CPU_VDD_MIN_UV		703000
-#define E2141_CPU_VDD_STEP_UV		19200
+#define T210REF_CPU_VDD_MIN_UV		703000
+#define T210REF_CPU_VDD_STEP_UV		19200
+#define E2190_CPU_VDD_MIN_UV		606250
+#define E2190_CPU_VDD_STEP_UV		6250
 
 
 static int __init t210ref_rail_alignment_init(void)
 {
 	int step_uv, offset_uv;
 
-	step_uv = E2141_CPU_VDD_STEP_UV;
-	offset_uv = E2141_CPU_VDD_MIN_UV;
+	if (of_machine_is_compatible("nvidia,e2190")) {
+		step_uv = E2190_CPU_VDD_STEP_UV;
+		offset_uv = E2190_CPU_VDD_MIN_UV;
+	} else {
+		step_uv = T210REF_CPU_VDD_STEP_UV;
+		offset_uv = T210REF_CPU_VDD_MIN_UV;
+	}
 
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	tegra21x_vdd_cpu_align(step_uv, offset_uv);
