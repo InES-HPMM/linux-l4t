@@ -121,60 +121,13 @@
 #define RCTRL(x)			0x0
 #define TCTRL(x)			0x0
 
-/* XUSB_PADCTL_HSIC_PAD0_CTL_2_0 0x308 */
-/* XUSB_PADCTL_HSIC_PAD1_CTL_2_0 0x328 */
-#define RX_DATA_TRIM(x)		0x0
-#define RX_STROBE_TRIM(x)	0x0
-#define CALIOUT(x)			0x0
-
-/* XUSB_PADCTL_HSIC_PAD0_CTL_1_0 0x304 */
-/* XUSB_PADCTL_HSIC_PAD1_CTL_1_0 0x324 */
-#define TX_RTUNEP(x)	0x0
-#define TX_RTUNEN(x)	0x0
-#define TX_SLEWP(x)		0x0
-#define TX_SLEWN(x)		0x0
-#define HSIC_OPT(x)		0x0
-
-/* XUSB_PADCTL_HSIC_PAD0_CTL_0_0 0x300 */
-/* XUSB_PADCTL_HSIC_PAD1_CTL_0_0 0x320 */
-#define GET_HSIC_REG_OFFSET()	(padregs->usb2_hsic_padX_ctlY_0[pad][0])
-#define HSIC_IDDQ		(0x1 << 0)
-#define PD_TX_DATA0		(0x1 << 1)
-#define PD_TX_DATA1		(0x1 << 2)
-#define PD_TX_STROBE	(0x1 << 3)
-#define PD_TX		(PD_TX_DATA0 | PD_TX_DATA1 | PD_TX_STROBE)
-
-#define PD_RX_DATA0		(0x1 << 4)
-#define PD_RX_DATA1		(0x1 << 5)
-#define PD_RX_STROBE	(0x1 << 6)
-#define PD_RX		(PD_RX_DATA0 | PD_RX_DATA1 | PD_RX_STROBE)
-
-#define PD_ZI_DATA0		(0x1 << 7)
-#define PD_ZI_DATA1		(0x1 << 8)
-#define PD_ZI_STROBE	(0x1 << 9)
-#define HSIC_PD_ZI	(PD_ZI_DATA0 | PD_ZI_DATA1 | PD_ZI_STROBE)
-
-#define LBPK_DATA0		(0x1 << 10)
-#define LBPK_DATA1		(0x1 << 11)
-#define LBPK_STROBE		(0x1 << 12)
-#define RPD_DATA0		(0x1 << 13)
-#define RPD_DATA1	(0x1 << 14)
-#define RPD_DATA	(RPD_DATA0 | RPD_DATA1)
-#define RPD_STROBE	(0x1 << 15)
-
-#define RPU_DATA0	(0x1 << 16)
-#define RPU_DATA1	(0x1 << 17)
-#define RPU_DATA	(RPU_DATA0 | RPU_DATA1)
-#define RPU_STROBE	(0x1 << 18)
-#define PD_TRX		0x0
-
-/* XUSB_PADCTL_HSIC_PAD_TRK_CTL_0 0x340*/
-#define AUTO_TERM_EN	(0x1 << 24)
-
-/* XUSB_PADCTL_HSIC_STRB_TRIM_CONTROL_0 0x344*/
-#define STRB_TRIM_VAL(x)	0x0
-
+/* SS pad operations */
 void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port);
 
+/* HSIC pad operations */
+int t210_hsic_pad_enable(struct tegra_xhci_hcd *tegra, u8 pad);
+int t210_hsic_pad_disable(struct tegra_xhci_hcd *tegra, unsigned pad);
+int t210_hsic_pad_pupd_set(struct tegra_xhci_hcd *tegra, unsigned pad,
+	enum hsic_pad_pupd pupd);
 
 #endif /* _XHCI_TEGRA_T210_PADCTL_H */

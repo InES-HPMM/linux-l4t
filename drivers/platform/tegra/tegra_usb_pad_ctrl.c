@@ -29,14 +29,14 @@
 #include "../../../arch/arm/mach-tegra/iomap.h"
 
 static DEFINE_SPINLOCK(utmip_pad_lock);
-static DEFINE_SPINLOCK(hsic_pad_lock);
 static DEFINE_SPINLOCK(xusb_padctl_lock);
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 static DEFINE_SPINLOCK(pcie_pad_lock);
 static DEFINE_SPINLOCK(sata_pad_lock);
+static DEFINE_SPINLOCK(hsic_pad_lock);
+static int hsic_pad_count;
 #endif
 static int utmip_pad_count;
-static int hsic_pad_count;
 static struct clk *utmi_pad_clk;
 
 void tegra_xhci_release_otg_port(bool release)
@@ -552,26 +552,30 @@ EXPORT_SYMBOL_GPL(utmi_phy_pad_disable);
 
 int hsic_trk_enable(void)
 {
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
 	unsigned long flags;
 
 	/* TODO : need to enable HSIC_TRK clk */
 	spin_lock_irqsave(&hsic_pad_lock, flags);
+
 	hsic_pad_count++;
-	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0
-			, HSIC_PAD_TRK , (0x1 << 16));
-	tegra_usb_pad_reg_update(XUSB_PADCTL_HSIC_PAD_TRK_CTL_0
-			, HSIC_TRK_START_TIMER_MASK , (0x1e << 5));
-	tegra_usb_pad_reg_update(XUSB_PADCTL_HSIC_PAD_TRK_CTL_0
-			, HSIC_TRK_DONE_RESET_TIMER_MASK , (0xa << 12));
-	tegra_usb_pad_reg_update(XUSB_PADCTL_HSIC_PAD1_CTL_0_0
-				, PAD1_PD_TX_MASK , ~(PAD1_PD_TX_MASK));
+	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0,
+		HSIC_PAD_TRK(~0) , HSIC_PAD_TRK(HSIC_PAD_TRK_XUSB));
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_HSIC_PAD_TRK_CTL_0,
+		HSIC_TRK_START_TIMER(~0), HSIC_TRK_START_TIMER(0x1e));
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_HSIC_PAD_TRK_CTL_0,
+		HSIC_TRK_DONE_RESET_TIMER(~0) , HSIC_TRK_DONE_RESET_TIMER(0xa));
 
 	udelay(1);
-	tegra_usb_pad_reg_update(XUSB_PADCTL_HSIC_PAD_TRK_CTL_0
-				, HSIC_PD_TRK_MASK , (0 << 19));
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_HSIC_PAD_TRK_CTL_0,
+		HSIC_PD_TRK(~0), HSIC_PD_TRK(0));
 
 	spin_unlock_irqrestore(&hsic_pad_lock, flags);
 	/* TODO : need to disable HSIC_TRK clk */
+#endif
 	return 0;
 }
 EXPORT_SYMBOL_GPL(hsic_trk_enable);

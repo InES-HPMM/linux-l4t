@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/platform_device.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 #include "xhci-tegra.h"
 #include "xhci-tegra-t210-padreg.h"
@@ -35,6 +36,35 @@
 
 /* UPHY_USB3_PADx_ECTL_6 */
 #define RX_EQ_CTRL_H(x)	(((x) & 0xffffffff) << 0)
+
+/* XUSB_PADCTL_USB2_PAD_MUX_0 0x4 */
+#define USB2_PAD_MUX_0		(0x4)
+#define  HSIC_PAD_PORT(x)	(1 << ((x) + 14))
+
+/* XUSB_PADCTL_HSIC_PAD0_CTL_0_0 0x300 */
+/* XUSB_PADCTL_HSIC_PAD1_CTL_0_0 0x320 */
+#define HSIC_PAD_CTL_0(x)			((x == 0) ? (0x300) : (0x320))
+#define  PD_TX_DATA0				(1 << 1)
+#define  PD_TX_STROBE				(1 << 3)
+#define  PD_TX					(PD_TX_DATA0 | PD_TX_STROBE)
+#define  PD_RX_DATA0				(1 << 4)
+#define  PD_RX_STROBE				(1 << 6)
+#define  PD_RX					(PD_RX_DATA0 | PD_RX_STROBE)
+#define  PD_ZI_DATA0				(1 << 7)
+#define  PD_ZI_STROBE				(1 << 9)
+#define  PD_ZI					(PD_ZI_DATA0 | PD_ZI_STROBE)
+#define  RPD_DATA0				(0x1 << 13)
+#define  RPD_DATA1				(0x1 << 14)
+#define  RPD_DATA				(RPD_DATA0 | RPD_DATA1)
+#define  RPD_STROBE				(0x1 << 15)
+#define  RPU_DATA0				(0x1 << 16)
+#define  RPU_DATA1				(0x1 << 17)
+#define  RPU_DATA				(RPU_DATA0 | RPU_DATA1)
+#define  RPU_STROBE				(0x1 << 18)
+
+/* XUSB_PADCTL_HSIC_STRB_TRIM_CONTROL_0 0x344 */
+#define HSIC_STRB_TRIM_CONTROL_0		(0x344)
+#define  STRB_TRIM_VAL(x)			(((x) & 0x3F) << 0)
 
 void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port)
 {
@@ -73,4 +103,90 @@ void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port)
 	val &= ~RX_EQ_CTRL_H(~0);
 	val |= RX_EQ_CTRL_H(tegra->soc_config->rx_eq_ctrl_h);
 	padctl_writel(tegra, val, ctl6);
+}
+
+int t210_hsic_pad_enable(struct tegra_xhci_hcd *tegra, u8 pad)
+{
+	struct device *dev = &tegra->pdev->dev;
+	struct tegra_xusb_hsic_config *hsic = &tegra->bdata->hsic[pad];
+	u32 mask, val;
+
+	if (pad >= 2) {
+		dev_err(dev, "%s invalid HSIC pad number %d\n", __func__, pad);
+		return -EINVAL;
+	}
+
+	dev_dbg(dev, "%s pad %u\n", __func__, pad);
+
+	tegra_usb_pad_reg_update(HSIC_STRB_TRIM_CONTROL_0, STRB_TRIM_VAL(~0),
+		STRB_TRIM_VAL(hsic->strb_trim_val));
+
+	/* keep HSIC in IDLE */
+	mask = RPD_DATA | RPD_STROBE | RPU_DATA | RPU_STROBE;
+	mask |= PD_RX | PD_ZI | PD_TX;
+	val = RPD_DATA | RPU_STROBE;
+	tegra_usb_pad_reg_update(HSIC_PAD_CTL_0(pad), mask, val);
+
+	hsic_trk_enable();
+
+	tegra_usb_pad_reg_update(USB2_PAD_MUX_0,
+		HSIC_PAD_PORT(pad), HSIC_PAD_PORT(pad)); /* hsic pad owner */
+
+	reg_dump(dev, tegra->padctl_base, HSIC_PAD_CTL_0(pad));
+	reg_dump(dev, tegra->padctl_base, HSIC_STRB_TRIM_CONTROL_0);
+	reg_dump(dev, tegra->padctl_base, USB2_PAD_MUX_0);
+
+	return 0;
+}
+
+int t210_hsic_pad_disable(struct tegra_xhci_hcd *tegra, unsigned pad)
+{
+	struct device *dev = &tegra->pdev->dev;
+
+	if (pad >= 2) {
+		dev_err(dev, "%s invalid HSIC pad number %d\n", __func__, pad);
+		return -EINVAL;
+	}
+
+	dev_dbg(dev, "%s pad %u\n", __func__, pad);
+
+	tegra_usb_pad_reg_update(USB2_PAD_MUX_0, HSIC_PAD_PORT(pad), 0);
+
+	tegra_usb_pad_reg_update(HSIC_PAD_CTL_0(pad), PD_RX | PD_ZI | PD_TX, 0);
+
+	reg_dump(dev, tegra->padctl_base, USB2_PAD_MUX_0);
+	reg_dump(dev, tegra->padctl_base, HSIC_PAD_CTL_0(pad));
+
+	return 0;
+}
+
+int t210_hsic_pad_pupd_set(struct tegra_xhci_hcd *tegra, unsigned pad,
+	enum hsic_pad_pupd pupd)
+{
+	struct device *dev = &tegra->pdev->dev;
+	u32 reg;
+	u32 mask, val = 0;
+
+	if (pad >= 2) {
+		dev_err(dev, "%s invalid HSIC pad number %u\n", __func__, pad);
+		return -EINVAL;
+	}
+
+	dev_dbg(dev, "%s pad %u pupd %d\n", __func__, pad, pupd);
+
+	mask = (RPD_DATA | RPD_STROBE | RPU_DATA | RPU_STROBE);
+	if (pupd == PUPD_IDLE) {
+		val = (RPD_DATA | RPU_STROBE);
+		reg |= (RPD_DATA | RPU_STROBE);
+	} else if (pupd == PUPD_RESET) {
+		val = (RPD_DATA | RPD_STROBE);
+		reg |= (RPD_DATA | RPU_STROBE);
+	} else if (pupd != PUPD_DISABLE) {
+		dev_err(dev, "%s invalid pupd %d\n", __func__, pupd);
+		return -EINVAL;
+	}
+	tegra_usb_pad_reg_update(HSIC_PAD_CTL_0(pad), mask, val);
+
+	reg_dump(dev, tegra->padctl_base, HSIC_PAD_CTL_0(pad));
+	return 0;
 }

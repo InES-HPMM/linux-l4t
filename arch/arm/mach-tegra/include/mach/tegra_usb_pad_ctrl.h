@@ -253,7 +253,9 @@
 /* XUSB_PADCTL_USB2_PAD_MUX_0 */
 #define BIAS_PAD_MASK	(0x3 << 18)
 #define BIAS_PAD_XUSB	(0x1 << 18)
-#define HSIC_PAD_TRK	(0x3 << 16)
+#define HSIC_PAD_TRK(x)	(((x) & 0x3) << 16)
+#define  HSIC_PAD_TRK_SNPS	(0)
+#define  HSIC_PAD_TRK_XUSB	(1)
 
 #define XUSB_PADCTL_USB3_PAD_MUX_0		0x28
 #define XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0	(1 << 1)
@@ -299,9 +301,9 @@
 #define TRK_DONE_RESET_TIMER		(0xA << 19)
 
 #define XUSB_PADCTL_HSIC_PAD_TRK_CTL_0		0x340
-#define HSIC_TRK_START_TIMER_MASK	(0x7F << 5)
-#define HSIC_TRK_DONE_RESET_TIMER_MASK	(0x7F << 12)
-#define HSIC_PD_TRK_MASK	(1 << 19)
+#define HSIC_TRK_START_TIMER(x)		(((x) & 0x7F) << 5)
+#define HSIC_TRK_DONE_RESET_TIMER(x)		(((x) & 0x7F) << 12)
+#define HSIC_PD_TRK(x)				(((x) & 0x1) << 19)
 
 #define XUSB_PADCTL_HSIC_PAD1_CTL_0_0	0x320
 #define PAD1_PD_TX_DATA0		(1 << 1)
