@@ -487,19 +487,6 @@ static int tegra210_enter_state(struct cpuidle_device *dev,
 	return t210_idle_states[i].enter(dev, drv, i);
 }
 
-/* TODO: remove this WAR */
-static void tegra210_init_usage(int cpu)
-{
-	struct cpuidle_device *dev = per_cpu(cpuidle_devices, cpu);
-	int i;
-
-	if (!dev)
-		return;
-
-	for (i = 0; i < CPUIDLE_STATE_MAX; i++)
-		dev->states_usage[i].disable = 1;
-}
-
 static int __init tegra210_cpuidle_register(int cpu)
 {
 	int ret;
@@ -592,8 +579,6 @@ static int __init tegra210_cpuidle_register(int cpu)
 		       __func__, ret);
 		return ret;
 	}
-
-	tegra210_init_usage(cpu);
 
 	return 0;
 }
