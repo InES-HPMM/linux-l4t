@@ -803,9 +803,25 @@ static void nvadsp_os_restart(struct work_struct *work)
 {
 	struct nvadsp_os_data *data =
 		container_of(work, struct nvadsp_os_data, restart_os_work);
+	int wdt_virq = tegra_agic_irq_get_virq(INT_ADSP_WDT);
 	struct device *dev = &data->pdev->dev;
 
+	disable_irq(wdt_virq);
 	nvadsp_os_stop();
+
+	if (tegra_agic_irq_is_active(INT_ADSP_WDT)) {
+		dev_info(dev, "wdt interrupt is active hence clearing\n");
+		tegra_agic_clear_active(INT_ADSP_WDT);
+	}
+
+	if (tegra_agic_irq_is_pending(INT_ADSP_WDT)) {
+		dev_info(dev, "wdt interrupt is pending hence clearing\n");
+		tegra_agic_clear_pending(INT_ADSP_WDT);
+	}
+
+	dev_info(dev, "wdt interrupt is not pending or active...enabling\n");
+	enable_irq(wdt_virq);
+
 	data->adsp_num_crashes++;
 	if (data->adsp_num_crashes >= ALLOWED_CRASHES) {
 		/* making pdev NULL so that externally start is not called */
