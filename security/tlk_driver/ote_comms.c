@@ -621,4 +621,6 @@ void te_launch_operation_compat(struct te_launchop_compat *cmd,
 		/* mark active any persistent mem buffers */
 		te_update_persist_mem_buffers(request->session_id, context);
 	}
+
+	te_release_temp_mem_buffers(context);
 }
