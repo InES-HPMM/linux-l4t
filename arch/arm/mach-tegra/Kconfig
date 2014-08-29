@@ -258,7 +258,7 @@ config TEGRA_CORE_DVFS
 config TEGRA_GPU_DVFS
 	bool "Enable voltage scaling on Tegra GPU"
 	depends on TEGRA_SILICON_PLATFORM
-	depends on ARCH_TEGRA_12x_SOC
+	depends on ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC
 	default y
 
 config TEGRA_DVFS_RAIL_CONNECT_ALL
