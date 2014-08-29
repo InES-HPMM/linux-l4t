@@ -695,6 +695,7 @@ struct NV_UDC_S {
 
 	/* extcon */
 	bool vbus_detected;
+	bool id_grounded;
 	struct extcon_dev *vbus_extcon_dev;
 	struct notifier_block vbus_extcon_nb;
 	struct extcon_dev *id_extcon_dev;

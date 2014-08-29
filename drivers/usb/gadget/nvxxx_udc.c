@@ -142,7 +142,8 @@ static int nvudc_ep_disable(struct usb_ep *_ep);
 /* must hold nvudc->lock */
 static inline void vbus_detected(struct NV_UDC_S *nvudc)
 {
-	if (nvudc->vbus_detected)
+	/* set VBUS_OVERRIDE only in device mode when ID pin is floating */
+	if (nvudc->vbus_detected || nvudc->id_grounded)
 		return; /* nothing to do */
 
 	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
@@ -207,12 +208,14 @@ static int extcon_id_notifications(struct notifier_block *nb,
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 			USB2_VBUS_ID_0_ID_OVERRIDE,
 			USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND);
+		nvudc->id_grounded = true;
 		xudc_enable_vbus(nvudc);
 	} else {
 		msg_info(dev, "%s: USB_ID pin floating\n", __func__);
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 			USB2_VBUS_ID_0_ID_OVERRIDE,
 			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
+		nvudc->id_grounded = false;
 		xudc_disable_vbus(nvudc);
 	}
 
