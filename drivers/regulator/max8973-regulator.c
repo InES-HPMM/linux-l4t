@@ -427,10 +427,16 @@ static int max8973_init_dcdc(struct max8973_chip *max,
 		return ret;
 	}
 
-	/* If external control is enabled then disable EN bit */
+	/* MAX8973: EN pin is ORed with EN bit.
+	 * MAX77621: EN pin is ANDed with shutdown.
+	 */
 	if (max->enable_external_control) {
+		int en_bit = 0;
+		if (max->id == MAX77621)
+			en_bit = MAX8973_VOUT_ENABLE;
+
 		ret = regmap_update_bits(max->regmap, MAX8973_VOUT,
-						MAX8973_VOUT_ENABLE, 0);
+					MAX8973_VOUT_ENABLE, en_bit);
 		if (ret < 0)
 			dev_err(max->dev, "register %d update failed, err = %d",
 				MAX8973_VOUT, ret);
