@@ -119,6 +119,8 @@ extern bool tegra_agic_irq_is_pending(int irq);
 
 extern void tegra_agic_save_registers(void);
 extern void tegra_agic_restore_registers(void);
+extern void tegra_agic_clear_pending(int irq);
+extern void tegra_agic_clear_active(int irq);
 #else
 static inline int tegra_agic_irq_get_virq(int irq)
 {
@@ -146,6 +148,16 @@ static inline void tegra_agic_save_registers(void)
 }
 
 static inline void tegra_agic_restore_registers(void)
+{
+	return;
+}
+
+static inline void tegra_agic_clear_pending(int irq)
+{
+	return;
+}
+
+static inline void tegra_agic_clear_active(int irq)
 {
 	return;
 }
