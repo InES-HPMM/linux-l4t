@@ -1584,6 +1584,7 @@ void tegra_get_board_info(struct board_info *bi)
 	}
 	memcpy(bi, &main_board_info, sizeof(struct board_info));
 }
+EXPORT_SYMBOL(tegra_get_board_info);
 
 void tegra_get_pmu_board_info(struct board_info *bi)
 {
