@@ -184,6 +184,7 @@
                 nvidia,charging-supported;
                 nvidia,enable-pmu-vbus-detection;
                 nvidia,id-detection-type = <1>;
+		nvidia,dcp-current-limit-ma = <2000>;
                 extcon-cables = <&bq2419x 0>;
                 extcon-cable-names = "vbus";
                 #extcon-cells = <1>;
