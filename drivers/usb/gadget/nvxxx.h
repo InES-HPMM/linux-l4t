@@ -691,6 +691,7 @@ struct NV_UDC_S {
 	/* regulators */
 	struct regulator_bulk_data *supplies;
 	struct xudc_board_data bdata;
+	struct regulator *usb_vbus0_reg;
 
 	/* extcon */
 	bool vbus_detected;

@@ -163,6 +163,36 @@ static inline void vbus_not_detected(struct NV_UDC_S *nvudc)
 	nvudc->vbus_detected = false;
 }
 
+static inline void xudc_enable_vbus(struct NV_UDC_S *nvudc)
+{
+	struct device *dev = nvudc->dev;
+	int ret;
+
+	if (!IS_ERR_OR_NULL(nvudc->usb_vbus0_reg)) {
+		msg_info(dev, "Enabling Vbus\n");
+		ret = regulator_enable(nvudc->usb_vbus0_reg);
+		if (ret < 0) {
+			msg_err(dev, "%s vbus0 enable failed. ret=%d\n",
+				__func__, ret);
+		}
+	}
+}
+
+static inline void xudc_disable_vbus(struct NV_UDC_S *nvudc)
+{
+	struct device *dev = nvudc->dev;
+	int ret;
+
+	if (!IS_ERR_OR_NULL(nvudc->usb_vbus0_reg)) {
+		msg_info(dev, "Disabling Vbus\n");
+		ret = regulator_disable(nvudc->usb_vbus0_reg);
+		if (ret < 0) {
+			msg_err(dev, "%s vbus0 disable failed. ret = %d\n",
+				__func__, ret);
+		}
+	}
+}
+
 static int extcon_id_notifications(struct notifier_block *nb,
 				   unsigned long event, void *unused)
 {
@@ -177,11 +207,13 @@ static int extcon_id_notifications(struct notifier_block *nb,
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 			USB2_VBUS_ID_0_ID_OVERRIDE,
 			USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND);
+		xudc_enable_vbus(nvudc);
 	} else {
 		msg_info(dev, "%s: USB_ID pin floating\n", __func__);
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 			USB2_VBUS_ID_0_ID_OVERRIDE,
 			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
+		xudc_disable_vbus(nvudc);
 	}
 
 	spin_unlock_irqrestore(&nvudc->lock, flags);
@@ -4426,6 +4458,12 @@ static int nvudc_plat_regulators_init(struct NV_UDC_S *nvudc)
 		}
 		return err;
 	}
+
+	/* regulator for usb_vbus0, to be moved to OTG driver */
+	nvudc->usb_vbus0_reg = regulator_get(dev, "usb_vbus0");
+	if (IS_ERR_OR_NULL(nvudc->usb_vbus0_reg))
+		msg_err(dev, "%s usb_vbus0 regulator not found\n", __func__);
+
 	return 0;
 }
 
