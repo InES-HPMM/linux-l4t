@@ -574,6 +574,11 @@ static int max8973_probe(struct i2c_client *client,
 		return -EIO;
 	}
 
+	/* If GPIOs number returned as EPROBE_DEFER then defer probe. */
+	if ((pdata->enable_gpio == -EPROBE_DEFER) ||
+		(pdata->dvs_gpio == -EPROBE_DEFER))
+		return -EPROBE_DEFER;
+
 	max = devm_kzalloc(&client->dev, sizeof(*max), GFP_KERNEL);
 	if (!max)
 		return -ENOMEM;
