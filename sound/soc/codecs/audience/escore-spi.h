@@ -29,9 +29,17 @@ extern struct spi_driver escore_spi_driver;
 #define ES_SPI_FW_SPEED	9600000
 #define ES_SPI_OPERATION_SPEED	4800000
 #elif defined(CONFIG_ARCH_TEGRA)
-#define ES_SPI_FW_SPEED	4000000
+#define ES_SPI_FW_SPEED	9600000
 #define ES_SPI_OPERATION_SPEED	3000000
 #endif
+
+/* This is obtained after discussion with FW team.*/
+#define ESCORE_SPI_PACKET_LEN 256
+/* This value is obtained after experimentation. Worst case streaming bandwidth
+ * requirement is 3 FB channels. We could get this use case working only with
+ * the delay given below (in usecs)
+ */
+#define ES_SPI_STREAM_READ_DELAY 30
 
 extern struct es_stream_device es_spi_streamdev;
 extern int escore_spi_init(void);

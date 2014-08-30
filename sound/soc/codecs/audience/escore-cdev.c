@@ -84,6 +84,7 @@ enum {
  *  - Streaming
  */
 #define CDEV_COUNT CDEV_MAX_DEV
+#define ES_STREAMING_READ_TIMEOUT		4000
 
 static int cdev_major;
 static int cdev_minor;
@@ -133,7 +134,7 @@ static int parse_have;		/* Bytes currently in buffer. */
 static int last_token;		/* Used to control parser state. */
 static int (*parse_cb_preset)(void *, int);
 static int (*parse_cb_cmd)(void *, u32);
-static bool is_nomore_databit_found(unsigned char *buf, int len,
+static bool is_nomore_databit_found(int clear, unsigned char *buf, int len,
 					int *nbytes_to_read);
 
 int macro_preset_id(void *ctx, int id)
@@ -883,9 +884,11 @@ read_next_page:
 
 		stream_read_page = streaming_consume_page(&length);
 		while (!stream_read_page) {
-			err = wait_event_interruptible(escore->stream_in_q,
+			err = wait_event_interruptible_timeout(
+				escore->stream_in_q,
 				(stream_read_page =
-				streaming_consume_page(&length)));
+				streaming_consume_page(&length)),
+				msecs_to_jiffies(ES_STREAMING_READ_TIMEOUT));
 
 			if (err == -ERESTARTSYS) {
 				/* return short read or -EINTR */
@@ -895,7 +898,8 @@ read_next_page:
 					err = -EINTR;
 
 				goto ERR_OUT;
-			}
+			} else if (err == 0)
+				goto ERR_OUT;
 		}
 
 		stream_read_off = 0;
@@ -940,13 +944,18 @@ ERR_OUT:
 	return err;
 }
 
-static bool is_nomore_databit_found(unsigned char *buf, int len,
+static bool is_nomore_databit_found(int clear, unsigned char *buf, int len,
 					int *nbytes_to_read)
 {
 	bool rc = false;
 	int i = 0, j = 0;
 	static int sync1, sync2, byteoff, skip_bytes;
 	u32 plen = 0;
+
+	if (clear) {
+		sync1 = sync2 = byteoff = skip_bytes = 0;
+		return 0;
+	}
 
 	/* skip data part. Only decode header */
 	if (skip_bytes) {
@@ -1038,6 +1047,7 @@ static int streaming_producer(void *ptr)
 		return -ENOMEM;
 
 	pr_debug("called: %s\n", __func__);
+	is_nomore_databit_found(1, 0, 0, 0);
 	escore = (struct escore_priv *) ptr;
 
 	/*
@@ -1096,6 +1106,7 @@ static int streaming_producer(void *ptr)
 		}
 		if (!no_more_bit) {
 			no_more_bit = is_nomore_databit_found(
+					0,
 					buf + rlen - rlen_last,
 					rlen_last,
 					&nbytes_to_read);

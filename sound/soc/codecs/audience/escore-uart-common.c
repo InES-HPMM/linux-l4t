@@ -212,7 +212,8 @@ int escore_configure_tty(struct tty_struct *tty, u32 bps, int stop)
 	termios.c_ispeed = bps;
 
 	/* Added to set baudrate dynamically */
-	tty_wait_until_sent(escore_uart.tty, 0);
+	tty_wait_until_sent(escore_uart.tty,
+		msecs_to_jiffies(ES_TTY_WAIT_TIMEOUT));
 
 	rc = tty_set_termios(tty, &termios);
 

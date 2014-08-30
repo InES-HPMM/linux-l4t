@@ -11,6 +11,7 @@
  * published by the Free Software Foundation.
  */
 #include <linux/spi/spi.h>
+#include <linux/delay.h>
 #include "escore.h"
 #include "escore-spi.h"
 static struct spi_device *escore_spi;
@@ -42,12 +43,16 @@ static int escore_spi_read_streaming(struct escore_priv *escore,
 				void *buf, int len)
 {
 	int rc;
-	int rdcnt;
+	int rdcnt, rd_len, rem_len, pk_cnt;
 	u16 data;
 
-	msleep(20);
-	for (rdcnt = 0; rdcnt < len; rdcnt += 2) {
-		rc = escore_spi_read(escore, (char *)&data, sizeof(data));
+	pk_cnt = len/ESCORE_SPI_PACKET_LEN;
+	rd_len = ESCORE_SPI_PACKET_LEN;
+	rem_len = len % ESCORE_SPI_PACKET_LEN;
+
+	for (rdcnt = 0; rdcnt < pk_cnt; rdcnt++) {
+		rc = escore_spi_read(escore, (char *)(buf + (rdcnt * rd_len)),
+				rd_len);
 		if (rc < 0) {
 			dev_err(escore->dev,
 				"%s(): Read Data Block error %d\n",
@@ -55,6 +60,17 @@ static int escore_spi_read_streaming(struct escore_priv *escore,
 			return rc;
 		}
 
+		usleep_range(ES_SPI_STREAM_READ_DELAY,
+				ES_SPI_STREAM_READ_DELAY);
+	}
+
+	if (rem_len) {
+		rc = escore_spi_read(escore, (char *) (buf + (rdcnt * rd_len)),
+				rem_len);
+	}
+
+	for (rdcnt = 0; rdcnt < len; rdcnt += 2) {
+		data = *((u16 *)buf);
 		data = be16_to_cpu(data);
 		memcpy(buf, (char *)&data, sizeof(data));
 		buf += 2;
@@ -100,9 +116,6 @@ static int escore_spi_cmd(struct escore_priv *escore,
 	err = escore_spi_write(escore, &cmd, sizeof(cmd));
 	if (err || sr)
 		return err;
-
-	/* This delay used to improve performance for DB operations. */
-	usleep_range(ES_SPI_1MS_DELAY, ES_SPI_1MS_DELAY + 200);
 
 	do {
 		--retry;
@@ -447,9 +460,40 @@ int escore_spi_wait(struct escore_priv *escore)
 	return 1;
 }
 
+static int escore_spi_close(struct escore_priv *escore)
+{
+	int rc;
+	char buf[64] = {0};
+	u32 sync_cmd = (ES_SYNC_CMD << 16) | ES_SYNC_POLLING;
+	u32 sync_ack;
+
+	rc = escore_spi_write(escore, buf, sizeof(buf));
+	if (rc) {
+		dev_err(escore->dev, "%s:spi write error %d\n",
+				__func__, rc);
+		return rc;
+	}
+
+	/* Sending SYNC command */
+	rc = escore_spi_cmd(escore, sync_cmd, &sync_ack);
+	if (rc) {
+		dev_err(escore->dev, "%s: Failed to send SYNC cmd, error %d\n",
+				__func__, rc);
+		return rc;
+	}
+
+	if (sync_ack != ES_SYNC_ACK) {
+		dev_warn(escore->dev, "%s:Invalis SYNC_ACK received %x\n",
+				__func__, sync_ack);
+		rc = -EIO;
+	}
+	return rc;
+}
+
 struct es_stream_device es_spi_streamdev = {
 	.read = escore_spi_read_streaming,
 	.wait = escore_spi_wait,
+	.close = escore_spi_close,
 	.intf = ES_SPI_INTF,
 };
 
@@ -480,6 +524,7 @@ struct spi_driver escore_spi_driver = {
 		.name   = "earSmart-codec",
 		.bus    = &spi_bus_type,
 		.owner  = THIS_MODULE,
+		.pm = &escore_pm_ops,
 	},
 	.probe  = escore_spi_probe,
 	.remove = escore_spi_remove,
