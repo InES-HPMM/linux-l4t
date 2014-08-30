@@ -31,6 +31,7 @@
 #define XUSB_CSB_MP_L2IMEMOP_TRIG				0x00101A14
 #define XUSB_CSB_MP_APMAP					0x0010181C
 #define XUSB_CSB_ARU_SCRATCH0				0x00100100
+#define XUSB_CSB_RST_SSPI				0x00100408
 
 /* Nvidia Cfg Registers */
 

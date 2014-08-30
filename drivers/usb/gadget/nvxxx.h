@@ -18,6 +18,7 @@
 
 #include <linux/ioctl.h>
 
+extern struct usb_hcd *tegra_xhci_hcd;
 /*
  * Register definitions
  */

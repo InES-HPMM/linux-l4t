@@ -30,6 +30,7 @@
 #include <linux/interrupt.h>
 #include <linux/ioport.h>
 #include <linux/usb/otg.h>
+#include <linux/usb/hcd.h>
 #include <linux/delay.h>
 #include <linux/version.h>
 #include <linux/tegra-powergate.h>
@@ -143,6 +144,38 @@ MODULE_PARM_DESC(min_irq_interval_us, "minimum irq interval in microseconds");
 
 static int nvudc_ep_disable(struct usb_ep *_ep);
 
+static inline void xudc_set_port_power(struct NV_UDC_S *nvudc, bool on)
+{
+	u32 portsc;
+	struct device *dev = nvudc->dev;
+
+	if (!tegra_xhci_hcd) {
+		msg_err(dev, "%s: host driver not loaded yet\n", __func__);
+		return;
+	}
+
+	if (on) {
+		if (tegra_xhci_hcd->driver &&
+				tegra_xhci_hcd->driver->hub_control)
+			tegra_xhci_hcd->driver->hub_control(tegra_xhci_hcd,
+				ClearPortFeature, USB_PORT_FEAT_POWER, 1, 0, 0);
+
+		if (tegra_xhci_hcd->driver &&
+				tegra_xhci_hcd->driver->reset_sspi)
+			tegra_xhci_hcd->driver->reset_sspi(tegra_xhci_hcd, 0);
+
+		if (tegra_xhci_hcd->driver &&
+				tegra_xhci_hcd->driver->hub_control)
+			tegra_xhci_hcd->driver->hub_control(tegra_xhci_hcd,
+				SetPortFeature, USB_PORT_FEAT_POWER, 1, 0, 0);
+	} else {
+		if (tegra_xhci_hcd->driver &&
+				tegra_xhci_hcd->driver->hub_control)
+			tegra_xhci_hcd->driver->hub_control(tegra_xhci_hcd,
+				ClearPortFeature, USB_PORT_FEAT_POWER, 1, 0, 0);
+	}
+}
+
 /* must hold nvudc->lock */
 static inline void vbus_detected(struct NV_UDC_S *nvudc)
 {
@@ -208,9 +241,13 @@ static void irq_work(struct work_struct *work)
 			USB2_VBUS_ID_0_ID_OVERRIDE,
 			USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND);
 
+		/* set PP */
+		xudc_set_port_power(nvudc, true);
 		xudc_enable_vbus(nvudc);
 	} else {
+		/* clear PP */
 		xudc_disable_vbus(nvudc);
+		xudc_set_port_power(nvudc, false);
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 			USB2_VBUS_ID_0_ID_OVERRIDE,
 			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);

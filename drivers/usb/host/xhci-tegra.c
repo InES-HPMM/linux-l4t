@@ -1910,7 +1910,6 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 	xusb_utmi_pad_init(port, USB2_PORT_CAP_HOST(port)
 			, tegra->bdata->uses_external_pmic);
 
-
 	ctl0_offset = padregs->usb2_otg_padX_ctlY_0[port][0];
 
 	reg = padctl_readl(tegra, ctl0_offset);
@@ -3497,6 +3496,22 @@ int tegra_xhci_update_hub_device(struct usb_hcd *hcd, struct usb_device *hdev,
 	return xhci_update_hub_device(hcd, hdev, tt, mem_flags);
 }
 
+void tegra_xhci_reset_sspi(struct usb_hcd *hcd, u8 pi)
+{
+	struct tegra_xhci_hcd *tegra = hcd_to_tegra_xhci(hcd);
+	struct device *dev = &tegra->pdev->dev;
+	u32 msec_to_wait = 10;
+
+	dev_dbg(dev, "%s\n", __func__);
+	csb_write(tegra, XUSB_CSB_RST_SSPI, (1 << pi));
+	while ((csb_read(tegra, XUSB_CSB_RST_SSPI) == (0x1 << pi))
+			&& msec_to_wait--)
+		usleep_range(1000, 2000);
+
+	dev_dbg(dev, "%s XUSB_CSB_RST_SSPI[%d] cleared\n", __func__, pi);
+	csb_write(tegra, XUSB_FALC_SS_PVTPORTSC1 + (pi * 0x80), 0x2b0);
+}
+
 static const struct hc_driver tegra_plat_xhci_driver = {
 	.description =		"tegra-xhci",
 	.product_desc =		"Nvidia xHCI Host Controller",
@@ -3549,6 +3564,7 @@ static const struct hc_driver tegra_plat_xhci_driver = {
 #endif
 	.enable_usb3_lpm_timeout =	xhci_enable_usb3_lpm_timeout,
 	.disable_usb3_lpm_timeout =	xhci_disable_usb3_lpm_timeout,
+	.reset_sspi = tegra_xhci_reset_sspi,
 };
 
 #ifdef CONFIG_PM

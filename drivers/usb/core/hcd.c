@@ -2460,6 +2460,8 @@ static int usb_hcd_request_irqs(struct usb_hcd *hcd,
 	return 0;
 }
 
+struct usb_hcd *tegra_xhci_hcd;
+EXPORT_SYMBOL(tegra_xhci_hcd);
 /**
  * usb_add_hcd - finish generic HCD structure initialization and register
  * @hcd: the usb_hcd structure to initialize
@@ -2477,6 +2479,9 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	struct usb_device *rhdev;
 
 	dev_info(hcd->self.controller, "%s\n", hcd->product_desc);
+
+	if (!strcmp(hcd->product_desc, "Nvidia xHCI Host Controller"))
+		tegra_xhci_hcd = hcd;
 
 	/* Keep old behaviour if authorized_default is not in [0, 1]. */
 	if (authorized_default < 0 || authorized_default > 1)
