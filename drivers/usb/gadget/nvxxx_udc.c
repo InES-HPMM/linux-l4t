@@ -194,6 +194,24 @@ static inline void xudc_disable_vbus(struct NV_UDC_S *nvudc)
 	}
 }
 
+static void irq_work(struct work_struct *work)
+{
+	struct NV_UDC_S *nvudc =
+		container_of(work, struct NV_UDC_S, work);
+
+	if (nvudc->id_grounded) {
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+			USB2_VBUS_ID_0_ID_OVERRIDE,
+			USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND);
+
+		xudc_enable_vbus(nvudc);
+	} else {
+		xudc_disable_vbus(nvudc);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+			USB2_VBUS_ID_0_ID_OVERRIDE,
+			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
+	}
+}
 static int extcon_id_notifications(struct notifier_block *nb,
 				   unsigned long event, void *unused)
 {
@@ -205,21 +223,16 @@ static int extcon_id_notifications(struct notifier_block *nb,
 	spin_lock_irqsave(&nvudc->lock, flags);
 	if (extcon_get_cable_state(nvudc->id_extcon_dev, "USB-Host")) {
 		msg_info(dev, "%s: USB_ID pin grounded\n", __func__);
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
-			USB2_VBUS_ID_0_ID_OVERRIDE,
-			USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND);
 		nvudc->id_grounded = true;
-		xudc_enable_vbus(nvudc);
 	} else {
 		msg_info(dev, "%s: USB_ID pin floating\n", __func__);
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
-			USB2_VBUS_ID_0_ID_OVERRIDE,
-			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
 		nvudc->id_grounded = false;
-		xudc_disable_vbus(nvudc);
 	}
 
 	spin_unlock_irqrestore(&nvudc->lock, flags);
+
+	schedule_work(&nvudc->work);
+
 	return NOTIFY_DONE;
 }
 
@@ -238,10 +251,13 @@ static int extcon_notifications(struct notifier_block *nb,
 		goto exit;
 	}
 
-	if (extcon_get_cable_state(nvudc->vbus_extcon_dev, "USB"))
+	if (extcon_get_cable_state(nvudc->vbus_extcon_dev, "USB")) {
+		msg_info(dev, "%s: vbus on detected\n", __func__);
 		vbus_detected(nvudc);
-	else
+	} else {
+		msg_info(dev, "%s: vbus off detected\n", __func__);
 		vbus_not_detected(nvudc);
+	}
 
 exit:
 	spin_unlock_irqrestore(&nvudc->lock, flags);
@@ -4727,6 +4743,8 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to allocate memory for nvudc\n");
 		return -ENOMEM;
 	}
+
+	INIT_WORK(&nvudc->work, irq_work);
 
 	nvudc->pdev.plat = pdev;
 	nvudc->dev = dev;

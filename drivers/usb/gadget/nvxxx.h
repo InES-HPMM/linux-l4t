@@ -700,6 +700,9 @@ struct NV_UDC_S {
 	struct notifier_block vbus_extcon_nb;
 	struct extcon_dev *id_extcon_dev;
 	struct notifier_block id_extcon_nb;
+
+	/* otg work, will be moved to OTG driver */
+	struct work_struct work;
 };
 
 void free_data_struct(struct NV_UDC_S *nvudc);
