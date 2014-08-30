@@ -63,7 +63,7 @@
 			      0 32 0x04
 			      0 33 0x04>;
 		dma-channels = <10>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	spi@7000d600 {
@@ -702,7 +702,7 @@
 	};
 
 	ahub {
-		status = "okay";
+		status = "disabled";
 
 		admaif@0x702d0000 {
 			status = "okay";
@@ -869,8 +869,15 @@
 		status = "disabled";
 	};
 
+	hda@70030000 {
+		compatible = "nvidia,tegra30-hda";
+		reg = <0x0 0x70030000 0x0 0x10000>;
+		interrupts = <0 81 0x04>;
+		status = "disabled";
+	};
+
 	adsp_audio {
-		status = "okay";
+		status = "disabled";
 	};
 
 	adsp {
@@ -881,25 +888,30 @@
 	spdif_dit0: spdif-dit.0@0 {
 		compatible = "linux,spdif-dit";
 		reg = <0x0 0x0 0x0 0x0>;
+		status = "disabled";
 	};
 
 	spdif_dit1: spdif-dit.1@1 {
 		compatible = "linux,spdif-dit";
 		reg = <0x0 0x1 0x0 0x0>;
+		status = "disabled";
 	};
 
 	spdif_dit2: spdif-dit.2@2 {
 		compatible = "linux,spdif-dit";
 		reg = <0x0 0x2 0x0 0x0>;
+		status = "disabled";
 	};
 
 	spdif_dit3: spdif-dit.3@3 {
 		compatible = "linux,spdif-dit";
 		reg = <0x0 0x03 0x0 0x0>;
+		status = "disabled";
 	};
 
 	sound {
 		compatible = "nvidia,tegra-audio-grenada";
+		status = "disabled";
 		nvidia,model = "tegra-snd-grenada";
 		nvidia,num-codec-link = <7>;
 		nvidia,amx-slot-map = <

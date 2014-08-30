@@ -136,4 +136,13 @@
 		vddio_sdmmc-supply = <&max77620_ldo2>; /* SDMMC1 for SD card on loki */
 		vddio_sd_slot-supply = <&en_vdd_sd>;
 	};
+
+	sata@70020000 {
+		hvdd_sata-supply = <&max77620_sd3>;
+		vddio_pex_sata-supply = <&max77620_sd3>;
+		avdd_sata-supply = <&max77620_sd3>;
+		vdd_sata-supply = <&max77620_ldo8>;
+		avdd_sata_pll-supply = <&max77620_ldo8>;
+	};
+
 };

@@ -439,9 +439,6 @@ static void dr_controller_run(struct tegra_udc *udc)
 	udc_writel(udc, temp, USB_CMD_REG_OFFSET);
 
 	if (can_pullup(udc)) {
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
-		udelay(200);
-#endif
 		/* Wait for controller to start */
 		timeout = jiffies + UDC_RUN_TIMEOUT_MS;
 		while ((udc_readl(udc, USB_CMD_REG_OFFSET) & USB_CMD_RUN_STOP)
@@ -1664,9 +1661,6 @@ static int tegra_pullup(struct usb_gadget *gadget, int is_on)
 	tmp |= USB_CMD_ITC_1_MICRO_FRM;
 	if (can_pullup(udc)) {
 		udc_writel(udc, tmp | USB_CMD_RUN_STOP, USB_CMD_REG_OFFSET);
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
-		udelay(200);
-#endif
 		/*
 		 * We cannot tell difference between a SDP and non-standard
 		 * charger (which has D+/D- line floating) based on line status

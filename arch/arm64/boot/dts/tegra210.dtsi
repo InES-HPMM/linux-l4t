@@ -20,6 +20,7 @@
 
 #include <dt-bindings/memory/tegra-swgroup.h>
 #include "tegra210-platforms/tegra210-bthrot-cdev.dtsi"
+#include <dt-bindings/gpio/tegra-gpio.h>
 
 / {
 	compatible = "nvidia,tegra210";
@@ -1058,6 +1059,8 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "nvidia,tegra210-vii2c";
+		scl-gpio = <&gpio TEGRA_GPIO(S, 2) 0>;
+		sda-gpio = <&gpio TEGRA_GPIO(S, 3) 0>;
 		status = "okay";
 	};
 
@@ -1153,5 +1156,6 @@
 		compatible = "nvidia,tegra-wdt";
 		reg = <0x0 0x60005100 0x0 0x20              /* WDT0 registers */
 		0x0 0x60005070 0x0 0x8>;              /* TMR7 registers */
+		status = "disabled";
 	};
 };

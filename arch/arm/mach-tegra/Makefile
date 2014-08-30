@@ -96,12 +96,8 @@ obj-$(CONFIG_SMP)                       += platsmp.o
 obj-y                                   += reset.o
 obj-y                                   += headsmp.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
-ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
 ifeq ($(CONFIG_TEGRA_CPUQUIET),y)
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += cpuquiet.o
-else
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
-endif
 endif
 obj-$(CONFIG_DEBUG_ICEDCC)              += sysfs-dcc.o
 obj-$(CONFIG_TEGRA_CLUSTER_CONTROL)     += sysfs-cluster.o

@@ -28,6 +28,9 @@ extern struct spi_driver escore_spi_driver;
 #elif defined(CONFIG_ARCH_MSM)
 #define ES_SPI_FW_SPEED	9600000
 #define ES_SPI_OPERATION_SPEED	4800000
+#elif defined(CONFIG_ARCH_TEGRA)
+#define ES_SPI_FW_SPEED	4000000
+#define ES_SPI_OPERATION_SPEED	3000000
 #endif
 
 extern struct es_stream_device es_spi_streamdev;

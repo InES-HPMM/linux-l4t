@@ -482,7 +482,7 @@ struct spi_driver escore_spi_driver = {
 		.owner  = THIS_MODULE,
 	},
 	.probe  = escore_spi_probe,
-	.remove = __devexit_p(escore_spi_remove),
+	.remove = escore_spi_remove,
 	.id_table = escore_spi_id,
 };
 

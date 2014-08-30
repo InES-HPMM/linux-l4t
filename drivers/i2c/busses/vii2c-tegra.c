@@ -50,6 +50,8 @@
 #define I2C_ERR_UNKNOWN_INTERRUPT		0x04
 #define I2C_ERR_UNEXPECTED_STATUS		0x08
 
+#define I2C_FIFO_MAX				(100 - 8)
+
 #define TEGRA_VII2C_TIMEOUT			(msecs_to_jiffies(1000))
 #define TEGRA_VII2C_RETRIES			3
 #define TEGRA_VII2C_REG_ADDR			0x20
@@ -67,6 +69,7 @@
 #define VII2C_I2C_STREAM_DIRECT_INTERRUPT_MASK_REGISTER_0	(0x364 << 2)
 #define VII2C_I2C_STREAM_DIRECT_INTERRUPT_STATUS_REGISTER_0	(0x368 << 2)
 #define VII2C_I2C_STREAM_DIRECT_FIFO_CONTROL_0			(0x35C << 2)
+#define VII2C_I2C_STREAM_DIRECT_I2C_STATUS_0			(0x31C << 2)
 #define I2C_FIFO_CONTROL_TX_FLUSH				BIT(1)
 #define I2C_FIFO_CONTROL_RX_FLUSH				BIT(0)
 #define I2C_FIFO_CONTROL_TX_TRIG_SHIFT				5
@@ -96,7 +99,6 @@
 #define VII2C_I2C_RESERVED_0_0					0x5c
 
 #define VII2C_WR(r, v)				i2c_writel(i2c_dev, r, v)
-/*#define VII2C_WR(r, v)	*((u32 *)(i2c_dev->nvhost->base + r)) = v*/
 #define VII2C_RD(r)				i2c_readl(i2c_dev, r)
 
 struct tegra_vii2c_platform_data {
@@ -125,18 +127,6 @@ enum msg_end_type {
  * struct tegra_vii2c_dev - per device i2c context
  * @dev: device reference for power management
  * @adapter: core i2c layer adapter information
- * @div_clk: clock reference for div clock of i2c controller.
- * @fast_clk: clock reference for fast clock of i2c controller.
- * @base: ioremapped registers cookie
- * @cont_id: i2c controller id, used for for packet header
- * @irq: irq number of transfer complete interrupt
- * @is_dvc: identifies the DVC i2c controller, has a different register layout
- * @msg_complete: transfer completion notifier
- * @msg_err: error code for completed message
- * @msg_buf: pointer to current message data
- * @msg_buf_remaining: size of unsent data in the message buffer
- * @msg_read: identifies read transfers
- * @bus_clk_rate: current i2c bus clock rate
  * @is_suspended: prevents i2c controller accesses after suspend is called
  */
 struct tegra_vii2c_dev {
@@ -145,39 +135,69 @@ struct tegra_vii2c_dev {
 	struct tegra_vii2c_platform_data *pdata;
 	struct nvhost_vii2c_struct *nvhost;
 	struct device *dev;
-	spinlock_t fifo_lock;
-	spinlock_t mem_lock;
-	int cont_id;
-	struct completion msg_complete;
-	int msg_err;
-	int next_msg_err;
-	u8 *msg_buf;
-	u8 *next_msg_buf;
-	u32 packet_header;
-	u32 next_packet_header;
-	u32 payload_size;
-	u32 next_payload_size;
-	u32 io_header;
-	u32 next_io_header;
-	size_t msg_buf_remaining;
-	size_t next_msg_buf_remaining;
-	int msg_read;
-	int next_msg_read;
-	struct i2c_msg *msgs;
-	int msg_add;
-	int next_msg_add;
-	int msgs_num;
 	bool is_suspended;
 	int scl_gpio;
 	int sda_gpio;
 	u16 slave_addr;
-	bool use_single_xfer_complete;
 	struct i2c_algo_bit_data bit_data;
 	const struct i2c_algorithm *bit_algo;
 	bool is_shutdown;
 	struct notifier_block pm_nb;
 	bool bit_banging_xfer_only;
+	u32 buffer[I2C_FIFO_MAX];
 };
+
+#ifdef TEGRA_VII2C_DEBUG_DUMP
+static void dump_msg(
+	struct tegra_vii2c_dev *i2c_dev,
+	struct i2c_msg *msg,
+	struct i2c_msg *msg2)
+{
+	int i;
+	int size;
+	char buf[32];
+	char *ptr;
+
+	memset(buf, 0, sizeof(buf));
+	size = sizeof(buf) - 1;
+	snprintf(buf, size, "1: %02x %04x -", msg->addr, msg->flags);
+	ptr = buf + strlen(buf);
+	size -= strlen(buf);
+	for (i = 0; i < msg->len && size; i++) {
+		snprintf(ptr, size, " %02x", msg->buf[i]);
+		size -= strlen(ptr);
+		ptr += strlen(ptr);
+	}
+	pr_info("%s - %s\n", __func__, buf);
+
+	if (msg2 == NULL)
+		return;
+
+	memset(buf, 0, sizeof(buf));
+	size = sizeof(buf) - 1;
+	snprintf(buf, size, "2: %02x %04x -", msg2->addr, msg2->flags);
+	ptr = buf + strlen(buf);
+	size -= strlen(buf);
+	for (i = 0; i < msg2->len && size; i++) {
+		snprintf(ptr, size, " %02x", msg2->buf[i]);
+		size -= strlen(ptr);
+		ptr += strlen(ptr);
+	}
+	pr_info("%s - %s\n", __func__, buf);
+}
+#else
+static void dump_msg(
+	struct tegra_vii2c_dev *i2c_dev,
+	struct i2c_msg *msg,
+	struct i2c_msg *msg2)
+{
+	dev_dbg(i2c_dev->dev, "%s %x %x %d\n",
+		__func__, msg->addr, msg->flags, msg->len);
+	if (msg2)
+		dev_dbg(i2c_dev->dev, "%s %x %x %d\n",
+			__func__, msg->addr, msg->flags, msg->len);
+}
+#endif
 
 static inline void tegra_vii2c_gpio_setscl(void *data, int state)
 {
@@ -287,13 +307,6 @@ static int tegra_vii2c_gpio_init(struct tegra_vii2c_dev *i2c_dev)
 static void i2c_writel(struct tegra_vii2c_dev *i2c_dev,
 	unsigned long reg, u32 val)
 {
-#if 0
-	writel(val, i2c_dev->nvhost->base + reg);
-
-	/* Read back register to make sure that register writes completed */
-	if (reg != VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0)
-		readw(i2c_dev->nvhost->base + reg);
-#else
 	struct nvhost_vii2c_struct *nvhost = i2c_dev->nvhost;
 	nvhost->write_reg(reg, val);
 
@@ -301,22 +314,16 @@ static void i2c_writel(struct tegra_vii2c_dev *i2c_dev,
 	if ((reg != VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0) &&
 		(reg != VII2C_I2C_STREAM_DIRECT_STREAM_DIRECT_FENCE_0))
 		nvhost->read_reg(reg);
-#endif
 }
 
 static u32 i2c_readl(struct tegra_vii2c_dev *i2c_dev, unsigned long reg)
 {
-#if 0
-	return readw(i2c_dev->nvhost->base + reg);
-#else
 	struct nvhost_vii2c_struct *nvhost = i2c_dev->nvhost;
 	return nvhost->read_reg(reg);
-#endif
 }
 
 static void tegra_vii2c_setup_wr(struct tegra_vii2c_dev *i2c_dev)
 {
-	dev_dbg(i2c_dev->dev, "%s +++\n", __func__);
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_CLK_DIVISOR_REGISTER_0, 0x200001);
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_INTERFACE_TIMING_0_0, 0x204);
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_INTERFACE_TIMING_1_0, 0x04070404);
@@ -325,30 +332,46 @@ static void tegra_vii2c_setup_wr(struct tegra_vii2c_dev *i2c_dev)
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_BUS_CLEAR_CONFIG_0, 0x90004);
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TLOW_SEXT_0, 0x0);
 	usleep_range(1000, 1020);
-	dev_dbg(i2c_dev->dev, "%s done.\n", __func__);
+	dev_dbg(i2c_dev->dev, "%s\n", __func__);
 }
 
-static int tegra_vii2c_clock_enable(struct tegra_vii2c_dev *i2c_dev)
+static void tegra_vii2c_reset(struct tegra_vii2c_dev *i2c_dev)
 {
-	return 0;
-}
+#define CLK_RST_CONTROLLER_RST_DEVICES_Y_0 \
+	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x2a4)
+	u32 val = readl(CLK_RST_CONTROLLER_RST_DEVICES_Y_0);
 
-static int tegra_vii2c_clock_disable(struct tegra_vii2c_dev *i2c_dev)
-{
-	return 0;
+	val |= BIT(16);
+	writel(val, CLK_RST_CONTROLLER_RST_DEVICES_Y_0);
+	usleep_range(1000, 1020);
+	val = readl(CLK_RST_CONTROLLER_RST_DEVICES_Y_0);
+	val &= ~BIT(16);
+	writel(val, CLK_RST_CONTROLLER_RST_DEVICES_Y_0);
+	dev_dbg(i2c_dev->dev, "%s\n", __func__);
 }
 
 int vii2c_direct_read(
-	struct tegra_vii2c_dev *i2c_dev, struct i2c_msg *msg, u8 *val)
+	struct tegra_vii2c_dev *i2c_dev, struct i2c_msg *msg, u8 *val, int num)
 {
 	struct nvhost_vii2c_struct *nvhost = i2c_dev->nvhost;
 	int slv = (msg->addr & 0x7f) << 1;
-	int addrn;
+	int addrn = 0;
+	u32 payload = 0;
 	int err = 0;
 
-	addrn = msg->buf[1];
-	addrn = (addrn << 8) + msg->buf[0];
-	dev_dbg(i2c_dev->dev, "%s: %02x %04x\n", __func__, slv, addrn);
+	if (num <= 0 || num >= I2C_FIFO_MAX) {
+		dev_err(i2c_dev->dev, "%s: invalid num %d\n", __func__, num);
+		return -EINVAL;
+	}
+	if ((!msg->flags & I2C_M_RD) && msg->len) {
+		/*we only support 0/8/16 bits address */
+		if (msg->len > 1) {
+			addrn = msg->buf[1];
+			payload = 1;
+		}
+		addrn = (addrn << 8) + msg->buf[0];
+	}
+	dev_dbg(i2c_dev->dev, "%s: %02x %04x %d\n", __func__, slv, addrn, num);
 
 	VII2C_WR(VII2C_VI_I2C_INCR_SYNCPT_0, nvhost->syncpt_inc(nvhost, 8));
 
@@ -358,22 +381,34 @@ int vii2c_direct_read(
 		0x1FF30FFF);
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_FIFO_CONTROL_0, 0x000000E0);
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_CONFIG_LOAD_0, 0x00000007);
+
+	if (!msg->flags & I2C_M_RD) {
+		VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, 0x10010);
+		VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, payload);
+		VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, slv);
+		VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, addrn);
+	}
+
+	/* read back num byte */
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, 0x00010010);
-	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, 0x00000001);
-	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, slv);
-	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, addrn);
-	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, 0x00010010);
-	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, 0x00000000);
+	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, num - 1);
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, BIT(19) + slv);
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_STREAM_DIRECT_FENCE_0, 0x0000AC00);
 
 	err = nvhost->syncpt_wait(nvhost);
-	if (err)
+	if (err) {
+		/*payload = VII2C_RD(VII2C_I2C_STREAM_DIRECT_I2C_STATUS_0);*/
+		dev_err(i2c_dev->dev, "%s timeout", __func__);
+		tegra_vii2c_reset(i2c_dev);
 		return err;
+	}
 
-	*val = VII2C_RD(VII2C_I2C_STREAM_DIRECT_I2C_RX_FIFO_0) & 0xFF;
+	while (num--) {
+		*val = VII2C_RD(VII2C_I2C_STREAM_DIRECT_I2C_RX_FIFO_0) & 0xFF;
+		dev_dbg(i2c_dev->dev, "    %02x", *val);
+		val++;
+	}
 
-	dev_dbg(i2c_dev->dev, "%s: %02x\n", __func__, *val);
 	return 0;
 }
 
@@ -382,13 +417,29 @@ static int vii2c_direct_write(
 {
 	struct nvhost_vii2c_struct *nvhost = i2c_dev->nvhost;
 	int slv = (msg->addr & 0x7f) << 1;
-	u32 payload = msg->buf[2];
+	u32 *ptr = i2c_dev->buffer - 1;
+	int i, num, shft;
 	int err = 0;
 
-	payload = (payload << 8) + msg->buf[1];
-	payload = (payload << 8) + msg->buf[0];
-	dev_dbg(i2c_dev->dev, "%s: %04x %08x\n", __func__, slv, payload);
+	if (!msg->len || msg->len > I2C_FIFO_MAX) {
+		dev_err(i2c_dev->dev, "%s: invalid bytes %d write\n",
+			__func__, msg->len);
+		return -EINVAL;
+	}
 
+	for (num = 0, i = 0; i < msg->len; i++) {
+		if (i % 4 == 0) {
+			ptr++;
+			num++;
+			*ptr = 0;
+			shft = 0;
+		}
+		*ptr += (u32)(msg->buf[i] & 0xff) << shft;
+		shft += 8;
+	}
+	dev_dbg(i2c_dev->dev, "%s: %d words @%04x\n", __func__, num, slv);
+	for (i = 0; i < num; i++)
+		dev_dbg(i2c_dev->dev, "    %08x\n", i2c_dev->buffer[i]);
 
 	VII2C_WR(VII2C_VI_I2C_INCR_SYNCPT_0, nvhost->syncpt_inc(nvhost, 5));
 
@@ -399,15 +450,20 @@ static int vii2c_direct_write(
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_FIFO_CONTROL_0, 0x000000E0);
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_CONFIG_LOAD_0, 0x00000007);
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, 0x00010010);
-	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, 0x00000002);
+	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, msg->len - 1);
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, slv);
-	VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, payload);
+	for (ptr = i2c_dev->buffer, i = 0; i < num; i++)
+		VII2C_WR(VII2C_I2C_STREAM_DIRECT_I2C_TX_PACKET_FIFO_0, *ptr++);
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_STREAM_DIRECT_FENCE_0, 0x0000AC00);
 	/*usleep_range(1000, 1020);*/
 
 	err = nvhost->syncpt_wait(nvhost);
-	if (err)
+	if (err) {
+		/*num = VII2C_RD(VII2C_I2C_STREAM_DIRECT_I2C_STATUS_0);*/
+		dev_err(i2c_dev->dev, "%s timeout", __func__);
+		tegra_vii2c_reset(i2c_dev);
 		return err;
+	}
 
 	return 0;
 }
@@ -417,9 +473,8 @@ static int tegra_vii2c_flush_fifos(struct tegra_vii2c_dev *i2c_dev)
 	unsigned long timeout = jiffies + HZ;
 
 	u32 val = VII2C_RD(VII2C_I2C_STREAM_DIRECT_FIFO_CONTROL_0);
-	dev_dbg(i2c_dev->dev, "%s: %08x\n", __func__, val);
+
 	val |= I2C_FIFO_CONTROL_TX_FLUSH | I2C_FIFO_CONTROL_RX_FLUSH;
-	dev_dbg(i2c_dev->dev, "%s: %08x\n", __func__, val);
 	VII2C_WR(VII2C_I2C_STREAM_DIRECT_FIFO_CONTROL_0, val);
 
 	while (VII2C_RD(VII2C_I2C_STREAM_DIRECT_FIFO_CONTROL_0) &
@@ -433,63 +488,6 @@ static int tegra_vii2c_flush_fifos(struct tegra_vii2c_dev *i2c_dev)
 	return 0;
 }
 
-static int tegra_vii2c_fill_tx_fifo(struct tegra_vii2c_dev *i2c_dev)
-{
-	return 0;
-}
-
-static void tegra_vii2c_slave_init(struct tegra_vii2c_dev *i2c_dev)
-{
-}
-
-static int tegra_vii2c_init(struct tegra_vii2c_dev *i2c_dev)
-{
-	return 0;
-}
-
-static int tegra_vii2c_copy_next_to_current(struct tegra_vii2c_dev *i2c_dev)
-{
-	i2c_dev->msg_buf = i2c_dev->next_msg_buf;
-	i2c_dev->msg_buf_remaining = i2c_dev->next_msg_buf_remaining;
-	i2c_dev->msg_err = i2c_dev->next_msg_err;
-	i2c_dev->msg_read = i2c_dev->next_msg_read;
-	i2c_dev->msg_add = i2c_dev->next_msg_add;
-	i2c_dev->packet_header = i2c_dev->next_packet_header;
-	i2c_dev->io_header = i2c_dev->next_io_header;
-	i2c_dev->payload_size = i2c_dev->next_payload_size;
-
-	return 0;
-}
-
-static int tegra_vii2c_send_next_read_msg_pkt_header(
-	struct tegra_vii2c_dev *i2c_dev,
-	struct i2c_msg *next_msg,
-	enum msg_end_type end_state)
-{
-	return 0;
-}
-
-#ifdef TEGRA_VII2C_DEBUG_DUMP
-static void dump_msg(struct i2c_msg *msg)
-{
-	int i;
-	int size;
-	char buf[32];
-	char *ptr = buf;
-
-	memset(buf, 0, sizeof(buf));
-	size = sizeof(buf) - 1;
-	for (i = 0; i < msg->len && size; i++) {
-		snprintf(ptr, size, " %02x", msg->buf[i]);
-		ptr += strlen(ptr);
-		size -= strlen(ptr);
-	}
-	pr_info("%s\n", buf);
-}
-#else
-static inline void dump_msg(struct i2c_msg *msg) {}
-#endif
-
 static int tegra_vii2c_xfer_msg(struct tegra_vii2c_dev *i2c_dev,
 	struct i2c_msg *msg, enum msg_end_type end_state,
 	struct i2c_msg *next_msg, enum msg_end_type next_msg_end_state)
@@ -497,20 +495,12 @@ static int tegra_vii2c_xfer_msg(struct tegra_vii2c_dev *i2c_dev,
 	if (msg->len == 0)
 		return -EINVAL;
 
-	dev_dbg(i2c_dev->dev, "%s %x %x %d\n",
-		__func__, msg->addr, msg->flags, msg->len);
-	dump_msg(msg);
-
-	i2c_dev->msg_buf = msg->buf;
-	i2c_dev->msg_buf_remaining = msg->len;
-	i2c_dev->msg_err = I2C_ERR_NONE;
-	i2c_dev->msg_read = (msg->flags & I2C_M_RD);
-	INIT_COMPLETION(i2c_dev->msg_complete);
+	dump_msg(i2c_dev, msg, next_msg);
 
 	if (msg->flags & I2C_M_RD)
-		vii2c_direct_read(i2c_dev, msg, &msg->buf[2]);
+		vii2c_direct_read(i2c_dev, msg, msg->buf, msg->len);
 	else if (next_msg && (next_msg->flags & I2C_M_RD))
-		vii2c_direct_read(i2c_dev, msg, next_msg->buf);
+		vii2c_direct_read(i2c_dev, msg, next_msg->buf, next_msg->len);
 	else {
 		tegra_vii2c_flush_fifos(i2c_dev);
 		vii2c_direct_write(i2c_dev, msg);
@@ -540,16 +530,8 @@ static int tegra_vii2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	if (adap->atomic_xfer_only)
 		return -EBUSY;
 
-	i2c_dev->msgs = msgs;
-	i2c_dev->msgs_num = num;
 
 	pm_runtime_get_sync(&adap->dev);
-	ret = tegra_vii2c_clock_enable(i2c_dev);
-	if (ret < 0) {
-		dev_err(i2c_dev->dev, "Clock enable failed %d\n", ret);
-		pm_runtime_put(&adap->dev);
-		return ret;
-	}
 
 	if (!i2c_dev->nvhost) {
 		nvhost = nvhost_vii2c_open(i2c_dev->pdev);
@@ -559,7 +541,6 @@ static int tegra_vii2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 			return -ENOTTY;
 		}
 		i2c_dev->nvhost = nvhost;
-		nvhost->base = IO_ADDRESS(0x546c0000);
 	}
 	nvhost = i2c_dev->nvhost;
 	nvhost->open(nvhost);
@@ -613,11 +594,7 @@ static int tegra_vii2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	nvhost->module_idle(nvhost);
 	nvhost->close(nvhost);
 
-	tegra_vii2c_clock_disable(i2c_dev);
 	pm_runtime_put(&adap->dev);
-
-	i2c_dev->msgs = NULL;
-	i2c_dev->msgs_num = 0;
 
 	return ret ?: i;
 }
@@ -721,29 +698,15 @@ static int tegra_vii2c_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	i2c_dev->cont_id = pdev->id;
 	i2c_dev->pdev = pdev;
 	i2c_dev->dev = &pdev->dev; /* for dev_info */
-	i2c_dev->msgs = NULL;
-	i2c_dev->msgs_num = 0;
 	i2c_dev->scl_gpio = pdata->scl_gpio;
 	i2c_dev->sda_gpio = pdata->sda_gpio;
 	i2c_dev->bit_banging_xfer_only = pdata->gpio_mode;
 	i2c_dev->slave_addr = pdata->slave_addr;
 	i2c_dev->pdata = pdata;
-	init_completion(&i2c_dev->msg_complete);
-
-	spin_lock_init(&i2c_dev->fifo_lock);
-
-	spin_lock_init(&i2c_dev->mem_lock);
 
 	platform_set_drvdata(pdev, i2c_dev);
-
-	ret = tegra_vii2c_init(i2c_dev);
-	if (ret) {
-		dev_err(&pdev->dev, "Failed to initialize i2c controller");
-		return ret;
-	}
 
 	pm_runtime_enable(&pdev->dev);
 
@@ -833,10 +796,6 @@ static int tegra_vii2c_suspend_noirq(struct device *dev)
 static int __tegra_vii2c_resume_noirq(struct tegra_vii2c_dev *i2c_dev)
 {
 	int ret;
-
-	ret = tegra_vii2c_init(i2c_dev);
-	if (ret)
-		return ret;
 
 	i2c_dev->is_suspended = false;
 

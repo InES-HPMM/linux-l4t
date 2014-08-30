@@ -47,8 +47,6 @@ enum tegra_wdt_status {
 
 struct tegra_wdt {
 	struct watchdog_device	wdt;
-	struct resource		*res_src;
-	struct resource		*res_wdt;
 	unsigned long		users;
 	void __iomem		*wdt_source;
 	void __iomem		*wdt_timer;
@@ -61,11 +59,6 @@ struct tegra_wdt {
  * for cases where the spinlock disabled irqs.
  */
 static int heartbeat = 120; /* must be greater than MIN_WDT_PERIOD and lower than MAX_WDT_PERIOD */
-#ifdef CONFIG_TEGRA_WATCHDOG_ENABLE_ON_PROBE
-static bool enable_on_probe = true;
-#else
-static bool enable_on_probe;
-#endif
 
 static inline struct tegra_wdt *to_tegra_wdt(struct watchdog_device *wdt)
 {
@@ -170,22 +163,19 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 {
 	struct resource *res_src, *res_wdt;
 	struct tegra_wdt *tegra_wdt;
+	struct device_node *np = pdev->dev.of_node;
 	int ret = 0;
-
-	res_src = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	res_wdt = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-
-	if (!res_src || !res_wdt) {
-		dev_err(&pdev->dev, "incorrect resources\n");
-		return -ENOENT;
-	}
+	bool enable_on_init = 0;
 
 	if (!tegra_platform_is_silicon()) {
 		dev_info(&pdev->dev, "no watchdog support in pre-silicon");
 		return -EPERM;
 	}
 
-	tegra_wdt = kzalloc(sizeof(*tegra_wdt), GFP_KERNEL);
+	if (of_find_property(np, "nvidia,enable-on-init", NULL))
+		enable_on_init = true;
+
+	tegra_wdt = devm_kzalloc(&pdev->dev, sizeof(*tegra_wdt), GFP_KERNEL);
 	if (!tegra_wdt) {
 		dev_err(&pdev->dev, "out of memory\n");
 		return -ENOMEM;
@@ -197,19 +187,28 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	tegra_wdt->wdt.max_timeout = MAX_WDT_PERIOD;
 	tegra_wdt->wdt.timeout = 120;
 
-	res_src = request_mem_region(res_src->start, resource_size(res_src),
-				     pdev->name);
-	res_wdt = request_mem_region(res_wdt->start, resource_size(res_wdt),
-				     pdev->name);
+	res_src = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	res_wdt = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 
 	if (!res_src || !res_wdt) {
-		dev_err(&pdev->dev, "unable to request memory resources\n");
-		ret = -EBUSY;
-		goto fail;
+		dev_err(&pdev->dev, "incorrect resources\n");
+		return -ENOENT;
 	}
 
-	tegra_wdt->wdt_source = ioremap(res_src->start, resource_size(res_src));
-	tegra_wdt->wdt_timer = ioremap(res_wdt->start, resource_size(res_wdt));
+	tegra_wdt->wdt_source = devm_request_and_ioremap(&pdev->dev, res_src);
+	if (!tegra_wdt->wdt_source) {
+		dev_err(&pdev->dev,
+				"Cannot request memregion/iomap res_src\n");
+		return -EADDRNOTAVAIL;
+	}
+
+	tegra_wdt->wdt_timer = devm_request_and_ioremap(&pdev->dev, res_wdt);
+	if (!tegra_wdt->wdt_timer) {
+		dev_err(&pdev->dev,
+				"Cannot request memregion/iomap res_wdt\n");
+		return -EADDRNOTAVAIL;
+	}
+
 	/* tmrsrc will be used to set WDT_CFG */
 	if ((res_wdt->start & 0xff) < 0x50)
 		tegra_wdt->tmrsrc = 1 + (res_wdt->start & 0xf) / 8;
@@ -224,17 +223,12 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	tegra_wdt_disable(&tegra_wdt->wdt);
 	writel(TIMER_PCR_INTR, tegra_wdt->wdt_timer + TIMER_PCR);
 
-	tegra_wdt->res_src = res_src;
-	tegra_wdt->res_wdt = res_wdt;
-
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	/* Init and enable watchdog on WDT0 with timer 8 during probe */
-	if (enable_on_probe) {
+	if (enable_on_init) {
 		set_bit(WDOG_ACTIVE, &tegra_wdt->wdt.status);
 		tegra_wdt_enable(&tegra_wdt->wdt);
 		pr_info("WDT heartbeat enabled on probe\n");
 	}
-#endif
 
 	watchdog_init_timeout(&tegra_wdt->wdt, heartbeat,  &pdev->dev);
 
@@ -249,15 +243,6 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "%s done\n", __func__);
 	return 0;
 fail:
-	if (tegra_wdt->wdt_source)
-		iounmap(tegra_wdt->wdt_source);
-	if (tegra_wdt->wdt_timer)
-		iounmap(tegra_wdt->wdt_timer);
-	if (res_src)
-		release_mem_region(res_src->start, resource_size(res_src));
-	if (res_wdt)
-		release_mem_region(res_wdt->start, resource_size(res_wdt));
-	kfree(tegra_wdt);
 	return ret;
 }
 
@@ -268,11 +253,6 @@ static int tegra_wdt_remove(struct platform_device *pdev)
 	tegra_wdt_disable(&tegra_wdt->wdt);
 
 	watchdog_unregister_device(&tegra_wdt->wdt);
-	iounmap(tegra_wdt->wdt_source);
-	iounmap(tegra_wdt->wdt_timer);
-	release_mem_region(tegra_wdt->res_src->start, resource_size(tegra_wdt->res_src));
-	release_mem_region(tegra_wdt->res_wdt->start, resource_size(tegra_wdt->res_wdt));
-	kfree(tegra_wdt);
 	platform_set_drvdata(pdev, NULL);
 	return 0;
 }
@@ -335,10 +315,6 @@ MODULE_DESCRIPTION("Tegra Watchdog Driver");
 module_param(heartbeat, int, 0);
 MODULE_PARM_DESC(heartbeat,
 		 "Watchdog heartbeat period in seconds");
-
-module_param(enable_on_probe, bool, 0);
-MODULE_PARM_DESC(enable_on_probe,
-		 "Start watchdog during boot");
 
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:tegra_wdt");

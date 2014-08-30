@@ -144,18 +144,19 @@
 		};
 	};
 
-	i2c@7000c000 {
-		rt5639: rt5639.0-001c@1c {
-			compatible = "realtek,rt5639";
-			reg = <0x1c>;
-		};
-		earSmart: earSmart-codec.0-003e@3e {
-			compatible = "adnc,earSmart";
-			reg = <0x3e>;
+
+	spi@7000d400 {
+		status = "okay";
+		earSmart: earSmart-codec@0 {
+			compatible = "adnc,earSmart-codec";
+			reg = <0>;
+			spi-max-frequency = <6000000>;
+			spi-cpha;
 
 			adnc,reset-gpio = <&gpio TEGRA_GPIO(BB, 3) GPIO_ACTIVE_HIGH>;
 			adnc,gpiob-gpio = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
 			adnc,wakeup-gpio = <&gpio TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH>;
+
 			adnc,int-gpio = <(-1)>;
 			adnc,gpioa-gpio = <(-1)>;
 			adnc,enable_hs_uart_intf = <0>;
@@ -316,9 +317,9 @@
 				vana-supply = <&max77620_ldo3>;
 				vdig-supply = <&vdd_sys_boost>;
 				vif-supply = <&en_vdd_cam>;
-				af-gpios = <&gpio 149 0>;
-				reset-gpios = <&gpio 148 0>;
-				cam1-gpios = <&gpio 151 0>;
+				af-gpios = <&gpio TEGRA_GPIO(S, 5) 0>;
+				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
+				cam1-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
 			};
 			dw9714@6_000c {
 				use_of_node = "yes";
@@ -334,7 +335,8 @@
 				use_of_node = "yes";
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
-				reset-gpios = <&gpio 221 0>;
+				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
+				cam2-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
 			};
 		};
 	};

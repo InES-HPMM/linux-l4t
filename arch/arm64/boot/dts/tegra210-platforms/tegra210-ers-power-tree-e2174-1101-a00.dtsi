@@ -127,4 +127,16 @@
 	otg@7d000000 {
 		usb_vbus-supply = <&usb0_vbus>;
 	};
+
+	regulators {
+		vdd_usb_5v0: regulator@11 {
+			status = "okay";
+			gpio = <&pca9539_76 6 0>;
+		};
+
+		vdd_cdc_1v2_aud: regulator@101 {
+			status = "okay";
+			gpio = <&pca9539_76 9 0>;
+		};
+	};
 };

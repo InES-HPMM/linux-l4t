@@ -1084,7 +1084,7 @@ static int __init tegra_cpufreq_init(void)
 	return cpufreq_register_driver(&tegra_cpufreq_driver);
 }
 
-#if CONFIG_TEGRA_CPU_FREQ_GOVERNOR_KERNEL_START
+#ifdef CONFIG_TEGRA_CPU_FREQ_GOVERNOR_KERNEL_START
 static int __init tegra_cpufreq_governor_init(void)
 {
 	/*

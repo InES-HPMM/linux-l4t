@@ -24,7 +24,6 @@
 
 #include "tegra210-ers-common.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-p2530-common.dtsi"
-#include "tegra210-platforms/tegra210-ers-extgpio-e2141-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-loki-power-tree-p2530-0999-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-gpio-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-pinmux-p2530-0032-e00.dtsi"
@@ -36,6 +35,7 @@
 #include "tegra210-platforms/tegra210-ers-touch-e1937-1000-a00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-sensor-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-thermal-fan-est.dtsi"
+#include "tegra210-platforms/tegra210-loki-e-camera-p2530-0032-e00.dtsi"
 
 / {
 	model = "loki_e_lte";
@@ -54,7 +54,7 @@
 	};
 
 	sdhci@700b0200 {
-		uhs-mask = <0x60>;
+		uhs-mask = <0x1c>;
 		status = "okay";
 	};
 
@@ -93,15 +93,19 @@
 		};
 	};
 
-	i2c@7000c000 {
 
-		earSmart: earSmart-codec.0-003e@3e {
-			compatible = "adnc,earSmart";
-			reg = <0x3e>;
+	spi@7000d400 {
+		status = "okay";
+		earSmart: earSmart-codec@0 {
+			compatible = "adnc,earSmart-codec";
+			reg = <0>;
+			spi-max-frequency = <6000000>;
+			spi-cpha;
 
 			adnc,reset-gpio = <&gpio TEGRA_GPIO(BB, 3) GPIO_ACTIVE_HIGH>;
 			adnc,gpiob-gpio = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
 			adnc,wakeup-gpio = <&gpio TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH>;
+
 			adnc,int-gpio = <(-1)>;
 			adnc,gpioa-gpio = <(-1)>;
 			adnc,enable_hs_uart_intf = <0>;
@@ -179,6 +183,7 @@
                 nvidia,charging-supported;
                 nvidia,enable-pmu-vbus-detection;
                 nvidia,id-detection-type = <1>;
+		nvidia,dcp-current-limit-ma = <2000>;
                 extcon-cables = <&bq2419x 0>;
                 extcon-cable-names = "vbus";
                 #extcon-cells = <1>;
@@ -193,5 +198,15 @@
                 #extcon-cells = <1>;
                 status = "okay";
         };
+	camera-pcl {
+		profiles {
+			ov7695@6_0021 {
+				use_of_node = "yes";
+				vana-supply = <&max77620_ldo3>;
+				vif-supply = <&en_vdd_cam>;
+				cam1-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
+			};
+		};
+	};
 };
 

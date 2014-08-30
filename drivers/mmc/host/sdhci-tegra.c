@@ -1851,12 +1851,6 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 		ctrl |= SDHCI_CTRL_VDD_180;
 		min_uV = SDHOST_LOW_VOLT_MIN;
 		max_uV = SDHOST_LOW_VOLT_MAX;
-		if (soc_data->nvquirks2 & NVQUIRK2_CONFIG_PWR_DET) {
-			if (tegra_host->instance == SDMMC1_INSTANCE)
-				pwr_detect_bit_write(SDMMC1_PWR_DET, false);
-			else if (tegra_host->instance == SDMMC3_INSTANCE)
-				pwr_detect_bit_write(SDMMC3_PWR_DET, false);
-		}
 	} else if (signal_voltage == MMC_SIGNAL_VOLTAGE_330) {
 		if (ctrl & SDHCI_CTRL_VDD_180)
 			ctrl &= ~SDHCI_CTRL_VDD_180;
@@ -1885,6 +1879,17 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 		rc = tegra_sdhci_configure_regulators(tegra_host,
 			CONFIG_REG_SET_VOLT, SDHOST_HIGH_VOLT_MIN,
 			SDHOST_HIGH_VOLT_MAX);
+	} else {
+		if (signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
+			if (soc_data->nvquirks2 & NVQUIRK2_CONFIG_PWR_DET) {
+				if (tegra_host->instance == SDMMC1_INSTANCE)
+					pwr_detect_bit_write(SDMMC1_PWR_DET,
+									false);
+				else if (tegra_host->instance == SDMMC3_INSTANCE)
+					pwr_detect_bit_write(SDMMC3_PWR_DET,
+									false);
+			}
+		}
 	}
 	if (gpio_is_valid(plat->power_gpio)) {
 		if (signal_voltage == MMC_SIGNAL_VOLTAGE_330) {
