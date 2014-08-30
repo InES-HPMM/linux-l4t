@@ -117,9 +117,12 @@ void pwr_detect_bit_write(u32 pwrdet_bit, bool enable)
 			udelay(100);
 		}
 		break;
-	default:
-		return;
+//	default: FIXME 3 lines below also need fix
+//		return; FIXME
 	}
+	pwrdet_mask = pmc_readl(PMC_PWR_DET_VAL);
+	pwrdet_mask &= ~(0x00002000);
+	pmc_writel(pwrdet_mask, PMC_PWR_DET_VAL);
 }
 EXPORT_SYMBOL(pwr_detect_bit_write);
 
@@ -324,6 +327,7 @@ static int tegra_pwr_detect_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	int i, ret;
 	u32 package_mask;
+	unsigned int pwrdet_mask;
 	unsigned long flags;
 	bool rails_found = true;
 
@@ -375,6 +379,9 @@ static int tegra_pwr_detect_probe(struct platform_device *pdev)
 	dev_info(dev, "NO_IO_POWER setting 0x%x package mask 0x%x\n",
 			pwrio_disabled_mask, package_mask);
 
+	pwrdet_mask = pmc_readl(PMC_PWR_DET_VAL); //FIXME
+	pwrdet_mask &= ~(0x00002000);
+	pmc_writel(pwrdet_mask, PMC_PWR_DET_VAL);
 	return 0;
 }
 
