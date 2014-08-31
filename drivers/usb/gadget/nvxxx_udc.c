@@ -221,18 +221,28 @@ static int extcon_id_notifications(struct notifier_block *nb,
 	unsigned long flags;
 
 	spin_lock_irqsave(&nvudc->lock, flags);
-	if (extcon_get_cable_state(nvudc->id_extcon_dev, "USB-Host")) {
-		msg_info(dev, "%s: USB_ID pin grounded\n", __func__);
-		nvudc->id_grounded = true;
-	} else {
-		msg_info(dev, "%s: USB_ID pin floating\n", __func__);
-		nvudc->id_grounded = false;
+
+	if (!nvudc->pullup) {
+		msg_info(dev, "%s: gadget is not ready yet\n", __func__);
+		goto done;
 	}
 
-	spin_unlock_irqrestore(&nvudc->lock, flags);
+	if (extcon_get_cable_state(nvudc->id_extcon_dev, "USB-Host")
+			&& !nvudc->id_grounded) {
+		msg_info(dev, "%s: USB_ID pin grounded\n", __func__);
+		nvudc->id_grounded = true;
+	} else if (nvudc->id_grounded) {
+		msg_info(dev, "%s: USB_ID pin floating\n", __func__);
+		nvudc->id_grounded = false;
+	} else {
+		msg_info(dev, "%s: USB_ID pin status unchanged\n", __func__);
+		goto done;
+	}
 
 	schedule_work(&nvudc->work);
 
+done:
+	spin_unlock_irqrestore(&nvudc->lock, flags);
 	return NOTIFY_DONE;
 }
 
