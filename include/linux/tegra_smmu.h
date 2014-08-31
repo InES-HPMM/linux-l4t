@@ -56,20 +56,12 @@ enum {
 #define TEGRA_IOMMU_NUM_ASIDS NUM_ASIDS
 extern struct dma_iommu_mapping *tegra_smmu_map_init_dev(struct device *dev,
 						  u64 swgids);
-extern struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev,
-						    u64 swgids);
 void tegra_smmu_unmap_misc_device(struct device *dev);
 void tegra_smmu_map_misc_device(struct device *dev);
 int tegra_smmu_get_asid(struct device *dev);
 int _tegra_smmu_get_asid(u64 swgids);
 #else
 #define TEGRA_IOMMU_NUM_ASIDS 1
-
-static inline struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev,
-							   u64 swgids)
-{
-	return NULL;
-}
 
 static inline void tegra_smmu_unmap_misc_device(struct device *dev)
 {

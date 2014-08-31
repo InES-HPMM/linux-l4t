@@ -477,11 +477,6 @@ void tegra_smmu_unmap_misc_device(struct device *dev)
 }
 EXPORT_SYMBOL(tegra_smmu_unmap_misc_device);
 
-struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev, u64 swgids)
-{
-	return smmu_default_map[_tegra_smmu_get_asid(swgids)].map;
-}
-
 /* XXX: Remove this function once all client devices moved to DT */
 static struct dma_iommu_mapping *__tegra_smmu_map_init_dev(struct device *dev,
 					   struct tegra_iommu_mapping *info)
