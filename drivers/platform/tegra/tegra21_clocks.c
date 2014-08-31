@@ -9524,6 +9524,31 @@ struct clk *tegra_ptr_camera_mclks[] = {
 	&tegra_camera_mipical,
 };
 
+#ifdef CONFIG_DEBUG_FS
+static struct tegra_pto_table ptodefs[] = {
+	{ .name = "pll_c",  .divider = 2, .pto_id = 1,   .presel_reg = 0x088, .presel_value = BIT(3),  .presel_mask = BIT(3) },
+	{ .name = "pll_a1", .divider = 2, .pto_id = 85,  .presel_reg = 0x6a8, .presel_value = BIT(3),  .presel_mask = BIT(3) },
+	{ .name = "pll_c2", .divider = 2, .pto_id = 88,  .presel_reg = 0x4ec, .presel_value = BIT(3),  .presel_mask = BIT(3) },
+	{ .name = "pll_c3", .divider = 2, .pto_id = 89,  .presel_reg = 0x500, .presel_value = BIT(3),  .presel_mask = BIT(3) },
+
+	{ .name = "pll_a",  .divider = 2, .pto_id = 4,   .presel_reg = 0x0bc, .presel_value = BIT(29), .presel_mask = BIT(29) },
+	{ .name = "pll_x",  .divider = 2, .pto_id = 5,   .presel_reg = 0x0e4, .presel_value = BIT(22), .presel_mask = BIT(22) },
+
+	{ .name = "pll_d",  .divider = 2, .pto_id = 203, .presel_reg = 0x0dc, .presel_value = BIT(25), .presel_mask = BIT(25) },
+	{ .name = "pll_d2", .divider = 2, .pto_id = 205, .presel_reg = 0x4b8, .presel_value = BIT(16), .presel_mask = BIT(16) },
+	{ .name = "pll_dp", .divider = 2, .pto_id = 207, .presel_reg = 0x590, .presel_value = BIT(16), .presel_mask = BIT(16) },
+	{ .name = "pll_c4", .divider = 2, .pto_id = 81,  .presel_reg = 0x5a4, .presel_value = BIT(16), .presel_mask = BIT(16) },
+
+	{ .name = "pll_m",  .divider = 2, .pto_id = 2,   .presel_reg = 0x9c,  .presel_value = BIT(8),  .presel_mask = BIT(8) },
+	{ .name = "pll_mb", .divider = 2, .pto_id = 37,  .presel_reg = 0x9c,  .presel_value = BIT(9),  .presel_mask = BIT(9) },
+
+	{ .name = "pll_u", .divider = 2,  .pto_id = 269, .presel_reg = 0xcc,  .presel_value = BIT(27), .presel_mask = BIT(27) },
+	{ .name = "pll_re_vco", .divider = 2, .pto_id = 271, .presel_reg = 0x4c8, .presel_value = BIT(26), .presel_mask = BIT(26) },
+
+	{ .name = NULL, },
+};
+#endif
+
 /*
  * Handle special clocks to check if they can be set to safe rate
  */
@@ -10440,6 +10465,10 @@ void __init tegra21x_init_clocks(void)
 
 #ifdef CONFIG_PM_SLEEP
 	register_syscore_ops(&tegra_clk_syscore_ops);
+#endif
+
+#ifdef CONFIG_DEBUG_FS
+	tegra_clk_add_pto_entries(ptodefs);
 #endif
 }
 
