@@ -2573,6 +2573,21 @@ static struct notifier_block tegra_smmu_device_nb = {
 	.notifier_call = tegra_smmu_device_notifier,
 };
 
+void tegra_smmu_map_misc_device(struct device *dev)
+{
+
+	tegra_smmu_device_notifier(&tegra_smmu_device_nb,
+				   BUS_NOTIFY_BIND_DRIVER, dev);
+}
+EXPORT_SYMBOL(tegra_smmu_map_misc_device);
+
+void tegra_smmu_unmap_misc_device(struct device *dev)
+{
+	tegra_smmu_device_notifier(&tegra_smmu_device_nb,
+				   BUS_NOTIFY_UNBOUND_DRIVER, dev);
+}
+EXPORT_SYMBOL(tegra_smmu_unmap_misc_device);
+
 static int tegra_smmu_init(void)
 {
 	int err;

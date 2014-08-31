@@ -437,46 +437,6 @@ static struct tegra_iommu_mapping smmu_default_map[] = {
 #endif
 };
 
-void tegra_smmu_map_misc_device(struct device *dev)
-{
-	int err;
-	struct tegra_iommu_mapping *info;
-
-	info = &smmu_default_map[SYSTEM_PROTECTED];
-	if (!info->map) {
-		info->asid = SYSTEM_PROTECTED;
-		info->map = __tegra_smmu_map_init_dev(dev, info);
-	}
-
-	if (strncmp(dummy_name, DUMMY_DEV_NAME, strlen(dummy_name)) != 0) {
-		dev_err(dev, "Can't Map device\n");
-		return;
-	}
-
-	strncpy(dummy_name, dev_name(dev), DUMMY_DEV_MAX_NAME_SIZE);
-	err = arm_iommu_attach_device(dev, info->map);
-	if (err) {
-		dev_err(dev, "failed to attach dev to map %p", info->map);
-		return;
-	}
-
-	dev_info(dev, "Mapped the misc device map=%p\n", info->map);
-}
-EXPORT_SYMBOL(tegra_smmu_map_misc_device);
-
-void tegra_smmu_unmap_misc_device(struct device *dev)
-{
-	if (!strncmp(dummy_name, dev_name(dev), strlen(dummy_name))) {
-		arm_iommu_detach_device(dev);
-		strncpy(dummy_name, DUMMY_DEV_NAME,
-			DUMMY_DEV_MAX_NAME_SIZE);
-		dev_info(dev, "Un-mapped the misc device\n");
-		return;
-	}
-	dev_err(dev, "Can't Unmap device\n");
-}
-EXPORT_SYMBOL(tegra_smmu_unmap_misc_device);
-
 /* XXX: Remove this function once all client devices moved to DT */
 static struct dma_iommu_mapping *__tegra_smmu_map_init_dev(struct device *dev,
 					   struct tegra_iommu_mapping *info)
