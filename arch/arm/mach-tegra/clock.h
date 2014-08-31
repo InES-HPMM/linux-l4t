@@ -271,6 +271,7 @@ struct clk {
 			unsigned long			cf_max;
 			unsigned long			vco_min;
 			unsigned long			vco_max;
+			u16				mdiv_default;
 			u8				cpcon_default;
 			const struct clk_pll_freq_table	*freq_table;
 			int				lock_delay;
