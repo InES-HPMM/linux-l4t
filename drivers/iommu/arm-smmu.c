@@ -45,6 +45,7 @@
 #include <linux/spinlock.h>
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>
+#include <linux/tegra-soc.h>
 
 #include <linux/amba/bus.h>
 
@@ -128,8 +129,10 @@
 
 /* Identification registers */
 #define ARM_SMMU_GR0_ID0		0x20
-#define ARM_SMMU_GR0_ID1		0x24
-#define ARM_SMMU_GR0_ID2		0x28
+#define ARM_SMMU_GR0_ID1		0x24	/* unused */
+#define ARM_SMMU_GR0_ID2		0x28	/* unused */
+#define ARM_SMMU_CONTROL_ADDRESS	0x24	/* linsim hack */
+#define ARM_SMMU_CONTROL_DATA		0x28	/* linsim hack */
 #define ARM_SMMU_GR0_ID3		0x2c
 #define ARM_SMMU_GR0_ID4		0x30
 #define ARM_SMMU_GR0_ID5		0x34
@@ -356,6 +359,7 @@ struct arm_smmu_device {
 	struct device			*dev;
 
 	void __iomem			*base;
+	phys_addr_t			phys_base;
 	unsigned long			size;
 	unsigned long			pagesize;
 
@@ -414,6 +418,63 @@ struct arm_smmu_domain {
 
 static DEFINE_SPINLOCK(arm_smmu_devices_lock);
 static LIST_HEAD(arm_smmu_devices);
+
+/*
+ * linsim hacks: Indirect register accessor
+ */
+static struct arm_smmu_device *smmu_handle; /* assmu only one smmu device */
+
+#undef readl_relaxed
+#undef writel_relaxed
+#undef writel
+#define __readl_relaxed(c)						\
+	({ u32 __v = le32_to_cpu((__force __le32)__raw_readl(c)); __v; })
+#define __writel(v,c)							\
+	({ __iowmb(); ((void)__raw_writel((__force u32)cpu_to_le32(v),(c))); })
+
+static inline void writel(u32 val, volatile void __iomem *virt_addr)
+{
+	u32 phys_addr_val, offset;
+	volatile void __iomem *ctl_addr;
+
+	if (!tegra_platform_is_linsim()) {
+		__writel(val, virt_addr);
+		return;
+	}
+
+	ctl_addr = smmu_handle->base + ARM_SMMU_CONTROL_ADDRESS;
+	offset = virt_addr - smmu_handle->base;
+	phys_addr_val = smmu_handle->phys_base + offset;
+	__writel(phys_addr_val, ctl_addr);
+	pr_info("Indirect write(ADDRESS) phys_addr_val=%08x ctl_addr=%p\n",
+		phys_addr_val, ctl_addr);
+
+	ctl_addr = smmu_handle->base + ARM_SMMU_CONTROL_DATA;
+	__writel(val, ctl_addr);
+	pr_info("Indirect write(DATA) val=%08x ctl_addr=%p\n", val, ctl_addr);
+}
+#define writel_relaxed(v,a) writel(v,a)
+
+static inline u32 readl_relaxed(const volatile void __iomem *virt_addr)
+{
+	u32 val, phys_addr_val, offset;
+	volatile void __iomem *ctl_addr;
+
+	if (!tegra_platform_is_linsim())
+		return __readl_relaxed(virt_addr);
+
+	ctl_addr = smmu_handle->base + ARM_SMMU_CONTROL_ADDRESS;
+	offset = virt_addr - smmu_handle->base;
+	phys_addr_val = smmu_handle->phys_base + offset;
+	__writel(phys_addr_val, ctl_addr);
+	pr_info("Indirect read(ADDRESS) phys_addr_val=%08x ctl_addr=%p\n",
+		phys_addr_val, ctl_addr);
+
+	ctl_addr = ARM_SMMU_GR0(smmu_handle) + ARM_SMMU_CONTROL_DATA;
+	val = __readl_relaxed(ctl_addr);
+	pr_info("Indirect read(DATA) val=%08x ctl_addr=%p\n", val, ctl_addr);
+	return val;
+}
 
 struct arm_smmu_option_prop {
 	u32 opt;
@@ -2210,10 +2271,15 @@ static int arm_smmu_device_dt_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to allocate arm_smmu_device\n");
 		return -ENOMEM;
 	}
+	smmu_handle = smmu;
 	smmu->dev = dev;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	smmu->base = devm_ioremap_resource(dev, res);
+	smmu->phys_base = res->start;
+
+	pr_info("smmu->phys_base=%pa smmu->base=%p\n",
+		&smmu->phys_base, smmu->base);
 	if (IS_ERR(smmu->base))
 		return PTR_ERR(smmu->base);
 	smmu->size = resource_size(res);
