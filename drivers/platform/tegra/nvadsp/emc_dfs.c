@@ -19,6 +19,7 @@
 #include <linux/tegra_nvadsp.h>
 #include <linux/tick.h>
 #include <linux/timer.h>
+#include <linux/workqueue.h>
 #include <linux/clk.h>
 #include <linux/debugfs.h>
 
@@ -30,29 +31,44 @@
 #define ABRIDGE_STATS_CLEAR_0		0x1b
 #define ABRIDGE_STATS_HI_0FFSET		0x04
 
-
+/* Sample Period in usecs */
 #define DEFAULT_SAMPLE_PERIOD	500000
-#define MIN_SCALE_DOWN_TIME		39995
 #define INT_SHIFT		32
 #define make64(hi, low) ((((u64)hi) << INT_SHIFT) | (low))
+#define SCALING_DIVIDER 2
+#define BOOST_DOWN_COUNT 2
+#define DEFAULT_BOOST_UP_THRESHOLD 2000000;
+#define DEFAULT_BOOST_STEP 2
 
 struct emc_dfs_info {
 	void __iomem *abridge_base;
 	struct timer_list cnt_timer;
+
 	u64 rd_cnt;
 	u64 wr_cnt;
 	bool enable;
 	u64 avg_cnt;
+
 	unsigned long timer_rate;
-	unsigned long scale_down_time;
+	ktime_t prev_time;
+
+	u32 dn_count;
+	u32 boost_dn_count;
+
+	u64 boost_up_threshold;
 	u8 boost_step;
+
+	struct work_struct clk_set_work;
+	unsigned long cur_freq;
+	unsigned long max_freq;
+
 	struct clk *emcclk;
 };
 
-static struct emc_dfs_info emcinfo;
+static struct emc_dfs_info global_emc_info;
 struct emc_dfs_info *einfo;
 
-u64 read64(u32 offset)
+static u64 read64(u32 offset)
 {
 	u32 low;
 	u32 hi;
@@ -61,46 +77,89 @@ u64 read64(u32 offset)
 	hi = readl(einfo->abridge_base + (offset + ABRIDGE_STATS_HI_0FFSET));
 	return make64(hi, low);
 }
-unsigned long count_to_emcfreq(u64 avg_cnt)
+static unsigned long count_to_emcfreq(void)
 {
-	unsigned long freq;
-	unsigned long final_freq;
-	freq = clk_get_rate(einfo->emcclk) / 1000; /* emc freq in MHZ */
+	unsigned long tfreq = 0;
 
-	final_freq = (freq * avg_cnt) / 100;
+	if (!einfo->avg_cnt) {
+		if (einfo->dn_count >= einfo->boost_dn_count) {
+			tfreq = einfo->cur_freq / SCALING_DIVIDER;
+			einfo->dn_count = 0;
+		} else
+			einfo->dn_count++;
+	} else if (einfo->avg_cnt >= einfo->boost_up_threshold) {
+		if (einfo->boost_step)
+			tfreq = einfo->cur_freq * einfo->boost_step;
+	}
 
-	pr_debug("%s: avg_cnt: %llu  current freq(kHz): %lu target freq(kHz): %lu\n",
-		"ape.emc", avg_cnt, freq, final_freq);
+	pr_debug("%s:avg_cnt: %llu  current freq(kHz): %lu target freq(kHz): %lu\n",
+		__func__, einfo->avg_cnt, einfo->cur_freq, tfreq);
 
-	return final_freq;
+	return tfreq;
 }
 
+static void clk_work(struct work_struct *work)
+{
+	int ret;
+
+	if (einfo->cur_freq && einfo->emcclk) {
+		ret = clk_set_rate(einfo->emcclk, einfo->cur_freq * 1000);
+		if (ret) {
+			pr_err("failed to set ape.emc freq:%d\n", ret);
+			BUG_ON(ret);
+		}
+		einfo->cur_freq = clk_get_rate(einfo->emcclk) / 1000;
+		pr_debug("ape.emc: setting emc clk: %lu\n", einfo->cur_freq);
+	}
+}
 static void emc_dfs_timer(unsigned long data)
 {
-	u64 rd_cnt;
-	u64 wr_cnt;
-	u64 total_cnt;
-	unsigned long emc_freq;
-	u64 prev_total_cnt = einfo->rd_cnt + einfo->wr_cnt;
+	u64 cur_cnt;
+	u64 delta_cnt;
+	u64 prev_cnt;
+	u64 delta_time;
+	ktime_t now;
+	unsigned long target_freq;
 
 	/* Return if emc dfs is disabled */
 	if (!einfo->enable)
 		return;
 
-	rd_cnt = read64((u32)ABRIDGE_STATS_READ_0);
-	wr_cnt = read64((u32)ABRIDGE_STATS_WRITE_0);
+	/* take lock */
+	prev_cnt = einfo->rd_cnt + einfo->wr_cnt;
 
-	einfo->rd_cnt = rd_cnt;
-	einfo->wr_cnt = wr_cnt;
+	einfo->rd_cnt = read64((u32)ABRIDGE_STATS_READ_0);
+	einfo->wr_cnt = read64((u32)ABRIDGE_STATS_WRITE_0);
+	pr_debug("einfo->rd_cnt: %llu einfo->wr_cnt: %llu\n",
+		einfo->rd_cnt, einfo->wr_cnt);
 
-	total_cnt = rd_cnt + wr_cnt;
+	cur_cnt = einfo->rd_cnt + einfo->wr_cnt;
+	delta_cnt = cur_cnt - prev_cnt;
 
-	einfo->avg_cnt = div64_u64(total_cnt * 100, prev_total_cnt);
+	now = ktime_get();
 
-	emc_freq = count_to_emcfreq(einfo->avg_cnt);
+	delta_time = ktime_to_ns(ktime_sub(now, einfo->prev_time));
+	if (!delta_time) {
+		pr_err("%s: time interval to calculate emc scaling is zero\n",
+		__func__);
+		goto exit;
+	}
+	einfo->prev_time = now;
 
-	clk_set_rate(einfo->emcclk, emc_freq * 1000);
+	einfo->avg_cnt = delta_cnt / delta_time;
 
+	/* if 0: no scaling is required*/
+	target_freq = count_to_emcfreq();
+	if (!target_freq)
+		goto exit;
+	else
+		einfo->cur_freq = target_freq;
+
+	pr_debug("einfo->avg_cnt: %llu delta_cnt: %llu delta_time %llu emc_freq:%lu\n",
+		einfo->avg_cnt, delta_cnt, delta_time, einfo->cur_freq);
+	/* release lock */
+	schedule_work(&einfo->clk_set_work);
+exit:
 	mod_timer(&einfo->cnt_timer,
 			  jiffies + usecs_to_jiffies(einfo->timer_rate));
 }
@@ -110,6 +169,7 @@ static void emc_dfs_enable(void)
 	einfo->rd_cnt = read64((u32)ABRIDGE_STATS_READ_0);
 	einfo->wr_cnt = read64((u32)ABRIDGE_STATS_WRITE_0);
 
+	einfo->prev_time = ktime_get();
 	mod_timer(&einfo->cnt_timer, jiffies + 2);
 }
 static void emc_dfs_disable(void)
@@ -135,7 +195,7 @@ static int dfs_enable_get(void *data, u64 *val)
 /* Enable/disable emc dfs */
 static int dfs_enable_set(void *data, u64 val)
 {
-	einfo->enable = val;
+	einfo->enable = (bool) val;
 		/*
 		 * If enabling: activate a timer to execute in next 2 jiffies,
 		 * so that emc scaled value takes effect immidiately.
@@ -151,6 +211,27 @@ static int dfs_enable_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(enable_fops, dfs_enable_get,
 	dfs_enable_set, "%llu\n");
 
+/* Get emc dfs staus: 0: disabled 1:enabled */
+static int boost_up_threshold_get(void *data, u64 *val)
+{
+	*val = einfo->boost_up_threshold;
+	return 0;
+}
+/* Enable/disable emc dfs */
+static int boost_up_threshold_set(void *data, u64 val)
+{
+	if (!einfo->enable) {
+		pr_info("EMC dfs is not enabled\n");
+		return -EINVAL;
+	} else
+		einfo->boost_up_threshold = val;
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(up_threshold_fops,
+	boost_up_threshold_get,	boost_up_threshold_set, "%llu\n");
+
 /* scaling emc freq in multiple of boost factor */
 static int boost_step_get(void *data, u64 *val)
 {
@@ -160,32 +241,43 @@ static int boost_step_get(void *data, u64 *val)
 /* Set period in usec */
 static int boost_step_set(void *data, u64 val)
 {
-	if (val) {
-		einfo->boost_step = val;
-		return 0;
+	if (!einfo->enable) {
+		pr_info("EMC dfs is not enabled\n");
+		return -EINVAL;
 	}
-	return -EINVAL;
+
+	if (!val)
+		einfo->boost_step = 1;
+	else
+		einfo->boost_step = (u8) val;
+
+	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(boost_fops, boost_step_get,
 	boost_step_set, "%llu\n");
 
 /* minimum time after that emc scaling down happens in usec */
-static int scale_down_time_get(void *data, u64 *val)
+static int boost_down_count_get(void *data, u64 *val)
 {
-	*val = einfo->scale_down_time;
+	*val = einfo->boost_dn_count;
 	return 0;
 }
 /* Set period in usec */
-static int scale_down_time_set(void *data, u64 val)
+static int boost_down_count_set(void *data, u64 val)
 {
+	if (!einfo->enable) {
+		pr_info("EMC dfs is not enabled\n");
+		return -EINVAL;
+	}
+
 	if (val) {
-		einfo->scale_down_time = val;
+		einfo->boost_dn_count = (u32) val;
 		return 0;
 	}
 	return -EINVAL;
 }
-DEFINE_SIMPLE_ATTRIBUTE(down_fops, scale_down_time_get,
-	scale_down_time_set, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(down_cnt_fops, boost_down_count_get,
+	boost_down_count_set, "%llu\n");
 
 static int period_get(void *data, u64 *val)
 {
@@ -195,6 +287,11 @@ static int period_get(void *data, u64 *val)
 /* Set period in usec */
 static int period_set(void *data, u64 val)
 {
+	if (!einfo->enable) {
+		pr_info("EMC dfs is not enabled\n");
+		return -EINVAL;
+	}
+
 	if (val) {
 		einfo->timer_rate = (unsigned long)val;
 		return 0;
@@ -204,7 +301,7 @@ static int period_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(period_fops, period_get, period_set, "%llu\n");
 
 
-static int __init emc_dfs_debugfs_init(struct nvadsp_drv_data *drv)
+static int emc_dfs_debugfs_init(struct nvadsp_drv_data *drv)
 {
 	int ret = -ENOMEM;
 	struct dentry *d;
@@ -221,13 +318,18 @@ static int __init emc_dfs_debugfs_init(struct nvadsp_drv_data *drv)
 	if (!d)
 		goto err_root;
 
+	d = debugfs_create_file("boost_up_threshold", RW_MODE, emc_dfs_root,
+		NULL, &up_threshold_fops);
+	if (!d)
+		goto err_root;
+
 	d = debugfs_create_file("boost_step", RW_MODE, emc_dfs_root, NULL,
 		&boost_fops);
 	if (!d)
 		goto err_root;
 
-	d = debugfs_create_file("min_scale_down_time", RW_MODE, emc_dfs_root,
-		NULL, &down_fops);
+	d = debugfs_create_file("boost_down_count", RW_MODE, emc_dfs_root,
+		NULL, &down_cnt_fops);
 	if (!d)
 		goto err_root;
 
@@ -252,21 +354,43 @@ status_t emc_dfs_init(struct platform_device *pdev)
 	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
 	int ret = 0;
 
-	einfo = &emcinfo;
+	einfo = &global_emc_info;
 	einfo->abridge_base = drv->base_regs[ABRIDGE];
+
 	einfo->emcclk = clk_get_sys("ape", "emc");
+	if (IS_ERR_OR_NULL(einfo->emcclk)) {
+		dev_info(&pdev->dev, "unable to find adsp clock\n");
+		return PTR_ERR(einfo->emcclk);
+	}
 
 	einfo->timer_rate = DEFAULT_SAMPLE_PERIOD;
-	einfo->scale_down_time = MIN_SCALE_DOWN_TIME;
-	einfo->boost_step = 0;
+	einfo->boost_up_threshold = DEFAULT_BOOST_UP_THRESHOLD;
+	einfo->boost_step = DEFAULT_BOOST_STEP;
+	einfo->dn_count = 0;
+	einfo->boost_dn_count = BOOST_DOWN_COUNT;
 	einfo->enable = 1;
+
+	einfo->max_freq = clk_round_rate(einfo->emcclk, ULONG_MAX);
+	ret = clk_set_rate(einfo->emcclk, einfo->max_freq);
+	if (ret) {
+		dev_info(&pdev->dev, "failed to set ape.emc freq:%d\n", ret);
+		return PTR_ERR(einfo->emcclk);
+	}
+	einfo->max_freq /= 1000;
+	einfo->cur_freq = clk_get_rate(einfo->emcclk) / 1000;
+	if (!einfo->cur_freq) {
+		dev_info(&pdev->dev, "ape.emc freq is NULL:\n");
+		return PTR_ERR(einfo->emcclk);
+	}
+
+	dev_info(&pdev->dev, "einfo->cur_freq %lu\n", einfo->cur_freq);
 
 	init_timer(&einfo->cnt_timer);
 	einfo->cnt_timer.function = emc_dfs_timer;
-
+	INIT_WORK(&einfo->clk_set_work, clk_work);
 	emc_dfs_enable();
 
-	pr_info("EMC DFS is initialized\n");
+	dev_info(&pdev->dev, "APE EMC DFS is initialized\n");
 
 #ifdef CONFIG_DEBUG_FS
 	emc_dfs_debugfs_init(drv);

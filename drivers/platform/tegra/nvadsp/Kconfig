@@ -49,7 +49,7 @@ config TEGRA_ADSP_ACTMON
 config TEGRA_EMC_APE_DFS
 	bool "Enable emc dfs due to APE"
 	depends on ARCH_TEGRA_APE
-	default n
+	default y
 	help
 	  Enable emc dfs due to APE DRAM access
 
