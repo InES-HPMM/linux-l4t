@@ -190,7 +190,6 @@ static void t210ref_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
-	usb_port_owner_info = UTMI1_PORT_OWNER_XUSB;
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
 		tegra_otg_pdata.is_xhci = false;
 		tegra_udc_pdata.u_data.dev.is_xhci = false;
