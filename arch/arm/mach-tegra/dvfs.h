@@ -61,7 +61,7 @@ struct rail_stats {
 
 struct rail_alignment {
 	int offset_uv;
-	int step_uv;
+	int step_uv; /* Step voltage */
 };
 
 struct dvfs_rail {
@@ -69,7 +69,7 @@ struct dvfs_rail {
 	int min_millivolts;
 	int max_millivolts;
 	int reg_max_millivolts;
-	int nominal_millivolts;
+	int nominal_millivolts; /* Max DVFS voltage */
 	int fixed_millivolts;
 	int override_millivolts;
 	int min_override_millivolts;
@@ -96,7 +96,7 @@ struct dvfs_rail {
 	bool dt_reg_fixed;
 	bool dt_reg_pwm;
 
-	struct device_node *dt_node; /* device tree rail node*/
+	struct device_node *dt_node; /* device tree rail node */
 	struct list_head node;  /* node in dvfs_rail_list */
 	struct list_head dvfs;  /* list head of attached dvfs clocks */
 	struct list_head relationships_to;
@@ -107,19 +107,27 @@ struct dvfs_rail {
 	int dbg_mv_offs;
 	int boot_millivolts;
 	int disable_millivolts;
-	int suspend_millivolts;
+	int suspend_millivolts; /* voltage setting set during suspend */
 
 	bool suspended;
-	bool dfll_mode;
+	bool dfll_mode; /* DFLL mode ON/OFF */
 	bool dfll_mode_updating;
 	int therm_floor_idx;
 	int therm_cap_idx;
+
+	/* Thermal index for thermal DVFS */
 	int therm_scale_idx;
+
+	/* Cooling device for vmin settings */
 	struct tegra_cooling_device *vmin_cdev;
+
+	/* Cooling device for vmax settings */
 	struct tegra_cooling_device *vmax_cdev;
+
+	/* Thermal DVFS for voltage scaling */
 	struct tegra_cooling_device *vts_cdev;
 
-	/* Used for CPU clock switch between PLLX and DFLL */
+	/* Cooling device for clock source switch */
 	struct tegra_cooling_device *clk_switch_cdev;
 
 	struct rail_alignment alignment;
@@ -178,6 +186,7 @@ struct dvfs {
 	unsigned long freqs[MAX_DVFS_FREQS];
 	const int *millivolts;
 	const int *peak_millivolts;
+	/* voltage settings as per DFLL clock source */
 	const int *dfll_millivolts;
 	struct dvfs_rail *dvfs_rail;
 	bool auto_dvfs;
@@ -188,6 +197,8 @@ struct dvfs {
 	int max_millivolts;
 	int num_freqs;
 	struct dvfs_dfll_data dfll_data;
+
+	/* Inidcates thermal DVFS on/off */
 	bool therm_dvfs;
 
 	int cur_millivolts;
@@ -201,6 +212,7 @@ struct dvfs {
 	struct mutex *lock;
 };
 
+/* CVB coefficients */
 struct cvb_dvfs_parameters {
 	int	c0;
 	int	c1;
@@ -212,7 +224,11 @@ struct cvb_dvfs_parameters {
 
 struct cvb_dvfs_table {
 	unsigned long freq;
+
+	/* Coeffs for voltage calculation, when dfll clock source is selected */
 	struct cvb_dvfs_parameters cvb_dfll_param;
+
+	/* Coeffs for voltage calculation, when pll clock source is selected */
 	struct cvb_dvfs_parameters cvb_pll_param;
 };
 
@@ -220,18 +236,34 @@ struct cvb_dvfs {
 	int speedo_id;
 	int process_id;
 
+	/* Tuning parameters for dfll */
 	struct dvfs_dfll_data dfll_tune_data;
+
+	/* tuning parameters for pll clock */
 	struct dvfs_pll_data pll_tune_data;
+
+	/* dvfs Max voltage */
 	int max_mv;
 	int freqs_mult;
+
+	/* scaling values for voltage calculation */
 	int speedo_scale;
 	int voltage_scale;
 	int thermal_scale;
+
 	struct cvb_dvfs_table cvb_vmin;
+
+	/* CVB table for various frequencies */
 	struct cvb_dvfs_table cvb_table[MAX_DVFS_FREQS];
+
+	/* Trips for minimal voltage settings per thermal ranges */
 	int vmin_trips_table[MAX_THERMAL_LIMITS];
 	int therm_floors_table[MAX_THERMAL_LIMITS];
+
+	/* Trips for thermal DVFS per thermal ranges */
 	int vts_trips_table[MAX_THERMAL_LIMITS];
+
+	/* Trips for clock source change per thermal ranges */
 	int clk_switch_trips[MAX_THERMAL_LIMITS];
 };
 
