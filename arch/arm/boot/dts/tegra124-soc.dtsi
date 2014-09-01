@@ -480,6 +480,7 @@
 		tegra_i2s0: i2s@70301000 {
 			compatible = "nvidia,tegra124-i2s";
 			reg = <0x70301000 0x100>;
+			interrupts = <0 103 0x04>;
 			nvidia,ahub-cif-ids = <4 4>;
 			nvidia,ahub-i2s-id = <0>;
 			status = "disabled";
@@ -488,6 +489,7 @@
 		tegra_i2s1: i2s@70301100 {
 			compatible = "nvidia,tegra124-i2s";
 			reg = <0x70301100 0x100>;
+			interrupts = <0 103 0x04>;
 			nvidia,ahub-cif-ids = <5 5>;
 			nvidia,ahub-i2s-id = <1>;
 			status = "disabled";
@@ -496,6 +498,7 @@
 		tegra_i2s2: i2s@70301200 {
 			compatible = "nvidia,tegra124-i2s";
 			reg = <0x70301200 0x100>;
+			interrupts = <0 103 0x04>;
 			nvidia,ahub-cif-ids = <6 6>;
 			nvidia,ahub-i2s-id = <2>;
 			status = "disabled";
@@ -504,6 +507,7 @@
 		tegra_i2s3: i2s@70301300 {
 			compatible = "nvidia,tegra124-i2s";
 			reg = <0x70301300 0x100>;
+			interrupts = <0 103 0x04>;
 			nvidia,ahub-cif-ids = <7 7>;
 			nvidia,ahub-i2s-id = <3>;
 			status = "disabled";
@@ -512,6 +516,7 @@
 		tegra_i2s4: i2s@70301400 {
 			compatible = "nvidia,tegra124-i2s";
 			reg = <0x70301400 0x100>;
+			interrupts = <0 103 0x04>;
 			nvidia,ahub-cif-ids = <8 8>;
 			nvidia,ahub-i2s-id = <4>;
 			status = "disabled";
