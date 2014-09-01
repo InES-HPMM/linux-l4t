@@ -8,6 +8,9 @@
  * kind, whether express or implied.
  */
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/nvavp.h>
+
 #include <linux/uaccess.h>
 #include <linux/clk.h>
 #include <linux/compat.h>
@@ -616,6 +619,11 @@ static void clock_disable_handler(struct work_struct *work)
 	channel_info = nvavp_get_channel_info(nvavp, NVAVP_VIDEO_CHANNEL);
 	mutex_lock(&channel_info->pushbuffer_lock);
 	mutex_lock(&nvavp->open_lock);
+
+	trace_nvavp_clock_disable_handler(channel_info->os_control->put,
+				channel_info->os_control->get,
+				nvavp->pending);
+
 	if (nvavp_check_idle(nvavp, NVAVP_VIDEO_CHANNEL) && nvavp->pending) {
 		nvavp->pending = false;
 		nvavp_clks_disable(nvavp);
@@ -977,6 +985,10 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 		syncpt->id = nvavp->syncpt_id;
 		syncpt->value = value;
 	}
+
+	trace_nvavp_pushbuffer_update(channel_id, control->put, control->get,
+				phys_addr, gather_count,
+				sizeof(struct nvavp_syncpt), syncpt);
 
 err_exit:
 	mutex_unlock(&channel_info->pushbuffer_lock);
@@ -1381,6 +1393,8 @@ static int nvavp_map_iova(struct file *filp, unsigned int cmd,
 
 	map_arg.addr = (__u32)addr;
 
+	trace_nvavp_map_iova(clientctx->channel_id, map_arg.fd, map_arg.addr);
+
 	if (copy_to_user((void __user *)arg, &map_arg,
 		sizeof(struct nvavp_map_args))) {
 		dev_err(&nvavp->nvhost_dev->dev,
@@ -1412,6 +1426,8 @@ static int nvavp_unmap_iova(struct file *filp, unsigned long arg)
 			"invalid buffer handle %08x\n", map_arg.fd);
 		return PTR_ERR(dmabuf);
 	}
+
+	trace_nvavp_unmap_iova(clientctx->channel_id, map_arg.fd, map_arg.addr);
 
 	nvavp_release_iova_addr(clientctx, dmabuf, (dma_addr_t)map_arg.addr);
 	dma_buf_put(dmabuf);
@@ -1449,6 +1465,10 @@ static int nvavp_set_clock_ioctl(struct file *filp, unsigned int cmd,
 
 	config.rate = clk_get_rate(c);
 	clk_disable_unprepare(c);
+
+	trace_nvavp_set_clock_ioctl(clientctx->channel_id, config.id,
+				config.rate);
+
 	if (copy_to_user((void __user *)arg, &config, sizeof(struct nvavp_clock_args)))
 		return -EFAULT;
 
@@ -1474,6 +1494,9 @@ static int nvavp_get_clock_ioctl(struct file *filp, unsigned int cmd,
 	config.rate = clk_get_rate(c);
 	clk_disable_unprepare(c);
 
+	trace_nvavp_get_clock_ioctl(clientctx->channel_id, config.id,
+								config.rate);
+
 	if (copy_to_user((void __user *)arg, &config, sizeof(struct nvavp_clock_args)))
 		return -EFAULT;
 
@@ -1493,6 +1516,9 @@ static int nvavp_get_syncpointid_ioctl(struct file *filp, unsigned int cmd,
 		else
 			return 0;
 	}
+
+	trace_nvavp_get_syncpointid_ioctl(clientctx->channel_id, id);
+
 	return -EFAULT;
 }
 
@@ -1610,6 +1636,10 @@ target_dmabuf_fail:
 		if (ret != 0)
 			goto err_reloc_info;
 	}
+
+	trace_nvavp_pushbuffer_submit_ioctl(clientctx->channel_id,
+				hdr.cmdbuf.mem, hdr.cmdbuf.offset,
+				hdr.cmdbuf.words, hdr.num_relocs, hdr.flags);
 
 	if (hdr.syncpt) {
 		ret = nvavp_pushbuffer_update(nvavp,
@@ -1747,6 +1777,9 @@ static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
 		return -EINVAL;
 	}
 
+	trace_nvavp_force_clock_stay_on_ioctl(clientctx->channel_id,
+				clock.state, clientctx->clk_reqs);
+
 	if (clock.state) {
 		mutex_lock(&nvavp->open_lock);
 		if (clientctx->clk_reqs++ == 0) {
@@ -1777,6 +1810,8 @@ int nvavp_enable_audio_clocks(nvavp_clientctx_t client, u32 clk_id)
 	dev_dbg(&nvavp->nvhost_dev->dev, "%s: clk_id = %d\n",
 			__func__, clk_id);
 
+	trace_nvavp_enable_audio_clocks(clientctx->channel_id, clk_id);
+
 	mutex_lock(&nvavp->open_lock);
 	if (clk_id == NVAVP_MODULE_ID_VCP)
 		clk_prepare_enable(nvavp->vcp_clk);
@@ -1794,6 +1829,8 @@ int nvavp_disable_audio_clocks(nvavp_clientctx_t client, u32 clk_id)
 
 	dev_dbg(&nvavp->nvhost_dev->dev, "%s: clk_id = %d\n",
 			__func__, clk_id);
+
+	trace_nvavp_disable_audio_clocks(clientctx->channel_id, clk_id);
 
 	mutex_lock(&nvavp->open_lock);
 	if (clk_id == NVAVP_MODULE_ID_VCP)
@@ -1832,6 +1869,9 @@ static int nvavp_set_min_online_cpus_ioctl(struct file *filp, unsigned int cmd,
 	dev_dbg(&nvavp->nvhost_dev->dev, "%s: min_online_cpus=%d\n",
 			__func__, config.min_online_cpus);
 
+	trace_nvavp_set_min_online_cpus_ioctl(clientctx->channel_id,
+				config.min_online_cpus);
+
 	if (config.min_online_cpus > 0)
 		pm_qos_update_request(&nvavp->min_online_cpus_req,
 					config.min_online_cpus);
@@ -1867,6 +1907,9 @@ static int tegra_nvavp_open(struct nvavp_info *nvavp,
 		if (IS_AUDIO_CHANNEL_ID(channel_id))
 			nvavp->audio_refcnt++;
 	}
+
+	trace_tegra_nvavp_open(channel_id, nvavp->refcount,
+				nvavp->video_refcnt, nvavp->audio_refcnt);
 
 	clientctx->nvavp = nvavp;
 	clientctx->iova_handles = RB_ROOT;
@@ -1957,6 +2000,9 @@ static int tegra_nvavp_release(struct nvavp_clientctx *clientctx,
 		nvavp->video_refcnt--;
 	if (IS_AUDIO_CHANNEL_ID(channel_id))
 		nvavp->audio_refcnt--;
+
+	trace_tegra_nvavp_release(channel_id, nvavp->refcount,
+				nvavp->video_refcnt, nvavp->audio_refcnt);
 
 out:
 	nvavp_remove_iova_mapping(clientctx);
@@ -2560,6 +2606,9 @@ static int tegra_nvavp_runtime_suspend(struct device *dev)
 		}
 	}
 
+	trace_tegra_nvavp_runtime_suspend(nvavp->refcount, nvavp->video_refcnt,
+				nvavp->audio_refcnt);
+
 	mutex_unlock(&nvavp->open_lock);
 
 	return ret;
@@ -2578,6 +2627,9 @@ static int tegra_nvavp_runtime_resume(struct device *dev)
 	if (nvavp->audio_refcnt)
 		nvavp_init(nvavp, NVAVP_AUDIO_CHANNEL);
 #endif
+
+	trace_tegra_nvavp_runtime_resume(nvavp->refcount, nvavp->video_refcnt,
+				nvavp->audio_refcnt);
 
 	mutex_unlock(&nvavp->open_lock);
 
