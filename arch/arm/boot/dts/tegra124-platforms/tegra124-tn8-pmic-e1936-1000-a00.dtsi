@@ -639,6 +639,10 @@
 						regulator-consumer-supply = "usb_bat_chg";
 						regulator-consumer-device = "tegra-udc.0";
 					};
+					c2 {
+						regulator-consumer-supply = "usb_bat_chg";
+						regulator-consumer-device = "tegra-otg";
+					};
 				};
 			};
 
