@@ -327,6 +327,7 @@ static int es_dac_enable(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_codec *codec = w->codec;
+	unsigned int val;
 	pr_debug("%s DAC%d event %d\n", __func__, w->shift, event);
 
 	switch (event) {
@@ -345,6 +346,13 @@ static int es_dac_enable(struct snd_soc_dapm_widget *w,
 				0);
 		break;
 	}
+
+	/* find which DAC is enabled */
+	val = snd_soc_read(codec, ES_DAC_CTRL);
+	snd_soc_update_bits(codec, ES_DAC_DIG_EN, ES_DAC0_LEFT_EN_MASK |
+		ES_DAC0_RIGHT_EN_MASK | ES_DAC1_LEFT_EN_MASK |
+		ES_DAC1_RIGHT_EN_MASK, val);
+
 	return 0;
 }
 
