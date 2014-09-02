@@ -27,7 +27,7 @@
 #include "tegra210-platforms/tegra210-loki-power-tree-p2530-0999-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-gpio-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-pinmux-p2530-0032-e00.dtsi"
-#include "tegra210-platforms/tegra210-comms.dtsi"
+#include "tegra210-platforms/tegra210-loki-e-comms.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-pwm-fan.dtsi"
 #include "tegra210-platforms/tegra210-loki-sdhci.dtsi"
 #include "panel-j-1440-810-5-8.dtsi"
@@ -207,6 +207,23 @@
 				cam1-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
 			};
 		};
+	};
+
+	/* Put common control config here */
+	xusb_pad_ctl: padctl@0 {
+		nvidia,ss_portmap = <0x2130>;
+		nvidia,lane_owner = <0xFFFF>; /* Use 0xF to disable lane assign */
+		status = "okay";
+	};
+
+	xusb@70090000 {
+		/* nvidia,uses_external_pmic;
+		/* nvidia,gpio_controls_muxed_ss_lanes; */
+		nvidia,gpio_ss1_sata = <0>;
+		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
+		nvidia,portmap = <0x0100>;
+		nvidia,common_padctl = <&xusb_pad_ctl>;
+		status = "okay";
 	};
 };
 

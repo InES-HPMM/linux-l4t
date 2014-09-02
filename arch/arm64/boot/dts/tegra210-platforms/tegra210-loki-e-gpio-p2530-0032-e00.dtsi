@@ -76,7 +76,6 @@
 				TEGRA_GPIO(K, 7)
 				TEGRA_GPIO(L, 0)
 				TEGRA_GPIO(H, 0)
-				TEGRA_GPIO(H, 1)
 				TEGRA_GPIO(H, 3)
 				TEGRA_GPIO(H, 4)
 				TEGRA_GPIO(H, 6)
@@ -89,6 +88,7 @@
 				>;
 			gpio-output-high = <
 				TEGRA_GPIO(V, 0)
+				TEGRA_GPIO(H, 1)
 				>;
 		};
 		uart_over_jack {

@@ -113,6 +113,15 @@
 		usb_bat_chg-supply = <&battery_charger>;
 	};
 
+	xusb@70090000 {
+		hvdd_usb-supply = <&vdd_3v3>;
+		avdd_pll_utmip-supply = <&max77620_sd3>;
+		vddio_hsic-supply = <&max77620_ldo0>;
+		avddio_usb-supply = <&vdd_3v3>;
+		dvdd_sata-supply = <&max77620_ldo8>;
+		avddio_pll_uerefe-supply = <&max77620_ldo7>;
+	};
+
 	otg@7d000000 {
 		usb_vbus-supply = <&usb0_vbus>;
 	};

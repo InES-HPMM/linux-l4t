@@ -83,6 +83,7 @@
 		usb_vbus0-supply = <&usb0_vbus>;
 		usb_vbus1-supply = <&vdd_usb_5v0>;
 		usb_vbus2-supply = <&vdd_usb_5v0>;
+		usb_vbus3-supply = <&vdd_usb_5v0>;
 		hvdd_usb-supply = <&vdd_3v3>;
 		avdd_pll_utmip-supply = <&max77620_sd3>;
 		vddio_hsic-supply = <&max77620_ldo0>;

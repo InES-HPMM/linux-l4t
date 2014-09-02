@@ -199,36 +199,6 @@ static void t210ref_usb_init(void)
 	}
 }
 
-static struct tegra_xusb_platform_data xusb_pdata = {
-	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_SS_P1 |
-			TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_USB2_P2,
-};
-
-#ifdef CONFIG_TEGRA_XUSB_PLATFORM
-static void t210ref_xusb_init(void)
-{
-	int usb_port_owner_info = tegra_get_usb_port_owner_info();
-
-	xusb_pdata.lane_owner = (u8) tegra_get_lane_owner_info();
-
-
-	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
-		xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
-			TEGRA_XUSB_SS_P0);
-
-	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
-		xusb_pdata.portmap &= ~(TEGRA_XUSB_USB2_P1 |
-				TEGRA_XUSB_USB2_P2 | TEGRA_XUSB_SS_P1);
-		/* FIXME Add for UTMIP2 when have odmdata assigend */
-
-	if (usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)
-		xusb_pdata.portmap |= TEGRA_XUSB_HSIC_P0;
-
-	if (usb_port_owner_info & HSIC2_PORT_OWNER_XUSB)
-		xusb_pdata.portmap |= TEGRA_XUSB_HSIC_P1;
-}
-#endif
-
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra210-sdhci", TEGRA_SDMMC1_BASE,
@@ -337,7 +307,7 @@ struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra210-dfll", 0x70110000, "tegra_cl_dvfs",
 			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-xhci", 0x70090000, "tegra-xhci",
-			&xusb_pdata),
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-xudc", 0x700D0000, "tegra-xudc",
 			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-pwm", 0x7000a000, "tegra-pwm", NULL),
@@ -395,7 +365,7 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	T124_SDMMC_OF_DEV_AUXDATA,
 #endif
 	OF_DEV_AUXDATA("nvidia,tegra124-xhci", 0x70090000, "tegra-xhci",
-			&xusb_pdata),
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY_BASE, "tegradc.0",
 			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY2_BASE, "tegradc.1",
@@ -514,9 +484,6 @@ static void __init tegra_t210ref_late_init(void)
 	t210ref_display_init();
 
 	t210ref_usb_init();
-#ifdef CONFIG_TEGRA_XUSB_PLATFORM
-	t210ref_xusb_init();
-#endif
 	platform_add_devices(t210ref_devices, ARRAY_SIZE(t210ref_devices));
 	tegra_io_dpd_init();
 	/* FIXME: Assumed all t210ref platforms have sdhci DT support */

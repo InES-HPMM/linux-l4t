@@ -731,6 +731,9 @@ static void tegra_ahci_set_pad_cntrl_regs(
 	int	val;
 	int	i;
 
+	if (tegra_hpriv->cid == TEGRA_CHIPID_TEGRA21)
+		return;
+
 	calib_val = fuse_readl(FUSE_SATA_CALIB_OFFSET) & FUSE_SATA_CALIB_MASK;
 
 	val = clk_readl(CLK_RST_CONTROLLER_PLLE_SS_CNTL_0);
@@ -990,7 +993,7 @@ static void tegra_ahci_uphy_init(void)
 	while (timeout--) {
 		udelay(1);
 		val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
-		if (val & PLL0_CAL_DONE)
+		if (!(val & PLL0_CAL_DONE))
 			break;
 	}
 	if (timeout == 0)
@@ -1021,7 +1024,7 @@ static void tegra_ahci_uphy_init(void)
 	while (timeout--) {
 		udelay(1);
 		val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
-		if (val & PLL0_RCAL_DONE)
+		if (!(val & PLL0_RCAL_DONE))
 			break;
 	}
 	if (timeout == 0)
@@ -1033,9 +1036,9 @@ static void tegra_ahci_uphy_init(void)
 	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
 
 	/* Lockdet step */
-	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+	val = xusb_readl(XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0);
 	val |= PLL0_ENABLE;
-	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+	xusb_writel(val, XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0);
 
 	udelay(20);
 
