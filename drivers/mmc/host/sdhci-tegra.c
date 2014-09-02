@@ -2501,7 +2501,6 @@ static int sdhci_tegra_issue_tuning_cmd(struct sdhci_host *sdhci)
 		else
 			err = -EIO;
 	}
-	mdelay(1);
 out:
 	return err;
 }
