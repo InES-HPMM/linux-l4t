@@ -712,7 +712,6 @@ int nvadsp_os_start(void)
 		dev_info(dev, "unable to find adsp clock\n");
 		return PTR_ERR(adsp_clk);
 	}
-	clk_prepare_enable(adsp_clk);
 	tegra_periph_reset_assert(adsp_clk);
 	udelay(10);
 
@@ -728,15 +727,14 @@ int nvadsp_os_start(void)
 		dev_info(dev, "unable to find ape clock\n");
 		return PTR_ERR(ape_clk);
 	}
-	clk_prepare_enable(ape_clk);
 
-#if 0
-	dev_info("Setting ape clock(KHz):%u\n", APE_CLK_FIX_RATE);
+	pr_info("Setting ape clock(KHz):%u", APE_CLK_FIX_RATE);
+	clk_prepare_enable(ape_clk);
 	clk_set_rate(ape_clk, APE_CLK_FIX_RATE * 1000);
 
-	dev_info("Setting adsp clock(KHz):%u\n", ADSP_CLK_FIX_RATE);
+	pr_info("Setting adsp clock(KHz):%u", ADSP_CLK_FIX_RATE);
+	clk_prepare_enable(adsp_clk);
 	clk_set_rate(adsp_clk, ADSP_CLK_FIX_RATE * 1000);
-#endif
 
 	/* TODO: enable ape2apb clock */
 	ape_uart = clk_get_sys("uartape", NULL);
