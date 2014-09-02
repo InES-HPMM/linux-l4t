@@ -247,7 +247,7 @@
 		status = "okay";
 	};
 	bcmdhd_wlan {
-		compatible = "nvidia,tegra-bcmdhd-wlan";
+		compatible = "android,bcmdhd_wlan";
 		wlan-pwr-gpio = <&pca9539_75 3 1>;
 		wlan-rst-gpio = <&pca9539_75 4 1>;
 		status = "okay";
