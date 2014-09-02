@@ -21,10 +21,16 @@
 #include <linux/sched.h>
 
 #ifdef CONFIG_F2FS_CHECK_FS
-#define f2fs_bug_on(condition)	BUG_ON(condition)
+#define f2fs_bug_on(sbi, condition)	BUG_ON(condition)
 #define f2fs_down_write(x, y)	down_write_nest_lock(x, y)
 #else
-#define f2fs_bug_on(condition)	WARN_ON(condition)
+#define f2fs_bug_on(sbi, condition)					\
+	do {								\
+		if (unlikely(condition)) {				\
+			WARN_ON(1);					\
+			sbi->need_fsck = true;				\
+		}							\
+	} while (0)
 #define f2fs_down_write(x, y)	down_write(x)
 #endif
 
@@ -711,6 +717,7 @@ static inline int f2fs_handle_error(struct f2fs_sb_info *sbi)
 	if (test_opt(sbi, ERRORS_PANIC))
 		BUG();
 	if (test_opt(sbi, ERRORS_RECOVER))
+		sbi->need_fsck = true;
 		return 1;
 	return 0;
 }
@@ -938,7 +945,7 @@ static inline unsigned int valid_node_count(struct f2fs_sb_info *sbi)
 static inline void inc_valid_inode_count(struct f2fs_sb_info *sbi)
 {
 	spin_lock(&sbi->stat_lock);
-	f2fs_bug_on(sbi->total_valid_inode_count == sbi->total_node_count);
+	f2fs_bug_on(sbi, sbi->total_valid_inode_count == sbi->total_node_count);
 	sbi->total_valid_inode_count++;
 	spin_unlock(&sbi->stat_lock);
 }
@@ -946,7 +953,7 @@ static inline void inc_valid_inode_count(struct f2fs_sb_info *sbi)
 static inline void dec_valid_inode_count(struct f2fs_sb_info *sbi)
 {
 	spin_lock(&sbi->stat_lock);
-	f2fs_bug_on(!sbi->total_valid_inode_count);
+	f2fs_bug_on(sbi, !sbi->total_valid_inode_count);
 	sbi->total_valid_inode_count--;
 	spin_unlock(&sbi->stat_lock);
 }
@@ -962,7 +969,7 @@ static inline void f2fs_put_page(struct page *page, int unlock)
 		return;
 
 	if (unlock) {
-		f2fs_bug_on(!PageLocked(page));
+		f2fs_bug_on(F2FS_P_SB(page), !PageLocked(page));
 		unlock_page(page);
 	}
 	page_cache_release(page);

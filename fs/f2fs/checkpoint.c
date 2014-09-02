@@ -467,7 +467,7 @@ static void write_orphan_inodes(struct f2fs_sb_info *sbi, block_t start_blk)
 	list_for_each_entry(orphan, head, list) {
 		if (!page) {
 			page = find_get_page(META_MAPPING(sbi), start_blk++);
-			f2fs_bug_on(!page);
+			f2fs_bug_on(sbi, !page);
 			orphan_blk =
 				(struct f2fs_orphan_block *)page_address(page);
 			memset(orphan_blk, 0, sizeof(*orphan_blk));
