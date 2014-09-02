@@ -30,6 +30,9 @@ struct iommu_linear_map {
 	size_t size;
 };
 
+/* FIXME: No need to expose */
+extern struct notifier_block tegra_smmu_device_nb;
+
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 
 extern struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev,

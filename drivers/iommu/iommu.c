@@ -527,9 +527,14 @@ static int iommu_bus_notifier(struct notifier_block *nb,
 			      unsigned long action, void *data)
 {
 	struct device *dev = data;
-	struct iommu_ops *ops = dev->bus->iommu_ops;
+	struct iommu_ops *ops;
 	struct iommu_group *group;
 	unsigned long group_action = 0;
+
+	if (!dev || !dev->bus|| !dev->bus->iommu_ops)
+		return 0;
+
+	ops = dev->bus->iommu_ops;
 
 	/*
 	 * ADD/DEL call into iommu driver ops if provided, which may

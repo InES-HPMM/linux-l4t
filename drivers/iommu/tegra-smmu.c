@@ -2569,7 +2569,7 @@ end:
 	return NOTIFY_DONE;
 }
 
-static struct notifier_block tegra_smmu_device_nb = {
+struct notifier_block tegra_smmu_device_nb = {
 	.notifier_call = tegra_smmu_device_notifier,
 };
 
