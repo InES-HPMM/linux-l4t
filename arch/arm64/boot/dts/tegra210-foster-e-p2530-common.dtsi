@@ -1,0 +1,149 @@
+/*
+ * arch/arm64/boot/dts/tegra210-foster-e-p2530-common.dtsi
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+/dts-v1/;
+
+/memreserve/ 0x80000000 0x00020000;
+
+#include "tegra210-ers-common.dtsi"
+#include "tegra210-platforms/tegra210-loki-e-p2530-common.dtsi"
+#include "tegra210-platforms/tegra210-ers-extgpio-e2141-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-foster-e-power-tree-p2530-0932-e00.dtsi"
+#include "tegra210-platforms/tegra210-loki-e-gpio-p2530-0032-e00.dtsi"
+#include "tegra210-platforms/tegra210-loki-e-pinmux-p2530-0032-e00.dtsi"
+#include "tegra210-platforms/tegra210-comms.dtsi"
+#include "tegra210-platforms/tegra210-foster-e-pwm-fan.dtsi"
+#include "tegra210-platforms/tegra210-loki-sdhci.dtsi"
+#include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-foster-e-thermal-fan-est.dtsi"
+#include "tegra210-platforms/tegra210-loki-e-keys-p2530-0032-e00.dtsi"
+
+/ {
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+	};
+
+	sound {
+		compatible = "nvidia,tegra-audio-t210ref-mobile-es755";
+		nvidia,model = "tegra-snd-t210ref-mobile-es755";
+		nvidia,num-codec-link = <2>;
+
+		nvidia,audio-routing =
+			"y Headphone", 	"y OUT",
+			"y IN",		"y Mic";
+
+		nvidia,xbar = <&tegra_axbar>;
+
+		nvidia,dai-link-1 {
+			cpu-dai = <&tegra_i2s1>;
+			codec-dai = <&spdif_dit0>;
+			cpu-dai-name = "I2S1";
+			codec-dai-name = "dit-hifi";
+			format = "i2s";
+			bitclock-slave;
+			frame-slave;
+			bit-format = "s16_le";
+			bclk_ratio = <0>;
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "x";
+		};
+		nvidia,dai-link-2 {
+			cpu-dai = <&tegra_i2s3>;
+			codec-dai = <&spdif_dit1>;
+			cpu-dai-name = "I2S3";
+			codec-dai-name = "dit-hifi";
+			format = "dsp_a";
+			bitclock-slave;
+			frame-slave;
+			bit-format = "s32_le";
+			bclk_ratio = <0>;
+			srate = <8000>;
+			num-channel = <2>;
+			name-prefix = "y";
+		};
+	};
+
+	extcon@0 {
+		status = "disabled";
+	};
+
+        vbus_gpio_extcon: extcon@1 {
+		compatible = "extcon-gpio-states";
+		reg = <0x0 0x1>;
+		extcon-gpio,name = "VBUS";
+		extcon-gpio,cable-states = <0x0 0x02
+					    0x1  0x1>;
+		gpio = <&max77620 0 0>;
+		extcon-gpio,cable-name = "USB", "USB-Host";
+                #extcon-cells = <1>;
+        };
+
+	udc@7d000000 {
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+                extcon-cables = <&vbus_gpio_extcon 0>;
+                extcon-cable-names = "vbus";
+		#extcon-cells = <1>;
+		status = "okay";
+	};
+
+        otg@7d000000 {
+                nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+                extcon-cables = <&vbus_gpio_extcon 0 &vbus_gpio_extcon 1>;
+                extcon-cable-names = "vbus", "id";
+		#extcon-cells = <1>;
+		status = "okay";
+	};
+
+	/* Put common control config here */
+	xusb_pad_ctl: padctl@0 {
+		nvidia,ss_portmap = <0x2130>;
+		nvidia,lane_owner = <0xFFFF>; /* Use 0xF to disable lane assign */
+		status = "okay";
+	};
+
+	xusb@70090000 {
+		/* nvidia,uses_external_pmic;
+		/* nvidia,gpio_controls_muxed_ss_lanes; */
+		nvidia,gpio_ss1_sata = <0>;
+		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
+		nvidia,portmap = <0x0F00>;
+		nvidia,common_padctl = <&xusb_pad_ctl>;
+		status = "okay";
+	};
+
+	gpio-keys {
+		power {
+			gpios = <&gpio TEGRA_GPIO(X, 7) GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+

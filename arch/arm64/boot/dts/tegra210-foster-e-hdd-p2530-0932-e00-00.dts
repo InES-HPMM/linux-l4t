@@ -1,5 +1,5 @@
 /*
- * arch/arm64/boot/dts/tegra210-foster-e-p2530-0032-e00-00.dts
+ * arch/arm64/boot/dts/tegra210-foster-e-hdd-p2530-0932-e00-00.dts
  *
  * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -17,12 +17,19 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  */
-
 #include "tegra210-foster-e-p2530-common.dtsi"
 
 / {
-	model = "foster_e";
+	model = "foster_e_hdd";
 	compatible = "nvidia,foster-e", "nvidia,tegra210";
 	nvidia,dtsfilename = __FILE__;
-};
 
+	sata@70020000 {
+		status = "okay";
+		nvidia,enable-sata-port;
+	};
+
+	sdhci@700b0600 {
+                status="disabled";
+	};
+};
