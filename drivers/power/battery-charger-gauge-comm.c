@@ -238,6 +238,9 @@ int battery_charging_restart(struct battery_charger_dev *bc_dev, int after_sec)
 			"No callback for restart charging\n");
 		return -EINVAL;
 	}
+	if (!after_sec)
+		return 0;
+
 	schedule_delayed_work(&bc_dev->restart_charging_wq,
 			msecs_to_jiffies(after_sec * HZ));
 	return 0;
@@ -365,6 +368,9 @@ int battery_charging_system_reset_after(struct battery_charger_dev *bc_dev,
 {
 	struct system_pmic_rtc_data rtc_data;
 	int ret;
+
+	if (!after_sec)
+		return 0;
 
 	dev_info(bc_dev->parent_dev, "Setting system on after %d sec\n",
 		after_sec);
