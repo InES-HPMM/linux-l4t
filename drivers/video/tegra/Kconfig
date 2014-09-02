@@ -14,14 +14,6 @@ config TEGRA_GRHOST_VI
 	  To compile this driver as a module, choose M here:
 	  the  module will be called nvhost-vi.
 
-config TEGRA_GRHOST_VII2C
-	depends on TEGRA_GRHOST
-	tristate "Tegra vii2c host1x client driver"
-	help
-	  Driver for the Tegra vi-i2c hardware.
-	  To compile this driver as a module, choose M here:
-	  the  module will be called nvhost-vii2c.
-
 config TEGRA_GRHOST_ISP
 	depends on TEGRA_GRHOST
 	tristate "Tegra image processing pipeline support"
