@@ -82,6 +82,43 @@ void tegra_xhci_release_dev_port(bool release)
 }
 EXPORT_SYMBOL_GPL(tegra_xhci_release_dev_port);
 
+static int tegra_padctl_hs_xmiter(int pad, bool force_disabled)
+{
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	u32 reg;
+	unsigned long flags;
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+
+	if (force_disabled) {
+		/* assert PD2 */
+		reg = readl(pad_base + XUSB_PADCTL_USB2_OTG_PAD_CTL_0(pad));
+		reg |= (USB2_OTG_PD2 | USB2_PD2_OVRD_EN);
+		writel(reg, pad_base + XUSB_PADCTL_USB2_OTG_PAD_CTL_0(pad));
+	} else {
+		/* remove pd2_ovrd_en, leave it under HW control */
+		reg = readl(pad_base + XUSB_PADCTL_USB2_OTG_PAD_CTL_0(pad));
+		reg &= ~(USB2_PD2_OVRD_EN);
+		writel(reg, pad_base + XUSB_PADCTL_USB2_OTG_PAD_CTL_0(pad));
+	}
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+#endif
+	return 0;
+}
+
+int tegra_pd2_asserted(int pad)
+{
+	return tegra_padctl_hs_xmiter(pad, true);
+}
+EXPORT_SYMBOL_GPL(tegra_pd2_asserted);
+
+int tegra_pd2_deasserted(int pad)
+{
+	return tegra_padctl_hs_xmiter(pad, false);
+}
+EXPORT_SYMBOL_GPL(tegra_pd2_deasserted);
+
 void tegra_xhci_ss_wake_on_interrupts(u32 enabled_port, bool enable)
 {
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);

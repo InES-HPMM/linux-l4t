@@ -362,6 +362,7 @@ enum padctl_lane {
 #define USB2_OTG_HS_CURR_LVL	(0x3F << 0)
 #define USB2_OTG_PD		(0x1 << 26)
 #define USB2_OTG_PD2	(0x1 << 27)
+#define USB2_PD2_OVRD_EN (0x1 << 28)
 #define USB2_OTG_PD_ZI	(0x1 << 29)
 
 #define XUSB_PADCTL_USB2_OTG_PAD_CTL_1(_p)	(0x8c + _p * 0x40)
@@ -519,4 +520,6 @@ int sata_usb_pad_pll_reset_assert(void);
 int sata_usb_pad_pll_reset_deassert(void);
 int t210_sata_uphy_pll_init(bool sata_used_by_xusb);
 
+int tegra_pd2_asserted(int pad);
+int tegra_pd2_deasserted(int pad);
 #endif
