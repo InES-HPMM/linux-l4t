@@ -713,8 +713,6 @@ static long tlk_device_ioctl(struct file *file, unsigned int ioctl_num,
 		mutex_unlock(&smc_lock);
 		break;
 
-	case TE_IOCTL_SS_NEW_REQ:
-	case TE_IOCTL_SS_REQ_COMPLETE:
 	case TE_IOCTL_SS_CMD:
 		err = te_handle_ss_ioctl(file, ioctl_num, ioctl_param);
 		break;

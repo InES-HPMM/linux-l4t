@@ -37,17 +37,6 @@
 #define TE_IOCTL_LAUNCH_OPERATION_COMPAT \
 	_IOWR(TE_IOCTL_MAGIC_NUMBER, 0x14, union te_cmd_compat)
 
-#define TE_IOCTL_SS_NEW_REQ_LEGACY \
-	_IOR(TE_IOCTL_MAGIC_NUMBER,  0x20, struct te_ss_op_legacy)
-#define TE_IOCTL_SS_REQ_COMPLETE_LEGACY \
-	_IOWR(TE_IOCTL_MAGIC_NUMBER, 0x21, struct te_ss_op_legacy)
-
-/* ioctls using new SS structs (eventually to replace current SS ioctls) */
-#define TE_IOCTL_SS_NEW_REQ \
-	_IOR(TE_IOCTL_MAGIC_NUMBER,  0x20, struct te_ss_op)
-#define TE_IOCTL_SS_REQ_COMPLETE \
-	_IOWR(TE_IOCTL_MAGIC_NUMBER, 0x21, struct te_ss_op)
-
 /* secure storage ioctl */
 #define TE_IOCTL_SS_CMD \
 	_IOR(TE_IOCTL_MAGIC_NUMBER,  0x30, int)
