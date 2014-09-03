@@ -34,7 +34,8 @@
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-foster-e-thermal-fan-est.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-keys-p2530-0032-e00.dtsi"
-#include "tegra210-platforms/tegra210-loki-e-powermon.dtsi"
+#include "tegra210-platforms/tegra210-foster-powermon-p2530-0930-e00.dtsi"
+#include <dt-bindings/iio/meter/ina3221x.h>
 
 / {
 	host1x {
@@ -97,13 +98,17 @@
 		status = "disabled";
 	};
 
-        vbus_gpio_extcon: extcon@1 {
-		compatible = "extcon-gpio-states";
+        otg_gpio_extcon: extcon@1 {
+		compatible = "extcon-otg";
 		reg = <0x0 0x1>;
-		extcon-gpio,name = "VBUS";
-		extcon-gpio,cable-states = <0x0 0x02
-					    0x1  0x1>;
-		gpio = <&max77620 0 0>;
+		extcon-otg,name = "otg";
+		id-gpio = <&max77620 0 0>;
+		vbus-gpio = <&gpio TEGRA_GPIO(Z, 5) 0>;
+		io-channels = <&ina3221x INA3221_CHAN_INDEX(1, VOLTAGE, NORMAL)>;
+		vbus-presence-threshold = <4000>;
+		io-channel-names = "vbus";
+		debounce = <100>;
+		vbus-auto-hw;
 		extcon-gpio,cable-name = "USB", "USB-Host";
                 #extcon-cells = <1>;
         };
@@ -113,7 +118,7 @@
 		nvidia,charging-supported;
 		nvidia,enable-pmu-vbus-detection;
 		nvidia,id-detection-type = <1>;
-                extcon-cables = <&vbus_gpio_extcon 0>;
+                extcon-cables = <&otg_gpio_extcon 0>;
                 extcon-cable-names = "vbus";
 		#extcon-cells = <1>;
 		status = "okay";
@@ -122,7 +127,7 @@
         otg@7d000000 {
                 nvidia,enable-pmu-vbus-detection;
 		nvidia,id-detection-type = <1>;
-                extcon-cables = <&vbus_gpio_extcon 0 &vbus_gpio_extcon 1>;
+                extcon-cables = <&otg_gpio_extcon 0 &otg_gpio_extcon 1>;
                 extcon-cable-names = "vbus", "id";
 		#extcon-cells = <1>;
 		status = "okay";
