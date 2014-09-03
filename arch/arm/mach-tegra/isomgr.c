@@ -249,6 +249,7 @@ static struct isoclient_info *get_iso_client_info(void)
 		break;
 	case TEGRA_CHIPID_TEGRA12:
 	case TEGRA_CHIPID_TEGRA13:
+	case TEGRA_CHIPID_TEGRA21:
 		cinfo = tegra12x_isoclients;
 		iso_bw_percentage = 50;
 		break;
