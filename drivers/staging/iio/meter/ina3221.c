@@ -111,6 +111,7 @@ struct ina3221_chan_pdata {
 struct ina3221_platform_data {
 	u16 cont_conf_data;
 	u16 trig_conf_data;
+	bool enable_forced_continuous;
 	struct ina3221_chan_pdata cpdata[INA3221_NUMBER_OF_RAILS];
 };
 
@@ -274,16 +275,11 @@ static int ina3221_get_mode(struct ina3221_chip *chip, char *buf)
 	return sprintf(buf, "%d\n", v);
 }
 
-static int ina3221_set_mode(struct ina3221_chip *chip,
-		const char *buf, size_t count)
+static int ina3221_set_mode_val(struct ina3221_chip *chip, long val)
 {
 	int cpufreq;
 	int cpus;
-	long val;
 	int ret = 0;
-
-	if (kstrtol(buf, 10, &val) < 0)
-		return -EINVAL;
 
 	mutex_lock(&chip->mutex);
 	if (val > 0) {
@@ -310,6 +306,19 @@ static int ina3221_set_mode(struct ina3221_chip *chip,
 		}
 	}
 	mutex_unlock(&chip->mutex);
+	return ret;
+}
+
+static int ina3221_set_mode(struct ina3221_chip *chip,
+		const char *buf, size_t count)
+{
+	long val;
+	int ret = 0;
+
+	if (kstrtol(buf, 10, &val) < 0)
+		return -EINVAL;
+
+	ret = ina3221_set_mode_val(chip, val);
 	return ret ? ret : count;
 }
 
@@ -840,6 +849,9 @@ static struct ina3221_platform_data *ina3221_get_platform_data_dt(
 	if (!ret)
 		pdata->trig_conf_data = (u16)pval;
 
+	pdata->enable_forced_continuous = of_property_read_bool(np,
+				"ti,enable-forced-continuous");
+
 	for_each_child_of_node(np, child) {
 		ret = of_property_read_u32(child, "reg", &reg);
 		if (ret || reg >= 3) {
@@ -913,7 +925,10 @@ static int ina3221_probe(struct i2c_client *client,
 	chip->pdata = pdata;
 	mutex_init(&chip->mutex);
 
-	chip->mode = TRIGGERED;
+	if (pdata->enable_forced_continuous)
+		chip->mode = FORCED_CONTINUOUS;
+	else
+		chip->mode = TRIGGERED;
 	chip->shutdown_complete = 0;
 	chip->is_suspended = 0;
 
@@ -951,11 +966,20 @@ static int ina3221_probe(struct i2c_client *client,
 		/*Not an error condition, could let the probe continue*/
 	}
 
-	/* set ina3221 to power down mode */
-	ret = __locked_power_down_ina3221(chip);
-	if (ret < 0) {
-		dev_err(&client->dev, "INA power down failed: %d\n", ret);
-		goto exit_pd;
+	if (chip->mode == FORCED_CONTINUOUS) {
+		ret = ina3221_set_mode_val(chip, FORCED_CONTINUOUS);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"INA forced continuous failed: %d\n", ret);
+			goto exit_pd;
+		}
+	} else {
+		ret = __locked_power_down_ina3221(chip);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"INA power down failed: %d\n", ret);
+			goto exit_pd;
+		}
 	}
 	return 0;
 
@@ -998,10 +1022,12 @@ static int ina3221_suspend(struct device *dev)
 	int ret = 0;
 
 	mutex_lock(&chip->mutex);
-	ret = __locked_power_down_ina3221(chip);
-	if (ret < 0) {
-		dev_err(dev, "INA can't be turned off: 0x%x\n", ret);
-		goto error;
+	if (chip->mode != FORCED_CONTINUOUS) {
+		ret = __locked_power_down_ina3221(chip);
+		if (ret < 0) {
+			dev_err(dev, "INA can't be turned off: 0x%x\n", ret);
+			goto error;
+		}
 	}
 	if (chip->mode == CONTINUOUS)
 		chip->mode = TRIGGERED;
