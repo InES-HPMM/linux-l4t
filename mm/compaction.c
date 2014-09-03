@@ -611,7 +611,8 @@ isolate_migratepages_range(struct zone *zone, struct compact_control *cc,
 
 check_compact_cluster:
 		/* Avoid isolating too much */
-		if (cc->nr_migratepages == COMPACT_CLUSTER_MAX) {
+		if (cc->nr_migratepages == COMPACT_CLUSTER_MAX &&
+			!is_cma_page(pfn_to_page(low_pfn))) {
 			++low_pfn;
 			break;
 		}
