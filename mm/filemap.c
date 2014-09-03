@@ -182,6 +182,11 @@ static int sleep_on_page(void *word)
 	return 0;
 }
 
+static int sleep_on_page_timeout(void *word)
+{
+	return io_schedule_timeout(2) ? 0 : -EAGAIN;
+}
+
 static int sleep_on_page_killable(void *word)
 {
 	sleep_on_page(word);
@@ -561,6 +566,16 @@ void wait_on_page_bit(struct page *page, int bit_nr)
 							TASK_UNINTERRUPTIBLE);
 }
 EXPORT_SYMBOL(wait_on_page_bit);
+
+void wait_on_page_bit_timeout(struct page *page, int bit_nr)
+{
+	DEFINE_WAIT_BIT(wait, &page->flags, bit_nr);
+
+	if (test_bit(bit_nr, &page->flags))
+		__wait_on_bit(page_waitqueue(page), &wait,
+				sleep_on_page_timeout, TASK_UNINTERRUPTIBLE);
+}
+EXPORT_SYMBOL(wait_on_page_bit_timeout);
 
 int wait_on_page_bit_killable(struct page *page, int bit_nr)
 {
