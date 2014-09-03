@@ -1858,6 +1858,7 @@ int __init of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
 	 */
 	rail->dt_node = rail_dn;
 	rail->dt_reg_fixed = of_device_is_compatible(reg_dn, "regulator-fixed");
+	rail->dt_reg_pwm = of_device_is_compatible(reg_dn, "regulator-pwm");
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	if (rail->dt_reg_fixed && !strcmp("vdd_cpu", rail->reg_id)) {
