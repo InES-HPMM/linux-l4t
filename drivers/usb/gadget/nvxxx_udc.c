@@ -3355,6 +3355,17 @@ bool nvudc_handle_port_status(struct NV_UDC_S *nvudc)
 	if ((PORTSC_PRC & u_temp) &&
 			(!(PORTSC_PR & u_temp))) {
 		msg_dbg(nvudc->dev, "PR completed. PRC is set, but PR is not\n");
+
+		u_temp2 = (u_temp >> PORTSC_PS_SHIFT) & PORTSC_PS_MASK;
+		if (u_temp2 <= 2)
+			nvudc->gadget.speed = USB_SPEED_FULL;
+		else if (u_temp2 == 3)
+			nvudc->gadget.speed = USB_SPEED_HIGH;
+		else
+			nvudc->gadget.speed = USB_SPEED_SUPER;
+		msg_dbg(nvudc->dev, "gadget speed = 0x%x\n",
+				nvudc->gadget.speed);
+
 		nvudc_reset(nvudc);
 		u_temp2 = u_temp & PORTSC_MASK;
 		u_temp2 |= PORTSC_PRC;
