@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, NVIDIA Corporation.  All rights reserved.
+ * Copyright (C) 2013-2014, NVIDIA Corporation.  All rights reserved.
  *
  *
  * This program is free software; you can redistribute it and/or modify
@@ -26,13 +26,14 @@
 #include <linux/mutex.h>
 #include <linux/io.h>
 #include <linux/uaccess.h>
-#include <mach/iomap.h>
+#include "../../arch/arm/mach-tegra/iomap.h"
 #include <linux/vmalloc.h>
 #include <linux/delay.h>
 #include <linux/tegra_snor.h>
 #include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/platform_data/tegra_nor.h>
+#include <linux/clk.h>
 
 #ifdef CONFIG_TEGRA_GMI_ACCESS_CONTROL
 #include <linux/tegra_gmi_access.h>
@@ -55,6 +56,7 @@ do {    \
 struct tegra_gmi_char_info {
 	struct tegra_nor_chip_parms *plat;
 	struct device *dev;
+	struct clk *clk;			/* Clock */
 	void __iomem *base;
 	u32 init_config;
 	u32 timing0_default, timing1_default;
@@ -299,7 +301,7 @@ const struct file_operations gmichar_fops = {
 	.release        = gmichar_chrdev_release
 };
 
-static int __devinit tegra_gmi_char_probe(struct platform_device *pdev)
+static int __init tegra_gmi_char_probe(struct platform_device *pdev)
 {
 	int err = -ENODEV;
 	struct tegra_nor_chip_parms *plat = pdev->dev.platform_data;
@@ -329,12 +331,30 @@ static int __devinit tegra_gmi_char_probe(struct platform_device *pdev)
 	info->release_gmi_access = NULL;
 #endif
 
+	/* Clock setting */
+	info->clk = clk_get_sys("tegra-nor", NULL);
+	if (IS_ERR(info->clk)) {
+		pr_err("%s: can't get clock\n", __func__);
+		return PTR_ERR(info->clk);
+	}
+
+	err = clk_prepare_enable(info->clk);
+	if (err != 0) {
+		pr_err("%s: can't enable clock\n", __func__);
+		return err;
+	}
+
 	err = tegra_gmi_char_prepare_regs(info);
 
 	if (err) {
 		dev_err(dev, "Error initializing reg values\n");
 		return err;
 	}
+
+	// write init config
+	snor_tegra_writel(info, info->init_config, TEGRA_SNOR_CONFIG_REG);
+	snor_tegra_writel(info, info->timing1_read, TEGRA_SNOR_TIMING1_REG);
+	snor_tegra_writel(info, info->timing0_read, TEGRA_SNOR_TIMING0_REG);
 
 	platform_set_drvdata(pdev, info);
 
@@ -374,7 +394,7 @@ fail:
 	return err;
 }
 
-static int __devexit tegra_gmi_char_remove(struct platform_device *pdev)
+static int __exit tegra_gmi_char_remove(struct platform_device *pdev)
 {
 
 	if (info->gmi_class)
@@ -387,7 +407,7 @@ static int __devexit tegra_gmi_char_remove(struct platform_device *pdev)
 
 static struct platform_driver __refdata tegra_gmi_char_driver = {
 	.probe = tegra_gmi_char_probe,
-	.remove = __devexit_p(tegra_gmi_char_remove),
+	.remove = __exit_p(tegra_gmi_char_remove),
 	.driver = {
 		   .name = DRV_NAME,
 		   .owner = THIS_MODULE,
