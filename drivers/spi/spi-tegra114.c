@@ -242,6 +242,7 @@ struct tegra_spi_data {
 	dma_addr_t				tx_dma_phys;
 	struct dma_async_tx_descriptor		*tx_dma_desc;
 	const struct tegra_spi_chip_data  *chip_data;
+	struct tegra_spi_device_controller_data cdata[MAX_CHIP_SELECT];
 };
 
 
@@ -949,7 +950,8 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 }
 
 static struct tegra_spi_device_controller_data
-	*tegra_spi_get_cdata_dt(struct spi_device *spi)
+	*tegra_spi_get_cdata_dt(struct spi_device *spi,
+			struct tegra_spi_data *tspi)
 {
 	struct tegra_spi_device_controller_data *cdata;
 	struct device_node *slave_np, *data_np;
@@ -967,13 +969,8 @@ static struct tegra_spi_device_controller_data
 		return NULL;
 	}
 
-	cdata = devm_kzalloc(&spi->dev, sizeof(*cdata),
-			GFP_KERNEL);
-	if (!cdata) {
-		dev_err(&spi->dev, "Memory alloc for cdata failed\n");
-		of_node_put(data_np);
-		return NULL;
-	}
+	cdata = &tspi->cdata[spi->chip_select];
+	memset(cdata, 0, sizeof(*cdata));
 
 	ret = of_property_read_bool(data_np, "nvidia,enable-hw-based-cs");
 	if (ret)
@@ -1015,7 +1012,7 @@ static int tegra_spi_setup(struct spi_device *spi)
 		spi->max_speed_hz);
 
 	if (!cdata) {
-		cdata = tegra_spi_get_cdata_dt(spi);
+		cdata = tegra_spi_get_cdata_dt(spi, tspi);
 		spi->controller_data = cdata;
 	}
 
