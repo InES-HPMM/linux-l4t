@@ -138,9 +138,6 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.speedo_id = -1,
 		.process_id = -1,
 		.dfll_tune_data  = {
-			.tune0		= 0x00000000,
-			.tune0_high_mv	= 0x00000000,
-			.tune1		= 0x000000a0,
 			.droop_rate_min = 1000000,
 			.min_millivolts = 900,
 		},
