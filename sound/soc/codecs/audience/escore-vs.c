@@ -30,6 +30,14 @@ static int escore_vs_sleep(struct escore_priv *escore)
 
 	dev_dbg(escore->dev, "%s()\n", __func__);
 
+	/* Set smooth mute to 0 */
+	cmd = ES_SET_SMOOTH_MUTE << 16 | ES_SMOOTH_MUTE_ZERO;
+	rc = escore->bus.ops.cmd(escore, cmd, &rsp);
+	if (rc) {
+		dev_err(escore->dev, "%s(): escore_cmd fail %d\n",
+					__func__, rc);
+		goto vs_sleep_err;
+	}
 	/* change power state to OVERLAY */
 	cmd = (ES_SET_POWER_STATE << 16) | ES_SET_POWER_STATE_VS_OVERLAY;
 	rc = escore->bus.ops.cmd(escore, cmd, &rsp);
@@ -413,6 +421,10 @@ int escore_vs_request_keywords(struct escore_priv *escore)
 	for (i = 0; i < MAX_NO_OF_VS_KW; i++) {
 		if (!(voice_sense->vs_active_keywords & (1 << i)))
 			continue;
+
+		if (voice_sense->kw[i]->size)
+			release_firmware(voice_sense->kw[i]);
+
 		snprintf(kw_filename, size, "audience-vs-kw-%d.bin", i + 1);
 		dev_dbg(escore->dev, "%s(): kw filename = %s\n",
 					__func__, kw_filename);
@@ -753,6 +765,7 @@ int escore_vs_init(struct escore_priv *escore)
 			rc = -ENOMEM;
 			goto kw_alloc_err;
 		}
+		voice_sense->kw[i]->size = 0;
 	}
 
 	mutex_init(&voice_sense->vs_event_mutex);

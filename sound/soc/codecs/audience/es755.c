@@ -51,6 +51,7 @@ struct escore_priv escore_priv = {
 	.streamdev.no_more_bit = 0,
 	.es_vs_route_preset = ES755_MIC0_VS_ROUTE_PREST,
 	.es_cvs_preset = ES755_MIC0_CVS_PREST,
+	.system_suspend = 0,
 };
 
 struct snd_soc_dai_driver es755_dai[];
@@ -92,22 +93,15 @@ static const u32 es755_streaming_cmds[] = {
 	[ES_UART_INTF]  = 0x90250100,	/* ES_UART_INTF */
 };
 
-#ifdef CONFIG_SND_SOC_ES755_A1
-static char *es755_device  = "es755-A1-device";
-static char *interface_device_name = "es755-A1-slim-ifd";
-static char *interface_device_elem_addr_name =
-			"es755-A1-slim-ifd-elemental-addr";
-#else
-static char *es755_device  = "es755-A0-device";
-static char *interface_device_name = "es755-A0-slim-ifd";
-static char *interface_device_elem_addr_name =
-			"es755-A0-slim-ifd-elemental-addr";
-#endif
 #ifdef CONFIG_ARCH_MSM
 const struct slim_device_id escore_slim_id[] = {
 	{ "earSmart-codec", ESCORE_DEVICE_NONE }, /* for portability */
-	{ "earSmart-codec-intf", ESCORE_INTERFACE_DEVICE },
-	{ "earSmart-codec-gen0", ESCORE_GENERIC_DEVICE },
+	{ "eS755A0-codec-intf", ESCORE_INTERFACE_DEVICE },
+	{ "eS755A0-codec-gen0", ESCORE_GENERIC_DEVICE },
+	{ "eS755A1-codec-intf", ESCORE_INTERFACE_DEVICE },
+	{ "eS755A1-codec-gen0", ESCORE_GENERIC_DEVICE },
+	{ "eS755A2-codec-intf", ESCORE_INTERFACE_DEVICE },
+	{ "eS755A2-codec-gen0", ESCORE_GENERIC_DEVICE },
 	{  }
 };
 MODULE_DEVICE_TABLE(slim, escore_slim_id);
@@ -978,10 +972,6 @@ int es755_power_transition(int next_power_state,
 				escore_priv.escore_power_state =
 					ES_SET_POWER_STATE_VS_LOWPWR;
 
-				/* Disable the clocks */
-				if (escore_priv.pdata->esxxx_clk_cb)
-					escore_priv.pdata->esxxx_clk_cb(0);
-
 			} else {
 				escore_priv.escore_power_state =
 					ES_SET_POWER_STATE_NORMAL;
@@ -999,6 +989,12 @@ int es755_power_transition(int next_power_state,
 					ES_SET_POWER_STATE_VS_OVERLAY;
 				goto es755_power_transition_exit;
 			}
+
+			if (escore_priv.escore_power_state ==
+					ES_SET_POWER_STATE_VS_LOWPWR)
+				/* Disable the clocks */
+				if (escore_priv.pdata->esxxx_clk_cb)
+					escore_priv.pdata->esxxx_clk_cb(0);
 
 			escore_priv.pm_state = ES_PM_ASLEEP;
 
@@ -2085,29 +2081,6 @@ int es755_core_probe(struct device *dev)
 			"failed to create core sysfs entries: %d\n", rc);
 	}
 
-	dev_dbg(escore_priv.dev, "%s(): reset_gpio = %d\n", __func__,
-		pdata->reset_gpio);
-	if (pdata->reset_gpio != -1) {
-		rc = gpio_request(pdata->reset_gpio, "es755_reset");
-		if (rc < 0) {
-			dev_err(escore_priv.dev,
-				"%s(): es755_reset request failed :%d",
-				__func__, pdata->reset_gpio);
-			goto reset_gpio_request_error;
-		}
-		rc = gpio_direction_output(pdata->reset_gpio, 1);
-		if (rc < 0) {
-			dev_err(escore_priv.dev,
-				"%s(): es755_reset direction failed", __func__);
-			goto reset_gpio_direction_error;
-		}
-		if (!escore_priv.flag.reset_done)
-			escore_gpio_reset(&escore_priv);
-	} else {
-		dev_warn(escore_priv.dev, "%s(): es755_reset undefined\n",
-			 __func__);
-	}
-
 	dev_dbg(escore_priv.dev, "%s(): wakeup_gpio = %d\n", __func__,
 		pdata->wakeup_gpio);
 
@@ -2175,6 +2148,29 @@ int es755_core_probe(struct device *dev)
 		}
 	} else {
 		dev_warn(escore_priv.dev, "%s(): es755_gpiob undefined\n",
+			 __func__);
+	}
+
+	dev_dbg(escore_priv.dev, "%s(): reset_gpio = %d\n", __func__,
+		pdata->reset_gpio);
+	if (pdata->reset_gpio != -1) {
+		rc = gpio_request(pdata->reset_gpio, "es755_reset");
+		if (rc < 0) {
+			dev_err(escore_priv.dev,
+				"%s(): es755_reset request failed :%d",
+				__func__, pdata->reset_gpio);
+			goto reset_gpio_request_error;
+		}
+		rc = gpio_direction_output(pdata->reset_gpio, 1);
+		if (rc < 0) {
+			dev_err(escore_priv.dev,
+				"%s(): es755_reset direction failed", __func__);
+			goto reset_gpio_direction_error;
+		}
+		if (!escore_priv.flag.reset_done)
+			escore_gpio_reset(&escore_priv);
+	} else {
+		dev_warn(escore_priv.dev, "%s(): es755_reset undefined\n",
 			 __func__);
 	}
 
@@ -2322,6 +2318,7 @@ int es755_core_probe(struct device *dev)
 				&es755_codec_intr_cb);
 
 	}
+
 #if defined(CONFIG_SND_SOC_ES_UART_STREAMDEV)
 	escore_priv.streamdev = es_uart_streamdev;
 #endif
@@ -2340,6 +2337,9 @@ request_vs_firmware_error:
 #endif
 	release_firmware(escore_priv.standard);
 request_firmware_error:
+reset_gpio_direction_error:
+	gpio_free(pdata->reset_gpio);
+reset_gpio_request_error:
 gpiob_gpio_direction_error:
 	gpio_free(pdata->gpiob_gpio);
 gpiob_gpio_request_error:
@@ -2349,9 +2349,6 @@ gpioa_gpio_request_error:
 wakeup_gpio_direction_error:
 	gpio_free(pdata->wakeup_gpio);
 wakeup_gpio_request_error:
-reset_gpio_direction_error:
-	gpio_free(pdata->reset_gpio);
-reset_gpio_request_error:
 	dev_dbg(escore_priv.dev, "%s(): exit with error\n", __func__);
 
 	return rc;
@@ -2366,11 +2363,10 @@ static __init int es755_init(void)
 
 	escore_pm_init();
 
-	escore_priv.device_name  = es755_device;
-	escore_priv.interface_device_name  = interface_device_name;
+	escore_priv.device_name  = "elemental-addr";
+	escore_priv.interface_device_name  = "slim-ifd";
 	escore_priv.interface_device_elem_addr_name  =
-					interface_device_elem_addr_name;
-
+					"slim-ifd-elemental-addr";
 	mutex_init(&escore_priv.api_mutex);
 	init_completion(&escore_priv.fw_download);
 	escore_platform_init();

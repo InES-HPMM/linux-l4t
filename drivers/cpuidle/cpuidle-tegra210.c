@@ -46,23 +46,6 @@
 #include "../../arch/arm/mach-tegra/flowctrl.h"
 #include "cpuidle-tegra210.h"
 
-/* Core state 0-9 */
-#define TEGRA210_CPUIDLE_C4	4
-#define TEGRA210_CPUIDLE_C7	7
-
-/* Cluster states 10-19 */
-#define TEGRA210_CPUIDLE_CC4	14
-#define TEGRA210_CPUIDLE_CC6	16
-#define TEGRA210_CPUIDLE_CC7	17
-
-/* SoC states 20-29 */
-#define TEGRA210_CPUIDLE_SC2	22
-#define TEGRA210_CPUIDLE_SC3	23
-#define TEGRA210_CPUIDLE_SC4	24
-#define TEGRA210_CPUIDLE_SC7	27
-
-#define TEGRA210_CLUSTER_SWITCH	31
-
 static const char *driver_name = "tegra210_idle";
 static struct module *owner = THIS_MODULE;
 
@@ -623,9 +606,11 @@ static int tegra210_cpu_notify(struct notifier_block *nb, unsigned long action,
 
 	switch (action) {
 	case CPU_POST_DEAD:
+	case CPU_DEAD_FROZEN:
 		tegra_bpmp_tolerate_idle(cpu, TEGRA_PM_CC7);
 		break;
 	case CPU_UP_PREPARE:
+	case CPU_UP_PREPARE_FROZEN:
 		tegra_bpmp_tolerate_idle(cpu, TEGRA_PM_CC1);
 		break;
 	}

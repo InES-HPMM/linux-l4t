@@ -182,7 +182,8 @@ __cpu_setup_post_flush:
 
 	mov	x0, #3 << 20
 	msr	cpacr_el1, x0			// Enable FP/ASIMD
-	msr	mdscr_el1, xzr			// Reset mdscr_el1
+	mov	x0, #1 << 14			// Enable MDSCR_EL1.HDE
+	msr	mdscr_el1, x0			// only set HDE in mdscr_el1
 	/*
 	 * Memory region attributes for LPAE:
 	 *

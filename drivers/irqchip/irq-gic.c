@@ -176,6 +176,35 @@ bool tegra_agic_irq_is_pending(int irq)
 }
 EXPORT_SYMBOL_GPL(tegra_agic_irq_is_pending);
 
+
+void tegra_agic_clear_pending(int irq)
+{
+	void __iomem *dist_base;
+	u32 irq_target;
+	u32 pending;
+	u8 curr_cpu;
+	u8 val8;
+
+	BUG_ON(!tegra_agic);
+
+	pending = GIC_DIST_PENDING_CLEAR + (irq / 32 * 4);
+	dist_base = gic_data_dist_base(tegra_agic);
+	curr_cpu = gic_get_cpumask(tegra_agic);
+	irq_target = GIC_DIST_TARGET + irq;
+
+	raw_spin_lock(&irq_controller_lock);
+	val8 = readb_relaxed(dist_base + irq_target);
+	if (!tegra_agic->is_percpu && !(val8 & curr_cpu)) {
+		pr_err("irq %d does not belong to this cpu\n", irq);
+		goto end;
+	}
+
+	writel_relaxed(1 << (irq % 32), dist_base + pending);
+end:
+	raw_spin_unlock(&irq_controller_lock);
+}
+EXPORT_SYMBOL_GPL(tegra_agic_clear_pending);
+
 bool tegra_agic_irq_is_active(int irq)
 {
 	void __iomem *dist_base;
@@ -192,6 +221,35 @@ bool tegra_agic_irq_is_active(int irq)
 	return value & (1 << (irq % 32));
 }
 EXPORT_SYMBOL_GPL(tegra_agic_irq_is_active);
+
+void tegra_agic_clear_active(int irq)
+{
+	void __iomem *dist_base;
+	u32 irq_target;
+	u8 curr_cpu;
+	u32 active;
+	u8 val8;
+
+	BUG_ON(!tegra_agic);
+
+	active = GIC_DIST_ACTIVE_CLEAR + (irq / 32 * 4);
+	dist_base = gic_data_dist_base(tegra_agic);
+	curr_cpu = gic_get_cpumask(tegra_agic);
+	irq_target = GIC_DIST_TARGET + irq;
+
+	raw_spin_lock(&irq_controller_lock);
+	val8 = readb_relaxed(dist_base + irq_target);
+	if (!tegra_agic->is_percpu && !(val8 & curr_cpu)) {
+		pr_err("irq %d does not belong to this cpu\n", irq);
+		goto end;
+	}
+
+	writel_relaxed(1 << (irq % 32), dist_base + active);
+end:
+	raw_spin_unlock(&irq_controller_lock);
+}
+EXPORT_SYMBOL_GPL(tegra_agic_clear_active);
+
 
 int tegra_agic_route_interrupt(int irq, enum tegra_agic_cpu cpu)
 {
@@ -614,7 +672,16 @@ static void __init gic_dist_init(struct gic_chip_data *gic)
 	for (i = 32; i < gic_irqs; i += 32)
 		writel_relaxed(0xffffffff, base + GIC_DIST_ENABLE_CLEAR + i * 4 / 32);
 
-	writel_relaxed(1, base + GIC_DIST_CTRL);
+	/* make all interrupts as group 1 interrupts */
+	if (!gic->is_percpu)
+		for (i = 0; i < gic_irqs; i += 32)
+			writel_relaxed(0xffffffff,
+					base + GIC_DIST_IGROUP + i * 4 / 32);
+
+	if (gic->is_percpu)
+		writel_relaxed(1, base + GIC_DIST_CTRL);
+	else
+		writel_relaxed(3, base + GIC_DIST_CTRL);
 }
 
 static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
@@ -653,7 +720,12 @@ static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
 		writel_relaxed(0xa0a0a0a0, dist_base + GIC_DIST_PRI + i * 4 / 4);
 
 	writel_relaxed(0xf0, base + GIC_CPU_PRIMASK);
-	writel_relaxed(1, base + GIC_CPU_CTRL);
+
+	if (gic->is_percpu)
+		writel_relaxed(1, base + GIC_CPU_CTRL);
+	else
+		writel_relaxed((1 << 0) | (1 << 1) | (1 << 2),
+				base + GIC_CPU_CTRL);
 }
 
 #ifdef CONFIG_CPU_PM
