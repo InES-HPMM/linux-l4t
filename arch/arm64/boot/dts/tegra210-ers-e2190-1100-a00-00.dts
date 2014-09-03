@@ -35,6 +35,7 @@
 #include "panel-a-wuxga-8-0.dtsi"
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-e2190-thermal-zone.dtsi"
 
 / {
 	model = "e2190";
@@ -224,6 +225,20 @@
 			srate = <8000>;
 			num-channel = <2>;
 			name-prefix = "y";
+		};
+	};
+
+	thermal-zones {
+		PMIC-Die-max77620 {
+			thermal-sensors = <&max77620>;
+		};
+
+		PMIC-Die-max77621-0 {
+			thermal-sensors = <&cpu_max77621_reg>;
+		};
+
+		PMIC-Die-max77621-1 {
+			thermal-sensors = <&gpu_max77621_reg>;
 		};
 	};
 
