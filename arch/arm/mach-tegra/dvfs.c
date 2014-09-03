@@ -403,12 +403,14 @@ static int dvfs_rail_apply_limits(struct dvfs_rail *rail, int millivolts)
 
 	if (rail->override_millivolts) {
 		millivolts = rail->override_millivolts;
-	} else {
-		/* apply offset and clip up to pll mode fixed mv */
-		millivolts += rail->dbg_mv_offs;
-		if (!rail->dfll_mode && rail->fixed_millivolts &&
-		    (millivolts < rail->fixed_millivolts))
+	} else if (!rail->dfll_mode && rail->fixed_millivolts) {
+		/* clip up to pll mode fixed mv */
+		if (millivolts < rail->fixed_millivolts)
 			millivolts = rail->fixed_millivolts;
+	} else if (rail->dbg_mv_offs) {
+		/* apply offset and ignore minimum limit */
+		millivolts += rail->dbg_mv_offs;
+		return millivolts;
 	}
 
 	if (millivolts < min_mv)
