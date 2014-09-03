@@ -25,6 +25,8 @@ struct bq27441_platform_data {
 	unsigned long v_at_chg_term; /* in mV */
 	u32 threshold_soc;
 	u32 maximum_soc;
+	u32 cc_gain;
+	u32 cc_delta;
 	const char *tz_name;
 };
 

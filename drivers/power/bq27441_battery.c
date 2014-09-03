@@ -86,6 +86,9 @@
 #define BQ27441_BATTERY_LOW		15
 #define BQ27441_BATTERY_FULL		100
 
+#define BQ27441_CC_GAIN			0x44
+#define BQ27441_CC_DELTA		0x48
+
 #define BQ27441_MAX_REGS		0x7F
 
 struct bq27441_chip {
@@ -115,6 +118,9 @@ struct bq27441_chip {
 	int taper_rate;
 	int terminate_voltage;
 	int v_chg_term;
+	u32 cc_gain;
+	u32 cc_delta;
+
 	int lasttime_soc;
 	int lasttime_status;
 	int shutdown_complete;
@@ -129,6 +135,22 @@ static const struct regmap_config bq27441_regmap_config = {
 	.val_bits		= 8,
 	.max_register		= BQ27441_MAX_REGS,
 };
+
+static int bq27441_read_u32(struct i2c_client *client, u8 reg)
+{
+	int ret;
+	u32 val;
+
+	struct bq27441_chip *chip = i2c_get_clientdata(client);
+
+	ret = regmap_raw_read(chip->regmap, reg, (u8 *) &val, sizeof(val));
+	if (ret < 0) {
+		dev_err(&client->dev, "error reading reg: 0x%x\n", reg);
+		return ret;
+	}
+
+	return val;
+}
 
 static int bq27441_read_word(struct i2c_client *client, u8 reg)
 {
@@ -236,6 +258,95 @@ static void bq27441_work(struct work_struct *work)
 	schedule_delayed_work(&chip->work, BQ27441_DELAY);
 }
 
+static int bq27441_initialize_cc_cal_block(struct bq27441_chip *chip)
+{
+	struct i2c_client *client = chip->client;
+	int old_csum, new_csum;
+	u8 temp;
+	u32 old_cc_gain, old_cc_delta;
+	u8 addr, val;
+	int i = 0;
+	int ret;
+
+	/* setup cc cal data block block for ram access */
+
+	ret = bq27441_write_byte(client, BQ27441_BLOCK_DATA_CONTROL, 0x00);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_DATA_BLOCK_CLASS, 105);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_DATA_BLOCK, 0x00);
+	if (ret < 0)
+		goto fail;
+
+	mdelay(1);
+
+	/* read check sum */
+	old_csum = bq27441_read_byte(client, BQ27441_BLOCK_DATA_CHECKSUM);
+
+	/* read all the old values that we want to update */
+	old_cc_gain = bq27441_read_u32(client, BQ27441_CC_GAIN);
+	old_cc_delta = bq27441_read_u32(client, BQ27441_CC_DELTA);
+
+	dev_info(&chip->client->dev, "cc cal values:\n gain old: %08x new: %08x\n"
+				"delta old: %08x new: %08x\n",
+				be32_to_cpu(old_cc_gain), chip->cc_gain,
+				be32_to_cpu(old_cc_delta), chip->cc_delta);
+
+	if (be32_to_cpu(old_cc_delta) != chip->cc_delta ||
+		be32_to_cpu(old_cc_gain) != chip->cc_gain) {
+		temp = (255 - old_csum
+		- (old_cc_gain & 0xFF)
+		- ((old_cc_gain >> 8) & 0xFF)
+		- ((old_cc_gain >> 16) & 0xFF)
+		- ((old_cc_gain >> 24) & 0xFF)
+		- (old_cc_delta & 0xFF)
+		- ((old_cc_delta >> 8) & 0xFF)
+		- ((old_cc_delta >> 16) & 0xFF)
+		- ((old_cc_delta >> 24) & 0xFF)) % 256;
+
+		new_csum = 255 - (((temp
+				+ (chip->cc_gain & 0xFF)
+				+ ((chip->cc_gain >> 8) & 0xFF)
+				+ ((chip->cc_gain >> 16) & 0xFF)
+				+ ((chip->cc_gain >> 24) & 0xFF)
+				+ (chip->cc_delta & 0xFF)
+				+ ((chip->cc_delta >> 8) & 0xFF)
+				+ ((chip->cc_delta >> 16) & 0xFF)
+				+ ((chip->cc_delta >> 24) & 0xFF)
+				)) % 256);
+
+		/* program cc_gain */
+		for (i = 0; i < sizeof(u32); i++) {
+			val = (chip->cc_gain >> (sizeof(u32) - i - 1)*8) & 0xFF;
+			addr = BQ27441_CC_GAIN + i;
+			ret = bq27441_write_byte(client, addr, val);
+			if (ret < 0)
+				goto fail;
+		}
+
+		/* program cc_delta */
+		for (i = 0; i < sizeof(u32); i++) {
+			val = ((chip->cc_delta >> (sizeof(u32) - i - 1)*8)
+				& 0xFF);
+			addr = BQ27441_CC_DELTA + i;
+			ret = bq27441_write_byte(client, addr, val);
+			if (ret < 0)
+				goto fail;
+		}
+		ret = bq27441_write_byte(client, BQ27441_BLOCK_DATA_CHECKSUM,
+					new_csum);
+		if (ret < 0)
+			goto fail;
+	}
+	return 0;
+fail:
+	return -EIO;
+}
+
 static int bq27441_initialize(struct bq27441_chip *chip)
 {
 	struct i2c_client *client = chip->client;
@@ -247,16 +358,6 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	int old_taper_rate;
 	int old_terminate_voltage;
 	int old_v_chg_term;
-	u8 old_des_cap_lsb;
-	u8 old_des_cap_msb;
-	u8 old_taper_rate_lsb;
-	u8 old_taper_rate_msb;
-	u8 old_des_energy_lsb;
-	u8 old_des_energy_msb;
-	u8 old_terminate_voltage_lsb;
-	u8 old_terminate_voltage_msb;
-	u8 old_v_chg_term_msb;
-	u8 old_v_chg_term_lsb;
 	int flags_lsb;
 
 	unsigned long timeout = jiffies + HZ;
@@ -305,21 +406,13 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	/* read all the old values that we want to update */
 
 	old_des_cap = bq27441_read_word(client, BQ27441_DESIGN_CAPACITY_1);
-	old_des_cap_msb = old_des_cap & 0xFF;
-	old_des_cap_lsb = (old_des_cap & 0xFF00) >> 8;
 
 	old_des_energy = bq27441_read_word(client, BQ27441_DESIGN_ENERGY_1);
-	old_des_energy_msb = old_des_energy & 0xFF;
-	old_des_energy_lsb = (old_des_energy & 0xFF00) >> 8;
 
 	old_taper_rate = bq27441_read_word(client, BQ27441_TAPER_RATE_1);
-	old_taper_rate_msb = old_taper_rate & 0xFF;
-	old_taper_rate_lsb = (old_taper_rate & 0xFF00) >> 8;
 
 	old_terminate_voltage = bq27441_read_word(client,
 						BQ27441_TERMINATE_VOLTAGE_1);
-	old_terminate_voltage_msb = old_terminate_voltage & 0xFF;
-	old_terminate_voltage_lsb = (old_terminate_voltage & 0xFF00) >> 8;
 
 
 	dev_info(&chip->client->dev, "FG values:\n capacity old: %d new: %d\n"
@@ -344,7 +437,7 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	  && (chip->terminate_voltage == be16_to_cpu(old_terminate_voltage))
 	  && (!(flags_lsb & BQ27441_FLAGS_ITPOR))) {
 		dev_info(&chip->client->dev, "FG is already programmed\n");
-		goto unseal;
+		goto seal;
 	}
 
 	/* place the fuel gauge into config update */
@@ -411,10 +504,15 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 		goto fail;
 
 	/* calculate the new checksum */
-	temp = (255 - old_csum - old_des_cap_lsb - old_des_cap_msb
-		- old_des_energy_lsb - old_des_energy_msb
-		- old_taper_rate_lsb - old_taper_rate_msb
-		- old_terminate_voltage_lsb - old_terminate_voltage_msb) % 256;
+	temp = (255 - old_csum
+		- (old_des_cap & 0xFF)
+		- ((old_des_cap >> 8) & 0xFF)
+		- (old_des_energy & 0xFF)
+		- ((old_des_energy >> 8) & 0xFF)
+		- (old_taper_rate & 0xFF)
+		- ((old_taper_rate >> 8) & 0xFF)
+		- (old_terminate_voltage & 0xFF)
+		- ((old_terminate_voltage >> 8) & 0xFF)) % 256;
 
 	new_csum = 255 - (((temp + (chip->full_capacity & 0xFF)
 				+ ((chip->full_capacity & 0xFF00) >> 8)
@@ -430,22 +528,7 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	if (ret < 0)
 		goto fail;
 
-	/* read checksum again to ensure that data was written properly */
-	ret = bq27441_write_byte(client, BQ27441_DATA_BLOCK_CLASS, 0x52);
-	if (ret < 0)
-		goto fail;
-
-	old_csum = bq27441_read_byte(client, BQ27441_BLOCK_DATA_CHECKSUM);
-
-	if (old_csum != new_csum)
-		dev_info(&chip->client->dev,
-		"checksum write failed old:%d, new:%d\n", new_csum, old_csum);
-	else
-		dev_info(&chip->client->dev,
-		"checksum written old:%d, new:%d\n", new_csum, old_csum);
-
-	/* setup fuel gauge state data block block for ram access */
-
+	/* setup fuel gauge state data block page 1 for ram access */
 	ret = bq27441_write_byte(client, BQ27441_BLOCK_DATA_CONTROL, 0x00);
 	if (ret < 0)
 		goto fail;
@@ -463,8 +546,6 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	old_csum = bq27441_read_byte(client, BQ27441_BLOCK_DATA_CHECKSUM);
 
 	old_v_chg_term = bq27441_read_word(client, BQ27441_V_CHG_TERM_1);
-	old_v_chg_term_msb = old_v_chg_term & 0xFF;
-	old_v_chg_term_lsb = (old_v_chg_term & 0xFF00) >> 8;
 
 	ret = bq27441_write_byte(client, BQ27441_V_CHG_TERM_1,
 					(chip->v_chg_term & 0xFF00) >> 8);
@@ -476,7 +557,10 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	if (ret < 0)
 		goto fail;
 
-	temp = (255 - old_csum - old_v_chg_term_lsb - old_v_chg_term_msb) % 256;
+	temp = (255 - old_csum
+		- (old_v_chg_term & 0xFF)
+		- (old_v_chg_term >> 8) & 0xFF) % 256;
+
 	new_csum = 255 - ((temp
 				+ (chip->v_chg_term & 0xFF)
 				+ ((chip->v_chg_term & 0xFF00) >> 8)
@@ -486,20 +570,9 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	if (ret < 0)
 		goto fail;
 
-	/* read checksum again to ensure that data was written properly */
-	ret = bq27441_write_byte(client, BQ27441_DATA_BLOCK_CLASS, 0x52);
-	if (ret < 0)
+	/* program the cc_cal block */
+	if (bq27441_initialize_cc_cal_block(chip) < 0)
 		goto fail;
-
-	old_csum = bq27441_read_byte(client, BQ27441_BLOCK_DATA_CHECKSUM);
-
-	if (old_csum != new_csum)
-		dev_info(&chip->client->dev,
-		"checksum write failed old:%d, new:%d\n", new_csum, old_csum);
-	else
-		dev_info(&chip->client->dev,
-		"checksum written old:%d, new:%d\n", new_csum, old_csum);
-
 
 	/* exit config update mode */
 	ret = bq27441_write_byte(client, BQ27441_CONTROL_1, 0x42);
@@ -519,8 +592,8 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 		msleep(1);
 	}
 
-unseal:
-	/* unseal the fuel gauge before exit */
+seal:
+	/* seal the fuel gauge before exit */
 	ret = bq27441_write_byte(client, BQ27441_CONTROL_1, 0x20);
 	if (ret < 0)
 		goto fail;
@@ -705,6 +778,12 @@ static void of_bq27441_parse_platform_data(struct i2c_client *client,
 	if (!of_property_read_u32(np, "ti,v-at-chg-term", &tmp))
 		pdata->v_at_chg_term = (unsigned long)tmp;
 
+	if (!of_property_read_u32(np, "ti,cc-gain", &tmp))
+		pdata->cc_gain = tmp;
+
+	if (!of_property_read_u32(np, "ti,cc-delta", &tmp))
+		pdata->cc_delta = tmp;
+
 	if (!of_property_read_string(np, "ti,tz-name", &pstr))
 		pdata->tz_name = pstr;
 	else
@@ -756,6 +835,10 @@ static int bq27441_probe(struct i2c_client *client,
 		chip->terminate_voltage = chip->pdata->terminate_voltage;
 	if (chip->pdata->v_at_chg_term)
 		chip->v_chg_term = chip->pdata->v_at_chg_term;
+	if (chip->pdata->cc_gain)
+		chip->cc_gain = chip->pdata->cc_gain;
+	if (chip->pdata->cc_delta)
+		chip->cc_delta = chip->pdata->cc_delta;
 
 	dev_info(&client->dev, "Battery capacity is %d\n", chip->full_capacity);
 
