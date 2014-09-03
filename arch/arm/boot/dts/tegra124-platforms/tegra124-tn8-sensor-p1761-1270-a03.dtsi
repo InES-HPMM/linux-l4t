@@ -33,6 +33,10 @@
 			illuminance,resolution = "7675";
 			illuminance,max-range  = "603193.3";
 			illuminance,power-consumed = "0.09";
+			light_uncalibrated_lo = <0>;
+			light_calibrated_lo = <16>;
+			light_uncalibrated_hi = <12>;
+			light_calibrated_hi = <1636>;
 		};
 
 		ltr659@23 {
