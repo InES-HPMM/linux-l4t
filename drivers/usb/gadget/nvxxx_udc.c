@@ -132,7 +132,8 @@ struct xusb_usb2_otg_pad_config {
 };
 
 #define DEFAULT_MIN_IRQ_INTERVAL	(1000) /* 1 ms */
-static unsigned int min_irq_interval_us = DEFAULT_MIN_IRQ_INTERVAL;
+/* disable interrupt moderation to boost the performance on silicon bringup */
+static unsigned int min_irq_interval_us;
 module_param(min_irq_interval_us, uint, S_IRUGO);
 MODULE_PARM_DESC(min_irq_interval_us, "minimum irq interval in microseconds");
 
@@ -200,6 +201,9 @@ static void set_interrupt_moderation(struct NV_UDC_S *nvudc, unsigned us)
 	reg = ioread32(nvudc->mmio_reg_base + RT_IMOD);
 	reg &= ~RT_IMOD_IMODI(-1);
 	reg |= RT_IMOD_IMODI(imodi);
+	/* HW won't overwrite IMODC. Set IMODC to the new value also */
+	reg &= ~RT_IMOD_IMODC(-1);
+	reg |= RT_IMOD_IMODC(imodi);
 	iowrite32(reg, nvudc->mmio_reg_base + RT_IMOD);
 }
 
@@ -3591,13 +3595,10 @@ static int nvudc_gadget_start(struct usb_gadget *gadget,
 	if (retval)
 		goto err_unbind;
 
-	set_interrupt_moderation(nvudc, min_irq_interval_us);
-
 	nvudc->device_state = USB_STATE_ATTACHED;
 	nvudc->setup_status = WAIT_FOR_SETUP;
 
-	u_temp = RT_IMOD_IMODI(0xfa0) | RT_IMOD_IMODC(0xfa0);
-	iowrite32(u_temp, nvudc->mmio_reg_base + RT_IMOD);
+	set_interrupt_moderation(nvudc, min_irq_interval_us);
 
 	u_temp = ioread32(nvudc->mmio_reg_base + CTRL);
 	u_temp |= CTRL_IE;
@@ -3608,6 +3609,7 @@ static int nvudc_gadget_start(struct usb_gadget *gadget,
 	u_temp = u_temp & PORTHALT_MASK;
 	u_temp |= PORTHALT_STCHG_INTR_EN;
 	iowrite32(u_temp, nvudc->mmio_reg_base + PORTHALT);
+
 
 	/* Enable clock gating */
 	/* T210 WAR, Disable BLCG CORE FE */
