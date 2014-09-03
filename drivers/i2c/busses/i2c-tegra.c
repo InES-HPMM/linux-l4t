@@ -1427,8 +1427,21 @@ static struct tegra_i2c_chipdata tegra148_i2c_chipdata = {
 	.has_config_load_reg = true,
 };
 
+static struct tegra_i2c_chipdata tegra210_i2c_chipdata = {
+	.timeout_irq_occurs_before_bus_inactive = false,
+	.has_xfer_complete_interrupt = true,
+	.has_continue_xfer_support = true,
+	.has_hw_arb_support = true,
+	.has_fast_clock = false,
+	.has_clk_divisor_std_fast_mode = true,
+	.clk_divisor_std_fast_mode = 0x19,
+	.clk_divisor_fast_plus_mode = 0x10,
+	.clk_divisor_hs_mode = 2,
+	.clk_multiplier_hs_mode = 13,
+	.has_config_load_reg = true,
+};
+
 #define tegra124_i2c_chipdata tegra148_i2c_chipdata
-#define tegra210_i2c_chipdata tegra148_i2c_chipdata
 
 /* Match table for of_platform binding */
 static const struct of_device_id tegra_i2c_of_match[] = {
