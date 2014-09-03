@@ -541,10 +541,6 @@ free:
 	return ERR_PTR(err);
 }
 
-/*
- * Look up a virtual address mapping for the specified bus number.
- * If no such mapping existis, try to create one.
- */
 static void __iomem *tegra_pcie_bus_map(struct tegra_pcie *pcie,
 							unsigned int busnr)
 {
@@ -554,13 +550,7 @@ static void __iomem *tegra_pcie_bus_map(struct tegra_pcie *pcie,
 		if (bus->nr == busnr)
 			return bus->area->addr;
 
-	bus = tegra_pcie_bus_alloc(pcie, busnr);
-	if (IS_ERR(bus))
-		return NULL;
-
-	list_add_tail(&bus->list, &pcie->buses);
-
-	return bus->area->addr;
+	return NULL;
 }
 
 
@@ -714,11 +704,17 @@ static int tegra_pcie_map_irq(const struct pci_dev *dev, u8 slot, u8 pin)
 
 static void tegra_pcie_add_bus(struct pci_bus *bus)
 {
-	if (IS_ENABLED(CONFIG_PCI_MSI)) {
-		struct tegra_pcie *pcie = sys_to_pcie(bus->sysdata);
+	struct tegra_pcie_bus *tbus;
+	struct tegra_pcie *pcie = sys_to_pcie(bus->sysdata);
 
+	if (IS_ENABLED(CONFIG_PCI_MSI))
 		bus->msi = &pcie->msi.chip;
-	}
+
+	/* Allocate memory for new bus */
+	tbus = tegra_pcie_bus_alloc(pcie, bus->number);
+	if (IS_ERR(tbus))
+		return;
+	list_add_tail(&tbus->list, &pcie->buses);
 }
 
 static struct pci_bus *tegra_pcie_scan_bus(int nr,
