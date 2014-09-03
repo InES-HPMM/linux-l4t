@@ -1856,8 +1856,7 @@ long __get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 				int ret;
 				unsigned int fault_flags = 0;
 
-				if (gup_flags & FOLL_DURABLE)
-					fault_flags = FAULT_FLAG_NO_CMA;
+				fault_flags = FAULT_FLAG_NO_CMA;
 
 				/* For mlock, just skip the stack guard page. */
 				if (foll_flags & FOLL_MLOCK) {
@@ -1925,8 +1924,18 @@ long __get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 			if (IS_ERR(page))
 				return i ? i : PTR_ERR(page);
 
-			if ((gup_flags & FOLL_DURABLE) && is_cma_page(page))
+			if (is_cma_page(page)) {
+				struct page *old_page = page;
+				unsigned long timeout = jiffies + msecs_to_jiffies(8000);
+retry:
 				page = migrate_replace_cma_page(page);
+				if (old_page == page && time_before(jiffies, timeout)) {
+					cond_resched();
+					goto retry;
+				}
+			}
+
+			BUG_ON(is_cma_page(page));
 
 			if (pages) {
 				pages[i] = page;
