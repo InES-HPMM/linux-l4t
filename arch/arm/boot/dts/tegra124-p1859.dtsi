@@ -43,6 +43,7 @@
 				disp-default-out {
 					nvidia,out-max-pixclk = <3367>;
 					nvidia,dither = <TEGRA_DC_ORDERED_DITHER>;
+					nvidia,out-depth = <0>; /* let EDID set */
 				};
 			};
 		};
