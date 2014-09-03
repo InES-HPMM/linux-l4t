@@ -162,8 +162,94 @@ TRACE_EVENT(nvhost_channel_write_cmdbuf,
 	),
 
 	TP_printk("name=%s, mem_id=%08x, words=%u, offset=%d",
-	  __entry->name, __entry->mem_id,
-	  __entry->words, __entry->offset)
+		__entry->name, __entry->mem_id,
+		__entry->words, __entry->offset)
+);
+
+TRACE_EVENT(nvhost_channel_map,
+	TP_PROTO(const char *devname, int chid,
+		int num_mapped_chs),
+
+	TP_ARGS(devname, chid, num_mapped_chs),
+
+	TP_STRUCT__entry(
+		__field(const char *, devname)
+		__field(int, chid)
+		__field(int, num_mapped_chs)
+	),
+
+	TP_fast_assign(
+		__entry->devname = devname;
+		__entry->chid = chid;
+		__entry->num_mapped_chs = num_mapped_chs;
+	),
+
+	TP_printk("device=%s, channel_id=%d, num_mapped_chs=%d",
+		__entry->devname, __entry->chid, __entry->num_mapped_chs)
+);
+
+TRACE_EVENT(nvhost_channel_unmap_locked,
+	TP_PROTO(const char *devname, int chid,
+		int num_mapped_chs),
+
+	TP_ARGS(devname, chid, num_mapped_chs),
+
+	TP_STRUCT__entry(
+		__field(const char *, devname)
+		__field(int, chid)
+		__field(int, num_mapped_chs)
+	),
+
+	TP_fast_assign(
+		__entry->devname = devname;
+		__entry->chid = chid;
+		__entry->num_mapped_chs = num_mapped_chs;
+	),
+
+	TP_printk("device=%s, channel_id=%d, num_mapped_chs=%d",
+		__entry->devname, __entry->chid, __entry->num_mapped_chs)
+);
+
+TRACE_EVENT(nvhost_putchannel,
+	TP_PROTO(const char *devname, int refcount, int chid),
+
+	TP_ARGS(devname, refcount, chid),
+
+	TP_STRUCT__entry(
+		__field(const char *, devname)
+		__field(int, refcount)
+		__field(int, chid)
+	),
+
+	TP_fast_assign(
+		__entry->devname = devname;
+		__entry->refcount = refcount;
+		__entry->chid = chid;
+	),
+
+	TP_printk("dev_name=%s, refcount=%d, chid=%d",
+		__entry->devname, __entry->refcount, __entry->chid)
+);
+
+TRACE_EVENT(nvhost_getchannel,
+	TP_PROTO(const char *devname, int refcount, int chid),
+
+	TP_ARGS(devname, refcount, chid),
+
+	TP_STRUCT__entry(
+		__field(const char *, devname)
+		__field(int, refcount)
+		__field(int, chid)
+	),
+
+	TP_fast_assign(
+		__entry->devname = devname;
+		__entry->refcount = refcount;
+		__entry->chid = chid;
+	),
+
+	TP_printk("dev_name=%s, refcount=%d, chid=%d",
+		__entry->devname, __entry->refcount, __entry->chid)
 );
 
 TRACE_EVENT(nvhost_cdma_end,
