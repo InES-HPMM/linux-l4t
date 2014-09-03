@@ -22,6 +22,8 @@
 #include <asm/page.h>
 #include <asm/dma-contiguous.h>
 
+#include <linux/buffer_head.h>
+#include <linux/delay.h>
 #include <linux/memblock.h>
 #include <linux/err.h>
 #include <linux/mm.h>
@@ -367,17 +369,33 @@ struct page *dma_alloc_at_from_contiguous(struct device *dev, int count,
 	mutex_lock(&cma_mutex);
 
 	for (;;) {
+		unsigned long timeout = jiffies + msecs_to_jiffies(8000);
+		int retries = 0;
+
 		pageno = bitmap_find_next_zero_area(cma->bitmap, cma->count,
 						    start, count, mask);
 		if (pageno >= cma->count || (start && start != pageno))
 			break;
 
 		pfn = cma->base_pfn + pageno;
+retry:
 		ret = alloc_contig_range(pfn, pfn + count, MIGRATE_CMA);
 		if (ret == 0) {
 			bitmap_set(cma->bitmap, pageno, count);
 			page = pfn_to_page(pfn);
 			break;
+		} else if (start && time_before(jiffies, timeout)) {
+			/* Possible migration contention from
+			 * __get_user_pages(). Retry after a bit of sleep.
+			 */
+			if (retries >= 5) {
+				msleep(retries > 10 ? 3 : 1);
+				invalidate_bh_lrus();
+			} else {
+				cond_resched();
+			}
+			retries++;
+			goto retry;
 		} else if (ret != -EBUSY || start) {
 			break;
 		}
