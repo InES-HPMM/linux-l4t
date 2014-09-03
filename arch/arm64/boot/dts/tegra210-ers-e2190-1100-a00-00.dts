@@ -51,6 +51,10 @@
 		bootargs ="mem=1024M@2048M console=ttyS0,115200 earlyprintk=uart8250-32bit,0x70006000";
         };
 
+	pmc@7000e400 {
+		nvidia,invert-interrupt;
+	};
+
 	host1x {
 		/* tegradc.0 */
 		dc@54200000 {
