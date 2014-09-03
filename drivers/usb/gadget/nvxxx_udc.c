@@ -4669,7 +4669,7 @@ static void t210_program_ss_pad()
 			RX_DFE(~0), RX_DFE(0xc0077f1f));
 
 	tegra_usb_pad_reg_update(UPHY_USB3_PAD0_ECTL_4,
-			RX_CDR_CTRL(~0), RX_DFE(0x1c7));
+			RX_CDR_CTRL(~0), RX_CDR_CTRL(0x1c7));
 
 	tegra_usb_pad_reg_update(UPHY_USB3_PAD0_ECTL_6,
 			RX_EQ_CTRL_H(~0), RX_EQ_CTRL_H(0xfcf01368));
