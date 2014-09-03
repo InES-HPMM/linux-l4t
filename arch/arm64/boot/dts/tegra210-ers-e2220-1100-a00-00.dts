@@ -33,6 +33,7 @@
 #include "tegra210-platforms/tegra210-comms.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
 #include "panel-j-1440-810-5-8.dtsi"
+#include "panel-a-wuxga-8-0.dtsi"
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-camera-e2249-1002-a00.dtsi"
@@ -134,6 +135,12 @@
 			nvidia,dsi-controller-vs = <DSI_VS_1>;
 			status = "okay";
 			panel-j-1440-810-5-8 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
+				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
+			};
+			panel-a-wuxga-8-0 {
 				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
