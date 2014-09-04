@@ -26,16 +26,6 @@
 #include "../../../arch/arm/mach-tegra/board.h"
 #include "../../../arch/arm/mach-tegra/common.h"
 
-struct tegra_iommu_mapping {
-	dma_addr_t base;
-	size_t size;
-	int asid;
-	struct dma_iommu_mapping *map;
-};
-
-static struct dma_iommu_mapping *__tegra_smmu_map_init_dev(struct device *dev,
-					   struct tegra_iommu_mapping *info);
-
 static struct iommu_linear_map tegra_fb_linear_map[16]; /* Terminated with 0 */
 
 #ifdef CONFIG_TEGRA_BPMP
@@ -313,79 +303,6 @@ u64 tegra_smmu_fixup_swgids(struct device *dev, struct iommu_linear_map **map)
 	return SWGIDS_ERROR_CODE;
 }
 EXPORT_SYMBOL(tegra_smmu_fixup_swgids);
-
-#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
-
-#define IOVA_SZ(strt) ((u32)~0 - strt)
-
-#define DC_START  0x00010000
-#define GPU_START 0x00100000
-
-static struct tegra_iommu_mapping smmu_default_map[] = {
-	[SYSTEM_DEFAULT] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
-	[SYSTEM_PROTECTED] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
-	[PPCS1_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
-	[SYSTEM_DC] = {DC_START, IOVA_SZ(DC_START)},
-	[SYSTEM_DCB] = {DC_START, IOVA_SZ(DC_START)},
-	/* Non-zero base to account for gk20a driver's assumptions */
-	[SYSTEM_GK20A] = {GPU_START, IOVA_SZ(GPU_START)},
-	[SDMMC1A_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
-	[SDMMC2A_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
-	[SDMMC3A_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
-	[SDMMC4A_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
-#if defined(CONFIG_ARCH_TEGRA_APE)
-	[SYSTEM_ADSP] = {TEGRA_APE_DRAM_MAP2_BASE, TEGRA_APE_DRAM_MAP2_SIZE},
-#endif
-	[AFI_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
-};
-
-/* XXX: Remove this function once all client devices moved to DT */
-static struct dma_iommu_mapping *__tegra_smmu_map_init_dev(struct device *dev,
-					   struct tegra_iommu_mapping *info)
-{
-	struct dma_iommu_mapping *map;
-
-	map = arm_iommu_create_mapping(&platform_bus_type,
-				       info->base, info->size, 0);
-	if (IS_ERR(map)) {
-		dev_err(dev, "%s: Failed create IOVA map for ASID[%d]\n",
-			__func__, info->asid);
-		return NULL;
-	}
-
-	BUG_ON(cmpxchg(&info->map, NULL, map));
-	dev_info(dev, "Created a new map %p(asid=%d)\n", map, info->asid);
-	return map;
-}
-
-struct dma_iommu_mapping *tegra_smmu_map_init_dev(struct device *dev,
-						  u64 swgids)
-{
-	int asid;
-	struct tegra_iommu_mapping *info;
-
-	BUG_ON(_tegra_smmu_get_asid(swgids) >= ARRAY_SIZE(smmu_default_map));
-
-	asid = _tegra_smmu_get_asid(swgids);
-	info = &smmu_default_map[asid];
-	info->asid = asid;
-	if (!info->size)
-		return NULL;
-
-	if (info->map) {
-		dev_info(dev, "Use an existing map %p(asid=%d)\n",
-			 info->map, info->asid);
-		return info->map;
-	}
-
-	return __tegra_smmu_map_init_dev(dev, info);
-}
-
-#else
-static inline void tegra_smmu_map_init(struct platform_device *pdev)
-{
-}
-#endif
 
 static int __init tegra_smmu_init(void)
 {
