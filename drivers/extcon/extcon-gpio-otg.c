@@ -68,6 +68,23 @@ static void extcon_otg_work(struct work_struct *work)
 			     work);
 	int new_cable_state = 0;
 	int ret, vbus;
+	int vbus_state;
+
+	if (!data->vbus_channel) {
+		data->vbus_channel = iio_channel_get(data->dev, "vbus");
+		if (IS_ERR(data->vbus_channel)) {
+			ret = PTR_ERR(data->vbus_channel);
+			dev_dbg(data->dev, "Failed to get vbus channel: %d\n",
+				ret);
+			data->vbus_channel = NULL;
+			if (ret == -EPROBE_DEFER)
+				schedule_delayed_work(&data->work,
+					msecs_to_jiffies(1000));
+			return;
+		} else {
+			dev_info(data->dev, "IIO channel get success\n");
+		}
+	}
 
 	id_state = gpio_get_value_cansleep(data->pdata->id_gpio);
 	id_state &= 0x1;
@@ -77,14 +94,18 @@ static void extcon_otg_work(struct work_struct *work)
 		goto done;
 	}
 
-	ret = iio_read_channel_raw(data->vbus_channel, &vbus);
+	ret = iio_read_channel_processed(data->vbus_channel, &vbus);
 	if (ret < 0) {
 		dev_err(data->dev, "Not able to read VBUS IIO channel: %d\n",
 			ret);
 		goto done;
 	}
-	dev_info(data->dev, "vbus_voltage = %dmV\n", vbus);
-	if (vbus > data->pdata->vbus_presence_threshold)
+	dev_info(data->dev, "vbus_voltage = %dmV , vbus_threshold = %dmV\n",
+			vbus, data->pdata->vbus_presence_threshold);
+
+	vbus_state = gpio_get_value_cansleep(data->pdata->vbus_gpio);
+	vbus_state &= 0x1;
+	if (!vbus_state)
 		new_cable_state = 1;
 
 done:
@@ -194,9 +215,11 @@ static int extcon_otg_probe(struct platform_device *pdev)
 	extcon_data->vbus_channel = iio_channel_get(&pdev->dev, "vbus");
 	if (IS_ERR(extcon_data->vbus_channel)) {
 		ret = PTR_ERR(extcon_data->vbus_channel);
-		dev_err(&pdev->dev, "Failed to get vbus channel: %d\n",
+		dev_dbg(&pdev->dev, "Failed to get vbus channel: %d\n",
 			ret);
-		goto free_edev;
+		extcon_data->vbus_channel = NULL;
+	} else {
+		dev_info(extcon_data->dev, "IIO channel get success\n");
 	}
 
 	INIT_DELAYED_WORK(&extcon_data->work, extcon_otg_work);
@@ -237,15 +260,20 @@ static int extcon_otg_probe(struct platform_device *pdev)
 	device_set_wakeup_capable(extcon_data->dev, true);
 
 	/* Perform initial detection */
-	extcon_otg_work(&extcon_data->work.work);
+	if (!extcon_data->vbus_channel) {
+		extcon_set_state(&extcon_data->edev, 0);
+		schedule_delayed_work(&extcon_data->work,
+				msecs_to_jiffies(1000));
+	} else {
+		extcon_otg_work(&extcon_data->work.work);
+	}
+
 	return 0;
 
 free_vbus_irq:
 	free_irq(extcon_data->vbus_irq, extcon_data);
 free_iio:
 	iio_channel_release(extcon_data->vbus_channel);
-free_edev:
-	extcon_dev_unregister(&extcon_data->edev);
 	return ret;
 }
 
@@ -309,7 +337,18 @@ static struct platform_driver extcon_otg_driver = {
 	},
 };
 
-module_platform_driver(extcon_otg_driver);
+static int __init gpio_extcon_otg_driver_init(void)
+{
+	return platform_driver_register(&extcon_otg_driver);
+}
+subsys_initcall_sync(gpio_extcon_otg_driver_init);
+
+static void __exit gpio_extcon_otg_driver_exit(void)
+{
+	platform_driver_unregister(&extcon_otg_driver);
+}
+module_exit(gpio_extcon_otg_driver_exit);
+
 
 MODULE_AUTHOR("Laxman Dewangan <ldewangan@nvidia.com>");
 MODULE_DESCRIPTION("GPIO/IIO channel based OTG extcon driver");
