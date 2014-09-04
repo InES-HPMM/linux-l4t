@@ -460,6 +460,7 @@ static void utmi_phy_pad(bool enable)
 	}
 #else
 	unsigned long val;
+	int port, xhci_port_present = 0;
 	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
 
 	if (enable) {
@@ -474,10 +475,19 @@ static void utmi_phy_pad(bool enable)
 			, PD_MASK , 0);
 #endif
 	} else {
+
+		val = tegra_usb_pad_reg_read(XUSB_PADCTL_USB2_PAD_MUX_0);
+		for (port = 0; port < XUSB_UTMI_COUNT; port++) {
+			if ((val & PAD_PORT_MASK(port)) == PAD_PORT_XUSB(port))
+				xhci_port_present = 1;
+		}
+
 		val = readl(pad_base + UTMIP_BIAS_CFG0);
 		val |= UTMIP_OTGPD;
-#if !defined(CONFIG_TEGRA_XHCI_ENABLE_CDP_PORT)
 		val |= UTMIP_BIASPD;
+#if defined(CONFIG_TEGRA_XHCI_ENABLE_CDP_PORT)
+		if (xhci_port_present)	/* xhci holds atleast one utmi port */
+			val &= ~UTMIP_BIASPD;
 #endif
 		val &= ~(UTMIP_HSSQUELCH_LEVEL(~0) | UTMIP_HSDISCON_LEVEL(~0) |
 			UTMIP_HSDISCON_LEVEL_MSB);
