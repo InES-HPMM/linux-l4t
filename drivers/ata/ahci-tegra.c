@@ -173,6 +173,7 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define CLK_RST_CONTROLLER_PLLE_MISC_0_VALUE	0x00070300
 #define CLK_RST_CONTROLLER_PLLE_BASE_0		0xe8
 #define PLLE_ENABLE				(1 << 30)
+#define PLLE_ENABLE_T210			(1 << 31)
 #define CLK_RST_CONTROLLER_PLLE_AUX_0		0x48c
 #define CLK_RST_CONTROLLER_PLLE_AUX_0_MASK	(1 << 1)
 
@@ -1045,9 +1046,9 @@ static void tegra_ahci_uphy_init(void)
 	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
 
 	/* Lockdet step */
-	val = xusb_readl(XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0);
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
 	val |= PLL0_ENABLE;
-	xusb_writel(val, XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0);
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
 
 	udelay(20);
 
@@ -1063,9 +1064,9 @@ static void tegra_ahci_uphy_init(void)
 								__func__, val);
 
 	/* Misc Programing including Lane AUX IDDQ removal */
-	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+	val = xusb_readl(XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0);
 	val |= (AUX_RX_MODE_OVRD | AUX_RX_IDLE_EN);
-	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+	xusb_writel(val, XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0);
 
 	val = xusb_readl(XUSB_PADCTL_ELPG_PROGRAM_1_0);
 	val &= ~(AUX_MUX_LP0_VCORE_DOWN | AUX_MUX_LP0_CLAMP_EN_EARLY
@@ -2177,7 +2178,10 @@ static void tegra_ahci_pad_config(void)
 			CLK_RST_CONTROLLER_PLLE_MISC_0);
 
 	val = clk_readl(CLK_RST_CONTROLLER_PLLE_BASE_0);
-	val |= PLLE_ENABLE;
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA21)
+		val |= PLLE_ENABLE_T210;
+	else
+		val |= PLLE_ENABLE;
 	clk_writel(val, CLK_RST_CONTROLLER_PLLE_BASE_0);
 
 }
