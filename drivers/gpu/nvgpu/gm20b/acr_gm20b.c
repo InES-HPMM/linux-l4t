@@ -400,6 +400,11 @@ int pmu_populate_loader_cfg(struct gk20a *g,
 	g->ops.pmu_ver.set_pmu_cmdline_args_cpu_freq(pmu,
 				clk_get_rate(platform->clk[1]));
 	g->ops.pmu_ver.set_pmu_cmdline_args_secure_mode(pmu, 1);
+	g->ops.pmu_ver.set_pmu_cmdline_args_trace_size(
+		pmu, GK20A_PMU_TRACE_BUFSIZE);
+	g->ops.pmu_ver.set_pmu_cmdline_args_trace_dma_base(pmu);
+	g->ops.pmu_ver.set_pmu_cmdline_args_trace_dma_idx(
+		pmu, GK20A_PMU_DMAIDX_VIRT);
 	*p_bl_gen_desc_size = sizeof(p_bl_gen_desc->loader_cfg);
 	g->acr.pmu_args = addr_args;
 	return 0;
@@ -831,7 +836,7 @@ int gm20b_bootstrap_hs_flcn(struct gk20a *g)
 	struct vm_gk20a *vm = &mm->pmu.vm;
 	struct device *d = dev_from_gk20a(g);
 	int i, err = 0;
-	struct sg_table *sgt_pmu_ucode;
+	struct sg_table *sgt_pmu_ucode = NULL;
 	dma_addr_t iova;
 	u64 *pacr_ucode_cpuva = NULL, pacr_ucode_pmu_va, *acr_dmem;
 	u32 img_size_in_bytes;
@@ -947,6 +952,7 @@ int gm20b_bootstrap_hs_flcn(struct gk20a *g)
 			((acr_ucode_header_t210_load[2]) >> 8);
 		bl_dmem_desc->data_size = acr_ucode_header_t210_load[3];
 		gk20a_free_sgtable(&sgt_pmu_ucode);
+		sgt_pmu_ucode = NULL;
 	}
 	status = pmu_exec_gen_bl(g, bl_dmem_desc, 1);
 	if (status != 0) {
@@ -959,7 +965,8 @@ err_free_ucode_map:
 			img_size_in_bytes, gk20a_mem_flag_none);
 	acr->acr_ucode.pmu_va = 0;
 err_free_ucode_sgt:
-	gk20a_free_sgtable(&sgt_pmu_ucode);
+	if (sgt_pmu_ucode)
+		gk20a_free_sgtable(&sgt_pmu_ucode);
 err_free_acr_buf:
 	dma_free_coherent(d, img_size_in_bytes,
 			pacr_ucode_cpuva, iova);
@@ -1132,7 +1139,7 @@ int pmu_exec_gen_bl(struct gk20a *g, void *desc, u8 b_wait_for_halt)
 	struct vm_gk20a *vm = &mm->pmu.vm;
 	struct device *d = dev_from_gk20a(g);
 	int i, err = 0;
-	struct sg_table *sgt_pmu_ucode;
+	struct sg_table *sgt_pmu_ucode = NULL;
 	dma_addr_t iova;
 	u32 bl_sz;
 	void *bl_cpuva;
@@ -1203,6 +1210,7 @@ int pmu_exec_gen_bl(struct gk20a *g, void *desc, u8 b_wait_for_halt)
 			gk20a_mem_wr32(bl_cpuva, i, pmu_bl_gm10x[i]);
 		gm20b_dbg_pmu("Copied bl ucode to bl_cpuva\n");
 		gk20a_free_sgtable(&sgt_pmu_ucode);
+		sgt_pmu_ucode = NULL;
 	}
 	/*
 	 * Disable interrupts to avoid kernel hitting breakpoint due
@@ -1240,7 +1248,8 @@ err_unmap_bl:
 	gk20a_gmmu_unmap(vm, acr->hsbl_ucode.pmu_va,
 			acr->hsbl_ucode.size, gk20a_mem_flag_none);
 err_free_ucode_sgt:
-	gk20a_free_sgtable(&sgt_pmu_ucode);
+	if (sgt_pmu_ucode)
+		gk20a_free_sgtable(&sgt_pmu_ucode);
 err_free_cpu_va:
 	dma_free_attrs(d, acr->hsbl_ucode.size,
 			acr->hsbl_ucode.cpuva, acr->hsbl_ucode.iova, &attrs);

@@ -94,6 +94,7 @@ struct dvfs_rail {
 	bool resolving_to;
 	bool rate_set;
 	bool dt_reg_fixed;
+	bool dt_reg_pwm;
 
 	struct device_node *dt_node; /* device tree rail node*/
 	struct list_head node;  /* node in dvfs_rail_list */

@@ -533,7 +533,7 @@ static int max77620_probe(struct i2c_client *client,
 	max77620_top_irq_chip.pre_post_irq_data = chip;
 
 	ret = regmap_add_irq_chip(chip->rmap[MAX77620_PWR_SLAVE],
-		chip->chip_irq, IRQF_ONESHOT, chip->irq_base,
+		chip->chip_irq, IRQF_ONESHOT | IRQF_SHARED, chip->irq_base,
 		&max77620_top_irq_chip, &chip->top_irq_data);
 	if (ret < 0) {
 		dev_err(chip->dev, "Failed to add top irq_chip %d\n", ret);

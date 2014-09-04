@@ -2269,7 +2269,10 @@ static void gk20a_gr_destroy_ctx_buffer(struct platform_device *pdev,
 					struct gr_ctx_buffer_desc *desc)
 {
 	struct device *dev = &pdev->dev;
-	gk20a_free_sgtable(&desc->sgt);
+	if (!desc)
+		return;
+	if (desc->sgt)
+		gk20a_free_sgtable(&desc->sgt);
 	dma_free_attrs(dev, desc->size, desc->pages,
 		       desc->iova, &desc->attrs);
 }
@@ -4246,10 +4249,6 @@ static int gk20a_init_gr_setup_hw(struct gk20a *g)
 	if (g->ops.gr.init_gpc_mmu)
 		g->ops.gr.init_gpc_mmu(g);
 
-	/* slcg prod values */
-	g->ops.clock_gating.slcg_gr_load_gating_prod(g, g->slcg_enabled);
-	g->ops.clock_gating.slcg_perf_load_gating_prod(g, g->slcg_enabled);
-
 	/* init mmu debug buffer */
 	addr = NV_MC_SMMU_VADDR_TRANSLATE(gr->mmu_wr_mem.iova);
 	addr_lo = u64_lo32(addr);
@@ -4280,9 +4279,6 @@ static int gk20a_init_gr_setup_hw(struct gk20a *g)
 	gk20a_writel(g, gr_gpc0_ppc0_pes_vsc_strem_r(), data);
 
 	gr_gk20a_zcull_init_hw(g, gr);
-
-	g->ops.clock_gating.blcg_gr_load_gating_prod(g, g->blcg_enabled);
-	g->ops.clock_gating.pg_gr_load_gating_prod(g, true);
 
 	if (g->elcg_enabled) {
 		gr_gk20a_init_elcg_mode(g, ELCG_AUTO, ENGINE_GR_GK20A);
@@ -4425,6 +4421,19 @@ static int gk20a_init_gr_prepare(struct gk20a *g)
 	gk20a_reset(g, mc_enable_pgraph_enabled_f()
 			| mc_enable_blg_enabled_f()
 			| mc_enable_perfmon_enabled_f());
+
+	/* slcg prod values */
+	g->ops.clock_gating.slcg_gr_load_gating_prod(g, g->slcg_enabled);
+	if (g->ops.clock_gating.slcg_ctxsw_firmware_load_gating_prod)
+		g->ops.clock_gating.slcg_ctxsw_firmware_load_gating_prod(g,
+				g->slcg_enabled);
+	g->ops.clock_gating.slcg_perf_load_gating_prod(g, g->slcg_enabled);
+
+	g->ops.clock_gating.blcg_gr_load_gating_prod(g, g->blcg_enabled);
+	if (g->ops.clock_gating.blcg_ctxsw_firmware_load_gating_prod)
+		g->ops.clock_gating.blcg_ctxsw_firmware_load_gating_prod(g,
+				g->blcg_enabled);
+	g->ops.clock_gating.pg_gr_load_gating_prod(g, true);
 
 	/* enable fifo access */
 	gk20a_writel(g, gr_gpfifo_ctl_r(),

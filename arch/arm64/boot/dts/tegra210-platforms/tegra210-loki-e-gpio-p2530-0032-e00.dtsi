@@ -87,7 +87,6 @@
 				TEGRA_GPIO(CC, 5)
 				>;
 			gpio-output-high = <
-				TEGRA_GPIO(V, 0)
 				TEGRA_GPIO(H, 1)
 				>;
 		};

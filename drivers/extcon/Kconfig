@@ -28,6 +28,12 @@ config EXTCON_GPIO
 	  Say Y here to enable GPIO based extcon support. Note that GPIO
 	  extcon supports single state per extcon instance.
 
+config EXTCON_GPIO_OTG
+	tristate "GPIO/IIO channel based OTG extcon support"
+	depends on GPIOLIB && IIO
+	help
+	  Say Y here to enable GPIO/IIO channel based extcon support.
+
 config EXTCON_ADC_JACK
 	tristate "ADC Jack extcon support"
 	depends on IIO

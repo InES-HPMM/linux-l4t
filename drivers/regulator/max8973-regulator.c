@@ -427,10 +427,16 @@ static int max8973_init_dcdc(struct max8973_chip *max,
 		return ret;
 	}
 
-	/* If external control is enabled then disable EN bit */
+	/* MAX8973: EN pin is ORed with EN bit.
+	 * MAX77621: EN pin is ANDed with shutdown.
+	 */
 	if (max->enable_external_control) {
+		int en_bit = 0;
+		if (max->id == MAX77621)
+			en_bit = MAX8973_VOUT_ENABLE;
+
 		ret = regmap_update_bits(max->regmap, MAX8973_VOUT,
-						MAX8973_VOUT_ENABLE, 0);
+					MAX8973_VOUT_ENABLE, en_bit);
 		if (ret < 0)
 			dev_err(max->dev, "register %d update failed, err = %d",
 				MAX8973_VOUT, ret);
@@ -483,9 +489,9 @@ static int max8973_thermal_init(struct max8973_chip *mchip)
 	}
 
 	ret = request_threaded_irq(mchip->irq, NULL, max8973_thermal_irq,
-			IRQF_ONESHOT, dev_name(mchip->dev), mchip);
+			IRQF_ONESHOT | IRQF_SHARED, dev_name(mchip->dev), mchip);
 	if (ret < 0) {
-		dev_err(mchip->dev, "request irq %d failed: %dn",
+		dev_err(mchip->dev, "request irq %d failed: %d\n",
 			mchip->irq, ret);
 		goto fail;
 	}
@@ -567,6 +573,11 @@ static int max8973_probe(struct i2c_client *client,
 		dev_err(&client->dev, "No Platform data");
 		return -EIO;
 	}
+
+	/* If GPIOs number returned as EPROBE_DEFER then defer probe. */
+	if ((pdata->enable_gpio == -EPROBE_DEFER) ||
+		(pdata->dvs_gpio == -EPROBE_DEFER))
+		return -EPROBE_DEFER;
 
 	max = devm_kzalloc(&client->dev, sizeof(*max), GFP_KERNEL);
 	if (!max)

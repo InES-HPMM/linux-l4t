@@ -35,11 +35,12 @@
 #include "panel-a-wuxga-8-0.dtsi"
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-e2190-thermal-zone.dtsi"
 
 / {
 	model = "e2190";
 	compatible = "nvidia,e2190", "nvidia,tegra210";
-	nvidia,boardids = "2190:1100:00;2174:1101:00";
+	nvidia,boardids = "2190:1100:00;2174:1102:00";
 	nvidia,dtsfilename = __FILE__;
 	nvidia,proc-boardid = "2190:1100:00";
 	nvidia,pmu-boardid = "2174:1102:00";
@@ -49,6 +50,10 @@
 	chosen {
 		bootargs ="mem=1024M@2048M console=ttyS0,115200 earlyprintk=uart8250-32bit,0x70006000";
         };
+
+	pmc@7000e400 {
+		nvidia,invert-interrupt;
+	};
 
 	host1x {
 		/* tegradc.0 */
@@ -73,7 +78,7 @@
 			nvidia,dsi-controller-vs = <DSI_VS_1>;
 			status = "okay";
 			panel-a-wuxga-8-0 {
-				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
 			};
 		};
@@ -226,6 +231,24 @@
 			name-prefix = "y";
 		};
 	};
+	memory@80000000 {
+		device_type = "memory";
+		reg = < 0x0 0x80000000 0x0 0x80000000>;
+	};
+
+	thermal-zones {
+		PMIC-Die-max77620 {
+			thermal-sensors = <&max77620>;
+		};
+
+		PMIC-Die-max77621-0 {
+			thermal-sensors = <&cpu_max77621_reg>;
+		};
+
+		PMIC-Die-max77621-1 {
+			thermal-sensors = <&gpu_max77621_reg>;
+		};
+	};
 
         sata@70020000 {
                 status = "okay";
@@ -319,5 +342,9 @@
                 #extcon-cells = <1>;
                 status = "okay";
         };
+
+	i2c@7000d000 {
+		clock-frequency = <1000000>;
+	};
 
 };

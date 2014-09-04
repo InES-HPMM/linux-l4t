@@ -25,6 +25,7 @@
 #include "tegra210-ers-common.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-p2530-common.dtsi"
 #include "tegra210-platforms/tegra210-loki-power-tree-p2530-0999-e00.dtsi"
+#include "tegra210-platforms/tegra210-ers-sensor-e2160-1000-a00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-gpio-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-pinmux-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-comms.dtsi"
@@ -36,6 +37,7 @@
 #include "tegra210-platforms/tegra210-loki-e-sensor-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-thermal-fan-est.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-camera-p2530-0032-e00.dtsi"
+#include "tegra210-platforms/tegra210-loki-e-keys-p2530-0032-e00.dtsi"
 
 / {
 	model = "loki_e_lte";
@@ -92,7 +94,6 @@
 			};
 		};
 	};
-
 
 	spi@7000d400 {
 		status = "okay";
@@ -225,5 +226,12 @@
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "okay";
 	};
+
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+		pwms = <&tegra_pwm 0 29334>;
+	};
+
 };
 

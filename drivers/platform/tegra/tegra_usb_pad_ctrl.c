@@ -580,15 +580,16 @@ static void get_usb_calib_data(int pad, u32 *hs_curr_level_pad,
 	 * set HS_CURR_LEVEL (PAD1)	= usb_calib0[20:15]
 	 */
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
-	u32 usb_calib_exit = tegra_fuse_readl(FUSE_USB_CALIB_EXT_0);
+	u32 usb_calib_ext = tegra_fuse_readl(FUSE_USB_CALIB_EXT_0);
+	/* RPD_CTRL			= USB_CALIB_EXT[4:0] */
 
 	pr_info("usb_calib0 = 0x%08x\n", usb_calib0);
-	pr_info("usb_calib_exit = 0x%08x\n", usb_calib_exit);
+	pr_info("usb_calib_ext = 0x%08x\n", usb_calib_ext);
 
 	*hs_curr_level_pad = (usb_calib0 >>
 		((!pad) ? 0 : ((6 * (pad + 1)) - 1))) & 0x3f;
 	*term_range_adj = (usb_calib0 >> 7) & 0xf;
-	*rpd_ctl = (usb_calib_exit >> 7) & 0xf;
+	*rpd_ctl = (usb_calib_ext >> 0) & 0x1f;
 	*hs_iref_cap = 0;
 #else
 	pr_info("usb_calib0 = 0x%08x\n", usb_calib0);

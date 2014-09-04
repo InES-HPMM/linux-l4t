@@ -209,10 +209,10 @@ bool tegra_is_dpd_mode = false;
 bool tegra_dvfs_is_dfll_bypass(void)
 {
 #ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
-	return true;
-#else
-	return false;
+	if (tegra_cpu_rail->dt_reg_pwm)
+		return true;
 #endif
+	return false;
 }
 
 static inline unsigned int is_slow_cluster(void)
