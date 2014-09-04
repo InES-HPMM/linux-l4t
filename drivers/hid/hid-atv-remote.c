@@ -306,7 +306,7 @@ static int mSBC_dev_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int mSBC_dev_read(struct file *file, char __user *buffer,
+static ssize_t mSBC_dev_read(struct file *file, char __user *buffer,
 			  size_t count, loff_t *ppos)
 {
 	size_t bytes_left = raw_mSBC_index - *ppos;
@@ -676,7 +676,7 @@ static int snd_atvr_decode_8KHz_mSBC_packet(
 		num_bytes--;
 	}
 	if (num_bytes != mSBC_bytes_in_packet[atvr_snd->packet_in_frame]) {
-		pr_err("%s: received %d audio bytes but expected %d bytes\n",
+		pr_err("%s: received %zd audio bytes but expected %d bytes\n",
 		       __func__, num_bytes,
 		       mSBC_bytes_in_packet[atvr_snd->packet_in_frame]);
 		return 0;
