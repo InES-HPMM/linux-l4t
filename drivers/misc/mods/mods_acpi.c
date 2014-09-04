@@ -19,6 +19,7 @@
 
 #include "mods_internal.h"
 
+#include <linux/acpi.h>
 #include <acpi/acpi.h>
 #include <acpi/acpi_bus.h>
 
@@ -167,7 +168,6 @@ static int mods_eval_acpi_method(struct file		      *pfile,
 	acpi_handle acpi_method_handler = NULL;
 
 	if (pdevice) {
-#ifdef DEVICE_ACPI_HANDLE
 		unsigned int devfn;
 		struct pci_dev *dev;
 
@@ -183,12 +183,7 @@ static int mods_eval_acpi_method(struct file		      *pfile,
 			mods_error_printk("ACPI: PCI device not found\n");
 			return -EINVAL;
 		}
-		acpi_method_handler = DEVICE_ACPI_HANDLE(&dev->dev);
-#else
-		mods_error_printk(
-			"this kernel does not support per-device ACPI calls\n");
-		return -EINVAL;
-#endif
+		acpi_method_handler = MODS_ACPI_HANDLE(&dev->dev);
 	} else {
 		mods_debug_printk(DEBUG_ACPI, "ACPI %s\n", p->method_name);
 		mods_acpi_handle_init(p->method_name, &acpi_method_handler);
@@ -277,12 +272,6 @@ int esc_mods_eval_dev_acpi_method(struct file *pfile,
 
 int esc_mods_acpi_get_ddc(struct file *pfile, struct MODS_ACPI_GET_DDC *p)
 {
-#if !defined(DEVICE_ACPI_HANDLE)
-	mods_error_printk(
-		"this kernel does not support per-device ACPI calls\n");
-	return -EINVAL;
-#else
-
 	acpi_status status;
 	struct acpi_device *device = NULL;
 	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
@@ -308,7 +297,7 @@ int esc_mods_acpi_get_ddc(struct file *pfile, struct MODS_ACPI_GET_DDC *p)
 			mods_error_printk("ACPI: PCI device not found\n");
 			return -EINVAL;
 		}
-		dev_handle = DEVICE_ACPI_HANDLE(&dev->dev);
+		dev_handle = MODS_ACPI_HANDLE(&dev->dev);
 	}
 	if (!dev_handle) {
 		mods_debug_printk(DEBUG_ACPI,
@@ -413,5 +402,4 @@ int esc_mods_acpi_get_ddc(struct file *pfile, struct MODS_ACPI_GET_DDC *p)
 
 	kfree(output.pointer);
 	return OK;
-#endif
 }

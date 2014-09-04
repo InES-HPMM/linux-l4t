@@ -282,6 +282,11 @@ struct mods_priv {
 #else
 #define MODS_ACPI_WALK_NAMESPACE acpi_walk_namespace
 #endif
+#ifdef MODS_HAS_NEW_ACPI_HANDLE
+#define MODS_ACPI_HANDLE(dev) ACPI_HANDLE(dev)
+#else
+#define MODS_ACPI_HANDLE(dev) DEVICE_ACPI_HANDLE(dev)
+#endif
 
 /* FILE */
 #define MODS_PRIVATE_DATA(var, fp) \
