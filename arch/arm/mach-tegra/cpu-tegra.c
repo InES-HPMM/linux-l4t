@@ -726,9 +726,14 @@ int tegra_cluster_switch(struct clk *cpu_clk, struct clk *new_clk)
 {
 	int ret;
 
+	/* Order hotplug lock before cpufreq lock. Deadlock otherwise. */
+	get_online_cpus();
+
 	mutex_lock(&tegra_cpu_lock);
 	ret = tegra_cluster_switch_locked(cpu_clk, new_clk);
 	mutex_unlock(&tegra_cpu_lock);
+
+	put_online_cpus();
 
 	return ret;
 }

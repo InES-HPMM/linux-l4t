@@ -15,6 +15,7 @@
  */
 
 #include <linux/compiler.h>
+#include <linux/cpu.h>
 #include <linux/cpu_pm.h>
 #include <linux/debugfs.h>
 #include <linux/init.h>
@@ -97,6 +98,7 @@ int unregister_cluster_switch_notifier(struct notifier_block *notifier)
 						notifier);
 }
 
+/* Must be called with the hotplug lock held */
 static void switch_cluster(enum cluster val)
 {
 	struct cpumask mask;
@@ -145,6 +147,16 @@ static void switch_cluster(enum cluster val)
 	mutex_unlock(&cluster_switch_lock);
 }
 
+/* Synchronizes cluster switch across hotplug explicitly */
+static void switch_cluster_hotplug_sync(enum cluster val)
+{
+	get_online_cpus();
+
+	switch_cluster(val);
+
+	put_online_cpus();
+}
+
 int tegra_cluster_control(unsigned int us, unsigned int flags)
 {
 	int cluster_flag = flags & TEGRA_POWER_CLUSTER_MASK;
@@ -164,7 +176,7 @@ static int cluster_set(void *data, u64 val)
 		return -EINVAL;
 
 	if (val != is_slow_cluster())
-		switch_cluster(val);
+		switch_cluster_hotplug_sync(val);
 
 	return 0;
 }
