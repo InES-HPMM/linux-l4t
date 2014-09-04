@@ -283,56 +283,6 @@ static size_t tegra_smmu_get_offset(int id)
 	BUG();
 }
 
-/*
- * FIXME: right now this static mapping is enough but in future
- * we may want to dynamically prepare swgid -> asid (or mapping) table
- */
-int _tegra_smmu_get_asid(u64 swgids)
-{
-	if (swgids & TEGRA_SWGROUP_BIT(PPCS))
-		return SYSTEM_PROTECTED;
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || \
-	defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	if (swgids & TEGRA_SWGROUP_BIT(PPCS1))
-		return PPCS1_ASID;
-#else
-	if (swgids & TEGRA_SWGROUP_BIT(PPCS1))
-		return SYSTEM_PROTECTED;
-#endif
-
-	if (swgids & TEGRA_SWGROUP_BIT(GPUB))
-		return SYSTEM_GK20A;
-
-#if defined(CONFIG_ARCH_TEGRA_APE)
-	if (swgids & TEGRA_SWGROUP_BIT(APE))
-		return SYSTEM_ADSP;
-#endif
-
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	if (swgids & TEGRA_SWGROUP_BIT(DC) ||
-	    swgids & TEGRA_SWGROUP_BIT(DCB))
-		return SYSTEM_DC;
-#else
-	if (swgids & TEGRA_SWGROUP_BIT(DC) ||
-	    swgids & TEGRA_SWGROUP_BIT(DC12))
-		return SYSTEM_DC;
-	if (swgids & TEGRA_SWGROUP_BIT(DCB))
-		return SYSTEM_DCB;
-	if (swgids & TEGRA_SWGROUP_BIT(SDMMC1A))
-		return SDMMC1A_ASID;
-	if (swgids & TEGRA_SWGROUP_BIT(SDMMC2A))
-		return SDMMC2A_ASID;
-	if (swgids & TEGRA_SWGROUP_BIT(SDMMC3A))
-		return SDMMC3A_ASID;
-	if (swgids & TEGRA_SWGROUP_BIT(SDMMC4A))
-		return SDMMC4A_ASID;
-#endif
-	if (swgids & TEGRA_SWGROUP_BIT(AFI))
-		return AFI_ASID;
-
-	return SYSTEM_DEFAULT;
-}
-
 struct smmu_domain {
 	struct smmu_as *as[MAX_AS_PER_DEV];
 	unsigned long bitmap[1];
@@ -455,6 +405,20 @@ static void dma_map_to_as_bitmap(struct dma_iommu_mapping *map,
 	(domain->as[__ffs(domain->bitmap[0])])
 
 static struct smmu_device *smmu_handle; /* unique for a system */
+
+int _tegra_smmu_get_asid(u64 swgids)
+{
+	int asid = 0;
+	struct smmu_map_prop *pprop;
+
+	list_for_each_entry(pprop, &smmu_handle->asprops, list) {
+		if (swgids & pprop->swgid_mask)
+			return asid;
+		asid++;
+	}
+
+	return asid;
+}
 
 /*
  *	SMMU/AHB register accessors
@@ -820,24 +784,19 @@ static struct dma_iommu_mapping *tegra_smmu_create_map_by_prop(
  * use it only when dev->archdata.mapping is not present
  */
 static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev,
-					u64 swgids, struct smmu_map_prop *_prop)
+					u64 swgids, struct smmu_map_prop *pprop)
 {
 	int asid;
 	struct dma_iommu_mapping *map;
-	struct smmu_map_prop *pprop = NULL;
 
-	if (_prop)
-		pprop = _prop;
+	BUG_ON(!pprop);
 
 	asid = _tegra_smmu_get_asid(swgids);
 	map = smmu_handle->map[asid];
 	if (map)
 		goto found;
 
-	if (pprop)
-		map = tegra_smmu_create_map_by_prop(pprop);
-	else
-		map = tegra_smmu_map_init_dev(dev, swgids);
+	map = tegra_smmu_create_map_by_prop(pprop);
 
 	if (!map)
 		goto err_out;
@@ -845,7 +804,7 @@ static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev,
 	smmu_handle->map[asid] = map;
 
 found:
-	if  (pprop && !tegra_smmu_map_prop_match(map, pprop))
+	if  (!tegra_smmu_map_prop_match(map, pprop))
 		goto err_out;
 
 	return map;
@@ -855,8 +814,8 @@ err_out:
 		dev_err(dev, "iommu map(%p) incompatible with prop(asid=%d)\n",
 			map, asid);
 	else
-		dev_err(dev, "fail to create iommu map by %s(asid=%d)\n",
-			pprop ? "property" : "system", asid);
+		dev_err(dev, "fail to create iommu map asid=%d\n",
+			asid);
 	return NULL;
 }
 
