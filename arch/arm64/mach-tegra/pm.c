@@ -54,6 +54,7 @@
 #include <linux/tegra-pm.h>
 #include <linux/tegra_pm_domains.h>
 #include <linux/tegra_smmu.h>
+#include <linux/platform_data/tegra_bpmp.h>
 #include <linux/kmemleak.h>
 
 #include <trace/events/power.h>
@@ -119,7 +120,9 @@ struct suspend_context {
 #ifdef CONFIG_PM_SLEEP
 static void __iomem *clk_rst = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 static int tegra_last_pclk;
+#endif
 static u64 resume_time;
 static u64 resume_entry_time;
 static u64 suspend_time;
@@ -210,6 +213,19 @@ bool tegra_dvfs_is_dfll_bypass(void)
 #else
 	return false;
 #endif
+}
+
+static inline unsigned int is_slow_cluster(void)
+{
+	int reg;
+
+	asm("mrs        %0, mpidr_el1\n"
+	    "ubfx       %0, %0, #8, #4"
+	    : "=r" (reg)
+	    :
+	    : "cc", "memory");
+
+	return reg & 1;
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -311,6 +327,15 @@ static void pmc_32kwritel(u32 val, unsigned long offs)
 }
 
 #if !defined(CONFIG_OF) || !defined(CONFIG_COMMON_CLK)
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+static void set_power_timers(unsigned long us_on, unsigned long us_off,
+			     long rate)
+{
+	writel(0, pmc + PMC_CPUPWRGOOD_TIMER);
+	writel(0, pmc + PMC_CPUPWROFF_TIMER);
+	wmb();
+}
+#else
 static void set_power_timers(unsigned long us_on, unsigned long us_off,
 			     long rate)
 {
@@ -336,6 +361,7 @@ static void set_power_timers(unsigned long us_on, unsigned long us_off,
 	tegra_last_pclk = pclk;
 	last_us_off = us_off;
 }
+#endif
 #endif
 
 /*
@@ -458,10 +484,18 @@ static inline void tegra_sleep_cpu(unsigned long v2p)
 static int tegra_common_suspend(void)
 {
 	void __iomem *mc = IO_ADDRESS(TEGRA_MC_BASE);
+	u32 reg;
 
 	tegra_sctx.mc[0] = readl(mc + MC_SECURITY_START);
 	tegra_sctx.mc[1] = readl(mc + MC_SECURITY_SIZE);
 	tegra_sctx.mc[2] = readl(mc + MC_SECURITY_CFG2);
+
+	reg = readl(pmc + PMC_SCRATCH4);
+	if (is_slow_cluster())
+		reg |= PMC_SCRATCH4_WAKE_CLUSTER_MASK;
+	else
+		reg &= (~PMC_SCRATCH4_WAKE_CLUSTER_MASK);
+	writel(reg, pmc + PMC_SCRATCH4);
 
 	return 0;
 }
@@ -639,6 +673,44 @@ static const char *lp_state[TEGRA_MAX_SUSPEND_MODE] = {
 	[TEGRA_SUSPEND_LP0] = "LP0",
 };
 
+int tegra210_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
+{
+	int err = 0;
+	unsigned long arg;
+	int cpu = smp_processor_id();
+	struct psci_power_state ps = {
+		.id = TEGRA210_CPUIDLE_SC7,
+		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
+		.affinity_level = 2,
+	};
+
+	if (WARN_ON(mode <= TEGRA_SUSPEND_NONE ||
+		mode >= TEGRA_MAX_SUSPEND_MODE)) {
+		err = -ENXIO;
+		goto fail;
+	}
+
+	if ((mode == TEGRA_SUSPEND_LP0) && !tegra_pm_irq_lp0_allowed()) {
+		err = -ENXIO;
+		goto fail;
+	}
+
+	if (tegra_bpmp_do_idle(cpu, TEGRA_PM_CC7,
+				TEGRA_PM_SC7) != 0) {
+		err = -ENXIO;
+		goto fail;
+	}
+
+	tegra_pm_prepare_sc7();
+
+	arg = psci_power_state_pack(ps);
+	cpu_suspend(arg, NULL);
+
+	tegra_pm_post_sc7();
+fail:
+	return err;
+}
+
 static int tegra_suspend_enter(suspend_state_t state)
 {
 	int ret = 0;
@@ -651,7 +723,11 @@ static int tegra_suspend_enter(suspend_state_t state)
 
 	read_persistent_clock(&ts_entry);
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	ret = tegra210_suspend_dram(current_suspend_mode, 0);
+#else
 	ret = tegra_suspend_dram(current_suspend_mode, 0);
+#endif
 	if (ret) {
 		pr_info("Aborting suspend, tegra_suspend_dram error=%d\n", ret);
 		goto abort_suspend;
@@ -1131,12 +1207,13 @@ out:
 	/* Initialize SOC-specific data */
 #ifdef CONFIG_ARCH_TEGRA_13x_SOC
 	tegra_soc_suspend_init();
-#endif
+
 	if (!tegra_tear_down_cpu || !tegra_sleep_core_finish) {
 		pr_err("%s: unable to obtain suspend info -- "
 				"disabling LP0\n", __func__);
 		current_suspend_mode = TEGRA_SUSPEND_LP2;
 	}
+#endif
 
 	/* Always enable CPU power request; just normal polarity is supported */
 	reg = readl(pmc + PMC_CTRL);

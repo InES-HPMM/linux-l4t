@@ -46,6 +46,26 @@ static struct pll_parms gpc_pll_params = {
 static int clk_gm20b_debugfs_init(struct gk20a *g);
 #endif
 
+#define DUMP_REG(addr_func) \
+do {									\
+	addr = trim_sys_##addr_func##_r();				\
+	data = gk20a_readl(g, addr);					\
+	pr_info(#addr_func "[0x%x] = 0x%x\n", addr, data);		\
+} while (0)
+
+static void dump_gpc_pll(struct gk20a *g, struct pll *gpll, u32 last_cfg)
+{
+	u32 addr, data;
+
+	pr_info("**** GPCPLL DUMP ****");
+	pr_info("gpcpll s/w M=%u N=%u P=%u\n", gpll->M, gpll->N, gpll->PL);
+	pr_info("gpcpll_cfg_last = 0x%x\n", last_cfg);
+	DUMP_REG(gpcpll_cfg);
+	DUMP_REG(gpcpll_coeff);
+	DUMP_REG(sel_vco);
+	pr_info("\n");
+}
+
 /* 1:1 match between post divider settings and divisor value */
 static inline u32 pl_to_div(u32 pl)
 {
@@ -344,6 +364,7 @@ static int clk_lock_gpc_pll_under_bypass(struct gk20a *g, struct pll *gpll)
 	} while (--timeout > 0);
 
 	/* PLL is messed up. What can we do here? */
+	dump_gpc_pll(g, gpll, cfg);
 	BUG();
 	return -EBUSY;
 
@@ -977,7 +998,7 @@ static int monitor_get(void *data, u64 *val)
 	u32 clk_slowdown, clk_slowdown_save;
 	int err;
 
-	u32 ncycle = 100; /* count GPCCLK for ncycle of clkin */
+	u32 ncycle = 800; /* count GPCCLK for ncycle of clkin */
 	u64 freq = clk->gpc_pll.clk_in;
 	u32 count1, count2;
 
@@ -1003,7 +1024,7 @@ static int monitor_get(void *data, u64 *val)
 		     trim_gpc_clk_cntr_ncgpcclk_cfg_noofipclks_f(ncycle));
 	/* start */
 
-	/* It should take less than 5us to finish 100 cycle of 38.4MHz.
+	/* It should take less than 25us to finish 800 cycle of 38.4MHz.
 	   But longer than 100us delay is required here. */
 	gk20a_readl(g, trim_gpc_clk_cntr_ncgpcclk_cfg_r(0));
 	udelay(200);

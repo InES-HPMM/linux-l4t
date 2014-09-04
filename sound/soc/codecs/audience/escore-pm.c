@@ -254,7 +254,6 @@ int escore_suspend(struct device *dev)
 					__func__);
 			ret = 0;
 			escore->pm_state = ES_PM_ASLEEP;
-			escore_priv.pm_enable = 0;
 			goto out;
 		}
 		ret = escore_non_vs_suspend(dev);
@@ -262,7 +261,6 @@ int escore_suspend(struct device *dev)
 
 	if (!ret) {
 		escore->pm_state = ES_PM_ASLEEP;
-		escore_priv.pm_enable = 0;
 		/* Disable the clocks */
 		if (escore_priv.pdata->esxxx_clk_cb)
 			escore_priv.pdata->esxxx_clk_cb(0);
@@ -300,25 +298,55 @@ int escore_resume(struct device *dev)
 	if (!ret)
 		escore->pm_state = ES_PM_NORMAL;
 
-	escore_priv.pm_enable = 1;
+	pm_runtime_mark_last_busy(escore_priv.dev);
 
 	dev_dbg(dev, "%s() complete %d\n", __func__, ret);
 
 	if (escore_priv.dev && device_may_wakeup(escore_priv.dev))
 		disable_irq_wake(gpio_to_irq(escore_priv.pdata->gpiob_gpio));
 
-	/* Bring the device to full powered state upon system resume */
-	pm_runtime_disable(dev);
-	pm_runtime_mark_last_busy(escore_priv.dev);
-	pm_runtime_set_active(dev);
-	pm_runtime_enable(dev);
+	if (escore_priv.system_suspend) {
+		/* Bring the device to full powered state upon system resume */
+		pm_runtime_disable(dev);
+		pm_runtime_mark_last_busy(escore_priv.dev);
+		pm_runtime_set_active(dev);
+		pm_runtime_enable(dev);
+	}
 out:
 	return ret;
+}
+
+int escore_prepare(struct device *dev)
+{
+	struct escore_priv *escore = &escore_priv;
+
+	dev_dbg(dev, "%s()\n", __func__);
+
+	if (escore->dev != dev)
+		dev_dbg(dev, "%s() Invalid device\n", __func__);
+	else
+		escore->system_suspend = 1;
+
+	return 0;
+}
+
+void escore_complete(struct device *dev)
+{
+	struct escore_priv *escore = &escore_priv;
+
+	dev_dbg(dev, "%s()\n", __func__);
+
+	if (escore->dev != dev)
+		dev_dbg(dev, "%s() Invalid device\n", __func__);
+	else
+		escore->system_suspend = 0;
 }
 
 const struct dev_pm_ops escore_pm_ops = {
 	.suspend = escore_suspend,
 	.resume = escore_resume,
+	.prepare = escore_prepare,
+	.complete = escore_complete,
 	.runtime_suspend = escore_runtime_suspend,
 	.runtime_resume = escore_runtime_resume,
 };
@@ -355,7 +383,8 @@ void escore_pm_disable(void)
 	struct device *xdev = escore->dev;
 
 	escore->pm_enable = 0;
-	if (escore->pm_state == ES_PM_RUNTIME_SLEEP) {
+	if (escore->pm_state == ES_PM_RUNTIME_SLEEP ||
+			escore->pm_state == ES_PM_ASLEEP) {
 		dev_dbg(xdev, "%s(): Wakeup chip before Runtime PM disable\n",
 				__func__);
 		escore_runtime_resume(xdev);
@@ -379,22 +408,25 @@ void escore_pm_vs_enable(struct escore_priv *escore, bool value)
 
 int escore_pm_get_sync(void)
 {
+	int ret = 0;
 	dev_dbg(escore_priv.dev, "%s()\n", __func__);
-	if (escore_priv.pm_enable == 1)
-		return pm_runtime_get_sync(escore_priv.dev);
-	else
-		return 0;
+	if (escore_priv.pm_enable == 1) {
+		if (!escore_priv.system_suspend)
+			ret = pm_runtime_get_sync(escore_priv.dev);
+	}
+	return ret;
 }
 
 void escore_pm_put_autosuspend(void)
 {
 	int ret = 0;
 	dev_dbg(escore_priv.dev, "%s()\n", __func__);
-	if (escore_priv.pm_enable == 1) {
+	if (escore_priv.pm_enable == 1 && !escore_priv.system_suspend) {
 		pm_runtime_mark_last_busy(escore_priv.dev);
 		ret = pm_runtime_put_sync_autosuspend(escore_priv.dev);
 		if (ret)
 			dev_err(escore_priv.dev, "%s() - failed\n", __func__);
 	}
+
 	return;
 }

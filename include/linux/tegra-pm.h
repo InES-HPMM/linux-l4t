@@ -20,9 +20,26 @@
 #ifndef _LINUX_TEGRA_PM_H_
 #define _LINUX_TEGRA_PM_H_
 
+/* Core state 0-9 */
+#define TEGRA210_CPUIDLE_C4	4
+#define TEGRA210_CPUIDLE_C7	7
+
+/* Cluster states 10-19 */
+#define TEGRA210_CPUIDLE_CC4	14
+#define TEGRA210_CPUIDLE_CC6	16
+#define TEGRA210_CPUIDLE_CC7	17
+
+/* SoC states 20-29 */
+#define TEGRA210_CPUIDLE_SC2	22
+#define TEGRA210_CPUIDLE_SC3	23
+#define TEGRA210_CPUIDLE_SC4	24
+#define TEGRA210_CPUIDLE_SC7	27
+
+#define TEGRA210_CLUSTER_SWITCH	31
+
 #define TEGRA_PM_SUSPEND	0x0001
 #define TEGRA_PM_RESUME		0x0002
- 
+
 enum tegra_suspend_mode {
 	TEGRA_SUSPEND_NONE = 0,
 	TEGRA_SUSPEND_LP2,	/* CPU voltage off */

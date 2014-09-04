@@ -51,6 +51,7 @@
 #define MAX_EAGAIN_RETRY		20
 #define EAGAIN_RETRY_DELAY		1000
 #define ES_TTY_BUF_AVAIL_WAIT_DELAY	2000
+#define ES_TTY_WAIT_TIMEOUT		500
 
 u32 escore_cpu_to_uart(struct escore_priv *escore, u32 resp);
 u32 escore_uart_to_cpu(struct escore_priv *escore, u32 resp);

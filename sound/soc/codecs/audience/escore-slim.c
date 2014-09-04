@@ -420,7 +420,8 @@ int escore_remote_cfg_slim_rx(int dai_id)
 
 	dev_dbg(escore->dev, "%s(dai_id = %d)\n", __func__, dai_id);
 
-	if (escore->slim_dai_data[DAI_INDEX(dai_id)].ch_tot != 0) {
+	if (escore->slim_dai_data &&
+		escore->slim_dai_data[DAI_INDEX(dai_id)].ch_tot != 0) {
 		/* start slim channels associated with id */
 		rc = escore_cfg_slim_rx(escore->gen0_client,
 			       escore->slim_dai_data[DAI_INDEX(dai_id)].ch_num,
@@ -452,7 +453,8 @@ int escore_remote_cfg_slim_tx(int dai_id)
 
 	dev_dbg(escore->dev, "%s(dai_id = %d)\n", __func__, dai_id);
 
-	if (escore->slim_dai_data[DAI_INDEX(dai_id)].ch_tot != 0) {
+	if (escore->slim_dai_data &&
+		escore->slim_dai_data[DAI_INDEX(dai_id)].ch_tot != 0) {
 		ch_cnt = escore->ap_tx1_ch_cnt;
 		/* start slim channels associated with id */
 		rc = escore_cfg_slim_tx(escore->gen0_client,
@@ -484,7 +486,8 @@ int escore_remote_close_slim_rx(int dai_id)
 
 	dev_dbg(escore->dev, "%s(dai_id = %d)\n", __func__, dai_id);
 
-	if (escore->slim_dai_data[DAI_INDEX(dai_id)].ch_tot != 0) {
+	if (escore->slim_dai_data &&
+		escore->slim_dai_data[DAI_INDEX(dai_id)].ch_tot != 0) {
 		rc = escore_close_slim_rx(escore->gen0_client,
 			    escore->slim_dai_data[DAI_INDEX(dai_id)].ch_num,
 			    escore->slim_dai_data[DAI_INDEX(dai_id)].ch_tot);
@@ -511,7 +514,8 @@ int escore_remote_close_slim_tx(int dai_id)
 
 	dev_dbg(escore->dev, "%s(dai_id = %d)\n", __func__, dai_id);
 
-	if (escore->slim_dai_data[DAI_INDEX(dai_id)].ch_tot != 0) {
+	if (escore->slim_dai_data &&
+		escore->slim_dai_data[DAI_INDEX(dai_id)].ch_tot != 0) {
 		ch_cnt = escore->ap_tx1_ch_cnt;
 		escore_close_slim_tx(escore->gen0_client,
 			    escore->slim_dai_data[DAI_INDEX(dai_id)].ch_num,
@@ -1386,6 +1390,7 @@ static int escore_slim_device_up(struct slim_device *sbdev)
 			slim_set_clientdata(sbdev, &escore_priv);
 			escore_priv.gen0_client = sbdev;
 			escore_priv.device_up_called = 1;
+			device_rename(&sbdev->dev, "earSmart-codec-gen0");
 			rc = escore_probe(&escore_priv,
 					&escore_priv.gen0_client->dev,
 					ES_SLIM_INTF, ES_CONTEXT_THREAD);

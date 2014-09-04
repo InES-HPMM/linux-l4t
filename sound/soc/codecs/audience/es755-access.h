@@ -213,11 +213,20 @@ static struct escore_api_access es755_api_access[ES_API_ADDR_MAX] = {
 	[ES_AECREF1_MUX] = {
 		.write_msg = {
 			ES_API_WORD(ES_SET_MUX_CMD,
-					ES300_DATA_PATH(0, 0, RXCHMGR8)),
+					ES300_DATA_PATH(0, 0, RXCHMGR4)),
 			ES_API_WORD(ES_SET_PATH_ID_CMD,
-					ES300_PATH_ID(RXCHMGR8, ES300_AECREF)),
+					ES300_PATH_ID(RXCHMGR4, ES300_AECREF)),
+			ES_API_WORD(ES_CONNECT_CMD,
+					ES300_ENDPOINT(FILTER_RXCHANMGR4,
+						OUT, RxChMgr_o0)),
+			ES_API_WORD(ES_CONNECT_CMD,
+					ES300_ENDPOINT(FILTER_VP, IN, vp_i4)),
+			ES_API_WORD(ES_SET_RATE_CMD,
+					ES300_RATE(FILTER_RXCHANMGR4, 2)),
+			ES_API_WORD(ES_SET_GROUP_CMD,
+					ES300_GROUP(FILTER_RXCHANMGR4, 0)),
 		},
-		.write_msg_len = 8,
+		.write_msg_len = 24,
 		.val_shift = 0,
 		.val_max = MAX_INPUT_PORT,
 	},
@@ -236,9 +245,9 @@ static struct escore_api_access es755_api_access[ES_API_ADDR_MAX] = {
 	[ES_UITONE1_MUX] = {
 		.write_msg = {
 			ES_API_WORD(ES_SET_MUX_CMD,
-					ES300_DATA_PATH(0, 0, RXCHMGR4)),
+					ES300_DATA_PATH(0, 0, RXCHMGR5)),
 			ES_API_WORD(ES_SET_PATH_ID_CMD,
-				ES300_PATH_ID(RXCHMGR4, ES300_UITONE1)),
+				ES300_PATH_ID(RXCHMGR5, ES300_UITONE1)),
 		},
 		.write_msg_len = 8,
 		.val_shift = 0,
@@ -248,9 +257,9 @@ static struct escore_api_access es755_api_access[ES_API_ADDR_MAX] = {
 	[ES_UITONE2_MUX] = {
 		.write_msg = {
 			ES_API_WORD(ES_SET_MUX_CMD,
-					ES300_DATA_PATH(0, 0, RXCHMGR5)),
+					ES300_DATA_PATH(0, 0, RXCHMGR6)),
 			ES_API_WORD(ES_SET_PATH_ID_CMD,
-				ES300_PATH_ID(RXCHMGR5, ES300_UITONE1)),
+				ES300_PATH_ID(RXCHMGR6, ES300_UITONE1)),
 		},
 		.write_msg_len = 8,
 		.val_shift = 0,

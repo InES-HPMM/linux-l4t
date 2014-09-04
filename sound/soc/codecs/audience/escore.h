@@ -51,6 +51,7 @@
 #include "escore-uart.h"
 #include "adnc-sensorhub-api.h"
 
+
 #define ES_READ_VE_OFFSET		0x0804
 #define ES_READ_VE_WIDTH		4
 #define ES_WRITE_VE_OFFSET		0x0800
@@ -195,9 +196,9 @@
 #define ES_MAX_FIN_RETRIES		\
 			(ES_FIN_TOUT / ES_FIN_POLL_TOUT)
 
-#define ES_SPI_RETRY_DELAY 4000  /*  4ms */
-#define ES_SPI_MAX_RETRIES 20 /* Number of retries */
-#define ES_SPI_CONT_RETRY 4 /* Retry for read without delay */
+#define ES_SPI_RETRY_DELAY 1000  /*  1ms */
+#define ES_SPI_MAX_RETRIES 500 /* Number of retries */
+#define ES_SPI_CONT_RETRY 25 /* Retry for read without delay */
 #define ES_SPI_1MS_DELAY 1000  /*1 ms*/
 
 #define ES_UART_WAKE_CMD	0xa
@@ -441,6 +442,7 @@ struct escore_priv {
 
 	int pm_use_vs;
 	int pm_enable;
+	int system_suspend;
 	struct escore_pm_ops non_vs_pm_ops;
 	struct escore_pm_ops vs_pm_ops;
 	u16 es_vs_route_preset;
