@@ -85,10 +85,6 @@ struct tegra_edp_cpu_powermodel_params {
 	unsigned int safety_cap[4];
 };
 
-struct tegra_edp_gpu_powermodel_params {
-	struct tegra_edp_common_powermodel_params common;
-};
-
 struct tegra_edp_freq_voltage_table {
 	unsigned int freq;
 	int voltage_mv;
@@ -177,19 +173,19 @@ void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
 					int *num_trips, int margin);
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
-struct tegra_edp_gpu_powermodel_params
+struct tegra_edp_common_powermodel_params
 				*tegra12x_get_gpu_powermodel_params(void);
 #else
-static inline struct tegra_edp_gpu_powermodel_params
+static inline struct tegra_edp_common_powermodel_params
 				*tegra12x_get_gpu_powermodel_params(void)
 { return NULL; }
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_13x_SOC
-struct tegra_edp_gpu_powermodel_params
+struct tegra_edp_common_powermodel_params
 				*tegra13x_get_gpu_powermodel_params(void);
 #else
-static inline struct tegra_edp_gpu_powermodel_params
+static inline struct tegra_edp_common_powermodel_params
 				*tegra13x_get_gpu_powermodel_params(void)
 { return NULL; }
 #endif

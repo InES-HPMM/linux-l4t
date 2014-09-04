@@ -224,8 +224,7 @@ struct tegra_sysedp_corecap *tegra_get_sysedp_corecap(unsigned int *sz)
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 
 #ifdef CONFIG_TEGRA_GPU_EDP
-static struct tegra_edp_gpu_powermodel_params t12x_gpu_powermodel_params = {
-	.common = {
+static struct tegra_edp_common_powermodel_params t12x_gpu_powermodel_params = {
 		.temp_scaled      = 10,
 		.dyn_scaled       = 1000,
 		.dyn_consts_n     = { 10646, },
@@ -259,10 +258,9 @@ static struct tegra_edp_gpu_powermodel_params t12x_gpu_powermodel_params = {
 			  {    -5328587,    4953756,  -1215038,    64556, },
 			},
 		},
-	},
 };
 
-struct tegra_edp_gpu_powermodel_params *tegra12x_get_gpu_powermodel_params(void)
+struct tegra_edp_common_powermodel_params *tegra12x_get_gpu_powermodel_params(void)
 {
 	return &t12x_gpu_powermodel_params;
 }
