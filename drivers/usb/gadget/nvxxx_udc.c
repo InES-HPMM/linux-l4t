@@ -4931,18 +4931,7 @@ static void tegra_xudc_plat_shutdown(struct platform_device *pdev)
 
 	dev_info(dev, "%s nvudc %p\n", __func__, nvudc);
 
-	/* TODO implement synchronization */
-	if (nvudc) {
-		usb_del_gadget_udc(&nvudc->gadget);
-		free_data_struct(nvudc);
-		nvudc_plat_clocks_disable(nvudc);
-		tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
-		tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
-		nvudc_plat_clocks_deinit(nvudc);
-		nvudc_plat_regulator_deinit(nvudc);
-		devm_kfree(dev, nvudc);
-		platform_set_drvdata(pdev, NULL);
-	}
+	nvudc_gadget_pullup(&nvudc->gadget, 0);
 }
 
 static struct of_device_id tegra_xudc_of_match[] = {
