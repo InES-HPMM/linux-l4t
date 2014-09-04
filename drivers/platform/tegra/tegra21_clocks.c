@@ -9134,7 +9134,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("i2cslow", "tegra_vi-i2c", "i2cslow"),
 	CLK_DUPLICATE("i2cslow", "tegra_vi", "i2cslow"),
 	CLK_DUPLICATE("mclk3", NULL, "cam_mclk1"),
-	CLK_DUPLICATE("mclk1", NULL, "cam_mclk2"),
+	CLK_DUPLICATE("mclk", NULL, "cam_mclk2"),
 	CLK_DUPLICATE("mclk2", NULL, "cam_mclk3"),
 #ifdef CONFIG_VI_ONE_DEVICE
 	CLK_DUPLICATE("vi.cbus", "tegra_vi", "vi"),
