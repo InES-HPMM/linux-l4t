@@ -72,6 +72,7 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra_emc_therm.o
 obj-y                                   += latency_allowance.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12x_la.o
 obj-$(CONFIG_TEGRA_EDP_LIMITS)          += edp.o
+obj-$(CONFIG_TEGRA_GPU_EDP)             += gpu-edp.o
 obj-$(CONFIG_TEGRA_CORE_EDP_LIMITS)     += edp_core.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12_edp.o
 ifeq ($(CONFIG_ARCH_TEGRA_13x_SOC),y)

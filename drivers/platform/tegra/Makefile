@@ -161,6 +161,7 @@ obj-${CONFIG_TEGRA_ISOMGR}              += isomgr.o
 obj-$(CONFIG_TEGRA_USE_NCT)             += nct.o nct_sysfs.o
 
 obj-$(CONFIG_TEGRA_EDP_LIMITS)          += edp.o
+obj-$(CONFIG_TEGRA_GPU_EDP)             += gpu-edp.o
 
 else # --- CONFIG_ARM64 --- #
 
