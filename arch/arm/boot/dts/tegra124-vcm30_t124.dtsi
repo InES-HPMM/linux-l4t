@@ -219,6 +219,7 @@
 		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
 		nvidia,disable-auto-cal;
+		cd_wakeup_incapable = <1>;
 		status = "disabled";
 		nvidia,update-pinctrl-settings;
 		/* clock freq based on mode */

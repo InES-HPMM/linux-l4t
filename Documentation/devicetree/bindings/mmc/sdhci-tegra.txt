@@ -71,6 +71,8 @@ in HS400 mode.
 	MMC_TIMING_MMC_HS200	9
 	MMC_TIMING_MMC_HS400	10
 
+- cd_wakeup_incapable: Set this flag to disable card detect event as wake source.
+
 Example:
 
 	sdhci@700b0600 {
