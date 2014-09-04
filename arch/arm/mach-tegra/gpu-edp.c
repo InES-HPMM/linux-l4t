@@ -33,8 +33,6 @@
 #include "clock.h"
 #include "common.h"
 
-#define OVERRIDE_DEFAULT 6000
-
 struct vdd_edp {
 	char *cdev_name;
 	char *cap_clk_name;
@@ -57,24 +55,15 @@ struct vdd_edp {
 	struct clk *cap_clk;
 	struct mutex edp_lock;
 
-	struct tegra_edp_limits *default_limits;
-
 	unsigned int imax_ma;
-	unsigned int i_override_ma;
 
 	const int *temperatures;
 	int n_temperatures;
 };
 
-struct tegra_edp_limits default_limits[] = {
-	{85, {350000} },
-};
-
-
 const int temps[] = { /* degree celcius (C) */
 	20, 50, 70, 75, 80, 85, 90, 95, 100, 105,
 };
-
 
 static void apply_cap_via_clock(struct vdd_edp *);
 
@@ -86,8 +75,6 @@ static struct vdd_edp s_gpu = {
 	.freq_step = 12000000,
 	.temperatures = temps,
 	.n_temperatures = ARRAY_SIZE(temps),
-	.i_override_ma = OVERRIDE_DEFAULT,
-	.default_limits = default_limits,
 	.edp_lock = __MUTEX_INITIALIZER(s_gpu.edp_lock),
 	.apply_cap = apply_cap_via_clock,
 };
@@ -313,13 +300,11 @@ static int init_fv_lut(struct vdd_edp *ctx)
 	return ret;
 }
 
-static int init_edp_limits_calculated(struct vdd_edp *ctx)
+static int calculate_edp_limits(struct vdd_edp *ctx)
 {
 	unsigned int limit;
 	struct tegra_edp_limits *edp_calculated_limits;
-	struct tegra_edp_limits *temp;
 	int i, j;
-	int imax = ctx->imax_ma - ctx->i_override_ma;
 
 	edp_calculated_limits = kmalloc(sizeof(struct tegra_edp_limits)
 				* ctx->n_temperatures, GFP_KERNEL);
@@ -332,7 +317,7 @@ static int init_edp_limits_calculated(struct vdd_edp *ctx)
 			limit = edp_calculate_maxf(ctx->params,
 						   ctx->fv_lut_size,
 						   ctx->fv_lut,
-						   imax,
+						   ctx->imax_ma,
 						   ctx->temperatures[i],
 						   ctx->iddq_ma);
 			if (limit == -EINVAL) {
@@ -343,20 +328,11 @@ static int init_edp_limits_calculated(struct vdd_edp *ctx)
 			edp_calculated_limits[i].freq_limits[j] = limit;
 		}
 
-	/*
-	 * If this is an EDP table update, need to overwrite old table.
-	 * The old table's address must remain valid.
-	 */
-	if (ctx->edp_freq_limits != ctx->default_limits &&
-			ctx->edp_freq_limits != edp_calculated_limits) {
-		temp = ctx->edp_freq_limits;
-		ctx->edp_freq_limits = edp_calculated_limits;
-		ctx->n_limits = ctx->n_temperatures;
-		kfree(temp);
-	} else {
-		ctx->edp_freq_limits = edp_calculated_limits;
-		ctx->n_limits = ctx->n_temperatures;
-	}
+	mutex_lock(&ctx->edp_lock);
+	kfree(ctx->edp_freq_limits);
+	ctx->edp_freq_limits = edp_calculated_limits;
+	ctx->n_limits = ctx->n_temperatures;
+	mutex_unlock(&ctx->edp_lock);
 
 	return 0;
 }
@@ -365,8 +341,8 @@ static void __init _init_edp_limits(struct vdd_edp *ctx,
 				    unsigned int regulator_ma)
 {
 	if (!regulator_ma) {
-		ctx->edp_freq_limits = ctx->default_limits;
-		ctx->n_limits = 1; /* XXX don't hardcode this */
+		ctx->edp_freq_limits = NULL;
+		ctx->n_limits = 0;
 		return;
 	}
 
@@ -378,10 +354,10 @@ static void __init _init_edp_limits(struct vdd_edp *ctx,
 	}
 	ctx->thermal_idx = 0;
 
-	ctx->imax_ma = regulator_ma + OVERRIDE_DEFAULT;
+	ctx->imax_ma = regulator_ma;
 
 	init_fv_lut(ctx);
-	init_edp_limits_calculated(ctx);
+	calculate_edp_limits(ctx);
 }
 
 void __init tegra_init_gpu_edp_limits(unsigned int regulator_ma)
@@ -407,7 +383,7 @@ static int edp_get_cdev_max_state(struct thermal_cooling_device *cdev,
 				       unsigned long *max_state)
 {
 	struct vdd_edp *ctx = cdev->devdata;
-	*max_state = ctx->n_limits - 1;
+	*max_state = ctx->n_temperatures;
 	return 0;
 }
 
@@ -513,78 +489,53 @@ static int edp_table_debugfs_show(struct seq_file *s, void *data)
 {
 	struct vdd_edp *ctx = s->private;
 
-	seq_printf(s, "-- %s %sEDP table (%umA = %umA - %umA) --\n",
+	mutex_lock(&ctx->edp_lock);
+	seq_printf(s, "-- %s EDP table (%umA) --\n",
 		   ctx->edp_name,
-		   ctx->edp_freq_limits == ctx->default_limits ?
-		   "**default** " : "",
-		   ctx->imax_ma - ctx->i_override_ma,
-		   ctx->imax_ma, ctx->i_override_ma);
+		   ctx->imax_ma);
 
 	edp_show_edp_table(s,
 			   ctx->edp_freq_limits,
 			   ctx->n_limits,
 			   ctx->n_cores,
 			   ctx->thermal_idx);
+	mutex_unlock(&ctx->edp_lock);
 
 	return 0;
 }
 
-static int edp_reg_override_show(struct seq_file *s, void *data)
+static int edp_imax_get(void *data, u64 *val)
 {
-	struct vdd_edp *ctx = s->private;
-
-	seq_printf(s, "Limit override: %u mA. Effective limit: %u mA\n",
-		   ctx->i_override_ma,
-		   ctx->imax_ma - ctx->i_override_ma);
+	struct vdd_edp *ctx = data;
+	*val = ctx->imax_ma;
 	return 0;
 }
 
-static ssize_t edp_reg_override_write(struct file *file,
-	const char __user *userbuf, size_t count, loff_t *ppos)
+static int edp_imax_set(void *data, u64 new_imax)
 {
-	char buf[32];
-	unsigned long edp_reg_override_ma_temp;
-	struct vdd_edp *ctx = file->private_data;
-	unsigned int edp_reg_override_ma_prev = ctx->i_override_ma;
+	struct vdd_edp *ctx = data;
 	struct thermal_cooling_device hack = {.devdata = ctx};
+	int old_imax;
 
-	if (sizeof(buf) <= count)
-		goto override_err;
+	old_imax = ctx->imax_ma;
+	ctx->imax_ma = new_imax;
 
-	if (copy_from_user(buf, userbuf, count))
-		goto override_err;
+	if (calculate_edp_limits(ctx)) {
+		pr_err("FAILED: Reinitialize %s EDP table with current limit %ullmA",
+		       ctx->edp_name, ctx->imax_ma);
 
-	/* terminate buffer and trim - white spaces may be appended
-	 *  at the end when invoked from shell command line */
-	buf[count] = '\0';
-	strim(buf);
-
-	if (kstrtoul(buf, 10, &edp_reg_override_ma_temp))
-		goto override_err;
-
-	if (edp_reg_override_ma_temp >= ctx->imax_ma)
-		goto override_err;
-
-	if (ctx->i_override_ma == edp_reg_override_ma_temp)
-		return count;
-
-	ctx->i_override_ma = edp_reg_override_ma_temp;
-	if (init_edp_limits_calculated(ctx)) {
-		/* Revert to previous override value if new value fails */
-		ctx->i_override_ma = edp_reg_override_ma_prev;
-		goto override_err;
+		/* Revert to previous value if new value fails */
+		ctx->imax_ma = old_imax;
+		return -EINVAL;
 	}
 
 	edp_set_cdev_state(&hack, ctx->thermal_idx);
 	pr_info("Reinitialized %s EDP table with regulator current limit %u mA\n",
-		ctx->edp_name, ctx->imax_ma - ctx->i_override_ma);
-	return count;
+		ctx->edp_name, ctx->imax_ma);
+	return 0;
 
- override_err:
-	pr_err("FAILED: Reinitialize %s EDP table with override \"%s\"",
-	       ctx->edp_name, buf);
-	return -EINVAL;
 }
+DEFINE_SIMPLE_ATTRIBUTE(edp_imax_fops, edp_imax_get, edp_imax_set, "%llu\n")
 
 static int edp_debugfs_open(struct inode *inode, struct file *file)
 {
@@ -594,11 +545,6 @@ static int edp_debugfs_open(struct inode *inode, struct file *file)
 static int edp_limit_debugfs_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, edp_limit_debugfs_show, inode->i_private);
-}
-
-static int edp_reg_override_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, edp_reg_override_show, inode->i_private);
 }
 
 static const struct file_operations edp_debugfs_fops = {
@@ -615,14 +561,6 @@ static const struct file_operations edp_limit_debugfs_fops = {
 	.release	= single_release,
 };
 
-static const struct file_operations edp_reg_override_debugfs_fops = {
-	.open		= edp_reg_override_open,
-	.read		= seq_read,
-	.write		= edp_reg_override_write,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-};
-
 static int __init vdd_edp_debugfs_init(struct vdd_edp *ctx,
 				       struct dentry *parent)
 {
@@ -631,12 +569,14 @@ static int __init vdd_edp_debugfs_init(struct vdd_edp *ctx,
 		return -ENOMEM;
 
 	debugfs_create_file("edp_table",  S_IRUGO, parent, ctx,
-				    &edp_debugfs_fops);
+			    &edp_debugfs_fops);
 	debugfs_create_file("edp_limit", S_IRUGO, parent,
-					  ctx, &edp_limit_debugfs_fops);
-	debugfs_create_file("i_override_ma",
-				S_IRUGO | S_IWUSR, parent, ctx,
-				&edp_reg_override_debugfs_fops);
+			    ctx, &edp_limit_debugfs_fops);
+	debugfs_create_file("imax_ma",
+			    S_IRUGO | S_IWUSR, parent, ctx,
+			    &edp_imax_fops);
+	debugfs_create_u32_array(".vf_lut", S_IRUGO, parent,
+				 (u32 *)ctx->fv_lut, 2*ctx->fv_lut_size);
 
 	return 0;
 }
