@@ -94,11 +94,15 @@
 #define SDHCI_VNDR_DLLCAL_CFG_STATUS			0x1bc
 #define SDHCI_VNDR_DLLCAL_CFG_STATUS_DLL_ACTIVE		0x80000000
 
-#define SDHCI_VNDR_TUN_CTRL				0x1c0
+#define SDHCI_VNDR_TUN_CTRL0_0				0x1c0
+#define SDHCI_VNDR_TUN_CTRL1_0				0x1c4
 /* Enable Re-tuning request only when CRC error is detected
  * in SDR50/SDR104/HS200 modes
  */
 #define SDHCI_VNDR_TUN_CTRL_RETUNE_REQ_EN		0x8000000
+#define SDHCI_VNDR_TUN_CTRL0_TUN_ITERATIONS		0x4000
+#define SDHCI_VNDR_TUN_CTRL1_TUN_STEP_SIZE		0x77
+
 
 #define SDHCI_VNDR_PRESET_VAL0_0	0x1d4
 #define SDCLK_FREQ_SEL_HS_SHIFT		20
@@ -135,6 +139,7 @@
 
 #define SDMMC_VNDR_IO_TRIM_CNTRL_0	0x1AC
 #define SDMMC_VNDR_IO_TRIM_CNTRL_0_SEL_VREG	0x4
+
 /* Erratum: Version register is invalid in HW */
 #define NVQUIRK_FORCE_SDHCI_SPEC_200		BIT(0)
 /* Erratum: Enable block gap interrupt detection */
@@ -183,8 +188,6 @@
 /* Disable SDMMC3 external loopback */
 #define NVQUIRK_DISABLE_EXTERNAL_LOOPBACK	BIT(23)
 #define NVQUIRK_TMP_VAR_1_5_TAP_MARGIN		BIT(24)
-/* Disable Timer Based Re-tuning mode */
-#define NVQUIRK_DISABLE_TIMER_BASED_TUNING	BIT(25)
 /* Enable HS400 mode */
 #define NVQUIRK_ENABLE_HS400			BIT(26)
 /* Enable AUTO CMD23 */
@@ -198,6 +201,8 @@
 
 /* Enable T210 specific SDMMC WAR - sd card voltage switch */
 #define NVQUIRK2_CONFIG_PWR_DET			BIT(0)
+/* Enable T210 specific SDMMC WAR - Tuning Step Size, Tuning Iterations*/
+#define NVQUIRK2_UPDATE_HW_TUNING_CONFG		BIT(1)
 
 /* Common subset of quirks for Tegra3 and later sdmmc controllers */
 #define TEGRA_SDHCI_NVQUIRKS	(NVQUIRK_ENABLE_PADPIPE_CLKEN | \
@@ -678,6 +683,11 @@ static void tegra_sdhci_dumpregs(struct sdhci_host *sdhci)
 			trim_delay);
 	pr_info("sdhci: SDMMC Interrupt status: 0x%08x\n", sdhci_readl(sdhci,
 				SDMMC_VENDOR_ERR_INTR_STATUS_0));
+}
+
+static int sdhci_tegra_get_max_tuning_loop_counter(struct sdhci_host *sdhci)
+{
+	return 256;
 }
 
 static int show_error_stats_dump(struct seq_file *s, void *data)
@@ -1390,12 +1400,17 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		host->mmc->caps2 &= ~MMC_CAP2_HS200;
 #endif
 
-	if (soc_data->nvquirks &
-		NVQUIRK_DISABLE_TIMER_BASED_TUNING) {
-		vendor_ctrl = sdhci_readl(host, SDHCI_VNDR_TUN_CTRL);
+	if (soc_data->nvquirks2 & NVQUIRK2_UPDATE_HW_TUNING_CONFG) {
+		vendor_ctrl = sdhci_readl(host, SDHCI_VNDR_TUN_CTRL0_0);
 		vendor_ctrl |= SDHCI_VNDR_TUN_CTRL_RETUNE_REQ_EN;
-		sdhci_writel(host, vendor_ctrl, SDHCI_VNDR_TUN_CTRL);
+		vendor_ctrl |= SDHCI_VNDR_TUN_CTRL0_TUN_ITERATIONS;
+		sdhci_writel(host, vendor_ctrl, SDHCI_VNDR_TUN_CTRL0_0);
+
+		vendor_ctrl = sdhci_readl(host, SDHCI_VNDR_TUN_CTRL1_0);
+		vendor_ctrl &= ~(SDHCI_VNDR_TUN_CTRL1_TUN_STEP_SIZE);
+		sdhci_writel(host, vendor_ctrl, SDHCI_VNDR_TUN_CTRL1_0);
 	}
+
 	/* Restore DLL calibration and DQS Trim delay values */
 	if (plat->dll_calib_needed && tegra_host->dll_calib)
 		sdhci_writel(host, tegra_host->dll_calib,
@@ -4228,6 +4243,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.get_drive_strength	= tegra_sdhci_get_drive_strength,
 	.post_init	= tegra_sdhci_do_dll_calibration,
 	.dump_host_cust_regs	= tegra_sdhci_dumpregs,
+	.get_max_tuning_loop_counter = sdhci_tegra_get_max_tuning_loop_counter,
 };
 
 static struct sdhci_pltfm_data sdhci_tegra11_pdata = {
@@ -4288,6 +4304,7 @@ static struct sdhci_pltfm_data sdhci_tegra21_pdata = {
 	.quirks = TEGRA_SDHCI_QUIRKS,
 	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN |
 		   SDHCI_QUIRK2_NON_STD_VOLTAGE_SWITCHING |
+		   SDHCI_QUIRK2_NON_STD_TUNING_LOOP_CNTR |
 		   SDHCI_QUIRK2_NO_CALC_MAX_DISCARD_TO |
 		   SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK |
 		   SDHCI_QUIRK2_HOST_OFF_CARD_ON |
@@ -4308,11 +4325,11 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 		    NVQUIRK_SET_SDMEMCOMP_VREF_SEL |
 		    NVQUIRK_HIGH_FREQ_TAP_PROCEDURE |
 		    NVQUIRK_SET_CALIBRATION_OFFSETS |
-		    NVQUIRK_DISABLE_TIMER_BASED_TUNING |
 		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK |
 		    NVQUIRK_UPDATE_PAD_CNTRL_REG |
 		    NVQUIRK_USE_TMCLK_WR_CRC_TIMEOUT,
-	.nvquirks2 = NVQUIRK2_CONFIG_PWR_DET,
+	.nvquirks2 = NVQUIRK2_UPDATE_HW_TUNING_CONFG |
+		     NVQUIRK2_CONFIG_PWR_DET,
 };
 
 static const struct of_device_id sdhci_tegra_dt_match[] = {

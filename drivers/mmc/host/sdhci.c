@@ -2242,6 +2242,11 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		return err;
 	}
 
+	if ((host->quirks2 & SDHCI_QUIRK2_NON_STD_TUNING_LOOP_CNTR) &&
+		(host->ops->get_max_tuning_loop_counter))
+		tuning_loop_counter =
+			host->ops->get_max_tuning_loop_counter(host);
+
 	spin_lock(&host->lock);
 	ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
 

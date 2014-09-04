@@ -386,6 +386,7 @@ struct sdhci_ops {
 		unsigned int max_dtr, int host_drv, int card_drv);
 	void	(*post_init)(struct sdhci_host *host);
 	void	(*dump_host_cust_regs)(struct sdhci_host *host);
+	int	(*get_max_tuning_loop_counter)(struct sdhci_host *sdhci);
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS
