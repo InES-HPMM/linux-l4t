@@ -87,29 +87,6 @@
 #define FUSE_GPU_INFO_MASK		(1<<2)
 #define FUSE_SPARE_BIT			0x380
 
-/* fuse registers used in public fuse data read API */
-#define FUSE_FT_REV			0x128
-#define FUSE_CP_REV			0x190
-/* fuse spare bits are used to get Tj-ADT values */
-#define NUM_TSENSOR_SPARE_BITS		28
-/* tsensor calibration register */
-#define FUSE_TSENSOR_CALIB_0		0x198
-/* sparse realignment register */
-#define FUSE_SPARE_REALIGNMENT_REG_0	0x37c
-/* tsensor8_calib */
-#define FUSE_TSENSOR_CALIB_8		0x280
-
-#define FUSE_BASE_CP_SHIFT		0
-#define FUSE_BASE_CP_MASK		0x3ff
-#define FUSE_BASE_FT_SHIFT		10
-#define FUSE_BASE_FT_MASK		0x7ff
-#define FUSE_SHIFT_CP_SHIFT		0
-#define FUSE_SHIFT_CP_MASK		0x3f
-#define FUSE_SHIFT_CP_BITS		6
-#define FUSE_SHIFT_FT_SHIFT		21
-#define FUSE_SHIFT_FT_MASK		0x1f
-#define FUSE_SHIFT_FT_BITS		5
-
 #define TEGRA_FUSE_SUPPLY		"dummy"
 #define PGM_TIME_US		12
 

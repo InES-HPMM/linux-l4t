@@ -91,8 +91,6 @@
 #define FUSE_GPU_INFO		0x390
 #define FUSE_GPU_INFO_MASK	(1<<2)
 #define FUSE_SPARE_BIT		0x280
-/* fuse registers used in public fuse data read API */
-#define FUSE_TEST_PROGRAM_REVISION_0	0x128
 /* fuse spare bits are used to get Tj-ADT values */
 #define NUM_TSENSOR_SPARE_BITS	28
 /* tsensor calibration register */
@@ -118,13 +116,6 @@ DEVICE_ATTR(public_key, 0440, tegra_fuse_show, tegra_fuse_store);
 DEVICE_ATTR(pkc_disable, 0440, tegra_fuse_show, tegra_fuse_store);
 DEVICE_ATTR(vp8_enable, 0440, tegra_fuse_show, tegra_fuse_store);
 DEVICE_ATTR(odm_lock, 0440, tegra_fuse_show, tegra_fuse_store);
-
-int tegra_fuse_get_revision(u32 *rev)
-{
-	/* fuse revision */
-	*rev = tegra_fuse_readl(FUSE_TEST_PROGRAM_REVISION_0);
-	return 0;
-}
 
 int tegra_fuse_get_tsensor_calibration_data(u32 *calib)
 {

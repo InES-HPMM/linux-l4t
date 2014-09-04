@@ -1407,6 +1407,7 @@ void tegra_init_fuse(void)
 	tegra_set_bct_strapping();
 	tegra_set_chip_id();
 	tegra_revision = tegra_chip_get_revision();
+	tegra_fuse_tsosc_init();
 	tegra_init_speedo_data();
 	pr_info("Tegra Revision: %s SKU: 0x%x CPU Process: %d Core Process: %d\n",
 		tegra_revision_name[tegra_revision],
