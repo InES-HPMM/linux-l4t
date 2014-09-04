@@ -86,7 +86,7 @@ config TEGRA_NVDISPLAY
 
 config TEGRA_DC_CDE
 	bool "Tegra Color Decompression Engine"
-	depends on TEGRA_DC && ARCH_TEGRA_21x_SOC
+	depends on TEGRA_DC && (ARCH_TEGRA_21x_SOC || TEGRA_NVDISPLAY)
 	default y
 	help
 	  Say Y here to enable Tegra color decompression engine
@@ -142,7 +142,7 @@ config TEGRA_DC_BLENDER_DEPTH
 
 config TEGRA_DC_BLOCK_LINEAR
 	bool "Support Block Linear encoding"
-	depends on TEGRA_DC && (ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC)
+	depends on TEGRA_DC && (ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC || TEGRA_NVDISPLAY)
 	default y
 	help
 	  A swizzled format that makes vertical walks of a surface
