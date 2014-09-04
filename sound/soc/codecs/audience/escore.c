@@ -1089,6 +1089,7 @@ int escore_probe(struct escore_priv *escore, struct device *dev, int curr_intf,
 	if (rc) {
 		pr_err("%s(): Error while setting up high bw interface %d\n",
 				__func__, rc);
+		escore->is_probe_error = 1;
 		goto out;
 	}
 
@@ -1101,6 +1102,7 @@ int escore_probe(struct escore_priv *escore, struct device *dev, int curr_intf,
 		if (rc) {
 			pr_err("%s(): Codec registration failed %d\n",
 					__func__, rc);
+			escore->is_probe_error = 1;
 			goto out;
 		}
 		if (context == ES_CONTEXT_THREAD) {
@@ -1121,7 +1123,8 @@ int escore_probe(struct escore_priv *escore, struct device *dev, int curr_intf,
 #else
 	complete(&escore->fw_download);
 #endif
-	/*escore_pm_enable();*/
+	escore->is_probe_error = 0;
+	escore_pm_enable();
 
 out:
 	return rc;

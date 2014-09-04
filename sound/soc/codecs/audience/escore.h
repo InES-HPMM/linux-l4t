@@ -554,7 +554,7 @@ struct escore_priv {
 	int escore_power_state;
 	u32 escore_event_type;
 	u8 device_up_called;
-
+	bool is_probe_error;
 #ifdef CONFIG_ARCH_MSM8974
 	bool i2c_pull_up;
 #endif
@@ -619,6 +619,7 @@ void escore_pm_put_autosuspend(void);
 int escore_pm_get_sync(void);
 int escore_platform_init(void);
 int escore_retrigger_probe(void);
+bool escore_is_probe_error(void);
 extern int escore_reconfig_intr(struct escore_priv *escore);
 extern const struct dev_pm_ops escore_pm_ops;
 
