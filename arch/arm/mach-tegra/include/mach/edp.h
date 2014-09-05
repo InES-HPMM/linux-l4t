@@ -41,13 +41,6 @@
 #include <linux/platform_data/tegra_edp.h>
 #include <linux/platform_data/thermal_sensors.h>
 
-struct tegra_edp_vdd_cpu_entry {
-	char speedo_id;
-	char regulator_100ma;
-	char temperature;
-	char freq_limits[4];
-};
-
 struct tegra_edp_limits {
 	int temperature;
 	unsigned int freq_limits[4];
@@ -90,8 +83,6 @@ struct tegra_edp_cpu_powermodel_params {
 	struct tegra_edp_common_powermodel_params common;
 
 	unsigned int safety_cap[4];
-	struct tegra_edp_maximum_current_constraint max_current_cap[9];
-	struct tegra_edp_voltage_temp_constraint volt_temp_cap;
 };
 
 struct tegra_edp_gpu_powermodel_params {

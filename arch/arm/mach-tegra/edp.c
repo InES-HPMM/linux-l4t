@@ -133,34 +133,7 @@ static inline s64 edp_pow(s64 val, int pwr)
 
 
 #ifdef CONFIG_TEGRA_CPU_EDP_FIXED_LIMITS
-static inline unsigned int cpu_edp_apply_fixed_limits(
-				unsigned int in_freq_khz,
-				struct tegra_edp_cpu_powermodel_params *params,
-				unsigned int cur_effective,
-				int temp_c, int n_cores_idx)
-{
-	unsigned int out_freq_khz = in_freq_khz;
-	unsigned int max_cur, max_temp, max_freq;
-	int i;
-
-	/* Apply any additional fixed limits */
-	for (i = 0; i < 8; i++) {
-		max_cur = params->common.max_current_cap[i].max_cur;
-		if (max_cur != 0 && cur_effective <= max_cur) {
-			max_temp = params->common.max_current_cap[i].max_temp;
-			if (max_temp != 0 && temp_c > max_temp) {
-				max_freq = params->common.max_current_cap[i].
-					max_freq[n_cores_idx];
-				if (max_freq && max_freq < out_freq_khz)
-					out_freq_khz = max_freq;
-			}
-		}
-	}
-
-	return out_freq_khz;
-}
-#else
-#define cpu_edp_apply_fixed_limits(freq, unused...)	(freq)
+#error
 #endif
 
 static struct thermal_cooling_device_ops tegra_cpu_edp_cooling_ops = {
@@ -297,13 +270,6 @@ static unsigned int cpu_edp_calculate_maxf(
 		freq_khz = freq_voltage_lut[f].freq / 1000;
 		voltage_mv = freq_voltage_lut[f].voltage_mv;
 
-		/* Constrain Volt-Temp */
-		if (params->volt_temp_cap.temperature &&
-		    temp_c > params->volt_temp_cap.temperature &&
-		    params->volt_temp_cap.voltage_limit_mv &&
-		    voltage_mv > params->volt_temp_cap.voltage_limit_mv)
-			continue;
-
 		/* Calculate leakage current */
 		leakage_ma = common_edp_calculate_leakage_ma(
 					&params->common, cpu_iddq_ma,
@@ -325,8 +291,7 @@ static unsigned int cpu_edp_calculate_maxf(
 	}
 
  end:
-	return cpu_edp_apply_fixed_limits(freq_khz, params,
-					cur_effective, temp_c, n_cores_idx);
+	return freq_khz;
 }
 
 static int edp_relate_freq_voltage(struct clk *c, unsigned int step,
@@ -607,12 +572,6 @@ void __init tegra_init_cpu_edp_limits(unsigned int regulator_ma)
 	init_cpu_edp_limits_calculated();
 }
 
-void tegra_get_cpu_edp_limits(const struct tegra_edp_limits **limits, int *size)
-{
-	*limits = cpu_edp_limits;
-	*size = cpu_edp_limits_size;
-}
-
 int tegra_get_edp_max_thermal_index(void)
 {
 	return cpu_edp_limits_size - 1;
@@ -676,15 +635,11 @@ void tegra_get_cpu_reg_mode_limits(const struct tegra_edp_limits **limits,
 void tegra_platform_edp_init(struct thermal_trip_info *trips,
 				int *num_trips, int margin)
 {
-	const struct tegra_edp_limits *cpu_edp_limits;
 	struct thermal_trip_info *trip_state;
-	int i, cpu_edp_limits_size;
+	int i;
 
 	if (!trips || !num_trips)
 		return;
-
-	/* edp capping */
-	tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
 
 	if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
 		BUG();
