@@ -769,19 +769,6 @@ phys_addr_t iommu_iova_to_phys(struct iommu_domain *domain, dma_addr_t iova)
 }
 EXPORT_SYMBOL_GPL(iommu_iova_to_phys);
 
-int iommu_domain_has_cap(struct iommu_domain *domain,
-			 enum iommu_cap cap)
-{
-	if (domain->ops->domain_has_cap != NULL)
-		return domain->ops->domain_has_cap(domain, cap);
-
-	if (domain->ops->capable != NULL)
-		return domain->ops->capable(cap);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(iommu_domain_has_cap);
-
 int iommu_map(struct iommu_domain *domain, unsigned long iova,
 	      phys_addr_t paddr, size_t size, unsigned long prot)
 {
