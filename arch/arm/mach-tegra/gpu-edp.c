@@ -26,12 +26,20 @@
 #include <linux/sysedp.h>
 #include <linux/tegra-soc.h>
 #include <linux/tegra-fuse.h>
+#include <linux/hashtable.h>
 
 #include <mach/edp.h>
 
 #include "dvfs.h"
 #include "clock.h"
 #include "common.h"
+
+struct maxf_cache_entry {
+	u32 imax;
+	s16 temp_c;
+	unsigned maxf;
+	struct hlist_node nib; /* next in bucket*/
+};
 
 struct vdd_edp {
 	char *cdev_name;
@@ -47,8 +55,8 @@ struct vdd_edp {
 	struct tegra_edp_common_powermodel_params *params;
 	int iddq_ma;
 
-	struct tegra_edp_limits *edp_freq_limits;
-	int n_limits;
+	DECLARE_HASHTABLE(maxf_cache, 7);
+
 	int thermal_idx;
 
 	void (*apply_cap)(struct vdd_edp *);
@@ -59,6 +67,7 @@ struct vdd_edp {
 
 	const int *temperatures;
 	int n_temperatures;
+	int temp_from_debugfs;
 };
 
 const int temps[] = { /* degree celcius (C) */
@@ -270,10 +279,60 @@ static unsigned int edp_calculate_maxf(
 	return freq_khz;
 }
 
-static int init_fv_lut(struct vdd_edp *ctx)
+#define make_key(imax, temp_c) ((imax << 8) ^ temp_c)
+static unsigned edp_get_maxf(struct vdd_edp *ctx, int temp_c)
+{
+	unsigned maxf;
+	struct maxf_cache_entry *me;
+	u32 key = make_key(ctx->imax_ma, temp_c);
+
+	BUG_ON(!mutex_is_locked(&ctx->edp_lock));
+
+	/* check cache */
+	hash_for_each_possible(ctx->maxf_cache, me, nib, key)
+		if (me->imax == ctx->imax_ma && me->temp_c == temp_c) {
+			maxf = me->maxf;
+			return maxf;
+		}
+
+	/* service a miss */
+	maxf = edp_calculate_maxf(ctx->params,
+				  ctx->fv_lut_size,
+				  ctx->fv_lut,
+				  ctx->imax_ma,
+				  temp_c,
+				  ctx->iddq_ma);
+
+	/* best effort to cache the result */
+	me = kzalloc(sizeof(*me), GFP_KERNEL);
+	if (!IS_ERR_OR_NULL(me)) {
+		me->imax = ctx->imax_ma;
+		me->temp_c = temp_c;
+		me->maxf = maxf;
+		hash_add(ctx->maxf_cache, &me->nib, key);
+	}
+	return maxf;
+}
+
+static void edp_flush_maxf_cache_locked(struct vdd_edp *ctx)
+{
+	int bucket;
+	struct hlist_node *tmp;
+	struct maxf_cache_entry *me;
+
+	hash_for_each_safe(ctx->maxf_cache, bucket, tmp, me, nib) {
+		hash_del(&me->nib);
+		kfree(me);
+	}
+}
+
+static int init_fv_lut_locked(struct vdd_edp *ctx)
 {
 	struct clk *c;
 	int minf, maxf, ret = 0;
+
+	kfree(ctx->fv_lut);
+	edp_flush_maxf_cache_locked(ctx);
 
 	c = clk_get_parent(ctx->cap_clk);
 	minf = 0;
@@ -297,55 +356,24 @@ static int init_fv_lut(struct vdd_edp *ctx)
 		ctx->fv_lut = NULL;
 		ctx->fv_lut_size = 0;
 	}
+
 	return ret;
 }
 
-static int calculate_edp_limits(struct vdd_edp *ctx)
+static int init_fv_lut(struct vdd_edp *ctx)
 {
-	unsigned int limit;
-	struct tegra_edp_limits *edp_calculated_limits;
-	int i, j;
-
-	edp_calculated_limits = kmalloc(sizeof(struct tegra_edp_limits)
-				* ctx->n_temperatures, GFP_KERNEL);
-	BUG_ON(!edp_calculated_limits);
-
-	for (i = 0; i < ctx->n_temperatures; i++)
-		for (j = 0; j < ctx->n_cores; j++) {
-			edp_calculated_limits[i].temperature =
-				ctx->temperatures[i];
-			limit = edp_calculate_maxf(ctx->params,
-						   ctx->fv_lut_size,
-						   ctx->fv_lut,
-						   ctx->imax_ma,
-						   ctx->temperatures[i],
-						   ctx->iddq_ma);
-			if (limit == -EINVAL) {
-				kfree(edp_calculated_limits);
-				return -EINVAL;
-			}
-
-			edp_calculated_limits[i].freq_limits[j] = limit;
-		}
+	int ret;
 
 	mutex_lock(&ctx->edp_lock);
-	kfree(ctx->edp_freq_limits);
-	ctx->edp_freq_limits = edp_calculated_limits;
-	ctx->n_limits = ctx->n_temperatures;
+	ret = init_fv_lut_locked(ctx);
 	mutex_unlock(&ctx->edp_lock);
 
-	return 0;
+	return ret;
 }
 
 static void __init _init_edp_limits(struct vdd_edp *ctx,
 				    unsigned int regulator_ma)
 {
-	if (!regulator_ma) {
-		ctx->edp_freq_limits = NULL;
-		ctx->n_limits = 0;
-		return;
-	}
-
 	if (ctx->cap_clk_name) {
 		ctx->cap_clk = tegra_get_clock_by_name(ctx->cap_clk_name);
 		if (!ctx->cap_clk)
@@ -357,7 +385,6 @@ static void __init _init_edp_limits(struct vdd_edp *ctx,
 	ctx->imax_ma = regulator_ma;
 
 	init_fv_lut(ctx);
-	calculate_edp_limits(ctx);
 }
 
 void __init tegra_init_gpu_edp_limits(unsigned int regulator_ma)
@@ -400,7 +427,7 @@ static void apply_cap_via_clock(struct vdd_edp *ctx)
 	unsigned long clk_rate;
 	BUG_ON(IS_ERR_OR_NULL(ctx->cap_clk));
 
-	clk_rate = ctx->edp_freq_limits[ctx->thermal_idx].freq_limits[0];
+	clk_rate = edp_get_maxf(ctx, ctx->temperatures[ctx->thermal_idx]);
 	clk_set_rate(ctx->cap_clk, clk_rate * 1000);
 }
 
@@ -411,7 +438,7 @@ static int edp_set_cdev_state(struct thermal_cooling_device *cdev,
 
 	mutex_lock(&ctx->edp_lock);
 
-	BUG_ON(cur_state >= ctx->n_limits);
+	BUG_ON(cur_state >= ctx->n_temperatures);
 
 	ctx->thermal_idx = cur_state;
 	if (ctx->apply_cap)
@@ -453,56 +480,44 @@ module_init(gpu_edp_cdev_init);
 
 #ifdef CONFIG_DEBUG_FS
 
-static inline void edp_show_edp_table(struct seq_file *s,
-				      struct tegra_edp_limits *limits,
-				      size_t nlimits, int ncores, int th_idx)
+static int edp_show_maxf(void *data, u64 *val)
 {
-	int i, j;
-	seq_puts(s, " Temp.");
-	for (i = 1; i <= ncores; i++)
-		seq_printf(s, "     %d-core", i);
-	seq_puts(s, "\n");
-
-	for (i = 0; i < nlimits; i++) {
-		seq_printf(s, "%c%3dC:",
-			   i == th_idx ? '>' : ' ',
-			   limits[i].temperature);
-		for (j = 0; j < ncores; j++)
-			seq_printf(s, " %10u", limits[i].freq_limits[j]);
-		seq_puts(s, "\n");
-	}
-}
-
-static int edp_limit_debugfs_show(struct seq_file *s, void *data)
-{
-	struct vdd_edp *ctx = s->private;
-	int j;
-
-	for (j = 0; j < ctx->n_cores; j++)
-		seq_printf(s, "%-9u%c",
-			   ctx->edp_freq_limits[ctx->thermal_idx].freq_limits[j],
-			   j == ctx->n_cores - 1 ? '\n' : ' ');
-	return 0;
-}
-
-static int edp_table_debugfs_show(struct seq_file *s, void *data)
-{
-	struct vdd_edp *ctx = s->private;
+	struct vdd_edp *ctx = data;
 
 	mutex_lock(&ctx->edp_lock);
-	seq_printf(s, "-- %s EDP table (%umA) --\n",
-		   ctx->edp_name,
-		   ctx->imax_ma);
-
-	edp_show_edp_table(s,
-			   ctx->edp_freq_limits,
-			   ctx->n_limits,
-			   ctx->n_cores,
-			   ctx->thermal_idx);
+	*val = edp_get_maxf(ctx, ctx->temp_from_debugfs);
 	mutex_unlock(&ctx->edp_lock);
 
 	return 0;
 }
+DEFINE_SIMPLE_ATTRIBUTE(edp_maxf_fops, edp_show_maxf, NULL, "%llu\n");
+
+static int edp_cache_show(struct seq_file *s, void *data)
+{
+	int bucket;
+	struct maxf_cache_entry *me;
+	struct vdd_edp *ctx = s->private;
+
+	seq_printf(s, "%10s %10s %10s\n",
+		   "imax [mA]", "temp['C]", "fmax [Hz]");
+
+	hash_for_each(ctx->maxf_cache, bucket, me, nib)
+		seq_printf(s, "%10d %10d %10d\n",
+			   me->imax, me->temp_c, me->maxf);
+
+	return 0;
+}
+
+static int edp_cache_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, edp_cache_show, inode->i_private);
+}
+
+static const struct file_operations edp_cache_fops = {
+	.open = edp_cache_open,
+	.read = seq_read,
+};
+
 
 static int edp_imax_get(void *data, u64 *val)
 {
@@ -515,51 +530,16 @@ static int edp_imax_set(void *data, u64 new_imax)
 {
 	struct vdd_edp *ctx = data;
 	struct thermal_cooling_device hack = {.devdata = ctx};
-	int old_imax;
 
-	old_imax = ctx->imax_ma;
 	ctx->imax_ma = new_imax;
 
-	if (calculate_edp_limits(ctx)) {
-		pr_err("FAILED: Reinitialize %s EDP table with current limit %ullmA",
-		       ctx->edp_name, ctx->imax_ma);
-
-		/* Revert to previous value if new value fails */
-		ctx->imax_ma = old_imax;
-		return -EINVAL;
-	}
-
 	edp_set_cdev_state(&hack, ctx->thermal_idx);
-	pr_info("Reinitialized %s EDP table with regulator current limit %u mA\n",
+	pr_info("Reinitialized %s EDP capping with regulator current limit %u mA\n",
 		ctx->edp_name, ctx->imax_ma);
 	return 0;
 
 }
 DEFINE_SIMPLE_ATTRIBUTE(edp_imax_fops, edp_imax_get, edp_imax_set, "%llu\n")
-
-static int edp_debugfs_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, edp_table_debugfs_show, inode->i_private);
-}
-
-static int edp_limit_debugfs_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, edp_limit_debugfs_show, inode->i_private);
-}
-
-static const struct file_operations edp_debugfs_fops = {
-	.open		= edp_debugfs_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-};
-
-static const struct file_operations edp_limit_debugfs_fops = {
-	.open		= edp_limit_debugfs_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-};
 
 static int __init vdd_edp_debugfs_init(struct vdd_edp *ctx,
 				       struct dentry *parent)
@@ -568,15 +548,17 @@ static int __init vdd_edp_debugfs_init(struct vdd_edp *ctx,
 	if (!parent)
 		return -ENOMEM;
 
-	debugfs_create_file("edp_table",  S_IRUGO, parent, ctx,
-			    &edp_debugfs_fops);
-	debugfs_create_file("edp_limit", S_IRUGO, parent,
-			    ctx, &edp_limit_debugfs_fops);
 	debugfs_create_file("imax_ma",
 			    S_IRUGO | S_IWUSR, parent, ctx,
 			    &edp_imax_fops);
+	debugfs_create_file("edp_cache", S_IRUGO, parent, ctx,
+			    &edp_cache_fops);
+	debugfs_create_file("maxf", S_IRUGO, parent, ctx,
+			    &edp_maxf_fops);
 	debugfs_create_u32_array(".vf_lut", S_IRUGO, parent,
 				 (u32 *)ctx->fv_lut, 2*ctx->fv_lut_size);
+	debugfs_create_u32(".temp_c", S_IRUGO | S_IWUSR, parent,
+			   (u32 *)&ctx->temp_from_debugfs);
 
 	return 0;
 }
