@@ -419,8 +419,12 @@ struct tap_hole_coeffs t12x_automotive_tap_hole_coeffs[] = {
 		114635,	9846,	114635),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	204000,	2956,	27274,	2956,
 		27274,	2956,	27274),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.2",	99000,	1802,	206152,	1802,
+		206152,	1802,	206152),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	204000,	5781,	67417,	5781,
 		67417,	5781,	67417),
+	SET_TAP_HOLE_COEFFS("sdhci-tegra.0",	99000,	2151,	250150,	2151,
+		250150,	2151,	250150),
 };
 
 struct tap_hole_coeffs t12x_tap_hole_coeffs[] = {
@@ -4830,6 +4834,8 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 				t12x_automotive_tap_hole_coeffs;
 		soc_data_tegra12.tap_hole_coeffs_count =
 				ARRAY_SIZE(t12x_automotive_tap_hole_coeffs);
+		/* For automotive SDR50 mode POR frequency is 99Mhz */
+		soc_data_tegra12.tuning_freq_list[0] = 99000000;
 	}
 	host->mmc->pm_caps |= plat->pm_caps;
 	host->mmc->pm_flags |= plat->pm_flags;
