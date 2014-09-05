@@ -34,6 +34,13 @@ config EXTCON_GPIO_OTG
 	help
 	  Say Y here to enable GPIO/IIO channel based extcon support.
 
+config EXTCON_CABLE_XLATE
+	tristate "Cable translator based on different cable type"
+	help
+	  Say Y here to enable cable translator which receives the cable states
+	  from different extcon and report as different cable state based on the
+	  state table.
+
 config EXTCON_ADC_JACK
 	tristate "ADC Jack extcon support"
 	depends on IIO
