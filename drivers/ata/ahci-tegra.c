@@ -351,6 +351,11 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define XUSB_PADCTL_ELPG_PROGRAM_0_0		0x20
 #define AUX_MUX_LP0_CLAMP_EN_EARLY		(1 << 30)
 
+/*Electrical settings for better link stability */
+#define SATA_CHX_PHY_CTRL17_0			0x6e8
+#define SATA_CHX_PHY_CTRL18_0			0x6ec
+#define SATA_CHX_PHY_CTRL20_0			0x6f4
+#define SATA_CHX_PHY_CTRL21_0			0x6f8
 
 
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
@@ -731,8 +736,13 @@ static void tegra_ahci_set_pad_cntrl_regs(
 	int	val;
 	int	i;
 
-	if (tegra_hpriv->cid == TEGRA_CHIPID_TEGRA21)
+	if (tegra_hpriv->cid == TEGRA_CHIPID_TEGRA21) {
+		scfg_writel(0x5501000, SATA_CHX_PHY_CTRL17_0);
+		scfg_writel(0x55010000, SATA_CHX_PHY_CTRL18_0);
+		scfg_writel(0x1, SATA_CHX_PHY_CTRL20_0);
+		scfg_writel(0x1, SATA_CHX_PHY_CTRL21_0);
 		return;
+	}
 
 	calib_val = fuse_readl(FUSE_SATA_CALIB_OFFSET) & FUSE_SATA_CALIB_MASK;
 
@@ -1339,6 +1349,7 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	 */
 	val = scfg_readl(T_SATA0_CFG_PHY_REG);
 	val |= T_SATA0_CFG_PHY_SQUELCH_MASK;
+	val |= PHY_USE_7BIT_ALIGN_DET_FOR_SPD_MASK;
 	scfg_writel(val, T_SATA0_CFG_PHY_REG);
 
 	val = scfg_readl(T_SATA0_NVOOB);
