@@ -90,6 +90,10 @@ static struct usb_endpoint_descriptor nvudc_ep0_desc = {
 	.wMaxPacketSize = cpu_to_le16(64),
 };
 
+int debug_level = LEVEL_WARNING;
+module_param(debug_level, int, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(debug_level, "level 0~4");
+
 static void usbep_struct_setup(struct NV_UDC_S *nvudc, u32 index, u8 *name);
 static bool u1_u2_enable = true;
 module_param(u1_u2_enable, bool, S_IRUGO|S_IWUSR);
