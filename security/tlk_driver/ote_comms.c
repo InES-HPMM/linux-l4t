@@ -117,47 +117,9 @@ static int te_prep_mem_buffers(struct te_request *request,
 {
 	uint32_t i;
 	int ret = OTE_SUCCESS;
-	struct te_oper_param *params = request->params;
+	struct te_oper_param *params;
 
-	for (i = 0; i < request->params_size; i++) {
-		switch (params[i].type) {
-		case TE_PARAM_TYPE_NONE:
-		case TE_PARAM_TYPE_INT_RO:
-		case TE_PARAM_TYPE_INT_RW:
-			break;
-		case TE_PARAM_TYPE_MEM_RO:
-		case TE_PARAM_TYPE_MEM_RW:
-		case TE_PARAM_TYPE_PERSIST_MEM_RO:
-		case TE_PARAM_TYPE_PERSIST_MEM_RW:
-			ret = te_prep_mem_buffer(request->session_id,
-				params[i].u.Mem.base,
-				params[i].u.Mem.len,
-				params[i].type,
-				context);
-			if (ret < 0) {
-				pr_err("%s failed with err (%d)\n",
-					__func__, ret);
-				ret = OTE_ERROR_BAD_PARAMETERS;
-				break;
-			}
-			break;
-		default:
-			pr_err("%s: OTE_ERROR_BAD_PARAMETERS\n", __func__);
-			ret = OTE_ERROR_BAD_PARAMETERS;
-			break;
-		}
-	}
-	return ret;
-}
-
-static int te_prep_mem_buffers_compat(struct te_request_compat *request,
-			struct tlk_context *context)
-{
-	uint32_t i;
-	int ret = OTE_SUCCESS;
-	struct te_oper_param_compat *params;
-
-	params = (struct te_oper_param_compat *)(uintptr_t)request->params;
+	params = (struct te_oper_param *)(uintptr_t)request->params;
 	for (i = 0; i < request->params_size; i++) {
 		switch (params[i].type) {
 		case TE_PARAM_TYPE_NONE:
@@ -332,29 +294,6 @@ static void do_smc(struct te_request *request, struct tlk_device *dev)
 	uint32_t smc_args;
 	uint32_t smc_params = 0;
 
-	if (dev->req_param_buf) {
-		smc_args = (char *)request - dev->req_param_buf;
-		if (request->params)
-			smc_params = (char *)request->params -
-						dev->req_param_buf;
-	} else {
-		smc_args = (uint32_t)virt_to_phys(request);
-		if (request->params)
-			smc_params = (uint32_t)virt_to_phys(request->params);
-	}
-
-	tlk_generic_smc(request->type, smc_args, smc_params);
-}
-
-/*
- * Do an SMC call
- */
-static void do_smc_compat(struct te_request_compat *request,
-			  struct tlk_device *dev)
-{
-	uint32_t smc_args;
-	uint32_t smc_params = 0;
-
 	smc_args = (char *)request - dev->req_param_buf;
 	if (request->params) {
 		smc_params =
@@ -434,13 +373,12 @@ int te_set_vpr_params(void *vpr_base, size_t vpr_size)
 }
 EXPORT_SYMBOL(te_set_vpr_params);
 
-
 /*
  * Open session SMC (supporting client-based te_open_session() calls)
  */
 void te_open_session(struct te_opensession *cmd,
-		     struct te_request *request,
-		     struct tlk_context *context)
+		    struct te_request *request,
+		    struct tlk_context *context)
 {
 	int ret;
 
@@ -481,8 +419,8 @@ void te_open_session(struct te_opensession *cmd,
  * Close session SMC (supporting client-based te_close_session() calls)
  */
 void te_close_session(struct te_closesession *cmd,
-		      struct te_request *request,
-		      struct tlk_context *context)
+		     struct te_request *request,
+		     struct tlk_context *context)
 {
 	request->session_id = cmd->session_id;
 	request->type = TE_SMC_CLOSE_SESSION;
@@ -500,8 +438,8 @@ void te_close_session(struct te_closesession *cmd,
  * Launch operation SMC (supporting client-based te_launch_operation() calls)
  */
 void te_launch_operation(struct te_launchop *cmd,
-			 struct te_request *request,
-			 struct tlk_context *context)
+			struct te_request *request,
+			struct tlk_context *context)
 {
 	int ret;
 
@@ -518,101 +456,6 @@ void te_launch_operation(struct te_launchop *cmd,
 	}
 
 	do_smc(request, context->dev);
-
-	if (request->result) {
-		/* release any persistent mem buffers if we failed */
-		te_release_persist_mem_buffers(request->session_id, context);
-	} else {
-		/* mark active any persistent mem buffers */
-		te_update_persist_mem_buffers(request->session_id, context);
-	}
-
-	te_release_temp_mem_buffers(context);
-}
-
-/*
- * Open session SMC (supporting client-based te_open_session() calls)
- */
-void te_open_session_compat(struct te_opensession_compat *cmd,
-			    struct te_request_compat *request,
-			    struct tlk_context *context)
-{
-	int ret;
-
-	request->type = TE_SMC_OPEN_SESSION;
-
-	ret = te_prep_mem_buffers_compat(request, context);
-	if (ret != OTE_SUCCESS) {
-		pr_err("%s: te_prep_mem_buffers failed err (0x%x)\n",
-			__func__, ret);
-		SET_RESULT(request, ret, OTE_RESULT_ORIGIN_API);
-		return;
-	}
-
-	memcpy(&request->dest_uuid,
-	       &cmd->dest_uuid,
-	       sizeof(struct te_service_id));
-
-	pr_info("OPEN_CLIENT_SESSION_COMPAT: 0x%x 0x%x 0x%x 0x%x\n",
-		request->dest_uuid[0],
-		request->dest_uuid[1],
-		request->dest_uuid[2],
-		request->dest_uuid[3]);
-
-	do_smc_compat(request, context->dev);
-
-	if (request->result) {
-		/* release any persistent mem buffers if we failed */
-		te_release_persist_mem_buffers(request->session_id, context);
-	} else {
-		/* mark active any persistent mem buffers */
-		te_update_persist_mem_buffers(request->session_id, context);
-	}
-
-	te_release_temp_mem_buffers(context);
-}
-
-/*
- * Close session SMC (supporting client-based te_close_session() calls)
- */
-void te_close_session_compat(struct te_closesession_compat *cmd,
-			     struct te_request_compat *request,
-			     struct tlk_context *context)
-{
-	request->session_id = cmd->session_id;
-	request->type = TE_SMC_CLOSE_SESSION;
-
-	do_smc_compat(request, context->dev);
-	if (request->result)
-		pr_info("%s: error closing session: %08x\n",
-			__func__, request->result);
-
-	/* release any peristent mem buffers */
-	te_release_persist_mem_buffers(request->session_id, context);
-}
-
-/*
- * Launch operation SMC (supporting client-based te_launch_operation() calls)
- */
-void te_launch_operation_compat(struct te_launchop_compat *cmd,
-				struct te_request_compat *request,
-				struct tlk_context *context)
-{
-	int ret;
-
-	request->session_id = cmd->session_id;
-	request->command_id = cmd->operation.command;
-	request->type = TE_SMC_LAUNCH_OPERATION;
-
-	ret = te_prep_mem_buffers_compat(request, context);
-	if (ret != OTE_SUCCESS) {
-		pr_err("%s: te_prep_mem_buffers failed err (0x%x)\n",
-			__func__, ret);
-		SET_RESULT(request, ret, OTE_RESULT_ORIGIN_API);
-		return;
-	}
-
-	do_smc_compat(request, context->dev);
 
 	if (request->result) {
 		/* release any persistent mem buffers if we failed */
