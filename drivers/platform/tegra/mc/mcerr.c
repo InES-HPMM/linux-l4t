@@ -224,7 +224,7 @@ static irqreturn_t tegra_mc_error_thread(int irq, void *data)
 	addr = __mc_readl(err_mc, fault->addr_reg);
 	secure = !!(status & MC_ERR_STATUS_SECURE);
 	write = !!(status & MC_ERR_STATUS_WRITE);
-	client_id = status & 0x7f;
+	client_id = status & 0xff;
 	client = &mc_clients[client_id <= mc_client_last
 			     ? client_id : mc_client_last];
 
