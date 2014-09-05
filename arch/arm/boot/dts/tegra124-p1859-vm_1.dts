@@ -27,18 +27,6 @@
 	compatible = "nvidia,vcm30t124", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 
-	ahub {
-		i2s@70301100 {
-			status = "disabled";
-		};
-		i2s@70301200 {
-			status = "disabled";
-		};
-		i2s@70301300 {
-			status = "disabled";
-		};
-	};
-
 	sdhci@700b0200 {
 		status = "disabled";
 	};
