@@ -4767,6 +4767,9 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 
 	plat->limit_vddio_max_volt = of_property_read_bool(np,
 					"nvidia,limit-vddio-max-volt");
+	plat->cd_wakeup_incapable = of_property_read_bool(np,
+					"cd_wakeup_incapable");
+
 	plat->mmc_data.built_in = of_property_read_bool(np, "built-in");
 	plat->update_pinctrl_settings = of_property_read_bool(np,
 			"nvidia,update-pinctrl-settings");
