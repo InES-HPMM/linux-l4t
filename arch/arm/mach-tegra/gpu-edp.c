@@ -34,6 +34,85 @@
 #include "clock.h"
 #include "common.h"
 
+struct fv_relation {
+	struct mutex lock;
+	struct clk *c;
+	int (*relate_voltages)(struct fv_relation *);
+
+	ssize_t size;
+	struct fv_entry {
+		unsigned int freq;
+		int voltage_mv;
+	} *table;
+};
+
+#define for_each_fv_entry(fv, fve) \
+	for (fve = fv->table + fv->size - 1; fve >= fv->table; fve--)
+
+static int fv_relation_update(struct fv_relation *fv)
+{
+	int ret = 0;
+
+	mutex_lock(&fv->lock);
+	ret = fv->relate_voltages(fv);
+	mutex_unlock(&fv->lock);
+
+	return ret;
+}
+
+static struct fv_relation *fv_relation_create(struct clk *c, int freq_step,
+				int (*relate_voltages)(struct fv_relation *))
+{
+	int i;
+	struct fv_relation *result;
+
+	BUG_ON(!c);
+	BUG_ON(!relate_voltages);
+	BUG_ON(freq_step <= 0);
+
+	result = kmalloc(sizeof(struct fv_relation), GFP_KERNEL);
+	if (!result)
+		return ERR_PTR(-ENOMEM);
+
+	mutex_init(&result->lock);
+	result->c = c;
+	result->relate_voltages = relate_voltages;
+	result->size = clk_get_max_rate(c) / freq_step + 1;
+	result->table = kmalloc(sizeof(struct fv_entry[result->size]),
+				GFP_KERNEL);
+
+	if (!result->table) {
+		kfree(result);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	for (i = 0; i < result->size; i++)
+		result->table[i].freq = i * freq_step;
+
+	if (fv_relation_update(result))	{
+		kfree(result->table);
+		kfree(result);
+		result = NULL;
+	}
+	return result;
+}
+
+static int tegra_relate_fv(struct fv_relation *fv)
+{
+	struct fv_entry *fve;
+
+	for_each_fv_entry(fv, fve) {
+		fve->voltage_mv = tegra_dvfs_predict_peak_millivolts(
+			fv->c, fve->freq);
+		if (fve->voltage_mv < 0) {
+			pr_err("%s: couldn't predict voltage: freq %u; err %d",
+			       __func__, fve->freq, fve->voltage_mv);
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
+
 struct maxf_cache_entry {
 	u32 imax;
 	s16 temp_c;
@@ -44,13 +123,13 @@ struct maxf_cache_entry {
 struct vdd_edp {
 	char *cdev_name;
 	char *cap_clk_name;
+	char *clk_name;
 	char *edp_name;
 
 	const int n_cores;
 
-	unsigned int fv_lut_size;
-	struct tegra_edp_freq_voltage_table *fv_lut;
 	const int freq_step;
+	struct fv_relation *fv;
 
 	struct tegra_edp_common_powermodel_params *params;
 	int iddq_ma;
@@ -79,13 +158,14 @@ static void apply_cap_via_clock(struct vdd_edp *);
 static struct vdd_edp s_gpu = {
 	.cdev_name = "gpu_edp",
 	.cap_clk_name = "edp.gbus",
+	.clk_name = "gbus",
 	.edp_name = "gpu",
 	.n_cores = 1,
-	.freq_step = 12000000,
 	.temperatures = temps,
 	.n_temperatures = ARRAY_SIZE(temps),
 	.edp_lock = __MUTEX_INITIALIZER(s_gpu.edp_lock),
 	.apply_cap = apply_cap_via_clock,
+	.freq_step = 12000000,
 };
 
 static inline s64 edp_pow(s64 val, int pwr)
@@ -185,32 +265,6 @@ static s64 common_edp_calculate_dynamic_ma(
 	return dyn_ma;
 }
 
-static int tegra_relate_freq_voltage(struct clk *c, unsigned int step,
-			unsigned int freq_volt_lut_size,
-			struct tegra_edp_freq_voltage_table *freq_volt_lut)
-{
-	unsigned int i, j, freq;
-	int voltage_mv;
-
-	for (i = 0, j = 0, freq = 0;
-		 i < freq_volt_lut_size;
-		 i++, freq += step) {
-
-		/* Predict voltages */
-		voltage_mv = tegra_dvfs_predict_peak_millivolts(c, freq);
-		if (voltage_mv < 0) {
-			pr_err("%s: couldn't predict voltage: freq %u; err %d",
-			       __func__, freq, voltage_mv);
-			return -EINVAL;
-		}
-
-		/* Cache frequency / voltage / voltage constant relationship */
-		freq_volt_lut[i].freq = freq;
-		freq_volt_lut[i].voltage_mv = voltage_mv;
-	}
-	return 0;
-}
-
 static void _init_thermal_trips(struct vdd_edp *ctx,
 			 struct thermal_trip_info *trips,
 			 int *num_trips, int margin)
@@ -247,18 +301,18 @@ void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
 }
 
 static unsigned int edp_calculate_maxf(
-			struct tegra_edp_common_powermodel_params *params,
-			unsigned int fv_lut_size,
-			struct tegra_edp_freq_voltage_table *fv_lut,
-			unsigned int cur_effective, int temp_c, int iddq_ma)
+	struct tegra_edp_common_powermodel_params *params,
+	struct fv_relation *fv,
+	unsigned int cur_effective, int temp_c, int iddq_ma)
 {
 	unsigned int voltage_mv, freq_khz = 0;
-	int f;
+	struct fv_entry *fve;
 	s64 leakage_ma = 0, dyn_ma;
 
-	for (f = fv_lut_size - 1; f >= 0; f--) {
-		freq_khz = fv_lut[f].freq / 1000;
-		voltage_mv = fv_lut[f].voltage_mv;
+	mutex_lock(&fv->lock);
+	for_each_fv_entry(fv, fve) {
+		freq_khz = fve->freq / 1000;
+		voltage_mv = fve->voltage_mv;
 
 		/* Calculate leakage current */
 		leakage_ma = common_edp_calculate_leakage_ma(
@@ -274,8 +328,8 @@ static unsigned int edp_calculate_maxf(
 
 		freq_khz = 0;
 	}
-
  end:
+	mutex_unlock(&fv->lock);
 	return freq_khz;
 }
 
@@ -297,8 +351,7 @@ static unsigned edp_get_maxf(struct vdd_edp *ctx, int temp_c)
 
 	/* service a miss */
 	maxf = edp_calculate_maxf(ctx->params,
-				  ctx->fv_lut_size,
-				  ctx->fv_lut,
+				  ctx->fv,
 				  ctx->imax_ma,
 				  temp_c,
 				  ctx->iddq_ma);
@@ -326,70 +379,10 @@ static void edp_flush_maxf_cache_locked(struct vdd_edp *ctx)
 	}
 }
 
-static int init_fv_lut_locked(struct vdd_edp *ctx)
-{
-	struct clk *c;
-	int minf, maxf, ret = 0;
-
-	kfree(ctx->fv_lut);
-	edp_flush_maxf_cache_locked(ctx);
-
-	c = clk_get_parent(ctx->cap_clk);
-	minf = 0;
-	maxf = clk_get_max_rate(c);
-
-	ctx->fv_lut_size = (maxf - minf) / ctx->freq_step + 1;
-	ctx->fv_lut = kmalloc(
-		sizeof(struct tegra_edp_freq_voltage_table)
-			      * ctx->fv_lut_size, GFP_KERNEL);
-	if (!ctx->fv_lut) {
-		pr_err("%s: failed alloc mem for freq/voltage LUT\n",
-			 __func__);
-		ctx->fv_lut_size = 0;
-		return -ENOMEM;
-	}
-
-	ret = tegra_relate_freq_voltage(c, ctx->freq_step,
-				ctx->fv_lut_size, ctx->fv_lut);
-	if (ret) {
-		kfree(ctx->fv_lut);
-		ctx->fv_lut = NULL;
-		ctx->fv_lut_size = 0;
-	}
-
-	return ret;
-}
-
-static int init_fv_lut(struct vdd_edp *ctx)
-{
-	int ret;
-
-	mutex_lock(&ctx->edp_lock);
-	ret = init_fv_lut_locked(ctx);
-	mutex_unlock(&ctx->edp_lock);
-
-	return ret;
-}
-
-static void __init _init_edp_limits(struct vdd_edp *ctx,
-				    unsigned int regulator_ma)
-{
-	if (ctx->cap_clk_name) {
-		ctx->cap_clk = tegra_get_clock_by_name(ctx->cap_clk_name);
-		if (!ctx->cap_clk)
-			pr_err("%s: cannot get clock:%s\n",
-			       __func__, ctx->cap_clk_name);
-	}
-	ctx->thermal_idx = 0;
-
-	ctx->imax_ma = regulator_ma;
-
-	init_fv_lut(ctx);
-}
-
 void __init tegra_init_gpu_edp_limits(unsigned int regulator_ma)
 {
 	static u32 tegra_chip_id;
+	struct clk *gpu_clk;
 	tegra_chip_id = tegra_get_chip_id();
 
 	if (tegra_chip_id == TEGRA_CHIPID_TEGRA12)
@@ -399,11 +392,26 @@ void __init tegra_init_gpu_edp_limits(unsigned int regulator_ma)
 	else
 		BUG();
 
+	gpu_clk = tegra_get_clock_by_name(s_gpu.clk_name);
+	s_gpu.fv = fv_relation_create(gpu_clk, s_gpu.freq_step,
+				      tegra_relate_fv);
+	BUG_ON(!s_gpu.fv);
+
 	s_gpu.iddq_ma = tegra_get_gpu_iddq_value();
 	pr_debug("%s: %s IDDQ value %d\n",
 		 __func__, s_gpu.edp_name, s_gpu.iddq_ma);
 
-	_init_edp_limits(&s_gpu, regulator_ma);
+	s_gpu.cap_clk = tegra_get_clock_by_name(s_gpu.cap_clk_name);
+	if (!s_gpu.cap_clk)
+		pr_err("%s: cannot get clock:%s\n",
+		       __func__, s_gpu.cap_clk_name);
+	s_gpu.thermal_idx = 0;
+
+	s_gpu.imax_ma = regulator_ma;
+
+	/* unecessary call so compiler quits complaining about
+	 * edp_flush_maxf_cache_locked being unused */
+	edp_flush_maxf_cache_locked(&s_gpu);
 }
 
 static int edp_get_cdev_max_state(struct thermal_cooling_device *cdev,
@@ -518,7 +526,6 @@ static const struct file_operations edp_cache_fops = {
 	.read = seq_read,
 };
 
-
 static int edp_imax_get(void *data, u64 *val)
 {
 	struct vdd_edp *ctx = data;
@@ -534,8 +541,6 @@ static int edp_imax_set(void *data, u64 new_imax)
 	ctx->imax_ma = new_imax;
 
 	edp_set_cdev_state(&hack, ctx->thermal_idx);
-	pr_info("Reinitialized %s EDP capping with regulator current limit %u mA\n",
-		ctx->edp_name, ctx->imax_ma);
 	return 0;
 
 }
@@ -556,7 +561,7 @@ static int __init vdd_edp_debugfs_init(struct vdd_edp *ctx,
 	debugfs_create_file("maxf", S_IRUGO, parent, ctx,
 			    &edp_maxf_fops);
 	debugfs_create_u32_array(".vf_lut", S_IRUGO, parent,
-				 (u32 *)ctx->fv_lut, 2*ctx->fv_lut_size);
+				 (u32 *)ctx->fv->table, 2*ctx->fv->size);
 	debugfs_create_u32(".temp_c", S_IRUGO | S_IWUSR, parent,
 			   (u32 *)&ctx->temp_from_debugfs);
 
