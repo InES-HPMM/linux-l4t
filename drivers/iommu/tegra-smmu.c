@@ -1132,10 +1132,9 @@ static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
 	return pa;
 }
 
-static int smmu_iommu_domain_has_cap(struct iommu_domain *domain,
-				     unsigned long cap)
+static bool smmu_iommu_capable(enum iommu_cap cap)
 {
-	return 0;
+	return false;
 }
 
 #if defined(CONFIG_DMA_API_DEBUG) || defined(CONFIG_FTRACE)
@@ -1476,6 +1475,7 @@ static void smmu_iommu_domain_destroy(struct iommu_domain *domain)
 }
 
 static struct iommu_ops smmu_iommu_ops_default = {
+	.capable	= smmu_iommu_capable,
 	.domain_init	= smmu_iommu_domain_init,
 	.domain_destroy	= smmu_iommu_domain_destroy,
 	.attach_dev	= smmu_iommu_attach_dev,
@@ -1484,7 +1484,6 @@ static struct iommu_ops smmu_iommu_ops_default = {
 	.map_sg		= smmu_iommu_map_sg,
 	.unmap		= smmu_iommu_unmap,
 	.iova_to_phys	= smmu_iommu_iova_to_phys,
-	.domain_has_cap	= smmu_iommu_domain_has_cap,
 	.pgsize_bitmap	= SMMU_IOMMU_PGSIZES,
 };
 
