@@ -52,9 +52,7 @@ CONFIG_HIGHMEM=y
 CONFIG_ARM_FLUSH_CONSOLE_ON_RESTART=y
 CONFIG_ZBOOT_ROM_TEXT=0x0
 CONFIG_ZBOOT_ROM_BSS=0x0
-CONFIG_ARM_APPENDED_DTB=y
 CONFIG_CMDLINE="video=tegrafb usbcore.old_scheme_first=1 no_console_suspend vpr=64M@2496M mem=448M@2048M ddr_die=512M@2048M section=64M tegraid=40.1.1.0.0 commchip_id=0 usb_port_owner_info=0 emc_max_dvfs=0 lane_owner_info=0 debug_uartport=lsport,2 lp0_vec=8192@0x84008120 ip=:::::eth1:on rw netdevwait usbcore.old_scheme_first=1 mtdparts=tegra-nor:256K@21248K(env),11264K@21504K(userspace)  root=/dev/mmcblk0p1 rw init=/sbin/init mem=128M console=ttyS0,115200n8 earlyprintk"
-CONFIG_CMDLINE_FORCE=y
 CONFIG_CPU_IDLE=y
 CONFIG_CPUQUIET_FRAMEWORK=y
 CONFIG_VFP=y
