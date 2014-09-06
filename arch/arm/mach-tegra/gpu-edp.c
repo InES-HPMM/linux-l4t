@@ -121,6 +121,10 @@ struct maxf_cache_entry {
 	struct hlist_node nib; /* next in bucket*/
 };
 
+#define C_TO_K(c) (c+273)
+#define K_TO_C(k) (k-273)
+#define MELT_SILICON_K 1687 /* melting point of silicon */
+
 struct vdd_edp {
 	char *cdev_name;
 	char *cap_clk_name;
@@ -137,22 +141,15 @@ struct vdd_edp {
 
 	DECLARE_HASHTABLE(maxf_cache, 7);
 
-	int thermal_idx;
-
 	void (*apply_cap)(struct vdd_edp *);
 	struct clk *cap_clk;
 	struct mutex edp_lock;
 
+	int temperature_now;
 	unsigned int imax_ma;
 
-	const int *temperatures;
-	int n_temperatures;
 	int temp_from_debugfs;
 	int cores_from_debugfs;
-};
-
-const int temps[] = { /* degree celcius (C) */
-	20, 50, 70, 75, 80, 85, 90, 95, 100, 105,
 };
 
 static void apply_cap_via_clock(struct vdd_edp *);
@@ -163,8 +160,6 @@ static struct vdd_edp s_gpu = {
 	.clk_name = "gbus",
 	.edp_name = "gpu",
 	.n_cores = 1,
-	.temperatures = temps,
-	.n_temperatures = ARRAY_SIZE(temps),
 	.edp_lock = __MUTEX_INITIALIZER(s_gpu.edp_lock),
 	.apply_cap = apply_cap_via_clock,
 	.freq_step = 12000000,
@@ -267,9 +262,10 @@ static s64 common_edp_calculate_dynamic_ma(
 	return dyn_ma;
 }
 
-static void _init_thermal_trips(struct vdd_edp *ctx,
-			 struct thermal_trip_info *trips,
-			 int *num_trips, int margin)
+static void _get_trip_info(int *temps, int n_temps,
+			   char *cdev_name,
+			   struct thermal_trip_info *trips,
+			   int *num_trips, int margin)
 {
 	struct thermal_trip_info *trip_state;
 	int i;
@@ -277,17 +273,18 @@ static void _init_thermal_trips(struct vdd_edp *ctx,
 	if (!trips || !num_trips)
 		return;
 
-	if (ctx->n_temperatures > MAX_THROT_TABLE_SIZE)
+	if (n_temps > MAX_THROT_TABLE_SIZE)
 		BUG();
 
-	for (i = 0; i < ctx->n_temperatures-1; i++) {
+	for (i = 0; i < n_temps-1; i++) {
 		trip_state = &trips[*num_trips];
 
-		trip_state->cdev_type = ctx->cdev_name;
+		trip_state->cdev_type = cdev_name;
 		trip_state->trip_temp =
-			(ctx->temperatures[i] * 1000) - margin;
+			(temps[i] * 1000) - margin;
 		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
-		trip_state->upper = trip_state->lower = i + 1;
+		trip_state->upper = trip_state->lower =
+			C_TO_K(temps[i + 1]);
 
 		(*num_trips)++;
 
@@ -296,10 +293,16 @@ static void _init_thermal_trips(struct vdd_edp *ctx,
 	}
 }
 
+/* this will be dead code once we use DT for thermals */
 void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
 				int *num_trips, int margin)
 {
-	_init_thermal_trips(&s_gpu, trips, num_trips, margin);
+	int gpu_temps[] = { /* degree celcius (C) */
+		20, 50, 70, 75, 80, 85, 90, 95, 100, 105,
+	};
+
+	_get_trip_info(gpu_temps, ARRAY_SIZE(gpu_temps), s_gpu.cdev_name,
+		       trips, num_trips, margin);
 }
 
 static unsigned int edp_calculate_maxf(
@@ -411,7 +414,7 @@ void __init tegra_init_gpu_edp_limits(unsigned int regulator_ma)
 	if (!s_gpu.cap_clk)
 		pr_err("%s: cannot get clock:%s\n",
 		       __func__, s_gpu.cap_clk_name);
-	s_gpu.thermal_idx = 0;
+	s_gpu.temperature_now = 25; /* HACK */
 
 	s_gpu.imax_ma = regulator_ma;
 
@@ -423,8 +426,7 @@ void __init tegra_init_gpu_edp_limits(unsigned int regulator_ma)
 static int edp_get_cdev_max_state(struct thermal_cooling_device *cdev,
 				       unsigned long *max_state)
 {
-	struct vdd_edp *ctx = cdev->devdata;
-	*max_state = ctx->n_temperatures;
+	*max_state = MELT_SILICON_K;
 	return 0;
 }
 
@@ -432,7 +434,7 @@ static int edp_get_cdev_cur_state(struct thermal_cooling_device *cdev,
 				       unsigned long *cur_state)
 {
 	struct vdd_edp *ctx = cdev->devdata;
-	*cur_state = ctx->thermal_idx;
+	*cur_state = C_TO_K(ctx->temperature_now);
 	return 0;
 }
 
@@ -441,7 +443,7 @@ static void apply_cap_via_clock(struct vdd_edp *ctx)
 	unsigned long clk_rate;
 	BUG_ON(IS_ERR_OR_NULL(ctx->cap_clk));
 
-	clk_rate = edp_get_maxf(ctx, ctx->temperatures[ctx->thermal_idx], 1);
+	clk_rate = edp_get_maxf(ctx, ctx->temperature_now, 1);
 	clk_set_rate(ctx->cap_clk, clk_rate * 1000);
 }
 
@@ -450,11 +452,14 @@ static int edp_set_cdev_state(struct thermal_cooling_device *cdev,
 {
 	struct vdd_edp *ctx = cdev->devdata;
 
+	if(cur_state == 0)
+		return 0;
+
 	mutex_lock(&ctx->edp_lock);
 
-	BUG_ON(cur_state >= ctx->n_temperatures);
+	BUG_ON(cur_state >= MELT_SILICON_K);
 
-	ctx->thermal_idx = cur_state;
+	ctx->temperature_now = K_TO_C(cur_state);
 	if (ctx->apply_cap)
 		ctx->apply_cap(ctx);
 
@@ -463,6 +468,9 @@ static int edp_set_cdev_state(struct thermal_cooling_device *cdev,
 	return 0;
 }
 
+/* cooling devices using these ops interpret the "cur_state" as
+ * a temperature in Kelvin
+ */
 static struct thermal_cooling_device_ops edp_cooling_ops = {
 	.get_max_state = edp_get_cdev_max_state,
 	.get_cur_state = edp_get_cdev_cur_state,
@@ -552,7 +560,7 @@ static int edp_imax_set(void *data, u64 new_imax)
 
 	ctx->imax_ma = new_imax;
 
-	edp_set_cdev_state(&hack, ctx->thermal_idx);
+	edp_set_cdev_state(&hack, C_TO_K(ctx->temperature_now));
 	return 0;
 
 }
