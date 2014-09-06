@@ -546,6 +546,7 @@ struct escore_priv {
 	u8 cmd_compl_mode;
 	u8 uart_ready;
 	u8 non_vs_sleep_state;
+	u16 current_preset;
 	int intf_probed;
 	char *device_name;
 	char *interface_device_name;

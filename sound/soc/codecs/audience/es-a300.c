@@ -413,6 +413,8 @@ const struct snd_soc_dapm_widget es_codec_dapm_widgets[] = {
 	SND_SOC_DAPM_SPK("SPKRL", NULL),
 	SND_SOC_DAPM_SPK("SPKRR", NULL),
 	SND_SOC_DAPM_OUTPUT("EP"),
+	/* Dummy EP Right output */
+	SND_SOC_DAPM_OUTPUT("EPR"),
 	SND_SOC_DAPM_LINE("AUXOUTL", NULL),
 	SND_SOC_DAPM_LINE("AUXOUTR", NULL),
 
@@ -567,6 +569,8 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"SPKRL", NULL, "SPKRL PGA"},
 	{"SPKRR", NULL, "SPKRR PGA"},
 	{"EP", NULL, "EP PGA"},
+	/* Dummy entry */
+	{"EPR", NULL, "DAC0R"},
 
 };
 

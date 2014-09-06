@@ -41,11 +41,29 @@
 #include "escore-slim.h"
 #include "es-d300.h"
 
-static u8 **cachedcmd_list;
+/* Base route preset for Simultaneous playback and capture using PT */
+#define PT_BASE_ROUTE	0x90311780
+
+struct cachedcmd_t {
+	u8 reg;
+	u8 refcnt;
+};
+static struct cachedcmd_t **cachedcmd_list;
 static int es_vp_tx;
 static int es_vp_rx;
 static int es_az_tx;
 static int es_az_rx;
+
+/* Passthrough algorithm has two distinct purposes:
+ * 1) PT Copy use case
+ * 2) Simultaneous playback and capture
+ * In both the usecases, the base route for Passthrough algorithm is
+ * different. To identify, which base route preset should be appended
+ * while sending the route to firmware, we rely on the MUXes being used
+ * while route preparation. If Pass AUDOUT1_X MUX is used in route, the
+ * usecase is PT Copy. This variable will be used to hold this information.
+ */
+static int pt_copy;
 
 static const u8 pcm_port[] = { 0x0, 0xA, 0xB, 0xC };
 static u8 chn_mgr_cache[MAX_CHMGR];
@@ -216,11 +234,53 @@ static int es300_codec_stop_algo(struct escore_priv *escore)
 	if (ret)
 		pr_err("%s: algo stop failed\n", __func__);
 
+	escore->current_preset = 0;
 	clear_chn_mgr_cache();
 	return ret;
 }
 /* Mask to keep track of chmgrs set by UCM */
 static u16 chn_mgr_mask;
+
+static void convert_pt_input_mux_to_cmd(int reg, u32 *msg, u32 *msg_len)
+{
+	switch (reg) {
+	case ES_PASSIN2_MUX:
+		msg[4] = ES_API_WORD(ES_SET_RATE_CMD,
+				ES300_RATE(FILTER_RXCHANMGR1, 3));
+		break;
+	case ES_PASSIN3_MUX:
+		msg[1] &= ES_API_WORD(ES_SET_PATH_ID_CMD,
+				ES300_PATH_ID(0xFF, 0));
+		msg[1] |= ES_API_WORD(ES_SET_PATH_ID_CMD,
+				ES300_PATH_ID(0, 0x12));
+
+		msg[4] = ES_API_WORD(ES_SET_RATE_CMD,
+				ES300_RATE(FILTER_RXCHANMGR2, 3));
+		msg[5] &= ES_API_WORD(ES_SET_GROUP_CMD,
+				ES300_GROUP(0xFF, 0));
+		msg[5] |= ES_API_WORD(ES_SET_GROUP_CMD,
+				ES300_GROUP(0, 0x1));
+
+		memcpy(&msg[2], &msg[4], sizeof(msg[0]) * 2);
+		(*msg_len) -= 8;
+		break;
+	case ES_PASSIN4_MUX:
+		msg[1] &= ES_API_WORD(ES_SET_PATH_ID_CMD,
+				ES300_PATH_ID(0xFF, 0));
+		msg[1] |= ES_API_WORD(ES_SET_PATH_ID_CMD,
+				ES300_PATH_ID(0, 0x13));
+
+		msg[4] = ES_API_WORD(ES_SET_RATE_CMD,
+				ES300_RATE(FILTER_RXCHANMGR3, 3));
+		msg[5] &= ES_API_WORD(ES_SET_GROUP_CMD,
+				ES300_GROUP(0xFF, 0));
+		msg[5] |= ES_API_WORD(ES_SET_GROUP_CMD,
+				ES300_GROUP(0, 0x2));
+		memcpy(&msg[2], &msg[4], sizeof(msg[0]) * 2);
+		(*msg_len) -= 8;
+		break;
+	}
+}
 
 static int convert_input_mux_to_cmd(struct escore_priv *escore, int reg)
 {
@@ -232,7 +292,7 @@ static int convert_input_mux_to_cmd(struct escore_priv *escore, int reg)
 	u8 path_id = 0;
 	u8 update_cmds = 0;
 	u8 update_chmgr_mask = 1;
-	int mux = cachedcmd_list[escore->algo_type][reg];
+	int mux = cachedcmd_list[escore->algo_type][reg].reg;
 
 	memcpy((char *)msg, (char *)escore->api_access[reg].write_msg,
 			msg_len);
@@ -287,6 +347,8 @@ static int convert_input_mux_to_cmd(struct escore_priv *escore, int reg)
 		break;
 
 	case PASSTHRU:
+		if (!pt_copy)
+			convert_pt_input_mux_to_cmd(reg, msg, &msg_len);
 		break;
 
 	case CVQ_ASR:
@@ -362,79 +424,54 @@ static int convert_input_mux_to_cmd(struct escore_priv *escore, int reg)
 	return escore_queue_msg_to_list(escore, (char *)msg, msg_len);
 }
 
-static int convert_output_mux_to_cmd(struct escore_priv *escore, int reg)
+static int convert_pt_copy_output_mux_to_cmd(u16 ch_mgr, u8 path_id,
+		u32 *msg, u32 msg_len)
 {
-	unsigned int value;
-	int msg_len = escore->api_access[reg].write_msg_len;
-	u32 msg[ES_CMD_ACCESS_WR_MAX] = {0};
-	u16 ch_mgr;
-	u8 path_id;
-	u8 i = 0;
+	u8 i = 2;
 	u8 update_cmds = 1;
-	u8 update_chmgr_mask = 1;
 	u16 ep_out = 0, filter_in = 0;
 	u16 filter_passthru = 0, filter_copyin = 0, filter_copyout = 0;
 	u16 group = 0, ep_copyin = 0, ep_copyout = 0, groupcopy = 0;
-	int mux = cachedcmd_list[escore->algo_type][reg];
 
-	memcpy((char *)msg, (char *)escore->api_access[reg].write_msg,
-				msg_len);
-	value = es300_output_mux_text_to_api[mux];
 
-	pr_debug("%s(): reg = %d mux = %d\n", __func__, reg, mux);
-
-	path_id = value & 0x3f;
-	ch_mgr = (value >> 8) & 0xf;
-
-	msg[i++] |= ES300_DATA_PATH(0, 0, ch_mgr);
-	msg[i++] |= ES300_PATH_ID(ch_mgr, path_id);
-
-	switch (escore->algo_type) {
-	case VP:
+	switch (ch_mgr) {
+	case TXCHMGR1:
+		ep_out = pass_o1;
+		filter_passthru = FILTER_PASSTHRU;
+		filter_in = FILTER_TXCHANMGR1;
+		filter_copyin = filter_copyout = FILTER_COPY1;
+		ep_copyin = pass_i0;
+		ep_copyout = pass_o0;
+		group = groupcopy = 1;
 		break;
-	case AUDIOZOOM:
+	case TXCHMGR2:
+		filter_passthru = FILTER_PASSTHRU;
+		ep_out = pass_o2;
+		filter_in = FILTER_TXCHANMGR2;
+		group = 1;
 		break;
-	case MM:
+	case TXCHMGR3:
+		filter_passthru = FILTER_PASSTHRU;
+		ep_out = pass_o3;
+		filter_in = FILTER_TXCHANMGR3;
+		group = 1;
 		break;
-	case PASSTHRU:
-		switch (ch_mgr) {
-		case TXCHMGR1:
-			ep_out = pass_o1;
-			filter_passthru = FILTER_PASSTHRU;
-			filter_in = FILTER_TXCHANMGR1;
-			filter_copyin = filter_copyout = FILTER_COPY1;
-			ep_copyin = pass_i0;
-			ep_copyout = pass_o0;
-			group = groupcopy = 1;
-			break;
-		case TXCHMGR2:
-			filter_passthru = FILTER_PASSTHRU;
-			ep_out = pass_o2;
-			filter_in = FILTER_TXCHANMGR2;
-			group = 1;
-			break;
-		case TXCHMGR3:
-			filter_passthru = FILTER_PASSTHRU;
-			ep_out = pass_o3;
-			filter_in = FILTER_TXCHANMGR3;
-			group = 1;
-			break;
-		case TXCHMGR4:
-			ep_out = pass_o1;
-			filter_in = FILTER_TXCHANMGR4;
-			filter_copyout = FILTER_COPY0;
-			ep_copyout = pass_o1;
-			break;
-		case TXCHMGR5:
-			ep_out = pass_o1;
-			filter_in = FILTER_TXCHANMGR5;
-			filter_copyout = FILTER_COPY1;
-			ep_copyout = pass_o1;
-			break;
-		default:
-			update_cmds = 0;
-			break;
-		}
+	case TXCHMGR4:
+		ep_out = pass_o1;
+		filter_in = FILTER_TXCHANMGR4;
+		filter_copyout = FILTER_COPY0;
+		ep_copyout = pass_o1;
+		break;
+	case TXCHMGR5:
+		ep_out = pass_o1;
+		filter_in = FILTER_TXCHANMGR5;
+		filter_copyout = FILTER_COPY1;
+		ep_copyout = pass_o1;
+		break;
+	default:
+		update_cmds = 0;
+		break;
+	}
 
 		if (update_cmds) {
 			/* Set OUT Endpoint */
@@ -479,7 +516,119 @@ static int convert_output_mux_to_cmd(struct escore_priv *escore, int reg)
 				ES300_GROUP(filter_copyin, 0));
 				msg_len += sizeof(*msg);
 			}
+	}
+	return msg_len;
+}
+
+static int convert_pt_output_mux_to_cmd(u16 ch_mgr, u8 path_id,
+		u32 *msg, u32 msg_len)
+{
+	u8 i = 2;
+	u8 update_cmds = 1;
+	u16 ep_out = 0, ep_in = 0, filter_in = 0, filter_out = 0;
+	u16 group = 0;
+
+	switch (ch_mgr) {
+	case TXCHMGR1:
+		filter_out = FILTER_PASSTHRU;
+		filter_in = FILTER_TXCHANMGR1;
+		ep_out = pass_o1;
+		ep_in = TxChMgr_i0;
+		path_id = 0;
+		group = 0;
+		break;
+	case TXCHMGR2:
+		filter_in = FILTER_TXCHANMGR2;
+		ep_in = TxChMgr_i0;
+		filter_out = FILTER_RXCHANMGR2;
+		ep_out = RxChMgr_o0;
+		group = 1;
+		path_id = 0x30;
+		break;
+	case TXCHMGR3:
+		filter_in = FILTER_TXCHANMGR3;
+		ep_in = TxChMgr_i0;
+		filter_out = FILTER_RXCHANMGR3;
+		ep_out = RxChMgr_o0;
+		group = 2;
+		path_id = 0x31;
+		break;
+	default:
+		update_cmds = 0;
+		break;
+	}
+
+	if (update_cmds) {
+		if (path_id) {
+			msg[1] &= ES_API_WORD(ES_SET_PATH_ID_CMD,
+					ES300_PATH_ID(0xFF, 0));
+			msg[1] |= ES300_PATH_ID(0, path_id);
 		}
+		if (filter_out != FILTER_RESERVED) {
+			msg[i++] = ES_API_WORD(ES_CONNECT_CMD,
+				ES300_ENDPOINT(filter_out, OUT, ep_out));
+			msg_len += 4;
+		}
+
+		/* Connect IN endpoints */
+		msg[i++] = ES_API_WORD(ES_CONNECT_CMD,
+				ES300_ENDPOINT(filter_in, IN, ep_in));
+		msg_len += 4;
+
+		/* Set Rate to 48Khz */
+		msg[i++] = ES_API_WORD(ES_SET_RATE_CMD,
+				ES300_RATE(filter_in, 3));
+		msg_len += 4;
+
+		/* Set Group ID */
+		msg[i++] = ES_API_WORD(ES_SET_GROUP_CMD,
+				ES300_GROUP(filter_in, group));
+		msg_len += 4;
+	}
+	return msg_len;
+}
+
+static int convert_output_mux_to_cmd(struct escore_priv *escore, int reg)
+{
+	unsigned int value;
+	int msg_len = escore->api_access[reg].write_msg_len;
+	u32 msg[ES_CMD_ACCESS_WR_MAX] = {0};
+	u16 ch_mgr;
+	u8 path_id = 0;
+	u8 update_chmgr_mask = 1;
+	int mux = cachedcmd_list[escore->algo_type][reg].reg;
+
+	memcpy((char *)msg, (char *)escore->api_access[reg].write_msg,
+				msg_len);
+	value = es300_output_mux_text_to_api[mux];
+
+	pr_debug("%s(): reg = %d mux = %d\n", __func__, reg, mux);
+
+	path_id = value & 0x3f;
+	ch_mgr = (value >> 8) & 0xf;
+
+	msg[0] |= ES300_DATA_PATH(0, 0, ch_mgr);
+	msg[1] |= ES300_PATH_ID(ch_mgr, path_id);
+
+	switch (escore->algo_type) {
+	case VP:
+		break;
+	case AUDIOZOOM:
+		break;
+	case MM:
+		break;
+	case PASSTHRU:
+		/*
+		 * Handling of PathIDs and Channel Managers in a passthrough
+		 * route varies based on the use cases: PT Copy OR Simultaneous
+		 * playback and capture
+		 */
+		if (pt_copy)
+			msg_len = convert_pt_copy_output_mux_to_cmd(ch_mgr,
+					path_id, msg, msg_len);
+		else
+			msg_len = convert_pt_output_mux_to_cmd(ch_mgr,
+					path_id, msg, msg_len);
 		break;
 	case CVQ_ASR:
 		msg_len = 4;
@@ -525,7 +674,7 @@ static void set_chmgr_null(struct escore_priv *escore)
 
 static int add_algo_base_route(struct escore_priv *escore)
 {
-	const u32 *msg;
+	u32 msg;
 	u32 cmd = ES_SYNC_CMD << 16;
 #if defined(CONFIG_SND_SOC_ES_SLIM)
 	u32 slimcmd[2] = {0xb00c0900, 0xb00d0000};
@@ -539,13 +688,19 @@ static int add_algo_base_route(struct escore_priv *escore)
 #if defined(CONFIG_SND_SOC_ES_SLIM)
 	if (algo == CVQ_ASR) {
 		rc = escore_queue_msg_to_list(escore,
-				(char *)&slimcmd[0], sizeof(*msg));
+				(char *)&slimcmd[0], sizeof(msg));
 		rc = escore_queue_msg_to_list(escore,
-				(char *)&slimcmd[1], sizeof(*msg));
+				(char *)&slimcmd[1], sizeof(msg));
 	}
 #endif
-	msg = &es_base_route_preset[algo];
-	rc = escore_queue_msg_to_list(escore, (char *)msg, sizeof(*msg));
+
+	if (algo == PASSTHRU && !pt_copy)
+		msg = PT_BASE_ROUTE;
+	else
+		msg = es_base_route_preset[algo];
+
+	escore->current_preset =  msg & 0xFFFF;
+	rc = escore_queue_msg_to_list(escore, (char *)&msg, sizeof(msg));
 
 	/* Configure command completion mode */
 	if (escore->cmd_compl_mode == ES_CMD_COMP_INTR) {
@@ -575,6 +730,8 @@ static int es_clear_route(struct escore_priv *escore)
 	} else if (escore->algo_type == AUDIOZOOM) {
 		es_az_tx = ES_AZ_NONE;
 		es_az_rx = ES_AZ_NONE;
+	} else if (escore->algo_type == PASSTHRU) {
+		pt_copy = 0;
 	}
 
 	return 0;
@@ -583,6 +740,7 @@ static int es_clear_route(struct escore_priv *escore)
 static int es_set_final_route(struct escore_priv *escore)
 {
 	int rc = 0, i;
+	u16 preset;
 
 	pr_debug("%s\n", __func__);
 
@@ -602,17 +760,33 @@ static int es_set_final_route(struct escore_priv *escore)
 		}
 	}
 
+	if (escore->algo_type == PASSTHRU && !pt_copy)
+		preset = PT_BASE_ROUTE & 0xFFFF;
+	else
+		preset = es_base_route_preset[escore->algo_type] & 0xFFFF;
+
+	/* In case of simultaneous playback and capture usecase, both playback
+	 * and capture muxes will set. If playback and capture are started
+	 * independent of each other, the route needs not to be set again. This
+	 * check will make sure that if a preset is already set and route
+	 * is running, there is no need to set the route again
+	 */
+	if (escore->current_preset == preset) {
+		pr_debug("%s(): Skip same preset %x\n", __func__, preset);
+		return 0;
+	}
+
 	escore_flush_msg_list(escore);
 
 	for (i = ES_PRIMARY_MUX; i <= ES_PASSIN4_MUX; i++) {
-		if (cachedcmd_list[escore->algo_type][i] != 0) {
+		if (cachedcmd_list[escore->algo_type][i].reg != 0) {
 			rc = convert_input_mux_to_cmd(escore, i);
 			if (rc)
 				return rc;
 		}
 	}
 	for (i = ES_DAC0_0_MUX; i <= ES_SBUSTX5_MUX; i++) {
-		if (cachedcmd_list[escore->algo_type][i] != 0) {
+		if (cachedcmd_list[escore->algo_type][i].reg != 0) {
 			rc = convert_output_mux_to_cmd(escore, i);
 			if (rc)
 				return rc;
@@ -1105,7 +1279,7 @@ static int put_pcm_port_sel(struct snd_kcontrol *kcontrol,
 	unsigned int value = ucontrol->value.enumerated.item[0];
 
 	escore->pcm_port = value;
-	cachedcmd_list[escore->algo_type][reg] = value;
+	cachedcmd_list[escore->algo_type][reg].reg = value;
 
 	return 0;
 }
@@ -1158,7 +1332,7 @@ static int put_cmd_compl_mode_sel(struct snd_kcontrol *kcontrol,
 	}
 
 	escore->cmd_compl_mode = value;
-	cachedcmd_list[escore->algo_type][reg] = value;
+	cachedcmd_list[escore->algo_type][reg].reg = value;
 
 	return 0;
 }
@@ -1170,7 +1344,7 @@ static int es300_get_algo_state(struct snd_kcontrol *kcontrol,
 		(struct soc_enum *)kcontrol->private_value;
 	unsigned int reg = e->reg;
 
-	ucontrol->value.enumerated.item[0] = cachedcmd_list[0][reg];
+	ucontrol->value.enumerated.item[0] = cachedcmd_list[0][reg].reg;
 
 	return 0;
 }
@@ -1190,7 +1364,7 @@ static int es300_put_algo_state(struct snd_kcontrol *kcontrol,
 	pr_debug("%s(): %s algo :%d\n", __func__, (value) ? "Enabling" :
 			"Disabling", reg);
 	/* Use 0th array to store the algo status */
-	cachedcmd_list[0][reg] = value;
+	cachedcmd_list[0][reg].reg = value;
 	switch (reg) {
 	case ES_ALGORITHM_VP:
 		algo_type = VP;
@@ -1220,7 +1394,7 @@ static int es300_put_algo_state(struct snd_kcontrol *kcontrol,
 		escore->algo_type = algo_type;
 	else
 		memset(cachedcmd_list[algo_type], 0x0,
-				ES_API_ADDR_MAX * sizeof(u8));
+				ES_API_ADDR_MAX * sizeof(struct cachedcmd_t));
 out:
 	return ret;
 }
@@ -1235,7 +1409,7 @@ static int es300_put_algo_rate(struct snd_kcontrol *kcontrol,
 	int ret = 0;
 	unsigned int value = ucontrol->value.enumerated.item[0];
 	escore->algo_rate = value;
-	cachedcmd_list[escore->algo_type][reg] = value;
+	cachedcmd_list[escore->algo_type][reg].reg = value;
 	return ret;
 }
 static int get_control_enum(struct snd_kcontrol *kcontrol,
@@ -1248,7 +1422,7 @@ static int get_control_enum(struct snd_kcontrol *kcontrol,
 	unsigned int reg = e->reg;
 	unsigned int value;
 
-	value = cachedcmd_list[escore->algo_type][reg];
+	value = cachedcmd_list[escore->algo_type][reg].reg;
 	ucontrol->value.enumerated.item[0] = value;
 
 	return 0;
@@ -1267,8 +1441,14 @@ static int put_input_route_value(struct snd_kcontrol *kcontrol,
 	int mux = ucontrol->value.enumerated.item[0];
 	int rc;
 
-	cachedcmd_list[escore->algo_type][reg] = mux;
+	cachedcmd_list[escore->algo_type][reg].reg = mux;
+	if (mux)
+		cachedcmd_list[escore->algo_type][reg].refcnt++;
+	else
+		cachedcmd_list[escore->algo_type][reg].refcnt--;
 
+	if (!mux && cachedcmd_list[escore->algo_type][reg].refcnt)
+		goto exit;
 #if (defined(CONFIG_ARCH_OMAP) || defined(CONFIG_ARCH_EXYNOS) || \
 	defined(CONFIG_X86_32) || defined(CONFIG_ARCH_TEGRA))
 	rc = snd_soc_dapm_mux_update_power(widget, kcontrol, mux, e);
@@ -1276,6 +1456,7 @@ static int put_input_route_value(struct snd_kcontrol *kcontrol,
 	rc = snd_soc_dapm_mux_update_power(widget, kcontrol, 1, mux, e);
 #endif
 
+exit:
 	pr_debug("put input reg %d val %d\n", reg, mux);
 
 	return rc;
@@ -1291,7 +1472,7 @@ static int get_input_route_value(struct snd_kcontrol *kcontrol,
 	unsigned int reg = e->reg;
 	unsigned int value;
 
-	value = cachedcmd_list[escore->algo_type][reg];
+	value = cachedcmd_list[escore->algo_type][reg].reg;
 
 	/* TBD: translation */
 	/* value = escore_read(NULL, reg); */
@@ -1325,9 +1506,19 @@ static int put_output_route_value(struct snd_kcontrol *kcontrol,
 	else if (strncmp(proc_block_output_texts[mux],
 				"AudioZoom AOUT1", 15) == 0)
 		es_az_rx = ES_AZ_RX_INIT;
+	else if (!strncmp(proc_block_output_texts[mux], "Pass AUDOUT1_2", 14) ||
+		!strncmp(proc_block_output_texts[mux], "Pass AUDOUT2_2", 14))
+		pt_copy = 1;
 
-	cachedcmd_list[escore->algo_type][reg] = mux;
 
+	cachedcmd_list[escore->algo_type][reg].reg = mux;
+	if (mux)
+		cachedcmd_list[escore->algo_type][reg].refcnt++;
+	else
+		cachedcmd_list[escore->algo_type][reg].refcnt--;
+
+	if (!mux && cachedcmd_list[escore->algo_type][reg].refcnt)
+		goto exit;
 #if (defined(CONFIG_ARCH_OMAP) || defined(CONFIG_ARCH_EXYNOS) || \
 	defined(CONFIG_X86_32) || defined(CONFIG_ARCH_TEGRA))
 	rc = snd_soc_dapm_mux_update_power(widget, kcontrol, mux, e);
@@ -1335,6 +1526,7 @@ static int put_output_route_value(struct snd_kcontrol *kcontrol,
 	rc = snd_soc_dapm_mux_update_power(widget, kcontrol, 1, mux, e);
 #endif
 
+exit:
 	pr_debug("put output reg %d val %d\n", reg, mux);
 	return rc;
 }
@@ -1349,7 +1541,7 @@ static int get_output_route_value(struct snd_kcontrol *kcontrol,
 	unsigned int reg = e->reg;
 	unsigned int value;
 
-	value = cachedcmd_list[escore->algo_type][reg];
+	value = cachedcmd_list[escore->algo_type][reg].reg;
 
 	/* TBD: translation */
 	/* value = escore_read(NULL, reg); */
@@ -3582,14 +3774,16 @@ int es_d300_fill_cmdcache(struct snd_soc_codec *codec)
 		[PASSTHRU] = "Passthru",
 	};
 
-	cachedcmd_list = kzalloc(ALGO_MAX*sizeof(u8 *), GFP_KERNEL);
+	cachedcmd_list = kzalloc(ALGO_MAX*sizeof(struct cachedcmd_t *),
+			GFP_KERNEL);
 	if (!cachedcmd_list) {
 		pr_err("%s(): Error while allocating regcache\n", __func__);
 		return -ENOMEM;
 	}
 
 	for (i = 0; i < ALGO_MAX; i++) {
-		cachedcmd_list[i] = kzalloc(ES_API_ADDR_MAX*sizeof(u8),
+		cachedcmd_list[i] = kzalloc(ES_API_ADDR_MAX *
+				sizeof(struct cachedcmd_t),
 				GFP_KERNEL);
 		if (!cachedcmd_list[i]) {
 			pr_err("%s(): Error while allocating regcache for %s\n",
