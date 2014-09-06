@@ -75,6 +75,32 @@
 #define XUSB_PADCTL_UPHY_PLL_P0_CTL8_PLL0_RCAL_OVRD	(1 << 15)
 #define XUSB_PADCTL_UPHY_PLL_P0_CTL8_PLL0_RCAL_DONE	(1 << 31)
 
+#define XUSB_PADCTL_UPHY_PLL_S0_CTL1_0			0x860
+#define S0_CTL1_PLL0_IDDQ				(1 << 0)
+#define S0_CTL1_PLL0_SLEEP				(0x3 << 1)
+#define S0_CTL1_PLL0_ENABLE				(1 << 3)
+#define S0_CTL1_PLL0_PWR_OVRD				(1 << 4)
+#define S0_CTL1_PLL0_LOCKDET_STATUS			(1 << 15)
+#define S0_PLL0_FREQ_NDIV(x)				(((x) & 0xFF) << 20)
+
+#define XUSB_PADCTL_UPHY_PLL_S0_CTL2_0			(0x864)
+#define S0_CTL2_PLL0_CAL_EN				(1 << 0)
+#define S0_CTL2_PLL0_CAL_DONE				(1 << 1)
+#define S0_CTL2_PLL0_CAL_OVRD				(1 << 2)
+#define S0_CTL2_PLL0_CAL_CTRL(x)			(((x) & 0xFFFFFF) << 4)
+
+#define XUSB_PADCTL_UPHY_PLL_S0_CTL4_0			(0x86c)
+#define S0_PLL0_TXCLKREF_SEL(x)			(((x) & 0x3) << 12)
+
+#define XUSB_PADCTL_UPHY_PLL_S0_CTL5_0			(0x870)
+#define S0_CTL5_PLL0_DCO_CTRL(x)			(((x) & 0xFF) << 16)
+
+#define XUSB_PADCTL_UPHY_PLL_S0_CTL8_0			(0x87C)
+#define S0_CTL8_PLL0_RCAL_EN				(1 << 12)
+#define S0_CTL8_PLL0_RCAL_CLK_EN			(1 << 13)
+#define S0_CTL8_PLL0_RCAL_OVRD				(1 << 15)
+#define S0_CTL8_PLL0_RCAL_DONE				(1 << 31)
+
 #define XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2	0x464
 #define XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2_TX_IDDQ	(1 << 0)
 #define XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2_RX_IDDQ	(1 << 8)
@@ -443,6 +469,7 @@
 #define SATA_PADPLL_RESET_SWCTL			(1 << 0)
 #define SATA_SEQ_ENABLE				(1 << 24)
 #define SATA_SEQ_START_STATE			(1 << 25)
+#define SATA_PADPLL_SLEEP_IDDQ			(1 << 13)
 
 #define CLK_RST_CONTROLLER_XUSBIO_PLL_CFG0_0		0x51C
 #define XUSBIO_PADPLL_RESET_SWCTL			(1 << 0)
@@ -477,5 +504,6 @@ int pex_usb_pad_pll_reset_assert(void);
 int pex_usb_pad_pll_reset_deassert(void);
 int sata_usb_pad_pll_reset_assert(void);
 int sata_usb_pad_pll_reset_deassert(void);
+int t210_sata_uphy_pll_init(bool sata_used_by_xusb);
 
 #endif
