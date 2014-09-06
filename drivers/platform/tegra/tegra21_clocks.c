@@ -4783,6 +4783,22 @@ static struct clk_ops tegra_dsi_clk_ops = {
 	.reset			= &tegra21_periph_clk_reset,
 };
 
+static void tegra21_dpaux_clk_init(struct clk *c)
+{
+	c->mul = 1;
+	c->div = 17;;
+	tegra21_periph_clk_init(c);
+}
+
+static struct clk_ops tegra_dpaux_clk_ops = {
+	.init			= &tegra21_dpaux_clk_init,
+	.enable			= &tegra21_periph_clk_enable,
+	.disable		= &tegra21_periph_clk_disable,
+	.set_parent		= &tegra21_periph_clk_set_parent,
+	.set_rate		= &tegra21_periph_clk_set_rate,
+	.reset			= &tegra21_periph_clk_reset,
+};
+
 /* pciex clock support only reset function */
 static void tegra21_pciex_clk_init(struct clk *c)
 {
@@ -8797,8 +8813,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c,	800000000, mux_pllp_plld_plld2_clkm,	MUX),
 	PERIPH_CLK_EX("sor0",	"sor0",			NULL,	182,	0x414,	600000000, mux_pllp_sor_sor0_brick,		MUX,	&tegra_sor0_clk_ops),
 	PERIPH_CLK_EX("sor1",	"sor1",			NULL,	183,	0x410,	600000000, mux_pllp_sor_sor1_brick_sor1_src, 	MUX,	&tegra_sor1_clk_ops),
-	PERIPH_CLK("dpaux",	"dpaux",		NULL,	181,	0,	408000000, mux_pllp,			0),
-	PERIPH_CLK("dpaux1",	"dpaux1",		NULL,	207,	0,	408000000, mux_pllp,			0),
+	PERIPH_CLK_EX("dpaux",	"dpaux",		NULL,	181,	0,	 24000000, mux_pllp,			0, &tegra_dpaux_clk_ops),
+	PERIPH_CLK_EX("dpaux1",	"dpaux1",		NULL,	207,	0,	 24000000, mux_pllp,			0, &tegra_dpaux_clk_ops),
 
 	PERIPH_CLK("usbd",	"tegra-udc.0",		NULL,	22,	0,	480000000, mux_clk_m,			0),
 	PERIPH_CLK("usb2",	"tegra-ehci.1",		NULL,	58,	0,	480000000, mux_clk_m,			0),
