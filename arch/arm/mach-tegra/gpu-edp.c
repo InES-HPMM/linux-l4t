@@ -116,6 +116,7 @@ static int tegra_relate_fv(struct fv_relation *fv)
 struct maxf_cache_entry {
 	u32 imax;
 	s16 temp_c;
+	u8 cores;
 	unsigned maxf;
 	struct hlist_node nib; /* next in bucket*/
 };
@@ -147,6 +148,7 @@ struct vdd_edp {
 	const int *temperatures;
 	int n_temperatures;
 	int temp_from_debugfs;
+	int cores_from_debugfs;
 };
 
 const int temps[] = { /* degree celcius (C) */
@@ -302,7 +304,7 @@ void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
 
 static unsigned int edp_calculate_maxf(
 	struct tegra_edp_common_powermodel_params *params,
-	struct fv_relation *fv,
+	struct fv_relation *fv, int cores,
 	unsigned int cur_effective, int temp_c, int iddq_ma)
 {
 	unsigned int voltage_mv, freq_khz = 0;
@@ -317,11 +319,11 @@ static unsigned int edp_calculate_maxf(
 		/* Calculate leakage current */
 		leakage_ma = common_edp_calculate_leakage_ma(
 					params, iddq_ma,
-					temp_c, voltage_mv, 0);
+					temp_c, voltage_mv, cores - 1);
 
 		/* Calculate dynamic current */
 		dyn_ma = common_edp_calculate_dynamic_ma(params,
-					voltage_mv, 0, freq_khz);
+					voltage_mv, cores - 1, freq_khz);
 
 		if ((leakage_ma + dyn_ma) <= cur_effective)
 			goto end;
@@ -333,18 +335,20 @@ static unsigned int edp_calculate_maxf(
 	return freq_khz;
 }
 
-#define make_key(imax, temp_c) ((imax << 8) ^ temp_c)
-static unsigned edp_get_maxf(struct vdd_edp *ctx, int temp_c)
+#define make_key(imax, temp_c, ncores) ((ncores<<24) ^ (imax << 8) ^ temp_c)
+static unsigned edp_get_maxf(struct vdd_edp *ctx, int temp_c, int cores)
 {
 	unsigned maxf;
 	struct maxf_cache_entry *me;
-	u32 key = make_key(ctx->imax_ma, temp_c);
+	u32 key = make_key(ctx->imax_ma, temp_c, cores);
 
 	BUG_ON(!mutex_is_locked(&ctx->edp_lock));
+	BUG_ON(cores < 0 || cores > ctx->n_cores);
 
 	/* check cache */
 	hash_for_each_possible(ctx->maxf_cache, me, nib, key)
-		if (me->imax == ctx->imax_ma && me->temp_c == temp_c) {
+		if (me->imax == ctx->imax_ma && me->temp_c == temp_c &&
+		    me->cores == cores) {
 			maxf = me->maxf;
 			return maxf;
 		}
@@ -352,6 +356,7 @@ static unsigned edp_get_maxf(struct vdd_edp *ctx, int temp_c)
 	/* service a miss */
 	maxf = edp_calculate_maxf(ctx->params,
 				  ctx->fv,
+				  cores,
 				  ctx->imax_ma,
 				  temp_c,
 				  ctx->iddq_ma);
@@ -362,6 +367,7 @@ static unsigned edp_get_maxf(struct vdd_edp *ctx, int temp_c)
 		me->imax = ctx->imax_ma;
 		me->temp_c = temp_c;
 		me->maxf = maxf;
+		me->cores = cores;
 		hash_add(ctx->maxf_cache, &me->nib, key);
 	}
 	return maxf;
@@ -435,7 +441,7 @@ static void apply_cap_via_clock(struct vdd_edp *ctx)
 	unsigned long clk_rate;
 	BUG_ON(IS_ERR_OR_NULL(ctx->cap_clk));
 
-	clk_rate = edp_get_maxf(ctx, ctx->temperatures[ctx->thermal_idx]);
+	clk_rate = edp_get_maxf(ctx, ctx->temperatures[ctx->thermal_idx], 1);
 	clk_set_rate(ctx->cap_clk, clk_rate * 1000);
 }
 
@@ -491,9 +497,15 @@ module_init(gpu_edp_cdev_init);
 static int edp_show_maxf(void *data, u64 *val)
 {
 	struct vdd_edp *ctx = data;
+	int cores;
+
+	cores = ctx->cores_from_debugfs;
+	if (cores <= 0 || cores > ctx->n_cores)
+		return -EINVAL;
 
 	mutex_lock(&ctx->edp_lock);
-	*val = edp_get_maxf(ctx, ctx->temp_from_debugfs);
+	*val = edp_get_maxf(ctx, ctx->temp_from_debugfs,
+			    ctx->cores_from_debugfs);
 	mutex_unlock(&ctx->edp_lock);
 
 	return 0;
@@ -506,12 +518,12 @@ static int edp_cache_show(struct seq_file *s, void *data)
 	struct maxf_cache_entry *me;
 	struct vdd_edp *ctx = s->private;
 
-	seq_printf(s, "%10s %10s %10s\n",
-		   "imax [mA]", "temp['C]", "fmax [Hz]");
+	seq_printf(s, "%10s %10s %10s %10s\n",
+		   "imax [mA]", "temp['C]", "cores[#]", "fmax [Hz]");
 
 	hash_for_each(ctx->maxf_cache, bucket, me, nib)
-		seq_printf(s, "%10d %10d %10d\n",
-			   me->imax, me->temp_c, me->maxf);
+		seq_printf(s, "%10d %10d %10d %10d\n",
+			   me->imax, me->temp_c, me->cores, me->maxf);
 
 	return 0;
 }
@@ -564,6 +576,8 @@ static int __init vdd_edp_debugfs_init(struct vdd_edp *ctx,
 				 (u32 *)ctx->fv->table, 2*ctx->fv->size);
 	debugfs_create_u32(".temp_c", S_IRUGO | S_IWUSR, parent,
 			   (u32 *)&ctx->temp_from_debugfs);
+	debugfs_create_u32(".cores", S_IRUGO | S_IWUSR, parent,
+			   (u32 *)&ctx->cores_from_debugfs);
 
 	return 0;
 }
