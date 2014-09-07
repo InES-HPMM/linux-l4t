@@ -10,6 +10,7 @@ Required properties:
 Optional properties:
 - nvidia,turn-off-vbus-in-lp0: Specify whether vbus should be powered power during LP0.
 - nvidia,enable-y-cable-detection: Enables y-cable detection.
+- nvidia,enable-nv-y-cable-detection: Enables nv-y-cable detection.
 - nvidia,enable-pmu-vbus-detection: Enables vbus detection through PMU.
 - nvidia,id-detection-type: Specify how usb id detection type on the platform.
     0 - if detection is through USB controller
