@@ -4953,6 +4953,68 @@ static struct clk_ops tegra_sdmmc24_clk_ops = {
 	.reset			= &tegra21_periph_clk_reset,
 };
 
+/* SLCG clock ops */
+static DEFINE_SPINLOCK(clk_slcg_lock);
+
+static void tegra21_clk_slcg_init(struct clk *c)
+{
+	char *end;
+	char root_name[32];
+	u32 val = clk_readl(c->reg);
+
+	c->state = (val & (0x1 << c->u.periph.clk_num)) ? ON : OFF;
+
+	strcpy(root_name, c->name);
+	end = strstr(root_name, "_slcg_ovr");
+	if (end) {
+		*end = '\0';
+		c->parent = tegra_get_clock_by_name(root_name);
+	}
+
+	if (WARN(!c->parent, "%s: %s parent %s not found\n",
+		 __func__, c->name, root_name))
+		return;
+
+	c->max_rate = c->parent->max_rate;
+}
+
+
+static int tegra21_clk_slcg_enable(struct clk *c)
+{
+	u32 val;
+	unsigned long flags;
+
+	pr_debug("%s on clock %s\n", __func__, c->name);
+
+	spin_lock_irqsave(&clk_slcg_lock, flags);
+	val = clk_readl(c->reg);
+	val |= (0x1 << c->u.periph.clk_num);
+	clk_writel_delay(val, c->reg);
+	spin_unlock_irqrestore(&clk_slcg_lock, flags);
+
+	return 0;
+}
+
+static void tegra21_clk_slcg_disable(struct clk *c)
+{
+	u32 val;
+	unsigned long flags;
+
+	pr_debug("%s on clock %s\n", __func__, c->name);
+
+	spin_lock_irqsave(&clk_slcg_lock, flags);
+	val = clk_readl(c->reg);
+	val &= ~(0x1 << c->u.periph.clk_num);
+	clk_writel_delay(val, c->reg);
+	spin_unlock_irqrestore(&clk_slcg_lock, flags);
+}
+
+static struct clk_ops tegra_clk_slcg_ops = {
+	.init			= &tegra21_clk_slcg_init,
+	.enable			= &tegra21_clk_slcg_enable,
+	.disable		= &tegra21_clk_slcg_disable,
+};
+
 /* Output clock ops */
 static DEFINE_SPINLOCK(clk_out_lock);
 
