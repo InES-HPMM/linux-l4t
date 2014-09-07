@@ -9083,6 +9083,29 @@ static struct clk tegra_xusb_source_clks[] = {
 	SHARED_EMC_CLK("xusb.emc",	XUSB_ID, "emc",	&tegra_clk_emc,	NULL,	0,	SHARED_BW, 0),
 };
 
+static struct clk_mux_sel mux_ss_clk_m[] = {
+	{ .input = &tegra_xusb_source_clks[3], .value = 0},
+	{ .input = &tegra_clk_m,	       .value = 1},
+	{ 0, 0},
+};
+
+static struct clk tegra_xusb_ssp_src = {
+	.name      = "xusb_ssp_src",
+	.lookup    = {
+		.dev_id    = NULL,
+		.con_id	   = "ssp_src",
+	},
+	.ops       = &tegra_periph_clk_ops,
+	.reg       = 0x610,
+	.inputs    = mux_ss_clk_m,
+	.flags     = MUX | PERIPH_NO_ENB | PERIPH_NO_RESET,
+	.max_rate  = 120000000,
+	.u.periph = {
+		.src_mask  = 0x1 << 24,
+		.src_shift = 24,
+	},
+};
+
 static struct clk tegra_xusb_ss_div2 = {
 	.name      = "xusb_ss_div2",
 	.ops       = &tegra_clk_m_div_ops,
@@ -9127,7 +9150,7 @@ static struct clk_mux_sel mux_xusb_host[] = {
 };
 
 static struct clk_mux_sel mux_xusb_ss[] = {
-	{ .input = &tegra_xusb_source_clks[3], .value = 3},
+	{ .input = &tegra_xusb_ssp_src,	       .value = 3},
 	{ .input = &tegra_xusb_source_clks[0], .value = 0},
 	{ .input = &tegra_xusb_source_clks[1], .value = 1},
 	{ 0, 0},
@@ -9136,7 +9159,7 @@ static struct clk_mux_sel mux_xusb_ss[] = {
 static struct clk_mux_sel mux_xusb_dev[] = {
 	{ .input = &tegra_xusb_source_clks[4], .value = 4},
 	{ .input = &tegra_xusb_source_clks[2], .value = 2},
-	{ .input = &tegra_xusb_source_clks[3], .value = 3},
+	{ .input = &tegra_xusb_ssp_src,	       .value = 3},
 	{ .input = &tegra_xusb_hs_src,         .value = 5},
 	{ 0, 0},
 };
@@ -10199,6 +10222,7 @@ static void tegra21_init_xusb_clocks(void)
 
 	tegra21_init_one_clock(&tegra_xusb_ss_div2);
 	tegra21_init_one_clock(&tegra_xusb_hs_src);
+	tegra21_init_one_clock(&tegra_xusb_ssp_src);
 
 	for (i = 0; i < ARRAY_SIZE(tegra_xusb_coupled_clks); i++)
 		tegra21_init_one_clock(&tegra_xusb_coupled_clks[i]);
