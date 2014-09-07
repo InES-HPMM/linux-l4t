@@ -262,49 +262,6 @@ static s64 common_edp_calculate_dynamic_ma(
 	return dyn_ma;
 }
 
-static void _get_trip_info(int *temps, int n_temps,
-			   char *cdev_name,
-			   struct thermal_trip_info *trips,
-			   int *num_trips, int margin)
-{
-	struct thermal_trip_info *trip_state;
-	int i;
-
-	if (!trips || !num_trips)
-		return;
-
-	if (n_temps > MAX_THROT_TABLE_SIZE)
-		BUG();
-
-	for (i = 0; i < n_temps-1; i++) {
-		trip_state = &trips[*num_trips];
-
-		trip_state->cdev_type = cdev_name;
-		trip_state->trip_temp =
-			(temps[i] * 1000) - margin;
-		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
-		trip_state->upper = trip_state->lower =
-			C_TO_K(temps[i + 1]);
-
-		(*num_trips)++;
-
-		if (*num_trips >= THERMAL_MAX_TRIPS)
-			BUG();
-	}
-}
-
-/* this will be dead code once we use DT for thermals */
-void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
-				int *num_trips, int margin)
-{
-	int gpu_temps[] = { /* degree celcius (C) */
-		20, 50, 70, 75, 80, 85, 90, 95, 100, 105,
-	};
-
-	_get_trip_info(gpu_temps, ARRAY_SIZE(gpu_temps), s_gpu.cdev_name,
-		       trips, num_trips, margin);
-}
-
 static unsigned int edp_calculate_maxf(
 	struct tegra_edp_common_powermodel_params *params,
 	struct fv_relation *fv, int cores,
@@ -388,39 +345,47 @@ static void edp_flush_maxf_cache_locked(struct vdd_edp *ctx)
 	}
 }
 
-void __init tegra_init_gpu_edp_limits(unsigned int regulator_ma)
+static void _get_trip_info(int *temps, int n_temps,
+			   char *cdev_name,
+			   struct thermal_trip_info *trips,
+			   int *num_trips, int margin)
 {
-	static u32 tegra_chip_id;
-	struct clk *gpu_clk;
-	tegra_chip_id = tegra_get_chip_id();
+	struct thermal_trip_info *trip_state;
+	int i;
 
-	if (tegra_chip_id == TEGRA_CHIPID_TEGRA12)
-		s_gpu.params = tegra12x_get_gpu_powermodel_params();
-	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA13)
-		s_gpu.params = tegra13x_get_gpu_powermodel_params();
-	else
+	if (!trips || !num_trips)
+		return;
+
+	if (n_temps > MAX_THROT_TABLE_SIZE)
 		BUG();
 
-	gpu_clk = tegra_get_clock_by_name(s_gpu.clk_name);
-	s_gpu.fv = fv_relation_create(gpu_clk, s_gpu.freq_step,
-				      tegra_relate_fv);
-	BUG_ON(!s_gpu.fv);
+	for (i = 0; i < n_temps-1; i++) {
+		trip_state = &trips[*num_trips];
 
-	s_gpu.iddq_ma = tegra_get_gpu_iddq_value();
-	pr_debug("%s: %s IDDQ value %d\n",
-		 __func__, s_gpu.edp_name, s_gpu.iddq_ma);
+		trip_state->cdev_type = cdev_name;
+		trip_state->trip_temp =
+			(temps[i] * 1000) - margin;
+		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
+		trip_state->upper = trip_state->lower =
+			C_TO_K(temps[i + 1]);
 
-	s_gpu.cap_clk = tegra_get_clock_by_name(s_gpu.cap_clk_name);
-	if (!s_gpu.cap_clk)
-		pr_err("%s: cannot get clock:%s\n",
-		       __func__, s_gpu.cap_clk_name);
-	s_gpu.temperature_now = 25; /* HACK */
+		(*num_trips)++;
 
-	s_gpu.imax_ma = regulator_ma;
+		if (*num_trips >= THERMAL_MAX_TRIPS)
+			BUG();
+	}
+}
 
-	/* unecessary call so compiler quits complaining about
-	 * edp_flush_maxf_cache_locked being unused */
-	edp_flush_maxf_cache_locked(&s_gpu);
+/* this will be dead code once we use DT for thermals */
+void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
+				int *num_trips, int margin)
+{
+	int gpu_temps[] = { /* degree celcius (C) */
+		20, 50, 70, 75, 80, 85, 90, 95, 100, 105,
+	};
+
+	_get_trip_info(gpu_temps, ARRAY_SIZE(gpu_temps), s_gpu.cdev_name,
+		       trips, num_trips, margin);
 }
 
 static int edp_get_cdev_max_state(struct thermal_cooling_device *cdev,
@@ -493,12 +458,6 @@ static int __init cdev_register(struct vdd_edp *ctx)
 
 	return PTR_RET(edp_cdev);
 }
-
-static int __init gpu_edp_cdev_init(void)
-{
-	return cdev_register(&s_gpu);
-}
-module_init(gpu_edp_cdev_init);
 
 #ifdef CONFIG_DEBUG_FS
 
@@ -602,9 +561,63 @@ static int __init tegra_edp_debugfs_init(void)
 		return -ENOMEM;
 
 	vdd_edp_debugfs_init(&s_gpu, edp_dir);
-
 	return 0;
 }
-
-late_initcall(tegra_edp_debugfs_init);
+#else
+static int __init tegra_edp_debugfs_init(void)
+{ return 0; }
 #endif /* CONFIG_DEBUG_FS */
+
+/* TODO: take this data from DT */
+/* NOTE: called by an arch_initcall well before module_initcalls */
+void __init tegra_init_gpu_edp_limits(unsigned int regulator_ma)
+{
+	s_gpu.imax_ma = regulator_ma;
+}
+
+static int __init tegra_gpu_edp_init(void)
+{
+	static u32 tegra_chip_id;
+	struct clk *gpu_clk;
+	tegra_chip_id = tegra_get_chip_id();
+
+	if (tegra_chip_id == TEGRA_CHIPID_TEGRA12)
+		s_gpu.params = tegra12x_get_gpu_powermodel_params();
+	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA13)
+		s_gpu.params = tegra13x_get_gpu_powermodel_params();
+	else
+		BUG();
+
+	gpu_clk = tegra_get_clock_by_name(s_gpu.clk_name);
+	s_gpu.fv = fv_relation_create(gpu_clk, s_gpu.freq_step,
+				      tegra_relate_fv);
+	BUG_ON(!s_gpu.fv);
+
+	s_gpu.iddq_ma = tegra_get_gpu_iddq_value();
+	pr_debug("%s: %s IDDQ value %d\n",
+		 __func__, s_gpu.edp_name, s_gpu.iddq_ma);
+
+	s_gpu.cap_clk = tegra_get_clock_by_name(s_gpu.cap_clk_name);
+	if (!s_gpu.cap_clk)
+		pr_err("%s: cannot get clock:%s\n",
+		       __func__, s_gpu.cap_clk_name);
+	s_gpu.temperature_now = 25; /* HACK */
+
+	/* unecessary call so compiler quits complaining about
+	 * edp_flush_maxf_cache_locked being unused */
+	edp_flush_maxf_cache_locked(&s_gpu);
+
+	return cdev_register(&s_gpu);
+}
+
+static int __init tegra_edp_init(void)
+{
+	int ret;
+	tegra_gpu_edp_init();
+
+	ret = tegra_edp_debugfs_init();
+	return ret;
+}
+
+module_init(tegra_edp_init);
+
