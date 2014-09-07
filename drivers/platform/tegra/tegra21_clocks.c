@@ -9147,6 +9147,45 @@ static struct clk tegra_xusb_coupled_clks[] = {
 	PERIPH_CLK_EX("xusb_dev",  XUDC_ID, "dev",  95, 0, 120000000, mux_xusb_dev,  0,	&tegra_clk_coupled_gate_ops),
 };
 
+#define SLCG_CLK(_root_name, _name_ext, _dev, _con, _reg, _bit)		\
+	{								\
+		.name      = _root_name "_slcg_ovr" _name_ext,		\
+		.lookup	= {						\
+			.dev_id	= _dev,					\
+			.con_id	= _con,					\
+		},							\
+		.ops       = &tegra_clk_slcg_ops,			\
+		.reg       = _reg,					\
+		.max_rate  = 38400000, /* replaced by root max */	\
+		.u.periph = {						\
+			.clk_num   = _bit,				\
+		},							\
+	}
+
+static struct clk tegra_slcg_clks[] = {
+	SLCG_CLK("disp2",	"",	"tegradc.1",	"slcg",		0xf8,	2),
+	SLCG_CLK("disp1",	"",	"tegradc.0",	"slcg",		0xf8,	1),
+
+	SLCG_CLK("vi",		"",	"tegra_vi",	"slcg",		0xf8,	15),
+	SLCG_CLK("ispa",	"",	"tegra_isp.0",	"slcg",		0x554,	3),
+	SLCG_CLK("ispb",	"",	"tegra_isp.1",	"slcg",		0x3a4,	22),
+
+	SLCG_CLK("nvdec",	"",	"tegra_nvdec",	"slcg",		0x554,	31),
+	SLCG_CLK("msenc",	"",	"tegra_msenc",	"slcg",		0x554,	29),
+	SLCG_CLK("nvjpg",	"",	"tegra_nvjpg",	"slcg",		0x554,	9),
+	SLCG_CLK("vic03",	"",	"tegra_vic03",	"slcg",		0x554,	5),
+
+	SLCG_CLK("xusb_dev",	"",	XUDC_ID,	"slcg",		0x3a0,	31),
+	SLCG_CLK("xusb_host",	"",	XUSB_ID,	"slcg",		0x3a0,	30),
+	SLCG_CLK("sata",	"_fpci", "tegra_sata",	"slcg_fpci",	0x3a0,	19),
+	SLCG_CLK("sata",	"_ipfs", "tegra_sata",	"slcg_ipfs",	0x3a0,	17),
+	SLCG_CLK("sata",	"",	"tegra_sata",	"slcg",		0x3a0,	0),
+
+	SLCG_CLK("d_audio",	"",   "tegra210-axbar", "slcg",		0x3a0,	1),
+	SLCG_CLK("adsp",	"",	NULL,		"slcg_adsp",	0x554,	11),
+	SLCG_CLK("ape",		"",	NULL,		"slcg_ape",	0x554,	10),
+};
+
 #define CLK_DUPLICATE(_name, _dev, _con)		\
 	{						\
 		.name	= _name,			\
@@ -10256,6 +10295,9 @@ void __init tegra21x_init_clocks(void)
 		tegra21_init_one_clock(&tegra_clk_out_list[i]);
 
 	tegra21_init_xusb_clocks();
+
+	for (i = 0; i < ARRAY_SIZE(tegra_slcg_clks); i++)
+		tegra21_init_one_clock(&tegra_slcg_clks[i]);
 
 	for (i = 0; i < ARRAY_SIZE(tegra_clk_duplicates); i++) {
 		c = tegra_get_clock_by_name(tegra_clk_duplicates[i].name);
