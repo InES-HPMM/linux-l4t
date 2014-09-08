@@ -75,7 +75,6 @@ int esc_mods_tegra_dc_config_possible(struct file *fp,
 	int i;
 	struct tegra_dc *dc = tegra_dc_get_dc(args->head);
 	struct tegra_dc_win *dc_wins[DC_N_WINDOWS];
-	struct MODS_TEGRA_DC_WINDOW *mods_wins;
 	LOG_ENT();
 
 	BUG_ON(args->win_num > DC_N_WINDOWS);
@@ -85,21 +84,13 @@ int esc_mods_tegra_dc_config_possible(struct file *fp,
 		return -EINVAL;
 	}
 
-	mods_wins = kzalloc(sizeof(*mods_wins) * args->win_num, GFP_KERNEL);
-
-	if (copy_from_user(mods_wins, args->wins,
-			sizeof(*mods_wins) * args->win_num)) {
-		kfree(mods_wins);
-		LOG_EXT();
-		return -EFAULT;
-	}
-
 	for (i = 0; i < args->win_num; i++) {
-		int idx = mods_wins[i].index;
+		int idx = args->windows[i].index;
 
-		if (mods_wins[i].flags & MODS_TEGRA_DC_WINDOW_FLAG_ENABLED) {
+		if (args->windows[i].flags &
+			MODS_TEGRA_DC_WINDOW_FLAG_ENABLED) {
 			mods_tegra_dc_set_windowattr_basic(&dc->tmp_wins[idx],
-							  &mods_wins[i]);
+							  &args->windows[i]);
 		} else {
 			dc->tmp_wins[idx].flags = 0;
 		}
@@ -118,22 +109,14 @@ int esc_mods_tegra_dc_config_possible(struct file *fp,
 	ret = tegra_dc_bandwidth_negotiate_bw(dc, dc_wins, args->win_num);
 	args->possible = (ret == 0);
 	for (i = 0; i < args->win_num; i++) {
-		mods_wins[i].bandwidth = dc_wins[i]->new_bandwidth;
+		args->windows[i].bandwidth = dc_wins[i]->new_bandwidth;
 		mods_debug_printk(DEBUG_TEGRADC,
 			"esc_mods_tegra_dc_config_possible head %u, "
 			"window %d bandwidth %d\n",
 			args->head, dc_wins[i]->idx, dc_wins[i]->new_bandwidth);
 	}
 
-	if (copy_to_user(args->wins, mods_wins,
-		sizeof(*mods_wins) * args->win_num)) {
-		kfree(mods_wins);
-		LOG_EXT();
-		return -EFAULT;
-	}
-
 	LOG_EXT();
-	kfree(mods_wins);
 	return 0;
 #endif
 }
