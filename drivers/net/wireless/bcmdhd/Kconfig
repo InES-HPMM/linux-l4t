@@ -10,7 +10,6 @@ config BCMDHD
 config BCMDHD_SDIO
 	bool "SDIO bus interface support"
 	depends on BCMDHD && MMC
-	default y
 
 config BCMDHD_PCIE
 	bool "PCIe bus interface support"
@@ -19,7 +18,6 @@ config BCMDHD_PCIE
 config BCM43241
 	bool "Broadcom 43241 wireless card support"
 	depends on BCMDHD
-	default y
 
 config BCM4354
 	bool "Broadcom 4354 wireless cards PRC support"
@@ -52,7 +50,6 @@ config BCMDHD_NVRAM_PATH
 config BCMDHD_HW_OOB
 	bool "Use out of band interrupt"
 	depends on BCMDHD
-	default y
 	---help---
 	  Use out of band interrupt for card interrupt and wake on wireless.
 
@@ -67,14 +64,12 @@ config BCMDHD_WEXT
 config DHD_USE_STATIC_BUF
 	bool "Enable memory preallocation"
 	depends on BCMDHD
-	default n
 	---help---
 	  Use memory preallocated in platform
 
 config DHD_USE_SCHED_SCAN
 	bool "Use CFG80211 sched scan"
 	depends on BCMDHD && CFG80211
-	default n
 	---help---
 	  Use CFG80211 sched scan
 
