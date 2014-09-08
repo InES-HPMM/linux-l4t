@@ -488,8 +488,6 @@ static void __init tegra_t210ref_late_init(void)
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
 
-	t210ref_display_init();
-
 	t210ref_usb_init();
 	platform_add_devices(t210ref_devices, ARRAY_SIZE(t210ref_devices));
 	tegra_io_dpd_init();
@@ -503,7 +501,7 @@ static void __init tegra_t210ref_late_init(void)
 #endif
 	t210ref_edp_init();
 	isomgr_init();
-	t210ref_panel_init();
+	tegra_fb_copy_or_clear();
 
 	/* put PEX pads into DPD mode to save additional power */
 	tegra_io_dpd_enable(&pexbias_io);

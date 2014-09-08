@@ -44,6 +44,22 @@
 	compatible = "nvidia,loki-e", "nvidia,tegra210";
 	nvidia,dtsfilename = __FILE__;
 
+	i2c@7000c500 {
+		battery-charger@6b {
+			charger {
+				status = "okay";
+				ti,watchdog-timeout = <160>;
+				ti,pre-charge-current-limit-milliamp = <768>;
+				ti,charge-term-current-limit-milliamp = <384>;
+				ti,ir-comp-voltage-millivolt = <112>;
+			};
+		};
+
+		battery-gauge@55 {
+			status = "okay";
+		};
+	};
+
 	sdhci@700b0600 {
 		uhs-mask = <0x60>;
 		built-in;
@@ -88,6 +104,7 @@
 			nvidia,dsi-controller-vs = <DSI_VS_1>;
 			status = "okay";
 			panel-j-1440-810-5-8 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
 				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */

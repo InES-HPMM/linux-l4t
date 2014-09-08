@@ -76,7 +76,10 @@ int tegra_pll_clk_wait_for_lock(struct clk *c, u32 lock_reg, u32 lock_bits)
 
 u16 pll_get_fixed_mdiv(struct clk *c, unsigned long input_rate)
 {
-	return input_rate / c->u.pll.cf_min;
+	u16 mdiv = input_rate / c->u.pll.cf_min;
+	if (c->u.pll.mdiv_default)
+		mdiv = min(mdiv, c->u.pll.mdiv_default);
+	return mdiv;
 }
 
 void pll_clk_verify_fixed_rate(struct clk *c)

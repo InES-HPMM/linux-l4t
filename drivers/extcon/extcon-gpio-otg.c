@@ -62,13 +62,13 @@ struct extcon_otg_data {
 
 static void extcon_otg_work(struct work_struct *work)
 {
-	int id_state;
 	struct extcon_otg_data	*data =
 		container_of(to_delayed_work(work), struct extcon_otg_data,
 			     work);
 	int new_cable_state = 0;
 	int ret, vbus;
-	int vbus_state;
+	int vbus_state = 0;
+	int id_state = 0;
 
 	if (!data->vbus_channel) {
 		data->vbus_channel = iio_channel_get(data->dev, "vbus");
@@ -109,7 +109,8 @@ static void extcon_otg_work(struct work_struct *work)
 		new_cable_state = 1;
 
 done:
-	dev_info(data->dev, "Cable state %d\n", new_cable_state);
+	dev_info(data->dev, "ID:VBUS: %d:%d, Cable state %d\n",
+			id_state, vbus_state, new_cable_state);
 	if (data->last_cable_state != new_cable_state)
 		extcon_set_state(&data->edev, new_cable_state);
 	data->last_cable_state = new_cable_state;

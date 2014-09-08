@@ -183,7 +183,6 @@ static int imx214_write_table(struct imx214_info *info,
 static int imx214_set_mode(struct imx214_info *info, struct imx214_mode *mode)
 {
 	int sensor_mode;
-	u8 quality_hdr;
 	int err;
 	struct imx214_reg reg_list[12];
 
@@ -200,17 +199,12 @@ static int imx214_set_mode(struct imx214_info *info, struct imx214_mode *mode)
 		} else if (mode->xres == 1920 && mode->yres == 1080) {
 			sensor_mode = IMX214_MODE_1920X1080_HDR;
 		} else if (mode->xres == 1280 && mode->yres == 720) {
-			sensor_mode = IMX214_MODE_1280X720_HS_HDR;
-		} else if (mode->xres == 4208 && mode->yres == 3120) {
-			sensor_mode = IMX214_MODE_4208X3120_HDR;
-		} else if (mode->xres == 2104 && mode->yres == 1184) {
-			sensor_mode = IMX214_MODE_2104X1184_HDR;
+			sensor_mode = IMX214_MODE_1280X720_120FPS_HDR;
 		} else {
 			pr_err("%s: invalid resolution supplied to set mode %d %d\n",
 				 __func__, mode->xres, mode->yres);
 			return -EINVAL;
 		}
-		quality_hdr = 1;
 	} else {
 		if (mode->xres == 4096 && mode->yres == 3072) {
 			sensor_mode = IMX214_MODE_4096X3072;
@@ -219,19 +213,12 @@ static int imx214_set_mode(struct imx214_info *info, struct imx214_mode *mode)
 		} else if (mode->xres == 1920 && mode->yres == 1080) {
 			sensor_mode = IMX214_MODE_1920X1080;
 		} else if (mode->xres == 1280 && mode->yres == 720) {
-			sensor_mode = IMX214_MODE_1280X720_HS;
-		} else if (mode->xres == 1052 && mode->yres == 592) {
-			sensor_mode = IMX214_MODE_1052X592_120FPS;
-		} else if (mode->xres == 4208 && mode->yres == 3120) {
-			sensor_mode = IMX214_MODE_4208X3120;
-		} else if (mode->xres == 2104 && mode->yres == 1184) {
-			sensor_mode = IMX214_MODE_2104X1184;
+			sensor_mode = IMX214_MODE_1280X720_120FPS;
 		} else {
 			pr_err("%s: invalid resolution supplied to set mode %d %d\n",
 				 __func__, mode->xres, mode->yres);
 			return -EINVAL;
 		}
-		quality_hdr = 0;
 	}
 
 	/* get a list of override regs for the asking frame length, */

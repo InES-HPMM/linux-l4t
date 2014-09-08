@@ -430,3 +430,11 @@ void escore_pm_put_autosuspend(void)
 
 	return;
 }
+
+
+bool escore_is_probe_error(void)
+{
+	struct escore_priv *escore = &escore_priv;
+
+	return escore->is_probe_error;
+}
