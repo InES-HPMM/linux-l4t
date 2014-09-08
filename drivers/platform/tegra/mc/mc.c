@@ -32,7 +32,7 @@
 #include <tegra/mc.h>
 #include <tegra/mcerr.h>
 
-#include "../../../../arch/arm/mach-tegra/iomap.h"
+#include <mach/tegra_emc.h>
 
 #define MC_CLIENT_HOTRESET_CTRL		0x200
 #define MC_CLIENT_HOTRESET_STAT		0x204
