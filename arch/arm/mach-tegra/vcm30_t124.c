@@ -446,6 +446,10 @@ static struct of_dev_auxdata tegra_vcm30_t124_auxdata_lookup[] __initdata = {
 			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-ahub", 0x70300000, "tegra30-ahub-apbif",
 			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-virt-ahub-master", 0x70300000,
+				"tegra30-ahub-apbif", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-virt-ahub-slave", 0x70300000,
+				"tegra124-virt-ahub-slave", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-efuse", TEGRA_FUSE_BASE, "tegra-fuse",
 			NULL),
 #ifdef CONFIG_SATA_AHCI_TEGRA
