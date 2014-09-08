@@ -336,6 +336,7 @@ static struct tegra_iommu_mapping smmu_default_map[] = {
 #if defined(CONFIG_ARCH_TEGRA_APE)
 	[SYSTEM_ADSP] = {TEGRA_APE_DRAM_MAP2_BASE, TEGRA_APE_DRAM_MAP2_SIZE},
 #endif
+	[AFI_ASID] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
 };
 
 /* XXX: Remove this function once all client devices moved to DT */

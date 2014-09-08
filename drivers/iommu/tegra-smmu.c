@@ -40,6 +40,7 @@
 #include <linux/bitops.h>
 #include <linux/tegra-soc.h>
 #include <linux/tegra_smmu.h>
+#include <linux/pci.h>
 
 #include <asm/page.h>
 #include <asm/cacheflush.h>
@@ -319,6 +320,8 @@ int _tegra_smmu_get_asid(u64 swgids)
 	if (swgids & TEGRA_SWGROUP_BIT(SDMMC4A))
 		return SDMMC4A_ASID;
 #endif
+	if (swgids & TEGRA_SWGROUP_BIT(AFI))
+		return AFI_ASID;
 
 	return SYSTEM_DEFAULT;
 }
@@ -691,7 +694,11 @@ static u64 tegra_smmu_of_get_swgids(struct device *dev,
 		goto out;
 	}
 
-	swgids = __tegra_smmu_of_get_swgids(dev, prop);
+	if (dev_is_pci(dev))
+		swgids = TEGRA_SWGROUP_BIT(AFI);
+	else
+		swgids = __tegra_smmu_of_get_swgids(dev, prop);
+
 	if (swgids_is_error(swgids))
 		goto out;
 
@@ -804,11 +811,6 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 		mask |= SMMU_ASID_ENABLE(dom->as[i]->asid, i);
 
 	for_each_set_bit(i, (unsigned long *)&map, HWGRP_COUNT) {
-
-		/* FIXME: PCIe client hasn't been registered as IOMMU */
-		if (i == TEGRA_SWGROUP_AFI)
-			continue;
-
 		offs = tegra_smmu_get_offset(i);
 		val = smmu_read(smmu, offs);
 		val &= ~SMMU_ASID_MASK; /* always overwrite ASID */
