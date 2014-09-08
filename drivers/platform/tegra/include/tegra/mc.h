@@ -194,4 +194,10 @@ static inline unsigned tegra_emc_dvfs_latency(unsigned int freq_khz)
 int tegra_mc_flush(int id);
 int tegra_mc_flush_done(int id);
 
+/*
+ * Necessary bit fields for various MC registers. Add to these as
+ * necessary.
+ */
+#define MC_EMEM_ARB_MISC0_MC_EMC_SAME_FREQ_BIT			(1 << 27)
+
 #endif

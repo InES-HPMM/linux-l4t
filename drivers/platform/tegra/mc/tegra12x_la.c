@@ -22,6 +22,8 @@
 #include <mach/latency_allowance.h>
 #include <mach/tegra_emc.h>
 
+#include <tegra/mc.h>
+
 #include "la_priv.h"
 #include <linux/platform/tegra/clock.h>
 #include "iomap.h"
@@ -53,7 +55,7 @@
 
 /* LA registers */
 #define T12X_MC_LA_AFI_0				0x2e0
-#define T12X_MC_LA_AVPC_ARM7_0				0x2e4
+#define T12X_MC_LA_AVPC_0				0x2e4
 #define T12X_MC_LA_DC_0					0x2e8
 #define T12X_MC_LA_DC_1					0x2ec
 #define T12X_MC_LA_DC_2					0x2f0
@@ -89,48 +91,6 @@
 #define T12X_MC_LA_SDMMC_0				0x3c0
 #define T12X_MC_LA_SDMMCAB_0				0x3c4
 #define T12X_MC_LA_DC_3					0x3c8
-#define T12X_MC_SCALED_LA_DISPLAY0A_0	(IO_ADDRESS(TEGRA_MC_BASE) + 0x690)
-#define T12X_MC_SCALED_LA_DISPLAY0A_0_LOW_SHIFT		0
-#define T12X_MC_SCALED_LA_DISPLAY0A_0_LOW_MASK		(0xff << \
-				T12X_MC_SCALED_LA_DISPLAY0A_0_LOW_SHIFT)
-#define T12X_MC_SCALED_LA_DISPLAY0A_0_HIGH_SHIFT	16
-#define T12X_MC_SCALED_LA_DISPLAY0A_0_HIGH_MASK		(0xff << \
-				T12X_MC_SCALED_LA_DISPLAY0A_0_HIGH_SHIFT)
-#define T12X_MC_SCALED_LA_DISPLAY0AB_0	(IO_ADDRESS(TEGRA_MC_BASE) + 0x694)
-#define T12X_MC_SCALED_LA_DISPLAY0AB_0_LOW_SHIFT	 0
-#define T12X_MC_SCALED_LA_DISPLAY0AB_0_LOW_MASK		(0xff << \
-				T12X_MC_SCALED_LA_DISPLAY0AB_0_LOW_SHIFT)
-#define T12X_MC_SCALED_LA_DISPLAY0AB_0_HIGH_SHIFT	16
-#define T12X_MC_SCALED_LA_DISPLAY0AB_0_HIGH_MASK	(0xff << \
-				T12X_MC_SCALED_LA_DISPLAY0AB_0_HIGH_SHIFT)
-#define T12X_MC_SCALED_LA_DISPLAY0B_0	(IO_ADDRESS(TEGRA_MC_BASE) + 0x698)
-#define T12X_MC_SCALED_LA_DISPLAY0B_0_LOW_SHIFT		0
-#define T12X_MC_SCALED_LA_DISPLAY0B_0_LOW_MASK		(0xff << \
-				T12X_MC_SCALED_LA_DISPLAY0B_0_LOW_SHIFT)
-#define T12X_MC_SCALED_LA_DISPLAY0B_0_HIGH_SHIFT	16
-#define T12X_MC_SCALED_LA_DISPLAY0B_0_HIGH_MASK		(0xff << \
-				T12X_MC_SCALED_LA_DISPLAY0B_0_HIGH_SHIFT)
-#define T12X_MC_SCALED_LA_DISPLAY0BB_0	(IO_ADDRESS(TEGRA_MC_BASE) + 0x69c)
-#define T12X_MC_SCALED_LA_DISPLAY0BB_0_LOW_SHIFT	 0
-#define T12X_MC_SCALED_LA_DISPLAY0BB_0_LOW_MASK		(0xff << \
-				T12X_MC_SCALED_LA_DISPLAY0BB_0_LOW_SHIFT)
-#define T12X_MC_SCALED_LA_DISPLAY0BB_0_HIGH_SHIFT	16
-#define T12X_MC_SCALED_LA_DISPLAY0BB_0_HIGH_MASK	(0xff << \
-				T12X_MC_SCALED_LA_DISPLAY0BB_0_HIGH_SHIFT)
-#define T12X_MC_SCALED_LA_DISPLAY0C_0	(IO_ADDRESS(TEGRA_MC_BASE) + 0x6a0)
-#define T12X_MC_SCALED_LA_DISPLAY0C_0_LOW_SHIFT		0
-#define T12X_MC_SCALED_LA_DISPLAY0C_0_LOW_MASK		(0xff << \
-				T12X_MC_SCALED_LA_DISPLAY0C_0_LOW_SHIFT)
-#define T12X_MC_SCALED_LA_DISPLAY0C_0_HIGH_SHIFT	16
-#define T12X_MC_SCALED_LA_DISPLAY0C_0_HIGH_MASK		(0xff << \
-				T12X_MC_SCALED_LA_DISPLAY0C_0_HIGH_SHIFT)
-#define T12X_MC_SCALED_LA_DISPLAY0CB_0	(IO_ADDRESS(TEGRA_MC_BASE) + 0x6a4)
-#define T12X_MC_SCALED_LA_DISPLAY0CB_0_LOW_SHIFT	 0
-#define T12X_MC_SCALED_LA_DISPLAY0CB_0_LOW_MASK		(0xff << \
-				T12X_MC_SCALED_LA_DISPLAY0CB_0_LOW_SHIFT)
-#define T12X_MC_SCALED_LA_DISPLAY0CB_0_HIGH_SHIFT	16
-#define T12X_MC_SCALED_LA_DISPLAY0CB_0_HIGH_MASK	(0xff << \
-				T12X_MC_SCALED_LA_DISPLAY0CB_0_HIGH_SHIFT)
 
 /* PTSA registers */
 #define T12X_MC_DIS_PTSA_RATE_0		0x41c
@@ -258,91 +218,75 @@
 #define T12X_EMEM_PTSA_MINMAX_WIDTH				5
 #define T12X_EMEM_PTSA_RATE_WIDTH				8
 #define T12X_RING1_FEEDER_SISO_ALLOC_DIV			2
-#define T12X_LA_USEC_TO_NSEC_FACTOR				1000
-#define T12X_LA_HZ_TO_MHZ_FACTOR				1000000
-#define T12X_LA(f, e, a, r, i, ss, la, clk) \
-{ \
-	.fifo_size_in_atoms = f, \
-	.expiration_in_ns = e, \
-	.reg_addr = T12X_RA(a), \
-	.mask = MASK(r), \
-	.shift = SHIFT(r), \
-	.id = ID(i), \
-	.name = __stringify(i), \
-	.scaling_supported = ss, \
-	.init_la = la, \
-	.la_ref_clk_mhz = clk \
-}
-
 
 struct la_client_info t12x_la_info_array[] = {
-	T12X_LA(0, 0, AFI_0, 7 : 0, AFIR, false, 28, 800),
-	T12X_LA(0, 0, AFI_0, 23 : 16, AFIW, false, 128, 800),
-	T12X_LA(0, 0, AVPC_ARM7_0, 7 : 0, AVPC_ARM7R, false, 4, 0),
-	T12X_LA(0, 0, AVPC_ARM7_0, 23 : 16, AVPC_ARM7W, false, 128, 800),
-	T12X_LA(0, 0, DC_0, 7 : 0, DISPLAY_0A, true, 80, 0),
-	T12X_LA(0, 0, DCB_0, 7 : 0, DISPLAY_0AB, true, 80, 0),
-	T12X_LA(0, 0, DC_0, 23 : 16, DISPLAY_0B, true, 80, 0),
-	T12X_LA(0, 0, DCB_0, 23 : 16, DISPLAY_0BB, true, 80, 0),
-	T12X_LA(0, 0, DC_1, 7 : 0, DISPLAY_0C, true, 80, 0),
-	T12X_LA(0, 0, DCB_1, 7 : 0, DISPLAY_0CB, true, 80, 0),
-	T12X_LA(0, 0, DC_3, 7 : 0, DISPLAYD, false, 80, 0),
-	T12X_LA(0, 0, DC_2, 7 : 0, DISPLAY_HC, false, 80, 0),
-	T12X_LA(0, 0, DCB_2, 7 : 0, DISPLAY_HCB, false, 80, 0),
-	T12X_LA(0, 0, DC_2, 23 : 16, DISPLAY_T, false, 80, 0),
-	T12X_LA(0, 0, GPU_0, 7 : 0, GPUSRD, false, 25, 800),
-	T12X_LA(0, 0, GPU_0, 23 : 16, GPUSWR, false, 128, 800),
-	T12X_LA(0, 0, HDA_0, 7 : 0, HDAR, false, 36, 0),
-	T12X_LA(0, 0, HDA_0, 23 : 16, HDAW, false, 128, 800),
-	T12X_LA(0, 0, TSEC_0, 7 : 0, TSECSRD, false, 60, 200),
-	T12X_LA(0, 0, TSEC_0, 23 : 16, TSECSWR, false, 128, 800),
-	T12X_LA(0, 0, HC_0, 7 : 0, HOST1X_DMAR, false, 22, 800),
-	T12X_LA(0, 0, HC_0, 23 : 16, HOST1XR, false, 80, 0),
-	T12X_LA(0, 0, HC_1, 7 : 0, HOST1XW, false, 128, 800),
-	T12X_LA(0, 0, ISP2_0, 7 : 0, ISP_RA, false, 54, 300),
-	T12X_LA(0, 0, ISP2_1, 7 : 0, ISP_WA, false, 128, 800),
-	T12X_LA(0, 0, ISP2_1, 23 : 16, ISP_WB, false, 128, 800),
-	T12X_LA(0, 0, ISP2B_0, 7 : 0, ISP_RAB, false, 54, 300),
-	T12X_LA(0, 0, ISP2B_1, 7 : 0, ISP_WAB, false, 128, 800),
-	T12X_LA(0, 0, ISP2B_1, 23 : 16, ISP_WBB, false, 128, 800),
-	T12X_LA(0, 0, MPCORELP_0, 7 : 0, MPCORE_LPR, false, 4, 0),
-	T12X_LA(0, 0, MPCORELP_0, 23 : 16, MPCORE_LPW, false, 128, 800),
-	T12X_LA(0, 0, MPCORE_0, 7 : 0, MPCORER, false, 4, 0),
-	T12X_LA(0, 0, MPCORE_0, 23 : 16, MPCOREW, false, 128, 800),
-	T12X_LA(0, 0, MSENC_0, 7 : 0, MSENCSRD, false, 24, 0),
-	T12X_LA(0, 0, MSENC_0, 23 : 16, MSENCSWR, false, 128, 800),
-	T12X_LA(0, 0, PPCS_1, 7 : 0, PPCS_AHBDMAW, true, 128, 800),
-	T12X_LA(0, 0, PPCS_0, 23 : 16, PPCS_AHBSLVR, false, 39, 408),
-	T12X_LA(0, 0, PPCS_1, 23 : 16, PPCS_AHBSLVW, false, 128, 800),
-	T12X_LA(0, 0, PTC_0, 7 : 0, PTCR, false, 0, 0),
-	T12X_LA(0, 0, SATA_0, 7 : 0, SATAR, false, 101, 400),
-	T12X_LA(0, 0, SATA_0, 23 : 16, SATAW, false, 128, 800),
-	T12X_LA(0, 0, SDMMC_0, 7 : 0, SDMMCR, false, 144, 248),
-	T12X_LA(0, 0, SDMMCA_0, 7 : 0, SDMMCRA, false, 144, 248),
-	T12X_LA(0, 0, SDMMCAA_0, 7 : 0, SDMMCRAA, false, 65, 248),
-	T12X_LA(0, 0, SDMMCAB_0, 7 : 0, SDMMCRAB, false, 65, 248),
-	T12X_LA(0, 0, SDMMC_0, 23 : 16, SDMMCW, false, 128, 800),
-	T12X_LA(0, 0, SDMMCA_0, 23 : 16, SDMMCWA, false, 128, 800),
-	T12X_LA(0, 0, SDMMCAA_0, 23 : 16, SDMMCWAA, false, 128, 800),
-	T12X_LA(0, 0, SDMMCAB_0, 23 : 16, SDMMCWAB, false, 128, 800),
-	T12X_LA(0, 0, VDE_0, 7 : 0, VDE_BSEVR, false, 255, 0),
-	T12X_LA(0, 0, VDE_2, 7 : 0, VDE_BSEVW, false, 128, 800),
-	T12X_LA(0, 0, VDE_2, 23 : 16, VDE_DBGW, false, 255, 0),
-	T12X_LA(0, 0, VDE_0, 23 : 16, VDE_MBER, false, 212, 200),
-	T12X_LA(0, 0, VDE_3, 7 : 0, VDE_MBEW, false, 128, 800),
-	T12X_LA(0, 0, VDE_1, 7 : 0, VDE_MCER, false, 41, 400),
-	T12X_LA(0, 0, VDE_1, 23 : 16, VDE_TPER, false, 81, 200),
-	T12X_LA(0, 0, VDE_3, 23 : 16, VDE_TPMW, false, 128, 800),
-	T12X_LA(0, 0, VIC_0, 7 : 0, VICSRD, false, 27, 800),
-	T12X_LA(0, 0, VIC_0, 23 : 16, VICSWR, false, 128, 800),
-	T12X_LA(0, 0, VI2_0, 7 : 0, VI_W, false, 128, 800),
-	T12X_LA(0, 0, XUSB_1, 7 : 0, XUSB_DEVR, false, 56, 400),
-	T12X_LA(0, 0, XUSB_1, 23 : 16, XUSB_DEVW, false, 128, 800),
-	T12X_LA(0, 0, XUSB_0, 7 : 0, XUSB_HOSTR, false, 56, 400),
-	T12X_LA(0, 0, XUSB_0, 23 : 16, XUSB_HOSTW, false, 128, 800),
+	LA(0, 0, AFI_0, 7 : 0, AFIR, false, 28, 800),
+	LA(0, 0, AFI_0, 23 : 16, AFIW, false, 128, 800),
+	LA(0, 0, AVPC_0, 7 : 0, AVPC_ARM7R, false, 4, 0),
+	LA(0, 0, AVPC_0, 23 : 16, AVPC_ARM7W, false, 128, 800),
+	LA(0, 0, DC_0, 7 : 0, DISPLAY_0A, true, 80, 0),
+	LA(0, 0, DCB_0, 7 : 0, DISPLAY_0AB, true, 80, 0),
+	LA(0, 0, DC_0, 23 : 16, DISPLAY_0B, true, 80, 0),
+	LA(0, 0, DCB_0, 23 : 16, DISPLAY_0BB, true, 80, 0),
+	LA(0, 0, DC_1, 7 : 0, DISPLAY_0C, true, 80, 0),
+	LA(0, 0, DCB_1, 7 : 0, DISPLAY_0CB, true, 80, 0),
+	LA(0, 0, DC_3, 7 : 0, DISPLAYD, false, 80, 0),
+	LA(0, 0, DC_2, 7 : 0, DISPLAY_HC, false, 80, 0),
+	LA(0, 0, DCB_2, 7 : 0, DISPLAY_HCB, false, 80, 0),
+	LA(0, 0, DC_2, 23 : 16, DISPLAY_T, false, 80, 0),
+	LA(0, 0, GPU_0, 7 : 0, GPUSRD, false, 25, 800),
+	LA(0, 0, GPU_0, 23 : 16, GPUSWR, false, 128, 800),
+	LA(0, 0, HDA_0, 7 : 0, HDAR, false, 36, 0),
+	LA(0, 0, HDA_0, 23 : 16, HDAW, false, 128, 800),
+	LA(0, 0, TSEC_0, 7 : 0, TSECSRD, false, 60, 200),
+	LA(0, 0, TSEC_0, 23 : 16, TSECSWR, false, 128, 800),
+	LA(0, 0, HC_0, 7 : 0, HOST1X_DMAR, false, 22, 800),
+	LA(0, 0, HC_0, 23 : 16, HOST1XR, false, 80, 0),
+	LA(0, 0, HC_1, 7 : 0, HOST1XW, false, 128, 800),
+	LA(0, 0, ISP2_0, 7 : 0, ISP_RA, false, 54, 300),
+	LA(0, 0, ISP2_1, 7 : 0, ISP_WA, false, 128, 800),
+	LA(0, 0, ISP2_1, 23 : 16, ISP_WB, false, 128, 800),
+	LA(0, 0, ISP2B_0, 7 : 0, ISP_RAB, false, 54, 300),
+	LA(0, 0, ISP2B_1, 7 : 0, ISP_WAB, false, 128, 800),
+	LA(0, 0, ISP2B_1, 23 : 16, ISP_WBB, false, 128, 800),
+	LA(0, 0, MPCORELP_0, 7 : 0, MPCORE_LPR, false, 4, 0),
+	LA(0, 0, MPCORELP_0, 23 : 16, MPCORE_LPW, false, 128, 800),
+	LA(0, 0, MPCORE_0, 7 : 0, MPCORER, false, 4, 0),
+	LA(0, 0, MPCORE_0, 23 : 16, MPCOREW, false, 128, 800),
+	LA(0, 0, MSENC_0, 7 : 0, MSENCSRD, false, 24, 0),
+	LA(0, 0, MSENC_0, 23 : 16, MSENCSWR, false, 128, 800),
+	LA(0, 0, PPCS_1, 7 : 0, PPCS_AHBDMAW, true, 128, 800),
+	LA(0, 0, PPCS_0, 23 : 16, PPCS_AHBSLVR, false, 39, 408),
+	LA(0, 0, PPCS_1, 23 : 16, PPCS_AHBSLVW, false, 128, 800),
+	LA(0, 0, PTC_0, 7 : 0, PTCR, false, 0, 0),
+	LA(0, 0, SATA_0, 7 : 0, SATAR, false, 101, 400),
+	LA(0, 0, SATA_0, 23 : 16, SATAW, false, 128, 800),
+	LA(0, 0, SDMMC_0, 7 : 0, SDMMCR, false, 144, 248),
+	LA(0, 0, SDMMCA_0, 7 : 0, SDMMCRA, false, 144, 248),
+	LA(0, 0, SDMMCAA_0, 7 : 0, SDMMCRAA, false, 65, 248),
+	LA(0, 0, SDMMCAB_0, 7 : 0, SDMMCRAB, false, 65, 248),
+	LA(0, 0, SDMMC_0, 23 : 16, SDMMCW, false, 128, 800),
+	LA(0, 0, SDMMCA_0, 23 : 16, SDMMCWA, false, 128, 800),
+	LA(0, 0, SDMMCAA_0, 23 : 16, SDMMCWAA, false, 128, 800),
+	LA(0, 0, SDMMCAB_0, 23 : 16, SDMMCWAB, false, 128, 800),
+	LA(0, 0, VDE_0, 7 : 0, VDE_BSEVR, false, 255, 0),
+	LA(0, 0, VDE_2, 7 : 0, VDE_BSEVW, false, 128, 800),
+	LA(0, 0, VDE_2, 23 : 16, VDE_DBGW, false, 255, 0),
+	LA(0, 0, VDE_0, 23 : 16, VDE_MBER, false, 212, 200),
+	LA(0, 0, VDE_3, 7 : 0, VDE_MBEW, false, 128, 800),
+	LA(0, 0, VDE_1, 7 : 0, VDE_MCER, false, 41, 400),
+	LA(0, 0, VDE_1, 23 : 16, VDE_TPER, false, 81, 200),
+	LA(0, 0, VDE_3, 23 : 16, VDE_TPMW, false, 128, 800),
+	LA(0, 0, VIC_0, 7 : 0, VICSRD, false, 27, 800),
+	LA(0, 0, VIC_0, 23 : 16, VICSWR, false, 128, 800),
+	LA(0, 0, VI2_0, 7 : 0, VI_W, false, 128, 800),
+	LA(0, 0, XUSB_1, 7 : 0, XUSB_DEVR, false, 56, 400),
+	LA(0, 0, XUSB_1, 23 : 16, XUSB_DEVW, false, 128, 800),
+	LA(0, 0, XUSB_0, 7 : 0, XUSB_HOSTR, false, 56, 400),
+	LA(0, 0, XUSB_0, 23 : 16, XUSB_HOSTW, false, 128, 800),
 
 	/* end of list */
-	T12X_LA(0, 0, DC_3, 0 : 0, MAX_ID, false, 0, 0)
+	LA(0, 0, DC_3, 0 : 0, MAX_ID, false, 0, 0)
 };
 
 static struct la_chip_specific *cs;
@@ -360,42 +304,6 @@ unsigned int tegra12x_la_real_to_fp(unsigned int val)
 unsigned int tegra12x_la_fp_to_real(unsigned int val)
 {
 	return val / T12X_LA_FP_FACTOR;
-}
-
-static inline bool is_display_client(enum tegra_la_id id)
-{
-	return ((id >= FIRST_DISP_CLIENT_ID) && (id <= LAST_DISP_CLIENT_ID));
-}
-
-static inline bool is_camera_client(enum tegra_la_id id)
-{
-	return ((id >= FIRST_CAMERA_CLIENT_ID) &&
-		(id <= LAST_CAMERA_CLIENT_ID));
-}
-
-unsigned int fraction2dda_fp(unsigned int fraction_fp,
-				unsigned int div,
-				unsigned int mask)
-{
-	unsigned int dda = 0;
-	unsigned int f_fpa = T12X_LA_FP_TO_FPA(fraction_fp) / div;
-	int i = 0;
-	unsigned int r = 0;
-
-	for (i = 0; i < T12X_EMEM_PTSA_RATE_WIDTH; i++) {
-		f_fpa *= 2;
-		r = T12X_LA_FPA_TO_REAL(f_fpa);
-		dda = (dda << 1) | (unsigned int)(r);
-		f_fpa -= T12X_LA_REAL_TO_FPA(r);
-	}
-	if (f_fpa > 0) {
-		/* Do not round up if the calculated dda is at the mask value
-		   already, it will overflow */
-		if (dda != mask)
-			dda++;		/* to round up dda value */
-	}
-
-	return min(dda, (unsigned int)T12X_MAX_DDA_RATE);
 }
 
 static void program_ptsa(void)
@@ -627,7 +535,7 @@ static void t12x_init_ptsa(void)
 	/* get emc frequency */
 	emc_clk = clk_get(NULL, "emc");
 	emc_freq_mhz = clk_get_rate(emc_clk) /
-			T12X_LA_HZ_TO_MHZ_FACTOR;
+			LA_HZ_TO_MHZ_FACTOR;
 	la_debug("**** emc clk_rate=%luMHz", emc_freq_mhz);
 
 	/* get mc frequency */
@@ -1047,82 +955,6 @@ exit:
 	return ret_code;
 }
 
-
-static void program_scaled_la(struct la_client_info *ci, int la)
-{
-	unsigned long reg_write;
-
-	if (ci->id == ID(DISPLAY_0A)) {
-		reg_write = ((la << T12X_MC_SCALED_LA_DISPLAY0A_0_LOW_SHIFT) &
-			T12X_MC_SCALED_LA_DISPLAY0A_0_LOW_MASK) |
-			((la << T12X_MC_SCALED_LA_DISPLAY0A_0_HIGH_SHIFT) &
-			T12X_MC_SCALED_LA_DISPLAY0A_0_HIGH_MASK);
-		writel(reg_write, T12X_MC_SCALED_LA_DISPLAY0A_0);
-		la_debug("reg_addr=0x%x, write=0x%x",
-		(u32)(uintptr_t)T12X_MC_SCALED_LA_DISPLAY0A_0, (u32)reg_write);
-	} else if (ci->id == ID(DISPLAY_0AB)) {
-		reg_write = ((la << T12X_MC_SCALED_LA_DISPLAY0AB_0_LOW_SHIFT) &
-			T12X_MC_SCALED_LA_DISPLAY0AB_0_LOW_MASK) |
-			((la << T12X_MC_SCALED_LA_DISPLAY0AB_0_HIGH_SHIFT) &
-			T12X_MC_SCALED_LA_DISPLAY0AB_0_HIGH_MASK);
-		writel(reg_write, T12X_MC_SCALED_LA_DISPLAY0AB_0);
-		la_debug("reg_addr=0x%x, write=0x%x",
-		(u32)(uintptr_t)T12X_MC_SCALED_LA_DISPLAY0AB_0, (u32)reg_write);
-	} else if (ci->id == ID(DISPLAY_0B)) {
-		reg_write = ((la << T12X_MC_SCALED_LA_DISPLAY0B_0_LOW_SHIFT) &
-			T12X_MC_SCALED_LA_DISPLAY0B_0_LOW_MASK) |
-			((la << T12X_MC_SCALED_LA_DISPLAY0B_0_HIGH_SHIFT) &
-			T12X_MC_SCALED_LA_DISPLAY0B_0_HIGH_MASK);
-		writel(reg_write, T12X_MC_SCALED_LA_DISPLAY0B_0);
-		la_debug("reg_addr=0x%x, write=0x%x",
-		(u32)(uintptr_t)T12X_MC_SCALED_LA_DISPLAY0B_0, (u32)reg_write);
-	} else if (ci->id == ID(DISPLAY_0BB)) {
-		reg_write = ((la << T12X_MC_SCALED_LA_DISPLAY0BB_0_LOW_SHIFT) &
-			T12X_MC_SCALED_LA_DISPLAY0BB_0_LOW_MASK) |
-			((la << T12X_MC_SCALED_LA_DISPLAY0BB_0_HIGH_SHIFT) &
-			T12X_MC_SCALED_LA_DISPLAY0BB_0_HIGH_MASK);
-		writel(reg_write, T12X_MC_SCALED_LA_DISPLAY0BB_0);
-		la_debug("reg_addr=0x%x, write=0x%x",
-		(u32)(uintptr_t)T12X_MC_SCALED_LA_DISPLAY0BB_0, (u32)reg_write);
-	} else if (ci->id == ID(DISPLAY_0C)) {
-		reg_write = ((la << T12X_MC_SCALED_LA_DISPLAY0C_0_LOW_SHIFT) &
-			T12X_MC_SCALED_LA_DISPLAY0C_0_LOW_MASK) |
-			((la << T12X_MC_SCALED_LA_DISPLAY0C_0_HIGH_SHIFT) &
-			T12X_MC_SCALED_LA_DISPLAY0C_0_HIGH_MASK);
-		writel(reg_write, T12X_MC_SCALED_LA_DISPLAY0C_0);
-		la_debug("reg_addr=0x%x, write=0x%x",
-		(u32)(uintptr_t)T12X_MC_SCALED_LA_DISPLAY0C_0, (u32)reg_write);
-	} else if (ci->id == ID(DISPLAY_0CB)) {
-		reg_write = ((la << T12X_MC_SCALED_LA_DISPLAY0CB_0_LOW_SHIFT) &
-			T12X_MC_SCALED_LA_DISPLAY0CB_0_LOW_MASK) |
-			((la << T12X_MC_SCALED_LA_DISPLAY0CB_0_HIGH_SHIFT) &
-			T12X_MC_SCALED_LA_DISPLAY0CB_0_HIGH_MASK);
-		writel(reg_write, T12X_MC_SCALED_LA_DISPLAY0CB_0);
-		la_debug("reg_addr=0x%x, write=0x%x",
-		(u32)(uintptr_t)T12X_MC_SCALED_LA_DISPLAY0CB_0, (u32)reg_write);
-	}
-}
-static void program_la(struct la_client_info *ci, int la)
-{
-	u32 reg_read;
-	u32 reg_write;
-
-	BUG_ON(la > T12X_MC_LA_MAX_VALUE);
-
-	spin_lock(&cs->lock);
-	reg_read = readl(ci->reg_addr);
-	reg_write = (reg_read & ~ci->mask) |
-			(la << ci->shift);
-	writel(reg_write, ci->reg_addr);
-	ci->la_set = la;
-	la_debug("reg_addr=0x%x, read=0x%x, write=0x%x",
-		(u32)(uintptr_t)ci->reg_addr, (u32)reg_read, (u32)reg_write);
-
-	program_scaled_la(ci, la);
-
-	spin_unlock(&cs->lock);
-}
-
 static int t12x_set_la(enum tegra_la_id id,
 			unsigned int bw_mbps)
 {
@@ -1138,7 +970,7 @@ static int t12x_set_la(enum tegra_la_id id,
 		/* This is a special case. */
 		struct clk *emc_clk = clk_get(NULL, "emc");
 		unsigned int emc_freq_mhz = clk_get_rate(emc_clk) /
-						T12X_LA_HZ_TO_MHZ_FACTOR;
+						LA_HZ_TO_MHZ_FACTOR;
 		unsigned int val_1 = 53;
 		unsigned int val_2 = 24;
 
@@ -1148,22 +980,22 @@ static int t12x_set_la(enum tegra_la_id id,
 		if (574 > emc_freq_mhz)
 			val_2 = val_2 * 574 / emc_freq_mhz;
 
-		la_to_set = min3((unsigned int)T12X_MC_LA_MAX_VALUE,
+		la_to_set = min3((unsigned int)MC_LA_MAX_VALUE,
 				val_1,
 				val_2);
 	} else if (ci->la_ref_clk_mhz != 0) {
 		/* In this case we need to scale LA with emc frequency. */
 		struct clk *emc_clk = clk_get(NULL, "emc");
 		unsigned long emc_freq_mhz = clk_get_rate(emc_clk) /
-					(unsigned long)T12X_LA_HZ_TO_MHZ_FACTOR;
+					(unsigned long)LA_HZ_TO_MHZ_FACTOR;
 
 		if (ci->la_ref_clk_mhz <= emc_freq_mhz) {
 			la_to_set = min(ci->init_la,
-				(unsigned int)T12X_MC_LA_MAX_VALUE);
+				(unsigned int)MC_LA_MAX_VALUE);
 		} else {
 			la_to_set = min((unsigned int)(ci->init_la *
 					 ci->la_ref_clk_mhz / emc_freq_mhz),
-				(unsigned int)T12X_MC_LA_MAX_VALUE);
+				(unsigned int)MC_LA_MAX_VALUE);
 		}
 	} else {
 		/* In this case we have a client with a static LA value. */
@@ -1222,7 +1054,7 @@ static int t12x_set_disp_la(enum tegra_la_id id,
 		tegra_get_dvfs_clk_change_latency_nsec(emc_freq_hz / 1000);
 	dvfs_buffering_reqd_bytes = bw_mbps *
 					dvfs_time_nsec /
-					T12X_LA_USEC_TO_NSEC_FACTOR;
+					LA_USEC_TO_NSEC_FACTOR;
 	thresh_dvfs_bytes =
 			disp_params.thresh_lwm_bytes +
 			dvfs_buffering_reqd_bytes +
@@ -1249,8 +1081,8 @@ static int t12x_set_disp_la(enum tegra_la_id id,
 		la_bw_upper_bound_nsec_fp -
 		(T12X_LA_ST_LA_MINUS_SNAP_ARB_TO_ROW_SRT_EMCCLKS_FP +
 		T12X_EXP_TIME_EMCCLKS_FP) /
-		(emc_freq_hz / T12X_LA_HZ_TO_MHZ_FACTOR);
-	la_bw_upper_bound_nsec_fp *= T12X_LA_USEC_TO_NSEC_FACTOR;
+		(emc_freq_hz / LA_HZ_TO_MHZ_FACTOR);
+	la_bw_upper_bound_nsec_fp *= LA_USEC_TO_NSEC_FACTOR;
 	la_bw_upper_bound_nsec = T12X_LA_FP_TO_REAL(
 					la_bw_upper_bound_nsec_fp);
 
@@ -1259,7 +1091,7 @@ static int t12x_set_disp_la(enum tegra_la_id id,
 			(unsigned int)T12X_MAX_LA_NSEC);
 
 	la_to_set = min(la_nsec / cs->ns_per_tick,
-			(unsigned int)T12X_MC_LA_MAX_VALUE);
+			(unsigned int)MC_LA_MAX_VALUE);
 
 	if (la_to_set < t12x_min_la(&disp_params))
 		return -1;
@@ -1268,43 +1100,13 @@ static int t12x_set_disp_la(enum tegra_la_id id,
 	return 0;
 }
 
-static int t12x_la_suspend(void)
-{
-	int i = 0;
-	struct la_client_info *ci = NULL;
-
-	/* stashing LA and PTSA from registers is necessary
-	 * in order to get latest values programmed by DVFS.
-	 */
-	for (i = 0; i < cs->la_info_array_size; i++) {
-		ci = &cs->la_info_array[i];
-		ci->la_set = (readl(ci->reg_addr) & ci->mask) >>
-				ci->shift;
-	}
-
-	save_ptsa();
-	return 0;
-}
-
-static void t12x_la_resume(void)
-{
-	int i;
-
-	for (i = 0; i < cs->la_info_array_size; i++) {
-		if (cs->la_info_array[i].la_set)
-			program_la(&cs->la_info_array[i],
-					cs->la_info_array[i].la_set);
-	}
-	program_ptsa();
-}
-
 void tegra_la_get_t12x_specific(struct la_chip_specific *cs_la)
 {
 	int i = 0;
 
 	cs_la->ns_per_tick = 30;
 	cs_la->atom_size = 64;
-	cs_la->la_max_value = T12X_MC_LA_MAX_VALUE;
+	cs_la->la_max_value = MC_LA_MAX_VALUE;
 	cs_la->la_info_array = t12x_la_info_array;
 	cs_la->la_info_array_size = ARRAY_SIZE(t12x_la_info_array);
 
@@ -1322,8 +1124,10 @@ void tegra_la_get_t12x_specific(struct la_chip_specific *cs_la)
 	cs_la->update_camera_ptsa_rate = t12x_update_camera_ptsa_rate;
 	cs_la->set_la = t12x_set_la;
 	cs_la->set_disp_la = t12x_set_disp_la;
-	cs_la->suspend = t12x_la_suspend;
-	cs_la->resume = t12x_la_resume;
+	cs_la->save_ptsa = save_ptsa;
+	cs_la->program_ptsa = program_ptsa;
+	cs_la->suspend = la_suspend;
+	cs_la->resume = la_resume;
 	cs = cs_la;
 
 	tegra_la_disp_clients_info = cs_la->disp_clients;

@@ -139,6 +139,13 @@ enum tegra_la_id {
 	TEGRA_LA_SDMMCWAB,			/* T12x specific */
 	TEGRA_LA_VICSRD,			/* T12x specific */
 	TEGRA_LA_VICSWR,			/* T12x specific */
+
+	TEGRA_LA_TSECBSRD,			/* T21x specific */
+	TEGRA_LA_TSECBSWR,			/* T21x specific */
+
+	TEGRA_LA_NVDECR,			/* T21x specific */
+	TEGRA_LA_NVDECW,			/* T21x specific */
+
 	TEGRA_LA_MAX_ID
 };
 

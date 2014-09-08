@@ -472,7 +472,7 @@ static int __init tegra_mc_init(void)
 
 	return 0;
 }
-arch_initcall(tegra_mc_init);
+core_initcall(tegra_mc_init);
 
 static void __exit tegra_mc_fini(void)
 {

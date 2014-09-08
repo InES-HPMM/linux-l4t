@@ -32,6 +32,9 @@
 #include <asm/io.h>
 #include <asm/string.h>
 #include <mach/latency_allowance.h>
+
+#include <tegra/mc.h>
+
 #include "la_priv.h"
 
 #define TEST_LA_CODE		0
@@ -68,6 +71,11 @@ static void init_chip_specific(void)
 		tegra_la_get_t12x_specific(&cs);
 		break;
 #endif
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	case TEGRA_CHIPID_TEGRA21:
+		tegra_la_get_t21x_specific(&cs);
+		break;
+#endif
 	default:
 		cs.set_la = NULL;
 	}
@@ -85,14 +93,14 @@ static void set_la(struct la_client_info *ci, int la)
 	int idx = cs.id_to_index[ci->id];
 
 	spin_lock(&cs.lock);
-	reg_read = readl(ci->reg_addr);
+	reg_read = mc_readl(ci->reg_addr);
 	reg_write = (reg_read & ~ci->mask) |
 			(la << ci->shift);
-	writel(reg_write, ci->reg_addr);
+	mc_writel(reg_write, ci->reg_addr);
 	cs.scaling_info[idx].la_set = la;
 	ci->la_set = la;
-	la_debug("reg_addr=0x%x, read=0x%x, write=0x%x",
-		(u32)(uintptr_t)ci->reg_addr, (u32)reg_read, (u32)reg_write);
+	la_debug("reg=0x%x, read=0x%x, write=0x%x",
+		(u32)ci->reg_addr, (u32)reg_read, (u32)reg_write);
 	spin_unlock(&cs.lock);
 }
 
@@ -146,6 +154,125 @@ static int default_set_la(enum tegra_la_id id, unsigned int bw_mbps)
 
 	set_la(ci, la_to_set);
 	return 0;
+}
+
+static void program_scaled_la(struct la_client_info *ci, int la)
+{
+	unsigned long reg_write;
+
+	if (ci->id == ID(DISPLAY_0A)) {
+		reg_write =
+		     ((la << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0A_LOW_SHIFT) &
+		      MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0A_LOW_MASK) |
+		     ((la << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0A_HIGH_SHIFT) &
+		      MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0A_HIGH_MASK);
+		mc_writel(reg_write, MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0A);
+		la_debug("reg_addr=0x%x, write=0x%x",
+			 (u32)(uintptr_t)MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0A,
+			 (u32)reg_write);
+	} else if (ci->id == ID(DISPLAY_0AB)) {
+		reg_write =
+		    ((la << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0AB_LOW_SHIFT) &
+		     MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0AB_LOW_MASK) |
+		    ((la << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0AB_HIGH_SHIFT) &
+		     MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0AB_HIGH_MASK);
+		mc_writel(reg_write, MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0AB);
+		la_debug("reg_addr=0x%x, write=0x%x",
+			 (u32)(uintptr_t)MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0AB,
+			 (u32)reg_write);
+	} else if (ci->id == ID(DISPLAY_0B)) {
+		reg_write =
+		    ((la << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0B_LOW_SHIFT) &
+		     MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0B_LOW_MASK) |
+		    ((la << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0B_HIGH_SHIFT) &
+		     MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0B_HIGH_MASK);
+		mc_writel(reg_write, MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0B);
+		la_debug("reg_addr=0x%x, write=0x%x",
+			 (u32)(uintptr_t)MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0B,
+			 (u32)reg_write);
+	} else if (ci->id == ID(DISPLAY_0BB)) {
+		reg_write =
+		    ((la << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0BB_LOW_SHIFT) &
+		     MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0BB_LOW_MASK) |
+		    ((la << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0BB_HIGH_SHIFT) &
+		     MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0BB_HIGH_MASK);
+		mc_writel(reg_write, MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0BB);
+		la_debug("reg_addr=0x%x, write=0x%x",
+			 (u32)(uintptr_t)MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0BB,
+			 (u32)reg_write);
+	} else if (ci->id == ID(DISPLAY_0C)) {
+		reg_write =
+		    ((la << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0C_LOW_SHIFT) &
+		     MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0C_LOW_MASK) |
+		    ((la << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0C_HIGH_SHIFT) &
+		     MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0C_HIGH_MASK);
+		mc_writel(reg_write, MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0C);
+		la_debug("reg_addr=0x%x, write=0x%x",
+			 (u32)(uintptr_t)MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0C,
+			 (u32)reg_write);
+	} else if (ci->id == ID(DISPLAY_0CB)) {
+		reg_write =
+		    ((la << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0CB_LOW_SHIFT) &
+		     MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0CB_LOW_MASK) |
+		    ((la << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0CB_HIGH_SHIFT) &
+		     MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0CB_HIGH_MASK);
+		mc_writel(reg_write, MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0CB);
+		la_debug("reg_addr=0x%x, write=0x%x",
+			 (u32)(uintptr_t)MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0CB,
+			 (u32)reg_write);
+	}
+}
+
+void program_la(struct la_client_info *ci, int la)
+{
+	u32 reg_read;
+	u32 reg_write;
+
+	BUG_ON(la > MC_LA_MAX_VALUE);
+
+	spin_lock(&cs.lock);
+	reg_read = mc_readl(ci->reg_addr);
+	reg_write = (reg_read & ~ci->mask) |
+			(la << ci->shift);
+	mc_writel(reg_write, ci->reg_addr);
+	ci->la_set = la;
+	la_debug("reg_addr=0x%x, read=0x%x, write=0x%x",
+		(u32)(uintptr_t)ci->reg_addr, (u32)reg_read, (u32)reg_write);
+
+	program_scaled_la(ci, la);
+
+	spin_unlock(&cs.lock);
+}
+
+int la_suspend(void)
+{
+	int i = 0;
+	struct la_client_info *ci = NULL;
+
+	/* stashing LA and PTSA from registers is necessary
+	 * in order to get latest values programmed by DVFS.
+	 */
+	for (i = 0; i < cs.la_info_array_size; i++) {
+		ci = &cs.la_info_array[i];
+		ci->la_set = (mc_readl(ci->reg_addr) & ci->mask) >>
+				ci->shift;
+	}
+
+	cs.save_ptsa();
+	return 0;
+}
+
+void la_resume(void)
+{
+	int i;
+
+	for (i = 0; i < cs.la_info_array_size; i++) {
+		if (cs.la_info_array[i].la_set)
+			program_la(&cs.la_info_array[i],
+					cs.la_info_array[i].la_set);
+	}
+
+	cs.program_ptsa();
 }
 
 int tegra_set_disp_latency_allowance(enum tegra_la_id id,
@@ -219,13 +346,13 @@ void tegra_latency_allowance_update_tick_length(unsigned int new_ns_per_tick)
 		spin_lock(&cs.lock);
 		cs.ns_per_tick = new_ns_per_tick;
 		for (i = 0; i < cs.la_info_array_size - 1; i++) {
-			reg_read = readl(cs.la_info_array[i].reg_addr);
+			reg_read = mc_readl(cs.la_info_array[i].reg_addr);
 			la = ((reg_read & cs.la_info_array[i].mask) >>
 				cs.la_info_array[i].shift) / scale_factor;
 
 			reg_write = (reg_read & ~cs.la_info_array[i].mask) |
 					(la << cs.la_info_array[i].shift);
-			writel(reg_write, cs.la_info_array[i].reg_addr);
+			mc_writel(reg_write, cs.la_info_array[i].reg_addr);
 			cs.scaling_info[i].la_set = la;
 		}
 		spin_unlock(&cs.lock);
@@ -239,7 +366,7 @@ static int la_regs_show(struct seq_file *s, void *unused)
 
 	/* iterate the list, but don't print MAX_ID */
 	for (i = 0; i < cs.la_info_array_size - 1; i++) {
-		la = (readl(cs.la_info_array[i].reg_addr) &
+		la = (mc_readl(cs.la_info_array[i].reg_addr) &
 			cs.la_info_array[i].mask) >> cs.la_info_array[i].shift;
 		seq_printf(s, "%-16s: %4lu\n", cs.la_info_array[i].name, la);
 	}
@@ -337,10 +464,9 @@ static int __init tegra_latency_allowance_init(void)
 				if (574 > emc_freq_mhz)
 					val_2 = val_2 * 574 / emc_freq_mhz;
 
-				la_to_set = min3((unsigned int)
-							T12X_MC_LA_MAX_VALUE,
-						val_1,
-						val_2);
+				la_to_set = min3((unsigned int)MC_LA_MAX_VALUE,
+						 val_1,
+						 val_2);
 			} else if (cs.la_info_array[i].la_ref_clk_mhz != 0) {
 				/* In this case we need to scale LA with emc
 				   frequency. */
@@ -354,14 +480,13 @@ static int __init tegra_latency_allowance_init(void)
 					la_to_set =
 						min((unsigned long)
 						cs.la_info_array[i].init_la,
-						(unsigned long)
-							T12X_MC_LA_MAX_VALUE);
+						(unsigned long)MC_LA_MAX_VALUE);
 				} else {
 					la_to_set =
 					min(cs.la_info_array[i].init_la *
 					cs.la_info_array[i].la_ref_clk_mhz /
 					emc_freq_mhz,
-					(unsigned long)T12X_MC_LA_MAX_VALUE);
+					(unsigned long)MC_LA_MAX_VALUE);
 				}
 			} else
 				la_to_set = cs.la_info_array[i].init_la;
@@ -378,7 +503,9 @@ static int __init tegra_latency_allowance_init(void)
 
 late_initcall(tegra_latency_allowance_debugfs_init);
 subsys_initcall(tegra_la_syscore_init);
-core_initcall(tegra_latency_allowance_init);
+
+/* Must happen after MC init which is done by device tree. */
+fs_initcall(tegra_latency_allowance_init);
 
 #if TEST_LA_CODE
 #define PRINT_ID_IDX_MAPPING 0

@@ -17,14 +17,63 @@
 #ifndef _MACH_TEGRA_LA_PRIV_H_
 #define _MACH_TEGRA_LA_PRIV_H_
 
-#define ENABLE_LA_DEBUG		0
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0A_LOW_SHIFT		0
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0A_LOW_MASK		\
+	(0xff << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0A_LOW_SHIFT)
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0A_HIGH_SHIFT	16
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0A_HIGH_MASK		\
+	(0xff << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0A_HIGH_SHIFT)
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0AB_LOW_SHIFT	0
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0AB_LOW_MASK		\
+	(0xff << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0AB_LOW_SHIFT)
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0AB_HIGH_SHIFT	16
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0AB_HIGH_MASK	\
+	(0xff << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0AB_HIGH_SHIFT)
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0B_LOW_SHIFT		0
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0B_LOW_MASK		\
+	(0xff << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0B_LOW_SHIFT)
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0B_HIGH_SHIFT	16
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0B_HIGH_MASK		\
+	(0xff << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0B_HIGH_SHIFT)
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0BB_LOW_SHIFT	0
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0BB_LOW_MASK		\
+	(0xff << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0BB_LOW_SHIFT)
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0BB_HIGH_SHIFT	16
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0BB_HIGH_MASK	\
+	(0xff << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0BB_HIGH_SHIFT)
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0C_LOW_SHIFT		0
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0C_LOW_MASK		\
+	(0xff << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0C_LOW_SHIFT)
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0C_HIGH_SHIFT	16
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0C_HIGH_MASK		\
+	(0xff << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0C_HIGH_SHIFT)
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0CB_LOW_SHIFT	0
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0CB_LOW_MASK		\
+	(0xff << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0CB_LOW_SHIFT)
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0CB_HIGH_SHIFT	16
+#define MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0CB_HIGH_MASK	\
+	(0xff << MC_SCALED_LATENCY_ALLOWANCE_DISPLAY0CB_HIGH_SHIFT)
 
-#define la_debug(fmt, ...) \
-do { \
-	if (ENABLE_LA_DEBUG) { \
-		printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__); \
-	} \
-} while (0)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define EMEM_PTSA_RATE_WIDTH		8
+#define MAX_DDA_RATE			0xff
+#include <tegra/mc-regs-t12x.h>
+#else
+#define EMEM_PTSA_RATE_WIDTH		12
+#define MAX_DDA_RATE			0xfff
+#include <tegra/mc-regs-t21x.h>
+#endif
+
+#define LA_FP_FACTOR			1000
+#define LA_REAL_TO_FP(val)		((val) * LA_FP_FACTOR)
+#define LA_FP_TO_REAL(val)		((val) / LA_FP_FACTOR)
+#define LA_ADDITIONAL_FP_FACTOR		10
+#define LA_FP_TO_FPA(val)		((val) * LA_ADDITIONAL_FP_FACTOR)
+#define LA_FPA_TO_FP(val)		((val) / LA_ADDITIONAL_FP_FACTOR)
+#define LA_FPA_TO_REAL(val)		((val) / LA_FP_FACTOR /		\
+					 LA_ADDITIONAL_FP_FACTOR)
+#define LA_REAL_TO_FPA(val)		((val) * LA_FP_FACTOR *	\
+					 LA_ADDITIONAL_FP_FACTOR)
 
 #define MASK(x) \
 	((0xFFFFFFFFUL >> (31 - (1 ? x) + (0 ? x))) << (0 ? x))
@@ -67,8 +116,160 @@ do { \
 #define CAMERA_LA_IDX(id)	(id - FIRST_CAMERA_CLIENT_ID)
 #define AGG_CAMERA_ID(id)	TEGRA_LA_AGG_CAMERA_##id
 
-#define T12X_MC_LA_MAX_VALUE	255
+#define MC_LA_MAX_VALUE		255
 
+#define LA_USEC_TO_NSEC_FACTOR				1000
+#define LA_HZ_TO_MHZ_FACTOR				1000000
+
+/*
+ * Setup macro for la_client_info array.
+ */
+#define LA(f, e, a, r, i, ss, la, clk)			\
+{							\
+	.fifo_size_in_atoms = f,			\
+	.expiration_in_ns = e,				\
+	.reg_addr = MC_LATENCY_ALLOWANCE_ ## a,		\
+	.mask = MASK(r),				\
+	.shift = SHIFT(r),				\
+	.id = ID(i),					\
+	.name = __stringify(i),				\
+	.scaling_supported = ss,			\
+	.init_la = la,					\
+	.la_ref_clk_mhz = clk				\
+}
+
+/*
+ * Several macros for initializing and accessing/modifying the PTSA registers.
+ */
+#define MC_SET_INIT_PTSA(p, client, min, max)				\
+	do {								\
+		(p)->client ## _ptsa_min = (unsigned int)(min) &	\
+			MC_PTSA_MIN_DEFAULT_MASK;			\
+		(p)->client ## _ptsa_max = (unsigned int)(max) &	\
+			MC_PTSA_MAX_DEFAULT_MASK;			\
+	} while (0)
+
+#define READ_PTSA_MIN_MAX(p, field, reg)				\
+	do {								\
+		(p)->field ##_ptsa_min = mc_readl(MC_ ## reg ## _PTSA_MIN); \
+		(p)->field ##_ptsa_max = mc_readl(MC_ ## reg ## _PTSA_MAX); \
+	} while (0)
+#define READ_PTSA_MIN_MAX_RATE(p, field, reg)				\
+	do {								\
+		(p)->field ##_ptsa_min = mc_readl(MC_ ## reg ## _PTSA_MIN); \
+		(p)->field ##_ptsa_max = mc_readl(MC_ ## reg ## _PTSA_MAX); \
+		(p)->field ##_ptsa_rate = mc_readl(MC_ ## reg ## _PTSA_RATE); \
+	} while (0)
+
+#define WRITE_PTSA_MIN_MAX(p, field, reg)				\
+	do {								\
+		mc_writel((p)->field ##_ptsa_min, MC_ ## reg ## _PTSA_MIN); \
+		mc_writel((p)->field ##_ptsa_max, MC_ ## reg ## _PTSA_MAX); \
+	} while (0)
+#define WRITE_PTSA_MIN_MAX_RATE(p, field, reg)				\
+	do {								\
+		mc_writel((p)->field ##_ptsa_min, MC_ ## reg ## _PTSA_MIN); \
+		mc_writel((p)->field ##_ptsa_max, MC_ ## reg ## _PTSA_MAX); \
+		mc_writel((p)->field ##_ptsa_rate, MC_ ## reg ## _PTSA_RATE); \
+	} while (0)
+
+/*
+ * Some common functions for both t12x and t21x.
+ */
+struct la_client_info;
+void program_la(struct la_client_info *ci, int la);
+int la_suspend(void);
+void la_resume(void);
+
+/*
+ * Note about fixed point arithmetic:
+ * ----------------------------------
+ * This file contains fixed point values and arithmetic due to the need to use
+ * floating point values. All fixed point values have the "_fp" or "_FP" suffix
+ * in their name. Macros used to convert between real and fixed point values are
+ * listed below:
+ *    - LA_FP_FACTOR
+ *    - LA_REAL_TO_FP(val)
+ *    - LA_FP_TO_REAL(val)
+ *
+ * Some scenarios require additional accuracy than what can be provided with
+ * T12X_LA_FP_FACTOR. For these special cases we use the following additional
+ * fixed point factor:- T12X_LA_ADDITIONAL_FP_FACTOR. Fixed point values which
+ * use the addtional fixed point factor have a suffix of "_fpa" or "_FPA" in
+ * their name. Macros used to convert between fpa values and other forms (i.e.
+ * fp and real) are as follows:
+ *    - LA_FP_TO_FPA(val)
+ *    - LA_FPA_TO_FP(val)
+ *    - LA_FPA_TO_REAL(val)
+ *    - LA_REAL_TO_FPA(val)
+ */
+
+static inline unsigned int la_real_to_fp(unsigned int val)
+{
+	return val * LA_FP_FACTOR;
+}
+
+static inline unsigned int la_fp_to_real(unsigned int val)
+{
+	return val / LA_FP_FACTOR;
+}
+
+static inline bool is_display_client(enum tegra_la_id id)
+{
+	return ((id >= FIRST_DISP_CLIENT_ID) && (id <= LAST_DISP_CLIENT_ID));
+}
+
+static inline bool is_camera_client(enum tegra_la_id id)
+{
+	return ((id >= FIRST_CAMERA_CLIENT_ID) &&
+		(id <= LAST_CAMERA_CLIENT_ID));
+}
+
+/*
+ * TODO: this doesn't actually return an FP per se. It returns a value suitable
+ * for placing in the DDA register fields; therefor this function needs
+ * renaming.
+ */
+static inline unsigned int __fraction2dda_fp(unsigned int fraction_fpa,
+					     unsigned int div,
+					     unsigned int mask)
+{
+	unsigned int dda = 0;
+	int i = 0;
+	unsigned int r = 0;
+
+	fraction_fpa /= div;
+
+	for (i = 0; i < EMEM_PTSA_RATE_WIDTH; i++) {
+		fraction_fpa *= 2;
+		r = LA_FPA_TO_REAL(fraction_fpa);
+		dda = (dda << 1) | (unsigned int)(r);
+		fraction_fpa -= LA_REAL_TO_FPA(r);
+	}
+	if (fraction_fpa > 0) {
+		/* Do not round up if the calculated dda is at the mask value
+		   already, it will overflow */
+		if (dda != mask)
+			dda++;		/* to round up dda value */
+	}
+
+	return min(dda, (unsigned int)MAX_DDA_RATE);
+}
+
+static inline unsigned int fraction2dda_fp(unsigned int fraction_fp,
+					   unsigned int div,
+					   unsigned int mask) {
+	unsigned int fraction_fpa = LA_FP_TO_FPA(fraction_fp);
+
+	return __fraction2dda_fp(fraction_fpa, div, mask);
+}
+
+#define ENABLE_LA_DEBUG		0
+#define la_debug(fmt, ...)						\
+	do {								\
+		if (ENABLE_LA_DEBUG)					\
+			pr_info("la_debug: " fmt, ##__VA_ARGS__);	\
+	} while (0)
 
 /* The following enum defines IDs for aggregated camera clients. In some cases
    we have to deal with groups of camera clients rather than individual
@@ -83,7 +284,7 @@ enum agg_camera_client_id {
 struct la_client_info {
 	unsigned int fifo_size_in_atoms;
 	unsigned int expiration_in_ns;	/* worst case expiration value */
-	void *reg_addr;
+	unsigned int reg_addr;
 	unsigned long mask;
 	unsigned long shift;
 	enum tegra_la_id id;
@@ -146,6 +347,9 @@ struct ptsa_info {
 	unsigned int mpcorer_ptsa_rate;
 	unsigned int mpcorer_ptsa_min;
 	unsigned int mpcorer_ptsa_max;
+	unsigned int ftop_ptsa_min;
+	unsigned int ftop_ptsa_max;
+	unsigned int ftop_ptsa_rate;
 	unsigned int smmu_ptsa_rate;
 	unsigned int smmu_ptsa_min;
 	unsigned int smmu_ptsa_max;
@@ -165,12 +369,6 @@ struct ptsa_info {
 	unsigned int a9avppc_ptsa_max;
 	unsigned int avp_ptsa_min;
 	unsigned int avp_ptsa_max;
-	unsigned int r0_dis_ptsa_min;
-	unsigned int r0_dis_ptsa_max;
-	unsigned int r0_disb_ptsa_min;
-	unsigned int r0_disb_ptsa_max;
-	unsigned int vd_ptsa_min;
-	unsigned int vd_ptsa_max;
 	unsigned int mse_ptsa_min;
 	unsigned int mse_ptsa_max;
 	unsigned int gk_ptsa_min;
@@ -195,8 +393,20 @@ struct ptsa_info {
 	unsigned int usbx_ptsa_max;
 	unsigned int usbd_ptsa_min;
 	unsigned int usbd_ptsa_max;
-	unsigned int ftop_ptsa_min;
-	unsigned int ftop_ptsa_max;
+
+	/* Tegra12x */
+	unsigned int r0_dis_ptsa_min;
+	unsigned int r0_dis_ptsa_max;
+	unsigned int r0_disb_ptsa_min;
+	unsigned int r0_disb_ptsa_max;
+	unsigned int vd_ptsa_min;
+	unsigned int vd_ptsa_max;
+
+	/* Tegra21x */
+	unsigned int jpg_ptsa_min;
+	unsigned int jpg_ptsa_max;
+	unsigned int gk2_ptsa_min;
+	unsigned int gk2_ptsa_max;
 };
 
 
@@ -239,13 +449,17 @@ struct la_chip_specific {
 				unsigned int threshold_mid,
 				unsigned int threshold_high);
 	void (*disable_la_scaling)(enum tegra_la_id id);
+	void (*save_ptsa)(void);
+	void (*program_ptsa)(void);
 	int (*suspend)(void);
 	void (*resume)(void);
 };
+
 
 void tegra_la_get_t3_specific(struct la_chip_specific *cs);
 void tegra_la_get_t14x_specific(struct la_chip_specific *cs);
 void tegra_la_get_t11x_specific(struct la_chip_specific *cs);
 void tegra_la_get_t12x_specific(struct la_chip_specific *cs);
+void tegra_la_get_t21x_specific(struct la_chip_specific *cs);
 
 #endif /* _MACH_TEGRA_LA_PRIV_H_ */
