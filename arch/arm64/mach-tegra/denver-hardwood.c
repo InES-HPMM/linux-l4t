@@ -397,7 +397,7 @@ const struct file_operations fops = {
 	.open		= hardwood_open,
 	.read		= hardwood_read,
 	.unlocked_ioctl	= hardwood_ioctl,
-#if CONFIG_COMPAT
+#ifdef CONFIG_COMPAT
 	.compat_ioctl	= hardwood_ioctl,
 #endif
 };
