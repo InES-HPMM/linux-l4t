@@ -213,6 +213,8 @@ struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 			"tegra-udc.0", &tegra_udc_pdata.u_data.dev),
 	OF_DEV_AUXDATA("nvidia,tegra132-otg", TEGRA_USB_BASE,
 			"tegra-otg", &tegra_otg_pdata),
+	OF_DEV_AUXDATA("nvidia,tegra132-ehci", 0x7d004000, "tegra-ehci.1",
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-host1x", TEGRA_HOST1X_BASE, "host1x",
 			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-gm20b", TEGRA_GK20A_BAR0_BASE,

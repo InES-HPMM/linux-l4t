@@ -182,7 +182,6 @@
 
 #define UHSIC_HSRX_CFG1				0xc0c
 #define   UHSIC_HS_SYNC_START_DLY(x)		(((x) & 0x1f) << 1)
-#define   UHSIC_RX_STROBE_DLY_TRIMMER(x)	(((x) & 0x3f) << 14)
 
 #define UHSIC_TX_CFG0				0xc10
 #define   UHSIC_HS_READY_WAIT_FOR_VALID	(1 << 9)
@@ -295,7 +294,6 @@
 #define HSIC_IDLE_WAIT_DELAY		17
 #define HSIC_ELASTIC_UNDERRUN_LIMIT	16
 #define HSIC_ELASTIC_OVERRUN_LIMIT	16
-#define HSIC_RX_STROBE_DELAY_TRIMMER	0x1e
 
 struct tegra_usb_pmc_data pmc_data[3];
 
@@ -375,6 +373,13 @@ static struct tegra_xtal_freq uhsic_freq_table[] = {
 		.stable_count = 0x66,
 		.active_delay = 0x0,
 		.xtal_freq_count = 0x3E0,
+	},
+	{
+		.freq = 38400000,
+		.enable_delay = 0x00,
+		.stable_count = 0x00,
+		.active_delay = 0x18,
+		.xtal_freq_count = 0x177,
 	},
 };
 
@@ -2271,6 +2276,8 @@ static int uhsic_phy_open(struct tegra_usb_phy *phy)
 	tegra_periph_reset_deassert(phy->ctrlr_clk);
 	udelay(2);
 
+	uhsic_phy_set_snps_trking_data();
+
 	pmc_init(phy);
 	pmc->pmc_ops->powerup_pmc_wake_detect(pmc);
 
@@ -2374,9 +2381,6 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 
 	val = readl(base + UHSIC_HSRX_CFG1);
 	val |= UHSIC_HS_SYNC_START_DLY(HSIC_SYNC_START_DELAY);
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
-	val |= UHSIC_RX_STROBE_DLY_TRIMMER(HSIC_RX_STROBE_DELAY_TRIMMER);
-#endif
 	writel(val, base + UHSIC_HSRX_CFG1);
 
 	/* WAR HSIC TX */

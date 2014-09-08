@@ -537,6 +537,66 @@ static void utmip_powerup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	mdelay(1);
 }
 
+int uhsic_phy_set_snps_trking_data(void)
+{
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	void __iomem *base = IO_ADDRESS(TEGRA_USB2_BASE);
+	u32 val;
+	void __iomem *car_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+
+	if (!pmc_base)
+		pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+
+	spin_lock_irqsave(&pmc_lock, flags);
+	/* Set CLK_ENB_HSIC_TRK*/
+	val = readl(car_base + CLK_RST_CONTROLLER_CLK_OUT_ENB_Y);
+	val |= CLK_ENB_HSIC_TRK;
+	writel(val, car_base + CLK_RST_CONTROLLER_CLK_OUT_ENB_Y);
+
+	/* Set TRK_CLK */
+	val = readl(car_base + CLK_RST_CONTROLLER_CLK_SOURCE_USB2_HSIC_TRK);
+	val &= ~USB2_HSIC_TRK_CLK_DIVISOR(~0);
+	val |= USB2_HSIC_TRK_CLK_DIVISOR(0x6);
+	writel(val, car_base + CLK_RST_CONTROLLER_CLK_SOURCE_USB2_HSIC_TRK);
+
+	/*
+	 * HSIC port is under SNPS control
+	 * Hence program the below registers accordingly
+	 */
+
+	/* Set TRK_START_COUNT */
+	val = readl(base + UHSIC_PADS_CFG1);
+	val &= ~UHSIC_TRK_START_COUNT(~0);
+	val |= UHSIC_TRK_START_COUNT(0x1e);
+	writel(val, base + UHSIC_PADS_CFG1);
+
+	/* Clear PD_TX */
+	val = readl(base + UHSIC_PADS_CFG1);
+	val &= ~(UHSIC_PD_TX);
+	writel(val, base + UHSIC_PADS_CFG1);
+	udelay(1);
+
+	/* Toggle PD_TRK */
+	val = readl(base + UHSIC_PADS_CFG1);
+	val &= ~(UHSIC_PD_TRK);
+	writel(val, base + UHSIC_PADS_CFG1);
+
+	udelay(100);
+	val = readl(base + UHSIC_PADS_CFG1);
+	val |= (UHSIC_PD_TRK);
+	writel(val, base + UHSIC_PADS_CFG1);
+	udelay(1);
+
+	/* Disable CLB_ENB_HSIC_TRK */
+	val = readl(car_base + CLK_RST_CONTROLLER_CLK_OUT_ENB_Y);
+	val |= CLK_ENB_HSIC_TRK;
+	writel(val, car_base + CLK_RST_CONTROLLER_CLK_OUT_ENB_Y);
+	spin_unlock_irqrestore(&pmc_lock, flags);
+#endif
+	return 0;
+}
+EXPORT_SYMBOL_GPL(uhsic_phy_set_snps_trking_data);
+
 static void uhsic_powerup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 {
 	unsigned long val;

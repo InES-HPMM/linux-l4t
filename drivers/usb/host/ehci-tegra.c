@@ -571,7 +571,12 @@ static struct tegra_usb_platform_data *tegra_ehci_dt_parse_pdata(
 
 	is_intf_utmi = of_property_read_bool(np, "nvidia,is-intf-utmi");
 	instance = of_alias_get_id(pdev->dev.of_node, "ehci");
-
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	if (instance == 1) {
+		pdata->phy_intf = TEGRA_USB_PHY_INTF_HSIC;
+		tegra_set_wake_source(42, INT_USB2);
+	}
+#else
 	if (instance == 1 && modem_id) {
 		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)) {
 			pdata->phy_intf = TEGRA_USB_PHY_INTF_HSIC;
@@ -586,7 +591,7 @@ static struct tegra_usb_platform_data *tegra_ehci_dt_parse_pdata(
 		else
 			return NULL;
 	}
-
+#endif
 	pdata->op_mode = TEGRA_USB_OPMODE_HOST;
 
 	pdata->u_data.host.hot_plug =

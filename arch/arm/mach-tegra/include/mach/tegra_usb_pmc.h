@@ -17,6 +17,11 @@
 
 #define UHSIC_INST(inst, x, y)	((inst == 1) ? x : y)
 
+#define UHSIC_PADS_CFG1	0xc20
+#define UHSIC_TRK_START_COUNT(x)	(((x) & 0xff) << 13)
+#define UHSIC_PD_TX		(1 << 3)
+#define UHSIC_PD_TRK		(1 << 4)
+
 #define USB_PORTSC		0x174
 #define USB_PORTSC_PHCD	(1 << 23)
 #define USB_PORTSC_WKOC	(1 << 22)
@@ -225,6 +230,7 @@
 
 #define CLK_RST_CONTROLLER_CLK_OUT_ENB_Y	0x298
 #define   CLK_ENB_USB2_TRK			(1 << 18)
+#define   CLK_ENB_HSIC_TRK			(1 << 17)
 
 #define CLK_RST_CONTROLLER_CLK_SOURCE_USB2_HSIC_TRK	0x6cc
 #define   USB2_HSIC_TRK_CLK_DIVISOR(x)		(((x) & 0xff) << 0)
@@ -289,6 +295,7 @@ struct tegra_usb_pmc_data {
 
 void tegra_usb_pmc_init(struct tegra_usb_pmc_data *pmc_data);
 int utmi_phy_set_snps_trking_data(void);
+int uhsic_phy_set_snps_trking_data(void);
 void utmi_phy_update_trking_data(u32 tctrl, u32 rctrl);
 void tegra_usb_pmc_reg_update(u32 reg_offset, u32 mask, u32 val);
 u32 tegra_usb_pmc_reg_read(u32 reg_offset);
