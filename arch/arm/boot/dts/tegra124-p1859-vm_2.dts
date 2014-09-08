@@ -83,65 +83,34 @@
 		status = "disabled";
 	};
 
+	chosen {
+		nvidia,tegra124-virt-audio-slave;
+	};
+
 	ahub {
+		status = "disabled";
+	};
+
+	virt-ahub-apbif {
+		compatible = "nvidia,tegra124-virt-ahub-slave";
+		reg = <0x0 0x70300000 0x0 0x200>,
+			<0x0 0x70300200 0x0 0x200>;
+		dmas =	<&apbdma 1>, <&apbdma 1>, <&apbdma 2>, <&apbdma 2>,
+			<&apbdma 3>, <&apbdma 3>, <&apbdma 4>, <&apbdma 4>,
+			<&apbdma 6>, <&apbdma 6>, <&apbdma 7>, <&apbdma 7>,
+			<&apbdma 12>, <&apbdma 12>, <&apbdma 13>, <&apbdma 13>,
+			<&apbdma 14>, <&apbdma 14>, <&apbdma 29>, <&apbdma 29>;
+		dma-names =	"rx0", "tx0", "rx1", "tx1", "rx2", "tx2",
+				"rx3", "tx3", "rx4", "tx4", "rx5", "tx5",
+				"rx6", "tx6", "rx7", "tx7", "rx8", "tx8",
+				"rx9", "tx9";
 		status = "okay";
 
-		i2s@70301000 {
+		virt-snd-slave {
+			compatible = "nvidia,tegra124-virt-machine-slave";
+			cardname = "tegra-virt-pcm-vm2";
+			apbif_group_id = <2>;
 			status = "okay";
-		};
-		i2s@70301100 {
-			status = "disabled";
-		};
-		i2s@70301200 {
-			status = "disabled";
-		};
-		i2s@70301300 {
-			status = "disabled";
-		};
-		i2s@70301400 {
-			status = "okay";
-		};
-		spdif@70306000 {
-			status = "okay";
-		};
-		amx@70303000 {
-			status = "okay";
-		};
-		adx@70303800 {
-			status = "okay";
-		};
-		amx@70303100 {
-			status = "okay";
-		};
-		adx@70303900 {
-			status = "okay";
-		};
-		dam@70302000 {
-			status = "disabled";
-		};
-		dam@70302200 {
-			status = "disabled";
-		};
-		dam@70302400 {
-			status = "disabled";
-		};
-		afc@70307000 {
-			status = "disabled";
-		};
-		afc@70307100 {
-			status = "disabled";
-		};
-		afc@70307200 {
-			status = "disabled";
-		};
-		afc@70307300 {
-			status = "disabled";
-		};
-		afc@70307400 {
-			status = "disabled";
-		};
-		afc@70307500 {
-			status = "disabled";
 		};
 	};
 

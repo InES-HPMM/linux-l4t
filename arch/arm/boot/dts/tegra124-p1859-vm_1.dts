@@ -17,7 +17,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  */
-
  /dts-v1/;
 
 #include "tegra124-p1859.dtsi"
@@ -26,6 +25,185 @@
 	model = "NVIDIA Tegra124 vcm30t124";
 	compatible = "nvidia,vcm30t124", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
+
+	chosen {
+		nvidia,tegra124-virt-audio-master;
+	};
+
+	ahub {
+		status = "disabled";
+	};
+
+	virt-ahub-xbar {
+		compatible = "nvidia,tegra124-virt-ahub-master";
+		reg = <0x0 0x70300000 0x0 0x200>,
+			<0x0 0x70300800 0x0 0x800>,
+			<0x0 0x70300200 0x0 0x200>;
+		status = "okay";
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		ranges = <0x70300000 0x0 0x70300000 0x00010000>;
+
+		tegra_virt_i2s0: i2s@70301000 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301000 0x100>;
+			nvidia,ahub-cif-ids = <4 4>;
+			nvidia,ahub-i2s-id = <0>;
+			status = "okay";
+		};
+
+		tegra_virt_i2s1: i2s@70301100 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301100 0x100>;
+			nvidia,ahub-cif-ids = <5 5>;
+			nvidia,ahub-i2s-id = <1>;
+			status = "okay";
+		};
+
+		tegra_virt_i2s2: i2s@70301200 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301200 0x100>;
+			nvidia,ahub-cif-ids = <6 6>;
+			nvidia,ahub-i2s-id = <2>;
+			status = "okay";
+		};
+
+		tegra_virt_i2s3: i2s@70301300 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301300 0x100>;
+			nvidia,ahub-cif-ids = <7 7>;
+			nvidia,ahub-i2s-id = <3>;
+			status = "okay";
+		};
+
+		tegra_virt_i2s4: i2s@70301400 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301400 0x100>;
+			nvidia,ahub-cif-ids = <8 8>;
+			nvidia,ahub-i2s-id = <4>;
+			status = "okay";
+		};
+
+		tegra_virt_amx0: amx@70303000 {
+			compatible = "nvidia,tegra124-virt-amx";
+			reg = <0x70303000 0x100>;
+			status = "okay";
+		};
+
+		tegra_virt_amx1: amx@70303100 {
+			compatible = "nvidia,tegra124-virt-amx";
+			reg = <0x70303100 0x100>;
+			status = "okay";
+		};
+
+		tegra_virt_adx0: adx@70303800 {
+			compatible = "nvidia,tegra124-adx";
+			reg = <0x70303800 0x100>;
+			status = "okay";
+		};
+
+		tegra_virt_adx1: adx@70303900 {
+			compatible = "nvidia,tegra124-adx";
+			reg = <0x70303900 0x100>;
+			status = "okay";
+		};
+
+		tegra_virt_spdif: spdif@70306000 {
+			compatible = "nvidia,tegra124-spdif";
+			reg = <0x70306000 0x100>;
+			status = "okay";
+		};
+
+		tegra_virt_dam0: dam@70302000 {
+			compatible = "nvidia,tegra124-dam";
+			reg = <0x70302000 0x200>;
+			nvidia,ahub-dam-id = <0>;
+			status = "okay";
+		};
+
+		tegra_virt_dam1: dam@70302200 {
+			compatible = "nvidia,tegra124-dam";
+			reg = <0x70302200 0x200>;
+			nvidia,ahub-dam-id = <1>;
+			status = "okay";
+		};
+
+		tegra_virt_dam2: dam@70302400 {
+			compatible = "nvidia,tegra124-dam";
+			reg = <0x70302400 0x200>;
+			nvidia,ahub-dam-id = <2>;
+			status = "okay";
+		};
+
+		tegra_virt_afc0: afc@70307000 {
+			compatible = "nvidia,tegra124-afc";
+			reg = <0x70307000 0x100>;
+			nvidia,ahub-afc-id = <0>;
+			status = "okay";
+		};
+
+		tegra_virt_afc1: afc@70307100 {
+			compatible = "nvidia,tegra124-afc";
+			reg = <0x70307100 0x100>;
+			nvidia,ahub-afc-id = <1>;
+			status = "okay";
+		};
+
+		tegra_virt_afc2: afc@70307200 {
+			compatible = "nvidia,tegra124-afc";
+			reg = <0x70307200 0x100>;
+			nvidia,ahub-afc-id = <2>;
+			status = "okay";
+		};
+
+		tegra_virt_afc3: afc@70307300 {
+			compatible = "nvidia,tegra124-afc";
+			reg = <0x70307300 0x100>;
+			nvidia,ahub-afc-id = <3>;
+			status = "okay";
+		};
+
+		tegra_virt_afc4: afc@70307400 {
+			compatible = "nvidia,tegra124-afc";
+			reg = <0x70307400 0x100>;
+			nvidia,ahub-afc-id = <4>;
+			status = "okay";
+		};
+
+		tegra_virt_afc5: afc@70307500 {
+			compatible = "nvidia,tegra124-afc";
+			reg = <0x70307500 0x100>;
+			nvidia,ahub-afc-id = <5>;
+			status = "okay";
+		};
+
+	};
+
+	virt-ahub-apbif {
+			compatible = "nvidia,tegra124-virt-ahub-slave";
+			reg = <0x0 0x70300000 0x0 0x200>,
+					<0x0 0x70300200 0x0 0x200>;
+			dmas =	<&apbdma 1>, <&apbdma 1>, <&apbdma 2>, <&apbdma 2>,
+					 <&apbdma 3>, <&apbdma 3>, <&apbdma 4>, <&apbdma 4>,
+					 <&apbdma 6>, <&apbdma 6>, <&apbdma 7>, <&apbdma 7>,
+					 <&apbdma 12>, <&apbdma 12>, <&apbdma 13>, <&apbdma 13>,
+					 <&apbdma 14>, <&apbdma 14>, <&apbdma 29>, <&apbdma 29>;
+			dma-names =	"rx0", "tx0", "rx1", "tx1", "rx2", "tx2",
+					"rx3", "tx3", "rx4", "tx4", "rx5", "tx5",
+					"rx6", "tx6", "rx7", "tx7", "rx8", "tx8",
+					"rx9", "tx9";
+			status = "okay";
+
+			virt-snd-slave {
+					compatible = "nvidia,tegra124-virt-machine-slave";
+					iommus = < &smmu TEGRA_SWGROUP_PPCS >;
+					status = "okay";
+					cardname = "tegra-virt-pcm-vm1";
+					apbif_group_id = <1>;
+			};
+	};
 
 	sdhci@700b0200 {
 		status = "disabled";
