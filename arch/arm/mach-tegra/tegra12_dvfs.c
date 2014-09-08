@@ -1172,16 +1172,37 @@ void __init tegra12x_init_dvfs(void)
 	int core_nominal_mv_index;
 	int gpu_max_freq_index = 0;
 	int cpu_max_freq_index = 0;
+	u32 dt_dvfs_gpu_enable __maybe_unused = 0;
+	u32 dt_dvfs_cpu_enable __maybe_unused = 0;
+
+#ifdef CONFIG_TEGRA_CPU_DVFS
+	/* if cpu dvfs dt node does exist AND dt_dvfs_cpu_enable is
+	 * false via DT, then disable cpu dvfs
+	 */
+	/* #FIXME: Move DT node from chosen group to dvfs group */
+	if (!of_property_read_u32(of_chosen, "nvidia,tegra_dvfs_cpu_enable",
+			&dt_dvfs_cpu_enable) && !dt_dvfs_cpu_enable)
+		tegra_dvfs_cpu_disabled = true;
+#else
+	tegra_dvfs_cpu_disabled = true;
+#endif
+
+#ifdef CONFIG_TEGRA_GPU_DVFS
+	/* if gpu dvfs dt node does exist AND dt_dvfs_gpu_enable is
+	 * flase via DT, then disable gpu dvfs
+	 */
+	 /* #FIXME: Move DT node from chosen group to dvfs group */
+	if (!of_property_read_u32(of_chosen, "nvidia,tegra_dvfs_gpu_enable",
+				&dt_dvfs_gpu_enable) && !dt_dvfs_gpu_enable)
+		tegra_dvfs_gpu_disabled = true;
+#else
+	tegra_dvfs_gpu_disabled = true;
+#endif
 
 #ifndef CONFIG_TEGRA_CORE_DVFS
 	tegra_dvfs_core_disabled = true;
 #endif
-#ifndef CONFIG_TEGRA_CPU_DVFS
-	tegra_dvfs_cpu_disabled = true;
-#endif
-#ifndef CONFIG_TEGRA_GPU_DVFS
-	tegra_dvfs_gpu_disabled = true;
-#endif
+
 
 	/*
 	 * Find nominal voltages for core (1st) and cpu rails before rail
