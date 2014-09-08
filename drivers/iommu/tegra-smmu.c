@@ -106,8 +106,9 @@ enum {
 	(SMMU_TLB_FLUSH_ASID_MATCH_ENABLE << SMMU_TLB_FLUSH_ASID_MATCH_SHIFT)
 
 #define SMMU_TLB_FLUSH_ASID_SHIFT(as)		\
-	(SMMU_TLB_FLUSH_ASID_SHIFT_BASE - __ffs((as)->smmu->num_as))
-#define SMMU_ASID_MASK		((1 << __ffs((as)->smmu->num_as)) - 1)
+	(SMMU_TLB_FLUSH_ASID_SHIFT_BASE -	\
+				__ffs((as)->smmu->chip_data->num_asids))
+#define SMMU_ASID_MASK	((1 << __ffs((as)->smmu->chip_data->num_asids)) - 1)
 
 #define SMMU_PTC_FLUSH				0x34
 #define SMMU_PTC_FLUSH_TYPE_ALL			0
@@ -259,6 +260,10 @@ static const u32 smmu_asid_security_ofs[] = {
 	SMMU_ASID_SECURITY_7,
 };
 
+struct tegra_smmu_chip_data {
+	int num_asids;
+};
+
 static size_t tegra_smmu_get_offset(int id)
 {
 	switch (id) {
@@ -402,6 +407,7 @@ struct smmu_device {
 	struct dentry *masters_root;
 
 	struct dma_iommu_mapping **map;
+	const struct tegra_smmu_chip_data *chip_data;
 
 	u32		num_as;
 	struct smmu_as	as[0];		/* Run-time allocated array */
@@ -2364,6 +2370,8 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	u32 num_as;
 	dma_addr_t base;
 	size_t size, bytes;
+	const struct of_device_id *match;
+	struct tegra_smmu_chip_data *chip_data = NULL;
 
 	if (smmu_handle) {
 		dev_info(dev, "skip %s", __func__);
@@ -2374,6 +2382,20 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	save_smmu_device = dev;
 
+	match = of_match_node(tegra_smmu_of_match, dev->of_node);
+	if (!match)
+		goto exit_probe;
+
+	if (!match->data) {
+		chip_data = devm_kzalloc(dev,
+					sizeof(*chip_data), GFP_KERNEL);
+		if (!chip_data)
+			goto exit_probe;
+
+		chip_data->num_asids = 128;
+	} else
+		chip_data = (struct tegra_smmu_chip_data *) match->data;
+
 	if (of_get_dma_window(dev->of_node, NULL, 0, NULL, &base,
 				&size))
 		goto exit_probe;
@@ -2382,6 +2404,11 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	if (of_property_read_u32(dev->of_node, "#asids",
 				   &num_as))
 		goto exit_probe;
+
+	if (num_as > chip_data->num_asids) {
+		dev_err(dev, "invalid number of asid\n");
+		goto exit_probe;
+	}
 
 	regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	regs2 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
@@ -2401,6 +2428,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	if (!smmu->map)
 		goto fail_smmu_map;
 
+	smmu->chip_data = chip_data;
 	smmu->dev = dev;
 	smmu->num_as = num_as;
 	smmu->clients = RB_ROOT;
