@@ -33,6 +33,13 @@ enum {
 	DRAM_OVER_TEMP_THROTTLE, /* 4x Refresh + derating. */
 };
 
+enum {
+	DRAM_TYPE_DDR3   = 0,
+	DRAM_TYPE_LPDDR4 = 1,
+	DRAM_TYPE_LPDDR2 = 2,
+	DRAM_TYPE_DDR2   = 3,
+};
+
 enum emc_user_id {
 	EMC_USER_DC1 = 0,
 	EMC_USER_DC2,

@@ -30,27 +30,24 @@
 
 /* Pull in chip specific EMC header. */
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
-#include <linux/platform/tegra/tegra12_emc.h>
+#include <tegra/mc-regs-t12x.h>
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
 #define MC_ERR_34BIT_PHYS_ADDR
 #elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
-#include <tegra/tegra21_emc.h>
+#include <tegra/mc-regs-t21x.h>
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI_0
 #define MC_ERR_34BIT_PHYS_ADDR
 #endif
 
 #define MAX_PRINTS			6
 
+/*
+ * Lagacy usage of these registers. FIXME.
+ */
 #define MC_INT_STATUS			0x0
 #define MC_INT_MASK			0x4
-#define MC_ERR_STATUS			0x8
-#define MC_ERR_ADR			0xC
 #define MC_ERR_BBC_STATUS		0x84
 #define MC_ERR_BBC_ADR			0x88
-#define MC_ERR_VPR_STATUS		0x654
-#define MC_ERR_VPR_ADR			0x658
-#define MC_ERR_SEC_STATUS		0x67c
-#define MC_ERR_SEC_ADR			0x680
 
 #define MC_ERR_SMMU_MASK		(0x7 << 25)
 #define MC_ERR_SMMU_BITS(err)		(((err) & MC_ERR_SMMU_MASK) >> 25)

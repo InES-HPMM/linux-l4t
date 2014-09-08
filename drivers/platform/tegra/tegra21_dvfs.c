@@ -985,7 +985,7 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 
 	mv = min(mv, core_edp_voltage);
 #ifndef CONFIG_TEGRA_CORE_DVFS
-	mv = min(mv, 1000);		/* Vmax if scaling is disabled */
+	mv = min(mv, 1100);		/* Vmax if scaling is disabled */
 #endif
 	/* Round nominal level down to the nearest core scaling step */
 	for (i = 0; i < MAX_DVFS_FREQS; i++) {
