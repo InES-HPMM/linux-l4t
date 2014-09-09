@@ -323,17 +323,7 @@ static struct platform_driver adc_jack_driver = {
 	},
 };
 
-static int __init adc_jack_driver_init(void)
-{
-	return platform_driver_register(&adc_jack_driver);
-}
-subsys_initcall_sync(adc_jack_driver_init);
-
-static void __exit adc_jack_driver_exit(void)
-{
-	platform_driver_unregister(&adc_jack_driver);
-}
-module_exit(adc_jack_driver_exit);
+module_platform_driver(adc_jack_driver);
 
 MODULE_AUTHOR("MyungJoo Ham <myungjoo.ham@samsung.com>");
 MODULE_DESCRIPTION("ADC Jack extcon driver");
