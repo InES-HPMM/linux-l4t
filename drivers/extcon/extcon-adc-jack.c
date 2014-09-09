@@ -25,6 +25,7 @@
 #include <linux/extcon/extcon-adc-jack.h>
 #include <linux/extcon.h>
 #include <linux/of.h>
+#include <linux/of_irq.h>
 
 /**
  * struct adc_jack_data - internal data for adc_jack device driver
@@ -114,10 +115,10 @@ static struct adc_jack_pdata *of_get_platform_data(
 	if (!pdata->name)
 		pdata->name = np->name;
 
-	of_property_read_string_index(np, "io-channel-names", 0,
+	ret = of_property_read_string_index(np, "io-channel-names", 0,
 				&pdata->consumer_channel);
-	if (!pdata->name)
-		pdata->name = np->name;
+	if (ret < 0)
+		return ERR_PTR(ret);
 
 	ret = of_property_read_u32(np, "extcon-adc-jack,irq-flags", &pval);
 	if (!ret)
@@ -150,7 +151,7 @@ static struct adc_jack_pdata *of_get_platform_data(
 					i * 3 + 2, &max_adc);
 
 		pdata->adc_conditions[i].state = state;
-		pdata->adc_conditions[i].min_adc= min_adc;
+		pdata->adc_conditions[i].min_adc = min_adc;
 		pdata->adc_conditions[i].max_adc = max_adc;
 	};
 
@@ -243,7 +244,9 @@ static int adc_jack_probe(struct platform_device *pdev)
 		goto out;
 
 	data->irq = platform_get_irq(pdev, 0);
-	if (!data->irq) {
+	if (data->irq < 0)
+		data->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
+	if (data->irq < 0) {
 		dev_err(&pdev->dev, "platform_get_irq failed\n");
 		err = -ENODEV;
 		goto err_irq;
