@@ -4805,6 +4805,60 @@ static struct clk_ops tegra_dpaux_clk_ops = {
 	.reset			= &tegra21_periph_clk_reset,
 };
 
+/* XUSB SS clock ops */
+static DEFINE_SPINLOCK(xusb_ss_lock);
+
+static int tegra21_xusb_ss_set_rate(struct clk *c, unsigned long rate)
+{
+	int ret;
+	unsigned long flags;
+
+	spin_lock_irqsave(&xusb_ss_lock, flags);
+	ret = tegra21_periph_clk_set_rate(c, rate);
+	spin_unlock_irqrestore(&xusb_ss_lock, flags);
+	return ret;
+}
+
+static int tegra21_xusb_ss_set_parent(struct clk *c, struct clk *p)
+{
+	u32 val;
+	unsigned long flags;
+	const struct clk_mux_sel *sel;
+	pr_debug("%s: %s %s\n", __func__, c->name, p->name);
+
+	for (sel = c->inputs; sel->input != NULL; sel++) {
+		if (sel->input == p) {
+			if (c->refcnt)
+				tegra_clk_prepare_enable(p);
+
+			spin_lock_irqsave(&xusb_ss_lock, flags);
+			val = clk_readl(c->reg);
+			val &= ~periph_clk_source_mask(c);
+			val |= (sel->value << periph_clk_source_shift(c));
+			clk_writel_delay(val, c->reg);
+			spin_unlock_irqrestore(&xusb_ss_lock, flags);
+
+			if (c->refcnt && c->parent)
+				tegra_clk_disable_unprepare(c->parent);
+
+			clk_reparent(c, p);
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+
+static struct clk_ops tegra_xusb_ss_ops = {
+	.init			= &tegra21_periph_clk_init,
+	.enable			= &tegra21_periph_clk_enable,
+	.disable		= &tegra21_periph_clk_disable,
+	.set_parent		= &tegra21_xusb_ss_set_parent,
+	.set_rate		= &tegra21_xusb_ss_set_rate,
+	.round_rate		= &tegra21_periph_clk_round_rate,
+	.reset			= &tegra21_periph_clk_reset,
+};
+
 /* pciex clock support only reset function */
 static void tegra21_pciex_clk_init(struct clk *c)
 {
@@ -9078,7 +9132,7 @@ static struct clk tegra_xusb_source_clks[] = {
 	PERIPH_CLK("xusb_host_src",	XUSB_ID, "host_src",	143,	0x600,	120000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("xusb_falcon_src",	XUSB_ID, "falcon_src",	143,	0x604,	350000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("xusb_fs_src",	NULL, "fs_src",	143,	0x608,	 48000000, mux_clkm_48M_pllp_480M,	MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK("xusb_ss_src",	NULL, "ss_src",	143,	0x610,	120000000, mux_clkm_pllre_clk32_480M_pllc_ref,	MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK_EX("xusb_ss_src",	NULL, "ss_src",	143,	0x610,	120000000, mux_clkm_pllre_clk32_480M_pllc_ref,	MUX | DIV_U71 | PERIPH_NO_RESET, &tegra_xusb_ss_ops),
 	PERIPH_CLK("xusb_dev_src",	XUDC_ID, "dev_src",	95,	0x60c,	120000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_ON_APB),
 	SHARED_EMC_CLK("xusb.emc",	XUSB_ID, "emc",	&tegra_clk_emc,	NULL,	0,	SHARED_BW, 0),
 };
@@ -9095,7 +9149,7 @@ static struct clk tegra_xusb_ssp_src = {
 		.dev_id    = NULL,
 		.con_id	   = "ssp_src",
 	},
-	.ops       = &tegra_periph_clk_ops,
+	.ops       = &tegra_xusb_ss_ops,
 	.reg       = 0x610,
 	.inputs    = mux_ss_clk_m,
 	.flags     = MUX | PERIPH_NO_ENB | PERIPH_NO_RESET,
@@ -9130,7 +9184,7 @@ static struct clk tegra_xusb_hs_src = {
 		.dev_id    = NULL,
 		.con_id	   = "hs_src",
 	},
-	.ops       = &tegra_periph_clk_ops,
+	.ops       = &tegra_xusb_ss_ops,
 	.reg       = 0x610,
 	.inputs    = mux_ss_div2_pllu_60M,
 	.flags     = MUX | PLLU | PERIPH_NO_ENB | PERIPH_NO_RESET,
