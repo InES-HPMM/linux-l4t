@@ -377,13 +377,13 @@ static int tegra_pinctrl_get_func_groups(struct pinctrl_dev *pctldev,
 	return 0;
 }
 
-static int tegra_pinconfig_froup_set(struct pinctrl_dev *pctldev,
+static int tegra_pinconfig_group_set(struct pinctrl_dev *pctldev,
 		unsigned group, unsigned long param, unsigned long arg)
 {
 	unsigned long config;
 	int ret;
 
-	config = TEGRA_PINCONF_PACK(TEGRA_PINCONF_PARAM_TRISTATE, arg);
+	config = TEGRA_PINCONF_PACK(param, arg);
 	ret = tegra_pinconf_group_set(pctldev, group, config);
 	if (ret < 0)
 		dev_err(pctldev->dev,
@@ -411,10 +411,10 @@ static int tegra_pinctrl_enable(struct pinctrl_dev *pctldev, unsigned req_functi
 	switch (req_function) {
 	case TEGRA_PINMUX_SPECIAL_UNUSED:
 		/* Set tristate =1 and input = 0 for unused pins */
-		ret = tegra_pinconfig_froup_set(pctldev, group,
+		ret = tegra_pinconfig_group_set(pctldev, group,
 					TEGRA_PINCONF_PARAM_TRISTATE, 1);
 		if (!ret)
-			ret = tegra_pinconfig_froup_set(pctldev, group,
+			ret = tegra_pinconfig_group_set(pctldev, group,
 					TEGRA_PINCONF_PARAM_ENABLE_INPUT, 0);
 		return ret;
 
@@ -485,10 +485,10 @@ static int tegra_pinctrl_gpio_set_direction (struct pinctrl_dev *pctldev,
 	 * tristate = 0 for output direction.
 	 */
 	if (input)
-		ret = tegra_pinconfig_froup_set(pctldev, group,
+		ret = tegra_pinconfig_group_set(pctldev, group,
 					TEGRA_PINCONF_PARAM_ENABLE_INPUT, 1);
 	else
-		ret = tegra_pinconfig_froup_set(pctldev, group,
+		ret = tegra_pinconfig_group_set(pctldev, group,
 					TEGRA_PINCONF_PARAM_TRISTATE, 0);
 	return ret;
 }
