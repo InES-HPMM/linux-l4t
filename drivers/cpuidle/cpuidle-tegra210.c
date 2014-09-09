@@ -144,6 +144,8 @@ static int tegra210_enter_cc_state(struct cpuidle_device *dev,
 			int state_id, int idx)
 {
 	unsigned long arg;
+	/* Initialize to C7 index as C7 is assumed to be default config */
+	int ret = 3;
 
 	/* Assume C7 config by default */
 	struct psci_power_state ps = {
@@ -162,6 +164,7 @@ static int tegra210_enter_cc_state(struct cpuidle_device *dev,
 		 */
 		ps.id = state_id;
 		ps.affinity_level = 1;
+		ret = idx;
 	}
 
 	arg = psci_power_state_pack(ps);
@@ -169,7 +172,7 @@ static int tegra210_enter_cc_state(struct cpuidle_device *dev,
 
 	cpu_pm_exit();
 
-	return idx;
+	return ret;
 }
 
 static int tegra210_enter_cc6(struct cpuidle_device *dev,
