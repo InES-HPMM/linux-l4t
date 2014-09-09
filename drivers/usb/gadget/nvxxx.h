@@ -711,15 +711,15 @@ extern int debug_level;
 		dev_dbg(dev, "%s():%d: " fmt, __func__ , __LINE__, ## args); \
 	}
 #define msg_info(dev, fmt, args...) { \
-	if (debug_level > LEVEL_INFO) \
-		dev_info(dev, fmt, ## args); \
+	if (debug_level >= LEVEL_INFO) \
+		dev_dbg(dev, "%s():%d: " fmt, __func__ , __LINE__, ## args); \
 	}
 #define msg_err(dev, fmt, args...) { \
-	if (debug_level > LEVEL_ERROR) \
+	if (debug_level >= LEVEL_ERROR) \
 		dev_err(dev, fmt, ## args); \
 	}
 #define msg_warn(dev, fmt, args...) { \
-	if (debug_level > LEVEL_WARNING) \
+	if (debug_level >= LEVEL_WARNING) \
 		dev_warn(dev, fmt, ## args); \
 	}
 

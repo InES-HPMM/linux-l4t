@@ -1954,7 +1954,7 @@ static int nvudc_gadget_get_frame(struct usb_gadget *gadget)
 	return u_temp >> MFINDEX_FRAME_SHIFT;
 }
 
-static void nvudc_resume_state(struct nv_udc_s *nvudc)
+static void nvudc_resume_state(struct nv_udc_s *nvudc, bool device_init)
 {
 	u32 ep_paused, u_temp, u_temp2;
 
@@ -1967,8 +1967,8 @@ static void nvudc_resume_state(struct nv_udc_s *nvudc)
 	u_temp = ioread32(nvudc->mmio_reg_base + PORTSC);
 	u_temp2 = u_temp & PORTSC_MASK;
 
-	if (nvudc->gadget.speed == USB_SPEED_SUPER) {
-		msg_dbg(nvudc->dev, "Directing link to U0\n");
+	if (device_init || nvudc->gadget.speed == USB_SPEED_SUPER) {
+		msg_info(nvudc->dev, "Directing link to U0\n");
 		/* don't clear (write to 1) bits which we are not handling */
 		u_temp2 &= ~PORTSC_PLS(-1);
 		u_temp2 |= PORTSC_PLS(0);
@@ -2010,7 +2010,7 @@ static int nvudc_gadget_wakeup(struct usb_gadget *gadget)
 		((nvudc->gadget.speed == USB_SPEED_SUPER) &&
 		(PORTPM_FRWE & utemp))) {
 
-		nvudc_resume_state(nvudc);
+		nvudc_resume_state(nvudc, 1);
 
 		/* write the function wake device notification register */
 		if (nvudc->gadget.speed == USB_SPEED_SUPER) {
@@ -3512,7 +3512,7 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 
 			msg_dbg(nvudc->dev, "PLS Resume\n");
 
-			nvudc_resume_state(nvudc);
+			nvudc_resume_state(nvudc, 0);
 
 			if (nvudc->driver->resume) {
 				spin_unlock(&nvudc->lock);
@@ -4367,7 +4367,7 @@ static int nvudc_resume_pci(struct pci_dev *pdev)
 
 	nvudc = pci_get_drvdata(pdev);
 	restore_mmio_reg(nvudc);
-	nvudc_resume_state(nvudc);
+	nvudc_resume_state(nvudc, 1);
 	return 0;
 }
 
@@ -4377,7 +4377,7 @@ static int nvudc_resume_platform(struct platform_device *pdev)
 
 	nvudc = platform_get_drvdata(pdev);
 	restore_mmio_reg(nvudc);
-	nvudc_resume_state(nvudc);
+	nvudc_resume_state(nvudc, 1);
 	return 0;
 }
 #endif
