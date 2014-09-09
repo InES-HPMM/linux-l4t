@@ -23,8 +23,8 @@
 #include "tegra124-p1859.dtsi"
 
 / {
-	model = "NVIDIA Tegra124 vcm30t124";
-	compatible = "nvidia,vcm30t124", "nvidia,tegra124";
+	model = "NVIDIA Tegra124 p1859";
+	compatible = "nvidia,p1859", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 
 	host1x {
