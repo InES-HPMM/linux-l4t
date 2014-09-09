@@ -565,11 +565,9 @@ static int rndis_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			VDBG(cdev, "reset rndis control %d\n", intf);
 			usb_ep_disable(rndis->notify);
 		}
-		if (!rndis->notify->desc) {
-			VDBG(cdev, "init rndis ctrl %d\n", intf);
-			if (config_ep_by_speed(cdev->gadget, f, rndis->notify))
-				goto fail;
-		}
+		VDBG(cdev, "init rndis ctrl %d\n", intf);
+		if (config_ep_by_speed(cdev->gadget, f, rndis->notify))
+			goto fail;
 		usb_ep_enable(rndis->notify);
 		rndis->notify->driver_data = rndis;
 
