@@ -39,6 +39,10 @@ static int hsic_pad_count;
 static int utmip_pad_count;
 static struct clk *utmi_pad_clk;
 
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
+static u32 usb_lanes;
+#endif
+
 void tegra_xhci_release_otg_port(bool release)
 {
 	void __iomem *padctl_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
@@ -1125,6 +1129,7 @@ int usb3_phy_pad_enable(u32 lane_owner)
 	val &= ~XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_VCORE_DOWN;
 	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
 
+	usb_lanes = lane_owner;
 
 	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
 	return 0;
@@ -1538,6 +1543,18 @@ static int tegra_pcie_lane_iddq(bool enable, int lane_owner)
 	unsigned long val;
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	/*
+	 * USB 3.0 lanes and PCIe lanes are shared
+	 *
+	 * Honour the XUSB lane ownership information while modifying
+	 * the controls for PCIe
+	 */
+	bool pcie_modify_lane0_iddq = (usb_lanes & BIT(2)) ? false : true;
+	bool pcie_modify_lane1_iddq =
+		(!(usb_lanes & BIT(0)) && (usb_lanes & BIT(1))) ? false : true;
+#endif
+
 	val = readl(pad_base + XUSB_PADCTL_USB3_PAD_MUX_0);
 	switch (lane_owner) {
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
@@ -1589,19 +1606,23 @@ static int tegra_pcie_lane_iddq(bool enable, int lane_owner)
 		break;
 #else
 	case PCIE_LANES_X4_X1:
-	if (enable)
-		val |=
-		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
-	else
-		val &=
-		~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
+	if (pcie_modify_lane0_iddq) {
+		if (enable)
+			val |=
+			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
+		else
+			val &=
+			~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
+	}
 	case PCIE_LANES_X4_X0:
-	if (enable)
-		val |=
-		XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1;
-	else
-		val &=
-		~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1;
+	if (pcie_modify_lane1_iddq) {
+		if (enable)
+			val |=
+			XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1;
+		else
+			val &=
+			~XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1;
+	}
 	case PCIE_LANES_X2_X1:
 	if (enable)
 		val |=
@@ -1668,8 +1689,23 @@ int pcie_phy_pad_enable(bool enable, int lane_owner)
 	unsigned long val, flags;
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 	int ret = 0;
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	bool pcie_modify_lane0_owner, pcie_modify_lane1_owner;
+#endif
 
 	spin_lock_irqsave(&xusb_padctl_lock, flags);
+
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	/*
+	 * USB 3.0 lanes and PCIe lanes are shared
+	 *
+	 * Honour the XUSB lane ownership information while modifying
+	 * the controls for PCIe
+	 */
+	pcie_modify_lane0_owner = (usb_lanes & BIT(2)) ? false : true;
+	pcie_modify_lane1_owner =
+		(!(usb_lanes & BIT(0)) && (usb_lanes & BIT(1))) ? false : true;
+#endif
 
 	if (enable) {
 		ret = tegra_xusb_padctl_phy_enable();
@@ -1733,9 +1769,11 @@ int pcie_phy_pad_enable(bool enable, int lane_owner)
 		break;
 #else
 	case PCIE_LANES_X4_X1:
-		val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE0;
+		if (pcie_modify_lane0_owner)
+			val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE0;
 	case PCIE_LANES_X4_X0:
-		val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE1;
+		if (pcie_modify_lane1_owner)
+			val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE1;
 	case PCIE_LANES_X2_X1:
 		val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE2;
 	case PCIE_LANES_X2_X0:
