@@ -209,7 +209,7 @@ static struct ecx_platform_data *ecx_get_pdata_from_dt(
 	if (!pdata)
 		return ERR_PTR(-ENOMEM);
 
-	of_property_read_string(np, "name", &pdata->name);
+	of_property_read_string(np, "extcon-name", &pdata->name);
 	if (!pdata->name)
 		pdata->name = np->name;
 
@@ -254,7 +254,7 @@ static struct ecx_platform_data *ecx_get_pdata_from_dt(
 
 
 	pdata->n_io_states = of_property_count_u32(np, "cable-states");
-	if ((pdata->n_io_states < 3) || (pdata->n_io_states % 3 == 0)) {
+	if ((pdata->n_io_states < 3) || (pdata->n_io_states % 3 != 0)) {
 		dev_err(&pdev->dev, "not found proper cable state\n");
 		return ERR_PTR(-EINVAL);
 	}
