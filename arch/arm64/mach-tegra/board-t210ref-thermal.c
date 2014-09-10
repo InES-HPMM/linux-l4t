@@ -564,7 +564,7 @@ static struct i2c_board_info t210ref_skin_i2c_nct72_board_info[] = {
 };
 #endif
 
-int t210ref_thermal_sensors_init(void)
+int __init t210ref_thermal_sensors_init(void)
 {
 	int nct72_port = TEGRA_GPIO_PX4;
 	int ret = 0;
