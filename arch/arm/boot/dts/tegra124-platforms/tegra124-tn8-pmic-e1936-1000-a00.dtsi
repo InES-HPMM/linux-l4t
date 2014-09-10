@@ -613,7 +613,7 @@
 		};
 
 		battery-charger@6b {
-			compatible = "ti,bq2419x";
+			compatible = "ti,bq2419x-st8";
 			reg = <0x6b>;
 
 			interrupt-parent = <&gpio>;
