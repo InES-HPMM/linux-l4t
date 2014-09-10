@@ -81,6 +81,14 @@
 		status = "okay";
 	};
 
+	i2c@7000c400 {
+		ads1015: ads1015@4a {
+			reg = <0x4a>;
+			compatible = "ads1015";
+			#io-channel-cells = <1>;
+		};
+	};
+
 	host1x {
 		/* tegradc.0 */
 		dc@54200000 {
@@ -196,13 +204,47 @@
 		};
 	};
 
+	extcon@0 {
+		status = "disabled";
+	};
+
+	extcon_adc_jack: extcon@1 {
+		compatible = "extcon-adc-jack";
+		reg = <0x0 0x1>;
+		interrupt-parent = <&max77620>;
+		interrupts = <0 0 3>;
+		extcon-adc-jack,irq-flags = <3>;
+		extcon-adc-jack,cable-names = "ID-GND", "ID-NV";
+		extcon-adc-jack,states = <0x1    0     20
+					  0x2    50    100>;
+		io-channels = <&ads1015 4>;
+		io-channel-names = "id-resistance";
+		#extcon-cells = <1>;
+	};
+
+	extcon_cable_xlate: extcon@2 {
+		compatible = "extcon-cable-xlate";
+		reg = <0x0 0x2>;
+		extcon-name = "cable-xlate";
+		cable-insert-delay = <500>;
+		output-cable-names = "USB", "USB-Host", "ACA-NV";
+                extcon-cables = <&bq2419x 0 &extcon_adc_jack 0 &extcon_adc_jack 1>;
+		extcon-cable-names = "vbus", "id", "aca-nv";
+		cable-states = <0x0	0x7	0x0
+				0x1	0x7	0x1
+				0x2	0x7	0x2
+				0x4	0x7	0x1
+				0x5	0x7	0x1>;
+		#extcon-cells = <1>;
+	};
+
 	udc@7d000000 {
                 nvidia,port-otg;
                 nvidia,charging-supported;
                 nvidia,enable-pmu-vbus-detection;
                 nvidia,id-detection-type = <1>;
 		nvidia,dcp-current-limit-ma = <2000>;
-                extcon-cables = <&bq2419x 0>;
+                extcon-cables = <&extcon_cable_xlate 0>;
                 extcon-cable-names = "vbus";
                 #extcon-cells = <1>;
                 status = "okay";
@@ -210,9 +252,9 @@
 
         otg@7d000000 {
                 nvidia,enable-pmu-vbus-detection;
-                nvidia,id-detection-type = <50>;
-                extcon-cables = <&bq2419x 0 &id_gpio_extcon 0>;
-                extcon-cable-names = "vbus", "id";
+                nvidia,id-detection-type = <1>;
+		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 1>;
+		extcon-cable-names = "vbus", "id";
                 #extcon-cells = <1>;
                 status = "okay";
         };
