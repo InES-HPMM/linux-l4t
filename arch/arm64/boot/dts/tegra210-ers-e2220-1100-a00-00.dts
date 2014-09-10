@@ -33,6 +33,7 @@
 #include "tegra210-platforms/tegra210-comms.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
 #include "panel-j-1440-810-5-8.dtsi"
+#include "panel-a-wuxga-8-0.dtsi"
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-camera-e2249-1002-a00.dtsi"
@@ -134,6 +135,12 @@
 			nvidia,dsi-controller-vs = <DSI_VS_1>;
 			status = "okay";
 			panel-j-1440-810-5-8 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
+				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
+			};
+			panel-a-wuxga-8-0 {
 				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
@@ -371,7 +378,7 @@
 	/* Put common control config here */
 	xusb_pad_ctl: padctl@0 {
 		nvidia,ss_portmap = <0x2130>;
-		nvidia,lane_owner = <0x8356>; /* Use 0xF to disable lane assign */
+		nvidia,lane_owner = <0x4056>; /* Use 0xF to disable lane assign */
 		status = "okay";
 	};
 
@@ -380,15 +387,16 @@
 		nvidia,gpio_controls_muxed_ss_lanes; */
 		nvidia,gpio_ss1_sata = <0>;
 		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
-		nvidia,portmap = <0x0101>;
+		nvidia,portmap = <0x0e0e>;
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "okay";
 	};
 
 	xudc@700d0000 {
-		extcon-cables = <&bq2419x 0>;
-		extcon-cable-names = "vbus";
+		extcon-cables = <&bq2419x 0 &id_gpio_extcon 0>;
+		extcon-cable-names = "vbus", "id";
 		#extcon-cells = <1>;
+		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "disabled";
 	};
 

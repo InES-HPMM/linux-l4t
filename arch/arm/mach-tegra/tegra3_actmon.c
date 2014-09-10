@@ -465,7 +465,15 @@ static void actmon_dev_restore(struct actmon_dev *dev, ulong freq)
 static void actmon_dev_resume(struct actmon_dev *dev)
 {
 	unsigned long flags;
-	unsigned long freq = clk_get_rate(dev->clk) / 1000;
+	unsigned long freq = 0;
+
+	if (!dev)
+		return;
+
+	if (IS_ERR(dev->clk))
+		return;
+
+	freq = clk_get_rate(dev->clk) / 1000;
 
 	spin_lock_irqsave(&dev->lock, flags);
 

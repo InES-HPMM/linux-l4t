@@ -66,7 +66,7 @@
 #define FW_IOCTL_DATA_MASK		(0x00ffffff)
 #define FW_IOCTL_TYPE_SHIFT		(24)
 #define FW_IOCTL_TYPE_MASK		(0xff000000)
-#define FW_LOG_SIZE			(sizeof(struct log_entry))
+#define FW_LOG_SIZE			((int) sizeof(struct log_entry))
 #define FW_LOG_COUNT			(4096)
 #define FW_LOG_RING_SIZE		(FW_LOG_SIZE * FW_LOG_COUNT)
 #define FW_LOG_PAYLOAD_SIZE		(27)
@@ -91,10 +91,6 @@
 		typecheck(u32, _addr);					\
 		(_addr & PAGE_OFFSET_MASK);				\
 	})
-
-#define reg_dump(_dev, _base, _reg)					\
-	dev_dbg(_dev, "%s: %s @%x = 0x%x\n", __func__, #_reg,		\
-		_reg, readl(_base + _reg))
 
 #define PMC_PORTMAP_MASK(map, pad)	(((map) >> 4*(pad)) & 0xF)
 
@@ -833,7 +829,7 @@ static ssize_t fw_log_file_read(struct file *file, char __user *buf,
 
 	wake_up_interruptible(&tegra->log.write_wait);
 
-	dev_dbg(&pdev->dev, "%s: %d bytes\n", __func__, n);
+	dev_dbg(&pdev->dev, "%s: %zu bytes\n", __func__, n);
 
 	return n;
 }
@@ -1039,6 +1035,10 @@ static int hsic_power_rail_disable(struct tegra_xhci_hcd *tegra)
 
 static int hsic_pad_enable(struct tegra_xhci_hcd *tegra, unsigned pad)
 {
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	if (XUSB_IS_T210(tegra))
+		return t210_hsic_pad_enable(tegra, pad);
+#else
 	struct device *dev = &tegra->pdev->dev;
 	void __iomem *base = tegra->padctl_base;
 	struct tegra_xusb_hsic_config *hsic = &tegra->bdata->hsic[pad];
@@ -1105,6 +1105,7 @@ static int hsic_pad_enable(struct tegra_xhci_hcd *tegra, unsigned pad)
 	reg_dump(dev, base, padregs->usb2_hsic_padX_ctlY_0[pad][2]);
 	reg_dump(dev, base, padregs->hsic_strb_trim_ctl0);
 	reg_dump(dev, base, padregs->usb2_pad_mux_0);
+#endif
 	return 0;
 }
 
@@ -1177,6 +1178,10 @@ static void hsic_pad_pretend_connect(struct tegra_xhci_hcd *tegra)
 
 static int hsic_pad_disable(struct tegra_xhci_hcd *tegra, unsigned pad)
 {
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	if (XUSB_IS_T210(tegra))
+		return t210_hsic_pad_disable(tegra, pad);
+#else
 	struct device *dev = &tegra->pdev->dev;
 	void __iomem *base = tegra->padctl_base;
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
@@ -1201,18 +1206,17 @@ static int hsic_pad_disable(struct tegra_xhci_hcd *tegra, unsigned pad)
 	reg_dump(dev, base, padregs->usb2_hsic_padX_ctlY_0[pad][1]);
 	reg_dump(dev, base, padregs->usb2_hsic_padX_ctlY_0[pad][2]);
 	reg_dump(dev, base, padregs->usb2_pad_mux_0);
+#endif
 	return 0;
 }
-
-enum hsic_pad_pupd {
-	PUPD_DISABLE = 0,
-	PUPD_IDLE,
-	PUPD_RESET
-};
 
 static int hsic_pad_pupd_set(struct tegra_xhci_hcd *tegra, unsigned pad,
 	enum hsic_pad_pupd pupd)
 {
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	if (XUSB_IS_T210(tegra))
+		return t210_hsic_pad_pupd_set(tegra, pad, pupd);
+#else
 	struct device *dev = &tegra->pdev->dev;
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 reg;
@@ -1240,10 +1244,9 @@ static int hsic_pad_pupd_set(struct tegra_xhci_hcd *tegra, unsigned pad,
 
 	reg_dump(dev, tegra->padctl_base
 		, padregs->usb2_hsic_padX_ctlY_0[pad][1]);
-
+#endif
 	return 0;
 }
-
 
 static void tegra_xhci_debug_read_pads(struct tegra_xhci_hcd *tegra)
 {
@@ -1899,7 +1902,7 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 {
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 reg;
-	u32 ctl0_offset, ctl1_offset;
+	u32 ctl0_offset;
 
 	/* We have host/device/otg driver to program pad,
 	 * Move to common API to reduce duplicate program
@@ -1936,14 +1939,12 @@ static inline bool xusb_use_sata_lane(struct tegra_xhci_hcd *tegra)
 	return ret;
 }
 
-
-
 static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 ctl2_offset, ctl4_offset, ctl5_offset;
-	u32 reg, lane;
+	u32 reg;
 
 	/* We have host/device/otg driver to program
 	 * Move to common API to reduce duplicate program
@@ -1999,7 +2000,7 @@ void
 tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 {
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
-	u32 reg, oc_bits = 0;
+	u32 reg = 0;
 	unsigned pad;
 	u32 ss_pads;
 
@@ -2211,6 +2212,12 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 	cfg_tbl->ss_portmap |=
 		(tegra->bdata->portmap & ((1 << ss_pads) - 1));
 
+	cfg_tbl->num_hsic_port = 0;
+	for_each_enabled_hsic_pad(pad, tegra)
+		cfg_tbl->num_hsic_port++;
+
+	dev_info(&pdev->dev, "num_hsic_port %d\n", cfg_tbl->num_hsic_port);
+
 	/* First thing, reset the ARU. By the time we get to
 	 * loading boot code below, reset would be complete.
 	 * alternatively we can busy wait on rst pending bit.
@@ -2293,12 +2300,6 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 		fw_tm.tm_min, fw_tm.tm_sec,
 		csb_read(tegra, XUSB_FALC_CPUCTL));
 
-	cfg_tbl->num_hsic_port = 0;
-	for_each_enabled_hsic_pad(pad, tegra)
-		cfg_tbl->num_hsic_port++;
-
-	dev_dbg(&pdev->dev, "num_hsic_port %d\n", cfg_tbl->num_hsic_port);
-
 	/* return fail if firmware status is not good */
 	if (csb_read(tegra, XUSB_FALC_CPUCTL) == XUSB_FALC_STATE_HALTED)
 		return -EFAULT;
@@ -2351,7 +2352,7 @@ static void tegra_xhci_release_port_ownership(struct tegra_xhci_hcd *tegra,
 
 static int get_host_controlled_ports(struct tegra_xhci_hcd *tegra)
 {
-	int enabled_ports = 0, pad;
+	int enabled_ports = 0;
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 
 	enabled_ports = tegra->bdata->portmap;
@@ -2954,7 +2955,7 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 			 * TODO: temporarily skip SSPI clock changing for T210.
 			 * Hardware group will provide proper sequence.
 			 */
-			pr_warn("%s: ignore SSPI clock request.\n", __func__);
+			pr_info("%s: ignore SSPI clock request.\n", __func__);
 			sw_resp = CMD_DATA(tegra->cmd_data) |
 						CMD_TYPE(MBOX_CMD_ACK);
 			goto send_sw_response;
@@ -3624,6 +3625,7 @@ tegra_xhci_resume(struct platform_device *pdev)
 	struct tegra_xhci_hcd *tegra = platform_get_drvdata(pdev);
 	struct xhci_hcd *xhci = tegra->xhci;
 	int pad;
+	int ret;
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 
@@ -3643,8 +3645,12 @@ tegra_xhci_resume(struct platform_device *pdev)
 	disable_irq_wake(tegra->usb2_irq);
 	tegra->lp0_exit = true;
 
-	regulator_enable(tegra->xusb_s1p05v_reg);
-	regulator_enable(tegra->xusb_s1p8v_reg);
+	ret = regulator_enable(tegra->xusb_s1p05v_reg);
+	if (ret)
+		xhci_warn(xhci, "enable 1.05V regulator failed %d\n", ret);
+	ret = regulator_enable(tegra->xusb_s1p8v_reg);
+	if (ret)
+		xhci_warn(xhci, "enable 1.8V regulator failed %d\n", ret);
 	tegra_usb2_clocks_init(tegra);
 
 	if (pex_usb_pad_pll_reset_deassert())
@@ -3667,12 +3673,13 @@ static int init_filesystem_firmware(struct tegra_xhci_hcd *tegra)
 	struct platform_device *pdev = tegra->pdev;
 	int ret;
 
-	if (!strcmp(firmware_file, ""))
+	if (!strcmp(firmware_file, "")) {
 		if (tegra->bdata->firmware_file_dt)
 			firmware_file = tegra->bdata->firmware_file_dt;
 		else
 			firmware_file =
 				tegra->soc_config->default_firmware_file;
+	}
 
 	ret = request_firmware_nowait(THIS_MODULE, true, firmware_file,
 		&pdev->dev, GFP_KERNEL, tegra, init_filesystem_firmware_done);
@@ -3706,7 +3713,7 @@ static void init_filesystem_firmware_done(const struct firmware *fw,
 
 	fw_cfgtbl = (struct cfgtbl *) fw->data;
 	fw_size = fw_cfgtbl->fwimg_len;
-	dev_info(&pdev->dev, "Firmware File: %s (%d Bytes)\n",
+	dev_info(&pdev->dev, "Firmware File: %s (%zu Bytes)\n",
 			firmware_file, fw_size);
 
 	fw_data = dma_alloc_coherent(&pdev->dev, fw_size,
@@ -3719,7 +3726,7 @@ static void init_filesystem_firmware_done(const struct firmware *fw,
 
 	memcpy(fw_data, fw->data, fw_size);
 	dev_info(&pdev->dev,
-		"Firmware DMA Memory: dma 0x%p mapped 0x%p (%d Bytes)\n",
+		"Firmware DMA Memory: dma 0x%p mapped 0x%p (%zu Bytes)\n",
 		(void *) fw_dma, fw_data, fw_size);
 
 	/* all set and ready to go */
@@ -4022,7 +4029,7 @@ static void tegra_xusb_read_board_data(struct tegra_xhci_hcd *tegra)
 	struct device_node *node = tegra->pdev->dev.of_node;
 	struct device_node *padctl;
 	int ret;
-	u32 lane = 0, ss_portmap = 0, enabled_port = 0;
+	u32 lane = 0, ss_portmap = 0;
 
 	bdata->uses_external_pmic = of_property_read_bool(node,
 					"nvidia,uses_external_pmic");
@@ -4041,6 +4048,7 @@ static void tegra_xusb_read_board_data(struct tegra_xhci_hcd *tegra)
 	ret = of_property_read_u8_array(node, "nvidia,hsic0",
 					(u8 *) &bdata->hsic[0],
 					sizeof(bdata->hsic[0]));
+
 	ret = of_property_read_u8_array(node, "nvidia,hsic1",
 					(u8 *) &bdata->hsic[1],
 					sizeof(bdata->hsic[0]));
@@ -4229,7 +4237,7 @@ static struct of_device_id tegra_xhci_of_match[] = {
 };
 
 static ssize_t hsic_power_show(struct device *dev,
-			struct kobj_attribute *attr, char *buf)
+			struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_xhci_hcd *tegra = platform_get_drvdata(pdev);
@@ -4244,7 +4252,7 @@ static ssize_t hsic_power_show(struct device *dev,
 }
 
 static ssize_t hsic_power_store(struct device *dev,
-			struct kobj_attribute *attr, const char *buf, size_t n)
+		struct device_attribute *attr, const char *buf, size_t n)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_xhci_hcd *tegra = platform_get_drvdata(pdev);
@@ -4263,7 +4271,6 @@ static ssize_t hsic_power_store(struct device *dev,
 
 	for_each_enabled_hsic_pad(pad, tegra) {
 		port = hsic_pad_to_port(pad);
-
 		if (&tegra->hsic_power_attr[pad] == attr) {
 			hsic_pad_pupd_set(tegra, pad, PUPD_IDLE);
 			ret = fw_message_send(tegra, msg, BIT(port + 1));
@@ -4303,7 +4310,7 @@ static int hsic_power_create_file(struct tegra_xhci_hcd *tegra)
 		tegra->hsic_power_attr[p].show = hsic_power_show;
 		tegra->hsic_power_attr[p].store = hsic_power_store;
 		tegra->hsic_power_attr[p].attr.mode = (S_IRUGO | S_IWUSR);
-		sysfs_attr_init(&tegra->hsic_power_attr[p]);
+		sysfs_attr_init(&tegra->hsic_power_attr[p].attr);
 
 		err = device_create_file(dev, &tegra->hsic_power_attr[p]);
 		if (err) {
@@ -4317,9 +4324,9 @@ static int hsic_power_create_file(struct tegra_xhci_hcd *tegra)
 }
 
 #define DEV_RST	31
-static void xusb_tegra_program_registers()
+static void xusb_tegra_program_registers(void)
 {
-	struct clock *c = clk_get_sys(NULL, "xusb_padctl");
+	struct clk *c = clk_get_sys(NULL, "xusb_padctl");
 	u32 val;
 
 	/* Clear XUSB_PADCTL_RST D14 */
@@ -4340,7 +4347,6 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	unsigned pad;
 	u32 val;
 	int ret;
-	int irq;
 	const struct tegra_xusb_soc_config *soc_config;
 	const struct of_device_id *match;
 
@@ -4403,8 +4409,11 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 				tegra->pdata->pretend_connect_0;
 		tegra->bdata->lane_owner = tegra->pdata->lane_owner;
 	}
-	if (tegra->bdata->portmap == NULL)
+
+	if (!tegra->bdata->portmap) {
+		pr_info("%s doesn't have any port enabled\n", __func__);
 		return -ENODEV;
+	}
 
 	tegra->soc_config = soc_config;
 	tegra->ss_pwr_gated = false;
@@ -4581,9 +4590,6 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	int irq;
 	struct xhci_hcd	*xhci;
 	struct usb_hcd	*hcd;
-	unsigned port;
-	int ss_pads;
-
 
 	ret = load_firmware(tegra, false /* do reset ARU */);
 	if (ret < 0) {
