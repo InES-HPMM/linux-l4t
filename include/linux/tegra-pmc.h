@@ -111,7 +111,8 @@ extern void tegra_pmc_enable_thermal_trip(void);
 enum pwrdet_bit {
 	AUDIO_HV_PWR_DET = 18,
 	SDMMC1_PWR_DET = 12,
-	SDMMC3_PWR_DET = 13
+	SDMMC3_PWR_DET = 13,
+	GPIO_PWR_DET = 21
 };
 
 extern void pwr_detect_bit_write(u32 pwrdet_bit, bool enable);

@@ -30,7 +30,6 @@
 		pinctrl-0 = <&pinmux_default>;
 		pinctrl-1 = <&drive_default>;
 		pinctrl-2 = <&pinmux_unused_lowpower>;
-		pinctrl-3 = <&pwr_i2c_hs_drive>;
 
 		pinmux_default: common {
 			/* SFIO Pin Configuration */

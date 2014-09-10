@@ -75,6 +75,32 @@
 #define XUSB_PADCTL_UPHY_PLL_P0_CTL8_PLL0_RCAL_OVRD	(1 << 15)
 #define XUSB_PADCTL_UPHY_PLL_P0_CTL8_PLL0_RCAL_DONE	(1 << 31)
 
+#define XUSB_PADCTL_UPHY_PLL_S0_CTL1_0			0x860
+#define S0_CTL1_PLL0_IDDQ				(1 << 0)
+#define S0_CTL1_PLL0_SLEEP				(0x3 << 1)
+#define S0_CTL1_PLL0_ENABLE				(1 << 3)
+#define S0_CTL1_PLL0_PWR_OVRD				(1 << 4)
+#define S0_CTL1_PLL0_LOCKDET_STATUS			(1 << 15)
+#define S0_PLL0_FREQ_NDIV(x)				(((x) & 0xFF) << 20)
+
+#define XUSB_PADCTL_UPHY_PLL_S0_CTL2_0			(0x864)
+#define S0_CTL2_PLL0_CAL_EN				(1 << 0)
+#define S0_CTL2_PLL0_CAL_DONE				(1 << 1)
+#define S0_CTL2_PLL0_CAL_OVRD				(1 << 2)
+#define S0_CTL2_PLL0_CAL_CTRL(x)			(((x) & 0xFFFFFF) << 4)
+
+#define XUSB_PADCTL_UPHY_PLL_S0_CTL4_0			(0x86c)
+#define S0_PLL0_TXCLKREF_SEL(x)			(((x) & 0x3) << 12)
+
+#define XUSB_PADCTL_UPHY_PLL_S0_CTL5_0			(0x870)
+#define S0_CTL5_PLL0_DCO_CTRL(x)			(((x) & 0xFF) << 16)
+
+#define XUSB_PADCTL_UPHY_PLL_S0_CTL8_0			(0x87C)
+#define S0_CTL8_PLL0_RCAL_EN				(1 << 12)
+#define S0_CTL8_PLL0_RCAL_CLK_EN			(1 << 13)
+#define S0_CTL8_PLL0_RCAL_OVRD				(1 << 15)
+#define S0_CTL8_PLL0_RCAL_DONE				(1 << 31)
+
 #define XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2	0x464
 #define XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2_TX_IDDQ	(1 << 0)
 #define XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2_RX_IDDQ	(1 << 8)
@@ -241,6 +267,7 @@
 #define PAD_PORT_MASK(_p)	(0x3 << (_p * 2))
 #define PAD_PORT_SNPS(_p)	(0x0 << (_p * 2))
 #define PAD_PORT_XUSB(_p)	(0x1 << (_p * 2))
+#define XUSB_OTG_MODE		3
 #define XUSB_DEVICE_MODE	2
 #define XUSB_HOST_MODE		1
 
@@ -252,7 +279,9 @@
 /* XUSB_PADCTL_USB2_PAD_MUX_0 */
 #define BIAS_PAD_MASK	(0x3 << 18)
 #define BIAS_PAD_XUSB	(0x1 << 18)
-#define HSIC_PAD_TRK	(0x3 << 16)
+#define HSIC_PAD_TRK(x)	(((x) & 0x3) << 16)
+#define  HSIC_PAD_TRK_SNPS	(0)
+#define  HSIC_PAD_TRK_XUSB	(1)
 
 #define XUSB_PADCTL_USB3_PAD_MUX_0		0x28
 #define XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0	(1 << 1)
@@ -298,9 +327,9 @@
 #define TRK_DONE_RESET_TIMER		(0xA << 19)
 
 #define XUSB_PADCTL_HSIC_PAD_TRK_CTL_0		0x340
-#define HSIC_TRK_START_TIMER_MASK	(0x7F << 5)
-#define HSIC_TRK_DONE_RESET_TIMER_MASK	(0x7F << 12)
-#define HSIC_PD_TRK_MASK	(1 << 19)
+#define HSIC_TRK_START_TIMER(x)		(((x) & 0x7F) << 5)
+#define HSIC_TRK_DONE_RESET_TIMER(x)		(((x) & 0x7F) << 12)
+#define HSIC_PD_TRK(x)				(((x) & 0x1) << 19)
 
 #define XUSB_PADCTL_HSIC_PAD1_CTL_0_0	0x320
 #define PAD1_PD_TX_DATA0		(1 << 1)
@@ -350,6 +379,10 @@
 #define ID_SOURCE_SELECT(val)	((val & 0x3) << 16)
 #define USB2_VBUS_ID_0_VBUS_OVERRIDE    (1 << 14)
 #define IDDIG_CHNG_INTR_EN		(1 << 11)
+#define USB2_VBUS_ID_0_ID_SRC_OVERRIDE		(0x1 << 16)
+#define USB2_VBUS_ID_0_ID_OVERRIDE		(0xf << 18)
+#define USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT	(0x8 << 18)
+#define USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND	(0x0 << 18)
 
 #else
 #define XUSB_PADCTL_USB3_PAD_MUX_0		0x134
@@ -436,6 +469,7 @@
 #define SATA_PADPLL_RESET_SWCTL			(1 << 0)
 #define SATA_SEQ_ENABLE				(1 << 24)
 #define SATA_SEQ_START_STATE			(1 << 25)
+#define SATA_PADPLL_SLEEP_IDDQ			(1 << 13)
 
 #define CLK_RST_CONTROLLER_XUSBIO_PLL_CFG0_0		0x51C
 #define XUSBIO_PADPLL_RESET_SWCTL			(1 << 0)
@@ -470,5 +504,6 @@ int pex_usb_pad_pll_reset_assert(void);
 int pex_usb_pad_pll_reset_deassert(void);
 int sata_usb_pad_pll_reset_assert(void);
 int sata_usb_pad_pll_reset_deassert(void);
+int t210_sata_uphy_pll_init(bool sata_used_by_xusb);
 
 #endif

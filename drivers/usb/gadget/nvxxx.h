@@ -691,11 +691,18 @@ struct NV_UDC_S {
 	/* regulators */
 	struct regulator_bulk_data *supplies;
 	struct xudc_board_data bdata;
+	struct regulator *usb_vbus0_reg;
 
 	/* extcon */
 	bool vbus_detected;
+	bool id_grounded;
 	struct extcon_dev *vbus_extcon_dev;
 	struct notifier_block vbus_extcon_nb;
+	struct extcon_dev *id_extcon_dev;
+	struct notifier_block id_extcon_nb;
+
+	/* otg work, will be moved to OTG driver */
+	struct work_struct work;
 };
 
 void free_data_struct(struct NV_UDC_S *nvudc);
@@ -767,14 +774,28 @@ void nvudc_handle_event(struct NV_UDC_S *nvudc, struct EVENT_TRB_S *event);
 		}							\
 	} while (0)
 
-#define msg_dbg(dev, fmt, args...) \
-	{ dev_dbg(dev, "%s():%d: " fmt, __func__ , __LINE__, ## args); }
-#define msg_info(dev, fmt, args...) \
-	{ dev_info(dev, fmt, ## args); }
-#define msg_err(dev, fmt, args...) \
-	{ dev_err(dev, fmt, ## args); }
-#define msg_warn(dev, fmt, args...) \
-	{ dev_warn(dev, fmt, ## args); }
+extern int debug_level;
+#define LEVEL_DEBUG	4
+#define LEVEL_INFO	3
+#define LEVEL_WARNING	2
+#define LEVEL_ERROR	1
+
+#define msg_dbg(dev, fmt, args...) { \
+	if (debug_level >= LEVEL_DEBUG) \
+		dev_dbg(dev, "%s():%d: " fmt, __func__ , __LINE__, ## args); \
+	}
+#define msg_info(dev, fmt, args...) { \
+	if (debug_level > LEVEL_INFO) \
+		dev_info(dev, fmt, ## args); \
+	}
+#define msg_err(dev, fmt, args...) { \
+	if (debug_level > LEVEL_ERROR) \
+		dev_err(dev, fmt, ## args); \
+	}
+#define msg_warn(dev, fmt, args...) { \
+	if (debug_level > LEVEL_WARNING) \
+		dev_warn(dev, fmt, ## args); \
+	}
 
 #define msg_entry(dev) msg_dbg(dev, "enter\n")
 #define msg_exit(dev) msg_dbg(dev, "exit\n")

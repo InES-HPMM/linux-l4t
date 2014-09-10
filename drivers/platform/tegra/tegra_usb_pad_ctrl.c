@@ -29,14 +29,14 @@
 #include "../../../arch/arm/mach-tegra/iomap.h"
 
 static DEFINE_SPINLOCK(utmip_pad_lock);
-static DEFINE_SPINLOCK(hsic_pad_lock);
 static DEFINE_SPINLOCK(xusb_padctl_lock);
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 static DEFINE_SPINLOCK(pcie_pad_lock);
 static DEFINE_SPINLOCK(sata_pad_lock);
+static DEFINE_SPINLOCK(hsic_pad_lock);
+static int hsic_pad_count;
 #endif
 static int utmip_pad_count;
-static int hsic_pad_count;
 static struct clk *utmi_pad_clk;
 
 void tegra_xhci_release_otg_port(bool release)
@@ -552,26 +552,30 @@ EXPORT_SYMBOL_GPL(utmi_phy_pad_disable);
 
 int hsic_trk_enable(void)
 {
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
 	unsigned long flags;
 
 	/* TODO : need to enable HSIC_TRK clk */
 	spin_lock_irqsave(&hsic_pad_lock, flags);
+
 	hsic_pad_count++;
-	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0
-			, HSIC_PAD_TRK , (0x1 << 16));
-	tegra_usb_pad_reg_update(XUSB_PADCTL_HSIC_PAD_TRK_CTL_0
-			, HSIC_TRK_START_TIMER_MASK , (0x1e << 5));
-	tegra_usb_pad_reg_update(XUSB_PADCTL_HSIC_PAD_TRK_CTL_0
-			, HSIC_TRK_DONE_RESET_TIMER_MASK , (0xa << 12));
-	tegra_usb_pad_reg_update(XUSB_PADCTL_HSIC_PAD1_CTL_0_0
-				, PAD1_PD_TX_MASK , ~(PAD1_PD_TX_MASK));
+	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0,
+		HSIC_PAD_TRK(~0) , HSIC_PAD_TRK(HSIC_PAD_TRK_XUSB));
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_HSIC_PAD_TRK_CTL_0,
+		HSIC_TRK_START_TIMER(~0), HSIC_TRK_START_TIMER(0x1e));
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_HSIC_PAD_TRK_CTL_0,
+		HSIC_TRK_DONE_RESET_TIMER(~0) , HSIC_TRK_DONE_RESET_TIMER(0xa));
 
 	udelay(1);
-	tegra_usb_pad_reg_update(XUSB_PADCTL_HSIC_PAD_TRK_CTL_0
-				, HSIC_PD_TRK_MASK , (0 << 19));
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_HSIC_PAD_TRK_CTL_0,
+		HSIC_PD_TRK(~0), HSIC_PD_TRK(0));
 
 	spin_unlock_irqrestore(&hsic_pad_lock, flags);
 	/* TODO : need to disable HSIC_TRK clk */
+#endif
 	return 0;
 }
 EXPORT_SYMBOL_GPL(hsic_trk_enable);
@@ -861,6 +865,7 @@ static void usb3_release_padmux_state_latch(void)
 	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_1);
 
 }
+static int tegra_xusb_padctl_phy_enable(void);
 /*
  * Have below lane define used for each port
  * PCIE_LANEP6 0x6
@@ -875,7 +880,7 @@ static void usb3_release_padmux_state_latch(void)
  */
 int usb3_phy_pad_enable(u32 lane_owner)
 {
-	unsigned long val, flags;
+	unsigned long flags;
 	int pad;
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 	static bool ss_pad_phy_inited;
@@ -888,42 +893,10 @@ int usb3_phy_pad_enable(u32 lane_owner)
 		return 0;
 	}
 	/* Program SATA pad phy */
-	if ((lane_owner & 0xf000) == SATA_LANE) {
-		val = readl(pad_base + XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
-		val &= ~(XUSB_PADCTL_UPHY_PLL_S0_CTL1_MDIV_MASK |
-				XUSB_PADCTL_UPHY_PLL_S0_CTL1_NDIV_MASK);
-		val |= (XUSB_PADCTL_UPHY_PLL_S0_CTL1_PLL0_FREQ_MDIV |
-				XUSB_PADCTL_UPHY_PLL_S0_CTL1_PLL0_FREQ_NDIV);
-		writel(val, pad_base + XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+	if ((lane_owner & 0xf000) == SATA_LANE)
+		t210_sata_uphy_pll_init(true);
 
-		val = readl(pad_base + XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
-		val &= ~XUSB_PADCTL_UPHY_PLL_S0_CTL2_CAL_CTRL_MASK;
-		val |= XUSB_PADCTL_UPHY_PLL_S0_CTL2_PLL0_CAL_CTRL;
-		writel(val, pad_base + XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
-
-		val = readl(pad_base + XUSB_PADCTL_UPHY_PLL_S0_CTL_4_0);
-		val &= ~(XUSB_PADCTL_UPHY_PLL_S0_CTL4_TXCLKREF_SEL_MASK |
-				XUSB_PADCTL_UPHY_PLL_S0_CTL4_TXCLKREF_EN_MASK);
-		val |= (XUSB_PADCTL_UPHY_PLL_S0_CTL4_PLL0_TXCLKREF_SEL |
-				XUSB_PADCTL_UPHY_PLL_S0_CTL4_PLL0_TXCLKREF_EN);
-		writel(val, pad_base + XUSB_PADCTL_UPHY_PLL_S0_CTL_4_0);
-
-		val = readl(pad_base + XUSB_PADCTL_UPHY_PLL_S0_CTL_5_0);
-		val &= ~XUSB_PADCTL_UPHY_PLL_S0_CTL5_DCO_CTRL_MASK;
-		val |= XUSB_PADCTL_UPHY_PLL_S0_CTL5_PLL0_DCO_CTRL;
-		writel(val, pad_base + XUSB_PADCTL_UPHY_PLL_S0_CTL_5_0);
-	}
-
-	/* Program PCIe pad phy */
-	val = readl(pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL2_0);
-	val &= ~XUSB_PADCTL_UPHY_PLL_P0_CTL2_CAL_CTRL_MASK;
-	val |= XUSB_PADCTL_UPHY_PLL_P0_CTL2_PLL0_CAL_CTRL;
-	writel(val, pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL2_0);
-
-	val = readl(pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL5_0);
-	val &= ~XUSB_PADCTL_UPHY_PLL_P0_CTL5_DCO_CTRL_MASK;
-	val |= XUSB_PADCTL_UPHY_PLL_P0_CTL5_PLL0_DCO_CTRL;
-	writel(val, pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL5_0);
+	tegra_xusb_padctl_phy_enable();
 
 	/* Check PCIe/SATA pad phy programmed */
 	pr_debug("[%s] PCIe pad/ SATA pad phy parameter\n", __func__);
@@ -939,7 +912,6 @@ int usb3_phy_pad_enable(u32 lane_owner)
 			, readl(pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL2_0));
 	pr_debug("XUSB_PADCTL_UPHY_PLL_P0_CTL5_0 = 0x%x\n"
 			, readl(pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL5_0));
-
 
 	/* Pad mux assign */
 	tegra_xusb_uphy_misc(true);
@@ -1130,6 +1102,136 @@ void tegra_usb_pad_reg_write(u32 reg_offset, u32 val)
 EXPORT_SYMBOL_GPL(tegra_usb_pad_reg_write);
 
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
+
+int t210_sata_uphy_pll_init(bool sata_used_by_xusb)
+{
+	u32 val;
+	int calib_timeout;
+	u8 freq_ndiv;
+	u8 txclkref_sel;
+	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL2_0,
+		S0_CTL2_PLL0_CAL_CTRL(~0),
+		S0_CTL2_PLL0_CAL_CTRL(0x136));
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL5_0,
+		S0_CTL5_PLL0_DCO_CTRL(~0),
+		S0_CTL5_PLL0_DCO_CTRL(0x2a));
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL1_0,
+		S0_CTL1_PLL0_PWR_OVRD, S0_CTL1_PLL0_PWR_OVRD);
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL2_0,
+		S0_CTL2_PLL0_CAL_OVRD, S0_CTL2_PLL0_CAL_OVRD);
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL8_0,
+		S0_CTL8_PLL0_RCAL_OVRD, S0_CTL8_PLL0_RCAL_OVRD);
+
+	pr_info("%s %s uses SATA Lane\n", __func__,
+			sata_used_by_xusb ? "XUSB" : "SATA");
+
+	if (sata_used_by_xusb) {
+		txclkref_sel = 0x2;
+		freq_ndiv = 0x19;
+	} else {
+		txclkref_sel = 0x0;
+		freq_ndiv = 0x1e;
+	}
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL4_0,
+		S0_PLL0_TXCLKREF_SEL(~0), S0_PLL0_TXCLKREF_SEL(txclkref_sel));
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL1_0,
+		S0_PLL0_FREQ_NDIV(~0), S0_PLL0_FREQ_NDIV(freq_ndiv));
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL1_0,
+		(S0_CTL1_PLL0_IDDQ | S0_CTL1_PLL0_SLEEP), 0);
+
+	udelay(1);
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL2_0,
+		S0_CTL2_PLL0_CAL_EN, S0_CTL2_PLL0_CAL_EN);
+
+	calib_timeout = 20; /* 200 us in total */
+	do {
+		val = tegra_usb_pad_reg_read(XUSB_PADCTL_UPHY_PLL_S0_CTL2_0);
+		udelay(10);
+		if (--calib_timeout == 0) {
+			pr_err("%s: timeout for CAL_DONE set\n", __func__);
+			return -EBUSY;
+		}
+	} while (!(val & S0_CTL2_PLL0_CAL_DONE));
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL2_0,
+		S0_CTL2_PLL0_CAL_EN, 0);
+
+	calib_timeout = 20; /* 200 us in total */
+	do {
+		val = tegra_usb_pad_reg_read(XUSB_PADCTL_UPHY_PLL_S0_CTL2_0);
+		udelay(10);
+		if (--calib_timeout == 0) {
+			pr_err("%s: timeout for CAL_DONE clear\n", __func__);
+			return -EBUSY;
+		}
+	} while (val & S0_CTL2_PLL0_CAL_DONE);
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL8_0,
+		S0_CTL8_PLL0_RCAL_EN, S0_CTL8_PLL0_RCAL_EN);
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL8_0,
+		S0_CTL8_PLL0_RCAL_CLK_EN, S0_CTL8_PLL0_RCAL_CLK_EN);
+
+	calib_timeout = 20; /* 200 us in total */
+	do {
+		val = tegra_usb_pad_reg_read(XUSB_PADCTL_UPHY_PLL_S0_CTL8_0);
+		udelay(10);
+		if (--calib_timeout == 0) {
+			pr_err("%s: timeout for RCAL_DONE set\n", __func__);
+			return -EBUSY;
+		}
+	} while (!(val & S0_CTL8_PLL0_RCAL_DONE));
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL8_0,
+		S0_CTL8_PLL0_RCAL_EN, 0);
+
+	calib_timeout = 20; /* 200 us in total */
+	do {
+		val = tegra_usb_pad_reg_read(XUSB_PADCTL_UPHY_PLL_S0_CTL8_0);
+		udelay(10);
+		if (--calib_timeout == 0) {
+			pr_err("%s: timeout for RCAL_DONE clear\n", __func__);
+			return -EBUSY;
+		}
+	} while (val & S0_CTL8_PLL0_RCAL_DONE);
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL8_0,
+		S0_CTL8_PLL0_RCAL_CLK_EN, 0);
+
+	/* Enable SATA PADPLL HW power sequencer */
+	val = readl(clk_base + CLK_RST_CONTROLLER_SATA_PLL_CFG0_0);
+	val &= ~SATA_PADPLL_RESET_SWCTL;
+	val |= SATA_PADPLL_USE_LOCKDET | SATA_PADPLL_SLEEP_IDDQ;
+	writel(val, clk_base + CLK_RST_CONTROLLER_SATA_PLL_CFG0_0);
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL1_0,
+		S0_CTL1_PLL0_PWR_OVRD, 0);
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL2_0,
+		S0_CTL2_PLL0_CAL_OVRD, 0);
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL8_0,
+		S0_CTL8_PLL0_RCAL_OVRD, 0);
+
+	udelay(1);
+	val = readl(clk_base + CLK_RST_CONTROLLER_SATA_PLL_CFG0_0);
+	val |= SATA_SEQ_ENABLE;
+	writel(val, clk_base + CLK_RST_CONTROLLER_SATA_PLL_CFG0_0);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(t210_sata_uphy_pll_init);
+
 static int tegra_xusb_padctl_phy_enable(void)
 {
 	unsigned long val, timeout;

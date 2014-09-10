@@ -193,6 +193,10 @@
 
 #define GET_SS_PORTMAP(map, p)		(((map) >> 4*(p)) & 0xF)
 
+#define reg_dump(_dev, _base, _reg)					\
+	dev_dbg(_dev, "%s: %s @%x = 0x%x\n", __func__, #_reg,		\
+		_reg, readl(_base + _reg))
+
 /*
  * FIXME: looks like no any .c requires below structure types
  * revisit and decide whether we can delete or not
@@ -203,6 +207,12 @@ struct usb2_pad_port_map {
 	u32 ulpi_port;
 	u32 otg_port1;
 	u32 otg_port0;
+};
+
+enum hsic_pad_pupd {
+	PUPD_DISABLE = 0,
+	PUPD_IDLE,
+	PUPD_RESET
 };
 
 struct usb2_otg_caps {
@@ -442,7 +452,7 @@ static inline void padctl_writel(struct tegra_xhci_hcd *tegra, u32 val, u32 reg)
 	else if (__p == 1)				\
 		_port = 6;				\
 	_port; })
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #define port_to_hsic_pad(_port) ({			\
 	int _pad = -1;					\
 	int __p = _port;				\
@@ -459,6 +469,24 @@ static inline void padctl_writel(struct tegra_xhci_hcd *tegra, u32 val, u32 reg)
 		_port = 6;				\
 	else if (__p == 1)				\
 		_port = 7;				\
+	_port; })
+#elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
+#define port_to_hsic_pad(_port) ({			\
+	int _pad = -1;					\
+	int __p = _port;				\
+	if (__p == 8)					\
+		_pad = 0;				\
+	else if (__p == 9)				\
+		_pad = 1;				\
+	_pad; })
+
+#define hsic_pad_to_port(_pad) ({			\
+	int _port = -1;					\
+	int __p = _pad;					\
+	if (__p == 0)					\
+		_port = 8;				\
+	else if (__p == 1)				\
+		_port = 9;				\
 	_port; })
 #endif
 #endif

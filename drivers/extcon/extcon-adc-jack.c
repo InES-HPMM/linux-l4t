@@ -25,6 +25,7 @@
 #include <linux/extcon/extcon-adc-jack.h>
 #include <linux/extcon.h>
 #include <linux/of.h>
+#include <linux/of_irq.h>
 
 /**
  * struct adc_jack_data - internal data for adc_jack device driver
@@ -83,6 +84,7 @@ static void adc_jack_handler(struct work_struct *work)
 	/* if no def has met, it means state = 0 (no cables attached) */
 
 	extcon_set_state(&data->edev, state);
+	dev_info(&data->edev.dev, "Cable State 0x%02X\n", state);
 }
 
 static irqreturn_t adc_jack_irq_thread(int irq, void *_data)
@@ -114,10 +116,10 @@ static struct adc_jack_pdata *of_get_platform_data(
 	if (!pdata->name)
 		pdata->name = np->name;
 
-	of_property_read_string_index(np, "io-channel-names", 0,
+	ret = of_property_read_string_index(np, "io-channel-names", 0,
 				&pdata->consumer_channel);
-	if (!pdata->name)
-		pdata->name = np->name;
+	if (ret < 0)
+		return ERR_PTR(ret);
 
 	ret = of_property_read_u32(np, "extcon-adc-jack,irq-flags", &pval);
 	if (!ret)
@@ -150,7 +152,7 @@ static struct adc_jack_pdata *of_get_platform_data(
 					i * 3 + 2, &max_adc);
 
 		pdata->adc_conditions[i].state = state;
-		pdata->adc_conditions[i].min_adc= min_adc;
+		pdata->adc_conditions[i].min_adc = min_adc;
 		pdata->adc_conditions[i].max_adc = max_adc;
 	};
 
@@ -243,7 +245,9 @@ static int adc_jack_probe(struct platform_device *pdev)
 		goto out;
 
 	data->irq = platform_get_irq(pdev, 0);
-	if (!data->irq) {
+	if (data->irq < 0)
+		data->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
+	if (data->irq < 0) {
 		dev_err(&pdev->dev, "platform_get_irq failed\n");
 		err = -ENODEV;
 		goto err_irq;
@@ -320,17 +324,7 @@ static struct platform_driver adc_jack_driver = {
 	},
 };
 
-static int __init adc_jack_driver_init(void)
-{
-	return platform_driver_register(&adc_jack_driver);
-}
-subsys_initcall_sync(adc_jack_driver_init);
-
-static void __exit adc_jack_driver_exit(void)
-{
-	platform_driver_unregister(&adc_jack_driver);
-}
-module_exit(adc_jack_driver_exit);
+module_platform_driver(adc_jack_driver);
 
 MODULE_AUTHOR("MyungJoo Ham <myungjoo.ham@samsung.com>");
 MODULE_DESCRIPTION("ADC Jack extcon driver");

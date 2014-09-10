@@ -118,13 +118,13 @@ struct tegra_xusb_padctl_regs {
 	u16 elpg_program_0;
 	u16 elpg_program_1;
 	u16 uphy_cfg_stb_0;
-	u16 usb2_bchrg_otgpadX_ctlY_0[3][2];
+	u16 usb2_bchrg_otgpadX_ctlY_0[4][2];
 	u16 usb2_bchrg_bias_pad_0;
 	u16 usb2_bchrg_tdcd_dbnc_timer_0;
 	u16 iophy_pll_p0_ctlY_0[4];
 	u16 iophy_usb3_padX_ctlY_0[2][4];
 	u16 iophy_misc_pad_pX_ctlY_0[5][6];
-	u16 usb2_otg_padX_ctlY_0[3][2];
+	u16 usb2_otg_padX_ctlY_0[4][2];
 	u16 usb2_bias_pad_ctlY_0[2];
 	u16 usb2_hsic_padX_ctlY_0[2][3];
 	u16 ulpi_link_trim_ctl0;
