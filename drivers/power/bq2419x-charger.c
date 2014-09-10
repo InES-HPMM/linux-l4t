@@ -790,11 +790,11 @@ static int bq2419x_handle_safety_timer_expire(struct bq2419x_chip *bq2419x)
 static int bq2419x_extcon_cable_update(struct bq2419x_chip *bq2419x,
 							unsigned int val)
 {
-	if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_USB) {
+	if ((val & BQ2419x_VBUS_PG_STAT) == BQ2419x_PG_VBUS_USB) {
 		extcon_set_cable_state(&bq2419x->edev,
 						bq2419x_extcon_cable[0], true);
 		dev_info(bq2419x->dev, "USB is connected\n");
-	} else if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_UNKNOWN) {
+	} else if ((val & BQ2419x_VBUS_PG_STAT) == BQ2419x_VBUS_UNKNOWN) {
 		extcon_set_cable_state(&bq2419x->edev,
 						bq2419x_extcon_cable[0], false);
 		dev_info(bq2419x->dev, "USB is disconnected\n");
