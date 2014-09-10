@@ -443,8 +443,8 @@ static struct throttle_table
 		"ERROR: throttle_table DT not supported for this ARCH\n");
 	return NULL;
 #endif
-	pr_info("%s: NUM_OF_CAP_FREQS_DT is %d.\n", __func__, NUM_OF_CAP_FREQS_DT);
-	pr_info("%s: NUM_OF_CAP_FREQS is %d.\n", __func__, NUM_OF_CAP_FREQS);
+	pr_debug("%s: NUM_OF_CAP_FREQS_DT is %d.\n", __func__, NUM_OF_CAP_FREQS_DT);
+	pr_debug("%s: NUM_OF_CAP_FREQS is %d.\n", __func__, NUM_OF_CAP_FREQS);
 
 	throt_tab = devm_kzalloc(dev,
 			sizeof(struct throttle_table)*num_states, GFP_KERNEL);
@@ -465,7 +465,7 @@ static struct throttle_table
 	}
 
 	for (i = 0; i < num_states; ++i) {
-		for (j = 0; j < NUM_OF_CAP_FREQS_DT; ++j)
+		for (j = 0; j < NUM_OF_CAP_FREQS; ++j)
 			throt_tab[i].cap_freqs[j] = val[count++];
 		for (; j < NUM_OF_CAP_FREQS_DT; j++)
 			count++; /* eat the rest of DT entries */
