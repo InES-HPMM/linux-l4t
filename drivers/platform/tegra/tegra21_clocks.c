@@ -1527,7 +1527,13 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	 * in advanvce before the switch happens. If target p_source is DFLL it
 	 * is switched here to open loop mode.
 	 */
-	tegra_clk_prepare_enable(p);
+	ret = tegra_clk_prepare_enable(p);
+	if (ret) {
+		pr_err("%s: Failed to enable parent clock %s\n",
+			__func__, p->name);
+		goto abort;
+	}
+
 	if (c_source == dfll)
 		tegra_dvfs_dfll_mode_clear(c->parent->dvfs, rate);
 
