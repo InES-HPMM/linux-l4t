@@ -68,21 +68,6 @@
 static const int MAX_HIGH_TEMP = 127000;
 static const int MIN_LOW_TEMP = -127000;
 
-/* Min temp granularity specified as X in 2^X.
- * -1: Hi precision option: 2^-1 = 0.5C (T12x onwards)
- *  0: Lo precision option: 2^0  = 1.0C
- */
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
-static const int precision = -1; /* Use high precision on T12x */
-#else
-static const int precision; /* default 0 -> low precision */
-#endif
-
-#define LOWER_PRECISION_FOR_CONV(val)	((!precision) ? ((val)*2) : (val))
-#define LOWER_PRECISION_FOR_TEMP(val)	((!precision) ? ((val)/2) : (val))
-#define PRECISION_IS_LOWER()		((!precision))
-#define PRECISION_TO_STR()		((!precision) ? "Lo" : "Hi")
-
 #define TS_TSENSE_REGS_SIZE		0x20
 #define TS_TSENSE_REG_OFFSET(reg, ts)	((reg) + ((ts) * TS_TSENSE_REGS_SIZE))
 
@@ -465,8 +450,6 @@ static const int precision; /* default 0 -> low precision */
 #define REG_GET(r, _name)	(REG_GET_BIT(r, _name) >> _name##_SHIFT)
 #define MAKE_SIGNED32(val, nb)	((s32)(val) << (32 - (nb)) >> (32 - (nb)))
 
-#define IS_T11X		(tegra_chip_id == TEGRA_CHIPID_TEGRA11)
-#define IS_T14X		(tegra_chip_id == TEGRA_CHIPID_TEGRA14)
 #define IS_T12X		(tegra_chip_id == TEGRA_CHIPID_TEGRA12)
 #define IS_T13X		(tegra_chip_id == TEGRA_CHIPID_TEGRA13)
 
@@ -576,7 +559,7 @@ static long temp_convert(int cap, int a, int b)
 	cap *= a;
 	cap >>= 10;
 	cap += (b << 3);
-	cap *= LOWER_PRECISION_FOR_CONV(500);
+	cap *= 500;
 	cap /= 8;
 	return cap;
 }
@@ -602,16 +585,16 @@ static u32 temp_translate_rev(long temp)
 	u32 lsb = 0;
 	u32 abs = 0;
 	u32 reg = 0;
+
 	sign = (temp > 0 ? 1 : -1);
 	low_bit = (sign > 0 ? 0 : 1);
 	temp *= sign;
-	/* high precision only */
-	if (!PRECISION_IS_LOWER()) {
-		lsb = ((temp % 1000) > 0) ? 1 : 0;
-		abs = (temp - 500 * lsb) / 1000;
-		abs &= 0xff;
-		reg = ((abs << 8) | (lsb << 7) | low_bit);
-	}
+
+	lsb = ((temp % 1000) > 0) ? 1 : 0;
+	abs = (temp - 500 * lsb) / 1000;
+	abs &= 0xff;
+	reg = ((abs << 8) | (lsb << 7) | low_bit);
+
 	return reg;
 }
 
@@ -742,8 +725,7 @@ static long temp_translate(int readback)
 	int lsb = (readback & 0x80) >> 7;
 	int sign = readback & 0x01 ? -1 : 1;
 
-	return (abs * LOWER_PRECISION_FOR_CONV(1000) +
-		lsb * LOWER_PRECISION_FOR_CONV(500)) * sign;
+	return (abs * 1000 + lsb * 500) * sign;
 }
 
 /**
@@ -832,7 +814,7 @@ static int soctherm_read_temp(u8 index, unsigned long *temp)
  */
 static int soctherm_has_mn_cpu_pskip_status(void)
 {
-	return IS_T11X || IS_T14X || IS_T12X;
+	return IS_T12X;
 }
 
 /**
@@ -885,22 +867,6 @@ int soctherm_get_mn_cpu_pskip_status(u8 *enabled, u8 *sw_override, u16 *m,
 }
 
 /**
- * soctherm_has_gpu_pskip_status() - is GPU pskip state readable via SOC_THERM?
- *
- * If the currently-running SoC reports the GPU thermal throttling
- * pulse skipper status via SOC_THERM registers, then return true;
- * otherwise, return false.  XXX Temporary - should be replaced by
- * autodetection or DT properties/compatible flags.
- *
- * Return: true if GPU thermal pulse-skipper status is readable via
- * SOC_THERM, or false if not.
- */
-static int soctherm_has_gpu_pskip_status(void)
-{
-	return IS_T11X || IS_T14X;
-}
-
-/**
  * soctherm_get_gpu_pskip_status() - read state of the GPU thermal pulse skipper
  * @enabled: pointer to a u8: return 0 if the skipper is disabled, 1 if enabled
  * @sw_override: ptr to a u8: return 0 if sw override is disabled, 1 if enabled
@@ -924,14 +890,6 @@ int soctherm_get_gpu_pskip_status(u8 *enabled, u8 *sw_override, u16 *m, u16 *n)
 
 	if (!enabled || !m || !n || !sw_override)
 		return -EINVAL;
-
-	/*
-	 * XXX should be replaced with an earlier DT property read to
-	 * determine the GPU type (or GPU->SOC_THERM integration) in
-	 * use
-	 */
-	if (!soctherm_has_gpu_pskip_status())
-		return -ENOTSUPP;
 
 	v = soctherm_readl(GPU_PSKIP_STATUS);
 	if (REG_GET(v, XPU_PSKIP_STATUS_ENABLED)) {
@@ -958,15 +916,15 @@ int soctherm_get_gpu_pskip_status(u8 *enabled, u8 *sw_override, u16 *m, u16 *n)
  */
 static int enforce_temp_range(long trip_temp)
 {
-	long temp = LOWER_PRECISION_FOR_TEMP(trip_temp);
+	long temp = trip_temp;
 
 	if (temp < MIN_LOW_TEMP) {
 		pr_info("soctherm: trip_point temp %ld forced to %d\n",
-			trip_temp, LOWER_PRECISION_FOR_CONV(MIN_LOW_TEMP));
+			trip_temp, MIN_LOW_TEMP);
 		temp = MIN_LOW_TEMP;
 	} else if (temp > MAX_HIGH_TEMP) {
 		pr_info("soctherm: trip_point temp %ld forced to %d\n",
-			trip_temp, LOWER_PRECISION_FOR_CONV(MAX_HIGH_TEMP));
+			trip_temp, MAX_HIGH_TEMP);
 		temp = MAX_HIGH_TEMP;
 	}
 
@@ -995,8 +953,7 @@ static void prog_hw_shutdown(long crit_temp, int therm)
 	long temp;
 
 	/* Add 1'C to HW shutdown threshold so SW can try to shutdown first */
-	temp = crit_temp + LOWER_PRECISION_FOR_CONV(1000);
-
+	temp = crit_temp + 1000;
 	temp = enforce_temp_range(temp) / 1000;
 
 	r = soctherm_readl(THERMTRIP);
@@ -1074,8 +1031,8 @@ static void soctherm_set_limits(enum soctherm_therm_id therm,
 	u32 r, reg_off;
 	int rlo_limit, rhi_limit;
 
-	rlo_limit = LOWER_PRECISION_FOR_TEMP(lo_limit) / 1000;
-	rhi_limit = LOWER_PRECISION_FOR_TEMP(hi_limit) / 1000;
+	rlo_limit = lo_limit / 1000;
+	rhi_limit = hi_limit / 1000;
 
 	reg_off = TS_THERM_REG_OFFSET(CTL_LVL0_CPU0, 0, therm);
 
@@ -1288,14 +1245,6 @@ static int soctherm_get_gpu_throt_state(u16 dividend, u16 divisor,
 	if (!cur_state || dividend == 0 || divisor == 0 ||
 	    dividend > 256 || divisor > 256)
 		return -EINVAL;
-
-	/*
-	 * XXX should be replaced with an earlier DT property read to
-	 * determine the GPU type (or GPU->SOC_THERM integration) in
-	 * use
-	 */
-	if (!soctherm_has_gpu_pskip_status())
-		return -ENOTSUPP;
 
 	r = soctherm_get_gpu_pskip_status(&enabled, &sw_override, &m, &n);
 	if (r) {
@@ -1594,7 +1543,7 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
 	trip_state = &therm->trips[trip];
 	trip_state->trip_temp = enforce_temp_range(temp);
 
-	rem = trip_state->trip_temp % LOWER_PRECISION_FOR_CONV(1000);
+	rem = trip_state->trip_temp % 1000;
 	if (rem) {
 		pr_warn("soctherm: zone%d/trip_point%d %ld mC rounded down\n",
 			thz->id, trip, trip_state->trip_temp);
@@ -2284,41 +2233,6 @@ static bool throttlectl_cpu_level_select(enum soctherm_throttle_id throt)
 }
 
 /**
- * throttlectl_gpu_mn() - programs GPU pulse skippers' configuration
- * @throt	soctherm_throttle_id describing the level of throttling
- *
- * Pulse skippers are used to throttle clock frequencies.
- * This function programs the pulse skippers based on @throt and platform data.
- *
- * Return: boolean true if HW was programmed
- */
-static bool throttlectl_gpu_mn(enum soctherm_throttle_id throt)
-{
-	u32 r;
-	struct soctherm_throttle *data = &pp->throttle[throt];
-	struct soctherm_throttle_dev *dev = &data->devs[THROTTLE_DEV_GPU];
-
-	if (!dev->enable)
-		return false;
-
-	if (dev->depth)
-		THROT_DEPTH(dev, dev->depth);
-
-	r = soctherm_readl(THROT_PSKIP_CTRL(throt, THROTTLE_DEV_GPU));
-	r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, 1);
-	r = REG_SET(r, THROT_PSKIP_CTRL_DIVIDEND, dev->dividend);
-	r = REG_SET(r, THROT_PSKIP_CTRL_DIVISOR, dev->divisor);
-	soctherm_writel(r, THROT_PSKIP_CTRL(throt, THROTTLE_DEV_GPU));
-
-	r = soctherm_readl(THROT_PSKIP_RAMP(throt, THROTTLE_DEV_GPU));
-	r = REG_SET(r, THROT_PSKIP_RAMP_DURATION, dev->duration);
-	r = REG_SET(r, THROT_PSKIP_RAMP_STEP, dev->step);
-	soctherm_writel(r, THROT_PSKIP_RAMP(throt, THROTTLE_DEV_GPU));
-
-	return true;
-}
-
-/**
  * throttlectl_gpu_level_cfg() - programs GK20a NV_THERM level config
  * @throt	soctherm_throttle_id describing the level of throttling
  *
@@ -2392,8 +2306,7 @@ static void soctherm_throttle_program(enum soctherm_throttle_id throt)
 
 	throt_enable = (IS_T13X) ?
 		throttlectl_cpu_level_select(throt) : throttlectl_cpu_mn(throt);
-	throt_enable |= (IS_T12X || IS_T13X) ?
-		throttlectl_gpu_level_select(throt) : throttlectl_gpu_mn(throt);
+	throt_enable |= throttlectl_gpu_level_select(throt);
 
 	r = REG_SET(0, THROT_PRIORITY_LITE_PRIO, data->priority);
 	soctherm_writel(r, THROT_PRIORITY_CTRL(throt));
@@ -2600,12 +2513,7 @@ static int soctherm_fuse_read_calib_base(void)
 	}
 
 	nominal_calib_cp = 25;
-	if (IS_T11X)
-		nominal_calib_ft = 90;
-	else if (IS_T14X || IS_T12X || IS_T13X)
-		nominal_calib_ft = 105;
-	else
-		BUG();
+	nominal_calib_ft = 105;
 
 	/* use HI precision to calculate: use fuse_temp in 0.5C */
 	actual_temp_cp = 2 * nominal_calib_cp + calib_cp;
@@ -2667,8 +2575,6 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 	therm_b = div64_s64_precise(((s64)therm_b * sp->fuse_war[sensor].a) +
 				    sp->fuse_war[sensor].b,
 				    (s64)1000000LL);
-	therm_a = LOWER_PRECISION_FOR_TEMP(therm_a);
-	therm_b = LOWER_PRECISION_FOR_TEMP(therm_b);
 
 	sensor2therm_a[sensor] = (s16)therm_a;
 	sensor2therm_b[sensor] = (s16)therm_b;
@@ -2877,8 +2783,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 			continue;
 
 		for (j = 0; j < therm->num_trips; j++) {
-			rem = therm->trips[j].trip_temp %
-				LOWER_PRECISION_FOR_CONV(1000);
+			rem = therm->trips[j].trip_temp % 1000;
 			if (rem) {
 				pr_warn(
 			"soctherm: zone%d/trip_point%d %ld mC rounded down\n",
@@ -2905,11 +2810,9 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 	}
 
 	/* configure low, med and heavy levels for GK20a NV_THERM */
-	if (IS_T12X || IS_T13X) {
-		throttlectl_gpu_level_cfg(THROT_LEVEL_LOW);
-		throttlectl_gpu_level_cfg(THROT_LEVEL_MED);
-		throttlectl_gpu_level_cfg(THROT_LEVEL_HVY);
-	}
+	throttlectl_gpu_level_cfg(THROT_LEVEL_LOW);
+	throttlectl_gpu_level_cfg(THROT_LEVEL_MED);
+	throttlectl_gpu_level_cfg(THROT_LEVEL_HVY);
 
 	/* Thermal HW throttle programming */
 	for (i = 0; i < THROTTLE_SIZE; i++) {
@@ -3420,12 +3323,10 @@ void tegra_soctherm_adjust_cpu_zone(bool high_voltage_range)
 
 void tegra_soctherm_adjust_core_zone(bool high_voltage_range)
 {
-	if ((IS_T12X || IS_T13X)) {
-		if (!vdd_core_low_voltage != high_voltage_range) {
-			vdd_core_low_voltage = !high_voltage_range;
-			soctherm_adjust_zone(THERM_GPU);
-			soctherm_adjust_zone(THERM_MEM);
-		}
+	if (!vdd_core_low_voltage != high_voltage_range) {
+		vdd_core_low_voltage = !high_voltage_range;
+		soctherm_adjust_zone(THERM_GPU);
+		soctherm_adjust_zone(THERM_MEM);
 	}
 }
 
@@ -3451,8 +3352,8 @@ static int regs_show(struct seq_file *s, void *data)
 	uint m, n, q;
 	char *depth;
 
-	seq_printf(s, "-----TSENSE (precision %s  fuse %d  convert %s)-----\n",
-		   PRECISION_TO_STR(), tegra_fuse_calib_base_get_cp(NULL, NULL),
+	seq_printf(s, "-----TSENSE (fuse %d  convert %s)-----\n",
+		   tegra_fuse_calib_base_get_cp(NULL, NULL),
 		   read_hw_temp ? "HW" : "SW");
 
 	if (soctherm_suspended) {
@@ -3532,10 +3433,9 @@ static int regs_show(struct seq_file *s, void *data)
 			r = soctherm_readl(TS_THERM_REG_OFFSET(CTL_LVL0_CPU0,
 								level, i));
 			state = REG_GET(r, CTL_LVL0_CPU0_UP_THRESH);
-			seq_printf(s, "   %d: Up/Dn(%d/", level,
-				   LOWER_PRECISION_FOR_CONV(state));
+			seq_printf(s, "   %d: Up/Dn(%d/", level, state);
 			state = REG_GET(r, CTL_LVL0_CPU0_DN_THRESH);
-			seq_printf(s, "%d) ", LOWER_PRECISION_FOR_CONV(state));
+			seq_printf(s, "%d) ", state);
 			state = REG_GET(r, CTL_LVL0_CPU0_EN);
 			seq_printf(s, "En(%d) ", state);
 
@@ -3579,22 +3479,22 @@ static int regs_show(struct seq_file *s, void *data)
 	state = REG_GET(r, THERMTRIP_CPU_EN);
 	seq_printf(s, "     CPU En(%d) ", state);
 	state = REG_GET(r, THERMTRIP_CPU_THRESH);
-	seq_printf(s, "Thresh(%d)\n", LOWER_PRECISION_FOR_CONV(state));
+	seq_printf(s, "Thresh(%d)\n", state);
 
 	state = REG_GET(r, THERMTRIP_GPU_EN);
 	seq_printf(s, "     GPU En(%d) ", state);
 	state = REG_GET(r, THERMTRIP_GPUMEM_THRESH);
-	seq_printf(s, "Thresh(%d)\n", LOWER_PRECISION_FOR_CONV(state));
+	seq_printf(s, "Thresh(%d)\n", state);
 
 	state = REG_GET(r, THERMTRIP_MEM_EN);
 	seq_printf(s, "     MEM En(%d) ", state);
 	state = REG_GET(r, THERMTRIP_GPUMEM_THRESH);
-	seq_printf(s, "Thresh(%d)\n", LOWER_PRECISION_FOR_CONV(state));
+	seq_printf(s, "Thresh(%d)\n", state);
 
 	state = REG_GET(r, THERMTRIP_TSENSE_EN);
 	seq_printf(s, "    PLLX En(%d) ", state);
 	state = REG_GET(r, THERMTRIP_TSENSE_THRESH);
-	seq_printf(s, "Thresh(%d)\n", LOWER_PRECISION_FOR_CONV(state));
+	seq_printf(s, "Thresh(%d)\n", state);
 
 	r = soctherm_readl(THROT_GLOBAL_CFG);
 	seq_printf(s, "GLOBAL THROTTLE CONFIG: 0x%08x\n", r);
@@ -3625,20 +3525,10 @@ static int regs_show(struct seq_file *s, void *data)
 	}
 
 	r = soctherm_readl(GPU_PSKIP_STATUS);
-	if ((IS_T12X || IS_T13X)) {
-		state = REG_GET(r, XPU_PSKIP_STATUS_ENABLED);
-		seq_printf(s, "%s PSKIP STATUS: ",
-			   throt_dev_names[THROTTLE_DEV_GPU]);
-		seq_printf(s, "enabled(%d)\n", state);
-	} else {
-		state = REG_GET(r, XPU_PSKIP_STATUS_M);
-		seq_printf(s, "%s PSKIP STATUS: M(%d) ",
-			   throt_dev_names[THROTTLE_DEV_GPU], state);
-		state = REG_GET(r, XPU_PSKIP_STATUS_N);
-		seq_printf(s, "N(%d) ", state);
-		state = REG_GET(r, XPU_PSKIP_STATUS_ENABLED);
-		seq_printf(s, "enabled(%d)\n", state);
-	}
+	state = REG_GET(r, XPU_PSKIP_STATUS_ENABLED);
+	seq_printf(s, "%s PSKIP STATUS: ",
+		   throt_dev_names[THROTTLE_DEV_GPU]);
+	seq_printf(s, "enabled(%d)\n", state);
 
 	seq_puts(s, "---------------------------------------------------\n");
 	seq_puts(s, "THROTTLE control and PSKIP configuration:\n");
@@ -3679,7 +3569,7 @@ static int regs_show(struct seq_file *s, void *data)
 					depth = "low";
 				}
 			}
-			if ((IS_T12X || IS_T13X) && j == THROTTLE_DEV_GPU) {
+			if (j == THROTTLE_DEV_GPU) {
 				state = REG_GET(r, THROT_PSKIP_CTRL_VECT_GPU);
 				/* Mapping is hard-coded in gk20a:nv_therm */
 				if (state == THROT_VECT_HVY) {
