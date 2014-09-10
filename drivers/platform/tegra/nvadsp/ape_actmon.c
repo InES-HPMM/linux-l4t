@@ -666,7 +666,7 @@ err_out:
 
 #endif
 
-int ape_actmon_init(struct platform_device *pdev)
+int __init ape_actmon_init(struct platform_device *pdev)
 {
 	int i, ret;
 	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);

@@ -77,7 +77,7 @@ static const struct dev_pm_ops nvadsp_pm_ops = {
 			   nvadsp_rt_idle)
 };
 
-static int nvadsp_probe(struct platform_device *pdev)
+static int __init nvadsp_probe(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv_data;
 	struct resource *res = NULL;
