@@ -172,7 +172,7 @@ static void _setup_debugfs(void)
 #endif
 }
 
-int tegra210_cluster_control_init(void)
+int __init tegra210_cluster_control_init(void)
 {
 	pg_core_arg = psci_power_state_pack(core_pg);
 	pg_cluster_arg = psci_power_state_pack(cluster_pg);
