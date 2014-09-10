@@ -169,6 +169,7 @@ static void ecx_cable_state_update_work(struct work_struct *work)
 		}
 		dev_info(ecx->dev, "Extcon Init success\n");
 		ecx->extcon_init_done = true;
+		schedule_delayed_work(&ecx->work, msecs_to_jiffies(1000));
 	}
 	ecx_attach_cable(ecx);
 }
