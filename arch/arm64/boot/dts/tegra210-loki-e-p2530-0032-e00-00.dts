@@ -233,35 +233,37 @@
 		cable-states = <0x0	0x7	0x0
 				0x1	0x7	0x1
 				0x2	0x7	0x2
-				0x4	0x7	0x1
-				0x5	0x7	0x1>;
+				0x4	0x7	0x4
+				0x5	0x7	0x4>;
 		#extcon-cells = <1>;
 	};
 
 	udc@7d000000 {
-                nvidia,port-otg;
-                nvidia,charging-supported;
-                nvidia,enable-pmu-vbus-detection;
-                nvidia,id-detection-type = <1>;
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		nvidia,enable-aca-nv-cable-detection;
 		nvidia,dcp-current-limit-ma = <2000>;
-                extcon-cables = <&extcon_cable_xlate 0>;
-                extcon-cable-names = "vbus";
-                #extcon-cells = <1>;
-                status = "okay";
-        };
+		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 2>;
+		extcon-cable-names = "vbus", "aca-nv";
+		#extcon-cells = <1>;
+		status = "okay";
+	};
 
-        otg@7d000000 {
-                nvidia,enable-pmu-vbus-detection;
-                nvidia,id-detection-type = <1>;
-		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 1>;
-		extcon-cable-names = "vbus", "id";
-                #extcon-cells = <1>;
-                status = "okay";
-        };
+	otg@7d000000 {
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		nvidia,enable-aca-nv-cable-detection;
+		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 1 &extcon_cable_xlate 2>;
+		extcon-cable-names = "vbus", "id", "aca-nv";
+		#extcon-cells = <1>;
+		status = "okay";
+	};
 
 	psy_extcon {
 		status = "okay";
-        };
+	};
 
 	camera-pcl {
 		profiles {
