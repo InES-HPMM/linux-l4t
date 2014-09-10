@@ -142,6 +142,7 @@ static char *const tegra_udc_extcon_cable[] = {
 	[CONNECT_TYPE_APPLE_500MA]  = "Apple 500mA-charger",
 	[CONNECT_TYPE_APPLE_1000MA] = "Apple 1A-charger",
 	[CONNECT_TYPE_APPLE_2000MA] = "Apple 2A-charger",
+	[CONNECT_TYPE_ACA_NV_CHARGER] = "ACA NV-Charger",
 	NULL,
 };
 
@@ -1470,6 +1471,11 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 		max_ua = USB_CHARGING_APPLE_CHARGER_2000mA_CURRENT_LIMIT_UA;
 		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
 		break;
+	case CONNECT_TYPE_ACA_NV_CHARGER:
+		dev_info(dev, "connected to ACA-NV Charger 2A custom charger\n");
+		max_ua = USB_CHARGING_ACA_NV_CHARGER_CURRENT_LIMIT_UA;
+		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
+		break;
 	default:
 		dev_info(dev, "connected to unknown USB port\n");
 		max_ua = 0;
@@ -1496,9 +1502,20 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 
 static int tegra_detect_cable_type(struct tegra_udc *udc)
 {
+	int index;
+
 	if (!udc->charging_supported) {
 		tegra_udc_set_charger_type(udc, CONNECT_TYPE_SDP);
 		return 0;
+	}
+
+	if (udc->support_aca_nv_cable && udc->aca_nv_extcon_cable) {
+		index = udc->aca_nv_extcon_cable->cable_index;
+		if (extcon_get_cable_state_(udc->aca_nv_extcon_dev, index)) {
+			tegra_udc_set_charger_type(udc, CONNECT_TYPE_ACA_NV_CHARGER);
+			tegra_usb_set_charging_current(udc);
+			return 0;
+		}
 	}
 
 	if (tegra_usb_phy_charger_detected(udc->phy)) {
@@ -1598,7 +1615,8 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		/* start the controller if USB host detected */
 		if ((udc->connect_type == CONNECT_TYPE_SDP) ||
 		    (udc->connect_type == CONNECT_TYPE_CDP) ||
-		    (udc->connect_type == CONNECT_TYPE_DCP_MAXIM))
+		    (udc->connect_type == CONNECT_TYPE_DCP_MAXIM) ||
+			(udc->connect_type == CONNECT_TYPE_ACA_NV_CHARGER))
 			dr_controller_run(udc);
 	}
 	mutex_unlock(&udc->sync_lock);
@@ -1625,7 +1643,8 @@ static int tegra_vbus_draw(struct usb_gadget *gadget, unsigned mA)
 	   as non-standard. Handle this case by setting to SDP */
 	if (udc->connect_type != CONNECT_TYPE_NONE
 		&& udc->connect_type != CONNECT_TYPE_SDP
-			&& udc->connect_type != CONNECT_TYPE_CDP)
+			&& udc->connect_type != CONNECT_TYPE_CDP
+				&& udc->connect_type != CONNECT_TYPE_ACA_NV_CHARGER)
 		tegra_udc_set_charger_type(udc, CONNECT_TYPE_SDP);
 
 	/* Avoid unnecessary work if there is no change in current limit */
@@ -2961,6 +2980,10 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 
 		soc_data = (struct tegra_udc_soc_data *)match->data;
 		pdata =	tegra_udc_dt_parse_pdata(pdev);
+		udc->support_aca_nv_cable =
+				of_property_read_bool(pdev->dev.of_node,
+					"nvidia,enable-aca-nv-cable-detection");
+
 		pdata->has_hostpc = soc_data->has_hostpc;
 		pdata->unaligned_dma_buf_supported =
 			soc_data->unaligned_dma_buf_supported;
@@ -3113,6 +3136,17 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (udc->support_aca_nv_cable) {
+		if (pdev->dev.of_node)
+			udc->aca_nv_extcon_cable = extcon_get_extcon_cable(&pdev->dev, "aca-nv");
+		if (IS_ERR(udc->aca_nv_extcon_cable)) {
+			dev_err(&pdev->dev, "failed to get aca-nv extcon cable\n");
+			err = -EPROBE_DEFER;
+		} else
+			udc->aca_nv_extcon_dev =
+				udc->aca_nv_extcon_cable->edev;
+	}
+
 	/* Create work for controlling clocks to the phy if otg is disabled */
 	INIT_WORK(&udc->irq_work, tegra_udc_irq_work);
 	INIT_DELAYED_WORK(&udc->non_std_charger_work,
@@ -3229,6 +3263,7 @@ static int tegra_udc_prepare(struct device *dev)
 {
 	struct tegra_udc *udc = dev_get_drvdata(dev);
 	u32 temp;
+	int index;
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
 	if (udc->support_pmu_vbus) {
@@ -3241,6 +3276,11 @@ static int tegra_udc_prepare(struct device *dev)
 			udc->vbus_in_lp0 = true;
 	}
 
+	if (udc->support_aca_nv_cable && udc->aca_nv_extcon_cable) {
+		index = udc->aca_nv_extcon_cable->cable_index;
+		if (extcon_get_cable_state_(udc->aca_nv_extcon_dev, index))
+			udc->vbus_in_lp0 = true;
+	}
 	/* During driver resume sometimes connect_type_lp0 is
 	   set to NONE, which means task is finished incomplete,
 	   in this case retain the value */
@@ -3306,7 +3346,7 @@ static int tegra_udc_resume(struct device *dev)
 	struct tegra_udc *udc = dev_get_drvdata(dev);
 	u32 temp;
 
-	int err = 0;
+	int err = 0, index;
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
 	udc->vbus_in_lp0 = false;
@@ -3334,6 +3374,17 @@ static int tegra_udc_resume(struct device *dev)
 				udc->connect_type_lp0 = CONNECT_TYPE_NONE;
 				regulator_set_current_limit(udc->vbus_reg,
 									 0, 0);
+			}
+		}
+
+		if (udc->support_aca_nv_cable && udc->aca_nv_extcon_cable) {
+			index = udc->aca_nv_extcon_cable->cable_index;
+			if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE) &&
+				!extcon_get_cable_state_(udc->aca_nv_extcon_dev, index)) {
+				tegra_udc_set_extcon_state(udc);
+				udc->connect_type_lp0 = CONNECT_TYPE_NONE;
+				regulator_set_current_limit(udc->vbus_reg,
+								0, 0);
 			}
 		}
 	}

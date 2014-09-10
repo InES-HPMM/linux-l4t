@@ -11,6 +11,7 @@ Optional properties:
 - nvidia,port-otg: Specify whether given port supports otg or not.
 - nvidia,charging-supported: Specify whether needs charging through USB.
 - nvidia,enable-pmu-vbus-detection: Specify whether vbus detection is supported from PMU.
+- nvidia,enable-nv-y-cable-detection: Enables nv-y-cable detection.
 - nvidia,id-detection-type: Specify how usb id detection type on the platform.
 	0 - if detection is through USB controller
 	1 - if detection is through PMU

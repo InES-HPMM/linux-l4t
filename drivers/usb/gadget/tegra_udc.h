@@ -43,6 +43,7 @@
 #define USB_CHARGING_SDP_CURRENT_LIMIT_UA 500000u
 #define USB_CHARGING_NV_CHARGER_CURRENT_LIMIT_UA 2000000u
 #define USB_CHARGING_NON_STANDARD_CHARGER_CURRENT_LIMIT_UA 500000u
+#define USB_CHARGING_ACA_NV_CHARGER_CURRENT_LIMIT_UA 2000000u
 #define USB_CHARGING_APPLE_CHARGER_500mA_CURRENT_LIMIT_UA 500000u
 #define USB_CHARGING_APPLE_CHARGER_1000mA_CURRENT_LIMIT_UA 1000000u
 #define USB_CHARGING_APPLE_CHARGER_2000mA_CURRENT_LIMIT_UA 2000000u
@@ -433,7 +434,8 @@ enum tegra_connect_type {
 	CONNECT_TYPE_NON_STANDARD_CHARGER,
 	CONNECT_TYPE_APPLE_500MA,
 	CONNECT_TYPE_APPLE_1000MA,
-	CONNECT_TYPE_APPLE_2000MA
+	CONNECT_TYPE_APPLE_2000MA,
+	CONNECT_TYPE_ACA_NV_CHARGER,
 };
 
 struct tegra_udc {
@@ -489,6 +491,9 @@ struct tegra_udc {
 	bool charging_supported;
 	struct extcon_dev *edev;
 	struct extcon_dev *vbus_extcon_dev;
+	struct extcon_cable *aca_nv_extcon_cable;
+	struct extcon_dev *aca_nv_extcon_dev;
+	bool support_aca_nv_cable;
 };
 
 
