@@ -216,6 +216,11 @@
                 #extcon-cells = <1>;
                 status = "okay";
         };
+
+	psy_extcon {
+		status = "okay";
+        };
+
 	camera-pcl {
 		profiles {
 			ov7695@6_0021 {
