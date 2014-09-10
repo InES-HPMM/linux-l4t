@@ -84,6 +84,7 @@ static void adc_jack_handler(struct work_struct *work)
 	/* if no def has met, it means state = 0 (no cables attached) */
 
 	extcon_set_state(&data->edev, state);
+	dev_info(&data->edev.dev, "Cable State 0x%02X\n", state);
 }
 
 static irqreturn_t adc_jack_irq_thread(int irq, void *_data)
