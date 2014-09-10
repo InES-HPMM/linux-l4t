@@ -378,8 +378,9 @@ static inline bool tegra_dvfs_is_dfll_range_entry(struct dvfs *d,
 
 static inline bool tegra_dvfs_is_dfll_scale(struct dvfs *d, unsigned long rate)
 {
-	return tegra_dvfs_rail_is_dfll_mode(d->dvfs_rail) ||
-		tegra_dvfs_is_dfll_range_entry(d, rate);
+	return d->dfll_millivolts &&
+		(tegra_dvfs_rail_is_dfll_mode(d->dvfs_rail) ||
+		tegra_dvfs_is_dfll_range_entry(d, rate));
 }
 
 static inline bool tegra_dvfs_is_dfll_range(struct dvfs *d, unsigned long rate)
