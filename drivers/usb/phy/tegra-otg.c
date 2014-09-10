@@ -1276,6 +1276,8 @@ static int tegra_otg_suspend(struct device *dev)
 	unsigned int val;
 	int err = 0;
 
+	flush_work(&tegra->work);
+
 	mutex_lock(&tegra->irq_work_mutex);
 	DBG("%s(%d) BEGIN state : %s\n", __func__, __LINE__,
 				tegra_state_name(tegra->phy.state));
@@ -1404,7 +1406,6 @@ static void tegra_otg_resume(struct device *dev)
 
 	/* Call work to set appropriate state */
 	schedule_work(&tegra->work);
-
 	enable_interrupt(tegra, true);
 
 	tegra->suspended = false;
