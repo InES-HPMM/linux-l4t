@@ -2771,7 +2771,7 @@ static int __init struct_ep_setup(struct tegra_udc *udc, unsigned char index,
 	return 0;
 }
 
-static int tegra_udc_ep_setup(struct tegra_udc *udc)
+static int __init tegra_udc_ep_setup(struct tegra_udc *udc)
 {
 	/* initialize EP0 descriptor */
 	static const struct usb_endpoint_descriptor tegra_ep0_desc = {
