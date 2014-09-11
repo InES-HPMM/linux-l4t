@@ -77,3 +77,9 @@ config DHD_USE_SCHED_SCAN
 	default n
 	---help---
 	  Use CFG80211 sched scan
+
+config BCMDHD_DISABLE_MCC
+	bool "Disable Multi channel concurrency"
+	depends on BCMDHD
+	---help---
+	  Disable Multi channel concurrency to operate WLAN and P2P interfaces on same channel.
