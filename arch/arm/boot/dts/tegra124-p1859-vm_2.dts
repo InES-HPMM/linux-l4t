@@ -169,10 +169,6 @@
 		status = "disabled";
 	};
 
-	pinmux@70000868 {
-		status = "disabled";
-	};
-
 	pwm@7000a000 {
 		status = "disabled";
 	};
