@@ -245,6 +245,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 			[3] = { .clk_name = "sor1", .clk_type = CLK_AND_RST },
 			[4] = { .clk_name = "mipi-cal", .clk_type = CLK_AND_RST },
 			[5] = { .clk_name = "dpaux", .clk_type = CLK_ONLY },
+			[6] = { .clk_name = "dpaux1", .clk_type = CLK_ONLY },
 		},
 		.slcg_info = {
 			[0] = { .clk_name = "mc_capa" },
