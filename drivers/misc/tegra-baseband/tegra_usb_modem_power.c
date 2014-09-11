@@ -38,6 +38,7 @@
 #include <linux/platform_data/tegra_usb_modem_power.h>
 #include <linux/dma-mapping.h>
 #include <linux/tegra-pmc.h>
+#include <linux/delay.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
 
 #define BOOST_CPU_FREQ_MIN	1200000
@@ -829,6 +830,9 @@ static int tegra_usb_modem_parse_dt(struct platform_device *pdev,
 			dev_err(&pdev->dev, "request gpio %d failed\n", gpio);
 			return ret;
 		}
+		/* Modem requires at least 10ms between MDM_EN assertion
+		and release of the reset. 20ms is the min value of msleep */
+		msleep(20);
 		/* Release modem reset to start boot */
 		gpio_direction_output(gpio, 1);
 		gpio_export(gpio, false);
