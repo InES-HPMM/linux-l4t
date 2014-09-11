@@ -171,6 +171,7 @@ static struct tegra210_mc_client_info tegra210_pg_mc_info[] = {
 static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	[TEGRA_POWERGATE_VE] = {
 		.name = "ve",
+		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "ispa", .clk_type = CLK_AND_RST },
 			[1] = { .clk_name = "vi", .clk_type = CLK_AND_RST },
@@ -204,6 +205,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 #ifdef CONFIG_ARCH_TEGRA_HAS_SATA
 	[TEGRA_POWERGATE_SATA] = {
 		.name = "sata",
+		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "sata", .clk_type = CLK_AND_RST },
 			[1] = { .clk_name = "sata_oob", .clk_type = CLK_AND_RST },
@@ -223,6 +225,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 #endif
 	[TEGRA_POWERGATE_NVENC] = {
 		.name = "nvenc",
+		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "msenc.cbus", .clk_type = CLK_AND_RST },
 		},
@@ -236,6 +239,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	},
 	[TEGRA_POWERGATE_SOR] = {
 		.name = "sor",
+		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "sor0", .clk_type = CLK_AND_RST },
 			[1] = { .clk_name = "dsia", .clk_type = CLK_AND_RST },
@@ -274,6 +278,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	},
 	[TEGRA_POWERGATE_DISB] = {
 		.name = "disb",
+		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "disp2", .clk_type = CLK_AND_RST },
 		},
@@ -289,6 +294,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	},
 	[TEGRA_POWERGATE_XUSBA] = {
 		.name = "xusba",
+		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "xusb_ss", .clk_type = CLK_AND_RST },
 		},
@@ -305,6 +311,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	},
 	[TEGRA_POWERGATE_XUSBB] = {
 		.name = "xusbb",
+		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "xusb_dev", .clk_type = CLK_AND_RST },
 		},
@@ -321,6 +328,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	},
 	[TEGRA_POWERGATE_XUSBC] = {
 		.name = "xusbc",
+		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "xusb_host", .clk_type = CLK_AND_RST },
 		},
@@ -338,6 +346,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 #ifdef CONFIG_ARCH_TEGRA_VIC
 	[TEGRA_POWERGATE_VIC] = {
 		.name = "vic",
+		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "vic03.cbus", .clk_type = CLK_AND_RST },
 		},
@@ -352,6 +361,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 #endif
 	[TEGRA_POWERGATE_NVDEC] = {
 		.name = "nvdec",
+		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "nvdec", .clk_type = CLK_AND_RST },
 		},
@@ -367,6 +377,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	},
 	[TEGRA_POWERGATE_NVJPG] = {
 		.name = "nvjpg",
+		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "nvjpg", .clk_type = CLK_AND_RST },
 		},
@@ -406,6 +417,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	},
 	[TEGRA_POWERGATE_VE2] = {
 		.name = "ve2",
+		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "ispb", .clk_type = CLK_AND_RST },
 		},
@@ -844,6 +856,8 @@ static int tegra210_pg_init_refcount(void)
 	for (i = 0; i < TEGRA_NUM_POWERGATE; i++)
 		if (tegra_powergate_is_powered(i))
 			tegra210_pg_partition_info[i].refcount = 1;
+		else
+			tegra210_pg_partition_info[i].disable_after_boot = 0;
 
 	return 0;
 }
@@ -889,3 +903,19 @@ int slcg_register_notifier(int id, struct notifier_block *nb)
 
 	return raw_notifier_chain_register(&pg_info->slcg_notifier, nb);
 }
+
+static int __init tegra210_disable_boot_partitions(void)
+{
+	int i;
+
+	pr_err("Disable partitions left on by BL\n");
+	for (i = 0; i < TEGRA_NUM_POWERGATE; i++)
+		if (tegra210_pg_partition_info[i].disable_after_boot &&
+			(i != TEGRA_POWERGATE_GPU)) {
+			pr_err("    %s\n", tegra210_pg_partition_info[i].name);
+			tegra_powergate_partition(i);
+		}
+
+	return 0;
+}
+late_initcall(tegra210_disable_boot_partitions);

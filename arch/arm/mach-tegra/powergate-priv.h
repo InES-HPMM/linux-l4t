@@ -78,6 +78,7 @@ struct powergate_partition_info {
 	struct partition_clk_info slcg_info[MAX_CLK_EN_NUM];
 	struct raw_notifier_head slcg_notifier;
 	int refcount;
+	bool disable_after_boot;
 };
 
 struct powergate_ops {
