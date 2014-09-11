@@ -115,6 +115,22 @@ static int lc709203f_write_word(struct i2c_client *client, u8 reg, u16 value)
 	return ret;
 }
 
+static int lc709203f_get_battery_soc(struct battery_gauge_dev *bg_dev)
+{
+	struct lc709203f_chip *chip = battery_gauge_get_drvdata(bg_dev);
+	int val;
+
+	val = lc709203f_read_word(chip->client, LC709203F_RSOC);
+	if (val < 0)
+		dev_err(&chip->client->dev, "%s: err %d\n", __func__, val);
+	else
+		val =  battery_gauge_get_adjusted_soc(chip->bg_dev,
+				chip->pdata->threshold_soc,
+				chip->pdata->maximum_soc, val * 100);
+
+	return val;
+}
+
 static int lc709203f_update_soc_voltage(struct lc709203f_chip *chip)
 {
 	int val;
@@ -346,6 +362,7 @@ done:
 
 static struct battery_gauge_ops lc709203f_bg_ops = {
 	.update_battery_status = lc709203f_update_battery_status,
+	.get_battery_soc = lc709203f_get_battery_soc,
 };
 
 static struct battery_gauge_info lc709203f_bgi = {
