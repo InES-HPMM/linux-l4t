@@ -695,6 +695,20 @@ int tegra210_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		goto fail;
 	}
 
+	if (mode == TEGRA_SUSPEND_LP1) {
+		if (tegra_bpmp_do_idle(cpu, TEGRA_PM_CC7,
+					TEGRA_PM_SC4) != 0)
+			return -ENXIO;
+
+		ps.id = TEGRA210_CPUIDLE_CC7;
+		ps.affinity_level = 1;
+
+		arg = psci_power_state_pack(ps);
+		cpu_suspend(arg, NULL);
+
+		return err;
+	}
+
 	if (tegra_bpmp_do_idle(cpu, TEGRA_PM_CC7,
 				TEGRA_PM_SC7) != 0) {
 		err = -ENXIO;
