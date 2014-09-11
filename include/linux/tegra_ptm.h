@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_ptm.h
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,14 +18,6 @@
 
 #ifndef __MACH_TEGRA_PTM_H
 #define __MACH_TEGRA_PTM_H
-
-#define PTM0_BASE	(TEGRA_CSITE_BASE + 0x1C000)
-#define PTM1_BASE	(TEGRA_CSITE_BASE + 0x1D000)
-#define PTM2_BASE	(TEGRA_CSITE_BASE + 0x1E000)
-#define PTM3_BASE	(TEGRA_CSITE_BASE + 0x1F000)
-#define FUNNEL_BASE	(TEGRA_CSITE_BASE + 0x4000)
-#define TPIU_BASE	(TEGRA_CSITE_BASE + 0x3000)
-#define ETB_BASE	(TEGRA_CSITE_BASE + 0x1000)
 
 #define TRACER_ACCESSED		BIT(0)
 #define TRACER_RUNNING		BIT(1)
@@ -235,31 +227,183 @@
 
 #define LOCK_MAGIC		0xc5acce55
 
+/* Clock Registers */
+#define CLK_RST_CONTROLLER_CLK_SOURCE_CSITE_0 0x1d4
+#define CLK_RST_CONTROLLER_CLK_CPUG_MISC2_0 0x714
+#define CLK_RST_CONTROLLER_CLK_CPUG_MISC_0 0x540
+
+/* Funnel major Registers */
+#define CORESIGHT_ATBFUNNEL_HUGO_MAJOR_CXATBFUNNEL_REGS_CTRL_REG_0 0x0
+
+/* ETF Registers */
+#define CORESIGHT_ETF_HUGO_CXTMC_REGS_RWP_0 0x18
+#define CORESIGHT_ETF_HUGO_CXTMC_REGS_CTL_0 0x20
+#define CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0 0x14
+#define CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0 0x10
+#define CORESIGHT_ETF_HUGO_CXTMC_REGS_STS_0 0x0c
+#define CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0 0x304
+#define CORESIGHT_ETF_HUGO_CXTMC_REGS_MODE_0 0x28
+#define CORESIGHT_ETF_HUGO_CXTMC_REGS_BUFWM_0 0x34
+#define CORESIGHT_ETF_HUGO_CXTMC_REGS_RSZ_0 0x4
+
+/* Replicator Registers */
+#define CORESIGHT_ATBREPLICATOR_HUGO_CXATBREPLICATOR_REGISTERS_IDFILTER1_0 0x4
+
+/* ETR Registers */
+#define CORESIGHT_ETR_HUGO_CXTMC_REGS_CTL_0 0x20
+#define CORESIGHT_ETR_HUGO_CXTMC_REGS_AXICTL_0 0x110
+#define CORESIGHT_ETR_HUGO_CXTMC_REGS_DBALO_0 0x0118
+#define CORESIGHT_ETR_HUGO_CXTMC_REGS_DBAHI_0 0x011c
+#define CORESIGHT_ETR_HUGO_CXTMC_REGS_PSCR_0 0x308
+
+/* Funnel BCCPLEX Registers */
+#define CORESIGHT_ATBFUNNEL_BCCPLEX_CXATBFUNNEL_REGS_CTRL_REG_0 0x0
+
+/* CPU Debug Registers */
+#define CORESIGHT_BCCPLEX_CPU_DEBUG_EDPCSRHI_0 0xac
+#define CORESIGHT_BCCPLEX_CPU_DEBUG_EDPCSRLO_0 0xa0
+#define CORESIGHT_BCCPLEX_CPU_DEBUG_OSLAR_EL1_0 0x300
+
+/* PTM Rgisters */
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCOSLAR_0 0x300
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCCONFIGR_0 0x10
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCBBCTLR_0 0x3c
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR0_0 0x400
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR1_0 0x408
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR0_0 0x480
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR1_0 0x488
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCSSCCR0_0 0x280
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCSYNCPR_0 0x34
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCVICTLR_0 0x80
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCVIIECTLR_0 0x84
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCTRACEIDR_0 0x40
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0 0x4
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCPDCR_0 0x310
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCPDSR_0 0x314
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCTSCTLR_0 0x30
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCCCCTLR_0 0x38
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCEVENTCTL1R_0 0x24
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCEVENTCTL0R_0 0x20
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCVISSCTLR_0 0x88
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQEVR0_0 0x100
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQEVR1_0 0x104
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQEVR2_0 0x108
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQRSTEVR_0 0x118
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQSTR_0 0x11c
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCEXTINSELR_0 0x120
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTRLDVR0_0 0x140
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTRLDVR1_0 0x144
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTCTLR0_0 0x150
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTCTLR1_0 0x154
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTVR0_0 0x160
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTVR1_0 0x164
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR2_0 0x208
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR3_0 0x20c
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR4_0 0x210
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR5_0 0x214
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR6_0 0x218
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR7_0 0x21c
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR8_0 0x220
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR9_0 0x224
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR10_0 0x228
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR11_0 0x22c
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR12_0 0x230
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR13_0 0x234
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR14_0 0x238
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR15_0 0x23c
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCSSCSR0_0  0x280
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR2_0 0x410
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR3_0 0x418
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR4_0 0x420
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR5_0 0x428
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR6_0 0x430
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR7_0 0x438
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR2_0 0x490
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR3_0 0x498
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR4_0 0x4a0
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR5_0 0x4a8
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR6_0 0x4b0
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR7_0 0x4b8
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCCIDCVR0_0 0x600
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCVMIDCVR0_0 0x640
+#define CORESIGHT_BCCPLEX_CPU_TRACE_TRCCIDCCTLR0_0 0x680
+
+/* Macro Definitions */
+#define funnel_major_writel(t, v, x)	__raw_writel((v),	\
+				(t)->funnel_major_regs + (x))
+#define funnel_major_readl(t, x)	__raw_readl(		\
+				(t)->funnel_major_regs + (x))
+#define funnel_major_regs_unlock(t)	funnel_major_writel((t), \
+				LOCK_MAGIC, CORESIGHT_LOCKACCESS);
+
+#define etf_writel(t, v, x)		__raw_writel((v),	\
+				(t)->etf_regs + (x))
+#define etf_readl(t, x)			__raw_readl(		\
+				(t)->etf_regs + (x))
+#define etf_regs_unlock(t)	etf_writel((t), LOCK_MAGIC,	\
+					CORESIGHT_LOCKACCESS);
+#define etf_regs_lock(t)	etf_writel((t), 0,		\
+					CORESIGHT_LOCKACCESS)
+
+#define replicator_writel(t, v, x)	__raw_writel((v),	\
+						(t)->replicator_regs + (x))
+#define replicator_readl(t, x)		__raw_readl(		\
+						(t)->replicator_regs + (x))
+#define replicator_regs_unlock(t)	replicator_writel((t),	\
+					LOCK_MAGIC, CORESIGHT_LOCKACCESS);
+
+#define funnel_bccplex_writel(t, v, x)	__raw_writel((v),	\
+					(t)->funnel_bccplex_regs + (x))
+#define funnel_bccplex_readl(t, x)	__raw_readl(		\
+					(t)->funnel_bccplex_regs + (x))
+#define funnel_bccplex_regs_unlock(t)	funnel_bccplex_writel((t),	\
+					LOCK_MAGIC, CORESIGHT_LOCKACCESS);
+
+#define cpu_debug_writel(t, id, v, x)	__raw_writel((v),	\
+						(t)->cpu_regs[id] + (x))
+#define cpu_debug_regs_unlock(t, id)	cpu_debug_writel((t), id,	\
+					LOCK_MAGIC, CORESIGHT_LOCKACCESS);
+#define cpu_debug_readl(t, id, x)	__raw_readl((t)->cpu_regs[id] + (x))
+
+#define ptm_t210_writel(t, id, v, x)	__raw_writel((v),	\
+						(t)->ptm_t210_regs[id] + (x))
+#define ptm_t210_readl(t, id, x)	__raw_readl(		\
+						(t)->ptm_t210_regs[id] + (x))
+#define ptm_t210_regs_unlock(t, id)	ptm_t210_writel((t), id,	\
+					LOCK_MAGIC, CORESIGHT_LOCKACCESS);
+
 #define etb_writel(t, v, x)	__raw_writel((v), (t)->etb_regs + (x))
 #define etb_readl(t, x)		__raw_readl((t)->etb_regs + (x))
-#define etb_regs_lock(t)	etb_writel((t), 0, CORESIGHT_LOCKACCESS)
-#define etb_regs_unlock(t)	etb_writel((t), LOCK_MAGIC,		\
+#define etb_regs_lock(t)	etb_writel((t), 0,		\
+							CORESIGHT_LOCKACCESS)
+#define etb_regs_unlock(t)	etb_writel((t), LOCK_MAGIC,	\
 						CORESIGHT_LOCKACCESS)
 
-#define funnel_writel(t, v, x)	__raw_writel((v), (t)->funnel_regs + (x))
-#define funnel_readl(t, x)	__raw_readl((t)->funnel_regs + (x))
-#define funnel_regs_lock(t)	funnel_writel((t), 0, CORESIGHT_LOCKACCESS)
-#define funnel_regs_unlock(t)	funnel_writel((t), LOCK_MAGIC,		\
+#define funnel_writel(t, v, x)	__raw_writel((v),		\
+							(t)->funnel_regs + (x))
+#define  funnel_readl(t, x)	__raw_readl((t)->funnel_regs + (x))
+#define  funnel_regs_lock(t)	funnel_writel((t), 0,		\
+							CORESIGHT_LOCKACCESS)
+#define  funnel_regs_unlock(t)	funnel_writel((t), LOCK_MAGIC,	\
 						CORESIGHT_LOCKACCESS)
 
-#define tpiu_writel(t, v, x)	__raw_writel((v), (t)->tpiu_regs + (x))
-#define tpiu_readl(t, x)	__raw_readl((t)->tpiu_regs + (x))
-#define tpiu_regs_lock(t)	tpiu_writel((t), 0, CORESIGHT_LOCKACCESS)
-#define tpiu_regs_unlock(t)	tpiu_writel((t), LOCK_MAGIC,		\
+#define  tpiu_writel(t, v, x)	__raw_writel((v), (t)->tpiu_regs + (x))
+#define  tpiu_readl(t, x)	__raw_readl((t)->tpiu_regs + (x))
+#define  tpiu_regs_lock(t)	tpiu_writel((t), 0,		\
+					CORESIGHT_LOCKACCESS)
+#define  tpiu_regs_unlock(t)	tpiu_writel((t), LOCK_MAGIC,	\
 						CORESIGHT_LOCKACCESS)
 
-#define ptm_writel(t, id, v, x)	__raw_writel((v), (t)->ptm_regs[(id)] + (x))
-#define ptm_readl(t, id, x)	__raw_readl((t)->ptm_regs[(id)] + (x))
-#define ptm_regs_lock(t, id)	ptm_writel((t), (id), 0, CORESIGHT_LOCKACCESS);
-#define ptm_regs_unlock(t, id)	ptm_writel((t), (id), LOCK_MAGIC,	\
+#define  ptm_writel(t, id, v, x)	__raw_writel((v),		\
+						(t)->ptm_regs[(id)] + (x))
+#define  ptm_readl(t, id, x)	__raw_readl((t)->ptm_regs[(id)] + (x))
+#define  ptm_regs_lock(t, id)	ptm_writel((t), (id), 0,	\
 						CORESIGHT_LOCKACCESS);
-#define ptm_os_lock(t, id)	ptm_writel((t), (id), LOCK_MAGIC, PTMMR_OSLAR)
-#define ptm_os_unlock(t, id)	ptm_writel((t), (id), 0, PTMMR_OSLAR)
+#define  ptm_regs_unlock(t, id)	ptm_writel((t), (id),		\
+			LOCK_MAGIC, CORESIGHT_LOCKACCESS);
+#define  ptm_os_lock(t, id)	ptm_writel((t), (id),		\
+						LOCK_MAGIC, PTMMR_OSLAR)
+#define  ptm_os_unlock(t, id)	ptm_writel((t), (id), 0, PTMMR_OSLAR)
 
 #ifdef CONFIG_TEGRA_PTM
 /* PTM required re-energized CPU enterring LP2 mode */

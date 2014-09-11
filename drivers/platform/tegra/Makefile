@@ -13,8 +13,13 @@ obj-$(CONFIG_TEGRA_BOOTLOADER_DEBUG)    += tegra_bootloader_debug.o
 
 obj-$(CONFIG_TEGRA_CAMERA_MIPI_CAL)     += mipi-cal.o
 obj-$(CONFIG_TEGRA_NVADSP)		+= nvadsp/
-
 obj-$(CONFIG_TEGRA_MC) += mc/
+
+ifeq ($(CONFIG_TEGRA_PTM),y)
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC)         += tegra_ptm_t124.o
+obj-$(CONFIG_ARCH_TEGRA_21x_SOC)         += tegra_ptm_t210.o
+endif
+
 obj-y += nvdumper/
 obj-$(CONFIG_PM_SLEEP) += pm-irq.o
 obj-$(CONFIG_TEGRA_PMC) += pmc.o

@@ -61,7 +61,7 @@
 #include "pm.h"
 #include "reset.h"
 #include "sleep.h"
-#include "tegra_ptm.h"
+#include <linux/tegra_ptm.h>
 
 #define CLK_RST_CONTROLLER_CPU_CMPLX_STATUS \
 	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x470)

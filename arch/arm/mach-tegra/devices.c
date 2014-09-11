@@ -41,7 +41,6 @@
 #include "iomap.h"
 #include "devices.h"
 #include "board.h"
-#include "tegra_ptm.h"
 
 #define TEGRA_DMA_REQ_SEL_I2S_1			2
 #define TEGRA_DMA_REQ_SEL_SPD_I			3

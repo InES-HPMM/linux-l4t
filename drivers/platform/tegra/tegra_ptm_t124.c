@@ -31,7 +31,7 @@
 #include <asm/sections.h>
 #include <linux/cpu.h>
 #include "pm.h"
-#include "tegra_ptm.h"
+#include <linux/tegra_ptm.h>
 #include <linux/of.h>
 
 /*

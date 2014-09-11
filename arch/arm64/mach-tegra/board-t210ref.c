@@ -178,9 +178,6 @@ static struct platform_device *t210ref_devices[] __initdata = {
 	&tegra_offload_device,
 	&tegra30_avp_audio_device,
 #endif
-#if defined(CONFIG_TEGRA_PTM)
-	&tegra_ptm_device,
-#endif
 #ifdef CONFIG_TEGRA_CEC_SUPPORT
 	&tegra_cec_device,
 #endif
@@ -328,6 +325,7 @@ struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power", NULL),
 	OF_DEV_AUXDATA("raydium,rm_ts_spidev", 0, "rm_ts_spidev", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
+	OF_DEV_AUXDATA("nvidia,ptm", 0x72010000, "ptm", NULL),
 	{}
 };
 #else
@@ -391,6 +389,7 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power", NULL),
 	OF_DEV_AUXDATA("raydium,rm_ts_spidev", 0, "rm_ts_spidev", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
+	OF_DEV_AUXDATA("nvidia,ptm", 0x72010000, "ptm", NULL),
 	{}
 };
 #endif

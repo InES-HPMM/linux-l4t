@@ -50,7 +50,6 @@ plus_sec := $(call as-instr,.arch_extension sec,+sec)
 AFLAGS_sleep.o :=-Wa,-march=armv7-a$(plus_sec)
 
 obj-y                                   += kfuse.o
-obj-$(CONFIG_TEGRA_PTM)                 += tegra_ptm.o
 
 obj-y                                   += powergate.o
 obj-y                                   += powergate-ops-txx.o
