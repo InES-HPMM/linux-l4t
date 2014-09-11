@@ -1,7 +1,7 @@
 /*
  * pinctrl-consumer.c -- The API supported to pincontrol consumer
  *
- * Copyright (c) 2014, NVIDIA Corporation.
+ * Copyright (c) 2014, NVIDIA Corporation. All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -20,6 +20,7 @@
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/pinconf.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/pinctrl/pinmux.h>
 #include <linux/of.h>
 #include "core.h"
 #include "pinconf.h"
@@ -134,6 +135,35 @@ int pinctrl_get_group_from_group_name(struct pinctrl_dev *pctldev,
 	return pinctrl_get_group_selector(pctldev, group_name);
 }
 EXPORT_SYMBOL_GPL(pinctrl_get_group_from_group_name);
+
+int pinctrl_set_func_for_pin(struct pinctrl_dev *pctldev, unsigned int pin,
+			const char *function)
+{
+	const struct pinmux_ops *ops = pctldev->desc->pmxops;
+	unsigned nfuncs = ops->get_functions_count(pctldev);
+	unsigned func = 0, grp = 0;
+	int ret = 0;
+
+	grp = pinctrl_get_group_selector_from_pin(pctldev, pin);
+
+	mutex_lock(&pctldev->mutex);
+	while (func < nfuncs) {
+		const char *fname = ops->get_function_name(pctldev, func);
+		if (!strcmp(function, fname))
+			break;
+		func++;
+	}
+
+	ret = ops->enable(pctldev, func, grp);
+	if (ret) {
+		dev_err(pctldev->dev, "unable to set func for pin %d\n", pin);
+		goto unlock;
+	}
+unlock:
+	mutex_unlock(&pctldev->mutex);
+	return ret;
+}
+EXPORT_SYMBOL(pinctrl_set_func_for_pin);
 
 int pinctrl_set_config_for_pin(struct pinctrl_dev *pctldev, unsigned pin,
 			   unsigned long config)

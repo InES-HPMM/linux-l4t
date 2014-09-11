@@ -235,6 +235,8 @@ extern int pinctrl_get_pins_from_group_name(struct pinctrl_dev *pctldev,
 		unsigned *num_pins);
 extern int pinctrl_get_group_from_group_name(struct pinctrl_dev *pctldev,
 		const char *group_name);
+extern int pinctrl_set_func_for_pin(struct pinctrl_dev *pctldev, unsigned int pin,
+		const char *function);
 extern int pinctrl_set_config_for_pin(struct pinctrl_dev *pctldev, unsigned pin,
 			   unsigned long config);
 extern int pinctrl_get_config_for_pin(struct pinctrl_dev *pctldev, unsigned pin,
