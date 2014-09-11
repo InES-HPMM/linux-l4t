@@ -229,14 +229,21 @@ static struct attribute_group stats_attr_grp = {
 #ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
 #define LP_TO_G_PERCENTAGE		50
 static u32 lp_to_g_ratio = LP_TO_G_PERCENTAGE;
+static u32 disable_virtualization;
 
 unsigned long lp_to_virtual_gfreq(unsigned long lp_freq)
 {
+	if (disable_virtualization)
+		return lp_freq;
+
 	return (lp_freq / 100) * LP_TO_G_PERCENTAGE;
 }
 
 static unsigned long virtualg_to_lpfreq(unsigned long gfreq)
 {
+	if (disable_virtualization)
+		return gfreq;
+
 	return (gfreq / LP_TO_G_PERCENTAGE) * 100;
 }
 
@@ -599,6 +606,10 @@ static int __init tegra_virt_debugfs_init(struct dentry *cpu_tegra_debugfs_root)
 #ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
 	if (!debugfs_create_u32("lp_to_gratio", 0444,
 			cpu_tegra_debugfs_root, &lp_to_g_ratio))
+		return -ENOMEM;
+
+	if (!debugfs_create_bool("disable_virtualization", 0644,
+			cpu_tegra_debugfs_root, &disable_virtualization))
 		return -ENOMEM;
 #endif
 	return 0;
