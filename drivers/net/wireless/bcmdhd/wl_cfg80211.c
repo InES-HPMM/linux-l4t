@@ -11720,9 +11720,6 @@ wl_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *dev,
 	s32 ret = 0;
 #ifdef WLTDLS
 	struct bcm_cfg80211 *cfg;
-	if (!cfg)
-		return ERR_PTR(-EINVAL);
-
 	tdls_iovar_t info;
 	cfg = g_bcm_cfg;
 	memset(&info, 0, sizeof(tdls_iovar_t));
