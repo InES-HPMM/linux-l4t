@@ -22,6 +22,7 @@
 #define _MACH_TEGRA_POWERGATE_H_
 
 #include <linux/init.h>
+#include <linux/notifier.h>
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define TEGRA_POWERGATE_CPU0	0
@@ -150,4 +151,10 @@ int tegra_powergate_partition(int id);
 int tegra_unpowergate_partition(int id);
 
 bool tegra_powergate_check_clamping(int id);
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+int slcg_register_notifier(int id, struct notifier_block *nb);
+#else
+static inline int slcg_register_notifier(int id, struct notifier_block *nb)
+{ return 0; }
+#endif
 #endif /* _MACH_TEGRA_POWERGATE_H_ */

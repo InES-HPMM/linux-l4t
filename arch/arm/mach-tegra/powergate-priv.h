@@ -27,7 +27,7 @@
 #include "clock.h"
 #include "iomap.h"
 
-#define MAX_CLK_EN_NUM			9
+#define MAX_CLK_EN_NUM			15
 #define MAX_HOTRESET_CLIENT_NUM		4
 
 #define PWRGATE_CLAMP_STATUS	0x2c
@@ -75,6 +75,8 @@ struct partition_clk_info {
 struct powergate_partition_info {
 	const char *name;
 	struct partition_clk_info clk_info[MAX_CLK_EN_NUM];
+	struct partition_clk_info slcg_info[MAX_CLK_EN_NUM];
+	struct raw_notifier_head slcg_notifier;
 	int refcount;
 };
 
@@ -121,6 +123,19 @@ int tegra_powergate_reset_module(struct powergate_partition_info *pg_info);
 int powergate_module(int id);
 int unpowergate_module(int id);
 int tegra_powergate_set(int id, bool new_state);
+
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+void get_slcg_info(struct powergate_partition_info *pg_info);
+int slcg_clk_enable(struct powergate_partition_info *pg_info);
+void slcg_clk_disable(struct powergate_partition_info *pg_info);
+#else
+static inline void get_slcg_info(struct powergate_partition_info *pg_info)
+{ return; }
+static inline int slcg_clk_enable(struct powergate_partition_info *pg_info)
+{ return 0; }
+static inline void slcg_clk_disable(struct powergate_partition_info *pg_info)
+{ return; }
+#endif
 
 /* INIT APIs: New SoC needs to add its support here */
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)

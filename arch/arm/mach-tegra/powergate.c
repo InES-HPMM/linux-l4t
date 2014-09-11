@@ -325,6 +325,73 @@ int tegra_powergate_reset_module(struct powergate_partition_info *pg_info)
 	return 0;
 }
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+int slcg_clk_enable(struct powergate_partition_info *pg_info)
+{
+	int ret;
+	u32 idx;
+	struct clk *clk;
+	struct partition_clk_info *slcg_info;
+
+	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
+		slcg_info = &pg_info->slcg_info[idx];
+		clk = slcg_info->clk_ptr;
+		if (!clk)
+			break;
+
+		ret = tegra_clk_prepare_enable(clk);
+		if (ret)
+			goto err_clk_en;
+	}
+
+	return 0;
+
+err_clk_en:
+	WARN(1, "Could not enable clk %s, error %d", clk->name, ret);
+	while (idx--) {
+		slcg_info = &pg_info->slcg_info[idx];
+		tegra_clk_disable_unprepare(slcg_info->clk_ptr);
+	}
+
+	return ret;
+}
+
+void slcg_clk_disable(struct powergate_partition_info *pg_info)
+{
+	u32 idx;
+	struct clk *clk;
+	struct partition_clk_info *slcg_info;
+
+	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
+		slcg_info = &pg_info->slcg_info[idx];
+		clk = slcg_info->clk_ptr;
+
+		if (!clk)
+			break;
+
+		tegra_clk_disable_unprepare(clk);
+	}
+}
+
+void get_slcg_info(struct powergate_partition_info *pg_info)
+{
+	int idx;
+
+	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
+		if (!pg_info->slcg_info[idx].clk_name)
+			break;
+
+		pg_info->slcg_info[idx].clk_ptr = tegra_get_clock_by_name(
+			pg_info->slcg_info[idx].clk_name);
+
+		if (IS_ERR_OR_NULL(pg_info->slcg_info[idx].clk_ptr))
+			pr_err("### Could not find clock %s for %s partition\n",
+				pg_info->slcg_info[idx].clk_name,
+				pg_info->name);
+	}
+}
+#endif
+
 bool tegra_powergate_check_clamping(int id)
 {
 	if (!pg_ops || !pg_ops->powergate_check_clamping) {

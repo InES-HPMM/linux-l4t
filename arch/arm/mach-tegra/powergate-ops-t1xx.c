@@ -65,6 +65,9 @@ int tegra1xx_unpowergate(int id, struct powergate_partition_info *pg_info)
 	if (!pg_info->clk_info[0].clk_ptr)
 		get_clk_info(pg_info);
 
+	if (!pg_info->slcg_info[0].clk_ptr)
+		get_slcg_info(pg_info);
+
 	if (tegra_powergate_is_powered(id))
 		return tegra_powergate_reset_module(pg_info);
 
@@ -96,6 +99,12 @@ int tegra1xx_unpowergate(int id, struct powergate_partition_info *pg_info)
 	tegra_powergate_mc_flush_done(id);
 
 	udelay(10);
+
+	slcg_clk_enable(pg_info);
+
+	raw_notifier_call_chain(&pg_info->slcg_notifier, 0, NULL);
+
+	slcg_clk_disable(pg_info);
 
 	/* Disable all clks enabled earlier. Drivers should enable clks */
 	partition_clk_disable(pg_info);
