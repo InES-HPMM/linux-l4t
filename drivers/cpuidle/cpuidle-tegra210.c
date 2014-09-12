@@ -320,7 +320,7 @@ static int tegra210_enter_cg(struct cpuidle_device *dev,
 
 /* Assuming this array and the states array in the driver are kept in sync */
 static struct t210_idle_state t210_idle_states[CPUIDLE_STATE_MAX] = {
-	[0] = {
+	[0] = { /* C1 */
 		.cluster = {
 			[0] = {
 				.residency = 1,
@@ -335,7 +335,7 @@ static struct t210_idle_state t210_idle_states[CPUIDLE_STATE_MAX] = {
 		},
 		.enter = tegra210_enter_cg,
 	},
-	[1] = {
+	[1] = { /* C3 */
 		.cluster = {
 			[0] = {
 				.residency = 10,
@@ -348,106 +348,106 @@ static struct t210_idle_state t210_idle_states[CPUIDLE_STATE_MAX] = {
 		},
 		.enter = tegra210_enter_hvc,
 	},
-	[2] = {
+	[2] = { /* C4 */
 		.cluster = {
 			[0] = {
-				.residency = 10,
-				.latency = 10,
+				.residency = 20,
+				.latency = 20,
 			},
 			[1] = {
-				.residency = 10,
-				.latency = 10,
+				.residency = 20,
+				.latency = 20,
 			},
 		},
 		.enter = tegra210_enter_retention,
 	},
-	[3] = {
+	[3] = { /* C7 */
 		.cluster = {
 			[0] = {
-				.residency = 20,
-				.latency = 10,
+				.residency = 200,
+				.latency = 100,
 			},
 			[1] = {
-				.residency = 20,
-				.latency = 10,
+				.residency = 200,
+				.latency = 100,
 			},
 		},
 		.enter = tegra210_enter_c7,
 	},
-	[4] = {
+	[4] = { /* CC6 */
 		.cluster = {
 			[0] = {
-				.residency = 30,
-				.latency = 20,
+				.residency = 800,
+				.latency = 200,
 			},
 			[1] = {
-				.residency = 30,
-				.latency = 20,
+				.residency = 500,
+				.latency = 100,
 			},
 		},
 		.enter = tegra210_enter_cc6,
 	},
-	[5] = {
+	[5] = { /* CC7 */
 		.cluster = {
 			[0] = {
-				.residency = 40,
-				.latency = 30,
+				.residency = 1000,
+				.latency = 500,
 			},
 			[1] = {
-				.residency = 40,
-				.latency = 30,
+				.residency = 1000,
+				.latency = 500,
 			},
 		},
 		.enter = tegra210_enter_cc7,
 	},
-	[6] = {
+	[6] = { /* SC2 */
 		.cluster = {
 			[0] = {
-				.residency = 40,
-				.latency = 30,
+				.residency = 1500,
+				.latency = 600,
 			},
 			[1] = {
-				.residency = 40,
-				.latency = 30,
+				.residency = 1500,
+				.latency = 600,
 			},
 		},
 		.enter = tegra210_enter_sc2,
 	},
-	[7] = {
+	[7] = { /* SC3 */
 		.cluster = {
 			[0] = {
-				.residency = 40,
-				.latency = 30,
+				.residency = 1600,
+				.latency = 700,
 			},
 			[1] = {
-				.residency = 40,
-				.latency = 30,
+				.residency = 1600,
+				.latency = 700,
 			},
 		},
 		.enter = tegra210_enter_sc3,
 	},
-	[8] = {
+	[8] = { /* SC4 */
 		.cluster = {
 			[0] = {
-				.residency = 40,
-				.latency = 30,
+				.residency = 5000,
+				.latency = 3000,
 			},
 			[1] = {
-				.residency = 40,
-				.latency = 30,
+				.residency = 5000,
+				.latency = 3000,
 			},
 		},
 		.enter = tegra210_enter_sc4,
 	},
-	[9] = {
+	[9] = { /* SC7 */
 		.cluster = {
 			[0] = {
-				.residency = 40,
-				.latency = 30,
+				.residency = 10000,
+				.latency = 5000,
 			},
 			[1] = {
-				.residency = 40,
-				.latency = 30,
+				.residency = 10000,
+				.latency = 5000,
 			},
 		},
 		.enter = tegra210_enter_sc7,
