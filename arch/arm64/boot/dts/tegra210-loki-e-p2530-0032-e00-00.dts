@@ -245,7 +245,7 @@
 		nvidia,charging-supported;
 		nvidia,enable-pmu-vbus-detection;
 		nvidia,id-detection-type = <1>;
-		nvidia,enable-aca-nv-cable-detection;
+		nvidia,enable-aca-nv-charger-detection;
 		nvidia,dcp-current-limit-ma = <2000>;
 		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 2>;
 		extcon-cable-names = "vbus", "aca-nv";
@@ -256,7 +256,7 @@
 	otg@7d000000 {
 		nvidia,enable-pmu-vbus-detection;
 		nvidia,id-detection-type = <1>;
-		nvidia,enable-aca-nv-cable-detection;
+		nvidia,enable-aca-nv-charger-detection;
 		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 1 &extcon_cable_xlate 2>;
 		extcon-cable-names = "vbus", "id", "aca-nv";
 		#extcon-cells = <1>;
