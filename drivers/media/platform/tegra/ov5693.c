@@ -51,6 +51,7 @@
 
 static struct nvc_gpio_init ov5693_gpio[] = {
 	{ OV5693_GPIO_TYPE_PWRDN, GPIOF_OUT_INIT_LOW, "pwrdn", true, true, },
+	{ OV5693_GPIO_TYPE_RESET, GPIOF_OUT_INIT_LOW, "reset", true, true, },
 };
 
 struct ov5693_info {
