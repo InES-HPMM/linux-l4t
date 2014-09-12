@@ -449,14 +449,28 @@ static int ramoops_probe(struct platform_device *pdev)
 	 */
 	if (cxt->max_dump_cnt)
 		goto fail_out;
-
-	if (!pdata->mem_size || (!pdata->record_size && !pdata->console_size &&
-			!pdata->ftrace_size && !pdata->rtrace_size)) {
-		pr_err("The memory size and the record/console size must be "
-			"non-zero\n");
+	if ((pdata->mem_size && pdata->record_size) == 0) {
+		pr_err("The memory size and the record size must be non-zero\n");
 		goto fail_out;
 	}
-
+#ifdef CONFIG_PSTORE_CONSOLE
+	if (pdata->console_size == 0) {
+		pr_err("PSTORE_CONSOLE is enabled, console size must be non-zero\n");
+		goto fail_out;
+	}
+#endif
+#ifdef CONFIG_PSTORE_FTRACE
+	if (pdata->ftrace_size == 0) {
+		pr_err("PSTORE_FTRACE is enabled, ftrace size must be non-zero\n");
+		goto fail_out;
+	}
+#endif
+#ifdef CONFIG_PSTORE_RTRACE
+	if (pdata->rtrace_size == 0) {
+		pr_err("PSTORE_RTRACE is enabled, rtrace size must be non-zero\n");
+		goto fail_out;
+	}
+#endif
 	if (!is_power_of_2(pdata->mem_size))
 		pdata->mem_size = rounddown_pow_of_two(pdata->mem_size);
 	if (!is_power_of_2(pdata->record_size))
@@ -485,21 +499,24 @@ static int ramoops_probe(struct platform_device *pdev)
 	if (err)
 		goto fail_out;
 
+#ifdef CONFIG_PSTORE_CONSOLE
 	err = ramoops_init_prz(dev, cxt, &cxt->cprz, &paddr,
 			       cxt->console_size, 0);
 	if (err)
 		goto fail_init_cprz;
-
+#endif
+#ifdef CONFIG_PSTORE_FTRACE
 	err = ramoops_init_prz(dev, cxt, &cxt->fprz, &paddr, cxt->ftrace_size,
 			       LINUX_VERSION_CODE);
 	if (err)
 		goto fail_init_fprz;
-
+#endif
+#ifdef CONFIG_PSTORE_RTRACE
 	err = ramoops_init_prz(dev, cxt, &cxt->rprz, &paddr,
 			       cxt->rtrace_size, 0);
 	if (err)
 		goto fail_init_rprz;
-
+#endif
 	if (!cxt->przs && !cxt->cprz && !cxt->fprz && !cxt->rprz) {
 		pr_err("memory size too small, minimum is %zu\n",
 			cxt->console_size + cxt->record_size +
