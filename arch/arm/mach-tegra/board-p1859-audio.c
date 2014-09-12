@@ -133,7 +133,17 @@ static struct snd_soc_pcm_stream tegra_p1859_amx_input_params[] = {
 	},
 };
 
-static struct snd_soc_pcm_stream tegra_p1859_adx_input_params[] = {
+static struct snd_soc_pcm_stream tegra_p1859_amx_output_params[] = {
+	[0] = {
+		.formats = SNDRV_PCM_FMTBIT_S32_LE,
+		.rate_min = 48000,
+		.rate_max = 48000,
+		.channels_min = 8,
+		.channels_max = 8,
+	},
+};
+
+static struct snd_soc_pcm_stream tegra_p1859_adx_output_params[] = {
 	[0] = {
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 		.rate_min = 48000,
@@ -161,6 +171,16 @@ static struct snd_soc_pcm_stream tegra_p1859_adx_input_params[] = {
 		.rate_max = 48000,
 		.channels_min = 2,
 		.channels_max = 2,
+	},
+};
+
+static struct snd_soc_pcm_stream tegra_p1859_adx_input_params[] = {
+	[0] = {
+		.formats = SNDRV_PCM_FMTBIT_S32_LE,
+		.rate_min = 48000,
+		.rate_max = 48000,
+		.channels_min = 8,
+		.channels_max = 8,
 	},
 };
 
@@ -278,21 +298,29 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
 	/* initialize AMX config */
 	.amx_config[0] = {
 		.slot_map = tegra_p1859_amx_slot_map,
-		.params = tegra_p1859_amx_input_params,
+		.slot_size = ARRAY_SIZE(tegra_p1859_amx_slot_map),
+		.in_params = tegra_p1859_amx_input_params,
+		.out_params = tegra_p1859_amx_output_params,
 	},
 	.amx_config[1] = {
 		.slot_map = tegra_p1859_amx_slot_map,
-		.params = tegra_p1859_amx_input_params,
+		.slot_size = ARRAY_SIZE(tegra_p1859_amx_slot_map),
+		.in_params = tegra_p1859_amx_input_params,
+		.out_params = tegra_p1859_amx_output_params,
 	},
 	.num_amx = 2,
 	/* initialize ADX config */
 	.adx_config[0] = {
 		.slot_map = tegra_p1859_adx_slot_map,
-		.params = tegra_p1859_adx_input_params,
+		.slot_size = ARRAY_SIZE(tegra_p1859_adx_slot_map),
+		.in_params = tegra_p1859_adx_input_params,
+		.out_params = tegra_p1859_adx_output_params,
 	},
 	.adx_config[1] = {
 		.slot_map = tegra_p1859_adx_slot_map,
-		.params = tegra_p1859_adx_input_params,
+		.slot_size = ARRAY_SIZE(tegra_p1859_adx_slot_map),
+		.in_params = tegra_p1859_adx_input_params,
+		.out_params = tegra_p1859_adx_output_params,
 	},
 	.num_adx = 2,
 	/* initialize DAPM routes */
@@ -378,21 +406,29 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 	/* initialize AMX config */
 	.amx_config[0] = {
 		.slot_map = tegra_p1859_amx_slot_map,
-		.params = tegra_p1859_amx_input_params,
+		.slot_size = ARRAY_SIZE(tegra_p1859_amx_slot_map),
+		.in_params = tegra_p1859_amx_input_params,
+		.out_params = tegra_p1859_amx_output_params,
 	},
 	.amx_config[1] = {
 		.slot_map = tegra_p1859_amx_slot_map,
-		.params = tegra_p1859_amx_input_params,
+		.slot_size = ARRAY_SIZE(tegra_p1859_amx_slot_map),
+		.in_params = tegra_p1859_amx_input_params,
+		.out_params = tegra_p1859_amx_output_params,
 	},
 	.num_amx = 2,
 	/* initialize ADX config */
 	.adx_config[0] = {
 		.slot_map = tegra_p1859_adx_slot_map,
-		.params = tegra_p1859_adx_input_params,
+		.slot_size = ARRAY_SIZE(tegra_p1859_adx_slot_map),
+		.in_params = tegra_p1859_adx_input_params,
+		.out_params = tegra_p1859_adx_output_params,
 	},
 	.adx_config[1] = {
 		.slot_map = tegra_p1859_adx_slot_map,
-		.params = tegra_p1859_adx_input_params,
+		.slot_size = ARRAY_SIZE(tegra_p1859_adx_slot_map),
+		.in_params = tegra_p1859_adx_input_params,
+		.out_params = tegra_p1859_adx_output_params,
 	},
 	.num_adx = 2,
 	/* initialize DAPM routes */

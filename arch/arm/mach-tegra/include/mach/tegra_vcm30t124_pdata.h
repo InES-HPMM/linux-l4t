@@ -41,7 +41,9 @@ struct dai_link_config {
  */
 struct amx_adx_config {
 	unsigned int *slot_map;
-	struct snd_soc_pcm_stream *params;
+	unsigned int slot_size;
+	struct snd_soc_pcm_stream *in_params;
+	struct snd_soc_pcm_stream *out_params;
 };
 
 /* tegra_vcm30t124_platform_data - platform specific data
