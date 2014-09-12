@@ -959,6 +959,30 @@ TRACE_EVENT(nvhost_module_power_off,
 		__entry->powergate_id1)
 );
 
+TRACE_EVENT(nvhost_scale_notify,
+	TP_PROTO(const char *devname,
+		unsigned long load,
+		bool busy),
+
+	TP_ARGS(devname, load, busy),
+
+	TP_STRUCT__entry(
+		__field(const char *, devname)
+		__field(unsigned long, load)
+		__field(bool, busy)
+	),
+
+	TP_fast_assign(
+		__entry->devname = devname;
+		__entry->load = load;
+		__entry->busy = busy;
+	),
+
+	TP_printk("dev=%s load=%ld, busy=%d",
+		__entry->devname, __entry->load,
+		__entry->busy)
+);
+
 DECLARE_EVENT_CLASS(nvhost_map,
 	TP_PROTO(const char *devname, void *handle, int size,
 		dma_addr_t iova),
