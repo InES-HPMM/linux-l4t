@@ -27,6 +27,11 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/max15569-regulator.h>
 #include <linux/slab.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/regulator/of_regulator.h>
+#include <linux/of_gpio.h>
+
 
 /* Register definitions */
 #define MAX15569_VOUTMAX_REG			0x2
@@ -115,6 +120,11 @@ struct max15569_chip {
 	unsigned int max_volt_sel; /* register setting for max voltage */
 };
 
+enum max_chip {
+	MAX15569 = 0,
+	MAX16989,
+};
+
 static int max15569_get_voltage_sel(struct regulator_dev *rdev)
 {
 	struct max15569_chip *max = rdev_get_drvdata(rdev);
@@ -137,6 +147,8 @@ static int max15569_set_voltage(struct regulator_dev *rdev,
 	unsigned int reg = MAX15569_SETVOUT_REG;
 	int vsel;
 	int ret;
+
+	dev_dbg(max->dev, "\n%s:%d: voltage:%d\n", __func__, __LINE__, min_uV);
 
 	if ((max_uV < min_uV) || (max_uV < MAX15569_MIN_VOLTAGE_UV) ||
 			(min_uV > max->max_voltage_uV))
@@ -178,8 +190,8 @@ static int max15569_set_voltage_time_sel(struct regulator_dev *rdev,
 		change_mv_per_us = MAX15569_MIN_SLEW_RATE;
 
 	return max->output_enabled ?
-		max15569_slewrate_table[max->change_mv_per_us].regular_slew_rate :
-		max15569_slewrate_table[max->change_mv_per_us].soft_start_slew_rate;
+	max15569_slewrate_table[max->change_mv_per_us].regular_slew_rate :
+	max15569_slewrate_table[max->change_mv_per_us].soft_start_slew_rate;
 }
 
 static int max15569_set_control_mode(struct regulator_dev *rdev,
@@ -214,42 +226,43 @@ static int max15569_init(struct max15569_chip *max15569,
 
 	max15569->output_enabled = true;
 
-	/* Set slew rate */
-	/* max15569->change_mv_per_us = min(44,max(1, pdata->slew_rate_mv_per_us)); */
-
-	if (max15569->change_mv_per_us > 44)
-		max15569->change_mv_per_us = 44;
-
-	if (max15569->change_mv_per_us < 1)
-		max15569->change_mv_per_us = 1;
-
-	vsel = max15569_slewrate_table[max15569->change_mv_per_us].regular_slew_rate;
-
-	ret = regmap_write(max15569->regmap, MAX15569_SLEW_RATE_REG, vsel);
-	if (ret < 0) {
-		dev_err(max15569->dev, "SLEW reg write failed, err %d\n", ret);
-		return ret;
+	/* setup max voltage */
+	if (pdata->max_voltage_uV) {
+		vsel = DIV_ROUND_UP(pdata->max_voltage_uV -
+			MAX15569_MIN_VOLTAGE_UV, MAX15569_VOLTAGE_STEP) + 0x1;
+		ret = regmap_write(max15569->regmap, MAX15569_VOUTMAX_REG,
+								vsel);
+		if (ret < 0) {
+			dev_err(max15569->dev, "VMAX write failed, err %d\n",
+									ret);
+			return ret;
+		}
+		max15569->max_volt_sel = vsel;
+		max15569->max_voltage_uV = pdata->max_voltage_uV;
+	/*
+	 * Maximum voltage setting is different between max15569 and max16989,
+	 * and no device-id available to differentiate between two.
+	 * So, manadatory to pass from platform/DT.
+	 */
+	} else {
+		dev_err(max15569->dev, "Max voltage setting not provided\n");
+		return -EINVAL;
 	}
+
+	dev_dbg(max15569->dev, "\n%s:%d: max_volt_sel: 0x%x max_voltage:%d\n",
+			__func__, __LINE__,
+			max15569->max_volt_sel, max15569->max_voltage_uV);
 
 	/* Set base voltage if passed from platform data*/
 	if (pdata->base_voltage_uV) {
 		vsel = DIV_ROUND_UP(pdata->base_voltage_uV -
 			MAX15569_MIN_VOLTAGE_UV, MAX15569_VOLTAGE_STEP) + 0x1;
-		dev_err(max15569->dev, "Setting rail to vsel %x\n", vsel);
-		ret = regmap_write(max15569->regmap, MAX15569_SETVOUT_REG, vsel);
+		dev_info(max15569->dev, "Setting rail to vsel %x\n", vsel);
+		ret = regmap_write(max15569->regmap, MAX15569_SETVOUT_REG,
+								vsel);
 		if (ret < 0) {
-			dev_err(max15569->dev, "BASE reg write failed, err %d\n", ret);
-			return ret;
-		}
-	}
-
-	/* setup max voltage */
-	if (pdata->max_voltage_uV) {
-		vsel = DIV_ROUND_UP(pdata->max_voltage_uV -
-			MAX15569_MIN_VOLTAGE_UV, MAX15569_VOLTAGE_STEP) + 0x1;
-		ret = regmap_write(max15569->regmap, MAX15569_VOUTMAX_REG, vsel);
-		if (ret < 0) {
-			dev_err(max15569->dev, "VMAX write failed, err %d\n", ret);
+			dev_err(max15569->dev,
+				"BASE reg write failed, err %d\n", ret);
 			return ret;
 		}
 	}
@@ -259,20 +272,6 @@ static int max15569_init(struct max15569_chip *max15569,
 		dev_err(max15569->dev, "STATUS reg read failed, err %d\n", ret);
 		return ret;
 	}
-
-	ret = regmap_read(max15569->regmap, MAX15569_VOUTMAX_REG,
-				&(max15569->max_volt_sel));
-	if (ret < 0) {
-		dev_err(max15569->dev, "VMAX reg read failed, err %d\n", ret);
-		return ret;
-	}
-	max15569->max_voltage_uV = (MAX15569_MIN_VOLTAGE_UV +
-					(max15569->max_volt_sel - 1)
-					* MAX15569_VOLTAGE_STEP);
-
-	pr_debug("\n%s:%d: max_volt_sel: 0x%x max_voltage:%d\n",
-		__func__, __LINE__,
-		max15569->max_volt_sel, max15569->max_voltage_uV);
 
 	if (status & MAX15569_STATUS_VRHOT)
 		dev_err(max15569->dev, "VRHOT: regulator temperature beyond limit\n");
@@ -345,10 +344,45 @@ static const struct regmap_config max15569_regmap_config = {
 	.writeable_reg		= is_write_reg,
 	.readable_reg		= is_read_reg,
 	.volatile_reg		= is_volatile_reg,
-	.reg_volatile_set       = max15569_reg_volatile_set,
+	.reg_volatile_set	= max15569_reg_volatile_set,
 	.max_register		= MAX15569_MAX_REG - 1,
 	.cache_type		= REGCACHE_RBTREE,
 };
+
+static const struct of_device_id max15569_of_match[] = {
+	 { .compatible = "maxim,max15569", .data = (void *)MAX15569},
+	 { .compatible = "maxim,max16989", .data = (void *)MAX16989},
+	{},
+};
+MODULE_DEVICE_TABLE(of, max15569_of_match);
+
+static struct max15569_regulator_platform_data *
+	of_get_max15569_platform_data(struct device *dev)
+{
+	struct max15569_regulator_platform_data *pdata;
+	struct device_node *np = dev->of_node;
+
+	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(dev, "Memory alloc failed for platform data\n");
+		return NULL;
+	}
+
+	pdata->reg_init_data = of_get_regulator_init_data(dev, dev->of_node);
+	pdata->ena_gpio = of_get_named_gpio(np, "enable-gpio", 0);
+	dev_dbg(dev, "\n %s:%d pdata->ena_gpio:%d\n",
+			__func__, __LINE__, pdata->ena_gpio);
+	if (!pdata->reg_init_data) {
+		dev_err(dev, "Not able to get OF regulator init data\n");
+		return NULL;
+	}
+
+	pdata->max_voltage_uV = pdata->reg_init_data->constraints.max_uV;
+
+	dev_dbg(dev, "\n %s:%d constraints.min_uV:%d\n", __func__, __LINE__,
+				pdata->reg_init_data->constraints.min_uV);
+	return pdata;
+}
 
 static int max15569_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
@@ -360,6 +394,18 @@ static int max15569_probe(struct i2c_client *client,
 	int ret;
 
 	pdata = client->dev.platform_data;
+
+	if (client->dev.of_node) {
+		const struct of_device_id *match;
+		match = of_match_device(of_match_ptr(max15569_of_match),
+					&client->dev);
+		if (!match) {
+			dev_err(&client->dev, "Error: No device match found\n");
+			return -ENODEV;
+		}
+		if (!pdata)
+			pdata = of_get_max15569_platform_data(&client->dev);
+	}
 	if (!pdata) {
 		dev_err(&client->dev, "No Platform data\n");
 		return -EINVAL;
@@ -394,13 +440,13 @@ static int max15569_probe(struct i2c_client *client,
 	}
 
 	max->desc.n_voltages = max->max_volt_sel + 1;
-	pr_debug("\n%s:%d: max->desc.n_voltages:%d max->max_voltage_uV:%d\n",
+	dev_dbg(max->dev, "\n%s:%d: max->desc.n_voltages:%d max->max_voltage_uV:%d\n",
 			__func__, __LINE__,
 			max->desc.n_voltages, max->max_voltage_uV);
 
 	/* Register the regulators */
 	rconfig.dev = &client->dev;
-	rconfig.of_node = NULL;
+	rconfig.of_node = client->dev.of_node;
 	rconfig.init_data = pdata->reg_init_data;
 	rconfig.driver_data = max;
 	rconfig.ena_gpio = pdata->ena_gpio;
@@ -425,6 +471,7 @@ static int max15569_remove(struct i2c_client *client)
 
 static const struct i2c_device_id max15569_id[] = {
 	{.name = "max15569",},
+	{.name = "max16989",},
 	{},
 };
 
@@ -434,6 +481,7 @@ static struct i2c_driver max15569_i2c_driver = {
 	.driver = {
 		.name = "max15569",
 		.owner = THIS_MODULE,
+		.of_match_table = max15569_of_match,
 	},
 	.probe = max15569_probe,
 	.remove = max15569_remove,
