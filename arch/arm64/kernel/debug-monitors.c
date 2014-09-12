@@ -179,7 +179,7 @@ static struct notifier_block dm_cpu_pm_nb = {
 	.notifier_call = dm_cpu_pm_notify,
 };
 
-static void __init debug_monitors_pm_init(void)
+static void debug_monitors_pm_init(void)
 {
 	cpu_pm_register_notifier(&dm_cpu_pm_nb);
 }
