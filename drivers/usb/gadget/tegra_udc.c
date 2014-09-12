@@ -1512,7 +1512,8 @@ static int tegra_detect_cable_type(struct tegra_udc *udc)
 	if (udc->support_aca_nv_cable && udc->aca_nv_extcon_cable) {
 		index = udc->aca_nv_extcon_cable->cable_index;
 		if (extcon_get_cable_state_(udc->aca_nv_extcon_dev, index)) {
-			tegra_udc_set_charger_type(udc, CONNECT_TYPE_ACA_NV_CHARGER);
+			tegra_udc_set_charger_type(udc,
+						CONNECT_TYPE_ACA_NV_CHARGER);
 			tegra_usb_set_charging_current(udc);
 			return 0;
 		}
@@ -2982,7 +2983,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		pdata =	tegra_udc_dt_parse_pdata(pdev);
 		udc->support_aca_nv_cable =
 				of_property_read_bool(pdev->dev.of_node,
-					"nvidia,enable-aca-nv-cable-detection");
+					"nvidia,enable-aca-nv-charger-detection");
 
 		pdata->has_hostpc = soc_data->has_hostpc;
 		pdata->unaligned_dma_buf_supported =
@@ -3138,9 +3139,11 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 
 	if (udc->support_aca_nv_cable) {
 		if (pdev->dev.of_node)
-			udc->aca_nv_extcon_cable = extcon_get_extcon_cable(&pdev->dev, "aca-nv");
+			udc->aca_nv_extcon_cable =
+				extcon_get_extcon_cable(&pdev->dev, "aca-nv");
 		if (IS_ERR(udc->aca_nv_extcon_cable)) {
-			dev_err(&pdev->dev, "failed to get aca-nv extcon cable\n");
+			dev_err(&pdev->dev,
+					"failed to get aca-nv extcon cable\n");
 			err = -EPROBE_DEFER;
 		} else
 			udc->aca_nv_extcon_dev =
@@ -3380,7 +3383,8 @@ static int tegra_udc_resume(struct device *dev)
 		if (udc->support_aca_nv_cable && udc->aca_nv_extcon_cable) {
 			index = udc->aca_nv_extcon_cable->cable_index;
 			if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE) &&
-				!extcon_get_cable_state_(udc->aca_nv_extcon_dev, index)) {
+				!extcon_get_cable_state_(udc->aca_nv_extcon_dev,
+								index)) {
 				tegra_udc_set_extcon_state(udc);
 				udc->connect_type_lp0 = CONNECT_TYPE_NONE;
 				regulator_set_current_limit(udc->vbus_reg,
