@@ -510,7 +510,6 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 	old_current_limit = bq2419x->in_current_limit;
 	bq2419x->last_charging_current = max_uA;
 	if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_UNKNOWN) {
-		battery_charging_restart_cancel(bq2419x->bc_dev);
 		in_current_limit = 500;
 		bq2419x->cable_connected = 0;
 		bq2419x->chg_status = BATTERY_DISCHARGING;
@@ -522,8 +521,6 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 		bq2419x->chg_status = BATTERY_CHARGING_DONE;
 		bq2419x->cable_connected = 1;
 		in_current_limit = max_uA/1000;
-		battery_charging_restart(bq2419x->bc_dev,
-					bq2419x->chg_restart_time);
 		battery_charger_thermal_stop_monitoring(
 				bq2419x->bc_dev);
 	} else {
@@ -576,7 +573,6 @@ static int bq2419x_set_charging_current_suspend(struct bq2419x_chip *bq2419x,
 		dev_err(bq2419x->dev, "SYS_STAT_REG read failed: %d\n", ret);
 
 	if (!bq2419x->cable_connected) {
-		battery_charging_restart_cancel(bq2419x->bc_dev);
 		ret = bq2419x_configure_charging_current(bq2419x,
 				in_current_limit);
 		if (ret < 0)
@@ -717,8 +713,6 @@ sys_stat_read:
 		bq2419x->chg_status = BATTERY_CHARGING_DONE;
 		battery_charging_status_update(bq2419x->bc_dev,
 					bq2419x->chg_status);
-		battery_charging_restart(bq2419x->bc_dev,
-					bq2419x->chg_restart_time);
 		if (bq2419x->disable_suspend_during_charging)
 			battery_charger_release_wake_lock(bq2419x->bc_dev);
 		battery_charger_thermal_stop_monitoring(
@@ -735,8 +729,6 @@ sys_stat_read:
 		bq2419x->chg_status = BATTERY_DISCHARGING;
 		battery_charging_status_update(bq2419x->bc_dev,
 				bq2419x->chg_status);
-		battery_charging_restart(bq2419x->bc_dev,
-					bq2419x->chg_restart_time);
 		if (bq2419x->disable_suspend_during_charging)
 			battery_charger_release_wake_lock(bq2419x->bc_dev);
 	}
@@ -1200,31 +1192,8 @@ static int bq2419x_charger_thermal_configure(
 	return 0;
 }
 
-static int bq2419x_charging_restart(struct battery_charger_dev *bc_dev)
-{
-	struct bq2419x_chip *bq2419x = battery_charger_get_drvdata(bc_dev);
-	int ret;
-
-	if (!bq2419x->cable_connected)
-		return 0;
-
-	dev_info(bq2419x->dev, "Restarting the charging\n");
-	ret = bq2419x_set_charging_current(bq2419x->chg_rdev,
-			bq2419x->last_charging_current,
-			bq2419x->last_charging_current);
-	if (ret < 0) {
-		dev_err(bq2419x->dev,
-			"Restarting of charging failed: %d\n", ret);
-		battery_charging_restart(bq2419x->bc_dev,
-				bq2419x->chg_restart_time);
-	}
-	return ret;
-}
-
-
 static struct battery_charging_ops bq2419x_charger_bci_ops = {
 	.get_charging_status = bq2419x_charger_get_status,
-	.restart_charging = bq2419x_charging_restart,
 	.thermal_configure = bq2419x_charger_thermal_configure,
 };
 
@@ -1250,7 +1219,6 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 	if (batt_reg_node) {
 		int temp_range_len, chg_current_lim_len, chg_voltage_lim_len;
 		int count;
-		int wdt_timeout;
 		int chg_restart_time;
 		int auto_recharge_time_power_off;
 		int auto_rechg_power_on_time;
@@ -1327,11 +1295,6 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 				"ti,disbale-suspend-during-charging");
 
 		ret = of_property_read_u32(batt_reg_node,
-				"ti,watchdog-timeout", &wdt_timeout);
-		if (!ret)
-			pdata->bcharger_pdata->wdt_timeout = wdt_timeout;
-
-		ret = of_property_read_u32(batt_reg_node,
 			"ti,auto-recharge-time-power-off",
 			&auto_recharge_time_power_off);
 		if (!ret)
@@ -1349,12 +1312,6 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 					auto_rechg_power_on_time;
 		else
 			pdata->bcharger_pdata->auto_rechg_power_on_time = 25;
-
-		ret = of_property_read_u32(batt_reg_node,
-				"ti,auto-recharge-time", &chg_restart_time);
-		if (!ret)
-			pdata->bcharger_pdata->chg_restart_time =
-							chg_restart_time;
 
 		ret = of_property_read_u32(batt_reg_node,
 				"ti,auto-recharge-time-suspend",
@@ -1597,7 +1554,6 @@ static int bq2419x_probe(struct i2c_client *client,
 
 	bq2419x->auto_recharge_time_power_off =
 			pdata->bcharger_pdata->auto_recharge_time_power_off;
-	bq2419x->chg_restart_time = pdata->bcharger_pdata->chg_restart_time;
 	bq2419x->battery_presense = true;
 	bq2419x->last_temp = -1000;
 	bq2419x->disable_suspend_during_charging =
@@ -1743,8 +1699,6 @@ static int bq2419x_suspend(struct device *dev)
 
 	if (!bq2419x->battery_presense)
 		return 0;
-
-	battery_charging_restart_cancel(bq2419x->bc_dev);
 
 	if (!bq2419x->cable_connected)
 		goto end;
