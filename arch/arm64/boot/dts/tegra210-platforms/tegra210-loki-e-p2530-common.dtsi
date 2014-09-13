@@ -39,12 +39,12 @@
 	};
 
 	sdhci@700b0400 {
-		uhs-mask = <0x1c>;
+		uhs-mask = <0x8>;
 		status = "okay";
 	};
 
 	sdhci@700b0200 {
-		uhs-mask = <0x1c>;
+		uhs-mask = <0x8>;
 		status = "okay";
 	};
 
