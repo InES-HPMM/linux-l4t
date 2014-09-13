@@ -35,6 +35,19 @@
 #define PCIE_LANES_X2_X0		0x02
 #define PCIE_LANES_X0_X1		0x10
 
+enum padctl_lane {
+	PEX_P0 = 0,
+	PEX_P1,
+	PEX_P2,
+	PEX_P3,
+	PEX_P4,
+	PEX_P5,
+	PEX_P6,
+	SATA_S0,
+	LANE_MIN = PEX_P0,
+	LANE_MAX = SATA_S0
+};
+
 /* PCIe/SATA pad phy */
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 #define SS_PAD_COUNT	4

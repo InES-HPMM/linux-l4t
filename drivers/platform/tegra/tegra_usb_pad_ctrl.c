@@ -318,6 +318,8 @@ static int pex_usb_pad_pll(bool assert)
 		return PTR_ERR(pex_uphy);
 	}
 
+	pr_debug("%s ref_count %d assert %d\n", __func__, ref_count, assert);
+
 	spin_lock_irqsave(&pcie_pad_lock, flags);
 
 	if (!assert) {
@@ -777,16 +779,34 @@ void usb2_vbus_id_init()
 }
 EXPORT_SYMBOL_GPL(usb2_vbus_id_init);
 
-static void tegra_xusb_uphy_misc(bool ovrd)
-{
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
+static void tegra_xusb_uphy_misc(bool ovrd, enum padctl_lane lane)
+{
 	unsigned long val;
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	u16 misc_pad_ctl2_regs[] = {
+		[PEX_P0] = XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2,
+		[PEX_P1] = XUSB_PADCTL_UPHY_MISC_PAD_P1_CTL2,
+		[PEX_P2] = XUSB_PADCTL_UPHY_MISC_PAD_P2_CTL2,
+		[PEX_P3] = XUSB_PADCTL_UPHY_MISC_PAD_P3_CTL2,
+		[PEX_P4] = XUSB_PADCTL_UPHY_MISC_PAD_P4_CTL2,
+		[PEX_P5] = XUSB_PADCTL_UPHY_MISC_PAD_P5_CTL2,
+		[PEX_P6] = XUSB_PADCTL_UPHY_MISC_PAD_P6_CTL2,
+		[SATA_S0] = XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2,
+	};
+
+	if ((lane < LANE_MIN) || (lane > LANE_MAX)) {
+		pr_warn("%s invalid lane number %d\n", __func__, lane);
+		return;
+	}
+
+	pr_debug("%s lane %d override IDDQ %d\n", __func__, lane, ovrd);
 
 	/* WAR: Override pad controls and keep UPHy under IDDQ and */
 	/* SLEEP 3 state during lane ownership changes and powergating */
-	val = readl(pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2);
+	val = readl(pad_base + misc_pad_ctl2_regs[lane]);
 	if (ovrd) {
+		/* register bit-fields are same across all lanes */
 		val |= XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2_TX_IDDQ |
 			XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2_RX_IDDQ |
 			XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2_TX_IDDQ_OVRD |
@@ -802,18 +822,8 @@ static void tegra_xusb_uphy_misc(bool ovrd)
 			XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2_TX_IDDQ_OVRD |
 			XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2_RX_IDDQ_OVRD);
 	}
-	writel(val, pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2);
-	writel(val, pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P1_CTL2);
-	writel(val, pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P2_CTL2);
-	writel(val, pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P3_CTL2);
-	writel(val, pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P4_CTL2);
-	writel(val, pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P5_CTL2);
-	writel(val, pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P6_CTL2);
-	writel(val, pad_base + XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2);
-#endif
+	writel(val, pad_base + misc_pad_ctl2_regs[lane]);
 }
-
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
 
 static void usb3_pad_mux_set(u8 lane)
 {
@@ -865,7 +875,9 @@ static void usb3_release_padmux_state_latch(void)
 	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_1);
 
 }
+
 static int tegra_xusb_padctl_phy_enable(void);
+
 /*
  * Have below lane define used for each port
  * PCIE_LANEP6 0x6
@@ -878,6 +890,27 @@ static int tegra_xusb_padctl_phy_enable(void);
  * SATA_LANE   0x8
  * NOT_SUPPORTED	0xF
  */
+static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
+{
+	if (laneowner == 0x0)
+		return PEX_P0;
+	else if (laneowner == 0x1)
+		return PEX_P1;
+	else if (laneowner == 0x2)
+		return PEX_P2;
+	else if (laneowner == 0x2)
+		return PEX_P3;
+	else if (laneowner == 0x4)
+		return PEX_P4;
+	else if (laneowner == 0x5)
+		return PEX_P5;
+	else if (laneowner == 0x6)
+		return PEX_P6;
+	else if (laneowner == 0x8)
+		return SATA_S0;
+	else
+		return -1; /* unknown */
+}
 int usb3_phy_pad_enable(u32 lane_owner)
 {
 	unsigned long flags;
@@ -913,13 +946,16 @@ int usb3_phy_pad_enable(u32 lane_owner)
 	pr_debug("XUSB_PADCTL_UPHY_PLL_P0_CTL5_0 = 0x%x\n"
 			, readl(pad_base + XUSB_PADCTL_UPHY_PLL_P0_CTL5_0));
 
-	/* Pad mux assign */
-	tegra_xusb_uphy_misc(true);
+	for (pad = 0; pad < SS_PAD_COUNT; pad++) {
+		u8 lane = (lane_owner >> (pad * 4)) & 0xf;
+		enum padctl_lane lane_enum = usb3_laneowner_to_lane_enum(lane);
 
-	for (pad = 0; pad < SS_PAD_COUNT; pad++)
-		usb3_pad_mux_set((lane_owner >> (pad * 4)) & 0xf);
-
-	tegra_xusb_uphy_misc(false);
+		if (lane == USB3_LANE_NOT_ENABLED)
+			continue;
+		tegra_xusb_uphy_misc(true, lane_enum);
+		usb3_pad_mux_set(lane);
+		tegra_xusb_uphy_misc(false, lane_enum);
+	}
 
 	pr_debug("[%s] ss pad mux\n", __func__);
 	pr_debug("XUSB_PADCTL_USB3_PAD_MUX_0 = 0x%x\n"
@@ -1232,11 +1268,23 @@ int t210_sata_uphy_pll_init(bool sata_used_by_xusb)
 }
 EXPORT_SYMBOL_GPL(t210_sata_uphy_pll_init);
 
+static int pex_pll_refcnt;
+static void tegra_xusb_padctl_phy_disable(void)
+{
+	pr_debug("%s pex_pll_refcnt %d\n", __func__, pex_pll_refcnt);
+	pex_pll_refcnt--;
+}
+
 static int tegra_xusb_padctl_phy_enable(void)
 {
 	unsigned long val, timeout;
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+
+	pr_debug("%s pex_pll_refcnt %d\n", __func__, pex_pll_refcnt);
+
+	if (pex_pll_refcnt > 0)
+		goto done; /* already done */
 
 	/* Enable overrides to enable SW control over PLL */
 	/* init UPHY, Set PWR/CAL/RCAL OVRD */
@@ -1393,9 +1441,15 @@ static int tegra_xusb_padctl_phy_enable(void)
 	val |= XUSBIO_SEQ_ENABLE;
 	writel(val, clk_base + CLK_RST_CONTROLLER_XUSBIO_PLL_CFG0_0);
 
+done:
+	pex_pll_refcnt++;
 	return 0;
 }
 #else
+static void tegra_xusb_padctl_phy_disable(void)
+{
+
+}
 static int tegra_xusb_padctl_phy_enable(void)
 {
 	unsigned long val, timeout;
@@ -1545,6 +1599,33 @@ static int tegra_pcie_lane_iddq(bool enable, int lane_owner)
 	return 0;
 }
 
+static void tegra_pcie_lane_misc_pad_override(bool ovdr, int lane_owner)
+{
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	switch (lane_owner) {
+	case PCIE_LANES_X4_X1:
+		tegra_xusb_uphy_misc(ovdr, PEX_P0);
+		/* fall through */
+	case PCIE_LANES_X4_X0:
+		tegra_xusb_uphy_misc(ovdr, PEX_P1);
+		tegra_xusb_uphy_misc(ovdr, PEX_P2);
+		tegra_xusb_uphy_misc(ovdr, PEX_P3);
+		tegra_xusb_uphy_misc(ovdr, PEX_P4);
+		break;
+	case PCIE_LANES_X2_X1:
+		tegra_xusb_uphy_misc(ovdr, PEX_P0);
+		/* fall through */
+	case PCIE_LANES_X2_X0:
+		tegra_xusb_uphy_misc(ovdr, PEX_P1);
+		tegra_xusb_uphy_misc(ovdr, PEX_P2);
+		break;
+	case PCIE_LANES_X0_X1:
+		tegra_xusb_uphy_misc(ovdr, PEX_P0);
+		break;
+	}
+#endif
+}
+
 int pcie_phy_pad_enable(bool enable, int lane_owner)
 {
 	unsigned long val, flags;
@@ -1560,8 +1641,10 @@ int pcie_phy_pad_enable(bool enable, int lane_owner)
 	}
 	ret = tegra_pcie_lane_iddq(enable, lane_owner);
 	if (ret || !enable) {
-		if (!enable)
-			tegra_xusb_uphy_misc(true);
+		if (!enable) {
+			tegra_xusb_padctl_phy_disable();
+			tegra_pcie_lane_misc_pad_override(true, lane_owner);
+		}
 		goto exit;
 	}
 
@@ -1589,7 +1672,7 @@ int pcie_phy_pad_enable(bool enable, int lane_owner)
 	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
 	udelay(100);
 #endif
-	tegra_xusb_uphy_misc(true);
+	tegra_pcie_lane_misc_pad_override(true, lane_owner);
 
 	val = readl(pad_base + XUSB_PADCTL_USB3_PAD_MUX_0);
 	switch (lane_owner) {
@@ -1632,7 +1715,7 @@ int pcie_phy_pad_enable(bool enable, int lane_owner)
 		goto exit;
 	}
 	writel(val, pad_base + XUSB_PADCTL_USB3_PAD_MUX_0);
-	tegra_xusb_uphy_misc(false);
+	tegra_pcie_lane_misc_pad_override(false, lane_owner);
 exit:
 	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
 	return ret;
