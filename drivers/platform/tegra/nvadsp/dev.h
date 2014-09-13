@@ -52,6 +52,7 @@ struct nvadsp_drv_data {
 	struct nvadsp_mbox **mboxes;
 	unsigned long *mbox_ids;
 	spinlock_t mbox_lock;
+
 #if CONFIG_DEBUG_FS
 	struct dentry *adsp_debugfs_root;
 #endif
@@ -61,8 +62,9 @@ status_t nvadsp_mbox_init(struct platform_device *pdev);
 status_t nvadsp_aram_init(struct platform_device *pdev);
 
 #ifdef CONFIG_TEGRA_ADSP_DFS
-unsigned long adsp_cpu_set_rate(unsigned long freq);
-int adsp_dfs_core_init(void);
+void adsp_cpu_set_rate(unsigned long freq);
+int adsp_dfs_core_init(struct platform_device *pdev);
+int adsp_dfs_core_exit(struct platform_device *pdev);
 #endif
 
 #ifdef CONFIG_TEGRA_EMC_APE_DFS

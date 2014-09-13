@@ -37,6 +37,7 @@
 
 #include <asm-generic/uaccess.h>
 
+#include "ape_actmon.h"
 #include "os.h"
 #include "dev.h"
 #include "dram_app_mem_manager.h"
@@ -693,10 +694,11 @@ EXPORT_SYMBOL(nvadsp_os_load);
 
 int nvadsp_os_start(void)
 {
+	struct nvadsp_drv_data *drv_data;
 	struct device *dev;
 	struct clk *adsp_clk;
-	struct clk *ape_uart;
 	struct clk *ape_clk;
+	struct clk *ape_uart;
 	int val, ret;
 
 	if (!priv.pdev) {
@@ -705,6 +707,7 @@ int nvadsp_os_start(void)
 	}
 
 	dev = &priv.pdev->dev;
+	drv_data = platform_get_drvdata(priv.pdev);
 
 	/*FIXME:this will be replaced by pm_runtime API */
 	adsp_clk = clk_get_sys(NULL, "adsp");
@@ -712,29 +715,19 @@ int nvadsp_os_start(void)
 		dev_info(dev, "unable to find adsp clock\n");
 		return PTR_ERR(adsp_clk);
 	}
+	clk_prepare_enable(adsp_clk);
 	tegra_periph_reset_assert(adsp_clk);
 	udelay(10);
 
 	val = readl(priv.misc_base + ADSP_CONFIG);
 	writel(val | MAXCLKLATENCY, priv.misc_base + ADSP_CONFIG);
 
-	/*
-	 * FIXME:this will be replaced by DFS runtime PM API
-	 * Set ADSP and APE clock in OS start
-	 */
 	ape_clk = clk_get_sys(NULL, "ape");
 	if (IS_ERR_OR_NULL(ape_clk)) {
 		dev_info(dev, "unable to find ape clock\n");
 		return PTR_ERR(ape_clk);
 	}
-
-	pr_info("Setting ape clock(KHz):%u", APE_CLK_FIX_RATE);
 	clk_prepare_enable(ape_clk);
-	clk_set_rate(ape_clk, APE_CLK_FIX_RATE * 1000);
-
-	pr_info("Setting adsp clock(KHz):%u", ADSP_CLK_FIX_RATE);
-	clk_prepare_enable(adsp_clk);
-	clk_set_rate(adsp_clk, ADSP_CLK_FIX_RATE * 1000);
 
 	/* TODO: enable ape2apb clock */
 	ape_uart = clk_get_sys("uartape", NULL);
@@ -752,9 +745,25 @@ int nvadsp_os_start(void)
 #if !CONFIG_SYSTEM_FPGA
 	writel(APE_RESET, priv.reset_reg);
 #endif
+
 	dev_info(dev, "waiting for ADSP OS to boot up...\n");
 	ret = wait_for_adsp_os_load_complete();
 	dev_info(dev, "waiting for ADSP OS to boot up...Done.\n");
+
+#ifdef CONFIG_TEGRA_ADSP_DFS
+	if (adsp_dfs_core_init(priv.pdev)) {
+		dev_err(dev, "adsp dfs initialization failed\n");
+		return -EINVAL;
+	}
+#endif
+
+#ifdef CONFIG_TEGRA_ADSP_ACTMON
+	if (ape_actmon_init(priv.pdev)) {
+		dev_err(dev, "ape actmon initialization failed\n");
+		return -EINVAL;
+	}
+#endif
+
 	return ret;
 }
 EXPORT_SYMBOL(nvadsp_os_start);
@@ -780,6 +789,14 @@ static void __nvadsp_os_stop(bool reload)
 	writel(ENABLE_MBOX2_EMPTY_INT, priv.misc_base + HWMBOX2_REG);
 	wait_for_completion(&entered_wfe);
 	writel(DISABLE_MBOX2_EMPTY_INT, priv.misc_base + HWMBOX2_REG);
+
+#ifdef CONFIG_TEGRA_ADSP_DFS
+	adsp_dfs_core_exit(priv.pdev);
+#endif
+
+#ifdef CONFIG_TEGRA_ADSP_ACTMON
+	ape_actmon_exit(priv.pdev);
+#endif
 
 	tegra_periph_reset_assert(adsp_clk);
 

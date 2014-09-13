@@ -16,25 +16,47 @@
  *
  */
 
+#include <linux/tegra_nvadsp.h>
 #include <linux/platform_device.h>
 #include <linux/debugfs.h>
 #include <linux/clk/tegra.h>
 
-#include "ape_actmon.h"
+#include "dev.h"
 
-#define POLICY_MAX 600000 /* 600 MHz: max adsp freq */
+#ifndef CONFIG_TEGRA_ADSP_ACTMON
+#include "ape_actmon.h"
+void actmon_rate_change(unsigned long freq)
+{
+
+}
+#endif
+
+#define MBOX_TIMEOUT 1000 /* in ms */
+#define HOST_ADSP_DFS_MBOX_ID 3
+
+enum adsp_dfs_reply {
+	ACK,
+	NACK,
+};
 
 struct adsp_dfs_policy {
 	bool enable;
+ /*
+ * update_freq_flag = TRUE, ADSP ACKed the new freq
+ *					= FALSE, ADSP NACKed the new freq
+ */
+	bool update_freq_flag;
 
 	const char *clk_name;
 	unsigned long min;    /* in kHz */
 	unsigned long max;    /* in kHz */
 	unsigned long cur;    /* in kHz */
-	spinlock_t lock;
+	unsigned long cpu_min;    /* in kHz */
+	unsigned long cpu_max;    /* in kHz */
 
 	struct clk *adsp_clk;
 	struct notifier_block rate_change_nb;
+	struct nvadsp_mbox mbox;
 
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *root;
@@ -42,57 +64,112 @@ struct adsp_dfs_policy {
 };
 
 struct adsp_dfs_policy *policy;
+static DEFINE_MUTEX(policy_mutex);
 
 /* adsp clock rate change notifier callback */
 static int adsp_dfs_rc_callback(
 	struct notifier_block *nb, unsigned long rate, void *v)
 {
-	unsigned long flags;
 	unsigned long freq = rate / 1000;
-	struct adsp_dfs_policy *dfs_pol = container_of(
-				nb, struct adsp_dfs_policy, rate_change_nb);
-
-	spin_lock_irqsave(&dfs_pol->lock, flags);
 
 	actmon_rate_change(freq);
+
+	mutex_lock(&policy_mutex);
 	policy->cur = freq;
+	mutex_unlock(&policy_mutex);
 
-	spin_unlock_irqrestore(&policy->lock, flags);
-
-	pr_info("policy->cur:%lu\n", policy->cur);
+	pr_debug("policy->cur:%lu\n", policy->cur);
 	/* TBD: Communicate ADSP about new freq */
 
 	return NOTIFY_OK;
 };
 
 static struct adsp_dfs_policy dfs_policy =  {
-	.enable = 0,
+	.enable = 1,
 	.clk_name = "adsp_cpu",
-	.max = POLICY_MAX, /* Check for 600MHz for max clock freq */
 	.rate_change_nb = {
 		.notifier_call = adsp_dfs_rc_callback,
 	},
 };
-
-/* @parameter freq(KHz): can be any freq value */
-unsigned long verify_policy(unsigned long freq)
-{
-	/* TBD: set freq  from adsp freq table. */
-	 if (freq < policy->min)
-		freq = policy->min;
-	 else if (freq > policy->max)
-		freq = policy->max;
-
-	return freq;
-}
-
 /**
- * @parameter freq(KHz): one of the freq adsp freq table
+ * update_policy - update adsp freq and ask adsp to work post change
+ *		in freq tasks
+ * tfreq - target frequency
+ * return - final freq got set.
+ *		- 0, incase of error.
+ *
+ * Note - Policy->cur would be updated via rate
+ * change notifier, when freq is changed in hw
+ *
  */
-void update_policy(unsigned long freq)
+static unsigned long update_policy(unsigned long tfreq)
 {
-	if (freq)
-		clk_set_rate(policy->adsp_clk, freq * 1000);
+	enum adsp_dfs_reply reply;
+	struct nvadsp_mbox *mbx = &policy->mbox;
+	int ret;
+	unsigned long old_freq;
+
+	old_freq = policy->cur;
+
+	ret = clk_set_rate(policy->adsp_clk, tfreq * 1000);
+	if (ret) {
+		pr_err("failed to set adsp freq:%d\n", ret);
+		policy->update_freq_flag = false;
+		return 0;
+	}
+
+	tfreq = clk_get_rate(policy->adsp_clk) / 1000;
+
+	mutex_lock(&policy_mutex);
+
+	pr_debug("sending change in freq:%lu\n", tfreq);
+	/* Ask adsp to do action upon change in freq */
+	ret = nvadsp_mbox_send(mbx, tfreq,
+				NVADSP_MBOX_SMSG, true, 100);
+	if (ret) {
+		pr_err("%s:host to adsp, mbox_send failure ....\n", __func__);
+		policy->update_freq_flag = false;
+		goto fail;
+	}
+
+	ret = nvadsp_mbox_recv(&policy->mbox, &reply, true, MBOX_TIMEOUT);
+	if (ret) {
+		pr_err("%s:host to adsp,  mbox_receive failure ....\n",
+		__func__);
+		policy->update_freq_flag = false;
+		goto fail;
+	}
+
+	switch (reply) {
+	case ACK:
+		/* Set Update freq flag */
+		pr_debug("adsp freq change status:ACK\n");
+		policy->update_freq_flag = true;
+		break;
+	case NACK:
+		/* Set Update freq flag */
+		pr_debug("adsp freq change status:NACK\n");
+		policy->update_freq_flag = false;
+		break;
+	default:
+		pr_err("Error: adsp freq change status\n");
+	}
+
+	pr_debug("%s:status received from adsp: %s, tfreq:%lu\n", __func__,
+		(policy->update_freq_flag == true ? "ACK" : "NACK"), tfreq);
+
+fail:
+	mutex_unlock(&policy_mutex);
+
+	if (!policy->update_freq_flag) {
+		ret = clk_set_rate(policy->adsp_clk, old_freq * 1000);
+		if (ret) {
+			pr_err("failed to resume adsp freq:%lu\n", old_freq);
+			policy->update_freq_flag = false;
+		}
+		tfreq = old_freq;
+	}
+	return tfreq;
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -116,42 +193,66 @@ static int dfs_enable_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(enable_fops, dfs_enable_get,
 	dfs_enable_set, "%llu\n");
 
-/* Get adsp dfs policy min freq */
+/* Get adsp dfs policy min freq(KHz) */
 static int policy_min_get(void *data, u64 *val)
 {
 	*val = policy->min;
 	return 0;
 }
 
-/* Set adsp dfs policy min freq */
+/* Set adsp dfs policy min freq(Khz) */
 static int policy_min_set(void *data, u64 val)
 {
-	if (policy->enable) {
-		policy->min = verify_policy((unsigned long)val);
-		update_policy(policy->min);
-		return 0;
-	} else
+	unsigned long min = (unsigned long)val;
+
+	if (!policy->enable) {
+		pr_info("adsp dfs policy is not enabled\n");
 		return -EINVAL;
+	}
+
+	if (!min || ((min < policy->cpu_min) || (min == policy->min)))
+		return -EINVAL;
+	else if (min >=  policy->cpu_max)
+		min = policy->cpu_max;
+
+	if (min > policy->cur)
+			policy->min = update_policy(min);
+	else
+		policy->min = min;
+
+	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(min_fops, policy_min_get,
 	policy_min_set, "%llu\n");
 
-/* Get adsp dfs policy max freq */
+/* Get adsp dfs policy max freq(KHz) */
 static int policy_max_get(void *data, u64 *val)
 {
 	*val = policy->max;
 	return 0;
 }
 
-/* Set adsp dfs policy max freq */
+/* Set adsp dfs policy max freq(KHz) */
 static int policy_max_set(void *data, u64 val)
 {
-	if (policy->enable) {
-		policy->max = verify_policy((unsigned long)val);
-		update_policy(policy->max);
-		return 0;
-	} else
+	unsigned long max = (unsigned long)val;
+
+	if (!policy->enable) {
+		pr_info("adsp dfs policy is not enabled\n");
 		return -EINVAL;
+	}
+
+	if (!max || ((max > policy->cpu_max) || (max == policy->max)))
+		return -EINVAL;
+	else if (max <=  policy->cpu_min)
+		max = policy->cpu_min;
+
+	if (max < policy->cur)
+			policy->max = update_policy(max);
+	else
+		policy->max = max;
+
+	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(max_fops, policy_max_get,
 	policy_max_set, "%llu\n");
@@ -163,15 +264,42 @@ static int policy_cur_get(void *data, u64 *val)
 	return 0;
 }
 
-DEFINE_SIMPLE_ATTRIBUTE(cur_fops, policy_cur_get,
-	NULL, "%llu\n");
+/* Set adsp dfs policy cur freq(Khz) */
+static int policy_cur_set(void *data, u64 val)
+{
+	unsigned long cur = (unsigned long)val;
 
-static int __init adsp_dfs_debugfs_init(void)
+	if (policy->enable) {
+		pr_info("adsp dfs is enabled, should be disabled first\n");
+		return -EINVAL;
+	}
+
+	if (!cur || cur == policy->cur)
+		return -EINVAL;
+
+	/* Check tfreq policy sanity */
+	if (cur < policy->min)
+		cur = policy->min;
+	else if (cur > policy->max)
+		cur = policy->max;
+
+	cur = update_policy(cur);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(cur_fops, policy_cur_get,
+	policy_cur_set, "%llu\n");
+
+static int adsp_dfs_debugfs_init(struct nvadsp_drv_data *drv)
 {
 	int ret = -ENOMEM;
 	struct dentry *d, *root;
 
-	root = debugfs_create_dir("adsp_dfs", NULL);
+	if (!drv->adsp_debugfs_root)
+		return ret;
+
+	root = debugfs_create_dir("adsp_dfs", drv->adsp_debugfs_root);
 	if (!root)
 		return ret;
 
@@ -192,7 +320,7 @@ static int __init adsp_dfs_debugfs_init(void)
 	if (!d)
 		goto err_out;
 
-	d = debugfs_create_file("cur_freq", RO_MODE, root, NULL,
+	d = debugfs_create_file("cur_freq", RW_MODE, root, NULL,
 		&cur_fops);
 	if (!d)
 		goto err_out;
@@ -208,34 +336,69 @@ err_out:
 
 void adsp_cpu_set_rate(unsigned long freq)
 {
-	if (policy->enable) {
-		freq = verify_policy(freq);
-		update_policy(freq);
+	if (!policy->enable) {
+		pr_info("adsp dfs policy is not enabled\n");
+		return;
 	}
+
+	if (freq)
+		update_policy(freq);
 }
 
-int adsp_dfs_core_init(void)
+/* Should be called after ADSP os is loaded */
+int adsp_dfs_core_init(struct platform_device *pdev)
 {
 	int ret = 0;
+	uint16_t mid = HOST_ADSP_DFS_MBOX_ID;
+	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
+
 	policy = &dfs_policy;
 	policy->adsp_clk = clk_get_sys(NULL, policy->clk_name);
 
-	spin_lock_init(&policy->lock);
+	/* Clk_round_rate returns in Hz */
+	policy->max = policy->cpu_max =
+		(clk_round_rate(policy->adsp_clk, ULONG_MAX)) / 1000;
+	policy->min = policy->cpu_min =
+		(clk_round_rate(policy->adsp_clk, 0)) / 1000;
+	policy->cur = clk_get_rate(policy->adsp_clk) / 1000;
+
+	ret = nvadsp_mbox_open(&policy->mbox, &mid, "dfs_comm", NULL, NULL);
+	if (ret) {
+		dev_info(&pdev->dev, "unable to open mailbox\n");
+		return ret;
+	}
 
 	if (policy->rate_change_nb.notifier_call) {
 		ret = tegra_register_clk_rate_notifier(policy->adsp_clk,
 			&policy->rate_change_nb);
 		if (ret) {
-			pr_err("Failed to register rate change notifier for %s\n",
+			dev_err(&pdev->dev, "rate change notifier err: %s\n",
 			policy->clk_name);
+			nvadsp_mbox_close(&policy->mbox);
 			return ret;
 		}
 	}
 
 #ifdef CONFIG_DEBUG_FS
-	adsp_dfs_debugfs_init();
+	adsp_dfs_debugfs_init(drv);
 #endif
-	pr_info("*******adsp dfs is initialised*********\n");
+	dev_info(&pdev->dev, "adsp dfs is initialized ....\n");
+
+	return ret;
+}
+
+int adsp_dfs_core_exit(struct platform_device *pdev)
+{
+	status_t ret = 0;
+
+	ret = nvadsp_mbox_close(&policy->mbox);
+	if (ret) {
+		dev_info(&pdev->dev, "adsp dfs exit failed: mbox close error ....\n");
+		return ret;
+	}
+
+	clk_put(policy->adsp_clk);
+	dev_info(&pdev->dev, "adsp dfs is exited ....\n");
 
 	return ret;
 }
