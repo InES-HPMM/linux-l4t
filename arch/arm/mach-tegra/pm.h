@@ -66,6 +66,7 @@ void tegra_mc_clk_finish(void);
 #ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 int tegra_is_lp1_suspend_mode(void);
 #endif
+int tegra_is_lp0_suspend_mode(void);
 void tegra_lp1bb_suspend_emc_rate(unsigned long emc_min, unsigned long emc_max);
 void tegra_lp1bb_suspend_mv_set(int mv);
 unsigned long tegra_lp1bb_emc_min_rate_get(void);
