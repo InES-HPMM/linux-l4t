@@ -38,7 +38,7 @@ config TEGRA_ADSP_DFS
 config TEGRA_ADSP_ACTMON
 	bool "Enable ADSP ACTMON"
 	depends on ARCH_TEGRA_APE
-	default n
+	default y
 	help
 	  Enable ADSP actmon. It converts adsp activty to frequency and
 	  asks adsp dfs to set the adsp frequency. Use it if adsp frequency

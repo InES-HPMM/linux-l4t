@@ -700,6 +700,13 @@ int nvadsp_os_start(void)
 	struct clk *ape_clk;
 	struct clk *ape_uart;
 	int val, ret;
+#ifdef CONFIG_TEGRA_ADSP_DFS
+	static bool is_dfs_initialized;
+#endif
+#ifdef CONFIG_TEGRA_ADSP_ACTMON
+	static bool is_actmon_initialized;
+#endif
+
 
 	if (!priv.pdev) {
 		pr_err("ADSP Driver is not initialized\n");
@@ -751,17 +758,19 @@ int nvadsp_os_start(void)
 	dev_info(dev, "waiting for ADSP OS to boot up...Done.\n");
 
 #ifdef CONFIG_TEGRA_ADSP_DFS
-	if (adsp_dfs_core_init(priv.pdev)) {
+	if (!is_dfs_initialized && adsp_dfs_core_init(priv.pdev)) {
 		dev_err(dev, "adsp dfs initialization failed\n");
 		return -EINVAL;
 	}
+	is_dfs_initialized = true;
 #endif
 
 #ifdef CONFIG_TEGRA_ADSP_ACTMON
-	if (ape_actmon_init(priv.pdev)) {
+	if (!is_actmon_initialized && ape_actmon_init(priv.pdev)) {
 		dev_err(dev, "ape actmon initialization failed\n");
 		return -EINVAL;
 	}
+	is_actmon_initialized = true;
 #endif
 
 	return ret;
@@ -789,14 +798,6 @@ static void __nvadsp_os_stop(bool reload)
 	writel(ENABLE_MBOX2_EMPTY_INT, priv.misc_base + HWMBOX2_REG);
 	wait_for_completion(&entered_wfe);
 	writel(DISABLE_MBOX2_EMPTY_INT, priv.misc_base + HWMBOX2_REG);
-
-#ifdef CONFIG_TEGRA_ADSP_DFS
-	adsp_dfs_core_exit(priv.pdev);
-#endif
-
-#ifdef CONFIG_TEGRA_ADSP_ACTMON
-	ape_actmon_exit(priv.pdev);
-#endif
 
 	tegra_periph_reset_assert(adsp_clk);
 

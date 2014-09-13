@@ -58,11 +58,15 @@
 #define ACTMON_DEV_INTR_AVG_UP_WMARK		(0x1 << 28)
 
 #define ACTMON_DEV_COUNT_WEGHT			0x24
+
 #define ACTMON_DEV_SAMPLE_CTRL		  0x28
+#define ACTMON_DEV_SAMPLE_CTRL_SHIFT_USEC	(0x1 << 2)
+#define ACTMON_DEV_SAMPLE_CTRL_SHIFT_MLSEC	(0x0 << 1)
 
-#define ACTMON_DEFAULT_AVG_WINDOW_LOG2		1
-#define ACTMON_DEFAULT_AVG_BAND			1	/* 1/10 of % */
-
+#define ACTMON_DEFAULT_AVG_WINDOW_LOG2		6
+/* 1/10 of % i.e 60 % of max freq */
+#define ACTMON_DEFAULT_AVG_BAND			6
+#define ACTMON_MAX_REG_OFFSET 0x2c
 /* TBD: These would come via dts file */
 #define ACTMON_REG_OFFSET 0x800
 
@@ -72,9 +76,9 @@
  * Here SAMPLE_PERIOD is set to usec mode.
  * SAMPLE_PERIOD = 255 * 256
  */
-#define ACTMON_DEFAULT_SAMPLING_PERIOD		255
-static unsigned long actmon_sampling_period;
+#define ACTMON_DEFAULT_SAMPLING_PERIOD		5
 
+static unsigned long actmon_sampling_period;
 static struct clk *actmon_clk;
 static unsigned long actmon_clk_freq;
 
@@ -102,20 +106,32 @@ static inline unsigned long do_percent(unsigned long val, unsigned int pct)
 
 void actmon_update_sample_period(unsigned long period)
 {
-	unsigned long clks_per_sample, freq_mhz;
-	u32 val;
+	u32 val = actmon_readl(ACTMON_DEV_SAMPLE_CTRL);
+	u32 divider;
 
 	actmon_clk_freq = clk_get_rate(actmon_clk) / 1000;
-	/* Use usec and MHz mode */
-	freq_mhz = actmon_clk_freq / 1000;
 
-	actmon_sampling_period = period;
-	clks_per_sample = freq_mhz * actmon_sampling_period;
+
+	if ((actmon_clk_freq * period) / 256 > 255) {
+		val |= ACTMON_DEV_SAMPLE_CTRL_SHIFT_USEC;
+		divider = 65536;
+	} else {
+		val &= ~ACTMON_DEV_SAMPLE_CTRL_SHIFT_USEC;
+		divider = 256;
+	}
+
+	actmon_sampling_period = ((actmon_clk_freq * period) / divider);
+	actmon_writel(val, ACTMON_DEV_SAMPLE_CTRL);
 
 	val = actmon_readl(ACTMON_DEV_CTRL);
-	val |= (clks_per_sample << ACTMON_DEV_CTRL_SAMPLE_PERIOD_VAL_SHIFT)
-			& ACTMON_DEV_CTRL_SAMPLE_PERIOD_MASK;
-	actmon_writel(val, ACTMON_DEV_CTRL);
+	val &= ~ACTMON_DEV_CTRL_SAMPLE_PERIOD_MASK;
+	val |= (actmon_sampling_period <<
+		ACTMON_DEV_CTRL_SAMPLE_PERIOD_VAL_SHIFT)
+		& ACTMON_DEV_CTRL_SAMPLE_PERIOD_MASK;
+		actmon_writel(val, ACTMON_DEV_CTRL);
+
+	/* AVG value depends on sample period => clear it */
+	actmon_writel(0, ACTMON_DEV_INIT_AVG);
 }
 
 static inline void actmon_dev_up_wmark_set(struct actmon_dev *dev)
@@ -147,6 +163,7 @@ static inline void actmon_dev_wmark_set(struct actmon_dev *dev)
 				 dev->cur_freq : actmon_clk_freq;
 
 	val = freq * actmon_sampling_period;
+
 	actmon_writel(do_percent(val, dev->boost_up_threshold),
 					  offs(ACTMON_DEV_UP_WMARK));
 	actmon_writel(do_percent(val, dev->boost_down_threshold),
@@ -178,38 +195,47 @@ static unsigned long actmon_dev_avg_freq_get(struct actmon_dev *dev)
 /* Activity monitor sampling operations */
 irqreturn_t ape_actmon_dev_isr(int irq, void *dev_id)
 {
-	u32 val;
+	u32 val, devval;
 	unsigned long flags;
 	struct actmon_dev *dev = (struct actmon_dev *)dev_id;
 
 	spin_lock_irqsave(&dev->lock, flags);
 
-	dev->avg_count = actmon_readl(offs(ACTMON_DEV_AVG_COUNT));
-	actmon_dev_avg_wmark_set(dev);
 
 	val = actmon_readl(offs(ACTMON_DEV_INTR_STATUS));
-	if (val & ACTMON_DEV_INTR_UP_WMARK) {
-		val = actmon_readl(offs(ACTMON_DEV_CTRL)) |
-			  ACTMON_DEV_CTRL_UP_WMARK_ENB |
-			  ACTMON_DEV_CTRL_DOWN_WMARK_ENB;
+	devval = actmon_readl(offs(ACTMON_DEV_CTRL));
+
+	if (val & ACTMON_DEV_INTR_AVG_UP_WMARK) {
+		dev->avg_count = actmon_readl(offs(ACTMON_DEV_AVG_COUNT));
+		devval |= (ACTMON_DEV_CTRL_AVG_UP_WMARK_ENB |
+			 ACTMON_DEV_CTRL_AVG_DOWN_WMARK_ENB);
+		actmon_dev_avg_wmark_set(dev);
+
+	} else if (val & ACTMON_DEV_INTR_AVG_DOWN_WMARK) {
+		dev->avg_count = actmon_readl(offs(ACTMON_DEV_AVG_COUNT));
+		devval |= (ACTMON_DEV_CTRL_AVG_UP_WMARK_ENB |
+			 ACTMON_DEV_CTRL_AVG_DOWN_WMARK_ENB);
+		actmon_dev_avg_wmark_set(dev);
+	} else if (val & ACTMON_DEV_INTR_UP_WMARK) {
+		devval |= (ACTMON_DEV_CTRL_UP_WMARK_ENB |
+			  ACTMON_DEV_CTRL_DOWN_WMARK_ENB);
 
 		dev->boost_freq = dev->boost_freq_step +
 			do_percent(dev->boost_freq, dev->boost_up_coef);
 		if (dev->boost_freq >= dev->max_freq) {
 			dev->boost_freq = dev->max_freq;
-			val &= ~ACTMON_DEV_CTRL_UP_WMARK_ENB;
+			devval &= ~ACTMON_DEV_CTRL_UP_WMARK_ENB;
 		}
-		actmon_writel(val, offs(ACTMON_DEV_CTRL));
+		actmon_writel(devval, offs(ACTMON_DEV_CTRL));
 	} else if (val & ACTMON_DEV_INTR_DOWN_WMARK) {
-		val = actmon_readl(offs(ACTMON_DEV_CTRL)) |
-				  ACTMON_DEV_CTRL_UP_WMARK_ENB |
-				  ACTMON_DEV_CTRL_DOWN_WMARK_ENB;
+		devval |= (ACTMON_DEV_CTRL_UP_WMARK_ENB |
+			  ACTMON_DEV_CTRL_DOWN_WMARK_ENB);
 
 		dev->boost_freq =
 			do_percent(dev->boost_freq, dev->boost_down_coef);
 		if (dev->boost_freq < (dev->boost_freq_step >> 1)) {
 			dev->boost_freq = 0;
-			val &= ~ACTMON_DEV_CTRL_DOWN_WMARK_ENB;
+			devval &= ~ACTMON_DEV_CTRL_DOWN_WMARK_ENB;
 		}
 		actmon_writel(val, offs(ACTMON_DEV_CTRL));
 	}
@@ -242,7 +268,7 @@ irqreturn_t ape_actmon_dev_fn(int irq, void *dev_id)
 
 	spin_unlock_irqrestore(&dev->lock, flags);
 
-	pr_info("%s(kHz): avg: %lu,  boost: %lu, target: %lu, current: %lu\n",
+	pr_debug("%s(kHz): avg: %lu,  boost: %lu, target: %lu, current: %lu\n",
 	dev->clk_name, dev->avg_actv_freq, dev->boost_freq, dev->target_freq,
 	dev->cur_freq);
 
@@ -255,19 +281,14 @@ irqreturn_t ape_actmon_dev_fn(int irq, void *dev_id)
 
 void actmon_rate_change(unsigned long freq)
 {
-	unsigned long flags;
 	struct actmon_dev *dev = container_of(&freq, struct actmon_dev,
 		cur_freq);
 
-	spin_lock_irqsave(&dev->lock, flags);
-
 	dev->cur_freq = freq;
 	if (dev->type == ACTMON_FREQ_SAMPLER) {
-			actmon_dev_wmark_set(dev);
-			actmon_wmb();
+		actmon_dev_wmark_set(dev);
+		actmon_wmb();
 	}
-
-	spin_unlock_irqrestore(&dev->lock, flags);
 };
 
 /* Activity monitor configuration and control */
@@ -289,6 +310,7 @@ static void actmon_dev_configure(struct actmon_dev *dev,
 		dev->avg_band_freq = actmon_clk_freq *
 					 ACTMON_DEFAULT_AVG_BAND / 1000;
 	}
+
 	actmon_writel(dev->avg_count, offs(ACTMON_DEV_INIT_AVG));
 
 	BUG_ON(!dev->boost_up_threshold);
@@ -299,9 +321,10 @@ static void actmon_dev_configure(struct actmon_dev *dev,
 	actmon_writel(dev->count_weight, offs(ACTMON_DEV_COUNT_WEGHT));
 	actmon_writel(0xffffffff, offs(ACTMON_DEV_INTR_STATUS)); /* clr all */
 
-	val = ACTMON_DEV_CTRL_PERIODIC_ENB |
+	val = actmon_readl(ACTMON_DEV_CTRL);
+	val |= (ACTMON_DEV_CTRL_PERIODIC_ENB |
 			ACTMON_DEV_CTRL_AVG_UP_WMARK_ENB |
-		 ACTMON_DEV_CTRL_AVG_DOWN_WMARK_ENB;
+		 ACTMON_DEV_CTRL_AVG_DOWN_WMARK_ENB);
 	val |= ((dev->avg_window_log2 - 1) << ACTMON_DEV_CTRL_K_VAL_SHIFT) &
 			ACTMON_DEV_CTRL_K_VAL_MASK;
 	val |= ((dev->down_wmark_window - 1) <<
@@ -311,7 +334,7 @@ static void actmon_dev_configure(struct actmon_dev *dev,
 				 ACTMON_DEV_CTRL_UP_WMARK_NUM_SHIFT) &
 				ACTMON_DEV_CTRL_UP_WMARK_NUM_MASK;
 	val |= ACTMON_DEV_CTRL_DOWN_WMARK_ENB |
-	ACTMON_DEV_CTRL_UP_WMARK_ENB;
+			ACTMON_DEV_CTRL_UP_WMARK_ENB;
 	actmon_writel(val, offs(ACTMON_DEV_CTRL));
 	actmon_wmb();
 }
@@ -353,7 +376,7 @@ static void actmon_dev_disable(struct actmon_dev *dev)
 	spin_unlock_irqrestore(&dev->lock, flags);
 }
 
-static int __init actmon_dev_init(struct actmon_dev *dev)
+static int actmon_dev_init(struct actmon_dev *dev)
 {
 	int ret;
 	unsigned long freq;
@@ -367,8 +390,15 @@ static int __init actmon_dev_init(struct actmon_dev *dev)
 			dev->dev_id, dev->con_id);
 		return -EINVAL;
 	}
+
 	dev->max_freq = clk_round_rate(dev->clk, ULONG_MAX);
-	clk_set_rate(dev->clk, dev->max_freq);
+
+	ret = clk_set_rate(dev->clk, dev->max_freq);
+	if (ret) {
+		pr_err("failed to set ape.emc freq:%d\n", ret);
+		BUG_ON(ret);
+	}
+
 	dev->max_freq /= 1000;
 	freq = clk_get_rate(dev->clk) / 1000;
 	actmon_dev_configure(dev, freq);
@@ -376,10 +406,11 @@ static int __init actmon_dev_init(struct actmon_dev *dev)
 	dev->state = ACTMON_OFF;
 	actmon_dev_enable(dev);
 	clk_prepare_enable(dev->clk);
-		virq = tegra_agic_irq_get_virq(INT_AMISC_ACTMON);
+
+	virq = tegra_agic_irq_get_virq(INT_AMISC_ACTMON);
 
 	ret = request_threaded_irq(virq, ape_actmon_dev_isr,
-		ape_actmon_dev_fn, IRQF_SHARED, dev->dev_id, dev);
+			ape_actmon_dev_fn, IRQF_SHARED, dev->dev_id, dev);
 	if (ret) {
 		pr_err("Failed irq %d request for %s.%s\n",
 		virq, dev->dev_id, dev->con_id);
@@ -397,14 +428,14 @@ static struct actmon_dev actmon_dev_adsp = {
 	/* ADSP/SCLK suspend activity floor */
 	.suspend_freq = 40000,
 
-	.boost_freq_step = 8000,
-	.boost_up_coef = 200,
-	.boost_down_coef = 50,
-	.boost_up_threshold = 35,
-	.boost_down_threshold = 25,
+	.boost_freq_step = 16000,
+	.boost_up_coef = 800,
+	.boost_down_coef = 90,
+	.boost_up_threshold = 60,
+	.boost_down_threshold = 40,
 
-	.up_wmark_window = 0,
-	.down_wmark_window = 0,
+	.up_wmark_window = 2,
+	.down_wmark_window = 3,
 	.avg_window_log2 = ACTMON_DEFAULT_AVG_WINDOW_LOG2,
 	/* Assuming ADSP is running at 600 MHz and APE is running at 300 MHz*/
 	.count_weight = 0x1,
@@ -637,13 +668,15 @@ static int actmon_debugfs_create_dev(struct actmon_dev *dev)
 	return 0;
 }
 
-static int __init actmon_debugfs_init(void)
+static int actmon_debugfs_init(struct nvadsp_drv_data *drv)
 {
 	int i;
 	int ret = -ENOMEM;
 	struct dentry *d;
 
-	d = debugfs_create_dir("adsp_actmon", NULL);
+	if (!drv->adsp_debugfs_root)
+		return ret;
+	d = debugfs_create_dir("adsp_actmon", drv->adsp_debugfs_root);
 	if (!d)
 		return ret;
 	clk_debugfs_root = d;
@@ -666,10 +699,11 @@ err_out:
 
 #endif
 
-int __init ape_actmon_init(struct platform_device *pdev)
+int ape_actmon_init(struct platform_device *pdev)
 {
 	int i, ret;
 	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
+
 	actmon_base = drv->base_regs[AMISC] + ACTMON_REG_OFFSET;
 
 	actmon_clk = clk_get_sys(NULL, "ape");
@@ -685,6 +719,7 @@ int __init ape_actmon_init(struct platform_device *pdev)
 	}
 
 	actmon_update_sample_period(ACTMON_DEFAULT_SAMPLING_PERIOD);
+
 	for (i = 0; i < ARRAY_SIZE(actmon_devices); i++) {
 		ret = actmon_dev_init(actmon_devices[i]);
 		pr_info("%s : %s initialization (%d)\n",
@@ -692,7 +727,28 @@ int __init ape_actmon_init(struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_DEBUG_FS
-	actmon_debugfs_init();
+	actmon_debugfs_init(drv);
 #endif
+
+	dev_info(&pdev->dev, "adsp actmon is initialized ....\n");
 	return 0;
+}
+
+int ape_actmon_exit(struct platform_device *pdev)
+{
+	int i;
+	status_t ret = 0;
+	struct actmon_dev *dev;
+
+	for (i = 0; i < ARRAY_SIZE(actmon_devices); i++) {
+		dev = actmon_devices[i];
+		clk_disable_unprepare(dev->clk);
+		clk_put(dev->clk);
+	}
+	clk_disable_unprepare(actmon_clk);
+	clk_put(actmon_clk);
+
+	dev_info(&pdev->dev, "adsp actmon is exited ....\n");
+
+	return ret;
 }

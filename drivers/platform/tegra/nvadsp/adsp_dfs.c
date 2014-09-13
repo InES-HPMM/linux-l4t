@@ -22,9 +22,9 @@
 #include <linux/clk/tegra.h>
 
 #include "dev.h"
+#include "ape_actmon.h"
 
 #ifndef CONFIG_TEGRA_ADSP_ACTMON
-#include "ape_actmon.h"
 void actmon_rate_change(unsigned long freq)
 {
 

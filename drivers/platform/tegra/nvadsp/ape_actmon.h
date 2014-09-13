@@ -14,6 +14,7 @@
 #ifndef __APE_ACTMON_H
 #define __APE_ACTMON_H
 #include <linux/spinlock.h>
+
 enum actmon_type {
 	ACTMON_LOAD_SAMPLER,
 	ACTMON_FREQ_SAMPLER,
@@ -69,5 +70,6 @@ struct actmon_dev {
 
 };
 int ape_actmon_init(struct platform_device *pdev);
+int ape_actmon_exit(struct platform_device *pdev);
 void actmon_rate_change(unsigned long freq);
 #endif
