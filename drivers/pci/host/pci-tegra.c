@@ -1042,6 +1042,12 @@ static int tegra_pcie_enable_pads(struct tegra_pcie *pcie, bool enable)
 	int err = 0;
 
 	PR_FUNC_LINE;
+
+	if (enable) {
+		if (pex_usb_pad_pll_reset_deassert())
+			dev_err(pcie->dev, "failed to deassert pex pll\n");
+	}
+
 	if (!tegra_platform_is_fpga()) {
 		/* WAR for Eye diagram failure */
 		pads_writel(pcie, REFCLK_POR_SETTINGS, PADS_REFCLK_CFG0);
@@ -1053,6 +1059,12 @@ static int tegra_pcie_enable_pads(struct tegra_pcie *pcie, bool enable)
 			dev_err(pcie->dev,
 				"%s unable to initalize pads\n", __func__);
 	}
+
+	if (!enable || err) {
+		if (pex_usb_pad_pll_reset_assert())
+			dev_err(pcie->dev, "failed to assert pex pll\n");
+	}
+
 	return err;
 }
 
