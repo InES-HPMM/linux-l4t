@@ -79,6 +79,8 @@ int tegra1xx_unpowergate(int id, struct powergate_partition_info *pg_info)
 	if (ret)
 		goto err_clk_on;
 
+	powergate_partition_assert_reset(pg_info);
+
 	udelay(10);
 
 	ret = tegra_powergate_remove_clamping(id);
