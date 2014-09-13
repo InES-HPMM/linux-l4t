@@ -490,7 +490,7 @@
 
 		vii2c {
 			compatible = "nvidia,tegra210-vi-i2c";
-			reg = <0x546C0000 0x00034000>;
+			reg = <0x0 0x546C0000 0x0 0x00034000>;
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(VII2C) &common_as>;
 		};
 
