@@ -5276,6 +5276,22 @@ static struct clk_ops tegra_mc_clk_ops = {
 	.disable		= &tegra21_periph_clk_disable,
 };
 
+#ifdef CONFIG_PM_SLEEP
+static void tegra21_emc_clk_suspend(struct clk *c, unsigned long rate)
+{
+	/* No change in emc configuration for LP1 */
+	if (!tegra_is_lp0_suspend_mode())
+		return;
+
+	/*
+	 * Scale EMC rate at/below boot rate - required for entering SC7(LP0)
+	 * on LPDDR4, but applied to LPDDR3 as well.
+	 * FIXME: keep it general or check for LPDDR4 below?
+	 */
+	if (rate > c->boot_rate)
+		tegra21_emc_clk_set_rate(c, c->boot_rate);
+}
+#endif
 
 /* Clock doubler ops (non-atomic shared register access) */
 static DEFINE_SPINLOCK(doubler_lock);
@@ -9986,7 +10002,8 @@ static int tegra21_clk_suspend(void)
 	*ctx++ = clk_readl(tegra_clk_cclk_lp.reg);
 	*ctx++ = clk_readl(tegra_clk_cclk_lp.reg + SUPER_CLK_DIVIDER);
 
-	*ctx++ = clk_get_rate_all_locked(&tegra_clk_emc);
+	*ctx = clk_get_rate_all_locked(&tegra_clk_emc);
+	tegra21_emc_clk_suspend(&tegra_clk_emc, *ctx++);
 
 	pr_debug("%s: suspend entries: %d, suspend array: %u\n", __func__,
 		(s32)(ctx - clk_rst_suspend), (u32)ARRAY_SIZE(clk_rst_suspend));
