@@ -641,7 +641,7 @@ static const char *const sensor_names[] = {
 	[TSENSE_CPU3] = "cpu3",
 	[TSENSE_MEM0] = "mem0",
 	[TSENSE_MEM1] = "mem1",
-	[TSENSE_GPU]  = "gpu0",
+	[TSENSE_GPU]  = "gpu",
 	[TSENSE_PLLX] = "pllx",
 };
 
@@ -2570,11 +2570,15 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 				    (s64)delta_sens);
 
 	/* FUSE correction WARs */
-	therm_a = div64_s64_precise((s64)therm_a * sp->fuse_war[sensor].a,
-				    (s64)1000000LL);
-	therm_b = div64_s64_precise(((s64)therm_b * sp->fuse_war[sensor].a) +
-				    sp->fuse_war[sensor].b,
-				    (s64)1000000LL);
+	if (sp->fuse_war[sensor].a) {
+		therm_a = div64_s64_precise(
+				(s64)therm_a * sp->fuse_war[sensor].a,
+				(s64)1000000LL);
+		therm_b = div64_s64_precise(
+				((s64)therm_b * sp->fuse_war[sensor].a) +
+				sp->fuse_war[sensor].b,
+				(s64)1000000LL);
+	}
 
 	sensor2therm_a[sensor] = (s16)therm_a;
 	sensor2therm_b[sensor] = (s16)therm_b;
@@ -3367,7 +3371,7 @@ static int regs_show(struct seq_file *s, void *data)
 		if (!state)
 			continue;
 
-		seq_printf(s, "%s: ", sensor_names[i]);
+		seq_printf(s, "%4s: ", sensor_names[i]);
 
 		seq_printf(s, "En(%d) ", state);
 		state = REG_GET(r, TS_CPU0_CONFIG1_TIDDQ);
@@ -4212,8 +4216,7 @@ static void soctherm_sensor_params_parse(struct platform_device *pdev)
 
 static int soctherm_fuse_wars_parse(struct platform_device *pdev)
 {
-	int ret, fuse_rev, val, vals[2];
-	bool found_war = false;
+	int iv, ret, fuse_rev, val, vals[2];
 	struct device_node *np = pdev->dev.of_node;
 	struct soctherm_sensor_params *sp = &pp->sensor_params;
 
@@ -4239,77 +4242,19 @@ static int soctherm_fuse_wars_parse(struct platform_device *pdev)
 			}
 		}
 
-		if (of_property_read_u32_array(np, "cpu0", vals, 2)) {
-			dev_err(&pdev->dev, "missing 'tsense_fuse_war:cpu0'\n");
-			return -EINVAL;
+		for (iv = 0; iv < TSENSE_SIZE; iv++) {
+			if (of_property_read_u32_array(
+					np, sensor_names[iv], vals, 2)) {
+				dev_err(&pdev->dev,
+					"missing 'tsense_fuse_war: %s'\n",
+					sensor_names[iv]);
+				return -EINVAL;
+			}
+			pr_debug("%s: WAR %d %d\n", __func__, vals[0], vals[1]);
+			sp->fuse_war[iv].a = vals[0];
+			sp->fuse_war[iv].b = vals[1];
 		}
-		sp->fuse_war[TSENSE_CPU0].a = vals[0];
-		sp->fuse_war[TSENSE_CPU0].b = -vals[1];
-
-		if (of_property_read_u32_array(np, "cpu1", vals, 2)) {
-			dev_err(&pdev->dev, "missing 'tsense_fuse_war:cpu1'\n");
-			return -EINVAL;
-		}
-		sp->fuse_war[TSENSE_CPU1].a = vals[0];
-		sp->fuse_war[TSENSE_CPU1].b = -vals[1];
-
-		if (of_property_read_u32_array(np, "cpu2", vals, 2)) {
-			dev_err(&pdev->dev, "missing 'tsense_fuse_war:cpu2'\n");
-			return -EINVAL;
-		}
-		sp->fuse_war[TSENSE_CPU2].a = vals[0];
-		sp->fuse_war[TSENSE_CPU2].b = -vals[1];
-
-		if (of_property_read_u32_array(np, "cpu3", vals, 2)) {
-			dev_err(&pdev->dev, "missing 'tsense_fuse_war:cpu3'\n");
-			return -EINVAL;
-		}
-		sp->fuse_war[TSENSE_CPU3].a = vals[0];
-		sp->fuse_war[TSENSE_CPU3].b = -vals[1];
-
-		if (of_property_read_u32_array(np, "mem0", vals, 2)) {
-			dev_err(&pdev->dev, "missing 'tsense_fuse_war:mem'\n");
-			return -EINVAL;
-		}
-		sp->fuse_war[TSENSE_MEM0].a = vals[0];
-		sp->fuse_war[TSENSE_MEM0].b = -vals[1];
-
-		if (of_property_read_u32_array(np, "mem1", vals, 2)) {
-			dev_err(&pdev->dev, "missing 'tsense_fuse_war:mem1'\n");
-			return -EINVAL;
-		}
-		sp->fuse_war[TSENSE_MEM1].a = vals[0];
-		sp->fuse_war[TSENSE_MEM1].b = -vals[1];
-
-		if (of_property_read_u32_array(np, "gpu", vals, 2)) {
-			dev_err(&pdev->dev, "missing 'tsense_fuse_war:gpu'\n");
-			return -EINVAL;
-		}
-		sp->fuse_war[TSENSE_GPU].a = vals[0];
-		sp->fuse_war[TSENSE_GPU].b = -vals[1];
-
-		if (of_property_read_u32_array(np, "pllx", vals, 2)) {
-			dev_err(&pdev->dev, "missing 'tsense_fuse_war:pllx'\n");
-			return -EINVAL;
-		}
-		sp->fuse_war[TSENSE_PLLX].a = vals[0];
-		sp->fuse_war[TSENSE_PLLX].b = -vals[1];
-
-		found_war = true; /* found matching war for fuse_rev */
 		break;
-	}
-
-	if (!found_war) {
-		dev_info(&pdev->dev, "missing 'fuse_war' - using no war.\n");
-		/* no fuse war: use [1000000, 0]*/
-		sp->fuse_war[TSENSE_CPU0].a = 1000000;
-		sp->fuse_war[TSENSE_CPU1].a = 1000000;
-		sp->fuse_war[TSENSE_CPU2].a = 1000000;
-		sp->fuse_war[TSENSE_CPU3].a = 1000000;
-		sp->fuse_war[TSENSE_MEM0].a = 1000000;
-		sp->fuse_war[TSENSE_MEM0].a = 1000000;
-		sp->fuse_war[TSENSE_GPU].a  = 1000000;
-		sp->fuse_war[TSENSE_PLLX].a = 1000000;
 	}
 
 	return 0;
