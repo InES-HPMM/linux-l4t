@@ -69,6 +69,56 @@
 			ti,power-on-delay = <4>;
 		};
 	};
+
+	i2c@7000d000 {
+		status = "okay";
+
+		max16989@3a {
+			compatible = "maxim,max16989";
+			reg = <0x3a>;
+			regulator-name = "max16989-vdd-cpu";
+			regulator-min-microvolt = <500000>;
+			regulator-max-microvolt = <1500000>;
+			consumers {
+				c1 {
+					regulator-consumer-supply = "vdd_cpu";
+				};
+			};
+		};
+
+		max16989@38 {
+			compatible = "maxim,max16989";
+			reg = <0x38>;
+			regulator-name = "max16989-vdd-gpu";
+			regulator-min-microvolt = <500000>;
+			regulator-max-microvolt = <1500000>;
+			enable-gpio = <&gpio TEGRA_GPIO(R, 2) 0>;
+			regulator-enable-ramp-delay = <210>;
+			consumers {
+				c1 {
+					regulator-consumer-supply = "vdd_gpu";
+				};
+			};
+		};
+
+		max16989@3b {
+			compatible = "maxim,max16989";
+			reg = <0x3b>;
+			regulator-name = "max16989-vdd-gpu";
+			regulator-min-microvolt = <500000>;
+			regulator-max-microvolt = <1500000>;
+			enable-gpio = <&gpio TEGRA_GPIO(R, 2) 0>;
+			regulator-enable-ramp-delay = <210>;
+			consumers {
+				c1 {
+					regulator-consumer-supply = "vdd_gpu";
+				};
+			};
+		};
+
+	};
+
+
 	serial@70006040 {
 		compatible = "nvidia,tegra20-uart";
 		console-port;

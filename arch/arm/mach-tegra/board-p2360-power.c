@@ -21,7 +21,6 @@
 #include <linux/io.h>
 #include <linux/mfd/max77663-core.h>
 #include <linux/regulator/max77663-regulator.h>
-#include <linux/regulator/max15569-regulator.h>
 #include <linux/gpio.h>
 
 #include "pm.h"
@@ -62,94 +61,12 @@ static struct i2c_board_info __initdata max77663_regulators[] = {
 	},
 };
 
-/* MAX15569 switching regulator for vdd_cpu */
-static struct regulator_consumer_supply max15569_vddcpu_supply[] = {
-	REGULATOR_SUPPLY("vdd_cpu", NULL),
-};
-
-static struct regulator_init_data max15569_vddcpu_init_data = {
-	.constraints = {
-		.min_uV = 500000,
-		.max_uV = 1520000,
-		.valid_modes_mask = (REGULATOR_MODE_NORMAL |
-				REGULATOR_MODE_STANDBY),
-		.valid_ops_mask = (REGULATOR_CHANGE_MODE |
-				REGULATOR_CHANGE_STATUS |
-				REGULATOR_CHANGE_CONTROL |
-				REGULATOR_CHANGE_VOLTAGE),
-		.always_on = 1,
-		.boot_on =  1,
-		.apply_uV = 0,
-	},
-	.num_consumer_supplies = ARRAY_SIZE(max15569_vddcpu_supply),
-	.consumer_supplies = max15569_vddcpu_supply,
-};
-
-static struct max15569_regulator_platform_data max15569_vddcpu_pdata = {
-	.reg_init_data = &max15569_vddcpu_init_data,
-	.max_voltage_uV = 1520000,
-	.slew_rate_mv_per_us = 44,
-};
-
-static struct i2c_board_info __initdata max15569_vddcpu_boardinfo[] = {
-	{
-		I2C_BOARD_INFO("max15569", 0x3a),
-		.platform_data  = &max15569_vddcpu_pdata,
-	},
-};
-
-/* MAX15569 switching regulator for vdd_gpu */
-static struct regulator_consumer_supply max15569_vddgpu_supply[] = {
-	REGULATOR_SUPPLY("vdd_gpu", NULL),
-};
-
-static struct regulator_init_data max15569_vddgpu_init_data = {
-	.constraints = {
-		.min_uV = 500000,
-		.max_uV = 1520000,
-		.valid_modes_mask = (REGULATOR_MODE_NORMAL |
-				REGULATOR_MODE_STANDBY),
-		.valid_ops_mask = (REGULATOR_CHANGE_MODE |
-				REGULATOR_CHANGE_STATUS |
-				REGULATOR_CHANGE_CONTROL |
-				REGULATOR_CHANGE_VOLTAGE),
-		.always_on = 0,
-		.boot_on =  0,
-		.apply_uV = 0,
-		.enable_time = 210, /* for ramp up time in usec */
-	},
-	.num_consumer_supplies = ARRAY_SIZE(max15569_vddgpu_supply),
-	.consumer_supplies = max15569_vddgpu_supply,
-};
-
-static struct max15569_regulator_platform_data max15569_vddgpu_pdata = {
-	.reg_init_data = &max15569_vddgpu_init_data,
-	.max_voltage_uV = 1400000,
-	.slew_rate_mv_per_us = 44,
-};
-
-static struct i2c_board_info __initdata max15569_vddgpu_boardinfo[] = {
-	{
-		I2C_BOARD_INFO("max15569", 0x38),
-		.platform_data  = &max15569_vddgpu_pdata,
-	},
-};
-
 int __init p2360_regulator_init(void)
 {
-	/* Use the address 0x3b for gpu regulator on A00 board */
-	if (tegra_is_board(NULL, "62360", NULL, "000", NULL))
-		max15569_vddgpu_boardinfo[0].addr = 0x3b;
-
 	tegra_pmc_pmu_interrupt_polarity(true);
-
-	max15569_vddgpu_pdata.ena_gpio = TEGRA_GPIO_PR2;
 
 	i2c_register_board_info(4, max77663_regulators,
 				ARRAY_SIZE(max77663_regulators));
-
-	i2c_register_board_info(4, max15569_vddcpu_boardinfo, 1);
-	i2c_register_board_info(4, max15569_vddgpu_boardinfo, 1);
 
 	return 0;
 }
