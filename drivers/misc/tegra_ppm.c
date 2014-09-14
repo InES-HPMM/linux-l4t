@@ -42,9 +42,10 @@ struct fv_relation {
 };
 
 struct maxf_cache_entry {
-	u32 imax;
+	u32 budget;
 	s16 temp_c;
 	u8 cores;
+	u8 units;
 	unsigned maxf;
 	struct hlist_node nib; /* next in bucket*/
 };
@@ -253,28 +254,41 @@ static s64 calc_total_ma(struct tegra_ppm_params *params,
 				   temp_c, voltage_mv, cores);
 	s64 dyn = calc_dynamic_ma(params, voltage_mv,
 				  cores, freq_khz);
-
 	return leak + dyn;
+}
+
+static s64 calc_total_mw(struct tegra_ppm_params *params,
+			int iddq_ma, int temp_c,
+			unsigned int voltage_mv, int cores,
+			unsigned int freq_khz)
+{
+	s64 cur_ma = calc_total_ma(params, iddq_ma, temp_c,
+				   voltage_mv, cores, freq_khz);
+	return div64_s64(cur_ma * voltage_mv, 1000);
 }
 
 static unsigned int calculate_maxf(
 	struct tegra_ppm_params *params,
 	struct fv_relation *fv, int cores,
-	unsigned int budget_ma, int temp_c, int iddq_ma)
+	unsigned int budget, int units, int temp_c, int iddq_ma)
 {
 	unsigned int voltage_mv, freq_khz = 0;
 	struct fv_entry *fve;
-	s64 cur_ma;
+	s64 val = 0;
 
 	mutex_lock(&fv->lock);
 	for_each_fv_entry(fv, fve) {
 		freq_khz = fve->freq / 1000;
 		voltage_mv = fve->voltage_mv;
 
-		cur_ma = calc_total_ma(params, iddq_ma, temp_c,
-				       voltage_mv, cores, freq_khz);
+		if (units == TEGRA_PPM_UNITS_MILLIWATTS)
+			val = calc_total_mw(params, iddq_ma, temp_c,
+					    voltage_mv, cores, freq_khz);
+		else if (units == TEGRA_PPM_UNITS_MILLIAMPS)
+			val = calc_total_ma(params, iddq_ma, temp_c,
+					    voltage_mv, cores, freq_khz);
 
-		if (cur_ma <= budget_ma)
+		if (val <= budget)
 			goto end;
 
 		freq_khz = 0;
@@ -284,22 +298,27 @@ static unsigned int calculate_maxf(
 	return freq_khz;
 }
 
-#define make_key(imax, temp_c, ncores) ((ncores<<24) ^ (imax << 8) ^ temp_c)
-static unsigned tegra_ppm_get_maxf_locked(
-	struct tegra_ppm *ctx, unsigned int limit, int temp_c, int cores)
+#define make_key(budget, units, temp_c, ncores) \
+	((ncores<<24) ^ (units<<23) ^ (budget << 8) ^ temp_c)
+
+static unsigned get_maxf_locked(struct tegra_ppm *ctx, unsigned limit,
+				int units, int temp_c, int cores)
 {
 	unsigned maxf;
 	struct maxf_cache_entry *me;
-	u32 key = make_key(limit, temp_c, cores);
+	u32 key = make_key(limit, units, temp_c, cores);
 
-	if (WARN(cores < 0 || cores > ctx->params->n_cores,
-		 "power model can't handle %d cores", cores))
+	if ((WARN(cores < 0 || cores > ctx->params->n_cores,
+		  "power model can't handle %d cores", cores))
+	    || (WARN(units != TEGRA_PPM_UNITS_MILLIAMPS &&
+		     units != TEGRA_PPM_UNITS_MILLIWATTS,
+		     "illegal value for units (%d)", units)))
 		return 0;
 
 	/* check cache */
 	hash_for_each_possible(ctx->maxf_cache, me, nib, key)
-		if (me->imax == limit && me->temp_c == temp_c &&
-		    me->cores == cores) {
+		if (me->budget == limit && me->temp_c == temp_c &&
+		    me->cores == cores && me->units == units) {
 			maxf = me->maxf;
 			return maxf;
 		}
@@ -309,13 +328,15 @@ static unsigned tegra_ppm_get_maxf_locked(
 			      ctx->fv,
 			      cores,
 			      limit,
+			      units,
 			      temp_c,
 			      ctx->iddq_ma);
 
 	/* best effort to cache the result */
 	me = kzalloc(sizeof(*me), GFP_KERNEL);
 	if (!IS_ERR_OR_NULL(me)) {
-		me->imax = limit;
+		me->budget = limit;
+		me->units = units;
 		me->temp_c = temp_c;
 		me->maxf = maxf;
 		me->cores = cores;
@@ -327,25 +348,27 @@ static unsigned tegra_ppm_get_maxf_locked(
 /**
  * tegra_ppm_get_maxf() - query maximum allowable frequency given a budget
  * @ctx : the power model to query
+ * @units: %TEGRA_PPM_MILLIWATTS or %TEGRA_PPM_MILLIAMPS
  * @limit : the budget
  * @temp_c : the temperature in degrees C
  * @cores : the number of "cores" consuming power
  *
  * If the result has not been previously memoized, compute and memoize
  * the maximum allowable frequency give a power model (@ctx), a budget
- * (@limit, in mA), a temperature (temp_c, in degrees Celcius), and
- * the number of active cores (@cores).
+ * (@limit, in mA or mW as specified by @units), a temperature
+ * (temp_c, in degrees Celcius), and the number of active cores
+ * (@cores).
  *
  * Return: If the value of cores is outside the model's expected range, 0.
  *    Otherwise, the (previously) computed frequency in Hz.
  */
-unsigned tegra_ppm_get_maxf(
-	struct tegra_ppm *ctx, unsigned int limit, int temp_c, int cores)
+unsigned tegra_ppm_get_maxf(struct tegra_ppm *ctx, unsigned int limit,
+			    int units, int temp_c, int cores)
 {
 	unsigned ret;
 	mutex_lock(&ctx->lock);
 
-	ret = tegra_ppm_get_maxf_locked(ctx, limit, temp_c, cores);
+	ret = get_maxf_locked(ctx, limit, units, temp_c, cores);
 
 	mutex_unlock(&ctx->lock);
 	return ret;
@@ -383,9 +406,8 @@ EXPORT_SYMBOL_GPL(tegra_ppm_drop_cache);
 static int total_ma_show(void *data, u64 *val)
 {
 	struct tegra_ppm *ctx = data;
-	int cores;
+	int cores = ctx->model_query.cores;
 
-	cores = ctx->model_query.cores;
 	if (cores <= 0 || cores > ctx->params->n_cores)
 		return -EINVAL;
 
@@ -400,21 +422,56 @@ static int total_ma_show(void *data, u64 *val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(total_ma_fops, total_ma_show, NULL, "%llu\n");
 
+static int total_mw_show(void *data, u64 *val)
+{
+	struct tegra_ppm *ctx = data;
+	int cores = ctx->model_query.cores;
+
+	if (cores <= 0 || cores > ctx->params->n_cores)
+		return -EINVAL;
+
+	mutex_lock(&ctx->lock);
+	*val = calc_total_mw(ctx->params, ctx->model_query.iddq_ma,
+			     ctx->model_query.temp_c, ctx->model_query.volt_mv,
+			     ctx->model_query.cores,
+			     ctx->model_query.freq_hz / 1000);
+	mutex_unlock(&ctx->lock);
+
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(total_mw_fops, total_mw_show, NULL, "%llu\n");
+
 static int show_ma_limited_hz(void *data, u64 *val)
 {
 	struct tegra_ppm *ctx = data;
-	int cores;
+	int cores = ctx->cap_query.cores;
 
-	cores = ctx->cap_query.cores;
 	if (cores <= 0 || cores > ctx->params->n_cores)
 		return -EINVAL;
 
 	*val = tegra_ppm_get_maxf(ctx, ctx->cap_query.budget,
+				  TEGRA_PPM_UNITS_MILLIAMPS,
 				  ctx->cap_query.temp_c,
 				  ctx->cap_query.cores);
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(ma_limited_hz_fops, show_ma_limited_hz, NULL, "%llu\n");
+
+static int show_mw_limited_hz(void *data, u64 *val)
+{
+	struct tegra_ppm *ctx = data;
+	int cores = ctx->cap_query.cores;
+
+	if (cores <= 0 || cores > ctx->params->n_cores)
+		return -EINVAL;
+
+	*val = tegra_ppm_get_maxf(ctx, ctx->cap_query.budget,
+				  TEGRA_PPM_UNITS_MILLIWATTS,
+				  ctx->cap_query.temp_c,
+				  ctx->cap_query.cores);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(mw_limited_hz_fops, show_mw_limited_hz, NULL, "%llu\n");
 
 static int ppm_cache_show(struct seq_file *s, void *data)
 {
@@ -422,12 +479,14 @@ static int ppm_cache_show(struct seq_file *s, void *data)
 	struct maxf_cache_entry *me;
 	struct tegra_ppm *ctx = s->private;
 
-	seq_printf(s, "%10s %10s %10s %10s\n",
-		   "imax [mA]", "temp['C]", "cores[#]", "fmax [Hz]");
+	seq_printf(s, "%10s %5s %10s %10s %10s\n",
+		   "budget", "units", "temp['C]", "cores[#]", "fmax [Hz]");
 
 	hash_for_each(ctx->maxf_cache, bucket, me, nib)
-		seq_printf(s, "%10d %10d %10d %10d\n",
-			   me->imax, me->temp_c, me->cores, me->maxf);
+		seq_printf(s, "%10d %5s %10d %10d %10d\n",
+			   me->budget,
+			   me->units == TEGRA_PPM_UNITS_MILLIAMPS ? "mA" : "mW",
+			   me->temp_c, me->cores, me->maxf);
 
 	return 0;
 }
@@ -468,7 +527,7 @@ static struct dentry *ppm_debugfs_dir(void)
 
 static int model_debugfs_init(struct tegra_ppm *ctx, struct dentry *parent)
 {
-	parent = debugfs_create_dir("model_query", parent);
+	parent = debugfs_create_dir("query_model", parent);
 	if (IS_ERR_OR_NULL(parent))
 		return PTR_ERR(parent);
 
@@ -484,13 +543,15 @@ static int model_debugfs_init(struct tegra_ppm *ctx, struct dentry *parent)
 			   &ctx->model_query.iddq_ma);
 	debugfs_create_file("total_ma", S_IRUSR, parent, ctx,
 			    &total_ma_fops);
+	debugfs_create_file("total_mw", S_IRUSR, parent, ctx,
+			    &total_mw_fops);
 
 	return 0;
 }
 
 static int cap_debugfs_init(struct tegra_ppm *ctx, struct dentry *parent)
 {
-	parent = debugfs_create_dir("check_cap", parent);
+	parent = debugfs_create_dir("query_cap", parent);
 	if (IS_ERR_OR_NULL(parent))
 		return PTR_ERR(parent);
 
@@ -504,6 +565,8 @@ static int cap_debugfs_init(struct tegra_ppm *ctx, struct dentry *parent)
 			   &ctx->cap_query.budget);
 	debugfs_create_file("ma_limited_hz", S_IRUSR, parent, ctx,
 			    &ma_limited_hz_fops);
+	debugfs_create_file("mw_limited_hz", S_IRUSR, parent, ctx,
+			    &mw_limited_hz_fops);
 
 	return 0;
 }

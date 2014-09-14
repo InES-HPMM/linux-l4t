@@ -49,7 +49,12 @@ struct tegra_ppm *tegra_ppm_create(char *name,
 				   int iddq_ma,
 				   struct dentry *debugfs_dir);
 
-unsigned tegra_ppm_get_maxf(struct tegra_ppm *ctx, unsigned int limit,
+#define TEGRA_PPM_UNITS_MILLIAMPS 0
+#define TEGRA_PPM_UNITS_MILLIWATTS 1
+
+
+unsigned tegra_ppm_get_maxf(struct tegra_ppm *ctx,
+			    unsigned int limit, int units,
 			    int temp_c, int cores);
 
 void tegra_ppm_drop_cache(struct tegra_ppm *ctx);

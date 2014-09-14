@@ -141,6 +141,7 @@ static int edp_set_cdev_state(struct thermal_cooling_device *cdev,
 
 	ctx->temperature_now = K_TO_C(cur_state);
 	clk_rate = tegra_ppm_get_maxf(ctx->ppm, ctx->plat_data->imax,
+				      TEGRA_PPM_UNITS_MILLIAMPS,
 				      ctx->temperature_now, 1);
 
 	clk_set_rate(ctx->cap_clk, clk_rate * 1000);
