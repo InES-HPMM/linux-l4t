@@ -132,6 +132,7 @@ enum {
 	(SMMU_STATS_CACHE_COUNT_BASE + 8 * cache + 4 * hitmiss)
 
 #define SMMU_TRANSLATION_ENABLE_0		0x228
+#define SMMU_TRANSLATION_ENABLE_4		0xb98
 
 #define SMMU_AFI_ASID	0x238   /* PCIE */
 
@@ -398,7 +399,7 @@ struct smmu_device {
 	 * Register image savers for suspend/resume
 	 */
 	u32 num_translation_enable;
-	u32 translation_enable[4];
+	u32 translation_enable[5];
 	u32 num_asid_security;
 	u32 asid_security[8];
 
@@ -873,6 +874,16 @@ static void smmu_flush_regs(struct smmu_device *smmu, int enable)
 	FLUSH_SMMU_REGS(smmu);
 }
 
+static int translation_enable_offset(int i)
+{
+	if (i < 4)
+		return SMMU_TRANSLATION_ENABLE_0 + i * sizeof(u32);
+	else if (i == 4)
+		return SMMU_TRANSLATION_ENABLE_4;
+	else
+		BUG();
+}
+
 static void smmu_setup_regs(struct smmu_device *smmu)
 {
 	int i;
@@ -894,7 +905,7 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 
 	for (i = 0; i < smmu->num_translation_enable; i++)
 		smmu_write(smmu, smmu->translation_enable[i],
-			   SMMU_TRANSLATION_ENABLE_0 + i * sizeof(u32));
+			   translation_enable_offset(i));
 
 	for (i = 0; i < smmu->num_asid_security; i++)
 		smmu_write(smmu,
@@ -2322,7 +2333,7 @@ int tegra_smmu_suspend(struct device *dev)
 
 	for (i = 0; i < smmu->num_translation_enable; i++)
 		smmu->translation_enable[i] = smmu_read(smmu,
-				SMMU_TRANSLATION_ENABLE_0 + i * sizeof(u32));
+				translation_enable_offset(i));
 
 	for (i = 0; i < smmu->num_asid_security; i++)
 		smmu->asid_security[i] =
