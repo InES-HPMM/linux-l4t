@@ -40,15 +40,11 @@
 #include <linux/thermal.h>
 #include <linux/platform_data/tegra_edp.h>
 #include <linux/platform_data/thermal_sensors.h>
+#include <linux/tegra_ppm.h>
 
 struct tegra_edp_limits {
 	int temperature;
 	unsigned int freq_limits[4];
-};
-
-struct tegra_edp_gpu_limits {
-	int temperature;
-	unsigned int freq_limits;
 };
 
 struct tegra_edp_voltage_temp_constraint {
@@ -173,19 +169,19 @@ void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
 					int *num_trips, int margin);
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
-struct tegra_edp_common_powermodel_params
+struct tegra_ppm_params
 				*tegra12x_get_gpu_powermodel_params(void);
 #else
-static inline struct tegra_edp_common_powermodel_params
+static inline struct tegra_ppm_params
 				*tegra12x_get_gpu_powermodel_params(void)
 { return NULL; }
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_13x_SOC
-struct tegra_edp_common_powermodel_params
+struct tegra_ppm_params
 				*tegra13x_get_gpu_powermodel_params(void);
 #else
-static inline struct tegra_edp_common_powermodel_params
+static inline struct tegra_ppm_params
 				*tegra13x_get_gpu_powermodel_params(void)
 { return NULL; }
 #endif

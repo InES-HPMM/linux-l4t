@@ -419,6 +419,7 @@ config TEGRA_GPU_EDP
        depends on THERMAL
        depends on TEGRA_EDP_LIMITS
        depends on ARCH_TEGRA_12x_SOC
+       select TEGRA_PROC_POWER_MODEL
        default n
        help
          Limit maximum GPU frequency based on temperature

@@ -66,7 +66,7 @@ struct tegra_sysedp_corecap *tegra_get_sysedp_corecap(unsigned int *sz)
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 
 #ifdef CONFIG_TEGRA_GPU_EDP
-struct tegra_edp_common_powermodel_params *tegra13x_get_gpu_powermodel_params(void)
+struct tegra_ppm_params *tegra13x_get_gpu_powermodel_params(void)
 {
 	/* T13x has same GPU power model params as T12x */
 	return tegra12x_get_gpu_powermodel_params();
