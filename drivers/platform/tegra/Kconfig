@@ -125,3 +125,14 @@ config TEGRA_SOCTHERM
 	default y
         help
 	  Enables use of soctherm for thermal management.
+
+config TEGRA_EDP_LIMITS
+	bool "Enforce electrical design limits on CPU rail"
+	depends on CPU_FREQ
+	depends on THERMAL
+	default n
+	select TEGRA_PROC_POWER_MODEL
+	help
+	  Limit maximum CPU frequency based on temperature and number
+	  of on-line CPUs to keep CPU rail current within power supply
+	  capabilities.

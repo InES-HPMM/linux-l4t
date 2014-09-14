@@ -67,6 +67,7 @@ CFLAGS_common.o = -Werror -Wno-unused-function
 endif
 
 obj-$(CONFIG_TEGRA_COMMON) += common.o
+obj-$(CONFIG_TEGRA_EDP_LIMITS)          += cpu-edp.o # must precede cpu-tegra.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
 obj-y += flowctrl.o
 obj-$(CONFIG_TEGRA3_PM) += pm-t3.o
@@ -163,7 +164,6 @@ obj-$(CONFIG_TEGRA_HMP_CLUSTER_CONTROL)      += cluster-control.o
 
 obj-$(CONFIG_TEGRA_USE_NCT)             += nct.o nct_sysfs.o
 
-obj-$(CONFIG_TEGRA_EDP_LIMITS)          += edp.o
 obj-$(CONFIG_TEGRA_GPU_EDP)             += gpu-edp.o
 
 else # --- CONFIG_ARM64 --- #
@@ -171,6 +171,7 @@ else # --- CONFIG_ARM64 --- #
 obj-y += dummy.o # generate a built-in.o
 
 endif
+
 
 obj-y					+= asim.o
 obj-y					+= hier_ictlr/

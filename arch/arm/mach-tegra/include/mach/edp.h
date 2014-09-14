@@ -76,7 +76,7 @@ struct tegra_edp_common_powermodel_params {
 struct tegra_edp_cpu_powermodel_params {
 	int cpu_speedo_id;
 
-	struct tegra_edp_common_powermodel_params common;
+	struct tegra_ppm_params common;
 
 	unsigned int safety_cap[4];
 };
@@ -105,7 +105,8 @@ struct tegra_core_edp_limits {
 	unsigned long *cap_rates_scpu_off;
 };
 
-bool is_edp_reg_idle_supported(void);
+bool tegra_is_edp_reg_idle_supported(void);
+bool tegra_is_cpu_edp_supported(void);
 
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 struct thermal_cooling_device *edp_cooling_device_create(void *v);
@@ -123,7 +124,7 @@ void tegra_get_cpu_reg_mode_limits(const struct tegra_edp_limits **limits,
 				   int *size, unsigned int mode);
 void tegra_platform_edp_init(struct thermal_trip_info *trips,
 					int *num_trips, int margin);
-unsigned int tegra_get_sysedp_max_freq(int cpupwr, int online_cpus,
+unsigned int tegra_get_sysedp_max_freq(int cpupwr, int temperature, int online_cpus,
 				       int cpu_mode);
 #else /* CONFIG_TEGRA_EDP_LIMITS */
 static inline struct thermal_cooling_device *edp_cooling_device_create(

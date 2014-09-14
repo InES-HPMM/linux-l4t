@@ -113,6 +113,7 @@ struct tegra_ppm_params *tegra13x_get_gpu_powermodel_params(void)
  */
 #define EDP_PARAMS_COMMON_PART						\
 {									\
+	.n_cores          = 2,						\
 	.temp_scaled      = 10,						\
 	.dyn_scaled       = 1000,					\
 	.dyn_consts_n     = { 3900, 5900 }, /* { save: 2700, 5900 } */	\

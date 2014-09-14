@@ -68,6 +68,40 @@ static unsigned int force_cpupwr_freqcap;
 
 static bool force_policy_max;
 
+#ifdef CONFIG_TEGRA_EDP_LIMITS
+static const int cpu_edp_temps[] = { /* degree celcius (C) */
+	23, 40, 50, 60, 70, 74, 78, 82, 86, 90, 94, 98, 102,
+};
+
+void tegra_platform_edp_init(struct thermal_trip_info *trips,
+				int *num_trips, int margin)
+{
+	struct thermal_trip_info *trip_state;
+	int i;
+
+	if (!trips || !num_trips)
+		return;
+
+	if (ARRAY_SIZE(cpu_edp_temps) > MAX_THROT_TABLE_SIZE)
+		BUG();
+
+	for (i = 0; i < ARRAY_SIZE(cpu_edp_temps) - 1; i++) {
+		trip_state = &trips[*num_trips];
+
+		trip_state->cdev_type = "cpu_edp";
+		trip_state->trip_temp =
+			(cpu_edp_temps[i] * 1000) - margin;
+		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
+		trip_state->upper = trip_state->lower = i + 1;
+
+		(*num_trips)++;
+
+		if (*num_trips >= THERMAL_MAX_TRIPS)
+			BUG();
+	}
+}
+#endif
+
 static int force_policy_max_set(const char *arg, const struct kernel_param *kp)
 {
 	int ret;
@@ -229,14 +263,17 @@ static int edp_thermal_index;
 static cpumask_t edp_cpumask;
 static struct pm_qos_request edp_max_cpus;
 
-unsigned int tegra_get_cpu_tegra_thermal_index(void)
+static int cpu_edp_temperature(void)
 {
-	return edp_thermal_index;
+	BUG_ON(edp_thermal_index < 0 ||
+	       edp_thermal_index >= ARRAY_SIZE(cpu_edp_temps));
+
+	return cpu_edp_temps[edp_thermal_index];
 }
 
 static unsigned int get_edp_freq_limit(unsigned int nr_cpus)
 {
-	unsigned int limit = tegra_get_edp_max_freq(edp_thermal_index,
+	unsigned int limit = tegra_get_edp_max_freq(cpu_edp_temperature(),
 				nr_cpus, is_lp_cluster() ? MODE_LP : MODE_G);
 #ifndef CONFIG_TEGRA_EDP_EXACT_FREQ
 	unsigned int i;
@@ -299,22 +336,21 @@ static unsigned int get_edp_limit_speed(unsigned int requested_speed)
 	}
 }
 
-/* used in struct thermal_cooling_device_ops edp.c::tegra_cpu_edp_cooling_ops */
-int tegra_cpu_edp_get_max_state(struct thermal_cooling_device *cdev,
+static int tegra_cpu_edp_get_max_state(struct thermal_cooling_device *cdev,
 				unsigned long *max_state)
 {
-	*max_state = tegra_get_edp_max_thermal_index();
+	*max_state = ARRAY_SIZE(cpu_edp_temps) - 1;
 	return 0;
 }
 
-int tegra_cpu_edp_get_cur_state(struct thermal_cooling_device *cdev,
+static int tegra_cpu_edp_get_cur_state(struct thermal_cooling_device *cdev,
 				unsigned long *cur_state)
 {
 	*cur_state = edp_thermal_index;
 	return 0;
 }
 
-int tegra_cpu_edp_set_cur_state(struct thermal_cooling_device *cdev,
+static int tegra_cpu_edp_set_cur_state(struct thermal_cooling_device *cdev,
 				unsigned long cur_state)
 {
 	mutex_lock(&tegra_cpu_lock);
@@ -331,6 +367,25 @@ int tegra_cpu_edp_set_cur_state(struct thermal_cooling_device *cdev,
 	return 0;
 }
 
+static struct thermal_cooling_device_ops tegra_cpu_edp_cooling_ops = {
+	.get_max_state = tegra_cpu_edp_get_max_state,
+	.get_cur_state = tegra_cpu_edp_get_cur_state,
+	.set_cur_state = tegra_cpu_edp_set_cur_state,
+};
+
+static int __init cpu_edp_cdev_init(void)
+{
+	struct thermal_cooling_device *cpu_edp_cdev;
+
+	cpu_edp_cdev = thermal_cooling_device_register("cpu_edp", NULL,
+					&tegra_cpu_edp_cooling_ops);
+	if (IS_ERR_OR_NULL(cpu_edp_cdev))
+		pr_err("Failed to register 'cpu_edp' cooling device\n");
+
+	return 0;
+}
+module_init(cpu_edp_cdev_init);
+
 static unsigned int sysedp_cap_speed(unsigned int requested_speed)
 {
 	unsigned int old_cpupwr_freqcap = cur_cpupwr_freqcap;
@@ -340,6 +395,7 @@ static unsigned int sysedp_cap_speed(unsigned int requested_speed)
 	else
 		/* get the max freq given the power and online cpu count */
 		cur_cpupwr_freqcap = tegra_get_sysedp_max_freq(cur_cpupwr,
+					  cpu_edp_temperature(),
 					  cpumask_weight(&edp_cpumask),
 					  is_lp_cluster() ? MODE_LP : MODE_G);
 
@@ -377,7 +433,7 @@ static int tegra_cpu_edp_notify(
 		new_speed = min_t(unsigned int, cpu_speed, edp_speed);
 		new_speed = sysedp_cap_speed(new_speed);
 		if (new_speed < cpu_speed ||
-		    (!is_suspended && is_edp_reg_idle_supported())) {
+		    (!is_suspended && tegra_is_edp_reg_idle_supported())) {
 			ret = tegra_cpu_set_speed_cap_locked(NULL);
 			if (cur_cpupwr_freqcap >= edp_speed) {
 				pr_debug("cpu-tegra:%sforce EDP limit %u kHz\n",
@@ -407,7 +463,7 @@ static void tegra_cpu_edp_init(bool resume)
 	if (!cpumask_weight(&edp_cpumask))
 		edp_cpumask = *cpu_online_mask;
 
-	if (tegra_get_edp_max_thermal_index() <= 0) {
+	if (!tegra_is_cpu_edp_supported()) {
 		if (!resume)
 			pr_info("cpu-tegra: no EDP table is provided\n");
 		return;
@@ -435,18 +491,18 @@ static unsigned int cpu_reg_mode_predict_idle_limit(void)
 {
 	unsigned int cpus, limit;
 
-	if (!is_edp_reg_idle_supported())
+	if (!tegra_is_edp_reg_idle_supported())
 		return 0;
 
 	cpus = cpumask_weight(&edp_cpumask);
 	BUG_ON(cpus == 0);
-	limit = tegra_get_reg_idle_freq(edp_thermal_index, cpus);
+	limit = tegra_get_reg_idle_freq(cpu_edp_temperature(), cpus);
 	return limit ? : 1; /* bump 0 to 1kHz to differentiate from no-table */
 }
 
 static int cpu_reg_mode_limits_init(void)
 {
-	if (!is_edp_reg_idle_supported()) {
+	if (!tegra_is_edp_reg_idle_supported()) {
 		reg_mode = -ENOENT;
 		return -ENOENT;
 	}
@@ -460,7 +516,7 @@ int tegra_cpu_reg_mode_force_normal(bool force)
 	int ret = 0;
 
 	mutex_lock(&tegra_cpu_lock);
-	if (is_edp_reg_idle_supported()) {
+	if (tegra_is_edp_reg_idle_supported()) {
 		reg_mode_force_normal = force;
 		ret = tegra_cpu_set_speed_cap_locked(NULL);
 	}
@@ -504,7 +560,7 @@ DEFINE_SIMPLE_ATTRIBUTE(reg_mode_fops, reg_mode_get, NULL, "0x%llx\n");
 
 static int cpu_edp_limit_get(void *data, u64 *val)
 {
-	*val = (u64)tegra_get_edp_max_freq(edp_thermal_index,
+	*val = (u64)tegra_get_edp_max_freq(cpu_edp_temperature(),
 					   cpumask_weight(&edp_cpumask),
 					   is_lp_cluster() ? MODE_LP : MODE_G);
 	return 0;
@@ -1229,7 +1285,7 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 		mutex_lock(&tegra_cpu_lock);
 		is_suspended = true;
 #ifdef CONFIG_TEGRA_EDP_LIMITS
-		if (is_edp_reg_idle_supported())
+		if (tegra_is_edp_reg_idle_supported())
 			reg_mode_force_normal = true;
 #endif
 		rate = freq_table[suspend_index].frequency;

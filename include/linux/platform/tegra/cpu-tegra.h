@@ -58,30 +58,13 @@ static inline int tegra_suspended_target(unsigned int target_freq)
 #if defined(CONFIG_CPU_FREQ) && defined(CONFIG_TEGRA_EDP_LIMITS)
 int tegra_update_cpu_edp_limits(void);
 int tegra_cpu_reg_mode_force_normal(bool force);
-unsigned int tegra_get_cpu_tegra_thermal_index(void);
-int tegra_cpu_edp_get_max_state(struct thermal_cooling_device *cdev,
-			    unsigned long *max_state);
-int tegra_cpu_edp_get_cur_state(struct thermal_cooling_device *cdev,
-			    unsigned long *cur_state);
-int tegra_cpu_edp_set_cur_state(struct thermal_cooling_device *cdev,
-			    unsigned long cur_state);
 #else
 static inline int tegra_update_cpu_edp_limits(void)
 { return 0; }
 static inline int tegra_cpu_reg_mode_force_normal(bool force)
 { return 0; }
-static inline unsigned int tegra_get_cpu_tegra_thermal_index(void)
-{ return -1; }
-static inline int tegra_cpu_edp_get_max_state(
-	struct thermal_cooling_device *cdev, unsigned long *max_state)
-{ return -1; }
-static inline int tegra_cpu_edp_get_cur_state(
-	struct thermal_cooling_device *cdev, unsigned long *cur_state)
-{ return -1; }
-static inline int tegra_cpu_edp_set_cur_state(
-	struct thermal_cooling_device *cdev, unsigned long cur_state)
-{ return -1; }
 #endif
+
 #ifdef CONFIG_TEGRA_CPU_VOLT_CAP
 struct tegra_cooling_device *tegra_vc_get_cdev(void);
 #else

@@ -393,27 +393,6 @@ config TEGRA_ERRATA_977223
 	  high priority. A SW work around is to program the ring 1 input to
 	  ring 0 ptsa rate to be 1/2 of the value intended.
 
-config TEGRA_EDP_LIMITS
-	bool "Enforce electrical design limits on CPU rail"
-	depends on CPU_FREQ
-	depends on THERMAL
-	default y if ARCH_TEGRA_3x_SOC
-	default n
-	help
-	  Limit maximum CPU frequency based on temperature and number
-	  of on-line CPUs to keep CPU rail current within power supply
-	  capabilities.
-
-config TEGRA_CPU_EDP_FIXED_LIMITS
-	bool "Enforce fixed EDP limits on CPU rail per chip SKU"
-	depends on ARCH_TEGRA_11x_SOC
-	depends on TEGRA_EDP_LIMITS
-	default n
-	help
-	  Enforce CPU EDP frequency limits which are fixed for a given
-	  chip SKU. By default, the max frequency is determined optimally
-	  for each individual chip.
-
 config TEGRA_GPU_EDP
        bool "enable GPU EDP "
        depends on THERMAL
