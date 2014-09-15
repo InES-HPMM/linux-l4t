@@ -214,7 +214,7 @@ struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	 TEGRA_SWGROUP_BIT(DC12), .linear_map = tegra_fb_linear_map, },
 	{ .name = "tegradc.1", .swgids = TEGRA_SWGROUP_BIT(DC) |
 					 TEGRA_SWGROUP_BIT(DCB) |
-	 TEGRA_SWGROUP_BIT(DC12), },
+	 TEGRA_SWGROUP_BIT(DC12), .linear_map = tegra_fb_linear_map, },
 	{ .name = "tegra_bb",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
