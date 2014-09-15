@@ -122,6 +122,12 @@ static struct power_supply_cables psy_cables[] = {
 		.ac_online = 1,
 	},
 	{
+		.name	= "ACA NV-Charger",
+		.dt_cable_name = "ACA NV-Charger",
+		.print_str = "USB ACA NV-Charger",
+		.ac_online = 1,
+	},
+	{
 		.name	= "Y-cable",
 		.dt_cable_name = "y-cable",
 		.print_str = "Y cable",
