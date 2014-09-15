@@ -229,14 +229,15 @@
 		reg = <0x0 0x2>;
 		extcon-name = "cable-xlate";
 		cable-insert-delay = <500>;
-		output-cable-names = "USB", "USB-Host", "ACA-NV";
+		output-cable-names = "USB", "USB-Host", "ACA-NV", "Y-Cable";
                 extcon-cables = <&bq2419x 0 &extcon_adc_jack 0 &extcon_adc_jack 1>;
 		extcon-cable-names = "vbus", "id", "aca-nv";
 		cable-states = <0x0	0x7	0x0
 				0x1	0x7	0x1
 				0x2	0x7	0x2
 				0x4	0x7	0x4
-				0x5	0x7	0x4>;
+				0x5	0x7	0x4
+				0x3	0x7	0x8>;
 		#extcon-cells = <1>;
 	};
 
