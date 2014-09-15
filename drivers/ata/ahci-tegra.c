@@ -1350,7 +1350,7 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	 */
 	val = scfg_readl(T_SATA0_CFG_PHY_REG);
 	val |= T_SATA0_CFG_PHY_SQUELCH_MASK;
-	val |= PHY_USE_7BIT_ALIGN_DET_FOR_SPD_MASK;
+	val &= ~PHY_USE_7BIT_ALIGN_DET_FOR_SPD_MASK;
 	scfg_writel(val, T_SATA0_CFG_PHY_REG);
 
 	val = scfg_readl(T_SATA0_NVOOB);
