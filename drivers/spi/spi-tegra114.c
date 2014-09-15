@@ -229,6 +229,7 @@ struct tegra_spi_data {
 	u32					def_command1_reg;
 	u32					def_command2_reg;
 	u32					spi_cs_timing;
+	u8					def_chip_select;
 
 	struct completion			xfer_completion;
 	struct spi_transfer			*curr_xfer;
@@ -1362,6 +1363,9 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 	struct tegra_spi_platform_data *pdata;
 	const unsigned int *prop;
 	struct device_node *np = pdev->dev.of_node;
+	struct device_node *nc = NULL;
+	struct device_node *found_nc = NULL;
+	int len;
 
 	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
@@ -1375,6 +1379,27 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 
 	if (of_find_property(np, "nvidia,clock-always-on", NULL))
 		pdata->is_clkon_always = true;
+
+	/* when no client is defined, default chipselect is zero */
+	pdata->def_chip_select = 0;
+
+	/*
+	 * Last child node or first node which has property as default-cs will
+	 * become the default.
+	 */
+	for_each_available_child_of_node(np, nc) {
+		found_nc = nc;
+		if (of_find_property(nc, "nvidia,default-chipselect", NULL))
+			break;
+	}
+	if (found_nc) {
+		prop = of_get_property(found_nc, "reg", &len);
+		if (!prop || len < sizeof(*prop))
+			dev_err(&pdev->dev, "%s has no reg property\n",
+					found_nc->full_name);
+		else
+			pdata->def_chip_select = be32_to_cpup(prop);
+	}
 
 	return pdata;
 }
@@ -1463,6 +1488,7 @@ static int tegra_spi_probe(struct platform_device *pdev)
 	tspi = spi_master_get_devdata(master);
 	tspi->master = master;
 	tspi->clock_always_on = pdata->is_clkon_always;
+	tspi->def_chip_select = pdata->def_chip_select;
 	tspi->dev = &pdev->dev;
 
 	if (pdev->dev.of_node) {
@@ -1543,6 +1569,7 @@ static int tegra_spi_probe(struct platform_device *pdev)
 		goto exit_pm_disable;
 	}
 	tspi->def_command1_reg  = SPI_M_S | SPI_LSBYTE_FE;
+	tspi->def_command1_reg |= SPI_CS_SEL(tspi->def_chip_select);
 	tegra_spi_writel(tspi, tspi->def_command1_reg, SPI_COMMAND1);
 	tspi->def_command2_reg = tegra_spi_readl(tspi, SPI_COMMAND2);
 	pm_runtime_put(&pdev->dev);
