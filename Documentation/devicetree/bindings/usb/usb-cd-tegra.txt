@@ -1,0 +1,27 @@
+* Nvidia USB charger detection driver
+
+This file documents the properties used by the tegra-usb-cd driver.
+
+Required properties:
+- compatible: Should be similar to "nvidia,tegra210-usb-cd"
+- reg: Specify start address and registers count details
+
+Optional properties:
+- nvidia,dcp-current-limit-ma: If needs to overried standard DCP charger current limit (1.5A), specify the value in milliamperes.
+- nvidia,qc2-current-limit-ma: Specify the QC2.0 charger current limit in milliamperes.
+- nvidia,qc2-input-voltage: Specify the input voltage needed to support QC2.0 charger.
+	0 - if input voltage is 5V
+	1 - if input voltage is 9V
+	2 - if input voltage is 12V
+	3 - if input voltage is 20V
+- nvidia,usb_bat_chg-supply: Specify the phandle of corresponding current regulator device tree node.
+
+Example:
+	usb_cd@7d000000 {
+			compatible = "nvidia,tegra210-usb-cd";
+			reg = <0x0 0x7009f000 0x0 0x1000>;
+			nvidia,dcp-current-limit-ma = <2000>;
+			#extcon-cells = <1>;
+			usb_bat_chg-supply = <&charger>;
+			status = "okay";
+	}
