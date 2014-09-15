@@ -1489,7 +1489,7 @@ err_fini_utils:
 	if (machine->dmic_reg)
 		regulator_put(machine->dmic_reg);
 	if (machine->codec_reg) {
-		regulator_disable(machine->digital_reg);
+		regulator_disable(machine->codec_reg);
 		regulator_put(machine->codec_reg);
 	}
 
