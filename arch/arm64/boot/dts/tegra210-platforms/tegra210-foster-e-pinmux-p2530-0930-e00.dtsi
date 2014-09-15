@@ -795,7 +795,7 @@
 			spdif_in_pcc3 {
 				nvidia,pins = "spdif_in_pcc3";
 				nvidia,function = "spdif";
-				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 			};
