@@ -203,14 +203,6 @@
 		};
 	};
 
-	i2c@7000d000 {
-		max77620@3c {
-			watchdog {
-				status = "okay";
-			};
-		};
-	};
-
 	i2c@7000c000 {
 		ad1937x: ad193x.0-0004@04 {
 			compatible = "ad,ad1937";

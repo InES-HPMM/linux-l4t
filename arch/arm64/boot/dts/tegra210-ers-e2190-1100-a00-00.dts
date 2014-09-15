@@ -147,14 +147,6 @@
 		};
 	};
 
-	i2c@7000d000 {
-		max77620@3c {
-			watchdog {
-				status = "okay";
-			};
-		};
-	};
-
 	adma@702e2000  {
 		interrupts = <0 24 0x04
 			      0 25 0x04

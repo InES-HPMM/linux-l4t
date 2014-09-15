@@ -275,7 +275,6 @@
 	};
 
 	watchdog@60005100 {
-		status = "okay";
 		dt-override-status-odm-data = <0x00010000 0x00010000>;
 	};
 
