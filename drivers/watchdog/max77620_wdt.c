@@ -337,9 +337,17 @@ static int max77620_wdt_remove(struct platform_device *pdev)
 	struct max77620_wdt *wdt = platform_get_drvdata(pdev);
 
 	max77620_wdt_stop(&wdt->wdt_dev);
-	cancel_delayed_work(&wdt->wdt_restart_wq);
+	cancel_delayed_work_sync(&wdt->wdt_restart_wq);
 	watchdog_unregister_device(&wdt->wdt_dev);
 	return 0;
+}
+
+static void max77620_wdt_shutdown(struct platform_device *pdev)
+{
+	struct max77620_wdt *wdt = platform_get_drvdata(pdev);
+
+	max77620_wdt_stop(&wdt->wdt_dev);
+	cancel_delayed_work_sync(&wdt->wdt_restart_wq);
 }
 
 static int max77620_wdt_suspend(struct device *dev)
@@ -376,6 +384,7 @@ static struct platform_driver max77620_wdt_driver = {
 	},
 	.probe	= max77620_wdt_probe,
 	.remove	= max77620_wdt_remove,
+	.shutdown = max77620_wdt_shutdown,
 };
 
 static int __init max77620_wdt_init(void)
