@@ -803,3 +803,27 @@ int dma_mmap_from_coherent(struct device *dev, struct vm_area_struct *vma,
 	return 0;
 }
 EXPORT_SYMBOL(dma_mmap_from_coherent);
+
+int dma_get_coherent_stats(struct device *dev,
+			struct dma_coherent_stats *stats)
+{
+	struct heap_info *h = NULL;
+	struct dma_coherent_mem *mem = dev->dma_mem;
+
+	if ((!dev) || !stats)
+		return -EINVAL;
+
+	h = dev_get_drvdata(dev);
+	if (h && (h->magic == RESIZE_MAGIC)) {
+		stats->size = h->curr_len;
+		stats->base = h->curr_base;
+		goto out;
+	}
+
+	if (!mem)
+		return -EINVAL;
+	stats->size = mem->size << PAGE_SHIFT;
+	stats->base = mem->device_base;
+out:
+	return 0;
+}
