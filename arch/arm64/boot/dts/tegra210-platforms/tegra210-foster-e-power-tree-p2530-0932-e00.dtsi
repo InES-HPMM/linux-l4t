@@ -69,6 +69,7 @@
 			regulator-max-microvolt = <5000000>;
 			gpio = <&gpio TEGRA_GPIO(CC, 4) 0>;
 			enable-active-high;
+			gpio-open-drain;
 		};
 
 		usb_vbus2: regulator@15 {
@@ -79,6 +80,7 @@
 			regulator-max-microvolt = <5000000>;
 			gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
 			enable-active-high;
+			gpio-open-drain;
 		};
 
 		usb_vbus3: regulator@16 {
@@ -89,6 +91,7 @@
 			regulator-max-microvolt = <5000000>;
 			gpio = <&gpio TEGRA_GPIO(D, 4) 0>;
 			enable-active-high;
+			gpio-open-drain;
 		};
 	};
 	i2c@7000c000 {
