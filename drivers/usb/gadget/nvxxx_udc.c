@@ -160,44 +160,13 @@ MODULE_PARM_DESC(min_irq_interval_us, "minimum irq interval in microseconds");
 
 static int nvudc_ep_disable(struct usb_ep *_ep);
 
-static inline void xudc_update_otg_port_ownership(
-			struct nv_udc_s *nvudc, bool host_owns_port)
-{
-	u32 portsc;
-	struct device *dev = nvudc->dev;
-
-	if (!tegra_xhci_hcd) {
-		msg_err(dev, "%s: host driver not loaded yet\n", __func__);
-		return;
-	}
-
-	if (tegra_xhci_hcd->driver &&
-		tegra_xhci_hcd->driver->update_otg_port_ownership)
-		tegra_xhci_hcd->driver->update_otg_port_ownership(
-			tegra_xhci_hcd, host_owns_port);
-}
-
-static inline void enable_pad_protection(bool devmode)
-{
-	u32 otgpad_ctl0 = tegra_usb_pad_reg_read(
-			XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL1(0));
-
-	otgpad_ctl0 &= ~(VREG_FIX18 | VREG_LEV);
-
-	otgpad_ctl0 |= devmode ? VREG_LEV_EN : VREG_FIX18;
-
-	tegra_usb_pad_reg_write(
-		XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL1(0), otgpad_ctl0);
-}
-
 /* must hold nvudc->lock */
 static inline void vbus_detected(struct nv_udc_s *nvudc)
 {
-	/* set VBUS_OVERRIDE only in device mode when ID pin is floating */
-	if (nvudc->vbus_detected || nvudc->id_grounded)
+	if (nvudc->vbus_detected)
 		return; /* nothing to do */
 
-	enable_pad_protection(1);
+	xusb_enable_pad_protection(1);
 
 	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 		USB2_VBUS_ID_0_VBUS_OVERRIDE, USB2_VBUS_ID_0_VBUS_OVERRIDE);
@@ -245,97 +214,6 @@ static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 	nvudc->vbus_detected = false;
 	pm_runtime_put_autosuspend(nvudc->dev);
 	wake_unlock(&nvudc->xudc_vbus);
-}
-
-static inline void xudc_enable_vbus(struct nv_udc_s *nvudc)
-{
-	struct device *dev = nvudc->dev;
-	int ret;
-
-	if (!IS_ERR_OR_NULL(nvudc->usb_vbus0_reg)) {
-		msg_info(dev, "Enabling Vbus\n");
-		ret = regulator_enable(nvudc->usb_vbus0_reg);
-		if (ret < 0) {
-			msg_err(dev, "%s vbus0 enable failed. ret=%d\n",
-				__func__, ret);
-		}
-	}
-}
-
-static inline void xudc_disable_vbus(struct nv_udc_s *nvudc)
-{
-	struct device *dev = nvudc->dev;
-	int ret;
-
-	if (!IS_ERR_OR_NULL(nvudc->usb_vbus0_reg)) {
-		msg_info(dev, "Disabling Vbus\n");
-		ret = regulator_disable(nvudc->usb_vbus0_reg);
-		if (ret < 0) {
-			msg_err(dev, "%s vbus0 disable failed. ret = %d\n",
-				__func__, ret);
-		}
-	}
-}
-
-static void irq_work(struct work_struct *work)
-{
-	struct nv_udc_s *nvudc =
-		container_of(work, struct nv_udc_s, work);
-
-	if (nvudc->id_grounded) {
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
-			USB2_VBUS_ID_0_ID_OVERRIDE,
-			USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND);
-
-		/* pad protection for host mode */
-		enable_pad_protection(0);
-
-		/* set PP */
-		xudc_update_otg_port_ownership(nvudc, true);
-		xudc_enable_vbus(nvudc);
-	} else {
-		/* clear PP */
-		xudc_disable_vbus(nvudc);
-		xudc_update_otg_port_ownership(nvudc, false);
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
-			USB2_VBUS_ID_0_ID_OVERRIDE,
-			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
-		/* pad protection for device mode */
-		enable_pad_protection(1);
-	}
-}
-static int extcon_id_notifications(struct notifier_block *nb,
-				   unsigned long event, void *unused)
-{
-	struct nv_udc_s *nvudc =
-			container_of(nb, struct nv_udc_s, id_extcon_nb);
-	struct device *dev = nvudc->dev;
-	unsigned long flags;
-
-	spin_lock_irqsave(&nvudc->lock, flags);
-
-	if (!nvudc->pullup) {
-		msg_info(dev, "%s: gadget is not ready yet\n", __func__);
-		goto done;
-	}
-
-	if (extcon_get_cable_state(nvudc->id_extcon_dev, "USB-Host")
-			&& !nvudc->id_grounded) {
-		msg_info(dev, "%s: USB_ID pin grounded\n", __func__);
-		nvudc->id_grounded = true;
-	} else if (nvudc->id_grounded) {
-		msg_info(dev, "%s: USB_ID pin floating\n", __func__);
-		nvudc->id_grounded = false;
-	} else {
-		msg_info(dev, "%s: USB_ID pin status unchanged\n", __func__);
-		goto done;
-	}
-
-	schedule_work(&nvudc->work);
-
-done:
-	spin_unlock_irqrestore(&nvudc->lock, flags);
-	return NOTIFY_DONE;
 }
 
 static void tegra_xudc_current_work(struct work_struct *work)
@@ -2204,9 +2082,6 @@ static int nvudc_gadget_pullup(struct usb_gadget *gadget, int is_on)
 	/* update vbus status */
 	extcon_notifications(&nvudc->vbus_extcon_nb, 0, NULL);
 
-	/* update id status */
-	extcon_id_notifications(&nvudc->id_extcon_nb, 0, NULL);
-
 	pm_runtime_put_sync(nvudc->dev);
 	return 0;
 }
@@ -3439,28 +3314,6 @@ static ssize_t debug_store(struct device *_dev, struct device_attribute *attr,
 	if (sysfs_streq(buf, "show_epc"))
 		dbg_print_ep_ctx(nvudc);
 
-	if (sysfs_streq(buf, "enable_host")) {
-		msg_info(nvudc->dev, "AppleOTG: setting up host mode\n");
-		nvudc->id_grounded = true;
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
-			USB2_VBUS_ID_0_VBUS_OVERRIDE, 0);
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
-			USB2_VBUS_ID_0_ID_OVERRIDE,
-			USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND);
-		xudc_update_otg_port_ownership(nvudc, true);
-	}
-	if (sysfs_streq(buf, "enable_device")) {
-		msg_info(nvudc->dev, "AppleOTG: setting up device mode\n");
-		nvudc->id_grounded = false;
-		xudc_update_otg_port_ownership(nvudc, false);
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
-			USB2_VBUS_ID_0_ID_OVERRIDE,
-			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
-			USB2_VBUS_ID_0_VBUS_OVERRIDE,
-			USB2_VBUS_ID_0_VBUS_OVERRIDE);
-	}
-
 	return size;
 }
 static DEVICE_ATTR(debug, S_IWUSR, NULL, debug_store);
@@ -3952,16 +3805,14 @@ static int nvudc_gadget_start(struct usb_gadget *gadget,
 		iowrite32(u_temp, nvudc->mmio_reg_base + CTRL);
 	}
 
+	if (!IS_ERR_OR_NULL(nvudc->phy)) {
+		msg_dbg(nvudc->dev, "otg_set_peripheral to nvudc->gadget\n");
+		otg_set_peripheral(nvudc->phy->otg, &nvudc->gadget);
+	}
+
 	/* update vbus status */
 	extcon_notifications(&nvudc->vbus_extcon_nb, 0, NULL);
 
-	/* update id status */
-	extcon_id_notifications(&nvudc->id_extcon_nb, 0, NULL);
-
-#ifdef OTG
-	if (nvudc->transceiver)
-		retval = otg_set_peripheral(nvudc->transceiver, &nvudc->gadget);
-#endif
 	pm_runtime_put_sync(nvudc->dev);
 	msg_exit(nvudc->dev);
 	return 0;
@@ -4009,10 +3860,11 @@ static int nvudc_gadget_stop(struct usb_gadget *gadget,
 	nvudc->driver = NULL;
 	nvudc->gadget.max_speed = USB_SPEED_UNKNOWN;
 
-#ifdef OTG
-	if (nvudc->transceiver)
-		otg_set_peripheral(nvudc->transceiver, NULL);
-#endif
+	if (!IS_ERR_OR_NULL(nvudc->phy)) {
+		msg_dbg(nvudc->dev, "otg_set_peripheral to NULL\n");
+		otg_set_peripheral(nvudc->phy->otg, NULL);
+	}
+
 	device_remove_file(nvudc->dev, &dev_attr_debug);
 	return 0;
 }
@@ -4695,11 +4547,6 @@ static int nvudc_plat_regulators_init(struct nv_udc_s *nvudc)
 		return err;
 	}
 
-	/* regulator for usb_vbus0, to be moved to OTG driver */
-	nvudc->usb_vbus0_reg = regulator_get(dev, "usb_vbus0");
-	if (IS_ERR_OR_NULL(nvudc->usb_vbus0_reg))
-		msg_err(dev, "%s usb_vbus0 regulator not found\n", __func__);
-
 	return 0;
 }
 
@@ -5040,7 +4887,7 @@ static int nvudc_get_bdata(struct nv_udc_s *nvudc)
 	struct device_node *node = pdev->dev.of_node;
 	struct device_node *padctl;
 	int ret;
-	int portcap, ss_portmap, lane_owner;
+	int portcap, ss_portmap, lane_owner, otg_portmap;
 
 	/* Get common setting for padctl */
 	padctl = of_parse_phandle(node, "nvidia,common_padctl", 0);
@@ -5056,6 +4903,11 @@ static int nvudc_get_bdata(struct nv_udc_s *nvudc)
 	if (ret < 0)
 		pr_err("Fail to get lane_owner, ret (%d)\n", ret);
 	nvudc->bdata.lane_owner = lane_owner;
+
+	ret = of_property_read_u32(padctl, "nvidia,otg_portmap", &otg_portmap);
+	if (ret < 0)
+		pr_err("Fail to get otg_portmap, ret (%d)\n", ret);
+	nvudc->bdata.otg_portmap = otg_portmap;
 
 	return 0;
 }
@@ -5267,7 +5119,6 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	INIT_WORK(&nvudc->work, irq_work);
 	INIT_WORK(&nvudc->ucd_work, tegra_xudc_ucd_work);
 	INIT_WORK(&nvudc->current_work, tegra_xudc_current_work);
 	INIT_DELAYED_WORK(&nvudc->non_std_charger_work,
@@ -5367,6 +5218,17 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 		goto err_clocks_disable;
 	}
 
+	if (nvudc->bdata.otg_portmap & (0xff << XUSB_UTMI_INDEX)) {
+		nvudc->phy = usb_get_phy(USB_PHY_TYPE_USB2);
+		if (IS_ERR_OR_NULL(nvudc->phy)) {
+			dev_err(dev, "USB_PHY_TYPE_USB2 not found\n");
+			nvudc->phy = NULL;
+			goto err_clocks_disable;
+		} else {
+			nvudc->gadget.is_otg = 1;
+		}
+	}
+
 	err = usb_add_gadget_udc(&pdev->dev, &nvudc->gadget);
 	if (err) {
 		dev_err(dev, "failed to usb_add_gadget_udc\n");
@@ -5397,15 +5259,6 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	nvudc->vbus_extcon_nb.notifier_call = extcon_notifications;
 	extcon_register_notifier(nvudc->vbus_extcon_dev,
 						&nvudc->vbus_extcon_nb);
-
-	nvudc->id_extcon_dev =
-		extcon_get_extcon_dev_by_cable(&pdev->dev, "id");
-	if (IS_ERR(nvudc->id_extcon_dev))
-		err = -ENODEV;
-
-	nvudc->id_extcon_nb.notifier_call = extcon_id_notifications;
-	extcon_register_notifier(nvudc->id_extcon_dev,
-						&nvudc->id_extcon_nb);
 
 	wake_lock_init(&nvudc->xudc_vbus, WAKE_LOCK_SUSPEND,
 			"xudc_vbus");
@@ -5453,8 +5306,6 @@ static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 			tegra_prod_release(&nvudc->prod_list);
 		extcon_unregister_notifier(nvudc->vbus_extcon_dev,
 			&nvudc->vbus_extcon_nb);
-		extcon_unregister_notifier(nvudc->id_extcon_dev,
-			&nvudc->id_extcon_nb);
 		devm_kfree(dev, nvudc);
 		platform_set_drvdata(pdev, NULL);
 	}

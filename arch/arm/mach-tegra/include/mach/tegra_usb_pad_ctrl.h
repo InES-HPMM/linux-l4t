@@ -448,6 +448,35 @@ static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
 #define USB2_VBUS_ID_0_ID_OVERRIDE		(0xf << 18)
 #define USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT	(0x8 << 18)
 #define USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND	(0x0 << 18)
+#define USB2_VBUS_ID_0_VBUS_SESS_VLD_STS	(0x1 << 0)
+#define USB2_VBUS_ID_0_VBUS_SESS_VLD_STS_CHG	(0x1 << 1)
+#define USB2_VBUS_ID_0_VBUS_SESS_VLD_CHG_INT_EN	(0x1 << 2)
+#define USB2_VBUS_ID_0_VBUS_VLD_STS		(0x1 << 3)
+#define USB2_VBUS_ID_0_VBUS_VLD_STS_CHG		(0x1 << 4)
+#define USB2_VBUS_ID_0_VBUS_VLD_CHG_INT_EN	(0x1 << 5)
+#define USB2_VBUS_ID_0_IDDIG_STS		(0x1 << 6)
+#define USB2_VBUS_ID_0_IDDIGA_STS		(0x1 << 7)
+#define USB2_VBUS_ID_0_IDDIGB_STS		(0x1 << 8)
+#define USB2_VBUS_ID_0_IDDIGC_STS		(0x1 << 9)
+#define USB2_VBUS_ID_0_RID_MASK			(0xf << 6)
+#define USB2_VBUS_ID_0_RID_FLOAT		USB2_VBUS_ID_0_IDDIG_STS
+#define USB2_VBUS_ID_0_RID_A			USB2_VBUS_ID_0_IDDIGA_STS
+#define USB2_VBUS_ID_0_RID_B			USB2_VBUS_ID_0_IDDIGB_STS
+#define USB2_VBUS_ID_0_RID_C			USB2_VBUS_ID_0_IDDIGC_STS
+#define USB2_VBUS_ID_0_RID_GND			(0x0 << 6)
+#define USB2_VBUS_ID_0_IDDIG_STS_CHG		(0x1 << 10)
+#define USB2_VBUS_ID_0_IDDIG_CHG_INT_EN		(0x1 << 11)
+#define USB2_VBUS_ID_0_VBUS_SRC_SELECT		(0x3 << 12)
+#define USB2_VBUS_ID_0_VBUS_SRC_OVERRIDE	(0x1 << 12)
+#define USB2_VBUS_ID_0_VBUS_WKUP_OVERRIDE	(0x1 << 15)
+#define USB2_VBUS_ID_0_ID_SRC_SELECT		(0x3 << 16)
+#define USB2_VBUS_ID_0_VBUS_WKUP_STS		(0x1 << 22)
+#define USB2_VBUS_ID_0_VBUS_WKUP_STS_CHG	(0x1 << 23)
+#define USB2_VBUS_ID_0_VBUS_WKUP_CHG_INT_EN	(0x1 << 24)
+#define USB2_VBUS_ID_0_INTR_STS_CHG_MASK (USB2_VBUS_ID_0_VBUS_VLD_STS_CHG | \
+					USB2_VBUS_ID_0_VBUS_SESS_VLD_STS_CHG | \
+					USB2_VBUS_ID_0_IDDIG_STS_CHG | \
+					USB2_VBUS_ID_0_VBUS_WKUP_STS_CHG)
 
 #else
 #define XUSB_PADCTL_USB3_PAD_MUX_0		0x134
@@ -577,4 +606,5 @@ int tegra_pd2_deasserted(int pad);
 void xusb_utmi_pad_deinit(int pad);
 void xusb_ss_pad_deinit(int pad);
 void usb3_phy_pad_disable(void);
+void xusb_enable_pad_protection(bool);
 #endif

@@ -1890,3 +1890,17 @@ exit:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(pcie_phy_pad_enable);
+
+void xusb_enable_pad_protection(bool devmode)
+{
+	u32 otgpad_ctl0 = tegra_usb_pad_reg_read(
+			XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL1(0));
+
+	otgpad_ctl0 &= ~(VREG_FIX18 | VREG_LEV);
+
+	otgpad_ctl0 |= devmode ? VREG_LEV_EN : VREG_FIX18;
+
+	tegra_usb_pad_reg_write(
+		XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL1(0), otgpad_ctl0);
+}
+EXPORT_SYMBOL_GPL(xusb_enable_pad_protection);

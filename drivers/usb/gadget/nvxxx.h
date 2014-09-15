@@ -18,8 +18,6 @@
 
 #include <linux/ioctl.h>
 
-extern struct usb_hcd *tegra_xhci_hcd;
-
 #define NON_STD_CHARGER_DET_TIME_MS 1000
 #define USB_ANDROID_SUSPEND_CURRENT_MA 2
 
@@ -548,6 +546,7 @@ struct mmio_reg_s {
 struct xudc_board_data {
 	u32 ss_portmap;
 	u32 lane_owner;
+	u32 otg_portmap;
 };
 
 struct nv_udc_s {
@@ -559,7 +558,7 @@ struct nv_udc_s {
 	} pdev;
 	struct device *dev; /* a shortcut to pdev.[pci/plat]->dev */
 
-	struct otg_transceiver *transceiver;
+	struct usb_phy *phy;
 	struct nv_udc_ep udc_ep[32];
 	u32 irq;
 	u32 padctl_irq;
@@ -630,15 +629,11 @@ struct nv_udc_s {
 	/* regulators */
 	struct regulator_bulk_data *supplies;
 	struct xudc_board_data bdata;
-	struct regulator *usb_vbus0_reg;
 
 	/* extcon */
 	bool vbus_detected;
-	bool id_grounded;
 	struct extcon_dev *vbus_extcon_dev;
 	struct notifier_block vbus_extcon_nb;
-	struct extcon_dev *id_extcon_dev;
-	struct notifier_block id_extcon_nb;
 
 	/* charger detection */
 	struct tegra_usb_cd *ucd;
@@ -647,10 +642,6 @@ struct nv_udc_s {
 	struct work_struct current_work;
 	struct delayed_work non_std_charger_work;
 	u32 current_ma;
-
-	/* otg work, will be moved to OTG driver */
-	struct work_struct work;
-
 
 	struct tegra_prod_list *prod_list;
 	void __iomem *base_list[4];

@@ -2,6 +2,7 @@
 # Makefile for physical layer USB drivers
 #
 GCOV_PROFILE_tegra-otg.o := y
+GCOV_PROFILE_tegra-xotg.o := y
 
 ccflags-$(CONFIG_USB_DEBUG) := -DDEBUG
 subdir-ccflags-y += -Werror
@@ -39,6 +40,8 @@ obj-$(CONFIG_USB_MV_OTG)		+= phy-mv-usb.o
 obj-$(CONFIG_USB_MXS_PHY)		+= phy-mxs-usb.o
 obj-$(CONFIG_USB_RCAR_PHY)		+= phy-rcar-usb.o
 CFLAGS_tegra-otg.o		= -Werror
+CFLAGS_tegra-xotg.o		= -Werror
 obj-$(CONFIG_USB_TEGRA_OTG)	+= tegra-otg.o
+obj-$(CONFIG_USB_TEGRA_XOTG)	+= tegra-xotg.o
 obj-$(CONFIG_USB_ULPI)			+= phy-ulpi.o
 obj-$(CONFIG_USB_ULPI_VIEWPORT)		+= phy-ulpi-viewport.o

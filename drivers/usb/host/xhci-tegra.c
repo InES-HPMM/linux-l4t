@@ -3184,8 +3184,9 @@ static irqreturn_t tegra_xhci_padctl_irq(int irq, void *ptrdev)
 			__func__);
 		schedule_work(&tegra->host_elpg_exit_work);
 	} else {
-		xhci_err(xhci, "error: wake due to no hs/ss event\n");
-		tegra_usb_pad_reg_write(padregs->elpg_program_0, 0xffffffff);
+		xhci_info(xhci, "padctl interrupt is not for xhci\n");
+		spin_unlock(&tegra->lock);
+		return IRQ_NONE;
 	}
 	spin_unlock(&tegra->lock);
 	return IRQ_HANDLED;
@@ -4651,7 +4652,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P0) {
+	if (tegra->bdata->otg_portmap & (0xff << XUSB_UTMI_INDEX)) {
 		tegra->transceiver = usb_get_phy(USB_PHY_TYPE_USB2);
 		if (IS_ERR_OR_NULL(tegra->transceiver)) {
 			dev_err(&pdev->dev, "failed to get usb phy\n");
@@ -4857,15 +4858,6 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	tegra->xhci = xhci;
 	platform_set_drvdata(pdev, tegra);
 
-	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P0) {
-		if (!IS_ERR_OR_NULL(tegra->transceiver)) {
-			otg_set_host(tegra->transceiver->otg, &hcd->self);
-			tegra->otgnb.notifier_call = tegra_xhci_otg_notify;
-			usb_register_notifier(tegra->transceiver,
-				&tegra->otgnb);
-		}
-	}
-
 	xhci->shared_hcd = usb_create_shared_hcd(driver, &pdev->dev,
 						dev_name(&pdev->dev), hcd);
 	if (!xhci->shared_hcd) {
@@ -4954,6 +4946,12 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 		portsc = xhci_readl(xhci, xhci->usb3_ports[tegra->otg_portnum]);
 		portsc &= ~PORT_POWER;
 		xhci_writel(xhci, portsc, xhci->usb3_ports[tegra->otg_portnum]);
+	}
+
+	if (!IS_ERR_OR_NULL(tegra->transceiver)) {
+		tegra->otgnb.notifier_call = tegra_xhci_otg_notify;
+		usb_register_notifier(tegra->transceiver, &tegra->otgnb);
+		otg_set_host(tegra->transceiver->otg, &hcd->self);
 	}
 
 	return 0;
