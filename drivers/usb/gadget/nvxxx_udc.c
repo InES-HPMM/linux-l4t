@@ -161,6 +161,7 @@ static inline void xudc_set_port_power(struct nv_udc_s *nvudc, bool on)
 			tegra_xhci_hcd->driver->hub_control(tegra_xhci_hcd,
 				ClearPortFeature, USB_PORT_FEAT_POWER, 1, 0, 0);
 
+		usleep_range(100, 200);
 		if (tegra_xhci_hcd->driver &&
 				tegra_xhci_hcd->driver->reset_sspi)
 			tegra_xhci_hcd->driver->reset_sspi(tegra_xhci_hcd, 0);
