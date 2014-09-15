@@ -162,7 +162,7 @@
 
 	thermal-zones {
 		Tboard {
-			polling-delay = <1500>; /* milliseconds */
+			polling-delay = <15000>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&tboard_thermistor>;
 
