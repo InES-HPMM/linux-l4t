@@ -293,4 +293,9 @@
 	bcmdhd_wlan {
 		status = "disabled";
 	};
+
+	chosen {
+		nvidia,tegra_dvfs_cpu_enable = <0>;
+		nvidia,tegra_dvfs_gpu_enable = <0>;
+	};
 };
