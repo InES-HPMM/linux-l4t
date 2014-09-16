@@ -922,6 +922,16 @@ void tegra_init_max_rate(struct clk *c, unsigned long max_rate)
 	}
 }
 
+/* dvfs initialization may increase default minimum rate */
+void tegra_init_min_rate(struct clk *c, unsigned long min_rate)
+{
+	if (c && (c->min_rate < min_rate)) {
+		pr_info("Changing %s minimum rate from %lu to %lu\n",
+			c->name, c->min_rate, min_rate);
+		c->min_rate = min_rate;
+	}
+}
+
 /* Use boot rate as emc monitor output until actual monitoring starts */
 void tegra_clk_preset_emc_monitor(unsigned long rate)
 {

@@ -1281,6 +1281,11 @@ void __init tegra12x_init_dvfs(void)
 	   voltage was determined */
 	tegra_init_dvfs_one(&cpu_dvfs, cpu_max_freq_index);
 
+	/* For Automotive: update cpu min rate with lowest dvfs frequency */
+	if (tegra_is_soc_automotive_speedo())
+		tegra_init_min_rate(tegra_get_clock_by_name(cpu_dvfs.clk_name),
+					cpu_dvfs.freqs[0]);
+
 	/* Finally disable dvfs on rails if necessary */
 	if (tegra_dvfs_core_disabled)
 		tegra_dvfs_rail_disable(&tegra12_dvfs_rail_vdd_core);
