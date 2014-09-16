@@ -105,6 +105,7 @@ static void switch_cluster(enum cluster val)
 	int bpmp_cpu_mask;
 	int phys_cpu_id;
 	uintptr_t target_cluster;
+	unsigned long flag;
 
 	mutex_lock(&cluster_switch_lock);
 	target_cluster = val;
@@ -132,12 +133,13 @@ static void switch_cluster(enum cluster val)
 		cpumask_set_cpu(3, &mask);
 
 	cpumask_clear_cpu(phys_cpu_id, &mask);
+
 	smp_call_function_many(&mask, shutdown_core, (void *)target_cluster,
 			       false);
 
-	local_irq_disable();
+	local_irq_save(flag);
 	shutdown_cluster();
-	local_irq_enable();
+	local_irq_restore(flag);
 
 	preempt_enable();
 
