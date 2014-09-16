@@ -58,7 +58,7 @@ struct tegra_sysedp_platform_data {
 #if defined(CONFIG_EDP_FRAMEWORK) || defined(CONFIG_SYSEDP_FRAMEWORK)
 void tegra_edp_notify_gpu_load(unsigned int load, unsigned int freq_in_hz);
 #else
-static void tegra_edp_notify_gpu_load(
+static inline void tegra_edp_notify_gpu_load(
 	unsigned int load, unsigned int freq_in_hz) {}
 #endif
 
