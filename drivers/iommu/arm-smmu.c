@@ -129,10 +129,8 @@
 
 /* Identification registers */
 #define ARM_SMMU_GR0_ID0		0x20
-#define ARM_SMMU_GR0_ID1		0x24	/* unused */
-#define ARM_SMMU_GR0_ID2		0x28	/* unused */
-#define ARM_SMMU_CONTROL_ADDRESS	0x24	/* linsim hack */
-#define ARM_SMMU_CONTROL_DATA		0x28	/* linsim hack */
+#define ARM_SMMU_GR0_ID1		0x24
+#define ARM_SMMU_GR0_ID2		0x28
 #define ARM_SMMU_GR0_ID3		0x2c
 #define ARM_SMMU_GR0_ID4		0x30
 #define ARM_SMMU_GR0_ID5		0x34
@@ -359,7 +357,6 @@ struct arm_smmu_device {
 	struct device			*dev;
 
 	void __iomem			*base;
-	phys_addr_t			phys_base;
 	unsigned long			size;
 	unsigned long			pagesize;
 
@@ -432,9 +429,15 @@ static struct arm_smmu_device *smmu_handle; /* assmu only one smmu device */
 #define __writel(v,c)							\
 	({ __iowmb(); ((void)__raw_writel((__force u32)cpu_to_le32(v),(c))); })
 
+static volatile void __iomem *mc_base;
+
+#define MC_BASE				0x7001C000
+#define ARM_SMMU_CONTROL_ADDRESS	0x24
+#define ARM_SMMU_CONTROL_DATA		0x28
+
 static inline void writel(u32 val, volatile void __iomem *virt_addr)
 {
-	u32 phys_addr_val, offset;
+	u32 offset;
 	volatile void __iomem *ctl_addr;
 
 	if (!tegra_platform_is_linsim()) {
@@ -442,37 +445,35 @@ static inline void writel(u32 val, volatile void __iomem *virt_addr)
 		return;
 	}
 
-	ctl_addr = smmu_handle->base + ARM_SMMU_CONTROL_ADDRESS;
+	ctl_addr = mc_base + ARM_SMMU_CONTROL_ADDRESS;
 	offset = virt_addr - smmu_handle->base;
-	phys_addr_val = smmu_handle->phys_base + offset;
-	__writel(phys_addr_val, ctl_addr);
-	pr_info("Indirect write(ADDRESS) phys_addr_val=%08x ctl_addr=%p\n",
-		phys_addr_val, ctl_addr);
+	__writel(offset, ctl_addr);
+	pr_debug("Indirect write(ADDRESS) offset=%08x ctl_addr=%p\n",
+		 offset, ctl_addr);
 
-	ctl_addr = smmu_handle->base + ARM_SMMU_CONTROL_DATA;
+	ctl_addr = mc_base + ARM_SMMU_CONTROL_DATA;
 	__writel(val, ctl_addr);
-	pr_info("Indirect write(DATA) val=%08x ctl_addr=%p\n", val, ctl_addr);
+	pr_debug("Indirect write(DATA) val=%08x ctl_addr=%p\n", val, ctl_addr);
 }
 #define writel_relaxed(v,a) writel(v,a)
 
 static inline u32 readl_relaxed(const volatile void __iomem *virt_addr)
 {
-	u32 val, phys_addr_val, offset;
+	u32 val, offset;
 	volatile void __iomem *ctl_addr;
 
 	if (!tegra_platform_is_linsim())
 		return __readl_relaxed(virt_addr);
 
-	ctl_addr = smmu_handle->base + ARM_SMMU_CONTROL_ADDRESS;
+	ctl_addr = mc_base + ARM_SMMU_CONTROL_ADDRESS;
 	offset = virt_addr - smmu_handle->base;
-	phys_addr_val = smmu_handle->phys_base + offset;
-	__writel(phys_addr_val, ctl_addr);
-	pr_info("Indirect read(ADDRESS) phys_addr_val=%08x ctl_addr=%p\n",
-		phys_addr_val, ctl_addr);
+	__writel(offset, ctl_addr);
+	pr_debug("Indirect read(ADDRESS) offset=%08x ctl_addr=%p\n",
+		 offset, ctl_addr);
 
-	ctl_addr = ARM_SMMU_GR0(smmu_handle) + ARM_SMMU_CONTROL_DATA;
+	ctl_addr = mc_base + ARM_SMMU_CONTROL_DATA;
 	val = __readl_relaxed(ctl_addr);
-	pr_info("Indirect read(DATA) val=%08x ctl_addr=%p\n", val, ctl_addr);
+	pr_debug("Indirect read(DATA) val=%08x ctl_addr=%p\n", val, ctl_addr);
 	return val;
 }
 
@@ -2276,10 +2277,6 @@ static int arm_smmu_device_dt_probe(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	smmu->base = devm_ioremap_resource(dev, res);
-	smmu->phys_base = res->start;
-
-	pr_info("smmu->phys_base=%pa smmu->base=%p\n",
-		&smmu->phys_base, smmu->base);
 	if (IS_ERR(smmu->base))
 		return PTR_ERR(smmu->base);
 	smmu->size = resource_size(res);
@@ -2449,6 +2446,10 @@ static struct platform_driver arm_smmu_driver = {
 static int __init arm_smmu_init(void)
 {
 	int ret;
+
+	mc_base = ioremap_nocache(MC_BASE, 2 * sizeof(u32));
+	if (!mc_base)
+		return -EINVAL;
 
 	ret = platform_driver_register(&arm_smmu_driver);
 	if (ret)
