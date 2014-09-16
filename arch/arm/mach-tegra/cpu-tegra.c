@@ -725,12 +725,30 @@ static int tegra_cluster_switch_locked(struct clk *cpu_clk, struct clk *new_clk)
 int tegra_cluster_switch(struct clk *cpu_clk, struct clk *new_clk)
 {
 	int ret;
+	unsigned long speed, min, max;
 
 	/* Order hotplug lock before cpufreq lock. Deadlock otherwise. */
 	get_online_cpus();
 
 	mutex_lock(&tegra_cpu_lock);
+	speed = tegra_getspeed(0);
+	min = clk_get_min_rate(new_clk) / 1000;
+	max = clk_get_max_rate(new_clk) / 1000;
+
+	if (speed < min)
+		speed = min;
+	else if (speed > max)
+		speed = max;
+	else
+		speed = 0;
+
+	if (speed) {
+		ret = tegra_update_cpu_speed(speed);
+		if (ret)
+			goto out;
+	}
 	ret = tegra_cluster_switch_locked(cpu_clk, new_clk);
+out:
 	mutex_unlock(&tegra_cpu_lock);
 
 	put_online_cpus();
