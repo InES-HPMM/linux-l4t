@@ -1475,6 +1475,9 @@ static void bq2419x_shutdown(struct i2c_client *client)
 	int ret;
 	int next_poweron_time = 0;
 
+	if (bq2419x->is_otg_connected)
+		bq2419x_vbus_disable(bq2419x->vbus_rdev);
+
 	if (!bq2419x->battery_presense)
 		return;
 
