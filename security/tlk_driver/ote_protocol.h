@@ -83,18 +83,34 @@ struct te_cmd_req_desc {
 struct te_shmem_desc {
 	struct list_head list;
 	uint32_t type;
-	bool active;
-	uint32_t session_id;
 	void *buffer;
 	size_t size;
 	struct page **pages;
 	unsigned int nr_pages;
 };
 
+/*
+ * Per-session data structure.
+ *
+ * Both temp (freed upon completion of the associated op) and persist
+ * (freed upon session close) memory references are tracked by this
+ * structure.
+ *
+ * Persistent memory references stay on an inactive list until the
+ * associated op completes.  If it completes successfully then the
+ * references are moved to the active list.
+ */
+struct te_session {
+	struct list_head list;
+	uint32_t session_id;
+	struct list_head temp_shmem_list;
+	struct list_head inactive_persist_shmem_list;
+	struct list_head persist_shmem_list;
+};
+
 struct tlk_context {
 	struct tlk_device *dev;
-	struct list_head temp_shmem_list;
-	struct list_head persist_shmem_list;
+	struct list_head session_list;
 };
 
 enum {

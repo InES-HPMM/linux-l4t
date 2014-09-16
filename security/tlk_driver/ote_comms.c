@@ -67,7 +67,7 @@ static int te_pin_user_pages(void *buffer, size_t size,
 
 static int te_prep_mem_buffer(uint32_t session_id,
 		void *buffer, size_t size, uint32_t buf_type,
-		struct tlk_context *context)
+		struct te_session *session)
 {
 	unsigned long pages = 0;
 	struct te_shmem_desc *shmem_desc = NULL;
@@ -93,7 +93,6 @@ static int te_prep_mem_buffer(uint32_t session_id,
 
 	/* initialize shmem descriptor */
 	INIT_LIST_HEAD(&(shmem_desc->list));
-	shmem_desc->active = false;
 	shmem_desc->buffer = buffer;
 	shmem_desc->size = size;
 	shmem_desc->nr_pages = nr_pages;
@@ -102,9 +101,10 @@ static int te_prep_mem_buffer(uint32_t session_id,
 	/* add shmem descriptor to proper list */
 	if ((buf_type == TE_PARAM_TYPE_MEM_RO) ||
 		(buf_type == TE_PARAM_TYPE_MEM_RW))
-		list_add_tail(&shmem_desc->list, &context->temp_shmem_list);
+		list_add_tail(&shmem_desc->list, &session->temp_shmem_list);
 	else {
-		list_add_tail(&shmem_desc->list, &context->persist_shmem_list);
+		list_add_tail(&shmem_desc->list,
+			&session->inactive_persist_shmem_list);
 	}
 
 	return OTE_SUCCESS;
@@ -113,7 +113,7 @@ error:
 }
 
 static int te_prep_mem_buffers(struct te_request *request,
-			struct tlk_context *context)
+			struct te_session *session)
 {
 	uint32_t i;
 	int ret = OTE_SUCCESS;
@@ -134,7 +134,7 @@ static int te_prep_mem_buffers(struct te_request *request,
 				(void *)(uintptr_t)params[i].u.Mem.base,
 				params[i].u.Mem.len,
 				params[i].type,
-				context);
+				session);
 			if (ret < 0) {
 				pr_err("%s failed with err (%d)\n",
 					__func__, ret);
@@ -166,59 +166,39 @@ static void te_release_mem_buffer(struct te_shmem_desc *shmem_desc)
 	kfree(shmem_desc);
 }
 
-static void te_release_temp_mem_buffers(struct tlk_context *context)
+static void te_release_mem_buffers(struct list_head *buflist)
 {
 	struct te_shmem_desc *shmem_desc, *tmp_shmem_desc;
 
-	if (list_empty(&context->temp_shmem_list))
-		return;
-
-	list_for_each_entry_safe(shmem_desc, tmp_shmem_desc,
-		&context->temp_shmem_list, list) {
+	list_for_each_entry_safe(shmem_desc, tmp_shmem_desc, buflist, list) {
 		te_release_mem_buffer(shmem_desc);
 	}
 }
 
-static void te_release_persist_mem_buffers(uint32_t session_id,
-	struct tlk_context *context)
+static void te_activate_persist_mem_buffers(struct te_session *session)
 {
 	struct te_shmem_desc *shmem_desc, *tmp_shmem_desc;
 
-	if (list_empty(&context->persist_shmem_list))
-		return;
-
-	/*
-	 * Release any persistent mem buffers that either belong to
-	 * the specified session_id or are not currently marked active
-	 * (i.e. because the associated open_session or launch_operation
-	 * failed).
-	 */
+	/* move persist mem buffers from inactive list to active list */
 	list_for_each_entry_safe(shmem_desc, tmp_shmem_desc,
-		&context->persist_shmem_list, list) {
-		if ((shmem_desc->session_id == session_id) ||
-			(!shmem_desc->active))
-			te_release_mem_buffer(shmem_desc);
+		&session->inactive_persist_shmem_list, list) {
+
+		list_move_tail(&shmem_desc->list, &session->persist_shmem_list);
 	}
 }
 
-static void te_update_persist_mem_buffers(uint32_t session_id,
-	struct tlk_context *context)
+static struct te_session *te_get_session(struct tlk_context *context,
+					uint32_t session_id)
 {
-	struct te_shmem_desc *shmem_desc, *tmp_shmem_desc;
+	struct te_session *session, *tmp_session;
 
-	/*
-	 * Assumes any entries that have yet to be marked active belong
-	 * to the session associated with the session_id that has been
-	 * passed in.
-	 */
-	list_for_each_entry_safe(shmem_desc, tmp_shmem_desc,
-		&context->persist_shmem_list, list) {
-
-		if (!shmem_desc->active) {
-			shmem_desc->session_id = session_id;
-			shmem_desc->active = true;
-		}
+	list_for_each_entry_safe(session, tmp_session,
+		&context->session_list, list) {
+		if (session->session_id == session_id)
+			return session;
 	}
+
+	return NULL;
 }
 
 #ifdef CONFIG_SMP
@@ -380,15 +360,29 @@ void te_open_session(struct te_opensession *cmd,
 		    struct te_request *request,
 		    struct tlk_context *context)
 {
+	struct te_session *session;
 	int ret;
+
+	session = kzalloc(sizeof(struct te_session), GFP_KERNEL);
+	if (!session) {
+		SET_RESULT(request, OTE_ERROR_OUT_OF_MEMORY,
+			OTE_RESULT_ORIGIN_API);
+		return;
+	}
+
+	INIT_LIST_HEAD(&session->list);
+	INIT_LIST_HEAD(&session->temp_shmem_list);
+	INIT_LIST_HEAD(&session->inactive_persist_shmem_list);
+	INIT_LIST_HEAD(&session->persist_shmem_list);
 
 	request->type = TE_SMC_OPEN_SESSION;
 
-	ret = te_prep_mem_buffers(request, context);
+	ret = te_prep_mem_buffers(request, session);
 	if (ret != OTE_SUCCESS) {
 		pr_err("%s: te_prep_mem_buffers failed err (0x%x)\n",
 			__func__, ret);
 		SET_RESULT(request, ret, OTE_RESULT_ORIGIN_API);
+		kfree(session);
 		return;
 	}
 
@@ -406,13 +400,17 @@ void te_open_session(struct te_opensession *cmd,
 
 	if (request->result) {
 		/* release any persistent mem buffers if we failed */
-		te_release_persist_mem_buffers(request->session_id, context);
+		te_release_mem_buffers(&session->inactive_persist_shmem_list);
 	} else {
-		/* mark active any persistent mem buffers */
-		te_update_persist_mem_buffers(request->session_id, context);
+		/* otherwise mark active any persistent mem buffers */
+		te_activate_persist_mem_buffers(session);
+
+		/* save off session_id and add to list */
+		session->session_id = request->session_id;
+		list_add_tail(&session->list, &context->session_list);
 	}
 
-	te_release_temp_mem_buffers(context);
+	te_release_mem_buffers(&session->temp_shmem_list);
 }
 
 /*
@@ -422,16 +420,27 @@ void te_close_session(struct te_closesession *cmd,
 		     struct te_request *request,
 		     struct tlk_context *context)
 {
+	struct te_session *session;
+
 	request->session_id = cmd->session_id;
 	request->type = TE_SMC_CLOSE_SESSION;
 
 	do_smc(request, context->dev);
 	if (request->result)
-		pr_info("%s: error closing session: %08x\n",
+		pr_info("%s: error closing session: 0x%08x\n",
 			__func__, request->result);
 
-	/* release any peristent mem buffers */
-	te_release_persist_mem_buffers(request->session_id, context);
+	session = te_get_session(context, cmd->session_id);
+	if (!session) {
+		pr_info("%s: session_id not found: 0x%x\n",
+			__func__, cmd->session_id);
+		return;
+	}
+
+	/* free session state */
+	te_release_mem_buffers(&session->persist_shmem_list);
+	list_del(&session->list);
+	kfree(session);
 }
 
 /*
@@ -441,13 +450,21 @@ void te_launch_operation(struct te_launchop *cmd,
 			struct te_request *request,
 			struct tlk_context *context)
 {
+	struct te_session *session;
 	int ret;
+
+	session = te_get_session(context, cmd->session_id);
+	if (!session) {
+		pr_info("%s: session_id not found: 0x%x\n",
+			__func__, cmd->session_id);
+		return;
+	}
 
 	request->session_id = cmd->session_id;
 	request->command_id = cmd->operation.command;
 	request->type = TE_SMC_LAUNCH_OPERATION;
 
-	ret = te_prep_mem_buffers(request, context);
+	ret = te_prep_mem_buffers(request, session);
 	if (ret != OTE_SUCCESS) {
 		pr_err("%s: te_prep_mem_buffers failed err (0x%x)\n",
 			__func__, ret);
@@ -458,12 +475,12 @@ void te_launch_operation(struct te_launchop *cmd,
 	do_smc(request, context->dev);
 
 	if (request->result) {
-		/* release any persistent mem buffers if we failed */
-		te_release_persist_mem_buffers(request->session_id, context);
+		/* release any inactive persistent mem buffers if we failed */
+		te_release_mem_buffers(&session->inactive_persist_shmem_list);
 	} else {
-		/* mark active any persistent mem buffers */
-		te_update_persist_mem_buffers(request->session_id, context);
+		/* otherwise mark active any persistent mem buffers */
+		te_activate_persist_mem_buffers(session);
 	}
 
-	te_release_temp_mem_buffers(context);
+	te_release_mem_buffers(&session->temp_shmem_list);
 }

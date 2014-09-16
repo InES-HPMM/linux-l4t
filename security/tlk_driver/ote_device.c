@@ -184,6 +184,39 @@ static void __attribute__((unused)) te_print_cmd_list(
 	}
 }
 
+
+static void te_close_sessions(struct tlk_context *context)
+{
+	struct tlk_device *dev = context->dev;
+	union te_cmd cmd;
+	struct te_cmd_req_desc *cmd_desc = NULL;
+	struct te_request *request;
+	struct te_session *session, *tmp_session;
+
+	if (list_empty(&context->session_list))
+		return;
+
+	cmd_desc = te_get_free_cmd_desc(dev);
+	if (!cmd_desc) {
+		pr_err("%s: failed to get cmd_desc\n", __func__);
+		return;
+	}
+
+	request = cmd_desc->req_addr;
+
+	list_for_each_entry_safe(session, tmp_session,
+		&context->session_list, list) {
+
+		memset(request, 0, sizeof(struct te_request));
+
+		cmd.closesession.session_id = session->session_id;
+
+		te_close_session(&cmd.closesession, request, context);
+	}
+
+	te_put_used_cmd_desc(dev, cmd_desc);
+}
+
 static int tlk_device_open(struct inode *inode, struct file *file)
 {
 	struct tlk_context *context;
@@ -195,8 +228,7 @@ static int tlk_device_open(struct inode *inode, struct file *file)
 		goto error;
 	}
 	context->dev = &tlk_dev;
-	INIT_LIST_HEAD(&(context->temp_shmem_list));
-	INIT_LIST_HEAD(&(context->persist_shmem_list));
+	INIT_LIST_HEAD(&context->session_list);
 
 	file->private_data = context;
 	return 0;
@@ -206,6 +238,11 @@ error:
 
 static int tlk_device_release(struct inode *inode, struct file *file)
 {
+	struct tlk_context *context = file->private_data;
+
+	/* close any open sessions */
+	te_close_sessions(context);
+
 	kfree(file->private_data);
 	file->private_data = NULL;
 	return 0;
