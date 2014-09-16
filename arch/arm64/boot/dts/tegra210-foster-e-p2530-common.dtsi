@@ -173,5 +173,16 @@
 	gpu-dvfs-rework {
 		status = "disabled";
 	};
+	pwm-leds {
+		compatible = "pwm-leds";
+		lightbar {
+			label = "led_lightbar";
+			pwms = <&tegra_pwm 0 10000000>;
+			gpios = <&gpio TEGRA_GPIO(V, 0) GPIO_ACTIVE_LOW>;
+			max-brightness = <255>;
+			default-brightness = <255>;
+			linux,default-trigger = "default-on";
+		};
+	};
 };
 
