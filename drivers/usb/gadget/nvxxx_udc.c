@@ -4711,26 +4711,32 @@ static int nvudc_get_bdata(struct nv_udc_s *nvudc)
 	return 0;
 }
 
-static void t210_program_ss_pad()
+static void t210_program_ss_pad(int port)
 {
-	tegra_usb_pad_reg_update(UPHY_USB3_PAD0_ECTL_1,
+	tegra_usb_pad_reg_update(UPHY_USB3_PAD_ECTL_1(port),
 			TX_TERM_CTRL(~0), TX_TERM_CTRL(0x2));
 
-	tegra_usb_pad_reg_update(UPHY_USB3_PAD0_ECTL_2,
+	tegra_usb_pad_reg_update(UPHY_USB3_PAD_ECTL_2(port),
 			RX_CTLE(~0), RX_CTLE(0xfb));
 
-	tegra_usb_pad_reg_update(UPHY_USB3_PAD0_ECTL_3,
+	tegra_usb_pad_reg_update(UPHY_USB3_PAD_ECTL_3(port),
 			RX_DFE(~0), RX_DFE(0xc0077f1f));
 
-	tegra_usb_pad_reg_update(UPHY_USB3_PAD0_ECTL_4,
+	tegra_usb_pad_reg_update(UPHY_USB3_PAD_ECTL_4(port),
 			RX_CDR_CTRL(~0), RX_CDR_CTRL(0x1c7));
 
-	tegra_usb_pad_reg_update(UPHY_USB3_PAD0_ECTL_6,
+	tegra_usb_pad_reg_update(UPHY_USB3_PAD_ECTL_6(port),
 			RX_EQ_CTRL_H(~0), RX_EQ_CTRL_H(0xfcf01368));
 }
 
 static int nvudc_plat_pad_init(struct nv_udc_s *nvudc)
 {
+	struct platform_device *pdev = nvudc->pdev.plat;
+	struct device *dev = &pdev->dev;
+	int ss_port;
+	bool is_ss_port_enabled = true;
+	u32 lane_owner_mask;
+
 	/* VBUS_ID init */
 	usb2_vbus_id_init();
 
@@ -4739,17 +4745,31 @@ static int nvudc_plat_pad_init(struct nv_udc_s *nvudc)
 	utmi_phy_pad_enable();
 	utmi_phy_iddq_override(false);
 
-	/* ss pad init for pad 0 */
-	xusb_ss_pad_init(0, (nvudc->bdata.ss_portmap & 0xf)
-			, XUSB_OTG_MODE);
+	if ((nvudc->bdata.ss_portmap & 0xf) == 0x0)
+		ss_port = 0;
+	else if ((nvudc->bdata.ss_portmap & 0xf0) == 0x0)
+		ss_port = 1;
+	else if ((nvudc->bdata.ss_portmap & 0xf00) == 0x0)
+		ss_port = 2;
+	else if ((nvudc->bdata.ss_portmap & 0xf000) == 0x0)
+		ss_port = 3;
 
-	t210_program_ss_pad();
+	lane_owner_mask = (0xf << (4 * ss_port));
+	if ((nvudc->bdata.lane_owner & lane_owner_mask) == lane_owner_mask)
+		is_ss_port_enabled = false;
 
-	tegra_xhci_ss_wake_signal(TEGRA_XUSB_SS_P0, false);
-	tegra_xhci_ss_vcore(TEGRA_XUSB_SS_P0, false);
+	/* ss pad init for pad ss_port */
+	xusb_ss_pad_init(ss_port, 0x0, XUSB_OTG_MODE);
+
+	if (is_ss_port_enabled)
+		t210_program_ss_pad(ss_port);
+
+	tegra_xhci_ss_wake_signal((1 << ss_port), false);
+	tegra_xhci_ss_vcore((1 << ss_port), false);
 
 	/* ss pad phy enable */
-	usb3_phy_pad_enable(nvudc->bdata.lane_owner);
+	if (is_ss_port_enabled)
+		usb3_phy_pad_enable(nvudc->bdata.lane_owner);
 
 	return 0;
 }

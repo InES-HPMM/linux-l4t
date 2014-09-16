@@ -804,19 +804,19 @@ extern int debug_level;
 #define  PCIE_PAD_LANE0			(((x) & 0x3) << 16)
 #define  PCIE_PAD_LANE1			(((x) & 0x3) << 18)
 
-#define UPHY_USB3_PAD0_ECTL_1			(0xa60)
+#define UPHY_USB3_PAD_ECTL_1(p)		(0xa60 + (p * 0x40))
 #define TX_TERM_CTRL(x)			(((x) & 0x3) << 16)
 
-#define UPHY_USB3_PAD0_ECTL_2			(0xa64)
+#define UPHY_USB3_PAD_ECTL_2(p)		(0xa64 + (p * 0x40))
 #define RX_CTLE(x)				(((x) & 0xffff) << 0)
 
-#define UPHY_USB3_PAD0_ECTL_3			(0xa68)
+#define UPHY_USB3_PAD_ECTL_3(p)		(0xa68 + (p * 0x40))
 #define RX_DFE(x)				(((x) & 0xffffffff) << 0)
 
-#define UPHY_USB3_PAD0_ECTL_4			(0xa6c)
+#define UPHY_USB3_PAD_ECTL_4(p)		(0xa6c + (p * 0x40))
 #define RX_CDR_CTRL(x)				(((x) & 0xffff) << 16)
 
-#define UPHY_USB3_PAD0_ECTL_6			(0xa74)
+#define UPHY_USB3_PAD_ECTL_6(p)		(0xa74 + (p * 0x40))
 #define RX_EQ_CTRL_H(x)			(((x) & 0xffffffff) << 0)
 
 #define XUSB_VBUS				(0xc60)
