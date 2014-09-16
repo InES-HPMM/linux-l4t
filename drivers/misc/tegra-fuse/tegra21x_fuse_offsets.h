@@ -83,6 +83,7 @@
 #define FUSE_X_COORDINATE_MASK		0x1ff
 #define FUSE_Y_COORDINATE		0x218
 #define FUSE_Y_COORDINATE_MASK		0x1ff
+#define FUSE_RESERVED_CALIB		0x304
 #define FUSE_GPU_INFO			0x390
 #define FUSE_GPU_INFO_MASK		(1<<2)
 #define FUSE_SPARE_BIT			0x380
@@ -434,6 +435,23 @@ static void fuse_update_overridden_reg_val(unsigned long offset,
 	default:
 		break;
 	}
+}
+
+static inline int fuse_get_gpcpll_adc_rev(u32 val)
+{
+	return (val >> 30) & 0x3;
+}
+
+static inline int fuse_get_gpcpll_adc_slope_uv(u32 val)
+{
+	/*      Integer part in mV  * 1000 + fractional part in uV */
+	return ((val >> 24) & 0x3f) * 1000 + ((val >> 14) & 0x3ff);
+}
+
+static inline int fuse_get_gpcpll_adc_intercept_uv(u32 val)
+{
+	/*      Integer part in mV  * 1000 + fractional part in 100uV */
+	return ((val >> 4) & 0x3ff) * 1000 + ((val >> 0) & 0xf) * 100;
 }
 
 DEVICE_ATTR(public_key, 0440, tegra_fuse_show, tegra_fuse_store);

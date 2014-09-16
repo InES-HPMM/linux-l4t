@@ -418,6 +418,20 @@ module_param_cb(tegra_gpu_num_alus_per_pixel_pipe,
 		&tegra_gpu_num_alus_per_pixel_pipe_ops,
 		&tegra_gpu_num_alus_per_pixel_pipe, 0444);
 
+int tegra_fuse_calib_gpcpll_get_adc(int *slope_uv, int *intercept_uv)
+{
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	u32 val = tegra_fuse_readl(FUSE_RESERVED_CALIB);
+	if (fuse_get_gpcpll_adc_rev(val)) {
+		*slope_uv = fuse_get_gpcpll_adc_slope_uv(val);
+		*intercept_uv = fuse_get_gpcpll_adc_intercept_uv(val);
+		return 0;
+	}
+#endif
+	return -EINVAL;
+}
+
+
 struct chip_revision {
 	enum tegra_chipid	chipid;
 	unsigned int		major;
