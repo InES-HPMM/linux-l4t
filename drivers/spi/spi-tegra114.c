@@ -1366,6 +1366,7 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 	struct device_node *nc = NULL;
 	struct device_node *found_nc = NULL;
 	int len;
+	int ret;
 
 	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
@@ -1389,7 +1390,8 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 	 */
 	for_each_available_child_of_node(np, nc) {
 		found_nc = nc;
-		if (of_find_property(nc, "nvidia,default-chipselect", NULL))
+		ret = of_property_read_bool(nc, "nvidia,default-chipselect");
+		if (ret)
 			break;
 	}
 	if (found_nc) {
