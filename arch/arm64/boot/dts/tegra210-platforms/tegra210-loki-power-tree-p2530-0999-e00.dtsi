@@ -117,6 +117,8 @@
 	};
 
 	xusb@70090000 {
+		usb_vbus0-supply = <&usb0_vbus>;
+		usb_vbus2-supply = <&battery_reg>;
 		hvdd_usb-supply = <&vdd_3v3>;
 		usb_vbus2-supply = <&battery_reg>;
 		avdd_pll_utmip-supply = <&max77620_sd3>;
@@ -125,6 +127,14 @@
 		dvdd_sata-supply = <&max77620_ldo8>;
 		avddio_pll_uerefe-supply = <&max77620_ldo7>;
 	};
+
+	xudc@700d0000 {
+		usb_vbus0-supply = <&usb0_vbus>;
+		hvdd_usb-supply = <&vdd_3v3>;
+		avdd_pll_utmip-supply = <&max77620_sd3>;
+		avddio_usb-supply = <&vdd_3v3>;
+		avddio_pll_uerefe-supply = <&max77620_ldo7>;
+        };
 
 	otg@7d000000 {
 		usb_vbus-supply = <&usb0_vbus>;

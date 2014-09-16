@@ -288,7 +288,7 @@
 
 	/* Put common control config here */
 	xusb_pad_ctl: padctl@0 {
-		nvidia,ss_portmap = <0x2130>;
+		nvidia,ss_portmap = <0x7770>;
 		nvidia,lane_owner = <0xFFFF>; /* Use 0xF to disable lane assign */
 		status = "okay";
 	};
@@ -298,10 +298,18 @@
 		/* nvidia,gpio_controls_muxed_ss_lanes; */
 		nvidia,gpio_ss1_sata = <0>;
 		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
-		nvidia,portmap = <0x0500>;
+		nvidia,portmap = <0x0400>;
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "okay";
 	};
+
+	 xudc@700d0000 {
+                nvidia,common_padctl = <&xusb_pad_ctl>;
+		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 1>;
+		extcon-cable-names = "vbus", "id";
+                #extcon-cells = <1>;
+                status = "disabled";
+        };
 
 	backlight {
 		compatible = "pwm-backlight";
