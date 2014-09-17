@@ -2727,7 +2727,7 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 		tegra_usb_pmc_reg_update(PMC_UTMIP_TERM_PAD_CFG,
 					0xffffffff, reg);
 		reg = UTMIP_RCTRL_USE_PMC_P2 | UTMIP_TCTRL_USE_PMC_P2;
-		tegra_usb_pmc_reg_update(PMC_SLEEP_CFG, reg, reg);
+		tegra_usb_pmc_reg_update(PMC_SLEEP_CFG(2), reg, reg);
 	} else {
 		/* Use common PMC API to use SNPS register space */
 		utmi_phy_set_snps_trking_data();

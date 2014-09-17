@@ -16,6 +16,7 @@
 #define _TEGRA_USB_PMC_INTERFACE_H_
 
 #define UHSIC_INST(inst, x, y)	((inst == 1) ? x : y)
+#define UTMIP_INST(inst, x, y)	((inst <= 2) ? x : y)
 
 #define UHSIC_PADS_CFG1	0xc20
 #define UHSIC_TRK_START_COUNT(x)	(((x) & 0xff) << 13)
@@ -108,11 +109,11 @@
 #define PMC_POWER_DOWN_MASK			0xffff
 #define USB_ID_PD(inst)				(1 << ((4*(inst))+3))
 #define VBUS_WAKEUP_PD(inst)			(1 << ((4*(inst))+2))
-#define USBON_VAL_PD(inst)			(1 << ((4*(inst))+1))
+#define USBON_VAL_PD(inst)	UTMIP_INST(inst, 1 << ((4*(inst))+1), 1 << 21)
 #define USBON_VAL_PD_P2			(1 << 9)
 #define USBON_VAL_PD_P1			(1 << 5)
 #define USBON_VAL_PD_P0			(1 << 1)
-#define USBOP_VAL_PD(inst)			(1 << (4*(inst)))
+#define USBOP_VAL_PD(inst)	UTMIP_INST(inst, 1 << (4*(inst)), 1 << 20)
 #define USBOP_VAL_PD_P2			(1 << 8)
 #define USBOP_VAL_PD_P1			(1 << 4)
 #define USBOP_VAL_PD_P0			(1 << 0)
@@ -121,15 +122,15 @@
 #define PMC_USB_AO_VBUS_WAKEUP_PD_P0	(1 << 2)
 
 #define PMC_TRIGGERS			0x1ec
-#define UTMIP_CLR_WALK_PTR(inst)	(1 << (inst))
+#define UTMIP_CLR_WALK_PTR(inst)	UTMIP_INST(inst, 1 << (inst), 1 << 16)
 #define UTMIP_CLR_WALK_PTR_P2		(1 << 2)
 #define UTMIP_CLR_WALK_PTR_P1		(1 << 1)
 #define UTMIP_CLR_WALK_PTR_P0		(1 << 0)
-#define UTMIP_CAP_CFG(inst)	(1 << ((inst)+4))
+#define UTMIP_CAP_CFG(inst)	UTMIP_INST(inst, 1 << ((inst)+4), 1 << 17)
 #define UTMIP_CAP_CFG_P2		(1 << 6)
 #define UTMIP_CAP_CFG_P1		(1 << 5)
 #define UTMIP_CAP_CFG_P0		(1 << 4)
-#define UTMIP_CLR_WAKE_ALARM(inst)		(1 << ((inst)+12))
+#define UTMIP_CLR_WAKE_ALARM(inst) UTMIP_INST(inst, 1 << ((inst)+12), 1 << 19)
 #define UTMIP_CLR_WAKE_ALARM_P2	(1 << 14)
 
 #define PMC_PAD_CFG		(0x1f4)
@@ -138,30 +139,33 @@
 #define PMC_TCTRL_VAL(x)	(((x) & 0x1f) << 5)
 #define PMC_RCTRL_VAL(x)	(((x) & 0x1f) << 0)
 
-#define PMC_SLEEP_CFG			0x1fc
-#define UTMIP_TCTRL_USE_PMC(inst) (1 << ((8*(inst))+3))
+#define PMC_SLEEP_CFG(inst)		UTMIP_INST(inst, 0x1fc, 0x4d0)
+#define UTMIP_TCTRL_USE_PMC(inst) UTMIP_INST(inst, 1 << ((8*(inst))+3), 1 << 3)
 #define UTMIP_TCTRL_USE_PMC_P2		(1 << 19)
 #define UTMIP_TCTRL_USE_PMC_P1		(1 << 11)
 #define UTMIP_TCTRL_USE_PMC_P0		(1 << 3)
-#define UTMIP_RCTRL_USE_PMC(inst) (1 << ((8*(inst))+2))
+#define UTMIP_RCTRL_USE_PMC(inst) UTMIP_INST(inst, 1 << ((8*(inst))+2), 1 << 2)
 #define UTMIP_RCTRL_USE_PMC_P2		(1 << 18)
 #define UTMIP_RCTRL_USE_PMC_P1		(1 << 10)
 #define UTMIP_RCTRL_USE_PMC_P0		(1 << 2)
-#define UTMIP_FSLS_USE_PMC(inst)	(1 << ((8*(inst))+1))
+#define UTMIP_FSLS_USE_PMC(inst) UTMIP_INST(inst, 1 << ((8*(inst))+1), 1 << 1)
 #define UTMIP_FSLS_USE_PMC_P2		(1 << 17)
 #define UTMIP_FSLS_USE_PMC_P1		(1 << 9)
 #define UTMIP_FSLS_USE_PMC_P0		(1 << 1)
-#define UTMIP_MASTER_ENABLE(inst) (1 << (8*(inst)))
+#define UTMIP_MASTER_ENABLE(inst) UTMIP_INST(inst, (1 << (8*(inst))), (1 << 0))
 #define UTMIP_MASTER_ENABLE_P2		(1 << 16)
 #define UTMIP_MASTER_ENABLE_P1		(1 << 8)
 #define UTMIP_MASTER_ENABLE_P0		(1 << 0)
 
-#define PMC_SLEEPWALK_CFG		0x200
-#define UTMIP_LINEVAL_WALK_EN(inst) (1 << ((8*(inst))+7))
+#define PMC_SLEEPWALK_CFG(inst)	UTMIP_INST(inst, 0x200, 0x288)
+#define UTMIP_LINEVAL_WALK_EN(inst)	UTMIP_INST(inst, \
+					1 << ((8*(inst))+7), 1 << 15)
 #define UTMIP_LINEVAL_WALK_EN_P2	(1 << 23)
 #define UTMIP_LINEVAL_WALK_EN_P1	(1 << 15)
 #define UTMIP_LINEVAL_WALK_EN_P0	(1 << 7)
-#define UTMIP_WAKE_VAL(inst, x) (((x) & 0xf) << ((8*(inst))+4))
+#define UTMIP_WAKE_VAL(inst, x)	UTMIP_INST(inst, \
+					((x) & 0xf) << ((8*(inst))+4), \
+					((x) & 0xf) << 4)
 #define UTMIP_WAKE_VAL_P2(x)		(((x) & 0xf) << 20)
 #define UTMIP_WAKE_VAL_P1(x)		(((x) & 0xf) << 12)
 #define UTMIP_WAKE_VAL_P0(x)		(((x) & 0xf) << 4)
@@ -171,7 +175,7 @@
 #define WAKE_VAL_FSK			0x1
 #define WAKE_VAL_SE0			0x0
 
-#define PMC_SLEEPWALK_REG(inst)		(0x204 + (4*(inst)))
+#define PMC_SLEEPWALK_REG(inst) UTMIP_INST(inst, 0x204 + (4*(inst)), 0x4e0)
 #define UTMIP_USBOP_RPD_A	(1 << 0)
 #define UTMIP_USBON_RPD_A	(1 << 1)
 #define UTMIP_AP_A			(1 << 4)
@@ -193,12 +197,12 @@
 #define UTMIP_AN_D		(1 << 29)
 #define UTMIP_HIGHZ_D		(1 << 30)
 
-#define PMC_UTMIP_FAKE		0x218
-#define USBON_VAL(inst)	(1 << ((4*(inst))+1))
+#define PMC_UTMIP_FAKE(inst)	UTMIP_INST(inst, 0x218, 0x294)
+#define USBON_VAL(inst)	UTMIP_INST(inst, 1 << ((4*(inst))+1), 1 << 9)
 #define USBON_VAL_P2			(1 << 9)
 #define USBON_VAL_P1			(1 << 5)
 #define USBON_VAL_P0			(1 << 1)
-#define USBOP_VAL(inst)	(1 << (4*(inst)))
+#define USBOP_VAL(inst)	UTMIP_INST(inst, 1 << (4*(inst)), 1 << 8)
 #define USBOP_VAL_P2			(1 << 8)
 #define USBOP_VAL_P1			(1 << 4)
 #define USBOP_VAL_P0			(1 << 0)
@@ -217,7 +221,7 @@
 #define   UTMIP_TCTRL_VAL(x)		(((x) & (0xffff << 16)) >> 16)
 
 #define PMC_UTMIP_MASTER_CONFIG		0x274
-#define UTMIP_PWR(inst)		(1 << (inst))
+#define UTMIP_PWR(inst)		UTMIP_INST(inst, 1 << (inst), (1 << 4))
 
 #define UTMIP_BIAS_TRK_START_COUNT(x) (((x) & 0xff) << 14)
 

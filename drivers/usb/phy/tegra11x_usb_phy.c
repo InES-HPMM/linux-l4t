@@ -470,7 +470,7 @@ static bool utmi_phy_remotewake_detected(struct tegra_usb_phy *phy)
 	if (val & EVENT_INT_ENB) {
 		val = tegra_usb_pmc_reg_read(UTMIP_STATUS);
 		if (UTMIP_WAKE_ALARM(inst) & val) {
-			tegra_usb_pmc_reg_update(PMC_SLEEP_CFG,
+			tegra_usb_pmc_reg_update(PMC_SLEEP_CFG(inst),
 				UTMIP_WAKE_VAL(inst, 0xF),
 				UTMIP_WAKE_VAL(inst, WAKE_VAL_NONE));
 
@@ -701,7 +701,7 @@ static void utmi_phy_close(struct tegra_usb_phy *phy)
 		writel(val, base + USB_SUSP_CTRL);
 	}
 
-	val = tegra_usb_pmc_reg_read(PMC_SLEEP_CFG);
+	val = tegra_usb_pmc_reg_read(PMC_SLEEP_CFG(phy->inst));
 	if (val & UTMIP_MASTER_ENABLE(phy->inst)) {
 		pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 0);
 
@@ -863,7 +863,7 @@ static int utmi_phy_post_resume(struct tegra_usb_phy *phy)
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 	if (phy->port_speed == USB_PHY_PORT_SPEED_FULL) {
-		val = tegra_usb_pmc_reg_read(PMC_SLEEP_CFG);
+		val = tegra_usb_pmc_reg_read(PMC_SLEEP_CFG(inst));
 		/* if PMC is not disabled by now then disable it */
 		if (val & UTMIP_MASTER_ENABLE(inst))
 			pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 0);
@@ -880,7 +880,7 @@ static int utmi_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
 	struct tegra_usb_pmc_data *pmc = &pmc_data[phy->inst];
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-	val = tegra_usb_pmc_reg_read(PMC_SLEEP_CFG);
+	val = tegra_usb_pmc_reg_read(PMC_SLEEP_CFG(inst));
 	if (val & UTMIP_MASTER_ENABLE(inst)) {
 		if (!remote_wakeup) {
 			pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 0);
@@ -1270,7 +1270,7 @@ static void utmi_phy_restore_start(struct tegra_usb_phy *phy)
 	if (UTMIP_WALK_PTR_VAL(inst) & val) {
 		phy->pmc_remote_wakeup = true;
 	} else if (!phy->pmc_remote_wakeup) {
-		val = tegra_usb_pmc_reg_read(PMC_SLEEP_CFG);
+		val = tegra_usb_pmc_reg_read(PMC_SLEEP_CFG(inst));
 		if (val & UTMIP_MASTER_ENABLE(inst))
 			pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 0);
 	}

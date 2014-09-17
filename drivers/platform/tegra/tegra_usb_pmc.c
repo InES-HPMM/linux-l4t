@@ -244,7 +244,8 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pmc_data->instance);
 
 	spin_lock_irqsave(&pmc_lock, flags);
-	val = readl(pmc_base + PMC_SLEEP_CFG);
+
+	val = readl(pmc_base + PMC_SLEEP_CFG(inst));
 	if (val & UTMIP_MASTER_ENABLE(inst)) {
 		DBG("%s(%d) inst:[%d] pmc already enabled\n",
 				__func__, __LINE__, pmc_data->instance);
@@ -261,9 +262,9 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	*/
 
 	/* disable master enable in PMC */
-	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val = readl(pmc_base + PMC_SLEEP_CFG(inst));
 	val &= ~UTMIP_MASTER_ENABLE(inst);
-	writel(val, pmc_base + PMC_SLEEP_CFG);
+	writel(val, pmc_base + PMC_SLEEP_CFG(inst));
 
 	/* UTMIP_PWR_PX=1 for power savings mode */
 	val = readl(pmc_base + PMC_UTMIP_MASTER_CONFIG);
@@ -278,19 +279,19 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	writel(val, pmc_base + PMC_USB_DEBOUNCE);
 
 	/* Make sure nothing is happening on the line with respect to PMC */
-	val = readl(pmc_base + PMC_UTMIP_FAKE);
+	val = readl(pmc_base + PMC_UTMIP_FAKE(inst));
 	val &= ~USBOP_VAL(inst);
 	val &= ~USBON_VAL(inst);
-	writel(val, pmc_base + PMC_UTMIP_FAKE);
+	writel(val, pmc_base + PMC_UTMIP_FAKE(inst));
 
 	/* Make sure wake value for line is none */
-	val = readl(pmc_base + PMC_SLEEPWALK_CFG);
+	val = readl(pmc_base + PMC_SLEEPWALK_CFG(inst));
 	val &= ~UTMIP_LINEVAL_WALK_EN(inst);
-	writel(val, pmc_base + PMC_SLEEPWALK_CFG);
-	val = readl(pmc_base + PMC_SLEEP_CFG);
+	writel(val, pmc_base + PMC_SLEEPWALK_CFG(inst));
+	val = readl(pmc_base + PMC_SLEEP_CFG(inst));
 	val &= ~UTMIP_WAKE_VAL(inst, ~0);
 	val |= UTMIP_WAKE_VAL(inst, WAKE_VAL_NONE);
-	writel(val, pmc_base + PMC_SLEEP_CFG);
+	writel(val, pmc_base + PMC_SLEEP_CFG(inst));
 
 	/* turn off pad detectors */
 	val = readl(pmc_base + PMC_USB_AO);
@@ -298,16 +299,16 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	writel(val, pmc_base + PMC_USB_AO);
 
 	/* Remove fake values and make synchronizers work a bit */
-	val = readl(pmc_base + PMC_UTMIP_FAKE);
+	val = readl(pmc_base + PMC_UTMIP_FAKE(inst));
 	val &= ~USBOP_VAL(inst);
 	val &= ~USBON_VAL(inst);
-	writel(val, pmc_base + PMC_UTMIP_FAKE);
+	writel(val, pmc_base + PMC_UTMIP_FAKE(inst));
 
 	/* Enable which type of event can trigger a walk,
 	* in this case usb_line_wake */
-	val = readl(pmc_base + PMC_SLEEPWALK_CFG);
+	val = readl(pmc_base + PMC_SLEEPWALK_CFG(inst));
 	val |= UTMIP_LINEVAL_WALK_EN(inst);
-	writel(val, pmc_base + PMC_SLEEPWALK_CFG);
+	writel(val, pmc_base + PMC_SLEEPWALK_CFG(inst));
 
 	/* Capture FS/LS pad configurations */
 	pmc_pad_cfg_val = readl(pmc_base + PMC_PAD_CFG);
@@ -391,12 +392,12 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	}
 
 	/* Turn over pad configuration to PMC  for line wake events*/
-	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val = readl(pmc_base + PMC_SLEEP_CFG(inst));
 	val &= ~UTMIP_WAKE_VAL(inst, ~0);
 	val |= UTMIP_WAKE_VAL(inst, WAKE_VAL_ANY);
 	val |= UTMIP_RCTRL_USE_PMC(inst) | UTMIP_TCTRL_USE_PMC(inst);
 	val |= UTMIP_MASTER_ENABLE(inst) | UTMIP_FSLS_USE_PMC(inst);
-	writel(val, pmc_base + PMC_SLEEP_CFG);
+	writel(val, pmc_base + PMC_SLEEP_CFG(inst));
 
 	spin_unlock_irqrestore(&pmc_lock, flags);
 }
@@ -412,7 +413,7 @@ static void utmip_phy_disable_pmc_bus_ctrl(struct tegra_usb_pmc_data *pmc_data,
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pmc_data->instance);
 
 	spin_lock_irqsave(&pmc_lock, flags);
-	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val = readl(pmc_base + PMC_SLEEP_CFG(inst));
 	if (!(val & UTMIP_MASTER_ENABLE(inst))) {
 		DBG("%s(%d) inst:[%d] pmc already disabled\n",
 				__func__, __LINE__, pmc_data->instance);
@@ -427,13 +428,13 @@ static void utmip_phy_disable_pmc_bus_ctrl(struct tegra_usb_pmc_data *pmc_data,
 		writel(val, usb_base + UTMIP_PMC_WAKEUP0);
 	}
 
-	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val = readl(pmc_base + PMC_SLEEP_CFG(inst));
 	val &= ~UTMIP_WAKE_VAL(inst, 0xF);
 	val |= UTMIP_WAKE_VAL(inst, WAKE_VAL_NONE);
-	writel(val, pmc_base + PMC_SLEEP_CFG);
+	writel(val, pmc_base + PMC_SLEEP_CFG(inst));
 
 	/* Disable PMC master mode by clearing MASTER_EN */
-	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val = readl(pmc_base + PMC_SLEEP_CFG(inst));
 	/* WAR for xusb */
 	if (pmc_data->controller_type == TEGRA_USB_3_0)
 		val |= UTMIP_RCTRL_USE_PMC(inst) | UTMIP_TCTRL_USE_PMC(inst);
@@ -441,7 +442,7 @@ static void utmip_phy_disable_pmc_bus_ctrl(struct tegra_usb_pmc_data *pmc_data,
 		val &= ~(UTMIP_RCTRL_USE_PMC(inst) |
 				UTMIP_TCTRL_USE_PMC(inst));
 	val &= ~(UTMIP_FSLS_USE_PMC(inst) | UTMIP_MASTER_ENABLE(inst));
-	writel(val, pmc_base + PMC_SLEEP_CFG);
+	writel(val, pmc_base + PMC_SLEEP_CFG(inst));
 
 	val = readl(pmc_base + PMC_TRIGGERS);
 	val &= ~UTMIP_CAP_CFG(inst);
@@ -500,12 +501,12 @@ static void utmip_powerdown_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	}
 
 	/* Turn over pad configuration to PMC */
-	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val = readl(pmc_base + PMC_SLEEP_CFG(inst));
 	val &= ~UTMIP_WAKE_VAL(inst, ~0);
 	val |= UTMIP_WAKE_VAL(inst, WAKE_VAL_NONE) |
 		UTMIP_RCTRL_USE_PMC(inst) | UTMIP_TCTRL_USE_PMC(inst) |
 		UTMIP_FSLS_USE_PMC(inst) | UTMIP_MASTER_ENABLE(inst);
-	writel(val, pmc_base + PMC_SLEEP_CFG);
+	writel(val, pmc_base + PMC_SLEEP_CFG(inst));
 
 	spin_unlock_irqrestore(&pmc_lock, flags);
 }
@@ -523,7 +524,7 @@ static void utmip_powerup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	spin_lock_irqsave(&pmc_lock, flags);
 
 	/* Disable PMC master mode by clearing MASTER_EN */
-	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val = readl(pmc_base + PMC_SLEEP_CFG(inst));
 	/* WAR for xusb */
 	if (pmc_data->controller_type == TEGRA_USB_3_0)
 		val |= UTMIP_RCTRL_USE_PMC(inst) | UTMIP_TCTRL_USE_PMC(inst);
@@ -531,7 +532,7 @@ static void utmip_powerup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 		val &= ~(UTMIP_RCTRL_USE_PMC(inst) |
 				UTMIP_TCTRL_USE_PMC(inst));
 	val &= ~(UTMIP_FSLS_USE_PMC(inst) | UTMIP_MASTER_ENABLE(inst));
-	writel(val, pmc_base + PMC_SLEEP_CFG);
+	writel(val, pmc_base + PMC_SLEEP_CFG(inst));
 
 	spin_unlock_irqrestore(&pmc_lock, flags);
 	mdelay(1);
