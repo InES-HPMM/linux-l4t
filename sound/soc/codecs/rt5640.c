@@ -2824,6 +2824,7 @@ static int rt5640_remove(struct snd_soc_codec *codec)
 	CHECK_I2C_SHUTDOWN(rt5640, codec)
 	rt5640_reset(codec);
 	snd_soc_write(codec, RT5640_PWR_ANLG1, 0);
+	device_remove_file(codec->dev, &dev_attr_index_reg);
 
 	mutex_unlock(&rt5640->lock);
 	return 0;

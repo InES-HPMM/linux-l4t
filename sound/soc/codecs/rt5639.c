@@ -3283,6 +3283,7 @@ static int rt5639_probe(struct snd_soc_codec *codec)
 static int rt5639_remove(struct snd_soc_codec *codec)
 {
 	rt5639_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	device_remove_file(codec->dev, &dev_attr_index_reg);
 	return 0;
 }
 

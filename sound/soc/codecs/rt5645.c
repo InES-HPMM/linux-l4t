@@ -3598,6 +3598,8 @@ static int rt5645_probe(struct snd_soc_codec *codec)
 static int rt5645_remove(struct snd_soc_codec *codec)
 {
 	rt5645_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	device_remove_file(codec->dev, &dev_attr_codec_reg);
+	device_remove_file(codec->dev, &dev_attr_index_reg);
 	return 0;
 }
 
