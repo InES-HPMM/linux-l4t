@@ -135,8 +135,8 @@
 
 	/* Put common control config here */
 	xusb_pad_ctl: padctl@0 {
-		nvidia,ss_portmap = <0x2130>;
-		nvidia,lane_owner = <0xFFFF>; /* Use 0xF to disable lane assign */
+		nvidia,ss_portmap = <0x0321>;
+		nvidia,lane_owner = <0xF056>; /* Use 0xF to disable lane assign */
 		status = "okay";
 	};
 
@@ -145,8 +145,17 @@
 		/* nvidia,gpio_controls_muxed_ss_lanes; */
 		nvidia,gpio_ss1_sata = <0>;
 		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
-		nvidia,portmap = <0x0700>;
+		nvidia,portmap = <0x0e07>;
 		nvidia,common_padctl = <&xusb_pad_ctl>;
+		status = "okay";
+	};
+
+	xudc@700d0000 {
+		nvidia,common_padctl = <&xusb_pad_ctl>;
+		nvidia,portmap = <0x0108>;
+		extcon-cables = <&otg_gpio_extcon 0 &otg_gpio_extcon 1>;
+		extcon-cable-names = "vbus", "id";
+		#extcon-cells = <1>;
 		status = "okay";
 	};
 
