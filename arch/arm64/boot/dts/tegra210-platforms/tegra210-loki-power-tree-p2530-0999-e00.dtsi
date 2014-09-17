@@ -101,6 +101,10 @@
 		vi {
 			avdd_dsi_csi-supply = <&max77620_gpio7>;
 		};
+
+		vii2c {
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
+		};
 	};
 
 	sound {

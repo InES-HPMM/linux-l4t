@@ -47,7 +47,7 @@
 				datalen = <2>;
 				pinmuxgrp = <0xFFFF>;
 				gpios = <3>;
-				regulators = "vana", "vif";
+				regulators = "vana", "vif2";
 				clocks = "cam_mclk1";
 				drivername = "ov7695";
 				detect = <0x0002 0x300A 0xFFFF 0x7695>;
