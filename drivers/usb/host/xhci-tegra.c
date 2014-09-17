@@ -483,7 +483,7 @@ u32 csb_read(struct tegra_xhci_hcd *tegra, u32 addr)
 	/* to select the appropriate CSB page to write to */
 	csb_page_select = CSB_PAGE_SELECT(addr);
 
-	dev_dbg(&pdev->dev, "csb_read: csb_page_select= 0x%08x\n",
+	dev_vdbg(&pdev->dev, "csb_read: csb_page_select= 0x%08x\n",
 			csb_page_select);
 
 	iowrite32(csb_page_select, fpci_base + XUSB_CFG_ARU_C11_CSBRANGE);
@@ -492,7 +492,7 @@ u32 csb_read(struct tegra_xhci_hcd *tegra, u32 addr)
 	input_addr = CSB_PAGE_OFFSET(addr);
 	data = ioread32(fpci_base + XUSB_CFG_CSB_BASE_ADDR + input_addr);
 
-	dev_dbg(&pdev->dev, "csb_read: input_addr = 0x%08x data = 0x%08x\n",
+	dev_vdbg(&pdev->dev, "csb_read: input_addr = 0x%08x data = 0x%08x\n",
 			input_addr, data);
 	return data;
 }
@@ -507,7 +507,7 @@ void csb_write(struct tegra_xhci_hcd *tegra, u32 addr, u32 data)
 	/* to select the appropriate CSB page to write to */
 	csb_page_select = CSB_PAGE_SELECT(addr);
 
-	dev_dbg(&pdev->dev, "csb_write:csb_page_selectx = 0x%08x\n",
+	dev_vdbg(&pdev->dev, "csb_write:csb_page_selectx = 0x%08x\n",
 			csb_page_select);
 
 	iowrite32(csb_page_select, fpci_base + XUSB_CFG_ARU_C11_CSBRANGE);
@@ -516,7 +516,7 @@ void csb_write(struct tegra_xhci_hcd *tegra, u32 addr, u32 data)
 	input_addr = CSB_PAGE_OFFSET(addr);
 	iowrite32(data, fpci_base + XUSB_CFG_CSB_BASE_ADDR + input_addr);
 
-	dev_dbg(&pdev->dev, "csb_write: input_addr = 0x%08x data = %0x08x\n",
+	dev_vdbg(&pdev->dev, "csb_write: input_addr = 0x%08x data = %0x08x\n",
 			input_addr, data);
 }
 
@@ -618,7 +618,7 @@ static inline void fw_log_update_deq_pointer(
 	dma_addr_t physical_addr;
 	u32 reg;
 
-	dev_dbg(dev, "curr 0x%p fast-forward %d entries\n", deq, n);
+	dev_vdbg(dev, "curr 0x%p fast-forward %d entries\n", deq, n);
 	while (n-- > 0)
 		deq = fw_log_next(log, deq);
 
@@ -635,7 +635,7 @@ static inline void fw_log_update_deq_pointer(
 	reg |= ((physical_addr >> 16) & 0xffff); /* higher 16-bits */
 	iowrite32(reg, tegra->fpci_base + XUSB_CFG_ARU_FW_SCRATCH);
 
-	dev_dbg(dev, "new 0x%p physical addr 0x%x\n", deq, (u32)physical_addr);
+	dev_vdbg(dev, "new 0x%p physical addr 0x%x\n", deq, (u32)physical_addr);
 }
 
 static inline bool circ_buffer_full(struct circ_buf *circ)
@@ -734,7 +734,7 @@ static inline bool fw_log_copy(struct tegra_xhci_hcd *tegra)
 
 		fw_log_update_deq_pointer(&tegra->log, copy_len/FW_LOG_SIZE);
 
-		dev_dbg(dev, "copied %d entries, new dequeue 0x%p\n",
+		dev_vdbg(dev, "copied %d entries, new dequeue 0x%p\n",
 				copy_len/FW_LOG_SIZE, tegra->log.dequeue);
 		wake_up_interruptible(&tegra->log.read_wait);
 	}
@@ -3241,11 +3241,6 @@ static int tegra_xhci_bus_suspend(struct usb_hcd *hcd)
 	u32 host_ports = get_host_controlled_ports(tegra);
 	unsigned long flags;
 
-	if (XUSB_IS_T210(tegra)) {
-		pr_debug("%s T210 ELPG is not verified yet\n", __func__);
-		return -EBUSY;
-	}
-
 	mutex_lock(&tegra->sync_lock);
 
 	if (xhci->shared_hcd == hcd) {
@@ -4170,11 +4165,11 @@ static void t210_chk_lane_owner_by_pad(int pad, u32 lane_owner)
 			pr_err("Lane owner for SS Pad 1 setting is incorrect\n");
 		break;
 	case 2:
-		if ((lane != 3) || (lane != 0))
+		if ((lane != 3) && (lane != 0))
 			pr_err("Lane owner for SS Pad 2 setting is incorrect\n");
 		break;
 	case 3:
-		if ((lane != 4) || (lane != 8))
+		if ((lane != 4) && (lane != 8))
 			pr_err("Lane owner for SS Pad 3 setting is incorrect\n");
 		break;
 	}
