@@ -81,6 +81,38 @@
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 			};
 
+			dap2_fs_paa0 {
+				nvidia,pins = "dap2_fs_paa0";
+				nvidia,function = "i2s2";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+
+			dap2_sclk_paa1 {
+				nvidia,pins = "dap2_sclk_paa1";
+				nvidia,function = "i2s2";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+
+			dap2_din_paa2 {
+				nvidia,pins = "dap2_din_paa2";
+				nvidia,function = "i2s2";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+
+			dap2_dout_paa3 {
+				nvidia,pins = "dap2_dout_paa3";
+				nvidia,function = "i2s2";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+
 			dmic1_clk_pe0 {
 				nvidia,pins = "dmic1_clk_pe0";
 				nvidia,function = "dmic1";

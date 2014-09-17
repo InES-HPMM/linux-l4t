@@ -40,6 +40,7 @@
 #include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-camera-e2249-1002-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-e2220-thermal-zone.dtsi"
+#include <dt-bindings/sound/tegra-asoc-alt.h>
 
 / {
 	model = "e2220";
@@ -210,6 +211,17 @@
 		};
 	};
 
+	i2c@7000c000 {
+		ad1937x: ad193x.0-0004@04 {
+			compatible = "ad,ad1937";
+			reg = <0x04>;
+		};
+		ad1937y: ad193x.0-0005@05 {
+			compatible = "ad,ad1937";
+			reg = <0x05>;
+		};
+	};
+
 	adma@702e2000  {
 		interrupts = <0 24 0x04
 			      0 25 0x04
@@ -233,6 +245,15 @@
 			regulator-supplies = "vdd-1v8-audio-hv", "vdd-1v8-audio-hv-bias";
 			vdd-1v8-audio-hv-supply = <&max77620_sd3>;
 			vdd-1v8-audio-hv-bias-supply = <&max77620_sd3>;
+		};
+
+		i2s@702d1100 {
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			regulator-supplies = "vdd-1v8-spi-hv", "vdd-1v8-spi-hv-bias";
+			vdd-1v8-spi-hv-supply = <&max77620_sd3>;
+			vdd-1v8-spi-hv-bias-supply = <&max77620_sd3>;
 		};
 
 		i2s@702d1300 {
@@ -285,6 +306,135 @@
 			name-prefix = "y";
 		};
 	};
+
+	sound_ref {
+		compatible = "nvidia,tegra-audio-t210ref";
+		nvidia,model = "tegra-snd-t210ref";
+		nvidia,num-codec-link = <2>;
+		nvidia,num-amx = <2>;
+		nvidia,num-adx = <2>;
+		nvidia,addr-max9485 = <0>;
+		nvidia,amx-slot-map = <
+			/* jack 0 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 1, 0)
+			TDM_SLOT_MAP(0, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 2, 0)
+			TDM_SLOT_MAP(0, 2, 1)
+			/* jack 1 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 1, 0)
+			TDM_SLOT_MAP(1, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 2, 0)
+			TDM_SLOT_MAP(1, 2, 1)
+			/* jack 2 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 1, 0)
+			TDM_SLOT_MAP(2, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 2, 0)
+			TDM_SLOT_MAP(2, 2, 1)
+			/* jack 3 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 1, 0)
+			TDM_SLOT_MAP(3, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 2, 0)
+			TDM_SLOT_MAP(3, 2, 1)>;
+		nvidia,adx-slot-map = <
+			/* jack 0 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 1, 0)
+			TDM_SLOT_MAP(0, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 2, 0)
+			TDM_SLOT_MAP(0, 2, 1)
+			/* jack 1 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 1, 0)
+			TDM_SLOT_MAP(1, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(1, 2, 0)
+			TDM_SLOT_MAP(1, 2, 1)
+			/* jack 2 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 1, 0)
+			TDM_SLOT_MAP(2, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(2, 2, 0)
+			TDM_SLOT_MAP(2, 2, 1)
+			/* jack 3 */
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 1, 0)
+			TDM_SLOT_MAP(3, 1, 1)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(0, 0, 0)
+			TDM_SLOT_MAP(3, 2, 0)
+			TDM_SLOT_MAP(3, 2, 1)>;
+
+		nvidia,audio-routing =
+			"Headphone-x", 	"x DAC1OUT",
+			"Headphone-x", 	"x DAC2OUT",
+			"Headphone-x", 	"x DAC3OUT",
+			"Headphone-x", 	"x DAC4OUT",
+			"x ADC1IN",	"LineIn-x",
+			"x ADC2IN",	"LineIn-x",
+
+			"Headphone-y", 	"y DAC1OUT",
+			"Headphone-y", 	"y DAC2OUT",
+			"Headphone-y", 	"y DAC3OUT",
+			"Headphone-y", 	"y DAC4OUT",
+			"y ADC1IN",	"LineIn-y",
+			"y ADC2IN",	"LineIn-y";
+		nvidia,xbar = <&tegra_axbar>;
+
+		nvidia,dai-link-1 {
+			cpu-dai = <&tegra_i2s1>;
+			codec-dai = <&ad1937x>;
+			cpu-dai-name = "I2S1";
+			codec-dai-name = "ad193x-hifi";
+			format = "dsp_a";
+			bitclock-slave;
+			frame-slave;
+			bit-format = "s32_le";
+			bclk_ratio = <1>;
+			srate = <48000>;
+			num-channel = <8>;
+			name-prefix = "x";
+		};
+		nvidia,dai-link-2 {
+			cpu-dai = <&tegra_i2s2>;
+			codec-dai = <&ad1937y>;
+			cpu-dai-name = "I2S2";
+			codec-dai-name = "ad193x-hifi";
+			format = "dsp_a";
+			bitclock-master;
+			frame-master;
+			bit-format = "s32_le";
+			bclk_ratio = <1>;
+			srate = <48000>;
+			num-channel = <8>;
+			name-prefix = "y";
+		};
+	};
+
 	spi@7000da00 {
 		status = "okay";
 		spi-max-frequency = <25000000>;

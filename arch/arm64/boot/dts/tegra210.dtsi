@@ -399,6 +399,10 @@
 		iommus = <&smmu TEGRA_SWGROUP_CELLS(APE) &ape_as>;
 	};
 
+	sound_ref {
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(APE) &ape_as>;
+	};
+
 	tegra_pwm: pwm@7000a000 {
 		compatible = "nvidia,tegra124-pwm";
 		reg = <0x0 0x7000a000 0x0 0x100>;
