@@ -35,4 +35,5 @@ obj-$(CONFIG_PALMAS_THERMAL)	+= palmas_thermal.o
 obj-$(CONFIG_MAX77620_THERMAL)    += max77620-thermal.o
 obj-$(CONFIG_AS3722_THERMAL)    += as3722_thermal.o
 obj-$(CONFIG_SENSORS_TMP006)	+= tmp006.o
+obj-$(CONFIG_TEGRA_AOTAG)	+= tegra_aotag.o
 

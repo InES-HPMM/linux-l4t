@@ -256,4 +256,11 @@ config SENSORS_TMP006
 	 To compile this driver as a module, choose M here: the
 	 module will be called tmp006. If unsure, say N here.
 
+config TEGRA_AOTAG
+	depends on PLATFORM_TEGRA
+	bool "Tegra Always-On-Thermal-Alert-Generator"
+	default y
+	help
+	  Support for Tegra Always-On thermal Alert Generator
+
 endif
