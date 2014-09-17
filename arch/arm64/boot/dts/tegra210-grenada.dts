@@ -1178,4 +1178,8 @@
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "okay";
 	};
+
+	gpu-dvfs-rework {
+		status = "disabled";
+	};
 };

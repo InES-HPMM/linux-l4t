@@ -296,5 +296,8 @@
 		pwms = <&tegra_pwm 0 29334>;
 	};
 
+	gpu-dvfs-rework {
+		status = "disabled";
+	};
 };
 

@@ -164,5 +164,9 @@
 			gpios = <&gpio TEGRA_GPIO(X, 7) GPIO_ACTIVE_LOW>;
 		};
 	};
+
+	gpu-dvfs-rework {
+		status = "disabled";
+	};
 };
 

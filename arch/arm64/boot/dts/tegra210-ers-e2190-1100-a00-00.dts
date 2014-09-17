@@ -348,4 +348,8 @@
 		clock-frequency = <1000000>;
 	};
 
+	gpu-dvfs-rework {
+		status = "disabled";
+	};
+
 };

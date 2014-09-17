@@ -569,4 +569,8 @@
 	i2c@7000d000 {
 		clock-frequency = <1000000>;
 	};
+
+	gpu-dvfs-rework {
+		status = "disabled";
+	};
 };
