@@ -123,6 +123,8 @@ static void switch_cluster(enum cluster val)
 	phys_cpu_id = cpu_logical_map(smp_processor_id());
 	bpmp_cpu_mask = tegra_bpmp_switch_cluster(phys_cpu_id);
 
+	cpumask_clear(&mask);
+
 	if (bpmp_cpu_mask & 1)
 		cpumask_set_cpu(0, &mask);
 	if (bpmp_cpu_mask & 2)
@@ -134,8 +136,9 @@ static void switch_cluster(enum cluster val)
 
 	cpumask_clear_cpu(phys_cpu_id, &mask);
 
-	smp_call_function_many(&mask, shutdown_core, (void *)target_cluster,
-			       false);
+	if (!cpumask_empty(&mask))
+		smp_call_function_many(&mask, shutdown_core,
+					(void *)target_cluster, false);
 
 	local_irq_save(flag);
 	shutdown_cluster();
