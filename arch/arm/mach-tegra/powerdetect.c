@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/powerdetect.c
  *
- * Copyright (c) 2011 - 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011 - 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -98,6 +98,7 @@ void pwr_detect_bit_write(u32 pwrdet_bit, bool enable)
 	unsigned int pwrdet_mask;
 	pwrdet_mask = pmc_readl(PMC_PWR_DET_ENABLE);
 	switch (pwrdet_bit) {
+	case SPI_HV_PWR_DET:
 	case AUDIO_HV_PWR_DET:
 	case SDMMC1_PWR_DET:
 	case SDMMC3_PWR_DET:
