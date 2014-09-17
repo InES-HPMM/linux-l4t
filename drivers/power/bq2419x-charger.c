@@ -1578,8 +1578,7 @@ end:
 static int bq2419x_suspend(struct device *dev)
 {
 	struct bq2419x_chip *bq2419x = dev_get_drvdata(dev);
-	int next_wakeup = 0;
-	int ret;
+	int ret = 0;
 
 	if (device_may_wakeup(bq2419x->dev) && (bq2419x->irq > 0))
 		enable_irq_wake(bq2419x->irq);
@@ -1595,27 +1594,16 @@ static int bq2419x_suspend(struct device *dev)
 		goto end;
 	}
 
-	if (bq2419x->in_current_limit <= 500)
+	if (bq2419x->in_current_limit <= 500) {
 		dev_info(bq2419x->dev, "Battery charging with 500mA\n");
-	else {
+		ret = bq2419x_set_charging_current_suspend(bq2419x, 500);
+		if (ret < 0)
+			dev_err(bq2419x->dev,
+			"Config of charging failed: %d\n", ret);
+	} else
 		dev_info(bq2419x->dev, "Battery charging with high current\n");
-		next_wakeup = bq2419x->auto_rechg_power_on_time;
-	}
 
-	battery_charging_wakeup(bq2419x->bc_dev, next_wakeup);
 end:
-	if (next_wakeup)
-		dev_info(dev, "System-charger will resume after %d sec\n",
-				next_wakeup);
-	else
-		dev_info(dev, "System-charger will not have resume time\n");
-
-	if (next_wakeup == bq2419x->auto_rechg_power_on_time)
-		return 0;
-
-	ret = bq2419x_set_charging_current_suspend(bq2419x, 500);
-	if (ret < 0)
-		dev_err(bq2419x->dev, "Config of charging failed: %d\n", ret);
 	return ret;
 }
 
