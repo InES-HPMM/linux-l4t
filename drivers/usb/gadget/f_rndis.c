@@ -27,11 +27,6 @@
 #include "u_ether.h"
 #include "rndis.h"
 
-static bool rndis_multipacket_dl_disable;
-module_param(rndis_multipacket_dl_disable, bool, S_IRUGO|S_IWUSR);
-MODULE_PARM_DESC(rndis_multipacket_dl_disable,
-	"Disable RNDIS Multi-packet support in DownLink");
-
 /*
  * This function is an RNDIS Ethernet port -- a Microsoft protocol that's
  * been promoted instead of the standard CDC Ethernet.  The published RNDIS
@@ -72,6 +67,16 @@ MODULE_PARM_DESC(rndis_multipacket_dl_disable,
  *
  *   - MS-Windows drivers sometimes emit undocumented requests.
  */
+
+static bool rndis_multipacket_dl_disable;
+module_param(rndis_multipacket_dl_disable, bool, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(rndis_multipacket_dl_disable,
+	"Disable RNDIS Multi-packet support in DownLink");
+
+static unsigned int rndis_ul_max_pkt_per_xfer = 3;
+module_param(rndis_ul_max_pkt_per_xfer, uint, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(rndis_ul_max_pkt_per_xfer,
+       "Maximum packets per transfer for UL aggregation");
 
 struct f_rndis {
 	struct gether			port;
@@ -565,9 +570,11 @@ static int rndis_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			VDBG(cdev, "reset rndis control %d\n", intf);
 			usb_ep_disable(rndis->notify);
 		}
-		VDBG(cdev, "init rndis ctrl %d\n", intf);
-		if (config_ep_by_speed(cdev->gadget, f, rndis->notify))
-			goto fail;
+		if (!rndis->notify->desc) {
+			VDBG(cdev, "init rndis ctrl %d\n", intf);
+			if (config_ep_by_speed(cdev->gadget, f, rndis->notify))
+				goto fail;
+		}
 		usb_ep_enable(rndis->notify);
 		rndis->notify->driver_data = rndis;
 
@@ -766,6 +773,7 @@ rndis_bind(struct usb_configuration *c, struct usb_function *f)
 
 	rndis_set_param_medium(rndis->config, RNDIS_MEDIUM_802_3, 0);
 	rndis_set_host_mac(rndis->config, rndis->ethaddr);
+	rndis_set_max_pkt_xfer(rndis->config, rndis_ul_max_pkt_per_xfer);
 
 	if (rndis->manufacturer && rndis->vendorID &&
 			rndis_set_param_vendor(rndis->config, rndis->vendorID,
@@ -871,6 +879,7 @@ rndis_bind_config_vendor(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
 	rndis->port.header_len = sizeof(struct rndis_packet_msg_type);
 	rndis->port.wrap = rndis_add_header;
 	rndis->port.unwrap = rndis_rm_hdr;
+	rndis->port.ul_max_pkts_per_xfer = rndis_ul_max_pkt_per_xfer;
 
 	rndis->port.func.name = "rndis";
 	rndis->port.func.strings = rndis_strings;
