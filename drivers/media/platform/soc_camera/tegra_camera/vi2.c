@@ -598,7 +598,8 @@ static int vi2_capture_setup_csi_0(struct tegra_camera_dev *cam,
 		image_size = (icd->user_width * 10) >> 3;
 	}
 
-	TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_IMAGE_DEF, (format << 16) | 0x1);
+	TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_IMAGE_DEF,
+			(cam->tpg_mode ? 0 : 1 << 24) | (format << 16) | 0x1);
 
 	TC_VI_REG_WT(cam, TEGRA_VI_CSI_0_CSI_IMAGE_DT, data_type);
 
@@ -677,7 +678,8 @@ static int vi2_capture_setup_csi_1(struct tegra_camera_dev *cam,
 		image_size = icd->user_width * 10 / 8;
 	}
 
-	TC_VI_REG_WT(cam, TEGRA_VI_CSI_1_IMAGE_DEF, (format << 16) | 0x1);
+	TC_VI_REG_WT(cam, TEGRA_VI_CSI_1_IMAGE_DEF,
+			(cam->tpg_mode ? 0 : 1 << 24) | (format << 16) | 0x1);
 
 	TC_VI_REG_WT(cam, TEGRA_VI_CSI_1_CSI_IMAGE_DT, data_type);
 
