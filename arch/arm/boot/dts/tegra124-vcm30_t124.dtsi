@@ -145,7 +145,7 @@
 		trim-delay = <0x2>;
 		ddr-trim-delay = <0x4>;
 		mmc-ocr-mask = <0>;
-		uhs_mask = <0x40>;
+		uhs-mask = <0x40>;
 		bus-width = <4>;
 		built-in;
 		ddr-clk-limit = <51000000>;
@@ -161,7 +161,7 @@
 		trim-delay = <0x4>;
 		ddr-trim-delay = <0x4>;
 		mmc-ocr-mask = <0>;
-		uhs_mask = <0x40>;
+		uhs-mask = <0x40>;
 		bus-width = <8>;
 		built-in;
 		ddr-clk-limit = <51000000>;
@@ -176,7 +176,7 @@
 		trim-delay = <0x3>;
 		ddr-trim-delay = <0x3>;
 		mmc-ocr-mask = <0>;
-		uhs_mask = <0x20>;
+		uhs-mask = <0x20>;
 		built-in;
 		ddr-clk-limit = <30000000>;
 		max-clk-limit = <51000000>;
@@ -191,7 +191,7 @@
 		tap-delay = <0>;
 		trim-delay = <3>;
 		mmc-ocr-mask = <3>;
-		uhs_mask = <0x28>;
+		uhs-mask = <0x28>;
 		bus-width = <4>;
 		max-clk-limit = <204000000>;
 		pll_source = "pll_m", "pll_p";
