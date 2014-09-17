@@ -106,14 +106,18 @@ struct tegra_otg {
 	struct extcon_dev *id_extcon_dev;
 	struct extcon_dev *vbus_extcon_dev;
 	struct extcon_dev *aca_nv_extcon_dev;
+	struct extcon_dev *y_extcon_dev;
 	struct extcon_dev *edev;
 	struct notifier_block otg_aca_nv_nb;
+	struct notifier_block otg_y_nb;
 	struct extcon_cable *id_extcon_cable;
 	struct extcon_cable *vbus_extcon_cable;
 	struct extcon_cable *aca_nv_extcon_cable;
+	struct extcon_cable *y_extcon_cable;
 	struct extcon_specific_cable_nb id_extcon_obj;
 	struct extcon_specific_cable_nb vbus_extcon_obj;
 	struct extcon_specific_cable_nb aca_nv_extcon_obj;
+	struct extcon_specific_cable_nb y_extcon_obj;
 };
 
 struct tegra_otg_soc_data {
@@ -171,7 +175,7 @@ static void otg_notifications_of(struct tegra_otg *tegra)
 {
 	unsigned long val;
 	int index;
-	bool vbus = false;
+	bool vbus = false, id = false;
 
 	if (tegra->support_pmu_vbus) {
 		index = tegra->vbus_extcon_cable->cable_index;
@@ -185,16 +189,30 @@ static void otg_notifications_of(struct tegra_otg *tegra)
 			vbus = true;
 	}
 
-	if (tegra->support_pmu_vbus || tegra->support_aca_nv_cable) {
+	if (tegra->support_y_cable) {
+		index = tegra->y_extcon_cable->cable_index;
+		if (extcon_get_cable_state_(tegra->y_extcon_dev, index)) {
+			vbus = true;
+			id = true;
+		}
+	}
+
+	if (tegra->support_pmu_id) {
+		index = tegra->id_extcon_cable->cable_index;
+		if (extcon_get_cable_state_(tegra->id_extcon_dev, index))
+			id = true;
+	}
+
+	if (tegra->support_pmu_vbus || tegra->support_aca_nv_cable ||
+			tegra->support_y_cable) {
 		if (vbus)
 			tegra->int_status |= USB_VBUS_STATUS;
 		else
 			tegra->int_status &= ~USB_VBUS_STATUS;
 	}
 
-	if (tegra->support_pmu_id) {
-		index = tegra->id_extcon_cable->cable_index;
-		if (extcon_get_cable_state_(tegra->id_extcon_dev, index)) {
+	if (tegra->support_pmu_id || tegra->support_y_cable) {
+		if (id) {
 			tegra->int_status &= ~USB_ID_STATUS;
 			tegra->int_status |= USB_ID_INT_EN;
 
@@ -539,8 +557,7 @@ static void irq_work(struct work_struct *work)
 	unsigned long flags;
 	unsigned long status;
 
-	/* Adding delay for proper detection of y-cable */
-	msleep(150);
+	msleep(50);
 
 	mutex_lock(&tegra->irq_work_mutex);
 
@@ -1052,6 +1069,19 @@ static int tegra_otg_conf(struct platform_device *pdev)
 		tegra->otg_aca_nv_nb.notifier_call = otg_notifications;
 		extcon_register_cable_interest(&tegra->aca_nv_extcon_obj,
 			tegra->aca_nv_extcon_cable, &tegra->otg_aca_nv_nb);
+	}
+
+	if (tegra->support_y_cable) {
+		tegra->y_extcon_cable = extcon_get_extcon_cable(&pdev->dev,
+							"y-cable");
+		if (IS_ERR(tegra->y_extcon_cable)) {
+			dev_err(&pdev->dev, "Cannot get y cable extcon cable\n");
+		} else {
+			tegra->y_extcon_dev = tegra->y_extcon_cable->edev;
+			tegra->otg_y_nb.notifier_call = otg_notifications;
+			extcon_register_cable_interest(&tegra->y_extcon_obj,
+				tegra->y_extcon_cable, &tegra->otg_y_nb);
+		}
 	}
 
 	err = usb_add_phy(&tegra->phy, USB_PHY_TYPE_USB2);

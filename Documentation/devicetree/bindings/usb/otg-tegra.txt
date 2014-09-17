@@ -22,6 +22,7 @@ Optional properties:
 - extcon-cables: Specify the phandles and index of different extcon needed.
 - extcon-cable-names: Specify the cable names needed from extcon.
 - usb_vbus-supply: Specify the phandle to the vbus regulator device tree node.
+- usb_bat_chg-supply: Specify the phandle of corresponding current regulator device tree node.
 
 Example:
         otg@0x7d000000 {

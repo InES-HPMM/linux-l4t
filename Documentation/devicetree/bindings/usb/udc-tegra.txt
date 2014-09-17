@@ -25,9 +25,9 @@ Optional properties:
 - nvidia,qc2-current-limit-ma: Specify the QC2.0 charger current limit in milliamperes.
 - nvidia,dcp-current-limit-ma: If needs to overried standard DCP charger current limit (1.5A), specify the value in milliamperes.
 - nvidia,enable-xhci-host: Specify whether this port is taken by XUSB.
-- nvidia,avdd_usb-supply: Specify the phandle of corresponding regulator device tree node.
-- nvidia,avdd_pll_utmip-supply: Specify the phandle of corresponding regulator device tree node.
-- nvidia,usb_bat_chg-supply: Specify the phandle of corresponding current regulator device tree node.
+- avdd_usb-supply: Specify the phandle of corresponding regulator device tree node.
+- avdd_pll_utmip-supply: Specify the phandle of corresponding regulator device tree node.
+- usb_bat_chg-supply: Specify the phandle of corresponding current regulator device tree node.
 - extcon-cables: Specify the phandles and index of different extcon needed.
 - extcon-cable-names: Specify the cable names needed from extcon.
 
