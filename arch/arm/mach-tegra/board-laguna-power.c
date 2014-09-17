@@ -45,7 +45,7 @@
 #include "board-common.h"
 #include "board-pmu-defines.h"
 #include "board-ardbeg.h"
-#include "tegra_cl_dvfs.h"
+#include <linux/platform/tegra/tegra_cl_dvfs.h>
 #include "devices.h"
 #include "iomap.h"
 

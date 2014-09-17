@@ -60,12 +60,6 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += powergate-t12x.o
 
 obj-y                                   += apbio.o
 obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)       += arb_sema.o
-obj-y                                   += dvfs.o
-ifeq ($(CONFIG_ARCH_TEGRA_13x_SOC),y)
-obj-y                                   += tegra13_dvfs.o
-else
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12_dvfs.o
-endif
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra_emc_therm.o
 
 obj-$(CONFIG_TEGRA_EDP_LIMITS)          += edp.o
@@ -100,7 +94,6 @@ endif
 obj-$(CONFIG_DEBUG_ICEDCC)              += sysfs-dcc.o
 obj-$(CONFIG_TEGRA_CLUSTER_CONTROL)     += sysfs-cluster.o
 obj-$(CONFIG_TEGRA_DYNAMIC_PWRDET)      += powerdetect.o
-obj-$(CONFIG_ARCH_TEGRA_HAS_CL_DVFS)    += tegra_cl_dvfs.o
 
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += board-dt-tegra20.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += board-dt-tegra30.o

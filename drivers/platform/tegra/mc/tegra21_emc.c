@@ -37,7 +37,7 @@
 
 #include "clock.h"
 #include "board.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "iomap.h"
 #include "tegra_emc_dt_parse.h"
 #include "devices.h"

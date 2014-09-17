@@ -97,7 +97,7 @@
 #include "tegra-board-id.h"
 #include "tegra-of-dev-auxdata.h"
 #include "tegra12_emc.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "board-t210.h"
 
 static struct tegra_usb_platform_data tegra_udc_pdata;

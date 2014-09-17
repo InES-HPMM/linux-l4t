@@ -40,13 +40,13 @@
 #include <tegra/mc.h>
 
 #include "clock.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "iomap.h"
 #include "pm.h"
 #include "sleep.h"
 #include "devices.h"
 #include "tegra12_emc.h"
-#include "tegra_cl_dvfs.h"
+#include <linux/platform/tegra/tegra_cl_dvfs.h>
 #include "cpu-tegra.h"
 
 #define RST_DEVICES_L			0x004

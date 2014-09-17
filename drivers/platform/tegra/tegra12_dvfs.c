@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra12_dvfs.c
+ * drivers/platform/tegra/tegra12_dvfs.c
  *
  * Copyright (c) 2012-2014 NVIDIA CORPORATION. All rights reserved.
  *
@@ -26,9 +26,9 @@
 #include <linux/tegra-fuse.h>
 
 #include "clock.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "board.h"
-#include "tegra_cl_dvfs.h"
+#include <linux/platform/tegra/tegra_cl_dvfs.h>
 #include "tegra_core_sysfs_limits.h"
 #include "pm.h"
 #include "tegra_simon.h"

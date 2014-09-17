@@ -40,11 +40,11 @@
 
 #include "clock.h"
 #include "tegra_clocks_ops.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "pm.h"
 #include "sleep.h"
 #include "devices.h"
-#include "tegra_cl_dvfs.h"
+#include <linux/platform/tegra/tegra_cl_dvfs.h>
 #include "cpu-tegra.h"
 
 /* FIXME: Disable for initial Si bringup */

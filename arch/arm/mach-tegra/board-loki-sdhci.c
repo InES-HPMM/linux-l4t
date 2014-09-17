@@ -37,7 +37,7 @@
 #include "board.h"
 #include "board-loki.h"
 #include "iomap.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "tegra-board-id.h"
 
 #define LOKI_WLAN_RST	TEGRA_GPIO_PR3

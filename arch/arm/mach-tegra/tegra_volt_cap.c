@@ -21,7 +21,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/debugfs.h>
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "cpu-tegra.h"
 #include "clock.h"
 

@@ -41,7 +41,7 @@
 
 #include "clock.h"
 #include "cpu-tegra.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "pm.h"
 
 #include <trace/events/sysedp.h>

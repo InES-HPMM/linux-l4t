@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra_cl_dvfs.c
+ * drivers/platform/tegra/tegra_cl_dvfs.c
  *
  * Copyright (c) 2012-2014 NVIDIA Corporation. All rights reserved.
  *
@@ -39,9 +39,9 @@
 
 #include <mach/irqs.h>
 
-#include "tegra_cl_dvfs.h"
+#include <linux/platform/tegra/tegra_cl_dvfs.h>
 #include "clock.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "iomap.h"
 #include "tegra_simon.h"
 

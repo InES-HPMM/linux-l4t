@@ -29,9 +29,9 @@
 
 #include "tegra_simon.h"
 #include "clock.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "pm.h"
-#include "tegra_cl_dvfs.h"
+#include <linux/platform/tegra/tegra_cl_dvfs.h>
 
 static DEFINE_MUTEX(simon_lock);
 static RAW_NOTIFIER_HEAD(simon_nh);

@@ -22,7 +22,7 @@
 #include "powergate-priv.h"
 #include "powergate-ops-txx.h"
 #include "powergate-ops-t1xx.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 
 enum mc_client {
 	MC_CLIENT_AFI		= 0,

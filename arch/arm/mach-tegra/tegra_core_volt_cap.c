@@ -25,7 +25,7 @@
 #include <linux/seq_file.h>
 
 #include "clock.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "tegra_core_sysfs_limits.h"
 
 /*

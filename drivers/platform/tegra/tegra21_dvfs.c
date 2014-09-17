@@ -25,9 +25,9 @@
 #include <linux/pm_qos.h>
 
 #include "clock.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "board.h"
-#include "tegra_cl_dvfs.h"
+#include <linux/platform/tegra/tegra_cl_dvfs.h>
 #include "tegra_core_sysfs_limits.h"
 
 static bool tegra_dvfs_cpu_disabled;

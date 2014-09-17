@@ -48,7 +48,7 @@
 #include "pm.h"
 #include "sleep.h"
 #include "tegra3_emc.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/nvpower.h>

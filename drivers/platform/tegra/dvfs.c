@@ -39,8 +39,8 @@
 
 #include "board.h"
 #include "clock.h"
-#include "dvfs.h"
-#include "tegra_cl_dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
+#include <linux/platform/tegra/tegra_cl_dvfs.h>
 
 #define DVFS_RAIL_STATS_BIN	12500
 

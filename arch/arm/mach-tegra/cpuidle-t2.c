@@ -50,7 +50,7 @@
 #include "pm.h"
 #include "sleep.h"
 #include "timer.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 
 static struct {
 	unsigned int cpu_ready_count[2];

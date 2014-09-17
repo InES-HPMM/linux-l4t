@@ -81,7 +81,7 @@
 #include "pm.h"
 #include "reset.h"
 #include "sleep.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "cpu-tegra.h"
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #include "tegra14_scratch.h"

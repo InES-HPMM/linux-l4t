@@ -54,7 +54,7 @@
 #include "gpio-names.h"
 #include "common.h"
 #include "board-ardbeg.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 
 /*
  * In backward-compatibility mode, soctherm registers itself as thermal_zones.

@@ -45,6 +45,16 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra_throttle.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += tegra_throttle.o
 endif
 
+ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
+obj-y += dvfs.o
+ifeq ($(CONFIG_ARCH_TEGRA_13x_SOC),y)
+obj-y += tegra13_dvfs.o
+else
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_dvfs.o
+endif
+obj-$(CONFIG_ARCH_TEGRA_HAS_CL_DVFS) += tegra_cl_dvfs.o
+endif
+
 ifneq ($(CONFIG_ARM64),)
 
 ccflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
@@ -103,9 +113,7 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += powergate-t12x.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += powergate-t21x.o
 endif
 
-obj-$(CONFIG_TEGRA_CLK_FRAMEWORK) += dvfs_link.o
 ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
-obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra13_dvfs_link.o
 
 # FIXME: Bug 1211919:
 # Remove CFLAGS_tegra21_dvfs.o flag when tegra21_dvfs.c becomes
@@ -137,9 +145,6 @@ obj-y += flowctrl.o
 obj-$(CONFIG_DEBUG_ICEDCC) += sysfs-dcc.o
 obj-$(CONFIG_TEGRA_CLUSTER_CONTROL) += sysfs-cluster.o
 obj-$(CONFIG_TEGRA_HMP_CLUSTER_CONTROL) += sysfs-cluster.o
-ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
-obj-$(CONFIG_ARCH_TEGRA_HAS_CL_DVFS) += tegra_cl_dvfs_link.o
-endif
 
 ifeq ($(CONFIG_TEGRA_SOCTHERM),y)
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra_soctherm.o

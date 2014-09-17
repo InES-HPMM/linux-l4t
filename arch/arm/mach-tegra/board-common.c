@@ -31,7 +31,7 @@
 #include "board-common.h"
 #include "devices.h"
 #include "clock.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "cpu-tegra.h"
 
 struct platform_device vibrator_device = {

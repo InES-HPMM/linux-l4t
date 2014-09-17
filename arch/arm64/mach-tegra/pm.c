@@ -80,7 +80,7 @@
 #include "pm-soc.h"
 #include "reset.h"
 #include "sleep.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "cpu-tegra.h"
 #include "flowctrl.h"
 #include "board.h"

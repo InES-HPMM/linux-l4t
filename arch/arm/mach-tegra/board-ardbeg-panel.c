@@ -45,7 +45,7 @@
 #include "common.h"
 #include "iomap.h"
 #include "tegra12_host1x_devices.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 
 struct platform_device * __init ardbeg_host1x_init(void)
 {

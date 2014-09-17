@@ -21,7 +21,7 @@
 #include "../../../arch/arm/mach-tegra/powergate-priv.h"
 #include "../../../arch/arm/mach-tegra/powergate-ops-t1xx.h"
 #include "../../../arch/arm/mach-tegra/powergate-ops-txx.h"
-#include "../../../arch/arm/mach-tegra/dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 
 #define EMULATION_MC_FLUSH_TIMEOUT 100
 

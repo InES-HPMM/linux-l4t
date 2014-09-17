@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra_cl_dvfs.h
+ * include/linux/platform/tegra/tegra_cl_dvfs.h
  *
  * Copyright (c) 2012-2014 NVIDIA Corporation. All rights reserved.
  *

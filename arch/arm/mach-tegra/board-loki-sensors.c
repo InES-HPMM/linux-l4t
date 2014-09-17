@@ -39,7 +39,7 @@
 #include "board-common.h"
 #include "board-loki.h"
 #include "tegra-board-id.h"
-#include "dvfs.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "cpu-tegra.h"
 
 static struct board_info board_info;
