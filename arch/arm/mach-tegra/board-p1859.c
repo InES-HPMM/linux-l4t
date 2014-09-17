@@ -23,7 +23,7 @@
 #include <linux/irqchip.h>
 
 #include <asm/mach/arch.h>
-#include <mach/isomgr.h>
+#include <linux/platform/tegra/isomgr.h>
 #include <mach/board_id.h>
 
 #include "iomap.h"

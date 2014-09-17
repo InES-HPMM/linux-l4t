@@ -28,7 +28,7 @@
 
 #include <linux/ktime.h>
 #include <linux/tracepoint.h>
-#include <mach/isomgr.h>
+#include <linux/platform/tegra/isomgr.h>
 
 TRACE_EVENT(tegra_isomgr_register,
 	TP_PROTO(enum tegra_iso_client client,

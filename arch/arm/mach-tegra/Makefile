@@ -180,5 +180,4 @@ obj-${CONFIG_TEGRA_BASEBAND}            += tegra_bb.o
 obj-$(CONFIG_TEGRA_BBC_PROXY)           += tegra_bbc_proxy.o
 obj-$(CONFIG_TEGRA_BBC_THERMAL)         += tegra_bbc_thermal.o
 
-obj-${CONFIG_TEGRA_ISOMGR}              += isomgr.o
 

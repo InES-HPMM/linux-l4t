@@ -26,3 +26,4 @@ ifeq ($(CONFIG_PM_SLEEP),y)
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += mc-timing-t12x.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += mc-timing-t21x.o
 endif
+obj-${CONFIG_TEGRA_ISOMGR}              += isomgr.o

@@ -37,7 +37,7 @@
 #include <linux/tegra-soc.h>
 #include <asm/processor.h>
 #include <asm/current.h>
-#include <mach/isomgr.h>
+#include <linux/platform/tegra/isomgr.h>
 
 #include <tegra/mc.h>
 

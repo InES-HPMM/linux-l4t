@@ -69,7 +69,7 @@
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
 #include <mach/i2s.h>
-#include <mach/isomgr.h>
+#include <linux/platform/tegra/isomgr.h>
 #include <mach/tegra_asoc_pdata.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
