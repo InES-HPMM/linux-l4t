@@ -283,8 +283,8 @@
 
 #define PLLDP_MISC0_DEFAULT_VALUE	0x40000020
 #define PLLDP_MISC1_CFG_DEFAULT_VALUE	0xc0000000
-#define PLLDP_MISC2_CTRL1_DEFAULT_VALUE	0xf000e5ec
-#define PLLDP_MISC3_CTRL2_DEFAULT_VALUE	0x101BF000
+#define PLLDP_MISC2_CTRL1_DEFAULT_VALUE	0xf400f0da
+#define PLLDP_MISC3_CTRL2_DEFAULT_VALUE	0x2004f400
 
 #define PLLDSS_MISC0_WRITE_MASK		0x47ffffff
 #define PLLDSS_MISC1_CFG_WRITE_MASK	0xf8000000
@@ -6699,7 +6699,7 @@ static struct clk tegra_pll_d2 = {
 static struct clk_pll_freq_table tegra_pll_dp_freq_table[] = {
 	{ 12000000, 270000000,  90, 1, 4},
 	{ 13000000, 270000000,  83, 1, 4},	/* actual: 269.8 MHz */
-	{ 38400000, 270000000,  84, 3, 4},	/* actual: 268.8 MHz */
+	{ 38400000, 270000000,  28, 1, 4},	/* actual: 268.8 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
