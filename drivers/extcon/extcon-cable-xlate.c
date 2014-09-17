@@ -147,6 +147,13 @@ static int ecx_attach_cable(struct extcon_cable_xlate *ecx)
 	if (ecx->last_cable_state != new_state) {
 		extcon_set_state(&ecx->edev, new_state);
 		dev_info(ecx->dev, "New cable state 0x%04x\n", new_state);
+		if (new_state) {
+			i = ffs(new_state) - 1;
+			dev_info(ecx->dev, "Cable%d %s is attach\n",
+				i, ecx->pdata->out_cable_names[i]);
+		} else {
+			dev_info(ecx->dev, "No cable attach\n");
+		}
 	}
 	ecx->last_cable_state = new_state;
 	spin_unlock_irqrestore(&ecx->lock, flags);
