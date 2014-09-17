@@ -32,7 +32,6 @@
 #include <linux/pm.h>
 #include <linux/slab.h>
 #include <linux/watchdog.h>
-#include <linux/workqueue.h>
 
 static bool nowayout = WATCHDOG_NOWAYOUT;
 
@@ -41,7 +40,6 @@ struct max77620_wdt {
 	struct device			*dev;
 	struct max77620_chip		*chip;
 
-	struct delayed_work		wdt_restart_wq;
 	int				timeout;
 	int				clear_time;
 	bool				otp_wdtt;
@@ -65,7 +63,6 @@ static int max77620_wdt_start(struct watchdog_device *wdt_dev)
 		return ret;
 	}
 
-	schedule_delayed_work(&wdt->wdt_restart_wq, wdt->clear_time * HZ);
 	return 0;
 }
 
@@ -81,12 +78,26 @@ static int max77620_wdt_stop(struct watchdog_device *wdt_dev)
 			dev_err(wdt->dev, "clear wdten failed %d\n", ret);
 			return ret;
 		}
-		cancel_delayed_work(&wdt->wdt_restart_wq);
 	} else {
 		dev_err(wdt->dev, "Can't clear WDTEN as OTP_WDTEN=1\n");
 		return -EPERM;
 	}
 	return 0;
+}
+
+static int max77620_wdt_ping(struct watchdog_device *wdt_dev)
+{
+	struct max77620_wdt *wdt = watchdog_get_drvdata(wdt_dev);
+	int ret;
+
+	ret = max77620_reg_update(wdt->chip->dev, MAX77620_PWR_SLAVE,
+		MAX77620_REG_CNFGGLBL3, MAX77620_WDTC_MASK, 0x1);
+	if (ret < 0)
+		dev_err(wdt->dev, "clear wdt failed: %d\n", ret);
+
+	dev_dbg(wdt->dev, "wdt cleared\n");
+
+	return ret;
 }
 
 static int max77620_wdt_set_timeout(struct watchdog_device *wdt_dev,
@@ -199,24 +210,9 @@ static const struct watchdog_ops max77620_wdt_ops = {
 	.owner = THIS_MODULE,
 	.start = max77620_wdt_start,
 	.stop = max77620_wdt_stop,
+	.ping = max77620_wdt_ping,
 	.set_timeout = max77620_wdt_set_timeout,
 };
-
-static void max77620_wdt_restart_wq(struct work_struct *work)
-{
-	struct max77620_wdt *wdt = container_of(work, struct max77620_wdt,
-						wdt_restart_wq.work);
-	int ret;
-
-	ret = max77620_reg_update(wdt->chip->dev, MAX77620_PWR_SLAVE,
-		MAX77620_REG_CNFGGLBL3, MAX77620_WDTC_MASK, 0x1);
-	if (ret < 0)
-		dev_err(wdt->dev, "clear wdt failed: %d\n", ret);
-
-	dev_info(wdt->dev, "wdt cleared\n");
-
-	schedule_delayed_work(&wdt->wdt_restart_wq, wdt->clear_time * HZ);
-}
 
 static int max77620_wdt_probe(struct platform_device *pdev)
 {
@@ -281,8 +277,6 @@ pdata_done:
 		return ret;
 	}
 
-	INIT_DELAYED_WORK(&wdt->wdt_restart_wq, max77620_wdt_restart_wq);
-
 	/*Enable WD_RST_WK - WDT expire results in a restart*/
 	ret = max77620_reg_update(wdt->chip->dev, MAX77620_PWR_SLAVE,
 		MAX77620_REG_ONOFFCNFG2, MAX77620_ONOFFCNFG2_WD_RST_WK,
@@ -319,15 +313,8 @@ pdata_done:
 		goto scrub;
 	}
 
-	ret = max77620_wdt_start(wdt_dev);
-	if (ret < 0) {
-		dev_err(wdt->dev, "wdt start failed: %d\n", ret);
-		goto scrub;
-	}
-
 	return 0;
 scrub:
-	cancel_delayed_work(&wdt->wdt_restart_wq);
 	watchdog_unregister_device(&wdt->wdt_dev);
 	return ret;
 }
@@ -337,7 +324,6 @@ static int max77620_wdt_remove(struct platform_device *pdev)
 	struct max77620_wdt *wdt = platform_get_drvdata(pdev);
 
 	max77620_wdt_stop(&wdt->wdt_dev);
-	cancel_delayed_work_sync(&wdt->wdt_restart_wq);
 	watchdog_unregister_device(&wdt->wdt_dev);
 	return 0;
 }
@@ -347,7 +333,6 @@ static void max77620_wdt_shutdown(struct platform_device *pdev)
 	struct max77620_wdt *wdt = platform_get_drvdata(pdev);
 
 	max77620_wdt_stop(&wdt->wdt_dev);
-	cancel_delayed_work_sync(&wdt->wdt_restart_wq);
 }
 
 static int max77620_wdt_suspend(struct device *dev)
