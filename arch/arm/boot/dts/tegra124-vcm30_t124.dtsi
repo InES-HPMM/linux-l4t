@@ -150,7 +150,7 @@
 		built-in;
 		ddr-clk-limit = <51000000>;
 		max-clk-limit = <204000000>;
-		pll_source = "pll_m", "pll_p";
+		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
 		disable-clock-gate;
 		status = "disabled";
@@ -166,7 +166,7 @@
 		built-in;
 		ddr-clk-limit = <51000000>;
 		max-clk-limit = <200000000>;
-		pll_source = "pll_m", "pll_p";
+		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
 		status = "disabled";
 	};
@@ -180,7 +180,7 @@
 		built-in;
 		ddr-clk-limit = <30000000>;
 		max-clk-limit = <51000000>;
-		pll_source = "pll_m", "pll_p";
+		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
 		status = "disabled";
 	};
@@ -194,7 +194,7 @@
 		uhs-mask = <0x28>;
 		bus-width = <4>;
 		max-clk-limit = <204000000>;
-		pll_source = "pll_m", "pll_p";
+		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
 		status = "disabled";
 	};
