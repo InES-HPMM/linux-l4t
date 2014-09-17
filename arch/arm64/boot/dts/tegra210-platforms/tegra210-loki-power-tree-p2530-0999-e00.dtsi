@@ -128,6 +128,7 @@
 
 	otg@7d000000 {
 		usb_vbus-supply = <&usb0_vbus>;
+		usb_bat_chg-supply = <&battery_charger>;
 	};
 
 	sdhci@700b0600 {
