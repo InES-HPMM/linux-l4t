@@ -1,0 +1,66 @@
+/ {
+	tegra-aotag {
+		compatible = "nvidia,tegra21x-aotag";
+		reg = <0x0 0x7000e333 0x0 0x666>;
+		/*
+		 * interrupts =
+		 * #interrupt-names =
+		 */
+		status = "okay";
+		sensor-params-tall       = <76>;
+		sensor-params-tiddq      = <1>;
+		sensor-params-ten-count  = <16>;
+		sensor-params-tsample    = <9>;
+		sensor-params-pdiv       = <8>;
+		sensor-params-tsamp-ate  = <39>;
+		sensor-params-pdiv-ate   = <8>;
+
+
+		#thermal-sensor-cells = <0>;
+		/* make this to '1' in case of more than one sensors */
+
+		/*
+		 * right way to do with multiple sensors is -
+		 * sensor0 : sensor@<0x.....>
+		 * etc.
+		 * e.g,
+		 * sensor@0 {
+		 * sensor-name = "aotag0";
+		 * sensor-id = <0>;
+		 * };
+		 *
+		 */
+		sensor-name = "aotag0";
+		sensor-id = <0>;
+		advertised-sensor-id = <9>;
+		/*
+		 * sensor-type = "nvidia,tegra21x-aotag";
+		 * not required, use 'compatible' instead.
+		 * keeping it as a comment
+		 */
+		sensor-nominal-temp-cp = <25>;
+		sensor-nominal-temp-ft = <105>;
+	};
+	thermal-zones {
+		AO-therm {
+			polling-delay = <0>;
+			polling-delay-passive = <1000>;
+			thermal-sensors = <&{/tegra-aotag}>;
+			/* in case of multiple sensors -
+			 * <&{/tegra-aotag/sensor} [0|1|..]>
+			 */
+			trips {
+				trip0 {
+					temperature = <90000>;
+					hysteresis = <0>;
+					type = "active";
+				};
+				trip1 {
+					temperature = <95000>;
+					hysteresis = <0>;
+					type = "critical";
+				};
+			};
+		};
+	};
+};
