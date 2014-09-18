@@ -132,13 +132,19 @@ void tegra_xhci_ss_wake_on_interrupts(u32 enabled_port, bool enable)
 	spin_lock_irqsave(&xusb_padctl_lock, flags);
 	/* clear any event */
 	elpg_program0 = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
-	elpg_program0 |= (SS_PORT0_WAKEUP_EVENT | SS_PORT1_WAKEUP_EVENT
-			| SS_PORT2_WAKEUP_EVENT | SS_PORT3_WAKEUP_EVENT);
+	if (enabled_port & TEGRA_XUSB_SS_P0)
+		elpg_program0 |= SS_PORT0_WAKEUP_EVENT;
+	if (enabled_port & TEGRA_XUSB_SS_P1)
+		elpg_program0 |= SS_PORT1_WAKEUP_EVENT;
+	if (enabled_port & TEGRA_XUSB_SS_P2)
+		elpg_program0 |= SS_PORT2_WAKEUP_EVENT;
+	if (enabled_port & TEGRA_XUSB_SS_P3)
+		elpg_program0 |= SS_PORT3_WAKEUP_EVENT;
+
 	writel(elpg_program0, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
 
 	/* enable ss wake interrupts */
 	elpg_program0 = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
-
 	if (enable) {
 		/* enable interrupts */
 		if (enabled_port & TEGRA_XUSB_SS_P0)
@@ -173,12 +179,18 @@ void tegra_xhci_hs_wake_on_interrupts(u32 portmap, bool enable)
 
 	spin_lock_irqsave(&xusb_padctl_lock, flags);
 	elpg_program0 = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
-	elpg_program0 |= (USB2_PORT0_WAKEUP_EVENT |
-			USB2_PORT1_WAKEUP_EVENT |
-			USB2_PORT2_WAKEUP_EVENT |
-			USB2_PORT3_WAKEUP_EVENT |
-			USB2_HSIC_PORT0_WAKEUP_EVENT |
-			USB2_HSIC_PORT1_WAKEUP_EVENT);
+	if (portmap & TEGRA_XUSB_USB2_P0)
+		elpg_program0 |= USB2_PORT0_WAKEUP_EVENT;
+	if (portmap & TEGRA_XUSB_USB2_P1)
+		elpg_program0 |= USB2_PORT1_WAKEUP_EVENT;
+	if (portmap & TEGRA_XUSB_USB2_P2)
+		elpg_program0 |= USB2_PORT2_WAKEUP_EVENT;
+	if (portmap & TEGRA_XUSB_USB2_P3)
+		elpg_program0 |= USB2_PORT3_WAKEUP_EVENT;
+	if (portmap & TEGRA_XUSB_HSIC_P0)
+		elpg_program0 |= USB2_HSIC_PORT0_WAKEUP_EVENT;
+	if (portmap & TEGRA_XUSB_HSIC_P1)
+		elpg_program0 |= USB2_HSIC_PORT1_WAKEUP_EVENT;
 
 	writel(elpg_program0, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
 

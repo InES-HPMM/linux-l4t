@@ -40,6 +40,7 @@
 #include <linux/tegra-fuse.h>
 #include <linux/extcon.h>
 #include <mach/tegra_usb_pad_ctrl.h>
+#include <linux/tegra_pm_domains.h>
 #include "nvxxx.h"
 #include "../../../arch/arm/mach-tegra/iomap.h"
 
@@ -323,6 +324,7 @@ static int extcon_notifications(struct notifier_block *nb,
 			container_of(nb, struct nv_udc_s, vbus_extcon_nb);
 	struct device *dev = nvudc->dev;
 	unsigned long flags;
+	int ret;
 
 	spin_lock_irqsave(&nvudc->lock, flags);
 
@@ -334,9 +336,17 @@ static int extcon_notifications(struct notifier_block *nb,
 	if (extcon_get_cable_state(nvudc->vbus_extcon_dev, "USB")) {
 		msg_info(dev, "%s: vbus on detected\n", __func__);
 		vbus_detected(nvudc);
+		if (!pm_runtime_active(dev)) {
+			ret = pm_runtime_get(dev);
+			if (ret)
+				dev_warn(dev, "Fail to runtime resume device\n");
+		}
 	} else {
 		msg_info(dev, "%s: vbus off detected\n", __func__);
 		vbus_not_detected(nvudc);
+		ret = pm_runtime_put_autosuspend(dev);
+		if (ret)
+			dev_warn(dev, "Fail to autosuspend device\n");
 	}
 
 exit:
@@ -2012,6 +2022,28 @@ static void nvudc_resume_state(struct nv_udc_s *nvudc, bool device_init)
 	if (nvudc->device_state == USB_STATE_SUSPENDED) {
 		nvudc->device_state = nvudc->resume_state;
 		nvudc->resume_state = 0;
+	}
+
+	if (device_init) {
+		/* select HS/FS PI */
+		u_temp = ioread32(nvudc->mmio_reg_base + CFG_DEV_FE);
+		u_temp &= PORTREGSEL_MASK;
+		u_temp |= CFG_DEV_FE_PORTREGSEL(2);
+		iowrite32(u_temp, nvudc->mmio_reg_base + CFG_DEV_FE);
+
+		/* set LWS = 1 and PLS = rx_detect */
+		u_temp = ioread32(nvudc->mmio_reg_base + PORTSC);
+		u_temp &= PORTSC_MASK;
+		u_temp &= ~PORTSC_PLS(~0);
+		u_temp |= PORTSC_PLS(5);
+		u_temp |= PORTSC_LWS;
+		iowrite32(u_temp, nvudc->mmio_reg_base + PORTSC);
+
+		/* restore portregsel */
+		u_temp = ioread32(nvudc->mmio_reg_base + CFG_DEV_FE);
+		u_temp &= PORTREGSEL_MASK;
+		u_temp |= CFG_DEV_FE_PORTREGSEL(0);
+		iowrite32(u_temp, nvudc->mmio_reg_base + CFG_DEV_FE);
 	}
 
 	/* ring door bell for the paused endpoints */
@@ -3700,8 +3732,30 @@ static irqreturn_t nvudc_irq(int irq, void *_udc)
 	return IRQ_HANDLED;
 }
 
-static irqreturn_t nvudc_padctl_irq(int irq, void *_udc)
+static irqreturn_t nvudc_padctl_irq(int irq, void *data)
 {
+	struct nv_udc_s *nvudc = (struct tegra_xhci_hcd *) data;
+	u32 reg, irq_for_dev;
+
+	reg = tegra_usb_pad_reg_read(XUSB_PADCTL_ELPG_PROGRAM_0);
+	reg &= XUSB_ALL_WAKE_EVENT;
+
+	irq_for_dev = (reg & USB2_PORT0_WAKEUP_EVENT) |
+			(reg & (SS_PORT_WAKEUP_EVENT(nvudc->ss_port)));
+
+	if (irq_for_dev) {
+		tegra_xhci_hs_wake_on_interrupts(TEGRA_XUSB_USB2_P0, false);
+		if (nvudc->is_ss_port_active)
+			tegra_xhci_ss_wake_on_interrupts((1 << nvudc->ss_port)
+					, false);
+
+		/* Check if still have pending padctl irq event*/
+		if (!(reg ^ irq_for_dev)) {
+			pr_info("IRQ event for device controller only\n");
+			return IRQ_HANDLED;
+		}
+	}
+	pr_info("IRQ event for host controller as well\n");
 	return IRQ_NONE;
 }
 
@@ -4306,7 +4360,6 @@ static void nvudc_remove_pci(struct pci_dev *pdev)
 	msg_exit(nvudc->dev);
 }
 
-#ifdef ELPG
 void save_mmio_reg(struct nv_udc_s *nvudc)
 {
 	/* Save Device Address, U2 Timeout, Port Link State and Port State
@@ -4322,7 +4375,7 @@ void save_mmio_reg(struct nv_udc_s *nvudc)
 
 void restore_mmio_reg(struct nv_udc_s *nvudc)
 {
-	u32 u_temp;
+	u32 reg;
 	dma_addr_t dma;
 
 	/* restore the event ring info */
@@ -4337,11 +4390,11 @@ void restore_mmio_reg(struct nv_udc_s *nvudc)
 
 	/* restore endpoint contexts info */
 	dma = nvudc->ep_cx.dma;
-	u_temp = lower_32_bits(dma);
-	iowrite32(u_temp, nvudc->mmio_reg_base + ECPLO);
+	reg = lower_32_bits(dma);
+	iowrite32(reg, nvudc->mmio_reg_base + ECPLO);
 
-	u_temp = upper_32_bits(dma);
-	iowrite32(u_temp, nvudc->mmio_reg_base + ECPHI;
+	reg = upper_32_bits(dma);
+	iowrite32(reg, nvudc->mmio_reg_base + ECPHI);
 
 	/* restore port related info */
 	iowrite32(nvudc->mmio_reg.portsc, nvudc->mmio_reg_base + PORTSC);
@@ -4371,13 +4424,8 @@ static int nvudc_suspend_platform(struct platform_device *pdev,
 
 	/* do not support suspend if link is connected */
 	u_temp = ioread32(nvudc->mmio_reg_base + PORTSC);
-	if (PORTSC_CCS(u_temp))
+	if (PORTSC_CCS & u_temp)
 		return -EAGAIN;
-
-	nvudc->resume_state = nvudc->device_state;
-	nvudc->device_state = USB_STATE_SUSPENDED;
-
-	save_mmio_reg(nvudc);
 
 	return 0;
 }
@@ -4391,7 +4439,7 @@ static int nvudc_suspend_pci(struct pci_dev *pdev)
 
 	/* do not support suspend if link is connected */
 	u_temp = ioread32(nvudc->mmio_reg_base + PORTSC);
-	if (PORTSC_CCS(u_temp))
+	if (PORTSC_CCS & u_temp)
 		return -EAGAIN;
 
 	nvudc->resume_state = nvudc->device_state;
@@ -4413,14 +4461,8 @@ static int nvudc_resume_pci(struct pci_dev *pdev)
 
 static int nvudc_resume_platform(struct platform_device *pdev)
 {
-	struct nv_udc_s *nvudc;
-
-	nvudc = platform_get_drvdata(pdev);
-	restore_mmio_reg(nvudc);
-	nvudc_resume_state(nvudc, 1);
 	return 0;
 }
-#endif
 
 static void nvudc_plat_clocks_deinit(struct nv_udc_s *nvudc)
 {
@@ -4729,6 +4771,150 @@ static void nvudc_plat_fpci_ipfs_init(struct nv_udc_s *nvudc)
 
 }
 
+static int tegra_xudc_exit_elpg(struct nv_udc_s *nvudc)
+{
+	int ret = 0;
+
+	mutex_lock(&nvudc->elpg_lock);
+
+	if (!nvudc->is_elpg) {
+		pr_info("%s Not in ELPG\n", __func__);
+		mutex_unlock(&nvudc->elpg_lock);
+		return 0;
+	}
+
+	pr_debug("Exit device controller ELPG\n");
+
+	/* enable power rail */
+	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_XUSBA);
+	if (ret) {
+		pr_err("%s Fail to unpowergate XUSBA\n", __func__);
+		mutex_unlock(&nvudc->elpg_lock);
+		return ret;
+	}
+
+	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_XUSBB);
+	if (ret) {
+		pr_err("%s Fail to unpowergate XUSBB\n", __func__);
+		mutex_unlock(&nvudc->elpg_lock);
+		return ret;
+	}
+
+	/* enable clocks */
+	clk_enable(nvudc->dev_clk);
+	clk_enable(nvudc->ss_clk);
+
+	/* disable wakeup interrupt */
+	tegra_xhci_hs_wake_on_interrupts(TEGRA_XUSB_USB2_P0, false);
+
+	/* disable SS wake interrupt and detection logic */
+	if (nvudc->is_ss_port_active) {
+		tegra_xhci_ss_wake_on_interrupts((1 << nvudc->ss_port), false);
+		tegra_xhci_ss_vcore((1 << nvudc->ss_port), false);
+		tegra_xhci_ss_wake_signal((1 << nvudc->ss_port), false);
+	}
+
+	/* register restore */
+	nvudc_plat_fpci_ipfs_init(nvudc);
+	restore_mmio_reg(nvudc);
+	nvudc_resume_state(nvudc, 1);
+
+	nvudc->is_elpg = false;
+
+	mutex_unlock(&nvudc->elpg_lock);
+
+	pr_info("[%s] Device mode ELPG exit done\n", __func__);
+	return 0;
+}
+
+static int tegra_xudc_enter_elpg(struct nv_udc_s *nvudc)
+{
+	u32 reg;
+	int ret;
+
+	mutex_lock(&nvudc->elpg_lock);
+
+	if (nvudc->is_elpg) {
+		pr_info("%s Already in ELPG\n", __func__);
+		mutex_unlock(&nvudc->elpg_lock);
+		return 0;
+	}
+
+	pr_debug("Enter device controller ELPG\n");
+
+	/* do not support suspend if link is connected */
+	reg = ioread32(nvudc->mmio_reg_base + PORTSC);
+	if (PORTSC_CCS & reg) {
+		pm_runtime_mark_last_busy(nvudc->dev);
+		mutex_unlock(&nvudc->elpg_lock);
+		return -EAGAIN;
+	}
+
+	nvudc->resume_state = nvudc->device_state;
+	nvudc->device_state = USB_STATE_SUSPENDED;
+
+	/* read and store registers */
+	save_mmio_reg(nvudc);
+
+	/* TODO : PMC sleepwalk */
+	/* enable wakeup interrupt */
+	tegra_xhci_hs_wake_on_interrupts(TEGRA_XUSB_USB2_P0, true);
+
+	/* enable SS wakeup interrupt and wake detection */
+	if (nvudc->is_ss_port_active) {
+		tegra_xhci_ss_wake_on_interrupts((1 << nvudc->ss_port), true);
+		tegra_xhci_ss_wake_signal((1 << nvudc->ss_port), true);
+	}
+
+	/* disable clock */
+	clk_disable(nvudc->dev_clk);
+	clk_disable(nvudc->ss_clk);
+
+	/* disable partition power */
+	ret = tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
+	if (ret) {
+		pr_info("%s Fail to powergate XUSBA\n", __func__);
+		mutex_unlock(&nvudc->elpg_lock);
+		return ret;
+	}
+
+	ret = tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
+	if (ret) {
+		pr_info("%s Fail to powergate XUSBB\n", __func__);
+		mutex_unlock(&nvudc->elpg_lock);
+		return ret;
+	}
+	/* enable SS wake detection logic*/
+	if (nvudc->is_ss_port_active)
+		tegra_xhci_ss_vcore((1 << nvudc->ss_port), true);
+
+	nvudc->is_elpg = true;
+
+	mutex_unlock(&nvudc->elpg_lock);
+	pr_info("Enter device controller ELPG done\n");
+	return 0;
+}
+
+static int tegra_xudc_runtime_resume(struct device *dev)
+{
+	struct NV_UDC_S *nvudc;
+	struct platform_device *pdev = to_platform_device(dev);
+
+	pr_debug("%s called\n", __func__);
+	nvudc = platform_get_drvdata(pdev);
+	return tegra_xudc_exit_elpg(nvudc);
+}
+
+static int tegra_xudc_runtime_suspend(struct device *dev)
+{
+	struct NV_UDC_S *nvudc;
+	struct platform_device *pdev = to_platform_device(dev);
+
+	pr_debug("%s called\n", __func__);
+	nvudc = platform_get_drvdata(pdev);
+	return tegra_xudc_enter_elpg(nvudc);
+}
+
 static int nvudc_plat_irqs_init(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
@@ -4856,6 +5042,8 @@ static int nvudc_plat_pad_init(struct nv_udc_s *nvudc)
 	if (is_ss_port_enabled)
 		usb3_phy_pad_enable(nvudc->bdata.lane_owner);
 
+	nvudc->is_ss_port_active = is_ss_port_enabled;
+	nvudc->ss_port = ss_port;
 	return 0;
 }
 
@@ -4981,6 +5169,7 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	}
 
 	spin_lock_init(&nvudc->lock);
+	mutex_init(&nvudc->elpg_lock);
 
 	for (i = 0; i < 32; i++)
 		nvudc->udc_ep[i].nvudc = nvudc;
@@ -5034,6 +5223,15 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	nvudc->id_extcon_nb.notifier_call = extcon_id_notifications;
 	extcon_register_notifier(nvudc->id_extcon_dev,
 						&nvudc->id_extcon_nb);
+
+	tegra_pd_add_device(&pdev->dev);
+
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_get_noresume(&pdev->dev);
+	pm_runtime_use_autosuspend(&pdev->dev);
+	pm_runtime_set_autosuspend_delay(&pdev->dev, 2000);
+	pm_runtime_enable(&pdev->dev);
+
 	return 0;
 
 err_clocks_disable:
@@ -5094,14 +5292,22 @@ static struct of_device_id tegra_xudc_of_match[] = {
 	{},
 };
 
+static const struct dev_pm_ops tegra_xudc_pm_ops = {
+	.runtime_suspend = tegra_xudc_runtime_suspend,
+	.runtime_resume = tegra_xudc_runtime_resume,
+};
+
 static struct platform_driver tegra_xudc_driver = {
 	.probe = tegra_xudc_plat_probe,
 	.remove = __exit_p(tegra_xudc_plat_remove),
 	.shutdown = tegra_xudc_plat_shutdown,
+	.suspend = nvudc_suspend_platform,
+	.resume = nvudc_resume_platform,
 	.driver = {
 		.name = driver_name,
 		.of_match_table = tegra_xudc_of_match,
 		.owner = THIS_MODULE,
+		.pm = &tegra_xudc_pm_ops,
 	},
 	/* TODO support PM */
 };

@@ -569,6 +569,7 @@ struct nv_udc_s {
 	bool enabled;
 	bool binded;
 	bool pullup;
+	bool is_elpg;
 	u32 act_bulk_ep;
 	u32 num_enabled_eps;
 	u32 g_isoc_eps;
@@ -586,7 +587,10 @@ struct nv_udc_s {
 	u8 device_state;
 	u8 resume_state;
 	u16 ctrl_seq_num;
+	u32 ss_port;
+	bool is_ss_port_active;
 	spinlock_t lock;
+	struct mutex elpg_lock;
 	struct event_trb_s *evt_seg0_last_trb;
 	struct event_trb_s *evt_seg1_last_trb;
 	u32 dbg_cnt1;
