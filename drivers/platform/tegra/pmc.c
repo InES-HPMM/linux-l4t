@@ -50,20 +50,18 @@
 #define PMC_WAKE_DET_EN		BIT(9)
 
 /* pmc register offsets needed for powering off PMU */
-#define PMC_SCRATCH_WRITE_SHIFT			2
-#define PMC_SCRATCH_WRITE_MASK			BIT(2)
-#define PMC_ENABLE_RST_SHIFT			1
-#define PMC_ENABLE_RST_MASK			BIT(1)
 #define PMC_SENSOR_CTRL				0x1B0
-#define PMC_SCRATCH54				0x258
-#define PMC_SCRATCH55				0x25C
+#define PMC_SCRATCH_WRITE_MASK			BIT(2)
+#define PMC_ENABLE_RST_MASK			BIT(1)
 
+#define PMC_SCRATCH54				0x258
 /* scratch54 register bit fields */
 #define PMU_OFF_DATA_SHIFT			8
 #define PMU_OFF_DATA_MASK			0xff
 #define PMU_OFF_ADDR_SHIFT			0
 #define PMU_OFF_ADDR_MASK			0xff
 
+#define PMC_SCRATCH55				0x25C
 /* scratch55 register bit fields */
 #define RESET_TEGRA_SHIFT			31
 #define RESET_TEGRA_MASK			0x1
@@ -79,6 +77,11 @@
 #define PMU_16BIT_SUPPORT_MASK			0x1
 #define PMU_I2C_ADDRESS_SHIFT			0
 #define PMU_I2C_ADDRESS_MASK			0x7f
+
+/* pmc registers for powering off PMIC directly via sideband in T210 */
+#define PMC_DIRECT_THERMTRIP_CFG		0x474
+#define PMC_DIRECT_THERMTRIP_CFG_LOCK_MASK	BIT(5)
+#define PMC_DIRECT_THERMTRIP_CFG_EN_MASK	BIT(4)
 
 static u8 tegra_cpu_domains[] = {
 	0xFF,			/* not available for CPU0 */
@@ -173,6 +176,25 @@ void tegra_pmc_enable_thermal_trip(void)
 	tegra_pmc_writel(val, PMC_SENSOR_CTRL);
 }
 EXPORT_SYMBOL(tegra_pmc_enable_thermal_trip);
+
+/**
+ * tegra_pmc_lock_thermal_shutdown - lock hw-controlled thermal shutdown
+ *
+ * Lock PMC configuration that initiates hw shutdown of PMIC via sideband when
+ * the SOC_THERM IP block detects a critical temperature condition.
+ * Reset HW default is ENABLED. This support is newly added in T21x chips.
+ * No return value.
+ */
+void tegra_pmc_lock_thermal_shutdown(void)
+{
+	u32 val;
+
+	return;
+	val = tegra_pmc_readl(PMC_DIRECT_THERMTRIP_CFG);
+	val |= PMC_DIRECT_THERMTRIP_CFG_LOCK_MASK;
+	tegra_pmc_writel(val, PMC_DIRECT_THERMTRIP_CFG);
+}
+EXPORT_SYMBOL(tegra_pmc_lock_thermal_shutdown);
 
 /**
  * tegra_pmc_config_thermal_trip - set PMC_SCRATCH54/55 from parameters

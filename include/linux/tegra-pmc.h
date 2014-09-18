@@ -107,6 +107,7 @@ struct pmc_pm_data *tegra_get_pm_data(void);
 extern void tegra_pmc_config_thermal_trip(struct tegra_thermtrip_pmic_data *data);
 
 extern void tegra_pmc_enable_thermal_trip(void);
+extern void tegra_pmc_lock_thermal_shutdown(void);
 
 enum pwrdet_bit {
 	SPI_HV_PWR_DET = 23,
