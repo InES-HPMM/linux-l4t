@@ -178,6 +178,7 @@ static int ads1015_read_raw(struct iio_dev *iodev,
 	struct ads1015 *adc = iio_priv(iodev);
 	int ret = 0;
 	u16 reg_val = 0;
+	int rval;
 
 	if (mask != IIO_CHAN_INFO_RAW) {
 		dev_err(adc->dev, "Invalid mask 0x%08lx\n", mask);
@@ -198,7 +199,8 @@ static int ads1015_read_raw(struct iio_dev *iodev,
 			ADS1015_CONVERSION_REG, ret);
 		goto done;
 	}
-	*val = (reg_val >> 4);
+	rval = (s16)reg_val;
+	*val = (rval >> 4);
 done:
 	mutex_unlock(&iodev->mlock);
 	if (!ret)
