@@ -41,6 +41,8 @@
 #define MMC_MASK_HS400		0x40
 
 struct tegra_sdhci_platform_data {
+	bool pwrdet_support;
+	int pwrdet_bit;
 	int cd_gpio;
 	int wp_gpio;
 	int power_gpio;
