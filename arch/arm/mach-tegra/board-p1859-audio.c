@@ -197,8 +197,6 @@ static const struct snd_soc_dapm_route tegra_e1860_a0x_audio_map[] = {
 	{"x RLINEIN",	NULL,	"LineIn-x"},
 	{"Spdif-out",	NULL,	"z OUT"},
 	{"z IN",	NULL,	"Spdif-in"},
-	{"BT-out",	NULL,	"b OUT"},
-	{"b IN",	NULL,	"BT-in"},
 };
 
 static const struct snd_soc_dapm_route tegra_e1860_b00_audio_map[] = {
@@ -223,6 +221,8 @@ static const struct snd_soc_dapm_route tegra_e1860_b00_audio_map[] = {
 	{"y ADC2IN",	NULL,	"LineIn-y"},
 	{"Spdif-out",	NULL,	"z OUT"},
 	{"z IN",	NULL,	"Spdif-in"},
+	{"BT-out",	NULL,	"b OUT"},
+	{"b IN",	NULL,	"BT-in"},
 };
 
 static const struct snd_soc_dapm_route tegra_voice_call_audio_map[] = {
@@ -284,7 +284,7 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
 	.dai_config[2] = {
 		.link_name = "spdif-playback",
 		.cpu_name = "tegra30-spdif",
-		.codec_name = "spdif-dit",
+		.codec_name = "spdif-dit.0",
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "SPDIF",
 		.codec_prefix = "z",
@@ -373,7 +373,7 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 	.dai_config[2] = {
 		.link_name = "spdif-playback",
 		.cpu_name = "tegra30-spdif",
-		.codec_name = "spdif-dit",
+		.codec_name = "spdif-dit.0",
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "SPDIF",
 		.codec_prefix = "z",
@@ -386,7 +386,7 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 	.dai_config[3] = {
 		.link_name = "bt-playback",
 		.cpu_name = "tegra30-i2s.2",
-		.codec_name = "spdif-dit",
+		.codec_name = "spdif-dit.1",
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "I2S2",
 		.codec_prefix = "b",
@@ -470,7 +470,7 @@ static struct tegra_vcm30t124_platform_data tegra_voice_call_pdata = {
 	.dai_config[1] = {
 		.link_name = "vc-playback",
 		.cpu_name = "tegra30-i2s.4",
-		.codec_name = "spdif-dit",
+		.codec_name = "spdif-dit.0",
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "I2S4",
 		.codec_prefix = "y",
@@ -500,16 +500,22 @@ static struct platform_device tegra_snd_p1859 = {
 	.id = 0,
 };
 
-static struct platform_device tegra_spdif_dit = {
-	.name = "spdif-dit",
-	.id = -1,
+static struct platform_device tegra_spdif_dit[] = {
+	[0] = {
+		.name = "spdif-dit",
+		.id = 0,
+	},
+	[1] = {
+		.name = "spdif-dit",
+		.id = 1,
+	},
 };
 
 void __init p1859_audio_init(void)
 {
 	int is_e1860_b00 = tegra_is_board(NULL, "61860", NULL, "300", NULL);
 	int modem_id = tegra_get_modem_id();
-	int is_e1892 = 0;
+	int is_e1892 = 0, i;
 	struct tegra_vcm30t124_platform_data *pdata;
 
 	/* check the version of embedded breakout board */
@@ -534,5 +540,6 @@ void __init p1859_audio_init(void)
 
 	/* register the platform device and dummy codec if any */
 	platform_device_register(&tegra_snd_p1859);
-	platform_device_register(&tegra_spdif_dit);
+	for (i = 0; i < ARRAY_SIZE(tegra_spdif_dit); i++)
+		platform_device_register(&tegra_spdif_dit[i]);
 }
