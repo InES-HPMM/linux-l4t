@@ -130,6 +130,11 @@
 		usb_vbus-supply = <&usb0_vbus>;
 	};
 
+	bluedroid_pm {
+		avdd-supply = <&battery_reg>;
+		dvdd-supply = <&max77620_sd3>;
+	};
+
 	regulators {
 		vdd_usb_5v0: regulator@11 {
 			status = "okay";

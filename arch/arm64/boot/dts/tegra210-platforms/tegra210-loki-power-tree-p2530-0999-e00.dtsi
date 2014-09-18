@@ -160,4 +160,9 @@
 		vddio_sdmmc-supply = <&max77620_ldo2>; /* SDMMC1 for SD card on loki */
 		vddio_sd_slot-supply = <&en_vdd_sd>;
 	};
+
+	bluedroid_pm {
+		avdd-supply = <&battery_reg>;
+		dvdd-supply = <&max77620_sd3>;
+	};
 };
