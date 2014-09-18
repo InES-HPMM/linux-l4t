@@ -71,6 +71,7 @@ static void adc_jack_handler(struct work_struct *work)
 		return;
 	}
 
+	adc_val = abs(adc_val);
 	/* Get state from adc value with adc_conditions */
 	for (i = 0; i < data->num_conditions; i++) {
 		struct adc_jack_cond *def = &data->adc_conditions[i];
