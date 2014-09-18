@@ -347,6 +347,17 @@ static int es_dac_enable(struct snd_soc_dapm_widget *w,
 		break;
 	}
 
+	/* writing cached HP_L gain and HPL_CTRL to HW,
+	 * firmware resets this register space to detecting
+	 * wired accessory
+	 */
+	val = snd_soc_read(codec, ES_HP_L_GAIN);
+	snd_soc_write(codec, ES_HP_L_GAIN, 0);
+	snd_soc_write(codec, ES_HP_L_GAIN, val);
+	val = snd_soc_read(codec, ES_HP_L_CTRL);
+	snd_soc_write(codec, ES_HP_L_CTRL, 2);
+	snd_soc_write(codec, ES_HP_L_CTRL, val);
+
 	/* find which DAC is enabled */
 	val = snd_soc_read(codec, ES_DAC_CTRL);
 	snd_soc_update_bits(codec, ES_DAC_DIG_EN, ES_DAC0_LEFT_EN_MASK |
