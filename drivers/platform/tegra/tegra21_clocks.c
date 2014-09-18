@@ -9147,8 +9147,10 @@ struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("vic_shared.emc",	"tegra_vic03",	"emc_shared",  &tegra_clk_emc, NULL, 0, SHARED_BW, 0),
 	SHARED_EMC_CLK("ape.emc", "ape", "emc",  &tegra_clk_emc, NULL, 0, 0, 0),
 
+	DUAL_CBUS_CLK("vic03.cbus",	"tegra_vic03",		"vic03", &tegra_clk_c2bus, "vic03", 0, 0),
 	DUAL_CBUS_CLK("nvjpg.cbus",	"tegra_nvjpg",		"nvjpg", &tegra_clk_c2bus, "nvjpg", 0, 0),
 	DUAL_CBUS_CLK("se.cbus",	"tegra21-se",		NULL,	 &tegra_clk_c2bus, "se",    0, 0),
+	DUAL_CBUS_CLK("tsecb.cbus",	"tegra_tsecb",		"tsecb", &tegra_clk_c2bus, "tsecb", 0, 0),
 	SHARED_LIMIT("cap.c2bus",	"cap.c2bus",		NULL,	 &tegra_clk_c2bus, NULL,    0, SHARED_CEILING),
 	SHARED_LIMIT("cap.vcore.c2bus",	"cap.vcore.c2bus",	NULL,	 &tegra_clk_c2bus, NULL,    0, SHARED_CEILING),
 	SHARED_LIMIT("cap.throttle.c2bus", "cap_throttle",	NULL,	 &tegra_clk_c2bus, NULL,    0, SHARED_CEILING),
@@ -9156,10 +9158,8 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("override.c2bus",	"override.c2bus",	NULL,	 &tegra_clk_c2bus, NULL,    0, SHARED_OVERRIDE),
 	SHARED_LIMIT("edp.c2bus",	"edp.c2bus",            NULL,    &tegra_clk_c2bus, NULL,    0, SHARED_CEILING),
 
-	DUAL_CBUS_CLK("vic03.cbus",	"tegra_vic03",		"vic03", &tegra_clk_c3bus, "vic03", 0, 0),
 	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc", &tegra_clk_c3bus, "msenc", 0, 0),
 	DUAL_CBUS_CLK("nvdec.cbus",	"tegra_nvdec",		"nvdec", &tegra_clk_c3bus, "nvdec", 0, 0),
-	DUAL_CBUS_CLK("tsecb.cbus",	"tegra_tsecb",		"tsecb", &tegra_clk_c3bus, "tsecb", 0, 0),
 	SHARED_LIMIT("vic_floor.cbus",	"tegra_vic03",		"vic_floor",	&tegra_clk_c3bus, NULL, 0, 0),
 	SHARED_LIMIT("cap.c3bus",	"cap.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
 	SHARED_LIMIT("cap.vcore.c3bus",	"cap.vcore.c3bus",	NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
