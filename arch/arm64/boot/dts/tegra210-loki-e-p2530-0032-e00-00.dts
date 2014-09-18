@@ -62,27 +62,6 @@
 		};
 	};
 
-	sdhci@700b0600 {
-		uhs-mask = <0x60>;
-		built-in;
-		status = "okay";
-	};
-
-	sdhci@700b0400 {
-		uhs-mask = <0x1c>;
-		status = "okay";
-	};
-
-	sdhci@700b0200 {
-		uhs-mask = <0x1c>;
-		status = "okay";
-	};
-
-	sdhci@700b0000 {
-		uhs-mask = <0x1c>;
-		status = "okay";
-	};
-
 	i2c@7000c400 {
 		ads1015: ads1015@4a {
 			reg = <0x4a>;
