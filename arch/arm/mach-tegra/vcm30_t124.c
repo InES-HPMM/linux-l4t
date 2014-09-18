@@ -34,7 +34,7 @@
 #include <asm/io.h>
 #include "board.h"
 #include "board-common.h"
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "devices.h"
 #include "gpio-names.h"
 #include "iomap.h"

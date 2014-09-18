@@ -20,7 +20,7 @@
 
 #include <linux/clk.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 
 
 static DEFINE_MUTEX(clock_list_lock);

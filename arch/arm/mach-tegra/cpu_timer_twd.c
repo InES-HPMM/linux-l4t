@@ -32,7 +32,7 @@
 
 #include <mach/irqs.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "iomap.h"
 #include "timer.h"
 

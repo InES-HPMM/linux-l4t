@@ -25,7 +25,7 @@
 
 #include <mach/edp.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "common.h"
 
 static DEFINE_MUTEX(core_edp_lock);

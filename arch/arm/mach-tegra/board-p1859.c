@@ -28,7 +28,7 @@
 
 #include "iomap.h"
 #include "board.h"
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "vcm30_t124.h"
 #include "board-p1859.h"
 #include "devices.h"

@@ -77,7 +77,7 @@
 #include <linux/clk.h>
 #include <linux/tegra_cluster_control.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "iomap.h"
 #include "sleep.h"
 #include "pm.h"

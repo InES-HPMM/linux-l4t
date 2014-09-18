@@ -20,7 +20,7 @@
 #include "mods_internal.h"
 #include <linux/clk.h>
 #include <mach/clk.h>
-#include <../arch/arm/mach-tegra/clock.h>
+#include <linux/platform/tegra/clock.h>
 
 static struct list_head mods_clock_handles;
 static spinlock_t mods_clock_lock;

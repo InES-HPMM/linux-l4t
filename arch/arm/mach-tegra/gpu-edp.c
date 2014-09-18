@@ -31,7 +31,7 @@
 #include <mach/edp.h>
 
 #include <linux/platform/tegra/dvfs.h>
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "common.h"
 
 struct fv_relation {

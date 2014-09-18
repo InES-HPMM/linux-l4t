@@ -55,7 +55,7 @@
 
 #include <trace/events/nvpower.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>
 #include "iomap.h"
 #include "pm.h"

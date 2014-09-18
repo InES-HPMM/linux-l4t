@@ -26,7 +26,7 @@
 #include <linux/tegra-fuse.h>
 #include <linux/delay.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>
 #include "board.h"
 #include <linux/platform/tegra/tegra_cl_dvfs.h>

@@ -27,7 +27,7 @@
 
 #include <mach/kfuse.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "apbio.h"
 #include "iomap.h"
 

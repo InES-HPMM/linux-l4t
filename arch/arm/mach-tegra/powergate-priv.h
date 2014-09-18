@@ -24,7 +24,7 @@
 #include <linux/io.h>
 #include <linux/tegra-powergate.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "iomap.h"
 
 #define MAX_CLK_EN_NUM			15

@@ -38,7 +38,7 @@
 #include <mach/nct.h>
 #include "../../../drivers/platform/tegra/nvdumper/nvdumper-footprint.h"
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "board.h"
 #include <linux/platform/tegra/dvfs.h>
 #include "iomap.h"

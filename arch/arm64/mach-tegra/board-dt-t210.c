@@ -29,7 +29,7 @@
 #include <linux/nvmap.h>
 
 #include "board.h"
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "common.h"
 #include "iomap.h"
 #include "board-common.h"

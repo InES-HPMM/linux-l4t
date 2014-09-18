@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/include/mach/clock.h
+ * include/linux/platform/tegra/clock.h
  *
  * Copyright (C) 2010 Google, Inc.
  *

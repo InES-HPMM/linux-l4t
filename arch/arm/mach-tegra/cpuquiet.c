@@ -37,7 +37,7 @@
 
 #include "pm.h"
 #include "cpu-tegra.h"
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 
 #define INITIAL_STATE		TEGRA_CPQ_DISABLED
 #define UP_DELAY_MS		70

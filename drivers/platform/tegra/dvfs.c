@@ -38,7 +38,7 @@
 #include <linux/of_platform.h>
 
 #include "board.h"
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>
 #include <linux/platform/tegra/tegra_cl_dvfs.h>
 

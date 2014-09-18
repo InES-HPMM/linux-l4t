@@ -28,7 +28,7 @@
 #include <linux/regulator/consumer.h>
 
 #include "tegra_simon.h"
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>
 #include "pm.h"
 #include <linux/platform/tegra/tegra_cl_dvfs.h>

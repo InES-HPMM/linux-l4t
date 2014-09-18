@@ -25,7 +25,7 @@
 #include <linux/pm_qos.h>
 #include <linux/tegra-fuse.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>
 #include "board.h"
 #include <linux/platform/tegra/tegra_cl_dvfs.h>

@@ -32,7 +32,7 @@
 #include "tegra_usb_phy.h"
 #include "../../../arch/arm/mach-tegra/gpio-names.h"
 #include "../../../arch/arm/mach-tegra/fuse.h"
-#include "../../../arch/arm/mach-tegra/clock.h"
+#include <linux/platform/tegra/clock.h>
 
 /* HACK! This needs to come from DT */
 #include "../../../arch/arm/mach-tegra/iomap.h"

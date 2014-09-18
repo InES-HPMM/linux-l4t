@@ -47,6 +47,9 @@ endif
 
 ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
 obj-y += dvfs.o
+obj-$(CONFIG_TEGRA_CLK_FRAMEWORK) += clock.o
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_clocks.o
+obj-$(CONFIG_DEBUG_FS) += clocks_stats.o
 ifeq ($(CONFIG_ARCH_TEGRA_13x_SOC),y)
 obj-y += tegra13_dvfs.o
 else
@@ -76,10 +79,8 @@ CFLAGS_common.o = -Werror -Wno-unused-function
 obj-$(CONFIG_TEGRA_COMMON) += common.o
 obj-$(CONFIG_TEGRA_DEVICES) += devices.o
 obj-y += io.o
-obj-$(CONFIG_TEGRA_CLK_FRAMEWORK) += clock_link.o
 obj-$(CONFIG_TEGRA_CLK_FRAMEWORK) += tegra_clocks_pll.o
 ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_clocks_link.o
 
 # FIXME: Bug 1211919:
 # Remove CFLAGS_tegra21_clocks.o flag when tegra21_clocks.c becomes
@@ -93,9 +94,6 @@ obj-$(CONFIG_COMMON_CLK) += common_clock.o
 obj-$(CONFIG_PM_SLEEP) += tegra-wakeups.o
 
 obj-$(CONFIG_TEGRA3_PM) += pm-t3.o
-ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
-obj-$(CONFIG_DEBUG_FS) += clocks_stats_link.o
-endif
 obj-$(CONFIG_TEGRA_CORE_VOLT_CAP) += tegra_core_volt_cap.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += wakeups-t12x.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += wakeups-t21x.o

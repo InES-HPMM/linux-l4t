@@ -79,7 +79,7 @@
 #include "board-touch-raydium.h"
 #include "board.h"
 #include "board-common.h"
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "board-loki.h"
 #include "devices.h"
 #include "gpio-names.h"

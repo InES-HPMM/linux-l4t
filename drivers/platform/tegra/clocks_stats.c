@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/clocks_stats.c
+ * drivers/platform/tegra/clocks_stats.c
  *
  * Copyright (C) 2012, NVIDIA CORPORATION. All rights reserved.
  *
@@ -20,7 +20,7 @@
 #include <linux/seq_file.h>
 #include <linux/list.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 
 #define STATS_TABLE_MAX_SIZE 64
 

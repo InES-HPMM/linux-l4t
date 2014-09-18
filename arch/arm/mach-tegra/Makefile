@@ -9,7 +9,6 @@ obj-y                                   += common.o
 obj-y                                   += devices.o
 obj-y                                   += board-info.o
 obj-y                                   += io.o
-obj-y                                   += clock.o
 obj-$(CONFIG_HAVE_ARM_TWD)              += cpu_timer_twd.o
 
 obj-$(CONFIG_PM_SLEEP)                  += tegra-wakeups.o
@@ -26,7 +25,6 @@ endif
 else
 obj-y                                   += pm-t3.o
 obj-y                                   += sleep-t30.o
-obj-$(CONFIG_DEBUG_FS)                  += clocks_stats.o
 obj-y                                   += tegra_core_volt_cap.o
 obj-$(CONFIG_TEGRA_USE_SIMON)           += tegra_simon.o
 ifeq ($(CONFIG_ARCH_TEGRA_12x_SOC),y)
@@ -83,7 +81,6 @@ obj-$(CONFIG_HOTPLUG_CPU)               += hotplug.o
 obj-y                                   += flowctrl.o
 obj-$(CONFIG_CPU_IDLE)                  += cpuidle.o
 obj-$(CONFIG_CPU_IDLE)                  += sleep.o
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12_clocks.o
 obj-$(CONFIG_SMP)                       += platsmp.o
 obj-y                                   += reset.o
 obj-y                                   += headsmp.o

@@ -30,7 +30,7 @@
 #include "board.h"
 #include "board-common.h"
 #include "devices.h"
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>
 #include "cpu-tegra.h"
 

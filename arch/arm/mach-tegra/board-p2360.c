@@ -29,7 +29,7 @@
 #include <mach/board_id.h>
 
 #include "board.h"
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "vcm30_t124.h"
 #include "board-p2360.h"
 #include "devices.h"

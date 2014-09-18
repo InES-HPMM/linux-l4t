@@ -38,7 +38,7 @@
 
 #include <tegra/mc.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "tegra_clocks_ops.h"
 #include <linux/platform/tegra/dvfs.h>
 #include "pm.h"

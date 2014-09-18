@@ -22,7 +22,7 @@
 
 #include <mach/hardware.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "tegra_clocks_ops.h"
 
 #define PLL_LOCKDET_DELAY 2	/* Lock detection safety delays */

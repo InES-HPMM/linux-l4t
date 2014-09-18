@@ -30,7 +30,7 @@
 #include <asm/cp15.h>
 
 #include "sleep.h"
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "reset.h"
 
 #define EMC_CFG				0xc

@@ -36,7 +36,7 @@
 #include <trace/events/power.h>
 #include <asm/atomic.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "iomap.h"
 #include "powergate-priv.h"
 #include "common.h"

@@ -23,7 +23,7 @@
 #include <linux/debugfs.h>
 #include <linux/platform/tegra/dvfs.h>
 #include "cpu-tegra.h"
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 
 
 #define WATCHDOG_TIMER_RATE		3900000 /* 1hr5min in msecs */

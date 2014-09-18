@@ -30,7 +30,7 @@
 
 #include <mach/irqs.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include "iomap.h"
 
 #define ACTMON_GLB_STATUS			0x00

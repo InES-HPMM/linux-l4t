@@ -44,7 +44,7 @@
 #include <mach/tegra_emc.h>
 
 #include "board.h"
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>
 #include "iomap.h"
 #include "cpu-tegra.h"

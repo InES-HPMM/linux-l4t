@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra12_clocks.c
+ *drivers/platform/tegra/tegra12_clocks.c
  *
  * Copyright (C) 2011-2014 NVIDIA Corporation. All rights reserved.
  *
@@ -39,7 +39,7 @@
 
 #include <tegra/mc.h>
 
-#include "clock.h"
+#include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>
 #include "iomap.h"
 #include "pm.h"
