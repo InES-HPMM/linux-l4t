@@ -994,9 +994,9 @@ static long mods_krnl_ioctl(struct file  *fp,
 				   MODS_TEGRA_DC_CONFIG_POSSIBLE);
 		break;
 	case MODS_ESC_TEGRA_DC_SETUP_SD:
-		MODS_IOCTL(MODS_ESC_TEGRA_DC_SETUP_SD,
-				   esc_mods_tegra_dc_setup_sd,
-				   MODS_TEGRA_DC_SETUP_SD);
+		MODS_IOCTL_NORETVAL(MODS_ESC_TEGRA_DC_SETUP_SD,
+				    esc_mods_tegra_dc_setup_sd,
+				    MODS_TEGRA_DC_SETUP_SD);
 		break;
 #endif
 #endif
@@ -1012,7 +1012,28 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   MODS_DMABUF_GET_PHYSICAL_ADDRESS);
 		break;
 #endif
+#ifdef CONFIG_TEGRA_NVADSP
+	case MODS_ESC_ADSP_LOAD:
+		MODS_IOCTL_VOID(MODS_ESC_ADSP_LOAD,
+				esc_mods_adsp_load);
+		break;
 
+	case MODS_ESC_ADSP_START:
+		MODS_IOCTL_VOID(MODS_ESC_ADSP_START,
+				esc_mods_adsp_start);
+		break;
+
+	case MODS_ESC_ADSP_STOP:
+		MODS_IOCTL_VOID(MODS_ESC_ADSP_STOP,
+				esc_mods_adsp_stop);
+		break;
+
+	case MODS_ESC_ADSP_RUN_APP:
+		MODS_IOCTL_NORETVAL(MODS_ESC_ADSP_RUN_APP,
+				    esc_mods_adsp_run_app,
+				    MODS_ADSP_RUN_APP_INFO);
+		break;
+#endif
 	default:
 		mods_error_printk("unrecognized ioctl (0x%x)\n", cmd);
 		ret = -EINVAL;

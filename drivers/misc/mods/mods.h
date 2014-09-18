@@ -24,7 +24,7 @@
 
 /* Driver version */
 #define MODS_DRIVER_VERSION_MAJOR 3
-#define MODS_DRIVER_VERSION_MINOR 49
+#define MODS_DRIVER_VERSION_MINOR 50
 #define MODS_DRIVER_VERSION ((MODS_DRIVER_VERSION_MAJOR << 8) | \
 			     ((MODS_DRIVER_VERSION_MINOR/10) << 4) | \
 			     (MODS_DRIVER_VERSION_MINOR%10))
@@ -477,6 +477,16 @@ struct MODS_DMABUF_GET_PHYSICAL_ADDRESS {
 	__u64 segment_size;
 };
 
+#define MODS_ADSP_APP_NAME_SIZE 64
+#define MODS_ADSP_APP_MAX_PARAM 128
+struct MODS_ADSP_RUN_APP_INFO {
+	char app_name[MODS_ADSP_APP_NAME_SIZE];
+	char app_file_name[MODS_ADSP_APP_NAME_SIZE];
+	__u32 argc;
+	__u32 argv[MODS_ADSP_APP_MAX_PARAM];
+	__u32 timeout;
+};
+
 #pragma pack(pop)
 
 /* ************************************************************************* */
@@ -585,5 +595,13 @@ struct MODS_DMABUF_GET_PHYSICAL_ADDRESS {
 #define MODS_ESC_DMABUF_GET_PHYSICAL_ADDRESS	\
 		   _IOWR(MODS_IOC_MAGIC, 49,    \
 			 struct MODS_DMABUF_GET_PHYSICAL_ADDRESS)
+#define MODS_ESC_ADSP_LOAD		\
+		   _IO(MODS_IOC_MAGIC, 50)
+#define MODS_ESC_ADSP_START		\
+		   _IO(MODS_IOC_MAGIC, 51)
+#define MODS_ESC_ADSP_STOP		\
+		   _IO(MODS_IOC_MAGIC, 52)
+#define MODS_ESC_ADSP_RUN_APP		\
+		   _IOW(MODS_IOC_MAGIC, 53, struct MODS_ADSP_RUN_APP_INFO)
 
 #endif /* _MODS_H_  */

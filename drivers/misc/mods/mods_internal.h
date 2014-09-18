@@ -394,6 +394,12 @@ static inline int esc_mods_dmabuf_get_phys_addr(struct file *f,
 				  struct MODS_DMABUF_GET_PHYSICAL_ADDRESS *a)
 				  { return -EINVAL; }
 #endif
+#ifdef CONFIG_TEGRA_NVADSP
+int esc_mods_adsp_load(struct file *pfile);
+int esc_mods_adsp_start(struct file *pfile);
+int esc_mods_adsp_stop(struct file *pfile);
+int esc_mods_adsp_run_app(struct file *pfile, struct MODS_ADSP_RUN_APP_INFO *p);
+#endif
 #endif
 
 #ifdef CONFIG_DEBUG_FS
