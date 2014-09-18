@@ -395,30 +395,44 @@ static int max77620_regulator_set_ramp_delay(struct regulator_dev *rdev,
 	int ret, val;
 	int retval;
 
-	if (rinfo->type != MAX77620_REGULATOR_TYPE_SD)
-		return -EINVAL;
-
-	if (ramp_delay <= 13750) {
-		val = 0;
-		retval = 13750;
-	} else if (ramp_delay <= 27500) {
-		val = 1;
-		retval = 27500;
-	} else if (ramp_delay <= 55000) {
-		val = 2;
-		retval = 55000;
+	if (rinfo->type == MAX77620_REGULATOR_TYPE_SD) {
+		if (ramp_delay <= 13750) {
+			val = 0;
+			retval = 13750;
+		} else if (ramp_delay <= 27500) {
+			val = 1;
+			retval = 27500;
+		} else if (ramp_delay <= 55000) {
+			val = 2;
+			retval = 55000;
+		} else {
+			val = 3;
+			retval = 100000;
+		}
+		ret = max77620_reg_update(parent, MAX77620_PWR_SLAVE,
+				rinfo->cfg_addr, MAX77620_SD_SR_MASK,
+				val << MAX77620_SD_SR_SHIFT);
+		if (ret < 0) {
+			dev_err(reg->dev, "Reg 0x%02x update failed: %d\n",
+					rinfo->cfg_addr, ret);
+			return ret;
+		}
 	} else {
-		val = 3;
-		retval = 100000;
-	}
-
-	ret = max77620_reg_update(parent, MAX77620_PWR_SLAVE,
-			rinfo->cfg_addr, MAX77620_SD_SR_MASK,
-			val << MAX77620_SD_SR_SHIFT);
-	if (ret < 0) {
-		dev_err(reg->dev, "Reg 0x%02x update failed: %d\n",
-			rinfo->cfg_addr, ret);
-		return ret;
+		if (ramp_delay <= 5000) {
+			val = 1;
+			retval = 5000;
+		} else {
+			val = 0;
+			retval = 100000;
+		}
+		ret = max77620_reg_update(parent, MAX77620_PWR_SLAVE,
+				rinfo->cfg_addr, MAX77620_LDO_SLEW_RATE_MASK,
+				val);
+		if (ret < 0) {
+			dev_err(reg->dev, "Reg 0x%02x update failed: %d\n",
+					rinfo->cfg_addr, ret);
+			return ret;
+		}
 	}
 	return retval;
 }
@@ -521,6 +535,27 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 				rinfo->cfg_addr, ret);
 			return ret;
 		}
+	} else {
+		int slew_rate;
+		u8 val_u8;
+
+		ret = max77620_reg_read(parent, MAX77620_PWR_SLAVE,
+				rinfo->cfg_addr, &val_u8);
+		if (ret < 0) {
+			dev_err(reg->dev, "Register 0x%02x read failed: %d\n",
+					rinfo->cfg_addr, ret);
+			return ret;
+		}
+		slew_rate = (val_u8) & 0x1;
+		switch (slew_rate) {
+		case 0:
+			slew_rate = 100000;
+			break;
+		case 1:
+			slew_rate = 5000;
+			break;
+		}
+		rinfo->desc.ramp_delay = slew_rate;
 	}
 
 	if ((id == MAX77620_REGULATOR_ID_SD0) && rpdata->en2_ctrl_sd0) {
