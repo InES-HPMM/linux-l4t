@@ -466,7 +466,7 @@ static void tegra_spi_copy_spi_rxbuf_to_client_rxbuf(
 
 		bits_per_word = t->bits_per_word ? t->bits_per_word :
 						tspi->cur_spi->bits_per_word;
-		rx_mask = (1 << bits_per_word) - 1;
+		rx_mask = (1ULL << bits_per_word) - 1;
 		for (count = 0; count < tspi->curr_dma_words; count++) {
 			x = tspi->rx_dma_buf[count];
 			x &= rx_mask;
