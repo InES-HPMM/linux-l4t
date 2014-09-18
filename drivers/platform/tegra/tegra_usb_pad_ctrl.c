@@ -647,7 +647,7 @@ static void get_usb_calib_data(int pad, u32 *hs_curr_level_pad,
 #else
 	pr_info("usb_calib0 = 0x%08x\n", usb_calib0);
 	*hs_curr_level_pad = (usb_calib0 >>
-			((!pad) ? 0 : 15)) & 0x3f;
+			((!pad) ? 0 : (15 + 7 * (pad - 1)))) & 0x3f;
 	*term_range_adj = (usb_calib0 >> 7) & 0xf;
 	*hs_iref_cap = (usb_calib0 >> 13) & 0x3;
 	*rpd_ctl = 0;
