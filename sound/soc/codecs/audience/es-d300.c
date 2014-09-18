@@ -808,7 +808,7 @@ static int es300_codec_enable_slimtx(struct snd_soc_dapm_widget *w,
 	struct escore_priv *escore = snd_soc_codec_get_drvdata(codec);
 	u32  j = 0;
 	int  ret = 0;
-	int dai_id = 0;
+	int dai_id = -1;
 
 	pr_debug("%s: %s %d\n", __func__, w->name, event);
 
@@ -857,7 +857,7 @@ static int es300_codec_enable_slimtx(struct snd_soc_dapm_widget *w,
 			}
 		}
 
-		if (!escore->slim_dai_data[dai_id].ch_act) {
+		if (dai_id >= 0 && !escore->slim_dai_data[dai_id].ch_act) {
 			ret = escore_close_slim_tx(escore->gen0_client,
 					escore->slim_dai_data[dai_id].ch_num,
 					escore->slim_dai_data[dai_id].ch_tot);
@@ -889,7 +889,7 @@ static int es300_codec_enable_slimrx(struct snd_soc_dapm_widget *w,
 	struct escore_priv *escore = snd_soc_codec_get_drvdata(codec);
 	u32  j = 0;
 	int  ret = 0;
-	int dai_id = 0;
+	int dai_id = -1;
 
 	pr_debug(" ==== AIF RX ==== %s: %s %d\n", __func__, w->name, event);
 
@@ -936,7 +936,7 @@ static int es300_codec_enable_slimrx(struct snd_soc_dapm_widget *w,
 				break;
 			}
 		}
-		if (!escore->slim_dai_data[dai_id].ch_act) {
+		if (dai_id >= 0 && !escore->slim_dai_data[dai_id].ch_act) {
 			ret = escore_close_slim_rx(escore->gen0_client,
 					escore->slim_dai_data[dai_id].ch_num,
 					escore->slim_dai_data[dai_id].ch_tot);
@@ -1392,9 +1392,6 @@ static int es300_put_algo_state(struct snd_kcontrol *kcontrol,
 
 	if (value)
 		escore->algo_type = algo_type;
-	else
-		memset(cachedcmd_list[algo_type], 0x0,
-				ES_API_ADDR_MAX * sizeof(struct cachedcmd_t));
 out:
 	return ret;
 }
@@ -1439,16 +1436,18 @@ static int put_input_route_value(struct snd_kcontrol *kcontrol,
 		(struct soc_enum *)kcontrol->private_value;
 	unsigned int reg = e->reg;
 	int mux = ucontrol->value.enumerated.item[0];
-	int rc;
+	int rc = 0;
 
-	cachedcmd_list[escore->algo_type][reg].reg = mux;
 	if (mux)
 		cachedcmd_list[escore->algo_type][reg].refcnt++;
 	else
 		cachedcmd_list[escore->algo_type][reg].refcnt--;
 
-	if (!mux && cachedcmd_list[escore->algo_type][reg].refcnt)
+	if (!mux && (cachedcmd_list[escore->algo_type][reg].refcnt ||
+		    atomic_read(&escore->active_streams)))
 		goto exit;
+
+	cachedcmd_list[escore->algo_type][reg].reg = mux;
 #if (defined(CONFIG_ARCH_OMAP) || defined(CONFIG_ARCH_EXYNOS) || \
 	defined(CONFIG_X86_32) || defined(CONFIG_ARCH_TEGRA))
 	rc = snd_soc_dapm_mux_update_power(widget, kcontrol, mux, e);
@@ -1492,7 +1491,7 @@ static int put_output_route_value(struct snd_kcontrol *kcontrol,
 	struct soc_enum *e =
 		(struct soc_enum *)kcontrol->private_value;
 	unsigned int reg = e->reg;
-	int rc;
+	int rc = 0;
 	int mux = ucontrol->value.enumerated.item[0];
 
 	/* VP CSOUT signals Tx init and VP FEOUT signals Rx init */
@@ -1511,14 +1510,15 @@ static int put_output_route_value(struct snd_kcontrol *kcontrol,
 		pt_copy = 1;
 
 
-	cachedcmd_list[escore->algo_type][reg].reg = mux;
 	if (mux)
 		cachedcmd_list[escore->algo_type][reg].refcnt++;
 	else
 		cachedcmd_list[escore->algo_type][reg].refcnt--;
 
-	if (!mux && cachedcmd_list[escore->algo_type][reg].refcnt)
+	if (!mux && (cachedcmd_list[escore->algo_type][reg].refcnt ||
+		    atomic_read(&escore->active_streams)))
 		goto exit;
+	cachedcmd_list[escore->algo_type][reg].reg = mux;
 #if (defined(CONFIG_ARCH_OMAP) || defined(CONFIG_ARCH_EXYNOS) || \
 	defined(CONFIG_X86_32) || defined(CONFIG_ARCH_TEGRA))
 	rc = snd_soc_dapm_mux_update_power(widget, kcontrol, mux, e);
