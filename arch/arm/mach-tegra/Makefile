@@ -58,7 +58,6 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += powergate-t12x.o
 
 obj-y                                   += apbio.o
 obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)       += arb_sema.o
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra_emc_therm.o
 
 obj-$(CONFIG_TEGRA_EDP_LIMITS)          += edp.o
 obj-$(CONFIG_TEGRA_GPU_EDP)             += gpu-edp.o
@@ -72,9 +71,6 @@ endif
 obj-$(CONFIG_TEGRA_ACTMON)              += tegra3_actmon.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_emc.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_emc.o
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12_emc.o
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra_emc_dt_parse.o
-obj-y					+= tegra_emc.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= tegra20_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= tegra30_speedo.o
 obj-$(CONFIG_HOTPLUG_CPU)               += hotplug.o

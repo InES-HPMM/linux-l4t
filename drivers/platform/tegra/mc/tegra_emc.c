@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra_emc.c
+ * drivers/platfrom/tegra/mc/tegra_emc.c
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *

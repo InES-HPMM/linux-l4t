@@ -23,7 +23,7 @@
 #include "board.h"
 #include "board-ardbeg.h"
 #include "tegra-board-id.h"
-#include "tegra12_emc.h"
+#include <linux/platform/tegra/tegra12_emc.h>
 #include "devices.h"
 
 static struct tegra12_emc_table norrin_emc_table[] = {

@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra_emc_dt_parse.h
+ * drivers/platform/tegra/mc/tegra_emc_dt_parse.h
  *
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *

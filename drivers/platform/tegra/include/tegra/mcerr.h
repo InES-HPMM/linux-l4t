@@ -30,7 +30,7 @@
 
 /* Pull in chip specific EMC header. */
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
-#include "../../../../arch/arm/mach-tegra/tegra12_emc.h"
+#include <linux/platform/tegra/tegra12_emc.h>
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
 #define MC_ERR_34BIT_PHYS_ADDR
 #elif defined(CONFIG_ARCH_TEGRA_21x_SOC)

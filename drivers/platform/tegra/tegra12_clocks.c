@@ -1,5 +1,5 @@
 /*
- *drivers/platform/tegra/tegra12_clocks.c
+ * drivers/platform/tegra/tegra12_clocks.c
  *
  * Copyright (C) 2011-2014 NVIDIA Corporation. All rights reserved.
  *
@@ -45,7 +45,7 @@
 #include "pm.h"
 #include "sleep.h"
 #include "devices.h"
-#include "tegra12_emc.h"
+#include <linux/platform/tegra/tegra12_emc.h>
 #include <linux/platform/tegra/tegra_cl_dvfs.h>
 #include "cpu-tegra.h"
 

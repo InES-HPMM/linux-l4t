@@ -27,3 +27,12 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += mc-timing-t12x.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += mc-timing-t21x.o
 endif
 obj-${CONFIG_TEGRA_ISOMGR}              += isomgr.o
+
+ifeq ($(CONFIG_TEGRA_MC),y)
+obj-y += tegra_emc.o
+
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_emc.o
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra_emc_dt_parse.o
+obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra_emc_dt_parse.o
+obj-y += tegra_emc_therm.o
+endif

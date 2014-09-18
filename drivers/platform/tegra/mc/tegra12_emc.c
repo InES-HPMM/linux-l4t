@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra12_emc.c
+ * drivers/platform/tegra/tegra12_emc.c
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -36,16 +36,16 @@
 #include <asm/cputime.h>
 
 #include <mach/nct.h>
-#include "../../../drivers/platform/tegra/nvdumper/nvdumper-footprint.h"
+#include "../nvdumper/nvdumper-footprint.h"
 
 #include <linux/platform/tegra/clock.h>
-#include "board.h"
 #include <linux/platform/tegra/dvfs.h>
-#include "iomap.h"
-#include "tegra12_emc.h"
+#include "../../../../arch/arm/mach-tegra/board.h"
+#include "../../../../arch/arm/mach-tegra/iomap.h"
+#include <linux/platform/tegra/tegra12_emc.h>
 #include "tegra_emc_dt_parse.h"
-#include "devices.h"
-#include "common.h"
+#include "../../../../arch/arm/mach-tegra/devices.h"
+#include "../../../../arch/arm/mach-tegra/common.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
 static bool emc_enable = true;

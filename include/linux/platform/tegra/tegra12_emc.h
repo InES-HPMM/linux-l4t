@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra12_emc.h
+ * include/linux/platform/tegra12_emc.h
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *

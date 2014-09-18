@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra_emc_dt_parse.c
+ * drivers/platform/tegra/mc/tegra_emc_dt_parse.c
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -25,7 +25,7 @@
 #include <linux/platform_device.h>
 #include <linux/platform_data/tegra_emc_pdata.h>
 
-#include "common.h"
+#include "../../../../arch/arm/mach-tegra/common.h"
 
 #ifdef CONFIG_OF
 static struct device_node *tegra_emc_ramcode_devnode(
