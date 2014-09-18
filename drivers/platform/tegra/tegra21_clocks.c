@@ -7977,11 +7977,12 @@ static struct clk_mux_sel mux_pllc_pllp_plla1_pllc2_c3_clkm[] = {
 	{ 0, 0},
 };
 
-static struct clk_mux_sel mux_pllc2_c_c3_pllp_plla1_pllc4[] = {
+static struct clk_mux_sel mux_pllc2_c_c3_pllp_clkm_plla1_pllc4[] = {
 	{ .input = &tegra_pll_c2, .value = 1},
 	{ .input = &tegra_pll_c, .value = 2},
 	{ .input = &tegra_pll_c3, .value = 3},
 	{ .input = &tegra_pll_p, .value = 4},
+	{ .input = &tegra_clk_m, .value = 5},
 	{ .input = &tegra_pll_a1, .value = 6},
 	{ .input = &tegra_pll_c4_out0, .value = 7},
 	{ 0, 0},
@@ -9008,7 +9009,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK_SKIP("tsecb", "tsecb",	NULL,	206,	0x6d8,	0x70c,	700000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_SKIP("ispa",	"isp",		"ispa",	23,	0,	0x6f8,	700000000, mux_isp,				PERIPH_ON_APB),
 	PERIPH_CLK_SKIP("ispb",	"isp",		"ispb",	3,	0,	0x6fc,	700000000, mux_isp,				PERIPH_ON_APB),
-	PERIPH_CLK_EX("vi",	"vi",		"vi",	20,	0x148,		700000000, mux_pllc2_c_c3_pllp_plla1_pllc4,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
+	PERIPH_CLK_EX("vi",	"vi",		"vi",	20,	0x148,		700000000, mux_pllc2_c_c3_pllp_clkm_plla1_pllc4,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
 	SUPER_SKIP_CLK("vi_skip", "vi",		"skip",		0x6ec,		   NULL, 0),
 
 	SHARED_CLK("avp.sclk",	"nvavp",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
