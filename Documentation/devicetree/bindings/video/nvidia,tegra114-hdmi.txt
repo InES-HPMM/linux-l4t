@@ -16,7 +16,6 @@ NVIDIA TEGRA114 High Definition Multimedia Interface
  - nvidia,hpd-gpio: specifies a GPIO used for hotplug detection,
    if invalid gpio number is provided driver will imply display is always connceted.
    invalid gpio can be like 0xffffffff mentioned as second entry in this parameter.
- - nvidia,edid: supplies a binary EDID blob
  - nvidia,hotplug-report: With 1, it will have optional hotplug report callback
    which does only set DDC_SDA and DDC_SCL pull downs to be active when hotplug
    is detected, otherwise keep them disabled.
@@ -27,6 +26,9 @@ NVIDIA TEGRA114 High Definition Multimedia Interface
  Required properties
  - name: hdmi-display
  - compatible: Should contain hdmi,display".
+
+ Optional properties:
+ - nvidia,edid: supplies a binary EDID blob
 
  - Child nodes represent tmds configurations, node of modes, output settings,
    smart dimmer settings, color management unit settings.
