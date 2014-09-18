@@ -56,7 +56,7 @@ struct tegra_camera_clk {
 };
 
 struct tegra_camera_ops {
-	int (*clks_init)(struct tegra_camera_dev *cam);
+	int (*clks_init)(struct tegra_camera_dev *cam, int port);
 	void (*clks_deinit)(struct tegra_camera_dev *cam);
 	void (*clks_enable)(struct tegra_camera_dev *cam);
 	void (*clks_disable)(struct tegra_camera_dev *cam);

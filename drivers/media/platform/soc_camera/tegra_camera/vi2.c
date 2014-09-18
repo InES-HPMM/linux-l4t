@@ -344,7 +344,7 @@ static struct tegra_camera_clk vi2_clks1[] = {
 		.use_devname = 1,
 	},
 	{
-		.name = "vi_sensor",
+		.name = "vi_sensor2",
 		.freq = 24000000,
 	},
 	{
@@ -366,12 +366,12 @@ static struct tegra_camera_clk vi2_clks1[] = {
 	},
 	{
 		.name = "cilcd",
-		.freq = 0,
+		.freq = 102000000,
 		.use_devname = 1,
 	},
 	{
 		.name = "cile",
-		.freq = 0,
+		.freq = 102000000,
 		.use_devname = 1,
 	},
 	/* Always put "p11_d" at the end */
@@ -383,23 +383,24 @@ static struct tegra_camera_clk vi2_clks1[] = {
 
 #define MAX_DEVID_LENGTH	16
 
-static int vi2_clks_init(struct tegra_camera_dev *cam)
+static int vi2_clks_init(struct tegra_camera_dev *cam, int port)
 {
 	struct platform_device *pdev = cam->ndev;
 	struct tegra_camera_clk *clks;
 	int i;
 
-	switch (pdev->id) {
-	case 0:
+	switch (port) {
+	case TEGRA_CAMERA_PORT_CSI_A:
 		cam->num_clks = ARRAY_SIZE(vi2_clks0);
 		cam->clks = vi2_clks0;
 		break;
-	case 1:
+	case TEGRA_CAMERA_PORT_CSI_B:
+	case TEGRA_CAMERA_PORT_CSI_C:
 		cam->num_clks = ARRAY_SIZE(vi2_clks1);
 		cam->clks = vi2_clks1;
 		break;
 	default:
-		dev_err(&pdev->dev, "Wrong device ID %d\n", pdev->id);
+		dev_err(&pdev->dev, "Wrong port number %d\n", port);
 		return -ENODEV;
 	}
 

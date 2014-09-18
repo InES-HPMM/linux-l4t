@@ -132,9 +132,13 @@ static const struct soc_mbus_pixelfmt tegra_camera_rgb_formats[] = {
 	},
 };
 
-static int tegra_camera_activate(struct tegra_camera_dev *cam)
+static int tegra_camera_activate(struct tegra_camera_dev *cam,
+				 struct soc_camera_device *icd)
 {
 	struct tegra_camera_ops *cam_ops = cam->ops;
+	struct soc_camera_subdev_desc *ssdesc = &icd->sdesc->subdev_desc;
+	struct tegra_camera_platform_data *pdata = ssdesc->drv_priv;
+	int port = pdata->port;
 	int ret;
 
 	ret = nvhost_module_busy_ext(cam->ndev);
@@ -156,6 +160,10 @@ static int tegra_camera_activate(struct tegra_camera_dev *cam)
 	/* Unpowergate VE */
 	tegra_unpowergate_partition(TEGRA_POWERGATE_VENC);
 
+	/* Init Clocks */
+	if (cam_ops->clks_init)
+		cam_ops->clks_init(cam, port);
+
 	if (cam_ops->clks_enable)
 		cam_ops->clks_enable(cam);
 
@@ -173,6 +181,9 @@ static void tegra_camera_deactivate(struct tegra_camera_dev *cam)
 
 	if (cam_ops->clks_disable)
 		cam_ops->clks_disable(cam);
+
+	if (cam->ops->clks_deinit)
+		cam->ops->clks_deinit(cam);
 
 	if (cam_ops->deactivate)
 		cam_ops->deactivate(cam);
@@ -225,7 +236,7 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *cam)
 	if (!retry) {
 		tegra_camera_deactivate(cam);
 		mdelay(5);
-		tegra_camera_activate(cam);
+		tegra_camera_activate(cam, icd);
 		if (cam->active)
 			cam->ops->capture_setup(cam);
 	}
@@ -577,7 +588,7 @@ static int tegra_camera_add_device(struct soc_camera_device *icd)
 	int ret;
 
 	if (!cam->enable_refcnt) {
-		ret = tegra_camera_activate(cam);
+		ret = tegra_camera_activate(cam, icd);
 		if (ret)
 			return ret;
 		cam->num_frames = 0;
@@ -914,16 +925,13 @@ static int tegra_camera_probe(struct platform_device *pdev)
 #endif
 	}
 
-	/* Init Clocks */
-	cam->ops->clks_init(cam);
-
 	/* Init Regulator */
 	cam->reg = devm_regulator_get(&pdev->dev, cam->regulator_name);
 	if (IS_ERR_OR_NULL(cam->reg)) {
 		dev_err(&pdev->dev, "%s: couldn't get regulator %s, err %ld\n",
 			__func__, cam->regulator_name, PTR_ERR(cam->reg));
 		cam->reg = NULL;
-		goto exit_deinit_clk;
+		goto exit;
 	}
 
 	mutex_init(&ndata->lock);
@@ -932,7 +940,7 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	if (err) {
 		dev_err(&pdev->dev, "%s: nvhost get resources failed %d\n",
 				__func__, err);
-		goto exit_deinit_clk;
+		goto exit;
 	}
 
 	/* Init syncpts */
@@ -983,8 +991,6 @@ exit_cleanup_alloc_ctx:
 	vb2_dma_contig_cleanup_ctx(cam->alloc_ctx);
 exit_free_syncpts:
 	cam->ops->free_syncpts(cam);
-exit_deinit_clk:
-	cam->ops->clks_deinit(cam);
 exit:
 	return err;
 }
@@ -1005,9 +1011,6 @@ static int tegra_camera_remove(struct platform_device *pdev)
 
 	if (cam->ops)
 		cam->ops->free_syncpts(cam);
-
-	if (cam->ops)
-		cam->ops->clks_deinit(cam);
 
 	dev_notice(&pdev->dev, "Tegra camera host driver unloaded\n");
 

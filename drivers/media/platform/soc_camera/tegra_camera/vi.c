@@ -302,7 +302,7 @@ static struct tegra_camera_clk vi_clks[] = {
 #endif
 };
 
-static int vi_clks_init(struct tegra_camera_dev *cam)
+static int vi_clks_init(struct tegra_camera_dev *cam, int port)
 {
 	struct platform_device *pdev = cam->ndev;
 	struct tegra_camera_clk *clks;
