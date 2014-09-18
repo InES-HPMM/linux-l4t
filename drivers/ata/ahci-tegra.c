@@ -2178,10 +2178,7 @@ static void tegra_ahci_pad_config(void)
 			CLK_RST_CONTROLLER_PLLE_MISC_0);
 
 	val = clk_readl(CLK_RST_CONTROLLER_PLLE_BASE_0);
-	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA21)
-		val |= PLLE_ENABLE_T210;
-	else
-		val |= PLLE_ENABLE;
+	val |= PLLE_ENABLE;
 	clk_writel(val, CLK_RST_CONTROLLER_PLLE_BASE_0);
 
 }
