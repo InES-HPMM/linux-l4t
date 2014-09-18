@@ -17,6 +17,8 @@
 #ifndef __LINUX_VII2C_H
 #define __LINUX_VII2C_H
 
+#ifdef CONFIG_TEGRA_GRHOST_VII2C
+
 struct platform_device *nvhost_vii2c_open(void);
 void nvhost_vii2c_close(void);
 
@@ -25,5 +27,42 @@ int nvhost_vii2c_end(struct platform_device *pdev);
 int nvhost_vii2c_hw_sync_inc(struct platform_device *pdev, int n);
 int nvhost_vii2c_flush(struct platform_device *pdev);
 int nvhost_vii2c_reset(struct platform_device *pdev);
+
+#else
+
+static inline struct platform_device *nvhost_vii2c_open(void)
+{
+	return NULL;
+}
+
+static inline void nvhost_vii2c_close(void) {}
+
+static inline int nvhost_vii2c_start(struct platform_device *pdev)
+{
+	return -EINVAL;
+}
+
+static inline int nvhost_vii2c_end(struct platform_device *pdev)
+{
+	return -EINVAL;
+}
+
+static inline int nvhost_vii2c_hw_sync_inc(struct platform_device *pdev, int n)
+{
+	return -EINVAL;
+}
+
+static inline int nvhost_vii2c_flush(struct platform_device *pdev)
+{
+	return -EINVAL;
+}
+
+static inline int nvhost_vii2c_reset(struct platform_device *pdev)
+{
+	return -EINVAL;
+}
+
+
+#endif
 
 #endif
