@@ -23,8 +23,8 @@
 #include <../drivers/video/tegra/dc/nvsd.h>
 #include <../arch/arm/mach-tegra/include/mach/dc.h>
 #include "mods_internal.h"
-#include <../drivers/platform/tegra/include/tegra/mc.h>
 
+#ifdef CONFIG_TEGRA_ISOMGR
 static void mods_tegra_dc_set_windowattr_basic(struct tegra_dc_win *win,
 		       const struct MODS_TEGRA_DC_WINDOW *mods_win)
 {
@@ -63,22 +63,18 @@ static void mods_tegra_dc_set_windowattr_basic(struct tegra_dc_win *win,
 		dfixed_trunc(win->h), win->out_x, win->out_y, win->out_w,
 		win->out_h);
 }
+#endif
 
 int esc_mods_tegra_dc_config_possible(struct file *fp,
 				struct MODS_TEGRA_DC_CONFIG_POSSIBLE *args)
 {
+#ifndef CONFIG_TEGRA_ISOMGR
+	return -EINVAL;
+#else
+	int ret;
 	int i;
 	struct tegra_dc *dc = tegra_dc_get_dc(args->head);
 	struct tegra_dc_win *dc_wins[DC_N_WINDOWS];
-#ifndef CONFIG_TEGRA_ISOMGR
-	struct clk *emc_clk = 0;
-	unsigned long max_bandwidth = 0;
-	unsigned long current_emc_freq = 0;
-	unsigned long max_available_bandwidth = 0;
-#else
-	int ret = -EINVAL;
-#endif
-
 	LOG_ENT();
 
 	BUG_ON(args->win_num > DC_N_WINDOWS);
@@ -110,32 +106,8 @@ int esc_mods_tegra_dc_config_possible(struct file *fp,
 		"dc->mode.pclk %u\n",
 		args->head, dc->mode.pclk);
 
-#ifndef CONFIG_TEGRA_ISOMGR
-	max_bandwidth = tegra_dc_get_bandwidth(dc_wins, args->win_num);
-
-	emc_clk = clk_get_sys(NULL, "emc");
-	if (IS_ERR(emc_clk)) {
-		mods_debug_printk(DEBUG_TEGRADC,
-		"esc_mods_tegra_dc_config_possible "
-		"invalid clock specified when fetching EMC clock\n");
-	} else {
-		current_emc_freq = clk_get_rate(emc_clk);
-		current_emc_freq /= 1000;
-		max_available_bandwidth =
-			8 * tegra_emc_freq_req_to_bw(current_emc_freq);
-		max_available_bandwidth = (max_available_bandwidth / 100) * 50;
-	}
-
-	mods_debug_printk(DEBUG_TEGRADC,
-		"esc_mods_tegra_dc_config_possible bandwidth needed = %u,"
-		" bandwidth available = %u\n",
-		max_bandwidth, max_available_bandwidth);
-
-	args->possible = (max_bandwidth <= max_available_bandwidth);
-#else
 	ret = tegra_dc_bandwidth_negotiate_bw(dc, dc_wins, args->win_num);
 	args->possible = (ret == 0);
-#endif
 	for (i = 0; i < args->win_num; i++) {
 		args->windows[i].bandwidth = dc_wins[i]->new_bandwidth;
 		mods_debug_printk(DEBUG_TEGRADC,
@@ -146,6 +118,7 @@ int esc_mods_tegra_dc_config_possible(struct file *fp,
 
 	LOG_EXT();
 	return 0;
+#endif
 }
 
 static struct tegra_dc_sd_settings mods_sd_settings[TEGRA_MAX_DC] = {

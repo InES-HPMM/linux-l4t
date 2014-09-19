@@ -988,11 +988,13 @@ static long mods_krnl_ioctl(struct file  *fp,
 				    MODS_FLUSH_CPU_CACHE_RANGE);
 		break;
 #ifdef CONFIG_TEGRA_DC
+#ifdef CONFIG_TEGRA_ISOMGR
 	case MODS_ESC_TEGRA_DC_CONFIG_POSSIBLE:
 		MODS_IOCTL(MODS_ESC_TEGRA_DC_CONFIG_POSSIBLE,
 				   esc_mods_tegra_dc_config_possible,
 				   MODS_TEGRA_DC_CONFIG_POSSIBLE);
 		break;
+#endif
 	case MODS_ESC_TEGRA_DC_SETUP_SD:
 		MODS_IOCTL(MODS_ESC_TEGRA_DC_SETUP_SD,
 				   esc_mods_tegra_dc_setup_sd,
