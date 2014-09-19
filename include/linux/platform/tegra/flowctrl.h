@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/flowctrl.h
+ * linux/platform/tegra/flowctrl.h
  *
  * functions and macros to control the flowcontroller
  *

@@ -45,7 +45,7 @@
 #include "board-ardbeg.h"
 #include "board-pmu-defines.h"
 #include "devices.h"
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 #include "iomap.h"
 #include "tegra-board-id.h"
 #include "battery-ini-model-data.h"

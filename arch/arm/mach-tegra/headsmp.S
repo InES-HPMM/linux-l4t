@@ -27,10 +27,10 @@
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/memory.h>
 
-#include "flowctrl.h"
+#include <linux/platform/tegra/flowctrl.h>
 #include "iomap.h"
 #include "sleep.h"
-#include "reset.h"
+#include <linux/platform/tegra/reset.h>
 
 #define APB_MISC_GP_HIDREV	0x804
 #define PMC_SCRATCH41	0x140

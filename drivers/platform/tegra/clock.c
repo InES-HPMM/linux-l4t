@@ -47,7 +47,7 @@
 #include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>
 #include "iomap.h"
-#include "cpu-tegra.h"
+#include <linux/platform/tegra/cpu-tegra.h>
 
 /* Global data of Tegra CPU CAR ops */
 struct tegra_cpu_car_ops *tegra_cpu_car_ops;

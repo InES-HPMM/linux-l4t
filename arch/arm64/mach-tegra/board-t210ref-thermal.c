@@ -43,7 +43,7 @@
 #include "pm.h"
 #include <linux/platform/tegra/dvfs.h>
 #include "board.h"
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 #include "tegra-board-id.h"
 #include "board-pmu-defines.h"
 #include "board-common.h"
@@ -52,7 +52,7 @@
 #include "devices.h"
 #include "iomap.h"
 #include <linux/platform/tegra/tegra_cl_dvfs.h>
-#include "cpu-tegra.h"
+#include <linux/platform/tegra/cpu-tegra.h>
 
 static u32 tegra_chip_id;
 

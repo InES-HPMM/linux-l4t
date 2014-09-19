@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/reset.h
+ * include/linux/platform/reset.h
  *
  * CPU reset dispatcher.
  *

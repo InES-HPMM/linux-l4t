@@ -34,7 +34,7 @@
 #include <asm/mach/arch.h>
 
 #include "board.h"
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 #include "iomap.h"
 
 #ifdef CONFIG_USE_OF

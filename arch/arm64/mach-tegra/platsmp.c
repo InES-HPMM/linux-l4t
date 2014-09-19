@@ -26,8 +26,8 @@
 #include <asm/smp_plat.h>
 #include <asm/soc.h>
 
-#include "common.h"
-#include "reset.h"
+#include <linux/platform/tegra/common.h>
+#include <linux/platform/tegra/reset.h>
 #include "pm-soc.h"
 
 static DECLARE_BITMAP(tegra_cpu_power_up_by_fc, CONFIG_NR_CPUS) __read_mostly;

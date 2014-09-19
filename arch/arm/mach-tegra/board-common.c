@@ -32,7 +32,7 @@
 #include "devices.h"
 #include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>
-#include "cpu-tegra.h"
+#include <linux/platform/tegra/cpu-tegra.h>
 
 struct platform_device vibrator_device = {
 	.name = "tegra-vibrator",

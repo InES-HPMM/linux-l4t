@@ -59,7 +59,7 @@
 #include <linux/platform/tegra/dvfs.h>
 #include "iomap.h"
 #include "pm.h"
-#include "reset.h"
+#include <linux/platform/tegra/reset.h>
 #include "sleep.h"
 #include <linux/tegra_ptm.h>
 

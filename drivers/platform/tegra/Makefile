@@ -58,6 +58,24 @@ endif
 obj-$(CONFIG_ARCH_TEGRA_HAS_CL_DVFS) += tegra_cl_dvfs.o
 endif
 
+# FIXME: Bug 1211919:
+# Remove CFLAGS_common.o flag for common.o when common.c
+# becomes stabilized for t210.
+
+ifeq ($(CONFIG_ARCH_TEGRA_21x_SOC),y)
+CFLAGS_common.o = -Werror -Wno-unused-function
+endif
+
+obj-$(CONFIG_TEGRA_COMMON) += common.o
+obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
+obj-y += flowctrl.o
+obj-$(CONFIG_TEGRA3_PM) += pm-t3.o
+obj-$(CONFIG_TEGRA_CLUSTER_CONTROL) += sysfs-cluster.o
+obj-$(CONFIG_TEGRA_HMP_CLUSTER_CONTROL) += sysfs-cluster.o
+ifeq ($(CONFIG_ARM),y)
+obj-y += reset.o
+endif
+
 ifneq ($(CONFIG_ARM64),)
 
 ccflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
@@ -68,15 +86,6 @@ asflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
 
 obj-y += ahb.o
 
-# FIXME: Bug 1211919:
-# Remove CFLAGS_common_link.o flag for common.o when common.c
-# becomes stabilized for t210.
-
-ifeq ($(CONFIG_ARCH_TEGRA_21x_SOC),y)
-CFLAGS_common_link.o = -Werror -Wno-unused-function
-endif
-
-obj-$(CONFIG_TEGRA_COMMON) += common_link.o
 obj-$(CONFIG_TEGRA_DEVICES) += devices.o
 obj-y += io.o
 obj-$(CONFIG_TEGRA_CLK_FRAMEWORK) += tegra_clocks_pll.o
@@ -93,7 +102,6 @@ obj-$(CONFIG_COMMON_CLK) += common_clock.o
 
 obj-$(CONFIG_PM_SLEEP) += tegra-wakeups_link.o
 
-obj-$(CONFIG_TEGRA3_PM) += pm-t3_link.o
 obj-$(CONFIG_TEGRA_CORE_VOLT_CAP) += tegra_core_volt_cap.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += wakeups-t12x_link.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += wakeups-t21x.o
@@ -120,7 +128,6 @@ CFLAGS_tegra21_dvfs.o = -Werror -Wno-unused-function -Wno-unused-variable
 
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra21_dvfs.o
 endif
-obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra_link.o
 
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC)        += tegra13_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += tegra21_speedo.o
@@ -130,10 +137,7 @@ obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra3_actmon.o
 
 obj-$(CONFIG_TEGRA_MC_DOMAINS) += pm_domains.o
 obj-y += bond_out.o
-obj-y += flowctrl_link.o
 obj-$(CONFIG_DEBUG_ICEDCC) += sysfs-dcc.o
-obj-$(CONFIG_TEGRA_CLUSTER_CONTROL) += sysfs-cluster_link.o
-obj-$(CONFIG_TEGRA_HMP_CLUSTER_CONTROL) += sysfs-cluster_link.o
 
 ifeq ($(CONFIG_TEGRA_SOCTHERM),y)
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra_soctherm.o

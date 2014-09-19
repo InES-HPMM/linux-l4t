@@ -26,7 +26,7 @@
 #include "board-ardbeg.h"
 #include "board.h"
 #include "board-panel.h"
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 
 /* --- EDP consumers data --- */
 static unsigned int ov5693_states[] = { 0, 300 };

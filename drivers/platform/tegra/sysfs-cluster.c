@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/sysfs-cluster.c
+ * drivers/platform/tegra/sysfs-cluster.c
  *
  * Copyright (c) 2010-2014, NVIDIA CORPORATION, All rights reserved.
  *

@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/pm-t3.c
+ * drivers/platform/tegra/pm-t3.c
  *
  * Tegra3 SOC-specific power and cluster management
  *

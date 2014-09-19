@@ -22,9 +22,9 @@
 #include <asm/assembler.h>
 #include <asm/memory.h>
 
-#include "flowctrl.h"
+#include <linux/platform/tegra/flowctrl.h>
 #include "iomap.h"
-#include "reset.h"
+#include <linux/platform/tegra/reset.h>
 
 #define PMC_SCRATCH41	0x140
 #define INVALID_HWID	~0

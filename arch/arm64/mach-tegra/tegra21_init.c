@@ -21,11 +21,11 @@
 #include <linux/platform_data/tegra_bpmp.h>
 #include <mach/powergate.h>
 
-#include "reset.h"
+#include <linux/platform/tegra/reset.h>
 #include "apbio.h"
 #include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 #include "devices.h"
 #include "iomap.h"
 

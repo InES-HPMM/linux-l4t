@@ -25,7 +25,7 @@
 #include <linux/platform_device.h>
 #include <linux/platform_data/tegra_emc_pdata.h>
 
-#include "../../../../arch/arm/mach-tegra/common.h"
+#include <linux/platform/tegra/common.h>
 
 #ifdef CONFIG_OF
 static struct device_node *tegra_emc_ramcode_devnode(

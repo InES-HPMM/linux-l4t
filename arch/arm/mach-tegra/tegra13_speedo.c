@@ -29,7 +29,7 @@
 #include <linux/tegra-fuse.h>
 
 #include "iomap.h"
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 
 #define CPU_PROCESS_CORNERS_NUM		2
 #define GPU_PROCESS_CORNERS_NUM		2

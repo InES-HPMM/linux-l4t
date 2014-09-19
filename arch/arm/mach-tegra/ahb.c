@@ -27,7 +27,7 @@
 #include <linux/io.h>
 #include <linux/syscore_ops.h>
 
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 #include "iomap.h"
 
 #define AHB_ARBITRATION_DISABLE		0x00

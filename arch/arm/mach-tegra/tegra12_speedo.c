@@ -29,7 +29,7 @@
 #include <linux/tegra-fuse.h>
 
 #include "iomap.h"
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 
 #define TEGRA124_CPU_SPEEDO 2271 /* FIXME: Get Correct Value */
 

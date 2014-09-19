@@ -41,8 +41,8 @@
 #include "iomap.h"
 
 #include "sleep.h"
-#include "flowctrl.h"
-#include "reset.h"
+#include <linux/platform/tegra/flowctrl.h>
+#include <linux/platform/tegra/reset.h>
 
 #define CLK_RESET_CCLK_BURST		0x20
 #define CLK_RESET_CCLK_DIVIDER		0x24

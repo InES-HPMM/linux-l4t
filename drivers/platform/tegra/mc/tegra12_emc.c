@@ -45,7 +45,7 @@
 #include <linux/platform/tegra/tegra12_emc.h>
 #include "tegra_emc_dt_parse.h"
 #include "../../../../arch/arm/mach-tegra/devices.h"
-#include "../../../../arch/arm/mach-tegra/common.h"
+#include <linux/platform/tegra/common.h>
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
 static bool emc_enable = true;

@@ -74,15 +74,15 @@
 
 #include "board.h"
 #include <linux/platform/tegra/clock.h>
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 #include "iomap.h"
 #include "pm.h"
 #include "pm-soc.h"
-#include "reset.h"
+#include <linux/platform/tegra/reset.h>
 #include "sleep.h"
 #include <linux/platform/tegra/dvfs.h>
-#include "cpu-tegra.h"
-#include "flowctrl.h"
+#include <linux/platform/tegra/cpu-tegra.h>
+#include <linux/platform/tegra/flowctrl.h>
 #include "board.h"
 
 #include "pm-tegra132.h"

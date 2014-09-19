@@ -37,7 +37,7 @@
 #include <mach/edp.h>
 #include <linux/tegra_soctherm.h>
 
-#include "cpu-tegra.h"
+#include <linux/platform/tegra/cpu-tegra.h>
 #include "pm.h"
 #include "tegra-board-id.h"
 #include "board.h"

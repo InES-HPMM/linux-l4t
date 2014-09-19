@@ -30,12 +30,12 @@
 
 #include "pm.h"
 #include "sleep.h"
-#include "common.h"
-#include "flowctrl.h"
+#include <linux/platform/tegra/common.h>
+#include <linux/platform/tegra/flowctrl.h>
 #include "pm-soc.h"
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 #include "iomap.h"
-#include "flowctrl.h"
+#include <linux/platform/tegra/flowctrl.h>
 #include "denver-knobs.h"
 
 #include "pm-tegra132.h"

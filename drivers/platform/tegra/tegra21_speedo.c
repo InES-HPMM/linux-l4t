@@ -29,7 +29,7 @@
 #include <linux/moduleparam.h>
 
 #include "iomap.h"
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 
 #define TEGRA21_CPU_SPEEDO 2275
 #define TEGRA21_GPU_SPEEDO 2275

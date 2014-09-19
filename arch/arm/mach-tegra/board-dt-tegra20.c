@@ -40,7 +40,7 @@
 
 #include "board.h"
 #include "devices.h"
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 #include "iomap.h"
 
 struct of_dev_auxdata tegra20_auxdata_lookup[] __initdata = {

@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/cpu-tegra.h
+ * linux/platform/tegra/cpu-tegra.h
  *
  * Copyright (c) 2011-2014, NVIDIA Corporation. All rights reserved.
  *

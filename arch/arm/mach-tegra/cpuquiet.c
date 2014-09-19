@@ -36,7 +36,7 @@
 #include <linux/debugfs.h>
 
 #include "pm.h"
-#include "cpu-tegra.h"
+#include <linux/platform/tegra/cpu-tegra.h>
 #include <linux/platform/tegra/clock.h>
 
 #define INITIAL_STATE		TEGRA_CPQ_DISABLED

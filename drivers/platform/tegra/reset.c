@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/reset.c
+ * drivers/platform/tegra/reset.c
  *
  * Copyright (C) 2011-2014, NVIDIA Corporation. All rights reserved.
  *
@@ -26,10 +26,10 @@
 
 #include "iomap.h"
 #include "irammap.h"
-#include "reset.h"
+#include <linux/platform/tegra/reset.h>
 #include "sleep.h"
 #include "pm.h"
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 
 #define TEGRA_IRAM_RESET_BASE (TEGRA_IRAM_BASE + \
 				TEGRA_IRAM_RESET_HANDLER_OFFSET)

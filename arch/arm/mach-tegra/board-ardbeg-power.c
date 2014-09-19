@@ -41,7 +41,7 @@
 #include "pm.h"
 #include <linux/platform/tegra/dvfs.h>
 #include "board.h"
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 #include "tegra-board-id.h"
 #include "board-pmu-defines.h"
 #include "board-common.h"

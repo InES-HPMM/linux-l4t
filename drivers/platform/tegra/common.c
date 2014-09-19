@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/common.c
+ * drivers/platform/tegra/common.c
  *
  * Copyright (C) 2010 Google, Inc.
  * Copyright (C) 2010-2014 NVIDIA Corporation. All rights reserved.
@@ -68,12 +68,12 @@
 #include "apbio.h"
 #include "board.h"
 #include <linux/platform/tegra/clock.h>
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 #include <linux/platform/tegra/dvfs.h>
 #include "iomap.h"
 #include "pm.h"
 #include "sleep.h"
-#include "reset.h"
+#include <linux/platform/tegra/reset.h>
 #include "devices.h"
 
 #define MC_SECURITY_CFG2	0x7c

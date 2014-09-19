@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/flowctrl.c
+ * drivers/platform/tegra/flowctrl.c
  *
  * functions and macros to control the flowcontroller
  *
@@ -24,7 +24,7 @@
 
 #include <asm/barrier.h>
 
-#include "flowctrl.h"
+#include <linux/platform/tegra/flowctrl.h>
 #include "iomap.h"
 
 u8 flowctrl_offset_halt_cpu[] = {

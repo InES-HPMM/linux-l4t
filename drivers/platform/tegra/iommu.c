@@ -24,7 +24,7 @@
 
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "../../../arch/arm/mach-tegra/board.h"
-#include "../../../arch/arm/mach-tegra/common.h"
+#include <linux/platform/tegra/common.h>
 
 static struct iommu_linear_map tegra_fb_linear_map[16]; /* Terminated with 0 */
 

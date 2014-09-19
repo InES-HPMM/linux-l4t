@@ -45,7 +45,7 @@
 #include "sleep.h"
 #include "devices.h"
 #include <linux/platform/tegra/tegra_cl_dvfs.h>
-#include "cpu-tegra.h"
+#include <linux/platform/tegra/cpu-tegra.h>
 
 /* FIXME: Disable for initial Si bringup */
 #undef USE_PLLE_SS

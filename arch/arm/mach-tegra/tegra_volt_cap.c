@@ -22,7 +22,7 @@
 #include <linux/slab.h>
 #include <linux/debugfs.h>
 #include <linux/platform/tegra/dvfs.h>
-#include "cpu-tegra.h"
+#include <linux/platform/tegra/cpu-tegra.h>
 #include <linux/platform/tegra/clock.h>
 
 

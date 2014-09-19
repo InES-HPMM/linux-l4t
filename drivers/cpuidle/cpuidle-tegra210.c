@@ -43,7 +43,7 @@
 #include <asm/proc-fns.h>
 #include <asm/psci.h>
 
-#include "../../arch/arm/mach-tegra/flowctrl.h"
+#include <linux/platform/tegra/flowctrl.h>
 #include "cpuidle-tegra210.h"
 
 static const char *driver_name = "tegra210_idle";

@@ -43,7 +43,7 @@
 #include <media/soc_camera_platform.h>
 #include <media/tegra_v4l2_camera.h>
 
-#include "cpu-tegra.h"
+#include <linux/platform/tegra/cpu-tegra.h>
 #include "devices.h"
 #include "board.h"
 #include "board-common.h"

@@ -32,7 +32,7 @@
 
 #include <linux/platform/tegra/dvfs.h>
 #include <linux/platform/tegra/clock.h>
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 
 struct fv_relation {
 	struct mutex lock;

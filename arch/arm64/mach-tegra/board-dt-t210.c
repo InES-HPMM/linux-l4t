@@ -30,7 +30,7 @@
 
 #include "board.h"
 #include <linux/platform/tegra/clock.h>
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 #include "iomap.h"
 #include "board-common.h"
 #include "board-t210.h"

@@ -31,14 +31,14 @@
 #include <asm/smp_scu.h>
 #include <asm/fiq_glue.h>
 
-#include "flowctrl.h"
-#include "reset.h"
+#include <linux/platform/tegra/flowctrl.h>
+#include <linux/platform/tegra/reset.h>
 #include "pm.h"
 #include <linux/platform/tegra/clock.h>
 #include "sleep.h"
-#include "cpu-tegra.h"
+#include <linux/platform/tegra/cpu-tegra.h>
 
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 #include "iomap.h"
 
 bool tegra_all_cpus_booted;

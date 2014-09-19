@@ -32,8 +32,8 @@
 
 #include <linux/platform/tegra/dvfs.h>
 #include <linux/platform/tegra/clock.h>
-#include "cpu-tegra.h"
-#include "common.h"
+#include <linux/platform/tegra/cpu-tegra.h>
+#include <linux/platform/tegra/common.h>
 
 #ifndef CONFIG_CPU_FREQ
 #error "CONFIG_CPU_FREQ is required for EDP"

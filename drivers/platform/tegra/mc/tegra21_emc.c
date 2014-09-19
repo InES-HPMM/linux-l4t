@@ -41,7 +41,7 @@
 #include "iomap.h"
 #include "tegra_emc_dt_parse.h"
 #include "devices.h"
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 #include "../nvdumper/nvdumper-footprint.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE

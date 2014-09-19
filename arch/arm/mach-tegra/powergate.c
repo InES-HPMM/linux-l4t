@@ -39,7 +39,7 @@
 #include <linux/platform/tegra/clock.h>
 #include "iomap.h"
 #include "powergate-priv.h"
-#include "common.h"
+#include <linux/platform/tegra/common.h>
 
 static struct powergate_ops *pg_ops;
 

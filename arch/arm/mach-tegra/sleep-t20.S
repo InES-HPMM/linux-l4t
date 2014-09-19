@@ -33,7 +33,7 @@
 #include <asm/glue-proc.h>
 
 #include "sleep.h"
-#include "flowctrl.h"
+#include <linux/platform/tegra/flowctrl.h>
 
 #define EMC_CFG				0xc
 #define EMC_ADR_CFG			0x10

@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/cpu-tegra.c
+ * drivers/platform/tegra/cpu-tegra.c
  *
  * Copyright (C) 2010 Google, Inc.
  *
@@ -40,7 +40,7 @@
 #include <mach/edp.h>
 
 #include <linux/platform/tegra/clock.h>
-#include "cpu-tegra.h"
+#include <linux/platform/tegra/cpu-tegra.h>
 #include <linux/platform/tegra/dvfs.h>
 #include "pm.h"
 

@@ -33,7 +33,7 @@
 
 #include <asm/cacheflush.h>
 
-#include "common.h" /* tegra_cpu_is_secure */
+#include <linux/platform/tegra/common.h> /* tegra_cpu_is_secure */
 
 #include "denver-knobs.h" /* backdoor detection */
 
