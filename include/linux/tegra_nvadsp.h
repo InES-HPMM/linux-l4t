@@ -186,6 +186,7 @@ void nvadsp_adsp_init(void);
 int __must_check nvadsp_os_load(void);
 int __must_check nvadsp_os_start(void);
 void nvadsp_os_stop(void);
+void nvadsp_os_suspend(void);
 
 /*
  * ADSP OS App

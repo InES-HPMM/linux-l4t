@@ -18,6 +18,7 @@
 
 #include <linux/platform_device.h>
 #include <linux/fs.h>
+#include <linux/platform_device.h>
 #include <linux/miscdevice.h>
 #include <linux/pm.h>
 #include <linux/of.h>
@@ -26,10 +27,14 @@
 #include <linux/moduleparam.h>
 #include <linux/io.h>
 #include <linux/tegra_nvadsp.h>
-#include <linux/miscdevice.h>
+#include <linux/tegra-soc.h>
+#include <linux/pm_runtime.h>
+#include <linux/clk/tegra.h>
+#include <linux/delay.h>
 
 #include "dev.h"
 #include "os.h"
+#include "amc.h"
 #include "ape_actmon.h"
 #include "aram_manager.h"
 
@@ -116,6 +121,7 @@ int nvadsp_amisc_restore(struct platform_device *pdev)
 	return 0;
 }
 
+
 #ifdef CONFIG_PM_SLEEP
 static int nvadsp_suspend(struct device *dev)
 {
@@ -129,17 +135,113 @@ static int nvadsp_resume(struct device *dev)
 #endif	/* CONFIG_PM_SLEEP */
 
 #ifdef CONFIG_PM_RUNTIME
-static int nvadsp_rt_suspend(struct device *dev)
+int nvadsp_clocks_enable(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
+	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
+	uint32_t val;
+	int ret;
+
+	drv_data->ape_clk = clk_get_sys(NULL, "ape");
+	if (IS_ERR_OR_NULL(drv_data->ape_clk)) {
+		dev_info(dev, "unable to find ape clock\n");
+		ret = PTR_ERR(drv_data->ape_clk);
+		goto end;
+	}
+	clk_prepare_enable(drv_data->ape_clk);
+	dev_dbg(dev, "ape clock enabled\n");
+
+	drv_data->adsp_clk = clk_get_sys(NULL, "adsp");
+	if (IS_ERR_OR_NULL(drv_data->adsp_clk)) {
+		dev_err(dev, "unable to find adsp clock\n");
+		ret = PTR_ERR(drv_data->adsp_clk);
+		goto end;
+	}
+	clk_prepare_enable(drv_data->adsp_clk);
+	tegra_periph_reset_assert(drv_data->adsp_clk);
+	udelay(10);
+	dev_dbg(dev, "adsp clock enabled and asserted\n");
+
+	drv_data->ape_uart_clk = clk_get_sys("uartape", NULL);
+	if (IS_ERR_OR_NULL(drv_data->ape_uart_clk)) {
+		dev_err(dev, "unable to find uart ape clk\n");
+		ret = PTR_ERR(drv_data->ape_uart_clk);
+		goto end;
+	}
+	clk_prepare_enable(drv_data->ape_uart_clk);
+	clk_set_rate(drv_data->ape_uart_clk, UART_BAUD_RATE * 16);
+	dev_dbg(dev, "uartape clock enabled\n");
+
+	/* Set MAXCLKLATENCY value before ADSP deasserting reset */
+	val = readl(drv_data->base_regs[AMISC] + ADSP_CONFIG);
+	writel(val | MAXCLKLATENCY, drv_data->base_regs[AMISC] + ADSP_CONFIG);
+
+ end:
 	return 0;
 }
 
-static int nvadsp_rt_resume(struct device *dev)
+static int nvadsp_clocks_disable(struct platform_device *pdev)
 {
+	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
+	struct device *dev = &pdev->dev;
+
+	clk_disable_unprepare(drv_data->adsp_clk);
+	clk_disable_unprepare(drv_data->ape_uart_clk);
+	dev_dbg(dev, "adsp & uartape clocks disabled\n");
+
+	clk_disable_unprepare(drv_data->ape_clk);
+	dev_dbg(dev, "ape clock disabled\n");
 	return 0;
 }
 
-static int nvadsp_rt_idle(struct device *dev)
+static int nvadsp_runtime_suspend(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
+	int ret = 0;
+
+	if (!drv_data->adsp_os_loaded) {
+		dev_err(dev, "adsp os is not loaded\n");
+		goto clocks;
+	}
+
+	dev_dbg(dev, "saving amsic\n");
+	nvadsp_amisc_save(pdev);
+
+	dev_dbg(dev, "saving aram\n");
+	nvadsp_aram_save(pdev);
+
+	dev_dbg(dev, "saving amc\n");
+	nvadsp_amc_save(pdev);
+ clocks:
+	dev_dbg(dev, "disabling clocks\n");
+	nvadsp_clocks_disable(pdev);
+	return ret;
+}
+
+static int nvadsp_runtime_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
+	int ret = 0;
+
+	dev_dbg(dev, "enabling clocks\n");
+	nvadsp_clocks_enable(pdev);
+
+	if (!drv_data->adsp_os_loaded) {
+		dev_info(dev, "adsp os is not loaded\n");
+		goto skip;
+	}
+
+	dev_dbg(dev, "restoring ape state\n");
+	nvadsp_amc_restore(pdev);
+	nvadsp_aram_restore(pdev);
+	nvadsp_amisc_restore(pdev);
+ skip:
+	return ret;
+}
+
+static int nvadsp_runtime_idle(struct device *dev)
 {
 	return 0;
 }
@@ -147,8 +249,8 @@ static int nvadsp_rt_idle(struct device *dev)
 
 static const struct dev_pm_ops nvadsp_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(nvadsp_suspend, nvadsp_resume)
-	SET_RUNTIME_PM_OPS(nvadsp_rt_suspend, nvadsp_rt_resume,
-			   nvadsp_rt_idle)
+	SET_RUNTIME_PM_OPS(nvadsp_runtime_suspend, nvadsp_runtime_resume,
+			   nvadsp_runtime_idle)
 };
 
 static int __init nvadsp_probe(struct platform_device *pdev)
@@ -221,6 +323,9 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, drv_data);
+
+	pm_runtime_enable(dev);
+
 	ret = nvadsp_os_probe(pdev);
 	if (ret)
 		goto err;

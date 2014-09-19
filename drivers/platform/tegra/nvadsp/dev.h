@@ -20,11 +20,13 @@
 #define __TEGRA_NVADSP_DEV_H
 
 #include <linux/tegra_nvadsp.h>
+#include <linux/platform_device.h>
 #include <linux/ioport.h>
 #include <linux/debugfs.h>
 
 #include "hwmailbox.h"
 #include "amc.h"
+#include "os.h"
 
 /*
  * Note: These enums should be aligned to the regs mentioned in the
@@ -62,6 +64,8 @@ struct nvadsp_pm_state {
 	u32 aram[AMC_ARAM_WSIZE];
 	uint32_t amc_regs[AMC_REGS];
 	uint32_t amisc_regs[AMISC_REGS];
+	u32 evp[AMC_EVP_WSIZE];
+	void *evp_ptr;
 };
 
 struct nvadsp_drv_data {
@@ -78,8 +82,17 @@ struct nvadsp_drv_data {
 #if CONFIG_DEBUG_FS
 	struct dentry *adsp_debugfs_root;
 #endif
+	struct clk *ape_clk;
+	struct clk *adsp_clk;
+	struct clk *ape_uart_clk;
+
 	struct nvadsp_pm_state state;
+	bool adsp_os_loaded;
 };
+
+#define ADSP_CONFIG	0x04
+#define MAXCLKLATENCY	(3 << 8)
+#define UART_BAUD_RATE	9600
 
 status_t nvadsp_mbox_init(struct platform_device *pdev);
 status_t nvadsp_amc_init(struct platform_device *pdev);

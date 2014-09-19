@@ -27,6 +27,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/firmware.h>
 #include <linux/tegra_nvadsp.h>
+#include <linux/tegra-soc.h>
 #include <linux/elf.h>
 #include <linux/device.h>
 #include <linux/clk.h>
@@ -34,6 +35,7 @@
 #include <linux/irqchip/tegra-agic.h>
 #include <linux/interrupt.h>
 #include <linux/slab.h>
+#include <linux/pm_runtime.h>
 
 #include <asm-generic/uaccess.h>
 
@@ -41,36 +43,6 @@
 #include "os.h"
 #include "dev.h"
 #include "dram_app_mem_manager.h"
-
-#define APE_FPGA_MISC_RST_DEVICES 0x702dc800 /*1882048512*/
-#define APE_RESET (1 << 6)
-
-#define ADSP_SMMU_LOAD_ADDR	0x80300000
-#define ADSP_APP_MEM_SMMU_ADDR	(ADSP_SMMU_LOAD_ADDR + SZ_8M)
-#define ADSP_APP_MEM_SIZE	SZ_8M
-#define ADSP_SMMU_SIZE		SZ_16M
-
-#define AMC_EVP_RESET_VEC_0		0x700
-#define AMC_EVP_UNDEF_VEC_0		0x704
-#define AMC_EVP_SWI_VEC_0		0x708
-#define AMC_EVP_PREFETCH_ABORT_VEC_0	0x70c
-#define AMC_EVP_DATA_ABORT_VEC_0	0x710
-#define AMC_EVP_RSVD_VEC_0		0x714
-#define AMC_EVP_IRQ_VEC_0		0x718
-#define AMC_EVP_FIQ_VEC_0		0x71c
-#define AMC_EVP_RESET_ADDR_0		0x720
-#define AMC_EVP_UNDEF_ADDR_0		0x724
-#define AMC_EVP_SWI_ADDR_0		0x728
-#define AMC_EVP_PREFETCH_ABORT_ADDR_0	0x72c
-#define AMC_EVP_DATA_ABORT_ADDR_0	0x730
-#define AMC_EVP_RSVD_ADDR_0		0x734
-#define AMC_EVP_IRQ_ADDR_0		0x738
-#define AMC_EVP_FIQ_ADDR_0		0x73c
-
-#define AMC_EVP_SIZE (AMC_EVP_FIQ_ADDR_0 - AMC_EVP_RESET_VEC_0 + 4)
-
-#define ADSP_CONFIG	0x04
-#define MAXCLKLATENCY   (3 << 8)
 
 #define NVADSP_ELF "adsp.elf"
 #define NVADSP_FIRMWARE NVADSP_ELF
@@ -138,7 +110,13 @@ struct nvadsp_mappings {
 
 static struct nvadsp_mappings adsp_map[NM_LOAD_MAPPINGS];
 static int map_idx;
-
+static struct nvadsp_mbox adsp_com_mbox;
+#ifdef CONFIG_TEGRA_ADSP_DFS
+static bool is_dfs_initialized;
+#endif
+#ifdef CONFIG_TEGRA_ADSP_ACTMON
+static bool is_actmon_initialized;
+#endif
 
 DECLARE_COMPLETION(entered_wfe);
 #ifdef CONFIG_DEBUG_FS
@@ -501,6 +479,7 @@ static void copy_io_in_l(void *to, const void *from, int sz)
 static int nvadsp_os_elf_load(const struct firmware *fw)
 {
 	struct device *dev = &priv.pdev->dev;
+	struct nvadsp_drv_data *drv_data = platform_get_drvdata(priv.pdev);
 	struct elf32_hdr *ehdr;
 	struct elf32_phdr *phdr;
 	int i, ret = 0;
@@ -548,12 +527,12 @@ static int nvadsp_os_elf_load(const struct firmware *fw)
 
 		/* put the segment where the remote processor expects it */
 		if (filesz) {
-			if (!is_adsp_dram_addr(da))
-				copy_io_in_l(va,
-					elf_data + offset, filesz);
-			else
-				memcpy(va, elf_data + offset,
-							filesz);
+			if (!is_adsp_dram_addr(da)) {
+				drv_data->state.evp_ptr = va;
+				memcpy(drv_data->state.evp,
+				       elf_data + offset, filesz);
+			} else
+				memcpy(va, elf_data + offset, filesz);
 		}
 	}
 
@@ -617,9 +596,10 @@ static void deallocate_memory_for_adsp_os(struct device *dev)
 
 int nvadsp_os_load(void)
 {
+	struct nvadsp_drv_data *drv_data;
 	const struct firmware *fw;
-	int ret;
 	struct device *dev;
+	int ret;
 	void *ptr;
 
 	if (!priv.pdev) {
@@ -629,6 +609,8 @@ int nvadsp_os_load(void)
 	}
 
 	dev = &priv.pdev->dev;
+
+	drv_data = platform_get_drvdata(priv.pdev);
 
 	ret = request_firmware(&fw, NVADSP_FIRMWARE, dev);
 	if (ret < 0) {
@@ -692,62 +674,29 @@ end:
 }
 EXPORT_SYMBOL(nvadsp_os_load);
 
-int nvadsp_os_start(void)
+int __nvadsp_os_start(void)
 {
 	struct nvadsp_drv_data *drv_data;
 	struct device *dev;
-	struct clk *adsp_clk;
-	struct clk *ape_clk;
-	struct clk *ape_uart;
-	int val, ret;
-#ifdef CONFIG_TEGRA_ADSP_DFS
-	static bool is_dfs_initialized;
+#if !CONFIG_SYSTEM_FPGA
+	u32 val;
 #endif
-#ifdef CONFIG_TEGRA_ADSP_ACTMON
-	static bool is_actmon_initialized;
-#endif
-
-
-	if (!priv.pdev) {
-		pr_err("ADSP Driver is not initialized\n");
-		return -EINVAL;
-	}
+	int ret;
 
 	dev = &priv.pdev->dev;
 	drv_data = platform_get_drvdata(priv.pdev);
 
-	/*FIXME:this will be replaced by pm_runtime API */
-	adsp_clk = clk_get_sys(NULL, "adsp");
-	if (IS_ERR_OR_NULL(adsp_clk)) {
-		dev_info(dev, "unable to find adsp clock\n");
-		return PTR_ERR(adsp_clk);
+	dev_info(dev, "Copying EVP...\n");
+	copy_io_in_l(drv_data->state.evp_ptr,
+		     drv_data->state.evp,
+		     AMC_EVP_SIZE);
+
+	dev_info(dev, "Starting ADSP OS...\n");
+	if (drv_data->adsp_clk) {
+		dev_info(dev, "deasserting adsp...\n");
+		tegra_periph_reset_deassert(drv_data->adsp_clk);
+		udelay(200);
 	}
-	clk_prepare_enable(adsp_clk);
-	tegra_periph_reset_assert(adsp_clk);
-	udelay(10);
-
-	val = readl(priv.misc_base + ADSP_CONFIG);
-	writel(val | MAXCLKLATENCY, priv.misc_base + ADSP_CONFIG);
-
-	ape_clk = clk_get_sys(NULL, "ape");
-	if (IS_ERR_OR_NULL(ape_clk)) {
-		dev_info(dev, "unable to find ape clock\n");
-		return PTR_ERR(ape_clk);
-	}
-	clk_prepare_enable(ape_clk);
-
-	/* TODO: enable ape2apb clock */
-	ape_uart = clk_get_sys("uartape", NULL);
-	if (IS_ERR_OR_NULL(ape_uart)) {
-		dev_info(dev, "unable to find uart ape clk\n");
-		return PTR_ERR(ape_uart);
-	}
-
-	clk_prepare_enable(ape_uart);
-	clk_set_rate(ape_uart, UART_BAUD_RATE * 16);
-
-	dev_info(dev, "starting ADSP OS ....\n");
-	tegra_periph_reset_deassert(adsp_clk);
 
 #if !CONFIG_SYSTEM_FPGA
 	writel(APE_RESET, priv.reset_reg);
@@ -773,9 +722,72 @@ int nvadsp_os_start(void)
 	is_actmon_initialized = true;
 #endif
 
-	return ret;
+	drv_data->adsp_os_loaded = true;
+	return 0;
+}
+
+int nvadsp_os_start(void)
+{
+	int ret;
+
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
+		return -EINVAL;
+	}
+
+	ret = pm_runtime_get_sync(&priv.pdev->dev);
+
+	return __nvadsp_os_start();
 }
 EXPORT_SYMBOL(nvadsp_os_start);
+
+static int __nvadsp_os_suspend(void)
+{
+	uint16_t com_mid = ADSP_COM_MBOX_ID;
+	int ret;
+
+#ifdef CONFIG_TEGRA_ADSP_DFS
+	adsp_dfs_core_exit(priv.pdev);
+	is_dfs_initialized = false;
+#endif
+
+#ifdef CONFIG_TEGRA_ADSP_ACTMON
+	ape_actmon_exit(priv.pdev);
+	is_actmon_initialized = false;
+#endif
+
+	ret = nvadsp_mbox_open(&adsp_com_mbox, &com_mid,
+			       "adsp_com_mbox",
+			       NULL, NULL);
+	if (ret) {
+		pr_err("failed to open adsp com mbox\n");
+		goto out;
+	}
+
+	ret = nvadsp_mbox_send(&adsp_com_mbox, ADSP_OS_SUSPEND,
+			       NVADSP_MBOX_SMSG, true, UINT_MAX);
+	if (ret) {
+		pr_err("failed to send with adsp com mbox\n");
+		goto out;
+	}
+
+	/* TODO: remove delay */
+	msleep(300);
+
+	ret = nvadsp_mbox_close(&adsp_com_mbox);
+	if (ret) {
+		pr_err("failed to close adsp com mbox\n");
+		goto out;
+	}
+
+	ret = pm_runtime_put_sync(&priv.pdev->dev);
+	if (ret) {
+		pr_err("failed in pm_runtime_put_sync\n");
+		goto out;
+	}
+ out:
+	return ret;
+}
 
 static void __nvadsp_os_stop(bool reload)
 {
@@ -822,6 +834,19 @@ void nvadsp_os_stop(void)
 	__nvadsp_os_stop(true);
 }
 EXPORT_SYMBOL(nvadsp_os_stop);
+
+void nvadsp_os_suspend(void)
+{
+	/*
+	 * No os suspend/stop on linsim as
+	 * APE can be reset only once.
+	 */
+	if (tegra_platform_is_linsim())
+		return;
+
+	__nvadsp_os_suspend();
+}
+EXPORT_SYMBOL(nvadsp_os_suspend);
 
 static void nvadsp_os_restart(struct work_struct *work)
 {
@@ -880,7 +905,7 @@ static irqreturn_t adsp_wdt_handler(int irq, void *arg)
 #else
 	dev_crit(dev, "ADSP OS Hanged or Crashed!\n");
 #endif
-	return 0;
+	return IRQ_HANDLED;
 }
 
 int nvadsp_os_probe(struct platform_device *pdev)
