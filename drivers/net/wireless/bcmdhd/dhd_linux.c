@@ -2952,6 +2952,8 @@ exit:
 static int
 dhd_dpc_thread(void *data)
 {
+	unsigned long timeout;
+	unsigned int loopcnt;
 	tsk_ctl_t *tsk = (tsk_ctl_t *)data;
 	dhd_info_t *dhd = (dhd_info_t *)tsk->parent;
 
@@ -2986,7 +2988,17 @@ dhd_dpc_thread(void *data)
 			/* Call bus dpc unless it indicated down (then clean stop) */
 			if (dhd->pub.busstate != DHD_BUS_DOWN) {
 				dhd_os_wd_timer_extend(&dhd->pub, TRUE);
+				timeout = jiffies + msecs_to_jiffies(100);
+				loopcnt = 0;
 				while (dhd_bus_dpc(dhd->pub.bus)) {
+					++loopcnt;
+					if (time_after(jiffies, timeout) &&
+						(loopcnt % 1000 == 0)) {
+						DHD_ERROR(("%s is consuming "
+							"too much time. %uth "
+							"iteration\b",
+							__func__, loopcnt));
+					}
 					/* process all data */
 				}
 				dhd_os_wd_timer_extend(&dhd->pub, FALSE);
@@ -4775,10 +4787,10 @@ dhd_bus_start(dhd_pub_t *dhdp)
 		DHD_GENERAL_LOCK(&dhd->pub, flags);
 		dhd->wd_timer_valid = FALSE;
 		DHD_GENERAL_UNLOCK(&dhd->pub, flags);
+		dhd_os_sdunlock(dhdp);
 		del_timer_sync(&dhd->timer);
 
 		DHD_ERROR(("%s Host failed to register for OOB\n", __FUNCTION__));
-		dhd_os_sdunlock(dhdp);
 		DHD_PERIM_UNLOCK(dhdp);
 		DHD_OS_WD_WAKE_UNLOCK(&dhd->pub);
 		return -ENODEV;
@@ -4810,9 +4822,9 @@ dhd_bus_start(dhd_pub_t *dhdp)
 		DHD_GENERAL_LOCK(&dhd->pub, flags);
 		dhd->wd_timer_valid = FALSE;
 		DHD_GENERAL_UNLOCK(&dhd->pub, flags);
+		dhd_os_sdunlock(dhdp);
 		del_timer_sync(&dhd->timer);
 		DHD_ERROR(("%s failed bus is not ready\n", __FUNCTION__));
-		dhd_os_sdunlock(dhdp);
 		DHD_PERIM_UNLOCK(dhdp);
 		DHD_OS_WD_WAKE_UNLOCK(&dhd->pub);
 		return -ENODEV;

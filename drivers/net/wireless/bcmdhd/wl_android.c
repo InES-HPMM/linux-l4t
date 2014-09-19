@@ -96,6 +96,7 @@
 #endif /* WL_SUPPORT_AUTO_CHANNEL */
 
 #define CMD_KEEP_ALIVE		"KEEPALIVE"
+#define CMD_MKEEP_ALIVE		"MKEEP_ALIVE"
 
 #define CMD_SETMIRACAST 	"SETMIRACAST"
 #define CMD_ASSOCRESPIE 	"ASSOCRESPIE"
@@ -1637,6 +1638,10 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		command, priv_cmd.total_len);
 	else if (strnicmp(command, CMD_KEEP_ALIVE, strlen(CMD_KEEP_ALIVE)) == 0) {
 		int skip = strlen(CMD_KEEP_ALIVE) + 1;
+		bytes_written = wl_keep_alive_set(net, command + skip, priv_cmd.total_len - skip);
+	}
+	else if (strnicmp(command, CMD_MKEEP_ALIVE, strlen(CMD_MKEEP_ALIVE)) == 0) {
+		int skip = strlen(CMD_MKEEP_ALIVE) + 1;
 		bytes_written = wl_keep_alive_set(net, command + skip, priv_cmd.total_len - skip);
 	}
 	else if (strnicmp(command, CMD_SETMIRACAST, strlen(CMD_SETMIRACAST)) == 0)
