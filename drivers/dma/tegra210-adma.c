@@ -525,12 +525,6 @@ static void handle_once_dma_done(struct tegra_adma_chan *tdc,
 	}
 	list_add_tail(&sgreq->node, &tdc->free_sg_req);
 
-	/* Do not start ADMA if it is going to be terminate */
-	if (list_empty(&tdc->pending_sg_req) && (!to_terminate)) {
-		clk_disable(tdc->tdma->dma_clk);
-		pm_runtime_put(tdc->tdma->dev);
-	}
-
 	if (to_terminate || list_empty(&tdc->pending_sg_req))
 		return;
 
@@ -641,13 +635,6 @@ static void tegra_adma_issue_pending(struct dma_chan *dc)
 		goto end;
 	}
 
-	pm_runtime_get(tdc->tdma->dev);
-	ret = clk_enable(tdc->tdma->dma_clk);
-	if (ret < 0) {
-		dev_err(tdc2dev(tdc), "clk_enable failed: %d\n", ret);
-		return;
-	}
-
 	if (!tdc->busy) {
 		tdc_start_head_req(tdc);
 
@@ -708,8 +695,6 @@ static void tegra_adma_terminate_all(struct dma_chan *dc)
 				get_current_xferred_count(tdc, sgreq, tc);
 	}
 	tegra_adma_resume(tdc);
-	clk_disable(tdc->tdma->dma_clk);
-	pm_runtime_put(tdc->tdma->dev);
 skip_dma_stop:
 	tegra_adma_abort_all(tdc);
 
