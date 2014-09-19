@@ -180,16 +180,14 @@ static __init int exynos_pm_dt_parse_domains(void)
 		pd->base = of_iomap(np, 0);
 		pd->pd.power_off = exynos_pd_power_off;
 		pd->pd.power_on = exynos_pd_power_on;
-		pd->pd.of_node = np;
 
 		platform_set_drvdata(pdev, pd);
 
 		on = __raw_readl(pd->base + 0x4) & S5P_INT_LOCAL_PWR_EN;
 
 		pm_genpd_init(&pd->pd, NULL, !on);
+		of_genpd_add_provider_simple(np, &pd->pd);
 	}
-
-	bus_register_notifier(&platform_bus_type, &platform_nb);
 
 	return 0;
 }
