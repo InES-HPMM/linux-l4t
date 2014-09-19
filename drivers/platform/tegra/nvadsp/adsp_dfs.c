@@ -397,6 +397,9 @@ int adsp_dfs_core_exit(struct platform_device *pdev)
 		return ret;
 	}
 
+	tegra_unregister_clk_rate_notifier(policy->adsp_clk,
+					   &policy->rate_change_nb);
+
 	clk_put(policy->adsp_clk);
 	dev_info(&pdev->dev, "adsp dfs is exited ....\n");
 
