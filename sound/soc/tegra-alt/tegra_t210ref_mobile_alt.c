@@ -165,7 +165,7 @@ static int tegra_t210ref_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_codec *codec = codec_dai->codec;
 	struct snd_soc_card *card = codec->card;
 	struct tegra_t210ref *machine = snd_soc_card_get_drvdata(card);
-	unsigned int idx =  tegra_machine_get_codec_dai_link_idx("rt5639");
+	unsigned int idx =  tegra_machine_get_codec_dai_link_idx("rt-playback");
 	struct snd_soc_pcm_stream *dai_params;
 	unsigned int fmt;
 	int srate;
