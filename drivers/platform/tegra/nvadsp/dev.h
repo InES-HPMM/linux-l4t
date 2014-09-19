@@ -43,9 +43,25 @@ enum {
 	ADSP_MAX_DRAM_MAP
 };
 
+#define AMISC_REGS	0x2000
+
+#define AMISC_ADSP_L2_REGFILEBASE	0x10
+#define AMISC_SHRD_SMP_STA		0x14
+#define AMISC_SEM_REG_START		0x1c
+#define AMISC_SEM_REG_END		0x44
+#define AMISC_TSC			0x48
+#define AMISC_ACTMON_AVG_CNT		0x81c
+
+#define AMISC_REG_START_OFFSET		0x0
+#define AMISC_REG_MBOX_OFFSET		0x64
+#define ADSP_ACTMON_REG_START_OFFSET	0x800
+#define ADSP_ACTMON_REG_END_OFFSET	0x828
+
+
 struct nvadsp_pm_state {
 	u32 aram[AMC_ARAM_WSIZE];
 	uint32_t amc_regs[AMC_REGS];
+	uint32_t amisc_regs[AMISC_REGS];
 };
 
 struct nvadsp_drv_data {

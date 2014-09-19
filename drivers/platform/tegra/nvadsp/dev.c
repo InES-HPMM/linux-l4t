@@ -43,6 +43,79 @@ static int __init adsp_debug_init(struct nvadsp_drv_data *drv_data)
 }
 #endif /* CONFIG_DEBUG_FS */
 
+static inline bool nvadsp_amsic_skip_reg(u32 offset)
+{
+	if (offset == AMISC_ADSP_L2_REGFILEBASE ||
+	    offset == AMISC_SHRD_SMP_STA ||
+	    (offset >= AMISC_SEM_REG_START && offset <= AMISC_SEM_REG_END) ||
+	    offset == AMISC_TSC ||
+	    offset == AMISC_ACTMON_AVG_CNT) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+int nvadsp_amisc_save(struct platform_device *pdev)
+{
+	struct nvadsp_drv_data *d = platform_get_drvdata(pdev);
+	u32 val, offset;
+	int i = 0;
+
+	offset = AMISC_REG_START_OFFSET;
+	while (offset <= AMISC_REG_MBOX_OFFSET) {
+		if (nvadsp_amsic_skip_reg(offset)) {
+			offset += 4;
+			continue;
+		}
+		val = readl(d->base_regs[AMISC] + offset);
+		d->state.amisc_regs[i++] = val;
+		offset += 4;
+	}
+
+	offset = ADSP_ACTMON_REG_START_OFFSET;
+	while (offset <= ADSP_ACTMON_REG_END_OFFSET) {
+		if (nvadsp_amsic_skip_reg(offset)) {
+			offset += 4;
+			continue;
+		}
+		val = readl(d->base_regs[AMISC] + offset);
+		d->state.amisc_regs[i++] = val;
+		offset += 4;
+	}
+	return 0;
+}
+
+int nvadsp_amisc_restore(struct platform_device *pdev)
+{
+	struct nvadsp_drv_data *d = platform_get_drvdata(pdev);
+	u32 val, offset;
+	int i = 0;
+
+	offset = AMISC_REG_START_OFFSET;
+	while (offset <= AMISC_REG_MBOX_OFFSET) {
+		if (nvadsp_amsic_skip_reg(offset)) {
+			offset += 4;
+			continue;
+		}
+		val = d->state.amisc_regs[i++];
+		writel(val, d->base_regs[AMISC] + offset);
+		offset += 4;
+	}
+
+	offset = ADSP_ACTMON_REG_START_OFFSET;
+	while (offset <= ADSP_ACTMON_REG_END_OFFSET) {
+		if (nvadsp_amsic_skip_reg(offset)) {
+			offset += 4;
+			continue;
+		}
+		val = d->state.amisc_regs[i++];
+		writel(val, d->base_regs[AMISC] + offset);
+		offset += 4;
+	}
+	return 0;
+}
+
 #ifdef CONFIG_PM_SLEEP
 static int nvadsp_suspend(struct device *dev)
 {
@@ -65,6 +138,7 @@ static int nvadsp_rt_resume(struct device *dev)
 {
 	return 0;
 }
+
 static int nvadsp_rt_idle(struct device *dev)
 {
 	return 0;
