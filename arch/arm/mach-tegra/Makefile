@@ -79,7 +79,6 @@ obj-y                                   += headsmp.o
 ifeq ($(CONFIG_TEGRA_CPUQUIET),y)
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += cpuquiet.o
 endif
-obj-$(CONFIG_DEBUG_ICEDCC)              += sysfs-dcc.o
 obj-$(CONFIG_TEGRA_DYNAMIC_PWRDET)      += powerdetect.o
 
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += board-dt-tegra20.o

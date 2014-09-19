@@ -137,7 +137,6 @@ obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra3_actmon.o
 
 obj-$(CONFIG_TEGRA_MC_DOMAINS) += pm_domains.o
 obj-y += bond_out.o
-obj-$(CONFIG_DEBUG_ICEDCC) += sysfs-dcc.o
 
 ifeq ($(CONFIG_TEGRA_SOCTHERM),y)
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC) += tegra_soctherm.o
