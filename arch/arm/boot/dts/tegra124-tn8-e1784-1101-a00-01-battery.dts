@@ -1,6 +1,6 @@
 /* E1784 2GB with Max17048 FG */
 
-#include "tegra124-tn8-e1784-1101-a00.dts"
+#include "tegra124-tn8-e1784-1101-a00-01.dts"
 
 / {
 	nvidia,dtsfilename = __FILE__;
