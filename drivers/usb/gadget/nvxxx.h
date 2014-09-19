@@ -744,6 +744,10 @@ extern int debug_level;
 #define RXDAT_VLD_TIMEOUT_U3_MASK	(0xfffff)
 #define RXDAT_VLD_TIMEOUT_U3		(0x5dc0)
 
+#define SSPX_CORE_CNT0				(0x610)
+#define PING_TBRST_MASK				(0xff)
+#define PING_TBRST(x)				((x) & 0xff)
+
 /* ipfs mmio registers */
 #define XUSB_DEV_CONFIGURATION			(0x180)
 #define  EN_FPCI				(1 << 0)

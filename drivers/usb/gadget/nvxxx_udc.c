@@ -4679,6 +4679,14 @@ static void nvudc_plat_fpci_ipfs_init(struct nv_udc_s *nvudc)
 	iowrite32(reg, nvudc->base + SSPX_CORE_PADCTL4);
 	reg_dump(dev, nvudc->base, SSPX_CORE_PADCTL4);
 
+	/* WAR of Bug 200039349 */
+	/* Ping LFPS TBURST is greater than spec defined value of 200ns */
+	reg = ioread32(nvudc->base + SSPX_CORE_CNT0);
+	reg &= ~PING_TBRST_MASK;
+	reg |= PING_TBRST(0xd);
+	iowrite32(reg, nvudc->base + SSPX_CORE_CNT0);
+	reg_dump(dev, nvudc->base, SSPX_CORE_CNT0);
+
 }
 
 static int nvudc_plat_irqs_init(struct nv_udc_s *nvudc)
