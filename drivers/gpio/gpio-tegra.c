@@ -433,10 +433,10 @@ static int tegra_update_lp1_gpio_wake(struct irq_data *d, bool enable)
 {
 #ifdef CONFIG_PM_SLEEP
 	struct tegra_gpio_bank *bank = irq_data_get_irq_chip_data(d);
-	u8 mask;
-	u8 port_index;
-	u8 pin_index_in_bank;
-	u8 pin_in_port;
+	u32 mask;
+	u32 port_index;
+	u32 pin_index_in_bank;
+	u32 pin_in_port;
 	int gpio = d->hwirq;
 
 	if (gpio < 0)
