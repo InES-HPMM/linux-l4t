@@ -1087,6 +1087,8 @@
 		compatible = "nvidia,tegra210-sdhci";
 		reg = <0x0 0x700b0400 0x0 0x200>;
 		interrupts = < 0 19 0x04 >;
+		pwrdet-support;
+		pwrdet-bit = <13>;
 		status = "disabled";
 	};
 
@@ -1101,6 +1103,8 @@
 		compatible = "nvidia,tegra210-sdhci";
 		reg = <0x0 0x700b0000 0x0 0x200>;
 		interrupts = < 0 14 0x04 >;
+		pwrdet-support;
+		pwrdet-bit = <12>;
 		status = "disabled";
 	};
 
