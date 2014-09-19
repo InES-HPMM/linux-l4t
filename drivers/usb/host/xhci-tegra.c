@@ -194,6 +194,7 @@ struct cfgtbl {
 
 static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra);
 static int tegra_xhci_remove(struct platform_device *pdev);
+static void set_port_cdp(struct tegra_xhci_hcd *tegra, bool enable, int pad);
 static void init_filesystem_firmware_done(const struct firmware *fw,
 					void *context);
 
@@ -2787,7 +2788,6 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 		}
 		tegra_xhci_padctl_portmap_and_caps(tegra);
 		/* release clamps post deassert */
-		tegra->lp0_exit = false;
 	}
 
 	/* Clear FLUSH_ENABLE of MC client */
@@ -3329,7 +3329,9 @@ static int tegra_xhci_bus_resume(struct usb_hcd *hcd)
 {
 	struct tegra_xhci_hcd *tegra = hcd_to_tegra_xhci(hcd);
 	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
-	int err = 0;
+	int usb2_utmi_port_start, usb2_utmi_port_end;
+	int err = 0, pad, port;
+	u32 reg;
 
 	mutex_lock(&tegra->sync_lock);
 
@@ -3349,6 +3351,22 @@ static int tegra_xhci_bus_resume(struct usb_hcd *hcd)
 	if (tegra->usb2_rh_suspend && tegra->usb3_rh_suspend) {
 		if (tegra->ss_pwr_gated && tegra->host_pwr_gated)
 			tegra_xhci_host_partition_elpg_exit(tegra);
+
+		if (tegra->lp0_exit) {
+			usb2_utmi_port_start = XUSB_SS_PORT_COUNT;
+			usb2_utmi_port_end = XUSB_SS_PORT_COUNT
+						+ XUSB_UTMI_COUNT - 1;
+
+			for (port = usb2_utmi_port_start;
+					port <= usb2_utmi_port_end; port++) {
+				reg = xhci_read_portsc(xhci, port);
+				if (!(reg & PORT_CONNECT)) {
+					pad = port - XUSB_SS_PORT_COUNT;
+					set_port_cdp(tegra, true, pad);
+				}
+			}
+			tegra->lp0_exit = false;
+		}
 	}
 
 	 /* handle remote wakeup before resuming bus */
@@ -3377,7 +3395,7 @@ xhci_bus_resume_failed:
 #endif
 
 #ifdef CONFIG_TEGRA_XHCI_ENABLE_CDP_PORT
-void set_port_cdp(struct tegra_xhci_hcd *tegra, bool enable, int pad)
+static void set_port_cdp(struct tegra_xhci_hcd *tegra, bool enable, int pad)
 {
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	void __iomem *bchrg_otgpad_reg =
@@ -3440,7 +3458,7 @@ int tegra_xhci_alloc_dev(struct usb_hcd *hcd, struct usb_device *udev)
 }
 
 #else
-void set_port_cdp(struct tegra_xhci_hcd *tegra, bool enable, int pad)
+static void set_port_cdp(struct tegra_xhci_hcd *tegra, bool enable, int pad)
 {
 	return;
 }
@@ -3640,7 +3658,6 @@ tegra_xhci_resume(struct platform_device *pdev)
 {
 	struct tegra_xhci_hcd *tegra = platform_get_drvdata(pdev);
 	struct xhci_hcd *xhci = tegra->xhci;
-	int pad;
 	int ret;
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
@@ -3676,9 +3693,6 @@ tegra_xhci_resume(struct platform_device *pdev)
 		if (sata_usb_pad_pll_reset_deassert())
 			dev_err(&pdev->dev, "error deassert sata pll\n");
 	}
-
-	for (pad = 0; pad < XUSB_UTMI_COUNT; pad++)
-		set_port_cdp(tegra, true, pad);
 
 	return 0;
 }
