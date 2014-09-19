@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/cpuquiet.c
+ * drivers/cpuquiet/tegra/cpuquiet.c
  *
  * Cpuquiet driver for Tegra CPUs
  *
