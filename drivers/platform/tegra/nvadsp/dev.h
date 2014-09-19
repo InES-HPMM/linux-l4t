@@ -24,6 +24,7 @@
 #include <linux/debugfs.h>
 
 #include "hwmailbox.h"
+#include "amc.h"
 
 /*
  * Note: These enums should be aligned to the regs mentioned in the
@@ -42,6 +43,11 @@ enum {
 	ADSP_MAX_DRAM_MAP
 };
 
+struct nvadsp_pm_state {
+	u32 aram[AMC_ARAM_WSIZE];
+	uint32_t amc_regs[AMC_REGS];
+};
+
 struct nvadsp_drv_data {
 	void __iomem **base_regs;
 	struct resource *dram_region[ADSP_MAX_DRAM_MAP];
@@ -56,10 +62,11 @@ struct nvadsp_drv_data {
 #if CONFIG_DEBUG_FS
 	struct dentry *adsp_debugfs_root;
 #endif
+	struct nvadsp_pm_state state;
 };
 
 status_t nvadsp_mbox_init(struct platform_device *pdev);
-status_t nvadsp_aram_init(struct platform_device *pdev);
+status_t nvadsp_amc_init(struct platform_device *pdev);
 
 #ifdef CONFIG_TEGRA_ADSP_DFS
 void adsp_cpu_set_rate(unsigned long freq);

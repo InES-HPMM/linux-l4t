@@ -35,4 +35,24 @@
 
 #define AMC_ERROR_ADDR_IGNORE		SZ_4K
 
+#define AMC_REGS			0x1000
+
+#define AMC_ARAM_APERTURE_BASE		0x28
+#define AMC_ARAM_APERTURE_DATA_START	0x800
+#define AMC_ARAM_APERTURE_DATA_LEN	0x800 /* 2KB */
+
+#define AMC_ARAM_ALIAS0			0x00400000
+#define AMC_ARAM_ALIAS1			0x00500000
+#define AMC_ARAM_ALIAS2			0x00600000
+#define AMC_ARAM_ALIAS3			0x00700000
+
+#define AMC_ARAM_START	0
+#define AMC_ARAM_SIZE	SZ_64K
+#define AMC_ARAM_WSIZE	(AMC_ARAM_SIZE >> 2)
+
+int nvadsp_aram_save(struct platform_device *pdev);
+int nvadsp_aram_restore(struct platform_device *pdev);
+int nvadsp_amc_save(struct platform_device *pdev);
+int nvadsp_amc_restore(struct platform_device *pdev);
+
 #endif /* __TEGRA_NVADSP_AMC_H */

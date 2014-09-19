@@ -151,7 +151,7 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
-	ret = nvadsp_aram_init(pdev);
+	ret = nvadsp_amc_init(pdev);
 	if (ret)
 		goto err;
 
