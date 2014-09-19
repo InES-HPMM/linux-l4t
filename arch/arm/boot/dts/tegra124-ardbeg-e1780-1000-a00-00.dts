@@ -36,4 +36,9 @@
 			};
 		};
 	};
+	i2c@7000c400 {
+		battery-gauge@0b {
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+		};
+	};
 };

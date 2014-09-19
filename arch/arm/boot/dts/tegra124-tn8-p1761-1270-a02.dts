@@ -93,6 +93,13 @@
 			onsemi,kernel-threshold-soc = <2>;
 			io-channels = <&ina3221x INA3221_CHAN_INDEX(0, CURRENT, NORMAL) &palams_gpadc 0>;
 			io-channel-names = "battery-current", "batt_id";
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+		};
+
+		battery-charger@6b {
+			charger {
+				dt-override-status-odm-data = <0x00C00000 0x00400000>;
+			};
 		};
 	};
 
@@ -122,6 +129,7 @@
 
 		Battery {
 			 thermal-sensors = <&fg_lc709203f>;
+			 dt-override-status-odm-data = <0x00C00000 0x00400000>;
 		};
 	};
 

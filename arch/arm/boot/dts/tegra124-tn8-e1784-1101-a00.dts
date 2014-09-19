@@ -57,6 +57,16 @@
 		iqs253@44 {
 			status = "disabled";
 		};
+
+		battery-gauge@36 {
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+		};
+
+		battery-charger@6b {
+			charger {
+				dt-override-status-odm-data = <0x00C00000 0x00400000>;
+			};
+		};
 	};
 
 	pinmux@70000868 {
@@ -114,7 +124,12 @@
 	thermal-zones {
 		Battery {
 			thermal-sensors = <&fg_lc709203f>;
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
 		};
+	};
+
+	sysedp_batmon_calc {
+		dt-override-status-odm-data = <0x00C00000 0x00400000>;
 	};
 };
 

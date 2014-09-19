@@ -86,5 +86,21 @@
 		compatible = "pwm-backlight";
 		status = "okay";
 	};
+
+	i2c@7000c000 {
+		battery-gauge@36 {
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+		};
+
+		battery-charger@6b {
+			charger {
+				dt-override-status-odm-data = <0x00C00000 0x00400000>;
+			};
+		};
+	};
+
+	sysedp_batmon_calc {
+		dt-override-status-odm-data = <0x00C00000 0x00400000>;
+	};
 };
 

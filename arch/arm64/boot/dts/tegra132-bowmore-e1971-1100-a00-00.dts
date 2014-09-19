@@ -59,6 +59,16 @@
 		pca9546@71 {
 			vcc-supply = <&palmas_smps9>;
 		};
+
+		battery-gauge@0b {
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+		};
+
+		battery-charger@6b {
+			charger {
+				dt-override-status-odm-data = <0x00C00000 0x00400000>;
+			};
+		};
 	};
 
 
@@ -190,6 +200,7 @@
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&fg_lc709203f>;
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
 		};
 	};
 
@@ -246,4 +257,9 @@
 			coeffs = "1 1 2 8 6 -8 -13 -9 -9 -8 -17 -18 -18 -16 2 17 15 27 42 60";
 		};
 	};
+
+	sysedp_batmon_calc {
+		dt-override-status-odm-data = <0x00C00000 0x00400000>;
+	};
+
 };
