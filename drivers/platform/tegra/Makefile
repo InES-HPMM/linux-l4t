@@ -83,6 +83,11 @@ obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra3_actmon.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra3_actmon.o
 obj-$(CONFIG_TEGRA_CPU_VOLT_CAP)	+= tegra_volt_cap.o
 
+ifeq ($(CONFIG_PM_SLEEP),y)
+obj-y += tegra-wakeups.o
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += wakeups-t12x.o
+endif
+
 ifneq ($(CONFIG_ARM64),)
 
 ccflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
@@ -105,9 +110,9 @@ obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra21_clocks.o
 endif
 obj-$(CONFIG_COMMON_CLK) += common_clock.o
 
-obj-$(CONFIG_PM_SLEEP) += tegra-wakeups_link.o
 
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += wakeups-t12x_link.o
+obj-$(CONFIG_TEGRA3_PM) += pm-t3.o
+obj-$(CONFIG_TEGRA_CORE_VOLT_CAP) += tegra_core_volt_cap.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += wakeups-t21x.o
 
 

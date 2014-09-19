@@ -8,7 +8,6 @@ obj-y                                   += devices.o
 obj-y                                   += board-info.o
 obj-$(CONFIG_HAVE_ARM_TWD)              += cpu_timer_twd.o
 
-obj-$(CONFIG_PM_SLEEP)                  += tegra-wakeups.o
 
 ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
 obj-y                                   += common-t2.o
@@ -21,9 +20,6 @@ endif
 else
 obj-y                                   += sleep-t30.o
 obj-$(CONFIG_TEGRA_USE_SIMON)           += tegra_simon.o
-ifeq ($(CONFIG_ARCH_TEGRA_12x_SOC),y)
-obj-$(CONFIG_PM_SLEEP)			+= wakeups-t12x.o
-endif
 
 ifeq ($(CONFIG_CPU_IDLE),y)
 ifeq ($(CONFIG_PM_SLEEP),y)
