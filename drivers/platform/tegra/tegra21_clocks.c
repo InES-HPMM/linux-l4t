@@ -47,8 +47,9 @@
 #include "tegra_cl_dvfs.h"
 #include "cpu-tegra.h"
 
+/* FIXME: Disable for initial Si bringup */
 #undef USE_PLLE_SS
-#define USE_PLLE_SS 1
+#define USE_PLLE_SS 0
 
 #define RST_DEVICES_L			0x004
 #define RST_DEVICES_H			0x008
@@ -504,7 +505,7 @@
 #define PLLE_SS_COEFFICIENTS_MASK	\
 	(PLLE_SS_INCINTRV_MASK | PLLE_SS_INC_MASK | PLLE_SS_MAX_MASK)
 #define PLLE_SS_COEFFICIENTS_VAL	\
-	((0x1F<<PLLE_SS_INCINTRV_SHIFT) | (0x1<<PLLE_SS_INC_SHIFT) | \
+	((0x20<<PLLE_SS_INCINTRV_SHIFT) | (0x1<<PLLE_SS_INC_SHIFT) | \
 	 (0x25<<PLLE_SS_MAX_SHIFT))
 #define PLLE_SS_DISABLE			(PLLE_SS_CNTL_SSC_BYP |\
 	PLLE_SS_CNTL_INTERP_RESET | PLLE_SS_CNTL_BYPASS_SS)
