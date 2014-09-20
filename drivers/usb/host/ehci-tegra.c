@@ -845,7 +845,8 @@ static int tegra_ehci_resume(struct platform_device *pdev)
 	}
 	if (pdata->u_data.host.turn_off_vbus_on_lp0) {
 		tegra_usb_enable_vbus(tegra->phy, true);
-		tegra_ehci_notify_event(tegra, USB_EVENT_ID);
+		if (pdata->port_otg)
+			tegra_ehci_notify_event(tegra, USB_EVENT_ID);
 	}
 	return tegra_usb_phy_power_on(tegra->phy);
 }
