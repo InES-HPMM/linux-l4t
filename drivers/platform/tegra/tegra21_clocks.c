@@ -9852,11 +9852,14 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 		return NULL;
 	}
 	g_vmin_freq = cpu_clk_g->dvfs->freqs[0] / 1000;
-	if (g_vmin_freq <= lp_backup_freq) {
+	if (g_vmin_freq < lp_backup_freq) {
 		WARN(1, "%s: cannot make cpufreq table: LP CPU backup rate"
 			" exceeds G CPU rate at Vmin\n", __func__);
 		return NULL;
 	}
+	/* Avoid duplicate frequency if g_vim_freq is already part of table */
+	if (g_vmin_freq == lp_backup_freq)
+		g_vmin_done = true;
 
 	/* Start with backup frequencies */
 	i = 0;
