@@ -4,15 +4,12 @@ asflags-y				+= -march=armv7-a
 subdir-ccflags-y := -Werror
 subdir-ccflags-y += -I$(srctree)/drivers/platform/tegra/include
 
-obj-y                                   += ahb.o
 obj-y                                   += devices.o
 obj-y                                   += board-info.o
-obj-y                                   += io.o
 obj-$(CONFIG_HAVE_ARM_TWD)              += cpu_timer_twd.o
 
 obj-$(CONFIG_PM_SLEEP)                  += tegra-wakeups.o
 
-obj-$(CONFIG_TEGRA_CPU_VOLT_CAP)	+= tegra_volt_cap.o
 ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
 obj-y                                   += common-t2.o
 obj-y                                   += pm-t2.o
@@ -23,7 +20,6 @@ obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t2.o
 endif
 else
 obj-y                                   += sleep-t30.o
-obj-y                                   += tegra_core_volt_cap.o
 obj-$(CONFIG_TEGRA_USE_SIMON)           += tegra_simon.o
 ifeq ($(CONFIG_ARCH_TEGRA_12x_SOC),y)
 obj-$(CONFIG_PM_SLEEP)			+= wakeups-t12x.o
@@ -66,7 +62,6 @@ obj-y                                   += tegra13_speedo.o
 else
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12_speedo.o
 endif
-obj-$(CONFIG_TEGRA_ACTMON)              += tegra3_actmon.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_emc.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_emc.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= tegra20_speedo.o

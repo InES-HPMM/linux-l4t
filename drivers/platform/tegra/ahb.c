@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/ahb.c
+ * drivers/platform/tegra/ahb.c
  *
  * Copyright (C) 2011 Google, Inc.
  *

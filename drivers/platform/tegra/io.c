@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/io.c
+ * drivers/platform/tegra/io.c
  *
  * Copyright (C) 2010 Google, Inc.
  *

@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra_core_sysfs_limits.h
+ * drivers/platfrom/tegra/tegra_core_sysfs_limits.h
  *
  * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
  *

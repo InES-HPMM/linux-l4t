@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra_volt_cap.c
+ * drivers/platform/tegra/tegra_volt_cap.c
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
