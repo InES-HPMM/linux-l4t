@@ -2586,7 +2586,7 @@ char *sk_get_waiting_task_cmdline(struct sock *sk, char *cmdline)
 	struct pid *pid = NULL;
 	struct fown_struct *fown = NULL;
 	struct file *file;
-	int preempt_count;
+	int preempt_count = 0;
 
 	*program_name = '\0';
 
