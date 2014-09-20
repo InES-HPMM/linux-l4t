@@ -956,10 +956,12 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 #else
 			id_present = (val & USB_ID_STATUS) ? false : true;
 #endif
-			if (id_present)
+			if (id_present &&
+				phy->pdata->u_data.host.remote_wakeup_supported)
 				pmc->pmc_ops->setup_pmc_wake_detect(pmc);
 		} else {
-			pmc->pmc_ops->setup_pmc_wake_detect(pmc);
+			if (phy->pdata->u_data.host.remote_wakeup_supported)
+				pmc->pmc_ops->setup_pmc_wake_detect(pmc);
 		}
 
 		val = readl(base + UTMIP_PMC_WAKEUP0);
