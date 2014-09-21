@@ -4574,10 +4574,12 @@ static int sdhci_tegra_init_pinctrl_info(struct device *dev,
 		if (IS_ERR(tegra_host->schmitt_disable[1]))
 			dev_warn(dev, "Missing clk schmitt disable state\n");
 		for (i = 0; i < 2; i++) {
-			ret = pinctrl_select_state(tegra_host->pinctrl_sdmmc,
+			if (!IS_ERR(tegra_host->schmitt_disable[i])) {
+				ret = pinctrl_select_state(tegra_host->pinctrl_sdmmc,
 						tegra_host->schmitt_disable[i]);
-			if (ret < 0)
-				dev_warn(dev, "setting schmitt state failed\n");
+				if (ret < 0)
+					dev_warn(dev, "setting schmitt state failed\n");
+			}
 		}
 	}
 
