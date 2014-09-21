@@ -582,8 +582,11 @@ out:
 		mutex_unlock(&sbi->cp_mutex);
 		f2fs_msg(sbi->sb, KERN_INFO, "recovery complete");
 	} else if (need_writecp) {
+		struct cp_control cpc = {
+			.reason = CP_SYNC,
+		};
 		mutex_unlock(&sbi->cp_mutex);
-		write_checkpoint(sbi, false);
+		write_checkpoint(sbi, &cpc);
 		f2fs_msg(sbi->sb, KERN_INFO, "recovery complete");
 	} else {
 		mutex_unlock(&sbi->cp_mutex);
