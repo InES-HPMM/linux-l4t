@@ -37,6 +37,9 @@
 #include "therm-monitor.h"
 #include "board-panel.h"
 #include "tegra-of-dev-auxdata.h"
+#include "linux/irqchip/tegra.h"
+
+#define EXTERNAL_PMU_INT_N_WAKE         18
 
 static int is_e1860_b00;
 
@@ -230,6 +233,9 @@ static void __init tegra_p1859_late_init(void)
 
 	isomgr_init();
 	p1859_panel_init();
+
+	/* Enable PMC wake source PWR_INT_N (Jetson TK1 Pro, Switch SW2) */
+	tegra_pm_irq_set_wake(EXTERNAL_PMU_INT_N_WAKE, true);
 }
 
 static void __init tegra_p1859_dt_init(void)
