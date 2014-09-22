@@ -54,6 +54,8 @@
 
 		battery-gauge@55 {
 			status = "okay";
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(V, 3) 0x0>;
 		};
 	};
 
