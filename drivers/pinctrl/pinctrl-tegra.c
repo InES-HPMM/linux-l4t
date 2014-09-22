@@ -955,6 +955,22 @@ static void tegra_pinctrl_default_soc_init(struct tegra_pmx *pmx)
 	}
 }
 
+static void pinctrl_clear_parked_bits(struct tegra_pmx *pmx)
+{
+	int i = 0;
+	const struct tegra_pingroup *g;
+	u32 val;
+
+	for (i = 0; i < pmx->soc->ngroups; ++i) {
+		if (pmx->soc->groups[i].parked_reg >= 0) {
+			g = &pmx->soc->groups[i];
+			val = pmx_readl(pmx, g->parked_bank, g->parked_reg);
+			val &= ~(1 << g->parked_bit);
+			pmx_writel(pmx, val, g->parked_bank, g->parked_reg);
+		}
+	}
+}
+
 int tegra_pinctrl_probe(struct platform_device *pdev,
 			const struct tegra_pinctrl_soc_data *soc_data)
 {
@@ -1048,6 +1064,8 @@ int tegra_pinctrl_probe(struct platform_device *pdev,
 		pmx->regs_size[i] = resource_size(res);
 #endif
 	}
+
+	pinctrl_clear_parked_bits(pmx);
 
 	pmx->pctl = pinctrl_register(&tegra_pinctrl_desc, &pdev->dev, pmx);
 	if (!pmx->pctl) {

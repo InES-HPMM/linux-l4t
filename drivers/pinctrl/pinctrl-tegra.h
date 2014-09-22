@@ -48,6 +48,9 @@ struct tegra_function {
  * @lock_reg:		Lock register offset. -1 if unsupported.
  * @lock_bank:		Lock register bank. 0 if unsupported.
  * @lock_bit:		Lock register bit. 0 if unsupported.
+ * @parked_reg:		Parked register offset. -1 if unsupported.
+ * @parked_bank:	Parked register bank. 0 if unsupported.
+ * @parked_bit:		Parked register bit. 0 if unsupported.
  * @ioreset_reg:	IO reset register offset. -1 if unsupported.
  * @ioreset_bank:	IO reset register bank. 0 if unsupported.
  * @ioreset_bit:	IO reset register bit. 0 if unsupported.
@@ -97,6 +100,7 @@ struct tegra_pingroup {
 	s16 einput_reg;
 	s16 odrain_reg;
 	s16 lock_reg;
+	s16 parked_reg;
 	s16 ioreset_reg;
 	s16 rcv_sel_reg;
 	s16 e_io_hv_reg;
@@ -113,6 +117,7 @@ struct tegra_pingroup {
 	int rcv_sel_bank;
 	int e_io_hv_bank;
 	int lock_bank;
+	int parked_bank;
 	int drv_bank;
 	int drvtype_bank;
 	int mux_bit;
@@ -121,6 +126,7 @@ struct tegra_pingroup {
 	int einput_bit;
 	int odrain_bit;
 	int lock_bit;
+	int parked_bit;
 	int ioreset_bit;
 	int rcv_sel_bit;
 	int e_io_hv_bit;
