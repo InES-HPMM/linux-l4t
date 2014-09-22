@@ -1875,23 +1875,6 @@ static void utmi_phy_pmc_disable(struct tegra_usb_phy *phy)
 		pmc->pmc_ops->powerdown_pmc_wake_detect(pmc);
 	}
 }
-
-static int utmi_phy_is_pmc_wakeup(struct tegra_usb_phy *phy)
-{
-	u32 val;
-	int inst = phy->inst;
-	void __iomem *base = phy->regs;
-	val = tegra_usb_pmc_reg_read(UTMIP_STATUS);
-	if (UTMIP_WALK_PTR_VAL(inst) & val)
-		return 1;
-	else {
-		val = readl(base + UTMIP_PMC_WAKEUP0);
-		val |= EVENT_INT_ENB;
-		writel(val, base + UTMIP_PMC_WAKEUP0);
-		return 0;
-	}
-}
-
 static bool utmi_phy_nv_charger_detect(struct tegra_usb_phy *phy)
 {
 	int status1;
@@ -2610,24 +2593,6 @@ static int uhsic_phy_bus_port_power(struct tegra_usb_phy *phy)
 	return 0;
 }
 
-static int uhsic_phy_is_pmc_wakeup(struct tegra_usb_phy *phy)
-{
-	u32 val;
-	int inst = phy->inst;
-	void __iomem *base = phy->regs;
-
-	val = tegra_usb_pmc_reg_read(UHSIC_STATUS(inst));
-	/* check whether we wake up from the remote resume */
-	if (UHSIC_WALK_PTR_VAL(inst) & val)
-		return 1;
-	else {
-		val = readl(base + UHSIC_PMC_WAKEUP0);
-		val |= EVENT_INT_ENB;
-		writel(val, base + UHSIC_PMC_WAKEUP0);
-		return 0;
-	}
-}
-
 static struct tegra_usb_phy_ops utmi_phy_ops = {
 	.init		= _usb_phy_init,
 	.reset		= usb_phy_reset,
@@ -2648,7 +2613,6 @@ static struct tegra_usb_phy_ops utmi_phy_ops = {
 	.apple_charger_2000ma_detect = utmi_phy_apple_charger_2000ma_detect,
 	.apple_charger_500ma_detect = utmi_phy_apple_charger_500ma_detect,
 	.pmc_disable = utmi_phy_pmc_disable,
-	.is_pmc_wakeup = utmi_phy_is_pmc_wakeup,
 };
 
 static struct tegra_usb_phy_ops uhsic_phy_ops = {
@@ -2661,7 +2625,6 @@ static struct tegra_usb_phy_ops uhsic_phy_ops = {
 	.power_off	= uhsic_phy_power_off,
 	.pre_resume	= uhsic_phy_pre_resume,
 	.port_power = uhsic_phy_bus_port_power,
-	.is_pmc_wakeup = uhsic_phy_is_pmc_wakeup,
 };
 
 static struct tegra_usb_phy_ops *phy_ops[] = {
