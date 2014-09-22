@@ -401,7 +401,7 @@
 	};
 
 	sound_ref {
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(APE) &ape_as>;
+		iommus = <&smmu TEGRA_SWGROUP_APE>;
 	};
 
 	tegra_pwm: pwm@7000a000 {

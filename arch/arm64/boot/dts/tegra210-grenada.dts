@@ -912,6 +912,10 @@
 		compatible = "nvidia,tegra-audio-grenada";
 		status = "disabled";
 		nvidia,model = "tegra-snd-grenada";
+		nvidia,num-amx = <2>;
+		nvidia,num-adx = <2>;
+		nvidia,amx-slot-size = <32 32>;
+		nvidia,adx-slot-size = <32 32>;
 		nvidia,num-codec-link = <7>;
 		nvidia,amx-slot-map = <
 			/* jack 0 */
@@ -1000,13 +1004,18 @@
 		nvidia,xbar = <&tegra_axbar>;
 
 		nvidia,dai-link-1 {
+			link-name = "spdif-dit-0";
 			cpu-dai = <&tegra_i2s1>;
 			codec-dai = <&spdif_dit0>;
 			cpu-dai-name = "I2S1";
 			codec-dai-name = "dit-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
 			format = "i2s";
 			bitclock-slave;
 			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
 			bit-format = "s16_le";
 			bclk_ratio = <0>;
 			srate = <48000>;
@@ -1014,13 +1023,18 @@
 			name-prefix = "x";
 		};
 		nvidia,dai-link-2 {
+			link-name = "spdif-dit-1";
 			cpu-dai = <&tegra_i2s3>;
 			codec-dai = <&spdif_dit1>;
 			cpu-dai-name = "I2S3";
 			codec-dai-name = "dit-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
 			format = "dsp_a";
 			bitclock-slave;
 			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
 			bit-format = "s32_le";
 			bclk_ratio = <0>;
 			srate = <48000>;
@@ -1028,13 +1042,18 @@
 			name-prefix = "y";
 		};
 		nvidia,dai-link-3 {
+			link-name = "spdif-dit-2";
 			cpu-dai = <&tegra_i2s5>;
 			codec-dai = <&spdif_dit2>;
 			cpu-dai-name = "I2S5";
 			codec-dai-name = "dit-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
 			format = "i2s";
 			bitclock-slave;
 			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
 			bit-format = "s16_le";
 			bclk_ratio = <0>;
 			srate = <48000>;
@@ -1042,6 +1061,7 @@
 			name-prefix = "z";
 		};
 		nvidia,dai-link-4 {
+			link-name = "spdif-dit-3";
 			cpu-dai = <&tegra_spdif>;
 			codec-dai = <&spdif_dit3>;
 			cpu-dai-name = "SPDIF1-1";
@@ -1053,6 +1073,7 @@
 			name-prefix = "s";
 		};
 		nvidia,dai-link-5 {
+			link-name = "spdif-dit-4";
 			cpu-dai = <&tegra_dmic1>;
 			codec-dai = <&spdif_dit0>;
 			cpu-dai-name = "DMIC1";
@@ -1064,6 +1085,7 @@
 			name-prefix = "dmic-x";
 		};
 		nvidia,dai-link-6 {
+			link-name = "spdif-dit-5";
 			cpu-dai = <&tegra_dmic2>;
 			codec-dai = <&spdif_dit1>;
 			cpu-dai-name = "DMIC2";
@@ -1075,6 +1097,7 @@
 			name-prefix = "dmic-y";
 		};
 		nvidia,dai-link-7 {
+			link-name = "spdif-dit-6";
 			cpu-dai = <&tegra_dmic3>;
 			codec-dai = <&spdif_dit2>;
 			cpu-dai-name = "DMIC3";

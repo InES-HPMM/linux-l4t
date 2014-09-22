@@ -248,6 +248,7 @@
 			regulator-supplies = "vdd-1v8-audio-hv", "vdd-1v8-audio-hv-bias";
 			vdd-1v8-audio-hv-supply = <&max77620_sd3>;
 			vdd-1v8-audio-hv-bias-supply = <&max77620_sd3>;
+			fsync-width = <31>;
 		};
 
 		i2s@702d1100 {
@@ -257,6 +258,7 @@
 			regulator-supplies = "vdd-1v8-spi-hv", "vdd-1v8-spi-hv-bias";
 			vdd-1v8-spi-hv-supply = <&max77620_sd3>;
 			vdd-1v8-spi-hv-bias-supply = <&max77620_sd3>;
+			fsync-width = <31>;
 		};
 
 		i2s@702d1300 {
@@ -281,6 +283,7 @@
 		nvidia,xbar = <&tegra_axbar>;
 
 		nvidia,dai-link-1 {
+			link-name = "earSmart-playback";
 			cpu-dai = <&tegra_i2s1>;
 			codec-dai = <&earSmart>;
 			cpu-dai-name = "I2S1";
@@ -288,6 +291,8 @@
 			format = "i2s";
 			bitclock-slave;
 			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
 			bit-format = "s16_le";
 			bclk_ratio = <0>;
 			srate = <48000>;
@@ -295,6 +300,7 @@
 			name-prefix = "x";
 		};
 		nvidia,dai-link-2 {
+			link-name = "spdif-playback";
 			cpu-dai = <&tegra_i2s3>;
 			codec-dai = <&spdif_dit1>;
 			cpu-dai-name = "I2S3";
@@ -302,6 +308,8 @@
 			format = "dsp_a";
 			bitclock-slave;
 			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
 			bit-format = "s32_le";
 			bclk_ratio = <0>;
 			srate = <8000>;
@@ -316,6 +324,8 @@
 		nvidia,num-codec-link = <2>;
 		nvidia,num-amx = <2>;
 		nvidia,num-adx = <2>;
+		nvidia,amx-slot-size = <32 32>;
+		nvidia,adx-slot-size = <32 32>;
 		nvidia,addr-max9485 = <0>;
 		nvidia,amx-slot-map = <
 			/* jack 0 */
@@ -409,13 +419,18 @@
 		nvidia,xbar = <&tegra_axbar>;
 
 		nvidia,dai-link-1 {
+			link-name = "ad-playback-x";
 			cpu-dai = <&tegra_i2s1>;
 			codec-dai = <&ad1937x>;
 			cpu-dai-name = "I2S1";
 			codec-dai-name = "ad193x-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
 			format = "dsp_a";
 			bitclock-slave;
 			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
 			bit-format = "s32_le";
 			bclk_ratio = <1>;
 			srate = <48000>;
@@ -423,13 +438,18 @@
 			name-prefix = "x";
 		};
 		nvidia,dai-link-2 {
+			link-name = "ad-playback-y";
 			cpu-dai = <&tegra_i2s2>;
 			codec-dai = <&ad1937y>;
 			cpu-dai-name = "I2S2";
 			codec-dai-name = "ad193x-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
 			format = "dsp_a";
 			bitclock-master;
 			frame-master;
+			bitclock-noninversion;
+			frame-noninversion;
 			bit-format = "s32_le";
 			bclk_ratio = <1>;
 			srate = <48000>;
