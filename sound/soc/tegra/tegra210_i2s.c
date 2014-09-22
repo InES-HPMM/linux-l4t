@@ -767,8 +767,6 @@ static int tegra210_i2s_platform_probe(struct platform_device *pdev)
 		ret = PTR_ERR(i2s->regmap);
 		goto err_pll_a_out0_clk_put;
 	}
-	/* Disable SLCG */
-	regmap_write(i2s->regmap, TEGRA210_I2S_CG, 0);
 	regcache_cache_only(i2s->regmap, true);
 
 	pm_runtime_enable(&pdev->dev);

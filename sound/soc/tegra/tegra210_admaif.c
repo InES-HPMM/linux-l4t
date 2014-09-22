@@ -488,9 +488,6 @@ static int tegra210_admaif_probe(struct platform_device *pdev)
 		ret = PTR_ERR(tegra210_admaif->regmap);
 		goto err_clk_put_admaif;
 	}
-	/* Disable SLCG */
-	regmap_write(tegra210_admaif->regmap,
-			TEGRA210_ADMAIF_GLOBAL_CG_0, 0);
 	regcache_cache_only(tegra210_admaif->regmap, true);
 
 	pm_runtime_enable(&pdev->dev);

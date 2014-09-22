@@ -505,9 +505,6 @@ static int tegra210_sfc_platform_probe(struct platform_device *pdev)
 		ret = PTR_ERR(sfc->regmap);
 		goto err_clk_put;
 	}
-
-	 /* Disable SLGC */
-	regmap_write(sfc->regmap, TEGRA210_SFC_CG, 0);
 	regcache_cache_only(sfc->regmap, true);
 
 	if (of_property_read_u32(pdev->dev.of_node,

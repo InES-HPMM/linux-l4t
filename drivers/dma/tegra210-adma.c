@@ -1297,9 +1297,7 @@ static int tegra_adma_probe(struct platform_device *pdev)
 	tdma->dma_dev.device_control = tegra_adma_device_control;
 	tdma->dma_dev.device_tx_status = tegra_adma_tx_status;
 	tdma->dma_dev.device_issue_pending = tegra_adma_issue_pending;
-
-	/* Disable SLGC and enable global ADMA registers */
-	global_write(tdma, ADMA_GLOBAL_CG, 0);
+	/* Enable global ADMA registers */
 	global_write(tdma, ADMA_GLOBAL_CMD, 1);
 	ret = dma_async_device_register(&tdma->dma_dev);
 	if (ret < 0) {

@@ -575,8 +575,6 @@ static int tegra210_dmic_probe(struct platform_device *pdev)
 		ret = PTR_ERR(dmic->regmap);
 		goto err_free;
 	}
-	/* Disable SLCG */
-	regmap_write(dmic->regmap, TEGRA210_DMIC_CG, 0);
 	regcache_cache_only(dmic->regmap, true);
 
 	pm_runtime_enable(&pdev->dev);
