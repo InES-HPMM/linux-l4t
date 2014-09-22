@@ -108,20 +108,16 @@ static int max77620_wdt_set_timeout(struct watchdog_device *wdt_dev,
 	u8 regval = 0;
 	u8 val = 0;
 
-	switch (timeout) {
-	case 2:
+	if (timeout <= 2)
 		regval = MAX77620_TWD_2s;
-		break;
-	case 16:
+	else if (timeout <= 16)
 		regval = MAX77620_TWD_16s;
-		break;
-	case 64:
+	else if (timeout <= 64)
 		regval = MAX77620_TWD_64s;
-		break;
-	case 128:
+	else if (timeout <= 128)
 		regval = MAX77620_TWD_128s;
-		break;
-	}
+	else
+		return -EINVAL;
 
 	if (wdt->otp_wdtt) {
 		/* if OTP_WDTT = 1, TWD can be changed when WDTEN = 0*/
