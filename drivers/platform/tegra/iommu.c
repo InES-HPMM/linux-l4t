@@ -278,6 +278,10 @@ u64 tegra_smmu_fixup_swgids(struct device *dev, struct iommu_linear_map **map)
 	if (!dev)
 		return SWGIDS_ERROR_CODE;
 
+	if (!dev->of_node)
+		pr_info("No Device Node present for smmu client: %s !!\n",
+			dev_name(dev));
+
 	switch (tegra_get_chipid()) {
 	case TEGRA_CHIPID_TEGRA12:
 	case TEGRA_CHIPID_TEGRA13:
