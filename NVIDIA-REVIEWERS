@@ -238,12 +238,16 @@ SENSORS, INPUT AND TOUCHSCREEN:
 M:	Robert Collins <rcollins@nvidia.com>
 L:	sw-mobile-sensors@exchange.nvidia.com
 S:	Supported
+F:	arch/arm/mach-tegra/board-*-sensors.c
+F:	arch/arm/mach-tegra/board-touch-*.c
+F:	drivers/iio/imu/*
+F:	drivers/iio/light/*
+F:	drivers/iio/magnetometer/*
+F:	drivers/iio/pressure/*
 F:	drivers/input/touchscreen/*
-F:	drivers/video/tegra/camera/
-F:	drivers/misc/therm_est.c
-F:	drivers/staging/iio/light/*
-F:	drivers/staging/iio/magnetometer/*
-F:	drivers/staging/iio/pressure/*
+F:	drivers/input/misc/compass/*
+F:	drivers/input/misc/mpu/*
+F:	drivers/input/misc/pressure/*
 
 STORAGE
 M:	Venu Byravarasu <vbyravarasu@nvidia.com>
