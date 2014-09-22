@@ -28,6 +28,7 @@
 #include <linux/pm.h>
 #include <linux/jiffies.h>
 #include <linux/regmap.h>
+#include <linux/interrupt.h>
 #include <linux/power/bq27441_battery.h>
 
 #define BQ27441_DELAY			(30*HZ)
@@ -776,6 +777,19 @@ static struct battery_gauge_info bq27441_bgi = {
 	.bg_ops = &bq27441_bg_ops,
 };
 
+static irqreturn_t bq27441_irq(int id, void *dev)
+{
+	struct bq27441_chip *chip = dev;
+	struct i2c_client *client = chip->client;
+
+	bq27441_update_soc_voltage(chip);
+	power_supply_changed(&chip->battery);
+	dev_info(&client->dev, "%s() Battery Voltage %dmV and SoC %d%%\n",
+				__func__, chip->vcell, chip->soc);
+
+	return IRQ_HANDLED;
+}
+
 static void of_bq27441_parse_platform_data(struct i2c_client *client,
 				struct bq27441_platform_data *pdata)
 {
@@ -916,10 +930,27 @@ static int bq27441_probe(struct i2c_client *client,
 	INIT_DEFERRABLE_WORK(&chip->work, bq27441_work);
 	schedule_delayed_work(&chip->work, 0);
 
+	if (client->irq) {
+		ret = devm_request_threaded_irq(&client->dev, client->irq,
+			NULL, bq27441_irq,
+			IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
+			dev_name(&client->dev), chip);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"%s: request IRQ %d fail, err = %d\n",
+				__func__, client->irq, ret);
+			client->irq = 0;
+			goto irq_reg_error;
+		}
+	}
+	device_set_wakeup_capable(&client->dev, 1);
+
 	dev_info(&client->dev, "Battery Voltage %dmV and SoC %d%%\n",
 			chip->vcell, chip->soc);
 
 	return 0;
+irq_reg_error:
+	cancel_delayed_work_sync(&chip->work);
 bg_err:
 	power_supply_unregister(&chip->battery);
 error:
@@ -959,6 +990,9 @@ static int bq27441_suspend(struct device *dev)
 	struct bq27441_chip *chip = dev_get_drvdata(dev);
 	cancel_delayed_work_sync(&chip->work);
 
+	if (device_may_wakeup(&chip->client->dev))
+		enable_irq_wake(chip->client->irq);
+
 	dev_info(&chip->client->dev, "At suspend Voltage %dmV and SoC %d%%\n",
 			chip->vcell, chip->soc);
 	return 0;
@@ -967,6 +1001,9 @@ static int bq27441_suspend(struct device *dev)
 static int bq27441_resume(struct device *dev)
 {
 	struct bq27441_chip *chip = dev_get_drvdata(dev);
+
+	if (device_may_wakeup(&chip->client->dev))
+		disable_irq_wake(chip->client->irq);
 
 	mutex_lock(&chip->mutex);
 	bq27441_update_soc_voltage(chip);
