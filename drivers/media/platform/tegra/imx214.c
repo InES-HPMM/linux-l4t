@@ -477,7 +477,7 @@ static void imx214_mclk_disable(struct imx214_info *info)
 static int imx214_mclk_enable(struct imx214_info *info)
 {
 	int err;
-	unsigned long mclk_init_rate = 22000000;
+	unsigned long mclk_init_rate = 24000000;
 
 	dev_info(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
 		__func__, mclk_init_rate);
