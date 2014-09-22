@@ -178,12 +178,27 @@ static inline void xudc_set_port_power(struct nv_udc_s *nvudc, bool on)
 	}
 }
 
+static inline void enable_pad_protection(bool devmode)
+{
+	u32 otgpad_ctl0 = tegra_usb_pad_reg_read(
+			XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL1(0));
+
+	otgpad_ctl0 &= ~(VREG_FIX18 | VREG_LEV);
+
+	otgpad_ctl0 |= devmode ? VREG_LEV_EN : VREG_FIX18;
+
+	tegra_usb_pad_reg_write(
+		XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL1(0), otgpad_ctl0);
+}
+
 /* must hold nvudc->lock */
 static inline void vbus_detected(struct nv_udc_s *nvudc)
 {
 	/* set VBUS_OVERRIDE only in device mode when ID pin is floating */
 	if (nvudc->vbus_detected || nvudc->id_grounded)
 		return; /* nothing to do */
+
+	enable_pad_protection(1);
 
 	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 		USB2_VBUS_ID_0_VBUS_OVERRIDE, USB2_VBUS_ID_0_VBUS_OVERRIDE);
@@ -243,6 +258,9 @@ static void irq_work(struct work_struct *work)
 			USB2_VBUS_ID_0_ID_OVERRIDE,
 			USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND);
 
+		/* pad protection for host mode */
+		enable_pad_protection(0);
+
 		/* set PP */
 		xudc_set_port_power(nvudc, true);
 		xudc_enable_vbus(nvudc);
@@ -253,6 +271,8 @@ static void irq_work(struct work_struct *work)
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 			USB2_VBUS_ID_0_ID_OVERRIDE,
 			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
+		/* pad protection for device mode */
+		enable_pad_protection(1);
 	}
 }
 static int extcon_id_notifications(struct notifier_block *nb,
