@@ -42,6 +42,7 @@
 #include "tegra210-platforms/tegra210-ers-e2220-thermal-zone.dtsi"
 #include "tegra210-platforms/tegra210-ers-pwm-fan-e2220-1100-a00.dtsi"
 #include <dt-bindings/sound/tegra-asoc-alt.h>
+#include <dt-bindings/platform/t210/t210.h>
 
 / {
 	model = "e2220";
@@ -81,7 +82,6 @@
 
 	sdhci@700b0000 {
 		uhs-mask = <0x1c>;
-		cd-gpios = <&gpio TEGRA_GPIO_PZ1 0>;
 		status = "okay";
 	};
 
@@ -542,6 +542,60 @@
 				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
 				cam2-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
 			};
+			ov5693@a_0036 {
+				use_of_node = "yes";
+				dev_name = "ov5693";
+				num = <0>;
+				vana-supply = <&max77620_ldo3>;
+				vif-supply = <&en_vdd_cam>;
+				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
+				cam2-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
+			};
+			ov5693@b_0036 {
+				use_of_node = "yes";
+				dev_name = "ov5693";
+				num = <1>;
+				vana-supply = <&max77620_ldo3>;
+				vif-supply = <&en_vdd_cam>;
+				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
+				cam2-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
+			};
+			ov5693@c_0036 {
+				use_of_node = "yes";
+				dev_name = "ov5693";
+				num = <2>;
+				vana-supply = <&max77620_ldo3>;
+				vif-supply = <&en_vdd_cam>;
+				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
+				cam2-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
+			};
+			ov5693@d_0036 {
+				use_of_node = "yes";
+				dev_name = "ov5693";
+				num = <3>;
+				vana-supply = <&max77620_ldo3>;
+				vif-supply = <&en_vdd_cam>;
+				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
+				cam2-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
+			};
+			ov5693@e_0036 {
+				use_of_node = "yes";
+				dev_name = "ov5693";
+				num = <4>;
+				vana-supply = <&max77620_ldo3>;
+				vif-supply = <&en_vdd_cam>;
+				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
+				cam2-gpios = <&gpio TEGRA_GPIO(Z, 3) 0>;
+			};
+			ov5693@f_0036 {
+				use_of_node = "yes";
+				dev_name = "ov5693";
+				num = <5>;
+				vana-supply = <&max77620_ldo3>;
+				vif-supply = <&en_vdd_cam>;
+				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
+				cam2-gpios = <&gpio TEGRA_GPIO(T, 1) 0>;
+			};
 		};
 	};
 
@@ -608,6 +662,54 @@
 
 	gpu-dvfs-rework {
 		status = "disabled";
+	};
+
+	i2c@546c0000 {
+		tca9548@6_0077 {
+			compatible = "nxp,pca9548";
+			reg = <0x77>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			vcc-supply = <&en_vdd_cam>;
+			skip_mux_detect = <1>;
+			force_bus_start = <T210_CAMERA_I2C_MUX_BUS(0)>;
+			i2c@0 {
+				reg = <0>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+			i2c@1 {
+				reg = <1>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+			i2c@2 {
+				reg = <2>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+			i2c@3 {
+				reg = <3>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+			i2c@4 {
+				reg = <4>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+			i2c@5 {
+				reg = <5>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+		};
 	};
 
 	thermal-zones {

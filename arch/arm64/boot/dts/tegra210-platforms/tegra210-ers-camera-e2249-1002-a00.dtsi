@@ -16,6 +16,7 @@
  */
 
 #include <dt-bindings/media/camera.h>
+#include <dt-bindings/platform/t210/t210.h>
 
 / {
 	camera-pcl {
@@ -47,6 +48,60 @@
 				sensor {
 					profile = <&ov5693_1>;
 					platformdata = "t210ref_ov5693f_pdata";
+				};
+			};
+			module3: module3@modules {
+				compatible = "sensor,rear";
+				badge_info = "e2249_front_P5V27C";
+
+				sensor {
+					profile = <&ov5693_A>;
+					platformdata = "t210ref_ov5693A_pdata";
+				};
+			};
+			module4: module4@modules {
+				compatible = "sensor,front";
+				badge_info = "e2249_front_P5V27C";
+
+				sensor {
+					profile = <&ov5693_B>;
+					platformdata = "t210ref_ov5693B_pdata";
+				};
+			};
+			module5: module5@modules {
+				compatible = "sensor,front";
+				badge_info = "e2249_front_P5V27C";
+
+				sensor {
+					profile = <&ov5693_C>;
+					platformdata = "t210ref_ov5693C_pdata";
+				};
+			};
+			module6: module6@modules {
+				compatible = "sensor,front";
+				badge_info = "e2249_front_P5V27C";
+
+				sensor {
+					profile = <&ov5693_D>;
+					platformdata = "t210ref_ov5693D_pdata";
+				};
+			};
+			module7: module7@modules {
+				compatible = "sensor,front";
+				badge_info = "e2249_front_P5V27C";
+
+				sensor {
+					profile = <&ov5693_E>;
+					platformdata = "t210ref_ov5693E_pdata";
+				};
+			};
+			module8: module8@modules {
+				compatible = "sensor,front";
+				badge_info = "e2249_front_P5V27C";
+
+				sensor {
+					profile = <&ov5693_F>;
+					platformdata = "t210ref_ov5693F_pdata";
 				};
 			};
 		};
@@ -189,6 +244,246 @@
 				poweroff = <
 					CAMERA_IND_CLK_CLR
 					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 0))
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
+			};
+			ov5693_A: ov5693@a_0036 {
+				index = <5>;
+				chipname = "pcl_OV5693A";
+				type = "sensor";
+				guid = "sOV5693A";
+				position = <0>;
+				bustype = "i2c";
+				busnum = <T210_CAMERA_I2C_MUX_BUS(3)>;
+				addr = <0x36>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vif";
+				clocks = "cam_mclk1";
+				drivername = "ov5693";
+				detect = <0x0002 0x300A 0xFFFF 0x5690>;
+				devid = <0x5693>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
+					CAMERA_WAITMS(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_WAITMS(1)
+					CAMERA_GPIO_SET(TEGRA_GPIO(S, 7))
+					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
+					CAMERA_WAITMS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
+			};
+			ov5693_B: ov5693@b_0036 {
+				index = <7>;
+				chipname = "pcl_OV5693B";
+				type = "sensor";
+				guid = "sOV5693B";
+				position = <1>;
+				bustype = "i2c";
+				busnum = <T210_CAMERA_I2C_MUX_BUS(2)>;
+				addr = <0x36>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vif";
+				clocks = "cam_mclk1";
+				drivername = "ov5693";
+				detect = <0x0002 0x300A 0xFFFF 0x5690>;
+				devid = <0x5693>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
+					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 0))
+					CAMERA_WAITMS(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_WAITMS(1)
+					CAMERA_GPIO_SET(TEGRA_GPIO(T, 0))
+					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
+					CAMERA_WAITMS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 0))
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
+			};
+			ov5693_C: ov5693@c_0036 {
+				index = <8>;
+				chipname = "pcl_OV5693C";
+				type = "sensor";
+				guid = "sOV5693C";
+				position = <2>;
+				bustype = "i2c";
+				busnum = <T210_CAMERA_I2C_MUX_BUS(0)>;
+				addr = <0x36>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vif";
+				clocks = "cam_mclk1";
+				drivername = "ov5693";
+				detect = <0x0002 0x300A 0xFFFF 0x5690>;
+				devid = <0x5693>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
+					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 0))
+					CAMERA_WAITMS(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_WAITMS(1)
+					CAMERA_GPIO_SET(TEGRA_GPIO(T, 0))
+					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
+					CAMERA_WAITMS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 0))
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
+			};
+			ov5693_D: ov5693@d_0036 {
+				index = <6>;
+				chipname = "pcl_OV5693D";
+				type = "sensor";
+				guid = "sOV5693D";
+				position = <3>;
+				bustype = "i2c";
+				busnum = <T210_CAMERA_I2C_MUX_BUS(1)>;
+				addr = <0x36>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vif";
+				clocks = "cam_mclk1";
+				drivername = "ov5693.1";
+				detect = <0x0002 0x300A 0xFFFF 0x5690>;
+				devid = <0x5693>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
+					CAMERA_WAITMS(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_WAITMS(1)
+					CAMERA_GPIO_SET(TEGRA_GPIO(S, 7))
+					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
+					CAMERA_WAITMS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
+			};
+			ov5693_E: ov5693@e_0036 {
+				index = <9>;
+				chipname = "pcl_OV5693E";
+				type = "sensor";
+				guid = "sOV5693E";
+				position = <4>;
+				bustype = "i2c";
+				busnum = <T210_CAMERA_I2C_MUX_BUS(5)>;
+				addr = <0x36>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vif";
+				clocks = "cam_mclk3";
+				drivername = "ov5693";
+				detect = <0x0002 0x300A 0xFFFF 0x5690>;
+				devid = <0x5693>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
+					CAMERA_GPIO_CLR(TEGRA_GPIO(Z, 3))
+					CAMERA_WAITMS(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_WAITMS(1)
+					CAMERA_GPIO_SET(TEGRA_GPIO(Z, 3))
+					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
+					CAMERA_WAITMS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(TEGRA_GPIO(Z, 3))
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
+			};
+			ov5693_F: ov5693@f_0036 {
+				index = <10>;
+				chipname = "pcl_OV5693F";
+				type = "sensor";
+				guid = "sOV5693F";
+				position = <5>;
+				bustype = "i2c";
+				busnum = <T210_CAMERA_I2C_MUX_BUS(4)>;
+				addr = <0x36>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vif";
+				clocks = "cam_mclk3";
+				drivername = "ov5693";
+				detect = <0x0002 0x300A 0xFFFF 0x5690>;
+				devid = <0x5693>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
+					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 1))
+					CAMERA_WAITMS(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_WAITMS(1)
+					CAMERA_GPIO_SET(TEGRA_GPIO(T, 1))
+					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
+					CAMERA_WAITMS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 1))
 					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_WAITUS(10)
 					CAMERA_REGULATOR_OFF(1)
