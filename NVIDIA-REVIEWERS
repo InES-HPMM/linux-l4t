@@ -125,13 +125,11 @@ M:	Krishna Reddy <vdumpa@nvidia.com>
 L:	sw-mobile-memory@exchange.nvidia.com
 S:	Supported
 F:	arch/arm64/mach-tegra/tegra21_memory.c
+F:	arch/arm/mach-tegra/board-*-memory.c
 F:	arch/arm/mach-tegra/common.c
 F:	arch/arm/mach-tegra/isomgr.c
 F:	arch/arm/mach-tegra/latency_allowance.c
-F:	arch/arm/mach-tegra/tegra12_emc.c
-F:	arch/arm/mach-tegra/tegra2_emc.c
-F:	arch/arm/mach-tegra/tegra3_emc.c
-F:	arch/arm/mach-tegra/tegra_emc_dt_parse.c
+F:	arch/arm/mach-tegra/tegra*_emc*.c
 F:	drivers/iommu/of_iommu.c
 F:	drivers/iommu/tegra-gart.c
 F:	drivers/iommu/tegra-smmu.c
