@@ -4561,8 +4561,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	const char *parent_clk_list[TEGRA_SDHCI_MAX_PLL_SOURCE];
 	int rc;
 	u8 i;
-	unsigned int vddio_prev;
-	unsigned int vddio_new;
 
 	for (i = 0; i < ARRAY_SIZE(parent_clk_list); i++)
 		parent_clk_list[i] = NULL;
@@ -4762,8 +4760,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 			"vddio_sdmmc", PTR_ERR(tegra_host->vdd_io_reg));
 		tegra_host->vdd_io_reg = NULL;
 	} else {
-		vddio_prev = regulator_get_voltage(tegra_host->vdd_io_reg);
-		/* Read old voltage before change */
 		rc = tegra_sdhci_configure_regulators(tegra_host,
 			CONFIG_REG_SET_VOLT,
 			tegra_host->vddio_min_uv,
@@ -4775,19 +4771,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 				tegra_host->vddio_max_uv, rc);
 			regulator_put(tegra_host->vdd_io_reg);
 			tegra_host->vdd_io_reg = NULL;
-		} else if (soc_data->nvquirks2 & NVQUIRK2_CONFIG_PWR_DET) {
-			vddio_new = regulator_get_voltage(
-				tegra_host->vdd_io_reg);
-			if ((vddio_prev == vddio_new) &&
-				(vddio_new == SDHOST_LOW_VOLT_MIN)) {
-				if (tegra_host->instance == SDMMC1_INSTANCE)
-					pwr_detect_bit_write(
-						SDMMC1_PWR_DET, false);
-				else if (tegra_host->instance ==
-					SDMMC3_INSTANCE)
-					pwr_detect_bit_write(
-						SDMMC3_PWR_DET, false);
-			}
 		}
 	}
 
