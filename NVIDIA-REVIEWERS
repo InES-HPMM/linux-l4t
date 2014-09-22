@@ -245,6 +245,7 @@ STORAGE
 M:	Venu Byravarasu <vbyravarasu@nvidia.com>
 L:	sw-mobile-system@exchange.nvidia.com
 S:	Supported
+F:	arch/arm/mach-tegra/board-*-sdhci.c
 F:	drivers/mmc/host/*
 
 SYSTEM
