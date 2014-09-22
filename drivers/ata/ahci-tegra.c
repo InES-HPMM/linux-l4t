@@ -340,6 +340,9 @@
 #define XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0	0x960
 #define AUX_RX_MODE_OVRD			(1 << 13)
 #define AUX_RX_IDLE_EN				(1 << 22)
+#define XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_4_0	0x96c
+#define RX_TERM_EN				(1 << 21)
+#define RX_TERM_OVRD				(1 << 23)
 #define CLK_RST_CONTROLLER_RST_DEV_Y_CLR_0	0x2ac
 #define CLR_SATA_USB_UPHY_RST			(1 << 12)
 #define XUSB_PADCTL_ELPG_PROGRAM_1_0		0x24
@@ -354,6 +357,16 @@
 #define SATA_CHX_PHY_CTRL18_0			0x6ec
 #define SATA_CHX_PHY_CTRL20_0			0x6f4
 #define SATA_CHX_PHY_CTRL21_0			0x6f8
+
+#define SATA0_CFG_35_0                          0x094
+#define IDP_INDEX                               (0x2a << 2)
+
+#define SATA0_AHCI_IDP1_0                       0x098
+#define SATA0_AHCI_IDP1_0_DATA			(1 << 6 | 1 << 22)
+
+#define SATA0_CFG_PHY_1_0                       0x12c
+#define PAD_IDDQ_EN                             (1 << 23)
+#define PAD_PLL_IDDQ_EN                         (1 << 22)
 
 #define CLK_RST_CONTROLLER_RST_DEVICES_Y_0	0x2a4
 #define SWR_PEX_USB_UPHY_RST			(0x1 << 13)
@@ -1065,6 +1078,11 @@ static void tegra_ahci_uphy_init(void)
 	udelay(200);
 
 	/* SW overrides removal */
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_4_0);
+	val |= (RX_TERM_EN | RX_TERM_OVRD);
+	xusb_writel(val, XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_4_0);
+
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
 	val &= ~(PADPLL_RESET_SWCTL_MASK);
 	val |= (SATA_PADPLL_SLEEP_IDDQ | SATA_PADPLL_USE_LOCKDET);
@@ -1387,10 +1405,24 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	scfg_writel(val, T_SATA0_AHCI_HBA_CAP_BKDR);
 
 	/* Second Level Clock Gating*/
-	val = bar5_readl(AHCI_HBA_PLL_CTRL_0);
-	val |= (CLAMP_TXCLK_ON_SLUMBER | CLAMP_TXCLK_ON_DEVSLP);
-	val &= ~NO_CLAMP_SHUT_DOWN;
-	bar5_writel(val, AHCI_HBA_PLL_CTRL_0);
+	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
+		val = bar5_readl(AHCI_HBA_PLL_CTRL_0);
+		val |= (CLAMP_TXCLK_ON_SLUMBER | CLAMP_TXCLK_ON_DEVSLP);
+		val &= ~NO_CLAMP_SHUT_DOWN;
+		bar5_writel(val, AHCI_HBA_PLL_CTRL_0);
+	} else {
+		val = scfg_readl(SATA0_CFG_35_0);
+		val |= (IDP_INDEX);
+		scfg_writel(val, SATA0_CFG_35_0);
+
+		val = scfg_readl(SATA0_AHCI_IDP1_0);
+		val |= SATA0_AHCI_IDP1_0_DATA;
+		scfg_writel(val, SATA0_AHCI_IDP1_0);
+
+		val = scfg_readl(SATA0_CFG_PHY_1_0);
+		val |= (PAD_IDDQ_EN | PAD_PLL_IDDQ_EN);
+		scfg_writel(val, SATA0_CFG_PHY_1_0);
+	}
 
 	/* set IP_INT_MASK */
 	val = sata_readl(SATA_INTR_MASK_0_OFFSET);
