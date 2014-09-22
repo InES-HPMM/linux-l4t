@@ -148,10 +148,28 @@ static struct tegra_io_dpd csib_io = {
 	.io_dpd_bit		= 1,
 };
 
+static struct tegra_io_dpd csic_io = {
+	.name			= "CSIC",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 10,
+};
+
+static struct tegra_io_dpd csid_io = {
+	.name			= "CSID",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 11,
+};
+
 static struct tegra_io_dpd csie_io = {
 	.name			= "CSIE",
 	.io_dpd_reg_index	= 1,
 	.io_dpd_bit		= 12,
+};
+
+static struct tegra_io_dpd csif_io = {
+	.name			= "CSIF",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 13,
 };
 
 static int t210ref_ar0261_power_on(struct ar0261_power_rail *pw)
@@ -226,10 +244,6 @@ static int t210ref_imx135_power_on(struct imx135_power_rail *pw)
 	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
 		return -EFAULT;
 
-	/* disable CSIA/B IOs DPD mode to turn on camera for t210ref */
-	tegra_io_dpd_disable(&csia_io);
-	tegra_io_dpd_disable(&csib_io);
-
 	gpio_set_value(CAM_AF_PWDN, 1);
 	gpio_set_value(CAM1_PWDN, 0);
 	usleep_range(10, 20);
@@ -256,8 +270,6 @@ imx135_iovdd_fail:
 imx135_avdd_fail:
 	gpio_set_value(CAM_AF_PWDN, 0);
 
-	tegra_io_dpd_enable(&csia_io);
-	tegra_io_dpd_enable(&csib_io);
 	pr_err("%s failed.\n", __func__);
 	return -ENODEV;
 }
@@ -265,17 +277,12 @@ imx135_avdd_fail:
 static int t210ref_imx135_power_off(struct imx135_power_rail *pw)
 {
 	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd))) {
-		tegra_io_dpd_enable(&csia_io);
-		tegra_io_dpd_enable(&csib_io);
 		return -EFAULT;
 	}
 
 	regulator_disable(pw->iovdd);
 	regulator_disable(pw->avdd);
 
-	/* put CSIA/B IOs into DPD mode to save additional power for t210ref */
-	tegra_io_dpd_enable(&csia_io);
-	tegra_io_dpd_enable(&csib_io);
 	return 0;
 }
 
@@ -297,10 +304,6 @@ static int t210ref_imx214_power_on(struct imx214_power_rail *pw)
 
 	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
 		return -EFAULT;
-
-	/* disable CSIA/B IOs DPD mode to turn on camera for t210ref */
-	tegra_io_dpd_disable(&csia_io);
-	tegra_io_dpd_disable(&csib_io);
 
 	gpio_set_value(CAM_RSTN, 0);
 	gpio_set_value(CAM_AF_PWDN, 0);
@@ -329,19 +332,14 @@ imx214_iovdd_fail:
 	regulator_disable(pw->avdd);
 
 imx214_avdd_fail:
-	tegra_io_dpd_enable(&csia_io);
-	tegra_io_dpd_enable(&csib_io);
 	pr_err("%s failed.\n", __func__);
 	return -ENODEV;
 }
 
 static int t210ref_imx214_power_off(struct imx214_power_rail *pw)
 {
-	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd))) {
-		tegra_io_dpd_enable(&csia_io);
-		tegra_io_dpd_enable(&csib_io);
+	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
 		return -EFAULT;
-	}
 
 	regulator_disable(pw->iovdd);
 	regulator_disable(pw->avdd);
@@ -350,9 +348,6 @@ static int t210ref_imx214_power_off(struct imx214_power_rail *pw)
 	gpio_set_value(CAM_AF_PWDN, 0);
 	gpio_set_value(CAM1_PWDN, 0);
 
-	/* put CSIA/B IOs into DPD mode to save additional power for t210ref */
-	tegra_io_dpd_enable(&csia_io);
-	tegra_io_dpd_enable(&csib_io);
 	return 0;
 }
 
@@ -583,13 +578,6 @@ static int t210ref_ov5693_power_on(struct ov5693_power_rail *pw)
 	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd)))
 		return -EFAULT;
 
-	/* disable CSIA/B IOs DPD mode to turn on camera for t210ref */
-	tegra_io_dpd_disable(&csia_io);
-	tegra_io_dpd_disable(&csib_io);
-
-	if (t210ref_get_extra_regulators())
-		goto ov5693_poweron_fail;
-
 	gpio_set_value(CAM1_PWDN, 0);
 	usleep_range(10, 20);
 
@@ -604,16 +592,9 @@ static int t210ref_ov5693_power_on(struct ov5693_power_rail *pw)
 	udelay(2);
 	gpio_set_value(CAM1_PWDN, 1);
 
-	err = regulator_enable(t210ref_vcmvdd);
-	if (unlikely(err))
-		goto ov5693_vcmvdd_fail;
-
 	usleep_range(1000, 1110);
 
 	return 0;
-
-ov5693_vcmvdd_fail:
-	regulator_disable(pw->dovdd);
 
 ov5693_iovdd_fail:
 	regulator_disable(pw->avdd);
@@ -621,36 +602,22 @@ ov5693_iovdd_fail:
 ov5693_avdd_fail:
 	gpio_set_value(CAM1_PWDN, 0);
 
-ov5693_poweron_fail:
-	/* put CSIA/B IOs into DPD mode to save additional power for t210ref */
-	tegra_io_dpd_enable(&csia_io);
-	tegra_io_dpd_enable(&csib_io);
 	pr_err("%s FAILED\n", __func__);
 	return -ENODEV;
 }
 
 static int t210ref_ov5693_power_off(struct ov5693_power_rail *pw)
 {
-	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd))) {
-		/* put CSIA/B IOs into DPD mode to
-		 * save additional power for t210ref
-		 */
-		tegra_io_dpd_enable(&csia_io);
-		tegra_io_dpd_enable(&csib_io);
+	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd)))
 		return -EFAULT;
-	}
 
 	usleep_range(21, 25);
 	gpio_set_value(CAM1_PWDN, 0);
 	udelay(2);
 
-	regulator_disable(t210ref_vcmvdd);
 	regulator_disable(pw->dovdd);
 	regulator_disable(pw->avdd);
 
-	/* put CSIA/B IOs into DPD mode to save additional power for t210ref */
-	tegra_io_dpd_enable(&csia_io);
-	tegra_io_dpd_enable(&csib_io);
 	return 0;
 }
 
@@ -825,6 +792,234 @@ static struct ov5693_platform_data t210ref_ov5693_front_pdata = {
 	.cap		= &ov5693_front_cap,
 };
 
+static struct nvc_imager_cap ov5693_a_cap = {
+	.identifier			= "OV5693_A",
+	.sensor_nvc_interface		= 3,
+	.pixel_types[0]			= 0x101,
+	.orientation			= 0,
+	.direction			= 0,
+	.initial_clock_rate_khz		= 6000,
+	.clock_profiles[0] = {
+		.external_clock_khz	= 24000,
+		.clock_multiplier	= 8000000, /* value * 1000000 */
+	},
+	.clock_profiles[1] = {
+		.external_clock_khz	= 0,
+		.clock_multiplier	= 0,
+	},
+	.h_sync_edge			= 0,
+	.v_sync_edge			= 0,
+	.mclk_on_vgp0			= 0,
+	.csi_port			= 0,
+	.data_lanes			= 2,
+	.virtual_channel_id		= 0,
+	.discontinuous_clk_mode		= 1,
+	.cil_threshold_settle		= 0,
+	.min_blank_time_width		= 16,
+	.min_blank_time_height		= 16,
+	.preferred_mode_index		= 0,
+	.focuser_guid			= 0,
+	.torch_guid			= 0,
+	.cap_version			= NVC_IMAGER_CAPABILITIES_VERSION2,
+	.flash_control_enabled		= 0,
+	.adjustable_flash_timing	= 0,
+	.is_hdr				= 1,
+};
+
+static struct ov5693_platform_data t210ref_ov5693_a_pdata = {
+	.cap		= &ov5693_a_cap,
+};
+
+static struct nvc_imager_cap ov5693_b_cap = {
+	.identifier			= "OV5693_B",
+	.sensor_nvc_interface		= 5,
+	.pixel_types[0]			= 0x101,
+	.orientation			= 0,
+	.direction			= 0,
+	.initial_clock_rate_khz		= 6000,
+	.clock_profiles[0] = {
+		.external_clock_khz	= 24000,
+		.clock_multiplier	= 8000000, /* value * 1000000 */
+	},
+	.clock_profiles[1] = {
+		.external_clock_khz	= 0,
+		.clock_multiplier	= 0,
+	},
+	.h_sync_edge			= 0,
+	.v_sync_edge			= 0,
+	.mclk_on_vgp0			= 0,
+	.csi_port			= 1,
+	.data_lanes			= 2,
+	.virtual_channel_id		= 0,
+	.discontinuous_clk_mode		= 1,
+	.cil_threshold_settle		= 0,
+	.min_blank_time_width		= 16,
+	.min_blank_time_height		= 16,
+	.preferred_mode_index		= 0,
+	.focuser_guid			= 0,
+	.torch_guid			= 0,
+	.cap_version			= NVC_IMAGER_CAPABILITIES_VERSION2,
+	.flash_control_enabled		= 0,
+	.adjustable_flash_timing	= 0,
+	.is_hdr				= 1,
+};
+
+static struct ov5693_platform_data t210ref_ov5693_b_pdata = {
+	.cap		= &ov5693_b_cap,
+};
+
+static struct nvc_imager_cap ov5693_c_cap = {
+	.identifier			= "OV5693_C",
+	.sensor_nvc_interface		= 6,
+	.pixel_types[0]			= 0x101,
+	.orientation			= 0,
+	.direction			= 0,
+	.initial_clock_rate_khz		= 6000,
+	.clock_profiles[0] = {
+		.external_clock_khz	= 24000,
+		.clock_multiplier	= 8000000, /* value * 1000000 */
+	},
+	.clock_profiles[1] = {
+		.external_clock_khz	= 0,
+		.clock_multiplier	= 0,
+	},
+	.h_sync_edge			= 0,
+	.v_sync_edge			= 0,
+	.mclk_on_vgp0			= 0,
+	.csi_port			= 1,
+	.data_lanes			= 2,
+	.virtual_channel_id		= 0,
+	.discontinuous_clk_mode		= 1,
+	.cil_threshold_settle		= 0,
+	.min_blank_time_width		= 16,
+	.min_blank_time_height		= 16,
+	.preferred_mode_index		= 0,
+	.focuser_guid			= 0,
+	.torch_guid			= 0,
+	.cap_version			= NVC_IMAGER_CAPABILITIES_VERSION2,
+	.flash_control_enabled		= 0,
+	.adjustable_flash_timing	= 0,
+	.is_hdr				= 1,
+};
+
+static struct ov5693_platform_data t210ref_ov5693_c_pdata = {
+	.cap		= &ov5693_c_cap,
+};
+
+static struct nvc_imager_cap ov5693_d_cap = {
+	.identifier			= "OV5693_D",
+	.sensor_nvc_interface		= 4,
+	.pixel_types[0]			= 0x101,
+	.orientation			= 0,
+	.direction			= 0,
+	.initial_clock_rate_khz		= 6000,
+	.clock_profiles[0] = {
+		.external_clock_khz	= 24000,
+		.clock_multiplier	= 8000000, /* value * 1000000 */
+	},
+	.clock_profiles[1] = {
+		.external_clock_khz	= 0,
+		.clock_multiplier	= 0,
+	},
+	.h_sync_edge			= 0,
+	.v_sync_edge			= 0,
+	.mclk_on_vgp0			= 0,
+	.csi_port			= 1,
+	.data_lanes			= 2,
+	.virtual_channel_id		= 0,
+	.discontinuous_clk_mode		= 1,
+	.cil_threshold_settle		= 0,
+	.min_blank_time_width		= 16,
+	.min_blank_time_height		= 16,
+	.preferred_mode_index		= 0,
+	.focuser_guid			= 0,
+	.torch_guid			= 0,
+	.cap_version			= NVC_IMAGER_CAPABILITIES_VERSION2,
+	.flash_control_enabled		= 0,
+	.adjustable_flash_timing	= 0,
+	.is_hdr				= 1,
+};
+
+static struct ov5693_platform_data t210ref_ov5693_d_pdata = {
+	.cap		= &ov5693_d_cap,
+};
+
+static struct nvc_imager_cap ov5693_e_cap = {
+	.identifier			= "OV5693_E",
+	.sensor_nvc_interface		= 7,
+	.pixel_types[0]			= 0x101,
+	.orientation			= 0,
+	.direction			= 0,
+	.initial_clock_rate_khz		= 6000,
+	.clock_profiles[0] = {
+		.external_clock_khz	= 24000,
+		.clock_multiplier	= 8000000, /* value * 1000000 */
+	},
+	.clock_profiles[1] = {
+		.external_clock_khz	= 0,
+		.clock_multiplier	= 0,
+	},
+	.h_sync_edge			= 0,
+	.v_sync_edge			= 0,
+	.mclk_on_vgp0			= 0,
+	.csi_port			= 1,
+	.data_lanes			= 2,
+	.virtual_channel_id		= 0,
+	.discontinuous_clk_mode		= 1,
+	.cil_threshold_settle		= 0,
+	.min_blank_time_width		= 16,
+	.min_blank_time_height		= 16,
+	.preferred_mode_index		= 0,
+	.focuser_guid			= 0,
+	.torch_guid			= 0,
+	.cap_version			= NVC_IMAGER_CAPABILITIES_VERSION2,
+	.flash_control_enabled		= 0,
+	.adjustable_flash_timing	= 0,
+	.is_hdr				= 1,
+};
+
+static struct ov5693_platform_data t210ref_ov5693_e_pdata = {
+	.cap		= &ov5693_e_cap,
+};
+
+static struct nvc_imager_cap ov5693_f_cap = {
+	.identifier			= "OV5693_F",
+	.sensor_nvc_interface		= 8,
+	.pixel_types[0]			= 0x101,
+	.orientation			= 0,
+	.direction			= 0,
+	.initial_clock_rate_khz		= 6000,
+	.clock_profiles[0] = {
+		.external_clock_khz	= 24000,
+		.clock_multiplier	= 8000000, /* value * 1000000 */
+	},
+	.clock_profiles[1] = {
+		.external_clock_khz	= 0,
+		.clock_multiplier	= 0,
+	},
+	.h_sync_edge			= 0,
+	.v_sync_edge			= 0,
+	.mclk_on_vgp0			= 0,
+	.csi_port			= 1,
+	.data_lanes			= 2,
+	.virtual_channel_id		= 0,
+	.discontinuous_clk_mode		= 1,
+	.cil_threshold_settle		= 0,
+	.min_blank_time_width		= 16,
+	.min_blank_time_height		= 16,
+	.preferred_mode_index		= 0,
+	.focuser_guid			= 0,
+	.torch_guid			= 0,
+	.cap_version			= NVC_IMAGER_CAPABILITIES_VERSION2,
+	.flash_control_enabled		= 0,
+	.adjustable_flash_timing	= 0,
+	.is_hdr				= 1,
+};
+
+static struct ov5693_platform_data t210ref_ov5693_f_pdata = {
+	.cap		= &ov5693_f_cap,
+};
+
 static int t210ref_ad5823_power_on(struct ad5823_platform_data *pdata)
 {
 	int err = 0;
@@ -862,6 +1057,12 @@ static struct camera_data_blob t210ref_camera_lut[] = {
 	{"t210ref_ov5693f_pdata", &t210ref_ov5693_front_pdata},
 	{"t210ref_imx214_pdata", &t210ref_imx214_data},
 	{"t210ref_dw9714_pdata", &t210ref_dw9714_data},
+	{"t210ref_ov5693A_pdata", &t210ref_ov5693_a_pdata},
+	{"t210ref_ov5693B_pdata", &t210ref_ov5693_b_pdata},
+	{"t210ref_ov5693C_pdata", &t210ref_ov5693_c_pdata},
+	{"t210ref_ov5693D_pdata", &t210ref_ov5693_d_pdata},
+	{"t210ref_ov5693E_pdata", &t210ref_ov5693_e_pdata},
+	{"t210ref_ov5693F_pdata", &t210ref_ov5693_f_pdata},
 	{},
 };
 
@@ -889,7 +1090,10 @@ int t210ref_camera_init(void)
 	 */
 	tegra_io_dpd_disable(&csia_io);
 	tegra_io_dpd_disable(&csib_io);
+	tegra_io_dpd_disable(&csic_io);
+	tegra_io_dpd_disable(&csid_io);
 	tegra_io_dpd_disable(&csie_io);
+	tegra_io_dpd_disable(&csif_io);
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_PLATFORM)
 	platform_device_register(&t210ref_soc_camera_device);
