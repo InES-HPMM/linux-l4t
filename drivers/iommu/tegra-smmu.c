@@ -490,7 +490,7 @@ static struct of_device_id tegra_smmu_of_match[];
 /* FIXME: Add linear map logic as well */
 static int tegra_smmu_of_register_asprops(struct smmu_device *smmu)
 {
-	int err, sum_hweight = 0;
+	int err, count = 0, sum_hweight = 0;
 	struct of_phandle_iter iter;
 	u64 swgid_mask = 0;
 	struct smmu_map_prop *prop, *temp;
@@ -528,6 +528,7 @@ static int tegra_smmu_of_register_asprops(struct smmu_device *smmu)
 			goto free_mem;
 		}
 
+		count++;
 		list_add_tail(&prop->list, &smmu->asprops);
 
 		/*
@@ -543,14 +544,14 @@ static int tegra_smmu_of_register_asprops(struct smmu_device *smmu)
 	}
 
 	if (sum_hweight == hweight64(swgid_mask))
-		return 0;
+		return count;
 
 	/* check bit mask overlap in domains= property */
 	dev_warn(smmu->dev, "overlapping bitmaps in domains!!!");
 free_mem:
 	list_for_each_entry_safe(prop, temp, &smmu->asprops, list)
 		devm_kfree(smmu->dev, prop);
-	return -EINVAL;
+	return 0;
 }
 
 static int tegra_smmu_of_get_asprops(u64 swgids, struct smmu_map_prop *prop)
@@ -2397,7 +2398,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	struct smmu_device *smmu;
 	struct resource *regs, *regs2;
 	struct device *dev = &pdev->dev;
-	int i;
+	int i, count;
 	u32 num_as;
 	dma_addr_t base;
 	size_t size, bytes;
@@ -2456,14 +2457,15 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	smmu->dev = dev;
 	INIT_LIST_HEAD(&smmu->asprops);
-	err = tegra_smmu_of_register_asprops(smmu);
-	if (err) {
+	count = tegra_smmu_of_register_asprops(smmu);
+	if (!count) {
 		dev_err(dev, "invalid domains property\n");
 		err = -EINVAL;
 		goto exit_probe;
 	}
 
-	bytes = num_as * sizeof(*smmu->map);
+	/* count now has the number of available address spaces */
+	bytes = count * sizeof(*smmu->map);
 	smmu->map = devm_kzalloc(dev, bytes, GFP_KERNEL);
 	if (!smmu->map)
 		goto fail_smmu_map;
