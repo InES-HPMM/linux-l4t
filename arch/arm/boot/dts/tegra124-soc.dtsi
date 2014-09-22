@@ -627,10 +627,10 @@
 		reg = <0x0 0x50000000 0x0 0x00034000>;
 		interrupts = <0 65 0x04   /* mpcore syncpt */
 			      0 67 0x04>; /* mpcore general */
-		iommus = <&smmu TEGRA_SWGROUP_EPP
-			  &smmu TEGRA_SWGROUP_HC
-			  &smmu TEGRA_SWGROUP_HDA
-			  &smmu TEGRA_SWGROUP_VDE>;
+		iommus = <&smmu TEGRA_SWGROUP_EPP>,
+			 <&smmu TEGRA_SWGROUP_HC>,
+			 <&smmu TEGRA_SWGROUP_HDA>,
+			 <&smmu TEGRA_SWGROUP_VDE>;
 
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -649,24 +649,24 @@
 			compatible = "nvidia,tegra124-isp";
 			reg = <0x54600000 0x00040000>;
 			interrupts = <0 71 0x04>;
-			iommus = <&smmu TEGRA_SWGROUP_ISP
-				  &smmu TEGRA_SWGROUP_ISP2B>;
+			iommus = <&smmu TEGRA_SWGROUP_ISP>,
+				 <&smmu TEGRA_SWGROUP_ISP2B>;
 		};
 
 		isp@54680000 {
 			compatible = "nvidia,tegra124-isp";
 			reg = <0x54680000 0x00040000>;
 			interrupts = <0 70 0x04>;
-			iommus = <&smmu TEGRA_SWGROUP_ISP
-				  &smmu TEGRA_SWGROUP_ISP2B>;
+			iommus = <&smmu TEGRA_SWGROUP_ISP>,
+				 <&smmu TEGRA_SWGROUP_ISP2B>;
 		};
 
 		dc@54200000 {
 			compatible = "nvidia,tegra124-dc";
 			reg = <0x54200000 0x00040000>;
 			interrupts = <0 73 0x04>;
-			iommus = <&smmu TEGRA_SWGROUP_DC
-				  &smmu TEGRA_SWGROUP_DC12>;
+			iommus = <&smmu TEGRA_SWGROUP_DC>,
+				 <&smmu TEGRA_SWGROUP_DC12>;
 			status = "disabled";
 
 			rgb {
@@ -746,8 +746,8 @@
 		      <0x0 0x538F0000 0x0 0x00001000>;
 		interrupts = <0 157 0x04
 			      0 158 0x04>;
-		iommus = <&smmu TEGRA_SWGROUP_GPU
-			  &smmu TEGRA_SWGROUP_GPUB>;
+		iommus = <&smmu TEGRA_SWGROUP_GPU>,
+			 <&smmu TEGRA_SWGROUP_GPUB>;
 	};
 
 	xusb@70090000 {
