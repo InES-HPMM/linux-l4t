@@ -85,6 +85,9 @@
 #define BQ27441_V_CHG_TERM_2		0x42
 #define BQ27441_BATTERY_LOW		15
 #define BQ27441_BATTERY_FULL		100
+#define BQ27441_SOFT_RESET_SOC		1
+#define BQ27441_SOFT_RESET_VOLTAGE	3800
+#define BQ27441_SOFT_RESET_DATA		0x01
 
 #define BQ27441_CC_GAIN			0x44
 #define BQ27441_CC_DELTA		0x48
@@ -198,6 +201,19 @@ static int bq27441_write_byte(struct i2c_client *client, u8 reg, u8 value)
 	return ret;
 }
 
+static void bq27441_soft_reset(struct bq27441_chip *chip)
+{
+	int ret = 0;
+
+	ret = bq27441_write_byte(chip->client, BQ27441_SOFT_RESET,
+				BQ27441_SOFT_RESET_DATA);
+	if (ret < 0)
+		dev_err(&chip->client->dev,
+				"BQ27441 SOFT RESET Failed:%d\n", ret);
+	else
+		dev_info(&chip->client->dev, "BQ27441 SOFT RESET done\n");
+}
+
 static int bq27441_update_soc_voltage(struct bq27441_chip *chip)
 {
 	int val;
@@ -230,6 +246,10 @@ static int bq27441_update_soc_voltage(struct bq27441_chip *chip)
 		chip->health = POWER_SUPPLY_HEALTH_GOOD;
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_NORMAL;
 	}
+
+	if ((chip->soc == BQ27441_SOFT_RESET_SOC) &&
+				(chip->vcell > BQ27441_SOFT_RESET_VOLTAGE))
+		bq27441_soft_reset(chip);
 
 	return 0;
 }
@@ -559,7 +579,7 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 
 	temp = (255 - old_csum
 		- (old_v_chg_term & 0xFF)
-		- (old_v_chg_term >> 8) & 0xFF) % 256;
+		- ((old_v_chg_term >> 8) & 0xFF)) % 256;
 
 	new_csum = 255 - ((temp
 				+ (chip->v_chg_term & 0xFF)
