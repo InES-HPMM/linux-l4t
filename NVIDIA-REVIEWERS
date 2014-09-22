@@ -76,10 +76,12 @@ F:	drivers/video/backlight/tegra_pwm_bl.c
 
 CPU
 M:	Bo Yan <byan@nvidia.com>
+M:	Alexander Van Brunt <avanbrunt@nvidia.com>
 L:	sw-mobile-cpu@exchange.nvidia.com
 S:	Supported
 F:	arch/arm64/mach-tegra/denver-hardwood.c
 F:	arch/arm64/mach-tegra/denver-knobs.c
+F:	arch/arm64/mach-tegra/hotplug-denver.c
 F:	arch/arm64/mach-tegra/platsmp.c
 F:	arch/arm/mach-tegra/cpu-tegra3.c
 F:	arch/arm/mach-tegra/cpu-tegra.c
@@ -87,7 +89,9 @@ F:	arch/arm/mach-tegra/flowctrl.c
 F:	arch/arm/mach-tegra/hotplug.c
 F:	arch/arm/mach-tegra/platsmp.c
 F:	arch/arm/mach-tegra/reset.c
+F:	arch/arm/mach-tegra/tegra12_speedo.c
 F:	drivers/clocksource/tegra-nvtimers.c
+F:	drivers/cpuidle/denver-cpuidle.c
 F:	drivers/irqchip/irq-tegra.c
 F:	drivers/misc/tegra_timerinfo.c
 F:	drivers/platform/tegra/tegra_fiq_debugger.c
