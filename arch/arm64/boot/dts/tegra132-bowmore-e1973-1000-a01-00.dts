@@ -24,6 +24,9 @@
 #include "tegra124-platforms/tegra124-ardbeg-power-tree-e1733-1000-a00.dtsi"
 #include "tegra132-platforms/tegra132-bowmore-sensor-e1934-1000-a00.dtsi"
 #include "tegra132-platforms/tegra132-bowmore-camera-a00.dtsi"
+#include "panel-a-wuxga-8-0.dtsi"
+#include "panel-p-wuxga-10-1.dtsi"
+#include "tegra124-platforms/tegra124-ardbeg-hdmi-e1780-1000-a00.dtsi"
 
 / {
 	model = "bowmore";
@@ -40,16 +43,42 @@
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
 	};
+
 	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
 		dsi {
-			nvidia,controller-vs = <1>;
-			status = "disabled";
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-a-wuxga-8-0 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+			};
 			panel-p-wuxga-10-1 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
 			};
 		};
 	};
+
 	i2c@7000d000 {
 		as3722@40 {
 			ams,minor-rev = <1>;
@@ -207,5 +236,9 @@
 			dev-data = "Tboard";
 			coeffs = "1 1 2 8 6 -8 -13 -9 -9 -8 -17 -18 -18 -16 2 17 15 27 42 60";
 		};
+	};
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
 	};
 };

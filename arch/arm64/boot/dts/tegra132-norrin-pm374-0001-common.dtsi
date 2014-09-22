@@ -1,7 +1,29 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #include "tegra132.dtsi"
 #include "tegra124-platforms/tegra124-pm374-gpio-default.dtsi"
 #include "tegra124-platforms/tegra124-pm374-pinmux.dtsi"
 #include "tegra124-platforms/tegra124-norrin-keys-pm374-0000-a00.dtsi"
+#include "panel-a-edp-1080p-14-0.dtsi"
+#include "panel-a-1080p-14-0.dtsi"
+#include "panel-p-wuxga-10-1.dtsi"
+#include "tegra124-platforms/tegra124-laguna-hdmi-pm359-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-norrin-power-tree-pm374-0000-a00.dtsi"
 #include "tegra132-platforms/tegra132-norrin-camera-a00.dtsi"
 
@@ -15,6 +37,53 @@
 		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
 		linux,initrd-start = <0x82080000>;
 		linux,initrd-end = <0x824B5300>;
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		dsi {
+			nvidia,dsi-controller-vs = <1>;
+			status = "okay";
+			panel-a-1080p-14-0 {
+				nvidia,dsi-edp-bridge = <TEGRA_DSI_ENABLE>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				nvidia,panel-bridge-en-0-gpio = <&gpio TEGRA_GPIO(I, 0) 0>; /* PI0 */
+				nvidia,panel-bridge-refclk-en-gpio = <&gpio TEGRA_GPIO(G, 4) 0>; /* PG4 */
+			};
+                        panel-p-wuxga-10-1 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
+                                nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
+                                nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+                        };
+		};
+		sor {
+			status = "okay";
+			nvidia,hpd-gpio = <&gpio 248 0>; /*PFF0*/
+			panel-a-edp-1080p-14-0 {
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+			};
+		};
+		dpaux {
+			status = "okay";
+		};
 	};
 
 	serial@70006000 {
@@ -59,6 +128,12 @@
 			compatible = "capella,cm32181";
 			reg = <0x48>;
 			vdd-supply = <&vdd_3v3>;
+		};
+
+		sn65dsi86@2d {
+			compatible = "ti,sn65dsi86";
+			reg = <0x2d>;
+			status = "okay";
 		};
 	};
 
@@ -195,6 +270,11 @@
 		avdd_usb-supply = <&as3722_gpio2>;
 		avdd_pll_utmip-supply = <&dcdc_1v8>;
 		usb_vbus-supply = <&usb1_usb2_vbus>;
+		status = "okay";
+	};
+
+	backlight {
+		compatible = "pwm-backlight";
 		status = "okay";
 	};
 };

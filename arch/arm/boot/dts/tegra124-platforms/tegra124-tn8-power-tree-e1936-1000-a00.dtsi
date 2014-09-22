@@ -28,6 +28,7 @@
 			avdd_dsi_csi-supply = <&ldo5_reg>;
 			avdd_lcd-supply = <&ldo2_reg>;
 			dvdd_lcd-supply = <&vddio_dvdd_lcd>;
+			vdd_lcd_bl-supply = <&ldo5_reg>;
 			vdd_lcd_bl_en-supply = <&en_lcd_bl>;
 		};
 		/* tegradc.1 */
