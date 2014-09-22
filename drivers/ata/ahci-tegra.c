@@ -1040,7 +1040,11 @@ static void tegra_ahci_uphy_init(void)
 
 	/* Register Calibration */
 	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
-	val |= (PLL0_RCAL_EN | PLL0_RCAL_CLK_EN);
+	val |= PLL0_RCAL_EN;
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
+	val |= PLL0_RCAL_CLK_EN;
 	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
 
 	timeout = 15;
