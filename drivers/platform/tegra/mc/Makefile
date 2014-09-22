@@ -2,6 +2,8 @@
 # Memory controller code.
 #
 
+GCOV_PROFILE := y
+
 ccflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
              -I$(srctree)/arch/arm/mach-tegra
 

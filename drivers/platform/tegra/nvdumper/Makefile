@@ -2,6 +2,8 @@
 # nvdumper code.
 #
 
+GCOV_PROFILE := y
+
 obj-${CONFIG_TEGRA_NVDUMPER}            += nvdumper.o
 obj-${CONFIG_TEGRA_NVDUMPER}            += nvdumper_regdump.o
 obj-${CONFIG_TEGRA_NVDUMPER}            += nvdumper-footprint.o
