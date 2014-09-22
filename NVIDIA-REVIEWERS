@@ -66,11 +66,13 @@ F:	drivers/mfd/aat2870-core.c
 F:	drivers/mfd/max77663-core.c
 F:	drivers/mfd/max8831.c
 F:	drivers/mfd/max8907c-irq.c
-F:	drivers/rtc/rtc-as3722.c
-F:	drivers/rtc/rtc-palmas.c
-F:	drivers/rtc/rtc-tps6591x.c
+F:	drivers/rtc/rtc-*.c
 F:	drivers/spi/*
 F:	drivers/tty/serial/*
+F:	drivers/video/backlight/backlight.c
+F:	drivers/video/backlight/max8831_bl.c
+F:	drivers/video/backlight/pwm_bl.c
+F:	drivers/video/backlight/tegra_pwm_bl.c
 
 CPU
 M:	Bo Yan <byan@nvidia.com>
