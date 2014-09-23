@@ -65,12 +65,9 @@
 /* number of AHCI ports */
 #define TEGRA_AHCI_NUM_PORTS			1
 
-/* idle timeout for PM in msec */
-#define TEGRA_AHCI_MIN_IDLE_TIME		1000
-#define TEGRA_AHCI_DEFAULT_IDLE_TIME		2000
-
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
-static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
+/* idle timeout for PM in msec */
+#define TEGRA_AHCI_DEFAULT_IDLE_TIME		10000
 #endif
 
 #define PORT_BASE	(TEGRA_SATA_BAR5_BASE + 0x100)
@@ -358,15 +355,6 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define SATA_CHX_PHY_CTRL20_0			0x6f4
 #define SATA_CHX_PHY_CTRL21_0			0x6f8
 
-
-#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
-
-/* create a work for handling the async transfers */
-static void tegra_ahci_work_handler(struct work_struct *work);
-static DECLARE_WORK(tegra_ahci_work, tegra_ahci_work_handler);
-static struct workqueue_struct *tegra_ahci_work_q;
-#endif
-
 #define CLK_RST_CONTROLLER_RST_DEVICES_Y_0	0x2a4
 #define SWR_PEX_USB_UPHY_RST			(0x1 << 13)
 #define SWR_SATA_USB_UPHY_RST			(0x1 << 12)
@@ -405,11 +393,6 @@ char *sata_power_rails[] = {
 
 #define NUM_SATA_POWER_RAILS	ARRAY_SIZE(sata_power_rails)
 
-struct tegra_qc_list {
-	struct list_head list;
-	struct ata_queued_cmd *qc;
-};
-
 /*
  *  tegra_ahci_host_priv is the extension of ahci_host_priv
  *  with extra fields: idle_timer, pg_save, pg_state, etc.
@@ -421,9 +404,9 @@ struct tegra_ahci_host_priv {
 	struct ata_host		*host;
 	struct timer_list	idle_timer;
 	struct device		*dev;
+	struct platform_device *pdev;
 	void			*pg_save;
 	enum sata_state		pg_state;
-	struct list_head	qc_list;
 	struct clk		*clk_sata;
 	struct clk		*clk_sata_oob;
 	struct clk		*clk_pllp;
@@ -452,23 +435,26 @@ static bool tegra_ahci_power_gate(struct ata_host *host);
 static void tegra_ahci_abort_power_gate(struct ata_host *host);
 static int tegra_ahci_controller_suspend(struct platform_device *pdev);
 static int tegra_ahci_controller_resume(struct platform_device *pdev);
+#ifndef CONFIG_TEGRA_SATA_IDLE_POWERGATE
 static int tegra_ahci_suspend(struct platform_device *pdev, pm_message_t mesg);
 static int tegra_ahci_resume(struct platform_device *pdev);
+#else
+static int tegra_ahci_suspend(struct device *dev);
+static int tegra_ahci_resume(struct device *dev);
+#endif
 static enum port_idle_status tegra_ahci_is_port_idle(struct ata_port *ap);
 static bool tegra_ahci_are_all_ports_idle(struct ata_host *host);
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
+#ifndef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
 static bool tegra_ahci_pad_resume(struct ata_host *host);
 static bool tegra_ahci_pad_suspend(struct ata_host *host);
 static void tegra_ahci_abort_pad_suspend(struct ata_host *host);
+#endif
 static unsigned int tegra_ahci_qc_issue(struct ata_queued_cmd *qc);
 static int tegra_ahci_hardreset(struct ata_link *link, unsigned int *class,
 				unsigned long deadline);
 static int tegra_ahci_runtime_suspend(struct device *dev);
 static int tegra_ahci_runtime_resume(struct device *dev);
-static void tegra_ahci_idle_timer(unsigned long arg);
-static int tegra_ahci_queue_one_qc(struct tegra_ahci_host_priv *tegra_hpriv,
-				   struct ata_queued_cmd *qc);
-static void tegra_ahci_dequeue_qcs(struct tegra_ahci_host_priv *tegra_hpriv);
 #endif
 #else
 #define tegra_ahci_controller_suspend	NULL
@@ -500,8 +486,9 @@ static const struct ata_port_info ahci_port_info = {
 
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
 static const struct dev_pm_ops tegra_ahci_dev_rt_ops = {
-	.runtime_suspend = tegra_ahci_runtime_suspend,
-	.runtime_resume = tegra_ahci_runtime_resume,
+	SET_SYSTEM_SLEEP_PM_OPS(tegra_ahci_suspend, tegra_ahci_resume)
+	SET_RUNTIME_PM_OPS(tegra_ahci_runtime_suspend,
+			tegra_ahci_runtime_resume, NULL)
 };
 #endif
 
@@ -515,14 +502,19 @@ static struct platform_driver tegra_platform_ahci_driver = {
 	.probe		= tegra_ahci_init_one,
 	.remove		= tegra_ahci_remove_one,
 #ifdef CONFIG_PM
+#ifndef CONFIG_TEGRA_SATA_IDLE_POWERGATE
 	.suspend	= tegra_ahci_suspend,
 	.resume		= tegra_ahci_resume,
+#endif
 #endif
 	.driver = {
 		.name = DRV_NAME,
 		.owner = THIS_MODULE,
 		.of_match_table = of_match_ptr(of_ahci_tegra_match),
-	}
+#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
+		.pm      = &tegra_ahci_dev_rt_ops,
+#endif
+	},
 };
 
 struct tegra_ahci_host_priv *g_tegra_hpriv;
@@ -722,13 +714,6 @@ static const struct sata_pad_cntrl sata_calib_pad_val[] = {
 		0x0e
 	}
 };
-
-#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
-static void tegra_ahci_work_handler(struct work_struct *work)
-{
-	tegra_ahci_runtime_resume(g_tegra_hpriv->dev);
-}
-#endif
 
 static void tegra_ahci_set_pad_cntrl_regs(
 			struct tegra_ahci_host_priv *tegra_hpriv)
@@ -1561,13 +1546,13 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev)
 	return 0;
 }
 
+#ifndef CONFIG_TEGRA_SATA_IDLE_POWERGATE
 static int tegra_ahci_suspend(struct platform_device *pdev, pm_message_t mesg)
 {
 	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	void __iomem *mmio = host->iomap[AHCI_PCI_BAR];
 	u32 ctl;
 	int rc;
-
 	dev_dbg(host->dev, "** entering %s: **\n", __func__);
 	if (mesg.event & PM_EVENT_SLEEP) {
 		/*
@@ -1602,16 +1587,131 @@ static int tegra_ahci_resume(struct platform_device *pdev)
 	rc = tegra_ahci_controller_init(g_tegra_hpriv, 1);
 	if (rc != 0) {
 		dev_err(host->dev, "TEGRA SATA init failed in resume\n");
+		tegra_ahci_controller_suspend(pdev);
 		return rc;
 	}
 
 	if (pdev->dev.power.power_state.event == PM_EVENT_SUSPEND) {
 		rc = ahci_reset_controller(host);
-		if (rc)
+		if (rc) {
+			dev_err(host->dev, "TEGRA SATA reset failed in resume\n");
+			tegra_ahci_controller_remove(pdev);
 			return rc;
+		}
 
 		val = misc_readl(SATA_AUX_RX_STAT_INT_0);
-		if (val && SATA_RX_STAT_INT_DISABLE) {
+		if (val & SATA_RX_STAT_INT_DISABLE) {
+			val &= ~SATA_RX_STAT_INT_DISABLE;
+			misc_writel(val, SATA_AUX_RX_STAT_INT_0);
+		}
+
+		ahci_init_controller(host);
+	}
+
+	ata_host_resume(host);
+
+	return 0;
+}
+#else
+static int tegra_ahci_suspend_common(struct platform_device *pdev,
+		pm_message_t mesg)
+{
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
+	void __iomem *mmio = host->iomap[AHCI_PCI_BAR];
+	u32 ctl;
+	int rc;
+
+	dev_dbg(host->dev, "** entering %s: **\n", __func__);
+	if (mesg.event & PM_EVENT_SLEEP) {
+		/*
+		 * AHCI spec rev1.1 section 8.3.3:
+		 * Software must disable interrupts prior to requesting a
+		 * transition of the HBA to D3 state.
+		 */
+		ctl = readl(mmio + HOST_CTL);
+		ctl &= ~HOST_IRQ_EN;
+		writel(ctl, mmio + HOST_CTL);
+		readl(mmio + HOST_CTL); /* flush */
+	}
+
+	rc = ata_host_suspend(host, mesg);
+	if (rc)
+		return rc;
+
+	return tegra_ahci_controller_suspend(pdev);
+}
+static int tegra_ahci_suspend(struct device *dev)
+{
+
+	struct platform_device *pdev = g_tegra_hpriv->pdev;
+	dev_dbg(dev, "Suspending...\n");
+	return tegra_ahci_suspend_common(pdev, PMSG_SUSPEND);
+}
+
+
+static int tegra_ahci_runtime_suspend(struct device *dev)
+{
+	struct platform_device *pdev = g_tegra_hpriv->pdev;
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
+	int err = 0;
+	bool pg_ok;
+
+	if (tegra_ahci_are_all_ports_idle(host)) {
+		/* if all ports are in idle, do power-gate */
+#ifdef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
+		pg_ok = tegra_ahci_power_gate(host);
+#else
+		pg_ok = tegra_ahci_pad_suspend(host);
+#endif
+
+		if (pg_ok) {
+			dev_dbg(dev, "rt-suspend Done\n");
+		} else {
+			dev_dbg(dev, "rt-suspend Failed\n");
+#ifdef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
+			tegra_ahci_abort_power_gate(host);
+#else
+			tegra_ahci_abort_pad_suspend(host);
+#endif
+			err = -EBUSY;
+		}
+	} else {
+		dev_dbg(dev, "Port not idle...\n");
+		err = -EBUSY;
+	}
+
+	return err;
+}
+
+static int tegra_ahci_resume(struct device *dev)
+{
+	struct platform_device *pdev = g_tegra_hpriv->pdev;
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
+	int rc;
+	u32 val;
+
+	dev_dbg(host->dev, "** entering %s: **\n", __func__);
+	rc = tegra_ahci_controller_resume(pdev);
+	if (rc != 0)
+		return rc;
+
+	rc = tegra_ahci_controller_init(g_tegra_hpriv, 1);
+	if (rc != 0) {
+		dev_err(host->dev, "TEGRA SATA init failed in resume\n");
+		tegra_ahci_controller_suspend(pdev);
+		return rc;
+	}
+
+	if (pdev->dev.power.power_state.event == PM_EVENT_SUSPEND) {
+		rc = ahci_reset_controller(host);
+		if (rc) {
+			dev_err(host->dev, "TEGRA SATA reset failed in resume\n");
+			tegra_ahci_controller_remove(pdev);
+			return rc;
+		}
+
+		val = misc_readl(SATA_AUX_RX_STAT_INT_0);
+		if (val & SATA_RX_STAT_INT_DISABLE) {
 			val &= ~SATA_RX_STAT_INT_DISABLE;
 			misc_writel(val, SATA_AUX_RX_STAT_INT_0);
 		}
@@ -1624,123 +1724,26 @@ static int tegra_ahci_resume(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
-static int tegra_ahci_runtime_suspend(struct device *dev)
-{
-	struct ata_host *host;
-	struct tegra_ahci_host_priv *tegra_hpriv;
-	bool pg_ok;
-	unsigned long flags;
-	int err = 0;
-
-	host = dev_get_drvdata(dev);
-	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
-
-	spin_lock_irqsave(&host->lock, flags);
-
-	switch (tegra_hpriv->pg_state) {
-	case SATA_OFF:
-		dev_dbg(dev, "** rt-suspend: already power gated **\n");
-		break;
-
-	case SATA_ABORT_OFF:
-		dev_dbg(dev, "** rt-suspend: abort suspend **\n");
-		tegra_hpriv->pg_state = SATA_ON;
-		tegra_ahci_dequeue_qcs(tegra_hpriv);
-		err = -EBUSY;
-		break;
-
-	case SATA_ON:
-	case SATA_GOING_OFF:
-		if (tegra_ahci_are_all_ports_idle(host)) {
-			/* if all ports are in idle, do power-gate */
-			dev_dbg(dev, "** rt-suspend: power-down sata (%u) **\n",
-					tegra_hpriv->pg_state);
-#ifdef TEGRA_AHCI_CONTEXT_RESTORE
-			pg_ok = tegra_ahci_power_gate(host);
-#else
-			pg_ok = tegra_ahci_pad_suspend(host);
-#endif
-			dev_dbg(dev, "** rt-suspend: done **\n");
-			if (pg_ok) {
-				tegra_hpriv->pg_state = SATA_OFF;
-			} else {
-				dev_err(dev, "** rt-suspend: abort pg **\n");
-#ifdef TEGRA_AHCI_CONTEXT_RESTORE
-				tegra_ahci_abort_power_gate(host);
-#else
-				tegra_ahci_abort_pad_suspend(host);
-#endif
-				tegra_hpriv->pg_state = SATA_ON;
-				err = -EBUSY;
-			}
-		} else {
-			dev_dbg(dev, "** rt-suspend: port not idle (%u) **\n",
-					tegra_hpriv->pg_state);
-			err = -EBUSY;
-		}
-		break;
-
-	case SATA_GOING_ON:
-	default:
-		dev_err(dev, "** rt-suspend: bad state (%u) **\n",
-			tegra_hpriv->pg_state);
-		WARN_ON(1);
-		err = -EBUSY;
-		break;
-
-	}
-
-	spin_unlock_irqrestore(&host->lock, flags);
-
-	return err;
-}
-
 static int tegra_ahci_runtime_resume(struct device *dev)
 {
-	struct ata_host *host;
-	struct tegra_ahci_host_priv *tegra_hpriv;
+	struct platform_device *pdev = g_tegra_hpriv->pdev;
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	int err = 0;
 
-	host = dev_get_drvdata(dev);
-	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
-
-	if (tegra_hpriv->pg_state == SATA_ON) {
-		dev_dbg(dev, "** rt-resume: already power ungated **\n");
-		goto exit;
-	}
-
-	if ((tegra_hpriv->pg_state == SATA_OFF) ||
-	    (tegra_hpriv->pg_state == SATA_GOING_ON)) {
-		dev_dbg(dev, "** rt-resume: power-up sata (%u) **\n",
-				tegra_hpriv->pg_state);
-#ifdef TEGRA_AHCI_CONTEXT_RESTORE
-		tegra_ahci_power_un_gate(host);
+#ifdef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
+	err = tegra_ahci_power_un_gate(host);
 #else
-		tegra_ahci_pad_resume(host);
+	err = tegra_ahci_pad_resume(host);
 #endif
-		dev_dbg(dev, "** rt-resume: done **\n");
-		tegra_hpriv->pg_state = SATA_ON;
-
-		/* now qc_issue all qcs in the qc_list */
-		tegra_ahci_dequeue_qcs(tegra_hpriv);
-
-	} else {
-		dev_err(dev, "** rt-resume: bad state (%u) **\n",
-				tegra_hpriv->pg_state);
-		WARN_ON(1);
-		err = -EBUSY;
-	}
-
-
-exit:
-
-	return err;
+	if (err)
+		return 0;
+	else
+		return -EBUSY;
 }
 
 #endif
 
-#ifdef TEGRA_AHCI_CONTEXT_RESTORE
+#ifdef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
 static u16 pg_save_bar5_registers[] = {
 	0x018,	/* T_AHCI_HBA_CCC_PORTS */
 	0x004,	/* T_AHCI_HBA_GHC */
@@ -2200,7 +2203,7 @@ static bool tegra_ahci_power_gate(struct ata_host *host)
 	val |= PG_INFO_ON;
 	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
 
-#ifdef TEGRA_AHCI_CONTEXT_RESTORE
+#ifdef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
 	tegra_ahci_pg_save_registers(host);
 #endif
 	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
@@ -2294,7 +2297,7 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host)
 
 	tegra_ahci_clr_clk_rst_cnt_rst_dev();
 
-#ifdef TEGRA_AHCI_CONTEXT_RESTORE
+#ifdef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
 	/* restore registers */
 	tegra_ahci_pg_restore_registers(host);
 #endif
@@ -2380,6 +2383,7 @@ static bool tegra_ahci_are_all_ports_idle(struct ata_host *host)
 }
 
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
+#ifndef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
 static void tegra_ahci_abort_pad_suspend(struct ata_host *host)
 {
 	/*No implementation*/
@@ -2391,6 +2395,17 @@ static bool tegra_ahci_pad_suspend(struct ata_host *host)
 	struct tegra_ahci_host_priv *tegra_hpriv;
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
+
+	/* abort PG if there are errors occurred */
+	if (tegra_ahci_check_errors(host)) {
+		dev_err(host->dev, "** pg: errors; abort power gating **\n");
+		return false;
+	}
+	/* make sure all ports have no outstanding commands and are idle. */
+	if (!tegra_ahci_are_all_ports_idle(host)) {
+		dev_err(host->dev, "** pg: cmds; abort power gating **\n");
+		return false;
+	}
 
 	/* Set the bits in the CAR to allow HW based low power sequencing. */
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
@@ -2404,16 +2419,6 @@ static bool tegra_ahci_pad_suspend(struct ata_host *host)
 		xusb_writel(val, XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
 	}
 
-	/* abort PG if there are errors occurred */
-	if (tegra_ahci_check_errors(host)) {
-		dev_err(host->dev, "** pg: errors; abort power gating **\n");
-		return false;
-	}
-	/* make sure all ports have no outstanding commands and are idle. */
-	if (!tegra_ahci_are_all_ports_idle(host)) {
-		dev_err(host->dev, "** pg: cmds; abort power gating **\n");
-		return false;
-	}
 	tegra_ahci_put_sata_in_iddq();
 
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
@@ -2483,163 +2488,48 @@ static bool tegra_ahci_pad_resume(struct ata_host *host)
 
 	return true;
 }
-
-static void tegra_ahci_to_add_idle_timer(struct ata_host *host)
-{
-	struct tegra_ahci_host_priv *tegra_hpriv;
-
-	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
-
-	/* note: the routine is called from interrupt context */
-	spin_lock(&host->lock);
-	/* start idle-timer if all ports have no outstanding commands */
-	if (tegra_ahci_are_all_ports_idle(host)) {
-		/* adjust tegra_ahci_idle_time to minimum if it is too small */
-		tegra_ahci_idle_time = max((u32)TEGRA_AHCI_MIN_IDLE_TIME,
-					   tegra_ahci_idle_time);
-		tegra_hpriv->idle_timer.expires =
-			ata_deadline(jiffies, tegra_ahci_idle_time);
-		mod_timer(&tegra_hpriv->idle_timer,
-			  tegra_hpriv->idle_timer.expires);
-	}
-	spin_unlock(&host->lock);
-}
-
-static void tegra_ahci_idle_timer(unsigned long arg)
-{
-	struct ata_host *host = (void *)arg;
-	struct tegra_ahci_host_priv *tegra_hpriv;
-	unsigned long flags;
-
-	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
-
-	spin_lock_irqsave(&host->lock, flags);
-	if (tegra_hpriv->pg_state == SATA_ON)
-		tegra_hpriv->pg_state = SATA_GOING_OFF;
-	else {
-		dev_err(host->dev, "idle_timer: bad state (%u)\n",
-				tegra_hpriv->pg_state);
-		WARN_ON(1);
-		spin_unlock_irqrestore(&host->lock, flags);
-		return;
-	}
-	spin_unlock_irqrestore(&host->lock, flags);
-	tegra_ahci_runtime_suspend(tegra_hpriv->dev);
-}
-
-static int tegra_ahci_queue_one_qc(struct tegra_ahci_host_priv *tegra_hpriv,
-				   struct ata_queued_cmd *qc)
-{
-	struct tegra_qc_list *qc_list;
-
-	qc_list = kmalloc(sizeof(struct tegra_qc_list), GFP_ATOMIC);
-	if (!qc_list) {
-		dev_err(tegra_hpriv->dev, "failed to alloc qc_list\n");
-		return AC_ERR_SYSTEM;
-	}
-	qc_list->qc = qc;
-	list_add_tail(&(qc_list->list), &(tegra_hpriv->qc_list));
-	return 0;
-}
-
-static void tegra_ahci_dequeue_qcs(struct tegra_ahci_host_priv *tegra_hpriv)
-{
-	struct list_head *list, *next;
-	struct tegra_qc_list *qc_list;
-	struct ata_queued_cmd *qc;
-
-	/* now qc_issue all qcs in the qc_list */
-	list_for_each_safe(list, next, &tegra_hpriv->qc_list) {
-		qc_list = list_entry(list, struct tegra_qc_list, list);
-		qc = qc_list->qc;
-		ahci_ops.qc_issue(qc);
-		list_del(list);
-		kfree(qc_list);
-	}
-}
+#endif
 
 static unsigned int tegra_ahci_qc_issue(struct ata_queued_cmd *qc)
 {
 	struct ata_port *ap = qc->ap;
 	struct ata_host *host = ap->host;
 	struct tegra_ahci_host_priv *tegra_hpriv = host->private_data;
+	int ret = 0;
 
-	/* stop the idle timer */
-	if (timer_pending(&tegra_hpriv->idle_timer))
-		del_timer_sync(&tegra_hpriv->idle_timer);
-
-	/* note: host->lock is locked */
-	switch (tegra_hpriv->pg_state) {
-	case SATA_ON:
-		/* normal case, issue the qc */
-		return ahci_ops.qc_issue(qc);
-	case SATA_GOING_OFF:
-	case SATA_ABORT_OFF:
-		/* SATA is going OFF, let's abort the suspend */
-		dev_dbg(host->dev, "** qc_issue: going OFF **\n");
-		tegra_hpriv->pg_state = SATA_ABORT_OFF;
-		return tegra_ahci_queue_one_qc(tegra_hpriv, qc);
-	case SATA_OFF:
-		dev_dbg(host->dev, "** qc_issue: request power-up sata **\n");
-		queue_work(tegra_ahci_work_q, &tegra_ahci_work);
-		tegra_hpriv->pg_state = SATA_GOING_ON;
-		/* continue with the following code to queue the qc */
-	case SATA_GOING_ON:
-		return tegra_ahci_queue_one_qc(tegra_hpriv, qc);
-	default:
-		dev_err(host->dev, "** qc_issue: bad state (%u) **\n",
-					tegra_hpriv->pg_state);
-		WARN_ON(1);
-		return AC_ERR_SYSTEM;
+	ret = pm_runtime_get_sync(&tegra_hpriv->pdev->dev);
+	if (ret < 0) {
+		dev_err(&g_tegra_hpriv->pdev->dev,
+			"%s(%d) Failed to resume the devcie err=%d\n",
+			__func__, __LINE__, ret);
 	}
+
+	ret = ahci_ops.qc_issue(qc);
+
+	pm_runtime_mark_last_busy(&g_tegra_hpriv->pdev->dev);
+	pm_runtime_put_sync_autosuspend(&g_tegra_hpriv->pdev->dev);
+
+
+	return ret;
 }
 
 static int tegra_ahci_hardreset(struct ata_link *link, unsigned int *class,
 				unsigned long deadline)
 {
-	struct ata_port *ap = link->ap;
-	struct ata_host *host = ap->host;
-	struct tegra_ahci_host_priv *tegra_hpriv = host->private_data;
-	unsigned long flags;
-	int rc;
-
-	if (tegra_hpriv->pg_state == SATA_OFF) {
-		dev_dbg(host->dev, "** hreset: request power-up sata **\n");
-		spin_lock_irqsave(&host->lock, flags);
-		rc = tegra_ahci_runtime_resume(tegra_hpriv->dev);
-		spin_unlock_irqrestore(&host->lock, flags);
-		/* rc == 0 means the request has been run successfully */
-		if (rc) {
-			dev_err(host->dev, "** hreset: rt_get()=%d **\n", rc);
-			WARN_ON(1);
-			return AC_ERR_SYSTEM;
-		}
-		tegra_hpriv->pg_state = SATA_ON;
+	int rc = 0;
+	rc = pm_runtime_get_sync(&g_tegra_hpriv->pdev->dev);
+	if (rc < 0) {
+		dev_err(&g_tegra_hpriv->pdev->dev,
+			"%s(%d) Failed to resume the devcie err=%d\n",
+			__func__, __LINE__, rc);
 	}
 
-	return ahci_ops.hardreset(link, class, deadline);
-}
+	rc = ahci_ops.hardreset(link, class, deadline);
 
-static irqreturn_t tegra_ahci_interrupt(int irq, void *dev_instance)
-{
-	irqreturn_t irq_retval;
-	u32 val;
+	pm_runtime_mark_last_busy(&g_tegra_hpriv->pdev->dev);
+	pm_runtime_put_sync_autosuspend(&g_tegra_hpriv->pdev->dev);
 
-	val = misc_readl(SATA_AUX_RX_STAT_INT_0);
-	if (!(val && SATA_RX_STAT_INT_DISABLE)) {
-		val |= SATA_RX_STAT_INT_DISABLE;
-		misc_writel(val, SATA_AUX_RX_STAT_INT_0);
-	}
-
-	irq_retval = ahci_interrupt(irq, dev_instance);
-	if (irq_retval == IRQ_NONE)
-		return IRQ_NONE;
-
-#ifdef CONFIG_PM
-	tegra_ahci_to_add_idle_timer((struct ata_host *)dev_instance);
-#endif
-
-	return irq_retval;
+	return rc;
 }
 #endif
 #endif
@@ -2658,17 +2548,11 @@ static int tegra_ahci_remove_one(struct platform_device *pdev)
 	devm_iounmap(&pdev->dev, host->iomap[AHCI_PCI_BAR]);
 	ata_host_detach(host);
 
-#ifdef TEGRA_AHCI_CONTEXT_RESTORE
+#ifdef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
 	/* Free PG save/restore area */
 	devm_kfree(&pdev->dev, ((struct tegra_ahci_host_priv *)hpriv)->pg_save);
 
 #endif
-#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
-	cancel_work_sync(&tegra_ahci_work);
-	if (tegra_ahci_work_q)
-		destroy_workqueue(tegra_ahci_work_q);
-#endif
-
 	devm_kfree(&pdev->dev, hpriv);
 
 	return 0;
@@ -2704,7 +2588,7 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	enum tegra_chipid cid;
 
 
-#if defined(TEGRA_AHCI_CONTEXT_RESTORE)
+#if defined(CONFIG_TEGRA_AHCI_CONTEXT_RESTORE)
 	u32 save_size;
 #endif
 	irq_handler_t irq_handler = ahci_interrupt;
@@ -2744,15 +2628,6 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 		goto fail;
 	}
 
-#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
-	tegra_ahci_work_q = alloc_workqueue("tegra_ahci_work_q",
-					WQ_HIGHPRI | WQ_UNBOUND, 16);
-	if (!tegra_ahci_work_q) {
-		dev_err(dev, "TEGRA WORKQUEUE SATA init failed\n");
-		goto fail;
-	}
-#endif
-
 	hpriv->flags |= (unsigned long)pi.private_data;
 	tegra_hpriv = (struct tegra_ahci_host_priv *)hpriv;
 	tegra_hpriv->dev = dev;
@@ -2774,6 +2649,7 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 		tegra_hpriv->pexp_gpio_low = ahci_pdata->pexp_gpio_low;
 	}
 	tegra_hpriv->cid = cid;
+	tegra_hpriv->pdev = pdev;
 	g_tegra_hpriv = tegra_hpriv;
 
 	/* Call tegra init routine */
@@ -2845,7 +2721,7 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	ahci_print_info(host, "TEGRA-SATA");
 	dev_dbg(dev, "controller init okay\n");
 
-#if defined(TEGRA_AHCI_CONTEXT_RESTORE)
+#if defined(CONFIG_TEGRA_AHCI_CONTEXT_RESTORE)
 	/* Setup PG save/restore area: */
 
 	/* calculate the size */
@@ -2871,26 +2747,29 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 		goto fail;
 	}
 #endif
-#ifdef CONFIG_PM
-#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
-	tegra_hpriv->pg_state = SATA_ON;
-
-	/* setup sata idle timer */
-	init_timer_deferrable(&tegra_hpriv->idle_timer);
-	tegra_hpriv->idle_timer.function = tegra_ahci_idle_timer;
-	tegra_hpriv->idle_timer.data = (unsigned long)host;
-
-	INIT_LIST_HEAD(&tegra_hpriv->qc_list);
-
-	/* use our own irq handler */
-	irq_handler = tegra_ahci_interrupt;
-#endif
-
-#endif
 
 	rc = ata_host_activate(host, irq_res->start, irq_handler, 0, &ahci_sht);
-	if (rc == 0)
-		return 0;
+
+	if (rc)
+		goto fail;
+#ifdef CONFIG_PM
+#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
+
+	rc = pm_runtime_set_active(dev);
+
+	if (rc) {
+		dev_dbg(dev, "unable to set runtime pm active err=%d\n", rc);
+	} else {
+		dev_dbg(dev, "Set runtime pm active err=%d\n", rc);
+		pm_runtime_set_autosuspend_delay(dev,
+					TEGRA_AHCI_DEFAULT_IDLE_TIME);
+		pm_runtime_use_autosuspend(dev);
+		pm_suspend_ignore_children(dev, true);
+		pm_runtime_enable(dev);
+	}
+#endif
+#endif
+	return 0;
 
 fail:
 	if (host) {
@@ -2900,11 +2779,6 @@ fail:
 	}
 	if (hpriv)
 		devm_kfree(dev, hpriv);
-
-#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
-	if (tegra_ahci_work_q)
-		destroy_workqueue(tegra_ahci_work_q);
-#endif
 
 	return rc;
 }
@@ -2957,12 +2831,24 @@ static int dbg_ahci_dump_show(struct seq_file *s, void *unused)
 	u32 base;
 	u32 *ptr;
 	u32 i;
-
+#ifndef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
-	if (g_tegra_hpriv)
-		tegra_ahci_runtime_resume(g_tegra_hpriv->dev);
-	else
+	int rc;
+#endif
+#endif
+
+	if (g_tegra_hpriv == NULL)
 		return 0;
+
+#ifndef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
+#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
+	rc = pm_runtime_get_sync(&g_tegra_hpriv->pdev->dev);
+	if (rc < 0) {
+		dev_err(&g_tegra_hpriv->pdev->dev,
+			"%s(%d) Failed to resume the devcie err=%d\n",
+			__func__, __LINE__, rc);
+	}
+#endif
 #endif
 
 	base = TEGRA_SATA_CONFIG_BASE;
@@ -2985,25 +2871,72 @@ static int dbg_ahci_dump_show(struct seq_file *s, void *unused)
 		dbg_ahci_dump_regs(s, ptr, base, 20);
 	}
 
-#ifdef	CONFIG_TEGRA_SATA_IDLE_POWERGATE
-	/* adjust tegra_ahci_idle_time to minimum if it is too small */
-	tegra_ahci_idle_time = max((u32)TEGRA_AHCI_MIN_IDLE_TIME,
-				   tegra_ahci_idle_time);
-	seq_printf(s, "\nIdle Timeout = %u milli-seconds.\n",
-		      tegra_ahci_idle_time);
-#endif
-
 	if (tegra_powergate_is_powered(TEGRA_POWERGATE_SATA))
 		seq_puts(s, "\n=== SATA controller is powered on ===\n\n");
 	else
 		seq_puts(s, "\n=== SATA controller is powered off ===\n\n");
+#ifndef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
-	tegra_ahci_runtime_suspend(g_tegra_hpriv->dev);
+	pm_runtime_mark_last_busy(&g_tegra_hpriv->pdev->dev);
+	pm_runtime_put_sync_autosuspend(&g_tegra_hpriv->pdev->dev);
 #endif
+#endif
+	return 0;
+}
 
+#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
+static int dbg_ahci_rtpm_dump_show(struct seq_file *s, void *unused)
+{
+	seq_printf(s, "\n\n device name = %s Runtime Status = %d\n"
+			"Usage count = %d Child_count = %d"
+			" ignore children = %d\n\n",
+			dev_name(g_tegra_hpriv->dev),
+			g_tegra_hpriv->dev->power.runtime_status,
+			atomic_read(&g_tegra_hpriv->dev->power.usage_count),
+			atomic_read(&g_tegra_hpriv->dev->power.child_count),
+			g_tegra_hpriv->dev->power.ignore_children);
+	seq_printf(s, "runtime_error = %d\n\n",
+			g_tegra_hpriv->dev->power.runtime_error);
+	seq_printf(s, "timer_expires = %ld\n\n",
+			g_tegra_hpriv->dev->power.timer_expires);
+	seq_printf(s, "disable_depth = %d\n\n",
+			g_tegra_hpriv->dev->power.disable_depth);
+	seq_printf(s, "idle_notification = %d\n\n",
+			g_tegra_hpriv->dev->power.idle_notification);
+	seq_printf(s, "request_pending = %d\n\n",
+			g_tegra_hpriv->dev->power.request_pending);
+	seq_printf(s, "deferred_resume = %d\n\n",
+			g_tegra_hpriv->dev->power.deferred_resume);
+	seq_printf(s, "run_wake = %d\n\n",
+			g_tegra_hpriv->dev->power.run_wake);
+	seq_printf(s, "runtime_auto = %d\n\n",
+			g_tegra_hpriv->dev->power.runtime_auto);
+	seq_printf(s, "no_callbacks = %d\n\n",
+			g_tegra_hpriv->dev->power.no_callbacks);
+	seq_printf(s, "irq_safe = %d\n\n",
+			g_tegra_hpriv->dev->power.irq_safe);
+	seq_printf(s, "timer_autosuspends = %d\n\n",
+			g_tegra_hpriv->dev->power.timer_autosuspends);
+
+	seq_printf(s, "last_busy = %ld\n\n",
+			g_tegra_hpriv->dev->power.last_busy);
 
 	return 0;
 }
+
+static int dbg_ahci_rtpm_dump_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, dbg_ahci_rtpm_dump_show, &inode->i_private);
+}
+
+static const struct file_operations debug_rtpm_fops = {
+	.open		= dbg_ahci_rtpm_dump_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+#endif
 
 static int dbg_ahci_dump_open(struct inode *inode, struct file *file)
 {
@@ -3021,10 +2954,9 @@ static int tegra_ahci_dump_debuginit(void)
 {
 	(void) debugfs_create_file("tegra_ahci", S_IRUGO,
 				   NULL, NULL, &debug_fops);
-#ifdef	CONFIG_TEGRA_SATA_IDLE_POWERGATE
-	(void) debugfs_create_u32("tegra_ahci_idle_ms", S_IRUGO | S_IXUGO
-					| S_IWUSR | S_IWGRP,
-				   NULL, &tegra_ahci_idle_time);
+#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
+		(void) debugfs_create_file("tegra_rtpm_ahci", S_IRUGO,
+				   NULL, NULL, &debug_rtpm_fops);
 #endif
 	return 0;
 }
