@@ -45,7 +45,7 @@
 #include <linux/platform/tegra/common.h>
 #include "../nvdumper/nvdumper-footprint.h"
 
-#define DVFS_CLOCK_CHANGE_VERSION	2105
+#define DVFS_CLOCK_CHANGE_VERSION	2108
 #define EMC_PRELOCK_VERSION		2101
 
 /*
@@ -1743,7 +1743,7 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 		emc_cc_dbg(INFO, "tRTM = %u, EMC_RP = %u\n", tRTM,
 			   next_timing->burst_regs[EMC_RP_INDEX]);
 
-		if (next_timing->burst_regs[EMC_RP_INDEX] < tRTM){
+		if (last_timing->burst_regs[EMC_RP_INDEX] < tRTM) {
 			if (tRTM > 63) {
 				RP_war = 63;
 				TRPab_war = 63;
@@ -1782,7 +1782,8 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 	emc_set_shadow_bypass(ACTIVE);
 	emc_writel(emc_cfg, EMC_CFG);
 	emc_writel(emc_sel_dpd_ctrl, EMC_SEL_DPD_CTRL);
-	emc_writel(EMC_CFG_PIPE_CLK_CLK_ALWAYS_ON, EMC_CFG_PIPE_CLK);
+	emc_writel(emc_cfg_pipe_clk_o | EMC_CFG_PIPE_CLK_CLK_ALWAYS_ON,
+		   EMC_CFG_PIPE_CLK);
 	emc_writel(next_timing->emc_fdpd_ctrl_cmd_no_ramp &
 		   ~EMC_FDPD_CTRL_CMD_NO_RAMP_CMD_DPD_NO_RAMP_ENABLE,
 		   EMC_FDPD_CTRL_CMD_NO_RAMP);
@@ -2176,6 +2177,7 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 		}
 	}
 
+	emc_dbg = emc_dbg_o;
 	if (dram_type == DRAM_TYPE_LPDDR4) {
 		ccfifo_writel(mr13_flip_fspop | 0x8, EMC_MRW3,
 			      (1000 * fake_timing->dram_timing_regs[T_RP]) /
@@ -2519,7 +2521,9 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 	 *   Restore EMC_CFG, FDPD registers.
 	 */
 	emc_cc_dbg(STEPS, "Step 27\n");
+	emc_set_shadow_bypass(ACTIVE);
 	emc_writel(next_timing->burst_regs[EMC_CFG_INDEX], EMC_CFG);
+	emc_set_shadow_bypass(ASSEMBLY);
 	emc_writel(next_timing->emc_fdpd_ctrl_cmd_no_ramp,
 		   EMC_FDPD_CTRL_CMD_NO_RAMP);
 	emc_writel(next_timing->emc_sel_dpd_ctrl, EMC_SEL_DPD_CTRL);
@@ -3004,7 +3008,7 @@ static int init_emc_table(const struct tegra21_emc_table *table,
 
 	tegra_emc_table_size = min(table_size, TEGRA_EMC_TABLE_MAX_SIZE);
 	switch (table[0].rev) {
-	case 0x3:
+	case 0x5:
 		start_timing.burst_regs_num = table[0].burst_regs_num;
 		break;
 	default:

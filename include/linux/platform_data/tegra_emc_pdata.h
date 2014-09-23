@@ -207,8 +207,15 @@ struct tegra12_emc_pdata {
 #define TEGRA21_EMC_VREF_REGS		4
 #define TEGRA21_EMC_DRAM_TIMING_REGS	5
 #define TEGRA21_BURST_MC_REGS		33
-#define TEGRA21_EMC_LA_SCALE_REGS	57
+#define TEGRA21_TRAINING_MOD_REGS	20
+#define TEGRA21_SAVE_RESTORE_MOD_REGS	33
+#define TEGRA21_EMC_LA_SCALE_REGS	24
 
+/*
+ * Some fields (marked with "unused") are only used in the BL. We keep them here
+ * to keep this structure in sync with all the other places this structure is
+ * used.
+ */
 struct tegra21_emc_table {
 	u8   rev;
 	char table_id[TEGRA21_MAX_TABLE_ID_LEN];
@@ -217,8 +224,9 @@ struct tegra21_emc_table {
 	int  gk20a_min_mv;
 	char src_name[32];
 	u32  src_sel_reg;
-	u8   needs_training;
-	u8   trained;
+	u32  needs_training;
+	u32  training_pattern; /* Unused */
+	u32  trained;
 
 	int  burst_regs_num;
 	int  burst_regs_per_ch_num;
@@ -227,6 +235,7 @@ struct tegra21_emc_table {
 	int  burst_mc_regs_num;
 	int  la_scale_regs_num; /* Up/down regs. */
 	int  vref_regs_num;
+	int  training_mod_regs_num;
 	int  dram_timing_regs_num;
 
 	u32  burst_regs[TEGRA21_EMC_BURST_REGS];
@@ -244,6 +253,8 @@ struct tegra21_emc_table {
 
 	/* dram timing parameters are required in some calculations*/
 	u32  dram_timing_regs[TEGRA21_EMC_DRAM_TIMING_REGS];
+	u32  training_mod_regs[TEGRA21_TRAINING_MOD_REGS]; /* Unused */
+	u32  save_restore_mod_regs[TEGRA21_SAVE_RESTORE_MOD_REGS]; /* Unused */
 	u32  burst_mc_regs[TEGRA21_BURST_MC_REGS];
 	u32  la_scale_regs[TEGRA21_EMC_LA_SCALE_REGS];
 
