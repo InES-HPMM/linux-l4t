@@ -238,13 +238,13 @@ dma_map_linear_attrs(struct device *dev, phys_addr_t pa, size_t size,
 		     enum dma_data_direction dir, struct dma_attrs *attrs)
 {
 	dma_addr_t da, req = pa;
+	DEFINE_DMA_ATTRS(_attrs);
 
 	struct dma_map_ops *ops = get_dma_ops(dev);
 	dma_addr_t addr;
 
 	da = dma_iova_alloc_at(dev, &req, size, attrs);
 	if (da == DMA_ERROR_CODE) {
-		DEFINE_DMA_ATTRS(_attrs);
 		switch (req) {
 		case -ENXIO:
 			/* Allow to map outside of map */
