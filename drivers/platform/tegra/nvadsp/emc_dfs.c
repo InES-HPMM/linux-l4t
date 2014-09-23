@@ -19,7 +19,10 @@
 #include <linux/tegra_nvadsp.h>
 #include <linux/tick.h>
 #include <linux/timer.h>
-#include <linux/workqueue.h>
+#include <linux/sched.h>
+#include <linux/sched/rt.h>
+#include <linux/kthread.h>
+#include <linux/spinlock.h>
 #include <linux/clk.h>
 #include <linux/debugfs.h>
 
@@ -60,6 +63,7 @@ struct emc_dfs_info {
 
 	struct work_struct clk_set_work;
 	unsigned long cur_freq;
+	bool speed_change_flag;
 	unsigned long max_freq;
 
 	struct clk *emcclk;
@@ -67,6 +71,8 @@ struct emc_dfs_info {
 
 static struct emc_dfs_info global_emc_info;
 struct emc_dfs_info *einfo;
+static struct task_struct *speedchange_task;
+static spinlock_t speedchange_lock;
 
 static u64 read64(u32 offset)
 {
@@ -98,19 +104,23 @@ static unsigned long count_to_emcfreq(void)
 	return tfreq;
 }
 
-static void clk_work(struct work_struct *work)
+static int clk_work(void *data)
 {
 	int ret;
 
-	if (einfo->cur_freq && einfo->emcclk) {
+	if (einfo->emcclk && einfo->speed_change_flag && einfo->cur_freq) {
 		ret = clk_set_rate(einfo->emcclk, einfo->cur_freq * 1000);
 		if (ret) {
 			pr_err("failed to set ape.emc freq:%d\n", ret);
 			BUG_ON(ret);
 		}
 		einfo->cur_freq = clk_get_rate(einfo->emcclk) / 1000;
-		pr_debug("ape.emc: setting emc clk: %lu\n", einfo->cur_freq);
+		pr_info("ape.emc: setting emc clk: %lu\n", einfo->cur_freq);
 	}
+
+	mod_timer(&einfo->cnt_timer,
+		  jiffies + usecs_to_jiffies(einfo->timer_rate));
+	return 0;
 }
 static void emc_dfs_timer(unsigned long data)
 {
@@ -120,12 +130,16 @@ static void emc_dfs_timer(unsigned long data)
 	u64 delta_time;
 	ktime_t now;
 	unsigned long target_freq;
+	unsigned long flags;
+
+	spin_lock_irqsave(&speedchange_lock, flags);
 
 	/* Return if emc dfs is disabled */
-	if (!einfo->enable)
+	if (!einfo->enable) {
+		spin_unlock_irqrestore(&speedchange_lock, flags);
 		return;
+	}
 
-	/* take lock */
 	prev_cnt = einfo->rd_cnt + einfo->wr_cnt;
 
 	einfo->rd_cnt = read64((u32)ABRIDGE_STATS_READ_0);
@@ -142,26 +156,28 @@ static void emc_dfs_timer(unsigned long data)
 	if (!delta_time) {
 		pr_err("%s: time interval to calculate emc scaling is zero\n",
 		__func__);
+		spin_unlock_irqrestore(&speedchange_lock, flags);
 		goto exit;
 	}
-	einfo->prev_time = now;
 
+	einfo->prev_time = now;
 	einfo->avg_cnt = delta_cnt / delta_time;
 
-	/* if 0: no scaling is required*/
+	/* if 0: no scaling is required */
 	target_freq = count_to_emcfreq();
-	if (!target_freq)
-		goto exit;
-	else
+	if (!target_freq) {
+		einfo->speed_change_flag = false;
+	} else {
 		einfo->cur_freq = target_freq;
+		einfo->speed_change_flag = true;
+	}
 
-	pr_debug("einfo->avg_cnt: %llu delta_cnt: %llu delta_time %llu emc_freq:%lu\n",
+	spin_unlock_irqrestore(&speedchange_lock, flags);
+	pr_info("einfo->avg_cnt: %llu delta_cnt: %llu delta_time %llu emc_freq:%lu\n",
 		einfo->avg_cnt, delta_cnt, delta_time, einfo->cur_freq);
-	/* release lock */
-	schedule_work(&einfo->clk_set_work);
+
 exit:
-	mod_timer(&einfo->cnt_timer,
-			  jiffies + usecs_to_jiffies(einfo->timer_rate));
+	wake_up_process(speedchange_task);
 }
 
 static void emc_dfs_enable(void)
@@ -220,13 +236,23 @@ static int boost_up_threshold_get(void *data, u64 *val)
 /* Enable/disable emc dfs */
 static int boost_up_threshold_set(void *data, u64 val)
 {
+	unsigned long flags;
+	int ret = 0;
+
+	spin_lock_irqsave(&speedchange_lock, flags);
+
 	if (!einfo->enable) {
 		pr_info("EMC dfs is not enabled\n");
-		return -EINVAL;
-	} else
+		ret = -EINVAL;
+		goto err;
+	}
+
+	if (val)
 		einfo->boost_up_threshold = val;
 
-	return 0;
+err:
+	spin_unlock_irqrestore(&speedchange_lock, flags);
+	return ret;
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(up_threshold_fops,
@@ -241,17 +267,24 @@ static int boost_step_get(void *data, u64 *val)
 /* Set period in usec */
 static int boost_step_set(void *data, u64 val)
 {
+	unsigned long flags;
+	int ret = 0;
+
+	spin_lock_irqsave(&speedchange_lock, flags);
+
 	if (!einfo->enable) {
 		pr_info("EMC dfs is not enabled\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err;
 	}
 
 	if (!val)
 		einfo->boost_step = 1;
 	else
 		einfo->boost_step = (u8) val;
-
-	return 0;
+err:
+	spin_unlock_irqrestore(&speedchange_lock, flags);
+	return ret;
 }
 DEFINE_SIMPLE_ATTRIBUTE(boost_fops, boost_step_get,
 	boost_step_set, "%llu\n");
@@ -265,16 +298,23 @@ static int boost_down_count_get(void *data, u64 *val)
 /* Set period in usec */
 static int boost_down_count_set(void *data, u64 val)
 {
+	unsigned long flags;
+	int ret = 0;
+
+	spin_lock_irqsave(&speedchange_lock, flags);
+
 	if (!einfo->enable) {
 		pr_info("EMC dfs is not enabled\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err;
 	}
 
-	if (val) {
+	if (val)
 		einfo->boost_dn_count = (u32) val;
-		return 0;
-	}
-	return -EINVAL;
+		ret = 0;
+err:
+	spin_unlock_irqrestore(&speedchange_lock, flags);
+	return ret;
 }
 DEFINE_SIMPLE_ATTRIBUTE(down_cnt_fops, boost_down_count_get,
 	boost_down_count_set, "%llu\n");
@@ -284,19 +324,27 @@ static int period_get(void *data, u64 *val)
 	*val = einfo->timer_rate;
 	return 0;
 }
+
 /* Set period in usec */
 static int period_set(void *data, u64 val)
 {
+	unsigned long flags;
+	int ret = 0;
+
+	spin_lock_irqsave(&speedchange_lock, flags);
+
 	if (!einfo->enable) {
 		pr_info("EMC dfs is not enabled\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err;
 	}
 
-	if (val) {
+	if (val)
 		einfo->timer_rate = (unsigned long)val;
-		return 0;
-	}
-	return -EINVAL;
+
+err:
+	spin_unlock_irqrestore(&speedchange_lock, flags);
+	return ret;
 }
 DEFINE_SIMPLE_ATTRIBUTE(period_fops, period_get, period_set, "%llu\n");
 
@@ -352,6 +400,7 @@ err_out:
 status_t emc_dfs_init(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
+	struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };
 	int ret = 0;
 
 	einfo = &global_emc_info;
@@ -385,9 +434,22 @@ status_t emc_dfs_init(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "einfo->cur_freq %lu\n", einfo->cur_freq);
 
+	spin_lock_init(&speedchange_lock);
 	init_timer(&einfo->cnt_timer);
 	einfo->cnt_timer.function = emc_dfs_timer;
-	INIT_WORK(&einfo->clk_set_work, clk_work);
+
+	speedchange_task =
+		kthread_create(clk_work, NULL,
+			       "cfinteractive");
+	if (IS_ERR(speedchange_task))
+		return PTR_ERR(speedchange_task);
+
+	sched_setscheduler_nocheck(speedchange_task, SCHED_FIFO, &param);
+	get_task_struct(speedchange_task);
+
+	/* NB: wake up so the thread does not look hung to the freezer */
+	wake_up_process(speedchange_task);
+
 	emc_dfs_enable();
 
 	dev_info(&pdev->dev, "APE EMC DFS is initialized\n");
@@ -397,4 +459,9 @@ status_t emc_dfs_init(struct platform_device *pdev)
 #endif
 
 	return ret;
+}
+void emc_dfs_exit(void)
+{
+	kthread_stop(speedchange_task);
+	put_task_struct(speedchange_task);
 }

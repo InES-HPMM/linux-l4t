@@ -182,8 +182,8 @@ err:
 
 static int nvadsp_remove(struct platform_device *pdev)
 {
+	emc_dfs_exit();
 	aram_exit();
-
 	return 0;
 }
 

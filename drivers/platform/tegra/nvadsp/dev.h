@@ -69,6 +69,7 @@ int adsp_dfs_core_exit(struct platform_device *pdev);
 
 #ifdef CONFIG_TEGRA_EMC_APE_DFS
 status_t emc_dfs_init(struct platform_device *pdev);
+void emc_dfs_exit(void);
 #endif
 
 #endif /* __TEGRA_NVADSP_DEV_H */
