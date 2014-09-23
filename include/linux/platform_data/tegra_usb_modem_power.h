@@ -43,6 +43,7 @@ struct tegra_usb_modem_power_platform_data {
 	const struct usb_device_id *modem_list; /* supported modem list */
 	const char *regulator_name;	/* regulator id or supply name */
 	int wake_gpio;			/* remote wakeup gpio */
+	int reset_gpio;			/* modem reset gpio */
 	unsigned long wake_irq_flags;	/* remote wakeup irq flags */
 	int boot_gpio;			/* modem boot gpio */
 	unsigned long boot_irq_flags;	/* modem boot irq flags */
@@ -52,6 +53,7 @@ struct tegra_usb_modem_power_platform_data {
 	struct tegra_usb_platform_data *tegra_ehci_pdata;
 	int mdm_power_report_gpio;	/* modem power increase report gpio */
 	unsigned long mdm_power_irq_flags; /* modem boot irq flags */
+	bool use_xhci_hsic;		/* indicate if we use XHCI HSIC */
 };
 
 #endif /* __MACH_TEGRA_USB_MODEM_POWER_H */

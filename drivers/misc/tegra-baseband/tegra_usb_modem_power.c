@@ -40,6 +40,9 @@
 #include <linux/tegra-pmc.h>
 #include <linux/delay.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
+#include <linux/fs.h>
+#include <asm/segment.h>
+#include <asm/uaccess.h>
 
 #define BOOST_CPU_FREQ_MIN	1200000
 #define BOOST_CPU_FREQ_TIMEOUT	5000
@@ -52,6 +55,33 @@
 /* default autosuspend and short autosuspend delay in ms */
 #define DEFAULT_AUTOSUSPEND		2000
 #define DEFAULT_SHORT_AUTOSUSPEND	50
+
+#define XHCI_HSIC_POWER "/sys/bus/platform/devices/tegra-xhci/hsic0_power"
+
+static void hsic_power(bool on)
+{
+	struct file *fp = NULL;
+	mm_segment_t oldfs;
+	loff_t offset = 0;
+
+	oldfs = get_fs();
+	set_fs(get_ds());
+	fp = filp_open(XHCI_HSIC_POWER, O_RDWR, S_IRWXU);
+	if (IS_ERR(fp)) {
+		pr_err("%s: error opening %s, error:%ld\n",
+				__func__, XHCI_HSIC_POWER, PTR_ERR(fp));
+		return;
+	}
+
+	if (on)
+		vfs_write(fp, "1", 1, &offset);
+	else
+		vfs_write(fp, "0", 1, &offset);
+
+	vfs_fsync(fp, 0);
+	set_fs(oldfs);
+	filp_close(fp, NULL);
+}
 
 static u64 tegra_ehci_dmamask = DMA_BIT_MASK(64);
 
@@ -105,6 +135,7 @@ struct tegra_usb_modem {
 	struct wake_lock wake_lock;	/* modem wake lock */
 	unsigned int vid;	/* modem vendor id */
 	unsigned int pid;	/* modem product id */
+	struct usb_device *xusb_roothub;	/* XUSB roothub device */
 	struct usb_device *udev;	/* modem usb device */
 	struct usb_device *parent;	/* parent device */
 	struct usb_interface *intf;	/* first modem usb interface */
@@ -304,7 +335,7 @@ static void tegra_usb_host_unload(struct work_struct *ws)
 	load_unload_usb_host(&modem->pdev->dev, NULL, "0", 1);
 }
 
-static void device_add_handler(struct tegra_usb_modem *modem,
+static void modem_device_add_handler(struct tegra_usb_modem *modem,
 			       struct usb_device *udev)
 {
 	const struct usb_device_descriptor *desc = &udev->descriptor;
@@ -325,6 +356,10 @@ static void device_add_handler(struct tegra_usb_modem *modem,
 		/* hold wakelock to ensure ril has enough time to restart */
 		wake_lock_timeout(&modem->wake_lock,
 				  WAKELOCK_TIMEOUT_FOR_USB_ENUM);
+#ifdef CONFIG_PM
+		if (modem->pdata->use_xhci_hsic)
+			usb_enable_autosuspend(modem->xusb_roothub);
+#endif
 
 		pr_info("Add device %d <%s %s>\n", udev->devnum,
 			udev->manufacturer, udev->product);
@@ -360,7 +395,7 @@ static void device_add_handler(struct tegra_usb_modem *modem,
 	}
 }
 
-static void device_remove_handler(struct tegra_usb_modem *modem,
+static void modem_device_remove_handler(struct tegra_usb_modem *modem,
 				  struct usb_device *udev)
 {
 	const struct usb_device_descriptor *desc = &udev->descriptor;
@@ -368,6 +403,11 @@ static void device_remove_handler(struct tegra_usb_modem *modem,
 	if (desc->idVendor == modem->vid && desc->idProduct == modem->pid) {
 		pr_info("Remove device %d <%s %s>\n", udev->devnum,
 			udev->manufacturer, udev->product);
+
+#ifdef CONFIG_PM
+		if (modem->pdata->use_xhci_hsic)
+			usb_enable_autosuspend(modem->xusb_roothub);
+#endif
 
 		mutex_lock(&modem->lock);
 		modem->udev = NULL;
@@ -381,6 +421,44 @@ static void device_remove_handler(struct tegra_usb_modem *modem,
 	}
 }
 
+
+static void xusb_usb2_roothub_add_handler(struct tegra_usb_modem *modem,
+		struct usb_device *udev)
+{
+	const struct usb_device_descriptor *desc = &udev->descriptor;
+	struct tegra_usb_modem_power_platform_data *pdata = modem->pdata;
+
+	if (pdata->use_xhci_hsic &&
+		desc->idVendor == 0x1d6b && desc->idProduct == 0x2 &&
+		!strcmp(udev->serial, "tegra-xhci")) {
+		pr_info("Add device %d <%s %s>\n", udev->devnum,
+			udev->manufacturer, udev->product);
+		mutex_lock(&modem->lock);
+		modem->xusb_roothub = udev;
+		mutex_unlock(&modem->lock);
+		pr_info("%s: XHCI ready, setting modem RESET(%d) to 1\n",
+			__func__, pdata->reset_gpio);
+		gpio_direction_output(pdata->reset_gpio, 1);
+	}
+}
+
+static void xusb_usb2_roothub_remove_handler(struct tegra_usb_modem *modem,
+		struct usb_device *udev)
+{
+	const struct usb_device_descriptor *desc = &udev->descriptor;
+	struct tegra_usb_modem_power_platform_data *pdata = modem->pdata;
+
+	if (pdata->use_xhci_hsic &&
+		desc->idVendor == 0x1d6b && desc->idProduct == 0x2 &&
+		!strcmp(udev->serial, "tegra-xhci")) {
+		pr_info("Remove device %d <%s %s>\n", udev->devnum,
+			udev->manufacturer, udev->product);
+		mutex_lock(&modem->lock);
+		modem->xusb_roothub = NULL;
+		mutex_unlock(&modem->lock);
+	}
+}
+
 static int mdm_usb_notifier(struct notifier_block *notifier,
 			    unsigned long usb_event, void *udev)
 {
@@ -389,10 +467,12 @@ static int mdm_usb_notifier(struct notifier_block *notifier,
 
 	switch (usb_event) {
 	case USB_DEVICE_ADD:
-		device_add_handler(modem, udev);
+		modem_device_add_handler(modem, udev);
+		xusb_usb2_roothub_add_handler(modem, udev);
 		break;
 	case USB_DEVICE_REMOVE:
-		device_remove_handler(modem, udev);
+		modem_device_remove_handler(modem, udev);
+		xusb_usb2_roothub_remove_handler(modem, udev);
 		break;
 	}
 	return NOTIFY_OK;
@@ -566,16 +646,41 @@ static ssize_t load_unload_usb_host(struct device *dev,
 	if (sscanf(buf, "%d", &host) != 1 || host < 0 || host > 1)
 		return -EINVAL;
 
-	pr_info("%s USB host\n", (host) ? "load" : "unload");
 
 	mutex_lock(&modem->hc_lock);
 	if (host) {
-		if (!modem->hc)
-			modem->hc = tegra_usb_host_register(modem);
+		if (modem->pdata->use_xhci_hsic) {
+			/* XHCI */
+			pr_info("Enable XHCI HSIC\n");
+#ifdef CONFIG_PM
+			if (modem->xusb_roothub)
+				usb_disable_autosuspend(modem->xusb_roothub);
+#endif
+			hsic_power(1);
+			modem->hc = (struct platform_device *)1;
+		} else {
+			/* EHCI */
+			pr_info("Load EHCI\n");
+			if (!modem->hc)
+				modem->hc = tegra_usb_host_register(modem);
+		}
 	} else {
-		if (modem->hc) {
-			tegra_usb_host_unregister(modem->hc);
+		if (modem->pdata->use_xhci_hsic) {
+			/* XHCI */
+			pr_info("Disable XHCI HSIC\n");
+#ifdef CONFIG_PM
+			if (modem->xusb_roothub)
+				usb_disable_autosuspend(modem->xusb_roothub);
+#endif
+			hsic_power(0);
 			modem->hc = NULL;
+		} else {
+			/* EHCI */
+			pr_info("Unload EHCI\n");
+			if (modem->hc) {
+				tegra_usb_host_unregister(modem->hc);
+				modem->hc = NULL;
+			}
 		}
 	}
 	mutex_unlock(&modem->hc_lock);
@@ -761,6 +866,7 @@ static int tegra_usb_modem_parse_dt(struct platform_device *pdev,
 	struct device_node *node = pdev->dev.of_node;
 	int gpio;
 	int ret;
+	u32 use_xhci = 0;
 
 	dev_dbg(&pdev->dev, "read platform data from DT\n");
 
@@ -778,6 +884,12 @@ static int tegra_usb_modem_parse_dt(struct platform_device *pdev,
 
 	/* regulator */
 	pdata->regulator_name = of_get_property(node, "nvidia,regulator", NULL);
+
+	/* determine if we are using EHCI or XHCI HSIC */
+	ret = of_property_read_u32(node, "nvidia,use-xhci-hsic", &use_xhci);
+	pdata->use_xhci_hsic = (ret == 0 && use_xhci) ? 1 : 0;
+	dev_info(&pdev->dev, "using %s HSIC\n",
+		pdata->use_xhci_hsic ? "XHCI" : "EHCI");
 
 	/* GPIO */
 	gpio = of_get_named_gpio(node, "nvidia,wake-gpio", 0);
@@ -824,19 +936,26 @@ static int tegra_usb_modem_parse_dt(struct platform_device *pdev,
 
 	gpio = of_get_named_gpio(node, "nvidia,reset-gpio", 0);
 	if (gpio_is_valid(gpio)) {
-		dev_info(&pdev->dev, "set MODEM RESET (%d) to 1\n", gpio);
+		pdata->reset_gpio = gpio;
 		ret = gpio_request(gpio, "MODEM RESET");
 		if (ret) {
 			dev_err(&pdev->dev, "request gpio %d failed\n", gpio);
 			return ret;
 		}
-		/* Modem requires at least 10ms between MDM_EN assertion
-		and release of the reset. 20ms is the min value of msleep */
-		msleep(20);
-		/* Release modem reset to start boot */
-		gpio_direction_output(gpio, 1);
+		/* boot modem now if EHCI is used */
+		if (!pdata->use_xhci_hsic) {
+			/* Modem requires at least 10ms between MDM_EN assertion
+			and release of the reset. 20ms is the min value of
+			msleep */
+			msleep(20);
+			/* Release modem reset to start boot */
+			dev_info(&pdev->dev, "set MODEM RESET (%d) to 1\n",
+				 gpio);
+			gpio_direction_output(gpio, 1);
+		}
 		gpio_export(gpio, false);
-	}
+	} else
+		pdata->reset_gpio = -1;
 
 	return 0;
 }
