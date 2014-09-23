@@ -55,7 +55,6 @@ obj-${CONFIG_MACH_T132REF}              += board-t132ref-memory.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-sensors.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-norrin-power.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-norrin-memory.o
-obj-${CONFIG_MACH_T132REF}              += board-t132ref-panel.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-power.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-sdhci.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-tn8-power.o

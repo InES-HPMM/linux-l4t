@@ -1253,7 +1253,7 @@ static void __init tegra_ardbeg_late_init(void)
 		board_info.minor_revision);
 
 #ifndef CONFIG_MACH_EXUMA
-	ardbeg_display_init();
+	tegra_disp_defer_vcore_override();
 #endif
 	ardbeg_usb_init();
 	ardbeg_modem_init();
@@ -1307,7 +1307,7 @@ static void __init tegra_ardbeg_late_init(void)
 			board_info.board_id == BOARD_P2530)
 		loki_panel_init();
 	else
-		ardbeg_panel_init();
+		tegra_fb_copy_or_clear();
 
 		/* put PEX pads into DPD mode to save additional power */
 		tegra_io_dpd_enable(&pexbias_io);
