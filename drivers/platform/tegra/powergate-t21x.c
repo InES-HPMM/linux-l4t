@@ -171,7 +171,6 @@ static struct tegra210_mc_client_info tegra210_pg_mc_info[] = {
 static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	[TEGRA_POWERGATE_VE] = {
 		.name = "ve",
-		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "ispa", .clk_type = CLK_AND_RST },
 			[1] = { .clk_name = "vi", .clk_type = CLK_AND_RST },
@@ -225,7 +224,6 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 #endif
 	[TEGRA_POWERGATE_NVENC] = {
 		.name = "nvenc",
-		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "msenc.cbus", .clk_type = CLK_AND_RST },
 		},
@@ -346,7 +344,6 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 #ifdef CONFIG_ARCH_TEGRA_VIC
 	[TEGRA_POWERGATE_VIC] = {
 		.name = "vic",
-		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "vic03.cbus", .clk_type = CLK_AND_RST },
 		},
@@ -356,12 +353,12 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 			[2] = { .clk_name = "mc_ccpa" },
 			[3] = { .clk_name = "mc_cdpa" },
 			[4] = { .clk_name = "vic03_slcg_ovr" },
+			[5] = { .clk_name = "host1x" },
 		},
 	},
 #endif
 	[TEGRA_POWERGATE_NVDEC] = {
 		.name = "nvdec",
-		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "nvdec", .clk_type = CLK_AND_RST },
 		},
@@ -377,7 +374,6 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	},
 	[TEGRA_POWERGATE_NVJPG] = {
 		.name = "nvjpg",
-		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "nvjpg", .clk_type = CLK_AND_RST },
 		},
@@ -417,7 +413,6 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	},
 	[TEGRA_POWERGATE_VE2] = {
 		.name = "ve2",
-		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "ispb", .clk_type = CLK_AND_RST },
 		},
