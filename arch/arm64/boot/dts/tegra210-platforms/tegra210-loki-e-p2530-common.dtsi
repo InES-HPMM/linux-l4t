@@ -93,5 +93,12 @@
 		};
 	};
 
+	gpio: gpio@6000d000 {
+		uart_over_jack {
+			status = "disabled";
+			gpio-output-high = <TEGRA_GPIO(DD, 0)>;
+			dt-override-status-odm-data = <0x80000000 0x80000000>;
+		};
+	};
 };
 
