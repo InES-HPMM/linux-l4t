@@ -29,6 +29,7 @@
 #include <linux/tegra_nvadsp.h>
 #include <linux/tegra-soc.h>
 #include <linux/pm_runtime.h>
+#include <linux/tegra_pm_domains.h>
 #include <linux/clk/tegra.h>
 #include <linux/delay.h>
 
@@ -379,7 +380,7 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 	if (!drv_data) {
 		dev_err(&pdev->dev, "Failed to allocate driver data");
 		ret = -ENOMEM;
-		goto err;
+		goto out;
 	}
 
 #if CONFIG_DEBUG_FS
@@ -394,7 +395,7 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 	if (!drv_data->base_regs) {
 		dev_err(dev, "Failed to allocate regs");
 		ret = -ENOMEM;
-		goto err;
+		goto out;
 	}
 
 	for (iter = 0; iter < APE_MAX_REG; iter++) {
@@ -404,7 +405,7 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 			"Failed to get resource with ID %d\n",
 							iter);
 			ret = -EINVAL;
-			goto err;
+			goto out;
 		}
 
 		base = devm_ioremap_resource(dev, res);
@@ -412,7 +413,7 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 			dev_err(dev,
 				"Failed to remap AMISC resource\n");
 			ret = PTR_ERR(base);
-			goto err;
+			goto out;
 		}
 		drv_data->base_regs[iter] = base;
 		adsp_add_load_mappings(res->start, base,
@@ -427,7 +428,7 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 			dev_err(dev,
 			"Failed to get DRAM map with ID %d\n", iter);
 			ret = -EINVAL;
-			goto err;
+			goto out;
 		}
 
 		drv_data->dram_region[dram_iter] = res;
@@ -437,7 +438,15 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, drv_data);
 
+	tegra_ape_pd_add_device(dev);
+	pm_genpd_dev_need_save(dev, true);
+	pm_genpd_dev_need_restore(dev, true);
+
 	pm_runtime_enable(dev);
+
+	ret = pm_runtime_get_sync(dev);
+	if (ret)
+		goto out;
 
 	ret = nvadsp_os_probe(pdev);
 	if (ret)
@@ -473,6 +482,10 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 	if (ret)
 		dev_err(dev, "Failed to init aram\n");
 err:
+	ret = pm_runtime_put_sync(dev);
+	if (ret)
+		dev_err(dev, "pm_runtime_put_sync failed\n");
+out:
 	return ret;
 }
 
