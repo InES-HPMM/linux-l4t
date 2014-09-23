@@ -1186,11 +1186,11 @@ struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value)
 				return p;
 
 			if (p_new != p) {
-				if (pll_rate != clk_get_rate(p_new)) {
-					if (clk_set_rate(p_new, pll_rate))
-						return NULL;
-				}
-				return p_new;
+				int ret = 0;
+				if (pll_rate != clk_get_rate(p_new))
+					ret = clk_set_rate(p_new, pll_rate);
+				if (!ret)
+					return p_new;
 			}
 
 			p_new = tegra_emc_clk_sel_b[i].input;
