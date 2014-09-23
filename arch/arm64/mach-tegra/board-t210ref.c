@@ -117,7 +117,7 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	{ "hda2codec_2x", "pll_p",	48000000,	false},
 	{ "pwm",	"pll_p",	48000000,	false},
 	{ "i2s0",	"pll_a_out0",	12288000,		false},
-	{ "i2s1",	"audio1",	12288000,		false},
+	{ "i2s1",	"pll_a_out0",	0,		false},
 	{ "i2s3",	"pll_a_out0",	0,		false},
 	{ "i2s4",	"pll_a_out0",	0,		false},
 	{ "spdif_out",	"pll_a_out0",	0,		false},
@@ -129,8 +129,7 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	{ "sbc5",	"pll_p",	25000000,	false},
 	{ "sbc6",	"pll_p",	25000000,	false},
 #endif
-	{ "i2s1_sync",	NULL,	12288000,		false},
-	{ "audio1",	"i2s1_sync",	12288000,		false},
+	{ "audio1",	"i2s1_sync",	0,		false},
 	{ "audio3",	"i2s3_sync",	0,		false},
 	{ "vi_sensor",	"pll_p",	150000000,	false},
 	{ "vi_sensor2",	"pll_p",	150000000,	false},
