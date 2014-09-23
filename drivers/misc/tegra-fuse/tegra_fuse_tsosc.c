@@ -190,6 +190,7 @@ static int fuse_ft_rev_check(void)
 
 static int fuse_calib_base_get_cp_raw(u32 *base_cp, s32 *shifted_cp)
 {
+	s32 cp;
 	u32 val;
 
 	if (check_cp < 0)
@@ -199,20 +200,19 @@ static int fuse_calib_base_get_cp_raw(u32 *base_cp, s32 *shifted_cp)
 	if (!val)
 		return -EINVAL;
 
-	val = (val >> FUSE_BASE_CP_POS) & FUSE_BASE_CP_MASK;
-	if (val == 0) {
+	*base_cp = (val >> FUSE_BASE_CP_POS) & FUSE_BASE_CP_MASK;
+	if (*base_cp == 0) {
 		pr_err("soctherm: ERROR: Improper calib_base CP fuse.\n");
 		*base_cp = -EINVAL; /* cache the error value */
 		return -EINVAL;
 	}
-	*base_cp = val;
 
 	if ((chip_id == TEGRA_CHIPID_TEGRA12) ||
 	    (chip_id == TEGRA_CHIPID_TEGRA13))
 		val = tegra_fuse_readl(FUSE_SPARE_REALIGNMENT_REG_0);
 
-	val = (val >> FUSE_SHIFT_CP_POS) & FUSE_SHIFT_CP_MASK;
-	*shifted_cp = ((s32)val << (32 - FUSE_SHIFT_CP_BITS))
+	cp = (val >> FUSE_SHIFT_CP_POS) & FUSE_SHIFT_CP_MASK;
+	*shifted_cp = ((s32)cp << (32 - FUSE_SHIFT_CP_BITS))
 				>> (32 - FUSE_SHIFT_CP_BITS);
 
 	return check_cp; /* return tri-state: 0, 1, or -ve */
