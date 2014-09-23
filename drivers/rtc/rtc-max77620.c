@@ -74,7 +74,6 @@ struct max77620_rtc {
 	struct mutex io_lock;
 	int irq;
 	u8 irq_mask;
-	bool shutdown_ongoing;
 };
 
 static inline struct device *_to_parent(struct max77620_rtc *rtc)
@@ -417,11 +416,6 @@ static int max77620_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	u8 buf[RTC_NR];
 	int ret;
 
-	if (rtc->shutdown_ongoing) {
-		dev_warn(rtc->dev, "rtc_set_alarm: "
-			 "Device shutdown on-going, skip alarm setting.\n");
-		return -ESHUTDOWN;
-	}
 	dev_dbg(rtc->dev, "rtc_set_alarm: "
 		"tm: %d-%02d-%02d %02d:%02d:%02d, wday=%d [%s]\n",
 		alrm->time.tm_year, alrm->time.tm_mon, alrm->time.tm_mday,
@@ -513,7 +507,7 @@ static int max77620_rtc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "probe: kzalloc() failed\n");
 		return -ENOMEM;
 	}
-	rtc->shutdown_ongoing = false;
+
 	dev_set_drvdata(&pdev->dev, rtc);
 	rtc->dev = &pdev->dev;
 	mutex_init(&rtc->io_lock);
@@ -560,17 +554,6 @@ static int max77620_rtc_remove(struct platform_device *pdev)
 
 	mutex_destroy(&rtc->io_lock);
 	return 0;
-}
-
-static void max77620_rtc_shutdown(struct platform_device *pdev)
-{
-	struct max77620_rtc *rtc = dev_get_drvdata(&pdev->dev);
-	u8 buf[RTC_NR] = { 0x0, 0x0, 0x0, 0x1, 0x1, 0x0, 0x1 };
-
-	rtc->shutdown_ongoing = true;
-	dev_info(rtc->dev, "rtc_shutdown: clean alarm\n");
-	max77620_rtc_write(rtc, MAX77620_REG_RTCSECA1, buf, sizeof(buf), 1);
-	max77620_rtc_alarm_irq_enable(&pdev->dev, 0);
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -627,7 +610,6 @@ static struct platform_driver max77620_rtc_driver = {
 			.owner = THIS_MODULE,
 			.pm = &max77620_rtc_pm_ops,
 	},
-	.shutdown = max77620_rtc_shutdown,
 };
 
 module_platform_driver(max77620_rtc_driver);
