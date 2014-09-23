@@ -2,6 +2,8 @@
 # Makefile for the input misc drivers.
 #
 
+GCOV_PROFILE := y
+
 # Each configuration option enables a list of files.
 
 obj-$(CONFIG_INPUT_88PM860X_ONKEY)	+= 88pm860x_onkey.o
