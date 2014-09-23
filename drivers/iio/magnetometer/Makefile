@@ -2,6 +2,8 @@
 # Makefile for industrial I/O Magnetometer sensor drivers
 #
 
+GCOV_PROFILE := y
+
 obj-$(CONFIG_AK8975) += ak8975.o
 obj-$(CONFIG_NVI_AK89XX) += nvi-ak89xx.o
 nvi-ak89xx-objs += nvi_ak89xx.o
