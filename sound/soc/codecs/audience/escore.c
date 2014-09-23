@@ -926,6 +926,13 @@ int escore_wakeup(struct escore_priv *escore)
 		goto escore_wakeup_exit;
 	}
 
+	/* Set the Smooth Mute rate to Zero */
+	cmd = ES_SET_SMOOTH_MUTE << 16 | ES_SMOOTH_MUTE_ZERO;
+	rc = escore->bus.ops.cmd(escore, cmd, &rsp);
+	if (rc)
+		dev_err(escore->dev, "%s(): escore_cmd fail %d\n",
+				__func__, rc);
+
 escore_wakeup_exit:
 	return rc;
 }
