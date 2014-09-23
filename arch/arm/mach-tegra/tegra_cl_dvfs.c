@@ -3144,7 +3144,9 @@ static int fout_mv_set(void *data, u64 val)
 	clk_lock_save(c, &flags);
 
 	if (val) {
-		v = output_force_set_val(cld, find_mv_out_cap(cld, (int)val));
+		u8 out_v = is_i2c(cld) ? find_mv_out_cap(cld, (int)val) :
+			find_vdd_map_entry(cld, (int)val, false)->reg_value;
+		v = output_force_set_val(cld, out_v);
 		if (!(v & CL_DVFS_OUTPUT_FORCE_ENABLE))
 			output_force_enable(cld);
 	} else {
