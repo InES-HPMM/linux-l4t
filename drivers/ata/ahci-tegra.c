@@ -2166,21 +2166,16 @@ static void tegra_ahci_pad_config(void)
 		val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
 		val &= ~(PLL_PWR_OVRD_MASK | PLL_IDDQ_MASK | PLL_RST_MASK);
 		xusb_writel(val, XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
+
+		/* PLLE related stuff*/
+
+		clk_writel(CLK_RST_CONTROLLER_PLLE_MISC_0_VALUE,
+				CLK_RST_CONTROLLER_PLLE_MISC_0);
+
+		val = clk_readl(CLK_RST_CONTROLLER_PLLE_BASE_0);
+		val |= PLLE_ENABLE;
+		clk_writel(val, CLK_RST_CONTROLLER_PLLE_BASE_0);
 	}
-
-	/* PLLE related stuff*/
-
-	val = clk_readl(CLK_RST_CONTROLLER_PLLE_MISC_0);
-	val &= ~(T124_PLLE_IDDQ_SWCTL_MASK | PLLE_IDDQ_OVERRIDE_VALUE_MASK);
-	clk_writel(val, CLK_RST_CONTROLLER_PLLE_MISC_0);
-
-	clk_writel(CLK_RST_CONTROLLER_PLLE_MISC_0_VALUE,
-			CLK_RST_CONTROLLER_PLLE_MISC_0);
-
-	val = clk_readl(CLK_RST_CONTROLLER_PLLE_BASE_0);
-	val |= PLLE_ENABLE;
-	clk_writel(val, CLK_RST_CONTROLLER_PLLE_BASE_0);
-
 }
 
 static void tegra_ahci_abort_power_gate(struct ata_host *host)
