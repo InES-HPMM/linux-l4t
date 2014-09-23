@@ -726,23 +726,22 @@ struct device_node *tegra_primary_panel_get_dt_node(
 		dc_out = pdata->default_out;
 
 	np_panel =
-		available_internal_panel_select(pdata);
+		internal_panel_select_by_disp_board_id(pdata);
 	if (np_panel) {
 		/*
-		 * search internal panel node by
-		 * status property.
+		 * legacy method to select internal panel
+		 * based on disp board id.
 		 */
 		of_node_put(np_hdmi);
 		return np_panel;
 	};
 
 	np_panel =
-		internal_panel_select_by_disp_board_id(pdata);
-
+		available_internal_panel_select(pdata);
 	if (np_panel) {
 		/*
-		 * legacy method to select internal panel
-		 * based on disp board id.
+		 * search internal panel node by
+		 * status property.
 		 */
 		of_node_put(np_hdmi);
 		return np_panel;

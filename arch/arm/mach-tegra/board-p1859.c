@@ -21,7 +21,12 @@
 #include <linux/kernel.h>
 #include <linux/clocksource.h>
 #include <linux/irqchip.h>
+#include <linux/gpio.h>
+#include <linux/ioport.h>
+#include <linux/of_address.h>
+#include <linux/clk.h>
 
+#include <asm/delay.h>
 #include <asm/mach/arch.h>
 #include <linux/platform/tegra/isomgr.h>
 #include <mach/board_id.h>
@@ -41,7 +46,9 @@
 
 #define EXTERNAL_PMU_INT_N_WAKE         18
 
+static int is_e1860;
 static int is_e1860_b00;
+static int en_dsi2grayson;  /* enable DSI to P1892 Grayson */
 
 static __initdata struct tegra_clk_init_table e1860_a0x_i2s_clk_table[] = {
 /*
@@ -212,7 +219,12 @@ static void p1859_panel_init(void)
 		/* device is hdmi primary. */
 		tegra_set_fixed_panel_ops(true,
 				&p1859_hdmi_ops, "hdmi,display");
-	} else {
+	} else if (en_dsi2grayson) {  /* HDMI + DSI(to grayson) */
+		tegra_set_fixed_panel_ops(true, &p1859_hdmi_ops,
+			"hdmi,display");
+		tegra_set_fixed_panel_ops(false, &dsi_grayson_dsi_rx_ops,
+			"nvidia,grayson-dsi-rx");
+	} else {  /* DP + HDMI */
 		tegra_set_fixed_panel_ops(true,
 				&edp_a_1080p_14_0_ops, "a-edp,1080p-14-0");
 		tegra_set_fixed_panel_ops(false,
@@ -234,6 +246,200 @@ static struct platform_device *p1859_devices[] __initdata = {
 	&tegra_rtc_device,
 };
 
+
+#include "gpio-names.h"
+
+#define GPIO_BBD_DET_  TEGRA_GPIO_PK2  /* in/inv: breakout board detect */
+#define I2C_BUS_A 0  /* i2cA bus */
+#define I2C_BUS_B 1  /* i2cB bus */
+
+static struct i2c_board_info __initdata p1892_i2cA_board_info[] = {
+	{
+		I2C_BOARD_INFO("grayson", 0x68),
+	},
+};
+
+static struct i2c_board_info __initdata p1892_i2cB_board_info[] = {
+	{
+		I2C_BOARD_INFO("max9281", 0x22),
+	},
+	{
+		I2C_BOARD_INFO("max9281", 0x24),
+	},
+};
+
+
+/*
+ * P1892 EBB board init.
+ * Init resources on P1892 board and check DT for DSI enable.
+ * If DSI enabled, init DSI for Grayson display input and config
+ * Display Splitter.
+ */
+static void tegra_p1892_board_init(int need_splitter)
+{
+	struct device_node *np_board = NULL;
+	struct device_node *np_panel = NULL;
+
+	/* check DT for availability */
+	np_board = of_find_compatible_node(NULL, NULL, "nvidia,p1892");
+	if (!(np_board && of_device_is_available(np_board))) {
+		pr_info("P1892: disabled in DT\n");
+		return;
+	}
+
+	/* init resources on P1892 EBB */
+	i2c_register_board_info(I2C_BUS_A, p1892_i2cA_board_info,
+		ARRAY_SIZE(p1892_i2cA_board_info));
+	i2c_register_board_info(I2C_BUS_B, p1892_i2cB_board_info,
+		ARRAY_SIZE(p1892_i2cB_board_info));
+
+	/* check DT for DSI availablity */
+	np_panel = of_find_compatible_node(NULL, NULL, "nvidia,grayson-dsi-rx");
+	if (need_splitter && np_panel && of_device_is_available(np_panel)) {
+		en_dsi2grayson = 1;
+		pr_info("P1892: activate DSI to Grayson\n");
+	} else
+		pr_info("P1892: DSI to Grayson is not activated\n");
+}
+
+
+/*
+ * Init breakout board plugged to E1860 baseboard
+ * First check GPIO to detect the breakout board presence.
+ * If attached, check DT for P1892 EBB enable.
+ */
+static void tegra_e1860_init_breakout_bd(int need_splitter)
+{
+	int  err = 0;
+	int  attached;
+
+
+	/* check breakout board presence */
+	err = gpio_request(GPIO_BBD_DET_, "breakout brd detect");
+	if (err < 0) {
+		pr_err("E1860: breakout brd detect gpio request failed\n");
+		goto fail;
+	}
+	err = gpio_direction_input(GPIO_BBD_DET_);
+	if (err < 0) {
+		pr_err("E1860: breakout brd detect gpio input direction failed\n");
+		gpio_free(GPIO_BBD_DET_);
+		goto fail;
+	}
+	attached = gpio_get_value(GPIO_BBD_DET_) ? 0 : 1;  /* low active */
+	pr_info("E1860: breakout board %sdetected\n", attached ? "" : "not ");
+
+	/* init breakout board */
+	if (attached) {
+		/* P1892 EBB is the only breakout board at this time */
+		tegra_p1892_board_init(need_splitter);
+	}
+
+	return;
+
+fail:
+	return;
+}
+
+
+/*
+ * Checking the DP Hot Plug Detect signal
+ * to select active display interfaces for E1860+VCM3.0-T124 Jetson Pro
+ * - It is very early stage before Tegra display driver initialization,
+ *   so DP HPD check by reading the register DPAUX_DP_AUXSTAT will be
+ *   independent from the Tegra DC & DP driver
+ * - it is assumed that the panel/monitor has been connected before the
+ *   system boot and the HPD signal is stable and the panel/monitor has
+ *   no reason to drive the HPD signal to low.
+ * - inputs: none
+ * - outputs:
+ *  . return: boolean status of DP HPD; 0:unplugged / !0:plugged
+ */
+static int  e1860_check_dp_hpd(void)
+{
+	int                 err = 0;
+	struct device_node  *np_dpaux;
+	struct resource     res;
+	void __iomem        *base = NULL;
+	struct clk          *clk;
+	int                 hpd = 0;
+	u32                 rd;
+	u32                 cfg_hpd;
+
+	/* DPAUX: sync with drivers/video/tegra/dc/dpaux_regs.h */
+#define  DPAUX_DP_AUXSTAT  (0x31)
+#define  DPAUX_DP_AUXSTAT_HPD_STATUS_PLUGGED  (1 << 28)
+#define  DPAUX_HPD_CONFIG  (0x3d)
+#define  TEGRA_DP_HPD_PLUG_MIN_US    10 /* for a quick check */
+#define  TEGRA_DP_HPD_UNPLUG_MIN_US  TEGRA_DP_HPD_PLUG_MIN_US
+#define  tegra_dpaux_readl(b, ofs32)  (readl((b) + (ofs32) * 4))
+#define  tegra_dpaux_writel(b, ofs32, wd)  (writel((wd), (b) + (ofs32) * 4))
+#define  tegra_dpaux_clk_enable(clk)  (clk_prepare_enable(clk))
+#define  tegra_dpaux_clk_disable(clk) (clk_disable_unprepare(clk))
+
+	/* enable DPAUX clock */
+	clk = clk_get_sys("dpaux", NULL);
+	if (IS_ERR_OR_NULL(clk)) {
+		pr_err("E1860: failed to get dpaux clock\n");
+		goto err_clk_get;
+	}
+	tegra_dpaux_clk_enable(clk);
+
+	/* map DPAUX reg block */
+	np_dpaux = of_find_compatible_node(NULL, NULL, "nvidia,tegra124-dpaux");
+	if (!(np_dpaux && of_device_is_available(np_dpaux))) {
+		pr_info("E1860: DPAUX is not available in DT\n");
+		goto err_map_reg;
+	}
+	err = of_address_to_resource(np_dpaux, 0, &res);
+	if (err) {
+		pr_info("E1860: DPAUX reg is not defined in DT\n");
+		goto err_map_reg;
+	}
+	base = ioremap(res.start, resource_size(&res));
+	if (!base) {
+		pr_err("E1860: DPAUX register block ioremap failed\n");
+		goto err_map_reg;
+	}
+
+	/* reduce DP HPD update time */
+	cfg_hpd = tegra_dpaux_readl(base, DPAUX_HPD_CONFIG);
+	tegra_dpaux_writel(base, DPAUX_HPD_CONFIG,
+		(TEGRA_DP_HPD_UNPLUG_MIN_US << 16) |
+		(TEGRA_DP_HPD_PLUG_MIN_US << 0));
+
+	/* get DP HPD status */
+	udelay(TEGRA_DP_HPD_UNPLUG_MIN_US * 2);
+	rd = tegra_dpaux_readl(base, DPAUX_DP_AUXSTAT);
+	tegra_dpaux_writel(base, DPAUX_HPD_CONFIG, cfg_hpd);
+	hpd = (rd & DPAUX_DP_AUXSTAT_HPD_STATUS_PLUGGED) ? 1 : 0;
+	pr_info("E1860: DP HPD signal %sdetected\n", hpd ? "" : "un");
+
+	/* release DPAUX */
+	if (base)
+		iounmap(base);
+err_map_reg:
+	if (clk) {
+		udelay(2);
+		tegra_dpaux_clk_disable(clk);
+		clk_put(clk);
+	}
+err_clk_get:
+
+	return hpd;
+
+#undef  DPAUX_DP_AUXSTAT
+#undef  DPAUX_DP_AUXSTAT_HPD_STATUS_PLUGGED
+#undef  DPAUX_HPD_CONFIG
+#undef  TEGRA_DP_HPD_PLUG_MIN_US
+#undef  TEGRA_DP_HPD_UNPLUG_MIN_US
+#undef  tegra_dpaux_readl
+#undef  tegra_dpaux_writel
+#undef  tegra_dpaux_clk_enable
+#undef  tegra_dpaux_clk_disable
+}
+
+
 static void __init tegra_p1859_early_init(void)
 {
 	int modem_id = tegra_get_modem_id();
@@ -241,6 +447,8 @@ static void __init tegra_p1859_early_init(void)
 			e1860_a0x_i2s_clk_table :
 				modem_id ? e1860_b0x_modem_i2s_clk_table :
 					e1860_b0x_i2s_clk_table;
+
+	en_dsi2grayson = 0;
 
 	/* Early init for vcm30t124 MCM */
 	tegra_vcm30_t124_early_init();
@@ -255,8 +463,11 @@ static void __init tegra_p1859_early_init(void)
 	tegra_soc_device_init("p1859");
 }
 
+
 static void __init tegra_p1859_late_init(void)
 {
+	int  dp_plugged;
+
 	/* Create procfs entries for board_serial, skuinfo etc */
 	tegra_init_board_info();
 
@@ -276,6 +487,12 @@ static void __init tegra_p1859_late_init(void)
 #endif
 	tegra_vcm30_t124_suspend_init();
 
+	if (is_e1860) {
+		/* init E1860 baseboard */
+		dp_plugged = e1860_check_dp_hpd(); /* check DP HPD */
+		tegra_e1860_init_breakout_bd(dp_plugged ? 0 : 1);
+	}
+
 	isomgr_init();
 	p1859_panel_init();
 
@@ -285,9 +502,20 @@ static void __init tegra_p1859_late_init(void)
 #endif
 }
 
-static void __init tegra_p1859_dt_init(void)
+
+void __init tegra_p1859_init_late(void)
+{
+	tegra_init_late();
+	p1859_audio_dap_d_sel();
+}
+
+
+static void _tegra_p1859_dt_init(void)
 {
 	is_e1860_b00 = tegra_is_board(NULL, "61860", NULL, "300", NULL);
+
+	pr_info("P1859: baseboard E1860:%s B00:%s\n", is_e1860 ? "yes" : "no",
+		is_e1860_b00 ? "yes" : "no");
 
 	tegra_p1859_early_init();
 
@@ -298,17 +526,25 @@ static void __init tegra_p1859_dt_init(void)
 	tegra_p1859_late_init();
 }
 
+
+static void __init tegra_e1860_dt_init(void)
+{
+	is_e1860 = true;  /* baseboard is E1860 from DT */
+	_tegra_p1859_dt_init();
+}
+
+
+/*
+ * E1860 is the TK1 Jetson Pro base board having a VCM2.0 socket for P1859
+ * that includes a VCM3.0-T124 MCM. The E1860 can have an P1892 embedded
+ * breakout board that includes a Grayson (Toshiba Brickyard) chip.
+ */
 static const char * const p1859_dt_board_compat[] = {
 	"nvidia,p1859",
 	"nvidia,p1859,1", /* for HDMI primary*/
+	"nvidia,e1860",
 	NULL
 };
-
-void __init tegra_p1859_init_late(void)
-{
-	tegra_init_late();
-	p1859_audio_dap_d_sel();
-}
 
 DT_MACHINE_START(P1859, "p1859")
 	.atag_offset	= 0x100,
@@ -318,7 +554,7 @@ DT_MACHINE_START(P1859, "p1859")
 	.init_early	= tegra12x_init_early,
 	.init_irq	= irqchip_init,
 	.init_time	= clocksource_of_init,
-	.init_machine	= tegra_p1859_dt_init,
+	.init_machine	= tegra_e1860_dt_init,
 	.dt_compat	= p1859_dt_board_compat,
 	.init_late	= tegra_p1859_init_late
 MACHINE_END
