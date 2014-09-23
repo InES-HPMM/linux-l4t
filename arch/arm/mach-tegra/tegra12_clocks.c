@@ -4316,8 +4316,15 @@ static int tegra12_dfll_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	int ret = tegra_cl_dvfs_request_rate(c->u.dfll.cl_dvfs, rate);
 
+	/*
+	 * Update c->rate with the requested rate.
+	 * Rate returned by tegra_cl_dvfs_request_get rounded to
+	 * DFLL granularity. This ensures correct clock  settings
+	 * when switching back and forth to a clock source with
+	 * different granularity.
+	 */
 	if (!ret)
-		c->rate = tegra_cl_dvfs_request_get(c->u.dfll.cl_dvfs);
+		c->rate = rate;
 
 	return ret;
 }
