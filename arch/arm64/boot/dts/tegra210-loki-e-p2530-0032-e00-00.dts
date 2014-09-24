@@ -50,10 +50,6 @@
 		battery-charger@6b {
 			charger {
 				status = "okay";
-				ti,watchdog-timeout = <160>;
-				ti,pre-charge-current-limit-milliamp = <768>;
-				ti,charge-term-current-limit-milliamp = <384>;
-				ti,ir-comp-voltage-millivolt = <112>;
 			};
 		};
 
