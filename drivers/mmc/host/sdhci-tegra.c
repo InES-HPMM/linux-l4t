@@ -1397,7 +1397,7 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		host->mmc->caps &= ~MMC_CAP_UHS_SDR12;
 
 	if (plat->uhs_mask & MMC_MASK_HS400)
-		host->mmc->caps &= ~MMC_CAP2_HS400;
+		host->mmc->caps2 &= ~MMC_CAP2_HS400;
 
 #ifdef CONFIG_MMC_SDHCI_TEGRA_HS200_DISABLE
 	host->mmc->caps2 &= ~MMC_CAP2_HS200;
