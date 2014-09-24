@@ -1289,7 +1289,8 @@ static int tegra_late_probe(struct snd_soc_card *card)
 				card->rtd[DAI_LINK_HIFI_MAX97236].codec;
 	int ret;
 
-	if (of_machine_is_compatible("nvidia,norrin"))
+	if (of_machine_is_compatible("nvidia,norrin") ||
+		of_machine_is_compatible("nvidia,laguna"))
 		return 0;
 
 	if (of_device_is_compatible(np, "nvidia,max97236")) {
@@ -1570,8 +1571,17 @@ err_unregister_card:
 	snd_soc_unregister_card(card);
 err_switch_unregister:
 #ifdef CONFIG_SWITCH
-	switch_dev_unregister(&tegra_max98090_headset_switch);
+	tegra_asoc_switch_unregister(&tegra_max98090_headset_switch);
 #endif
+	if (machine->avdd_aud_reg) {
+		regulator_disable(machine->avdd_aud_reg);
+		regulator_put(machine->avdd_aud_reg);
+	}
+
+	if (machine->vdd_sw_1v8_reg) {
+		regulator_disable(machine->vdd_sw_1v8_reg);
+		regulator_put(machine->vdd_sw_1v8_reg);
+	}
 err_fini_utils:
 	tegra_asoc_utils_fini(&machine->util_data);
 err_free_machine:
@@ -1590,7 +1600,7 @@ static int __devexit tegra_max98090_driver_remove(struct platform_device *pdev)
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 
 #ifdef CONFIG_SWITCH
-	switch_dev_unregister(&tegra_max98090_headset_switch);
+	tegra_asoc_switch_unregister(&tegra_max98090_headset_switch);
 #endif
 
 	if (machine->gpio_requested & GPIO_HP_MUTE)
