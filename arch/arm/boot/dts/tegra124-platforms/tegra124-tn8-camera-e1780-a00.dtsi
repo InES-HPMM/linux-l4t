@@ -97,6 +97,24 @@
 					platformdata = "ardbeg_dw9714_pdata";
 				};
 			};
+			module8: module8@modules {
+				compatible = "sensor,front";
+				badge_info = "e1633_imx208";
+
+				sensor {
+					profile = <&imx208_1>;
+					platformdata = "ardbeg_imx208_pdata";
+				};
+			};
+			module9: module9@modules {
+				compatible = "sensor,rear";
+				badge_info = "e1633_imx219";
+
+				sensor {
+					profile = <&imx219_1>;
+					platformdata = "ardbeg_imx219_pdata";
+				};
+			};
 		};
 
 		profiles {
@@ -431,6 +449,36 @@
 					CAMERA_END
 					>;
 			};
+			dw9714_1: dw9714@2_000c {
+				index = <8>;
+				chipname = "pcl_DW9714";
+				type = "focuser";
+				guid = "f_NVCAM0";
+				position = <0>;
+				addr = <0xc>;
+				datalen = <1>;
+				gpios = <1>;
+				regulators = "vdd", "vdd_i2c";
+				drivername = "dw9714";
+				detect = <0x0000 0x0000 0xFFFF 0x0000>;
+				devid = <0x9714>;
+				poweron = <
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_WAITUS(10)
+					CAMERA_GPIO_SET(223)
+					CAMERA_WAITUS(10)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_GPIO_CLR(223)
+					CAMERA_WAITUS(10)
+					CAMERA_END
+					>;
+			};
+
 			imx214_1: imx214@2_001a {
 				index = <10>;
 				chipname = "pcl_IMX214";
@@ -474,35 +522,83 @@
 					CAMERA_END
 					>;
 			};
-			dw9714_1: dw9714@2_000c {
-				index = <8>;
-				chipname = "pcl_DW9714";
-				type = "focuser";
-				guid = "f_NVCAM0";
-				position = <0>;
+			imx208_1: imx208@2_0037 {
+				index = <11>;
+				chipname = "pcl_IMX208";
+				type = "sensor";
+				guid = "s_IMX208";
+				position = <1>;
 				bustype = "i2c";
 				busnum = <2>;
-				addr = <0xc>;
-				datalen = <1>;
+				addr = <0x37>;
+				datalen = <2>;
 				pinmuxgrp = <0xFFFF>;
-				gpios = <1>;
-				regulators = "vdd", "vdd_i2c";
-				drivername = "dw9714";
-				detect = <0x0000 0x0000 0xFFFF 0x0000>;
-				devid = <0x9714>;
+				gpios = <3>;
+				regulators = "vana", "vif", "vdig";
+				clocks = "mclk2";
+				drivername = "imx208";
+				detect = <0x0002 0x0000 0xFFFF 0x0208>;
+				devid = <0x0208>;
 				poweron = <
-					CAMERA_REGULATOR_ON(1)
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(219)
 					CAMERA_REGULATOR_ON(0)
-					CAMERA_WAITUS(10)
-					CAMERA_GPIO_SET(223)
-					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(2)
+					CAMERA_WAITMS(10)
+					CAMERA_GPIO_SET(219)
+					CAMERA_WAITMS(20)
 					CAMERA_END
 					>;
 				poweroff = <
-					CAMERA_REGULATOR_OFF(0)
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(219)
+					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(2)
 					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
+					CAMERA_END
+					>;
+			};
+			imx219_1: imx219@2_0010 {
+				index = <12>;
+				chipname = "pcl_IMX219";
+				type = "sensor";
+				guid = "s_IMX219";
+				position = <0>;
+				bustype = "i2c";
+				busnum = <2>;
+				addr = <0x10>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vdig", "dovdd", "vdd_af1";
+				clocks = "mclk";
+				drivername = "imx219";
+				detect = <0x0002 0x0000 0xFFFF 0x0219>;
+				devid = <0x0219>;
+				poweron = <
+					CAMERA_IND_CLK_SET(10000)
+					CAMERA_GPIO_CLR(219)
+					CAMERA_GPIO_SET(223)
+					CAMERA_REGULATOR_ON(3)
+					CAMERA_REGULATOR_ON(0)
+					CAMERA_REGULATOR_ON(1)
+					CAMERA_REGULATOR_ON(2)
+					CAMERA_WAITMS(10)
+					CAMERA_GPIO_SET(219)
+					CAMERA_WAITMS(20)
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_IND_CLK_CLR
+					CAMERA_GPIO_CLR(219)
 					CAMERA_GPIO_CLR(223)
 					CAMERA_WAITUS(10)
+					CAMERA_REGULATOR_OFF(3)
+					CAMERA_REGULATOR_OFF(2)
+					CAMERA_REGULATOR_OFF(1)
+					CAMERA_REGULATOR_OFF(0)
 					CAMERA_END
 					>;
 			};
