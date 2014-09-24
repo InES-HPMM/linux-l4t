@@ -520,7 +520,7 @@ static int check_dnode(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
 	return 1;
 }
 
-static void move_data_page(struct inode *inode, struct page *page, int gc_type)
+void move_data_page(struct inode *inode, struct page *page, int gc_type)
 {
 	struct f2fs_io_info fio = {
 		.type = DATA,

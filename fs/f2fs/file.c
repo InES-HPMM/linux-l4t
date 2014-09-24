@@ -816,6 +816,57 @@ static inline __u32 f2fs_mask_flags(umode_t mode, __u32 flags)
 		return flags & F2FS_OTHER_FLMASK;
 }
 
+static int f2fs_ioc_atomic_write(struct file *filp, unsigned long arg)
+{
+	struct inode *inode = file_inode(filp);
+	struct atomic_w aw;
+	loff_t pos;
+	int ret;
+
+	if (!inode_owner_or_capable(inode))
+		return -EACCES;
+
+	if (copy_from_user(&aw, (struct atomic_w __user *)arg, sizeof(aw)))
+		return -EFAULT;
+
+	ret = mnt_want_write_file(filp);
+	if (ret)
+		return ret;
+
+	pos = aw.pos;
+	set_inode_flag(F2FS_I(inode), FI_ATOMIC_FILE);
+	ret = vfs_write(filp, aw.buf, aw.count, &pos);
+	if (ret >= 0)
+		prepare_atomic_pages(inode, &aw);
+	else
+		clear_inode_flag(F2FS_I(inode), FI_ATOMIC_FILE);
+
+	mnt_drop_write_file(filp);
+	return ret;
+}
+
+static int f2fs_ioc_atomic_commit(struct file *filp, unsigned long arg)
+{
+	struct inode *inode = file_inode(filp);
+	int ret;
+	u64 aid;
+
+	if (!inode_owner_or_capable(inode))
+		return -EACCES;
+
+	if (copy_from_user(&aid, (u64 __user *)arg, sizeof(u64)))
+		return -EFAULT;
+
+	ret = mnt_want_write_file(filp);
+	if (ret)
+		return ret;
+
+	commit_atomic_pages(inode, aid, false);
+	ret = f2fs_sync_file(filp, 0, LONG_MAX, 0);
+	mnt_drop_write_file(filp);
+	return ret;
+}
+
 long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct inode *inode = file_inode(filp);
@@ -871,6 +922,10 @@ out:
 		mnt_drop_write_file(filp);
 		return ret;
 	}
+	case F2FS_IOC_ATOMIC_WRITE:
+		return f2fs_ioc_atomic_write(filp, arg);
+	case F2FS_IOC_ATOMIC_COMMIT:
+		return f2fs_ioc_atomic_commit(filp, arg);
 	case FITRIM:
 	{
 		struct super_block *sb = inode->i_sb;

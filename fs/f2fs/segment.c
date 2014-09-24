@@ -26,6 +26,7 @@
 
 static struct kmem_cache *discard_entry_slab;
 static struct kmem_cache *sit_entry_set_slab;
+static struct kmem_cache *aw_entry_slab;
 
 /*
  * __reverse_ffs is copied from include/asm-generic/bitops/__ffs.h since
@@ -171,6 +172,70 @@ found_first:
 		return result + size;   /* Nope. */
 found_middle:
 	return result + __reverse_ffz(tmp);
+}
+
+/* For atomic write support */
+void prepare_atomic_pages(struct inode *inode, struct atomic_w *aw)
+{
+	pgoff_t start = aw->pos >> PAGE_CACHE_SHIFT;
+	pgoff_t end = (aw->pos + aw->count + PAGE_CACHE_SIZE - 1) >>
+						PAGE_CACHE_SHIFT;
+	struct atomic_range *new;
+
+	new = f2fs_kmem_cache_alloc(aw_entry_slab, GFP_NOFS);
+
+	/* add atomic page indices to the list */
+	new->aid = aw->aid;
+	new->start = start;
+	new->end = end;
+	INIT_LIST_HEAD(&new->list);
+	list_add_tail(&new->list, &F2FS_I(inode)->atomic_pages);
+}
+
+void commit_atomic_pages(struct inode *inode, u64 aid, bool abort)
+{
+	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
+	struct atomic_range *cur, *tmp;
+	u64 start;
+	struct page *page;
+
+	if (abort)
+		goto release;
+
+	f2fs_balance_fs(sbi);
+	mutex_lock(&sbi->cp_mutex);
+
+	/* Step #1: write all the pages */
+	list_for_each_entry(cur, &F2FS_I(inode)->atomic_pages, list) {
+		if (cur->aid != aid)
+			continue;
+
+		for (start = cur->start; start < cur->end; start++) {
+			page = grab_cache_page(inode->i_mapping, start);
+			WARN_ON(!page);
+			move_data_page(inode, page, FG_GC);
+		}
+	}
+	f2fs_submit_merged_bio(sbi, DATA, WRITE);
+	mutex_unlock(&sbi->cp_mutex);
+release:
+	/* Step #2: wait for writeback */
+	list_for_each_entry_safe(cur, tmp, &F2FS_I(inode)->atomic_pages, list) {
+		if (cur->aid != aid && !abort)
+			continue;
+
+		for (start = cur->start; start < cur->end; start++) {
+			page = find_get_page(inode->i_mapping, start);
+			WARN_ON(!page);
+			wait_on_page_writeback(page);
+			f2fs_put_page(page, 0);
+
+			/* release reference got by atomic_write operation */
+			f2fs_put_page(page, 0);
+		}
+		list_del(&cur->list);
+		kmem_cache_free(aw_entry_slab, cur);
+	}
 }
 
 /*
@@ -2187,8 +2252,14 @@ int __init create_segment_manager_caches(void)
 			sizeof(struct nat_entry_set));
 	if (!sit_entry_set_slab)
 		goto destory_discard_entry;
+	aw_entry_slab = f2fs_kmem_cache_create("atomic_entry",
+			sizeof(struct atomic_range));
+	if (!aw_entry_slab)
+		goto destroy_sit_entry_set;
 	return 0;
 
+destroy_sit_entry_set:
+	kmem_cache_destroy(sit_entry_set_slab);
 destory_discard_entry:
 	kmem_cache_destroy(discard_entry_slab);
 fail:
