@@ -180,9 +180,6 @@ static struct platform_device *t210ref_devices[] __initdata = {
 	&tegra_offload_device,
 	&tegra30_avp_audio_device,
 #endif
-#ifdef CONFIG_TEGRA_CEC_SUPPORT
-	&tegra_cec_device,
-#endif
 };
 
 static void t210ref_usb_init(void)
