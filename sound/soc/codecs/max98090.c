@@ -3702,6 +3702,7 @@ static int max98090_probe(struct snd_soc_codec *codec)
 		of_property_read_u32(np, "maxim,audio-int", &audio_int);
 	}
 
+	max98090->irq = audio_int;
 	max98090->codec = codec;
 
 	codec->dapm.idle_bias_off = 1;
@@ -3809,6 +3810,8 @@ err_access:
 static int max98090_remove(struct snd_soc_codec *codec)
 {
 	struct max98090_priv *max98090 = snd_soc_codec_get_drvdata(codec);
+
+	free_irq(max98090->irq, codec);
 
 	cancel_delayed_work_sync(&max98090->jack_work);
 

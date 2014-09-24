@@ -1545,6 +1545,7 @@ struct max98090_priv {
 	unsigned int mic2pre;
 	unsigned int extmic_mux;
 	unsigned int sidetone;
+	int irq;
 };
 
 #endif
