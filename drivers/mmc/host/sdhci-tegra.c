@@ -1200,6 +1200,25 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 	vndr_ctrl |= (best_tap_value <<
 		SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
 	sdhci_writel(host, vndr_ctrl, SDHCI_VNDR_CLK_CTRL);
+
+	/* T21x: Enable Band Gap trimmers and VIO supply for eMMC all modes
+	 * and for SD/SDIO tunable modes only.
+	 * Wait for 3usec after enabling the trimmers.
+	 */
+	if (!plat->en_io_trim_volt)
+	       return 0;
+
+	vndr_ctrl = sdhci_readl(host, SDMMC_VNDR_IO_TRIM_CNTRL_0);
+
+	if (plat->is_emmc || (uhs == MMC_TIMING_UHS_SDR104) ||
+			(uhs == MMC_TIMING_UHS_SDR50))
+		vndr_ctrl &= ~(SDMMC_VNDR_IO_TRIM_CNTRL_0_SEL_VREG);
+	else
+		vndr_ctrl |= (SDMMC_VNDR_IO_TRIM_CNTRL_0_SEL_VREG);
+
+	sdhci_writel(host, vndr_ctrl, SDMMC_VNDR_IO_TRIM_CNTRL_0);
+	udelay(3);
+
 	return 0;
 }
 
@@ -1393,10 +1412,6 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		misc_ctrl = sdhci_readl(host, SDMMC_IO_SPARE_0);
 		misc_ctrl |= (1 << SPARE_OUT_3_OFFSET);
 		sdhci_writel(host, misc_ctrl, SDMMC_IO_SPARE_0);
-
-		vendor_ctrl = sdhci_readl(host, SDMMC_VNDR_IO_TRIM_CNTRL_0);
-		vendor_ctrl &= ~(SDMMC_VNDR_IO_TRIM_CNTRL_0_SEL_VREG);
-		sdhci_writel(host, vendor_ctrl, SDMMC_VNDR_IO_TRIM_CNTRL_0);
 	}
 
 	if (soc_data->nvquirks & NVQUIRK_DISABLE_AUTO_CMD23)
@@ -1454,18 +1469,6 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT);
 		sdhci_writel(host, misc_ctrl, SDHCI_VNDR_CAP_OVERRIDES_0);
 	}
-
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-	/* Enable Band Gap trimmers and VIO supply.
-	 * Wait for 3usec after enabling the trimmers.
-	 */
-	misc_ctrl = sdhci_readl(host, SDMMC_VNDR_IO_TRIM_CNTRL_0);
-	misc_ctrl &= ~(SDMMC_VNDR_IO_TRIM_CNTRL_0_SEL_VREG);
-	sdhci_writel(host, misc_ctrl, SDMMC_VNDR_IO_TRIM_CNTRL_0);
-	udelay(3);
-	if (tegra_host->en_strobe)
-		tegra_sdhci_en_strobe(host);
-#endif
 
 	/* Use timeout clk data timeout counter for generating wr crc status */
 	if (soc_data->nvquirks &
@@ -4487,6 +4490,9 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	plat->disable_clock_gate = of_property_read_bool(np,
 		"disable-clock-gate");
 	of_property_read_u8(np, "default-drv-type", &plat->default_drv_type);
+	plat->en_io_trim_volt = of_property_read_bool(np,
+			"nvidia,en-io-trim-volt");
+	plat->is_emmc = of_property_read_bool(np, "nvidia,is-emmc");
 
 	if (!of_property_read_u32(np, "mmc-ocr-mask", &val)) {
 		if (val == 0)

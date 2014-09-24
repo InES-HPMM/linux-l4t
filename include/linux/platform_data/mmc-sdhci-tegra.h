@@ -78,6 +78,8 @@ struct tegra_sdhci_platform_data {
 	bool pwr_off_during_lp0;
 	bool disable_auto_cal;
 	unsigned int auto_cal_step;
+	bool en_io_trim_volt;
+	bool is_emmc;
 };
 
 #endif
