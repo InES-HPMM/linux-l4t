@@ -46,6 +46,8 @@ Optional properties:
 - nvidia,dll-calib-needed: DLL calibration is needed for SDMMC4 and SDMMC2 devices if they are enumerated
 in HS400 mode.
 - nvidia,disable-auto-cal: This flag when set will disable auto calibration
+- nvidia,en-io-trim-volt: Enable IO trimmer voltage
+- nvidia,is-emmc: Enable this flag for eMMC devices
 
 Example:
 

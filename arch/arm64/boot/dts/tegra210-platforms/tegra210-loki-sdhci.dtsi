@@ -30,6 +30,8 @@
 		built-in;
 		compad-vref-3v3 = <0x7>;
 		compad-vref-1v8 = <0x7>;
+		nvidia,en-io-trim-volt;
+		nvidia,is-emmc;
 	};
 
 	sdhci@700b0400 { /* SDMMC3 for 2nd Wifi on loki */
@@ -45,6 +47,7 @@
 		compad-vref-3v3 = <0x1>;
 		compad-vref-1v8 = <0x2>;
 		default-drv-type = <1>;
+		nvidia,en-io-trim-volt;
 	};
 
 	sdhci@700b0200 { /* SDMMC2 for Wifi on loki */
@@ -59,6 +62,7 @@
 		compad-vref-3v3 = <0x7>;
 		compad-vref-1v8 = <0x7>;
 		default-drv-type = <1>;
+		nvidia,en-io-trim-volt;
 	};
 
 	sdhci@700b0000 { /* SDMMC1 for uSD card on loki */
@@ -74,5 +78,6 @@
 		compad-vref-3v3 = <0x1>;
 		compad-vref-1v8 = <0x2>;
 		cd-gpios = <&gpio TEGRA_GPIO_PZ1 0>;
+		nvidia,en-io-trim-volt;
 	};
 };
