@@ -1,3 +1,20 @@
+/*
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
 / {
 	i2c@7000c400 {
 		ina3221x@40 {
@@ -26,6 +43,20 @@
 				ti,rail-name = "VDD_MODEM";
 				ti,shunt-resistor-mohm = <5>;
 			};
+		};
+
+		ina226@46 {
+			status = "disabled";
+			compatible = "ti,ina226x";
+			reg = <0x46>;
+			ti,rail-name = "VDD_DDR";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,resistor = <10>;
+			ti,calibration-data = <0x0DF1>;
+			ti,power-lsb = <143>;
+			ti,divisor = <25>;
+			ti,precision-multiplier = <1000>;
 		};
 	};
 };
