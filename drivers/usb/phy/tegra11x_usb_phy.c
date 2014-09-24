@@ -182,6 +182,7 @@
 
 #define UHSIC_HSRX_CFG1				0xc0c
 #define   UHSIC_HS_SYNC_START_DLY(x)		(((x) & 0x1f) << 1)
+#define   UHSIC_RX_STROBE_DLY_TRIMMER(x)	(((x) & 0x3f) << 14)
 
 #define UHSIC_TX_CFG0				0xc10
 #define   UHSIC_HS_READY_WAIT_FOR_VALID	(1 << 9)
@@ -296,6 +297,8 @@
 #define HSIC_IDLE_WAIT_DELAY		17
 #define HSIC_ELASTIC_UNDERRUN_LIMIT	16
 #define HSIC_ELASTIC_OVERRUN_LIMIT	16
+#define HSIC_RX_STROBE_DELAY_TRIMMER	0x1e
+#define HSIC_RX_STROBE_DELAY_TRIMMER_MASK	(0x3f << 14)
 
 struct tegra_usb_pmc_data pmc_data[3];
 
@@ -2387,6 +2390,10 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 
 	val = readl(base + UHSIC_HSRX_CFG1);
 	val |= UHSIC_HS_SYNC_START_DLY(HSIC_SYNC_START_DELAY);
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	val &= ~HSIC_RX_STROBE_DELAY_TRIMMER_MASK;
+	val |= UHSIC_RX_STROBE_DLY_TRIMMER(HSIC_RX_STROBE_DELAY_TRIMMER);
+#endif
 	writel(val, base + UHSIC_HSRX_CFG1);
 
 	/* WAR HSIC TX */
