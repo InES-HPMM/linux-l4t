@@ -1742,6 +1742,10 @@ static void sbus_build_round_table_one(struct clk *c, unsigned long rate, int j)
 		c, sel.src, flags, rate, false, &sel.div);
 	sbus_round_table[j] = sel;
 
+	/* Don't use high frequency source above threshold */
+	if (rate <= c->u.system.threshold)
+		return;
+
 	sel.src = c->u.system.sclk_high;
 	sel.rate = fixed_src_bus_round_updown(
 		c, sel.src, flags, rate, false, &sel.div);
@@ -9696,6 +9700,7 @@ static void tegra21_pllp_init_dependencies(unsigned long pllp_rate)
 		tegra_pll_p_out3.u.pll_div.default_rate = 72000000;
 		tegra_pll_p_out4.u.pll_div.default_rate = 108000000;
 		tegra_pll_p_out5.u.pll_div.default_rate = 108000000;
+		tegra_clk_sbus_cmplx.u.system.threshold = 108000000;
 		tegra_clk_host1x.u.periph.threshold = 108000000;
 		tegra_clk_aclk_adsp.u.cclk.div71 = 2; /* reg settings */
 		break;
@@ -9703,6 +9708,7 @@ static void tegra21_pllp_init_dependencies(unsigned long pllp_rate)
 		tegra_pll_p_out3.u.pll_div.default_rate = 102000000;
 		tegra_pll_p_out4.u.pll_div.default_rate = 204000000;
 		tegra_pll_p_out5.u.pll_div.default_rate = 204000000;
+		tegra_clk_sbus_cmplx.u.system.threshold = 204000000;
 		tegra_clk_host1x.u.periph.threshold = 204000000;
 		tegra_clk_aclk_adsp.u.cclk.div71 = 2; /* reg settings */
 		break;
@@ -9710,6 +9716,7 @@ static void tegra21_pllp_init_dependencies(unsigned long pllp_rate)
 		tegra_pll_p_out3.u.pll_div.default_rate = 102000000;
 		tegra_pll_p_out4.u.pll_div.default_rate = 204000000;
 		tegra_pll_p_out5.u.pll_div.default_rate = 204000000;
+		tegra_clk_sbus_cmplx.u.system.threshold = 204000000;
 		tegra_clk_host1x.u.periph.threshold = 204000000;
 		tegra_clk_aclk_adsp.u.cclk.div71 = 0; /* reg settings */
 		break;
