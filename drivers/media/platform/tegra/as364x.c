@@ -1444,7 +1444,7 @@ static int as364x_probe(
 		dev_info(&client->dev, "%s device %02x found\n",
 			__func__, info->regs.dev_id);
 
-	if (info->pdata->dev_name != 0)
+	if (info->pdata->dev_name != NULL)
 		strncpy(info->devname, info->pdata->dev_name,
 			sizeof(info->devname) - 1);
 	else
