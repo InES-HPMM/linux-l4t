@@ -1424,36 +1424,32 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	if (!sel->input)
 		return -EINVAL;
 
+	/* over/under-clocking after switch - allow, but update rate */
+	if ((rate > p->max_rate) || (rate < p->min_rate)) {
+		rate = rate > p->max_rate ? p->max_rate : p->min_rate;
+		ret = clk_set_rate(c->parent, rate);
+		if (ret) {
+			pr_err("%s: Failed to set rate %lu for %s\n",
+					__func__, rate, p->name);
+			return ret;
+		}
+	}
+
 #if PARAMETERIZE_CLUSTER_SWITCH
 	spin_lock(&parameters_lock);
 	flags = switch_flags;
 	delay = switch_delay;
 	switch_flags = 0;
 	spin_unlock(&parameters_lock);
-
-	if (flags) {
-		/* over/under-clocking after switch - allow, but update rate */
-		if ((rate > p->max_rate) || (rate < p->min_rate)) {
-			rate = rate > p->max_rate ? p->max_rate : p->min_rate;
-			ret = clk_set_rate(c->parent, rate);
-			if (ret) {
-				pr_err("%s: Failed to set rate %lu for %s\n",
-				        __func__, rate, p->name);
-				return ret;
-			}
-		}
-	} else
 #endif
-	{
-		if (rate > p->max_rate) {	/* over-clocking - no switch */
-			pr_warn("%s: No %s mode switch to %s at rate %lu\n",
-				 __func__, c->name, p->name, rate);
-			return -ECANCELED;
-		}
-		flags = TEGRA_POWER_CLUSTER_IMMEDIATE;
-		flags |= TEGRA_POWER_CLUSTER_PART_DEFAULT;
-		delay = 0;
+	if (rate > p->max_rate) {	/* over-clocking - no switch */
+		pr_warn("%s: No %s mode switch to %s at rate %lu\n",
+				__func__, c->name, p->name, rate);
+		return -ECANCELED;
 	}
+	flags = TEGRA_POWER_CLUSTER_IMMEDIATE;
+	flags |= TEGRA_POWER_CLUSTER_PART_DEFAULT;
+	delay = 0;
 	flags |= (p->u.cpu.mode == MODE_LP) ? TEGRA_POWER_CLUSTER_LP :
 		TEGRA_POWER_CLUSTER_G;
 
