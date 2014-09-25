@@ -1492,7 +1492,8 @@ noinline u32 dll_prelock(const struct tegra21_emc_table *next_timing,
 	emc_cfg_dig_dll |= EMC_CFG_DIG_DLL_CFG_DLL_EN;
 	emc_writel(emc_cfg_dig_dll, EMC_CFG_DIG_DLL);
 
-	emc_timing_update(DUAL_CHANNEL);
+	emc_timing_update(dual_channel_lpddr4_case ?
+			  DUAL_CHANNEL : SINGLE_CHANNEL);
 
 	do {
 		emc_cfg_dig_dll = emc_readl(EMC_CFG_DIG_DLL);
