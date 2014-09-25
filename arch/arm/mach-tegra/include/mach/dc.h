@@ -56,6 +56,12 @@
 
 extern atomic_t sd_brightness;
 
+enum {
+	TEGRA_HPD_STATE_FORCE_DEASSERT = -1,
+	TEGRA_HPD_STATE_NORMAL = 0,
+	TEGRA_HPD_STATE_FORCE_ASSERT = 1,
+};
+
 /* DSI pixel data format */
 enum {
 	TEGRA_DSI_PIXEL_FORMAT_16BIT_P,
