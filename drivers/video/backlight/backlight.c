@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2003,2004 Hewlett-Packard Company
  *
- * Copyright (c) 2013, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -126,6 +126,8 @@ static unsigned int backlight_calc_sysedp_state(struct backlight_device *bd)
 	brightness = bd->props.brightness;
 	brightness = (brightness * cur_sd_brightness)/255;
 	state = 1 + brightness*10 / bd->props.max_brightness;
+	if (bd->props.state & BL_CORE_FBBLANK)
+		state = 0;
 	return brightness ? state : 0;
 }
 
