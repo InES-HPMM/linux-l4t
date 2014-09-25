@@ -24,6 +24,7 @@
 #define DEVFREQ_GOV_INTERVAL			0x3
 #define DEVFREQ_GOV_SUSPEND			0x4
 #define DEVFREQ_GOV_RESUME			0x5
+#define DEVFREQ_GOV_WMARK			0x6
 
 #if defined(CONFIG_PM_DEVFREQ)
 

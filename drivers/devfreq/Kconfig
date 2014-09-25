@@ -63,6 +63,13 @@ config DEVFREQ_GOV_USERSPACE
 	  Otherwise, the governor does not change the frequnecy
 	  given at the initialization.
 
+config DEVFREQ_GOV_WATERMARK
+	tristate "Watermark"
+	help
+	  Sets the frequency based on monitor watermark events.
+	  This governor returns the next frequency from frequency table
+	  based on type watermark event.
+
 comment "DEVFREQ Drivers"
 
 config ARM_EXYNOS4_BUS_DEVFREQ
