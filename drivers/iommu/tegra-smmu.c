@@ -555,7 +555,7 @@ static struct smmu_client *tegra_smmu_register_client(struct smmu_device *smmu,
 	return client;
 }
 
-static u64 tegra_smmu_of_get_swgids(struct device *dev,
+static u64 tegra_smmu_get_swgids(struct device *dev,
 				    struct smmu_map_prop *out_prop)
 {
 	u64 swgids = SWGIDS_ERROR_CODE;
@@ -579,7 +579,7 @@ static u64 tegra_smmu_of_get_swgids(struct device *dev,
 		goto out;
 	}
 
-	swgids = __tegra_smmu_of_get_swgids(dev, tegra_smmu_of_match, &area);
+	swgids = tegra_smmu_of_get_swgids(dev, tegra_smmu_of_match, &area);
 
 	if (swgids_is_error(swgids))
 		goto out;
@@ -2453,7 +2453,7 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 		"UNBOUND_DRIVER",
 	};
 
-	swgids = tegra_smmu_of_get_swgids(dev, &prop);
+	swgids = tegra_smmu_get_swgids(dev, &prop);
 	if (swgids_is_error(swgids))
 		goto end;
 	/* dev is a smmu client */

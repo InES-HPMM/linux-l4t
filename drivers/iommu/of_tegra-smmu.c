@@ -111,7 +111,7 @@ int tegra_smmu_of_get_asprops(struct list_head *asprops,
 	return -ENOENT;
 }
 
-u64 __tegra_smmu_of_get_swgids(struct device *dev,
+u64 tegra_smmu_of_get_swgids(struct device *dev,
 			       const struct of_device_id *matches,
 			       struct iommu_linear_map **area)
 {
