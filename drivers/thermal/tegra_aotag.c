@@ -47,6 +47,7 @@
 
 #define MAX_SENSORS	(4)
 #define SENSOR_TYPE_LEN	(32)
+#define DEFAULT_SHUTDOWN_TEMP	(104000)
 
 #define reg_read(pdev, device, reg)	\
 	readl((PDEV2REG_INFO(pdev))->device##_base + reg)
@@ -70,6 +71,10 @@
 #define PDEV2FUSE_INFO(pdev)	\
 	(&(((struct aotag_plat_info_t *)(pdev->dev.platform_data))->\
 	   sensor_info.fuse_info))
+
+#define PDEV2TZDEVICE(pdev)	\
+	((((struct aotag_plat_info_t *)(pdev->dev.platform_data))->\
+	   sensor_info.tzd))
 
 #define PDEV2OF_NODE(pdev)	\
 	(pdev->dev.of_node)
@@ -110,7 +115,6 @@ static int aotag_get_trend_generic(void*, long*);
 #define PMC_R_OBS_AOTAG			(0x017)
 #define PMC_R_OBS_AOTAG_CAPTURE		(0x017)
 #define PMC_RST_STATUS			(0x1B4)
-#define PMC_DIRECT_THERMTRIP_CFG	(0x474)
 
 #define PMC_AOTAG_CFG			(0x484)
 #define CFG_DISABLE_CLK_POS		(0)
@@ -122,7 +126,13 @@ static int aotag_get_trend_generic(void*, long*);
 
 #define PMC_AOTAG_THRESH1_CFG		(0x488)
 #define PMC_AOTAG_THRESH2_CFG		(0x48C)
+
 #define PMC_AOTAG_THRESH3_CFG		(0x490)
+#define THRESH3_CFG_POS_START		(0)
+#define THRESH3_CFG_POS_END		(14)
+#define THRESH3_CFG_MASK		(MASK(THRESH3_CFG_POS_START,\
+						THRESH3_CFG_POS_END))
+
 #define PMC_AOTAG_STATUS		(0x494)
 #define PMC_AOTAG_SECURITY		(0x498)
 
@@ -269,6 +279,7 @@ struct aotag_sensor_info_t {
 
 	u32 last_raw_capture;
 	long last_temp_capture;
+	long shutdown_temp;
 };
 
 struct aotag_plat_info_t {
@@ -377,6 +388,11 @@ static int aotag_init(struct platform_device *pdev)
 		goto out;
 	}
 
+	/*
+	 * Initialize plat data with defaults
+	 */
+	pplat->sensor_info.shutdown_temp = DEFAULT_SHUTDOWN_TEMP;
+
 out:
 	return ret;
 }
@@ -449,6 +465,13 @@ out:
 	return ret;
 }
 
+static void aotag_unregister_sensors(struct platform_device *pdev)
+{
+	struct device *dev = PDEV2DEVICE(pdev);
+	struct aotag_sensor_info_t *ps_info = PDEV2SENSOR_INFO(pdev);
+	struct thermal_zone_device *ptz = ps_info->tzd;
+	thermal_zone_of_sensor_unregister(dev, ptz);
+}
 static int aotag_register_sensors(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -637,6 +660,7 @@ static int aotag_hw_init(struct platform_device *pdev)
 {
 	int ret = 0;
 	unsigned long reg = 0;
+	int temp = 0;
 	struct aotag_sensor_info_t *ps_info = PDEV2SENSOR_INFO(pdev);
 	struct sensor_common_params_t *pcparams =
 		SENSOR_INFO2COMMON_PARAMS(ps_info);
@@ -673,15 +697,50 @@ static int aotag_hw_init(struct platform_device *pdev)
 	/*
 	 * configure therm trip
 	 */
+	reg = 0;
+	temp = (ps_info->shutdown_temp)/2000;
+	FILL_REG_OR(temp, THRESH3_CFG, &reg);
+	reg_write(pdev, pmc, reg, PMC_AOTAG_THRESH3_CFG);
+	aotag_pdev_print(info, pdev, "shutdown temperature - %d\n",
+			reg_read(pdev, pmc, PMC_AOTAG_THRESH3_CFG));
 
 	/*
-	 * Enable AOTAG
+	 * Enable AOTAG + THERMTRIP
 	 */
 	reg = 0;
 	set_bit(CFG_TAG_EN_POS, &reg);
 	clear_bit(CFG_DISABLE_CLK_POS, &reg);
+	set_bit(CFG_THERMTRIP_EN_POS, &reg);
 	reg_write(pdev, pmc, reg, PMC_AOTAG_CFG);
+	aotag_pdev_print(info, pdev, "AOTAG EN %x\n",
+			reg_read(pdev, pmc, PMC_AOTAG_CFG));
 
+	return ret;
+}
+
+static int aotag_update_shutdown_temp(struct platform_device *pdev)
+{
+	int ret = 0;
+	struct thermal_zone_device *ptzd = PDEV2TZDEVICE(pdev);
+	struct aotag_sensor_info_t *ps_info = PDEV2SENSOR_INFO(pdev);
+
+	if (IS_ERR_OR_NULL(ptzd)) {
+		ret = -ENODEV;
+		goto out;
+	}
+
+	ret = -EINVAL;
+	if (ptzd->ops->get_crit_temp)
+		ret = ptzd->ops->get_crit_temp(ptzd, &ps_info->shutdown_temp);
+
+	if (unlikely(ret)) {
+		aotag_pdev_print(warn, pdev,
+				"Could not query shutdown/critical temp\n");
+		goto out;
+	}
+	aotag_pdev_print(info, pdev, "Shutdwon temp is %ld\n",
+			ps_info->shutdown_temp);
+out:
 	return ret;
 }
 
@@ -723,18 +782,25 @@ static int __init tegra_aotag_probe(struct platform_device *pdev)
 		goto out;
 	}
 
-	ret = aotag_hw_init(pdev);
-	if (unlikely(ret)) {
-		aotag_pdev_print(alert, pdev, "failed sensor registration\n");
-		goto out;
-	}
-
 	ret = aotag_register_sensors(pdev);
 	if (unlikely(ret)) {
 		aotag_pdev_print(alert, pdev, "failed sensor registration\n");
 		goto out;
 	}
 
+	ret = aotag_update_shutdown_temp(pdev);
+	if (unlikely(ret)) {
+		aotag_pdev_print(alert, pdev,
+				"failed to get shutdown temp, using default\n");
+	}
+
+	ret = aotag_hw_init(pdev);
+	if (unlikely(ret)) {
+		aotag_pdev_print(alert, pdev, "failed hardware init\n");
+		aotag_unregister_sensors(pdev);
+		/* unregister the sensor if HW init fails */
+		goto out;
+	}
 
 out:
 	aotag_pdev_print(alert, pdev, "Probe done %s:%d\n",
