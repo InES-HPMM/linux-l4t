@@ -2230,6 +2230,14 @@ static int sdhci_card_busy(struct mmc_host *mmc)
 	return !(present_state & SDHCI_DATA_LVL_MASK);
 }
 
+static void sdhci_config_tap(struct mmc_host *mmc, u8 option)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
+
+	if (host->ops->config_tap_delay)
+		host->ops->config_tap_delay(host, option);
+}
+
 static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 {
 	struct sdhci_host *host;
@@ -2412,6 +2420,8 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 				" failed, falling back to fixed sampling"
 				" clock\n");
 			err = -EIO;
+		} else {
+			sdhci_config_tap(mmc, SAVE_TUNED_TAP);
 		}
 	}
 

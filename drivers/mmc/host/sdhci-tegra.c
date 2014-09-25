@@ -102,6 +102,7 @@
  */
 #define SDHCI_VNDR_TUN_CTRL_RETUNE_REQ_EN		0x8000000
 #define SDHCI_VNDR_TUN_CTRL0_TUN_ITERATIONS		0x4000
+#define SDHCI_VNDR_TUN_CTRL0_TUN_HW_TAP			0x20000
 #define SDHCI_VNDR_TUN_CTRL1_TUN_STEP_SIZE		0x77
 
 
@@ -672,6 +673,7 @@ struct sdhci_tegra {
 	int drive_group_sel;
 	u32 dll_calib;
 	bool en_strobe;
+	unsigned int tuned_tap_delay;
 };
 
 static unsigned int boot_volt_req_refcount;
@@ -695,6 +697,7 @@ static void tegra_sdhci_update_sdmmc_pinctrl_register(struct sdhci_host *sdhci,
 		bool set);
 static int get_tuning_tap_hole_margins(struct sdhci_host *sdhci,
 		int t2t_tuning_value);
+static void tegra_sdhci_config_tap(struct sdhci_host *sdhci, u8 option);
 
 static void tegra_sdhci_dumpregs(struct sdhci_host *sdhci)
 {
@@ -1180,17 +1183,23 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 			sdhci_writel(host, vndr_ctrl, SDHCI_VNDR_CLK_CTRL);
 		}
 	}
+
 	/* Set the best tap value based on timing */
 	if (((uhs == MMC_TIMING_MMC_HS200) ||
 		(uhs == MMC_TIMING_UHS_SDR104) ||
+		(uhs == MMC_TIMING_MMC_HS400) ||
 		(uhs == MMC_TIMING_UHS_SDR50)) &&
 		(tegra_host->tuning_status == TUNING_STATUS_DONE)) {
-		tuning_data = sdhci_tegra_get_tuning_data(host,
-			host->mmc->ios.clock);
-		best_tap_value = (tegra_host->tap_cmd ==
-			TAP_CMD_TRIM_HIGH_VOLTAGE) ?
-			tuning_data->nom_best_tap_value :
-			tuning_data->best_tap_value;
+		if (host->quirks2 & SDHCI_QUIRK2_NON_STANDARD_TUNING) {
+			tuning_data = sdhci_tegra_get_tuning_data(host,
+				host->mmc->ios.clock);
+			best_tap_value = (tegra_host->tap_cmd ==
+				TAP_CMD_TRIM_HIGH_VOLTAGE) ?
+				tuning_data->nom_best_tap_value :
+				tuning_data->best_tap_value;
+		} else {
+			best_tap_value = tegra_host->tuned_tap_delay;
+		}
 	} else if ((uhs == MMC_TIMING_UHS_DDR50) && (plat->is_ddr_tap_delay)) {
 		best_tap_value = plat->ddr_tap_delay;
 	} else {
@@ -1336,19 +1345,23 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	if (soc_data->nvquirks & NVQUIRK_SET_TAP_DELAY) {
 		if ((tegra_host->tuning_status == TUNING_STATUS_DONE)
 			&& (host->mmc->pm_flags & MMC_PM_KEEP_POWER)) {
-			tuning_data = sdhci_tegra_get_tuning_data(host,
-				host->mmc->ios.clock);
-			best_tap_value = (tegra_host->tap_cmd ==
-				TAP_CMD_TRIM_HIGH_VOLTAGE) ?
-				tuning_data->nom_best_tap_value :
-				tuning_data->best_tap_value;
+			if (host->quirks2 & SDHCI_QUIRK2_NON_STANDARD_TUNING) {
+				tuning_data = sdhci_tegra_get_tuning_data(host,
+					host->mmc->ios.clock);
+				best_tap_value = (tegra_host->tap_cmd ==
+					TAP_CMD_TRIM_HIGH_VOLTAGE) ?
+					tuning_data->nom_best_tap_value :
+					tuning_data->best_tap_value;
+			} else {
+				best_tap_value = tegra_host->tuned_tap_delay;
+			}
 		} else {
 			best_tap_value = tegra_host->plat->tap_delay;
 		}
 		vendor_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TAP_VALUE_MASK <<
 				SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
 		vendor_ctrl |= (best_tap_value <<
-			SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+				SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
 	}
 
 	if (soc_data->nvquirks & NVQUIRK_SET_TRIM_DELAY) {
@@ -2102,12 +2115,23 @@ static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
 		dump_stack();
 		return;
 	}
+	if (!(sdhci->quirks2 & SDHCI_QUIRK2_NON_STANDARD_TUNING)) {
+		vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_TUN_CTRL0_0);
+		vendor_ctrl &= ~SDHCI_VNDR_TUN_CTRL0_TUN_HW_TAP;
+		sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_TUN_CTRL0_0);
+	}
 
 	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
 	vendor_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TAP_VALUE_MASK <<
 			SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
 	vendor_ctrl |= (tap_delay << SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
 	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_CLK_CTRL);
+
+	if (!(sdhci->quirks2 & SDHCI_QUIRK2_NON_STANDARD_TUNING)) {
+		vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_TUN_CTRL0_0);
+		vendor_ctrl |= SDHCI_VNDR_TUN_CTRL0_TUN_HW_TAP;
+		sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_TUN_CTRL0_0);
+	}
 }
 
 static void sdhci_tegra_set_trim_delay(struct sdhci_host *sdhci,
@@ -4308,6 +4332,32 @@ static int tegra_sdhci_get_drive_strength(struct sdhci_host *sdhci,
 	return plat->default_drv_type;
 }
 
+static void tegra_sdhci_config_tap(struct sdhci_host *sdhci, u8 option)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	u32 tap_delay;
+
+	switch (option) {
+	case SAVE_TUNED_TAP:
+		tap_delay = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
+		tap_delay >>= SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT;
+		tap_delay &= SDHCI_VNDR_CLK_CTRL_TAP_VALUE_MASK;
+		tegra_host->tuned_tap_delay = tap_delay;
+		tegra_host->tuning_status = TUNING_STATUS_DONE;
+		break;
+	case SET_DEFAULT_TAP:
+		sdhci_tegra_set_tap_delay(sdhci, tegra_host->plat->tap_delay);
+		break;
+	case SET_TUNED_TAP:
+		sdhci_tegra_set_tap_delay(sdhci, tegra_host->tuned_tap_delay);
+		break;
+	default:
+		dev_err(mmc_dev(sdhci->mmc),
+			"Invalid argument passed to tap config\n");
+	}
+}
+
 static const struct sdhci_ops tegra_sdhci_ops = {
 	.get_ro     = tegra_sdhci_get_ro,
 	.get_cd     = tegra_sdhci_get_cd,
@@ -4338,6 +4388,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.en_strobe	= tegra_sdhci_en_strobe,
 	.dump_host_cust_regs	= tegra_sdhci_dumpregs,
 	.get_max_tuning_loop_counter = sdhci_tegra_get_max_tuning_loop_counter,
+	.config_tap_delay	= tegra_sdhci_config_tap,
 };
 
 static struct sdhci_pltfm_data sdhci_tegra11_pdata = {

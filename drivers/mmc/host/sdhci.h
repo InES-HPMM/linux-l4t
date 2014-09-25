@@ -388,6 +388,7 @@ struct sdhci_ops {
 	void	(*en_strobe)(struct sdhci_host *host);
 	void	(*dump_host_cust_regs)(struct sdhci_host *host);
 	int	(*get_max_tuning_loop_counter)(struct sdhci_host *sdhci);
+	void	(*config_tap_delay)(struct sdhci_host *host, u8 option);
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS

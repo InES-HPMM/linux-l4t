@@ -23,6 +23,10 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/pm.h>
 
+#define SAVE_TUNED_TAP	0
+#define SET_DEFAULT_TAP	1
+#define SET_TUNED_TAP	2
+
 struct mmc_ios {
 	unsigned int	clock;			/* clock rate */
 	unsigned short	vdd;
