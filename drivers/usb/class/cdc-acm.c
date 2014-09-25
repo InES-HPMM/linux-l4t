@@ -205,6 +205,7 @@ static int acm_start_wb(struct acm *acm, struct acm_wb *wb)
 	wb->urb->transfer_dma = wb->dmah;
 	wb->urb->transfer_buffer_length = wb->len;
 	wb->urb->dev = acm->dev;
+
 	rc = usb_submit_urb(wb->urb, GFP_ATOMIC);
 	if (rc < 0) {
 		dev_err(&acm->data->dev,
@@ -232,15 +233,6 @@ static int acm_write_start(struct acm *acm, int wbn)
 							acm->susp_count);
 	usb_autopm_get_interface_async(acm->control);
 	if (acm->susp_count) {
-#ifdef CONFIG_PM
-		printk("%s buffer urb\n", __func__);
-		acm->transmitting++;
-		wb->urb->transfer_buffer = wb->buf;
-		wb->urb->transfer_dma = wb->dmah;
-		wb->urb->transfer_buffer_length = wb->len;
-		wb->urb->dev = acm->dev;
-		usb_anchor_urb(wb->urb, &acm->deferred);
-#endif
 		if (!acm->delayed_wb)
 			acm->delayed_wb = wb;
 		else
@@ -1248,7 +1240,6 @@ made_compressed_probe:
 	INIT_LIST_HEAD(&acm->rb_head);
 	acm->rx_buflimit = num_rx_buf;
 	INIT_WORK(&acm->work, acm_softint);
-	init_usb_anchor(&acm->deferred);
 	spin_lock_init(&acm->write_lock);
 	spin_lock_init(&acm->read_lock);
 	mutex_init(&acm->mutex);
@@ -1544,7 +1535,6 @@ static int acm_resume(struct usb_interface *intf)
 	struct acm *acm = usb_get_intfdata(intf);
 	struct acm_wb *wb;
 	int rv = 0;
-	struct urb *res;
 	int cnt;
 
 	if (!acm) {
@@ -1565,18 +1555,9 @@ static int acm_resume(struct usb_interface *intf)
 	if (cnt)
 		return 0;
 
-#ifdef CONFIG_PM
-	while ((res = usb_get_from_anchor(&acm->deferred))) {
-		printk("%s process buffered request \n", __func__);
-		rv = usb_submit_urb(res, GFP_ATOMIC);
-		if (rv < 0) {
-			dev_dbg(&acm->data->dev, "usb_submit_urb(pending request) failed: %d", rv);
-		}
-	}
-#endif
-
 	if (test_bit(ASYNCB_INITIALIZED, &acm->port.flags)) {
 		rv = usb_submit_urb(acm->ctrlurb, GFP_NOIO);
+
 		spin_lock_irq(&acm->write_lock);
 		if (acm->delayed_wb) {
 			wb = acm->delayed_wb;
@@ -1586,7 +1567,6 @@ static int acm_resume(struct usb_interface *intf)
 		} else {
 			spin_unlock_irq(&acm->write_lock);
 		}
-
 
 		/*
 		 * delayed error checking because we must
