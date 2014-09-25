@@ -269,6 +269,15 @@
 			regulator-supplies = "vddio-dmic";
 			vddio-dmic-supply = <&max77620_sd3>;
 		};
+
+		spdif@702d6000 {
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			regulator-supplies = "vdd-io-1v8-dp", "vdd-1v8-dp";
+			vdd-io-1v8-dp-supply = <&max77620_sd3>;
+			vdd-1v8-dp-supply = <&max77620_sd3>;
+		};
 	};
 
 	sound {
@@ -322,7 +331,7 @@
 	sound_ref {
 		compatible = "nvidia,tegra-audio-t210ref";
 		nvidia,model = "tegra-snd-t210ref";
-		nvidia,num-codec-link = <2>;
+		nvidia,num-codec-link = <3>;
 		nvidia,num-amx = <2>;
 		nvidia,num-adx = <2>;
 		nvidia,amx-slot-size = <32 32>;
@@ -416,7 +425,10 @@
 			"Headphone-y", 	"y DAC3OUT",
 			"Headphone-y", 	"y DAC4OUT",
 			"y ADC1IN",	"LineIn-y",
-			"y ADC2IN",	"LineIn-y";
+			"y ADC2IN",	"LineIn-y",
+
+			"Headphone-z", "z OUT",
+			"z IN", "LineIn-z";
 		nvidia,xbar = <&tegra_axbar>;
 
 		nvidia,dai-link-1 {
@@ -456,6 +468,20 @@
 			srate = <48000>;
 			num-channel = <8>;
 			name-prefix = "y";
+		};
+		nvidia,dai-link-3 {
+			link-name = "spdif-playback";
+			cpu-dai = <&tegra_spdif>;
+			codec-dai = <&spdif_dit0>;
+			cpu-dai-name = "SPDIF1-1";
+			codec-dai-name = "dit-hifi";
+			tx-mask = <0xFF>;
+			rx-mask = <0xFF>;
+			bit-format = "s16_le";
+			bclk_ratio = <2>;
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "z";
 		};
 	};
 
