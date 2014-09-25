@@ -488,28 +488,29 @@ static void smmu_client_ordered(struct smmu_device *smmu)
 static struct of_device_id tegra_smmu_of_match[];
 
 /* FIXME: Add linear map logic as well */
-static int tegra_smmu_of_register_asprops(struct smmu_device *smmu)
+static int tegra_smmu_of_register_asprops(struct device *dev,
+					  struct list_head *asprops)
 {
 	int err, count = 0, sum_hweight = 0;
 	struct of_phandle_iter iter;
 	u64 swgid_mask = 0;
 	struct smmu_map_prop *prop, *temp;
 
-	of_property_for_each_phandle_with_args(iter, smmu->dev->of_node,
+	of_property_for_each_phandle_with_args(iter, dev->of_node,
 					       "domains", NULL, 2) {
 		struct of_phandle_args *ret = &iter.out_args;
 		struct device_node *np = ret->np;
 
 		if (ret->args_count < 2) {
-			dev_err(smmu->dev,
+			dev_err(dev,
 				"domains expects 2 params but %d\n",
 				ret->args_count);
 			goto free_mem;
 		}
 
-		prop = devm_kzalloc(smmu->dev, sizeof(*prop), GFP_KERNEL);
+		prop = devm_kzalloc(dev, sizeof(*prop), GFP_KERNEL);
 		if (!prop) {
-			dev_err(smmu->dev, "no memory available\n");
+			dev_err(dev, "no memory available\n");
 			goto free_mem;
 		}
 
@@ -522,14 +523,14 @@ static int tegra_smmu_of_register_asprops(struct smmu_device *smmu)
 							&prop->num_pf_page);
 		err |= of_property_read_u32(np, "gap-page", &prop->gap_page);
 		if (err) {
-			dev_err(smmu->dev,
+			dev_err(dev,
 				"invalid address-space-prop %s\n",
 				np->name);
 			goto free_mem;
 		}
 
 		count++;
-		list_add_tail(&prop->list, &smmu->asprops);
+		list_add_tail(&prop->list, asprops);
 
 		/*
 		 * The final entry in domains property is
@@ -547,21 +548,22 @@ static int tegra_smmu_of_register_asprops(struct smmu_device *smmu)
 		return count;
 
 	/* check bit mask overlap in domains= property */
-	dev_warn(smmu->dev, "overlapping bitmaps in domains!!!");
+	dev_warn(dev, "overlapping bitmaps in domains!!!");
 free_mem:
-	list_for_each_entry_safe(prop, temp, &smmu->asprops, list)
-		devm_kfree(smmu->dev, prop);
+	list_for_each_entry_safe(prop, temp, asprops, list)
+		devm_kfree(dev, prop);
 	return 0;
 }
 
-static int tegra_smmu_of_get_asprops(u64 swgids, struct smmu_map_prop *prop)
+static int tegra_smmu_of_get_asprops(struct list_head *asprops,
+				     u64 swgids, struct smmu_map_prop *prop)
 {
 	struct smmu_map_prop *pprop;
 
 	if (swgids_is_error(swgids))
 		return -EINVAL;
 
-	list_for_each_entry(pprop, &smmu_handle->asprops, list)
+	list_for_each_entry(pprop, asprops, list)
 		if (swgids & pprop->swgid_mask) {
 			memcpy(prop, pprop, sizeof(*pprop));
 			return 0;
@@ -571,6 +573,7 @@ static int tegra_smmu_of_get_asprops(u64 swgids, struct smmu_map_prop *prop)
 }
 
 static u64 __tegra_smmu_of_get_swgids(struct device *dev,
+				      const struct of_device_id *matches,
 				      struct iommu_linear_map **area)
 {
 	struct of_phandle_iter iter;
@@ -585,7 +588,7 @@ static u64 __tegra_smmu_of_get_swgids(struct device *dev,
 					       "#iommu-cells", 0) {
 		struct of_phandle_args *ret = &iter.out_args;
 
-		if (!of_match_node(tegra_smmu_of_match, ret->np))
+		if (!of_match_node(matches, ret->np))
 			continue;
 
 		if (ret->args_count == 1)  {
@@ -721,12 +724,12 @@ static u64 tegra_smmu_of_get_swgids(struct device *dev,
 		goto out;
 	}
 
-	swgids = __tegra_smmu_of_get_swgids(dev, &area);
+	swgids = __tegra_smmu_of_get_swgids(dev, tegra_smmu_of_match, &area);
 
 	if (swgids_is_error(swgids))
 		goto out;
 
-	err = tegra_smmu_of_get_asprops(swgids, prop);
+	err = tegra_smmu_of_get_asprops(&smmu_handle->asprops, swgids, prop);
 	if (err) {
 		dev_err(dev,
 			"Unable to retrieve as prop for swgids:%lld\n",
@@ -2457,7 +2460,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	smmu->dev = dev;
 	INIT_LIST_HEAD(&smmu->asprops);
-	count = tegra_smmu_of_register_asprops(smmu);
+	count = tegra_smmu_of_register_asprops(smmu->dev, &smmu->asprops);
 	if (!count) {
 		dev_err(dev, "invalid domains property\n");
 		err = -EINVAL;
