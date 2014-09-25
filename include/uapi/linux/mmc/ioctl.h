@@ -49,7 +49,7 @@ struct mmc_ioc_cmd {
  * combo command used ioctl cmd id MMC_COMBO_IOC_CMD
  */
 struct mmc_combo_cmd_info {
-	uint8_t  num_of_combo_cmds;
+	__u8 num_of_combo_cmds;
 	struct mmc_ioc_cmd *mmc_ioc_cmd_list;
 };
 
