@@ -38,6 +38,7 @@ static int tegra_prod_get(const struct device_node *np,
 		struct tegra_prod_list *tegra_prod_list)
 {
 	int i;
+	int j;
 	int cnt;
 	int ret;
 	struct device_node *child;
@@ -75,25 +76,39 @@ static int tegra_prod_get(const struct device_node *np,
 			p_tuple = (struct prod_tuple *)&t_prod->prod_tuple[cnt];
 			ret = of_property_read_u32_index(child, t_prod->name,
 				cnt * PROD_TUPLE_NUM, &p_tuple->addr);
-			if (ret)
+			if (ret) {
+				pr_err("Node %s: Failed to parse %s address\n",
+					np->name, t_prod->name);
 				goto err_parsing;
+			}
 
 			ret = of_property_read_u32_index(child, t_prod->name,
 				cnt * PROD_TUPLE_NUM + 1, &p_tuple->mask);
-			if (ret)
+			if (ret) {
+				pr_err("Node %s: Failed to parse %s mask\n",
+					np->name, t_prod->name);
 				goto err_parsing;
+			}
 
 			ret = of_property_read_u32_index(child, t_prod->name,
 				cnt * PROD_TUPLE_NUM + 2, &p_tuple->val);
-			if (ret)
+			if (ret) {
+				pr_err("Node %s: Failed to parse %s value\n",
+					np->name, t_prod->name);
 				goto err_parsing;
+			}
 		}
 	}
 
+	of_node_put(child);
 	return 0;
 
 err_parsing:
 	of_node_put(child);
+	for (j = 0; j <= i; j++) {
+		t_prod = (struct tegra_prod *)&tegra_prod_list->tegra_prod[j];
+		kfree(t_prod->prod_tuple);
+	}
 	return ret;
 }
 
@@ -184,7 +199,6 @@ int tegra_prod_set_by_name(void __iomem *base, const char *name,
 		struct tegra_prod_list *tegra_prod_list)
 {
 	int i;
-	int ret;
 	struct tegra_prod *t_prod;
 
 	if (!tegra_prod_list)
@@ -194,13 +208,8 @@ int tegra_prod_set_by_name(void __iomem *base, const char *name,
 		t_prod = &tegra_prod_list->tegra_prod[i];
 		if (!t_prod)
 			return -EINVAL;
-		if (!strcmp(t_prod->name, name)) {
-			ret = tegra_prod_set(base, t_prod);
-			if (ret)
-				return ret;
-			else
-				return 0;
-		}
+		if (!strcmp(t_prod->name, name))
+			return tegra_prod_set(base, t_prod);
 	}
 
 	return -ENODEV;
@@ -230,9 +239,12 @@ struct tegra_prod_list *tegra_prod_init(const struct device_node *np)
 		return ERR_PTR(-ENODEV);
 
 	for_each_property_of_node(child, pp) {
+		/* exclusive of the "name" property of dt node */
+		if (!strcmp(pp->name, "name"))
+			continue;
 		prod_num++;
 	}
-	prod_num--; /* exclusive of the name property of dt node */
+
 	if (prod_num <= 0) {
 		ret = -ENODEV;
 		goto err_init;
@@ -248,17 +260,19 @@ struct tegra_prod_list *tegra_prod_init(const struct device_node *np)
 		sizeof(struct tegra_prod) * prod_num, GFP_KERNEL);
 	if (!tegra_prod_list->tegra_prod) {
 		ret = -ENOMEM;
-		goto err_init;
+		goto err_prod_alloc;
 	}
 
 	ncount = 0;
 	for_each_property_of_node(child, pp) {
+		/* exclusive of the "name" property of dt node */
+		if (!strcmp(pp->name, "name"))
+			continue;
 		tegra_prod_list->tegra_prod[ncount].name = pp->name;
 		ncount++;
 	}
 
 	tegra_prod_list->num = prod_num;
-	of_node_put(child);
 
 	ret = tegra_prod_get(np, tegra_prod_list);
 	if (ret) {
@@ -266,11 +280,15 @@ struct tegra_prod_list *tegra_prod_init(const struct device_node *np)
 		goto err_get;
 	}
 
+	of_node_put(child);
 	return tegra_prod_list;
 
+err_get:
+	kfree(tegra_prod_list->tegra_prod);
+err_prod_alloc:
+	kfree(tegra_prod_list);
 err_init:
 	of_node_put(child);
-err_get:
 	return ERR_PTR(ret);
 }
 
@@ -281,24 +299,30 @@ err_get:
  * Release all the resources of tegra_prod_list.
  * Returns 0 on success.
  */
-int tegra_prod_release(struct tegra_prod_list *tegra_prod_list)
+int tegra_prod_release(struct tegra_prod_list **tegra_prod_list)
 {
 	int i;
 	struct tegra_prod *t_prod;
+	struct tegra_prod_list *tp_list;
 
-	if (tegra_prod_list) {
-		if (tegra_prod_list->tegra_prod) {
-			for (i = 0; i < tegra_prod_list->num; i++) {
+	if (!tegra_prod_list)
+		return -EINVAL;
+
+	tp_list = *tegra_prod_list;
+	if (tp_list) {
+		if (tp_list->tegra_prod) {
+			for (i = 0; i < tp_list->num; i++) {
 				t_prod = (struct tegra_prod *)
-					&tegra_prod_list->tegra_prod[i];
+					&tp_list->tegra_prod[i];
 				if (t_prod)
 					kfree(t_prod->prod_tuple);
 			}
-			kfree(tegra_prod_list->tegra_prod);
+			kfree(tp_list->tegra_prod);
 		}
-		kfree(tegra_prod_list);
+		kfree(tp_list);
 	}
 
+	*tegra_prod_list = 0;
 	return 0;
 }
 

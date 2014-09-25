@@ -48,5 +48,5 @@ int tegra_prod_set_by_name(void __iomem *base, const char *name,
 
 struct tegra_prod_list *tegra_prod_init(const struct device_node *np);
 
-int tegra_prod_release(struct tegra_prod_list *tegra_prod_list);
+int tegra_prod_release(struct tegra_prod_list **tegra_prod_list);
 #endif
