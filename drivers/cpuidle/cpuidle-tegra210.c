@@ -37,6 +37,7 @@
 #include <linux/suspend.h>
 #include <linux/tick.h>
 #include <linux/irq.h>
+#include <linux/tegra_cluster_control.h>
 #include "../../kernel/irq/internals.h"
 
 #include <asm/suspend.h>
@@ -459,8 +460,7 @@ static void tegra210_set_idle_state_params(int cpu)
 	int i;
 	unsigned int target_residency, exit_latency;
 	struct cpuidle_driver *drv = &per_cpu(cpuidle_drv, cpu);
-	/* XXX: Replace with an actual call to check cluster */
-	bool is_slow_cluster = false;
+	bool is_slow_cluster = is_lp_cluster();
 
 	for (i = 0; i < drv->state_count; i++) {
 		target_residency =
@@ -475,8 +475,7 @@ static void tegra210_set_idle_state_params(int cpu)
 static int tegra210_enter_state(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv, int index)
 {
-	/* XXX: Replace with call to actually check cluster */
-	bool is_slow_cluster = false;
+	bool is_slow_cluster = is_lp_cluster();
 	bool enabled = false;
 	int i;
 
@@ -622,9 +621,15 @@ static void set_state_enable(bool slow_cluster)
 	bool enabled;
 
 	for (i = 1; i < ARRAY_SIZE(t210_idle_states); i++) {
-		enabled = (fast_enable >> i) & 0x1;
-		if (slow_cluster)
-			enabled = (slow_enable >> i) & 0x1;
+		if (slow_cluster) {
+			/* CC3 is not supported on slow cluster */
+			if (i == 1)
+				enabled = false;
+			else
+				enabled = (slow_enable >> i) & 0x1;
+		} else
+			enabled = (fast_enable >> i) & 0x1;
+
 		t210_idle_states[i].cluster[slow_cluster].enabled = enabled;
 	}
 }
