@@ -458,6 +458,15 @@ static int max77620_read_es_version(struct max77620_chip *chip)
 			i - MAX77620_REG_CID0, cid);
 	}
 
+	/* Read OTP Version */
+	ret = max77620_reg_read(chip->dev, MAX77620_PWR_SLAVE,
+			MAX77620_REG_CID4, &val);
+	if (ret < 0) {
+		dev_err(chip->dev, "CID4 read failed: %d\n", ret);
+		return ret;
+	}
+	dev_info(chip->dev, "MAX77620 PMIC OTP Version is 0x%02X\n", val);
+
 	/* Read ES version */
 	ret = max77620_reg_read(chip->dev, MAX77620_PWR_SLAVE,
 			MAX77620_REG_CID5, &val);
