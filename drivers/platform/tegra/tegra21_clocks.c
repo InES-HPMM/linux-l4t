@@ -6611,7 +6611,7 @@ static struct clk tegra_pll_a_out0 = {
 static struct clk_pll_freq_table tegra_pll_d_freq_table[] = {
 	{ 12000000, 594000000,  99, 1, 2},
 	{ 13000000, 594000000,  91, 1, 2, 0, 0xfc4f},	/* actual: 594000183 */
-	{ 38400000, 594000000,  92, 3, 2, 0, 0x0a00},
+	{ 38400000, 594000000,  30, 1, 2, 0, 0x0e00},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -6678,7 +6678,7 @@ static struct clk tegra_pll_d_out0 = {
 static struct clk_pll_freq_table tegra_pll_d2_freq_table[] = {
 	{ 12000000, 594000000,  99, 1, 2},
 	{ 13000000, 594000000,  91, 1, 2, 0, 0xfc4f},	/* actual: 594000183 */
-	{ 38400000, 594000000,  92, 3, 2, 0, 0x0a00},
+	{ 38400000, 594000000,  30, 1, 2, 0, 0x0e00},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
