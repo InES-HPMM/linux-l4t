@@ -139,6 +139,18 @@
 		};
 	};
 
+	ahub {
+		i2s@702d1100 {
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			regulator-supplies = "vdd-1v8-spi-hv", "vdd-1v8-spi-hv-bias";
+			vdd-1v8-spi-hv-supply = <&max77620_sd3>;
+			vdd-1v8-spi-hv-bias-supply = <&max77620_sd3>;
+			fsync-width = <0>;
+		};
+	};
+
 	sound {
 		compatible = "nvidia,tegra-audio-t210ref-mobile-es755";
 		nvidia,model = "tegra-snd-t210ref-mobile-es755";
@@ -177,8 +189,8 @@
 			format = "dsp_a";
 			bitclock-slave;
 			frame-slave;
-			bitclock-noninversion;
-			frame-noninversion;
+			bitclock-inversion;
+			frame-inversion;
 			bit-format = "s16_le";
 			bclk_ratio = <4>;
 			srate = <8000>;
