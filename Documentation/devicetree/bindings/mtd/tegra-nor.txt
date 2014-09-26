@@ -34,6 +34,8 @@ Required Properties
 - nvidia,phy_addr - U64 Physical address
 - nvidia,phy_size - Size
 
+- nvidia,gmi_wait_pin - Name of gmi_wait_pin specific to platform
+
 Example:
 
 	snor {

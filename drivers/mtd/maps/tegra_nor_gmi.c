@@ -77,8 +77,6 @@ struct tegra_nor_info {
 
 static void tegra_snor_reset_controller(struct tegra_nor_info *info);
 
-static struct pinctrl *pin;
-
 /* Master structure of all tegra NOR private data*/
 struct tegra_nor_private {
 	struct tegra_nor_info *info;
@@ -186,6 +184,7 @@ static void tegra_flash_dma(struct map_info *map,
 	int dma_retry_count = 0;
 	struct pinctrl_state *s;
 	int ret = 0;
+	struct pinctrl_dev *pctl_dev = NULL;
 
 	snor_config = c->init_config;
 
@@ -295,18 +294,14 @@ static void tegra_flash_dma(struct map_info *map,
 		tegra_snor_writel(c, dma_config, TEGRA_SNOR_DMA_CFG_REG);
 
 		/* Configure GMI_WAIT pinmux to RSVD1 */
-		if (!IS_ERR(pin)) {
-			s = pinctrl_lookup_state(pin, "pi7_rsvd_mode");
-			if (IS_ERR(s)) {
-				dev_warn(c->dev, "Missing pi7_rsvd_mode state\n");
-				goto skip_pinctrl_rsvd;
-			}
-			ret = pinctrl_select_state(pin, s);
-			if (ret < 0)
-			dev_warn(c->dev, "setting pi7_rsvd_mode state failed\n");
+		pctl_dev = pinctrl_get_dev_from_of_compatible("nvidia,tegra124-pinmux");
+		if (pctl_dev != NULL) {
+			ret = pinctrl_set_func_for_pin(pctl_dev,
+							pinctrl_get_pin_from_pin_name(pctl_dev, c->plat->gmi_wait_pin),
+							"rsvd1");
+			if (ret)
+				dev_warn(c->dev, "Changing GMI_WAIT to rsvd1 mode failed\n");
 		}
-
-skip_pinctrl_rsvd:
 
 		for (nor_address = (unsigned int)(map->phys + from);
 		     word32_count > 0;
@@ -384,18 +379,14 @@ skip_pinctrl_rsvd:
 
 fail:
 	/* Restore GMI_WAIT pinmux back to original */
-	if (!IS_ERR(pin)) {
-		s = pinctrl_lookup_state(pin, "pi7_gmi_mode");
-		if (IS_ERR(s)) {
-			dev_warn(c->dev, "Missing pi7_gmi_mode state\n");
-			goto skip_pinctrl_gmi;
-		}
-		ret = pinctrl_select_state(pin, s);
-		if (ret < 0)
-		dev_warn(c->dev, "setting pi7_gmi_mode state failed\n");
+	pctl_dev = pinctrl_get_dev_from_of_compatible("nvidia,tegra124-pinmux");
+	if (pctl_dev != NULL) {
+		ret = pinctrl_set_func_for_pin(pctl_dev,
+						pinctrl_get_pin_from_pin_name(pctl_dev, c->plat->gmi_wait_pin),
+						"gmi");
+		if (ret)
+			dev_warn(c->dev, "Chagning GMI_WAIT to gmi mode failed\n");
 	}
-
-skip_pinctrl_gmi:
 
 	/* Put the controller back into slave mode. */
 	snor_config = tegra_snor_readl(c, TEGRA_SNOR_CONFIG_REG);
@@ -808,6 +799,8 @@ static struct tegra_nor_platform_data *tegra_nor_parse_dt(
 	of_property_read_u32(np, "nvidia,num-chips",
 			(unsigned int *) &pdata->info.num_chips);
 	pdata->gmi_oe_n_gpio = of_get_named_gpio(np, "nvidia,gmi-oe-pin", 0);
+	of_property_read_string(np, "nvidia,gmi_wait_pin",
+			&pdata->gmi_wait_pin);
 
 	for_each_child_of_node(np, np_cs_info) {
 		of_property_read_u32(np_cs_info, "nvidia,cs",
@@ -970,11 +963,6 @@ static int tegra_nor_probe(struct platform_device *pdev)
 	nor_gmi_map_list.n_maps = info->n_maps;
 #endif
 
-	/*Get the gmi_wait pin*/
-	pin = devm_pinctrl_get(&pdev->dev);
-	if (IS_ERR(pin)) {
-		dev_warn(&pdev->dev, "Missing pinctrl device\n");
-	}
 	return 0;
 
 out_dma_free_coherent:

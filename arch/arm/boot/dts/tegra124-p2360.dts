@@ -22,7 +22,6 @@
 
 #include "tegra124-vcm30_t124.dtsi"
 #include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
-#include <tegra124-platforms/tegra124-p2360-pinmux.dtsi>
 #include <panel-a-lvds-800-480-14-0.dtsi>
 
 / {
