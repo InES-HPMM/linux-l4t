@@ -12,7 +12,6 @@
 #include <linux/dma-contiguous.h>
 #include <linux/debugfs.h>
 #include <linux/highmem.h>
-#include <asm/cacheflush.h>
 
 #define RESIZE_MAGIC 0xC11A900d
 struct heap_info {
@@ -315,7 +314,6 @@ static void update_alloc_range(struct heap_info *h)
 
 static int heap_resize_locked(struct heap_info *h)
 {
-	int i;
 	int err = 0;
 	phys_addr_t base = -1;
 	size_t len = h->cma_chunk_size;
@@ -376,19 +374,6 @@ alloc_success:
 	if (!h->curr_len || h->curr_base > base)
 		h->curr_base = base;
 	h->curr_len += len;
-
-	for (i = 0; i < (len >> PAGE_SHIFT); i++) {
-		struct page *page = phys_to_page(i + base);
-
-		if (PageHighMem(page)) {
-			void *ptr = kmap_atomic(page);
-			dmac_flush_range(ptr, ptr + PAGE_SIZE);
-			kunmap_atomic(ptr);
-		} else {
-			void *ptr = page_address(page);
-			dmac_flush_range(ptr, ptr + PAGE_SIZE);
-		}
-	}
 
 	/* Handle VPR configuration updates*/
 	if (h->update_resize_cfg) {

@@ -480,6 +480,9 @@ void __init dma_contiguous_early_fixup(phys_addr_t base, unsigned long size)
 	dma_mmu_remap_num++;
 }
 
+__init void iotable_init_va(struct map_desc *io_desc, int nr);
+__init void iotable_init_mapping(struct map_desc *io_desc, int nr);
+
 void __init dma_contiguous_remap(void)
 {
 	int i;
@@ -492,10 +495,7 @@ void __init dma_contiguous_remap(void)
 		if (start >= end)
 			continue;
 
-		map.pfn = __phys_to_pfn(start);
-		map.virtual = __phys_to_virt(start);
-		map.length = end - start;
-		map.type = MT_NORMAL_NC;
+		map.type = MT_MEMORY_KERNEL_EXEC;
 
 		/*
 		 * Clear previous low-memory mapping
@@ -504,28 +504,18 @@ void __init dma_contiguous_remap(void)
 		     addr += PMD_SIZE)
 			pmd_clear(pmd_off_k(addr));
 
-		iotable_init(&map, 1);
+		for (addr = start; addr < end; addr += PAGE_SIZE) {
+			map.pfn = __phys_to_pfn(addr);
+			map.virtual = __phys_to_virt(addr);
+			map.length = PAGE_SIZE;
+			iotable_init_mapping(&map, 1);
+		}
+
+		map.pfn = __phys_to_pfn(start);
+		map.virtual = __phys_to_virt(start);
+		map.length = end - start;
+		iotable_init_va(&map, 1);
 	}
-}
-
-static int __dma_update_pte(pte_t *pte, pgtable_t token, unsigned long addr,
-			    void *data)
-{
-	struct page *page = virt_to_page(addr);
-	pgprot_t prot = *(pgprot_t *)data;
-
-	set_pte(pte, mk_pte(page, prot));
-	return 0;
-}
-
-static void __dma_remap(struct page *page, size_t size, pgprot_t prot)
-{
-	unsigned long start = (unsigned long) page_address(page);
-	unsigned end = start + size;
-
-	apply_to_page_range(&init_mm, start, size, __dma_update_pte, &prot);
-	dsb();
-	flush_tlb_kernel_range(start, end);
 }
 
 static void *__alloc_remap_buffer(struct device *dev, size_t size, gfp_t gfp,
@@ -644,9 +634,6 @@ static void *__alloc_from_contiguous(struct device *dev, size_t size,
 	if (!page)
 		return NULL;
 
-	__dma_clear_buffer(page, size);
-	__dma_remap(page, size, prot);
-
 	*ret_page = page;
 	return page_address(page);
 }
@@ -654,7 +641,6 @@ static void *__alloc_from_contiguous(struct device *dev, size_t size,
 static void __free_from_contiguous(struct device *dev, struct page *page,
 				   size_t size)
 {
-	__dma_remap(page, size, PG_PROT_KERNEL);
 	dma_release_from_contiguous(dev, page, size >> PAGE_SHIFT);
 }
 
@@ -1516,8 +1502,6 @@ static struct page **__iommu_alloc_buffer(struct device *dev, size_t size,
 		page = dma_alloc_from_contiguous(dev, count, order);
 		if (!page)
 			goto error;
-
-		__dma_clear_buffer(page, size);
 
 		for (i = 0; i < count; i++)
 			pages[i] = page + i;
