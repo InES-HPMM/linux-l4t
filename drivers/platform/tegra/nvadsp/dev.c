@@ -216,6 +216,10 @@ static int nvadsp_runtime_suspend(struct device *dev)
  clocks:
 	dev_dbg(dev, "disabling clocks\n");
 	nvadsp_clocks_disable(pdev);
+
+	dev_dbg(dev, "locking out adsp base regs\n");
+	drv_data->base_regs = NULL;
+
 	return ret;
 }
 
@@ -224,6 +228,9 @@ static int nvadsp_runtime_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
 	int ret = 0;
+
+	dev_dbg(dev, "restoring adsp base regs\n");
+	drv_data->base_regs = drv_data->base_regs_saved;
 
 	dev_dbg(dev, "enabling clocks\n");
 	nvadsp_clocks_enable(pdev);
@@ -309,6 +316,8 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 		adsp_add_load_mappings(res->start, base,
 						resource_size(res));
 	}
+
+	drv_data->base_regs_saved = drv_data->base_regs;
 
 	for (dram_iter = 0; dram_iter < ADSP_MAX_DRAM_MAP; dram_iter++) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, iter++);

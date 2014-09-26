@@ -70,6 +70,7 @@ struct nvadsp_pm_state {
 
 struct nvadsp_drv_data {
 	void __iomem **base_regs;
+	void __iomem **base_regs_saved;
 	struct resource *dram_region[ADSP_MAX_DRAM_MAP];
 	struct hwmbox_queue hwmbox_send_queue;
 	int hwmbox_send_virq;
