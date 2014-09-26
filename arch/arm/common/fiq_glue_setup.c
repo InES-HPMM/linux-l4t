@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -16,8 +17,8 @@
 #include <linux/slab.h>
 #include <linux/syscore_ops.h>
 #include <linux/cpu_pm.h>
+#include <linux/fiq_glue.h>
 #include <asm/fiq.h>
-#include <asm/fiq_glue.h>
 
 extern unsigned char fiq_glue, fiq_glue_end;
 extern void fiq_glue_setup(void *func, void *data, void *sp,
