@@ -25,11 +25,11 @@
 #include <linux/tegra-powergate.h>
 #include <linux/tegra-timer.h>
 #include <linux/tegra-fuse.h>
+#include <linux/fiq_glue.h>
 
 #include <asm/cputype.h>
 #include <asm/smp_plat.h>
 #include <asm/smp_scu.h>
-#include <asm/fiq_glue.h>
 
 #include <linux/platform/tegra/flowctrl.h>
 #include <linux/platform/tegra/reset.h>
