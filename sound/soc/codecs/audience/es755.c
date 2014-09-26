@@ -2321,6 +2321,8 @@ int es755_core_probe(struct device *dev)
 
 #if defined(CONFIG_SND_SOC_ES_UART_STREAMDEV)
 	escore_priv.streamdev = es_uart_streamdev;
+#elif defined(CONFIG_SND_SOC_ES_SPI_STREAMDEV)
+	escore_priv.streamdev = es_spi_streamdev;
 #endif
 	return rc;
 
