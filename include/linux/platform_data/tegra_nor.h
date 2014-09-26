@@ -79,7 +79,7 @@ enum CS {
 /* All params required for map_info passed*/
 struct cs_info {
 	enum CS cs;
-	struct gpio_state gpio_cs;
+	struct gpio_state *gpio_cs;
 	int num_cs_gpio;
 	void __iomem *virt;	/* Virtual address of chip select window */
 	resource_size_t phys;	/* Physical address of chip select window */

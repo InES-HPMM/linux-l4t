@@ -132,7 +132,7 @@ static void flash_bank_cs(struct map_info *map)
 	struct tegra_nor_private *priv =
 				(struct tegra_nor_private *)map->map_priv_1;
 	struct cs_info *csinfo = priv->cs;
-	struct gpio_state *state = &csinfo->gpio_cs;
+	struct gpio_state *state = csinfo->gpio_cs;
 	int i;
 	u32 snor_config = 0;
 	struct tegra_nor_info *c = priv->info;
@@ -146,8 +146,8 @@ static void flash_bank_cs(struct map_info *map)
 
 	snor_config = tegra_snor_readl(c, TEGRA_SNOR_CONFIG_REG);
 	for (i = 0; i < csinfo->num_cs_gpio; i++) {
-		if (gpio_get_value(state->gpio_num) != state->value)
-			gpio_set_value(state->gpio_num, state->value);
+		if (gpio_get_value(state[i].gpio_num) != state[i].value)
+			gpio_set_value(state[i].gpio_num, state[i].value);
 	}
 }
 
@@ -728,7 +728,7 @@ static int flash_maps_init(struct tegra_nor_info *info, struct resource *res)
 		map->map_priv_1 = (unsigned long)&priv[i];
 
 		csinfo =  priv[i].cs;
-		state  =  &csinfo->gpio_cs;
+		state  =  csinfo->gpio_cs;
 		adinfo = priv[i].info->adinfo;
 		addr = adinfo->addr;
 		/* Request Needed GPIO's */
@@ -808,15 +808,30 @@ static struct tegra_nor_platform_data *tegra_nor_parse_dt(
 		of_property_read_u32(np_cs_info, "nvidia,num_cs_gpio",
 				(unsigned int *) &nor_cs_info[i].num_cs_gpio);
 		if (nor_cs_info[i].num_cs_gpio) {
-			nor_cs_info[i].gpio_cs.gpio_num =
-						of_get_named_gpio_flags(
-						np_cs_info,
-						"nvidia,gpio-cs",
-						0,
-						&gpio_flags);
-			nor_cs_info[i].gpio_cs.value = !(gpio_flags &
-							OF_GPIO_ACTIVE_LOW);
-			nor_cs_info[i].gpio_cs.label = "tegra-nor-cs";
+			unsigned int j = 0;
+			int gpio_nums = nor_cs_info[i].num_cs_gpio;
+
+			nor_cs_info[i].gpio_cs = devm_kzalloc(&pdev->dev,
+					sizeof(*nor_cs_info[i].gpio_cs) * gpio_nums,
+					GFP_KERNEL);
+			if (!nor_cs_info[i].gpio_cs) {
+				dev_err(&pdev->dev, "Memory alloc for" \
+					"nor_cs_info[%d].gpio_cs failed", i);
+				return NULL;
+			}
+
+			for (j = 0; j < nor_cs_info[i].num_cs_gpio; j++) {
+				nor_cs_info[i].gpio_cs[j].gpio_num =
+					of_get_named_gpio_flags(
+							np_cs_info,
+							"nvidia,gpio-cs",
+							0,
+							&gpio_flags);
+				nor_cs_info[i].gpio_cs[j].value = !(gpio_flags &
+						OF_GPIO_ACTIVE_LOW);
+				nor_cs_info[i].gpio_cs[j].label =
+							"tegra-nor-cs";
+			}
 		}
 		/*Read it as U64 always and then typecast to the required data type*/
 		of_property_read_u64(np_cs_info, "nvidia,phy_addr", &phy_addr);
