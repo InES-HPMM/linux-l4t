@@ -281,6 +281,7 @@ static int max77620_initialise_fps(struct max77620_chip *chip,
 	bool enable_fps = false;
 	unsigned int mask;
 	unsigned int config;
+	int i;
 
 	node = of_get_child_by_name(dev->of_node, "fps");
 	if (!node)
@@ -332,8 +333,12 @@ static int max77620_initialise_fps(struct max77620_chip *chip,
 			chip->enable_global_lpm = of_property_read_bool(child,
 						"maxim,enable-global-lpm");
 
-		config = (((time_period / 40) - 1) & 0x7) <<
-				MAX77620_FPS_TIME_PERIOD_SHIFT;
+		for (i = 0; i < 0x7; ++i) {
+			int x = 40 * BIT(i);
+			if (x >= time_period)
+				break;
+		}
+		config = (i & 0x7) << MAX77620_FPS_TIME_PERIOD_SHIFT;
 		config |= (input_enable & 0x3) << MAX77620_FPS_EN_SRC_SHIFT;
 		if (enable_fps)
 			config |= 1;
