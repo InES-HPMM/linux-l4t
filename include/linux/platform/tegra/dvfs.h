@@ -200,6 +200,8 @@ struct dvfs {
 
 	/* Inidcates thermal DVFS on/off */
 	bool therm_dvfs;
+	/* Maximum rate safe at minimum voltage across all thermal ranges */
+	unsigned long therm_safe_fmax;
 
 	int cur_millivolts;
 	unsigned long cur_rate;

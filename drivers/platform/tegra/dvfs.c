@@ -82,6 +82,15 @@ int tegra_dvfs_get_core_boot_level(void)
 }
 EXPORT_SYMBOL(tegra_dvfs_get_core_boot_level);
 
+unsigned long tegra_dvfs_get_therm_safe_fmax(struct clk *c)
+{
+	if (!c->dvfs)
+		return 0;
+
+	return c->dvfs->therm_safe_fmax;
+}
+EXPORT_SYMBOL(tegra_dvfs_get_therm_safe_fmax);
+
 void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
 {
 	int i;
