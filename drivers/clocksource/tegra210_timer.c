@@ -54,6 +54,7 @@ struct tegra210_clockevent {
 	struct clock_event_device evt;
 	char name[TNAMELEN];
 	void __iomem *reg_base;
+	struct irqaction iact;
 };
 
 static DEFINE_PER_CPU(struct tegra210_clockevent, tegra210_evt);
@@ -121,6 +122,8 @@ static irqreturn_t tegra210_timer_isr(int irq, void *dev_id)
 static void tegra210_timer_setup(struct tegra210_clockevent *tevt)
 {
 	int cpu = smp_processor_id();
+	int ret;
+
 	sprintf(tevt->name, "tegra210_timer%d", cpu);
 	tevt->evt.name = tevt->name;
 	tevt->evt.cpumask = cpumask_of(cpu);
@@ -128,13 +131,21 @@ static void tegra210_timer_setup(struct tegra210_clockevent *tevt)
 	tevt->evt.set_mode = tegra210_timer_set_mode;
 	tevt->evt.features = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT;
 	tevt->evt.rating = 460; /* want to be preferred over arch timers */
-	if (request_irq(tevt->evt.irq, tegra210_timer_isr,
-			IRQF_TIMER | IRQF_TRIGGER_HIGH | IRQF_NOBALANCING,
-			tevt->name, tevt)) {
-		pr_err("%s: cannot request irq %d for CPU%d\n",
+	clockevents_config_and_register(&tevt->evt, tegra210_timer_freq,
+					1, /* min */
+					0x1fffffff); /* 29 bits */
+
+	tevt->iact.name = tevt->name;
+	tevt->iact.dev_id = tevt;
+	tevt->iact.flags = IRQF_TIMER | IRQF_TRIGGER_HIGH | IRQF_NOBALANCING;
+	tevt->iact.handler = tegra210_timer_isr;
+	ret = setup_irq(tevt->evt.irq, &tevt->iact);
+	if (ret) {
+		pr_err("%s: cannot setup irq %d for CPU%d\n",
 		       __func__, tevt->evt.irq, cpu);
 		BUG();
 	}
+
 #ifdef CONFIG_SMP
 	if (irq_force_affinity(tevt->evt.irq, cpumask_of(cpu))) {
 		pr_err("%s: cannot set irq %d affinity to CPU%d\n",
@@ -142,15 +153,12 @@ static void tegra210_timer_setup(struct tegra210_clockevent *tevt)
 		BUG();
 	}
 #endif
-	clockevents_config_and_register(&tevt->evt, tegra210_timer_freq,
-					1, /* min */
-					0x1fffffff); /* 29 bits */
 }
 
 static void tegra210_timer_stop(struct tegra210_clockevent *tevt)
 {
 	tevt->evt.set_mode(CLOCK_EVT_MODE_UNUSED, &tevt->evt);
-	free_irq(tevt->evt.irq, tevt);
+	remove_irq(tevt->evt.irq, &tevt->iact);
 }
 
 static int tegra210_timer_cpu_notify(struct notifier_block *self,
