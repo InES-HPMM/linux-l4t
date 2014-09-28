@@ -349,7 +349,6 @@ struct smmu_device {
 	struct smmu_debugfs_info *debugfs_info;
 	struct dentry *masters_root;
 
-	struct dma_iommu_mapping **map;
 	const struct tegra_smmu_chip_data *chip_data;
 	struct list_head asprops;
 
@@ -602,29 +601,21 @@ static struct dma_iommu_mapping *tegra_smmu_create_map_by_prop(
  */
 static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev,
 						u64 swgids,
-						struct list_head *asprops,
-						struct dma_iommu_mapping **maps)
+						struct list_head *asprops)
 {
 	struct smmu_map_prop *tmp;
 
 	list_for_each_entry(tmp, asprops, list) {
 		if (swgids & tmp->swgid_mask) {
-			struct dma_iommu_mapping *map = *maps;
-			if (map)
-				return map;
-
-			map = tegra_smmu_create_map_by_prop(tmp);
-			if (!map) {
-				dev_err(dev,
-					"fail to create iommu map pprop=%p\n",
-					tmp);
-				return NULL;
+			if (!tmp->map) {
+				tmp->map = tegra_smmu_create_map_by_prop(tmp);
+				if (!tmp->map)
+					dev_err(dev,
+						"fail to create iommu map pprop=%p\n",
+						tmp);
 			}
-
-			*maps = map;
-			return map;
+			return tmp->map;
 		}
-		maps++;
 	}
 
 	return NULL;
@@ -2274,12 +2265,6 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 		goto exit_probe;
 	}
 
-	/* count now has the number of available address spaces */
-	bytes = count * sizeof(*smmu->map);
-	smmu->map = devm_kzalloc(dev, bytes, GFP_KERNEL);
-	if (!smmu->map)
-		goto fail_smmu_map;
-
 	smmu->chip_data = chip_data;
 	smmu->num_as = num_as;
 	smmu->clients = RB_ROOT;
@@ -2341,8 +2326,6 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	dev_info(dev, "Loaded Tegra IOMMU driver\n");
 	return 0;
 fail_cleanup:
-	devm_kfree(dev, smmu->map);
-fail_smmu_map:
 	devm_kfree(dev, smmu);
 exit_probe:
 	dev_err(dev, "tegra smmu probe failed, e=%d", err);
@@ -2424,8 +2407,7 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 		}
 
 		map = tegra_smmu_get_mapping(dev, swgids,
-					     &smmu_handle->asprops,
-					     smmu_handle->map);
+					     &smmu_handle->asprops);
 		if (!map) {
 			dev_err(dev, "map creation failed!!!\n");
 			break;

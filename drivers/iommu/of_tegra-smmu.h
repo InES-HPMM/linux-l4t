@@ -27,6 +27,7 @@ struct smmu_map_prop {
 	u32 gap_page;
 	struct iommu_linear_map *area;
 	struct list_head list;
+	struct dma_iommu_mapping *map;
 };
 
 int tegra_smmu_of_register_asprops(struct device *dev,
