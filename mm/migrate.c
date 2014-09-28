@@ -36,6 +36,7 @@
 #include <linux/hugetlb_cgroup.h>
 #include <linux/gfp.h>
 #include <linux/balloon_compaction.h>
+#include <linux/dma-contiguous.h>
 
 #include <asm/tlbflush.h>
 
@@ -218,7 +219,7 @@ static void __migration_entry_wait(struct mm_struct *mm, pte_t *ptep,
 
 	page = migration_entry_to_page(entry);
 
-	if (is_cma_page(page)) {
+	if (dma_contiguous_should_replace_page(page)) {
 		pte_unmap_unlock(ptep, ptl);
 		/* don't take ref on page, as it causes
 		 * migration to get aborted in between.
