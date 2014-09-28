@@ -22,9 +22,51 @@
 #include <linux/pci.h>
 #include <linux/tegra_smmu.h>
 
+#include <asm/dma-iommu.h>
+
 #include <dt-bindings/memory/tegra-swgroup.h>
 
 #include "of_tegra-smmu.h"
+
+struct dma_iommu_mapping *tegra_smmu_of_get_mapping(struct device *dev,
+						    u64 swgids,
+						    struct list_head *asprops)
+{
+	struct smmu_map_prop *tmp;
+
+	list_for_each_entry(tmp, asprops, list) {
+		struct dma_iommu_mapping *map;
+
+		if (!(swgids & tmp->swgid_mask))
+			continue;
+
+		if ((swgids & tmp->swgid_mask) != swgids)
+			dev_info(dev, "mask=%lx doesn't include swgids=%lx\n",
+				 tmp->swgid_mask, swgids);
+
+		if (tmp->map)
+			return tmp->map;
+
+		map = arm_iommu_create_mapping(&platform_bus_type,
+					       (dma_addr_t)tmp->iova_start,
+					       (size_t)tmp->iova_size, 0);
+		if (IS_ERR(map)) {
+			dev_err(dev, "fail to create iommu map prop=%p\n", tmp);
+			goto err_out;
+		}
+
+		/* FIXME: residual data */
+		map->alignment = tmp->alignment;
+		map->gap_page = !!tmp->gap_page;
+		map->num_pf_page = tmp->num_pf_page;
+
+		tmp->map = map;
+		return map;
+	}
+
+err_out:
+	return NULL;
+}
 
 /* FIXME: Add linear map logic as well */
 int tegra_smmu_of_register_asprops(struct device *dev,

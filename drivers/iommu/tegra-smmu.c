@@ -577,50 +577,6 @@ static u64 tegra_smmu_get_swgids(struct device *dev)
 	return swgids;
 }
 
-static struct dma_iommu_mapping *tegra_smmu_create_map_by_prop(
-	struct smmu_map_prop *prop)
-{
-	struct dma_iommu_mapping *map;
-
-	map = arm_iommu_create_mapping(&platform_bus_type,
-				       (dma_addr_t)prop->iova_start,
-				       (size_t)prop->iova_size,
-				       0);
-	if (IS_ERR(map))
-		return NULL;
-
-	map->alignment = prop->alignment;
-	map->gap_page = !!prop->gap_page;
-	map->num_pf_page = prop->num_pf_page;
-	return map;
-}
-
-/*
- * XXX: creates new map for dev if required,
- * use it only when dev->archdata.mapping is not present
- */
-static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev,
-						u64 swgids,
-						struct list_head *asprops)
-{
-	struct smmu_map_prop *tmp;
-
-	list_for_each_entry(tmp, asprops, list) {
-		if (swgids & tmp->swgid_mask) {
-			if (!tmp->map) {
-				tmp->map = tegra_smmu_create_map_by_prop(tmp);
-				if (!tmp->map)
-					dev_err(dev,
-						"fail to create iommu map pprop=%p\n",
-						tmp);
-			}
-			return tmp->map;
-		}
-	}
-
-	return NULL;
-}
-
 static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 {
 	int i;
@@ -2406,8 +2362,8 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 			break;
 		}
 
-		map = tegra_smmu_get_mapping(dev, swgids,
-					     &smmu_handle->asprops);
+		map = tegra_smmu_of_get_mapping(dev, swgids,
+						&smmu_handle->asprops);
 		if (!map) {
 			dev_err(dev, "map creation failed!!!\n");
 			break;
