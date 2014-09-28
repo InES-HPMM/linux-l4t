@@ -289,7 +289,7 @@ struct smmu_client {
 	struct smmu_domain	*domain;
 	u64			swgids;
 
-	struct smmu_map_prop	prop;
+	struct smmu_map_prop	*prop;
 
 	struct dentry		*debugfs_root;
 	struct dentry		*as_link[MAX_AS_PER_DEV];
@@ -530,7 +530,7 @@ static struct smmu_client *tegra_smmu_register_client(struct smmu_device *smmu,
 
 	client->dev = dev;
 	client->swgids = swgids;
-	memcpy(&client->prop, prop, sizeof(*prop));
+	client->prop = prop;
 
 	err = tegra_smmu_insert_client(smmu, client);
 	if (err) {
@@ -541,69 +541,41 @@ static struct smmu_client *tegra_smmu_register_client(struct smmu_device *smmu,
 	return client;
 }
 
-static u64 tegra_smmu_get_swgids(struct device *dev,
-				    struct smmu_map_prop *out_prop)
+static u64 tegra_smmu_get_swgids(struct device *dev)
 {
 	u64 swgids = SWGIDS_ERROR_CODE;
 	struct smmu_client *client;
-	struct smmu_map_prop *prop, _prop;
 	struct iommu_linear_map *area = NULL;
+	struct smmu_map_prop *prop;
 	int err;
 
-	prop = &_prop;
-
-	if (prop)
-		memset(prop, 0, sizeof(*prop));
-
-	if (!smmu_handle)
-		goto out;
-
-	client = tegra_smmu_find_client(smmu_handle, dev);
-	if (client) {
-		swgids = client->swgids;
-		prop = &client->prop;
-		goto out;
+	if (!smmu_handle) {
+		dev_info(dev, "SMMU isn't ready yet\n");
+		return SWGIDS_ERROR_CODE;
 	}
 
+	client = tegra_smmu_find_client(smmu_handle, dev);
+	if (client)
+		return client->swgids;
+
 	swgids = tegra_smmu_of_get_swgids(dev, tegra_smmu_of_match, &area);
-
 	if (swgids_is_error(swgids))
-		goto out;
+		return SWGIDS_ERROR_CODE;
 
-	err = tegra_smmu_of_get_asprops(&smmu_handle->asprops, swgids, prop);
+	err = tegra_smmu_of_get_asprops(&smmu_handle->asprops, swgids, &prop);
 	if (err) {
 		dev_err(dev,
 			"Unable to retrieve as prop for swgids:%lld\n",
 			swgids);
-		goto out;
+		return SWGIDS_ERROR_CODE;
 	}
 	prop->area = area;
 
 	client = tegra_smmu_register_client(smmu_handle, dev, swgids, prop);
 	if (!client)
 		swgids = SWGIDS_ERROR_CODE;
-out:
-	if (out_prop)
-		memcpy(out_prop, prop, sizeof(*prop));
 
 	return swgids;
-}
-
-static bool tegra_smmu_validate_map_by_prop(const struct dma_iommu_mapping *map,
-					 const struct smmu_map_prop *prop)
-{
-	if (map->base != prop->iova_start)
-		return false;
-	if (map->end - map->base != prop->iova_size)
-		return false;
-	/* XXX: will not be 0 in case map was initialized using iommus prop */
-	if (!map->alignment)
-		return true;
-	if (!map->gap_page && (map->gap_page != !!prop->gap_page))
-		return false;
-	if (!map->num_pf_page && (map->num_pf_page != prop->num_pf_page))
-		return false;
-	return true;
 }
 
 static struct dma_iommu_mapping *tegra_smmu_create_map_by_prop(
@@ -631,33 +603,21 @@ static struct dma_iommu_mapping *tegra_smmu_create_map_by_prop(
 static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev,
 						u64 swgids,
 						struct list_head *asprops,
-						struct dma_iommu_mapping **maps,
-						struct smmu_map_prop *pprop)
+						struct dma_iommu_mapping **maps)
 {
 	struct smmu_map_prop *tmp;
 
-	BUG_ON(!pprop);
-
 	list_for_each_entry(tmp, asprops, list) {
-		struct dma_iommu_mapping *map = *maps;
-
 		if (swgids & tmp->swgid_mask) {
-			if (map) {
-				if (!tegra_smmu_validate_map_by_prop(map,
-								     pprop)) {
-					dev_err(dev,
-						"iommu map=%p incompatible with prop=%p\n",
-						map, pprop);
-					return NULL;
-				}
+			struct dma_iommu_mapping *map = *maps;
+			if (map)
 				return map;
-			}
 
-			map = tegra_smmu_create_map_by_prop(pprop);
+			map = tegra_smmu_create_map_by_prop(tmp);
 			if (!map) {
 				dev_err(dev,
 					"fail to create iommu map pprop=%p\n",
-					pprop);
+					tmp);
 				return NULL;
 			}
 
@@ -1720,7 +1680,7 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	as = dom->as[idx];
 	smmu = as->smmu;
 
-	area = client->prop.area;
+	area = client->prop->area;
 	while (area && area->size) {
 		DEFINE_DMA_ATTRS(attrs);
 		size_t size = PAGE_ALIGN(area->size);
@@ -2433,7 +2393,6 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 {
 	struct dma_iommu_mapping *map;
 	struct device *dev = _dev;
-	struct smmu_map_prop prop;
 	u64 swgids;
 	const char * const event_to_string[] = {
 		"-----",
@@ -2445,7 +2404,7 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 		"UNBOUND_DRIVER",
 	};
 
-	swgids = tegra_smmu_get_swgids(dev, &prop);
+	swgids = tegra_smmu_get_swgids(dev);
 	if (swgids_is_error(swgids))
 		goto end;
 	/* dev is a smmu client */
@@ -2464,8 +2423,9 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 			break;
 		}
 
-		map = tegra_smmu_get_mapping(dev, swgids, &smmu_handle->asprops,
-					     smmu_handle->map, &prop);
+		map = tegra_smmu_get_mapping(dev, swgids,
+					     &smmu_handle->asprops,
+					     smmu_handle->map);
 		if (!map) {
 			dev_err(dev, "map creation failed!!!\n");
 			break;

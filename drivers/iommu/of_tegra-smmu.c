@@ -95,7 +95,7 @@ free_mem:
 }
 
 int tegra_smmu_of_get_asprops(struct list_head *asprops,
-			      u64 swgids, struct smmu_map_prop *prop)
+			      u64 swgids, struct smmu_map_prop **prop)
 {
 	struct smmu_map_prop *pprop;
 
@@ -104,7 +104,7 @@ int tegra_smmu_of_get_asprops(struct list_head *asprops,
 
 	list_for_each_entry(pprop, asprops, list)
 		if (swgids & pprop->swgid_mask) {
-			memcpy(prop, pprop, sizeof(*pprop));
+			*prop = pprop;
 			return 0;
 		}
 

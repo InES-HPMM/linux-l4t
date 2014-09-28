@@ -33,7 +33,7 @@ int tegra_smmu_of_register_asprops(struct device *dev,
 				   struct list_head *asprops);
 
 int tegra_smmu_of_get_asprops(struct list_head *asprops,
-			      u64 swgids, struct smmu_map_prop *prop);
+			      u64 swgids, struct smmu_map_prop **prop);
 
 u64 tegra_smmu_of_get_swgids(struct device *dev,
 			       const struct of_device_id *matches,
