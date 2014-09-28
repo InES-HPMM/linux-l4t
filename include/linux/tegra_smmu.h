@@ -35,8 +35,6 @@ struct iommu_linear_map {
 #define TEGRA_IOMMU_NUM_ASIDS NUM_ASIDS
 void tegra_smmu_unmap_misc_device(struct device *dev);
 void tegra_smmu_map_misc_device(struct device *dev);
-int tegra_smmu_get_asid(struct device *dev);
-int _tegra_smmu_get_asid(u64 swgids);
 #else
 #define TEGRA_IOMMU_NUM_ASIDS 1
 
@@ -48,15 +46,6 @@ static inline void tegra_smmu_map_misc_device(struct device *dev)
 {
 }
 
-static inline int tegra_smmu_get_asid(struct device *dev)
-{
-	return 0;
-}
-
-static inline int _tegra_smmu_get_asid(u64 swgids)
-{
-	return 0;
-}
 #endif
 
 

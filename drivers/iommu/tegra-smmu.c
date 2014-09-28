@@ -397,20 +397,6 @@ static void dma_map_to_as_bitmap(struct dma_iommu_mapping *map,
 
 static struct smmu_device *smmu_handle; /* unique for a system */
 
-int _tegra_smmu_get_asid(u64 swgids)
-{
-	int asid = 0;
-	struct smmu_map_prop *pprop;
-
-	list_for_each_entry(pprop, &smmu_handle->asprops, list) {
-		if (swgids & pprop->swgid_mask)
-			return asid;
-		asid++;
-	}
-
-	return asid;
-}
-
 /*
  *	SMMU/AHB register accessors
  */
@@ -603,7 +589,7 @@ out:
 	return swgids;
 }
 
-static bool tegra_smmu_map_prop_match(const struct dma_iommu_mapping *map,
+static bool tegra_smmu_validate_map_by_prop(const struct dma_iommu_mapping *map,
 					 const struct smmu_map_prop *prop)
 {
 	if (map->base != prop->iova_start)
@@ -643,38 +629,44 @@ static struct dma_iommu_mapping *tegra_smmu_create_map_by_prop(
  * use it only when dev->archdata.mapping is not present
  */
 static struct dma_iommu_mapping *tegra_smmu_get_mapping(struct device *dev,
-					u64 swgids, struct smmu_map_prop *pprop)
+						u64 swgids,
+						struct list_head *asprops,
+						struct dma_iommu_mapping **maps,
+						struct smmu_map_prop *pprop)
 {
-	int asid;
-	struct dma_iommu_mapping *map;
+	struct smmu_map_prop *tmp;
 
 	BUG_ON(!pprop);
 
-	asid = _tegra_smmu_get_asid(swgids);
-	map = smmu_handle->map[asid];
-	if (map)
-		goto found;
+	list_for_each_entry(tmp, asprops, list) {
+		struct dma_iommu_mapping *map = *maps;
 
-	map = tegra_smmu_create_map_by_prop(pprop);
+		if (swgids & tmp->swgid_mask) {
+			if (map) {
+				if (!tegra_smmu_validate_map_by_prop(map,
+								     pprop)) {
+					dev_err(dev,
+						"iommu map=%p incompatible with prop=%p\n",
+						map, pprop);
+					return NULL;
+				}
+				return map;
+			}
 
-	if (!map)
-		goto err_out;
+			map = tegra_smmu_create_map_by_prop(pprop);
+			if (!map) {
+				dev_err(dev,
+					"fail to create iommu map pprop=%p\n",
+					pprop);
+				return NULL;
+			}
 
-	smmu_handle->map[asid] = map;
+			*maps = map;
+			return map;
+		}
+		maps++;
+	}
 
-found:
-	if  (!tegra_smmu_map_prop_match(map, pprop))
-		goto err_out;
-
-	return map;
-
-err_out:
-	if (map)
-		dev_err(dev, "iommu map(%p) incompatible with prop(asid=%d)\n",
-			map, asid);
-	else
-		dev_err(dev, "fail to create iommu map asid=%d\n",
-			asid);
 	return NULL;
 }
 
@@ -2472,7 +2464,8 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 			break;
 		}
 
-		map = tegra_smmu_get_mapping(dev, swgids, &prop);
+		map = tegra_smmu_get_mapping(dev, swgids, &smmu_handle->asprops,
+					     smmu_handle->map, &prop);
 		if (!map) {
 			dev_err(dev, "map creation failed!!!\n");
 			break;
