@@ -130,6 +130,8 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "mc_cbpa",        "mc",           0,              true},
 	{ "mc_ccpa",        "mc",           0,              true},
 	{ "mc_cdpa",        "mc",           0,              true},
+	{ "mc_cpu",	    "mc",           0,              true},
+	{ "mc_bbc",	    "mc",           0,              true},
 #ifdef CONFIG_TEGRA_PLLM_SCALED
 	{ "vi",         "pll_p",        0,              false},
 	{ "isp",        "pll_p",        0,              false},
