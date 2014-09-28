@@ -112,22 +112,21 @@ struct dvfs_rail {
 	bool suspended;
 	bool dfll_mode; /* DFLL mode ON/OFF */
 	bool dfll_mode_updating;
-	int therm_floor_idx;
-	int therm_cap_idx;
 
-	/* Thermal index for thermal DVFS */
-	int therm_scale_idx;
+	int therm_floor_idx;	/* index of vmin thermal range */
+	int therm_cap_idx;	/* index of vmax thermal range */
+	int therm_scale_idx;	/* index of thermal DVFS or clk source range */
 
-	/* Cooling device for vmin settings */
+	/* Trips for vmin cooling device */
 	struct tegra_cooling_device *vmin_cdev;
 
-	/* Cooling device for vmax settings */
+	/* Trips for vmax cooling device */
 	struct tegra_cooling_device *vmax_cdev;
 
-	/* Thermal DVFS for voltage scaling */
+	/* Trips for thermal DVFS cooling device */
 	struct tegra_cooling_device *vts_cdev;
 
-	/* Cooling device for clock source switch */
+	/* Trips for clock source switch cooling device */
 	struct tegra_cooling_device *clk_switch_cdev;
 
 	struct rail_alignment alignment;
@@ -176,7 +175,6 @@ struct dvfs_pll_data {
 };
 
 struct dvfs {
-	/* Used only by tegra2_clock.c */
 	const char *clk_name;
 	int speedo_id;
 	int process_id;
