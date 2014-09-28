@@ -55,10 +55,6 @@ static struct tegra_cooling_device core_vmin_cdev = {
 	.cdev_type = "core_cold",
 };
 
-static struct tegra_cooling_device gpu_vmin_cdev = {
-	.cdev_type = "gpu_cold",
-};
-
 static struct tegra_cooling_device gpu_vts_cdev = {
 	.cdev_type = "gpu_scaling",
 };
@@ -100,7 +96,6 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_gpu = {
 	.step_up = 1300,
 	.in_band_pm = true,
 	.vts_cdev = &gpu_vts_cdev,
-	.vmin_cdev = &gpu_vmin_cdev,
 	.alignment = {
 		.step_uv = 6250, /* 6.25mV */
 	},
@@ -800,6 +795,37 @@ static void __init init_cpu_lp_dvfs_table(int *cpu_lp_max_freq_index)
  * and gpu maximum frequency. Error when gpu dvfs table can not be constructed
  * must never happen.
  */
+static unsigned long __init find_gpu_fmax_at_vmin(
+	struct dvfs *gpu_dvfs, int thermal_ranges, int freqs_num)
+{
+	int i, j;
+	unsigned long fmax = ULONG_MAX;
+
+	/*
+	 * For voltage scaling row in each temperature range, as well as peak
+	 * voltage row find maximum frequency at lowest voltage, and return
+	 * minimax. On Tegra21 all GPU DVFS thermal dependencies are integrated
+	 * into thermal DVFS table (i.e., there is no separate thermal floors
+	 * applied in the rail level). Hence, returned frequency specifies max
+	 * frequency safe at minimum voltage across all temperature ranges.
+	 */
+	for (j = 0; j < thermal_ranges; j++) {
+		for (i = 1; i < freqs_num; i++) {
+			if (gpu_millivolts[j][i] > gpu_millivolts[j][0])
+				break;
+		}
+		fmax = min(fmax, gpu_dvfs->freqs[i - 1]);
+	}
+
+	for (i = 1; i < freqs_num; i++) {
+		if (gpu_peak_millivolts[i] > gpu_peak_millivolts[0])
+			break;
+	}
+	fmax = min(fmax, gpu_dvfs->freqs[i - 1]);
+
+	return fmax;
+}
+
 static int __init set_gpu_dvfs_data(unsigned long max_freq,
 	struct gpu_cvb_dvfs *d, struct dvfs *gpu_dvfs, int *max_freq_index)
 {
@@ -915,11 +941,8 @@ static int __init set_gpu_dvfs_data(unsigned long max_freq,
 
 	*max_freq_index = i - 1;
 
-	/* Init thermal floors */
-	if (d->therm_floors_table[0]) /* if table contains at least one entry */
-		tegra_dvfs_rail_init_vmin_thermal_profile(d->vmin_trips_table,
-			d->therm_floors_table, rail, NULL);
-
+	gpu_dvfs->therm_safe_fmax = d->freqs_mult *
+		find_gpu_fmax_at_vmin(gpu_dvfs, thermal_ranges, i);
 	return 0;
 }
 
