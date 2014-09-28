@@ -53,7 +53,6 @@
 #include "iomap.h"
 #include "gpio-names.h"
 #include <linux/platform/tegra/common.h>
-#include "board-ardbeg.h"
 #include <linux/platform/tegra/dvfs.h>
 
 /*
@@ -4470,9 +4469,6 @@ static int tegra_soctherm_probe(struct platform_device *pdev)
 		return -EINVAL;
 
 	pdev->dev.platform_data = pp;
-
-	pp->oc_irq_base = TEGRA_SOC_OC_IRQ_BASE;
-	pp->num_oc_irqs = TEGRA_SOC_OC_NUM_IRQ;
 
 	if (soctherm_mem_resources_probe(pdev))
 		return -EINVAL;
