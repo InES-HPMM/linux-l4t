@@ -105,7 +105,7 @@ EXPORT_SYMBOL(pwr_detect_bit_write);
 #ifdef CONFIG_OF
 static struct pmc_pm_data pmc_pm_data;
 #endif
-struct pmc_pm_data *tegra_get_pm_data()
+struct pmc_pm_data *tegra_get_pm_data(void)
 {
 #ifdef CONFIG_OF
 	/*
@@ -255,19 +255,19 @@ void tegra_pmc_enable_wake_det(bool enable)
 	tegra_pmc_writel(reg, PMC_CNTRL2);
 }
 
-void tegra_pmc_set_dpd_sample()
+void tegra_pmc_set_dpd_sample(void)
 {
 	tegra_pmc_writel(0x1, PMC_DPD_SAMPLE);
 }
 EXPORT_SYMBOL(tegra_pmc_set_dpd_sample);
 
-void tegra_pmc_clear_dpd_sample()
+void tegra_pmc_clear_dpd_sample(void)
 {
 	tegra_pmc_writel(0x0, PMC_DPD_SAMPLE);
 }
 EXPORT_SYMBOL(tegra_pmc_clear_dpd_sample);
 
-void tegra_pmc_remove_dpd_req()
+void tegra_pmc_remove_dpd_req(void)
 {
 	tegra_pmc_writel(0x400fffff, PMC_IO_DPD_REQ);
 	tegra_pmc_readl(PMC_IO_DPD_REQ); /* unblock posted write */
