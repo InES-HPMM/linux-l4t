@@ -79,6 +79,8 @@
 
 #define LOGGER_TIMEOUT	20 /* in ms */
 
+#define LOAD_ADSP_FREQ 51200000lu /* in Hz */
+
 struct nvadsp_debug_log {
 	struct device *dev;
 	char *debug_ram_rdr;
@@ -690,6 +692,11 @@ int __nvadsp_os_start(void)
 	copy_io_in_l(drv_data->state.evp_ptr,
 		     drv_data->state.evp,
 		     AMC_EVP_SIZE);
+
+	if (drv_data->adsp_cpu_clk) {
+		dev_info(dev, "setting adsp cpu to %lu...\n", LOAD_ADSP_FREQ);
+		clk_set_rate(drv_data->adsp_cpu_clk, LOAD_ADSP_FREQ);
+	}
 
 	dev_info(dev, "Starting ADSP OS...\n");
 	if (drv_data->adsp_clk) {

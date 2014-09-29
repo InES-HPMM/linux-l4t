@@ -85,6 +85,7 @@ struct nvadsp_drv_data {
 #endif
 	struct clk *ape_clk;
 	struct clk *adsp_clk;
+	struct clk *adsp_cpu_clk;
 	struct clk *ape_uart_clk;
 
 	struct nvadsp_pm_state state;

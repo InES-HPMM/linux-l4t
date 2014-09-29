@@ -162,6 +162,13 @@ int nvadsp_clocks_enable(struct platform_device *pdev)
 	udelay(10);
 	dev_dbg(dev, "adsp clock enabled and asserted\n");
 
+	drv_data->adsp_cpu_clk = clk_get_sys(NULL, "adsp_cpu");
+	if (IS_ERR_OR_NULL(drv_data->adsp_cpu_clk)) {
+		dev_err(dev, "unable to find adsp cpu clock\n");
+		ret = PTR_ERR(drv_data->adsp_cpu_clk);
+		goto end;
+	}
+
 	drv_data->ape_uart_clk = clk_get_sys("uartape", NULL);
 	if (IS_ERR_OR_NULL(drv_data->ape_uart_clk)) {
 		dev_err(dev, "unable to find uart ape clk\n");

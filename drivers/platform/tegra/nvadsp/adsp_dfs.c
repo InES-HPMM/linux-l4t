@@ -39,6 +39,20 @@ enum adsp_dfs_reply {
 	NACK,
 };
 
+/*
+ * Freqency in Hz.The frequency always needs to be a multiple of 12.8 Mhz and
+ * should be extended with a slab 51.2 Mhz.
+ */
+static unsigned long adsp_cpu_freq_table[] = {
+	51200000,
+	102400000,
+	153600000,
+	204800000,
+	256000000,
+	307200000,
+	358400000,
+};
+
 struct adsp_dfs_policy {
 	bool enable;
  /*
@@ -91,6 +105,33 @@ static struct adsp_dfs_policy dfs_policy =  {
 		.notifier_call = adsp_dfs_rc_callback,
 	},
 };
+
+static unsigned long adsp_get_target_freq(unsigned long tfreq, int *index)
+{
+	int i;
+	int size = sizeof(adsp_cpu_freq_table) / sizeof(adsp_cpu_freq_table[0]);
+
+	if (tfreq <= adsp_cpu_freq_table[0]) {
+		*index = 0;
+		return adsp_cpu_freq_table[0];
+	}
+
+	if (tfreq >= adsp_cpu_freq_table[size - 1]) {
+		*index = size - 1;
+		return adsp_cpu_freq_table[size - 1];
+	}
+
+	for (i = 1; i < size; i++) {
+		if ((tfreq <= adsp_cpu_freq_table[i]) &&
+				(tfreq > adsp_cpu_freq_table[i - 1])) {
+			*index = i;
+			return adsp_cpu_freq_table[i];
+		}
+	}
+
+	return 0;
+}
+
 /**
  * update_policy - update adsp freq and ask adsp to work post change
  *		in freq tasks
@@ -106,12 +147,19 @@ static unsigned long update_policy(unsigned long tfreq)
 {
 	enum adsp_dfs_reply reply;
 	struct nvadsp_mbox *mbx = &policy->mbox;
-	int ret;
 	unsigned long old_freq;
+	int index;
+	int ret;
 
 	old_freq = policy->cur;
 
-	ret = clk_set_rate(policy->adsp_clk, tfreq * 1000);
+	tfreq = adsp_get_target_freq(tfreq * 1000, &index);
+	if (!tfreq) {
+		pr_info("unable set the target freq\n");
+		return 0;
+	}
+
+	ret = clk_set_rate(policy->adsp_clk, tfreq);
 	if (ret) {
 		pr_err("failed to set adsp freq:%d\n", ret);
 		policy->update_freq_flag = false;
@@ -123,8 +171,11 @@ static unsigned long update_policy(unsigned long tfreq)
 	mutex_lock(&policy_mutex);
 
 	pr_debug("sending change in freq:%lu\n", tfreq);
-	/* Ask adsp to do action upon change in freq */
-	ret = nvadsp_mbox_send(mbx, tfreq,
+	/*
+	 * Ask adsp to do action upon change in freq. ADSP and Host need to
+	 * maintain the same freq table.
+	 */
+	ret = nvadsp_mbox_send(mbx, index,
 				NVADSP_MBOX_SMSG, true, 100);
 	if (ret) {
 		pr_err("%s:host to adsp, mbox_send failure ....\n", __func__);
