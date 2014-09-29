@@ -53,6 +53,8 @@ struct tegra_hv_ivc_ops {
 	void (*tx_rdy)(struct tegra_hv_ivc_cookie *ivck);
 };
 
+struct ivc;
+
 /**
  * tegra_hv_ivc_reserve - Reserve an IVC queue for use
  * @dn:		Device node pointer to the queue in the DT
@@ -93,6 +95,7 @@ int tegra_hv_ivc_unreserve(struct tegra_hv_ivc_cookie *ivck);
  */
 int tegra_hv_ivc_write(struct tegra_hv_ivc_cookie *ivck, const void *buf,
 		int size);
+int tegra_ivc_write(struct ivc *ivc, const void *buf, int size);
 
 /**
  * ivc_hv_ivc_read - Reads a frame from the IVC queue
@@ -105,6 +108,7 @@ int tegra_hv_ivc_write(struct tegra_hv_ivc_cookie *ivck, const void *buf,
  * Returns size on success and an error code otherwise
  */
 int tegra_hv_ivc_read(struct tegra_hv_ivc_cookie *ivck, void *buf, int size);
+int tegra_ivc_read(struct ivc *ivc, void *buf, int size);
 
 /**
  * ivc_hv_ivc_can_read - Test whether data are available
@@ -115,6 +119,7 @@ int tegra_hv_ivc_read(struct tegra_hv_ivc_cookie *ivck, void *buf, int size);
  * Returns 1 if data are available in the rx queue, 0 if not
  */
 int tegra_hv_ivc_can_read(struct tegra_hv_ivc_cookie *ivck);
+int tegra_ivc_can_read(struct ivc *ivc);
 
 /**
  * ivc_hv_ivc_can_write - Test whether data can be written
@@ -125,6 +130,7 @@ int tegra_hv_ivc_can_read(struct tegra_hv_ivc_cookie *ivck);
  * Returns 1 if data are can be written to the tx queue, 0 if not
  */
 int tegra_hv_ivc_can_write(struct tegra_hv_ivc_cookie *ivck);
+int tegra_ivc_can_write(struct ivc *ivc);
 
 /**
  * ivc_hv_ivc_tx_empty - Test whether the tx queue is empty
@@ -135,6 +141,7 @@ int tegra_hv_ivc_can_write(struct tegra_hv_ivc_cookie *ivck);
  * Returns 1 if the queue is empty, zero otherwise
  */
 int tegra_hv_ivc_tx_empty(struct tegra_hv_ivc_cookie *ivck);
+int tegra_ivc_tx_empty(struct ivc *ivc);
 
 /**
  * ivc_hv_ivc_loopback - Sets (or clears) loopback mode
@@ -150,9 +157,6 @@ int tegra_hv_ivc_tx_empty(struct tegra_hv_ivc_cookie *ivck);
  * Returns 0 on success, a negative error code otherwise
  */
 int tegra_hv_ivc_set_loopback(struct tegra_hv_ivc_cookie *ivck, int mode);
-
-/* perform fast loopback */
-int tegra_hv_ivc_perform_loopback(struct tegra_hv_ivc_cookie *ivck);
 
 /* debugging aid */
 int tegra_hv_ivc_dump(struct tegra_hv_ivc_cookie *ivck);
@@ -171,6 +175,7 @@ int tegra_hv_ivc_dump(struct tegra_hv_ivc_cookie *ivck);
  */
 int tegra_hv_ivc_read_peek(struct tegra_hv_ivc_cookie *ivck,
 		void *buf, int off, int count);
+int tegra_ivc_read_peek(struct ivc *ivc, void *buf, int off, int count);
 
 /**
  * ivc_hv_ivc_read_get_next_frame - Peek at the next frame to receive
@@ -182,6 +187,7 @@ int tegra_hv_ivc_read_peek(struct tegra_hv_ivc_cookie *ivck,
  * Returns a pointer to the frame, or an error encoded pointer.
  */
 void *tegra_hv_ivc_read_get_next_frame(struct tegra_hv_ivc_cookie *ivck);
+void *tegra_ivc_read_get_next_frame(struct ivc *ivc);
 
 /**
  * ivc_hv_ivc_read_advance - Advance the read queue
@@ -192,6 +198,7 @@ void *tegra_hv_ivc_read_get_next_frame(struct tegra_hv_ivc_cookie *ivck);
  * Returns 0, or a negative error value if failed.
  */
 int tegra_hv_ivc_read_advance(struct tegra_hv_ivc_cookie *ivck);
+int tegra_ivc_read_advance(struct ivc *ivc);
 
 /**
  * ivc_hv_ivc_write_poke - Poke data to a frame to be transmitted
@@ -207,6 +214,7 @@ int tegra_hv_ivc_read_advance(struct tegra_hv_ivc_cookie *ivck);
  */
 int tegra_hv_ivc_write_poke(struct tegra_hv_ivc_cookie *ivck,
 		const void *buf, int off, int count);
+int tegra_ivc_write_poke(struct ivc *ivc, const void *buf, int off, int count);
 
 /**
  * ivc_hv_ivc_write_get_next_frame - Poke at the next frame to transmit
@@ -217,6 +225,7 @@ int tegra_hv_ivc_write_poke(struct tegra_hv_ivc_cookie *ivck,
  * Returns a pointer to the frame, or an error encoded pointer.
  */
 void *tegra_hv_ivc_write_get_next_frame(struct tegra_hv_ivc_cookie *ivck);
+void *tegra_ivc_write_get_next_frame(struct ivc *ivc);
 
 /**
  * ivc_hv_ivc_write_advance - Advance the write queue
@@ -227,5 +236,6 @@ void *tegra_hv_ivc_write_get_next_frame(struct tegra_hv_ivc_cookie *ivck);
  * Returns 0, or a negative error value if failed.
  */
 int tegra_hv_ivc_write_advance(struct tegra_hv_ivc_cookie *ivck);
+int tegra_ivc_write_advance(struct ivc *ivc);
 
 #endif
