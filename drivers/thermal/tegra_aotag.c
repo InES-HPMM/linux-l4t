@@ -263,6 +263,8 @@ struct fuse_info_t {
 	s32 actual_temp_ft;
 	s32 actual_ts_reading_cp;
 	s32 actual_ts_reading_ft;
+	s32 compensation_a;
+	s32 compensation_b;
 };
 
 struct aotag_sensor_info_t {
@@ -434,6 +436,10 @@ static int aotag_parse_sensor_params(struct platform_device *pdev)
 				&pfuse->nominal_temp_cp);
 		OF_PROPERTY_READ(s32, np, "sensor-nominal-temp-ft",
 				&pfuse->nominal_temp_ft);
+		OF_PROPERTY_READ(s32, np, "sensor-compensation-a",
+				&pfuse->compensation_a);
+		OF_PROPERTY_READ(s32, np, "sensor-compensation-b",
+				&pfuse->compensation_b);
 
 	if (ret < 0)
 		goto out;
@@ -449,6 +455,8 @@ static int aotag_parse_sensor_params(struct platform_device *pdev)
 			pfuse->nominal_temp_cp);
 	aotag_pdev_print(info, pdev, "pdiv-ate -- %d\n", pcparams->pdiv_ate);
 	aotag_pdev_print(info, pdev, "tsamp-ate -- %d\n", pcparams->tsamp_ate);
+	aotag_pdev_print(info, pdev, "compensation A,B -- %d,%d\n",
+			pfuse->compensation_a, pfuse->compensation_b);
 
 
 	psensor_info->of_get_temp = aotag_get_temp_generic;
@@ -624,6 +632,7 @@ static int aotag_read_fuses(struct platform_device *pdev)
 		pcparams->tsample * pcparams->pdiv * 10;
 	do_div(numerator, denominator);
 	ps_info->therm_a = numerator;
+	ps_info->therm_a = (ps_info->therm_a) * (pfuse->compensation_a)/10000;
 
 	/*
 	 * THERM_B
@@ -643,6 +652,14 @@ static int aotag_read_fuses(struct platform_device *pdev)
 		ps_info->therm_b = (-1) * numerator;
 	}
 
+	if (ps_info->therm_b > 0) {
+		ps_info->therm_b = ((ps_info->therm_b * pfuse->compensation_a)
+				+ pfuse->compensation_b)/10000;
+	} else {
+		ps_info->therm_b = (-1) *
+			(((-1) * ((ps_info->therm_b * pfuse->compensation_a)
+				  + pfuse->compensation_b))/10000);
+	}
 	/*
 	 * Now write the thermA,B registers
 	 */
