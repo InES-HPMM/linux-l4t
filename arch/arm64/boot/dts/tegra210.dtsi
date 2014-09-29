@@ -119,7 +119,7 @@
 		#num-asid-security = <8>;
 		ptc-cache-size = <0x00008000>; /* 32 KB */
 
-		domains = <&ppcs_as TEGRA_SWGROUP_CELLS3(PPCS, PPCS1, PPCS2)
+		domains = <&ppcs_as TEGRA_SWGROUP_CELLS5(PPCS, PPCS1, PPCS2, SE, SE1)
 			   &gpu_as TEGRA_SWGROUP_CELLS(GPUB)
 			   &ape_as TEGRA_SWGROUP_CELLS(APE)
 			   &dc_as TEGRA_SWGROUP_CELLS3(DC, DC12, DCB)
