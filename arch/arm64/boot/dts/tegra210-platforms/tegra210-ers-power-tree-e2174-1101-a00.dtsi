@@ -33,12 +33,16 @@
 			avdd_lcd-supply = <&max77620_gpio7>;
 			dvdd_lcd-supply = <&max77620_sd3>;
 			vdd_lcd_bl_en-supply = <&lcd_bl_en>;
+			vdd_lcd_bl-supply = <&battery_reg>;
+			vdd_ds_1v8-supply = <&battery_reg>;
 		};
 		/* tegradc.1 */
 		dc@54240000 {
 			avdd_hdmi-supply = <&max77620_ldo8>;
 			avdd_hdmi_pll-supply = <&max77620_sd3>;
 			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+			vdd_lcd_bl-supply = <&battery_reg>;
+			vdd_ds_1v8-supply = <&battery_reg>;
 		};
 		vi {
 			avdd_dsi_csi-supply = <&max77620_gpio7>;
