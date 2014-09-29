@@ -81,7 +81,8 @@ static void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 
 #define IOCTL_HOST_FLAG_ENABLED		1
 #define PORTSC_MASK     0xFF15FFFF
-#define PORTREGSEL_MASK	0xFFFFFFFC;
+#define PORTREGSEL_MASK	0xFFFFFFFC
+#define POLL_TBRST_MAX_VAL	0xB0
 
 static struct usb_endpoint_descriptor nvudc_ep0_desc = {
 	.bLength = USB_DT_ENDPOINT_SIZE,
@@ -103,6 +104,9 @@ module_param(u1_u2_enable, bool, S_IRUGO|S_IWUSR);
 /* T210 workaround. Disable LPM for HS and FS by default */
 static bool disable_lpm = false;
 module_param(disable_lpm, bool, S_IRUGO|S_IWUSR);
+
+static bool war_poll_trbst_max = true;
+module_param(war_poll_trbst_max, bool, S_IRUGO|S_IWUSR);
 
 #ifdef PRIME_NOT_RCVD_WAR
 /* With some hosts, after they reject the stream, they are not sending the
@@ -4687,6 +4691,18 @@ static void nvudc_plat_fpci_ipfs_init(struct nv_udc_s *nvudc)
 	iowrite32(reg, nvudc->base + SSPX_CORE_CNT0);
 	reg_dump(dev, nvudc->base, SSPX_CORE_CNT0);
 
+	/* WAR for TD 6.5 Polling LFPS Duration Test.
+	* Test suite is violating polling lfps burst max of 1.4us
+	* Sending 1.45us instead
+	* program POLL_TBRST_MAX to 0xB0 in order to make the test pass
+	*/
+	if (war_poll_trbst_max) {
+		reg = ioread32(nvudc->base + SSPX_CORE_CNT32);
+		reg &= ~POLL_TBRST_MAX_MASK;
+		reg |= POLL_TBRST_MAX(POLL_TBRST_MAX_VAL);
+		iowrite32(reg, nvudc->base + SSPX_CORE_CNT32);
+		reg_dump(dev, nvudc->base, SSPX_CORE_CNT32);
+	}
 }
 
 static int nvudc_plat_irqs_init(struct nv_udc_s *nvudc)
