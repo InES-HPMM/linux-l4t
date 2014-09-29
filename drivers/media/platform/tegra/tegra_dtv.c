@@ -971,7 +971,7 @@ static void tear_down_dma(struct tegra_dtv_context *dtv_ctx)
 			buf->data_phy = 0;
 		}
 		dma_release_channel(stream->dma_chan);
-		dtv_ctx->stream.dma_chan = 0;
+		dtv_ctx->stream.dma_chan = NULL;
 	}
 }
 

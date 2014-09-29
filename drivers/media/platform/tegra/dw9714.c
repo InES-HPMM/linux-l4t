@@ -911,7 +911,7 @@ static int dw9714_probe(
 		}
 	}
 
-	if (info->pdata->dev_name != 0)
+	if (info->pdata->dev_name != NULL)
 		strncpy(info->devname, info->pdata->dev_name,
 			sizeof(info->devname) - 1);
 	else

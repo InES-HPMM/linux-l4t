@@ -2565,7 +2565,7 @@ static int ov9772_probe(
 		if (info->pdata->probe_clock)
 			info->pdata->probe_clock(0);
 	}
-	if (info->pdata->dev_name != 0)
+	if (info->pdata->dev_name != NULL)
 		strncpy(info->devname, info->pdata->dev_name,
 			sizeof(info->devname) - 1);
 	else
