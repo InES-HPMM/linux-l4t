@@ -823,7 +823,7 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 		rail, &d->dfll_tune_data);
 #endif
 
-	if (cpu_dvfs->speedo_id == 4) {
+	if (tegra_is_soc_automotive_speedo()) {
 		rail->clk_switch_cdev = &cpu_clk_switch_cdev;
 		ret = tegra_dvfs_rail_init_clk_switch_thermal_profile(
 				d->clk_switch_trips, rail);
@@ -1256,7 +1256,7 @@ void __init tegra12x_init_dvfs(void)
 		unsigned long max_freq = gpu_max_freq[gpu_speedo_id];
 		if (match_dvfs_one("gpu cvb", d->speedo_id, d->process_id,
 				   gpu_speedo_id, gpu_process_id)) {
-			if (gpu_speedo_id != 3)
+			if (!tegra_is_soc_automotive_speedo())
 				ret = set_gpu_dvfs_data(max_freq,
 					d, &gpu_dvfs, &gpu_max_freq_index);
 			else
