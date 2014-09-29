@@ -39,6 +39,7 @@ static void mboxq_init(struct nvadsp_mbox_queue *queue)
 	queue->tail = 0;
 	queue->count = 0;
 	init_completion(&queue->comp);
+	spin_lock_init(&queue->lock);
 }
 
 static void mboxq_destroy(struct nvadsp_mbox_queue *queue)
