@@ -874,7 +874,7 @@ static struct io_dpd_reg_info t3_io_dpd_req_regs[] = {
 #define IO_DPD_CODE_OFF		1
 
 /* cleans io dpd settings from bootloader during kernel init */
-void tegra_bl_io_dpd_cleanup()
+void tegra_bl_io_dpd_cleanup(void)
 {
 	int i;
 	unsigned int dpd_mask;
