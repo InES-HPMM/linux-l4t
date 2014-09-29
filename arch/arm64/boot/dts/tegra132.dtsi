@@ -81,7 +81,7 @@
 
 	smmu: iommu {
 		domains = <
-			&ppcs_as TEGRA_SWGROUP_CELLS2(PPCS, PPCS1)
+			&ppcs_as TEGRA_SWGROUP_CELLS3(PPCS, PPCS1, PPCS2)
 			&gpu_as TEGRA_SWGROUP_CELLS(GPUB)
 			&common_as TEGRA_SWGROUP_CELLS(AFI)
 			&common_as 0xFFFFFFFF 0xFFFFFFFF>;
