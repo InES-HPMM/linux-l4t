@@ -35,25 +35,21 @@
 	sdhci@700b0600 {
 		uhs-mask = <0x60>;
 		built-in;
-		disable-clock-gate;
 		status = "okay";
 	};
 
 	sdhci@700b0400 {
 		uhs-mask = <0x1c>;
-		disable-clock-gate;
 		status = "okay";
 	};
 
 	sdhci@700b0200 {
 		uhs-mask = <0x60>;
-		disable-clock-gate;
 		status = "okay";
 	};
 
 	sdhci@700b0000 {
 		uhs-mask = <0x1c>;
-		disable-clock-gate;
 		status = "okay";
 	};
 

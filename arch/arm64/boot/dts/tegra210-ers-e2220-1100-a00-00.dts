@@ -63,7 +63,6 @@
 	sdhci@700b0600 {
 		uhs-mask = <0x60>;
 		built-in;
-		disable-clock-gate;
 		status = "okay";
 	};
 
@@ -71,21 +70,18 @@
 		uhs-mask = <0x1c>;
 		vddio_sdmmc-supply = <&max77620_sd3>;
 		vddio_sd_slot-supply = <&en_vdd_sd3>;
-		disable-clock-gate;
 		status = "disabled";
 	};
 
 	sdhci@700b0200 {
 		uhs-mask = <0x1C>;
 		bus-width = <4>;
-		disable-clock-gate;
 		status = "okay";
 	};
 
 	sdhci@700b0000 {
 		uhs-mask = <0x1c>;
 		cd-gpios = <&gpio TEGRA_GPIO_PZ1 0>;
-		disable-clock-gate;
 		status = "okay";
 	};
 
