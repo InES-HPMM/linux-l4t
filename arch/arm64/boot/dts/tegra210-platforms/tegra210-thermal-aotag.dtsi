@@ -1,3 +1,21 @@
+/*
+ * arch/arm/boot/dts/tegra210-platforms/tegra210-thermal-aotag.dtsi
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 / {
 	tegra-aotag {
 		compatible = "nvidia,tegra21x-aotag";
@@ -50,13 +68,8 @@
 			 * <&{/tegra-aotag/sensor} [0|1|..]>
 			 */
 			trips {
-				trip0 {
-					temperature = <90000>;
-					hysteresis = <0>;
-					type = "active";
-				};
-				trip1 {
-					temperature = <95000>;
+				trip_shutdown {
+					temperature = <102000>;
 					hysteresis = <0>;
 					type = "critical";
 				};
