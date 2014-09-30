@@ -16,6 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#define TEGRA132_PACKAGE_IS_MID
 #include "tegra132.dtsi"
 #include "tegra124-platforms/tegra124-pm374-gpio-default.dtsi"
 #include "tegra124-platforms/tegra124-pm374-pinmux.dtsi"
@@ -276,5 +277,12 @@
 	backlight {
 		compatible = "pwm-backlight";
 		status = "okay";
+	};
+
+	cpu_edp {
+		nvidia,edp_limit = <32000>;
+	};
+	gpu_edp {
+		nvidia,edp_limit = <16000>;
 	};
 };

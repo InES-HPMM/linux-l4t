@@ -51,4 +51,8 @@
 			};
 		};
 	};
+
+	cpu_edp {
+		nvidia,regulator_idle_limit = <5000>;
+	};
 };

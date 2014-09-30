@@ -223,4 +223,13 @@
 		nvidia,mdm-sar0-gpio = <&gpio TEGRA_GPIO(G, 2) GPIO_ACTIVE_LOW>;
 		status = "disabled";
 	};
+
+	cpu_edp {
+		nvidia,edp_limit = <14000>;
+	};
+	gpu_edp {
+		nvidia,edp_limit = <11200>;
+	};
+
+
 };

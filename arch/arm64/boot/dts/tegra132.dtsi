@@ -25,6 +25,10 @@
 #include "tegra124-platforms/tegra124-soctherm.dtsi"
 #include "tegra124-platforms/tegra124-bthrot-cdev.dtsi"
 
+#if defined(TEGRA132_PACKAGE_IS_DSC) ^ !defined(TEGRA132_PACKAGE_IS_MID)
+#error please define either TEGRA132_PACKAGE_IS_DSC or TEGRA132_PACKAGE_IS_MID
+#endif
+
 / {
 	compatible = "nvidia,tegra132";
 	interrupt-parent = <&intc>;
@@ -58,6 +62,37 @@
 			cpu-release-addr = <0x0 0x8000fff8>;
 			power-states = <&power_states>;
 		};
+	};
+
+	cpu_edp {
+		compatible = "nvidia,tegra124-cpu-edp-capping";
+		nvidia,freq_step = <12750000>;
+		nvidia,edp_clk = "cpu_g";
+#ifdef TEGRA132_PACKAGE_IS_DSC
+		nvidia,hard_cap = <2500000 2300000>;
+#endif
+		nvidia,tegra-ppm-cdyn = <3900000 5900000>;
+		nvidia,tegra-ppm-leakage_weights = <1000 1000>;
+		nvidia,tegra-ppm-min_leakage = <30>;
+		nvidia,tegra-ppm-coeff_scale = <1000>;
+		nvidia,tegra-ppm-leakage_coeffs = <
+			(  37941815) ( -34693402) (  7820012) ( -441775)
+			(-120688312) ( 110469778) (-24921798) ( 1406135)
+			( 125400868) (-114967356) ( 25961411) (-1462457)
+			( -42517654) (  39125172) ( -8844968) (  497219)
+			( -50381367) (  44032432) ( -9833725) (  555725)
+			( 160275950) (-139793882) ( 31257629) (-1764975)
+			(-166543984) ( 144936902) (-32453803) ( 1830681)
+			(  56516540) ( -49076991) ( 11008971) ( -619802)
+			(  17384788) ( -15152169) (  3354364) ( -189265)
+			( -55185216) (  48061420) (-10652770) (  601257)
+			(  57179883) ( -49766548) ( 11046206) ( -623597)
+			( -19334275) (  16829382) ( -3741212) (  211201)
+			(  -1678751) (   1460723) (  -322310) (   18193)
+			(   5323806) (  -4629524) (  1022876) (  -57779)
+			(  -5509910) (   4788629) ( -1059681) (   59896)
+			(   1861103) (  -1617204) (   358518) (  -20274)
+		>;
 	};
 
 	intc: interrupt-controller {

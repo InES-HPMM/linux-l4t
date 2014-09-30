@@ -280,4 +280,12 @@
 		compatible = "pwm-backlight";
 		status = "okay";
 	};
+
+	cpu_edp {
+		nvidia,edp_limit = <15000>;
+	};
+
+	gpu_edp {
+		nvidia,edp_limit = <8000>;
+	};
 };

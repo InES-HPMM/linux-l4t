@@ -149,4 +149,11 @@
 				status = "disabled";
 			};
 	};
+
+	gpu_edp {
+		nvidia,edp_limit = <14000>;
+	};
+	cpu_edp {
+		nvidia,edp_limit = <14000>;
+	};
 };

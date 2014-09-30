@@ -70,4 +70,8 @@
 		vddio_hsic-supply = <&as3722_ldo2>;
 		avddio_usb-supply = <&as3722_sd4>;
 	};
+
+	cpu_edp {
+		nvidia,edp_limit = <15000>;
+	};
 };

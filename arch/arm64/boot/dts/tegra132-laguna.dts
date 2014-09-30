@@ -18,6 +18,7 @@
 
 /dts-v1/;
 
+#define TEGRA132_PACKAGE_IS_MID
 #include "tegra132.dtsi"
 #include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-pm359-gpio-default.dtsi"

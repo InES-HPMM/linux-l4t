@@ -18,6 +18,7 @@
 
 /dts-v1/;
 
+#define TEGRA132_PACKAGE_IS_MID
 #include "tegra132.dtsi"
 #include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-power-tree-e1936-1000-a00.dtsi"
@@ -321,5 +322,12 @@
 	backlight {
 		compatible = "pwm-backlight";
 		status = "okay";
+	};
+
+	cpu_edp {
+		nvidia,edp_limit = <16800>;
+	};
+	gpu_edp {
+		nvidia,edp_limit = <11200>;
 	};
 };

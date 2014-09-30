@@ -1,5 +1,6 @@
 /dts-v1/;
 
+#define TEGRA132_PACKAGE_IS_MID
 #include "tegra132.dtsi"
 
 / {

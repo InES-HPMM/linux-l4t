@@ -19,6 +19,7 @@
  */
 /dts-v1/;
 
+#define TEGRA132_PACKAGE_IS_DSC
 #include "tegra132.dtsi"
 #include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-ardbeg-power-tree-e1733-1000-a00.dtsi"
