@@ -775,6 +775,10 @@ _out:
 }
 
 #ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
+
+#define UP_DELAY_MS		70
+#define DOWN_DELAY_MS		100
+
 static int target_state;
 static unsigned int up_delay;
 static unsigned int down_delay;
@@ -854,8 +858,52 @@ static void tegra_auto_cluster_switch(void)
 	}
 }
 
+#define show(filename, param)			\
+static ssize_t show_##filename						\
+(struct kobject *kobj, struct kobj_attribute *attr, char *buf)		\
+{									\
+	return scnprintf(buf, PAGE_SIZE, "%u\n", (param));		\
+}									\
+
+#define store(filename, param)			\
+static ssize_t store_##filename						\
+(struct kobject *kobj, struct kobj_attribute *attr,			\
+const char *buf, size_t count)						\
+{									\
+	unsigned int val;						\
+	if (kstrtouint(buf, 10, &val))					\
+		return -EINVAL;						\
+	param = val;							\
+	return count;							\
+}									\
+
+#define cputegra_attr(attr, filename, param)				\
+show(filename, param);							\
+store(filename, param);							\
+static struct kobj_attribute attr =					\
+	__ATTR(filename, 0644, show_##filename, store_##filename);	\
+
+cputegra_attr(enable, enable, auto_cluster_enable);
+cputegra_attr(updelay, up_delay_msec, up_delay);
+cputegra_attr(downdelay, down_delay_msec, down_delay);
+cputegra_attr(top_freq, idle_top_freq, idle_top_freq);
+cputegra_attr(bottom_freq, idle_bottom_freq, idle_bottom_freq);
+
+const struct attribute *tegra_auto_cluster_switch_attrs[] = {
+	&enable.attr,
+	&updelay.attr,
+	&downdelay.attr,
+	&top_freq.attr,
+	&bottom_freq.attr,
+	NULL,
+};
+
+static struct kobject *tegra_auto_cluster_switch_kobj;
+
 static int tegra_auto_cluster_switch_init(void)
 {
+	int ret;
+
 	init_timer(&updown_timer);
 	updown_timer.function = updown_handler;
 	INIT_WORK(&cluster_switch_work,
@@ -870,14 +918,40 @@ static int tegra_auto_cluster_switch_init(void)
 	target_state = is_lp_cluster() ? SLOW_CLUSTER : FAST_CLUSTER;
 	idle_top_freq = lp_to_virtual_gfreq(clk_get_max_rate(lp_clock)) / 1000;
 	idle_bottom_freq = clk_get_min_rate(g_clock) / 1000;
+	up_delay = UP_DELAY_MS;
+	down_delay = DOWN_DELAY_MS;
+
+	tegra_auto_cluster_switch_kobj =
+		kobject_create_and_add("tegra_auto_cluster_switch",
+				kernel_kobj);
+
+	if (!tegra_auto_cluster_switch_kobj) {
+		pr_err("%s: Couldn't create kobj\n", __func__);
+		return -ENOMEM;
+	}
+
+	ret = sysfs_create_files(tegra_auto_cluster_switch_kobj,
+				tegra_auto_cluster_switch_attrs);
+	if (ret) {
+		pr_err("%s: Couldn't create sysfs files\n", __func__);
+		return ret;
+	}
 
 	return 0;
 }
+
+static void tegra_auto_cluster_switch_exit(void)
+{
+	if (tegra_auto_cluster_switch_kobj)
+		sysfs_remove_files(tegra_auto_cluster_switch_kobj,
+			tegra_auto_cluster_switch_attrs);
+}
+
 #else
 static inline int tegra_auto_cluster_switch_init(void)
 { return 0; }
-static inline void tegra_auto_cluster_switch(void)
-{ }
+static inline void tegra_auto_cluster_switch(void) {}
+static inline void tegra_auto_cluster_switch_exit(void) {}
 #endif
 unsigned int tegra_count_slow_cpus(unsigned long speed_limit)
 {
@@ -1300,6 +1374,7 @@ static void __exit tegra_cpufreq_exit(void)
 {
 	tegra_cpu_edp_exit();
 	tegra_auto_hotplug_exit();
+	tegra_auto_cluster_switch_exit();
 	cpufreq_unregister_driver(&tegra_cpufreq_driver);
 	cpufreq_unregister_notifier(
 		&tegra_cpufreq_policy_nb, CPUFREQ_POLICY_NOTIFIER);
