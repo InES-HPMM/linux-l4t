@@ -239,7 +239,8 @@ static int pll_fixed_mdiv_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	cfg->sdm_data = 0;
 	if (c->u.pll.controls->sdm_en_mask) {
 		unsigned long rem = cfg->output_rate - cf * cfg->n;
-		if (rem) {
+		/* If ssc is enabled SDM enabled as well, even for integer n */
+		if (rem || c->u.pll.controls->ssc_en_mask) {
 			u64 s = rem * PLL_SDM_COEFF;
 			do_div(s, cf);
 			s -= PLL_SDM_COEFF / 2;
@@ -270,6 +271,8 @@ int pll_clk_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 				       pll_get_fixed_mdiv(c, input_rate));
 			BUG_ON(!c->u.pll.controls->sdm_en_mask &&
 			       sel->sdm_data);
+			BUG_ON(c->u.pll.controls->ssc_en_mask &&
+			       !sel->sdm_data);
 			*cfg = *sel;
 			return 0;
 		}
