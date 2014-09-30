@@ -3558,6 +3558,14 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 		}
 	}
 
+	if (PORTSC_CEC & u_temp) {
+		msg_dbg(nvudc->dev, "CEC is set PORTSC = 0x%x\n", u_temp);
+		u_temp2 = ioread32(nvudc->mmio_reg_base + PORTSC);
+		u_temp2 &= PORTSC_MASK;
+		u_temp2 |= PORTSC_CEC;
+		iowrite32(u_temp2, nvudc->mmio_reg_base + PORTSC);
+	}
+
 	return update_ptrs;
 }
 
