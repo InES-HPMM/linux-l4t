@@ -1,6 +1,5 @@
 config TRUSTED_LITTLE_KERNEL
 	bool "Enable Open Trusted Execution driver"
-	select TEGRA_USE_SECURE_KERNEL
 	help
 	  This option adds kernel support for communication with the
 	  Trusted LK secure OS monitor/runtime support.
