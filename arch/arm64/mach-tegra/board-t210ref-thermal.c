@@ -28,18 +28,6 @@
 #include "tegra-board-id.h"
 #include "board-t210ref.h"
 
-int __init t210ref_edp_init(void)
-{
-	unsigned int regulator_mA;
-
-	/* gpu maximum current */
-	regulator_mA = 12000;
-	pr_info("%s: GPU regulator %d mA\n", __func__, regulator_mA);
-	tegra_init_gpu_edp_limits(regulator_mA);
-
-	return 0;
-}
-
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 static struct thermal_zone_params board_tzp = {
 	.governor_name = "pid_thermal_gov"

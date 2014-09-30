@@ -494,7 +494,6 @@ static void __init tegra_t210ref_late_init(void)
 #else
 	tegra12_emc_init();
 #endif
-	t210ref_edp_init();
 	isomgr_init();
 	tegra_fb_copy_or_clear();
 

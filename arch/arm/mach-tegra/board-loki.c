@@ -787,7 +787,6 @@ static void __init tegra_loki_late_init(void)
 	loki_regulator_init();
 	loki_suspend_init();
 	loki_emc_init();
-	loki_edp_init();
 	isomgr_init();
 	loki_touch_init();
 	loki_panel_init();

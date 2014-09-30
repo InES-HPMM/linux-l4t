@@ -21,19 +21,15 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/uaccess.h>
-#include <linux/edp.h>
-#include <linux/tegra-soc.h>
+#include <linux/of.h>
 #include <linux/tegra-fuse.h>
 #include <linux/tegra_ppm.h>
 
-#include <mach/edp.h>
-
 #include <linux/platform/tegra/dvfs.h>
 #include <linux/platform/tegra/clock.h>
-#include <linux/platform/tegra/common.h>
 
 struct gpu_edp_platform_data {
-	char *name;
+	const char *name;
 	char *cdev_name;
 	char *cap_clk_name;
 	char *clk_name;
@@ -42,25 +38,16 @@ struct gpu_edp_platform_data {
 };
 
 struct gpu_edp {
-	struct gpu_edp_platform_data *plat_data;
-
 	struct tegra_ppm *ppm;
 	struct mutex edp_lock;
 	struct clk *cap_clk;
 
+	int imax;
 	int temperature_now;
 };
 
 static struct gpu_edp_platform_data s_plat_data = {
 	.cdev_name = "gpu_edp",
-	.cap_clk_name = "edp.gbus",
-	.clk_name = "gbus",
-	.name = "gpu_edp",
-	.freq_step = 12000000,
-};
-
-static struct gpu_edp s_gpu = {
-	.plat_data = &s_plat_data,
 };
 
 #define C_TO_K(c) (c+273)
@@ -107,7 +94,7 @@ void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
 	};
 
 	_get_trip_info(gpu_temps, ARRAY_SIZE(gpu_temps),
-		       s_gpu.plat_data->cdev_name,
+		       s_plat_data.cdev_name,
 		       trips, num_trips, margin);
 }
 
@@ -140,7 +127,7 @@ static int edp_set_cdev_state(struct thermal_cooling_device *cdev,
 	BUG_ON(cur_state >= MELT_SILICON_K);
 
 	ctx->temperature_now = K_TO_C(cur_state);
-	clk_rate = tegra_ppm_get_maxf(ctx->ppm, ctx->plat_data->imax,
+	clk_rate = tegra_ppm_get_maxf(ctx->ppm, ctx->imax,
 				      TEGRA_PPM_UNITS_MILLIAMPS,
 				      ctx->temperature_now, 1);
 
@@ -160,49 +147,82 @@ static struct thermal_cooling_device_ops edp_cooling_ops = {
 	.set_cur_state = edp_set_cdev_state,
 };
 
-static int __init cdev_register(struct gpu_edp *ctx)
+static int __init cdev_register(struct gpu_edp *ctx, char *name)
 {
 	struct thermal_cooling_device *edp_cdev;
 
-	edp_cdev = thermal_cooling_device_register(ctx->plat_data->cdev_name,
+	edp_cdev = thermal_cooling_device_register(name,
 						   ctx,
 						   &edp_cooling_ops);
 	if (IS_ERR_OR_NULL(edp_cdev))
 		pr_err("Failed to register '%s' cooling device\n",
-			ctx->plat_data->cdev_name);
+			name);
 
 	return PTR_RET(edp_cdev);
 }
 
-/* TODO: take this data from DT */
-/* NOTE: called by an arch_initcall well before module_initcalls */
-void __init tegra_init_gpu_edp_limits(unsigned int regulator_ma)
+static int __init tegra_gpu_edp_parse_dt(struct platform_device *pdev,
+					 struct gpu_edp_platform_data *pdata)
 {
-	s_gpu.plat_data->imax = regulator_ma;
+
+	struct device_node *np = pdev->dev.of_node;
+
+	if (WARN(of_property_read_u32(np, "nvidia,freq_step",
+				      &pdata->freq_step),
+		 "missing required parameter: nvidia,freq_step\n"))
+		return -ENODATA;
+
+	if (WARN(of_property_read_u32(np, "nvidia,edp_limit",
+				      &pdata->imax),
+		 "missing required parameter: nvidia,edp_limit\n"))
+		return -ENODATA;
+
+	if (WARN(of_property_read_string(np, "nvidia,edp_cap_clk",
+					 (const char **)&pdata->cap_clk_name),
+		 "missing required parameter: nvidia,edp_cap_clk\n"))
+		return -ENODATA;
+
+	if (WARN(of_property_read_string(np, "nvidia,edp_clk",
+				      (const char **)&pdata->clk_name),
+		 "missing required parameter: nvidia,edp_clk\n"))
+		return -ENODATA;
+
+	pdata->cdev_name = "gpu_edp";
+	pdata->name = dev_name(&pdev->dev);
+
+	return 0;
 }
 
-static int __init tegra_gpu_edp_init(void)
+static int __init tegra_gpu_edp_probe(struct platform_device *pdev)
 {
-	static u32 tegra_chip_id;
 	struct clk *gpu_clk;
 	struct fv_relation *fv;
 	struct tegra_ppm_params *params;
 	unsigned iddq_ma;
+	struct gpu_edp_platform_data pdata;
+	struct gpu_edp *ctx;
+	int ret;
 
-	tegra_chip_id = tegra_get_chip_id();
+	if (WARN(!pdev || !pdev->dev.of_node,
+		 "DT node required but absent\n"))
+		return -EINVAL;
 
-	if (tegra_chip_id == TEGRA_CHIPID_TEGRA12)
-		params = tegra12x_get_gpu_powermodel_params();
-	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA13)
-		params = tegra13x_get_gpu_powermodel_params();
-	else {
-		WARN(true,
-		     "Failed GPU EDP mgmt init. No power model available\n");
-		return -ENODATA;
-	}
+	ret = tegra_gpu_edp_parse_dt(pdev, &pdata);
+	if (WARN(ret, "GPU EDP management initialization failed\n"))
+		return ret;
 
-	gpu_clk = tegra_get_clock_by_name(s_gpu.plat_data->clk_name);
-	fv = fv_relation_create(gpu_clk, s_gpu.plat_data->freq_step, 150,
+	params = of_read_tegra_ppm_params(pdev->dev.of_node);
+	if (WARN(IS_ERR_OR_NULL(params),
+		 "GPU EDP management initialization failed\n"))
+		return PTR_ERR(params);
+
+	ctx = devm_kzalloc(&pdev->dev, sizeof(*ctx), GFP_KERNEL);
+	if (WARN(IS_ERR_OR_NULL(ctx),
+		 "Failed GPU EDP mgmt init. Allocation failure\n"))
+		return PTR_ERR(ctx);
+
+	gpu_clk = tegra_get_clock_by_name(pdata.clk_name);
+	fv = fv_relation_create(gpu_clk, pdata.freq_step, 150,
 				      tegra_dvfs_predict_peak_millivolts);
 	if (WARN(IS_ERR_OR_NULL(fv),
 		 "Failed GPU EDP mgmt init. freq/volt data unavailable\n"))
@@ -210,25 +230,49 @@ static int __init tegra_gpu_edp_init(void)
 
 	iddq_ma = tegra_get_gpu_iddq_value();
 	pr_debug("%s: %s IDDQ value %d\n",
-		 __func__, s_gpu.plat_data->name, iddq_ma);
+		 __func__, pdata.name, iddq_ma);
 
 
-	s_gpu.cap_clk = tegra_get_clock_by_name(s_gpu.plat_data->cap_clk_name);
-	if (!s_gpu.cap_clk)
+	ctx->cap_clk = tegra_get_clock_by_name(pdata.cap_clk_name);
+	if (!ctx->cap_clk)
 		pr_err("%s: cannot get clock:%s\n",
-		       __func__, s_gpu.plat_data->cap_clk_name);
+		       __func__, pdata.cap_clk_name);
 
-	s_gpu.ppm = tegra_ppm_create(s_gpu.plat_data->name,
-				     fv, params, iddq_ma, NULL);
+	ctx->ppm = tegra_ppm_create(pdata.name, fv, params, iddq_ma, NULL);
 
-	if (WARN(IS_ERR_OR_NULL(s_gpu.ppm),
+	if (WARN(IS_ERR_OR_NULL(ctx->ppm),
 		 "Failed GPU EDP mgmt init. Couldn't create power model\n"))
-		return PTR_ERR(s_gpu.ppm);
+		return PTR_ERR(ctx->ppm);
 
-	s_gpu.temperature_now = 25; /* HACK */
+	ctx->temperature_now = -273; /* HACK */
+	ctx->imax = pdata.imax;
 
-	mutex_init(&s_gpu.edp_lock);
-	return cdev_register(&s_gpu);
+	mutex_init(&ctx->edp_lock);
+	return cdev_register(ctx, pdata.cdev_name);
 }
-module_init(tegra_gpu_edp_init);
 
+static struct of_device_id tegra_gpu_edp_of_match[] = {
+	{ .compatible = "nvidia,tegra124-gpu-edp-capping" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, tegra_gpu_edp_of_match);
+
+static struct platform_driver tegra_gpu_edp_driver = {
+	.driver = {
+		.name = "tegra_gpu_edp",
+		.owner = THIS_MODULE,
+		.of_match_table = tegra_gpu_edp_of_match,
+	},
+};
+
+static int __init tegra_gpu_edp_driver_init(void)
+{
+	return platform_driver_probe(&tegra_gpu_edp_driver,
+				     tegra_gpu_edp_probe);
+}
+module_init(tegra_gpu_edp_driver_init);
+
+MODULE_AUTHOR("NVIDIA Corp.");
+MODULE_DESCRIPTION("Tegra GPU EDP management");
+MODULE_LICENSE("GPL v2");
+MODULE_ALIAS("platform:tegra-gpu-edp");

@@ -181,18 +181,6 @@ int __init laguna_suspend_init(void)
 	return 0;
 }
 
-int __init laguna_edp_init(void)
-{
-	unsigned int regulator_mA;
-
-	/* gpu maximum current */
-	regulator_mA = 8000;
-	pr_info("%s: GPU regulator %d mA\n", __func__, regulator_mA);
-
-	tegra_init_gpu_edp_limits(regulator_mA);
-	return 0;
-}
-
 static struct pid_thermal_gov_params soctherm_pid_params = {
 	.max_err_temp = 9000,
 	.max_err_gain = 1000,

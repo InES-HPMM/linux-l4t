@@ -127,7 +127,6 @@ GPIO, also the GPIO is same for T114 interposer and T124*/
 
 int laguna_pinmux_init(void);
 int laguna_regulator_init(void);
-int laguna_edp_init(void);
 
 /* Norrin specific */
 int norrin_regulator_init(void);
@@ -143,7 +142,6 @@ int loki_panel_init(void);
 int loki_kbc_init(void);
 int loki_sensors_init(void);
 int loki_soctherm_init(void);
-int loki_edp_init(void);
 int loki_rail_alignment_init(void);
 
 /* AUO Display related GPIO */
@@ -162,7 +160,6 @@ int loki_rail_alignment_init(void);
 
 /* TN8 specific */
 
-int tn8_edp_init(void);
 void tn8_new_sysedp_init(void);
 void tn8_sysedp_dynamic_capping_init(void);
 

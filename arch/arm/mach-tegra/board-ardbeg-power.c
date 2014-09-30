@@ -379,28 +379,6 @@ int __init ardbeg_suspend_init(void)
 	return 0;
 }
 
-int __init ardbeg_edp_init(void)
-{
-	unsigned int regulator_mA;
-	struct board_info pmu_board_info;
-
-	tegra_get_pmu_board_info(&pmu_board_info);
-
-	/* gpu maximum current */
-	if (pmu_board_info.board_id == BOARD_E1936)
-		regulator_mA = 11200;
-	else if (pmu_board_info.board_id == BOARD_PM374)
-		regulator_mA = 16000;
-	else
-		regulator_mA = 12000;
-
-	pr_info("%s: GPU regulator %d mA\n", __func__, regulator_mA);
-	tegra_init_gpu_edp_limits(regulator_mA);
-
-	return 0;
-}
-
-
 static struct pid_thermal_gov_params soctherm_pid_params = {
 	.max_err_temp = 9000,
 	.max_err_gain = 1000,

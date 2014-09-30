@@ -22,7 +22,6 @@ obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-sensors.o
 obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-sysedp.o
 obj-${CONFIG_MACH_EXUMA}              += board-t132ref-norrin-power.o
 obj-${CONFIG_MACH_EXUMA}              += board-t132ref-norrin-memory.o
-obj-${CONFIG_MACH_EXUMA}              += board-t132ref-tn8-power.o
 
 obj-y                   += panel-lgd-wxga-7-0.o
 obj-y                   += panel-p-wuxga-10-1.o
@@ -57,7 +56,6 @@ obj-${CONFIG_MACH_T132REF}              += board-t132ref-norrin-power.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-norrin-memory.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-power.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-sdhci.o
-obj-${CONFIG_MACH_T132REF}              += board-t132ref-tn8-power.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-sysedp.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-tn8-sysedp.o
 obj-${CONFIG_MACH_T132REF}              += panel-a-1080p-11-6.o
