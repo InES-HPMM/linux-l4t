@@ -189,6 +189,11 @@ void nvadsp_os_stop(void);
 void nvadsp_os_suspend(void);
 
 /*
+ * ADSP TSC
+ */
+uint64_t nvadsp_get_timestamp_counter(void);
+
+/*
  * ADSP OS App
  */
 #define NVADSP_NAME_SZ	64

@@ -38,6 +38,11 @@
 #include "ape_actmon.h"
 #include "aram_manager.h"
 
+#define ADSP_TSC	0x48
+
+static DEFINE_SPINLOCK(tsc_lock);
+static struct nvadsp_drv_data *nvadsp_drv_data;
+
 #ifdef CONFIG_DEBUG_FS
 static int __init adsp_debug_init(struct nvadsp_drv_data *drv_data)
 {
@@ -267,6 +272,37 @@ static const struct dev_pm_ops nvadsp_pm_ops = {
 			   nvadsp_runtime_idle)
 };
 
+uint64_t nvadsp_get_timestamp_counter(void)
+{
+	uint32_t count_low = 0;
+	uint32_t count_high = 0;
+	uint64_t tsc = 0;
+	void * __iomem base = nvadsp_drv_data->base_regs[AMISC];
+	unsigned long flags;
+
+	spin_lock_irqsave(&tsc_lock, flags);
+read_again:
+	/* read MSB 32 bits */
+	count_high = readl(base + ADSP_TSC);
+	/* read LSB 32 bits */
+	count_low = readl(base + ADSP_TSC);
+	if (count_high != readl(base + ADSP_TSC))
+		goto read_again;
+
+	/*
+	 * Additional read to make sure that the next read is the higher
+	 * nibble
+	 */
+	readl(base + ADSP_TSC);
+
+	tsc = count_high;
+	tsc <<= 32;
+	tsc |= count_low;
+	spin_unlock_irqrestore(&tsc_lock, flags);
+	return tsc;
+}
+EXPORT_SYMBOL(nvadsp_get_timestamp_counter);
+
 static int __init nvadsp_probe(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv_data;
@@ -337,6 +373,8 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 
 		drv_data->dram_region[dram_iter] = res;
 	}
+
+	nvadsp_drv_data = drv_data;
 
 	platform_set_drvdata(pdev, drv_data);
 
