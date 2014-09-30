@@ -9382,6 +9382,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cilab", "tegra_vi", "cilab"),
 	CLK_DUPLICATE("cilcd", "tegra_vi", "cilcd"),
 	CLK_DUPLICATE("cile", "tegra_vi", "cile"),
+	CLK_DUPLICATE("camera.emc", "tegra_vi", "emc"),
 #else
 	CLK_DUPLICATE("via.vi.cbus", "tegra_vi", "vi"),
 	CLK_DUPLICATE("vib.vi.cbus", "tegra_vi.1", "vi"),
