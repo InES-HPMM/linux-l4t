@@ -1,7 +1,7 @@
 /*
  * include/dt-bindings/display/tegra-dc.h
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -67,6 +67,7 @@
 
 /* tegra_dc_platform_data.flags */
 #define TEGRA_DC_FLAG_ENABLED		(1 << 0)
+#define TEGRA_DC_FLAG_SET_EARLY_MODE		(1 << 1)
 
 /* tegra_dc_out_pin.name */
 #define TEGRA_DC_OUT_PIN_DATA_ENABLE	0

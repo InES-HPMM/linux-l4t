@@ -11,8 +11,10 @@ NVIDIA Tegra114 Display Controller
  - reg: Physical base address and length of the controller's registers.
  - interrupts: The interrupt outputs from the controller.
  - nvidia,memory-clients: This is the "swgroup" ID in the Tegra TRM term.
- - nvidia,dc-flags: This is to enable display controller in probe time.
-   Should be TEGRA_DC_FLAG_ENABLED or 0.
+ - nvidia,dc-flags: can be 0 or below flags
+   TEGRA_DC_FLAG_ENABLED is to enable display controller in probe time.
+   TEGRA_DC_FLAG_SET_EARLY_MODE together with TEGRA_DC_FLAG_ENABLED is to enable
+   early modeset during kernel boot.
  - nvidia,emc-clk-rate: Initially required embedded memory controller clk rate.
  - nvidia,cmu-enable: Toggle switch for color management unit.
  - nvidia,low-v-win: If low_v_win is set, we can lower vdd_core when that windows
