@@ -89,4 +89,11 @@ static inline struct tegra_cooling_device *tegra_vc_get_cdev(void)
 { return NULL; }
 #endif
 
+#ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
+unsigned long lp_to_virtual_gfreq(unsigned long lp_freq);
+#else
+static inline unsigned long lp_to_virtual_gfreq(unsigned long freq)
+{ return freq; }
+#endif
+
 #endif /* __MACH_TEGRA_CPU_TEGRA_H */

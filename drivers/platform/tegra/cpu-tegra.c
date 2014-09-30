@@ -1016,6 +1016,14 @@ static struct freq_attr *tegra_cpufreq_attr[] = {
 	NULL,
 };
 
+#ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
+#define LP_TO_G_PERCENTAGE		50
+unsigned long lp_to_virtual_gfreq(unsigned long lp_freq)
+{
+	return (lp_freq / 100) * LP_TO_G_PERCENTAGE;
+}
+#endif
+
 static struct cpufreq_driver tegra_cpufreq_driver = {
 	.verify		= tegra_verify_speed,
 	.target		= tegra_target,
