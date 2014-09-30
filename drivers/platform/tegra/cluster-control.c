@@ -174,20 +174,6 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 	return 0;
 }
 
-int tegra_cluster_switch(struct clk *cpu_clk, struct clk *new_clk)
-{
-	int ret;
-
-	ret = clk_set_parent(cpu_clk, new_clk);
-	if (ret)
-		return ret;
-
-	return 0;
-}
-
-void tegra_cluster_switch_prolog(unsigned int flags) {}
-void tegra_cluster_switch_epilog(unsigned int flags) {}
-
 #ifdef CONFIG_DEBUG_FS
 static int cluster_set(void *data, u64 val)
 {

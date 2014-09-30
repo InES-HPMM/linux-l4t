@@ -776,6 +776,39 @@ _out:
 
 #ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
 
+static int tegra_cluster_switch_locked(struct clk *cpu_clk, struct clk *new_clk)
+{
+	int ret;
+
+	ret = clk_set_parent(cpu_clk, new_clk);
+	if (ret)
+		return ret;
+
+	tegra_cpu_set_speed_cap_locked(NULL);
+
+	return 0;
+}
+
+/* Explicitly hold the lock here to protect manual cluster switch requests */
+int tegra_cluster_switch(struct clk *cpu_clk, struct clk *new_clk)
+{
+	int ret;
+
+	/* Order hotplug lock before cpufreq lock. Deadlock otherwise. */
+	get_online_cpus();
+
+	mutex_lock(&tegra_cpu_lock);
+	ret = tegra_cluster_switch_locked(cpu_clk, new_clk);
+	mutex_unlock(&tegra_cpu_lock);
+
+	put_online_cpus();
+
+	return ret;
+}
+
+void tegra_cluster_switch_prolog(unsigned int flags) {}
+void tegra_cluster_switch_epilog(unsigned int flags) {}
+
 #define UP_DELAY_MS		70
 #define DOWN_DELAY_MS		100
 
@@ -800,6 +833,7 @@ static void cluster_switch_worker(struct work_struct *work)
 	int err;
 	struct clk *target_clk = NULL;
 
+	get_online_cpus();
 	mutex_lock(&tegra_cpu_lock);
 
 	if (!auto_cluster_enable)
@@ -815,7 +849,7 @@ static void cluster_switch_worker(struct work_struct *work)
 	}
 
 	if (target_clk) {
-		err = tegra_cluster_switch(cpu_clk, target_clk);
+		err = tegra_cluster_switch_locked(cpu_clk, target_clk);
 		if (err)
 			pr_err("%s: Cluster switch to %d failed:%d\n",
 				__func__, target_state, err);
@@ -824,6 +858,7 @@ static void cluster_switch_worker(struct work_struct *work)
 	target_state = is_lp_cluster() ? SLOW_CLUSTER : FAST_CLUSTER;
 out:
 	mutex_unlock(&tegra_cpu_lock);
+	put_online_cpus();
 }
 
 /* Must be called with tegra_cpu_lock held */
@@ -953,6 +988,7 @@ static inline int tegra_auto_cluster_switch_init(void)
 static inline void tegra_auto_cluster_switch(void) {}
 static inline void tegra_auto_cluster_switch_exit(void) {}
 #endif
+
 unsigned int tegra_count_slow_cpus(unsigned long speed_limit)
 {
 	unsigned int cnt = 0;
