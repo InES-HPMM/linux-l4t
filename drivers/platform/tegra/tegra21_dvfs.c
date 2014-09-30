@@ -234,7 +234,7 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 		.speedo_id =  -1,
 		.process_id = -1,
 #ifdef CONFIG_TEGRA_GPU_DVFS
-		.max_mv = 1225,
+		.max_mv = 1150,
 #else
 		.max_mv = 1000,
 #endif
