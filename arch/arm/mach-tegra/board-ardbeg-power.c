@@ -85,7 +85,6 @@ static struct tegra_suspend_platform_data ardbeg_suspend_data = {
 #define E1735_CPU_VDD_STEP_UV		18750
 #define E1735_CPU_VDD_STEP_US		80
 #define E1735_CPU_VDD_BOOT_UV		1000000
-#define E1735_CPU_VDD_IDLE_MA		5000
 #define ARDBEG_DEFAULT_CVB_ALIGNMENT	10000
 
 #define E2141_CPU_VDD_MIN_UV		703000
@@ -334,15 +333,8 @@ int __init ardbeg_regulator_init(void)
 	switch (pmu_board_info.board_id) {
 	case BOARD_E1733:
 	case BOARD_E1734:
-		tegra_pmc_pmu_interrupt_polarity(true);
-		break;
-
 	case BOARD_E1735:
 		tegra_pmc_pmu_interrupt_polarity(true);
-#ifdef CONFIG_REGULATOR_TEGRA_DFLL_BYPASS
-		tegra_init_cpu_reg_mode_limits(
-			E1735_CPU_VDD_IDLE_MA, REGULATOR_MODE_IDLE);
-#endif
 		break;
 
 	case BOARD_E1736:
@@ -393,19 +385,6 @@ int __init ardbeg_edp_init(void)
 	struct board_info pmu_board_info;
 
 	tegra_get_pmu_board_info(&pmu_board_info);
-
-	regulator_mA = get_maximum_cpu_current_supported();
-	if (!regulator_mA) {
-		if (pmu_board_info.board_id == BOARD_E1936)
-			regulator_mA = 16800;
-		else if (pmu_board_info.board_id == BOARD_PM374)
-			regulator_mA = 32000;
-		else
-			regulator_mA = 14000;
-	}
-
-	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
-	tegra_init_cpu_edp_limits(regulator_mA);
 
 	/* gpu maximum current */
 	if (pmu_board_info.board_id == BOARD_E1936)

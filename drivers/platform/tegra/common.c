@@ -334,7 +334,6 @@ static int debug_uart_port_id;
 static bool uart_over_sd;
 static enum audio_codec_type audio_codec_name;
 static enum image_type board_image_type = system_image;
-static int max_cpu_current;
 static int max_core_current;
 static int emc_max_dvfs;
 static unsigned int memory_type;
@@ -1316,18 +1315,6 @@ static int __init tegra_pmu_core_edp(char *options)
 	return 0;
 }
 early_param("core_edp_mv", tegra_pmu_core_edp);
-
-int get_maximum_cpu_current_supported(void)
-{
-	return max_cpu_current;
-}
-static int __init tegra_max_cpu_current(char *options)
-{
-	char *p = options;
-	max_cpu_current = memparse(p, &p);
-	return 1;
-}
-__setup("max_cpu_cur_ma=", tegra_max_cpu_current);
 
 int get_maximum_core_current_supported(void)
 {

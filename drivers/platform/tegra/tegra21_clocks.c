@@ -10525,10 +10525,6 @@ void __init tegra21x_init_clocks(void)
 	/* Make sure at list one of dual PLLM/PLLMB is disabled */
 	tegra21_emc_sync_plls(&tegra_clk_emc, &tegra_pll_m, &tegra_pll_mb);
 
-
-	/* Initialize to default */
-	tegra_init_cpu_edp_limits(0);
-
 	/* Tegra21 allows to change dividers of disabled clocks */
 	tegra_clk_set_disabled_div_all();
 

@@ -33,35 +33,28 @@
 #include <linux/platform/tegra/common.h>
 
 struct cpu_edp_platform_data {
-	char *name;
+	const char *name;
 	char *clk_name;
+	u32 *hard_cap;
+	int n_caps;
 	int freq_step;
 	int reg_edp;
 	int reg_idle_max;
 };
 struct cpu_edp {
-	struct cpu_edp_platform_data *plat_data;
+	struct cpu_edp_platform_data pdata;
 	struct tegra_ppm *ppm;
-	unsigned int *hard_cap;
-	unsigned int n_cores;
 	int recent_temperature;
 };
 
-static struct cpu_edp_platform_data s_plat_data = {
-	.clk_name = "cpu_g",
-	.name = "cpu_edp",
-	.freq_step = 12750000,
-};
-
 static struct cpu_edp s_cpu = {
-	.plat_data = &s_plat_data,
 	.recent_temperature = -273,
 };
 
 unsigned int tegra_get_sysedp_max_freq(int cpupwr, int temperature,
 				       int online_cpus, int cpu_mode)
 {
-	if (WARN_ONCE(!s_cpu.ppm, "Init call orering issue!\n"))
+	if (WARN_ONCE(!s_cpu.ppm, "Init call ordering issue?\n"))
 		return 0;
 
 	if (cpu_mode != MODE_G) {
@@ -79,7 +72,7 @@ unsigned int tegra_get_edp_max_freq(int temperature, int online_cpus,
 {
 	unsigned int res;
 
-	if (WARN_ONCE(!s_cpu.ppm, "Init call orering issue!\n"))
+	if (WARN_ONCE(!s_cpu.ppm, "Init call ordering issue?\n"))
 		return 0;
 
 	s_cpu.recent_temperature = temperature;
@@ -89,13 +82,13 @@ unsigned int tegra_get_edp_max_freq(int temperature, int online_cpus,
 		return 0;
 	}
 
-	res = tegra_ppm_get_maxf(s_cpu.ppm, s_cpu.plat_data->reg_edp,
+	res = tegra_ppm_get_maxf(s_cpu.ppm, s_cpu.pdata.reg_edp,
 				 TEGRA_PPM_UNITS_MILLIAMPS,
 				 temperature, online_cpus);
 
-	if (s_cpu.hard_cap && s_cpu.hard_cap[online_cpus - 1]
-	    && res > s_cpu.hard_cap[online_cpus - 1])
-		res = s_cpu.hard_cap[online_cpus - 1];
+	if (s_cpu.pdata.hard_cap && s_cpu.pdata.hard_cap[online_cpus - 1]
+	    && res > s_cpu.pdata.hard_cap[online_cpus - 1])
+		res = s_cpu.pdata.hard_cap[online_cpus - 1];
 
 	return res;
 }
@@ -103,10 +96,12 @@ unsigned int tegra_get_edp_max_freq(int temperature, int online_cpus,
 unsigned int tegra_get_reg_idle_freq(int temperature, int online_cpus)
 {
 	unsigned int res;
-	WARN_ON(!s_cpu.ppm);
+
+	if (WARN_ONCE(!s_cpu.ppm, "Init call ordering issue?\n"))
+		return 0;
 
 	/* TODO: for T210, handle MODE_LP */
-	res = tegra_ppm_get_maxf(s_cpu.ppm, s_cpu.plat_data->reg_idle_max,
+	res = tegra_ppm_get_maxf(s_cpu.ppm, s_cpu.pdata.reg_idle_max,
 				 TEGRA_PPM_UNITS_MILLIAMPS,
 				 temperature, online_cpus);
 
@@ -116,12 +111,12 @@ unsigned int tegra_get_reg_idle_freq(int temperature, int online_cpus)
 
 bool tegra_is_edp_reg_idle_supported(void)
 {
-	return (s_cpu.plat_data->reg_idle_max != 0);
+	return (s_cpu.pdata.reg_idle_max != 0);
 }
 
 bool tegra_is_cpu_edp_supported(void)
 {
-	return s_cpu.plat_data->reg_edp != 0;
+	return s_cpu.pdata.reg_edp != 0;
 }
 
 void tegra_recalculate_cpu_edp_limits(void)
@@ -142,13 +137,16 @@ static int __init tegra_edp_debugfs_init(struct dentry *edp_dir)
 		return -ENOMEM;
 
 	debugfs_create_u32("reg_idle_ma", S_IRUGO | S_IWUSR,
-			   edp_dir, &s_cpu.plat_data->reg_idle_max);
+			   edp_dir, &s_cpu.pdata.reg_idle_max);
 	debugfs_create_u32("reg_edp_ma", S_IRUGO | S_IWUSR,
-			   edp_dir, &s_cpu.plat_data->reg_edp);
+			   edp_dir, &s_cpu.pdata.reg_edp);
 	debugfs_create_u32("temperature", S_IRUGO,
 			   edp_dir, &s_cpu.recent_temperature);
-	debugfs_create_u32_array("hard_cap", S_IRUGO,
-			   edp_dir, s_cpu.hard_cap, s_cpu.n_cores);
+	if (s_cpu.pdata.hard_cap)
+		debugfs_create_u32_array(
+			"hard_cap", S_IRUGO,
+			edp_dir, s_cpu.pdata.hard_cap,
+			s_cpu.pdata.n_caps);
 
 	return 0;
 }
@@ -157,100 +155,123 @@ static int __init tegra_edp_debugfs_init(void)
 { return 0; }
 #endif /* CONFIG_DEBUG_FS */
 
-/* TODO: take this data from DT */
-/* NOTE: called by an arch_initcall well before module_initcalls */
-void __init tegra_init_cpu_edp_limits(unsigned int regulator_ma)
+static int __init tegra_cpu_edp_parse_dt(struct platform_device *pdev,
+					 struct cpu_edp_platform_data *pdata)
 {
-	s_cpu.plat_data->reg_edp = regulator_ma;
-}
 
-void __init tegra_init_cpu_reg_mode_limits(unsigned int regulator_ma,
-					   unsigned int mode)
-{
-	if (mode == REGULATOR_MODE_IDLE) {
-		s_cpu.plat_data->reg_idle_max = regulator_ma;
-		return;
+	struct device_node *np = pdev->dev.of_node;
+
+	if (WARN(of_property_read_u32(np, "nvidia,freq_step",
+				      &pdata->freq_step),
+		 "missing required parameter: nvidia,freq_step\n"))
+		return -ENODATA;
+
+	if (WARN(of_property_read_u32(np, "nvidia,edp_limit",
+				      &pdata->reg_edp),
+		 "missing required parameter: nvidia,edp_limit\n"))
+		return -ENODATA;
+
+	if (of_find_property(np, "nvidia,regulator_idle_limit", NULL) &&
+	    WARN(of_property_read_u32(np, "nvidia,regulator_idle_limit",
+				      &pdata->reg_idle_max),
+		 "missing parameter value: nvidia,regulator_idle_limit\n"))
+		return -ENODATA;
+
+	if (WARN(of_property_read_string(np, "nvidia,edp_clk",
+				      (const char **)&pdata->clk_name),
+		 "missing required parameter: nvidia,edp_clk\n"))
+		return -ENODATA;
+
+	pdata->n_caps = of_property_count_u32(np, "nvidia,hard_cap");
+	if (pdata->n_caps > 0) {
+		pdata->hard_cap = devm_kzalloc(&pdev->dev,
+					       sizeof(u32[pdata->n_caps]),
+					       GFP_KERNEL);
+		if (!pdata->hard_cap)
+			return -ENOMEM;
+
+		if (WARN(of_property_read_u32_array(np, "nvidia,hard_cap",
+						    (u32 *)pdata->hard_cap,
+						    pdata->n_caps),
+			 "missing parameter value: nvidia,hard_cap\n"))
+			return -ENODATA;
 	}
-	pr_err("%s: Not supported regulator mode 0x%x\n", __func__, mode);
+
+	pdata->name = dev_name(&pdev->dev);
+
+	return 0;
 }
 
-/* TODO: eliminate this entirely */
-static int edp_find_speedo_idx(int cpu_speedo_id, unsigned int *cpu_speedo_idx)
+static int __init tegra_cpu_edp_probe(struct platform_device *pdev)
 {
-	int i, array_size;
-	struct tegra_edp_cpu_powermodel_params *params = NULL;
-	u32 tegra_chip_id;
-
-	params = NULL;
-
-	tegra_chip_id = tegra_get_chip_id();
-
-	if (tegra_chip_id == TEGRA_CHIPID_TEGRA12)
-		params = tegra12x_get_cpu_powermodel_params(0, &array_size);
-	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA13) {
-		/* pick edp_params array-index based on package */
-		*cpu_speedo_idx = (tegra_package_id() == 1);
-		return 0;
-	} else
-		array_size = 0;
-
-	for (i = 0; i < array_size; i++)
-		if (cpu_speedo_id == params[i].cpu_speedo_id) {
-			*cpu_speedo_idx = i;
-			return 0;
-		}
-
-	*cpu_speedo_idx = 0;
-	pr_err("%s: couldn't find cpu speedo id %d in freq/voltage LUT\n",
-	       __func__, cpu_speedo_id);
-	return -EINVAL;
-}
-
-static __init int tegra_cpu_edp_init(void)
-{
-	unsigned int cpu_iddq_ma;
-	unsigned int cpu_speedo_idx;
-	u32 tegra_chip_id;
+	struct clk *cpu_clk;
 	struct fv_relation *fv;
-	struct tegra_edp_cpu_powermodel_params *params;
-	int ret;
-	struct clk *clk_cpu_g =
-		tegra_get_clock_by_name(s_cpu.plat_data->clk_name);
-	int cpu_speedo_id = tegra_cpu_speedo_id();
+	struct tegra_ppm_params *params;
+	unsigned iddq_ma;
 
+	struct cpu_edp *ctx = &s_cpu;
+	int ret;
 	struct dentry *edp_dir;
 
-	cpu_iddq_ma = tegra_get_cpu_iddq_value();
-	pr_debug("%s: CPU IDDQ value %d\n", __func__, cpu_iddq_ma);
+	if (WARN(!pdev || !pdev->dev.of_node,
+		 "DT node required but absent\n"))
+		return -EINVAL;
 
-	ret = edp_find_speedo_idx(cpu_speedo_id, &cpu_speedo_idx);
-	BUG_ON(ret);
+	params = of_read_tegra_ppm_params(pdev->dev.of_node);
+	if (WARN(IS_ERR_OR_NULL(params),
+		 "CPU EDP management initialization failed\n"))
+		return PTR_ERR(params);
 
-	tegra_chip_id = tegra_get_chip_id();
+	ret = tegra_cpu_edp_parse_dt(pdev, &ctx->pdata);
+	if (WARN(ret, "CPU EDP management initialization failed\n"))
+		return ret;
 
-	params =
-		(tegra_chip_id == TEGRA_CHIPID_TEGRA12) ?
-		tegra12x_get_cpu_powermodel_params(cpu_speedo_idx, NULL) :
-		(tegra_chip_id == TEGRA_CHIPID_TEGRA13) ?
-		tegra13x_get_cpu_powermodel_params(cpu_speedo_idx, NULL) :
-		NULL;
-	BUG_ON(!params);
+	cpu_clk = tegra_get_clock_by_name(ctx->pdata.clk_name);
+	fv = fv_relation_create(cpu_clk, ctx->pdata.freq_step, 220,
+				      tegra_dvfs_predict_peak_millivolts);
+	if (WARN(IS_ERR_OR_NULL(fv),
+		 "Failed CPU EDP mgmt init. freq/volt data unavailable\n"))
+		return PTR_ERR(fv);
 
-	s_cpu.hard_cap = params->safety_cap;
-	s_cpu.n_cores = params->common.n_cores;
+	iddq_ma = tegra_get_cpu_iddq_value();
+	pr_debug("%s: CPU IDDQ value %d\n", __func__, iddq_ma);
 
-	fv = fv_relation_create(clk_cpu_g,
-				s_cpu.plat_data->freq_step, 220,
-				tegra_dvfs_predict_peak_millivolts);
+	edp_dir = debugfs_create_dir("cpu_edp", NULL);
 
-	edp_dir = debugfs_create_dir(s_cpu.plat_data->name, NULL);
+	ctx->ppm = tegra_ppm_create("cpu_edp", fv, params,
+				    iddq_ma, edp_dir);
 
-	s_cpu.ppm = tegra_ppm_create(s_cpu.plat_data->name,
-				     fv, &params->common, cpu_iddq_ma, edp_dir);
-	BUG_ON(!s_cpu.ppm);
+	if (WARN(IS_ERR_OR_NULL(ctx->ppm),
+		 "Failed CPU EDP mgmt init. Couldn't create power model\n"))
+		return PTR_ERR(ctx->ppm);
 
 	tegra_edp_debugfs_init(edp_dir);
 	return 0;
 }
-module_init(tegra_cpu_edp_init);
 
+
+static struct of_device_id tegra_cpu_edp_of_match[] = {
+	{ .compatible = "nvidia,tegra124-cpu-edp-capping" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, tegra_cpu_edp_of_match);
+
+static struct platform_driver tegra_cpu_edp_driver = {
+	.driver = {
+		.name = "tegra_cpu_edp",
+		.owner = THIS_MODULE,
+		.of_match_table = tegra_cpu_edp_of_match,
+	},
+};
+
+static int __init tegra_cpu_edp_driver_init(void)
+{
+	return platform_driver_probe(&tegra_cpu_edp_driver,
+				     tegra_cpu_edp_probe);
+}
+module_init(tegra_cpu_edp_driver_init);
+
+MODULE_AUTHOR("NVIDIA Corp.");
+MODULE_DESCRIPTION("Tegra CPU EDP management");
+MODULE_LICENSE("GPL v2");
+MODULE_ALIAS("platform:tegra-cpu-edp");

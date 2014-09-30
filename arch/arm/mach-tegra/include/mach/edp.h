@@ -110,7 +110,6 @@ bool tegra_is_cpu_edp_supported(void);
 
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 struct thermal_cooling_device *edp_cooling_device_create(void *v);
-void tegra_init_cpu_edp_limits(unsigned int regulator_ma);
 int tegra_get_edp_max_thermal_index(void);
 unsigned int tegra_get_edp_max_freq(int thermal_idx, int online_cpus,
 				    int cpu_mode);
@@ -118,10 +117,6 @@ unsigned int tegra_get_reg_idle_freq(int thermal_idx, int online_cpus);
 void tegra_recalculate_cpu_edp_limits(void);
 void tegra_get_cpu_edp_limits(const struct tegra_edp_limits **limits,
 			      int *size);
-void tegra_init_cpu_reg_mode_limits(unsigned int regulator_ma,
-				    unsigned int mode);
-void tegra_get_cpu_reg_mode_limits(const struct tegra_edp_limits **limits,
-				   int *size, unsigned int mode);
 void tegra_platform_edp_init(struct thermal_trip_info *trips,
 					int *num_trips, int margin);
 unsigned int tegra_get_sysedp_max_freq(int cpupwr, int temperature, int online_cpus,
@@ -130,18 +125,10 @@ unsigned int tegra_get_sysedp_max_freq(int cpupwr, int temperature, int online_c
 static inline struct thermal_cooling_device *edp_cooling_device_create(
 	int index)
 { return NULL; }
-static inline void tegra_init_cpu_edp_limits(int regulator_ma)
-{}
 static inline void tegra_recalculate_cpu_edp_limits(void)
 {}
 static inline void tegra_get_cpu_edp_limits(struct tegra_edp_limits **limits,
 					    int *size)
-{}
-static inline void tegra_init_cpu_reg_mode_limits(unsigned int regulator_ma,
-						  unsigned int mode)
-{}
-static inline void tegra_get_cpu_reg_mode_limits(
-	const struct tegra_edp_limits **limits, int *size, unsigned int mode)
 {}
 static inline void tegra_platform_edp_init(struct thermal_trip_info *trips,
 					   int *num_trips, int margin)
@@ -193,24 +180,6 @@ static inline void tegra_init_gpu_edp_limits(unsigned int regulator_ma)
 static inline void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
 					int *num_trips, int margin)
 {}
-#endif
-
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && !defined(CONFIG_ARCH_TEGRA_13x_SOC)
-struct tegra_edp_cpu_powermodel_params *tegra12x_get_cpu_powermodel_params(
-						int index, unsigned int *sz);
-#else
-static inline struct tegra_edp_cpu_powermodel_params
-	*tegra12x_get_cpu_powermodel_params(int index, unsigned int *sz)
-{ return NULL; }
-#endif
-
-#ifdef CONFIG_ARCH_TEGRA_13x_SOC
-struct tegra_edp_cpu_powermodel_params *tegra13x_get_cpu_powermodel_params(
-						int index, unsigned int *sz);
-#else
-static inline struct tegra_edp_cpu_powermodel_params
-	*tegra13x_get_cpu_powermodel_params(int index, unsigned int *sz)
-{ return NULL; }
 #endif
 
 #ifdef CONFIG_SYSEDP_FRAMEWORK

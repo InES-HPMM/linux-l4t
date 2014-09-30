@@ -61,17 +61,6 @@ int __init tn8_edp_init(void)
 	if (!tegra_chip_id)
 		tegra_chip_id = tegra_get_chip_id();
 
-	regulator_mA = get_maximum_cpu_current_supported();
-	if (!regulator_mA) {
-		if (IS_T13X)
-			regulator_mA = 16800;
-		else
-			regulator_mA = 12000;
-	}
-
-	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
-	tegra_init_cpu_edp_limits(regulator_mA);
-
 	/* gpu maximum current */
 	regulator_mA = 11200;
 	pr_info("%s: GPU regulator %d mA\n", __func__, regulator_mA);
