@@ -512,25 +512,42 @@ static struct tegra_throttle_data
 	return pdata;
 }
 
-static int tegra30_throttle_probe(struct platform_device *pdev)
+static int get_start_index(struct throttle_table *throt_tab,
+			u32 num_states, unsigned long cpu_g_maxf)
 {
-	char *type;
-	int ret = 0;
+	int si;
+
+	for (si = 0; si < num_states; ++si)
+		if (throt_tab[si].cap_freqs[0] < cpu_g_maxf)
+			return si;
+
+	return -EINVAL;
+}
+
+static int tegra_throttle_probe(struct platform_device *pdev)
+{
+	struct clk *clk_cpu_g;
+	int ret, start_index;
+	unsigned long cpu_g_maxf;
 	struct tegra_throttle_data *pdata;
 	struct balanced_throttle *bthrot;
+	struct thermal_cooling_device *cdev;
 
 	ret = tegra_throttle_init();
 	if (ret) {
-		dev_err(&pdev->dev, "tegra throttle init failed\n");
+		dev_err(&pdev->dev, "tegra throttle init failed.\n");
 		return -ENOMEM;
 	}
 
 	pdata = parse_throttle_dt_data(&pdev->dev);
 
 	if (!pdata) {
-		dev_err(&pdev->dev, "No Platform data\n");
+		dev_err(&pdev->dev, "No Platform data.\n");
 		return -EIO;
 	}
+
+	clk_cpu_g = tegra_get_clock_by_name("cpu_g");
+	cpu_g_maxf = clk_get_max_rate(clk_cpu_g);
 
 	list_for_each_entry(pdata, &bthrot_cdev_list, list) {
 		bthrot = devm_kzalloc(&pdev->dev,
@@ -538,19 +555,27 @@ static int tegra30_throttle_probe(struct platform_device *pdev)
 		if (IS_ERR(bthrot))
 			return -ENOMEM;
 
-		bthrot->throt_tab_size
-			= pdata->num_states;
-		bthrot->throt_tab = pdata->throt_tab;
-		type = pdata->cdev_type;
+		start_index = get_start_index(pdata->throt_tab,
+					      pdata->num_states,
+					      cpu_g_maxf / 1000);
+		if (start_index < 0) {
+			dev_err(&pdev->dev, "tegra throttle init FAILED.\n");
+			return -EINVAL;
+		}
 
-		if (IS_ERR_OR_NULL(balanced_throttle_register(bthrot, type)))
-			dev_err(&pdev->dev, "balanced_throttle_register FAILED\n");
+		bthrot->throt_tab_size = pdata->num_states - start_index;
+		bthrot->throt_tab      = pdata->throt_tab + start_index;
+
+		cdev = balanced_throttle_register(bthrot, pdata->cdev_type);
+		if (IS_ERR_OR_NULL(cdev))
+			dev_err(&pdev->dev,
+				"balanced_throttle_register FAILED.\n");
 	}
 
 	return 0;
 }
 
-static int tegra30_throttle_remove(struct platform_device *pdev)
+static int tegra_throttle_remove(struct platform_device *pdev)
 {
 	struct balanced_throttle *bthrot;
 
@@ -565,22 +590,22 @@ static int tegra30_throttle_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct of_device_id tegra30_throttle_of_match[] = {
+static struct of_device_id tegra_throttle_of_match[] = {
 	{ .compatible = "nvidia,balanced-throttle", },
 	{ },
 };
 
-static struct platform_driver tegra30_throtlle_driver = {
+static struct platform_driver tegra_throttle_driver = {
 	.driver = {
 		.name = "tegra-throttle",
 		.owner = THIS_MODULE,
-		.of_match_table = tegra30_throttle_of_match,
+		.of_match_table = tegra_throttle_of_match,
 	},
-	.probe = tegra30_throttle_probe,
-	.remove = tegra30_throttle_remove,
+	.probe = tegra_throttle_probe,
+	.remove = tegra_throttle_remove,
 };
 
-module_platform_driver(tegra30_throtlle_driver);
+module_platform_driver(tegra_throttle_driver);
 
 MODULE_DESCRIPTION("Tegra Balanced Throttle Driver");
 MODULE_AUTHOR("NVIDIA");
