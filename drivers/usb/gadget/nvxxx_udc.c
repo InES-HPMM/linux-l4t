@@ -3366,6 +3366,28 @@ static ssize_t debug_store(struct device *_dev, struct device_attribute *attr,
 	if (sysfs_streq(buf, "show_epc"))
 		dbg_print_ep_ctx(nvudc);
 
+	if (sysfs_streq(buf, "enable_host")) {
+		msg_info(nvudc->dev, "AppleOTG: setting up host mode\n");
+		nvudc->id_grounded = true;
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+			USB2_VBUS_ID_0_VBUS_OVERRIDE, 0);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+			USB2_VBUS_ID_0_ID_OVERRIDE,
+			USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND);
+		xudc_set_port_power(nvudc, true);
+	}
+	if (sysfs_streq(buf, "enable_device")) {
+		msg_info(nvudc->dev, "AppleOTG: setting up device mode\n");
+		nvudc->id_grounded = false;
+		xudc_set_port_power(nvudc, false);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+			USB2_VBUS_ID_0_ID_OVERRIDE,
+			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+			USB2_VBUS_ID_0_VBUS_OVERRIDE,
+			USB2_VBUS_ID_0_VBUS_OVERRIDE);
+	}
+
 	return size;
 }
 static DEVICE_ATTR(debug, S_IWUSR, NULL, debug_store);
