@@ -28,11 +28,9 @@
 #include <linux/irq.h>
 #include <linux/interrupt.h>
 #include <linux/irqdomain.h>
-#include <linux/slab.h>
 #include <linux/suspend.h>
 #include <linux/uaccess.h>
 #include <linux/thermal.h>
-#include <linux/platform_data/thermal_sensors.h>
 #include <linux/bug.h>
 #include <linux/tegra-fuse.h>
 #include <linux/tegra-pmc.h>
@@ -40,13 +38,10 @@
 #include <linux/platform_device.h>
 #include <linux/of.h>
 #include <linux/tegra_soctherm.h>
-
-#include <mach/irqs.h>
-#include <mach/edp.h>
-
-#include "iomap.h"
 #include <linux/platform/tegra/common.h>
 #include <linux/platform/tegra/dvfs.h>
+
+#include "iomap.h"
 
 /*
  * In backward-compatibility mode, soctherm registers itself as thermal_zones.
@@ -4264,13 +4259,13 @@ static void soctherm_throttlectl_parse(struct platform_device *pdev)
 				continue;
 			ocn = np->name[len] - '0';
 			dev_err(&pdev->dev, "node %s: enable OC%d (TODO).\n",
-				np->name, ocn);
+				np->full_name, ocn);
 			continue;
 		}
 
 		if (of_property_read_string(np, "cdev-type", &type)) {
 			dev_err(&pdev->dev, "missing 'cdev-type' from %s.\n",
-				np->name);
+				np->full_name);
 			continue;
 		}
 
