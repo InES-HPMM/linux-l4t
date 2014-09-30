@@ -22,6 +22,7 @@
 #include "tegra210-platforms/tegra210-soctherm.dtsi"
 #include "tegra210-platforms/tegra210-bthrot-cdev.dtsi"
 #include "tegra210-platforms/tegra210-thermal-aotag.dtsi"
+#include "tegra210-platforms/tegra210-thermal.dtsi"
 #include <dt-bindings/gpio/tegra-gpio.h>
 
 / {
