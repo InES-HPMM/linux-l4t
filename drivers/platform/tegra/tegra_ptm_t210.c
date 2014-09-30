@@ -127,15 +127,6 @@ static int trace_t210_stop(struct tracectx *t)
 		ptm_t210_writel(t, id, 0,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
 
-	/* Manual flush and stop */
-	etf_writel(t, 0x1001, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-	etf_writel(t, 0x1041, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-
-	udelay(1000);
-
-	/* Disable ETF */
-	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_CTL_0);
-
 	return 0;
 }
 
@@ -155,25 +146,13 @@ static int etf_open(struct inode *inode, struct file *file)
 static ssize_t etf_read(struct file *file, char __user *data,
 	size_t len, loff_t *ppos)
 {
-	int rrp, rrd, rwp, rwp32, rrp32, max, count = 0, serial, id, overflow;
+	int rrp, rrd, rwp, rwp32, rrp32, max, count = 0, serial, overflow;
 	struct tracectx *t = file->private_data;
 
 	if (!t->etf_regs)
 		return -ENODEV;
 
 	etf_regs_unlock(t);
-
-	/* Enabling the PTMs */
-	for (id = 0; id < t->ptm_t210_regs_count; id++)
-		ptm_t210_writel(t, id, 1,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
-
-	udelay(1000);
-
-	/* Disabling the PTMs */
-	for (id = 0; id < t->ptm_t210_regs_count; id++)
-		ptm_t210_writel(t, id, 0,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
 
 	/* Manual flush and stop */
 	etf_writel(t, 0x1001, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
