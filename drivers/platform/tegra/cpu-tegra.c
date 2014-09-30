@@ -774,6 +774,111 @@ _out:
 	return 0;
 }
 
+#ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
+static int target_state;
+static unsigned int up_delay;
+static unsigned int down_delay;
+static unsigned int auto_cluster_enable;
+static unsigned int idle_top_freq;
+static unsigned int idle_bottom_freq;
+static struct timer_list updown_timer;
+static struct work_struct cluster_switch_work;
+static struct clk *lp_clock, *g_clock;
+
+static void updown_handler(unsigned long data)
+{
+	schedule_work(&cluster_switch_work);
+}
+
+static void cluster_switch_worker(struct work_struct *work)
+{
+	int current_state;
+	int err;
+	struct clk *target_clk = NULL;
+
+	mutex_lock(&tegra_cpu_lock);
+
+	if (!auto_cluster_enable)
+		goto out;
+
+	current_state = is_lp_cluster() ? SLOW_CLUSTER : FAST_CLUSTER;
+
+	if (current_state != target_state) {
+		if (target_state  == SLOW_CLUSTER)
+			target_clk = lp_clock;
+		else
+			target_clk = g_clock;
+	}
+
+	if (target_clk) {
+		err = tegra_cluster_switch(cpu_clk, target_clk);
+		if (err)
+			pr_err("%s: Cluster switch to %d failed:%d\n",
+				__func__, target_state, err);
+	}
+
+	target_state = is_lp_cluster() ? SLOW_CLUSTER : FAST_CLUSTER;
+out:
+	mutex_unlock(&tegra_cpu_lock);
+}
+
+/* Must be called with tegra_cpu_lock held */
+static void tegra_auto_cluster_switch(void)
+{
+	unsigned int cpu_freq = tegra_getspeed(0);
+
+	if (!auto_cluster_enable)
+		return;
+
+	if (is_lp_cluster()) {
+		if (cpu_freq >= idle_top_freq && target_state != FAST_CLUSTER) {
+			target_state = FAST_CLUSTER;
+			mod_timer(&updown_timer, jiffies +
+					msecs_to_jiffies(up_delay));
+		} else if (cpu_freq < idle_top_freq &&
+			   target_state == FAST_CLUSTER) {
+			target_state = SLOW_CLUSTER;
+			del_timer(&updown_timer);
+		}
+	} else {
+		if (cpu_freq <= idle_bottom_freq &&
+		    target_state !=  SLOW_CLUSTER) {
+			target_state = SLOW_CLUSTER;
+			mod_timer(&updown_timer, jiffies +
+					msecs_to_jiffies(down_delay));
+		} else if (cpu_freq > idle_bottom_freq &&
+			   target_state == SLOW_CLUSTER) {
+			target_state = FAST_CLUSTER;
+			del_timer(&updown_timer);
+		}
+	}
+}
+
+static int tegra_auto_cluster_switch_init(void)
+{
+	init_timer(&updown_timer);
+	updown_timer.function = updown_handler;
+	INIT_WORK(&cluster_switch_work,
+			cluster_switch_worker);
+	lp_clock = tegra_get_clock_by_name("cpu_lp");
+	g_clock = tegra_get_clock_by_name("cpu_g");
+
+	if (!g_clock || !lp_clock) {
+		pr_err("%s: Clock not present\n", __func__);
+		return -EINVAL;
+	}
+	target_state = is_lp_cluster() ? SLOW_CLUSTER : FAST_CLUSTER;
+	idle_top_freq = lp_to_virtual_gfreq(clk_get_max_rate(lp_clock)) / 1000;
+	idle_bottom_freq = clk_get_min_rate(g_clock) / 1000;
+
+	return 0;
+}
+#else
+static inline int tegra_auto_cluster_switch_init(void)
+{ return 0; }
+static inline void tegra_auto_cluster_switch(void)
+{ }
+#endif
 unsigned int tegra_count_slow_cpus(unsigned long speed_limit)
 {
 	unsigned int cnt = 0;
@@ -870,8 +975,10 @@ int tegra_cpu_set_speed_cap_locked(unsigned int *speed_cap)
 		*speed_cap = new_speed;
 
 	ret = tegra_update_cpu_speed(new_speed);
-	if (ret == 0)
+	if (ret == 0) {
 		tegra_auto_hotplug_governor(new_speed, false);
+		tegra_auto_cluster_switch();
+	}
 	return ret;
 }
 
@@ -969,6 +1076,7 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 			rate);
 		tegra_update_cpu_speed(rate);
 		tegra_auto_hotplug_governor(rate, true);
+		tegra_auto_cluster_switch();
 		mutex_unlock(&tegra_cpu_lock);
 	} else if (event == PM_POST_SUSPEND) {
 		unsigned int freq;
@@ -1124,6 +1232,10 @@ static int __init tegra_cpufreq_init(void)
 	}
 
 	ret = tegra_auto_hotplug_init(&tegra_cpu_lock);
+	if (ret)
+		return ret;
+
+	ret = tegra_auto_cluster_switch_init();
 	if (ret)
 		return ret;
 
