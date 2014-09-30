@@ -32,7 +32,8 @@ struct resource;
 struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 					struct tegra_dc *dc,
 					struct tegra_fb_data *fb_data,
-					struct resource *fb_mem);
+					struct resource *fb_mem,
+					void *virt_addr);
 void tegra_fb_unregister(struct tegra_fb_info *fb_info);
 void tegra_fb_pan_display_reset(struct tegra_fb_info *fb_info);
 void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
