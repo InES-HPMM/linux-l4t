@@ -791,63 +791,6 @@ TRACE_EVENT(f2fs_write_checkpoint,
 		__entry->msg)
 );
 
-TRACE_EVENT(f2fs_write_begin,
-
-	TP_PROTO(struct inode *inode, loff_t pos, unsigned int len,
-		 unsigned int flags),
-
-	TP_ARGS(inode, pos, len, flags),
-
-	TP_STRUCT__entry(
-		__field(	dev_t,	dev			)
-		__field(	ino_t,	ino			)
-		__field(	loff_t,	pos			)
-		__field(	unsigned int, len		)
-		__field(	unsigned int, flags		)
-	),
-
-	TP_fast_assign(
-		__entry->dev	= inode->i_sb->s_dev;
-		__entry->ino	= inode->i_ino;
-		__entry->pos	= pos;
-		__entry->len	= len;
-		__entry->flags	= flags;
-	),
-
-	TP_printk("dev = (%d,%d), ino %lu, pos %lld, len %u, flags %u",
-		  MAJOR(__entry->dev), MINOR(__entry->dev),
-		  (unsigned long) __entry->ino,
-		  __entry->pos, __entry->len, __entry->flags)
-);
-
-TRACE_EVENT(f2fs_write_end,
-	TP_PROTO(struct inode *inode, loff_t pos, unsigned int len,
-			unsigned int copied),
-
-	TP_ARGS(inode, pos, len, copied),
-
-	TP_STRUCT__entry(
-		__field(	dev_t,	dev			)
-		__field(	ino_t,	ino			)
-		__field(	loff_t,	pos			)
-		__field(	unsigned int, len		)
-		__field(	unsigned int, copied		)
-	),
-
-	TP_fast_assign(
-		__entry->dev	= inode->i_sb->s_dev;
-		__entry->ino	= inode->i_ino;
-		__entry->pos	= pos;
-		__entry->len	= len;
-		__entry->copied	= copied;
-	),
-
-	TP_printk("dev = (%d,%d), ino %lu, pos %lld, len %u, copied %u",
-		  MAJOR(__entry->dev), MINOR(__entry->dev),
-		  (unsigned long) __entry->ino,
-		  __entry->pos, __entry->len, __entry->copied)
-);
-
 TRACE_EVENT(f2fs_issue_discard,
 
 	TP_PROTO(struct super_block *sb, block_t blkstart, block_t blklen),
