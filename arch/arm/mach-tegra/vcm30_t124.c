@@ -31,6 +31,7 @@
 #include <linux/tegra-pmc.h>
 #include <linux/pid_thermal_gov.h>
 #include <linux/tegra_soctherm.h>
+#include <linux/irqchip/tegra.h>
 #include <asm/io.h>
 #include "board.h"
 #include "board-common.h"
@@ -378,6 +379,9 @@ static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 };
 
+/* wakeup IDs corresponding to XHCI usage*/
+#define USB3_UTMIP_WAKEUP 41
+#define XUSB_PADCTL_WAKEUP 58
 void __init tegra_vcm30_t124_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
@@ -410,6 +414,13 @@ void __init tegra_vcm30_t124_usb_init(void)
 		tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 		platform_device_register(&tegra_ehci3_device);
 	}
+
+	/*
+	 * lp0 has auto-resume issues when XHCI wakeup source is allowed in
+	 * the platform.  Undeclare it to avoid autoresume.
+	 */
+	tegra_disable_wake_source(USB3_UTMIP_WAKEUP);
+	tegra_disable_wake_source(XUSB_PADCTL_WAKEUP);
 }
 
 #ifdef CONFIG_USE_OF
