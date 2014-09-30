@@ -141,6 +141,7 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "tsensor",    "clk_m",        500000,         false },
 #endif
 	{ "csite",      NULL,           0,              true },
+	{ "dbgapb",     NULL,           0,              true },
 	{ "adsp_cpu",	NULL,	600000000,		false },
 	{ NULL,         NULL,           0,              0},
 
