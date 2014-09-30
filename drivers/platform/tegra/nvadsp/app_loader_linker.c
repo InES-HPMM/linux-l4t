@@ -831,9 +831,8 @@ static int elf_header_check(struct load_info *info)
 	return 0;
 }
 
-struct adsp_module
-*load_adsp_module(const char *appname,
-			const char *appfile, struct device *dev)
+struct adsp_module *load_adsp_module(const char *appname, const char *appfile,
+	struct device *dev, struct app_load_stats *stats)
 {
 	struct load_info info = { };
 	struct adsp_module *mod;
@@ -846,6 +845,7 @@ struct adsp_module
 	struct app_mem_size *mem_size;
 	int ret;
 
+	RECORD_STAT(stats->ns_time_req_firmware);
 	ret = request_firmware(&fw, appfile, dev);
 	if (ret < 0) {
 		dev_err(dev,
@@ -853,6 +853,7 @@ struct adsp_module
 							appname, appfile, ret);
 		return ERR_PTR(ret);
 	}
+	RECORD_STAT(stats->ns_time_req_firmware);
 
 	info.hdr = (struct elf32_hdr *)fw->data;
 	info.len = fw->size;

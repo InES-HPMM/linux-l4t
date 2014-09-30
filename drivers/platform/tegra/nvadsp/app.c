@@ -48,6 +48,7 @@
 
 struct nvadsp_app_service {
 	char name[NVADSP_NAME_SZ];
+	char file[NVADSP_NAME_SZ];
 	struct list_head node;
 	int instance;
 	spinlock_t lock;
@@ -71,6 +72,13 @@ struct app_load_data {
 	uint64_t adsp_mod_size;
 #endif
 	uint32_t ser;
+#if RECORD_STATS
+	uint64_t map_time;
+	uint64_t app_load_time;
+	uint64_t adsp_send_status_time;
+	uint64_t timestamp;
+	uint64_t receive_timestamp;
+#endif
 } __packed;
 
 struct app_init_data {
@@ -85,6 +93,14 @@ struct app_init_data {
 	uint32_t aram_x_ptr;
 	uint32_t aram_x_flag;
 	nvadsp_app_args_t app_args;
+#if RECORD_STATS
+	uint64_t app_init_time;
+	uint64_t app_mem_instance_map;
+	uint64_t app_init_call;
+	uint64_t adsp_send_status_time;
+	uint64_t timestamp;
+	uint64_t receive_timestamp;
+#endif
 } __packed;
 
 struct app_deinit_data {
@@ -96,6 +112,20 @@ struct app_start_data {
 	uint32_t ptr;
 	uint32_t stack_size;
 	uint32_t status;
+#if RECORD_STATS
+	uint64_t app_start_time;
+	uint64_t app_thread_creation_time;
+	uint64_t app_thread_detach_time;
+	uint64_t app_thread_resume_time;
+	uint64_t insert_queue_head_time;
+	uint64_t thread_yield_time;
+	uint64_t thread_resched_time;
+	uint64_t kevlog_thread_switch_time;
+	uint64_t thread_context_switch_time;
+	uint64_t adsp_send_status_time;
+	uint64_t timestamp;
+	uint64_t receive_timestamp;
+#endif
 } __packed;
 
 struct app_complete_data {
@@ -122,6 +152,9 @@ static struct nvadsp_app_priv_struct priv;
 static struct work_struct mailbox_work;
 static struct nvadsp_mbox mbox;
 static struct list_head service_list;
+#if RECORD_STATS
+static u64 ns_time_native_load_complete;
+#endif
 
 DECLARE_COMPLETION(os_load);
 DECLARE_COMPLETION(load_app_status);
@@ -142,6 +175,91 @@ static DEFINE_SPINLOCK(state_lock);
 static DEFINE_MUTEX(service_lock_list);
 
 struct shared_mem_struct *shared;
+
+static inline void print_load_stats(const char *appfile,
+	struct app_load_stats *stats, struct device *dev)
+{
+#if RECORD_STATS
+	dev_info(dev, "%s total load time %lld us\n",
+		appfile, stats->ns_time_load / 1000);
+	dev_info(dev, "%s parse load time %lld us\n",
+		appfile, stats->ns_time_service_parse / 1000);
+	dev_info(dev, "%s module load time %lld us\n",
+		appfile, stats->ns_time_module_load / 1000);
+	dev_info(dev, "\t request firmware %lld us\n",
+		stats->ns_time_req_firmware / 1000);
+	dev_info(dev, "\t layout and allocate  %lld us\n",
+		stats->ns_time_layout / 1000);
+	dev_info(dev, "%s native load time %lld us\n",
+		appfile, stats->ns_time_native_load / 1000);
+	dev_info(dev, "\t load mbox_send time %lld us\n",
+		stats->ns_time_load_mbox_send_time / 1000);
+	dev_info(dev, "\t load native wait time %lld us\n",
+		stats->ns_time_load_wait_time / 1000);
+	dev_info(dev, "\t\t load native load complete %lld us\n",
+		stats->ns_time_native_load_complete / 1000);
+	dev_info(dev, "\t\t\t adsp map %llu us\n",
+		stats->ns_time_adsp_map);
+	dev_info(dev, "\t\t\t adsp app load %llu us\n",
+		stats->ns_time_adsp_app_load);
+	dev_info(dev, "\t\t\t adsp app load send ack %llu us\n",
+		stats->ns_time_adsp_send_status);
+	dev_info(dev, "\t\t\t latency in receiveing the mbox on adsp %llu\n",
+		stats->adsp_receive_timestamp - stats->host_send_timestamp);
+	dev_info(dev, "\t\t\t latency in receiveing the mbox on host %llu\n",
+		stats->host_receive_timestamp - stats->adsp_receive_timestamp);
+	dev_info(dev, "%s timestamp before send %llu\n",
+		appfile, stats->host_send_timestamp);
+	dev_info(dev, "%s timestamp on adsp receive %llu\n",
+		appfile, stats->adsp_receive_timestamp);
+	dev_info(dev, "%s timestamp on adsp receive %llu\n",
+		appfile, stats->host_receive_timestamp);
+#endif
+}
+
+static inline void print_init_stats(const char *appfile,
+	struct app_init_stats *stats, struct device *dev)
+{
+#if RECORD_STATS
+	dev_info(dev, "%s app takes %lld us to init\n",
+		appfile, stats->ns_time_app_init / 1000);
+	dev_info(dev, "\t app instance allocation %lld us\n",
+		stats->ns_time_app_alloc / 1000);
+	dev_info(dev, "\t app instance memory allocation %lld us\n",
+		stats->ns_time_instance_memory / 1000);
+	dev_info(dev, "\t app instance native init call %lld us\n",
+		stats->ns_time_native_call / 1000);
+	dev_info(dev, "\t\t app init call on adsp %llu us\n",
+		stats->ns_time_adsp_app_init);
+	dev_info(dev, "\t\t\t app instance map on adsp %llu us\n",
+		stats->ns_time_adsp_mem_instance_map);
+	dev_info(dev, "\t\t\t app actual init call on adsp %llu us\n",
+		stats->ns_time_adsp_init_call);
+	dev_info(dev, "\t\t app send init status ack %llu us\n",
+		stats->ns_time_adsp_send_status);
+#endif
+}
+
+static inline void print_start_stats(const char *appfile,
+	struct app_start_stats *stats, struct device *dev)
+{
+#if RECORD_STATS
+	dev_info(dev, "%s app takes %lld us to start\n",
+		appfile, stats->ns_time_app_start / 1000);
+	dev_info(dev, "\t app instance native init call %lld us\n",
+		stats->ns_time_native_call / 1000);
+	dev_info(dev, "\t\t app start call on adsp %llu us\n",
+		stats->ns_time_adsp_app_start);
+	dev_info(dev, "\t\t\t app thread creation %llu us\n",
+		stats->ns_time_app_thread_creation);
+	dev_info(dev, "\t\t\t app thread detach %llu us\n",
+		stats->ns_time_app_thread_detach);
+	dev_info(dev, "\t\t\t app threaad resume %llu us\n",
+		stats->ns_time_app_thread_resume);
+	dev_info(dev, "\t\t app send start status ack %llu us\n",
+		stats->ns_time_adsp_send_status);
+#endif
+}
 
 static void app_complete_notifier(struct work_struct *work)
 {
@@ -175,11 +293,14 @@ static void notify_update_nvadsp_app_complete(struct app_complete_data *data)
 
 static void nvadsp_app_receive_thread(struct work_struct *work)
 {
-	int data = -1;
 	struct device *dev = &priv.pdev->dev;
+	struct app_load_data *load;
+	int data = -1;
 
 	while (1) {
 		nvadsp_mbox_recv(&mbox, &data, true, ~0);
+		load = &shared->app_load;
+		RECORD_TIMESTAMP(load->receive_timestamp);
 		switch (data) {
 		case OS_LOAD_COMPLETE:
 			dev_dbg(dev, "in OS_LOAD_COMPLETE\n");
@@ -188,6 +309,7 @@ static void nvadsp_app_receive_thread(struct work_struct *work)
 
 		case APP_LOAD_RET_STATUS:
 			dev_dbg(dev, "in APP_LOAD_RET_STATUS\n");
+			RECORD_STAT(ns_time_native_load_complete);
 			complete(&load_app_status);
 			break;
 
@@ -239,8 +361,23 @@ int wait_for_adsp_os_load_complete(void)
 
 	return ret;
 }
+static inline void native_adsp_app_start_stats(struct app_start_stats *stats,
+	struct app_start_data *data)
+{
+	EQUATE_STAT(stats->ns_time_adsp_app_start, data->app_start_time);
+	EQUATE_STAT(stats->ns_time_app_thread_creation,
+		data->app_thread_creation_time);
+	EQUATE_STAT(stats->ns_time_app_thread_detach,
+		data->app_thread_detach_time);
+	EQUATE_STAT(stats->ns_time_app_thread_resume,
+		data->app_thread_resume_time);
+	EQUATE_STAT(stats->ns_time_adsp_send_status,
+		data->adsp_send_status_time);
+	EQUATE_STAT(stats->adsp_receive_timestamp, data->timestamp);
+}
 
-static int native_adsp_app_start(nvadsp_app_info_t *app)
+static int native_adsp_app_start(nvadsp_app_info_t *app,
+	struct app_start_stats *stats)
 {
 	struct app_start_data *data = &shared->app_start;
 	int32_t status;
@@ -250,6 +387,8 @@ static int native_adsp_app_start(nvadsp_app_info_t *app)
 
 	nvadsp_mbox_send(&mbox, APP_START, NVADSP_MBOX_SMSG, true, 100);
 	wait_for_completion(&app_start_status);
+	native_adsp_app_start_stats(stats, data);
+
 	status = data->status;
 	memset(data, 0, sizeof(struct app_start_data));
 
@@ -275,7 +414,22 @@ static struct nvadsp_app_service
 	return NULL;
 }
 
-uint32_t native_adsp_load_app(struct nvadsp_app_service *ser)
+static inline void native_adsp_load_stats(struct app_load_stats *stats,
+	struct app_load_data *data)
+{
+	EQUATE_STAT(stats->ns_time_native_load_complete,
+		ns_time_native_load_complete);
+	EQUATE_STAT(stats->ns_time_adsp_map, data->map_time);
+	EQUATE_STAT(stats->ns_time_adsp_app_load, data->app_load_time);
+	EQUATE_STAT(stats->ns_time_adsp_send_status,
+		data->adsp_send_status_time);
+	EQUATE_STAT(stats->adsp_receive_timestamp, data->timestamp);
+	EQUATE_STAT(stats->host_receive_timestamp, data->receive_timestamp);
+	EQUATE_STAT(ns_time_native_load_complete, 0);
+}
+
+uint32_t native_adsp_load_app(struct nvadsp_app_service *ser,
+	struct app_load_stats *stats)
 {
 	uint32_t status;
 	struct app_load_data *data = &shared->app_load;
@@ -289,8 +443,16 @@ uint32_t native_adsp_load_app(struct nvadsp_app_service *ser)
 	strncpy(data->service_name, ser->name, NVADSP_NAME_SZ);
 #endif
 
+	RECORD_TIMESTAMP(stats->host_send_timestamp);
+	RECORD_STAT(stats->ns_time_load_mbox_send_time);
 	nvadsp_mbox_send(&mbox, LOAD_APP, NVADSP_MBOX_SMSG, true, 100);
+	RECORD_STAT(stats->ns_time_load_mbox_send_time);
+
+	RECORD_STAT(stats->ns_time_load_wait_time);
+	RECORD_STAT(ns_time_native_load_complete);
 	wait_for_completion(&load_app_status);
+	RECORD_STAT(stats->ns_time_load_wait_time);
+	native_adsp_load_stats(stats, data);
 	status = data->ser;
 	memset(data, 0, sizeof(struct app_load_data));
 
@@ -306,27 +468,36 @@ nvadsp_app_handle_t
 nvadsp_app_load(const char *appname, const char *appfile)
 {
 	struct device *dev = &priv.pdev->dev;
-	struct nvadsp_app_service *ser;
+	struct nvadsp_app_service *ser = NULL;
+	struct app_load_stats stats = { };
 	struct adsp_module *mod;
 	uint32_t *token;
 
+	RECORD_STAT(stats.ns_time_load);
+	RECORD_STAT(stats.ns_time_service_parse);
 	ser = get_loaded_service(appname);
+	RECORD_STAT(stats.ns_time_service_parse);
 	if (!ser) {
 		dev_dbg(dev, "loading app %s\n", appname);
 
-		mod = load_adsp_module(appname, appfile, dev);
+		RECORD_STAT(stats.ns_time_module_load);
+		mod = load_adsp_module(appname, appfile, dev, &stats);
 		if (IS_ERR_OR_NULL(mod))
 			goto end;
+		RECORD_STAT(stats.ns_time_module_load);
 
 		ser = kzalloc(sizeof(struct nvadsp_app_service), GFP_KERNEL);
 		strncpy(ser->name, appname, NVADSP_NAME_SZ);
+		strncpy(ser->file, appfile, NVADSP_NAME_SZ);
 		ser->mod = mod;
 
 		ser->mem_size = &mod->mem_size;
 		token = (void *)&ser->token;
+		RECORD_STAT(stats.ns_time_native_load);
 		mutex_lock(&load_app_mutex);
-		*token = native_adsp_load_app(ser);
+		*token = native_adsp_load_app(ser, &stats);
 		mutex_unlock(&load_app_mutex);
+		RECORD_STAT(stats.ns_time_native_load);
 		if (!ser->token) {
 			dev_err(dev, "unable to load app %s\n", appname);
 			kfree(ser);
@@ -342,6 +513,9 @@ nvadsp_app_load(const char *appname, const char *appfile)
 
 		dev_dbg(dev, "loaded app %s\n", ser->name);
 	}
+
+	RECORD_STAT(stats.ns_time_load);
+	print_load_stats(appfile, &stats, dev);
 end:
 	return ser;
 }
@@ -486,10 +660,22 @@ static void free_instance_memory(nvadsp_app_info_t *app,
 
 }
 
+static inline void native_adsp_init_stats(struct app_init_stats *stats,
+	struct app_init_data *data)
+{
+	EQUATE_STAT(stats->ns_time_adsp_app_init, data->app_init_time);
+	EQUATE_STAT(stats->ns_time_adsp_mem_instance_map,
+		data->app_mem_instance_map);
+	EQUATE_STAT(stats->ns_time_adsp_init_call, data->app_init_call);
+	EQUATE_STAT(stats->ns_time_adsp_send_status,
+		data->adsp_send_status_time);
+	EQUATE_STAT(stats->adsp_receive_timestamp, data->timestamp);
+}
+
 static uint32_t
 native_adsp_app_init(nvadsp_app_info_t *app,
-				const struct nvadsp_app_service *ser,
-					nvadsp_app_args_t *app_args)
+	const struct nvadsp_app_service *ser, nvadsp_app_args_t *app_args,
+	struct app_init_stats *stats)
 {
 	uint32_t token;
 	struct app_init_data *data = &shared->app_init;
@@ -520,7 +706,7 @@ native_adsp_app_init(nvadsp_app_info_t *app,
 	/* call the adsp app init function on ADSP */
 	nvadsp_mbox_send(&mbox, APP_INIT, NVADSP_MBOX_SMSG, true, 100);
 	wait_for_completion(&app_init_status);
-
+	native_adsp_init_stats(stats, data);
 	/*
 	 * store the app instance structure and clearing the value in the shared
 	 * memory.
@@ -542,13 +728,17 @@ nvadsp_app_info_t *nvadsp_app_init(nvadsp_app_handle_t handle,
 	uint32_t *token;
 	int *state;
 	int *id;
+	struct app_init_stats stats = { };
 
+	RECORD_STAT(stats.ns_time_app_init);
+	EQUATE_STAT(stats.ns_time_app_alloc, stats.ns_time_app_init);
 	app = kzalloc(sizeof(nvadsp_app_info_t), GFP_KERNEL);
 	if (unlikely(!app)) {
 		dev_err(dev, "cannot allocate memory for app %s instance\n",
 				ser->name);
 		goto err_value;
 	}
+	RECORD_STAT(stats.ns_time_app_alloc);
 
 	/* set the instance name with the app name */
 	app->name = ser->name;
@@ -557,17 +747,22 @@ nvadsp_app_info_t *nvadsp_app_init(nvadsp_app_handle_t handle,
 	*id = ser->generated_instance_id++;
 
 	/* create the instance memory required by the app instance */
+	RECORD_STAT(stats.ns_time_instance_memory);
 	if (create_instance_memory(app, ser->mem_size)) {
 		dev_err(dev, "instance creation failed for app %s:%d\n",
 				app->name, app->instance_id);
 		goto free_app;
 	}
+	RECORD_STAT(stats.ns_time_instance_memory);
 
 	/* token holds the app instance pointer created on adsp */
 	token = (void *)&app->token;
+	RECORD_STAT(stats.ns_time_native_call);
 	mutex_lock(&app_init_mutex);
-	*token = native_adsp_app_init(app, ser, app_args);
+	*token = native_adsp_app_init(app, ser, app_args, &stats);
 	mutex_unlock(&app_init_mutex);
+	RECORD_STAT(stats.ns_time_native_call);
+
 	if (!app->token) {
 		dev_err(dev, "app failed to initilize %s\n", app->name);
 		goto free_instance_memory;
@@ -606,6 +801,10 @@ free_app:
 err_value:
 	app = ERR_PTR(-ENOMEM);
 end:
+
+	RECORD_STAT(stats.ns_time_app_init);
+	print_init_stats(ser->file, &stats, dev);
+
 	return app;
 }
 EXPORT_SYMBOL(nvadsp_app_init);
@@ -720,7 +919,9 @@ EXPORT_SYMBOL(nvadsp_app_unload);
 
 int nvadsp_app_start(nvadsp_app_info_t *app)
 {
+	struct nvadsp_app_service *ser = (void *)app->handle;
 	struct device *dev = &priv.pdev->dev;
+	struct app_start_stats stats = { };
 	unsigned long flags;
 	int ret = -EINVAL;
 	int *state;
@@ -744,9 +945,11 @@ int nvadsp_app_start(nvadsp_app_info_t *app)
 		init_completion(&app->wait_for_app_complete);
 
 		/* start the app from adsp side by creating a thread */
+		RECORD_STAT(stats.ns_time_native_call);
 		mutex_lock(&app_start_mutex);
-		ret = native_adsp_app_start(app);
+		ret = native_adsp_app_start(app, &stats);
 		mutex_unlock(&app_start_mutex);
+		RECORD_STAT(stats.ns_time_native_call);
 
 		if (ret) {
 			dev_err(dev,
@@ -765,6 +968,7 @@ int nvadsp_app_start(nvadsp_app_info_t *app)
 			schedule_work(&app->complete_work);
 	}
 end:
+	print_start_stats(ser->file, &stats, dev);
 	return ret;
 }
 EXPORT_SYMBOL(nvadsp_app_start);

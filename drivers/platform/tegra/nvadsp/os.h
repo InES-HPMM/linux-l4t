@@ -22,6 +22,8 @@
 #define CONFIG_ADSP_DRAM_LOG_WITH_TAG	1
 #define CONFIG_USE_STATIC_APP_LOAD	0
 #define CONFIG_SYSTEM_FPGA		1
+/* enable profiling of load init start */
+#define RECORD_STATS			0
 
 #define SYM_NAME_SZ 128
 
@@ -60,6 +62,19 @@ enum adsp_os_cmd {
 	ADSP_OS_SUSPEND,
 };
 
+#if RECORD_STATS
+#define RECORD_STAT(x) \
+	(x = ktime_to_ns(ktime_get()) - x)
+#define EQUATE_STAT(x, y) \
+	(x = y)
+#define RECORD_TIMESTAMP(x) \
+	(x = nvadsp_get_timestamp_counter())
+#else
+#define RECORD_STAT(x)
+#define EQUATE_STAT(x, y)
+#define RECORD_TIMESTAMP(x)
+#endif
+
 /**
  * struct global_sym_info - Global Symbol information required by app loader.
  * @name:	Name of the symbol
@@ -89,6 +104,47 @@ struct adsp_module {
 	const struct app_mem_size	mem_size;
 };
 
+struct app_load_stats {
+	s64 ns_time_load;
+	s64 ns_time_service_parse;
+	s64 ns_time_module_load;
+	s64 ns_time_req_firmware;
+	s64 ns_time_layout;
+	s64 ns_time_native_load;
+	s64 ns_time_load_mbox_send_time;
+	s64 ns_time_load_wait_time;
+	s64 ns_time_native_load_complete;
+	u64 ns_time_adsp_map;
+	u64 ns_time_adsp_app_load;
+	u64 ns_time_adsp_send_status;
+	u64 adsp_receive_timestamp;
+	u64 host_send_timestamp;
+	u64 host_receive_timestamp;
+};
+
+struct app_init_stats {
+	s64 ns_time_app_init;
+	s64 ns_time_app_alloc;
+	s64 ns_time_instance_memory;
+	s64 ns_time_native_call;
+	u64 ns_time_adsp_app_init;
+	u64 ns_time_adsp_mem_instance_map;
+	u64 ns_time_adsp_init_call;
+	u64 ns_time_adsp_send_status;
+	u64 adsp_receive_timestamp;
+};
+
+struct app_start_stats {
+	s64 ns_time_app_start;
+	s64 ns_time_native_call;
+	s64 ns_time_adsp_app_start;
+	u64 ns_time_app_thread_creation;
+	u64 ns_time_app_thread_detach;
+	u64 ns_time_app_thread_resume;
+	u64 ns_time_adsp_send_status;
+	u64 adsp_receive_timestamp;
+};
+
 int nvadsp_os_probe(struct platform_device *);
 int nvadsp_app_module_probe(struct platform_device *);
 int adsp_add_load_mappings(phys_addr_t, void *, int);
@@ -97,8 +153,8 @@ struct elf32_shdr *nvadsp_get_section(const struct firmware *, char *);
 struct global_sym_info *find_global_symbol(const char *);
 void update_nvadsp_app_shared_ptr(void *);
 
-struct adsp_module
-*load_adsp_module(const char *, const char *, struct device *);
+struct adsp_module *load_adsp_module(const char *, const char *,
+	struct device *, struct app_load_stats *);
 void unload_adsp_module(struct adsp_module *);
 
 int allocate_memory_from_adsp(void **, unsigned int);
