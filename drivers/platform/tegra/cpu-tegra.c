@@ -613,32 +613,91 @@ static int tegra_verify_speed(struct cpufreq_policy *policy)
 	return cpufreq_frequency_table_verify(policy, freq_table);
 }
 
+#ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
+#define LP_TO_G_PERCENTAGE		50
+unsigned long lp_to_virtual_gfreq(unsigned long lp_freq)
+{
+	return (lp_freq / 100) * LP_TO_G_PERCENTAGE;
+}
+
+static unsigned long virtualg_to_lpfreq(unsigned long gfreq)
+{
+	return (gfreq / LP_TO_G_PERCENTAGE) * 100;
+}
+
+static unsigned long map_to_actual_cluster_freq(unsigned long gfreq)
+{
+	if (is_lp_cluster())
+		return virtualg_to_lpfreq(gfreq);
+
+	return gfreq;
+}
+#else
+static inline unsigned long virtualg_to_lpfreq(unsigned long gfreq)
+{ return gfreq; }
+static inline unsigned long map_to_actual_cluster_freq(unsigned long gfreq)
+{ return gfreq; }
+#endif
+
+static unsigned int tegra_getspeed_actual(void)
+{
+	return clk_get_rate(cpu_clk) / 1000;
+}
+
 unsigned int tegra_getspeed(unsigned int cpu)
 {
 	unsigned long rate;
+	unsigned int on_lp_cluster;
+	unsigned long flags;
 
 	if (cpu >= CONFIG_NR_CPUS)
 		return 0;
 
-	rate = clk_get_rate(cpu_clk) / 1000;
+	/*
+	 * Explicitly holding the cpu_clk lock across get_rate and is_lp_cluster
+	 * check to prevent a racy getspeed. Cannot hold tegra_cpu_lock here.
+	 */
+	clk_lock_save(cpu_clk, &flags);
+
+	rate = clk_get_rate_locked(cpu_clk) / 1000;
+
+	on_lp_cluster = is_lp_cluster();
+
+	clk_unlock_restore(cpu_clk, &flags);
+
+	if (on_lp_cluster)
+		rate = lp_to_virtual_gfreq(rate);
+
 	return rate;
 }
 
+/**
+ * tegra_update_cpu_speed - Sets given real rate for the current cluster
+ * @rate - Actual rate to set for the current cluster
+ * Returns 0 on success, -ve on failure
+ * Must be called with tegra_cpu_lock held
+ */
 int tegra_update_cpu_speed(unsigned long rate)
 {
 	int ret = 0;
 	struct cpufreq_freqs freqs;
+	struct cpufreq_freqs actual_freqs;
 	unsigned int mode, mode_limit = cpu_reg_mode_predict_idle_limit();
 
 	freqs.old = tegra_getspeed(0);
+	actual_freqs.new = rate;
+	actual_freqs.old = tegra_getspeed_actual();
 	freqs.new = rate;
+	if (is_lp_cluster())
+		freqs.new = lp_to_virtual_gfreq(rate);
 
-	rate = clk_round_rate(cpu_clk, rate * 1000);
+	rate = clk_round_rate(cpu_clk, actual_freqs.new * 1000);
 	if (!IS_ERR_VALUE(rate))
-		freqs.new = rate / 1000;
+		actual_freqs.new = rate / 1000;
 
 	mode = REGULATOR_MODE_NORMAL;
-	if (mode_limit && (mode_limit < freqs.new || reg_mode_force_normal)) {
+	if (mode_limit && (mode_limit < actual_freqs.new ||
+	    reg_mode_force_normal)) {
 		mode_limit = 0;		/* prevent further mode controls */
 		if (reg_mode != mode) {
 			ret = tegra_dvfs_rail_set_mode(tegra_cpu_rail, mode);
@@ -648,61 +707,67 @@ int tegra_update_cpu_speed(unsigned long rate)
 		}
 	}
 
-	if (freqs.old == freqs.new)
+	/* Only bail out if both virt and actual new/old freqs are the same. */
+	if (actual_freqs.old == actual_freqs.new && freqs.old == freqs.new)
 		goto _out;
 
 	/*
 	 * Vote on memory bus frequency based on cpu frequency
 	 * This sets the minimum frequency, display or avp may request higher
 	 */
-	if (freqs.old < freqs.new) {
-		ret = tegra_update_mselect_rate(freqs.new);
+	if (actual_freqs.old < actual_freqs.new) {
+		ret = tegra_update_mselect_rate(actual_freqs.new);
 		if (ret) {
-			pr_err("cpu-tegra: Failed to scale mselect for cpu"
-			       " frequency %u kHz\n", freqs.new);
+			pr_err("cpu-tegra: Failed to scale mselect for cpu frequency %u kHz\n",
+				actual_freqs.new);
 			return ret;
 		}
+	}
 
+	if (freqs.old < freqs.new) {
 		if (emc_clk) {
 			ret = clk_set_rate(emc_clk,
 					   tegra_emc_cpu_limit(freqs.new));
 			if (ret) {
-				pr_err("cpu-tegra: Failed to scale emc for cpu"
-				       " frequency %u kHz\n", freqs.new);
+				pr_err("cpu-tegra: Failed to scale emc for cpu frequency %u kHz\n",
+					freqs.new);
 				return ret;
 			}
 		}
 	}
 
-	for_each_online_cpu(freqs.cpu)
-		cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
+	if (freqs.old != freqs.new)
+		for_each_online_cpu(freqs.cpu)
+			cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
 
 #ifdef CONFIG_CPU_FREQ_DEBUG
 	printk(KERN_DEBUG "cpufreq-tegra: transition: %u --> %u\n",
 	       freqs.old, freqs.new);
 #endif
 
-	ret = clk_set_rate(cpu_clk, freqs.new * 1000);
+	ret = clk_set_rate(cpu_clk, actual_freqs.new * 1000);
 	if (ret) {
 		pr_err("cpu-tegra: Failed to set cpu frequency to %d kHz\n",
-			freqs.new);
+			actual_freqs.new);
 		return ret;
 	}
 
 	freqs.new = tegra_getspeed(0);
 
-	for_each_online_cpu(freqs.cpu)
-		cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
+	if (freqs.old != freqs.new)
+		for_each_online_cpu(freqs.cpu)
+			cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 
-	if (freqs.old > freqs.new) {
-		if (emc_clk)
-			clk_set_rate(emc_clk, tegra_emc_cpu_limit(freqs.new));
-		tegra_update_mselect_rate(freqs.new);
-	}
+	if (actual_freqs.old > actual_freqs.new)
+		tegra_update_mselect_rate(actual_freqs.new);
+
+	if (emc_clk && freqs.old > freqs.new)
+		clk_set_rate(emc_clk, tegra_emc_cpu_limit(freqs.new));
+
 
 _out:
 	mode = REGULATOR_MODE_IDLE;
-	if ((mode_limit >= freqs.new) && (reg_mode != mode))
+	if ((mode_limit >= actual_freqs.new) && (reg_mode != mode))
 		if (!tegra_dvfs_rail_set_mode(tegra_cpu_rail, mode))
 			reg_mode = mode;
 
@@ -790,15 +855,17 @@ int tegra_cpu_set_speed_cap_locked(unsigned int *speed_cap)
 	if (is_suspended)
 		return -EBUSY;
 
+	/* Caps based on virtual G-cpu freq */
 	new_speed = tegra_throttle_governor_speed(new_speed);
+	new_speed = user_cap_speed(new_speed);
+
+	/* Caps based on actual cluster freq */
+	new_speed = map_to_actual_cluster_freq(new_speed);
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 	new_speed = get_edp_limit_speed(new_speed);
-#endif
-	new_speed = user_cap_speed(new_speed);
-	new_speed = volt_cap_speed(new_speed);
-#ifdef CONFIG_TEGRA_EDP_LIMITS
 	new_speed = sysedp_cap_speed(new_speed);
 #endif
+	new_speed = volt_cap_speed(new_speed);
 	if (speed_cap)
 		*speed_cap = new_speed;
 
@@ -827,6 +894,7 @@ int tegra_suspended_target(unsigned int target_freq)
 
 	/* apply only "hard" caps */
 	new_speed = tegra_throttle_governor_speed(new_speed);
+	new_speed = map_to_actual_cluster_freq(new_speed);
 	new_speed = get_edp_limit_speed(new_speed);
 
 	return tegra_update_cpu_speed(new_speed);
@@ -881,6 +949,8 @@ static struct notifier_block max_cpu_pwr_notifier = {
 static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 	void *dummy)
 {
+	unsigned long rate;
+
 	if (event == PM_SUSPEND_PREPARE) {
 		pm_qos_update_request(&cpufreq_min_req,
 			freq_table[suspend_index].frequency);
@@ -893,11 +963,12 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 		if (is_edp_reg_idle_supported())
 			reg_mode_force_normal = true;
 #endif
-		pr_info("Tegra cpufreq suspend: setting frequency to %d kHz\n",
-			freq_table[suspend_index].frequency);
-		tegra_update_cpu_speed(freq_table[suspend_index].frequency);
-		tegra_auto_hotplug_governor(
-			freq_table[suspend_index].frequency, true);
+		rate = freq_table[suspend_index].frequency;
+		rate = map_to_actual_cluster_freq(rate);
+		pr_info("Tegra cpufreq suspend: setting frequency to %lu kHz\n",
+			rate);
+		tegra_update_cpu_speed(rate);
+		tegra_auto_hotplug_governor(rate, true);
 		mutex_unlock(&tegra_cpu_lock);
 	} else if (event == PM_POST_SUSPEND) {
 		unsigned int freq;
@@ -907,7 +978,7 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 		reg_mode_force_normal = false;
 		tegra_cpu_edp_init(true);
 		tegra_cpu_set_speed_cap_locked(&freq);
-		pr_info("Tegra cpufreq resume: restoring frequency to %d kHz\n",
+		pr_info("Tegra cpufreq resume: restoring frequency to %u kHz\n",
 			freq);
 		mutex_unlock(&tegra_cpu_lock);
 
@@ -927,7 +998,7 @@ static struct notifier_block tegra_cpu_pm_notifier = {
 static int tegra_cpu_init(struct cpufreq_policy *policy)
 {
 	int idx, ret;
-	unsigned int freq;
+	unsigned int freq, rate;
 
 	if (policy->cpu >= CONFIG_NR_CPUS)
 		return -EINVAL;
@@ -954,7 +1025,9 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 	ret = cpufreq_frequency_table_target(policy, freq_table, freq,
 		CPUFREQ_RELATION_H, &idx);
 	if (!ret && (freq != freq_table[idx].frequency)) {
-		ret = tegra_update_cpu_speed(freq_table[idx].frequency);
+		rate = freq_table[idx].frequency;
+		rate = map_to_actual_cluster_freq(rate);
+		ret = tegra_update_cpu_speed(rate);
 		if (!ret)
 			freq = freq_table[idx].frequency;
 	}
@@ -1015,14 +1088,6 @@ static struct freq_attr *tegra_cpufreq_attr[] = {
 #endif
 	NULL,
 };
-
-#ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
-#define LP_TO_G_PERCENTAGE		50
-unsigned long lp_to_virtual_gfreq(unsigned long lp_freq)
-{
-	return (lp_freq / 100) * LP_TO_G_PERCENTAGE;
-}
-#endif
 
 static struct cpufreq_driver tegra_cpufreq_driver = {
 	.verify		= tegra_verify_speed,
