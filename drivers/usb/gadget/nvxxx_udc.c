@@ -83,6 +83,9 @@ static void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 #define PORTSC_MASK     0xFF15FFFF
 #define PORTREGSEL_MASK	0xFFFFFFFC
 #define POLL_TBRST_MAX_VAL	0xB0
+#define PING_TBRST_VAL	0x6
+#define LMPITP_TIMER_VAL	0x978
+
 
 static struct usb_endpoint_descriptor nvudc_ep0_desc = {
 	.bLength = USB_DT_ENDPOINT_SIZE,
@@ -4683,13 +4686,21 @@ static void nvudc_plat_fpci_ipfs_init(struct nv_udc_s *nvudc)
 	iowrite32(reg, nvudc->base + SSPX_CORE_PADCTL4);
 	reg_dump(dev, nvudc->base, SSPX_CORE_PADCTL4);
 
-	/* WAR of Bug 200039349 */
-	/* Ping LFPS TBURST is greater than spec defined value of 200ns */
+	/* Ping LFPS TBURST is greater than spec defined value of 200ns
+	* Reduce ping tburst to 0x6 in order to make link layer tests pass
+	*/
 	reg = ioread32(nvudc->base + SSPX_CORE_CNT0);
 	reg &= ~PING_TBRST_MASK;
-	reg |= PING_TBRST(0xd);
+	reg |= PING_TBRST(PING_TBRST_VAL);
 	iowrite32(reg, nvudc->base + SSPX_CORE_CNT0);
 	reg_dump(dev, nvudc->base, SSPX_CORE_CNT0);
+
+	/* Increase tPortConfiguration timeout to 0x978 */
+	reg = ioread32(nvudc->base + SSPX_CORE_CNT30);
+	reg &= ~LMPITP_TIMER_MASK;
+	reg |= LMPITP_TIMER(LMPITP_TIMER_VAL);
+	iowrite32(reg, nvudc->base + SSPX_CORE_CNT30);
+	reg_dump(dev, nvudc->base, SSPX_CORE_CNT30);
 
 	/* WAR for TD 6.5 Polling LFPS Duration Test.
 	* Test suite is violating polling lfps burst max of 1.4us
@@ -4703,6 +4714,7 @@ static void nvudc_plat_fpci_ipfs_init(struct nv_udc_s *nvudc)
 		iowrite32(reg, nvudc->base + SSPX_CORE_CNT32);
 		reg_dump(dev, nvudc->base, SSPX_CORE_CNT32);
 	}
+
 }
 
 static int nvudc_plat_irqs_init(struct nv_udc_s *nvudc)

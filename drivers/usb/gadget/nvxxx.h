@@ -748,9 +748,14 @@ extern int debug_level;
 #define PING_TBRST_MASK				(0xff)
 #define PING_TBRST(x)				((x) & 0xff)
 
+#define SSPX_CORE_CNT30				(0x688)
+#define LMPITP_TIMER_MASK			(0xfffff)
+#define LMPITP_TIMER(x)				((x) & 0xfffff)
+
 #define SSPX_CORE_CNT32				(0x690)
 #define POLL_TBRST_MAX_MASK			(0xff)
 #define POLL_TBRST_MAX(x)			((x) & 0xff)
+
 /* ipfs mmio registers */
 #define XUSB_DEV_CONFIGURATION			(0x180)
 #define  EN_FPCI				(1 << 0)
