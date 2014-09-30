@@ -164,6 +164,10 @@
 		power {
 			gpios = <&gpio TEGRA_GPIO(X, 7) GPIO_ACTIVE_LOW>;
 		};
+
+		sw_lid {
+			status="disabled";
+		};
 	};
 
 	gpu-dvfs-rework {
