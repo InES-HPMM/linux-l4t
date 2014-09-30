@@ -26,13 +26,13 @@ struct fv_relation *fv_relation_create(
 
 #define TEGRA_PPM_MAX_CORES 4
 struct tegra_ppm_params {
-	const int n_cores;
+	int n_cores;
 
 	/* activity factor in nA/MHz (aka fF, femtofarads) */
-	int dyn_consts_n[TEGRA_PPM_MAX_CORES];
+	u32 dyn_consts_n[TEGRA_PPM_MAX_CORES];
 
 	/* leakage scaling factor based on number of cores. Expressed permill */
-	int leakage_consts_n[TEGRA_PPM_MAX_CORES];
+	u32 leakage_consts_n[TEGRA_PPM_MAX_CORES];
 
 	/* Coefficients to a tricubic model of leakage. Model inputs are:
 	 *   Voltage in Volts
@@ -47,15 +47,18 @@ struct tegra_ppm_params {
 	 * value so that they fit nicely in 32-bit integers with minimal
 	 * quantization error.
 	 */
-	int leakage_consts_ijk[4][4][4];
-	unsigned int ijk_scaled;
+	s32 leakage_consts_ijk[4][4][4];
+	u32 ijk_scaled;
 
-	unsigned int leakage_min;	 /* minimum leakage current */
+	u32 leakage_min; /* minimum leakage current */
 };
 
 struct tegra_ppm;
+struct dt;
 
-struct tegra_ppm *tegra_ppm_create(char *name,
+struct tegra_ppm_params *of_read_tegra_ppm_params(struct device_node *np);
+
+struct tegra_ppm *tegra_ppm_create(const char *name,
 				   struct fv_relation *fv,
 				   struct tegra_ppm_params *params,
 				   int iddq_ma,

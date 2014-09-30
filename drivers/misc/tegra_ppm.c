@@ -24,6 +24,7 @@
 #include <linux/hashtable.h>
 #include <linux/fs.h>
 #include <linux/debugfs.h>
+#include <linux/of.h>
 #include <linux/tegra_ppm.h>
 
 #define for_each_fv_entry(fv, fve) \
@@ -54,7 +55,7 @@ struct maxf_cache_entry {
 };
 
 struct tegra_ppm {
-	char *name;
+	const char *name;
 
 	struct fv_relation *fv;
 	struct tegra_ppm_params *params;
@@ -626,6 +627,82 @@ static int ppm_debugfs_init(struct tegra_ppm *ctx
 { return 0; }
 #endif /* CONFIG_DEBUG_FS */
 
+struct tegra_ppm_params *of_read_tegra_ppm_params(struct device_node *np)
+{
+	int ret;
+	int n_dyn, n_leak, n_coeff;
+	struct tegra_ppm_params *params;
+
+	if (!np)
+		return ERR_PTR(-EINVAL);
+
+	n_dyn = of_property_count_u32(np, "nvidia,tegra-ppm-cdyn");
+	if (n_dyn <= 0) {
+		pr_warn("%s: missing required property nvidia,tegra-ppm-cdyn\n",
+			__func__);
+		return ERR_PTR(-EINVAL);
+	} else if (n_dyn > TEGRA_PPM_MAX_CORES) {
+		pr_warn("%s: can't handle nvidia,tegra-ppm-cdyn of length %d\n",
+			__func__, n_dyn);
+		return ERR_PTR(-EDOM);
+	}
+
+	n_coeff = of_property_count_u32(np, "nvidia,tegra-ppm-leakage_coeffs");
+	if (n_coeff <= 0) {
+		pr_warn("%s: missing required property %s\n",
+			__func__, "nvidia,tegra-ppm-leakage_coeffs");
+		return ERR_PTR(-EINVAL);
+	} else if (n_coeff != 64) {
+		pr_warn("%s: expected nvidia,tegra-ppm-cdyn length 64, not %d\n",
+			__func__, n_coeff);
+		return ERR_PTR(-EDOM);
+	}
+
+	n_leak = of_property_count_u32(np, "nvidia,tegra-ppm-leakage_weights");
+	if ((n_dyn == 1) ? (n_leak > 1) : (n_leak != n_dyn)) {
+		pr_warn("__func__: nvidia,tegra-ppm-leakage_weights required but invalid\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	params = kzalloc(sizeof(struct tegra_ppm_params), GFP_KERNEL);
+	if (IS_ERR_OR_NULL(params))
+		return params;
+	params->n_cores = n_dyn;
+
+	ret = (of_property_read_u32_array(
+		       np, "nvidia,tegra-ppm-cdyn",
+		       (u32 *)&params->dyn_consts_n, params->n_cores)
+	       || of_property_read_u32_array(
+		       np, "nvidia,tegra-ppm-leakage_coeffs",
+		       (u32 *)&params->leakage_consts_ijk, 4 * 4 * 4));
+	WARN_ON(ret); /* this shouldn't happen */
+	if (ret)
+		goto err;
+
+	if (n_leak < 0)
+		params->leakage_consts_n[0] = 1000;
+	else
+		ret = of_property_read_u32_array(
+			np, "nvidia,tegra-ppm-leakage_weights",
+			(u32 *)&params->leakage_consts_n, params->n_cores);
+	WARN_ON(ret); /* this shouldn't happen */
+	if (ret)
+		goto err;
+
+	if (of_property_read_u32(np, "nvidia,tegra-ppm-min_leakage",
+				 &params->leakage_min))
+		params->leakage_min = 0;
+
+	if (of_property_read_u32(np, "nvidia,tegra-ppm-coeff_scale",
+				 &params->ijk_scaled))
+		params->ijk_scaled = 100000;
+
+	return params;
+err:
+	kfree(params);
+	return ERR_PTR(ret);
+}
+
 /**
  * tegra_ppm_create() - build a processor power model
  * @name : a name for this model to use in debugfs
@@ -642,7 +719,7 @@ static int ppm_debugfs_init(struct tegra_ppm *ctx
  * success. -%EINVAL if name, fv, or params doesn't point to anything.
  * -%ENOMEM on memory allocation failure.
  */
-struct tegra_ppm *tegra_ppm_create(char *name,
+struct tegra_ppm *tegra_ppm_create(const char *name,
 				   struct fv_relation *fv,
 				   struct tegra_ppm_params *params,
 				   int iddq_ma,
