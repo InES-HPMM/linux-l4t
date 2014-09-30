@@ -656,23 +656,10 @@ config MMC_REALTEK_PCI
 	  Say Y here to include driver code to support SD/MMC card interface
 	  of Realtek PCI-E card reader
 
-config MMC_RTPM
-	bool "Enable Run time Power Management only SD/MMC/SDIO devices"
-	depends on PM_RUNTIME
-	default N
-	help
-	  If you say Y here, the MMC layer RTPM support will be enabled
-	  for  SD/MMC/SDIO device.
-
-	  Note: Run time Power Management for SDHCI driver implies disabling
-	  clock gating and delayed clock gating.
-
 config MMC_PM_DOMAIN
 	bool "Enable PM Domain for SD/MMC devices"
 	depends on PM_RUNTIME
-	depends on MMC_RTPM
 	default N
 	help
 	  If you say Y here, the MMC layer PM domain will be enabled
 	  for  SD/MMC device.
-

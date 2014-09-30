@@ -268,9 +268,6 @@
 #define TAP_CMD_TRIM_DEFAULT_VOLTAGE	1
 #define TAP_CMD_TRIM_HIGH_VOLTAGE	2
 
-/* Some boards show reset during boot if RTPM TMOUT is 10msec */
-#define MMC_RTPM_MSEC_TMOUT 20
-
 /* Max number of clock parents for sdhci is fixed to 2 */
 #define TEGRA_SDHCI_MAX_PLL_SOURCE 2
 /*
@@ -1662,7 +1659,7 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-#if !defined(CONFIG_MMC_RTPM)
+#ifndef CONFIG_MMC_PM_DOMAIN
 	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
 #endif
 	u8 ctrl;
@@ -1673,7 +1670,7 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		mmc_hostname(sdhci->mmc), clock, tegra_host->clk_enabled);
 	if (clock) {
 		if (!tegra_host->clk_enabled) {
-#if !defined(CONFIG_MMC_RTPM)
+#ifndef CONFIG_MMC_PM_DOMAIN
 			pm_runtime_get_sync(&pdev->dev);
 #endif
 			ret = clk_prepare_enable(pltfm_host->clk);
@@ -1726,7 +1723,7 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		clk_disable_unprepare(pltfm_host->clk);
 		tegra_host->clk_enabled = false;
 		sdhci->is_clk_on = tegra_host->clk_enabled;
-#if !defined(CONFIG_MMC_RTPM)
+#ifndef CONFIG_MMC_PM_DOMAIN
 		pm_runtime_put_sync(&pdev->dev);
 #endif
 	}
@@ -4658,9 +4655,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (plat == NULL) {
 		pr_err("%s Parsing DT data\n", mmc_hostname(host->mmc));
 		plat = sdhci_tegra_dt_parse_pdata(pdev);
-		pr_debug("%s: %s line=%d disable-clock-gate=%d\n",
-			mmc_hostname(host->mmc), __func__,
-			__LINE__, plat->disable_clock_gate);
 	} else {
 		pr_err("%s using board files instead of DT\n",
 			mmc_hostname(host->mmc));
@@ -4861,12 +4855,12 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_pd_add_device(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 	pm_runtime_use_autosuspend(&pdev->dev);
-#ifdef CONFIG_MMC_RTPM
+#ifdef CONFIG_MMC_PM_DOMAIN
 	/*
 	 * Below Autosuspend delay can be increased/decreased based on
 	 * power and perf data
 	 */
-	pm_runtime_set_autosuspend_delay(&pdev->dev, MMC_RTPM_MSEC_TMOUT);
+	pm_runtime_set_autosuspend_delay(&pdev->dev, 5000);
 #endif
 
 	/* Get the ddr clock */
@@ -4901,7 +4895,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (clk_get_parent(pltfm_host->clk) == tegra_host->pll_source[0].pll)
 		tegra_host->is_parent_pll_source_1 = true;
 
-#if !defined(CONFIG_MMC_RTPM)
+#ifndef CONFIG_MMC_PM_DOMAIN
 	pm_runtime_get_sync(&pdev->dev);
 #endif
 	rc = clk_prepare_enable(pltfm_host->clk);
@@ -5071,7 +5065,7 @@ err_add_host:
 	else
 		clk_disable_unprepare(tegra_host->sdr_clk);
 
-#if !defined(CONFIG_MMC_RTPM)
+#ifndef CONFIG_MMC_PM_DOMAIN
 	pm_runtime_put_sync(&pdev->dev);
 #endif
 err_clk_put:
@@ -5131,7 +5125,7 @@ static int sdhci_tegra_remove(struct platform_device *pdev)
 			clk_disable_unprepare(tegra_host->ddr_clk);
 		else
 			clk_disable_unprepare(tegra_host->sdr_clk);
-#if !defined(CONFIG_MMC_RTPM)
+#ifndef CONFIG_MMC_PM_DOMAIN
 		pm_runtime_put_sync(&pdev->dev);
 #endif
 	}

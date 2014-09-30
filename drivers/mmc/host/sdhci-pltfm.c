@@ -278,7 +278,7 @@ static int sdhci_pltfm_resume(struct device *dev)
 	return ret;
 }
 
-#if defined(CONFIG_MMC_RTPM)
+#if defined(CONFIG_MMC_PM_DOMAIN)
 
 static int sdhci_runtime_suspend(struct device *dev)
 {
