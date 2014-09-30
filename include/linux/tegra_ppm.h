@@ -28,16 +28,28 @@ struct fv_relation *fv_relation_create(
 struct tegra_ppm_params {
 	const int n_cores;
 
-	unsigned int temp_scaled;
-
-	unsigned int dyn_scaled;
+	/* activity factor in nA/MHz (aka fF, femtofarads) */
 	int dyn_consts_n[TEGRA_PPM_MAX_CORES];
 
-	unsigned int consts_scaled;
+	/* leakage scaling factor based on number of cores. Expressed permill */
 	int leakage_consts_n[TEGRA_PPM_MAX_CORES];
 
-	unsigned int ijk_scaled;
+	/* Coefficients to a tricubic model of leakage. Model inputs are:
+	 *   Voltage in Volts
+	 *   IDDQ in Amps
+	 *   Temperature in *deciCelcius*
+	 *
+	 * This unusual choice of units helps with the accuracy of fixed point
+	 * calculations by keeping all of the coefficients near the same order
+	 * of magnitude.
+	 *
+	 * All of the coefficients are expressed as ijk_scaled times their true
+	 * value so that they fit nicely in 32-bit integers with minimal
+	 * quantization error.
+	 */
 	int leakage_consts_ijk[4][4][4];
+	unsigned int ijk_scaled;
+
 	unsigned int leakage_min;	 /* minimum leakage current */
 };
 

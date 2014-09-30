@@ -108,17 +108,12 @@ struct tegra_ppm_params *tegra13x_get_gpu_powermodel_params(void)
  * The one-core value in dynamic_constants[] is adjusted to account for this.
  * The one-core value in leakage_constants[] is set to the two-core value.
  *
- * The original 'pure single-core' values for these two arrays are saved in
- * comments for reference.
  */
 #define EDP_PARAMS_COMMON_PART						\
 {									\
 	.n_cores          = 2,						\
-	.temp_scaled      = 10,						\
-	.dyn_scaled       = 1000,					\
-	.dyn_consts_n     = { 3900, 5900 }, /* { save: 2700, 5900 } */	\
-	.consts_scaled    = 100,					\
-	.leakage_consts_n = { 100, 100 }, /* { save: 60, 100 } */	\
+	.dyn_consts_n     = { 3900000, 5900000 },			\
+	.leakage_consts_n = { 1000, 1000 },				\
 	.ijk_scaled       = 1000,					\
 	.leakage_min      = 30,						\
 	.leakage_consts_ijk = LEAKAGE_CONSTS_IJK_COMMON			\

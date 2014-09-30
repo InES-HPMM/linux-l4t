@@ -226,11 +226,8 @@ struct tegra_sysedp_corecap *tegra_get_sysedp_corecap(unsigned int *sz)
 #ifdef CONFIG_TEGRA_GPU_EDP
 static struct tegra_ppm_params t12x_gpu_powermodel_params = {
 		.n_cores          = 1,
-		.temp_scaled      = 10,
-		.dyn_scaled       = 1000,
-		.dyn_consts_n     = { 10646, },
-		.consts_scaled    = 1,
-		.leakage_consts_n = { 1, },
+		.dyn_consts_n     = { 10646000, },
+		.leakage_consts_n = { 1000, },
 		.ijk_scaled       = 100000,
 		.leakage_min      = 30,
 		.leakage_consts_ijk = {
@@ -300,14 +297,10 @@ struct tegra_ppm_params *tegra12x_get_gpu_powermodel_params(void)
 #define EDP_PARAMS_COMMON_PART						\
 {									\
 	.n_cores          = 4,						\
-	.temp_scaled      = 10,						\
-	.dyn_scaled       = 1000,					\
-	.dyn_consts_n     = { 950,  1399, 2166, 3041 },			\
-	.consts_scaled    = 100,					\
-	.leakage_consts_n = { 45, 67, 87, 100 },			\
+	.dyn_consts_n     = { 950000, 1399000, 2166000, 3041000 },	\
+	.leakage_consts_n = { 450, 670, 870, 1000 },			\
 	.ijk_scaled       = 100000,					\
 	.leakage_min      = 30,						\
-	/* .volt_temp_cap = { 70, 1240 }, - TODO for T124 */		\
 	.leakage_consts_ijk = LEAKAGE_CONSTS_IJK_COMMON			\
 }
 

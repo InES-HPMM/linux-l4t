@@ -209,13 +209,9 @@ static s64 calc_leakage_calc_step(struct tegra_ppm_params *common,
 	/* temp raised to k */
 	leakage_calc_step *= _pow(temp_c, k);
 
-	/* Convert (C)^k to (scaled_C)^k */
+	/* Convert (C)^k to (dC)^k */
 	leakage_calc_step = div64_s64(leakage_calc_step,
-					_pow(common->temp_scaled, k));
-
-	/* leakage_consts_ijk was scaled */
-	leakage_calc_step = div64_s64(leakage_calc_step,
-					common->ijk_scaled);
+					_pow(10, k));
 
 	return leakage_calc_step;
 }
@@ -235,10 +231,12 @@ static s64 calc_leakage_ma(struct tegra_ppm_params *common,
 						common, iddq_ma,
 						temp_c, voltage_mv, i, j, k);
 
-	leakage_ma *= common->leakage_consts_n[cores - 1];
+	/* leakage model coefficients were pre-scaled */
+	leakage_ma = div64_s64(leakage_ma, common->ijk_scaled);
 
-	/* leakage_const_n was scaled */
-	leakage_ma = div64_s64(leakage_ma, common->consts_scaled);
+	/* scale leakage based on number of cores */
+	leakage_ma *= common->leakage_consts_n[cores - 1];
+	leakage_ma = div64_s64(leakage_ma, 1000);
 
 	/* set floor for leakage current */
 	if (leakage_ma <= common->leakage_min)
@@ -260,8 +258,8 @@ static s64 calc_dynamic_ma(struct tegra_ppm_params *common,
 	dyn_ma = div64_s64(dyn_ma, 1000);
 	dyn_ma *= common->dyn_consts_n[cores - 1];
 
-	/* dyn_const_n was scaled */
-	dyn_ma = div64_s64(dyn_ma, common->dyn_scaled);
+	/* dyn_const_n was in fF, convert it to nF */
+	dyn_ma = div64_s64(dyn_ma, 1000000);
 
 	return dyn_ma;
 }
