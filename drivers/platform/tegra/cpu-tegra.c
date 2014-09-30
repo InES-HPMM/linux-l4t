@@ -192,6 +192,34 @@ static struct attribute_group stats_attr_grp = {
 
 #endif /* CONFIG_TEGRA_THERMAL_THROTTLE */
 
+#ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
+#define LP_TO_G_PERCENTAGE		50
+static u32 lp_to_g_ratio = LP_TO_G_PERCENTAGE;
+
+unsigned long lp_to_virtual_gfreq(unsigned long lp_freq)
+{
+	return (lp_freq / 100) * LP_TO_G_PERCENTAGE;
+}
+
+static unsigned long virtualg_to_lpfreq(unsigned long gfreq)
+{
+	return (gfreq / LP_TO_G_PERCENTAGE) * 100;
+}
+
+static unsigned long map_to_actual_cluster_freq(unsigned long gfreq)
+{
+	if (is_lp_cluster())
+		return virtualg_to_lpfreq(gfreq);
+
+	return gfreq;
+}
+#else
+static inline unsigned long virtualg_to_lpfreq(unsigned long gfreq)
+{ return gfreq; }
+static inline unsigned long map_to_actual_cluster_freq(unsigned long gfreq)
+{ return gfreq; }
+#endif
+
 static unsigned int reg_mode;
 static bool reg_mode_force_normal;
 
@@ -510,6 +538,15 @@ static int __init tegra_edp_debug_init(struct dentry *cpu_tegra_debugfs_root)
 #endif	/* CONFIG_TEGRA_EDP_LIMITS */
 
 #ifdef CONFIG_DEBUG_FS
+static int __init tegra_virt_debugfs_init(struct dentry *cpu_tegra_debugfs_root)
+{
+#ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
+	if (!debugfs_create_u32("lp_to_gratio", 0444,
+			cpu_tegra_debugfs_root, &lp_to_g_ratio))
+		return -ENOMEM;
+#endif
+	return 0;
+}
 
 static int force_cpu_set(void *data, u64 val)
 {
@@ -577,6 +614,9 @@ static int __init tegra_cpu_debug_init(void)
 	if (tegra_edp_debug_init(cpu_tegra_debugfs_root))
 		goto err_out;
 
+	if (tegra_virt_debugfs_init(cpu_tegra_debugfs_root))
+		goto err_out;
+
 	sysedp_capping_dir = debugfs_create_dir("sysedp-capping",
 						cpu_tegra_debugfs_root);
 	if (!sysedp_capping_dir)
@@ -613,31 +653,7 @@ static int tegra_verify_speed(struct cpufreq_policy *policy)
 	return cpufreq_frequency_table_verify(policy, freq_table);
 }
 
-#ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
-#define LP_TO_G_PERCENTAGE		50
-unsigned long lp_to_virtual_gfreq(unsigned long lp_freq)
-{
-	return (lp_freq / 100) * LP_TO_G_PERCENTAGE;
-}
 
-static unsigned long virtualg_to_lpfreq(unsigned long gfreq)
-{
-	return (gfreq / LP_TO_G_PERCENTAGE) * 100;
-}
-
-static unsigned long map_to_actual_cluster_freq(unsigned long gfreq)
-{
-	if (is_lp_cluster())
-		return virtualg_to_lpfreq(gfreq);
-
-	return gfreq;
-}
-#else
-static inline unsigned long virtualg_to_lpfreq(unsigned long gfreq)
-{ return gfreq; }
-static inline unsigned long map_to_actual_cluster_freq(unsigned long gfreq)
-{ return gfreq; }
-#endif
 
 static unsigned int tegra_getspeed_actual(void)
 {
