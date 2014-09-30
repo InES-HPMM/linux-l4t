@@ -265,8 +265,7 @@ static struct nvadsp_app_service
 	mutex_lock(&service_lock_list);
 	list_for_each_entry(ser, &service_list, node) {
 		if (!strcmp(appname, ser->name)) {
-			dev_info(dev, "module %s already loaded\n",
-							appname);
+			dev_dbg(dev, "module %s already loaded\n", appname);
 			mutex_unlock(&service_lock_list);
 			return ser;
 		}
