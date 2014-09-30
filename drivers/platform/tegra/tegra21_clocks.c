@@ -1486,12 +1486,12 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		   (p->dvfs && tegra_dvfs_is_dfll_range(p->dvfs, rate))) {
 		/*
 		 * LP => G (DFLL selected as clock source) switch:
-		 * set DFLL rate ready (DFLL is still disabled)
-		 * (set target p_source as dfll, G source is already selected)
+		 * set DFLL minimum rate ready; DFLL is still disabled, min rate
+		 * just guarantees initial voltage after switch above Vmin)
+		 * set target p_source as dfll, G source is already selected
 		 */
 		p_source = dfll;
-		ret = clk_set_rate(dfll,
-			max(rate, p->dvfs->dfll_data.use_dfll_rate_min));
+		ret = clk_set_rate(dfll, p->dvfs->dfll_data.use_dfll_rate_min);
 		if (ret)
 			goto abort;
 	} else {
