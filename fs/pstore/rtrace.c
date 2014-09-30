@@ -59,6 +59,7 @@ noinline void notrace pstore_rtrace_call(enum rtrace_event_type log_type,
 
 	local_irq_restore(flags);
 }
+EXPORT_SYMBOL_GPL(pstore_rtrace_call);
 
 static DEFINE_MUTEX(pstore_rtrace_lock);
 
