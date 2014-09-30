@@ -511,7 +511,6 @@ static void __init tegra_t210ref_late_init(void)
 	t210ref_camera_init();
 
 	t210ref_thermal_sensors_init();
-	t210ref_soctherm_init();
 }
 
 static void __init tegra_t210ref_init_early(void)
