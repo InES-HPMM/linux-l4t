@@ -9815,7 +9815,7 @@ static struct tegra_cpufreq_table_data freq_table_data;
 struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 {
 	int i, j;
-	bool g_vmin_done = false;
+	unsigned int virt_freq;
 	unsigned int freq, lp_backup_freq, g_vmin_freq, g_start_freq, max_freq;
 	struct clk *cpu_clk_g = tegra_get_clock_by_name("cpu_g");
 	struct clk *cpu_clk_lp = tegra_get_clock_by_name("cpu_lp");
@@ -9852,16 +9852,14 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 			" exceeds G CPU rate at Vmin\n", __func__);
 		return NULL;
 	}
-	/* Avoid duplicate frequency if g_vim_freq is already part of table */
-	if (g_vmin_freq == lp_backup_freq)
-		g_vmin_done = true;
+
+	freq = lp_backup_freq;
+	virt_freq = lp_to_virtual_gfreq(freq);
 
 	/* Start with backup frequencies */
 	i = 0;
-	freq = lp_backup_freq;
-	freq_table[i++].frequency = freq/4;
-	freq_table[i++].frequency = freq/2;
-	freq_table[i++].frequency = freq;
+	freq_table[i++].frequency = virt_freq / 2;
+	freq_table[i++].frequency = virt_freq;
 
 	/* Throttle low index at backup level*/
 	freq_table_data.throttle_lowest_index = i - 1;
@@ -9874,38 +9872,37 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 	max_freq = cpu_clk_lp->max_rate / 1000;
 	for (j = 0; j < cpu_clk_lp->dvfs->num_freqs; j++) {
 		freq = cpu_clk_lp->dvfs->freqs[j] / 1000;
+		virt_freq = lp_to_virtual_gfreq(freq);
 		if (freq <= lp_backup_freq)
 			continue;
 
-		if (!g_vmin_done && (freq >= g_vmin_freq)) {
-			g_vmin_done = true;
-			if (freq > g_vmin_freq)
-				freq_table[i++].frequency = g_vmin_freq;
-		}
-		freq_table[i++].frequency = freq;
+		freq_table[i++].frequency = virt_freq;
 
 		if (freq == max_freq)
 			break;
 	}
 
-	/* Set G CPU min rate at least one table step below LP maximum */
-	cpu_clk_g->min_rate = min(freq_table[i-2].frequency, g_vmin_freq)*1000;
+	/* Set G CPU min rate to lowest freq in the table */
+	cpu_clk_g->min_rate = min(freq_table[0].frequency,
+					g_vmin_freq) * 1000;
 
 	/* Suspend index at max LP CPU */
 	freq_table_data.suspend_index = i - 1;
 
-	/* Fill in "hole" (if any) between LP CPU maximum rate and G CPU dvfs
-	   ladder rate at minimum voltage */
-	if (freq < g_vmin_freq) {
-		int n = (g_vmin_freq - freq) / CPU_FREQ_STEP;
+	/*
+	 * Fill in "hole" (if any) between LP CPU maximum rate and G CPU dvfs
+	 * ladder rate at minimum voltage
+	 */
+	if (virt_freq < g_vmin_freq) {
+		int n = (g_vmin_freq - virt_freq) / CPU_FREQ_STEP;
 		for (j = 0; j <= n; j++) {
-			freq = g_vmin_freq - CPU_FREQ_STEP * (n - j);
-			freq_table[i++].frequency = freq;
+			virt_freq = g_vmin_freq - CPU_FREQ_STEP * (n - j);
+			freq_table[i++].frequency = virt_freq;
 		}
 	}
 
 	/* Now, step along the rest of G CPU dvfs ladder */
-	g_start_freq = freq;
+	g_start_freq = virt_freq;
 	max_freq = cpu_clk_g->max_rate / 1000;
 	for (j = 0; j < cpu_clk_g->dvfs->num_freqs; j++) {
 		freq = cpu_clk_g->dvfs->freqs[j] / 1000;
