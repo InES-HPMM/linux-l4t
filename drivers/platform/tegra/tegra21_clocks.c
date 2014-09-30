@@ -2562,7 +2562,7 @@ static struct clk_ops tegra_plld_ops = {
 
 /*
  * PLLD2, PLLDP
- * PLL with fractional SDM and Spread Spectrum (mutually exclusive).
+ * PLL with fractional SDM and Spread Spectrum (SDM is a must if SSC is used).
  */
 static void plldss_defaults(struct clk *c, u32 misc0_val, u32 misc1_val,
 			    u32 misc2_val, u32 misc3_val)
@@ -2673,10 +2673,9 @@ static void plld2_set_defaults(struct clk *c, unsigned long input_rate)
 static void tegra21_plld2_clk_init(struct clk *c)
 {
 	if (PLLD2_MISC1_CFG_DEFAULT_VALUE & PLLDSS_MISC1_CFG_EN_SSC) {
-		/* SSC requires SDM enabled, but prevent fractional div usage */
+		/* SSC requires SDM enabled */
 		BUILD_BUG_ON(!(PLLD2_MISC1_CFG_DEFAULT_VALUE &
 			       PLLDSS_MISC1_CFG_EN_SDM));
-		c->u.pll.controls->sdm_en_mask = 0;
 	} else {
 		/* SSC should be disabled */
 		c->u.pll.controls->ssc_en_mask = 0;
@@ -2705,10 +2704,9 @@ static void tegra21_plldp_clk_init(struct clk *c)
 {
 
 	if (PLLDP_MISC1_CFG_DEFAULT_VALUE & PLLDSS_MISC1_CFG_EN_SSC) {
-		/* SSC requires SDM enabled, but prevent fractional div usage */
+		/* SSC requires SDM enabled */
 		BUILD_BUG_ON(!(PLLDP_MISC1_CFG_DEFAULT_VALUE &
 			       PLLDSS_MISC1_CFG_EN_SDM));
-		c->u.pll.controls->sdm_en_mask = 0;
 	} else {
 		/* SSC should be disabled */
 		c->u.pll.controls->ssc_en_mask = 0;
@@ -6673,7 +6671,7 @@ static struct clk tegra_pll_d_out0 = {
 };
 
 static struct clk_pll_freq_table tegra_pll_d2_freq_table[] = {
-	{ 12000000, 594000000,  99, 1, 2},
+	{ 12000000, 594000000,  99, 1, 2, 0, 0xf000},
 	{ 13000000, 594000000,  91, 1, 2, 0, 0xfc4f},	/* actual: 594000183 */
 	{ 38400000, 594000000,  30, 1, 2, 0, 0x0e00},
 	{ 0, 0, 0, 0, 0, 0 },
@@ -6734,9 +6732,9 @@ static struct clk tegra_pll_d2 = {
 };
 
 static struct clk_pll_freq_table tegra_pll_dp_freq_table[] = {
-	{ 12000000, 270000000,  90, 1, 4},
-	{ 13000000, 270000000,  83, 1, 4},	/* actual: 269.8 MHz */
-	{ 38400000, 270000000,  28, 1, 4},	/* actual: 268.8 MHz */
+	{ 12000000, 270000000,  90, 1, 4, 0, 0xf000},
+	{ 13000000, 270000000,  83, 1, 4, 0, 0xf000},	/* actual: 269.8 MHz */
+	{ 38400000, 270000000,  28, 1, 4, 0, 0xf400},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
