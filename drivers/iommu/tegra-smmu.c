@@ -1756,11 +1756,20 @@ static void smmu_iommu_domain_destroy(struct iommu_domain *domain)
 	struct smmu_as *as = domain_to_as(domain, -1);
 	struct smmu_device *smmu;
 	unsigned long flags;
+	struct smmu_map_prop *prop;
 
 	if (!as)
 		return;
 	smmu = as->smmu;
 
+	/* find the smmu_map_prop containing this domain */
+	list_for_each_entry(prop, &smmu_handle->asprops, list) {
+		if (prop->map->domain == domain)
+			goto found;
+	}
+
+	prop = NULL;
+found:
 	spin_lock_irqsave(&as->lock, flags);
 
 	debugfs_remove_recursive(as->debugfs_root);
@@ -1789,6 +1798,8 @@ static void smmu_iommu_domain_destroy(struct iommu_domain *domain)
 
 	devm_kfree(smmu->dev, domain->priv);
 	domain->priv = NULL;
+	if (prop)
+		prop->map = NULL;
 	dev_dbg(smmu->dev, "smmu_as@%p\n", as);
 }
 
