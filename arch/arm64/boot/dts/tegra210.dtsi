@@ -1103,7 +1103,6 @@
 		compatible = "nvidia,tegra210-sdhci";
 		reg = <0x0 0x700b0200 0x0 0x200>;
 		interrupts = < 0 15 0x04 >;
-		iommus = <&smmu TEGRA_SWGROUP_SDMMC2A>;
 		status = "disabled";
 	};
 
