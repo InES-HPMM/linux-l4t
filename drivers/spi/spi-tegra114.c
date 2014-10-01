@@ -784,7 +784,11 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 	if (!speed)
 		speed = tspi->spi_max_frequency;
 	if (speed != tspi->cur_speed) {
-		clk_set_rate(tspi->clk, speed);
+		ret = clk_set_rate(tspi->clk, speed);
+		if (ret) {
+			dev_err(tspi->dev, "Failed to set clk freq %d\n", ret);
+			return -EINVAL;
+		}
 		tspi->cur_speed = speed;
 	}
 
