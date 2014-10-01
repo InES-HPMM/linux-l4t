@@ -61,7 +61,6 @@
 #include <linux/page-debug-flags.h>
 #include <linux/hugetlb.h>
 #include <linux/sched/rt.h>
-#include <linux/buffer_head.h>
 
 #include <asm/tlbflush.h>
 #include <asm/div64.h>
@@ -5997,9 +5996,6 @@ int alloc_contig_range(unsigned long start, unsigned long end,
 				       false);
 	if (ret)
 		return ret;
-
-	if (migratetype == MIGRATE_CMA || migratetype == MIGRATE_MOVABLE)
-		invalidate_bh_lrus();
 
 	ret = __alloc_contig_migrate_range(&cc, start, end);
 	if (ret)
