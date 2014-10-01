@@ -175,6 +175,9 @@
 			};
 			panel-i-edp-1080p-11-6 {
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				disp-default-out {
+					nvidia,out-max-pixclk = <1852>; /* KHZ2PICOS(540000) */
+				};
 			};
 		};
 		dpaux {
