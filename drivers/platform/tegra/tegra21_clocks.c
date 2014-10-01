@@ -9122,7 +9122,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_SCLK("boot.apb.sclk", "boot.apb.sclk",	NULL,	&tegra_clk_apb,        NULL, 0, 0),
 
 	SHARED_EMC_CLK("avp.emc",	"nvavp",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
-	SHARED_EMC_CLK("cpu.emc",	"cpu",		"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("cpu.emc",	"tegra-cpu", "cpu_emc",	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("disp1.emc",	"tegradc.0",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW, BIT(EMC_USER_DC1)),
 	SHARED_EMC_CLK("disp2.emc",	"tegradc.1",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW, BIT(EMC_USER_DC2)),
 	SHARED_EMC_CLK("usbd.emc",	"tegra-udc.0",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
@@ -9976,7 +9976,7 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 	return &freq_table_data;
 }
 
-unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate)
+unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate)
 {
 	static unsigned long emc_max_rate;
 
@@ -9998,6 +9998,11 @@ unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate)
 		return  50000000;	/* cpu >= 275 MHz, emc 50 MHz */
 	else
 		return 0;		/* emc min */
+}
+
+unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate)
+{
+	return tegra_emc_cpu_limit(cpu_rate);
 }
 
 int tegra_update_mselect_rate(unsigned long cpu_rate)
