@@ -147,3 +147,11 @@ config TEGRA_GPU_EDP
          to keep GPU rail current within power supply
          capabilities.
 
+config TEGRA_ACTMON
+	bool "Tegra Activity Monitor"
+	depends on ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC
+	default y
+	help
+	  Actmon is a hardware block that can be used to track the activity of
+	  certain hardware units. It can boost EMC clock or AVP clock depending
+	  on the memory trafic among various client. If unsure, say Y here.

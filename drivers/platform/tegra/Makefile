@@ -80,8 +80,7 @@ endif
 obj-y += io.o
 obj-$(CONFIG_TEGRA_CORE_VOLT_CAP) += tegra_core_volt_cap.o
 obj-y += ahb.o
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra3_actmon.o
-obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra3_actmon.o
+obj-$(CONFIG_TEGRA_ACTMON) += tegra3_actmon.o
 obj-$(CONFIG_TEGRA_CPU_VOLT_CAP)	+= tegra_volt_cap.o
 
 ifeq ($(CONFIG_PM_SLEEP),y)
