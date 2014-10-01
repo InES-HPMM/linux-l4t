@@ -31,8 +31,11 @@
 #include "iomap.h"
 #include <linux/platform/tegra/common.h>
 
+#define TEGRA21_SOC_SPEEDO 1900
 #define TEGRA21_CPU_SPEEDO 2100
-#define TEGRA21_GPU_SPEEDO 2275
+#define TEGRA21_GPU_SPEEDO 2100
+#define TEGRA21_GPU_SPEEDO_OFFS 75
+
 
 #define CPU_PROCESS_CORNERS_NUM		2
 #define GPU_PROCESS_CORNERS_NUM		2
@@ -71,6 +74,9 @@ static int soc_speedo_2_value;
 
 static int cpu_speedo_value;
 static int gpu_speedo_value;
+static int soc_speedo_value;
+
+static int speedo_rev;
 
 static int enable_app_profiles;
 
@@ -120,7 +126,7 @@ static int get_speedo_rev(void)
 
 void tegra_init_speedo_data(void)
 {
-	int i, rev;
+	int i;
 	u32 tegra_sku_id;
 
 	if (!tegra_platform_is_silicon()) {
@@ -133,6 +139,7 @@ void tegra_init_speedo_data(void)
 		package_id = -1;
 		cpu_speedo_value = TEGRA21_CPU_SPEEDO;
 		gpu_speedo_value = TEGRA21_GPU_SPEEDO;
+		soc_speedo_value = TEGRA21_SOC_SPEEDO;
 		cpu_speedo_0_value = 0;
 		cpu_speedo_1_value = 0;
 		soc_speedo_0_value = 0;
@@ -141,7 +148,7 @@ void tegra_init_speedo_data(void)
 		soc_iddq_value = 0;
 		gpu_iddq_value = 0;
 		pr_info("Tegra21: CPU Speedo value %d, Soc Speedo value %d, Gpu Speedo value %d\n",
-			cpu_speedo_value, soc_speedo_0_value, gpu_speedo_value);
+			cpu_speedo_value, soc_speedo_value, gpu_speedo_value);
 		pr_info("Tegra21: CPU Speedo ID %d, Soc Speedo ID %d, Gpu Speedo ID %d\n",
 			cpu_speedo_id, soc_speedo_id, gpu_speedo_id);
 		pr_info("Tegra21: CPU Process ID %d,Soc Process ID %d,Gpu Process ID %d\n",
@@ -149,6 +156,7 @@ void tegra_init_speedo_data(void)
 		return;
 	}
 
+	/* Read speedo/iddq fuses */
 	cpu_speedo_0_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_0);
 	cpu_speedo_1_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_1);
 	cpu_speedo_2_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_2);
@@ -161,29 +169,45 @@ void tegra_init_speedo_data(void)
 	soc_iddq_value = tegra_fuse_readl(FUSE_SOC_IDDQ) * 4;
 	gpu_iddq_value = tegra_fuse_readl(FUSE_GPU_IDDQ) * 5;
 
-	rev = get_speedo_rev();
-	if (rev >= 2) {
+	/*
+	 * Determine CPU, GPU, SOC speedo values depending on speedo fusing
+	 * revision. Note that GPU speedo value is fused in CPU_SPEEDO_2
+	 */
+	speedo_rev = get_speedo_rev();
+	if (speedo_rev >= 3) {
 		cpu_speedo_value = cpu_speedo_0_value;
-		/* GPU Speedo is stored in CPU_SPEEDO_2 */
 		gpu_speedo_value = cpu_speedo_2_value;
+		soc_speedo_value = soc_speedo_0_value;
+	} else if (speedo_rev == 2) {
+		cpu_speedo_value = (-1938 + (1095*cpu_speedo_0_value/100)) / 10;
+		gpu_speedo_value = (-1662 + (1082*cpu_speedo_2_value/100)) / 10;
+		soc_speedo_value = (-705 + (1037*soc_speedo_0_value/100)) / 10;
 	} else {
 		/* FIXME: do we need hard-coded IDDQ here? */
 		cpu_speedo_value = TEGRA21_CPU_SPEEDO;
-		gpu_speedo_value = TEGRA21_GPU_SPEEDO;
+		gpu_speedo_value = cpu_speedo_2_value - TEGRA21_GPU_SPEEDO_OFFS;
+		soc_speedo_value = TEGRA21_SOC_SPEEDO;
 	}
 
-	if (cpu_speedo_value == 0) {
-		cpu_speedo_value = 2100;
+	if (cpu_speedo_value <= 0) {
+		cpu_speedo_value = TEGRA21_CPU_SPEEDO;
 		pr_warn("Tegra21: Warning: CPU Speedo value not fused. PLEASE FIX!!!!!!!!!!!\n");
 		pr_warn("Tegra21: Warning: PLEASE USE BOARD WITH FUSED SPEEDO VALUE !!!!\n");
 	}
 
-	if (gpu_speedo_value == 0) {
-		gpu_speedo_value = 2100;
+	if (gpu_speedo_value <= 0) {
+		gpu_speedo_value = TEGRA21_GPU_SPEEDO;
 		pr_warn("Tegra21: Warning: GPU Speedo value not fused. PLEASE FIX!!!!!!!!!!!\n");
 		pr_warn("Tegra21: Warning: PLEASE USE BOARD WITH FUSED SPEEDO VALUE !!!!\n");
 	}
 
+	if (soc_speedo_value <= 0) {
+		soc_speedo_value = TEGRA21_SOC_SPEEDO;
+		pr_warn("Tegra21: Warning: SOC Speedo value not fused. PLEASE FIX!!!!!!!!!!!\n");
+		pr_warn("Tegra21: Warning: PLEASE USE BOARD WITH FUSED SPEEDO VALUE !!!!\n");
+	}
+
+	/* Map chip sku, rev, speedo values into speedo and process IDs */
 	tegra_sku_id = tegra_get_sku_id();
 	rev_sku_to_speedo_ids(tegra_revision, tegra_sku_id);
 
@@ -204,20 +228,20 @@ void tegra_init_speedo_data(void)
 	cpu_process_id = i;
 
 	for (i = 0; i < CORE_PROCESS_CORNERS_NUM; i++) {
-		if (soc_speedo_0_value <
+		if (soc_speedo_value <
 			core_process_speedos[threshold_index][i]) {
 			break;
 		}
 	}
 	core_process_id = i;
 
-	pr_info("Tegra21: Speedo/IDDQ fuse revision %d\n", rev);
+	pr_info("Tegra21: Speedo/IDDQ fuse revision %d\n", speedo_rev);
 	pr_info("Tegra21: CPU Speedo ID %d, Soc Speedo ID %d, Gpu Speedo ID %d\n",
 		cpu_speedo_id, soc_speedo_id, gpu_speedo_id);
 	pr_info("Tegra21: CPU Process ID %d,Soc Process ID %d,Gpu Process ID %d\n",
 		 cpu_process_id, core_process_id, gpu_process_id);
 	pr_info("Tegra21: CPU Speedo value %d, Soc Speedo value %d, Gpu Speedo value %d\n",
-		 cpu_speedo_value, soc_speedo_0_value, gpu_speedo_value);
+		 cpu_speedo_value, soc_speedo_value, gpu_speedo_value);
 }
 
 int tegra_cpu_process_id(void)
@@ -277,7 +301,7 @@ int tegra_gpu_speedo_value(void)
 
 int tegra_soc_speedo_0_value(void)
 {
-	return soc_speedo_0_value;
+	return soc_speedo_value;
 }
 EXPORT_SYMBOL(tegra_soc_speedo_0_value);
 
