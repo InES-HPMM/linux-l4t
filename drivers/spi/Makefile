@@ -74,6 +74,7 @@ obj-$(CONFIG_SPI_TEGRA)			+= spi-tegra11.o
 CFLAGS_spi-tegra114.o			= -Werror
 obj-$(CONFIG_SPI_TEGRA114)			+= spi-tegra114.o
 obj-$(CONFIG_SPI_TEGRA114_SLAVE)	+= spi-tegra114-slave.o
+obj-$(CONFIG_SPI_TEGRA114_SLAVE)	+= spi-tegra124-slave.o
 obj-$(CONFIG_QSPI_TEGRA210)		+= spi-tegra210-qspi.o
 obj-$(CONFIG_SPI_TI_SSP)		+= spi-ti-ssp.o
 obj-$(CONFIG_SPI_TLE62X0)		+= spi-tle62x0.o

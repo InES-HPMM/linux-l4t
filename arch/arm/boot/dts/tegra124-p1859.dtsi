@@ -154,7 +154,8 @@
 
 	spi@7000d400 {
 		status = "okay";
-		compatible = "nvidia,tegra114-spi-slave";
+		compatible = "nvidia,tegra124-spi-slave";
+		nvidia,rx-trigger-words = <0>;
 	};
 
 	spi@7000d600 {

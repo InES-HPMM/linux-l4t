@@ -43,17 +43,17 @@
 		OF_DEV_AUXDATA("nvidia,tegra124-spi", 0x7000de00, \
 				"spi-tegra114.5", NULL),  \
 		/* slave */ \
-		OF_DEV_AUXDATA("nvidia,tegra114-spi-slave", 0x7000d400, \
+		OF_DEV_AUXDATA("nvidia,tegra124-spi-slave", 0x7000d400, \
 				"spi-tegra114-slave.0", NULL),  \
-		OF_DEV_AUXDATA("nvidia,tegra114-spi-slave", 0x7000d600, \
+		OF_DEV_AUXDATA("nvidia,tegra124-spi-slave", 0x7000d600, \
 				"spi-tegra114-slave.1", NULL),  \
-		OF_DEV_AUXDATA("nvidia,tegra114-spi-slave", 0x7000d800, \
+		OF_DEV_AUXDATA("nvidia,tegra124-spi-slave", 0x7000d800, \
 				"spi-tegra114-slave.2", NULL),  \
-		OF_DEV_AUXDATA("nvidia,tegra114-spi-slave", 0x7000da00, \
+		OF_DEV_AUXDATA("nvidia,tegra124-spi-slave", 0x7000da00, \
 				"spi-tegra114-slave.3", NULL),  \
-		OF_DEV_AUXDATA("nvidia,tegra114-spi-slave", 0x7000dc00, \
+		OF_DEV_AUXDATA("nvidia,tegra124-spi-slave", 0x7000dc00, \
 				"spi-tegra114-slave.4", NULL),  \
-		OF_DEV_AUXDATA("nvidia,tegra114-spi-slave", 0x7000de00, \
+		OF_DEV_AUXDATA("nvidia,tegra124-spi-slave", 0x7000de00, \
 				"spi-tegra114-slave.5", NULL)
 
 
