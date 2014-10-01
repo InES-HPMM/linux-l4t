@@ -153,6 +153,9 @@
 		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
 		disable-clock-gate;
+		calib-3v3-offsets = <0x6969>;
+		calib-1v8-offsets = <0x6969>;
+		auto-cal-step = <0x7>;
 		status = "disabled";
 	};
 
@@ -168,6 +171,9 @@
 		max-clk-limit = <200000000>;
 		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
+		calib-3v3-offsets = <0x615F>;
+		calib-1v8-offsets = <0x615F>;
+		auto-cal-step = <0x7>;
 		status = "disabled";
 	};
 
@@ -196,6 +202,9 @@
 		max-clk-limit = <204000000>;
 		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
+		calib-3v3-offsets = <0x6969>;
+		calib-1v8-offsets = <0x6969>;
+		auto-cal-step = <0x7>;
 		status = "disabled";
 	};
 
