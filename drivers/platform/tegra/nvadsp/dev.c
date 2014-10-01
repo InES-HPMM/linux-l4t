@@ -465,6 +465,10 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
+	ret = nvadsp_run_app_module_probe(pdev);
+	if (ret)
+		goto err;
+
 	ret = aram_init();
 	if (ret)
 		dev_err(dev, "Failed to init aram\n");

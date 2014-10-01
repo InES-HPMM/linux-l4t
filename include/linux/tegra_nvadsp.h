@@ -134,6 +134,8 @@ typedef struct _msgq_t {
 #define MSGQ_MAX_QUEUE_WSIZE	(8192 - MSGQ_HEADER_WSIZE)
 #define MSGQ_MSG_WSIZE(x) \
 	(((sizeof(x) + sizeof(int32_t) - 1) & (~(sizeof(int32_t)-1))) >> 2)
+#define MSGQ_MSG_PAYLOAD_WSIZE(x) \
+	(MSGQ_MSG_WSIZE(x) - MSGQ_MESSAGE_HEADER_WSIZE)
 
 void msgq_init(msgq_t *msgq, int32_t size);
 int32_t msgq_queue_message(msgq_t *msgq, const msgq_message_t *message);
@@ -182,6 +184,9 @@ void nvadsp_aram_release(char *start, size_t size);
 /*
  * ADSP OS
  */
+
+typedef const void *nvadsp_os_handle_t;
+
 void nvadsp_adsp_init(void);
 int __must_check nvadsp_os_load(void);
 int __must_check nvadsp_os_start(void);
@@ -207,9 +212,15 @@ enum {
 	NVADSP_APP_STATE_STOPPED
 };
 
+enum adsp_app_status_msg {
+	ADSP_APP_START_STATUS,
+	ADSP_APP_COMPLETE_STATUS
+};
+
 struct nvadsp_app_info;
 typedef const void *nvadsp_app_handle_t;
-typedef void (*app_complete_status_notifier)(struct nvadsp_app_info *, int32_t);
+typedef void (*app_complete_status_notifier)(struct nvadsp_app_info *,
+	enum adsp_app_status_msg, int32_t);
 
 typedef struct adsp_app_mem {
 	/* DRAM segment*/
@@ -270,8 +281,10 @@ typedef struct nvadsp_app_info {
 	const void *handle;
 	int return_status;
 	struct completion wait_for_app_complete;
+	struct completion wait_for_app_start;
 	app_complete_status_notifier complete_status_notifier;
 	struct work_struct complete_work;
+	enum adsp_app_status_msg status_msg;
 } nvadsp_app_info_t;
 
 nvadsp_app_handle_t __must_check
@@ -285,6 +298,9 @@ int nvadsp_app_deinit(nvadsp_app_info_t *);
 void *nvadsp_alloc_coherent(size_t, dma_addr_t *, gfp_t);
 void nvadsp_free_coherent(size_t, void *, dma_addr_t);
 void *nvadsp_da_to_va_mappings(u64, int);
+nvadsp_app_info_t *nvadsp_run_app(nvadsp_os_handle_t, const char *,
+	nvadsp_app_args_t *, app_complete_status_notifier, uint32_t, bool);
+void nvadsp_exit_app(nvadsp_app_info_t *app, bool terminate);
 
 static inline void
 set_app_complete_notifier(

@@ -646,8 +646,7 @@ int nvadsp_os_load(void)
 	priv.logger.dev = dev;
 
 
-	dev_info(dev, "Loading ADSP OS firmware %s\n",
-						NVADSP_FIRMWARE);
+	dev_info(dev, "Loading ADSP OS firmware %s\n", NVADSP_FIRMWARE);
 
 	ret = nvadsp_os_elf_load(fw);
 	if (ret) {
@@ -663,6 +662,7 @@ int nvadsp_os_load(void)
 	}
 	ptr = get_mailbox_shared_region();
 	update_nvadsp_app_shared_ptr(ptr);
+	drv_data->shared_adsp_os_data = ptr;
 	priv.os_firmware = fw;
 
 	return 0;

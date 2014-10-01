@@ -91,6 +91,7 @@ struct nvadsp_drv_data {
 
 	struct nvadsp_pm_state state;
 	bool adsp_os_loaded;
+	void *shared_adsp_os_data;
 };
 
 #define ADSP_CONFIG	0x04
