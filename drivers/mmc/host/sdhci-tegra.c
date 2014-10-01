@@ -124,6 +124,7 @@
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_START	0x80000000
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_ENABLE	0x20000000
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET_SHIFT	0x8
+#define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_STEP_OFFSET_SHIFT	0x10
 
 #define SDMMC_AUTO_CAL_STATUS	0x1EC
 #define SDMMC_AUTO_CAL_STATUS_AUTO_CAL_ACTIVE	0x80000000
@@ -1839,6 +1840,7 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 			calib_offsets = tegra_host->plat->calib_3v3_offsets;
 		else if (signal_voltage == MMC_SIGNAL_VOLTAGE_180)
 			calib_offsets = tegra_host->plat->calib_1v8_offsets;
+
 		if (calib_offsets) {
 			/* Program Auto cal PD offset(bits 8:14) */
 			val &= ~(0x7F <<
@@ -1849,6 +1851,12 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 			val &= ~0x7F;
 			val |= (calib_offsets & 0xFF);
 		}
+	}
+	if (tegra_host->plat->auto_cal_step) {
+		val &= ~(0x7 <<
+			SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_STEP_OFFSET_SHIFT);
+		val |= (tegra_host->plat->auto_cal_step <<
+			SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_STEP_OFFSET_SHIFT);
 	}
 	sdhci_writel(sdhci, val, SDMMC_AUTO_CAL_CONFIG);
 
@@ -4462,6 +4470,7 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	of_property_read_u32(np, "uhs-mask", &plat->uhs_mask);
 	of_property_read_u32(np, "calib-3v3-offsets", &plat->calib_3v3_offsets);
 	of_property_read_u32(np, "calib-1v8-offsets", &plat->calib_1v8_offsets);
+	of_property_read_u32(np, "auto-cal-step", &plat->auto_cal_step);
 
 	plat->pwr_off_during_lp0 = of_property_read_bool(np,
 						"pwr-off-during-lp0");
