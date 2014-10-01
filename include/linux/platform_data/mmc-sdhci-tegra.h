@@ -76,6 +76,7 @@ struct tegra_sdhci_platform_data {
 	unsigned char default_drv_type;
 	bool dll_calib_needed;
 	bool pwr_off_during_lp0;
+	bool disable_auto_cal;
 	unsigned int auto_cal_step;
 };
 

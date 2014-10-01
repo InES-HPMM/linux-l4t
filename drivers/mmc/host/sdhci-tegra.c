@@ -1809,6 +1809,9 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 	unsigned int timeout = 10;
 	unsigned int calib_offsets = 0;
 
+	if (tegra_host->plat->disable_auto_cal)
+		return;
+
 	/* No Calibration for sdmmc4 */
 	if (unlikely(soc_data->nvquirks & NVQUIRK_DISABLE_SDMMC4_CALIB) &&
 		(tegra_host->instance == 3))
@@ -4471,6 +4474,8 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	of_property_read_u32(np, "calib-3v3-offsets", &plat->calib_3v3_offsets);
 	of_property_read_u32(np, "calib-1v8-offsets", &plat->calib_1v8_offsets);
 	of_property_read_u32(np, "auto-cal-step", &plat->auto_cal_step);
+	plat->disable_auto_cal = of_property_read_bool(np,
+		"nvidia,disable-auto-cal");
 
 	plat->pwr_off_during_lp0 = of_property_read_bool(np,
 						"pwr-off-during-lp0");
