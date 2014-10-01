@@ -206,10 +206,7 @@ static void __migration_entry_wait(struct mm_struct *mm, pte_t *ptep,
 	pte_t pte;
 	swp_entry_t entry;
 	struct page *page;
-	bool wait;
-	unsigned long timeout = jiffies + msecs_to_jiffies(8000);
 
-retry:
 	spin_lock(ptl);
 	pte = *ptep;
 	if (!is_swap_pte(pte))
@@ -221,19 +218,18 @@ retry:
 
 	page = migration_entry_to_page(entry);
 
-	if (!page_count(page))
+	/*
+	 * Once radix-tree replacement of page migration started, page_count
+	 * *must* be zero. And, we don't want to call wait_on_page_locked()
+	 * against a page without get_page().
+	 * So, we use get_page_unless_zero(), here. Even failed, page fault
+	 * will occur again.
+	 */
+	if (!get_page_unless_zero(page))
 		goto out;
-	wait = false;
-	if (PageLocked(page))
-		wait = true;
 	pte_unmap_unlock(ptep, ptl);
-	if (wait) {
-		cond_resched();
-		if (time_before(jiffies, timeout))
-			goto retry;
-		else
-			pr_err("__migration_entry_wait timeout error\n");
-	}
+	wait_on_page_locked(page);
+	put_page(page);
 	return;
 out:
 	pte_unmap_unlock(ptep, ptl);
