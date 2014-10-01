@@ -27,6 +27,7 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include <linux/module.h>
+#include <linux/delay.h>
 
 #include <mach/irqs.h>
 
@@ -976,6 +977,12 @@ static int __init tegra_actmon_init(void)
 		pr_err("%s: Failed to find actmon clock\n", __func__);
 		return 0;
 	}
+
+	/* Reset ACTMON */
+	tegra_periph_reset_assert(c);
+	udelay(10);
+	tegra_periph_reset_deassert(c);
+
 	actmon_clk_freq = clk_get_rate(c) / 1000;
 	ret = tegra_clk_prepare_enable(c);
 	if (ret) {
