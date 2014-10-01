@@ -188,6 +188,7 @@
 		max-clk-limit = <51000000>;
 		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
+		nvidia,disable-auto-cal;
 		status = "disabled";
 	};
 

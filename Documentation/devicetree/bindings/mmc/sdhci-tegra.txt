@@ -45,6 +45,7 @@ Optional properties:
 - update-pinctrl-settings: flag when set using pictrl apis for updating sdmmc pins
 - nvidia,dll-calib-needed: DLL calibration is needed for SDMMC4 and SDMMC2 devices if they are enumerated
 in HS400 mode.
+- nvidia,disable-auto-cal: This flag when set will disable auto calibration
 
 Example:
 
