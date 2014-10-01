@@ -28,6 +28,8 @@ struct tegra_spi_platform_data {
 	unsigned int spi_max_frequency;
 	bool is_clkon_always;
 	u8 def_chip_select;
+	int rx_trig_words;
+	int ls_bit;
 };
 
 /*
