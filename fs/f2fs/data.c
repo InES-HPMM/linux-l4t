@@ -945,7 +945,7 @@ static void f2fs_write_failed(struct address_space *mapping, loff_t to)
 	struct inode *inode = mapping->host;
 
 	if (to > inode->i_size) {
-		truncate_pagecache(inode, to, inode->i_size);
+		truncate_pagecache(inode, 0, inode->i_size);
 		truncate_blocks(inode, inode->i_size, true);
 	}
 }
@@ -1089,7 +1089,8 @@ static int check_direct_IO(struct inode *inode, int rw,
 }
 
 static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb,
-		const struct iovec *iov, loff_t offset, unsigned long nr_segs)
+				const struct iovec *iov, loff_t offset,
+				unsigned long nr_segs)
 {
 	struct file *file = iocb->ki_filp;
 	struct address_space *mapping = file->f_mapping;
@@ -1116,12 +1117,11 @@ static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb,
 	return err;
 }
 
-static void f2fs_invalidate_data_page(struct page *page, unsigned int offset,
-				      unsigned int length)
+static void f2fs_invalidate_data_page(struct page *page, unsigned long offset)
 {
 	struct inode *inode = page->mapping->host;
 
-	if (offset % PAGE_CACHE_SIZE || length != PAGE_CACHE_SIZE)
+	if (offset % PAGE_CACHE_SIZE)
 		return;
 
 	if (PageDirty(page))
