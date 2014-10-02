@@ -102,8 +102,13 @@ MODULE_PARM_DESC(debug_level, "level 0~4");
 
 static void usbep_struct_setup(struct nv_udc_s *nvudc, u32 index, u8 *name);
 
-static bool u1_u2_enable = true;
-module_param(u1_u2_enable, bool, S_IRUGO|S_IWUSR);
+/* WAR: Disable u1 to improve link stability */
+/* Please enable u1 for compliance tests */
+static bool u1_enable;
+module_param(u1_enable, bool, S_IRUGO|S_IWUSR);
+
+static bool u2_enable = true;
+module_param(u2_enable, bool, S_IRUGO|S_IWUSR);
 
 /* T210 workaround. Disable LPM for HS and FS by default */
 static bool disable_lpm = false;
@@ -2701,24 +2706,20 @@ bool setfeaturesrequest(struct nv_udc_s *nvudc, u8 RequestType, u8 bRequest, u16
 				goto set_feature_error;
 			}
 
-			/* disable U1/U2 by default */
-			if (u1_u2_enable) {
-				u_temp = ioread32(nvudc->mmio_reg_base
+			u_temp = ioread32(nvudc->mmio_reg_base
 						+ PORTPM);
 
-				if (value == USB_DEVICE_U1_ENABLE) {
+			if ((value == USB_DEVICE_U1_ENABLE) && u1_enable) {
 					u_temp &= ~PORTPM_U1E;
 					u_temp |= set_feat << PORTPM_U1E_SHIFT;
-				}
-				if (value == USB_DEVICE_U2_ENABLE) {
+			}
+			if ((value == USB_DEVICE_U2_ENABLE) && u2_enable) {
 					u_temp &= ~PORTPM_U2E;
 					u_temp |= set_feat << PORTPM_U2E_SHIFT;
-				}
-
-				iowrite32(u_temp, nvudc->mmio_reg_base
-						+ PORTPM);
-				msg_dbg(nvudc->dev, "PORTPM = 0x%x", u_temp);
 			}
+
+			iowrite32(u_temp, nvudc->mmio_reg_base + PORTPM);
+			msg_dbg(nvudc->dev, "PORTPM = 0x%x", u_temp);
 			break;
 
 		}
@@ -3397,11 +3398,12 @@ static void portpm_config_war(struct nv_udc_s *nvudc)
 	u32 portsc_value = ioread32(nvudc->mmio_reg_base + PORTSC);
 	u32 reg_portpm;
 
-	if (!u1_u2_enable) {
-		/* bug 1376335 */
+	if (!u1_enable || !u2_enable) {
 		reg_portpm = ioread32(nvudc->mmio_reg_base + PORTPM);
-		reg_portpm &= ~PORTPM_U1TIMEOUT(-1);
-		reg_portpm &= ~PORTPM_U2TIMEOUT(-1);
+		if (!u1_enable)
+			reg_portpm &= ~PORTPM_U1TIMEOUT(-1);
+		if (!u2_enable)
+			reg_portpm &= ~PORTPM_U2TIMEOUT(-1);
 		iowrite32(reg_portpm, nvudc->mmio_reg_base + PORTPM);
 	}
 
