@@ -175,7 +175,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 			[0] = { .clk_name = "ispa", .clk_type = CLK_AND_RST },
 			[1] = { .clk_name = "vi", .clk_type = CLK_AND_RST },
 			[2] = { .clk_name = "csi", .clk_type = CLK_AND_RST },
-			[3] = { .clk_name = "vi_i2c", .clk_type = CLK_AND_RST },
+			[3] = { .clk_name = "vii2c", .clk_type = CLK_AND_RST },
 			[4] = { .clk_name = "cilab", .clk_type = CLK_ONLY },
 			[5] = { .clk_name = "cilcd", .clk_type = CLK_ONLY },
 			[6] = { .clk_name = "cile", .clk_type = CLK_ONLY },
