@@ -237,7 +237,6 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	},
 	[TEGRA_POWERGATE_SOR] = {
 		.name = "sor",
-		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "sor0", .clk_type = CLK_AND_RST },
 			[1] = { .clk_name = "dsia", .clk_type = CLK_AND_RST },
@@ -854,6 +853,12 @@ static int tegra210_pg_init_refcount(void)
 			tegra210_pg_partition_info[i].refcount = 1;
 		else
 			tegra210_pg_partition_info[i].disable_after_boot = 0;
+
+	/* SOR refcount depends on other units */
+	tegra210_pg_partition_info[TEGRA_POWERGATE_SOR].refcount =
+		(tegra_powergate_is_powered(TEGRA_POWERGATE_DISA) ? 1 : 0) +
+		(tegra_powergate_is_powered(TEGRA_POWERGATE_DISB) ? 1 : 0) +
+		(tegra_powergate_is_powered(TEGRA_POWERGATE_VE) ? 1 : 0);
 
 	return 0;
 }
