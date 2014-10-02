@@ -18,6 +18,7 @@
  *
  */
 #include "tegra210-foster-e-p2530-common.dtsi"
+#include "tegra210-platforms/tegra210-foster-e-extcon-p2530-0930-e00.dtsi"
 
 / {
 	model = "foster_e_hdd";
@@ -30,6 +31,6 @@
 	};
 
 	sdhci@700b0600 {
-                status="disabled";
+		status="disabled";
 	};
 };
