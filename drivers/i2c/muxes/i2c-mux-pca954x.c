@@ -222,7 +222,9 @@ static int pca954x_probe(struct i2c_client *client,
 	struct pca954x_platform_data *pdata = client->dev.platform_data;
 	int num, force, class;
 	struct pca954x *data;
+	bool fskip = false;
 	int ret;
+	int force_bus = 0;
 
 	if (!i2c_check_functionality(adap, I2C_FUNC_SMBUS_BYTE))
 		return -ENODEV;
@@ -232,6 +234,28 @@ static int pca954x_probe(struct i2c_client *client,
 		return -ENOMEM;
 
 	i2c_set_clientdata(client, data);
+
+	if (client->dev.of_node) {
+		ret = of_get_property(client->dev.of_node,
+			"skip_mux_detect", NULL);
+		if (ret > 0) {
+			dev_info(&client->dev, "%s: device detect skipped.\n",
+				__func__);
+			fskip = true;
+		}
+
+		ret = of_property_read_u32(client->dev.of_node,
+			"force_bus_start", &force_bus);
+		if (ret > 0) {
+			dev_info(&client->dev, "%s: could not read force bus number\n",
+					__func__);
+		} else {
+			if (force_bus > 0) {
+				dev_info(&client->dev, "%s: forcing device bus number, start %i.\n",
+					__func__, force_bus);
+			}
+		}
+	}
 
 	/* Get regulator pointer for pca954x vcc */
 	data->vcc_reg = devm_regulator_get(&client->dev, "vcc");
@@ -249,6 +273,9 @@ static int pca954x_probe(struct i2c_client *client,
 		dev_info(&client->dev, "vcc-pullup regulator not found\n");
 		data->pullup_reg = NULL;
 	}
+
+	if (fskip)
+		goto pca954x_probe_skip_detect;
 
 	/* Increase ref count for pca954x vcc */
 	if (data->vcc_reg) {
@@ -290,6 +317,7 @@ static int pca954x_probe(struct i2c_client *client,
 	if (data->pullup_reg)
 		regulator_disable(data->pullup_reg);
 
+pca954x_probe_skip_detect:
 	data->type = id->driver_data;
 	data->last_chan = 0;		   /* force the first selection */
 
@@ -299,6 +327,10 @@ static int pca954x_probe(struct i2c_client *client,
 
 		force = 0;			  /* dynamic adap number */
 		class = 0;			  /* no class by default */
+
+		if (force_bus)
+			force = force_bus + num;
+
 		if (pdata) {
 			if (num < pdata->num_modes) {
 				/* force static number */
@@ -310,6 +342,7 @@ static int pca954x_probe(struct i2c_client *client,
 				/* discard unconfigured channels */
 				break;
 		}
+
 		if (client->dev.of_node)
 			deselect_on_exit = true;
 
