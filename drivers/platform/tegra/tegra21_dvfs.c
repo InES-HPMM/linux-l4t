@@ -1008,7 +1008,7 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 	 * (if edp limit is set).
 	 */
 	if (!core_edp_voltage)
-		core_edp_voltage = 1225;	/* default 1.225V EDP limit */
+		core_edp_voltage = 1125;	/* default 1.125V EDP limit */
 
 	mv = min(mv, core_edp_voltage);
 #ifndef CONFIG_TEGRA_CORE_DVFS
