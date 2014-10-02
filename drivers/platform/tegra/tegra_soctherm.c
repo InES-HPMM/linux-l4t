@@ -21,12 +21,9 @@
 #include <linux/module.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
-#include <linux/delay.h>
 #include <linux/err.h>
-#include <linux/gpio.h>
 #include <linux/io.h>
 #include <linux/clk.h>
-#include <linux/cpufreq.h>
 #include <linux/seq_file.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
@@ -36,22 +33,18 @@
 #include <linux/uaccess.h>
 #include <linux/thermal.h>
 #include <linux/platform_data/thermal_sensors.h>
-#include <linux/pid_thermal_gov.h>
 #include <linux/bug.h>
 #include <linux/tegra-fuse.h>
 #include <linux/tegra-pmc.h>
 #include <linux/regulator/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
-#include <linux/pid_thermal_gov.h>
-#include <linux/tegra-fuse.h>
 #include <linux/tegra_soctherm.h>
 
 #include <mach/irqs.h>
 #include <mach/edp.h>
 
 #include "iomap.h"
-#include "gpio-names.h"
 #include <linux/platform/tegra/common.h>
 #include <linux/platform/tegra/dvfs.h>
 
@@ -116,38 +109,11 @@ static const int MIN_LOW_TEMP = -127000;
 #define THERMTRIP_ANY_EN_SHIFT		(THERMTRIP_MEM_EN_SHIFT + 1)
 #define THERMTRIP			0x80
 
-#define LOCK_CTL			0x90
-#define LOCK_CTL_TSENSE_LOCK_EN_SHIFT	5
-#define LOCK_CTL_THTRIP_LOCK_EN_SHIFT	4
-#define LOCK_CTL_LEVEL3_LOCK_EN_SHIFT	3
-#define LOCK_CTL_LEVEL2_LOCK_EN_SHIFT	2
-#define LOCK_CTL_LEVEL1_LOCK_EN_SHIFT	1
-#define LOCK_CTL_LEVEL0_LOCK_EN_SHIFT	0
-
 #define STATS_CTL		0x94
 #define STATS_CTL_CLR_DN	0x8
 #define STATS_CTL_EN_DN		0x4
 #define STATS_CTL_CLR_UP	0x2
 #define STATS_CTL_EN_UP		0x1
-
-#define THERM_SLOWDOWN_THRESH			0x98
-#define THERM_SLOWDOWN_THRESH_MEM_SHIFT		24
-#define THERM_SLOWDOWN_THRESH_MEM_MASK		0xff
-#define THERM_SLOWDOWN_THRESH_GPU_SHIFT		16
-#define THERM_SLOWDOWN_THRESH_GPU_MASK		0xff
-#define THERM_SLOWDOWN_THRESH_CPU_SHIFT		8
-#define THERM_SLOWDOWN_THRESH_CPU_MASK		0xff
-#define THERM_SLOWDOWN_THRESH_TSENSE_SHIFT	0
-#define THERM_SLOWDOWN_THRESH_TSENSE_MASK	0xff
-
-#define THERM_SLOWDOWN_CTL				0x9c
-#define THERM_SLOWDOWN_CTL_SLOWDOWN_SELECT_SHIFT	30
-#define THERM_SLOWDOWN_CTL_SLOWDOWN_SELECT_MASK		0x3
-#define THERM_SLOWDOWN_CTL_ANY_EN_SHIFT			4
-#define THERM_SLOWDOWN_CTL_MEM_EN_SHIFT			3
-#define THERM_SLOWDOWN_CTL_GPU_EN_SHIFT			2
-#define THERM_SLOWDOWN_CTL_CPU_EN_SHIFT			1
-#define THERM_SLOWDOWN_CTL_TSENSE_EN_SHIFT		0
 
 #define TS_CPU0_CONFIG0				0xc0
 #define TS_CPU0_CONFIG0_TALL_SHIFT		8
@@ -713,15 +679,6 @@ static const enum soctherm_throttle_dev_id therm2dev[] = {
 	[THERM_MEM] = THROTTLE_DEV_NONE,
 	[THERM_GPU] = THROTTLE_DEV_GPU,
 	[THERM_PLL] = THROTTLE_DEV_NONE,
-};
-
-/* SOC- OCx to theirt GPIO which is wakeup capable. This is T114 specific */
-static int soctherm_ocx_to_wake_gpio[TEGRA_SOC_OC_IRQ_MAX] = {
-	TEGRA_GPIO_PEE3,	/* TEGRA_SOC_OC_IRQ_1 */
-	TEGRA_GPIO_INVALID,	/* TEGRA_SOC_OC_IRQ_2 */
-	TEGRA_GPIO_INVALID,	/* TEGRA_SOC_OC_IRQ_3 */
-	TEGRA_GPIO_PJ2,		/* TEGRA_SOC_OC_IRQ_4 */
-	TEGRA_GPIO_INVALID,	/* TEGRA_SOC_OC_IRQ_5 */
 };
 
 static int sensor2therm_a[TSENSE_SIZE];
@@ -3153,43 +3110,6 @@ static int soctherm_oc_irq_set_type(struct irq_data *data, unsigned int type)
 }
 
 /**
- * soctherm_oc_irq_set_wake() - Set the overcurrent interrupt request
- * to "wake"
- * @irq_data:	Interrupt request information
- * @on:		Whether to enable or disable power management wakeup
- *
- * Configure the GPIO associated with a SOC_THERM over-current
- * interrupt to wake the system from sleep
- *
- * It may be necessary to wake the system from sleep mode so that
- * SOC_THERM can provide proper over-current throttling.
- *
- * Return: 0 on success, -EINVAL if there is no wakeup support
- * for that given hardware irq, or the gpio number if there is
- * no gpio_to_irq for that gpio.
- */
-static int soctherm_oc_irq_set_wake(struct irq_data *data, unsigned int on)
-{
-	int gpio;
-	int gpio_irq;
-
-	gpio = soctherm_ocx_to_wake_gpio[data->hwirq];
-	if (!gpio_is_valid(gpio)) {
-		pr_err("No wakeup supported for irq %lu\n", data->hwirq);
-		return -EINVAL;
-	}
-
-	gpio_irq = gpio_to_irq(gpio);
-	if (gpio_irq < 0) {
-		pr_err("No gpio_to_irq for gpio %d\n", gpio);
-		return gpio;
-	}
-
-	irq_set_irq_wake(gpio_irq, on);
-	return 0;
-}
-
-/**
  * soctherm_oc_irq_map() - SOC_THERM interrupt request domain mapper
  * @h:		Interrupt request domain
  * @virq:	Virtual interrupt request number
@@ -3285,7 +3205,7 @@ static int soctherm_oc_int_init(int irq_base, int num_irqs,
 	soc_irq_cdata.irq_chip.irq_disable = soctherm_oc_irq_disable;
 	soc_irq_cdata.irq_chip.irq_enable = soctherm_oc_irq_enable;
 	soc_irq_cdata.irq_chip.irq_set_type = soctherm_oc_irq_set_type;
-	soc_irq_cdata.irq_chip.irq_set_wake = soctherm_oc_irq_set_wake;
+	soc_irq_cdata.irq_chip.irq_set_wake = NULL;
 
 	if (irq_base) {
 		irq_base = irq_alloc_descs(irq_base, 0, num_irqs, 0);
