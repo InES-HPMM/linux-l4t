@@ -295,4 +295,14 @@
 		i2c-fs-rate = <400000>;
 		sel-conversion-slope = <1>;
 	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		gpio_sys_12 {
+			label = "Power";
+			linux,code = <KEY_POWER>;
+			gpios = <&gpio TEGRA_GPIO(S, 4) GPIO_ACTIVE_LOW>;
+			gpio-key,wakeup;
+		};
+	};
 };
