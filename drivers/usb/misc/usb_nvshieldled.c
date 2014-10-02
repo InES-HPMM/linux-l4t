@@ -55,6 +55,7 @@
 #define LED_TOUCH 1
 
 struct nvshield_led *g_dev;
+struct compat_class *nvshieldled_compat_class = NULL;
 
 static const struct usb_device_id nvshield_table[] = {
 	{ USB_DEVICE_AND_INTERFACE_INFO(VID, PID,
@@ -345,8 +346,22 @@ static int nvshieldled_probe(struct usb_interface *interface,
 	retval = register_reboot_notifier(&nvshieldled_notifier);
 	if (retval)
 		goto error5;
+
+	nvshieldled_compat_class = class_compat_register("nvshieldled");
+	if (IS_ERR(nvshieldled_compat_class))
+		goto error6;
+
+	retval = class_compat_create_link(nvshieldled_compat_class,
+					&interface->dev, NULL);
+	if (retval)
+		goto error7;
+
 	return 0;
 
+error7:
+	class_compat_unregister(nvshieldled_compat_class);
+error6:
+	unregister_reboot_notifier(&nvshieldled_notifier);
 error5:
 	device_remove_file(&interface->dev, &dev_attr_state2);
 error4:
@@ -374,6 +389,7 @@ static void nvshieldled_disconnect(struct usb_interface *interface)
 	device_remove_file(&interface->dev, &dev_attr_state);
 	device_remove_file(&interface->dev, &dev_attr_brightness2);
 	device_remove_file(&interface->dev, &dev_attr_state2);
+	class_compat_unregister(nvshieldled_compat_class);
 
 	usb_set_intfdata(interface, NULL);
 	usb_put_dev(dev->udev);
