@@ -3519,6 +3519,50 @@ void tegra_xhci_reset_sspi(struct usb_hcd *hcd, u8 pi)
 	csb_write(tegra, XUSB_FALC_SS_PVTPORTSC1 + (pi * 0x80), 0x2b0);
 }
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+static int tegra_xhci_hub_control(struct usb_hcd *hcd, u16 typeReq,
+		u16 wValue, u16 wIndex, char *buf, u16 wLength)
+{
+	struct tegra_xhci_hcd *tegra = hcd_to_tegra_xhci(hcd);
+	struct xhci_hcd *xhci = tegra->xhci;
+	struct device *dev = &tegra->pdev->dev;
+	unsigned link_state = (wIndex & 0xff00) >> 3;
+	unsigned port = (wIndex & 0xff) - 1;
+	u32 portsc;
+	int rc;
+
+	if (XUSB_IS_T210(tegra) &&
+		(hcd->speed == HCD_USB3) && (typeReq == SetPortFeature) &&
+		(wValue == USB_PORT_FEAT_LINK_STATE) &&
+		(link_state == USB_SS_PORT_LS_U3)) {
+		t210_disable_lfps_detector(tegra, port);
+	}
+
+	rc = xhci_hub_control(hcd, typeReq, wValue, wIndex, buf, wLength);
+
+	if (XUSB_IS_T210(tegra) &&
+		(hcd->speed == HCD_USB3) && (typeReq == SetPortFeature) &&
+		(wValue == USB_PORT_FEAT_LINK_STATE) &&
+		(link_state == USB_SS_PORT_LS_U3)) {
+		unsigned long timeout = jiffies + msecs_to_jiffies(100);
+
+		do {
+			portsc = xhci_readl(xhci, xhci->usb3_ports[port]);
+			if ((portsc & PORT_PLS_MASK) != XDEV_U3) {
+				dev_info(dev,
+					"%s portsc 0x%x is not U3 wait 10ms\n",
+					__func__, portsc);
+				usleep_range(10000, 15000);
+			}
+		} while (time_is_after_jiffies(timeout));
+
+		t210_enable_lfps_detector(tegra, port);
+	}
+
+	return rc;
+}
+#endif
+
 static const struct hc_driver tegra_plat_xhci_driver = {
 	.description =		"tegra-xhci",
 	.product_desc =		"Nvidia xHCI Host Controller",
@@ -3562,15 +3606,23 @@ static const struct hc_driver tegra_plat_xhci_driver = {
 	.get_frame_number =	xhci_get_frame,
 
 	/* Root hub support */
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	.hub_control =		tegra_xhci_hub_control,
+#else
 	.hub_control =		xhci_hub_control,
+#endif
 	.hub_status_data =	xhci_hub_status_data,
 
 #ifdef CONFIG_PM
 	.bus_suspend =		tegra_xhci_bus_suspend,
 	.bus_resume =		tegra_xhci_bus_resume,
 #endif
+
+/* TODO: temporarily disable U1/U2 for T210, enable it later */
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	.enable_usb3_lpm_timeout =	xhci_enable_usb3_lpm_timeout,
 	.disable_usb3_lpm_timeout =	xhci_disable_usb3_lpm_timeout,
+#endif
 	.reset_sspi = tegra_xhci_reset_sspi,
 };
 

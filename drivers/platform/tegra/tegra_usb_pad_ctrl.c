@@ -943,27 +943,6 @@ static int tegra_xusb_padctl_phy_enable(void);
  * SATA_LANE   0x8
  * NOT_SUPPORTED	0xF
  */
-static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
-{
-	if (laneowner == 0x0)
-		return PEX_P0;
-	else if (laneowner == 0x1)
-		return PEX_P1;
-	else if (laneowner == 0x2)
-		return PEX_P2;
-	else if (laneowner == 0x2)
-		return PEX_P3;
-	else if (laneowner == 0x4)
-		return PEX_P4;
-	else if (laneowner == 0x5)
-		return PEX_P5;
-	else if (laneowner == 0x6)
-		return PEX_P6;
-	else if (laneowner == 0x8)
-		return SATA_S0;
-	else
-		return -1; /* unknown */
-}
 int usb3_phy_pad_enable(u32 lane_owner)
 {
 	unsigned long flags;

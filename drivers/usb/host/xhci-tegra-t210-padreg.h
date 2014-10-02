@@ -123,6 +123,9 @@
 
 /* SS pad operations */
 void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port);
+void
+t210_disable_lfps_detector(struct tegra_xhci_hcd *tegra, unsigned port);
+void t210_enable_lfps_detector(struct tegra_xhci_hcd *tegra, unsigned port);
 
 /* HSIC pad operations */
 int t210_hsic_pad_enable(struct tegra_xhci_hcd *tegra, u8 pad);

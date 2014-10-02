@@ -66,6 +66,12 @@
 #define HSIC_STRB_TRIM_CONTROL_0		(0x344)
 #define  STRB_TRIM_VAL(x)			(((x) & 0x3F) << 0)
 
+/* XUSB_PADCTL_UPHY_MISC_PAD_Px_CTL_1_0 */
+/* XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0 */
+#define UPHY_MISC_PAD_AUX_RX_IDLE_MODE(x)		(((x) & 0x3) << 20)
+#define UPHY_MISC_PAD_AUX_RX_TERM_EN			(1 << 18)
+#define UPHY_MISC_PAD_AUX_RX_MODE_OVRD			(1 << 13)
+
 void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port)
 {
 	u32 ctl1, ctl2, ctl3, ctl4, ctl6, val;
@@ -189,4 +195,49 @@ int t210_hsic_pad_pupd_set(struct tegra_xhci_hcd *tegra, unsigned pad,
 
 	reg_dump(dev, tegra->padctl_base, HSIC_PAD_CTL_0(pad));
 	return 0;
+}
+
+static void t210_lfps_detector(struct tegra_xhci_hcd *tegra,
+						unsigned port, bool on)
+{
+	struct device *dev = &tegra->pdev->dev;
+	u8 lane = (tegra->bdata->lane_owner >> (port * 4)) & 0xf;
+	enum padctl_lane lane_enum = usb3_laneowner_to_lane_enum(lane);
+	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	u32 misc_pad_ctl1;
+	u32 mask, val;
+
+	if ((lane == USB3_LANE_NOT_ENABLED) || (lane_enum < 0))
+		return;
+
+	if (lane_enum == SATA_S0)
+		misc_pad_ctl1 = padregs->uphy_misc_pad_s0_ctlY_0[0];
+	else
+		misc_pad_ctl1 = padregs->uphy_misc_pad_pX_ctlY_0[lane_enum][0];
+
+	mask = UPHY_MISC_PAD_AUX_RX_IDLE_MODE(~0) |
+		UPHY_MISC_PAD_AUX_RX_TERM_EN | UPHY_MISC_PAD_AUX_RX_MODE_OVRD;
+
+	if (!on) {
+		val = UPHY_MISC_PAD_AUX_RX_IDLE_MODE(0x1) |
+			UPHY_MISC_PAD_AUX_RX_TERM_EN |
+			UPHY_MISC_PAD_AUX_RX_MODE_OVRD;
+	} else
+		val = 0;
+
+	tegra_usb_pad_reg_update(misc_pad_ctl1, mask, val);
+
+	reg_dump(dev, tegra->padctl_base, misc_pad_ctl1);
+}
+
+void t210_enable_lfps_detector(struct tegra_xhci_hcd *tegra, unsigned port)
+{
+	dev_dbg(&tegra->pdev->dev, "%s port %d\n", __func__, port);
+	t210_lfps_detector(tegra, port, true);
+}
+
+void t210_disable_lfps_detector(struct tegra_xhci_hcd *tegra, unsigned port)
+{
+	dev_dbg(&tegra->pdev->dev, "%s port %d\n", __func__, port);
+	t210_lfps_detector(tegra, port, false);
 }
