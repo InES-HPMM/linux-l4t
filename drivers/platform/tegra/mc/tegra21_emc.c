@@ -1958,8 +1958,10 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 		if (var == emc_cfg_ab) {
 			wval &= ~EMC_CFG_DRAM_ACPD;
 			wval &= ~EMC_CFG_DYN_SELF_REF;
-			if (dram_type == DRAM_TYPE_LPDDR4)
+			if (dram_type == DRAM_TYPE_LPDDR4) {
+				wval &= ~EMC_CFG_DRAM_CLKSTOP_SR;
 				wval &= ~EMC_CFG_DRAM_CLKSTOP_PD;
+			}
 		} else if (var == emc_mrs_wait_cnt_ab &&
 			   dram_type == DRAM_TYPE_LPDDR2 &&
 			   opt_zcal_en_cc && !opt_cc_short_zcal &&
