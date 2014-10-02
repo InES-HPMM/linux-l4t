@@ -58,6 +58,9 @@
 		 */
 		sensor-nominal-temp-cp = <25>;
 		sensor-nominal-temp-ft = <105>;
+
+		sensor-compensation-a = <10503>;
+		sensor-compensation-b = <(-63275)>;
 	};
 	thermal-zones {
 		AO-therm {
