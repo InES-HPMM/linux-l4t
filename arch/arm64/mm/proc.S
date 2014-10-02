@@ -223,6 +223,14 @@ __cpu_setup_post_flush:
 	ret					// return to head.S
 ENDPROC(__cpu_setup)
 
+ENTRY(__cortexa53_cpu_setup)
+	/*
+	 * no need to flush cache and invalidate tlb and btbs because
+	 * cortex-a53 invalidates them already during reset
+	 */
+	b	__cpu_setup_post_flush
+ENDPROC(__cortexa57_cpu_setup)
+
 ENTRY(__cortexa57_cpu_setup)
 
 	mrs	x0, s3_1_c15_c2_0

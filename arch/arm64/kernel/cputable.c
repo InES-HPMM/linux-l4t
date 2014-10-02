@@ -21,6 +21,7 @@
 #include <asm/cputable.h>
 
 extern unsigned long __cortexa57_cpu_setup(void);
+extern unsigned long __cortexa53_cpu_setup(void);
 extern unsigned long __cpu_setup(void);
 
 struct cpu_info cpu_table[] = {
@@ -40,7 +41,7 @@ struct cpu_info cpu_table[] = {
 		.cpu_id_val	= 0x410fd030,
 		.cpu_id_mask	= 0xff0ffff0,
 		.cpu_name	= "Cortex A53 Processor",
-		.cpu_setup	= __cpu_setup,
+		.cpu_setup	= __cortexa53_cpu_setup,
 	},
 	{
 		.cpu_id_val	= 0x000f0000,
