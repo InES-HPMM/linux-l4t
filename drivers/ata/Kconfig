@@ -113,6 +113,14 @@ config TEGRA_SATA_IDLE_POWERGATE
 
 	  If unsure, say N.
 
+config TEGRA_AHCI_CONTEXT_RESTORE
+       bool "TEGRA Context save and Restore"
+       depends on TEGRA_SATA_IDLE_POWERGATE
+       default n
+       help
+         This option enables saving context and restoring it back during
+         ELPG Entry and ELPG exit.
+
 config SATA_FSL
 	tristate "Freescale 3.0Gbps SATA support"
 	depends on FSL_SOC
