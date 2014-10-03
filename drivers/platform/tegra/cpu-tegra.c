@@ -874,12 +874,13 @@ static void cluster_switch_worker(struct work_struct *work)
 
 	if (target_clk) {
 		err = tegra_cluster_switch_locked(cpu_clk, target_clk);
-		if (err)
+		if (err) {
 			pr_err("%s: Cluster switch to %d failed:%d\n",
 				__func__, target_state, err);
+			target_state = is_lp_cluster() ?
+					SLOW_CLUSTER : FAST_CLUSTER;
+		}
 	}
-
-	target_state = is_lp_cluster() ? SLOW_CLUSTER : FAST_CLUSTER;
 out:
 	mutex_unlock(&tegra_cpu_lock);
 	put_online_cpus();
