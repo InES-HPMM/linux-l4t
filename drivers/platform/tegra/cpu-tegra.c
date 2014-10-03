@@ -834,13 +834,21 @@ static unsigned int down_delay;
 static unsigned int auto_cluster_enable;
 static unsigned int idle_top_freq;
 static unsigned int idle_bottom_freq;
-static struct timer_list updown_timer;
-static struct work_struct cluster_switch_work;
+static struct delayed_work cluster_switch_work;
 static struct clk *lp_clock, *g_clock;
 
-static void updown_handler(unsigned long data)
+static void queue_clusterswitch(bool up)
 {
-	schedule_work(&cluster_switch_work);
+	unsigned long delay_jif;
+
+	cancel_delayed_work(&cluster_switch_work);
+
+	delay_jif = msecs_to_jiffies(down_delay);
+
+	if (up)
+		delay_jif = msecs_to_jiffies(up_delay);
+
+	schedule_delayed_work(&cluster_switch_work, delay_jif);
 }
 
 static void cluster_switch_worker(struct work_struct *work)
@@ -888,23 +896,21 @@ static void tegra_auto_cluster_switch(void)
 	if (is_lp_cluster()) {
 		if (cpu_freq >= idle_top_freq && target_state != FAST_CLUSTER) {
 			target_state = FAST_CLUSTER;
-			mod_timer(&updown_timer, jiffies +
-					msecs_to_jiffies(up_delay));
+			queue_clusterswitch(true);
 		} else if (cpu_freq < idle_top_freq &&
 			   target_state == FAST_CLUSTER) {
 			target_state = SLOW_CLUSTER;
-			del_timer(&updown_timer);
+			cancel_delayed_work(&cluster_switch_work);
 		}
 	} else {
 		if (cpu_freq <= idle_bottom_freq &&
 		    target_state !=  SLOW_CLUSTER) {
 			target_state = SLOW_CLUSTER;
-			mod_timer(&updown_timer, jiffies +
-					msecs_to_jiffies(down_delay));
+			queue_clusterswitch(false);
 		} else if (cpu_freq > idle_bottom_freq &&
 			   target_state == SLOW_CLUSTER) {
 			target_state = FAST_CLUSTER;
-			del_timer(&updown_timer);
+			cancel_delayed_work(&cluster_switch_work);
 		}
 	}
 }
@@ -955,10 +961,8 @@ static int tegra_auto_cluster_switch_init(void)
 {
 	int ret;
 
-	init_timer(&updown_timer);
-	updown_timer.function = updown_handler;
-	INIT_WORK(&cluster_switch_work,
-			cluster_switch_worker);
+	INIT_DELAYED_WORK(&cluster_switch_work,
+				cluster_switch_worker);
 	lp_clock = tegra_get_clock_by_name("cpu_lp");
 	g_clock = tegra_get_clock_by_name("cpu_g");
 
