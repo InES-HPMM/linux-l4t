@@ -928,19 +928,50 @@ static ssize_t store_##filename						\
 const char *buf, size_t count)						\
 {									\
 	unsigned int val;						\
-	if (kstrtouint(buf, 10, &val))					\
+	if (kstrtouint(buf, 0, &val))					\
 		return -EINVAL;						\
 	param = val;							\
 	return count;							\
 }									\
 
+#define cputegra_attr_cust(attr, filename, show, store)			\
+static struct kobj_attribute attr =					\
+	__ATTR(filename, 0644, show, store);				\
+
 #define cputegra_attr(attr, filename, param)				\
 show(filename, param);							\
 store(filename, param);							\
-static struct kobj_attribute attr =					\
-	__ATTR(filename, 0644, show_##filename, store_##filename);	\
+cputegra_attr_cust(attr, filename, show_##filename, store_##filename)	\
 
-cputegra_attr(enable, enable, auto_cluster_enable);
+
+show(enable, auto_cluster_enable);
+static ssize_t store_enable(struct kobject *kobj, struct kobj_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned int val;
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val > 1)
+		return -EINVAL;
+
+	mutex_lock(&tegra_cpu_lock);
+	if (val == auto_cluster_enable) {
+		mutex_unlock(&tegra_cpu_lock);
+		return count;
+	}
+	auto_cluster_enable = val;
+	if (!val)
+		cancel_delayed_work(&cluster_switch_work);
+	else
+		tegra_auto_cluster_switch();
+	mutex_unlock(&tegra_cpu_lock);
+
+	return count;
+}
+
+cputegra_attr_cust(enable, enable, show_enable, store_enable);
 cputegra_attr(updelay, up_delay_msec, up_delay);
 cputegra_attr(downdelay, down_delay_msec, down_delay);
 cputegra_attr(top_freq, idle_top_freq, idle_top_freq);
