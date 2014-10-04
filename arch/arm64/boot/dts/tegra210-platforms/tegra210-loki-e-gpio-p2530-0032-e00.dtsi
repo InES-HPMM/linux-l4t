@@ -80,7 +80,6 @@
 				TEGRA_GPIO(H, 7)
 				TEGRA_GPIO(I, 0)
 				TEGRA_GPIO(I, 2)
-				TEGRA_GPIO(I, 3)
 				TEGRA_GPIO(CC, 7)
 				TEGRA_GPIO(CC, 5)
 				>;
