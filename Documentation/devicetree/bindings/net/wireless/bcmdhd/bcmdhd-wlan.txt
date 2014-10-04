@@ -9,6 +9,7 @@ Optional properties:
 - "wlan-pwr-gpio" is a gpio to power on/off wifi chip
 - "wlan-rst-gpio" is a gpio to reset wifi chip
 - "interrupts" is a wake on wireless gpio interrupt pin
+- "edp-consumer-name" is required to populate wifi edp consumer name
 
 Example:
 bcmdhd_wlan {
@@ -17,6 +18,7 @@ bcmdhd_wlan {
 	interrupts = <165 0x14>;
 	wlan-pwr-gpio = <&gpio TEGRA_GPIO(X, 7) 0>;
 	wlan-rst-gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
+	edp-consumer-name = "primary-wifi";
 };
 ===============================================================================
 * bcmdhd2-wlan devicetree bindings
@@ -30,6 +32,7 @@ Optional properties:
 - "wlan-pwr-gpio" is a gpio to power on/off wifi chip
 - "wlan-rst-gpio" is a gpio to reset wifi chip
 - "interrupts" is a wake on wireless gpio interrupt pin
+- "edp-consumer-name" is required to populate wifi edp consumer name
 
 Example:
 bcm4329_wlan2_ {
@@ -38,4 +41,5 @@ bcm4329_wlan2_ {
 	interrupts = <165 0x14>;
 	wlan-pwr-gpio = <&gpio TEGRA_GPIO(X, 7) 0>;
 	wlan-rst-gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
+	edp-consumer-name = "secondary-wifi";
 };
