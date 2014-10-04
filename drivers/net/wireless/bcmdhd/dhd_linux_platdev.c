@@ -358,6 +358,14 @@ static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
 			irq_flags = irqd_get_trigger_type(irq_data);
 			adapter->intr_flags = irq_flags & IRQF_TRIGGER_MASK;
 		}
+
+		if (of_property_read_string(node, "edp-consumer-name", &adapter->edp_name)) {
+			adapter->sysedpc = NULL;
+			DHD_ERROR(("%s: property 'edp-consumer-name' missing or invalid\n",
+									__FUNCTION__));
+		} else {
+			adapter->sysedpc = sysedp_create_consumer("primary-wifi", adapter->edp_name);
+		}
 	} else {
 		resource = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "bcmdhd_wlan_irq");
 		if (resource == NULL)
@@ -366,9 +374,8 @@ static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
 			adapter->irq_num = resource->start;
 			adapter->intr_flags = resource->flags & IRQF_TRIGGER_MASK;
 		}
+		adapter->sysedpc = sysedp_create_consumer("wifi", "wifi");
 	}
-
-	adapter->sysedpc = sysedp_create_consumer("wifi", "wifi");
 
 	wifi_plat_dev_probe_ret = dhd_wifi_platform_load();
 	return wifi_plat_dev_probe_ret;
