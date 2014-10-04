@@ -51,7 +51,7 @@
 					nvidia,out-type = <TEGRA_DC_OUT_DSI>;
 					nvidia,out-width = <130>;
 					nvidia,out-height = <74>;
-					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE TEGRA_DC_OUT_INITIALIZED_MODE>;
 					nvidia,out-xres = <1440>;
 					nvidia,out-yres = <810>;
 				};
