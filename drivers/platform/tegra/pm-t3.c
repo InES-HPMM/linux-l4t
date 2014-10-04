@@ -506,14 +506,9 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 	}
 
 	local_irq_save(irq_flags);
-	if (is_idle_task(current))
-		trace_nvcpu_cluster_rcuidle(NVPOWER_CPU_CLUSTER_START,
-					    current_cluster,
-					    target_cluster);
-	else
-		trace_nvcpu_cluster(NVPOWER_CPU_CLUSTER_START,
-				    current_cluster,
-				    target_cluster);
+	trace_nvcpu_clusterswitch(NVPOWER_CPU_CLUSTER_START,
+				  current_cluster,
+				  target_cluster);
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_start);
 
 #ifdef CONFIG_TEGRA_VIRTUAL_CPUID
@@ -565,14 +560,9 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 		}
 	}
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_end);
-	if (is_idle_task(current))
-		trace_nvcpu_cluster_rcuidle(NVPOWER_CPU_CLUSTER_DONE,
-					    current_cluster,
-					    target_cluster);
-	else
-		trace_nvcpu_cluster(NVPOWER_CPU_CLUSTER_DONE,
-				    current_cluster,
-				    target_cluster);
+	trace_nvcpu_clusterswitch(NVPOWER_CPU_CLUSTER_DONE,
+				  current_cluster,
+				  target_cluster);
 	local_irq_restore(irq_flags);
 
 	DEBUG_CLUSTER(("%s: %s\r\n", __func__, is_lp_cluster() ? "LP" : "G"));

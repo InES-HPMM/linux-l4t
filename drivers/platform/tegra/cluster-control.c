@@ -26,6 +26,7 @@
 #include <asm/psci.h>
 #include <asm/smp_plat.h>
 #include <asm/suspend.h>
+#include <trace/events/nvpower.h>
 
 #include "sleep.h"
 
@@ -166,10 +167,25 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 {
 	int cluster_flag = flags & TEGRA_POWER_CLUSTER_MASK;
 
-	if (cluster_flag == TEGRA_POWER_CLUSTER_G)
+	if (cluster_flag == TEGRA_POWER_CLUSTER_G) {
+		enum cluster current_cluster = get_current_cluster();
+		trace_nvcpu_clusterswitch(NVPOWER_CPU_CLUSTER_START,
+					  current_cluster,
+					  FAST_CLUSTER);
 		switch_cluster(FAST_CLUSTER);
-	else if (cluster_flag == TEGRA_POWER_CLUSTER_LP)
+		trace_nvcpu_clusterswitch(NVPOWER_CPU_CLUSTER_DONE,
+					  current_cluster,
+					  FAST_CLUSTER);
+	} else if (cluster_flag == TEGRA_POWER_CLUSTER_LP) {
+		enum cluster current_cluster = get_current_cluster();
+		trace_nvcpu_clusterswitch(NVPOWER_CPU_CLUSTER_START,
+					  current_cluster,
+					  SLOW_CLUSTER);
 		switch_cluster(SLOW_CLUSTER);
+		trace_nvcpu_clusterswitch(NVPOWER_CPU_CLUSTER_DONE,
+					  current_cluster,
+					  SLOW_CLUSTER);
+	}
 
 	return 0;
 }

@@ -124,6 +124,20 @@ TRACE_EVENT(nvmc_clk_stop,
 		  (unsigned long)__entry->sleep,
 		  (unsigned long)__entry->state)
 );
+
+#define trace_nvcpu_clusterswitch(state, cluster_now, cluster_tgt)	\
+	do {								\
+		if (is_idle_task(current))				\
+			trace_nvcpu_cluster_rcuidle((state),		\
+						    (cluster_now),	\
+						    (cluster_tgt));	\
+		else							\
+			trace_nvcpu_cluster((state),			\
+					    (cluster_now),		\
+					    (cluster_tgt));		\
+									\
+	} while (0)
+
 #endif /* _TRACE_NVPOWER_H */
 
 /* This part must be outside protection */
