@@ -531,6 +531,14 @@
         };
     };
 
+    bcmdhd_wlan {
+        edp-consumer-name = "primary-wifi";
+    };
+
+    bcm4329_wlan2_ {
+        edp-consumer-name = "secondary-wifi";
+    };
+
 	gpio: gpio@6000d000 {
 		uart_over_jack {
 			status = "disabled";
