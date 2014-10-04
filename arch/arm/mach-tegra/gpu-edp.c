@@ -202,7 +202,7 @@ static int __init tegra_gpu_edp_init(void)
 	}
 
 	gpu_clk = tegra_get_clock_by_name(s_gpu.plat_data->clk_name);
-	fv = fv_relation_create(gpu_clk, s_gpu.plat_data->freq_step,
+	fv = fv_relation_create(gpu_clk, s_gpu.plat_data->freq_step, 150,
 				      tegra_dvfs_predict_peak_millivolts);
 	if (WARN(IS_ERR_OR_NULL(fv),
 		 "Failed GPU EDP mgmt init. freq/volt data unavailable\n"))

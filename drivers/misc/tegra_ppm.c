@@ -34,6 +34,9 @@ struct fv_relation {
 	struct clk *c;
 	int (*lookup_voltage)(struct clk*, long unsigned int);
 
+	ssize_t max_size;
+	int freq_step;
+
 	ssize_t size;
 	struct fv_entry {
 		unsigned int freq;
@@ -80,18 +83,36 @@ struct tegra_ppm {
 static int fv_relation_update(struct fv_relation *fv)
 {
 	int ret = 0;
+	unsigned long f, maxf;
 	struct fv_entry *fve;
 
 	mutex_lock(&fv->lock);
 
+	maxf = clk_round_rate(fv->c, ULONG_MAX);
+	if (IS_ERR_VALUE(maxf))
+		return -ENODATA;
+
+	fv->size = maxf / fv->freq_step + 1;
+
+	if (fv->size > fv->max_size) {
+		pr_warn("%s: fv->table ought to be bigger (%d > %d)\n",
+			__func__, fv->size, fv->max_size);
+		fv->size = fv->max_size;
+	}
+
+	f = maxf;
 	for_each_fv_entry(fv, fve) {
+		fve->freq = f;
 		fve->voltage_mv = fv->lookup_voltage(fv->c, fve->freq);
+
 		if (fve->voltage_mv < 0) {
-			pr_err("%s: couldn't predict voltage: freq %u; err %d",
-			       __func__, fve->freq, fve->voltage_mv);
-			ret = -EINVAL;
-			break;
+			int mv = (f == maxf ? INT_MAX : fve[1].voltage_mv);
+			pr_warn("%s: failure %d. guessing %dmV for %uHz\n",
+				__func__, fve->voltage_mv, mv, fve->freq);
+			fve->voltage_mv = mv;
+			ret = -ENODATA;
 		}
+		f -= fv->freq_step;
 	}
 
 	mutex_unlock(&fv->lock);
@@ -103,6 +124,7 @@ static int fv_relation_update(struct fv_relation *fv)
  * fv_relation_create() - build a voltage/frequency table for a clock
  * @c : the subject clock domain
  * @freq_step : step size between frequency points in Hz
+ * @max_size : max number of frequency/voltage entries
  * @lookup_voltage : callback to get the minimium voltage for a frequency
  *
  * fv_relation_create constructs a voltage/frequency table for a given
@@ -110,42 +132,41 @@ static int fv_relation_update(struct fv_relation *fv)
  * rate of the clock.
  *
  * Return: pointer to the the newly created &struct fv_relation on
- *  success. -%ENOMEM on memory allocation failures
+ *  success. -%ENOMEM or -%EINVAL for the usual reasons. -ENODATA if
+ *  a call to @lookup_voltage or clk_round_rate fails
  */
 struct fv_relation *fv_relation_create(struct clk *c, int freq_step,
-				       int (*lookup_voltage)(struct clk *,
-							     long unsigned int))
+				       ssize_t max_size, int (*lookup_voltage)(
+					       struct clk *, long unsigned int))
 {
-	int i;
+	int ret = 0;
 	struct fv_relation *result;
+	struct fv_entry *table;
 
-	BUG_ON(!c);
-	BUG_ON(!lookup_voltage);
-	BUG_ON(freq_step <= 0);
+	if (WARN_ON(!c || !lookup_voltage || freq_step <= 0))
+		return ERR_PTR(-EINVAL);
 
-	result = kmalloc(sizeof(struct fv_relation), GFP_KERNEL);
-	if (!result)
+	result = kzalloc(sizeof(struct fv_relation), GFP_KERNEL);
+	table = kzalloc(sizeof(struct fv_entry[max_size]), GFP_KERNEL);
+
+	if (!result || !table) {
+		kfree(result);
+		kfree(table);
 		return ERR_PTR(-ENOMEM);
+	}
 
 	mutex_init(&result->lock);
 	result->c = c;
 	result->lookup_voltage = lookup_voltage;
-	result->size = clk_round_rate(c, ULONG_MAX) / freq_step + 1;
-	result->table = kmalloc(sizeof(struct fv_entry[result->size]),
-				GFP_KERNEL);
+	result->freq_step = freq_step;
+	result->max_size = max_size;
+	result->table = table;
 
-	if (!result->table) {
-		kfree(result);
-		return ERR_PTR(-ENOMEM);
-	}
-
-	for (i = 0; i < result->size; i++)
-		result->table[i].freq = i * freq_step;
-
-	if (fv_relation_update(result)) {
+	ret = fv_relation_update(result);
+	if (ret) {
 		kfree(result->table);
 		kfree(result);
-		result = NULL;
+		result = ERR_PTR(ret);
 	}
 	return result;
 }
