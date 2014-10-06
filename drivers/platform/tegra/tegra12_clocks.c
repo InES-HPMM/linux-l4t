@@ -637,6 +637,8 @@
 /* Use PLL_RE as PLLE input (default - OSC via pll reference divider) */
 #define USE_PLLE_INPUT_PLLRE    0
 
+static unsigned long sclk_pclk_unity_rate_max;
+
 static bool tegra12_is_dyn_ramp(struct clk *c,
 				unsigned long rate, bool from_vco_min);
 static void tegra12_pllp_init_dependencies(unsigned long pllp_rate);
@@ -1960,6 +1962,7 @@ static struct clk_ops tegra_bus_ops = {
 static void tegra12_sbus_cmplx_init(struct clk *c)
 {
 	unsigned long rate;
+	struct clk *apb;
 
 	c->max_rate = c->parent->max_rate;
 	c->min_rate = c->parent->min_rate;
@@ -1975,6 +1978,14 @@ static void tegra12_sbus_cmplx_init(struct clk *c)
 	}
 	BUG_ON(!(c->u.system.sclk_low->flags & DIV_U71));
 	BUG_ON(!(c->u.system.sclk_high->flags & DIV_U71));
+
+	if (tegra_is_soc_automotive_speedo()) {
+		sclk_pclk_unity_rate_max = ULONG_MAX;
+		apb = c->u.system.pclk;
+		apb->max_rate = 282000000;
+	} else
+		sclk_pclk_unity_rate_max = 60000000;
+
 }
 
 /* This special sbus round function is implemented because:
@@ -2040,7 +2051,6 @@ static long tegra12_sbus_cmplx_round_rate(struct clk *c, unsigned long rate)
  *  increase HCLK above 60MHz, and HCLK:PCLK = 1:1 is allowed.
  */
 
-#define SCLK_PCLK_UNITY_RATIO_RATE_MAX	60000000
 #define BUS_AHB_DIV_MAX			(BUS_CLK_DIV_MASK + 1UL)
 #define BUS_APB_DIV_MAX			(BUS_CLK_DIV_MASK + 1UL)
 
@@ -2103,18 +2113,19 @@ static int tegra12_clk_sbus_update(struct clk *bus)
 	apb = ahb->child_bus;
 	h_rate = ahb->u.shared_bus_user.rate;
 	p_rate = apb->u.shared_bus_user.rate;
-	p_requested = apb->refcnt > 1;
+	p_requested = (apb->refcnt > 1) &&
+		(sclk_pclk_unity_rate_max != ULONG_MAX);
 
 	/* Propagate ratio requirements up from PCLK to SCLK */
 	if (p_requested)
 		h_rate = max(h_rate, p_rate * 2);
 	s_rate = max(s_rate, h_rate);
-	if (s_rate >= SCLK_PCLK_UNITY_RATIO_RATE_MAX)
+	if (s_rate >= sclk_pclk_unity_rate_max)
 		s_rate = max(s_rate, p_rate * 2);
 
 	/* Propagate cap requirements down from SCLK to PCLK */
 	s_rate = tegra12_clk_cap_shared_bus(bus, s_rate, ceiling);
-	if (s_rate >= SCLK_PCLK_UNITY_RATIO_RATE_MAX)
+	if (s_rate >= sclk_pclk_unity_rate_max)
 		p_rate = min(p_rate, s_rate / 2);
 	h_rate = min(h_rate, s_rate);
 	if (p_requested)
