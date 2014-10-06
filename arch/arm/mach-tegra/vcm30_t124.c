@@ -65,7 +65,7 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 
 	{ "automotive.sclk",	NULL,		282000000,	true},
 	{ "automotive.hclk",	NULL,		282000000,	true},
-	{ "automotive.pclk",	NULL,		141000000,	true},
+	{ "automotive.pclk",	NULL,		282000000,	true},
 
 	{ "mselect",		"pll_p",	204000000,	true},
 	{ "automotive.mselect",	NULL,		204000000,	true},
@@ -183,8 +183,8 @@ static  __initdata struct tegra_clk_init_table
 	SET_FIXED_TARGET_RATE("sclk",		282000000),
 	SET_FIXED_TARGET_RATE("hclk",		282000000),
 	SET_FIXED_TARGET_RATE("ahb.sclk",	282000000),
-	SET_FIXED_TARGET_RATE("pclk",		141000000),
-	SET_FIXED_TARGET_RATE("apb.sclk",	141000000),
+	SET_FIXED_TARGET_RATE("pclk",		282000000),
+	SET_FIXED_TARGET_RATE("apb.sclk",	282000000),
 	SET_FIXED_TARGET_RATE("cpu_lp",		948000000),
 
 	SET_FIXED_TARGET_RATE("vde",		450000000),
