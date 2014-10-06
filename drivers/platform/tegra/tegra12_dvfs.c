@@ -446,7 +446,7 @@ static struct dvfs core_dvfs_table_automotive[] = {
 	CORE_DVFS("xusb_fs_src",      2, -1, 1, KHZ,    1,      1,      1,      1,      1,      48000,  48000,   48000,  48000),
 	CORE_DVFS("xusb_hs_src",      2, -1, 1, KHZ,    1,      1,      1,      1,      1,      60000,  60000,   60000,  60000),
 
-	CORE_DVFS("hda",              2, -1, 1, KHZ,    1,      1,      1,      1,      1,      48000,  48000,   48000,  48000),
+	CORE_DVFS("hda",              2, -1, 1, KHZ,    1,      1,      1,      1,      1,      108000, 108000,  108000, 108000),
 	CORE_DVFS("hda2codec_2x",     2, -1, 1, KHZ,    1,      1,      1,      1,      1,      48000,  48000,   48000,  48000),
 };
 
