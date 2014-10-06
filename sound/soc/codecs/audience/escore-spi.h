@@ -30,7 +30,7 @@ extern struct spi_driver escore_spi_driver;
 #define ES_SPI_OPERATION_SPEED	4800000
 #elif defined(CONFIG_ARCH_TEGRA)
 #define ES_SPI_FW_SPEED	9600000
-#define ES_SPI_OPERATION_SPEED	3000000
+#define ES_SPI_OPERATION_SPEED	4800000
 #endif
 
 /* This is obtained after discussion with FW team.*/
