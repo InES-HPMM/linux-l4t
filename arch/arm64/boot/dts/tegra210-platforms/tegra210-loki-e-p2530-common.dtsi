@@ -44,7 +44,7 @@
 	};
 
 	sdhci@700b0200 {
-		uhs-mask = <0x60>;
+		uhs-mask = <0x1c>;
 		status = "okay";
 	};
 
