@@ -17,7 +17,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  */
-
  /dts-v1/;
 
 #include "tegra124-p1859.dtsi"
@@ -40,7 +39,7 @@
 		compatible = "nvidia,tegra-hv";
 		status = "okay";
 
-		server-to-peers = <0 1>;
+		server-to-peers = <0>;
 
 		queues {
 			#address-cells = <1>;
@@ -50,41 +49,44 @@
 			ivc0 {
 				reg = <0>;
 				peers = <0 1>;
-				nframes = <2>;
-				frame-size = <50>;
 			};
 
 			/* guest 0 <-> guest 1 (comm) */
 			ivc1 {
 				reg = <1>;
 				peers = <0 1>;
-				nframes = <4>;
-				frame-size = <16>;
 			};
 
 			/* guest 0 <-> guest 1 (net) */
 			ivc2 {
 				reg = <2>;
 				peers = <0 1>;
-				nframes = <32>;
-				frame-size = <1536>;
 			};
 
-			/* guest 0 <-> guest 0 (loop) */
+			/* guest 0 <-> guest 2 (vhost cmd) */
+			ivc3 {
+				reg = <3>;
+				peers = <0 2>;
+			};
+
+			/* guest 0 <-> guest 2 (vhost intr) */
+			ivc4 {
+				reg = <4>;
+				peers = <0 2>;
+			};
+
+			/* guest 0 <-> guest 2 (vgpu cmd) */
 			ivc5 {
 				reg = <5>;
-				peers = <0 0>;
-				nframes = <4>;
-				frame-size = <16>;
+				peers = <0 2>;
 			};
 
-			/* guest 0 <-> guest 0 (loop) */
+			/* guest 0 <-> guest 2 (vgpu intr) */
 			ivc6 {
 				reg = <6>;
-				peers = <0 0>;
-				nframes = <4>;
-				frame-size = <16>;
+				peers = <0 2>;
 			};
+
 		};
 	};
 
@@ -101,5 +103,42 @@
 		status = "okay";
 		/* ivc channel to use definition (third one in tegra_hv) */
 		ivc = <&tegra_hv 2>;
+	};
+
+	iommu {
+		#asids = <120>;
+	};
+
+	host1x {
+		virtual-dev = <1>;
+
+		ivc-queue0 = <&tegra_hv 3>;
+		ivc-queue1 = <&tegra_hv 4>;
+
+		/delete-node/ dpaux;
+		/delete-node/ sor;
+
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "disabled";
+		};
+
+		vi {
+			status = "disabled";
+		};
+	};
+
+	gk20a {
+		status = "disabled";
+	};
+
+	gk20a-vgpu {
+		compatible = "nvidia,tegra124-gk20a-vgpu";
+		nvidia,host1x = <&host1x>;
+		reg = <0x0 0x58000000 0x0 0x01000000>;
+		iommus = <&smmu TEGRA_SWGROUP_GPU &smmu TEGRA_SWGROUP_GPUB>;
+
+		ivc-queue2 = <&tegra_hv 5>;
+		ivc-queue3 = <&tegra_hv 6>;
 	};
 };
