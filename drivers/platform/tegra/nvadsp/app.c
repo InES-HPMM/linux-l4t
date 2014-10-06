@@ -149,7 +149,6 @@ struct shared_mem_struct {
 } __packed;
 
 static struct nvadsp_app_priv_struct priv;
-static struct work_struct mailbox_work;
 static struct nvadsp_mbox mbox;
 static struct list_head service_list;
 #if RECORD_STATS
@@ -291,58 +290,55 @@ static void notify_update_nvadsp_app_complete(struct app_complete_data *data)
 	complete_all(&app->wait_for_app_complete);
 }
 
-static void nvadsp_app_receive_thread(struct work_struct *work)
+static status_t nvadsp_app_receive_handler(uint32_t data, void *hdata)
 {
-	struct device *dev = &priv.pdev->dev;
+	struct nvadsp_app_priv_struct *priv = hdata;
+	struct device *dev = &priv->pdev->dev;
 	struct app_load_data *load;
-	int data = -1;
 
-	while (1) {
-		nvadsp_mbox_recv(&mbox, &data, true, ~0);
-		load = &shared->app_load;
-		RECORD_TIMESTAMP(load->receive_timestamp);
-		switch (data) {
-		case OS_LOAD_COMPLETE:
-			dev_dbg(dev, "in OS_LOAD_COMPLETE\n");
-			complete(&os_load);
-			break;
+	load = &shared->app_load;
+	RECORD_TIMESTAMP(load->receive_timestamp);
+	switch (data) {
+	case OS_LOAD_COMPLETE:
+		dev_dbg(dev, "in OS_LOAD_COMPLETE\n");
+		complete(&os_load);
+		break;
 
-		case APP_LOAD_RET_STATUS:
-			dev_dbg(dev, "in APP_LOAD_RET_STATUS\n");
-			RECORD_STAT(ns_time_native_load_complete);
-			complete(&load_app_status);
-			break;
+	case APP_LOAD_RET_STATUS:
+		dev_dbg(dev, "in APP_LOAD_RET_STATUS\n");
+		RECORD_STAT(ns_time_native_load_complete);
+		complete(&load_app_status);
+		break;
 
-		case APP_UNLOAD_STATUS:
-			dev_dbg(dev, "in APP_LOAD_RET_STATUS\n");
-			complete(&app_unload_status);
-			break;
+	case APP_UNLOAD_STATUS:
+		dev_dbg(dev, "in APP_LOAD_RET_STATUS\n");
+		complete(&app_unload_status);
+		break;
 
-		case APP_INIT_STATUS:
-			dev_dbg(dev, "in APP_INIT_STATUS\n");
-			complete(&app_init_status);
-			break;
+	case APP_INIT_STATUS:
+		dev_dbg(dev, "in APP_INIT_STATUS\n");
+		complete(&app_init_status);
+		break;
 
-		case APP_DEINIT_STATUS:
-			dev_dbg(dev, "in APP_DEINIT_STATUS\n");
-			complete(&app_deinit_status);
-			break;
+	case APP_DEINIT_STATUS:
+		dev_dbg(dev, "in APP_DEINIT_STATUS\n");
+		complete(&app_deinit_status);
+		break;
 
-		case APP_START_STATUS:
-			dev_dbg(dev, "in APP_START_STATUS\n");
-			complete(&app_start_status);
-			break;
+	case APP_START_STATUS:
+		dev_dbg(dev, "in APP_START_STATUS\n");
+		complete(&app_start_status);
+		break;
 
-		case APP_COMPLETE:
-			dev_dbg(dev, "in APP_COMPLETE\n");
-			notify_update_nvadsp_app_complete(
-					&shared->app_complete);
-			break;
+	case APP_COMPLETE:
+		dev_dbg(dev, "in APP_COMPLETE\n");
+		notify_update_nvadsp_app_complete(&shared->app_complete);
+		break;
 
-		default:
-			dev_err(dev, "received wrong data\n");
-		}
+	default:
+		dev_err(dev, "received wrong data\n");
 	}
+	return 0;
 }
 
 int wait_for_adsp_os_load_complete(void)
@@ -986,14 +982,13 @@ int nvadsp_app_module_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "%s\n", __func__);
 
 	priv.pdev = pdev;
-	ret = nvadsp_mbox_open(&mbox, &mbox_id, "app_service", NULL, NULL);
+	ret = nvadsp_mbox_open(&mbox, &mbox_id, "app_service",
+		nvadsp_app_receive_handler, &priv);
 	if (ret) {
 		pr_info("unable to open mailbox\n");
 		goto end;
 	}
 	INIT_LIST_HEAD(&service_list);
-	INIT_WORK(&mailbox_work, nvadsp_app_receive_thread);
-	schedule_work(&mailbox_work);
 end:
 	return ret;
 }
