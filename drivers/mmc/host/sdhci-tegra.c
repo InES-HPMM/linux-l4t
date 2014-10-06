@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2010 Google, Inc.
  *
- * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -4944,6 +4944,7 @@ static int tegra_sdhci_reboot_notify(struct notifier_block *nb,
 	struct sdhci_tegra *tegra_host =
 		container_of(nb, struct sdhci_tegra, reboot_notify);
 	int err;
+	struct sdhci_host *sdhci = dev_get_drvdata(tegra_host->dev);
 
 	switch (event) {
 	case SYS_RESTART:
@@ -4953,6 +4954,11 @@ static int tegra_sdhci_reboot_notify(struct notifier_block *nb,
 		if (err)
 			pr_err("Disable regulator in reboot notify failed %d\n",
 				err);
+
+		/* disable runtime pm callbacks */
+		pr_debug("%s: %s line=%d\n",
+			mmc_hostname(sdhci->mmc), __func__, __LINE__);
+		sdhci_runtime_forbid(sdhci);
 
 		return NOTIFY_OK;
 	}
