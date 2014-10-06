@@ -40,9 +40,11 @@ struct dma_iommu_mapping *tegra_smmu_of_get_mapping(struct device *dev,
 		if (!(swgids & tmp->swgid_mask))
 			continue;
 
-		if ((swgids & tmp->swgid_mask) != swgids)
-			dev_info(dev, "mask=%lx doesn't include swgids=%lx\n",
+		if ((swgids & tmp->swgid_mask) != swgids) {
+			dev_err(dev, "mask=%lx doesn't include swgids=%lx\n",
 				 tmp->swgid_mask, swgids);
+			continue;
+		}
 
 		if (tmp->map)
 			return tmp->map;
