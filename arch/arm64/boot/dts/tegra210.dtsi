@@ -620,8 +620,7 @@
 		    <0x0 0x538f0000 0x0 0x00001000>;
 		    interrupts = <0 157 0x04
 			    0 158 0x04>;
-		iommus = <&smmu TEGRA_SWGROUP_GPU>,
-			 <&smmu TEGRA_SWGROUP_GPUB>;
+		iommus = <&smmu TEGRA_SWGROUP_GPUB>;
 	};
 
 	mipical {
