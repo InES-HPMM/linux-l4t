@@ -64,6 +64,8 @@ static struct pm_qos_request cpufreq_min_req;
 
 static unsigned int cur_cpupwr;
 static unsigned int cur_cpupwr_freqcap;
+
+static unsigned int force_cpupwr;
 static unsigned int force_cpupwr_freqcap;
 
 static bool force_policy_max;
@@ -396,12 +398,13 @@ module_init(cpu_edp_cdev_init);
 static unsigned int sysedp_cap_speed(unsigned int requested_speed)
 {
 	unsigned int old_cpupwr_freqcap = cur_cpupwr_freqcap;
+	unsigned eff_cpupwr = force_cpupwr ?: cur_cpupwr;
 
 	if (force_cpupwr_freqcap)
 		cur_cpupwr_freqcap = force_cpupwr_freqcap;
 	else
 		/* get the max freq given the power and online cpu count */
-		cur_cpupwr_freqcap = tegra_get_sysedp_max_freq(cur_cpupwr,
+		cur_cpupwr_freqcap = tegra_get_sysedp_max_freq(eff_cpupwr,
 					  cpu_edp_temperature(),
 					  cpumask_weight(&edp_cpumask),
 					  is_lp_cluster() ? MODE_LP : MODE_G);
@@ -412,10 +415,10 @@ static unsigned int sysedp_cap_speed(unsigned int requested_speed)
 	if (cur_cpupwr_freqcap != old_cpupwr_freqcap) {
 		if (IS_ENABLED(CONFIG_DEBUG_KERNEL)) {
 			pr_debug("sysedp: ncpus %u, cpu %5u mW %u kHz\n",
-				 cpumask_weight(&edp_cpumask), cur_cpupwr,
+				 cpumask_weight(&edp_cpumask), eff_cpupwr,
 				 cur_cpupwr_freqcap);
 		}
-		trace_sysedp_max_cpu_pwr(cur_cpupwr, cur_cpupwr_freqcap);
+		trace_sysedp_max_cpu_pwr(eff_cpupwr, cur_cpupwr_freqcap);
 	}
 
 	if (cur_cpupwr_freqcap && requested_speed > cur_cpupwr_freqcap)
@@ -574,6 +577,13 @@ static int cpu_edp_limit_get(void *data, u64 *val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(cpu_edp_limit_fops, cpu_edp_limit_get, NULL, "%lld\n");
 
+static int cpu_edp_temp_get(void *data, u64 *val)
+{
+	*val = cpu_edp_temperature();
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(cpu_edp_temp_fops, cpu_edp_temp_get, NULL, "%llu\n");
+
 static int __init tegra_edp_debug_init(struct dentry *cpu_tegra_debugfs_root)
 {
 	if (!debugfs_create_file("reg_mode_force_normal", 0644,
@@ -586,6 +596,10 @@ static int __init tegra_edp_debug_init(struct dentry *cpu_tegra_debugfs_root)
 
 	if (!debugfs_create_file("cpu_edp_limit", 0444,
 			cpu_tegra_debugfs_root, NULL, &cpu_edp_limit_fops))
+		return -ENOMEM;
+
+	if (!debugfs_create_file("temperature", 0444,
+			cpu_tegra_debugfs_root, NULL, &cpu_edp_temp_fops))
 		return -ENOMEM;
 
 	return 0;
@@ -615,15 +629,14 @@ static int __init tegra_virt_debugfs_init(struct dentry *cpu_tegra_debugfs_root)
 	return 0;
 }
 
-static int force_cpu_set(void *data, u64 val)
+static int force_cpu_unsigned_set(void *data, u64 val)
 {
-	unsigned int old;
+	unsigned *var = data;
 
 	mutex_lock(&tegra_cpu_lock);
-	old = force_cpupwr_freqcap;
-	force_cpupwr_freqcap = val;
 
-	if (old != force_cpupwr_freqcap) {
+	if (*var != val) {
+		*var = val;
 		tegra_cpu_set_speed_cap_locked(NULL);
 	}
 
@@ -632,14 +645,15 @@ static int force_cpu_set(void *data, u64 val)
 	return 0;
 }
 
-static int force_cpu_get(void *data, u64 *val)
+static int force_cpu_unsigned_get(void *data, u64 *val)
 {
-	*val = force_cpupwr_freqcap;
+	unsigned *var = data;
+	*val = *var;
 	return 0;
 }
-
-DEFINE_SIMPLE_ATTRIBUTE(force_cpu_debugfs_fops,
-			force_cpu_get, force_cpu_set, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(force_cpu_unsigned_fops,
+			force_cpu_unsigned_get,
+			force_cpu_unsigned_set, "%llu\n");
 
 static int status_show(struct seq_file *file, void *data)
 {
@@ -648,7 +662,8 @@ static int status_show(struct seq_file *file, void *data)
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 	seq_printf(file, "cpus online : %u\n", cpumask_weight(&edp_cpumask));
 #endif
-	seq_printf(file, "cpu power   : %u\n", cur_cpupwr);
+	seq_printf(file, "cpu power   : %u%s\n", force_cpupwr ?: cur_cpupwr,
+		   force_cpupwr ? "(forced)" : "");
 	seq_printf(file, "cpu cap     : %u kHz\n", cur_cpupwr_freqcap);
 
 	mutex_unlock(&tegra_cpu_lock);
@@ -689,9 +704,14 @@ static int __init tegra_cpu_debug_init(void)
 	if (!sysedp_capping_dir)
 		goto err_out;
 
-	if (!debugfs_create_file("force_cpu", S_IRUGO | S_IWUSR,
-				 sysedp_capping_dir,
-				 NULL, &force_cpu_debugfs_fops))
+	if (!debugfs_create_file("force_cpu_freq_cap", S_IRUGO | S_IWUSR,
+				 sysedp_capping_dir, &force_cpupwr_freqcap,
+				 &force_cpu_unsigned_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("force_cpu_power_cap", S_IRUGO | S_IWUSR,
+				 sysedp_capping_dir, &force_cpupwr,
+				 &force_cpu_unsigned_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("status", S_IRUGO,
