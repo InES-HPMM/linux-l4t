@@ -2520,10 +2520,4 @@ config DS90UH925Q_SER
 	help
 	  This is a driver for FPDLink Serializer DS90UH925Q.
 
-config DS90UH949_SER
-	bool "DS90UH949 FPDLink Serializer"
-	depends on I2C
-	help
-	  This is a driver for FPDLink Serializer DS90UH949.
-
 endmenu

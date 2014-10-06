@@ -152,7 +152,6 @@ obj-$(CONFIG_FB_JZ4740)		  += jz4740_fb.o
 obj-$(CONFIG_FB_PUV3_UNIGFX)      += fb-puv3.o
 obj-$(CONFIG_FB_HYPERV)		  += hyperv_fb.o
 obj-$(CONFIG_DS90UH925Q_SER)      += ds90uh925q_ser.o
-obj-$(CONFIG_DS90UH949_SER)      += ds90uh949_ser.o
 obj-y                             += tegra/
 
 # Platform or fallback drivers go here

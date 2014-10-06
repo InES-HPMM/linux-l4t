@@ -283,6 +283,19 @@ config TEGRA_HDMI
 	  It is not for the newer Tegra21x family of HDMI, which uses sor/dp instead.
 	  Default is to enable it for chips that support it.
 
+config TEGRA_HDMI2FPD
+	bool
+
+config TEGRA_HDMI2FPD_DS90UH949
+	bool "DS90UH949 FPDLink Serializer"
+	depends on I2C && TEGRA_HDMI
+	select TEGRA_HDMI2FPD
+	help
+	  Say Y here to enable HDMI2FPD serializer bridge
+	  This is a driver for FPDLink Serializer DS90UH949.
+	  This option is required when HDMI output is converted to FPD output
+	  using DS90UH949 serializer chip.
+
 config TEGRA_NVSR
 	bool "Enable NVSR support."
 	default  n

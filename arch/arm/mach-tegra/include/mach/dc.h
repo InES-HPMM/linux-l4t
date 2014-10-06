@@ -997,6 +997,7 @@ struct tmds_config {
 struct tegra_hdmi_out {
 	struct tmds_config *tmds_config;
 	int n_tmds_config;
+	bool hdmi2fpd_bridge_enable;
 };
 
 enum {
