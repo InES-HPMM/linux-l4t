@@ -23,6 +23,7 @@ dtb-$(CONFIG_MACH_GRENADA) += tegra210-foster-e-p2530-0930-e01-00.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-foster-e-hdd-p2530-0932-e00-00.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-foster-e-hdd-p2530-0930-e01-00.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-loki-e-p2530-0032-e00-00.dtb
+dtb-$(CONFIG_MACH_GRENADA) += tegra210-vcm30t210.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl33688874.dtb
 targets += $(dtb-y)
