@@ -612,6 +612,7 @@ struct dbg_cfg_data {
 struct sdhci_tegra {
 	const struct tegra_sdhci_platform_data *plat;
 	const struct sdhci_tegra_soc_data *soc_data;
+	struct device *dev;
 	bool	clk_enabled;
 	/* ensure atomic set clock calls */
 	struct mutex		set_clock_mutex;
@@ -4278,6 +4279,7 @@ static int tegra_sdhci_reboot_notify(struct notifier_block *nb,
 	struct sdhci_tegra *tegra_host =
 		container_of(nb, struct sdhci_tegra, reboot_notify);
 	int err;
+	struct sdhci_host *sdhci = dev_get_drvdata(tegra_host->dev);
 
 	switch (event) {
 	case SYS_RESTART:
@@ -4287,6 +4289,11 @@ static int tegra_sdhci_reboot_notify(struct notifier_block *nb,
 		if (err)
 			pr_err("Disable regulator in reboot notify failed %d\n",
 				err);
+
+		/* disable runtime pm callbacks */
+		pr_debug("%s: %s line=%d\n", mmc_hostname(sdhci->mmc), __func__, __LINE__);
+		__pm_runtime_disable(tegra_host->dev, false);
+
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
@@ -4801,6 +4808,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		goto err_no_plat;
 	}
 
+	tegra_host->dev = &pdev->dev;
 	tegra_host->plat = plat;
 	pdev->dev.platform_data = plat;
 
