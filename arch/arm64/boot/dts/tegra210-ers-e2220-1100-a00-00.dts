@@ -31,6 +31,7 @@
 #include "tegra210-platforms/tegra210-ers-sensor-e2160-1000-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-gpio-e2220-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-pinmux-e2220-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-emc.dtsi"
 #include "tegra210-platforms/tegra210-comms.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
 #include "panel-j-1440-810-5-8.dtsi"
