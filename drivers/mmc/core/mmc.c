@@ -520,6 +520,11 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 				"rpmb", 0, false,
 				MMC_BLK_DATA_AREA_RPMB);
 		}
+		/*
+		 *update the manufacture year based on ext_csd rev.
+		 */
+		if (card->cid.year < 2010)
+			card->cid.year += 16;
 	}
 
 	card->ext_csd.raw_erased_mem_count = ext_csd[EXT_CSD_ERASED_MEM_CONT];
