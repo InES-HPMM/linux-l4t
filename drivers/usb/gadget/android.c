@@ -45,6 +45,10 @@
 #include "f_eem.c"
 #include "f_ncm.c"
 #include "u_ether.c"
+#ifdef CONFIG_TARGET_CORE
+#define UASP_ANDROID_GADGET
+#include "tcm_usb_gadget.c"
+#endif
 
 MODULE_AUTHOR("Mike Lockwood");
 MODULE_DESCRIPTION("Android Composite USB Driver");
@@ -1168,6 +1172,32 @@ static struct android_usb_function mass_storage_function = {
 	.attributes	= mass_storage_function_attributes,
 };
 
+#ifdef CONFIG_TARGET_CORE
+static int uasp_function_init(struct android_usb_function *f,
+				struct usb_composite_dev *cdev)
+{
+	return usbg_register_configfs();
+}
+
+static void uasp_function_cleanup(struct android_usb_function *f)
+{
+	usbg_deregister_configfs();
+}
+
+
+static int uasp_function_bind_config(struct android_usb_function *f,
+					struct usb_configuration *c)
+{
+	return usbg_cfg_bind(c);
+}
+
+static struct android_usb_function uasp_function = {
+	.name           = "uasp",
+	.init           = uasp_function_init,
+	.cleanup        = uasp_function_cleanup,
+	.bind_config    = uasp_function_bind_config,
+};
+#endif
 
 static int accessory_function_init(struct android_usb_function *f,
 					struct usb_composite_dev *cdev)
@@ -1301,6 +1331,9 @@ static struct android_usb_function *supported_functions[] = {
 	&accessory_function,
 	&audio_source_function,
 	&nvusb_function,
+#ifdef CONFIG_TARGET_CORE
+	&uasp_function,
+#endif
 	NULL
 };
 
