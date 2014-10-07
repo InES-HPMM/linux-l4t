@@ -173,8 +173,6 @@
 #define NVQUIRK_ENABLE_HS200			BIT(14)
 /* Enable Infinite Erase Timeout*/
 #define NVQUIRK_INFINITE_ERASE_TIMEOUT		BIT(15)
-/* No Calibration for sdmmc4 */
-#define NVQUIRK_DISABLE_SDMMC4_CALIB		BIT(16)
 /* ENAABLE FEEDBACK IO CLOCK */
 #define NVQUIRK_EN_FEEDBACK_CLK			BIT(17)
 /* Disable AUTO CMD23 */
@@ -312,13 +310,6 @@ enum tegra_tuning_freq {
 	TUNING_LOW_FREQ,
 	TUNING_HIGH_FREQ,
 	TUNING_MAX_FREQ,
-};
-
-enum sdmmc_instance {
-	SDMMC1_INSTANCE = 0,
-	SDMMC2_INSTANCE,
-	SDMMC3_INSTANCE,
-	SDMMC4_instance
 };
 
 struct tuning_t2t_coeffs {
@@ -620,8 +611,6 @@ struct sdhci_tegra {
 	struct regulator *vdd_io_reg;
 	struct regulator *vdd_slot_reg;
 	struct regulator *vcore_reg;
-	/* Host controller instance */
-	unsigned int instance;
 	/* vddio_min */
 	unsigned int vddio_min_uv;
 	/* vddio_max */
@@ -1392,7 +1381,7 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	}
 	/* Enable DDR mode support only for SDMMC4 */
 	if (soc_data->nvquirks & NVQUIRK_ENABLE_DDR50) {
-		if (tegra_host->instance == 3) {
+		if (!(plat->uhs_mask & MMC_UHS_MASK_DDR50)) {
 			misc_ctrl |=
 			SDHCI_VNDR_MISC_CTRL_ENABLE_DDR50_SUPPORT;
 		}
@@ -1406,7 +1395,7 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 
 	/* External loopback is valid for sdmmc3 only */
 	if ((soc_data->nvquirks & NVQUIRK_DISABLE_EXTERNAL_LOOPBACK) &&
-		(tegra_host->instance == 2)) {
+		(plat->enb_ext_loopback)) {
 		if ((tegra_host->tuning_status == TUNING_STATUS_DONE)
 			&& (host->mmc->pm_flags &
 			MMC_PM_KEEP_POWER)) {
@@ -1827,12 +1816,8 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 	unsigned int timeout = 10;
 	unsigned int calib_offsets = 0;
 
-	if (tegra_host->plat->disable_auto_cal)
-		return;
-
 	/* No Calibration for sdmmc4 */
-	if (unlikely(soc_data->nvquirks & NVQUIRK_DISABLE_SDMMC4_CALIB) &&
-		(tegra_host->instance == 3))
+	if (tegra_host->plat->disable_auto_cal)
 		return;
 
 	if (unlikely(soc_data->nvquirks & NVQUIRK_DISABLE_AUTO_CALIBRATION))
@@ -2031,7 +2016,7 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 	if (rc)
 		return rc;
 
-	if ((tegra_host->instance == 1) || (tegra_host->instance == 3))
+	if (!plat->update_pinctrl_settings)
 		return rc;
 
 	set = (signal_voltage == MMC_SIGNAL_VOLTAGE_180) ? true : false;
@@ -3644,7 +3629,7 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 	SDHCI_TEGRA_DBG("%s: Starting freq tuning\n", mmc_hostname(sdhci->mmc));
 	enable_lb_clk = (soc_data->nvquirks &
 			NVQUIRK_DISABLE_EXTERNAL_LOOPBACK) &&
-			(tegra_host->instance == 2);
+			tegra_host->plat->enb_ext_loopback;
 	if (enable_lb_clk) {
 		misc_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_MISC_CTRL);
 		misc_ctrl &= ~(1 <<
@@ -4448,8 +4433,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra11 = {
 		    NVQUIRK_ENABLE_HS200 |
 		    NVQUIRK_ENABLE_AUTO_CMD23 |
 		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
-		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK |
-		    NVQUIRK_DISABLE_SDMMC4_CALIB,
+		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK,
 	.parent_clk_list = {"pll_p", "pll_c"},
 	.tuning_freq_list = {81600000, 156000000, 200000000},
 	.t2t_coeffs = t11x_tuning_coeffs,
@@ -4589,7 +4573,10 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	plat->mmc_data.built_in = of_property_read_bool(np, "built-in");
 	plat->update_pinctrl_settings = of_property_read_bool(np,
 			"nvidia,update-pinctrl-settings");
-	plat->dll_calib_needed = of_property_read_bool(np, "nvidia,dll-calib-needed");
+	plat->dll_calib_needed = of_property_read_bool(np,
+			"nvidia,dll-calib-needed");
+	plat->enb_ext_loopback = of_property_read_bool(np,
+			"nvidia,enable-ext-loopback");
 	plat->disable_clock_gate = of_property_read_bool(np,
 		"disable-clock-gate");
 	of_property_read_u8(np, "default-drv-type", &plat->default_drv_type);
@@ -4815,11 +4802,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_host->dev = &pdev->dev;
 	tegra_host->plat = plat;
 	pdev->dev.platform_data = plat;
-
-	if (match)
-		tegra_host->instance = plat->id;
-	else
-		tegra_host->instance = pdev->id;
 
 	tegra_host->sd_stat_head = devm_kzalloc(&pdev->dev,
 		sizeof(struct sdhci_tegra_sd_stats), GFP_KERNEL);

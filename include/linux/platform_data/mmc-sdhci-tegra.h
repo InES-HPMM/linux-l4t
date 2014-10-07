@@ -84,6 +84,7 @@ struct tegra_sdhci_platform_data {
 	bool en_io_trim_volt;
 	bool is_emmc;
 	bool limit_vddio_max_volt;
+	bool enb_ext_loopback;
 };
 
 #endif
