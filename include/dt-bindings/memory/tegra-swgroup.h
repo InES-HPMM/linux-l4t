@@ -49,7 +49,7 @@
 #define TEGRA_SWGROUP_SDMMC3A	27	/* 0xa9c */
 #define TEGRA_SWGROUP_SDMMC4A	28	/* 0xaa0 */
 #define TEGRA_SWGROUP_ISP2B	29	/* 0xaa4 */
-#define TEGRA_SWGROUP_GPU	30	/* 0xaa8 */
+#define TEGRA_SWGROUP_GPU	30	/* 0xaa8, DO NOT USE THIS */
 #define TEGRA_SWGROUP_GPUB	31	/* 0xaac */
 #define TEGRA_SWGROUP_PPCS2	32	/* 0xab0 */
 #define TEGRA_SWGROUP_NVDEC	33	/* 0xab4 */
