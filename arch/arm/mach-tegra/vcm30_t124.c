@@ -586,7 +586,7 @@ void __init tegra_vcm30_t124_reserve(void)
 	/* 2560*1440*4*2 = 29491200 = 28.125*1M = 29M bytes */
 	tegra_reserve4(0, 29 * SZ_1M, 29 * SZ_1M, 64 * SZ_1M);
 #else
-	tegra_reserve4(SZ_128M, SZ_16M + SZ_2M, SZ_16M + SZ_2M, 64 * SZ_1M);
+	tegra_reserve4(SZ_256M, SZ_16M + SZ_2M, SZ_16M + SZ_2M, 64 * SZ_1M);
 #endif
 }
 
