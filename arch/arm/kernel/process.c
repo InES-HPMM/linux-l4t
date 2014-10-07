@@ -612,14 +612,21 @@ int in_gate_area_no_mm(unsigned long addr)
 
 const char *arch_vma_name(struct vm_area_struct *vma)
 {
-	return is_gate_vma(vma) ? "[vectors]" :
-		(vma->vm_mm && vma->vm_start == vma->vm_mm->context.sigpage) ?
-		 "[sigpage]" : NULL;
+	if (is_gate_vma(vma))
+		return "[vectors]";
+	if (!vma->vm_mm)
+		return NULL;
+	if (vma->vm_start == vma->vm_mm->context.sigpage)
+		return "[sigpage]";
+	if (vma->vm_start == (long)vma->vm_mm->context.vdso)
+		return "[vdso]";
+	return NULL;
 }
 
 static struct page *signal_page;
 extern struct page *get_signal_page(void);
-
+extern int vdso_setup_additional_pages(struct linux_binprm *bprm,
+				       int uses_interp);
 int arch_setup_additional_pages(struct linux_binprm *bprm, int uses_interp)
 {
 	struct mm_struct *mm = current->mm;
@@ -642,8 +649,12 @@ int arch_setup_additional_pages(struct linux_binprm *bprm, int uses_interp)
 		VM_READ | VM_EXEC | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC,
 		&signal_page);
 
-	if (ret == 0)
-		mm->context.sigpage = addr;
+	if (ret != 0)
+		goto up_fail;
+
+	mm->context.sigpage = addr;
+
+	ret = vdso_setup_additional_pages(bprm, uses_interp);
 
  up_fail:
 	up_write(&mm->mmap_sem);
