@@ -24,7 +24,7 @@
 
 /memreserve/ 0x80000000 0x00020000;
 
-#include "tegra210-ers-common.dtsi"
+#include "tegra210-common.dtsi"
 #include "tegra210-platforms/tegra210-ers-extgpio-e2141-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-power-tree-e2174-1101-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-sensor-e2160-1000-a00.dtsi"
