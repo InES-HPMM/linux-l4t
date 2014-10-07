@@ -81,6 +81,8 @@ struct pinctrl_gpio_range {
  *	allocated members of the mapping table entries themselves. This
  *	function is optional, and may be omitted for pinctrl drivers that do
  *	not support device tree.
+ * @dt_node_to_custom_config: parse a device tree "pin configuration node" for
+ *      custom properties and return mapping table entries for it.
  */
 struct pinctrl_ops {
 	int (*get_groups_count) (struct pinctrl_dev *pctldev);
@@ -97,6 +99,9 @@ struct pinctrl_ops {
 			       struct pinctrl_map **map, unsigned *num_maps);
 	void (*dt_free_map) (struct pinctrl_dev *pctldev,
 			     struct pinctrl_map *map, unsigned num_maps);
+	int (*dt_node_to_custom_config) (struct pinctrl_dev *pctldev,
+			       struct device_node *np_config,
+			       unsigned long *configs, unsigned int *nconfigs);
 };
 
 /**
