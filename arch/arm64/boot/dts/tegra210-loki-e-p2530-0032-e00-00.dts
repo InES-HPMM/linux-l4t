@@ -17,7 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  */
-
+#include <dt-bindings/types.h>
 /dts-v1/;
 
 /memreserve/ 0x80000000 0x00020000;
@@ -450,6 +450,32 @@
 			status = "okay";
 		};
 	};
+
+    sysedp_batmon_calc {
+        compatible = "nvidia,tegra124-sysedp_batmon_calc";
+        power_supply = "battery";
+        update_interval = <30000>;
+        ocv_lut = <
+            100 4150000
+            60 3710000
+            30 3550000
+            0 3330000
+        >;
+        ibat_lut = <
+            60 15600
+            40 15600
+            0 15600
+            S32_TO_U32(-30) 0
+        >;
+        rbat_data = <
+            100000
+            100000
+        >;
+        temp_axis = <25>;
+        capacity_axis = <100 0>;
+        r_const = <18000>;
+        vsys_min = <2600000>;
+    };
 
     sysedp {
         compatible = "nvidia,tegra124-sysedp";
