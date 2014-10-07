@@ -276,8 +276,8 @@ static int gpio_extcon_probe(struct platform_device *pdev)
 		if (ret < 0)
 			goto err;
 
-		ret = devm_request_threaded_irq(&pdev->dev, irq,
-				gpio_irq_handler, NULL, pdata->irq_flags,
+		ret = devm_request_any_context_irq(&pdev->dev, irq,
+				gpio_irq_handler, pdata->irq_flags,
 				pdev->name, gpex);
 		if (ret < 0)
 			goto err;
