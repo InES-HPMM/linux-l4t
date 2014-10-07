@@ -45,11 +45,27 @@ enum max77620_pin_ppdrv {
 	MAX77620_PIN_PP_DRV,
 };
 
+enum max77620_pinconf_param {
+	MAX77620_FPS_SOURCE = PIN_CONFIG_END + 1,
+};
+
 struct max77620_pin_function {
 	const char *name;
 	const char * const *groups;
 	unsigned ngroups;
 	int mux_option;
+};
+
+struct max77620_cfg_param {
+	const char *property;
+	enum max77620_pinconf_param param;
+};
+
+static const struct max77620_cfg_param  max77620_cfg_params[] = {
+	{
+		.property = "maxim,fps-source",
+		.param = MAX77620_FPS_SOURCE,
+	},
 };
 
 enum max77620_alternate_pinmux_option {
@@ -170,6 +186,39 @@ static int max77620_pinctrl_get_group_pins(struct pinctrl_dev *pctldev,
 	*num_pins = max77620_pci->pin_groups[group].npins;
 	return 0;
 }
+static int max77620_pinctrl_max_cfg(struct pinctrl_dev *pctldev)
+{
+	return ARRAY_SIZE(max77620_cfg_params);
+}
+
+static int max77620_pinctrl_parse_dt_config(struct pinctrl_dev *pctldev,
+	struct device_node *np, unsigned long *configs, unsigned int *nconfigs)
+{
+	int max_cfg = max77620_pinctrl_max_cfg(pctldev);
+	int i;
+	int ncfg = 0;
+	u32 val;
+	int ret;
+	unsigned long *cfg = configs;
+
+	for (i = 0; i < max_cfg; i++) {
+                const struct max77620_cfg_param *par = &max77620_cfg_params[i];
+                ret = of_property_read_u32(np, par->property, &val);
+
+                /* property not found */
+                if (ret == -EINVAL)
+                        continue;
+		if (ret)
+			return -EINVAL;
+
+                pr_debug("found %s with value %u\n", par->property, val);
+                cfg[ncfg] = pinconf_to_config_packed(par->param, val);
+                ncfg++;
+        }
+
+	*nconfigs = ncfg;
+	return 0;
+}
 
 static const struct pinctrl_ops max77620_pinctrl_ops = {
 	.get_groups_count = max77620_pinctrl_get_groups_count,
@@ -177,6 +226,7 @@ static const struct pinctrl_ops max77620_pinctrl_ops = {
 	.get_group_pins = max77620_pinctrl_get_group_pins,
 	.dt_node_to_map = pinconf_generic_dt_node_to_map_pin,
 	.dt_free_map = pinctrl_utils_dt_free_map,
+	.dt_node_to_custom_config = max77620_pinctrl_parse_dt_config,
 };
 
 static int max77620_pinctrl_get_funcs_count(struct pinctrl_dev *pctldev)
@@ -268,9 +318,10 @@ static int max77620_pinconf_set(struct pinctrl_dev *pctldev,
 
 	struct max77620_pctrl_info *max77620_pci =
 					pinctrl_dev_get_drvdata(pctldev);
-	enum pin_config_param param = pinconf_to_config_param(config);
+	int param = pinconf_to_config_param(config);
 	u16 param_val = pinconf_to_config_argument(config);
 	unsigned int val;
+	int addr, ret;
 
 	switch (param) {
 	case PIN_CONFIG_DRIVE_OPEN_DRAIN:
@@ -291,6 +342,24 @@ static int max77620_pinconf_set(struct pinctrl_dev *pctldev,
 			MAX77620_PIN_PP_DRV : MAX77620_PIN_OD_DRV;
 		break;
 
+	case MAX77620_FPS_SOURCE:
+		if ((pin < MAX77620_GPIO1) || (pin > MAX77620_GPIO3))
+			return -EINVAL;
+
+		if (param_val == FPS_SRC_DEF)
+			return 0;
+
+		addr = MAX77620_REG_FPS_GPIO1 + pin - 1;
+		ret = max77620_reg_update(max77620_pci->max77620->dev,
+				MAX77620_PWR_SLAVE, addr, MAX77620_FPS_SRC_MASK,
+				param_val << MAX77620_FPS_SRC_SHIFT);
+		if (ret < 0) {
+			dev_err(max77620_pci->dev,
+				"Reg 0x%02x update failed %d\n", addr, ret);
+			return ret;
+		}
+		break;
+
 	default:
 		dev_err(max77620_pci->dev, "Properties not supported\n");
 		return -ENOTSUPP;
@@ -302,6 +371,7 @@ static int max77620_pinconf_set(struct pinctrl_dev *pctldev,
 static const struct pinconf_ops max77620_pinconf_ops = {
 	.pin_config_get = max77620_pinconf_get,
 	.pin_config_set = max77620_pinconf_set,
+	.pin_config_get_max_custom_config = max77620_pinctrl_max_cfg,
 };
 
 static struct pinctrl_desc max77620_pinctrl_desc = {
