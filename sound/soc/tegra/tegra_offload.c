@@ -97,24 +97,51 @@ static const struct snd_pcm_hardware tegra_offload_pcm_hardware_capture = {
 
 int tegra_register_offload_ops(struct tegra_offload_ops *ops)
 {
+	int ret = 0;
+
 	mutex_lock(&tegra_offload_lock);
 	if (!ops) {
 		pr_err("Invalid ops pointer.");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto errout;
 	}
 
 	if (tegra_offload_init_done) {
 		pr_err("Offload ops already registered.");
-		return -EBUSY;
+		ret = -EBUSY;
+		goto errout;
 	}
+
 	memcpy(&offload_ops, ops, sizeof(offload_ops));
 	tegra_offload_init_done = 1;
-	mutex_unlock(&tegra_offload_lock);
-
 	pr_info("succefully registered offload ops");
-	return 0;
+
+errout:
+	mutex_unlock(&tegra_offload_lock);
+	return ret;
 }
 EXPORT_SYMBOL_GPL(tegra_register_offload_ops);
+
+void tegra_deregister_offload_ops(void)
+{
+	mutex_lock(&tegra_offload_lock);
+
+	if (!tegra_offload_init_done) {
+		pr_err("Offload ops not registered.");
+		mutex_unlock(&tegra_offload_lock);
+		return;
+	}
+
+	memset(&offload_ops, 0, sizeof(offload_ops));
+	tegra_offload_init_done = 0;
+
+	mutex_unlock(&tegra_offload_lock);
+
+	pr_info("succefully deregistered offload ops");
+	return;
+}
+EXPORT_SYMBOL_GPL(tegra_deregister_offload_ops);
+
 
 /* Compress playback related APIs */
 static void tegra_offload_compr_fragment_elapsed(void *arg, unsigned int is_eos)

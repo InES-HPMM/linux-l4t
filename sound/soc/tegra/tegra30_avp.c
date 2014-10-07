@@ -1447,7 +1447,9 @@ static int tegra30_avp_audio_remove(struct platform_device *pdev)
 
 	dev_vdbg(&pdev->dev, "%s", __func__);
 
-	tegra_nvavp_audio_client_release(audio_avp->nvavp_client);
+	tegra_deregister_offload_ops();
+	if (audio_avp->nvavp_client)
+		tegra_nvavp_audio_client_release(audio_avp->nvavp_client);
 	tegra30_avp_mem_free(&audio_avp->cmd_buf_mem);
 	tegra30_avp_mem_free(&audio_avp->param_mem);
 	tegra30_avp_mem_free(&audio_avp->ucode_mem);

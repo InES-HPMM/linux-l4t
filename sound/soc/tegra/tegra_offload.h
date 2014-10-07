@@ -93,4 +93,5 @@ struct tegra_offload_ops {
 };
 
 int tegra_register_offload_ops(struct tegra_offload_ops *ops);
+void tegra_deregister_offload_ops(void);
 #endif
