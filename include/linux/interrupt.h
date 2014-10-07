@@ -196,6 +196,9 @@ devm_request_irq(struct device *dev, unsigned int irq, irq_handler_t handler,
 
 extern void devm_free_irq(struct device *dev, unsigned int irq, void *dev_id);
 
+extern int devm_request_any_context_irq(struct device *dev, unsigned int irq,
+		irq_handler_t handler, unsigned long flags, const char *name,
+		void *dev_id);
 /*
  * On lockdep we dont want to enable hardirqs in hardirq
  * context. Use local_irq_enable_in_hardirq() to annotate
