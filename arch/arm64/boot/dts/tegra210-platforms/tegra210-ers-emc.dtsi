@@ -9,8 +9,8 @@
 			nvidia,revision = <0x5>;
 			nvidia,dvfs-version = "01_204000_04_P9.5.6_V0.9";
 			clock-frequency = <204000>;
-			nvidia,emc-min-mv = <1100>;
-			nvidia,gk20a-min-mv = <1100>;
+			nvidia,emc-min-mv = <780>;
+			nvidia,gk20a-min-mv = <780>;
 			nvidia,source = "pllp_out0";
 			nvidia,src-sel-reg = <0x40180002>;
 			nvidia,needs-training = <00000000>;
@@ -1226,8 +1226,8 @@
 			nvidia,revision = <0x5>;
 			nvidia,dvfs-version = "01_931200_03_P9.5.2_V0.9";
 			clock-frequency = <931200>;
-			nvidia,emc-min-mv = <1100>;
-			nvidia,gk20a-min-mv = <1100>;
+			nvidia,emc-min-mv = <920>;
+			nvidia,gk20a-min-mv = <920>;
 			nvidia,source = "pllm_ud";
 			nvidia,src-sel-reg = <0x80180000>;
 			nvidia,needs-training = <00000000>;
