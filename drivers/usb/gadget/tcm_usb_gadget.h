@@ -20,6 +20,37 @@
 #define UASP_SS_EP_COMP_LOG_STREAMS 4
 #define UASP_SS_EP_COMP_NUM_STREAMS (1 << UASP_SS_EP_COMP_LOG_STREAMS)
 
+/* The following UASP_STREAM_* flags are used to set the flags variable
+ * in the uas_stream structure
+ */
+/* This tells if the stream resource is currently being used */
+#define UASP_STREAM_BUSY   1
+
+/* When all the pre-allocated stream resources are busy and a new stream
+ * resource is created, this flag is used so that the resource can be
+ * freed once the command is completed
+ */
+#define UASP_STREAM_RES_ALLOCATED	2
+/* The following three flags are used to indicate what is the latst
+ * endpoint on which the data transfer is happening for a command so
+ * that when an error occurs, we can dequeue the request on this endpoint
+ * which inturn deletes the command from the SCSI layer in the usb req
+ * callback
+ */
+#define UASP_STREAM_EP_IN_ENQUEUED	4
+#define UASP_STREAM_EP_OUT_ENQUEUED	8
+#define UASP_STREAM_EP_STATUS_ENQUEUED  16
+
+/* Used to clear the above UASP_STREAM_EP_*_QUEUED Flags of the
+ * flags variable in the uas_stream structure. If more flags are
+ * used later then this MASK definition has to be changed accordingly
+ */
+#define UASP_STREAM_EP_QUEUE_CLEAR_MASK       0x3
+
+/* The following is the maximum value for a valid stream ID
+ */
+#define VALID_STREAM_ID_MAX	0xfffd
+
 enum {
 	USB_G_STR_CONFIG = USB_GADGET_FIRST_AVAIL_IDX,
 	USB_G_STR_INT_UAS,
@@ -109,6 +140,7 @@ struct uas_stream {
 	struct usb_request	*req_in;
 	struct usb_request	*req_out;
 	struct usb_request	*req_status;
+	u8     flags;
 };
 
 struct usbg_cdb {

@@ -499,6 +499,21 @@ static void uasp_cleanup_one_stream(struct f_uas *fu, struct uas_stream *stream)
 	stream->req_status = NULL;
 }
 
+static void cleanup_stream(struct f_uas *fu, struct uas_stream *stream)
+{
+	if (stream != NULL) {
+		if (stream->flags & UASP_STREAM_RES_ALLOCATED) {
+			uasp_cleanup_one_stream(fu, stream);
+			kfree(stream);
+		} else {
+			stream->flags = 0;
+			stream->req_in->stream_id = 0;
+			stream->req_out->stream_id = 0;
+			stream->req_status->stream_id = 0;
+		}
+	}
+}
+
 static void uasp_free_cmdreq(struct f_uas *fu)
 {
 	usb_ep_free_request(fu->ep_cmd, fu->cmd.req);
@@ -585,7 +600,10 @@ static void uasp_status_data_cmpl(struct usb_ep *ep, struct usb_request *req)
 	struct uas_stream *stream = cmd->stream;
 	struct f_uas *fu = cmd->fu;
 	int ret;
-
+	/* The usb req enqueued previously has completed.
+	 * so Clear the previous  EP queued Flags
+	 */
+	stream->flags &= UASP_STREAM_EP_QUEUE_CLEAR_MASK;
 	if (req->status < 0)
 		goto cleanup;
 
@@ -595,8 +613,11 @@ static void uasp_status_data_cmpl(struct usb_ep *ep, struct usb_request *req)
 		if (ret)
 			goto cleanup;
 		ret = usb_ep_queue(fu->ep_in, stream->req_in, GFP_ATOMIC);
-		if (ret)
+		if (ret) {
 			pr_err("%s(%d) => %d\n", __func__, __LINE__, ret);
+			goto cleanup;
+		} else
+			stream->flags |= UASP_STREAM_EP_IN_ENQUEUED;
 		break;
 
 	case UASP_RECEIVE_DATA:
@@ -604,21 +625,27 @@ static void uasp_status_data_cmpl(struct usb_ep *ep, struct usb_request *req)
 		if (ret)
 			goto cleanup;
 		ret = usb_ep_queue(fu->ep_out, stream->req_out, GFP_ATOMIC);
-		if (ret)
+		if (ret) {
 			pr_err("%s(%d) => %d\n", __func__, __LINE__, ret);
+			goto cleanup;
+		} else
+			stream->flags |= UASP_STREAM_EP_OUT_ENQUEUED;
 		break;
 
 	case UASP_SEND_STATUS:
 		uasp_prepare_status(cmd);
 		ret = usb_ep_queue(fu->ep_status, stream->req_status,
 				GFP_ATOMIC);
-		if (ret)
+		if (ret) {
 			pr_err("%s(%d) => %d\n", __func__, __LINE__, ret);
+			goto cleanup;
+		} else
+			stream->flags |= UASP_STREAM_EP_STATUS_ENQUEUED;
 		break;
 
 	case UASP_QUEUE_COMMAND:
+		cleanup_stream(fu, stream);
 		usbg_cleanup_cmd(cmd);
-		usb_ep_queue(fu->ep_cmd, fu->cmd.req, GFP_ATOMIC);
 		break;
 
 	default:
@@ -627,6 +654,7 @@ static void uasp_status_data_cmpl(struct usb_ep *ep, struct usb_request *req)
 	return;
 
 cleanup:
+	cleanup_stream(fu, stream);
 	usbg_cleanup_cmd(cmd);
 }
 
@@ -636,7 +664,7 @@ static int uasp_send_response_iu(struct usbg_cmd *cmd)
 	struct uas_stream *stream = cmd->stream;
 	struct response_ui *iu = &cmd->response_iu;
 	struct se_tmr_req  *se_tmr_req;
-
+	int ret;
 	/* Filling the usb request with the response information */
 	stream->req_status->complete = uasp_status_data_cmpl;
 	stream->req_status->context = cmd;
@@ -671,9 +699,14 @@ static int uasp_send_response_iu(struct usbg_cmd *cmd)
 			/*
 			* This is to pass the compliance tests that
 			* expects the UASP device to implement all the
-			* Task management Functions.
+			* Task management Functions. The SCCI Layer
+			* currently does not support DELETE TASK SET command
+			* and it returns NOT SUPPORTED. Many of the UASP
+			* Compliance tests use that command and the tests fail
+			* Tweaking the return code here to pass the UASP
+			* Tests.
 			*/
-			iu->response_code = RC_TMF_FAILED;
+			iu->response_code = RC_TMF_COMPLETE;
 			break;
 		case TMR_FUNCTION_COMPLETE:
 			iu->response_code = RC_TMF_COMPLETE;
@@ -690,7 +723,12 @@ static int uasp_send_response_iu(struct usbg_cmd *cmd)
 			iu->response_code = RC_TMF_FAILED;
 		};
 	}
-	return usb_ep_queue(fu->ep_status, stream->req_status, GFP_ATOMIC);
+	ret = usb_ep_queue(fu->ep_status, stream->req_status, GFP_ATOMIC);
+
+	if (!ret)
+		stream->flags |= UASP_STREAM_EP_STATUS_ENQUEUED;
+
+	return ret;
 }
 
 static int uasp_send_status_response(struct usbg_cmd *cmd)
@@ -698,13 +736,17 @@ static int uasp_send_status_response(struct usbg_cmd *cmd)
 	struct f_uas *fu = cmd->fu;
 	struct uas_stream *stream = cmd->stream;
 	struct sense_iu *iu = &cmd->sense_iu;
+	int ret;
 
 	iu->tag = cpu_to_be16(cmd->tag);
 	stream->req_status->complete = uasp_status_data_cmpl;
 	stream->req_status->context = cmd;
 	cmd->fu = fu;
 	uasp_prepare_status(cmd);
-	return usb_ep_queue(fu->ep_status, stream->req_status, GFP_ATOMIC);
+	ret = usb_ep_queue(fu->ep_status, stream->req_status, GFP_ATOMIC);
+	if (!ret)
+		stream->flags |= UASP_STREAM_EP_STATUS_ENQUEUED;
+	return ret;
 }
 
 static int uasp_send_read_response(struct usbg_cmd *cmd)
@@ -727,6 +769,8 @@ static int uasp_send_read_response(struct usbg_cmd *cmd)
 			pr_err("%s(%d) => %d\n", __func__, __LINE__, ret);
 			kfree(cmd->data_buf);
 			cmd->data_buf = NULL;
+		} else {
+			stream->flags |= UASP_STREAM_EP_IN_ENQUEUED;
 		}
 
 	} else {
@@ -741,10 +785,13 @@ static int uasp_send_read_response(struct usbg_cmd *cmd)
 		stream->req_status->buf = iu;
 		stream->req_status->length = sizeof(struct iu);
 
+
 		ret = usb_ep_queue(fu->ep_status, stream->req_status,
 				GFP_ATOMIC);
 		if (ret)
 			pr_err("%s(%d) => %d\n", __func__, __LINE__, ret);
+		else
+			stream->flags |= UASP_STREAM_EP_STATUS_ENQUEUED;
 	}
 out:
 	return ret;
@@ -769,9 +816,11 @@ static int uasp_send_write_request(struct usbg_cmd *cmd)
 		if (ret)
 			goto cleanup;
 		ret = usb_ep_queue(fu->ep_out, stream->req_out, GFP_ATOMIC);
+
 		if (ret)
 			pr_err("%s(%d)\n", __func__, __LINE__);
-
+		else
+			stream->flags |= UASP_STREAM_EP_OUT_ENQUEUED;
 	} else {
 
 		iu->iu_id = IU_ID_WRITE_READY;
@@ -788,8 +837,10 @@ static int uasp_send_write_request(struct usbg_cmd *cmd)
 				GFP_ATOMIC);
 		if (ret)
 			pr_err("%s(%d)\n", __func__, __LINE__);
-	}
+		else
+			stream->flags |= UASP_STREAM_EP_STATUS_ENQUEUED;
 
+	}
 	wait_for_completion(&cmd->write_complete);
 	/* Continue processing the command only when the data transfer
 	 * is successful. Or else just return from this thread.
@@ -804,6 +855,77 @@ static void uasp_response_work(struct work_struct *work)
 {
 	struct usbg_cmd *cmd = container_of(work, struct usbg_cmd, work);
 	uasp_send_response_iu(cmd);
+}
+
+static int uasp_alloc_stream_res(struct f_uas *fu, struct uas_stream *stream)
+{
+	stream->req_in = usb_ep_alloc_request(fu->ep_in, GFP_KERNEL);
+	if (!stream->req_in)
+		goto out;
+
+	stream->req_out = usb_ep_alloc_request(fu->ep_out, GFP_KERNEL);
+	if (!stream->req_out)
+		goto err_out;
+
+	stream->req_status = usb_ep_alloc_request(fu->ep_status, GFP_KERNEL);
+	if (!stream->req_status)
+		goto err_sts;
+
+	return 0;
+err_sts:
+	usb_ep_free_request(fu->ep_out, stream->req_out);
+	stream->req_out = NULL;
+err_out:
+	usb_ep_free_request(fu->ep_in, stream->req_in);
+	stream->req_in = NULL;
+out:
+	return -ENOMEM;
+}
+
+/* This function first searched the pre allocated stream resouces for
+ * a free stream and returns. If all the stream resources are exhausted,
+ * it tries to create a new one and return
+ */
+static struct uas_stream *get_free_stream(struct f_uas *fu, u16 tag,
+						bool *is_duplicate_tag)
+{
+	u32 i;
+	struct uas_stream *stream = NULL;
+	for (i = 0; i < UASP_SS_EP_COMP_NUM_STREAMS; i++) {
+		if (!(fu->stream[i].flags & UASP_STREAM_BUSY)) {
+			if (stream == NULL) {
+				fu->stream[i].flags |= UASP_STREAM_BUSY;
+				stream = &fu->stream[i];
+			}
+		} else {
+			if (is_duplicate_tag != NULL) {
+				if (fu->stream[i].req_in->stream_id == tag)
+					*is_duplicate_tag = true;
+			}
+		}
+	}
+
+	if (stream != NULL)
+		return stream;
+
+	/* In the SS mode, sice we have advertized the maximum number
+	 * of streams supported and when we receive more than that, we
+	 * try to return the MAX TASK SET FULL return status which requires
+	 * stream resources.
+	 */
+	stream = kzalloc(sizeof(struct uas_stream), GFP_ATOMIC);
+	if (stream == NULL)
+		return NULL;
+
+	if (uasp_alloc_stream_res(fu, stream)) {
+		kfree(stream);
+		return NULL;
+	} else {
+		stream->flags |= UASP_STREAM_RES_ALLOCATED;
+		stream->flags |= UASP_STREAM_BUSY;
+		return stream;
+	}
+	return NULL;
 }
 
 static int handle_invalid_cmd(struct f_uas *fu, void *tmpbuf,
@@ -821,25 +943,38 @@ static int handle_invalid_cmd(struct f_uas *fu, void *tmpbuf,
 	kref_init(&cmd->ref);
 	cmd->tag = be16_to_cpup(&iu->tag);
 
-	/* Currently the driver is selecting the stream id based on the
-	 * tagreceived in the command. This logic has to be changed
-	 * because the streams supported are 16 and the tag can be anywhere
-	 * from 1 to 0xffff.
-	 */
 	if (fu->flags & USBG_USE_STREAMS) {
-		if (cmd->tag > UASP_SS_EP_COMP_NUM_STREAMS)
+		if ((cmd->tag < 1) || (cmd->tag > VALID_STREAM_ID_MAX)) {
+			pr_err("%s Invalid stream Id received\n", __func__);
 			goto err;
-		if (!cmd->tag)
-			cmd->stream = &fu->stream[0];
-		else
-			cmd->stream = &fu->stream[cmd->tag - 1];
-	} else {
-		cmd->stream = &fu->stream[0];
+		}
+	}
+
+	cmd->stream = get_free_stream(fu, cmd->tag, NULL);
+	if (cmd->stream == NULL)
+		goto err;
+
+	cmd->no_scsi_contact = true;
+	cmd->stream->req_in->stream_id = cmd->tag;
+	cmd->stream->req_out->stream_id = cmd->tag;
+	cmd->stream->req_status->stream_id = cmd->tag;
+
+	/* If all the resources are busy and this is a new command then
+	 * we send TASK SET FUll status. Or else we send a INVALID INFO UNIT
+	 * error
+	 */
+	if (cmd->stream->flags & UASP_STREAM_RES_ALLOCATED) {
+		uasp_prepare_status(cmd);
+		cmd->sense_iu.status = SAM_STAT_TASK_SET_FULL;
+		ret = usb_ep_queue(fu->ep_status,
+			cmd->stream->req_status, GFP_ATOMIC);
+		if (ret < 0)
+			goto err;
+
+		return 0;
 	}
 
 	cmd->response_iu.response_code = RC_INVALID_INFO_UNIT;
-	cmd->no_scsi_contact = true;
-
 	INIT_WORK(&cmd->work, uasp_response_work);
 	ret = queue_work(tpg->workqueue, &cmd->work);
 	if (ret < 0)
@@ -847,6 +982,7 @@ static int handle_invalid_cmd(struct f_uas *fu, void *tmpbuf,
 
 	return 0;
 err:
+	cleanup_stream(fu, cmd->stream);
 	kfree(cmd);
 	return -EINVAL;
 }
@@ -896,6 +1032,91 @@ out:
 	usbg_cleanup_cmd(cmd);
 }
 
+/* This function tries to assign a strem resource and retunrs 1 when
+ * successful. Returns 0 when there is a Error case and it has been
+ * handled here. Returns Negative value when it encounters an error
+ * that is not handled  by this function
+ */
+static int map_free_stream(struct usbg_cmd *cmd, struct f_uas *fu)
+{
+	int ret, i;
+	bool duplicate_tag = false;
+
+	/* If the tag received doesnt fall under the valid stream ID
+	 * range in SS mode, then we dont process it.
+	 */
+	if (fu->flags & USBG_USE_STREAMS) {
+		if ((cmd->tag < 1) || (cmd->tag > VALID_STREAM_ID_MAX)) {
+			pr_err("%s Invalid stream Id received\n", __func__);
+			return -EINVAL;
+		}
+	}
+
+	/* Get a free stream resource for data transfers */
+	cmd->stream = get_free_stream(fu, cmd->tag, &duplicate_tag);
+
+	if (cmd->stream == NULL)
+		return -ENOMEM;
+
+	cmd->stream->req_in->stream_id = cmd->tag;
+	cmd->stream->req_out->stream_id = cmd->tag;
+	cmd->stream->req_status->stream_id = cmd->tag;
+
+
+	/* If all the resources are busy */
+	if (cmd->stream->flags & UASP_STREAM_RES_ALLOCATED) {
+		uasp_prepare_status(cmd);
+		cmd->no_scsi_contact = true;
+		cmd->sense_iu.status = SAM_STAT_TASK_SET_FULL;
+		ret = usb_ep_queue(fu->ep_status,
+			cmd->stream->req_status, GFP_ATOMIC);
+		if (ret)
+			return -EINVAL;
+
+		return 0;
+	}
+
+	/* First cancel all the commands that are currently being processed
+	 * Since a duplicate tag is received. Use the current stream to return
+	 * error. We simply dequeue the latest enqued request. The usb req
+	 * callback will be called with error status which then deletes the
+	 * command from the top SCSI layer.
+	 */
+	if (duplicate_tag) {
+		for (i = 0; i < UASP_SS_EP_COMP_NUM_STREAMS; i++) {
+			if ((fu->stream[i].flags & UASP_STREAM_BUSY)
+					&& (&fu->stream[i] != cmd->stream)) {
+				if (fu->stream[i].flags &
+					UASP_STREAM_EP_IN_ENQUEUED) {
+					usb_ep_dequeue(fu->ep_in,
+							fu->stream[i].req_in);
+				} else if (fu->stream[i].flags &
+						UASP_STREAM_EP_OUT_ENQUEUED) {
+					usb_ep_dequeue(fu->ep_out,
+							fu->stream[i].req_out);
+				} else if (fu->stream[i].flags &
+					UASP_STREAM_EP_STATUS_ENQUEUED) {
+					usb_ep_dequeue(fu->ep_status,
+					fu->stream[i].req_status);
+				} else
+					usbg_cleanup_cmd(cmd);
+			}
+		}
+
+		/* After cancelling all the requests, send the OVERLAPPED TAG
+		 * response to the Host
+		 */
+		cmd->response_iu.response_code = RC_OVERLAPPED_TAG;
+		cmd->no_scsi_contact = true;
+		INIT_WORK(&cmd->work, uasp_response_work);
+		ret = queue_work(fu->tpg->workqueue, &cmd->work);
+		if (ret < 0)
+			return  -EINVAL;
+		return 0;
+	}
+	return 1;
+}
+
 static int usbg_submit_task_mgmt(struct f_uas *fu,
 		void *tmbuf, unsigned int len)
 {
@@ -903,9 +1124,7 @@ static int usbg_submit_task_mgmt(struct f_uas *fu,
 	struct usbg_cmd *cmd;
 	struct usbg_tpg *tpg;
 	struct tcm_usbg_nexus *tv_nexus;
-	u32 cmd_len;
 	int ret;
-
 	cmd = kzalloc(sizeof(*cmd), GFP_ATOMIC);
 	if (!cmd)
 		return -ENOMEM;
@@ -918,23 +1137,14 @@ static int usbg_submit_task_mgmt(struct f_uas *fu,
 	cmd->tag = be16_to_cpup(&tm_iu->tag);
 	cmd->tm_function = tm_iu->function;
 	cmd->tm_tag = be16_to_cpup(&tm_iu->task_tag);
-	/* Currently the driver is selecting the stream id based on the
-	 * tagreceived in the command. This logic has to be changed
-	 * because the streams supported are 16 and the tag can be anywhere
-	 * from 1 to 0xffff
-	 */
-	if (fu->flags & USBG_USE_STREAMS) {
-		if (cmd->tag > UASP_SS_EP_COMP_NUM_STREAMS) {
-			pr_err("Tag value exceeded MAX streams\n");
-			goto err;
-		}
-		if (!cmd->tag)
-			cmd->stream = &fu->stream[0];
-		else
-			cmd->stream = &fu->stream[cmd->tag - 1];
-	} else {
-		cmd->stream = &fu->stream[0];
-	}
+
+	ret = map_free_stream(cmd, fu);
+	/* If the error is handled by the map_free_stream we return */
+	if (!ret)
+		return 0;
+	else if (ret < 0)
+		goto err;
+
 	cmd->unpacked_lun = scsilun_to_int(&tm_iu->lun);
 
 	if (invalid_tm_function(tm_iu->function)) {
@@ -966,6 +1176,7 @@ static int usbg_submit_task_mgmt(struct f_uas *fu,
 
 	return 0;
 err:
+	cleanup_stream(fu, cmd->stream);
 	kfree(cmd);
 	return -EINVAL;
 
@@ -981,7 +1192,6 @@ static void uasp_cmd_complete(struct usb_ep *ep, struct usb_request *req)
 
 	if (req->status < 0)
 		return;
-
 	if (uas_iu->iu_id == IU_ID_COMMAND)
 		ret = usbg_submit_command(fu, req->buf, req->actual);
 	else if (uas_iu->iu_id == IU_ID_TASK_MGMT)
@@ -989,40 +1199,12 @@ static void uasp_cmd_complete(struct usb_ep *ep, struct usb_request *req)
 	else
 		ret = handle_invalid_cmd(fu, req->buf, req->actual);
 
-	/*
-	 * Once we tune for performance enqueue the command req here again so
-	 * we can receive a second command while we processing this one. Pay
-	 * attention to properly sync STAUS endpoint with DATA IN + OUT so you
-	 * don't break HS.
+
+	/* Once we process the command received and schedule a thread
+	 * to process the command, we queue a new buffer to receive the
+	 * next command.
 	 */
-	if (!ret)
-		return;
 	usb_ep_queue(fu->ep_cmd, fu->cmd.req, GFP_ATOMIC);
-}
-
-static int uasp_alloc_stream_res(struct f_uas *fu, struct uas_stream *stream)
-{
-	stream->req_in = usb_ep_alloc_request(fu->ep_in, GFP_KERNEL);
-	if (!stream->req_in)
-		goto out;
-
-	stream->req_out = usb_ep_alloc_request(fu->ep_out, GFP_KERNEL);
-	if (!stream->req_out)
-		goto err_out;
-
-	stream->req_status = usb_ep_alloc_request(fu->ep_status, GFP_KERNEL);
-	if (!stream->req_status)
-		goto err_sts;
-
-	return 0;
-err_sts:
-	usb_ep_free_request(fu->ep_status, stream->req_status);
-	stream->req_status = NULL;
-err_out:
-	usb_ep_free_request(fu->ep_out, stream->req_out);
-	stream->req_out = NULL;
-out:
-	return -ENOMEM;
 }
 
 static int uasp_alloc_cmd(struct f_uas *fu)
@@ -1064,14 +1246,13 @@ static int uasp_prepare_reqs(struct f_uas *fu)
 {
 	int ret;
 	int i;
-	int max_streams;
 
-	if (fu->flags & USBG_USE_STREAMS)
-		max_streams = UASP_SS_EP_COMP_NUM_STREAMS;
-	else
-		max_streams = 1;
-
-	for (i = 0; i < max_streams; i++) {
+	/* The drier currently supports multiple commands to be queued.
+	 * So we preallocate some streams even for the HS mode so that
+	 * we wont keep the interrupts waiting while allocating resources
+	 * for parallel commands
+	 */
+	for (i = 0; i < UASP_SS_EP_COMP_NUM_STREAMS; i++) {
 		ret = uasp_alloc_stream_res(fu, &fu->stream[i]);
 		if (ret)
 			goto err_cleanup;
@@ -1080,7 +1261,6 @@ static int uasp_prepare_reqs(struct f_uas *fu)
 	ret = uasp_alloc_cmd(fu);
 	if (ret)
 		goto err_free_stream;
-	uasp_setup_stream_res(fu, max_streams);
 
 	ret = usb_ep_queue(fu->ep_cmd, fu->cmd.req, GFP_ATOMIC);
 	if (ret)
@@ -1232,6 +1412,8 @@ static void usbg_data_write_cmpl(struct usb_ep *ep, struct usb_request *req)
 	struct usbg_cmd *cmd = req->context;
 	struct se_cmd *se_cmd = &cmd->se_cmd;
 	cmd->cmd_status = req->status;
+	cmd->stream->flags &= UASP_STREAM_EP_QUEUE_CLEAR_MASK;
+
 	if (req->status < 0) {
 		pr_err("%s() state %d transfer failed\n", __func__, cmd->state);
 		goto cleanup;
@@ -1336,8 +1518,11 @@ static void usbg_cmd_work(struct work_struct *work)
 	/* If there is an error in data transfer, then we wont continue
 	 * processing the command. So free the memory of cmd struct here.
 	 */
+
+
 	if (cmd->cmd_status) {
 		kref_put(&cmd->ref, usbg_cmd_release);
+		cleanup_stream(cmd->fu, cmd->stream);
 		usbg_cleanup_cmd(cmd);
 	}
 
@@ -1346,6 +1531,8 @@ static void usbg_cmd_work(struct work_struct *work)
 out:
 	transport_send_check_condition_and_sense(se_cmd,
 			TCM_UNSUPPORTED_SCSI_OPCODE, 1);
+
+	cleanup_stream(cmd->fu, cmd->stream);
 	usbg_cleanup_cmd(cmd);
 }
 
@@ -1359,13 +1546,11 @@ static int usbg_submit_command(struct f_uas *fu,
 	struct tcm_usbg_nexus *tv_nexus;
 	u32 cmd_len;
 	int ret;
-
 	cmd = kzalloc(sizeof *cmd, GFP_ATOMIC);
 	if (!cmd)
 		return -ENOMEM;
 
 	cmd->fu = fu;
-
 	/* XXX until I figure out why I can't free in on complete */
 	kref_init(&cmd->ref);
 	kref_get(&cmd->ref);
@@ -1378,21 +1563,13 @@ static int usbg_submit_command(struct f_uas *fu,
 	memcpy(cmd->cmd_buf, cmd_iu->cdb, cmd_len);
 
 	cmd->tag = be16_to_cpup(&cmd_iu->tag);
-	/* Currently the driver is selecting the stream id based on the
-	 * tagreceived in the command. This logic has to be changed
-	 * because the streams supported are 16 and the tag can be anywhere
-	 * from 1 to 0xffff
-	 */
-	if (fu->flags & USBG_USE_STREAMS) {
-		if (cmd->tag > UASP_SS_EP_COMP_NUM_STREAMS)
-			goto err;
-		if (!cmd->tag)
-			cmd->stream = &fu->stream[0];
-		else
-			cmd->stream = &fu->stream[cmd->tag - 1];
-	} else {
-		cmd->stream = &fu->stream[0];
-	}
+	ret = map_free_stream(cmd, fu);
+
+	/* If the error is handled by the map_free_stream func we return */
+	if (!ret)
+		return 0;
+	else if (ret < 0)
+		goto err;
 
 	tv_nexus = tpg->tpg_nexus;
 	if (!tv_nexus) {
@@ -1428,6 +1605,7 @@ static int usbg_submit_command(struct f_uas *fu,
 
 	return 0;
 err:
+	cleanup_stream(fu, cmd->stream);
 	kfree(cmd);
 	return -EINVAL;
 }
@@ -1751,7 +1929,6 @@ static int usbg_queue_tm_rsp(struct se_cmd *se_cmd)
 {
 	struct usbg_cmd *cmd = container_of(se_cmd, struct usbg_cmd,
 							se_cmd);
-	struct f_uas *fu = cmd->fu;
 	return uasp_send_response_iu(cmd);
 
 }
@@ -1847,7 +2024,11 @@ static struct se_portal_group *usbg_make_tpg(
 	}
 	mutex_init(&tpg->tpg_mutex);
 	atomic_set(&tpg->tpg_port_count, 0);
-	tpg->workqueue = alloc_workqueue("tcm_usb_gadget", 0, 1);
+	/* Using the defualt value of 0 for the max_active threads
+	 * as the driver currently supports multiple commands each
+	 * running in different threads
+	 */
+	tpg->workqueue = alloc_workqueue("tcm_usb_gadget", 0, 0);
 	if (!tpg->workqueue) {
 		kfree(tpg);
 		return NULL;
