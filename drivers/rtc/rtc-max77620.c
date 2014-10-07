@@ -389,6 +389,7 @@ static int max77620_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 		buf[RTC_SEC], buf[RTC_MIN], buf[RTC_HOUR], buf[RTC_WEEKDAY],
 		buf[RTC_MONTH], buf[RTC_YEAR], buf[RTC_MONTHDAY]);
 
+	buf[RTC_YEAR] &= ~ALARM_EN_MASK;
 	ret = max77620_rtc_reg_to_tm(rtc, buf, &alrm->time);
 	if (ret < 0) {
 		dev_err(rtc->dev, "rtc_read_alarm: "
