@@ -1175,8 +1175,7 @@ static struct core_bus_rates_table tegra21_gpu_rates_sysfs = {
 
 static int __init tegra21_dvfs_init_core_cap(void)
 {
-	int ret;
-	const int hack_core_millivolts = 0;
+	int ret = 0;
 
 	cap_kobj = kobject_create_and_add("tegra_cap", kernel_kobj);
 	if (!cap_kobj) {
@@ -1184,14 +1183,10 @@ static int __init tegra21_dvfs_init_core_cap(void)
 		return 0;
 	}
 
-	/* FIXME: skip core cap init b/c it's too slow on QT */
-	if (tegra_platform_is_qt())
+	if (!tegra_platform_is_qt())
 		ret = tegra_init_core_cap(
-			tegra21_core_cap_table, ARRAY_SIZE(tegra21_core_cap_table),
-			&hack_core_millivolts, 1, cap_kobj);
-	else
-		ret = tegra_init_core_cap(
-			tegra21_core_cap_table, ARRAY_SIZE(tegra21_core_cap_table),
+			tegra21_core_cap_table,
+			ARRAY_SIZE(tegra21_core_cap_table),
 			core_millivolts, ARRAY_SIZE(core_millivolts), cap_kobj);
 
 	if (ret) {
@@ -1200,6 +1195,7 @@ static int __init tegra21_dvfs_init_core_cap(void)
 		kobject_del(cap_kobj);
 		return 0;
 	}
+	tegra_core_cap_debug_init();
 	pr_info("tegra dvfs: tegra sysfs cap interface is initialized\n");
 
 	gpu_kobj = kobject_create_and_add("tegra_gpu", kernel_kobj);
