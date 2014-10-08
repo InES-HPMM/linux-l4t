@@ -334,6 +334,7 @@
 		status = "disabled";
 		dmas = <&apbdma 15>, <&apbdma 15>;
 		dma-names = "rx", "tx";
+		nvidia,clk-parents = "pll_p", "clk_m";
 	};
 
 	spi1: spi@7000d600 {
@@ -348,6 +349,7 @@
 		status = "disabled";
 		dmas = <&apbdma 16>, <&apbdma 16>;
 		dma-names = "rx", "tx";
+		nvidia,clk-parents = "pll_p", "clk_m";
 	};
 
 	spi2: spi@7000d800 {
@@ -362,6 +364,7 @@
 		status = "disabled";
 		dmas = <&apbdma 17>, <&apbdma 17>;
 		dma-names = "rx", "tx";
+		nvidia,clk-parents = "pll_p", "clk_m";
 	};
 
 	spi3: spi@7000da00 {
@@ -376,6 +379,7 @@
 		status = "disabled";
 		dmas = <&apbdma 18>, <&apbdma 18>;
 		dma-names = "rx", "tx";
+		nvidia,clk-parents = "pll_p", "clk_m";
 	};
 
 	spi4: spi@7000dc00 {
@@ -390,6 +394,7 @@
 		status = "disabled";
 		dmas = <&apbdma 27>, <&apbdma 27>;
 		dma-names = "rx", "tx";
+		nvidia,clk-parents = "pll_p", "clk_m";
 	};
 
 	spi5: spi@7000de00 {
@@ -404,6 +409,7 @@
 		status = "disabled";
 		dmas = <&apbdma 28>, <&apbdma 28>;
 		dma-names = "rx", "tx";
+		nvidia,clk-parents = "pll_p", "clk_m";
 	};
 
 	pmc@7000e400 {

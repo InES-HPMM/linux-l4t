@@ -423,6 +423,7 @@
 		#size-cells = <0>;
 		dmas = <&apbdma 15>, <&apbdma 15>;
 		dma-names = "rx", "tx";
+		nvidia,clk-parents = "pll_p", "clk_m";
 		status = "disabled";
 	};
 
@@ -436,6 +437,7 @@
 		#size-cells = <0>;
 		dmas = <&apbdma 16>, <&apbdma 16>;
 		dma-names = "rx", "tx";
+		nvidia,clk-parents = "pll_p", "clk_m";
 		status = "disabled";
 	};
 
@@ -449,6 +451,7 @@
 		#size-cells = <0>;
 		dmas = <&apbdma 17>, <&apbdma 17>;
 		dma-names = "rx", "tx";
+		nvidia,clk-parents = "pll_p", "clk_m";
 		status = "disabled";
 	};
 
@@ -462,6 +465,7 @@
 		#size-cells = <0>;
 		dmas = <&apbdma 18>, <&apbdma 18>;
 		dma-names = "rx", "tx";
+		nvidia,clk-parents = "pll_p", "clk_m";
 		status = "disabled";
 	};
 
