@@ -171,6 +171,7 @@
 					temperature = <40000>;
 					type = "active";
 					hysteresis = <1000>;
+					writable;
 				};
 			};
 
