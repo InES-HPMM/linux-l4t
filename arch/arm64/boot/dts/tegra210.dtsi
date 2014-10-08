@@ -520,7 +520,8 @@
 			reg = <0x0 0x54200000 0x0 0x00040000>;
 			interrupts = <0 73 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_DC>,
-				 <&smmu TEGRA_SWGROUP_DC12>;
+				 <&smmu TEGRA_SWGROUP_DC12>,
+				 <&smmu TEGRA_SWGROUP_DCB>;
 			status = "disabled";
 
 			rgb {
@@ -532,7 +533,9 @@
 			compatible = "nvidia,tegra210-dc";
 			reg = <0x0 0x54240000 0x0 0x00040000>;
 			interrupts = <0 74 0x04>;
-			iommus = <&smmu TEGRA_SWGROUP_DCB>;
+			iommus = <&smmu TEGRA_SWGROUP_DC>,
+				 <&smmu TEGRA_SWGROUP_DC12>,
+				 <&smmu TEGRA_SWGROUP_DCB>;
 			status = "disabled";
 
 			rgb {
