@@ -427,7 +427,7 @@ static const struct of_device_id nvadsp_of_match[] = {
 };
 #endif
 
-static struct platform_driver nvadsp_driver = {
+static struct platform_driver nvadsp_driver __refdata = {
 	.driver	= {
 		.name	= "nvadsp",
 		.owner	= THIS_MODULE,
