@@ -922,7 +922,7 @@ static int predict_non_alt_millivolts(struct clk *c, const int *millivolts,
 	if (i == c->dvfs->num_freqs)
 		i--;
 
-	return millivolts[i];
+	return max(millivolts[i], c->dvfs->dvfs_rail->min_millivolts);
 }
 
 static int predict_millivolts(struct clk *c, const int *millivolts,
@@ -1849,6 +1849,7 @@ _out:
 int __init of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
 					 struct dvfs_rail *rail)
 {
+	u32 val;
 	struct device_node *reg_dn;
 	char prop_name[80];
 
@@ -1870,6 +1871,10 @@ int __init of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
 	rail->dt_node = rail_dn;
 	rail->dt_reg_fixed = of_device_is_compatible(reg_dn, "regulator-fixed");
 	rail->dt_reg_pwm = of_device_is_compatible(reg_dn, "regulator-pwm");
+	if (!of_property_read_u32(reg_dn, "regulator-min-microvolt", &val)) {
+		if (rail->min_millivolts < val / 1000)
+			rail->min_millivolts = val / 1000;
+	}
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	if (rail->dt_reg_fixed && !strcmp("vdd_cpu", rail->reg_id)) {
@@ -2651,6 +2656,7 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 		}
 		seq_printf(s, "   nominal    %-7d mV\n",
 			   rail->nominal_millivolts);
+		seq_printf(s, "   minimum    %-7d mV\n", rail->min_millivolts);
 		seq_printf(s, "   offset     %-7d mV\n", rail->dbg_mv_offs);
 
 		thermal_mv_floor = tegra_dvfs_rail_get_thermal_floor(rail);
