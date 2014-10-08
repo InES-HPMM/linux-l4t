@@ -1866,8 +1866,10 @@ follow_page_again:
 
 				/* For mlock, just skip the stack guard page. */
 				if (foll_flags & FOLL_MLOCK) {
-					if (stack_guard_page(vma, start))
+					if (stack_guard_page(vma, start)) {
+						mutex_unlock(&s_follow_page_lock);
 						goto next_page;
+					}
 				}
 				if (foll_flags & FOLL_WRITE)
 					fault_flags |= FAULT_FLAG_WRITE;
