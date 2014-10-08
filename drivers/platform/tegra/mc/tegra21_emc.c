@@ -3071,6 +3071,12 @@ static int init_emc_table(const struct tegra21_emc_table *table,
 		return -ENODATA;
 	}
 
+	if (emc_stats.last_sel == TEGRA_EMC_TABLE_MAX_SIZE) {
+		pr_err("tegra: invalid EMC DFS table: entry for boot rate"
+		       " %lu kHz is not found\n", boot_rate);
+		return -ENODATA;
+	}
+
 	tegra_emc_table = table;
 	tegra_emc_table_derated = table_der;
 
