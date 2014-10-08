@@ -499,12 +499,6 @@
 			iommus = <&smmu TEGRA_SWGROUP_VI>;
 		};
 
-		vii2c {
-			compatible = "nvidia,tegra210-vi-i2c";
-			reg = <0x0 0x546C0000 0x0 0x00034000>;
-			iommus = <&smmu TEGRA_SWGROUP_VII2C>;
-		};
-
 		isp@54600000 {
 			compatible = "nvidia,tegra210-isp";
 			reg = <0x0 0x54600000 0x0 0x00040000>;
@@ -1083,9 +1077,13 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "nvidia,tegra210-vii2c";
+		reg = <0x0 0x546C0000 0x0 0x00034000>;
+		iommus = <&smmu TEGRA_SWGROUP_VII2C>;
+		interrupts = <0 17 0x04>;
 		scl-gpio = <&gpio TEGRA_GPIO(S, 2) 0>;
 		sda-gpio = <&gpio TEGRA_GPIO(S, 3) 0>;
 		status = "okay";
+		clock-frequency = <400000>;
 	};
 
 	sdhci@700b0600 {

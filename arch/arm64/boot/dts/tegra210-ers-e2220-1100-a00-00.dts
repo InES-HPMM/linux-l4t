@@ -214,6 +214,10 @@
 		};
 	};
 
+	i2c@546c0000 {
+		avdd_dsi_csi-supply = <&max77620_gpio7>;
+	};
+
 	adma@702e2000  {
 		interrupts = <0 24 0x04
 			      0 25 0x04
