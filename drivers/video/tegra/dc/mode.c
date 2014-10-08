@@ -286,6 +286,9 @@ static u8 calc_default_avi_m(struct tegra_dc *dc)
 
 static bool check_mode_timings(struct tegra_dc *dc, struct tegra_dc_mode *mode)
 {
+#if defined(CONFIG_TEGRA_HDMI2_0)
+	calc_ref_to_sync(mode);
+#else
 	if (dc->out->type == TEGRA_DC_OUT_HDMI) {
 			/* HDMI controller requires h_ref=1, v_ref=1 */
 		mode->h_ref_to_sync = 1;
@@ -298,6 +301,7 @@ static bool check_mode_timings(struct tegra_dc *dc, struct tegra_dc_mode *mode)
 	} else {
 		calc_ref_to_sync(mode);
 	}
+#endif
 	if (!check_ref_to_sync(mode)) {
 		dev_err(&dc->ndev->dev,
 				"Display timing doesn't meet restrictions.\n");
