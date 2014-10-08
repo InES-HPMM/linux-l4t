@@ -217,6 +217,7 @@ static inline void vbus_detected(struct nv_udc_s *nvudc)
 		USB2_VBUS_ID_0_VBUS_OVERRIDE, USB2_VBUS_ID_0_VBUS_OVERRIDE);
 
 	nvudc->vbus_detected = true;
+	pm_runtime_get(nvudc->dev);
 }
 
 /* must hold nvudc->lock */
@@ -229,6 +230,7 @@ static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 		USB2_VBUS_ID_0_VBUS_OVERRIDE, 0);
 
 	nvudc->vbus_detected = false;
+	pm_runtime_put_autosuspend(nvudc->dev);
 }
 
 static inline void xudc_enable_vbus(struct nv_udc_s *nvudc)
@@ -329,7 +331,6 @@ static int extcon_notifications(struct notifier_block *nb,
 			container_of(nb, struct nv_udc_s, vbus_extcon_nb);
 	struct device *dev = nvudc->dev;
 	unsigned long flags;
-	int ret;
 
 	spin_lock_irqsave(&nvudc->lock, flags);
 
@@ -341,17 +342,9 @@ static int extcon_notifications(struct notifier_block *nb,
 	if (extcon_get_cable_state(nvudc->vbus_extcon_dev, "USB")) {
 		msg_info(dev, "%s: vbus on detected\n", __func__);
 		vbus_detected(nvudc);
-		if (!pm_runtime_active(dev)) {
-			ret = pm_runtime_get(dev);
-			if (ret)
-				dev_warn(dev, "Fail to runtime resume device\n");
-		}
 	} else {
 		msg_info(dev, "%s: vbus off detected\n", __func__);
 		vbus_not_detected(nvudc);
-		ret = pm_runtime_put_autosuspend(dev);
-		if (ret)
-			dev_warn(dev, "Fail to autosuspend device\n");
 	}
 
 exit:
@@ -2114,6 +2107,7 @@ static int nvudc_gadget_pullup(struct usb_gadget *gadget, int is_on)
 	struct nv_udc_s *nvudc = container_of(gadget, struct nv_udc_s, gadget);
 	msg_dbg(nvudc->dev, "pullup is_on = %x", is_on);
 
+	pm_runtime_get_sync(nvudc->dev);
 	spin_lock_irqsave(&nvudc->lock, flags);
 	temp = ioread32(nvudc->mmio_reg_base + CTRL);
 	if (is_on != nvudc->pullup) {
@@ -2136,6 +2130,7 @@ static int nvudc_gadget_pullup(struct usb_gadget *gadget, int is_on)
 	/* update id status */
 	extcon_id_notifications(&nvudc->id_extcon_nb, 0, NULL);
 
+	pm_runtime_put_sync(nvudc->dev);
 	return 0;
 }
 
@@ -3792,11 +3787,11 @@ static irqreturn_t nvudc_padctl_irq(int irq, void *data)
 
 		/* Check if still have pending padctl irq event*/
 		if (!(reg ^ irq_for_dev)) {
-			pr_info("IRQ event for device controller only\n");
+			dev_dbg(nvudc->dev, "IRQ event for device controller only\n");
 			return IRQ_HANDLED;
 		}
 	}
-	pr_info("IRQ event for host controller as well\n");
+	dev_dbg(nvudc->dev, "IRQ event for host controller as well\n");
 	return IRQ_NONE;
 }
 
@@ -3854,6 +3849,7 @@ static int nvudc_gadget_start(struct usb_gadget *gadget,
 		return -EBUSY;
 	msg_dbg(nvudc->dev, "nvudc->driver is not assgined.\n");
 
+	pm_runtime_get_sync(nvudc->dev);
 	spin_lock_irqsave(&nvudc->lock, flags);
 	driver->driver.bus = NULL;
 	nvudc->driver = driver;
@@ -3910,11 +3906,13 @@ static int nvudc_gadget_start(struct usb_gadget *gadget,
 	if (nvudc->transceiver)
 		retval = otg_set_peripheral(nvudc->transceiver, &nvudc->gadget);
 #endif
+	pm_runtime_put_sync(nvudc->dev);
 	msg_exit(nvudc->dev);
 	return 0;
 err_unbind:
 	nvudc->gadget.dev.driver = NULL;
 	nvudc->driver = NULL;
+	pm_runtime_put_sync(nvudc->dev);
 	msg_exit(nvudc->dev);
 	return retval;
 }
@@ -4815,28 +4813,29 @@ static void nvudc_plat_fpci_ipfs_init(struct nv_udc_s *nvudc)
 static int tegra_xudc_exit_elpg(struct nv_udc_s *nvudc)
 {
 	int ret = 0;
+	struct device *dev = nvudc->dev;
 
 	mutex_lock(&nvudc->elpg_lock);
 
 	if (!nvudc->is_elpg) {
-		pr_info("%s Not in ELPG\n", __func__);
+		dev_warn(dev, "%s Not in ELPG\n", __func__);
 		mutex_unlock(&nvudc->elpg_lock);
 		return 0;
 	}
 
-	pr_debug("Exit device controller ELPG\n");
+	dev_dbg(dev, "Exit device controller ELPG\n");
 
 	/* enable power rail */
 	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_XUSBA);
 	if (ret) {
-		pr_err("%s Fail to unpowergate XUSBA\n", __func__);
+		dev_err(dev, "%s Fail to unpowergate XUSBA\n", __func__);
 		mutex_unlock(&nvudc->elpg_lock);
 		return ret;
 	}
 
 	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_XUSBB);
 	if (ret) {
-		pr_err("%s Fail to unpowergate XUSBB\n", __func__);
+		dev_err(dev, "%s Fail to unpowergate XUSBB\n", __func__);
 		mutex_unlock(&nvudc->elpg_lock);
 		return ret;
 	}
@@ -4865,7 +4864,7 @@ static int tegra_xudc_exit_elpg(struct nv_udc_s *nvudc)
 
 	mutex_unlock(&nvudc->elpg_lock);
 
-	pr_info("[%s] Device mode ELPG exit done\n", __func__);
+	dev_info(dev, "Exit device controller ELPG done\n");
 	return 0;
 }
 
@@ -4873,16 +4872,17 @@ static int tegra_xudc_enter_elpg(struct nv_udc_s *nvudc)
 {
 	u32 reg;
 	int ret;
+	struct device *dev = nvudc->dev;
 
 	mutex_lock(&nvudc->elpg_lock);
 
 	if (nvudc->is_elpg) {
-		pr_info("%s Already in ELPG\n", __func__);
+		dev_warn(dev, "%s Already in ELPG\n", __func__);
 		mutex_unlock(&nvudc->elpg_lock);
 		return 0;
 	}
 
-	pr_debug("Enter device controller ELPG\n");
+	dev_dbg(dev, "Enter device controller ELPG\n");
 
 	/* do not support suspend if link is connected */
 	reg = ioread32(nvudc->mmio_reg_base + PORTSC);
@@ -4915,14 +4915,14 @@ static int tegra_xudc_enter_elpg(struct nv_udc_s *nvudc)
 	/* disable partition power */
 	ret = tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
 	if (ret) {
-		pr_info("%s Fail to powergate XUSBA\n", __func__);
+		dev_err(dev, "%s Fail to powergate XUSBA\n", __func__);
 		mutex_unlock(&nvudc->elpg_lock);
 		return ret;
 	}
 
 	ret = tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
 	if (ret) {
-		pr_info("%s Fail to powergate XUSBB\n", __func__);
+		dev_err(dev, "%s Fail to powergate XUSBB\n", __func__);
 		mutex_unlock(&nvudc->elpg_lock);
 		return ret;
 	}
@@ -4933,7 +4933,7 @@ static int tegra_xudc_enter_elpg(struct nv_udc_s *nvudc)
 	nvudc->is_elpg = true;
 
 	mutex_unlock(&nvudc->elpg_lock);
-	pr_info("Enter device controller ELPG done\n");
+	dev_info(dev, "Enter device controller ELPG done\n");
 	return 0;
 }
 
@@ -5247,6 +5247,12 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 
 	the_controller = nvudc; /* TODO support device context */
 
+	/* Enable runtime PM */
+	tegra_pd_add_device(&pdev->dev);
+	pm_runtime_use_autosuspend(&pdev->dev);
+	pm_runtime_set_autosuspend_delay(&pdev->dev, 2000);
+	pm_runtime_enable(&pdev->dev);
+
 	/* TODO: support non-dt ?*/
 	nvudc->vbus_extcon_dev =
 		extcon_get_extcon_dev_by_cable(&pdev->dev, "vbus");
@@ -5265,14 +5271,6 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	nvudc->id_extcon_nb.notifier_call = extcon_id_notifications;
 	extcon_register_notifier(nvudc->id_extcon_dev,
 						&nvudc->id_extcon_nb);
-
-	tegra_pd_add_device(&pdev->dev);
-
-	pm_runtime_set_active(&pdev->dev);
-	pm_runtime_get_noresume(&pdev->dev);
-	pm_runtime_use_autosuspend(&pdev->dev);
-	pm_runtime_set_autosuspend_delay(&pdev->dev, 2000);
-	pm_runtime_enable(&pdev->dev);
 
 	return 0;
 
