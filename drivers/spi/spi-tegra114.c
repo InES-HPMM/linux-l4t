@@ -198,6 +198,7 @@ struct tegra_spi_data {
 	bool					clock_always_on;
 	u32					spi_max_frequency;
 	u32					cur_speed;
+	unsigned				min_div;
 
 	struct spi_device			*cur_spi;
 	unsigned				cur_pos;
@@ -784,6 +785,82 @@ static void tegra_spi_deinit_dma_param(struct tegra_spi_data *tspi,
 	dma_release_channel(dma_chan);
 }
 
+static void set_best_clk_source(struct spi_device *spi,
+		unsigned long rate)
+{
+	long new_rate;
+	unsigned long err_rate, crate, prate;
+	unsigned int cdiv, fin_err = rate;
+	int ret;
+	struct clk *pclk, *fpclk = NULL;
+	const char *pclk_name, *fpclk_name;
+	struct device_node *node;
+	struct property *prop;
+	struct tegra_spi_data *tspi = spi_master_get_devdata(spi->master);
+
+	node = spi->master->dev.of_node;
+	if (!of_property_count_strings(node, "nvidia,clk-parents"))
+		return;
+
+	/* when parent of a clk changes divider is not changed
+	 * set a min div with which clk will not cross max rate
+	 */
+	if (!tspi->min_div) {
+		of_property_for_each_string(node, "nvidia,clk-parents",
+				prop, pclk_name) {
+			pclk = clk_get(tspi->dev, pclk_name);
+			if (IS_ERR(pclk))
+				continue;
+			prate = clk_get_rate(pclk);
+			crate = tspi->spi_max_frequency;
+			cdiv = DIV_ROUND_UP(prate, crate);
+			if (cdiv > tspi->min_div)
+				tspi->min_div = cdiv;
+		}
+	}
+
+	pclk = clk_get_parent(tspi->clk);
+	crate = clk_get_rate(tspi->clk);
+	prate = clk_get_rate(pclk);
+	cdiv = DIV_ROUND_UP(prate, crate);
+	if (cdiv < tspi->min_div) {
+		crate = DIV_ROUND_UP(prate, tspi->min_div);
+		clk_set_rate(tspi->clk, crate);
+	}
+
+	of_property_for_each_string(node, "nvidia,clk-parents",
+				prop, pclk_name) {
+		pclk = clk_get(tspi->dev, pclk_name);
+		if (IS_ERR(pclk))
+			continue;
+
+		ret = clk_set_parent(tspi->clk, pclk);
+		if (ret < 0) {
+			dev_warn(tspi->dev,
+				"Error in setting parent clk src %s\n",
+				pclk_name);
+			continue;
+		}
+
+		new_rate = clk_round_rate(tspi->clk, rate);
+		if (new_rate < 0)
+			continue;
+
+		err_rate = abs(new_rate - rate);
+		if (err_rate < fin_err) {
+			fpclk = pclk;
+			fin_err = err_rate;
+			fpclk_name = pclk_name;
+		}
+	}
+
+	if (fpclk) {
+		dev_dbg(tspi->dev, "Setting clk_src %s\n",
+				fpclk_name);
+		clk_set_parent(tspi->clk, fpclk);
+	}
+}
+
 static int tegra_spi_start_transfer_one(struct spi_device *spi,
 		struct spi_transfer *t, bool is_first_of_msg,
 		bool is_single_xfer)
@@ -802,6 +879,7 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 	if (!speed)
 		speed = tspi->spi_max_frequency;
 	if (speed != tspi->cur_speed) {
+		set_best_clk_source(spi, speed);
 		ret = clk_set_rate(tspi->clk, speed);
 		if (ret) {
 			dev_err(tspi->dev, "Failed to set clk freq %d\n", ret);
@@ -1563,6 +1641,7 @@ static int tegra_spi_probe(struct platform_device *pdev)
 	tspi->max_buf_size = SPI_FIFO_DEPTH << 2;
 	tspi->dma_buf_size = DEFAULT_SPI_DMA_BUF_LEN;
 	tspi->spi_max_frequency = pdata->spi_max_frequency;
+	tspi->min_div = 0;
 
 	ret = tegra_spi_init_dma_param(tspi, true);
 	if (ret < 0)
