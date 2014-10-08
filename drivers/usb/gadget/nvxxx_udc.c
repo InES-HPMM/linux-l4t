@@ -224,11 +224,37 @@ static inline void vbus_detected(struct nv_udc_s *nvudc)
 /* must hold nvudc->lock */
 static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 {
+	u32 portsc;
+
 	if (!nvudc->vbus_detected)
 		return; /* nothing to do */
 
 	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 		USB2_VBUS_ID_0_VBUS_OVERRIDE, 0);
+
+	portsc = ioread32(nvudc->mmio_reg_base + PORTSC);
+
+	/* war for disconnect in U2 or RESUME state */
+	if (nvudc->gadget.speed == USB_SPEED_SUPER &&
+		((portsc & PORTSC_PLS_MASK) == XDEV_RESUME ||
+		((portsc & PORTSC_PLS_MASK) == XDEV_U2))) {
+		u32 reg;
+		/* set FRWE */
+		reg = ioread32(nvudc->mmio_reg_base + PORTPM);
+		reg |= PORTPM_FRWE;
+		iowrite32(reg, nvudc->mmio_reg_base + PORTPM);
+
+		/* direct U0 */
+		reg = ioread32(nvudc->mmio_reg_base + PORTSC);
+		reg &= ~PORTSC_PLS_MASK;
+		reg |= XDEV_U0;
+		reg |= PORTSC_LWS;
+		iowrite32(reg, nvudc->mmio_reg_base + PORTSC);
+
+		reg = ioread32(nvudc->mmio_reg_base + PORTSC);
+		msg_dbg(nvudc->dev,
+		"Directing link to U0, PORTSC: %08x => %08x\n", portsc, reg);
+	}
 
 	nvudc->vbus_detected = false;
 	pm_runtime_put_autosuspend(nvudc->dev);

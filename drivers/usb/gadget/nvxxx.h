@@ -102,6 +102,7 @@ extern struct usb_hcd *tegra_xhci_hcd;
 
 #define PORTSC_PLS_MASK	(0xf << 5)
 #define XDEV_U0		(0x0 << 5)
+#define XDEV_U2		(0x2 << 5)
 #define XDEV_U3		(0x3 << 5)
 #define XDEV_RESUME	(0xf << 5)
 
