@@ -99,6 +99,10 @@ Required properties:
 	"critical":	Hardware not reliable.
   Type: string
 
+Optional property:
+- writable:			boolean to enable writability for the trip temperature and
+            the trip hysteresis.
+
 * Thermal zone parameters
 
 The thermal-zone-params node is a node to specify additional thermal zone

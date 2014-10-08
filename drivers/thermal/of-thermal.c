@@ -606,7 +606,8 @@ static int thermal_of_get_trip_type(struct device_node *np,
  * Return: 0 on success, proper error code otherwise
  */
 static int thermal_of_populate_trip(struct device_node *np,
-				    struct __thermal_trip *trip)
+				    struct __thermal_trip *trip,
+				    u32 *trip_writable)
 {
 	int prop;
 	int ret;
@@ -631,6 +632,11 @@ static int thermal_of_populate_trip(struct device_node *np,
 		return ret;
 	}
 
+	if (of_property_read_bool(np, "writable"))
+		*trip_writable = 1;
+	else
+		*trip_writable = 0;
+
 	/* Required for cooling map matching */
 	trip->np = np;
 
@@ -652,12 +658,14 @@ static int thermal_of_populate_trip(struct device_node *np,
  * check the return value with help of IS_ERR() helper.
  */
 static struct __thermal_zone *
-thermal_of_build_thermal_zone(struct device_node *np)
+thermal_of_build_thermal_zone(struct device_node *np, u64 *mask)
 {
 	struct device_node *child = NULL, *gchild;
 	struct __thermal_zone *tz;
 	int ret, i;
 	u32 prop;
+	u32 trip_writable = 0;
+	u64 m = 0;
 
 	if (!np) {
 		pr_err("no thermal zone np\n");
@@ -701,9 +709,12 @@ thermal_of_build_thermal_zone(struct device_node *np)
 
 	i = 0;
 	for_each_child_of_node(child, gchild) {
-		ret = thermal_of_populate_trip(gchild, &tz->trips[i++]);
+		ret = thermal_of_populate_trip(gchild, &tz->trips[i++],
+								&trip_writable);
 		if (ret)
 			goto free_trips;
+		m <<= 1;
+		m |= trip_writable;
 	}
 
 	of_node_put(child);
@@ -736,6 +747,7 @@ thermal_of_build_thermal_zone(struct device_node *np)
 finish:
 	of_node_put(child);
 	tz->mode = THERMAL_DEVICE_DISABLED;
+	*mask = m;
 
 	return tz;
 
@@ -797,6 +809,7 @@ int __init of_parse_thermal_zones(void)
 	struct device_node *np, *child;
 	struct __thermal_zone *tz;
 	struct thermal_zone_device_ops *ops;
+	u64 mask;
 
 	np = of_find_node_by_name(NULL, "thermal-zones");
 	if (!np) {
@@ -813,7 +826,8 @@ int __init of_parse_thermal_zones(void)
 		if (!of_device_is_available(child))
 			continue;
 
-		tz = thermal_of_build_thermal_zone(child);
+		mask = 0;
+		tz = thermal_of_build_thermal_zone(child, &mask);
 		if (IS_ERR(tz)) {
 			pr_err("failed to build thermal zone %s: %ld\n",
 			       child->name,
@@ -840,7 +854,7 @@ int __init of_parse_thermal_zones(void)
 			of_parse_thermal_zone_params(param_child, tzp);
 
 		zone = thermal_zone_device_register(child->name, tz->ntrips,
-						    0, tz,
+						    mask, tz,
 						    ops, tzp,
 						    tz->passive_delay,
 						    tz->polling_delay);
