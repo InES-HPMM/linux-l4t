@@ -621,6 +621,7 @@
 		    interrupts = <0 157 0x04
 			    0 158 0x04>;
 		iommus = <&smmu TEGRA_SWGROUP_GPUB>;
+		access-vpr-phys;
 	};
 
 	mipical {
