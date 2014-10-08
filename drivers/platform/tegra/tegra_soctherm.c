@@ -1679,7 +1679,7 @@ static struct thermal_zone_device_ops soctherm_ops = {
   * hardware throttling temperature threshold. Examining the cooling
   * device's cur_state indicates whether hardware throttling is active.
   */
-static void __init soctherm_hot_cdev_register(int i, int trip)
+static void soctherm_hot_cdev_register(int i, int trip)
 {
 	struct soctherm_therm *therm;
 	int k;
