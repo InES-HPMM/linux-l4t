@@ -5295,6 +5295,30 @@ static struct clk_ops tegra_mc_clk_ops = {
 	.disable		= &tegra21_periph_clk_disable,
 };
 
+/*
+ * EMC parent selection algorithm always keeps PLLM and/or PLLMB disabled when
+ * the respective PLL is not used as EMC clock source. However, boot-loader may
+ * leave both PLLs enabled. To allow proper start of the algorithm, make sure
+ * PLLs are disabled if not used.
+ */
+static void tegra21_emc_sync_plls(struct clk *emc,
+				  struct clk *pllm, struct clk *pllmb)
+{
+	if (emc->parent != pllm) {
+		if (pllm->state == ON) {
+			pllm->ops->disable(pllm);
+			pllm->state = OFF;
+		}
+	}
+
+	if (emc->parent != pllmb) {
+		if (pllmb->state == ON) {
+			pllmb->ops->disable(pllmb);
+			pllmb->state = OFF;
+		}
+	}
+}
+
 #ifdef CONFIG_PM_SLEEP
 static void tegra21_emc_clk_suspend(struct clk *c, unsigned long rate)
 {
@@ -10459,6 +10483,10 @@ void __init tegra21x_init_clocks(void)
 
 	/* Check/apply safe rate to clocks with reset dependency on others */
 	tegra21_periph_check_special_reset();
+
+	/* Make sure at list one of dual PLLM/PLLMB is disabled */
+	tegra21_emc_sync_plls(&tegra_clk_emc, &tegra_pll_m, &tegra_pll_mb);
+
 
 	/* Initialize to default */
 	tegra_init_cpu_edp_limits(0);
