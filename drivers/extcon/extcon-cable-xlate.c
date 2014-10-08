@@ -64,6 +64,7 @@ struct extcon_cable_xlate {
 	int debounce_jiffies;
 	int timer_to_work_jiffies;
 	spinlock_t lock;
+	struct mutex cable_lock;
 	bool extcon_init_done;
 	int last_cable_state;
 };
@@ -118,9 +119,8 @@ static int ecx_attach_cable(struct extcon_cable_xlate *ecx)
 	int new_state = -1;
 	int i;
 	int ret;
-	unsigned long flags;
 
-	spin_lock_irqsave(&ecx->lock, flags);
+	mutex_lock(&ecx->cable_lock);
 	for (i = 0; i < ecx->pdata->n_in_cable; i++) {
 		in_cables = &ecx->in_cables[i];
 
@@ -141,7 +141,7 @@ static int ecx_attach_cable(struct extcon_cable_xlate *ecx)
 	if (new_state < 0) {
 		dev_err(ecx->dev, "Cable state 0x%04x is not defined\n",
 			all_states);
-		spin_unlock_irqrestore(&ecx->lock, flags);
+		mutex_unlock(&ecx->cable_lock);
 		return -EINVAL;
 	}
 	if (ecx->last_cable_state != new_state) {
@@ -156,7 +156,7 @@ static int ecx_attach_cable(struct extcon_cable_xlate *ecx)
 		}
 	}
 	ecx->last_cable_state = new_state;
-	spin_unlock_irqrestore(&ecx->lock, flags);
+	mutex_unlock(&ecx->cable_lock);
 	return 0;
 }
 
@@ -321,6 +321,7 @@ static int ecx_probe(struct platform_device *pdev)
 	ecx->dev = &pdev->dev;
 	dev_set_drvdata(&pdev->dev, ecx);
 	spin_lock_init(&ecx->lock);
+	mutex_init(&ecx->cable_lock);
 
 	ecx->dev = &pdev->dev;
 	ecx->edev.name = pdata->name;
