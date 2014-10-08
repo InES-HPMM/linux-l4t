@@ -1620,6 +1620,7 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		}
 		dom->as[idx] = as;
 		set_bit(idx, &as_alloc_bitmap);
+		dev_info(dev, "domain=%p allocates as[%d]=%p\n", dom, idx, as);
 	}
 
 	/* get the first valid asid */
