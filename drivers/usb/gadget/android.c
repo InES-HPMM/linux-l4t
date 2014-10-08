@@ -1879,6 +1879,8 @@ static void android_disconnect(struct usb_composite_dev *cdev)
 {
 	struct android_dev *dev = _android_dev;
 
+	if (dev->connected == 0)
+		return;
 	/* accessory HID support can be active while the
 	   accessory function is not actually enabled,
 	   so we need to inform it when we are disconnected.
@@ -1889,6 +1891,16 @@ static void android_disconnect(struct usb_composite_dev *cdev)
 	schedule_work(&dev->work);
 }
 
+static void android_suspend(struct usb_composite_dev *cdev)
+{
+	struct android_dev *dev = _android_dev;
+	android_disconnect(cdev);
+	flush_work(&dev->work);
+	printk("AAA %s %d\n", __func__, __LINE__);
+	android_disable(dev);
+	printk("AAA %s %d\n", __func__, __LINE__);
+}
+
 static struct usb_composite_driver android_usb_driver = {
 	.name		= "android_usb",
 	.dev		= &device_desc,
@@ -1897,6 +1909,7 @@ static struct usb_composite_driver android_usb_driver = {
 	.unbind		= android_usb_unbind,
 	.disconnect	= android_disconnect,
 	.max_speed	= USB_SPEED_HIGH,
+	.suspend	= android_suspend,
 };
 
 static int android_create_device(struct android_dev *dev)
@@ -1927,7 +1940,6 @@ static int __init init(void)
 {
 	struct android_dev *dev;
 	int err;
-
 	android_class = class_create(THIS_MODULE, "android_usb");
 	if (IS_ERR(android_class))
 		return PTR_ERR(android_class);

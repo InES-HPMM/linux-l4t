@@ -387,7 +387,10 @@ static void wakeup_source_activate(struct wakeup_source *ws)
 	 * out of PM_SUSPEND_FREEZE state
 	 */
 	freeze_wake();
-
+	if(strcmp(ws->name, "NETLINK") == 0) {
+		printk("AAA NETLINK GETTING ACTIVE by %s\n", current->comm);
+		dump_stack();
+	}
 	ws->active = true;
 	ws->active_count++;
 	ws->last_time = ktime_get();
@@ -500,6 +503,10 @@ static void wakeup_source_deactivate(struct wakeup_source *ws)
 	if (ws->relax_count != ws->active_count) {
 		ws->relax_count--;
 		return;
+	}
+	if(strcmp(ws->name, "NETLINK") == 0 ) {
+		printk("AAA NETLINK GETTING DISABLED by %s\n", current->comm);
+		dump_stack();
 	}
 
 	ws->active = false;
