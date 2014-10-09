@@ -4294,7 +4294,7 @@ static const struct tegra_xusb_soc_config tegra210_soc_config = {
 	.check_lane_owner_by_pad = t210_chk_lane_owner_by_pad,
 
 	.tx_term_ctrl = 0x2,
-	.rx_ctle = 0xfb,
+	.rx_ctle = 0xfc,
 	.rx_dfe = 0xc0077f1f,
 	.rx_cdr_ctrl = 0x1c7,
 	.rx_eq_ctrl_h = 0xfcf01368,

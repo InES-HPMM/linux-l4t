@@ -5012,7 +5012,7 @@ static void t210_program_ss_pad(int port)
 			TX_TERM_CTRL(~0), TX_TERM_CTRL(0x2));
 
 	tegra_usb_pad_reg_update(UPHY_USB3_PAD_ECTL_2(port),
-			RX_CTLE(~0), RX_CTLE(0xfb));
+			RX_CTLE(~0), RX_CTLE(0xfc));
 
 	tegra_usb_pad_reg_update(UPHY_USB3_PAD_ECTL_3(port),
 			RX_DFE(~0), RX_DFE(0xc0077f1f));
