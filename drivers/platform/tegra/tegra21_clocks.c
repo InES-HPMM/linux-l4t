@@ -3832,6 +3832,9 @@ static void tegra21_pllp_out_clk_init(struct clk *c)
 		/* Complete pllp output s/w controlled initialization */
 		tegra_pll_out_clk_init(c);
 	}
+
+	/* Reset not used PLL_P_OUT1 branch. */
+	clk_writel(0x0, pll->reg + 0x4);
 }
 
 static struct clk_ops tegra_pllp_out_ops = {
@@ -3854,6 +3857,10 @@ static void tegra_pllu_out_resume_enable(struct clk *c)
 static void tegra_pllp_out_resume_enable(struct clk *c)
 {
 	u32 val = clk_readl(c->parent->reg);
+
+	/* Reset not used PLL_P_OUT1 branch. */
+	clk_writel(0x0, c->parent->reg + 0x4);
+
 	if (!(val & PLLP_BASE_OVERRIDE) ||
 	    val & c->parent->u.pll.controls->enable_mask)
 		return;		/* already resumed */
