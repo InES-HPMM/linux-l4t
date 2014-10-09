@@ -851,7 +851,6 @@
 		interrupts = < 0 31 0x04 >;
 		iommus = <&smmu TEGRA_SWGROUP_SDMMC4A>;
 		status = "disabled";
-		id = <3>;
 	};
 	sdhci@700b0400 {
 		compatible = "nvidia,tegra124-sdhci";
@@ -859,7 +858,6 @@
 		interrupts = < 0 19 0x04 >;
 		iommus = <&smmu TEGRA_SWGROUP_SDMMC3A>;
 		status = "disabled";
-		id = <2>;
 	};
 	sdhci@700b0200 {
 		compatible = "nvidia,tegra124-sdhci";
@@ -867,7 +865,6 @@
 		interrupts = < 0 15 0x04 >;
 		iommus = <&smmu TEGRA_SWGROUP_SDMMC2A>;
 		status = "disabled";
-		id = <1>;
 	};
 	sdhci@700b0000 {
 		compatible = "nvidia,tegra124-sdhci";
@@ -875,7 +872,6 @@
 		interrupts = < 0 14 0x04 >;
 		iommus = <&smmu TEGRA_SWGROUP_SDMMC1A>;
 		status = "disabled";
-		id = <0>;
 	};
 
 	tegra_cec {
