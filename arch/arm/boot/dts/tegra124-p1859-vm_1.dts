@@ -214,7 +214,16 @@
 					iommus = < &smmu TEGRA_SWGROUP_PPCS >;
 					status = "okay";
 					cardname = "tegra-virt-pcm-vm1";
+			/*
+			** The default asound.conf file for the VMs expect the apbif channels
+			** to be (0, 1, 2, 3) if the apbif_group_id is set to 1 and
+			** (4, 5, 6, 7, 8, 9) if the apbif_group_id is set to 2. If random apbif
+			** channels has to be assigned, corresponding change has to be made in
+			** the asound.conf file also.
+			*/
 					apbif_group_id = <1>;
+					apbif_ch_num = <4>;
+					apbif_ch_list = <0>, <1>, <2>, <3>;
 			};
 	};
 
