@@ -1945,6 +1945,10 @@ static int __init thermal_register_governors(void)
 	if (result)
 		return result;
 
+	result = thermal_gov_adaptive_skin_register();
+	if (result)
+		return result;
+
 	return thermal_gov_user_space_register();
 }
 
@@ -1954,6 +1958,7 @@ static void thermal_unregister_governors(void)
 	thermal_gov_fair_share_unregister();
 	pid_thermal_gov_unregister();
 	thermal_gov_user_space_unregister();
+	thermal_gov_adaptive_skin_unregister();
 }
 
 static int __init thermal_init(void)
