@@ -962,6 +962,8 @@ int nvadsp_app_start(nvadsp_app_info_t *app)
 		 */
 		if (app->complete_status_notifier)
 			schedule_work(&app->complete_work);
+	} else {
+		spin_unlock_irqrestore(&state_lock, flags);
 	}
 end:
 	print_start_stats(ser->file, &stats, dev);
