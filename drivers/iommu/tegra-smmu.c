@@ -2404,6 +2404,10 @@ struct notifier_block tegra_smmu_device_nb = {
 	.notifier_call = tegra_smmu_device_notifier,
 };
 
+struct notifier_block tegra_smmu_device_pci_nb = {
+	.notifier_call = tegra_smmu_device_notifier,
+};
+
 void tegra_smmu_map_misc_device(struct device *dev)
 {
 

@@ -31,7 +31,7 @@ struct iommu_linear_map {
 };
 
 /* FIXME: No need to expose */
-extern struct notifier_block tegra_smmu_device_nb;
+extern struct notifier_block tegra_smmu_device_pci_nb;
 
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 
