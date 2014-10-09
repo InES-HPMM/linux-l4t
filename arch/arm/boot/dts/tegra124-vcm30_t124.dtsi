@@ -167,6 +167,7 @@
 		calib-1v8-offsets = <0x6969>;
 		auto-cal-step = <0x7>;
 		status = "disabled";
+		nvidia,update-pinctrl-settings;
 	};
 
 	sdhci@700b0600 {
@@ -185,6 +186,7 @@
 		calib-1v8-offsets = <0x615F>;
 		auto-cal-step = <0x7>;
 		status = "disabled";
+		nvidia,disable-auto-cal;
 	};
 
 	sdhci@700b0200 {
@@ -192,7 +194,7 @@
 		trim-delay = <0x3>;
 		ddr-trim-delay = <0x3>;
 		mmc-ocr-mask = <0>;
-		uhs-mask = <0x20>;
+		uhs-mask = <0x28>;
 		built-in;
 		ddr-clk-limit = <30000000>;
 		max-clk-limit = <51000000>;
@@ -217,6 +219,8 @@
 		calib-1v8-offsets = <0x6969>;
 		auto-cal-step = <0x7>;
 		status = "disabled";
+		nvidia,update-pinctrl-settings;
+		nvidia,enable-ext-loopback;
 	};
 
 	snor {

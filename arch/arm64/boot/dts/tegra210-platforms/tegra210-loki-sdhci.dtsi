@@ -34,6 +34,7 @@
 		compad-vref-1v8 = <0x7>;
 		nvidia,en-io-trim-volt;
 		nvidia,is-emmc;
+		nvidia,disable-auto-cal;
 	};
 
 	sdhci@700b0400 { /* SDMMC3 for 2nd Wifi on loki */
@@ -50,6 +51,8 @@
 		compad-vref-1v8 = <0x2>;
 		default-drv-type = <1>;
 		nvidia,en-io-trim-volt;
+		nvidia,update-pinctrl-settings;
+		nvidia,enable-ext-loopback;
 	};
 
 	sdhci@700b0200 { /* SDMMC2 for Wifi on loki */
@@ -81,6 +84,7 @@
 		compad-vref-1v8 = <0x2>;
 		cd-gpios = <&gpio TEGRA_GPIO_PZ1 0>;
 		nvidia,en-io-trim-volt;
+		nvidia,update-pinctrl-settings;
 		nvidia,limit-vddio-max-volt;
 	};
 };
