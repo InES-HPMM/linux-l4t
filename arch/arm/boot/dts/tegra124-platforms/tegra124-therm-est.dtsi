@@ -61,13 +61,13 @@
 				};
 			};
 			thermal-zone-params {
-				governor-name = "pid_thermal_gov";
-				max_err_temp = <4000>;
-				max_err_gain = <1000>;
-				gain_p = <1000>;
-				gain_d = <0>;
-				up_compensation = <15>;
-				down_compensation = <15>;
+				governor-name = "adaptive_skin";
+				tskin_tran_threshold = <500>;
+				tskin_std_threshold = <1000>;
+				target_state_tdp = <7>;
+				tj_tran_threshold = <2000>;
+				tj_std_threshold = <3000>;
+				tj_std_fup_threshold = <5000>;
 			};
 		};
 	};
