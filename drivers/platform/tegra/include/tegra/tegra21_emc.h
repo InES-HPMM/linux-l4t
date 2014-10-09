@@ -935,6 +935,10 @@ enum {
 #define EMC_PMACRO_VTTGEN_CTRL_1                                0xc38
 #define EMC_PMACRO_VTTGEN_CTRL_2                                0xcf0
 #define EMC_PMACRO_BG_BIAS_CTRL_0                               0xc3c
+#define EMC_PMACRO_BG_BIAS_CTRL_0_BG_E_PWRD			(1 << 0)
+#define EMC_PMACRO_BG_BIAS_CTRL_0_BG_MODE			(1 << 1)
+#define EMC_PMACRO_BG_BIAS_CTRL_0_BGLP_E_PWRD			(1 << 2)
+
 #define EMC_PMACRO_PAD_CFG_CTRL                                 0xc40
 #define EMC_PMACRO_CMD_PAD_RX_CTRL                              0xc50
 #define EMC_PMACRO_DATA_PAD_RX_CTRL                             0xc54

@@ -45,7 +45,7 @@
 #include <linux/platform/tegra/common.h>
 #include "../nvdumper/nvdumper-footprint.h"
 
-#define DVFS_CLOCK_CHANGE_VERSION	2108
+#define DVFS_CLOCK_CHANGE_VERSION	2109
 #define EMC_PRELOCK_VERSION		2101
 
 /*
@@ -1546,7 +1546,6 @@ noinline void dll_disable(int channel_mode)
 }
 
 /*
- * Sequence revision: 0
  */
 noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 			    const struct tegra21_emc_table *last_timing,
@@ -1657,6 +1656,11 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 	u32 opt_war_200024907;
 	u32 zq_wait_long;
 	u32 zq_wait_short;
+
+	u32 bg_regulator_switch_complete_wait_clks;
+	u32 bg_regulator_mode_change;
+	u32 enable_bglp_regulator;
+	u32 enable_bg_regulator;
 
 	u32 tRTM;
 	u32 RP_war;
@@ -1788,6 +1792,36 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 		   ~EMC_FDPD_CTRL_CMD_NO_RAMP_CMD_DPD_NO_RAMP_ENABLE,
 		   EMC_FDPD_CTRL_CMD_NO_RAMP);
 
+	bg_regulator_mode_change =
+		((next_timing->burst_regs[EMC_PMACRO_BG_BIAS_CTRL_0_INDEX] &
+		  EMC_PMACRO_BG_BIAS_CTRL_0_BGLP_E_PWRD) ^
+		 (last_timing->burst_regs[EMC_PMACRO_BG_BIAS_CTRL_0_INDEX] &
+		  EMC_PMACRO_BG_BIAS_CTRL_0_BGLP_E_PWRD)) ||
+		((next_timing->burst_regs[EMC_PMACRO_BG_BIAS_CTRL_0_INDEX] &
+		  EMC_PMACRO_BG_BIAS_CTRL_0_BG_E_PWRD) ^
+		 (last_timing->burst_regs[EMC_PMACRO_BG_BIAS_CTRL_0_INDEX] &
+		  EMC_PMACRO_BG_BIAS_CTRL_0_BG_E_PWRD));
+	enable_bglp_regulator =
+		(next_timing->burst_regs[EMC_PMACRO_BG_BIAS_CTRL_0_INDEX] &
+		 EMC_PMACRO_BG_BIAS_CTRL_0_BGLP_E_PWRD) == 0;
+	enable_bg_regulator =
+		(next_timing->burst_regs[EMC_PMACRO_BG_BIAS_CTRL_0_INDEX] &
+		 EMC_PMACRO_BG_BIAS_CTRL_0_BG_E_PWRD) == 0;
+
+	if (bg_regulator_mode_change) {
+		if (enable_bg_regulator)
+			emc_writel(last_timing->burst_regs
+				   [EMC_PMACRO_BG_BIAS_CTRL_0_INDEX] &
+				   ~EMC_PMACRO_BG_BIAS_CTRL_0_BG_E_PWRD,
+				   EMC_PMACRO_BG_BIAS_CTRL_0);
+		else
+			emc_writel(last_timing->burst_regs
+				   [EMC_PMACRO_BG_BIAS_CTRL_0_INDEX] &
+				   ~EMC_PMACRO_BG_BIAS_CTRL_0_BGLP_E_PWRD,
+				   EMC_PMACRO_BG_BIAS_CTRL_0);
+
+	}
+
 	/* Check if we need to turn on VREF generator. */
 	if ((((last_timing->burst_regs[EMC_PMACRO_DATA_PAD_TX_CTRL_INDEX] &
 	       EMC_PMACRO_DATA_PAD_TX_CTRL_DATA_DQ_E_IVREF) == 0) &&
@@ -1811,10 +1845,11 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 			     ~EMC_PMACRO_DATA_PAD_TX_CTRL_DATA_DQS_E_IVREF) |
 			next_dq_e_ivref | next_dqs_e_ivref;
 		emc_writel(next_push, EMC_PMACRO_DATA_PAD_TX_CTRL);
-		udelay(30);
+		udelay(1);
+	} else if (bg_regulator_mode_change) {
+		udelay(1);
 	}
 
-	/* Does this need to be before or after the 30us delay? */
 	emc_set_shadow_bypass(ASSEMBLY);
 
 	/* Step 2:
@@ -2423,6 +2458,18 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 		}
 	}
 
+	if (bg_regulator_mode_change) {
+		emc_set_shadow_bypass(ACTIVE);
+		bg_regulator_switch_complete_wait_clks =
+			ramp_up_wait > 1250000 ? 0 :
+			(1250000 - ramp_up_wait) / destination_clock_period;
+		ccfifo_writel(next_timing->burst_regs
+			      [EMC_PMACRO_BG_BIAS_CTRL_0_INDEX],
+			      EMC_PMACRO_BG_BIAS_CTRL_0,
+			      bg_regulator_switch_complete_wait_clks);
+		emc_set_shadow_bypass(ASSEMBLY);
+	}
+
 	/* Step 20:
 	 *   Issue ref and optional QRST.
 	 */
@@ -2457,6 +2504,19 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 	 */
 	emc_cc_dbg(STEPS, "Step 22\n");
 	ccfifo_writel(emc_cfg_pipe_clk_o, EMC_CFG_PIPE_CLK, 0);
+
+	if (bg_regulator_mode_change) {
+		if (enable_bg_regulator)
+			emc_writel(next_timing->burst_regs
+				   [EMC_PMACRO_BG_BIAS_CTRL_0_INDEX] &
+				   ~EMC_PMACRO_BG_BIAS_CTRL_0_BGLP_E_PWRD,
+				   EMC_PMACRO_BG_BIAS_CTRL_0);
+		else
+			emc_writel(next_timing->burst_regs
+				   [EMC_PMACRO_BG_BIAS_CTRL_0_INDEX] &
+				   ~EMC_PMACRO_BG_BIAS_CTRL_0_BG_E_PWRD,
+				   EMC_PMACRO_BG_BIAS_CTRL_0);
+	}
 
 	/* Step 23:
 	 */
