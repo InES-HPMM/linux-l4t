@@ -30,6 +30,7 @@
 #define CPU_DAI_NAME(i) "SLAVE APBIF" #i
 #define CODEC_DAI_NAME "dit-hifi"
 #define PLATFORM_NAME LINK_CPU_NAME
+#define MAX_APBIF_IDS	10
 
 static struct snd_soc_pcm_stream default_params = {
 	.rate_min = 48000,
@@ -48,6 +49,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 		.cpu_dai_name = CPU_DAI_NAME(0),
 		.codec_dai_name = CODEC_DAI_NAME,
 		.platform_name = PLATFORM_NAME,
+		.params = &default_params,
 	},
 	{
 		/* 1 */
@@ -58,6 +60,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 		.cpu_dai_name = CPU_DAI_NAME(1),
 		.codec_dai_name = CODEC_DAI_NAME,
 		.platform_name = PLATFORM_NAME,
+		.params = &default_params,
 	},
 	{
 		/* 2 */
@@ -68,6 +71,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 		.cpu_dai_name = CPU_DAI_NAME(2),
 		.codec_dai_name = CODEC_DAI_NAME,
 		.platform_name = PLATFORM_NAME,
+		.params = &default_params,
 	},
 	{
 		/* 3 */
@@ -78,6 +82,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 		.cpu_dai_name = CPU_DAI_NAME(3),
 		.codec_dai_name = CODEC_DAI_NAME,
 		.platform_name = PLATFORM_NAME,
+		.params = &default_params,
 	},
 	{
 		/* 4 */
@@ -88,6 +93,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 		.cpu_dai_name = CPU_DAI_NAME(4),
 		.codec_dai_name = CODEC_DAI_NAME,
 		.platform_name = PLATFORM_NAME,
+		.params = &default_params,
 	},
 	{
 		/* 5 */
@@ -98,6 +104,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 		.cpu_dai_name = CPU_DAI_NAME(5),
 		.codec_dai_name = CODEC_DAI_NAME,
 		.platform_name = PLATFORM_NAME,
+		.params = &default_params,
 	},
 	{
 		/* 6 */
@@ -108,6 +115,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 		.cpu_dai_name = CPU_DAI_NAME(6),
 		.codec_dai_name = CODEC_DAI_NAME,
 		.platform_name = PLATFORM_NAME,
+		.params = &default_params,
 	},
 	{
 		/* 7 */
@@ -118,6 +126,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 		.cpu_dai_name = CPU_DAI_NAME(7),
 		.codec_dai_name = CODEC_DAI_NAME,
 		.platform_name = PLATFORM_NAME,
+		.params = &default_params,
 	},
 	{
 		/* 8 */
@@ -128,6 +137,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 		.cpu_dai_name = CPU_DAI_NAME(8),
 		.codec_dai_name = CODEC_DAI_NAME,
 		.platform_name = PLATFORM_NAME,
+		.params = &default_params,
 	},
 	{
 		/* 9 */
@@ -138,6 +148,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 		.cpu_dai_name = CPU_DAI_NAME(9),
 		.codec_dai_name = CODEC_DAI_NAME,
 		.platform_name = PLATFORM_NAME,
+		.params = &default_params,
 	},
 };
 
@@ -167,37 +178,37 @@ static int tegra_vcm30t124_slave_driver_probe(struct platform_device *pdev)
 	struct snd_soc_card *card = &snd_soc_tegra_vcm30t124_slave;
 	int ret = 0;
 	int i;
-	int apbif_group_id = 0;
-	unsigned int num_apbif_masked = 6;
-	unsigned int start_offset_masked_apbif = 0;
+	int apbif_ch_num = 0;
+	unsigned int apbif_ch_list[MAX_APBIF_IDS];
 
 	card->dev = &pdev->dev;
 
 	if (of_property_read_u32(pdev->dev.of_node,
-				"apbif_group_id", &apbif_group_id)) {
-		dev_err(&pdev->dev, "property apbif_group_id is not present\n");
-		return -ENODEV;
-	}
-
-	if (1 == apbif_group_id) {
-		num_apbif_masked = 6;
-		start_offset_masked_apbif = 4;
-	} else if (2 == apbif_group_id) {
-		num_apbif_masked = 4;
-		start_offset_masked_apbif = 0;
-	} else {
-		dev_err(&pdev->dev, "Invalid apbif_group_id\n");
-		return -ENODEV;
+				"apbif_ch_num", &apbif_ch_num)) {
+		dev_err(&pdev->dev, "number of apbif channels is not set\n");
+		return -EINVAL;
 	}
 
 	if (of_property_read_string(pdev->dev.of_node,
 		"cardname", &card->name))
 			dev_warn(&pdev->dev, "Use default card name\n");
 
-	for (i = 0; i < num_apbif_masked; i++)
-		tegra_vcm30t124_set_dai_params(tegra_vcm30t124_slave_links,
-						&default_params,
-						i + start_offset_masked_apbif);
+	if (apbif_ch_num > 0) {
+
+		if (of_property_read_u32_array(pdev->dev.of_node,
+						"apbif_ch_list",
+						apbif_ch_list,
+						apbif_ch_num)) {
+			dev_err(&pdev->dev, "apbif_ch_list os not populated\n");
+			return -EINVAL;
+		}
+		for (i = 0; i < apbif_ch_num; i++) {
+			tegra_vcm30t124_set_dai_params(
+						tegra_vcm30t124_slave_links,
+						NULL,
+						apbif_ch_list[i]);
+		}
+	}
 
 	ret = snd_soc_register_card(card);
 	if (ret) {
