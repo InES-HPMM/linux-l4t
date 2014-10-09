@@ -630,7 +630,7 @@ static const struct utmi_clk_param utmi_parameters[] =
 
 	{19200000,	0x03,		0x4B,		0x06,		0xBB},
 	/* HACK!!! FIXME!!! following entry for 38.4MHz is a stub */
-	{38400000,      0x03,           0x4B,           0x06,           0x80}
+	{38400000,      0x0,           0x0,           0x06,           0x80}
 };
 
 static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
