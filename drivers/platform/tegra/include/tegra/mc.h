@@ -115,13 +115,17 @@ int tegra_mc_get_tiled_memory_bandwidth_multiplier(void);
 
 /*
  * Tegra11 has dual 32-bit memory channels, while
- * Tegra12 has single 64-bit memory channel.
+ * Tegra12 has single 64-bit memory channel. Tegra21
+ * has either dual 32 bit channels (LP4) or a single
+ * 64 bit channel (LP3).
+ *
  * MC effectively operates as 64-bit bus.
  */
 static inline int tegra_mc_get_effective_bytes_width(void)
 {
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || \
-	defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) ||     \
+	defined(CONFIG_ARCH_TEGRA_11x_SOC) || \
+	defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	return 8;
 #else
 	return 4;
