@@ -258,21 +258,58 @@ static struct tegra_pm_domain tegra_nvavp = {
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 static int tegra_ape_power_on(struct generic_pm_domain *genpd)
 {
+	struct tegra_pm_domain *ape_pd;
 	int ret = 0;
 
 	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_APE);
 	if (ret)
 		return ret;
 
+	ape_pd = to_tegra_pd(genpd);
+	if (unlikely(!ape_pd->clk)) {
+		struct clk *ape_clk;
+
+		ape_clk = clk_get_sys(NULL, "ape");
+		if (IS_ERR_OR_NULL(ape_clk)) {
+			pr_err("%s:unable to find ape clock\n", __func__);
+			ret = PTR_ERR(ape_clk);
+			return ret;
+		}
+		ape_pd->clk = ape_clk;
+	}
+
+	ret = clk_prepare_enable(ape_pd->clk);
+	if (ret)
+		return ret;
+
 	tegra_agic_restore_registers();
+
 	return ret;
 }
 
 static int tegra_ape_power_off(struct generic_pm_domain *genpd)
 {
+	struct tegra_pm_domain *ape_pd;
 	int ret = 0;
 
 	tegra_agic_save_registers();
+
+	ape_pd = to_tegra_pd(genpd);
+	if (likely(ape_pd->clk))
+		clk_disable_unprepare(ape_pd->clk);
+	else {
+		struct clk *ape_clk;
+
+		ape_clk = clk_get_sys(NULL, "ape");
+		if (IS_ERR_OR_NULL(ape_clk)) {
+			pr_err("%s:unable to find ape clock\n", __func__);
+			ret = PTR_ERR(ape_clk);
+			return ret;
+		}
+		clk_disable_unprepare(ape_clk);
+
+		ape_pd->clk = ape_clk;
+	}
 
 	ret = tegra_powergate_partition(TEGRA_POWERGATE_APE);
 	return ret;
