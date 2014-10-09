@@ -426,6 +426,7 @@ struct tegra_ahci_host_priv {
 	struct clk		*clk_sata_aux;
 	struct clk		*clk_pllp;
 	struct clk		*clk_cml1;
+	struct clk		*clk_sata_uphy;
 	enum clk_gate_state	clk_state;
 	s16			gen2_rx_eq;
 	int			pexp_gpio_high;
@@ -1504,6 +1505,7 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	struct clk *clk_sata = NULL;
 	struct clk *clk_sata_oob = NULL;
 	struct clk *clk_sata_cold = NULL;
+	struct clk *clk_sata_uphy = NULL;
 	struct clk *clk_pllp = NULL;
 	struct clk *clk_cml1 = NULL;
 	int err;
@@ -1531,6 +1533,16 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 		}
 	}
 
+	clk_sata_uphy = clk_get_sys(NULL, "sata_uphy");
+	if (IS_ERR_OR_NULL(clk_sata_uphy)) {
+		pr_err("%s: unable to get sata_uphy clock Errone is %d\n",
+				__func__, (int) PTR_ERR(clk_sata_uphy));
+		err = PTR_ERR(clk_sata_uphy);
+		goto exit;
+	}
+	tegra_hpriv->clk_sata_uphy = clk_sata_uphy;
+	tegra_periph_reset_assert(clk_sata_uphy);
+
 	clk_cml1 = clk_get_sys(NULL, "cml1");
 	if (IS_ERR_OR_NULL(clk_cml1)) {
 		pr_err("%s: unable to get cml1 clock Errone is %d\n",
@@ -1544,6 +1556,7 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 		err = -ENODEV;
 		goto exit;
 	}
+	tegra_periph_reset_deassert(clk_sata_uphy);
 
 	tegra_ahci_uphy_init();
 
