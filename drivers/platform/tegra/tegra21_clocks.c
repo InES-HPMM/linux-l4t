@@ -5322,14 +5322,17 @@ static void tegra21_emc_sync_plls(struct clk *emc,
 #ifdef CONFIG_PM_SLEEP
 static void tegra21_emc_clk_suspend(struct clk *c, unsigned long rate)
 {
+	/* No change if other than LPDDR4 */
+	if (tegra_emc_get_dram_type() != DRAM_TYPE_LPDDR4)
+		return;
+
 	/* No change in emc configuration for LP1 */
 	if (!tegra_is_lp0_suspend_mode())
 		return;
 
 	/*
 	 * Scale EMC rate at/below boot rate - required for entering SC7(LP0)
-	 * on LPDDR4, but applied to LPDDR3 as well.
-	 * FIXME: keep it general or check for LPDDR4 below?
+	 * on LPDDR4.
 	 */
 	if (rate > c->boot_rate)
 		tegra21_emc_clk_set_rate(c, c->boot_rate);
