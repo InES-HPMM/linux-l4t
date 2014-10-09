@@ -91,7 +91,6 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
 static struct dvfs_rail tegra21_dvfs_rail_vdd_gpu = {
 	.reg_id = "vdd_gpu",
 	.max_millivolts = 1300,
-	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 	.step_up = 1300,
 	.in_band_pm = true,
@@ -576,11 +575,20 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	struct rail_alignment *align = &rail->alignment;
 
 	min_dfll_mv = d->dfll_tune_data.min_millivolts;
+	if (min_dfll_mv < rail->min_millivolts) {
+		pr_debug("tegra21_dvfs: dfll min %dmV below rail min %dmV\n",
+		     min_dfll_mv, rail->min_millivolts);
+		min_dfll_mv = rail->min_millivolts;
+	}
 	min_dfll_mv =  round_voltage(min_dfll_mv, align, true);
 
 	min_mv = d->pll_tune_data.min_millivolts;
+	if (min_mv < rail->min_millivolts) {
+		pr_debug("tegra21_dvfs: pll min %dmV below rail min %dmV\n",
+		     min_mv, rail->min_millivolts);
+		min_mv = rail->min_millivolts;
+	}
 	min_mv =  round_voltage(min_mv, align, true);
-	rail->min_millivolts = min(min_mv, min_dfll_mv);
 
 	d->max_mv = round_voltage(d->max_mv, align, false);
 	BUG_ON(d->max_mv > rail->max_millivolts);
@@ -717,8 +725,12 @@ static int __init set_cpu_lp_dvfs_data(unsigned long max_freq,
 	struct rail_alignment *align = &rail->alignment;
 
 	min_mv = d->pll_tune_data.min_millivolts;
+	if (min_mv < rail->min_millivolts) {
+		pr_debug("tegra21_dvfs: scpu min %dmV below rail min %dmV\n",
+		     min_mv, rail->min_millivolts);
+		min_mv = rail->min_millivolts;
+	}
 	min_mv =  round_voltage(min_mv, align, true);
-	rail->min_millivolts = min(min_mv, rail->min_millivolts);
 
 	d->max_mv = round_voltage(d->max_mv, align, false);
 	BUG_ON(d->max_mv > rail->max_millivolts);
