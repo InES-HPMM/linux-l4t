@@ -3,6 +3,7 @@
  *
  * (C) Copyright 2002-2004, 2007 Greg Kroah-Hartman <greg@kroah.com>
  * (C) Copyright 2007 Novell Inc.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Released under the GPL v2 only.
  *
@@ -1300,7 +1301,7 @@ static int __init pci_driver_init(void)
 		return err;
 
 #ifdef CONFIG_TEGRA_IOMMU_SMMU
-	bus_register_notifier(&pci_bus_type, &tegra_smmu_device_nb);
+	bus_register_notifier(&pci_bus_type, &tegra_smmu_device_pci_nb);
 #endif
 	return 0;
 }
