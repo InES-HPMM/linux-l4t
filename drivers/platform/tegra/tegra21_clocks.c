@@ -309,6 +309,7 @@
 /* PLLU */
 #define PLLU_BASE_LOCK			(1 << 27)
 #define PLLU_BASE_OVERRIDE		(1 << 24)
+#define PLLU_BASE_CLKENABLE_USB		(1 << 21)
 
 #define PLLU_MISC0_IDDQ			(1 << 31)
 #define PLLU_MISC0_LOCK_ENABLE		(1 << 29)
@@ -2912,8 +2913,12 @@ static void tegra21_pllu_hw_ctrl_set(struct clk *c)
 		pll_writel_delay(val, PLLU_HW_PWRDN_CFG0);
 	}
 
+	/* Disable clock branch to UTMIP PLL (using OSC directly) */
+	val = clk_readl(c->reg);
+	val &= ~PLLU_BASE_CLKENABLE_USB;
+	clk_writel(val, c->reg);
 
-	/* Put UTMI PLL under h/w control  (if not already) */
+	/* Put UTMIP PLL under h/w control  (if not already) */
 	val = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
 	if (!(val & UTMIPLL_HW_PWRDN_CFG0_SEQ_ENABLE))
 		tegra21_utmi_param_configure(c);
@@ -7269,7 +7274,7 @@ static struct clk tegra_pll_p_out_sor = {
 static struct clk_pll_freq_table tegra_pll_u_vco_freq_table[] = {
 	{ 12000000, 480000000, 40, 1, 1},
 	{ 13000000, 480000000, 36, 1, 1},	/* actual: 468.0 MHz */
-	{ 38400000, 480000000, 50, 4, 1},
+	{ 38400000, 480000000, 25, 2, 1},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
