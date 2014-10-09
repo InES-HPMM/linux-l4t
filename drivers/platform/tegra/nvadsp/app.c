@@ -843,10 +843,6 @@ int nvadsp_app_deinit(nvadsp_app_info_t *app)
 			dev_dbg(dev, "%s:freeing app %s:%d\n",
 					__func__, app->name, app->instance_id);
 
-			/* free instance memory */
-			free_instance_memory(app, ser->mem_size);
-			kfree(app);
-
 			/* update the service app instance manager atomically */
 			spin_lock_irqsave(&ser->lock, flags);
 			ser->instance--;
@@ -854,6 +850,10 @@ int nvadsp_app_deinit(nvadsp_app_info_t *app)
 			dev_dbg(dev, "%s: the app %s has instance %d\n",
 					__func__, ser->name, ser->instance);
 			spin_unlock_irqrestore(&ser->lock, flags);
+
+			/* free instance memory */
+			free_instance_memory(app, ser->mem_size);
+			kfree(app);
 		} else {
 			/*
 			 * this should not happen, This means there is something
