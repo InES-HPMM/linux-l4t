@@ -33,6 +33,7 @@
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/pm.h>
+#include <linux/tegra_pm_domains.h>
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/clk/tegra.h>
@@ -1227,7 +1228,10 @@ static int tegra_adma_probe(struct platform_device *pdev)
 
 	dma_device = &pdev->dev;
 
-	tegra_pd_add_device(&pdev->dev);
+	tegra_ape_pd_add_device(&pdev->dev);
+	pm_genpd_dev_need_save(&pdev->dev, true);
+	pm_genpd_dev_need_restore(&pdev->dev, true);
+
 	pm_runtime_enable(&pdev->dev);
 	if (!pm_runtime_enabled(&pdev->dev)) {
 		ret = tegra_adma_runtime_resume(&pdev->dev);
@@ -1338,7 +1342,7 @@ err_pm_disable:
 	pm_runtime_disable(&pdev->dev);
 	if (!pm_runtime_status_suspended(&pdev->dev))
 		tegra_adma_runtime_suspend(&pdev->dev);
-	tegra_pd_remove_device(&pdev->dev);
+	tegra_ape_pd_remove_device(&pdev->dev);
 	clk_put(tdma->ape_clk);
 	return ret;
 }
@@ -1361,7 +1365,7 @@ static int tegra_adma_remove(struct platform_device *pdev)
 	if (!pm_runtime_status_suspended(&pdev->dev))
 		tegra_adma_runtime_suspend(&pdev->dev);
 
-	tegra_pd_remove_device(&pdev->dev);
+	tegra_ape_pd_remove_device(&pdev->dev);
 	return 0;
 }
 
