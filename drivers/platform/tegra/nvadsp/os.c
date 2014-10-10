@@ -799,8 +799,9 @@ static int __nvadsp_os_suspend(void)
 static void __nvadsp_os_stop(bool reload)
 {
 	const struct firmware *fw = priv.os_firmware;
-	struct clk *adsp_clk;
+	struct nvadsp_drv_data *drv_data;
 	struct device *dev;
+	int err = 0;
 
 	if (!priv.pdev) {
 		pr_err("ADSP Driver is not initialized\n");
@@ -808,17 +809,23 @@ static void __nvadsp_os_stop(bool reload)
 	}
 
 	dev = &priv.pdev->dev;
-	adsp_clk = clk_get_sys(NULL, "adsp");
-	if (IS_ERR_OR_NULL(adsp_clk)) {
-		dev_err(dev, "unable to find adsp clock\n");
-		goto end;
-	}
+	drv_data = platform_get_drvdata(priv.pdev);
+
+#ifdef CONFIG_TEGRA_ADSP_DFS
+	adsp_dfs_core_exit(priv.pdev);
+	is_dfs_initialized = false;
+#endif
+
+#ifdef CONFIG_TEGRA_ADSP_ACTMON
+	ape_actmon_exit(priv.pdev);
+	is_actmon_initialized = false;
+#endif
 
 	writel(ENABLE_MBOX2_EMPTY_INT, priv.misc_base + HWMBOX2_REG);
 	wait_for_completion(&entered_wfe);
 	writel(DISABLE_MBOX2_EMPTY_INT, priv.misc_base + HWMBOX2_REG);
 
-	tegra_periph_reset_assert(adsp_clk);
+	tegra_periph_reset_assert(drv_data->adsp_clk);
 
 	if (reload) {
 		/*
@@ -831,8 +838,12 @@ static void __nvadsp_os_stop(bool reload)
 		if (nvadsp_os_elf_load(fw))
 			dev_err(dev, "failed to reload %s\n", NVADSP_FIRMWARE);
 	}
-end:
-	clk_put(adsp_clk);
+
+	err = pm_runtime_put_sync(dev);
+	if (err)
+		pr_err("failed in pm_runtime_put_sync\n");
+
+	return;
 }
 
 
