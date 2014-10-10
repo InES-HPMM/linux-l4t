@@ -768,7 +768,7 @@ rndis_bind(struct usb_configuration *c, struct usb_function *f)
 
 	status = rndis_register(rndis_response_available, rndis);
 	if (status < 0)
-		goto fail;
+		goto fail_free_descs;
 	rndis->config = status;
 
 	rndis_set_param_medium(rndis->config, RNDIS_MEDIUM_802_3, 0);
@@ -778,7 +778,7 @@ rndis_bind(struct usb_configuration *c, struct usb_function *f)
 	if (rndis->manufacturer && rndis->vendorID &&
 			rndis_set_param_vendor(rndis->config, rndis->vendorID,
 					       rndis->manufacturer))
-		goto fail;
+		goto fail_free_descs;
 
 	/* NOTE:  all that is done without knowing or caring about
 	 * the network link ... which is unavailable to this code
@@ -792,9 +792,9 @@ rndis_bind(struct usb_configuration *c, struct usb_function *f)
 			rndis->notify->name);
 	return 0;
 
-fail:
+fail_free_descs:
 	usb_free_all_descriptors(f);
-
+fail:
 	if (rndis->notify_req) {
 		kfree(rndis->notify_req->buf);
 		usb_ep_free_request(rndis->notify, rndis->notify_req);
