@@ -708,8 +708,14 @@ int tegra210_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		ps.id = TEGRA210_CPUIDLE_CC7;
 		ps.affinity_level = 1;
 
+		trace_cpu_suspend(CPU_SUSPEND_START, tegra_rtc_read_ms());
+		tegra_get_suspend_time();
+
 		arg = psci_power_state_pack(ps);
 		cpu_suspend(arg, NULL);
+
+		resume_entry_time = tegra_read_usec_raw();
+		trace_cpu_suspend(CPU_SUSPEND_DONE, tegra_rtc_read_ms());
 
 		return err;
 	}
@@ -721,11 +727,16 @@ int tegra210_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	}
 
 	tegra_pm_prepare_sc7();
+	trace_cpu_suspend(CPU_SUSPEND_START, tegra_rtc_read_ms());
+	tegra_get_suspend_time();
 
 	arg = psci_power_state_pack(ps);
 	cpu_suspend(arg, NULL);
 
+	resume_entry_time = tegra_read_usec_raw();
+	trace_cpu_suspend(CPU_SUSPEND_DONE, tegra_rtc_read_ms());
 	tegra_pm_post_sc7();
+
 fail:
 	return err;
 }
