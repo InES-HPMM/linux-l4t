@@ -73,7 +73,7 @@ TRACE_EVENT(nvcpu_cluster,
 		  (unsigned long)__entry->target)
 );
 
-#ifdef CONFIG_CLK_SRC_TEGRA_TIMER
+#if defined(CONFIG_CLK_SRC_TEGRA_TIMER) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 extern u32 notrace tegra_read_usec_raw(void);
 #else
 #undef tegra_read_usec_raw
