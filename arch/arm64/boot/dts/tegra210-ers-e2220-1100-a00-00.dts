@@ -40,7 +40,6 @@
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-camera-e2249-1002-a00.dtsi"
-#include "tegra210-platforms/tegra210-ers-e2220-thermal-zone.dtsi"
 #include "tegra210-platforms/tegra210-ers-pwm-fan-e2220-1100-a00.dtsi"
 #include <dt-bindings/sound/tegra-asoc-alt.h>
 #include <dt-bindings/platform/t210/t210.h>
@@ -619,12 +618,6 @@
                 #extcon-cells = <1>;
                 status = "okay";
         };
-
-	thermal-zones {
-		PMIC-Die {
-			thermal-sensors = <&max77620>;
-		};
-	};
 
 	/* Put common control config here */
 	xusb_pad_ctl: padctl@0 {
