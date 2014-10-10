@@ -41,6 +41,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/slab.h>
+#include <linux/thermal.h>
 #include <linux/alarmtimer.h>
 #include <linux/power/battery-charger-gauge-comm.h>
 #include <linux/workqueue.h>
@@ -123,6 +124,9 @@ struct bq2419x_chip {
 	struct bq2419x_vbus_platform_data *vbus_pdata;
 	struct bq2419x_charger_platform_data *charger_pdata;
 
+	struct delayed_work		thermal_init_work;
+	struct thermal_zone_device	*die_tz_device;
+	int				thermal_init_retry;
 	struct extcon_dev		edev;
 	const char			*ext_name;
 };
@@ -575,6 +579,68 @@ static int bq2419x_set_charging_current_suspend(struct bq2419x_chip *bq2419x,
 	return 0;
 }
 
+static int bq2419x_thermal_read_temp(void *data, long *temp)
+{
+	struct bq2419x_chip *bq2419x = data;
+	unsigned int reg_06;
+	unsigned int reg_08;
+	int treg;
+	int ret;
+	long curr_temp;
+
+	ret = regmap_read(bq2419x->regmap, BQ2419X_THERM_REG, &reg_06);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "BQ2419X_THERM_REG rd failed %d\n", ret);
+		return ret;
+	}
+	ret = regmap_read(bq2419x->regmap, BQ2419X_SYS_STAT_REG, &reg_08);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "BQ2419X_SYS_STAT_REG rd failed %d\n", ret);
+		return ret;
+	}
+	treg = reg_06 & BQ2419x_TREG;
+	curr_temp = (treg * 20 + 60) * 1000;
+
+	if (reg_08 & BQ2419x_THERM_STAT)
+		curr_temp += 5000;
+	else
+		curr_temp -= 5000;
+
+	*temp = curr_temp;
+	return 0;
+}
+
+static int bq2419x_thermal_check_therm_regulation(struct bq2419x_chip *bq2419x)
+{
+	if (bq2419x->die_tz_device)
+		thermal_zone_device_update(bq2419x->die_tz_device);
+	return 0;
+}
+
+static void bq2419x_thermal_init_work(struct work_struct *work)
+{
+	int ret;
+	struct bq2419x_chip *bq2419x = container_of(to_delayed_work(work),
+			struct bq2419x_chip, thermal_init_work);
+	struct thermal_zone_device *die_tz_device;
+
+	die_tz_device = thermal_zone_of_sensor_register(bq2419x->dev,
+					0, bq2419x, bq2419x_thermal_read_temp,
+					NULL);
+	if (IS_ERR(die_tz_device)) {
+		ret = PTR_ERR(die_tz_device);
+		if ((ret == -EPROBE_DEFER) && (bq2419x->thermal_init_retry)) {
+			schedule_delayed_work(&bq2419x->thermal_init_work,
+					msecs_to_jiffies(1000));
+			bq2419x->thermal_init_retry--;
+		}
+		return;
+	}
+	bq2419x->die_tz_device = die_tz_device;
+	dev_info(bq2419x->dev, "Thermal Zone registration success\n");
+	return;
+}
+
 static int bq2419x_fault_clear_sts(struct bq2419x_chip *bq2419x,
 	unsigned int *reg09_val)
 {
@@ -701,6 +767,11 @@ sys_stat_read:
 
 	if (!bq2419x->battery_presense)
 		return IRQ_HANDLED;
+
+	if (val & BQ2419x_THERM_STAT) {
+		dev_info(bq2419x->dev, "Charger in thermal regulation\n");
+		bq2419x_thermal_check_therm_regulation(bq2419x);
+	}
 
 	if ((val & BQ2419x_CHRG_STATE_MASK) == BQ2419x_CHRG_STATE_CHARGE_DONE) {
 		dev_info(bq2419x->dev, "Charging completed\n");
@@ -1443,6 +1514,13 @@ skip_bcharger_init:
 	if (ret < 0)
 		goto scrub_wq;
 
+	if (bq2419x->battery_presense) {
+		bq2419x->thermal_init_retry = 10;
+		INIT_DELAYED_WORK(&bq2419x->thermal_init_work,
+				bq2419x_thermal_init_work);
+		bq2419x_thermal_init_work(&bq2419x->thermal_init_work.work);
+	}
+
 	return 0;
 scrub_wq:
 	if (pdata->bcharger_pdata)
@@ -1465,6 +1543,10 @@ static int bq2419x_remove(struct i2c_client *client)
 	mutex_destroy(&bq2419x->mutex);
 	mutex_destroy(&bq2419x->otg_mutex);
 	cancel_delayed_work_sync(&bq2419x->otg_reset_work);
+	cancel_delayed_work_sync(&bq2419x->thermal_init_work);
+	if (bq2419x->battery_presense && bq2419x->die_tz_device)
+		thermal_zone_of_sensor_unregister(bq2419x->dev,
+			bq2419x->die_tz_device);
 	return 0;
 }
 
@@ -1513,6 +1595,7 @@ end:
 
 	battery_charging_system_power_on_usb_event(bq2419x->bc_dev);
 	cancel_delayed_work_sync(&bq2419x->otg_reset_work);
+	cancel_delayed_work_sync(&bq2419x->thermal_init_work);
 }
 
 #ifdef CONFIG_PM_SLEEP
