@@ -71,7 +71,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_cpu = {
 	.stats = {
 		.bin_uV = 6250, /* 6.25mV */
 	},
-	.version = "p4v02",
+	.version = "p4v03",
 };
 
 static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
@@ -135,10 +135,10 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune0		= 0x0000A0FF,
 			.tune1		= 0x0222F1D3,
 			.droop_rate_min = 1000000,
-			.min_millivolts = 800,
+			.min_millivolts = 950,
 		},
 		.pll_tune_data = {
-			.min_millivolts = 900,
+			.min_millivolts = 950,
 		},
 		.max_mv = 1225,
 		.freqs_mult = KHZ,
@@ -183,7 +183,7 @@ static struct dvfs cpu_dvfs = {
 /* FIXME: real data */
 static unsigned long cpu_lp_max_freq[] = {
 /* speedo_id	0	 */
-		1203200,
+		1300000,
 };
 
 static struct cpu_cvb_dvfs cpu_lp_cvb_dvfs_table[] = {
@@ -191,23 +191,26 @@ static struct cpu_cvb_dvfs cpu_lp_cvb_dvfs_table[] = {
 		.speedo_id = -1,
 		.process_id = -1,
 		.pll_tune_data = {
-			.min_millivolts = 900,
+			.min_millivolts = 950,
 		},
 		.max_mv = 1225,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 1000,
 		.cvb_table = {
-			/*f       dfll  pll:  c0,       c1,    c2 */
-			{ 384000 , {  }, {  0      ,  0     ,  0    } },
-			{ 486400 , {  }, {  0      ,  0     ,  0    } },
-			{ 588800 , {  }, { -2001927,  282071, -6899 } },
-			{ 691200 , {  }, {  326281 ,  79964 , -2413 } },
-			{ 793600 , {  }, {  2711280, -120592,  1899 } },
-			{ 896000 , {  }, {  2808375, -120304,  1831 } },
-			{ 998400 , {  }, {  3056813, -132036,  2017 } },
-			{ 1100800, {  }, {  4415397, -229955,  3887 } },
-			{ 1203200, {  }, {  4151796, -197768,  3186 } },
+			/*f        dfll  pll:   c0,    c1,     c2 */
+			{ 204000 , {  }, { 706791 , 21825, -1033 } },
+			{ 307200 , {  }, { 750523 , 20835, -1033 } },
+			{ 409600 , {  }, { 798465 , 19835, -1033 } },
+			{ 512000 , {  }, { 850618 , 18845, -1033 } },
+			{ 614400 , {  }, { 906981 , 17845, -1033 } },
+			{ 716800 , {  }, { 967554 , 16855, -1033 } },
+			{ 819200 , {  }, { 1032338, 15855, -1033 } },
+			{ 921600 , {  }, { 1101333, 14865, -1033 } },
+			{ 1024000, {  }, { 1174537, 13875, -1033 } },
+			{ 1126400, {  }, { 1251952, 12875, -1033 } },
+			{ 1228800, {  }, { 1333578, 11885, -1033 } },
+			{ 1280000, {  }, { 1375970, 11385, -1033 } },
 			{       0, {  }, { } },
 		},
 	},
@@ -750,9 +753,6 @@ static int __init set_cpu_lp_dvfs_data(unsigned long max_freq,
 
 		mv = get_cvb_voltage(
 			speedo, d->speedo_scale, &table->cvb_pll_param);
-#ifdef BRINGUP_CVB_V_MARGIN
-		mv = mv * (100 + BRINGUP_CVB_V_MARGIN) / 100;
-#endif
 		mv = round_cvb_voltage(mv, d->voltage_scale, align);
 		mv = max(mv, min_mv);
 
