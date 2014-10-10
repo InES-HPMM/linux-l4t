@@ -87,7 +87,6 @@ struct bq2419x_chip {
 	int				irq;
 	int				gpio_otg_iusb;
 	bool				emulate_input_disconnected;
-	int				auto_recharge_time_power_off;
 	int				auto_rechg_power_on_time;
 
 	struct mutex			mutex;
@@ -115,7 +114,6 @@ struct bq2419x_chip {
 	int				last_charging_current;
 	bool				disable_suspend_during_charging;
 	int				last_temp;
-	u32				auto_recharge_time_supend;
 	struct bq2419x_reg_info		input_src;
 	struct bq2419x_reg_info		chg_current_control;
 	struct bq2419x_reg_info		prechg_term_control;
@@ -1204,7 +1202,6 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 	batt_reg_node = of_find_node_by_name(np, "charger");
 	if (batt_reg_node) {
 		int chg_restart_time;
-		int auto_recharge_time_power_off;
 		int auto_rechg_power_on_time;
 		struct regulator_init_data *batt_init_data;
 		struct bq2419x_charger_platform_data *chg_pdata;
@@ -1278,16 +1275,6 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 				"ti,disbale-suspend-during-charging");
 
 		ret = of_property_read_u32(batt_reg_node,
-			"ti,auto-recharge-time-power-off",
-			&auto_recharge_time_power_off);
-		if (!ret)
-			pdata->bcharger_pdata->auto_recharge_time_power_off =
-					auto_recharge_time_power_off;
-		else
-			pdata->bcharger_pdata->auto_recharge_time_power_off =
-					3600;
-
-		ret = of_property_read_u32(batt_reg_node,
 					"ti,auto-rechg-power-on-time",
 					&auto_rechg_power_on_time);
 		if (!ret)
@@ -1295,16 +1282,6 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 					auto_rechg_power_on_time;
 		else
 			pdata->bcharger_pdata->auto_rechg_power_on_time = 25;
-
-		ret = of_property_read_u32(batt_reg_node,
-				"ti,auto-recharge-time-suspend",
-				&chg_restart_time);
-		if (!ret)
-			pdata->bcharger_pdata->auto_recharge_time_supend =
-							chg_restart_time;
-		else
-			pdata->bcharger_pdata->auto_recharge_time_supend =
-					3600;
 
 		pdata->bcharger_pdata->consumer_supplies =
 					batt_init_data->consumer_supplies;
@@ -1449,13 +1426,9 @@ static int bq2419x_probe(struct i2c_client *client,
 		goto skip_bcharger_init;
 	}
 
-	bq2419x->auto_recharge_time_power_off =
-			pdata->bcharger_pdata->auto_recharge_time_power_off;
 	bq2419x->battery_presense = true;
 	bq2419x->disable_suspend_during_charging =
 			pdata->bcharger_pdata->disable_suspend_during_charging;
-	bq2419x->auto_recharge_time_supend =
-			pdata->bcharger_pdata->auto_recharge_time_supend;
 	bq2419x->auto_rechg_power_on_time =
 			pdata->bcharger_pdata->auto_rechg_power_on_time;
 
