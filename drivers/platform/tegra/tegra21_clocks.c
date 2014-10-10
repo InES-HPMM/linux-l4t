@@ -8946,7 +8946,6 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("fuse",	"fuse-tegra",	      "fuse",	39,	0,	38400000,  mux_clk_m,			PERIPH_ON_APB),
 	PERIPH_CLK("fuse_burn",	"fuse-tegra",	 "fuse_burn",	39,	0,	38400000,  mux_clk_m,			PERIPH_ON_APB),
 
-	PERIPH_CLK("apbif",	"tegra210-admaif",	NULL,   107,	0,	38400000,  mux_clk_m,			PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("i2s0",	"tegra210-i2s.0",	NULL,	30,	0x1d8,	204000000,  mux_pllaout0_audio0_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("i2s1",	"tegra210-i2s.1",	NULL,	11,	0x100,	204000000,  mux_pllaout0_audio1_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("i2s2",	"tegra210-i2s.2",	NULL,	18,	0x104,	204000000,  mux_pllaout0_audio2_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
