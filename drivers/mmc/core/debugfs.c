@@ -541,9 +541,9 @@ static int mmc_dbg_ext_csd_life_time_type_b(void *data, u64 *val)
 DEFINE_SIMPLE_ATTRIBUTE(mmc_dbg_ext_csd_life_time_type_b_fops,
 		mmc_dbg_ext_csd_life_time_type_b, NULL, "%llu\n");
 
-#define EXT_CSD_STR_LEN 1025
-
-static int mmc_ext_csd_open(struct inode *inode, struct file *filp)
+/* Here index starts with zero*/
+static char *mmc_ext_csd_read_by_index(int start, int end,
+		int strlen, struct inode *inode)
 {
 	struct mmc_card *card = inode->i_private;
 	char *buf;
@@ -551,35 +551,72 @@ static int mmc_ext_csd_open(struct inode *inode, struct file *filp)
 	u8 *ext_csd;
 	int err, i;
 
-	buf = kmalloc(EXT_CSD_STR_LEN + 1, GFP_KERNEL);
+	buf = kmalloc(strlen + 1, GFP_KERNEL);
 	if (!buf)
-		return -ENOMEM;
+		return ERR_PTR(-ENOMEM);
 
 	ext_csd = kmalloc(512, GFP_KERNEL);
 	if (!ext_csd) {
-		err = -ENOMEM;
-		goto out_free;
+		kfree(buf);
+		return ERR_PTR(-ENOMEM);
 	}
-
 	mmc_claim_host(card->host);
 	err = mmc_send_ext_csd(card, ext_csd);
 	mmc_release_host(card->host);
 	if (err)
 		goto out_free;
 
-	for (i = 0; i < 512; i++)
+	for (i = start; i <= end; i++)
 		n += sprintf(buf + n, "%02x", ext_csd[i]);
 	n += sprintf(buf + n, "\n");
-	BUG_ON(n != EXT_CSD_STR_LEN);
 
-	filp->private_data = buf;
 	kfree(ext_csd);
-	return 0;
+	return buf;
 
 out_free:
-	kfree(buf);
 	kfree(ext_csd);
-	return err;
+	kfree(buf);
+	return NULL;
+}
+
+#define EXT_CSD_FW_V_STR_LEN 17
+static int mmc_ext_csd_fw_v_open(struct inode *inode, struct file *filp)
+{
+	/*Firmware Version ext_csd 254:261 */
+	filp->private_data = mmc_ext_csd_read_by_index(254, 261,
+				EXT_CSD_FW_V_STR_LEN, inode);
+	return 0;
+}
+
+static ssize_t mmc_ext_csd_fw_v_read(struct file *filp, char __user *ubuf,
+				size_t cnt, loff_t *ppos)
+{
+	char *buf = filp->private_data;
+
+	return simple_read_from_buffer(ubuf, cnt, ppos,
+				       buf, EXT_CSD_FW_V_STR_LEN);
+}
+
+static int mmc_ext_csd_fw_v_release(struct inode *inode, struct file *file)
+{
+	kfree(file->private_data);
+	return 0;
+}
+
+static const struct file_operations mmc_dbg_ext_csd_fw_v_fops = {
+	.open		= mmc_ext_csd_fw_v_open,
+	.read		= mmc_ext_csd_fw_v_read,
+	.release	= mmc_ext_csd_fw_v_release,
+	.llseek		= default_llseek,
+};
+
+#define EXT_CSD_STR_LEN 1025
+
+static int mmc_ext_csd_open(struct inode *inode, struct file *filp)
+{
+	filp->private_data = mmc_ext_csd_read_by_index(0, 511,
+				EXT_CSD_STR_LEN, inode);
+	return 0;
 }
 
 static ssize_t mmc_ext_csd_read(struct file *filp, char __user *ubuf,
@@ -643,6 +680,9 @@ void mmc_add_card_debugfs(struct mmc_card *card)
 			goto err;
 		if (!debugfs_create_file("dhs_type_b", S_IRUSR, root, card,
 					&mmc_dbg_ext_csd_life_time_type_b_fops))
+			goto err;
+		if (!debugfs_create_file("firmware_version", S_IRUSR, root,
+					card, &mmc_dbg_ext_csd_fw_v_fops))
 			goto err;
 	}
 
