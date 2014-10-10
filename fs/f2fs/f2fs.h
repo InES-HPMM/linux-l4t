@@ -1235,7 +1235,8 @@ static inline bool f2fs_cp_error(struct f2fs_sb_info *sbi)
 static inline void f2fs_stop_checkpoint(struct f2fs_sb_info *sbi)
 {
 	set_ckpt_flags(sbi->ckpt, CP_ERROR_FLAG);
-	sbi->sb->s_flags |= MS_RDONLY;
+	if (f2fs_handle_error(sbi))
+		sbi->sb->s_flags |= MS_RDONLY;
 }
 
 #define get_inode_mode(i) \
