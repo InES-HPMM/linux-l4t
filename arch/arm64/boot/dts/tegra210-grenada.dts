@@ -1206,4 +1206,10 @@
 	gpu-dvfs-rework {
 		status = "disabled";
 	};
+
+	tegra_cec {
+		compatible = "nvidia,tegra210-cec";
+		status = "disabled";
+	};
+
 };
