@@ -95,6 +95,7 @@ F:	drivers/cpuidle/denver-cpuidle.c
 F:	drivers/irqchip/irq-tegra.c
 F:	drivers/misc/tegra_timerinfo.c
 F:	drivers/platform/tegra/tegra_fiq_debugger.c
+F:	drivers/platform/tegra/tegra_ptm*.c
 
 DISPLAY
 M:	Jon Mayo <jmayo@nvidia.com>
@@ -152,6 +153,7 @@ M:	Mallikarjun Kasoju <mkasoju@nvidia.com>
 L:	sw-mobile-kernel-platform@exchange.nvidia.com
 S:	Supported
 F:	arch/arm/mach-tegra/arb_sema.c
+F:	arch/arm/mach-tegra/baseband-xmm-power.c
 F:	arch/arm/mach-tegra/board-common.c
 F:	arch/arm/mach-tegra/board-info.c
 F:	arch/arm/mach-tegra/kfuse.c
@@ -168,59 +170,85 @@ F:	drivers/misc/tegra-baseband/bb-power.c
 F:	drivers/pinctrl/pinctrl-tegra.c
 F:	drivers/pinctrl/pinctrl-tegra30.c
 F:	drivers/usb/serial/baseband_usb_chr.c
-F:	drivers/regulator/as3722-regulator.c
 
 PLATFORM POWER DELIVERY
 M:	Laxman Dewangan <ldewangan@nvidia.com>
 L:	sw-mobile-pmic@exchange.nvidia.com
 S:	Supported
-
-POWER AND PERF
-M:	Matt Longnecker <mlongnecker@nvidia.com>
-L:	sw-mobile-power@exchange.nvidia.com
-S:	Supported
-F:	arch/arm64/mach-tegra/pm.c
-F:	arch/arm64/mach-tegra/pm-tegra132.c
-F:	arch/arm64/mach-tegra/powerdetect.c
-F:	arch/arm/mach-tegra/baseband-xmm-power.c
-F:	arch/arm/mach-tegra/cpuidle.c
-F:	arch/arm/mach-tegra/cpuidle-t11x.c
-F:	arch/arm/mach-tegra/cpuquiet.c
-F:	arch/arm/mach-tegra/edp.c
-F:	arch/arm/mach-tegra/pm.c
-F:	arch/arm/mach-tegra/powerdetect.c
-F:	arch/arm/mach-tegra/powergate-t30.c
-F:	arch/arm/mach-tegra/tegra3_actmon.c
-F:	arch/arm/mach-tegra/tegra_simon.c
-F:	arch/arm/mach-tegra/wdt-recovery.c
-F:	drivers/cpufreq/cpufreq_interactive.c
-F:	drivers/cpuquiet/*
-F:	drivers/cpuquiet/governors/*
-F:	drivers/edp/*
-F:	drivers/firmware/tegra/
-F:	drivers/input/input-cfboost.c
 F:	drivers/mfd/tps65090.c
 F:	drivers/mfd/tps6591x.c
+F:	drivers/power/
+F:	drivers/regulator/
+
+POWER: CLOCKS AND VOLTAGE
+M:	Matt Longnecker <mlongnecker@nvidia.com>
+L:	sw-mobile-clocks@exchange.nvidia.com
+F:	arch/arm/mach-tegra/*_dvfs.c
+F:	arch/arm/mach-tegra/clocks_stats.c
+F:	arch/arm/mach-tegra/tegra_core_volt_cap.c
+F:	arch/arm/mach-tegra/tegra12_clocks.c
+F:	arch/arm/mach-tegra/tegra3_actmon.c
+F:	arch/arm/mach-tegra/dvfs.c
 F:	drivers/platform/tegra/clock.c
 F:	drivers/platform/tegra/clocks_stats.c
 F:	drivers/platform/tegra/dvfs.c
+F:	drivers/platform/tegra/tegra_cl_dvfs.c
+
+POWER: CPU
+M:	Matt Longnecker <mlongnecker@nvidia.com>
+L:	sw-mobile-cpu-power@exchange.nvidia.com
+S:	Supported
+F:	arch/arm/mach-tegra/cpuidle-t11x.c
+F:	arch/arm/mach-tegra/cpuidle.c
+F:	arch/arm/mach-tegra/cpuquiet.c
+F:	arch/arm/mach-tegra/sysfs-cluster.c
+F:	drivers/cpufreq/
+F:	drivers/cpuidle/
+F:	drivers/cpuquiet/
+F:	drivers/input/input-cfboost.c
+F:	drivers/platform/tegra/cpu-tegra.c
+F:	drivers/platform/tegra/sysfs-cluster.c
+
+POWER: THERMAL
+M:	Matt Longnecker <mlongnecker@nvidia.com>
+L:	sw-mobile-therm@exchange.nvidia.com
+S:	Supported
+F:	arch/arm64/mach-tegra/board-*-thermal.c
+F:	drivers/misc/tegra-fuse/tegra_fuse_tsosc.c
+F:	drivers/misc/therm_fan_est.c
+F:	drivers/platform/tegra/tegra_soctherm.c
+F:	drivers/platform/tegra/tegra_throttle.c
+F:	drivers/thermal/
+
+POWER: EDP AND FRIENDS
+M:	Matt Longnecker <mlongnecker@nvidia.com>
+L:	mobile-sys-edp@exchange.nvidia.com
+S:	Supported
+F:	arch/arm/mach-tegra/board-*-sysedp.c
+F:	arch/arm/mach-tegra/edp.c
+F:	arch/arm/mach-tegra/gpu-edp.c
+F:	arch/arm/mach-tegra/tegra_simon.c
+F:	arch/arm/mach-tegra/tegra_volt_cap.c
+F:	arch/arm/mach-tegra/tegra12_edp.c
+F:	drivers/edp/
+F:	drivers/misc/tegra_ppm.c
+F:	drivers/platform/tegra/cpu-edp.c
+F:	include/linux/tegra_ppm.h
+
+POWER: GATING AND STATES
+M:	Matt Longnecker <mlongnecker@nvidia.com>
+L:	sw-mobile-power@exchange.nvidia.com
+S:	Supported
+F:	arch/arm*/mach-tegra/pm*.c
+F:	arch/arm*/mach-tegra/powerdetect.c
+F:	arch/arm/mach-tegra/powergate*
+F:	arch/arm/mach-tegra/tegra-wakeups.c
+F:	arch/arm/mach-tegra/wakeups-t12x.c
 F:	drivers/platform/tegra/pm.c
 F:	drivers/platform/tegra/pmc.c
 F:	drivers/platform/tegra/pm-irq.c
 F:	drivers/platform/tegra/pm-t3.c
-F:	drivers/platform/tegra/powergate.c
-F:	drivers/platform/tegra/powergate-ops-t1xx.c
-F:	drivers/platform/tegra/powergate-ops-txx.c
-F:	drivers/platform/tegra/sysfs-cluster.c
-F:	drivers/platform/tegra/tegra_cl_dvfs.c
-F:	drivers/platform/tegra/tegra_throttle.c
-F:	drivers/power/bq27x00_battery.c
-F:	drivers/power/sbs-battery.c
-F:	drivers/power/tps65090-charger.c
-F:	drivers/regulator/tps51632-regulator.c
-F:	drivers/regulator/tps65090-regulator.c
-F:	drivers/regulator/tps6591x-regulator.c
-F:	drivers/thermal/
+F:	drivers/platform/tegra/powergate*
 
 SECURE OS:
 M:	Dennis Huang <denhuang@nvidia.com>
