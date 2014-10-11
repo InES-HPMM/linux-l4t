@@ -73,6 +73,7 @@ struct eth_dev {
 
 	unsigned		header_len;
 	unsigned		ul_max_pkts_per_xfer;
+	unsigned		dl_max_pkts_per_xfer;
 	struct sk_buff		*(*wrap)(struct gether *, struct sk_buff *skb);
 	int			(*unwrap)(struct gether *,
 						struct sk_buff *skb,
@@ -93,7 +94,6 @@ struct eth_dev {
 #define RX_EXTRA	20	/* bytes guarding against rx overflows */
 
 #define DEFAULT_QLEN	2	/* double buffering by default */
-
 
 static unsigned qmult = 10;
 module_param(qmult, uint, S_IRUGO|S_IWUSR);
@@ -580,7 +580,7 @@ static void alloc_tx_buffer(struct eth_dev *dev)
 	struct list_head	*act;
 	struct usb_request	*req;
 
-	dev->tx_req_bufsize = (TX_SKB_HOLD_THRESHOLD *
+	dev->tx_req_bufsize = (dev->dl_max_pkts_per_xfer *
 				(dev->net->mtu
 				+ sizeof(struct ethhdr)
 				/* size of rndis_packet_msg_type */
@@ -695,7 +695,7 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 		dev_kfree_skb_any(skb);
 
 		spin_lock_irqsave(&dev->req_lock, flags);
-		if (dev->tx_skb_hold_count < TX_SKB_HOLD_THRESHOLD) {
+		if (dev->tx_skb_hold_count < dev->dl_max_pkts_per_xfer) {
 			if (dev->no_tx_req_used > TX_REQ_THRESHOLD) {
 				list_add(&req->list, &dev->tx_reqs);
 				spin_unlock_irqrestore(&dev->req_lock, flags);
@@ -1067,6 +1067,7 @@ struct net_device *gether_connect(struct gether *link)
 		dev->unwrap = link->unwrap;
 		dev->wrap = link->wrap;
 		dev->ul_max_pkts_per_xfer = link->ul_max_pkts_per_xfer;
+		dev->dl_max_pkts_per_xfer = link->dl_max_pkts_per_xfer;
 
 		spin_lock(&dev->lock);
 		dev->tx_skb_hold_count = 0;
@@ -1177,3 +1178,23 @@ void gether_disconnect(struct gether *link)
 	dev->port_usb = NULL;
 	spin_unlock(&dev->lock);
 }
+
+static int __init gether_init(void)
+{
+	uether_wq  = create_singlethread_workqueue("uether");
+	if (!uether_wq) {
+		pr_err("%s: Unable to create workqueue: uether\n", __func__);
+		return -ENOMEM;
+	}
+	return 0;
+}
+__initcall(gether_init);
+
+static void __exit gether_exit(void)
+{
+	destroy_workqueue(uether_wq);
+
+}
+__exitcall(gether_exit);
+MODULE_DESCRIPTION("ethernet over USB driver");
+MODULE_LICENSE("GPL v2");
