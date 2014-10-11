@@ -34,6 +34,8 @@
 #include <linux/sched.h>
 #include <linux/workqueue.h>
 
+#define PALMAS_USB_ID_STATE_CONNECTED		1
+
 enum palmas_usb_cable_id {
 	USB_CABLE_INIT,
 	USB_CABLE_VBUS,
@@ -416,6 +418,9 @@ static int palmas_usb_suspend(struct device *dev)
 {
 	struct palmas_usb *palmas_usb = dev_get_drvdata(dev);
 
+	if (palmas_usb->cur_cable_index == PALMAS_USB_ID_STATE_CONNECTED)
+		disable_irq(palmas_usb->vbus_irq);
+
 	if (device_may_wakeup(dev)) {
 		if (palmas_usb->enable_vbus_detection)
 			enable_irq_wake(palmas_usb->vbus_irq);
@@ -428,6 +433,20 @@ static int palmas_usb_suspend(struct device *dev)
 static int palmas_usb_resume(struct device *dev)
 {
 	struct palmas_usb *palmas_usb = dev_get_drvdata(dev);
+	unsigned int vbus_line_state;
+
+	if (palmas_usb->cur_cable_index == PALMAS_USB_ID_STATE_CONNECTED) {
+		palmas_read(palmas_usb->palmas, PALMAS_INTERRUPT_BASE,
+				PALMAS_INT3_LINE_STATE, &vbus_line_state);
+		if (!(vbus_line_state & PALMAS_INT3_LINE_STATE_VBUS) &&
+			(palmas_usb->vbus_linkstat == PALMAS_USB_STATE_VBUS)) {
+			palmas_usb->vbus_linkstat = PALMAS_USB_STATE_DISCONNECT;
+			extcon_set_cable_state(&palmas_usb->edev, "USB", false);
+				dev_info(palmas_usb->dev,
+					"%s():USB cable is detached\n", __func__);
+		}
+		enable_irq(palmas_usb->vbus_irq);
+	}
 
 	if (device_may_wakeup(dev)) {
 		if (palmas_usb->enable_vbus_detection)
@@ -436,7 +455,7 @@ static int palmas_usb_resume(struct device *dev)
 			disable_irq_wake(palmas_usb->id_irq);
 	}
 	return 0;
-};
+}
 #endif
 
 static const struct dev_pm_ops palmas_pm_ops = {
