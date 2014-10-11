@@ -1205,15 +1205,13 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 		int auto_rechg_power_on_time;
 		struct regulator_init_data *batt_init_data;
 		struct bq2419x_charger_platform_data *chg_pdata;
-		const char *status_str;
 		struct bq2419x_charger_platform_data *bcharger_pdata;
 		u32 pval;
 
-		status_str = of_get_property(batt_reg_node, "status", NULL);
-		if (status_str && !(!strcmp(status_str, "okay"))) {
+		if (!of_device_is_available(batt_reg_node)) {
 			dev_info(&client->dev,
 				"charger node status is disabled\n");
-			goto  vbus_node;
+			goto vbus_node;
 		}
 
 		pdata->bcharger_pdata = devm_kzalloc(&client->dev,
