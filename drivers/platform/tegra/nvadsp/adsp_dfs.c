@@ -218,6 +218,7 @@ fail:
 			pr_err("failed to resume adsp freq:%lu\n", old_freq);
 			policy->update_freq_flag = false;
 		}
+
 		tfreq = old_freq;
 	}
 	return tfreq;
@@ -391,6 +392,14 @@ void adsp_cpu_set_rate(unsigned long freq)
 		pr_info("adsp dfs policy is not enabled\n");
 		return;
 	}
+
+	if (!freq || freq == policy->cur)
+		return;
+
+	if (freq < policy->min)
+		freq = policy->min;
+	else if (freq > policy->max)
+		freq = policy->max;
 
 	if (freq)
 		update_policy(freq);
