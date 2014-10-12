@@ -232,7 +232,7 @@ static int track_clock(char *clk_name)
 	if (ret)
 		goto err_out;
 
-	ret = set_last_rate(&d->table, clk_get_rate(c));
+	ret = set_last_rate(&d->table, clk_round_rate(c, clk_get_rate(c)));
 	if (ret)
 		goto err_out;
 
