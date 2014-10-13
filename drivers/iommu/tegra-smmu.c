@@ -136,10 +136,6 @@ enum {
 #define SMMU_TRANSLATION_ENABLE_0		0x228
 #define SMMU_TRANSLATION_ENABLE_4		0xb98
 
-#define SMMU_AFI_ASID	0x238   /* PCIE */
-
-#define SMMU_SWGRP_ASID_BASE	SMMU_AFI_ASID
-
 #define HWGRP_COUNT	64
 
 #define SMMU_PDE_NEXT_SHIFT		28
@@ -256,23 +252,6 @@ static const u32 smmu_asid_security_ofs[] = {
 struct tegra_smmu_chip_data {
 	int num_asids;
 };
-
-static size_t tegra_smmu_get_offset(int id)
-{
-	switch (id) {
-	case TEGRA_SWGROUP_DC14:
-		return 0x490;
-	case TEGRA_SWGROUP_DC12:
-		return 0xa88;
-	case TEGRA_SWGROUP_AFI...TEGRA_SWGROUP_ISP:
-	case TEGRA_SWGROUP_MPE...TEGRA_SWGROUP_PPCS1:
-		return (id - TEGRA_SWGROUP_AFI) * sizeof(u32) + SMMU_AFI_ASID;
-	case TEGRA_SWGROUP_SDMMC1A...63:
-		return (id - TEGRA_SWGROUP_SDMMC1A) * sizeof(u32) + 0xa94;
-	};
-
-	BUG();
-}
 
 struct smmu_domain {
 	struct smmu_as *as[MAX_AS_PER_DEV];
@@ -596,7 +575,7 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 		mask |= SMMU_ASID_ENABLE(dom->as[i]->asid, i);
 
 	for_each_set_bit(i, (unsigned long *)&map, HWGRP_COUNT) {
-		offs = tegra_smmu_get_offset(i);
+		offs = tegra_smmu_of_offset(i);
 		val = smmu_read(smmu, offs);
 		val &= ~SMMU_ASID_MASK; /* always overwrite ASID */
 

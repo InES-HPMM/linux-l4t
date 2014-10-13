@@ -30,6 +30,8 @@ struct smmu_map_prop {
 	struct dma_iommu_mapping *map;
 };
 
+size_t tegra_smmu_of_offset(int swgroupid);
+
 struct dma_iommu_mapping *tegra_smmu_of_get_mapping(struct device *dev,
 						    u64 swgids,
 						    struct list_head *asprops);

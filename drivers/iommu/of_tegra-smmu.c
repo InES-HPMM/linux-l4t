@@ -28,6 +28,26 @@
 
 #include "of_tegra-smmu.h"
 
+#define SMMU_AFI_ASID		0x238   /* PCIE */
+#define SMMU_SWGRP_ASID_BASE	SMMU_AFI_ASID
+
+size_t tegra_smmu_of_offset(int id)
+{
+	switch (id) {
+	case TEGRA_SWGROUP_DC14:
+		return 0x490;
+	case TEGRA_SWGROUP_DC12:
+		return 0xa88;
+	case TEGRA_SWGROUP_AFI...TEGRA_SWGROUP_ISP:
+	case TEGRA_SWGROUP_MPE...TEGRA_SWGROUP_PPCS1:
+		return (id - TEGRA_SWGROUP_AFI) * sizeof(u32) + SMMU_AFI_ASID;
+	case TEGRA_SWGROUP_SDMMC1A...63:
+		return (id - TEGRA_SWGROUP_SDMMC1A) * sizeof(u32) + 0xa94;
+	};
+
+	BUG();
+}
+
 struct dma_iommu_mapping *tegra_smmu_of_get_mapping(struct device *dev,
 						    u64 swgids,
 						    struct list_head *asprops)
