@@ -83,6 +83,7 @@
 		domains = <
 			&ppcs_as TEGRA_SWGROUP_CELLS3(PPCS, PPCS1, PPCS2)
 			&gpu_as TEGRA_SWGROUP_CELLS(GPUB)
+			&dc_as TEGRA_SWGROUP_CELLS3(DC, DC12, DCB)
 			&common_as TEGRA_SWGROUP_CELLS(AFI)
 			&common_as 0xFFFFFFFF 0xFFFFFFFF>;
 	};
