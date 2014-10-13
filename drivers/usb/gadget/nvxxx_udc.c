@@ -74,8 +74,8 @@ static void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 #define NUM_EP_CX	32
 
 #define TRB_MAX_BUFFER_SIZE		65536
-#define NVUDC_CONTROL_EP_TD_RING_SIZE	1024
-#define NVUDC_BULK_EP_TD_RING_SIZE	1024
+#define NVUDC_CONTROL_EP_TD_RING_SIZE	8
+#define NVUDC_BULK_EP_TD_RING_SIZE	64
 #define NVUDC_ISOC_EP_TD_RING_SIZE	8
 #define NVUDC_INT_EP_TD_RING_SIZE	8
 #define EVENT_RING_SIZE			4096
@@ -3335,13 +3335,17 @@ void dbg_print_ep_ctx(struct nv_udc_s *nvudc)
 
 	msg_dbg(nvudc->dev, "Transfer ring for each endpoint\n");
 	for (i = 0; i < 32; i++) {
-		if (nvudc->udc_ep[i].tran_ring_ptr) {
+		struct nv_udc_ep *udc_ep = &nvudc->udc_ep[i];
+		if (udc_ep->tran_ring_ptr) {
+			struct nv_buffer_info_s *ring = &udc_ep->tran_ring_info;
+			int ring_size =
+				ring->len / sizeof(struct transfer_trb_s);
 
-			msg_dbg(nvudc->dev, "endpoint DCI = %d\n",
-				nvudc->udc_ep[i].DCI);
+			msg_dbg(nvudc->dev, "endpoint DCI = %d, %p %p\n",
+				nvudc->udc_ep[i].DCI, ring->vaddr, ring->dma);
 			temp_trb1 =
-			(struct transfer_trb_s *)nvudc->udc_ep[i].tran_ring_ptr;
-			for (j = 0; j < NVUDC_BULK_EP_TD_RING_SIZE; j++) {
+			(struct transfer_trb_s *) udc_ep->tran_ring_ptr;
+			for (j = 0; j < ring_size; j++) {
 				msg_dbg(nvudc->dev,
 					"0x%lx: 0x%x 0x%x 0x%x 0x%x\n",
 						(unsigned long)temp_trb1,
@@ -3350,7 +3354,6 @@ void dbg_print_ep_ctx(struct nv_udc_s *nvudc)
 						temp_trb1->trb_dword2,
 						temp_trb1->trb_dword3);
 				temp_trb1++;
-
 			}
 		}
 	}
