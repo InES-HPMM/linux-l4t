@@ -31,7 +31,7 @@
 #include <linux/interrupt.h>
 #include <linux/power/bq27441_battery.h>
 
-#define BQ27441_DELAY			(30*HZ)
+#define BQ27441_DELAY			msecs_to_jiffies(30000)
 
 #define BQ27441_CONTROL_STATUS		0x0000
 #define BQ27441_DEVICE_TYPE		0x0001
