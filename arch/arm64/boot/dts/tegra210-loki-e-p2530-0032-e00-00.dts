@@ -332,16 +332,19 @@
 					temperature = <99000>;
 					hysteresis = <0>;
 					type = "critical";
+					writable;
 				};
 				cpu_heavy {
 					temperature = <95000>;
 					hysteresis = <0>;
 					type = "hot";
+					writable;
 				};
 				cpu_throttle {
 					temperature = <85500>;
 					hysteresis = <0>;
 					type = "passive";
+					writable;
 				};
 			};
 			cooling-maps {
@@ -380,16 +383,19 @@
 					temperature = <97500>;
 					hysteresis = <0>;
 					type = "critical";
+					writable;
 				};
 				gpu_heavy {
 					temperature = <94500>;
 					hysteresis = <0>;
 					type = "hot";
+					writable;
 				};
 				gpu_throttle {
 					temperature = <85000>;
 					hysteresis = <0>;
 					type = "passive";
+					writable;
 				};
 			};
 			cooling-maps {
@@ -419,6 +425,7 @@
 					temperature = <97500>;
 					hysteresis = <0>;
 					type = "critical";
+					writable;
 				};
 			};
 			cooling-maps {
@@ -436,6 +443,7 @@
 					temperature = <100000>;
 					hysteresis = <0>;
 					type = "critical";
+					writable;
 				};
 			};
 			cooling-maps {
