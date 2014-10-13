@@ -57,7 +57,7 @@
 #define BQ2419X_PRE_CHG_IPRECHG_OFFSET	128
 #define BQ2419X_PRE_CHG_TERM_OFFSET	128
 #define BQ2419X_CHARGE_VOLTAGE_OFFSET	3504
-#define BQ2419x_OTG_ENABLE_TIME		(30*HZ)
+#define BQ2419x_OTG_ENABLE_TIME		msecs_to_jiffies(30000)
 
 /* input current limit */
 static const unsigned int iinlim[] = {
@@ -107,7 +107,6 @@ struct bq2419x_chip {
 	int				chg_status;
 
 	struct delayed_work		otg_reset_work;
-	int				chg_restart_time;
 	int				is_otg_connected;
 	int				battery_presense;
 	bool				cable_connected;
@@ -1201,7 +1200,6 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 
 	batt_reg_node = of_find_node_by_name(np, "charger");
 	if (batt_reg_node) {
-		int chg_restart_time;
 		int auto_rechg_power_on_time;
 		struct regulator_init_data *batt_init_data;
 		struct bq2419x_charger_platform_data *chg_pdata;
@@ -1511,9 +1509,13 @@ static int bq2419x_remove(struct i2c_client *client)
 		battery_charger_unregister(bq2419x->bc_dev);
 	extcon_dev_unregister(&bq2419x->edev);
 
+	if (bq2419x->is_otg_connected) {
+		cancel_delayed_work_sync(&bq2419x->otg_reset_work);
+		bq2419x_vbus_disable(bq2419x->vbus_rdev);
+	}
+
 	mutex_destroy(&bq2419x->mutex);
 	mutex_destroy(&bq2419x->otg_mutex);
-	cancel_delayed_work_sync(&bq2419x->otg_reset_work);
 	cancel_delayed_work_sync(&bq2419x->thermal_init_work);
 	if (bq2419x->battery_presense && bq2419x->die_tz_device)
 		thermal_zone_of_sensor_unregister(bq2419x->dev,
@@ -1528,8 +1530,10 @@ static void bq2419x_shutdown(struct i2c_client *client)
 	int ret;
 	int next_poweron_time = 0;
 
-	if (bq2419x->is_otg_connected)
+	if (bq2419x->is_otg_connected) {
+		cancel_delayed_work_sync(&bq2419x->otg_reset_work);
 		bq2419x_vbus_disable(bq2419x->vbus_rdev);
+	}
 
 	if (!bq2419x->battery_presense)
 		return;
@@ -1565,7 +1569,6 @@ end:
 		dev_info(bq2419x->dev, "System-charger will not power-ON\n");
 
 	battery_charging_system_power_on_usb_event(bq2419x->bc_dev);
-	cancel_delayed_work_sync(&bq2419x->otg_reset_work);
 	cancel_delayed_work_sync(&bq2419x->thermal_init_work);
 }
 
