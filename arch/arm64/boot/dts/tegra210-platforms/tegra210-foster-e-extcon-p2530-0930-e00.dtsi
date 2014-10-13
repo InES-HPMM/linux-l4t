@@ -12,9 +12,10 @@
  */
 
 / {
+	extcon {
 		otg_gpio_extcon: extcon@1 {
 			compatible = "extcon-otg";
-			reg = <0x0 0x1>;
+			reg = <0x1>;
 			extcon-otg,name = "otg";
 			id-gpio = <&max77620 0 0>;
 			vbus-gpio = <&gpio TEGRA_GPIO(Z, 5) 0>;
@@ -25,6 +26,7 @@
 			vbus-auto-hw;
 			extcon-gpio,cable-name = "USB", "USB-Host";
 			#extcon-cells = <1>;
+		};
 	};
 
 	udc@7d000000 {

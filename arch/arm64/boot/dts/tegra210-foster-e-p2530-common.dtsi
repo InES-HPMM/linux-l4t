@@ -95,8 +95,10 @@
 		};
 	};
 
-	extcon@0 {
-		status = "disabled";
+	extcon {
+		extcon@0 {
+			status = "disabled";
+		};
 	};
 
 	udc@7d000000 {
