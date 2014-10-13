@@ -497,10 +497,12 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 	msleep(200);
 	bq2419x->chg_status = BATTERY_DISCHARGING;
 
-	ret = bq2419x_charger_enable(bq2419x);
-	if (ret < 0) {
-		dev_err(bq2419x->dev, "Charger enable failed %d", ret);
-		return ret;
+	if (!bq2419x->is_otg_connected) {
+		ret = bq2419x_charger_enable(bq2419x);
+		if (ret < 0) {
+			dev_err(bq2419x->dev, "Charger enable failed %d", ret);
+			return ret;
+		}
 	}
 
 	ret = regmap_read(bq2419x->regmap, BQ2419X_SYS_STAT_REG, &val);
@@ -563,10 +565,12 @@ static int bq2419x_set_charging_current_suspend(struct bq2419x_chip *bq2419x,
 	dev_info(bq2419x->dev, "Setting charging current %d mA\n",
 			in_current_limit);
 
-	ret = bq2419x_charger_enable(bq2419x);
-	if (ret < 0) {
-		dev_err(bq2419x->dev, "Charger enable failed %d", ret);
-		return ret;
+	if (!bq2419x->is_otg_connected) {
+		ret = bq2419x_charger_enable(bq2419x);
+		if (ret < 0) {
+			dev_err(bq2419x->dev, "Charger enable failed %d", ret);
+			return ret;
+		}
 	}
 
 	ret = regmap_read(bq2419x->regmap, BQ2419X_SYS_STAT_REG, &val);
