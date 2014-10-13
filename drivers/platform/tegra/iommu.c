@@ -26,6 +26,12 @@
 #include "../../../arch/arm/mach-tegra/board.h"
 #include <linux/platform/tegra/common.h>
 
+/* FIXME: Use DT reserved-memory node */
+phys_addr_t __weak tegra_fb_start, tegra_fb_size,
+	tegra_fb2_start, tegra_fb2_size,
+	tegra_bootloader_fb_start, tegra_bootloader_fb_size,
+	tegra_bootloader_fb2_start, tegra_bootloader_fb2_size;
+
 static struct iommu_linear_map tegra_fb_linear_map[16]; /* Terminated with 0 */
 
 #ifdef CONFIG_TEGRA_BPMP

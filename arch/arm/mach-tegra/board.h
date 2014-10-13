@@ -162,7 +162,7 @@ extern unsigned long tegra_nck_start;
 extern unsigned long tegra_nck_size;
 #endif
 
-#ifdef CONFIG_TEGRA_IOMMU_SMMU
+#ifdef CONFIG_OF_TEGRA_IOMMU_SMMU
 void tegra_fb_linear_set(struct iommu_linear_map *map);
 #else
 static inline void tegra_fb_linear_set(struct iommu_linear_map *map) {}

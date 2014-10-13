@@ -11,7 +11,7 @@ subdir-ccflags-y += -I$(srctree)/drivers/platform/tegra/include
 obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pmc.o
 obj-$(CONFIG_TEGRA_USB_SHARED_PAD)      += tegra_usb_pad_ctrl.o
 obj-$(CONFIG_TEGRA_FIQ_DEBUGGER)        += tegra_fiq_debugger.o
-obj-$(CONFIG_TEGRA_IOMMU_SMMU)          += iommu.o
+obj-$(CONFIG_OF_TEGRA_IOMMU_SMMU)       += iommu.o
 obj-$(CONFIG_TEGRA_BOOTLOADER_DEBUG)    += tegra_bootloader_debug.o
 
 obj-$(CONFIG_TEGRA_CAMERA_MIPI_CAL)     += mipi-cal.o
