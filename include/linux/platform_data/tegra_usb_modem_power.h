@@ -53,7 +53,6 @@ struct tegra_usb_modem_power_platform_data {
 	struct tegra_usb_platform_data *tegra_ehci_pdata;
 	int mdm_power_report_gpio;	/* modem power increase report gpio */
 	unsigned long mdm_power_irq_flags; /* modem boot irq flags */
-	bool use_xhci_hsic;		/* indicate if we use XHCI HSIC */
 };
 
 #endif /* __MACH_TEGRA_USB_MODEM_POWER_H */
