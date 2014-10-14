@@ -1922,14 +1922,15 @@ int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate)
 		d->dvfs_rail->dfll_mode = false;
 		regulator_set_vsel_volatile(d->dvfs_rail->reg, false);
 
+		/*
+		 * avoid false detection of matching target (voltage in
+		 * dfll mode is fluctuating, and recorded level is just
+		 * estimate)
+		 */
+		d->dvfs_rail->millivolts--;
+
 		/* Update voltage using pll dvfs table per caller request */
 		if (rate) {
-			/*
-			 * avoid false detection of matching target (voltage in
-			 * dfll mode is fluctuating, and recorded level is just
-			 * estimate)
-			 */
-			d->dvfs_rail->millivolts--;
 			if (d->dvfs_rail->disabled) {
 				d->dvfs_rail->disabled = false;
 				__tegra_dvfs_rail_disable(d->dvfs_rail);
