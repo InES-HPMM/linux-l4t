@@ -132,7 +132,16 @@
 	pcie-controller {
 		nvidia,port0_status = <1>;
 		nvidia,port1_status = <1>;
+		nvidia,lane-map = <0x14>;
 		status = "disabled";
+
+		pci@1,0 {
+			status = "disabled";
+		};
+
+		pci@2,0 {
+			status = "disabled";
+		};
 	};
 
 	sata@70020000 {
