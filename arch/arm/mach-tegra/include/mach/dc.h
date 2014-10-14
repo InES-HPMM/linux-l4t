@@ -865,6 +865,7 @@ struct tegra_dc_platform_data {
 	bool			cmu_enable;
 	struct tegra_dc_cmu	*cmu;
 #endif
+	unsigned long		ctrl_num;
 };
 
 struct tegra_dc_bw_data {
