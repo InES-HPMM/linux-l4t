@@ -518,7 +518,7 @@
                 nvidia,states = <0 1785>;
             };
             consumer5 {
-                nvidia,consumer_name = "display+touch";
+                nvidia,consumer_name = "display";
                 nvidia,states = <0 616>;
             };
             consumer6 {
