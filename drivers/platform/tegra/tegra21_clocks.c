@@ -6794,6 +6794,7 @@ struct clk_pll_controls plldp_controls = {
 
 static struct clk tegra_pll_dp = {
 	.name      = "pll_dp",
+	.flags     = PLL_FIXED,
 	.ops       = &tegra_plldp_ops,
 	.reg       = 0x590,
 	.parent    = &tegra_pll_ref,	/* s/w policy, always tegra_pll_ref */
@@ -6816,6 +6817,7 @@ static struct clk tegra_pll_dp = {
 		.div_layout = &plldss_div_layout,
 		.round_p_to_pdiv = pll_qlin_p_to_pdiv,
 		.set_defaults = plldp_set_defaults,
+		.fixed_rate = 270000000,
 	},
 };
 
