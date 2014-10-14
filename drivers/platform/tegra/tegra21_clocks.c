@@ -8390,7 +8390,7 @@ static struct clk tegra_clk_sata = {
 	},
 	.ops       = &tegra_periph_clk_ops,
 	.reg       = SOURCE_SATA,
-	.max_rate  = 216000000,
+	.max_rate  = 102000000,
 	.u.periph  = {
 		.clk_num = 124,
 	},
@@ -8406,7 +8406,7 @@ static struct clk tegra_sata_aux_clk = {
 	.parent    = &tegra_clk_sata,
 	.ops       = &tegra_cml_clk_ops,
 	.reg       = SOURCE_SATA,
-	.max_rate  = 216000000,
+	.max_rate  = 102000000,
 	.u.periph  = {
 		.clk_num = 24,
 	},
@@ -8994,8 +8994,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("sbc2",	"spi-tegra114.1",	NULL,	44,	0x118,  51000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc3",	"spi-tegra114.2",	NULL,	46,	0x11c,  51000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc4",	"spi-tegra114.3",	NULL,	68,	0x1b4,  51000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sata_oob",	"tegra_sata_oob",	NULL,	123,	0x420,	216000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sata_cold",	"tegra_sata_cold",	NULL,	129,	0,	48000000,  mux_clk_m,		PERIPH_ON_APB),
+	PERIPH_CLK("sata_oob",	"tegra_sata_oob",	NULL,	123,	0x420,	204000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("sata_cold",	"tegra_sata_cold",	NULL,	129,	0,	38400000,  mux_clk_m,		PERIPH_ON_APB),
 	PERIPH_CLK("sdmmc1",	"sdhci-tegra.0",	NULL,	14,	0x150,	204000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sdmmc3",	"sdhci-tegra.2",	NULL,	69,	0x1bc,	204000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sdmmc1_ddr", "sdhci-tegra.0",	"ddr",	14,	0x150,	 96000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
