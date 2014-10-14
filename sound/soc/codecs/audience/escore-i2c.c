@@ -94,6 +94,9 @@ int escore_i2c_cmd(struct escore_priv *escore, u32 cmd, u32 *resp)
 	dev_dbg(escore->dev,
 			"%s: cmd=0x%08x  sr=0x%08x\n", __func__, cmd, sr);
 
+	if ((escore->cmd_compl_mode == ES_CMD_COMP_INTR) && !sr)
+		escore->wait_api_intr = 1;
+
 	cmd = cpu_to_be32(cmd);
 	err = escore_i2c_write(escore, &cmd, sizeof(cmd));
 	if (err || sr)
@@ -103,11 +106,12 @@ int escore_i2c_cmd(struct escore_priv *escore, u32 cmd, u32 *resp)
 		if (escore->cmd_compl_mode == ES_CMD_COMP_INTR) {
 			pr_debug("%s(): Waiting for API interrupt. Jiffies:%lu",
 					__func__, jiffies);
-			err = wait_for_completion_timeout(&escore->rising_edge,
+			err = wait_for_completion_timeout(&escore->cmd_compl,
 					msecs_to_jiffies(ES_RESP_TOUT_MSEC));
 			if (!err) {
 				pr_debug("%s(): API Interrupt wait timeout\n",
 						__func__);
+				escore->wait_api_intr = 0;
 				err = -ETIMEDOUT;
 				break;
 			}
@@ -186,23 +190,6 @@ int escore_i2c_boot_finish(struct escore_priv *escore)
 	u32 sync_ack;
 	int rc = 0;
 	int sync_retry = ES_SYNC_MAX_RETRY;
-
-	/* Utilize gpio-a for boot finish */
-	if (escore->pdata->gpioa_gpio != -1) {
-		rc = wait_for_completion_timeout(&escore->falling_edge,
-				msecs_to_jiffies(ES_SBL_RESP_TOUT));
-		if (!rc) {
-			pr_err("%s(): Boot Finish response timed out\n",
-				__func__);
-			rc = -ETIMEDOUT;
-		} else {
-			pr_info("%s(): firmware load success\n", __func__);
-			rc = 0;
-		}
-		return rc;
-	}
-
-	/* Use Polling method if gpio-a is not defined */
 
 	/* sometimes earSmart chip sends success in second sync command */
 	do {

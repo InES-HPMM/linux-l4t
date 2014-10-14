@@ -17,6 +17,11 @@
 #define ES_VS_KEYWORD_PARAM_MAX 512
 #define MAX_NO_OF_VS_KW		5
 
+#ifdef CONFIG_SND_SOC_ES_CVQ_TIME_MEASUREMENT
+#define es_cvq_profiling(x) getnstimeofday(x)
+#else
+#define es_cvq_profiling(x)
+#endif
 struct escore_voice_sense {
 	int vs_wakeup_keyword;
 	int vs_irq;
@@ -59,5 +64,14 @@ void escore_vs_release_bkg(struct escore_priv *escore);
 int escore_vs_request_keywords(struct escore_priv *escore);
 void escore_vs_release_keywords(struct escore_priv *escore);
 int escore_vs_write_bkg_and_keywords(struct escore_priv *escore);
+int escore_vs_put_control_enum(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol);
+int escore_vs_get_control_enum(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol);
+int escore_vs_put_control_value(struct snd_kcontrol *kcontrol,
+			   struct snd_ctl_elem_value *ucontrol);
+int escore_vs_get_control_value(struct snd_kcontrol *kcontrol,
+			   struct snd_ctl_elem_value *ucontrol);
+
 
 #endif /* _ESCORE_VS_H */

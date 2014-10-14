@@ -41,6 +41,9 @@ extern struct spi_driver escore_spi_driver;
  */
 #define ES_SPI_STREAM_READ_DELAY 30
 
+#define ES_SPI_SYNCBYTE_CMD		0x00000000
+#define ES_SPI_SYNCBYTE_ACK		0x00000000
+
 extern struct es_stream_device es_spi_streamdev;
 extern int escore_spi_init(void);
 extern void escore_spi_exit(void);

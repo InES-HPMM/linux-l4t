@@ -25,7 +25,7 @@
 #define ESCORE_I2C_LOAD_UA		30000
 #endif
 
-#define ES_MAX_I2C_XFER_LEN		0x1000
+#define ES_MAX_I2C_XFER_LEN		0x8000
 
 extern struct i2c_driver escore_i2c_driver;
 extern int escore_i2c_init(void);

@@ -160,7 +160,6 @@ static ssize_t es755_route_status_show(struct device *dev,
 		[MM] = "MM",
 		[AUDIOZOOM] = "AudioZoom",
 		[PASSTHRU] = "Passthru",
-		[CVQ_ASR] = "CVQ ASR",
 	};
 
 	const char *status_text[] = {
@@ -367,14 +366,16 @@ static struct attribute_group core_sysfs = {
 	.attrs = core_sysfs_attrs
 };
 
-int es755_bootup(struct escore_priv *es755)
+static int es755_fw_download(struct escore_priv *es755)
 {
 	int rc;
-	u32 cmd, resp;
+	u32 cmd;
 
 	pr_debug("%s()\n", __func__);
 
 	BUG_ON(es755->standard->size == 0);
+	/* Reset Mode to Polling */
+	es755->cmd_compl_mode = ES_CMD_COMP_POLL;
 
 	if (es755->bus.ops.high_bw_open) {
 		rc = es755->bus.ops.high_bw_open(es755);
@@ -409,6 +410,7 @@ int es755_bootup(struct escore_priv *es755)
 	msleep(20);
 
 	if (es755->boot_ops.finish) {
+	    u32 resp;
 		pr_debug("%s(): calling bus specific boot finish\n", __func__);
 		rc = es755->boot_ops.finish(es755);
 		if (rc != 0) {
@@ -416,26 +418,59 @@ int es755_bootup(struct escore_priv *es755)
 				__func__);
 			goto es755_bootup_failed;
 		}
+        es755->bus.ops.high_bw_cmd(es755, 0x807c431f, &resp);
 	}
 	es755->mode = STANDARD;
 
-	if (es755->cmd_compl_mode == ES_CMD_COMP_INTR) {
+	if (es755->pdata->gpioa_gpio != -1) {
 		cmd = ((ES_SYNC_CMD | ES_SUPRESS_RESPONSE) << 16) |
 					es755->pdata->gpio_a_irq_type;
-		rc = escore_cmd(es755, cmd, &resp);
+		rc = escore_cmd(es755, cmd, NULL);
 		if (rc < 0) {
 			pr_err("%s(): API interrupt config failed:%d\n",
 					__func__, rc);
 
 			goto es755_bootup_failed;
 		}
+		/* Set Interrupt Mode */
+		es755->cmd_compl_mode = ES_CMD_COMP_INTR;
 	}
 
 es755_bootup_failed:
-	if (es755->bus.ops.high_bw_close)
-		es755->bus.ops.high_bw_close(es755);
+	if (es755->bus.ops.high_bw_close) {
+		int ret = 0;
+		ret = es755->bus.ops.high_bw_close(es755);
+		if (ret) {
+			dev_err(es755->dev, "%s(): high_bw_close failed %d\n",
+				__func__, ret);
+			rc = ret;
+		}
+	}
 
 es755_high_bw_open_failed:
+	return rc;
+}
+
+int es755_bootup(struct escore_priv *es755)
+{
+	u8 retry = ES755_FW_DOWNLOAD_MAX_RETRY;
+	int rc;
+
+	pr_debug("%s()\n", __func__);
+
+	BUG_ON(es755->standard->size == 0);
+
+	do {
+		if (retry < ES755_FW_DOWNLOAD_MAX_RETRY)
+			escore_gpio_reset(es755);
+		rc = es755_fw_download(es755);
+	} while (rc && retry--);
+
+	if (rc) {
+		dev_err(es755->dev, "%s(): STANDARD fw download error %d\n",
+								__func__, rc);
+	}
+
 	return rc;
 }
 
@@ -559,6 +594,45 @@ static void es755_shutdown(struct snd_pcm_substream *substream,
 	else
 		escore->i2s_dai_data[id].tx_ch_tot = 0;
 
+	if (escore->can_mpsleep)
+		escore->can_mpsleep = 0;
+}
+
+static int es755_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+{
+	struct snd_soc_codec *codec = dai->codec;
+	struct escore_priv *escore = snd_soc_codec_get_drvdata(codec);
+	struct escore_api_access *api_access;
+	int data_justification;
+	int id = DAI_INDEX(dai->id);
+	u8 pcm_port[] = { ES755_PCM_PORT_A,
+		ES755_PCM_PORT_B,
+		ES755_PCM_PORT_C };
+	int rc;
+
+	dev_dbg(codec->dev, "%s(): dai->name = %s, dai->id = %d, fmt = %lx\n",
+		__func__, dai->name, dai->id, fmt);
+
+
+	/* set master/slave audio interface */
+	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
+	case SND_SOC_DAIFMT_CBM_CFM:
+		/* es755 as master */
+		i2s_dai_data[id].port_mode = ES_PCM_PORT_MASTER;
+		break;
+	case SND_SOC_DAIFMT_CBS_CFS:
+		/* es755 as slave */
+		i2s_dai_data[id].port_mode = ES_PCM_PORT_SLAVE;
+		break;
+	default:
+		dev_err(codec->dev, "%s(): unsupported DAI clk mode\n",
+			__func__);
+		return -EINVAL;
+	}
+	dev_dbg(codec->dev, "%s(): clk mode = %d\n", __func__,
+			i2s_dai_data[id].port_mode);
+
+	return 0;
 }
 
 static int es755_hw_params(struct snd_pcm_substream *substream,
@@ -567,9 +641,16 @@ static int es755_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct escore_priv *escore = snd_soc_codec_get_drvdata(codec);
+	struct escore_api_access *api_access;
 	int rc = 0;
-	int id = DAI_INDEX(dai->id);
 	int channels;
+	int bps = 0;
+	int rate = 0;
+	int id = DAI_INDEX(dai->id);
+	u16 clock_control = 0;
+	u8 pcm_port[] = { ES755_PCM_PORT_A,
+		ES755_PCM_PORT_B,
+		ES755_PCM_PORT_C };
 
 	dev_dbg(codec->dev, "%s(): dai->name = %s, dai->id = %d\n", __func__,
 		dai->name, dai->id);
@@ -591,6 +672,142 @@ static int es755_hw_params(struct snd_pcm_substream *substream,
 			"%s(): unsupported number of channels, %d\n",
 			__func__, channels);
 		return -EINVAL;
+	}
+
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_A_LAW:
+		bps = 0x0207;
+		break;
+	case SNDRV_PCM_FORMAT_MU_LAW:
+		bps = 0x0107;
+		break;
+	case SNDRV_PCM_FORMAT_S16_LE:
+	case SNDRV_PCM_FORMAT_S16_BE:
+		bps = 0xF;
+		break;
+	case SNDRV_PCM_FORMAT_S20_3LE:
+	case SNDRV_PCM_FORMAT_S20_3BE:
+		bps = 0x13;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+	case SNDRV_PCM_FORMAT_S24_BE:
+		bps = 0x17;
+		break;
+	case SNDRV_PCM_FORMAT_S32_LE:
+	case SNDRV_PCM_FORMAT_S32_BE:
+		bps = 0x1F;
+		break;
+	default:
+		dev_err(codec->dev, "%s(): Unsupported format :%d\n",
+				__func__, params_format(params));
+		break;
+	}
+
+	if (bps) {
+		api_access = &escore->api_access[ES_PORT_WORD_LEN];
+
+		/* Update the Port info in write command */
+		api_access->write_msg[0] |=  ES_API_WORD(ES_SET_DEV_PARAM_ID,
+				(pcm_port[id] << 8));
+
+		rc = escore_write(codec, ES_PORT_WORD_LEN, bps);
+		if (rc) {
+			pr_err("%s(): Preparing write message failed\n",
+					__func__);
+			return rc;
+		}
+		/* Clear the Port info in write command */
+		api_access->write_msg[0] &= ES_API_WORD(ES_SET_DEV_PARAM_ID,
+				0x00ff);
+	}
+
+	switch (params_rate(params)) {
+	case 8000:
+		rate = 8;
+		break;
+	case 11025:
+		rate = 11;
+		break;
+	case 12000:
+		rate = 12;
+		break;
+	case 16000:
+		rate = 16;
+		break;
+	case 22050:
+		rate = 22;
+		break;
+	case 24000:
+		rate = 24;
+		break;
+	case 32000:
+		rate = 32;
+		break;
+	case 44100:
+		rate = 44;
+		break;
+	case 48000:
+		rate = 48;
+		break;
+	case 96000:
+		rate = 96;
+		break;
+	case 192000:
+		rate = 192;
+		break;
+	default:
+		pr_err("%s: Unsupported sampling rate %d\n", __func__,
+				params_rate(params));
+		return -EINVAL;
+	}
+	dev_dbg(codec->dev, "%s(): params_rate(params) = %d\n",
+			__func__, params_rate(params));
+
+	api_access = &escore->api_access[ES_PORT_CLOCK_CONTROL];
+
+	/* Update the Port info in write command */
+	api_access->write_msg[0] |=  ES_API_WORD(ES_SET_DEV_PARAM_ID,
+			(pcm_port[id] << 8));
+
+	if (i2s_dai_data[id].port_mode == ES_PCM_PORT_MASTER)
+		clock_control = rate;
+
+	clock_control |= (i2s_dai_data[id].port_mode << 8);
+	rc = escore_write(codec, ES_PORT_CLOCK_CONTROL, clock_control);
+	if (rc) {
+		pr_err("%s(): Preparing write message failed\n",
+				__func__);
+		return rc;
+	}
+
+	/* Clear the Port info in write command */
+	api_access->write_msg[0] &= ES_API_WORD(ES_SET_DEV_PARAM_ID, 0x00ff);
+
+	/*
+	 * To enter into MP_SLEEP mode during playback, a minimum 3Mhz clock
+	 * is required. For that, minimum 48Khz sample rate, 32 bit word length
+	 * and 2 channels are required.
+	 */
+	escore->can_mpsleep = (rate == 48) && (bps == 0x1F) && (channels == 2);
+
+	if (escore->can_mpsleep) {
+		int port_map = 0;
+		switch (dai->id) {
+		case ES_I2S_PORTA:
+			port_map = PORT_A_TO_D;
+			break;
+		case ES_I2S_PORTB:
+			port_map = PORT_B_TO_D;
+			break;
+		case ES_I2S_PORTC:
+			port_map = PORT_C_TO_D;
+			break;
+		}
+		BUG_ON(!port_map);
+		escore->dhwpt_cmd = (ES_DHWPT_CMD << 16) | port_map;
+	} else {
+		/* Clear the DHWPT command */
+		escore->dhwpt_cmd = 0;
 	}
 
 	dev_dbg(codec->dev, "%s(): params_channels(params) = %d\n", __func__,
@@ -791,31 +1008,32 @@ static int es755_get_null_control_enum(struct snd_kcontrol *kcontrol,
 static struct snd_kcontrol_new es755_voice_sense_snd_controls[] = {
 	SOC_ENUM_EXT("Voice Sense Status",
 		     es755_vs_event_enum,
-		     escore_get_control_enum, NULL),
+		     escore_vs_get_control_enum, NULL),
 	SOC_ENUM_EXT("Voice Sense Training Mode",
 			 es755_vs_training_mode_enum,
-			 escore_get_control_enum, escore_put_control_enum),
+			 escore_vs_get_control_enum,
+			 escore_vs_put_control_enum),
 	SOC_ENUM_EXT("Voice Sense Training Status",
 		     es755_vs_training_status_enum,
-		     escore_get_control_enum, NULL),
+		     escore_vs_get_control_enum, NULL),
 	SOC_SINGLE_EXT("Voice Sense Training Model Length",
 			ES_VOICE_SENSE_TRAINING_MODEL_LENGTH, 0, 75, 0,
-			escore_get_control_value,
+			escore_vs_get_control_value,
 			NULL),
 	SOC_ENUM_EXT("Voice Sense Training Record",
 		     es755_vs_training_record_enum,
-		     es755_get_null_control_enum, escore_put_control_enum),
+		     es755_get_null_control_enum, escore_vs_put_control_enum),
 	SOC_ENUM_EXT("Voice Sense Stored Keyword",
 		     es755_vs_stored_keyword_enum,
-		     es755_get_null_control_enum, escore_put_control_enum),
+		     es755_get_null_control_enum, escore_vs_put_control_enum),
 	SOC_SINGLE_EXT("Voice Sense Detect Sensitivity",
 			ES_VOICE_SENSE_DETECTION_SENSITIVITY, 0, 10, 0,
-			escore_get_control_value,
-			escore_put_control_value),
+			escore_vs_get_control_value,
+			escore_vs_put_control_value),
 	SOC_SINGLE_EXT("Voice Activity Detect Sensitivity",
 			ES_VOICE_ACTIVITY_DETECTION_SENSITIVITY, 0, 10, 0,
-			escore_get_control_value,
-			escore_put_control_value),
+			escore_vs_get_control_value,
+			escore_vs_put_control_value),
 	SOC_SINGLE_EXT("Continuous Voice Sense Preset",
 		       ES_CVS_PRESET, 0, 65535, 0,
 		       escore_get_cvs_preset_value,
@@ -893,6 +1111,31 @@ int es755_wakeup(void)
 	return rc;
 }
 
+int escore_enter_dhwpt(struct escore_priv *escore)
+{
+	int resp;
+	int rc = 0;
+
+	if (!atomic_read(&escore->active_streams)) {
+		pr_debug("%s(): No active streams.\n", __func__);
+		goto out;
+	}
+
+	if (!escore->can_mpsleep) {
+		pr_debug("%s(): Insufficient Clock to enable DHWPT\n",
+				__func__);
+		rc = -EINVAL;
+		goto out;
+	}
+
+	rc = escore_cmd(escore, escore->dhwpt_cmd, &resp);
+	if (rc < 0)
+		pr_err("%s(): Error %d in sending DHWPT command\n",
+				__func__, rc);
+out:
+	return rc;
+}
+
 /* Power state transition */
 int es755_power_transition(int next_power_state,
 				unsigned int set_power_state_cmd)
@@ -921,9 +1164,16 @@ int es755_power_transition(int next_power_state,
 		case ES_SET_POWER_STATE_NORMAL:
 			/* Either switch to Sleep or VS Overlay mode */
 			switch (next_power_state) {
-			case ES_SET_POWER_STATE_SLEEP:
+			case ES_SET_POWER_STATE_MP_SLEEP:
+				rc = escore_enter_dhwpt(&escore_priv);
+				if (rc) {
+					dev_err(escore_priv.dev,
+						"%s(): Failed to enter DHWPT\n",
+						__func__);
+					goto es755_power_transition_exit;
+				}
 				escore_priv.escore_power_state =
-					ES_SET_POWER_STATE_SLEEP;
+					next_power_state;
 				break;
 			case ES_SET_POWER_STATE_VS_OVERLAY:
 			case ES_SET_POWER_STATE_VS_LOWPWR:
@@ -958,6 +1208,11 @@ int es755_power_transition(int next_power_state,
 						__func__);
 					goto es755_power_transition_exit;
 				}
+			} else {
+				/* Reset Interrupt mode for sleep */
+				if (escore_priv.pdata->gpioa_gpio != -1)
+					escore_priv.cmd_compl_mode =
+							ES_CMD_COMP_POLL;
 			}
 			break;
 
@@ -1007,6 +1262,11 @@ int es755_power_transition(int next_power_state,
 						__func__, rc);
 					goto es755_power_transition_exit;
 				}
+			} else {
+				/* Reset Interrupt mode for low power */
+				if (escore_priv.pdata->gpioa_gpio != -1)
+					escore_priv.cmd_compl_mode =
+							ES_CMD_COMP_POLL;
 			}
 
 			break;
@@ -1151,16 +1411,21 @@ static int es755_get_rdb_size(struct snd_kcontrol *kcontrol,
 static int es755_get_event_status(struct snd_kcontrol *kcontrol,
 				       struct snd_ctl_elem_value *ucontrol)
 {
+	mutex_lock(&escore_priv.escore_event_type_mutex);
+
 	ucontrol->value.enumerated.item[0] = escore_priv.escore_event_type;
 
 	/* Reset the event status after read */
 	escore_priv.escore_event_type = ES_NO_EVENT;
 
+	mutex_unlock(&escore_priv.escore_event_type_mutex);
+
 	return 0;
 }
 
 static const char * const es755_vs_power_state_texts[] = {
-	"None", "Sleep", "MP_Sleep", "MP_Cmd", "Normal", "Overlay", "Low_Power"
+	"None", "Sleep", "MP_Sleep", "MP_Cmd", "Normal", "Overlay", "Low_Power",
+	"Codec Deep Sleep"
 };
 
 static const struct soc_enum es755_vs_power_state_enum =
@@ -1177,6 +1442,14 @@ static const struct soc_enum es755_runtime_pm_enum =
 			ARRAY_SIZE(es755_runtime_pm_texts),
 			es755_runtime_pm_texts);
 
+static const char * const es755_streaming_mode_texts[] = {
+	"CVQ", "Non-CVQ",
+};
+static const struct soc_enum es755_streaming_mode_enum =
+	SOC_ENUM_SINGLE(SND_SOC_NOPM, 0,
+			ARRAY_SIZE(es755_streaming_mode_texts),
+			es755_streaming_mode_texts);
+
 static struct snd_kcontrol_new es755_snd_controls[] = {
 	SOC_ENUM_EXT("ES755 Power State", es755_vs_power_state_enum,
 		     es755_get_power_control_enum,
@@ -1192,6 +1465,9 @@ static struct snd_kcontrol_new es755_snd_controls[] = {
 	SOC_SINGLE_EXT("Get RDB data size",
 		       SND_SOC_NOPM, 0, 65535, 0,
 		       es755_get_rdb_size, NULL),
+	SOC_ENUM_EXT("Streaming Mode", es755_streaming_mode_enum,
+			   escore_get_streaming_mode,
+			   escore_put_streaming_mode),
 };
 
 static int es_voice_sense_add_snd_soc_controls(struct snd_soc_codec *codec)
@@ -1304,6 +1580,7 @@ static unsigned int es755_codec_read(struct snd_soc_codec *codec,
 	u32 resp;
 	unsigned int msg_len;
 	int rc;
+	u8 state_changed = 0;
 
 	if (reg > ES_MAX_REGISTER) {
 		/*dev_err(codec->dev, "read out of range reg %d", reg);*/
@@ -1313,6 +1590,25 @@ static unsigned int es755_codec_read(struct snd_soc_codec *codec,
 	if (!escore->reg_cache[reg].is_volatile)
 		return escore->reg_cache[reg].value & 0xff;
 
+	if (escore->can_mpsleep &&
+		escore->escore_power_state == ES_SET_POWER_STATE_MP_SLEEP) {
+
+		/* Bring the chip to normal state before sending any analog
+		 * commands*/
+		pr_debug("%s(): Bring chip into normal mode\n", __func__);
+		rc = es755_power_transition(ES_SET_POWER_STATE_NORMAL,
+				ES_POWER_STATE);
+		if (rc) {
+			dev_err(escore_priv.dev,
+				"%s(): es755_power_transition() failed\n",
+				__func__);
+			goto out;
+		}
+
+		state_changed = 1;
+		msleep(20);
+	}
+
 	api_access = &escore->api_access[ES_CODEC_VALUE];
 	msg_len = api_access->read_msg_len;
 	memcpy((char *)&cmd, (char *)api_access->read_msg, msg_len);
@@ -1320,11 +1616,23 @@ static unsigned int es755_codec_read(struct snd_soc_codec *codec,
 	rc = escore_cmd(escore, cmd | reg<<8, &resp);
 	if (rc < 0) {
 		dev_err(codec->dev, "codec reg read err %d()", rc);
-		return rc;
+		goto out;
 	}
 	cmd = escore->bus.last_response;
 
-	return cmd & 0xff;
+	if (state_changed) {
+		msleep(20);
+		pr_debug("%s(): Put chip back into mp_sleep\n", __func__);
+		rc = es755_power_transition(ES_SET_POWER_STATE_MP_SLEEP,
+				ES_POWER_STATE);
+		if (rc) {
+			dev_err(escore_priv.dev,
+				"%s(): es755_power_transition() failed\n",
+				__func__);
+		}
+	}
+out:
+	return (rc < 0) ? rc : (cmd & 0xff);
 
 }
 
@@ -1332,21 +1640,61 @@ static int es755_codec_write(struct snd_soc_codec *codec, unsigned int reg,
 	unsigned int value)
 {
 	struct escore_priv *escore = &escore_priv;
-	int ret;
+	int ret = 0;
+	u8 state_changed = 0;
 
 	if (reg > ES_MAX_REGISTER) {
 		/*dev_err(codec->dev, "write out of range reg %d", reg);*/
 		return 0;
 	}
 
+	if (escore->can_mpsleep &&
+		escore->escore_power_state == ES_SET_POWER_STATE_MP_SLEEP) {
+
+		/* Bring the chip to normal state before sending any analog
+		 * commands*/
+		pr_debug("%s(): Bring chip into normal mode\n", __func__);
+		ret = es755_power_transition(ES_SET_POWER_STATE_NORMAL,
+				ES_POWER_STATE);
+		if (ret) {
+			dev_err(escore_priv.dev,
+				"%s(): es755_power_transition() failed\n",
+				__func__);
+			goto out;
+		}
+
+		state_changed = 1;
+
+		/* Sleep is added after some observations where chip was
+		 * failing to response some command sent quickly.
+		 * For example, bringing chip to normal state from mp_sleep
+		 * and set the gains very quickly results in failure of
+		 * response.
+		 */
+		msleep(20);
+	}
+
 	ret = escore_write(codec, ES_CODEC_VALUE, reg<<8 | value);
 	if (ret < 0) {
 		dev_err(codec->dev, "codec reg %x write err %d\n",
 			reg, ret);
-		return ret;
+		goto out;
 	}
 	escore->reg_cache[reg].value = value;
-	return 0;
+
+	if (state_changed) {
+		msleep(20);
+		pr_debug("%s(): Put chip back into mp_sleep\n", __func__);
+		ret = es755_power_transition(ES_SET_POWER_STATE_MP_SLEEP,
+				ES_POWER_STATE);
+		if (ret) {
+			dev_err(escore_priv.dev,
+				"%s(): es755_power_transition() failed\n",
+				__func__);
+		}
+	}
+out:
+	return ret;
 }
 
 struct snd_soc_codec_driver soc_codec_dev_es755 = {
@@ -1544,91 +1892,121 @@ static struct esxxx_platform_data *es755_populate_dt_pdata(struct device *dev)
 	dev_dbg(dev, "%s: gpiob_gpio %d", __func__, pdata->gpiob_gpio);
 
 	prop = of_find_property(dev->of_node, "adnc,enable_hs_uart_intf", NULL);
-	temp =	(u8 *)prop->value;
-	if (temp[3] == 1)
-		pdata->enable_hs_uart_intf = true;
-	else
-		pdata->enable_hs_uart_intf = false;
-
+	if (prop != NULL) {
+		temp =	(u8 *)prop->value;
+		if (temp[3] == 1)
+			pdata->enable_hs_uart_intf = true;
+		else
+			pdata->enable_hs_uart_intf = false;
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,ext_clk_rate", NULL);
-	temp = (u8 *)prop->value;
-	if (temp[3] != 0)
-		pdata->ext_clk_rate = temp[3];
+	if (prop != NULL) {
+		temp = (u8 *)prop->value;
+		if (temp[3] != 0)
+			pdata->ext_clk_rate = temp[3];
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,btn_press_settling_time",
 			NULL);
-	temp = (u8 *)prop->value;
-	if (temp[3] != 0)
-		es755_btn_cfg->btn_press_settling_time = temp[3];
+	if (prop != NULL) {
+		temp = (u8 *)prop->value;
+		if (temp[3] != 0)
+			es755_btn_cfg->btn_press_settling_time = temp[3];
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,btn_press_polling_rate",
 			NULL);
-	temp = (u8 *)prop->value;
-	if (temp[3] != 0)
-		es755_btn_cfg->btn_press_polling_rate = temp[3];
+	if (prop != NULL) {
+		temp = (u8 *)prop->value;
+		if (temp[3] != 0)
+			es755_btn_cfg->btn_press_polling_rate = temp[3];
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,btn_press_det_act", NULL);
-	temp = (u8 *)prop->value;
-	if (temp[3] != 0)
-		es755_btn_cfg->btn_press_det_act = temp[3];
+	if (prop != NULL) {
+		temp = (u8 *)prop->value;
+		if (temp[3] != 0)
+			es755_btn_cfg->btn_press_det_act = temp[3];
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,double_btn_timer", NULL);
-	temp = (u8 *)prop->value;
-	if (temp[3] != 0)
-		es755_btn_cfg->double_btn_timer = temp[3];
+	if (prop != NULL) {
+		temp = (u8 *)prop->value;
+		if (temp[3] != 0)
+			es755_btn_cfg->double_btn_timer = temp[3];
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,mic_det_settling_timer",
 			NULL);
-	temp = (u8 *)prop->value;
-	if (temp[3] != 0)
-		es755_btn_cfg->mic_det_settling_timer = temp[3];
+	if (prop != NULL) {
+		temp = (u8 *)prop->value;
+		if (temp[3] != 0)
+			es755_btn_cfg->mic_det_settling_timer = temp[3];
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,long_btn_timer", NULL);
-	temp = (u8 *)prop->value;
-	if (temp[3] != 0)
-		es755_btn_cfg->long_btn_timer = temp[3];
+	if (prop != NULL) {
+		temp = (u8 *)prop->value;
+		if (temp[3] != 0)
+			es755_btn_cfg->long_btn_timer = temp[3];
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,adc_btn_mute", NULL);
-	temp = (u8 *)prop->value;
-	if (temp[3] != 0)
-		es755_btn_cfg->adc_btn_mute = temp[3];
+	if (prop != NULL) {
+		temp = (u8 *)prop->value;
+		if (temp[3] != 0)
+			es755_btn_cfg->adc_btn_mute = temp[3];
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,valid_levels", NULL);
-	temp =	(u8 *)prop->value;
-	if (temp[3] != 0)
-		es755_btn_cfg->valid_levels = temp[3];
+	if (prop != NULL) {
+		temp =	(u8 *)prop->value;
+		if (temp[3] != 0)
+			es755_btn_cfg->valid_levels = temp[3];
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,impd_det_timer", NULL);
-	temp = (u8 *)prop->value;
-	if (temp[3] != 0)
-		es755_btn_cfg->impd_det_timer = temp[3];
+	if (prop != NULL) {
+		temp = (u8 *)prop->value;
+		if (temp[3] != 0)
+			es755_btn_cfg->impd_det_timer = temp[3];
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,gpio_b_irq_type", NULL);
-	temp = (u8 *)prop->value;
-	if (temp[3] != 0)
-		pdata->gpio_b_irq_type = temp[3];
+	if (prop != NULL) {
+		temp = (u8 *)prop->value;
+		if (temp[3] != 0)
+			pdata->gpio_b_irq_type = temp[3];
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,debounce_timer", NULL);
-	temp = (u8 *)prop->value;
-	if (temp[3] != 0)
-		pdata->accdet_cfg.debounce_timer = temp[3];
+	if (prop != NULL) {
+		temp = (u8 *)prop->value;
+		if (temp[3] != 0)
+			pdata->accdet_cfg.debounce_timer = temp[3];
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,plug_det_enabled", NULL);
-	temp = (u8 *)prop->value;
-	if (temp[3] != 0)
-		pdata->accdet_cfg.plug_det_enabled = temp[3];
+	if (prop != NULL) {
+		temp = (u8 *)prop->value;
+		if (temp[3] != 0)
+			pdata->accdet_cfg.plug_det_enabled = temp[3];
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,mic_det_enabled", NULL);
-	temp = (u8 *)prop->value;
-	if (temp[3] != 0)
-		pdata->accdet_cfg.mic_det_enabled = temp[3];
+	if (prop != NULL) {
+		temp = (u8 *)prop->value;
+		if (temp[3] != 0)
+			pdata->accdet_cfg.mic_det_enabled = temp[3];
+	}
 
 	prop = of_find_property(dev->of_node, "adnc,cmd_comp_mode", NULL);
-	temp = (u8 *)prop->value;
-	if (temp[3] != 0)
-		pdata->cmd_comp_mode = temp[3];
-
+	if (prop != NULL) {
+		temp = (u8 *)prop->value;
+		if (temp[3] != 0)
+			pdata->cmd_comp_mode = temp[3];
+	}
 /*TODO:Acce detect GPIO*/
 	/*
 pdata->gpiob_gpio = of_get_named_gpio(dev->of_node,
@@ -1794,6 +2172,42 @@ btn_cfg_exit:
 
 }
 
+/* Notifier callback to configure the Interrupts:
+ * It gets called in two conditions,
+ * 1) Any interrupt arrived when the chip was suspended
+ * 2) Chip woke up as a part of system resume.
+ */
+static int es755_codec_reconfig_intr(struct notifier_block *self,
+		unsigned long action, void *dev)
+{
+	struct escore_priv *escore = (struct escore_priv *)dev;
+	int rc;
+
+	pr_debug("%s(): Event: 0x%04x\n", __func__, (u32)action);
+
+	if (((action & 0xFF) == ES_RECONFIG_INTR_EVENT) ||
+		(escore->escore_power_state == ES_SET_POWER_STATE_NORMAL
+		&& escore->defer_intr_config)) {
+
+		escore->defer_intr_config = 0;
+
+		mutex_lock(&escore->api_mutex);
+		rc = escore_reconfig_intr(escore);
+		if (rc < 0) {
+			pr_err("%s(): Reconfig interrupt failed: %d\n",
+					__func__, rc);
+			mutex_unlock(&escore->api_mutex);
+			goto out;
+		}
+		mutex_unlock(&escore->api_mutex);
+
+		if (escore->button_config_required)
+			es755_button_config(escore);
+	}
+out:
+	return NOTIFY_OK;
+}
+
 static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 		void *dev)
 {
@@ -1845,6 +2259,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 					goto intr_exit;
 				}
 
+				escore->button_config_required = 1;
 				snd_soc_jack_report(escore->jack,
 					SND_JACK_HEADSET, JACK_DET_MASK);
 
@@ -1855,6 +2270,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 			} else {
 				pr_debug("%s(): Headphone detected\n",
 						__func__);
+
 				snd_soc_jack_report(escore->jack,
 					SND_JACK_HEADPHONE,
 					JACK_DET_MASK);
@@ -1910,8 +2326,11 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 			}
 		} else if (ES_UNPLUG_EVENT(value)) {
 			pr_debug("%s(): Unplug detected\n", __func__);
+
+			escore->button_config_required = 0;
 			snd_soc_jack_report(escore->jack, 0, JACK_DET_MASK);
 		}
+
 	}
 
 intr_exit:
@@ -1922,26 +2341,16 @@ irqreturn_t es755_cmd_completion_isr(int irq, void *data)
 {
 	struct escore_priv *escore = (struct escore_priv *)data;
 
-	int gpio_value = -1;
-
 	BUG_ON(!escore);
 
-	gpio_value = gpio_get_value(escore->pdata->gpioa_gpio);
-	if (gpio_value < 0) {
-		pr_err("%s(): error in gpio_get_value(), err_code=%d\n",
-			__func__, gpio_value);
-		return IRQ_HANDLED;
-	}
-
-	if (gpio_value) {
-		pr_debug("%s(): API Rising edge completion. Jiffies:%lu\n",
-				__func__, jiffies);
-		complete(&escore->rising_edge);
-	} else {
-		/* Interrupt can occur if firmware download is initiated */
-		pr_debug("%s(): API Falling Edge completion. Jiffies:%lu\n",
-				__func__, jiffies);
-		complete(&escore->falling_edge);
+	pr_debug("%s(): API Rising edge received\n",
+			__func__);
+	/* Complete if expected */
+	if (escore->wait_api_intr) {
+		pr_debug("%s(): API Rising edge completion.\n",
+				__func__);
+		complete(&escore->cmd_compl);
+		escore->wait_api_intr = 0;
 	}
 	return IRQ_HANDLED;
 }
@@ -1951,7 +2360,9 @@ irqreturn_t es755_irq_work(int irq, void *data)
 	struct escore_priv *escore = (struct escore_priv *)data;
 	int rc;
 	u32 cmd = 0;
+	u32 event_type = 0;
 
+	pr_debug("%s() Interrupt received\n", __func__);
 	if (!escore) {
 		pr_err("%s(): Invalid IRQ data\n", __func__);
 		goto irq_exit;
@@ -1971,54 +2382,46 @@ irqreturn_t es755_irq_work(int irq, void *data)
 	/* Delay required for firmware to be ready in case of CVQ mode */
 	msleep(50);
 
-	/* Power state change:
-	 * If the chip is in "MP Sleep" or "VS Low Power" mode, the interrupt
-	 * (either codec or VS) will put the chip into command mode. This
-	 * requires the codec configuration to be done again.
+	/* If the chip is not awake, the reading of event will wakeup the
+	 * chip which will result in interrupt reconfiguration from device
+	 * resume. Reconfiguration is deferred till the time interrupt
+	 * is processed from the notifier callback.
+	 *
+	 * The interrupt reconfiguration in this case will be taken care of
+	 * by a low priority notifier callback
 	 */
-	if ((escore->escore_power_state == ES_SET_POWER_STATE_MP_SLEEP) ||
-		(escore->escore_power_state == ES_SET_POWER_STATE_VS_LOWPWR)) {
-		pr_debug("%s(): Power state:%d\n", __func__,
-				escore->escore_power_state);
+	mutex_lock(&escore->api_mutex);
+	if (escore->escore_power_state != ES_SET_POWER_STATE_NORMAL)
+			escore->defer_intr_config = 1;
 
-		switch (escore->escore_power_state) {
-		case ES_SET_POWER_STATE_MP_SLEEP:
-			escore->escore_power_state = ES_SET_POWER_STATE_NORMAL;
-			break;
-		case ES_SET_POWER_STATE_VS_LOWPWR:
-			escore->escore_power_state =
-				ES_SET_POWER_STATE_VS_OVERLAY;
-			break;
-		default:
-			pr_err("%s(): IRQ in invalid power state - %d\n",
-					__func__,
-					escore->escore_power_state);
-			break;
-		}
+	/* Power state change:
+	 * Interrupt will put the chip into Normal State
+	 */
 
-		rc = escore_reconfig_intr(escore);
-		if (rc < 0) {
-			pr_err("%s(): Error in reconfig interupt :%d\n",
-					__func__, rc);
-			goto irq_exit;
-		}
-	}
+	if (escore->escore_power_state == escore->non_vs_sleep_state)
+		escore->escore_power_state = ES_SET_POWER_STATE_NORMAL;
+	else if (escore->escore_power_state == ES_SET_POWER_STATE_VS_LOWPWR)
+		escore->escore_power_state = ES_SET_POWER_STATE_VS_OVERLAY;
 
 	cmd = ES_GET_EVENT << 16;
 
-	rc = escore_cmd(escore, cmd, &escore->escore_event_type);
+	rc = escore->bus.ops.cmd(escore, cmd, &event_type);
 	if (rc < 0) {
-		pr_err("%s(): Error reading IRQ event\n", __func__);
+		pr_err("%s(): Error reading IRQ event: %d\n", __func__, rc);
 		goto irq_exit;
 	}
 
-	escore->escore_event_type &= ES_MASK_INTR_EVENT;
+	event_type &= ES_MASK_INTR_EVENT;
+	mutex_lock(&escore->escore_event_type_mutex);
+	escore->escore_event_type = event_type;
+	mutex_unlock(&escore->escore_event_type_mutex);
+	mutex_unlock(&escore->api_mutex);
 
-	if (escore->escore_event_type != ES_NO_EVENT) {
+	if (event_type != ES_NO_EVENT) {
 		pr_debug("%s(): Notify subscribers about 0x%04x event",
-				__func__, escore->escore_event_type);
+				__func__, event_type);
 		blocking_notifier_call_chain(escore->irq_notifier_list,
-				escore->escore_event_type, escore);
+						event_type, escore);
 	}
 
 irq_exit:
@@ -2032,6 +2435,10 @@ static struct notifier_block es755_codec_intr_cb = {
 	.priority = ES_NORMAL,
 };
 
+static struct notifier_block es755_codec_reconfig_intr_cb = {
+	.notifier_call = es755_codec_reconfig_intr,
+	.priority = ES_LOW,
+};
 
 int es755_core_probe(struct device *dev)
 {
@@ -2062,14 +2469,14 @@ int es755_core_probe(struct device *dev)
 	mutex_init(&escore_priv.streaming_mutex);
 	mutex_init(&escore_priv.msg_list_mutex);
 	mutex_init(&escore_priv.datablock_dev.datablock_mutex);
+	mutex_init(&escore_priv.escore_event_type_mutex);
 
 	init_completion(&escore_priv.cmd_compl);
-	init_completion(&escore_priv.rising_edge);
-	init_completion(&escore_priv.falling_edge);
 	init_waitqueue_head(&escore_priv.stream_in_q);
 	INIT_LIST_HEAD(&escore_priv.msg_list);
 	escore_priv.irq_notifier_list = &es755_irq_notifier_list;
 	escore_priv.cmd_compl_mode = ES_CMD_COMP_POLL;
+	escore_priv.wait_api_intr = 0;
 
 #if defined(CONFIG_SND_SOC_ES_VS)
 	rc = escore_vs_init(&escore_priv);
@@ -2122,9 +2529,8 @@ int es755_core_probe(struct device *dev)
 				"%s(): es755_gpioa direction failed", __func__);
 			goto gpioa_gpio_direction_error;
 		}
-		/* Fix value to Rising Edge */
-		pdata->gpio_a_irq_type = ES_RISING_EDGE;
-		escore_priv.cmd_compl_mode = ES_CMD_COMP_INTR;
+		/* Fix value for IRQ Type */
+		pdata->gpio_a_irq_type = ES_FALLING_EDGE;
 	} else {
 		dev_warn(escore_priv.dev, "%s(): es755_gpioa undefined\n",
 			 __func__);
@@ -2221,7 +2627,7 @@ int es755_core_probe(struct device *dev)
 	escore_priv.escore_event_type = ES_NO_EVENT;
 	escore_priv.i2s_dai_data = i2s_dai_data;
 	escore_priv.config_jack = es755_config_jack;
-	escore_priv.non_vs_sleep_state = ES_SET_POWER_STATE_MP_SLEEP;
+	escore_priv.non_vs_sleep_state = ES_SET_POWER_STATE_DEEP_SLEEP;
 	if (escore_priv.pri_intf == ES_SLIM_INTF) {
 
 		escore_priv.slim_rx = slim_rx;
@@ -2259,6 +2665,7 @@ int es755_core_probe(struct device *dev)
 #if defined(CONFIG_SND_SOC_ES_I2S)
 	escore_priv.i2s_dai_ops.digital_mute = es755_digital_mute;
 	escore_priv.i2s_dai_ops.hw_params = es755_hw_params;
+	escore_priv.i2s_dai_ops.set_fmt = es755_set_fmt;
 	escore_priv.i2s_dai_ops.shutdown = es755_shutdown;
 #endif
 #if defined(CONFIG_SND_SOC_ES_SLIM)
@@ -2267,9 +2674,8 @@ int es755_core_probe(struct device *dev)
 
 	/* API Interrupt registration */
 	if (pdata->gpioa_gpio != -1) {
-		irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING;
 		rc = request_threaded_irq(gpio_to_irq(pdata->gpioa_gpio), NULL,
-				es755_cmd_completion_isr, irq_flags,
+				es755_cmd_completion_isr, IRQF_TRIGGER_FALLING,
 				"es755-cmd-completion-isr", &escore_priv);
 		if (rc < 0) {
 			pr_err("%s() API interrupt registration failed :%d",
@@ -2317,6 +2723,8 @@ int es755_core_probe(struct device *dev)
 		escore_register_notify(escore_priv.irq_notifier_list,
 				&es755_codec_intr_cb);
 
+		escore_register_notify(escore_priv.irq_notifier_list,
+				&es755_codec_reconfig_intr_cb);
 	}
 
 #if defined(CONFIG_SND_SOC_ES_UART_STREAMDEV)

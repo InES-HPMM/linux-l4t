@@ -213,15 +213,20 @@ int escore_reconfig_intr(struct escore_priv *escore)
 	int rc = 0;
 	u32 cmd, resp;
 
-	cmd = ES_SYNC_CMD << 16;
-	if (escore->cmd_compl_mode == ES_CMD_COMP_INTR)
+	cmd = ((ES_SYNC_CMD | ES_SUPRESS_RESPONSE) << 16);
+	if (escore->pdata->gpioa_gpio != -1) {
+		/* Set Interrupt Mode */
+		escore->cmd_compl_mode = ES_CMD_COMP_INTR;
 		cmd |= escore->pdata->gpio_a_irq_type;
+	}
 
 	rc = escore->bus.ops.cmd(escore, cmd, &resp);
 	if (rc < 0) {
 		dev_err(escore->dev,
 				"%s() - failed sync cmd resume rc = %d\n",
 				__func__, rc);
+		if (escore->pdata->gpioa_gpio != -1)
+			escore->cmd_compl_mode = ES_CMD_COMP_POLL;
 		goto out;
 	}
 
@@ -291,7 +296,6 @@ int escore_datablock_read(struct escore_priv *escore, void *buf,
 		rc = escore->bus.ops.rdb(escore, buf, len, id);
 		goto out;
 	}
-
 	cmd = (ES_READ_DATA_BLOCK << 16) | (id & 0xFFFF);
 
 	rc = escore->bus.ops.high_bw_cmd(escore, cmd, &resp);
@@ -316,7 +320,7 @@ int escore_datablock_read(struct escore_priv *escore, void *buf,
 	}
 
 	if (len != size) {
-		pr_debug("%s(): Requested:%d Received:%d\n", __func__,
+		pr_debug("%s(): Requested:%zd Received:%d\n", __func__,
 				len, size);
 		if (len < size)
 			flush_extra_blk = (size - len) % 4;
@@ -334,7 +338,6 @@ int escore_datablock_read(struct escore_priv *escore, void *buf,
 		rdcnt += 4;
 		buf += 4;
 	}
-
 	/* Store read data block size */
 	escore->datablock_dev.rdb_read_count = size;
 
@@ -382,7 +385,7 @@ int escore_datablock_write(struct escore_priv *escore, const void *buf,
 	struct timespec tstart_resp;
 	struct timespec tend_resp;
 #endif
-	pr_debug("%s() len = %d\n", __func__, len);
+	pr_debug("%s() len = %zd\n", __func__, len);
 	es_profiling(&tstart);
 	es_profiling(&tstart_cmd);
 
@@ -883,6 +886,8 @@ int escore_wakeup(struct escore_priv *escore)
 	u32 cmd = ES_SYNC_CMD << 16;
 	u32 rsp;
 	int rc = 0;
+	int retry = 20;
+	u32 p_cmd = ES_GET_POWER_STATE << 16;
 
 	/* Enable the clocks */
 	if (escore_priv.pdata->esxxx_clk_cb) {
@@ -891,48 +896,74 @@ int escore_wakeup(struct escore_priv *escore)
 		msleep(ES_PM_CLOCK_STABILIZATION);
 	}
 
-	/* Toggle the wakeup pin H->L the L->H */
-	if (escore->wakeup_intf == ES_UART_INTF &&
+	if (escore->pri_intf == ES_SPI_INTF)
+		msleep(ES_WAKEUP_TIME);
+
+	do {
+		/* Toggle the wakeup pin H->L the L->H */
+		if (escore->wakeup_intf == ES_UART_INTF &&
 				escore->escore_uart_wakeup) {
-		rc = escore->escore_uart_wakeup(escore);
-		if (rc) {
+			rc = escore->escore_uart_wakeup(escore);
+			if (rc) {
+				dev_err(escore->dev,
+						"%s() Wakeup failed rc = %d\n",
+						__func__, rc);
+				goto escore_wakeup_exit;
+			}
+		} else if (escore->pdata->wakeup_gpio != -1) {
+			gpio_set_value(escore->pdata->wakeup_gpio, 1);
+			usleep_range(1000, 1005);
+			gpio_set_value(escore->pdata->wakeup_gpio, 0);
+			usleep_range(1000, 1005);
+			gpio_set_value(escore->pdata->wakeup_gpio, 1);
+			usleep_range(1000, 1005);
+			gpio_set_value(escore->pdata->wakeup_gpio, 0);
+		} else {
 			dev_err(escore->dev,
-				"%s() Wakeup failed rc = %d\n", __func__, rc);
+				"%s()Wakeup interface not defined\n", __func__);
 			goto escore_wakeup_exit;
 		}
-	} else if (escore->pdata->wakeup_gpio != -1) {
-		gpio_set_value(escore->pdata->wakeup_gpio, 0);
-		usleep_range(1000, 1005);
-		gpio_set_value(escore->pdata->wakeup_gpio, 1);
-	} else {
-		dev_err(escore->dev,
-			"%s() Wakeup interface not defined\n", __func__);
-		goto escore_wakeup_exit;
-	}
-	/* Give the device time to "wakeup" */
-	msleep(ES_WAKEUP_TIME);
+		/* Give the device time to "wakeup" */
+		msleep(ES_WAKEUP_TIME);
 
-	if (escore->cmd_compl_mode == ES_CMD_COMP_INTR)
-		cmd |= ES_RISING_EDGE;
-	rc = escore_priv.bus.ops.cmd(escore, cmd, &rsp);
-	if (rc < 0) {
-		dev_err(escore->dev, "%s() - failed sync cmd resume\n",
+	if (escore->pdata->gpioa_gpio != -1)
+		cmd |= escore->pdata->gpio_a_irq_type;
+
+		if (escore->pri_intf == ES_SPI_INTF) {
+			msleep(ES_WAKEUP_TIME);
+			rc = escore_priv.bus.ops.cmd(escore, p_cmd, &rsp);
+			if (rc < 0)
+				break;
+
+			if  ((rsp != ES_PS_NORMAL) && (rsp != ES_PS_OVERLAY)) {
+				rc = -1;
+				continue;
+			}
+		}
+
+
+		rc = escore_priv.bus.ops.cmd(escore, cmd, &rsp);
+		if (rc < 0) {
+			dev_err(escore->dev, "%s() - failed sync cmd resume\n",
 							__func__);
-		goto escore_wakeup_exit;
-	}
-	if (cmd != rsp) {
-		dev_err(escore->dev, "%s() - failed sync rsp resume\n",
+		}
+		if (cmd != rsp) {
+			dev_err(escore->dev, "%s() - failed sync rsp resume\n",
 							__func__);
-		goto escore_wakeup_exit;
-	}
+			rc = -EIO;
+		}
+	} while (rc && --retry);
+
+	/* Set Interrupt mode after wakeup */
+	if (escore->pdata->gpioa_gpio != -1)
+		escore->cmd_compl_mode = ES_CMD_COMP_INTR;
 
 	/* Set the Smooth Mute rate to Zero */
 	cmd = ES_SET_SMOOTH_MUTE << 16 | ES_SMOOTH_MUTE_ZERO;
 	rc = escore->bus.ops.cmd(escore, cmd, &rsp);
 	if (rc)
 		dev_err(escore->dev, "%s(): escore_cmd fail %d\n",
-				__func__, rc);
-
+					__func__, rc);
 escore_wakeup_exit:
 	return rc;
 }
@@ -1039,6 +1070,21 @@ int escore_get_control_value(struct snd_kcontrol *kcontrol,
 	return ret;
 }
 
+int escore_put_streaming_mode(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	escore_priv.es_streaming_mode = ucontrol->value.enumerated.item[0];
+	return 0;
+}
+
+int escore_get_streaming_mode(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.enumerated.item[0] = escore_priv.es_streaming_mode;
+
+	return 0;
+}
+
 void escore_register_notify(struct blocking_notifier_head *list,
 		struct notifier_block *nb)
 {
@@ -1060,6 +1106,7 @@ void escore_gpio_reset(struct escore_priv *escore)
 	usleep_range(10000, 10050);
 	/* eSxxx is READY */
 	escore->flag.reset_done = 1;
+	escore->mode = SBL;
 }
 
 int escore_probe(struct escore_priv *escore, struct device *dev, int curr_intf,
@@ -1131,7 +1178,7 @@ int escore_probe(struct escore_priv *escore, struct device *dev, int curr_intf,
 	complete(&escore->fw_download);
 #endif
 	escore->is_probe_error = 0;
-	escore_pm_enable();
+	//escore_pm_enable();
 
 out:
 	return rc;

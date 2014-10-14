@@ -290,15 +290,11 @@ static const struct snd_kcontrol_new spkrr_mix[] = {
 };
 
 static const struct snd_kcontrol_new lo_l_mix[] = {
-	SOC_DAPM_SINGLE("DAC0L", ES_LO_L_CTRL, ES_DAC0L_TO_LO_L_SHIFT, 1, 0),
 	SOC_DAPM_SINGLE("DAC1L", ES_LO_L_CTRL, ES_DAC1L_TO_LO_L_SHIFT, 1, 0),
-	SOC_DAPM_SINGLE("AUXL", ES_LO_L_CTRL, ES_AUXL_TO_LO_L_SHIFT, 1, 0),
 };
 
 static const struct snd_kcontrol_new lo_r_mix[] = {
-	SOC_DAPM_SINGLE("DAC0R", ES_LO_R_CTRL, ES_DAC0R_TO_LO_R_SHIFT, 1, 0),
 	SOC_DAPM_SINGLE("DAC1R", ES_LO_R_CTRL, ES_DAC1R_TO_LO_R_SHIFT, 1, 0),
-	SOC_DAPM_SINGLE("AUXR", ES_LO_R_CTRL, ES_AUXR_TO_LO_R_SHIFT, 1, 0),
 };
 
 static const struct snd_kcontrol_new michs_control =
@@ -557,13 +553,9 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"EP MIXER", "DAC0L", "DAC0L"},
 	{"EP MIXER", "AUXL", "AUXINL PGA"},
 
-	{"LOL MIXER", "DAC0L", "DAC0L"},
 	{"LOL MIXER", "DAC1L", "DAC1L"},
-	{"LOL MIXER", "AUXL", "AUXINL PGA"},
 
-	{"LOR MIXER", "DAC0R", "DAC0R"},
 	{"LOR MIXER", "DAC1R", "DAC1R"},
-	{"LOR MIXER", "AUXR", "AUXINR PGA"},
 
 	{"LOL PGA", NULL, "LOL MIXER"},
 	{"LOR PGA", NULL, "LOR MIXER"},

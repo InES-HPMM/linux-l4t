@@ -657,18 +657,10 @@
 #define ES_LO_L_ON_MASK				0x01  /* LO_L_ON */
 #define ES_LO_L_ON_SHIFT			     0  /* LO_L_ON */
 #define ES_LO_L_ON_WIDTH			     1  /* LO_L_ON */
-#define ES_DAC0L_TO_LO_L			0x02  /* DAC0L_TO_LO_L */
-#define ES_DAC0L_TO_LO_L_MASK			0x02  /* DAC0L_TO_LO_L */
-#define ES_DAC0L_TO_LO_L_SHIFT			     1  /* DAC0L_TO_LO_L */
-#define ES_DAC0L_TO_LO_L_WIDTH			     1  /* DAC0L_TO_LO_L */
-#define ES_DAC1L_TO_LO_L			0x04  /* DAC1L_TO_LO_L */
-#define ES_DAC1L_TO_LO_L_MASK			0x04  /* DAC1L_TO_LO_L */
-#define ES_DAC1L_TO_LO_L_SHIFT			     2  /* DAC1L_TO_LO_L */
+#define ES_DAC1L_TO_LO_L			0x02  /* DAC1L_TO_LO_L */
+#define ES_DAC1L_TO_LO_L_MASK			0x02  /* DAC1L_TO_LO_L */
+#define ES_DAC1L_TO_LO_L_SHIFT			     1  /* DAC1L_TO_LO_L */
 #define ES_DAC1L_TO_LO_L_WIDTH			     1  /* DAC1L_TO_LO_L */
-#define ES_AUXL_TO_LO_L				0x08  /* AUXL_TO_LO_L */
-#define ES_AUXL_TO_LO_L_MASK			0x08  /* AUXL_TO_LO_L */
-#define ES_AUXL_TO_LO_L_SHIFT			     3  /* AUXL_TO_LO_L */
-#define ES_AUXL_TO_LO_L_WIDTH			     1  /* AUXL_TO_LO_L */
 #define ES_LO_L_STARTUP_PULLDN_MASK		0x20  /* LO_L_STARTUP_PULLDN */
 #define ES_LO_L_STARTUP_PULLDN_SHIFT		5  /* LO_L_STARTUP_PULLDN */
 #define ES_LO_L_STARTUP_PULLDN_WIDTH		1  /* LO_L_STARTUP_PULLDN */
@@ -700,19 +692,10 @@
 #define ES_LO_R_ON_MASK				0x01  /* LO_R_ON */
 #define ES_LO_R_ON_SHIFT			     0  /* LO_R_ON */
 #define ES_LO_R_ON_WIDTH			     1  /* LO_R_ON */
-#define ES_DAC0R_TO_LO_R			0x02  /* DAC0R_TO_LO_R */
-#define ES_DAC0R_TO_LO_R_MASK			0x02  /* DAC0R_TO_LO_R */
-#define ES_DAC0R_TO_LO_R_SHIFT			     1  /* DAC0R_TO_LO_R */
-#define ES_DAC0R_TO_LO_R_WIDTH			     1  /* DAC0R_TO_LO_R */
-#define ES_DAC1R_TO_LO_R			0x04  /* DAC1R_TO_LO_R */
-#define ES_DAC1R_TO_LO_R_MASK			0x04  /* DAC1R_TO_LO_R */
-#define ES_DAC1R_TO_LO_R_SHIFT			     2  /* DAC1R_TO_LO_R */
+#define ES_DAC1R_TO_LO_R			0x02  /* DAC1R_TO_LO_R */
+#define ES_DAC1R_TO_LO_R_MASK			0x02  /* DAC1R_TO_LO_R */
+#define ES_DAC1R_TO_LO_R_SHIFT			     1  /* DAC1R_TO_LO_R */
 #define ES_DAC1R_TO_LO_R_WIDTH			     1  /* DAC1R_TO_LO_R */
-#define ES_AUXR_TO_LO_R				0x08  /* AUXR_TO_LO_R */
-#define ES_AUXR_TO_LO_R_MASK			0x08  /* AUXR_TO_LO_R */
-#define ES_AUXR_TO_LO_R_SHIFT			     3  /* AUXR_TO_LO_R */
-#define ES_AUXR_TO_LO_R_WIDTH			     1  /* AUXR_TO_LO_R */
-
 
 /*
  * R33 (0x21) - INT1 STATE

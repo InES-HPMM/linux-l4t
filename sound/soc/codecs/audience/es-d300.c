@@ -43,6 +43,7 @@
 
 /* Base route preset for Simultaneous playback and capture using PT */
 #define PT_BASE_ROUTE	0x90311780
+#define CSOUT2_BASE_ROUTE	0x9031177E
 
 struct cachedcmd_t {
 	u8 reg;
@@ -53,6 +54,7 @@ static int es_vp_tx;
 static int es_vp_rx;
 static int es_az_tx;
 static int es_az_rx;
+static int nr_csouts;
 
 /* Passthrough algorithm has two distinct purposes:
  * 1) PT Copy use case
@@ -67,6 +69,7 @@ static int pt_copy;
 
 static const u8 pcm_port[] = { 0x0, 0xA, 0xB, 0xC };
 static u8 chn_mgr_cache[MAX_CHMGR];
+static int loopback_mode;
 
 static void clear_chn_mgr_cache(void)
 {
@@ -110,8 +113,7 @@ static const u16 es300_input_mux_text_to_api[] = {
 
 static const char * const proc_block_output_texts[] = {
 	"None",
-	"VP CSOUT", "VP FEOUT1", "VP FEOUT2",
-	"VP MONOUT1", "VP MONOUT2",
+	"VP CSOUT1", "VP CSOUT2", "VP FEOUT1", "VP FEOUT2",
 	"AudioZoom CSOUT",
 	"AudioZoom AOUT1",
 	"MM AUDOUT1", "MM AUDOUT2", "MM PASSOUT1", "MM PASSOUT2",
@@ -119,7 +121,6 @@ static const char * const proc_block_output_texts[] = {
 	"Pass AUDOUT1", "Pass AUDOUT2", "Pass AUDOUT3", "Pass AUDOUT4",
 	"Pass AUDOUT1_2", "Pass AUDOUT2_2",
 	"MONOUT1", "MONOUT2", "MONOUT3", "MONOUT4",
-	"CVQ ASROUT",
 };
 
 static const u16 es300_output_mux_text_to_api[] = {
@@ -127,12 +128,9 @@ static const u16 es300_output_mux_text_to_api[] = {
 
 	/* VP outputs */
 	ES300_PATH_ID(TXCHMGR0, ES300_CSOUT1),
+	ES300_PATH_ID(TXCHMGR1, ES300_CSOUT2),
 	ES300_PATH_ID(TXCHMGR1, ES300_FEOUT1),
 	ES300_PATH_ID(TXCHMGR2, ES300_FEOUT2),
-
-	/* VP MONOUT */
-	ES300_PATH_ID(TXCHMGR0, ES300_MM_MONOUT1),
-	ES300_PATH_ID(TXCHMGR1, ES300_MM_MONOUT2),
 
 	/* AudioZoom */
 	ES300_PATH_ID(TXCHMGR0, ES300_CSOUT1),
@@ -163,9 +161,6 @@ static const u16 es300_output_mux_text_to_api[] = {
 	ES300_PATH_ID(TXCHMGR2, ES300_MONOUT2),
 	ES300_PATH_ID(0, ES300_MONOUT3),
 	ES300_PATH_ID(0, ES300_MONOUT4),
-
-	/* CVQ ASROUT */
-	ES300_PATH_ID(TXCHMGR0, 0),
 };
 
 static const u32 es_base_route_preset[ALGO_MAX] = {
@@ -179,8 +174,6 @@ static const u32 es_base_route_preset[ALGO_MAX] = {
 	[MM] = 0x90311772,
 	[PASSTHRU] = 0x9031177D,
 #endif
-	[CVQ_ASR] = 0x90311779,
-
 };
 
 static const struct es_ch_mgr_max es_chn_mgr_max[ALGO_MAX] = {
@@ -351,9 +344,6 @@ static int convert_input_mux_to_cmd(struct escore_priv *escore, int reg)
 			convert_pt_input_mux_to_cmd(reg, msg, &msg_len);
 		break;
 
-	case CVQ_ASR:
-		break;
-
 	case MM:
 		update_cmds = 1;
 		port = (value >> 9) & 0x1f;
@@ -473,49 +463,49 @@ static int convert_pt_copy_output_mux_to_cmd(u16 ch_mgr, u8 path_id,
 		break;
 	}
 
-		if (update_cmds) {
-			/* Set OUT Endpoint */
-			if (filter_passthru) {
-				msg[i++] = ES_API_WORD(0xB064,
+	if (update_cmds) {
+		/* Set OUT Endpoint */
+		if (filter_passthru) {
+			msg[i++] = ES_API_WORD(0xB064,
 				ES300_ENDPOINT(filter_passthru, OUT, ep_out));
-				msg_len += sizeof(*msg);
-			}
-			if (filter_copyin) {
-				msg[i++] = ES_API_WORD(0xB064,
-					ES300_ENDPOINT(filter_copyin, IN,
-							ep_copyin));
-				msg_len += sizeof(*msg);
-			}
-			if (filter_copyout) {
-				msg[i++] = ES_API_WORD(0xB064,
-					ES300_ENDPOINT(filter_copyout, OUT,
-							ep_copyout));
-				msg_len += sizeof(*msg);
-			}
-
-			/* Set IN Endpoint */
-			if (filter_in) {
-				msg[i++] = ES_API_WORD(0xB064,
-				ES300_ENDPOINT(filter_in, IN, TxChMgr_i0));
-				msg_len += sizeof(*msg);
-			}
-			/* Set TxChanMgr Rate 48k */
-			msg[i++] = ES_API_WORD(0xB063,
-				ES300_RATE(filter_in, 3));
 			msg_len += sizeof(*msg);
+		}
+		if (filter_copyin) {
+			msg[i++] = ES_API_WORD(0xB064,
+					ES300_ENDPOINT(filter_copyin, IN,
+						ep_copyin));
+			msg_len += sizeof(*msg);
+		}
+		if (filter_copyout) {
+			msg[i++] = ES_API_WORD(0xB064,
+					ES300_ENDPOINT(filter_copyout, OUT,
+						ep_copyout));
+			msg_len += sizeof(*msg);
+		}
 
-			if (group) {
-				/* Set Group ID */
-				msg[i++] = ES_API_WORD(0xB068,
-				ES300_GROUP(filter_in, 0));
-				msg_len += sizeof(*msg);
-			}
-			if (groupcopy) {
-				/* Set Group ID */
-				msg[i++] = ES_API_WORD(0xB068,
-				ES300_GROUP(filter_copyin, 0));
-				msg_len += sizeof(*msg);
-			}
+		/* Set IN Endpoint */
+		if (filter_in) {
+			msg[i++] = ES_API_WORD(0xB064,
+				ES300_ENDPOINT(filter_in, IN, TxChMgr_i0));
+			msg_len += sizeof(*msg);
+		}
+		/* Set TxChanMgr Rate 48k */
+		msg[i++] = ES_API_WORD(0xB063,
+				ES300_RATE(filter_in, 3));
+		msg_len += sizeof(*msg);
+
+		if (group) {
+			/* Set Group ID */
+			msg[i++] = ES_API_WORD(0xB068,
+					ES300_GROUP(filter_in, 0));
+			msg_len += sizeof(*msg);
+		}
+		if (groupcopy) {
+			/* Set Group ID */
+			msg[i++] = ES_API_WORD(0xB068,
+					ES300_GROUP(filter_copyin, 0));
+			msg_len += sizeof(*msg);
+		}
 	}
 	return msg_len;
 }
@@ -607,6 +597,13 @@ static int convert_output_mux_to_cmd(struct escore_priv *escore, int reg)
 	path_id = value & 0x3f;
 	ch_mgr = (value >> 8) & 0xf;
 
+	/* Need to update the TxChanMgr when 2 CSOUTs are used in route */
+	if (nr_csouts == 2) {
+		if (!strncmp(proc_block_output_texts[mux], "VP FEOUT1", 9))
+			ch_mgr = TXCHMGR2;
+		else if (!strncmp(proc_block_output_texts[mux], "VP FEOUT2", 9))
+			ch_mgr = TXCHMGR3;
+	}
 	msg[0] |= ES300_DATA_PATH(0, 0, ch_mgr);
 	msg[1] |= ES300_PATH_ID(ch_mgr, path_id);
 
@@ -629,9 +626,6 @@ static int convert_output_mux_to_cmd(struct escore_priv *escore, int reg)
 		else
 			msg_len = convert_pt_output_mux_to_cmd(ch_mgr,
 					path_id, msg, msg_len);
-		break;
-	case CVQ_ASR:
-		msg_len = 4;
 		break;
 	}
 
@@ -676,26 +670,18 @@ static int add_algo_base_route(struct escore_priv *escore)
 {
 	u32 msg;
 	u32 cmd = ES_SYNC_CMD << 16;
-#if defined(CONFIG_SND_SOC_ES_SLIM)
-	u32 slimcmd[2] = {0xb00c0900, 0xb00d0000};
-#endif
 	u32 rate_msg;
 	int rc;
+	u32 filter = 0;
 	int algo = escore->algo_type;
 
 	/* Set unused CHMGRs to NULL */
 	set_chmgr_null(escore);
-#if defined(CONFIG_SND_SOC_ES_SLIM)
-	if (algo == CVQ_ASR) {
-		rc = escore_queue_msg_to_list(escore,
-				(char *)&slimcmd[0], sizeof(msg));
-		rc = escore_queue_msg_to_list(escore,
-				(char *)&slimcmd[1], sizeof(msg));
-	}
-#endif
 
 	if (algo == PASSTHRU && !pt_copy)
 		msg = PT_BASE_ROUTE;
+	else if (algo == VP && nr_csouts > 1)
+		msg = CSOUT2_BASE_ROUTE;
 	else
 		msg = es_base_route_preset[algo];
 
@@ -709,11 +695,29 @@ static int add_algo_base_route(struct escore_priv *escore)
 				sizeof(cmd));
 	}
 
+	switch (algo) {
+	case VP:
+		filter = FILTER_VP;
+		break;
+	case MM:
+		filter = FILTER_MM;
+		break;
+	case PASSTHRU:
+		filter = FILTER_PASSTHRU;
+		break;
+	case AUDIOZOOM:
+		filter = FILTER_AZ;
+		break;
+	default:
+		pr_err("%s(): Algorithm rate not supported for algo type:%d\n",
+				__func__, algo);
+	       break;
+	}
 	/* Set algo rate if specified */
-	if (escore->algo_rate) {
+	if (escore->algo_rate && filter) {
 		rate_msg = (ES_SET_RATE_CMD << 16) |
-			((escore->algo_rate << 8) | escore->algo_type);
-		rc = escore_queue_msg_to_list(escore,
+			((escore->algo_rate << 8) | filter);
+		escore_queue_msg_to_list(escore,
 			(char *)&rate_msg, sizeof(rate_msg));
 	}
 	return rc;
@@ -1071,39 +1075,6 @@ static int es300_codec_enable_i2stx(struct snd_soc_dapm_widget *w,
 }
 #endif
 
-static int stereo_widening;
-
-static int get_stereo_widening(struct snd_kcontrol *kcontrol,
-				  struct snd_ctl_elem_value *ucontrol)
-{
-	ucontrol->value.enumerated.item[0] = stereo_widening;
-
-	return 0;
-}
-
-static int put_stereo_widening(struct snd_kcontrol *kcontrol,
-				  struct snd_ctl_elem_value *ucontrol)
-{
-	struct snd_soc_codec *codec = escore_priv.codec;
-	struct escore_priv *escore = snd_soc_codec_get_drvdata(codec);
-	unsigned int value = ucontrol->value.enumerated.item[0];
-	u32 cmd = ES_SET_PRESET<<16;
-	u32 resp;
-	int ret;
-
-	if (value)
-		cmd |= ES_STEREO_WIDE_ON;
-	else
-		cmd |= ES_STEREO_WIDE_OFF;
-
-	ret = escore_cmd(escore, cmd, &resp);
-
-	if (!ret)
-		stereo_widening = value;
-
-	return ret;
-}
-
 static int get_noise_suppression(struct snd_kcontrol *kcontrol,
 				  struct snd_ctl_elem_value *ucontrol)
 {
@@ -1223,51 +1194,6 @@ static int get_az_mode(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int put_stereo_width(struct snd_kcontrol *kcontrol,
-		struct snd_ctl_elem_value *ucontrol)
-{
-	struct snd_soc_codec *codec = escore_priv.codec;
-	struct soc_enum *e =
-		(struct soc_enum *)kcontrol->private_value;
-	unsigned int reg = e->reg;
-	unsigned int value = ucontrol->value.enumerated.item[0];
-	u16 stereo_width;
-
-	if (!value)
-		stereo_width = ES_DEF_ST_WIDE_SETTING;
-	else
-		stereo_width = (u16)ES_FULL_NARROWING + (value - 1);
-
-	pr_debug("%s: stereo width %04x value %u\n", __func__,
-		stereo_width, value);
-
-	return escore_write(codec, reg, stereo_width);
-}
-
-static int get_stereo_width(struct snd_kcontrol *kcontrol,
-		struct snd_ctl_elem_value *ucontrol)
-{
-	struct snd_soc_codec *codec = escore_priv.codec;
-	struct soc_enum *e =
-		(struct soc_enum *)kcontrol->private_value;
-	unsigned int reg = e->reg;
-	u16 value;
-	u16 stereo_width;
-
-	stereo_width = escore_read(codec, reg);
-	if (stereo_width == ES_DEF_ST_WIDE_SETTING)
-		value = 0;
-	else
-		value = stereo_width - (u16)ES_FULL_NARROWING + 1;
-
-	ucontrol->value.enumerated.item[0] = value;
-
-	pr_debug("%s: stereo width %04x value %u\n", __func__,
-		stereo_width, value);
-
-	return 0;
-}
-
 static int put_pcm_port_sel(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
@@ -1378,9 +1304,6 @@ static int es300_put_algo_state(struct snd_kcontrol *kcontrol,
 	case ES_ALGORITHM_AZ:
 		algo_type = AUDIOZOOM;
 		break;
-	case ES_ALGORITHM_CVQ_ASR:
-		algo_type = CVQ_ASR;
-		break;
 	default:
 		pr_err("%s(): Algo type not implemented: %d\n", __func__, reg);
 		ret = -EINVAL;
@@ -1438,10 +1361,17 @@ static int put_input_route_value(struct snd_kcontrol *kcontrol,
 	int mux = ucontrol->value.enumerated.item[0];
 	int rc = 0;
 
+	if (mux >= ARRAY_SIZE(proc_block_input_texts) || mux < 0) {
+		pr_err("%s(): Invalid input mux:%d Max valid value:%d\n",
+			__func__, mux, ARRAY_SIZE(proc_block_input_texts));
+		return -EINVAL;
+	}
+
 	if (mux)
 		cachedcmd_list[escore->algo_type][reg].refcnt++;
 	else
 		cachedcmd_list[escore->algo_type][reg].refcnt--;
+
 
 	if (!mux && (cachedcmd_list[escore->algo_type][reg].refcnt ||
 		    atomic_read(&escore->active_streams)))
@@ -1494,30 +1424,39 @@ static int put_output_route_value(struct snd_kcontrol *kcontrol,
 	int rc = 0;
 	int mux = ucontrol->value.enumerated.item[0];
 
+	if (mux >= ARRAY_SIZE(proc_block_output_texts) || mux < 0) {
+		pr_err("%s(): Invalid output mux:%d Max valid value:%d\n",
+			__func__, mux, ARRAY_SIZE(proc_block_output_texts));
+		return -EINVAL;
+	}
 	/* VP CSOUT signals Tx init and VP FEOUT signals Rx init */
-	if (strncmp(proc_block_output_texts[mux], "VP CSOUT", 8) == 0)
+	if (strncmp(proc_block_output_texts[mux], "VP CSOUT", 8) == 0) {
 		es_vp_tx = ES_VP_TX_INIT;
-	else if (strncmp(proc_block_output_texts[mux], "VP FEOUT1", 9) == 0)
+		nr_csouts++;
+	} else if (strncmp(proc_block_output_texts[mux], "VP FEOUT1", 9) == 0) {
 		es_vp_rx = ES_VP_RX_INIT;
-	else if (strncmp(proc_block_output_texts[mux],
-				"AudioZoom CSOUT", 15) == 0)
+	} else if (strncmp(proc_block_output_texts[mux],
+				"AudioZoom CSOUT", 15) == 0) {
 		es_az_tx = ES_AZ_TX_INIT;
-	else if (strncmp(proc_block_output_texts[mux],
-				"AudioZoom AOUT1", 15) == 0)
+	} else if (strncmp(proc_block_output_texts[mux],
+				"AudioZoom AOUT1", 15) == 0) {
 		es_az_rx = ES_AZ_RX_INIT;
-	else if (!strncmp(proc_block_output_texts[mux], "Pass AUDOUT1_2", 14) ||
-		!strncmp(proc_block_output_texts[mux], "Pass AUDOUT2_2", 14))
+	} else if (!strncmp(proc_block_output_texts[mux], "Pass AUDOUT1_2", 14)
+		|| !strncmp(proc_block_output_texts[mux],
+			"Pass AUDOUT2_2", 14)) {
 		pt_copy = 1;
-
+	}
 
 	if (mux)
 		cachedcmd_list[escore->algo_type][reg].refcnt++;
 	else
 		cachedcmd_list[escore->algo_type][reg].refcnt--;
 
+
 	if (!mux && (cachedcmd_list[escore->algo_type][reg].refcnt ||
 		    atomic_read(&escore->active_streams)))
 		goto exit;
+
 	cachedcmd_list[escore->algo_type][reg].reg = mux;
 #if (defined(CONFIG_ARCH_OMAP) || defined(CONFIG_ARCH_EXYNOS) || \
 	defined(CONFIG_X86_32) || defined(CONFIG_ARCH_TEGRA))
@@ -1587,6 +1526,18 @@ static int get_asr_sel(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int put_reset(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	es_d300_reset_cmdcache();
+	clear_chn_mgr_cache();
+	es_vp_tx = ES_VP_NONE;
+	es_vp_rx = ES_VP_NONE;
+	es_az_tx = ES_AZ_NONE;
+	es_az_rx = ES_AZ_NONE;
+	pt_copy = 0;
+	return 0;
+}
 
 static int get_flush_route_cmds(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
@@ -1735,6 +1686,49 @@ static int put_mic_config(struct snd_kcontrol *kcontrol,
 	return escore_write(codec, reg, value);
 }
 
+static int get_lp_mode(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.enumerated.item[0] = loopback_mode;
+	return 0;
+}
+
+static int put_lp_mode(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	loopback_mode = ucontrol->value.enumerated.item[0];
+	return 0;
+}
+
+static int get_lp_route(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+
+static int put_lp_route(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = escore_priv.codec;
+	struct escore_priv *escore = snd_soc_codec_get_drvdata(codec);
+
+	unsigned int value;
+	int ret = 0;
+	value = ucontrol->value.enumerated.item[0];
+	if (!loopback_mode || escore->algo_type != PASSTHRU) {
+		pr_debug("%s(): loopback mode is not enabled\n", __func__);
+		return 0;
+	}
+	if (!value) {
+		pr_debug("%s(): discard cached list\n", __func__);
+		ret = es300_codec_stop_algo(escore);
+	} else {
+		pr_debug("%s(): commit cached list\n", __func__);
+		ret = es_set_final_route(escore);
+	}
+	return ret;
+}
+
 static const char * const algorithm_texts[] = {
 	"Off", "On"
 };
@@ -1773,10 +1767,6 @@ static const struct soc_enum az_algorithm_enum =
 	SOC_ENUM_SINGLE(ES_ALGORITHM_AZ, 0,
 			ARRAY_SIZE(algorithm_texts),
 			algorithm_texts);
-static const struct soc_enum cvq_asr_algorithm_enum =
-	SOC_ENUM_SINGLE(ES_ALGORITHM_CVQ_ASR, 0,
-			ARRAY_SIZE(algorithm_texts),
-			algorithm_texts);
 
 static const char * const es755_algo_rates_text[] = {
 	"fs=8khz", "fs=16khz", "fs=24khz", "fs=48khz", "fs=96khz", "fs=192khz",
@@ -1787,37 +1777,14 @@ static const struct soc_enum algorithm_rate_enum =
 			ARRAY_SIZE(es755_algo_rates_text),
 			es755_algo_rates_text);
 
-static const char * const stereo_widening_texts[] = {
-	"OFF", "ON"
-};
-
 static const char * const noise_suppression_texts[] = {
 	"Off", "On"
 };
-
-static const struct soc_enum stereo_widening_enum =
-	SOC_ENUM_SINGLE(SND_SOC_NOPM, 0,
-			ARRAY_SIZE(stereo_widening_texts),
-			stereo_widening_texts);
 
 static const struct soc_enum noise_suppression_enum =
 	SOC_ENUM_SINGLE(ES_SET_NS, 0,
 			ARRAY_SIZE(noise_suppression_texts),
 			noise_suppression_texts);
-
-static const char * const stereo_width_texts[] = {
-	"Default", "Full narrowing", "90% narrowing", "80% narrowing",
-	"70% narrowing", "60% narrowing", "50% narrowing", "40% narrowing",
-	"30% narrowing", "20% narrowing", "10% narrowing", "No effect",
-	"10% widening", "20% widening", "30% widening", "40% widening",
-	"50% widening",	"60% widening", "70% widening", "80% widening",
-	"90% widening", "Full widening"
-};
-
-static const struct soc_enum stereo_width_enum =
-	SOC_ENUM_SINGLE(ES_STEREO_WIDTH, 0,
-			ARRAY_SIZE(stereo_width_texts),
-			stereo_width_texts);
 
 static const char * const mic_config_texts[] = {
 	"CT Multi-mic", "FT Multi-mic", "DV 1-mic", "EXT 1-mic", "BT 1-mic",
@@ -1849,6 +1816,20 @@ static const struct soc_enum es755_az_mode_enum =
 	SOC_ENUM_SINGLE(ES_AZ_MODE, 0, ARRAY_SIZE(es755_audio_zoom_texts),
 			es755_audio_zoom_texts);
 
+static const char * const lp_mode_texts[] = {
+	"Off", "On"
+};
+static const struct soc_enum lp_mode_enum =
+	SOC_ENUM_SINGLE(SND_SOC_NOPM, 0, ARRAY_SIZE(lp_mode_texts),
+			lp_mode_texts);
+
+static const char * const lp_commit_texts[] = {
+	"Discard", "Commit"
+};
+static const struct soc_enum lp_commit_enum =
+	SOC_ENUM_SINGLE(SND_SOC_NOPM, 0, ARRAY_SIZE(lp_commit_texts),
+			lp_commit_texts);
+
 static const struct snd_kcontrol_new es_d300_snd_controls[] = {
 	SOC_ENUM_EXT("VP Algorithm", vp_algorithm_enum,
 			 es300_get_algo_state, es300_put_algo_state),
@@ -1857,8 +1838,6 @@ static const struct snd_kcontrol_new es_d300_snd_controls[] = {
 	SOC_ENUM_EXT("PT Algorithm", pass_algorithm_enum,
 			 es300_get_algo_state, es300_put_algo_state),
 	SOC_ENUM_EXT("AZ Algorithm", az_algorithm_enum,
-			 es300_get_algo_state, es300_put_algo_state),
-	SOC_ENUM_EXT("CVQ_ASR Algorithm", cvq_asr_algorithm_enum,
 			 es300_get_algo_state, es300_put_algo_state),
 
 	SOC_ENUM_EXT("Algorithm Rate", algorithm_rate_enum,
@@ -1869,16 +1848,12 @@ static const struct snd_kcontrol_new es_d300_snd_controls[] = {
 		       get_write_route_cmds, put_write_route_cmds),
 	SOC_SINGLE_EXT("Flush Route Cmds", SND_SOC_NOPM, 0, 1, 0,
 		       get_flush_route_cmds, put_flush_route_cmds),
-	SOC_ENUM_EXT("Stereo Widening Effect", stereo_widening_enum,
-			get_stereo_widening, put_stereo_widening),
 	SOC_ENUM_EXT("Noise Suppression", noise_suppression_enum,
 			get_noise_suppression, put_noise_suppression),
 	SOC_ENUM_EXT("Mic Config", mic_config_enum,
 			get_mic_config, put_mic_config),
 	SOC_ENUM_EXT("Audio Zoom", es755_az_mode_enum,
 			get_az_mode, put_az_mode),
-	SOC_ENUM_EXT("Stereo Width", stereo_width_enum,
-			get_stereo_width, put_stereo_width),
 	SOC_ENUM_EXT("PCM Port Selection", pcm_port_sel_enum,
 			get_control_enum, put_pcm_port_sel),
 	SOC_ENUM_EXT("Command Mode Selection", cmd_compl_mode_sel_enum,
@@ -1914,7 +1889,12 @@ static const struct snd_kcontrol_new es_d300_snd_controls[] = {
 			get_pcm_port_param, put_pcm_port_param),
 	SOC_SINGLE_EXT("PCM Port FS Duration", ES_PORT_FS_DURATION, 0,
 			65535, 0, get_pcm_port_param, put_pcm_port_param),
-
+	SOC_ENUM_EXT("Loopback mode", lp_mode_enum,
+			 get_lp_mode, put_lp_mode),
+	SOC_ENUM_EXT("Loopback routes commit", lp_commit_enum,
+			 get_lp_route, put_lp_route),
+	SOC_SINGLE_EXT("Reset", SND_SOC_NOPM, 0, 1, 0,
+			 NULL, put_reset),
 };
 
 static const struct soc_enum vp_pri_enum =
@@ -2098,14 +2078,6 @@ static const struct soc_enum az_ai1_enum =
 		     proc_block_input_texts);
 static const struct snd_kcontrol_new dapm_az_ai1_control =
 	SOC_DAPM_ENUM_EXT("AudioZoom AI1 MUX Mux", az_ai1_enum,
-			  get_input_route_value, put_input_route_value);
-
-static const struct soc_enum cvq_asr_in_enum =
-	SOC_ENUM_SINGLE(ES_CVQ_ASR_IN_MUX, 0,
-		     ARRAY_SIZE(proc_block_input_texts),
-		     proc_block_input_texts);
-static const struct snd_kcontrol_new dapm_cvq_asr_in_control =
-	SOC_DAPM_ENUM_EXT("CVQ ASR IN MUX Mux", cvq_asr_in_enum,
 			  get_input_route_value, put_input_route_value);
 
 static const struct soc_enum pcm0_0_enum =
@@ -2463,10 +2435,6 @@ static const struct snd_soc_dapm_widget es_d300_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("AudioZoom AI1 MUX", SND_SOC_NOPM, 0, 0,
 			&dapm_az_ai1_control),
 
-	/* CVQ_ASR */
-	SND_SOC_DAPM_MUX("CVQ ASR IN MUX", SND_SOC_NOPM, 0, 0,
-			&dapm_cvq_asr_in_control),
-
 	SND_SOC_DAPM_MUX("PCM0.0 MUX", SND_SOC_NOPM, 0, 0,
 			 &dapm_pcm0_0_control),
 	SND_SOC_DAPM_MUX("PCM0.1 MUX", SND_SOC_NOPM, 0, 0,
@@ -2516,11 +2484,10 @@ static const struct snd_soc_dapm_widget es_d300_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("DAC1.1 MUX", SND_SOC_NOPM, 0, 0,
 			&dapm_dac1_1_control),
 
-	SND_SOC_DAPM_MIXER("VP CSOUT Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
+	SND_SOC_DAPM_MIXER("VP CSOUT1 Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
+	SND_SOC_DAPM_MIXER("VP CSOUT2 Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_MIXER("VP FEOUT1 Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_MIXER("VP FEOUT2 Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
-	SND_SOC_DAPM_MIXER("VP MONOUT1 Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
-	SND_SOC_DAPM_MIXER("VP MONOUT2 Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_MIXER("MM AUDOUT1 Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_MIXER("MM AUDOUT2 Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_MIXER("MM PASSOUT1 Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
@@ -2536,8 +2503,6 @@ static const struct snd_soc_dapm_widget es_d300_dapm_widgets[] = {
 	SND_SOC_DAPM_MIXER("AudioZoom CSOUT Mixer", SND_SOC_NOPM,
 			0, 0, NULL, 0),
 	SND_SOC_DAPM_MIXER("AudioZoom AOUT1 Mixer", SND_SOC_NOPM,
-			0, 0, NULL, 0),
-	SND_SOC_DAPM_MIXER("CVQ ASROUT Mixer", SND_SOC_NOPM,
 			0, 0, NULL, 0),
 	SND_SOC_DAPM_OUTPUT("PCM PORT A.0"),
 	SND_SOC_DAPM_OUTPUT("PCM PORT A.1"),
@@ -2768,14 +2733,18 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"VP UITONE2 MUX", "ADC2", "ADC2"},
 	{"VP UITONE2 MUX", "ADC3", "ADC3"},
 
-	{"VP CSOUT Mixer", NULL, "VP Primary MUX"},
-	{"VP CSOUT Mixer", NULL, "VP Secondary MUX"},
-	{"VP CSOUT Mixer", NULL, "VP Teritary MUX"},
-	{"VP CSOUT Mixer", NULL, "VP AECREF MUX"},
+	{"VP CSOUT1 Mixer", NULL, "VP Primary MUX"},
+	{"VP CSOUT1 Mixer", NULL, "VP Secondary MUX"},
+	{"VP CSOUT1 Mixer", NULL, "VP Teritary MUX"},
+	{"VP CSOUT1 Mixer", NULL, "VP AECREF MUX"},
+	{"VP CSOUT2 Mixer", NULL, "VP Primary MUX"},
+	{"VP CSOUT2 Mixer", NULL, "VP Secondary MUX"},
+	{"VP CSOUT2 Mixer", NULL, "VP Teritary MUX"},
+	{"VP CSOUT2 Mixer", NULL, "VP AECREF MUX"},
 	{"VP FEOUT1 Mixer", NULL, "VP FEIN MUX"},
 	{"VP FEOUT2 Mixer", NULL, "VP FEIN MUX"},
-	{"VP MONOUT1 Mixer", NULL, "VP UITONE1 MUX"},
-	{"VP MONOUT2 Mixer", NULL, "VP UITONE2 MUX"},
+	{"VP FEOUT1 Mixer", NULL, "VP UITONE1 MUX"},
+	{"VP FEOUT1 Mixer", NULL, "VP UITONE2 MUX"},
 
 	{"MM AUDIN1 MUX", "PCM0.0", "PCM0.0 RX"},
 	{"MM AUDIN1 MUX", "PCM0.1", "PCM0.1 RX"},
@@ -3214,44 +3183,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"AudioZoom CSOUT Mixer", NULL, "AudioZoom Teritary MUX"},
 	{"AudioZoom AOUT1 Mixer", NULL, "AudioZoom AI1 MUX"},
 
-	{"CVQ ASR IN MUX", "PCM0.0", "PCM0.0 RX"},
-	{"CVQ ASR IN MUX", "PCM0.1", "PCM0.1 RX"},
-	{"CVQ ASR IN MUX", "PCM0.2", "PCM0.2 RX"},
-	{"CVQ ASR IN MUX", "PCM0.3", "PCM0.3 RX"},
-	{"CVQ ASR IN MUX", "PCM1.0", "PCM1.0 RX"},
-	{"CVQ ASR IN MUX", "PCM1.1", "PCM1.1 RX"},
-	{"CVQ ASR IN MUX", "PCM1.2", "PCM1.2 RX"},
-	{"CVQ ASR IN MUX", "PCM1.3", "PCM1.3 RX"},
-	{"CVQ ASR IN MUX", "PCM2.0", "PCM2.0 RX"},
-	{"CVQ ASR IN MUX", "PCM2.1", "PCM2.1 RX"},
-	{"CVQ ASR IN MUX", "PCM2.2", "PCM2.2 RX"},
-	{"CVQ ASR IN MUX", "PCM2.3", "PCM2.3 RX"},
-	{"CVQ ASR IN MUX", "PDMI0", "PDMI0"},
-	{"CVQ ASR IN MUX", "PDMI1", "PDMI1"},
-	{"CVQ ASR IN MUX", "PDMI2", "PDMI2"},
-	{"CVQ ASR IN MUX", "PDMI3", "PDMI3"},
-	{"CVQ ASR IN MUX", "SBUS.RX0", "SBUS.RX0"},
-	{"CVQ ASR IN MUX", "SBUS.RX1", "SBUS.RX1"},
-	{"CVQ ASR IN MUX", "SBUS.RX2", "SBUS.RX2"},
-	{"CVQ ASR IN MUX", "SBUS.RX3", "SBUS.RX3"},
-	{"CVQ ASR IN MUX", "SBUS.RX4", "SBUS.RX4"},
-	{"CVQ ASR IN MUX", "SBUS.RX5", "SBUS.RX5"},
-	{"CVQ ASR IN MUX", "SBUS.RX6", "SBUS.RX6"},
-	{"CVQ ASR IN MUX", "SBUS.RX7", "SBUS.RX7"},
-	{"CVQ ASR IN MUX", "SBUS.RX8", "SBUS.RX8"},
-	{"CVQ ASR IN MUX", "SBUS.RX9", "SBUS.RX9"},
-	{"CVQ ASR IN MUX", "ADC0", "ADC0"},
-	{"CVQ ASR IN MUX", "ADC1", "ADC1"},
-	{"CVQ ASR IN MUX", "ADC2", "ADC2"},
-	{"CVQ ASR IN MUX", "ADC3", "ADC3"},
-
-	{"CVQ ASROUT Mixer", NULL, "CVQ ASR IN MUX"},
-
-	{"PCM0.0 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"PCM0.0 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"PCM0.0 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"PCM0.0 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"PCM0.0 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"PCM0.0 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"PCM0.0 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"PCM0.0 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"PCM0.0 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"PCM0.0 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3266,12 +3201,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PCM0.0 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"PCM0.0 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"PCM0.0 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"PCM0.0 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
-	{"PCM0.1 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"PCM0.1 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"PCM0.1 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"PCM0.1 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"PCM0.1 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"PCM0.1 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"PCM0.1 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"PCM0.1 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"PCM0.1 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"PCM0.1 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3286,12 +3219,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PCM0.1 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"PCM0.1 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"PCM0.1 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"PCM0.1 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
-	{"PCM0.2 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"PCM0.2 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"PCM0.2 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"PCM0.2 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"PCM0.2 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"PCM0.2 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"PCM0.2 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"PCM0.2 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"PCM0.2 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"PCM0.2 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3306,12 +3237,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PCM0.2 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"PCM0.2 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"PCM0.2 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"PCM0.2 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
-	{"PCM0.3 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"PCM0.3 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"PCM0.3 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"PCM0.3 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"PCM0.3 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"PCM0.3 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"PCM0.3 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"PCM0.3 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"PCM0.3 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"PCM0.3 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3326,13 +3255,11 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PCM0.3 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"PCM0.3 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"PCM0.3 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"PCM0.3 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
 
-	{"PCM1.0 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"PCM1.0 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"PCM1.0 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"PCM1.0 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"PCM1.0 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"PCM1.0 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"PCM1.0 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"PCM1.0 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"PCM1.0 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"PCM1.0 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3347,12 +3274,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PCM1.0 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"PCM1.0 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"PCM1.0 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"PCM1.0 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
-	{"PCM1.1 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"PCM1.1 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"PCM1.1 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"PCM1.1 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"PCM1.1 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"PCM1.1 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"PCM1.1 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"PCM1.1 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"PCM1.1 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"PCM1.1 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3367,12 +3292,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PCM1.1 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"PCM1.1 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"PCM1.1 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"PCM1.1 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
-	{"PCM1.2 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"PCM1.2 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"PCM1.2 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"PCM1.2 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"PCM1.2 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"PCM1.2 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"PCM1.2 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"PCM1.2 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"PCM1.2 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"PCM1.2 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3387,12 +3310,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PCM1.2 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"PCM1.2 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"PCM1.2 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"PCM1.2 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
-	{"PCM1.3 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"PCM1.3 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"PCM1.3 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"PCM1.3 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"PCM1.3 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"PCM1.3 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"PCM1.3 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"PCM1.3 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"PCM1.3 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"PCM1.3 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3407,13 +3328,11 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PCM1.3 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"PCM1.3 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"PCM1.3 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"PCM1.3 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
 
-	{"PCM2.0 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"PCM2.0 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"PCM2.0 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"PCM2.0 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"PCM2.0 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"PCM2.0 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"PCM2.0 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"PCM2.0 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"PCM2.0 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"PCM2.0 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3428,12 +3347,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PCM2.0 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"PCM2.0 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"PCM2.0 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"PCM2.0 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
-	{"PCM2.1 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"PCM2.1 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"PCM2.1 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"PCM2.1 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"PCM2.1 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"PCM2.1 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"PCM2.1 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"PCM2.1 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"PCM2.1 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"PCM2.1 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3448,12 +3365,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PCM2.1 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"PCM2.1 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"PCM2.1 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"PCM2.1 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
-	{"PCM2.2 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"PCM2.2 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"PCM2.2 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"PCM2.2 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"PCM2.2 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"PCM2.2 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"PCM2.2 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"PCM2.2 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"PCM2.2 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"PCM2.2 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3468,12 +3383,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PCM2.2 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"PCM2.2 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"PCM2.2 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"PCM2.2 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
-	{"PCM2.3 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"PCM2.3 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"PCM2.3 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"PCM2.3 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"PCM2.3 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"PCM2.3 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"PCM2.3 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"PCM2.3 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"PCM2.3 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"PCM2.3 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3488,14 +3401,12 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PCM2.3 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"PCM2.3 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"PCM2.3 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"PCM2.3 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
 
 
-	{"SBUS.TX0 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"SBUS.TX0 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"SBUS.TX0 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"SBUS.TX0 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"SBUS.TX0 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"SBUS.TX0 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"SBUS.TX0 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"SBUS.TX0 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"SBUS.TX0 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"SBUS.TX0 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3510,13 +3421,11 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"SBUS.TX0 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"SBUS.TX0 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"SBUS.TX0 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"SBUS.TX0 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
 
-	{"SBUS.TX1 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"SBUS.TX1 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"SBUS.TX1 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"SBUS.TX1 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"SBUS.TX1 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"SBUS.TX1 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"SBUS.TX1 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"SBUS.TX1 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"SBUS.TX1 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"SBUS.TX1 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3531,13 +3440,11 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"SBUS.TX1 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"SBUS.TX1 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"SBUS.TX1 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"SBUS.TX1 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
 
-	{"SBUS.TX2 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"SBUS.TX2 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"SBUS.TX2 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"SBUS.TX2 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"SBUS.TX2 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"SBUS.TX2 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"SBUS.TX2 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"SBUS.TX2 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"SBUS.TX2 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"SBUS.TX2 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3552,13 +3459,11 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"SBUS.TX2 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"SBUS.TX2 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"SBUS.TX2 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"SBUS.TX2 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
 
-	{"SBUS.TX3 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"SBUS.TX3 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"SBUS.TX3 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"SBUS.TX3 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"SBUS.TX3 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"SBUS.TX3 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"SBUS.TX3 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"SBUS.TX3 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"SBUS.TX3 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"SBUS.TX3 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3573,13 +3478,11 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"SBUS.TX3 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"SBUS.TX3 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"SBUS.TX3 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"SBUS.TX3 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
 
-	{"SBUS.TX4 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"SBUS.TX4 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"SBUS.TX4 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"SBUS.TX4 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"SBUS.TX4 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"SBUS.TX4 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"SBUS.TX4 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"SBUS.TX4 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"SBUS.TX4 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"SBUS.TX4 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3594,13 +3497,11 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"SBUS.TX4 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"SBUS.TX4 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"SBUS.TX4 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"SBUS.TX4 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
 
-	{"SBUS.TX5 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"SBUS.TX5 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"SBUS.TX5 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"SBUS.TX5 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"SBUS.TX5 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"SBUS.TX5 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"SBUS.TX5 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"SBUS.TX5 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"SBUS.TX5 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"SBUS.TX5 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3615,13 +3516,11 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"SBUS.TX5 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"SBUS.TX5 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"SBUS.TX5 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"SBUS.TX5 MUX", "CVQ ASROUT", "CVQ ASROUT Mixer"},
 
-	{"DAC0.0 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"DAC0.0 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"DAC0.0 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"DAC0.0 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"DAC0.0 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"DAC0.0 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"DAC0.0 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"DAC0.0 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"DAC0.0 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"DAC0.0 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3636,11 +3535,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"DAC0.0 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"DAC0.0 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"DAC0.0 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"DAC0.1 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"DAC0.1 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"DAC0.1 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"DAC0.1 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"DAC0.1 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"DAC0.1 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"DAC0.1 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"DAC0.1 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"DAC0.1 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"DAC0.1 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3656,11 +3554,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"DAC0.1 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"DAC0.1 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
 
-	{"DAC1.0 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"DAC1.0 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"DAC1.0 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"DAC1.0 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"DAC1.0 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"DAC1.0 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"DAC1.0 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"DAC1.0 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"DAC1.0 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"DAC1.0 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3675,11 +3572,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"DAC1.0 MUX", "Pass AUDOUT4", "Pass AUDOUT4 Mixer"},
 	{"DAC1.0 MUX", "Pass AUDOUT1_2", "Pass AUDOUT1_2 Mixer"},
 	{"DAC1.0 MUX", "Pass AUDOUT2_2", "Pass AUDOUT2_2 Mixer"},
-	{"DAC1.1 MUX", "VP CSOUT", "VP CSOUT Mixer"},
+	{"DAC1.1 MUX", "VP CSOUT1", "VP CSOUT1 Mixer"},
+	{"DAC1.1 MUX", "VP CSOUT2", "VP CSOUT2 Mixer"},
 	{"DAC1.1 MUX", "VP FEOUT1", "VP FEOUT1 Mixer"},
 	{"DAC1.1 MUX", "VP FEOUT2", "VP FEOUT2 Mixer"},
-	{"DAC1.1 MUX", "VP MONOUT1", "VP MONOUT1 Mixer"},
-	{"DAC1.1 MUX", "VP MONOUT2", "VP MONOUT2 Mixer"},
 	{"DAC1.1 MUX", "AudioZoom CSOUT", "AudioZoom CSOUT Mixer"},
 	{"DAC1.1 MUX", "AudioZoom AOUT1", "AudioZoom AOUT1 Mixer"},
 	{"DAC1.1 MUX", "MM PASSOUT1", "MM PASSOUT1 Mixer"},
@@ -3760,7 +3656,7 @@ void es_d300_reset_cmdcache(void)
 	int i;
 	for (i = 0; i < ALGO_MAX; i++) {
 		memset(cachedcmd_list[i], 0x0,
-				ES_API_ADDR_MAX * sizeof(u8));
+			ES_API_ADDR_MAX * sizeof(struct cachedcmd_list *));
 	}
 }
 

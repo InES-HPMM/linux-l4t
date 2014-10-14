@@ -43,6 +43,11 @@ config MQ100_SENSOR_HUB
 	  * SPI
 	  * UART
 
+config SND_SOC_ES705_EXTCLK_OVER_GPIO
+	bool "Enable External Clock Control Over GPIO"
+	---help---
+	  This will enable external clock ON/OFF over GPIO
+
 config SND_SOC_ES705_CLOCK_INDEX
 	depends on (SND_SOC_ES705 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE || MQ100_SENSOR_HUB)
 	prompt "Audience es705 clock's index"
@@ -305,33 +310,52 @@ config SND_SOC_ES_RUNTIME_SUSPEND_MODE_CVQ
 endchoice
 endif
 
-# Should be used in eS325 driver to use different baud rates
-# for multi stage firmware download
-config SND_SOC_ES_1ST_STAGE_UART_BAUD
-	depends on SND_SOC_ES_HIGH_BW_BUS_UART && SND_SOC_ES325
-	prompt "UART baud rate for 1st stage firmware download"
+if SND_SOC_ES_HIGH_BW_BUS_UART && (SND_SOC_ES755 || SND_SOC_ES705 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE || MQ100_SENSOR_HUB)
+
+config SND_SOC_ES_UART_SBL_BAUD
+	prompt "UART baud rate for SBL mode"
 	int
-	default 28800
+	default 460800
 	---help---
 	  Supported buad rates
 	  * 19200
 	  * 28800
 	  * 38400
 	  * 57600
+	  * 28800
+	  * 460800
 
-config SND_SOC_ES_2ND_STAGE_UART_BAUD
-	depends on SND_SOC_ES_HIGH_BW_BUS_UART && SND_SOC_ES325
-	prompt "UART baud rate for 2nd stage firmware download"
+config SND_SOC_ES_UART_NS_BAUD
+	prompt "UART baud rate for NS firmware"
 	int
-	default 1000000
+	default 3000000
 	---help---
 	  Supported buad rates
+	  * 460800
 	  * 921600
 	  * 1000000
+	  * 1024000
+	  * 1152000
 	  * 2000000
+	  * 2048000
 	  * 3000000
-	  The 1st stage firmware will contain the information about the baud
-	  rate for 2nd stage download.
+	  * 3072000
+
+config SND_SOC_ES_UART_VS_BAUD
+	prompt "UART baud rate for VS firmware"
+	int
+	default 3000000
+	---help---
+	  Supported buad rates
+	  * 460800
+	  * 921600
+	  * 1000000
+	  * 1024000
+	  * 1152000
+	  * 2000000
+	  * 2048000
+	  * 3000000
+	  * 3072000
 
 config SND_SOC_ES_UARTHS_BAUD
 	depends on SND_SOC_ES_HIGH_BW_BUS_UART && (SND_SOC_ES755 || SND_SOC_ES705 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE || MQ100_SENSOR_HUB)
@@ -349,9 +373,11 @@ config SND_SOC_ES_UARTHS_BAUD
 	  * 2048000
 	  * 3000000
 	  * 3072000
+endif
 
 config SND_SOC_ES_CDEV
-        bool "Character device interface"
+        prompt "Character device interface"
+        bool
 	---help---
 	The character device interface allows the streaming out the audio
 	data through selected Bus interface. Three nodes created under /dev
@@ -413,6 +439,17 @@ config SND_SOC_ES_VS
 	depends on SND_SOC_ES705 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE || SND_SOC_ES755 || SND_SOC_ES325
 	---help---
 	This allows to select VS feature
+
+config SND_SOC_ES_CVQ_TIME_MEASUREMENT
+        bool "CVQ performance measurement"
+	depends on SND_SOC_ES_VS
+	default y
+	---help---
+	This allows to calculate and print CVQ sleep
+	time. If this option is enabled, time required
+	for different CVQ steps like firmware download
+	time, BKG and keywords write time are
+	calculated and printed in kernal message.
 
 config SND_SOC_ES755_A1
 	bool "A1 revision of eS755 chip"

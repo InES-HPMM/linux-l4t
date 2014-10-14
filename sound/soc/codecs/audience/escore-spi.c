@@ -14,6 +14,7 @@
 #include <linux/delay.h>
 #include "escore.h"
 #include "escore-spi.h"
+
 static struct spi_device *escore_spi;
 
 static u32 escore_cpu_to_spi(struct escore_priv *escore, u32 resp)
@@ -49,6 +50,16 @@ static int escore_spi_read_streaming(struct escore_priv *escore,
 	pk_cnt = len/ESCORE_SPI_PACKET_LEN;
 	rd_len = ESCORE_SPI_PACKET_LEN;
 	rem_len = len % ESCORE_SPI_PACKET_LEN;
+
+	/*
+	 * While doing CVQ streaming, userspace is slower in reading data from
+	 * kernel which causes circular buffer overrun in kernel. SPI read is
+	 * not blocking call and will always return (with either valid data or
+	 * 0's). This causes kernel thread much faster. This delay is added for
+	 * CVQ streaming only for bug #24910.
+	 */
+	if (escore->es_streaming_mode == ES_CVQ_STREAMING)
+		usleep_range(20000, 20000);
 
 	for (rdcnt = 0; rdcnt < pk_cnt; rdcnt++) {
 		rc = escore_spi_read(escore, (char *)(buf + (rdcnt * rd_len)),
@@ -88,7 +99,7 @@ static int escore_spi_write(struct escore_priv *escore,
 
 	/* Check if length is 4 byte aligned or not
 	   If not aligned send extra bytes after write */
-	if (len % 4 != 0) {
+	if ((len > 4) && (len % 4 != 0)) {
 		rem = len % 4;
 		dev_info(escore->dev,
 			"Alignment required 0x%x bytes\n", rem);
@@ -97,7 +108,7 @@ static int escore_spi_write(struct escore_priv *escore,
 	rc = spi_write(escore_spi, buf, len);
 
 	if (rem != 0)
-		rc = spi_write(escore_spi, align, rem);
+		rc = spi_write(escore_spi, align, 4 - rem);
 
 	return rc;
 }
@@ -112,25 +123,34 @@ static int escore_spi_cmd(struct escore_priv *escore,
 
 	dev_dbg(escore->dev,
 			"%s: cmd=0x%08x  sr=0x%08x\n", __func__, cmd, sr);
+
+	if ((escore->cmd_compl_mode == ES_CMD_COMP_INTR) && !sr)
+		escore->wait_api_intr = 1;
+
 	cmd = cpu_to_be32(cmd);
 	err = escore_spi_write(escore, &cmd, sizeof(cmd));
 	if (err || sr)
 		return err;
 
+	if (escore->cmd_compl_mode == ES_CMD_COMP_INTR) {
+		pr_debug("%s(): Waiting for API interrupt. Jiffies:%lu",
+				__func__, jiffies);
+		err = wait_for_completion_timeout(&escore->cmd_compl,
+				msecs_to_jiffies(ES_RESP_TOUT_MSEC));
+		if (!err) {
+			pr_err("%s(): API Interrupt wait timeout\n",
+					__func__);
+			escore->wait_api_intr = 0;
+			err = -ETIMEDOUT;
+			goto cmd_exit;
+		}
+	}
+
+	usleep_range(ES_SPI_1MS_DELAY, ES_SPI_1MS_DELAY + 50);
+
 	do {
 		--retry;
-		if (escore->cmd_compl_mode == ES_CMD_COMP_INTR) {
-			pr_debug("%s(): Waiting for API interrupt. Jiffies:%lu",
-					__func__, jiffies);
-			err = wait_for_completion_timeout(&escore->cmd_compl,
-					msecs_to_jiffies(ES_RESP_TOUT_MSEC));
-			if (!err) {
-				pr_err("%s(): API Interrupt wait timeout\n",
-						__func__);
-				err = -ETIMEDOUT;
-				break;
-			}
-		} else {
+		if (escore->cmd_compl_mode != ES_CMD_COMP_INTR) {
 			if (retry % ES_SPI_CONT_RETRY == 0) {
 				usleep_range(ES_SPI_RETRY_DELAY,
 					ES_SPI_RETRY_DELAY + 200);
@@ -177,7 +197,8 @@ static int escore_spi_cmd(struct escore_priv *escore,
 			goto cmd_exit;
 		}
 
-	} while (retry != 0 && escore->cmd_compl_mode != ES_CMD_COMP_INTR);
+	} while (retry != 0);
+	dev_dbg(escore->dev, "%s: err=%d  *resp=0x%08x\n", __func__, err, *resp);
 
 cmd_exit:
 	return err;
@@ -244,7 +265,7 @@ static int escore_spi_datablock_read(struct escore_priv *escore, void *buf,
 	}
 
 	if (len != size) {
-		dev_dbg(escore->dev, "%s(): Requested:%d Received:%d\n",
+		dev_dbg(escore->dev, "%s(): Requested:%zd Received:%d\n",
 			 __func__, len, size);
 		if (len < size)
 			flush_extra_blk = (size - len) % 4;
@@ -281,6 +302,7 @@ static int escore_spi_datablock_read(struct escore_priv *escore, void *buf,
 out:
 	return rc;
 }
+
 static int escore_spi_boot_setup(struct escore_priv *escore)
 {
 	u32 boot_cmd = ES_SPI_BOOT_CMD;
@@ -336,7 +358,7 @@ static int escore_spi_boot_setup(struct escore_priv *escore)
 	sbl_sync_ack = be32_to_cpu(sbl_sync_ack);
 	pr_debug("%s(): SBL SYNC ACK = 0x%08x\n", __func__, sbl_sync_ack);
 	if (sbl_sync_ack != ES_SPI_SBL_SYNC_ACK) {
-		pr_err("%s(): boot ack pattern fail\n", __func__);
+		pr_err("%s(): sync ack pattern fail\n", __func__);
 		rc = -EIO;
 		goto escore_spi_boot_setup_failed;
 	}
@@ -359,7 +381,6 @@ static int escore_spi_boot_setup(struct escore_priv *escore)
 
 	boot_ack = be32_to_cpu(boot_ack);
 	pr_debug("%s(): BOOT ACK = 0x%08x\n", __func__, boot_ack);
-
 	if (boot_ack != ES_SPI_BOOT_ACK) {
 		pr_err("%s(): boot ack pattern fail\n", __func__);
 		rc = -EIO;

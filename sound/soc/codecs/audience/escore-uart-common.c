@@ -143,21 +143,9 @@ int escore_uart_cmd(struct escore_priv *escore, u32 cmd, u32 *resp)
 		return err;
 
 	do {
-		if (escore->cmd_compl_mode == ES_CMD_COMP_INTR) {
-			pr_debug("%s(): Waiting for API interrupt. Jiffies:%lu",
-					__func__, jiffies);
-			err = wait_for_completion_timeout(&escore->rising_edge,
-					msecs_to_jiffies(ES_RESP_TOUT_MSEC));
-			if (!err) {
-				pr_debug("%s(): API Interrupt wait timeout\n",
-						__func__);
-				err = -ETIMEDOUT;
-				break;
-			}
-		} else {
-			usleep_range(ES_RESP_POLL_TOUT,
-					ES_RESP_POLL_TOUT + 500);
-		}
+		usleep_range(ES_RESP_POLL_TOUT,
+				ES_RESP_POLL_TOUT + 500);
+
 		err = escore_uart_read(escore, &rv, sizeof(rv));
 		dev_dbg(escore->dev, "%s: err=%d\n", __func__, err);
 		*resp = be32_to_cpu(rv);
@@ -179,7 +167,7 @@ int escore_uart_cmd(struct escore_priv *escore, u32 cmd, u32 *resp)
 		}
 
 		--retry;
-	} while (retry != 0 && escore->cmd_compl_mode != ES_CMD_COMP_INTR);
+	} while (retry != 0);
 
 cmd_exit:
 	return err;
@@ -292,11 +280,23 @@ int escore_uart_wait(struct escore_priv *escore)
 		msecs_to_jiffies(50));
 }
 
+int escore_uart_config(struct escore_priv *escore)
+{
+	int rc = 0;
+	/* perform baudrate configuration */
+	if (escore->mode == STANDARD) {
+		rc = escore_configure_tty(escore_uart.tty,
+			escore_uart.baudrate_ns, UART_TTY_STOP_BITS);
+	}
+	return rc;
+}
+
 struct es_stream_device es_uart_streamdev = {
 	.open = escore_uart_open,
 	.read = escore_uart_read_internal,
 	.close = escore_uart_close,
 	.wait = escore_uart_wait,
+	.config = escore_uart_config,
 	.intf = ES_UART_INTF,
 };
 

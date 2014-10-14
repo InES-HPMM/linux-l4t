@@ -510,8 +510,15 @@ static int firmware_release(struct inode *inode, struct file *filp)
 		dev_err(escore->dev, "%s(): Interrupt setup failed %d\n",
 				__func__, ret);
 firmware_release_exit:
-	if (escore->bus.ops.high_bw_close)
-		escore->bus.ops.high_bw_close(escore);
+	if (escore->bus.ops.high_bw_close) {
+		int rc = 0;
+		rc = escore->bus.ops.high_bw_close(escore);
+		if (rc) {
+			dev_err(escore->dev, "%s(): high_bw_close failed %d\n",
+				__func__, rc);
+			ret = rc;
+		}
+	}
 
 	pr_debug("successful download of firmware\n");
 	return ret;
@@ -638,6 +645,11 @@ static int stream_datalog_open(struct escore_priv *escore, struct inode *inode,
 				__func__, err);
 			goto streamdev_open_err;
 		}
+		/* Set NS baud rate after VS to NS switching */
+		/*
+		if (escore->streamdev.config)
+			escore->streamdev.config(escore);
+		*/
 	}
 
 	/* initialize stream buffer */

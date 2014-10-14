@@ -13,6 +13,24 @@
 #include "escore.h"
 #include "escore-vs.h"
 
+#define VS_KCONTROL(method, type) \
+	int escore_vs_##method##_control_##type(struct snd_kcontrol *kcontrol,\
+			struct snd_ctl_elem_value *ucontrol)		\
+{									\
+	struct escore_priv *escore = &escore_priv;			\
+	if (escore->mode != VOICESENSE) {				\
+		dev_warn(escore->dev, "%s(): Not in VS mode\n",		\
+				__func__);				\
+		return 0;						\
+	}								\
+	return escore_##method##_control_##type(kcontrol, ucontrol);	\
+}
+
+VS_KCONTROL(get, value)
+VS_KCONTROL(put, value)
+VS_KCONTROL(get, enum)
+VS_KCONTROL(put, enum)
+
 inline int escore_is_sleep_aborted(struct escore_priv *escore)
 {
 	if (unlikely(escore->sleep_abort))
@@ -27,8 +45,21 @@ static int escore_vs_sleep(struct escore_priv *escore)
 			(struct escore_voice_sense *) escore_priv.voice_sense;
 	u32 cmd, rsp;
 	int rc;
+#ifdef CONFIG_SND_SOC_ES_CVQ_TIME_MEASUREMENT
+	struct timespec cvq_sleep_start;
+	struct timespec cvq_sleep_end;
+	struct timespec cvq_sleep_time;
+	struct timespec vs_load_start;
+	struct timespec vs_load_end;
+	struct timespec vs_load_time;
+	struct timespec wdb_start;
+	struct timespec wdb_end;
+	struct timespec wdb_time;
+#endif
 
 	dev_dbg(escore->dev, "%s()\n", __func__);
+
+	es_cvq_profiling(&cvq_sleep_start);
 
 	/* Set smooth mute to 0 */
 	cmd = ES_SET_SMOOTH_MUTE << 16 | ES_SMOOTH_MUTE_ZERO;
@@ -38,6 +69,11 @@ static int escore_vs_sleep(struct escore_priv *escore)
 					__func__, rc);
 		goto vs_sleep_err;
 	}
+	/* Its observed that an additional 30msec delay is needed for positive
+	 * stress test results. vs_sleep found to be failing in rare instances
+	 * without this.
+	 */
+	msleep(30);
 	/* change power state to OVERLAY */
 	cmd = (ES_SET_POWER_STATE << 16) | ES_SET_POWER_STATE_VS_OVERLAY;
 	rc = escore->bus.ops.cmd(escore, cmd, &rsp);
@@ -47,11 +83,13 @@ static int escore_vs_sleep(struct escore_priv *escore)
 		goto vs_sleep_err;
 	}
 
-	msleep(20);
+	msleep(30);
 
 	rc = escore_is_sleep_aborted(escore);
 	if (rc == -EABORT)
 		goto escore_sleep_aborted;
+
+	es_cvq_profiling(&vs_load_start);
 
 	/* download VS firmware */
 	rc = escore_vs_load(escore);
@@ -60,8 +98,9 @@ static int escore_vs_sleep(struct escore_priv *escore)
 					__func__, rc);
 		goto vs_sleep_err;
 	}
-
 	escore->escore_power_state = ES_SET_POWER_STATE_VS_OVERLAY;
+
+	es_cvq_profiling(&vs_load_end);
 
 	rc = escore_is_sleep_aborted(escore);
 	if (rc == -EABORT)
@@ -88,6 +127,8 @@ static int escore_vs_sleep(struct escore_priv *escore)
 	if (rc == -EABORT)
 		goto escore_sleep_aborted;
 
+	es_cvq_profiling(&wdb_start);
+
 	/* write background model and keywords files */
 	rc = escore_vs_write_bkg_and_keywords(escore);
 	if (rc) {
@@ -96,6 +137,8 @@ static int escore_vs_sleep(struct escore_priv *escore)
 			__func__, rc);
 		goto vs_sleep_err;
 	}
+
+	es_cvq_profiling(&wdb_end);
 
 	rc = escore_is_sleep_aborted(escore);
 	if (rc == -EABORT)
@@ -139,13 +182,28 @@ static int escore_vs_sleep(struct escore_priv *escore)
 escore_sleep_aborted:
 vs_sleep_err:
 
+	es_cvq_profiling(&cvq_sleep_end);
+
+#ifdef CONFIG_SND_SOC_ES_CVQ_TIME_MEASUREMENT
+	vs_load_time = (timespec_sub(vs_load_end, vs_load_start));
+	wdb_time = (timespec_sub(wdb_end, wdb_start));
+	cvq_sleep_time = (timespec_sub(cvq_sleep_end, cvq_sleep_start));
+
+	dev_info(escore->dev, "VS firmware load time = %lu.%03lu sec\n",
+			vs_load_time.tv_sec, (vs_load_time.tv_nsec)/1000000);
+	dev_info(escore->dev, "BKG and KW write time = %lu.%03lu sec\n",
+			wdb_time.tv_sec, (wdb_time.tv_nsec)/1000000);
+	dev_info(escore->dev, "Total CVQ sleep time = %lu.%03lu sec\n",
+		cvq_sleep_time.tv_sec, (cvq_sleep_time.tv_nsec)/1000000);
+#endif
+
 	return rc;
 }
 
 int escore_vs_wakeup(struct escore_priv *escore)
 {
 	u32 cmd, rsp;
-	int rc;
+	int rc = 0;
 
 	dev_dbg(escore->dev, "%s()\n", __func__);
 
@@ -153,14 +211,29 @@ int escore_vs_wakeup(struct escore_priv *escore)
 
 	mutex_lock(&escore_priv.api_mutex);
 
-	rc = escore_wakeup(escore);
-	if (rc) {
-		dev_err(escore->dev, "%s() wakeup failed rc = %d\n",
-					__func__, rc);
+	/* If chip is in low power mode and keyword detection happens,
+	 * it switch back to Normal(BOSKO) mode automatically.
+	 */
+	if (escore->escore_power_state == ES_SET_POWER_STATE_NORMAL) {
+		dev_dbg(escore->dev, "%s() Already in normal mode\n", __func__);
+		escore->mode = STANDARD;
+		escore->pm_state = ES_PM_NORMAL;
 		goto vs_wakeup_err;
 	}
 
-	escore->escore_power_state = ES_SET_POWER_STATE_VS_OVERLAY;
+	/* If chip is in low power mode and Jack detection happens,
+	 * it switch back to Overlay command mode and wakeup gpio
+	 * toggling is not required
+	 */
+	if (escore->escore_power_state == ES_SET_POWER_STATE_VS_LOWPWR) {
+		rc = escore_wakeup(escore);
+		if (rc) {
+			dev_err(escore->dev, "%s() wakeup failed rc = %d\n",
+					__func__, rc);
+			goto vs_wakeup_err;
+		}
+		escore->escore_power_state = ES_SET_POWER_STATE_VS_OVERLAY;
+	}
 
 	/* change power state to Normal*/
 	cmd = (ES_SET_POWER_STATE << 16) | ES_SET_POWER_STATE_NORMAL;
@@ -314,7 +387,7 @@ int escore_put_vs_activate_keyword(struct snd_kcontrol *kcontrol,
 	}
 
 	voice_sense->vs_active_keywords = value;
-	escore_vs_request_keywords(escore);
+	rc = escore_vs_request_keywords(escore);
 
 	escore_pm_put_autosuspend();
 
@@ -517,13 +590,6 @@ static int escore_vs_isr(struct notifier_block *self, unsigned long action,
 	if (voice_sense->cvs_preset != 0xFFFF && voice_sense->cvs_preset != 0) {
 		escore->escore_power_state = ES_SET_POWER_STATE_NORMAL;
 		escore->mode = STANDARD;
-		rc = escore_reconfig_intr(escore);
-		if (rc) {
-			dev_err(escore->dev,
-				"%s() reconfig interrupt failed rc = %d\n",
-				__func__, rc);
-			return NOTIFY_DONE;
-		}
 	}
 
 	mutex_lock(&voice_sense->vs_event_mutex);
@@ -584,6 +650,9 @@ int escore_vs_load(struct escore_priv *escore)
 
 	BUG_ON(voice_sense->vs->size == 0);
 	escore->mode = VOICESENSE_PENDING;
+
+	/* Reset Mode to Polling */
+	escore->cmd_compl_mode = ES_CMD_COMP_POLL;
 
 	if (!escore->boot_ops.setup || !escore->boot_ops.finish) {
 		dev_err(escore->dev,
@@ -697,10 +766,12 @@ int escore_vs_load(struct escore_priv *escore)
 escore_sleep_aborted:
 escore_vs_fw_download_failed:
 	if (escore->bus.ops.high_bw_close) {
-		rc = escore->bus.ops.high_bw_close(escore);
-		if (rc) {
+		int ret = 0;
+		ret = escore->bus.ops.high_bw_close(escore);
+		if (ret) {
 			dev_err(escore->dev, "%s(): high_bw_close failed %d\n",
-				__func__, rc);
+				__func__, ret);
+			rc = ret;
 		}
 	}
 escore_vs_uart_open_failed:

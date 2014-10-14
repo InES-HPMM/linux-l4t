@@ -28,7 +28,9 @@
 #define ES_SET_POWER_STATE_NORMAL	0x0004
 #define ES_SET_POWER_STATE_VS_OVERLAY	0x0005
 #define ES_SET_POWER_STATE_VS_LOWPWR	0x0006
+#define ES_SET_POWER_STATE_DEEP_SLEEP	0x0007
 
+#define ES_DHWPT_CMD			0x9052
 /*
  * Device parameter command codes
  */
@@ -90,6 +92,8 @@
 #define ES_SET_EVENT_RESP		0x901A
 #define ES_ACCDET_CONFIG_CMD		0x9056
 #define ES_SMOOTH_RATE			0x804E
+#define ES755_FW_DOWNLOAD_MAX_RETRY	5
+
 /*
  * Stereo widening presets for headphone playback and MM audio algo rate 48K
  */
@@ -117,6 +121,16 @@
 #define ES755_DMIC0_CVS_PREST			0x1B59
 #define ES755_MIC0_CVS_PREST			0x1B8A
 #define ES755_MICHS_CVS_PREST			0x1B8B
+
+/* PCM Port IDs */
+#define ES755_PCM_PORT_A		0xA
+#define ES755_PCM_PORT_B		0xB
+#define ES755_PCM_PORT_C		0xC
+
+/* Digital Hardware Passthrough Mapping for PCM ports */
+#define PORT_A_TO_D	0x00CC
+#define PORT_B_TO_D	0x00DD
+#define PORT_C_TO_D	0x00EE
 
 union es755_accdet_status_reg {
 	u16 value;
@@ -159,7 +173,6 @@ enum {
 	ES_ALGORITHM_MM,
 	ES_ALGORITHM_PT,
 	ES_ALGORITHM_AZ,
-	ES_ALGORITHM_CVQ_ASR,
 
 	/* PCM Port Parameters*/
 	ES_PCM_PORT,
@@ -200,8 +213,6 @@ enum {
 	ES_AZ_SEC_MUX,
 	ES_AZ_TER_MUX,
 	ES_AZ_AI1_MUX,
-
-	ES_CVQ_ASR_IN_MUX,
 
 	ES_MM_PASSIN1_MUX,
 	ES_MM_PASSIN2_MUX,
@@ -349,5 +360,7 @@ int es755_slim_sleep(struct escore_priv *escore);
 int es755_slim_wakeup(struct escore_priv *escore);
 void es755_slim_setup(struct escore_priv *escore_priv);
 int es755_detect(struct snd_soc_codec *codec, struct snd_soc_jack *jack);
+int es755_power_transition(int next_power_state,
+				unsigned int set_power_state_cmd);
 
 #endif /* _ES_H */

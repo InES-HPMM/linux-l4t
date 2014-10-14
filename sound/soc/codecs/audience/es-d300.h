@@ -82,7 +82,6 @@ enum {
 	PASSTHRU_VP_MM,
 	PASSTHRU_AZ,
 	VOICEQ,
-	CVQ_ASR,
 	ALGO_MAX,
 };
 
@@ -180,7 +179,7 @@ enum {
 
 
 	/* Extra Path ID for MM */
-	ES300_MM_MONOUT1,
+	ES300_MM_MONOUT1 = 0x30,
 	ES300_MM_MONOUT2,
 };
 

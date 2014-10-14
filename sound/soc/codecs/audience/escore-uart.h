@@ -14,12 +14,17 @@
 #ifndef _ESCORE_UART_H
 #define _ESCORE_UART_H
 
+#define ESCORE_UART_SBL_SYNC_WRITE_RETRY 10
+#define ESCORE_UART_SBL_SYNC_READ_RETRY 10;
+#define ESCORE_UART_SBL_BOOT_ACK_RETRY 10;
+
 enum {
 	UART_RATE_4608,	UART_RATE_9216,	UART_RATE_1kk,
 	UART_RATE_1M, UART_RATE_1152k, UART_RATE_2kk,
 	UART_RATE_2M, UART_RATE_3kk, UART_RATE_3M,
 	UART_RATE_MAX
 };
+
 enum {
 	ESXXX_CLK_6M, ESXXX_CLK_6144M,
 	ESXXX_CLK_9M6, ESXXX_CLK_12M,
@@ -36,8 +41,9 @@ struct escore_uart_device {
 	struct tty_struct *tty;
 	struct file *file;
 	struct tty_ldisc *ld;
-	unsigned int baudrate_bootloader;
-	unsigned int baudrate_fw;
+	unsigned int baudrate_sbl;
+	unsigned int baudrate_ns;
+	unsigned int baudrate_vs;
 };
 
 extern struct platform_driver escore_uart_driver;

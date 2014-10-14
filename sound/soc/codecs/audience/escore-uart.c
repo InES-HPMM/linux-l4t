@@ -154,7 +154,7 @@ static int escore_uart_abort_config(struct escore_priv *escore)
 	int rc;
 
 	rc = escore_configure_tty(escore_uart.tty,
-			escore_uart.baudrate_bootloader, UART_TTY_STOP_BITS);
+			escore_uart.baudrate_sbl, UART_TTY_STOP_BITS);
 	if (rc) {
 		pr_err("%s(): config UART failed, rc = %d\n", __func__, rc);
 		return rc;
@@ -172,6 +172,8 @@ static int escore_uart_abort_config(struct escore_priv *escore)
 
 int escore_uart_boot_setup(struct escore_priv *escore)
 {
+	u8 retry = ESCORE_UART_SBL_SYNC_WRITE_RETRY;
+
 	u8 sbl_sync_cmd = ESCORE_SBL_SYNC_CMD;
 	u8 sbl_boot_cmd = ESCORE_SBL_BOOT_CMD;
 	u32 sbl_rate_req_cmd = ESCORE_SBL_SET_RATE_REQ_CMD << 16;
@@ -182,7 +184,7 @@ int escore_uart_boot_setup(struct escore_priv *escore)
 
 	/* set speed to bootloader baud */
 	escore_configure_tty(escore_uart.tty,
-		escore_uart.baudrate_bootloader, UART_TTY_STOP_BITS);
+		escore_uart.baudrate_sbl, UART_TTY_STOP_BITS);
 
 	pr_debug("%s()\n", __func__);
 
@@ -190,8 +192,10 @@ int escore_uart_boot_setup(struct escore_priv *escore)
 	pr_debug("%s(): write ESCORE_SBL_SYNC_CMD = 0x%02x\n", __func__,
 		sbl_sync_cmd);
 	memcpy(msg, (char *)&sbl_sync_cmd, 1);
+	do {
+		rc = escore_uart_write(escore, msg, 1);
+	} while (rc && retry--);
 
-	rc = escore_uart_write(escore, msg, 1);
 	if (rc) {
 		rc = -EIO;
 		goto escore_bootup_failed;
@@ -202,7 +206,11 @@ int escore_uart_boot_setup(struct escore_priv *escore)
 
 	usleep_range(10000, 10500);
 
-	rc = escore_uart_read(escore, msg, 1);
+	retry = ESCORE_UART_SBL_SYNC_READ_RETRY;
+	do {
+		rc = escore_uart_read(escore, msg, 1);
+	} while (rc && retry--);
+
 	if (rc) {
 		pr_err("%s(): firmware load failed sync ack rc = %d\n",
 			__func__, rc);
@@ -262,7 +270,11 @@ int escore_uart_boot_setup(struct escore_priv *escore)
 	/* SBL BOOT BYTE ACK 0x01 */
 	msleep(20);
 	memset(msg, 0, 4);
-	rc = escore_uart_read(escore, msg, 1);
+	retry = ESCORE_UART_SBL_BOOT_ACK_RETRY;
+	do {
+		rc = escore_uart_read(escore, msg, 1);
+	} while (rc && retry--);
+
 	if (rc) {
 		pr_err("%s(): firmware load failed boot ack\n", __func__);
 		goto escore_bootup_failed;
@@ -293,7 +305,7 @@ int escore_uart_boot_finish(struct escore_priv *escore)
 	 * Give the chip some time to become ready after firmware
 	 * download. (FW is still transferring)
 	 */
-	msleep(200);
+	msleep(35);
 
 	/* Discard extra bytes from escore during firmware load. Host gets
 	 * one more extra bytes after VS firmware download as per Bug 19441.
@@ -306,8 +318,13 @@ int escore_uart_boot_finish(struct escore_priv *escore)
 	rc = escore_uart_read(escore, msg, 4);
 
 	/* now switch to firmware baud to talk to chip */
-	escore_configure_tty(escore_uart.tty,
-		escore_uart.baudrate_fw, UART_TTY_STOP_BITS);
+	if (escore->mode == SBL) {
+		escore_configure_tty(escore_uart.tty,
+			escore_uart.baudrate_ns, UART_TTY_STOP_BITS);
+	} else {
+		escore_configure_tty(escore_uart.tty,
+			escore_uart.baudrate_vs, UART_TTY_STOP_BITS);
+	}
 
 	/* sometimes earSmart chip sends success in second sync command */
 	do {
@@ -359,17 +376,25 @@ static int escore_uart_setup_high_bw_intf(struct escore_priv *escore)
 	escore->bus.ops.cpu_to_bus = escore_cpu_to_uart;
 	escore->bus.ops.bus_to_cpu = escore_uart_to_cpu;
 	escore->escore_uart_wakeup = escore_uart_wakeup;
-#if defined(CONFIG_SND_SOC_ES_1ST_STAGE_UART_BAUD)
-	escore_uart.baudrate_bootloader =
-		CONFIG_SND_SOC_ES_1ST_STAGE_UART_BAUD;
+
+#if defined(CONFIG_SND_SOC_ES_UART_SBL_BAUD)
+	escore_uart.baudrate_sbl = CONFIG_SND_SOC_ES_UART_SBL_BAUD;
 #else
-	escore_uart.baudrate_bootloader = 28800;
+	escore_uart.baudrate_sbl = UART_TTY_BAUD_RATE_460_8_K;
 #endif
-#if defined(CONFIG_SND_SOC_ES_2ND_STAGE_UART_BAUD)
-	escore_uart.baudrate_fw = CONFIG_SND_SOC_ES_2ND_STAGE_UART_BAUD;
+
+#if defined(CONFIG_SND_SOC_ES_UART_NS_BAUD)
+	escore_uart.baudrate_ns = CONFIG_SND_SOC_ES_UART_NS_BAUD;
 #else
-	escore_uart.baudrate_fw = 3000000;
+	escore_uart.baudrate_ns = UART_TTY_BAUD_RATE_3_M;
 #endif
+
+#if defined(CONFIG_SND_SOC_ES_UART_VS_BAUD)
+	escore_uart.baudrate_vs = CONFIG_SND_SOC_ES_UART_VS_BAUD;
+#else
+	escore_uart.baudrate_vs = UART_TTY_BAUD_RATE_3_M;
+#endif
+
 	rc = escore->probe(escore->dev);
 	if (rc)
 		goto out;
