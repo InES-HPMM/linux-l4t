@@ -8381,11 +8381,6 @@ static struct clk_mux_sel mux_clk_mc[] = {
 	{ 0, 0},
 };
 
-static struct clk_mux_sel mux_plld[] = {
-	{ .input = &tegra_pll_d_out0, .value = 1},
-	{ 0, 0},
-};
-
 static struct raw_notifier_head emc_rate_change_nh;
 
 static struct clk tegra_clk_sata = {
@@ -9051,18 +9046,18 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("hsic_trk",	NULL,		  "hsic_trk",	209,	0,	38400000, mux_clk_usb2_hsic_trk,	PERIPH_NO_RESET),
 	PERIPH_CLK("usb2_trk",	NULL,		  "usb2_trk",	210,	0,	38400000, mux_clk_usb2_hsic_trk,	PERIPH_NO_RESET),
 
-	PERIPH_CLK_EX("dsia",	"tegradc.0",	      "dsia",	48,	0xd0,  1500000000, mux_plld_out0,		PLLD,	&tegra_dsi_clk_ops),
-	PERIPH_CLK_EX("dsib",	"tegradc.1",	      "dsib",	82,	0x4b8, 1500000000, mux_plld_out0,		PLLD,	&tegra_dsi_clk_ops),
+	PERIPH_CLK_EX("dsia",	"tegradc.0",	      "dsia",	48,	0xd0,   750000000, mux_plld_out0,		PLLD,	&tegra_dsi_clk_ops),
+	PERIPH_CLK_EX("dsib",	"tegradc.1",	      "dsib",	82,	0x4b8,  750000000, mux_plld_out0,		PLLD,	&tegra_dsi_clk_ops),
 	PERIPH_CLK("dsi1-fixed", "tegradc.0",    "dsi-fixed",	0,	0,	108000000, mux_pllp_out3,		PERIPH_NO_ENB | PERIPH_NO_RESET),
 	PERIPH_CLK("dsi2-fixed", "tegradc.1",    "dsi-fixed",	0,	0,	108000000, mux_pllp_out3,		PERIPH_NO_ENB | PERIPH_NO_RESET),
-	PERIPH_CLK("csi",	"vi",		       "csi",	52,	0,     1000000000, mux_plld,			PLLD),
+	PERIPH_CLK("csi",	"vi",		       "csi",	52,	0,      750000000, mux_plld_out0,		PLLD),
 	PERIPH_CLK("csus",	"vi",		      "csus",	92,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
 	PERIPH_CLK("vim2_clk",	"vi",		  "vim2_clk",	171,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
-	PERIPH_CLK("cilab",	"vi",		     "cilab",	144,	0x614,	204000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK("cilcd",	"vi",		     "cilcd", 	145,	0x618,	204000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK("cile",	"vi",		      "cile",	146,	0x61c,	204000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK("dsialp",	"tegradc.0",	    "dsialp",	147,	0x620,	204000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK("dsiblp",	"tegradc.1",	    "dsiblp",	148,	0x624,	204000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("cilab",	"vi",		     "cilab",	144,	0x614,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("cilcd",	"vi",		     "cilcd", 	145,	0x618,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("cile",	"vi",		      "cile",	146,	0x61c,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("dsialp",	"tegradc.0",	    "dsialp",	147,	0x620,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("dsiblp",	"tegradc.1",	    "dsiblp",	148,	0x624,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
 
 	PERIPH_CLK("entropy",	"entropy",		NULL,	149,	0x628,	102000000, mux_pllp_clkm_clk32_plle,		MUX | DIV_U71),
 	PERIPH_CLK("uart_mipi_cal", "uart_mipi_cal",	NULL,	177,	0x66c,	102000000, mux_pllp_out3_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET),
