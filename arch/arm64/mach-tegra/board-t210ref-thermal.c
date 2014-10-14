@@ -146,10 +146,6 @@ int __init t210ref_thermal_sensors_init(void)
 	tegra_get_board_info(&board_info);
 
 #if 0 /* EDP and DVFS thermals NOT YET ENABLED on T210 */
-	tegra_platform_edp_init(
-		t210ref_nct72_pdata.sensors[EXT].trips,
-		&t210ref_nct72_pdata.sensors[EXT].num_trips,
-				12000); /* edp temperature margin */
 	tegra_add_cpu_vmax_trips(
 		t210ref_nct72_pdata.sensors[EXT].trips,
 		&t210ref_nct72_pdata.sensors[EXT].num_trips);

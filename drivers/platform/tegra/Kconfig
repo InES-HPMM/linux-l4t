@@ -136,3 +136,14 @@ config TEGRA_EDP_LIMITS
 	  Limit maximum CPU frequency based on temperature and number
 	  of on-line CPUs to keep CPU rail current within power supply
 	  capabilities.
+
+config TEGRA_GPU_EDP
+       bool "GPU EDP management"
+       depends on THERMAL
+       select TEGRA_PROC_POWER_MODEL
+       default n
+       help
+         Limit maximum GPU frequency based on temperature
+         to keep GPU rail current within power supply
+         capabilities.
+

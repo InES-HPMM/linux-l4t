@@ -27,6 +27,10 @@
 #include <linux/pinctrl/consumer.h>
 
 int tegra_vibrator_init(void);
+
+void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
+					int *num_trips, int margin);
+
 void tegra_add_all_vmin_trips(struct thermal_trip_info *trips, int *num_trips);
 void tegra_add_cpu_vmin_trips(struct thermal_trip_info *trips, int *num_trips);
 void tegra_add_gpu_vmin_trips(struct thermal_trip_info *trips, int *num_trips);

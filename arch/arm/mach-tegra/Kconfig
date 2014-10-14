@@ -393,18 +393,6 @@ config TEGRA_ERRATA_977223
 	  high priority. A SW work around is to program the ring 1 input to
 	  ring 0 ptsa rate to be 1/2 of the value intended.
 
-config TEGRA_GPU_EDP
-       bool "enable GPU EDP "
-       depends on THERMAL
-       depends on TEGRA_EDP_LIMITS
-       depends on ARCH_TEGRA_12x_SOC
-       select TEGRA_PROC_POWER_MODEL
-       default n
-       help
-         Limit maximum GPU frequency based on temperature
-         to keep GPU rail current within power supply
-         capabilities.
-
 config TEGRA_CPU_VOLT_CAP
 	bool "Allow cpu voltage to be capped based on usage metrics."
 	depends on TEGRA_EDP_LIMITS

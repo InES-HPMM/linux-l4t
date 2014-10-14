@@ -163,8 +163,6 @@ obj-$(CONFIG_TEGRA_HMP_CLUSTER_CONTROL)      += cluster-control.o
 
 obj-$(CONFIG_TEGRA_USE_NCT)             += nct.o nct_sysfs.o
 
-obj-$(CONFIG_TEGRA_GPU_EDP)             += gpu-edp.o
-
 else # --- CONFIG_ARM64 --- #
 
 obj-y += dummy.o # generate a built-in.o
@@ -172,6 +170,7 @@ obj-y += dummy.o # generate a built-in.o
 endif
 
 
+obj-$(CONFIG_TEGRA_GPU_EDP)             += gpu-edp.o
 obj-y					+= asim.o
 obj-y					+= hier_ictlr/
 

@@ -44,6 +44,42 @@ int tegra_vibrator_init(void)
 	return platform_device_register(&vibrator_device);
 }
 
+#define C_TO_K(c) (c+273)
+void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
+				int *num_trips, int margin)
+{
+#ifdef CONFIG_TEGRA_GPU_EDP
+	struct thermal_trip_info *trip_state;
+	int temps[] = { /* degree celcius (C) */
+		20, 50, 70, 75, 80, 85, 90, 95, 100, 105,
+	};
+	int n_temps = ARRAY_SIZE(temps);
+	int i;
+
+	if (!trips || !num_trips)
+		return;
+
+	if (n_temps > MAX_THROT_TABLE_SIZE)
+		BUG();
+
+	for (i = 0; i < n_temps-1; i++) {
+		trip_state = &trips[*num_trips];
+
+		trip_state->cdev_type = "gpu_edp";
+		trip_state->trip_temp =
+			(temps[i] * 1000) - margin;
+		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
+		trip_state->upper = trip_state->lower =
+			C_TO_K(temps[i + 1]);
+
+		(*num_trips)++;
+
+		if (*num_trips >= THERMAL_MAX_TRIPS)
+			BUG();
+	}
+#endif
+}
+
 static void tegra_add_trip_points(struct thermal_trip_info *trips,
 				int *num_trips,
 				struct tegra_cooling_device *cdev_data)

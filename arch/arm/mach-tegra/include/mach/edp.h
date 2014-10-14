@@ -151,15 +151,6 @@ static inline struct tegra_cooling_device *tegra_core_edp_get_cdev(void)
 { return NULL; }
 #endif
 
-#ifdef CONFIG_TEGRA_GPU_EDP
-void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
-					int *num_trips, int margin);
-#else
-static inline void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
-					int *num_trips, int margin)
-{}
-#endif
-
 #ifdef CONFIG_SYSEDP_FRAMEWORK
 struct tegra_sysedp_corecap *tegra_get_sysedp_corecap(unsigned int *sz);
 #else
