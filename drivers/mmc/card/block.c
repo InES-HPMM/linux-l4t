@@ -686,7 +686,7 @@ static int mmc_blk_ioctl_combo_cmd(struct block_device *bdev,
 		}
 	}
 	/* Ensure all command has completed by polling CMD13 status */
-	err = mmc_blk_ioctl_card_status_poll(card, &status, 5);
+	err = mmc_blk_ioctl_card_status_poll(card, &status, 5000);
 	if (err)
 		dev_err(mmc_dev(card->host),
 				"%s: Card Status=0x%08X, error %d\n",
