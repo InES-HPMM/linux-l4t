@@ -1,0 +1,105 @@
+/*
+ * arch/arm/boot/dts/tegra124-p1859-vm_1.dts
+ *
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+ /dts-v1/;
+
+#include "tegra124-p1859.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 p1859";
+	compatible = "nvidia,p1859", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+
+	sdhci@700b0200 {
+		status = "disabled";
+	};
+
+	dma@60020000 {
+		dma-channels = <16>;
+		status = "okay";
+	};
+
+	tegra_hv: hyp {
+		compatible = "nvidia,tegra-hv";
+		status = "okay";
+
+		server-to-peers = <0 1>;
+
+		queues {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* guest 0 <-> guest 1 (frame based) */
+			ivc0 {
+				reg = <0>;
+				peers = <0 1>;
+				nframes = <2>;
+				frame-size = <50>;
+			};
+
+			/* guest 0 <-> guest 1 (comm) */
+			ivc1 {
+				reg = <1>;
+				peers = <0 1>;
+				nframes = <4>;
+				frame-size = <16>;
+			};
+
+			/* guest 0 <-> guest 1 (net) */
+			ivc2 {
+				reg = <2>;
+				peers = <0 1>;
+				nframes = <32>;
+				frame-size = <1536>;
+			};
+
+			/* guest 0 <-> guest 0 (loop) */
+			ivc5 {
+				reg = <5>;
+				peers = <0 0>;
+				nframes = <4>;
+				frame-size = <16>;
+			};
+
+			/* guest 0 <-> guest 0 (loop) */
+			ivc6 {
+				reg = <6>;
+				peers = <0 0>;
+				nframes = <4>;
+				frame-size = <16>;
+			};
+		};
+	};
+
+	/* the virtual serial device node */
+	tegra_hv_comm {
+		compatible = "nvidia,tegra-hv-comm";
+		status = "okay";
+		/* ivc channel to use definition (second one in tegra_hv) */
+		ivc = <&tegra_hv 1>;
+	};
+
+	tegra_hv_net {
+		compatible = "nvidia,tegra-hv-net";
+		status = "okay";
+		/* ivc channel to use definition (third one in tegra_hv) */
+		ivc = <&tegra_hv 2>;
+	};
+};
