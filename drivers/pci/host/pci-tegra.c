@@ -189,6 +189,7 @@
 
 #define RP_VEND_XP						0x00000F00
 #define RP_VEND_XP_DL_UP					(1 << 30)
+#define RP_VEND_XP_UPDATE_FC_THRESHOLD				(0xFF << 18)
 
 #define RP_LINK_CONTROL_STATUS					0x00000090
 #define RP_LINK_CONTROL_STATUS_DL_LINK_ACTIVE	0x20000000
@@ -211,6 +212,14 @@
 
 #define NV_PCIE2_RP_INTR_BCR					0x0000003C
 #define NV_PCIE2_RP_INTR_BCR_INTR_LINE				(0xFF << 0)
+
+#define NV_PCIE2_RP_PRIV_XP_DL					0x00000494
+#define PCIE2_RP_PRIV_XP_DL_GEN2_UPD_FC_TSHOLD			(0x1FF << 1)
+
+#define NV_PCIE2_RP_RX_HDR_LIMIT				0x00000E00
+#define PCIE2_RP_RX_HDR_LIMIT_PW_MASK				(0xFF00)
+#define PCIE2_RP_RX_HDR_LIMIT_PW				(0x0E << 8)
+
 #define NV_PCIE2_RP_TX_HDR_LIMIT				0x00000E08
 #define PCIE2_RP_TX_HDR_LIMIT_NPT_0				32
 #define PCIE2_RP_TX_HDR_LIMIT_NPT_1				4
@@ -1813,6 +1822,20 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 		data &= ~PCIE2_RP_L1_PM_SUBSTATES_2_CYA_MICROSECOND_COMP_MASK;
 		data |= PCIE2_RP_L1_PM_SUBSTATES_2_CYA_MICROSECOND_COMP;
 		rp_writel(port, data, NV_PCIE2_RP_L1_PM_SUBSTATES_2_CYA);
+#else
+		/* WAR for RAW violation on T124/T132 platforms */
+		data = rp_readl(port, NV_PCIE2_RP_RX_HDR_LIMIT);
+		data &= ~PCIE2_RP_RX_HDR_LIMIT_PW_MASK;
+		data |= PCIE2_RP_RX_HDR_LIMIT_PW;
+		rp_writel(port, data, NV_PCIE2_RP_RX_HDR_LIMIT);
+
+		data = rp_readl(port, NV_PCIE2_RP_PRIV_XP_DL);
+		data |= PCIE2_RP_PRIV_XP_DL_GEN2_UPD_FC_TSHOLD;
+		rp_writel(port, data, NV_PCIE2_RP_PRIV_XP_DL);
+
+		data = rp_readl(port, RP_VEND_XP);
+		data |= RP_VEND_XP_UPDATE_FC_THRESHOLD;
+		rp_writel(port, data, RP_VEND_XP);
 #endif
 	}
 }
