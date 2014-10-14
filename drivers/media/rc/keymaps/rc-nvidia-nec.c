@@ -41,6 +41,30 @@ static struct rc_map_table foster_table[] = {
 	{ 0x3100, KEY_POWER },
 	{ 0x3113, KEY_ENTER },
 	{ 0x3141, KEY_BACK },
+
+	/* Key codes for the Samsung AA59-00600A*/
+	{ 0x70711, KEY_0 },
+	{ 0x70704, KEY_1 },
+	{ 0x70705, KEY_2 },
+	{ 0x70706, KEY_3 },
+	{ 0x70708, KEY_4 },
+	{ 0x70709, KEY_5 },
+	{ 0x7070a, KEY_6 },
+	{ 0x7070c, KEY_7 },
+	{ 0x7070d, KEY_8 },
+	{ 0x7070e, KEY_9 },
+	{ 0x70707, KEY_VOLUMEUP },
+	{ 0x7070b, KEY_VOLUMEDOWN },
+	{ 0x70712, KEY_CHANNELUP },
+	{ 0x70710, KEY_CHANNELDOWN },
+	{ 0x70760, KEY_UP },
+	{ 0x70761, KEY_DOWN },
+	{ 0x70765, KEY_LEFT },
+	{ 0x70762, KEY_RIGHT },
+	{ 0x7071a, KEY_HOMEPAGE },
+	{ 0x70702, KEY_POWER },
+	{ 0x70768, KEY_ENTER },
+	{ 0x70758, KEY_BACK },
 };
 
 static struct rc_map_list nvidia_map = {
