@@ -81,5 +81,6 @@
 		compad-vref-1v8 = <0x2>;
 		cd-gpios = <&gpio TEGRA_GPIO_PZ1 0>;
 		nvidia,en-io-trim-volt;
+		nvidia,limit-vddio-max-volt;
 	};
 };
