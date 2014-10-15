@@ -1711,8 +1711,17 @@ static void tegra21_sbus_cmplx_init(struct clk *c)
 	if (tegra_platform_is_qt())
 		return;
 
-	/* Unity threshold must be an exact proper factor of low range parent */
-	BUG_ON((rate % sclk_pclk_unity_ratio_rate_max) != 0);
+	/*
+	 * Unity and low range thresholds must be an exact proper factors of
+	 * low range parent. Unity threshold must be set within low range
+	 */
+	if (c->u.system.threshold &&
+	    (sclk_pclk_unity_ratio_rate_max > c->u.system.threshold))
+		sclk_pclk_unity_ratio_rate_max = c->u.system.threshold;
+	if (sclk_pclk_unity_ratio_rate_max)
+		BUG_ON((rate % sclk_pclk_unity_ratio_rate_max) != 0);
+	if (c->u.system.threshold)
+		BUG_ON((rate % c->u.system.threshold) != 0);
 	BUG_ON(!(sclk_div->flags & DIV_U71));
 }
 
@@ -1756,7 +1765,9 @@ static void sbus_build_round_table(struct clk *c)
 {
 	int i, j = 0;
 	unsigned long rate;
-	bool inserted = false;
+	bool inserted_u = false;
+	bool inserted_t = false;
+	unsigned long threshold = c->u.system.threshold;
 
 	/*
 	 * Make sure unity ratio threshold always inserted into the table.
@@ -1777,11 +1788,22 @@ static void sbus_build_round_table(struct clk *c)
 		if (rate <= 1 * c->dvfs->freqs_mult)
 			continue; /* skip 1kHz place holders */
 
-		if (!inserted && (rate >= sclk_pclk_unity_ratio_rate_max)) {
-			inserted = true;
+		if (i && (rate == c->dvfs->freqs[i - 1]))
+			continue; /* skip duplicated rate */
+
+		if (!inserted_u && (rate >= sclk_pclk_unity_ratio_rate_max)) {
+			inserted_u = true;
+			if (sclk_pclk_unity_ratio_rate_max == threshold)
+				inserted_t = true;
+
 			if (rate > sclk_pclk_unity_ratio_rate_max)
 				sbus_build_round_table_one(
 					c, sclk_pclk_unity_ratio_rate_max, j++);
+		}
+		if (!inserted_t && (rate >= threshold)) {
+			inserted_t = true;
+			if (rate > threshold)
+				sbus_build_round_table_one(c, threshold, j++);
 		}
 		sbus_build_round_table_one(c, rate, j++);
 	}
