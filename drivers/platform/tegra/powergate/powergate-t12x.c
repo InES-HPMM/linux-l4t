@@ -20,7 +20,6 @@
 #include <asm/atomic.h>
 
 #include "powergate-priv.h"
-#include "powergate-ops-txx.h"
 #include "powergate-ops-t1xx.h"
 #include <linux/platform/tegra/dvfs.h>
 
@@ -783,7 +782,7 @@ int tegra12x_powergate_partition_with_clk_off(int id)
 {
 	BUG_ON(TEGRA_IS_GPU_POWERGATE_ID(id));
 
-	return tegraxx_powergate_partition_with_clk_off(id,
+	return tegra1xx_powergate_partition_with_clk_off(id,
 		&tegra12x_powergate_partition_info[id]);
 }
 
@@ -791,7 +790,7 @@ int tegra12x_unpowergate_partition_with_clk_on(int id)
 {
 	BUG_ON(TEGRA_IS_GPU_POWERGATE_ID(id));
 
-	return tegraxx_unpowergate_partition_with_clk_on(id,
+	return tegra1xx_unpowergate_partition_with_clk_on(id,
 		&tegra12x_powergate_partition_info[id]);
 }
 

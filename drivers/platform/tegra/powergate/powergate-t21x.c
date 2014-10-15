@@ -21,7 +21,6 @@
 
 #include "powergate-priv.h"
 #include "powergate-ops-t1xx.h"
-#include "powergate-ops-txx.h"
 
 #define EMULATION_MC_FLUSH_TIMEOUT 100
 
@@ -797,7 +796,7 @@ static int tegra210_pg_powergate_clk_off(int id)
 {
 	BUG_ON(TEGRA_IS_GPU_POWERGATE_ID(id));
 
-	return tegraxx_powergate_partition_with_clk_off(id,
+	return tegra1xx_powergate_partition_with_clk_off(id,
 			&tegra210_pg_partition_info[id]);
 }
 
@@ -805,7 +804,7 @@ static int tegra210_pg_unpowergate_clk_on(int id)
 {
 	BUG_ON(TEGRA_IS_GPU_POWERGATE_ID(id));
 
-	return tegraxx_unpowergate_partition_with_clk_on(id,
+	return tegra1xx_unpowergate_partition_with_clk_on(id,
 			&tegra210_pg_partition_info[id]);
 }
 

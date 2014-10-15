@@ -18,5 +18,10 @@
 /* Common APIs for tegra1xx SoCs */
 int tegra1xx_powergate(int id, struct powergate_partition_info *pg_info);
 int tegra1xx_unpowergate(int id, struct powergate_partition_info *pg_info);
+int tegra1xx_powergate_partition_with_clk_off(int id,
+	struct powergate_partition_info *pg_info);
+
+int tegra1xx_unpowergate_partition_with_clk_on(int id,
+	struct powergate_partition_info *pg_info);
 
 #endif /* __POWERGATE_OPS_T1XX_H__ */

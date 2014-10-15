@@ -119,3 +119,55 @@ err_power:
 	WARN(1, "Could not Un-Powergate %d", id);
 	return ret;
 }
+
+int tegra1xx_powergate_partition_with_clk_off(int id,
+	struct powergate_partition_info *pg_info)
+{
+	int ret = 0;
+
+	/* Disable clks for the partition */
+	partition_clk_disable(pg_info);
+
+	ret = is_partition_clk_disabled(pg_info);
+	if (ret)
+		goto err_powergate_clk;
+
+	ret = tegra_powergate_partition(id);
+	if (ret)
+		goto err_powergating;
+
+	return ret;
+
+err_powergate_clk:
+	WARN(1, "Could not Powergate Partition %d, all clks not disabled", id);
+err_powergating:
+	ret = partition_clk_enable(pg_info);
+	if (ret)
+		return ret;
+	WARN(1, "Could not Powergate Partition %d", id);
+	return ret;
+}
+
+int tegra1xx_unpowergate_partition_with_clk_on(int id,
+	struct powergate_partition_info *pg_info)
+{
+	int ret = 0;
+
+	ret = tegra_unpowergate_partition(id);
+	if (ret)
+		goto err_unpowergating;
+
+	/* Enable clks for the partition */
+	ret = partition_clk_enable(pg_info);
+	if (ret)
+		goto err_unpowergate_clk;
+
+	return ret;
+
+err_unpowergate_clk:
+	tegra_powergate_partition(id);
+	WARN(1, "Could not Un-Powergate %d, err in enabling clk", id);
+err_unpowergating:
+	WARN(1, "Could not Un-Powergate %d", id);
+	return ret;
+}
