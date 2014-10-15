@@ -47,6 +47,8 @@ enum max77620_pin_ppdrv {
 
 enum max77620_pinconf_param {
 	MAX77620_FPS_SOURCE = PIN_CONFIG_END + 1,
+	MAX77620_FPS_POWER_ON_PERIOD,
+	MAX77620_FPS_POWER_OFF_PERIOD,
 };
 
 struct max77620_pin_function {
@@ -65,6 +67,14 @@ static const struct max77620_cfg_param  max77620_cfg_params[] = {
 	{
 		.property = "maxim,fps-source",
 		.param = MAX77620_FPS_SOURCE,
+	},
+	{
+		.property = "maxim,fps-power-up-period",
+		.param = MAX77620_FPS_POWER_ON_PERIOD,
+	},
+	{
+		.property = "maxim,fps-power-down-period",
+		.param = MAX77620_FPS_POWER_OFF_PERIOD,
 	},
 };
 
@@ -321,6 +331,7 @@ static int max77620_pinconf_set(struct pinctrl_dev *pctldev,
 	int param = pinconf_to_config_param(config);
 	u16 param_val = pinconf_to_config_argument(config);
 	unsigned int val;
+	int mask, shift;
 	int addr, ret;
 
 	switch (param) {
@@ -343,6 +354,8 @@ static int max77620_pinconf_set(struct pinctrl_dev *pctldev,
 		break;
 
 	case MAX77620_FPS_SOURCE:
+	case MAX77620_FPS_POWER_ON_PERIOD:
+	case MAX77620_FPS_POWER_OFF_PERIOD:
 		if ((pin < MAX77620_GPIO1) || (pin > MAX77620_GPIO3))
 			return -EINVAL;
 
@@ -350,9 +363,20 @@ static int max77620_pinconf_set(struct pinctrl_dev *pctldev,
 			return 0;
 
 		addr = MAX77620_REG_FPS_GPIO1 + pin - 1;
+		if (param == MAX77620_FPS_SOURCE) {
+			mask = MAX77620_FPS_SRC_MASK;
+			shift = MAX77620_FPS_SRC_SHIFT;
+		} else if (param == MAX77620_FPS_POWER_ON_PERIOD) {
+			mask = MAX77620_FPS_PU_PERIOD_MASK;
+			shift = MAX77620_FPS_PU_PERIOD_SHIFT;
+		} else {
+			mask = MAX77620_FPS_PD_PERIOD_MASK;
+			shift = MAX77620_FPS_PD_PERIOD_SHIFT;
+		}
+
 		ret = max77620_reg_update(max77620_pci->max77620->dev,
-				MAX77620_PWR_SLAVE, addr, MAX77620_FPS_SRC_MASK,
-				param_val << MAX77620_FPS_SRC_SHIFT);
+				MAX77620_PWR_SLAVE, addr, mask,
+				param_val << shift);
 		if (ret < 0) {
 			dev_err(max77620_pci->dev,
 				"Reg 0x%02x update failed %d\n", addr, ret);
