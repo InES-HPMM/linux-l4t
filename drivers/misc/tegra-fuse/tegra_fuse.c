@@ -548,7 +548,7 @@ static void tegra_get_tegraid_from_hw(void)
 #ifndef CONFIG_ARM64
 	cid = tegra_read_chipid();
 	nlist = tegra_read_apb_misc_reg(0x860);
-#else
+#elif defined(CONFIG_ARCH_TEGRA_13x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	void __iomem *chip_id;
 	void __iomem *netlist;
 
@@ -582,7 +582,13 @@ static void tegra_get_tegraid_from_hw(void)
 		cid = tegra_read_apb_misc_reg(0x804);
 		nlist = tegra_read_apb_misc_reg(0x860);
 	}
-
+#else
+	void __iomem *apb_misc = ioremap(
+		TEGRA_APB_MISC_BASE, TEGRA_APB_MISC_SIZE);
+	BUG_ON(!apb_misc);
+	cid = readl(apb_misc + 0x804);
+	nlist = readl(apb_misc + 0x860);
+	iounmap(apb_misc);
 #endif
 
 	tegra_set_tegraid((cid >> 8) & 0xff,
