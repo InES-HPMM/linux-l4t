@@ -3549,13 +3549,10 @@ static int regs_show(struct seq_file *s, void *data)
 				}
 			}
 
-			if (level == THROT_LEVEL_NONE)
-				r = 0;
-			else if (IS_T13X && j == THROTTLE_DEV_CPU)
-				r = clk_reset13_readl(
-					THROT13_PSKIP_CTRL_CPU(level));
-			else
-				r = soctherm_readl(THROT_PSKIP_CTRL(i, j));
+			if (IS_T13X && j == THROTTLE_DEV_CPU)
+				r = (level == THROT_LEVEL_NONE) ? 0 :
+					clk_reset13_readl(
+						THROT13_PSKIP_CTRL_CPU(level));
 
 			m = REG_GET(r, THROT_PSKIP_CTRL_DIVIDEND);
 			n = REG_GET(r, THROT_PSKIP_CTRL_DIVISOR);
@@ -4241,56 +4238,174 @@ static void soctherm_thermctl_parse(struct platform_device *pdev)
 
 static void soctherm_throttlectl_parse(struct platform_device *pdev)
 {
-	int ocn, len;
-	struct device_node *np = pdev->dev.of_node;
-	struct thermal_cooling_device *cdev, **cdevp = NULL;
-	const char _type[THERMAL_NAME_LENGTH], *type = _type;
+	int ocn, val, prio;
+	bool oc_type, cdev_type, low;
+	struct device_node *cpu, *gpu, *np = pdev->dev.of_node;
+	struct thermal_cooling_device *cdev, **cdevp;
+	struct soctherm_throttle *throt;
+	struct soctherm_throttle_dev *dev_cpu, *dev_gpu;
+	const char *typ, *mod, *lvl;
 
-	/* register each valid child of type 'throttlectl' as cooling-device */
+	/* parse type 'throttlectl' for HW thermal throttle and OC alarms */
 	while ((np = of_find_node_by_type(np, "throttlectl"))) {
-		type = NULL;
-		cdevp = NULL;
 		if (!of_device_is_available(np))
 			continue;
 
-		if (strnstr(np->name, "throttle_oc", THERMAL_NAME_LENGTH)) {
-			len = strnlen("throttle_oc", THERMAL_NAME_LENGTH);
-			if (len < 0 || len >= THERMAL_NAME_LENGTH)
-				continue;
-			ocn = np->name[len] - '0';
-			dev_err(&pdev->dev, "node %s: enable OC%d (TODO).\n",
-				np->full_name, ocn);
+		cdevp = NULL;
+		throt = NULL;
+
+		/* do dev-type error checking */
+		oc_type = !of_property_read_u32(np, "oc-alarm-id", &ocn);
+		cdev_type = !of_property_read_string(np, "cdev-type", &typ);
+		if (cdev_type && oc_type) {
+			dev_err(&pdev->dev,
+		"error: both 'oc-alarm-id' and 'cdev-type' found in %s.\n",
+				np->full_name);
 			continue;
+		} else if (oc_type) {
+			/* look specifically for "oc1/2/3/4" */
+			if (ocn < 1 || ocn > 4) {
+				dev_err(&pdev->dev,
+					"invalid 'oc-alarm-id' in %s.\n",
+					np->full_name);
+				continue;
+			}
 		}
 
-		if (of_property_read_string(np, "cdev-type", &type)) {
-			dev_err(&pdev->dev, "missing 'cdev-type' from %s.\n",
+		if (cdev_type) {
+			if (strnstr(typ, "shutdown",
+						THERMAL_NAME_LENGTH)) {
+				cdevp = &soctherm_hw_critical_cdev;
+				/* throt = &pp->throttle[none]; */
+			} else if (strnstr(typ, "heavy",
+						THERMAL_NAME_LENGTH)) {
+				cdevp = &soctherm_hw_heavy_cdev;
+				throt = &pp->throttle[THROTTLE_HEAVY];
+			} else if (strnstr(typ, "light",
+						THERMAL_NAME_LENGTH)) {
+				cdevp = &soctherm_hw_light_cdev;
+				throt = &pp->throttle[THROTTLE_LIGHT];
+			}
+			if (!cdevp) {
+				dev_err(&pdev->dev,
+					"unknown 'cdev-type' in %s.\n",
+					np->full_name);
+				continue;
+			}
+
+			cdev = thermal_cooling_device_register(
+						(char *)typ,
+						NULL,
+						&soctherm_hw_action_ops);
+			if (IS_ERR_OR_NULL(cdev)) {
+				dev_err(&pdev->dev,
+					"cdev-register %s failed.\n", typ);
+				continue;
+			}
+
+			*cdevp = cdev;
+			dev_dbg(&pdev->dev,
+				"Registered cooling_device %s.\n", typ);
+
+			/* No throt_dev PSKIP config for HW shutdown */
+			if (cdevp == &soctherm_hw_critical_cdev)
+				continue;
+		} else if (oc_type) {
+			throt = &pp->throttle[THROTTLE_OC1 + ocn - 1];
+			throt->alarm_cnt_threshold = 0;
+			throt->alarm_filter = 0;
+			throt->throt_mode = DISABLED;
+
+			if (!of_property_read_string(np, "mode", &mod)) {
+				if (!strnstr(mod, "brief",
+						THERMAL_NAME_LENGTH))
+					throt->throt_mode = BRIEF;
+				else if (!strnstr(mod, "sticky",
+						THERMAL_NAME_LENGTH))
+					throt->throt_mode = STICKY;
+			}
+			if (!throt->throt_mode) {
+				dev_err(&pdev->dev,
+					"missing or incorrect 'mode' in %s.\n",
+					np->full_name);
+				continue;
+			}
+
+			throt->intr = of_property_read_bool(np, "intr");
+
+			low = of_property_read_bool(np, "active_low");
+			if (low && of_property_read_bool(np, "active_high")) {
+				dev_err(&pdev->dev,
+		"error: both 'active_low' and 'active_high' found in %s.\n",
+					np->full_name);
+				continue;
+			}
+			if (low)
+				throt->polarity = SOCTHERM_ACTIVE_LOW;
+			else /* default is ACTIVE_HIGH */
+				throt->polarity = SOCTHERM_ACTIVE_HIGH;
+
+			of_property_read_u32(np, "count_threshold",
+					     &throt->alarm_cnt_threshold);
+			of_property_read_u32(np, "filter",
+					     &throt->alarm_filter);
+
+			dev_dbg(&pdev->dev, "configured OC%d in %s.\n",
+				ocn, np->full_name);
+		}
+
+		if (of_property_read_u32(np, "priority", &prio))
+			dev_err(&pdev->dev, "missing 'priority' from %s.\n",
+				np->full_name);
+		else
+			throt->priority = prio;
+
+		/* parse CPU/GPU dev depth config at id 0/1 */
+		cpu = of_parse_phandle(np, "throttle_dev", 0);
+		gpu = of_parse_phandle(np, "throttle_dev", 1);
+		if (!cpu || !gpu) {
+			dev_err(&pdev->dev,
+				"missing CPU, GPU 'throttle_dev' in %s.\n",
 				np->full_name);
 			continue;
 		}
 
-		if (!type)
-			continue;
-		else if (strnstr(type, "shutdown", THERMAL_NAME_LENGTH))
-			cdevp = &soctherm_hw_critical_cdev;
-		else if (strnstr(type, "heavy", THERMAL_NAME_LENGTH))
-			cdevp = &soctherm_hw_heavy_cdev;
-		else if (strnstr(type, "light", THERMAL_NAME_LENGTH))
-			cdevp = &soctherm_hw_light_cdev;
-
-		if (!cdevp) {
-			dev_err(&pdev->dev, "unrecognized cdev %s'.\n", type);
+		/* configure CPU throttle depth */
+		dev_cpu = &throt->devs[THROTTLE_DEV_CPU];
+		if (!of_property_read_u32(cpu, "depth", &val)) {
+			THROT_DEPTH(dev_cpu, val);
+		} else {
+			of_property_read_u32(cpu, "dividend", &val);
+			dev_cpu->dividend = val;
+			of_property_read_u32(cpu, "divisor", &val);
+			dev_cpu->divisor = val;
+			of_property_read_u32(cpu, "duration", &val);
+			dev_cpu->duration = val;
+			of_property_read_u32(cpu, "step", &val);
+			dev_cpu->step = val;
+		}
+		if (!dev_cpu->dividend && !dev_cpu->divisor) {
+			dev_err(&pdev->dev, "missing pskip-cfg from %s.\n",
+				np->full_name);
 			continue;
 		}
+		dev_cpu->enable = 1;
 
-		cdev = thermal_cooling_device_register((char *)type, NULL,
-						       &soctherm_hw_action_ops);
-		if (IS_ERR_OR_NULL(cdev)) {
-			dev_err(&pdev->dev, "cdev-register %s failed.\n", type);
+		/* configure GPU throttle depth */
+		dev_gpu = &throt->devs[THROTTLE_DEV_GPU];
+		if (of_property_read_string(gpu, "level", &lvl)) {
+			dev_err(&pdev->dev, "missing 'level' from %s.\n",
+				np->full_name);
 			continue;
 		}
-		dev_info(&pdev->dev, "Registered cooling_device %s.\n", type);
-		*cdevp = cdev;
+		dev_gpu->enable = 1;
+
+		if (!strcmp(lvl, "heavy_throttling"))
+			dev_gpu->throttling_depth = "heavy_throttling";
+		else if (!strcmp(lvl, "medium_throttling"))
+			dev_gpu->throttling_depth = "medium_throttling";
+		else if (!strcmp(lvl, "low_throttling"))
+			dev_gpu->throttling_depth = "low_throttling";
 	}
 }
 
