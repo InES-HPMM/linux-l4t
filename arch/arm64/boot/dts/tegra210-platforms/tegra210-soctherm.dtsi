@@ -87,77 +87,11 @@
 			throttle_dev = <&{/soctherm@0x700E2000/throttle_dev@cpu_high}
 					&{/soctherm@0x700E2000/throttle_dev@gpu_high}>;
 		};
-		throttle@light {
-			device_type = "throttlectl";
-			cdev-type = "tegra-light";
-			cooling-min-state = <0>;
-			cooling-max-state = <3>;
-			#cooling-cells = <2>;
-			priority = <50>;
-			throttle_dev = <&{/soctherm@0x700E2000/throttle_dev@cpu_low}
-					&{/soctherm@0x700E2000/throttle_dev@gpu_low}>;
-		};
-		throttle@oc1 {
-			device_type = "throttlectl";
-			cooling-min-state = <0>;
-			cooling-max-state = <3>;
-			#cooling-cells = <2>;
-			priority = <10>;
-			throttle_dev = <&{/soctherm@0x700E2000/throttle_dev@cpu_medium}
-					&{/soctherm@0x700E2000/throttle_dev@gpu_medium}>;
-		};
-		throttle@oc2 {
-			device_type = "throttlectl";
-			cooling-min-state = <0>;
-			cooling-max-state = <3>;
-			#cooling-cells = <2>;
-			priority = <10>;
-			throttle_dev = <&{/soctherm@0x700E2000/throttle_dev@cpu_medium}
-					&{/soctherm@0x700E2000/throttle_dev@gpu_medium}>;
-		};
-		throttle@oc3 {
-			device_type = "throttlectl";
-			cooling-min-state = <0>;
-			cooling-max-state = <3>;
-			#cooling-cells = <2>;
-			priority = <10>;
-			throttle_dev = <&{/soctherm@0x700E2000/throttle_dev@cpu_medium}
-					&{/soctherm@0x700E2000/throttle_dev@gpu_medium}>;
-		};
-		throttle@oc4 {
-			device_type = "throttlectl";
-			cooling-min-state = <0>;
-			cooling-max-state = <3>;
-			#cooling-cells = <2>;
-			priority = <10>;
-			throttle_dev = <&{/soctherm@0x700E2000/throttle_dev@cpu_medium}
-					&{/soctherm@0x700E2000/throttle_dev@gpu_medium}>;
-		};
-
-		/* TODO - throttle_dev - pulse skip cfg and parse the phandles */
-		throttle_dev@cpu_low {
-			device_type = "throttle_dev";
-			depth = <50>;
-		};
-		throttle_dev@cpu_medium {
-			device_type = "throttle_dev";
-			depth = <75>;
-		};
 		throttle_dev@cpu_high {
-			device_type = "throttle_dev";
-			depth = <80>;
-		};
-		throttle_dev@gpu_low {
-			device_type = "throttle_dev";
-			depth = <50>;
-		};
-		throttle_dev@gpu_medium {
-			device_type = "throttle_dev";
-			depth = <75>;
+			depth = <85>;
 		};
 		throttle_dev@gpu_high {
-			device_type = "throttle_dev";
-			depth = <80>;
+			level = "heavy_throttling";
 		};
 	};
 };
