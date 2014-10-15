@@ -50,6 +50,7 @@ struct tegra_usb_cd_ops {
 	bool    (*apple_500ma_cd)(struct tegra_usb_cd *ucd);
 	bool    (*apple_1000ma_cd)(struct tegra_usb_cd *ucd);
 	bool    (*apple_2000ma_cd)(struct tegra_usb_cd *ucd);
+	void	(*vbus_pad_protection)(struct tegra_usb_cd *ucd, bool enable);
 };
 
 struct tegra_usb_cd {

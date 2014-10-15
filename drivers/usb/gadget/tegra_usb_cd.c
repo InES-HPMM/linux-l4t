@@ -68,9 +68,25 @@ static void tegra_usb_cd_set_extcon_state(struct tegra_usb_cd *ucd)
 				old_state, new_state);
 }
 
+static int tegra_usb_cd_set_current_limit(struct tegra_usb_cd *ucd, int max_ua)
+{
+	int ret = 0;
+
+	if (max_ua > 0 && ucd->vbus_pad_protection)
+		ucd->vbus_pad_protection(true);
+
+	if (ucd->vbus_reg != NULL)
+		ret = regulator_set_current_limit(ucd->vbus_reg, 0, max_ua);
+
+	if (max_ua == 0 && ucd->vbus_pad_protection)
+		ucd->vbus_pad_protection(false);
+
+	return ret;
+}
+
 static int tegra_usb_cd_set_charging_current(struct tegra_usb_cd *ucd)
 {
-	int max_ua, ret;
+	int max_ua;
 
 	switch (ucd->connect_type) {
 	case CONNECT_TYPE_NONE:
@@ -124,11 +140,7 @@ static int tegra_usb_cd_set_charging_current(struct tegra_usb_cd *ucd)
 		max_ua = 0;
 	}
 
-	ret = 0;
-	if (ucd->vbus_reg != NULL)
-		ret = regulator_set_current_limit(ucd->vbus_reg, 0, max_ua);
-
-	return ret;
+	return tegra_usb_cd_set_current_limit(ucd, max_ua);
 }
 
 enum tegra_usb_connect_type
@@ -197,8 +209,7 @@ EXPORT_SYMBOL_GPL(tegra_usb_get_ucd);
 
 void tegra_ucd_set_current(struct tegra_usb_cd *ucd, int current_ma)
 {
-	if (ucd->vbus_reg != NULL)
-		regulator_set_current_limit(ucd->vbus_reg, 0, current_ma*1000);
+	tegra_usb_cd_set_current_limit(ucd, current_ma*1000);
 	return;
 }
 EXPORT_SYMBOL_GPL(tegra_ucd_set_current);
