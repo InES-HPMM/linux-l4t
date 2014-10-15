@@ -588,7 +588,7 @@ static int tegra210_pg_gpu_powergate(int id)
 	struct powergate_partition_info *partition =
 				&tegra210_pg_partition_info[id];
 
-	if (partition->refcount-- <= 0)
+	if (--partition->refcount > 0)
 		return 0;
 
 	if (!tegra_powergate_is_powered(id)) {
