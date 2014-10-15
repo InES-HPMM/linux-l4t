@@ -25,7 +25,7 @@
 #include <linux/tegra-powergate.h>
 
 #include <linux/platform/tegra/clock.h>
-#include "iomap.h"
+#include "../../../../arch/arm/mach-tegra/iomap.h"
 
 #define MAX_CLK_EN_NUM			15
 #define MAX_HOTRESET_CLIENT_NUM		4

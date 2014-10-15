@@ -39,11 +39,6 @@ AFLAGS_sleep.o :=-Wa,-march=armv7-a$(plus_sec)
 
 obj-y                                   += kfuse.o
 
-obj-y                                   += powergate.o
-obj-y                                   += powergate-ops-txx.o
-obj-y                                   += powergate-ops-t1xx.o
-obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += powergate-t12x.o
-
 obj-y                                   += apbio.o
 obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)       += arb_sema.o
 

@@ -17,11 +17,11 @@
 #include <linux/regulator/consumer.h>
 #include <linux/tegra-powergate.h>
 #include <linux/tegra-soc.h>
-
-#include "../../../arch/arm/mach-tegra/powergate-priv.h"
-#include "../../../arch/arm/mach-tegra/powergate-ops-t1xx.h"
-#include "../../../arch/arm/mach-tegra/powergate-ops-txx.h"
 #include <linux/platform/tegra/dvfs.h>
+
+#include "powergate-priv.h"
+#include "powergate-ops-t1xx.h"
+#include "powergate-ops-txx.h"
 
 #define EMULATION_MC_FLUSH_TIMEOUT 100
 

@@ -37,9 +37,8 @@
 #include <asm/atomic.h>
 
 #include <linux/platform/tegra/clock.h>
-#include "iomap.h"
-#include "powergate-priv.h"
 #include <linux/platform/tegra/common.h>
+#include "powergate-priv.h"
 
 static struct powergate_ops *pg_ops;
 
