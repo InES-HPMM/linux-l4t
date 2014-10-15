@@ -578,6 +578,15 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		card->ext_csd.data_sector_size = 512;
 	}
 
+	/* eMMC v5 or later */
+	if (card->ext_csd.rev >= 7) {
+		card->ext_csd.ffu_capable =
+			((ext_csd[EXT_CSD_SUPPORTED_MODE] & 1) == 1) &&
+			((ext_csd[EXT_CSD_FW_CONFIG] & 1) == 0);
+	} else {
+		card->ext_csd.ffu_capable = false;
+	}
+
 out:
 	return err;
 }
