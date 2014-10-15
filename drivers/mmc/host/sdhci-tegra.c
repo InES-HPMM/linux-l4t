@@ -1170,7 +1170,7 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 		sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
 
 		/* Set the ddr mode trim delay if required */
-		if (plat->ddr_trim_delay != -1) {
+		if (plat->is_ddr_trim_delay) {
 			trim_delay = plat->ddr_trim_delay;
 			vndr_ctrl = sdhci_readl(host, SDHCI_VNDR_CLK_CTRL);
 			vndr_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_MASK <<
@@ -1191,15 +1191,12 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 			TAP_CMD_TRIM_HIGH_VOLTAGE) ?
 			tuning_data->nom_best_tap_value :
 			tuning_data->best_tap_value;
+	} else if ((uhs == MMC_TIMING_UHS_DDR50) && (plat->is_ddr_tap_delay)) {
+		best_tap_value = plat->ddr_tap_delay;
 	} else {
 		best_tap_value = tegra_host->plat->tap_delay;
 	}
-	vndr_ctrl = sdhci_readl(host, SDHCI_VNDR_CLK_CTRL);
-	vndr_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TAP_VALUE_MASK <<
-		SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
-	vndr_ctrl |= (best_tap_value <<
-		SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
-	sdhci_writel(host, vndr_ctrl, SDHCI_VNDR_CLK_CTRL);
+	sdhci_tegra_set_tap_delay(host, best_tap_value);
 
 	/* T21x: Enable Band Gap trimmers and VIO supply for eMMC all modes
 	 * and for SD/SDIO tunable modes only.
@@ -4464,7 +4461,12 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 		plat->is_8bit = 1;
 
 	of_property_read_u32(np, "tap-delay", &plat->tap_delay);
+	plat->is_ddr_tap_delay = of_property_read_bool(np,
+		"nvidia,is-ddr-tap-delay");
+	of_property_read_u32(np, "nvidia,ddr-tap-delay", &plat->ddr_tap_delay);
 	of_property_read_u32(np, "trim-delay", &plat->trim_delay);
+	plat->is_ddr_trim_delay = of_property_read_bool(np,
+			"nvidia,is-ddr-trim-delay");
 	of_property_read_u32(np, "ddr-trim-delay", &plat->ddr_trim_delay);
 	of_property_read_u32(np, "ddr-clk-limit", &plat->ddr_clk_limit);
 	of_property_read_u32(np, "max-clk-limit", &plat->max_clk_limit);
