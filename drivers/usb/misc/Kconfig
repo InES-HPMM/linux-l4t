@@ -253,3 +253,10 @@ config USB_NV_SHIELD_LED
 	help
 	  This driver communicates with the microcontroller on Nvidia Shield
 	  to control the center button LED.
+
+config USB_NV_SHIELD_PDA
+	tristate "USB Nvidia Shield PDA driver support"
+	depends on USB
+	help
+	  This driver communicates with the microcontorller on PDA which
+	  controls the states of PDA.
