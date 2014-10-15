@@ -45,7 +45,6 @@
 							   TEGRA_DC_OUT_PIN_DATA_ENABLE TEGRA_DC_OUT_PIN_POL_HIGH>;
 					nvidia,out-depth = <18>;
 					nvidia,out-parent-clk = "pll_d_out0";
-					nvidia,out-max-pixclk = <3367>;
 					nvidia,dither = <TEGRA_DC_ORDERED_DITHER>;
 				};
 			};
