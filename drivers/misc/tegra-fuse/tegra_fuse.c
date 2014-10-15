@@ -430,6 +430,7 @@ int tegra_fuse_calib_gpcpll_get_adc(int *slope_uv, int *intercept_uv)
 #endif
 	return -EINVAL;
 }
+EXPORT_SYMBOL(tegra_fuse_calib_gpcpll_get_adc);
 
 
 struct chip_revision {
@@ -651,6 +652,7 @@ bool tegra_cpu_is_asim(void)
 		tegra_get_tegraid_from_hw();
 	return cpu_is_asim;
 }
+EXPORT_SYMBOL(tegra_cpu_is_asim);
 
 bool tegra_cpu_is_dsim(void)
 {
