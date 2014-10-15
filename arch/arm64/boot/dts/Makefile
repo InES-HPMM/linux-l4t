@@ -32,6 +32,7 @@ dtb-$(CONFIG_MACH_GRENADA) += tegra210-loki-e-e2581-0031-a00-00.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-loki-e-e2581-0031-a01-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl33688874.dtb
+dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl33759297.dtb
 targets += $(dtb-y)
 
 DTC_FLAGS := -i $(srctree)/arch/arm/boot/dts
