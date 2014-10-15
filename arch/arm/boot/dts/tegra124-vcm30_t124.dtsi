@@ -152,6 +152,7 @@
 	sdhci@700b0000 {
 		tap-delay = <0x0>;
 		trim-delay = <0x2>;
+		nvidia,is-ddr-trim-delay;
 		ddr-trim-delay = <0x4>;
 		mmc-ocr-mask = <0>;
 		uhs-mask = <0x40>;

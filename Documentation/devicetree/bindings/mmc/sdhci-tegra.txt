@@ -13,7 +13,10 @@ Optional properties:
 - built-in: Add the check if the device is built-in device
 - bus-width: Specify device bus width details
 - tap-delay: Specify number of cycles to delay for reading data from device
+- nvidia,is-ddr-tap-delay: Specifies whether the tap value for ddr mode is available or not.
+- nvidia,ddr-tap-delay: Specify number of cycles to delay for reading data from device in ddr mode.
 - trim-delay: Specify number of cycles to delay for writing data to device
+- nvidia,is-ddr-trim-delay: Specifies whether the trim value for ddr mode is available or not.
 - ddr-trim-delay: Specify number of cycles to delay for writing data to device when in DDR mode
 - max-clk-limit: Specify the maximum clock limit for the device
 - ddr-clk-limit: Specify the maximum clock frequency in kHz for device in DDR mode
