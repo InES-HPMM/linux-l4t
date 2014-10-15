@@ -69,6 +69,7 @@
 #include <linux/pinctrl/pinconf-tegra.h>
 #include <linux/tegra_nvadsp.h>
 #include <linux/tegra-pm.h>
+#include <linux/regulator/machine.h>
 
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
@@ -548,6 +549,8 @@ static struct notifier_block platform_nb = {
 };
 static void __init tegra_t210ref_dt_init(void)
 {
+	regulator_has_full_constraints();
+
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	/*
 	 * In t210ref, zero display_board_id is considered to
