@@ -234,8 +234,8 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 		}
 		ret = of_device_is_available(np);
 		if (!ret) {
-			dev_info(&pdev->dev, "WDT is disabled\n");
-			goto pdata_done;
+			dev_info(&pdev->dev, "WDT node is disabled\n");
+			return -ENODEV;
 		}
 
 		ret =	of_property_read_u32(np, "maxim,wdt-timeout", &prop);
