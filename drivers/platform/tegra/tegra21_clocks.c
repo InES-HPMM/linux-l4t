@@ -9474,6 +9474,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("dmic2", "tegra-dmic.1", NULL),
 	CLK_DUPLICATE("dmic3", "tegra-dmic.2", NULL),
 	CLK_DUPLICATE("d_audio", "tegra210-adma", NULL),
+	CLK_DUPLICATE("d_audio", "nvadsp", "ahub"),
 	CLK_DUPLICATE("mclk", NULL, "default_mclk"),
 	CLK_DUPLICATE("uart_mipi_cal", "clk72mhz", NULL),
 };
