@@ -78,3 +78,10 @@ config BCMDHD_DISABLE_MCC
 	depends on BCMDHD
 	---help---
 	  Disable Multi channel concurrency to operate WLAN and P2P interfaces on same channel.
+
+config BCMDHD_CUSTOM_SYSFS_TEGRA
+	bool "Custom sysfs for Tegra platform"
+	depends on BCMDHD
+	default y
+	---help---
+	  Enable custom sysfs for Tegra platform.

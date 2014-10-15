@@ -204,6 +204,15 @@ ifneq ($(CONFIG_BCMDHD_PCIE),)
   DHDOFILES += pcie_core.o
 endif
 
+ifneq ($(CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA),)
+  DHDOFILES += dhd_custom_sysfs_tegra.o
+  DHDOFILES += dhd_custom_sysfs_tegra_ping.o
+  DHDOFILES += dhd_custom_sysfs_tegra_rssi.o
+  DHDOFILES += dhd_custom_sysfs_tegra_scan.o
+  DHDOFILES += dhd_custom_sysfs_tegra_stat.o
+  DHDOFILES += dhd_custom_sysfs_tegra_tcpdump.o
+endif
+
 bcmdhd-objs := $(DHDOFILES)
 obj-$(DRIVER_TYPE)   += bcmdhd.o
 

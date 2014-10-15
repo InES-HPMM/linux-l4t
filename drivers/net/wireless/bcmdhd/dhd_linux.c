@@ -105,6 +105,22 @@
 #include <dhd_ip.h>
 #endif /* DHDTCPACK_SUPPRESS */
 
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+#include "dhd_custom_sysfs_tegra.h"
+
+#define netif_rx(skb)\
+	{\
+		tegra_sysfs_histogram_tcpdump_rx(skb, __func__, __LINE__);\
+		netif_rx(skb);\
+	}\
+
+#define netif_rx_ni(skb)\
+	{\
+		tegra_sysfs_histogram_tcpdump_rx(skb, __func__, __LINE__);\
+		netif_rx_ni(skb);\
+	}\
+
+#endif
 
 #ifdef WLMEDIA_HTSF
 #include <linux/time.h>
@@ -2314,6 +2330,10 @@ dhd_start_xmit(struct sk_buff *skb, struct net_device *net)
 			goto done;
 		}
 	}
+
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	tegra_sysfs_histogram_tcpdump_tx(skb, __func__, __LINE__);
+#endif
 
 	/* Convert to packet */
 	if (!(pktbuf = PKTFRMNATIVE(dhd->pub.osh, skb))) {
@@ -6178,6 +6198,14 @@ dhd_register_if(dhd_pub_t *dhdp, int ifidx, bool need_rtnl_lock)
 		err = register_netdev(net);
 	else
 		err = register_netdevice(net);
+
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+{
+	extern struct net_device *dhd_custom_sysfs_tegra_histogram_stat_netdev;
+	if (ifidx == 0)
+		dhd_custom_sysfs_tegra_histogram_stat_netdev = net;
+}
+#endif
 
 	if (err != 0) {
 		DHD_ERROR(("couldn't register the net device [%s], err %d\n", net->name, err));
