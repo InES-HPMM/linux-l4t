@@ -17,11 +17,13 @@
 #ifndef _MACH_DENVER_HARDWOOD_H_
 #define _MACH_DENVER_HARDWOOD_H_
 
-#define N_CPU 2
-#define N_BUFFER 4
-#define BUFFER_SIZE (1 << 22)
+#define N_CPU		2
+#define N_BUFFER	4
+#define BUFFER_SIZE	(1 << 22)
+#define BUFFER_ORDER	10
 
-#define OSDUMP_VER_TRACER_NAMES 101
+#define OSDUMP_VER_TRACER_NAMES		101
+#define OSDUMP_VER_OSDUMP_IRQS		102
 
 struct hardwood_cmd {
 	__u8 core_id;
@@ -43,6 +45,8 @@ struct hardwood_cmd {
 #define HARDWOOD_GET_OSDUMP_VER		0x09
 #define HARDWOOD_GET_TR_NAMES		0x0a
 #define HARDWOOD_GET_TR_NAMES_SZ	0x0b
+#define HARDWOOD_SET_CLIENT_VER		0x0c
+#define HARDWOOD_SET_OSDUMP_IRQS	0x0d
 
 #define HARDWOOD_GET_STATUS			0x10
 #define HARDWOOD_GET_BYTES_USED		0x11

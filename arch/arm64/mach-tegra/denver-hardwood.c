@@ -85,6 +85,9 @@ static int minor_map[N_CPU] = { -1 };
 
 static int TRACER_IRQS[] = { 48, 54 };
 
+/* Single IRQ for all CPUs for V102 onward */
+static int osdump_irq = 54;
+
 static u64 osdump_version;
 
 static char *tracer_names;
@@ -103,6 +106,8 @@ static void hardwood_init_agent(void);
 static void hardwood_late_init(void);
 
 static bool check_buffers(struct hardwood_device *dev, bool lock);
+
+core_param(osdump_irq, osdump_irq, int, 0644);
 
 static irqreturn_t hardwood_handler(int irq, void *dev_id)
 {
@@ -194,6 +199,7 @@ long hardwood_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	/* CMD with input argument */
 	case HARDWOOD_SET_PHYS_ADDR:
 	case HARDWOOD_SET_BUFFER_SIZE:
+	case HARDWOOD_SET_CLIENT_VER:
 		hw_set_data(op.data);
 		hw_run_cmd(trace_cmd);
 		break;
@@ -427,7 +433,7 @@ static __init void init_one_buffer(int cpu, int buf_id)
 	buf->va = NULL;
 	buf->pa = 0;
 
-	buf->va = kmalloc(BUFFER_SIZE, GFP_KERNEL);
+	buf->va = (void *)__get_free_pages(GFP_KERNEL, BUFFER_ORDER);
 	buf->pa = virt_to_phys(buf->va);
 	BUG_ON(!buf->va || !buf->pa);
 
@@ -537,12 +543,14 @@ static struct notifier_block hardwood_cpu_notifier = {
 
 static void hardwood_init_agent(void)
 {
-	register_hotcpu_notifier(&hardwood_cpu_notifier);
+	if (osdump_version < OSDUMP_VER_OSDUMP_IRQS)
+		register_hotcpu_notifier(&hardwood_cpu_notifier);
 	agent_thread = kthread_create(agent_thread_fn, 0, "hardwood-agent");
 }
 
 static __init void init_one_cpu(int cpu)
 {
+	u32 cmd;
 	struct irqaction *irq;
 	struct hardwood_device *hdev;
 
@@ -561,13 +569,31 @@ static __init void init_one_cpu(int cpu)
 	minor_map[cpu] = hdev->dev.minor;
 	DBG_PRINT("minor for cpu[%d] is %d", cpu, minor_map[cpu]);
 
-	irq = &hdev->irq;
-	irq->name = hdev->name;
-	irq->flags = 0;
-	irq->handler = hardwood_handler;
-	irq->dev_id = (void *)hdev;
-	irq->irq = TRACER_IRQS[cpu];
-	BUG_ON(setup_irq(TRACER_IRQS[cpu], irq));
+	if (osdump_version >= OSDUMP_VER_OSDUMP_IRQS) {
+		BUG_ON(osdump_irq < 32 || osdump_irq > 1024);
+
+		/* Use the most reliable IRQ# */
+		TRACER_IRQS[0] = osdump_irq;
+
+		if (cpu == 0) {
+			/* Inform MTS the IRQ to use for CPU0 */
+			cmd = HARDWOOD_SET_OSDUMP_IRQS;
+			hw_run_cmd(HW_CMD(cpu, TRACER_IRQS[cpu], cmd));
+		} else {
+			/* Let CPU0 dispatch for other CPUs */
+			hw_run_cmd(HW_CMD(cpu, 0, HARDWOOD_SET_IRQ_TARGET));
+		}
+	}
+
+	if (cpu == 0 || osdump_version < OSDUMP_VER_OSDUMP_IRQS) {
+		irq = &hdev->irq;
+		irq->name = hdev->name;
+		irq->flags = 0;
+		irq->handler = hardwood_handler;
+		irq->dev_id = (void *)hdev;
+		irq->irq = TRACER_IRQS[cpu];
+		BUG_ON(setup_irq(TRACER_IRQS[cpu], irq));
+	}
 
 	hdev->buf_status = 0;
 	hdev->buf_occupied = 0;
@@ -587,14 +613,11 @@ static __init int hardwood_init(void)
 
 	hardwood_supported = denver_backdoor_enabled();
 
-	pr_info("Denver: hardwood is %ssupported.\n",
-		hardwood_supported ? "" : "NOT ");
-
 	if (hardwood_supported) {
+		init_osdump_version();
+		pr_info("Denver: hardwood version %lld.\n", osdump_version);
 		for (cpu = 0; cpu < N_CPU; ++cpu)
 			init_one_cpu(cpu);
-
-		init_osdump_version();
 	}
 
 	return 0;
