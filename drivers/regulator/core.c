@@ -987,6 +987,10 @@ static void print_constraints(struct regulator_dev *rdev)
 	if (!count)
 		sprintf(buf, "no parameters");
 
+	ret = _regulator_is_enabled(rdev);
+	if (ret >= 0)
+		count += sprintf(buf + count, "; Rail %s", ret ? "ON": "OFF");
+
 	rdev_info(rdev, "%s\n", buf);
 
 	if ((constraints->min_uV != constraints->max_uV) &&
