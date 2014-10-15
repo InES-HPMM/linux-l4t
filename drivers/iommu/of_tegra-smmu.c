@@ -181,6 +181,7 @@ u64 tegra_smmu_of_get_swgids(struct device *dev,
 	u64 fixup, swgids = 0;
 
 	if (dev_is_pci(dev)) {
+		return SWGIDS_ERROR_CODE;
 		swgids = TEGRA_SWGROUP_BIT(AFI);
 		goto try_fixup;
 	}
