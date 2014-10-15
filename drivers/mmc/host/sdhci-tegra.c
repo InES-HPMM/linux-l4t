@@ -2155,6 +2155,7 @@ static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
 	unsigned int tap_delay)
 {
 	u32 vendor_ctrl;
+	u16 clk;
 
 	/* Max tap delay value is 255 */
 	if (tap_delay > MAX_TAP_VALUES) {
@@ -2170,11 +2171,19 @@ static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
 		sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_TUN_CTRL0_0);
 	}
 
+	clk = sdhci_readw(sdhci, SDHCI_CLOCK_CONTROL);
+	clk &= ~SDHCI_CLOCK_CARD_EN;
+	sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
+
 	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
 	vendor_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TAP_VALUE_MASK <<
 			SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
 	vendor_ctrl |= (tap_delay << SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
 	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_CLK_CTRL);
+
+	clk = sdhci_readw(sdhci, SDHCI_CLOCK_CONTROL);
+	clk |= SDHCI_CLOCK_CARD_EN;
+	sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
 
 	if (!(sdhci->quirks2 & SDHCI_QUIRK2_NON_STANDARD_TUNING)) {
 		vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_TUN_CTRL0_0);
