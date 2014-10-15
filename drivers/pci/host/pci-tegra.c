@@ -2616,9 +2616,8 @@ static int tegra_msi_setup_irq(struct msi_chip *chip, struct pci_dev *pdev,
 
 	irq_set_msi_desc(irq, desc);
 
-	msg.address_lo = virt_to_phys((void *)msi->pages);
-	/* 32 bit address only */
-	msg.address_hi = 0;
+	msg.address_lo = virt_to_phys((void *)msi->pages) & 0xFFFFFFFF;
+	msg.address_hi = virt_to_phys((void *)msi->pages) >> 32;
 	msg.data = hwirq;
 
 	write_msi_msg(irq, &msg);
