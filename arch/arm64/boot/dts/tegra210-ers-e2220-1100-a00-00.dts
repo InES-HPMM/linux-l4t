@@ -51,6 +51,7 @@
 	nvidia,dtsfilename = __FILE__;
 	nvidia,proc-boardid = "2220:1100:00";
 	nvidia,pmu-boardid = "2174:1101:00";
+	nvidia,fastboot-usb-pid = <0x7100>;
 	#address-cells = <2>;
 	#size-cells = <2>;
 

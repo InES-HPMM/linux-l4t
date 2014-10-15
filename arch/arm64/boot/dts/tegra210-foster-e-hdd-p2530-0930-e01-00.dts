@@ -24,6 +24,7 @@
 	model = "foster_e_hdd";
 	compatible = "nvidia,foster-e", "nvidia,tegra210";
 	nvidia,dtsfilename = __FILE__;
+	nvidia,fastboot-usb-pid = <0xb422>;
 
 	sata@70020000 {
 		status = "okay";

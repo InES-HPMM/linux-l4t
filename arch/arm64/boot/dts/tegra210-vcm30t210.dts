@@ -24,6 +24,7 @@
 
 / {
 	nvidia,dtsfilename = __FILE__;
+	nvidia,fastboot-usb-pid = <0x7100>;
 
 	spi@7000d400 {
 		earSmart: earSmart-codec@0 {

@@ -44,6 +44,7 @@
 	model = "loki_e_lte";
 	compatible = "nvidia,loki-e", "nvidia,tegra210";
 	nvidia,dtsfilename = __FILE__;
+	nvidia,fastboot-usb-pid = <0xb420>;
 
 	i2c@7000c500 {
 		battery-charger@6b {
