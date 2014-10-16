@@ -138,6 +138,7 @@ struct tegra_adma {
 	struct dma_device		dma_dev;
 	struct device			*dev;
 	struct clk			*dma_clk;
+	struct clk			*ape_clk;
 	spinlock_t			global_lock;
 	void __iomem			*base_addr;
 	const struct tegra_adma_chip_data *chip_data;
@@ -1072,7 +1073,8 @@ struct dma_async_tx_descriptor *tegra_adma_prep_dma_cyclic(
 static int tegra_adma_alloc_chan_resources(struct dma_chan *dc)
 {
 	struct tegra_adma_chan *tdc = to_tegra_adma_chan(dc);
-	clk_prepare(tdc->tdma->dma_clk);
+
+	pm_runtime_get_sync(tdc->tdma->dev);
 	dma_cookie_init(&tdc->dma_chan);
 	tdc->config_init = false;
 	return 0;
@@ -1094,7 +1096,7 @@ static void tegra_adma_free_chan_resources(struct dma_chan *dc)
 
 	if (tdc->busy)
 		tegra_adma_terminate_all(dc);
-	clk_unprepare(tdc->tdma->dma_clk);
+	pm_runtime_put(tdc->tdma->dev);
 	spin_lock_irqsave(&tdc->lock, flags);
 	list_splice_init(&tdc->pending_sg_req, &sg_req_list);
 	list_splice_init(&tdc->free_sg_req, &sg_req_list);
@@ -1215,6 +1217,12 @@ static int tegra_adma_probe(struct platform_device *pdev)
 		return PTR_ERR(tdma->dma_clk);
 	}
 
+	tdma->ape_clk = clk_get_sys(NULL, "ape");
+	if (IS_ERR(tdma->ape_clk)) {
+		dev_err(&pdev->dev, "Error: Missing APE clock\n");
+		return PTR_ERR(tdma->ape_clk);
+	}
+
 	spin_lock_init(&tdma->global_lock);
 
 	dma_device = &pdev->dev;
@@ -1331,6 +1339,7 @@ err_pm_disable:
 	if (!pm_runtime_status_suspended(&pdev->dev))
 		tegra_adma_runtime_suspend(&pdev->dev);
 	tegra_pd_remove_device(&pdev->dev);
+	clk_put(tdma->ape_clk);
 	return ret;
 }
 
@@ -1347,6 +1356,7 @@ static int tegra_adma_remove(struct platform_device *pdev)
 		tasklet_kill(&tdc->tasklet);
 	}
 
+	clk_put(tdma->ape_clk);
 	pm_runtime_disable(&pdev->dev);
 	if (!pm_runtime_status_suspended(&pdev->dev))
 		tegra_adma_runtime_suspend(&pdev->dev);
@@ -1361,6 +1371,7 @@ static int tegra_adma_runtime_suspend(struct device *dev)
 	struct tegra_adma *tdma = platform_get_drvdata(pdev);
 
 	clk_disable(tdma->dma_clk);
+	clk_disable(tdma->ape_clk);
 	return 0;
 }
 
@@ -1369,6 +1380,12 @@ static int tegra_adma_runtime_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_adma *tdma = platform_get_drvdata(pdev);
 	int ret;
+
+	ret = clk_enable(tdma->ape_clk);
+	if (ret < 0) {
+		dev_err(dev, "clk_enable failed: %d\n", ret);
+		return ret;
+	}
 
 	ret = clk_enable(tdma->dma_clk);
 	if (ret < 0) {
