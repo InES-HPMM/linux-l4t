@@ -68,6 +68,7 @@ struct mmc_ios {
 #define MMC_TIMING_UHS_DDR50	7
 #define MMC_TIMING_MMC_HS200	8
 #define MMC_TIMING_MMC_HS400	9
+#define MMC_TIMINGS_MAX_MODES   10
 
 #define MMC_SDR_MODE		0
 #define MMC_1_2V_DDR_MODE	1
