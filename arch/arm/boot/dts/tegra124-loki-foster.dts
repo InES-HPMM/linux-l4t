@@ -22,6 +22,7 @@
 #include "tegra124-platforms/tegra124-loki-thermal-zone-p2530-0000-a01.dtsi"
 #include "tegra124-platforms/tegra124-loki-foster-pwm-fan.dtsi"
 #include "tegra124-platforms/tegra124-foster-thermal-fan-est.dtsi"
+#include <tegra124-platforms/tegra124-foster-hdmi-e2530-1000-a00.dtsi>
 
 / {
 	model = "NVIDIA Tegra124 Foster";
@@ -69,6 +70,17 @@
 		dt-override-status-odm-data = <0x00038000 0x00018000>;
 	};
 
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+	};
 	memory@0x80000000 {
 		device_type = "memory";
 		reg = <0x0 0x80000000 0x0 0x80000000>;
