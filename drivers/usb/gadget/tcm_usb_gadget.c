@@ -2452,6 +2452,7 @@ static struct usb_endpoint_descriptor uasp_fs_bi_desc = {
 	.bDescriptorType =	USB_DT_ENDPOINT,
 	.bEndpointAddress =	USB_DIR_IN,
 	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
+	.wMaxPacketSize =       cpu_to_le16(64),
 };
 
 static struct usb_pipe_usage_descriptor uasp_bi_pipe_desc = {
@@ -2495,6 +2496,7 @@ static struct usb_endpoint_descriptor uasp_fs_bo_desc = {
 	.bDescriptorType =	USB_DT_ENDPOINT,
 	.bEndpointAddress =	USB_DIR_OUT,
 	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
+	.wMaxPacketSize =       cpu_to_le16(64),
 };
 
 static struct usb_pipe_usage_descriptor uasp_bo_pipe_desc = {
@@ -2535,6 +2537,7 @@ static struct usb_endpoint_descriptor uasp_fs_status_desc = {
 	.bDescriptorType =	USB_DT_ENDPOINT,
 	.bEndpointAddress =	USB_DIR_IN,
 	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
+	.wMaxPacketSize =       cpu_to_le16(64),
 };
 
 static struct usb_pipe_usage_descriptor uasp_status_pipe_desc = {
@@ -2570,6 +2573,7 @@ static struct usb_endpoint_descriptor uasp_fs_cmd_desc = {
 	.bDescriptorType =	USB_DT_ENDPOINT,
 	.bEndpointAddress =	USB_DIR_OUT,
 	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
+	.wMaxPacketSize =       cpu_to_le16(64),
 };
 
 static struct usb_pipe_usage_descriptor uasp_cmd_pipe_desc = {
