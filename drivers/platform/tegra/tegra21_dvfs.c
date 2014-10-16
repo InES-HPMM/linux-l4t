@@ -101,7 +101,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_gpu = {
 	.stats = {
 		.bin_uV = 6250, /* 6.25mV */
 	},
-	.version = "p4v03",
+	.version = "p4v06",
 };
 
 static struct dvfs_rail *tegra21_dvfs_rails[] = {
@@ -236,7 +236,7 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 		.speedo_id =  -1,
 		.process_id = -1,
 #ifdef CONFIG_TEGRA_GPU_DVFS
-		.max_mv = 1225,
+		.max_mv = 1150,
 #else
 		.max_mv = 1000,
 #endif
