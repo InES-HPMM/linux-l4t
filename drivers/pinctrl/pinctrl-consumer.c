@@ -22,6 +22,8 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/pinctrl/pinmux.h>
 #include <linux/of.h>
+#include <linux/hardirq.h>
+#include <linux/irqflags.h>
 #include "core.h"
 #include "pinconf.h"
 #include "pinctrl-utils.h"
@@ -208,7 +210,7 @@ int pinctrl_get_config_for_pin(struct pinctrl_dev *pctldev, unsigned pin,
 }
 EXPORT_SYMBOL_GPL(pinctrl_get_config_for_pin);
 
-int pinctrl_set_config_for_group_sel(struct pinctrl_dev *pctldev,
+static int set_config_for_group_sel(struct pinctrl_dev *pctldev,
 	unsigned group_sel, unsigned long config)
 {
 	const struct pinconf_ops *ops = pctldev->desc->confops;
@@ -230,7 +232,6 @@ int pinctrl_set_config_for_group_sel(struct pinctrl_dev *pctldev,
 		return ret;
 	}
 
-	mutex_lock(&pctldev->mutex);
        /*
 	 * If the pin controller supports handling entire groups we use that
 	 * capability.
@@ -242,7 +243,7 @@ int pinctrl_set_config_for_group_sel(struct pinctrl_dev *pctldev,
 		 * pin-by-pin as well, it returns -EAGAIN.
 		 */
 		if (ret != -EAGAIN)
-			goto unlock;
+			return ret;
 	}
 
 	/*
@@ -250,19 +251,45 @@ int pinctrl_set_config_for_group_sel(struct pinctrl_dev *pctldev,
 	 * individually.
 	 */
 	if (!ops->pin_config_set) {
-		ret = 0;
-		goto unlock;
+		return 0;
 	}
 
 	for (i = 0; i < num_pins; i++) {
 		ret = ops->pin_config_set(pctldev, pins[i], config);
 		if (ret < 0)
-			goto unlock;
+			return ret;
 	}
 
-	ret = 0;
+	return ret;
+}
 
-unlock:
+int pinctrl_set_config_for_group_sel_any_context(struct pinctrl_dev *pctldev,
+	unsigned group_sel, unsigned long config)
+{
+	int ret;
+	bool is_locked = false;
+
+	if (!in_atomic() && !irqs_disabled()) {
+		mutex_lock(&pctldev->mutex);
+		is_locked = true;
+	}
+
+	ret = set_config_for_group_sel(pctldev, group_sel, config);
+
+	if (is_locked)
+		mutex_unlock(&pctldev->mutex);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(pinctrl_set_config_for_group_sel_any_context);
+
+int pinctrl_set_config_for_group_sel(struct pinctrl_dev *pctldev,
+	unsigned group_sel, unsigned long config)
+{
+	int ret;
+
+	mutex_lock(&pctldev->mutex);
+	ret = set_config_for_group_sel(pctldev, group_sel, config);
 	mutex_unlock(&pctldev->mutex);
 
 	return ret;

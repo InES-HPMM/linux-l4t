@@ -243,6 +243,8 @@ extern int pinctrl_get_config_for_pin(struct pinctrl_dev *pctldev, unsigned pin,
 			   unsigned long *config);
 extern int pinctrl_set_config_for_group_sel(struct pinctrl_dev *pctldev,
 	unsigned group_sel, unsigned long config);
+extern int pinctrl_set_config_for_group_sel_any_context(
+	struct pinctrl_dev *pctldev, unsigned group_sel, unsigned long config);
 extern int pinctrl_get_config_for_group_sel(struct pinctrl_dev *pctldev,
 		unsigned group_sel, unsigned long *config);
 extern int pinctrl_set_config_for_group_name(struct pinctrl_dev *pctldev,
