@@ -44,7 +44,7 @@
 #define		DCD_DETECTED			BIT(26)
 
 #define	XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL1	0x84
-#define		VREG_FIX18			BIT(6)
+#define		VBUS_VREG_FIX18			BIT(6)
 #define		USBOP_RPD_OVRD			BIT(16)
 #define		USBOP_RPD_OVRD_VAL		BIT(17)
 #define		USBOP_RPU_OVRD			BIT(18)
@@ -290,9 +290,9 @@ static void tegra21x_usb_vbus_pad_protection(struct tegra_usb_cd *ucd,
 
 	val = readl(base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL1);
 	if (enable)
-		val &= ~VREG_FIX18;
+		val &= ~VBUS_VREG_FIX18;
 	else
-		val |= VREG_FIX18;
+		val |= VBUS_VREG_FIX18;
 	writel(val, base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL1);
 }
 
