@@ -410,7 +410,6 @@ static int es755_fw_download(struct escore_priv *es755)
 	msleep(20);
 
 	if (es755->boot_ops.finish) {
-	    u32 resp;
 		pr_debug("%s(): calling bus specific boot finish\n", __func__);
 		rc = es755->boot_ops.finish(es755);
 		if (rc != 0) {
@@ -418,7 +417,6 @@ static int es755_fw_download(struct escore_priv *es755)
 				__func__);
 			goto es755_bootup_failed;
 		}
-        es755->bus.ops.high_bw_cmd(es755, 0x807c431f, &resp);
 	}
 	es755->mode = STANDARD;
 
@@ -2382,40 +2380,41 @@ irqreturn_t es755_irq_work(int irq, void *data)
 	/* Delay required for firmware to be ready in case of CVQ mode */
 	msleep(50);
 
-	/* If the chip is not awake, the reading of event will wakeup the
-	 * chip which will result in interrupt reconfiguration from device
-	 * resume. Reconfiguration is deferred till the time interrupt
-	 * is processed from the notifier callback.
-	 *
-	 * The interrupt reconfiguration in this case will be taken care of
-	 * by a low priority notifier callback
-	 */
-	mutex_lock(&escore->api_mutex);
-	if (escore->escore_power_state != ES_SET_POWER_STATE_NORMAL)
-			escore->defer_intr_config = 1;
-
 	/* Power state change:
 	 * Interrupt will put the chip into Normal State
 	 */
 
-	if (escore->escore_power_state == escore->non_vs_sleep_state)
+	if (escore->escore_power_state == escore->non_vs_sleep_state) {
 		escore->escore_power_state = ES_SET_POWER_STATE_NORMAL;
-	else if (escore->escore_power_state == ES_SET_POWER_STATE_VS_LOWPWR)
+	} else if (escore->escore_power_state == ES_SET_POWER_STATE_VS_LOWPWR) {
 		escore->escore_power_state = ES_SET_POWER_STATE_VS_OVERLAY;
+
+		/* If the chip is not awake, the reading of event will wakeup
+		 * the chip which will result in interrupt reconfiguration
+		 * from device resume. Reconfiguration is deferred till the
+		 * time interrupt is processed from the notifier callback.
+		 *
+		 * The interrupt reconfiguration in this case will be taken
+		 * care of by a low priority notifier callback
+		 */
+		escore->defer_intr_config = 1;
+	}
 
 	cmd = ES_GET_EVENT << 16;
 
+	mutex_lock(&escore->api_mutex);
 	rc = escore->bus.ops.cmd(escore, cmd, &event_type);
 	if (rc < 0) {
 		pr_err("%s(): Error reading IRQ event: %d\n", __func__, rc);
+		mutex_unlock(&escore->api_mutex);
 		goto irq_exit;
 	}
+	mutex_unlock(&escore->api_mutex);
 
 	event_type &= ES_MASK_INTR_EVENT;
 	mutex_lock(&escore->escore_event_type_mutex);
 	escore->escore_event_type = event_type;
 	mutex_unlock(&escore->escore_event_type_mutex);
-	mutex_unlock(&escore->api_mutex);
 
 	if (event_type != ES_NO_EVENT) {
 		pr_debug("%s(): Notify subscribers about 0x%04x event",

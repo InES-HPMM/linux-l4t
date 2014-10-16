@@ -6,6 +6,7 @@
  * published by the Free Software Foundation.
  */
 
+
 #include "escore.h"
 #include "escore-i2c.h"
 #include "escore-slim.h"
@@ -889,6 +890,7 @@ int escore_wakeup(struct escore_priv *escore)
 	int retry = 20;
 	u32 p_cmd = ES_GET_POWER_STATE << 16;
 
+	mutex_lock(&escore->api_mutex);
 	/* Enable the clocks */
 	if (escore_priv.pdata->esxxx_clk_cb) {
 		escore_priv.pdata->esxxx_clk_cb(1);
@@ -941,7 +943,6 @@ int escore_wakeup(struct escore_priv *escore)
 			}
 		}
 
-
 		rc = escore_priv.bus.ops.cmd(escore, cmd, &rsp);
 		if (rc < 0) {
 			dev_err(escore->dev, "%s() - failed sync cmd resume\n",
@@ -961,10 +962,22 @@ int escore_wakeup(struct escore_priv *escore)
 	/* Set the Smooth Mute rate to Zero */
 	cmd = ES_SET_SMOOTH_MUTE << 16 | ES_SMOOTH_MUTE_ZERO;
 	rc = escore->bus.ops.cmd(escore, cmd, &rsp);
-	if (rc)
+	if (rc) {
 		dev_err(escore->dev, "%s(): escore_cmd fail %d\n",
-					__func__, rc);
+				__func__, rc);
+		goto escore_wakeup_exit;
+	}
+
+	/* Setup the Event response */
+	cmd = (ES_SET_EVENT_RESP << 16) |
+		escore->pdata->gpio_b_irq_type;
+	rc = escore->bus.ops.cmd(escore, cmd, &rsp);
+	if (rc < 0)
+		pr_err("%s(): Error %d in setting event response\n",
+				__func__, rc);
+
 escore_wakeup_exit:
+	mutex_unlock(&escore->api_mutex);
 	return rc;
 }
 
@@ -1178,7 +1191,7 @@ int escore_probe(struct escore_priv *escore, struct device *dev, int curr_intf,
 	complete(&escore->fw_download);
 #endif
 	escore->is_probe_error = 0;
-	//escore_pm_enable();
+	escore_pm_enable();
 
 out:
 	return rc;

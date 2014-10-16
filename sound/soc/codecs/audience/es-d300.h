@@ -71,17 +71,17 @@ enum {
 
 /* Algorithm */
 enum {
-	NONE,
 	VP,
 	MM,
-	VP_MM,
 	AUDIOZOOM,
 	PASSTHRU,
+	VP_MM,
 	PASSTHRU_VP,
 	PASSTHRU_MM,
 	PASSTHRU_VP_MM,
 	PASSTHRU_AZ,
 	VOICEQ,
+	NONE,
 	ALGO_MAX,
 };
 
@@ -263,6 +263,7 @@ struct es_ch_mgr_max {
 #define ES300_PATH_ID(xchandesg, xpath)	((xchandesg << 8) | (xpath))
 #define ES300_RATE(filter, rate)	((rate << 8) | filter)
 #define ES300_GROUP(filter, groupid)	((filter << 8) | (groupid & 0xf))
+#define ES300_ALGO_PROC(algo, value)	((value << 0x8) | algo)
 #define ES300_MAX_BASE_ROUTE		ALGO_MAX
 /* Extract chmgr from Datapath */
 #define ES_CHMGR_DATAPATH(datapath)	(datapath & 0x0F)

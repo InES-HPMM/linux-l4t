@@ -525,6 +525,7 @@ struct escore_priv {
 	int fw_requested;
 	u16 preset;
 	u16 cvs_preset;
+	u16 algo_preset;
 /* endif 705 */
 
 	struct mutex pm_mutex;

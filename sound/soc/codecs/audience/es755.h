@@ -60,6 +60,7 @@
 #define ES_SET_RATE_CMD			0xB063
 #define ES_CONNECT_CMD			0xB064
 #define ES_SET_GROUP_CMD		0xB068
+#define ES_SET_ALGO_PROC_CMD		0xB01C
 
 
 #define ES_API_WORD(upper, lower) ((upper << 16) | lower)
@@ -172,6 +173,7 @@ enum {
 	ES_ALGORITHM_VP,
 	ES_ALGORITHM_MM,
 	ES_ALGORITHM_PT,
+	ES_ALGORITHM_PT_VP,
 	ES_ALGORITHM_AZ,
 
 	/* PCM Port Parameters*/

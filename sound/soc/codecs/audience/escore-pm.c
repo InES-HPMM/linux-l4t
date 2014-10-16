@@ -138,10 +138,6 @@ static int escore_non_vs_resume(struct device *dev)
 		goto escore_wakeup_fail_recovery;
 	}
 
-	if (!escore->defer_intr_config)
-		blocking_notifier_call_chain(escore->irq_notifier_list,
-				ES_RECONFIG_INTR_EVENT, escore);
-
 	dev_dbg(dev, "%s() - out rc =%d\n", __func__, ret);
 
 	escore->escore_power_state = ES_SET_POWER_STATE_NORMAL;
