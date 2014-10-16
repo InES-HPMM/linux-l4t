@@ -308,6 +308,10 @@
 
 #define SATA_AUX_RX_STAT_INT_0			0x110c
 #define SATA_RX_STAT_INT_DISABLE		(1 << 2)
+#define SATA_AUX_RX_STAT_INT_0_SATA_DEVSLP	(0x1 << 7)
+
+#define SATA_AUX_MISC_CNTL_1_0			0x1108
+#define SATA_AUX_MISC_CNTL_1_0_DEVSLP_OVERRIDE	(0x1 << 17)
 
 #define T_SATA0_NVOOB				0x114
 #define T_SATA0_NVOOB_SQUELCH_FILTER_MODE_SHIFT	24
@@ -321,6 +325,7 @@
 #define XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0		0x860
 #define PLL0_IDDQ				(1 << 0)
 #define PLL0_SLEEP				(1 << 1)
+#define PLL0_SLEEP_DEFAULT			(0x3 << 1)
 #define PLL0_ENABLE				(1 << 3)
 #define PLL0_PWR_OVRD				(1 << 4)
 #define PLL0_LOCKDET_STATUS			(1 << 15)
@@ -352,6 +357,12 @@
 #define AUX_MUX_LP0_CLAMP_EN			(1 << 29)
 #define XUSB_PADCTL_ELPG_PROGRAM_0_0		0x20
 #define AUX_MUX_LP0_CLAMP_EN_EARLY		(1 << 30)
+
+#define XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2      0x964
+#define XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2_TX_IDDQ_OVRD (0x1 << 1)
+#define XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2_TX_IDDQ (0x1 << 0)
+#define XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2_RX_IDDQ_OVRD (0x1 << 9)
+#define XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2_RX_IDDQ (0x1 << 8)
 
 /*Electrical settings for better link stability */
 #define SATA_CHX_PHY_CTRL17_0			0x6e8
@@ -1543,6 +1554,11 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	tegra_hpriv->clk_sata_uphy = clk_sata_uphy;
 	tegra_periph_reset_assert(clk_sata_uphy);
 
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+	val |= (PLL0_PWR_OVRD | PLL0_IDDQ | PLL0_SLEEP_DEFAULT);
+	val &= ~PLL0_ENABLE;
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+
 	clk_cml1 = clk_get_sys(NULL, "cml1");
 	if (IS_ERR_OR_NULL(clk_cml1)) {
 		pr_err("%s: unable to get cml1 clock Errone is %d\n",
@@ -2478,6 +2494,51 @@ void tegra_ahci_iddqlane_config(void)
 	udelay(dat);
 
 }
+
+static void tegra_ahci_t210_power_down_uphy(void)
+{
+
+	u32 val;
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2);
+	val |= (XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2_TX_IDDQ_OVRD |
+			XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2_TX_IDDQ |
+			XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2_RX_IDDQ_OVRD |
+			XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2_RX_IDDQ);
+	xusb_writel(val, XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2);
+}
+
+static void tegra_ahci_t210_power_down_uphy_padpll(void)
+{
+	u32 val;
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+	val |= (PLL0_PWR_OVRD | PLL0_IDDQ);
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+}
+
+static void tegra_ahci_t210_power_up_uphy(void)
+{
+
+	u32 val;
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2);
+	val &= ~(XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2_TX_IDDQ_OVRD |
+			XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2_TX_IDDQ |
+			XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2_RX_IDDQ_OVRD |
+			XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2_RX_IDDQ);
+	xusb_writel(val, XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2);
+}
+
+static void tegra_ahci_t210_power_up_uphy_padpll(void)
+{
+	u32 val;
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+	val &= ~(PLL0_PWR_OVRD | PLL0_IDDQ);
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+}
+
 void tegra_ahci_put_sata_in_iddq()
 {
 	u32 val;
@@ -2506,9 +2567,19 @@ void tegra_ahci_put_sata_in_iddq()
 		val = xusb_readl(XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
 		val |= (PLL_PWR_OVRD_MASK | PLL_IDDQ_MASK | PLL_RST_MASK);
 		xusb_writel(val, XUSB_PADCTL_IOPHY_PLL_S0_CTL1_0);
-	}
+	} else {
+		val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
+		val |= (SATA_SEQ_PADPLL_PD_INPUT_VALUE |
+				SATA_SEQ_LANE_PD_INPUT_VALUE |
+				SATA_SEQ_RESET_INPUT_VALUE |
+				PLLE_IDDQ_SWCTL_ON);
+		clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
 
+		tegra_ahci_t210_power_down_uphy();
+		tegra_ahci_t210_power_down_uphy_padpll();
+	}
 }
+
 void tegra_ahci_clr_clk_rst_cnt_rst_dev(void)
 {
 	u32 val;
@@ -2678,6 +2749,18 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host)
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
 	val &= ~PADPLL_RESET_OVERRIDE_VALUE_MASK;
 	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
+
+	if (tegra_hpriv->cid == TEGRA_CHIPID_TEGRA21) {
+		val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
+		val &= ~(SATA_SEQ_PADPLL_PD_INPUT_VALUE |
+				SATA_SEQ_LANE_PD_INPUT_VALUE |
+				SATA_SEQ_RESET_INPUT_VALUE |
+				PLLE_IDDQ_SWCTL_ON);
+		clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
+
+		tegra_ahci_t210_power_up_uphy();
+		tegra_ahci_t210_power_up_uphy_padpll();
+	}
 
 	tegra_ahci_clr_clk_rst_cnt_rst_dev();
 
