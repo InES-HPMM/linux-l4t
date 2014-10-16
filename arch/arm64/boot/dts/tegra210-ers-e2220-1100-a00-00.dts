@@ -522,30 +522,29 @@
 
 	camera-pcl {
 		profiles {
-			imx214@6_001a {
+			imx214@x_001a {
 				use_of_node = "yes";
 				vana-supply = <&max77620_ldo3>;
 				vdig-supply = <&vdd_sys_boost>;
 				vif-supply = <&en_vdd_cam>;
 				af-gpios = <&gpio TEGRA_GPIO(S, 5) 0>;
-				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
+				reset-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
 				cam1-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
 			};
-			dw9714@6_000c {
+			dw9714@x_000c {
 				use_of_node = "yes";
 				vdd-supply = <&max77620_ldo3>;
 				vdd_i2c-supply = <&en_vdd_cam>;
 			};
-			as3648@6_0030 {
+			as3648@x_0030 {
 				use_of_node = "yes";
 				vin-supply = <&vdd_sys_boost>;
 				vi2c-supply = <&en_vdd_cam>;
 			};
-			ov5693@6_0036 {
+			ov5693@x_0036 {
 				use_of_node = "yes";
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
-				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
 				cam2-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
 			};
 			ov5693@a_0036 {
@@ -554,7 +553,6 @@
 				num = <0>;
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
-				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
 				cam2-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
 			};
 			ov5693@b_0036 {
@@ -563,7 +561,6 @@
 				num = <1>;
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
-				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
 				cam2-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
 			};
 			ov5693@c_0036 {
@@ -572,7 +569,6 @@
 				num = <2>;
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
-				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
 				cam2-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
 			};
 			ov5693@d_0036 {
@@ -581,7 +577,6 @@
 				num = <3>;
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
-				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
 				cam2-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
 			};
 			ov5693@e_0036 {
@@ -590,7 +585,6 @@
 				num = <4>;
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
-				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
 				cam2-gpios = <&gpio TEGRA_GPIO(Z, 3) 0>;
 			};
 			ov5693@f_0036 {
@@ -599,7 +593,6 @@
 				num = <5>;
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
-				reset-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
 				cam2-gpios = <&gpio TEGRA_GPIO(T, 1) 0>;
 			};
 		};

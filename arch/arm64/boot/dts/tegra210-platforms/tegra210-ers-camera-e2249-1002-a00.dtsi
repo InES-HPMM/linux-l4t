@@ -18,6 +18,8 @@
 #include <dt-bindings/media/camera.h>
 #include <dt-bindings/platform/t210/t210.h>
 
+#define VI_I2C_BUS	6
+
 / {
 	camera-pcl {
 		compatible = "nvidia,tegra210-camera", "simple-bus";
@@ -107,14 +109,14 @@
 		};
 
 		profiles {
-			imx214_1: imx214@6_001a {
+			imx214_1: imx214@x_001a {
 				index = <1>;
 				chipname = "pcl_IMX214";
 				type = "sensor";
 				guid = "s_IMX214";
 				position = <0>;
 				bustype = "i2c";
-				busnum = <6>;
+				busnum = <VI_I2C_BUS>;
 				addr = <0x1a>;
 				datalen = <2>;
 				pinmuxgrp = <0xFFFF>;
@@ -126,14 +128,12 @@
 				devid = <0x0214>;
 				poweron = <
 					CAMERA_IND_CLK_SET(10000)
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
 					CAMERA_WAITUS(10)
 					CAMERA_REGULATOR_ON(2)
 					CAMERA_REGULATOR_ON(1)
 					CAMERA_REGULATOR_ON(0)
 					CAMERA_WAITMS(5)
-					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
 					CAMERA_GPIO_SET(TEGRA_GPIO(S, 7))
 					CAMERA_GPIO_SET(TEGRA_GPIO(S, 5))
 					CAMERA_WAITUS(300)
@@ -141,7 +141,6 @@
 					>;
 				poweroff = <
 					CAMERA_IND_CLK_CLR
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
 					CAMERA_WAITUS(10)
 					CAMERA_REGULATOR_OFF(2)
@@ -150,14 +149,14 @@
 					CAMERA_END
 					>;
 			};
-			dw9714_1: dw9714@6_000c {
+			dw9714_1: dw9714@x_000c {
 				index = <2>;
 				chipname = "pcl_DW9714";
 				type = "focuser";
 				guid = "f_NVCAM0";
 				position = <0>;
 				bustype = "i2c";
-				busnum = <6>;
+				busnum = <VI_I2C_BUS>;
 				addr = <0xc>;
 				datalen = <1>;
 				pinmuxgrp = <0xFFFF>;
@@ -177,19 +176,19 @@
 				poweroff = <
 					CAMERA_REGULATOR_OFF(0)
 					CAMERA_REGULATOR_OFF(1)
-					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 0))
+					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 5))
 					CAMERA_WAITUS(10)
 					CAMERA_END
 					>;
 			};
-			as3648_1: as3648@6_0030 {
+			as3648_1: as3648@x_0030 {
 				index = <3>;
 				chipname = "pcl_AS3648";
 				type = "flash";
 				guid = "l_NVCAM0";
 				position = <0>;
 				bustype = "i2c";
-				busnum = <6>;
+				busnum = <VI_I2C_BUS>;
 				addr = <0x30>;
 				datalen = <1>;
 				pinmuxgrp = <0xFFFF>;
@@ -211,14 +210,14 @@
 					CAMERA_END
 					>;
 			};
-			ov5693_1: ov5693@6_0036 {
+			ov5693_1: ov5693@x_0036 {
 				index = <4>;
 				chipname = "pcl_OV5693f";
 				type = "sensor";
 				guid = "sOV5693f";
 				position = <1>;
 				bustype = "i2c";
-				busnum = <6>;
+				busnum = <VI_I2C_BUS>;
 				addr = <0x36>;
 				datalen = <2>;
 				pinmuxgrp = <0xFFFF>;
@@ -230,21 +229,18 @@
 				devid = <0x5693>;
 				poweron = <
 					CAMERA_IND_CLK_SET(10000)
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 0))
 					CAMERA_WAITMS(1)
 					CAMERA_REGULATOR_ON(0)
 					CAMERA_REGULATOR_ON(1)
 					CAMERA_WAITMS(1)
 					CAMERA_GPIO_SET(TEGRA_GPIO(T, 0))
-					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
 					CAMERA_WAITMS(10)
 					CAMERA_END
 					>;
 				poweroff = <
 					CAMERA_IND_CLK_CLR
 					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 0))
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_WAITUS(10)
 					CAMERA_REGULATOR_OFF(1)
 					CAMERA_REGULATOR_OFF(0)
@@ -270,21 +266,18 @@
 				devid = <0x5693>;
 				poweron = <
 					CAMERA_IND_CLK_SET(10000)
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
 					CAMERA_WAITMS(1)
 					CAMERA_REGULATOR_ON(0)
 					CAMERA_REGULATOR_ON(1)
 					CAMERA_WAITMS(1)
 					CAMERA_GPIO_SET(TEGRA_GPIO(S, 7))
-					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
 					CAMERA_WAITMS(10)
 					CAMERA_END
 					>;
 				poweroff = <
 					CAMERA_IND_CLK_CLR
 					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_WAITUS(10)
 					CAMERA_REGULATOR_OFF(1)
 					CAMERA_REGULATOR_OFF(0)
@@ -310,21 +303,18 @@
 				devid = <0x5693>;
 				poweron = <
 					CAMERA_IND_CLK_SET(10000)
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 0))
 					CAMERA_WAITMS(1)
 					CAMERA_REGULATOR_ON(0)
 					CAMERA_REGULATOR_ON(1)
 					CAMERA_WAITMS(1)
 					CAMERA_GPIO_SET(TEGRA_GPIO(T, 0))
-					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
 					CAMERA_WAITMS(10)
 					CAMERA_END
 					>;
 				poweroff = <
 					CAMERA_IND_CLK_CLR
 					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 0))
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_WAITUS(10)
 					CAMERA_REGULATOR_OFF(1)
 					CAMERA_REGULATOR_OFF(0)
@@ -350,21 +340,18 @@
 				devid = <0x5693>;
 				poweron = <
 					CAMERA_IND_CLK_SET(10000)
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 0))
 					CAMERA_WAITMS(1)
 					CAMERA_REGULATOR_ON(0)
 					CAMERA_REGULATOR_ON(1)
 					CAMERA_WAITMS(1)
 					CAMERA_GPIO_SET(TEGRA_GPIO(T, 0))
-					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
 					CAMERA_WAITMS(10)
 					CAMERA_END
 					>;
 				poweroff = <
 					CAMERA_IND_CLK_CLR
 					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 0))
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_WAITUS(10)
 					CAMERA_REGULATOR_OFF(1)
 					CAMERA_REGULATOR_OFF(0)
@@ -390,21 +377,18 @@
 				devid = <0x5693>;
 				poweron = <
 					CAMERA_IND_CLK_SET(10000)
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
 					CAMERA_WAITMS(1)
 					CAMERA_REGULATOR_ON(0)
 					CAMERA_REGULATOR_ON(1)
 					CAMERA_WAITMS(1)
 					CAMERA_GPIO_SET(TEGRA_GPIO(S, 7))
-					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
 					CAMERA_WAITMS(10)
 					CAMERA_END
 					>;
 				poweroff = <
 					CAMERA_IND_CLK_CLR
 					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_WAITUS(10)
 					CAMERA_REGULATOR_OFF(1)
 					CAMERA_REGULATOR_OFF(0)
@@ -430,21 +414,18 @@
 				devid = <0x5693>;
 				poweron = <
 					CAMERA_IND_CLK_SET(10000)
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_GPIO_CLR(TEGRA_GPIO(Z, 3))
 					CAMERA_WAITMS(1)
 					CAMERA_REGULATOR_ON(0)
 					CAMERA_REGULATOR_ON(1)
 					CAMERA_WAITMS(1)
 					CAMERA_GPIO_SET(TEGRA_GPIO(Z, 3))
-					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
 					CAMERA_WAITMS(10)
 					CAMERA_END
 					>;
 				poweroff = <
 					CAMERA_IND_CLK_CLR
 					CAMERA_GPIO_CLR(TEGRA_GPIO(Z, 3))
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_WAITUS(10)
 					CAMERA_REGULATOR_OFF(1)
 					CAMERA_REGULATOR_OFF(0)
@@ -470,21 +451,18 @@
 				devid = <0x5693>;
 				poweron = <
 					CAMERA_IND_CLK_SET(10000)
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 1))
 					CAMERA_WAITMS(1)
 					CAMERA_REGULATOR_ON(0)
 					CAMERA_REGULATOR_ON(1)
 					CAMERA_WAITMS(1)
 					CAMERA_GPIO_SET(TEGRA_GPIO(T, 1))
-					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
 					CAMERA_WAITMS(10)
 					CAMERA_END
 					>;
 				poweroff = <
 					CAMERA_IND_CLK_CLR
 					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 1))
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
 					CAMERA_WAITUS(10)
 					CAMERA_REGULATOR_OFF(1)
 					CAMERA_REGULATOR_OFF(0)
