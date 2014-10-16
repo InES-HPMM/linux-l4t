@@ -71,7 +71,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_cpu = {
 	.stats = {
 		.bin_uV = 6250, /* 6.25mV */
 	},
-	.version = "p4v03",
+	.version = "p4v06",
 };
 
 static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
@@ -140,7 +140,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.pll_tune_data = {
 			.min_millivolts = 950,
 		},
-		.max_mv = 1225,
+		.max_mv = 1170,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 1000,
@@ -193,7 +193,7 @@ static struct cpu_cvb_dvfs cpu_lp_cvb_dvfs_table[] = {
 		.pll_tune_data = {
 			.min_millivolts = 950,
 		},
-		.max_mv = 1225,
+		.max_mv = 1170,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 1000,
