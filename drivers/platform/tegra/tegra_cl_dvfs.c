@@ -472,8 +472,8 @@ static int tegra_pinctrl_set_tristate(struct tegra_cl_dvfs_platform_data *d,
 		return -EINVAL;
 	}
 
-	ret = pinctrl_set_config_for_group_sel(d->u.pmu_pwm.pinctrl_dev,
-				group_sel, config);
+	ret = pinctrl_set_config_for_group_sel_any_context(
+		d->u.pmu_pwm.pinctrl_dev, group_sel, config);
 	if (ret < 0)
 		pr_err("%s(): ERROR: pinconfig for pin group %d failed: %d\n",
 			__func__, group_sel, ret);
