@@ -34,10 +34,20 @@ struct ecx_io_cable_states {
 	int out_states;
 };
 
+struct ecx_io_cable_new_states {
+	int last_cable_in_state;
+	int current_in_cable_state;
+	int in_mask;
+	int new_cable_out_state;
+	int reschedule_wq;
+};
+
 struct ecx_platform_data {
 	const char *name;
 	struct ecx_io_cable_states *io_states;
+	struct ecx_io_cable_new_states *io_new_states;
 	int n_io_states;
+	int n_io_new_states;
 	const char **in_cable_names;
 	int n_in_cable;
 	const char **out_cable_names;
@@ -66,7 +76,8 @@ struct extcon_cable_xlate {
 	spinlock_t lock;
 	struct mutex cable_lock;
 	bool extcon_init_done;
-	int last_cable_state;
+	int last_cable_in_state;
+	int last_cable_out_state;
 };
 
 static int ecx_extcon_notifier(struct notifier_block *self,
@@ -119,6 +130,7 @@ static int ecx_attach_cable(struct extcon_cable_xlate *ecx)
 	int new_state = -1;
 	int i;
 	int ret;
+	int reschedule_wq = 0;
 
 	mutex_lock(&ecx->cable_lock);
 	for (i = 0; i < ecx->pdata->n_in_cable; i++) {
@@ -130,11 +142,29 @@ static int ecx_attach_cable(struct extcon_cable_xlate *ecx)
 			all_states |= BIT(i);
 	}
 
-	for (i = 0; i < ecx->pdata->n_io_states; ++i) {
-		mask_state = all_states & ecx->pdata->io_states[i].in_mask;
-		if (mask_state == ecx->pdata->io_states[i].in_state) {
-			new_state = ecx->pdata->io_states[i].out_states;
-			break;
+	if (ecx->pdata->io_new_states) {
+		for (i = 0; i < ecx->pdata->n_io_new_states; ++i) {
+			mask_state = all_states & ecx->pdata->io_new_states[i].in_mask;
+			if (mask_state ==
+					ecx->pdata->io_new_states[i].current_in_cable_state) {
+					if ((ecx->last_cable_in_state ==
+							ecx->pdata->io_new_states[i].last_cable_in_state)
+							|| (ecx->last_cable_in_state == mask_state)
+							|| (mask_state == 0)) {
+						ecx->last_cable_in_state = mask_state;
+						new_state = ecx->pdata->io_new_states[i].new_cable_out_state;
+						reschedule_wq = ecx->pdata->io_new_states[i].reschedule_wq;
+						break;
+					}
+			}
+		}
+	} else {
+		for (i = 0; i < ecx->pdata->n_io_states; ++i) {
+			mask_state = all_states & ecx->pdata->io_states[i].in_mask;
+			if (mask_state == ecx->pdata->io_states[i].in_state) {
+				new_state = ecx->pdata->io_states[i].out_states;
+				break;
+			}
 		}
 	}
 
@@ -144,7 +174,7 @@ static int ecx_attach_cable(struct extcon_cable_xlate *ecx)
 		mutex_unlock(&ecx->cable_lock);
 		return -EINVAL;
 	}
-	if (ecx->last_cable_state != new_state) {
+	if (ecx->last_cable_out_state != new_state) {
 		extcon_set_state(&ecx->edev, new_state);
 		dev_info(ecx->dev, "New cable state 0x%04x\n", new_state);
 		if (new_state) {
@@ -155,7 +185,9 @@ static int ecx_attach_cable(struct extcon_cable_xlate *ecx)
 			dev_info(ecx->dev, "No cable attach\n");
 		}
 	}
-	ecx->last_cable_state = new_state;
+	ecx->last_cable_out_state = new_state;
+	if (reschedule_wq)
+		schedule_delayed_work(&ecx->work, msecs_to_jiffies(1000));
 	mutex_unlock(&ecx->cable_lock);
 	return 0;
 }
@@ -288,6 +320,44 @@ static struct ecx_platform_data *ecx_get_pdata_from_dt(
 			pdata->io_states[count].out_states = pval;
 
 	}
+
+	pdata->n_io_new_states = of_property_count_u32(np, "cable-new-states");
+	if ((pdata->n_io_new_states < 5) || (pdata->n_io_new_states % 5 != 0)) {
+		dev_dbg(&pdev->dev, "not found proper cable-new-states\n");
+		goto exit;
+	}
+	pdata->n_io_new_states /= 5;
+	pdata->io_new_states = devm_kzalloc(&pdev->dev, (pdata->n_io_new_states) *
+				sizeof(*pdata->io_new_states), GFP_KERNEL);
+	if (!pdata->io_new_states)
+		return ERR_PTR(-ENOMEM);
+	for (count = 0;  count < pdata->n_io_new_states; ++count) {
+		ret = of_property_read_u32_index(np, "cable-new-states",
+				count * 5, &pval);
+		if (!ret)
+			pdata->io_new_states[count].last_cable_in_state = pval;
+
+		ret = of_property_read_u32_index(np, "cable-new-states",
+				count * 5 + 1, &pval);
+		if (!ret)
+			pdata->io_new_states[count].current_in_cable_state = pval;
+
+		ret = of_property_read_u32_index(np, "cable-new-states",
+				count * 5 + 2, &pval);
+		if (!ret)
+			pdata->io_new_states[count].in_mask = pval;
+
+		ret = of_property_read_u32_index(np, "cable-new-states",
+				count * 5 + 3, &pval);
+		if (!ret)
+			pdata->io_new_states[count].new_cable_out_state = pval;
+
+		ret = of_property_read_u32_index(np, "cable-new-states",
+				count * 5 + 4, &pval);
+		if (!ret)
+			pdata->io_new_states[count].reschedule_wq = pval;
+	}
+exit:
 	return pdata;
 }
 static int ecx_probe(struct platform_device *pdev)
