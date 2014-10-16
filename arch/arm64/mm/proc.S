@@ -223,7 +223,7 @@ ENTRY(__cortexa53_cpu_setup)
 	 * cortex-a53 invalidates them already during reset
 	 */
 	b	__cpu_setup_post_flush
-ENDPROC(__cortexa57_cpu_setup)
+ENDPROC(__cortexa53_cpu_setup)
 
 ENTRY(__cortexa57_cpu_setup)
 
