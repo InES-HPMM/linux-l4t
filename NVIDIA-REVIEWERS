@@ -97,6 +97,18 @@ F:	drivers/misc/tegra_timerinfo.c
 F:	drivers/platform/tegra/tegra_fiq_debugger.c
 F:	drivers/platform/tegra/tegra_ptm*.c
 
+ARM64 PORT (AARCH64 ARCHITECTURE)
+M:	Bo Yan <byan@nvidia.com>
+M:	Alexander Van Brunt <avanbrunt@nvidia.com>
+L:	sw-mobile-cpu@exchange.nvidia.com
+S:	Supported
+F:	arch/arm64/
+F:	Documentation/arm64/
+X:	arch/arm64/mach-tegra/
+X:	arch/arm64/include/asm/mach/
+X:	arch/arm64/boot/dts/
+X:	arch/arm64/configs/
+
 DISPLAY
 M:	Jon Mayo <jmayo@nvidia.com>
 L:	sw-mobile-display@exchange.nvidia.com
