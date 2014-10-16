@@ -105,13 +105,11 @@ static void pmc_32kwritel(u32 val, unsigned long offs)
 
 static inline void write_pmc_wake_mask(u64 value)
 {
-	pr_info("Wake[31-0] enable=0x%x\n", (u32)(value & 0xFFFFFFFF));
+	pr_info("Wake[31-0]  enable=0x%x\n", (u32)(value & 0xFFFFFFFF));
 	writel((u32)value, tegra_pmc_base + PMC_WAKE_MASK);
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	pr_info("Tegra3 wake[63-32] enable=0x%x\n", (u32)((value >> 32) &
+	pr_info("Wake[63-32] enable=0x%x\n", (u32)((value >> 32) &
 		0xFFFFFFFF));
 	__raw_writel((u32)(value >> 32), tegra_pmc_base + PMC_WAKE2_MASK);
-#endif
 }
 
 static inline u64 read_pmc_wake_level(void)
@@ -129,13 +127,11 @@ static inline u64 read_pmc_wake_level(void)
 
 static inline void write_pmc_wake_level(u64 value)
 {
-	pr_info("Wake[31-0] level=0x%x\n", (u32)(value & 0xFFFFFFFF));
+	pr_info("Wake[31-0]  level=0x%x\n", (u32)(value & 0xFFFFFFFF));
 	writel((u32)value, tegra_pmc_base + PMC_WAKE_LEVEL);
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	pr_info("Tegra3 wake[63-32] level=0x%x\n", (u32)((value >> 32) &
+	pr_info("Wake[63-32] level=0x%x\n", (u32)((value >> 32) &
 		0xFFFFFFFF));
 	__raw_writel((u32)(value >> 32), tegra_pmc_base + PMC_WAKE2_LEVEL);
-#endif
 }
 
 static inline u64 read_pmc_wake_status(void)
@@ -269,13 +265,11 @@ static void tegra_pm_irq_syscore_resume(void)
 {
 	unsigned long long wake_status = read_pmc_wake_status();
 
-	pr_info(" legacy wake status=0x%x\n", (u32)wake_status);
+	pr_info("Wake Status[31:0]  = 0x%x\n", (u32)wake_status);
 	tegra_pm_irq_syscore_resume_helper((unsigned long)wake_status, 0);
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	pr_info(" tegra3 wake status=0x%x\n", (u32)(wake_status >> 32));
+	pr_info("Wake Status[63:32] = 0x%x\n", (u32)(wake_status >> 32));
 	tegra_pm_irq_syscore_resume_helper(
 		(unsigned long)(wake_status >> 32), 1);
-#endif
 }
 
 #ifdef DEBUG_WAKE_SOURCE
