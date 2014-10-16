@@ -156,21 +156,21 @@ config TEGRA_IOMMU_GART
 	  space through the GART (Graphics Address Relocation Table)
 	  hardware included on Tegra 2 SoCs.
 
+config OF_TEGRA_IOMMU_SMMU
+	bool
+	depends on PLATFORM_TEGRA
+
 config TEGRA_IOMMU_SMMU
 	bool "Tegra SMMU IOMMU Support"
 	depends on ARCH_TEGRA
 	select IOMMU_API
 	select ARM_DMA_USE_IOMMU
+	select OF_TEGRA_IOMMU_SMMU
 	help
 	  Enables support for remapping discontiguous physical memory
 	  shared with the operating system into contiguous I/O virtual
 	  space through the SMMU (System Memory Management Unit)
 	  hardware included on Tegra SoCs.
-
-config OF_TEGRA_IOMMU_SMMU
-	bool
-	default y
-	depends on PLATFORM_TEGRA
 
 config TEGRA_IOMMU_SMMU_LINEAR
 	bool "Physical RAM IOVA Liner Mapping Support"
@@ -297,6 +297,7 @@ config ARM_SMMU
 	depends on ARM64 || (ARM_LPAE && OF)
 	select IOMMU_API
 	select ARM_DMA_USE_IOMMU if (ARM || ARM64)
+	select OF_TEGRA_IOMMU_SMMU if (ARM || ARM64)
 	help
 	  Support for implementations of the ARM System MMU architecture
 	  versions 1 and 2. The driver supports both v7l and v8l table
