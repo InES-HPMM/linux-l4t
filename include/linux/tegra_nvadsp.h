@@ -132,7 +132,7 @@ typedef struct _msgq_t {
 #define MSGQ_HEADER_SIZE	(sizeof(msgq_t) - sizeof(((msgq_t *)0)->queue))
 #define MSGQ_HEADER_WSIZE	(MSGQ_HEADER_SIZE / sizeof(int32_t))
 #define MSGQ_MAX_QUEUE_WSIZE	(8192 - MSGQ_HEADER_WSIZE)
-#define MSGQ_MSG_SIZE(x) \
+#define MSGQ_MSG_WSIZE(x) \
 	(((sizeof(x) + sizeof(int32_t) - 1) & (~(sizeof(int32_t)-1))) >> 2)
 
 void msgq_init(msgq_t *msgq, int32_t size);
