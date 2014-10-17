@@ -188,6 +188,8 @@
 #define AFI_MSG_RP_INT_MASK					0x10001000
 
 #define RP_VEND_XP						0x00000F00
+#define RP_VEND_XP_OPPORTUNISTIC_ACK				(1 << 27)
+#define RP_VEND_XP_OPPORTUNISTIC_UPDATEFC			(1 << 28)
 #define RP_VEND_XP_DL_UP					(1 << 30)
 #define RP_VEND_XP_UPDATE_FC_THRESHOLD				(0xFF << 18)
 
@@ -202,7 +204,7 @@
 #define  PADS_REFCLK_CFG1					0x000000CC
 #define  PADS_REFCLK_BIAS					0x000000D0
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-#define REFCLK_POR_SETTINGS					0x40ac40ac
+#define REFCLK_POR_SETTINGS					0x80b880b8
 #else
 #define REFCLK_POR_SETTINGS					0x44ac44ac
 #endif
@@ -275,14 +277,27 @@
 #define NV_PCIE2_RP_VEND_XP_BIST				0x00000F4C
 #define PCIE2_RP_VEND_XP_BIST_GOTO_L1_L2_AFTER_DLLP_DONE	(1 << 28)
 
-#define NV_PCIE2_RP_PRIV_XP_RX_L0S_ENTRY_COUNT	0x00000F8C
-#define NV_PCIE2_RP_PRIV_XP_TX_L0S_ENTRY_COUNT	0x00000F90
-#define NV_PCIE2_RP_PRIV_XP_TX_L1_ENTRY_COUNT	0x00000F94
+#define NV_PCIE2_RP_PRIV_XP_RX_L0S_ENTRY_COUNT			0x00000F8C
+#define NV_PCIE2_RP_PRIV_XP_TX_L0S_ENTRY_COUNT			0x00000F90
+#define NV_PCIE2_RP_PRIV_XP_TX_L1_ENTRY_COUNT			0x00000F94
 
+#define NV_PCIE2_RP_VEND_CTL2					0x00000F44
+#define PCIE2_RP_VEND_CTL2_PCA_ENABLE				(1 << 7)
+
+#define NV_PCIE2_RP_ECTL_5_R1					0x00000E90
+#define PCIE2_RP_ECTL_5_R1_RX_EQ_CTRL_L_1C			(0x55010000)
+#define NV_PCIE2_RP_ECTL_6_R1					0x00000E94
+#define PCIE2_RP_ECTL_6_R1_RX_EQ_CTRL_H_1C			(0x00000001)
+#define NV_PCIE2_RP_ECTL_5_R2					0x00000EB0
+#define PCIE2_RP_ECTL_5_R2_RX_EQ_CTRL_L_1C			(0x55010000)
+#define NV_PCIE2_RP_ECTL_6_R2					0x00000EB4
+#define PCIE2_RP_ECTL_6_R2_RX_EQ_CTRL_H_1C			(0x00000001)
+
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #define NV_PCIE2_RP_ECTL_1_R2					0x00000FD8
 #define PCIE2_RP_ECTL_1_R2_TX_CMADJ_1C				(0xD << 8)
 #define PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C			(0x3 << 28)
-
+#endif
 #define NV_PCIE2_RP_XP_CTL_1					0x00000FEC
 #define PCIE2_RP_XP_CTL_1_SPARE_BIT29				(1 << 29)
 
@@ -1054,10 +1069,7 @@ static int tegra_pcie_enable_pads(struct tegra_pcie *pcie, bool enable)
 	}
 
 	if (!tegra_platform_is_fpga()) {
-		/* WAR for Eye diagram failure */
-		pads_writel(pcie, REFCLK_POR_SETTINGS, PADS_REFCLK_CFG0);
-		pads_writel(pcie, 0x00000028, PADS_REFCLK_BIAS);
-		/* PCIe pad programming is moved to XUSB_PADCTL space */
+		/* PCIe pad programming done in shared XUSB_PADCTL space */
 		err = pcie_phy_pad_enable(enable,
 				pcie->plat_data->lane_map);
 		if (err)
@@ -1127,10 +1139,6 @@ static int tegra_pcie_enable_controller(struct tegra_pcie *pcie)
 
 	/* Disable all execptions */
 	afi_writel(pcie, 0, AFI_FPCI_ERROR_MASKS);
-
-	/* Wait for clock to latch (min of 100us) */
-	udelay(100);
-	tegra_periph_reset_deassert(pcie->pcie_xclk);
 
 	return ret;
 }
@@ -1736,13 +1744,12 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 				pdev->msi_enabled = 0;
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 		raise_emc_freq(pcie);
+		/* handle MBIST issue for PCIE */
+		data = rp_readl(port, NV_PCIE2_RP_VEND_CTL2);
+		data &= ~PCIE2_RP_VEND_CTL2_PCA_ENABLE;
+		rp_writel(port, data, NV_PCIE2_RP_VEND_CTL2);
 #endif
 	} else {
-		/* WAR for Eye diagram failure on lanes for T124 platforms */
-		data = rp_readl(port, NV_PCIE2_RP_ECTL_1_R2);
-		data |= PCIE2_RP_ECTL_1_R2_TX_CMADJ_1C;
-		data |= PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C;
-		rp_writel(port, data, NV_PCIE2_RP_ECTL_1_R2);
 		/* Avoid warning during enumeration for invalid IRQ of RP */
 		data = rp_readl(port, NV_PCIE2_RP_INTR_BCR);
 		data |= NV_PCIE2_RP_INTR_BCR_INTR_LINE;
@@ -1846,6 +1853,35 @@ static void tegra_pcie_enable_rp_features(struct tegra_pcie_port *port)
 	unsigned int data;
 
 	PR_FUNC_LINE;
+
+	/* UPHY prod settings provided by char team */
+	pads_writel(port->pcie, REFCLK_POR_SETTINGS, PADS_REFCLK_CFG0);
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	rp_writel(port,
+		PCIE2_RP_ECTL_5_R1_RX_EQ_CTRL_L_1C, NV_PCIE2_RP_ECTL_5_R1);
+	rp_writel(port,
+		PCIE2_RP_ECTL_6_R1_RX_EQ_CTRL_H_1C, NV_PCIE2_RP_ECTL_6_R1);
+	rp_writel(port,
+		PCIE2_RP_ECTL_5_R2_RX_EQ_CTRL_L_1C, NV_PCIE2_RP_ECTL_5_R2);
+	rp_writel(port,
+		PCIE2_RP_ECTL_6_R2_RX_EQ_CTRL_H_1C, NV_PCIE2_RP_ECTL_6_R2);
+#else
+	pads_writel(port->pcie, 0x00000028, PADS_REFCLK_BIAS);
+	data = rp_readl(port, NV_PCIE2_RP_ECTL_1_R2);
+	data |= PCIE2_RP_ECTL_1_R2_TX_CMADJ_1C;
+	data |= PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C;
+	rp_writel(port, data, NV_PCIE2_RP_ECTL_1_R2);
+#endif
+	data = rp_readl(port, NV_PCIE2_RP_VEND_CTL2);
+	data |= PCIE2_RP_VEND_CTL2_PCA_ENABLE;
+	rp_writel(port, data, NV_PCIE2_RP_VEND_CTL2);
+
+	/* Optimal settings to enhance bandwidth */
+	data = rp_readl(port, RP_VEND_XP);
+	data |= RP_VEND_XP_OPPORTUNISTIC_ACK;
+	data |= RP_VEND_XP_OPPORTUNISTIC_UPDATEFC;
+	rp_writel(port, data, RP_VEND_XP);
+
 	/* Power mangagement settings */
 	/* Enable clock clamping by default and enable card detect */
 	data = rp_readl(port, NV_PCIE2_RP_PRIV_MISC);
@@ -1906,14 +1942,18 @@ void tegra_pcie_check_ports(struct tegra_pcie *pcie)
 			 port->index, port->lanes, pcie->plat_data->lane_map);
 
 		tegra_pcie_port_enable(port);
+		tegra_pcie_enable_rp_features(port);
+	}
+	/* Wait for clock to latch (min of 100us) */
+	udelay(100);
+	tegra_periph_reset_deassert(pcie->pcie_xclk);
 
+	list_for_each_entry_safe(port, tmp, &pcie->ports, list) {
 		if (tegra_pcie_port_check_link(port)) {
 			pcie->num_ports++;
 			tegra_pcie_update_lane_width(port);
-			tegra_pcie_enable_rp_features(port);
 			continue;
 		}
-
 		dev_info(pcie->dev, "link %u down, ignoring\n", port->index);
 
 		tegra_pcie_port_disable(port);
