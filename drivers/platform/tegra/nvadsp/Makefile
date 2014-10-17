@@ -20,3 +20,7 @@ endif
 ifeq ($(CONFIG_TEGRA_EMC_APE_DFS),y)
 nvadsp-objs += emc_dfs.o
 endif
+
+ifeq ($(CONFIG_TEGRA_ADSP_CONSOLE),y)
+nvadsp-objs += adsp_console_dbfs.o
+endif

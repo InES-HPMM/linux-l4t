@@ -54,3 +54,12 @@ config TEGRA_EMC_APE_DFS
 	  Enable emc dfs due to APE DRAM access
 
 	  If unsure, say N
+
+config TEGRA_ADSP_CONSOLE
+	bool "Enable ADSP console"
+	depends on TEGRA_NVADSP
+	default y
+	help
+	  Enable ADSP console access
+
+	  If unsure, say N

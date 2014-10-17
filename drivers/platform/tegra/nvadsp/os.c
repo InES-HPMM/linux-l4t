@@ -43,6 +43,7 @@
 #include "os.h"
 #include "dev.h"
 #include "dram_app_mem_manager.h"
+#include "adsp_console_dbfs.h"
 
 #define NVADSP_ELF "adsp.elf"
 #define NVADSP_FIRMWARE NVADSP_ELF
@@ -98,6 +99,7 @@ struct nvadsp_os_data {
 	void __iomem		*misc_base;
 	struct resource		**dram_region;
 	struct nvadsp_debug_log	logger;
+	struct nvadsp_cnsl   console;
 	struct work_struct	restart_os_work;
 	int			adsp_num_crashes;
 	bool			adsp_os_fw_loaded;
@@ -1024,10 +1026,18 @@ int nvadsp_os_probe(struct platform_device *pdev)
 	priv.dram_region = drv_data->dram_region;
 
 #ifdef CONFIG_DEBUG_FS
+	priv.logger.dev = &priv.pdev->dev;
+
 	if (adsp_create_debug_logger(drv_data->adsp_debugfs_root))
 		dev_err(dev,
 			"unable to create adsp debug logger file\n");
-#endif
+#ifdef CONFIG_TEGRA_ADSP_CONSOLE
+	priv.console.dev = &priv.pdev->dev;
+	if (adsp_create_cnsl(drv_data->adsp_debugfs_root, &priv.console))
+		dev_err(dev,
+		"unable to create adsp console file\n");
+#endif /* CONFIG_TEGRA_ADSP_CONSOLE */
+#endif /* CONFIG_DEBUG_FS */
 
 	ret = devm_request_irq(dev, wdt_virq, adsp_wdt_handler,
 			IRQF_TRIGGER_RISING, "adsp watchdog", &priv);
