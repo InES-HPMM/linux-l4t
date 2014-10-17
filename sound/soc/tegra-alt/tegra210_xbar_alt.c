@@ -729,7 +729,7 @@ static struct snd_soc_codec_driver tegra210_xbar_codec = {
 	.dapm_routes = tegra210_xbar_routes,
 	.num_dapm_widgets = ARRAY_SIZE(tegra210_xbar_widgets),
 	.num_dapm_routes = ARRAY_SIZE(tegra210_xbar_routes),
-	.idle_bias_off = 0,
+	.idle_bias_off = 1,
 };
 
 static const struct tegra210_xbar_soc_data soc_data_tegra210 = {
