@@ -531,7 +531,8 @@ static int max77620_rtc_probe(struct platform_device *pdev)
 
 	rtc->irq = platform_get_irq(pdev, 0);
 	ret = devm_request_threaded_irq(&pdev->dev, rtc->irq, NULL,
-			max77620_rtc_irq, IRQF_ONESHOT, "max77620-rtc", rtc);
+			max77620_rtc_irq, IRQF_ONESHOT | IRQF_EARLY_RESUME,
+			"max77620-rtc", rtc);
 	if (ret < 0) {
 		dev_err(rtc->dev, "probe: Failed to request irq %d\n",
 			rtc->irq);
