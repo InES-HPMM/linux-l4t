@@ -41,6 +41,7 @@ Optional properties:
 	Drive strength Type C: 0x2
 	Drive strength Type D: 0x3
 - disable-clock-gate: flag when set disables sdmmc clock gating
+- power-off-rail: flag when set enables sdmmc reboot notifier
 - pwrdet-support: flag when set indicates the sdmmc controller instance needs power detect bit programming for voltage switching.
 - pwrdet-bit: Specify Tegra Power Management Controller power detect bit for the particular SDMMC controller instance. This field is specified only when the pwrdet-support is true
 - vddio_sdmmc-supply: regulator with this name
