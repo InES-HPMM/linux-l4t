@@ -140,6 +140,14 @@
 				i2c-mux,deselect-on-exit;
 				#address-cells = <1>;
 				#size-cells = <0>;
+
+				max98090@10 {
+					compatible = "nvidia,max98090";
+					reg = <0x10>;
+					maxim,audio-int = <237>;
+					maxim,digmic-left-mode = <1>;
+					maxim,digmic-right-mode = <1>;
+				};
 			};
 			pca9546_i2c2: i2c@2 {
 				reg = <2>;
@@ -292,8 +300,26 @@
 		usb_vbus-supply = <&usb1_usb2_vbus>;
 		status = "okay";
 	};
+
 	backlight {
 		compatible = "pwm-backlight";
 		status = "okay";
 	};
+
+	tegra-snd-max98090 {
+		compatible = "nvidia,tegra-snd-max98090";
+		nvidia,name = "tegra-snd-max98090";
+		nvidia,id = <0>;
+		nvidia,codec-name = "max98090.7-0010";
+		nvidia,codec-dai-name = "HiFi";
+		nvidia,num-links = <1>;
+		nvidia,edp-support;
+		nvidia,edp-states = <1080 842 0>;
+		nvidia,i2s-param,0,audio-port-id	= <1>;
+		nvidia,i2s-param,0,is-i2s-master	= <1>;
+		nvidia,i2s-param,0,i2s-mode		= <0>;
+		nvidia,i2s-param,0,sample-size		= <16>;
+		nvidia,i2s-param,0,channels		= <2>;
+		nvidia,i2s-param,0,bit-clk		= <1536000>;
+		};
 };
