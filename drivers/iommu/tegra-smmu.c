@@ -498,7 +498,7 @@ static struct smmu_client *tegra_smmu_register_client(struct smmu_device *smmu,
 	if (client) {
 		dev_err(dev,
 			"rejecting multiple registrations for client device %s\n",
-			dev->of_node->full_name);
+			dev->of_node ? dev->of_node->full_name : "<no device node>");
 		return NULL;
 	}
 
