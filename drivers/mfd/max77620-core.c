@@ -642,9 +642,18 @@ static int max77620_i2c_suspend(struct device *dev)
 	return 0;
 }
 
+static int max77620_i2c_suspend_no_irq(struct device *dev)
+{
+	struct max77620_chip *chip = dev_get_drvdata(dev);
+
+	return regmap_irq_suspend_noirq(chip->top_irq_data);
+}
+
 static int max77620_i2c_resume(struct device *dev)
 {
-	return 0;
+	struct max77620_chip *chip = dev_get_drvdata(dev);
+
+	return regmap_irq_resume(chip->top_irq_data);
 }
 #endif
 
@@ -656,6 +665,7 @@ MODULE_DEVICE_TABLE(i2c, max77620_id);
 
 static const struct dev_pm_ops max77620_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(max77620_i2c_suspend, max77620_i2c_resume)
+	.suspend_noirq = max77620_i2c_suspend_no_irq,
 };
 
 static struct i2c_driver max77620_driver = {
