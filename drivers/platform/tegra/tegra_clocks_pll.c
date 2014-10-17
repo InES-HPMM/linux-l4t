@@ -248,6 +248,7 @@ static int pll_fixed_mdiv_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 		}
 	}
 
+	cfg->input_rate = input_rate;
 	return 0;
 }
 
