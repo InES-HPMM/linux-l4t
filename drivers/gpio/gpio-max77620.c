@@ -298,7 +298,7 @@ static int max77620_gpio_probe(struct platform_device *pdev)
 	max77620_gpio->gpio_base = max77620_gpio->gpio_chip.base;
 
 	ret = regmap_add_irq_chip(chip->rmap[MAX77620_PWR_SLAVE],
-		max77620_gpio->gpio_irq, IRQF_ONESHOT,
+		max77620_gpio->gpio_irq, IRQF_ONESHOT | IRQF_EARLY_RESUME,
 		max77620_gpio->irq_base,
 		&max77620_gpio_irq_chip, &chip->gpio_irq_data);
 	if (ret < 0) {
