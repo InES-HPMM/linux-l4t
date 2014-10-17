@@ -1,31 +1,33 @@
 #include <dt-bindings/gpio/tegra-gpio.h>
 
 / {
-        i2c@7000c000 {
-                icm20628@68 {
-                        compatible = "invensense,mpu6xxx";
-                        reg = <0x68>;
-                        interrupt-parent = <&gpio>;
-                        interrupts = <TEGRA_GPIO(X, 2) 0x00>;
-                        invensense,orientation = [ff 00 00 00 01 00 00 00 ff];
-                };
+	i2c@7000c000 {
+		icm20628@68 {
+			compatible = "invensense,mpu6xxx";
+			reg = <0x68>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(X, 2) 0x00>;
+			invensense,orientation = [ff 00 00 00 01 00 00 00 ff];
+		};
 
-                ak8963c@0c {
-                        compatible = "ak,ak89xx";
-                        reg = <0x0c>;
-                        orientation = [01 00 00 00 ff 00 00 00 ff];
-                };
-                jsa1127@39 {
-                        compatible = "solteam-opto,jsa1127";
-                        reg = <0x39>;
-                        solteam-opto,rint = <100>;
-                        solteam-opto,integration-time = <2000>;
-                        solteam-opto,use-internal-integration-timing = <1>;
-                        solteam-opto,tint-coeff = <22>;
-                        solteam-opto,noisy = <1>;
-                };
+		ak8963c@0c {
+			compatible = "ak,ak89xx";
+			reg = <0x0c>;
+			orientation = [01 00 00 00 ff 00 00 00 ff];
+		};
 
-        };
+		jsa1127@39 {
+			compatible = "solteamopto,jsa1127";
+			reg = <0x39>;
+			light_uncalibrated_lo = <3700>;
+			light_calibrated_lo = <40000>;
+			light_uncalibrated_hi = <15000>;
+			light_calibrated_hi = <200000>;
+			light_threshold_lo = <200>;
+			light_threshold_hi = <1000>;
+		};
+	};
+
 	spi@7000da00 {
 		spi-touch@0 {
 			platform-id = <RM_PLATFORM_L005>;
