@@ -113,6 +113,11 @@ static void do_cc4_init(void)
 	flowctrl_update(FLOW_CTRL_CC4_HVC_RETRY, 2);
 }
 
+static struct syscore_ops tegra210_syscore_ops = {
+	.restore = do_cc4_init,
+	.resume = do_cc4_init
+};
+
 /*
  * tegra210_enter_c7 - Programs CPU to enter power gate state
  *
@@ -853,6 +858,7 @@ int __init tegra210_idle_init(void)
 	}
 
 	do_cc4_init();
+	register_syscore_ops(&tegra210_syscore_ops);
 
 	for_each_possible_cpu(cpu) {
 		ret = tegra210_cpuidle_register(cpu);
