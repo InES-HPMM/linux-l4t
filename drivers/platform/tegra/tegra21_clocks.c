@@ -341,7 +341,7 @@
 #define PLLP_MISC1_WRITE_MASK		0x70ffffff
 
 /* PLLX */
-#define PLLX_USE_DYN_RAMP		0
+#define PLLX_USE_DYN_RAMP		1
 #define PLLX_BASE_LOCK			(1 << 27)
 
 #define PLLX_MISC0_FO_G_DISABLE		(0x1 << 28)
@@ -3204,7 +3204,9 @@ static int pllx_dyn_ramp(struct clk *c, struct clk_pll_freq_table *cfg)
 	val &= ~ctrl->dramp_en_mask;
 	pll_writel_delay(val, reg);
 
-	pr_debug("%s: dynamic ramp to ndiv = %u\n", c->name, cfg->n);
+	pr_debug("%s: dynamic ramp to m = %u n = %u p = %u, Fout = %lu kHz\n",
+		 c->name, cfg->m, cfg->n, cfg->p,
+		 cfg->input_rate / cfg->m * cfg->n / cfg->p / 1000);
 
 	return 0;
 }
