@@ -211,11 +211,12 @@ static int gpio_extcon_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err;
 
-	platform_set_drvdata(pdev, extcon_data);
 	device_set_wakeup_capable(extcon_data->dev, true);
 	device_wakeup_enable(extcon_data->dev);
 
 skip_gpio:
+	platform_set_drvdata(pdev, extcon_data);
+
 	/* Perform initial detection */
 	gpio_extcon_work(&extcon_data->work.work);
 
