@@ -178,10 +178,19 @@ config TEGRA_DC_CLOCK_GEN2
 	help
 	  T12x redefined pll usages for pll_d and pll_d2.
 
-config TEGRA_SD_GEN2
-	bool
-	depends on TEGRA_DC
+config TEGRA_NVSD
+	bool "Tegra SmartDimmer"
+	depends on TEGRA_DC && !TEGRA_NVDISPLAY
 	default y
+	help
+	  Smart Dimmer support for Tegra display controller.
+
+config TEGRA_SD_GEN2
+	bool "Tegra SD Gen2"
+	depends on TEGRA_DC && TEGRA_NVSD
+	default y
+	help
+	  Smart Dimmer Gen2 support for Tegra display controller.
 
 config TEGRA_DC_TEMPORAL_DITHER
 	bool
