@@ -1471,6 +1471,8 @@ skip_bcharger_init:
 			"Supporting bq driver without interrupt\n");
 		ret = 0;
 	}
+	device_set_wakeup_capable(bq2419x->dev, true);
+	device_wakeup_enable(bq2419x->dev);
 
 	ret = bq2419x_init_vbus_regulator(bq2419x, pdata);
 	if (ret < 0) {
@@ -1579,6 +1581,9 @@ static int bq2419x_suspend(struct device *dev)
 	int next_wakeup = 0;
 	int ret;
 
+	if (device_may_wakeup(bq2419x->dev) && (bq2419x->irq > 0))
+		enable_irq_wake(bq2419x->irq);
+
 	if (!bq2419x->battery_presense)
 		return 0;
 
@@ -1619,6 +1624,9 @@ static int bq2419x_resume(struct device *dev)
 	int ret = 0;
 	struct bq2419x_chip *bq2419x = dev_get_drvdata(dev);
 	unsigned int val;
+
+	if (device_may_wakeup(bq2419x->dev) && (bq2419x->irq > 0))
+		disable_irq_wake(bq2419x->irq);
 
 	if (!bq2419x->battery_presense)
 		return 0;
