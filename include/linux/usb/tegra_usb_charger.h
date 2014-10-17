@@ -30,27 +30,78 @@ enum tegra_usb_connect_type {
 	CONNECT_TYPE_DCP_MAXIM,
 	CONNECT_TYPE_DCP_QC2,
 	CONNECT_TYPE_CDP,
-	CONNECT_TYPE_NV_CHARGER,
 	CONNECT_TYPE_NON_STANDARD_CHARGER,
 	CONNECT_TYPE_APPLE_500MA,
 	CONNECT_TYPE_APPLE_1000MA,
 	CONNECT_TYPE_APPLE_2000MA
 };
 
+#if IS_ENABLED(CONFIG_USB_TEGRA_CD)
 /**
  * Returns USB charger detection handle.
  */
-struct tegra_usb_cd *tegra_usb_get_ucd(void);
+extern struct tegra_usb_cd *tegra_usb_get_ucd(void);
+
+/**
+ * Releases USB charger detection handle.
+ */
+extern void tegra_usb_release_ucd(struct tegra_usb_cd *ucd);
 
 /**
  * Detects the USB charger and returns the type.
  */
-enum tegra_usb_connect_type
+extern enum tegra_usb_connect_type
 	tegra_ucd_detect_cable_and_set_current(struct tegra_usb_cd *ucd);
 
 /**
- * Set USB charging current.
+ * Set custom USB charging current.
  */
-void tegra_ucd_set_current(struct tegra_usb_cd *ucd, int current_ma);
+extern void tegra_ucd_set_current(struct tegra_usb_cd *ucd, int current_ma);
 
+/**
+ * Set USB charging current for SDP, CDP as per gadget driver.
+ */
+extern void tegra_ucd_set_sdp_cdp_current(struct tegra_usb_cd *ucd,
+		int current_ma);
+
+/**
+ * Set custom USB charger type, this automatically sets the corresponding
+ * charging current.
+ */
+void tegra_ucd_set_charger_type(struct tegra_usb_cd *ucd,
+			enum tegra_usb_connect_type connect_type);
+#else /* CONFIG_USB_TEGRA_CD */
+
+struct tegra_usb_cd *tegra_usb_get_ucd(void)
+{
+	return	ERR_PTR(-ENODEV);
+}
+
+void tegra_usb_release_ucd(struct tegra_usb_cd *ucd)
+{
+	return;
+}
+
+enum tegra_usb_connect_type
+	tegra_ucd_detect_cable_and_set_current(struct tegra_usb_cd *ucd)
+{
+	return -EINVAL;
+}
+
+void tegra_ucd_set_current(struct tegra_usb_cd *ucd, int current_ma)
+{
+	return;
+}
+
+void tegra_ucd_set_sdp_cdp_current(struct tegra_usb_cd *ucd, int current_ma)
+{
+	return;
+}
+
+void tegra_ucd_set_charger_type(struct tegra_usb_cd *ucd,
+			enum tegra_usb_connect_type connect_type)
+{
+	return;
+}
+#endif /* CONFIG_USB_TEGRA_CD */
 #endif /* __TEGRA_USB_CHARGER_H */

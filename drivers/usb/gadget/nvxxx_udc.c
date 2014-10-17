@@ -31,6 +31,7 @@
 #include <linux/ioport.h>
 #include <linux/usb/otg.h>
 #include <linux/usb/hcd.h>
+#include <linux/usb/tegra_usb_charger.h>
 #include <linux/delay.h>
 #include <linux/version.h>
 #include <linux/tegra-powergate.h>
@@ -324,6 +325,56 @@ done:
 	return NOTIFY_DONE;
 }
 
+static void tegra_xudc_current_work(struct work_struct *work)
+{
+	struct nv_udc_s *nvudc =
+		container_of(work, struct nv_udc_s, current_work);
+
+	if (nvudc->ucd == NULL)
+		return;
+
+	tegra_ucd_set_sdp_cdp_current(nvudc->ucd, nvudc->current_ma);
+}
+
+static void tegra_xudc_ucd_work(struct work_struct *work)
+{
+	struct nv_udc_s *nvudc =
+		container_of(work, struct nv_udc_s, ucd_work);
+	struct device *dev = nvudc->dev;
+	int ret;
+
+	if (nvudc->ucd == NULL)
+		return;
+
+	if (nvudc->vbus_detected) {
+		nvudc->connect_type =
+			tegra_ucd_detect_cable_and_set_current(nvudc->ucd);
+		if (nvudc->connect_type == CONNECT_TYPE_SDP)
+			schedule_delayed_work(&nvudc->non_std_charger_work,
+				msecs_to_jiffies(NON_STD_CHARGER_DET_TIME_MS));
+		if (!pm_runtime_active(dev)) {
+			ret = pm_runtime_get(dev);
+			if (ret)
+				dev_warn(dev, "Fail to runtime resume device\n");
+		}
+	} else {
+		cancel_delayed_work(&nvudc->non_std_charger_work);
+		tegra_ucd_set_charger_type(nvudc->ucd, CONNECT_TYPE_NONE);
+	}
+}
+
+static void tegra_xudc_non_std_charger_work(struct work_struct *work)
+{
+	struct nv_udc_s *nvudc =
+		container_of(work, struct nv_udc_s, non_std_charger_work.work);
+
+	if (nvudc->ucd == NULL)
+		return;
+
+	tegra_ucd_set_charger_type(nvudc->ucd,
+			CONNECT_TYPE_NON_STANDARD_CHARGER);
+}
+
 static int extcon_notifications(struct notifier_block *nb,
 				   unsigned long event, void *unused)
 {
@@ -347,6 +398,7 @@ static int extcon_notifications(struct notifier_block *nb,
 		vbus_not_detected(nvudc);
 	}
 
+	schedule_work(&nvudc->ucd_work);
 exit:
 	spin_unlock_irqrestore(&nvudc->lock, flags);
 	return NOTIFY_DONE;
@@ -2156,6 +2208,12 @@ static int nvudc_vbus_draw(struct usb_gadget *gadget, unsigned m_a)
 
 	nvudc = container_of(gadget, struct nv_udc_s, gadget);
 	msg_dbg(nvudc->dev, "nvudc_vbus_draw m_a= 0x%x\n", m_a);
+
+	if (nvudc->current_ma != m_a) {
+		nvudc->current_ma = m_a;
+		schedule_work(&nvudc->current_work);
+	}
+
 	return -ENOTSUPP;
 }
 
@@ -3696,6 +3754,7 @@ void nvudc_handle_event(struct nv_udc_s *nvudc, struct event_trb_s *event)
 			u16 seq_num;
 			msg_dbg(nvudc->dev, "nvudc_handle_setup_pkt\n");
 
+			cancel_delayed_work(&nvudc->non_std_charger_work);
 			setup_pkt = (struct usb_ctrlrequest *)
 					&event->trb_pointer_lo;
 
@@ -5134,6 +5193,10 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	}
 
 	INIT_WORK(&nvudc->work, irq_work);
+	INIT_WORK(&nvudc->ucd_work, tegra_xudc_ucd_work);
+	INIT_WORK(&nvudc->current_work, tegra_xudc_current_work);
+	INIT_DELAYED_WORK(&nvudc->non_std_charger_work,
+					tegra_xudc_non_std_charger_work);
 
 	nvudc->pdev.plat = pdev;
 	nvudc->dev = dev;
@@ -5243,6 +5306,13 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	pm_runtime_set_autosuspend_delay(&pdev->dev, 2000);
 	pm_runtime_enable(&pdev->dev);
 
+	nvudc->current_ma = USB_ANDROID_SUSPEND_CURRENT_MA;
+	nvudc->ucd = tegra_usb_get_ucd();
+	if (IS_ERR(nvudc->ucd)) {
+		dev_err(dev, "couldn't get charger detection handle\n");
+		nvudc->ucd = NULL;
+	}
+
 	/* TODO: support non-dt ?*/
 	nvudc->vbus_extcon_dev =
 		extcon_get_extcon_dev_by_cable(&pdev->dev, "vbus");
@@ -5288,6 +5358,10 @@ static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 
 	/* TODO implement synchronization */
 	if (nvudc) {
+		tegra_usb_release_ucd(nvudc->ucd);
+		cancel_work_sync(&nvudc->ucd_work);
+		cancel_work_sync(&nvudc->current_work);
+		cancel_delayed_work(&nvudc->non_std_charger_work);
 		usb_del_gadget_udc(&nvudc->gadget);
 		free_data_struct(nvudc);
 		nvudc_plat_clocks_disable(nvudc);

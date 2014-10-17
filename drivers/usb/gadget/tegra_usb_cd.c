@@ -75,6 +75,7 @@ static int tegra_usb_cd_set_current_limit(struct tegra_usb_cd *ucd, int max_ua)
 	if (max_ua > 0 && ucd->hw_ops->vbus_pad_protection)
 		ucd->hw_ops->vbus_pad_protection(ucd, true);
 
+	dev_info(ucd->dev, "set current %dma\n", max_ua/1000);
 	if (ucd->vbus_reg != NULL)
 		ret = regulator_set_current_limit(ucd->vbus_reg, 0, max_ua);
 
@@ -86,23 +87,25 @@ static int tegra_usb_cd_set_current_limit(struct tegra_usb_cd *ucd, int max_ua)
 
 static int tegra_usb_cd_set_charging_current(struct tegra_usb_cd *ucd)
 {
-	int max_ua;
+	int max_ua = 0, ret = 0;
+	DBG(ucd->dev, "Begin");
 
 	switch (ucd->connect_type) {
 	case CONNECT_TYPE_NONE:
 		dev_info(ucd->dev, "disconnected USB cable/charger\n");
+		ucd->sdp_cdp_current_limit_ma = 0;
 		max_ua = 0;
 		break;
 	case CONNECT_TYPE_SDP:
-		dev_info(ucd->dev, "connected to SDP\n");
-		if (ucd->current_limit_ma > 2)
+		if (ucd->sdp_cdp_current_limit_ma > 2)
 			dev_info(ucd->dev, "connected to SDP\n");
-		max_ua = min(ucd->current_limit_ma * 1000,
+		max_ua = min(ucd->sdp_cdp_current_limit_ma * 1000,
 				USB_CHARGING_SDP_CURRENT_LIMIT_UA);
 		break;
 	case CONNECT_TYPE_DCP:
-		dev_info(ucd->dev, "connected to DCP(wall charger)\n");
-		max_ua = ucd->dcp_current_limit_ma * 1000;
+		dev_info(ucd->dev, "connected to DCP\n");
+		max_ua = max(ucd->dcp_current_limit_ma * 1000,
+				USB_CHARGING_DCP_CURRENT_LIMIT_UA);
 		break;
 	case CONNECT_TYPE_DCP_QC2:
 		dev_info(ucd->dev, "connected to QuickCharge 2(wall charger)\n");
@@ -113,11 +116,11 @@ static int tegra_usb_cd_set_charging_current(struct tegra_usb_cd *ucd)
 		max_ua = ucd->dcp_current_limit_ma * 1000;
 		break;
 	case CONNECT_TYPE_CDP:
-		dev_info(ucd->dev, "connected to CDP(1.5A)\n");
-		if (ucd->current_limit_ma > 2)
+		dev_info(ucd->dev, "connected to CDP\n");
+		if (ucd->sdp_cdp_current_limit_ma > 2)
 			max_ua = USB_CHARGING_CDP_CURRENT_LIMIT_UA;
 		else
-			max_ua = ucd->current_limit_ma * 1000;
+			max_ua = ucd->sdp_cdp_current_limit_ma * 1000;
 		break;
 	case CONNECT_TYPE_NON_STANDARD_CHARGER:
 		dev_info(ucd->dev, "connected to non-standard charger\n");
@@ -140,7 +143,11 @@ static int tegra_usb_cd_set_charging_current(struct tegra_usb_cd *ucd)
 		max_ua = 0;
 	}
 
-	return tegra_usb_cd_set_current_limit(ucd, max_ua);
+	ucd->current_limit_ma = max_ua/1000;
+	ret = tegra_usb_cd_set_current_limit(ucd, max_ua);
+
+	DBG(ucd->dev, "End");
+	return ret;
 }
 
 static enum tegra_usb_connect_type
@@ -181,21 +188,34 @@ static enum tegra_usb_connect_type
 	else
 		ucd->connect_type = CONNECT_TYPE_SDP;
 
+	ucd->hw_ops->power_off(ucd);
+
 	tegra_usb_cd_set_extcon_state(ucd);
 	tegra_usb_cd_set_charging_current(ucd);
 
-	ucd->hw_ops->power_off(ucd);
-
 	DBG(ucd->dev, "End");
-
 	return ucd->connect_type;
 }
+
+/* --------------------------- */
+/* API's for controller driver */
+
+void tegra_ucd_set_charger_type(struct tegra_usb_cd *ucd,
+				enum tegra_usb_connect_type connect_type)
+{
+	ucd->connect_type = connect_type;
+	tegra_usb_cd_set_extcon_state(ucd);
+	tegra_usb_cd_set_charging_current(ucd);
+}
+EXPORT_SYMBOL_GPL(tegra_ucd_set_charger_type);
 
 enum tegra_usb_connect_type
 	tegra_ucd_detect_cable_and_set_current(struct tegra_usb_cd *ucd)
 {
-	if (ucd == NULL)
+	if (IS_ERR(ucd)) {
 		dev_err(ucd->dev, "ucd not initialized");
+		return -EINVAL;
+	}
 
 	return	tegra_usb_cd_detect_cable_and_set_current(ucd);
 }
@@ -203,16 +223,53 @@ EXPORT_SYMBOL_GPL(tegra_ucd_detect_cable_and_set_current);
 
 struct tegra_usb_cd *tegra_usb_get_ucd(void)
 {
+	if (_ucd == NULL)
+		return ERR_PTR(-EINVAL);
+	_ucd->open_count++;
+
 	return _ucd;
 }
 EXPORT_SYMBOL_GPL(tegra_usb_get_ucd);
 
+void tegra_usb_release_ucd(struct tegra_usb_cd *ucd)
+{
+	if (ucd == NULL)
+		return;
+
+	ucd->open_count--;
+}
+EXPORT_SYMBOL_GPL(tegra_usb_release_ucd);
+
 void tegra_ucd_set_current(struct tegra_usb_cd *ucd, int current_ma)
 {
+	if (ucd == NULL)
+		return;
+
+	ucd->current_limit_ma = current_ma;
 	tegra_usb_cd_set_current_limit(ucd, current_ma*1000);
 	return;
 }
 EXPORT_SYMBOL_GPL(tegra_ucd_set_current);
+
+void tegra_ucd_set_sdp_cdp_current(struct tegra_usb_cd *ucd, int current_ma)
+{
+	if (ucd == NULL)
+		return;
+
+	if (ucd->connect_type != CONNECT_TYPE_SDP
+			&& ucd->connect_type != CONNECT_TYPE_CDP) {
+		dev_err(ucd->dev,
+			"tyring to set current for non SDP/CDP port");
+		return;
+	}
+
+	ucd->sdp_cdp_current_limit_ma = current_ma;
+	tegra_usb_cd_set_charging_current(ucd);
+	return;
+}
+EXPORT_SYMBOL_GPL(tegra_ucd_set_sdp_cdp_current);
+
+/* --------------------------- */
 
 static struct tegra_usb_cd_soc_data tegra_soc_config = {
 	.init_hw_ops = tegra21x_usb_cd_init_ops,
@@ -328,6 +385,9 @@ static int tegra_usb_cd_probe(struct platform_device *pdev)
 	_ucd = ucd;
 	ucd->dev = &pdev->dev;
 	ucd->connect_type = CONNECT_TYPE_NONE;
+	ucd->current_limit_ma = 0;
+	ucd->sdp_cdp_current_limit_ma = 0;
+	ucd->open_count = 0;
 	soc_data = (struct tegra_usb_cd_soc_data *)match->data;
 	platform_set_drvdata(pdev, ucd);
 
@@ -343,8 +403,6 @@ static int tegra_usb_cd_probe(struct platform_device *pdev)
 		dev_err(ucd->dev, "hw_ops open failed\n");
 		goto err_iounmap;
 	}
-
-	tegra_usb_cd_detect_cable_and_set_current(ucd);
 
 	DBG(&pdev->dev, "End");
 	return 0;
@@ -365,6 +423,9 @@ static int tegra_usb_cd_remove(struct platform_device *pdev)
 
 	if (!ucd)
 		return -ENODEV;
+
+	if (ucd->open_count)
+		return -EBUSY;
 
 	if (!res) {
 		dev_err(ucd->dev, "resource request failed\n");

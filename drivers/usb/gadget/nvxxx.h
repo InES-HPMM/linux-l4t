@@ -19,6 +19,10 @@
 #include <linux/ioctl.h>
 
 extern struct usb_hcd *tegra_xhci_hcd;
+
+#define NON_STD_CHARGER_DET_TIME_MS 1000
+#define USB_ANDROID_SUSPEND_CURRENT_MA 2
+
 /*
  * Register definitions
  */
@@ -633,6 +637,14 @@ struct nv_udc_s {
 	struct notifier_block vbus_extcon_nb;
 	struct extcon_dev *id_extcon_dev;
 	struct notifier_block id_extcon_nb;
+
+	/* charger detection */
+	struct tegra_usb_cd *ucd;
+	enum tegra_usb_connect_type connect_type;
+	struct work_struct ucd_work;
+	struct work_struct current_work;
+	struct delayed_work non_std_charger_work;
+	u32 current_ma;
 
 	/* otg work, will be moved to OTG driver */
 	struct work_struct work;

@@ -45,6 +45,7 @@
 
 #define	XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL1	0x84
 #define		VBUS_VREG_FIX18			BIT(6)
+#define		VBUS_VREG_LEV(x)		(((x) & 0x3) << 7)
 #define		USBOP_RPD_OVRD			BIT(16)
 #define		USBOP_RPD_OVRD_VAL		BIT(17)
 #define		USBOP_RPU_OVRD			BIT(18)
@@ -56,12 +57,15 @@
 
 #define XUSB_PADCTL_USB2_PAD_MUX_0	0x4
 #define		USB2_BIAS_PAD(x)		(((x) & 0x3) << 18)
+#define		USB2_BIAS_PAD_VAL(x)		(((x) & (0x3 << 18)) >> 18)
 #define		USB2_OTG_PAD_PORT0(x)	(((x) & 0x3) << 0)
+#define		USB2_OTG_PAD_PORT0_VAL(x)	(((x) & (0x3 << 0)) >> 0)
 
 #define XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0	0x284
 #define		BIAS_PAD_PD	BIT(11)
 
 #define	XUSB_PADCTL_USB2_OTG_PAD0_CTL_0_0	0x88
+#define		OTG_PAD0_PD		BIT(26)
 #define		PD2			BIT(27)
 #define		PD2_OVRD_EN	BIT(28)
 #define		PD_ZI		BIT(29)
@@ -98,7 +102,7 @@ static bool tegra21x_usb_dcd_detect(struct tegra_usb_cd *ucd)
 
 	/* Turn on D- pull-down resistor */
 	val = readl(base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL1);
-	val |= (USBON_RPD_OVRD | USBON_RPD_OVRD_VAL);
+	val |= (USBON_RPD_OVRD_VAL);
 	writel(val, base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL1);
 
 	/* Wait for TDCD_DBNC */
@@ -139,7 +143,7 @@ static bool tegra21x_usb_dcp_charger_detect(struct tegra_usb_cd *ucd)
 
 	/* Data Contact Detection step */
 	if (tegra21x_usb_dcd_detect(ucd))
-		dev_info(ucd->dev, "DCD successful\n");
+		DBG(ucd->dev, "DCD successful\n");
 
 	/* Primary Detection step */
 	/* Source D+ to D- */
@@ -154,12 +158,6 @@ static bool tegra21x_usb_dcp_charger_detect(struct tegra_usb_cd *ucd)
 		readl(base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL0));
 	DBG(ucd->dev, "BATTERY_CHRG_OTGPAD0_CTL1 = %08x",
 		readl(base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL1));
-	DBG(ucd->dev, "XUSB_PADCTL_USB2_PAD_MUX_0 = 0x%08x\n",
-		readl(base + XUSB_PADCTL_USB2_PAD_MUX_0));
-	DBG(ucd->dev, "XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0 = 0x%08x\n",
-		readl(base + XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0));
-	DBG(ucd->dev, "XUSB_PADCTL_USB2_OTG_PAD0_CTL_0_0 = 0x%08x\n",
-		readl(base + XUSB_PADCTL_USB2_OTG_PAD0_CTL_0_0));
 
 	val = readl(base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL0);
 	if (val & VDAT_DET) {
@@ -171,7 +169,6 @@ static bool tegra21x_usb_dcp_charger_detect(struct tegra_usb_cd *ucd)
 	/* Turn off OP_SRC, ON_SINK, clear VDAT, ZIN status change */
 	val = readl(base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL0);
 	val &= ~(OP_SRC_EN | ON_SINK_EN);
-	val |= VDAT_DET_ST_CHNG | ZIN_ST_CHNG;
 	writel(val, base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL0);
 
 	DBG(ucd->dev, "End Status = %d", status);
@@ -205,7 +202,6 @@ static bool tegra21x_usb_cdp_charger_detect(struct tegra_usb_cd *ucd)
 	/* Turn off ON_SRC, OP_SINK, clear VDAT, ZIP status change */
 	val = readl(base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL0);
 	val &= ~(ON_SRC_EN | OP_SINK_EN);
-	val |= VDAT_DET_ST_CHNG | ZIP_ST_CHNG;
 	writel(val, base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL0);
 	DBG(ucd->dev, "End Status = %d", status);
 	return status;
@@ -226,24 +222,14 @@ static int tegra21x_pad_power_on(struct tegra_usb_cd *ucd)
 	unsigned long val;
 	void __iomem *base = ucd->regs;
 
-	/* Set bias pad and port0 ownership to XUSB */
 	val = readl(base + XUSB_PADCTL_USB2_PAD_MUX_0);
-	val &= ~USB2_BIAS_PAD(~0);
-	val |= USB2_BIAS_PAD(0x1);
-	val &= ~USB2_OTG_PAD_PORT0(~0);
-	val |= USB2_OTG_PAD_PORT0(0x1);
-	writel(val, base + XUSB_PADCTL_USB2_PAD_MUX_0);
-
-	/* Set and clear relavent PD controls */
-	val = readl(base + XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0);
-	val &= ~BIAS_PAD_PD;
-	writel(val, base + XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0);
+	if (USB2_BIAS_PAD_VAL(val) != 0x1 &&
+		USB2_OTG_PAD_PORT0_VAL(val) != 0x1) {
+		dev_err(ucd->dev, "pad/port ownership is not with XUSB");
+		return -EINVAL;
+	}
 
 	tegra_pd2_asserted(0);
-
-	val = readl(base + XUSB_PADCTL_USB2_OTG_PAD0_CTL_0_0);
-	val &= ~PD_ZI;
-	writel(val, base + XUSB_PADCTL_USB2_OTG_PAD0_CTL_0_0);
 
 	val = readl(base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL0);
 	val &= ~PD_CHG;
@@ -270,12 +256,26 @@ static int tegra21x_pad_power_on(struct tegra_usb_cd *ucd)
 
 	tegra21x_usb_charger_filters(base, 1);
 
+	DBG(ucd->dev, "XUSB_PADCTL_USB2_PAD_MUX_0 = 0x%08x\n",
+		readl(base + XUSB_PADCTL_USB2_PAD_MUX_0));
+	DBG(ucd->dev, "XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0 = 0x%08x\n",
+		readl(base + XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0));
+	DBG(ucd->dev, "XUSB_PADCTL_USB2_OTG_PAD0_CTL_0_0 = 0x%08x\n",
+		readl(base + XUSB_PADCTL_USB2_OTG_PAD0_CTL_0_0));
 	return 0;
 }
 
 static int tegra21x_pad_power_off(struct tegra_usb_cd *ucd)
 {
+	void __iomem *base = ucd->regs;
+	unsigned long val;
+
 	tegra_pd2_deasserted(0);
+
+	val = readl(base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL1);
+	val &= ~(USBOP_RPD_OVRD | USBOP_RPU_OVRD |
+		USBON_RPD_OVRD | USBON_RPU_OVRD);
+	writel(val, base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL1);
 
 	tegra21x_usb_charger_filters(ucd->regs, 0);
 
@@ -289,10 +289,24 @@ static void tegra21x_usb_vbus_pad_protection(struct tegra_usb_cd *ucd,
 	unsigned long val;
 
 	val = readl(base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL1);
-	if (enable)
+	if (enable) {
 		val &= ~VBUS_VREG_FIX18;
-	else
+		val &= ~VBUS_VREG_LEV(~0);
+		if (ucd->current_limit_ma >= 500 &&
+				ucd->current_limit_ma <= 899)
+			val |= VBUS_VREG_LEV(0x0);
+		else if (ucd->current_limit_ma >= 900 &&
+				ucd->current_limit_ma >= 1499)
+			val |= VBUS_VREG_LEV(0x1);
+		else if (ucd->current_limit_ma >= 1500 &&
+				ucd->current_limit_ma >= 1999)
+			val |= VBUS_VREG_LEV(0x2);
+		else if (ucd->current_limit_ma >= 2000)
+			val |= VBUS_VREG_LEV(0x3);
+	} else {
 		val |= VBUS_VREG_FIX18;
+		val &= ~VBUS_VREG_LEV(~0);
+	}
 	writel(val, base + XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD0_CTL1);
 }
 
