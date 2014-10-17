@@ -15,12 +15,9 @@ CFLAGS_REMOVE_return_address.o = -pg
 
 # Object file lists.
 
-arm-obj-y	:= elf.o entry-armv.o entry-common.o irq.o opcodes.o \
+obj-y		:= elf.o entry-armv.o entry-common.o irq.o opcodes.o \
 		   process.o ptrace.o return_address.o \
-		   setup.o signal.o stacktrace.o sys_arm.o time.o traps.o \
-		   vdso.o
-
-obj-y += $(arm-obj-y) vdso32/
+		   setup.o signal.o stacktrace.o sys_arm.o time.o traps.o
 
 obj-$(CONFIG_ATAGS)		+= atags_parse.o
 obj-$(CONFIG_ATAGS_PROC)	+= atags_proc.o
@@ -89,6 +86,3 @@ obj-$(CONFIG_ARM_VIRT_EXT)	+= hyp-stub.o
 obj-$(CONFIG_ARM_PSCI)		+= psci.o
 
 extra-y := $(head-y) vmlinux.lds
-# vDSO - this must be built first to generate the symbol offsets
-$(call objectify,$(arm-obj-y)): $(obj)/vdso32/vdso-offsets.h
-$(obj)/vdso32/vdso-offsets.h: $(obj)/vdso32
