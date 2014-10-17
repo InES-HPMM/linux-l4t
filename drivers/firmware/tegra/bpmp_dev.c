@@ -28,6 +28,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/tegra_smmu.h>
+#include <linux/uaccess.h>
 #include <mach/clk.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "bpmp_private.h"
@@ -79,7 +80,6 @@ struct platform_config {
 struct bpmp_module {
 	struct list_head entry;
 	struct dentry *root;
-	char name[20];
 	u32 handle;
 	u32 size;
 };
@@ -128,6 +128,7 @@ static int bpmp_module_unload_show(void *data, u64 *val)
 		debugfs_remove_recursive(m->root);
 	mutex_unlock(&bpmp_lock);
 
+	kfree(m);
 	*val = err;
 	return 0;
 }
@@ -135,94 +136,108 @@ static int bpmp_module_unload_show(void *data, u64 *val)
 DEFINE_SIMPLE_ATTRIBUTE(bpmp_module_unload_fops, bpmp_module_unload_show,
 		NULL, "%lld\n");
 
-static void bpmp_module_ready(const struct firmware *fw, void *context)
+static int bpmp_module_ready(const char *name, const struct firmware *fw,
+		struct bpmp_module *m)
 {
-	struct bpmp_module *m = context;
 	struct module_hdr *hdr;
-	struct dentry *d;
 	int err;
-
-	if (!fw) {
-		dev_info(device, "module not ready\n");
-		kfree(m);
-		return;
-	}
-
-	dev_info(device, "module %s ready: %zu@%p\n",
-			m->name, fw->size, fw->data);
 
 	hdr = (struct module_hdr *)fw->data;
 
 	if (fw->size < sizeof(struct module_hdr) ||
 			hdr->magic != BPMP_MODULE_MAGIC ||
 			hdr->size + hdr->reloc_size != fw->size) {
-
-		dev_err(device, "unknown or invalid module format\n");
-		goto err_nolock;
+		dev_err(device, "%s: invalid module format\n", name);
+		return -EINVAL;
 	}
 
 	m->size = hdr->size + hdr->bss_size;
 
-	mutex_lock(&bpmp_lock);
-
 	err = bpmp_module_load(device, fw->data, fw->size, &m->handle);
 	if (err) {
 		dev_err(device, "failed to load module, code=%d\n", err);
-		goto err;
+		return err;
 	}
 
-	m->root = debugfs_create_dir(m->name, module_root);
-	if (IS_ERR_OR_NULL(m->root))
-		goto err;
+	if (!debugfs_create_x32("handle", S_IRUGO, m->root, &m->handle))
+		return -ENOMEM;
 
-	d = debugfs_create_x32("handle", S_IRUGO, m->root, &m->handle);
-	if (IS_ERR_OR_NULL(d))
-		goto err;
+	if (!debugfs_create_x32("size", S_IRUGO, m->root, &m->size))
+		return -ENOMEM;
 
-	d = debugfs_create_x32("size", S_IRUGO, m->root, &m->size);
-	if (IS_ERR_OR_NULL(d))
-		goto err;
-
-	d = debugfs_create_file("unload", S_IRUSR, m->root, m,
-			&bpmp_module_unload_fops);
-	if (IS_ERR_OR_NULL(d))
-		goto err;
+	if (!debugfs_create_file("unload", S_IRUSR, m->root, m,
+			&bpmp_module_unload_fops))
+		return -ENOMEM;
 
 	list_add_tail(&m->entry, &modules);
 
-	mutex_unlock(&bpmp_lock);
-	release_firmware(fw);
-	uncache_firmware(m->name);
-	return;
-
-err:
-	mutex_unlock(&bpmp_lock);
-err_nolock:
-	release_firmware(fw);
-	uncache_firmware(m->name);
-	debugfs_remove_recursive(m->root);
-	kfree(m);
+	return 0;
 }
 
-static int bpmp_module_load_show(void *data, u64 *val)
+static ssize_t bpmp_module_load_store(struct file *file,
+		const char __user *user_buf, size_t count, loff_t *ppos)
 {
-	static u32 serial;
-	struct platform_device *pdev = data;
+	const struct firmware *fw;
 	struct bpmp_module *m;
+	char buf[64];
+	char *name;
+	int r;
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (strncpy_from_user(buf, user_buf, count) <= 0)
+		return -EFAULT;
+
+	buf[count] = 0;
+	name = strim(buf);
 
 	m = kzalloc(sizeof(*m), GFP_KERNEL);
 	if (m == NULL)
 		return -ENOMEM;
 
-	*val = ++serial;
-	snprintf(m->name, sizeof(m->name), "bpmp.mod.%u", serial);
+	mutex_lock(&bpmp_lock);
 
-	return request_firmware_nowait(THIS_MODULE, false, m->name,
-			&pdev->dev, GFP_KERNEL, m, bpmp_module_ready);
+	/* We are more likely to have a duplicate than NOMEM */
+	m->root = debugfs_create_dir(name, module_root);
+	if (!m->root) {
+		dev_err(device, "module %s exist\n", name);
+		r = -EEXIST;
+		goto clean;
+	}
+
+	r = request_firmware(&fw, name, device);
+	if (r) {
+		dev_err(device, "request_firmware() failed: %d\n", r);
+		goto clean;
+	}
+
+	if (!fw) {
+		r = -EFAULT;
+		WARN_ON(0);
+		goto clean;
+	}
+
+	dev_info(device, "%s: module ready %zu@%p\n", name, fw->size, fw->data);
+	r = bpmp_module_ready(name, fw, m);
+	release_firmware(fw);
+	uncache_firmware(name);
+
+clean:
+	mutex_unlock(&bpmp_lock);
+
+	if (r) {
+		debugfs_remove_recursive(m->root);
+		kfree(m);
+		return r;
+	}
+
+	return count;
 }
 
-DEFINE_SIMPLE_ATTRIBUTE(bpmp_module_load_fops, bpmp_module_load_show,
-		NULL, "%lld\n");
+static const struct file_operations bpmp_module_load_fops = {
+	.write = bpmp_module_load_store
+};
 
 static void bpmp_cleanup_modules(void)
 {
