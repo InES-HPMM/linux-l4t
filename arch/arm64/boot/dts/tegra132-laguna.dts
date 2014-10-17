@@ -35,6 +35,13 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
+	aliases {
+		i2c6 = &pca9546_i2c0;
+		i2c7 = &pca9546_i2c1;
+		i2c8 = &pca9546_i2c2;
+		i2c9 = &pca9546_i2c3;
+	};
+
 	chosen {
 		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
 		linux,initrd-start = <0x85000000>;
@@ -115,6 +122,36 @@
 			compatible = "ti,sn65dsi86";
 			reg = <0x2d>;
 			status = "okay";
+		};
+		pca9546@70 {
+			compatible = "nxp,pca9546";
+			reg = <0x70>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			pca9546_i2c0: i2c@0 {
+				reg = <0>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+			pca9546_i2c1: i2c@1 {
+				reg = <1>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+			pca9546_i2c2: i2c@2 {
+				reg = <2>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+			pca9546_i2c3: i2c@3 {
+				reg = <3>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
 		};
 	};
 
