@@ -206,13 +206,14 @@ static int gpio_extcon_probe(struct platform_device *pdev)
 	}
 
 	ret = request_any_context_irq(extcon_data->irq, gpio_irq_handler,
-				      pdata->irq_flags, pdev->name,
-				      extcon_data);
+			pdata->irq_flags | IRQF_EARLY_RESUME, pdev->name,
+			extcon_data);
 	if (ret < 0)
 		goto err;
 
 	platform_set_drvdata(pdev, extcon_data);
 	device_set_wakeup_capable(extcon_data->dev, true);
+	device_wakeup_enable(extcon_data->dev);
 
 skip_gpio:
 	/* Perform initial detection */
