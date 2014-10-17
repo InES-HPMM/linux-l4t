@@ -36,21 +36,25 @@
 		uhs-mask = <0x0>;
 		built-in;
 		pll_source = "pll_p", "pll_c4_out2";
+		power-off-rail;
 		status = "okay";
 	};
 
 	sdhci@700b0400 {
 		uhs-mask = <0x8>;
+		power-off-rail;
 		status = "okay";
 	};
 
 	sdhci@700b0200 {
 		uhs-mask = <0x8>;
+		power-off-rail;
 		status = "okay";
 	};
 
 	sdhci@700b0000 {
 		uhs-mask = <0xc>;
+		power-off-rail;
 		status = "okay";
 	};
 
