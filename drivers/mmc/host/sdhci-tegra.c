@@ -4577,6 +4577,9 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	plat->disable_auto_cal = of_property_read_bool(np,
 		"nvidia,disable-auto-cal");
 
+	plat->power_off_rail = of_property_read_bool(np,
+		"power-off-rail");
+
 	plat->pwr_off_during_lp0 = of_property_read_bool(np,
 						"pwr-off-during-lp0");
 
