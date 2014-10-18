@@ -45,7 +45,7 @@ static int tegra_prod_get(const struct device_node *np,
 	struct tegra_prod *t_prod;
 	struct prod_tuple *p_tuple;
 
-	if (!tegra_prod_list && !tegra_prod_list->tegra_prod) {
+	if (!tegra_prod_list || !tegra_prod_list->tegra_prod) {
 		pr_err("Node %s: Invalid tegra prods list.\n", np->name);
 		return -EINVAL;
 	};
