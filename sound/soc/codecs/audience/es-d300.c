@@ -1191,6 +1191,7 @@ static int es300_codec_enable_i2srx(struct snd_soc_dapm_widget *w,
 		if (escore->i2s_dai_data[dai_id].rx_ch_act ==
 				escore->i2s_dai_data[dai_id].rx_ch_tot) {
 			ret = es_set_final_route(escore);
+			msleep(20);
 			atomic_inc(&escore->active_streams);
 		}
 		break;
@@ -1232,12 +1233,10 @@ static int es300_codec_enable_i2stx(struct snd_soc_dapm_widget *w,
 			}
 		}
 
-		if (escore->i2s_dai_data[dai_id].tx_ch_act ==
-				escore->i2s_dai_data[dai_id].tx_ch_tot) {
+        /* WAR removed the code that checks for ACK from DAI */
+		ret = es_set_final_route(escore);
+		atomic_inc(&escore->active_streams);
 
-			ret = es_set_final_route(escore);
-			atomic_inc(&escore->active_streams);
-		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		for (j = 0; j < escore->dai_nr; j++) {
