@@ -245,6 +245,7 @@ static int virtual_instance_create(struct camera_device *cdev, void *pdata)
 		GFP_KERNEL);
 	if (buf == NULL) {
 		dev_err(cdev->dev, "%s memory low!\n", __func__);
+		of_camera_put_pwrseq(cdev->dev, pwr_seq);
 		return -ENOMEM;
 	}
 
@@ -279,7 +280,9 @@ static int virtual_instance_create(struct camera_device *cdev, void *pdata)
 		if (IS_ERR(cdev->clks[idx])) {
 			dev_err(cdev->dev, "%s: get clock %s FAILED.\n",
 					__func__, clks);
+			of_camera_put_pwrseq(cdev->dev, pwr_seq);
 			kfree(buf);
+			cdev->gpios = buf = NULL;
 			return PTR_ERR(cdev->clks[idx]);
 		}
 		dev_dbg(cdev->dev, "%s - clock: %s\n", __func__, clks);
