@@ -968,7 +968,7 @@ static int __init set_gpu_dvfs_data(unsigned long max_freq,
 
 	*max_freq_index = i - 1;
 
-	gpu_dvfs->therm_safe_fmax = d->freqs_mult *
+	gpu_dvfs->fmax_at_vmin_safe_t = d->freqs_mult *
 		find_gpu_fmax_at_vmin(gpu_dvfs, thermal_ranges, i);
 	return 0;
 }
