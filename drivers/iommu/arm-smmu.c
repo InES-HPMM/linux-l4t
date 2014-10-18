@@ -431,7 +431,7 @@ static struct arm_smmu_device *smmu_handle; /* assmu only one smmu device */
 
 static volatile void __iomem *mc_base;
 
-#define MC_BASE				0x7001C000
+#define MC_BASE				0x22c10000 /* HACK: for c-model */
 #define ARM_SMMU_CONTROL_ADDRESS	0x24
 #define ARM_SMMU_CONTROL_DATA		0x28
 
