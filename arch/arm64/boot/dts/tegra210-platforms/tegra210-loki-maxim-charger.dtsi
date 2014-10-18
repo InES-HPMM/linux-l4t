@@ -2,7 +2,7 @@
 	usb-devices {
 		maxim-charger {
 			compatible = "maxim,max14675";
-			maxim,max-board-vbus-voltage-uv = <16000000>;
+			maxim,max-board-vbus-voltage-uv = <14000000>;
 		};
 	};
 };
