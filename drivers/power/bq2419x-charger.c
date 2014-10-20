@@ -1628,6 +1628,23 @@ static int bq2419x_resume(struct device *dev)
 	if (device_may_wakeup(bq2419x->dev) && (bq2419x->irq > 0))
 		disable_irq_wake(bq2419x->irq);
 
+	ret = regmap_read(bq2419x->regmap, BQ2419X_SYS_STAT_REG, &val);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "SYS_STAT_REG read failed %d\n", ret);
+		return IRQ_HANDLED;
+	}
+	if ((val & BQ2419x_VBUS_PG_STAT) == BQ2419x_PG_VBUS_USB) {
+		extcon_set_cable_state(&bq2419x->edev,
+						bq2419x_extcon_cable[0], true);
+		if (!bq2419x->cable_connected)
+			dev_info(bq2419x->dev, "USB is connected\n");
+	} else if ((val & BQ2419x_VBUS_PG_STAT) == BQ2419x_VBUS_UNKNOWN) {
+		extcon_set_cable_state(&bq2419x->edev,
+						bq2419x_extcon_cable[0], false);
+		if (bq2419x->cable_connected)
+			dev_info(bq2419x->dev, "USB is disconnected\n");
+	}
+
 	if (!bq2419x->battery_presense)
 		return 0;
 
