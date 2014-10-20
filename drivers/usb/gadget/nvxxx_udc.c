@@ -4843,6 +4843,7 @@ static int tegra_xudc_exit_elpg(struct nv_udc_s *nvudc)
 
 	/* register restore */
 	nvudc_plat_fpci_ipfs_init(nvudc);
+	set_interrupt_moderation(nvudc, min_irq_interval_us);
 	restore_mmio_reg(nvudc);
 	nvudc_resume_state(nvudc, 1);
 
