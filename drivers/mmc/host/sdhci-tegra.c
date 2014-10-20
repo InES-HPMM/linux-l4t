@@ -206,6 +206,8 @@
 #define NVQUIRK2_UPDATE_HW_TUNING_CONFG		BIT(1)
 /* Enable Enhanced strobe mode support */
 #define NVQUIRK2_EN_STROBE_SUPPORT		BIT(2)
+/*controller does not support cards if 1.8 V is not supported by cards*/
+#define NVQUIRK2_BROKEN_SD2_0_SUPPORT		BIT(3)
 
 /* Common subset of quirks for Tegra3 and later sdmmc controllers */
 #define TEGRA_SDHCI_NVQUIRKS	(NVQUIRK_ENABLE_PADPIPE_CLKEN | \
@@ -243,6 +245,7 @@
 #define SDHOST_LOW_VOLT_MAX	1800000
 #define SDHOST_HIGH_VOLT_3V2	3200000
 #define SDHOST_HIGH_VOLT_3V3	3300000
+#define SDHOST_MAX_VOLT_SUPPORT	3000000
 
 /* Clock related definitions */
 #define MAX_DIVISOR_VALUE	128
@@ -1937,6 +1940,36 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 	}
 }
 
+static int tegra_sdhci_validate_sd2_0(struct sdhci_host *sdhci)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
+	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
+	struct tegra_sdhci_platform_data *plat;
+	int rc;
+
+	plat = pdev->dev.platform_data;
+
+	if ((soc_data->nvquirks2 & NVQUIRK2_BROKEN_SD2_0_SUPPORT) &&
+		(plat->limit_vddio_max_volt)) {
+		/* T210: Bug 1561291
+		 * Design issue where a cap connected to IO node is stressed
+		 * to 3.3v while it can only tolerate up to 1.8v.
+		 */
+		rc = tegra_sdhci_configure_regulators(tegra_host,
+				CONFIG_REG_DIS, 0, 0);
+		if (rc)
+			dev_err(mmc_dev(sdhci->mmc),
+				"Regulator disable failed %d\n", rc);
+		dev_err(mmc_dev(sdhci->mmc),
+			"SD cards with out 1.8V is not supported\n");
+		return -EPERM;
+	} else {
+		return 0;
+	}
+
+}
 static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 	unsigned int signal_voltage)
 {
@@ -2043,7 +2076,7 @@ static int tegra_sdhci_configure_regulators(struct sdhci_tegra *tegra_host,
 				plat = tegra_host->plat;
 				/* set pwrdet sdmmc1 before set 3.3 V */
 				if ((vddio_prev < min_uV) &&
-					(min_uV >= SDHOST_HIGH_VOLT_3V3)) {
+					(min_uV >= SDHOST_HIGH_VOLT_2V8)) {
 					if (plat->pwrdet_support)
 						pwr_detect_bit_write(
 							plat->pwrdet_bit, true);
@@ -4376,6 +4409,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.platform_ios_config_exit	= tegra_sdhci_ios_config_exit,
 	.set_uhs_signaling	= tegra_sdhci_set_uhs_signaling,
 	.switch_signal_voltage	= tegra_sdhci_signal_voltage_switch,
+	.validate_sd2_0		= tegra_sdhci_validate_sd2_0,
 	.switch_signal_voltage_exit = tegra_sdhci_do_calibration,
 	.execute_freq_tuning	= sdhci_tegra_execute_tuning,
 	.sd_error_stats		= sdhci_tegra_sd_error_stats,
@@ -4477,6 +4511,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 		    NVQUIRK_USE_TMCLK_WR_CRC_TIMEOUT,
 	.nvquirks2 = NVQUIRK2_UPDATE_HW_TUNING_CONFG |
 		     NVQUIRK2_CONFIG_PWR_DET |
+		     NVQUIRK2_BROKEN_SD2_0_SUPPORT |
 		     NVQUIRK_UPDATE_PIN_CNTRL_REG,
 };
 
@@ -4538,6 +4573,8 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	plat->pwr_off_during_lp0 = of_property_read_bool(np,
 						"pwr-off-during-lp0");
 
+	plat->limit_vddio_max_volt = of_property_read_bool(np,
+					"nvidia,limit-vddio-max-volt");
 	plat->mmc_data.built_in = of_property_read_bool(np, "built-in");
 	plat->update_pinctrl_settings = of_property_read_bool(np,
 			"nvidia,update-pinctrl-settings");
@@ -4886,6 +4923,10 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
 	}
 
+	if (plat->limit_vddio_max_volt) {
+		tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_2V8;
+		tegra_host->vddio_max_uv = SDHOST_MAX_VOLT_SUPPORT;
+	}
 	tegra_host->vdd_io_reg = regulator_get(mmc_dev(host->mmc),
 							"vddio_sdmmc");
 	if (IS_ERR_OR_NULL(tegra_host->vdd_io_reg)) {

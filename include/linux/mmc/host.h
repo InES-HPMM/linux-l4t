@@ -145,6 +145,7 @@ struct mmc_host_ops {
 
 	/* The tuning command opcode value is different for SD and eMMC cards */
 	int	(*execute_tuning)(struct mmc_host *host, u32 opcode);
+	int	(*validate_sd2_0)(struct mmc_host *host);
 	int	(*select_drive_strength)(struct mmc_host *host,
 					 unsigned int max_dtr,
 					 int host_drv, int card_drv);
