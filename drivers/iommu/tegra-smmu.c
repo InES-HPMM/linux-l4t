@@ -525,7 +525,6 @@ static u64 tegra_smmu_get_swgids(struct device *dev)
 	struct smmu_client *client;
 	struct iommu_linear_map *area = NULL;
 	struct smmu_map_prop *prop;
-	int err;
 
 	if (!smmu_handle) {
 		dev_info(dev, "SMMU isn't ready yet\n");
@@ -540,13 +539,14 @@ static u64 tegra_smmu_get_swgids(struct device *dev)
 	if (swgids_is_error(swgids))
 		return SWGIDS_ERROR_CODE;
 
-	err = tegra_smmu_of_get_asprops(&smmu_handle->asprops, swgids, &prop);
-	if (err) {
-		dev_err(dev,
-			"Unable to retrieve as prop for swgids:%lld\n",
-			swgids);
-		return SWGIDS_ERROR_CODE;
-	}
+	list_for_each_entry(prop, &smmu_handle->asprops, list)
+		if (swgids & prop->swgid_mask)
+			goto found;
+
+	dev_err(dev, "Unable to retrieve as prop for swgids:%lld\n", swgids);
+	return SWGIDS_ERROR_CODE;
+
+found:
 	prop->area = area;
 
 	client = tegra_smmu_register_client(smmu_handle, dev, swgids, prop);

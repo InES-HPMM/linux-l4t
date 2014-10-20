@@ -156,23 +156,6 @@ free_mem:
 	return 0;
 }
 
-int tegra_smmu_of_get_asprops(struct list_head *asprops,
-			      u64 swgids, struct smmu_map_prop **prop)
-{
-	struct smmu_map_prop *pprop;
-
-	if (swgids_is_error(swgids))
-		return -EINVAL;
-
-	list_for_each_entry(pprop, asprops, list)
-		if (swgids & pprop->swgid_mask) {
-			*prop = pprop;
-			return 0;
-		}
-
-	return -ENOENT;
-}
-
 u64 tegra_smmu_of_get_swgids(struct device *dev,
 			       const struct of_device_id *matches,
 			       struct iommu_linear_map **area)
