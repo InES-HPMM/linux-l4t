@@ -56,6 +56,8 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/arm_smmu.h>
 
+#include "of_tegra-smmu.h" /* FIXME: to parse implicitly */
+
 /* Maximum number of stream IDs assigned to a single device */
 #define MAX_MASTER_STREAMIDS		MAX_PHANDLE_ARGS
 
@@ -394,6 +396,8 @@ struct arm_smmu_device {
 	struct dentry			*debugfs_root;
 	struct debugfs_regset32		*regset;
 	DECLARE_BITMAP(context_filter, ARM_SMMU_MAX_CBS);
+
+	struct list_head		asprops;
 };
 
 struct arm_smmu_cfg {
@@ -2270,7 +2274,7 @@ static int arm_smmu_device_dt_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct rb_node *node;
 	struct of_phandle_args masterspec;
-	int num_irqs, i, err;
+	int num_irqs, i, err, count;
 
 	smmu = devm_kzalloc(dev, sizeof(*smmu), GFP_KERNEL);
 	if (!smmu) {
@@ -2279,6 +2283,13 @@ static int arm_smmu_device_dt_probe(struct platform_device *pdev)
 	}
 	smmu_handle = smmu;
 	smmu->dev = dev;
+
+	INIT_LIST_HEAD(&smmu->asprops);
+	count = tegra_smmu_of_register_asprops(smmu->dev, &smmu->asprops);
+	if (!count) {
+		dev_err(dev, "invalid domains property\n");
+		return -EINVAL;
+	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	smmu->base = devm_ioremap_resource(dev, res);
