@@ -26,6 +26,7 @@
 #include <linux/io.h>
 #include <linux/gpio.h>
 #include <linux/of_device.h>
+#include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/module.h>
 #include <linux/delay.h>
@@ -426,6 +427,7 @@ static int tegra_gpio_suspend(void)
 	}
 	local_irq_restore(flags);
 
+	of_gpiochip_suspend(&tegra_gpio_chip);
 	return 0;
 }
 
