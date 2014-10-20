@@ -79,6 +79,7 @@
 #include "board-touch-raydium.h"
 #include "board.h"
 #include "board-common.h"
+#include "board-panel.h"
 #include <linux/platform/tegra/clock.h>
 #include "board-loki.h"
 #include "devices.h"
@@ -794,7 +795,7 @@ static void __init tegra_loki_late_init(void)
 	loki_emc_init();
 	isomgr_init();
 	loki_touch_init();
-	loki_panel_init();
+	tegra_fb_copy_or_clear();
 	loki_kbc_init();
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	loki_sensors_init();
