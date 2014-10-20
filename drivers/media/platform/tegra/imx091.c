@@ -2335,8 +2335,8 @@ static int imx091_param_rd(struct imx091_info *info, unsigned long arg)
 		}
 
 		if (copy_from_user(p_i2c_table,
-				   (const void __user *)params.p_value,
-				   params.sizeofvalue)) {
+			(const void __user *)(uintptr_t)params.p_value,
+			params.sizeofvalue)) {
 			dev_err(&info->i2c_client->dev,
 				"%s copy_from_user err line %d\n",
 				__func__, __LINE__);
@@ -2347,9 +2347,9 @@ static int imx091_param_rd(struct imx091_info *info, unsigned long arg)
 		imx091_pm_dev_wr(info, NVC_PWR_COMM);
 		err = imx091_i2c_rd_table(info, p_i2c_table);
 		imx091_pm_dev_wr(info, NVC_PWR_OFF);
-		if (copy_to_user((void __user *)params.p_value,
-				 p_i2c_table,
-				 params.sizeofvalue)) {
+		if (copy_to_user((void __user *)(uintptr_t)params.p_value,
+			p_i2c_table,
+			params.sizeofvalue)) {
 			dev_err(&info->i2c_client->dev,
 				"%s copy_to_user err line %d\n",
 				__func__, __LINE__);
@@ -2371,9 +2371,8 @@ static int imx091_param_rd(struct imx091_info *info, unsigned long arg)
 		return -EINVAL;
 	}
 
-	if (copy_to_user((void __user *)params.p_value,
-			 data_ptr,
-			 data_size)) {
+	if (copy_to_user((void __user *)(uintptr_t)params.p_value,
+		data_ptr, data_size)) {
 		dev_err(&info->i2c_client->dev,
 			"%s copy_to_user err line %d\n", __func__, __LINE__);
 		return -EFAULT;
@@ -2453,8 +2452,8 @@ static int imx091_param_wr_s(struct imx091_info *info,
 		}
 
 		if (copy_from_user(p_i2c_table,
-				   (const void __user *)params->p_value,
-				   params->sizeofvalue)) {
+			(const void __user *)(uintptr_t)params->p_value,
+			params->sizeofvalue)) {
 			dev_err(&info->i2c_client->dev,
 				"%s copy_from_user err line %d\n",
 				__func__, __LINE__);
@@ -2471,7 +2470,8 @@ static int imx091_param_wr_s(struct imx091_info *info,
 	{
 		union nvc_imager_flash_control fm;
 		if (copy_from_user(&fm,
-			(const void __user *)params->p_value, sizeof(fm))) {
+			(const void __user *)(uintptr_t)params->p_value,
+			sizeof(fm))) {
 			pr_info("%s:fail set flash mode.\n", __func__);
 			return -EFAULT;
 		}
@@ -2500,8 +2500,9 @@ static int imx091_param_wr(struct imx091_info *info, unsigned long arg)
 		return -EFAULT;
 	}
 
-	if (copy_from_user(&u32val, (const void __user *)params.p_value,
-			   sizeof(u32val))) {
+	if (copy_from_user(&u32val,
+		(const void __user *)(uintptr_t)params.p_value,
+		sizeof(u32val))) {
 		dev_err(&info->i2c_client->dev, "%s %d copy_from_user err\n",
 			__func__, __LINE__);
 		return -EFAULT;
@@ -2584,8 +2585,9 @@ static int imx091_param_wr(struct imx091_info *info, unsigned long arg)
 		struct nvc_imager_ae ae;
 		dev_dbg(&info->i2c_client->dev, "%s GROUP_HOLD\n",
 			__func__);
-		if (copy_from_user(&ae, (const void __user *)params.p_value,
-				sizeof(struct nvc_imager_ae))) {
+		if (copy_from_user(&ae,
+			(const void __user *)(uintptr_t)params.p_value,
+			sizeof(struct nvc_imager_ae))) {
 			dev_err(&info->i2c_client->dev,
 				"Error: %s %d copy_from_user err\n",
 				__func__, __LINE__);

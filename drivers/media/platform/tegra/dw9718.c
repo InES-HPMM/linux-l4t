@@ -433,7 +433,7 @@ static int dw9718_set_focuser_capabilities(struct dw9718_info *info,
 {
 	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
 	if (copy_from_user(&info->nv_config,
-		(const void __user *)params->p_value,
+		(const void __user *)(uintptr_t)params->p_value,
 		sizeof(struct nv_focuser_config))) {
 			dev_err(&info->i2c_client->dev,
 			"%s Error: copy_from_user bytes %d\n",
@@ -525,7 +525,8 @@ static int dw9718_param_rd(struct dw9718_info *info, unsigned long arg)
 			__func__, params.sizeofvalue, data_size, params.param);
 		return -EINVAL;
 	}
-	if (copy_to_user((void __user *)params.p_value, data_ptr, data_size)) {
+	if (copy_to_user((void __user *)(uintptr_t)params.p_value,
+		data_ptr, data_size)) {
 		dev_err(&info->i2c_client->dev, "%s copy_to_user err line %d\n",
 			__func__, __LINE__);
 		return -EFAULT;
@@ -578,7 +579,8 @@ static int dw9718_param_wr(struct dw9718_info *info, unsigned long arg)
 		return -EFAULT;
 	}
 	if (copy_from_user(&s32val,
-		(const void __user *)params.p_value, sizeof(s32val))) {
+		(const void __user *)(uintptr_t)params.p_value,
+		sizeof(s32val))) {
 		dev_err(&info->i2c_client->dev, "%s %d copy_from_user err\n",
 			__func__, __LINE__);
 		return -EFAULT;

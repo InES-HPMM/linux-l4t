@@ -1071,7 +1071,7 @@ static int as364x_user_get_param(struct as364x_info *info, long arg)
 		err = -EINVAL;
 	}
 
-	if (!err && copy_to_user((void __user *)params.p_value,
+	if (!err && copy_to_user((void __user *)(uintptr_t)params.p_value,
 		data_ptr, data_size)) {
 		dev_err(info->dev, "%s copy_to_user err line %d\n",
 			__func__, __LINE__);
@@ -1089,8 +1089,9 @@ static int as364x_get_levels(struct as364x_info *info,
 	struct nvc_torch_timer_capabilities_v1 *p_tm;
 	u8 op_mode;
 
-	if (copy_from_user(plevels, (const void __user *)params->p_value,
-			   sizeof(*plevels))) {
+	if (copy_from_user(plevels,
+		(const void __user *)(uintptr_t)params->p_value,
+		sizeof(*plevels))) {
 		dev_err(info->dev, "%s %d copy_from_user err\n",
 				__func__, __LINE__);
 		return -EINVAL;
@@ -1172,7 +1173,8 @@ static int as364x_user_set_param(struct as364x_info *info, long arg)
 			led_levels.levels[0], led_levels.levels[1]);
 		break;
 	case NVC_PARAM_FLASH_PIN_STATE:
-		if (copy_from_user(&val, (const void __user *)params.p_value,
+		if (copy_from_user(&val,
+			(const void __user *)(uintptr_t)params.p_value,
 			sizeof(val))) {
 			dev_err(info->dev, "%s %d copy_from_user err\n",
 				__func__, __LINE__);

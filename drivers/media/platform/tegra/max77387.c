@@ -1311,8 +1311,8 @@ static int max77387_get_param(struct max77387_info *info, long arg)
 		err = -EINVAL;
 	}
 
-	if (!err && copy_to_user((void __user *)params.p_value,
-			 data_ptr, data_size)) {
+	if (!err && copy_to_user((void __user *)(uintptr_t)params.p_value,
+		data_ptr, data_size)) {
 		dev_err(info->dev, "%s copy_to_user err line %d\n",
 				__func__, __LINE__);
 		err = -EFAULT;
@@ -1329,8 +1329,9 @@ static int max77387_get_levels(struct max77387_info *info,
 	struct nvc_torch_timer_capabilities_v1 *p_tm;
 	u8 op_mode;
 
-	if (copy_from_user(plevels, (const void __user *)params->p_value,
-			   sizeof(*plevels))) {
+	if (copy_from_user(plevels,
+		(const void __user *)(uintptr_t)params->p_value,
+		sizeof(*plevels))) {
 		dev_err(info->dev, "%s %d copy_from_user err\n",
 				__func__, __LINE__);
 		return -EINVAL;
@@ -1418,8 +1419,9 @@ static int max77387_set_param(struct max77387_info *info, long arg)
 			led_levels.ledmask, curr1, curr2);
 		break;
 	case NVC_PARAM_FLASH_PIN_STATE:
-		if (copy_from_user(&val, (const void __user *)params.p_value,
-			   sizeof(val))) {
+		if (copy_from_user(&val,
+			(const void __user *)(uintptr_t)params.p_value,
+			sizeof(val))) {
 			dev_err(info->dev, "%s %d copy_from_user err\n",
 				__func__, __LINE__);
 			err = -EINVAL;
