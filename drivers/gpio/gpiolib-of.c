@@ -302,3 +302,66 @@ void of_gpiochip_remove(struct gpio_chip *chip)
 	if (chip->of_node)
 		of_node_put(chip->of_node);
 }
+
+void of_gpiochip_suspend(struct gpio_chip *chip)
+{
+	struct device_node *np = chip->of_node;
+	struct device_node *child;
+	int state;
+	const char *statename;
+	bool found;
+	int i;
+	int count;
+	u32 pval;
+	int ret;
+
+	if (!chip->of_node)
+		return;
+
+	/* For each defined state ID */
+	state = 0;
+	for_each_child_of_node(np, child) {
+		if (!of_device_is_available(child))
+			continue;
+
+		found = false;
+
+		count = of_property_count_u32(child, "gpio-suspend-input");
+		for (i = 0; i < count; ++i) {
+			found = true;
+			ret = of_property_read_u32_index(child,
+					"gpio-suspend-input", i, &pval);
+			if (!ret)
+				chip->direction_input(chip, pval);
+		}
+
+		count = of_property_count_u32(child, "gpio-suspend-output-low");
+		for (i = 0; i < count; ++i) {
+			found = true;
+			ret = of_property_read_u32_index(child,
+					"gpio-suspend-output-low", i, &pval);
+			if (!ret)
+				chip->direction_output(chip, pval, 0);
+		}
+
+		count = of_property_count_u32(child, "gpio-suspend-output-high");
+		for (i = 0; i < count; ++i) {
+			found = true;
+			ret = of_property_read_u32_index(child,
+					"gpio-suspend-output-high", i, &pval);
+			if (!ret)
+				chip->direction_output(chip, pval, 1);
+		}
+		if (found) {
+			statename = NULL;
+			/* Determine whether gpio-init-names property names the state */
+			of_property_read_string_index(np, "gpio-init-names",
+						    state, &statename);
+			dev_info(chip->dev, "Initialising GPIO state %d: name %s\n",
+				state, (statename) ? statename : child->name);
+		}
+		of_node_put(child);
+		state++;
+	}
+}
+EXPORT_SYMBOL(of_gpiochip_suspend);
