@@ -814,17 +814,17 @@ static void __init tegra_ramrepair_init(void)
 static void __init tegra_init_power(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_HAS_SATA
-	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_SATA);
+	tegra_powergate_partition(TEGRA_POWERGATE_SATA);
 #endif
 #ifdef CONFIG_ARCH_TEGRA_HAS_PCIE
-	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
+	tegra_powergate_partition(TEGRA_POWERGATE_PCIE);
 #endif
 
 #if defined(CONFIG_TEGRA_XUSB_PLATFORM)
 	/* powergate xusb partitions by default */
-	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBB);
-	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBA);
-	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBC);
+	tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
+	tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
+	tegra_powergate_partition(TEGRA_POWERGATE_XUSBC);
 #endif
 
 }
