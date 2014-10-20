@@ -42,6 +42,7 @@
 #include <linux/extcon.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <linux/tegra_pm_domains.h>
+#include <linux/wakelock.h>
 #include "nvxxx.h"
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include <linux/tegra_prod.h>
@@ -88,7 +89,6 @@ static void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 #define POLL_TBRST_MAX_VAL	0xB0
 #define PING_TBRST_VAL	0x6
 #define LMPITP_TIMER_VAL	0x978
-
 
 static struct usb_endpoint_descriptor nvudc_ep0_desc = {
 	.bLength = USB_DT_ENDPOINT_SIZE,
@@ -204,6 +204,7 @@ static inline void vbus_detected(struct nv_udc_s *nvudc)
 
 	nvudc->vbus_detected = true;
 	pm_runtime_get(nvudc->dev);
+	wake_lock(&nvudc->xudc_vbus);
 }
 
 /* must hold nvudc->lock */
@@ -243,6 +244,7 @@ static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 
 	nvudc->vbus_detected = false;
 	pm_runtime_put_autosuspend(nvudc->dev);
+	wake_unlock(&nvudc->xudc_vbus);
 }
 
 static inline void xudc_enable_vbus(struct nv_udc_s *nvudc)
@@ -4513,22 +4515,6 @@ void restore_mmio_reg(struct nv_udc_s *nvudc)
 	iowrite32(reg, nvudc->base + SSPX_CORE_PADCTL4);
 }
 
-static int nvudc_suspend_platform(struct platform_device *pdev,
-				pm_message_t state)
-{
-	u32 u_temp;
-	struct nv_udc_s *nvudc;
-
-	nvudc = platform_get_drvdata(pdev);
-
-	/* do not support suspend if link is connected */
-	u_temp = ioread32(nvudc->mmio_reg_base + PORTSC);
-	if (PORTSC_CCS & u_temp)
-		return -EAGAIN;
-
-	return 0;
-}
-
 static int nvudc_suspend_pci(struct pci_dev *pdev)
 {
 	u32 u_temp;
@@ -4555,11 +4541,6 @@ static int nvudc_resume_pci(struct pci_dev *pdev)
 	nvudc = pci_get_drvdata(pdev);
 	restore_mmio_reg(nvudc);
 	nvudc_resume_state(nvudc, 1);
-	return 0;
-}
-
-static int nvudc_resume_platform(struct platform_device *pdev)
-{
 	return 0;
 }
 
@@ -4993,6 +4974,7 @@ static int tegra_xudc_enter_elpg(struct nv_udc_s *nvudc)
 		mutex_unlock(&nvudc->elpg_lock);
 		return ret;
 	}
+
 	nvudc->is_elpg = true;
 
 	mutex_unlock(&nvudc->elpg_lock);
@@ -5002,7 +4984,7 @@ static int tegra_xudc_enter_elpg(struct nv_udc_s *nvudc)
 
 static int tegra_xudc_runtime_resume(struct device *dev)
 {
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_s *nvudc;
 	struct platform_device *pdev = to_platform_device(dev);
 
 	pr_debug("%s called\n", __func__);
@@ -5012,7 +4994,7 @@ static int tegra_xudc_runtime_resume(struct device *dev)
 
 static int tegra_xudc_runtime_suspend(struct device *dev)
 {
-	struct NV_UDC_S *nvudc;
+	struct nv_udc_s *nvudc;
 	struct platform_device *pdev = to_platform_device(dev);
 
 	pr_debug("%s called\n", __func__);
@@ -5125,6 +5107,19 @@ safesettings:
 		RX_EQ_CTRL_H(~0), RX_EQ_CTRL_H(0xfcf01368));
 }
 
+static int nvudc_plat_pad_deinit(struct nv_udc_s *nvudc)
+{
+	xusb_utmi_pad_deinit(0);
+	utmi_phy_pad_disable();
+	utmi_phy_iddq_override(true);
+
+	xusb_ss_pad_deinit(nvudc->ss_port);
+	if (nvudc->is_ss_port_active)
+		usb3_phy_pad_disable();
+
+	return 0;
+}
+
 static int nvudc_plat_pad_init(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
@@ -5169,6 +5164,61 @@ static int nvudc_plat_pad_init(struct nv_udc_s *nvudc)
 
 	nvudc->is_ss_port_active = is_ss_port_enabled;
 	nvudc->ss_port = ss_port;
+	return 0;
+}
+
+static int nvudc_suspend_platform(struct device *dev)
+{
+	struct nv_udc_s *nvudc;
+	struct platform_device *pdev = to_platform_device(dev);
+	int err = 0;
+
+	nvudc = platform_get_drvdata(pdev);
+
+	if (!pm_runtime_status_suspended(dev))
+		tegra_xudc_enter_elpg(nvudc);
+
+	clk_disable(nvudc->pll_e);
+	clk_disable(nvudc->pll_u_480M);
+
+	if (pex_usb_pad_pll_reset_assert())
+		dev_err(dev, "error assert reset to pex pll\n");
+
+	err = regulator_bulk_disable(udc_regulator_count, nvudc->supplies);
+	if (err)
+		msg_err(dev, "failed to disable regulators %d\n", err);
+
+	nvudc_plat_pad_deinit(nvudc);
+
+	return 0;
+}
+
+static int nvudc_resume_platform(struct device *dev)
+{
+	struct nv_udc_s *nvudc;
+	struct platform_device *pdev = to_platform_device(dev);
+	int err = 0;
+
+	nvudc = platform_get_drvdata(pdev);
+
+	err = regulator_bulk_enable(udc_regulator_count, nvudc->supplies);
+	if (err)
+		msg_err(dev, "failed to enable regulators %d\n", err);
+
+	if (pex_usb_pad_pll_reset_deassert())
+		dev_err(dev, "error deassert pex pll\n");
+
+	clk_enable(nvudc->pll_e);
+	clk_enable(nvudc->pll_u_480M);
+
+	nvudc_plat_pad_init(nvudc);
+
+	tegra_xudc_exit_elpg(nvudc);
+
+	pm_runtime_disable(dev);
+	pm_runtime_set_active(dev);
+	pm_runtime_enable(dev);
+
 	return 0;
 }
 
@@ -5366,6 +5416,8 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	extcon_register_notifier(nvudc->id_extcon_dev,
 						&nvudc->id_extcon_nb);
 
+	wake_lock_init(&nvudc->xudc_vbus, WAKE_LOCK_SUSPEND,
+			"xudc_vbus");
 	return 0;
 
 err_clocks_disable:
@@ -5392,6 +5444,7 @@ static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 
 	/* TODO implement synchronization */
 	if (nvudc) {
+		wake_lock_destroy(&nvudc->xudc_vbus);
 		tegra_usb_release_ucd(nvudc->ucd);
 		cancel_work_sync(&nvudc->ucd_work);
 		cancel_work_sync(&nvudc->current_work);
@@ -5435,14 +5488,14 @@ static struct of_device_id tegra_xudc_of_match[] = {
 static const struct dev_pm_ops tegra_xudc_pm_ops = {
 	.runtime_suspend = tegra_xudc_runtime_suspend,
 	.runtime_resume = tegra_xudc_runtime_resume,
+	.suspend = nvudc_suspend_platform,
+	.resume = nvudc_resume_platform,
 };
 
 static struct platform_driver tegra_xudc_driver = {
 	.probe = tegra_xudc_plat_probe,
 	.remove = __exit_p(tegra_xudc_plat_remove),
 	.shutdown = tegra_xudc_plat_shutdown,
-	.suspend = nvudc_suspend_platform,
-	.resume = nvudc_resume_platform,
 	.driver = {
 		.name = driver_name,
 		.of_match_table = tegra_xudc_of_match,

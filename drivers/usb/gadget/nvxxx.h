@@ -651,8 +651,12 @@ struct nv_udc_s {
 	/* otg work, will be moved to OTG driver */
 	struct work_struct work;
 
+
 	struct tegra_prod_list *prod_list;
 	void __iomem *base_list[4];
+
+	/* system wake lock */
+	struct wake_lock xudc_vbus;
 };
 
 void free_data_struct(struct nv_udc_s *nvudc);
