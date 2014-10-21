@@ -78,6 +78,9 @@
 #if !defined(SDIO_DEVICE_ID_BROADCOM_43239)
 #define SDIO_DEVICE_ID_BROADCOM_43239    43239
 #endif /* !defined(SDIO_DEVICE_ID_BROADCOM_43239) */
+#if !defined(SDIO_DEVICE_ID_BROADCOM_4339)
+#define SDIO_DEVICE_ID_BROADCOM_4339    4339
+#endif /* !defined(SDIO_DEVICE_ID_BROADCOM_4339) */
 
 extern void wl_cfg80211_set_parent_dev(void *dev);
 extern void sdioh_sdmmc_devintr_off(sdioh_info_t *sd);
@@ -245,6 +248,12 @@ static const struct sdio_device_id bcmsdh_sdmmc_ids[] = {
 		.vendor	= SDIO_VENDOR_ID_BROADCOM,
 		.device	= 0x4324
 	},
+	/* BCM4339 */
+	{ 	.class	= SDIO_CLASS_NONE,
+		.vendor	= SDIO_VENDOR_ID_BROADCOM,
+		.device	= 0x4339
+	},
+
 #else
 	/* BCM43341 */
 	{ 	.class	= SDIO_CLASS_NONE,
