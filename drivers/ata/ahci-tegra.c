@@ -423,6 +423,7 @@ struct tegra_ahci_host_priv {
 	enum sata_state		pg_state;
 	struct clk		*clk_sata;
 	struct clk		*clk_sata_oob;
+	struct clk		*clk_sata_aux;
 	struct clk		*clk_pllp;
 	struct clk		*clk_cml1;
 	enum clk_gate_state	clk_state;
@@ -907,6 +908,8 @@ static void tegra_first_level_clk_gate(void)
 
 	clk_disable_unprepare(g_tegra_hpriv->clk_sata);
 	clk_disable_unprepare(g_tegra_hpriv->clk_sata_oob);
+	if (g_tegra_hpriv->clk_sata_aux)
+		clk_disable_unprepare(g_tegra_hpriv->clk_sata_aux);
 	clk_disable_unprepare(g_tegra_hpriv->clk_cml1);
 	g_tegra_hpriv->clk_state = CLK_OFF;
 }
@@ -914,6 +917,7 @@ static void tegra_first_level_clk_gate(void)
 static int tegra_first_level_clk_ungate(void)
 {
 	int ret = 0;
+	const char *err_clk_name;
 
 	if (g_tegra_hpriv->clk_state == CLK_ON) {
 		ret = -1;
@@ -921,26 +925,37 @@ static int tegra_first_level_clk_ungate(void)
 	}
 
 	if (clk_prepare_enable(g_tegra_hpriv->clk_sata)) {
-		pr_err("%s: unable to enable SATA clock\n", __func__);
-		ret = -ENODEV;
-		return ret;
+		err_clk_name = "SATA";
+		goto clk_sata_enb_error;
 	}
 	if (clk_prepare_enable(g_tegra_hpriv->clk_sata_oob)) {
-		pr_err("%s: unable to enable SATA_OOB clock\n", __func__);
-		clk_disable_unprepare(g_tegra_hpriv->clk_sata);
-		ret = -ENODEV;
-		return ret;
+		err_clk_name = "SATA_OOB";
+		goto clk_sata_oob_enb_error;
+	}
+
+	if (g_tegra_hpriv->clk_sata_aux &&
+		clk_prepare_enable(g_tegra_hpriv->clk_sata_aux)) {
+		err_clk_name = "SATA_AUX";
+		goto clk_sata_aux_enb_error;
 	}
 	if (clk_prepare_enable(g_tegra_hpriv->clk_cml1)) {
-		pr_err("%s: unable to enable cml1 clock\n", __func__);
-		clk_disable_unprepare(g_tegra_hpriv->clk_sata);
-		clk_disable_unprepare(g_tegra_hpriv->clk_sata_oob);
-		ret = -ENODEV;
-		return ret;
+		err_clk_name = "cml1";
+		goto clk_cml1_enb_error;
 	}
 	g_tegra_hpriv->clk_state = CLK_ON;
 
 	return ret;
+
+clk_cml1_enb_error:
+	if (g_tegra_hpriv->clk_sata_aux)
+		clk_disable_unprepare(g_tegra_hpriv->clk_sata_aux);
+clk_sata_aux_enb_error:
+	clk_disable_unprepare(g_tegra_hpriv->clk_sata_oob);
+clk_sata_oob_enb_error:
+	clk_disable_unprepare(g_tegra_hpriv->clk_sata);
+clk_sata_enb_error:
+	pr_err("%s: unable to enable %s clock\n", __func__, err_clk_name);
+	return -ENODEV;
 }
 
 static int tegra_request_pexp_gpio(struct tegra_ahci_host_priv *tegra_hpriv)
@@ -1562,6 +1577,13 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 		goto exit;
 	}
 
+	tegra_hpriv->clk_sata_aux = clk_get_sys("tegra_sata_aux", NULL);
+	if (IS_ERR_OR_NULL(tegra_hpriv->clk_sata_aux)) {
+		pr_err("%s: unable to get SATA AUX clock\n", __func__);
+		err = PTR_ERR(tegra_hpriv->clk_sata_aux);
+		goto exit;
+	}
+
 	tegra_hpriv->clk_sata = clk_sata;
 	tegra_hpriv->clk_sata_oob = clk_sata_oob;
 	tegra_hpriv->clk_pllp = clk_pllp;
@@ -1604,6 +1626,11 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 		goto exit;
 	}
 
+	if (clk_prepare_enable(tegra_hpriv->clk_sata_aux)) {
+		pr_err("%s: unable to enable SATA AUX clock\n", __func__);
+		err = -ENODEV;
+		goto exit;
+	}
 
 	tegra_periph_reset_deassert(clk_sata);
 	tegra_periph_reset_deassert(clk_sata_oob);
@@ -1744,6 +1771,8 @@ exit:
 		clk_put(clk_sata);
 	if (!IS_ERR_OR_NULL(clk_sata_oob))
 		clk_put(clk_sata_oob);
+	if (!IS_ERR_OR_NULL(tegra_hpriv->clk_sata_aux))
+		clk_put(tegra_hpriv->clk_sata_aux);
 	if (!IS_ERR_OR_NULL(clk_sata_cold))
 		clk_put(clk_sata_cold);
 	if (!IS_ERR_OR_NULL(clk_cml1))
