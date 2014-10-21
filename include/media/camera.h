@@ -68,6 +68,23 @@
 #define CAMERA_IOCTL_DPD_ENABLE	_IOW('o', 171, u32)
 #define CAMERA_IOCTL_DPD_DISABLE	_IOW('o', 172, u32)
 
+#ifdef CONFIG_COMPAT
+/* IOCTL commands that pass 32 bit pointers from user space.
+   CAUTION: the nr number of these commands MUST be the same value as the
+   nr number of the related normal commands. */
+#define CAMERA_IOCTL32_CHIP_REG		_IOW('o', 100, struct virtual_device_32)
+#define CAMERA_IOCTL32_SEQ_WR		_IOWR('o', 112, struct nvc_param_32)
+#define CAMERA_IOCTL32_SEQ_RD		_IOWR('o', 113, struct nvc_param_32)
+#define CAMERA_IOCTL32_UPDATE		_IOW('o', 116, struct nvc_param_32)
+#define CAMERA_IOCTL32_LAYOUT_WR	_IOW('o', 120, struct nvc_param_32)
+#define CAMERA_IOCTL32_LAYOUT_RD	_IOWR('o', 121, struct nvc_param_32)
+#define CAMERA_IOCTL32_PARAM_WR		_IOWR('o', 140, struct nvc_param_32)
+#define CAMERA_IOCTL32_PARAM_RD		_IOWR('o', 141, struct nvc_param_32)
+#define CAMERA_IOCTL32_DRV_ADD		_IOW('o', 150, struct nvc_param_32)
+#define CAMERA_IOCTL32_DT_GET		_IOWR('o', 160, struct nvc_param_32)
+#define CAMERA_IOCTL32_MSG		_IOWR('o', 170, struct nvc_param_32)
+#endif
+
 #define CAMERA_MAX_NAME_LENGTH	32
 #define CAMDEV_INVALID		0xffffffff
 
@@ -143,9 +160,25 @@ struct gpio_cfg {
 #define VIRTUAL_REGNAME_SIZE		(VIRTUAL_DEV_MAX_REGULATORS * \
 						CAMERA_MAX_NAME_LENGTH)
 
-struct virtual_device {
+#ifdef CONFIG_COMPAT
+struct virtual_device_32 {
 	__u32 power_on;
 	__u32 power_off;
+	struct regmap_cfg regmap_cfg;
+	__u32 bus_type;
+	__u32 gpio_num;
+	__u32 reg_num;
+	__u32 pwr_on_size;
+	__u32 pwr_off_size;
+	__u32 clk_num;
+	__u8 name[32];
+	__u8 reg_names[VIRTUAL_REGNAME_SIZE];
+};
+#endif
+
+struct virtual_device {
+	unsigned long power_on;
+	unsigned long power_off;
 	struct regmap_cfg regmap_cfg;
 	__u32 bus_type;
 	__u32 gpio_num;

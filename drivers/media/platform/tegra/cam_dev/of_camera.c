@@ -224,7 +224,7 @@ int of_camera_get_property(
 		return -EBADF;
 	}
 
-	dev_dbg(cam->dev, "%s params: %x, %x, %x, %d\n", __func__,
+	dev_dbg(cam->dev, "%s params: %x, %x, %lx, %d\n", __func__,
 		prm->param, prm->variant, prm->p_value, prm->sizeofvalue);
 	/* use bit mask to determine if it's a profile or a module query */
 	switch (prm->param & CAMERA_DT_HANDLE_MASK) {

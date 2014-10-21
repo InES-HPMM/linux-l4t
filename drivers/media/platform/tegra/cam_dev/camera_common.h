@@ -126,6 +126,7 @@ struct camera_info {
 	struct device *dev;
 	struct mutex k_mutex;
 	struct camera_device *cdev;
+	bool is_compat;
 };
 
 struct camera_platform_info {

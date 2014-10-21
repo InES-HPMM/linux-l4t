@@ -970,7 +970,8 @@ read_devid_exit:
 	return err;
 }
 
-static int as364x_user_get_param(struct as364x_info *info, long arg)
+static int as364x_user_get_param(
+	struct as364x_info *info, long arg, bool is_compat)
 {
 	struct nvc_param params;
 	struct nvc_torch_pin_state pinstate;
@@ -979,9 +980,7 @@ static int as364x_user_get_param(struct as364x_info *info, long arg)
 	int err = 0;
 	u8 reg;
 
-	if (copy_from_user(&params,
-			(const void __user *)arg,
-			sizeof(struct nvc_param))) {
+	if (get_user_nvc_param(info->dev, is_compat, arg, 0, &params, NULL)) {
 		dev_err(info->dev,
 			"%s %d copy_from_user err\n", __func__, __LINE__);
 		return -EINVAL;
@@ -1146,15 +1145,15 @@ static int as364x_get_levels(struct as364x_info *info,
 	return 0;
 }
 
-static int as364x_user_set_param(struct as364x_info *info, long arg)
+static int as364x_user_set_param(
+	struct as364x_info *info, long arg, bool is_compat)
 {
 	struct nvc_param params;
 	struct nvc_torch_set_level_v1 led_levels;
 	int err = 0;
 	u8 val;
 
-	if (copy_from_user(
-		&params, (const void __user *)arg, sizeof(struct nvc_param))) {
+	if (get_user_nvc_param(info->dev, is_compat, arg, 0, &params, NULL)) {
 		dev_err(info->dev,
 			"%s %d copy_from_user err\n", __func__, __LINE__);
 		return -EINVAL;
@@ -1206,14 +1205,22 @@ static long as364x_ioctl(struct file *file,
 	int pwr;
 	int err = 0;
 
-	switch (_IOC_NR(cmd)) {
-	case _IOC_NR(NVC_IOCTL_PARAM_WR):
-		err = as364x_user_set_param(info, arg);
+	switch (cmd) {
+#ifdef CONFIG_COMPAT
+	case NVC_IOCTL32_PARAM_WR:
+		err = as364x_user_set_param(info, arg, true);
 		break;
-	case _IOC_NR(NVC_IOCTL_PARAM_RD):
-		err = as364x_user_get_param(info, arg);
+	case NVC_IOCTL32_PARAM_RD:
+		err = as364x_user_get_param(info, arg, true);
 		break;
-	case _IOC_NR(NVC_IOCTL_PWR_WR):
+#endif
+	case NVC_IOCTL_PARAM_WR:
+		err = as364x_user_set_param(info, arg, false);
+		break;
+	case NVC_IOCTL_PARAM_RD:
+		err = as364x_user_get_param(info, arg, false);
+		break;
+	case NVC_IOCTL_PWR_WR:
 		/* This is a Guaranteed Level of Service (GLOS) call */
 		pwr = (int)arg * 2;
 		dev_dbg(info->dev, "%s PWR_WR: %d\n", __func__, pwr);
@@ -1225,7 +1232,7 @@ static long as364x_ioctl(struct file *file,
 		if (info->pdata->cfg & NVC_CFG_NOERR)
 			err = 0;
 		break;
-	case _IOC_NR(NVC_IOCTL_PWR_RD):
+	case NVC_IOCTL_PWR_RD:
 		pwr = info->pwr_state / 2;
 		dev_dbg(info->dev, "%s PWR_RD: %d\n", __func__, pwr);
 		if (copy_to_user((void __user *)arg, (const void *)&pwr,

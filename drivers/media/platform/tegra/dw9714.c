@@ -477,16 +477,16 @@ static int dw9714_set_focuser_capabilities(struct dw9714_info *info,
 	return 0;
 }
 
-static int dw9714_param_rd(struct dw9714_info *info, unsigned long arg)
+static int dw9714_param_rd(
+	struct dw9714_info *info, unsigned long arg, bool is_compat)
 {
 	struct nvc_param params;
 	const void *data_ptr = NULL;
 	u32 data_size = 0;
 
 	dev_dbg(&info->i2c_client->dev, "%s %lx\n", __func__, arg);
-	if (copy_from_user(&params,
-		(const void __user *)arg,
-		sizeof(struct nvc_param))) {
+	if (get_user_nvc_param(&info->i2c_client->dev, is_compat, arg, 0,
+			&params, NULL)) {
 		dev_err(&info->i2c_client->dev, "%s %d copy_from_user err\n",
 			__func__, __LINE__);
 		return -EFAULT;
@@ -587,14 +587,16 @@ static int dw9714_param_wr_s(struct dw9714_info *info,
 	return err;
 }
 
-static int dw9714_param_wr(struct dw9714_info *info, unsigned long arg)
+static int dw9714_param_wr(
+	struct dw9714_info *info, unsigned long arg, bool is_compat)
 {
 	struct nvc_param params;
 	u8 u8val;
 	s32 s32val;
 	int err = 0;
-	if (copy_from_user(&params, (const void __user *)arg,
-		sizeof(struct nvc_param))) {
+
+	if (get_user_nvc_param(&info->i2c_client->dev, is_compat, arg, 0,
+			&params, NULL)) {
 		dev_err(&info->i2c_client->dev,
 			"%s copy_from_user err line %d\n",
 			__func__, __LINE__);
@@ -704,23 +706,27 @@ static long dw9714_ioctl(struct file *file,
 {
 	struct dw9714_info *info = file->private_data;
 	int pwr;
-	int err = 0;
-	switch (_IOC_NR(cmd)) {
-	case _IOC_NR(NVC_IOCTL_PARAM_WR):
+
+	switch (cmd) {
+#ifdef CONFIG_COMPAT
+	case NVC_IOCTL32_PARAM_WR:
 		dw9714_pm_dev_wr(info, NVC_PWR_ON);
-		err = dw9714_param_wr(info, arg);
-		return err;
-	case _IOC_NR(NVC_IOCTL_PARAM_RD):
-		err = dw9714_param_rd(info, arg);
-		return err;
-	case _IOC_NR(NVC_IOCTL_PWR_WR):
+		return dw9714_param_wr(info, arg, true);
+	case NVC_IOCTL32_PARAM_RD:
+		return dw9714_param_rd(info, arg, true);
+#endif
+	case NVC_IOCTL_PARAM_WR:
+		dw9714_pm_dev_wr(info, NVC_PWR_ON);
+		return dw9714_param_wr(info, arg, false);
+	case NVC_IOCTL_PARAM_RD:
+		return dw9714_param_rd(info, arg, false);
+	case NVC_IOCTL_PWR_WR:
 		/* This is a Guaranteed Level of Service (GLOS) call */
 		pwr = (int)arg * 2;
 		dev_dbg(&info->i2c_client->dev, "%s PWR_WR: %d\n",
 				__func__, pwr);
-		err = dw9714_pm_dev_wr(info, pwr);
-		return err;
-	case _IOC_NR(NVC_IOCTL_PWR_RD):
+		return dw9714_pm_dev_wr(info, pwr);
+	case NVC_IOCTL_PWR_RD:
 		if (info->s_mode == NVC_SYNC_SLAVE)
 			pwr = info->s_info->pwr_dev;
 		else
