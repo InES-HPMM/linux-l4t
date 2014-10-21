@@ -92,6 +92,8 @@ struct module_hdr {
 	u32 bss_size;
 	u32 init_offset;
 	u32 cleanup_offset;
+	u8 reserved[72];
+	u8 parent_tag[32];
 };
 
 struct fops_entry {
@@ -141,6 +143,8 @@ static int bpmp_module_ready(const char *name, const struct firmware *fw,
 		struct bpmp_module *m)
 {
 	struct module_hdr *hdr;
+	const int sz = sizeof(firmware_tag);
+	char fmt[sz + 1];
 	int err;
 
 	hdr = (struct module_hdr *)fw->data;
@@ -149,6 +153,17 @@ static int bpmp_module_ready(const char *name, const struct firmware *fw,
 			hdr->magic != BPMP_MODULE_MAGIC ||
 			hdr->size + hdr->reloc_size != fw->size) {
 		dev_err(device, "%s: invalid module format\n", name);
+		return -EINVAL;
+	}
+
+	if (memcmp(hdr->parent_tag, firmware_tag, sz)) {
+		dev_err(device, "%s: bad module - tag mismatch\n", name);
+		memcpy(fmt, firmware_tag, sz);
+		fmt[sz] = 0;
+		dev_err(device, "firmware: %s\n", fmt);
+		memcpy(fmt, hdr->parent_tag, sz);
+		fmt[sz] = 0;
+		dev_err(device, "%s : %s\n", name, fmt);
 		return -EINVAL;
 	}
 
