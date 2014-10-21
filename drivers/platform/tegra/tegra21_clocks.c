@@ -8405,6 +8405,9 @@ static struct clk tegra_clk_sata = {
 
 static struct clk tegra_sata_aux_clk = {
 	.name      = "sata_aux",
+	.lookup    = {
+		.dev_id = "tegra_sata_aux",
+	},
 	.parent    = &tegra_clk_sata,
 	.ops       = &tegra_cml_clk_ops,
 	.reg       = SOURCE_SATA,
