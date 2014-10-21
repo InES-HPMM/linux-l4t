@@ -314,6 +314,7 @@
 #define SATA_AUX_MISC_CNTL_1_0_DEVSLP_OVERRIDE	(0x1 << 17)
 
 #define T_SATA0_NVOOB				0x114
+#define T_SATA0_NVOOB_COMMA_CNT			(0x7 << 28)
 #define T_SATA0_NVOOB_SQUELCH_FILTER_MODE_SHIFT	24
 #define T_SATA0_NVOOB_SQUELCH_FILTER_MODE_MASK	(3 << 24)
 #define T_SATA0_NVOOB_SQUELCH_FILTER_LENGTH_SHIFT	26
@@ -1742,6 +1743,7 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	val = scfg_readl(T_SATA0_NVOOB);
 	val |= (1 << T_SATA0_NVOOB_SQUELCH_FILTER_MODE_SHIFT);
 	val |= (3 << T_SATA0_NVOOB_SQUELCH_FILTER_LENGTH_SHIFT);
+	val |= T_SATA0_NVOOB_COMMA_CNT;
 	scfg_writel(val, T_SATA0_NVOOB);
 
 	/*
