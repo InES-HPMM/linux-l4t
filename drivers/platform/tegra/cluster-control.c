@@ -52,24 +52,11 @@ static struct psci_power_state cluster_pg __initdata = {
 	.affinity_level = 1,
 };
 
-static inline unsigned int is_slow_cluster(void)
-{
-	return is_lp_cluster();
-}
-
-static enum cluster get_current_cluster(void)
-{
-	if (is_slow_cluster())
-		return SLOW_CLUSTER;
-
-	return FAST_CLUSTER;
-}
-
 static void shutdown_core(void *info)
 {
 	uintptr_t target_cluster = (uintptr_t)info;
 
-	if (target_cluster != is_slow_cluster()) {
+	if (target_cluster != is_lp_cluster()) {
 		cpu_pm_enter();
 		cpu_suspend(pg_core_arg, NULL);
 		cpu_pm_exit();
@@ -111,7 +98,7 @@ static void switch_cluster(enum cluster val)
 	mutex_lock(&cluster_switch_lock);
 	target_cluster = val;
 
-	if (target_cluster == get_current_cluster()) {
+	if (target_cluster == is_lp_cluster()) {
 		mutex_unlock(&cluster_switch_lock);
 		return;
 	}
@@ -158,7 +145,7 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 	int cluster_flag = flags & TEGRA_POWER_CLUSTER_MASK;
 
 	if (cluster_flag == TEGRA_POWER_CLUSTER_G) {
-		enum cluster current_cluster = get_current_cluster();
+		enum cluster current_cluster = is_lp_cluster();
 		trace_nvcpu_clusterswitch(NVPOWER_CPU_CLUSTER_START,
 					  current_cluster,
 					  FAST_CLUSTER);
@@ -167,7 +154,7 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 					  current_cluster,
 					  FAST_CLUSTER);
 	} else if (cluster_flag == TEGRA_POWER_CLUSTER_LP) {
-		enum cluster current_cluster = get_current_cluster();
+		enum cluster current_cluster = is_lp_cluster();
 		trace_nvcpu_clusterswitch(NVPOWER_CPU_CLUSTER_START,
 					  current_cluster,
 					  SLOW_CLUSTER);
