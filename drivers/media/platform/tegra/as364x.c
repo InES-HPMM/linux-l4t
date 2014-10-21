@@ -1296,7 +1296,7 @@ static int as364x_regulator_get(struct as364x_info *info,
 	reg = regulator_get(info->dev, vreg_name);
 	if (unlikely(IS_ERR(reg))) {
 		dev_err(info->dev,
-			"%s %s ERR: %d\n", __func__, vreg_name, (int)reg);
+			"%s %s ERR: %p\n", __func__, vreg_name, reg);
 		err = PTR_ERR(reg);
 		reg = NULL;
 	} else

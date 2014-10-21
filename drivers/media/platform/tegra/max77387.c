@@ -1530,8 +1530,8 @@ static int max77387_regulator_get(struct max77387_info *info,
 
 	reg = regulator_get(info->dev, vreg_name);
 	if (unlikely(IS_ERR(reg))) {
-		dev_err(info->dev, "%s %s ERR: %d\n",
-			__func__, vreg_name, (int)reg);
+		dev_err(info->dev, "%s %s ERR: %p\n",
+			__func__, vreg_name, reg);
 		err = PTR_ERR(reg);
 		reg = NULL;
 	} else

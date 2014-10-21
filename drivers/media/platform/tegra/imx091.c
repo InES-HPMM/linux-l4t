@@ -1909,9 +1909,9 @@ static int imx091_vreg_init(struct imx091_info *info)
 		info->vreg[j].vreg = regulator_get(&info->i2c_client->dev,
 						   info->vreg[j].vreg_name);
 		if (IS_ERR(info->vreg[j].vreg)) {
-			dev_dbg(&info->i2c_client->dev, "%s %s ERR: %d\n",
+			dev_dbg(&info->i2c_client->dev, "%s %s ERR: %p\n",
 				__func__, info->vreg[j].vreg_name,
-				(int)info->vreg[j].vreg);
+				info->vreg[j].vreg);
 			err |= PTR_ERR(info->vreg[j].vreg);
 			info->vreg[j].vreg = NULL;
 		} else {
