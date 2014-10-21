@@ -1904,10 +1904,10 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 reg;
 	u32 ctl0_offset;
-
-	/* We have host/device/otg driver to program pad,
-	 * Move to common API to reduce duplicate program
-	 */
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	if (XUSB_IS_T210(tegra))
+		t210_program_utmi_pad(tegra, port);
+#else
 	xusb_utmi_pad_init(port, USB2_PORT_CAP_HOST(port)
 			, tegra->bdata->uses_external_pmic);
 
@@ -1920,6 +1920,7 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 	reg |= tegra->soc_config->hs_slew;
 	reg |= tegra->soc_config->ls_rslew_pad[port];
 	padctl_writel(tegra, reg, ctl0_offset);
+#endif
 
 	/*Release OTG port if not in host mode*/
 	if ((port == 0) && !is_otg_host(tegra))

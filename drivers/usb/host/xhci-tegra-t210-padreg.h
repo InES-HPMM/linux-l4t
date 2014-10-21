@@ -121,6 +121,9 @@
 #define RCTRL(x)			0x0
 #define TCTRL(x)			0x0
 
+/* UTMI pad operations */
+void t210_program_utmi_pad(struct tegra_xhci_hcd *tegra, u8 port);
+
 /* SS pad operations */
 void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port);
 void

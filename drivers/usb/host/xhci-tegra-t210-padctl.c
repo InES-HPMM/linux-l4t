@@ -72,6 +72,12 @@
 #define UPHY_MISC_PAD_AUX_RX_TERM_EN			(1 << 18)
 #define UPHY_MISC_PAD_AUX_RX_MODE_OVRD			(1 << 13)
 
+void t210_program_utmi_pad(struct tegra_xhci_hcd *tegra, u8 port)
+{
+	xusb_utmi_pad_init(port, USB2_PORT_CAP_HOST(port)
+		, tegra->bdata->uses_external_pmic);
+}
+
 void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port)
 {
 	u32 ctl1, ctl2, ctl3, ctl4, ctl6, val;
