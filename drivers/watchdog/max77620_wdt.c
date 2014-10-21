@@ -254,7 +254,6 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 		wdt->otp_wdten = 0;
 	}
 
-pdata_done:
 	wdt->dev = &pdev->dev;
 	wdt_dev = &wdt->wdt_dev;
 	wdt->chip = dev_get_drvdata(pdev->dev.parent);
