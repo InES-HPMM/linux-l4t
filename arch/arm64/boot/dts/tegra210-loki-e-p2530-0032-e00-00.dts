@@ -68,6 +68,10 @@
 		};
 	};
 
+	i2c@546c0000 {
+		avdd_dsi_csi-supply = <&max77620_gpio7>;
+	};
+
 	host1x {
 		/* tegradc.0 */
 		dc@54200000 {
