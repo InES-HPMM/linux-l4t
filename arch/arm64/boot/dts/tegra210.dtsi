@@ -28,6 +28,7 @@
 / {
 	compatible = "nvidia,tegra210";
 	interrupt-parent = <&intc>;
+	nvidia,dtbbuildtime = __DATE__, __TIME__;
 	#address-cells = <2>;
 	#size-cells = <2>;
 

@@ -2449,9 +2449,12 @@ early_param("tegra_split_mem", set_tegra_split_mem);
 
 void __init display_tegra_dt_info(void)
 {
+	int ret_d;
+	int ret_t;
 	unsigned long dt_root;
 	const char *dts_fname;
-
+	const char *dtb_bdate;
+	const char *dtb_btime;
 
 	dt_root = of_get_flat_dt_root();
 
@@ -2460,6 +2463,15 @@ void __init display_tegra_dt_info(void)
 		pr_info("DTS File Name: %s\n", dts_fname);
 	else
 		pr_info("DTS File Name: <unknown>\n");
+
+	ret_d = of_property_read_string_index(of_find_node_by_path("/"),
+			"nvidia,dtbbuildtime", 0, &dtb_bdate);
+	ret_t = of_property_read_string_index(of_find_node_by_path("/"),
+			"nvidia,dtbbuildtime", 1, &dtb_btime);
+	if (!ret_d && !ret_t)
+		pr_info("DTB Build time: %s %s\n", dtb_bdate, dtb_btime);
+	else
+		pr_info("DTB Build time: <unknown>\n");
 }
 
 static void tegra_get_bl_reset_status(void)
