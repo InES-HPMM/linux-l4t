@@ -554,12 +554,32 @@ static int bpmp_get_fwtag(void)
 	return r;
 }
 
+static int bpmp_tag_show(struct seq_file *file, void *data)
+{
+	seq_write(file, firmware_tag, sizeof(firmware_tag));
+	seq_putc(file, '\n');
+	return 0;
+}
+
+static int bpmp_tag_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, bpmp_tag_show, inode->i_private);
+}
+
+static const struct file_operations bpmp_tag_fops = {
+	.open = bpmp_tag_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release
+};
+
 static const struct fops_entry root_attrs[] = {
 	{ "reset", &bpmp_reset_fops, S_IWUSR },
 	{ "ping", &bpmp_ping_fops, S_IRUGO },
 	{ "trace_enable", &trace_enable_fops, S_IRUGO | S_IWUSR },
 	{ "trace_disable", &trace_disable_fops, S_IWUSR },
 	{ "trace", &trace_fops, S_IRUGO },
+	{ "tag", &bpmp_tag_fops, S_IRUGO },
 	{ NULL, NULL, 0 }
 };
 
