@@ -27,6 +27,7 @@ struct tegra_ahci_platform_data {
 struct tegra_sata_soc_data {
 	char	* const *sata_regulator_names;
 	int	num_sata_regulators;
+	int (*controller_init) (void *, int);
 };
 
 #endif
