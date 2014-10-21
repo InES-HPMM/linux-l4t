@@ -665,9 +665,11 @@ static int bpmp_cpu_notify(struct notifier_block *nb, unsigned long action,
 
 	switch (action) {
 	case CPU_DOWN_PREPARE:
+	case CPU_DOWN_PREPARE_FROZEN:
 		bpmp_irq_clr_affinity(cpu);
 		break;
 	case CPU_ONLINE:
+	case CPU_ONLINE_FROZEN:
 		bpmp_irq_set_affinity(cpu);
 		break;
 	}
