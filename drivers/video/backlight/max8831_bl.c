@@ -1,7 +1,7 @@
 /*
  * Backlight LEDs driver for MAX8831
  *
- * Copyright (c) 2008-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2008-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -110,6 +110,7 @@ static int max8831_bl_probe(struct platform_device *pdev)
 	struct backlight_device *bl;
 	struct backlight_properties props;
 	struct platform_max8831_backlight_data *pData = pdev->dev.platform_data;
+	int ret = 0;
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 	if (data == NULL)
@@ -127,7 +128,7 @@ static int max8831_bl_probe(struct platform_device *pdev)
 		       __func__);
 		data->regulator = NULL;
 	} else {
-		regulator_enable(data->regulator);
+		ret = regulator_enable(data->regulator);
 	}
 
 	props.type = BACKLIGHT_RAW;
@@ -143,7 +144,7 @@ static int max8831_bl_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, bl);
 	backlight_update_status(bl);
-	return 0;
+	return ret;
 }
 
 static int max8831_bl_remove(struct platform_device *pdev)
@@ -178,11 +179,12 @@ static int max8831_bl_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct backlight_device *bl = platform_get_drvdata(pdev);
 	struct max8831_backlight_data *data = bl_get_data(bl);
+	int ret = 0;
 
 	if (data->regulator)
-		regulator_enable(data->regulator);
+		ret = regulator_enable(data->regulator);
 	backlight_update_status(bl);
-	return 0;
+	return ret;
 }
 
 static const struct dev_pm_ops max8831_bl_pm_ops = {
