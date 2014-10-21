@@ -176,3 +176,8 @@ void tegra_bpmp_sclk_skip_set_rate(unsigned long input_rate,
 	r = __bpmp_rpc(MRQ_SCLK_SKIP_SET_RATE, &mb, sizeof(mb), NULL, 0);
 	WARN_ON(r);
 }
+
+int bpmp_query_tag(uint32_t phys)
+{
+	return __bpmp_rpc(MRQ_QUERY_TAG, &phys, sizeof(phys), NULL, 0);
+}

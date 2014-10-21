@@ -57,6 +57,7 @@ static phys_addr_t loadfw_phys;
 static void *loadfw_virt;
 static struct dentry *bpmp_root;
 static struct dentry *module_root;
+static char firmware_tag[32];
 static LIST_HEAD(modules);
 
 struct fwheader {
@@ -542,6 +543,17 @@ static const struct file_operations trace_fops = {
 	.release = single_release
 };
 
+static int bpmp_get_fwtag(void)
+{
+	unsigned long flags;
+	int r;
+	spin_lock_irqsave(&shared_lock, flags);
+	r = bpmp_query_tag(shared_phys);
+	spin_unlock_irqrestore(&shared_lock, flags);
+	memcpy(firmware_tag, shared_virt, sizeof(firmware_tag));
+	return r;
+}
+
 static const struct fops_entry root_attrs[] = {
 	{ "reset", &bpmp_reset_fops, S_IWUSR },
 	{ "ping", &bpmp_ping_fops, S_IRUGO },
@@ -575,6 +587,7 @@ clean:
 }
 #else
 static inline int bpmp_init_debug(struct platform_device *pdev) { return 0; }
+static inline int bpmp_get_fwtag(void) { return 0; }
 #endif
 
 void tegra_bpmp_trace_printk(void)
@@ -684,7 +697,11 @@ static int bpmp_probe(struct platform_device *pdev)
 	if (r)
 		return r;
 
-	return bpmp_ipc_init(pdev);
+	r = bpmp_ipc_init(pdev);
+	if (r)
+		return r;
+
+	return bpmp_get_fwtag();
 }
 
 static const struct of_device_id bpmp_of_matches[] = {

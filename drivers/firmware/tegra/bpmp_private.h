@@ -44,5 +44,6 @@ uint64_t bpmp_cpuidle_time(int state);
 int bpmp_write_trace(uint32_t phys, int size, int *eof);
 int bpmp_modify_trace_mask(uint32_t clr, uint32_t set);
 int bpmp_init_cpus_present(int nr_cpus);
+int bpmp_query_tag(uint32_t phys);
 
 #endif
