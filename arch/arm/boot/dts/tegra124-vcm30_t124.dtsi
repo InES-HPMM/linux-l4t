@@ -150,7 +150,7 @@
 	};
 
 	sdhci@700b0000 {
-		tap-delay = <0x0>;
+		tap-delay = <0x3B>;
 		trim-delay = <0x2>;
 		nvidia,is-ddr-trim-delay;
 		ddr-trim-delay = <0x4>;
@@ -163,16 +163,14 @@
 		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
 		disable-clock-gate;
-		calib-3v3-offsets = <0x6969>;
-		calib-1v8-offsets = <0x6969>;
-		auto-cal-step = <0x7>;
+		nvidia,disable-auto-cal;
 		status = "disabled";
 		nvidia,update-pinctrl-settings;
 	};
 
 	sdhci@700b0600 {
-		tap-delay = <0x4>;
-		trim-delay = <0x4>;
+		tap-delay = <0x39>;
+		trim-delay = <0x3>;
 		ddr-trim-delay = <0x4>;
 		mmc-ocr-mask = <0>;
 		uhs-mask = <0x40>;
@@ -182,15 +180,13 @@
 		max-clk-limit = <200000000>;
 		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
-		calib-3v3-offsets = <0x615F>;
-		calib-1v8-offsets = <0x615F>;
-		auto-cal-step = <0x7>;
+		nvidia,disable-auto-cal;
 		status = "disabled";
 		nvidia,disable-auto-cal;
 	};
 
 	sdhci@700b0200 {
-		tap-delay = <0x1>;
+		tap-delay = <0x31>;
 		trim-delay = <0x3>;
 		ddr-trim-delay = <0x3>;
 		mmc-ocr-mask = <0>;
@@ -207,17 +203,15 @@
 	sdhci@700b0400 {
 		cd-gpios = <&gpio 133 0>;
 		wp-gpios = <&gpio 132 0>;
-		tap-delay = <0>;
-		trim-delay = <3>;
+		tap-delay = <0x39>;
+		trim-delay = <0x3>;
 		mmc-ocr-mask = <3>;
 		uhs-mask = <0x28>;
 		bus-width = <4>;
 		max-clk-limit = <204000000>;
 		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
-		calib-3v3-offsets = <0x6969>;
-		calib-1v8-offsets = <0x6969>;
-		auto-cal-step = <0x7>;
+		nvidia,disable-auto-cal;
 		status = "disabled";
 		nvidia,update-pinctrl-settings;
 		nvidia,enable-ext-loopback;
