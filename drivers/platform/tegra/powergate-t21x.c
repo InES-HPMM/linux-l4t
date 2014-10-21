@@ -821,10 +821,6 @@ static spinlock_t *tegra210_pg_get_lock(void)
 static bool tegra210_pg_skip(int id)
 {
 	switch (id) {
-#ifdef CONFIG_ARCH_TEGRA_HAS_SATA
-		case TEGRA_POWERGATE_SATA:
-			return true;
-#endif
 		default:
 			return false;
 	}
