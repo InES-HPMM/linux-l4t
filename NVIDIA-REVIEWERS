@@ -266,6 +266,7 @@ SECURE OS:
 M:	Dennis Huang <denhuang@nvidia.com>
 L:	TMK@exchange.nvidia.com
 S:	Supported
+F:	security/tlk_driver/
 
 SECURITY
 M:	Venkat Moganty <vmoganty@nvidia.com>
