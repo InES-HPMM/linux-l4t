@@ -460,6 +460,14 @@ int tegra_mcerr_init(struct dentry *mc_parent, struct platform_device *pdev)
 	mc_int_mask = be32_to_cpup(prop);
 	mc_writel(mc_int_mask, MC_INT_MASK);
 
+	prop = of_get_property(pdev->dev.of_node, "int_count", NULL);
+	if (!prop) {
+		pr_err("No int_count prop for mcerr!\n");
+		return -EINVAL;
+	}
+
+	mc_intr_count = be32_to_cpup(prop);
+
 	mcerr_debugfs_dir = debugfs_create_dir("err", mc_parent);
 	if (mcerr_debugfs_dir == NULL) {
 		pr_err("Failed to make debugfs node: %ld\n",
