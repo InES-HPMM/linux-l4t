@@ -738,6 +738,10 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 			goto error;
 	}
 
+	mutex_init(&(modem->lock));
+	mutex_init(&modem->hc_lock);
+	wake_lock_init(&modem->wake_lock, WAKE_LOCK_SUSPEND, "mdm_lock");
+
 	/* if wake gpio is not specified we rely on native usb remote wake */
 	if (gpio_is_valid(pdata->wake_gpio)) {
 		/* request remote wakeup irq from platform data */
@@ -806,9 +810,6 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	}
 	modem->sysfs_file_created = 1;
 	modem->capability = TEGRA_USB_HOST_RELOAD;
-	mutex_init(&(modem->lock));
-	mutex_init(&modem->hc_lock);
-	wake_lock_init(&modem->wake_lock, WAKE_LOCK_SUSPEND, "mdm_lock");
 	if (pdev->id >= 0)
 		dev_set_name(&pdev->dev, "MDM%d", pdev->id);
 	else
