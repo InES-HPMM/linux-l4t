@@ -3,6 +3,7 @@
 #
 GCOV_PROFILE := y
 
+ccflags-y += -Werror
 obj-$(CONFIG_I2C_BOARDINFO)	+= i2c-boardinfo.o
 obj-$(CONFIG_I2C)		+= i2c-core.o
 obj-$(CONFIG_I2C_SMBUS)		+= i2c-smbus.o
