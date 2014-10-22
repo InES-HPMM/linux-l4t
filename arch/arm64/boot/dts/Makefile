@@ -28,6 +28,7 @@ dtb-$(CONFIG_MACH_GRENADA) += tegra210-foster-e-e2581-0930-a00-00.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-foster-e-e2581-0930-a01-00.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-loki-e-e2581-0031-a00-00.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-loki-e-e2581-0031-a01-00.dtb
+dtb-$(CONFIG_MACH_GRENADA) += tegra210-jetson-e-p2595-0000-a00-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl33688874.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl33759297.dtb
