@@ -1085,12 +1085,36 @@ static int tegra_pcie_enable_pads(struct tegra_pcie *pcie, bool enable)
 	return err;
 }
 
+static void tegra_pcie_enable_wrap(void)
+{
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	u32 val;
+	void __iomem *msel_base;
+
+	PR_FUNC_LINE;
+#define MSELECT_CONFIG_BASE	0x50060000
+#define MSELECT_CONFIG_WRAP_TO_INCR_SLAVE1	BIT(28)
+#define MSELECT_CONFIG_ERR_RESP_EN_SLAVE1	BIT(24)
+
+	/* Config MSELECT to support wrap trans for normal NC & GRE mapping */
+	msel_base = ioremap(MSELECT_CONFIG_BASE, 4);
+	val = readl(msel_base);
+	/* Enable WRAP_TO_INCR_SLAVE1 */
+	val |= MSELECT_CONFIG_WRAP_TO_INCR_SLAVE1;
+	/* Disable ERR_RESP_EN_SLAVE1 */
+	val &= ~MSELECT_CONFIG_ERR_RESP_EN_SLAVE1;
+	writel(val, msel_base);
+	iounmap(msel_base);
+#endif
+}
+
 static int tegra_pcie_enable_controller(struct tegra_pcie *pcie)
 {
 	u32 val;
 	int ret = 0;
 
 	PR_FUNC_LINE;
+	tegra_pcie_enable_wrap();
 	/* Enable PLL power down */
 	val = afi_readl(pcie, AFI_PLLE_CONTROL);
 	val &= ~AFI_PLLE_CONTROL_BYPASS_PADS2PLLE_CONTROL;
