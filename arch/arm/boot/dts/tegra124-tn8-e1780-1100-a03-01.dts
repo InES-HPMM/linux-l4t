@@ -88,10 +88,6 @@
 		compatible = "pwm-backlight";
 		status = "okay";
 	};
-	gps {
-		compatible = "mtk,mt3332";
-		force-on-gpios = <&gpio TEGRA_GPIO(H, 5) GPIO_ACTIVE_HIGH>;
-	};
 
 	i2c@7000c000 {
 		battery-gauge@62 {
