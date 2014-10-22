@@ -251,7 +251,7 @@
 				use_of_node = "yes";
 				vana-supply = <&max77620_ldo3>;
 				vif2-supply = <&en_vdd_cam>;
-				cam1-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
+				cam1-gpio = <&gpio TEGRA_GPIO(S, 7) 0>;
 			};
 		};
 	};

@@ -48,12 +48,10 @@
 				pinmuxgrp = <0xFFFF>;
 				gpios = <3>;
 				regulators = "vana", "vif2";
-				clocks = "cam_mclk1";
 				drivername = "ov7695";
 				detect = <0x0002 0x300A 0xFFFF 0x7695>;
 				devid = <0x7695>;
 				poweron = <
-					CAMERA_IND_CLK_SET(10000)
 					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
 					CAMERA_WAITMS(1)
 					CAMERA_REGULATOR_ON(0)
@@ -64,7 +62,6 @@
 					CAMERA_END
 					>;
 				poweroff = <
-					CAMERA_IND_CLK_CLR
 					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
 					CAMERA_WAITUS(10)
 					CAMERA_REGULATOR_OFF(1)
