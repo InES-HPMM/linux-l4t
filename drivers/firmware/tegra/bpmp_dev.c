@@ -32,6 +32,7 @@
 #include <mach/clk.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "bpmp_private.h"
+#include "bpmp_abi.h"
 
 #define BPMP_FIRMWARE_NAME		"bpmp.bin"
 #define BPMP_MODULE_MAGIC		0x646f6d
@@ -588,6 +589,79 @@ static const struct file_operations bpmp_tag_fops = {
 	.release = single_release
 };
 
+#define MSG_NR_FIELDS	((MSG_DATA_SZ + 3) / 4)
+#define MSG_DATA_COUNT	(MSG_NR_FIELDS + 1)
+
+static uint32_t inbox_data[MSG_DATA_COUNT];
+
+static ssize_t bpmp_mrq_write(struct file *file, const char __user *user_buf,
+		size_t count, loff_t *ppos)
+{
+	/* size in dec, space, new line, terminator */
+	char buf[MSG_DATA_COUNT * 11 + 1 + 1];
+	uint32_t outbox_data[MSG_DATA_COUNT];
+	char *line;
+	char *p;
+	int i;
+	int ret;
+
+	memset(outbox_data, 0, sizeof(outbox_data));
+	memset(inbox_data, 0, sizeof(inbox_data));
+
+	count = min(count, sizeof(buf) - 1);
+	if (copy_from_user(buf, user_buf, count)) {
+		ret = -EFAULT;
+		goto complete;
+	}
+
+	buf[count] = 0;
+	line = strim(buf);
+
+
+	for (i = 0; i < MSG_DATA_COUNT && line; i++) {
+		p = strsep(&line, " ");
+		ret = kstrtouint(p, 0, outbox_data + i);
+		if (ret)
+			break;
+	}
+
+	if (!i) {
+		ret = -EINVAL;
+		goto complete;
+	}
+
+	ret = tegra_bpmp_rpc(outbox_data[0], outbox_data + 1, MSG_DATA_SZ,
+			inbox_data + 1, MSG_DATA_SZ);
+
+complete:
+	inbox_data[0] = ret;
+	return ret ?: count;
+}
+
+static int bpmp_mrq_show(struct seq_file *file, void *data)
+{
+	int i;
+	for (i = 0; i < MSG_DATA_COUNT; i++) {
+		seq_printf(file, "0x%x%s", inbox_data[i],
+				i == MSG_DATA_COUNT - 1 ? "\n" : " ");
+	}
+
+	return 0;
+}
+
+static int bpmp_mrq_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, bpmp_mrq_show, inode->i_private);
+}
+
+static const struct file_operations bpmp_mrq_fops = {
+	.open = bpmp_mrq_open,
+	.llseek = seq_lseek,
+	.read = seq_read,
+	.write = bpmp_mrq_write,
+	.release = single_release
+};
+
 static const struct fops_entry root_attrs[] = {
 	{ "reset", &bpmp_reset_fops, S_IWUSR },
 	{ "ping", &bpmp_ping_fops, S_IRUGO },
@@ -595,6 +669,7 @@ static const struct fops_entry root_attrs[] = {
 	{ "trace_disable", &trace_disable_fops, S_IWUSR },
 	{ "trace", &trace_fops, S_IRUGO },
 	{ "tag", &bpmp_tag_fops, S_IRUGO },
+	{ "mrq", &bpmp_mrq_fops, S_IRUGO | S_IWUSR },
 	{ NULL, NULL, 0 }
 };
 
