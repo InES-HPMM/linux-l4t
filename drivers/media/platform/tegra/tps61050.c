@@ -1,7 +1,7 @@
 /*
  * tps61050.c - tps61050 flash/torch kernel driver
  *
- * Copyright (c) 2011-2014, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2011-2015, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -903,6 +903,15 @@ static int tps61050_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void tps61050_shutdown(struct i2c_client *client)
+{
+	struct tps61050_info *info = i2c_get_clientdata(client);
+
+	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
+	tps61050_pm_wr_s(info, NVC_PWR_OFF);
+	tps61050_sync_dis(info);
+}
+
 static int tps61050_probe(
 	struct i2c_client *client,
 	const struct i2c_device_id *id)
@@ -944,10 +953,10 @@ static int tps61050_probe(
 	}
 
 	if (info->pdata->dev_name != 0)
-		strcpy(info->devname, info->pdata->dev_name,
+		strncpy(info->devname, info->pdata->dev_name,
 			sizeof(info->devname) - 1);
 	else
-		strcpy(info->devname, "tps61050", sizeof(info->devname) - 1);
+		strncpy(info->devname, "tps61050", sizeof(info->devname) - 1);
 
 	if (info->pdata->num)
 		snprintf(info->devname, sizeof(info->devname), "%s.%u",
@@ -981,6 +990,7 @@ static struct i2c_driver tps61050_i2c_driver = {
 	.id_table = tps61050_id,
 	.probe = tps61050_probe,
 	.remove = tps61050_remove,
+	.shutdown = tps61050_shutdown,
 };
 
 static int __init tps61050_init(void)
