@@ -40,7 +40,6 @@
 	compatible = "nvidia,p1859", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 
-
 	i2c@7000c400 {
 		status = "disabled";
 	};
@@ -82,6 +81,10 @@
 	};
 
 	ahub {
+		status = "disabled";
+	};
+
+	tegra-vcm30t124-alt {
 		status = "disabled";
 	};
 

@@ -19,6 +19,7 @@
 #include <sound/soc.h>
 #include <mach/tegra_vcm30t124_pdata.h>
 #include <mach/board_id.h>
+#include <linux/of_platform.h>
 #include "board.h"
 
 #define TDM_SLOT_MAP(stream_id, nth_channel, nth_byte)	\
@@ -495,11 +496,6 @@ static struct tegra_vcm30t124_platform_data tegra_voice_call_pdata = {
 	.card_name = "tegra-ak-vc",
 };
 
-static struct platform_device tegra_snd_p1859 = {
-	.name = "tegra-snd-vcm30t124",
-	.id = 0,
-};
-
 static struct platform_device tegra_spdif_dit[] = {
 	[0] = {
 		.name = "spdif-dit",
@@ -516,18 +512,15 @@ void __init p1859_audio_init(void)
 	int is_e1860_b00 = tegra_is_board(NULL, "61860", NULL, "300", NULL);
 	int modem_id = tegra_get_modem_id();
 	int is_e1892 = 0, i;
-	struct tegra_vcm30t124_platform_data *pdata;
+	struct device_node *np;
+	static struct property tegra_audio_property = {
+		.name = "platform_data",
+		.value = &tegra_e1860_b00_pdata,
+		.length = sizeof(tegra_e1860_b00_pdata),
+	};
 
 	/* check the version of embedded breakout board */
 	is_e1892 = tegra_is_board(NULL, "61892", NULL, NULL, NULL);
-	if (is_e1860_b00) {
-		if (modem_id)
-			pdata = &tegra_voice_call_pdata;
-		else
-			pdata = &tegra_e1860_b00_pdata;
-	} else {
-		pdata = &tegra_e1860_a0x_pdata;
-	}
 
 	/* set max9485 addr as priv data for a0x and b00 */
 	tegra_e1860_a0x_pdata.priv_data =
@@ -535,11 +528,25 @@ void __init p1859_audio_init(void)
 	tegra_voice_call_pdata.priv_data =
 		(void *)(is_e1892 ? 0x70 : 0x60);
 
-	/* initialize the platform data structure */
-	tegra_snd_p1859.dev.platform_data = pdata;
+	np = of_find_compatible_node(NULL, NULL,
+		"nvidia,tegra-audio-vcm30t124");
+	if (NULL != np) {
+		if (is_e1860_b00) {
+			if (modem_id) {
+				tegra_audio_property.value =
+					(void *)(&tegra_voice_call_pdata);
+				tegra_audio_property.length =
+					sizeof(tegra_voice_call_pdata);
+			}
+		} else {
+				tegra_audio_property.value =
+					(void *)(&tegra_e1860_a0x_pdata);
+				tegra_audio_property.length =
+					sizeof(tegra_e1860_a0x_pdata);
+			}
+		of_update_property(np, &tegra_audio_property);
+	}
 
-	/* register the platform device and dummy codec if any */
-	platform_device_register(&tegra_snd_p1859);
 	for (i = 0; i < ARRAY_SIZE(tegra_spdif_dit); i++)
 		platform_device_register(&tegra_spdif_dit[i]);
 }

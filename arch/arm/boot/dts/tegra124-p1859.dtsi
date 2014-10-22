@@ -253,6 +253,11 @@
 		};
 	};
 
+	tegra-vcm30t124-alt {
+		compatible = "nvidia,tegra-audio-vcm30t124";
+		status = "okay";
+	};
+
 	pcie-controller {
 		status = "okay";
 
