@@ -61,6 +61,8 @@ obj-$(CONFIG_LEDS_BLINKM)		+= leds-blinkm.o
 
 obj-$(CONFIG_LEDS_MAX8831)		+= leds-max8831.o
 
+obj-$(CONFIG_LEDS_CY8C)			+= leds-cy8c.o
+
 # LED SPI Drivers
 obj-$(CONFIG_LEDS_DAC124S085)		+= leds-dac124s085.o
 
