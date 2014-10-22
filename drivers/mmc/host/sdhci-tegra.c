@@ -2496,7 +2496,7 @@ static int sdhci_tegra_calculate_best_tap(struct sdhci_host *sdhci,
 	int vmin, curr_vmin, best_tap_value = 0;
 	int err = 0;
 
-	curr_vmin = tegra_dvfs_predict_millivolts(pltfm_host->clk,
+	curr_vmin = tegra_dvfs_predict_mv_at_hz_no_tfloor(pltfm_host->clk,
 		tuning_data->freq_hz);
 	if (!curr_vmin)
 		curr_vmin = tegra_host->boot_vcore_mv;

@@ -1526,7 +1526,7 @@ static int init_emc_table(const struct tegra12_emc_table *table,
 
 	if (emc->dvfs) {
 		adjust_emc_dvfs_table(tegra_emc_table, tegra_emc_table_size);
-		mv = tegra_dvfs_predict_peak_millivolts(emc, max_rate * 1000);
+		mv = tegra_dvfs_predict_mv_at_hz_max_tfloor(emc, max_rate*1000);
 		if ((mv <= 0) || (mv > emc->dvfs->max_millivolts)) {
 			tegra_emc_table = NULL;
 			pr_err("tegra: invalid EMC DFS table: maximum rate %lu"

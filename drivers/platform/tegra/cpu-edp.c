@@ -316,7 +316,8 @@ static int __init tegra_cpu_edp_probe(struct platform_device *pdev)
 
 	cpu_clk = tegra_get_clock_by_name(ctx->pdata.clk_name);
 	fv = fv_relation_create(cpu_clk, ctx->pdata.freq_step, 220,
-				      tegra_dvfs_predict_peak_millivolts);
+				      tegra_dvfs_predict_mv_at_hz_max_tfloor);
+
 	if (WARN(IS_ERR_OR_NULL(fv),
 		 "Failed CPU EDP mgmt init. freq/volt data unavailable\n"))
 		return PTR_ERR(fv);

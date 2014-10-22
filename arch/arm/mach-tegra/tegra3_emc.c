@@ -976,7 +976,7 @@ static bool is_emc_bridge(void)
 	if (IS_ERR_VALUE(rate))
 		return false;
 
-	mv = tegra_dvfs_predict_peak_millivolts(emc, rate);
+	mv = tegra_dvfs_predict_mv_at_hz_max_tfloor(emc, rate);
 	if (IS_ERR_VALUE(mv) || (mv > TEGRA_EMC_BRIDGE_MVOLTS_MIN))
 		return false;
 
@@ -1292,7 +1292,7 @@ static int __devinit tegra30_emc_probe(struct platform_device *pdev)
 	tegra_emc_table = pdata->tables;
 
 	adjust_emc_dvfs_table(tegra_emc_table, tegra_emc_table_size);
-	mv = tegra_dvfs_predict_peak_millivolts(emc, max_rate * 1000);
+	mv = tegra_dvfs_predict_mv_at_hz_max_tfloor(emc, max_rate * 1000);
 	if ((mv <= 0) || (mv > emc->dvfs->max_millivolts)) {
 		tegra_emc_table = NULL;
 		pr_err("tegra: invalid EMC DFS table: maximum rate %lu kHz does"

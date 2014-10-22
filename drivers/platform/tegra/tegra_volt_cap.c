@@ -80,7 +80,7 @@ static int vf_lut_init(struct clk *c, struct list_head *head)
 	min_rate = clk_get_min_rate(c);
 
 	for (f = max_rate; f >= min_rate; f -= 1000) {
-		int mv = tegra_dvfs_predict_peak_millivolts(c, f);
+		int mv = tegra_dvfs_predict_mv_at_hz_max_tfloor(c, f);
 		if (mv < 0) {
 			pr_err("%s: couldn't predict voltage: freq %u; err %d\n",
 			       __FILE__ , f, mv);

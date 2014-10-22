@@ -5798,7 +5798,7 @@ static int tegra21_clk_cbus_update(struct clk *bus)
 	bus->u.cbus.top_user = top;
 
 	rate = tegra21_clk_cap_shared_bus(bus, rate, ceiling);
-	mv = tegra_dvfs_predict_millivolts(bus, rate);
+	mv = tegra_dvfs_predict_mv_at_hz_no_tfloor(bus, rate);
 	if (IS_ERR_VALUE(mv))
 		return -EINVAL;
 
