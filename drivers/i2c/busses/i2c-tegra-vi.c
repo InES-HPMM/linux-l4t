@@ -594,7 +594,7 @@ static int tegra_vi_i2c_init(struct tegra_vi_i2c_dev *i2c_dev)
 	u32 clk_divisor = 0;
 	unsigned long timeout = jiffies + HZ;
 
-	if (!regulator_is_enabled(i2c_dev->reg))
+	if (!i2c_dev->reg || !regulator_is_enabled(i2c_dev->reg))
 		return -EFAULT;
 
 	tegra_periph_reset_assert(i2c_dev->div_clk);
