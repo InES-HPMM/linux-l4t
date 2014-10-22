@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -216,12 +216,15 @@ struct ov7695_power_rail {
 	struct regulator *dvdd;
 	struct regulator *avdd;
 	struct regulator *iovdd;
+	struct clk *mclk;
+	int cam_pwdn;
 };
 
 struct ov7695_platform_data {
 	int (*power_on)(struct ov7695_power_rail *pw);
 	int (*power_off)(struct ov7695_power_rail *pw);
 	const char *mclk_name;
+	int cam_pwdn;
 };
 #endif /* __KERNEL__ */
 

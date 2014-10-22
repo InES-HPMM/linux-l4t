@@ -30,6 +30,7 @@
 #include <linux/regmap.h>
 #include <linux/export.h>
 #include <linux/module.h>
+#include <linux/of_gpio.h>
 #include "regmap_util.h"
 
 #include <media/ov7695.h>
@@ -291,7 +292,6 @@ struct ov7695_info {
 	struct ov7695_power_rail	power;
 	struct ov7695_sensordata	sensor_data;
 	struct i2c_client		*i2c_client;
-	struct clk			*mclk;
 	struct ov7695_platform_data	*pdata;
 	struct regmap			*regmap;
 	atomic_t			in_use;
@@ -352,7 +352,9 @@ static int ov7695_write_reg16(struct ov7695_info *info, u16 addr, u16 val)
 static void ov7695_mclk_disable(struct ov7695_info *info)
 {
 	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
-	clk_disable_unprepare(info->mclk);
+	if (!(info->power.mclk))
+		return;
+	clk_disable_unprepare(info->power.mclk);
 }
 
 static int ov7695_mclk_enable(struct ov7695_info *info)
@@ -363,20 +365,96 @@ static int ov7695_mclk_enable(struct ov7695_info *info)
 	dev_dbg(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
 		__func__, mclk_init_rate);
 
-	err = clk_set_rate(info->mclk, mclk_init_rate);
+	if (!(info->power.mclk))
+		return 0;
+	err = clk_set_rate(info->power.mclk, mclk_init_rate);
 	if (!err)
-		err = clk_prepare_enable(info->mclk);
+		err = clk_prepare_enable(info->power.mclk);
 	return err;
+}
+
+static int ov7695_power_on(struct ov7695_info *info)
+{
+	struct ov7695_power_rail *pw = &info->power;
+	int err;
+
+	err = ov7695_mclk_enable(info);
+	if (err)
+		return err;
+
+	if (info->pdata && info->pdata->power_on)
+		return info->pdata->power_on(&info->power);
+
+	if (pw->cam_pwdn) {
+		gpio_set_value(pw->cam_pwdn, 0);
+		usleep_range(1000, 1020);
+	}
+
+	if (pw->avdd) {
+		err = regulator_enable(pw->avdd);
+		if (unlikely(err))
+			goto ov7695_avdd_fail;
+		usleep_range(300, 320);
+	}
+
+	if (pw->iovdd) {
+		err = regulator_enable(pw->iovdd);
+		if (unlikely(err))
+			goto ov7695_iovdd_fail;
+		usleep_range(1000, 1020);
+	}
+
+	if (pw->cam_pwdn) {
+		gpio_set_value(pw->cam_pwdn, 1);
+		usleep_range(1000, 1020);
+	}
+
+	return 0;
+
+ov7695_iovdd_fail:
+	regulator_disable(pw->avdd);
+ov7695_avdd_fail:
+	dev_err(&info->i2c_client->dev, "%s FAILED!\n", __func__);
+	return -ENODEV;
+}
+
+static int ov7695_power_off(struct ov7695_info *info)
+{
+	struct ov7695_power_rail *pw = &info->power;
+
+	if (info->pdata && info->pdata->power_off) {
+		info->pdata->power_off(&info->power);
+		goto ov7695_pwr_off_end;
+	}
+
+	usleep_range(100, 120);
+
+	if (pw->cam_pwdn) {
+		gpio_set_value(pw->cam_pwdn, 0);
+		usleep_range(100, 120);
+	}
+
+	if (pw->iovdd) {
+		regulator_disable(pw->iovdd);
+		usleep_range(100, 120);
+	}
+
+	if (pw->avdd)
+		regulator_disable(pw->avdd);
+
+ov7695_pwr_off_end:
+	ov7695_mclk_disable(info);
+	return 0;
 }
 
 static int ov7695_open(struct inode *inode, struct file *file)
 {
 	int err = 0;
 	struct miscdevice	*miscdev = file->private_data;
-	struct ov7695_info *info = dev_get_drvdata(miscdev->parent);
+	struct ov7695_info	*info =
+		container_of(miscdev, struct ov7695_info, miscdev_info);
 
-	dev_dbg(&info->i2c_client->dev, "ov7695: open.\n");
-	info = container_of(miscdev, struct ov7695_info, miscdev_info);
+	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
 	/* check if the device is in use */
 	if (atomic_xchg(&info->in_use, 1)) {
 		dev_err(&info->i2c_client->dev, "%s:BUSY!\n", __func__);
@@ -385,17 +463,7 @@ static int ov7695_open(struct inode *inode, struct file *file)
 
 	file->private_data = info;
 
-	if (info->mclk)
-		err = ov7695_mclk_enable(info);
-	if (!err && info->pdata && info->pdata->power_on) {
-		err = info->pdata->power_on(&info->power);
-	} else {
-		dev_err(&info->i2c_client->dev,
-			"%s:no valid power_on function.\n", __func__);
-		err = -EFAULT;
-	}
-	if (err < 0 && info->mclk)
-		ov7695_mclk_disable(info);
+	err = ov7695_power_on(info);
 	return err;
 }
 
@@ -403,10 +471,7 @@ int ov7695_release(struct inode *inode, struct file *file)
 {
 	struct ov7695_info *info = file->private_data;
 
-	if (info->pdata && info->pdata->power_off)
-		info->pdata->power_off(&info->power);
-	if (info->mclk)
-		ov7695_mclk_disable(info);
+	ov7695_power_off(info);
 	file->private_data = NULL;
 
 	/* warn if device is already released */
@@ -422,9 +487,9 @@ static int ov7695_regulator_get(struct ov7695_info *info,
 
 	reg = devm_regulator_get(&info->i2c_client->dev, vreg_name);
 	if (unlikely(IS_ERR(reg))) {
-		dev_err(&info->i2c_client->dev, "%s %s ERR: %p\n",
-			__func__, vreg_name, reg);
 		err = PTR_ERR(reg);
+		dev_err(&info->i2c_client->dev, "%s %s ERR: %d\n",
+			__func__, vreg_name, err);
 		reg = NULL;
 	} else {
 		dev_dbg(&info->i2c_client->dev, "%s: %s\n",
@@ -438,9 +503,11 @@ static int ov7695_regulator_get(struct ov7695_info *info,
 static int ov7695_power_get(struct ov7695_info *info)
 {
 	struct ov7695_power_rail *pw = &info->power;
+	struct ov7695_platform_data *pdata = info->pdata;
+	struct clk *mclk;
 	int err;
 
-	dev_dbg(&info->i2c_client->dev, "ov7695: %s\n", __func__);
+	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
 
 	/* note: ov7695 uses i2c address 0x42,
 	 *
@@ -462,6 +529,23 @@ static int ov7695_power_get(struct ov7695_info *info)
 	err = ov7695_regulator_get(info, &pw->avdd, "vana");
 	if (unlikely(IS_ERR(ERR_PTR(err))))
 		return err;
+
+	if (pdata) {
+		if (pdata->mclk_name) {
+			mclk = devm_clk_get(&info->i2c_client->dev,
+				pdata->mclk_name);
+			if (IS_ERR(mclk)) {
+				dev_err(&info->i2c_client->dev,
+					"%s: unable to get clock %s\n",
+					__func__, pdata->mclk_name);
+				return PTR_ERR(mclk);
+			}
+			pw->mclk = mclk;
+		}
+		pw->cam_pwdn = pdata->cam_pwdn;
+		dev_dbg(&info->i2c_client->dev, "%s: mclk - %p, gpio - %d\n",
+			__func__, pw->mclk, pw->cam_pwdn);
+	}
 
 	return 0;
 }
@@ -837,14 +921,39 @@ static long ov7695_ioctl(struct file *file,
 	return err;
 }
 
+static struct ov7695_platform_data *ov7695_parse_dt(struct i2c_client *client)
+{
+	struct device_node *np = client->dev.of_node;
+	struct ov7695_platform_data *pdata;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "Failed to allocate pdata\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	/* init with default platform data values in board file */
+	if (client->dev.platform_data)
+		memcpy(pdata, client->dev.platform_data, sizeof(*pdata));
+
+	pdata->cam_pwdn = of_get_named_gpio_flags(np, "cam1-gpio", 0, NULL);
+	if (pdata->cam_pwdn < 0)
+		pdata->cam_pwdn = 0;
+	/* MCLK clock info */
+	of_property_read_string(np, "clocks", &pdata->mclk_name);
+
+	dev_dbg(&client->dev, "%s: mclk - %s, gpio - %d\n",
+		__func__, pdata->mclk_name, pdata->cam_pwdn);
+	return pdata;
+}
+
 static int ov7695_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
-	int err;
 	struct ov7695_info *info;
-	const char *mclk_name;
-	dev_dbg(&client->dev, "ov7695: probing sensor.\n");
+	int err;
 
+	dev_dbg(&client->dev, "ov7695: probing sensor.\n");
 	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
 	if (info == NULL) {
 		dev_err(&client->dev, "%s: kzalloc error\n", __func__);
@@ -858,7 +967,16 @@ static int ov7695_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
-	info->pdata = client->dev.platform_data;
+	if (client->dev.of_node) {
+		info->pdata = ov7695_parse_dt(client);
+		if (IS_ERR(info->pdata)) {
+			err = PTR_ERR(info->pdata);
+			dev_err(&client->dev,
+				"Failed to parse OF node: %d\n", err);
+			return err;
+		}
+	} else
+		info->pdata = client->dev.platform_data;
 	info->i2c_client = client;
 	atomic_set(&info->in_use, 0);
 	info->mode = NULL;
@@ -868,7 +986,7 @@ static int ov7695_probe(struct i2c_client *client,
 	err = ov7695_power_get(info);
 	if (err) {
 		dev_err(&info->i2c_client->dev,
-			"ov7695: Unable to get regulators\n");
+			"ov7695: Unable to config power\n");
 		return err;
 	}
 	ov7695_mode_info_init(info);
@@ -883,21 +1001,6 @@ static int ov7695_probe(struct i2c_client *client,
 			"ov7695: Unable to register misc device!\n");
 		return err;
 	}
-
-	mclk_name = info->pdata && info->pdata->mclk_name ?
-		info->pdata->mclk_name : "default_mclk";
-	if (!strncmp(mclk_name, "ext_mclk", 8))
-		/* use external mclk */
-		info->mclk = NULL;
-	else {
-		info->mclk = devm_clk_get(&client->dev, mclk_name);
-		if (IS_ERR(info->mclk)) {
-			dev_err(&client->dev, "%s: unable to get clock %s\n",
-				__func__, mclk_name);
-			return PTR_ERR(info->mclk);
-		}
-	}
-
 
 #ifdef CONFIG_DEBUG_FS
 	ov7695_debug_init(info);
