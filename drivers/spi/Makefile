@@ -3,6 +3,7 @@
 #
 GCOV_PROFILE := y
 
+ccflags-y += -Werror
 ccflags-$(CONFIG_SPI_DEBUG) := -DDEBUG
 
 # small core, mostly translating board-specific
