@@ -973,8 +973,10 @@ static int arm_smmu_init_domain_context(struct iommu_domain *domain,
 	if (smmu->version == 1) {
 		cfg->irptndx = atomic_inc_return(&smmu->irptndx);
 		cfg->irptndx %= smmu->num_context_irqs;
-	} else {
+	} else if (smmu->num_context_banks == smmu->num_context_irqs) {
 		cfg->irptndx = cfg->cbndx;
+	} else {
+		cfg->irptndx = 0;
 	}
 
 	irq = smmu->irqs[smmu->num_global_irqs + cfg->irptndx];
@@ -2341,11 +2343,9 @@ static int arm_smmu_device_dt_probe(struct platform_device *pdev)
 
 	if (smmu->version > 1 &&
 	    smmu->num_context_banks != smmu->num_context_irqs) {
-		dev_err(dev,
+		dev_info(dev,
 			"found only %d context interrupt(s) but %d required\n",
 			smmu->num_context_irqs, smmu->num_context_banks);
-		err = -ENODEV;
-		goto out_put_masters;
 	}
 
 	for (i = 0; i < smmu->num_global_irqs; ++i) {
