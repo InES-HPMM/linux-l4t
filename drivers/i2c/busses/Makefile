@@ -3,6 +3,7 @@
 #
 GCOV_PROFILE := y
 
+ccflags-y += -Werror
 # ACPI drivers
 obj-$(CONFIG_I2C_SCMI)		+= i2c-scmi.o
 
