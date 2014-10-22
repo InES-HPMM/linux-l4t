@@ -503,74 +503,6 @@ static struct as364x_platform_data t210ref_as3648_data = {
 	.gpio_strobe	= CAM_FLASH_STROBE,
 };
 
-static int t210ref_ov7695_power_on(struct ov7695_power_rail *pw)
-{
-	int err;
-
-	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd)))
-		return -EFAULT;
-
-	/* disable CSIE IOs DPD mode to turn on front camera for t210ref */
-	tegra_io_dpd_disable(&csie_io);
-
-	gpio_set_value(CAM1_PWDN, 0);
-	usleep_range(1000, 1020);
-
-	err = regulator_enable(pw->avdd);
-	if (unlikely(err))
-		goto ov7695_avdd_fail;
-	usleep_range(300, 320);
-
-	err = regulator_enable(pw->iovdd);
-	if (unlikely(err))
-		goto ov7695_iovdd_fail;
-	usleep_range(1000, 1020);
-
-	gpio_set_value(CAM1_PWDN, 1);
-	usleep_range(1000, 1020);
-
-	return 0;
-
-ov7695_iovdd_fail:
-	regulator_disable(pw->avdd);
-
-ov7695_avdd_fail:
-	gpio_set_value(CAM_RSTN, 0);
-	/* put CSIE IOs into DPD mode to save additional power for t210ref */
-	tegra_io_dpd_enable(&csie_io);
-	return -ENODEV;
-}
-
-static int t210ref_ov7695_power_off(struct ov7695_power_rail *pw)
-{
-	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd))) {
-		/* put CSIE IOs into DPD mode to
-		 * save additional power for t210ref
-		 */
-		tegra_io_dpd_enable(&csie_io);
-		return -EFAULT;
-	}
-	usleep_range(100, 120);
-
-	gpio_set_value(CAM1_PWDN, 0);
-	usleep_range(100, 120);
-
-	regulator_disable(pw->iovdd);
-	usleep_range(100, 120);
-
-	regulator_disable(pw->avdd);
-
-	/* put CSIE IOs into DPD mode to save additional power for t210ref */
-	tegra_io_dpd_enable(&csie_io);
-	return 0;
-}
-
-static struct ov7695_platform_data t210ref_ov7695_pdata = {
-	.power_on = t210ref_ov7695_power_on,
-	.power_off = t210ref_ov7695_power_off,
-	.mclk_name = "cam_mclk1",
-};
-
 static int t210ref_ov5693_power_on(struct ov5693_power_rail *pw)
 {
 	int err;
@@ -1053,7 +985,6 @@ static struct camera_data_blob t210ref_camera_lut[] = {
 	{"t210ref_ov5693_pdata", &t210ref_ov5693_pdata},
 	{"t210ref_ad5823_pdata", &t210ref_ad5823_pdata},
 	{"t210ref_as3648_pdata", &t210ref_as3648_data},
-	{"t210ref_ov7695_pdata", &t210ref_ov7695_pdata},
 	{"t210ref_ov5693f_pdata", &t210ref_ov5693_front_pdata},
 	{"t210ref_imx214_pdata", &t210ref_imx214_data},
 	{"t210ref_dw9714_pdata", &t210ref_dw9714_data},
