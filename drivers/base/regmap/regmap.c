@@ -1496,7 +1496,7 @@ int regmap_raw_read(struct regmap *map, unsigned int reg, void *val,
 	size_t val_bytes = map->format.val_bytes;
 	size_t val_count = val_len / val_bytes;
 	unsigned int v;
-	int ret, i;
+	int ret = -EINVAL, i;
 
 	if (!map->bus)
 		return -EINVAL;
