@@ -49,6 +49,8 @@
 
 #include <linux/amba/bus.h>
 
+#include <dt-bindings/memory/tegra-swgroup.h>
+
 #include <asm/pgalloc.h>
 #include <asm/dma-iommu.h>
 #include <asm/pgtable.h>
@@ -1812,6 +1814,7 @@ static int arm_smmu_add_device(struct device *dev)
 	struct iommu_group *group;
 	int ret;
 	struct dma_iommu_mapping *mapping;
+	u64 swgids = 0;
 
 	if (dev->archdata.iommu) {
 		dev_warn(dev, "IOMMU driver already assigned to device\n");
@@ -1839,6 +1842,7 @@ static int arm_smmu_add_device(struct device *dev)
 		}
 
 		cfg->num_streamids = 1;
+		swgids = TEGRA_SWGROUP_BIT(AFI);
 		/*
 		 * Assume Stream ID == Requester ID for now.
 		 * We need a way to describe the ID mappings in FDT.
@@ -1847,7 +1851,17 @@ static int arm_smmu_add_device(struct device *dev)
 				       &cfg->streamids[0]);
 		dev->archdata.iommu = cfg;
 	} else {
+		int i;
+		struct arm_smmu_master_cfg *cfg;
+
 		dev->archdata.iommu = smmu;
+		cfg = find_smmu_master_cfg(smmu, dev);
+		WARN_ON(!cfg);
+
+		for (i = 0; i < cfg->num_streamids; i++)
+			swgids |= BIT(cfg->streamids[i]);
+
+		dev_info(dev, "swgids=%llx\n", swgids);
 	}
 
 	ret = iommu_group_add_device(group, dev);
@@ -1856,8 +1870,8 @@ out_put_group:
 	if (ret)
 		return ret;
 
-	/* FIXME: specify IOVA range dynamically */
-	mapping = arm_iommu_create_mapping(&platform_bus_type, 0, UINT_MAX, 0);
+
+	mapping = tegra_smmu_of_get_mapping(dev, swgids, &smmu->asprops);
 	if (IS_ERR(mapping)) {
 		ret = PTR_ERR(mapping);
 		goto err_create_mapping;
