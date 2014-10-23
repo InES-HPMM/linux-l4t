@@ -45,7 +45,7 @@
 #include <linux/platform/tegra/common.h>
 #include "../nvdumper/nvdumper-footprint.h"
 
-#define DVFS_CLOCK_CHANGE_VERSION	2109
+#define DVFS_CLOCK_CHANGE_VERSION	21012
 #define EMC_PRELOCK_VERSION		2101
 
 /*
@@ -1567,8 +1567,8 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 	u32 zqcal_before_cc_cutoff = 2400; /* In picoseconds */
 	u32 ref_delay_mult;
 	u32 ref_delay;
-	u32 zq_latch_dvfs_wait_time;
-	u32 tZQCAL_lpddr4_fc_adj;
+	s32 zq_latch_dvfs_wait_time;
+	s32 tZQCAL_lpddr4_fc_adj;
 	/* Scaled by x1000 */
 	u32 tFC_lpddr4 = 1000 * next_timing->dram_timing_regs[T_FC_LPDDR4];
 	/* u32 tVRCG_lpddr4 = next_timing->dram_timing_regs[T_FC_LPDDR4]; */
@@ -1666,6 +1666,10 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 	u32 RP_war;
 	u32 R2P_war;
 	u32 TRPab_war;
+	s32 nRTP;
+	u32 deltaTWATM;
+	u32 W2P_war;
+	u32 tRPST;
 
 	static u32 fsp_for_next_freq;
 
@@ -1740,41 +1744,87 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 	emc_cc_dbg(SUB_STEPS, "Step 1.1: Bug 200024907 - Patch RP R2P");
 
 	if (opt_war_200024907) {
+		nRTP = 16;
+		if (source_clock_period >= 1000000/1866) /* 535.91 ps */
+			nRTP = 14;
+		if (source_clock_period >= 1000000/1600) /* 625.00 ps */
+			nRTP = 12;
+		if (source_clock_period >= 1000000/1333) /* 750.19 ps */
+			nRTP = 10;
+		if (source_clock_period >= 1000000/1066) /* 938.09 ps */
+			nRTP = 8;
+
+		deltaTWATM = max_t(u32, div_o3(7500, source_clock_period), 8);
+
+		/*
+		 * Originally there was a + .5 in the tRPST calculation.
+		 * However since we can't do FP in the kernel and the tRTM
+		 * computation was in a floating point ceiling function, adding
+		 * one to tRTP should be ok. There is no other source of non
+		 * integer values, so the result was always going to be
+		 * something for the form: f_ceil(N + .5) = N + 1;
+		 */
+		tRPST = ((last_timing->emc_mrw & 0x80) >> 7);
 		tRTM = fake_timing->dram_timing_regs[RL] +
 			div_o3(3600, source_clock_period) +
-			max_t(u32, div_o3(7500, source_clock_period), 8) + 16;
+			max_t(u32, div_o3(7500, source_clock_period), 8) +
+			tRPST + 1;
 
 		emc_cc_dbg(INFO, "tRTM = %u, EMC_RP = %u\n", tRTM,
 			   next_timing->burst_regs[EMC_RP_INDEX]);
 
 		if (last_timing->burst_regs[EMC_RP_INDEX] < tRTM) {
-			if (tRTM > 63) {
-				RP_war = 63;
-				TRPab_war = 63;
-				if ((tRTM - 63) >
-				    last_timing->burst_regs[EMC_R2P_INDEX])
-					R2P_war = tRTM-63;
-				else
-					R2P_war = last_timing->
-						burst_regs[EMC_R2P_INDEX];
+			if (tRTM > (last_timing->burst_regs[EMC_R2P_INDEX] +
+				    last_timing->burst_regs[EMC_RP_INDEX])) {
+				R2P_war = tRTM -
+					last_timing->burst_regs[EMC_RP_INDEX];
+				RP_war = last_timing->burst_regs[EMC_RP_INDEX];
+				TRPab_war =
+				       last_timing->burst_regs[EMC_TRPAB_INDEX];
+				if (R2P_war > 63) {
+					RP_war = R2P_war +
+						last_timing->burst_regs
+						[EMC_RP_INDEX] - 63;
+					if (TRPab_war < RP_war)
+						TRPab_war = RP_war;
+					R2P_war = 63;
+				}
 			} else {
 				R2P_war = last_timing->
 					burst_regs[EMC_R2P_INDEX];
-				RP_war = tRTM;
-				if (last_timing->burst_regs[EMC_TRPAB_INDEX] <
-				    RP_war) {
-					emc_cc_dbg(INFO, "Using RP_war\n");
-					TRPab_war = RP_war;
-				} else {
-					emc_cc_dbg(INFO, "Not using RP_war\n");
-					TRPab_war = last_timing->
-						burst_regs[EMC_TRPAB_INDEX];
-				}
+				RP_war = last_timing->burst_regs[EMC_RP_INDEX];
+				TRPab_war =
+				       last_timing->burst_regs[EMC_TRPAB_INDEX];
+			}
 
+			if (RP_war < deltaTWATM) {
+				W2P_war = last_timing->burst_regs[EMC_W2P_INDEX]
+					+ deltaTWATM - RP_war;
+				if (W2P_war > 63) {
+					RP_war = RP_war + W2P_war - 63;
+					if (TRPab_war < RP_war)
+						TRPab_war = RP_war;
+					W2P_war = 63;
+				}
+			} else {
+				W2P_war =
+					last_timing->burst_regs[EMC_W2P_INDEX];
+			}
+
+			if((last_timing->burst_regs[EMC_W2P_INDEX] ^ W2P_war) ||
+			   (last_timing->burst_regs[EMC_R2P_INDEX] ^ R2P_war) ||
+			   (last_timing->burst_regs[EMC_RP_INDEX] ^ RP_war) ||
+			   (last_timing->burst_regs[EMC_TRPAB_INDEX] ^
+			    TRPab_war)) {
+				emc_writel(RP_war, EMC_RP);
+				emc_writel(R2P_war, EMC_R2P);
+				emc_writel(W2P_war, EMC_W2P);
+				emc_writel(TRPab_war, EMC_TRPAB);
 			}
 
 			emc_writel(RP_war, EMC_RP);
 			emc_writel(R2P_war, EMC_R2P);
+			emc_writel(W2P_war, EMC_W2P);
 			emc_writel(TRPab_war, EMC_TRPAB);
 			emc_timing_update(DUAL_CHANNEL);
 		} else {
