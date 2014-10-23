@@ -954,6 +954,10 @@ static int predict_non_alt_millivolts(struct clk *c, const int *millivolts,
 	return max(millivolts[i], c->dvfs->dvfs_rail->min_millivolts);
 }
 
+/*
+ * Predict minimum voltage required to run target clock at specified rate
+ * along specified V/F relation.
+ */
 static int predict_millivolts(struct clk *c, const int *millivolts,
 			      unsigned long rate)
 {
@@ -969,10 +973,10 @@ static int predict_millivolts(struct clk *c, const int *millivolts,
 }
 
 /*
- * Predict minimum voltage required to run specified clock at target rate.
- * Evaluate individual clock domain V/F relation; does not apply thermal
- * floor. Should be used for core domains to evaluate per-clock voltage
- * requirements.
+ * Predict minimum voltage required to run target clock at specified rate.
+ * Evaluate target clock domain V/F relation, and apply proper PLL or
+ * DFLL table depending on specified rate range. Does not apply thermal floor.
+ * Should be used for core domains to evaluate per-clock voltage requirements.
  */
 int tegra_dvfs_predict_mv_at_hz_no_tfloor(struct clk *c, unsigned long rate)
 {
@@ -1000,8 +1004,10 @@ int tegra_dvfs_predict_mv_at_hz_no_tfloor(struct clk *c, unsigned long rate)
 EXPORT_SYMBOL(tegra_dvfs_predict_mv_at_hz_no_tfloor);
 
 /*
- * Predict minimum voltage required to run specified clock at target rate
- * including effect of thermal floor at current temperature.
+ * Predict minimum voltage required to run target clock at specified rate.
+ * Evaluate target clock domain V/F relation, and apply proper PLL or
+ * DFLL table depending on specified rate range. Apply thermal floor at current
+ * temperature.
  */
 int tegra_dvfs_predict_mv_at_hz_cur_tfloor(struct clk *c, unsigned long rate)
 {
@@ -1033,8 +1039,10 @@ int tegra_dvfs_predict_mv_at_hz_cur_tfloor(struct clk *c, unsigned long rate)
 EXPORT_SYMBOL(tegra_dvfs_predict_mv_at_hz_cur_tfloor);
 
 /*
- * Predict minimum voltage required to run specified clock at target rate
- * including effect of thermal floors across all temperature ranges.
+ * Predict minimum voltage required to run target clock at specified rate.
+ * Evaluate target clock domain V/F relation, and apply proper PLL or
+ * DFLL table depending on specified rate range. Apply maximum thermal floor
+ * across all temperature ranges.
  */
 static int dvfs_predict_mv_at_hz_max_tfloor(struct clk *c, unsigned long rate)
 {
@@ -1070,6 +1078,7 @@ int tegra_dvfs_predict_mv_at_hz_max_tfloor(struct clk *c, unsigned long rate)
 
 	return mv;
 }
+EXPORT_SYMBOL(tegra_dvfs_predict_mv_at_hz_max_tfloor);
 
 /* Set DVFS rate and update voltage accordingly */
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)
