@@ -11,5 +11,6 @@ obj-$(CONFIG_VIDEO_CAMERA)		+= debugfs.o
 obj-$(CONFIG_VIDEO_CAMERA)		+= virtual.o
 obj-$(CONFIG_VIDEO_CAMERA)		+= of_camera.o
 obj-$(CONFIG_VIDEO_CAMERA)		+= auto_detect.o
+obj-$(CONFIG_VIDEO_CAMERA)		+= camera_gpio.o
 obj-$(CONFIG_CAMERA_DEV_AS364X)		+= as364x.o
 obj-$(CONFIG_CAMERA_DEV_IMX135)		+= imx135.o

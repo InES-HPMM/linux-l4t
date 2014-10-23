@@ -33,6 +33,7 @@
 #include <media/ov5693.h>
 #include <media/nvc.h>
 #include "regmap_util.h"
+#include "cam_dev/camera_gpio.h"
 
 #define OV5693_ID			0x5693
 #define OV5693_SENSOR_TYPE		NVC_IMAGER_TYPE_RAW
@@ -2475,7 +2476,7 @@ static int ov5693_gpio_rd(struct ov5693_info *info,
 	if (info->gpio[type].gpio) {
 		val = gpio_get_value_cansleep(info->gpio[type].gpio);
 		dev_dbg(&info->i2c_client->dev, "%s %u %d\n", __func__,
-		       info->gpio[type].gpio, val);
+			 info->gpio[type].gpio, val);
 		if (!info->gpio[type].active_high)
 			val = !val;
 		val &= 1;
@@ -2489,15 +2490,22 @@ static int ov5693_gpio_wr(struct ov5693_info *info,
 {
 	int err = -EINVAL;
 
-	if (info->gpio[type].gpio) {
-		if (!info->gpio[type].active_high)
-			val = !val;
+	if (!info->gpio[type].gpio)
+		return err;
+
+	if (info->pdata->use_cam_gpio) {
+		err = cam_gpio_ctrl(info->i2c_client,
+			 info->gpio[type].gpio, val,
+			 info->gpio[type].active_high);
+	} else {
+		val = info->gpio[type].active_high ? val : !val;
 		val &= 1;
 		err = val;
 		gpio_set_value_cansleep(info->gpio[type].gpio, val);
 		dev_dbg(&info->i2c_client->dev, "%s %u %d\n", __func__,
-		       info->gpio[type].gpio, val);
+			 info->gpio[type].gpio, val);
 	}
+
 	return err; /* return value written or error */
 }
 
@@ -2506,7 +2514,7 @@ static void ov5693_gpio_pwrdn(struct ov5693_info *info, int val)
 	int prev_val;
 
 	prev_val = ov5693_gpio_rd(info, OV5693_GPIO_TYPE_PWRDN);
-	if ((prev_val < 0) || (val == prev_val))
+	if (prev_val < 0)
 		return;
 
 	ov5693_gpio_wr(info, OV5693_GPIO_TYPE_PWRDN, val);
@@ -2520,7 +2528,7 @@ static void ov5693_gpio_reset(struct ov5693_info *info, int val)
 	int prev_val;
 
 	prev_val = ov5693_gpio_rd(info, OV5693_GPIO_TYPE_RESET);
-	if ((prev_val < 0) || (val == prev_val))
+	if (prev_val < 0)
 		return;
 
 	ov5693_gpio_wr(info, OV5693_GPIO_TYPE_RESET, val);
@@ -2535,6 +2543,9 @@ static void ov5693_gpio_exit(struct ov5693_info *info)
 
 	for (i = 0; i < ARRAY_SIZE(ov5693_gpio); i++) {
 		if (info->gpio[i].gpio && info->gpio[i].own)
+			if (info->pdata->use_cam_gpio)
+				cam_gpio_deregister(info->i2c_client,
+					 info->gpio[i].gpio);
 			gpio_free(info->gpio[i].gpio);
 	}
 }
@@ -2573,6 +2584,16 @@ static void ov5693_gpio_init(struct ov5693_info *info)
 			else
 				flags = GPIOF_OUT_INIT_HIGH;
 		}
+
+		if (info->pdata->use_cam_gpio) {
+			err = cam_gpio_register(
+				 info->i2c_client, info->gpio[type].gpio);
+			if (err)
+				dev_err(&info->i2c_client->dev,
+					 "%s ERR can't register cam gpio %u!\n",
+					 __func__, info->gpio[type].gpio);
+		}
+
 		if (!info->pdata->gpio[j].init_en)
 			continue;
 
@@ -3326,10 +3347,6 @@ static int ov5693_platform_power_on(struct ov5693_power_rail *pw)
 			goto ov5693_vcm_fail;
 	}
 
-	ov5693_gpio_pwrdn(info, 0);
-	ov5693_gpio_reset(info, 0);
-	usleep_range(10, 20);
-
 	err = regulator_enable(pw->avdd);
 	if (err)
 		goto ov5693_avdd_fail;
@@ -3460,6 +3477,8 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 				"reset-gpios", OV5693_GPIO_TYPE_RESET,
 				&gpio_pdata[pdata->gpio_count]);
 	pdata->gpio = gpio_pdata;
+
+	pdata->use_cam_gpio = of_property_read_bool(np, "cam,use-cam-gpio");
 
 	/* MCLK clock info */
 	of_property_read_string(np, "clocks", &pdata->mclk_name);
