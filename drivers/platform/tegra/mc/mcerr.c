@@ -135,6 +135,13 @@ static const struct mc_error mc_errors[] = {
 	       MC_ERR_GENERALIZED_CARVEOUT_ADR),
 #endif
 
+	/*
+	 * Miscellaneous errors.
+	 */
+	MC_ERR(MC_INT_INVALID_APB_ASID_UPDATE,
+	       "invalid APB ASID update", 0,
+	       MC_ERR_STATUS, MC_ERR_ADR),
+
 	/* NULL terminate. */
 	MC_ERR(0, NULL, 0, 0, 0),
 };
