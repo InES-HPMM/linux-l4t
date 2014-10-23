@@ -554,6 +554,7 @@
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
 				cam2-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
+				cam,use-cam-gpio;
 			};
 			ov5693@b_0036 {
 				use_of_node = "yes";
@@ -562,6 +563,7 @@
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
 				cam2-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
+				cam,use-cam-gpio;
 			};
 			ov5693@c_0036 {
 				use_of_node = "yes";
@@ -570,6 +572,7 @@
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
 				cam2-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
+				cam,use-cam-gpio;
 			};
 			ov5693@d_0036 {
 				use_of_node = "yes";
@@ -578,6 +581,7 @@
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
 				cam2-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
+				cam,use-cam-gpio;
 			};
 			ov5693@e_0036 {
 				use_of_node = "yes";
@@ -586,6 +590,7 @@
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
 				cam2-gpios = <&gpio TEGRA_GPIO(Z, 3) 0>;
+				cam,use-cam-gpio;
 			};
 			ov5693@f_0036 {
 				use_of_node = "yes";
@@ -594,6 +599,7 @@
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
 				cam2-gpios = <&gpio TEGRA_GPIO(T, 1) 0>;
+				cam,use-cam-gpio;
 			};
 		};
 	};
