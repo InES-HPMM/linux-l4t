@@ -189,10 +189,10 @@
 
 	sata@70020000 {
 		hvdd_sata-supply = <&max77620_sd3>;
-		vddio_pex_sata-supply = <&max77620_sd3>;
-		avdd_sata-supply = <&max77620_sd3>;
-		vdd_sata-supply = <&max77620_ldo8>;
-		avdd_sata_pll-supply = <&max77620_ldo8>;
+		hvdd_pex_pll_e-supply = <&max77620_sd3>;
+		l0_hvddio_sata-supply = <&max77620_sd3>;
+		l0_dvddio_sata-supply = <&max77620_ldo8>;
+		dvdd_sata_pll-supply = <&max77620_ldo8>;
 	};
 
 	bluedroid_pm {
