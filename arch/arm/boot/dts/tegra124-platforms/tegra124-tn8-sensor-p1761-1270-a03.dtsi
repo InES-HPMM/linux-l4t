@@ -30,8 +30,8 @@
 			compatible = "capella,cm3217";
 			reg = <0x10>;
 			vdd-supply = <&palmas_smps9>;
-			illuminance,resolution = "7675";
-			illuminance,max-range  = "603193.3";
+			illuminance,resolution = "8740";
+			illuminance,max-range  = "681613.7";
 			illuminance,power-consumed = "0.09";
 			light_uncalibrated_lo = <0>;
 			light_calibrated_lo = <16>;
