@@ -130,6 +130,10 @@ obj-${CONFIG_MACH_P1859}                += board-p1859.o
 obj-${CONFIG_MACH_P1859}                += board-p1859-power.o
 obj-${CONFIG_MACH_P1859}                += board-p1859-audio.o
 
+obj-${CONFIG_MACH_P1889}                += board-p1889.o
+obj-${CONFIG_MACH_P1889}                += board-p1889-power.o
+obj-${CONFIG_MACH_P1889}                += board-p1889-audio.o
+
 obj-${CONFIG_MACH_P2360}                += board-p2360.o
 obj-${CONFIG_MACH_P2360}                += board-p2360-power.o
 

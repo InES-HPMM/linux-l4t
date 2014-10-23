@@ -210,6 +210,7 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-android-p1859.dtb \
 	tegra124-android-p1859-vm_1.dtb \
 	tegra124-ardbeg-p1859-hdmiprimary.dtb \
+	tegra124-android-p1889.dtb \
 	tegra124-laguna.dtb \
 	tegra124-laguna-pm358.dtb \
 	tegra124-jetson_tk1-pm375-000-c00-00.dtb \
@@ -252,6 +253,7 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-p1859.dtb \
 	tegra124-p1859-vm_1.dtb \
 	tegra124-p1859-vm_2.dtb \
+	tegra124-p1889.dtb \
 	tegra124-p2360.dtb
 dtb-$(CONFIG_ARCH_VERSATILE) += versatile-ab.dtb \
 	versatile-pb.dtb

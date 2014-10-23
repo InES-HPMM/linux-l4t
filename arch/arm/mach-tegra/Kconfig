@@ -186,6 +186,16 @@ config MACH_P1859
        help
          Support for NVIDIA P1859-Jetson Automotive Development platform
 
+config MACH_P1889
+       bool "P1889-UCC(Automotive) board"
+       depends on ARCH_TEGRA_VCM30T124
+       help
+         Support for NVIDIA P1889-UCC Automotive Development platform.
+         UCC means Unified Car Computer. This is a comprehensive
+         platform to cover cluster, IVI(In-Vehicle Infotainment) and
+         ADAS(Advanced driver asistance systems) for whole-vehicle
+         experience.
+
 config MACH_LAGUNA
 	 bool "LAGUNA board"
 	 depends on ARCH_TEGRA_12x_SOC || ARCH_TEGRA_11x_SOC
