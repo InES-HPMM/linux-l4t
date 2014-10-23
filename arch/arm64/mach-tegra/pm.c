@@ -154,6 +154,9 @@ struct suspend_context tegra_sctx;
 #define PMC_IO_DPD_REQ          0x1B8
 #define PMC_IO_DPD2_REQ         0x1C0
 
+#define PMC_CTRL2		0x440
+#define PMC_ALLOW_PULSE_WAKE	BIT(14)
+
 #define PMC_WAKE_STATUS		0x14
 #define PMC_SW_WAKE_STATUS	0x18
 #define PMC_COREPWRGOOD_TIMER	0x3c
@@ -1243,6 +1246,12 @@ out:
 				"disabling LP0\n", __func__);
 		current_suspend_mode = TEGRA_SUSPEND_LP2;
 	}
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	reg = readl(pmc + PMC_CTRL2);
+	reg |= PMC_ALLOW_PULSE_WAKE;
+	pmc_32kwritel(reg, PMC_CTRL2);
 #endif
 
 	/* Always enable CPU power request; just normal polarity is supported */
