@@ -2363,8 +2363,8 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 		   destination_clock_period);
 	emc_cc_dbg(INFO, "next_timing->dram_timing_regs[T_PDEX] = %u\n",
 		   next_timing->dram_timing_regs[T_PDEX]);
-	emc_cc_dbg(INFO, "zq_latch_dvfs_wait_time = %u\n",
-		   zq_latch_dvfs_wait_time);
+	emc_cc_dbg(INFO, "zq_latch_dvfs_wait_time = %d\n",
+		   max_t(s32, 0, zq_latch_dvfs_wait_time));
 
 	if (dram_type == DRAM_TYPE_LPDDR4 && opt_zcal_en_cc) {
 		if (dram_dev_num == ONE_RANK) {
@@ -2384,7 +2384,8 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 			ccfifo_writel(0, EMC_REF, 0);
 			ccfifo_writel(2 << EMC_ZQ_CAL_DEV_SEL_SHIFT |
 				      EMC_ZQ_CAL_ZQ_LATCH_CMD,
-				      EMC_ZQ_CAL, zq_latch_dvfs_wait_time);
+				      EMC_ZQ_CAL,
+				      max_t(s32, 0, zq_latch_dvfs_wait_time));
 		} else if (shared_zq_resistor) {
 			if (source_clock_period > zqcal_before_cc_cutoff)
 				ccfifo_writel(2 << EMC_ZQ_CAL_DEV_SEL_SHIFT |
@@ -2395,7 +2396,7 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 
 			ccfifo_writel(2 << EMC_ZQ_CAL_DEV_SEL_SHIFT |
 				  EMC_ZQ_CAL_ZQ_LATCH_CMD, EMC_ZQ_CAL,
-				  zq_latch_dvfs_wait_time +
+				  max_t(s32, 0, zq_latch_dvfs_wait_time) +
 				  div_o3(1000 *
 					 next_timing->dram_timing_regs[T_PDEX],
 					 destination_clock_period));
@@ -2430,7 +2431,7 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 			ccfifo_writel(0, EMC_REF, 0);
 
 			ccfifo_writel(EMC_ZQ_CAL_ZQ_LATCH_CMD, EMC_ZQ_CAL,
-				      zq_latch_dvfs_wait_time);
+				      max_t(s32, 0, zq_latch_dvfs_wait_time));
 		}
 	}
 
