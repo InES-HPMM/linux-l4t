@@ -224,12 +224,11 @@ void of_gpiochip_init(struct gpio_chip *chip)
 	struct device_node *np_config;
 	int state;
 	const char *statename;
-	const __be32 *gpio_nr;
-	int ngpios;
-	unsigned int plen;
-	int offset;
+	int ret, count;
+	unsigned int pval;
+	bool found;
 	int i;
-
+	
 	if (!chip->of_node)
 		return;
 
@@ -239,40 +238,45 @@ void of_gpiochip_init(struct gpio_chip *chip)
 		if (!of_device_is_available(np_config))
 			continue;
 
-		statename = NULL;
-		/* Determine whether gpio-init-names property names the state */
-		of_property_read_string_index(np, "gpio-init-names",
+		found = false;
+
+		count = of_property_count_u32(np_config, "gpio-input");
+		for (i = 0; i < count; ++i) {
+			found = true;
+			ret = of_property_read_u32_index(np_config,
+					"gpio-input", i, &pval);
+			if (!ret)
+				chip->direction_input(chip, pval);
+		}
+
+		count = of_property_count_u32(np_config, "gpio-output-low");
+		for (i = 0; i < count; ++i) {
+			found = true;
+			ret = of_property_read_u32_index(np_config,
+					"gpio-output-low", i, &pval);
+			if (!ret)
+				chip->direction_output(chip, pval, 0);
+		}
+
+		count = of_property_count_u32(np_config, "gpio-output-high");
+		for (i = 0; i < count; ++i) {
+			found = true;
+			ret = of_property_read_u32_index(np_config,
+					"gpio-output-high", i, &pval);
+			if (!ret)
+				chip->direction_output(chip, pval, 1);
+		}
+
+		if (found) {
+			statename = NULL;
+			/* Determine whether gpio-init-names property names the state */
+			of_property_read_string_index(np, "gpio-init-names",
 						    state, &statename);
 
-		dev_info(chip->dev, "Initialising GPIO state %d: name %s\n",
-			state, (statename) ? statename : np_config->name);
-
-		gpio_nr = of_get_property(np_config, "gpio-input", &plen);
-		if (gpio_nr) {
-			ngpios = plen/sizeof(u32);
-			for (i = 0; i < ngpios; ++i) {
-				offset = be32_to_cpup(gpio_nr + i);
-				chip->direction_input(chip, offset);
-			}
+			dev_info(chip->dev, "Initialising GPIO state %d: name %s\n",
+				state, (statename) ? statename : np_config->name);
 		}
 
-		gpio_nr = of_get_property(np_config, "gpio-output-low", &plen);
-		if (gpio_nr) {
-			ngpios = plen/sizeof(u32);
-			for (i = 0; i < ngpios; ++i) {
-				offset = be32_to_cpup(gpio_nr + i);
-				chip->direction_output(chip, offset, 0);
-			}
-		}
-
-		gpio_nr = of_get_property(np_config, "gpio-output-high", &plen);
-		if (gpio_nr) {
-			ngpios = plen/sizeof(u32);
-			for (i = 0; i < ngpios; ++i) {
-				offset = be32_to_cpup(gpio_nr + i);
-				chip->direction_output(chip, offset, 1);
-			}
-		}
 		of_node_put(np_config);
 		state++;
 	}
