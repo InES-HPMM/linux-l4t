@@ -6655,7 +6655,7 @@ static struct clk tegra_pll_p_out1 = {
 static struct clk tegra_pll_p_out2 = {
 	.name      = "pll_p_out2",
 	.ops       = &tegra_pll_div_ops,
-	.flags     = DIV_U71 | DIV_U71_FIXED | DIV_U71_INT,
+	.flags     = DIV_U71 | DIV_U71_FIXED,
 	.parent    = &tegra_pll_p,
 	.reg       = 0xa4,
 	.reg_shift = 16,
@@ -9800,9 +9800,14 @@ void __init tegra12x_init_clocks(void)
 	int i;
 	struct clk *c;
 
-	/* Allow host1x fractional divider for Automotive SKUs */
-	if (!tegra_is_soc_automotive_speedo())
+	/*
+	 * Don't allow fractional divider for these clocks on
+	 * non-vcm30t124 platform
+	 */
+	if (!tegra_is_soc_automotive_speedo()) {
 		tegra_clk_host1x.flags |= DIV_U71_INT;
+		tegra_pll_p_out2.flags |= DIV_U71_INT;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(tegra_ptr_clks); i++)
 		tegra12_init_one_clock(tegra_ptr_clks[i]);
