@@ -343,11 +343,11 @@ static struct t210_idle_state t210_idle_states[CPUIDLE_STATE_MAX] = {
 	[1] = { /* C3 */
 		.cluster = {
 			[0] = {
-				.residency = 10,
+				.residency = 1,
 				.latency = 10,
 			},
 			[1] = {
-				.residency = 10,
+				.residency = 1,
 				.latency = 10,
 			},
 		},
@@ -356,12 +356,12 @@ static struct t210_idle_state t210_idle_states[CPUIDLE_STATE_MAX] = {
 	[2] = { /* C4 */
 		.cluster = {
 			[0] = {
-				.residency = 20,
-				.latency = 20,
+				.residency = 500,
+				.latency = 140,
 			},
 			[1] = {
-				.residency = 20,
-				.latency = 20,
+				.residency = 500,
+				.latency = 140,
 			},
 		},
 		.enter = tegra210_enter_retention,
@@ -369,12 +369,12 @@ static struct t210_idle_state t210_idle_states[CPUIDLE_STATE_MAX] = {
 	[3] = { /* C7 */
 		.cluster = {
 			[0] = {
-				.residency = 200,
-				.latency = 100,
+				.residency = 1000,
+				.latency = 130,
 			},
 			[1] = {
-				.residency = 200,
-				.latency = 100,
+				.residency = 1000,
+				.latency = 130,
 			},
 		},
 		.enter = tegra210_enter_c7,
@@ -382,12 +382,12 @@ static struct t210_idle_state t210_idle_states[CPUIDLE_STATE_MAX] = {
 	[4] = { /* CC6 */
 		.cluster = {
 			[0] = {
-				.residency = 800,
-				.latency = 200,
+				.residency = 50000,
+				.latency = 230,
 			},
 			[1] = {
-				.residency = 500,
-				.latency = 100,
+				.residency = 50000,
+				.latency = 230,
 			},
 		},
 		.enter = tegra210_enter_cc6,
