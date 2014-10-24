@@ -44,6 +44,7 @@
 #include <linux/tegra_pm_domains.h>
 #include "nvxxx.h"
 #include "../../../arch/arm/mach-tegra/iomap.h"
+#include <linux/tegra_prod.h>
 
 static const char const driver_name[] = "tegra-xudc";
 static struct nv_udc_s *the_controller;
@@ -4770,6 +4771,7 @@ static int nvudc_plat_mmio_regs_init(struct nv_udc_s *nvudc)
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
+	resource_size_t size;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -4811,6 +4813,25 @@ static int nvudc_plat_mmio_regs_init(struct nv_udc_s *nvudc)
 		msg_err(dev, "failed to request and map ipfs mmio\n");
 		return -EFAULT;
 	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
+	if (!res) {
+		msg_err(dev, "failed to get padctl mmio resources\n");
+		return -ENXIO;
+	}
+	msg_info(dev, "padctl mmio start %pa end %pa\n",
+						&res->start, &res->end);
+	size = resource_size(res);
+	nvudc->padctl = devm_ioremap_nocache(dev, res->start, size);
+	if (!nvudc->padctl) {
+		msg_err(dev, "failed to map padctl mmio\n");
+		return -EFAULT;
+	}
+
+	nvudc->base_list[0] = nvudc->base;
+	nvudc->base_list[1] = nvudc->fpci;
+	nvudc->base_list[2] = nvudc->ipfs;
+	nvudc->base_list[3] = nvudc->padctl;
 
 	return 0;
 }
@@ -5099,22 +5120,42 @@ static int nvudc_get_bdata(struct nv_udc_s *nvudc)
 	return 0;
 }
 
-static void t210_program_ss_pad(int port)
+static void t210_program_ss_pad(struct nv_udc_s *nvudc, int port)
 {
+	struct platform_device *pdev = nvudc->pdev.plat;
+	struct device_node *node = pdev->dev.of_node;
+	char prod_name[] = "prod_c_ssX";
+	int err = 0;
+
+	nvudc->prod_list = tegra_prod_init(node);
+	if (IS_ERR(nvudc->prod_list)) {
+		msg_warn(nvudc->dev, "prod list init failed with error %d\n",
+			PTR_ERR(nvudc->prod_list));
+		nvudc->prod_list = NULL;
+		goto safesettings;
+	}
+
+	snprintf(prod_name, sizeof(prod_name), "prod_c_ss%d", port);
+	err = tegra_prod_set_by_name(&nvudc->base_list,
+					prod_name, nvudc->prod_list);
+	if (err) {
+		msg_warn(nvudc->dev, "prod set failed\n");
+		goto safesettings;
+	}
+
+	return;
+
+safesettings:
 	tegra_usb_pad_reg_update(UPHY_USB3_PAD_ECTL_1(port),
-			TX_TERM_CTRL(~0), TX_TERM_CTRL(0x2));
-
+		TX_TERM_CTRL(~0), TX_TERM_CTRL(0x2));
 	tegra_usb_pad_reg_update(UPHY_USB3_PAD_ECTL_2(port),
-			RX_CTLE(~0), RX_CTLE(0xfc));
-
+		RX_CTLE(~0), RX_CTLE(0xfc));
 	tegra_usb_pad_reg_update(UPHY_USB3_PAD_ECTL_3(port),
-			RX_DFE(~0), RX_DFE(0xc0077f1f));
-
+		RX_DFE(~0), RX_DFE(0xc0077f1f));
 	tegra_usb_pad_reg_update(UPHY_USB3_PAD_ECTL_4(port),
-			RX_CDR_CTRL(~0), RX_CDR_CTRL(0x1c7));
-
+		RX_CDR_CTRL(~0), RX_CDR_CTRL(0x1c7));
 	tegra_usb_pad_reg_update(UPHY_USB3_PAD_ECTL_6(port),
-			RX_EQ_CTRL_H(~0), RX_EQ_CTRL_H(0xfcf01368));
+		RX_EQ_CTRL_H(~0), RX_EQ_CTRL_H(0xfcf01368));
 }
 
 static int nvudc_plat_pad_init(struct nv_udc_s *nvudc)
@@ -5150,7 +5191,7 @@ static int nvudc_plat_pad_init(struct nv_udc_s *nvudc)
 	xusb_ss_pad_init(ss_port, 0x0, XUSB_OTG_MODE);
 
 	if (is_ss_port_enabled)
-		t210_program_ss_pad(ss_port);
+		t210_program_ss_pad(nvudc, ss_port);
 
 	tegra_xhci_ss_wake_signal((1 << ss_port), false);
 	tegra_xhci_ss_vcore((1 << ss_port), false);
@@ -5397,6 +5438,8 @@ static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 		if (pex_usb_pad_pll_reset_assert())
 			pr_err("Fail to assert pex pll\n");
 		nvudc_plat_regulator_deinit(nvudc);
+		if (nvudc->prod_list)
+			tegra_prod_release(&nvudc->prod_list);
 		extcon_unregister_notifier(nvudc->vbus_extcon_dev,
 			&nvudc->vbus_extcon_nb);
 		extcon_unregister_notifier(nvudc->id_extcon_dev,

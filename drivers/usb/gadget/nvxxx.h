@@ -619,6 +619,7 @@ struct nv_udc_s {
 	void __iomem *base;
 	void __iomem *ipfs;
 	void __iomem *fpci;
+	void __iomem *padctl;
 
 	/* clocks */
 	struct clk *pll_u_480M;
@@ -649,6 +650,9 @@ struct nv_udc_s {
 
 	/* otg work, will be moved to OTG driver */
 	struct work_struct work;
+
+	struct tegra_prod_list *prod_list;
+	void __iomem *base_list[4];
 };
 
 void free_data_struct(struct nv_udc_s *nvudc);
