@@ -33,9 +33,8 @@
 	};
 
 	sdhci@700b0600 {
-		uhs-mask = <0x40>;
+		uhs-mask = <0x60>;
 		built-in;
-		pll_source = "pll_p", "pll_c4_out2";
 		power-off-rail;
 		status = "okay";
 	};

@@ -4519,7 +4519,6 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 	.nvquirks = TEGRA_SDHCI_NVQUIRKS |
 		    NVQUIRK_SET_TRIM_DELAY |
 		    NVQUIRK_ENABLE_DDR50 |
-		    NVQUIRK_ENABLE_HS200 |
 		    NVQUIRK_ENABLE_AUTO_CMD23 |
 		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
 		    NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD |
