@@ -220,6 +220,7 @@ struct tegra_i2c_dev {
 	bool is_suspended;
 	u16 slave_addr;
 	bool is_clkon_always;
+	bool is_interruptable_xfer;
 	bool is_high_speed_enable;
 	u16 hs_master_code;
 	u16 clk_divisor_non_hs_mode;
@@ -289,26 +290,34 @@ static void i2c_writesl(struct tegra_i2c_dev *i2c_dev, void *data,
 	unsigned long reg, int len)
 {
 	u32 *buf = data;
-	unsigned long flags;
+	unsigned long flags = 0;
 
-	spin_lock_irqsave(&i2c_dev->mem_lock, flags);
+	if (!i2c_dev->is_interruptable_xfer)
+		spin_lock_irqsave(&i2c_dev->mem_lock, flags);
+
 	while (len--)
 		writel(*buf++, i2c_dev->base +
 					tegra_i2c_reg_addr(i2c_dev, reg));
-	spin_unlock_irqrestore(&i2c_dev->mem_lock, flags);
+
+	if (!i2c_dev->is_interruptable_xfer)
+		spin_unlock_irqrestore(&i2c_dev->mem_lock, flags);
 }
 
 static void i2c_readsl(struct tegra_i2c_dev *i2c_dev, void *data,
 	unsigned long reg, int len)
 {
 	u32 *buf = data;
-	unsigned long flags;
+	unsigned long flags = 0;
 
-	spin_lock_irqsave(&i2c_dev->mem_lock, flags);
+	if (!i2c_dev->is_interruptable_xfer)
+		spin_lock_irqsave(&i2c_dev->mem_lock, flags);
+
 	while (len--)
 		*buf++ = readl(i2c_dev->base +
 					tegra_i2c_reg_addr(i2c_dev, reg));
-	spin_unlock_irqrestore(&i2c_dev->mem_lock, flags);
+
+	if (!i2c_dev->is_interruptable_xfer)
+		spin_unlock_irqrestore(&i2c_dev->mem_lock, flags);
 }
 
 static inline void tegra_i2c_gpio_setscl(void *data, int state)
@@ -819,11 +828,13 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 	if (!i2c_dev->msg_read && (status & I2C_INT_TX_FIFO_DATA_REQ)) {
 		if (i2c_dev->msg_buf_remaining) {
 
-			spin_lock_irqsave(&i2c_dev->fifo_lock, flags);
+			if (!i2c_dev->is_interruptable_xfer)
+				spin_lock_irqsave(&i2c_dev->fifo_lock, flags);
 
 			tegra_i2c_fill_tx_fifo(i2c_dev);
 
-			spin_unlock_irqrestore(&i2c_dev->fifo_lock, flags);
+			if (!i2c_dev->is_interruptable_xfer)
+				spin_unlock_irqrestore(&i2c_dev->fifo_lock, flags);
 
 		}
 		else
@@ -966,7 +977,8 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 	i2c_dev->msg_read = (msg->flags & I2C_M_RD);
 	INIT_COMPLETION(i2c_dev->msg_complete);
 
-	spin_lock_irqsave(&i2c_dev->fifo_lock, flags);
+	if (!i2c_dev->is_interruptable_xfer)
+		spin_lock_irqsave(&i2c_dev->fifo_lock, flags);
 
 	cnfg = I2C_CNFG_NEW_MASTER_FSM | I2C_CNFG_PACKET_MODE_EN;
 	if (!i2c_dev->is_high_speed_enable)
@@ -1060,7 +1072,8 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 			i2c_dev->chipdata->has_xfer_complete_interrupt))
 		int_mask |= I2C_INT_ALL_PACKETS_XFER_COMPLETE;
 
-	spin_unlock_irqrestore(&i2c_dev->fifo_lock, flags);
+	if (!i2c_dev->is_interruptable_xfer)
+		spin_unlock_irqrestore(&i2c_dev->fifo_lock, flags);
 
 	tegra_i2c_unmask_irq(i2c_dev, int_mask);
 
@@ -1358,6 +1371,8 @@ static struct tegra_i2c_platform_data *parse_i2c_tegra_dt(
 		pdata->is_high_speed_enable = true;
 	}
 
+	pdata->is_interruptable_xfer = of_property_read_bool(np,
+					"nvidia,interruptable-transfer");
 	pdata->needs_cl_dvfs_clock = of_property_read_bool(np,
 					"nvidia,require-cldvfs-clock");
 
@@ -1550,6 +1565,7 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 
 	i2c_dev->chipdata = chip_data;
 	i2c_dev->needs_cl_dvfs_clock = pdata->needs_cl_dvfs_clock;
+	i2c_dev->is_interruptable_xfer = pdata->is_interruptable_xfer;
 
 	div_clk = devm_clk_get(&pdev->dev, "div-clk");
 	if (IS_ERR(div_clk)) {
