@@ -676,3 +676,8 @@ config MMC_PM_DOMAIN
 	  If you say Y here, the MMC layer PM domain will be enabled
 	  for  SD/MMC device.
 
+config CMD_DUMP
+	bool "MMC Command Dump for debugging"
+	default n
+	help
+		use mmc command dump for debug

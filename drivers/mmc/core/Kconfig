@@ -51,3 +51,22 @@ config MMC_FREQ_SCALING
 	  device frequency dynamically. Enable this config only if
 	  there is a custom implementation to determine the frequency
 	  using the device stats.
+
+config EMMC_BLKTRACE
+	bool "eMMC blktrace"
+	default n
+	help
+	  eMMC block trace support
+
+config TRACE_MINIMIZING
+	bool "Blktrace minimizing for test"
+	default n
+	help
+		If you take some tests for App loading performance time,
+		use this configuration & see blktrace.
+
+config GC_SEPARATE
+	bool "Using delay GC Separate for cpu usage"
+	default n
+	help
+		If you don't select this option, it will be operated by timer.

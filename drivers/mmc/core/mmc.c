@@ -24,6 +24,8 @@
 #include "mmc_ops.h"
 #include "sd_ops.h"
 
+extern void mmc_wait_cmdq_empty(struct mmc_host *);
+
 static const unsigned int tran_exp[] = {
 	10000,		100000,		1000000,	10000000,
 	0,		0,		0,		0
@@ -43,7 +45,7 @@ static const unsigned int tacc_mant[] = {
 	35,	40,	45,	50,	55,	60,	70,	80,
 };
 
-#define UNSTUFF_BITS(resp,start,size)					\
+#define UNSTUFF_BITS(resp, start, size)					\
 	({								\
 		const int __size = size;				\
 		const u32 __mask = (__size < 32 ? 1 << __size : 0) - 1;	\
@@ -580,6 +582,18 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 
 	/* eMMC v5 or later */
 	if (card->ext_csd.rev >= 7) {
+		card->ext_csd.cmdq_support = ext_csd[EXT_CSD_CMDQ_SUPPORT];
+	/*
+	 * Set card->ext_csd.cmdq_support to 0 to disable CQ.
+	 */
+		card->ext_csd.cmdq_support = 0; /* Disabling CQ now (re-eanble after QA) */
+
+		if (card->ext_csd.cmdq_support) {
+			card->ext_csd.cmdq_depth = ext_csd[EXT_CSD_CMDQ_DEPTH];
+			card->ext_csd.qrdy_support = 1;
+			card->ext_csd.qrdy_function =
+				ext_csd[EXT_CSD_CMDQ_QRDY_FUNCTION];
+		}
 		card->ext_csd.ffu_capable =
 			((ext_csd[EXT_CSD_SUPPORTED_MODE] & 1) == 1) &&
 			((ext_csd[EXT_CSD_FW_CONFIG] & 1) == 0);
@@ -675,6 +689,30 @@ MMC_DEV_ATTR(enhanced_area_size, "%u\n", card->ext_csd.enhanced_area_size);
 MMC_DEV_ATTR(raw_rpmb_size_mult, "%#x\n", card->ext_csd.raw_rpmb_size_mult);
 MMC_DEV_ATTR(rel_sectors, "%#x\n", card->ext_csd.rel_sectors);
 
+#ifdef CONFIG_CMD_DUMP
+extern void mmc_cmd_dump(struct mmc_host *host);
+extern void mmc_areq_state_dump(struct mmc_request *mrq, struct mmc_host *host, char const *function, int line);
+static ssize_t mmc_cmd_dump_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	struct mmc_card *card = mmc_dev_to_card(dev);
+	struct mmc_host *host = card->host;
+	mmc_cmd_dump(host);
+	mmc_areq_state_dump(NULL, host, NULL, 0);
+	return sprintf(buf, "%d\n",
+			dbg_max_cnt);
+}
+DEVICE_ATTR(cmd_dump, S_IRWXU, mmc_cmd_dump_show, NULL);
+#endif
+static ssize_t mmc_cmdq_mode_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	struct mmc_card *card = mmc_dev_to_card(dev);
+	return sprintf(buf, "%d\n",
+			card->ext_csd.cmdq_mode_en);
+}
+DEVICE_ATTR(cmdq_mode, S_IRWXU, mmc_cmdq_mode_show, NULL);
+
 static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_cid.attr,
 	&dev_attr_csd.attr,
@@ -690,6 +728,10 @@ static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_serial.attr,
 	&dev_attr_enhanced_area_offset.attr,
 	&dev_attr_enhanced_area_size.attr,
+	&dev_attr_cmdq_mode.attr,
+#ifdef CONFIG_CMD_DUMP
+	&dev_attr_cmd_dump.attr,
+#endif
 	&dev_attr_raw_rpmb_size_mult.attr,
 	&dev_attr_rel_sectors.attr,
 	NULL,
@@ -1472,6 +1514,14 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		}
 	}
 
+	if (card->ext_csd.cmdq_support && card->ext_csd.cmdq_mode_en) {
+		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+				EXT_CSD_CMDQ_MODE_EN, 1,
+				card->ext_csd.generic_cmd6_time);
+		if (err)
+			pr_warning("%s: Enabling cmdq failed\n",
+					mmc_hostname(card->host));
+	}
 	if (!oldcard)
 		host->card = card;
 
@@ -1602,7 +1652,13 @@ static int mmc_suspend(struct mmc_host *host)
 
 	mmc_claim_host(host);
 
-	err = mmc_cache_ctrl(host, 0);
+	if (host->card->ext_csd.cmdq_mode_en) {
+		mmc_claim_host(host);
+		mmc_wait_cmdq_empty(host);
+		err = mmc_flush_cache(host->card);
+		mmc_release_host(host);
+	} else
+		err = mmc_cache_ctrl(host, 0);
 	if (err)
 		goto out;
 

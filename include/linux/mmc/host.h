@@ -170,7 +170,18 @@ struct device;
 
 struct mmc_async_req {
 	/* active mmc request */
+	struct mmc_request	*mrq_que;
 	struct mmc_request	*mrq;
+#define MMC_QUEUE_BEFORE_ENQ			(0)	/* mrq is entered in driver */
+#define MMC_QUEUE_ENQ					(1)	/* mrq is enqueued in device */
+#define MMC_QUEUE_BEFORE_QRDY			(2)	/* mrq is 44/45 issue & wait for qrdy */
+#define MMC_QUEUE_BEFORE_TRAN			(3)	/* mrq is checking qrdy & ready to transfer */
+#define MMC_QUEUE_TRAN					(4)	/* mrq is transfer */
+#define MMC_QUEUE_BUSY					(5) /* mrq is transfer done & cheking busy in case of write */
+#define MMC_QUEUE_WAIT_DONE				(6) /* mrq is transfer done & cheking busy in case of write */
+#define MMC_QUEUE_BEFORE_POST			(7) /* mrq is terminated transfer including busy check & ready to post process */
+	unsigned long		state;
+	unsigned int		prio;
 	/*
 	 * Check error status of completed mmc request.
 	 * Returns 0 if success otherwise non zero.
@@ -212,6 +223,30 @@ struct mmc_context_info {
 	spinlock_t		lock;
 };
 
+#define EMMC_MAX_QUEUE_DEPTH		(16)
+#define EMMC_MIN_RT_CLASS_TAG_COUNT	(14)
+
+#ifdef CONFIG_CMD_DUMP
+#define dbg_max_cnt (400)
+struct dbg_run_host_log {
+	unsigned long long time_sec;
+	unsigned long long time_usec;
+	int type;
+	int cmd;
+	int arg;
+};
+#endif
+enum transfer_flags {
+	MMC_QUEUE_WRITE_NORMAL,
+	MMC_QUEUE_READ_NORMAL,
+#ifdef CONFIG_SKIP_QUEUE_CHECK
+	MMC_QUEUE_WRITE_SKIP,
+	MMC_QUEUE_READ_SKIP,
+#endif
+	MMC_QUEUE_ALL
+};
+#define MMC_QUEUE_WRITE		0
+#define MMC_QUEUE_READ		1
 struct regulator;
 
 struct mmc_supply {
@@ -411,6 +446,31 @@ struct mmc_host {
 	struct mmc_async_req	*areq;		/* active async req */
 	struct mmc_context_info	context_info;	/* async synchronization info */
 
+	struct mmc_async_req	*areq_que[EMMC_MAX_QUEUE_DEPTH];
+	struct mmc_async_req	*areq_cur;
+	atomic_t		areq_cnt;
+	atomic_t		read_cnt;
+	spinlock_t		que_lock;
+#define GC_NOT_OPERATE	0
+#define GC_OPERATE		1
+#define GC_UNKNOWN		2
+#ifdef CONFIG_GC_SEPERATE
+	atomic_t		gc_status;
+#endif
+	spinlock_t		cmd_dump_lock;
+	unsigned long		state;
+#define MMC_CMDQ_IDLE		(0)
+#define MMC_CMDQ_CMD		(1 << 0)
+#define MMC_CMDQ_DAT		(1 << 1)
+#define MMC_CMDQ_QRDY		(1 << 2)
+	wait_queue_head_t	cmp_que;
+	struct mmc_command	chk_cmd;
+	struct mmc_request	chk_mrq;
+	struct mmc_command	que_cmd;
+	struct mmc_request	que_mrq;
+#define MMC_QUEUE_STATE_MAX		8
+	unsigned int mmc_queue_state_sum[2][MMC_QUEUE_STATE_MAX];
+
 #ifdef CONFIG_FAIL_MMC_REQUEST
 	struct fault_attr	fail_mmc_request;
 #endif
@@ -419,6 +479,17 @@ struct mmc_host {
 
 	unsigned int		slotno;	/* used for sdio acpi binding */
 
+	int				need_tuning;
+	int				ready_tuning;
+#ifdef CONFIG_GC_SEPERATE
+	atomic_t		cmd13p_count;
+	atomic_t		cmd13p_write_first;
+	struct delayed_work poll_ready;
+#endif
+#ifdef CONFIG_CMD_DUMP
+	struct dbg_run_host_log dbg_run_host_log_dat[dbg_max_cnt];
+	int dbg_host_cnt;
+#endif
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	struct {
 		struct sdio_cis			*cis;
@@ -427,7 +498,11 @@ struct mmc_host {
 		int				num_funcs;
 	} embedded_sdio_data;
 #endif
-
+#ifdef CONFIG_EMMC_BLKTRACE
+	struct mmc_queue	*mq;
+	struct mmc_queue_req	*mqrq_cur;	/* for mmc trace */
+	struct mmc_queue_req	*mqrq_prev;	/* for mmc trace */
+#endif
 	unsigned long		private[0] ____cacheline_aligned;
 };
 
@@ -476,6 +551,14 @@ int mmc_power_restore_host(struct mmc_host *host);
 
 void mmc_detect_change(struct mmc_host *, unsigned long delay);
 void mmc_request_done(struct mmc_host *, struct mmc_request *);
+#define MMC_HANDLE_QUE_READY	(0)
+#define MMC_HANDLE_SET_CMD	(1)
+#define MMC_HANDLE_CLR_CMD	(2)
+#define MMC_HANDLE_SET_DAT	(3)
+#define MMC_HANDLE_CLR_DAT	(4)
+extern void mmc_handle_queued_request(struct mmc_host *host, int flag);
+extern int mmc_blk_end_queued_req(struct mmc_host *host,
+			struct mmc_async_req *areq, int index, int status);
 
 int mmc_cache_ctrl(struct mmc_host *, u8);
 

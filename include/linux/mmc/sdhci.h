@@ -207,7 +207,8 @@ struct sdhci_host {
 
 	bool runtime_suspended;	/* Host is runtime suspended */
 
-	struct mmc_request *mrq;	/* Current request */
+	struct mmc_request *mrq_cmd;	/* Current request */
+	struct mmc_request *mrq_dat;	/* Current request with data*/
 	struct mmc_command *cmd;	/* Current command */
 	struct mmc_data *data;	/* Current data request */
 	unsigned int data_early:1;	/* Data finished before cmd */
@@ -228,6 +229,8 @@ struct sdhci_host {
 
 	struct tasklet_struct card_tasklet;	/* Tasklet structures */
 	struct tasklet_struct finish_tasklet;
+	struct tasklet_struct finish_dat_tasklet;
+	struct tasklet_struct finish_cmd_tasklet;
 
 	struct timer_list timer;	/* Timer for timeouts */
 	unsigned int card_int_set;	/* card int status */

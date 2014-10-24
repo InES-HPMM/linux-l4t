@@ -85,6 +85,13 @@
 #define MMC_APP_CMD              55   /* ac   [31:16] RCA        R1  */
 #define MMC_GEN_CMD              56   /* adtc [0] RD/WR          R1  */
 
+  /* class 11 */
+#define MMC_QUEUED_TASK_PARAMS   44   /* ac   [31:0] data addr   R1  */
+#define MMC_QUEUED_TASK_ADDRESS  45   /* ac   [31:0] data addr   R1  */
+#define MMC_EXECUTE_READ_TASK    46   /* adtc [31:0] data addr   R1  */
+#define MMC_EXECUTE_WRITE_TASK   47   /* adtc [31:0] data addr   R1  */
+#define MMC_CMDQ_TASK_MGMT       48   /* ac                      R1b */
+
 static inline bool mmc_op_multi(u32 opcode)
 {
 	return opcode == MMC_WRITE_MULTIPLE_BLOCK ||
@@ -109,11 +116,11 @@ static inline bool mmc_op_multi(u32 opcode)
 	s : status bit
 	r : detected and set for the actual command response
 	x : detected and set during command execution. the host must poll
-            the card by sending status command in order to read these bits.
-  Clear condition
+		the card by sending status command in order to read these bits.
+	Clear condition
 	a : according to the card state
 	b : always related to the previous command. Reception of
-            a valid command will clear it (with a delay of one command)
+		a valid command will clear it (with a delay of one command)
 	c : clear by read
  */
 
@@ -138,6 +145,9 @@ static inline bool mmc_op_multi(u32 opcode)
 #define R1_ERASE_RESET		(1 << 13)	/* sr, c */
 #define R1_STATUS(x)            (x & 0xFFFFE000)
 #define R1_CURRENT_STATE(x)	((x & 0x00001E00) >> 9)	/* sx, b (4 bits) */
+#ifdef CONFIG_GC_SEPERATE
+#define R1_GC_STATE(x)		((x & 0x00000010) >> 4)	/* GC check bit  */
+#endif
 #define R1_READY_FOR_DATA	(1 << 8)	/* sx, a */
 #define R1_SWITCH_ERROR		(1 << 7)	/* sx, c */
 #define R1_EXCEPTION_EVENT	(1 << 6)	/* sr, a */
@@ -272,7 +282,7 @@ struct _mmc_csd {
 /*
  * EXT_CSD fields
  */
-
+#define EXT_CSD_CMDQ_MODE_EN		15	/* R/W */
 #define EXT_CSD_FFU_STATUS		26	/* R */
 #define EXT_CSD_MODE_OPERATION_CODES	29	/* W */
 #define EXT_CSD_MODE_CONFIG		30	/* R/W */
@@ -284,6 +294,8 @@ struct _mmc_csd {
 #define EXT_CSD_EXP_EVENTS_STATUS	54	/* RO, 2 bytes */
 #define EXT_CSD_EXP_EVENTS_CTRL		56	/* R/W, 2 bytes */
 #define EXT_CSD_DATA_SECTOR_SIZE	61	/* R */
+#define EXT_CSD_QRDY_SUPPORT		96	/* RO */
+#define EXT_CSD_CMDQ_QRDY_FUNCTION	97	/* R/W */
 #define EXT_CSD_GP_SIZE_MULT		143	/* R/W */
 #define EXT_CSD_PARTITION_ATTRIBUTE	156	/* R/W */
 #define EXT_CSD_PARTITION_SUPPORT	160	/* RO */
@@ -332,6 +344,8 @@ struct _mmc_csd {
 #define EXT_CSD_GENERIC_CMD6_TIME	248	/* RO */
 #define EXT_CSD_CACHE_SIZE		249	/* RO, 4 bytes */
 #define EXT_CSD_PWR_CL_DDR_200		253	/* RO */
+#define EXT_CSD_CMDQ_DEPTH		307	/* RO */
+#define EXT_CSD_CMDQ_SUPPORT		308	/* RO */
 #define EXT_CSD_PRE_EOL_INFO		267	/* RO */
 #define EXT_CSD_DEVICE_LIFE_EST_TYP_A	268	/* RO */
 #define EXT_CSD_DEVICE_LIFE_EST_TYP_B	269	/* RO */
