@@ -410,7 +410,11 @@ set_mode:
 
 	if (mode == 0) {
 		/* Normal mode: restore everything to default */
+#ifdef CUSTOM_AMPDU_MPDU
+		ampdu_mpdu = CUSTOM_AMPDU_MPDU;
+#else
 		ampdu_mpdu = -1;	/* FW default */
+#endif
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 		mchan_algo = 0;	/* Default */
 		mchan_bw = 50;	/* 50:50 */
