@@ -113,12 +113,6 @@ struct nvadsp_mappings {
 static struct nvadsp_mappings adsp_map[NM_LOAD_MAPPINGS];
 static int map_idx;
 static struct nvadsp_mbox adsp_com_mbox;
-#ifdef CONFIG_TEGRA_ADSP_DFS
-static bool is_dfs_initialized;
-#endif
-#ifdef CONFIG_TEGRA_ADSP_ACTMON
-static bool is_actmon_initialized;
-#endif
 
 DECLARE_COMPLETION(entered_wfe);
 #ifdef CONFIG_DEBUG_FS
@@ -714,19 +708,17 @@ static int __nvadsp_os_start(void)
 	dev_info(dev, "waiting for ADSP OS to boot up...Done.\n");
 
 #ifdef CONFIG_TEGRA_ADSP_DFS
-	if (!is_dfs_initialized && adsp_dfs_core_init(priv.pdev)) {
+	if (adsp_dfs_core_init(priv.pdev)) {
 		dev_err(dev, "adsp dfs initialization failed\n");
 		return -EINVAL;
 	}
-	is_dfs_initialized = true;
 #endif
 
 #ifdef CONFIG_TEGRA_ADSP_ACTMON
-	if (!is_actmon_initialized && ape_actmon_init(priv.pdev)) {
+	if (ape_actmon_init(priv.pdev)) {
 		dev_err(dev, "ape actmon initialization failed\n");
 		return -EINVAL;
 	}
-	is_actmon_initialized = true;
 #endif
 
 	drv_data->adsp_os_loaded = true;
@@ -755,12 +747,10 @@ static int __nvadsp_os_suspend(void)
 
 #ifdef CONFIG_TEGRA_ADSP_DFS
 	adsp_dfs_core_exit(priv.pdev);
-	is_dfs_initialized = false;
 #endif
 
 #ifdef CONFIG_TEGRA_ADSP_ACTMON
 	ape_actmon_exit(priv.pdev);
-	is_actmon_initialized = false;
 #endif
 
 	ret = nvadsp_mbox_open(&adsp_com_mbox, &com_mid,
@@ -813,12 +803,10 @@ static void __nvadsp_os_stop(bool reload)
 
 #ifdef CONFIG_TEGRA_ADSP_DFS
 	adsp_dfs_core_exit(priv.pdev);
-	is_dfs_initialized = false;
 #endif
 
 #ifdef CONFIG_TEGRA_ADSP_ACTMON
 	ape_actmon_exit(priv.pdev);
-	is_actmon_initialized = false;
 #endif
 
 	writel(ENABLE_MBOX2_EMPTY_INT, priv.misc_base + HWMBOX2_REG);

@@ -489,6 +489,10 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 	int ret = 0;
 	int size = sizeof(adsp_cpu_freq_table) / sizeof(adsp_cpu_freq_table[0]);
 	uint16_t mid = HOST_ADSP_DFS_MBOX_ID;
+	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
+
+	if (drv->dfs_initialized)
+		return 0;
 
 	policy = &dfs_policy;
 	policy->adsp_clk = clk_get_sys(NULL, policy->clk_name);
@@ -535,6 +539,8 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 #ifdef CONFIG_DEBUG_FS
 	adsp_dfs_debugfs_init(pdev);
 #endif
+	drv->dfs_initialized = true;
+
 	dev_info(&pdev->dev, "adsp dfs is initialized ....\n");
 	return ret;
 end:
@@ -546,6 +552,7 @@ end:
 int adsp_dfs_core_exit(struct platform_device *pdev)
 {
 	status_t ret = 0;
+	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
 
 	ret = nvadsp_mbox_close(&policy->mbox);
 	if (ret)
@@ -556,6 +563,8 @@ int adsp_dfs_core_exit(struct platform_device *pdev)
 					   &policy->rate_change_nb);
 
 	clk_put(policy->adsp_clk);
+	drv->dfs_initialized = false;
+
 	dev_info(&pdev->dev, "adsp dfs is exited ....\n");
 
 	return ret;

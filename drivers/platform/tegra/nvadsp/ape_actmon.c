@@ -704,6 +704,9 @@ int ape_actmon_init(struct platform_device *pdev)
 	int i, ret;
 	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
 
+	if (drv->actmon_initialized)
+		return 0;
+
 	actmon_base = drv->base_regs[AMISC] + ACTMON_REG_OFFSET;
 
 	actmon_clk = clk_get_sys(NULL, "ape");
@@ -730,6 +733,8 @@ int ape_actmon_init(struct platform_device *pdev)
 	actmon_debugfs_init(drv);
 #endif
 
+	drv->actmon_initialized = true;
+
 	dev_info(&pdev->dev, "adsp actmon is initialized ....\n");
 	return 0;
 }
@@ -739,6 +744,7 @@ int ape_actmon_exit(struct platform_device *pdev)
 	int i;
 	status_t ret = 0;
 	struct actmon_dev *dev;
+	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
 
 	for (i = 0; i < ARRAY_SIZE(actmon_devices); i++) {
 		dev = actmon_devices[i];
@@ -747,6 +753,7 @@ int ape_actmon_exit(struct platform_device *pdev)
 	}
 	clk_disable_unprepare(actmon_clk);
 	clk_put(actmon_clk);
+	drv->actmon_initialized = false;
 
 	dev_info(&pdev->dev, "adsp actmon is exited ....\n");
 
