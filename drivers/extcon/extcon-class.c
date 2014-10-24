@@ -32,6 +32,7 @@
 #include <linux/slab.h>
 #include <linux/sysfs.h>
 #include <linux/of.h>
+#include <linux/suspend.h>
 
 /*
  * extcon_cable_name suggests the standard cable names for commonly used
@@ -185,6 +186,34 @@ static ssize_t cable_state_show(struct device *dev,
 					       cable->cable_index));
 }
 
+static ssize_t uevent_in_suspend_show(struct device *dev,
+				      struct device_attribute *attr, char *buf)
+{
+	struct extcon_dev *edev = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%c\n", edev->uevent_in_suspend ? 'Y' : 'N');
+}
+
+static ssize_t uevent_in_suspend_store(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t count)
+{
+	struct extcon_dev *edev = dev_get_drvdata(dev);
+	bool uevent_in_suspend;
+	int ret;
+	unsigned long flags;
+
+	ret = strtobool(buf, &uevent_in_suspend);
+	if (ret)
+		return ret;
+
+	spin_lock_irqsave(&edev->lock, flags);
+	edev->uevent_in_suspend = uevent_in_suspend;
+	spin_unlock_irqrestore(&edev->lock, flags);
+
+	return count;
+}
+
 /**
  * extcon_update_state() - Update the cable attach states of the extcon device
  *			   only for the masked bits.
@@ -211,6 +240,16 @@ int extcon_update_state(struct extcon_dev *edev, u32 mask, u32 state)
 	unsigned long flags;
 
 	spin_lock_irqsave(&edev->lock, flags);
+	/* Store a new state in the last_state_in_suspend while suspending.
+	 * It will be handled after resume. */
+	if (edev->is_suspend && !edev->uevent_in_suspend) {
+		edev->last_state_in_suspend = state;
+		spin_unlock_irqrestore(&edev->lock, flags);
+		dev_info(&edev->dev,
+			"%s: didn't send uevent (0x%08x 0x%08x 0x%08x) due to suspending\n",
+			__func__, mask, state, edev->state);
+		return 0;
+	}
 
 	if (edev->state != ((edev->state & ~mask) | (state & mask))) {
 		u32 old_state = edev->state;
@@ -532,6 +571,8 @@ EXPORT_SYMBOL_GPL(extcon_unregister_notifier);
 static struct device_attribute extcon_attrs[] = {
 	__ATTR(state, S_IRUGO | S_IWUSR, state_show, state_store),
 	__ATTR_RO(name),
+	__ATTR(uevent_in_suspend, S_IRUGO | S_IWUSR,
+	       uevent_in_suspend_show, uevent_in_suspend_store),
 	__ATTR_NULL,
 };
 
@@ -561,6 +602,32 @@ static const char *muex_name = "mutually_exclusive";
 static void dummy_sysfs_dev_release(struct device *dev)
 {
 }
+
+static int extcon_pm_notify(struct notifier_block *nb,
+			    unsigned long event, void *data)
+{
+	struct extcon_dev *edev = container_of(nb, struct extcon_dev, pm_nb);
+	unsigned long flags;
+
+	if (event == PM_SUSPEND_PREPARE) {
+		spin_lock_irqsave(&edev->lock, flags);
+		edev->is_suspend = true;
+		edev->last_state_in_suspend = edev->state;
+		spin_unlock_irqrestore(&edev->lock, flags);
+	} else if (event == PM_POST_SUSPEND) {
+		spin_lock_irqsave(&edev->lock, flags);
+		edev->is_suspend = false;
+		spin_unlock_irqrestore(&edev->lock, flags);
+		extcon_set_state(edev, edev->last_state_in_suspend);
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block extcon_pm_nb = {
+	.notifier_call = extcon_pm_notify,
+	.priority = -1,
+};
 
 /**
  * extcon_dev_register() - Register a new extcon device
@@ -744,6 +811,11 @@ int extcon_dev_register(struct extcon_dev *edev)
 	dev_set_drvdata(&edev->dev, edev);
 	edev->state = 0;
 
+	edev->uevent_in_suspend = true;
+	edev->is_suspend = false;
+	edev->pm_nb = extcon_pm_nb;
+	register_pm_notifier(&edev->pm_nb);
+
 	mutex_lock(&extcon_dev_list_lock);
 	list_add(&edev->entry, &extcon_dev_list);
 	mutex_unlock(&extcon_dev_list_lock);
@@ -791,6 +863,8 @@ void extcon_dev_unregister(struct extcon_dev *edev)
 				dev_name(&edev->dev));
 		return;
 	}
+
+	unregister_pm_notifier(&edev->pm_nb);
 
 	if (edev->mutually_exclusive && edev->max_supported) {
 		for (index = 0; edev->mutually_exclusive[index];
