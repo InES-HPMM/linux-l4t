@@ -32,6 +32,8 @@
 #ifndef __TEGRA_IVC_H
 #define __TEGRA_IVC_H
 
+#include <linux/types.h>
+
 struct device_node;
 
 /* in kernel interfaces */
@@ -95,7 +97,7 @@ int tegra_hv_ivc_unreserve(struct tegra_hv_ivc_cookie *ivck);
  */
 int tegra_hv_ivc_write(struct tegra_hv_ivc_cookie *ivck, const void *buf,
 		int size);
-int tegra_ivc_write(struct ivc *ivc, const void *buf, int size);
+int tegra_ivc_write(struct ivc *ivc, const void *buf, size_t size);
 
 /**
  * ivc_hv_ivc_read - Reads a frame from the IVC queue
@@ -108,7 +110,7 @@ int tegra_ivc_write(struct ivc *ivc, const void *buf, int size);
  * Returns size on success and an error code otherwise
  */
 int tegra_hv_ivc_read(struct tegra_hv_ivc_cookie *ivck, void *buf, int size);
-int tegra_ivc_read(struct ivc *ivc, void *buf, int size);
+int tegra_ivc_read(struct ivc *ivc, void *buf, size_t size);
 
 /**
  * ivc_hv_ivc_can_read - Test whether data are available
@@ -175,7 +177,7 @@ int tegra_hv_ivc_dump(struct tegra_hv_ivc_cookie *ivck);
  */
 int tegra_hv_ivc_read_peek(struct tegra_hv_ivc_cookie *ivck,
 		void *buf, int off, int count);
-int tegra_ivc_read_peek(struct ivc *ivc, void *buf, int off, int count);
+int tegra_ivc_read_peek(struct ivc *ivc, void *buf, size_t off, size_t count);
 
 /**
  * ivc_hv_ivc_read_get_next_frame - Peek at the next frame to receive
@@ -214,7 +216,8 @@ int tegra_ivc_read_advance(struct ivc *ivc);
  */
 int tegra_hv_ivc_write_poke(struct tegra_hv_ivc_cookie *ivck,
 		const void *buf, int off, int count);
-int tegra_ivc_write_poke(struct ivc *ivc, const void *buf, int off, int count);
+int tegra_ivc_write_poke(struct ivc *ivc, const void *buf, size_t off,
+		size_t count);
 
 /**
  * ivc_hv_ivc_write_get_next_frame - Poke at the next frame to transmit

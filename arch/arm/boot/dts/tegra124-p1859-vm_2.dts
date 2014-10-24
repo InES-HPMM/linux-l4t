@@ -188,7 +188,7 @@
 				reg = <0>;
 				peers = <0 1>;
 				nframes = <2>;
-				frame-size = <50>;
+				frame-size = <64>;
 			};
 
 			/* guest 0 <-> guest 1 (comm) */
@@ -196,7 +196,7 @@
 				reg = <1>;
 				peers = <0 1>;
 				nframes = <4>;
-				frame-size = <16>;
+				frame-size = <64>;
 			};
 
 			/* guest 0 <-> guest 1 (net) */
