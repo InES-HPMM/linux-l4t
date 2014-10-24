@@ -725,6 +725,17 @@ static int dvfs_rail_get_thermal_floor_dfll(struct dvfs_rail *rail)
 	return 0;
 }
 
+static int dvfs_get_peak_thermal_floor(struct dvfs *d, unsigned long rate)
+{
+	bool dfll_range = tegra_dvfs_is_dfll_range(d, rate);
+
+	if (!dfll_range && d->dvfs_rail->therm_mv_floors)
+		return d->dvfs_rail->therm_mv_floors[0];
+	if (dfll_range && d->dvfs_rail->therm_mv_dfll_floors)
+		return d->dvfs_rail->therm_mv_dfll_floors[0];
+	return 0;
+}
+
 /* Get dvfs clock V/F curve helpers in pll and dfll modes */
 static unsigned long *dvfs_get_freqs(struct dvfs *d)
 {
@@ -745,7 +756,14 @@ static const int *dvfs_get_millivolts_pll(struct dvfs *d)
 	return d->millivolts;
 }
 
-static const int *dvfs_get_millivolts(struct dvfs *d, unsigned long rate)
+static const int *dvfs_get_peak_millivolts(struct dvfs *d, unsigned long rate)
+{
+	bool dfll_range = tegra_dvfs_is_dfll_range(d, rate);
+	return dfll_range ? dvfs_get_millivolts_dfll(d) :
+		d->peak_millivolts ? : dvfs_get_millivolts_pll(d);
+}
+
+static const int *dvfs_get_scale_millivolts(struct dvfs *d, unsigned long rate)
 {
 	if (tegra_dvfs_is_dfll_scale(d, rate))
 		return dvfs_get_millivolts_dfll(d);
@@ -759,7 +777,7 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 	int i = 0;
 	int ret, mv, detach_mv;
 	unsigned long *freqs = dvfs_get_freqs(d);
-	const int *millivolts = dvfs_get_millivolts(d, rate);
+	const int *millivolts = dvfs_get_scale_millivolts(d, rate);
 
 	if (freqs == NULL || millivolts == NULL)
 		return -ENODEV;
@@ -1012,6 +1030,55 @@ static int predict_millivolts(struct clk *c, const int *millivolts,
 }
 
 /*
+ * Predict maximum frequency target clock can run at specified voltage.
+ * Evaluate target clock domain V/F relation, and apply proper PLL or
+ * DFLL table depending on predicted rate range. Apply maximum thermal floor
+ * across all temperature ranges.
+ */
+static unsigned long predict_hz_at_mv_max_tfloor(struct clk *c, int mv)
+{
+	int i, mv_at_f;
+	const int *millivolts;
+	unsigned long rate;
+
+	if (!c->dvfs)
+		return c->max_rate;
+
+	/*
+	 * Prediction is not valid across the switch to alternative frequency
+	 * limits. Just fail the call for clock that has alternative limits
+	 * initialized.
+	 */
+	if (c->dvfs->alt_freqs)
+		return -ENOSYS;
+
+	for (i = 0; i < c->dvfs->num_freqs; i++) {
+		rate = c->dvfs->freqs[i];
+		millivolts = dvfs_get_peak_millivolts(c->dvfs, rate);
+		if (!millivolts)
+			return -EINVAL;
+
+		mv_at_f = dvfs_get_peak_thermal_floor(c->dvfs, rate);
+		mv_at_f = max(millivolts[i], mv_at_f);
+		if (mv < mv_at_f)
+			break;
+	}
+
+	if (i)
+		rate = c->dvfs->freqs[i - 1];
+
+	/*
+	 * Error if target clock cannot run at specified voltage at all
+	 * (either  all voltage entries are above specified, or unit-frequency
+	 * placeholder is mapped to specified voltage)
+	 */
+	if (!i || (rate <= 1 * c->dvfs->freqs_mult))
+		return -ENOENT;
+
+	return rate;
+}
+
+/*
  * Predict minimum voltage required to run target clock at specified rate.
  * Evaluate target clock domain V/F relation, and apply proper PLL or
  * DFLL table depending on specified rate range. Does not apply thermal floor.
@@ -1087,23 +1154,16 @@ static int dvfs_predict_mv_at_hz_max_tfloor(struct clk *c, unsigned long rate)
 {
 	int mv;
 	const int *millivolts;
-	bool dfll_range;
 
 	if (!rate || !c->dvfs)
 		return 0;
 
-	dfll_range = tegra_dvfs_is_dfll_range(c->dvfs, rate);
-	millivolts = dfll_range ? dvfs_get_millivolts_dfll(c->dvfs) :
-		c->dvfs->peak_millivolts ? : dvfs_get_millivolts_pll(c->dvfs);
-
+	millivolts = dvfs_get_peak_millivolts(c->dvfs, rate);
 	mv = predict_non_alt_millivolts(c, millivolts, rate);
 	if (mv < 0)
 		return mv;
 
-	if (!dfll_range && c->dvfs->dvfs_rail->therm_mv_floors)
-		mv = max(mv, c->dvfs->dvfs_rail->therm_mv_floors[0]);
-	if (dfll_range && c->dvfs->dvfs_rail->therm_mv_dfll_floors)
-		mv = max(mv, c->dvfs->dvfs_rail->therm_mv_dfll_floors[0]);
+	mv = max(mv, dvfs_get_peak_thermal_floor(c->dvfs, rate));
 	return mv;
 }
 
@@ -1118,6 +1178,61 @@ int tegra_dvfs_predict_mv_at_hz_max_tfloor(struct clk *c, unsigned long rate)
 	return mv;
 }
 EXPORT_SYMBOL(tegra_dvfs_predict_mv_at_hz_max_tfloor);
+
+
+/*
+ * Mutual throttling with "butterfly" scheme:
+ *
+ *  ---------------------->-------------------------------
+ *  I							 I
+ * F1 ---> V1(F1) ---				    min(F1, F1throt(Vthrot))
+ *		     I				    I
+ *		     -----> Vthrot = min(V1, V2)---->
+ *		     I				    I
+ * F2 ---> V2(F2) ---				    min(F2, F2throt(Vthrot))
+ *  I							 I
+ *  ---------------------->-------------------------------
+ */
+int tegra_dvfs_butterfly_throttle(struct clk *c1, unsigned long *rate1,
+				  struct clk *c2, unsigned long *rate2)
+{
+	int mv1, mv2, ret = 0;
+	unsigned long out_rate1, out_rate2;
+
+	mutex_lock(&dvfs_lock);
+
+	mv1 = dvfs_predict_mv_at_hz_max_tfloor(c1, *rate1);
+	pr_debug("%s: predicted %d mV for %s at %lu Hz\n",
+		 __func__, mv1, c1->name, *rate1);
+	mv2 = dvfs_predict_mv_at_hz_max_tfloor(c2, *rate2);
+	pr_debug("%s: predicted %d mV for %s at %lu Hz\n",
+		 __func__, mv2, c2->name, *rate2);
+	if ((mv1 <= 0) || (mv2 <= 0)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	mv1 = mv2 = min(mv1, mv2);
+
+	out_rate1 = predict_hz_at_mv_max_tfloor(c1, mv1);
+	pr_debug("%s: predicted %lu Hz for %s at %d mV\n",
+		 __func__, out_rate1, c1->name, mv1);
+	out_rate2 = predict_hz_at_mv_max_tfloor(c2, mv2);
+	pr_debug("%s: predicted %lu Hz for %s at %d mV\n",
+		 __func__, out_rate2, c2->name, mv2);
+	if (IS_ERR_VALUE(out_rate1) || IS_ERR_VALUE(out_rate2)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	*rate1 = min(*rate1, out_rate1);
+	*rate2 = min(*rate2, out_rate2);
+	pr_debug("%s: %s Fsafe %lu Hz : %s Fsafe %lu Hz : Vsafe %d mV\n",
+		 __func__, c1->name, *rate1, c2->name, *rate2, mv1);
+out:
+	mutex_unlock(&dvfs_lock);
+	return ret;
+}
 
 /* Set DVFS rate and update voltage accordingly */
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)

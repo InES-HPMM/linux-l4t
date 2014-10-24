@@ -352,6 +352,9 @@ int tegra_dvfs_alt_freqs_install(struct dvfs *d, unsigned long *alt_freqs);
 int tegra_dvfs_alt_freqs_set(struct dvfs *d, unsigned long *alt_freqs);
 int tegra_dvfs_replace_voltage_table(struct dvfs *d, const int *new_millivolts);
 
+int tegra_dvfs_butterfly_throttle(struct clk *c1, unsigned long *rate1,
+				  struct clk *c2, unsigned long *rate2);
+
 int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate);
 int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate);
 int tegra_clk_dfll_range_control(enum dfll_range use_dfll);
