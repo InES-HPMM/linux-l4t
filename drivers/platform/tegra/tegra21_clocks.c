@@ -1403,14 +1403,72 @@ static int tegra21_cpu_cmplx_clk_set_rate(struct clk *c, unsigned long rate)
 	return ret;
 }
 
+static int cpu_cmplx_find_edp_safe_rates(unsigned long rate,
+	struct clk *c_from, unsigned long *rate_from,
+	struct clk *c_to, unsigned long *rate_to)
+{
+	int ret;
+	*rate_from = rate; /* current rate is EDP safe on current cluster */
+	*rate_to = clk_get_cpu_edp_safe_rate(c_to);
+
+	/* EDP safe rate on target cluster is not specified: iso rate switch */
+	if (*rate_to == 0) {
+		rate = max(rate, c_to->min_rate);
+		rate = min(rate, c_to->max_rate);
+		BUG_ON((rate < c_from->min_rate) || (rate > c_from->max_rate));
+		*rate_from = rate;
+		*rate_to = rate;
+		return 0;
+	}
+
+	/* Determine EDP safe rates, given DVFS voltage interdependencies */
+	ret = tegra_dvfs_butterfly_throttle(c_from, rate_from, c_to, rate_to);
+	if (ret)
+		return ret;
+
+	if ((*rate_from < c_from->min_rate) ||
+	    (*rate_from > c_from->max_rate)) {
+		pr_err("%s: EDP safe %s rate %lu out of range (%lu %lu)\n",
+		       __func__, c_from->name, *rate_from,
+		       c_from->min_rate, c_from->max_rate);
+		return -EINVAL;
+	}
+
+	if ((*rate_to < c_to->min_rate) || (*rate_to > c_to->max_rate)) {
+		pr_err("%s: EDP safe %s rate %lu out of range (%lu %lu)\n",
+		       __func__, c_to->name, *rate_to,
+		       c_to->min_rate, c_to->max_rate);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int cpu_cmplx_set_rate_from(struct clk *c_from, unsigned long rate_from,
+				   unsigned long rate, struct clk **c_source)
+{
+	if (rate_from != rate) {
+		int ret = clk_set_rate(c_from, rate_from);
+		if (ret) {
+			pr_err("%s: Failed to set rate %lu for %s\n",
+			       __func__, rate_from, c_from->name);
+			return ret;
+		}
+		*c_source = c_from->parent->parent;
+	}
+	return 0;
+}
+
 static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 {
 	int ret;
 	unsigned int flags = 0, delay = 0;
 	const struct clk_mux_sel *sel;
+	unsigned long rate_from, rate_to;
 	unsigned long rate = clk_get_rate(c->parent);
 	struct clk *dfll = c->parent->u.cpu.dynamic ? : p->u.cpu.dynamic;
 	struct clk *c_source, *p_source;
+	bool dfll_range_to;
 
 	pr_debug("%s: %s %s\n", __func__, c->name, p->name);
 	if (!c->refcnt) {
@@ -1427,17 +1485,6 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	if (!sel->input)
 		return -EINVAL;
 
-	/* over/under-clocking after switch - allow, but update rate */
-	if ((rate > p->max_rate) || (rate < p->min_rate)) {
-		rate = rate > p->max_rate ? p->max_rate : p->min_rate;
-		ret = clk_set_rate(c->parent, rate);
-		if (ret) {
-			pr_err("%s: Failed to set rate %lu for %s\n",
-					__func__, rate, p->name);
-			return ret;
-		}
-	}
-
 #if PARAMETERIZE_CLUSTER_SWITCH
 	spin_lock(&parameters_lock);
 	flags = switch_flags;
@@ -1445,11 +1492,6 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	switch_flags = 0;
 	spin_unlock(&parameters_lock);
 #endif
-	if (rate > p->max_rate) {	/* over-clocking - no switch */
-		pr_warn("%s: No %s mode switch to %s at rate %lu\n",
-				__func__, c->name, p->name, rate);
-		return -ECANCELED;
-	}
 	if (!flags) {
 		flags = TEGRA_POWER_CLUSTER_IMMEDIATE;
 		flags |= TEGRA_POWER_CLUSTER_PART_DEFAULT;
@@ -1470,40 +1512,86 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		return 0;	/* already switched - exit */
 	}
 
+	/* Find EDP safe rates for switch */
+	ret = cpu_cmplx_find_edp_safe_rates(
+		rate, c->parent, &rate_from, p, &rate_to);
+	if (ret) {
+		pr_err("%s: Didn't find EDP safe rates for %s to %s switch\n",
+		       __func__, c->parent->name, p->name);
+		return ret;
+	}
+
 	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, true);
 	c_source = c->parent->parent->parent;
+	dfll_range_to = p->dvfs && tegra_dvfs_is_dfll_range(p->dvfs, rate_to);
 	if (c_source == dfll) {
 		/*
 		 * G (DFLL selected as clock source) => LP switch:
-		 * turn DFLL into open loop mode ("release" VDD_CPU rail)
-		 * select target p_source for LP, and get its rate ready
+		 * - set EDP safe rate on current cluster
+		 * - turn DFLL into open loop mode ("release" VDD_CPU rail)
+		 * - select target p_source for LP, and get EDP safe rate ready
 		 */
+		ret = cpu_cmplx_set_rate_from(c->parent, rate_from, rate,
+					      &c_source);
+		if (ret)
+			goto abort;
+
 		ret = tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 0);
 		if (ret)
 			goto abort;
 
-		p_source = rate <= p->u.cpu.backup_rate ?
+		p_source = rate_to <= p->u.cpu.backup_rate ?
 			p->u.cpu.backup : p->u.cpu.main;
-		ret = clk_set_rate(p_source, rate);
+		ret = clk_set_rate(p_source, rate_to);
 		if (ret)
 			goto abort;
-	} else if ((p->parent->parent == dfll) ||
-		   (p->dvfs && tegra_dvfs_is_dfll_range(p->dvfs, rate))) {
+	} else if ((p->parent->parent == dfll) || dfll_range_to) {
 		/*
 		 * LP => G (DFLL selected as clock source) switch:
-		 * set DFLL minimum rate ready; DFLL is still disabled, min rate
-		 * just guarantees initial voltage after switch above Vmin)
-		 * set target p_source as dfll, G source is already selected
+		 * - set EDP safe rate on current cluster
+		 * - select target p_source as dfll, and set DFLL rate ready.
+		 * DFLL is still disabled, initial rate only set skipper so
+		 * that when enabled in open loop DFLL is running at low EDP
+		 * safe rate. In case when the entire G cluster rate range is
+		 * sourced from DFLL any EDP safe rate also guarantees voltage
+		 * above DFLL Vmin. In case when there is low PLL sourced rate
+		 * range, we need explicitly apply DFLL rate floor, which may
+		 * violate EDP limitations. Only former case is productized on
+		 * Tegra21.
 		 */
+		ret = cpu_cmplx_set_rate_from(c->parent, rate_from, rate,
+					      &c_source);
+		if (ret)
+			goto abort;
+
+		BUG_ON(!dfll_range_to);
+
 		p_source = dfll;
-		ret = clk_set_rate(dfll, p->dvfs->dfll_data.use_dfll_rate_min);
+		ret = clk_set_rate(dfll, dfll_range_to ? rate_to :
+			max(rate_to, p->dvfs->dfll_data.use_dfll_rate_min));
 		if (ret)
 			goto abort;
 	} else {
 		/*
 		 * DFLL is not selected on either side of the switch:
-		 * set target p_source equal to current clock source
+		 * - set common EDP safe rate (since we use the same PLL on
+		 *   both clusters in this case)
+		 * - set target p_source equal to current clock source
 		 */
+		rate_from = min(rate_from, rate_to);
+		if ((rate_from < c->parent->min_rate) ||
+		    (rate_from < p->min_rate)) {
+			pr_err("%s: common EDP safe rate %lu out of range\n",
+			       __func__, rate_from);
+			ret = -EINVAL;
+			goto abort;
+		}
+
+		ret = cpu_cmplx_set_rate_from(c->parent, rate_from, rate,
+					      &c_source);
+		if (ret)
+			goto abort;
+
 		p_source = c_source;
 	}
 
@@ -1539,6 +1627,11 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		goto abort;
 	}
 
+	pr_debug("%s: switch %s(rate %lu) to %s(rate %lu) at %d mV\n", __func__,
+		 c->parent->name, clk_get_rate(c->parent),
+		 p->name, clk_get_rate(p),
+		 tegra_dvfs_rail_get_current_millivolts(tegra_cpu_rail));
+
 	/* switch CPU mode */
 	ret = tegra_cluster_control(delay, flags);
 	if (ret) {
@@ -1555,9 +1648,9 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	 * when auto-switch between PLL and DFLL is enabled.
 	 */
 	if (p_source == dfll) {
-		clk_set_rate(dfll, rate);
+		clk_set_rate(dfll, rate_to);
 		tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
-		tegra_dvfs_dfll_mode_set(p->dvfs, rate);
+		tegra_dvfs_dfll_mode_set(p->dvfs, rate_to);
 	}
 
 	/* Disabling old parent scales old mode voltage rail */
@@ -1569,9 +1662,9 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	return 0;
 
 abort:
-	/* Re-lock DFLL if necessary after aborted switch */
+	/* Restore rate, and re-lock DFLL if necessary after aborted switch */
+	clk_set_rate(c->parent, rate);
 	if (c_source == dfll) {
-		clk_set_rate(dfll, rate);
 		tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
 		tegra_dvfs_dfll_mode_set(c->parent->dvfs, rate);
 	}
