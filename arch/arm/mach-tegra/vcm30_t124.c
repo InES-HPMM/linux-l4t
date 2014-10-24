@@ -67,6 +67,12 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 	{ "automotive.hclk",	NULL,		282000000,	true},
 	{ "automotive.pclk",	NULL,		282000000,	true},
 
+	{ "pll_p_out1",		"pll_p",	9600000,	true},
+	{ "pll_p_out2",		"pll_p",	48000000,	true},
+	{ "pll_p_out3",		"pll_p",	102000000,	true},
+	{ "pll_p_out4",		"pll_p",	204000000,	true},
+	{ "pll_p_out5",		"pll_p",	204000000,	true},
+
 	{ "mselect",		"pll_p",	204000000,	true},
 	{ "automotive.mselect",	NULL,		204000000,	true},
 
@@ -138,7 +144,7 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 	{ "i2c6",		"pll_p",	408000000,	false},
 
 	{ "sdmmc2",		"pll_p",	48000000,	false},
-	{"gk20a.gbus",		NULL,		600000000,	false},
+	{ "gk20a.gbus",		NULL,		600000000,	false},
 
 	{ NULL,			NULL,		0,		0},
 };
