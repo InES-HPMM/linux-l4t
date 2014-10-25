@@ -1234,79 +1234,6 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 	return err;
 }
 
-static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
-				struct page **pages, size_t total, unsigned long prot)
-{
-	struct smmu_as *as = domain_to_as(domain, iova);
-	struct smmu_device *smmu = as->smmu;
-	u32 *pdir = page_address(as->pdir_page);
-	int err = 0;
-	unsigned long iova_base = iova;
-	bool flush_all = (total > smmu_flush_all_th_pages) ? true : false;
-	int attrs = as->pte_attr;
-
-	if (dma_get_attr(DMA_ATTR_READ_ONLY, (struct dma_attrs *)prot))
-		attrs &= ~_WRITABLE;
-	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
-		attrs &= ~_READABLE;
-
-	while (total > 0) {
-		int pdn = SMMU_ADDR_TO_PDN(iova);
-		int ptn = SMMU_ADDR_TO_PTN(iova);
-		unsigned int *rest = &as->pte_count[pdn];
-		int count = min_t(size_t, SMMU_PTBL_COUNT - ptn, total);
-		struct page *tbl_page;
-		u32 *ptbl;
-		u32 *pte;
-		int i;
-		unsigned long flags;
-
-		spin_lock_irqsave(&as->lock, flags);
-
-		if (pdir[pdn] == _PDE_VACANT(pdn)) {
-			tbl_page = alloc_ptbl(as, iova, !flush_all);
-			if (!tbl_page) {
-				err = -ENOMEM;
-				spin_unlock_irqrestore(&as->lock, flags);
-				goto out;
-			}
-
-		} else {
-			tbl_page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
-		}
-
-		ptbl = page_address(tbl_page);
-		for (i = 0; i < count; i++) {
-			pte = &ptbl[ptn + i];
-
-			if (*pte == _PTE_VACANT(iova + i * PAGE_SIZE))
-				(*rest)++;
-
-			*pte = SMMU_PFN_TO_PTE(page_to_pfn(pages[i]), attrs);
-			trace_smmu_set_pte(as->asid, iova, page_to_phys(pages[i]),
-					   PAGE_SIZE, attrs);
-		}
-
-		pte = &ptbl[ptn];
-		FLUSH_CPU_DCACHE(pte, tbl_page, count * sizeof(*pte));
-		if (!flush_all)
-			flush_ptc_and_tlb_range(smmu, as, iova, pte, tbl_page,
-						count);
-
-		iova += PAGE_SIZE * count;
-		total -= count;
-		pages += count;
-
-		spin_unlock_irqrestore(&as->lock, flags);
-	}
-
-out:
-	if (flush_all)
-		flush_ptc_and_tlb_as(as, iova_base,
-				     iova_base + total * PAGE_SIZE);
-	return err;
-}
-
 #define sg_num_pages(sg)					\
 	(PAGE_ALIGN((sg)->offset + (sg)->length) >> PAGE_SHIFT)
 
@@ -1788,7 +1715,6 @@ static struct iommu_ops smmu_iommu_ops = {
 	.attach_dev	= smmu_iommu_attach_dev,
 	.detach_dev	= smmu_iommu_detach_dev,
 	.map		= smmu_iommu_map,
-	.map_pages	= smmu_iommu_map_pages,
 	.map_sg		= smmu_iommu_map_sg,
 	.unmap		= smmu_iommu_unmap,
 	.iova_to_phys	= smmu_iommu_iova_to_phys,
