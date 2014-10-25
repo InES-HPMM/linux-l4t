@@ -2644,6 +2644,7 @@ static int tegra_nvavp_resume(struct device *dev)
 	/* To balance the unpowergate in suspend routine */
 	nvavp_powergate_vde(nvavp);
 
+	nvavp_halt_avp(nvavp);
 	tegra_nvavp_runtime_resume(dev);
 
 	return 0;
