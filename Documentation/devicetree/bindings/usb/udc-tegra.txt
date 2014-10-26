@@ -12,6 +12,7 @@ Optional properties:
 - nvidia,charging-supported: Specify whether needs charging through USB.
 - nvidia,enable-pmu-vbus-detection: Specify whether vbus detection is supported from PMU.
 - nvidia,enable-aca-nv-charger-detection: Enables aca-nv-charger detection.
+- nvidia,enable-aca-rid-detection: Enables ACA ID resistances detection.
 - nvidia,id-detection-type: Specify how usb id detection type on the platform.
 	0 - if detection is through USB controller
 	1 - if detection is through PMU extcon

@@ -143,6 +143,8 @@ static char *const tegra_udc_extcon_cable[] = {
 	[CONNECT_TYPE_APPLE_1000MA] = "Apple 1A-charger",
 	[CONNECT_TYPE_APPLE_2000MA] = "Apple 2A-charger",
 	[CONNECT_TYPE_ACA_NV_CHARGER] = "ACA NV-Charger",
+	[CONNECT_TYPE_ACA_RID_B] = "ACA RID-B",
+	[CONNECT_TYPE_ACA_RID_C] = "ACA RID-C",
 	NULL,
 };
 
@@ -1476,6 +1478,16 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 		max_ua = USB_CHARGING_ACA_NV_CHARGER_CURRENT_LIMIT_UA;
 		tegra_udc_notify_event(udc, USB_EVENT_VBUS);
 		break;
+	case CONNECT_TYPE_ACA_RID_B:
+		dev_info(dev, "connected to ACA RID_B\n");
+		max_ua = USB_CHARGING_ACA_RID_B_CHARGER_CURRENT_LIMIT_UA;
+		tegra_udc_notify_event(udc, USB_EVENT_VBUS);
+		break;
+	case CONNECT_TYPE_ACA_RID_C:
+		dev_info(dev, "connected to ACA RID_C\n");
+		max_ua = USB_CHARGING_ACA_RID_C_CHARGER_CURRENT_LIMIT_UA;
+		tegra_udc_notify_event(udc, USB_EVENT_VBUS);
+		break;
 	default:
 		dev_info(dev, "connected to unknown USB port\n");
 		max_ua = 0;
@@ -1513,10 +1525,41 @@ static int tegra_detect_cable_type(struct tegra_udc *udc)
 		index = udc->aca_nv_extcon_cable->cable_index;
 		if (extcon_get_cable_state_(udc->aca_nv_extcon_dev, index)) {
 			tegra_udc_set_charger_type(udc,
-						CONNECT_TYPE_ACA_NV_CHARGER);
+					CONNECT_TYPE_ACA_NV_CHARGER);
 			tegra_usb_set_charging_current(udc);
 			return 0;
 		}
+	}
+
+	if (udc->support_aca_rid && udc->aca_rid_b_ecable) {
+		index = udc->aca_rid_b_ecable->cable_index;
+		if (extcon_get_cable_state_(udc->aca_rid_b_ecable->edev,
+					index)) {
+			tegra_udc_set_charger_type(udc,
+					CONNECT_TYPE_ACA_RID_B);
+			tegra_usb_set_charging_current(udc);
+			udc->aca_status = true;
+			return 0;
+		}
+	}
+
+	if (udc->support_aca_rid && udc->aca_rid_c_ecable) {
+		index = udc->aca_rid_c_ecable->cable_index;
+		if (extcon_get_cable_state_(udc->aca_rid_c_ecable->edev,
+					index)) {
+			tegra_udc_set_charger_type(udc,
+					CONNECT_TYPE_ACA_RID_C);
+			tegra_usb_set_charging_current(udc);
+			udc->aca_status = true;
+			return 0;
+		}
+	}
+
+	if (udc->support_aca_rid && udc->aca_status) {
+		tegra_udc_set_charger_type(udc,	CONNECT_TYPE_SDP);
+		tegra_usb_set_charging_current(udc);
+		udc->aca_status = false;
+		return 0;
 	}
 
 	if (tegra_usb_phy_charger_detected(udc->phy)) {
@@ -1601,6 +1644,7 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		tegra_usb_phy_power_off(udc->phy);
 		tegra_usb_set_charging_current(udc);
 		udc->current_limit = 0;
+		udc->aca_status = false;
 	} else if (!udc->vbus_active && is_active) {
 		tegra_usb_phy_power_on(udc->phy);
 		/* setup the controller in the device mode */
@@ -1617,9 +1661,13 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		if ((udc->connect_type == CONNECT_TYPE_SDP) ||
 		    (udc->connect_type == CONNECT_TYPE_CDP) ||
 		    (udc->connect_type == CONNECT_TYPE_DCP_MAXIM) ||
-			(udc->connect_type == CONNECT_TYPE_ACA_NV_CHARGER))
+		    (udc->connect_type == CONNECT_TYPE_ACA_NV_CHARGER) ||
+		    (udc->connect_type == CONNECT_TYPE_ACA_RID_B) ||
+		    (udc->connect_type == CONNECT_TYPE_ACA_RID_C))
 			dr_controller_run(udc);
-	}
+	} else if (udc->vbus_active && is_active && udc->support_aca_rid)
+		/* handle rid_b -> rid_c, rid_c/rid_b -> vbus, vbus -> rid_c/rid_b */
+		tegra_detect_cable_type(udc);
 	mutex_unlock(&udc->sync_lock);
 
 	return 0;
@@ -1644,8 +1692,10 @@ static int tegra_vbus_draw(struct usb_gadget *gadget, unsigned mA)
 	   as non-standard. Handle this case by setting to SDP */
 	if (udc->connect_type != CONNECT_TYPE_NONE
 		&& udc->connect_type != CONNECT_TYPE_SDP
-			&& udc->connect_type != CONNECT_TYPE_CDP
-				&& udc->connect_type != CONNECT_TYPE_ACA_NV_CHARGER)
+		&& udc->connect_type != CONNECT_TYPE_CDP
+		&& udc->connect_type != CONNECT_TYPE_ACA_NV_CHARGER
+		&& udc->connect_type != CONNECT_TYPE_ACA_RID_B
+		&& udc->connect_type != CONNECT_TYPE_ACA_RID_C)
 		tegra_udc_set_charger_type(udc, CONNECT_TYPE_SDP);
 
 	/* Avoid unnecessary work if there is no change in current limit */
@@ -2985,7 +3035,9 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		udc->support_aca_nv_cable =
 				of_property_read_bool(pdev->dev.of_node,
 					"nvidia,enable-aca-nv-charger-detection");
-
+		udc->support_aca_rid =
+				of_property_read_bool(pdev->dev.of_node,
+					"nvidia,enable-aca-rid-detection");
 		pdata->has_hostpc = soc_data->has_hostpc;
 		pdata->unaligned_dma_buf_supported =
 			soc_data->unaligned_dma_buf_supported;
@@ -3151,6 +3203,26 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 				udc->aca_nv_extcon_cable->edev;
 	}
 
+	if (udc->support_aca_rid && pdev->dev.of_node) {
+		udc->aca_rid_b_ecable =
+			extcon_get_extcon_cable(&pdev->dev, "aca-rb");
+		if (IS_ERR(udc->aca_rid_b_ecable)) {
+			dev_err(&pdev->dev,
+				"failed to get aca-rid-b extcon cable\n");
+			err = -EPROBE_DEFER;
+			goto err_del_udc;
+		}
+
+		udc->aca_rid_c_ecable =
+			extcon_get_extcon_cable(&pdev->dev, "aca-rc");
+		if (IS_ERR(udc->aca_rid_c_ecable)) {
+			dev_err(&pdev->dev,
+				"failed to get aca-rid-c extcon cable\n");
+			err = -EPROBE_DEFER;
+			goto err_del_udc;
+		}
+	}
+
 	/* Create work for controlling clocks to the phy if otg is disabled */
 	INIT_WORK(&udc->irq_work, tegra_udc_irq_work);
 	INIT_DELAYED_WORK(&udc->non_std_charger_work,
@@ -3283,6 +3355,20 @@ static int tegra_udc_prepare(struct device *dev)
 		if (extcon_get_cable_state_(udc->aca_nv_extcon_dev, index))
 			udc->vbus_in_lp0 = true;
 	}
+
+	if (udc->support_aca_rid && udc->aca_rid_b_ecable) {
+		index = udc->aca_rid_b_ecable->cable_index;
+		if (extcon_get_cable_state_(udc->aca_rid_b_ecable->edev,
+						index))
+			udc->vbus_in_lp0 = true;
+	}
+
+	if (udc->support_aca_rid && udc->aca_rid_c_ecable) {
+		index = udc->aca_rid_c_ecable->cable_index;
+		if (extcon_get_cable_state_(udc->aca_rid_c_ecable->edev,
+						index))
+			udc->vbus_in_lp0 = true;
+	}
 	/* During driver resume sometimes connect_type_lp0 is
 	   set to NONE, which means task is finished incomplete,
 	   in this case retain the value */
@@ -3384,6 +3470,30 @@ static int tegra_udc_resume(struct device *dev)
 			if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE) &&
 				!extcon_get_cable_state_(udc->aca_nv_extcon_dev,
 								index)) {
+				tegra_udc_set_extcon_state(udc);
+				udc->connect_type_lp0 = CONNECT_TYPE_NONE;
+				regulator_set_current_limit(udc->vbus_reg,
+								0, 0);
+			}
+		}
+
+		if (udc->support_aca_rid && udc->aca_rid_b_ecable) {
+			index = udc->aca_rid_b_ecable->cable_index;
+			if ((udc->connect_type_lp0 == CONNECT_TYPE_ACA_RID_B) &&
+				!extcon_get_cable_state_(
+					udc->aca_rid_b_ecable->edev, index)) {
+				tegra_udc_set_extcon_state(udc);
+				udc->connect_type_lp0 = CONNECT_TYPE_NONE;
+				regulator_set_current_limit(udc->vbus_reg,
+								0, 0);
+			}
+		}
+
+		if (udc->support_aca_rid && udc->aca_rid_c_ecable) {
+			index = udc->aca_rid_c_ecable->cable_index;
+			if ((udc->connect_type_lp0 != CONNECT_TYPE_ACA_RID_C) &&
+				!extcon_get_cable_state_(
+					udc->aca_rid_c_ecable->edev, index)) {
 				tegra_udc_set_extcon_state(udc);
 				udc->connect_type_lp0 = CONNECT_TYPE_NONE;
 				regulator_set_current_limit(udc->vbus_reg,
