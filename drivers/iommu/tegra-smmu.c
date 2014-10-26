@@ -1741,7 +1741,7 @@ static void smmu_iommu_domain_destroy(struct iommu_domain *domain)
 
 	/* find the smmu_map_prop containing this domain */
 	list_for_each_entry(prop, &smmu_handle->asprops, list) {
-		if (prop->map->domain == domain) {
+		if (prop->map && (prop->map->domain == domain)) {
 			prop->map = NULL;
 			break;
 		}
