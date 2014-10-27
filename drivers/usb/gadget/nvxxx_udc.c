@@ -1513,15 +1513,20 @@ nvudc_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 	nvudc = udc_ep_ptr->nvudc;
 	msg_entry(nvudc->dev);
 
+	spin_lock_irqsave(&nvudc->lock, flags);
+
 	if (!udc_ep_ptr->tran_ring_ptr ||
 		!udc_req_ptr->usb_req.complete ||
 		!udc_req_ptr->usb_req.buf ||
-		!list_empty(&udc_req_ptr->queue))
+		!list_empty(&udc_req_ptr->queue)) {
+		spin_unlock_irqrestore(&nvudc->lock, flags);
 		return -EINVAL;
+	}
 	msg_dbg(nvudc->dev, "EPDCI = 0x%x\n", udc_ep_ptr->DCI);
 
 	if (!udc_ep_ptr->desc) {
 		msg_dbg(nvudc->dev, "udc_ep_ptr->Desc is null\n");
+		spin_unlock_irqrestore(&nvudc->lock, flags);
 		return -EINVAL;
 	}
 
@@ -1533,7 +1538,6 @@ nvudc_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 	udc_req_ptr->td_start = NULL;
 	udc_req_ptr->short_pkt = 0;
 
-	spin_lock_irqsave(&nvudc->lock, flags);
 	if (usb_endpoint_xfer_control(udc_ep_ptr->desc) &&
 				(_req->length == 0)) {
 		nvudc->setup_status = STATUS_STAGE_XFER;
