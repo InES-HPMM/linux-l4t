@@ -97,8 +97,7 @@ struct __thermal_zone {
 
 	/* sensor interface */
 	void *sensor_data;
-	int (*get_temp)(void *, long *);
-	int (*get_trend)(void *, long *);
+	struct thermal_of_sensor_ops sops;
 };
 
 /***   DT thermal zone device callbacks   ***/
@@ -108,10 +107,10 @@ static int of_thermal_get_temp(struct thermal_zone_device *tz,
 {
 	struct __thermal_zone *data = tz->devdata;
 
-	if (!data->get_temp)
+	if (!data->sops.get_temp)
 		return -EINVAL;
 
-	return data->get_temp(data->sensor_data, temp);
+	return data->sops.get_temp(data->sensor_data, temp);
 }
 
 static int of_thermal_get_trend(struct thermal_zone_device *tz, int trip,
@@ -121,10 +120,10 @@ static int of_thermal_get_trend(struct thermal_zone_device *tz, int trip,
 	long dev_trend;
 	int r;
 
-	if (!data->get_trend)
+	if (!data->sops.get_trend)
 		return -EINVAL;
 
-	r = data->get_trend(data->sensor_data, &dev_trend);
+	r = data->sops.get_trend(data->sensor_data, &dev_trend);
 	if (r)
 		return r;
 
@@ -329,8 +328,7 @@ static struct thermal_zone_device_ops of_thermal_ops = {
 static struct thermal_zone_device *
 thermal_zone_of_add_sensor(struct device_node *zone,
 			   struct device_node *sensor, void *data,
-			   int (*get_temp)(void *, long *),
-			   int (*get_trend)(void *, long *))
+			   struct thermal_of_sensor_ops *sops)
 {
 	struct thermal_zone_device *tzd;
 	struct __thermal_zone *tz;
@@ -342,8 +340,9 @@ thermal_zone_of_add_sensor(struct device_node *zone,
 	tz = tzd->devdata;
 
 	mutex_lock(&tzd->lock);
-	tz->get_temp = get_temp;
-	tz->get_trend = get_trend;
+	if (sops)
+		memcpy(&(tz->sops), sops, sizeof(*sops));
+
 	tz->sensor_data = data;
 
 	tzd->ops->get_temp = of_thermal_get_temp;
@@ -357,15 +356,15 @@ thermal_zone_of_add_sensor(struct device_node *zone,
 }
 
 /**
- * thermal_zone_of_sensor_register - registers a sensor to a DT thermal zone
+ * thermal_zone_of_sensor_register2 - registers a sensor to a DT thermal zone
  * @dev: a valid struct device pointer of a sensor device. Must contain
  *       a valid .of_node, for the sensor node.
  * @sensor_id: a sensor identifier, in case the sensor IP has more
  *             than one sensors
  * @data: a private pointer (owned by the caller) that will be passed
  *        back, when a temperature reading is needed.
- * @get_temp: a pointer to a function that reads the sensor temperature.
- * @get_trend: a pointer to a function that reads the sensor temperature trend.
+ * @sops: handle to the sensor ops (get_temp/get_trend etc.) provided by the
+ *		sensor to OF.
  *
  * This function will search the list of thermal zones described in device
  * tree and look for the zone that refer to the sensor device pointed by
@@ -378,21 +377,13 @@ thermal_zone_of_add_sensor(struct device_node *zone,
  * The thermal zone temperature trend is provided by the @get_trend function
  * pointer. When called, it will have the private pointer @data back.
  *
- * TODO:
- * 01 - This function must enqueue the new sensor instead of using
- * it as the only source of temperature values.
- *
- * 02 - There must be a way to match the sensor with all thermal zones
- * that refer to it.
- *
  * Return: On success returns a valid struct thermal_zone_device,
  * otherwise, it returns a corresponding ERR_PTR(). Caller must
  * check the return value with help of IS_ERR() helper.
  */
 struct thermal_zone_device *
-thermal_zone_of_sensor_register(struct device *dev, int sensor_id,
-				void *data, int (*get_temp)(void *, long *),
-				int (*get_trend)(void *, long *))
+thermal_zone_of_sensor_register2(struct device *dev, int sensor_id,
+				void *data, struct thermal_of_sensor_ops *sops)
 {
 	struct device_node *np, *child, *sensor_np;
 
@@ -433,13 +424,44 @@ thermal_zone_of_sensor_register(struct device *dev, int sensor_id,
 			of_node_put(np);
 			return thermal_zone_of_add_sensor(child, sensor_np,
 							  data,
-							  get_temp,
-							  get_trend);
+							  sops);
 		}
 	}
 	of_node_put(np);
 
 	return ERR_PTR(-ENODEV);
+}
+EXPORT_SYMBOL_GPL(thermal_zone_of_sensor_register2);
+
+/**
+ * thermal_zone_of_sensor_register - registers a sensor to a DT thermal zone
+ * @dev: a valid struct device pointer of a sensor device. Must contain
+ *       a valid .of_node, for the sensor node.
+ * @sensor_id: a sensor identifier, in case the sensor IP has more
+ *             than one sensors
+ * @data: a private pointer (owned by the caller) that will be passed
+ *        back, when a temperature reading is needed.
+ * @get_temp: a pointer to a function that reads the sensor temperature.
+ * @get_trend: a pointer to a function that reads the sensor temperature trend.
+ *
+ * This function calls thermal_zone_of_sensor_register2 after translating
+ * the sensor callbacks into a single structi (sops).
+ *
+ * Return: Bubbles up the return status from thermal_zone_of_register2
+ *
+ */
+struct thermal_zone_device *
+thermal_zone_of_sensor_register(struct device *dev, int sensor_id,
+				void *data, int (*get_temp)(void *, long *),
+				int (*get_trend)(void *, long *))
+{
+	struct thermal_of_sensor_ops sops = {
+		.get_temp = get_temp,
+		.get_trend = get_trend,
+	};
+
+	return thermal_zone_of_sensor_register2(dev, sensor_id, data, &sops);
+
 }
 EXPORT_SYMBOL_GPL(thermal_zone_of_sensor_register);
 
@@ -476,8 +498,8 @@ void thermal_zone_of_sensor_unregister(struct device *dev,
 	tzd->ops->get_temp = NULL;
 	tzd->ops->get_trend = NULL;
 
-	tz->get_temp = NULL;
-	tz->get_trend = NULL;
+	tz->sops.get_temp = NULL;
+	tz->sops.get_trend = NULL;
 	tz->sensor_data = NULL;
 	mutex_unlock(&tzd->lock);
 }

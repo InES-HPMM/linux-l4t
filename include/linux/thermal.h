@@ -255,6 +255,11 @@ struct thermal_genl_event {
 	int temp;
 };
 
+struct thermal_of_sensor_ops {
+	int (*get_temp)(void *, long *);
+	int (*get_trend)(void *, long *);
+};
+
 /* Function declarations */
 #ifdef CONFIG_THERMAL_OF
 struct thermal_zone_device *
@@ -263,6 +268,9 @@ thermal_zone_of_sensor_register(struct device *dev, int id,
 				int (*get_trend)(void *, long *));
 void thermal_zone_of_sensor_unregister(struct device *dev,
 				       struct thermal_zone_device *tz);
+struct thermal_zone_device *
+thermal_zone_of_sensor_register2(struct device *dev, int sensor_id,
+				void *data, struct thermal_of_sensor_ops *sops);
 #else
 static inline struct thermal_zone_device *
 thermal_zone_of_sensor_register(struct device *dev, int id,
@@ -278,6 +286,12 @@ void thermal_zone_of_sensor_unregister(struct device *dev,
 {
 }
 
+static inline struct thermal_zone_device *
+thermal_zone_of_sensor_register2(struct device *dev, int sensor_id,
+				void *data, struct thermal_of_sensor_ops *sops)
+{
+	return NULL;
+}
 #endif
 struct thermal_zone_device *thermal_zone_device_register(const char *, int, u64,
 		void *, struct thermal_zone_device_ops *,
