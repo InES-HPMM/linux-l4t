@@ -16,8 +16,6 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
-GCOV_PROFILE := y
-
 tlk_driver-objs += ote_device.o
 tlk_driver-objs += ote_comms.o
 tlk_driver-objs += ote_fs.o
