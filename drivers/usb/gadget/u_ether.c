@@ -214,11 +214,11 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 		out = dev->port_usb->out_ep;
 	else
 		out = NULL;
-	spin_unlock_irqrestore(&dev->lock, flags);
 
-	if (!out)
+	if (!out) {
+		spin_unlock_irqrestore(&dev->lock, flags);
 		return -ENOTCONN;
-
+	}
 
 	/* Padding up to RX_EXTRA handles minor disagreements with host.
 	 * Normally we use the USB "terminate on short read" convention;
@@ -242,6 +242,8 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 
 	if (dev->port_usb->is_fixed)
 		size = max_t(size_t, size, dev->port_usb->fixed_out_len);
+
+	spin_unlock_irqrestore(&dev->lock, flags);
 
 	DBG(dev, "%s: size: %d\n", __func__, size);
 	skb = alloc_skb(size + NET_IP_ALIGN, gfp_flags);
@@ -488,6 +490,10 @@ static void tx_complete(struct usb_ep *ep, struct usb_request *req)
 	struct usb_ep *in;
 	int length;
 	int retval;
+	unsigned long flags;
+	bool multi_pkt_xfer = false;
+	bool is_fixed = false;
+	u32 fixed_in_len = 0;
 
 	switch (req->status) {
 	default:
@@ -505,13 +511,21 @@ static void tx_complete(struct usb_ep *ep, struct usb_request *req)
 	}
 	dev->net->stats.tx_packets++;
 
+	spin_lock_irqsave(&dev->lock, flags);
+	if (dev->port_usb) {
+		multi_pkt_xfer = dev->port_usb->multi_pkt_xfer;
+		is_fixed = dev->port_usb->is_fixed;
+		fixed_in_len = dev->port_usb->fixed_in_len;
+		in = dev->port_usb->in_ep;
+	}
+	spin_unlock_irqrestore(&dev->lock, flags);
+
 	spin_lock(&dev->req_lock);
 	list_add_tail(&req->list, &dev->tx_reqs);
 
-	if (dev->port_usb->multi_pkt_xfer) {
+	if (multi_pkt_xfer) {
 		dev->no_tx_req_used--;
 		req->length = 0;
-		in = dev->port_usb->in_ep;
 
 		if (!list_empty(&dev->tx_reqs)) {
 			new_req = container_of(dev->tx_reqs.next,
@@ -523,8 +537,7 @@ static void tx_complete(struct usb_ep *ep, struct usb_request *req)
 
 				/* NCM requires no zlp if transfer is
 				 * dwNtbInMaxSize */
-				if (dev->port_usb->is_fixed &&
-					length == dev->port_usb->fixed_in_len &&
+				if (is_fixed && length == fixed_in_len &&
 					(length % in->maxpacket) == 0)
 					new_req->zero = 0;
 				else
@@ -606,11 +619,17 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	struct usb_ep		*in;
 	u16			cdc_filter;
 	int			buffer_is_full = 0;
+	bool			multi_pkt_xfer = false;
+	bool			is_fixed = false;
+	u32			fixed_in_len = 0;
 
 	spin_lock_irqsave(&dev->lock, flags);
 	if (dev->port_usb) {
 		in = dev->port_usb->in_ep;
 		cdc_filter = dev->port_usb->cdc_filter;
+		multi_pkt_xfer = dev->port_usb->multi_pkt_xfer;
+		is_fixed = dev->port_usb->is_fixed;
+		fixed_in_len = dev->port_usb->fixed_in_len;
 	} else {
 		in = NULL;
 		cdc_filter = 0;
@@ -623,7 +642,7 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	}
 
 	/* Allocate memory for tx_reqs to support multi packet transfer */
-	if (dev->port_usb->multi_pkt_xfer && !dev->tx_req_bufsize)
+	if (multi_pkt_xfer && !dev->tx_req_bufsize)
 		alloc_tx_buffer(dev);
 
 	/* apply outgoing CDC or RNDIS filters */
@@ -688,7 +707,7 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	dev->tx_skb_hold_count++;
 	spin_unlock_irqrestore(&dev->req_lock, flags);
 
-	if (dev->port_usb->multi_pkt_xfer) {
+	if (multi_pkt_xfer) {
 		memcpy(req->buf + req->length, skb->data, skb->len);
 		req->length = req->length + skb->len;
 		length = req->length;
@@ -718,8 +737,7 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	req->complete = tx_complete;
 
 	/* NCM requires no zlp if transfer is dwNtbInMaxSize */
-	if (dev->port_usb->is_fixed &&
-	    length == dev->port_usb->fixed_in_len &&
+	if (is_fixed && length == fixed_in_len &&
 	    (length % in->maxpacket) == 0)
 		req->zero = 0;
 	else
@@ -760,7 +778,7 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	}
 
 	if (retval) {
-		if (!dev->port_usb->multi_pkt_xfer)
+		if (!multi_pkt_xfer)
 			dev_kfree_skb_any(skb);
 drop:
 		dev->net->stats.tx_dropped++;
