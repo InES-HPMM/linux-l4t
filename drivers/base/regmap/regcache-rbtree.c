@@ -15,6 +15,7 @@
 #include <linux/debugfs.h>
 #include <linux/rbtree.h>
 #include <linux/seq_file.h>
+#include <linux/kmemleak.h>
 
 #include "internal.h"
 
@@ -370,6 +371,8 @@ static int regcache_rbtree_write(struct regmap *map, unsigned int reg,
 			kfree(rbnode);
 			return -ENOMEM;
 		}
+		kmemleak_not_leak(rbnode->block);
+		kmemleak_not_leak(rbnode);
 		regcache_rbtree_set_register(map, rbnode, 0, value);
 		regcache_rbtree_insert(map, &rbtree_ctx->root, rbnode);
 		rbtree_ctx->cached_rbnode = rbnode;
