@@ -176,13 +176,13 @@ u64 tegra_smmu_of_get_swgids(struct device *dev,
 		if (!of_match_node(matches, ret->np))
 			continue;
 
-		if (ret->args_count == 1)  {
-			swgids |= BIT(ret->args[0]);
-		} else {
-			/* XXX: Remove once DT has upstream iommus= */
-			memcpy(&swgids, ret->args, sizeof(u64));
+		if (ret->args_count != 1) {
+			dev_err(dev, "iommus contains %d cells, expected 1\n",
+				ret->args_count);
 			break;
 		}
+
+		swgids |= BIT(ret->args[0]);
 	}
 
 	swgids = swgids ? swgids : SWGIDS_ERROR_CODE;
