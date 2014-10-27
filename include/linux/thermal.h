@@ -258,6 +258,7 @@ struct thermal_genl_event {
 struct thermal_of_sensor_ops {
 	int (*get_temp)(void *, long *);
 	int (*get_trend)(void *, long *);
+	int (*trip_update)(void *, int);
 };
 
 /* Function declarations */

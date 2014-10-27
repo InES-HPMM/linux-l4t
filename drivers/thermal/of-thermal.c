@@ -263,6 +263,9 @@ static int of_thermal_set_trip_temp(struct thermal_zone_device *tz, int trip,
 	/* thermal framework should take care of data->mask & (1 << trip) */
 	data->trips[trip].temperature = temp;
 
+	if (data->sops.trip_update)
+		data->sops.trip_update(data->sensor_data, trip);
+
 	return 0;
 }
 
@@ -289,6 +292,9 @@ static int of_thermal_set_trip_hyst(struct thermal_zone_device *tz, int trip,
 
 	/* thermal framework should take care of data->mask & (1 << trip) */
 	data->trips[trip].hysteresis = hyst;
+
+	if (data->sops.trip_update)
+		data->sops.trip_update(data->sensor_data, trip);
 
 	return 0;
 }
@@ -500,6 +506,7 @@ void thermal_zone_of_sensor_unregister(struct device *dev,
 
 	tz->sops.get_temp = NULL;
 	tz->sops.get_trend = NULL;
+	tz->sops.trip_update = NULL;
 	tz->sensor_data = NULL;
 	mutex_unlock(&tzd->lock);
 }
