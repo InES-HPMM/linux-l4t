@@ -424,6 +424,8 @@ el0_sync_compat:
 	cmp	x24, #ESR_EL1_EC_BREAKPT_EL0	// debug exception in EL0
 	b.ge	el0_sync_tramp
 	b	el0_inv
+#endif
+
 el0_sync_tramp:
 	blr	x26
 	/* Fall through	*/
@@ -435,6 +437,7 @@ ret_from_exception:
 	b	ret_to_user
 ENDPROC(ret_from_exception)
 
+#ifdef CONFIG_COMPAT
 el0_svc_compat:
 	/*
 	 * AArch32 syscall handling
