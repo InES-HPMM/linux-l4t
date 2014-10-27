@@ -3420,7 +3420,8 @@ static void portpm_config_war(struct nv_udc_s *nvudc)
 	}
 
 	if (disable_lpm &&
-		(((portsc_value >> PORTSC_PS_SHIFT) & PORTSC_PS_MASK) <= 3)) {
+		(((portsc_value >> PORTSC_PS_SHIFT) & PORTSC_PS_MASK)
+			<= USB_SPEED_HIGH)) {
 		reg_portpm = ioread32(nvudc->mmio_reg_base + PORTPM);
 		reg_portpm &= ~PORTPM_L1S(-1);
 		reg_portpm |= PORTPM_L1S(2);
@@ -3454,9 +3455,9 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 		msg_dbg(nvudc->dev, "PR completed. PRC is set, but PR is not\n");
 
 		u_temp2 = (u_temp >> PORTSC_PS_SHIFT) & PORTSC_PS_MASK;
-		if (u_temp2 <= 2)
+		if (u_temp2 <= USB_SPEED_FULL)
 			nvudc->gadget.speed = USB_SPEED_FULL;
-		else if (u_temp2 == 3)
+		else if (u_temp2 == USB_SPEED_HIGH)
 			nvudc->gadget.speed = USB_SPEED_HIGH;
 		else
 			nvudc->gadget.speed = USB_SPEED_SUPER;
@@ -3544,9 +3545,9 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 
 			msg_dbg(nvudc->dev, "CCS is set\n");
 			u_temp2 = (u_temp >> PORTSC_PS_SHIFT) & PORTSC_PS_MASK;
-			if (u_temp2 <= 2)
+			if (u_temp2 <= USB_SPEED_FULL)
 				nvudc->gadget.speed = USB_SPEED_FULL;
-			else if (u_temp2 == 3)
+			else if (u_temp2 == USB_SPEED_HIGH)
 				nvudc->gadget.speed = USB_SPEED_HIGH;
 			else
 				nvudc->gadget.speed = USB_SPEED_SUPER;
@@ -3583,7 +3584,7 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 		msg_dbg(nvudc->dev, "PLC is set PORTSC= 0x%x\n",
 				u_temp);
 
-		if (((u_temp >> PORTSC_PLS_SHIFT) & PORTSC_PLS_MASK) == 3) {
+		if ((u_temp & PORTSC_PLS_MASK) == XDEV_U3) {
 			msg_dbg(nvudc->dev, "PLS Suspend (U3)\n");
 			nvudc->resume_state = nvudc->device_state;
 			nvudc->device_state = USB_STATE_SUSPENDED;
@@ -3600,11 +3601,10 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 #ifdef OTG_XXX
 			nv_notify_otg(A_BUS_SUSPEND);
 #endif
-		} else if ((((((u_temp >> PORTSC_PLS_SHIFT) & PORTSC_PLS_MASK)
-			== 0xF) && (nvudc->gadget.speed == USB_SPEED_SUPER)) ||
-			((((u_temp >> PORTSC_PLS_SHIFT) & PORTSC_PLS_MASK) == 0)
-			&& (nvudc->gadget.speed < USB_SPEED_SUPER))) &&
-			 (nvudc->resume_state != 0)) {
+		} else if ((((u_temp & PORTSC_PLS_MASK) == XDEV_RESUME)
+			&& (nvudc->gadget.speed == USB_SPEED_SUPER)) ||
+			(((u_temp & PORTSC_PLS_MASK) == XDEV_U0)
+			&& (nvudc->gadget.speed < USB_SPEED_SUPER))) {
 
 			msg_dbg(nvudc->dev, "PLS Resume\n");
 

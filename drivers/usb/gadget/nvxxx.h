@@ -84,8 +84,6 @@ extern struct usb_hcd *tegra_xhci_hcd;
 #define PORTSC_LANE_POLARITY_OVRD_VALUE	(1 << 3)
 #define PORTSC_PR	(1 << 4)
 #define PORTSC_PLS(x)	(((x) & 0xf) << 5)
-#define PORTSC_PLS_SHIFT	5
-#define PORTSC_PLS_MASK		0xf
 #define PORTSC_LANE_POLARITY_VALUE (1 << 9)
 #define PORTSC_PS(x)	(((x) & 0xf) << 10)
 #define PORTSC_PS_MASK	0xf
@@ -97,6 +95,11 @@ extern struct usb_hcd *tegra_xhci_hcd;
 #define PORTSC_PLC	(1 << 22)
 #define PORTSC_CEC	(1 << 23)
 #define PORTSC_WPR	(1 << 30)
+
+#define PORTSC_PLS_MASK	(0xf << 5)
+#define XDEV_U0		(0x0 << 5)
+#define XDEV_U3		(0x3 << 5)
+#define XDEV_RESUME	(0xf << 5)
 
 #define ECPLO		0x00000040
 #define ECPLO_ADDRLO(x)	((x) & 0xffffffc0)
