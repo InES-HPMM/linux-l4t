@@ -291,6 +291,50 @@ struct aotag_plat_info_t {
 /*
  * Helper Functions
  */
+static int aotag_update_shutdown_temp(struct platform_device *pdev)
+{
+	int ret = 0;
+	u32 reg;
+	long temp;
+	struct thermal_zone_device *ptzd = PDEV2TZDEVICE(pdev);
+	struct aotag_sensor_info_t *ps_info = PDEV2SENSOR_INFO(pdev);
+
+	if (IS_ERR_OR_NULL(ptzd)) {
+		ret = -ENODEV;
+		goto out;
+	}
+
+	ret = -EINVAL;
+	if (ptzd->ops->get_crit_temp)
+		ret = ptzd->ops->get_crit_temp(ptzd, &ps_info->shutdown_temp);
+
+	if (unlikely(ret)) {
+		aotag_pdev_print(warn, pdev,
+				"Could not query shutdown/critical temp\n");
+	}
+
+	reg = 0;
+	temp = (ps_info->shutdown_temp)/2000;
+	FILL_REG_OR(temp, THRESH3_CFG, &reg);
+	reg_write(pdev, pmc, reg, PMC_AOTAG_THRESH3_CFG);
+	aotag_pdev_print(info, pdev, "shutdown temperature - %d\n",
+			reg_read(pdev, pmc, PMC_AOTAG_THRESH3_CFG));
+out:
+	return ret;
+}
+
+static int aotag_trip_update(void *data, int trip)
+{
+	int ret = 0;
+	struct platform_device *pdev;
+
+	pdev = (struct platform_device *)data;
+
+	aotag_update_shutdown_temp(pdev);
+
+	return ret;
+}
+
 static int aotag_get_temp_generic(void *data, long *temp)
 {
 	int ret = 0;
@@ -460,6 +504,7 @@ static int aotag_parse_sensor_params(struct platform_device *pdev)
 
 	psensor_info->sops.get_temp = aotag_get_temp_generic;
 	psensor_info->sops.get_trend = aotag_get_trend_generic;
+	psensor_info->sops.trip_update = aotag_trip_update;
 	aotag_pdev_print(info, pdev,
 			"sensor found :ID %d, Name: %s\n",
 			psensor_info->id,
@@ -675,7 +720,6 @@ static int aotag_hw_init(struct platform_device *pdev)
 {
 	int ret = 0;
 	unsigned long reg = 0;
-	int temp = 0;
 	struct aotag_sensor_info_t *ps_info = PDEV2SENSOR_INFO(pdev);
 	struct sensor_common_params_t *pcparams =
 		SENSOR_INFO2COMMON_PARAMS(ps_info);
@@ -710,18 +754,14 @@ static int aotag_hw_init(struct platform_device *pdev)
 	reg_write(pdev, pmc, reg, PMC_TSENSOR_PDIV0);
 
 	/*
-	 * configure therm trip
-	 */
-	reg = 0;
-	temp = (ps_info->shutdown_temp)/2000;
-	FILL_REG_OR(temp, THRESH3_CFG, &reg);
-	reg_write(pdev, pmc, reg, PMC_AOTAG_THRESH3_CFG);
-	aotag_pdev_print(info, pdev, "shutdown temperature - %d\n",
-			reg_read(pdev, pmc, PMC_AOTAG_THRESH3_CFG));
-
-	/*
 	 * Enable AOTAG + THERMTRIP
 	 */
+	ret = aotag_update_shutdown_temp(pdev);
+	if (unlikely(ret)) {
+		aotag_pdev_print(alert, pdev,
+				"failed to get shutdown temp, using default\n");
+	}
+
 	reg = 0;
 	set_bit(CFG_TAG_EN_POS, &reg);
 	clear_bit(CFG_DISABLE_CLK_POS, &reg);
@@ -730,32 +770,6 @@ static int aotag_hw_init(struct platform_device *pdev)
 	aotag_pdev_print(info, pdev, "AOTAG EN %x\n",
 			reg_read(pdev, pmc, PMC_AOTAG_CFG));
 
-	return ret;
-}
-
-static int aotag_update_shutdown_temp(struct platform_device *pdev)
-{
-	int ret = 0;
-	struct thermal_zone_device *ptzd = PDEV2TZDEVICE(pdev);
-	struct aotag_sensor_info_t *ps_info = PDEV2SENSOR_INFO(pdev);
-
-	if (IS_ERR_OR_NULL(ptzd)) {
-		ret = -ENODEV;
-		goto out;
-	}
-
-	ret = -EINVAL;
-	if (ptzd->ops->get_crit_temp)
-		ret = ptzd->ops->get_crit_temp(ptzd, &ps_info->shutdown_temp);
-
-	if (unlikely(ret)) {
-		aotag_pdev_print(warn, pdev,
-				"Could not query shutdown/critical temp\n");
-		goto out;
-	}
-	aotag_pdev_print(info, pdev, "Shutdwon temp is %ld\n",
-			ps_info->shutdown_temp);
-out:
 	return ret;
 }
 
@@ -801,12 +815,6 @@ static int __init tegra_aotag_probe(struct platform_device *pdev)
 	if (unlikely(ret)) {
 		aotag_pdev_print(alert, pdev, "failed sensor registration\n");
 		goto out;
-	}
-
-	ret = aotag_update_shutdown_temp(pdev);
-	if (unlikely(ret)) {
-		aotag_pdev_print(alert, pdev,
-				"failed to get shutdown temp, using default\n");
 	}
 
 	ret = aotag_hw_init(pdev);
