@@ -26,23 +26,6 @@ static inline dma_addr_t dma_map_single_attrs(struct device *dev, void *ptr,
 	return addr;
 }
 
-static inline dma_addr_t dma_map_pages_at_attrs(struct device *dev,
-						struct page **pages,
-						dma_addr_t handle,
-						size_t count,
-						enum dma_data_direction dir,
-						struct dma_attrs *attrs)
-{
-	struct dma_map_ops *ops = get_dma_ops(dev);
-	dma_addr_t addr;
-
-	BUG_ON(!valid_dma_direction(dir));
-	addr = ops->map_pages(dev, pages, handle, count, 0, attrs);
-	debug_dma_map_page(dev, pages[0], 0, count * PAGE_SIZE, 0, handle,
-			   true);
-	return addr;
-}
-
 static inline dma_addr_t dma_map_single_at_attrs(struct device *dev, void *ptr,
 					      dma_addr_t handle,
 					      size_t size,
