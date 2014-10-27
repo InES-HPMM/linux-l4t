@@ -108,11 +108,13 @@
 /* To Set value of [12:6] as 1 */
 #define SDHCI_VNDR_TUN_CTRL0_0_MUL_M_VAL		0x40
 #define SDHCI_VNDR_TUN_CTRL1_0				0x1c4
+#define SDHCI_VNDR_TUN_STATUS0_0			0x1c8
 /* Enable Re-tuning request only when CRC error is detected
  * in SDR50/SDR104/HS200 modes
  */
 #define SDHCI_VNDR_TUN_CTRL_RETUNE_REQ_EN		0x8000000
 #define SDHCI_VNDR_TUN_CTRL0_TUN_HW_TAP			0x20000
+#define TUNING_WORD_SEL_MASK 				0x7
 /*value 4 in 13 to 15 bits indicates 256 iterations*/
 #define SDHCI_VNDR_TUN_CTRL0_TUN_ITERATIONS		0x8000
 #define SDHCI_VNDR_TUN_CTRL1_TUN_STEP_SIZE		0x77
@@ -717,7 +719,21 @@ static void tegra_sdhci_dumpregs(struct sdhci_host *sdhci)
 {
 	u32 tap_delay;
 	u32 trim_delay;
+	u32 reg, val;
+	int i;
 
+	/* print tuning windows */
+	if (!(sdhci->quirks2 & SDHCI_QUIRK2_NON_STANDARD_TUNING)) {
+		for (i = 0; i <= TUNING_WORD_SEL_MASK; i++) {
+			reg = sdhci_readl(sdhci, SDHCI_VNDR_TUN_CTRL0_0);
+			reg &= ~TUNING_WORD_SEL_MASK;
+			reg |= i;
+			sdhci_writel(sdhci, reg, SDHCI_VNDR_TUN_CTRL0_0);
+			val = sdhci_readl(sdhci, SDHCI_VNDR_TUN_STATUS0_0);
+			pr_info("%s: tuning_window[%d]: %#x\n",
+			mmc_hostname(sdhci->mmc), i, val);
+		}
+	}
 	tap_delay = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
 	trim_delay = tap_delay;
 	tap_delay >>= SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT;

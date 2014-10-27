@@ -2498,6 +2498,11 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 			err = -EIO;
 		} else {
 			sdhci_config_tap(mmc, SAVE_TUNED_TAP);
+			pr_info("%s: tap value and tuning window after hw tuning completion ...\n",
+				mmc_hostname(mmc));
+			/* log tap, trim and tuning windows */
+			if (host->ops->dump_host_cust_regs)
+				host->ops->dump_host_cust_regs(host);
 		}
 	}
 
