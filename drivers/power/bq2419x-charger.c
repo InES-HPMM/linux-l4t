@@ -927,6 +927,85 @@ scrub:
 	return ret;
 }
 
+#ifdef CONFIG_DEBUG_FS
+
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
+
+static struct dentry *debugfs_root;
+static ssize_t bq2419x_enable_suspend_on_charging(struct file *file,
+			const char __user *user_buf, size_t count, loff_t *ppos)
+{
+	struct i2c_client *client = file->private_data;
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	char buf[64] = { 0, };
+	ssize_t buf_size;
+	bool enabled;
+	int ret;
+
+	if (!bq2419x->cable_connected ||
+			(bq2419x->chg_status == BATTERY_CHARGING_DONE))
+		return -EINVAL;
+
+	if (!bq2419x->disable_suspend_during_charging)
+		return -EINVAL;
+
+	buf_size = min(count, (sizeof(buf)-1));
+	if (copy_from_user(buf, user_buf, buf_size))
+		return -EFAULT;
+
+	if ((*buf == 'E') || (*buf == 'e'))
+		enabled = true;
+	else if ((*buf == 'D') || (*buf == 'd'))
+		enabled = false;
+	else
+		return -EINVAL;
+
+	if (enabled) {
+		if (bq2419x->in_current_limit == 500)
+			return -EINVAL;
+		ret = bq2419x_configure_charging_current(bq2419x, 500);
+		if (ret  < 0) {
+			dev_err(bq2419x->dev,
+				"Charging Current config faild: %d\n", ret);
+			return ret;
+		}
+		battery_charger_release_wake_lock(bq2419x->bc_dev);
+	} else {
+		ret = bq2419x_configure_charging_current(bq2419x,
+				bq2419x->last_charging_current/1000);
+		if (ret  < 0) {
+			dev_err(bq2419x->dev,
+				"Charging Current config faild: %d\n", ret);
+			return ret;
+		}
+		battery_charger_acquire_wake_lock(bq2419x->bc_dev);
+	}
+	return count;
+}
+
+static const struct file_operations bq2419x_debug_fops = {
+	.open		= simple_open,
+	.write		= bq2419x_enable_suspend_on_charging,
+};
+
+static int bq2419x_debugfs_init(struct i2c_client *client)
+{
+	debugfs_root = debugfs_create_dir("battery_charger", NULL);
+	if (!debugfs_root)
+		pr_warn("bq2419x: Failed to create debugfs directory\n");
+
+	debugfs_create_file("allow_suspend_on_charging", S_IRUGO | S_IWUSR,
+			debugfs_root, (void *)client, &bq2419x_debug_fops);
+	return 0;
+}
+#else
+static int bq2419x_debugfs_init(struct i2c_client *client)
+{
+	return 0;
+}
+#endif
+
 static int bq2419x_show_chip_version(struct bq2419x_chip *bq2419x)
 {
 	int ret;
@@ -1383,6 +1462,8 @@ static int bq2419x_probe(struct i2c_client *client,
 		dev_err(&client->dev, "sysfs create failed %d\n", ret);
 		return ret;
 	}
+
+	bq2419x_debugfs_init(client);
 
 	bq2419x->edev.supported_cable = bq2419x_extcon_cable;
 	bq2419x->edev.name = bq2419x->ext_name;
