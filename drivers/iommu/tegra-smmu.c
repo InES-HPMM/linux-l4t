@@ -1593,7 +1593,7 @@ err_client:
 	smmu_client_disable_hwgrp(client);
 	spin_unlock(&as->client_lock);
 err_hwgrp:
-	devm_kfree(smmu->dev, client);
+	client->domain = NULL;
 release_as:
 	for_each_set_bit(idx, &as_alloc_bitmap, MAX_AS_PER_DEV) {
 		free_pdir(dom->as[idx]);
