@@ -948,6 +948,7 @@ static int bq27441_probe(struct i2c_client *client,
 		}
 	}
 	device_set_wakeup_capable(&client->dev, 1);
+	device_wakeup_enable(&client->dev);
 
 	dev_info(&client->dev, "Battery Voltage %dmV and SoC %d%%\n",
 			chip->vcell, chip->soc);
@@ -994,7 +995,7 @@ static int bq27441_suspend(struct device *dev)
 	struct bq27441_chip *chip = dev_get_drvdata(dev);
 	cancel_delayed_work_sync(&chip->work);
 
-	if (device_may_wakeup(&chip->client->dev))
+	if (device_may_wakeup(&chip->client->dev) && chip->client->irq)
 		enable_irq_wake(chip->client->irq);
 
 	dev_info(&chip->client->dev, "At suspend Voltage %dmV and SoC %d%%\n",
@@ -1006,7 +1007,7 @@ static int bq27441_resume(struct device *dev)
 {
 	struct bq27441_chip *chip = dev_get_drvdata(dev);
 
-	if (device_may_wakeup(&chip->client->dev))
+	if (device_may_wakeup(&chip->client->dev) && chip->client->irq)
 		disable_irq_wake(chip->client->irq);
 
 	mutex_lock(&chip->mutex);
