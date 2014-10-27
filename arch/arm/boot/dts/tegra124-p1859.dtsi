@@ -69,6 +69,17 @@
 		};
 	};
 
+	i2c@7000c000 {
+		touch-controller@4b {
+			compatible = "atmel,maxtouch";
+			reg = <0x4b>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(I, 5) 0x0>;
+			atmel,irq_flags = <IRQ_TYPE_LEVEL_LOW>;
+			status = "okay";
+		};
+	};
+
 	i2c@7000c400 {
 		nvidia,clock-always-on;
 
