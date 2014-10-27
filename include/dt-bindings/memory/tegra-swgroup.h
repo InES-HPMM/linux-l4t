@@ -30,6 +30,7 @@
 #define TEGRA_SWGROUP_DC12	10	/* 0xa88 *//* Exceptional non-linear */
 #define TEGRA_SWGROUP_MPE	11	/* 0x264 */
 #define TEGRA_SWGROUP_MSENC	11
+#define TEGRA_SWGROUP_NVENC	11
 #define TEGRA_SWGROUP_NV	12	/* 0x268 */
 #define TEGRA_SWGROUP_NV2	13	/* 0x26c */
 #define TEGRA_SWGROUP_PPCS	14	/* 0x270 */
@@ -63,6 +64,7 @@
 #define TEGRA_SWGROUP_TSECB	41	/* 0xad4 */
 #define TEGRA_SWGROUP_TSEC1	42	/* 0xad8 */
 #define TEGRA_SWGROUP_TSECB1	43	/* 0xadc */
+#define TEGRA_SWGROUP_NVDEC1	44	/* 0xae0 */
 
 #define TWO_U32_OF_U64(x)	((x) & 0xffffffff) ((x) >> 32)
 #define TEGRA_SWGROUP_BIT(x)	(1ULL << TEGRA_SWGROUP_##x)
