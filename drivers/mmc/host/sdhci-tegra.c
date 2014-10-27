@@ -715,7 +715,7 @@ static void tegra_sdhci_dumpregs(struct sdhci_host *sdhci)
 
 static int sdhci_tegra_get_max_tuning_loop_counter(struct sdhci_host *sdhci)
 {
-	return 256;
+	return 257;
 }
 
 static int show_error_stats_dump(struct seq_file *s, void *data)
