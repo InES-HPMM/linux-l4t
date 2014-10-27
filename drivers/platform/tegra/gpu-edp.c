@@ -22,6 +22,8 @@
 #include <linux/module.h>
 #include <linux/uaccess.h>
 #include <linux/of.h>
+#include <linux/pm_qos.h>
+#include <linux/debugfs.h>
 #include <linux/tegra-fuse.h>
 #include <linux/tegra_ppm.h>
 
@@ -37,15 +39,47 @@ struct gpu_edp_platform_data {
 	int imax;
 };
 
+struct edp_attrs {
+	struct gpu_edp *ctx;
+	int *var;
+	const char *name;
+};
+
 struct gpu_edp {
 	struct tegra_ppm *ppm;
 	struct mutex edp_lock;
 	struct clk *cap_clk;
 	struct thermal_cooling_device *cdev;
 
+	int pmax;
 	int imax;
 	int temperature_now;
+
+	struct edp_attrs *debugfs_attrs;
+
 };
+
+static void edp_update_cap(struct gpu_edp *ctx, int temperature,
+			  int imax, int pmax)
+{
+	unsigned clk_rate;
+
+	mutex_lock(&ctx->edp_lock);
+
+	ctx->temperature_now = temperature;
+	ctx->imax = imax;
+	ctx->pmax = pmax;
+	clk_rate = min(tegra_ppm_get_maxf(ctx->ppm, ctx->imax,
+					  TEGRA_PPM_UNITS_MILLIAMPS,
+					  ctx->temperature_now, 1),
+		       tegra_ppm_get_maxf(ctx->ppm, ctx->pmax,
+					  TEGRA_PPM_UNITS_MILLIWATTS,
+					  ctx->temperature_now, 1));
+
+	clk_set_rate(ctx->cap_clk, clk_rate * 1000);
+
+	mutex_unlock(&ctx->edp_lock);
+}
 
 #define C_TO_K(c) (c+273)
 #define K_TO_C(k) (k-273)
@@ -69,25 +103,15 @@ static int edp_get_cdev_cur_state(struct thermal_cooling_device *cdev,
 static int edp_set_cdev_state(struct thermal_cooling_device *cdev,
 				   unsigned long cur_state)
 {
-	unsigned clk_rate;
 	struct gpu_edp *ctx = cdev->devdata;
 
 	if (cur_state == 0)
 		return 0;
 
-	mutex_lock(&ctx->edp_lock);
-
 	BUG_ON(cur_state >= MELT_SILICON_K);
 
-	ctx->temperature_now = K_TO_C(cur_state);
-	clk_rate = tegra_ppm_get_maxf(ctx->ppm, ctx->imax,
-				      TEGRA_PPM_UNITS_MILLIAMPS,
-				      ctx->temperature_now, 1);
-
-	clk_set_rate(ctx->cap_clk, clk_rate * 1000);
-
-	mutex_unlock(&ctx->edp_lock);
-
+	edp_update_cap(ctx, K_TO_C(cur_state),
+		       ctx->imax, ctx->pmax);
 	return 0;
 }
 
@@ -99,6 +123,77 @@ static struct thermal_cooling_device_ops edp_cooling_ops = {
 	.get_cur_state = edp_get_cdev_cur_state,
 	.set_cur_state = edp_set_cdev_state,
 };
+
+static struct gpu_edp *s_gpu;
+static int max_gpu_power_notify(struct notifier_block *b,
+				unsigned long max_gpu_pwr, void *v)
+{
+	/* XXX there's no private data for a pm_qos notifier call */
+	struct gpu_edp *ctx = s_gpu;
+
+	edp_update_cap(ctx, ctx->temperature_now,
+		       ctx->imax, max_gpu_pwr);
+
+	return NOTIFY_OK;
+}
+static struct notifier_block max_gpu_pwr_notifier = {
+	.notifier_call = max_gpu_power_notify,
+};
+
+#ifdef CONFIG_DEBUG_FS
+static int show_edp_max(void *data, u64 *val)
+{
+	struct edp_attrs *attr = data;
+	*val = *attr->var;
+	return 0;
+}
+static int store_edp_max(void *data, u64 val)
+{
+	struct edp_attrs *attr = data;
+	struct gpu_edp *ctx = attr->ctx;
+
+	*attr->var = val;
+
+	edp_update_cap(ctx, ctx->temperature_now,
+		       ctx->imax, ctx->pmax);
+
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(edp_max_fops, show_edp_max, store_edp_max, "%llu\n");
+
+static int __init tegra_edp_debugfs_init(struct device *dev,
+					 struct gpu_edp *ctx,
+					 struct dentry *edp_dir)
+{
+	struct edp_attrs *attr;
+	struct edp_attrs attrs[] = {
+		{ ctx, &ctx->imax, "imax" },
+		{ ctx, &ctx->pmax, "pmax" },
+		{ NULL}
+	};
+
+	if (!edp_dir)
+		return -ENOSYS;
+
+	ctx->debugfs_attrs = devm_kzalloc(dev, sizeof(attrs), GFP_KERNEL);
+	if (!ctx->debugfs_attrs)
+		return -ENOMEM;
+
+	memcpy(ctx->debugfs_attrs, attrs, sizeof(attrs));
+
+	for (attr = ctx->debugfs_attrs; attr->ctx; attr++)
+		debugfs_create_file(attr->name, S_IRUGO | S_IWUSR,
+				    edp_dir, attr, &edp_max_fops);
+
+	debugfs_create_u32("temperature", S_IRUGO,
+			   edp_dir, &ctx->temperature_now);
+
+	return 0;
+}
+#else
+static int __init tegra_edp_debugfs_init(void)
+{ return 0; }
+#endif /* CONFIG_DEBUG_FS */
 
 static int __init tegra_gpu_edp_parse_dt(struct platform_device *pdev,
 					 struct gpu_edp_platform_data *pdata)
@@ -127,7 +222,7 @@ static int __init tegra_gpu_edp_parse_dt(struct platform_device *pdev,
 		return -ENODATA;
 
 	pdata->cdev_name = "gpu_edp";
-	pdata->name = dev_name(&pdev->dev);
+	pdata->name = "gpu_edp";
 
 	return 0;
 }
@@ -140,7 +235,8 @@ static int __init tegra_gpu_edp_probe(struct platform_device *pdev)
 	unsigned iddq_ma;
 	struct gpu_edp_platform_data pdata;
 	struct gpu_edp *ctx;
-	int ret;
+	struct dentry *edp_dir = NULL;
+	int ret, ret_warn;
 
 	if (WARN(!pdev || !pdev->dev.of_node,
 		 "DT node required but absent\n"))
@@ -176,11 +272,12 @@ static int __init tegra_gpu_edp_probe(struct platform_device *pdev)
 	pr_debug("%s: %s IDDQ value %d\n",
 		 __func__, pdata.name, iddq_ma);
 
-
 	ctx->cap_clk = tegra_get_clock_by_name(pdata.cap_clk_name);
 	if (!ctx->cap_clk)
 		pr_err("%s: cannot get clock:%s\n",
 		       __func__, pdata.cap_clk_name);
+
+	edp_dir = debugfs_create_dir("gpu_edp", NULL);
 
 	ctx->ppm = tegra_ppm_create(pdata.name, fv, params, iddq_ma, NULL);
 	if (WARN(IS_ERR_OR_NULL(ctx->ppm),
@@ -188,13 +285,20 @@ static int __init tegra_gpu_edp_probe(struct platform_device *pdev)
 		ret = PTR_ERR(ctx->ppm);
 		ctx->ppm = NULL;
 		goto out;
-
 	}
 
 	ctx->temperature_now = -273; /* HACK */
 	ctx->imax = pdata.imax;
+	ctx->pmax = PM_QOS_GPU_POWER_MAX_DEFAULT_VALUE;
 
 	mutex_init(&ctx->edp_lock);
+
+	s_gpu = ctx;
+	ret_warn = pm_qos_add_notifier(PM_QOS_MAX_GPU_POWER,
+					 &max_gpu_pwr_notifier);
+	if (ret_warn)
+		dev_err(&pdev->dev,
+			"pm_qos failure. max_gpu_power won't work\n");
 
 	ctx->cdev = thermal_of_cooling_device_register(
 		pdev->dev.of_node, pdata.cdev_name, ctx, &edp_cooling_ops);
@@ -206,12 +310,18 @@ static int __init tegra_gpu_edp_probe(struct platform_device *pdev)
 		goto out;
 	}
 
+	ret_warn = tegra_edp_debugfs_init(&pdev->dev, ctx, edp_dir);
+	if (ret_warn)
+		dev_err(&pdev->dev,
+			"failed to init debugfs interface\n");
+
 out:
 	if (ret) {
 		if (ctx) {
 			thermal_cooling_device_unregister(ctx->cdev);
 			tegra_ppm_destroy(ctx->ppm, NULL, NULL);
 		}
+		debugfs_remove_recursive(edp_dir);
 		fv_relation_destroy(fv);
 		kfree(params);
 	}
