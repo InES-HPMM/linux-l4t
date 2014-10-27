@@ -272,8 +272,7 @@ struct aotag_sensor_info_t {
 	u32 advertised_id;
 	const char *name;
 	struct sensor_common_params_t sensor_common_params;
-	int (*of_get_temp)(void*, long*);
-	int (*of_get_trend)(void*, long*);
+	struct thermal_of_sensor_ops sops;
 	struct thermal_zone_device *tzd;
 	struct fuse_info_t fuse_info;
 	s32 therm_a;
@@ -459,8 +458,8 @@ static int aotag_parse_sensor_params(struct platform_device *pdev)
 			pfuse->compensation_a, pfuse->compensation_b);
 
 
-	psensor_info->of_get_temp = aotag_get_temp_generic;
-	psensor_info->of_get_trend = aotag_get_trend_generic;
+	psensor_info->sops.get_temp = aotag_get_temp_generic;
+	psensor_info->sops.get_trend = aotag_get_trend_generic;
 	aotag_pdev_print(info, pdev,
 			"sensor found :ID %d, Name: %s\n",
 			psensor_info->id,
@@ -491,12 +490,11 @@ static int aotag_register_sensors(struct platform_device *pdev)
 			"Registering sensor %d\n", ps_info->id);
 
 	ptz = NULL;
-	ptz = thermal_zone_of_sensor_register(
+	ptz = thermal_zone_of_sensor_register2(
 			dev,
 			ps_info->id,
 			pdev,
-			ps_info->of_get_temp,
-			ps_info->of_get_trend);
+			&ps_info->sops);
 	if (IS_ERR(ptz)) {
 		aotag_pdev_print(alert, pdev,
 				"Failed to register sensor %d\n",
