@@ -2205,16 +2205,16 @@ void tegra_reserve4(ulong carveout_size, ulong fb_size,
 
 void tegra_get_fb_resource(struct resource *fb_res)
 {
-	fb_res->start = (resource_size_t) tegra_fb_start;
+	fb_res->start = (resource_size_t) tegra_bootloader_fb_start;
 	fb_res->end = fb_res->start +
-			(resource_size_t) tegra_fb_size - 1;
+			(resource_size_t) tegra_bootloader_fb_size - 1;
 }
 
 void tegra_get_fb2_resource(struct resource *fb2_res)
 {
-	fb2_res->start = (resource_size_t) tegra_fb2_start;
+	fb2_res->start = (resource_size_t) tegra_bootloader_fb2_start;
 	fb2_res->end = fb2_res->start +
-			(resource_size_t) tegra_fb2_size - 1;
+			(resource_size_t) tegra_bootloader_fb2_size - 1;
 }
 
 
