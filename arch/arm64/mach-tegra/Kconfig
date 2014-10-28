@@ -27,6 +27,7 @@ config ARCH_TEGRA_13x_SOC
 	select MACH_HAS_SND_SOC_TEGRA_MAX98090 if SND_SOC
 	select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
 	select ZONE_DMA32 if !TEGRA_IOMMU_SMMU
+	select CMA
 	help
 	  Support for NVIDIA Tegra 13x family of SoCs, based upon the
 	  NVIDIA Denver CPU
@@ -58,6 +59,7 @@ config ARCH_TEGRA_21x_SOC
 	select SYSTEM_PMIC
 	select HAVE_FUNCTION_TRACER
 	select TEGRA_HMP_CLUSTER_CONTROL
+	select CMA
 	help
 	  Support for NVIDIA Tegra 21x family of SoCs, based upon the
 	  NVIDIA Denver CPU
