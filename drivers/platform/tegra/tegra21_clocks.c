@@ -8997,6 +8997,7 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("dmic2",	"tegra210-dmic.1",	NULL,	162,	0x650,	 12288000, mux_pllaout0_audio1_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("dmic3",	"tegra210-dmic.2",	NULL,	197,	0x6bc,	 12288000, mux_pllaout0_audio2_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("ape",	NULL,			"ape",	198,	0x6c0,	408000000, mux_plla_pllc4_out0_pllc_pllc4_out1_pllp_clkm_pllc4_out2, MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("apb2ape",	NULL,		    "apb2ape",	107,	0,	38400000,  mux_clk_m,			PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("maud",	"maud",			NULL,	202,	0x6d4,	300000000, mux_pllp_pllp_out3_clkm_clk32k_plla,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("pwm",	"tegra-pwm",		NULL,	17,	0x110,	 48000000, mux_pllp_pllc_clk32_clkm,		MUX | DIV_U71 | PERIPH_ON_APB),
 	D_AUDIO_CLK("d_audio",	"tegra210-axbar",	"ahub",	106,	0x3d0,	 98304000, mux_d_audio_clk,			MUX | DIV_U71 | PERIPH_ON_APB),
