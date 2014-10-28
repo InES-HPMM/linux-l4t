@@ -75,6 +75,7 @@
 					temperature = <102000>;
 					hysteresis = <0>;
 					type = "critical";
+					writable;
 				};
 			};
 		};
