@@ -365,7 +365,7 @@ static void mcerr_default_print(const struct mc_error *err,
 				int secure, int rw, const char *smmu_info)
 {
 	pr_err("[mcerr] (%s) %s: %s\n", client->swgid, client->name, err->msg);
-	pr_err("[mcerr]   status = 0x%08x; addr = 0x%08llx", status,
+	pr_err("[mcerr]   status = 0x%08x; addr = 0x%08llx\n", status,
 	       (long long unsigned int)addr);
 	pr_err("[mcerr]   secure: %s, access-type: %s, SMMU fault: %s\n",
 	       secure ? "yes" : "no", rw ? "write" : "read",
@@ -456,18 +456,6 @@ int tegra_mcerr_init(struct dentry *mc_parent, struct platform_device *pdev)
 	 */
 	mcerr_chip_specific_setup(&chip_specific);
 
-	irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
-	if (irq < 0) {
-		pr_err("Unable to parse/map MC error interrupt\n");
-		goto done;
-	}
-
-	if (request_threaded_irq(irq, tegra_mc_error_hard_irq,
-				 tegra_mc_error_thread, 0, "mc_status", NULL)) {
-		pr_err("Unable to register MC error interrupt\n");
-		goto done;
-	}
-
 	prop = of_get_property(pdev->dev.of_node, "int_mask", NULL);
 	if (!prop) {
 		pr_err("No int_mask prop for mcerr!\n");
@@ -485,6 +473,18 @@ int tegra_mcerr_init(struct dentry *mc_parent, struct platform_device *pdev)
 
 	mc_intr_count = be32_to_cpup(prop);
 
+	irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
+	if (irq < 0) {
+		pr_err("Unable to parse/map MC error interrupt\n");
+		goto done;
+	}
+
+	if (request_threaded_irq(irq, tegra_mc_error_hard_irq,
+				 tegra_mc_error_thread, 0, "mc_status", NULL)) {
+		pr_err("Unable to register MC error interrupt\n");
+		goto done;
+	}
+
 	mcerr_debugfs_dir = debugfs_create_dir("err", mc_parent);
 	if (mcerr_debugfs_dir == NULL) {
 		pr_err("Failed to make debugfs node: %ld\n",
@@ -496,8 +496,6 @@ int tegra_mcerr_init(struct dentry *mc_parent, struct platform_device *pdev)
 	debugfs_create_file("mcerr_throttle", S_IRUGO | S_IWUSR,
 			    mcerr_debugfs_dir, NULL,
 			    &mcerr_throttle_debugfs_fops);
-
-	pr_info("Started MC error interface!\n");
 
 done:
 	return 0;
