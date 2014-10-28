@@ -33,7 +33,6 @@
 		compad-vref-1v8 = <0x7>;
 		nvidia,en-io-trim-volt;
 		nvidia,is-emmc;
-		nvidia,disable-auto-cal;
 	};
 
 	sdhci@700b0400 { /* SDMMC3 for 2nd Wifi on loki */
