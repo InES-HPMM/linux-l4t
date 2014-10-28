@@ -108,6 +108,7 @@ config ARCH_TEGRA_12x_SOC
 	select TEGRA_ISOMGR_SYSFS
 	select PROC_DEVICETREE
 	select ZONE_DMA if !TEGRA_IOMMU_SMMU
+	select CMA
 	help
 	  Support for NVIDIA Tegra 12x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
