@@ -140,6 +140,10 @@ static void tegra124_virt_apbif_stop_playback(struct snd_soc_dai *dai)
 	struct slave_remap_add *phandle = &(data->phandle);
 	int value;
 
+	data->apbif_id = dai->id;
+	/* find amx channel for latest amixer settings */
+	tegra_find_amx_info((unsigned long)data);
+
 	/* disable the amx in channel */
 	if (data->amx_id < AMX_MAX_INSTANCE) {
 		value = reg_read(phandle->amx_base[data->amx_id],
