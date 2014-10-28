@@ -25,6 +25,7 @@
 #include <linux/errno.h>
 #include <linux/string.h>
 #include <linux/mm.h>
+#include <linux/highmem.h>
 #include <linux/uaccess.h>
 #include <linux/slab.h>
 #include <linux/file.h>
@@ -54,6 +55,9 @@
 #define user_ptr(p) (p)
 #endif
 
+/* support up to 4K (3840x2150) with double buffering */
+#define DEFAULT_FBMEM_SIZE	(SZ_64M + SZ_8M)
+
 struct tegra_fb_info {
 	struct tegra_dc_win	win;
 	struct tegra_dc_win	blank_win;
@@ -62,6 +66,7 @@ struct tegra_fb_info {
 	bool			valid;
 
 	struct resource		*fb_mem;
+	size_t			fb_size;
 
 	int			xres;
 	int			yres;
@@ -70,6 +75,8 @@ struct tegra_fb_info {
 
 	struct fb_videomode	mode;
 	phys_addr_t		phys_start;
+	int			kuse_count;
+	int			mmap_count;
 
 	char __iomem		*blank_base;	/* Virtual address */
 	phys_addr_t		blank_start;
@@ -77,6 +84,43 @@ struct tegra_fb_info {
 
 /* palette array used by the fbcon */
 static u32 pseudo_palette[16];
+
+int tegra_fb_release_fbmem(struct tegra_fb_info *info)
+{
+	if (info && info->phys_start) {
+		/* do not release the framebuffer if:
+		 * 1) kernel is using (e.g. fbcon)
+		 * 2) user space has mmap
+		 */
+		if (info->kuse_count || info->mmap_count)
+			return -EBUSY;
+
+		dma_free_writecombine(&info->ndev->dev,
+				info->fb_size,
+				info->win.virt_addr,
+				info->phys_start);
+
+		info->phys_start = 0;
+		info->win.virt_addr = NULL;
+	}
+	return 0;
+}
+
+static int tegra_fb_open(struct fb_info *fb_info, int user)
+{
+	struct tegra_fb_info *info = fb_info->par;
+	if (user == 0)
+		info->kuse_count++;
+	return 0;
+}
+
+static int tegra_fb_release(struct fb_info *fb_info, int user)
+{
+	struct tegra_fb_info *info = fb_info->par;
+	if (user == 0)
+		info->kuse_count--;
+	return 0;
+}
 
 static int tegra_fb_check_var(struct fb_var_screeninfo *var,
 			      struct fb_info *info)
@@ -619,8 +663,24 @@ static int tegra_fb_set_mode(struct tegra_dc *dc, int fps)
 	return -EIO;
 }
 
+static int tegra_fb_mmap(struct fb_info *fb_info, struct vm_area_struct *vma)
+{
+	struct tegra_fb_info *info = fb_info->par;
+
+	if (info->phys_start) {
+		info->mmap_count++;
+		return dma_mmap_writecombine(&info->ndev->dev, vma,
+				info->win.virt_addr,
+				info->phys_start,
+				info->fb_size);
+	}
+	return -ENOMEM;
+}
+
 static struct fb_ops tegra_fb_ops = {
 	.owner = THIS_MODULE,
+	.fb_open = tegra_fb_open,
+	.fb_release = tegra_fb_release,
 	.fb_check_var = tegra_fb_check_var,
 	.fb_set_par = tegra_fb_set_par,
 	.fb_setcmap = tegra_fb_setcmap,
@@ -633,6 +693,7 @@ static struct fb_ops tegra_fb_ops = {
 #ifdef CONFIG_COMPAT
 	.fb_compat_ioctl = tegra_fb_ioctl,
 #endif
+	.fb_mmap = tegra_fb_mmap,
 };
 
 /* Enabling the pan_display by resetting the cache of offset */
@@ -891,6 +952,28 @@ struct tegra_dc_win *tegra_fb_get_blank_win(struct tegra_fb_info *tegra_fb)
 	return &tegra_fb->blank_win;
 }
 
+static void tegra_fb_copy_fbmem(void *to, size_t size, struct resource *fb)
+{
+	size_t i;
+	phys_addr_t from = fb->start;
+	size = min_t(size_t, size, resource_size(fb));
+
+	if (!from || size <= 0)
+		return;
+
+	BUG_ON(PAGE_ALIGN((unsigned long)to) != (unsigned long)to);
+	BUG_ON(PAGE_ALIGN(from) != from);
+	BUG_ON(PAGE_ALIGN(size) != size);
+	BUG_ON(!pfn_valid(page_to_pfn(phys_to_page(from))));
+
+	for (i = 0; i < size; i += PAGE_SIZE) {
+		struct page *page = phys_to_page(from + i);
+		void *from_virt = kmap(page);
+		memcpy(to + i, from_virt, PAGE_SIZE);
+		kunmap(page);
+	}
+}
+
 struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 					struct tegra_dc *dc,
 					struct tegra_fb_data *fb_data,
@@ -899,7 +982,7 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 {
 	struct fb_info *info;
 	struct tegra_fb_info *tegra_fb;
-	void __iomem *fb_base = NULL;
+	void *fb_base = NULL;
 	phys_addr_t fb_size = 0;
 	int ret = 0;
 	int mode_idx;
@@ -927,21 +1010,19 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 
 	tegra_fb->win.idx = fb_data->win;
 
-	if (fb_mem) {
-		fb_size = resource_size(fb_mem);
-		tegra_fb->phys_start = fb_mem->start;
-
-		/* If the caller provided virtual address, meaning the buffer
-		 * is already mapped, just use that address */
-		fb_base = virt_addr ? virt_addr :
-			ioremap_wc(tegra_fb->phys_start, fb_size);
-		if (!fb_base) {
-			dev_err(&ndev->dev, "fb can't be mapped\n");
-			ret = -EBUSY;
-			goto err_free;
-		}
-		tegra_fb->valid = true;
+	fb_size = fb_data->fbmem_size ? : DEFAULT_FBMEM_SIZE;
+	fb_base = dma_alloc_writecombine(&ndev->dev, fb_size,
+			&tegra_fb->phys_start, GFP_KERNEL);
+	if (!fb_base) {
+		dev_err(&ndev->dev, "failed to allocate framebuffer\n");
+		ret = -EBUSY;
+		goto err_free;
 	}
+
+	/* copy content from the bootloader framebuffer */
+	tegra_fb_copy_fbmem(fb_base, fb_size, fb_mem);
+	tegra_fb->fb_size = fb_size;
+	tegra_fb->valid = true;
 
 	dma_set_attr(DMA_ATTR_WRITE_COMBINE, &attrs);
 	tegra_fb->blank_base = dma_alloc_attrs(&ndev->dev,
@@ -952,7 +1033,7 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 	if (!tegra_fb->blank_base) {
 		dev_err(&ndev->dev, "failed to allocate blank buffer\n");
 		ret = -EBUSY;
-		goto err_free;
+		goto err_free_fbmem;
 	}
 
 	info->fix.line_length = fb_data->xres * fb_data->bits_per_pixel / 8;
@@ -1064,6 +1145,8 @@ err_iounmap_fb:
 		       tegra_fb->blank_start, &attrs);
 	if (fb_base)
 		iounmap(fb_base);
+err_free_fbmem:
+	tegra_fb_release_fbmem(tegra_fb);
 err_free:
 	framebuffer_release(info);
 err:
@@ -1081,8 +1164,8 @@ void tegra_fb_unregister(struct tegra_fb_info *fb_info)
 	dma_free_attrs(dev, BLANK_LINE_SIZE, fb_info->blank_base,
 		       fb_info->blank_start, &attrs);
 
+	tegra_fb_release_fbmem(fb_info);
 	unregister_framebuffer(info);
-
 	iounmap(info->screen_base);
 	framebuffer_release(info);
 }
