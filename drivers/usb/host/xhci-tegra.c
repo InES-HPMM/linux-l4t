@@ -357,12 +357,12 @@ static bool is_otg_host(struct tegra_xhci_hcd *tegra)
 		return false;
 }
 
-static int update_speed(struct tegra_xhci_hcd *tegra, u8 port)
+static int get_usb2_port_speed(struct tegra_xhci_hcd *tegra, u8 port)
 {
-	struct usb_hcd *hcd = xhci_to_hcd(tegra->xhci);
+	struct xhci_hcd *xhci = tegra->xhci;
 	u32 portsc;
 
-	portsc = readl(hcd->regs + BAR0_XHCI_OP_PORTSC(port));
+	portsc = xhci_readl(xhci, xhci->usb2_ports[port]);
 	if (DEV_FULLSPEED(portsc))
 		return USB_PMC_PORT_SPEED_FULL;
 	else if (DEV_HIGHSPEED(portsc))
@@ -443,7 +443,7 @@ static void pmc_setup_wake_detect(struct tegra_xhci_hcd *tegra)
 		if (BIT(XUSB_UTMI_INDEX + pad) & tegra->bdata->portmap) {
 			dev_dbg(dev, "%s utmi pad %d\n", __func__, pad);
 			pmc = &pmc_data[pad];
-			pmc->port_speed = update_speed(tegra, pad);
+			pmc->port_speed = get_usb2_port_speed(tegra, pad);
 			if (pad == 0) {
 				if (is_otg_host(tegra))
 					pmc->pmc_ops->setup_pmc_wake_detect(
@@ -455,7 +455,7 @@ static void pmc_setup_wake_detect(struct tegra_xhci_hcd *tegra)
 	if (tegra->otg_port_owned) {
 		pad = tegra->otg_portnum;
 		pmc = &pmc_data[pad];
-		pmc->port_speed = update_speed(tegra, pad);
+		pmc->port_speed = get_usb2_port_speed(tegra, pad);
 		pmc->pmc_ops->setup_pmc_wake_detect(pmc);
 	}
 }

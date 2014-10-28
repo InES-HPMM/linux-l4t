@@ -70,9 +70,6 @@
  * registers.
  */
 
-/* BAR0 Registers */
-#define BAR0_XHCI_OP_PORTSC(i)                         (0x00000440+(i)*16)
-
 /* IPFS Registers to save and restore  */
 #define	IPFS_XUSB_HOST_MSI_BAR_SZ_0			0xC0
 #define	IPFS_XUSB_HOST_MSI_AXI_BAR_ST_0			0xC4
