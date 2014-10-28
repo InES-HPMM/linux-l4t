@@ -1,6 +1,7 @@
 /* The industrial I/O core
  *
  * Copyright (c) 2008 Jonathan Cameron
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -47,7 +48,7 @@ static const char * const iio_direction[] = {
 	[1] = "out",
 };
 
-static const char * const iio_chan_type_name_spec[] = {
+const char * const iio_chan_type_name_spec[] = {
 	[IIO_VOLTAGE] = "voltage",
 	[IIO_CURRENT] = "current",
 	[IIO_POWER] = "power",
@@ -66,12 +67,29 @@ static const char * const iio_chan_type_name_spec[] = {
 	[IIO_ALTVOLTAGE] = "altvoltage",
 	[IIO_CCT] = "cct",
 	[IIO_PRESSURE] = "pressure",
+	[IIO_ORIENTATION] = "orientation",
+	[IIO_GRAVITY] = "gravity",
+	[IIO_LINEAR_ACCEL] = "linearaccel",
+	[IIO_HUMIDITY] = "humidity",
+	[IIO_MAGN_UNCAL] = "magnuncal",
+	[IIO_ANGLVEL_UNCAL] = "anglveluncal",
+	[IIO_GAME_ROT] = "gamerot",
+	[IIO_MOTION] = "motion",
+	[IIO_STEP] = "step",
+	[IIO_STEP_COUNT] = "stepcount",
+	[IIO_GEOMAGN_ROT] = "geomagnrot",
+	[IIO_HEART_RATE] = "heartrate",
+	[IIO_GESTURE_WAKE] = "gesturewake",
+	[IIO_GESTURE_GLANCE] = "gestureglance",
+	[IIO_GESTURE_PICKUP] = "gesturepickup",
 };
+EXPORT_SYMBOL(iio_chan_type_name_spec);
 
 static const char * const iio_modifier_names[] = {
 	[IIO_MOD_X] = "x",
 	[IIO_MOD_Y] = "y",
 	[IIO_MOD_Z] = "z",
+	[IIO_MOD_COS] = "cos",
 	[IIO_MOD_ROOT_SUM_SQUARED_X_Y] = "sqrt(x^2+y^2)",
 	[IIO_MOD_SUM_SQUARED_X_Y_Z] = "x^2+y^2+z^2",
 	[IIO_MOD_LIGHT_BOTH] = "both",
@@ -80,6 +98,14 @@ static const char * const iio_modifier_names[] = {
 	[IIO_MOD_LIGHT_RED] = "red",
 	[IIO_MOD_LIGHT_GREEN] = "green",
 	[IIO_MOD_LIGHT_BLUE] = "blue",
+	[IIO_MOD_X_UNCALIB] = "x_uncalib",
+	[IIO_MOD_Y_UNCALIB] = "y_uncalib",
+	[IIO_MOD_Z_UNCALIB] = "z_uncalib",
+	[IIO_MOD_X_BIAS] = "x_bias",
+	[IIO_MOD_Y_BIAS] = "y_bias",
+	[IIO_MOD_Z_BIAS] = "z_bias",
+	[IIO_MOD_STATUS] = "status",
+	[IIO_MOD_BPM] = "bpm"
 };
 
 /* relies on pairs of these shared then separate */
@@ -94,15 +120,22 @@ static const char * const iio_chan_info_postfix[] = {
 	[IIO_CHAN_INFO_CALIBBIAS] = "calibbias",
 	[IIO_CHAN_INFO_PEAK] = "peak_raw",
 	[IIO_CHAN_INFO_PEAK_SCALE] = "peak_scale",
-	[IIO_CHAN_INFO_QUADRATURE_CORRECTION_RAW] = "quadrature_correction_raw",
+	[IIO_CHAN_INFO_QUADRATURE_CORRECTION_RAW] =
+	"quadrature_correction_raw",
 	[IIO_CHAN_INFO_AVERAGE_RAW] = "mean_raw",
-	[IIO_CHAN_INFO_LOW_PASS_FILTER_3DB_FREQUENCY]
-	= "filter_low_pass_3db_frequency",
+	[IIO_CHAN_INFO_LOW_PASS_FILTER_3DB_FREQUENCY] =
+	"filter_low_pass_3db_frequency",
 	[IIO_CHAN_INFO_SAMP_FREQ] = "sampling_frequency",
 	[IIO_CHAN_INFO_FREQUENCY] = "frequency",
 	[IIO_CHAN_INFO_PHASE] = "phase",
 	[IIO_CHAN_INFO_HARDWAREGAIN] = "hardwaregain",
 	[IIO_CHAN_INFO_HYSTERESIS] = "hysteresis",
+	[IIO_CHAN_INFO_THRESHOLD_LOW] = "threshold_low",
+	[IIO_CHAN_INFO_THRESHOLD_HIGH] = "threshold_high",
+	[IIO_CHAN_INFO_BATCH_FLAGS] = "batch_flags",
+	[IIO_CHAN_INFO_BATCH_PERIOD] = "batch_period",
+	[IIO_CHAN_INFO_BATCH_TIMEOUT] = "batch_timeout",
+	[IIO_CHAN_INFO_BATCH_FLUSH] = "flush",
 };
 
 const struct iio_chan_spec
@@ -1058,12 +1091,34 @@ int iio_device_register(struct iio_dev *indio_dev)
 	if (ret < 0)
 		goto error_unreg_eventset;
 
-	ret = sysfs_create_link(&indio_dev->dev.parent->kobj,
-			&indio_dev->dev.kobj, "iio_device");
-	if (ret) {
-		dev_err(indio_dev->dev.parent,
-			"Failed to create link for iio_device %d\n", ret);
-		goto error_del_device;
+	if (indio_dev->multi_link) {
+		indio_dev->link_name = kasprintf(GFP_KERNEL, "iio_device_%u",
+						 indio_dev->dev.devt);
+		if (indio_dev->link_name == NULL) {
+			dev_err(indio_dev->dev.parent,
+				"Failed to create link name\n");
+			goto error_del_device;
+		}
+
+		ret = sysfs_create_link(&indio_dev->dev.parent->kobj,
+					&indio_dev->dev.kobj,
+					indio_dev->link_name);
+		if (ret) {
+			dev_err(indio_dev->dev.parent,
+				"Failed to create link for %s %d\n",
+				indio_dev->link_name, ret);
+			kfree(indio_dev->link_name);
+			goto error_del_device;
+		}
+	} else {
+		ret = sysfs_create_link(&indio_dev->dev.parent->kobj,
+					&indio_dev->dev.kobj, "iio_device");
+		if (ret) {
+			dev_err(indio_dev->dev.parent,
+				"Failed to create link for iio_device %d\n",
+				ret);
+			goto error_del_device;
+		}
 	}
 
 	cdev_init(&indio_dev->chrdev, &iio_buffer_fileops);
@@ -1075,7 +1130,13 @@ int iio_device_register(struct iio_dev *indio_dev)
 	return 0;
 
 error_free_syslink:
-	sysfs_remove_link(&indio_dev->dev.parent->kobj, "iio_device");
+	if (indio_dev->link_name) {
+		sysfs_remove_link(&indio_dev->dev.parent->kobj,
+				  indio_dev->link_name);
+		kfree(indio_dev->link_name);
+	} else {
+		sysfs_remove_link(&indio_dev->dev.parent->kobj, "iio_device");
+	}
 error_del_device:
 	device_del(&indio_dev->dev);
 error_unreg_eventset:
@@ -1094,6 +1155,7 @@ void iio_device_unregister(struct iio_dev *indio_dev)
 	mutex_lock(&indio_dev->info_exist_lock);
 	indio_dev->info = NULL;
 	mutex_unlock(&indio_dev->info_exist_lock);
+	kfree(indio_dev->link_name);
 	device_del(&indio_dev->dev);
 }
 EXPORT_SYMBOL(iio_device_unregister);
