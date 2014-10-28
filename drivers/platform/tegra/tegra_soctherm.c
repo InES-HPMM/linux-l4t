@@ -472,14 +472,22 @@ static struct soctherm_platform_data plat_data, *pp;
 static bool soctherm_init_platform_done;
 static bool read_hw_temp = true;
 static bool soctherm_suspended;
+
+#ifdef CONFIG_THERMAL
 static bool vdd_cpu_low_voltage;
 static bool vdd_core_low_voltage;
+#endif
+
 static u32 tegra_chip_id;
 static int bits_per_temp_threshold;
 static int thresh_grain;
 
 static struct clk *soctherm_clk;
 static struct clk *tsensor_clk;
+
+static struct thermal_cooling_device *soctherm_hw_critical_cdev;
+static struct thermal_cooling_device *soctherm_hw_heavy_cdev;
+static struct thermal_cooling_device *soctherm_hw_light_cdev;
 
 /**
  * soctherm_writel() - Writes a value to a SOC_THERM register
@@ -540,6 +548,7 @@ static u32 clk_reset_readl(u32 reg)
 		return __raw_readl(clk_reset_base + reg);
 }
 
+#ifdef CONFIG_THERMAL
 /**
  * temp_convert() - convert raw sensor readings to temperature
  * @cap:	raw TSOSC count
@@ -600,6 +609,12 @@ static u32 temp_translate_reverse(long temp)
 	return reg;
 }
 
+static u32 fuse_calib_base_cp;
+static u32 fuse_calib_base_ft;
+static s32 actual_temp_cp;
+static s32 actual_temp_ft;
+#endif
+
 struct soctherm_oc_irq_chip_data {
 	int			irq_base;
 	struct mutex		irq_lock; /* serialize OC IRQs */
@@ -608,18 +623,6 @@ struct soctherm_oc_irq_chip_data {
 	int			irq_enable;
 };
 static struct soctherm_oc_irq_chip_data soc_irq_cdata;
-
-static u32 fuse_calib_base_cp;
-static u32 fuse_calib_base_ft;
-static s32 actual_temp_cp;
-static s32 actual_temp_ft;
-
-static const char *const therm_names[] = {
-	[THERM_CPU] = "CPU",
-	[THERM_MEM] = "MEM",
-	[THERM_GPU] = "GPU",
-	[THERM_PLL] = "PLL",
-};
 
 static const char *const throt_names[] = {
 	[THROTTLE_LIGHT]   = "light",
@@ -634,6 +637,14 @@ static const char *const throt_names[] = {
 static const char *const throt_dev_names[] = {
 	[THROTTLE_DEV_CPU] = "CPU",
 	[THROTTLE_DEV_GPU] = "GPU",
+};
+
+#ifdef CONFIG_THERMAL
+static const char *const therm_names[] = {
+	[THERM_CPU] = "CPU",
+	[THERM_MEM] = "MEM",
+	[THERM_GPU] = "GPU",
+	[THERM_PLL] = "PLL",
 };
 
 static const char *const sensor_names[] = {
@@ -793,6 +804,7 @@ static int soctherm_read_temp(u8 index, unsigned long *temp)
 	}
 	return 0;
 }
+#endif
 
 /**
  * soctherm_has_mn_cpu_pskip_status() - does CPU use M,N values for pskip status?
@@ -897,6 +909,7 @@ int soctherm_get_gpu_pskip_status(u8 *enabled, u8 *sw_override, u16 *m, u16 *n)
 	return 0;
 }
 
+#ifdef CONFIG_THERMAL
 /**
  * enforce_temp_range() - check and enforce temperature range [min, max]
  * @trip_temp:		The trip temperature to check
@@ -1330,9 +1343,6 @@ static int soctherm_hw_action_set_cur_state(struct thermal_cooling_device *cdev,
 	return 0; /* hw sets this state */
 }
 
-static struct thermal_cooling_device *soctherm_hw_critical_cdev;
-static struct thermal_cooling_device *soctherm_hw_heavy_cdev;
-static struct thermal_cooling_device *soctherm_hw_light_cdev;
 static struct thermal_cooling_device_ops soctherm_hw_action_ops = {
 	.get_max_state = soctherm_hw_action_get_max_state,
 	.get_cur_state = soctherm_hw_action_get_cur_state,
@@ -1892,6 +1902,18 @@ static irqreturn_t soctherm_thermal_thread_func(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+#else
+
+static void soctherm_update(void)
+{ }
+
+static int soctherm_thermal_sys_init(void)
+{
+	return 0;
+}
+
+#endif /* CONFIG_THERMAL */
+
 /**
  * soctherm_oc_intr_enable() - Enables the soctherm over-current interrupt
  * @alarm:		The soctherm throttle id
@@ -2045,6 +2067,7 @@ static irqreturn_t soctherm_edp_thread_func(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+#ifdef CONFIG_THERMAL
 /**
  * soctherm_thermal_isr() - thermal interrupt request handler
  * @irq:	Interrupt request number
@@ -2066,6 +2089,7 @@ static irqreturn_t soctherm_thermal_isr(int irq, void *arg)
 
 	return IRQ_WAKE_THREAD;
 }
+#endif
 
 /**
  * soctherm_edp_isr() - Disables any active interrupts
@@ -2372,6 +2396,7 @@ static void soctherm_throttle_program(enum soctherm_throttle_id throt)
 		soctherm_writel(0xffffffff, ALARM_FILTER(throt));
 }
 
+#ifdef CONFIG_THERMAL
 /**
  * soctherm_tsense_program() - Configure sensor timing parameters based on
  * chip-specific data.
@@ -2403,6 +2428,7 @@ static void soctherm_tsense_program(enum soctherm_sense sensor,
 	r = REG_SET(r, TS_CPU0_CONFIG1_TSAMPLE, scp->tsample - 1);
 	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG1, sensor));
 }
+#endif /* CONFIG_THERMAL */
 
 /**
  * soctherm_clk_init() - Initialize SOC_THERM related clocks.
@@ -2486,6 +2512,7 @@ static int soctherm_clk_enable(bool enable)
 	return 0;
 }
 
+#ifdef CONFIG_THERMAL
 /**
  * soctherm_fuse_read_calib_base() - Calculates calibration base temperature
  *
@@ -2706,6 +2733,7 @@ static void soctherm_adjust_zone(int tz)
 		soctherm_writel(r, TS_HOTSPOT_OFF);
 	}
 }
+#endif /* CONFIG_THERMAL */
 
 /**
  * soctherm_init_platform_data() - Initializes the platform data.
@@ -2753,11 +2781,14 @@ static void soctherm_adjust_zone(int tz)
 static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 {
 	struct soctherm_therm *therm;
-	int i, j, k;
+	int i, j;
 	long rem;
-	long gsh = MAX_HIGH_TEMP;
 	u32 r;
+
+#ifdef CONFIG_THERMAL
 	struct soctherm_sensor_common_params *scp = &pp->sensor_params.scp;
+	int k;
+	long gsh = MAX_HIGH_TEMP;
 
 	/* program pdiv register */
 	r = soctherm_readl(TS_PDIV);
@@ -2776,6 +2807,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 		if (soctherm_fuse_read_tsensor(i) < 0)
 			return -EINVAL;
 	}
+#endif
 
 	/* Sanitize therm trips */
 	for (i = 0; i < THERM_SIZE; i++) {
@@ -2824,6 +2856,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 		/* Setup PSKIP parameters */
 		soctherm_throttle_program(i);
 
+#ifdef CONFIG_THERMAL
 		/* Setup throttle thresholds per THERM */
 		for (j = 0; j < THERM_SIZE; j++) {
 			if ((therm2dev[j] == THROTTLE_DEV_NONE) ||
@@ -2842,6 +2875,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 				prog_hw_threshold(
 					therm->trips[k].trip_temp, j, i);
 		}
+#endif
 	}
 
 	r = REG_SET(0, THROT_GLOBAL_ENB, 1);
@@ -2860,12 +2894,13 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 	soctherm_writel(r, STATS_CTL);
 	soctherm_writel(OC_STATS_CTL_EN_ALL, OC_STATS_CTL);
 
-	/* Enable PMC to shutdown */
-	soctherm_therm_trip_init(plat->tshut_pmu_trip_data);
-
 	r = clk_reset_readl(CAR_SUPER_CLK_DIVIDER_REGISTER());
 	r = REG_SET(r, CDIVG_USE_THERM_CONTROLS, 1);
 	clk_reset_writel(r, CAR_SUPER_CLK_DIVIDER_REGISTER());
+
+#ifdef CONFIG_THERMAL
+	/* Enable PMC to shutdown */
+	soctherm_therm_trip_init(plat->tshut_pmu_trip_data);
 
 	/* Thermtrip */
 	for (i = 0; i < THERM_SIZE; i++) {
@@ -2881,7 +2916,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 			} else if ((i == THERM_MEM) &&
 				   (gsh != MAX_HIGH_TEMP) &&
 				   (therm->trips[j].trip_temp != gsh)) {
-				pr_warn("soctherm: Force TRIP temp: MEM = GPU");
+				pr_warn("soctherm: Force TRIP temp: MEM=GPU");
 				therm->trips[j].trip_temp = gsh;
 			}
 			prog_hw_shutdown(therm->trips[j].trip_temp, i);
@@ -2891,6 +2926,8 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 	soctherm_adjust_zone(THERM_CPU);
 	soctherm_adjust_zone(THERM_GPU);
 	soctherm_adjust_zone(THERM_MEM);
+#endif
+
 	return 0;
 }
 
@@ -3279,19 +3316,23 @@ late_initcall_sync(soctherm_core_rail_notify_init);
  */
 void tegra_soctherm_adjust_cpu_zone(bool high_voltage_range)
 {
+#ifdef CONFIG_THERMAL
 	if (!vdd_cpu_low_voltage != high_voltage_range) {
 		vdd_cpu_low_voltage = !high_voltage_range;
 		soctherm_adjust_zone(THERM_CPU);
 	}
+#endif
 }
 
 void tegra_soctherm_adjust_core_zone(bool high_voltage_range)
 {
+#ifdef CONFIG_THERMAL
 	if (!vdd_core_low_voltage != high_voltage_range) {
 		vdd_core_low_voltage = !high_voltage_range;
 		soctherm_adjust_zone(THERM_GPU);
 		soctherm_adjust_zone(THERM_MEM);
 	}
+#endif
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -3311,7 +3352,6 @@ static int regs_show(struct seq_file *s, void *data)
 {
 	u32 r;
 	u32 state;
-	int tcpu[TSENSE_SIZE];
 	int i, j, level;
 	uint m, n, q;
 	char *depth;
@@ -3325,6 +3365,7 @@ static int regs_show(struct seq_file *s, void *data)
 		return 0;
 	}
 
+#ifdef CONFIG_THERMAL
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG1, i));
 		state = REG_GET(r, TS_CPU0_CONFIG1_EN);
@@ -3345,7 +3386,7 @@ static int regs_show(struct seq_file *s, void *data)
 		state = REG_GET(r, TS_CPU0_STATUS1_TEMP_VALID);
 		seq_printf(s, "Temp(%d/", state);
 		state = REG_GET(r, TS_CPU0_STATUS1_TEMP);
-		seq_printf(s, "%d) ", tcpu[i] = temp_translate(state));
+		seq_printf(s, "%ld) ", temp_translate(state));
 
 		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_STATUS0, i));
 		state = REG_GET(r, TS_CPU0_STATUS0_VALID);
@@ -3460,6 +3501,7 @@ static int regs_show(struct seq_file *s, void *data)
 	seq_printf(s, "    PLLX En(%d) ", state);
 	state = REG_GET(r, THERMTRIP_TSENSE_THRESH);
 	seq_printf(s, "Thresh(%d mC)\n", state * thresh_grain);
+#endif /* CONFIG_THERMAL */
 
 	r = soctherm_readl(THROT_GLOBAL_CFG);
 	seq_printf(s, "GLOBAL THROTTLE CONFIG: 0x%08x\n", r);
@@ -3612,6 +3654,7 @@ static int regs_show(struct seq_file *s, void *data)
 	return 0;
 }
 
+#ifdef CONFIG_THERMAL
 /**
  * temp_log_show() - "show" callback for temp_log debugfs node
  * @s:		pointer to the seq_file record to write the log through
@@ -3676,6 +3719,7 @@ static int temp_log_show(struct seq_file *s, void *data)
 	}
 	return 0;
 }
+#endif
 
 /**
  * regs_open() - wraps single_open to associate internal regs_show()
@@ -3696,6 +3740,7 @@ static const struct file_operations regs_fops = {
 	.release	= single_release,
 };
 
+#ifdef CONFIG_THERMAL
 /**
  * convert_get() - indicates software or hardware temperature conversion
  * @data:       argument for callback, currently not being used
@@ -3954,6 +3999,7 @@ static const struct file_operations temp_log_fops = {
 	.llseek		= seq_lseek,
 	.release	= single_release,
 };
+#endif /* CONFIG_THERMAL */
 
 /**
  * soctherm_debug_init() - initializes the SOC_THERM debugfs files
@@ -3974,6 +4020,8 @@ static int __init soctherm_debug_init(void)
 	tegra_soctherm_root = debugfs_create_dir("tegra_soctherm", NULL);
 	debugfs_create_file("regs", 0644, tegra_soctherm_root,
 			    NULL, &regs_fops);
+
+#ifdef CONFIG_THERMAL
 	debugfs_create_file("convert", 0644, tegra_soctherm_root,
 			    NULL, &convert_fops);
 	debugfs_create_file("cputemp", 0644, tegra_soctherm_root,
@@ -3988,6 +4036,8 @@ static int __init soctherm_debug_init(void)
 			    NULL, &tempoverride_fops);
 	debugfs_create_file("temp_log", 0644, tegra_soctherm_root,
 			    NULL, &temp_log_fops);
+#endif
+
 	return 0;
 }
 late_initcall(soctherm_debug_init);
@@ -4001,6 +4051,7 @@ static const struct of_device_id tegra_soctherm_of_match[] = {
 	{},
 };
 
+#ifdef CONFIG_THERMAL
 static int soctherm_of_get_temp(void *of_data, long *temp)
 {
 	struct soctherm_therm *therm = of_data;
@@ -4087,6 +4138,7 @@ static int soctherm_of_expose_therm(struct device *dev,
 	soctherm_update_zone(id);
 	return 0;
 }
+#endif
 
 static int soctherm_mem_resources_probe(struct platform_device *pdev)
 {
@@ -4134,6 +4186,7 @@ static void soctherm_clock_frequencies_parse(struct platform_device *pdev)
 		dev_err(&pdev->dev, "no property: 'tsensor-clock-frequency'\n");
 }
 
+#ifdef CONFIG_THERMAL
 static void soctherm_sensor_params_parse(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -4236,6 +4289,21 @@ static void soctherm_thermctl_parse(struct platform_device *pdev)
 	}
 }
 
+#else
+
+static void soctherm_sensor_params_parse(struct platform_device *pdev)
+{ }
+
+static int soctherm_fuse_wars_parse(struct platform_device *pdev)
+{
+	return 0;
+}
+
+static void soctherm_thermctl_parse(struct platform_device *pdev)
+{ }
+
+#endif /* CONFIG_THERMAL */
+
 static void soctherm_throttlectl_parse(struct platform_device *pdev)
 {
 	int ocn, val, prio;
@@ -4251,6 +4319,7 @@ static void soctherm_throttlectl_parse(struct platform_device *pdev)
 		if (!of_device_is_available(np))
 			continue;
 
+		cdev = NULL;
 		cdevp = NULL;
 		throt = NULL;
 
@@ -4293,6 +4362,7 @@ static void soctherm_throttlectl_parse(struct platform_device *pdev)
 				continue;
 			}
 
+#ifdef CONFIG_THERMAL
 			cdev = thermal_cooling_device_register(
 						(char *)typ,
 						NULL,
@@ -4306,6 +4376,7 @@ static void soctherm_throttlectl_parse(struct platform_device *pdev)
 			*cdevp = cdev;
 			dev_dbg(&pdev->dev,
 				"Registered cooling_device %s.\n", typ);
+#endif
 
 			/* No throt_dev PSKIP config for HW shutdown */
 			if (cdevp == &soctherm_hw_critical_cdev)
@@ -4434,6 +4505,7 @@ static int soctherm_interrupts_init(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_THERMAL
 	ret = request_threaded_irq(pp->thermal_irq_num,
 				   soctherm_thermal_isr,
 				   soctherm_thermal_thread_func,
@@ -4444,6 +4516,7 @@ static int soctherm_interrupts_init(struct platform_device *pdev)
 		dev_err(&pdev->dev, "request_irq 'thermal_irq' failed.\n");
 		return -EINVAL;
 	}
+#endif
 
 	ret = request_threaded_irq(pp->edp_irq_num,
 				   soctherm_edp_isr,

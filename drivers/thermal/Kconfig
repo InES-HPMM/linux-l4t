@@ -272,6 +272,7 @@ config SENSORS_TMP006
 
 config TEGRA_AOTAG
 	depends on PLATFORM_TEGRA
+	depends on THERMAL
 	bool "Tegra Always-On-Thermal-Alert-Generator"
 	default y
 	help

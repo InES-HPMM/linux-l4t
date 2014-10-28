@@ -444,6 +444,7 @@ static int max8973_init_dcdc(struct max8973_chip *max,
 	return ret;
 }
 
+#ifdef CONFIG_THERMAL
 static int max8973_thermal_read_temp(void *data, long *temp)
 {
 	struct max8973_chip *mchip = data;
@@ -510,6 +511,19 @@ static int max8973_thermal_deinit(struct max8973_chip *mchip)
 	thermal_zone_of_sensor_unregister(mchip->dev, mchip->tz_device);
 	return 0;
 }
+
+#else
+
+static int max8973_thermal_init(struct max8973_chip *mchip)
+{
+	return -ENODEV;
+}
+static int max8973_thermal_deinit(struct max8973_chip *mchip)
+{
+	return -ENODEV;
+}
+
+#endif
 
 static const struct regmap_config max8973_regmap_config = {
 	.reg_bits		= 8,

@@ -607,6 +607,7 @@ static int bq2419x_thermal_read_temp(void *data, long *temp)
 	return 0;
 }
 
+#ifdef CONFIG_THERMAL
 static int bq2419x_thermal_check_therm_regulation(struct bq2419x_chip *bq2419x)
 {
 	if (bq2419x->die_tz_device)
@@ -637,6 +638,7 @@ static void bq2419x_thermal_init_work(struct work_struct *work)
 	dev_info(bq2419x->dev, "Thermal Zone registration success\n");
 	return;
 }
+#endif
 
 static int bq2419x_fault_clear_sts(struct bq2419x_chip *bq2419x,
 	unsigned int *reg09_val)
@@ -765,10 +767,12 @@ sys_stat_read:
 	if (!bq2419x->battery_presense)
 		return IRQ_HANDLED;
 
+#ifdef CONFIG_THERMAL
 	if (val & BQ2419x_THERM_STAT) {
 		dev_info(bq2419x->dev, "Charger in thermal regulation\n");
 		bq2419x_thermal_check_therm_regulation(bq2419x);
 	}
+#endif
 
 	if ((val & BQ2419x_CHRG_STATE_MASK) == BQ2419x_CHRG_STATE_CHARGE_DONE) {
 		dev_info(bq2419x->dev, "Charging completed\n");
@@ -1487,9 +1491,11 @@ skip_bcharger_init:
 
 	if (bq2419x->battery_presense) {
 		bq2419x->thermal_init_retry = 10;
+#ifdef CONFIG_THERMAL
 		INIT_DELAYED_WORK(&bq2419x->thermal_init_work,
 				bq2419x_thermal_init_work);
 		bq2419x_thermal_init_work(&bq2419x->thermal_init_work.work);
+#endif
 	}
 
 	return 0;

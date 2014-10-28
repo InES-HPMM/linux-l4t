@@ -101,6 +101,7 @@ static void battery_charger_restart_charging_wq(struct work_struct *work)
 	bc_dev->ops->restart_charging(bc_dev);
 }
 
+#ifdef CONFIG_THERMAL
 static void battery_charger_thermal_monitor_wq(struct work_struct *work)
 {
 	struct battery_charger_dev *bc_dev;
@@ -162,6 +163,7 @@ exit:
 			msecs_to_jiffies(bc_dev->polling_time_sec * HZ));
 	return;
 }
+#endif
 
 int battery_charger_set_current_broadcast(struct battery_charger_dev *bc_dev)
 {
@@ -428,6 +430,7 @@ struct battery_charger_dev *battery_charger_register(struct device *dev,
 	bc_dev->parent_dev = dev;
 	bc_dev->drv_data = drv_data;
 
+#ifdef CONFIG_THERMAL
 	/* Thermal monitoring */
 	if (bci->tz_name) {
 		bc_dev->tz_name = kstrdup(bci->tz_name, GFP_KERNEL);
@@ -436,6 +439,7 @@ struct battery_charger_dev *battery_charger_register(struct device *dev,
 		INIT_DELAYED_WORK(&bc_dev->poll_temp_monitor_wq,
 				battery_charger_thermal_monitor_wq);
 	}
+#endif
 
 	INIT_DELAYED_WORK(&bc_dev->restart_charging_wq,
 			battery_charger_restart_charging_wq);
@@ -461,6 +465,7 @@ void battery_charger_unregister(struct battery_charger_dev *bc_dev)
 }
 EXPORT_SYMBOL_GPL(battery_charger_unregister);
 
+#ifdef CONFIG_THERMAL
 int battery_gauge_get_battery_temperature(struct battery_gauge_dev *bg_dev,
 	int *temp)
 {
@@ -490,6 +495,7 @@ int battery_gauge_get_battery_temperature(struct battery_gauge_dev *bg_dev,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(battery_gauge_get_battery_temperature);
+#endif
 
 int battery_gauge_get_battery_current(struct battery_gauge_dev *bg_dev,
 	int *current_ma)
@@ -556,6 +562,7 @@ struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 	if (bgi->current_channel_name)
 		bg_dev->bat_curr_channel_name = bgi->current_channel_name;
 
+#ifdef CONFIG_THERMAL
 	if (bgi->tz_name) {
 		bg_dev->tz_name = kstrdup(bgi->tz_name, GFP_KERNEL);
 		bg_dev->battery_tz = thermal_zone_get_zone_by_name(
@@ -566,6 +573,7 @@ struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 			bg_dev->tz_name);
 			bg_dev->battery_tz = NULL;
 	}
+#endif
 
 	list_add(&bg_dev->list, &gauge_list);
 	mutex_unlock(&charger_gauge_list_mutex);

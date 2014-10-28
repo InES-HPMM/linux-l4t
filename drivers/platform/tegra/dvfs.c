@@ -2240,6 +2240,7 @@ static void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
 }
 
 #else
+
 #define tegra_dvfs_rail_register_vmin_cdev(rail)
 void tegra_dvfs_rail_register_vmax_cdev(struct dvfs_rail *rail)
 { }
@@ -2247,7 +2248,12 @@ static void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
 {
 	make_safe_thermal_dvfs(rail);
 }
-#endif
+static void tegra_dvfs_rail_register_clk_switch_cdev(struct dvfs_rail *rail)
+{
+	make_safe_thermal_dvfs(rail);
+}
+
+#endif /* CONFIG_THERMAL */
 
 #ifdef CONFIG_TEGRA_USE_SIMON
 /*
