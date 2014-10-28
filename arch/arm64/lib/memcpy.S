@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,30 +16,25 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#include <linux/types.h>
+#include <linux/linkage.h>
+#include <asm/assembler.h>
 
-void *memcpy(void *dest, const void *src, size_t count)
-{
-	uintptr_t d = (uintptr_t) dest;
-	uintptr_t s = (uintptr_t) src;
+/* Parameters */
+dstin	.req	x0
+src	.req	x1
+count	.req	x2
 
-	while (count && (count < 8 || d & 0x7 || s & 0x7)) {
-		*((char *) d) = *((char *) s);
-		d += 1;
-		s += 1;
-		count -= 1;
-	}
-	while (count >= 8) {
-		*((u64 *) d) = *((u64 *) s);
-		d += 8;
-		s += 8;
-		count -= 8;
-	}
-	while (count) {
-		*((char *) d) = *((char *) s);
-		d += 1;
-		s += 1;
-		count -= 1;
-	}
-	return dest;
-}
+/* Return value */
+ret_val	.req	x0	/* Aliased with dstin */
+
+/* Local version of dstin */
+dst	.req	x3
+
+
+#define LOAD_USER( offset, x...) x
+#define STORE_USER(offset, x...) x
+
+ENTRY(memcpy)
+	mov	dst, dstin
+#include "memcpy_base.h"
+ENDPROC(memcpy)

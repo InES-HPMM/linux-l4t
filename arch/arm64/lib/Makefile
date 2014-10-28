@@ -4,4 +4,4 @@ lib-y		:= bitops.o delay.o clear_user.o			\
 		   copy_page.o clear_page.o				\
 		   memchr.o memmove.o memset.o				\
 		   strchr.o strrchr.o					\
-		   string.o
+		   memcpy.o
