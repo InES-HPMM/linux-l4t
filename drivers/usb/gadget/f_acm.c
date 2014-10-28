@@ -5,6 +5,7 @@
  * Copyright (C) 2008 by David Brownell
  * Copyright (C) 2008 by Nokia Corporation
  * Copyright (C) 2009 by Samsung Electronics
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  * Author: Michal Nazarewicz (mina86@mina86.com)
  *
  * This software is distributed under the terms of the GNU General
@@ -443,17 +444,17 @@ static int acm_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			DBG(cdev, "reset acm ttyGS%d\n", acm->port_num);
 			gserial_disconnect(&acm->port);
 		}
-		if (!acm->port.in->desc || !acm->port.out->desc) {
-			DBG(cdev, "activate acm ttyGS%d\n", acm->port_num);
-			if (config_ep_by_speed(cdev->gadget, f,
-					       acm->port.in) ||
-			    config_ep_by_speed(cdev->gadget, f,
-					       acm->port.out)) {
-				acm->port.in->desc = NULL;
-				acm->port.out->desc = NULL;
-				return -EINVAL;
-			}
+
+		DBG(cdev, "activate acm ttyGS%d\n", acm->port_num);
+		if (config_ep_by_speed(cdev->gadget, f,
+				       acm->port.in) ||
+		    config_ep_by_speed(cdev->gadget, f,
+				       acm->port.out)) {
+			acm->port.in->desc = NULL;
+			acm->port.out->desc = NULL;
+			return -EINVAL;
 		}
+
 		gserial_connect(&acm->port, acm->port_num);
 
 	} else
