@@ -106,9 +106,13 @@ static const struct regmap_config ads1015_regmap_config = {
 };
 
 struct ads1015_property {
+	bool is_continuous_mode;
 	int pga;		/* Programmable gain amplifier */
 	int sampling_freq;
 	int comparator_mode;
+	int channel_number;
+	int high_threshold_offset;
+	int low_threshold_offset;
 };
 
 struct ads1015 {
@@ -172,6 +176,53 @@ static int ads1015_start_conversion(struct ads1015 *adc, int chan)
 	return -ETIMEDOUT;
 }
 
+static int ads1015_threshold_update(struct ads1015 *adc, int *adc_val)
+{
+	struct ads1015_property *adc_prop = &adc->adc_prop;
+	u16 reg_val = 0;
+	int ret;
+	int val;
+	int low_threshold;
+	int high_threshold;
+	s16 min_s16;
+	s16 max_s16;
+
+	ret = ads1015_read(adc->rmap, ADS1015_CONVERSION_REG, &reg_val);
+	if (ret < 0) {
+		dev_err(adc->dev, "CONVERSION_REG Read failed %d\n", ret);
+		return ret;
+	}
+
+	val = (s16)reg_val;
+	val = (val >> 4);
+	val = abs(val);
+
+	high_threshold =
+		((val + adc_prop->high_threshold_offset) > 0x7ff) ? 0x7ff :
+					val + adc_prop->high_threshold_offset;
+	low_threshold =
+		(val > adc_prop->low_threshold_offset) ?
+				val - adc_prop->low_threshold_offset : 0;
+
+	min_s16 = (s16) (low_threshold * 16);
+	max_s16 = (s16) (high_threshold * 16);
+
+	ret = ads1015_write(adc->rmap, ADS1015_LO_THRESH_REG, (u16) min_s16);
+	if (ret < 0) {
+		dev_err(adc->dev, "LO_THRESH_REG write failed %d\n", ret);
+		return ret;
+	}
+
+	ret = ads1015_write(adc->rmap, ADS1015_HI_THRESH_REG, (u16)max_s16);
+	if (ret < 0) {
+		dev_err(adc->dev, "HI_THRESH_REG write failed %d\n", ret);
+		return ret;
+	}
+
+	*adc_val = val;
+	return 0;
+}
+
 static int ads1015_read_raw(struct iio_dev *iodev,
 	struct iio_chan_spec const *chan, int *val, int *val2, long mask)
 {
@@ -186,6 +237,11 @@ static int ads1015_read_raw(struct iio_dev *iodev,
 	}
 
 	mutex_lock(&iodev->mlock);
+
+	if (adc->adc_prop.is_continuous_mode) {
+		ret = ads1015_threshold_update(adc, val);
+		goto done;
+	}
 
 	ret = ads1015_start_conversion(adc, chan->channel);
 	if (ret < 0) {
@@ -215,12 +271,15 @@ static const struct iio_info ads1015_iio_info = {
 
 static int ads1015_configure(struct ads1015 *adc)
 {
+	int ret, val;
 	u16 reg_val = 0;
-	int ret;
 
 	/* Set PGA */
 	reg_val |= (adc->adc_prop.pga << ADS1015_AMPLIFIER_GAIN_SHIFT);
-	/* Set single-shot mode */
+	reg_val |= (adc->adc_prop.channel_number <<
+				ADS1015_INPUT_MULTIPLEXER_SHIFT);
+
+	/* Set operation mode */
 	reg_val |= (ADS1015_SINGLE_SHOT_MODE << ADS1015_OPERATION_MODE_SHIFT);
 	/* Set Sampling frequence rate */
 	reg_val |= (adc->adc_prop.sampling_freq << ADS1015_DATA_RATE_SHIFT);
@@ -231,18 +290,80 @@ static int ads1015_configure(struct ads1015 *adc)
 	reg_val |= (ADS1015_COMPARATOR_POLARITY_ACTIVITY_LOW <<
 					ADS1015_COMPARATOR_POLARITY_SHIFT);
 	/* Set Comparator latch */
-	reg_val |= (ADS1015_COMPARATOR_LATCHING <<
+	reg_val |= (ADS1015_COMPARATOR_NON_LATCHING <<
 				ADS1015_COMPARATOR_LATCHING_SHIFT);
 	/* Assert after one conversion */
-	reg_val |= (ADS1015_ONE_CONVERSION << ADS1015_COMPARATOR_QUEUE_SHIFT);
+	reg_val |= (ADS1015_FOUR_CONVERSIONS << ADS1015_COMPARATOR_QUEUE_SHIFT);
 
-	ret = ads1015_write(adc->rmap, 1, reg_val);
+	ret = ads1015_write(adc->rmap, ADS1015_CONFIG_REG, reg_val);
 	if (ret < 0) {
 		dev_err(adc->dev, "CONFIG reg write failed %d\n", ret);
 		return ret;
 	}
 	adc->config = reg_val;
+
+	if (!adc->adc_prop.is_continuous_mode)
+		return 0;
+
+	ret = ads1015_start_conversion(adc, adc->adc_prop.channel_number);
+	if (ret < 0) {
+		dev_err(adc->dev, "Start conversion failed %d\n", ret);
+		return ret;
+	}
+	ret = ads1015_threshold_update(adc, &val);
+	if (ret < 0) {
+		dev_err(adc->dev, "Continuous mode config failed: %d\n", ret);
+		return ret;
+	}
+
+	/* Configure in continuous mode */
+	adc->config &= ~(1 << ADS1015_OPERATION_MODE_SHIFT);
+	adc->config |= (ADS1015_COTINUOUS_MODE << ADS1015_OPERATION_MODE_SHIFT);
+
+	ret = ads1015_write(adc->rmap, ADS1015_CONFIG_REG, adc->config);
+	if (ret < 0) {
+		dev_err(adc->dev, "CONFIG reg write failed %d\n", ret);
+		return ret;
+	}
+
 	return ret;
+}
+
+static int ads1015_get_dt_data(struct ads1015 *adc,
+	struct device_node *node)
+{
+	struct ads1015_property *adc_prop = &adc->adc_prop;
+	int ret = 0;
+	u32 val;
+
+	ret = of_property_read_u32(node, "ti,programmable-gain-amplifier",
+			&val);
+	adc_prop->pga = (!ret) ? val : ADS1015_2048MV_AMPLIFIER_GAIN;
+
+	ret = of_property_read_u32(node, "sampling-frequency", &val);
+	adc_prop->sampling_freq = (!ret) ? val : ADS1015_920_SPS;
+
+	ret = of_property_read_u32(node, "ti,comparator-mode", &val);
+	adc_prop->comparator_mode = (!ret) ? val : ADS1015_WINDOW_COMPARATOR;
+
+	adc_prop->is_continuous_mode = of_property_read_bool(node,
+						"ti,enable-continuous-mode");
+	if (!adc_prop->is_continuous_mode)
+		return 0;
+
+	ret = of_property_read_u32(node, "ti,continuous-channel-number", &val);
+	if (!ret) {
+		adc_prop->channel_number = val;
+	} else {
+		dev_err(adc->dev, "Continuous channel number not available\n");
+		return ret;
+	}
+	ret = of_property_read_u32(node, "ti,low-threshold-offset", &val);
+	adc_prop->low_threshold_offset = (!ret) ? val : 10;
+	ret = of_property_read_u32(node, "ti,high-threshold-offset", &val);
+	adc_prop->high_threshold_offset = (!ret) ? val : 10;
+
+	return 0;
 }
 
 static int ads1015_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
@@ -252,7 +373,6 @@ static int ads1015_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	struct iio_dev *iodev;
 	struct ads1015_property *adc_prop;
 	int ret;
-	u32 val;
 
 	if (!node) {
 		dev_err(&i2c->dev, "Device DT not found\n");
@@ -264,30 +384,13 @@ static int ads1015_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 		dev_err(&i2c->dev, "iio_device_alloc failed\n");
 		return -ENOMEM;
 	}
-
 	adc = iio_priv(iodev);
 	adc->dev = &i2c->dev;
 	i2c_set_clientdata(i2c, adc);
 	adc_prop = &adc->adc_prop;
-
-	ret = of_property_read_u32(node, "ti,programmable-gain-amplifier",
-			&val);
-	if (!ret)
-		adc_prop->pga = val;
-	else
-		adc_prop->pga = ADS1015_2048MV_AMPLIFIER_GAIN;
-
-	ret = of_property_read_u32(node, "sampling-frequency", &val);
-	if (!ret)
-		adc_prop->sampling_freq = val;
-	else
-		adc_prop->sampling_freq = ADS1015_1600_SPS;
-
-	ret = of_property_read_u32(node, "ti,comparator-mode", &val);
-	if (!ret)
-		adc_prop->comparator_mode = val;
-	else
-		adc_prop->comparator_mode = ADS1015_TRADITIONAL_COMPARATOR;
+	ret = ads1015_get_dt_data(adc, node);
+	if (ret < 0)
+		return ret;
 
 	adc->rmap = devm_regmap_init_i2c(i2c, &ads1015_regmap_config);
 	if (IS_ERR(adc->rmap)) {
@@ -313,6 +416,7 @@ static int ads1015_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 		dev_err(adc->dev, "ADC configuration failed: %d\n", ret);
 		return ret;
 	}
+
 	return 0;
 }
 
