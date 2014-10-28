@@ -34,7 +34,6 @@
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-foster-e-thermal-fan-est.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-keys-p2530-0032-e00.dtsi"
-#include "tegra210-platforms/tegra210-foster-powermon-p2530-0930-e00.dtsi"
 #include "tegra210-platforms/tegra210-edp.dtsi"
 #include <dt-bindings/iio/meter/ina3221x.h>
 #include "tegra210-platforms/tegra210-sysedp.dtsi"
