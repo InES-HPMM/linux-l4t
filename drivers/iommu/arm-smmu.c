@@ -1226,6 +1226,20 @@ static void arm_smmu_bypass_stream_mapping(struct arm_smmu_device *smmu,
 	}
 }
 
+/* HACK: c-model uses legacy swgroup interface */
+static void tegra_smmu_conf_swgroup(struct arm_smmu_device *smmu, int swgid,
+				    u8 cbndx)
+{
+	size_t offs;
+	u32 val;
+
+	offs = tegra_smmu_of_offset(swgid);
+	val = BIT(31) | cbndx;
+	__writel(val, mc_base + offs);
+
+	pr_info("%s() ASID_0=0x%zx val=0x%08x\n", __func__, offs, val);
+}
+
 static int arm_smmu_domain_add_master(struct arm_smmu_domain *smmu_domain,
 				      struct arm_smmu_master_cfg *cfg)
 {
@@ -1244,6 +1258,9 @@ static int arm_smmu_domain_add_master(struct arm_smmu_domain *smmu_domain,
 		s2cr = S2CR_TYPE_TRANS |
 		       (smmu_domain->cfg.cbndx << S2CR_CBNDX_SHIFT);
 		writel_relaxed(s2cr, gr0_base + ARM_SMMU_GR0_S2CR(idx));
+
+		tegra_smmu_conf_swgroup(smmu, cfg->streamids[i],
+					smmu_domain->cfg.cbndx);
 	}
 
 	return 0;
