@@ -28,7 +28,7 @@ struct tegra_system_edp_entry {
 
 struct tegra_sysedp_devcap {
 	unsigned int cpu_power;
-	unsigned int gpufreq;
+	unsigned int gpu_cap; /* may be freq or power */
 	unsigned int emcfreq;
 };
 
@@ -53,6 +53,7 @@ struct tegra_sysedp_platform_data {
 	unsigned int init_req_watts;
 	unsigned int pthrot_ratio;
 	unsigned int cap_method;
+	bool gpu_cap_as_mw;
 };
 
 #if defined(CONFIG_EDP_FRAMEWORK) || defined(CONFIG_SYSEDP_FRAMEWORK)

@@ -52,6 +52,7 @@ static struct tegra_sysedp_corecap *cur_corecap;
 static struct clk *emc_cap_clk;
 static struct clk *gpu_cap_clk;
 static struct pm_qos_request cpupwr_qos;
+static struct pm_qos_request gpupwr_qos;
 static unsigned int cpu_power_balance;
 static unsigned int force_gpu_pri;
 static struct delayed_work capping_work;
@@ -74,9 +75,11 @@ static void pr_caps(struct sysedpcap *old, struct sysedpcap *new)
 		return;
 
 	pr_debug("sysedp: gpupri %d, core %5u mW, "
-		 "cpu %5u mW, gpu %u kHz, emc %u kHz\n",
+		 "cpu %5u mW, gpu %u %s, emc %u kHz\n",
 		 gpu_busy, cur_corecap->power,
-		 new->cpupwr, new->gpu, new->emc);
+		 new->cpupwr, new->gpu,
+		 capping_device_platdata->gpu_cap_as_mw ? "mW" : "kHz",
+		 new->emc);
 }
 
 static void apply_caps(struct tegra_sysedp_devcap *devcap)
@@ -86,7 +89,7 @@ static void apply_caps(struct tegra_sysedp_devcap *devcap)
 	int do_trace = 0;
 
 	core_policy.cpupwr = devcap->cpu_power + cpu_power_balance;
-	core_policy.gpu = devcap->gpufreq;
+	core_policy.gpu = devcap->gpu_cap;
 	core_policy.emc = devcap->emcfreq;
 
 	new.cpupwr = forced_caps.cpupwr ?: core_policy.cpupwr;
@@ -105,8 +108,12 @@ static void apply_caps(struct tegra_sysedp_devcap *devcap)
 	}
 
 	if (new.gpu != cur_caps.gpu) {
-		r = clk_set_rate(gpu_cap_clk, new.gpu * 1000);
-		WARN_ON(r && (r != -ENOENT));
+		if (capping_device_platdata->gpu_cap_as_mw) {
+			pm_qos_update_request(&gpupwr_qos, new.gpu);
+		} else {
+			r = clk_set_rate(gpu_cap_clk, new.gpu * 1000);
+			WARN_ON(r && (r != -ENOENT));
+		}
 		do_trace = 1;
 	}
 
@@ -119,9 +126,19 @@ static void apply_caps(struct tegra_sysedp_devcap *devcap)
 
 static inline bool gpu_priority(void)
 {
-	return (force_gpu_pri ||
-		(gpu_busy &&
-		 (fgpu > cur_corecap->cpupri.gpufreq * priority_bias / 100)));
+	bool prefer_gpu = gpu_busy;
+
+	/* NOTE: the policy for selecting between the GPU priority
+	 * mode and the CPU priority mode depends on whether GPU
+	 * caps are expressed in mW or kHz. The policy is "smarter"
+	 * when capping is in terms of kHz.
+	 */
+	if (!capping_device_platdata->gpu_cap_as_mw)
+		prefer_gpu = prefer_gpu
+			&& (fgpu > (cur_corecap->cpupri.gpu_cap
+				    * priority_bias / 100));
+
+	return force_gpu_pri || prefer_gpu;
 }
 
 static inline struct tegra_sysedp_devcap *get_devcap(void)
@@ -312,16 +329,21 @@ static int corecaps_show(struct seq_file *file, void *data)
 	struct tegra_sysedp_corecap *p;
 	struct tegra_sysedp_devcap *c;
 	struct tegra_sysedp_devcap *g;
+	const char *gpu_label;
 
 	if (!capping_device_platdata || !capping_device_platdata->corecap)
 		return -ENODEV;
+
+	gpu_label = (capping_device_platdata->gpu_cap_as_mw
+		     ? "GPU-mW"
+		     : "GPU-kHz");
 
 	p = capping_device_platdata->corecap;
 
 	seq_printf(file, "%s %s { %s %9s %9s } %s { %s %9s %9s } %7s\n",
 		   "E-state",
-		   "CPU-pri", "CPU-mW", "GPU-kHz", "EMC-kHz",
-		   "GPU-pri", "CPU-mW", "GPU-kHz", "EMC-kHz",
+		   "CPU-pri", "CPU-mW", gpu_label, "EMC-kHz",
+		   "GPU-pri", "CPU-mW", gpu_label, "EMC-kHz",
 		   "Pthrot");
 
 	for (i = 0; i < capping_device_platdata->corecap_size; i++, p++) {
@@ -329,8 +351,8 @@ static int corecaps_show(struct seq_file *file, void *data)
 		g = &p->gpupri;
 		seq_printf(file, "%7u %16u %9u %9u %18u %9u %9u %7u\n",
 			   p->power,
-			   c->cpu_power, c->gpufreq, c->emcfreq,
-			   g->cpu_power, g->gpufreq, g->emcfreq,
+			   c->cpu_power, c->gpu_cap, c->emcfreq,
+			   g->cpu_power, g->gpu_cap, g->emcfreq,
 			   p->pthrot);
 	}
 
@@ -361,7 +383,8 @@ static int status_show(struct seq_file *file, void *data)
 	seq_printf(file, "cpu balance : %u\n", cpu_power_balance);
 	seq_printf(file, "cpu power   : %u\n", get_devcap()->cpu_power +
 		   cpu_power_balance);
-	seq_printf(file, "gpu cap     : %u kHz\n", cur_caps.gpu);
+	seq_printf(file, "gpu cap     : %u %s\n", cur_caps.gpu,
+		capping_device_platdata->gpu_cap_as_mw ? "mW" : "kHz");
 	seq_printf(file, "emc cap     : %u kHz\n", cur_caps.emc);
 	seq_printf(file, "cc method   : %u\n", cap_method);
 
@@ -435,10 +458,12 @@ static int init_clks(void)
 	if (IS_ERR(emc_cap_clk))
 		return -ENODEV;
 
-	gpu_cap_clk = clk_get_sys("battery_edp", "gpu");
-	if (IS_ERR(gpu_cap_clk)) {
-		clk_put(emc_cap_clk);
-		return -ENODEV;
+	if (!capping_device_platdata->gpu_cap_as_mw) {
+		gpu_cap_clk = clk_get_sys("battery_edp", "gpu");
+		if (IS_ERR(gpu_cap_clk)) {
+			clk_put(emc_cap_clk);
+			return -ENODEV;
+		}
 	}
 
 	return 0;
@@ -494,10 +519,10 @@ static void of_sysedp_dynamic_capping_get_pdata(struct platform_device *pdev,
 		i += sizeof(struct tegra_sysedp_corecap)/sizeof(u32)) {
 		obj_ptr->corecap[idx].power            = u32_ptr[i];
 		obj_ptr->corecap[idx].cpupri.cpu_power = u32_ptr[i+1];
-		obj_ptr->corecap[idx].cpupri.gpufreq   = u32_ptr[i+2];
+		obj_ptr->corecap[idx].cpupri.gpu_cap   = u32_ptr[i+2];
 		obj_ptr->corecap[idx].cpupri.emcfreq   = u32_ptr[i+3];
 		obj_ptr->corecap[idx].gpupri.cpu_power = u32_ptr[i+4];
-		obj_ptr->corecap[idx].gpupri.gpufreq   = u32_ptr[i+5];
+		obj_ptr->corecap[idx].gpupri.gpu_cap   = u32_ptr[i+5];
 		obj_ptr->corecap[idx].gpupri.emcfreq   = u32_ptr[i+6];
 		obj_ptr->corecap[idx].pthrot           = u32_ptr[i+7];
 	}
@@ -533,6 +558,9 @@ static void of_sysedp_dynamic_capping_get_pdata(struct platform_device *pdev,
 	else
 		return;
 
+	obj_ptr->gpu_cap_as_mw =
+		!!of_find_property(np, "nvidia,gpu_cap_as_mw", NULL);
+
 	*pdata = obj_ptr;
 
 	return;
@@ -563,6 +591,10 @@ static int sysedp_dynamic_capping_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&capping_work, capping_worker);
 	pm_qos_add_request(&cpupwr_qos, PM_QOS_MAX_CPU_POWER,
 			   PM_QOS_CPU_POWER_MAX_DEFAULT_VALUE);
+
+	if (capping_device_platdata->gpu_cap_as_mw)
+		pm_qos_add_request(&gpupwr_qos, PM_QOS_MAX_GPU_POWER,
+				   PM_QOS_GPU_POWER_MAX_DEFAULT_VALUE);
 
 	r = init_clks();
 	if (r)

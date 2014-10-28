@@ -6,18 +6,20 @@ Required properties:
   and contents of each corecap line refers to a unsigned int value inside the
   tegra_sysedp_corecap struct.  Here's the order of the values expected per
   line of data:
-    - AP power (milliwatts): Power required by the AP+DRAM when the CPU power
+	- AP power (milliwatts): Power required by the AP+DRAM when the CPU power
 	  and GPU and EMC frequencies are capped.
 	- CPU Priority CPU Max Power (milliwatts): Maximum power given to the CPU
 	  when the CPU has the priority.
-	- CPU Priority GPU Max Frequency (kHz): Maximum GPU frequency allowed when
-	  the CPU has the priority.
+	- CPU Priority GPU Max Frequency (kHz) (or Max Power (mW)): Maximum GPU
+	  frequency (or power) allowed when the CPU has the priority. (See
+	  nvidia,gpu_cap_as_mw).
 	- CPU Priority EMC Max Frequency (kHz): Maximum EMC frequency allowed when
 	  the CPU has the priority.
 	- GPU Priority CPU Max Power (milliwatts): Maximum power given to the CPU
 	  when the GPU has the priority.
-	- GPU Priority GPU Max Frequency (kHz): Maximum GPU frequency allowed when
-	  the GPU has the priority.
+	- GPU Priority GPU Max Frequency (kHz) (or Max Power (mW)): Maximum GPU
+	  frequency (or power) allowed when the GPU has the priority. (See
+	  nvidia,gpu_cap_as_mw).
 	- GPU Priority EMC Max Frequency (kHz): Maximum EMC frequency allowed when
 	  the GPU has the priority.
 	- Throttle power (milliwatts): The amount of power returned to the system
@@ -38,6 +40,11 @@ Required properties:
   but with modem overcurrent signals, the value should be 2.  For all other
   systems, the value should be set to 1.
 
+Optional properties:
+- nvidia,gpu_cap_as_mw: if present, this property indicates that the
+  GPU caps are power limits in mW as opposed to frequency limits in
+  kHz
+
 Example:
 	sysedp-dynamic-capping {
 		compatible = "nvidia,tegra124-sysedp-dynamic-capping";
@@ -46,6 +53,22 @@ Example:
 		  10000   7000 100000 933000   3500 400000 933000   2000
 		  15000  10000 200000 933000   4000 600000 933000   4000
 		  20000  10000 500000 933000   5000 700000 933000   8000
+		>;
+		nvidia,core_gain = <100>;
+		nvidia,init_req_watts = <20000>;
+		nvidia,throttle_depth = <75>;
+		nvidia,cap_method = <3>;
+	};
+
+Example 2:
+	sysedp-dynamic-capping {
+		compatible = "nvidia,tegra124-sysedp-dynamic-capping";
+		nvidia,gpu_cap_as_mw;
+		nvidia,corecap = <
+		   5000   2000 1200 933000   2000 1200 933000    500
+		  10000   7000 1200 933000   3500 3800 933000   2000
+		  15000  10000 2400 933000   4000 6000 933000   4000
+		  20000  10000 5000 933000   5000 7000 933000   8000
 		>;
 		nvidia,core_gain = <100>;
 		nvidia,init_req_watts = <20000>;
