@@ -22,6 +22,8 @@ Optional properties :
         Kernel read maximum SoC from device for given battery. Kernel
         translate the SoC to 100% before reporting to framework if it
         reads equal/more than this value.
+ - ti,enable-temp-prop:should enable temp prop if platform supports
+        battery temp reading through fuel gauge chip or ADC channel.
 Example:
 
 	bq27441@55 {

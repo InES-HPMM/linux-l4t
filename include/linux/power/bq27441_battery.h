@@ -28,6 +28,7 @@ struct bq27441_platform_data {
 	u32 cc_gain;
 	u32 cc_delta;
 	const char *tz_name;
+	bool enable_temp_prop;
 };
 
 #endif

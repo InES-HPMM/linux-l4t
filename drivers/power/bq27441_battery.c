@@ -129,6 +129,7 @@ struct bq27441_chip {
 	int lasttime_status;
 	int shutdown_complete;
 	int charge_complete;
+	bool enable_temp_prop;
 	struct mutex mutex;
 };
 
@@ -834,6 +835,9 @@ static void of_bq27441_parse_platform_data(struct i2c_client *client,
 		pdata->maximum_soc = tmp;
 	else
 		pdata->maximum_soc = 100;
+
+	pdata->enable_temp_prop = of_property_read_bool(np,
+					"ti,enable-temp-prop");
 }
 
 static int bq27441_probe(struct i2c_client *client,
@@ -877,6 +881,7 @@ static int bq27441_probe(struct i2c_client *client,
 		chip->cc_gain = chip->pdata->cc_gain;
 	if (chip->pdata->cc_delta)
 		chip->cc_delta = chip->pdata->cc_delta;
+	chip->enable_temp_prop = chip->pdata->enable_temp_prop;
 
 	dev_info(&client->dev, "Battery capacity is %d\n", chip->full_capacity);
 
@@ -893,6 +898,10 @@ static int bq27441_probe(struct i2c_client *client,
 	chip->status			= POWER_SUPPLY_STATUS_DISCHARGING;
 	chip->lasttime_status		= POWER_SUPPLY_STATUS_DISCHARGING;
 	chip->charge_complete		= 0;
+
+	/* remove temperature property if it is not supported */
+	if (!chip->enable_temp_prop)
+		chip->battery.num_properties--;
 
 	chip->regmap = devm_regmap_init_i2c(client, &bq27441_regmap_config);
 	if (IS_ERR(chip->regmap)) {
