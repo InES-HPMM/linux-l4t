@@ -29,6 +29,7 @@ obj-y                   += panel-j-1440-810-5-8.o
 obj-y                   += panel-c-edp-1366-768-14-0.o
 obj-y                   += panel-l-720p-5-loki.o
 obj-y                   += panel-j-720p-5.o
+obj-y                   += panel-s-edp-uhdtv-15-6.o
 
 obj-${CONFIG_MACH_LOKI}               += board-loki-power.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-memory.o
@@ -47,7 +48,6 @@ obj-${CONFIG_MACH_T132REF}              += board-t132ref-power.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-sdhci.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-tn8-sysedp.o
 obj-${CONFIG_MACH_T132REF}              += panel-a-1080p-11-6.o
-obj-${CONFIG_MACH_T132REF}              += panel-s-edp-uhdtv-15-6.o
 obj-${CONFIG_MACH_T132REF}              += panel-s-edp-wqxgap-15-6.o
 
 obj-y                                   += board-touch-maxim_sti-spi.o
