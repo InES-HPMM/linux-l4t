@@ -346,6 +346,10 @@
 #define XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0	0x960
 #define AUX_RX_MODE_OVRD			(1 << 13)
 #define AUX_RX_IDLE_EN				(1 << 22)
+#define AUX_RX_TERM_EN				(1 << 18)
+#define AUX_TX_IDDQ				(1 << 0)
+#define AUX_TX_IDDQ_OVRD			(1 << 1)
+
 #define XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_4_0	0x96c
 #define RX_TERM_EN				(1 << 21)
 #define RX_TERM_OVRD				(1 << 23)
@@ -2539,6 +2543,28 @@ static void tegra_ahci_t210_power_up_uphy_padpll(void)
 	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
 }
 
+static void tegra_ahci_t210_power_down_aux_idle_detector(void)
+{
+	u32 val;
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0);
+	val |= (AUX_RX_TERM_EN | AUX_RX_MODE_OVRD |
+			AUX_TX_IDDQ | AUX_TX_IDDQ_OVRD);
+	val &= ~(AUX_RX_IDLE_EN);
+	xusb_writel(val, XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0);
+}
+
+static void tegra_ahci_t210_power_up_aux_idle_detector(void)
+{
+	u32 val;
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0);
+	val &= ~(AUX_RX_TERM_EN | AUX_RX_MODE_OVRD |
+			AUX_TX_IDDQ | AUX_TX_IDDQ_OVRD);
+	val |= AUX_RX_IDLE_EN;
+	xusb_writel(val, XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0);
+}
+
 void tegra_ahci_put_sata_in_iddq()
 {
 	u32 val;
@@ -2715,6 +2741,9 @@ static bool tegra_ahci_power_gate(struct ata_host *host)
 		return false;
 	}
 
+	if (tegra_hpriv->cid == TEGRA_CHIPID_TEGRA21)
+		tegra_ahci_t210_power_down_aux_idle_detector();
+
 	return true;
 }
 
@@ -2728,6 +2757,8 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host)
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
 
 	tegra_ahci_iddqlane_config();
+	if (tegra_hpriv->cid == TEGRA_CHIPID_TEGRA21)
+		tegra_ahci_t210_power_up_aux_idle_detector();
 
 	val = pmc_readl(APBDEV_PMC_PWRGATE_TOGGLE_0);
 	val |= PARTID_VALUE;
