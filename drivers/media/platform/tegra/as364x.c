@@ -1375,10 +1375,11 @@ static void as364x_caps_layout(struct as364x_info *info)
 	}
 	info->torch_cap_size = AS364X_TORCH_CAP_TIMEOUT_SIZE;
 
-	dev_dbg(info->dev, "%s: %d(%d + %d), %d(%d + %d)\n", __func__,
-		info->flash_cap_size, as364x_flash_cap_size,
-		as364x_flash_timeout_size, info->torch_cap_size,
-		as364x_torch_cap_size, as364x_torch_timeout_size);
+	dev_dbg(info->dev, "%s: %d(%lu + %lu), %d(%lu + %lu)\n", __func__,
+		info->flash_cap_size, (unsigned long)as364x_flash_cap_size,
+		(unsigned long)as364x_flash_timeout_size, info->torch_cap_size,
+		(unsigned long)as364x_torch_cap_size,
+		(unsigned long) as364x_torch_timeout_size);
 }
 
 static int as364x_probe(

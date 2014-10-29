@@ -1612,10 +1612,11 @@ static void max77387_caps_layout(struct max77387_info *info)
 	info->torch_timeouts[1] = start_ptr + max77387_torch_cap_size;
 
 	info->torch_cap_size = MAX77387_TORCH_CAP_TIMEOUT_SIZE;
-	dev_dbg(info->dev, "%s: %d(%d + %d), %d(%d + %d)\n", __func__,
-		info->flash_cap_size, max77387_flash_cap_size,
-		max77387_flash_timeout_size, info->torch_cap_size,
-		max77387_torch_cap_size, max77387_torch_timeout_size);
+	dev_dbg(info->dev, "%s: %d(%lu + %lu), %d(%lu + %lu)\n", __func__,
+		info->flash_cap_size, (unsigned long)max77387_flash_cap_size,
+		(unsigned long)max77387_flash_timeout_size,
+		info->torch_cap_size, (unsigned long)max77387_torch_cap_size,
+		(unsigned long)max77387_torch_timeout_size);
 }
 
 static int max77387_probe(

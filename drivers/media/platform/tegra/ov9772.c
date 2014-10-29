@@ -2235,8 +2235,9 @@ static long ov9772_ioctl(struct file *file,
 		return 0;
 
 	case _IOC_NR(NVC_IOCTL_STATIC_RD):
-		dev_dbg(&info->i2c_client->dev, "%s STATIC_RD n=%d\n",
-			__func__, sizeof(struct nvc_imager_static_nvc));
+		dev_dbg(&info->i2c_client->dev, "%s STATIC_RD n=%lu\n",
+			__func__,
+			(unsigned long)sizeof(struct nvc_imager_static_nvc));
 		data_ptr = &info->sdata;
 		if (copy_to_user((void __user *)arg,
 				 data_ptr,

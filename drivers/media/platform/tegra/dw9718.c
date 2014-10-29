@@ -436,8 +436,8 @@ static int dw9718_set_focuser_capabilities(struct dw9718_info *info,
 		(const void __user *)(uintptr_t)params->p_value,
 		sizeof(struct nv_focuser_config))) {
 			dev_err(&info->i2c_client->dev,
-			"%s Error: copy_from_user bytes %d\n",
-			__func__, sizeof(struct nv_focuser_config));
+			"%s Error: copy_from_user bytes %lu\n",	__func__,
+			(unsigned long)sizeof(struct nv_focuser_config));
 			return -EFAULT;
 	}
 
@@ -448,8 +448,8 @@ static int dw9718_set_focuser_capabilities(struct dw9718_info *info,
 		info->cap.settle_time = dw9718_SETTLETIME;
 
 	dev_dbg(&info->i2c_client->dev,
-		"%s: copy_from_user bytes %d info->cap.settle_time %d\n",
-		__func__, sizeof(struct nv_focuser_config),
+		"%s: copy_from_user bytes %lu info->cap.settle_time %d\n",
+		__func__, (unsigned long)sizeof(struct nv_focuser_config),
 		info->cap.settle_time);
 
 	return 0;
@@ -1031,7 +1031,7 @@ static ssize_t nvc_attr_set(struct file *s,
 	int err;
 	u32 val = 0;
 
-	pr_info("%s (%d)\n", __func__, count);
+	pr_info("%s (%lu)\n", __func__, (unsigned long)count);
 
 	if (!user_buf || count <= 1)
 		return -EFAULT;
