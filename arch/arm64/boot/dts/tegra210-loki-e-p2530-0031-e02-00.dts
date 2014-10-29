@@ -1,0 +1,15 @@
+#include "tegra210-loki-e-p2530-0031-e01-00.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	extcon {
+		extcon@1 {
+			extcon-adc-jack,states = <0x1    0     20
+						  0x2    240   265
+						  0x4    1120  1165
+						  0x8    755   785
+						  0x10   430   475>;
+		};
+	};
+};
