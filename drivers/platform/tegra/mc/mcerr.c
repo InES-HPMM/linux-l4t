@@ -128,9 +128,16 @@ static const struct mc_error mc_errors[] = {
 	       "MTS carveout access violation",
 	       0, MC_ERR_STATUS, MC_ERR_ADR),
 
+	/*
+	 * Generalized carveouts.
+	 */
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
-	MC_ERR(MC_INT_DECERR_GENERALIZED_CARVEOUT | MC_INT_DECERR_EMEM,
+	MC_ERR(MC_INT_DECERR_GENERALIZED_CARVEOUT,
 	       "GSC access violation", 0,
+	       MC_ERR_GENERALIZED_CARVEOUT_STATUS,
+	       MC_ERR_GENERALIZED_CARVEOUT_ADR),
+	MC_ERR(MC_INT_DECERR_GENERALIZED_CARVEOUT | MC_INT_DECERR_EMEM,
+	       "EMEM GSC access violation", 0,
 	       MC_ERR_GENERALIZED_CARVEOUT_STATUS,
 	       MC_ERR_GENERALIZED_CARVEOUT_ADR),
 #endif
