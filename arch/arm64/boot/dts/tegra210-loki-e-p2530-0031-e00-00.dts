@@ -373,19 +373,23 @@
                 nvidia,states = <0 1785>;
             };
             consumer5 {
-                nvidia,consumer_name = "display";
+                nvidia,consumer_name = "display_0";
                 nvidia,states = <0 616>;
             };
             consumer6 {
+                nvidia,consumer_name = "display_1";
+                nvidia,states = <0 616>;
+            };
+            consumer7 {
                 nvidia,consumer_name = "codec+speaker";
                 nvidia,states = <0 1270>;
             };
-            consumer7 {
+            consumer8 {
                 nvidia,consumer_name = "pwm-backlight";
                 nvidia,states = <0 127 255 382 510 638 765 893 1020 1148 1276>;
             };
             /*SD Card */
-            consumer8 {
+            consumer9 {
                 nvidia,consumer_name = "sdhci-tegra.0";
                 nvidia,states = <0 1785>;
             };
