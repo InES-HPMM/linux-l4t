@@ -596,7 +596,8 @@ static irqreturn_t tegra_adma_isr(int irq, void *dev_id)
 	status = channel_read(tdc, ADMA_CH_INT_STATUS);
 	if (status & ADMA_CH_INT_TD_STATUS) {
 		channel_write(tdc, ADMA_CH_INT_CLEAR, 1);
-		tdc->isr_handler(tdc, false);
+		if (tdc->isr_handler)
+			tdc->isr_handler(tdc, false);
 		tasklet_schedule(&tdc->tasklet);
 		spin_unlock_irqrestore(&tdc->lock, flags);
 		return IRQ_HANDLED;
