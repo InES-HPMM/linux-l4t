@@ -1,0 +1,66 @@
+/*
+ * arch/arm/boot/dts/tegra124-p1859.dts
+ *
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+ /dts-v1/;
+
+/ {
+	/* smmu and ivc drivers are called very early in the kernel init
+	 * call sequence (core_initcall). smmu driver as such is a consumer
+	 * of ivc and depends on it.
+	 * Keeping the ivc node at the very top in the device tree ensures
+	 * that probe for ivc is called before the smmu driver probe.
+	 * Without this virtualized smmu driver probe will fail.
+	 */
+	tegra_hv: hyp {
+		compatible = "nvidia,tegra-hv";
+	};
+};
+
+#include "tegra124-p1859.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 p1859";
+	compatible = "nvidia,p1859", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+
+	hyp {
+		status = "okay";
+
+		server-to-peers = <0>;
+		queues {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* guest 0 <-> guest 1 (smmu server) */
+			ivc7 {
+				reg = <7>;
+				peers = <0 1>;
+				nframes = <50>;
+				frame-size = <100>;
+			};
+		};
+	};
+
+	iommu {
+		compatible = "nvidia,tegra124-smmu-hv";
+		#asids = <120>;
+		ivc_queue = <&tegra_hv 7>;
+	};
+};
