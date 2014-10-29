@@ -36,7 +36,7 @@ static inline void amc_writel(u32 val, u32 reg)
 	writel(val, nvadsp_drv_data->base_regs[AMC] + reg);
 }
 
-void wmemcpy_to_aram(u32 to_aram, const u32 *from_mem, size_t wlen)
+static void wmemcpy_to_aram(u32 to_aram, const u32 *from_mem, size_t wlen)
 {
 	u32 base, offset;
 
@@ -58,7 +58,7 @@ void wmemcpy_to_aram(u32 to_aram, const u32 *from_mem, size_t wlen)
 	}
 }
 
-void wmemcpy_from_aram(u32 *to_mem, const u32 from_aram, size_t wlen)
+static void wmemcpy_from_aram(u32 *to_mem, const u32 from_aram, size_t wlen)
 {
 	u32 base, offset;
 

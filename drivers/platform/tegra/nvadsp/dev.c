@@ -66,7 +66,7 @@ static inline bool nvadsp_amsic_skip_reg(u32 offset)
 	}
 }
 
-int nvadsp_amisc_save(struct platform_device *pdev)
+static int nvadsp_amisc_save(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *d = platform_get_drvdata(pdev);
 	u32 val, offset;
@@ -96,7 +96,7 @@ int nvadsp_amisc_save(struct platform_device *pdev)
 	return 0;
 }
 
-int nvadsp_amisc_restore(struct platform_device *pdev)
+static int nvadsp_amisc_restore(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *d = platform_get_drvdata(pdev);
 	u32 val, offset;
@@ -176,7 +176,7 @@ static void nvadsp_clocks_disable(struct platform_device *pdev)
 	}
 }
 
-int nvadsp_clocks_enable(struct platform_device *pdev)
+static int nvadsp_clocks_enable(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;

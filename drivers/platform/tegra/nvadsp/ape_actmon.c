@@ -104,7 +104,7 @@ static inline unsigned long do_percent(unsigned long val, unsigned int pct)
 	return val * pct / 100;
 }
 
-void actmon_update_sample_period(unsigned long period)
+static void actmon_update_sample_period(unsigned long period)
 {
 	u32 val = actmon_readl(ACTMON_DEV_SAMPLE_CTRL);
 	u32 divider;
@@ -193,7 +193,7 @@ static unsigned long actmon_dev_avg_freq_get(struct actmon_dev *dev)
 }
 
 /* Activity monitor sampling operations */
-irqreturn_t ape_actmon_dev_isr(int irq, void *dev_id)
+static irqreturn_t ape_actmon_dev_isr(int irq, void *dev_id)
 {
 	u32 val, devval;
 	unsigned long flags;
@@ -247,7 +247,7 @@ irqreturn_t ape_actmon_dev_isr(int irq, void *dev_id)
 	return IRQ_WAKE_THREAD;
 }
 
-irqreturn_t ape_actmon_dev_fn(int irq, void *dev_id)
+static irqreturn_t ape_actmon_dev_fn(int irq, void *dev_id)
 {
 	unsigned long flags, freq;
 	struct actmon_dev *dev = (struct actmon_dev *)dev_id;

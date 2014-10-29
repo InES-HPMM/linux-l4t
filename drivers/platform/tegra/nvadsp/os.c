@@ -676,7 +676,7 @@ end:
 }
 EXPORT_SYMBOL(nvadsp_os_load);
 
-int __nvadsp_os_start(void)
+static int __nvadsp_os_start(void)
 {
 	struct nvadsp_drv_data *drv_data;
 	struct device *dev;

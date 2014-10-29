@@ -70,7 +70,7 @@ struct emc_dfs_info {
 };
 
 static struct emc_dfs_info global_emc_info;
-struct emc_dfs_info *einfo;
+static struct emc_dfs_info *einfo;
 static struct task_struct *speedchange_task;
 static spinlock_t speedchange_lock;
 

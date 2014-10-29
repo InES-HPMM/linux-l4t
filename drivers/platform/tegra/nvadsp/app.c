@@ -88,7 +88,7 @@ static DEFINE_SPINLOCK(state_lock);
 
 static DEFINE_MUTEX(service_lock_list);
 
-struct shared_mem_struct *shared;
+static struct shared_mem_struct *shared;
 
 static inline void print_load_stats(const char *appfile,
 	struct app_load_stats *stats, struct device *dev)
@@ -340,7 +340,7 @@ static inline void native_adsp_load_stats(struct app_load_stats *stats,
 	EQUATE_STAT(ns_time_native_load_complete, 0);
 }
 
-uint32_t native_adsp_load_app(struct nvadsp_app_service *ser,
+static uint32_t native_adsp_load_app(struct nvadsp_app_service *ser,
 	struct app_load_stats *stats)
 {
 	uint32_t status;

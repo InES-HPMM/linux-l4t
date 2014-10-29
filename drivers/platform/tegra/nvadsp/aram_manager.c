@@ -52,7 +52,7 @@ unsigned long aram_get_address(void *handle)
 EXPORT_SYMBOL(aram_get_address);
 
 #ifdef CONFIG_DEBUG_FS
-struct dentry *aram_dump_debugfs_file;
+static struct dentry *aram_dump_debugfs_file;
 
 static int aram_dump(struct seq_file *s, void *data)
 {

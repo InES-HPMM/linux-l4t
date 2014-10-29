@@ -105,7 +105,7 @@ static status_t mboxq_dequeue(struct nvadsp_mbox_queue *queue,
 	return ret;
 }
 
-uint16_t nvadsp_mbox_alloc_mboxid(void)
+static uint16_t nvadsp_mbox_alloc_mboxid(void)
 {
 	unsigned long start = NVADSP_MAILBOX_START;
 	unsigned int nr = 1;
@@ -120,7 +120,7 @@ uint16_t nvadsp_mbox_alloc_mboxid(void)
 	return mid;
 }
 
-status_t nvadsp_mbox_free_mboxid(uint16_t mid)
+static status_t nvadsp_mbox_free_mboxid(uint16_t mid)
 {
 	bitmap_clear(nvadsp_drv_data->mbox_ids, mid, 1);
 	return 0;

@@ -55,7 +55,7 @@ unsigned long dram_app_mem_get_address(void *handle)
 EXPORT_SYMBOL(dram_app_mem_get_address);
 
 #ifdef CONFIG_DEBUG_FS
-struct dentry *dram_app_mem_dump_debugfs_file;
+static struct dentry *dram_app_mem_dump_debugfs_file;
 
 static int dram_app_mem_dump(struct seq_file *s, void *data)
 {

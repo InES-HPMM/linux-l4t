@@ -77,7 +77,7 @@ struct adsp_dfs_policy {
 #endif
 };
 
-struct adsp_dfs_policy *policy;
+static struct adsp_dfs_policy *policy;
 static DEFINE_MUTEX(policy_mutex);
 
 /* adsp clock rate change notifier callback */
