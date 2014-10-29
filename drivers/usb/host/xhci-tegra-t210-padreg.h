@@ -134,4 +134,9 @@ int t210_hsic_pad_disable(struct tegra_xhci_hcd *tegra, unsigned pad);
 int t210_hsic_pad_pupd_set(struct tegra_xhci_hcd *tegra, unsigned pad,
 	enum hsic_pad_pupd pupd);
 
+/* Enable/Disable Battery charger circuitry*/
+void t210_disable_battery_circuit(struct tegra_xhci_hcd *tegra, unsigned port);
+void t210_enable_battery_circuit(struct tegra_xhci_hcd *tegra, unsigned port);
+
+
 #endif /* _XHCI_TEGRA_T210_PADCTL_H */

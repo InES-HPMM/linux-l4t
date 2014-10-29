@@ -4421,6 +4421,9 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	int ret;
 	const struct tegra_xusb_soc_config *soc_config;
 	const struct of_device_id *match;
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	u32 port;
+#endif
 
 	if (tegra_platform_is_fpga())
 		xusb_tegra_program_registers();
@@ -4636,6 +4639,11 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	for (pad = 0; pad < XUSB_UTMI_COUNT; pad++)
 		set_port_cdp(tegra, true, pad);
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	/* By default disable the BATTERY_CHRG_OTGPAD for all ports */
+	for (port = 0; port <= XUSB_UTMI_COUNT; port++)
+		t210_enable_battery_circuit(tegra, port);
+#endif
 	return 0;
 
 err_deinit_firmware_log:

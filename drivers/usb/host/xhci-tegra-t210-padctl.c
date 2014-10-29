@@ -72,6 +72,10 @@
 #define UPHY_MISC_PAD_AUX_RX_TERM_EN			(1 << 18)
 #define UPHY_MISC_PAD_AUX_RX_MODE_OVRD			(1 << 13)
 
+#define BATTERY_CHRG_OTGPAD(x) (x * 0x40)
+#define PADCTL_USB2_BATTERY_CHRG_OTGPAD_BASE 0x84
+#define VREG_FIX18_OFFSET 0x6
+
 void t210_program_utmi_pad(struct tegra_xhci_hcd *tegra, u8 port)
 {
 	xusb_utmi_pad_init(port, USB2_PORT_CAP_HOST(port)
@@ -246,4 +250,28 @@ void t210_disable_lfps_detector(struct tegra_xhci_hcd *tegra, unsigned port)
 {
 	dev_dbg(&tegra->pdev->dev, "%s port %d\n", __func__, port);
 	t210_lfps_detector(tegra, port, false);
+}
+
+static void t210_battery_circuit(struct tegra_xhci_hcd *tegra,
+						unsigned port, bool on)
+{
+	u32 mask;
+	u32 reg_offset;
+
+	mask = VREG_FIX18_OFFSET;
+	reg_offset = (PADCTL_USB2_BATTERY_CHRG_OTGPAD_BASE +
+		(BATTERY_CHRG_OTGPAD(port)));
+	tegra_usb_pad_reg_update(reg_offset, mask, (on << VREG_FIX18_OFFSET));
+}
+
+void t210_disable_battery_circuit(struct tegra_xhci_hcd *tegra, unsigned port)
+{
+	dev_dbg(&tegra->pdev->dev, "%s port %d\n", __func__, port);
+	t210_battery_circuit(tegra, port, false);
+}
+
+void t210_enable_battery_circuit(struct tegra_xhci_hcd *tegra, unsigned port)
+{
+	dev_dbg(&tegra->pdev->dev, "%s port %d\n", __func__, port);
+	t210_battery_circuit(tegra, port, true);
 }
