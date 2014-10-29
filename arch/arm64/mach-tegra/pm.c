@@ -129,7 +129,7 @@ static u64 suspend_time;
 static u64 suspend_entry_time;
 #endif
 
-struct suspend_context tegra_sctx;
+static struct suspend_context tegra_sctx;
 
 #define TEGRA_POWER_PWRREQ_POLARITY	(1 << 8)   /* core power request polarity */
 #define TEGRA_POWER_PWRREQ_OE		(1 << 9)   /* core power request enable */

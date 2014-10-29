@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 NVIDIA Corporation.
+ * Copyright (C) 2010-2014 NVIDIA Corporation. All rights reserved.
  * Copyright (C) 2010 Google, Inc.
  *
  * This software is licensed under the terms of the GNU General Public
@@ -38,7 +38,7 @@ static void tegra_apb_writel_direct(u32 value, unsigned long offset);
 static struct dma_chan *tegra_apb_dma_chan;
 static struct dma_slave_config dma_sconfig;
 
-bool tegra_apb_dma_init(void)
+static bool tegra_apb_dma_init(void)
 {
 	dma_cap_mask_t mask;
 

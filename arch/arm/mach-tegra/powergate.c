@@ -699,7 +699,7 @@ const char *tegra_powergate_get_name(int id)
 }
 EXPORT_SYMBOL(tegra_powergate_get_name);
 
-int tegra_powergate_init_refcount(void)
+static int tegra_powergate_init_refcount(void)
 {
 	if ((!pg_ops) || (!pg_ops->powergate_init_refcount))
 		return 0;

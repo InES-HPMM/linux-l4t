@@ -197,7 +197,7 @@ static void t210ref_usb_init(void)
 }
 
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
+static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra210-sdhci", TEGRA_SDMMC1_BASE,
 			"sdhci-tegra.0", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-sdhci", TEGRA_SDMMC2_BASE,

@@ -231,7 +231,7 @@ static int t210ref_ar0261_power_off(struct ar0261_power_rail *pw)
 	return 0;
 }
 
-struct ar0261_platform_data t210ref_ar0261_data = {
+static struct ar0261_platform_data t210ref_ar0261_data = {
 	.power_on = t210ref_ar0261_power_on,
 	.power_off = t210ref_ar0261_power_off,
 	.mclk_name = "clk_out_3",
@@ -286,7 +286,7 @@ static int t210ref_imx135_power_off(struct imx135_power_rail *pw)
 	return 0;
 }
 
-struct imx135_platform_data t210ref_imx135_data = {
+static struct imx135_platform_data t210ref_imx135_data = {
 	.flash_cap = {
 		.enable = 1,
 		.edge_trig_en = 1,
@@ -351,7 +351,7 @@ static int t210ref_imx214_power_off(struct imx214_power_rail *pw)
 	return 0;
 }
 
-struct imx214_platform_data t210ref_imx214_data = {
+static struct imx214_platform_data t210ref_imx214_data = {
 	.power_on = t210ref_imx214_power_on,
 	.power_off = t210ref_imx214_power_off,
 };
@@ -565,7 +565,7 @@ static int t210ref_ov7695_power_off(struct ov7695_power_rail *pw)
 	return 0;
 }
 
-struct ov7695_platform_data t210ref_ov7695_pdata = {
+static struct ov7695_platform_data t210ref_ov7695_pdata = {
 	.power_on = t210ref_ov7695_power_on,
 	.power_off = t210ref_ov7695_power_off,
 	.mclk_name = "cam_mclk1",

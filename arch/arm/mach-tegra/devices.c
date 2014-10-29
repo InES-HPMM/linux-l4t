@@ -1244,7 +1244,7 @@ struct platform_device tegra_rtc_device = {
 };
 
 
-struct resource tegra_nvavp_resources[] = {
+static struct resource tegra_nvavp_resources[] = {
 	[0] = {
 		.start  = INT_SHR_SEM_INBOX_IBF,
 		.end    = INT_SHR_SEM_INBOX_IBF,
@@ -1334,7 +1334,7 @@ struct platform_device tegra_tsensor_device = {
 static u64 tegra_se_dma_mask = DMA_BIT_MASK(32);
 static u64 tegra12_se_dma_mask = DMA_BIT_MASK(64);
 
-struct resource tegra_se_resources[] = {
+static struct resource tegra_se_resources[] = {
 	[0] = {
 		.start = TEGRA_SE_BASE,
 		.end = TEGRA_SE_BASE + TEGRA_SE_SIZE - 1,

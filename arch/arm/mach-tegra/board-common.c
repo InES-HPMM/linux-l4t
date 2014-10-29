@@ -34,7 +34,7 @@
 #include <linux/platform/tegra/dvfs.h>
 #include <linux/platform/tegra/cpu-tegra.h>
 
-struct platform_device vibrator_device = {
+static struct platform_device vibrator_device = {
 	.name = "tegra-vibrator",
 	.id = -1,
 };
