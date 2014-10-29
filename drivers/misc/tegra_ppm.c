@@ -65,6 +65,8 @@ struct tegra_ppm {
 
 	struct mutex lock;
 
+	struct dentry *debugfs_dir;
+
 	struct {
 		s32 temp_c;
 		u32 volt_mv;
@@ -133,7 +135,7 @@ static int fv_relation_update(struct fv_relation *fv)
  * rate of the clock.
  *
  * Return: pointer to the the newly created &struct fv_relation on
- *  success. -%ENOMEM or -%EINVAL for the usual reasons. -ENODATA if
+ *  success. -%ENOMEM or -%EINVAL for the usual reasons. -%ENODATA if
  *  a call to @lookup_voltage or clk_round_rate fails
  */
 struct fv_relation *fv_relation_create(struct clk *c, int freq_step,
@@ -172,6 +174,20 @@ struct fv_relation *fv_relation_create(struct clk *c, int freq_step,
 	return result;
 }
 EXPORT_SYMBOL_GPL(fv_relation_create);
+
+/**
+ * fv_relation_destroy() - inverse of fv_relation_create
+ * @fv : pointer to the &struct fv_relation to be destroyed
+ *
+ * Free the resources created by a previous call to fv_relation_create
+ */
+void fv_relation_destroy(struct fv_relation *fv)
+{
+	if (fv)
+		kfree(fv->table);
+	kfree(fv);
+}
+EXPORT_SYMBOL_GPL(fv_relation_destroy);
 
 static inline s64 _pow(s64 val, int pwr)
 {
@@ -608,6 +624,8 @@ static int ppm_debugfs_init(struct tegra_ppm *ctx,
 	if (IS_ERR_OR_NULL(parent))
 		return PTR_ERR(parent);
 
+	ctx->debugfs_dir = parent;
+
 	debugfs_create_file("ppm_cache", S_IRUSR | S_IWUSR, parent,
 			    ctx, &ppm_cache_fops);
 	debugfs_create_u32_array("vf_lut", S_IRUSR, parent,
@@ -627,6 +645,20 @@ static int ppm_debugfs_init(struct tegra_ppm *ctx
 { return 0; }
 #endif /* CONFIG_DEBUG_FS */
 
+/**
+ * of_read_tegra_ppm_params() - read PPM parameters from device tree
+ * @np : the device tree node containing the PPM information
+ *
+ * Allocate a &struct tegra_ppm_params. Populate it according to the
+ * device tree properties in *@np.
+ *
+ * If this function succeeds, the caller is responsible for
+ * (eventually) calling kfree on the returned result.
+ *
+ * Return: on success, a pointer to thew new &struct
+ * tegra_ppm_params. -%EINVAL or -%EDOM for device tree content
+ * errors. %NULL or other errors for a kzalloc failure.
+ */
 struct tegra_ppm_params *of_read_tegra_ppm_params(struct device_node *np)
 {
 	int ret;
@@ -702,6 +734,8 @@ err:
 	kfree(params);
 	return ERR_PTR(ret);
 }
+EXPORT_SYMBOL_GPL(of_read_tegra_ppm_params);
+
 
 /**
  * tegra_ppm_create() - build a processor power model
@@ -747,3 +781,38 @@ struct tegra_ppm *tegra_ppm_create(const char *name,
 	return result;
 }
 EXPORT_SYMBOL_GPL(tegra_ppm_create);
+
+/**
+ * tegra_ppm_destroy() - inverse of tegra_ppm_create
+ * @doomed : pointer to struct to destroy
+ * @pfv : receptable for @doomed's fv_relation pointer
+ * @pparams : receptable for @doomed's tegra_ppm_params pointer
+ *
+ * Reverse the operations done by tegra_ppm create resulting in the
+ * deallocation of struct *@doomed. If @doomed is NULL, nothing is
+ * deallocated.
+ *
+ * If @pfv is non-NULL *@pfv is set to value passed to
+ * tegra_ppm_create as fv. Callers may use that value to destroy an
+ * fv_relation. Similarly for @pparams and the value passed to
+ * tegra_ppm_create as params.
+ *
+ * if @doomed is %NULL, *@pfv and *@pparams will still be set to %NULL
+ *
+ */
+void tegra_ppm_destroy(struct tegra_ppm *doomed,
+		       struct fv_relation **pfv,
+		       struct tegra_ppm_params **pparams)
+{
+	if (pfv)
+		*pfv = doomed ? doomed->fv : NULL;
+	if (pparams)
+		*pparams = doomed ? doomed->params : NULL;
+
+	if (!doomed)
+		return;
+
+	debugfs_remove_recursive(doomed->debugfs_dir);
+	kfree(doomed);
+}
+EXPORT_SYMBOL_GPL(tegra_ppm_destroy);

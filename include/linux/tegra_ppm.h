@@ -23,6 +23,7 @@
 struct fv_relation;
 struct fv_relation *fv_relation_create(
 	struct clk *, int, ssize_t, int (*)(struct clk *, long unsigned int));
+void fv_relation_destroy(struct fv_relation *);
 
 #define TEGRA_PPM_MAX_CORES 4
 struct tegra_ppm_params {
@@ -63,6 +64,9 @@ struct tegra_ppm *tegra_ppm_create(const char *name,
 				   struct tegra_ppm_params *params,
 				   int iddq_ma,
 				   struct dentry *debugfs_dir);
+void tegra_ppm_destroy(struct tegra_ppm *doomed,
+		       struct fv_relation **fv,
+		       struct tegra_ppm_params **params);
 
 #define TEGRA_PPM_UNITS_MILLIAMPS 0
 #define TEGRA_PPM_UNITS_MILLIWATTS 1
