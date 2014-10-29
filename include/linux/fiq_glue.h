@@ -16,7 +16,8 @@
 #define _LINUX_FIQ_GLUE_H
 
 struct fiq_glue_handler {
-	void (*fiq)(struct fiq_glue_handler *h, void *regs, void *svc_sp);
+	void (*fiq)(struct fiq_glue_handler *h, const struct pt_regs *regs,
+			void *svc_sp);
 	void (*resume)(struct fiq_glue_handler *h);
 };
 typedef void (*fiq_return_handler_t)(void);
