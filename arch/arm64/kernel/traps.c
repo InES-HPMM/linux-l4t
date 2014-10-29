@@ -455,7 +455,9 @@ misc1:0x%016lx, misc2:0x%016lx\n",
 asmlinkage void bad_mode(struct pt_regs *regs, int reason, unsigned int esr)
 {
 	siginfo_t info;
+#ifdef CONFIG_DENVER_CPU
 	unsigned long serr_status;
+#endif
 	void __user *pc = (void __user *)instruction_pointer(regs);
 	console_verbose();
 
