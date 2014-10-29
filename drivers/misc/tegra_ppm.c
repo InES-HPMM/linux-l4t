@@ -98,7 +98,7 @@ static int fv_relation_update(struct fv_relation *fv)
 	fv->size = maxf / fv->freq_step + 1;
 
 	if (fv->size > fv->max_size) {
-		pr_warn("%s: fv->table ought to be bigger (%d > %d)\n",
+		pr_warn("%s: fv->table ought to be bigger (%zu > %zu)\n",
 			__func__, fv->size, fv->max_size);
 		fv->size = fv->max_size;
 	}
@@ -527,7 +527,7 @@ static int ppm_cache_show(struct seq_file *s, void *data)
 	return 0;
 }
 
-static int ppm_cache_poison(struct file *f, const char __user *buf,
+static ssize_t ppm_cache_poison(struct file *f, const char __user *buf,
 			    size_t sz, loff_t *off)
 {
 	struct tegra_ppm *ctx = f->f_inode->i_private;
