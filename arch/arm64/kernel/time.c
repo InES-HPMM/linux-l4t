@@ -64,8 +64,6 @@ unsigned long profile_pc(struct pt_regs *regs)
 EXPORT_SYMBOL(profile_pc);
 #endif
 
-static u64 sched_clock_mult __read_mostly;
-
 static void dummy_clock_access(struct timespec *ts)
 {
 	ts->tv_sec = 0;
