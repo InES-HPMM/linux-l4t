@@ -107,6 +107,7 @@ config SATA_AHCI_TEGRA
 config TEGRA_SATA_IDLE_POWERGATE
 	bool "TEGRA SATA idle power-gating"
 	depends on SATA_AHCI_TEGRA && PM && PM_RUNTIME
+	select ARCH_TEGRA_HAS_SATA
 	help
 	  This option enables power-gating during SATA idling.
 	  This option should not be enabled if sata clocks are in dvfs_table.
