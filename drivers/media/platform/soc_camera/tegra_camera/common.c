@@ -179,6 +179,7 @@ static void tegra_camera_deactivate(struct tegra_camera_dev *cam)
 {
 	struct tegra_camera_ops *cam_ops = cam->ops;
 
+
 	if (cam_ops->clks_disable)
 		cam_ops->clks_disable(cam);
 
