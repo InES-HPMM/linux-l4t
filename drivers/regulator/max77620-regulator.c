@@ -456,6 +456,7 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
 	struct max77620_regulator_info *rinfo = reg->rinfo[id];
 	struct device *parent = reg->max77620_chip->dev;
+	struct regulator_init_data *ridata = reg->reg_pdata[id].reg_idata;
 	u8 val, mask;
 	int ret;
 
@@ -472,6 +473,18 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 	 */
 	if ((rpdata->fps_src != FPS_SRC_NONE) &&
 		(reg->current_power_mode[id] != reg->enable_power_mode[id])) {
+		ret = max77620_regulator_set_power_mode(reg,
+				reg->enable_power_mode[id], id);
+		if (ret < 0) {
+			dev_err(reg->dev, "Reg %d pm mode config failed %d\n",
+				id, ret);
+			return ret;
+		}
+	}
+
+	/* Enable rail before changing FPS to NONE to avoid glitch */
+	if (ridata && ridata->constraints.boot_on &&
+		(rpdata->fps_src == FPS_SRC_NONE)) {
 		ret = max77620_regulator_set_power_mode(reg,
 				reg->enable_power_mode[id], id);
 		if (ret < 0) {
