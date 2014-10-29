@@ -14,9 +14,8 @@ Optional properties:
 - nvidia,enable-pmu-vbus-detection: Enables vbus detection through PMU.
 - nvidia,id-detection-type: Specify how usb id detection type on the platform.
     0 - if detection is through USB controller
-    1 - if detection is through PMU
-    2 - if detection is through GPIO
-    3 - if enable through sysfs interface.
+    1 - if detection is through PMU extcon
+    2 - if enable through sysfs interface.
 - nvidia,id-detection_gpio: If id detection is supported through GPIO, specify the GPIO phandle.
 - nvidia,enable-xhci-host: Specify whether this port is taken by XUSB.
 - extcon-cables: Specify the phandles and index of different extcon needed.

@@ -41,8 +41,7 @@ enum tegra_usb_phy_interface {
 enum tegra_usb_id_detection {
 	TEGRA_USB_ID = 0,
 	TEGRA_USB_PMU_ID = 1,
-	TEGRA_USB_GPIO_ID = 2,
-	TEGRA_USB_VIRTUAL_ID = 3,
+	TEGRA_USB_VIRTUAL_ID = 2,
 };
 
 /**

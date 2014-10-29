@@ -14,9 +14,8 @@ Optional properties:
 - nvidia,enable-aca-nv-charger-detection: Enables aca-nv-charger detection.
 - nvidia,id-detection-type: Specify how usb id detection type on the platform.
 	0 - if detection is through USB controller
-	1 - if detection is through PMU
-	2 - if detection is through GPIO
-	3 - if enable through sysfs interface.
+	1 - if detection is through PMU extcon
+	2 - if enable through sysfs interface.
 - nvidia,qc2-voltage: Specify the input voltage needed to support QC2.0 charger.
 	0 - if input voltage is 5V
 	1 - if input voltage is 9V
