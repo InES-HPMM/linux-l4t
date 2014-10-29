@@ -41,6 +41,7 @@ struct gpu_edp {
 	struct tegra_ppm *ppm;
 	struct mutex edp_lock;
 	struct clk *cap_clk;
+	struct thermal_cooling_device *cdev;
 
 	int imax;
 	int temperature_now;
@@ -99,20 +100,6 @@ static struct thermal_cooling_device_ops edp_cooling_ops = {
 	.set_cur_state = edp_set_cdev_state,
 };
 
-static int __init cdev_register(struct device_node *np, struct gpu_edp *ctx,
-				char *name)
-{
-	struct thermal_cooling_device *edp_cdev;
-
-	edp_cdev = thermal_of_cooling_device_register(np, name, ctx,
-						      &edp_cooling_ops);
-	if (IS_ERR_OR_NULL(edp_cdev))
-		pr_err("Failed to register '%s' cooling device\n",
-			name);
-
-	return PTR_RET(edp_cdev);
-}
-
 static int __init tegra_gpu_edp_parse_dt(struct platform_device *pdev,
 					 struct gpu_edp_platform_data *pdata)
 {
@@ -148,7 +135,7 @@ static int __init tegra_gpu_edp_parse_dt(struct platform_device *pdev,
 static int __init tegra_gpu_edp_probe(struct platform_device *pdev)
 {
 	struct clk *gpu_clk;
-	struct fv_relation *fv;
+	struct fv_relation *fv = NULL;
 	struct tegra_ppm_params *params;
 	unsigned iddq_ma;
 	struct gpu_edp_platform_data pdata;
@@ -169,16 +156,21 @@ static int __init tegra_gpu_edp_probe(struct platform_device *pdev)
 		return PTR_ERR(params);
 
 	ctx = devm_kzalloc(&pdev->dev, sizeof(*ctx), GFP_KERNEL);
-	if (WARN(IS_ERR_OR_NULL(ctx),
-		 "Failed GPU EDP mgmt init. Allocation failure\n"))
-		return PTR_ERR(ctx);
+	if (WARN(!ctx,
+		 "Failed GPU EDP mgmt init. Allocation failure\n")) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
 	gpu_clk = tegra_get_clock_by_name(pdata.clk_name);
 	fv = fv_relation_create(gpu_clk, pdata.freq_step, 150,
 				      tegra_dvfs_predict_peak_millivolts);
 	if (WARN(IS_ERR_OR_NULL(fv),
-		 "Failed GPU EDP mgmt init. freq/volt data unavailable\n"))
-		return PTR_ERR(fv);
+		 "Failed GPU EDP mgmt init. freq/volt data unavailable\n")) {
+		ret = PTR_ERR(fv);
+		fv = NULL;
+		goto out;
+	}
 
 	iddq_ma = tegra_get_gpu_iddq_value();
 	pr_debug("%s: %s IDDQ value %d\n",
@@ -191,17 +183,39 @@ static int __init tegra_gpu_edp_probe(struct platform_device *pdev)
 		       __func__, pdata.cap_clk_name);
 
 	ctx->ppm = tegra_ppm_create(pdata.name, fv, params, iddq_ma, NULL);
-
 	if (WARN(IS_ERR_OR_NULL(ctx->ppm),
-		 "Failed GPU EDP mgmt init. Couldn't create power model\n"))
-		return PTR_ERR(ctx->ppm);
+		 "Failed GPU EDP mgmt init. Couldn't create power model\n")) {
+		ret = PTR_ERR(ctx->ppm);
+		ctx->ppm = NULL;
+		goto out;
+
+	}
 
 	ctx->temperature_now = -273; /* HACK */
 	ctx->imax = pdata.imax;
 
 	mutex_init(&ctx->edp_lock);
 
-	return cdev_register(pdev->dev.of_node, ctx, pdata.cdev_name);
+	ctx->cdev = thermal_of_cooling_device_register(
+		pdev->dev.of_node, pdata.cdev_name, ctx, &edp_cooling_ops);
+	if (IS_ERR_OR_NULL(ctx->cdev)) {
+		pr_err("Failed to register '%s' cooling device\n",
+			pdata.cdev_name);
+		ctx->cdev = NULL;
+		ret = PTR_ERR(ctx->cdev);
+		goto out;
+	}
+
+out:
+	if (ret) {
+		if (ctx) {
+			thermal_cooling_device_unregister(ctx->cdev);
+			tegra_ppm_destroy(ctx->ppm, NULL, NULL);
+		}
+		fv_relation_destroy(fv);
+		kfree(params);
+	}
+	return ret;
 }
 
 static struct of_device_id tegra_gpu_edp_of_match[] = {
