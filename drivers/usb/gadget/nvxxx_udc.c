@@ -4125,8 +4125,6 @@ u32 reset_data_struct(struct nv_udc_s *nvudc)
 		container_of(nvudc_alloc_request(&nvudc->udc_ep[0].usb_ep,
 			GFP_ATOMIC), struct nv_udc_request,
 			usb_req);
-
-		nvudc->status_req->usb_req.buf = kmalloc(8, GFP_ATOMIC);
 	}
 
 	nvudc->act_bulk_ep = 0;
@@ -4354,7 +4352,6 @@ void free_data_struct(struct nv_udc_s *nvudc)
 	}
 
 	if (nvudc->status_req) {
-		kfree(nvudc->status_req->usb_req.buf);
 		kfree(nvudc->status_req);
 	}
 	/*        otg_put_transceiver(nvudc->transceiver); */
