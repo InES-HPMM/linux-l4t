@@ -1,5 +1,5 @@
 /*
- * arch/arm64/boot/dts/tegra210-loki-e-p2530-0031-e00-00.dts
+ * arch/arm64/boot/dts/tegra210-loki-e-p2530-0131-e00-00.dts
  *
  * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -19,11 +19,11 @@
  */
 
 #include "tegra210-loki-e-p2530-common.dtsi"
-#include "panel-j-1440-810-5-8.dtsi"
+#include "panel-j-720p-5-0.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-emc-a00.dtsi"
 
 / {
-	model = "loki_e_lte";
+	model = "loki_e_base";
 	nvidia,dtsfilename = __FILE__;
 
 	backlight {
@@ -53,7 +53,8 @@
 		dsi {
 			nvidia,dsi-controller-vs = <DSI_VS_1>;
 			status = "okay";
-			panel-j-1440-810-5-8 {
+			panel-j-720p-5-0 {
+				nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
 				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
