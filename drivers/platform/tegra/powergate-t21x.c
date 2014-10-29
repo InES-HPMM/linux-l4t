@@ -206,10 +206,11 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 		.name = "sata",
 		.disable_after_boot = true,
 		.clk_info = {
-			[0] = { .clk_name = "sata", .clk_type = CLK_AND_RST },
-			[1] = { .clk_name = "sata_oob", .clk_type = CLK_AND_RST },
-			[2] = { .clk_name = "cml1", .clk_type = CLK_ONLY },
-			[3] = { .clk_name = "sata_cold", .clk_type = RST_ONLY },
+			[0] = { .clk_name = "sata_oob", .clk_type = CLK_AND_RST },
+			[1] = { .clk_name = "cml1", .clk_type = CLK_ONLY },
+			[2] = { .clk_name = "sata_cold", .clk_type = RST_ONLY },
+			[3] = { .clk_name = "sata_aux", .clk_type = CLK_ONLY },
+			[4] = { .clk_name = "sata", .clk_type = CLK_AND_RST },
 		},
 		.slcg_info = {
 			[0] = { .clk_name = "mc_capa" },
