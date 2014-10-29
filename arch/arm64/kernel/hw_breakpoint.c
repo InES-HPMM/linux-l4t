@@ -893,37 +893,12 @@ static void hw_breakpoint_restore(void)
 		}
 	}
 }
-
-static int hw_breakpoint_cpu_pm_notify(struct notifier_block *self,
-				       unsigned long action,
-				       void *v)
-{
-	if (action == CPU_PM_EXIT) {
-		hw_breakpoint_restore();
-		return NOTIFY_OK;
-	}
-
-	return NOTIFY_DONE;
-}
-
-static struct notifier_block hw_breakpoint_cpu_pm_nb = {
-	.notifier_call = hw_breakpoint_cpu_pm_notify,
-};
-
-static void __init hw_breakpoint_pm_init(void)
-{
-	cpu_pm_register_notifier(&hw_breakpoint_cpu_pm_nb);
-}
-#else
-static inline void hw_breakpoint_pm_init(void)
-{
-}
 #endif
 
 #ifdef CONFIG_ARM64_CPU_SUSPEND
-extern void cpu_suspend_set_dbg_restorer(void (*hw_bp_restore)(void *));
+extern void cpu_suspend_set_dbg_restorer(void (*hw_bp_restore)(void));
 #else
-static inline void cpu_suspend_set_dbg_restorer(void (*hw_bp_restore)(void *))
+static inline void cpu_suspend_set_dbg_restorer(void (*hw_bp_restore)(void))
 {
 }
 #endif
