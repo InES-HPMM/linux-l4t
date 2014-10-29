@@ -118,6 +118,38 @@ static int tegra_dvfs_round_voltage(int mv,
 	return mv;
 }
 
+static bool tegra_dvfs_is_dfll_range_entry(struct dvfs *d, unsigned long rate)
+{
+	bool ret;
+
+	/*
+	 * This term identifies DFLL range entry when auto-switching from PLLX
+	 * to DFLL on the same cluster. Exception is made for cluster switch
+	 * (cur_rate = 0), since it is possible for CPU to run on the "old"
+	 * clock source - PLLX, for a short time after the switch.
+	 */
+	ret = d->cur_rate && d->dvfs_rail && (!d->dvfs_rail->dfll_mode) &&
+		(d->dfll_data.range == DFLL_RANGE_HIGH_RATES) &&
+		(rate >= d->dfll_data.use_dfll_rate_min) &&
+		(d->cur_rate < d->dfll_data.use_dfll_rate_min);
+
+#ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
+	/*
+	 * On SoC with HMP cluster it is guarnteed that for any rate in DFLL
+	 * range, DFLL is used immediately after the cluster switch.
+	 */
+	ret |= !d->cur_rate && tegra_dvfs_is_dfll_range(d, rate);
+#endif
+	return ret;
+}
+
+bool tegra_dvfs_is_dfll_scale(struct dvfs *d, unsigned long rate)
+{
+	return d->dfll_millivolts &&
+		(tegra_dvfs_rail_is_dfll_mode(d->dvfs_rail) ||
+		tegra_dvfs_is_dfll_range_entry(d, rate));
+}
+
 void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
 {
 	int i;
