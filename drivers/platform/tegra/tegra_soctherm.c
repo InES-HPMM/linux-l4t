@@ -1021,6 +1021,38 @@ static void prog_hw_threshold(long trip_temp, int therm, int throt)
 	soctherm_writel(r, reg_off);
 }
 
+static int prog_therm_thresholds(struct soctherm_therm *therm)
+{
+	int ret = 0;
+	int i, r;
+	long temp;
+	enum thermal_trip_type trip_type;
+	ptrdiff_t id = therm - pp->therm;
+
+	if (therm->tz->ops && therm->tz->ops->get_crit_temp) {
+		r = therm->tz->ops->get_crit_temp(therm->tz, &temp);
+		if (r == 0)
+			prog_hw_shutdown(temp, id);
+	}
+
+	for (i = 0; i < therm->tz->trips; i++) {
+		if (!therm->tz->ops->get_trip_type)
+			continue;
+		r = therm->tz->ops->get_trip_type(therm->tz, i, &trip_type);
+		if (r || (trip_type != THERMAL_TRIP_HOT))
+			continue;
+
+		if (!therm->tz->ops->get_trip_temp)
+			continue;
+		r = therm->tz->ops->get_trip_temp(therm->tz, i, &temp);
+		if (r)
+			continue;
+		prog_hw_threshold(temp, id, THROTTLE_HEAVY);
+	}
+
+	return ret;
+}
+
 /**
  * soctherm_set_limits() - Configures a sensor group to raise interrupts outside
  * the given temperature range
@@ -4052,6 +4084,18 @@ static const struct of_device_id tegra_soctherm_of_match[] = {
 };
 
 #ifdef CONFIG_THERMAL
+static int soctherm_trip_update(void *of_data, int trip)
+{
+	int ret = 0;
+	struct soctherm_therm *therm = of_data;
+	ptrdiff_t index = therm - pp->therm;
+
+	prog_therm_thresholds(therm);
+	soctherm_update_zone(index);
+
+	return ret;
+}
+
 static int soctherm_of_get_temp(void *of_data, long *temp)
 {
 	struct soctherm_therm *therm = of_data;
@@ -4096,14 +4140,12 @@ static int soctherm_of_get_trend(void *of_data, long *trend)
 static int soctherm_of_expose_therm(struct device *dev,
 				    struct soctherm_therm *therm)
 {
-	int i, r;
-	long temp;
 	ptrdiff_t id = therm - pp->therm;
-	enum thermal_trip_type trip_type;
 	struct thermal_zone_device *tz;
 	struct thermal_of_sensor_ops sops = {
 		.get_temp = soctherm_of_get_temp,
 		.get_trend = soctherm_of_get_trend,
+		.trip_update = soctherm_trip_update,
 	};
 
 	if (id < 0 || id >= THERM_SIZE)
@@ -4117,27 +4159,7 @@ static int soctherm_of_expose_therm(struct device *dev,
 	else
 		therm->tz = tz;
 
-	if (therm->tz->ops && therm->tz->ops->get_crit_temp) {
-		r = therm->tz->ops->get_crit_temp(therm->tz, &temp);
-		if (r == 0)
-			prog_hw_shutdown(temp, id);
-	}
-
-	for (i = 0; i < therm->tz->trips; i++) {
-		if (!therm->tz->ops->get_trip_type)
-			continue;
-		r = therm->tz->ops->get_trip_type(therm->tz, i, &trip_type);
-		if (r || (trip_type != THERMAL_TRIP_HOT))
-			continue;
-
-		if (!therm->tz->ops->get_trip_temp)
-			continue;
-		r = therm->tz->ops->get_trip_temp(therm->tz, i, &temp);
-		if (r)
-			continue;
-		prog_hw_threshold(temp, id, THROTTLE_HEAVY);
-	}
-
+	prog_therm_thresholds(therm);
 	soctherm_update_zone(id);
 	return 0;
 }
