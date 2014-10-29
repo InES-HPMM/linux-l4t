@@ -139,7 +139,11 @@ static int tegra210_enter_c7(struct cpuidle_device *dev,
 
 	cpu_pm_enter();
 	arg = psci_power_state_pack(ps);
+	flowctrl_write_cc4_ctrl(dev->cpu, 0xffffffff);
+	cpu_retention_enable(7);
 	cpu_suspend(arg, NULL);
+	cpu_retention_enable(0);
+	flowctrl_write_cc4_ctrl(dev->cpu, 0);
 	cpu_pm_exit();
 
 	return idx;
