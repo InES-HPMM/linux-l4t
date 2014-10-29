@@ -243,28 +243,33 @@ static inline struct reserved_mem *__find_rmem(struct device_node *node)
  * This function assign memory region pointed by "memory-region" device tree
  * property to the given device.
  */
-void of_reserved_mem_device_init(struct device *dev)
+int of_reserved_mem_device_init(struct device *dev)
 {
 	struct reserved_mem *rmem;
 	struct of_phandle_iter iter;
+	int err;
 
 	of_property_for_each_phandle_with_args(iter, dev->of_node, "memory-region",
 					       NULL, 1) {
 		struct of_phandle_args *ret = &iter.out_args;
 
 		if (!ret->np)
-			return;
+			return -ENODEV;
 
 		of_node_get(ret->np);
 		rmem = __find_rmem(ret->np);
 		of_node_put(ret->np);
 
 		if (!rmem || !rmem->ops || !rmem->ops->device_init)
-			return;
+			return -EINVAL;
 
-		rmem->ops->device_init(rmem, dev);
+		err = rmem->ops->device_init(rmem, dev);
+		if (err != 0)
+			break;
 		dev_info(dev, "assigned reserved memory node %s\n", rmem->name);
 	}
+
+	return err;
 }
 
 /**
