@@ -21,17 +21,6 @@
 
 / {
 
-	i2c@7000d000 {
-		max77620@3c {
-			regulators {
-				ldo4 {
-					regulator-min-microvolt = <900000>;
-					regulator-max-microvolt = <900000>;
-				};
-			};
-		};
-	};
-
 	regulators {
 		regulator@2 {
 			regulator-always-on;
