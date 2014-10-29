@@ -4101,14 +4101,17 @@ static int soctherm_of_expose_therm(struct device *dev,
 	ptrdiff_t id = therm - pp->therm;
 	enum thermal_trip_type trip_type;
 	struct thermal_zone_device *tz;
+	struct thermal_of_sensor_ops sops = {
+		.get_temp = soctherm_of_get_temp,
+		.get_trend = soctherm_of_get_trend,
+	};
 
 	if (id < 0 || id >= THERM_SIZE)
 		return -EINVAL;
 
-	tz = thermal_zone_of_sensor_register(
+	tz = thermal_zone_of_sensor_register2(
 					dev, id, therm,
-					soctherm_of_get_temp,
-					soctherm_of_get_trend);
+					&sops);
 	if (IS_ERR(tz))
 		return -EINVAL;
 	else
