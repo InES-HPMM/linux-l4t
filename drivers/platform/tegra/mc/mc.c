@@ -62,7 +62,7 @@ int mc_channels;
 void __iomem *mc;
 
 /* Only populated if there are 2 channels. */
-void __iomem *mc0;
+static void __iomem *mc0;
 void __iomem *mc1;
 
 int mc_intr_count;
