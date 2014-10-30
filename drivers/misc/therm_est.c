@@ -182,6 +182,16 @@ static int therm_est_get_trend(void *of_data, long *trend)
 	return 0;
 }
 
+static int therm_est_trip_update(void *of_data, int trip)
+{
+	struct therm_estimator *est = (struct therm_estimator *)of_data;
+
+	thermal_zone_device_update(est->thz);
+	therm_est_update_limits(est);
+
+	return 0;
+}
+
 static int therm_est_init_history(struct therm_estimator *est)
 {
 	int i, j;
@@ -583,6 +593,7 @@ static int therm_est_probe(struct platform_device *pdev)
 	struct thermal_of_sensor_ops sops = {
 		.get_temp = therm_est_get_temp,
 		.get_trend = therm_est_get_trend,
+		.trip_update = therm_est_trip_update,
 	};
 
 	est = kzalloc(sizeof(struct therm_estimator), GFP_KERNEL);
