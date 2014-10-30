@@ -30,9 +30,6 @@ NVIDIA TEGRA210 High Definition Multimedia Interface
  Optional properties:
  - nvidia,edid: supplies a binary EDID blob
 
- - Child nodes represent tmds configurations, node of modes, output settings,
-   smart dimmer settings, color management unit settings.
-
  1.A.i) NVIDIA Display Controller Modes
  This must be contained in hdmi-display parent node. This contains supported modes.
 
@@ -146,31 +143,25 @@ NVIDIA TEGRA210 High Definition Multimedia Interface
  - nvidia,cmu-csc: CMU color space conversion matrix. It is 3X3 matrix.
  - nvidia,cmu-lut2: CMU LUT2. Should be 960 u8 arrays.
 
- 1.A.m) NVIDIA HDMI TMDS configurations
- This must be contained in hdmi-display parent node. This includes tmds configurations.
+ 1.B) the prod-settings node:
+ the prod-settings node holds prod settings for hdmi tmds.
+ Optinonal properties:
+ - #prod-cells: Indicate how many entries are there on prod setting tupples per
+   configuration. Absence of this property assume that prod-cells are 3
 
- Required properties:
- - name: Should be "tmds-config"
+ 1.B.i) the prod nodes:
+ the "prod" node holds the default tmds settings and the status is always
+ "okay". other nodes are optional. prod_c_<N>M: holds the prod settings for a
+ particular frequency ranging between 54 and 600 Mhz. For example: "prod_c_75M"
+ holds prod settings for a maximum frequency of 75 MHz.
 
- - Child nodes represent tmds configurations. Several configurations can be prepared.
+ required properties:
+ - prod: This is a set of tuples used to program registers through the prod settings API.
+   The fields of each tuple are [offset, bitmask, value]
+ optional properties:
+ - status: can be "okay" or "disabled" if this property is not present, "okay"
+   is assumed
 
- 1.A.m.x) NVIDIA HDMI TMDS configuration
- This must be contained in tmds-config parent node. This includes tmds configuration.
-
- Required properties:
- - name: Can be arbitrary, but each sibling node should have unique name.
- - version: tmds configuration version. two tuples items needs to be written.: <major minor>
- - pclk: pixel clk required in tmds table for each mode.
- - pll0: See HDMI_NV_PDISP_SOR_PLL0_0 in Tegra TRM.
- - pll1: See HDMI_NV_PDISP_SOR_PLL1_0 in Tegra TRM.
- - pe-current: Individual lane pre-emphasis current control (4bits per lane)
-   See HDMI_NV_PDISP_PE_CURRENT_0 in Tegra TRM.
- - drive-current: TMDS per-lane I/O current control.
-   See HDMI_NV_PDISP_SOR_LANE_DRIVE_CURRENT_0 in Tegra TRM.
- - peak-current: New pad controls for 28nm macro TMDS_X4_HP 8 bits per lane.
-   See HDMI_NV_PDISP_SOR_IO_PEAK_CURRENT_0 in Tegra TRM.
- - pad-ctls0-mask: HDMI_NV_PDISP_SOR_PAD_CTLS0_0 register and mask.
- - pad-ctls0-setting: HDMI_NV_PDISP_SOR_PAD_CTLS0_0 register or mask.
 
 Example
 
@@ -194,51 +185,31 @@ Example
 					nvidia,out-xres = <1920>;
 					nvidia,out-yres = <1080>;
 				};
-				tmds-config {
-					tmds-cfg@0 {
-						version = <1 0>;
-						pclk = <27000000>;
-						pll0 = <0x01003010>;
-						pll1 = <0x00301b00>;
-						pe-current = <0x00000000>;
-						drive-current = <0x1f1f1f1f>;
-						peak-current = <0x03030303>;
-						pad-ctls0-mask = <0xfffff0ff>;
-						pad-ctls0-setting = <0x00000400>;
-					};
-					tmds-cfg@1 {
-						version = <1 0>;
-						pclk = <74250000>;
-						pll0 = <0x01003110>;
-						pll1 = <0x00301500>;
-						pe-current = <0x00000000>;
-						drive-current = <0x2c2c2c2c>;
-						peak-current = <0x07070707>;
-						pad-ctls0-mask = <0xfffff0ff>;
-						pad-ctls0-setting = <0x00000400>;
-					};
-					tmds-cfg@2 {
-						version = <1 0>;
-						pclk = <148500000>;
-						pll0 = <0x01003310>;
-						pll1 = <0x00301500>;
-						pe-current = <0x00000000>;
-						drive-current = <0x33333333>;
-						peak-current = <0x0c0c0c0c>;
-						pad-ctls0-mask = <0xfffff0ff>;
-						pad-ctls0-setting = <0x00000400>;
-					};
-					tmds-cfg@3 {
-						version = <1 0>;
-						pclk = <0x7fffffff>;
-						pll0 = <0x01003f10>;
-						pll1 = <0x00300f00>;
-						pe-current = <0x00000000>;
-						drive-current = <0x37373737>;
-						peak-current = <0x17171717>;
-						pad-ctls0-mask = <0xfffff0ff>;
-						pad-ctls0-setting = <0x00000600>;
-					};
+			};
+			prod-settings {
+				#prod-cells = <3>
+				prod {
+					prod = <
+						0x000003a0 0xfffffffe 0x00000001 //INPUT_CONTROL
+						0x0000005c 0xf0fff8ff 0x01000000 //PLL0
+						0x00000060 0xff0fe0ff 0x00300f80 //PLL1
+						0x00000068 0xf0ffffff 0x09000000 //PLL3
+						0x00000138 0x00000000 0x373f3f3f //LANE_DRIVE_CURRENT
+						0x00000148 0x00000000 0x00000000 //LANE_PREEMPHASIS
+						0x00000170 0xffbf00ff 0x00401000 //LANE_PADCTL
+					>;
+				};
+				prod_c_600M {
+					status = "okay";
+					prod = <
+						0x000003a0 0xfffffffd 0x00000002
+						0x0000005c 0xf0fff8ff 0x01000300
+						0x00000060 0xff0fe0ff 0x00300980
+						0x00000068 0xf0ffffff 0x08000000
+						0x00000138 0x00000000 0x33373737
+						0x00000148 0x00000000 0x00000000
+						0x00000170 0xffbf00ff 0x00406600
+					>;
 				};
 			};
 		};
