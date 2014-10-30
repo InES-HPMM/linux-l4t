@@ -510,6 +510,7 @@ static void cleanup_stream(struct f_uas *fu, struct uas_stream *stream)
 			stream->req_in->stream_id = 0;
 			stream->req_out->stream_id = 0;
 			stream->req_status->stream_id = 0;
+			stream->cmd = NULL;
 		}
 	}
 }
@@ -665,6 +666,7 @@ static int uasp_send_response_iu(struct usbg_cmd *cmd)
 	struct response_ui *iu = &cmd->response_iu;
 	struct se_tmr_req  *se_tmr_req;
 	int ret;
+	unsigned long flags;
 	/* Filling the usb request with the response information */
 	stream->req_status->complete = uasp_status_data_cmpl;
 	stream->req_status->context = cmd;
@@ -723,11 +725,18 @@ static int uasp_send_response_iu(struct usbg_cmd *cmd)
 			iu->response_code = RC_TMF_FAILED;
 		};
 	}
+
+	spin_lock_irqsave(&fu->lock, flags);
+	if (cmd->cancel_command == true) {
+		spin_unlock_irqrestore(&fu->lock, flags);
+		return 0;
+	}
 	ret = usb_ep_queue(fu->ep_status, stream->req_status, GFP_ATOMIC);
 
 	if (!ret)
 		stream->flags |= UASP_STREAM_EP_STATUS_ENQUEUED;
 
+	spin_unlock_irqrestore(&fu->lock, flags);
 	return ret;
 }
 
@@ -736,6 +745,7 @@ static int uasp_send_status_response(struct usbg_cmd *cmd)
 	struct f_uas *fu = cmd->fu;
 	struct uas_stream *stream = cmd->stream;
 	struct sense_iu *iu = &cmd->sense_iu;
+	unsigned long flags;
 	int ret;
 
 	iu->tag = cpu_to_be16(cmd->tag);
@@ -743,9 +753,19 @@ static int uasp_send_status_response(struct usbg_cmd *cmd)
 	stream->req_status->context = cmd;
 	cmd->fu = fu;
 	uasp_prepare_status(cmd);
+
+	spin_lock_irqsave(&fu->lock, flags);
+	if (cmd->cancel_command == true) {
+		cmd->cmd_status = -EINVAL;
+		goto out;
+	}
+
 	ret = usb_ep_queue(fu->ep_status, stream->req_status, GFP_ATOMIC);
 	if (!ret)
 		stream->flags |= UASP_STREAM_EP_STATUS_ENQUEUED;
+
+out:
+	spin_unlock_irqrestore(&fu->lock, flags);
 	return ret;
 }
 
@@ -755,10 +775,16 @@ static int uasp_send_read_response(struct usbg_cmd *cmd)
 	struct uas_stream *stream = cmd->stream;
 	struct sense_iu *iu = &cmd->sense_iu;
 	int ret;
-
+	unsigned long flags;
 	cmd->fu = fu;
 
 	iu->tag = cpu_to_be16(cmd->tag);
+	spin_lock_irqsave(&fu->lock, flags);
+	if (cmd->cancel_command == true) {
+		cmd->cmd_status = -EINVAL;
+		goto out;
+	}
+
 	if (fu->flags & USBG_USE_STREAMS) {
 
 		ret = uasp_prepare_r_request(cmd);
@@ -794,6 +820,7 @@ static int uasp_send_read_response(struct usbg_cmd *cmd)
 			stream->flags |= UASP_STREAM_EP_STATUS_ENQUEUED;
 	}
 out:
+	spin_unlock_irqrestore(&fu->lock, flags);
 	return ret;
 }
 
@@ -804,17 +831,27 @@ static int uasp_send_write_request(struct usbg_cmd *cmd)
 	struct uas_stream *stream = cmd->stream;
 	struct sense_iu *iu = &cmd->sense_iu;
 	int ret;
+	unsigned long flags;
 
 	init_completion(&cmd->write_complete);
 	cmd->fu = fu;
 
 	iu->tag = cpu_to_be16(cmd->tag);
 
+	spin_lock_irqsave(&fu->lock, flags);
+	if (cmd->cancel_command == true) {
+		cmd->cmd_status = -EINVAL;
+		spin_unlock_irqrestore(&fu->lock, flags);
+		return ret;
+	}
+
 	if (fu->flags & USBG_USE_STREAMS) {
 
 		ret = usbg_prepare_w_request(cmd, stream->req_out);
-		if (ret)
+		if (ret) {
+			spin_unlock_irqrestore(&fu->lock, flags);
 			goto cleanup;
+		}
 		ret = usb_ep_queue(fu->ep_out, stream->req_out, GFP_ATOMIC);
 
 		if (ret)
@@ -841,6 +878,7 @@ static int uasp_send_write_request(struct usbg_cmd *cmd)
 			stream->flags |= UASP_STREAM_EP_STATUS_ENQUEUED;
 
 	}
+	spin_unlock_irqrestore(&fu->lock, flags);
 	wait_for_completion(&cmd->write_complete);
 	/* Continue processing the command only when the data transfer
 	 * is successful. Or else just return from this thread.
@@ -871,6 +909,7 @@ static int uasp_alloc_stream_res(struct f_uas *fu, struct uas_stream *stream)
 	if (!stream->req_status)
 		goto err_sts;
 
+	stream->cmd = NULL;
 	return 0;
 err_sts:
 	usb_ep_free_request(fu->ep_out, stream->req_out);
@@ -1058,6 +1097,7 @@ static int map_free_stream(struct usbg_cmd *cmd, struct f_uas *fu)
 	if (cmd->stream == NULL)
 		return -ENOMEM;
 
+	cmd->stream->cmd = cmd;
 	cmd->stream->req_in->stream_id = cmd->tag;
 	cmd->stream->req_out->stream_id = cmd->tag;
 	cmd->stream->req_status->stream_id = cmd->tag;
@@ -1098,8 +1138,17 @@ static int map_free_stream(struct usbg_cmd *cmd, struct f_uas *fu)
 					UASP_STREAM_EP_STATUS_ENQUEUED) {
 					usb_ep_dequeue(fu->ep_status,
 					fu->stream[i].req_status);
-				} else
-					usbg_cleanup_cmd(cmd);
+				} else {
+				/* Reached here means that the thread executing
+				 * the previous command hasnt started yet, so it
+				 * hasnt scheduled any data on ep yet. The
+				 * thread on starting will check for the below
+				 * flag and wont proceed further. It cleans up
+				 * the command
+				 */
+					fu->stream[i].cmd->cancel_command =
+									true;
+				}
 			}
 		}
 
@@ -1329,6 +1378,7 @@ static void uasp_set_alt(struct f_uas *fu)
 	if ((gadget->speed == USB_SPEED_SUPER) && (f->ss_descriptors != NULL))
 		f->ss_descriptors -= SS_ALT_IFC_1_UASP_OFFSET;
 
+	spin_lock_init(&fu->lock);
 	pr_info("Using the UAS protocol\n");
 	return;
 err_wq:
@@ -2331,6 +2381,12 @@ static int usbg_check_stop_free(struct se_cmd *se_cmd)
 			se_cmd);
 
 	kref_put(&cmd->ref, usbg_cmd_release);
+
+	if (cmd->cancel_command == true) {
+		cleanup_stream(cmd->fu, cmd->stream);
+		usbg_cleanup_cmd(cmd);
+	}
+
 	return 1;
 }
 

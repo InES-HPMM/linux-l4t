@@ -10,6 +10,7 @@
 #include <linux/usb/composite.h>
 #include <linux/usb/uas.h>
 #include <linux/usb/storage.h>
+#include <linux/spinlock.h>
 #include <scsi/scsi.h>
 #include <target/target_core_base.h>
 #include <target/target_core_fabric.h>
@@ -133,13 +134,24 @@ struct usbg_cmd {
 	__le32 bot_tag;
 	unsigned int csw_code;
 	unsigned is_read:1;
-
+	/* If this flag is set then the command processing
+	 * should not proceed. For ex if the device receives
+	 * a command with a tag same as the tag of a previously
+	 * received command, then the driver sets this flag for
+	 * the previous command so that the previous command
+	 * processing will not proceed further.
+	 */
+	bool cancel_command;
 };
 
 struct uas_stream {
 	struct usb_request	*req_in;
 	struct usb_request	*req_out;
 	struct usb_request	*req_status;
+	/* Storing the current command pointer that is
+	 * using this stream
+	 */
+	struct usbg_cmd         *cmd;
 	u8     flags;
 };
 
@@ -178,6 +190,7 @@ struct f_uas {
 	struct bot_status	bot_status;
 	struct usb_request	*bot_req_in;
 	struct usb_request	*bot_req_out;
+	spinlock_t lock;
 };
 
 extern struct usbg_tpg *the_only_tpg_I_currently_have;
