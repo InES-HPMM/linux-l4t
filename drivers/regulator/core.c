@@ -1516,7 +1516,7 @@ static struct regulator_dev *regulator_dev_lookup(struct device *dev,
 
 found:
 	if (dev) {
-		if (dev->of_node) {
+		if (dev->of_node && r->dev.of_node) {
 			dev_warn(dev, "Dev node doesn\'t have %s supply props\n",
 				supply);
 			WARN_ON(1);
