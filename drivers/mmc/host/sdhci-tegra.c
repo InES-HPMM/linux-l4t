@@ -4754,7 +4754,7 @@ static int sdhci_tegra_init_pinctrl_info(struct device *dev,
 	if (!tegra_host->pinctrl)
 		 return -EINVAL;
 
-	drive_gname = of_get_property(np, "drive-pin-name", 0);
+	drive_gname = of_get_property(np, "drive-pin-name", NULL);
 	tegra_host->drive_group_sel = pinctrl_get_selector_from_group_name(
 					tegra_host->pinctrl, drive_gname);
 	return 0;
