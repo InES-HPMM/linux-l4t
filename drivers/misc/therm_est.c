@@ -580,6 +580,10 @@ static int therm_est_probe(struct platform_device *pdev)
 	struct therm_estimator *est;
 	struct therm_est_data *data;
 	struct thermal_zone_device *thz;
+	struct thermal_of_sensor_ops sops = {
+		.get_temp = therm_est_get_temp,
+		.get_trend = therm_est_get_trend,
+	};
 
 	est = kzalloc(sizeof(struct therm_estimator), GFP_KERNEL);
 	if (IS_ERR_OR_NULL(est))
@@ -622,9 +626,8 @@ static int therm_est_probe(struct platform_device *pdev)
 	est->cdev = thermal_est_activation_device_register(est,
 							"therm_est_activ");
 
-	est->thz = thermal_zone_of_sensor_register(&pdev->dev, 0,
-					est, therm_est_get_temp,
-					therm_est_get_trend);
+	est->thz = thermal_zone_of_sensor_register2(&pdev->dev, 0,
+					est, &sops);
 	if (IS_ERR(est->thz)) {
 		ret = PTR_ERR(est->thz);
 		dev_err(&pdev->dev,
