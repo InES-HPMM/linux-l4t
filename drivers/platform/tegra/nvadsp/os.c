@@ -400,7 +400,7 @@ struct global_sym_info *find_global_symbol(const char *sym_name)
 
 	if (unlikely(!table)) {
 		dev_info(dev, "symbol table not present\n");
-		return 0;
+		return NULL;
 	}
 	num_ent = table[0].addr;
 

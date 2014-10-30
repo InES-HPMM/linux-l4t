@@ -688,7 +688,7 @@ static int __init tegra_cpu_debug_init(void)
 {
 	struct dentry *sysedp_capping_dir;
 
-	cpu_tegra_debugfs_root = debugfs_create_dir("cpu-tegra", 0);
+	cpu_tegra_debugfs_root = debugfs_create_dir("cpu-tegra", NULL);
 
 	if (!cpu_tegra_debugfs_root)
 		return -ENOMEM;

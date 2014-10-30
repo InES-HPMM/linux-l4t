@@ -322,7 +322,7 @@ int tegra_prod_release(struct tegra_prod_list **tegra_prod_list)
 		kfree(tp_list);
 	}
 
-	*tegra_prod_list = 0;
+	*tegra_prod_list = NULL;
 	return 0;
 }
 
