@@ -169,7 +169,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune_high_min_millivolts = 900,
 			.min_millivolts = 850,
 		},
-		.max_mv = 1220,
+		.max_mv = 1160,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 1000,
@@ -503,7 +503,7 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 		/* Automotive SKU */
 		.speedo_id =  3,
 		.process_id = -1,
-		.max_mv = 1200,
+		.max_mv = 1120,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.thermal_scale = 10,
