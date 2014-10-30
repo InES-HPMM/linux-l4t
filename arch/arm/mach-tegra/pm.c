@@ -141,9 +141,6 @@ struct suspend_context tegra_sctx;
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && defined(CONFIG_ARCH_TEGRA_14x_SOC)
 extern struct device *get_se_device(void);
 extern int se_suspend(struct device *dev, bool pooling);
-extern struct device *get_smmu_device(void);
-extern int tegra_smmu_resume(struct device *dev);
-extern int tegra_smmu_suspend(struct device *dev);
 #endif
 
 bool tegra_is_dpd_mode;
@@ -1174,49 +1171,6 @@ static const char *lp_state[TEGRA_MAX_SUSPEND_MODE] = {
 	[TEGRA_SUSPEND_LP0] = "LP0",
 };
 
-#if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && defined(CONFIG_ARCH_TEGRA_14x_SOC)
-static int save_se_context(void)
-{
-	struct device *smmu_dev, *se_dev;
-	int ret = 0;
-
-	smmu_dev = get_smmu_device();
-	if (!smmu_dev) {
-		pr_info("Failed to get smmu device\n");
-		goto save_fail;
-	}
-
-	se_dev = get_se_device();
-	if (!se_dev) {
-		pr_info("Failed to get SE device \n");
-		goto save_fail;
-	}
-
-	/* smmu resume needs to be called
-	 * for se_suspend() operation */
-	ret = tegra_smmu_resume(smmu_dev);
-	if (ret) {
-		pr_info("Failed to resume smmu device\n");
-		goto save_fail;
-	}
-
-	ret = se_suspend(se_dev, true);
-	if (ret) {
-		pr_info("Failed to suspend SE device\n");
-		goto save_fail;
-	}
-
-	ret = tegra_smmu_suspend(smmu_dev);
-	if (ret) {
-		pr_info("Failed to suspend smmu device\n");
-		goto save_fail;
-	}
-
-save_fail:
-	return ret;
-}
-#endif
-
 static int tegra_suspend_enter(suspend_state_t state)
 {
 	int ret = 0;
@@ -1233,14 +1187,6 @@ static int tegra_suspend_enter(suspend_state_t state)
 		pr_info("Aborting suspend, tegra_suspend_dram error=%d\n", ret);
 		goto abort_suspend;
 	}
-
-#if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	ret = save_se_context();
-	if (ret) {
-		pr_info("Failed to save SE context\n");
-		goto abort_suspend;
-	}
-#endif
 
 	read_persistent_clock(&ts_exit);
 
