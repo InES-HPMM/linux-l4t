@@ -612,13 +612,15 @@ static int extcon_pm_notify(struct notifier_block *nb,
 	if (event == PM_SUSPEND_PREPARE) {
 		spin_lock_irqsave(&edev->lock, flags);
 		edev->is_suspend = true;
-		edev->last_state_in_suspend = edev->state;
+		if (!edev->uevent_in_suspend)
+			edev->last_state_in_suspend = edev->state;
 		spin_unlock_irqrestore(&edev->lock, flags);
 	} else if (event == PM_POST_SUSPEND) {
 		spin_lock_irqsave(&edev->lock, flags);
 		edev->is_suspend = false;
 		spin_unlock_irqrestore(&edev->lock, flags);
-		extcon_set_state(edev, edev->last_state_in_suspend);
+		if (!edev->uevent_in_suspend)
+			extcon_set_state(edev, edev->last_state_in_suspend);
 	}
 
 	return NOTIFY_OK;
