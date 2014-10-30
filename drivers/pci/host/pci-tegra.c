@@ -1318,11 +1318,11 @@ void tegra_pcie_unmap_resources(struct tegra_pcie *pcie)
 
 	if (pcie->pads) {
 		devm_iounmap(&pdev->dev, pcie->pads);
-		pcie->pads = 0;
+		pcie->pads = NULL;
 	}
 	if (pcie->afi) {
 		devm_iounmap(&pdev->dev, pcie->afi);
-		pcie->afi = 0;
+		pcie->afi = NULL;
 	}
 }
 
