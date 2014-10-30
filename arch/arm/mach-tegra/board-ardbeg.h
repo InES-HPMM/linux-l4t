@@ -138,6 +138,7 @@ int loki_regulator_init(void);
 int loki_emc_init(void);
 int loki_sdhci_init(void);
 int loki_pmon_init(void);
+int loki_panel_init(void);
 int loki_kbc_init(void);
 int loki_sensors_init(void);
 int loki_soctherm_init(void);

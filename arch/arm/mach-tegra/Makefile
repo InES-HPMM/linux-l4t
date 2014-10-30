@@ -112,6 +112,7 @@ endif
 obj-${CONFIG_MACH_LOKI}               	+= board-loki.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-kbc.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-sensors.o
+obj-${CONFIG_MACH_LOKI}               	+= board-loki-panel.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-memory.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-power.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-sdhci.o

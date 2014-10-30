@@ -23,6 +23,7 @@
 #include <mach/irqs.h>
 #include "gpio-names.h"
 
+int loki_panel_init(void);
 int loki_kbc_init(void);
 int loki_sdhci_init(void);
 int loki_sensors_init(void);

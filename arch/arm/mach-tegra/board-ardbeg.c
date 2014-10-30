@@ -1274,13 +1274,16 @@ static void __init tegra_ardbeg_late_init(void)
 
 	isomgr_init();
 	ardbeg_touch_init();
+	if (board_info.board_id == BOARD_E2548 ||
+			board_info.board_id == BOARD_P2530)
+		loki_panel_init();
+	else
+		tegra_fb_copy_or_clear();
 
-	tegra_fb_copy_or_clear();
-
-	/* put PEX pads into DPD mode to save additional power */
-	tegra_io_dpd_enable(&pexbias_io);
-	tegra_io_dpd_enable(&pexclk1_io);
-	tegra_io_dpd_enable(&pexclk2_io);
+		/* put PEX pads into DPD mode to save additional power */
+		tegra_io_dpd_enable(&pexbias_io);
+		tegra_io_dpd_enable(&pexclk1_io);
+		tegra_io_dpd_enable(&pexclk2_io);
 
 	if (board_info.board_id == BOARD_E2548 ||
 			board_info.board_id == BOARD_P2530)
