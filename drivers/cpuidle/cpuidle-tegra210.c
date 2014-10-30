@@ -806,7 +806,7 @@ static int __init debugfs_init(void)
 {
 	struct dentry *dfs_file;
 
-	cpuidle_debugfs_root = debugfs_create_dir("cpuidle_t210", 0);
+	cpuidle_debugfs_root = debugfs_create_dir("cpuidle_t210", NULL);
 
 	if (!cpuidle_debugfs_root)
 		return -ENOMEM;
