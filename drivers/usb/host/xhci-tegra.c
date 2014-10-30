@@ -203,7 +203,7 @@ static struct tegra_usb_pmc_data pmc_hsic_data[XUSB_HSIC_COUNT];
 static void save_ctle_context(struct tegra_xhci_hcd *tegra,
 	u8 port)  __attribute__ ((unused));
 
-static char *firmware_file = "";
+static const char *firmware_file = "";
 #define FIRMWARE_FILE_HELP	\
 	"used to specify firmware file of Tegra XHCI host controller. "
 
