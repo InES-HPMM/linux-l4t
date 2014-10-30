@@ -657,7 +657,7 @@ void nvudc_handle_event(struct nv_udc_s *nvudc, struct event_trb_s *event);
 			ndelay(50);					\
 		}							\
 		if (_i == (STATECHG_REG_TIMEOUT_IN_USECS*20)) {		\
-			msg_dbg(dev, "STCHG Timeout: "_fmt"\n");	\
+			msg_dbg(dev, "STCHG Timeout: %s\n", _fmt);	\
 			msg_dbg(dev, "STCHG=0x%.8x, EpMask=0x%.8x\n",	\
 					_reg, _val);			\
 		}							\

@@ -1856,6 +1856,22 @@ static int nvudc_ep_set_halt(struct usb_ep *_ep, int value)
 	return status;
 }
 
+static set_ep_halt(struct nv_udc_s *nvudc, int ep_index, char *msg)
+{
+	u32 val, ep_bit = NV_BIT(ep_index);
+
+	val = ioread32(nvudc->mmio_reg_base + EP_HALT);
+	val |= ep_bit;
+	iowrite32(val, nvudc->mmio_reg_base + EP_HALT);
+
+	msg_info(nvudc->dev, "%s: 0x%x\n", msg, val);
+
+	poll_stchg(nvudc->dev, msg, ep_bit);
+	iowrite32(ep_bit, nvudc->mmio_reg_base + EP_STCHG);
+	msg_dbg(nvudc->dev, "cleaned EP STCHG for ep %d: 0x%x\n",
+		ep_index, ioread32(nvudc->mmio_reg_base + EP_STCHG));
+}
+
 static int ep_halt(struct nv_udc_ep *udc_ep_ptr, int halt)
 {
 	struct nv_udc_s *nvudc;
@@ -2574,18 +2590,8 @@ int nvudc_handle_exfer_event(struct nv_udc_s *nvudc, struct event_trb_s *event)
 	case CMPL_CODE_USB_TRANS_ERR:
 	case CMPL_CODE_TRB_ERR:
 	{
-		u32 utemp;
-
-		msg_dbg(nvudc->dev, "comp_code = 0x%x\n", comp_code);
-		/* halt the endpoint */
-		utemp = ioread32(nvudc->mmio_reg_base + EP_HALT);
-		utemp |= NV_BIT(ep_index);
-		iowrite32(utemp, nvudc->mmio_reg_base + EP_HALT);
-
-		poll_stchg(nvudc->dev, "cmpl_code_err", NV_BIT(ep_index));
-
-		iowrite32(NV_BIT(ep_index), nvudc->mmio_reg_base + EP_STCHG);
-
+		msg_info(nvudc->dev, "comp_code = 0x%x\n", comp_code);
+		set_ep_halt(nvudc, ep_index, "cmpl code error");
 		break;
 	}
 	case CMPL_CODE_CTRL_SEQNUM_ERR:
@@ -2595,7 +2601,7 @@ int nvudc_handle_exfer_event(struct nv_udc_s *nvudc, struct event_trb_s *event)
 		struct nv_setup_packet *nv_setup_pkt;
 		u16 seq_num;
 
-		msg_dbg(nvudc->dev, "CMPL_CODE_SEQNUM_ERR\n");
+		msg_info(nvudc->dev, "CMPL_CODE_SEQNUM_ERR\n");
 
 		udc_req_ptr = list_entry(udc_ep_ptr->queue.next,
 					struct nv_udc_request, queue);
@@ -2799,19 +2805,9 @@ bool setfeaturesrequest(struct nv_udc_s *nvudc, u8 RequestType, u8 bRequest, u16
 	return true;
 
 set_feature_error:
-	u_temp = ioread32(nvudc->mmio_reg_base + EP_HALT);
-	u_temp |= 1;
-	iowrite32(u_temp, nvudc->mmio_reg_base + EP_HALT);
-
-	msg_dbg(nvudc->dev, "halt the control endpoint 0x%x\n",
-			u_temp);
-	poll_stchg(nvudc->dev, "set_feature():", 1);
-				;
-	iowrite32(1, nvudc->mmio_reg_base + EP_STCHG);
-
+	set_ep_halt(nvudc, 0, "set feature error");
 	nvudc->setup_status = WAIT_FOR_SETUP;
 	return true;
-
 }
 
 void getstatusrequest(struct nv_udc_s *nvudc, u8 RequestType, u16 value,
@@ -3093,6 +3089,13 @@ void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 		"bRequest=%d, wValue=0x%.4x, wIndex=%d, wLength=%d\n",
 		setup_pkt->bRequest, wValue, wIndex, wLength);
 
+	/* war for ctrl request with seq_num = 0xfffe or 0xffff */
+	if (seq_num == 0xfffe || seq_num == 0xffff) {
+		set_ep_halt(nvudc, 0, "war: ctrl seq_num = 0xfffe/0xffff");
+		nvudc->setup_status = WAIT_FOR_SETUP;
+		return;
+	}
+
 	nvudc->setup_status = SETUP_PKT_PROCESS_IN_PROGRESS;
 	nvudc->setup_fn_call_back = NULL;
 	if ((setup_pkt->bRequestType & USB_TYPE_MASK) == USB_TYPE_STANDARD) {
@@ -3190,18 +3193,8 @@ void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 	if (nvudc->driver->setup(&nvudc->gadget, setup_pkt) < 0) {
 		u32 u_temp;
 		spin_lock(&nvudc->lock);
-		msg_dbg(nvudc->dev, "setup request failed\n");
-		u_temp = ioread32(nvudc->mmio_reg_base + EP_HALT);
-		u_temp |= 1;
-		iowrite32(u_temp, nvudc->mmio_reg_base + EP_HALT);
 
-		msg_dbg(nvudc->dev, "halt the control endpoint 0x%x\n", u_temp);
-
-		poll_stchg(nvudc->dev, "handle_setup_pkt():halting ep0", 1);
-			iowrite32(1, nvudc->mmio_reg_base + EP_STCHG);
-		msg_dbg(nvudc->dev, "cleaned EP STCHG for control ep 0x%x\n",
-				ioread32(nvudc->mmio_reg_base + EP_STCHG));
-
+		set_ep_halt(nvudc, 0, "setup request failed");
 		nvudc->setup_status = WAIT_FOR_SETUP;
 		return;
 	}
