@@ -115,7 +115,7 @@ static char dummy_name[DUMMY_DEV_MAX_NAME_SIZE] = DUMMY_DEV_NAME;
 /*
  * FIXME: They should have a DT entry with swgroup IDs.
  */
-struct swgid_fixup tegra_swgid_fixup_t124[] = {
+static struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{ .name = "isp",	.swgids = TEGRA_SWGROUP_BIT(ISP2) |
 					  TEGRA_SWGROUP_BIT(ISP2B), },
 	{ .name = "msenc",	.swgids = TEGRA_SWGROUP_BIT(MSENC), },
@@ -178,7 +178,7 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{},
 };
 
-struct swgid_fixup tegra_swgid_fixup_t210[] = {
+static struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	{ .name = "tegra-aes",	.swgids = TEGRA_SWGROUP_BIT(NVDEC), },
 	{ .name = "nvavp",	.swgids = TEGRA_SWGROUP_BIT(AVPC), },
 	{
