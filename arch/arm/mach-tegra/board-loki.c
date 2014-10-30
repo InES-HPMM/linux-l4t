@@ -615,10 +615,6 @@ struct of_dev_auxdata loki_auxdata_lookup[] __initdata = {
 	T124_I2C_OF_DEV_AUXDATA,
 	OF_DEV_AUXDATA("nvidia,tegra124-xhci", 0x70090000, "tegra-xhci",
 				&xusb_pdata),
-	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY_BASE, "tegradc.0",
-		NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY2_BASE, "tegradc.1",
-		NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-nvavp", 0x60001000, "nvavp",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-pwm", 0x7000a000, "tegra-pwm", NULL),
@@ -632,7 +628,6 @@ struct of_dev_auxdata loki_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-cec", 0x70015000, "tegra_cec", NULL),
 #endif
 	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
-	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
 	{}
 };
 #endif

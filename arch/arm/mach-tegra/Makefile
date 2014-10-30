@@ -91,8 +91,6 @@ obj-y					+= panel-i-edp-1080p-11-6.o
 obj-y					+= panel-c-lvds-1366-14.o
 obj-y					+= panel-a-1080p-14-0.o
 obj-y					+= panel-j-1440-810-5-8.o
-obj-y					+= panel-j-720p-5.o
-obj-y					+= panel-l-720p-5-loki.o
 
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sdhci.o
@@ -117,6 +115,8 @@ obj-${CONFIG_MACH_LOKI}               	+= board-loki-memory.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-power.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-sdhci.o
 obj-${CONFIG_MACH_LOKI}               	+= panel-a-1080p-11-6.o
+obj-${CONFIG_MACH_LOKI}               	+= panel-l-720p-5-loki.o
+obj-${CONFIG_MACH_LOKI}               	+= panel-j-720p-5.o
 
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-sdhci.o
