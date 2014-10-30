@@ -671,6 +671,8 @@ static int tegra210_pg_gpu_unpowergate(int id)
 
 	powergate_partition_assert_reset(partition);
 
+	udelay(10);
+
 	pmc_write(0, PMC_GPU_RG_CONTROL);
 
 	udelay(10);
