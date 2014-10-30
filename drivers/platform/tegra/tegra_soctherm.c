@@ -4228,7 +4228,7 @@ static void soctherm_sensor_params_parse(struct platform_device *pdev)
 static int soctherm_fuse_wars_parse(struct platform_device *pdev)
 {
 	int iv, ret, fuse_rev, val, vals[2];
-	struct device_node *np = pdev->dev.of_node;
+	struct device_node *np = NULL;
 	struct soctherm_sensor_params *sp = &pp->sensor_params;
 
 	fuse_rev = tegra_fuse_calib_base_get_cp(NULL, NULL);
@@ -4237,7 +4237,12 @@ static int soctherm_fuse_wars_parse(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	while ((np = of_find_node_by_type(np, "fuse_war"))) {
+	while ((np = of_get_next_child(pdev->dev.of_node, np))) {
+		if (!of_device_is_available(np))
+			continue;
+		if (!np->type || of_node_cmp(np->type, "fuse_war"))
+			continue;
+
 		ret = of_property_read_u32_array(np, "match_fuse_rev", vals, 2);
 		if (ret != 0 && ret != -EOVERFLOW) {
 			dev_err(&pdev->dev, "missing 'match_fuse_rev'\n");
@@ -4274,11 +4279,13 @@ static int soctherm_fuse_wars_parse(struct platform_device *pdev)
 static void soctherm_thermctl_parse(struct platform_device *pdev)
 {
 	int id, val;
-	struct device_node *np = pdev->dev.of_node;
+	struct device_node *np = NULL;
 
 	/* register each valid child of type 'thermctl' as thermal-sensor */
-	while ((np = of_find_node_by_type(np, "thermctl"))) {
+	while ((np = of_get_next_child(pdev->dev.of_node, np))) {
 		if (!of_device_is_available(np))
+			continue;
+		if (!np->type || of_node_cmp(np->type, "thermctl"))
 			continue;
 		if (of_property_read_u32(np, "thermal-sensor-id", &id))
 			continue;
@@ -4308,15 +4315,17 @@ static void soctherm_throttlectl_parse(struct platform_device *pdev)
 {
 	int ocn, val, prio;
 	bool oc_type, cdev_type, low;
-	struct device_node *cpu, *gpu, *np = pdev->dev.of_node;
+	struct device_node *cpu, *gpu, *np = NULL;
 	struct thermal_cooling_device *cdev, **cdevp;
 	struct soctherm_throttle *throt;
 	struct soctherm_throttle_dev *dev_cpu, *dev_gpu;
 	const char *typ, *mod, *lvl;
 
 	/* parse type 'throttlectl' for HW thermal throttle and OC alarms */
-	while ((np = of_find_node_by_type(np, "throttlectl"))) {
+	while ((np = of_get_next_child(pdev->dev.of_node, np))) {
 		if (!of_device_is_available(np))
+			continue;
+		if (!np->type || of_node_cmp(np->type, "throttlectl"))
 			continue;
 
 		cdev = NULL;
@@ -4423,6 +4432,11 @@ static void soctherm_throttlectl_parse(struct platform_device *pdev)
 
 			dev_dbg(&pdev->dev, "configured OC%d in %s.\n",
 				ocn, np->full_name);
+		} else {
+			dev_err(&pdev->dev,
+		"error: neither 'oc-alarm-id' or 'cdev-type' found in %s.\n",
+				np->full_name);
+			continue;
 		}
 
 		if (of_property_read_u32(np, "priority", &prio))
@@ -4457,7 +4471,7 @@ static void soctherm_throttlectl_parse(struct platform_device *pdev)
 		}
 		if (!dev_cpu->dividend && !dev_cpu->divisor) {
 			dev_err(&pdev->dev, "missing pskip-cfg from %s.\n",
-				np->full_name);
+				cpu->full_name);
 			continue;
 		}
 		dev_cpu->enable = 1;
@@ -4466,7 +4480,7 @@ static void soctherm_throttlectl_parse(struct platform_device *pdev)
 		dev_gpu = &throt->devs[THROTTLE_DEV_GPU];
 		if (of_property_read_string(gpu, "level", &lvl)) {
 			dev_err(&pdev->dev, "missing 'level' from %s.\n",
-				np->full_name);
+				gpu->full_name);
 			continue;
 		}
 		dev_gpu->enable = 1;
