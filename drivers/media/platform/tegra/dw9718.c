@@ -152,7 +152,7 @@ static struct nvc_focus_cap dw9718_default_cap = {
 static struct nvc_focus_nvc dw9718_default_nvc = {
 	.focal_length = dw9718_FOCAL_LENGTH,
 	.fnumber = dw9718_FNUMBER,
-	.max_aperature = dw9718_FNUMBER,
+	.max_aperture = dw9718_FNUMBER,
 };
 
 static struct dw9718_platform_data dw9718_default_pdata = {
@@ -484,10 +484,10 @@ static int dw9718_param_rd(struct dw9718_info *info, unsigned long arg)
 		data_size = sizeof(info->nvc.focal_length);
 		break;
 	case NVC_PARAM_MAX_APERTURE:
-		data_ptr = &info->nvc.max_aperature;
-		data_size = sizeof(info->nvc.max_aperature);
+		data_ptr = &info->nvc.max_aperture;
+		data_size = sizeof(info->nvc.max_aperture);
 		dev_dbg(&info->i2c_client->dev, "%s MAX_APERTURE: %x\n",
-				__func__, info->nvc.max_aperature);
+				__func__, info->nvc.max_aperture);
 		break;
 	case NVC_PARAM_FNUMBER:
 		data_ptr = &info->nvc.fnumber;
@@ -733,9 +733,9 @@ static void dw9718_sdata_init(struct dw9718_info *info)
 			info->nvc.fnumber = info->pdata->nvc->fnumber;
 		if (info->pdata->nvc->focal_length)
 			info->nvc.focal_length = info->pdata->nvc->focal_length;
-		if (info->pdata->nvc->max_aperature)
-			info->nvc.max_aperature =
-				info->pdata->nvc->max_aperature;
+		if (info->pdata->nvc->max_aperture)
+			info->nvc.max_aperture =
+				info->pdata->nvc->max_aperture;
 	}
 
 	if (info->pdata->cap) {
