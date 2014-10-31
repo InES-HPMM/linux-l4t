@@ -1,6 +1,7 @@
 # generic pinmux support
 GCOV_PROFILE := y
 
+ccflags-y += -Werror
 ccflags-$(CONFIG_DEBUG_PINCTRL)	+= -DDEBUG
 
 obj-$(CONFIG_PINCTRL)		+= core.o pinctrl-utils.o
