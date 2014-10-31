@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-p2360.h
  * Based on arch/arm/mach-tegra/board-p1859.h
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -28,11 +28,6 @@ int p2360_regulator_init(void);
 
 /* Tegra GPIOs */
 #define TEGRA_GPIO_GPUPWR		TEGRA_GPIO_PR2
-
-#define TEGRA_GPIO_TV1ENA		TEGRA_GPIO_PI5
-#define TEGRA_GPIO_TV2ENA		TEGRA_GPIO_PK2
-#define TEGRA_GPIO_TV3ENA		TEGRA_GPIO_PK0
-#define TEGRA_GPIO_TV4ENA		TEGRA_GPIO_PK1
 
 /* External peripheral act as gpio */
 #define MAX77663_IRQ_BASE		TEGRA_NR_IRQS

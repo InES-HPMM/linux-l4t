@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-p2360.c
  * Based on arch/arm/mach-tegra/board-p1859.c
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -40,41 +40,6 @@
 #include "tegra-of-dev-auxdata.h"
 
 static int is_p2360_a00;
-
-static int __init p2360_gpio_init(void)
-{
-	int err;
-
-	err = gpio_request(TEGRA_GPIO_TV1ENA, "tv1_ena");
-	if (err < 0) {
-		pr_err("Err %d: TV1 enable GPIO request failed\n", err);
-		return err;
-	}
-	gpio_direction_output(TEGRA_GPIO_TV1ENA, 1);
-
-	err = gpio_request(TEGRA_GPIO_TV2ENA, "tv2_ena");
-	if (err < 0) {
-		pr_err("Err %d: TV2 enable GPIO request failed\n", err);
-		return err;
-	}
-	gpio_direction_output(TEGRA_GPIO_TV2ENA, 1);
-
-	err = gpio_request(TEGRA_GPIO_TV3ENA, "tv3_ena");
-	if (err < 0) {
-		pr_err("Err %d: TV3 enable GPIO request failed\n", err);
-		return err;
-	}
-	gpio_direction_output(TEGRA_GPIO_TV3ENA, 1);
-
-	err = gpio_request(TEGRA_GPIO_TV4ENA, "tv4_ena");
-	if (err < 0) {
-		pr_err("Err %d: TV4 enable GPIO request failed\n", err);
-		return err;
-	}
-	gpio_direction_output(TEGRA_GPIO_TV4ENA, 1);
-
-	return 0;
-}
 
 /* Display panel/HDMI */
 static int p2360_dev_dummy(struct device *dev)
@@ -166,10 +131,6 @@ static void __init tegra_p2360_late_init(void)
 
 	isomgr_init();
 	p2360_panel_init();
-
-	/* Initialize TV Enable GPIOs for all boards later than A00 */
-	if (!is_p2360_a00)
-		p2360_gpio_init();
 }
 
 static void __init tegra_p2360_dt_init(void)
