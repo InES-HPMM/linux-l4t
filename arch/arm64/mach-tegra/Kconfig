@@ -62,6 +62,7 @@ config ARCH_TEGRA_21x_SOC
 	select CMA
 	select NVMAP_CACHE_MAINT_BY_SET_WAYS if TEGRA_NVMAP
 	select NVMAP_CACHE_MAINT_BY_SET_WAYS_ON_ONE_CPU if TEGRA_NVMAP
+	select TEGRA_CPU_FREQ_GOVERNOR_KERNEL_START
 	help
 	  Support for NVIDIA Tegra 21x family of SoCs, based upon the
 	  NVIDIA Denver CPU
