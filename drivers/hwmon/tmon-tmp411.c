@@ -68,7 +68,7 @@
 #define STATUS_LOCAL_HIGH	0x40
 #define STATUS_RTHRM		0x02
 #define STATUS_LTHRM		0x01
-
+#define FUTURE_USE		0
 
 
 /* Based on POR values of CONVERSION RATE REGISTER (125ms) +
