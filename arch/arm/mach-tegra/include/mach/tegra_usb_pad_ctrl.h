@@ -384,6 +384,10 @@ static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
 #define TRK_START_TIMER				(0x1E << 12)
 #define TRK_DONE_RESET_TIMER_MASK	(0x7F << 19)
 #define TRK_DONE_RESET_TIMER		(0xA << 19)
+#define GET_PCTRL(x)	((x & 0xfc0) >> 6)
+#define GET_TCTRL(x)	((x & 0x3f) >> 0)
+
+
 
 #define XUSB_PADCTL_HSIC_PAD_TRK_CTL_0		0x340
 #define HSIC_TRK_START_TIMER(x)		(((x) & 0x7F) << 5)
@@ -417,6 +421,7 @@ static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
 #define USB2_OTG_PD_DISC_FORCE_POWERUP	(0x1 << 1)
 #define USB2_OTG_PD_CHRP_FORCE_POWERUP	(0x1 << 0)
 #define RPD_CTRL				(0x1f << 26)
+#define GET_RPD_CTRL(x)			((x & 0x7c000000) >> 26)
 #define USB2_OTG_HS_IREF_CAP			0x0
 
 #define XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL1(_p)	\

@@ -27,6 +27,9 @@
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/clk/tegra.h>
 #include <mach/tegra_usb_pmc.h>
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+#include <mach/tegra_usb_pad_ctrl.h>
+#endif
 
 #include "../../../arch/arm/mach-tegra/iomap.h"
 
@@ -240,6 +243,9 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 {
 	unsigned long val, pmc_pad_cfg_val;
 	unsigned  int inst = pmc_data->instance;
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	unsigned long rpd_ctrl, tctrl, pctrl;
+#endif
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pmc_data->instance);
 
@@ -383,6 +389,36 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 
 	spin_lock_irqsave(&pmc_lock, flags);
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	/* Program PCTRL_VAL, TCTRL_VAL into PMC space */
+	val = tegra_usb_pad_reg_read(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1);
+	tctrl = GET_TCTRL(val);
+	pctrl = GET_PCTRL(val);
+	val = readl(pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+	val &= ~(PMC_TCTRL_VAL(~0) | PMC_PCTRL_VAL(~0));
+	val |= PMC_TCTRL_VAL(tctrl) | PMC_PCTRL_VAL(pctrl);
+	writel(val, pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+
+	/* Program PRD_CTRL into PMC space */
+	val = tegra_usb_pad_reg_read(XUSB_PADCTL_USB2_OTG_PAD_CTL_1(inst));
+	rpd_ctrl = GET_RPD_CTRL(val);
+	val = readl(pmc_base + PMC_UTMIP_PAD_CFG(inst));
+	val &= ~UTMIP_RPD_CTRL(~0);
+	val |= UTMIP_RPD_CTRL(rpd_ctrl);
+	writel(val, pmc_base + PMC_UTMIP_PAD_CFG(inst));
+
+	/* Turn over pad configuration to PMC  for line wake events*/
+	val = readl(pmc_base + PMC_SLEEP_CFG(inst));
+	val &= ~UTMIP_WAKE_VAL(inst, ~0);
+	val |= UTMIP_WAKE_VAL(inst, WAKE_VAL_ANY);
+	val |= UTMIP_PCTRL_USE_PMC(inst) | UTMIP_TCTRL_USE_PMC(inst);
+	val |= UTMIP_MASTER_ENABLE(inst) | UTMIP_FSLS_USE_PMC(inst);
+	writel(val, pmc_base + PMC_SLEEP_CFG(inst));
+
+	val = readl(pmc_base + PMC_SLEEP_CFG(3));
+	val |= UTMIP_RPD_CTRL_USE_PMC(inst) | UTMIP_RPU_SWITC_LOW_USE_PMC(inst);
+	writel(val, pmc_base + PMC_SLEEP_CFG(3));
+#else
 	/* Program thermally encoded RCTRL_VAL, TCTRL_VAL into PMC space */
 	if (utmip_tctrl_val | utmip_rctrl_val) {
 		val = readl(pmc_base + PMC_UTMIP_TERM_PAD_CFG);
@@ -398,6 +434,7 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	val |= UTMIP_RCTRL_USE_PMC(inst) | UTMIP_TCTRL_USE_PMC(inst);
 	val |= UTMIP_MASTER_ENABLE(inst) | UTMIP_FSLS_USE_PMC(inst);
 	writel(val, pmc_base + PMC_SLEEP_CFG(inst));
+#endif
 
 	spin_unlock_irqrestore(&pmc_lock, flags);
 }
@@ -444,6 +481,13 @@ static void utmip_phy_disable_pmc_bus_ctrl(struct tegra_usb_pmc_data *pmc_data,
 	val &= ~(UTMIP_FSLS_USE_PMC(inst) | UTMIP_MASTER_ENABLE(inst));
 	writel(val, pmc_base + PMC_SLEEP_CFG(inst));
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	val = readl(pmc_base + PMC_SLEEP_CFG(3));
+	val &= ~(UTMIP_RPD_CTRL_USE_PMC(inst) |
+			UTMIP_RPU_SWITC_LOW_USE_PMC(inst));
+	writel(val, pmc_base + PMC_SLEEP_CFG(3));
+#endif
+
 	val = readl(pmc_base + PMC_TRIGGERS);
 	val &= ~UTMIP_CAP_CFG(inst);
 	writel(val, pmc_base + PMC_TRIGGERS);
@@ -472,6 +516,9 @@ static void utmip_powerdown_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 {
 	unsigned long val;
 	unsigned  int inst = pmc_data->instance;
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	unsigned long rpd_ctrl, tctrl, pctrl;
+#endif
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pmc_data->instance);
 
@@ -492,6 +539,36 @@ static void utmip_powerdown_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 		UTMIP_USBOP_RPD_D | UTMIP_USBON_RPD_D | UTMIP_HIGHZ_D;
 	writel(val, pmc_base + PMC_SLEEPWALK_REG(inst));
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	/* Program PCTRL_VAL, TCTRL_VAL into PMC space */
+	val = tegra_usb_pad_reg_read(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1);
+	tctrl = GET_TCTRL(val);
+	pctrl = GET_PCTRL(val);
+	val = readl(pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+	val &= ~(PMC_TCTRL_VAL(~0) | PMC_PCTRL_VAL(~0));
+	val |= PMC_TCTRL_VAL(tctrl) | PMC_PCTRL_VAL(pctrl);
+	writel(val, pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+
+	/* Program PRD_CTRL into PMC space */
+	val = tegra_usb_pad_reg_read(XUSB_PADCTL_USB2_OTG_PAD_CTL_1(inst));
+	rpd_ctrl = GET_RPD_CTRL(val);
+	val = readl(pmc_base + PMC_UTMIP_PAD_CFG(inst));
+	val &= ~UTMIP_RPD_CTRL(~0);
+	val |= UTMIP_RPD_CTRL(rpd_ctrl);
+	writel(val, pmc_base + PMC_UTMIP_PAD_CFG(inst));
+
+	/* Turn over pad configuration to PMC */
+	val = readl(pmc_base + PMC_SLEEP_CFG(inst));
+	val &= ~UTMIP_WAKE_VAL(inst, ~0);
+	val |= UTMIP_WAKE_VAL(inst, WAKE_VAL_NONE) |
+		UTMIP_PCTRL_USE_PMC(inst) | UTMIP_TCTRL_USE_PMC(inst) |
+		UTMIP_FSLS_USE_PMC(inst) | UTMIP_MASTER_ENABLE(inst);
+	writel(val, pmc_base + PMC_SLEEP_CFG(inst));
+
+	val = readl(pmc_base + PMC_SLEEP_CFG(3));
+	val |= UTMIP_RPD_CTRL_USE_PMC(inst) | UTMIP_RPU_SWITC_LOW_USE_PMC(inst);
+	writel(val, pmc_base + PMC_SLEEP_CFG(3));
+#else
 	/* Program thermally encoded RCTRL_VAL, TCTRL_VAL into PMC space */
 	if (utmip_tctrl_val | utmip_rctrl_val) {
 		val = readl(pmc_base + PMC_UTMIP_TERM_PAD_CFG);
@@ -507,6 +584,7 @@ static void utmip_powerdown_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 		UTMIP_RCTRL_USE_PMC(inst) | UTMIP_TCTRL_USE_PMC(inst) |
 		UTMIP_FSLS_USE_PMC(inst) | UTMIP_MASTER_ENABLE(inst);
 	writel(val, pmc_base + PMC_SLEEP_CFG(inst));
+#endif
 
 	spin_unlock_irqrestore(&pmc_lock, flags);
 }
@@ -533,6 +611,13 @@ static void utmip_powerup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 				UTMIP_TCTRL_USE_PMC(inst));
 	val &= ~(UTMIP_FSLS_USE_PMC(inst) | UTMIP_MASTER_ENABLE(inst));
 	writel(val, pmc_base + PMC_SLEEP_CFG(inst));
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	val = readl(pmc_base + PMC_SLEEP_CFG(3));
+	val &= ~(UTMIP_RPD_CTRL_USE_PMC(inst) |
+			UTMIP_RPU_SWITC_LOW_USE_PMC(inst));
+	writel(val, pmc_base + PMC_SLEEP_CFG(3));
+#endif
 
 	spin_unlock_irqrestore(&pmc_lock, flags);
 	mdelay(1);
