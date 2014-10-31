@@ -20,6 +20,9 @@
 #include <linux/platform_device.h>
 #include <linux/debugfs.h>
 #include <linux/clk/tegra.h>
+#include <linux/seq_file.h>
+#include <asm/cputime.h>
+#include <linux/slab.h>
 
 #include "dev.h"
 #include "ape_actmon.h"
@@ -77,34 +80,17 @@ struct adsp_dfs_policy {
 #endif
 };
 
-static struct adsp_dfs_policy *policy;
+struct adsp_freq_stats {
+	struct device *dev;
+	unsigned long long last_time;
+	int last_index;
+	u64 *time_in_state;
+	int state_num;
+};
+
+struct adsp_dfs_policy *policy;
+static struct adsp_freq_stats freq_stats;
 static DEFINE_MUTEX(policy_mutex);
-
-/* adsp clock rate change notifier callback */
-static int adsp_dfs_rc_callback(
-	struct notifier_block *nb, unsigned long rate, void *v)
-{
-	unsigned long freq = rate / 1000;
-
-	actmon_rate_change(freq);
-
-	mutex_lock(&policy_mutex);
-	policy->cur = freq;
-	mutex_unlock(&policy_mutex);
-
-	pr_debug("policy->cur:%lu\n", policy->cur);
-	/* TBD: Communicate ADSP about new freq */
-
-	return NOTIFY_OK;
-};
-
-static struct adsp_dfs_policy dfs_policy =  {
-	.enable = 1,
-	.clk_name = "adsp_cpu",
-	.rate_change_nb = {
-		.notifier_call = adsp_dfs_rc_callback,
-	},
-};
 
 static unsigned long adsp_get_target_freq(unsigned long tfreq, int *index)
 {
@@ -131,6 +117,51 @@ static unsigned long adsp_get_target_freq(unsigned long tfreq, int *index)
 
 	return 0;
 }
+
+static void adspfreq_stats_update(void)
+{
+	unsigned long long cur_time;
+
+	cur_time = get_jiffies_64();
+	freq_stats.time_in_state[freq_stats.last_index] += cur_time -
+		freq_stats.last_time;
+	freq_stats.last_time = cur_time;
+}
+
+/* adsp clock rate change notifier callback */
+static int adsp_dfs_rc_callback(
+	struct notifier_block *nb, unsigned long rate, void *v)
+{
+	unsigned long freq = rate / 1000;
+	int old_index, new_index;
+
+	actmon_rate_change(freq);
+
+	mutex_lock(&policy_mutex);
+	policy->cur = freq;
+
+	/* update states */
+	adspfreq_stats_update();
+	old_index = freq_stats.last_index;
+	adsp_get_target_freq(policy->cur * 1000, &new_index);
+	if (old_index != new_index)
+		freq_stats.last_index = new_index;
+
+	mutex_unlock(&policy_mutex);
+
+	pr_debug("policy->cur:%lu\n", policy->cur);
+	/* TBD: Communicate ADSP about new freq */
+
+	return NOTIFY_OK;
+};
+
+static struct adsp_dfs_policy dfs_policy =  {
+	.enable = 1,
+	.clk_name = "adsp_cpu",
+	.rate_change_nb = {
+		.notifier_call = adsp_dfs_rc_callback,
+	},
+};
 
 /**
  * update_policy - update adsp freq and ask adsp to work post change
@@ -343,10 +374,49 @@ static int policy_cur_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(cur_fops, policy_cur_get,
 	policy_cur_set, "%llu\n");
 
-static int adsp_dfs_debugfs_init(struct nvadsp_drv_data *drv)
+/*
+ * Print residency in each freq levels
+ */
+static void dump_stats_table(struct seq_file *s, struct adsp_freq_stats *fstats)
+{
+	int i;
+
+	adspfreq_stats_update();
+
+	seq_printf(s, "%-10s %-10s\n", "rate(kHz)", "time(ms)");
+	for (i = 0; i < fstats->state_num; i++) {
+		seq_printf(s, "%-10lu %-10llu\n",
+			(long unsigned int)(adsp_cpu_freq_table[i] / 1000),
+			cputime64_to_clock_t(fstats->time_in_state[i]));
+	}
+}
+
+static int show_time_in_state(struct seq_file *s, void *data)
+{
+	struct adsp_freq_stats *fstats =
+		(struct adsp_freq_stats *) (s->private);
+
+	dump_stats_table(s, fstats);
+	return 0;
+}
+
+static int stats_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, show_time_in_state, inode->i_private);
+}
+
+static const struct file_operations time_in_state_fops = {
+	.open = stats_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+static int adsp_dfs_debugfs_init(struct platform_device *pdev)
 {
 	int ret = -ENOMEM;
 	struct dentry *d, *root;
+	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
 
 	if (!drv->adsp_debugfs_root)
 		return ret;
@@ -377,11 +447,19 @@ static int adsp_dfs_debugfs_init(struct nvadsp_drv_data *drv)
 	if (!d)
 		goto err_out;
 
+	d = debugfs_create_file("time_in_state", S_IRUGO,
+					root, &freq_stats,
+					&time_in_state_fops);
+	if (!d)
+		goto err_out;
+
 	return 0;
 
 err_out:
 	debugfs_remove_recursive(root);
 	policy->root = NULL;
+	dev_err(&pdev->dev,
+	"unable to create adsp logger debug fs file\n");
 	return ret;
 }
 #endif
@@ -409,11 +487,16 @@ void adsp_cpu_set_rate(unsigned long freq)
 int adsp_dfs_core_init(struct platform_device *pdev)
 {
 	int ret = 0;
+	int size = sizeof(adsp_cpu_freq_table) / sizeof(adsp_cpu_freq_table[0]);
 	uint16_t mid = HOST_ADSP_DFS_MBOX_ID;
-	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
 
 	policy = &dfs_policy;
 	policy->adsp_clk = clk_get_sys(NULL, policy->clk_name);
+	if (IS_ERR_OR_NULL(policy->adsp_clk)) {
+		dev_err(&pdev->dev, "unable to find ahub clock\n");
+		ret = PTR_ERR(policy->adsp_clk);
+		goto end;
+	}
 
 	/* Clk_round_rate returns in Hz */
 	policy->max = policy->cpu_max =
@@ -422,10 +505,19 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 		(clk_round_rate(policy->adsp_clk, 0)) / 1000;
 	policy->cur = clk_get_rate(policy->adsp_clk) / 1000;
 
+	adsp_get_target_freq(policy->cur * 1000, &freq_stats.last_index);
+	freq_stats.last_time = get_jiffies_64();
+	freq_stats.state_num = size;
+	freq_stats.time_in_state = kzalloc(size, GFP_KERNEL);
+	if (!freq_stats.time_in_state) {
+		ret = -ENOMEM;
+		goto end;
+	}
 	ret = nvadsp_mbox_open(&policy->mbox, &mid, "dfs_comm", NULL, NULL);
 	if (ret) {
 		dev_info(&pdev->dev, "unable to open mailbox\n");
-		return ret;
+		kfree(freq_stats.time_in_state);
+		goto end;
 	}
 
 	if (policy->rate_change_nb.notifier_call) {
@@ -435,15 +527,19 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 			dev_err(&pdev->dev, "rate change notifier err: %s\n",
 			policy->clk_name);
 			nvadsp_mbox_close(&policy->mbox);
-			return ret;
+			kfree(freq_stats.time_in_state);
+			goto end;
 		}
 	}
 
 #ifdef CONFIG_DEBUG_FS
-	adsp_dfs_debugfs_init(drv);
+	adsp_dfs_debugfs_init(pdev);
 #endif
 	dev_info(&pdev->dev, "adsp dfs is initialized ....\n");
-
+	return ret;
+end:
+	if (policy->adsp_clk)
+		clk_put(policy->adsp_clk);
 	return ret;
 }
 
@@ -452,11 +548,10 @@ int adsp_dfs_core_exit(struct platform_device *pdev)
 	status_t ret = 0;
 
 	ret = nvadsp_mbox_close(&policy->mbox);
-	if (ret) {
+	if (ret)
 		dev_info(&pdev->dev, "adsp dfs exit failed: mbox close error ....\n");
-		return ret;
-	}
 
+	kfree(freq_stats.time_in_state);
 	tegra_unregister_clk_rate_notifier(policy->adsp_clk,
 					   &policy->rate_change_nb);
 
