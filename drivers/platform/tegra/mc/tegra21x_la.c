@@ -77,9 +77,9 @@ struct la_client_info t21x_la_info_array[] = {
 	LA(0, 0, ISP2_0,	7  : 0,  ISP_RA,	false, 51,  300),
 	LA(0, 0, ISP2_1,	7  : 0,  ISP_WA,	false, 128, 800),
 	LA(0, 0, ISP2_1,	23 : 16, ISP_WB,	false, 128, 800),
-	/* LA(0, 0, ISP2B_0,	7  : 0,  ISP_RAB,	false, 54,  300), */
-	/* LA(0, 0, ISP2B_1,	7  : 0,  ISP_WAB,	false, 128, 800), */
-	/* LA(0, 0, ISP2B_1,	23 : 16, ISP_WBB,	false, 128, 800), */
+	LA(0, 0, ISP2B_0,	7  : 0,  ISP_RAB,	false, 54,  300),
+	LA(0, 0, ISP2B_1,	7  : 0,  ISP_WAB,	false, 128, 800),
+	LA(0, 0, ISP2B_1,	23 : 16, ISP_WBB,	false, 128, 800),
 	LA(0, 0, MPCORE_0,	7  : 0,  MPCORER,	false, 4,   0),
 	LA(0, 0, MPCORE_0,	23 : 16, MPCOREW,	false, 128, 800),
 	LA(0, 0, NVDEC_0,	7  : 0,  NVDECR,	false, 4,   0),
