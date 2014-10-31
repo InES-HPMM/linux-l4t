@@ -1565,17 +1565,7 @@ static int tegra_xusb_partitions_clk_init(struct tegra_xhci_hcd *tegra)
 		goto get_ss_clk_failed;
 	}
 
-	if (tegra->soc_config->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2) {
-		err = clk_enable(tegra->pll_re_vco_clk);
-		if (err) {
-			dev_err(&pdev->dev, "Failed to enable refPLLE clk\n");
-			goto enable_pll_re_vco_clk_failed;
-		}
-	}
 	return 0;
-
-enable_pll_re_vco_clk_failed:
-	tegra->ss_clk = NULL;
 
 get_ss_clk_failed:
 	tegra->host_clk = NULL;
@@ -1605,10 +1595,10 @@ static void tegra_xusb_partitions_clk_deinit(struct tegra_xhci_hcd *tegra)
 		clk_disable(tegra->ss_clk);
 		clk_disable(tegra->host_clk);
 		clk_disable(tegra->emc_clk);
+		if (tegra->soc_config->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2)
+			clk_disable(tegra->pll_re_vco_clk);
 		tegra->clock_enable_done = false;
 	}
-	if (tegra->soc_config->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2)
-		clk_disable(tegra->pll_re_vco_clk);
 	tegra->ss_clk = NULL;
 	tegra->host_clk = NULL;
 	tegra->ss_src_clk = NULL;
@@ -3975,33 +3965,42 @@ static int tegra_enable_xusb_clk(struct tegra_xhci_hcd *tegra,
 		struct platform_device *pdev)
 {
 	int err = 0;
-	/* enable ss clock */
+
+	if (tegra->soc_config->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2) {
+		err = clk_enable(tegra->pll_re_vco_clk);
+		if (err) {
+			dev_err(&pdev->dev, "Failed to enable refPLLE clk\n");
+			return err;
+		}
+	}
+
 	err = clk_enable(tegra->host_clk);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to enable host partition clk\n");
 		goto enable_host_clk_failed;
 	}
 
+	/* enable ss clock */
 	err = clk_enable(tegra->ss_clk);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to enable ss partition clk\n");
-		goto eanble_ss_clk_failed;
+		goto enable_ss_clk_failed;
 	}
 
 	err = clk_enable(tegra->emc_clk);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to enable xusb.emc clk\n");
-		goto eanble_emc_clk_failed;
+		goto enable_emc_clk_failed;
 	}
 
 	tegra->clock_enable_done = true;
 
 	return 0;
 
-eanble_emc_clk_failed:
+enable_emc_clk_failed:
 	clk_disable(tegra->ss_clk);
 
-eanble_ss_clk_failed:
+enable_ss_clk_failed:
 	clk_disable(tegra->host_clk);
 
 enable_host_clk_failed:
@@ -4697,13 +4696,6 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra->base_list[2] = tegra->ipfs_base;
 	tegra->base_list[3] = tegra->padctl_base;
 
-	ret = tegra_xusb_partitions_clk_init(tegra);
-	if (ret) {
-		dev_err(&pdev->dev,
-			"failed to initialize xusb partitions clocks\n");
-		return ret;
-	}
-
 	if (tegra->bdata->otg_portmap & (0xff << XUSB_UTMI_INDEX)) {
 		tegra->transceiver = usb_get_phy(USB_PHY_TYPE_USB3);
 		if (IS_ERR_OR_NULL(tegra->transceiver)) {
@@ -4729,7 +4721,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 			ret = -EPROBE_DEFER;
 			dev_err(&pdev->dev, "Retry at a later stage\n");
 		}
-		goto err_deinit_xusb_partition_clk;
+		goto err_put_otg_transceiver;
 	}
 
 	/* Enable UTMIP, PLLU and PLLE */
@@ -4749,9 +4741,18 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	if (ret)
 		dev_err(&pdev->dev, "could not unpowergate xusbc partition\n");
 
+	ret = tegra_xusb_partitions_clk_init(tegra);
+	if (ret) {
+		dev_err(&pdev->dev,
+			"failed to initialize xusb partitions clocks\n");
+		goto err_deinit_usb2_clocks;
+	}
+
 	ret = tegra_enable_xusb_clk(tegra, pdev);
-	if (ret)
+	if (ret) {
 		dev_err(&pdev->dev, "could not enable partition clock\n");
+		goto err_deinit_xusb_partition_clk;
+	}
 
 	/* reset the pointer back to NULL. driver uses it */
 	/* platform_set_drvdata(pdev, NULL); */
@@ -4761,7 +4762,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	if (!res) {
 		dev_err(&pdev->dev, "mem resource host doesn't exist\n");
 		ret = -ENODEV;
-		goto err_deinit_usb2_clocks;
+		goto err_deinit_xusb_partition_clk;
 	}
 	tegra->host_phy_base = res->start;
 	tegra->host_phy_size = resource_size(res);
@@ -4771,7 +4772,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	if (!tegra->host_phy_virt_base) {
 		dev_err(&pdev->dev, "error mapping host phy memory\n");
 		ret = -ENOMEM;
-		goto err_deinit_usb2_clocks;
+		goto err_deinit_xusb_partition_clk;
 	}
 	/* Setup IPFS access and BAR0 space */
 	tegra_xhci_cfg(tegra);
@@ -4839,15 +4840,17 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 
 err_deinit_firmware_log:
 	fw_log_deinit(tegra);
+	if (tegra->prod_list)
+		tegra_prod_release(&tegra->prod_list);
+err_deinit_xusb_partition_clk:
+	tegra_xusb_partitions_clk_deinit(tegra);
 err_deinit_usb2_clocks:
 	tegra_usb2_clocks_deinit(tegra);
 err_deinit_tegra_xusb_regulator:
 	tegra_xusb_regulator_deinit(tegra);
-err_deinit_xusb_partition_clk:
+err_put_otg_transceiver:
 	if (tegra->transceiver)
 		usb_put_phy(tegra->transceiver);
-
-	tegra_xusb_partitions_clk_deinit(tegra);
 
 	return ret;
 }
@@ -5021,7 +5024,6 @@ err_remove_usb3_hcd:
 err_put_usb3_hcd:
 	usb_put_hcd(xhci->shared_hcd);
 err_remove_usb2_hcd:
-	kfree(tegra->xhci);
 	usb_remove_hcd(hcd);
 err_put_usb2_hcd:
 	usb_put_hcd(hcd);
@@ -5061,7 +5063,6 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 		usb_put_hcd(xhci->shared_hcd);
 		usb_remove_hcd(hcd);
 		usb_put_hcd(hcd);
-		kfree(xhci);
 	}
 
 	deinit_firmware(tegra);
