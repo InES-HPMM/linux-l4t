@@ -66,17 +66,19 @@ int tegra_bpmp_do_idle(int cpu, int ccxtl, int scx)
 }
 
 /*
- * When any CPU is being hot plugged/unplugged, it shall call this API
- * to inform bpmp about its new tolerance level.
+ * Called by CPU to inform bpmp about its new tolerance level.
+ * This is used when the CPU does not require permission from
+ * bpmp for its next step - for e.g during offlining.
  *
  * Can be called from interrupt or thread context
  *
  * @cpu: CPU id
  * @ccxtl: CCx tolerance of the given CPU
+ * @scxtl: SCX tolerance of the given CPU
  */
-int tegra_bpmp_tolerate_idle(int cpu, int ccxtl)
+int tegra_bpmp_tolerate_idle(int cpu, int ccxtl, int scxtl)
 {
-	int data[] = { cpu, ccxtl };
+	int data[] = { cpu, ccxtl, scxtl };
 	return bpmp_post(MRQ_TOLERATE_IDLE, data, sizeof(data));
 }
 
