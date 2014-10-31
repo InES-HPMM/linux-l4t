@@ -194,30 +194,32 @@ static int tegra210_enter_cc7(struct cpuidle_device *dev,
 }
 
 static int tegra210_enter_sc2(struct cpuidle_device *dev,
-				struct cpuidle_driver *drv,
-				int idx)
+		struct cpuidle_driver *drv, int idx)
 {
-	return tegra210_enter_cc_state(dev, TEGRA_PM_CC6, TEGRA_PM_SC2,
-					TEGRA210_CPUIDLE_CC6, idx);
+	tegra_bpmp_tolerate_idle(dev->cpu, TEGRA_PM_CC4, TEGRA_PM_SC2);
+	__tegra210_enter_c7(dev->cpu);
+	tegra_bpmp_tolerate_idle(dev->cpu, TEGRA_PM_CC1, TEGRA_PM_SC1);
+	return idx;
 }
 
 static int tegra210_enter_sc3(struct cpuidle_device *dev,
-				struct cpuidle_driver *drv,
-				int idx)
+		struct cpuidle_driver *drv, int idx)
 {
-	return tegra210_enter_cc_state(dev, TEGRA_PM_CC6, TEGRA_PM_SC3,
-					TEGRA210_CPUIDLE_CC6, idx);
+	tegra_bpmp_tolerate_idle(dev->cpu, TEGRA_PM_CC4, TEGRA_PM_SC3);
+	__tegra210_enter_c7(dev->cpu);
+	tegra_bpmp_tolerate_idle(dev->cpu, TEGRA_PM_CC1, TEGRA_PM_SC1);
+	return idx;
 }
 
 static int tegra210_enter_sc4(struct cpuidle_device *dev,
-				struct cpuidle_driver *drv,
-				int idx)
+		struct cpuidle_driver *drv, int idx)
 {
 	if (csite_dbg_nopwrdown())
 		return 0;
-
-	return tegra210_enter_cc_state(dev, TEGRA_PM_CC6, TEGRA_PM_SC4,
-					TEGRA210_CPUIDLE_CC6, idx);
+	tegra_bpmp_tolerate_idle(dev->cpu, TEGRA_PM_CC4, TEGRA_PM_SC4);
+	__tegra210_enter_c7(dev->cpu);
+	tegra_bpmp_tolerate_idle(dev->cpu, TEGRA_PM_CC1, TEGRA_PM_SC1);
+	return idx;
 }
 
 static bool restore_sc7 = false;
