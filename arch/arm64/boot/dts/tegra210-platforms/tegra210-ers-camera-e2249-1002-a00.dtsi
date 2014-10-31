@@ -180,6 +180,12 @@
 					CAMERA_WAITUS(10)
 					CAMERA_END
 					>;
+				/* focuser capabilities */
+				settle-time = <30000>; /* uS */
+				slew-rate = <0x3a200c>; /* tunned slew mode */
+				macro-position = <450>;
+				infinity-position = <200>;
+				hyper-value = <200>;
 			};
 			as3648_1: as3648@x_0030 {
 				index = <3>;
@@ -209,6 +215,12 @@
 					CAMERA_WAITUS(10)
 					CAMERA_END
 					>;
+				/* configuration */
+				led-mask = <3>;
+				max-total-current = <1000>; /* mA */
+				max-peak-current = <600>; /* mA */
+				max-torch-current = <600>; /* mA */
+				vin-low-v-run = <3070>; /* mV */
 			};
 			ov5693_1: ov5693@x_0036 {
 				index = <4>;
@@ -246,6 +258,30 @@
 					CAMERA_REGULATOR_OFF(0)
 					CAMERA_END
 					>;
+				/* sensor capabilities */
+				cap-version = <0x34340002>;
+				cap-identifier = "OV5693.1";
+				cap-sensor_nvc_interface = <5>;
+				cap-pixel_types = <0x101>;
+				cap-orientation = <0>;
+				cap-direction = <1>;
+				cap-initial_clock_rate_khz = <6000>;
+				cap-h_sync_edge = <0>;
+				cap-v_sync_edge = <0>;
+				cap-mclk_on_vgp0 = <0>;
+				cap-csi_port = <1>;
+				cap-data_lanes = <2>;
+				cap-virtual_channel_id = <0>;
+				cap-discontinuous_clk_mode = <1>;
+				cap-cil_threshold_settle = <0>;
+				cap-min_blank_time_width = <16>;
+				cap-min_blank_time_height = <16>;
+				cap-preferred_mode_index = <0>;
+				cap-external_clock_khz_0 = <24000>;
+				cap-clock_multiplier_0 = <8000000>;
+				cap-external_clock_khz_1 = <0>;
+				cap-clock_multiplier_1 = <0>;
+				cap-hdr-enabled;
 			};
 			ov5693_A: ov5693@a_0036 {
 				index = <5>;
@@ -283,6 +319,30 @@
 					CAMERA_REGULATOR_OFF(0)
 					CAMERA_END
 					>;
+				/* sensor capabilities */
+				cap-cap-version = <0x34340002>;
+				cap-identifier = "OV5693_A";
+				cap-sensor_nvc_interface = <3>;
+				cap-pixel_types = <0x101>;
+				cap-orientation = <0>;
+				cap-direction = <0>;
+				cap-initial_clock_rate_khz = <6000>;
+				cap-h_sync_edge = <0>;
+				cap-v_sync_edge = <0>;
+				cap-mclk_on_vgp0 = <0>;
+				cap-csi_port = <0>;
+				cap-data_lanes = <2>;
+				cap-virtual_channel_id = <0>;
+				cap-discontinuous_clk_mode = <1>;
+				cap-cil_threshold_settle = <0>;
+				cap-min_blank_time_width = <16>;
+				cap-min_blank_time_height = <16>;
+				cap-preferred_mode_index = <0>;
+				cap-external_clock_khz_0 = <24000>;
+				cap-clock_multiplier_0 = <8000000>;
+				cap-external_clock_khz_1 = <0>;
+				cap-clock_multiplier_1 = <0>;
+				cap-hdr-enabled;
 			};
 			ov5693_B: ov5693@b_0036 {
 				index = <7>;
@@ -320,6 +380,30 @@
 					CAMERA_REGULATOR_OFF(0)
 					CAMERA_END
 					>;
+				/* sensor capabilities */
+				cap-cap-version = <0x34340002>;
+				cap-identifier = "OV5693_B";
+				cap-sensor_nvc_interface = <5>;
+				cap-pixel_types = <0x101>;
+				cap-orientation = <0>;
+				cap-direction = <0>;
+				cap-initial_clock_rate_khz = <6000>;
+				cap-h_sync_edge = <0>;
+				cap-v_sync_edge = <0>;
+				cap-mclk_on_vgp0 = <0>;
+				cap-csi_port = <0>;
+				cap-data_lanes = <2>;
+				cap-virtual_channel_id = <0>;
+				cap-discontinuous_clk_mode = <1>;
+				cap-cil_threshold_settle = <0>;
+				cap-min_blank_time_width = <16>;
+				cap-min_blank_time_height = <16>;
+				cap-preferred_mode_index = <0>;
+				cap-external_clock_khz_0 = <24000>;
+				cap-clock_multiplier_0 = <8000000>;
+				cap-external_clock_khz_1 = <0>;
+				cap-clock_multiplier_1 = <0>;
+				cap-hdr-enabled;
 			};
 			ov5693_C: ov5693@c_0036 {
 				index = <8>;
@@ -357,6 +441,30 @@
 					CAMERA_REGULATOR_OFF(0)
 					CAMERA_END
 					>;
+				/* sensor capabilities */
+				cap-cap-version = <0x34340002>;
+				cap-identifier = "OV5693_C";
+				cap-sensor_nvc_interface = <6>;
+				cap-pixel_types = <0x101>;
+				cap-orientation = <0>;
+				cap-direction = <0>;
+				cap-initial_clock_rate_khz = <6000>;
+				cap-h_sync_edge = <0>;
+				cap-v_sync_edge = <0>;
+				cap-mclk_on_vgp0 = <0>;
+				cap-csi_port = <0>;
+				cap-data_lanes = <2>;
+				cap-virtual_channel_id = <0>;
+				cap-discontinuous_clk_mode = <1>;
+				cap-cil_threshold_settle = <0>;
+				cap-min_blank_time_width = <16>;
+				cap-min_blank_time_height = <16>;
+				cap-preferred_mode_index = <0>;
+				cap-external_clock_khz_0 = <24000>;
+				cap-clock_multiplier_0 = <8000000>;
+				cap-external_clock_khz_1 = <0>;
+				cap-clock_multiplier_1 = <0>;
+				cap-hdr-enabled;
 			};
 			ov5693_D: ov5693@d_0036 {
 				index = <6>;
@@ -394,6 +502,30 @@
 					CAMERA_REGULATOR_OFF(0)
 					CAMERA_END
 					>;
+				/* sensor capabilities */
+				cap-cap-version = <0x34340002>;
+				cap-identifier = "OV5693_D";
+				cap-sensor_nvc_interface = <4>;
+				cap-pixel_types = <0x101>;
+				cap-orientation = <0>;
+				cap-direction = <0>;
+				cap-initial_clock_rate_khz = <6000>;
+				cap-h_sync_edge = <0>;
+				cap-v_sync_edge = <0>;
+				cap-mclk_on_vgp0 = <0>;
+				cap-csi_port = <0>;
+				cap-data_lanes = <2>;
+				cap-virtual_channel_id = <0>;
+				cap-discontinuous_clk_mode = <1>;
+				cap-cil_threshold_settle = <0>;
+				cap-min_blank_time_width = <16>;
+				cap-min_blank_time_height = <16>;
+				cap-preferred_mode_index = <0>;
+				cap-external_clock_khz_0 = <24000>;
+				cap-clock_multiplier_0 = <8000000>;
+				cap-external_clock_khz_1 = <0>;
+				cap-clock_multiplier_1 = <0>;
+				cap-hdr-enabled;
 			};
 			ov5693_E: ov5693@e_0036 {
 				index = <9>;
@@ -431,6 +563,30 @@
 					CAMERA_REGULATOR_OFF(0)
 					CAMERA_END
 					>;
+				/* sensor capabilities */
+				cap-cap-version = <0x34340002>;
+				cap-identifier = "OV5693_E";
+				cap-sensor_nvc_interface = <7>;
+				cap-pixel_types = <0x101>;
+				cap-orientation = <0>;
+				cap-direction = <0>;
+				cap-initial_clock_rate_khz = <6000>;
+				cap-h_sync_edge = <0>;
+				cap-v_sync_edge = <0>;
+				cap-mclk_on_vgp0 = <0>;
+				cap-csi_port = <0>;
+				cap-data_lanes = <2>;
+				cap-virtual_channel_id = <0>;
+				cap-discontinuous_clk_mode = <1>;
+				cap-cil_threshold_settle = <0>;
+				cap-min_blank_time_width = <16>;
+				cap-min_blank_time_height = <16>;
+				cap-preferred_mode_index = <0>;
+				cap-external_clock_khz_0 = <24000>;
+				cap-clock_multiplier_0 = <8000000>;
+				cap-external_clock_khz_1 = <0>;
+				cap-clock_multiplier_1 = <0>;
+				cap-hdr-enabled;
 			};
 			ov5693_F: ov5693@f_0036 {
 				index = <10>;
@@ -468,6 +624,30 @@
 					CAMERA_REGULATOR_OFF(0)
 					CAMERA_END
 					>;
+				/* sensor capabilities */
+				cap-cap-version = <0x34340002>;
+				cap-identifier = "OV5693_F";
+				cap-sensor_nvc_interface = <8>;
+				cap-pixel_types = <0x101>;
+				cap-orientation = <0>;
+				cap-direction = <0>;
+				cap-initial_clock_rate_khz = <6000>;
+				cap-h_sync_edge = <0>;
+				cap-v_sync_edge = <0>;
+				cap-mclk_on_vgp0 = <0>;
+				cap-csi_port = <0>;
+				cap-data_lanes = <2>;
+				cap-virtual_channel_id = <0>;
+				cap-discontinuous_clk_mode = <1>;
+				cap-cil_threshold_settle = <0>;
+				cap-min_blank_time_width = <16>;
+				cap-min_blank_time_height = <16>;
+				cap-preferred_mode_index = <0>;
+				cap-external_clock_khz_0 = <24000>;
+				cap-clock_multiplier_0 = <8000000>;
+				cap-external_clock_khz_1 = <0>;
+				cap-clock_multiplier_1 = <0>;
+				cap-hdr-enabled;
 			};
 		};
 	};

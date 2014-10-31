@@ -532,14 +532,29 @@
 				use_of_node = "yes";
 				vdd-supply = <&max77620_ldo3>;
 				vdd_i2c-supply = <&en_vdd_cam>;
+				/* platform data */
+				dev_name = "focuser";
+				num = <0>;
+				sync = <0>;
 			};
 			as3648@x_0030 {
 				use_of_node = "yes";
 				vin-supply = <&vdd_sys_boost>;
 				vi2c-supply = <&en_vdd_cam>;
+				/* platform data */
+				dev_name = "torch";
+				num = <0>;
+				flash-type = <2>; /* 0-AS3643, 1-AS3647, 2-AS3648 */
+				strobe-gpio = <TEGRA_GPIO(S, 6)>;
+				strobe-type = <1> ; /* 1=edge, 2=level, 3=i2c */
+				/* pin state */
+				pin-mask = <0x10>;
+				pin-value = <0x10>;
 			};
 			ov5693@x_0036 {
 				use_of_node = "yes";
+				dev_name = "ov5693";
+				num = <1>;
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
 				cam2-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
