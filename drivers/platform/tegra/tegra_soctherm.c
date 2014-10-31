@@ -2005,14 +2005,15 @@ static int soctherm_handle_alarm(enum soctherm_throttle_id alarm)
 		break;
 
 	case THROTTLE_OC2:
-		pr_info("soctherm: Successfully handled OC2 alarm\n");
+		pr_debug("soctherm: Successfully handled OC2 alarm\n");
 		/* TODO: add OC2 alarm handling code here */
 		rv = 0;
 		break;
 
 	case THROTTLE_OC3:
-		pr_warn("soctherm: Unexpected OC3 alarm\n");
+		pr_debug("soctherm: Successfully handled OC3 alarm\n");
 		/* add OC3 alarm handling code here */
+		rv = 0;
 		break;
 
 	case THROTTLE_OC4:
@@ -4524,6 +4525,8 @@ static int soctherm_interrupts_init(struct platform_device *pdev)
 	int ret;
 	struct device_node *np = pdev->dev.of_node;
 
+	if(pp->num_oc_irqs == 0)
+		pp->num_oc_irqs = TEGRA_SOC_OC_IRQ_MAX;
 	ret = soctherm_oc_int_init(pp->oc_irq_base, pp->num_oc_irqs, np);
 	if (ret < 0) {
 		dev_err(&pdev->dev,
