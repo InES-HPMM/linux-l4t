@@ -3,7 +3,7 @@
  *
  * USB character driver to communicate with baseband modems.
  *
- * Copyright (c) 2012, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -89,16 +89,9 @@ static void baseband_ipc_dump(const char *prefix, unsigned long int offset,
 	size_t i;
 
 	for (i = 0; i < bufsiz; i += 16) {
-		pr_debug("%s"
-			"[%lx+%x] %p "
-			"%02x %02x %02x %02x "
-			"%02x %02x %02x %02x "
-			"%02x %02x %02x %02x "
-			"%02x %02x %02x %02x\n",
-			prefix,
-			offset,
-			i,
-			((const unsigned char *) buf) + i,
+		pr_debug("%s[%lx+%zu] %p ", prefix, offset, i,
+			((const unsigned char *) buf) + i);
+		pr_debug("%02x %02x %02x %02x ",
 			(i + 0 < bufsiz) ? ((const unsigned char *) buf)[i+0]
 				: 0xff,
 			(i + 1 < bufsiz) ? ((const unsigned char *) buf)[i+1]
@@ -106,7 +99,8 @@ static void baseband_ipc_dump(const char *prefix, unsigned long int offset,
 			(i + 2 < bufsiz) ? ((const unsigned char *) buf)[i+2]
 				: 0xff,
 			(i + 3 < bufsiz) ? ((const unsigned char *) buf)[i+3]
-				: 0xff,
+				: 0xff);
+		pr_debug("%02x %02x %02x %02x ",
 			(i + 4 < bufsiz) ? ((const unsigned char *) buf)[i+4]
 				: 0xff,
 			(i + 5 < bufsiz) ? ((const unsigned char *) buf)[i+5]
@@ -114,7 +108,8 @@ static void baseband_ipc_dump(const char *prefix, unsigned long int offset,
 			(i + 6 < bufsiz) ? ((const unsigned char *) buf)[i+6]
 				: 0xff,
 			(i + 7 < bufsiz) ? ((const unsigned char *) buf)[i+7]
-				: 0xff,
+				: 0xff);
+		pr_debug("%02x %02x %02x %02x ",
 			(i + 8 < bufsiz) ? ((const unsigned char *) buf)[i+8]
 				: 0xff,
 			(i + 9 < bufsiz) ? ((const unsigned char *) buf)[i+9]
@@ -122,7 +117,8 @@ static void baseband_ipc_dump(const char *prefix, unsigned long int offset,
 			(i + 10 < bufsiz) ? ((const unsigned char *) buf)[i+10]
 				: 0xff,
 			(i + 11 < bufsiz) ? ((const unsigned char *) buf)[i+11]
-				: 0xff,
+				: 0xff);
+		pr_debug("%02x %02x %02x %02x\n",
 			(i + 12 < bufsiz) ? ((const unsigned char *) buf)[i+12]
 				: 0xff,
 			(i + 13 < bufsiz) ? ((const unsigned char *) buf)[i+13]
@@ -131,7 +127,7 @@ static void baseband_ipc_dump(const char *prefix, unsigned long int offset,
 				: 0xff,
 			(i + 15 < bufsiz) ? ((const unsigned char *) buf)[i+15]
 				: 0xff);
-	}
+			}
 
 }
 
@@ -160,9 +156,9 @@ static size_t peek_ipc_tx_bufsiz(struct baseband_ipc *ipc,
 	tx_bufsiz = 0;
 	list_for_each_entry_safe(ipc_buf, ipc_buf_next, &ipc->tx.buf, list)
 	{
-		pr_debug("peek_ipc_tx_bufsiz - "
-			"ipc_buf %p ipc_buf->offset %x ipc_buf->count %x\n",
-			ipc_buf, ipc_buf->offset, ipc_buf->count);
+		pr_debug("peek_ipc_tx_bufsiz - ipc_buf %p ", ipc_buf);
+		pr_debug("ipc_buf->offset %zu ", ipc_buf->offset);
+		pr_debug("ipc_buf->count %zu\n", ipc_buf->count);
 		if (ipc_buf->count > bufsiz - tx_bufsiz)
 			break;
 		else
@@ -202,9 +198,9 @@ static size_t get_ipc_tx_buf(struct baseband_ipc *ipc,
 	tx_bufsiz = 0;
 	list_for_each_entry_safe(ipc_buf, ipc_buf_next, &ipc->tx.buf, list)
 	{
-		pr_debug("get_ipc_tx_buf - "
-			"ipc_buf %p ipc_buf->offset %x ipc_buf->count %x\n",
-			ipc_buf, ipc_buf->offset, ipc_buf->count);
+		pr_debug("get_ipc_tx_buf - ipc_buf %p ", ipc_buf);
+		pr_debug("ipc_buf->offset %zd ", ipc_buf->offset);
+		pr_debug("ipc_buf->count %zd\n", ipc_buf->count);
 		pr_debug("get_ipc_tx_buf - "
 			"ipc_buf->data [0] %x [1] %x [2] %x [3] %x\n",
 			ipc_buf->data[0],
@@ -271,9 +267,9 @@ retry:
 	rx_bufsiz = 0;
 	list_for_each_entry_safe(ipc_buf, ipc_buf_next, &ipc->rx_free.buf, list)
 	{
-		pr_debug("put_ipc_rx_buf - "
-			"ipc_buf %p ipc_buf->offset %x ipc_buf->count %x\n",
-			ipc_buf, ipc_buf->offset, ipc_buf->count);
+		pr_debug("put_ipc_rx_buf - ipc_buf %p ", ipc_buf);
+		pr_debug("ipc_buf->offset %zu ", ipc_buf->offset);
+		pr_debug("ipc_buf->count %zu\n", ipc_buf->count);
 		if (sizeof(ipc_buf->data) > bufsiz - rx_bufsiz) {
 			/* partially fill rx free buffer */
 			memcpy(ipc_buf->data,
@@ -348,9 +344,9 @@ retry:
 	read_count = 0;
 	list_for_each_entry_safe(ipc_buf, ipc_buf_next, &ipc->rx.buf, list)
 	{
-		pr_debug("baseband_ipc_file_read - "
-			"ipc_buf %p ipc_buf->offset %x ipc_buf->count %x\n",
-			ipc_buf, ipc_buf->offset, ipc_buf->count);
+		pr_debug("baseband_ipc_file_read - ipc_buf %p ", ipc_buf);
+		pr_debug("ipc_buf->offset %zu ", ipc_buf->offset);
+		pr_debug("ipc_buf->count %zu\n", ipc_buf->count);
 		pr_debug("baseband_ipc_file_read - "
 			"ipc_buf->data [0] %x [1] %x [2] %x [3] %x\n",
 			ipc_buf->data[0],
@@ -423,7 +419,7 @@ static ssize_t baseband_ipc_file_write(struct baseband_ipc *ipc,
 
 	/* do not accept write if previous tx not finished */
 	if (peek_ipc_tx_bufsiz(ipc, USB_CHR_TX_BUFSIZ) != 0) {
-		pr_debug("%s: not accepting write of %u bytes"
+		pr_debug("%s: not accepting write of %zu bytes"
 			" - previous tx not finished\n",
 			__func__, count);
 		return 0;
@@ -441,9 +437,9 @@ retry:
 	write_count = 0;
 	list_for_each_entry_safe(ipc_buf, ipc_buf_next, &ipc->tx_free.buf, list)
 	{
-		pr_debug("baseband_ipc_file_write - "
-			"ipc_buf %p ipc_buf->offset %x ipc_buf->count %x\n",
-			ipc_buf, ipc_buf->offset, ipc_buf->count);
+		pr_debug("baseband_ipc_file_write - ipc_buf %p ", ipc_buf);
+		pr_debug("ipc_buf->offset %zu ", ipc_buf->offset);
+		pr_debug("ipc_buf->count %zu\n", ipc_buf->count);
 		if (sizeof(ipc_buf->data) > count - write_count) {
 			/* partially fill tx free buffer */
 			if (copy_from_user(ipc_buf->data,
@@ -753,9 +749,9 @@ static void baseband_usb_chr_rx_urb_comp_work(struct work_struct *work)
 			" - rx buf ", 0,
 			urb->transfer_buffer, len > 16 ? 16 : len);
 		if (len != urb->actual_length) {
-			pr_err("baseband_usb_chr_rx_urb_comp_work - "
-				"put_ipx_rx_buf() only put %d/%d bytes\n",
-				len, urb->actual_length);
+			pr_err("baseband_usb_chr_rx_urb_comp_work - ");
+			pr_err("put_ipx_rx_buf() only put %zu", len);
+			pr_err("/%d bytes\n", urb->actual_length);
 		}
 		/* increment count of available rx bytes */
 		atomic_add(len, &g_rx_count);
@@ -1148,7 +1144,7 @@ static ssize_t baseband_usb_chr_read(struct file *file, char *buf,
 	if (ret > 0) {
 		/* decrement count of available rx bytes */
 		int val = atomic_read(&g_rx_count);
-		pr_debug("baseband_usb_chr_read - read %d unread %d\n",
+		pr_debug("baseband_usb_chr_read - read %zd unread %zd\n",
 			ret, val - ret);
 		atomic_sub(ret, &g_rx_count);
 	}
