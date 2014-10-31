@@ -456,7 +456,6 @@ static void __init tegra_t210ref_dt_init(void)
 #endif
 	bus_register_notifier(&platform_bus_type, &platform_nb);
 	tegra_t210ref_early_init();
-	t210ref_camera_auxdata(t210ref_auxdata_lookup);
 	of_platform_populate(NULL,
 		of_default_bus_match_table, t210ref_auxdata_lookup,
 		&platform_bus);
