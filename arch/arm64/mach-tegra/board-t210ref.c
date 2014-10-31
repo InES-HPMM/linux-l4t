@@ -550,6 +550,14 @@ static struct notifier_block platform_nb = {
 };
 static void __init tegra_t210ref_dt_init(void)
 {
+	unsigned long pinmux_clamp = readl(IO_ADDRESS(0x70000040));
+
+	/* Check for the PINMUX CLAMP Settings */
+	if (pinmux_clamp & 1)
+		pr_warn("WARN: pinmux CLAMP_INPUTS_WHEN_TRISTATED: enabled\n");
+	else
+		pr_warn("INFO: pinmux CLAMP_INPUTS_WHEN_TRISTATED: disabled\n");
+
 	regulator_has_full_constraints();
 
 #ifndef CONFIG_TEGRA_HDMI_PRIMARY
