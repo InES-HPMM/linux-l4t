@@ -124,27 +124,10 @@ static void tegra210_timer_setup(struct tegra210_clockevent *tevt)
 	int cpu = smp_processor_id();
 	int ret;
 
-	sprintf(tevt->name, "tegra210_timer%d", cpu);
-	tevt->evt.name = tevt->name;
-	tevt->evt.cpumask = cpumask_of(cpu);
-	tevt->evt.set_next_event = tegra210_timer_set_next_event;
-	tevt->evt.set_mode = tegra210_timer_set_mode;
-	tevt->evt.features = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT;
-	tevt->evt.rating = 460; /* want to be preferred over arch timers */
 	clockevents_config_and_register(&tevt->evt, tegra210_timer_freq,
 					1, /* min */
 					0x1fffffff); /* 29 bits */
-
-	tevt->iact.name = tevt->name;
-	tevt->iact.dev_id = tevt;
-	tevt->iact.flags = IRQF_TIMER | IRQF_TRIGGER_HIGH | IRQF_NOBALANCING;
-	tevt->iact.handler = tegra210_timer_isr;
-	ret = setup_irq(tevt->evt.irq, &tevt->iact);
-	if (ret) {
-		pr_err("%s: cannot setup irq %d for CPU%d\n",
-		       __func__, tevt->evt.irq, cpu);
-		BUG();
-	}
+	enable_irq(tevt->evt.irq);
 
 #ifdef CONFIG_SMP
 	if (irq_force_affinity(tevt->evt.irq, cpumask_of(cpu))) {
@@ -158,7 +141,7 @@ static void tegra210_timer_setup(struct tegra210_clockevent *tevt)
 static void tegra210_timer_stop(struct tegra210_clockevent *tevt)
 {
 	tevt->evt.set_mode(CLOCK_EVT_MODE_UNUSED, &tevt->evt);
-	remove_irq(tevt->evt.irq, &tevt->iact);
+	disable_irq_nosync(tevt->evt.irq);
 }
 
 static int tegra210_timer_cpu_notify(struct notifier_block *self,
@@ -246,6 +229,30 @@ static void __init tegra210_timer_init(struct device_node *np)
 		if (!tevt->evt.irq) {
 			pr_err("%s: can't map IRQ for CPU%d\n",
 			       __func__, cpu);
+			BUG();
+		}
+
+		sprintf(tevt->name, "tegra210_timer%d", cpu);
+		tevt->evt.name = tevt->name;
+		tevt->evt.cpumask = cpumask_of(cpu);
+		tevt->evt.set_next_event = tegra210_timer_set_next_event;
+		tevt->evt.set_mode = tegra210_timer_set_mode;
+		tevt->evt.features = CLOCK_EVT_FEAT_PERIODIC |
+			CLOCK_EVT_FEAT_ONESHOT;
+
+		/* want to be preferred over arch timers */
+		tevt->evt.rating = 460;
+
+		tevt->iact.name = tevt->name;
+		tevt->iact.dev_id = tevt;
+		tevt->iact.flags = IRQF_TIMER | IRQF_TRIGGER_HIGH |
+			IRQF_NOBALANCING;
+		tevt->iact.handler = tegra210_timer_isr;
+		irq_set_status_flags(tevt->evt.irq, IRQ_NOAUTOEN);
+		ret = setup_irq(tevt->evt.irq, &tevt->iact);
+		if (ret) {
+			pr_err("%s: cannot setup irq %d for CPU%d\n",
+				__func__, tevt->evt.irq, cpu);
 			BUG();
 		}
 	}
