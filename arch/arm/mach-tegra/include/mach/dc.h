@@ -866,6 +866,7 @@ struct tegra_dc_platform_data {
 	struct tegra_dc_cmu	*cmu;
 #endif
 	unsigned long		ctrl_num;
+	unsigned long		win_mask;
 };
 
 struct tegra_dc_bw_data {
