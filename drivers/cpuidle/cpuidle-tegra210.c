@@ -118,71 +118,63 @@ static struct syscore_ops tegra210_syscore_ops = {
 	.resume = do_cc4_init
 };
 
+static void __tegra210_enter_c7(int cpu)
+{
+	struct psci_power_state ps = {
+		.id = TEGRA210_CPUIDLE_C7,
+		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
+		.affinity_level = 0,
+	};
+	unsigned long arg = psci_power_state_pack(ps);
+
+	cpu_pm_enter();
+	flowctrl_write_cc4_ctrl(cpu, 0xffffffff);
+	cpu_retention_enable(7);
+	cpu_suspend(arg, NULL);
+	cpu_retention_enable(0);
+	flowctrl_write_cc4_ctrl(cpu, 0);
+	cpu_pm_exit();
+}
+
 /*
  * tegra210_enter_c7 - Programs CPU to enter power gate state
  *
  * @dev: cpuidle device
  * @drv: cpuidle driver
  * @idx: state index
- *
  */
 static int tegra210_enter_c7(struct cpuidle_device *dev,
-				struct cpuidle_driver *drv,
-				int idx)
+		struct cpuidle_driver *drv,
+		int idx)
 {
-	unsigned long arg;
-	struct psci_power_state ps = {
-		.id = TEGRA210_CPUIDLE_C7,
-		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
-		.affinity_level = 0,
-	};
-
-	cpu_pm_enter();
-	arg = psci_power_state_pack(ps);
-	flowctrl_write_cc4_ctrl(dev->cpu, 0xffffffff);
-	cpu_retention_enable(7);
-	cpu_suspend(arg, NULL);
-	cpu_retention_enable(0);
-	flowctrl_write_cc4_ctrl(dev->cpu, 0);
-	cpu_pm_exit();
-
+	__tegra210_enter_c7(dev->cpu);
 	return idx;
 }
 
+static int c7_index;
+
 static int tegra210_enter_cc_state(struct cpuidle_device *dev,
-			int cc_state_tolerance, int sc_state_tolerance,
-			int state_id, int idx)
+		int cc_state_tolerance, int sc_state_tolerance,
+		int state_id, int idx)
 {
-	unsigned long arg;
-	/* Initialize to C7 index as C7 is assumed to be default config */
-	int ret = 3;
-
-	/* Assume C7 config by default */
 	struct psci_power_state ps = {
-		.id = TEGRA210_CPUIDLE_C7,
+		.id = state_id,
 		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
-		.affinity_level = 0,
+		.affinity_level = 1,
 	};
+	unsigned long arg = psci_power_state_pack(ps);
 
-	cpu_pm_enter();
-
-	if (!tegra_bpmp_do_idle(dev->cpu, cc_state_tolerance,
-					sc_state_tolerance)) {
-		/*
-		 * We are the last core standing and bpmp says GO.
-		 * Change to CCx config.
-		 */
-		ps.id = state_id;
-		ps.affinity_level = 1;
-		ret = idx;
+	if (tegra_bpmp_do_idle(dev->cpu, cc_state_tolerance,
+			sc_state_tolerance)) {
+		__tegra210_enter_c7(dev->cpu);
+		return c7_index;
 	}
 
-	arg = psci_power_state_pack(ps);
+	cpu_pm_enter();
 	cpu_suspend(arg, NULL);
-
 	cpu_pm_exit();
 
-	return ret;
+	return idx;
 }
 
 static int tegra210_enter_cc6(struct cpuidle_device *dev,
@@ -537,6 +529,7 @@ static int __init tegra210_cpuidle_register(int cpu)
 	state->enter = tegra210_enter_state;
 	state->power_usage = 500;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
+	c7_index = 3;
 
 	state = &drv->states[4];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "CC6");
