@@ -288,11 +288,18 @@ typedef int (*of_tegra_dvfs_init_cb_t)(struct device_node *);
 int of_tegra_dvfs_init(const struct of_device_id *matches);
 int of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
 				  struct dvfs_rail *rail);
+int of_tegra_dvfs_rail_get_cdev_trips(
+	struct tegra_cooling_device *tegra_cdev, int *therm_trips_table,
+	int *therm_limits_table, struct rail_alignment *align, bool up);
 #else
 static inline int of_tegra_dvfs_init(const struct of_device_id *matches)
 { return -ENODATA; }
 static inline int of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
 						struct dvfs_rail *rail)
+{ return -ENODEV; }
+static inline int of_tegra_dvfs_rail_get_cdev_trips(
+	struct tegra_cooling_device *tegra_cdev, int *therm_trips_table,
+	int *therm_limits_table, struct rail_alignment *align, bool up)
 { return -ENODEV; }
 #endif
 

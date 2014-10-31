@@ -24,6 +24,8 @@ struct tegra_cooling_device {
 	char *cdev_type;
 	int *trip_temperatures;
 	int trip_temperatures_num;
+	const char *compatible;
+	struct device_node *cdev_dn;
 };
 
 #define MAX_THROT_TABLE_SIZE	(64)

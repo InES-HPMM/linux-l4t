@@ -91,6 +91,16 @@ unsigned long tegra_dvfs_get_fmax_at_vmin_safe_t(struct clk *c)
 }
 EXPORT_SYMBOL(tegra_dvfs_get_fmax_at_vmin_safe_t);
 
+int tegra_dvfs_round_voltage(int mv, struct rail_alignment *align, bool up)
+{
+	if (align->step_uv) {
+		int uv = max(mv * 1000, align->offset_uv) - align->offset_uv;
+		uv = (uv + (up ? align->step_uv - 1 : 0)) / align->step_uv;
+		return (uv * align->step_uv + align->offset_uv) / 1000;
+	}
+	return mv;
+}
+
 void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
 {
 	int i;
@@ -1846,6 +1856,47 @@ _out:
 	return ret;
 }
 
+static int __init of_rail_get_cdev(struct dvfs_rail *rail, char *phandle_name,
+				    struct tegra_cooling_device *tegra_cdev)
+{
+	const char *type;
+	struct device_node *cdev_dn =
+		 of_parse_phandle(rail->dt_node, phandle_name, 0);
+
+	if (!cdev_dn || !tegra_cdev->compatible ||
+	    !of_device_is_available(cdev_dn) ||
+	    !of_device_is_compatible(cdev_dn, tegra_cdev->compatible)) {
+		pr_err("tegra_dvfs: %s: no compatible %s is available in DT\n",
+		       rail->reg_id, phandle_name);
+		return -ENODEV;
+	}
+
+	/* If device type is not specified re-use property name */
+	if (of_property_read_string(cdev_dn, "cdev-type", &type))
+		type = phandle_name;
+	tegra_cdev->cdev_type = (char *)type;
+	tegra_cdev->cdev_dn = cdev_dn;
+	return 0;
+}
+
+static int __init of_rail_init_cdev_nodes(struct dvfs_rail *rail)
+{
+	if (rail->vts_cdev)
+		of_rail_get_cdev(rail, "scaling-cdev", rail->vts_cdev);
+
+	if (rail->vmin_cdev)
+		of_rail_get_cdev(rail, "vmin-cdev", rail->vmin_cdev);
+
+	if (rail->vmax_cdev)
+		of_rail_get_cdev(rail, "vmax-cdev", rail->vmax_cdev);
+
+	if (rail->clk_switch_cdev)
+		of_rail_get_cdev(rail, "clk-switch-cdev",
+				 rail->clk_switch_cdev);
+
+	return 0;
+}
+
 int __init of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
 					 struct dvfs_rail *rail)
 {
@@ -1862,7 +1913,7 @@ int __init of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
 	 * This is called in early DVFS init before device tree population.
 	 * Hence, if rail node supply is matching rail regulator id, save rail
 	 * node to be used when DVFS is connected to regulators in late init,
-	 * and align rail to regulator DT data.
+	 * align rail to regulator DT data, and populate rail cooling devices.
 	 *
 	 * If CPU rail supply is specified as fixed regulator on platforms that
 	 * have DFLL clock source with CL-DVFS h/w control, a separate DFLL mode
@@ -1889,8 +1940,53 @@ int __init of_tegra_dvfs_rail_node_parse(struct device_node *rail_dn,
 	}
 #endif
 	of_rail_align(reg_dn, rail);
+	of_rail_init_cdev_nodes(rail);
 	return 0;
+}
 
+int __init of_tegra_dvfs_rail_get_cdev_trips(
+	struct tegra_cooling_device *tegra_cdev, int *therm_trips_table,
+	int *therm_limits_table, struct rail_alignment *align, bool up)
+{
+	s32 t = 0;
+	int cells_num, i = 0;
+	struct of_phandle_iter iter;
+	struct device_node *cdev_dn = tegra_cdev->cdev_dn;
+
+	if (!cdev_dn)
+		return -ENODEV;
+
+	/* 1 cell per trip-point, if constraint is specified */
+	cells_num = of_property_read_bool(cdev_dn, "nvidia,constraint") ? 1 : 0;
+
+	/* Iterate thru list of trip handles with constraint argument */
+	of_property_for_each_phandle_with_args(iter, cdev_dn, "nvidia,trips",
+					       NULL, cells_num) {
+		struct device_node *trip_dn = iter.out_args.np;
+
+		if (i >= MAX_THERMAL_LIMITS) {
+			pr_err("tegra_dvfs: list of %s cdev trips exceeds max limit\n",
+			       tegra_cdev->cdev_type);
+			return -EINVAL;
+		}
+
+		if (of_property_read_s32(trip_dn, "temperature", &t)) {
+			pr_err("tegra_dvfs: failed to read %s cdev trip %d\n",
+			       tegra_cdev->cdev_type, i);
+			return -ENODATA;
+		}
+
+		therm_trips_table[i] = t / 1000; /* convert mC to C */
+		if (cells_num && therm_limits_table) {
+			int mv = iter.out_args.args[0];
+			if (align && mv)	/* round non-zero limits */
+				mv = tegra_dvfs_round_voltage(mv, align, up);
+			therm_limits_table[i] = mv;
+		}
+		i++;
+	}
+
+	return i;
 }
 #endif
 
