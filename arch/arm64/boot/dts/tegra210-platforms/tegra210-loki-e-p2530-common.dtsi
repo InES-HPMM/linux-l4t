@@ -115,8 +115,9 @@
 			oc-alarm-id = <3>;
 			priority = <50>;
 			mode = "brief";
+			intr;
 			active_low;
-			count_threshold = <100>;
+			count_threshold = <15>;
 			filter = <5100000>;
 			throttle_dev = <&{/soctherm@0x700E2000/throttle_dev@cpu_medium}
 					&{/soctherm@0x700E2000/throttle_dev@gpu_medium}>;
