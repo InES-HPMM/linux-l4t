@@ -81,6 +81,10 @@ struct imx214_power_rail {
 	struct regulator *iovdd;
 	struct regulator *ext_reg1;
 	struct regulator *ext_reg2;
+	struct clk *mclk;
+	unsigned int cam1_gpio;
+	unsigned int reset_gpio;
+	unsigned int af_gpio;
 };
 
 struct imx214_platform_data {

@@ -46,7 +46,6 @@ struct imx214_info {
 	struct imx214_sensordata	sensor_data;
 	struct i2c_client		*i2c_client;
 	struct imx214_platform_data	*pdata;
-	struct clk			*mclk;
 	struct regmap			*regmap;
 	struct mutex			imx214_camera_lock;
 	struct dentry			*debugdir;
@@ -468,24 +467,130 @@ static int imx214_get_sensor_id(struct imx214_info *info)
 	return ret;
 }
 
-static void imx214_mclk_disable(struct imx214_info *info)
+static void imx214_mclk_disable(
+	struct device *dev, struct imx214_power_rail *pw)
 {
-	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
-	clk_disable_unprepare(info->mclk);
+	dev_dbg(dev, "%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(pw->mclk);
 }
 
-static int imx214_mclk_enable(struct imx214_info *info)
+static int imx214_mclk_enable(
+	struct device *dev, struct imx214_power_rail *pw)
 {
-	int err;
 	unsigned long mclk_init_rate = 24000000;
+	int err;
 
-	dev_info(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
+	dev_info(dev, "%s: enable MCLK with %lu Hz\n",
 		__func__, mclk_init_rate);
 
-	err = clk_set_rate(info->mclk, mclk_init_rate);
+	err = clk_set_rate(pw->mclk, mclk_init_rate);
 	if (!err)
-		err = clk_prepare_enable(info->mclk);
+		err = clk_prepare_enable(pw->mclk);
 	return err;
+}
+
+static int imx214_power_on(struct imx214_info *info)
+{
+	int err = 0;
+	struct imx214_power_rail *pw = &info->power;
+
+	err = imx214_mclk_enable(&info->i2c_client->dev, pw);
+	if (err < 0)
+		return err;
+
+	if (info->pdata->power_on)
+		return info->pdata->power_on(pw);
+
+	if (pw->ext_reg1)
+		err = regulator_enable(pw->ext_reg1);
+	if (unlikely(err))
+		goto imx214_ext_reg1_fail;
+
+	if (pw->ext_reg2)
+		err = regulator_enable(pw->ext_reg2);
+	if (unlikely(err))
+		goto imx214_ext_reg2_fail;
+
+	if (pw->reset_gpio)
+		gpio_set_value(pw->reset_gpio, 0);
+	if (pw->af_gpio)
+		gpio_set_value(pw->af_gpio, 1);
+	if (pw->cam1_gpio)
+		gpio_set_value(pw->cam1_gpio, 0);
+	usleep_range(10, 20);
+
+	if (pw->avdd)
+		err = regulator_enable(pw->avdd);
+	if (err)
+		goto imx214_avdd_fail;
+
+	if (pw->iovdd)
+		err = regulator_enable(pw->iovdd);
+	if (err)
+		goto imx214_iovdd_fail;
+
+	usleep_range(1, 2);
+	if (pw->reset_gpio)
+		gpio_set_value(pw->reset_gpio, 1);
+	if (pw->cam1_gpio)
+		gpio_set_value(pw->cam1_gpio, 1);
+
+	usleep_range(300, 310);
+
+	return 1;
+
+
+imx214_iovdd_fail:
+	regulator_disable(pw->avdd);
+
+imx214_avdd_fail:
+	if (pw->ext_reg2)
+		regulator_disable(pw->ext_reg2);
+
+imx214_ext_reg2_fail:
+	if (pw->ext_reg1)
+		regulator_disable(pw->ext_reg1);
+	if (pw->af_gpio)
+		gpio_set_value(pw->af_gpio, 0);
+
+imx214_ext_reg1_fail:
+	imx214_mclk_disable(&info->i2c_client->dev, pw);
+	pr_err("%s failed.\n", __func__);
+	return -ENODEV;
+}
+
+static int imx214_power_off(struct imx214_info *info)
+{
+	struct imx214_power_rail *pw = &info->power;
+
+	if (info->pdata->power_off) {
+		info->pdata->power_off(&info->power);
+		goto power_off_done;
+	}
+
+	usleep_range(1, 2);
+	if (pw->reset_gpio)
+		gpio_set_value(pw->reset_gpio, 0);
+	if (pw->af_gpio)
+		gpio_set_value(pw->af_gpio, 0);
+	if (pw->cam1_gpio)
+		gpio_set_value(pw->cam1_gpio, 0);
+	usleep_range(1, 2);
+
+	if (pw->iovdd)
+		regulator_disable(pw->iovdd);
+	if (pw->avdd)
+		regulator_disable(pw->avdd);
+
+	if (pw->ext_reg1)
+		regulator_disable(pw->ext_reg1);
+	if (pw->ext_reg2)
+		regulator_disable(pw->ext_reg2);
+
+power_off_done:
+	imx214_mclk_disable(&info->i2c_client->dev, pw);
+
+	return 0;
 }
 
 static int imx214_eeprom_device_release(struct imx214_info *info)
@@ -554,19 +659,10 @@ static long imx214_ioctl(struct file *file,
 
 	switch (_IOC_NR(cmd)) {
 	case _IOC_NR(IMX214_IOCTL_SET_POWER):
-		if (!info->pdata)
-			break;
-		if (arg && info->pdata->power_on) {
-			err = imx214_mclk_enable(info);
-			if (!err)
-				err = info->pdata->power_on(&info->power);
-			if (err < 0)
-				imx214_mclk_disable(info);
-		}
-		if (!arg && info->pdata->power_off) {
-			info->pdata->power_off(&info->power);
-			imx214_mclk_disable(info);
-		}
+		if (arg)
+			err = imx214_power_on(info);
+		else
+			err = imx214_power_off(info);
 		break;
 	case _IOC_NR(IMX214_IOCTL_SET_MODE):
 	{
@@ -831,90 +927,6 @@ static int imx214_get_extra_regulators(struct imx214_info *info,
 	return 0;
 }
 
-static int imx214_power_on(struct imx214_power_rail *pw)
-{
-	int err;
-	struct imx214_info *info = container_of(pw, struct imx214_info, power);
-
-	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
-		return -EFAULT;
-
-	if (info->pdata->ext_reg) {
-		if (imx214_get_extra_regulators(info, pw))
-			goto imx214_poweron_fail;
-
-		err = regulator_enable(pw->ext_reg1);
-		if (unlikely(err))
-			goto imx214_ext_reg1_fail;
-
-		err = regulator_enable(pw->ext_reg2);
-		if (unlikely(err))
-			goto imx214_ext_reg2_fail;
-
-	}
-
-	gpio_set_value(info->pdata->reset_gpio, 0);
-	gpio_set_value(info->pdata->af_gpio, 1);
-	gpio_set_value(info->pdata->cam1_gpio, 0);
-	usleep_range(10, 20);
-
-	err = regulator_enable(pw->avdd);
-	if (err)
-		goto imx214_avdd_fail;
-
-	err = regulator_enable(pw->iovdd);
-	if (err)
-		goto imx214_iovdd_fail;
-
-	usleep_range(1, 2);
-	gpio_set_value(info->pdata->reset_gpio, 1);
-	gpio_set_value(info->pdata->cam1_gpio, 1);
-
-	usleep_range(300, 310);
-
-	return 1;
-
-
-imx214_iovdd_fail:
-	regulator_disable(pw->avdd);
-
-imx214_avdd_fail:
-	if (pw->ext_reg2)
-		regulator_disable(pw->ext_reg2);
-
-imx214_ext_reg2_fail:
-	if (pw->ext_reg1)
-		regulator_disable(pw->ext_reg1);
-	gpio_set_value(info->pdata->af_gpio, 0);
-
-imx214_ext_reg1_fail:
-imx214_poweron_fail:
-	pr_err("%s failed.\n", __func__);
-	return -ENODEV;
-}
-
-static int imx214_power_off(struct imx214_power_rail *pw)
-{
-	struct imx214_info *info = container_of(pw, struct imx214_info, power);
-
-	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
-		return -EFAULT;
-
-	usleep_range(1, 2);
-	gpio_set_value(info->pdata->cam1_gpio, 0);
-	usleep_range(1, 2);
-
-	regulator_disable(pw->iovdd);
-	regulator_disable(pw->avdd);
-
-	if (info->pdata->ext_reg) {
-		regulator_disable(pw->ext_reg1);
-		regulator_disable(pw->ext_reg2);
-	}
-
-	return 0;
-}
-
 static int imx214_open(struct inode *inode, struct file *file)
 {
 	struct miscdevice	*miscdev = file->private_data;
@@ -995,11 +1007,30 @@ static int imx214_regulator_get(struct imx214_info *info,
 static int imx214_power_get(struct imx214_info *info)
 {
 	struct imx214_power_rail *pw = &info->power;
+	struct imx214_platform_data *pdata = info->pdata;
+	const char *mclk_name;
 	int err = 0;
+
+	mclk_name = pdata->mclk_name ? pdata->mclk_name : "default_mclk";
+	pw->mclk = devm_clk_get(&info->i2c_client->dev, mclk_name);
+	if (IS_ERR(pw->mclk)) {
+		dev_err(&info->i2c_client->dev, "%s: unable to get clock %s\n",
+			__func__, mclk_name);
+		return PTR_ERR(pw->mclk);
+	}
 
 	err |= imx214_regulator_get(info, &pw->avdd, "vana"); /* ananlog 2.7v */
 	err |= imx214_regulator_get(info, &pw->dvdd, "vdig"); /* digital 1.2v */
 	err |= imx214_regulator_get(info, &pw->iovdd, "vif"); /* IO 1.8v */
+
+	if (pdata->ext_reg)
+		err |= imx214_get_extra_regulators(info, pw);
+
+	if (!err) {
+		pw->reset_gpio = pdata->reset_gpio;
+		pw->af_gpio = pdata->af_gpio;
+		pw->cam1_gpio = pdata->cam1_gpio;
+	}
 
 	return err;
 }
@@ -1023,26 +1054,22 @@ static struct miscdevice imx214_device = {
 static struct imx214_platform_data *imx214_parse_dt(struct i2c_client *client)
 {
 	struct device_node *np = client->dev.of_node;
-	struct imx214_platform_data *board_info_pdata;
+	struct imx214_platform_data *pdata;
 
-	board_info_pdata = devm_kzalloc(&client->dev, sizeof(*board_info_pdata),
-			GFP_KERNEL);
-	if (!board_info_pdata) {
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
 		dev_err(&client->dev, "Failed to allocate pdata\n");
 		return NULL;
 	}
 
-	of_property_read_string(np, "clocks", &board_info_pdata->mclk_name);
-	board_info_pdata->cam1_gpio = of_get_named_gpio(np, "cam1-gpios", 0);
-	board_info_pdata->reset_gpio = of_get_named_gpio(np, "reset-gpios", 0);
-	board_info_pdata->af_gpio = of_get_named_gpio(np, "af-gpios", 0);
+	of_property_read_string(np, "clocks", &pdata->mclk_name);
+	pdata->cam1_gpio = of_get_named_gpio(np, "cam1-gpios", 0);
+	pdata->reset_gpio = of_get_named_gpio(np, "reset-gpios", 0);
+	pdata->af_gpio = of_get_named_gpio(np, "af-gpios", 0);
 
-	board_info_pdata->ext_reg = of_property_read_bool(np, "nvidia,ext_reg");
+	pdata->ext_reg = of_property_read_bool(np, "nvidia,ext_reg");
 
-	board_info_pdata->power_on = imx214_power_on;
-	board_info_pdata->power_off = imx214_power_off;
-
-	return board_info_pdata;
+	return pdata;
 }
 
 static int imx214_probe(struct i2c_client *client,
@@ -1050,7 +1077,6 @@ static int imx214_probe(struct i2c_client *client,
 {
 	struct imx214_info *info;
 	int err;
-	const char *mclk_name;
 
 	pr_info("[IMX214]: probing sensor.\n");
 
@@ -1081,15 +1107,6 @@ static int imx214_probe(struct i2c_client *client,
 	info->i2c_client = client;
 	atomic_set(&info->in_use, 0);
 	info->mode = -1;
-
-	mclk_name = info->pdata->mclk_name ?
-		    info->pdata->mclk_name : "default_mclk";
-	info->mclk = devm_clk_get(&client->dev, mclk_name);
-	if (IS_ERR(info->mclk)) {
-		dev_err(&client->dev, "%s: unable to get clock %s\n",
-			__func__, mclk_name);
-		return PTR_ERR(info->mclk);
-	}
 
 	imx214_power_get(info);
 

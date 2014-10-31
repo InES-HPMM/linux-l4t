@@ -3253,7 +3253,7 @@ static struct imx091_platform_data *imx091_parse_dt(struct i2c_client *client)
 	board_info_pdata->gpio = gpio_pdata;
 
 	/* imx091 caps */
-	nvc_imager_parse_caps(np, imx091_cap);
+	nvc_imager_parse_caps(np, imx091_cap, NULL);
 	imx091_cap->focuser_guid = NVC_FOCUS_GUID(0);
 	imx091_cap->torch_guid = NVC_TORCH_GUID(0);
 	imx091_cap->cap_version = NVC_IMAGER_CAPABILITIES_VERSION2;

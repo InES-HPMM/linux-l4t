@@ -92,10 +92,13 @@
 #include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
+#include <linux/of_gpio.h>
 
 #include "t124/t124.h"
 #include <media/dw9714.h>
 #include <media/camera.h>
+
+#include "nvc_utilities.h"
 
 #define ENABLE_DEBUGFS_INTERFACE
 
@@ -232,6 +235,55 @@ dw9714_set_position_fail:
 	return err;
 }
 
+static int dw9714_power_on(struct dw9714_info *info)
+{
+	struct dw9714_power_rail *pw = &info->power;
+	int err = 0;
+
+	if (info->pdata->power_on)
+		return info->pdata->power_on(pw);
+
+	if (pw->vdd_i2c)
+		err = regulator_enable(pw->vdd_i2c);
+	if (err)
+		goto dw9714_avdd_fail;
+
+	if (pw->vdd)
+		err = regulator_enable(pw->vdd);
+	if (err)
+		goto dw9714_iovdd_fail;
+
+	usleep_range(10, 20);
+
+	if (pw->reset_gpio)
+		gpio_set_value(pw->reset_gpio, 1);
+	usleep_range(12000, 12500);
+
+	return 0;
+
+dw9714_iovdd_fail:
+	regulator_disable(pw->vdd_i2c);
+dw9714_avdd_fail:
+	dev_err(&info->i2c_client->dev, "%s FAILED\n", __func__);
+	return -ENODEV;
+}
+
+static int dw9714_power_off(struct dw9714_info *info)
+{
+	struct dw9714_power_rail *pw = &info->power;
+
+	if (info->pdata->power_off)
+		return info->pdata->power_off(pw);
+
+	if (pw->reset_gpio)
+		gpio_set_value(pw->reset_gpio, 0);
+	if (pw->vdd_i2c)
+		regulator_disable(pw->vdd_i2c);
+	if (pw->vdd)
+		regulator_disable(pw->vdd);
+	return 0;
+}
+
 /**
  * Below are device specific functions.
  */
@@ -248,18 +300,13 @@ static int dw9714_pm_wr(struct dw9714_info *info, int pwr)
 	switch (pwr) {
 	case NVC_PWR_OFF_FORCE:
 	case NVC_PWR_OFF:
-		if (info->pdata->power_off)
-			info->pdata->power_off(&info->power);
-		break;
 	case NVC_PWR_STDBY_OFF:
 	case NVC_PWR_STDBY:
-		if (info->pdata->power_off)
-			info->pdata->power_off(&info->power);
+		err = dw9714_power_off(info);
 		break;
 	case NVC_PWR_COMM:
 	case NVC_PWR_ON:
-		if (info->pdata->power_on)
-			info->pdata->power_on(&info->power);
+		err = dw9714_power_on(info);
 		break;
 	default:
 		err = -EINVAL;
@@ -846,6 +893,57 @@ static int dw9714_remove(struct i2c_client *client)
 static int nvc_debugfs_init(const char *dir_name,
 	struct dentry **d_entry, struct dentry **f_entry, void *info);
 
+static struct dw9714_platform_data *dw9714_parse_dt(struct i2c_client *client)
+{
+	struct device_node *np = client->dev.of_node;
+	struct dw9714_platform_data *pdata;
+	void *p_cap, *p_nvc;
+
+	pdata = devm_kzalloc(&client->dev,
+		sizeof(*pdata) + sizeof(*pdata->cap) + sizeof(*pdata->nvc),
+		GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "Failed to allocate pdata\n");
+		return NULL;
+	}
+
+	/* init with default platform data values in board file or driver */
+	if (client->dev.platform_data)
+		memcpy(pdata, client->dev.platform_data, sizeof(*pdata));
+	else
+		memcpy(pdata, &dw9714_default_pdata, sizeof(*pdata));
+
+	p_cap = pdata->cap;
+	p_nvc = pdata->nvc;
+	pdata->cap = (void *)(pdata + 1);
+	pdata->nvc = (void *)(pdata->cap + 1);
+	if (p_cap)
+		memcpy(pdata->cap, p_cap, sizeof(*pdata->cap));
+	if (p_nvc)
+		memcpy(pdata->nvc, p_nvc, sizeof(*pdata->nvc));
+
+	/* generic info */
+	of_property_read_string(np, "dev_name", &pdata->dev_name);
+	of_property_read_u32(np, "num", &pdata->num);
+	of_property_read_u32(np, "sync", &pdata->sync);
+	if (of_property_read_bool(np, "off-to-standby"))
+		pdata->cfg |= NVC_CFG_OFF2STDBY;
+	if (of_property_read_bool(np, "boot-init"))
+		pdata->cfg |= NVC_CFG_BOOT_INIT;
+	if (of_property_read_bool(np, "nodev-check"))
+		pdata->cfg |= NVC_CFG_NODEV;
+	if (of_property_read_bool(np, "error-free"))
+		pdata->cfg |= NVC_CFG_NOERR;
+	if (of_property_read_bool(np, "sync-i2c-mux"))
+		pdata->cfg |= NVC_CFG_SYNC_I2C_MUX;
+	pdata->reset_gpio = of_get_named_gpio(np, "reset-gpio", 0);
+
+	/* get cap info */
+	nvc_focuser_parse_caps(np, pdata->cap, pdata->nvc);
+
+	return pdata;
+}
+
 static int dw9714_probe(
 		struct i2c_client *client,
 		const struct i2c_device_id *id)
@@ -866,9 +964,12 @@ static int dw9714_probe(
 		return -ENOMEM;
 	}
 	info->i2c_client = client;
-	if (client->dev.platform_data) {
+	if (client->dev.of_node)
+		info->pdata = dw9714_parse_dt(client);
+	else
 		info->pdata = client->dev.platform_data;
-	} else {
+
+	if (info->pdata == NULL) {
 		info->pdata = &dw9714_default_pdata;
 		dev_dbg(&client->dev, "%s No platform data.  Using defaults.\n",
 			__func__);

@@ -34,6 +34,7 @@
 #include <media/nvc.h>
 #include "regmap_util.h"
 #include "cam_dev/camera_gpio.h"
+#include "nvc_utilities.h"
 
 #define OV5693_ID			0x5693
 #define OV5693_SENSOR_TYPE		NVC_IMAGER_TYPE_RAW
@@ -2634,6 +2635,74 @@ static int ov5693_mclk_enable(struct ov5693_info *info)
 	return err;
 }
 
+static int ov5693_platform_power_on(struct ov5693_power_rail *pw)
+{
+	int err = 0;
+	struct ov5693_info *info = container_of(pw, struct ov5693_info,
+						regulators);
+
+	if (info->pdata && info->pdata->power_on)
+		return info->pdata->power_on(pw);
+
+	if (info->pdata->use_vcm_vdd) {
+		err = regulator_enable(info->ext_vcm_vdd);
+		if (unlikely(err))
+			goto ov5693_vcm_fail;
+	}
+
+	if (pw->avdd)
+		err = regulator_enable(pw->avdd);
+	if (err)
+		goto ov5693_avdd_fail;
+
+	if (pw->dovdd)
+		err = regulator_enable(pw->dovdd);
+	if (err)
+		goto ov5693_iovdd_fail;
+
+	usleep_range(1, 2);
+	ov5693_gpio_pwrdn(info, 1);
+	ov5693_gpio_reset(info, 1);
+
+	usleep_range(300, 310);
+
+	return 0;
+
+ov5693_iovdd_fail:
+	regulator_disable(pw->avdd);
+
+ov5693_avdd_fail:
+	if (info->pdata->use_vcm_vdd)
+		regulator_disable(info->ext_vcm_vdd);
+
+ov5693_vcm_fail:
+	pr_err("%s FAILED\n", __func__);
+	return err;
+}
+
+static int ov5693_platform_power_off(struct ov5693_power_rail *pw)
+{
+	struct ov5693_info *info = container_of(pw, struct ov5693_info,
+						regulators);
+
+	if (info->pdata && info->pdata->power_off)
+		return info->pdata->power_off(pw);
+
+	usleep_range(21, 25);
+	ov5693_gpio_pwrdn(info, 0);
+	ov5693_gpio_reset(info, 0);
+	usleep_range(1, 2);
+
+	if (pw->dovdd)
+		regulator_disable(pw->dovdd);
+	if (pw->avdd)
+		regulator_disable(pw->avdd);
+	if (info->pdata->use_vcm_vdd)
+		regulator_disable(info->ext_vcm_vdd);
+
+	return 0;
+}
+
 static int ov5693_power_off(struct ov5693_info *info)
 {
 	struct ov5693_power_rail *pw = &info->regulators;
@@ -2642,18 +2711,13 @@ static int ov5693_power_off(struct ov5693_info *info)
 	if (false == info->power_on)
 		return 0;
 
-	if (info->pdata && info->pdata->power_off) {
-		err = info->pdata->power_off(pw);
-		if (0 > err)
-			return err;
-		info->power_on = false;
-		ov5693_mclk_disable(info);
-		sysedp_set_state(info->sysedpc, 0);
-	} else {
-		dev_err(&info->i2c_client->dev,
-			"%s ERR: has no power_off function\n", __func__);
-		err = -EINVAL;
-	}
+	err = ov5693_platform_power_off(pw);
+	if (err < 0)
+		return err;
+	info->power_on = false;
+	ov5693_mclk_disable(info);
+	sysedp_set_state(info->sysedpc, 0);
+
 	return err;
 }
 
@@ -2669,19 +2733,11 @@ static int ov5693_power_on(struct ov5693_info *info, bool standby)
 	if (err)
 		return err;
 
-	if (info->pdata && info->pdata->power_on) {
-		err = info->pdata->power_on(pw);
-		if (err >= 0) {
-			info->power_on = true;
-			info->pwr_dev = NVC_PWR_ON;
-		}
-	} else {
-		dev_err(&info->i2c_client->dev,
-			"%s ERR: has no power_on function\n", __func__);
-		err = -EINVAL;
-	}
-
-	if (err < 0)
+	err = ov5693_platform_power_on(pw);
+	if (err >= 0) {
+		info->power_on = true;
+		info->pwr_dev = NVC_PWR_ON;
+	} else
 		ov5693_mclk_disable(info);
 
 	return err;
@@ -3259,17 +3315,23 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 static void ov5693_sdata_init(struct ov5693_info *info)
 {
+	struct nvc_imager_static_nvc *static_info;
+
 	memcpy(&info->sdata, &ov5693_dflt_sdata, sizeof(info->sdata));
-	if (info->pdata->lens_focal_length)
-		info->sdata.focal_len = info->pdata->lens_focal_length;
-	if (info->pdata->lens_max_aperture)
-		info->sdata.max_aperture = info->pdata->lens_max_aperture;
-	if (info->pdata->lens_fnumber)
-		info->sdata.fnumber = info->pdata->lens_fnumber;
-	if (info->pdata->lens_view_angle_h)
-		info->sdata.view_angle_h = info->pdata->lens_view_angle_h;
-	if (info->pdata->lens_view_angle_v)
-		info->sdata.view_angle_v = info->pdata->lens_view_angle_v;
+	if (!info->pdata || !info->pdata->static_info)
+		return;
+
+	static_info = info->pdata->static_info;
+	if (static_info->focal_len)
+		info->sdata.focal_len = static_info->focal_len;
+	if (static_info->max_aperture)
+		info->sdata.max_aperture = static_info->max_aperture;
+	if (static_info->fnumber)
+		info->sdata.fnumber = static_info->fnumber;
+	if (static_info->view_angle_h)
+		info->sdata.view_angle_h = static_info->view_angle_h;
+	if (static_info->view_angle_v)
+		info->sdata.view_angle_v = static_info->view_angle_v;
 }
 
 static int ov5693_open(struct inode *inode, struct file *file)
@@ -3335,64 +3397,6 @@ static struct of_device_id ov5693_of_match[] = {
 
 MODULE_DEVICE_TABLE(of, ov5693_of_match);
 
-static int ov5693_platform_power_on(struct ov5693_power_rail *pw)
-{
-	int err;
-	struct ov5693_info *info = container_of(pw, struct ov5693_info,
-						regulators);
-
-	if (info->pdata->use_vcm_vdd) {
-		err = regulator_enable(info->ext_vcm_vdd);
-		if (unlikely(err))
-			goto ov5693_vcm_fail;
-	}
-
-	err = regulator_enable(pw->avdd);
-	if (err)
-		goto ov5693_avdd_fail;
-
-	err = regulator_enable(pw->dovdd);
-	if (err)
-		goto ov5693_iovdd_fail;
-
-	usleep_range(1, 2);
-	ov5693_gpio_pwrdn(info, 1);
-	ov5693_gpio_reset(info, 1);
-
-	usleep_range(300, 310);
-
-	return 0;
-
-ov5693_iovdd_fail:
-	regulator_disable(pw->avdd);
-
-ov5693_avdd_fail:
-	if (info->pdata->use_vcm_vdd)
-		regulator_disable(info->ext_vcm_vdd);
-
-ov5693_vcm_fail:
-	pr_err("%s FAILED\n", __func__);
-	return err;
-}
-
-static int ov5693_platform_power_off(struct ov5693_power_rail *pw)
-{
-	struct ov5693_info *info = container_of(pw, struct ov5693_info,
-						regulators);
-
-	usleep_range(21, 25);
-	ov5693_gpio_pwrdn(info, 0);
-	ov5693_gpio_reset(info, 0);
-	usleep_range(1, 2);
-
-	regulator_disable(pw->dovdd);
-	regulator_disable(pw->avdd);
-	if (info->pdata->use_vcm_vdd)
-		regulator_disable(info->ext_vcm_vdd);
-
-	return 0;
-}
-
 static int ov5693_parse_dt_gpio(struct device_node *np, const char *name,
 				enum ov5693_gpio_type type,
 				struct nvc_gpio_pdata *pdata)
@@ -3418,16 +3422,12 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 	int ret;
 	int num;
 
-	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	dev_dbg(&client->dev, "%s: %s\n", __func__, np->full_name);
+	num = sizeof(*pdata) + sizeof(*pdata->cap) + sizeof(*pdata->static_info)
+		+ sizeof(*gpio_pdata) * ARRAY_SIZE(ov5693_gpio);
+	pdata = devm_kzalloc(&client->dev, num, GFP_KERNEL);
 	if (!pdata) {
 		dev_err(&client->dev, "Failed to allocate pdata\n");
-		return ERR_PTR(-ENOMEM);
-	}
-
-	gpio_pdata = devm_kzalloc(&client->dev,
-		sizeof(*gpio_pdata) * ARRAY_SIZE(ov5693_gpio), GFP_KERNEL);
-	if (!gpio_pdata) {
-		dev_err(&client->dev, "cannot allocate gpio data memory\n");
 		return ERR_PTR(-ENOMEM);
 	}
 
@@ -3436,6 +3436,13 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 		memcpy(pdata, client->dev.platform_data, sizeof(*pdata));
 	else
 		memcpy(pdata, &ov5693_dflt_pdata, sizeof(*pdata));
+
+	if (pdata->cap)
+		memcpy((void *)(pdata + 1), pdata->cap, sizeof(*pdata->cap));
+
+	pdata->cap = (void *)(pdata + 1);
+	pdata->static_info = (void *)(pdata->cap + 1);
+	gpio_pdata = (void *)(pdata->static_info + 1);
 
 	num = 0;
 	do {
@@ -3465,8 +3472,16 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 	pdata->use_vcm_vdd = of_property_read_bool(np, "use-vcm-vdd");
 
 	/* generic info */
-	of_property_read_u32(np, "num", &pdata->num);
 	of_property_read_string(np, "dev_name", &pdata->dev_name);
+	of_property_read_u32(np, "num", &pdata->num);
+	if (of_property_read_bool(np, "has-eeprom"))
+		pdata->has_eeprom = true;
+	if (of_property_read_bool(np, "off-to-standby"))
+		pdata->cfg |= NVC_CFG_OFF2STDBY;
+	if (of_property_read_bool(np, "boot-init"))
+		pdata->cfg |= NVC_CFG_BOOT_INIT;
+	if (of_property_read_bool(np, "nodev-check"))
+		pdata->cfg |= NVC_CFG_NODEV;
 
 	/* ov5693 gpios */
 	pdata->gpio_count = 0;
@@ -3483,9 +3498,8 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 	/* MCLK clock info */
 	of_property_read_string(np, "clocks", &pdata->mclk_name);
 
-	/* ov5693 power functions */
-	pdata->power_on = ov5693_platform_power_on;
-	pdata->power_off = ov5693_platform_power_off;
+	/* get cap info */
+	nvc_imager_parse_caps(np, pdata->cap, pdata->static_info);
 
 	return pdata;
 }

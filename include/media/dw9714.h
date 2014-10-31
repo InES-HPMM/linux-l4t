@@ -24,6 +24,7 @@
 struct dw9714_power_rail {
 	struct regulator *vdd;
 	struct regulator *vdd_i2c;
+	int reset_gpio;
 };
 
 struct dw9714_platform_data {
@@ -33,8 +34,7 @@ struct dw9714_platform_data {
 	const char *dev_name;
 	struct nvc_focus_nvc (*nvc);
 	struct nvc_focus_cap (*cap);
-	int gpio_count;
-	struct nvc_gpio_pdata *gpio;
+	int reset_gpio;
 	int (*power_on)(struct dw9714_power_rail *pw);
 	int (*power_off)(struct dw9714_power_rail *pw);
 	int (*detect)(void *buf, size_t size);
