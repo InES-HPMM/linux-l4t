@@ -6,6 +6,7 @@
 
 GCOV_PROFILE := y
 
+ccflags-y += -Werror
 obj-$(CONFIG_USB_SERIAL)			+= usbserial.o
 
 usbserial-y := usb-serial.o generic.o bus.o
