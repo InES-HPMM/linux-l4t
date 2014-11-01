@@ -336,7 +336,7 @@ uint64_t nvadsp_get_timestamp_counter(void)
 	uint32_t count_low = 0;
 	uint32_t count_high = 0;
 	uint64_t tsc = 0;
-	void * __iomem base = nvadsp_drv_data->base_regs[AMISC];
+	void __iomem *base = nvadsp_drv_data->base_regs[AMISC];
 	unsigned long flags;
 
 	spin_lock_irqsave(&tsc_lock, flags);
