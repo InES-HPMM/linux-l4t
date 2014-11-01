@@ -40,31 +40,28 @@ static bool tegra_dvfs_gpu_disabled;
 /* FIXME: need tegra21 step */
 #define VDD_SAFE_STEP			100
 
-/* FIXME: tegra21 data */
 static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS];
 static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS];
-
-static int vdd_core_vmax_trips_table[MAX_THERMAL_LIMITS];
-static int vdd_core_therm_caps_table[MAX_THERMAL_LIMITS];
-
-static struct tegra_cooling_device core_vmax_cdev = {
-	.cdev_type = "core_hot",
+static struct tegra_cooling_device core_vmin_cdev = {
+	.compatible = "nvidia,tegra210-rail-vmin-cdev",
 };
 
-static struct tegra_cooling_device core_vmin_cdev = {
-	.cdev_type = "core_cold",
+static int vdd_cpu_vmin_trips_table[MAX_THERMAL_LIMITS];
+static int vdd_cpu_therm_floors_table[MAX_THERMAL_LIMITS];
+static struct tegra_cooling_device cpu_vmin_cdev = {
+	.compatible = "nvidia,tegra210-rail-vmin-cdev",
 };
 
 static struct tegra_cooling_device gpu_vts_cdev = {
 	.compatible = "nvidia,tegra210-rail-scaling-cdev",
 };
 
-/* FIXME: fill in actual hw numbers for all rails */
 static struct dvfs_rail tegra21_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
 	.max_millivolts = 1300,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
+	.vmin_cdev = &cpu_vmin_cdev,
 	.alignment = {
 		.step_uv = 6250, /* 6.25mV */
 	},
@@ -81,7 +78,6 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
 	.step = VDD_SAFE_STEP,
 	.step_up = 1300,
 	.vmin_cdev = &core_vmin_cdev,
-	.vmax_cdev = &core_vmax_cdev,
 	.alignment = {
 		.step_uv = 6250, /* 6.25mV */
 	},
@@ -791,6 +787,25 @@ static void __init init_cpu_lp_dvfs_table(int *cpu_lp_max_freq_index)
 	BUG_ON((i == ARRAY_SIZE(cpu_lp_cvb_dvfs_table)) || ret);
 }
 
+static int __init init_cpu_rail_thermal_profile(struct dvfs *cpu_dvfs)
+{
+	struct dvfs_rail *rail = &tegra21_dvfs_rail_vdd_cpu;
+
+	/*
+	 * Failure to get/configure trips may not be fatal for boot - let it
+	 * boot, even with partial configuration with appropriate WARNING, and
+	 * invalidate cdev. It must not happen with production DT, of course.
+	 */
+	if (rail->vmin_cdev) {
+		if (tegra_dvfs_rail_of_init_vmin_thermal_profile(
+			vdd_cpu_vmin_trips_table, vdd_cpu_therm_floors_table,
+			rail, &cpu_dvfs->dfll_data))
+			rail->vmin_cdev = NULL;
+	}
+
+	return 0;
+}
+
 /*
  * Setup gpu dvfs tables from cvb data, determine nominal voltage for gpu rail,
  * and gpu maximum frequency. Error when gpu dvfs table can not be constructed
@@ -1036,6 +1051,25 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 	return i - 1;
 }
 
+static int __init init_core_rail_thermal_profile(void)
+{
+	struct dvfs_rail *rail = &tegra21_dvfs_rail_vdd_core;
+
+	/*
+	 * Failure to get/configure trips may not be fatal for boot - let it
+	 * boot, even with partial configuration with appropriate WARNING, and
+	 * invalidate cdev. It must not happen with production DT, of course.
+	 */
+	if (rail->vmin_cdev) {
+		if (tegra_dvfs_rail_of_init_vmin_thermal_profile(
+			vdd_core_vmin_trips_table, vdd_core_therm_floors_table,
+			rail, NULL))
+			rail->vmin_cdev = NULL;
+	}
+
+	return 0;
+}
+
 static int __init of_rails_init(struct device_node *dn)
 {
 	int i;
@@ -1105,6 +1139,9 @@ void __init tegra21x_init_dvfs(void)
 	init_cpu_dvfs_table(&cpu_max_freq_index);
 	init_cpu_lp_dvfs_table(&cpu_lp_max_freq_index);
 
+	/* Init cpu thermal profile */
+	init_cpu_rail_thermal_profile(&cpu_dvfs);
+
 	/*
 	 * Construct GPU DVFS table from CVB data; find GPU maximum frequency,
 	 * and nominal voltage.
@@ -1112,14 +1149,7 @@ void __init tegra21x_init_dvfs(void)
 	init_gpu_dvfs_table(&gpu_max_freq_index);
 
 	/* Init core thermal profile */
-	if (vdd_core_therm_floors_table[0])
-		tegra_dvfs_rail_init_vmin_thermal_profile(
-			vdd_core_vmin_trips_table, vdd_core_therm_floors_table,
-			&tegra21_dvfs_rail_vdd_core, NULL);
-	if (vdd_core_therm_caps_table[0])
-		tegra_dvfs_rail_init_vmax_thermal_profile(
-			vdd_core_vmax_trips_table, vdd_core_therm_caps_table,
-			&tegra21_dvfs_rail_vdd_core, NULL);
+	init_core_rail_thermal_profile();
 
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra21_dvfs_rails,

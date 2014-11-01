@@ -2500,6 +2500,23 @@ void __init tegra_dvfs_rail_init_vmin_thermal_profile(
 	}
 }
 
+int __init tegra_dvfs_rail_of_init_vmin_thermal_profile(
+	int *therm_trips_table, int *therm_floors_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
+{
+	int ret = of_tegra_dvfs_rail_get_cdev_trips(
+		rail->vmin_cdev, therm_trips_table, therm_floors_table,
+		&rail->alignment, true);
+	if (ret <= 0) {
+		WARN(1, "%s: failed to get Vmin trips from DT\n", rail->reg_id);
+		return ret ? : -EINVAL;
+	}
+
+	tegra_dvfs_rail_init_vmin_thermal_profile(
+		therm_trips_table, therm_floors_table, rail, d);
+	return 0;
+}
+
 /*
  * Validate thermal dvfs settings:
  * - trip-points are montonically increasing

@@ -368,6 +368,9 @@ void tegra_dvfs_rail_init_vmin_thermal_profile(
 void tegra_dvfs_rail_init_vmax_thermal_profile(
 	int *therm_trips_table, int *therm_caps_table,
 	struct dvfs_rail *rail, struct dvfs_dfll_data *d);
+int tegra_dvfs_rail_of_init_vmin_thermal_profile(
+	int *therm_trips_table, int *therm_floors_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d);
 int __init tegra_dvfs_rail_init_clk_switch_thermal_profile(
 	int *clk_switch_trips, struct dvfs_rail *rail);
 int tegra_dvfs_rail_init_thermal_dvfs_trips(
