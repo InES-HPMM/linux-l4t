@@ -159,6 +159,7 @@ static void bluedroid_pm_timer_expire(unsigned long data)
 static int bluedroid_pm_rfkill_set_power(void *data, bool blocked)
 {
 	struct bluedroid_pm_data *bluedroid_pm = data;
+	int ret = 0;
 
 	mdelay(100);
 	if (blocked) {
@@ -169,9 +170,9 @@ static int bluedroid_pm_rfkill_set_power(void *data, bool blocked)
 			bluedroid_pm_gpio_set_value(
 				bluedroid_pm->gpio_reset, 0);
 		if (bluedroid_pm->vdd_3v3)
-			regulator_disable(bluedroid_pm->vdd_3v3);
+			ret |= regulator_disable(bluedroid_pm->vdd_3v3);
 		if (bluedroid_pm->vdd_1v8)
-			regulator_disable(bluedroid_pm->vdd_1v8);
+			ret |= regulator_disable(bluedroid_pm->vdd_1v8);
 		if (gpio_is_valid(bluedroid_pm->ext_wake))
 			wake_unlock(&bluedroid_pm->wake_lock);
 		if (bluedroid_pm->resume_min_frequency)
@@ -179,9 +180,9 @@ static int bluedroid_pm_rfkill_set_power(void *data, bool blocked)
 						resume_cpu_freq_req);
 	} else {
 		if (bluedroid_pm->vdd_3v3)
-			regulator_enable(bluedroid_pm->vdd_3v3);
+			ret |= regulator_enable(bluedroid_pm->vdd_3v3);
 		if (bluedroid_pm->vdd_1v8)
-			regulator_enable(bluedroid_pm->vdd_1v8);
+			ret |= regulator_enable(bluedroid_pm->vdd_1v8);
 		if (gpio_is_valid(bluedroid_pm->gpio_shutdown))
 			bluedroid_pm_gpio_set_value(
 				bluedroid_pm->gpio_shutdown, 1);
@@ -197,7 +198,7 @@ static int bluedroid_pm_rfkill_set_power(void *data, bool blocked)
 	bluedroid_pm->is_blocked = blocked;
 	mdelay(100);
 
-	return 0;
+	return ret;
 }
 
 static const struct rfkill_ops bluedroid_pm_rfkill_ops = {
@@ -486,7 +487,7 @@ static struct platform_driver bluedroid_pm_driver = {
 	},
 };
 
-static int lpm_read_proc(struct file *file, char __user *buf, size_t size,
+static ssize_t lpm_read_proc(struct file *file, char __user *buf, size_t size,
 					loff_t *ppos)
 {
 	char *msg = "lpm_read";
