@@ -47,7 +47,6 @@
 #define POWER_BACKDOOR_I2C_CC4_VOLTAGE_UP		0x15
 
 static struct dentry *dfs_dir;
-static char ker_buf[LEN];
 static u64 pmstate = 5;
 
 /* Forces idle every time_interval seconds */
@@ -79,7 +78,6 @@ static void force_idle_cpus_work(struct work_struct *work)
 static int __init init_debug(void)
 {
 	struct dentry *dfs_file;
-	int filevalue;
 
 	if (tegra_revision > TEGRA_REVISION_A01)
 		return 0;
