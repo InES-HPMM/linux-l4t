@@ -347,7 +347,7 @@ static int fuse_override_option_regs(u32 *patch_buff, u32 num_entries)
 	return 0;
 }
 
-int tegra_fuse_override_chip_option_regs(void)
+static int tegra_fuse_override_chip_option_regs(void)
 {
 	u32 patch_record_size, patch_start_addr;
 	u32 patch_header, num_cam_entries;
@@ -454,11 +454,11 @@ static inline int fuse_get_gpcpll_adc_intercept_uv(u32 val)
 	return ((val >> 4) & 0x3ff) * 1000 + ((val >> 0) & 0xf) * 100;
 }
 
-DEVICE_ATTR(public_key, 0440, tegra_fuse_show, tegra_fuse_store);
-DEVICE_ATTR(pkc_disable, 0440, tegra_fuse_show, tegra_fuse_store);
-DEVICE_ATTR(odm_lock, 0440, tegra_fuse_show, tegra_fuse_store);
+static DEVICE_ATTR(public_key, 0440, tegra_fuse_show, tegra_fuse_store);
+static DEVICE_ATTR(pkc_disable, 0440, tegra_fuse_show, tegra_fuse_store);
+static DEVICE_ATTR(odm_lock, 0440, tegra_fuse_show, tegra_fuse_store);
 
-int tegra_fuse_add_sysfs_variables(struct platform_device *pdev,
+static int tegra_fuse_add_sysfs_variables(struct platform_device *pdev,
 					bool odm_security_mode)
 {
 	dev_attr_odm_lock.attr.mode = 0640;
@@ -479,7 +479,7 @@ int tegra_fuse_add_sysfs_variables(struct platform_device *pdev,
 	return 0;
 }
 
-int tegra_fuse_rm_sysfs_variables(struct platform_device *pdev)
+static int tegra_fuse_rm_sysfs_variables(struct platform_device *pdev)
 {
 	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_public_key.attr);
 	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_pkc_disable.attr);
@@ -488,7 +488,7 @@ int tegra_fuse_rm_sysfs_variables(struct platform_device *pdev)
 	return 0;
 }
 
-int tegra_fuse_ch_sysfs_perm(struct device *dev, struct kobject *kobj)
+static int tegra_fuse_ch_sysfs_perm(struct device *dev, struct kobject *kobj)
 {
 	CHK_ERR(dev, sysfs_chmod_file(kobj,
 				&dev_attr_public_key.attr, 0440));

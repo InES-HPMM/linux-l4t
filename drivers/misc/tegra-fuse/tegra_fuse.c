@@ -57,17 +57,19 @@
 #include "tegra21x_fuse_offsets.h"
 #endif
 
-DEVICE_ATTR(device_key, 0440, tegra_fuse_show, tegra_fuse_store);
-DEVICE_ATTR(jtag_disable, 0440, tegra_fuse_show, tegra_fuse_store);
-DEVICE_ATTR(odm_production_mode, 0440, tegra_fuse_show, tegra_fuse_store);
-DEVICE_ATTR(sec_boot_dev_cfg, 0440, tegra_fuse_show, tegra_fuse_store);
-DEVICE_ATTR(sec_boot_dev_sel, 0440, tegra_fuse_show, tegra_fuse_store);
-DEVICE_ATTR(secure_boot_key, 0440, tegra_fuse_show, tegra_fuse_store);
-DEVICE_ATTR(sw_reserved, 0440, tegra_fuse_show, tegra_fuse_store);
-DEVICE_ATTR(ignore_dev_sel_straps, 0440, tegra_fuse_show, tegra_fuse_store);
-DEVICE_ATTR(odm_reserved, 0440, tegra_fuse_show, tegra_fuse_store);
+static DEVICE_ATTR(device_key, 0440, tegra_fuse_show, tegra_fuse_store);
+static DEVICE_ATTR(jtag_disable, 0440, tegra_fuse_show, tegra_fuse_store);
+static DEVICE_ATTR(odm_production_mode, 0440, tegra_fuse_show,
+		tegra_fuse_store);
+static DEVICE_ATTR(sec_boot_dev_cfg, 0440, tegra_fuse_show, tegra_fuse_store);
+static DEVICE_ATTR(sec_boot_dev_sel, 0440, tegra_fuse_show, tegra_fuse_store);
+static DEVICE_ATTR(secure_boot_key, 0440, tegra_fuse_show, tegra_fuse_store);
+static DEVICE_ATTR(sw_reserved, 0440, tegra_fuse_show, tegra_fuse_store);
+static DEVICE_ATTR(ignore_dev_sel_straps, 0440, tegra_fuse_show,
+		tegra_fuse_store);
+static DEVICE_ATTR(odm_reserved, 0440, tegra_fuse_show, tegra_fuse_store);
 #ifdef CONFIG_AID_FUSE
-DEVICE_ATTR(aid, 0444, tegra_fuse_show, NULL);
+static DEVICE_ATTR(aid, 0444, tegra_fuse_show, NULL);
 #endif
 
 #define MINOR_QT		0
@@ -139,7 +141,7 @@ struct param_info {
 	char sysfs_name[FUSE_NAME_LEN];
 };
 
-DEFINE_MUTEX(fuse_lock);
+static DEFINE_MUTEX(fuse_lock);
 
 static enum tegra_platform tegra_platform;
 static bool cpu_is_asim;
