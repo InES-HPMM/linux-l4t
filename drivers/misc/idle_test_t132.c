@@ -107,7 +107,6 @@ static int idle_write(void *data, u64 val)
 {
 	unsigned long timer_interval_us = 0;
 	ktime_t time, interval, sleep;
-	int cpu = smp_processor_id();
 
 	timer_interval_us = (ulong)val;
 
