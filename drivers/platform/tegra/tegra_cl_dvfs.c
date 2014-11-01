@@ -1871,34 +1871,48 @@ static struct thermal_cooling_device_ops tegra_cl_dvfs_vmin_cool_ops = {
 
 static void tegra_cl_dvfs_init_cdev(struct work_struct *work)
 {
+	char *type;
+	struct device_node *dn;
 	struct tegra_cl_dvfs *cld = container_of(
 		work, struct tegra_cl_dvfs, init_cdev_work);
 
 	/* just report error - initialized at WC temperature, anyway */
 	if (cld->safe_dvfs->dvfs_rail->vmin_cdev) {
-		char *type = cld->safe_dvfs->dvfs_rail->vmin_cdev->cdev_type;
-		cld->vmin_cdev = thermal_cooling_device_register(
-			type, (void *)cld, &tegra_cl_dvfs_vmin_cool_ops);
-		if (IS_ERR_OR_NULL(cld->vmin_cdev)) {
+		type = cld->safe_dvfs->dvfs_rail->vmin_cdev->cdev_type;
+		dn = cld->safe_dvfs->dvfs_rail->vmin_cdev->cdev_dn;
+		cld->vmin_cdev = dn ?
+			thermal_of_cooling_device_register(dn, type,
+				(void *)cld, &tegra_cl_dvfs_vmin_cool_ops) :
+			thermal_cooling_device_register(type,
+				(void *)cld, &tegra_cl_dvfs_vmin_cool_ops);
+
+		if (IS_ERR_OR_NULL(cld->vmin_cdev)  ||
+		    list_empty(&cld->vmin_cdev->thermal_instances)) {
 			cld->vmin_cdev = NULL;
-			pr_err("tegra cooling device %s failed to register\n",
-			       type);
+			pr_err("%s: tegra cooling device %s failed to register\n",
+			       __func__, type);
 			return;
 		}
-		pr_info("%s cooling device is registered\n", type);
+		pr_info("%s: %s cooling device registered\n", __func__, type);
 	}
 
 	if (cld->safe_dvfs->dvfs_rail->vmax_cdev) {
-		char *type = cld->safe_dvfs->dvfs_rail->vmax_cdev->cdev_type;
-		cld->vmax_cdev = thermal_cooling_device_register(
-			type, (void *)cld, &tegra_cl_dvfs_vmax_cool_ops);
-		if (IS_ERR_OR_NULL(cld->vmax_cdev)) {
+		type = cld->safe_dvfs->dvfs_rail->vmax_cdev->cdev_type;
+		dn = cld->safe_dvfs->dvfs_rail->vmax_cdev->cdev_dn;
+		cld->vmax_cdev = dn ?
+			thermal_of_cooling_device_register(dn, type,
+				(void *)cld, &tegra_cl_dvfs_vmax_cool_ops) :
+			thermal_cooling_device_register(type,
+				(void *)cld, &tegra_cl_dvfs_vmax_cool_ops);
+
+		if (IS_ERR_OR_NULL(cld->vmax_cdev) ||
+		    list_empty(&cld->vmax_cdev->thermal_instances)) {
 			cld->vmax_cdev = NULL;
-			pr_err("tegra cooling device %s failed to register\n",
-			       type);
+			pr_err("%s: tegra cooling device %s failed to register\n",
+			       __func__, type);
 			return;
 		}
-		pr_info("%s cooling device is registered\n", type);
+		pr_info("%s: %s cooling device registered\n", __func__, type);
 	}
 }
 #endif
