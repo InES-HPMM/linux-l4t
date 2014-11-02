@@ -275,6 +275,11 @@
 #define NV_PCIE2_RP_PRIV_XP_RX_L0S_ENTRY_COUNT			0x00000F8C
 #define NV_PCIE2_RP_PRIV_XP_TX_L0S_ENTRY_COUNT			0x00000F90
 #define NV_PCIE2_RP_PRIV_XP_TX_L1_ENTRY_COUNT			0x00000F94
+#define NV_PCIE2_RP_LTR_REP_VAL				0x00000C10
+#define NV_PCIE2_RP_L1_1_ENTRY_COUNT				0x00000C14
+#define PCIE2_RP_L1_1_ENTRY_COUNT_RESET			(1 << 31)
+#define NV_PCIE2_RP_L1_2_ENTRY_COUNT				0x00000C18
+#define PCIE2_RP_L1_2_ENTRY_COUNT_RESET			(1 << 31)
 
 #define NV_PCIE2_RP_VEND_CTL2					0x00000FA8
 #define PCIE2_RP_VEND_CTL2_PCA_ENABLE				(1 << 7)
@@ -3061,7 +3066,6 @@ static int check_d3hot(struct seq_file *s, void *data)
 			break;
 		}
 	}
-
 	/* Force all the devices (including RPs) back to D0 state */
 	/* NOTE: Devices go to D0-Uninitialized state */
 	/* Hence it may not work as expected */
@@ -3099,6 +3103,26 @@ static int dump_config_space(struct seq_file *s, void *data)
 				seq_printf(s, "%02x ", val);
 			}
 			seq_printf(s, "\n");
+		}
+	}
+	return 0;
+}
+
+static int dump_afi_space(struct seq_file *s, void *data)
+{
+	u32 val, offset;
+	struct tegra_pcie_port *port = NULL;
+	struct tegra_pcie *pcie = (struct tegra_pcie *)(s->private);
+
+	list_for_each_entry(port, &pcie->ports, list) {
+		seq_puts(s, "Offset:  Values\n");
+		for (offset = 0; offset < 0x200; offset += 0x10) {
+			val = afi_readl(port->pcie, offset);
+			seq_printf(s, "%6x: %8x %8x %8x %8x\n", offset,
+				afi_readl(port->pcie, offset),
+				afi_readl(port->pcie, offset + 4),
+				afi_readl(port->pcie, offset + 8),
+				afi_readl(port->pcie, offset + 12));
 		}
 	}
 	return 0;
@@ -3229,6 +3253,155 @@ static int aspm(struct seq_file *s, void *data)
 	return 0;
 }
 
+static void reset_l1ss_counter(struct tegra_pcie_port *port, u32 val,
+			unsigned long offset)
+{
+	int c = 0;
+
+	if ((val & 0xFFFF) == 0xFFFF) {
+		pr_info(" Trying reset L1ss entry count to 0\n");
+		while (val) {
+			if (c++ > 50) {
+				pr_info("Timeout: reset did not happen!\n");
+				break;
+			}
+			val |= PCIE2_RP_L1_1_ENTRY_COUNT_RESET;
+			rp_writel(port, val, offset);
+			mdelay(1);
+			val = rp_readl(port, offset);
+		}
+		if (!val)
+			pr_info("L1ss entry count reset to 0\n");
+	}
+}
+static int aspm_l11(struct seq_file *s, void *data)
+{
+	struct pci_dev *pdev = NULL;
+	u32 val = 0, pos = 0;
+	struct tegra_pcie_port *port = NULL;
+	struct tegra_pcie *pcie = (struct tegra_pcie *)(s->private);
+
+	pr_info("\nPCIE aspm l1.1 test START..\n");
+	list_for_each_entry(port, &pcie->ports, list) {
+		/* reset RP L1.1 counter */
+		val = rp_readl(port, NV_PCIE2_RP_L1_1_ENTRY_COUNT);
+		val |= PCIE2_RP_L1_1_ENTRY_COUNT_RESET;
+		rp_writel(port, val, NV_PCIE2_RP_L1_1_ENTRY_COUNT);
+
+		val = rp_readl(port, NV_PCIE2_RP_L1_1_ENTRY_COUNT);
+		pr_info("L1.1 Entry count before %x\n", val);
+		reset_l1ss_counter(port, val, NV_PCIE2_RP_L1_1_ENTRY_COUNT);
+	}
+	/* disable automatic l1ss exit by gpu */
+	for_each_pci_dev(pdev)
+		if (pci_pcie_type(pdev) != PCI_EXP_TYPE_ROOT_PORT) {
+			pci_write_config_dword(pdev, 0x658, 0);
+			pci_write_config_dword(pdev, 0x150, 0xE0000015);
+		}
+	for_each_pci_dev(pdev) {
+		u16 aspm;
+		pcie_capability_read_word(pdev, PCI_EXP_LNKCTL, &aspm);
+		aspm |= PCI_EXP_LNKCTL_ASPM_L1;
+		pcie_capability_write_word(pdev, PCI_EXP_LNKCTL, aspm);
+		pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_L1SS);
+		pci_read_config_dword(pdev, pos + PCI_L1SS_CTRL1, &val);
+		val &= ~PCI_L1SS_CAP_L1PM_MASK;
+		val |= PCI_L1SS_CTRL1_ASPM_L11S;
+		pci_write_config_dword(pdev, pos + PCI_L1SS_CTRL1, val);
+		if (pci_pcie_type(pdev) != PCI_EXP_TYPE_ROOT_PORT)
+			break;
+	}
+	mdelay(2000);
+	for_each_pci_dev(pdev) {
+		pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_L1SS);
+		pci_read_config_dword(pdev, pos + PCI_L1SS_CTRL1, &val);
+		if (pci_pcie_type(pdev) != PCI_EXP_TYPE_ROOT_PORT)
+			break;
+	}
+	list_for_each_entry(port, &pcie->ports, list) {
+		val = rp_readl(port, NV_PCIE2_RP_L1_1_ENTRY_COUNT);
+		pr_info("L1.1 Entry count after %x\n", val);
+	}
+
+	pr_info("PCIE aspm l1.1 test END..\n");
+	return 0;
+}
+
+static int aspm_l1ss(struct seq_file *s, void *data)
+{
+	struct pci_dev *pdev = NULL;
+	u32 val = 0, pos = 0;
+	struct tegra_pcie_port *port = NULL;
+	struct tegra_pcie *pcie = (struct tegra_pcie *)(s->private);
+
+	pr_info("\nPCIE aspm l1ss test START..\n");
+	list_for_each_entry(port, &pcie->ports, list) {
+		/* reset RP L1.1 L1.2 counters */
+		val = rp_readl(port, NV_PCIE2_RP_L1_1_ENTRY_COUNT);
+		val |= PCIE2_RP_L1_1_ENTRY_COUNT_RESET;
+		rp_writel(port, val, NV_PCIE2_RP_L1_1_ENTRY_COUNT);
+		val = rp_readl(port, NV_PCIE2_RP_L1_1_ENTRY_COUNT);
+		pr_info("L1.1 Entry count before %x\n", val);
+		reset_l1ss_counter(port, val, NV_PCIE2_RP_L1_1_ENTRY_COUNT);
+
+		val = rp_readl(port, NV_PCIE2_RP_L1_2_ENTRY_COUNT);
+		val |= PCIE2_RP_L1_2_ENTRY_COUNT_RESET;
+		rp_writel(port, val, NV_PCIE2_RP_L1_2_ENTRY_COUNT);
+		val = rp_readl(port, NV_PCIE2_RP_L1_2_ENTRY_COUNT);
+		pr_info("L1.2 Entry count before %x\n", val);
+		reset_l1ss_counter(port, val, NV_PCIE2_RP_L1_2_ENTRY_COUNT);
+	}
+	/* disable automatic l1ss exit by gpu */
+	for_each_pci_dev(pdev)
+		if (pci_pcie_type(pdev) != PCI_EXP_TYPE_ROOT_PORT) {
+			pci_write_config_dword(pdev, 0x658, 0);
+			pci_write_config_dword(pdev, 0x150, 0xE0000015);
+		}
+
+	for_each_pci_dev(pdev) {
+		u16 aspm;
+		pcie_capability_read_word(pdev, PCI_EXP_LNKCTL, &aspm);
+		aspm |= PCI_EXP_LNKCTL_ASPM_L1;
+		pcie_capability_write_word(pdev, PCI_EXP_LNKCTL, aspm);
+		pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_L1SS);
+		pci_read_config_dword(pdev, pos + PCI_L1SS_CTRL1, &val);
+		val &= ~PCI_L1SS_CAP_L1PM_MASK;
+		val |= (PCI_L1SS_CTRL1_ASPM_L11S | PCI_L1SS_CTRL1_ASPM_L12S);
+		pci_write_config_dword(pdev, pos + PCI_L1SS_CTRL1, val);
+		if (pci_pcie_type(pdev) != PCI_EXP_TYPE_ROOT_PORT)
+			break;
+	}
+	mdelay(2000);
+	for_each_pci_dev(pdev) {
+		pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_L1SS);
+		pci_read_config_dword(pdev, pos + PCI_L1SS_CTRL1, &val);
+		if (pci_pcie_type(pdev) != PCI_EXP_TYPE_ROOT_PORT)
+			break;
+	}
+	list_for_each_entry(port, &pcie->ports, list) {
+		u32 ltr_val;
+		val = rp_readl(port, NV_PCIE2_RP_L1_1_ENTRY_COUNT);
+		pr_info("L1.1 Entry count after %x\n", val);
+		val = rp_readl(port, NV_PCIE2_RP_L1_2_ENTRY_COUNT);
+		pr_info("L1.2 Entry count after %x\n", val);
+
+		val = rp_readl(port, NV_PCIE2_RP_LTR_REP_VAL);
+		pr_info("LTR reproted by EP %x\n", val);
+		ltr_val = (val & 0x1FF) * (1 << (5 * ((val & 0x1C00) >> 10)));
+		if (ltr_val > (106 * 1000)) {
+			pr_info("EP's LTR = %u ns is > RP's threshold = %u ns\n",
+					ltr_val, 106 * 1000);
+			pr_info("Hence only L1.2 entry allowed\n");
+		} else {
+			pr_info("EP's LTR = %u ns is < RP's threshold = %u ns\n",
+					ltr_val, 106 * 1000);
+			pr_info("Hence only L1.1 entry allowed\n");
+		}
+	}
+
+	pr_info("PCIE aspm l1ss test END..\n");
+	return 0;
+}
 static struct dentry *create_tegra_pcie_debufs_file(char *name,
 		const struct file_operations *ops,
 		struct dentry *parent,
@@ -3260,8 +3433,11 @@ DEFINE_ENTRY(list_devices)
 DEFINE_ENTRY(apply_link_speed)
 DEFINE_ENTRY(check_d3hot)
 DEFINE_ENTRY(dump_config_space)
+DEFINE_ENTRY(dump_afi_space)
 DEFINE_ENTRY(config_read)
 DEFINE_ENTRY(config_write)
+DEFINE_ENTRY(aspm_l11)
+DEFINE_ENTRY(aspm_l1ss)
 
 /* Port specific */
 DEFINE_ENTRY(apply_lane_width)
@@ -3440,6 +3616,12 @@ static int tegra_pcie_debugfs_init(struct tegra_pcie *pcie)
 	if (!d)
 		goto remove;
 
+	d = create_tegra_pcie_debufs_file("dump_afi_space",
+					&dump_afi_space_fops, pcie->debugfs,
+					(void *)pcie);
+	if (!d)
+		goto remove;
+
 	d = debugfs_create_u16("bus_dev_func", S_IWUGO | S_IRUGO,
 					pcie->debugfs,
 					&bdf);
@@ -3466,6 +3648,16 @@ static int tegra_pcie_debugfs_init(struct tegra_pcie *pcie)
 
 	d = create_tegra_pcie_debufs_file("config_write",
 					&config_write_fops, pcie->debugfs,
+					(void *)pcie);
+	if (!d)
+		goto remove;
+	d = create_tegra_pcie_debufs_file("aspm_l11",
+					&aspm_l11_fops, pcie->debugfs,
+					(void *)pcie);
+	if (!d)
+		goto remove;
+	d = create_tegra_pcie_debufs_file("aspm_l1ss",
+					&aspm_l1ss_fops, pcie->debugfs,
 					(void *)pcie);
 	if (!d)
 		goto remove;
