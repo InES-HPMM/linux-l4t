@@ -412,7 +412,7 @@ struct tegra_pcie_port {
 	void __iomem *base;
 	unsigned int index;
 	unsigned int lanes;
-	bool has_clkreq;
+	bool disable_clock_request;
 	int status;
 	struct dentry *port_debugfs;
 };
@@ -1612,14 +1612,15 @@ static void tegra_pcie_port_enable(struct tegra_pcie_port *port)
 
 	/* enable reference clock */
 	value = afi_readl(port->pcie, ctrl);
-	value |= AFI_PEX_CTRL_REFCLK_EN | AFI_PEX_CTRL_CLKREQ_EN;
-
-	/* Since CLKREQ# pinmux pins may float in some platfoms */
-	/* resulting in disappear of refclk specially at higher temp */
-	/* overrided CLKREQ to always drive refclk */
-	if (!port->has_clkreq)
-		value |= AFI_PEX_CTRL_OVERRIDE_EN;
-
+	value |= AFI_PEX_CTRL_REFCLK_EN;
+	/* t124 doesn't support pll power down due to RTL bug and some */
+	/* platforms don't support clkreq, both needs to disable clkreq and */
+	/* enable refclk override to have refclk always ON independent of EP */
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	value |= (AFI_PEX_CTRL_CLKREQ_EN | AFI_PEX_CTRL_OVERRIDE_EN);
+#endif
+	if (port->disable_clock_request)
+		value |= (AFI_PEX_CTRL_CLKREQ_EN | AFI_PEX_CTRL_OVERRIDE_EN);
 	afi_writel(port->pcie, value, ctrl);
 
 	tegra_pcie_port_reset(port);
@@ -2183,52 +2184,6 @@ static bool tegra_pcie_link_speed(struct tegra_pcie *pcie, bool isGen2)
 	return ret;
 }
 
-/* support PLL power down in L1 dynamically based on platform */
-static void tegra_pcie_pll_pdn(struct tegra_pcie *pcie)
-{
-	static struct pinctrl_dev *pctl_dev = NULL;
-	struct pci_dev *pdev = NULL;
-
-	if (!pctl_dev)
-		pctl_dev = pinctrl_get_dev_from_of_compatible(
-					pinctrl_compatible);
-	if (!pctl_dev) {
-		dev_err(pcie->dev,
-			"%s(): tegra pincontrol does not found\n", __func__);
-		return;
-	}
-
-	PR_FUNC_LINE;
-	/* CLKREQ# to PD if device connected to RP doesn't have CLKREQ# */
-	/* capability(no PLL power down in L1 here) and PU if they have */
-	for_each_pci_dev(pdev) {
-		if (pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT)
-			continue;
-
-		if ((pci_pcie_type(pdev->bus->self) ==
-			PCI_EXP_TYPE_ROOT_PORT)) {
-			u32 val = 0;
-			unsigned long config;
-
-			pcie_capability_read_dword(pdev, PCI_EXP_LNKCAP, &val);
-			if (val & PCI_EXP_LNKCAP_CLKPM) {
-				config = TEGRA_PINCONF_PACK(
-						TEGRA_PINCONF_PARAM_PULL,
-						TEGRA_PIN_PULL_UP);
-			} else {
-				config = TEGRA_PINCONF_PACK(
-						TEGRA_PINCONF_PARAM_PULL,
-						TEGRA_PIN_PULL_DOWN);
-			}
-			pinctrl_set_config_for_group_name(pctl_dev,
-					pin_pex_l0_clkreq, config);
-			pinctrl_set_config_for_group_name(pctl_dev,
-					pin_pex_l1_clkreq, config);
-			break;
-		}
-	}
-}
-
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static void tegra_pcie_config_l1ss_tpwr_on(void)
 {
@@ -2485,7 +2440,6 @@ static void tegra_pcie_enable_features(struct tegra_pcie *pcie)
 	if (!tegra_pcie_link_speed(pcie, true))
 		dev_info(pcie->dev, "PCIE: No Link speed change happened\n");
 
-	tegra_pcie_pll_pdn(pcie);
 	tegra_pcie_enable_aspm(pcie);
 	list_for_each_entry(port, &pcie->ports, list) {
 		tegra_pcie_apply_sw_war(port, true);
@@ -3018,8 +2972,8 @@ static int tegra_pcie_parse_dt(struct tegra_pcie *pcie)
 		rp->base = devm_ioremap_resource(pcie->dev, &rp->regs);
 		if (!(rp->base))
 			return -EADDRNOTAVAIL;
-		rp->has_clkreq = of_property_read_bool(port,
-			"nvidia,has_clkreq");
+		rp->disable_clock_request = of_property_read_bool(port,
+			"nvidia,disable_clock_request");
 		rp->status = of_device_is_available(port);
 
 		list_add_tail(&rp->list, &pcie->ports);

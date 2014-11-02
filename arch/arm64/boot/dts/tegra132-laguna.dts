@@ -203,10 +203,12 @@
 		status = "okay";
 
 		pci@1,0 {
+			nvidia,disable-clock-request;
 			status = "okay";
 		};
 
 		pci@2,0 {
+			nvidia,disable-clock-request;
 			status = "okay";
 		};
 	};
