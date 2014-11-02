@@ -19,6 +19,19 @@
  */
  /dts-v1/;
 
+/ {
+	/* smmu and ivc drivers are called very early in the kernel init
+	 * call sequence (core_initcall). smmu driver as such is a consumer
+	 * of ivc and depends on it.
+	 * Keeping the ivc node at the very top in the device tree ensures
+	 * that probe for ivc is called before the smmu driver probe.
+	 * Without this virtualized smmu driver probe will fail.
+	 */
+	tegra_hv: hyp {
+		compatible = "nvidia,tegra-hv";
+	};
+};
+
 #include "tegra124-p1859.dtsi"
 
 / {
@@ -214,7 +227,7 @@
 		status = "okay";
 	};
 
-	tegra_hv: hyp {
+	hyp {
 		compatible = "nvidia,tegra-hv";
 		status = "okay";
 
@@ -266,6 +279,14 @@
 				peers = <0 2>;
 			};
 
+			/* guest 0 <-> guest 3 (smmu) */
+			ivc11 {
+				reg = <11>;
+				peers = <0 3>;
+				nframes = <50>;
+				frame-size = <128>;
+			};
+
 		};
 	};
 
@@ -285,7 +306,8 @@
 	};
 
 	iommu {
-		#asids = <120>;
+		compatible = "nvidia,tegra124-smmu-hv";
+		ivc_queue = <&tegra_hv 11>;
 	};
 
 	host1x {
