@@ -236,7 +236,7 @@ struct tegra_cl_dvfs {
 
 	u8				minimax_output;
 	u8				thermal_out_caps[MAX_THERMAL_LIMITS];
-	u8				thermal_out_floors[MAX_THERMAL_LIMITS];
+	u8				thermal_out_floors[MAX_THERMAL_LIMITS+1];
 	int				thermal_mv_floors[MAX_THERMAL_LIMITS];
 	int				therm_caps_num;
 	int				therm_floors_num;
@@ -1420,9 +1420,12 @@ static void cl_dvfs_init_output_thresholds(struct tegra_cl_dvfs *cld)
 	cl_dvfs_init_tuning_thresholds(cld);
 	cl_dvfs_init_cold_output_floor(cld);
 
+	/* Append minimum output to thermal floors */
+	cld->thermal_out_floors[cld->therm_floors_num] = get_output_bottom(cld);
+
 	/* make sure safe output is safe at any temperature */
-	cld->safe_output = cld->thermal_out_floors[0] ? :
-		get_output_bottom(cld) + 1;
+	cld->safe_output = max(cld->thermal_out_floors[0],
+		(u8)(get_output_bottom(cld) + 1));
 	if (cld->minimax_output <= cld->safe_output)
 		cld->minimax_output = cld->safe_output + 1;
 
