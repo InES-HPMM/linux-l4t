@@ -16,7 +16,20 @@
 #ifndef __ASM_FIQ_H
 #define __ASM_FIQ_H
 
+#include <linux/irq.h>
 #include <asm/ptrace.h>
+
+struct fiq_chip {
+	void (*fiq_enable)(struct irq_data *data);
+	void (*fiq_disable)(struct irq_data *data);
+
+	/* .fiq_ack() and .fiq_eoi() will be called from the FIQ
+	 * handler. For this reason they must not use spin locks (or any
+	 * other locks).
+	 */
+	int (*fiq_ack)(struct irq_data *data);
+	void (*fiq_eoi)(struct irq_data *data);
+};
 
 struct fiq_handler {
 	struct fiq_handler *next;
@@ -38,6 +51,10 @@ extern void release_fiq(struct fiq_handler *f);
 extern void set_fiq_handler(void *start, unsigned int length);
 extern void enable_fiq(int fiq);
 extern void disable_fiq(int fiq);
+extern int ack_fiq(int fiq);
+extern void eoi_fiq(int fiq);
+extern bool has_fiq(int fiq);
+extern void fiq_register_mapping(int irq, struct fiq_chip *chip);
 
 /* helpers defined in fiqasm.S: */
 extern void __set_fiq_regs(unsigned long const *regs);

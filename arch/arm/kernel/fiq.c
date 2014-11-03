@@ -40,6 +40,9 @@
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/seq_file.h>
+#include <linux/irq.h>
+#include <linux/radix-tree.h>
+#include <linux/slab.h>
 
 #include <asm/cacheflush.h>
 #include <asm/cp15.h>
@@ -52,7 +55,15 @@
 		(unsigned)&vector_fiq_offset;		\
 	})
 
+struct fiq_data {
+	struct fiq_chip *fiq_chip;
+	struct irq_data *irq_data;
+};
+
 static unsigned long no_fiq_insn;
+static int fiq_start = -1;
+static RADIX_TREE(fiq_data_tree, GFP_KERNEL);
+static DEFINE_MUTEX(fiq_data_mutex);
 
 /* Default reacquire function
  * - we always relinquish FIQ control
@@ -130,17 +141,83 @@ void release_fiq(struct fiq_handler *f)
 	while (current_fiq->fiq_op(current_fiq->dev_id, 0));
 }
 
-static int fiq_start;
+static struct fiq_data *lookup_fiq_data(int fiq)
+{
+	struct fiq_data *data;
+
+	rcu_read_lock();
+	data = radix_tree_lookup(&fiq_data_tree, fiq);
+	rcu_read_unlock();
+
+	return data;
+}
 
 void enable_fiq(int fiq)
 {
+	struct fiq_data *data = lookup_fiq_data(fiq);
+
+	if (data) {
+		if (data->fiq_chip->fiq_enable)
+			data->fiq_chip->fiq_enable(data->irq_data);
+		enable_irq(fiq);
+		return;
+	}
+
+	if (WARN_ON(fiq_start == -1))
+		return;
+
 	enable_irq(fiq + fiq_start);
 }
 
 void disable_fiq(int fiq)
 {
+	struct fiq_data *data = lookup_fiq_data(fiq);
+
+	if (data) {
+		if (data->fiq_chip->fiq_disable)
+			data->fiq_chip->fiq_disable(data->irq_data);
+		disable_irq(fiq);
+		return;
+	}
+
+	if (WARN_ON(fiq_start == -1))
+		return;
+
 	disable_irq(fiq + fiq_start);
 }
+
+int ack_fiq(int fiq)
+{
+	struct fiq_data *data = lookup_fiq_data(fiq);
+
+	if (data && data->fiq_chip->fiq_ack)
+		return data->fiq_chip->fiq_ack(data->irq_data);
+
+	return fiq;
+}
+
+void eoi_fiq(int fiq)
+{
+	struct fiq_data *data = lookup_fiq_data(fiq);
+
+	if (data && data->fiq_chip->fiq_eoi)
+		data->fiq_chip->fiq_eoi(data->irq_data);
+}
+EXPORT_SYMBOL(eoi_fiq);
+
+bool has_fiq(int fiq)
+{
+	struct fiq_data *data = lookup_fiq_data(fiq);
+
+	if (data)
+		return true;
+
+	if (fiq_start == -1)
+		return false;
+
+	return fiq >= fiq_start;
+}
+EXPORT_SYMBOL(has_fiq);
 
 EXPORT_SYMBOL(set_fiq_handler);
 EXPORT_SYMBOL(__set_fiq_regs);	/* defined in fiqasm.S */
@@ -150,9 +227,50 @@ EXPORT_SYMBOL(release_fiq);
 EXPORT_SYMBOL(enable_fiq);
 EXPORT_SYMBOL(disable_fiq);
 
+/*
+ * Add a mapping from a Linux irq to the fiq data.
+ */
+void fiq_register_mapping(int irq, struct fiq_chip *chip)
+{
+	struct fiq_data *fiq_data = NULL;
+	int res;
+
+	/* fiq_register_mapping can't be mixed with init_FIQ */
+	BUG_ON(fiq_start != -1);
+
+	fiq_data = kmalloc(sizeof(*fiq_data), GFP_KERNEL);
+	if (!fiq_data)
+		goto err;
+
+	fiq_data->fiq_chip = chip;
+	fiq_data->irq_data = irq_get_irq_data(irq);
+	BUG_ON(!fiq_data->irq_data);
+
+	mutex_lock(&fiq_data_mutex);
+	res = radix_tree_insert(&fiq_data_tree, irq, fiq_data);
+	mutex_unlock(&fiq_data_mutex);
+	if (res)
+		goto err;
+
+	return;
+
+err:
+	kfree(fiq_data);
+	pr_err("fiq: Cannot register mapping %d\n", irq);
+}
+
+/*
+ * Set the offset between normal IRQs and their FIQ shadows.
+ */
 void __init init_FIQ(int start)
+{
+	fiq_start = start;
+}
+
+static int __init init_default_fiq_handler(void)
 {
 	unsigned offset = FIQ_OFFSET;
 	no_fiq_insn = *(unsigned long *)(0xffff0000 + offset);
-	fiq_start = start;
+	return 0;
 }
+pure_initcall(init_default_fiq_handler);
