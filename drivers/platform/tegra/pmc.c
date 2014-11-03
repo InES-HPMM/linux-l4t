@@ -189,7 +189,6 @@ void tegra_pmc_lock_thermal_shutdown(void)
 {
 	u32 val;
 
-	return;
 	val = tegra_pmc_readl(PMC_DIRECT_THERMTRIP_CFG);
 	val |= PMC_DIRECT_THERMTRIP_CFG_LOCK_MASK;
 	tegra_pmc_writel(val, PMC_DIRECT_THERMTRIP_CFG);
