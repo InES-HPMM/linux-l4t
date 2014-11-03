@@ -66,6 +66,10 @@ static int tegra_prod_parse_dt(const struct device_node *np,
 
 	n_child = 0;
 	for_each_child_of_node(prod_child, child) {
+		/* Check whether child is enabled or not */
+		if (!of_device_is_available(child))
+			continue;
+
 		t_prod = &tegra_prod_list->tegra_prod[n_child];
 		t_prod->name = child->name;
 		count = of_property_count_u32(child, "prod");
@@ -129,6 +133,8 @@ static int tegra_prod_parse_dt(const struct device_node *np,
 		}
 		n_child++;
 	}
+
+	tegra_prod_list->num = n_child;
 
 	of_node_put(child);
 	return 0;
@@ -265,6 +271,12 @@ struct tegra_prod_list *tegra_prod_init(const struct device_node *np)
 	child = of_get_child_by_name(np, TEGRA_PROD_SETTING);
 	if (!child)
 		return ERR_PTR(-ENODEV);
+
+	/* Check whether child is enabled or not */
+	if (!of_device_is_available(child)) {
+		pr_err("Node %s: Node is not enabled\n", np->name);
+		return ERR_PTR(-ENODEV);
+	}
 
 	prod_num = of_get_child_count(child);
 	if (prod_num <= 0) {
