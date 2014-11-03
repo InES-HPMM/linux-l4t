@@ -18,13 +18,14 @@
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/io.h>
 #include <linux/tegra_prod.h>
 
 #define TEGRA_PROD_SETTING "prod-settings"
 
 /**
- * tegra_prod_get - Read the prod setting form Device tree.
+ * tegra_prod_parse_dt - Read the prod setting form Device tree.
  * @np:		device node from which the property value is to be read.
  * @tegra_prod_list:	the list of tegra prods.
  *
@@ -34,39 +35,50 @@
  *
  * Returns 0 on success.
  */
-static int tegra_prod_get(const struct device_node *np,
+static int tegra_prod_parse_dt(const struct device_node *np,
+		const struct device_node *prod_child,
 		struct tegra_prod_list *tegra_prod_list)
 {
-	int i;
-	int j;
-	int cnt;
-	int ret;
 	struct device_node *child;
 	struct tegra_prod *t_prod;
 	struct prod_tuple *p_tuple;
+	int index;
+	int n_child, j;
+	int n_tupple = 3;
+	int cnt;
+	int ret;
+	int count;
+	u32 pval;
 
 	if (!tegra_prod_list || !tegra_prod_list->tegra_prod) {
 		pr_err("Node %s: Invalid tegra prods list.\n", np->name);
 		return -EINVAL;
 	};
 
-	child = of_get_child_by_name(np, TEGRA_PROD_SETTING);
-	if (!child)
-		return -ENODEV;
+	ret = of_property_read_u32(prod_child, "#prod-cells", &pval);
+	if (!ret)
+		n_tupple = pval;
+	if ((n_tupple != 3) && (n_tupple != 4)) {
+		pr_err("Node %s: Prod cells not supported\n", np->name);
+		return -EINVAL;
+	}
+	tegra_prod_list->n_prod_cells = n_tupple;
 
-	for (i = 0; i < tegra_prod_list->num; i++) {
-		t_prod = (struct tegra_prod *)&tegra_prod_list->tegra_prod[i];
-		t_prod->count = of_property_count_u32(child, t_prod->name);
-		if ((t_prod->count < PROD_TUPLE_NUM) ||
-			(t_prod->count % PROD_TUPLE_NUM != 0)) {
+	n_child = 0;
+	for_each_child_of_node(prod_child, child) {
+		t_prod = &tegra_prod_list->tegra_prod[n_child];
+		t_prod->name = child->name;
+		count = of_property_count_u32(child, "prod");
+		if ((count < n_tupple) || (count % n_tupple != 0)) {
 			pr_err("Node %s: Not found proper setting in %s\n",
-				np->name, t_prod->name);
+				child->name, t_prod->name);
 			ret = -EINVAL;
 			goto err_parsing;
 		}
-		t_prod->count /= PROD_TUPLE_NUM;
-		t_prod->prod_tuple = kzalloc(
-			sizeof(struct prod_tuple) * t_prod->count, GFP_KERNEL);
+
+		t_prod->count = count / n_tupple;
+		t_prod->prod_tuple = kzalloc(sizeof(*p_tuple) * t_prod->count,
+						GFP_KERNEL);
 		if (!t_prod->prod_tuple) {
 			ret = -ENOMEM;
 			goto err_parsing;
@@ -74,30 +86,48 @@ static int tegra_prod_get(const struct device_node *np,
 
 		for (cnt = 0; cnt < t_prod->count; cnt++) {
 			p_tuple = (struct prod_tuple *)&t_prod->prod_tuple[cnt];
-			ret = of_property_read_u32_index(child, t_prod->name,
-				cnt * PROD_TUPLE_NUM, &p_tuple->addr);
+			index = cnt * n_tupple;
+
+			if (n_tupple == 4) {
+				ret = of_property_read_u32_index(child, "prod",
+						index, &p_tuple->index);
+				if (ret) {
+					pr_err("Node %s: Failed to parse %s index\n",
+						child->name, t_prod->name);
+					goto err_parsing;
+				}
+				index++;
+			} else {
+				p_tuple->index = 0;
+			}
+
+			ret = of_property_read_u32_index(child, "prod",
+						index, &p_tuple->addr);
 			if (ret) {
 				pr_err("Node %s: Failed to parse %s address\n",
-					np->name, t_prod->name);
+					child->name, t_prod->name);
 				goto err_parsing;
 			}
+			index++;
 
-			ret = of_property_read_u32_index(child, t_prod->name,
-				cnt * PROD_TUPLE_NUM + 1, &p_tuple->mask);
+			ret = of_property_read_u32_index(child, "prod",
+						index, &p_tuple->mask);
 			if (ret) {
 				pr_err("Node %s: Failed to parse %s mask\n",
-					np->name, t_prod->name);
+					child->name, t_prod->name);
 				goto err_parsing;
 			}
+			index++;
 
-			ret = of_property_read_u32_index(child, t_prod->name,
-				cnt * PROD_TUPLE_NUM + 2, &p_tuple->val);
+			ret = of_property_read_u32_index(child, "prod",
+						index, &p_tuple->val);
 			if (ret) {
 				pr_err("Node %s: Failed to parse %s value\n",
-					np->name, t_prod->name);
+					child->name, t_prod->name);
 				goto err_parsing;
 			}
 		}
+		n_child++;
 	}
 
 	of_node_put(child);
@@ -105,7 +135,7 @@ static int tegra_prod_get(const struct device_node *np,
 
 err_parsing:
 	of_node_put(child);
-	for (j = 0; j <= i; j++) {
+	for (j = 0; j <= n_child; j++) {
 		t_prod = (struct tegra_prod *)&tegra_prod_list->tegra_prod[j];
 		kfree(t_prod->prod_tuple);
 	}
@@ -119,17 +149,17 @@ err_parsing:
  *
  * Returns 0 on success.
  */
-int tegra_prod_set_tuple(void __iomem *base, struct prod_tuple *prod_tuple)
+int tegra_prod_set_tuple(void __iomem **base, struct prod_tuple *prod_tuple)
 {
 	u32 reg;
 
 	if (!prod_tuple)
 		return -EINVAL;
 
-	reg = readl(base + prod_tuple->addr);
+	reg = readl(base[prod_tuple->index] + prod_tuple->addr);
 	reg = ((reg & prod_tuple->mask) |
 		(prod_tuple->val & ~prod_tuple->mask));
-	writel(reg, base + prod_tuple->addr);
+	writel(reg, base[prod_tuple->index] + prod_tuple->addr);
 
 	return 0;
 };
@@ -142,7 +172,7 @@ int tegra_prod_set_tuple(void __iomem *base, struct prod_tuple *prod_tuple)
  * Set all the tuples in one tegra_prod.
  * Returns 0 on success.
  */
-int tegra_prod_set(void __iomem *base, struct tegra_prod *tegra_prod)
+int tegra_prod_set(void __iomem **base, struct tegra_prod *tegra_prod)
 {
 	int i;
 	int ret;
@@ -166,7 +196,7 @@ int tegra_prod_set(void __iomem *base, struct tegra_prod *tegra_prod)
  *
  * Returns 0 on success.
  */
-int tegra_prod_set_list(void __iomem *base,
+int tegra_prod_set_list(void __iomem **base,
 		struct tegra_prod_list *tegra_prod_list)
 {
 	int i;
@@ -195,7 +225,7 @@ int tegra_prod_set_list(void __iomem *base,
  *
  * Returns 0 on success.
  */
-int tegra_prod_set_by_name(void __iomem *base, const char *name,
+int tegra_prod_set_by_name(void __iomem **base, const char *name,
 		struct tegra_prod_list *tegra_prod_list)
 {
 	int i;
@@ -227,54 +257,34 @@ int tegra_prod_set_by_name(void __iomem *base, const char *name,
  */
 struct tegra_prod_list *tegra_prod_init(const struct device_node *np)
 {
-	int prod_num = 0;
-	int ncount;
-	int ret;
-	struct device_node *child;
-	struct property *pp;
 	struct tegra_prod_list *tegra_prod_list;
+	struct device_node *child;
+	int prod_num = 0;
+	int ret;
 
 	child = of_get_child_by_name(np, TEGRA_PROD_SETTING);
 	if (!child)
 		return ERR_PTR(-ENODEV);
 
-	for_each_property_of_node(child, pp) {
-		/* exclusive of the "name" property of dt node */
-		if (!strcmp(pp->name, "name"))
-			continue;
-		prod_num++;
-	}
-
+	prod_num = of_get_child_count(child);
 	if (prod_num <= 0) {
-		ret = -ENODEV;
-		goto err_init;
+		pr_err("Node %s: No child node for prod settings\n", np->name);
+		return  ERR_PTR(-ENODEV);
 	}
 
-	tegra_prod_list = kzalloc(sizeof(struct tegra_prod_list), GFP_KERNEL);
-	if (!tegra_prod_list) {
-		ret = -ENOMEM;
-		goto err_init;
-	}
+	tegra_prod_list = kzalloc(sizeof(*tegra_prod_list), GFP_KERNEL);
+	if (!tegra_prod_list)
+		return  ERR_PTR(-ENOMEM);
 
-	tegra_prod_list->tegra_prod = kzalloc(
-		sizeof(struct tegra_prod) * prod_num, GFP_KERNEL);
+	tegra_prod_list->tegra_prod = kzalloc(prod_num * sizeof(struct tegra_prod),
+						GFP_KERNEL);
 	if (!tegra_prod_list->tegra_prod) {
 		ret = -ENOMEM;
 		goto err_prod_alloc;
 	}
-
-	ncount = 0;
-	for_each_property_of_node(child, pp) {
-		/* exclusive of the "name" property of dt node */
-		if (!strcmp(pp->name, "name"))
-			continue;
-		tegra_prod_list->tegra_prod[ncount].name = pp->name;
-		ncount++;
-	}
-
 	tegra_prod_list->num = prod_num;
 
-	ret = tegra_prod_get(np, tegra_prod_list);
+	ret = tegra_prod_parse_dt(np, child, tegra_prod_list);
 	if (ret) {
 		pr_err("Node %s: Faild to read the Prod Setting.\n", np->name);
 		goto err_get;
@@ -287,9 +297,22 @@ err_get:
 	kfree(tegra_prod_list->tegra_prod);
 err_prod_alloc:
 	kfree(tegra_prod_list);
-err_init:
-	of_node_put(child);
 	return ERR_PTR(ret);
+}
+
+/**
+ * tegra_prod_get - Get the prod list for tegra.
+ * @dev: Device for which prod settings are required.
+ * @name: Name of the prod settings, if NULL then complete list of that device.
+ */
+struct tegra_prod_list *tegra_prod_get(struct device *dev, const char *name)
+{
+	if (!dev || !dev->of_node) {
+		pr_err("Device does not have node pointer\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	return tegra_prod_init(dev->of_node);
 }
 
 /**
@@ -325,4 +348,3 @@ int tegra_prod_release(struct tegra_prod_list **tegra_prod_list)
 	*tegra_prod_list = NULL;
 	return 0;
 }
-
