@@ -13,15 +13,6 @@ obj-y += reset-handler.o trampoline.o
 obj-$(CONFIG_SMP) += platsmp.o
 
 # Temp board files (should be gone when we go DT)
-obj-${CONFIG_MACH_EXUMA}              += board-exuma.o
-obj-${CONFIG_MACH_EXUMA}              += board-exuma-panel.o
-obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-memory.o
-obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-power.o
-obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-sdhci.o
-obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-sensors.o
-obj-${CONFIG_MACH_EXUMA}              += board-ardbeg64-sysedp.o
-obj-${CONFIG_MACH_EXUMA}              += board-t132ref-norrin-power.o
-obj-${CONFIG_MACH_EXUMA}              += board-t132ref-norrin-memory.o
 
 obj-y                   += panel-lgd-wxga-7-0.o
 obj-y                   += panel-p-wuxga-10-1.o
@@ -46,9 +37,6 @@ obj-${CONFIG_MACH_LOKI}               += panel-j-720p-5.o
 
 
 obj-${CONFIG_MACH_T132REF}              += board-t132ref.o
-obj-${CONFIG_MACH_T132REF}              += board-t210ref.o
-obj-${CONFIG_MACH_T132REF}              += board-t210ref-thermal.o
-obj-${CONFIG_MACH_T132REF}              += board-t210ref-camera.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-laguna-power.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-memory.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-sensors.o

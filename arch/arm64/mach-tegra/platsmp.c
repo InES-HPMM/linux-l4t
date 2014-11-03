@@ -31,7 +31,7 @@
 #include "pm-soc.h"
 
 static DECLARE_BITMAP(tegra_cpu_power_up_by_fc, CONFIG_NR_CPUS) __read_mostly;
-struct cpumask *tegra_cpu_power_mask =
+static struct cpumask *tegra_cpu_power_mask =
 				to_cpumask(tegra_cpu_power_up_by_fc);
 #define tegra_cpu_power_map	(*(cpumask_t *)tegra_cpu_power_mask)
 

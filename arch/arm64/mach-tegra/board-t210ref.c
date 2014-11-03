@@ -111,9 +111,6 @@ static struct nvadsp_platform_data nvadsp_plat_data;
 
 static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	/* name		parent		rate		enabled */
-#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
-	{ "pll_m",	NULL,		0,		false},
-#endif
 	{ "hda",	"pll_p",	108000000,	false},
 	{ "hda2codec_2x", "pll_p",	48000000,	false},
 	{ "pwm",	"pll_p",	48000000,	false},
@@ -124,13 +121,6 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	{ "spdif_out",		"pll_a_out0",	6144000,	false},
 	{ "spdif_in",		"pll_p",	48000000,	false},
 	{ "d_audio",	"pll_a_out0",	12288000,	false},
-#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
-	{ "dam0",	"clk_m",	12000000,	false},
-	{ "dam1",	"clk_m",	12000000,	false},
-	{ "dam2",	"clk_m",	12000000,	false},
-	{ "sbc5",	"pll_p",	25000000,	false},
-	{ "sbc6",	"pll_p",	25000000,	false},
-#endif
 	{ "audio1",	"i2s1_sync",	0,		false},
 	{ "audio3",	"i2s3_sync",	0,		false},
 	{ "vi_sensor",	"pll_p",	150000000,	false},
@@ -163,26 +153,6 @@ static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-static struct platform_device *t210ref_devices[] __initdata = {
-#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
-	&tegra_pmu_device,
-	&tegra_ahub_device,
-	&tegra_dam_device0,
-	&tegra_dam_device1,
-	&tegra_dam_device2,
-	&tegra_i2s_device0,
-	&tegra_i2s_device1,
-	&tegra_i2s_device3,
-	&tegra_i2s_device4,
-	&tegra_spdif_device,
-	&spdif_dit_device,
-	&bluetooth_dit_device,
-	&baseband_dit_device,
-	&tegra_offload_device,
-	&tegra30_avp_audio_device,
-#endif
-};
-
 static void t210ref_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
@@ -196,7 +166,6 @@ static void t210ref_usb_init(void)
 	}
 }
 
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra210-sdhci", TEGRA_SDMMC1_BASE,
 			"sdhci-tegra.0", NULL),
@@ -324,69 +293,6 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,ptm", 0x72010000, "ptm", NULL),
 	{}
 };
-#else
-static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
-	T124_SPI_OF_DEV_AUXDATA,
-	OF_DEV_AUXDATA("nvidia,tegra124-apbdma", 0x60020000, "tegra-apbdma",
-			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0x0, "tegra-snd-rt5639",
-			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-se", 0x70012000, "tegra12-se", NULL),
-	OF_DEV_AUXDATA("nvidia,tegra132-dtv", 0x7000c300, "dtv", NULL),
-	OF_DEV_AUXDATA("nvidia,tegra132-udc", 0x7d000000, "tegra-udc.0",
-			&tegra_udc_pdata.u_data.dev),
-	OF_DEV_AUXDATA("nvidia,tegra132-otg", 0x7d000000, "tegra-otg",
-			&tegra_otg_pdata),
-	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
-			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-gk20a", TEGRA_GK20A_BAR0_BASE,
-			"gk20a.0", NULL),
-#ifdef CONFIG_ARCH_TEGRA_VIC
-	OF_DEV_AUXDATA("nvidia,tegra124-vic", TEGRA_VIC_BASE, "vic03.0", NULL),
-#endif
-	OF_DEV_AUXDATA("nvidia,tegra124-msenc", TEGRA_MSENC_BASE, "msenc",
-			NULL),
-#ifdef CONFIG_VI_ONE_DEVICE
-	OF_DEV_AUXDATA("nvidia,tegra124-vi", TEGRA_VI_BASE, "vi", NULL),
-#else
-	OF_DEV_AUXDATA("nvidia,tegra124-vi", TEGRA_VI_BASE, "vi.0", NULL),
-#endif
-	OF_DEV_AUXDATA("nvidia,tegra124-isp", TEGRA_ISP_BASE, "isp.0", NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-isp", TEGRA_ISPB_BASE, "isp.1", NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-tsec", TEGRA_TSEC_BASE, "tsec", NULL),
-	T124_UART_OF_DEV_AUXDATA,
-	T124_I2C_OF_DEV_AUXDATA,
-#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
-	/* supports t210-interposer using t13x */
-	T124_SDMMC_OF_DEV_AUXDATA,
-#endif
-	OF_DEV_AUXDATA("nvidia,tegra124-xhci", 0x70090000, "tegra-xhci",
-			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY_BASE, "tegradc.0",
-			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY2_BASE, "tegradc.1",
-			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-nvavp", 0x60001000, "nvavp",
-			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-pwm", 0x7000a000, "tegra-pwm", NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-dfll", 0x70110000, "tegra_cl_dvfs",
-			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra132-dfll", 0x70040084, "tegra_cl_dvfs",
-			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-efuse", TEGRA_FUSE_BASE, "tegra-fuse",
-			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-camera", 0, "pcl-generic",
-			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra210-ahci-sata", 0x70020000, "tegra-sata.0",
-			NULL),
-	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
-	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power", NULL),
-	OF_DEV_AUXDATA("raydium,rm_ts_spidev", 0, "rm_ts_spidev", NULL),
-	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
-	OF_DEV_AUXDATA("nvidia,ptm", 0x72010000, "ptm", NULL),
-	{}
-};
-#endif
 
 static void __init tegra_t210ref_early_init(void)
 {
@@ -432,14 +338,6 @@ static struct tegra_suspend_platform_data t210ref_suspend_data = {
 	.core_off_timer = 10,
 	.corereq_high   = true,
 	.sysclkreq_high = true,
-#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
-	.cpu_lp2_min_residency = 1000,
-	.min_residency_vmin_fmin = 1000,
-	.min_residency_ncpu_fast = 8000,
-	.min_residency_ncpu_slow = 5000,
-	.min_residency_mclk_stop = 5000,
-	.min_residency_crail = 20000,
-#endif
 };
 
 #define T210REF_CPU_VDD_MIN_UV		703000
@@ -460,11 +358,7 @@ static int __init t210ref_rail_alignment_init(void)
 		offset_uv = T210REF_CPU_VDD_MIN_UV;
 	}
 
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	tegra21x_vdd_cpu_align(step_uv, offset_uv);
-#else
-	tegra13x_vdd_cpu_align(step_uv, offset_uv);
-#endif
 	return 0;
 }
 
@@ -484,16 +378,11 @@ static void __init tegra_t210ref_late_init(void)
 		board_info.minor_revision);
 
 	t210ref_usb_init();
-	platform_add_devices(t210ref_devices, ARRAY_SIZE(t210ref_devices));
 	tegra_io_dpd_init();
 	/* FIXME: Assumed all t210ref platforms have sdhci DT support */
 	t210ref_suspend_init();
 
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	tegra21_emc_init();
-#else
-	tegra12_emc_init();
-#endif
 	isomgr_init();
 	tegra_fb_copy_or_clear();
 
@@ -514,11 +403,7 @@ static void __init tegra_t210ref_late_init(void)
 static void __init tegra_t210ref_init_early(void)
 {
 	t210ref_rail_alignment_init();
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	tegra21x_init_early();
-#else
-	tegra12x_init_early();
-#endif
 }
 
 static int tegra_t210ref_notifier_call(struct notifier_block *nb,
@@ -631,10 +516,6 @@ DT_MACHINE_START(T210REF, "t210ref")
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_t210ref_reserve,
 	.init_early	= tegra_t210ref_init_early,
-#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
-	.smp		= smp_ops(tegra_smp_ops),
-	.init_irq	= irqchip_init,
-#endif
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_t210ref_dt_init,
 	.restart	= tegra_assert_system_reset,
@@ -642,6 +523,4 @@ DT_MACHINE_START(T210REF, "t210ref")
 	.init_late      = tegra_init_late,
 MACHINE_END
 
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 void tegra_pd_in_idle(bool enable) {}
-#endif

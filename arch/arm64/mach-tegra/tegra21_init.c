@@ -29,8 +29,6 @@
 #include "devices.h"
 #include "iomap.h"
 
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-
 #define MC_SECURITY_CFG2        0x7c
 
 #define AHB_ARBITRATION_PRIORITY_CTRL           0x4
@@ -282,4 +280,3 @@ void __init tegra21x_init_early(void)
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 }
-#endif
