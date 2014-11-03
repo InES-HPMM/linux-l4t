@@ -255,4 +255,12 @@
 		droop-restore-ramp = <0x0>;
 		scale-out-ramp = <0x0>;
 	};
+
+        cpu_edp {
+		status = "disabled";
+	};
+
+        gpu_edp {
+		status = "disabled";
+	};
 };
