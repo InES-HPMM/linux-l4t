@@ -43,6 +43,8 @@ For pwm-backlight bindings
  should have its own compatible property.
 
   - compatible: Can be arbitrary, but each child backlight node should have unique name.
+  - pwms: OF device-tree PWM specification (see PWM binding[0]). If pwms is not searched
+    underneath backlight node, then, search pwm device in this node.
 
 [0]: Documentation/devicetree/bindings/pwm/pwm.txt
 
