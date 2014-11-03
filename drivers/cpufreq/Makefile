@@ -1,5 +1,6 @@
 GCOV_PROFILE := y
 
+subdir-ccflags-y += -Werror
 # CPUfreq core
 obj-$(CONFIG_CPU_FREQ)			+= cpufreq.o freq_table.o
 # CPUfreq stats
