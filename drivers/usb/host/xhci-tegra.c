@@ -42,6 +42,7 @@
 #include <linux/of_gpio.h>
 #include <linux/tegra-fuse.h>
 #include <linux/tegra_pm_domains.h>
+#include <linux/tegra_prod.h>
 
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/tegra_usb_pmc.h>
@@ -2004,7 +2005,13 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	u32 reg = 0;
 	unsigned pad;
 	u32 ss_pads;
+	char prod_name[15];
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	if (tegra->prod_list)
+		tegra_prod_set_by_name(&tegra->base_list, "prod",
+				tegra->prod_list);
+#endif
 	reg = padctl_readl(tegra, padregs->usb2_bias_pad_ctlY_0[0]);
 	reg &= ~(USB2_BIAS_HS_SQUELCH_LEVEL | USB2_BIAS_HS_DISCON_LEVEL);
 	reg |= tegra->cdata->hs_squelch_level | tegra->soc_config->hs_disc_lvl;
@@ -4530,6 +4537,10 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	tegra->base_list[1] = tegra->fpci_base;
+	tegra->base_list[2] = tegra->ipfs_base;
+	tegra->base_list[3] = tegra->padctl_base;
+
 	ret = tegra_xusb_partitions_clk_init(tegra);
 	if (ret) {
 		dev_err(&pdev->dev,
@@ -4610,6 +4621,13 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		XUSB_IS_T210(tegra) ? "T210" : "UNKNOWN");
 
 	tegra->padregs = soc_config->padctl_offsets;
+
+	tegra->base_list[0] = tegra->host_phy_virt_base;
+	tegra->prod_list = tegra_prod_init(tegra->pdev->dev.of_node);
+	if (IS_ERR(tegra->prod_list)) {
+		dev_err(&pdev->dev, "Prod settings list not initialized\n");
+		tegra->prod_list = NULL;
+	}
 
 	if (pex_usb_pad_pll_reset_deassert())
 		dev_err(&pdev->dev, "error deassert pex pll\n");
@@ -4889,6 +4907,9 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	tegra_usb2_clocks_deinit(tegra);
 	if (!tegra->hc_in_elpg)
 		tegra_xusb_partitions_clk_deinit(tegra);
+
+	if (tegra->prod_list)
+		tegra_prod_release(&tegra->prod_list);
 
 	tegra_pd_remove_device(&pdev->dev);
 	platform_set_drvdata(pdev, NULL);

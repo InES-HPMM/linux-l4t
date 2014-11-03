@@ -413,6 +413,9 @@ struct tegra_xhci_hcd {
 	struct tegra_xhci_firmware_log log;
 	struct device_attribute hsic_power_attr[XUSB_HSIC_COUNT];
 
+	struct tegra_prod_list *prod_list;
+	void __iomem *base_list[4];
+
 	bool init_done;
 };
 

@@ -18,6 +18,7 @@
  */
 
 #include <linux/platform_device.h>
+#include <linux/tegra_prod.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 #include "xhci-tegra.h"
 #include "xhci-tegra-t210-padreg.h"
@@ -76,49 +77,30 @@
 #define PADCTL_USB2_BATTERY_CHRG_OTGPAD_BASE 0x84
 #define VREG_FIX18_OFFSET 0x6
 
+#define XUSB_PROD_PREFIX_UTMI	"prod_c_utmi"
+#define XUSB_PROD_PREFIX_HSIC	"prod_c_hsic"
+#define XUSB_PROD_PREFIX_SS	"prod_c_ss"
+
 void t210_program_utmi_pad(struct tegra_xhci_hcd *tegra, u8 port)
 {
+	char prod_name[15];
+
+	sprintf(prod_name, XUSB_PROD_PREFIX_UTMI "%d", port);
+	tegra_prod_set_by_name(&tegra->base_list, prod_name,
+				tegra->prod_list);
 	xusb_utmi_pad_init(port, USB2_PORT_CAP_HOST(port)
 		, tegra->bdata->uses_external_pmic);
 }
 
 void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port)
 {
-	u32 ctl1, ctl2, ctl3, ctl4, ctl6, val;
+	char prod_name[15];
 
+	sprintf(prod_name, XUSB_PROD_PREFIX_SS "%d", port);
+	tegra_prod_set_by_name(&tegra->base_list, prod_name,
+					tegra->prod_list);
 	xusb_ss_pad_init(port, GET_SS_PORTMAP(tegra->bdata->ss_portmap, port)
 			, XUSB_HOST_MODE);
-
-	ctl1 = tegra->padregs->uphy_usb3_padX_ectlY_0[port][0];
-	ctl2 = tegra->padregs->uphy_usb3_padX_ectlY_0[port][1];
-	ctl3 = tegra->padregs->uphy_usb3_padX_ectlY_0[port][2];
-	ctl4 = tegra->padregs->uphy_usb3_padX_ectlY_0[port][3];
-	ctl6 = tegra->padregs->uphy_usb3_padX_ectlY_0[port][5];
-
-	val = padctl_readl(tegra, ctl1);
-	val &= ~TX_TERM_CTRL(~0);
-	val |= TX_TERM_CTRL(tegra->soc_config->tx_term_ctrl);
-	padctl_writel(tegra, val, ctl1);
-
-	val = padctl_readl(tegra, ctl2);
-	val &= ~RX_CTLE(~0);
-	val |= RX_CTLE(tegra->soc_config->rx_ctle);
-	padctl_writel(tegra, val, ctl2);
-
-	val = padctl_readl(tegra, ctl3);
-	val &= ~RX_DFE(~0);
-	val |= RX_DFE(tegra->soc_config->rx_dfe);
-	padctl_writel(tegra, val, ctl3);
-
-	val = padctl_readl(tegra, ctl4);
-	val &= ~RX_CDR_CTRL(~0);
-	val |= RX_CDR_CTRL(tegra->soc_config->rx_cdr_ctrl);
-	padctl_writel(tegra, val, ctl4);
-
-	val = padctl_readl(tegra, ctl6);
-	val &= ~RX_EQ_CTRL_H(~0);
-	val |= RX_EQ_CTRL_H(tegra->soc_config->rx_eq_ctrl_h);
-	padctl_writel(tegra, val, ctl6);
 }
 
 int t210_hsic_pad_enable(struct tegra_xhci_hcd *tegra, u8 pad)
@@ -126,6 +108,7 @@ int t210_hsic_pad_enable(struct tegra_xhci_hcd *tegra, u8 pad)
 	struct device *dev = &tegra->pdev->dev;
 	struct tegra_xusb_hsic_config *hsic = &tegra->bdata->hsic[pad];
 	u32 mask, val;
+	char prod_name[15];
 
 	if (pad >= 2) {
 		dev_err(dev, "%s invalid HSIC pad number %d\n", __func__, pad);
@@ -134,8 +117,9 @@ int t210_hsic_pad_enable(struct tegra_xhci_hcd *tegra, u8 pad)
 
 	dev_dbg(dev, "%s pad %u\n", __func__, pad);
 
-	tegra_usb_pad_reg_update(HSIC_STRB_TRIM_CONTROL_0, STRB_TRIM_VAL(~0),
-		STRB_TRIM_VAL(hsic->strb_trim_val));
+	sprintf(prod_name, XUSB_PROD_PREFIX_HSIC "%d", pad);
+	tegra_prod_set_by_name(&tegra->base_list, prod_name,
+				tegra->prod_list);
 
 	/* keep HSIC in IDLE */
 	mask = RPD_DATA | RPD_STROBE | RPU_DATA | RPU_STROBE;
