@@ -60,6 +60,8 @@ config ARCH_TEGRA_21x_SOC
 	select HAVE_FUNCTION_TRACER
 	select TEGRA_HMP_CLUSTER_CONTROL
 	select CMA
+	select NVMAP_CACHE_MAINT_BY_SET_WAYS if TEGRA_NVMAP
+	select NVMAP_CACHE_MAINT_BY_SET_WAYS_ON_ONE_CPU if TEGRA_NVMAP
 	help
 	  Support for NVIDIA Tegra 21x family of SoCs, based upon the
 	  NVIDIA Denver CPU
