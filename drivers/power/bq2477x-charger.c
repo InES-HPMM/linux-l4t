@@ -108,12 +108,6 @@ static int bq2477x_read(struct bq2477x_chip *bq2477x,
 	return regmap_read(bq2477x->regmap, reg, val);
 }
 
-static int bq2477x_read_word(struct bq2477x_chip *bq2477x,
-	unsigned int reg, unsigned int *val)
-{
-	return regmap_read(bq2477x->regmap_word, reg, val);
-}
-
 static int bq2477x_write(struct bq2477x_chip *bq2477x,
 	unsigned int reg, unsigned int val)
 {
@@ -174,7 +168,6 @@ static int bq2477x_show_chip_version(struct bq2477x_chip *bq2477x)
 static int bq2477x_hw_init(struct bq2477x_chip *bq2477x)
 {
 	int ret = 0;
-	unsigned int val;
 
 	/* Configure control */
 	ret = bq2477x_write(bq2477x, BQ2477X_CHARGE_OPTION_0_MSB,
@@ -227,7 +220,6 @@ static void bq2477x_work_thread(struct kthread_work *work)
 	struct bq2477x_chip *bq2477x = container_of(work,
 					struct bq2477x_chip, bq_wdt_work);
 	int ret;
-	unsigned int val;
 
 	for (;;) {
 		ret = bq2477x_hw_init(bq2477x);
