@@ -1,6 +1,7 @@
 /*
- *  i2c-pca-gmi.c driver for PCA9564 on ISA boards
- *	Copyright (C) 2013 NVIDIA Corporation
+ * Copyright (C) 2013-2014, NVIDIA Corporation. All rights reserved.
+ *
+ * i2c-pca-gmi.c driver for PCA9564 on ISA boards
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -102,7 +103,7 @@ static void pca_gmi_writebyte(void *pd, int reg, int val)
 	struct tegra_nor_chip_parms *chip_parm = info->plat;
 	struct cs_info *csinfo = &chip_parm->csinfo;
 	unsigned int *ptr = csinfo->virt;
-	struct gpio_state *state = &csinfo->gpio_cs;
+	struct gpio_state *state = csinfo->gpio_cs;
 
 	snor_tegra_writel(info, info->init_config, TEGRA_SNOR_CONFIG_REG);
 	snor_tegra_writel(info, info->timing1_read, TEGRA_SNOR_TIMING1_REG);
@@ -117,7 +118,7 @@ static int pca_gmi_readbyte(void *pd, int reg)
 	struct tegra_nor_chip_parms *chip_parm = info->plat;
 	struct cs_info *csinfo = &chip_parm->csinfo;
 	unsigned int *ptr = csinfo->virt;
-	struct gpio_state *state = &csinfo->gpio_cs;
+	struct gpio_state *state = csinfo->gpio_cs;
 
 	snor_tegra_writel(info, info->init_config, TEGRA_SNOR_CONFIG_REG);
 	snor_tegra_writel(info, info->timing1_read, TEGRA_SNOR_TIMING1_REG);
@@ -242,7 +243,7 @@ static int tegra_gmi_pca_probe(struct platform_device *pdev)
 	int err_int = 0;
 	struct tegra_nor_chip_parms *plat = pdev->dev.platform_data;
 	struct cs_info *csinfo = &plat->csinfo;
-	struct gpio_state *state = &csinfo->gpio_cs;
+	struct gpio_state *state = csinfo->gpio_cs;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
 
