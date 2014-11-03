@@ -127,7 +127,7 @@ static int tegra_wake_event_irq[] = {
 	-EAGAIN,				/* wake36 */
 	-EINVAL,				/* wake37 */
 	-EINVAL,				/* wake38 */
-	-EINVAL,				/* wake39 */
+	INT_USB,				/* wake39 */
 	-EINVAL,				/* wake40 */
 	-EINVAL,				/* wake41 */
 	-EINVAL,				/* wake42 */
