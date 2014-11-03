@@ -1648,28 +1648,60 @@ static int tegra_pcie_lane_iddq(bool enable, int lane_owner)
 	return 0;
 }
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+static void tegra_pcie_lane_aux_idle(bool ovdr, int lane)
+{
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	unsigned long val;
+	u16 misc_pad_ctl1_regs[] = {
+		[PEX_P0] = XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL2,
+		[PEX_P1] = XUSB_PADCTL_UPHY_MISC_PAD_P1_CTL2,
+		[PEX_P2] = XUSB_PADCTL_UPHY_MISC_PAD_P2_CTL2,
+		[PEX_P3] = XUSB_PADCTL_UPHY_MISC_PAD_P3_CTL2,
+		[PEX_P4] = XUSB_PADCTL_UPHY_MISC_PAD_P4_CTL2,
+	};
+
+	if (!ovdr)
+		return;
+	/* reduce idle detect threshold for compliance purpose */
+	val = readl(pad_base + misc_pad_ctl1_regs[lane]);
+	val &= ~XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL1_AUX_RX_IDLE_TH_MASK;
+	val |= XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL1_AUX_RX_IDLE_TH;
+	writel(val, pad_base + misc_pad_ctl1_regs[lane]);
+}
+#endif
+
 static void tegra_pcie_lane_misc_pad_override(bool ovdr, int lane_owner)
 {
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 	switch (lane_owner) {
 	case PCIE_LANES_X4_X1:
 		tegra_xusb_uphy_misc(ovdr, PEX_P0);
+		tegra_pcie_lane_aux_idle(ovdr, PEX_P0);
 		/* fall through */
 	case PCIE_LANES_X4_X0:
 		tegra_xusb_uphy_misc(ovdr, PEX_P1);
+		tegra_pcie_lane_aux_idle(ovdr, PEX_P1);
 		tegra_xusb_uphy_misc(ovdr, PEX_P2);
+		tegra_pcie_lane_aux_idle(ovdr, PEX_P2);
 		tegra_xusb_uphy_misc(ovdr, PEX_P3);
+		tegra_pcie_lane_aux_idle(ovdr, PEX_P3);
 		tegra_xusb_uphy_misc(ovdr, PEX_P4);
+		tegra_pcie_lane_aux_idle(ovdr, PEX_P4);
 		break;
 	case PCIE_LANES_X2_X1:
 		tegra_xusb_uphy_misc(ovdr, PEX_P0);
+		tegra_pcie_lane_aux_idle(ovdr, PEX_P0);
 		/* fall through */
 	case PCIE_LANES_X2_X0:
 		tegra_xusb_uphy_misc(ovdr, PEX_P1);
+		tegra_pcie_lane_aux_idle(ovdr, PEX_P1);
 		tegra_xusb_uphy_misc(ovdr, PEX_P2);
+		tegra_pcie_lane_aux_idle(ovdr, PEX_P2);
 		break;
 	case PCIE_LANES_X0_X1:
 		tegra_xusb_uphy_misc(ovdr, PEX_P0);
+		tegra_pcie_lane_aux_idle(ovdr, PEX_P0);
 		break;
 	}
 #endif
