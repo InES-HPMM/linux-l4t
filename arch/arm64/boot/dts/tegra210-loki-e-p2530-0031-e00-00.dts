@@ -217,11 +217,11 @@
 			interrupts = <0 0 3>;
 			extcon-adc-jack,irq-flags = <3>;
 			extcon-adc-jack,cable-names = "ID-GND", "ID-NV", "ID-RA", "ID-RB", "ID-RC";
-			extcon-adc-jack,states = <0x1    0     20
-						  0x2    50    100
-						  0x4    380   415
-						  0x8    215   245
-						  0x10    115   140>;
+			extcon-adc-jack,states = <0x1    0     21
+						  0x2    54    85
+						  0x4    354   458
+						  0x8    204   271
+						  0x10   113   153>;
 			io-channels = <&ads1015 4>;
 			io-channel-names = "id-resistance";
 			#extcon-cells = <1>;
