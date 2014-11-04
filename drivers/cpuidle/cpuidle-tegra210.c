@@ -380,11 +380,11 @@ static struct t210_idle_state t210_idle_states[CPUIDLE_STATE_MAX] = {
 	[4] = { /* CC6 */
 		.cluster = {
 			[0] = {
-				.residency = 50000,
+				.residency = 10000,
 				.latency = 230,
 			},
 			[1] = {
-				.residency = 50000,
+				.residency = 10000,
 				.latency = 230,
 			},
 		},
