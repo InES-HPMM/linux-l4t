@@ -1338,22 +1338,6 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	if (tegra_host->gov_data != NULL)
 		tegra_host->gov_data->freq_switch_count = 0;
 
-	vendor_ctrl = sdhci_readl(host, SDHCI_VNDR_CLK_CTRL);
-	if (soc_data->nvquirks & NVQUIRK_ENABLE_PADPIPE_CLKEN) {
-		vendor_ctrl |=
-			SDHCI_VNDR_CLK_CTRL_PADPIPE_CLKEN_OVERRIDE;
-	}
-	if (soc_data->nvquirks & NVQUIRK_DISABLE_SPI_MODE_CLKEN) {
-		vendor_ctrl &=
-			~SDHCI_VNDR_CLK_CTRL_SPI_MODE_CLKEN_OVERRIDE;
-	}
-	if (soc_data->nvquirks & NVQUIRK_EN_FEEDBACK_CLK) {
-		vendor_ctrl &=
-			~SDHCI_VNDR_CLK_CTRL_INPUT_IO_CLK;
-	} else {
-		vendor_ctrl |= SDHCI_VNDR_CLK_CTRL_INTERNAL_CLK;
-	}
-
 	if (soc_data->nvquirks & NVQUIRK_SET_TAP_DELAY) {
 		if ((tegra_host->tuning_status == TUNING_STATUS_DONE)
 			&& (host->mmc->pm_flags & MMC_PM_KEEP_POWER)) {
@@ -1370,12 +1354,24 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		} else {
 			best_tap_value = tegra_host->plat->tap_delay;
 		}
-		vendor_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TAP_VALUE_MASK <<
-				SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
-		vendor_ctrl |= (best_tap_value <<
-				SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+		sdhci_tegra_set_tap_delay(host, best_tap_value);
 	}
 
+	vendor_ctrl = sdhci_readl(host, SDHCI_VNDR_CLK_CTRL);
+	if (soc_data->nvquirks & NVQUIRK_ENABLE_PADPIPE_CLKEN) {
+		vendor_ctrl |=
+			SDHCI_VNDR_CLK_CTRL_PADPIPE_CLKEN_OVERRIDE;
+	}
+	if (soc_data->nvquirks & NVQUIRK_DISABLE_SPI_MODE_CLKEN) {
+		vendor_ctrl &=
+			~SDHCI_VNDR_CLK_CTRL_SPI_MODE_CLKEN_OVERRIDE;
+	}
+	if (soc_data->nvquirks & NVQUIRK_EN_FEEDBACK_CLK) {
+		vendor_ctrl &=
+			~SDHCI_VNDR_CLK_CTRL_INPUT_IO_CLK;
+	} else {
+		vendor_ctrl |= SDHCI_VNDR_CLK_CTRL_INTERNAL_CLK;
+	}
 	if (soc_data->nvquirks & NVQUIRK_SET_TRIM_DELAY) {
 		vendor_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_MASK <<
 		SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
@@ -2158,6 +2154,7 @@ static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
 {
 	u32 vendor_ctrl;
 	u16 clk;
+	bool card_clk_enabled;
 
 	/* Max tap delay value is 255 */
 	if (tap_delay > MAX_TAP_VALUES) {
@@ -2167,15 +2164,21 @@ static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
 		dump_stack();
 		return;
 	}
+
+	card_clk_enabled = sdhci_readw(sdhci, SDHCI_CLOCK_CONTROL) &
+				SDHCI_CLOCK_CARD_EN;
+
+	if (card_clk_enabled) {
+		clk = sdhci_readw(sdhci, SDHCI_CLOCK_CONTROL);
+		clk &= ~SDHCI_CLOCK_CARD_EN;
+		sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
+	}
+
 	if (!(sdhci->quirks2 & SDHCI_QUIRK2_NON_STANDARD_TUNING)) {
 		vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_TUN_CTRL0_0);
 		vendor_ctrl &= ~SDHCI_VNDR_TUN_CTRL0_TUN_HW_TAP;
 		sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_TUN_CTRL0_0);
 	}
-
-	clk = sdhci_readw(sdhci, SDHCI_CLOCK_CONTROL);
-	clk &= ~SDHCI_CLOCK_CARD_EN;
-	sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
 
 	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
 	vendor_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TAP_VALUE_MASK <<
@@ -2183,14 +2186,18 @@ static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
 	vendor_ctrl |= (tap_delay << SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
 	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_CLK_CTRL);
 
-	clk = sdhci_readw(sdhci, SDHCI_CLOCK_CONTROL);
-	clk |= SDHCI_CLOCK_CARD_EN;
-	sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
-
 	if (!(sdhci->quirks2 & SDHCI_QUIRK2_NON_STANDARD_TUNING)) {
 		vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_TUN_CTRL0_0);
 		vendor_ctrl |= SDHCI_VNDR_TUN_CTRL0_TUN_HW_TAP;
 		sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_TUN_CTRL0_0);
+		udelay(1);
+		tegra_sdhci_reset(sdhci, SDHCI_RESET_CMD|SDHCI_RESET_DATA);
+	}
+
+	if (card_clk_enabled) {
+		clk = sdhci_readw(sdhci, SDHCI_CLOCK_CONTROL);
+		clk |= SDHCI_CLOCK_CARD_EN;
+		sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
 	}
 }
 
