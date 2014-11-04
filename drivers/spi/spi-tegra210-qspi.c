@@ -151,7 +151,11 @@
 #define TX_FIFO_EMPTY_COUNT_MAX			SPI_TX_FIFO_EMPTY_COUNT(0x40)
 #define RX_FIFO_FULL_COUNT_ZERO			SPI_RX_FIFO_FULL_COUNT(0)
 
-#define MAX_CHIP_SELECT				1
+/*
+ * NOTE: Actual chip has only one CS. Below is WAR to enable
+ * spidev and mtd layer register same time.
+ */
+#define MAX_CHIP_SELECT				2
 #define QSPI_FIFO_DEPTH				64
 #define QSPI_FIFO_FLUSH_MAX_DELAY		2000
 #define QSPI_DEBUG_BUILD			1
@@ -667,7 +671,7 @@ static int tegra_qspi_init_dma_param(struct tegra_qspi_data *tqspi,
 	dma_chan = dma_request_channel(mask, NULL, NULL);
 	if (!dma_chan) {
 		dev_err(tqspi->dev,
-				"Dma channel is not available, will try later\n");
+			"Dma channel is not available, will try later\n");
 		return -EPROBE_DEFER;
 	}
 
@@ -1308,7 +1312,7 @@ static int tegra_qspi_probe(struct platform_device *pdev)
 		bus_num = of_alias_get_id(pdev->dev.of_node, "qspi");
 		if (bus_num < 0) {
 			dev_warn(&pdev->dev,
-					"Dynamic bus number will be registerd\n");
+				"Dynamic bus number will be registerd\n");
 			bus_num = -1;
 		}
 	} else {

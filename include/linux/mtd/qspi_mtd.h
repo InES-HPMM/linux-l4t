@@ -62,10 +62,13 @@ enum qspi_operation_mode {
 	DDR_QUAD_IO_READ,
 	PAGE_PROGRAM,
 	QUAD_PAGE_PROGRAM,
+	QPI_PAGE_PROGRAM,
 	READ_ID,
 	ERASE_SECT,
 	ERASE_BULK,
 	STATUS_READ,
+	READ_ANY_REG,
+	WRITE_ANY_REG,
 	OPERATION_MAX_LIMIT,
 };
 
@@ -113,13 +116,13 @@ struct qcmdset cmd_info_table[OPERATION_MAX_LIMIT] = {
 	/* DUAL_IO_READ */
 	{ {.op_code = 0xBC, .is_ddr = FALSE, .bus_width = X1, .post_txn = 2},
 		{.address = 0, .is_ddr = FALSE, .len = 4,
-			.bus_width = X2, .dummy_cycles = 8},
+			.bus_width = X2, .dummy_cycles = 24},
 		{.is_ddr = FALSE, .bus_width = X2}
 	},
 	/* QUAD_IO_READ */
 	{ {.op_code = 0xEC, .is_ddr = FALSE, .bus_width = X1, .post_txn = 2},
 		{.address = 0, .is_ddr = FALSE, .len = 4,
-			.bus_width = X4, .dummy_cycles = 24},
+			.bus_width = X4, .dummy_cycles = 40},
 		{.is_ddr = FALSE, .bus_width = X4}
 	},
 	/* DDR_FAST_READ */
@@ -137,7 +140,7 @@ struct qcmdset cmd_info_table[OPERATION_MAX_LIMIT] = {
 	/* DDR_QUAD_IO_READ  Spansion - 56 Micron - 64 Dummy Cycles */
 	{ {.op_code = 0xEE, .is_ddr = FALSE, .bus_width = X1, .post_txn = 2},
 		{.address = 0, .is_ddr = TRUE, .len = 4,
-			.bus_width = X4, .dummy_cycles = 64},
+			.bus_width = X4, .dummy_cycles = 72},
 		{.is_ddr = TRUE, .bus_width = X4}
 	},
 	/* PAGE_PROGRAM */
@@ -150,6 +153,12 @@ struct qcmdset cmd_info_table[OPERATION_MAX_LIMIT] = {
 	{ {.op_code = 0x34, .is_ddr = FALSE, .bus_width = X1, .post_txn = 2},
 		{.address = 0, .is_ddr = FALSE, .len = 4,
 			.bus_width = X1, .dummy_cycles = 0},
+		{.is_ddr = FALSE, .bus_width = X4}
+	},
+	/* QPI_PAGE_PROGRAM */
+	{ {.op_code = 0x12, .is_ddr = FALSE, .bus_width = X4, .post_txn = 2},
+		{.address = 0, .is_ddr = FALSE, .len = 4,
+			.bus_width = X4, .dummy_cycles = 0},
 		{.is_ddr = FALSE, .bus_width = X4}
 	},
 	/* READ ID*/
@@ -173,6 +182,18 @@ struct qcmdset cmd_info_table[OPERATION_MAX_LIMIT] = {
 	/* STATUS READ */
 	{ {.op_code = 0x01, .is_ddr = FALSE, .bus_width = X1, .post_txn = 1},
 		{.address = 0, .is_ddr = FALSE, .len = 4,
+			.bus_width = X1, .dummy_cycles = 0},
+		{.is_ddr = FALSE, .bus_width = X1}
+	},
+	/* READ_ANY_REG */
+	{ {.op_code = 0x65, .is_ddr = FALSE, .bus_width = X1, .post_txn = 2},
+		{.address = 0, .is_ddr = FALSE, .len = 3,
+			.bus_width = X1, .dummy_cycles = 1},
+		{.is_ddr = FALSE, .bus_width = X1}
+	},
+	/* WRITE_ANY_REG */
+	{ {.op_code = 0x71, .is_ddr = FALSE, .bus_width = X1, .post_txn = 2},
+		{.address = 0, .is_ddr = FALSE, .len = 3,
 			.bus_width = X1, .dummy_cycles = 0},
 		{.is_ddr = FALSE, .bus_width = X1}
 	},
@@ -212,6 +233,8 @@ struct qspi {
 	u16			addr_width;
 	u8			erase_opcode;
 	struct qcmdset		cmd_table;
+	u8			curr_cmd_mode;
+	u8			is_quad_set;
 };
 
 /*
@@ -243,7 +266,7 @@ static const struct spi_device_id qspi_ids[] = {
 	/* Spansion -- single (large) sector size only, at least
 	 * for the chips listed here (without boot sectors).
 	 */
-	{ "s25fl512s",  INFO(0x010220, 0x4d00, 256 * 1024, 256, 512, 0)},
+	{ "s25fl512s",  INFO(0x012018, 0x0000, 64 * 1024, 256, 256, 0)},
 	{ "MT25QL512AB",  INFO(0x20BA20, 0x0000, 256 * 1024, 256, 256, 0)},
 	{ },
 };
