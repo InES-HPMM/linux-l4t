@@ -54,6 +54,12 @@ static unsigned long adsp_cpu_freq_table[] = {
 	256000000,
 	307200000,
 	358400000,
+	409600000,
+	460800000,
+	512000000,
+	563200000,
+	614400000,
+
 };
 
 struct adsp_dfs_policy {
