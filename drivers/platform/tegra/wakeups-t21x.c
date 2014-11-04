@@ -128,11 +128,11 @@ static int tegra_wake_event_irq[] = {
 	-EINVAL,				/* wake37 */
 	-EINVAL,				/* wake38 */
 	INT_USB,				/* wake39 */
-	-EINVAL,				/* wake40 */
-	-EINVAL,				/* wake41 */
-	-EINVAL,				/* wake42 */
+	INT_USB2,				/* wake40 */
+	INT_USB2,				/* wake41 */
+	INT_USB2,				/* wake42 */
 	-EINVAL,				/* wake43 */
-	-EINVAL,				/* wake44 */
+	INT_XUSB_PADCTL,			/* wake44 */
 	-EAGAIN,				/* wake45 */
 	-EINVAL,				/* wake46 */
 	-EAGAIN, /* CAM_I2C_SCL */		/* wake47 */
