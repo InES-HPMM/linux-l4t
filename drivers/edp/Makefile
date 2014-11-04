@@ -1,5 +1,6 @@
 GCOV_PROFILE := y
 
+subdir-ccflags-y += -Werror
 obj-$(CONFIG_SYSEDP_FRAMEWORK) += sysedp.o
 obj-$(CONFIG_SYSEDP_FRAMEWORK) += sysedp_sysfs.o
 obj-$(CONFIG_SYSEDP_FRAMEWORK) += sysedp_dynamic_capping.o
