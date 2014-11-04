@@ -776,6 +776,18 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   MODS_FIND_PCI_CLASS_CODE);
 		break;
 
+	case MODS_ESC_PCI_GET_BAR_INFO:
+		MODS_IOCTL(MODS_ESC_PCI_GET_BAR_INFO,
+			   esc_mods_pci_get_bar_info,
+			   MODS_PCI_GET_BAR_INFO);
+		break;
+
+	case MODS_ESC_PCI_GET_IRQ:
+		MODS_IOCTL(MODS_ESC_PCI_GET_IRQ,
+			   esc_mods_pci_get_irq,
+			   MODS_PCI_GET_IRQ);
+		break;
+
 	case MODS_ESC_PCI_READ:
 		MODS_IOCTL(MODS_ESC_PCI_READ, esc_mods_pci_read, MODS_PCI_READ);
 		break;
@@ -827,6 +839,12 @@ static long mods_krnl_ioctl(struct file  *fp,
 	case MODS_ESC_GET_PHYSICAL_ADDRESS:
 		MODS_IOCTL(MODS_ESC_GET_PHYSICAL_ADDRESS,
 			   esc_mods_get_phys_addr,
+			   MODS_GET_PHYSICAL_ADDRESS);
+		break;
+
+	case MODS_ESC_GET_MAPPED_PHYSICAL_ADDRESS:
+		MODS_IOCTL(MODS_ESC_GET_MAPPED_PHYSICAL_ADDRESS,
+			   esc_mods_get_mapped_phys_addr,
 			   MODS_GET_PHYSICAL_ADDRESS);
 		break;
 

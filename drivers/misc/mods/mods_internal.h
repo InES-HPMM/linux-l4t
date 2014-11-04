@@ -79,6 +79,10 @@ struct MODS_PHYS_CHUNK {
 	u64          dma_addr:58; /* phys addr (or machine addr on XEN) */
 	u32          order:5;     /* 1<<order = number of contig pages */
 	int          allocated:1;
+#if defined(CONFIG_PPC64)
+	u64          map_addr;
+		/* pci_map_page() addr on PPC64LE (else same as dma_addr) */
+#endif
 	struct page *p_page;
 };
 
@@ -92,6 +96,10 @@ struct MODS_MEM_INFO {
 	u32		 max_chunks;   /* max number of contig chunks */
 	u32		 addr_bits;    /* phys addr size requested */
 	int		 numa_node;    /* numa node for the allocation */
+
+#if defined(CONFIG_PPC64)
+	struct pci_dev  *dev;          /* pci_dev to map the page to */
+#endif
 
 	struct list_head list;
 
@@ -211,8 +219,8 @@ struct mods_priv {
 #	define MODS_SET_MEMORY_WC MODS_SET_MEMORY_UC
 #	define MODS_SET_MEMORY_WB(addr, pages) \
 	       change_page_attr(virt_to_page(addr), pages, PAGE_KERNEL)
-#elif defined(CONFIG_ARCH_TEGRA) && !defined(CONFIG_CPA) && \
-	  !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#elif (defined(CONFIG_ARCH_TEGRA) && !defined(CONFIG_CPA) && \
+	  !defined(CONFIG_ARCH_TEGRA_3x_SOC)) || defined(CONFIG_PPC64)
 #	define MODS_SET_MEMORY_UC(addr, pages) 0
 #	define MODS_SET_MEMORY_WC(addr, pages) 0
 #	define MODS_SET_MEMORY_WB(addr, pages) 0
@@ -266,7 +274,8 @@ struct mods_priv {
 ({									     \
 	struct pci_dev *__dev = NULL;					     \
 	while ((__dev = pci_get_device(PCI_ANY_ID, PCI_ANY_ID, __dev))) {    \
-		if (__dev->bus->number == mybus				     \
+		if (pci_domain_nr(__dev->bus) == 0			     \
+		    && __dev->bus->number == mybus			     \
 		    && __dev->devfn == devfn)				     \
 			break;						     \
 	}								     \
@@ -328,6 +337,8 @@ int esc_mods_free_pages(struct file *, struct MODS_FREE_PAGES *);
 int esc_mods_set_mem_type(struct file *, struct MODS_MEMORY_TYPE *);
 int esc_mods_get_phys_addr(struct file *,
 			  struct MODS_GET_PHYSICAL_ADDRESS *);
+int esc_mods_get_mapped_phys_addr(struct file *,
+			  struct MODS_GET_PHYSICAL_ADDRESS *);
 int esc_mods_virtual_to_phys(struct file *,
 			    struct MODS_VIRTUAL_TO_PHYSICAL *);
 int esc_mods_phys_to_virtual(struct file *,
@@ -346,6 +357,8 @@ int esc_mods_acpi_get_ddc(struct file *, struct MODS_ACPI_GET_DDC *);
 int esc_mods_find_pci_dev(struct file *, struct MODS_FIND_PCI_DEVICE *);
 int esc_mods_find_pci_class_code(struct file *,
 				struct MODS_FIND_PCI_CLASS_CODE *);
+int esc_mods_pci_get_bar_info(struct file *, struct MODS_PCI_GET_BAR_INFO *);
+int esc_mods_pci_get_irq(struct file *, struct MODS_PCI_GET_IRQ *);
 int esc_mods_pci_read(struct file *, struct MODS_PCI_READ *);
 int esc_mods_pci_write(struct file *, struct MODS_PCI_WRITE *);
 int esc_mods_pci_bus_add_dev(struct file *,

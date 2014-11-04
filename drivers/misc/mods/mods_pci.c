@@ -39,7 +39,7 @@ int esc_mods_find_pci_dev(struct file *pfile, struct MODS_FIND_PCI_DEVICE *p)
 	dev = pci_get_device(p->vendor_id, p->device_id, NULL);
 
 	while (dev) {
-		if (index == p->index) {
+		if (index == p->index && pci_domain_nr(dev->bus) == 0) {
 			p->bus_number	  = dev->bus->number;
 			p->device_number   = PCI_SLOT(dev->devfn);
 			p->function_number = PCI_FUNC(dev->devfn);
@@ -64,9 +64,9 @@ int esc_mods_find_pci_class_code(struct file *pfile,
 	dev = pci_get_class(p->class_code, NULL);
 
 	while (dev) {
-		if (index == p->index) {
+		if (index == p->index && pci_domain_nr(dev->bus) == 0) {
 			p->bus_number		= dev->bus->number;
-			p->device_number		= PCI_SLOT(dev->devfn);
+			p->device_number	= PCI_SLOT(dev->devfn);
 			p->function_number	= PCI_FUNC(dev->devfn);
 			return OK;
 		}
@@ -75,6 +75,71 @@ int esc_mods_find_pci_class_code(struct file *pfile,
 	}
 
 	return -EINVAL;
+}
+
+int esc_mods_pci_get_bar_info(struct file *pfile,
+			      struct MODS_PCI_GET_BAR_INFO *p)
+{
+	struct pci_dev *dev;
+	unsigned int devfn, bar_resource_offset, i;
+#if !defined(MODS_HAS_IORESOURCE_MEM_64)
+	__u32 temp;
+#endif
+
+	devfn = PCI_DEVFN(p->pci_device.device, p->pci_device.function);
+	dev = MODS_PCI_GET_SLOT(p->pci_device.bus, devfn);
+
+	if (dev == NULL)
+		return -EINVAL;
+
+	mods_debug_printk(DEBUG_PCICFG,
+			  "pci get bar info %x:%02x:%x, bar index %d\n",
+			  (int) p->pci_device.bus, (int) p->pci_device.device,
+			  (int) p->pci_device.function, (int) p->bar_index);
+
+	bar_resource_offset = 0;
+	for (i = 0; i < p->bar_index; i++) {
+#if defined(MODS_HAS_IORESOURCE_MEM_64)
+		if (pci_resource_flags(dev, bar_resource_offset)
+		    & IORESOURCE_MEM_64) {
+#else
+		pci_read_config_dword(dev,
+				      (PCI_BASE_ADDRESS_0
+				       + (bar_resource_offset * 4)),
+				      &temp);
+		if (temp & PCI_BASE_ADDRESS_MEM_TYPE_64) {
+#endif
+			bar_resource_offset += 2;
+		} else {
+			bar_resource_offset += 1;
+		}
+	}
+	p->base_address = pci_resource_start(dev, bar_resource_offset);
+	p->bar_size	= pci_resource_len(dev, bar_resource_offset);
+
+	return OK;
+}
+
+int esc_mods_pci_get_irq(struct file *pfile,
+			 struct MODS_PCI_GET_IRQ *p)
+{
+	struct pci_dev *dev;
+	unsigned int devfn;
+
+	devfn = PCI_DEVFN(p->pci_device.device, p->pci_device.function);
+	dev = MODS_PCI_GET_SLOT(p->pci_device.bus, devfn);
+
+	if (dev == NULL)
+		return -EINVAL;
+
+	mods_debug_printk(DEBUG_PCICFG,
+			  "pci get irq %x:%02x:%x\n",
+			  (int) p->pci_device.bus, (int) p->pci_device.device,
+			  (int) p->pci_device.function);
+
+	p->irq = dev->irq;
+
+	return OK;
 }
 
 int esc_mods_pci_read(struct file *pfile, struct MODS_PCI_READ *p)
@@ -217,7 +282,7 @@ int esc_mods_pio_write(struct file *pfile, struct MODS_PIO_WRITE  *p)
 
 int esc_mods_device_numa_info(struct file *fp, struct MODS_DEVICE_NUMA_INFO *p)
 {
-#ifdef MODS_HAS_WC
+#ifdef MODS_HAS_DEV_TO_NUMA_NODE
 	unsigned int devfn = PCI_DEVFN(p->pci_device.device,
 				       p->pci_device.function);
 	struct pci_dev *dev = MODS_PCI_GET_SLOT(p->pci_device.bus, devfn);

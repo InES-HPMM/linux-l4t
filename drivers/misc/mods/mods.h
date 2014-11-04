@@ -24,7 +24,7 @@
 
 /* Driver version */
 #define MODS_DRIVER_VERSION_MAJOR 3
-#define MODS_DRIVER_VERSION_MINOR 50
+#define MODS_DRIVER_VERSION_MINOR 51
 #define MODS_DRIVER_VERSION ((MODS_DRIVER_VERSION_MAJOR << 8) | \
 			     ((MODS_DRIVER_VERSION_MINOR/10) << 4) | \
 			     (MODS_DRIVER_VERSION_MINOR%10))
@@ -135,6 +135,26 @@ struct MODS_FIND_PCI_CLASS_CODE {
 	__u32	bus_number;
 	__u32	device_number;
 	__u32	function_number;
+};
+
+/* MODS_ESC_PCI_GET_BAR_INFO */
+struct MODS_PCI_GET_BAR_INFO {
+	/* IN */
+	struct mods_pci_dev pci_device;
+	__u32 bar_index;
+
+	/* OUT */
+	__u64 base_address;
+	__u64 bar_size;
+};
+
+/* MODS_ESC_PCI_GET_IRQ */
+struct MODS_PCI_GET_IRQ {
+	/* IN */
+	struct mods_pci_dev pci_device;
+
+	/* OUT */
+	__u32 irq;
 };
 
 /* MODS_ESC_PCI_READ */
@@ -384,7 +404,11 @@ struct MODS_CLOCK_ENABLED {
 };
 
 /* MODS_ESC_DEVICE_NUMA_INFO */
+#if defined(CONFIG_PPC64) || defined(PPC64LE)
+#define MAX_CPU_MASKS 64  /* 32 masks of 32bits = 2048 CPUs max */
+#else
 #define MAX_CPU_MASKS 32  /* 32 masks of 32bits = 1024 CPUs max */
+#endif
 struct MODS_DEVICE_NUMA_INFO {
 	/* IN */
 	struct mods_pci_dev pci_device;
@@ -603,5 +627,12 @@ struct MODS_ADSP_RUN_APP_INFO {
 		   _IO(MODS_IOC_MAGIC, 52)
 #define MODS_ESC_ADSP_RUN_APP		\
 		   _IOW(MODS_IOC_MAGIC, 53, struct MODS_ADSP_RUN_APP_INFO)
+#define MODS_ESC_PCI_GET_BAR_INFO		\
+		   _IOWR(MODS_IOC_MAGIC, 54, struct MODS_PCI_GET_BAR_INFO)
+#define MODS_ESC_PCI_GET_IRQ			\
+		   _IOWR(MODS_IOC_MAGIC, 55, struct MODS_PCI_GET_IRQ)
+#define MODS_ESC_GET_MAPPED_PHYSICAL_ADDRESS	\
+		   _IOWR(MODS_IOC_MAGIC, 56,	\
+			 struct MODS_GET_PHYSICAL_ADDRESS)
 
 #endif /* _MODS_H_  */

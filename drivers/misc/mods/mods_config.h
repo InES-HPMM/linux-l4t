@@ -36,6 +36,8 @@
 #define MODS_HAS_DMABUF 1
 #endif
 #define MODS_MULTI_INSTANCE_DEFAULT_VALUE 1
+#define MODS_HAS_IORESOURCE_MEM_64 1
+#undef MODS_HAS_NEW_ACPI_HANDLE /* new in 3.13 */
 
 #endif /* _MODS_CONFIG_H_  */
 

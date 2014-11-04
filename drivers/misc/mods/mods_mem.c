@@ -77,6 +77,11 @@ static void mods_free_pages(struct MODS_MEM_INFO *p_mem_info)
 		if (!pt->allocated)
 			continue;
 
+#if defined(CONFIG_PPC64)
+		pci_unmap_page(p_mem_info->dev, pt->map_addr,
+			       (1U<<pt->order)*PAGE_SIZE, DMA_BIDIRECTIONAL);
+#endif
+
 #ifdef CONFIG_BIGPHYS_AREA
 		if (p_mem_info->alloc_type == MODS_ALLOC_TYPE_BIGPHYS_AREA) {
 			bigphysarea_free_pages((void *)
@@ -147,6 +152,17 @@ static int mods_alloc_contig_sys_pages(struct MODS_MEM_INFO *p_mem_info)
 		return -ENOMEM;
 	}
 	p_mem_info->pages[0].dma_addr = MODS_PHYS_TO_DMA(phys_addr);
+#if defined(CONFIG_PPC64)
+	if (p_mem_info->dev != NULL) {
+		p_mem_info->pages[0].map_addr = pci_map_page(p_mem_info->dev,
+						p_mem_info->pages[0].p_page,
+						0,
+						(1U << order) * PAGE_SIZE,
+						DMA_BIDIRECTIONAL);
+	} else {
+		p_mem_info->pages[0].map_addr = p_mem_info->pages[0].dma_addr;
+	}
+#endif
 
 	mods_debug_printk(DEBUG_MEM,
 	    "alloc contig 0x%lx bytes%s, 2^%u pages, %s, phys 0x%llx\n",
@@ -226,6 +242,17 @@ static int mods_alloc_noncontig_sys_pages(struct MODS_MEM_INFO *p_mem_info)
 			goto failed;
 		}
 		pt->dma_addr = MODS_PHYS_TO_DMA(phys_addr);
+#if defined(CONFIG_PPC64)
+		if (p_mem_info->dev != NULL) {
+			pt->map_addr = pci_map_page(p_mem_info->dev,
+						pt->p_page,
+						0,
+						(1U << pt->order) * PAGE_SIZE,
+						DMA_BIDIRECTIONAL);
+		} else {
+			pt->map_addr = pt->dma_addr;
+		}
+#endif
 		mods_debug_printk(DEBUG_MEM,
 		    "alloc 0x%lx bytes [%u], 2^%u pages, %s, phys 0x%llx\n",
 		    (unsigned long)p_mem_info->length,
@@ -384,6 +411,37 @@ static u32 mods_estimate_max_chunks(u32 num_pages)
 	return max_chunks;
 }
 
+static struct MODS_PHYS_CHUNK *mods_find_phys_chunk(
+					struct MODS_MEM_INFO *p_mem_info,
+					u32 offset,
+					u32 *chunk_offset)
+{
+	struct MODS_PHYS_CHUNK	*pt = NULL;
+	u32			pages_left;
+	u32			page_offs;
+	u32			i;
+
+	pages_left = offset >> PAGE_SHIFT;
+	page_offs  = offset & (~PAGE_MASK);
+
+	for (i = 0; i < p_mem_info->max_chunks; i++) {
+		u32 num_pages;
+
+		pt = &p_mem_info->pages[i];
+		if (!pt->allocated)
+			break;
+
+		num_pages = 1U << pt->order;
+		if (pages_left < num_pages)
+			break;
+		pages_left -= num_pages;
+		pt = NULL;
+	}
+
+	*chunk_offset = (pages_left << PAGE_SHIFT) + page_offs;
+	return pt;
+}
+
 /************************
  * ESCAPE CALL FUNCTONS *
  ************************/
@@ -443,8 +501,10 @@ int esc_mods_device_alloc_pages(struct file                    *fp,
 	p_mem_info->addr_bits	 = p->address_bits;
 	p_mem_info->num_pages	 = num_pages;
 	p_mem_info->numa_node    = numa_node_id();
+#if defined(CONFIG_PPC64)
+	p_mem_info->dev		 = NULL;
+#endif
 
-#ifdef MODS_HAS_DEV_TO_NUMA_NODE
 	if (p->pci_device.bus || p->pci_device.device) {
 		unsigned int devfn = PCI_DEVFN(p->pci_device.device,
 					       p->pci_device.function);
@@ -454,7 +514,12 @@ int esc_mods_device_alloc_pages(struct file                    *fp,
 			LOG_EXT();
 			return -EINVAL;
 		}
+#if defined(CONFIG_PPC64)
+		p_mem_info->dev = dev;
+#endif
+#if defined(MODS_HAS_DEV_TO_NUMA_NODE)
 		p_mem_info->numa_node = dev_to_node(&dev->dev);
+#endif
 		mods_debug_printk(DEBUG_MEM_DETAILED,
 			"affinity %x:%x.%x node %d\n",
 			p->pci_device.bus,
@@ -462,7 +527,6 @@ int esc_mods_device_alloc_pages(struct file                    *fp,
 			p->pci_device.function,
 			p_mem_info->numa_node);
 	}
-#endif
 
 	p->memory_handle = 0;
 
@@ -566,31 +630,14 @@ int esc_mods_set_mem_type(struct file *fp, struct MODS_MEMORY_TYPE *p)
 
 int esc_mods_get_phys_addr(struct file *fp, struct MODS_GET_PHYSICAL_ADDRESS *p)
 {
-	struct MODS_MEM_INFO   *p_mem_info;
-	struct MODS_PHYS_CHUNK *pt = NULL;
-	u32			pages_left;
-	u32			page_offs;
-	u32			i;
+	struct MODS_MEM_INFO	*p_mem_info;
+	struct MODS_PHYS_CHUNK	*pt = NULL;
+	u32			chunk_offset;
 
 	LOG_ENT();
 
 	p_mem_info = (struct MODS_MEM_INFO *)(size_t)p->memory_handle;
-	pages_left = p->offset >> PAGE_SHIFT;
-	page_offs  = p->offset & (~PAGE_MASK);
-
-	for (i = 0; i < p_mem_info->max_chunks; i++) {
-		u32 num_pages;
-
-		pt = &p_mem_info->pages[i];
-		if (!pt->allocated)
-			break;
-
-		num_pages = 1U << pt->order;
-		if (pages_left < num_pages)
-			break;
-		pages_left -= num_pages;
-		pt = NULL;
-	}
+	pt = mods_find_phys_chunk(p_mem_info, p->offset, &chunk_offset);
 
 	if (!pt || !pt->allocated) {
 		mods_error_printk("invalid offset requested\n");
@@ -598,13 +645,42 @@ int esc_mods_get_phys_addr(struct file *fp, struct MODS_GET_PHYSICAL_ADDRESS *p)
 		return -EINVAL;
 	}
 
-	p->physical_address = pt->dma_addr + (pages_left<<PAGE_SHIFT)
-			      + page_offs;
+	p->physical_address = pt->dma_addr + chunk_offset;
 	mods_debug_printk(DEBUG_MEM_DETAILED,
-		"get phys: %p+0x%x -> [%u] 0x%llx\n",
-		p_mem_info, p->offset, i, p->physical_address);
+		"get phys: %p+0x%x -> 0x%llx\n",
+		p_mem_info, p->offset, p->physical_address);
 	LOG_EXT();
 	return 0;
+}
+
+int esc_mods_get_mapped_phys_addr(struct file *fp,
+				  struct MODS_GET_PHYSICAL_ADDRESS *p)
+{
+#if !defined(CONFIG_PPC64)
+	return esc_mods_get_phys_addr(fp, p);
+#else
+	struct MODS_MEM_INFO	*p_mem_info;
+	struct MODS_PHYS_CHUNK	*pt = NULL;
+	u32			chunk_offset;
+
+	LOG_ENT();
+
+	p_mem_info = (struct MODS_MEM_INFO *)(size_t)p->memory_handle;
+	pt = mods_find_phys_chunk(p_mem_info, p->offset, &chunk_offset);
+
+	if (!pt || !pt->allocated) {
+		mods_error_printk("invalid offset requested\n");
+		LOG_EXT();
+		return -EINVAL;
+	}
+
+	p->physical_address = pt->map_addr + chunk_offset;
+	mods_debug_printk(DEBUG_MEM_DETAILED,
+		"get mapped phys: %p+0x%x -> 0x%llx\n",
+		p_mem_info, p->offset, p->physical_address);
+	LOG_EXT();
+	return 0;
+#endif
 }
 
 int esc_mods_virtual_to_phys(struct file *fp,
