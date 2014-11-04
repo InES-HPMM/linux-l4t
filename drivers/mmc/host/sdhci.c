@@ -2386,6 +2386,7 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 
 		if (host->quirks2 & SDHCI_QUIRK2_NON_STD_TUN_CARD_CLOCK) {
 			udelay(1);
+			sdhci_reset(host, SDHCI_RESET_CMD|SDHCI_RESET_DATA);
 			clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
 			clk |= SDHCI_CLOCK_CARD_EN;
 			sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
