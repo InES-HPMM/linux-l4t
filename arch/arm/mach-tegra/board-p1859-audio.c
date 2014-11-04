@@ -390,12 +390,12 @@ static struct tegra_vcm30t124_platform_data tegra_e1860_b00_pdata = {
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "I2S2",
 		.codec_prefix = "b",
-		.bclk_ratio = 4,
+		.bclk_ratio = 1,
 		.tx_mask = 1,
 		.rx_mask = 1,
 		.dai_fmt = SND_SOC_DAIFMT_DSP_A |
 			SND_SOC_DAIFMT_IB_IF |
-			SND_SOC_DAIFMT_CBS_CFS,
+			SND_SOC_DAIFMT_CBM_CFM,
 		.params.formats = SNDRV_PCM_FMTBIT_S16_LE,
 		.params.rate_min = 8000,
 		.params.rate_max = 8000,
