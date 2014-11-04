@@ -39,7 +39,7 @@
 #include "tegra210-platforms/tegra210-loki-e-keys-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-maxim-charger.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-powermon.dtsi"
-#include "tegra210-platforms/tegra210-loki-e-emc-e00.dtsi"
+#include "tegra210-platforms/tegra210-loki-e-emc-a00.dtsi"
 
 / {
 	model = "loki_e_lte";
