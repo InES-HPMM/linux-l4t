@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -69,6 +69,14 @@ struct tegra_camera_ops {
 		 struct tegra_camera_buffer *buf);
 };
 
+struct cam_regs_config {
+	u32 csi_base;
+	u32 csi_pp_base;
+	u32 cil_base;
+	u32 cil_phy_base;
+	u32 tpg_base;
+};
+
 struct tegra_camera {
 	struct soc_camera_host		ici;
 	struct platform_device		*pdev;
@@ -83,6 +91,7 @@ struct tegra_camera {
 	struct tegra_camera_ops		*ops;
 
 	void __iomem			*reg_base;
+	struct cam_regs_config		regs;
 	spinlock_t			videobuf_queue_lock;
 	struct list_head		capture;
 	struct vb2_buffer		*active;
@@ -95,6 +104,10 @@ struct tegra_camera {
 	struct mutex			work_mutex;
 
 	/* syncpt ids */
+	u32				syncpt_id;
+	u32				syncpt_thresh;
+
+	/* Back compatitble to T30/T20 */
 	u32				syncpt_id_csi_a;
 	u32				syncpt_id_csi_b;
 	u32				syncpt_id_vip;
@@ -116,6 +129,25 @@ struct tegra_camera {
 
 #define TC_VI_REG_RD(dev, offset) readl(dev->reg_base + offset)
 #define TC_VI_REG_WT(dev, offset, val) writel(val, dev->reg_base + offset)
+#define csi_regs_write(cam, offset, val) \
+		TC_VI_REG_WT(cam, cam->regs.csi_base + offset, val)
+#define csi_regs_read(cam, offset) \
+		TC_VI_REG_RD(cam, cam->regs.csi_base + offset)
+#define csi_pp_regs_write(cam, offset, val) \
+		TC_VI_REG_WT(cam, cam->regs.csi_pp_base + offset, val)
+#define csi_pp_regs_read(cam, offset) \
+		TC_VI_REG_RD(cam, cam->regs.csi_pp_base + offset)
+#define cil_regs_write(cam, offset, val) \
+		TC_VI_REG_WT(cam, cam->regs.cil_base + offset, val)
+#define cil_regs_read(cam, offset) \
+		TC_VI_REG_RD(cam, cam->regs.cil_base + offset)
+#define cil_phy_reg_write(cam, val) \
+		TC_VI_REG_WT(cam, cam->regs.cil_phy_base, val)
+#define cil_phy_reg_read(cam) TC_VI_REG_RD(cam, cam->regs.cil_phy_base)
+#define tpg_regs_write(cam, offset, val) \
+		TC_VI_REG_WT(cam, cam->regs.tpg_base + offset, val)
+#define tpg_regs_read(cam, offset) \
+		TC_VI_REG_RD(cam, cam->regs.tpg_base + offset)
 
 int vi_register(struct tegra_camera *cam);
 int vi2_register(struct tegra_camera *cam);
