@@ -1669,78 +1669,6 @@ void tegra12_mc_holdoff_enable(void)
 		MC_EMEM_ARB_HYSTERESIS_3_0);
 }
 
-static int tegra12_emc_probe(struct platform_device *pdev)
-{
-	struct tegra12_emc_pdata *pdata;
-	struct resource *res;
-	int ret;
-
-	if (tegra_emc_table) {
-		ret = -EINVAL;
-		goto fail;
-	}
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		dev_err(&pdev->dev, "missing register base\n");
-		ret = -ENOMEM;
-		goto fail;
-	}
-
-	pdata = pdev->dev.platform_data;
-
-	if (!pdata) {
-		pdata = tegra_emc_dt_parse_pdata(pdev);
-	}
-
-	if (!pdata) {
-		dev_err(&pdev->dev, "missing platform data\n");
-		ret = -ENODATA;
-		goto fail;
-	}
-
-	ret = init_emc_table(pdata->tables, pdata->tables_derated,
-			      pdata->num_tables);
-
-	if (!ret) {
-		tegra_emc_iso_usage_table_init(tegra12_emc_iso_usage,
-				ARRAY_SIZE(tegra12_emc_iso_usage));
-		if (emc_enable) {
-			unsigned long rate = tegra_emc_round_rate_updown(
-				emc->boot_rate, false);
-			if (!IS_ERR_VALUE(rate))
-				tegra_clk_preset_emc_monitor(rate);
-		}
-	}
-
-fail:
-	/* We need to do this even if rest of the logic fails */
-	tegra12_mc_holdoff_enable();
-	tegra_emc_dvfs_table_ops_init(&tegra12_emc_dvfs_table_ops);
-
-	return ret;
-}
-
-static struct of_device_id tegra12_emc_of_match[] = {
-	{ .compatible = "nvidia,tegra12-emc", },
-	{ },
-};
-
-static struct platform_driver tegra12_emc_driver = {
-	.driver         = {
-		.name   = "tegra-emc",
-		.owner  = THIS_MODULE,
-	},
-	.probe          = tegra12_emc_probe,
-};
-
-int __init tegra12_emc_init(void)
-{
-	if (!tegra_emc_device.dev.platform_data)
-		tegra12_emc_driver.driver.of_match_table = tegra12_emc_of_match;
-	return platform_driver_register(&tegra12_emc_driver);
-}
-
 void tegra_emc_timing_invalidate(void)
 {
 	emc_timing = NULL;
@@ -2096,7 +2024,7 @@ static int efficiency_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(efficiency_fops, efficiency_get,
 			efficiency_set, "%llu\n");
 
-static int __init tegra_emc_debug_init(void)
+static int tegra_emc_debug_init(void)
 {
 	if (!tegra_emc_table)
 		return 0;
@@ -2144,6 +2072,83 @@ err_out:
 	debugfs_remove_recursive(emc_debugfs_root);
 	return -ENOMEM;
 }
-
-late_initcall(tegra_emc_debug_init);
 #endif
+
+static int tegra12_emc_probe(struct platform_device *pdev)
+{
+	struct tegra12_emc_pdata *pdata;
+	struct resource *res;
+	int ret;
+
+	if (tegra_emc_table) {
+		ret = -EINVAL;
+		goto fail;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(&pdev->dev, "missing register base\n");
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	pdata = pdev->dev.platform_data;
+
+	if (!pdata) {
+		pdata = tegra_emc_dt_parse_pdata(pdev);
+	}
+
+	if (!pdata) {
+		dev_err(&pdev->dev, "missing platform data\n");
+		ret = -ENODATA;
+		goto fail;
+	}
+
+	ret = init_emc_table(pdata->tables, pdata->tables_derated,
+			      pdata->num_tables);
+
+	if (!ret) {
+		tegra_emc_iso_usage_table_init(tegra12_emc_iso_usage,
+				ARRAY_SIZE(tegra12_emc_iso_usage));
+		if (emc_enable) {
+			unsigned long rate = tegra_emc_round_rate_updown(
+				emc->boot_rate, false);
+			if (!IS_ERR_VALUE(rate))
+				tegra_clk_preset_emc_monitor(rate);
+		}
+	}
+
+fail:
+	/* We need to do this even if rest of the logic fails */
+	tegra12_mc_holdoff_enable();
+	tegra_emc_dvfs_table_ops_init(&tegra12_emc_dvfs_table_ops);
+
+#ifdef CONFIG_DEBUG_FS
+	tegra_emc_debug_init();
+	ret = tegra_emc_timers_init(emc_debugfs_root);
+#else
+	ret = tegra_emc_timers_init(NULL);
+#endif
+
+	return ret;
+}
+
+static struct of_device_id tegra12_emc_of_match[] = {
+	{ .compatible = "nvidia,tegra12-emc", },
+	{ },
+};
+
+static struct platform_driver tegra12_emc_driver = {
+	.driver         = {
+		.name   = "tegra-emc",
+		.owner  = THIS_MODULE,
+	},
+	.probe          = tegra12_emc_probe,
+};
+
+int __init tegra12_emc_init(void)
+{
+	if (!tegra_emc_device.dev.platform_data)
+		tegra12_emc_driver.driver.of_match_table = tegra12_emc_of_match;
+	return platform_driver_register(&tegra12_emc_driver);
+}

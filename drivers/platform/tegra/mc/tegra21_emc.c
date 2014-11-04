@@ -1192,70 +1192,6 @@ void tegra21_mc_holdoff_enable(void)
 		MC_EMEM_ARB_HYSTERESIS_3_0);
 }
 
-static int tegra21_emc_probe(struct platform_device *pdev)
-{
-	struct tegra21_emc_pdata *pdata;
-	struct resource *res;
-	int ret;
-
-	if (tegra_emc_table) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		dev_err(&pdev->dev, "missing register base\n");
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	pdata = tegra_emc_dt_parse_pdata(pdev);
-
-	if (!pdata) {
-		dev_err(&pdev->dev, "missing platform data\n");
-		ret = -ENODATA;
-		goto out;
-	}
-
-	pr_info("Loading EMC tables...\n");
-	ret = init_emc_table(pdata->tables, pdata->tables_derated,
-			      pdata->num_tables);
-
-	if (!ret) {
-		tegra_emc_iso_usage_table_init(tegra21_emc_iso_usage,
-				ARRAY_SIZE(tegra21_emc_iso_usage));
-		if (emc_enable) {
-			unsigned long rate = tegra_emc_round_rate_updown(
-				emc->boot_rate, false);
-			if (!IS_ERR_VALUE(rate))
-				tegra_clk_preset_emc_monitor(rate);
-		}
-	}
-
-out:
-	return ret;
-}
-
-static struct of_device_id tegra21_emc_of_match[] = {
-	{ .compatible = "nvidia,tegra21-emc", },
-	{ },
-};
-
-static struct platform_driver tegra21_emc_driver = {
-	.driver         = {
-		.name   = "tegra-emc",
-		.owner  = THIS_MODULE,
-		.of_match_table = tegra21_emc_of_match
-	},
-	.probe          = tegra21_emc_probe,
-};
-
-int __init tegra21_emc_init(void)
-{
-	return platform_driver_register(&tegra21_emc_driver);
-}
-
 void tegra_emc_timing_invalidate(void)
 {
 	emc_timing = NULL;
@@ -1640,11 +1576,8 @@ static int efficiency_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(efficiency_fops, efficiency_get,
 			efficiency_set, "%llu\n");
 
-static int __init tegra_emc_debug_init(void)
+static int tegra_emc_debug_init(void)
 {
-	if (!tegra_emc_table)
-		return 0;
-
 	emc_debugfs_root = debugfs_create_dir("tegra_emc", NULL);
 	if (!emc_debugfs_root)
 		return -ENOMEM;
@@ -1688,6 +1621,75 @@ err_out:
 	debugfs_remove_recursive(emc_debugfs_root);
 	return -ENOMEM;
 }
-
-late_initcall(tegra_emc_debug_init);
 #endif
+
+static int tegra21_emc_probe(struct platform_device *pdev)
+{
+	struct tegra21_emc_pdata *pdata;
+	struct resource *res;
+	int err;
+
+	if (tegra_emc_table) {
+		err = -EINVAL;
+		goto out;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(&pdev->dev, "missing register base\n");
+		err = -ENOMEM;
+		goto out;
+	}
+
+	pdata = tegra_emc_dt_parse_pdata(pdev);
+
+	if (!pdata) {
+		dev_err(&pdev->dev, "missing platform data\n");
+		err = -ENODATA;
+		goto out;
+	}
+
+	pr_info("Loading EMC tables...\n");
+	err = init_emc_table(pdata->tables, pdata->tables_derated,
+			      pdata->num_tables);
+	if (err)
+		goto out;
+
+#ifdef CONFIG_DEBUG_FS
+	tegra_emc_debug_init();
+	err = tegra_emc_timers_init(emc_debugfs_root);
+#else
+	err = tegra_emc_timers_init(NULL);
+#endif
+
+out:
+	tegra_emc_iso_usage_table_init(tegra21_emc_iso_usage,
+				       ARRAY_SIZE(tegra21_emc_iso_usage));
+	if (emc_enable) {
+		unsigned long rate = tegra_emc_round_rate_updown(
+							emc->boot_rate, false);
+		if (!IS_ERR_VALUE(rate))
+			tegra_clk_preset_emc_monitor(rate);
+	}
+
+	return err;
+}
+
+static struct of_device_id tegra21_emc_of_match[] = {
+	{ .compatible = "nvidia,tegra21-emc", },
+	{ },
+};
+
+static struct platform_driver tegra21_emc_driver = {
+	.driver         = {
+		.name   = "tegra-emc",
+		.owner  = THIS_MODULE,
+		.of_match_table = tegra21_emc_of_match,
+	},
+	.probe          = tegra21_emc_probe,
+};
+
+int __init tegra21_emc_init(void)
+{
+	return platform_driver_register(&tegra21_emc_driver);
+}

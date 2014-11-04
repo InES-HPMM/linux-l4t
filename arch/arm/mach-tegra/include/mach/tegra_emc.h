@@ -72,6 +72,7 @@ struct dentry;
 
 void tegra_emc_iso_usage_table_init(struct emc_iso_usage *table, int size);
 int  tegra_emc_iso_usage_debugfs_init(struct dentry *emc_debugfs_root);
+int tegra_emc_timers_init(struct dentry *parent);
 void tegra_emc_dvfs_table_ops_init(
 		struct tegra_emc_dvfs_table_ops *dvfs_table_ops_to_copy);
 unsigned long tegra_emc_apply_efficiency(unsigned long total_bw,

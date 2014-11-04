@@ -180,7 +180,7 @@ static const struct file_operations emc_usage_table_fops = {
 	.release	= single_release,
 };
 
-int __init tegra_emc_iso_usage_debugfs_init(struct dentry *emc_debugfs_root)
+int tegra_emc_iso_usage_debugfs_init(struct dentry *emc_debugfs_root)
 {
 	struct dentry *d;
 
