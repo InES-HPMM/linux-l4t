@@ -250,9 +250,10 @@ static int tegra_usb_cd_conf(struct platform_device *pdev,
 
 	/* Prepare and register extcon device for charging notification */
 	ucd->edev = kzalloc(sizeof(struct extcon_dev), GFP_KERNEL);
-	if (!ucd->edev) {
+	if (ucd->edev == NULL) {
 		dev_err(&pdev->dev, "failed to allocate memory for extcon\n");
 		err = -ENOMEM;
+		goto error;
 	}
 	ucd->edev->name = driver_name;
 	ucd->edev->supported_cable = (const char **) tegra_usb_cd_extcon_cable;
@@ -275,6 +276,7 @@ static int tegra_usb_cd_conf(struct platform_device *pdev,
 
 	soc_data->init_hw_ops(ucd);
 	DBG(ucd->dev, "End");
+error:
 	return err;
 }
 
