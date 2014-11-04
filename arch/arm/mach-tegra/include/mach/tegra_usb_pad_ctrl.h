@@ -568,4 +568,8 @@ int t210_sata_uphy_pll_init(bool sata_used_by_xusb);
 
 int tegra_pd2_asserted(int pad);
 int tegra_pd2_deasserted(int pad);
+
+void xusb_utmi_pad_deinit(int pad);
+void xusb_ss_pad_deinit(int pad);
+void usb3_phy_pad_disable(void);
 #endif

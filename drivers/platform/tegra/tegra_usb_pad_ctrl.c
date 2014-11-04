@@ -506,6 +506,9 @@ static void utmi_phy_pad(bool enable)
 
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1,
 			PD_TRK_MASK, 0);
+
+		/* for tracking complete */
+		udelay(10);
 	} else {
 
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0,
@@ -562,11 +565,17 @@ static void utmi_phy_pad(bool enable)
 int utmi_phy_pad_enable(void)
 {
 	unsigned long flags;
+	static struct clk *usb2_trk;
+
+	if (!usb2_trk)
+		usb2_trk = clk_get_sys(NULL, "usb2_trk");
 
 	if (!utmi_pad_clk)
 		utmi_pad_clk = clk_get_sys("utmip-pad", NULL);
 
 	clk_enable(utmi_pad_clk);
+	if (!IS_ERR_OR_NULL(usb2_trk))
+		clk_enable(usb2_trk);
 
 	spin_lock_irqsave(&utmip_pad_lock, flags);
 	utmip_pad_count++;
@@ -576,6 +585,8 @@ int utmi_phy_pad_enable(void)
 	spin_unlock_irqrestore(&utmip_pad_lock, flags);
 
 	clk_disable(utmi_pad_clk);
+	if (!IS_ERR_OR_NULL(usb2_trk))
+		clk_disable(usb2_trk);
 
 	return 0;
 }
@@ -584,11 +595,17 @@ EXPORT_SYMBOL_GPL(utmi_phy_pad_enable);
 int utmi_phy_pad_disable(void)
 {
 	unsigned long flags;
+	static struct clk *usb2_trk;
+
+	if (!usb2_trk)
+		usb2_trk = clk_get_sys(NULL, "usb2_trk");
 
 	if (!utmi_pad_clk)
 		utmi_pad_clk = clk_get_sys("utmip-pad", NULL);
 
 	clk_enable(utmi_pad_clk);
+	if (!IS_ERR_OR_NULL(usb2_trk))
+		clk_enable(usb2_trk);
 	spin_lock_irqsave(&utmip_pad_lock, flags);
 
 	if (!utmip_pad_count) {
@@ -600,6 +617,8 @@ int utmi_phy_pad_disable(void)
 out:
 	spin_unlock_irqrestore(&utmip_pad_lock, flags);
 	clk_disable(utmi_pad_clk);
+	if (!IS_ERR_OR_NULL(usb2_trk))
+		clk_disable(usb2_trk);
 
 	return 0;
 }
@@ -670,13 +689,24 @@ static void get_usb_calib_data(int pad, u32 *hs_curr_level_pad,
 #endif
 }
 
+static u8 ss_pad_inited = 0x0;
+static u8 utmi_pad_inited = 0x0;
+
+void xusb_utmi_pad_deinit(int pad)
+{
+	unsigned long flags;
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	utmi_pad_inited &= ~(1 << pad);
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+}
+EXPORT_SYMBOL_GPL(xusb_utmi_pad_deinit);
+
 void xusb_utmi_pad_init(int pad, u32 cap, bool external_pmic)
 {
 	unsigned long val, flags;
 	u32 ctl0_offset, ctl1_offset, batry_chg_1;
 	static u32 hs_curr_level_pad, term_range_adj;
 	static u32 rpd_ctl, hs_iref_cap;
-	static u8 utmi_pad_inited = 0x0;
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 
 	spin_lock_irqsave(&xusb_padctl_lock, flags);
@@ -777,10 +807,18 @@ void xusb_utmi_pad_init(int pad, u32 cap, bool external_pmic)
 }
 EXPORT_SYMBOL_GPL(xusb_utmi_pad_init);
 
+void xusb_ss_pad_deinit(int pad)
+{
+	unsigned long flags;
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	ss_pad_inited &= ~(1 << pad);
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+}
+EXPORT_SYMBOL_GPL(xusb_ss_pad_deinit);
+
 void xusb_ss_pad_init(int pad, int port_map, u32 cap)
 {
 	unsigned long val, flags;
-	static u8 ss_pad_inited = 0x0;
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 
 	spin_lock_irqsave(&xusb_padctl_lock, flags);
@@ -930,6 +968,22 @@ static void usb3_release_padmux_state_latch(void)
 }
 
 static int tegra_xusb_padctl_phy_enable(void);
+static void tegra_xusb_padctl_phy_disable(void);
+static int usb3_phy_refcnt = 0x0;
+
+void usb3_phy_pad_disable(void)
+{
+	unsigned long flags;
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+
+	pr_debug("%s usb3_phy_refcnt %d\n", __func__, usb3_phy_refcnt);
+
+	usb3_phy_refcnt--;
+	if (usb3_phy_refcnt == 0)
+		tegra_xusb_padctl_phy_disable();
+
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+}
 
 /*
  * Have below lane define used for each port
@@ -948,15 +1002,13 @@ int usb3_phy_pad_enable(u32 lane_owner)
 	unsigned long flags;
 	int pad;
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
-	static bool ss_pad_phy_inited;
 
+	pr_debug("%s usb3_phy_refcnt %d\n", __func__, usb3_phy_refcnt);
 	spin_lock_irqsave(&xusb_padctl_lock, flags);
 
-	if (ss_pad_phy_inited) {
-		pr_warn("Already init for ss pad phy\n");
-		spin_unlock_irqrestore(&xusb_padctl_lock, flags);
-		return 0;
-	}
+	if (usb3_phy_refcnt > 0)
+		goto done;
+
 	/* Program SATA pad phy */
 	if ((lane_owner & 0xf000) == SATA_LANE)
 		t210_sata_uphy_pll_init(true);
@@ -1008,12 +1060,15 @@ int usb3_phy_pad_enable(u32 lane_owner)
 	pr_debug("XUSB_PADCTL_ELPG_PROGRAM_1 = 0x%x\n"
 			, readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_1));
 
-	ss_pad_phy_inited = true;
+done:
+	usb3_phy_refcnt++;
 	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
 	return 0;
 }
 
 #else
+void usb3_phy_pad_disable(void) {}
+
 int usb3_phy_pad_enable(u32 lane_owner)
 {
 	unsigned long val, flags;
@@ -1128,6 +1183,7 @@ int usb3_phy_pad_enable(u32 lane_owner)
 
 #endif
 EXPORT_SYMBOL_GPL(usb3_phy_pad_enable);
+EXPORT_SYMBOL_GPL(usb3_phy_pad_disable);
 
 void tegra_usb_pad_reg_update(u32 reg_offset, u32 mask, u32 val)
 {

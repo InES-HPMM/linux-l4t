@@ -3635,8 +3635,8 @@ tegra_xhci_suspend(struct platform_device *pdev,
 	struct tegra_xhci_hcd *tegra = platform_get_drvdata(pdev);
 	struct xhci_hcd *xhci = tegra->xhci;
 	int host_ports = get_host_controlled_ports(tegra);
-
 	int ret = 0;
+	int pad = 0;
 
 	mutex_lock(&tegra->sync_lock);
 	if (!tegra->init_done) {
@@ -3691,6 +3691,17 @@ tegra_xhci_suspend(struct platform_device *pdev,
 	regulator_disable(tegra->xusb_s1p8v_reg);
 	regulator_disable(tegra->xusb_s1p05v_reg);
 	tegra_usb2_clocks_deinit(tegra);
+
+	for_each_enabled_utmi_pad(pad, tegra)
+		xusb_utmi_pad_deinit(pad);
+
+	for_each_ss_pad(pad, tegra->soc_config->ss_pad_count) {
+		if (tegra->bdata->portmap & (1 << pad))
+			xusb_ss_pad_deinit(pad);
+	}
+
+	if (XUSB_DEVICE_ID_T114 != tegra->device_id)
+		usb3_phy_pad_disable();
 
 	return ret;
 }
