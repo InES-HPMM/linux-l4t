@@ -478,7 +478,9 @@ err:
 
 static int nvadsp_remove(struct platform_device *pdev)
 {
+#ifdef CONFIG_TEGRA_EMC_APE_DFS
 	emc_dfs_exit();
+#endif
 	aram_exit();
 	return 0;
 }
