@@ -438,6 +438,7 @@ static struct arm_smmu_device *smmu_handle; /* assmu only one smmu device */
 static volatile void __iomem *mc_base;
 
 #define MC_BASE				0x22c10000 /* HACK: for c-model */
+#define MC_SIZE				0x00010000
 #define ARM_SMMU_CONTROL_ADDRESS	0x24
 #define ARM_SMMU_CONTROL_DATA		0x28
 
@@ -2475,7 +2476,7 @@ static int __init arm_smmu_init(void)
 {
 	int ret;
 
-	mc_base = ioremap_nocache(MC_BASE, 2 * sizeof(u32));
+	mc_base = ioremap_nocache(MC_BASE, MC_SIZE);
 	if (!mc_base)
 		return -EINVAL;
 
