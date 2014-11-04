@@ -388,6 +388,9 @@
 #define SWR_PEX_USB_UPHY_RST			(0x1 << 13)
 #define SWR_SATA_USB_UPHY_RST			(0x1 << 12)
 
+/* SATA Port Registers*/
+#define PXSSTS						0X28
+
 enum {
 	AHCI_PCI_BAR = 5,
 };
@@ -774,6 +777,15 @@ static const struct sata_pad_cntrl sata_calib_pad_val[] = {
 		0x0e
 	}
 };
+
+static u32 tegra_ahci_get_port_status(void)
+{
+	u32 val;
+
+	val = port_readl(PXSSTS);
+
+	return val;
+}
 
 static void tegra_ahci_set_pad_cntrl_regs(
 			struct tegra_ahci_host_priv *tegra_hpriv)
@@ -3252,6 +3264,12 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 		goto fail;
 	}
 #endif
+	/* Suspend the controller if drive is not present */
+	if (!tegra_ahci_get_port_status()) {
+		dev_dbg(dev, "Drive not present\n");
+		tegra_ahci_controller_suspend(pdev);
+		return -ENODEV;
+	}
 
 	rc = ata_host_activate(host, irq_res->start, irq_handler, 0, &ahci_sht);
 
