@@ -259,6 +259,7 @@ static struct tegra_pm_domain tegra_nvavp = {
 static int tegra_ape_power_on(struct generic_pm_domain *genpd)
 {
 	struct tegra_pm_domain *ape_pd;
+	struct pm_domain_data *pdd;
 	int ret = 0;
 
 	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_APE);
@@ -284,13 +285,20 @@ static int tegra_ape_power_on(struct generic_pm_domain *genpd)
 
 	tegra_agic_restore_registers();
 
+	list_for_each_entry(pdd, &genpd->dev_list, list_node)
+		TEGRA_PD_DEV_CALLBACK(resume, pdd->dev);
+
 	return ret;
 }
 
 static int tegra_ape_power_off(struct generic_pm_domain *genpd)
 {
 	struct tegra_pm_domain *ape_pd;
+	struct pm_domain_data *pdd;
 	int ret = 0;
+
+	list_for_each_entry(pdd, &genpd->dev_list, list_node)
+		TEGRA_PD_DEV_CALLBACK(suspend, pdd->dev);
 
 	tegra_agic_save_registers();
 
