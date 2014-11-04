@@ -248,7 +248,7 @@ static void __init tegra210_timer_init(struct device_node *np)
 		tevt->iact.flags = IRQF_TIMER | IRQF_TRIGGER_HIGH |
 			IRQF_NOBALANCING;
 		tevt->iact.handler = tegra210_timer_isr;
-		irq_set_status_flags(tevt->evt.irq, IRQ_NOAUTOEN);
+		irq_set_status_flags(tevt->evt.irq, IRQ_NOAUTOEN | IRQ_PER_CPU);
 		ret = setup_irq(tevt->evt.irq, &tevt->iact);
 		if (ret) {
 			pr_err("%s: cannot setup irq %d for CPU%d\n",
