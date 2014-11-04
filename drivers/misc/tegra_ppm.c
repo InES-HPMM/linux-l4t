@@ -210,11 +210,16 @@ static s64 calc_leakage_calc_step(struct tegra_ppm_params *common,
 {
 	s64 leakage_calc_step;
 
-	/* iddq raised to i */
-	leakage_calc_step = common->leakage_consts_ijk[i][j][k] *
-						_pow(iddq_ma, i);
+	leakage_calc_step = common->leakage_consts_ijk[i][j][k];
 
-	/* Convert (mA)^i to (A)^i */
+	/* iddq raised to i */
+	for (; i; i--) {
+		leakage_calc_step *= iddq_ma;
+
+		/* Convert (mA) to (A) */
+		leakage_calc_step = div64_s64(leakage_calc_step, 1000);
+	}
+
 	leakage_calc_step = div64_s64(leakage_calc_step, _pow(1000, i));
 
 	/* voltage raised to j */
