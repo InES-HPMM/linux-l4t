@@ -3638,8 +3638,8 @@ bool dhd_update_fw_nv_path(dhd_info_t *dhdinfo)
 #endif /* CONFIG_BCMDHD_NVRAM_PATH */
 #ifdef	BCMDHD2
 		pr_info("BCMDHD2: configured fw/nvram path - %s %s\n", fw, nv);
-		fw = "/system/vendor/firmware/bcm43341/fw_bcmdhd.bin";
-		nv = "/system/etc/nvram_rev2.txt";
+		fw = CONFIG_BCMDHD2_FW_PATH;
+		nv = CONFIG_BCMDHD2_NVRAM_PATH;
 		pr_info("BCMDHD2: use bcmdhd2 fw/nvram path - %s %s\n", fw, nv);
 #endif
 	}
