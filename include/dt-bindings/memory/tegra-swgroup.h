@@ -66,6 +66,13 @@
 #define TEGRA_SWGROUP_TSECB1	43	/* 0xadc */
 #define TEGRA_SWGROUP_NVDEC1	44	/* 0xae0 */
 
+#define TEGRA_SWGROUP_AXIS	46	/* 0xae8 */
+#define TEGRA_SWGROUP_EQOS	47	/* 0xaec */
+#define TEGRA_SWGROUP_UFSHC	48	/* 0xaf0 */
+#define TEGRA_SWGROUP_NVDISPLAY	49	/* 0xaf4 */
+#define TEGRA_SWGROUP_BPMP	50	/* 0xaf8 */
+#define TEGRA_SWGROUP_AON	51	/* 0xafc */
+
 #define TWO_U32_OF_U64(x)	((x) & 0xffffffff) ((x) >> 32)
 #define TEGRA_SWGROUP_BIT(x)	(1ULL << TEGRA_SWGROUP_##x)
 #define TEGRA_SWGROUP_CELLS(x)	TWO_U32_OF_U64(TEGRA_SWGROUP_BIT(x))
