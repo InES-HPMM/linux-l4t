@@ -340,7 +340,7 @@ struct tuning_t2t_coeffs {
 		.t2t_vmin_int = _t2t_vmin_int,		\
 	}
 
-struct tuning_t2t_coeffs t11x_tuning_coeffs[] = {
+static struct tuning_t2t_coeffs t11x_tuning_coeffs[] = {
 	SET_TUNING_COEFFS("sdhci-tegra.3",	1250,	950,	55,	135434,
 		73,	170493,	243,	455948),
 	SET_TUNING_COEFFS("sdhci-tegra.2",	1250,	950,	50,	129738,
@@ -349,7 +349,7 @@ struct tuning_t2t_coeffs t11x_tuning_coeffs[] = {
 		82,	180096,	238,	444285),
 };
 
-struct tuning_t2t_coeffs t12x_automotive_tuning_coeffs[] = {
+static struct tuning_t2t_coeffs t12x_automotive_tuning_coeffs[] = {
 	SET_TUNING_COEFFS("sdhci-tegra.3",	1040,	950,	29,	130687,
 			29,	130687,	29,	130687),
 	SET_TUNING_COEFFS("sdhci-tegra.2",	1040,	950,	36,	148855,
@@ -358,7 +358,7 @@ struct tuning_t2t_coeffs t12x_automotive_tuning_coeffs[] = {
 			37,	149783,	37,	149783),
 };
 
-struct tuning_t2t_coeffs t12x_tuning_coeffs[] = {
+static struct tuning_t2t_coeffs t12x_tuning_coeffs[] = {
 	SET_TUNING_COEFFS("sdhci-tegra.3",	1150,	950,	27,	118295,
 		27,	118295,	48,	188148),
 	SET_TUNING_COEFFS("sdhci-tegra.2",	1150,	950,	29,	124427,
@@ -392,7 +392,7 @@ struct tap_hole_coeffs {
 		.thole_vmin_int = _thole_vmin_int,	\
 	}
 
-struct tap_hole_coeffs t11x_tap_hole_coeffs[] = {
+static struct tap_hole_coeffs t11x_tap_hole_coeffs[] = {
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	200000,	765,	102357,	507,
 		81144,	131,	36346),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	156000,	1042,	142044,	776,
@@ -419,7 +419,7 @@ struct tap_hole_coeffs t11x_tap_hole_coeffs[] = {
 		221722,	354,	109880),
 };
 
-struct tap_hole_coeffs t12x_automotive_tap_hole_coeffs[] = {
+static struct tap_hole_coeffs t12x_automotive_tap_hole_coeffs[] = {
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	198000,	926,	107053,	926,
 		107053,	926,	107053),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	189000,	985,	114635,	985,
@@ -436,7 +436,7 @@ struct tap_hole_coeffs t12x_automotive_tap_hole_coeffs[] = {
 		219359,	1785,	219359),
 };
 
-struct tap_hole_coeffs t12x_tap_hole_coeffs[] = {
+static struct tap_hole_coeffs t12x_tap_hole_coeffs[] = {
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	200000,	1037,	106934,	1037,
 		106934,	558,	74315),
 	SET_TAP_HOLE_COEFFS("sdhci-tegra.3",	198000,	1037,	106934,	1037,
@@ -674,7 +674,7 @@ struct sdhci_tegra {
 };
 
 static unsigned int boot_volt_req_refcount;
-DEFINE_MUTEX(tuning_mutex);
+static DEFINE_MUTEX(tuning_mutex);
 
 static struct tegra_tuning_data *sdhci_tegra_get_tuning_data(
 	struct sdhci_host *sdhci, unsigned int clock);
@@ -4332,7 +4332,8 @@ static int tegra_sdhci_reboot_notify(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
-void tegra_sdhci_ios_config_enter(struct sdhci_host *sdhci, struct mmc_ios *ios)
+static void tegra_sdhci_ios_config_enter(struct sdhci_host *sdhci,
+				struct mmc_ios *ios)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
@@ -4378,7 +4379,8 @@ void tegra_sdhci_ios_config_enter(struct sdhci_host *sdhci, struct mmc_ios *ios)
 	}
 }
 
-void tegra_sdhci_ios_config_exit(struct sdhci_host *sdhci, struct mmc_ios *ios)
+static void tegra_sdhci_ios_config_exit(struct sdhci_host *sdhci,
+				struct mmc_ios *ios)
 {
 	/*
 	 * Do any required handling for retuning requests before powering off
