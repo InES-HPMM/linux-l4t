@@ -1822,6 +1822,8 @@ static void tegra_sdhci_update_sdmmc_pinctrl_register(struct sdhci_host *sdhci,
 	}
 
 	for (i = 0; i < 2; i++) {
+		if (IS_ERR_OR_NULL(set_schmitt[i]))
+			continue;
 		ret = pinctrl_select_state(tegra_host->pinctrl_sdmmc,
 				set_schmitt[i]);
 		if (ret < 0)
@@ -2045,7 +2047,8 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 
 	set = (signal_voltage == MMC_SIGNAL_VOLTAGE_180) ? true : false;
 
-	tegra_sdhci_update_sdmmc_pinctrl_register(sdhci, set);
+	if (!IS_ERR_OR_NULL(tegra_host->pinctrl_sdmmc))
+		tegra_sdhci_update_sdmmc_pinctrl_register(sdhci, set);
 
 	return rc;
 }
