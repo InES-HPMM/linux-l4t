@@ -1729,8 +1729,6 @@ phys_addr_t __init tegra_reserve_adsp(unsigned long size)
 void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size)
 {
-	struct iommu_linear_map map[4];
-
 	if (!tegra_vpr_resize && carveout_size) {
 		/*
 		 * Place the carveout below the 4 GB physical address limit
@@ -2054,8 +2052,6 @@ out:
 		if (dma_declare_contiguous(&tegra_vpr_cma_dev,
 			tegra_vpr_size, 0, memblock_end_of_4G()))
 			pr_err("dma_declare_contiguous failed VPR carveout\n");
-
-	tegra_fb_linear_set(map);
 }
 
 void tegra_reserve4(ulong carveout_size, ulong fb_size,

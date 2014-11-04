@@ -26,14 +26,6 @@
 #include "../../../arch/arm/mach-tegra/board.h"
 #include <linux/platform/tegra/common.h>
 
-/* FIXME: Use DT reserved-memory node */
-phys_addr_t __weak tegra_fb_start, tegra_fb_size,
-	tegra_fb2_start, tegra_fb2_size,
-	tegra_bootloader_fb_start, tegra_bootloader_fb_size,
-	tegra_bootloader_fb2_start, tegra_bootloader_fb2_size;
-
-static struct iommu_linear_map tegra_fb_linear_map[16]; /* Terminated with 0 */
-
 #ifdef CONFIG_TEGRA_BPMP
 static struct iommu_linear_map tegra_bpmp_linear_map[2];
 static void tegra_bpmp_linear_set(void)
@@ -53,52 +45,6 @@ do { \
 		map[i++].size = n##_size; \
 	} \
 } while (0)
-
-#if defined(CONFIG_CMA) && defined(CONFIG_TEGRA_NVMAP)
-static void carveout_linear_set(struct device *cma_dev)
-{
-	struct dma_contiguous_stats stats;
-	struct iommu_linear_map *map = &tegra_fb_linear_map[0];
-
-	if (dma_get_contiguous_stats(cma_dev, &stats))
-		return;
-
-	/* get the free slot at end and add carveout entry */
-	while (map && map->size)
-		map++;
-	map->start = stats.base;
-	map->size = stats.size;
-}
-#endif
-
-static void cma_carveout_linear_set(void)
-{
-#if defined(CONFIG_CMA) && defined(CONFIG_TEGRA_NVMAP)
-	if (tegra_vpr_resize) {
-		carveout_linear_set(&tegra_generic_cma_dev);
-		carveout_linear_set(&tegra_vpr_cma_dev);
-	}
-#endif
-}
-
-void tegra_fb_linear_set(struct iommu_linear_map *map)
-{
-	int i = 0;
-
-	map = tegra_fb_linear_map;
-
-	LINEAR_MAP_ADD(tegra_fb);
-	LINEAR_MAP_ADD(tegra_fb2);
-	LINEAR_MAP_ADD(tegra_bootloader_fb);
-	LINEAR_MAP_ADD(tegra_bootloader_fb2);
-#ifdef CONFIG_TEGRA_NVMAP
-	if (!tegra_vpr_resize) {
-		LINEAR_MAP_ADD(tegra_vpr);
-		LINEAR_MAP_ADD(tegra_carveout);
-	}
-#endif
-}
-EXPORT_SYMBOL(tegra_fb_linear_set);
 
 struct swgid_fixup {
 	const char * const name;
@@ -138,10 +84,8 @@ static struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{ .name = "tegra30-avp-audio",	.swgids = TEGRA_SWGROUP_BIT(AVPC) |
 						  TEGRA_SWGROUP_BIT(A9AVP), },
 	{ .name = "tegradc.0", .swgids = TEGRA_SWGROUP_BIT(DC) |
-					 TEGRA_SWGROUP_BIT(DC12),
-	  .linear_map = tegra_fb_linear_map, },
-	{ .name = "tegradc.1", .swgids = TEGRA_SWGROUP_BIT(DCB),
-	  .linear_map = tegra_fb_linear_map, },
+					 TEGRA_SWGROUP_BIT(DC12), },
+	{ .name = "tegradc.1", .swgids = TEGRA_SWGROUP_BIT(DCB), },
 	{ .name = "tegra_bb",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra_dma",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra-ehci",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
@@ -219,10 +163,10 @@ static struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	  TEGRA_SWGROUP_BIT(PPCS2), },
 	{ .name = "tegradc.0", .swgids = TEGRA_SWGROUP_BIT(DC) |
 					 TEGRA_SWGROUP_BIT(DCB) |
-	 TEGRA_SWGROUP_BIT(DC12), .linear_map = tegra_fb_linear_map, },
+	 TEGRA_SWGROUP_BIT(DC12), },
 	{ .name = "tegradc.1", .swgids = TEGRA_SWGROUP_BIT(DC) |
 					 TEGRA_SWGROUP_BIT(DCB) |
-	 TEGRA_SWGROUP_BIT(DC12), .linear_map = tegra_fb_linear_map, },
+	 TEGRA_SWGROUP_BIT(DC12), },
 	{ .name = "tegra_bb",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
@@ -319,7 +263,6 @@ EXPORT_SYMBOL(tegra_smmu_fixup_swgids);
 static int __init tegra_smmu_init(void)
 {
 	tegra_bpmp_linear_set();
-	cma_carveout_linear_set();
 	return 0;
 }
 postcore_initcall(tegra_smmu_init);
