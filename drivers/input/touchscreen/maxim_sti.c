@@ -604,7 +604,7 @@ static int device_fw_load(struct dev_data *dd, const struct firmware *fw)
 	u16  fw_crc16, chip_crc16;
 
 	fw_crc16 = crc16(0, fw->data, fw->size);
-	INFO("firmware size (%d) CRC16(0x%04X)", fw->size, fw_crc16);
+	INFO("firmware size (%zu) CRC16(0x%04X)", fw->size, fw_crc16);
 	if (bootloader_enter(dd) != 0) {
 		ERROR("failed to enter bootloader");
 		return -1;
@@ -665,7 +665,7 @@ static int fw_request_load(struct dev_data *dd)
 	}
 	if (fw->size != FIRMWARE_SIZE) {
 		release_firmware(fw);
-		ERROR("incoming firmware is of wrong size (%04X)", fw->size);
+		ERROR("incoming firmware is of wrong size (%04zX)", fw->size);
 		return -1;
 	}
 	ret = device_fw_load(dd, fw);
@@ -768,8 +768,11 @@ static int regulator_control(struct dev_data *dd, bool on)
 		if (regulator_is_enabled(dd->reg_dvdd))
 			ret = regulator_disable(dd->reg_dvdd);
 		if (ret < 0) {
+			int err;
 			ERROR("Failed to disable regulator dvdd: %d", ret);
-			regulator_enable(dd->reg_avdd);
+			err = regulator_enable(dd->reg_avdd);
+			if (err < 0)
+				ERROR("Failed to re-enable regulator avdd\n");
 			return ret;
 		}
 
@@ -1688,7 +1691,7 @@ static void service_irq_legacy_acceleration(struct dev_data *dd)
 static void service_irq(struct dev_data *dd)
 {
 	struct fu_async_data  *async_data;
-	u16                   status, clear, test, address[2], xbuf;
+	u16                   status, clear, test, address[2] = {0}, xbuf;
 	bool                  read_buf[2] = {true, false};
 	int                   ret, ret2;
 
