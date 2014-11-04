@@ -311,8 +311,8 @@ static void __init tegra210_timer_init(struct device_node *np)
 #endif
 	tegra210_timer_setup(tevt);
 
-	clocks_calc_mult_shift(&timer_us_mult, &timer_us_shift, 1000000,
-				USEC_PER_SEC, 0);
+	clocks_calc_mult_shift(&timer_us_mult, &timer_us_shift,
+				tegra210_timer_freq, USEC_PER_SEC, 0);
 
 	if (register_cpu_notifier(&tegra210_timer_cpu_nb)) {
 		pr_err("%s: cannot setup CPU notifier\n", __func__);
