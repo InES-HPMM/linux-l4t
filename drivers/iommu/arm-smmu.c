@@ -2479,6 +2479,9 @@ static int __init arm_smmu_init(void)
 	mc_base = ioremap_nocache(MC_BASE, MC_SIZE);
 	if (!mc_base)
 		return -EINVAL;
+	else
+		pr_info("%s(): 0x%08x is mapped to %p\n",
+			__func__, MC_BASE, mc_base);
 
 	ret = platform_driver_register(&arm_smmu_driver);
 	if (ret)
