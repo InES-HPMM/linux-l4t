@@ -149,6 +149,7 @@ static inline void gic_set_base_accessor(struct gic_chip_data *data,
 #ifdef CONFIG_TEGRA_APE_AGIC
 
 static struct gic_chip_data *tegra_agic;
+static bool tegra_agic_suspended;
 static int gic_notifier(struct notifier_block *, unsigned long, void *);
 
 int tegra_agic_irq_get_virq(int irq)
@@ -347,6 +348,11 @@ static void gic_mask_irq(struct irq_data *d)
 	u8 curr_cpu = gic_get_cpumask(gic);
 	u32 irq_target = GIC_DIST_TARGET + gic_irq(d);
 
+#ifdef CONFIG_TEGRA_APE_AGIC
+	if (!gic->is_percpu && tegra_agic_suspended)
+		return;
+#endif
+
 	raw_spin_lock(&irq_controller_lock);
 	/*
 	 * if it is not per-cpu then we should make sure the irq has
@@ -372,6 +378,11 @@ static void gic_unmask_irq(struct irq_data *d)
 	u8 curr_cpu = gic_get_cpumask(gic);
 	u32 irq_target = GIC_DIST_TARGET + gic_irq(d);
 
+#ifdef CONFIG_TEGRA_APE_AGIC
+	if (!gic->is_percpu && tegra_agic_suspended)
+		return;
+#endif
+
 	raw_spin_lock(&irq_controller_lock);
 	/*
 	 * if it is not per-cpu then we should make sure the irq has
@@ -390,11 +401,24 @@ end:
 
 static inline void gic_irq_enable(struct irq_data *d)
 {
+#ifdef CONFIG_TEGRA_APE_AGIC
+	struct gic_chip_data *gic = irq_data_get_irq_chip_data(d);
+
+	if (!gic->is_percpu && tegra_agic_suspended)
+		return;
+#endif
+
 	gic_unmask_irq(d);
 }
 
 static inline void gic_irq_disable(struct irq_data *d)
 {
+#ifdef CONFIG_TEGRA_APE_AGIC
+	struct gic_chip_data *gic = irq_data_get_irq_chip_data(d);
+
+	if (!gic->is_percpu && tegra_agic_suspended)
+		return;
+#endif
 	gic_mask_irq(d);
 }
 
@@ -905,10 +929,16 @@ static int gic_notifier(struct notifier_block *self, unsigned long cmd,	void *v)
 			case MOD_DOMAIN_POWER_ON:
 				gic_dist_restore(gic);
 				gic_cpu_restore(gic);
+#ifdef CONFIG_TEGRA_APE_AGIC
+				tegra_agic_suspended = false;
+#endif
 				break;
 			case MOD_DOMAIN_POWER_OFF:
 				gic_cpu_save(gic);
 				gic_dist_save(gic);
+#ifdef CONFIG_TEGRA_APE_AGIC
+				tegra_agic_suspended = true;
+#endif
 				break;
 			}
 		}
