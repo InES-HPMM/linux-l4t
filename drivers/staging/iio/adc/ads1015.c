@@ -70,7 +70,7 @@
 #define ADS1015_TWO_CONVERSIONS				1
 #define ADS1015_FOUR_CONVERSIONS			2
 #define ADS1015_DISABLE_CONVERSION			3
-
+#define ADS_1015_MAX_RETRIES			6
 #define ADS1015_CHANNEL_NAME(_name)	"ads1015-chan-"#_name
 
 #define ADS1015_CHAN_IIO(chan, name)				\
@@ -105,14 +105,22 @@ static const struct regmap_config ads1015_regmap_config = {
 	.max_register = 4,
 };
 
+struct ads1015_adc_threshold_ranges {
+	u32 lower;
+	u32 upper;
+};
+
 struct ads1015_property {
 	bool is_continuous_mode;
 	int pga;		/* Programmable gain amplifier */
 	int sampling_freq;
 	int comparator_mode;
 	int channel_number;
-	int high_threshold_offset;
-	int low_threshold_offset;
+	int tolerance;
+	struct ads1015_adc_threshold_ranges *threshold_ranges;
+	int num_conditions;
+	int num_retries;
+	int retry_delay_ms;
 };
 
 struct ads1015 {
@@ -179,13 +187,17 @@ static int ads1015_start_conversion(struct ads1015 *adc, int chan)
 static int ads1015_threshold_update(struct ads1015 *adc, int *adc_val)
 {
 	struct ads1015_property *adc_prop = &adc->adc_prop;
+	struct ads1015_adc_threshold_ranges *thres_range;
 	u16 reg_val = 0;
 	int ret;
-	int val;
-	int low_threshold;
-	int high_threshold;
-	s16 min_s16;
-	s16 max_s16;
+	s16 lower_s16;
+	s16 upper_s16;
+	int i;
+	int stable_count = 0;
+	int last_val;
+	int cur_val;
+	int max_retry = adc_prop->num_retries;
+	bool in_valid_range = false;
 
 	ret = ads1015_read(adc->rmap, ADS1015_CONVERSION_REG, &reg_val);
 	if (ret < 0) {
@@ -193,33 +205,64 @@ static int ads1015_threshold_update(struct ads1015 *adc, int *adc_val)
 		return ret;
 	}
 
-	val = (s16)reg_val;
-	val = (val >> 4);
-	val = abs(val);
+	last_val = (s16)reg_val;
+	last_val = (last_val >> 4);
+	last_val = abs(last_val);
 
-	high_threshold =
-		((val + adc_prop->high_threshold_offset) > 0x7ff) ? 0x7ff :
-					val + adc_prop->high_threshold_offset;
-	low_threshold =
-		(val > adc_prop->low_threshold_offset) ?
-				val - adc_prop->low_threshold_offset : 0;
+	do {
+		mdelay(adc_prop->retry_delay_ms);
+		ret = ads1015_read(adc->rmap, ADS1015_CONVERSION_REG, &reg_val);
+		if (ret < 0) {
+			dev_err(adc->dev,
+				"CONVERSION Read failed %d\n", ret);
+			return ret;
+		}
 
-	min_s16 = (s16) (low_threshold * 16);
-	max_s16 = (s16) (high_threshold * 16);
+		cur_val = (s16)reg_val;
+		cur_val = (cur_val >> 4);
+		cur_val = abs(cur_val);
 
-	ret = ads1015_write(adc->rmap, ADS1015_LO_THRESH_REG, (u16) min_s16);
+		if (cur_val >= (last_val - adc_prop->tolerance) &&
+			cur_val <= (last_val + adc_prop->tolerance))
+			stable_count++;
+		else
+			stable_count = 0;
+
+		if (stable_count == 3)
+			break;
+		last_val = cur_val;
+	} while (--max_retry > 0);
+
+	for (i = 0; i < adc_prop->num_conditions; i++) {
+		thres_range = &adc_prop->threshold_ranges[i];
+		if (thres_range->lower <= cur_val &&
+			thres_range->upper >= cur_val) {
+			lower_s16 = (s16) (thres_range->lower * 16);
+			upper_s16 = (s16) (thres_range->upper * 16);
+			in_valid_range = true;
+			break;
+		}
+	}
+
+	*adc_val = cur_val;
+	if (!in_valid_range) {
+		dev_info(adc->dev,
+			"Not in valid threshold range. Val: %d\n", cur_val);
+		return  0;
+	}
+
+	ret = ads1015_write(adc->rmap, ADS1015_LO_THRESH_REG, (u16)lower_s16);
 	if (ret < 0) {
 		dev_err(adc->dev, "LO_THRESH_REG write failed %d\n", ret);
 		return ret;
 	}
 
-	ret = ads1015_write(adc->rmap, ADS1015_HI_THRESH_REG, (u16)max_s16);
+	ret = ads1015_write(adc->rmap, ADS1015_HI_THRESH_REG, (u16)upper_s16);
 	if (ret < 0) {
 		dev_err(adc->dev, "HI_THRESH_REG write failed %d\n", ret);
 		return ret;
 	}
 
-	*adc_val = val;
 	return 0;
 }
 
@@ -334,7 +377,8 @@ static int ads1015_get_dt_data(struct ads1015 *adc,
 {
 	struct ads1015_property *adc_prop = &adc->adc_prop;
 	int ret = 0;
-	u32 val;
+	u32 val, lower_adc, upper_adc;
+	int nranges, i;
 
 	ret = of_property_read_u32(node, "ti,programmable-gain-amplifier",
 			&val);
@@ -351,6 +395,18 @@ static int ads1015_get_dt_data(struct ads1015 *adc,
 	if (!adc_prop->is_continuous_mode)
 		return 0;
 
+	ret = of_property_read_u32(node, "ti,maximum-retries", &val);
+	adc_prop->num_retries = (!ret) ? val : 0;
+
+	if (adc_prop->num_retries > ADS_1015_MAX_RETRIES)
+		adc_prop->num_retries = ADS_1015_MAX_RETRIES;
+
+	ret = of_property_read_u32(node, "ti,tolerance-val", &val);
+	adc_prop->tolerance = (!ret) ? val : 10;
+
+	ret = of_property_read_u32(node, "ti,delay-between-retry-ms", &val);
+	adc_prop->retry_delay_ms = (!ret) ? val : 10;
+
 	ret = of_property_read_u32(node, "ti,continuous-channel-number", &val);
 	if (!ret) {
 		adc_prop->channel_number = val;
@@ -358,11 +414,30 @@ static int ads1015_get_dt_data(struct ads1015 *adc,
 		dev_err(adc->dev, "Continuous channel number not available\n");
 		return ret;
 	}
-	ret = of_property_read_u32(node, "ti,low-threshold-offset", &val);
-	adc_prop->low_threshold_offset = (!ret) ? val : 10;
-	ret = of_property_read_u32(node, "ti,high-threshold-offset", &val);
-	adc_prop->high_threshold_offset = (!ret) ? val : 10;
 
+	nranges = of_property_count_u32(node, "ti,adc-valid-threshold-ranges");
+	if (nranges <= 0)
+		return -EINVAL;
+
+	nranges = (nranges  / 2);
+	adc_prop->threshold_ranges = devm_kzalloc(adc->dev, nranges *
+		sizeof(*adc_prop->threshold_ranges), GFP_KERNEL);
+	if (!adc_prop->threshold_ranges)
+		return -ENOMEM;
+
+	for (i = 0; i < nranges; ++i) {
+		lower_adc = 0;
+		upper_adc = 0;
+
+		of_property_read_u32_index(node,
+			"ti,adc-valid-threshold-ranges", i * 2 + 0, &lower_adc);
+		of_property_read_u32_index(node,
+			"ti,adc-valid-threshold-ranges", i * 2 + 1, &upper_adc);
+
+		adc_prop->threshold_ranges[i].lower = lower_adc;
+		adc_prop->threshold_ranges[i].upper = upper_adc;
+	};
+	adc_prop->num_conditions = nranges;
 	return 0;
 }
 
