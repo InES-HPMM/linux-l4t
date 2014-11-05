@@ -300,7 +300,7 @@
 #define HSIC_RX_STROBE_DELAY_TRIMMER	0x1e
 #define HSIC_RX_STROBE_DELAY_TRIMMER_MASK	(0x3f << 14)
 
-struct tegra_usb_pmc_data pmc_data[3];
+static struct tegra_usb_pmc_data pmc_data[3];
 
 static struct tegra_xtal_freq utmip_freq_table[] = {
 	{
@@ -1459,7 +1459,7 @@ static unsigned long utmi_phy_set_dp_dm_pull_up_down(struct tegra_usb_phy *phy,
 	return org;
 }
 
-unsigned long utmi_phy_get_dp_dm_status(struct tegra_usb_phy *phy,
+static unsigned long utmi_phy_get_dp_dm_status(struct tegra_usb_phy *phy,
 		unsigned long pull_up_down_flags)
 {
 	void __iomem *base = phy->regs;

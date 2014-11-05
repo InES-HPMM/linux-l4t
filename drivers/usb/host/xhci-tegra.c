@@ -472,7 +472,7 @@ static void pmc_disable_bus_ctrl(struct tegra_xhci_hcd *tegra)
 	}
 }
 
-u32 csb_read(struct tegra_xhci_hcd *tegra, u32 addr)
+static u32 csb_read(struct tegra_xhci_hcd *tegra, u32 addr)
 {
 	void __iomem *fpci_base = tegra->fpci_base;
 	struct platform_device *pdev = tegra->pdev;
@@ -497,7 +497,7 @@ u32 csb_read(struct tegra_xhci_hcd *tegra, u32 addr)
 	return data;
 }
 
-void csb_write(struct tegra_xhci_hcd *tegra, u32 addr, u32 data)
+static void csb_write(struct tegra_xhci_hcd *tegra, u32 addr, u32 data)
 {
 	void __iomem *fpci_base = tegra->fpci_base;
 	struct platform_device *pdev = tegra->pdev;
@@ -1854,7 +1854,7 @@ static void tegra_xhci_restore_dfe_context(struct tegra_xhci_hcd *tegra,
 			, tegra->padregs->iophy_usb3_padX_ctlY_0[port][3]);
 }
 
-void restore_ctle_context(struct tegra_xhci_hcd *tegra,
+static void restore_ctle_context(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
 	struct xhci_hcd *xhci = tegra->xhci;
@@ -1997,7 +1997,7 @@ static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
  * then programs the port capabilities and pad parameters
  * of ports assigned to XUSB after booted to OS.
  */
-void
+static void
 tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 {
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
@@ -3453,12 +3453,12 @@ static void set_port_cdp(struct tegra_xhci_hcd *tegra, bool enable, int pad)
 	return;
 }
 
-void tegra_xhci_free_dev(struct usb_hcd *hcd, struct usb_device *udev)
+static void tegra_xhci_free_dev(struct usb_hcd *hcd, struct usb_device *udev)
 {
 		xhci_free_dev(hcd, udev);
 }
 
-int tegra_xhci_alloc_dev(struct usb_hcd *hcd, struct usb_device *udev)
+static int tegra_xhci_alloc_dev(struct usb_hcd *hcd, struct usb_device *udev)
 {
 	return xhci_alloc_dev(hcd, udev);
 }
@@ -3492,8 +3492,8 @@ static irqreturn_t tegra_xhci_irq(struct usb_hcd *hcd)
 	return iret;
 }
 
-int tegra_xhci_update_hub_device(struct usb_hcd *hcd, struct usb_device *hdev,
-			struct usb_tt *tt, gfp_t mem_flags)
+static int tegra_xhci_update_hub_device(struct usb_hcd *hcd,
+		struct usb_device *hdev, struct usb_tt *tt, gfp_t mem_flags)
 {
 	/* Disable LPM SUPPORT for SS hubs connected to roothub
 	   This is to avoid the Firmware exception seen on host controller */
@@ -3504,7 +3504,7 @@ int tegra_xhci_update_hub_device(struct usb_hcd *hcd, struct usb_device *hdev,
 	return xhci_update_hub_device(hcd, hdev, tt, mem_flags);
 }
 
-void tegra_xhci_reset_sspi(struct usb_hcd *hcd, u8 pi)
+static void tegra_xhci_reset_sspi(struct usb_hcd *hcd, u8 pi)
 {
 	struct tegra_xhci_hcd *tegra = hcd_to_tegra_xhci(hcd);
 	struct device *dev = &tegra->pdev->dev;
@@ -4932,12 +4932,12 @@ static struct platform_driver tegra_xhci_driver = {
 };
 MODULE_ALIAS("platform:tegra-xhci");
 
-int tegra_xhci_register_plat(void)
+static int tegra_xhci_register_plat(void)
 {
 	return platform_driver_register(&tegra_xhci_driver);
 }
 
-void tegra_xhci_unregister_plat(void)
+static void tegra_xhci_unregister_plat(void)
 {
 	platform_driver_unregister(&tegra_xhci_driver);
 }

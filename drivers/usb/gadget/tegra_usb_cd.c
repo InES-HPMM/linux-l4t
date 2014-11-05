@@ -32,7 +32,7 @@
 
 #include "tegra_usb_cd.h"
 
-struct tegra_usb_cd *_ucd;
+static struct tegra_usb_cd *_ucd;
 static const char driver_name[] = "tegra-usb-cd";
 
 static char *const tegra_usb_cd_extcon_cable[] = {
@@ -143,7 +143,7 @@ static int tegra_usb_cd_set_charging_current(struct tegra_usb_cd *ucd)
 	return tegra_usb_cd_set_current_limit(ucd, max_ua);
 }
 
-enum tegra_usb_connect_type
+static enum tegra_usb_connect_type
 	tegra_usb_cd_detect_cable_and_set_current(struct tegra_usb_cd *ucd)
 {
 	DBG(ucd->dev, "Begin");

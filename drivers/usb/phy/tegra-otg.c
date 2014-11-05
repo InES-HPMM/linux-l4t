@@ -127,7 +127,6 @@ static u64 tegra_ehci_dmamask = DMA_BIT_MASK(64);
 static struct tegra_otg *tegra_clone;
 static struct notifier_block otg_vbus_nb;
 static struct notifier_block otg_id_nb;
-struct extcon_specific_cable_nb *extcondev;
 
 enum tegra_connect_type {
 	CONNECT_TYPE_Y_CABLE
@@ -745,7 +744,7 @@ static int tegra_otg_set_suspend(struct usb_phy *phy, int suspend)
 	return 0;
 }
 
-void tegra_otg_set_id_detection_type(struct tegra_otg *tegra)
+static void tegra_otg_set_id_detection_type(struct tegra_otg *tegra)
 {
 	switch (tegra->pdata->ehci_pdata->id_det_type) {
 	case TEGRA_USB_ID:
@@ -816,7 +815,7 @@ static struct resource tegra_usb_resources[] = {
 	},
 };
 
-struct platform_device tegra_ehci_device = {
+static struct platform_device tegra_ehci_device = {
 	.name   = "tegra-ehci",
 	.id     = 0,
 	.dev    = {
@@ -853,12 +852,12 @@ static struct tegra_usb_platform_data tegra_ehci_utmi_pdata = {
 	},
 };
 
-struct tegra_otg_soc_data tegra_soc_data = {
+static struct tegra_otg_soc_data tegra_soc_data = {
 	.ehci_device = &tegra_ehci_device,
 	.ehci_pdata = &tegra_ehci_utmi_pdata,
 };
 
-struct of_device_id tegra_otg_of_match[] = {
+static struct of_device_id tegra_otg_of_match[] = {
 	{.compatible = "nvidia,tegra132-otg", .data = &tegra_soc_data, },
 };
 MODULE_DEVICE_TABLE(of, tegra_otg_of_match);
