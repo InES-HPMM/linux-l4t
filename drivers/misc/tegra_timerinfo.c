@@ -44,11 +44,6 @@ static struct miscdevice timerinfo_dev = {
 static int timerinfo_dev_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	/* start at first page containing TIMERUS_CNTR_1US */
-	if (IS_ERR_OR_NULL(timer_reg_base_pa)) {
-		pr_err("%s: Invalid timer_base_address\n", __func__);
-		return -EINVAL;
-	}
-
 	if (vma->vm_end  - vma->vm_start != PAGE_SIZE)
 		return -EINVAL;
 
@@ -68,6 +63,10 @@ static int timerinfo_dev_mmap(struct file *file, struct vm_area_struct *vma)
 
 static int __init timerinfo_dev_init(void)
 {
+	if (!timer_reg_base_pa) {
+		pr_err("%s: Timer not registered\n", __func__);
+		return 0;
+	}
 	return misc_register(&timerinfo_dev);
 }
 

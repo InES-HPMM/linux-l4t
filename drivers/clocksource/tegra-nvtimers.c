@@ -362,8 +362,10 @@ void __init tegra_init_timer(struct device_node *np)
 	unsigned long rate;
 	struct resource res;
 
-	if (of_address_to_resource(np, 0, &res))
+	if (of_address_to_resource(np, 0, &res)) {
 		pr_err("%s:No memory resources found\n", __func__);
+		return;
+	}
 
 	timer_reg_base = ioremap(res.start, resource_size(&res));
 	if (!timer_reg_base) {
