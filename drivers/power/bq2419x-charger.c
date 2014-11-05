@@ -112,6 +112,7 @@ struct bq2419x_chip {
 	bool				cable_connected;
 	int				last_charging_current;
 	bool				disable_suspend_during_charging;
+	bool				wake_lock_released;
 	int				last_temp;
 	bool				shutdown_complete;
 	struct bq2419x_reg_info		input_src;
@@ -508,6 +509,8 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 
 	if (max_uA == 0 && val != 0)
 		return ret;
+	if (!max_uA)
+		bq2419x->wake_lock_released = false;
 
 	old_current_limit = bq2419x->in_current_limit;
 	bq2419x->last_charging_current = max_uA;
@@ -526,6 +529,8 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 		bq2419x->cable_connected = 1;
 		bq2419x->chg_status = BATTERY_CHARGING;
 	}
+	if (bq2419x->wake_lock_released)
+		in_current_limit = 500;
 	ret = bq2419x_configure_charging_current(bq2419x, in_current_limit);
 	if (ret < 0)
 		goto error;
@@ -937,6 +942,25 @@ scrub:
 #include <linux/seq_file.h>
 
 static struct dentry *debugfs_root;
+static ssize_t bq2419x_show_suspend_state(struct file *file,
+			char __user *user_buf, size_t count, loff_t *ppos)
+{
+	struct i2c_client *client = file->private_data;
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	char buf[64] = { 0, };
+	ssize_t ret = 0;
+
+	if (bq2419x->wake_lock_released ||
+			(bq2419x->chg_status == BATTERY_CHARGING_DONE) ||
+			(bq2419x->in_current_limit <= 500))
+		ret = snprintf(buf, sizeof(buf), "Wake lock disabled\n");
+	else if (!bq2419x->wake_lock_released ||
+			(bq2419x->in_current_limit > 500))
+		ret = snprintf(buf, sizeof(buf), "Wake lock enabled\n");
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, ret);
+}
+
 static ssize_t bq2419x_enable_suspend_on_charging(struct file *file,
 			const char __user *user_buf, size_t count, loff_t *ppos)
 {
@@ -965,7 +989,7 @@ static ssize_t bq2419x_enable_suspend_on_charging(struct file *file,
 	else
 		return -EINVAL;
 
-	if (enabled) {
+	if (enabled && !bq2419x->wake_lock_released) {
 		if (bq2419x->in_current_limit == 500)
 			return -EINVAL;
 		ret = bq2419x_configure_charging_current(bq2419x, 500);
@@ -975,7 +999,9 @@ static ssize_t bq2419x_enable_suspend_on_charging(struct file *file,
 			return ret;
 		}
 		battery_charger_release_wake_lock(bq2419x->bc_dev);
-	} else {
+		bq2419x->wake_lock_released = true;
+	} else if (!enabled && bq2419x->wake_lock_released) {
+		bq2419x->wake_lock_released = false;
 		ret = bq2419x_configure_charging_current(bq2419x,
 				bq2419x->last_charging_current/1000);
 		if (ret  < 0) {
@@ -991,6 +1017,7 @@ static ssize_t bq2419x_enable_suspend_on_charging(struct file *file,
 static const struct file_operations bq2419x_debug_fops = {
 	.open		= simple_open,
 	.write		= bq2419x_enable_suspend_on_charging,
+	.read		= bq2419x_show_suspend_state,
 };
 
 static int bq2419x_debugfs_init(struct i2c_client *client)
@@ -1455,6 +1482,7 @@ static int bq2419x_probe(struct i2c_client *client,
 	mutex_init(&bq2419x->otg_mutex);
 	bq2419x->is_otg_connected = 0;
 	bq2419x->shutdown_complete = 0;
+	bq2419x->wake_lock_released = false;
 
 	ret = bq2419x_show_chip_version(bq2419x);
 	if (ret < 0) {
