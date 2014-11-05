@@ -312,8 +312,8 @@ static const int MIN_LOW_TEMP = -127000;
 
 #define CPU_PSKIP_STATUS			0x418
 #define GPU_PSKIP_STATUS			0x41c
-#define XPU_PSKIP_THROTTLE_DEPTH_SHIFT		20	 /* GPU_PSKIP_STATUS */
-#define XPU_PSKIP_THROTTLE_DEPTH_MASK		0x3
+#define GPU_PSKIP_STATUS_THROTTLE_DEPTH_SHIFT	20
+#define GPU_PSKIP_STATUS_THROTTLE_DEPTH_MASK	0x7
 #define XPU_PSKIP_STATUS_M_SHIFT		12
 #define XPU_PSKIP_STATUS_M_MASK			0xff
 #define XPU_PSKIP_STATUS_N_SHIFT		4
@@ -330,8 +330,10 @@ static const int MIN_LOW_TEMP = -127000;
 #define THROT_STATUS				0x428
 #define THROT_STATUS_BREACH_SHIFT		12
 #define THROT_STATUS_BREACH_MASK		0x1
-#define THROT_STATUS_STATE_SHIFT		4
-#define THROT_STATUS_STATE_MASK			0xff
+#define THROT_STATUS_CPU_SEQ_STATE_SHIFT	4
+#define THROT_STATUS_CPU_SEQ_STATE_MASK		0xf
+#define THROT_STATUS_GPU_SEQ_STATE_SHIFT	8
+#define THROT_STATUS_GPU_SEQ_STATE_MASK		0xf
 #define THROT_STATUS_ENABLED_SHIFT		0
 #define THROT_STATUS_ENABLED_MASK		0x1
 
@@ -364,10 +366,10 @@ static const int MIN_LOW_TEMP = -127000;
 #define THROT_VECT_MED				0x3 /* 3'b011 */
 #define THROT_VECT_HVY				0x7 /* 3'b111 */
 
-#define THROT_LEVEL_LOW				0
-#define THROT_LEVEL_MED				1
-#define THROT_LEVEL_HVY				2
-#define THROT_LEVEL_NONE			-1 /* invalid */
+#define THROT_LEVEL_LOW				THROT_VECT_LOW
+#define THROT_LEVEL_MED				THROT_VECT_MED
+#define THROT_LEVEL_HVY				THROT_VECT_HVY
+#define THROT_LEVEL_NONE			THROT_VECT_NONE
 
 #define THROT_PRIORITY_LITE			0x444
 #define THROT_PRIORITY_LITE_PRIO_SHIFT		0
@@ -3370,6 +3372,56 @@ void tegra_soctherm_adjust_core_zone(bool high_voltage_range)
 
 #ifdef CONFIG_DEBUG_FS
 
+static int mn2pct(int m, int n)
+{
+	int p;
+
+	m++; /* HW adds 1 to m, n value */
+	n++;
+	p = 100 * m; /* numerator */
+	p += n / 2; /* to round UP */
+	p /= n; /* get percentage */
+
+	return 100 - p;
+}
+
+static char *vect2str(int vect)
+{
+	switch (vect) {
+	case THROT_VECT_HVY:
+		return "hi";
+		break;
+	case THROT_VECT_MED:
+		return "med";
+		break;
+	case THROT_VECT_LOW:
+		return "low";
+		break;
+	default:
+		return "";
+		break;
+	}
+}
+
+static int vect2pct(int vect)
+{
+	/* These mappings are hard-coded in gk20a:nv_therm */
+	switch (vect) {
+	case THROT_VECT_HVY:
+		return 87;
+		break;
+	case THROT_VECT_MED:
+		return 75;
+		break;
+	case THROT_VECT_LOW:
+		return 50;
+		break;
+	default:
+		return 0;
+		break;
+	}
+}
+
 /**
  * regs_show() - show callback for regs debugfs
  * @s:          seq_file for registers values to be written to
@@ -3541,35 +3593,43 @@ static int regs_show(struct seq_file *s, void *data)
 
 	seq_puts(s, "---------------------------------------------------\n");
 	r = soctherm_readl(THROT_STATUS);
-	state = REG_GET(r, THROT_STATUS_BREACH);
-	seq_printf(s, "THROT STATUS: breach(%d) ", state);
-	state = REG_GET(r, THROT_STATUS_STATE);
-	seq_printf(s, "state(%d) ", state);
 	state = REG_GET(r, THROT_STATUS_ENABLED);
-	seq_printf(s, "enabled(%d)\n", state);
+	seq_printf(s, "THROT SEQ STATUS: enabled(%d)", state);
+	state = REG_GET(r, THROT_STATUS_BREACH);
+	seq_printf(s, " breach(%d)", state);
+	state = REG_GET(r, THROT_STATUS_CPU_SEQ_STATE);
+	seq_printf(s, " CPU-seq(0x%x)", state);
+	state = REG_GET(r, THROT_STATUS_GPU_SEQ_STATE);
+	seq_printf(s, " GPU-seq(0x%x)\n", state);
 
+	/* show instantaneous CPU PSKIP state */
 	r = soctherm_readl(CPU_PSKIP_STATUS);
-	if (IS_T13X) {
-		state = REG_GET(r, XPU_PSKIP_STATUS_ENABLED);
-		seq_printf(s, "%s PSKIP STATUS: ",
-			   throt_dev_names[THROTTLE_DEV_CPU]);
-		seq_printf(s, "enabled(%d)\n", state);
-	} else {
-		state = REG_GET(r, XPU_PSKIP_STATUS_M);
-		seq_printf(s, "%s PSKIP STATUS: M(%d) ",
-			   throt_dev_names[THROTTLE_DEV_CPU], state);
-		state = REG_GET(r, XPU_PSKIP_STATUS_N);
-		seq_printf(s, "N(%d) ", state);
-		state = REG_GET(r, XPU_PSKIP_STATUS_ENABLED);
-		seq_printf(s, "enabled(%d)\n", state);
+	state = REG_GET(r, XPU_PSKIP_STATUS_ENABLED);
+	seq_printf(s, "%s PSKIP STATUS: enabled(%d)",
+		   throt_dev_names[THROTTLE_DEV_CPU], state);
+	if (state) {
+		if (!IS_T13X) {
+			m = REG_GET(r, XPU_PSKIP_STATUS_M);
+			n = REG_GET(r, XPU_PSKIP_STATUS_N);
+			q = mn2pct(m, n);
+			seq_printf(s, " M(%d) N(%d) depth(%d%%)", m, n, q);
+		}
 	}
+	seq_puts(s, "\n");
 
+	/* show instantaneous GPU PSKIP state */
 	r = soctherm_readl(GPU_PSKIP_STATUS);
 	state = REG_GET(r, XPU_PSKIP_STATUS_ENABLED);
-	seq_printf(s, "%s PSKIP STATUS: ",
-		   throt_dev_names[THROTTLE_DEV_GPU]);
-	seq_printf(s, "enabled(%d)\n", state);
+	seq_printf(s, "%s PSKIP STATUS: enabled(%d)",
+		   throt_dev_names[THROTTLE_DEV_GPU], state);
+	if (state) {
+		state = REG_GET(r, GPU_PSKIP_STATUS_THROTTLE_DEPTH);
+		seq_printf(s, " vector(0x%x) depth(%d%% %s)",
+			   state, vect2pct(state), vect2str(state));
+	}
+	seq_puts(s, "\n");
 
+	/* show PSKIP state for each throttle-control */
 	seq_puts(s, "---------------------------------------------------\n");
 	seq_puts(s, "THROTTLE control and PSKIP configuration:\n");
 	seq_printf(s, "%5s  %3s  %2s  %7s  %8s  %7s  %8s  %4s  %4s  %5s  ",
@@ -3598,30 +3658,13 @@ static int regs_show(struct seq_file *s, void *data)
 			q = 0;
 			if (IS_T13X && j == THROTTLE_DEV_CPU) {
 				state = REG_GET(r, THROT_PSKIP_CTRL_VECT_CPU);
-				if (state == THROT_VECT_HVY) {
-					level = THROT_LEVEL_HVY;
-					depth = "hi";
-				} else if (state == THROT_VECT_MED) {
-					level = THROT_LEVEL_MED;
-					depth = "med";
-				} else if (state == THROT_VECT_LOW) {
-					level = THROT_LEVEL_LOW;
-					depth = "low";
-				}
+				level = state;
+				depth = vect2str(state);
 			}
 			if (j == THROTTLE_DEV_GPU) {
 				state = REG_GET(r, THROT_PSKIP_CTRL_VECT_GPU);
-				/* Mapping is hard-coded in gk20a:nv_therm */
-				if (state == THROT_VECT_HVY) {
-					q = 87;
-					depth = "hi";
-				} else if (state == THROT_VECT_MED) {
-					q = 75;
-					depth = "med";
-				} else if (state == THROT_VECT_LOW) {
-					q = 50;
-					depth = "low";
-				}
+				q = vect2pct(state);
+				depth = vect2str(state);
 			}
 
 			if (IS_T13X && j == THROTTLE_DEV_CPU)
@@ -3631,7 +3674,7 @@ static int regs_show(struct seq_file *s, void *data)
 
 			m = REG_GET(r, THROT_PSKIP_CTRL_DIVIDEND);
 			n = REG_GET(r, THROT_PSKIP_CTRL_DIVISOR);
-			q = q ?: 100 - (((100 * (m+1)) + ((n+1) / 2)) / (n+1));
+			q = q ?: mn2pct(m, n);
 			seq_printf(s, "%2u%% %3s  ", q, depth);
 			seq_printf(s, "%8u  ", m);
 			seq_printf(s, "%7u  ", n);
