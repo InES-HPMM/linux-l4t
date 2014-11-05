@@ -281,7 +281,7 @@
 #define NV_PCIE2_RP_PRIV_XP_TX_L0S_ENTRY_COUNT			0x00000F90
 #define NV_PCIE2_RP_PRIV_XP_TX_L1_ENTRY_COUNT			0x00000F94
 
-#define NV_PCIE2_RP_VEND_CTL2					0x00000F44
+#define NV_PCIE2_RP_VEND_CTL2					0x00000FA8
 #define PCIE2_RP_VEND_CTL2_PCA_ENABLE				(1 << 7)
 
 #define NV_PCIE2_RP_ECTL_5_R1					0x00000E90
@@ -1769,6 +1769,7 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 		raise_emc_freq(pcie);
 		/* handle MBIST issue for PCIE */
+		/* Disable PCA after enumeration to save power */
 		data = rp_readl(port, NV_PCIE2_RP_VEND_CTL2);
 		data &= ~PCIE2_RP_VEND_CTL2_PCA_ENABLE;
 		rp_writel(port, data, NV_PCIE2_RP_VEND_CTL2);
@@ -1779,6 +1780,11 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 		data |= NV_PCIE2_RP_INTR_BCR_INTR_LINE;
 		rp_writel(port, data, NV_PCIE2_RP_INTR_BCR);
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+		/* handle MBIST issue for PCIE */
+		data = rp_readl(port, NV_PCIE2_RP_VEND_CTL2);
+		data |= PCIE2_RP_VEND_CTL2_PCA_ENABLE;
+		rp_writel(port, data, NV_PCIE2_RP_VEND_CTL2);
+
 		/* resize buffers for better perf, bug#1447522 */
 		if (t210_war) {
 			struct tegra_pcie_port *temp_port;
@@ -1896,10 +1902,6 @@ static void tegra_pcie_enable_rp_features(struct tegra_pcie_port *port)
 	data |= PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C;
 	rp_writel(port, data, NV_PCIE2_RP_ECTL_1_R2);
 #endif
-	data = rp_readl(port, NV_PCIE2_RP_VEND_CTL2);
-	data |= PCIE2_RP_VEND_CTL2_PCA_ENABLE;
-	rp_writel(port, data, NV_PCIE2_RP_VEND_CTL2);
-
 	/* Optimal settings to enhance bandwidth */
 	data = rp_readl(port, RP_VEND_XP);
 	data |= RP_VEND_XP_OPPORTUNISTIC_ACK;
