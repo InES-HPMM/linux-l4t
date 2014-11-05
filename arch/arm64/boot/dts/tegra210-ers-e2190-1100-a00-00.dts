@@ -321,7 +321,9 @@
 	backlight {
 		compatible = "pwm-backlight";
 		status = "okay";
-		pwms = <&tegra_pwm 0 29334>;
+		panel-a-wuxga-8-0-bl {
+			pwms = <&tegra_pwm 0 40161>;
+		};
 	};
 
 	gpio-keys {

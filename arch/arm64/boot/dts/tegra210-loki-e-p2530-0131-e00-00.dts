@@ -30,7 +30,9 @@
 	backlight {
 		compatible = "pwm-backlight";
 		status = "okay";
-		pwms = <&tegra_pwm 0 29334>;
+		panel-j-720p-5-0-bl {
+			pwms = <&tegra_pwm 0 29334>;
+		};
 	};
 
 	host1x {

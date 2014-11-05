@@ -233,10 +233,10 @@
 		};
 	};
 	backlight {
-		pwms = <&tegra_pwm 1 29334>;
 		panel-j-1440-810-5-8-bl {
 			status = "okay";
 			compatible = "j,1440-810-5-8-bl";
+			pwms = <&tegra_pwm 1 29334>;
 			max-brightness = <255>;
 			default-brightness = <77>;
 			bl-measured = < 0 1 2 3 4 5 6 8 9 10

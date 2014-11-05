@@ -101,10 +101,10 @@
 		};
 	};
 	backlight {
-		pwms = <&tegra_pwm 1 1000000>;
 		panel-a-edp-1080p-14-0-bl {
 			status = "okay";
 			compatible = "a-edp,1080p-14-0-bl";
+			pwms = <&tegra_pwm 1 1000000>;
 			max-brightness = <255>;
 			default-brightness = <224>;
 			bl-measured = < 0 0 1 2 3 4 5 6

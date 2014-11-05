@@ -234,10 +234,10 @@
 		};
 	};
 	backlight {
-		pwms = <&tegra_pwm 1 29334>;
 		panel-j-720p-5-0-bl {
 			status = "okay";
 			compatible = "j,720p-5-0-bl";
+			pwms = <&tegra_pwm 1 29334>;
 			max-brightness = <255>;
 			default-brightness = <77>;
 		};

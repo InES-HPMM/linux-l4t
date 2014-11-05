@@ -225,10 +225,10 @@
 		};
 	};
 	backlight {
-		pwms = <&tegra_pwm 1 40161>;
 		panel-a-wuxga-8-0-bl {
 			status = "okay";
 			compatible = "a,wuxga-8-0-bl";
+			pwms = <&tegra_pwm 1 40161>;
 			max-brightness = <255>;
 			default-brightness = <191>;
 			bl-measured = < 0 1 2 4 5 6 7 8
