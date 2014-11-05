@@ -511,6 +511,7 @@ struct tegra_dc_sd_window {
 
 struct tegra_dc_sd_settings {
 	unsigned enable;
+	unsigned enable_int;
 	bool use_auto_pwm;
 	u8 hw_update_delay;
 	u8 aggressiveness;
