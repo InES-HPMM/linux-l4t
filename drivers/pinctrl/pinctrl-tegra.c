@@ -32,6 +32,7 @@
 #include <linux/slab.h>
 #include <linux/syscore_ops.h>
 #include <linux/uaccess.h>
+#include <linux/tegra_prod.h>
 
 #include <linux/pinctrl/pinconf-tegra.h>
 
@@ -53,6 +54,7 @@ struct tegra_pmx {
 
 	u32 *pg_data;
 	unsigned drive_group_start_index;
+	struct tegra_prod_list *prod_list;
 };
 
 static struct tegra_pmx *pmx;
@@ -976,6 +978,7 @@ int tegra_pinctrl_probe(struct platform_device *pdev,
 {
 	struct resource *res;
 	int i, pg_data_size = 0;
+	int ret;
 
 	pmx = devm_kzalloc(&pdev->dev, sizeof(*pmx), GFP_KERNEL);
 	if (!pmx) {
@@ -1066,6 +1069,18 @@ int tegra_pinctrl_probe(struct platform_device *pdev,
 	}
 
 	pinctrl_clear_parked_bits(pmx);
+
+	pmx->prod_list = tegra_prod_get(&pdev->dev, NULL);
+	if (IS_ERR(pmx->prod_list)) {
+		dev_info(&pdev->dev, "Prod-settngs not available\n");
+		pmx->prod_list = NULL;
+	} else {
+		ret = tegra_prod_set_boot_init(pmx->regs, pmx->prod_list);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "Prod config failed: %d\n", ret);
+			return ret;
+		}
+	}
 
 	pmx->pctl = pinctrl_register(&tegra_pinctrl_desc, &pdev->dev, pmx);
 	if (!pmx->pctl) {
