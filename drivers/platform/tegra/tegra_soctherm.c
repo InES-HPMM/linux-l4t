@@ -312,6 +312,7 @@ static const int MIN_LOW_TEMP = -127000;
 
 #define CPU_PSKIP_STATUS			0x418
 #define GPU_PSKIP_STATUS			0x41c
+#define CPU_HVC_PSKIP_STATUS			0x768
 #define GPU_PSKIP_STATUS_THROTTLE_DEPTH_SHIFT	20
 #define GPU_PSKIP_STATUS_THROTTLE_DEPTH_MASK	0x7
 #define XPU_PSKIP_STATUS_M_SHIFT		12
@@ -339,6 +340,7 @@ static const int MIN_LOW_TEMP = -127000;
 
 #define THROT_PSKIP_CTRL_LITE_CPU		0x430
 #define THROT13_PSKIP_CTRL_LOW_CPU		0x154
+#define CPU_HVC_PSKIP_CTRL			0x760
 #define THROT_PSKIP_CTRL_ENABLE_SHIFT		31
 #define THROT_PSKIP_CTRL_ENABLE_MASK		0x1
 #define THROT_PSKIP_CTRL_VECT_GPU_SHIFT		16
@@ -354,6 +356,7 @@ static const int MIN_LOW_TEMP = -127000;
 
 #define THROT_PSKIP_RAMP_LITE_CPU		0x434
 #define THROT13_PSKIP_RAMP_LOW_CPU		0x150
+#define CPU_HVC_PSKIP_RAMP			0x764
 #define THROT_PSKIP_RAMP_SEQ_BYPASS_MODE_SHIFT	31
 #define THROT_PSKIP_RAMP_SEQ_BYPASS_MODE_MASK	0x1
 #define THROT_PSKIP_RAMP_DURATION_SHIFT		8
@@ -2431,6 +2434,30 @@ static void soctherm_throttle_program(enum soctherm_throttle_id throt)
 		soctherm_writel(0xffffffff, ALARM_FILTER(throt));
 }
 
+/**
+ * soctherm_cpu_hvc_program() - programs CPU HVC pulse skippers' configuration
+ * @m		effective dividend to program (note: HW adds 1)
+ * @n		effective divisor to program (note: HW adds 1)
+ *
+ * Pulse skippers are used to throttle clock frequencies.
+ * This function programs the pulse skippers for CPU HVC used in CC3
+ *
+ * Return: Nothing is returned (void).
+ */
+static void soctherm_cpu_hvc_program(int m, int n)
+{
+	u32 r;
+
+	r = REG_SET(0, THROT_PSKIP_CTRL_DIVIDEND, m - 1);
+	r = REG_SET(r, THROT_PSKIP_CTRL_DIVISOR, n - 1);
+	r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, 1);
+	soctherm_writel(r, CPU_HVC_PSKIP_CTRL);
+
+	r = REG_SET(0, THROT_PSKIP_RAMP_DURATION, 4);
+	r = REG_SET(r, THROT_PSKIP_RAMP_STEP, 3);
+	soctherm_writel(r, CPU_HVC_PSKIP_RAMP);
+}
+
 #ifdef CONFIG_THERMAL
 /**
  * soctherm_tsense_program() - Configure sensor timing parameters based on
@@ -2912,6 +2939,9 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 		}
 #endif
 	}
+
+	/* Setup CPU HVC PSKIP parameters */
+	soctherm_cpu_hvc_program(1, 256);
 
 	r = REG_SET(0, THROT_GLOBAL_ENB, 1);
 	if (IS_T13X)
@@ -3626,6 +3656,18 @@ static int regs_show(struct seq_file *s, void *data)
 		state = REG_GET(r, GPU_PSKIP_STATUS_THROTTLE_DEPTH);
 		seq_printf(s, " vector(0x%x) depth(%d%% %s)",
 			   state, vect2pct(state), vect2str(state));
+	}
+	seq_puts(s, "\n");
+
+	/* show instantaneous HVC PSKIP state */
+	r = soctherm_readl(CPU_HVC_PSKIP_STATUS);
+	state = REG_GET(r, XPU_PSKIP_STATUS_ENABLED);
+	seq_printf(s, "HVC PSKIP STATUS: enabled(%d)", state);
+	if (state) {
+		m = REG_GET(r, XPU_PSKIP_STATUS_M);
+		n = REG_GET(r, XPU_PSKIP_STATUS_N);
+		q = mn2pct(m, n);
+		seq_printf(s, " M(%d) N(%d) depth(%d%%)", m, n, q);
 	}
 	seq_puts(s, "\n");
 
