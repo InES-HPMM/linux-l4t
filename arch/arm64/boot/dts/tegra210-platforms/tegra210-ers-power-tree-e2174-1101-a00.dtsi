@@ -21,6 +21,102 @@
 #include "tegra210-ers-power-dvfs-e2174-1101-a00.dtsi"
 
 / {
+	i2c@7000d000 {
+		max77620@3c {
+			regulators {
+				sd0 {
+					regulator-enable-ramp-delay = <60>;
+					regulator-disable-ramp-delay = <860>;
+					regulator-ramp-delay = <27500>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+				sd1 {
+					regulator-enable-ramp-delay = <60>;
+					regulator-disable-ramp-delay = <14600>;
+					regulator-ramp-delay = <27500>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+				sd2 {
+					regulator-enable-ramp-delay = <82>;
+					regulator-disable-ramp-delay = <3660>;
+					regulator-ramp-delay = <27500>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+				sd3 {
+					regulator-enable-ramp-delay = <102>;
+					regulator-disable-ramp-delay = <29000>;
+					regulator-ramp-delay = <27500>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+				ldo0 {
+					regulator-enable-ramp-delay = <44>;
+					regulator-disable-ramp-delay = <2240>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <400>;
+				};
+
+				ldo1 {
+					regulator-enable-ramp-delay = <48>;
+					regulator-disable-ramp-delay = <1580>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <550>;
+				};
+
+				ldo2 {
+					regulator-enable-ramp-delay = <62>;
+					regulator-disable-ramp-delay = <2580>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <400>;
+				};
+
+				ldo3 {
+					regulator-enable-ramp-delay = <28>;
+					regulator-disable-ramp-delay = <394>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <100>;
+				};
+
+				ldo4 {
+					regulator-enable-ramp-delay = <9>;
+					regulator-disable-ramp-delay = <284>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <100>;
+				};
+
+				ldo5 {
+					regulator-enable-ramp-delay = <150>;
+					regulator-disable-ramp-delay = <3680>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <550>;
+				};
+
+				ldo6 {
+					regulator-enable-ramp-delay = <102>;
+					regulator-disable-ramp-delay = <2360>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <400>;
+				};
+
+				ldo7 {
+					regulator-enable-ramp-delay = <56>;
+					regulator-disable-ramp-delay = <5860>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <550>;
+				};
+
+				ldo8 {
+					regulator-enable-ramp-delay = <24>;
+					regulator-disable-ramp-delay = <3080>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <266>;
+				};
+			};
+		};
+	};
 
 	efuse@7000f800 {
 		vpp_fuse-supply = <&max77620_sd3>;
