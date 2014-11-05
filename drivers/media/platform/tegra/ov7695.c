@@ -31,6 +31,7 @@
 #include <linux/export.h>
 #include <linux/module.h>
 #include <linux/of_gpio.h>
+#include <linux/sysedp.h>
 #include "regmap_util.h"
 
 #include <media/ov7695.h>
@@ -294,6 +295,7 @@ struct ov7695_info {
 	struct i2c_client		*i2c_client;
 	struct ov7695_platform_data	*pdata;
 	struct regmap			*regmap;
+	struct sysedp_consumer		*sysedpc;
 	atomic_t			in_use;
 	const struct reg_8		*mode;
 #ifdef CONFIG_DEBUG_FS
@@ -473,6 +475,7 @@ static int ov7695_release(struct inode *inode, struct file *file)
 
 	ov7695_power_off(info);
 	file->private_data = NULL;
+	sysedp_set_state(info->sysedpc, 0);
 
 	/* warn if device is already released */
 	WARN_ON(!atomic_xchg(&info->in_use, 0));
@@ -747,6 +750,9 @@ static int ov7695_set_mode(struct ov7695_info *info,
 		return -EINVAL;
 	}
 
+	/* request highest edp state */
+	sysedp_set_state(info->sysedpc, 1);
+
 	err = regmap_util_write_table_8(info->regmap,
 				sensor_mode->mode_tbl,
 				NULL, 0, OV7695_WAIT_MS,
@@ -1002,6 +1008,9 @@ static int ov7695_probe(struct i2c_client *client,
 		return err;
 	}
 
+	info->sysedpc = sysedp_create_consumer(
+			"ov7695", info->miscdev_info.name);
+
 #ifdef CONFIG_DEBUG_FS
 	ov7695_debug_init(info);
 #endif
@@ -1015,6 +1024,7 @@ static int ov7695_remove(struct i2c_client *client)
 	info = i2c_get_clientdata(client);
 	misc_deregister(&ov7695_device);
 
+	sysedp_free_consumer(info->sysedpc);
 #ifdef CONFIG_DEBUG_FS
 	debugfs_remove_recursive(info->debugfs_root);
 #endif
