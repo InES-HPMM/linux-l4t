@@ -88,6 +88,8 @@ static int tegra_prod_parse_dt(const struct device_node *np,
 			goto err_parsing;
 		}
 
+		t_prod->boot_init = of_property_read_bool(child,
+						"nvidia,prod-boot-init");
 		for (cnt = 0; cnt < t_prod->count; cnt++) {
 			p_tuple = (struct prod_tuple *)&t_prod->prod_tuple[cnt];
 			index = cnt * n_tupple;
@@ -212,6 +214,34 @@ int tegra_prod_set_list(void __iomem **base,
 		return -EINVAL;
 
 	for (i = 0; i < tegra_prod_list->num; i++) {
+		ret = tegra_prod_set(base, &tegra_prod_list->tegra_prod[i]);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+/**
+ * tegra_prod_set_boot_init - Set all the prod settings of the list in sequence
+ *			Which are needed for boot initialisation.
+ * @base:		base address of the register.
+ * @tegra_prod_list:	the list of tegra prods.
+ *
+ * Returns 0 on success.
+ */
+int tegra_prod_set_boot_init(void __iomem **base,
+		struct tegra_prod_list *tegra_prod_list)
+{
+	int i;
+	int ret;
+
+	if (!tegra_prod_list)
+		return -EINVAL;
+
+	for (i = 0; i < tegra_prod_list->num; i++) {
+		if (!tegra_prod_list->tegra_prod[i].boot_init)
+			continue;
 		ret = tegra_prod_set(base, &tegra_prod_list->tegra_prod[i]);
 		if (ret)
 			return ret;

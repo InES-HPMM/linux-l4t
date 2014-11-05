@@ -30,6 +30,7 @@ struct tegra_prod {
 	const char *name;
 	struct prod_tuple *prod_tuple;
 	int count; /* number of prod_tuple*/
+	bool boot_init;
 };
 
 /* tegra_prod_list: Tegra Prod list for the given submodule
@@ -46,6 +47,9 @@ int tegra_prod_set_tuple(void __iomem **base, struct prod_tuple *prod_tuple);
 int tegra_prod_set(void __iomem **base, struct tegra_prod *tegra_prod);
 
 int tegra_prod_set_list(void __iomem **base,
+		struct tegra_prod_list *tegra_prod_list);
+
+int tegra_prod_set_boot_init(void __iomem **base,
 		struct tegra_prod_list *tegra_prod_list);
 
 int tegra_prod_set_by_name(void __iomem **base, const char *name,
