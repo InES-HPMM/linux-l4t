@@ -113,6 +113,7 @@ struct bq2419x_chip {
 	int				last_charging_current;
 	bool				disable_suspend_during_charging;
 	int				last_temp;
+	bool				shutdown_complete;
 	struct bq2419x_reg_info		input_src;
 	struct bq2419x_reg_info		chg_current_control;
 	struct bq2419x_reg_info		prechg_term_control;
@@ -709,6 +710,9 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 	int ret;
 	unsigned int val;
 	int check_chg_state = 0;
+
+	if (bq2419x->shutdown_complete)
+		return IRQ_HANDLED;
 
 	ret = bq2419x_fault_clear_sts(bq2419x, &val);
 	if (ret < 0) {
@@ -1450,6 +1454,7 @@ static int bq2419x_probe(struct i2c_client *client,
 	bq2419x->irq = client->irq;
 	mutex_init(&bq2419x->otg_mutex);
 	bq2419x->is_otg_connected = 0;
+	bq2419x->shutdown_complete = 0;
 
 	ret = bq2419x_show_chip_version(bq2419x);
 	if (ret < 0) {
@@ -1618,6 +1623,10 @@ static void bq2419x_shutdown(struct i2c_client *client)
 	struct device *dev = &client->dev;
 	int ret;
 	int next_poweron_time = 0;
+
+	mutex_lock(&bq2419x->mutex);
+	bq2419x->shutdown_complete = 1;
+	mutex_unlock(&bq2419x->mutex);
 
 	if (bq2419x->is_otg_connected) {
 		cancel_delayed_work_sync(&bq2419x->otg_reset_work);
