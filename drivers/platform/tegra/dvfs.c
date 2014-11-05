@@ -2103,6 +2103,19 @@ static void make_safe_thermal_dvfs(struct dvfs_rail *rail)
 }
 
 #ifdef CONFIG_THERMAL
+#define REGISTER_TEGRA_CDEV(tcdev)					\
+do {									\
+	if (rail->tcdev##_cdev->cdev_dn)				\
+		dev = thermal_of_cooling_device_register(		\
+			rail->tcdev##_cdev->cdev_dn,			\
+			rail->tcdev##_cdev->cdev_type, (void *)rail,	\
+			&tegra_dvfs_##tcdev##_cooling_ops);		\
+	else								\
+		dev = thermal_cooling_device_register(			\
+			rail->tcdev##_cdev->cdev_type, (void *)rail,	\
+			&tegra_dvfs_##tcdev##_cooling_ops);		\
+} while (0)
+
 /* Cooling device limits minimum rail voltage at cold temperature in pll mode */
 static int tegra_dvfs_rail_get_vmin_cdev_max_state(
 	struct thermal_cooling_device *cdev, unsigned long *max_state)
@@ -2142,13 +2155,15 @@ static struct thermal_cooling_device_ops tegra_dvfs_vmin_cooling_ops = {
 
 static void tegra_dvfs_rail_register_vmin_cdev(struct dvfs_rail *rail)
 {
+	struct thermal_cooling_device *dev;
+
 	if (!rail->vmin_cdev)
 		return;
 
+	REGISTER_TEGRA_CDEV(vmin);
+
 	/* just report error - initialized for cold temperature, anyway */
-	if (IS_ERR_OR_NULL(thermal_cooling_device_register(
-		rail->vmin_cdev->cdev_type, (void *)rail,
-		&tegra_dvfs_vmin_cooling_ops)))
+	if (IS_ERR_OR_NULL(dev) || list_empty(&dev->thermal_instances))
 		pr_err("tegra cooling device %s failed to register\n",
 		       rail->vmin_cdev->cdev_type);
 }
@@ -2197,8 +2212,7 @@ void tegra_dvfs_rail_register_vmax_cdev(struct dvfs_rail *rail)
 	if (!rail || !rail->vmax_cdev || (rail != tegra_core_rail))
 		return;
 
-	dev = thermal_cooling_device_register(rail->vmax_cdev->cdev_type,
-		(void *)rail, &tegra_dvfs_vmax_cooling_ops);
+	REGISTER_TEGRA_CDEV(vmax);
 
 	if (IS_ERR_OR_NULL(dev) || list_empty(&dev->thermal_instances)) {
 		/* report error & set the most agressive caps */
@@ -2253,7 +2267,7 @@ static int tegra_dvfs_rail_set_clk_switch_cdev_state(
 	return ret;
 }
 
-static struct thermal_cooling_device_ops tegra_dvfs_clk_cooling_ops = {
+static struct thermal_cooling_device_ops tegra_dvfs_clk_switch_cooling_ops = {
 	.get_max_state = tegra_dvfs_rail_get_clk_switch_cdev_max_state,
 	.get_cur_state = tegra_dvfs_rail_get_clk_switch_cdev_cur_state,
 	.set_cur_state = tegra_dvfs_rail_set_clk_switch_cdev_state,
@@ -2266,8 +2280,8 @@ static void tegra_dvfs_rail_register_clk_switch_cdev(struct dvfs_rail *rail)
 	if (!rail->clk_switch_cdev)
 		return;
 
-	dev = thermal_cooling_device_register(rail->clk_switch_cdev->cdev_type,
-		(void *)rail, &tegra_dvfs_clk_cooling_ops);
+	REGISTER_TEGRA_CDEV(clk_switch);
+
 	/* report error & set max limits across thermal ranges as safe dvfs */
 	if (IS_ERR_OR_NULL(dev) || list_empty(&dev->thermal_instances)) {
 		pr_err("tegra cooling device %s failed to register\n",
@@ -2325,8 +2339,8 @@ static void tegra_dvfs_rail_register_vts_cdev(struct dvfs_rail *rail)
 	if (!rail->vts_cdev)
 		return;
 
-	dev = thermal_cooling_device_register(rail->vts_cdev->cdev_type,
-		(void *)rail, &tegra_dvfs_vts_cooling_ops);
+	REGISTER_TEGRA_CDEV(vts);
+
 	/* report error & set max limits across thermal ranges as safe dvfs */
 	if (IS_ERR_OR_NULL(dev) || list_empty(&dev->thermal_instances)) {
 		pr_err("tegra cooling device %s failed to register\n",
