@@ -438,6 +438,17 @@ void tegra_pd_add_sd(struct generic_pm_domain *sd)
 }
 EXPORT_SYMBOL(tegra_pd_add_sd);
 
+void tegra_pd_remove_sd(struct generic_pm_domain *sd)
+{
+	struct generic_pm_domain *master = tegra_pd_get_domain(sd->name);
+
+	if (!master)
+		return;
+
+	pm_genpd_remove_subdomain(master, sd);
+}
+EXPORT_SYMBOL(tegra_pd_remove_sd);
+
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 void tegra_ape_pd_add_device(struct device *dev)
 {
