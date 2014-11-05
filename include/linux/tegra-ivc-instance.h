@@ -9,14 +9,12 @@
  *
  */
 
-#ifndef __tegra_ivc_internal_h__
-#define  __tegra_ivc_internal_h__
+#ifndef __tegra_ivc_instance_h__
+#define  __tegra_ivc_instance_h__
 
-#include <linux/tegra-ivc.h>
 #include <linux/dma-mapping.h>
 #include <linux/device.h>
 
-struct ivc;
 struct ivc_channel_header;
 
 struct ivc {
@@ -42,40 +40,4 @@ int tegra_ivc_write_user(struct ivc *ivc, const void __user *user_buf,
 int tegra_ivc_read_user(struct ivc *ivc, void __user *buf, size_t max_read);
 size_t tegra_ivc_align(size_t size);
 
-#ifdef CONFIG_SMP
-
-static inline void ivc_rmb(void)
-{
-	smp_rmb();
-}
-
-static inline void ivc_wmb(void)
-{
-	smp_wmb();
-}
-
-static inline void ivc_mb(void)
-{
-	smp_mb();
-}
-
-#else
-
-static inline void ivc_rmb(void)
-{
-	rmb();
-}
-
-static inline void ivc_wmb(void)
-{
-	wmb();
-}
-
-static inline void ivc_mb(void)
-{
-	mb();
-}
-
-#endif
-
-#endif /* __tegra_ivc_internal_h__ */
+#endif /* __tegra_ivc_instance_h__ */

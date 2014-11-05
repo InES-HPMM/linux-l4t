@@ -135,6 +135,18 @@ int tegra_hv_ivc_can_write(struct tegra_hv_ivc_cookie *ivck);
 int tegra_ivc_can_write(struct ivc *ivc);
 
 /**
+ * tegra_ivc_tx_frames_available - gets number of free entries in tx queue
+ * @ivc/@ivck	IVC channel or cookie
+ *
+ * Returns the number of unused entries in the tx queue. Assuming the caller
+ * does not write any additional frames, this number may increase from the
+ * value returned as the receiver consumes frames.
+ *
+ */
+uint32_t tegra_hv_ivc_tx_frames_avilable(struct tegra_hv_ivc_cookie *ivck);
+uint32_t tegra_ivc_tx_frames_available(struct ivc *ivc);
+
+/**
  * ivc_hv_ivc_tx_empty - Test whether the tx queue is empty
  * @ivck	IVC cookie of the queue
  *

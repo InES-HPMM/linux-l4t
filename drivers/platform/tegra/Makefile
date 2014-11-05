@@ -162,6 +162,7 @@ obj-y += dummy.o # generate a built-in.o
 
 endif
 
+obj-$(CONFIG_TEGRA_IVC)			+= tegra-ivc.o
 
 obj-$(CONFIG_TEGRA_GPU_EDP)             += gpu-edp.o
 obj-y					+= asim.o

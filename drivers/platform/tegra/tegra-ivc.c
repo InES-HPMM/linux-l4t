@@ -10,11 +10,47 @@
  */
 
 #include <linux/tegra-ivc.h>
-#include "tegra-ivc-internal.h"
+#include <linux/tegra-ivc-instance.h>
 #include <linux/module.h>
 #include <linux/uaccess.h>
 #include <linux/err.h>
 #include <asm/compiler.h>
+
+#ifdef CONFIG_SMP
+
+static inline void ivc_rmb(void)
+{
+	smp_rmb();
+}
+
+static inline void ivc_wmb(void)
+{
+	smp_wmb();
+}
+
+static inline void ivc_mb(void)
+{
+	smp_mb();
+}
+
+#else
+
+static inline void ivc_rmb(void)
+{
+	rmb();
+}
+
+static inline void ivc_wmb(void)
+{
+	wmb();
+}
+
+static inline void ivc_mb(void)
+{
+	mb();
+}
+
+#endif
 
 #define IVC_ALIGN 64
 
@@ -96,7 +132,7 @@ static inline int ivc_rx_empty(struct ivc *ivc)
 {
 	if (ivc_channel_empty(ivc->rx_channel)) {
 		ivc_invalidate_counter(ivc, ivc->rx_handle +
-				offsetof(struct ivc_channel_header, r_count));
+				offsetof(struct ivc_channel_header, w_count));
 		return ivc_channel_empty(ivc->rx_channel);
 	}
 
@@ -107,7 +143,7 @@ static inline int ivc_tx_full(struct ivc *ivc)
 {
 	if (ivc_channel_full(ivc, ivc->tx_channel)) {
 		ivc_invalidate_counter(ivc, ivc->tx_handle +
-				offsetof(struct ivc_channel_header, w_count));
+				offsetof(struct ivc_channel_header, r_count));
 		return ivc_channel_full(ivc, ivc->tx_channel);
 	}
 
@@ -129,10 +165,19 @@ EXPORT_SYMBOL(tegra_ivc_can_write);
 int tegra_ivc_tx_empty(struct ivc *ivc)
 {
 	ivc_invalidate_counter(ivc, ivc->tx_handle +
-			offsetof(struct ivc_channel_header, w_count));
+			offsetof(struct ivc_channel_header, r_count));
 	return ivc_channel_empty(ivc->tx_channel);
 }
 EXPORT_SYMBOL(tegra_ivc_tx_empty);
+
+uint32_t tegra_ivc_tx_frames_available(struct ivc *ivc)
+{
+	ivc_invalidate_counter(ivc, ivc->tx_handle +
+			offsetof(struct ivc_channel_header, r_count));
+	return ivc->nframes - (ACCESS_ONCE(ivc->tx_channel->w_count) -
+			ACCESS_ONCE(ivc->tx_channel->r_count));
+}
+EXPORT_SYMBOL(tegra_ivc_tx_frames_available);
 
 static void *ivc_frame_pointer(struct ivc *ivc, struct ivc_channel_header *ch,
 		uint32_t frame)
@@ -146,7 +191,8 @@ static inline dma_addr_t ivc_frame_handle(struct ivc *ivc,
 {
 	BUG_ON(!ivc->peer_device);
 	BUG_ON(frame >= ivc->nframes);
-	return channel_handle + ivc->frame_size * frame;
+	return channel_handle + sizeof(struct ivc_channel_header) +
+		ivc->frame_size * frame;
 }
 
 static inline void ivc_invalidate_frame(struct ivc *ivc,
@@ -206,7 +252,8 @@ static int ivc_read_frame(struct ivc *ivc, void *buf, void __user *user_buf,
 		BUG();
 
 	ivc_advance_rx(ivc);
-	ivc_flush_counter(ivc, ivc->rx_handle);
+	ivc_flush_counter(ivc, ivc->rx_handle +
+			offsetof(struct ivc_channel_header, r_count));
 	ivc->notify(ivc);
 
 	return (int)max_read;
@@ -281,7 +328,8 @@ int tegra_ivc_read_advance(struct ivc *ivc)
 		return -ENOMEM;
 
 	ivc_advance_rx(ivc);
-	ivc_flush_counter(ivc, ivc->rx_handle);
+	ivc_flush_counter(ivc, ivc->rx_handle +
+			offsetof(struct ivc_channel_header, r_count));
 	ivc->notify(ivc);
 
 	return 0;
@@ -327,7 +375,8 @@ static int ivc_write_frame(struct ivc *ivc, const void *buf,
 	ivc_wmb();
 
 	ivc_advance_tx(ivc);
-	ivc_flush_counter(ivc, ivc->tx_handle);
+	ivc_flush_counter(ivc, ivc->tx_handle +
+			offsetof(struct ivc_channel_header, w_count));
 	ivc->notify(ivc);
 
 	return (int)size;
@@ -389,7 +438,8 @@ int tegra_ivc_write_advance(struct ivc *ivc)
 	ivc_wmb();
 
 	ivc_advance_tx(ivc);
-	ivc_flush_counter(ivc, ivc->tx_handle);
+	ivc_flush_counter(ivc, ivc->tx_handle +
+			offsetof(struct ivc_channel_header, w_count));
 	ivc->notify(ivc);
 
 	return 0;
@@ -467,9 +517,13 @@ int tegra_ivc_init(struct ivc *ivc, uintptr_t rx_base, uintptr_t tx_base,
 		unsigned nframes, unsigned frame_size,
 		struct device *peer_device, void (*notify)(struct ivc *))
 {
+	size_t queue_size;
+
 	BUG_ON(!ivc);
 	BUG_ON((uint64_t)nframes * (uint64_t)frame_size >= 0x100000000);
 	BUG_ON(!notify);
+
+	queue_size = tegra_ivc_total_queue_size(nframes * frame_size);
 
 	/*
 	 * All sizes that can be returned by communication functions should
@@ -483,12 +537,12 @@ int tegra_ivc_init(struct ivc *ivc, uintptr_t rx_base, uintptr_t tx_base,
 
 	if (peer_device) {
 		ivc->rx_handle = dma_map_single(peer_device, ivc->rx_channel,
-				nframes * frame_size, DMA_BIDIRECTIONAL);
+				queue_size, DMA_BIDIRECTIONAL);
 		if (ivc->rx_handle == DMA_ERROR_CODE)
 			return -ENOMEM;
 
 		ivc->tx_handle = dma_map_single(peer_device, ivc->tx_channel,
-				nframes * frame_size, DMA_BIDIRECTIONAL);
+				queue_size, DMA_BIDIRECTIONAL);
 		if (ivc->tx_handle == DMA_ERROR_CODE)
 			return -ENOMEM;
 	}
@@ -496,6 +550,7 @@ int tegra_ivc_init(struct ivc *ivc, uintptr_t rx_base, uintptr_t tx_base,
 	ivc->notify = notify;
 	ivc->frame_size = frame_size;
 	ivc->nframes = nframes;
+	ivc->peer_device = peer_device;
 
 	return 0;
 }
