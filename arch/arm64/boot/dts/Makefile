@@ -16,6 +16,7 @@ dtb-$(CONFIG_MACH_T132REF) += tegra132-interposer-e2141-1100-a00-00-cboot.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-grenada.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-ers-e2190-1100-a00-00.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-ers-e2220-1100-a00-00.dtb
+dtb-$(CONFIG_MACH_GRENADA) += tegra210-ers-e2220-1199-a00-00.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-foster-e-p2530-0930-e00-00.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-foster-e-p2530-0930-e01-00.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-foster-e-hdd-p2530-0932-e00-00.dtb
