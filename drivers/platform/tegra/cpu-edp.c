@@ -31,9 +31,11 @@
 #include <linux/platform/tegra/dvfs.h>
 #include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/common.h>
+#include <linux/platform/tegra/cpu-tegra.h>
 
 struct cpu_edp_platform_data {
 	const char *name;
+	char *tz_name;
 	char *clk_name;
 	u32 *hard_cap;
 	int n_caps;
@@ -44,14 +46,19 @@ struct cpu_edp_platform_data {
 struct cpu_edp {
 	struct cpu_edp_platform_data pdata;
 	struct tegra_ppm *ppm;
-	int recent_temperature;
+	int temperature;
+
+	unsigned long cdev_state; /* not actually meaningful */
+	struct thermal_cooling_device *cdev;
+	struct thermal_zone_device *tz;
+	struct mutex cdev_lock;
 };
 
 static struct cpu_edp s_cpu = {
-	.recent_temperature = -273,
+	.temperature = 75, /* assume we're running hot */
 };
 
-unsigned int tegra_get_sysedp_max_freq(int cpupwr, int temperature,
+unsigned int tegra_get_sysedp_max_freq(int cpupwr,
 				       int online_cpus, int cpu_mode)
 {
 	if (WARN_ONCE(!s_cpu.ppm, "Init call ordering issue?\n"))
@@ -64,18 +71,16 @@ unsigned int tegra_get_sysedp_max_freq(int cpupwr, int temperature,
 
 	return tegra_ppm_get_maxf(s_cpu.ppm, cpupwr,
 				  TEGRA_PPM_UNITS_MILLIWATTS,
-				  temperature, online_cpus);
+				  s_cpu.temperature, online_cpus);
 }
 
-unsigned int tegra_get_edp_max_freq(int temperature, int online_cpus,
+unsigned int tegra_get_edp_max_freq(int online_cpus,
 				    int cpu_mode)
 {
 	unsigned int res;
 
 	if (WARN_ONCE(!s_cpu.ppm, "Init call ordering issue?\n"))
 		return 0;
-
-	s_cpu.recent_temperature = temperature;
 
 	if (cpu_mode != MODE_G) {
 		/* TODO: for T210, handle MODE_LP */
@@ -84,7 +89,7 @@ unsigned int tegra_get_edp_max_freq(int temperature, int online_cpus,
 
 	res = tegra_ppm_get_maxf(s_cpu.ppm, s_cpu.pdata.reg_edp,
 				 TEGRA_PPM_UNITS_MILLIAMPS,
-				 temperature, online_cpus);
+				 s_cpu.temperature, online_cpus);
 
 	if (s_cpu.pdata.hard_cap && s_cpu.pdata.hard_cap[online_cpus - 1]
 	    && res > s_cpu.pdata.hard_cap[online_cpus - 1])
@@ -93,7 +98,7 @@ unsigned int tegra_get_edp_max_freq(int temperature, int online_cpus,
 	return res;
 }
 
-unsigned int tegra_get_reg_idle_freq(int temperature, int online_cpus)
+unsigned int tegra_get_reg_idle_freq(int online_cpus)
 {
 	unsigned int res;
 
@@ -103,7 +108,7 @@ unsigned int tegra_get_reg_idle_freq(int temperature, int online_cpus)
 	/* TODO: for T210, handle MODE_LP */
 	res = tegra_ppm_get_maxf(s_cpu.ppm, s_cpu.pdata.reg_idle_max,
 				 TEGRA_PPM_UNITS_MILLIAMPS,
-				 temperature, online_cpus);
+				 s_cpu.temperature, online_cpus);
 
 	return res;
 
@@ -127,6 +132,88 @@ void tegra_recalculate_cpu_edp_limits(void)
 	tegra_ppm_drop_cache(s_cpu.ppm);
 }
 
+static int tegra_cpu_edp_get_max_state(struct thermal_cooling_device *cdev,
+				unsigned long *max_state)
+{
+	*max_state = 1024; /* meaningless largish number */
+	return 0;
+}
+
+static int tegra_cpu_edp_get_cur_state(struct thermal_cooling_device *cdev,
+				unsigned long *cur_state)
+{
+	struct cpu_edp *ctx = cdev->devdata;
+	*cur_state = ctx->cdev_state;
+	return 0;
+}
+
+static int cpu_edp_get_tz(struct cpu_edp *ctx)
+{
+	int ret = 0;
+
+	mutex_lock(&ctx->cdev_lock);
+	if (!ctx->tz) {
+		ctx->tz = thermal_zone_get_zone_by_name(ctx->pdata.tz_name);
+
+		if (IS_ERR(ctx->tz)) {
+			ctx->tz = NULL;
+			ret = -ENODEV;
+		}
+	}
+	mutex_unlock(&ctx->cdev_lock);
+
+	return ret;
+}
+
+static int tegra_cpu_edp_set_cur_state(struct thermal_cooling_device *cdev,
+				unsigned long cur_state)
+{
+	struct cpu_edp *ctx = cdev->devdata;
+
+	if (!ctx->tz &&
+	    WARN_ONCE(cpu_edp_get_tz(ctx),
+		      "%s: can't find thermal zone to get temperature\n",
+		      __func__))
+		return -ENODEV;
+
+	mutex_lock(&ctx->cdev_lock);
+	ctx->cdev_state = cur_state;
+
+	/* get temperature, convert from mC to C, and quantize to 4 degrees */
+	ctx->temperature = (ctx->tz->temperature + 3999) / 4000 * 4;
+
+	tegra_cpu_set_speed_cap(NULL);
+	tegra_edp_update_max_cpus();
+
+	mutex_unlock(&ctx->cdev_lock);
+
+	return 0;
+}
+
+static struct thermal_cooling_device_ops tegra_cpu_edp_cooling_ops = {
+	.get_max_state = tegra_cpu_edp_get_max_state,
+	.get_cur_state = tegra_cpu_edp_get_cur_state,
+	.set_cur_state = tegra_cpu_edp_set_cur_state,
+};
+
+static int __init cpu_edp_cdev_init(struct cpu_edp *ctx, struct device_node *np)
+{
+	mutex_init(&ctx->cdev_lock);
+
+	if (cpu_edp_get_tz(ctx))
+		pr_info("%s: Thermal zone %s not (yet?) available\n",
+			__func__, ctx->pdata.tz_name);
+
+	ctx->cdev = thermal_of_cooling_device_register(
+		np, "cpu_edp", ctx, &tegra_cpu_edp_cooling_ops);
+	if (IS_ERR_OR_NULL(ctx->cdev)) {
+		ctx->cdev = NULL;
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
 #ifdef CONFIG_DEBUG_FS
 static int __init tegra_edp_debugfs_init(struct dentry *edp_dir)
 {
@@ -141,7 +228,7 @@ static int __init tegra_edp_debugfs_init(struct dentry *edp_dir)
 	debugfs_create_u32("reg_edp_ma", S_IRUGO | S_IWUSR,
 			   edp_dir, &s_cpu.pdata.reg_edp);
 	debugfs_create_u32("temperature", S_IRUGO,
-			   edp_dir, &s_cpu.recent_temperature);
+			   edp_dir, &s_cpu.temperature);
 	if (s_cpu.pdata.hard_cap)
 		debugfs_create_u32_array(
 			"hard_cap", S_IRUGO,
@@ -198,6 +285,7 @@ static int __init tegra_cpu_edp_parse_dt(struct platform_device *pdev,
 	}
 
 	pdata->name = dev_name(&pdev->dev);
+	pdata->tz_name = "CPU-therm";
 
 	return 0;
 }
@@ -244,6 +332,12 @@ static int __init tegra_cpu_edp_probe(struct platform_device *pdev)
 	if (WARN(IS_ERR_OR_NULL(ctx->ppm),
 		 "Failed CPU EDP mgmt init. Couldn't create power model\n"))
 		return PTR_ERR(ctx->ppm);
+
+	ret = cpu_edp_cdev_init(ctx, pdev->dev.of_node);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed CPU EDP mgmt thermal registration\n");
+		return ret;
+	}
 
 	tegra_edp_debugfs_init(edp_dir);
 	return 0;

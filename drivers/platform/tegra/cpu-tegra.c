@@ -70,40 +70,6 @@ static unsigned int force_cpupwr_freqcap;
 
 static bool force_policy_max;
 
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-static const int cpu_edp_temps[] = { /* degree celcius (C) */
-	23, 40, 50, 60, 70, 74, 78, 82, 86, 90, 94, 98, 102,
-};
-
-void tegra_platform_edp_init(struct thermal_trip_info *trips,
-				int *num_trips, int margin)
-{
-	struct thermal_trip_info *trip_state;
-	int i;
-
-	if (!trips || !num_trips)
-		return;
-
-	if (ARRAY_SIZE(cpu_edp_temps) > MAX_THROT_TABLE_SIZE)
-		BUG();
-
-	for (i = 0; i < ARRAY_SIZE(cpu_edp_temps) - 1; i++) {
-		trip_state = &trips[*num_trips];
-
-		trip_state->cdev_type = "cpu_edp";
-		trip_state->trip_temp =
-			(cpu_edp_temps[i] * 1000) - margin;
-		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
-		trip_state->upper = trip_state->lower = i + 1;
-
-		(*num_trips)++;
-
-		if (*num_trips >= THERMAL_MAX_TRIPS)
-			BUG();
-	}
-}
-#endif
-
 static int force_policy_max_set(const char *arg, const struct kernel_param *kp)
 {
 	int ret;
@@ -268,22 +234,14 @@ static bool reg_mode_force_normal;
 
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 
-static int edp_thermal_index;
 static cpumask_t edp_cpumask;
 static struct pm_qos_request edp_max_cpus;
 
-static int cpu_edp_temperature(void)
-{
-	BUG_ON(edp_thermal_index < 0 ||
-	       edp_thermal_index >= ARRAY_SIZE(cpu_edp_temps));
-
-	return cpu_edp_temps[edp_thermal_index];
-}
-
 static unsigned int get_edp_freq_limit(unsigned int nr_cpus)
 {
-	unsigned int limit = tegra_get_edp_max_freq(cpu_edp_temperature(),
-				nr_cpus, is_lp_cluster() ? MODE_LP : MODE_G);
+	unsigned int limit = tegra_get_edp_max_freq(
+		nr_cpus, is_lp_cluster() ? MODE_LP : MODE_G);
+
 #ifndef CONFIG_TEGRA_EDP_EXACT_FREQ
 	unsigned int i;
 	for (i = 0; freq_table[i].frequency != CPUFREQ_TABLE_END; i++) {
@@ -321,7 +279,7 @@ static int get_edp_max_cpus(void)
  * Shouldn't be called with tegra_cpu_lock held. Will result in a deadlock
  * otherwise
  */
-static void edp_update_max_cpus(void)
+void tegra_edp_update_max_cpus(void)
 {
 	unsigned int max_cpus = get_edp_max_cpus();
 
@@ -345,56 +303,6 @@ static unsigned int get_edp_limit_speed(unsigned int requested_speed)
 	}
 }
 
-static int tegra_cpu_edp_get_max_state(struct thermal_cooling_device *cdev,
-				unsigned long *max_state)
-{
-	*max_state = ARRAY_SIZE(cpu_edp_temps) - 1;
-	return 0;
-}
-
-static int tegra_cpu_edp_get_cur_state(struct thermal_cooling_device *cdev,
-				unsigned long *cur_state)
-{
-	*cur_state = edp_thermal_index;
-	return 0;
-}
-
-static int tegra_cpu_edp_set_cur_state(struct thermal_cooling_device *cdev,
-				unsigned long cur_state)
-{
-	mutex_lock(&tegra_cpu_lock);
-	edp_thermal_index = cur_state;
-
-	/* Update cpu rate if cpufreq (at least on cpu0) is already started*/
-	if (target_cpu_speed[0]) {
-		tegra_cpu_set_speed_cap_locked(NULL);
-	}
-	mutex_unlock(&tegra_cpu_lock);
-
-	edp_update_max_cpus();
-
-	return 0;
-}
-
-static struct thermal_cooling_device_ops tegra_cpu_edp_cooling_ops = {
-	.get_max_state = tegra_cpu_edp_get_max_state,
-	.get_cur_state = tegra_cpu_edp_get_cur_state,
-	.set_cur_state = tegra_cpu_edp_set_cur_state,
-};
-
-static int __init cpu_edp_cdev_init(void)
-{
-	struct thermal_cooling_device *cpu_edp_cdev;
-
-	cpu_edp_cdev = thermal_cooling_device_register("cpu_edp", NULL,
-					&tegra_cpu_edp_cooling_ops);
-	if (IS_ERR_OR_NULL(cpu_edp_cdev))
-		pr_err("Failed to register 'cpu_edp' cooling device\n");
-
-	return 0;
-}
-module_init(cpu_edp_cdev_init);
-
 static unsigned int sysedp_cap_speed(unsigned int requested_speed)
 {
 	unsigned int old_cpupwr_freqcap = cur_cpupwr_freqcap;
@@ -405,7 +313,6 @@ static unsigned int sysedp_cap_speed(unsigned int requested_speed)
 	else
 		/* get the max freq given the power and online cpu count */
 		cur_cpupwr_freqcap = tegra_get_sysedp_max_freq(eff_cpupwr,
-					  cpu_edp_temperature(),
 					  cpumask_weight(&edp_cpumask),
 					  is_lp_cluster() ? MODE_LP : MODE_G);
 
@@ -479,12 +386,6 @@ static void tegra_cpu_edp_init(bool resume)
 		return;
 	}
 
-	/* FIXME: use the highest temperature limits if sensor is not on-line?
-	 * If thermal zone is not set yet by the sensor, edp_thermal_index = 0.
-	 * Boot frequency allowed SoC to get here, should work till sensor is
-	 * initialized.
-	 */
-
 	if (!resume) {
 		register_hotcpu_notifier(&tegra_cpu_edp_notifier);
 		pr_info("cpu-tegra: init EDP limit: %u MHz\n",
@@ -506,7 +407,7 @@ static unsigned int cpu_reg_mode_predict_idle_limit(void)
 
 	cpus = cpumask_weight(&edp_cpumask);
 	BUG_ON(cpus == 0);
-	limit = tegra_get_reg_idle_freq(cpu_edp_temperature(), cpus);
+	limit = tegra_get_reg_idle_freq(cpus);
 	return limit ? : 1; /* bump 0 to 1kHz to differentiate from no-table */
 }
 
@@ -570,19 +471,11 @@ DEFINE_SIMPLE_ATTRIBUTE(reg_mode_fops, reg_mode_get, NULL, "0x%llx\n");
 
 static int cpu_edp_limit_get(void *data, u64 *val)
 {
-	*val = (u64)tegra_get_edp_max_freq(cpu_edp_temperature(),
-					   cpumask_weight(&edp_cpumask),
+	*val = (u64)tegra_get_edp_max_freq(cpumask_weight(&edp_cpumask),
 					   is_lp_cluster() ? MODE_LP : MODE_G);
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(cpu_edp_limit_fops, cpu_edp_limit_get, NULL, "%lld\n");
-
-static int cpu_edp_temp_get(void *data, u64 *val)
-{
-	*val = cpu_edp_temperature();
-	return 0;
-}
-DEFINE_SIMPLE_ATTRIBUTE(cpu_edp_temp_fops, cpu_edp_temp_get, NULL, "%llu\n");
 
 static int __init tegra_edp_debug_init(struct dentry *cpu_tegra_debugfs_root)
 {
@@ -596,10 +489,6 @@ static int __init tegra_edp_debug_init(struct dentry *cpu_tegra_debugfs_root)
 
 	if (!debugfs_create_file("cpu_edp_limit", 0444,
 			cpu_tegra_debugfs_root, NULL, &cpu_edp_limit_fops))
-		return -ENOMEM;
-
-	if (!debugfs_create_file("temperature", 0444,
-			cpu_tegra_debugfs_root, NULL, &cpu_edp_temp_fops))
 		return -ENOMEM;
 
 	return 0;

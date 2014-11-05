@@ -28,6 +28,8 @@
 
 int tegra_vibrator_init(void);
 
+void tegra_platform_edp_init(struct thermal_trip_info *trips,
+					int *num_trips, int margin);
 void tegra_platform_gpu_edp_init(struct thermal_trip_info *trips,
 					int *num_trips, int margin);
 

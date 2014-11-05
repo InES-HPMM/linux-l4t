@@ -109,29 +109,25 @@ bool tegra_is_edp_reg_idle_supported(void);
 bool tegra_is_cpu_edp_supported(void);
 
 #ifdef CONFIG_TEGRA_EDP_LIMITS
-struct thermal_cooling_device *edp_cooling_device_create(void *v);
 int tegra_get_edp_max_thermal_index(void);
-unsigned int tegra_get_edp_max_freq(int thermal_idx, int online_cpus,
-				    int cpu_mode);
-unsigned int tegra_get_reg_idle_freq(int thermal_idx, int online_cpus);
+unsigned int tegra_get_edp_max_freq(int, int);
+unsigned int tegra_get_reg_idle_freq(int);
 void tegra_recalculate_cpu_edp_limits(void);
 void tegra_get_cpu_edp_limits(const struct tegra_edp_limits **limits,
 			      int *size);
-void tegra_platform_edp_init(struct thermal_trip_info *trips,
-					int *num_trips, int margin);
-unsigned int tegra_get_sysedp_max_freq(int cpupwr, int temperature, int online_cpus,
+unsigned int tegra_get_sysedp_max_freq(int cpupwr, int online_cpus,
 				       int cpu_mode);
+
+/* defined in cpu-tegra.c */
+void tegra_edp_update_max_cpus(void);
+
 #else /* CONFIG_TEGRA_EDP_LIMITS */
-static inline struct thermal_cooling_device *edp_cooling_device_create(
-	int index)
-{ return NULL; }
 static inline void tegra_recalculate_cpu_edp_limits(void)
 {}
 static inline void tegra_get_cpu_edp_limits(struct tegra_edp_limits **limits,
 					    int *size)
 {}
-static inline void tegra_platform_edp_init(struct thermal_trip_info *trips,
-					   int *num_trips, int margin)
+static inline void tegra_edp_update_max_cpus(void)
 {}
 #endif
 
