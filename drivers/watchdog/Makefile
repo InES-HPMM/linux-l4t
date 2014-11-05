@@ -3,6 +3,7 @@
 #
 GCOV_PROFILE_tegra_wdt.o := y
 
+ccflags-y += -Werror
 # The WatchDog Timer Driver Core.
 watchdog-objs	+= watchdog_core.o watchdog_dev.o
 obj-$(CONFIG_WATCHDOG_CORE)	+= watchdog.o
