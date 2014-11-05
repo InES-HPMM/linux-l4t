@@ -201,7 +201,7 @@ static int mods_register_mapping(
 
 	LOG_ENT();
 
-	p_map_mem = kmalloc(sizeof(*p_map_mem), GFP_KERNEL);
+	p_map_mem = kmalloc(sizeof(*p_map_mem), GFP_ATOMIC);
 	if (unlikely(!p_map_mem)) {
 		LOG_EXT();
 		return -ENOMEM;
