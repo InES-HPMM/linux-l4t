@@ -130,51 +130,62 @@ static int modem_thermal_probe(struct platform_device *pdev)
 
 	mtd = kzalloc(sizeof(struct modem_thermal_data), GFP_KERNEL);
 	if (!mtd) {
-		dev_dbg(&pdev->dev, "failed to allocated memory\n");
+		dev_err(&pdev->dev, "failed to allocated memory\n");
 		ret = -ENOMEM;
-		goto err;
+		return ret;
 	}
 
 	mtd->num_zones = pdata->num_zones;
 
 	mtd->zi = kzalloc(mtd->num_zones * sizeof(struct modem_zone_info),
 			GFP_KERNEL);
-	if (!mtd->zi)
+	if (!mtd->zi) {
 		dev_err(&pdev->dev, "failed to allocate zones\n");
+		ret = -ENOMEM;
+		goto err_mtd_free;
+	}
 
 	for (i = 0; i < mtd->num_zones; i++) {
 		mtd->zi[i].tzd = thermal_zone_device_register("modem", 0, 0,
 				mtd, &modem_thermal_ops, NULL, 0, 0);
 		if (IS_ERR(mtd->zi[i].tzd)) {
 			dev_err(&pdev->dev, "error in therm reg\n");
-			goto err;
+			ret = -EINVAL;
+			goto err_tzd_unregister;
 		}
 	}
 
 	if (device_create_file(&pdev->dev, &dev_attr_temp)) {
 		dev_err(&pdev->dev, "can't create temp sysfs file\n");
-		goto err;
+		ret = -EINVAL;
+		goto err_remove_temp_file;
 	}
 
 	if (device_create_file(&pdev->dev, &dev_attr_sensors_active)) {
 		dev_err(&pdev->dev, "can't create sensors sysfs file\n");
-		goto err;
+		ret = -EINVAL;
+		goto err_remove_sensor_file;
 	}
 
 	mtd->dev = &pdev->dev;
 	dev_set_drvdata(&pdev->dev, mtd);
 
 	return 0;
-err:
-	device_remove_file(&pdev->dev, &dev_attr_temp);
+
+err_remove_sensor_file:
 	device_remove_file(&pdev->dev, &dev_attr_sensors_active);
 
+err_remove_temp_file:
+	device_remove_file(&pdev->dev, &dev_attr_temp);
+
+err_tzd_unregister:
 	for (i = 0; i < mtd->num_zones; i++)
 		if (!IS_ERR(mtd->zi[i].tzd))
 			thermal_zone_device_unregister(mtd->zi[i].tzd);
-
 	kfree(mtd->zi);
+err_mtd_free:
 	kfree(mtd);
+	return ret;
 }
 
 static int modem_thermal_remove(struct platform_device *pdev)
