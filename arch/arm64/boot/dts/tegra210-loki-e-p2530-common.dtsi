@@ -321,7 +321,7 @@
 
 		consumers {
 			consumer1 {
-				nvidia,consumer_name = "camera";
+				nvidia,consumer_name = "ov7695";
 				nvidia,states = <0 124>;
 			};
 			consumer2 {
