@@ -408,7 +408,7 @@ status_t emc_dfs_init(struct platform_device *pdev)
 
 	einfo->emcclk = clk_get_sys("ape", "emc");
 	if (IS_ERR_OR_NULL(einfo->emcclk)) {
-		dev_info(&pdev->dev, "unable to find adsp clock\n");
+		dev_info(&pdev->dev, "unable to find ape.emc clock\n");
 		return PTR_ERR(einfo->emcclk);
 	}
 
@@ -438,9 +438,7 @@ status_t emc_dfs_init(struct platform_device *pdev)
 	init_timer(&einfo->cnt_timer);
 	einfo->cnt_timer.function = emc_dfs_timer;
 
-	speedchange_task =
-		kthread_create(clk_work, NULL,
-			       "cfinteractive");
+	speedchange_task = kthread_create(clk_work, NULL, "emc_dfs");
 	if (IS_ERR(speedchange_task))
 		return PTR_ERR(speedchange_task);
 
