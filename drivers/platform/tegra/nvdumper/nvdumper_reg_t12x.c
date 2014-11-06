@@ -19,6 +19,7 @@
 #include <linux/notifier.h>
 #include <linux/sched.h>
 #include <linux/dma-mapping.h>
+#include <nvdumper.h>
 
 #include <asm/cacheflush.h>
 
@@ -91,8 +92,6 @@ struct nvdumper_cpu_data_t {
 static struct nvdumper_cpu_data_t *nvdumper_cpu_data;
 static int max_cpus;
 static dma_addr_t nvdumper_p;
-extern struct notifier_block nvdumper_panic_notifier;
-extern struct notifier_block nvdumper_die_notifier;
 
 void __naked save_mode_regs(struct mode_regs_t *regs)
 {
@@ -119,7 +118,7 @@ void __naked save_mode_regs(struct mode_regs_t *regs)
 		"bx        lr\n");
 }
 
-void save_cp15_regs(struct cp15_regs_t *cp15_regs)
+static void save_cp15_regs(struct cp15_regs_t *cp15_regs)
 {
 	asm("mrc    p15, 0, r1, c1, c0, 0\n\t"        /* SCTLR */
 		"str r1, [%0]\n\t"
@@ -164,7 +163,7 @@ void save_cp15_regs(struct cp15_regs_t *cp15_regs)
 	);
 }
 
-void nvdumper_save_regs(void *data)
+static void nvdumper_save_regs(void *data)
 {
 	int id = smp_processor_id();
 

@@ -21,6 +21,7 @@
 #include <linux/reboot.h>
 #include <linux/debugfs.h>
 #include <linux/slab.h>
+#include <linux/uaccess.h>
 #include "../../../arch/arm/mach-tegra/board.h"
 #include "nvdumper.h"
 #include "nvdumper-footprint.h"
@@ -38,7 +39,7 @@ static void __exit nvdumper_debugfs_exit(void);
 
 #define RW_MODE (S_IWUSR | S_IRUGO)
 
-static uint32_t *nvdumper_ptr;
+static void __iomem *nvdumper_ptr;
 static uint32_t nvdumper_last_reboot;
 
 static uint32_t get_dirty_state(void)
@@ -60,7 +61,7 @@ static int nvdumper_reboot_cb(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
-struct notifier_block nvdumper_reboot_notifier = {
+static struct notifier_block nvdumper_reboot_notifier = {
 	.notifier_call = nvdumper_reboot_cb,
 };
 
@@ -207,10 +208,15 @@ static int nvdumper_set_dbg_open(struct inode *inode, struct file *file)
 static ssize_t nvdumper_write_set(struct file *file, const char __user *buf,
 				size_t count, loff_t *ppos)
 {
+	size_t count_copy;
+
 	if (count < 1)
 		return 0;
 
-	strcpy(nvdumper_set_str, buf);
+	count_copy = copy_from_user(nvdumper_set_str, buf, count);
+	if (count_copy != 0)
+		return 0;
+
 	nvdumper_set_str[count-1] = '\0';
 
 	if (!strcmp(nvdumper_set_str, "clean"))
@@ -254,6 +260,7 @@ static void __init nvdumper_debugfs_init(void)
 		nvdumper_set_str = "dirty_dump\n";
 		break;
 	default:
+		nvdumper_set_str = "dirty\n";
 		break;
 	}
 

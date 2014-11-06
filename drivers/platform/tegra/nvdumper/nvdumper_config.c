@@ -94,7 +94,7 @@ struct config_option {
 	uint64_t value;
 };
 
-const struct config_option nvdumper_config[] = {
+static const struct config_option nvdumper_config[] = {
 {
 	"stack",
 	"task_struct",

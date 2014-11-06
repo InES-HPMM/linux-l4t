@@ -32,7 +32,7 @@ void nvdumper_print_data(void)
 		print_cpu_data(id);
 }
 
-int nvdumper_die_handler(struct notifier_block *nb, unsigned long reason,
+static int nvdumper_die_handler(struct notifier_block *nb, unsigned long reason,
 					void *data)
 {
 	nvdumper_crash_setup_regs();

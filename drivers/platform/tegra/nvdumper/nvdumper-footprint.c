@@ -21,8 +21,8 @@
 #include <asm/ptrace.h>
 #include "nvdumper-footprint.h"
 
-struct dbg_footprint_data_cpu dbp_fp_cpu;
-struct dbg_footprint_data_soc dbp_fp_soc;
+static struct dbg_footprint_data_cpu dbp_fp_cpu;
+static struct dbg_footprint_data_soc dbp_fp_soc;
 
 void nvdumper_dbg_footprint_init(void)
 {

@@ -20,6 +20,7 @@
 #include <linux/sched.h>
 #include <linux/dma-mapping.h>
 #include <asm/cacheflush.h>
+#include <nvdumper.h>
 
 #define THREAD_INFO(sp) ((struct thread_info *) \
 		((unsigned long)(sp) & ~(THREAD_SIZE - 1)))
@@ -95,10 +96,8 @@ struct nvdumper_cpu_data_t {
 static struct nvdumper_cpu_data_t *nvdumper_cpu_data;
 static int max_cpus;
 static dma_addr_t nvdumper_p;
-extern struct notifier_block nvdumper_panic_notifier;
-extern struct notifier_block nvdumper_die_notifier;
 
-void save_aar64_sys_regs(struct aar64_system_regs_t *aar64_sys_regs)
+static void save_aar64_sys_regs(struct aar64_system_regs_t *aar64_sys_regs)
 {
 	asm("mrs    x1, ACTLR_EL1\n\t"
 	    "str    x1, [%0, #8 * 0]\n\t"
@@ -126,7 +125,7 @@ void save_aar64_sys_regs(struct aar64_system_regs_t *aar64_sys_regs)
 	);
 }
 
-void nvdumper_save_regs(void *data)
+static void nvdumper_save_regs(void *data)
 {
 	int id = smp_processor_id();
 

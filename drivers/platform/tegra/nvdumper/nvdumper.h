@@ -17,10 +17,14 @@
 #ifndef __MACH_TEGRA_NVDUMPER_H
 #define __MACH_TEGRA_NVDUMPER_H
 
+extern struct notifier_block nvdumper_panic_notifier;
+extern struct notifier_block nvdumper_die_notifier;
+
 void print_cpu_data(int id);
 int nvdumper_regdump_init(void);
 void nvdumper_regdump_exit(void);
 void nvdumper_crash_setup_regs(void);
 void nvdumper_print_data(void);
+void nvdumper_copy_regs(unsigned int id, struct pt_regs *regs, void *svc_sp);
 
 #endif
