@@ -721,6 +721,7 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 
 	if (rate == 0) {
 		d->cur_millivolts = 0;
+		d->cur_index = MAX_DVFS_FREQS;
 		/*
 		 * For single clock GPU rail keep DVFS rate unchanged when clock
 		 * is disabled. Rail is turned off explicitly, in any case, but
@@ -771,6 +772,7 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 			return -EINVAL;
 		}
 		d->cur_millivolts = mv;
+		d->cur_index = i;
 	}
 
 	d->cur_rate = rate;
@@ -1328,6 +1330,8 @@ static int __init enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
 	}
 
 	c->dvfs = d;
+	d->clk = c;
+	d->cur_index = MAX_DVFS_FREQS;
 
 	/*
 	 * Minimum core override level is determined as maximum voltage required

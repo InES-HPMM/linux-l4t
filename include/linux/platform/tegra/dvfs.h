@@ -176,6 +176,7 @@ struct dvfs_pll_data {
 
 struct dvfs {
 	const char *clk_name;
+	struct clk *clk;
 	int speedo_id;
 	int process_id;
 
@@ -201,8 +202,16 @@ struct dvfs {
 	/* Maximum rate safe at minimum voltage across all thermal ranges */
 	unsigned long fmax_at_vmin_safe_t;
 
+	/*
+	 * Current dvfs point = { index into V/F arrays, voltage, rate request }
+	 * cur_index is invalid - set to MAX_DVFS_FREQS - if cur_rate and
+	 * cur_millivolts are set to zero (may happen when dvfs rate is not set
+	 * initially, or clock is disabled).
+	 */
+	int cur_index;
 	int cur_millivolts;
 	unsigned long cur_rate;
+
 	unsigned long *alt_freqs;
 	bool use_alt_freqs;
 	long dbg_hz_offs;
