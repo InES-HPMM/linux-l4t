@@ -30,6 +30,7 @@
 	 */
 	tegra_hv: hyp {
 		compatible = "nvidia,tegra-hv";
+		status = "ok";
 	};
 };
 
@@ -202,70 +203,6 @@
 	hyp {
 		compatible = "nvidia,tegra-hv";
 		status = "okay";
-
-		server-to-peers = <0 1>;
-
-		queues {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			/* guest 0 <-> guest 1 (frame based) */
-			ivc0 {
-				reg = <0>;
-				peers = <0 1>;
-				nframes = <2>;
-				frame-size = <64>;
-			};
-
-			/* guest 0 <-> guest 1 (comm) */
-			ivc1 {
-				reg = <1>;
-				peers = <0 1>;
-				nframes = <4>;
-				frame-size = <64>;
-			};
-
-			/* guest 0 <-> guest 1 (net) */
-			ivc2 {
-				reg = <2>;
-				peers = <0 1>;
-				nframes = <32>;
-				frame-size = <1536>;
-			};
-
-			/* guest 1 <-> guest 2 (vhost cmd) */
-			ivc7 {
-				reg = <7>;
-				peers = <1 2>;
-			};
-
-			/* guest 1 <-> guest 2 (vhost intr) */
-			ivc8 {
-				reg = <8>;
-				peers = <1 2>;
-			};
-
-			/* guest 1 <-> guest 2 (vgpu cmd) */
-			ivc9 {
-				reg = <9>;
-				peers = <1 2>;
-			};
-
-			/* guest 1 <-> guest 2 (vgpu intr) */
-			ivc10 {
-				reg = <10>;
-				peers = <1 2>;
-			};
-
-			/* guest 1 <-> guest 3 (smmu) */
-			ivc12 {
-				reg = <12>;
-				peers = <1 3>;
-				nframes = <50>;
-				frame-size = <128>;
-                        };
-
-		};
 	};
 
 	iommu {

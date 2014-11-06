@@ -29,6 +29,7 @@
 	 */
 	tegra_hv: hyp {
 		compatible = "nvidia,tegra-hv";
+		status = "okay";
 	};
 };
 
@@ -234,69 +235,6 @@
 	dma@60020000 {
 		dma-channels = <16>;
 		status = "okay";
-	};
-
-	hyp {
-		compatible = "nvidia,tegra-hv";
-		status = "okay";
-
-		server-to-peers = <0>;
-
-		queues {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			/* guest 0 <-> guest 1 (frame based) */
-			ivc0 {
-				reg = <0>;
-				peers = <0 1>;
-			};
-
-			/* guest 0 <-> guest 1 (comm) */
-			ivc1 {
-				reg = <1>;
-				peers = <0 1>;
-			};
-
-			/* guest 0 <-> guest 1 (net) */
-			ivc2 {
-				reg = <2>;
-				peers = <0 1>;
-			};
-
-			/* guest 0 <-> guest 2 (vhost cmd) */
-			ivc3 {
-				reg = <3>;
-				peers = <0 2>;
-			};
-
-			/* guest 0 <-> guest 2 (vhost intr) */
-			ivc4 {
-				reg = <4>;
-				peers = <0 2>;
-			};
-
-			/* guest 0 <-> guest 2 (vgpu cmd) */
-			ivc5 {
-				reg = <5>;
-				peers = <0 2>;
-			};
-
-			/* guest 0 <-> guest 2 (vgpu intr) */
-			ivc6 {
-				reg = <6>;
-				peers = <0 2>;
-			};
-
-			/* guest 0 <-> guest 3 (smmu) */
-			ivc11 {
-				reg = <11>;
-				peers = <0 3>;
-				nframes = <50>;
-				frame-size = <128>;
-			};
-
-		};
 	};
 
 	/* the virtual serial device node */
