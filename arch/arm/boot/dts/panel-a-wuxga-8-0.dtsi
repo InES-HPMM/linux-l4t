@@ -48,14 +48,14 @@
 				};
 				display-timings {
 					1200x1920-32 {
-						clock-frequency = <154779200>;
+						clock-frequency = <155774400>;
 						hactive = <1200>;
 						vactive = <1920>;
 						hfront-porch = <64>;
 						hback-porch = <54>;
 						hsync-len = <10>;
 						vfront-porch = <3>;
-						vback-porch = <15>;
+						vback-porch = <30>;
 						vsync-len = <2>;
 						nvidia,h-ref-to-sync = <4>;
 						nvidia,v-ref-to-sync = <1>;
