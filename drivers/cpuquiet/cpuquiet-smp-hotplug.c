@@ -423,23 +423,20 @@ static int hp_stats_show(struct seq_file *s, void *data)
 	int i;
 	u64 cur_jiffies = get_jiffies_64();
 
-	mutex_lock(&cpuquiet_lock);
-
 	mutex_lock(&cpq_lock_stats);
 
-	if (cpq_state != CPQ_DISABLED) {
-		for (i = 0; i < ARRAY_SIZE(hp_stats); i++) {
-			bool was_up = (hp_stats[i].up_down_count & 0x1);
-			__hp_stats_update(i, was_up);
-		}
+	for (i = 0; i < ARRAY_SIZE(hp_stats); i++) {
+		bool was_up = (hp_stats[i].up_down_count & 0x1);
+		__hp_stats_update(i, was_up);
 	}
-	mutex_unlock(&cpq_lock_stats);
 
-	mutex_unlock(&cpuquiet_lock);
+	mutex_unlock(&cpq_lock_stats);
 
 	seq_printf(s, "%-15s ", "cpu:");
 	for (i = 0; i < ARRAY_SIZE(hp_stats); i++)
 		seq_printf(s, "%-9d ", i);
+
+	seq_puts(s, "\n");
 
 	seq_printf(s, "%-15s ", "transitions:");
 	for (i = 0; i < ARRAY_SIZE(hp_stats); i++)
@@ -477,7 +474,7 @@ static const struct file_operations hp_stats_fops = {
 static int __init cpuquiet_debug_init(void)
 {
 
-	hp_debugfs_root = debugfs_create_dir("hotplug", NULL);
+	hp_debugfs_root = debugfs_create_dir("tegra_hotplug", NULL);
 	if (!hp_debugfs_root)
 		return -ENOMEM;
 
