@@ -334,6 +334,7 @@
                 nvidia,port-otg;
                 nvidia,charging-supported;
                 nvidia,enable-pmu-vbus-detection;
+		nvidia,turn-off-vbus-in-lp0;
                 nvidia,id-detection-type = <1>;
                 extcon-cables = <&bq2419x 0>;
                 extcon-cable-names = "vbus";

@@ -221,6 +221,7 @@
 		nvidia,port-otg;
 		nvidia,charging-supported;
 		nvidia,enable-pmu-vbus-detection;
+		nvidia,turn-off-vbus-in-lp0;
 		nvidia,id-detection-type = <1>;
 		nvidia,enable-aca-nv-charger-detection;
 		nvidia,dcp-current-limit-ma = <2000>;
