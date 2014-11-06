@@ -223,7 +223,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.max_clk_limit = 200000000,
 	.calib_3v3_offsets = 0x0202,
 	.calib_1v8_offsets = 0x0202,
-	.disable_auto_cal = 1,
 };
 
 static struct platform_device tegra_sdhci_device0 = {
