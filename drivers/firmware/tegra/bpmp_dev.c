@@ -61,13 +61,17 @@ static struct dentry *module_root;
 static char firmware_tag[32];
 static LIST_HEAD(modules);
 
-struct fwheader {
-	u32 magic;
-	u32 version;
-	u32 chipid;
-	u32 memsize;
-	u32 reset_off;
-};
+struct fw_header {
+	uint32_t magic;
+	uint32_t version;
+	uint32_t chip_id;
+	uint32_t mem_size;
+	uint32_t reset_offset;
+	uint8_t reserved2[124];
+	uint8_t md5sum[32];
+	uint8_t common_head[40];
+	uint8_t platform_head[40];
+} __PACKED;
 
 struct platform_config {
 	u32 magic;
@@ -399,13 +403,26 @@ static void bpmp_reset(u32 addr)
 	writel(FLOW_MODE_NONE, FLOW_CTRL_HALT_COP_EVENTS);
 }
 
+static int bpmp_get_fwtag(void)
+{
+	unsigned long flags;
+	int r;
+	spin_lock_irqsave(&shared_lock, flags);
+	r = bpmp_query_tag(shared_phys);
+	memcpy(firmware_tag, shared_virt, sizeof(firmware_tag));
+	spin_unlock_irqrestore(&shared_lock, flags);
+	return r;
+}
+
 static void bpmp_loadfw(const void *data, int size)
 {
-	struct fwheader *h;
+	struct fw_header *h;
 	struct platform_config bpmp_config;
 	unsigned int cfgsz = sizeof(bpmp_config);
 	u32 reset_addr;
 	int r;
+	const int sz = sizeof(h->md5sum);
+	char fwtag[sz + 1];
 
 	if (!data || !size) {
 		dev_err(device, "no data to load\n");
@@ -414,17 +431,21 @@ static void bpmp_loadfw(const void *data, int size)
 
 	dev_info(device, "firmware ready: %d bytes\n", size);
 
-	h = (struct fwheader *)data;
-	reset_addr = loadfw_phys + h->reset_off;
+	h = (struct fw_header *)data;
+	reset_addr = loadfw_phys + h->reset_offset;
+
+	memcpy(fwtag, h->md5sum, sz);
+	fwtag[sz] = 0;
 
 	dev_info(device, "magic     : %x\n", h->magic);
 	dev_info(device, "version   : %x\n", h->version);
-	dev_info(device, "chip      : %x\n", h->chipid);
-	dev_info(device, "memsize   : %u bytes\n", h->memsize);
-	dev_info(device, "reset off : %x\n", h->reset_off);
+	dev_info(device, "chip      : %x\n", h->chip_id);
+	dev_info(device, "memsize   : %u bytes\n", h->mem_size);
+	dev_info(device, "reset off : %x\n", h->reset_offset);
 	dev_info(device, "reset addr: %x\n", reset_addr);
+	dev_info(device, "fwtag     : %s\n", fwtag);
 
-	if (size > h->memsize || h->memsize + cfgsz > SZ_256K) {
+	if (size > h->mem_size || h->mem_size + cfgsz > SZ_256K) {
 		dev_err(device, "firmware too big\n");
 		return;
 	}
@@ -437,7 +458,7 @@ static void bpmp_loadfw(const void *data, int size)
 
 	memcpy(loadfw_virt, data, size);
 	memset(loadfw_virt + size, 0, SZ_256K - size);
-	memcpy(loadfw_virt + h->memsize, &bpmp_config, cfgsz);
+	memcpy(loadfw_virt + h->mem_size, &bpmp_config, cfgsz);
 
 	bpmp_reset(reset_addr);
 	r = bpmp_attach();
@@ -445,7 +466,7 @@ static void bpmp_loadfw(const void *data, int size)
 		dev_err(device, "attach failed with error %d\n", r);
 		return;
 	}
-
+	bpmp_get_fwtag();
 	dev_info(device, "firmware load done\n");
 }
 
@@ -558,17 +579,6 @@ static const struct file_operations trace_fops = {
 	.read = seq_read,
 	.release = single_release
 };
-
-static int bpmp_get_fwtag(void)
-{
-	unsigned long flags;
-	int r;
-	spin_lock_irqsave(&shared_lock, flags);
-	r = bpmp_query_tag(shared_phys);
-	spin_unlock_irqrestore(&shared_lock, flags);
-	memcpy(firmware_tag, shared_virt, sizeof(firmware_tag));
-	return r;
-}
 
 static int bpmp_tag_show(struct seq_file *file, void *data)
 {
