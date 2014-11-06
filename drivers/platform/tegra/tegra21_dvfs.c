@@ -224,18 +224,44 @@ static struct dvfs cpu_lp_dvfs = {
 /* GPU DVFS tables */
 /* FIXME: fill in actual hw numbers */
 static unsigned long gpu_max_freq[] = {
-/* speedo_id	0	*/
-		1075200,
+/* speedo_id	0	 1      */
+		1075200, 1075200,
 };
 static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
-		.speedo_id =  -1,
+		.speedo_id = 0,
 		.process_id = -1,
 #ifdef CONFIG_TEGRA_GPU_DVFS
 		.max_mv = 1150,
 #else
 		.max_mv = 1000,
 #endif
+		.freqs_mult = KHZ,
+		.speedo_scale = 100,
+		.thermal_scale = 10,
+		.voltage_scale = 1000,
+		.cvb_table = {
+			/* f	   dfll pll:    c0,       c1,       c2 */
+			{   76800, { }, {  1786666,   -85625,     1632 }, },
+			{  153600, { }, {  1846729,   -87525,     1632 }, },
+			{  230400, { }, {  1910480,   -89425,     1632 }, },
+			{  307200, { }, {  1977920,   -91325,     1632 }, },
+			{  384000, { }, {  2049049,   -93215,     1632 }, },
+			{  460800, { }, {  2122872,   -95095,     1632 }, },
+			{  537600, { }, {  2201331,   -96985,     1632 }, },
+			{  614400, { }, {  2283479,   -98885,     1632 }, },
+			{  691200, { }, {  2369315,  -100785,     1632 }, },
+			{  768000, { }, {  2458841,  -102685,     1632 }, },
+			{  844800, { }, {  2550821,  -104555,     1632 }, },
+			{  921600, { }, {  2647676,  -106455,     1632 }, },
+			{ 0,	   { }, { }, },
+		},
+		.cvb_vmin =  {  0, {  }, { 950000, }, },
+	},
+	{
+		.speedo_id = 1,
+		.process_id = -1,
+		.max_mv = 1150,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.thermal_scale = 10,

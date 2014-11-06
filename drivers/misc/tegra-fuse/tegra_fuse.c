@@ -434,6 +434,16 @@ int tegra_fuse_calib_gpcpll_get_adc(int *slope_uv, int *intercept_uv)
 }
 EXPORT_SYMBOL(tegra_fuse_calib_gpcpll_get_adc);
 
+bool tegra_fuse_can_use_na_gpcpll(void)
+{
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	/* on T210 NA mode can be used if id >= 1 */
+	return tegra_gpu_speedo_id();
+#else
+	return false;
+#endif
+}
+EXPORT_SYMBOL(tegra_fuse_can_use_na_gpcpll);
 
 struct chip_revision {
 	enum tegra_chipid	chipid;
