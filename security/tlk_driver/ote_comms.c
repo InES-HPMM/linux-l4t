@@ -325,8 +325,9 @@ int te_set_vpr_params(void *vpr_base, size_t vpr_size)
 	if (current->flags &
 	    (PF_WQ_WORKER | PF_NO_SETAFFINITY | PF_KTHREAD)) {
 		struct tlk_smc_work_args work_args;
-		int cpu = cpu_logical_map(smp_processor_id());
+		int cpu = cpu_logical_map(get_cpu());
 
+		put_cpu();
 		work_args.arg0 = TE_SMC_PROGRAM_VPR;
 		work_args.arg1 = (uintptr_t)vpr_base;
 		work_args.arg2 = vpr_size;
