@@ -59,7 +59,6 @@ static unsigned long adsp_cpu_freq_table[] = {
 	512000000,
 	563200000,
 	614400000,
-
 };
 
 struct adsp_dfs_policy {
@@ -144,10 +143,10 @@ static int adsp_dfs_rc_callback(
 	actmon_rate_change(freq);
 
 	mutex_lock(&policy_mutex);
-	policy->cur = freq;
-
 	/* update states */
 	adspfreq_stats_update();
+	policy->cur = freq;
+
 	old_index = freq_stats.last_index;
 	adsp_get_target_freq(policy->cur * 1000, &new_index);
 	if (old_index != new_index)
@@ -387,6 +386,7 @@ static void dump_stats_table(struct seq_file *s, struct adsp_freq_stats *fstats)
 {
 	int i;
 
+	mutex_lock(&policy_mutex);
 	adspfreq_stats_update();
 
 	seq_printf(s, "%-10s %-10s\n", "rate(kHz)", "time(ms)");
@@ -395,6 +395,7 @@ static void dump_stats_table(struct seq_file *s, struct adsp_freq_stats *fstats)
 			(long unsigned int)(adsp_cpu_freq_table[i] / 1000),
 			cputime64_to_clock_t(fstats->time_in_state[i]));
 	}
+	mutex_unlock(&policy_mutex);
 }
 
 static int show_time_in_state(struct seq_file *s, void *data)
@@ -518,11 +519,14 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 	adsp_get_target_freq(policy->cur * 1000, &freq_stats.last_index);
 	freq_stats.last_time = get_jiffies_64();
 	freq_stats.state_num = size;
-	freq_stats.time_in_state = kzalloc(size, GFP_KERNEL);
+	freq_stats.dev = &pdev->dev;
+	freq_stats.time_in_state = kzalloc(size * sizeof(unsigned long long),
+		GFP_KERNEL);
 	if (!freq_stats.time_in_state) {
 		ret = -ENOMEM;
 		goto end;
 	}
+
 	ret = nvadsp_mbox_open(&policy->mbox, &mid, "dfs_comm", NULL, NULL);
 	if (ret) {
 		dev_info(&pdev->dev, "unable to open mailbox\n");
