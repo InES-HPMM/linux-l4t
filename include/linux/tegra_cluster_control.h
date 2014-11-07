@@ -42,10 +42,6 @@ int unregister_cluster_switch_notifier(struct notifier_block *notifier);
 static inline unsigned int is_lp_cluster(void)
 {
 	unsigned int reg;
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	reg = readl(FLOW_CTRL_CLUSTER_CONTROL);
-	return reg & 1; /* 0 == G, 1 == LP*/
-#else
 #ifdef CONFIG_ARM64
 	asm("mrs	%0, mpidr_el1\n"
 	    "ubfx	%0, %0, #8, #4"
@@ -60,7 +56,6 @@ static inline unsigned int is_lp_cluster(void)
 	    : "cc", "memory");
 #endif
 	return reg & 1; /* 0 == G, 1 == LP*/
-#endif
 }
 int tegra_cluster_control(unsigned int us, unsigned int flags);
 int tegra_cluster_switch(struct clk *cpu_clk, struct clk *new_cluster_clk);

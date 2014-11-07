@@ -485,7 +485,6 @@ void tegra30_init_clocks(void);
 void tegra11x_init_clocks(void);
 void tegra12x_init_clocks(void);
 void tegra21x_init_clocks(void);
-void tegra14x_init_clocks(void);
 void tegra11x_clk_init_la(void);
 void tegra_common_init_clock(void);
 struct clk *tegra_get_clock_by_name(const char *name);

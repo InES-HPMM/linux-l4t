@@ -55,11 +55,8 @@ struct tegra_cpuidle_ops {
 int tegra2_cpuidle_init_soc(struct tegra_cpuidle_ops *ops);
 int tegra3_cpuidle_init_soc(struct tegra_cpuidle_ops *ops);
 int tegra11x_cpuidle_init_soc(struct tegra_cpuidle_ops *ops);
-int tegra14x_cpuidle_init_soc(struct tegra_cpuidle_ops *ops);
 int tegra11_cpu_lp_idle_rate_exchange(unsigned long *rate);
 int tegra11_cpu_g_idle_rate_exchange(unsigned long *rate);
-int tegra14_cpu_lp_idle_rate_exchange(unsigned long *rate);
-int tegra14_cpu_g_idle_rate_exchange(unsigned long *rate);
 int tegra12_cpu_lp_idle_rate_exchange(unsigned long *rate);
 int tegra12_cpu_g_idle_rate_exchange(unsigned long *rate);
 
@@ -72,8 +69,6 @@ static inline int tegra_cpuidle_init_soc(struct tegra_cpuidle_ops *ops)
 #elif defined(CONFIG_ARCH_TEGRA_11x_SOC) || \
 	defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	return tegra11x_cpuidle_init_soc(ops);
-#elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	return tegra14x_cpuidle_init_soc(ops);
 #else
 	return 0;
 #endif
@@ -85,8 +80,6 @@ static inline int tegra_cpu_g_idle_rate_exchange(unsigned long *rate)
 	return tegra11_cpu_g_idle_rate_exchange(rate);
 #elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	return tegra12_cpu_g_idle_rate_exchange(rate);
-#elif defined CONFIG_ARCH_TEGRA_14x_SOC
-	return tegra14_cpu_g_idle_rate_exchange(rate);
 #else
 	return -ENOSYS;
 #endif
@@ -98,8 +91,6 @@ static inline int tegra_cpu_lp_idle_rate_exchange(unsigned long *rate)
 	return tegra11_cpu_lp_idle_rate_exchange(rate);
 #elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	return tegra12_cpu_lp_idle_rate_exchange(rate);
-#elif defined CONFIG_ARCH_TEGRA_14x_SOC
-	return tegra14_cpu_lp_idle_rate_exchange(rate);
 #else
 	return -ENOSYS;
 #endif
