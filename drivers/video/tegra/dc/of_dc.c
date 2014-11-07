@@ -458,7 +458,7 @@ static int parse_disp_default_out(struct platform_device *ndev,
 	return 0;
 }
 
-int parse_tmds_config(struct platform_device *ndev,
+static int parse_tmds_config(struct platform_device *ndev,
 	struct device_node *np, struct tegra_dc_out *default_out)
 {
 	int err = 0;
@@ -855,7 +855,7 @@ static int parse_cmu_data(struct device_node *np,
 }
 #endif
 
-struct tegra_dsi_cmd *tegra_dsi_parse_cmd_dt(struct platform_device *ndev,
+static struct tegra_dsi_cmd *tegra_dsi_parse_cmd_dt(struct platform_device *ndev,
 					const struct device_node *node,
 					struct property *prop,
 					u32 n_cmd)
@@ -989,7 +989,7 @@ static const u32 *tegra_dsi_parse_pkt_seq_dt(struct platform_device *ndev,
 	return pkt_seq;
 }
 
-struct device_node *parse_dsi_settings(struct platform_device *ndev,
+static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 	struct device_node *np_dsi,
 	struct tegra_dc_platform_data *pdata)
 {
@@ -1472,7 +1472,7 @@ static int parse_lt_setting(struct device_node *np,
 	return 0;
 }
 
-struct device_node *parse_dp_settings(struct platform_device *ndev,
+static struct device_node *parse_dp_settings(struct platform_device *ndev,
 	struct tegra_dc_platform_data *pdata)
 {
 	u32 temp;
@@ -1540,7 +1540,7 @@ struct device_node *parse_dp_settings(struct platform_device *ndev,
 	return np_dp_panel;
 }
 
-struct device_node *parse_lvds_settings(struct platform_device *ndev,
+static struct device_node *parse_lvds_settings(struct platform_device *ndev,
 	struct tegra_dc_platform_data *pdata)
 {
 	struct device_node *np_lvds_panel = NULL;
