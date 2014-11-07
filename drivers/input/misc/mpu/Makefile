@@ -4,6 +4,7 @@
 
 GCOV_PROFILE := y
 
+subdir-ccflags := -Werror
 obj-$(CONFIG_INV_MPU) += inv-mpu.o
 
 inv-mpu-objs := inv_gyro.o
