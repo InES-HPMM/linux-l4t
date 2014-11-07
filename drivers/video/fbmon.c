@@ -1112,8 +1112,14 @@ void fb_edid_add_monspecs(unsigned char *edid, struct fb_monspecs *specs)
 		} else if (type == 3 && len >= 3) {
 			u32 ieee_reg = edid[pos] | (edid[pos + 1] << 8) |
 				(edid[pos + 2] << 16);
+
+			/* OUI for hdmi licensing, LLC */
 			if (ieee_reg == 0x000c03)
 				specs->misc |= FB_MISC_HDMI;
+
+			/* OUI for hdmi forum */
+			if (ieee_reg == 0xc45dd8)
+				specs->misc |= FB_MISC_HDMI_FORUM;
 
 			/* HDMI_Video_Format @HDMI 1.4 ch8.2.3*/
 			if (edid[pos + 2] >> 5 != 0) {

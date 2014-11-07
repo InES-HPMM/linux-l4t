@@ -811,7 +811,18 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	{}, {}, {}, {}, {}, {},
 	{}, {}, {}, {}, {}, {}, {}, {}, {}, {},
 	{}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-	{}, {}, {}, {}, {}, {},
+	{}, {}, {}, {},
+
+	/* 95: 3840x2160p @ 29.97/30Hz */
+	{.refresh = 30, .xres =  3840, .yres = 2160, .pixclock = 3367,
+	 .left_margin = 296, .right_margin = 176,
+	 .upper_margin = 72, .lower_margin = 8,
+	 .hsync_len = 88, .vsync_len = 10,
+	 .sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
+	 .flag = FB_FLAG_RATIO_16_9,
+	 .vmode = FB_VMODE_NONINTERLACED},
+
+	{},
 
 	 /* 97: 3840x2160p @ 59.94/60Hz */
 	{.refresh = 60, .xres =  3840, .yres = 2160, .pixclock = 1683,
@@ -821,6 +832,9 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
 	 .flag = FB_FLAG_RATIO_16_9,
 	 .vmode = FB_VMODE_NONINTERLACED},
+
+	 /* TODO: add other modes supported by cea-861-f */
+	{}, {}, {}, {}, {}, {}, {}, {}, {}, {},
 };
 EXPORT_SYMBOL(cea_modes);
 
