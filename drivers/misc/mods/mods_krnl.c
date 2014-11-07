@@ -201,7 +201,7 @@ static int mods_register_mapping(
 
 	LOG_ENT();
 
-	p_map_mem = kmalloc(sizeof(*p_map_mem), GFP_ATOMIC);
+	p_map_mem = kmalloc(sizeof(*p_map_mem), GFP_KERNEL);
 	if (unlikely(!p_map_mem)) {
 		LOG_EXT();
 		return -ENOMEM;
@@ -358,7 +358,11 @@ static void mods_krnl_vma_close(struct vm_area_struct *vma)
 			= MODS_VMA_PRIVATE(vma);
 		if (atomic_dec_and_test(&vma_private_data->usage_count)) {
 			MODS_PRIVATE_DATA(private_data, vma_private_data->fp);
-			spin_lock(&private_data->lock);
+			if (unlikely(mutex_lock_interruptible(
+						&private_data->mtx))) {
+				LOG_EXT();
+				return;
+			}
 
 			/* we need to unregister the mapping */
 			mods_unregister_mapping(vma_private_data->fp,
@@ -369,7 +373,7 @@ static void mods_krnl_vma_close(struct vm_area_struct *vma)
 			MODS_VMA_PRIVATE(vma) = NULL;
 			kfree(vma_private_data);
 
-			spin_unlock(&private_data->lock);
+			mutex_unlock(&private_data->mtx);
 		}
 	}
 	LOG_EXT();
@@ -410,7 +414,7 @@ static int mods_krnl_open(struct inode *ip, struct file *fp)
 		return -ENOMEM;
 	}
 
-	id	=  mods_alloc_channel();
+	id = mods_alloc_channel();
 	if (id_is_valid(id) != OK) {
 		mods_error_printk("too many clients\n");
 		kfree(mods_alloc_list);
@@ -432,7 +436,7 @@ static int mods_krnl_open(struct inode *ip, struct file *fp)
 	private_data->mem_type.size = 0;
 	private_data->mem_type.type = 0;
 
-	spin_lock_init(&private_data->lock);
+	mutex_init(&private_data->mtx);
 
 	init_waitqueue_head(&private_data->interrupt_event);
 
@@ -447,6 +451,7 @@ static int mods_krnl_close(struct inode *ip, struct file *fp)
 {
 	MODS_PRIVATE_DATA(private_data, fp);
 	unsigned char id = MODS_GET_FILE_PRIVATE_ID(fp);
+	int ret = OK;
 
 	LOG_ENT();
 
@@ -455,7 +460,9 @@ static int mods_krnl_close(struct inode *ip, struct file *fp)
 	mods_irq_dev_clr_pri(private_data->mods_id);
 
 	mods_unregister_all_mappings(fp);
-	mods_unregister_all_alloc(fp);
+	ret = mods_unregister_all_alloc(fp);
+	if (ret)
+		mods_error_printk("failed to free all memory\n");
 	mods_disable_all_devices(private_data);
 
 	kfree(private_data->mods_alloc_list);
@@ -464,7 +471,7 @@ static int mods_krnl_close(struct inode *ip, struct file *fp)
 
 	mods_info_printk("driver closed\n");
 	LOG_EXT();
-	return OK;
+	return ret;
 }
 
 static unsigned int mods_krnl_poll(struct file *fp, poll_table *wait)
@@ -510,9 +517,12 @@ static int mods_krnl_mmap(struct file *fp, struct vm_area_struct *vma)
 	{
 		int ret = OK;
 		MODS_PRIVATE_DATA(private_data, fp);
-		spin_lock(&private_data->lock);
-		ret = mods_krnl_map_inner(fp, vma);
-		spin_unlock(&private_data->lock);
+		if (unlikely(mutex_lock_interruptible(&private_data->mtx)))
+			ret = -EINTR;
+		else {
+			ret = mods_krnl_map_inner(fp, vma);
+			mutex_unlock(&private_data->mtx);
+		}
 		LOG_EXT();
 		return ret;
 	}

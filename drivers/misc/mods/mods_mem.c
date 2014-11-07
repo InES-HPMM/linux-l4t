@@ -275,17 +275,19 @@ failed:
 	return -ENOMEM;
 }
 
-static void mods_register_alloc(struct file	     *fp,
-				struct MODS_MEM_INFO *p_mem_info)
+static int mods_register_alloc(struct file          *fp,
+			       struct MODS_MEM_INFO *p_mem_info)
 {
 	MODS_PRIVATE_DATA(private_data, fp);
-	spin_lock(&private_data->lock);
+	if (unlikely(mutex_lock_interruptible(&private_data->mtx)))
+		return -EINTR;
 	list_add(&p_mem_info->list, private_data->mods_alloc_list);
-	spin_unlock(&private_data->lock);
+	mutex_unlock(&private_data->mtx);
+	return OK;
 }
 
-static void mods_unregister_and_free(struct file	  *fp,
-				     struct MODS_MEM_INFO *p_del_mem)
+static int mods_unregister_and_free(struct file          *fp,
+				    struct MODS_MEM_INFO *p_del_mem)
 {
 	struct MODS_MEM_INFO *p_mem_info;
 
@@ -295,7 +297,8 @@ static void mods_unregister_and_free(struct file	  *fp,
 
 	mods_debug_printk(DEBUG_MEM_DETAILED, "free %p\n", p_del_mem);
 
-	spin_lock(&private_data->lock);
+	if (unlikely(mutex_lock_interruptible(&private_data->mtx)))
+		return -EINTR;
 
 	head = private_data->mods_alloc_list;
 
@@ -305,36 +308,42 @@ static void mods_unregister_and_free(struct file	  *fp,
 		if (p_del_mem == p_mem_info) {
 			list_del(iter);
 
-			spin_unlock(&private_data->lock);
+			mutex_unlock(&private_data->mtx);
 
 			mods_restore_cache(p_mem_info);
 			mods_free_pages(p_mem_info);
 
 			kfree(p_mem_info);
 
-			return;
+			return OK;
 		}
 	}
 
-	spin_unlock(&private_data->lock);
+	mutex_unlock(&private_data->mtx);
 
 	mods_error_printk("failed to unregister allocation %p\n",
 			  p_del_mem);
+	return -EINVAL;
 }
 
-void mods_unregister_all_alloc(struct file *fp)
+int mods_unregister_all_alloc(struct file *fp)
 {
-	struct MODS_MEM_INFO *p_mem_info;
-
 	MODS_PRIVATE_DATA(private_data, fp);
 	struct list_head *head = private_data->mods_alloc_list;
 	struct list_head *iter;
 	struct list_head *tmp;
 
 	list_for_each_safe(iter, tmp, head) {
+		struct MODS_MEM_INFO *p_mem_info;
+		int ret;
+
 		p_mem_info = list_entry(iter, struct MODS_MEM_INFO, list);
-		mods_unregister_and_free(fp, p_mem_info);
+		ret = mods_unregister_and_free(fp, p_mem_info);
+		if (ret)
+			return ret;
 	}
+
+	return OK;
 }
 
 /* Returns an offset within an allocation deduced from physical address.
@@ -453,6 +462,7 @@ int esc_mods_device_alloc_pages(struct file                    *fp,
 	u32    num_pages;
 	u32    alloc_size;
 	u32    max_chunks;
+	int    ret = OK;
 
 	LOG_ENT();
 
@@ -554,9 +564,9 @@ int esc_mods_device_alloc_pages(struct file                    *fp,
 
 	mods_debug_printk(DEBUG_MEM_DETAILED, "alloc %p\n", p_mem_info);
 
-	mods_register_alloc(fp, p_mem_info);
+	ret = mods_register_alloc(fp, p_mem_info);
 	LOG_EXT();
-	return OK;
+	return ret;
 }
 
 int esc_mods_alloc_pages(struct file *fp, struct MODS_ALLOC_PAGES *p)
@@ -578,14 +588,16 @@ int esc_mods_alloc_pages(struct file *fp, struct MODS_ALLOC_PAGES *p)
 
 int esc_mods_free_pages(struct file *fp, struct MODS_FREE_PAGES *p)
 {
+	int ret;
+
 	LOG_ENT();
 
-	mods_unregister_and_free(fp,
+	ret = mods_unregister_and_free(fp,
 	    (struct MODS_MEM_INFO *)(size_t)p->memory_handle);
 
 	LOG_EXT();
 
-	return OK;
+	return ret;
 }
 
 int esc_mods_set_mem_type(struct file *fp, struct MODS_MEMORY_TYPE *p)
@@ -607,11 +619,14 @@ int esc_mods_set_mem_type(struct file *fp, struct MODS_MEMORY_TYPE *p)
 		return -EINVAL;
 	}
 
-	spin_lock(&private_data->lock);
+	if (unlikely(mutex_lock_interruptible(&private_data->mtx))) {
+		LOG_EXT();
+		return -EINTR;
+	}
 
 	p_mem_info = mods_find_alloc(fp, p->physical_address);
 	if (p_mem_info) {
-		spin_unlock(&private_data->lock);
+		mutex_unlock(&private_data->mtx);
 		mods_error_printk("cannot set mem type on phys addr 0x%llx\n",
 				  p->physical_address);
 		LOG_EXT();
@@ -622,7 +637,7 @@ int esc_mods_set_mem_type(struct file *fp, struct MODS_MEMORY_TYPE *p)
 	private_data->mem_type.size     = p->size;
 	private_data->mem_type.type     = p->type;
 
-	spin_unlock(&private_data->lock);
+	mutex_unlock(&private_data->mtx);
 
 	LOG_EXT();
 	return OK;
@@ -693,7 +708,10 @@ int esc_mods_virtual_to_phys(struct file *fp,
 
 	LOG_ENT();
 
-	spin_lock(&private_data->lock);
+	if (unlikely(mutex_lock_interruptible(&private_data->mtx))) {
+		LOG_EXT();
+		return -EINTR;
+	}
 
 	head = private_data->mods_mapping_list;
 
@@ -716,7 +734,7 @@ int esc_mods_virtual_to_phys(struct file *fp,
 			if (!p_map_mem->p_mem_info) {
 				p->physical_address = p_map_mem->dma_addr
 						      + virt_offs;
-				spin_unlock(&private_data->lock);
+				mutex_unlock(&private_data->mtx);
 
 				mods_debug_printk(DEBUG_MEM_DETAILED,
 				    "get phys: map %p virt 0x%llx -> 0x%llx\n",
@@ -736,7 +754,7 @@ int esc_mods_virtual_to_phys(struct file *fp,
 				(u64)(size_t)p_map_mem->p_mem_info;
 			get_phys_addr.offset = virt_offs + phys_offs;
 
-			spin_unlock(&private_data->lock);
+			mutex_unlock(&private_data->mtx);
 
 			ret = esc_mods_get_phys_addr(fp, &get_phys_addr);
 			if (ret != OK)
@@ -753,7 +771,7 @@ int esc_mods_virtual_to_phys(struct file *fp,
 		}
 	}
 
-	spin_unlock(&private_data->lock);
+	mutex_unlock(&private_data->mtx);
 
 	mods_error_printk("invalid virtual address\n");
 	return -EINVAL;
@@ -771,7 +789,10 @@ int esc_mods_phys_to_virtual(struct file *fp,
 
 	LOG_ENT();
 
-	spin_lock(&private_data->lock);
+	if (unlikely(mutex_lock_interruptible(&private_data->mtx))) {
+		LOG_EXT();
+		return -EINTR;
+	}
 
 	head = private_data->mods_mapping_list;
 
@@ -790,7 +811,7 @@ int esc_mods_phys_to_virtual(struct file *fp,
 				 - p_map_mem->dma_addr;
 			p->virtual_address = p_map_mem->virtual_addr
 					     + offset;
-			spin_unlock(&private_data->lock);
+			mutex_unlock(&private_data->mtx);
 
 			mods_debug_printk(DEBUG_MEM_DETAILED,
 			    "get virt: map %p phys 0x%llx -> 0x%llx\n",
@@ -817,7 +838,7 @@ int esc_mods_phys_to_virtual(struct file *fp,
 			p->virtual_address = p_map_mem->virtual_addr
 					   + offset - map_offset;
 
-			spin_unlock(&private_data->lock);
+			mutex_unlock(&private_data->mtx);
 			mods_debug_printk(DEBUG_MEM_DETAILED,
 			    "get virt: map %p phys 0x%llx -> 0x%llx\n",
 			    p_map_mem, p->physical_address, p->virtual_address);
@@ -826,7 +847,7 @@ int esc_mods_phys_to_virtual(struct file *fp,
 			return OK;
 		}
 	}
-	spin_unlock(&private_data->lock);
+	mutex_unlock(&private_data->mtx);
 	mods_error_printk("phys addr 0x%llx is not mapped\n",
 			  p->physical_address);
 	return -EINVAL;
@@ -940,10 +961,13 @@ int esc_mods_flush_cpu_cache_range(struct file *fp,
 	    MODS_INVALIDATE_CPU_CACHE == p->flags) {
 
 		mods_debug_printk(DEBUG_MEM_DETAILED, "cannot clear cache\n");
-		return ~EINVAL;
+		return -EINVAL;
 	}
 
-	spin_lock(&private_data->lock);
+	if (unlikely(mutex_lock_interruptible(&private_data->mtx))) {
+		LOG_EXT();
+		return -EINTR;
+	}
 
 	head = private_data->mods_mapping_list;
 
@@ -980,7 +1004,7 @@ int esc_mods_flush_cpu_cache_range(struct file *fp,
 						   virt_end);
 		}
 	}
-	spin_unlock(&private_data->lock);
+	mutex_unlock(&private_data->mtx);
 	return OK;
 }
 

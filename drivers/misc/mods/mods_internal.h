@@ -25,6 +25,7 @@
 #include <linux/pci.h>
 #include <linux/slab.h>
 #include <linux/miscdevice.h>
+#include <linux/mutex.h>
 
 #include "mods_config.h"
 #include "mods.h"
@@ -64,9 +65,9 @@ struct mods_file_private_data {
 	struct list_head    *mods_mapping_list;
 	wait_queue_head_t    interrupt_event;
 	struct en_dev_entry *enabled_devices;
-	int		     mods_id;
-	struct mem_type	     mem_type;
-	spinlock_t	     lock;
+	int                  mods_id;
+	struct mem_type      mem_type;
+	struct mutex         mtx;
 };
 
 /* VM private data */
@@ -318,7 +319,7 @@ int mods_irq_event_check(unsigned char);
 
 /* mem */
 const char *mods_get_prot_str(u32 mem_type);
-void mods_unregister_all_alloc(struct file *fp);
+int mods_unregister_all_alloc(struct file *fp);
 struct MODS_MEM_INFO *mods_find_alloc(struct file *, u64);
 
 /* clock */
