@@ -247,6 +247,7 @@ CONFIG_BCM4354=y
 CONFIG_BCMDHD_FW_PATH="/data/misc/wifi/firmware/fw_bcmdhd.bin"
 CONFIG_BCMDHD_NVRAM_PATH="/data/misc/wifi/firmware/nvram.txt"
 CONFIG_BCMDHD_HW_OOB=y
+CONFIG_DHD_USE_SCHED_SCAN=y
 CONFIG_BCMDHD2=y
 CONFIG_BCMDHD2_FW_PATH="/system/vendor/firmware/bcm43341/fw_bcmdhd.bin"
 CONFIG_BCMDHD2_NVRAM_PATH="/system/etc/nvram_rev2.txt"
