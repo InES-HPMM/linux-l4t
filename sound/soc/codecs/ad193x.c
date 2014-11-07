@@ -14,6 +14,8 @@
 #include <linux/i2c.h>
 #include <linux/spi/spi.h>
 #include <linux/slab.h>
+#include <linux/pm_runtime.h>
+#include <linux/regmap.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -446,6 +448,7 @@ static const struct regmap_config ad193x_i2c_regmap_config = {
 
 	.max_register = AD193X_NUM_REGS - 1,
 	.volatile_reg = adau193x_reg_volatile,
+	.cache_type = REGCACHE_FLAT,
 };
 
 static const struct i2c_device_id ad193x_id[] = {
@@ -454,38 +457,102 @@ static const struct i2c_device_id ad193x_id[] = {
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, ad193x_id);
+static int ad193x_runtime_suspend(struct device *dev)
+{
+
+	struct ad193x_priv *ad193x = dev_get_drvdata(dev);
+
+	regcache_cache_only(ad193x->regmap, true);
+
+	return 0;
+}
+
+static int ad193x_runtime_resume(struct device *dev)
+{
+	struct ad193x_priv *ad193x = dev_get_drvdata(dev);
+
+	regcache_cache_only(ad193x->regmap, false);
+	regcache_sync(ad193x->regmap);
+
+	return 0;
+}
 
 static int ad193x_i2c_probe(struct i2c_client *client,
 			    const struct i2c_device_id *id)
 {
 	struct ad193x_priv *ad193x;
-
+	int ret = 0;
 	ad193x = devm_kzalloc(&client->dev, sizeof(struct ad193x_priv),
 			      GFP_KERNEL);
 	if (ad193x == NULL)
 		return -ENOMEM;
-
 	ad193x->regmap = devm_regmap_init_i2c(client, &ad193x_i2c_regmap_config);
 	if (IS_ERR(ad193x->regmap))
 		return PTR_ERR(ad193x->regmap);
+	regcache_cache_only(ad193x->regmap, true);
+	pm_runtime_enable(&client->dev);
+	if (!pm_runtime_enabled(&client->dev)) {
+		ret = ad193x_runtime_resume(&client->dev);
+		if (ret)
+			goto err_pm_disable;
+	}
 
 	i2c_set_clientdata(client, ad193x);
 
 	return snd_soc_register_codec(&client->dev, &soc_codec_dev_ad193x,
 			&ad193x_dai, 1);
+
+err_pm_disable:
+	pm_runtime_disable(&client->dev);
+
+	return ret;
+
 }
 
 static int ad193x_i2c_remove(struct i2c_client *client)
 {
 	snd_soc_unregister_codec(&client->dev);
+	pm_runtime_disable(&client->dev);
+	if (!pm_runtime_status_suspended(&client->dev))
+		ad193x_runtime_suspend(&client->dev);
+
 	return 0;
 }
+
+#ifdef CONFIG_PM_SLEEP
+static int ad193x_suspend(struct device *dev)
+{
+	struct ad193x_priv *ad193x = dev_get_drvdata(dev);
+
+	regcache_cache_only(ad193x->regmap, true);
+	regcache_mark_dirty(ad193x->regmap);
+
+	return 0;
+}
+static int ad193x_resume(struct device *dev)
+{
+	struct ad193x_priv *ad193x = dev_get_drvdata(dev);
+
+	regcache_cache_only(ad193x->regmap, false);
+	regcache_sync(ad193x->regmap);
+
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops ad193x_pm_ops = {
+	SET_RUNTIME_PM_OPS(ad193x_runtime_suspend,
+				ad193x_runtime_resume, NULL)
+	SET_SYSTEM_SLEEP_PM_OPS(ad193x_suspend,
+				ad193x_resume)
+};
 
 static struct i2c_driver ad193x_i2c_driver = {
 	.driver = {
 		.name = "ad193x",
 		.owner = THIS_MODULE,
 		.of_match_table = ad193x_of_match,
+		.pm = &ad193x_pm_ops,
 	},
 	.probe    = ad193x_i2c_probe,
 	.remove   = ad193x_i2c_remove,
