@@ -269,6 +269,7 @@ void dev_pm_qos_constraints_destroy(struct device *dev)
 	spin_unlock_irq(&dev->power.lock);
 
 	kfree(c->notifiers);
+	kfree(qos->flags.notifiers);
 	kfree(qos);
 
  out:
