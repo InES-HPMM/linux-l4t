@@ -59,6 +59,7 @@
 #include <trace/events/arm_smmu.h>
 
 #include "of_tegra-smmu.h" /* FIXME: to parse implicitly */
+#include "tegra-smmu.h"
 
 /* Maximum number of stream IDs assigned to a single device */
 #define MAX_MASTER_STREAMIDS		MAX_PHANDLE_ARGS
@@ -2550,6 +2551,7 @@ static int __init arm_smmu_init(void)
 	else
 		pr_info("%s(): 0x%08x is mapped to %p\n",
 			__func__, MC_BASE, mc_base);
+	__writel(SMMU_CONFIG_ENABLE, mc_base + SMMU_CONFIG);
 
 	ret = platform_driver_register(&arm_smmu_driver);
 	if (ret)
