@@ -80,7 +80,7 @@ void *mem_request(void *mem_handle, const char *name, size_t size)
 		spin_unlock_irqrestore(&mm_info->lock, flags);
 		return best_match_chunk;
 	} else {
-		new_mc = kzalloc(sizeof(struct mem_chunk), GFP_KERNEL);
+		new_mc = kzalloc(sizeof(struct mem_chunk), GFP_ATOMIC);
 		if (unlikely(!new_mc)) {
 			pr_err("failed to allocate memory for mem_chunk\n");
 
