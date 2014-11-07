@@ -108,6 +108,12 @@ X:	arch/arm64/include/asm/mach/
 X:	arch/arm64/boot/dts/
 X:	arch/arm64/configs/
 
+CAMERA
+M:	Nick Haemel <nhaemel@nvidia.com>
+S:	Supported
+F:	drivers/media/platform/tegra/*
+F:	drivers/media/platform/tegra/cam_dev/*
+
 DISPLAY
 M:	Jon Mayo <jmayo@nvidia.com>
 L:	sw-mobile-display@exchange.nvidia.com
@@ -153,7 +159,6 @@ F:	drivers/video/tegra/nvmap/*
 MULTIMEDIA
 M:	Niranjan Wartikar <nwartikar@nvidia.com>
 S:	Supported
-F:	drivers/media/platform/tegra/*
 F:	drivers/media/platform/tegra/nvavp/*
 F:	drivers/platform/tegra/nvadsp/*
 F:	sound/soc/tegra/*
