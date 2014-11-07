@@ -120,14 +120,10 @@ cpu_not_secure:
 	mov32	r0, TEGRA_ARM_PERIF_BASE
 	ldr	r1, [r0]
 	orr	r1, r1, #1
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	orr	r1, r1, #8
-#endif
 	str	r1, [r0]
 #endif /* CONFIG_HAVE_ARM_SCU */
 
 #ifdef CONFIG_CACHE_L2X0
-#if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	cmp	r12, #1			@ secure firmware present?
 	beq	cpu_resume
 
@@ -142,7 +138,7 @@ cpu_not_secure:
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	mov32	r0, 0x331			/* tag latency */
 	mov32	r1, 0x441			/* data latency */
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	mov32	r0, TEGRA_FLOW_CTRL_BASE + 0x2c	/* FLOW_CTRL_CLUSTER_CONTROL */
 	mov32	r2, RESET_DATA_PHYS
@@ -156,14 +152,10 @@ cpu_not_secure:
 	mov32	r0, #0x770			/* tag latency */
 	mov32	r1, #0x770			/* data latency */
 #endif /* ?CONFIG_TEGRA_SILICON_PLATFORM */
-#endif /* CONFIG_ARCH_TEGRA_3x_SOC || CONFIG_ARCH_TEGRA_14x_SOC */
+#endif /* CONFIG_ARCH_TEGRA_3x_SOC */
 	str	r0, [r3, #L2X0_TAG_LATENCY_CTRL]
 	str	r1, [r3, #L2X0_DATA_LATENCY_CTRL]
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	mov32	r0, 0x40000007	/* Enable double line fill */
-#else
 	mov	r0, #7
-#endif
 	str	r0, [r3, #L2X0_PREFETCH_CTRL]
 	mov	r0, #3
 	str	r0, [r3, #L2X0_POWER_CTRL]
@@ -180,7 +172,6 @@ cpu_not_secure:
 	str	r2, [r3, #L2X0_AUX_CTRL]
 	mov	r2, #1
 	str	r2, [r3, #L2X0_CTRL]
-#endif /* CONFIG_ARCH_TEGRA_14x_SOC */
 #endif /* CONFIG_CACHE_L2X0 */
 no_l2_init:
 	b	cpu_resume

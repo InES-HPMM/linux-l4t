@@ -608,8 +608,7 @@ resume_lp1:
 	/* Restore the Core voltage back to high */
 	set_voltage r1, r4, r3, r0, lp1_register_core_highvolt
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
-defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	add	r5, pc, #tegra3_sdram_pad_save-(.+8)	@ r5 --> saved data
 #endif
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
@@ -654,22 +653,8 @@ powerup_l2_done:
 	str	r0, [r2, #PMC_REMOVE_CLAMPING_CMD]
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-
-	/* If we are waking up from LP1, unconditionally continue
-	 * resume.
-	 */
-	mov32	r4, TEGRA_PMC_BASE
-	ldr	r0, [r4, #PMC_LP_STATE_SCRATCH_REG]
-	mov	r0, r0, lsr #PMC_LP_STATE_BIT_OFFSET
-	and	r0, r0, #PMC_LP_STATE_BIT_MASK
-	cmp	r0, #PMC_LP_STATE_LP1BB
-	beq	self_refresh_skip
-#endif
-
 emc_exit_selfrefresh:
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
-defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	mov32	r0, TEGRA_EMC_BASE		@ r0 reserved for emc base
 	add	r5, pc, #tegra3_sdram_pad_save-(.+8)	@ r5 --> saved data
 #endif
@@ -770,7 +755,7 @@ emc_wait_audo_cal_onetime:
 	mov	r1, #0
 	str	r1, [r0, #EMC_SELF_REF]	@ take DRAM out of self refresh
 	mov	r1, #1
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	str	r1, [r0, #EMC_NOP]
 	str	r1, [r0, #EMC_NOP]
 #endif
@@ -850,22 +835,12 @@ zcal_done:
 	bne	exit_self_refresh
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	/* In the LP1 case, we need to set the Memory status from
-	 * AP to BB, so that memory transactions can take place
-	 */
-	mov32	r4, TEGRA_PMC_BASE
-	mov	r1, #PMC_IPC_SET_MEM_STS
-	str	r1, [r4, #PMC_IPC_SET]
-self_refresh_skip:
-#endif
 	mov32	r0, TEGRA_PMC_BASE
 	ldr	r0, [r0, #PMC_SCRATCH41]
 	mov	pc, r0
 ENDPROC(tegra3_lp1_reset)
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
-defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	.align	L1_CACHE_SHIFT
 	.type	tegra3_sdram_pad_save, %object
 tegra3_sdram_pad_save:
@@ -946,140 +921,11 @@ lp1_register_core_highvolt:
 pllm_state:
 	.word	0
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-lp_enter_state:
-	.word	0
-#endif
-
 /* tegra3_tear_down_core
  *
  * LP0 entry check conditions w.r.t BB take place here
  */
 tegra3_tear_down_core:
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	/* Checking for BB-idle or Paging case */
-	ldr	r0, [r4, #PMC_IPC_STS]
-	tst	r0, #PMC_IPC_STS_MEM_REQ | PMC_IPC_STS_MEM_REQ_SOON
-	bne	lp1bb_entry
-
-	/* Write PMC_IPC_CLR[mem_sts] = 1 */
-	mov	r1, #PMC_IPC_CLR_MEM_STS
-	str	r1, [r4, #PMC_IPC_CLR]
-
-	/* Clear FLOW_IPC_STS[AP2BB_MSC_STS[0]] */
-	ldr	r1, [r6, #FLOW_IPC_STS]
-	bic	r1, #FLOW_IPC_STS_AP2BB_MSC_STS_0
-	str	r1, [r6, #FLOW_IPC_STS]
-
-	b	tegra3_lp0_tear_down_core
-
-/* lp1bb_entry
- * Set up mem_req active low to be a wake event.
- * Configure the EVP reset vector.
- * Set up LIC to accept pmc wake events as interrupts.
- * Clear previously set warmboot and side_effect bits
- * Invoke remaining LP routines.
- */
-lp1bb_entry:
-	bl	tegra148_lp1bb_clear_warmboot_flag
-	mov	r0, #PMC_LP_STATE_LP1BB
-	str	r0, lp_enter_state
-	bl	tegra148_set_lp_state
-	bl	tegra148_set_mem_req_interrupt
-	bl	tegra3_save_config
-	bl	tegra3_cpu_clk32k
-	b	tegra3_enter_sleep
-
-/* Based on LP state being entered, sets mem_req=0
- * or mem_req=1 as a wake interrupt
- */
-tegra148_set_mem_req_interrupt:
-	/* Clear the PMC_CTRL2_WAKE_DET_EN bit */
-	ldr	r0, [r4, #PMC_CTRL2]
-	bic	r0, r0, #PMC_CTRL2_WAKE_DET_EN
-	str	r0, [r4, #PMC_CTRL2]
-
-	/* Program the wake_level2 registers */
-	ldr     r0, [r4, #PMC_WAKE2_LEVEL]
-	ldr	r1, lp_enter_state
-	cmp	r1, #PMC_LP_STATE_LP1BB
-	biceq	r0, r0, #PMC_WAKE2_BB_MEM_REQ
-	orrne	r0, r0, #PMC_WAKE2_BB_MEM_REQ
-	str	r0, [r4, #PMC_WAKE2_LEVEL]
-
-	/* Wait for 1ms for write to take effect */
-	mov32	r7, TEGRA_TMRUS_BASE
-	wait_for_us r1, r7, r9
-	add r1, r1, #100
-	wait_until r1, r7, r9
-
-	/* Program the auto_wake_lvl regsiters */
-	ldr	r0, [r4, #PMC_AUTO_WAKE_LVL]
-	orr	r0, r0, #1
-	str	r0, [r4, #PMC_AUTO_WAKE_LVL]
-
-	/* Wait for 1ms for write to take effect */
-	mov32	r7, TEGRA_TMRUS_BASE
-	wait_for_us r1, r7, r9
-	add r1, r1, #100
-	wait_until r1, r7, r9
-
-	/* Configure mem_req active low to be wake event */
-	ldr	r0, [r4, #PMC_WAKE2_MASK]
-	orr	r0, r0, #PMC_WAKE2_BB_MEM_REQ
-	str	r0, [r4, #PMC_WAKE2_MASK]
-
-	ldr	r0, [r4, #PMC_CTRL2]
-	orr	r0, r0, #PMC_CTRL2_WAKE_DET_EN
-	str	r0, [r4, #PMC_CTRL2]
-
-	/* Set up the LIC to accept pmc_wake events as interrupts */
-	ldr	r8, =TEGRA_TERTIARY_ICTLR_BASE
-	ldr	r0, =TRI_ICTLR_PMC_WAKE_INT
-	str	r0, [r8, #TRI_ICTLR_CPU_IER_SET]
-	mov	pc, lr
-
-/*
- * tegra148_lp1bb_clear_warmboot_flag
- * Clears side effect bit in case it was set during
- * suspend entry. Also clears Warmboot0 flag.
- */
-tegra148_lp1bb_clear_warmboot_flag:
-	ldr	r0, [r4, #PMC_SCRATCH0]
-	bic	r0, r0, #1
-	str	r0, [r4, #PMC_SCRATCH0]
-	ldr	r0, [r4, #PMC_CTRL]
-	bic	r0, r0, #PMC_CTRL_SIDE_EFFECT_LP0
-	str	r0, [r4, #PMC_CTRL]
-	mov	pc, lr
-
-/* Based on value of lp_enter_state, update LP state
- * scratch register
- */
-tegra148_set_lp_state:
-	ldr	r0, lp_enter_state
-	mov	r0, r0, lsl #PMC_LP_STATE_BIT_OFFSET
-	ldr	r1, [r4, #PMC_LP_STATE_SCRATCH_REG]
-	mov	r2, #PMC_LP_STATE_BIT_MASK
-	bic	r1, r2, lsl #PMC_LP_STATE_BIT_OFFSET
-	orr	r1, r0
-	str	r1, [r4, #PMC_LP_STATE_SCRATCH_REG]
-	mov	pc, lr
-
-/* tegra3_lp0_tear_down_core
- *
- * copied into and executed from IRAM
- * puts memory in self-refresh for LP0 and LP1
- */
-tegra3_lp0_tear_down_core:
-	ldr	r0, [r4, #PMC_CTRL]
-	tst	r0, #PMC_CTRL_SIDE_EFFECT_LP0
-	moveq	r0, #PMC_LP_STATE_LP1
-	movne	r0, #PMC_LP_STATE_LP0
-	str	r0, lp_enter_state
-	bleq	tegra148_set_mem_req_interrupt
-	bl	tegra148_set_lp_state
-#endif
 	bl	tegra3_save_config
 	bl	tegra3_sdram_self_refresh
 	bl	tegra3_cpu_clk32k
@@ -1150,12 +996,6 @@ tegra3_cpu_clk32k:
 	str r1, [r4, #PMC_SCRATCH1_ECO]
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	ldr r1, [r4, #PMC_POR_DPD_CTRL]
-	orr r1, r1, #0x47
-	str r1, [r4, #PMC_POR_DPD_CTRL]
-#endif
-
 	mov	pc, lr
 
 lp1_clocks_prepare:
@@ -1191,37 +1031,14 @@ lp1_clocks_prepare:
 	add	r1, r1, #2
 	wait_until r1, r7, r9
 
-#if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	/* disable PLLM via PMC in LP1 */
 	ldr	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
 	bic	r0, r0, #(1 << 12)
 	str	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
-#endif
 
 	ldr	r11, [r4, #PMC_SCRATCH37]	@ load the LP1 flags
 	tst	r11, #TEGRA_POWER_LP1_AUDIO	@ check if voice call is going on
-#if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	bne	powerdown_pll_cx		@ if yes, do not turn off pll-p/pll-a
-#else
-	/*
-         * BB needs PLLP and EMC on voice call/LP1BB. EMC may be clocked by
-         * PLLC so we need to check the EMC source PLL to determine whether
-         * PLLC can be turned OFF
-         */
-	bne	lp1bb_emc_source_check
-	ldr	r0, lp_enter_state
-	cmp	r0, #PMC_LP_STATE_LP1BB         @ check if we're entering LP1BB
-	bne	powerdown_pll_pacx              @ if not, turn off plls p/a/c/x
-lp1bb_emc_source_check:
-	/* find source pll of EMC */
-	ldr	r0, [r5, #CLK_RESET_CLK_SOURCE_EMC]
-	mov	r0, r0, lsr #0x1d
-	cmp	r0, #0x1                        @ EMC clocked by PLLC_OUT0?
-	beq	powerdown_pll_x                 @ if yes, just turn off pll-x
-	cmp	r0, #0x7                        @ EMC clocked by PLLC_UD?
-	beq	powerdown_pll_x                 @ if yes, just turn off pll-x
-	b	powerdown_pll_cx                @ if not, turn off pll-c/pll-x
-#endif
 powerdown_pll_pacx:
 	ldr	r0, [r6, #FLOW_CONTROL_CLUSTER_CONTROL]
 	tst	r0, #1
@@ -1288,8 +1105,7 @@ tegra3_enter_sleep:
 	orr	r0, r0, #FLOW_CTRL_CSR_ENABLE
 	str	r0, [r6, r2]
 
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC) \
-	|| defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	tst	r0, #FLOW_CTRL_IMMEDIATE_WAKE
 	movne	r0, #FLOW_CTRL_WAITEVENT
 	moveq	r0, #FLOW_CTRL_WAIT_FOR_INTERRUPT
@@ -1337,8 +1153,7 @@ halted:
 
 tegra3_save_config:
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
-defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	adr	r2, tegra3_sdram_pad_address
 	adr	r8, tegra3_sdram_pad_save
 #endif
@@ -1362,8 +1177,7 @@ padsave_done:
 	mov	pc, lr
 
 tegra3_sdram_self_refresh:
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
-defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	mov32	r0, TEGRA_EMC_BASE		@ r0 reserved for emc base
 #endif
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
@@ -1383,8 +1197,7 @@ enter_self_refresh:
 	str	r1, [r0, #EMC_AUTO_CAL_INTERVAL]
 	ldr	r1, [r0, #EMC_CFG]
 	bic	r1, r1, #(1<<28)
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || \
-defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	bic	r1, r1, #(1<<29)
 #endif
 	str	r1, [r0, #EMC_CFG]		@ disable DYN_SELF_REF
@@ -1427,8 +1240,7 @@ emcself:
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	orr	r1, r1, #7			@ set E_NO_VTTGEN
 #endif
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || \
-defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	orr	r1, r1, #0x3f			@ set E_NO_VTTGEN
 #endif
 	str	r1, [r0, #EMC_XM2VTTGENPADCTRL2]
@@ -1497,15 +1309,6 @@ dram_sr_wait4:
 	mov	pc, lr
 
 pmc_io_dpd_skip:
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	/*
-	 * Make sure the BGBIAS pads are not in DPD so that when the system
-	 * comes out of LP0 at max EMC frequency we can read memory.
-	 */
-	ldr	r1, =PMC_IO_DPD2_REQ_CODE_DPD_OFF
-	orr	r1, r1, #PMC_IO_DPD2_REQ_DISC_BIAS
-	str	r1, [r4, #PMC_IO_DPD2_REQ]
-#endif
 	dsb
 	mov	pc, lr
 

@@ -2,7 +2,7 @@
  *
  *  Copyright (C) 2002 ARM Ltd.
  *  All Rights Reserved
- *  Copyright (C) 2010-2013 NVIDIA Corporation. All rights reserved.
+ *  Copyright (C) 2010-2014 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -69,13 +69,8 @@ void __init tegra20_hotplug_init(void)
 }
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
-    defined(CONFIG_ARCH_TEGRA_11x_SOC) || \
-    defined(CONFIG_ARCH_TEGRA_12x_SOC) || \
-    defined(CONFIG_ARCH_TEGRA_14x_SOC)
 extern void tegra30_hotplug_shutdown(void);
 void __init tegra30_hotplug_init(void)
 {
 	tegra_hotplug_shutdown = tegra30_hotplug_shutdown;
 }
-#endif

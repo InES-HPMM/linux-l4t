@@ -83,9 +83,6 @@
 #include "sleep.h"
 #include <linux/platform/tegra/dvfs.h>
 #include <linux/platform/tegra/cpu-tegra.h>
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-#include "tegra14_scratch.h"
-#endif
 
 struct suspend_context {
 	/*
@@ -123,9 +120,6 @@ static unsigned long iram_save_size;
 static void __iomem *iram_code = IO_ADDRESS(TEGRA_IRAM_CODE_AREA);
 static void __iomem *clk_rst = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-static void __iomem *tert_ictlr = IO_ADDRESS(TEGRA_TERTIARY_ICTLR_BASE);
-#endif
 static int tegra_last_pclk;
 static u64 resume_time;
 static u64 resume_entry_time;
@@ -133,15 +127,7 @@ static u64 suspend_time;
 static u64 suspend_entry_time;
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-static void update_pmc_registers(unsigned long rate);
-#endif
-
 struct suspend_context tegra_sctx;
-#if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && defined(CONFIG_ARCH_TEGRA_14x_SOC)
-extern struct device *get_se_device(void);
-extern int se_suspend(struct device *dev, bool pooling);
-#endif
 
 bool tegra_is_dpd_mode;
 
@@ -164,7 +150,7 @@ bool tegra_is_dpd_mode;
 #define PMC_DPAD_ORIDE		0x1C
 #define PMC_WAKE_DELAY		0xe0
 #define PMC_DPD_SAMPLE		0x20
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #define PMC_DPD_ENABLE		0x24
 #endif
 #define PMC_IO_DPD_REQ          0x1B8
@@ -884,7 +870,6 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 		flush_cache_all();
 		outer_disable();
 	}
-#if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	if (!tegra_cpu_is_secure()) {
 		tegra_resume_l2_init = 1;
 		__cpuc_flush_dcache_area(&tegra_resume_l2_init,
@@ -893,56 +878,21 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 			  __pa(&tegra_resume_l2_init) + sizeof(unsigned long));
 	}
 #endif
-#endif
 
 	/* T148: Check for mem_req and mem_req_soon only if it is
 	 * MC clock stop state.
 	 */
 	if (flags & TEGRA_POWER_STOP_MC_CLK) {
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-		u32 val;
-
-		/* Check if mem_req or mem_req_soon is asserted or if voice
-		 * call is active call, if yes then we skip SDRAM
-		 * self-refresh and just do CPU power-gating.
-		 */
-		val = readl(pmc + PMC_IPC_STS);
-		if ((val & (PMC_IPC_STS_MEM_REQ | PMC_IPC_STS_MEM_REQ_SOON)) ||
-			tegra_is_voice_call_active()) {
-
-			/* Reset LP1 and MC clock mask if we skipping SDRAM
-			 * self-refresh.
-			 */
-			*iram_cpu_lp1_mask = 0;
-			*iram_mc_clk_mask = 0;
-			writel(0, pmc + PMC_SCRATCH41);
-
-			tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
-		} else {
-			/* Clear mem_sts since SDRAM will not be accessible
-			 * to BBC in this state.
-			 */
-			val = PMC_IPC_CLR_MEM_STS;
-			writel(val, pmc + PMC_IPC_CLR);
-
-			tegra_stop_mc_clk(PHYS_OFFSET - PAGE_OFFSET);
-		}
-#else
 		/* If it is not T148 then we do not have to
 		 * check mem_req and mem_req_soon.
 		 */
 		tegra_stop_mc_clk(PHYS_OFFSET - PAGE_OFFSET);
-#endif
 	} else {
 		tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
 	}
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	tegra_init_cache(true);
-#else
 	if (tegra_cpu_is_secure())
 		tegra_init_cache(false);
-#endif
 
 #if defined(CONFIG_TRUSTED_FOUNDATIONS)
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
@@ -1046,7 +996,7 @@ static void tegra_common_resume(void)
 	void __iomem *emc = IO_ADDRESS(TEGRA_EMC_BASE);
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	/* Clear DPD Enable */
 	writel(0x0, pmc + PMC_DPD_ENABLE);
 #endif
@@ -1234,34 +1184,6 @@ static void tegra_suspend_check_pwr_stats(void)
 	return;
 }
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-/* This is the opposite of the LP1BB related PMC setup that occurs
- * during suspend.
- */
-static void tegra_disable_lp1bb_interrupt(void)
-{
-	unsigned reg;
-	/* mem_req = 0 was set as an interrupt during LP1BB entry.
-	 * It has to be disabled now
-	 */
-	reg = readl(pmc + PMC_CTRL2);
-	reg &= ~(PMC_CTRL2_WAKE_DET_EN);
-	pmc_32kwritel(reg, PMC_CTRL2);
-
-	/* Program mem_req NOT to be a wake event */
-	reg = readl(pmc + PMC_WAKE2_MASK);
-	reg &= ~(PMC_WAKE2_BB_MEM_REQ);
-	pmc_32kwritel(reg, PMC_WAKE2_MASK);
-
-	reg = PMC_WAKE2_BB_MEM_REQ;
-	pmc_32kwritel(reg, PMC_WAKE2_STATUS);
-
-	/* Set up the LIC to NOT accept pmc_wake events as interrupts */
-	reg = TRI_ICTLR_PMC_WAKE_INT;
-	writel(reg, tert_ictlr + TRI_ICTLR_CPU_IER_CLR);
-}
-#endif
-
 static void tegra_suspend_powergate_control(int partid, bool turn_off)
 {
 	if (turn_off)
@@ -1276,9 +1198,6 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	u32 scratch37 = 0xDEADBEEF;
 	u32 reg;
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	u32 enter_state = 0;
-#endif
 	bool tegra_suspend_vde_powergated = false;
 
 	if (WARN_ON(mode <= TEGRA_SUSPEND_NONE ||
@@ -1286,10 +1205,6 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		err = -ENXIO;
 		goto fail;
 	}
-
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	update_pmc_registers(tegra_lp1bb_emc_min_rate_get());
-#endif
 
 	if (tegra_is_voice_call_active()) {
 		/* backup the current value of scratch37 */
@@ -1326,10 +1241,6 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 
 	local_fiq_disable();
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	tegra_smp_save_power_mask();
-#endif
-
 	trace_cpu_suspend(CPU_SUSPEND_START, tegra_rtc_read_ms());
 
 	if (mode == TEGRA_SUSPEND_LP0) {
@@ -1349,9 +1260,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 			tegra_smp_clear_power_mask();
 	}
 
-#if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	if (mode == TEGRA_SUSPEND_LP1)
-#endif
 		*iram_cpu_lp1_mask = 1;
 
 	suspend_cpu_complex(flags);
@@ -1384,19 +1293,6 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 
 	tegra_init_cache(true);
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	reg = readl(pmc + PMC_LP_STATE_SCRATCH_REG);
-	enter_state = (reg >> PMC_LP_STATE_BIT_OFFSET) & PMC_LP_STATE_BIT_MASK;
-	/* If we actually had entered in either LP1 or LP1BB,
-	 * restore power mask and disable mem_req interrupt PMC
-	 */
-	if (enter_state) {
-		pr_debug("Exited state is LP1/LP1BB\n");
-		tegra_disable_lp1bb_interrupt();
-		tegra_smp_restore_power_mask();
-	}
-#endif
-
 	if (tegra_cpu_is_secure()) {
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
 		trace_smc_wake(tegra_resume_smc_entry_time, NVSEC_SMC_START);
@@ -1426,9 +1322,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		tegra_tsc_wait_for_resume();
 	}
 
-#if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	if (mode == TEGRA_SUSPEND_LP1)
-#endif
 		*iram_cpu_lp1_mask = 0;
 
 	/* if scratch37 was clobbered during LP1, restore it */
@@ -1929,56 +1823,6 @@ unsigned long tegra_lp1bb_emc_min_rate_get(void)
 
 	return pdata->lp1bb_emc_rate_min;
 }
-
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-static inline bool pmc_write_check(int index, int bit_position)
-{
-	if (pmc_write_bitmap[index] & (1 << bit_position))
-		return true;
-	else
-		return false;
-}
-
-static void update_pmc_registers(unsigned long rate)
-{
-	u32 i, j;
-	int instance = 1;
-
-	/* FIXME: convert rate to instance */
-
-	/* Based on index, we select that block of scratches */
-	u32 base2 = (tegra_wb0_params_address + (instance - 1) *
-		tegra_wb0_params_block_size);
-	void __iomem *base = ioremap(base2, tegra_wb0_params_block_size);
-
-#define copy_dram_to_pmc(index, bit)	\
-	pmc_32kwritel(readl(base + PMC_REGISTER_OFFSET(index, bit)), \
-		PMC_REGISTER_OFFSET(index, bit) + PMC_SCRATCH0)
-
-
-	/* Iterate through the bitmap, and copy those registers
-	 * which are marked in the bitmap
-	 */
-	for (i = 0, j = 0; j < ARRAY_SIZE(pmc_write_bitmap);) {
-		if (pmc_write_bitmap[j] == 0) {
-			j++;
-			i = 0;
-			continue;
-		}
-
-		if (pmc_write_check(j, i))
-			copy_dram_to_pmc(j, i);
-
-		if (++i > (sizeof(pmc_write_bitmap[0]) * 8)) {
-			i = 0;
-			j++;
-		}
-	}
-
-#undef copy_dram_to_pmc
-	iounmap(base);
-}
-#endif
 
 #ifdef CONFIG_ARM_ARCH_TIMER
 
