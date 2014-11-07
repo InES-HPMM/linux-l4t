@@ -4508,10 +4508,10 @@ static void soctherm_throttlectl_parse(struct platform_device *pdev)
 			throt->throt_mode = DISABLED;
 
 			if (!of_property_read_string(np, "mode", &mod)) {
-				if (!strnstr(mod, "brief",
+				if (!strncmp(mod, "brief",
 						THERMAL_NAME_LENGTH))
 					throt->throt_mode = BRIEF;
-				else if (!strnstr(mod, "sticky",
+				else if (!strncmp(mod, "sticky",
 						THERMAL_NAME_LENGTH))
 					throt->throt_mode = STICKY;
 			}
