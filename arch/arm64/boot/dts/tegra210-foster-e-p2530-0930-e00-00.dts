@@ -39,4 +39,9 @@
 	rollback-protection {
 		status = "okay";
 	};
+	soctherm@0x700E2000 {
+		throttle@oc3 {
+			status = "disabled";
+		};
+	};
 };
