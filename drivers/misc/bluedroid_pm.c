@@ -469,6 +469,23 @@ static int bluedroid_pm_resume(struct platform_device *pdev)
 	return 0;
 }
 
+static void bluedroid_pm_shutdown(struct platform_device *pdev)
+{
+	struct bluedroid_pm_data *bluedroid_pm = platform_get_drvdata(pdev);
+
+	if (gpio_is_valid(bluedroid_pm->gpio_shutdown))
+		bluedroid_pm_gpio_set_value(
+			bluedroid_pm->gpio_shutdown, 0);
+	if (gpio_is_valid(bluedroid_pm->gpio_reset))
+		bluedroid_pm_gpio_set_value(
+			bluedroid_pm->gpio_reset, 0);
+	if (bluedroid_pm->vdd_3v3)
+		regulator_disable(bluedroid_pm->vdd_3v3);
+	if (bluedroid_pm->vdd_1v8)
+		regulator_disable(bluedroid_pm->vdd_1v8);
+
+}
+
 static struct of_device_id bdroid_of_match[] = {
 	{ .compatible = "nvidia,tegra-bluedroid_pm", },
 	{ },
@@ -480,6 +497,7 @@ static struct platform_driver bluedroid_pm_driver = {
 	.remove = bluedroid_pm_remove,
 	.suspend = bluedroid_pm_suspend,
 	.resume = bluedroid_pm_resume,
+	.shutdown = bluedroid_pm_shutdown,
 	.driver = {
 		.name = "bluedroid_pm",
 		.of_match_table = of_match_ptr(bdroid_of_match),
