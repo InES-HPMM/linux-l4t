@@ -1251,10 +1251,11 @@ static void tegra_smmu_conf_swgroup(struct arm_smmu_device *smmu, int swgid,
 	u32 val;
 
 	offs = tegra_smmu_of_offset(swgid);
-	val = BIT(31) | cbndx;
+	val = BIT(31) | swgid; /* swgid == streamID */
 	__writel(val, mc_base + offs);
 
-	pr_info("%s() ASID_0=0x%zx val=0x%08x\n", __func__, offs, val);
+	pr_info("%s() ASID_0=0x%zx val=0x%08x streamID=%d cbndx=%d\n",
+		__func__, offs, val, swgid, cbndx);
 }
 
 static int arm_smmu_domain_add_master(struct arm_smmu_domain *smmu_domain,
