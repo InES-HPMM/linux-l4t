@@ -31,6 +31,7 @@
 #include <linux/tegra-fuse.h>
 #include <mach/tegra_usb_pmc.h>
 #include <mach/tegra_usb_pad_ctrl.h>
+#include <linux/tegra_prod.h>
 
 #include "tegra_usb_phy.h"
 #include "../../../arch/arm/mach-tegra/gpio-names.h"
@@ -653,6 +654,18 @@ static int utmi_phy_open(struct tegra_usb_phy *phy)
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	if (phy->pdev->dev.of_node) {
+		phy->prod_list = tegra_prod_get(&phy->pdev->dev, NULL);
+		if (IS_ERR_OR_NULL(phy->prod_list)) {
+			dev_warn(&phy->pdev->dev,
+				"phy: prod list get failed with error %ld\n",
+				PTR_ERR(phy->prod_list));
+			phy->prod_list = NULL;
+		}
+	}
+#endif
+
 	phy->utmi_pad_clk = clk_get_sys("utmip-pad", NULL);
 	if (IS_ERR(phy->utmi_pad_clk)) {
 		pr_err("%s: can't get utmip pad clock\n", __func__);
@@ -712,6 +725,10 @@ static void utmi_phy_close(struct tegra_usb_phy *phy)
 		phy->pmc_hotplug_wakeup = false;
 		PHY_DBG("%s DISABLE_PMC inst = %d\n", __func__, phy->inst);
 	}
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	if (phy->prod_list)
+		tegra_prod_release(&phy->prod_list);
+#endif
 
 	clk_put(phy->utmi_pad_clk);
 }
@@ -1119,6 +1136,27 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 
 	utmi_phy_pad_enable();
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	if (phy->prod_list) {
+		val = tegra_prod_set_by_name(&base, "prod", phy->prod_list);
+		if (val < 0) {
+			dev_err(&phy->pdev->dev,
+			"Failed to set prod settings with err %ld", val);
+			return val;
+		}
+	} else {
+		val = readl(base + UTMIP_BIAS_CFG0);
+		val |= UTMIP_HSSQUELCH_LEVEL(0x2) | UTMIP_HSDISCON_LEVEL(0x3) |
+			UTMIP_HSDISCON_LEVEL_MSB;
+		writel(val, base + UTMIP_BIAS_CFG0);
+
+		val = readl(base + UTMIP_BIAS_CFG2);
+		val &= ~UTMIP_HSSQUELCH_LEVEL_NEW(~0);
+		val |= UTMIP_HSSQUELCH_LEVEL_NEW(2);
+		writel(val, base + UTMIP_BIAS_CFG2);
+	}
+#endif
+
 	val = readl(base + UTMIP_XCVR_CFG0);
 	val &= ~(UTMIP_XCVR_LSBIAS_SEL | UTMIP_FORCE_PD_POWERDOWN |
 		 UTMIP_FORCE_PD2_POWERDOWN | UTMIP_FORCE_PDZI_POWERDOWN |
@@ -1150,11 +1188,6 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val &= ~UTMIP_HSSQUELCH_LEVEL(~0);
 	val |= UTMIP_HSSQUELCH_LEVEL(2);
 	writel(val, base + UTMIP_BIAS_CFG0);
-
-	val = readl(base + UTMIP_BIAS_CFG2);
-	val &= ~UTMIP_HSSQUELCH_LEVEL_NEW(~0);
-	val |= UTMIP_HSSQUELCH_LEVEL_NEW(2);
-	writel(val, base + UTMIP_BIAS_CFG2);
 
 	/* 20soc process is not tolerant to 3.3v
 	 * activate protection circuits for usb2 pads
