@@ -237,20 +237,87 @@ unsigned int sysedp_get_state(struct sysedp_consumer *consumer)
 }
 EXPORT_SYMBOL(sysedp_get_state);
 
+static int sysedp_get_consumer_data(struct platform_device *pdev,
+		struct sysedp_platform_data *obj_ptr, struct device_node *np_consumers)
+{
+	struct device_node *child;
+	int idx = 0;
+	int i;
+	u32 lenp;
+	int n;
+	u32 *u32_ptr;
+	const char *c_ptr;
+	const void *ptr;
+	int ret;
+
+	obj_ptr->consumer_data_size = of_get_child_count(np_consumers);
+	if (!obj_ptr->consumer_data_size)
+		return -EINVAL;
+
+	obj_ptr->consumer_data = devm_kzalloc(&pdev->dev,
+		sizeof(struct sysedp_consumer_data) *
+		obj_ptr->consumer_data_size, GFP_KERNEL);
+	if (!obj_ptr->consumer_data)
+		return -EINVAL;
+
+	for_each_child_of_node(np_consumers, child) {
+		ptr = of_get_property(child, "nvidia,consumer_name", &lenp);
+		if (!ptr)
+			return -EINVAL;
+		obj_ptr->consumer_data[idx].name = devm_kzalloc(&pdev->dev,
+			sizeof(char) * lenp, GFP_KERNEL);
+		if (!obj_ptr->consumer_data[idx].name)
+			return -EINVAL;
+		ret = of_property_read_string(child, "nvidia,consumer_name",
+					      &c_ptr);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"The name of consumer %s is not set\n",
+				child->name);
+			return -EINVAL;
+		}
+		strncpy(obj_ptr->consumer_data[idx].name, c_ptr, lenp);
+
+		ptr = of_get_property(child, "nvidia,states", &lenp);
+		if (!ptr)
+			return -EINVAL;
+		n = lenp / sizeof(u32);
+		if (!n)
+			return -EINVAL;
+		obj_ptr->consumer_data[idx].states = devm_kzalloc(&pdev->dev,
+			sizeof(unsigned int) * n, GFP_KERNEL);
+		if (!obj_ptr->consumer_data[idx].states)
+			return -EINVAL;
+		u32_ptr = kzalloc(sizeof(u32) * n, GFP_KERNEL);
+		if (!u32_ptr)
+			return -EINVAL;
+		ret = of_property_read_u32_array(child, "nvidia,states",
+						 u32_ptr, n);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"Fail to read states of consumer %s\n",
+				child->name);
+			kfree(u32_ptr);
+			return -EINVAL;
+		}
+		for (i = 0; i < n; ++i)
+			obj_ptr->consumer_data[idx].states[i] = u32_ptr[i];
+		obj_ptr->consumer_data[idx].num_states = n;
+		kfree(u32_ptr);
+
+		++idx;
+	}
+
+	return 0;
+}
+
 static void of_sysedp_get_pdata(struct platform_device *pdev,
 		      struct sysedp_platform_data **pdata)
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct device_node *np_consumers;
-	struct device_node *child;
 	struct sysedp_platform_data *obj_ptr;
-	int idx = 0;
-	int i;
-	u32 lenp, val;
-	int n;
-	u32 *u32_ptr;
-	const char *c_ptr;
-	const void *ptr;
+	u32 val;
 	int ret;
 
 	obj_ptr = devm_kzalloc(&pdev->dev, sizeof(struct sysedp_platform_data),
@@ -259,65 +326,13 @@ static void of_sysedp_get_pdata(struct platform_device *pdev,
 		return;
 
 	np_consumers = of_get_child_by_name(np, "consumers");
-	if (!np_consumers)
-		return;
-
-	obj_ptr->consumer_data_size = of_get_child_count(np_consumers);
-	if (!obj_ptr->consumer_data_size)
-		return;
-
-	obj_ptr->consumer_data = devm_kzalloc(&pdev->dev,
-		sizeof(struct sysedp_consumer_data) *
-		obj_ptr->consumer_data_size, GFP_KERNEL);
-	if (!obj_ptr->consumer_data)
-		return;
-
-	for_each_child_of_node(np_consumers, child) {
-		ptr = of_get_property(child, "nvidia,consumer_name", &lenp);
-		if (!ptr)
-			return;
-		obj_ptr->consumer_data[idx].name = devm_kzalloc(&pdev->dev,
-			sizeof(char) * lenp, GFP_KERNEL);
-		if (!obj_ptr->consumer_data[idx].name)
-			return;
-		ret = of_property_read_string(child, "nvidia,consumer_name",
-					      &c_ptr);
+	if (np_consumers) {
+		ret = sysedp_get_consumer_data(pdev, obj_ptr, np_consumers);
 		if (ret) {
-			dev_err(&pdev->dev,
-				"The name of consumer %s is not set\n",
-				child->name);
+			pr_err("sysedp_get_consumer_data: Failed to initialize consumers (%d).\n",
+					ret);
 			return;
 		}
-		strncpy(obj_ptr->consumer_data[idx].name, c_ptr, lenp);
-
-		ptr = of_get_property(child, "nvidia,states", &lenp);
-		if (!ptr)
-			return;
-		n = lenp / sizeof(u32);
-		if (!n)
-			return;
-		obj_ptr->consumer_data[idx].states = devm_kzalloc(&pdev->dev,
-			sizeof(unsigned int) * n, GFP_KERNEL);
-		if (!obj_ptr->consumer_data[idx].states)
-			return;
-		u32_ptr = kzalloc(sizeof(u32) * n, GFP_KERNEL);
-		if (!u32_ptr)
-			return;
-		ret = of_property_read_u32_array(child, "nvidia,states",
-						 u32_ptr, n);
-		if (ret) {
-			dev_err(&pdev->dev,
-				"Fail to read states of consumer %s\n",
-				child->name);
-			kfree(u32_ptr);
-			return;
-		}
-		for (i = 0; i < n; ++i)
-			obj_ptr->consumer_data[idx].states[i] = u32_ptr[i];
-		obj_ptr->consumer_data[idx].num_states = n;
-		kfree(u32_ptr);
-
-		++idx;
 	}
 
 	ret = of_property_read_u32(np, "nvidia,margin", &val);

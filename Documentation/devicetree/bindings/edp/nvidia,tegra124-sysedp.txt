@@ -12,7 +12,7 @@ Optional properties:
   be used as a fixed budget for the system.  If this option is not present,
   the initial budget will be set to 1000000 mW.
 
-Required nodes:
+Optional Child Nodes:
 - consumers: This node contains a set of subnodes describing different
   devices on the system and their power consumption states.
 
