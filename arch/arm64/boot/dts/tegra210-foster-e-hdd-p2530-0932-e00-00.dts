@@ -36,4 +36,10 @@
 	sdhci@700b0600 {
 		status="disabled";
 	};
+
+	soctherm@0x700E2000 {
+		throttle@oc3 {
+			status = "disabled";
+		};
+	};
 };

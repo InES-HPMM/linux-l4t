@@ -27,6 +27,12 @@
 	compatible = "nvidia,foster-e", "nvidia,tegra210";
 	nvidia,dtsfilename = __FILE__;
 	nvidia,fastboot-usb-pid = <0xb421>;
+
+	soctherm@0x700E2000 {
+		throttle@oc3 {
+			status = "disabled";
+		};
+	};
 	rollback-protection {
 		status = "okay";
 	};
