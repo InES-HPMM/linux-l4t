@@ -350,7 +350,7 @@
 
 			pz3 {
 				nvidia,pins = "pz3";
-				nvidia,function = "sdmmc1";
+				nvidia,function = "sdmmc3";
 				nvidia,pull = <TEGRA_PIN_PULL_UP>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
