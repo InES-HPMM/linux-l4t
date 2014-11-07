@@ -195,10 +195,12 @@ u32 notrace tegra_read_usec_raw(void)
 	return timer_readl(TIMERUS_CNTR_1US);
 }
 
+#ifndef CONFIG_ARM64
 static u32 notrace tegra_read_sched_clock(void)
 {
 	return timer_readl(TIMERUS_CNTR_1US);
 }
+#endif
 
 static irqreturn_t tegra_timer_interrupt(int irq, void *dev_id)
 {

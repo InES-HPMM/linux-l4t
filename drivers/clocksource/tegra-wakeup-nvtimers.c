@@ -83,7 +83,7 @@ static u32 lp2_wake_timers[] = {
 
 static irqreturn_t tegra_lp2wake_interrupt(int irq, void *dev_id)
 {
-	int cpu = (int)dev_id;
+	int cpu = (int)(uintptr_t)dev_id;
 	int base;
 
 	base = lp2_wake_timers[cpu];
@@ -171,7 +171,7 @@ fail:
 }
 
 #if defined(CONFIG_PM_SLEEP) && defined(CONFIG_HOTPLUG_CPU)
-static void tegra3_suspend_wake_timer(unsigned int cpu)
+static void tegra3_suspend_wake_timer(int cpu)
 {
 	cpumask_clear_cpu(cpu, &wake_timer_ready);
 #ifdef CONFIG_SMP
@@ -184,7 +184,7 @@ static void tegra3_suspend_wake_timer(unsigned int cpu)
 #endif
 }
 
-static void tegra3_unregister_wake_timer(unsigned int cpu)
+static void tegra3_unregister_wake_timer(int cpu)
 {
 	tegra3_suspend_wake_timer(cpu);
 
@@ -249,16 +249,16 @@ static int hotplug_notify(struct notifier_block *self,
 {
 	switch (action) {
 	case CPU_ONLINE:
-		tegra3_register_wake_timer((unsigned int)cpu);
+		tegra3_register_wake_timer((unsigned int)(uintptr_t)cpu);
 		break;
 	case CPU_ONLINE_FROZEN:
-		tegra3_resume_wake_timer((unsigned int)cpu);
+		tegra3_resume_wake_timer((unsigned int)(uintptr_t)cpu);
 		break;
 	case CPU_DOWN_PREPARE:
-		tegra3_unregister_wake_timer((unsigned int)cpu);
+		tegra3_unregister_wake_timer((int)(uintptr_t)cpu);
 		break;
 	case CPU_DOWN_PREPARE_FROZEN:
-		tegra3_suspend_wake_timer((unsigned int)cpu);
+		tegra3_suspend_wake_timer((int)(uintptr_t)cpu);
 		break;
 	default:
 		break;

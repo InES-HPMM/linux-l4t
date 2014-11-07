@@ -122,7 +122,6 @@ static irqreturn_t tegra210_timer_isr(int irq, void *dev_id)
 static void tegra210_timer_setup(struct tegra210_clockevent *tevt)
 {
 	int cpu = smp_processor_id();
-	int ret;
 
 	clockevents_config_and_register(&tevt->evt, tegra210_timer_freq,
 					1, /* min */
