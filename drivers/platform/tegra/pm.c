@@ -55,7 +55,7 @@ int tegra_pm_notifier_call_chain(unsigned int val)
 	return notifier_to_errno(ret);
 }
 
-struct tegra_pm_context suspend_ctx;
+static struct tegra_pm_context suspend_ctx;
 
 unsigned long debug_uart_port_base = 0;
 EXPORT_SYMBOL(debug_uart_port_base);
