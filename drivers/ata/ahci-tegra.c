@@ -425,6 +425,11 @@ char *sata_power_rails[] = {
 
 #define NUM_SATA_POWER_RAILS	ARRAY_SIZE(sata_power_rails)
 
+struct tegra_qc_list {
+	struct list_head list;
+	struct ata_queued_cmd *qc;
+};
+
 /*
  *  tegra_ahci_host_priv is the extension of ahci_host_priv
  *  with extra fields: idle_timer, pg_save, pg_state, etc.
@@ -451,6 +456,7 @@ struct tegra_ahci_host_priv {
 	int			pexp_gpio_low;
 	enum tegra_chipid	cid;
 	struct tegra_sata_soc_data *soc_data;
+	struct list_head        qc_list;
 };
 
 #ifdef	CONFIG_DEBUG_FS
@@ -2029,6 +2035,39 @@ static int tegra_ahci_resume(struct platform_device *pdev)
 	return 0;
 }
 #else
+static int tegra_ahci_queue_one_qc(struct tegra_ahci_host_priv *tegra_hpriv,
+		struct ata_queued_cmd *qc)
+{
+	struct tegra_qc_list *qc_list;
+
+	qc_list = kmalloc(sizeof(struct tegra_qc_list), GFP_ATOMIC);
+	if (!qc_list) {
+		dev_err(tegra_hpriv->dev, "failed to alloc qc_list\n");
+		return AC_ERR_SYSTEM;
+	}
+	qc_list->qc = qc;
+	list_add_tail(&(qc_list->list), &(tegra_hpriv->qc_list));
+	return 0;
+}
+
+static void tegra_ahci_dequeue_qcs(struct tegra_ahci_host_priv *tegra_hpriv)
+{
+	struct list_head *list, *next;
+	struct tegra_qc_list *qc_list;
+	struct ata_queued_cmd *qc;
+
+	/* now qc_issue all qcs in the qc_list */
+	list_for_each_safe(list, next, &tegra_hpriv->qc_list) {
+		qc_list = list_entry(list, struct tegra_qc_list, list);
+		qc = qc_list->qc;
+		ahci_ops.qc_issue(qc);
+		list_del(list);
+		kfree(qc_list);
+	}
+
+	pm_runtime_mark_last_busy(&g_tegra_hpriv->pdev->dev);
+}
+
 static int tegra_ahci_suspend_common(struct platform_device *pdev,
 		pm_message_t mesg)
 {
@@ -2151,12 +2190,13 @@ static int tegra_ahci_runtime_resume(struct device *dev)
 #else
 	err = tegra_ahci_pad_resume(host);
 #endif
-	if (err)
+	if (err) {
+		tegra_ahci_dequeue_qcs(g_tegra_hpriv);
 		return 0;
-	else
+	} else {
 		return -EBUSY;
+	}
 }
-
 #endif
 
 #ifdef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
@@ -3007,18 +3047,23 @@ static unsigned int tegra_ahci_qc_issue(struct ata_queued_cmd *qc)
 	struct tegra_ahci_host_priv *tegra_hpriv = host->private_data;
 	int ret = 0;
 
-	ret = pm_runtime_get_sync(&tegra_hpriv->pdev->dev);
+	ret = pm_runtime_get(&tegra_hpriv->pdev->dev);
 	if (ret < 0) {
 		dev_err(&g_tegra_hpriv->pdev->dev,
-			"%s(%d) Failed to resume the devcie err=%d\n",
-			__func__, __LINE__, ret);
+				"%s(%d) Failed to resume the devcie err=%d\n",
+				__func__, __LINE__, ret);
+		return AC_ERR_SYSTEM;
 	}
 
-	ret = ahci_ops.qc_issue(qc);
+	if (!pm_runtime_suspended(&g_tegra_hpriv->pdev->dev)) {
+		tegra_ahci_dequeue_qcs(g_tegra_hpriv);
+		ret = ahci_ops.qc_issue(qc);
+	} else {
+		ret = tegra_ahci_queue_one_qc(tegra_hpriv, qc);
+	}
 
 	pm_runtime_mark_last_busy(&g_tegra_hpriv->pdev->dev);
-	pm_runtime_put_sync_autosuspend(&g_tegra_hpriv->pdev->dev);
-
+	pm_runtime_put_autosuspend(&g_tegra_hpriv->pdev->dev);
 
 	return ret;
 }
@@ -3027,17 +3072,26 @@ static int tegra_ahci_hardreset(struct ata_link *link, unsigned int *class,
 				unsigned long deadline)
 {
 	int rc = 0;
-	rc = pm_runtime_get_sync(&g_tegra_hpriv->pdev->dev);
+
+	rc = pm_runtime_get(&g_tegra_hpriv->pdev->dev);
 	if (rc < 0) {
-		dev_err(&g_tegra_hpriv->pdev->dev,
-			"%s(%d) Failed to resume the devcie err=%d\n",
-			__func__, __LINE__, rc);
+			dev_err(&g_tegra_hpriv->pdev->dev,
+							"%s(%d) Failed to resume the devcie err=%d\n",
+							__func__, __LINE__, rc);
+			return AC_ERR_SYSTEM;
 	}
 
-	rc = ahci_ops.hardreset(link, class, deadline);
-
+	if (!pm_runtime_suspended(&g_tegra_hpriv->pdev->dev)) {
+			tegra_ahci_dequeue_qcs(g_tegra_hpriv);
+			rc = ahci_ops.hardreset(link, class, deadline);
+	} else {
+			dev_err(&g_tegra_hpriv->pdev->dev,
+							"%s(%d) Controller is suspended\n",
+							__func__, __LINE__);
+			rc = AC_ERR_HOST_BUS;
+	}
 	pm_runtime_mark_last_busy(&g_tegra_hpriv->pdev->dev);
-	pm_runtime_put_sync_autosuspend(&g_tegra_hpriv->pdev->dev);
+	pm_runtime_put_autosuspend(&g_tegra_hpriv->pdev->dev);
 
 	return rc;
 }
@@ -3277,6 +3331,8 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 		goto fail;
 #ifdef CONFIG_PM
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
+
+	INIT_LIST_HEAD(&tegra_hpriv->qc_list);
 
 	rc = pm_runtime_set_active(dev);
 
