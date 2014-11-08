@@ -1184,7 +1184,7 @@ defined(CONFIG_ARCH_TEGRA_12x_SOC))
 #define IO_SMC_VIRT		IOMEM((IO_SIM_ESCAPE_VIRT - IO_VIRT_ROUND_UP(IO_SMC_SIZE)))
 
 #define IO_TO_VIRT_BETWEEN(p, st, sz)	((p) >= (st) && (p) < ((st) + (sz)))
-#define IO_TO_VIRT_XLATE(p, pst, vst)	((void *)((p) - (pst) + (vst)))
+#define IO_TO_VIRT_XLATE(p, pst, vst)	((void __iomem *)((p) - (pst) + (vst)))
 
 #ifdef CONFIG_TEGRA_GK20A
 #define IO_TO_VIRT_GK20A_B0(n) \
