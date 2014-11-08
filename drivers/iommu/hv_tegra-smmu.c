@@ -132,7 +132,7 @@ static int __smmu_iommu_map_pfn_hv(struct smmu_as *as, dma_addr_t iova,
 		attrs &= ~_READABLE;
 
 	return libsmmu_map_page(as->tegra_hv_comm_chan, as->asid, iova,
-					__pfn_to_phys(pfn), attrs);
+					__pfn_to_phys(pfn), 1, attrs);
 }
 
 static int __smmu_iommu_map_page_hv(struct smmu_as *as, dma_addr_t iova,
@@ -194,7 +194,7 @@ static int smmu_iommu_map_sg_hv(struct iommu_domain *domain,
 	struct smmu_as *as = domain_to_as(domain, iova);
 	size_t total = npages;
 	int attrs = as->pte_attr;
-	int i, err = 0;
+	int err = 0;
 	unsigned long flags;
 	size_t sg_remaining = sg_num_pages(sgl);
 	unsigned long sg_pfn = page_to_pfn(sg_page(sgl));
@@ -205,19 +205,19 @@ static int smmu_iommu_map_sg_hv(struct iommu_domain *domain,
 		attrs &= ~_READABLE;
 
 	while (total > 0) {
+		phys_addr_t pa;
+
 		spin_lock_irqsave(&as->lock, flags);
-		for (i = 0; i < sg_remaining; i++) {
-			phys_addr_t pa = PFN_PHYS(sg_pfn + i);
-			/* optimize to program in one request */
-			err = libsmmu_map_page(as->tegra_hv_comm_chan, as->asid,
-							iova, pa, attrs);
-			if (err < 0) {
-				spin_unlock_irqrestore(&as->lock, flags);
-				goto fail;
-			}
-			iova += PAGE_SIZE;
-			total--;
+		pa = PFN_PHYS(sg_pfn);
+		err = libsmmu_map_page(as->tegra_hv_comm_chan, as->asid,
+						iova, pa, sg_remaining, attrs);
+		if (err < 0) {
+			spin_unlock_irqrestore(&as->lock, flags);
+			goto fail;
 		}
+		iova += (sg_remaining * PAGE_SIZE);
+		total -= sg_remaining;
+
 		sgl = sg_next(sgl);
 		if (sgl) {
 			sg_pfn = page_to_pfn(sg_page(sgl));

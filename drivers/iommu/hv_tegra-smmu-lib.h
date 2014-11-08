@@ -24,7 +24,8 @@ extern int libsmmu_attach_hwgrp(int comm_chan_id, u32 asid, u32 hwgrp);
 extern int libsmmu_detach_hwgrp(int comm_chan_id, u32 hwgrp);
 extern int libsmmu_map_large_page(int comm_chan_id, u32 asid, u64 iova, u64 pa,
 								int attr);
-extern int libsmmu_map_page(int comm_chan_id, u32 asid, u64 iova, u64 ipa, int attr);
+extern int libsmmu_map_page(int comm_chan_id, u32 asid, u64 iova, u64 ipa,
+				int count, int attr);
 extern int libsmmu_unmap(int comm_chan_id, u32 asid, u64 iova, u64 bytes);
 extern int libsmmu_iova_to_phys(int comm_chan_id, u32 asid, u64 iova, u64 *ipa);
 extern int libsmmu_connect(int comm_chan_id);
@@ -71,6 +72,7 @@ struct drv_ctxt {
 	unsigned int hwgrp;
 	u64 iova;
 	u64 ipa;
+	int count;
 	int attr;
 };
 

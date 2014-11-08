@@ -638,7 +638,8 @@ int libsmmu_map_large_page(int comm_chan_id, u32 asid, u64 iova, u64 ipa,
  * Create iova -> pa tranlations
  * Guest specified ipa is converted to pa
  */
-int libsmmu_map_page(int comm_chan_id, u32 asid, u64 iova, u64 ipa, int attr)
+int libsmmu_map_page(int comm_chan_id, u32 asid, u64 iova, u64 ipa,
+			int count, int attr)
 {
 	int err;
 	struct smmu_ivc_msg tx_msg, rx_msg;
@@ -662,6 +663,7 @@ int libsmmu_map_page(int comm_chan_id, u32 asid, u64 iova, u64 ipa, int attr)
 	dctxt->asid = asid;
 	dctxt->iova = iova;
 	dctxt->ipa = ipa;
+	dctxt->count = count;
 	dctxt->attr = attr;
 
 	err = ivc_send_recv(MAP_PAGE, comm_chan, &tx_msg, &rx_msg);
