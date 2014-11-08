@@ -725,8 +725,10 @@ static int ptm_remove(struct platform_device *dev)
 
 	mutex_lock(&t->mutex);
 
-	devm_iounmap(&dev->dev, t->ptm_t210_regs);
-	devm_iounmap(&dev->dev, t->cpu_regs);
+	for (i = 0; i < t->ptm_t210_regs_count; i++)
+		devm_iounmap(&dev->dev, t->ptm_t210_regs[i]);
+	for (i = 0; i < t->cpu_regs_count; i++)
+		devm_iounmap(&dev->dev, t->cpu_regs[i]);
 	devm_iounmap(&dev->dev, t->funnel_major_regs);
 	devm_iounmap(&dev->dev, t->etf_regs);
 	devm_iounmap(&dev->dev, t->etr_regs);
