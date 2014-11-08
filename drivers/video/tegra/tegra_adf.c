@@ -728,7 +728,7 @@ static void tegra_adf_dev_post(struct adf_device *dev, struct adf_post *cfg,
 
 	if (!skip_flip) {
 		tegra_dc_update_windows(wins, nr_win,
-			data->dirty_rect_valid ? data->dirty_rect : NULL);
+			data->dirty_rect_valid ? data->dirty_rect : NULL, true);
 		/* TODO: implement swapinterval here */
 		tegra_dc_sync_windows(wins, nr_win);
 		tegra_dc_program_bandwidth(adf_info->dc, true);
@@ -969,6 +969,7 @@ static const char *tegra_adf_intf_type_str(struct adf_interface *intf)
 	}
 }
 
+#if IS_ENABLED(CONFIG_ADF_TEGRA_FBDEV)
 static int tegra_adf_dpms_to_fb_blank(u8 dpms_state)
 {
 	switch (dpms_state) {
@@ -984,6 +985,7 @@ static int tegra_adf_dpms_to_fb_blank(u8 dpms_state)
 		BUG();
 	}
 }
+#endif
 
 static int tegra_adf_intf_blank(struct adf_interface *intf, u8 state)
 {
