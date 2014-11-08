@@ -1257,14 +1257,11 @@ unsigned long tegra_clk_measure_input_freq(void)
 	if (osc_freq)
 		return osc_freq;
 
-	writel(OSC_FREQ_DET_TRIG | 1,
-		(void *)((uintptr_t)clk_base + OSC_FREQ_DET));
-	do {} while (readl(
-		(void *)((uintptr_t)clk_base + OSC_FREQ_DET_STATUS))
+	writel(OSC_FREQ_DET_TRIG | 1, clk_base + OSC_FREQ_DET);
+	do {} while (readl(clk_base + OSC_FREQ_DET_STATUS)
 		& OSC_FREQ_DET_BUSY);
 
-	clock_autodetect = readl(
-		(void *)((uintptr_t)clk_base + OSC_FREQ_DET_STATUS));
+	clock_autodetect = readl(clk_base + OSC_FREQ_DET_STATUS);
 	if (clock_autodetect >= 732 - 3 && clock_autodetect <= 732 + 3) {
 		osc_freq = 12000000;
 	} else if (clock_autodetect >= 794 - 3 && clock_autodetect <= 794 + 3) {
