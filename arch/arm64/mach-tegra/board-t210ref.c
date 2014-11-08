@@ -522,5 +522,3 @@ DT_MACHINE_START(T210REF, "t210ref")
 	.dt_compat	= t210ref_dt_board_compat,
 	.init_late      = tegra_init_late,
 MACHINE_END
-
-void tegra_pd_in_idle(bool enable) {}

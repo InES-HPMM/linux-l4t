@@ -117,7 +117,8 @@ void tegra_pd_update_target_residency(struct cpuidle_state *state);
 
 #endif /* CONFIG_PM_SLEEP */
 
-#if defined(CONFIG_CPU_IDLE) && defined(CONFIG_PM_SLEEP)
+#if defined(CONFIG_CPU_IDLE) && defined(CONFIG_PM_SLEEP) \
+	&& defined(CONFIG_ARCH_TEGRA_12x_SOC)
 void tegra_pd_in_idle(bool enable);
 #else
 static inline void tegra_pd_in_idle(bool enable) {}

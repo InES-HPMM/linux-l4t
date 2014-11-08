@@ -28,6 +28,7 @@
 #include <linux/platform/tegra/common.h>
 #include "devices.h"
 #include "iomap.h"
+#include "board.h"
 
 #define MC_SECURITY_CFG2        0x7c
 

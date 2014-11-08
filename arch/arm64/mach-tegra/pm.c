@@ -71,6 +71,7 @@
 #include <asm/psci.h>
 
 #include <mach/irqs.h>
+#include <mach/dc.h>
 
 #include "board.h"
 #include <linux/platform/tegra/clock.h>
@@ -83,7 +84,6 @@
 #include <linux/platform/tegra/dvfs.h>
 #include <linux/platform/tegra/cpu-tegra.h>
 #include <linux/platform/tegra/flowctrl.h>
-#include "board.h"
 
 #include "pm-tegra132.h"
 
@@ -682,7 +682,7 @@ static const char *lp_state[TEGRA_MAX_SUSPEND_MODE] = {
 };
 
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-int tegra210_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
+static int tegra210_suspend_dram(enum tegra_suspend_mode mode)
 {
 	int err = 0;
 	unsigned long arg;
@@ -759,7 +759,7 @@ static int tegra_suspend_enter(suspend_state_t state)
 	read_persistent_clock(&ts_entry);
 
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
-	ret = tegra210_suspend_dram(current_suspend_mode, 0);
+	ret = tegra210_suspend_dram(current_suspend_mode);
 #else
 	ret = tegra_suspend_dram(current_suspend_mode, 0);
 #endif
@@ -1022,7 +1022,7 @@ static ssize_t suspend_resume_time_show(struct kobject *kobj,
 }
 
 static struct kobj_attribute suspend_resume_time_attribute =
-	__ATTR(resume_time, 0444, suspend_resume_time_show, 0);
+	__ATTR(resume_time, 0444, suspend_resume_time_show, NULL);
 
 static ssize_t suspend_time_show(struct kobject *kobj,
 					struct kobj_attribute *attr,
@@ -1032,7 +1032,7 @@ static ssize_t suspend_time_show(struct kobject *kobj,
 }
 
 static struct kobj_attribute suspend_time_attribute =
-	__ATTR(suspend_time, 0444, suspend_time_show, 0);
+	__ATTR(suspend_time, 0444, suspend_time_show, NULL);
 
 static struct kobject *suspend_kobj;
 
@@ -1223,7 +1223,8 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 		tmp = (unsigned long) reloc_lp0;
 		tmp = (tmp + L1_CACHE_BYTES - 1) & ~(L1_CACHE_BYTES - 1);
 		reloc_lp0 = (unsigned char *)tmp;
-		memcpy(reloc_lp0, orig, tegra_lp0_vec_size);
+		memcpy(reloc_lp0, (const void *)(uintptr_t)orig,
+			tegra_lp0_vec_size);
 		wmb();
 		iounmap(orig);
 		tegra_lp0_vec_start = virt_to_phys(reloc_lp0);
