@@ -332,6 +332,15 @@ config TEGRA_HDMIHDCP
 	  option to simply display a GUI on an HDMI TV. An HDMI TV will display
 	  unprotected content just fine.
 
+config TEGRA_DEBUG_HDCP
+	bool "Support Debug mode for HDCP on HDMI2_0"
+	depends on TEGRA_HDMIHDCP
+	default n
+	help
+	  Say Y here to expose debugfs nodes for HDCP content protection on HDMI2_0.
+	  It is only required if you need to modify the number of retries for HDCP
+	  authentication.
+
 config TEGRA_HDMI_74MHZ_LIMIT
 	bool "Support only up to 74.25 MHz HDMI pixel frequency"
 	depends on TEGRA_HDMI
