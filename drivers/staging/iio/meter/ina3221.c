@@ -270,6 +270,11 @@ static int ina3221_get_mode(struct ina3221_chip *chip, char *buf)
 	int v;
 
 	mutex_lock(&chip->mutex);
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -EIO;
+	}
+
 	v = (IS_TRIGGERED(chip->mode)) ? 0 : 1;
 	mutex_unlock(&chip->mutex);
 	return sprintf(buf, "%d\n", v);
@@ -282,6 +287,12 @@ static int ina3221_set_mode_val(struct ina3221_chip *chip, long val)
 	int ret = 0;
 
 	mutex_lock(&chip->mutex);
+
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -EIO;
+	}
+
 	if (val > 0) {
 		ret = __locked_power_up_ina3221(chip,
 				chip->pdata->cont_conf_data);
@@ -330,6 +341,11 @@ static int ina3221_get_channel_voltage(struct ina3221_chip *chip,
 
 	mutex_lock(&chip->mutex);
 
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -EIO;
+	}
+
 	ret = __locked_do_conversion(chip, NULL, &vbus, channel);
 	if (ret < 0) {
 		dev_err(chip->dev, "Voltage read on channel %d failed: %d\n",
@@ -349,6 +365,11 @@ static int ina3221_get_channel_current(struct ina3221_chip *chip,
 	int ret = 0;
 
 	mutex_lock(&chip->mutex);
+
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -EIO;
+	}
 
 	/* return 0 if INA is off */
 	if (trigger && (IS_TRIGGERED(chip->mode))) {
@@ -378,6 +399,11 @@ static int ina3221_get_channel_power(struct ina3221_chip *chip,
 
 	mutex_lock(&chip->mutex);
 
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -EIO;
+	}
+
 	if (trigger && (IS_TRIGGERED(chip->mode))) {
 		*power_mw = 0;
 		goto exit;
@@ -406,6 +432,11 @@ static int ina3221_get_channel_vbus_voltage_current(struct ina3221_chip *chip,
 	int ret = 0;
 
 	mutex_lock(&chip->mutex);
+
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -EIO;
+	}
 
 	ret = __locked_do_conversion(chip, &vsh, &vbus, channel);
 	if (ret < 0) {
@@ -480,6 +511,12 @@ static int ina3221_set_channel_critical(struct ina3221_chip *chip,
 	int ret;
 
 	mutex_lock(&chip->mutex);
+
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -EIO;
+	}
+
 	cpdata->crit_conf_limits = curr_limit;
 	ret = __locked_set_crit_alert_register(chip, channel);
 	mutex_unlock(&chip->mutex);
@@ -494,6 +531,11 @@ static int ina3221_get_channel_critical(struct ina3221_chip *chip,
 	int ret;
 
 	mutex_lock(&chip->mutex);
+
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -EIO;
+	}
 
 	/* getting voltage readings in micro volts*/
 	ret = i2c_smbus_read_word_data(chip->client, crit_reg_addr);
@@ -579,7 +621,7 @@ static int ina3221_cpufreq_notify(struct notifier_block *nb,
 		return 0;
 
 	mutex_lock(&chip->mutex);
-	if (chip->is_suspended)
+	if (chip->is_suspended || chip->shutdown_complete)
 		goto exit;
 
 	cpufreq = ((struct cpufreq_freqs *)hcpu)->new;
@@ -607,6 +649,10 @@ static int ina3221_hotplug_notify(struct notifier_block *nb,
 
 	if (event == CPU_ONLINE || event == CPU_DEAD) {
 		mutex_lock(&chip->mutex);
+		if (chip->shutdown_complete) {
+			mutex_unlock(&chip->mutex);
+			return -EIO;
+		}
 		cpufreq = cpufreq_quick_get(0);
 		cpus = num_online_cpus();
 		dev_vdbg(chip->dev, "hotplug notified cpufreq:%d cpus:%d\n",
