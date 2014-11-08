@@ -2316,11 +2316,84 @@ static int tegra_dvfs_rail_get_vts_cdev_cur_state(
 	return 0;
 }
 
+/*
+ * Configuration of the voltage noise aware clock source must be updated when
+ * voltage is changing with temperature even if clock rate remains constant.
+ * This can be accomplished if clock set rate interface with the same/current
+ * target rate is invoked inside thermal scaling cooling device callback.
+ * Voltage change should precede rate re-set if voltage is rising, and follow
+ * rate re-set, otherwise.
+ */
+static int vts_update_na_dvfs(struct dvfs *d, unsigned long cdev_state,
+			      int *therm_idx)
+{
+	bool up;
+	int ret = 0;
+	unsigned long flags;
+	const int *millivolts;
+
+	clk_lock_save(d->clk, &flags);
+	mutex_lock(&dvfs_lock);
+
+	if (*therm_idx == cdev_state)
+		goto _out_dvfs;	/* no state changes: exit */
+
+	/* Update rail theramal state, and get new voltage ladder */
+	*therm_idx = cdev_state;
+	millivolts = dvfs_get_millivolts_pll(d);
+
+	/* Check if voltage is changing in the new vts cdev state */
+	if (d->cur_index >= MAX_DVFS_FREQS)
+		goto _out_dvfs;	/* clock is disabled: exit */
+	if (millivolts[d->cur_index] == d->cur_millivolts)
+		goto _out_dvfs;	/* no voltage change: exit */
+
+	/* Update voltage if it is going up */
+	up = millivolts[d->cur_index] > d->cur_millivolts;
+	if (up) {
+		ret = __tegra_dvfs_set_rate(d, d->cur_rate);
+		if (ret)
+			goto _out_dvfs; /* error updating voltage: exit */
+	}
+	mutex_unlock(&dvfs_lock);
+
+	/*
+	 * Update NA DVFS configuration by re-setting current rate under new
+	 * thermal state.
+	 */
+	ret = d->clk->ops->set_rate(d->clk, d->cur_rate);
+
+	/* Update voltage if it is going down */
+	if (!ret && !up) {
+		mutex_lock(&dvfs_lock);
+		__tegra_dvfs_set_rate(d, d->cur_rate);
+		mutex_unlock(&dvfs_lock);
+	}
+	goto _out_clk;
+
+_out_dvfs:
+	mutex_unlock(&dvfs_lock);
+_out_clk:
+	clk_unlock_restore(d->clk, &flags);
+
+	if (ret)
+		pr_err("tegra_dvfs: failed %s thermal scaling to state %lu\n",
+		       d->clk_name, cdev_state);
+	return ret;
+}
+
 static int tegra_dvfs_rail_set_vts_cdev_state(
 	struct thermal_cooling_device *cdev, unsigned long cur_state)
 {
 	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
-	struct dvfs *d;
+	struct dvfs *d = list_first_entry(&rail->dvfs, struct dvfs, reg_node);
+
+	/*
+	 * Only GPU thermal dvfs is supported, and GPU rail is a sindle clock
+	 * rail. Hence, checking only the 1st DVFS entry for NA mode is enough.
+	 */
+	if (d->therm_dvfs && d->na_dvfs)
+		return vts_update_na_dvfs(d, cur_state, &rail->therm_scale_idx);
 
 	mutex_lock(&dvfs_lock);
 	if (rail->therm_scale_idx != cur_state) {
