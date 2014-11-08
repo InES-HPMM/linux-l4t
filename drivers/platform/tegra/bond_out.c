@@ -49,8 +49,7 @@ bool tegra_bonded_out_dev(enum tegra_bondout_dev dev)
 
 	index = dev >> 5;
 	offset = dev & 0x1f;
-	reg = readl_relaxed((void *)((uintptr_t)clk_base +
-			bondout_offset[index]));
+	reg = readl_relaxed(clk_base + bondout_offset[index]);
 	return reg & (1 << offset);
 }
 
