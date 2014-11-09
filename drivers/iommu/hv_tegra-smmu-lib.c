@@ -434,8 +434,8 @@ int libsmmu_get_dma_window(int comm_chan_id, u64 *base,	size_t *size)
 	return err;
 }
 
-/* disconnect from server and reset all mappings to default */
-int libsmmu_disconnect(int comm_chan_id)
+/* connect to server and reset all mappings to default */
+int libsmmu_connect(int comm_chan_id)
 {
 	int err;
 	struct smmu_ivc_msg tx_msg, rx_msg;
@@ -455,7 +455,7 @@ int libsmmu_disconnect(int comm_chan_id)
 	memset(&tx_msg, 0, sizeof(struct smmu_ivc_msg));
 	memset(&rx_msg, 0, sizeof(struct smmu_ivc_msg));
 
-	err = ivc_send_recv(DISCONNECT, comm_chan, &tx_msg, &rx_msg);
+	err = ivc_send_recv(CONNECT, comm_chan, &tx_msg, &rx_msg);
 
 	if (err < 0) {
 		dev_err(dev,

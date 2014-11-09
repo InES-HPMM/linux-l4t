@@ -27,7 +27,7 @@ extern int libsmmu_map_large_page(int comm_chan_id, u32 asid, u64 iova, u64 pa,
 extern int libsmmu_map_page(int comm_chan_id, u32 asid, u64 iova, u64 ipa, int attr);
 extern int libsmmu_unmap(int comm_chan_id, u32 asid, u64 iova, u64 bytes);
 extern int libsmmu_iova_to_phys(int comm_chan_id, u32 asid, u64 iova, u64 *ipa);
-extern int libsmmu_disconnect(int comm_chan_id);
+extern int libsmmu_connect(int comm_chan_id);
 extern int libsmmu_debug_op(int comm_chan_id, u32 op, u64 op_data_in,
 							u64 *op_data_out);
 extern int tegra_hv_smmu_comm_chan_alloc(void);

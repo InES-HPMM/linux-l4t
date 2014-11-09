@@ -291,17 +291,6 @@ static int tegra_smmu_resume_hv(struct device *dev)
 	return 0;
 }
 
-static int tegra_smmu_reboot_notifier(struct notifier_block *nb,
-				unsigned long event, void *unused)
-{
-	libsmmu_disconnect(smmu_handle->tegra_hv_comm_chan);
-	return 0;
-}
-
-static struct notifier_block tegra_smmu_reboot_nb = {
-	.notifier_call = tegra_smmu_reboot_notifier,
-};
-
 #define DEBUG_OP_HIT_MISS_COUNTER_ON	1
 #define DEBUG_OP_HIT_MISS_COUNTER_OFF	2
 #define DEBUG_OP_HIT_MISS_COUNTER_RESET	3
@@ -424,6 +413,12 @@ int tegra_smmu_probe_hv(struct platform_device *pdev,
 	if (smmu->tegra_hv_debug_chan < 0)
 		goto exit_probe_hv;
 
+
+	/* Send connect first */
+	err = libsmmu_connect(smmu->tegra_hv_comm_chan);
+	if (err)
+		goto exit_probe_hv;
+
 	/* Get the number of asid from server */
 	err = libsmmu_get_num_asids(chan, &num_as);
 	if (err)
@@ -445,12 +440,6 @@ int tegra_smmu_probe_hv(struct platform_device *pdev,
 	err = libsmmu_get_swgids(chan, &smmu->swgids);
 	if (err)
 		goto exit_probe_hv;
-
-	err = register_reboot_notifier(&tegra_smmu_reboot_nb);
-	if (err) {
-		pr_err("unable to register reboot notifier\n");
-		return err;
-	}
 
 	/* Update default functions */
 	__smmu_iommu_map_pfn = __smmu_iommu_map_pfn_hv;
