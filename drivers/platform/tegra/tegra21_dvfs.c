@@ -1019,6 +1019,19 @@ static int __init set_gpu_dvfs_data(unsigned long max_freq,
 
 	gpu_dvfs->fmax_at_vmin_safe_t = d->freqs_mult *
 		find_gpu_fmax_at_vmin(gpu_dvfs, thermal_ranges, i);
+
+#ifdef CONFIG_TEGRA_USE_NA_GPCPLL
+	/*
+	 * Set NA DVFS flag, if GPCPLL NA mode is enabled. This is necessary to
+	 * make sure that GPCPLL configuration is updated by tegra core DVFS
+	 * when thermal DVFS cooling device state is changed. Since tegra core
+	 * DVFS does not support NA operations for Vmin cooling device, GPU Vmin
+	 * thermal floors have been integrated with thermal DVFS, and no Vmin
+	 * cooling device is installed.
+	 */
+	if (tegra_fuse_can_use_na_gpcpll())
+		gpu_dvfs->na_dvfs = 1;
+#endif
 	return 0;
 }
 
