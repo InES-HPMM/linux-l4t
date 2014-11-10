@@ -1297,7 +1297,7 @@ static int tegra_pcie_map_resources(struct tegra_pcie *pcie)
 	return 0;
 }
 
-void tegra_pcie_unmap_resources(struct tegra_pcie *pcie)
+static void tegra_pcie_unmap_resources(struct tegra_pcie *pcie)
 {
 	struct platform_device *pdev = to_platform_device(pcie->dev);
 
