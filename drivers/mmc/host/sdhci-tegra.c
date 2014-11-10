@@ -478,7 +478,7 @@ struct tuning_tap_hole_margins {
 		.tap_hole_margin = _tap_hole_margin,	\
 	}
 
-struct tuning_tap_hole_margins t12x_automotive_tap_hole_margins[] = {
+static struct tuning_tap_hole_margins t12x_automotive_tap_hole_margins[] = {
 	SET_TUNING_TAP_HOLE_MARGIN("sdhci-tegra.3", 13),
 	SET_TUNING_TAP_HOLE_MARGIN("sdhci-tegra.2", 7),
 	SET_TUNING_TAP_HOLE_MARGIN("sdhci-tegra.0", 10),
