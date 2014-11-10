@@ -89,7 +89,6 @@ F:	arch/arm/mach-tegra/flowctrl.c
 F:	arch/arm/mach-tegra/hotplug.c
 F:	arch/arm/mach-tegra/platsmp.c
 F:	arch/arm/mach-tegra/reset.c
-F:	arch/arm/mach-tegra/tegra12_speedo.c
 F:	drivers/clocksource/tegra-nvtimers.c
 F:	drivers/cpuidle/denver-cpuidle.c
 F:	drivers/irqchip/irq-tegra.c
@@ -197,6 +196,7 @@ M:	Matt Longnecker <mlongnecker@nvidia.com>
 L:	sw-mobile-clocks@exchange.nvidia.com
 F:	arch/arm/mach-tegra/*_dvfs.c
 F:	arch/arm/mach-tegra/clocks_stats.c
+F:	arch/arm/mach-tegra/tegra*_speedo.c
 F:	arch/arm/mach-tegra/tegra_core_volt_cap.c
 F:	arch/arm/mach-tegra/tegra12_clocks.c
 F:	arch/arm/mach-tegra/tegra3_actmon.c
@@ -204,6 +204,7 @@ F:	arch/arm/mach-tegra/dvfs.c
 F:	drivers/platform/tegra/clock.c
 F:	drivers/platform/tegra/clocks_stats.c
 F:	drivers/platform/tegra/dvfs.c
+F:	drivers/platform/tegra/tegra*_speedo.c
 F:	drivers/platform/tegra/tegra_cl_dvfs.c
 
 POWER: CPU
