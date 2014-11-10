@@ -273,21 +273,6 @@ int tegra_update_lp1_irq_wake(unsigned int irq, bool enable)
 	return 0;
 }
 
-static int tegra_irq_read_mask(unsigned int irq, unsigned long reg)
-{
-	void __iomem *base;
-	u32 mask;
-	u32 val;
-
-	BUG_ON(!tegra_irq_range_valid(irq));
-
-	base = ictlr_reg_base[(irq - FIRST_LEGACY_IRQ) / 32];
-	mask = BIT((irq - FIRST_LEGACY_IRQ) % 32);
-
-	val = __raw_readl(base + reg);
-	return (val & mask);
-}
-
 static inline void tegra_irq_write_mask(unsigned int irq, unsigned long reg)
 {
 	void __iomem *base;
@@ -302,6 +287,21 @@ static inline void tegra_irq_write_mask(unsigned int irq, unsigned long reg)
 }
 
 #ifdef CONFIG_SMP
+static int tegra_irq_read_mask(unsigned int irq, unsigned long reg)
+{
+	void __iomem *base;
+	u32 mask;
+	u32 val;
+
+	BUG_ON(!tegra_irq_range_valid(irq));
+
+	base = ictlr_reg_base[(irq - FIRST_LEGACY_IRQ) / 32];
+	mask = BIT((irq - FIRST_LEGACY_IRQ) % 32);
+
+	val = __raw_readl(base + reg);
+	return val & mask;
+}
+
 static int tegra_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 			    bool force)
 {
