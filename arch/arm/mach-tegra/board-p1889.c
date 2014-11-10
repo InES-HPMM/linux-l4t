@@ -134,7 +134,7 @@ static int p1889_dummy(void)
 
 struct tegra_panel_ops p1889_hdmi_ops = {
 	.enable = p1889_dev_dummy,
-	.disable = p1889_dummy,
+	.disable = p1889_dev_dummy,
 	.postsuspend = p1889_dummy,
 	.hotplug_init = p1889_dev_dummy,
 };

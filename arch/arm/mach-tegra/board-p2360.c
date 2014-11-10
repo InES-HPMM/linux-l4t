@@ -89,7 +89,7 @@ static int p2360_dummy(void)
 
 struct tegra_panel_ops p2360_panel_ops = {
 	.enable = p2360_dev_dummy,
-	.disable = p2360_dummy,
+	.disable = p2360_dev_dummy,
 	.postsuspend = p2360_dummy,
 	.hotplug_init = p2360_dev_dummy,
 };

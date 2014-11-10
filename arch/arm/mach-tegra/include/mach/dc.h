@@ -628,7 +628,7 @@ struct tegra_dc_out {
 	int	(*enable)(struct device *);
 	int	(*postpoweron)(struct device *);
 	int	(*prepoweroff)(void);
-	int	(*disable)(void);
+	int	(*disable)(struct device *);
 
 	int	(*hotplug_init)(struct device *);
 	int	(*postsuspend)(void);
