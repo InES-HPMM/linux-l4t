@@ -146,17 +146,6 @@ static void tegra_gpio_disable(int gpio)
 	tegra_gpio_mask_write(GPIO_MSK_CNF(gpio), gpio, 0);
 }
 
-void tegra_gpio_init_configure(unsigned gpio, bool is_input, int value)
-{
-	if (is_input) {
-		tegra_gpio_mask_write(GPIO_MSK_OE(gpio), gpio, 0);
-	} else {
-		tegra_gpio_mask_write(GPIO_MSK_OUT(gpio), gpio, value);
-		tegra_gpio_mask_write(GPIO_MSK_OE(gpio), gpio, 1);
-	}
-	tegra_gpio_mask_write(GPIO_MSK_CNF(gpio), gpio, 1);
-}
-
 static int tegra_gpio_request(struct gpio_chip *chip, unsigned offset)
 {
 	return pinctrl_request_gpio(chip->base + offset);
