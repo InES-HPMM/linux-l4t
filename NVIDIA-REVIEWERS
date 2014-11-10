@@ -183,8 +183,7 @@ F:	drivers/misc/max1749.c
 F:	drivers/misc/nct1008.c
 F:	drivers/misc/tegra-baseband/bb-oem2.c
 F:	drivers/misc/tegra-baseband/bb-power.c
-F:	drivers/pinctrl/pinctrl-tegra.c
-F:	drivers/pinctrl/pinctrl-tegra30.c
+F:	drivers/pinctrl/pinctrl-*.c
 F:	drivers/usb/serial/baseband_usb_chr.c
 
 PLATFORM POWER DELIVERY
