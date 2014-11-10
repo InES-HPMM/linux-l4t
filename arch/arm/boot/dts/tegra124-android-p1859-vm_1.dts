@@ -316,6 +316,15 @@
 	iommu {
 		compatible = "nvidia,tegra124-smmu-hv";
 		ivc_queue = <&tegra_hv 11>;
+		address-space-prop {
+			gpu_as: gpu {
+				iova-start = <0x0 0x80000000>;
+				iova-size = <0x0 0x7FFFFFFF>;
+				alignment = <0xFFFFF>;
+				num-pf-page = <0>;
+				gap-page = <0>;
+				};
+		};
 	};
 
 	host1x {
