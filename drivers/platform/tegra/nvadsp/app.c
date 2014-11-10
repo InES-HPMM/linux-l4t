@@ -70,18 +70,18 @@ static struct list_head service_list;
 static u64 ns_time_native_load_complete;
 #endif
 
-DECLARE_COMPLETION(os_load);
-DECLARE_COMPLETION(load_app_status);
-DECLARE_COMPLETION(app_init_status);
-DECLARE_COMPLETION(app_start_status);
-DECLARE_COMPLETION(app_deinit_status);
-DECLARE_COMPLETION(app_unload_status);
+static DECLARE_COMPLETION(os_load);
+static DECLARE_COMPLETION(load_app_status);
+static DECLARE_COMPLETION(app_init_status);
+static DECLARE_COMPLETION(app_start_status);
+static DECLARE_COMPLETION(app_deinit_status);
+static DECLARE_COMPLETION(app_unload_status);
 
-DEFINE_MUTEX(load_app_mutex);
-DEFINE_MUTEX(app_init_mutex);
-DEFINE_MUTEX(app_start_mutex);
-DEFINE_MUTEX(app_deinit_mutex);
-DEFINE_MUTEX(app_unload_mutex);
+static DEFINE_MUTEX(load_app_mutex);
+static DEFINE_MUTEX(app_init_mutex);
+static DEFINE_MUTEX(app_start_mutex);
+static DEFINE_MUTEX(app_deinit_mutex);
+static DEFINE_MUTEX(app_unload_mutex);
 
 /* app states need to be changed atomically */
 static DEFINE_SPINLOCK(state_lock);

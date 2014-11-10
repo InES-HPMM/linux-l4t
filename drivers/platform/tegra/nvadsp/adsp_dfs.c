@@ -93,7 +93,7 @@ struct adsp_freq_stats {
 	int state_num;
 };
 
-struct adsp_dfs_policy *policy;
+static struct adsp_dfs_policy *policy;
 static struct adsp_freq_stats freq_stats;
 static DEFINE_MUTEX(policy_mutex);
 

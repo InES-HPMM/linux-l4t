@@ -114,7 +114,7 @@ static struct nvadsp_mappings adsp_map[NM_LOAD_MAPPINGS];
 static int map_idx;
 static struct nvadsp_mbox adsp_com_mbox;
 
-DECLARE_COMPLETION(entered_wfe);
+static DECLARE_COMPLETION(entered_wfe);
 #ifdef CONFIG_DEBUG_FS
 
 static int adsp_logger_open(struct inode *inode, struct file *file)
