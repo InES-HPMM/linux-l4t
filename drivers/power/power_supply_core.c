@@ -359,6 +359,7 @@ static int power_supply_read_temp(struct thermal_zone_device *tzd, long *temp)
 	return ret;
 }
 
+#ifdef CONFIG_THERMAL_OF
 static int power_supply_get_temp(void *data, long *temp)
 {
 	struct power_supply *psy = data;
@@ -374,6 +375,7 @@ static int power_supply_get_temp(void *data, long *temp)
 
 	return ret;
 }
+#endif
 
 static struct thermal_zone_device_ops psy_tzd_ops = {
 	.get_temp = power_supply_read_temp,
