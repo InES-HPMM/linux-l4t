@@ -414,4 +414,9 @@
 		nvidia,edp_limit = <25000>;
 	};
 
+	camera-pcl {
+		dpd {
+			default-enable;
+		};
+	};
 };
