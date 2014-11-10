@@ -815,7 +815,7 @@ static void get_fuse(enum fuse_io_param io_param, u32 *out)
 	} while (nbits > 0);
 }
 
-int tegra_fuse_read(struct device *dev,
+static int tegra_fuse_read(struct device *dev,
 		enum fuse_io_param io_param, u32 *data, int size)
 {
 	int nbits;
@@ -1088,7 +1088,7 @@ static int fuse_get_pgm_cycles(int index)
 	return cycles;
 }
 
-int tegra_fuse_program(struct device *dev,
+static int tegra_fuse_program(struct device *dev,
 		struct fuse_data *pgm_data, u32 flags)
 {
 	u32 reg;
