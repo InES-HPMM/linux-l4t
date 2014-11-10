@@ -175,6 +175,10 @@
 		status = "okay";
 	};
 
+	smmu: iommu {
+		#asids = <120>;
+	};
+
 	cpu_dfll_pmic_integration {
 		pmic-i2c-address = <0x74>;
 		pmic-i2c-voltage-register = <0x07>;
