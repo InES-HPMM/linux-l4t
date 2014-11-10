@@ -158,6 +158,7 @@ F:	drivers/media/platform/tegra/*
 F:	drivers/media/platform/tegra/nvavp/*
 F:	drivers/platform/tegra/nvadsp/*
 F:	sound/soc/tegra/*
+F:	sound/soc/tegra-alt/*
 
 PLATFORM
 M:	Mallikarjun Kasoju <mkasoju@nvidia.com>
