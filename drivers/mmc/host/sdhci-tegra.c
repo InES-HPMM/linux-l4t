@@ -3319,18 +3319,21 @@ static int get_tuning_tap_hole_margins(struct sdhci_host *sdhci,
 	int i;
 	int tap_margin = 0;
 
-	if (soc_data->nvquirks & NVQUIRK_SELECT_FIXED_TAP_HOLE_MARGINS &&
-			soc_data->tap_hole_margins) {
-		tap_hole = soc_data->tap_hole_margins;
-		dev_id = dev_name(mmc_dev(sdhci->mmc));
-		for (i = 0; i < soc_data->tap_hole_margins_count; i++) {
-			if (!strcmp(dev_id, tap_hole->dev_id))
-				return tap_hole->tap_hole_margin;
-			tap_hole++;
+	if (soc_data->nvquirks & NVQUIRK_SELECT_FIXED_TAP_HOLE_MARGINS)  {
+		if (soc_data->tap_hole_margins) {
+			tap_hole = soc_data->tap_hole_margins;
+			dev_id = dev_name(mmc_dev(sdhci->mmc));
+			for (i = 0; i < soc_data->tap_hole_margins_count; i++) {
+				if (!strcmp(dev_id, tap_hole->dev_id))
+					return tap_hole->tap_hole_margin;
+				tap_hole++;
+			}
+		} else {
+			dev_info(mmc_dev(sdhci->mmc),
+				"Fixed tap hole margins missing\n");
 		}
 	}
-	dev_info(mmc_dev(sdhci->mmc),
-				"Tap hole margins missing\n");
+
 	/* if no margin are available calculate tap margin */
 	tap_margin = (((2 * (450 / t2t_tuning_value)) +
 			1) / 2);
