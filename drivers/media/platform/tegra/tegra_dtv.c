@@ -1167,11 +1167,11 @@ done:
 	return status;
 }
 
-struct tegra_dtv_chipdata tegra21_dtv_chipdata = {
+static struct tegra_dtv_chipdata tegra21_dtv_chipdata = {
 	.interrupt_supported = false,
 };
 
-struct tegra_dtv_chipdata tegra12_dtv_chipdata = {
+static struct tegra_dtv_chipdata tegra12_dtv_chipdata = {
 	.interrupt_supported = false,
 };
 
