@@ -21,6 +21,7 @@
 #include <linux/miscdevice.h>
 #include <linux/i2c.h>
 #include <linux/regmap.h>
+#include <mach/io_dpd.h>
 #include <media/nvc.h>
 
 #define NUM_OF_SEQSTACK			16
@@ -51,13 +52,14 @@ struct camera_platform_data {
 	unsigned cfg;
 	int pinmux_num;
 	struct tegra_pingroup_config **pinmux;
+	struct tegra_io_dpd *dpd_tbl;
+	bool enable_dpd;
 	struct camera_module *modules;
 	struct camera_data_blob *lut;
 	struct device_node *of_profiles;
 	uint prof_num;
 	uint mod_num;
 	uint max_blob_size;
-	bool freeable;
 };
 
 struct camera_seq_status {

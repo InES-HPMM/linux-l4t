@@ -853,6 +853,47 @@ static int camera_add_drivers(struct camera_info *cam, unsigned long arg)
 	return camera_add_drv_by_module(cam->dev, param.variant);
 }
 
+static int camera_dpd_ctrl(
+	struct camera_info *cam, unsigned long map, bool dpd_on)
+{
+	struct camera_platform_data *pd = cam_desc.pdata;
+	struct tegra_io_dpd *dpd = NULL;
+
+	if (!pd || !pd->dpd_tbl || !map)
+		return 0;
+
+	dpd = pd->dpd_tbl;
+	do {
+		if (dpd->name == NULL)
+			break;
+		if (map & 1) {
+			if (dpd_on)
+				tegra_io_dpd_enable(dpd);
+			else
+				tegra_io_dpd_disable(dpd);
+
+			dev_dbg(cam->dev, "dpd %s %s\n", dpd->name,
+					dpd_on ? "enabled" : "disabled");
+		}
+		map >>= 1;
+		dpd++;
+	} while (map);
+
+	return 0;
+}
+
+static void camera_dpd_init(struct device *dev, struct tegra_io_dpd *dpd)
+{
+	if (!dpd)
+		return;
+
+	while (dpd->name) {
+		tegra_io_dpd_enable(dpd);
+		dev_dbg(dev, "dpd %s enabled\n", dpd->name);
+		dpd++;
+	};
+}
+
 static long camera_ioctl(struct file *file,
 			 unsigned int cmd,
 			 unsigned long arg)
@@ -920,6 +961,12 @@ static long camera_ioctl(struct file *file,
 		break;
 	case _IOC_NR(CAMERA_IOCTL_MSG):
 		err = camera_msg(cam, arg);
+		break;
+	case _IOC_NR(CAMERA_IOCTL_DPD_ENABLE):
+		err = camera_dpd_ctrl(cam, arg, true);
+		break;
+	case _IOC_NR(CAMERA_IOCTL_DPD_DISABLE):
+		err = camera_dpd_ctrl(cam, arg, false);
 		break;
 	default:
 		dev_err(cam->dev, "%s unsupported ioctl: %x\n",
@@ -1027,8 +1074,6 @@ static int camera_remove(struct platform_device *dev)
 	kfree(cam_desc.layout);
 	cam_desc.layout = NULL;
 	cam_desc.size_layout = 0;
-	if (cam_desc.pdata->freeable)
-		kfree(cam_desc.pdata);
 	cam_desc.pdata = NULL;
 	return 0;
 }
@@ -1078,8 +1123,11 @@ static int camera_probe(struct platform_device *dev)
 	}
 
 	camera_debugfs_init(&cam_desc);
-	if (pd)
+	if (pd) {
+		if (pd->enable_dpd)
+			camera_dpd_init(cam_desc.dev, pd->dpd_tbl);
 		camera_module_detect(&cam_desc);
+	}
 	camera_ref_init();
 	return 0;
 }

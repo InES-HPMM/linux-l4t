@@ -881,6 +881,64 @@ static int of_module_sanity_check(struct device *dev, struct camera_module *md)
 	return 0;
 }
 
+static void *of_parse_dpd(struct device *dev, struct device_node *np, bool *enb)
+{
+	struct device_node *np_dpd, *sub_dpd;
+	struct tegra_io_dpd *dpd_tbl = NULL;
+	u32 data[3];
+	int err = 0, num = 0, i = 0;
+
+	if (!np)
+		return NULL;
+
+	np_dpd = of_find_node_by_name(np, "dpd");
+	if (!np_dpd) {
+		dev_err(dev, "%s can't find dpd table\n", __func__);
+		return NULL;
+	}
+
+	of_property_read_u32(np_dpd, "num", &num);
+	if (!num) {
+		dev_dbg(dev, "%s: num = 0\n", __func__);
+		return NULL;
+	}
+
+	dpd_tbl = devm_kzalloc(dev, sizeof(*dpd_tbl) * (num + 1), GFP_KERNEL);
+	if (!dpd_tbl) {
+		dev_err(dev, "%s: can't allocate memory\n", __func__);
+		return NULL;
+	}
+
+	for_each_child_of_node(np_dpd, sub_dpd) {
+		if (i >= num)
+			break;
+		dpd_tbl[i].name = sub_dpd->name;
+		err = of_property_read_u32_array(
+			sub_dpd, "reg", data, ARRAY_SIZE(data));
+		if (err) {
+			devm_kfree(dev, dpd_tbl);
+			dev_err(dev, "%s: can't get reg of %s\n",
+				__func__, sub_dpd->full_name);
+			return NULL;
+		}
+		dpd_tbl[i].io_dpd_reg_index = data[0];
+		dpd_tbl[i].io_dpd_bit = data[1];
+		dpd_tbl[i].need_delay_dpd = data[2];
+		dev_dbg(dev, "%s: dpd[%d] = %s %x %x %x\n", __func__, i,
+			dpd_tbl[i].name,
+			dpd_tbl[i].io_dpd_reg_index,
+			dpd_tbl[i].io_dpd_bit,
+			dpd_tbl[i].need_delay_dpd);
+		i++;
+	}
+	if (enb)
+		*enb = of_property_read_bool(np_dpd, "default-enable");
+
+	dev_dbg(dev, "%s: dpd @ %s, num = %d default %d\n", __func__,
+		np_dpd->full_name, num, enb ? *enb : 0);
+	return dpd_tbl;
+}
+
 struct camera_platform_data *of_camera_create_pdata(
 	struct platform_device *dev)
 {
@@ -902,7 +960,9 @@ struct camera_platform_data *of_camera_create_pdata(
 
 	num = of_camera_get_child_count(dev, modules);
 
-	pd = kzalloc(sizeof(*pd) + (num + 1) * (sizeof(*pd->modules) +
+	pd = devm_kzalloc(&dev->dev,
+		sizeof(*pd) +
+		(num + 1) * (sizeof(*pd->modules) +
 		sizeof(struct i2c_board_info) * 3),
 		GFP_KERNEL);
 	if (!pd) {
@@ -921,7 +981,7 @@ struct camera_platform_data *of_camera_create_pdata(
 				break;
 			chip = of_camera_add_new_chip(dev, pdev);
 			if (IS_ERR(chip)) {
-				kfree(pd);
+				devm_kfree(&dev->dev, pd);
 				return (void *)chip;
 			}
 			/* looking for matching pdata in lut */
@@ -975,13 +1035,16 @@ struct camera_platform_data *of_camera_create_pdata(
 			memset(&pd->modules[num], 0, sizeof(pd->modules[0]));
 	}
 
+	/* dpd config */
+	pd->dpd_tbl = of_parse_dpd(
+		&dev->dev, dev->dev.of_node, &pd->enable_dpd);
+
 	/* generic info */
 	cam_alias = of_find_node_by_name(NULL, "camera-alias");
 	of_property_read_u32(dev->dev.of_node, "configuration", &pd->cfg);
 	pd->max_blob_size = of_camera_profile_statistic(
 		dev, &pd->of_profiles, &pd->prof_num);
 	pd->lut = dev->dev.platform_data;
-	pd->freeable = true;
 
 	return pd;
 }

@@ -171,8 +171,7 @@ static int camera_debugfs_platform_data(struct seq_file *s)
 	struct i2c_board_info *bi;
 	char ch;
 
-	seq_printf(s, "\nplatform data(%s): cfg = %x\n",
-		pd->freeable ? "freeable" : "static", pd->cfg);
+	seq_printf(s, "\nplatform data: cfg = %x\n", pd->cfg);
 
 	while (md) {
 		if (!md->sensor.bi && !md->focuser.bi && !md->flash.bi)

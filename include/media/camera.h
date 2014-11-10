@@ -71,6 +71,8 @@
 #define CAMERA_IOCTL_DRV_ADD	_IOW('o', 150, struct nvc_param)
 #define CAMERA_IOCTL_DT_GET	_IOWR('o', 160, struct nvc_param)
 #define CAMERA_IOCTL_MSG		_IOWR('o', 170, struct nvc_param)
+#define CAMERA_IOCTL_DPD_ENABLE	_IOW('o', 171, u32)
+#define CAMERA_IOCTL_DPD_DISABLE	_IOW('o', 172, u32)
 
 #define CAMERA_MAX_NAME_LENGTH	32
 #define CAMDEV_INVALID		0xffffffff
