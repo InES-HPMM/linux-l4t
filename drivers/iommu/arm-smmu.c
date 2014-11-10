@@ -45,6 +45,7 @@
 #include <linux/spinlock.h>
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>
+#include <linux/dma-attrs.h>
 #include <linux/tegra-soc.h>
 
 #include <linux/amba/bus.h>
@@ -1710,15 +1711,21 @@ static int arm_smmu_alloc_init_pud(struct arm_smmu_device *smmu, pgd_t *pgd,
 
 static int arm_smmu_handle_mapping(struct arm_smmu_domain *smmu_domain,
 				   unsigned long iova, phys_addr_t paddr,
-				   size_t size, int prot)
+				   size_t size, unsigned long attrs)
 {
-	int ret, stage;
+	int ret, stage, prot = IOMMU_WRITE | IOMMU_READ;
 	unsigned long end;
 	phys_addr_t input_mask, output_mask;
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
 	struct arm_smmu_cfg *cfg = &smmu_domain->cfg;
 	pgd_t *pgd = cfg->pgd;
 	unsigned long flags;
+
+	/* FIXME: follow the upstream prot */
+	if (dma_get_attr(DMA_ATTR_READ_ONLY, (struct dma_attrs *)attrs))
+		prot &= ~IOMMU_WRITE;
+	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)attrs))
+		prot &= ~IOMMU_READ;
 
 	if (cfg->cbar == CBAR_TYPE_S2_TRANS) {
 		stage = 2;
