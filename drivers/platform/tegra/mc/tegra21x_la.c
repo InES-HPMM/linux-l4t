@@ -48,7 +48,7 @@
 #define EMEM_PTSA_MINMAX_WIDTH				5
 #define RING1_FEEDER_SISO_ALLOC_DIV			2
 
-struct la_client_info t21x_la_info_array[] = {
+static struct la_client_info t21x_la_info_array[] = {
 	LA(0, 0, AFI_0,		23 : 16, AFIW,		false, 128, 800),
 	LA(0, 0, AFI_0,		7  : 0,  AFIR,		false, 59,  800),
 	LA(0, 0, AVPC_0,	7  : 0,  AVPC_ARM7R,	false, 4,   0),
@@ -125,7 +125,7 @@ static struct la_chip_specific *cs;
 const struct disp_client *tegra_la_disp_clients_info;
 static unsigned int total_dc0_bw;
 static unsigned int total_dc1_bw;
-DEFINE_MUTEX(disp_and_camera_ptsa_lock);
+static DEFINE_MUTEX(disp_and_camera_ptsa_lock);
 
 static void program_ptsa(void)
 {

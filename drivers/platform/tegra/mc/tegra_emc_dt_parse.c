@@ -44,7 +44,7 @@ static struct device_node *tegra_emc_ramcode_devnode(
 	return NULL;
 }
 
-void *tegra_emc_dt_parse_pdata_comp(const char *emc_mode,
+static void *tegra_emc_dt_parse_pdata_comp(const char *emc_mode,
 				    const char *comp,
 				    void *pdata,
 				    struct device_node *tnp,
