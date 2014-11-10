@@ -847,7 +847,7 @@ static int soctherm_has_mn_cpu_pskip_status(void)
  * CPU-local (i.e., non-SOC_THERM) pulse-skipper status, or -EINVAL if
  * any of the arguments are NULL.
  */
-int soctherm_get_mn_cpu_pskip_status(u8 *enabled, u8 *sw_override, u16 *m,
+static int soctherm_get_mn_cpu_pskip_status(u8 *enabled, u8 *sw_override, u16 *m,
 				     u16 *n)
 {
 	u32 v;
@@ -894,7 +894,7 @@ int soctherm_get_mn_cpu_pskip_status(u8 *enabled, u8 *sw_override, u16 *m,
  * throttling status (e.g., T124, T132) or -EINVAL if any of the
  * arguments are NULL.
  */
-int soctherm_get_gpu_pskip_status(u8 *enabled, u8 *sw_override, u16 *m, u16 *n)
+static int soctherm_get_gpu_pskip_status(u8 *enabled, u8 *sw_override, u16 *m, u16 *n)
 {
 	u32 v;
 

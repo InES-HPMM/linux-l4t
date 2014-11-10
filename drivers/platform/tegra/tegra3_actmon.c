@@ -217,7 +217,7 @@ static unsigned long actmon_dev_avg_freq_get(struct actmon_dev *dev)
 }
 
 /* Activity monitor sampling operations */
-irqreturn_t actmon_dev_isr(int irq, void *dev_id)
+static irqreturn_t actmon_dev_isr(int irq, void *dev_id)
 {
 	u32 val;
 	unsigned long flags;
@@ -274,7 +274,7 @@ irqreturn_t actmon_dev_isr(int irq, void *dev_id)
 	return IRQ_WAKE_THREAD;
 }
 
-irqreturn_t actmon_dev_fn(int irq, void *dev_id)
+static irqreturn_t actmon_dev_fn(int irq, void *dev_id)
 {
 	unsigned long flags, freq;
 	struct actmon_dev *dev = (struct actmon_dev *)dev_id;

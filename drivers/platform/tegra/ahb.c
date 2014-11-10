@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2011 Google, Inc.
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Jay Cheng <jacheng@nvidia.com>
@@ -108,7 +108,7 @@ static u32 ahb_gizmo[33];
 static u32 ahb_gizmo[29];
 #endif
 
-int tegra_ahbgizmo_suspend(void)
+static int tegra_ahbgizmo_suspend(void)
 {
 	ahb_gizmo[0] = gizmo_readl(AHB_ARBITRATION_DISABLE);
 	ahb_gizmo[1] = gizmo_readl(AHB_ARBITRATION_PRIORITY_CTRL);
@@ -148,7 +148,7 @@ int tegra_ahbgizmo_suspend(void)
 	return 0;
 }
 
-void tegra_ahbgizmo_resume(void)
+static void tegra_ahbgizmo_resume(void)
 {
 	gizmo_writel(ahb_gizmo[0],  AHB_ARBITRATION_DISABLE);
 	gizmo_writel(ahb_gizmo[1],  AHB_ARBITRATION_PRIORITY_CTRL);

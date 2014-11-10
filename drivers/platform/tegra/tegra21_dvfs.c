@@ -432,7 +432,8 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("tsensor",		-1, -1, 1, KHZ,	      1,   19200,   19200,   19200,   19200,   19200,   19200,   19200),
 };
 
-int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)
+static int tegra_dvfs_disable_core_set(const char *arg,
+	const struct kernel_param *kp)
 {
 	int ret;
 
@@ -448,7 +449,8 @@ int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)
 	return 0;
 }
 
-int tegra_dvfs_disable_cpu_set(const char *arg, const struct kernel_param *kp)
+static int tegra_dvfs_disable_cpu_set(const char *arg,
+	const struct kernel_param *kp)
 {
 	int ret;
 
@@ -464,7 +466,8 @@ int tegra_dvfs_disable_cpu_set(const char *arg, const struct kernel_param *kp)
 	return 0;
 }
 
-int tegra_dvfs_disable_gpu_set(const char *arg, const struct kernel_param *kp)
+static int tegra_dvfs_disable_gpu_set(const char *arg,
+	const struct kernel_param *kp)
 {
 	int ret;
 
@@ -480,7 +483,7 @@ int tegra_dvfs_disable_gpu_set(const char *arg, const struct kernel_param *kp)
 	return 0;
 }
 
-int tegra_dvfs_disable_get(char *buffer, const struct kernel_param *kp)
+static int tegra_dvfs_disable_get(char *buffer, const struct kernel_param *kp)
 {
 	return param_get_bool(buffer, kp);
 }

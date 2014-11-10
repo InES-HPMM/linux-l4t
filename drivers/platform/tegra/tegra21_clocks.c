@@ -2946,7 +2946,7 @@ static void tegra21_pllu_hw_ctrl_set(struct clk *c)
 		tegra21_utmi_param_configure(c);
 }
 
-int tegra21_pllu_clk_enable(struct clk *c)
+static int tegra21_pllu_clk_enable(struct clk *c)
 {
 	int ret = tegra_pll_clk_enable(c);
 	if (ret)
@@ -6449,7 +6449,7 @@ static struct clk_pll_freq_table tegra_pll_cx_freq_table[] = {
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
-struct clk_pll_controls pllcx_controls = {
+static struct clk_pll_controls pllcx_controls = {
 	.enable_mask = PLL_BASE_ENABLE,
 	.bypass_mask = PLL_BASE_BYPASS,
 	.reset_mask = PLLCX_MISC0_RESET,
@@ -6604,7 +6604,7 @@ static struct clk_pll_freq_table tegra_pll_a_freq_table[] = {
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
-struct clk_pll_controls plla_controls = {
+static struct clk_pll_controls plla_controls = {
 	.enable_mask = PLL_BASE_ENABLE,
 	.bypass_mask = PLL_BASE_BYPASS,
 	.iddq_mask = PLLA_BASE_IDDQ,
@@ -6673,7 +6673,7 @@ static struct clk_pll_freq_table tegra_pll_d_freq_table[] = {
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
-struct clk_pll_controls plld_controls = {
+static struct clk_pll_controls plld_controls = {
 	.enable_mask = PLL_BASE_ENABLE,
 	.bypass_mask = PLL_BASE_BYPASS,
 	.iddq_mask = PLLD_MISC0_IDDQ,
@@ -6741,7 +6741,7 @@ static struct clk_pll_freq_table tegra_pll_d2_freq_table[] = {
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
-struct clk_pll_controls plld2_controls = {
+static struct clk_pll_controls plld2_controls = {
 	.enable_mask = PLL_BASE_ENABLE,
 	.bypass_mask = PLL_BASE_BYPASS,
 	.iddq_mask = PLLDSS_BASE_IDDQ,
@@ -6803,7 +6803,7 @@ static struct clk_pll_freq_table tegra_pll_dp_freq_table[] = {
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
-struct clk_pll_controls plldp_controls = {
+static struct clk_pll_controls plldp_controls = {
 	.enable_mask = PLL_BASE_ENABLE,
 	.bypass_mask = PLL_BASE_BYPASS,
 	.iddq_mask = PLLDSS_BASE_IDDQ,
@@ -6852,7 +6852,7 @@ static struct clk_pll_freq_table tegra_pllc4_vco_freq_table[] = {
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
-struct clk_pll_controls pllc4_controls = {
+static struct clk_pll_controls pllc4_controls = {
 	.enable_mask = PLL_BASE_ENABLE,
 	.bypass_mask = PLL_BASE_BYPASS,
 	.iddq_mask = PLLDSS_BASE_IDDQ,
@@ -6935,7 +6935,7 @@ static struct clk_pll_freq_table tegra_pllre_vco_freq_table[] = {
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
-struct clk_pll_controls pllre_controls = {
+static struct clk_pll_controls pllre_controls = {
 	.enable_mask = PLL_BASE_ENABLE,
 	.bypass_mask = PLL_BASE_BYPASS,
 	.iddq_mask = PLLRE_MISC0_IDDQ,
@@ -7003,7 +7003,7 @@ static struct clk_pll_freq_table tegra_pll_x_freq_table[] = {
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
-struct clk_pll_controls pllx_controls = {
+static struct clk_pll_controls pllx_controls = {
 	.enable_mask = PLL_BASE_ENABLE,
 	.bypass_mask = PLL_BASE_BYPASS,
 	.iddq_mask = PLLX_MISC3_IDDQ,
@@ -7079,7 +7079,7 @@ static struct clk_pll_freq_table tegra_pll_m_freq_table[] = {
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
-struct clk_pll_controls pllm_controls = {
+static struct clk_pll_controls pllm_controls = {
 	.enable_mask = PLL_BASE_ENABLE,
 	.iddq_mask = PLLM_MISC0_IDDQ,
 	.iddq_reg_idx = PLL_MISC0_IDX,
@@ -7122,7 +7122,7 @@ static struct clk tegra_pll_m = {
 	},
 };
 
-struct clk_pll_controls pllmb_controls = {
+static struct clk_pll_controls pllmb_controls = {
 	.enable_mask = PLL_BASE_ENABLE,
 	.iddq_mask = PLLMB_MISC0_IDDQ,
 	.iddq_reg_idx = PLL_MISC0_IDX,
@@ -7160,7 +7160,7 @@ static struct clk_pll_freq_table tegra_pll_p_vco_freq_table[] = {
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
-struct clk_pll_controls pllp_controls = {
+static struct clk_pll_controls pllp_controls = {
 	.enable_mask = PLL_BASE_ENABLE,
 	.bypass_mask = PLL_BASE_BYPASS,
 	.iddq_mask = PLLP_MISC0_IDDQ,
@@ -7307,7 +7307,7 @@ static struct clk_pll_freq_table tegra_pll_u_vco_freq_table[] = {
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
-struct clk_pll_controls pllu_controls = {
+static struct clk_pll_controls pllu_controls = {
 	.enable_mask = PLL_BASE_ENABLE,
 	.bypass_mask = PLL_BASE_BYPASS,
 	.iddq_mask = PLLU_MISC0_IDDQ,
@@ -8961,7 +8961,7 @@ static DEFINE_MUTEX(sbus_cross_mutex);
 		.cross_clk_mutex = &sbus_cross_mutex,	\
 }
 
-struct clk tegra_list_clks[] = {
+static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("apbdma",	"tegra-apbdma",		NULL,	34,	0,	38400000,  mux_clk_m,			0),
 	PERIPH_CLK("rtc",	"rtc-tegra",		NULL,	4,	0,	32768,     mux_clk_32k,			PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("timer",	"timer",		NULL,	5,	0,	38400000,  mux_clk_m,			0),
@@ -9377,7 +9377,7 @@ static struct clk tegra_slcg_clks[] = {
  * configuration.  List those here to register them twice in the clock lookup
  * table under two names.
  */
-struct clk_duplicate tegra_clk_duplicates[] = {
+static struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("uarta",  "serial8250.0", NULL),
 	CLK_DUPLICATE("uartb",  "serial8250.1", NULL),
 	CLK_DUPLICATE("uartc",  "serial8250.2", NULL),
@@ -9478,13 +9478,13 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 };
 
 
-struct clk *tegra_main_clks[] = {
+static struct clk *tegra_main_clks[] = {
 	&tegra_clk_32k,
 	&tegra_clk_osc,
 	&tegra_clk_m,
 };
 
-struct clk *tegra_ptr_clks[] = {
+static struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_m_div2,
 	&tegra_clk_m_div4,
 	&tegra_pll_ref,
@@ -9572,7 +9572,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_usb2_hsic_trk,
 };
 
-struct clk *tegra_ptr_camera_mclks[] = {
+static struct clk *tegra_ptr_camera_mclks[] = {
 	&tegra_camera_mclk,
 	&tegra_camera_mclk2,
 	&tegra_camera_mclk3,

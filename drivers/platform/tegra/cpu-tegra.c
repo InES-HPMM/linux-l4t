@@ -954,7 +954,7 @@ cputegra_attr(downdelay, down_delay_msec, down_delay);
 cputegra_attr(top_freq, idle_top_freq, idle_top_freq);
 cputegra_attr(bottom_freq, idle_bottom_freq, idle_bottom_freq);
 
-const struct attribute *tegra_auto_cluster_switch_attrs[] = {
+static const struct attribute *tegra_auto_cluster_switch_attrs[] = {
 	&enable.attr,
 	&updelay.attr,
 	&downdelay.attr,

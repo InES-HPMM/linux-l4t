@@ -131,7 +131,7 @@ static int tegra_pd_start_dev(struct device *dev)
 	return TEGRA_PD_DEV_CALLBACK(runtime_resume, dev);
 }
 
-struct gpd_dev_ops tegra_pd_ops = {
+static struct gpd_dev_ops tegra_pd_ops = {
 	.active_wakeup = tegra_pd_active_wakeup,
 	.save_state = tegra_pd_save_dev,
 	.restore_state = tegra_pd_restore_dev,

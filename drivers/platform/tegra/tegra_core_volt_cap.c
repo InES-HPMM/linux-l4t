@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/tegra_core_volt_cap.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -186,7 +186,7 @@ static struct kobj_attribute cap_state_attribute =
 static struct kobj_attribute cap_level_attribute =
 	__ATTR(core_cap_level, 0644, core_cap_level_show, core_cap_level_store);
 
-const struct attribute *cap_attributes[] = {
+static const struct attribute *cap_attributes[] = {
 	&cap_state_attribute.attr,
 	&cap_level_attribute.attr,
 	NULL,
