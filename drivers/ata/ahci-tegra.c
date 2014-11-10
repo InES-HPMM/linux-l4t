@@ -415,16 +415,6 @@ enum clk_gate_state {
 	CLK_ON,
 };
 
-char *sata_power_rails[] = {
-	"avdd_sata",
-	"vdd_sata",
-	"hvdd_sata",
-	"avdd_sata_pll",
-	"vddio_pex_sata"
-};
-
-#define NUM_SATA_POWER_RAILS	ARRAY_SIZE(sata_power_rails)
-
 struct tegra_qc_list {
 	struct list_head list;
 	struct ata_queued_cmd *qc;
@@ -586,7 +576,7 @@ static struct platform_driver tegra_platform_ahci_driver = {
 	},
 };
 
-struct tegra_ahci_host_priv *g_tegra_hpriv;
+static struct tegra_ahci_host_priv *g_tegra_hpriv;
 
 static inline u32 port_readl(u32 offset)
 {
@@ -861,7 +851,7 @@ static void tegra_ahci_set_pad_cntrl_regs(
 	scfg_writel(SATA0_NONE_SELECTED, T_SATA0_INDEX_OFFSET);
 }
 
-int tegra_ahci_get_rails(struct tegra_ahci_host_priv *tegra_hpriv)
+static int tegra_ahci_get_rails(struct tegra_ahci_host_priv *tegra_hpriv)
 {
 	struct regulator *reg;
 	int i;
@@ -889,7 +879,7 @@ exit:
 	return ret;
 }
 
-int tegra_ahci_power_off_rails(struct tegra_ahci_host_priv *tegra_hpriv,
+static int tegra_ahci_power_off_rails(struct tegra_ahci_host_priv *tegra_hpriv,
 		int num_reg)
 {
 	struct regulator *reg;
@@ -914,7 +904,7 @@ int tegra_ahci_power_off_rails(struct tegra_ahci_host_priv *tegra_hpriv,
 	return rc;
 }
 
-int tegra_ahci_power_on_rails(struct tegra_ahci_host_priv *tegra_hpriv)
+static int tegra_ahci_power_on_rails(struct tegra_ahci_host_priv *tegra_hpriv)
 {
 	int i;
 	int ret = 0;
@@ -2533,7 +2523,7 @@ static bool tegra_ahci_check_errors(struct ata_host *host)
 	return false;
 }
 
-void tegra_ahci_iddqlane_config(void)
+static void tegra_ahci_iddqlane_config(void)
 {
 	u32 val;
 	u32 dat;
@@ -2617,7 +2607,7 @@ static void tegra_ahci_t210_power_up_aux_idle_detector(void)
 	xusb_writel(val, XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0);
 }
 
-void tegra_ahci_put_sata_in_iddq()
+static void tegra_ahci_put_sata_in_iddq()
 {
 	u32 val;
 	u32 dat;
@@ -2658,7 +2648,7 @@ void tegra_ahci_put_sata_in_iddq()
 	}
 }
 
-void tegra_ahci_clr_clk_rst_cnt_rst_dev(void)
+static void tegra_ahci_clr_clk_rst_cnt_rst_dev(void)
 {
 	u32 val;
 
@@ -2671,7 +2661,7 @@ void tegra_ahci_clr_clk_rst_cnt_rst_dev(void)
 	clk_writel(val, CLK_RST_CONTROLLER_RST_DEV_W_CLR_0);
 
 }
-void tegra_ahci_set_clk_rst_cnt_rst_dev(void)
+static void tegra_ahci_set_clk_rst_cnt_rst_dev(void)
 {
 
 	u32 val;
@@ -3121,7 +3111,7 @@ static int tegra_ahci_remove_one(struct platform_device *pdev)
 
 	return 0;
 }
-void tegra_ahci_sata_clk_gate(void)
+static void tegra_ahci_sata_clk_gate(void)
 {
 	u32 val;
 
