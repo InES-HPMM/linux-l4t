@@ -130,7 +130,7 @@ static int tegra_rtc_sec_alarm0_irq_enable(unsigned int enabled)
 	return 0;
 }
 
-void tegra_rtc_set_alarm(unsigned int period)
+static void tegra_rtc_set_alarm(unsigned int period)
 {
 	unsigned int sec;
 	unsigned int msec;
@@ -276,7 +276,7 @@ err_out:
  * tegra_rtc driver could be executing to avoid race conditions
  * on the RTC shadow register
  */
-void tegra_read_persistent_clock(struct timespec *ts)
+static void tegra_read_persistent_clock(struct timespec *ts)
 {
 	u64 delta;
 	struct timespec *tsp = &persistent_ts;
