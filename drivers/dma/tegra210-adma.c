@@ -933,7 +933,7 @@ static struct dma_async_tx_descriptor *tegra_adma_prep_slave_sg(
 	return &dma_desc->txd;
 }
 
-struct dma_async_tx_descriptor *tegra_adma_prep_dma_cyclic(
+static struct dma_async_tx_descriptor *tegra_adma_prep_dma_cyclic(
 	struct dma_chan *dc, dma_addr_t buf_addr, size_t buf_len,
 	size_t period_len, enum dma_transfer_direction direction,
 	unsigned long flags, void *context)
@@ -1455,16 +1455,6 @@ static int tegra_adma_pm_resume(struct device *dev)
 	return 0;
 }
 #endif
-
-int tegra_adma_save(void)
-{
-	return tegra_adma_pm_suspend(dma_device);
-}
-
-int tegra_adma_restore(void)
-{
-	return tegra_adma_pm_resume(dma_device);
-}
 
 static const struct dev_pm_ops tegra_adma_dev_pm_ops = {
 #ifdef CONFIG_PM_RUNTIME
