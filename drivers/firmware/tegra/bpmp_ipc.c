@@ -82,7 +82,7 @@ static int cpu_mrqs[] = {
 static struct mrq_handler_data mrq_handlers[ARRAY_SIZE(cpu_mrqs)];
 static uint8_t mrq_handler_index[NR_MRQS];
 static struct mb_data *channel_area[NR_CHANNELS];
-struct completion completion[NR_THREAD_CH];
+static struct completion completion[NR_THREAD_CH];
 static int connected;
 static DEFINE_SPINLOCK(lock);
 
@@ -256,7 +256,7 @@ static void bpmp_ack_doorbell(int irq)
 	writel(FIR_BIT(irq), ICTLR_FIR_CLR(irq));
 }
 
-irqreturn_t bpmp_inbox_irq(int irq, void *data)
+static irqreturn_t bpmp_inbox_irq(int irq, void *data)
 {
 	unsigned long flags;
 	int ch;
