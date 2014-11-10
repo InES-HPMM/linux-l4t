@@ -187,7 +187,7 @@ static int ad5823_open(struct inode *inode, struct file *file)
 	return err;
 }
 
-int ad5823_release(struct inode *inode, struct file *file)
+static int ad5823_release(struct inode *inode, struct file *file)
 {
 	struct ad5823_info *info = file->private_data;
 

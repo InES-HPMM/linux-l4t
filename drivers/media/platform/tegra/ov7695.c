@@ -467,7 +467,7 @@ static int ov7695_open(struct inode *inode, struct file *file)
 	return err;
 }
 
-int ov7695_release(struct inode *inode, struct file *file)
+static int ov7695_release(struct inode *inode, struct file *file)
 {
 	struct ov7695_info *info = file->private_data;
 

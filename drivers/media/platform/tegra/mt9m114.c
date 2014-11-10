@@ -559,7 +559,7 @@ static int mt9m114_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-int mt9m114_release(struct inode *inode, struct file *file)
+static int mt9m114_release(struct inode *inode, struct file *file)
 {
 	struct mt9m114_info *info = file->private_data;
 

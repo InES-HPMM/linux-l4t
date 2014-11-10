@@ -2359,7 +2359,7 @@ static int ov9772_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-int ov9772_release(struct inode *inode, struct file *file)
+static int ov9772_release(struct inode *inode, struct file *file)
 {
 	struct ov9772_info *info = file->private_data;
 

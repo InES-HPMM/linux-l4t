@@ -992,7 +992,3 @@ int of_camera_init(struct camera_platform_info *info)
 	return 0;
 }
 
-int of_camera_remove(void)
-{
-	return 0;
-}

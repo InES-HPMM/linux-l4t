@@ -242,7 +242,7 @@ static int dw9718_position_wr(struct dw9718_info *info, s32 position)
 	return err;
 }
 
-int dw9718_set_arc_mode(struct dw9718_info *info)
+static int dw9718_set_arc_mode(struct dw9718_info *info)
 {
 	int err;
 	u32 sr = info->nv_config.slew_rate;
