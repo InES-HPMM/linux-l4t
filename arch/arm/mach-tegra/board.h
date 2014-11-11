@@ -99,7 +99,6 @@ void __init tegra20_init_early(void);
 void __init tegra30_init_early(void);
 void __init tegra11x_init_early(void);
 void __init tegra12x_init_early(void);
-void __init tegra14x_init_early(void);
 void __init tegra21x_init_early(void);
 void __init tegra_map_common_io(void);
 phys_addr_t __init tegra_reserve_adsp(unsigned long size);
@@ -146,11 +145,6 @@ extern phys_addr_t tegra_vpr_size;
 extern phys_addr_t tegra_lp0_vec_start;
 extern phys_addr_t tegra_lp0_vec_size;
 extern bool tegra_vpr_resize;
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-extern phys_addr_t tegra_wb0_params_address;
-extern phys_addr_t tegra_wb0_params_instances;
-extern phys_addr_t tegra_wb0_params_block_size;
-#endif
 #ifdef CONFIG_TEGRA_NVDUMPER
 extern unsigned long nvdumper_reserved;
 #endif

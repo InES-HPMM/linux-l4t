@@ -350,28 +350,6 @@ config TEGRA_MC_EARLY_ACK
 	  controller. This feature is used to improve CPU memory
 	  write performance.
 
-config TEGRA_ERRATA_1252872
-	bool "DLL experiences internal sychronization issue"
-	depends on ARCH_TEGRA_14x_SOC
-	help
-	  The digital DLL in the T148 A01 chip has an internal synchronization
-	  issue that can lead to reading invalid results. These invalid results
-	  are returned when multiple bits change in one calibration value to
-	  the next. To work around this a two step process is used: (1) the DLL
-	  is enabled and locked (but not sampled); and (2) the DLL clock is
-	  disabled and the internal state machine is reinvoked (and then
-	  sampled). This requires that the DLL is never placed in a continuous
-	  running mode.
-
-config TEGRA_ERRATA_1213083
-	bool "HOTRESET_STAT can return invalid status"
-	depends on ARCH_TEGRA_14x_SOC
-	help
-	  On T14x it is possible to read the HOTRESET_STAT register before
-	  the HW has had a chance to transition into the flush state. Thus
-	  the flush status appears to be done. This errata adds a small delay
-	  (at least 25 mcclk cycles) before polling the HOTRESET_STAT register.
-
 config TEGRA_ERRATA_1157520
 	bool "Memory writes are not consistent/ordered from CPU"
 	depends on ARCH_TEGRA_11x_SOC
@@ -383,7 +361,7 @@ config TEGRA_ERRATA_1157520
 
 config TEGRA_ERRATA_977223
 	bool "PTSA ring 1 to ring 0 does not account for forced coalescing"
-	depends on ARCH_TEGRA_11x_SOC || ARCH_TEGRA_14x_SOC
+	depends on ARCH_TEGRA_11x_SOC
 	help
 	  The forced coalescing logic will "drop" the first request of the
 	  coalesced pair after the ring 1 snap arbiter.  This means that for
@@ -419,7 +397,6 @@ config TEGRA_GADGET_BOOST_CPU_FREQ
 	int "Boost cpu frequency for tegra usb gadget"
 	range 0 1300 if ARCH_TEGRA_3x_SOC
 	range 0 1800 if ARCH_TEGRA_11x_SOC
-	range 0 2000 if ARCH_TEGRA_14x_SOC
 	range 0 2000 if ARCH_TEGRA_12x_SOC
 	default 0
 	help
@@ -433,7 +410,6 @@ config TEGRA_EHCI_BOOST_CPU_FREQ
         int "Boost cpu frequency(in Mhz) for tegra usb host"
         range 0 1300 if ARCH_TEGRA_3x_SOC
         range 0 1800 if ARCH_TEGRA_11x_SOC
-        range 0 2000 if ARCH_TEGRA_14x_SOC
         range 0 2000 if ARCH_TEGRA_12x_SOC
         default 0
         help
@@ -815,11 +791,10 @@ config TEGRA_USE_SIMON
 
 config AID_FUSE
 	bool "Support AID fuse reads"
-	default n if ARCH_TEGRA_11x_SOC || ARCH_TEGRA_14x_SOC || \
-	(ARCH_TEGRA_12x_SOC && !ARCH_TEGRA_13x_SOC) || ARCH_TEGRA_21x_SOC
+	default n if !ARCH_TEGRA_13x_SOC
 	default y
 	help
 	  When enabled, allows sysfs reads of the AID fuse, which contains
-	  the chip family ID and a chip-unique Tegra ID. Supported on t132+.
+	  the chip family ID and a chip-unique Tegra ID. Supported on t132.
 
 endif

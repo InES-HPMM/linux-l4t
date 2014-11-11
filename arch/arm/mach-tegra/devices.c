@@ -585,38 +585,6 @@ struct platform_device tegra_dam_device2 = {
 };
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-static struct resource dmic_resource0[] = {
-	[0] = {
-		.start = TEGRA_DMIC0_BASE,
-		.end   = TEGRA_DMIC0_BASE + TEGRA_DMIC0_SIZE - 1,
-		.flags = IORESOURCE_MEM
-	}
-};
-
-struct platform_device tegra_dmic_device0 = {
-	.name = "tegra-dmic",
-	.id = 0,
-	.resource      = dmic_resource0,
-	.num_resources = ARRAY_SIZE(dmic_resource0),
-};
-
-static struct resource dmic_resource1[] = {
-	[0] = {
-		.start = TEGRA_DMIC1_BASE,
-		.end   = TEGRA_DMIC1_BASE + TEGRA_DMIC1_SIZE - 1,
-		.flags = IORESOURCE_MEM
-	}
-};
-
-struct platform_device tegra_dmic_device1 = {
-	.name = "tegra-dmic",
-	.id = 1,
-	.resource      = dmic_resource1,
-	.num_resources = ARRAY_SIZE(dmic_resource1),
-};
-#endif
-
 #if defined(CONFIG_ARCH_TEGRA_APE)
 static struct resource tegra_axbar_resource[] = {
 	[0] = {

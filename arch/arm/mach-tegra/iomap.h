@@ -39,11 +39,7 @@
 #endif
 
 #define TEGRA_IRAM_BASE			0x40000000
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-#define TEGRA_IRAM_SIZE			(192 * SZ_1K)
-#else
 #define TEGRA_IRAM_SIZE			SZ_256K
-#endif
 
 /* First 1K of IRAM is reserved for cpu reset handler. */
 #define TEGRA_RESET_HANDLER_BASE	TEGRA_IRAM_BASE
@@ -74,14 +70,6 @@
 
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-
-#define TEGRA_ARM_PL310_BASE		0x50061000
-#define TEGRA_ARM_PL310_SIZE		SZ_4K
-
-#endif
-
-
 #define TEGRA_GK20A_BAR0_BASE  0x57000000
 #define TEGRA_GK20A_BAR0_SIZE  SZ_16M
 
@@ -99,8 +87,7 @@
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC) || \
 	defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
-	defined(CONFIG_ARCH_TEGRA_11x_SOC) || \
-	defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define TEGRA_ISP_BASE			0x54100000
 #define TEGRA_ISP_SIZE			SZ_256K
 #else
@@ -373,8 +360,7 @@
 #define TEGRA_HDA_BASE			0x70030000
 #define TEGRA_HDA_SIZE			SZ_64K
 
-#if (defined(CONFIG_ARCH_TEGRA_14x_SOC) || \
-defined(CONFIG_ARCH_TEGRA_12x_SOC))
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #define TEGRA_AUDIO_CLUSTER_BASE	0x70300000
 #define TEGRA_AUDIO_CLUSTER_SIZE	SZ_64K
 
@@ -878,7 +864,7 @@ defined(CONFIG_ARCH_TEGRA_12x_SOC))
 #define TEGRA_KFUSE_SIZE		SZ_1K
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)  || defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
-    defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define TEGRA_CSITE_BASE		0x70040000
 #else
 #define TEGRA_CSITE_BASE		0x70800000
@@ -941,7 +927,7 @@ defined(CONFIG_ARCH_TEGRA_12x_SOC))
 #define TEGRA_ASIM_QT_CARVEOUT_MIN_SIZE		SZ_128M
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)  || defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
-    defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+defined(CONFIG_ARCH_TEGRA_11x_SOC)
 
 #define TEGRA_SDMMC1_BASE		0x78000000
 #define TEGRA_SDMMC1_SIZE		SZ_512
@@ -990,12 +976,6 @@ defined(CONFIG_ARCH_TEGRA_12x_SOC))
 
 #define TEGRA_I2C6_BASE			0x7000d100
 #define TEGRA_I2C6_SIZE			SZ_512
-#endif
-
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-
-#define TEGRA_MIPI_BIF_BASE		0x70120000
-#define TEGRA_MIPI_BIF_SIZE		SZ_1K
 #endif
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)

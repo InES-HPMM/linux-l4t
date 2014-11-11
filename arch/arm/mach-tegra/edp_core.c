@@ -177,11 +177,6 @@ void __init tegra_init_core_edp_limits(unsigned int regulator_mA)
 			regulator_mA, &core_edp_limits))
 			return;
 		break;
-	case TEGRA_CHIPID_TEGRA14:
-		if (tegra14x_select_core_edp_table(
-			regulator_mA, &core_edp_limits))
-			return;
-		break;
 	default:
 		pr_err("%s: core edp is not supported on chip ID %d\n",
 		       __func__, tegra_chip_id);

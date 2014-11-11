@@ -298,17 +298,6 @@ tegra_shut_off_mmu:
 	tst	r11, #1
 	beq	2f
 	mov32	r1, TEGRA_ARM_PL310_BASE
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	/* need to flush the L2 */
-	ldr	r2, [r1, #L2X0_AUX_CTRL]
-	tst	r2, #(1 << 16)			@ associativity
-	mov	r2, #0xff
-	orrne	r2, #0xff00
-	str	r2, [r1, #L2X0_CLEAN_INV_WAY]
-1:	ldr	r3, [r1, #L2X0_CLEAN_INV_WAY]
-	tst	r3, r2
-	bne	1b
-#endif /* CONFIG_ARCH_TEGRA_14x_SOC */
 	/* Sync and disable L2 */
 	mov	r2, #0
 	str	r2, [r1, #L2X0_CACHE_SYNC]

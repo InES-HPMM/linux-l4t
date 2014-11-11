@@ -71,11 +71,6 @@ void tegra_lp1bb_suspend_emc_rate(unsigned long emc_min, unsigned long emc_max);
 void tegra_lp1bb_suspend_mv_set(int mv);
 unsigned long tegra_lp1bb_emc_min_rate_get(void);
 
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-#define FLOW_CTRL_CLUSTER_CONTROL \
-	(IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + 0x2c)
-#endif
-
 #define FLOW_CTRL_CPU_PWR_CSR \
 	(IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + 0x38)
 #define FLOW_CTRL_CPU_PWR_CSR_RAIL_ENABLE	1
@@ -233,11 +228,6 @@ extern bool tegra_all_cpus_booted __read_mostly;
 void tegra_smp_clear_power_mask(void);
 #else
 static inline void tegra_smp_clear_power_mask(void){}
-#endif
-
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-void tegra_smp_save_power_mask(void);
-void tegra_smp_restore_power_mask(void);
 #endif
 
 u32 tegra_restart_prev_smc(void);
