@@ -1608,7 +1608,7 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 	u32 mr13_flip_fspop;
 
 	u32 opt_zcal_en_cc;
-	u32 opt_do_sw_qrst = 0;
+	u32 opt_do_sw_qrst = 1;
 	u32 opt_dvfs_mode;
 	u32 opt_dll_mode;
 	u32 opt_cc_short_zcal = 1;
