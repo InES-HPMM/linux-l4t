@@ -54,6 +54,9 @@ in HS400 mode.
 - nvidia,is-emmc: Enable this flag for eMMC devices
 - nvidia,enable-ext-loopback: flag when set, enables external loopback
 - nvidia,limit-vddio-max-volt: enable this flag for sdmmc1/3 if it has Vddio 3.3v support.
+- nvidia,enable-hs533-mode: Set this Flag toenable HS533 mode.
+	---> eMMC card does not advertise HS533 mode support in device registers.
+	---> This flag has to be enabled only if the card supports HS533 mode, other wise the consequences are un-known.(Errors will be seen)
 
 Example:
 

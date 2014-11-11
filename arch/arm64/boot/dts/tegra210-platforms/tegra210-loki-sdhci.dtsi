@@ -24,7 +24,7 @@
 		nvidia,ddr-tap-delay = <0>;
 		mmc-ocr-mask = <0>;
 		dqs-trim-delay = <17>;
-		max-clk-limit = <200000000>;
+		max-clk-limit = <266000000>;
 		bus-width = <8>;
 		calib-3v3-offsets = <0x0505>;
 		calib-1v8-offsets = <0x0505>;
@@ -33,6 +33,8 @@
 		compad-vref-1v8 = <0x7>;
 		nvidia,en-io-trim-volt;
 		nvidia,is-emmc;
+		nvidia,enable-hs533-mode;
+		pll_source = "pll_p", "pll_c4_out1";
 	};
 
 	sdhci@700b0400 { /* SDMMC3 for 2nd Wifi on loki */
