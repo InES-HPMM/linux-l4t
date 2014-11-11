@@ -452,9 +452,6 @@ static void sdhci_transfer_pio(struct sdhci_host *host)
 
 	BUG_ON(!host->data);
 
-	if (host->blocks == 0)
-		return;
-
 	if (host->data->flags & MMC_DATA_READ)
 		mask = SDHCI_DATA_AVAILABLE;
 	else
@@ -469,7 +466,13 @@ static void sdhci_transfer_pio(struct sdhci_host *host)
 		(host->data->blocks == 1))
 		mask = ~0;
 
-	while (sdhci_readl(host, SDHCI_PRESENT_STATE) & mask) {
+	/*
+	 * Start the transfer if the present state register indicates
+	 * SDHCI_DATA_AVAILABLE or SDHCI_SPACE_AVAILABLE. The driver should
+	 * transfer one complete block of data and wait for the buffer ready
+	 * interrupt to transfer the next block of data.
+	 */
+	if (sdhci_readl(host, SDHCI_PRESENT_STATE) & mask) {
 		if (host->quirks & SDHCI_QUIRK_PIO_NEEDS_DELAY)
 			udelay(100);
 
@@ -477,10 +480,6 @@ static void sdhci_transfer_pio(struct sdhci_host *host)
 			sdhci_read_block_pio(host);
 		else
 			sdhci_write_block_pio(host);
-
-		host->blocks--;
-		if (host->blocks == 0)
-			break;
 	}
 
 	DBG("PIO transfer complete.\n");
