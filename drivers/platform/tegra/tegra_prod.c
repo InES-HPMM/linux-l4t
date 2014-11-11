@@ -170,7 +170,8 @@ int tegra_prod_set_tuple(void __iomem **base, struct prod_tuple *prod_tuple)
 	writel(reg, base[prod_tuple->index] + prod_tuple->addr);
 
 	return 0;
-};
+}
+EXPORT_SYMBOL(tegra_prod_set_tuple);
 
 /**
  * tegra_prod_set - Set one prod setting.
@@ -196,6 +197,7 @@ int tegra_prod_set(void __iomem **base, struct tegra_prod *tegra_prod)
 
 	return 0;
 }
+EXPORT_SYMBOL(tegra_prod_set);
 
 /**
  * tegra_prod_set_list - Set all the prod settings of the list in sequence.
@@ -221,6 +223,7 @@ int tegra_prod_set_list(void __iomem **base,
 
 	return 0;
 }
+EXPORT_SYMBOL(tegra_prod_set_list);
 
 /**
  * tegra_prod_set_boot_init - Set all the prod settings of the list in sequence
@@ -249,6 +252,7 @@ int tegra_prod_set_boot_init(void __iomem **base,
 
 	return 0;
 }
+EXPORT_SYMBOL(tegra_prod_set_boot_init);
 
 /**
  * tegra_prod_set_by_name - Set the prod setting according the name.
@@ -280,6 +284,7 @@ int tegra_prod_set_by_name(void __iomem **base, const char *name,
 
 	return -ENODEV;
 }
+EXPORT_SYMBOL(tegra_prod_set_by_name);
 
 /**
  * tegra_prod_init - Init tegra prod list.
@@ -341,6 +346,7 @@ err_prod_alloc:
 	kfree(tegra_prod_list);
 	return ERR_PTR(ret);
 }
+EXPORT_SYMBOL(tegra_prod_init);
 
 /**
  * tegra_prod_get - Get the prod list for tegra.
@@ -356,6 +362,7 @@ struct tegra_prod_list *tegra_prod_get(struct device *dev, const char *name)
 
 	return tegra_prod_init(dev->of_node);
 }
+EXPORT_SYMBOL(tegra_prod_get);
 
 /**
  * tegra_prod_release - Release all the resources.
@@ -390,3 +397,4 @@ int tegra_prod_release(struct tegra_prod_list **tegra_prod_list)
 	*tegra_prod_list = NULL;
 	return 0;
 }
+EXPORT_SYMBOL(tegra_prod_release);
