@@ -120,10 +120,10 @@ int t210_hsic_pad_enable(struct tegra_xhci_hcd *tegra, u8 pad)
 	tegra_prod_set_by_name(&tegra->base_list[0], prod_name,
 				tegra->prod_list);
 
-	/* keep HSIC in IDLE */
+	/* keep HSIC in RESET */
 	mask = RPD_DATA | RPD_STROBE | RPU_DATA | RPU_STROBE;
 	mask |= PD_RX | PD_ZI | PD_TX;
-	val = RPD_DATA | RPU_STROBE;
+	val = RPD_DATA | RPD_STROBE;
 	tegra_usb_pad_reg_update(HSIC_PAD_CTL_0(pad), mask, val);
 
 	hsic_trk_enable();

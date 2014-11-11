@@ -2361,8 +2361,6 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 		dev_err(&pdev->dev, "Controller not ready\n");
 		return -EFAULT;
 	}
-	for_each_enabled_hsic_pad(pad, tegra)
-		hsic_pad_pupd_set(tegra, pad, PUPD_IDLE);
 
 	return 0;
 }
@@ -2829,6 +2827,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	struct xhci_hcd *xhci = tegra->xhci;
 	int ret = 0;
+	int pad;
 
 	must_have_sync_lock(tegra);
 
@@ -2933,6 +2932,8 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 			__func__, ret);
 		goto out;
 	}
+	for_each_enabled_hsic_pad(pad, tegra)
+		hsic_pad_pupd_set(tegra, pad, PUPD_IDLE);
 
 	pmc_disable_bus_ctrl(tegra);
 
