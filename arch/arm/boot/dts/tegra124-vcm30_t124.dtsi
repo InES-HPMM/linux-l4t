@@ -180,9 +180,10 @@
 		max-clk-limit = <200000000>;
 		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
-		nvidia,disable-auto-cal;
+		calib-3v3-offsets = <0x615F>;
+		calib-1v8-offsets = <0x615F>;
+		auto-cal-step = <0x7>;
 		status = "disabled";
-		nvidia,disable-auto-cal;
 	};
 
 	sdhci@700b0200 {
