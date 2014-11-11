@@ -351,7 +351,7 @@ struct tegra_xhci_hcd {
 	struct tegra_xusb_platform_data *pdata;
 	struct tegra_xusb_board_data *bdata;
 	struct tegra_xusb_chip_calib *cdata;
-	struct tegra_xusb_padctl_regs *padregs;
+	const struct tegra_xusb_padctl_regs *padregs;
 	const struct tegra_xusb_soc_config *soc_config;
 	u64 tegra_xusb_dmamask;
 

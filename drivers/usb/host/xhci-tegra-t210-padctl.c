@@ -86,7 +86,7 @@ void t210_program_utmi_pad(struct tegra_xhci_hcd *tegra, u8 port)
 	char prod_name[15];
 
 	sprintf(prod_name, XUSB_PROD_PREFIX_UTMI "%d", port);
-	tegra_prod_set_by_name(&tegra->base_list, prod_name,
+	tegra_prod_set_by_name(&tegra->base_list[0], prod_name,
 				tegra->prod_list);
 	xusb_utmi_pad_init(port, USB2_PORT_CAP_HOST(port)
 		, tegra->bdata->uses_external_pmic);
@@ -97,7 +97,7 @@ void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port)
 	char prod_name[15];
 
 	sprintf(prod_name, XUSB_PROD_PREFIX_SS "%d", port);
-	tegra_prod_set_by_name(&tegra->base_list, prod_name,
+	tegra_prod_set_by_name(&tegra->base_list[0], prod_name,
 					tegra->prod_list);
 	xusb_ss_pad_init(port, GET_SS_PORTMAP(tegra->bdata->ss_portmap, port)
 			, XUSB_HOST_MODE);
@@ -106,7 +106,6 @@ void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port)
 int t210_hsic_pad_enable(struct tegra_xhci_hcd *tegra, u8 pad)
 {
 	struct device *dev = &tegra->pdev->dev;
-	struct tegra_xusb_hsic_config *hsic = &tegra->bdata->hsic[pad];
 	u32 mask, val;
 	char prod_name[15];
 
@@ -118,7 +117,7 @@ int t210_hsic_pad_enable(struct tegra_xhci_hcd *tegra, u8 pad)
 	dev_dbg(dev, "%s pad %u\n", __func__, pad);
 
 	sprintf(prod_name, XUSB_PROD_PREFIX_HSIC "%d", pad);
-	tegra_prod_set_by_name(&tegra->base_list, prod_name,
+	tegra_prod_set_by_name(&tegra->base_list[0], prod_name,
 				tegra->prod_list);
 
 	/* keep HSIC in IDLE */
@@ -197,7 +196,7 @@ static void t210_lfps_detector(struct tegra_xhci_hcd *tegra,
 	struct device *dev = &tegra->pdev->dev;
 	u8 lane = (tegra->bdata->lane_owner >> (port * 4)) & 0xf;
 	enum padctl_lane lane_enum = usb3_laneowner_to_lane_enum(lane);
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 misc_pad_ctl1;
 	u32 mask, val;
 

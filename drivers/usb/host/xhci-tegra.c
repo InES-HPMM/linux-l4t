@@ -204,7 +204,7 @@ static struct tegra_usb_pmc_data pmc_hsic_data[XUSB_HSIC_COUNT];
 static void save_ctle_context(struct tegra_xhci_hcd *tegra,
 	u8 port)  __attribute__ ((unused));
 
-static const char *firmware_file = "";
+static char *firmware_file = "";
 #define FIRMWARE_FILE_HELP	\
 	"used to specify firmware file of Tegra XHCI host controller. "
 
@@ -1060,7 +1060,7 @@ static int hsic_pad_enable(struct tegra_xhci_hcd *tegra, unsigned pad)
 	struct device *dev = &tegra->pdev->dev;
 	void __iomem *base = tegra->padctl_base;
 	struct tegra_xusb_hsic_config *hsic = &tegra->bdata->hsic[pad];
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 reg;
 
 	if (pad >= XUSB_HSIC_COUNT) {
@@ -1202,7 +1202,7 @@ static int hsic_pad_disable(struct tegra_xhci_hcd *tegra, unsigned pad)
 #else
 	struct device *dev = &tegra->pdev->dev;
 	void __iomem *base = tegra->padctl_base;
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 reg;
 
 	if (pad >= XUSB_HSIC_COUNT) {
@@ -1236,7 +1236,7 @@ static int hsic_pad_pupd_set(struct tegra_xhci_hcd *tegra, unsigned pad,
 		return t210_hsic_pad_pupd_set(tegra, pad, pupd);
 #else
 	struct device *dev = &tegra->pdev->dev;
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 reg;
 
 	if (pad >= XUSB_HSIC_COUNT) {
@@ -1268,7 +1268,7 @@ static int hsic_pad_pupd_set(struct tegra_xhci_hcd *tegra, unsigned pad,
 
 static void tegra_xhci_debug_read_pads(struct tegra_xhci_hcd *tegra)
 {
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	struct xhci_hcd *xhci = tegra->xhci;
 	u32 reg;
 
@@ -1609,7 +1609,7 @@ static void tegra_xusb_partitions_clk_deinit(struct tegra_xhci_hcd *tegra)
 static void tegra_xhci_rx_idle_mode_override(struct tegra_xhci_hcd *tegra,
 	bool enable)
 {
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 reg;
 
 	/* Issue is only applicable for T114 */
@@ -1733,7 +1733,7 @@ static void tegra_xhci_save_dfe_context(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
 	struct xhci_hcd *xhci = tegra->xhci;
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 offset;
 	u32 reg;
 	int ss_pads = tegra->soc_config->ss_pad_count;
@@ -1790,7 +1790,7 @@ static void save_ctle_context(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
 	struct xhci_hcd *xhci = tegra->xhci;
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 offset;
 	u32 reg;
 	int ss_pads = tegra->soc_config->ss_pad_count;
@@ -1848,6 +1848,7 @@ static void save_ctle_context(struct tegra_xhci_hcd *tegra,
 	tegra->ctle_ctx_saved = (1 << port);
 }
 
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_13x_SOC)
 static void tegra_xhci_restore_dfe_context(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
@@ -1893,11 +1894,12 @@ static void restore_ctle_context(struct tegra_xhci_hcd *tegra,
 	padctl_writel(tegra, reg
 			, tegra->padregs->iophy_usb3_padX_ctlY_0[port][2]);
 }
+#endif
 
 static void tegra_xhci_program_ulpi_pad(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 reg;
 
 	reg = padctl_readl(tegra, padregs->usb2_pad_mux_0);
@@ -1918,15 +1920,13 @@ static void tegra_xhci_program_ulpi_pad(struct tegra_xhci_hcd *tegra,
 static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
-#ifndef CONFIG_ARCH_TEGRA_21x_SOC
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
-#endif
-	u32 reg;
-	u32 ctl0_offset;
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	if (XUSB_IS_T210(tegra))
 		t210_program_utmi_pad(tegra, port);
 #else
+	u32 ctl0_offset;
+	u32 reg;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	xusb_utmi_pad_init(port, USB2_PORT_CAP_HOST(port)
 			, tegra->bdata->uses_external_pmic);
 
@@ -1959,10 +1959,11 @@ static inline bool xusb_use_sata_lane(struct tegra_xhci_hcd *tegra)
 	return ret;
 }
 
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 ctl2_offset, ctl4_offset, ctl5_offset;
 	u32 reg;
 
@@ -2011,6 +2012,7 @@ static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 	tegra_xhci_restore_dfe_context(tegra, port);
 	tegra_xhci_restore_ctle_context(tegra, port);
 }
+#endif
 
 /* This function assigns the USB ports to the controllers,
  * then programs the port capabilities and pad parameters
@@ -2019,15 +2021,14 @@ static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 static void
 tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 {
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 reg = 0;
 	unsigned pad;
 	u32 ss_pads;
-	char prod_name[15];
 
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	if (tegra->prod_list)
-		tegra_prod_set_by_name(&tegra->base_list, "prod",
+		tegra_prod_set_by_name(&tegra->base_list[0], "prod",
 				tegra->prod_list);
 #endif
 	reg = padctl_readl(tegra, padregs->usb2_bias_pad_ctlY_0[0]);
@@ -2352,7 +2353,7 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 static void tegra_xhci_release_port_ownership(struct tegra_xhci_hcd *tegra,
 	bool release)
 {
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 reg;
 
 	/* Issue is only applicable for T114 */
@@ -2379,6 +2380,7 @@ static void tegra_xhci_release_port_ownership(struct tegra_xhci_hcd *tegra,
 static int get_host_controlled_ports(struct tegra_xhci_hcd *tegra)
 {
 	int enabled_ports = 0;
+
 	enabled_ports = tegra->bdata->portmap;
 
 	if (tegra->otg_port_owned)
@@ -2693,7 +2695,7 @@ static void wait_remote_wakeup_ports(struct usb_hcd *hcd)
 
 static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 {
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 reg, utmip_rctrl_val, utmip_tctrl_val, pad_mux, portmux, portowner;
 
 	portmux = USB2_OTG_PAD_PORT_MASK(0) | USB2_OTG_PAD_PORT_MASK(1);
@@ -2766,6 +2768,7 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 static void tegra_init_otg_port(struct tegra_xhci_hcd *tegra)
 {
 	struct xhci_hcd	*xhci = tegra->xhci;
+
 	u32 portsc;
 
 	if (!tegra->otg_port_owned || !tegra->otg_port_ownership_changed)
@@ -2806,7 +2809,7 @@ static void tegra_init_otg_port(struct tegra_xhci_hcd *tegra)
 static int
 tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 {
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	struct xhci_hcd *xhci = tegra->xhci;
 	int ret = 0;
 
@@ -3138,7 +3141,7 @@ static irqreturn_t tegra_xhci_padctl_irq(int irq, void *ptrdev)
 {
 	struct tegra_xhci_hcd *tegra = (struct tegra_xhci_hcd *) ptrdev;
 	struct xhci_hcd *xhci = tegra->xhci;
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 elpg_program0 = 0;
 	int host_ports = get_host_controlled_ports(tegra);
 
@@ -3449,10 +3452,10 @@ xhci_bus_resume_failed:
 #ifdef CONFIG_TEGRA_XHCI_ENABLE_CDP_PORT
 static void set_port_cdp(struct tegra_xhci_hcd *tegra, bool enable, int pad)
 {
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
-	void __iomem *bchrg_otgpad_reg =
+	const struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+	u32 __iomem bchrg_otgpad_reg =
 				padregs->usb2_bchrg_otgpadX_ctlY_0[pad][0];
-	void __iomem *otg_pad_reg = padregs->usb2_otg_padX_ctlY_0[pad][0];
+	u32 __iomem otg_pad_reg = padregs->usb2_otg_padX_ctlY_0[pad][0];
 	long val;
 
 	if (enable) {
@@ -3855,10 +3858,11 @@ static int init_filesystem_firmware(struct tegra_xhci_hcd *tegra)
 
 	if (!strcmp(firmware_file, "")) {
 		if (tegra->bdata->firmware_file_dt)
-			firmware_file = tegra->bdata->firmware_file_dt;
+			firmware_file = kasprintf(GFP_KERNEL, "%s",
+					tegra->bdata->firmware_file_dt);
 		else
-			firmware_file =
-				tegra->soc_config->default_firmware_file;
+			firmware_file = kasprintf(GFP_KERNEL, "%s",
+				tegra->soc_config->default_firmware_file);
 	}
 
 	ret = request_firmware_nowait(THIS_MODULE, true, firmware_file,
@@ -3907,7 +3911,7 @@ static void init_filesystem_firmware_done(const struct firmware *fw,
 	memcpy(fw_data, fw->data, fw_size);
 	dev_info(&pdev->dev,
 		"Firmware DMA Memory: dma 0x%p mapped 0x%p (%zu Bytes)\n",
-		(void *) fw_dma, fw_data, fw_size);
+		(void *)(uintptr_t) fw_dma, fw_data, fw_size);
 
 	/* all set and ready to go */
 	tegra->firmware.data = fw_data;
@@ -4485,14 +4489,15 @@ static int hsic_power_create_file(struct tegra_xhci_hcd *tegra)
 	struct device *dev = &tegra->pdev->dev;
 	int p;
 	int err;
+	char *power_attr;
 
 	for_each_enabled_hsic_pad(p, tegra) {
-		attr_name(tegra->hsic_power_attr[p]) = kzalloc(16, GFP_KERNEL);
-		if (!attr_name(tegra->hsic_power_attr[p]))
+		power_attr = kasprintf(GFP_KERNEL, "hsic%d_power", p);
+		if (!power_attr)
 			return -ENOMEM;
 
-		snprintf(attr_name(tegra->hsic_power_attr[p]), 16,
-			"hsic%d_power", p);
+		attr_name(tegra->hsic_power_attr[p]) = power_attr;
+		power_attr = NULL;
 		tegra->hsic_power_attr[p].show = hsic_power_show;
 		tegra->hsic_power_attr[p].store = hsic_power_store;
 		tegra->hsic_power_attr[p].attr.mode = (S_IRUGO | S_IWUSR);
