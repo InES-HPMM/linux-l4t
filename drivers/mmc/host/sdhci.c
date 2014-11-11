@@ -3637,6 +3637,14 @@ static void sdhci_debugfs_init(struct sdhci_host *host)
 		root, (u32 *)&host->no_data_transfer_count))
 		goto err_root;
 
+	if (!debugfs_create_u32("max_pio_size", S_IRUGO | S_IWUSR,
+		root, (u32 *)&host->max_pio_size))
+		goto err_root;
+
+	if (!debugfs_create_u32("max_pio_blocks", S_IRUGO | S_IWUSR,
+		root, (u32 *)&host->max_pio_blocks))
+		goto err_root;
+
 	return;
 
 err_root:
