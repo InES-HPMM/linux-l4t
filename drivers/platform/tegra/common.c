@@ -150,12 +150,6 @@ EXPORT_SYMBOL(tegra_bl_debug_data_start);
 phys_addr_t tegra_bl_debug_data_size = 0;
 EXPORT_SYMBOL(tegra_bl_debug_data_size);
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-phys_addr_t tegra_wb0_params_address;
-phys_addr_t tegra_wb0_params_instances;
-phys_addr_t tegra_wb0_params_block_size;
-#endif
-
 #ifdef CONFIG_TEGRA_NVDUMPER
 unsigned long nvdumper_reserved;
 #endif
@@ -553,85 +547,6 @@ static __initdata struct tegra_clk_init_table tegra12x_sbus_init_table[] = {
 };
 #endif
 
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-static __initdata struct tegra_clk_init_table tegra14x_clk_init_table[] = {
-	/* name		parent		rate		enabled */
-	{ "osc",	NULL,		0,		true },
-	{ "clk_m",	"osc",		0,		true },
-	{ "emc",	NULL,		0,		true },
-	{ "cpu",	NULL,		0,		true },
-	{ "kfuse",	NULL,		0,		true },
-	{ "fuse",	NULL,		0,		true },
-	{ "sclk",	NULL,		0,		true },
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	{ "pll_p",	NULL,		0,		true },
-	{ "pll_p_out1",	"pll_p",	0,		false },
-	{ "pll_p_out3",	"pll_p",	0,		true },
-	{ "pll_m_out1",	"pll_m",	275000000,	false },
-	{ "pll_p_out2",	 "pll_p",	102000000,	false },
-	{ "sclk",	 "pll_p_out2",	102000000,	true },
-	{ "pll_p_out4",	 "pll_p",	204000000,	true },
-	{ "hclk",	"sclk",		102000000,	true },
-	{ "pclk",	"hclk",		51000000,	true },
-	{ "mselect",	"pll_p",	102000000,	true },
-	{ "host1x",	"pll_p",	102000000,	false },
-	{ "cl_dvfs_ref", "pll_p",       51000000,       true },
-	{ "cl_dvfs_soc", "pll_p",       51000000,       true },
-#else
-	{ "pll_p",	NULL,		0,		true },
-	{ "pll_p_out1",	"pll_p",	0,		false },
-	{ "pll_p_out3",	"pll_p",	0,		true },
-	{ "pll_m_out1",	"pll_m",	275000000,	true },
-	{ "pll_p_out2",	"pll_p",	108000000,	false },
-	{ "sclk",	"pll_p_out2",	108000000,	true },
-	{ "pll_p_out4",	"pll_p",	216000000,	true },
-	{ "host1x",	"pll_p",	108000000,	false },
-	{ "cl_dvfs_ref", "clk_m",	13000000,	false },
-	{ "cl_dvfs_soc", "clk_m",	13000000,	false },
-	{ "hclk",	"sclk",		108000000,	true },
-	{ "pclk",	"hclk",		54000000,	true },
-	{ "wake.sclk",  NULL,           250000000,	true },
-	{ "mselect",	"pll_p",	108000000,	true },
-#endif
-#ifdef CONFIG_TEGRA_SLOW_CSITE
-	{ "csite",	"clk_m",	1000000,	true },
-#else
-	{ "csite",      NULL,           0,              true },
-#endif
-	{ "pll_u",	NULL,		480000000,	false },
-	{ "sdmmc1",	"pll_p",	48000000,	false},
-	{ "sdmmc3",	"pll_p",	48000000,	false},
-	{ "sdmmc4",	"pll_p",	48000000,	false},
-	{ "mon.avp",	NULL,		80000000,	true },
-	{ "sbc1.sclk",	NULL,		20000000,	false},
-	{ "sbc2.sclk",	NULL,		20000000,	false},
-	{ "sbc3.sclk",	NULL,		20000000,	false},
-	{ "msenc",	"pll_p",	108000000,	false },
-	{ "tsec",	"pll_p",	108000000,	false },
-	{ "mc_capa",	"emc",		0,		true },
-	{ "mc_cbpa",	"emc",		0,		true },
-#ifdef CONFIG_TEGRA_SOCTHERM
-	{ "soc_therm",	"pll_p",	51000000,	false },
-	{ "tsensor",	"clk_m",	400000,		false },
-#endif
-	{ NULL,		NULL,		0,		0},
-};
-static __initdata struct tegra_clk_init_table tegra14x_cbus_init_table[] = {
-	/* Initialize c2bus, c3bus, or cbus at the end of the list
-	 * after all the clocks are moved under the proper parents.
-	 */
-#ifdef CONFIG_TEGRA_DUAL_CBUS
-	{ "c2bus",	"pll_c2",	200000000,	false },
-	{ "c3bus",	"pll_c3",	200000000,	false },
-	{ "pll_c",	NULL,		768000000,	false },
-#else
-	{ "cbus",	"pll_c",	200000000,	false },
-#endif
-	{ "pll_c_out1",	"pll_c",	100000000,	false },
-	{ NULL,		NULL,		0,		0},
-};
-#endif
-
 #ifdef CONFIG_CACHE_L2X0
 static void tegra_cache_smc(bool enable, u32 arg)
 {
@@ -743,12 +658,7 @@ void tegra_init_cache(bool init)
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 		if (!tegra_platform_is_fpga()) {
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-			/* Enable double line fill */
-			writel(0x40000007, p + L2X0_PREFETCH_CTRL);
-#else
 			writel(0x7, p + L2X0_PREFETCH_CTRL);
-#endif
 			writel(0x3, p + L2X0_POWER_CTRL);
 		}
 #endif
@@ -847,7 +757,7 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 
 	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11)
 		val |= WR_WAIT_COMMIT_ON_1K;
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	val |= WR_WAIT_COMMIT_ON_1K | EN_USB_WAIT_COMMIT_ON_1K_STALL;
 #endif
 	gizmo_writel(val, AHB_GIZMO_AHB_MEM);
@@ -904,9 +814,9 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	/*
 	 * SDMMC controller is removed from AHB interface in T124 and
 	 * later versions of Tegra. Configure AHB prefetcher for SDMMC4
-	 * in T11x and T14x SOCs.
+	 * in T11x.
 	 */
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG5);
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | SDMMC4_MST_ID;
@@ -1029,35 +939,6 @@ void __init tegra12x_init_early(void)
 	tegra_init_ahb_gizmo_settings();
 }
 #endif
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-void __init tegra14x_init_early(void)
-{
-	display_tegra_dt_info();
-	tegra_apb_io_init();
-	tegra_perf_init();
-	tegra_init_fuse();
-	tegra_ramrepair_init();
-	tegra14x_init_clocks();
-	tegra14x_init_dvfs();
-	tegra_common_init_clock();
-	tegra_clk_init_from_table(tegra14x_clk_init_table);
-	tegra_clk_init_cbus_plls_from_table(tegra14x_cbus_init_table);
-	tegra_cpu_c1_l2_tag_latency = 0x110;
-	tegra_cpu_c1_l2_data_latency = 0x331;
-	writel_relaxed(0x110, tegra_cpu_c1_l2_tag_latency_iram);
-	writel_relaxed(0x331, tegra_cpu_c1_l2_data_latency_iram);
-	tegra_cpu_c0_l2_tag_latency = 0x111;
-	tegra_cpu_c0_l2_data_latency = 0x441;
-	writel_relaxed(0x111, tegra_cpu_c0_l2_tag_latency_iram);
-	writel_relaxed(0x441, tegra_cpu_c0_l2_data_latency_iram);
-	tegra_init_cache(true);
-	tegra_powergate_init();
-	tegra30_hotplug_init();
-	tegra_init_power();
-	tegra_init_ahb_gizmo_settings();
-	tegra_init_debug_uart_rate();
-}
-#endif
 static int __init tegra_lp0_vec_arg(char *options)
 {
 	char *p = options;
@@ -1089,22 +970,6 @@ static int __init tegra_bl_debug_data_arg(char *options)
 	return 0;
 }
 early_param("bl_debug_data", tegra_bl_debug_data_arg);
-
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-static int __init tegra_wb0_params_arg(char *options)
-{
-	char *p = options;
-
-	tegra_wb0_params_address = memparse(p, &p);
-	if (*p == ',')
-		tegra_wb0_params_instances = memparse(p+1, &p);
-	if (*p == ',')
-		tegra_wb0_params_block_size = memparse(p+1, &p);
-
-	return 0;
-}
-early_param("wb0_params", tegra_wb0_params_arg);
-#endif
 
 #ifdef CONFIG_TEGRA_NVDUMPER
 static int __init tegra_nvdumper_arg(char *options)
