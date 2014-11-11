@@ -4,6 +4,7 @@
 GCOV_PROFILE := y
 
 ccflags-$(CONFIG_USB_DEBUG) := -DDEBUG
+subdir-ccflags-y += -Werror
 
 isp1760-y := isp1760-hcd.o isp1760-if.o
 
