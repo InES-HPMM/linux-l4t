@@ -570,11 +570,9 @@ static int rndis_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			VDBG(cdev, "reset rndis control %d\n", intf);
 			usb_ep_disable(rndis->notify);
 		}
-		if (!rndis->notify->desc) {
-			VDBG(cdev, "init rndis ctrl %d\n", intf);
-			if (config_ep_by_speed(cdev->gadget, f, rndis->notify))
-				goto fail;
-		}
+		VDBG(cdev, "init rndis ctrl %d\n", intf);
+		if (config_ep_by_speed(cdev->gadget, f, rndis->notify))
+			goto fail;
 		usb_ep_enable(rndis->notify);
 		rndis->notify->driver_data = rndis;
 
@@ -586,16 +584,14 @@ static int rndis_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			gether_disconnect(&rndis->port);
 		}
 
-		if (!rndis->port.in_ep->desc || !rndis->port.out_ep->desc) {
-			DBG(cdev, "init rndis\n");
-			if (config_ep_by_speed(cdev->gadget, f,
-					       rndis->port.in_ep) ||
-			    config_ep_by_speed(cdev->gadget, f,
-					       rndis->port.out_ep)) {
-				rndis->port.in_ep->desc = NULL;
-				rndis->port.out_ep->desc = NULL;
-				goto fail;
-			}
+		DBG(cdev, "init rndis\n");
+		if (config_ep_by_speed(cdev->gadget, f,
+				       rndis->port.in_ep) ||
+		    config_ep_by_speed(cdev->gadget, f,
+				       rndis->port.out_ep)) {
+			rndis->port.in_ep->desc = NULL;
+			rndis->port.out_ep->desc = NULL;
+			goto fail;
 		}
 
 		/* Avoid ZLPs; they can be troublesome. */

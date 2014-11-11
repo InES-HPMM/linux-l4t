@@ -1,6 +1,7 @@
 /*
  * f_ecm.c -- USB CDC Ethernet (ECM) link function driver
  *
+ * Copyright (c) 2014, NVIDIA CORPORATION. All rights reserved.
  * Copyright (C) 2003-2005,2008 David Brownell
  * Copyright (C) 2008 Nokia Corporation
  *
@@ -542,11 +543,11 @@ static int ecm_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			VDBG(cdev, "reset ecm control %d\n", intf);
 			usb_ep_disable(ecm->notify);
 		}
-		if (!(ecm->notify->desc)) {
-			VDBG(cdev, "init ecm ctrl %d\n", intf);
-			if (config_ep_by_speed(cdev->gadget, f, ecm->notify))
-				goto fail;
-		}
+
+		VDBG(cdev, "init ecm ctrl %d\n", intf);
+		if (config_ep_by_speed(cdev->gadget, f, ecm->notify))
+			goto fail;
+
 		usb_ep_enable(ecm->notify);
 		ecm->notify->driver_data = ecm;
 
@@ -560,17 +561,14 @@ static int ecm_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			gether_disconnect(&ecm->port);
 		}
 
-		if (!ecm->port.in_ep->desc ||
-		    !ecm->port.out_ep->desc) {
-			DBG(cdev, "init ecm\n");
-			if (config_ep_by_speed(cdev->gadget, f,
-					       ecm->port.in_ep) ||
-			    config_ep_by_speed(cdev->gadget, f,
-					       ecm->port.out_ep)) {
-				ecm->port.in_ep->desc = NULL;
-				ecm->port.out_ep->desc = NULL;
-				goto fail;
-			}
+		DBG(cdev, "init ecm\n");
+		if (config_ep_by_speed(cdev->gadget, f,
+				       ecm->port.in_ep) ||
+		    config_ep_by_speed(cdev->gadget, f,
+				       ecm->port.out_ep)) {
+			ecm->port.in_ep->desc = NULL;
+			ecm->port.out_ep->desc = NULL;
+			goto fail;
 		}
 
 		/* CDC Ethernet only sends data in non-default altsettings.

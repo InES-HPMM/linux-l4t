@@ -199,16 +199,14 @@ static int eem_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			gether_disconnect(&eem->port);
 		}
 
-		if (!eem->port.in_ep->desc || !eem->port.out_ep->desc) {
-			DBG(cdev, "init eem\n");
-			if (config_ep_by_speed(cdev->gadget, f,
-					       eem->port.in_ep) ||
-			    config_ep_by_speed(cdev->gadget, f,
-					       eem->port.out_ep)) {
-				eem->port.in_ep->desc = NULL;
-				eem->port.out_ep->desc = NULL;
-				goto fail;
-			}
+		DBG(cdev, "init eem\n");
+		if (config_ep_by_speed(cdev->gadget, f,
+				       eem->port.in_ep) ||
+		    config_ep_by_speed(cdev->gadget, f,
+				       eem->port.out_ep)) {
+			eem->port.in_ep->desc = NULL;
+			eem->port.out_ep->desc = NULL;
+			goto fail;
 		}
 
 		/* zlps should not occur because zero-length EEM packets
