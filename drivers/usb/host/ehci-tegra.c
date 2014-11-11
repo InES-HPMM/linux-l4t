@@ -95,7 +95,7 @@ static struct usb_phy *get_usb_phy(struct tegra_usb_phy *x)
 
 static int tegra_ehci_port_speed(struct ehci_hcd *ehci)
 {
-	u32 hostpc = ehci_readl(ehci, &ehci->regs->hostpc);
+	u32 hostpc = ehci_readl(ehci, ehci->regs->hostpc);
 	enum usb_device_speed port_speed;
 
 	switch ((hostpc >> (ehci->has_hostpc ? 25 : 26)) & 3) {
@@ -544,8 +544,10 @@ static struct tegra_usb_platform_data *tegra_ehci_dt_parse_pdata(
 	bool is_intf_utmi;
 	int err;
 	u32 instance;
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	int modem_id = tegra_get_modem_id();
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
+#endif
 
 	if (!np)
 		return NULL;
