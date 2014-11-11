@@ -45,6 +45,7 @@ TEXT_OFFSET := 0x00080000
 
 export	TEXT_OFFSET GZFLAGS
 
+subdir-ccflags-y += -Werror
 core-y		+= arch/arm64/kernel/ arch/arm64/mm/
 
 core-$(CONFIG_ARCH_TEGRA)	+= arch/arm64/mach-tegra/
