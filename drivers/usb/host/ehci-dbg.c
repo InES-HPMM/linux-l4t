@@ -31,17 +31,6 @@
 #define FORCE_ENABLE_LS		7
 #define TESTMODES_SIZE		8
 
-static char *testmodes[TESTMODES_SIZE] = {
-	"TEST_MODE_DISABLE",
-	"J_STATE",
-	"K_STATE",
-	"SE0",
-	"PACKET",
-	"FORCE_ENABLE_HS",
-	"FORCE_ENABLE_FS",
-	"FORCE_ENABLE_LS"
-};
-
 #ifdef	DEBUG
 
 /* check the values in the HCSPARAMS register
@@ -354,6 +343,16 @@ static inline void create_debug_files (struct ehci_hcd *bus) { }
 static inline void remove_debug_files (struct ehci_hcd *bus) { }
 
 #else
+static char *testmodes[TESTMODES_SIZE] = {
+	"TEST_MODE_DISABLE",
+	"J_STATE",
+	"K_STATE",
+	"SE0",
+	"PACKET",
+	"FORCE_ENABLE_HS",
+	"FORCE_ENABLE_FS",
+	"FORCE_ENABLE_LS"
+};
 
 /* troubleshooting help: expose state in debugfs */
 
