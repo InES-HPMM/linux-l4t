@@ -23,6 +23,7 @@
 #include <linux/err.h>
 #include <linux/tegra-fuse.h>
 #include <linux/pm_qos.h>
+#include <linux/of_address.h>
 
 #include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>
@@ -423,13 +424,23 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("sor0",		-1, -1, 1, KHZ,	 270000,  540000,  540000,  540000,  540000,  540000,  540000,  540000),
 	CORE_DVFS("sor1",		-1, -1, 1, KHZ,	 297000,  594000,  594000,  594000,  594000,  594000,  594000,  594000),
 	CORE_DVFS("pciex",		-1, -1, 1, KHZ,	 250000,  500000,  500000,  500000,  500000,  500000,  500000,  500000),
+
+	CORE_DVFS("soc_therm",		-1, -1, 1, KHZ,	      1,  136000,  136000,  136000,  136000,  136000,  136000,  136000),
+	CORE_DVFS("tsensor",		-1, -1, 1, KHZ,	      1,   19200,   19200,   19200,   19200,   19200,   19200,   19200),
+};
+
+static struct dvfs spi_dvfs_table[] = {
 	CORE_DVFS("sbc1",		-1, -1, 1, KHZ,	  35000,   65000,   65000,   65000,   65000,   65000,   65000,   65000),
 	CORE_DVFS("sbc2",		-1, -1, 1, KHZ,	  35000,   65000,   65000,   65000,   65000,   65000,   65000,   65000),
 	CORE_DVFS("sbc3",		-1, -1, 1, KHZ,	  35000,   65000,   65000,   65000,   65000,   65000,   65000,   65000),
 	CORE_DVFS("sbc4",		-1, -1, 1, KHZ,	  35000,   65000,   65000,   65000,   65000,   65000,   65000,   65000),
+};
 
-	CORE_DVFS("soc_therm",		-1, -1, 1, KHZ,	      1,  136000,  136000,  136000,  136000,  136000,  136000,  136000),
-	CORE_DVFS("tsensor",		-1, -1, 1, KHZ,	      1,   19200,   19200,   19200,   19200,   19200,   19200,   19200),
+static struct dvfs spi_slave_dvfs_table[] = {
+	CORE_DVFS("sbc1",		-1, -1, 1, KHZ,	  45000,   45000,   45000,   45000,   45000,   45000,   45000,   45000),
+	CORE_DVFS("sbc2",		-1, -1, 1, KHZ,	  45000,   45000,   45000,   45000,   45000,   45000,   45000,   45000),
+	CORE_DVFS("sbc3",		-1, -1, 1, KHZ,	  45000,   45000,   45000,   45000,   45000,   45000,   45000,   45000),
+	CORE_DVFS("sbc4",		-1, -1, 1, KHZ,	  45000,   45000,   45000,   45000,   45000,   45000,   45000,   45000),
 };
 
 static int tegra_dvfs_disable_core_set(const char *arg,
@@ -1058,6 +1069,67 @@ static void __init init_gpu_dvfs_table(int *gpu_max_freq_index)
 	BUG_ON((i == ARRAY_SIZE(gpu_cvb_dvfs_table)) || ret);
 }
 
+
+/*
+ * SPI DVFS tables are different in master and in slave mode. Use master tables
+ * by default. Check if slave mode is specified for enabled SPI devices in DT,
+ * and overwrite master table for the respective SPI controller.
+ */
+
+static __initdata struct {
+	u64 address;
+	struct dvfs *d;
+} spi_map[] = {
+	{ 0x7000d400, &spi_dvfs_table[0] },
+	{ 0x7000d600, &spi_dvfs_table[1] },
+	{ 0x7000d800, &spi_dvfs_table[2] },
+	{ 0x7000da00, &spi_dvfs_table[3] },
+};
+
+static int __init of_update_spi_slave_dvfs(struct device_node *dn)
+{
+	int i;
+	u64 addr = 0;
+	const __be32 *reg;
+
+	if (!of_device_is_available(dn))
+		return 0;
+
+	reg = of_get_property(dn, "reg", NULL);
+	if (reg && of_can_translate_address(dn))
+		addr = of_translate_address(dn, reg);
+
+	for (i = 0; i < ARRAY_SIZE(spi_map); i++) {
+		if (spi_map[i].address == addr) {
+			spi_map[i].d = &spi_slave_dvfs_table[i];
+			break;
+		}
+	}
+	return 0;
+}
+
+static __initdata struct of_device_id tegra21_dvfs_spi_slave_of_match[] = {
+	{ .compatible = "nvidia,tegra210-spi-slave",
+	  .data = of_update_spi_slave_dvfs, },
+	{ },
+};
+
+static void __init init_spi_dvfs(int soc_speedo_id, int core_process_id,
+				 int core_nominal_mv_index)
+{
+	int i;
+
+	of_tegra_dvfs_init(tegra21_dvfs_spi_slave_of_match);
+
+	for (i = 0; i <  ARRAY_SIZE(spi_map); i++) {
+		struct dvfs *d = spi_map[i].d;
+		if (!match_dvfs_one(d->clk_name, d->speedo_id,
+			d->process_id, soc_speedo_id, core_process_id))
+			continue;
+		tegra_init_dvfs_one(d, core_nominal_mv_index);
+	}
+}
+
 /*
  * Clip sku-based core nominal voltage to core DVFS voltage ladder
  */
@@ -1207,6 +1279,8 @@ void __init tegra21x_init_dvfs(void)
 				continue;
 			tegra_init_dvfs_one(d, core_nominal_mv_index);
 		}
+		init_spi_dvfs(soc_speedo_id, core_process_id,
+			      core_nominal_mv_index);
 	}
 
 	/* Initialize matching gpu dvfs entry already found when nominal
