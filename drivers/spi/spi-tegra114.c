@@ -36,6 +36,7 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/spi-tegra.h>
 #include <linux/clk/tegra.h>
+#include <linux/tegra_prod.h>
 
 #define SPI_COMMAND1				0x000
 #define SPI_BIT_LENGTH(x)			(((x) & 0x1f) << 0)
@@ -245,6 +246,7 @@ struct tegra_spi_data {
 	struct dma_async_tx_descriptor		*tx_dma_desc;
 	const struct tegra_spi_chip_data  *chip_data;
 	struct tegra_spi_device_controller_data cdata[MAX_CHIP_SELECT];
+	struct tegra_prod_list *prod_list;
 };
 
 
@@ -873,6 +875,7 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 	struct tegra_spi_device_controller_data *cdata = spi->controller_data;
 	unsigned long command1;
 	int req_mode;
+	char prod_name[15];
 
 	bits_per_word = t->bits_per_word;
 	speed = t->speed_hz ? t->speed_hz : spi->max_speed_hz;
@@ -974,24 +977,12 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 						inactive_cycles);
 			tegra_spi_writel(tspi, spi_cs_timing2, SPI_CS_TIMING2);
 		}
-		if (cdata) {
-			u32 command2_reg;
-			u32 rx_tap_delay;
-			u32 tx_tap_delay;
-			int rx_clk_tap_delay;
-
-			rx_clk_tap_delay = cdata->rx_clk_tap_delay;
-			if (tspi->chip_data->set_rx_tap_delay) {
-				if (rx_clk_tap_delay == 0)
-					if (speed > SPI_SPEED_TAP_DELAY_MARGIN)
-						rx_clk_tap_delay =
-							SPI_DEFAULT_RX_TAP_DELAY;
-			}
-			rx_tap_delay = min(rx_clk_tap_delay, 63);
-			tx_tap_delay = min(cdata->tx_clk_tap_delay, 63);
-			command2_reg = SPI_TX_TAP_DELAY(tx_tap_delay) |
-					SPI_RX_TAP_DELAY(rx_tap_delay);
-			tegra_spi_writel(tspi, command2_reg, SPI_COMMAND2);
+		if (tspi->prod_list) {
+			sprintf(prod_name, "prod_c_cs%d", spi->chip_select);
+			if (tegra_prod_set_by_name(&tspi->base, prod_name,
+					tspi->prod_list))
+				tegra_prod_set_by_name(&tspi->base, "prod",
+					tspi->prod_list);
 		} else {
 			u32 command2_reg;
 			command2_reg = tspi->def_command2_reg;
@@ -1611,6 +1602,12 @@ static int tegra_spi_probe(struct platform_device *pdev)
 	}
 	tspi->chip_data = chip_data;
 
+	tspi->prod_list = tegra_prod_get(&pdev->dev, NULL);
+	if (IS_ERR(tspi->prod_list)) {
+		dev_err(&pdev->dev, "Prod settings list not initialized\n");
+		tspi->prod_list = NULL;
+	}
+
 	spin_lock_init(&tspi->lock);
 
 	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -1735,6 +1732,9 @@ static int tegra_spi_remove(struct platform_device *pdev)
 
 	if (tspi->clock_always_on)
 		clk_disable_unprepare(tspi->clk);
+
+	if (tspi->prod_list)
+		tegra_prod_release(&tspi->prod_list);
 
 	return 0;
 }
