@@ -225,6 +225,8 @@
 		nvidia,id-detection-type = <1>;
 		nvidia,enable-aca-nv-charger-detection;
 		nvidia,dcp-current-limit-ma = <2000>;
+		nvidia,qc2-input-voltage = <2>;
+		nvidia,qc2-current-limit-ma = <1300>;
 		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 2>;
 		extcon-cable-names = "vbus", "aca-nv";
 		#extcon-cells = <1>;
