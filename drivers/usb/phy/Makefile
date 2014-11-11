@@ -4,6 +4,7 @@
 GCOV_PROFILE_tegra-otg.o := y
 
 ccflags-$(CONFIG_USB_DEBUG) := -DDEBUG
+subdir-ccflags-y += -Werror
 
 obj-$(CONFIG_USB_PHY)			+= phy.o
 obj-$(CONFIG_USB_OTG_WAKELOCK)		+= otg-wakelock.o
