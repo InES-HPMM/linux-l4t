@@ -1474,7 +1474,7 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 	case CONNECT_TYPE_ACA_NV_CHARGER:
 		dev_info(dev, "connected to ACA-NV Y-Cable 17V/2.1A custom charger\n");
 		max_ua = USB_CHARGING_ACA_NV_CHARGER_CURRENT_LIMIT_UA;
-		tegra_udc_notify_event(udc, USB_EVENT_CHARGER);
+		tegra_udc_notify_event(udc, USB_EVENT_VBUS);
 		break;
 	default:
 		dev_info(dev, "connected to unknown USB port\n");
