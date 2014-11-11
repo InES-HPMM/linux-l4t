@@ -70,6 +70,7 @@ struct mmc_ext_csd {
 #define MMC_HIGH_DDR_MAX_DTR	52000000
 #define MMC_HS200_MAX_DTR	200000000
 #define MMC_HS400_MAX_DTR	200000000
+#define MMC_HS533_MAX_DTR	266000000
 	unsigned int		sectors;
 	unsigned int		card_type;
 	unsigned int		hc_erase_size;		/* In sectors */

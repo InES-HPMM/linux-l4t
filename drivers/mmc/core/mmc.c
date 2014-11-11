@@ -266,8 +266,12 @@ static void mmc_select_card_type(struct mmc_card *card)
 	if ((caps2 & MMC_CAP2_HS400_1_8V_DDR &&
 			card_type & EXT_CSD_CARD_TYPE_UHS_DDR_1_8V) ||
 	    (caps2 & MMC_CAP2_HS400_1_2V_DDR &&
-			card_type & EXT_CSD_CARD_TYPE_UHS_DDR_1_2V))
-		hs_max_dtr = MMC_HS400_MAX_DTR;
+			card_type & EXT_CSD_CARD_TYPE_UHS_DDR_1_2V)) {
+		if (caps2 & MMC_CAP2_HS533)
+			hs_max_dtr = MMC_HS533_MAX_DTR;
+		else
+			hs_max_dtr = MMC_HS400_MAX_DTR;
+	}
 
 	card->ext_csd.hs_max_dtr = hs_max_dtr;
 	card->ext_csd.card_type = card_type;
@@ -733,7 +737,7 @@ static int mmc_select_powerclass(struct mmc_card *card,
 			index = (bus_width <= EXT_CSD_BUS_WIDTH_8) ?
 				EXT_CSD_PWR_CL_52_195 :
 				EXT_CSD_PWR_CL_DDR_52_195;
-		else if (host->ios.clock <= 200000000) {
+		else if (host->ios.clock <= 266000000) {
 			if (mmc_card_hs400(card))
 				index = EXT_CSD_PWR_CL_DDR_200;
 			else
@@ -755,7 +759,7 @@ static int mmc_select_powerclass(struct mmc_card *card,
 			index = (bus_width <= EXT_CSD_BUS_WIDTH_8) ?
 				EXT_CSD_PWR_CL_52_360 :
 				EXT_CSD_PWR_CL_DDR_52_360;
-		else if (host->ios.clock <= 200000000)
+		else if (host->ios.clock <= 266000000)
 			index = EXT_CSD_PWR_CL_200_360;
 		break;
 	default:
@@ -1276,7 +1280,7 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 
 		mmc_card_set_hs400(card);
 		mmc_card_clr_highspeed(card);
-		mmc_set_clock(host, MMC_HS400_MAX_DTR);
+		mmc_set_clock(host, max_dtr);
 		err = mmc_select_powerclass(card, EXT_CSD_DDR_BUS_WIDTH_8,
 				ext_csd);
 		if (err) {
