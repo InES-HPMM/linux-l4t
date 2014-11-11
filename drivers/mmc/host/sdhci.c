@@ -791,6 +791,22 @@ static void sdhci_set_transfer_irqs(struct sdhci_host *host)
 		sdhci_clear_set_irqs(host, dma_irqs, pio_irqs);
 }
 
+static void sdhci_determine_transfer_mode(struct sdhci_host *host,
+	unsigned int req_size, unsigned int req_blocks)
+{
+	/* Nothing to do if DMA modes are not supported. */
+	if (!(host->flags & (SDHCI_USE_SDMA | SDHCI_USE_ADMA))) {
+		host->flags &= ~SDHCI_REQ_USE_DMA;
+	} else if (!host->max_pio_size || (req_size > host->max_pio_size)) {
+		host->flags |= SDHCI_REQ_USE_DMA;
+	} else if (req_size < host->max_pio_size) {
+		host->flags &= ~SDHCI_REQ_USE_DMA;
+		if (host->max_pio_blocks &&
+			(req_blocks > host->max_pio_blocks))
+			host->flags |= SDHCI_REQ_USE_DMA;
+	}
+}
+
 static void sdhci_prepare_data(struct sdhci_host *host, struct mmc_command *cmd)
 {
 	u8 count;
@@ -817,8 +833,9 @@ static void sdhci_prepare_data(struct sdhci_host *host, struct mmc_command *cmd)
 	host->data_early = 0;
 	host->data->bytes_xfered = 0;
 
-	if (host->flags & (SDHCI_USE_SDMA | SDHCI_USE_ADMA))
-		host->flags |= SDHCI_REQ_USE_DMA;
+	/* Select dma or PIO mode for transfer */
+	sdhci_determine_transfer_mode(host, data->blksz * data->blocks,
+		data->blocks);
 
 	/*
 	 * FIXME: This doesn't account for merging when mapping the
@@ -2663,7 +2680,18 @@ static int sdhci_select_drive_strength(struct mmc_host *mmc,
 
 	return drv_type;
 }
+static void sdhci_init_card(struct mmc_host *mmc, struct mmc_card *card)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
 
+	/*
+	 * Get the max pio transfer limits if defined. This would be used to
+	 * dynamically choose between dma and pio modes depending on the
+	 * transfer parameters.
+	 */
+	if (host->ops->get_max_pio_transfer_limits)
+		host->ops->get_max_pio_transfer_limits(host);
+}
 static const struct mmc_host_ops sdhci_ops = {
 	.request	= sdhci_request,
 	.set_ios	= sdhci_set_ios,
@@ -2686,6 +2714,7 @@ static const struct mmc_host_ops sdhci_ops = {
 	.select_drive_strength		= sdhci_select_drive_strength,
 	.post_init	= sdhci_post_init,
 	.en_strobe	= sdhci_en_strobe,
+	.init_card	= sdhci_init_card,
 };
 
 /*****************************************************************************\

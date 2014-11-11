@@ -390,6 +390,7 @@ struct sdhci_ops {
 	int	(*get_max_tuning_loop_counter)(struct sdhci_host *sdhci);
 	void	(*config_tap_delay)(struct sdhci_host *host, u8 option);
 	int	(*validate_sd2_0)(struct sdhci_host *sdhci);
+	void	(*get_max_pio_transfer_limits)(struct sdhci_host *sdhci);
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS

@@ -967,6 +967,10 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 		memcpy(card->raw_cid, cid, sizeof(card->raw_cid));
 	}
 
+	/* Call the optional init_card for HC quirks */
+	if (host->ops->init_card)
+		host->ops->init_card(host, card);
+
 	/*
 	 * For native busses:  get card RCA and quit open drain mode.
 	 */

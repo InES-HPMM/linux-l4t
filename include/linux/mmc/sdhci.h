@@ -211,6 +211,8 @@ struct sdhci_host {
 
 	struct sg_mapping_iter sg_miter;	/* SG state for PIO */
 	unsigned int blocks;	/* remaining PIO blocks */
+	unsigned int max_pio_size;
+	unsigned int max_pio_blocks;
 
 	int sg_count;		/* Mapped sg entries */
 
