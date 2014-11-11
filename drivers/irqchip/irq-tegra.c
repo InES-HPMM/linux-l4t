@@ -330,7 +330,7 @@ static int tegra_set_affinity(struct irq_data *d, const struct cpumask *mask_val
 	if (!irq_enabled)
 		return -EINVAL;
 
-	for_each_online_cpu(cpu) {
+	for_each_present_cpu(cpu) {
 		if (cpu == target_cpu)
 			tegra_irq_write_mask(d->irq, ICTLR_CPU_IER_SET(cpu));
 		else
