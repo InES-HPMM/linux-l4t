@@ -207,7 +207,7 @@ static int smmu_iommu_map_sg_hv(struct iommu_domain *domain,
 	while (total > 0) {
 		spin_lock_irqsave(&as->lock, flags);
 		for (i = 0; i < sg_remaining; i++) {
-			u32 pa = (sg_pfn + i) << 12;
+			phys_addr_t pa = PFN_PHYS(sg_pfn + i);
 			/* optimize to program in one request */
 			err = libsmmu_map_page(as->tegra_hv_comm_chan, as->asid,
 							iova, pa, attrs);
