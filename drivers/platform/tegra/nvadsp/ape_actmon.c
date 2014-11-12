@@ -735,7 +735,7 @@ int ape_actmon_init(struct platform_device *pdev)
 
 	drv->actmon_initialized = true;
 
-	dev_info(&pdev->dev, "adsp actmon is initialized ....\n");
+	dev_dbg(&pdev->dev, "adsp actmon initialized ....\n");
 	return 0;
 }
 
@@ -755,7 +755,7 @@ int ape_actmon_exit(struct platform_device *pdev)
 	clk_put(actmon_clk);
 	drv->actmon_initialized = false;
 
-	dev_info(&pdev->dev, "adsp actmon is exited ....\n");
+	dev_dbg(&pdev->dev, "adsp actmon has exited ....\n");
 
 	return ret;
 }

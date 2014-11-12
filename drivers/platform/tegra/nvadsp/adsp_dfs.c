@@ -551,7 +551,7 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 #endif
 	drv->dfs_initialized = true;
 
-	dev_info(&pdev->dev, "adsp dfs is initialized ....\n");
+	dev_dbg(&pdev->dev, "adsp dfs initialized ....\n");
 	return ret;
 end:
 	if (policy->adsp_clk)
@@ -575,7 +575,7 @@ int adsp_dfs_core_exit(struct platform_device *pdev)
 	clk_put(policy->adsp_clk);
 	drv->dfs_initialized = false;
 
-	dev_info(&pdev->dev, "adsp dfs is exited ....\n");
+	dev_dbg(&pdev->dev, "adsp dfs has exited ....\n");
 
 	return ret;
 }
