@@ -376,6 +376,7 @@ int escore_put_vs_activate_keyword(struct snd_kcontrol *kcontrol,
 			(struct escore_voice_sense *) escore->voice_sense;
 	unsigned int value;
 	int rc = 0;
+	int i;
 
 	value = ucontrol->value.integer.value[0];
 
@@ -384,6 +385,11 @@ int escore_put_vs_activate_keyword(struct snd_kcontrol *kcontrol,
 		dev_err(escore->dev, "%s(): pm_get_sync failed :%d\n",
 				__func__, rc);
 		return rc;
+	}
+
+	for (i = 0; i < MAX_NO_OF_VS_KW; i++) {
+		if (voice_sense->vs_active_keywords & (1 << i))
+			release_firmware(voice_sense->kw[i]);
 	}
 
 	voice_sense->vs_active_keywords = value;
@@ -469,7 +475,6 @@ int escore_vs_request_bkg(struct escore_priv *escore, const char *bkg_filename)
 	if (rc) {
 		dev_err(escore->dev, "%s(): request_firmware(%s) failed %d\n",
 				__func__, bkg_filename, rc);
-		return  rc;
 	}
 	return  rc;
 }
@@ -494,9 +499,6 @@ int escore_vs_request_keywords(struct escore_priv *escore)
 	for (i = 0; i < MAX_NO_OF_VS_KW; i++) {
 		if (!(voice_sense->vs_active_keywords & (1 << i)))
 			continue;
-
-		if (voice_sense->kw[i]->size)
-			release_firmware(voice_sense->kw[i]);
 
 		snprintf(kw_filename, size, "audience-vs-kw-%d.bin", i + 1);
 		dev_dbg(escore->dev, "%s(): kw filename = %s\n",
@@ -789,17 +791,16 @@ void escore_vs_exit(struct escore_priv *escore)
 	struct escore_voice_sense *voice_sense =
 			(struct escore_voice_sense *) escore->voice_sense;
 	int i;
-	kfree(voice_sense->bkg);
+	release_firmware(voice_sense->bkg);
 	for (i = 0; i < MAX_NO_OF_VS_KW; i++)
-		kfree(voice_sense->kw[i]);
-	kfree(voice_sense->vs);
+		if (voice_sense->kw[i])
+			release_firmware(voice_sense->kw[i]);
 	kfree(voice_sense);
 }
 
 int escore_vs_init(struct escore_priv *escore)
 {
 	int rc = 0;
-	int i;
 
 	struct escore_voice_sense *voice_sense;
 	voice_sense = (struct escore_voice_sense *)
@@ -814,30 +815,6 @@ int escore_vs_init(struct escore_priv *escore)
 	/* Initialize variables */
 	voice_sense->cvs_preset = 0;
 	voice_sense->vs_active_keywords = 0;
-
-	voice_sense->vs = (struct firmware *)
-			kmalloc(sizeof(struct firmware), GFP_KERNEL);
-	if (!voice_sense->vs) {
-		rc = -ENOMEM;
-		goto vs_alloc_err;
-	}
-
-	voice_sense->bkg = (struct firmware *)
-			kmalloc(sizeof(struct firmware), GFP_KERNEL);
-	if (!voice_sense->bkg) {
-		rc = -ENOMEM;
-		goto bkg_alloc_err;
-	}
-
-	for (i = 0; i < MAX_NO_OF_VS_KW; i++) {
-		voice_sense->kw[i] = (struct firmware *)
-			kmalloc(sizeof(struct firmware), GFP_KERNEL);
-		if (!voice_sense->kw[i]) {
-			rc = -ENOMEM;
-			goto kw_alloc_err;
-		}
-		voice_sense->kw[i]->size = 0;
-	}
 
 	mutex_init(&voice_sense->vs_event_mutex);
 
@@ -855,15 +832,7 @@ int escore_vs_init(struct escore_priv *escore)
 
 	return rc;
 
-kw_alloc_err:
-	kfree(voice_sense->bkg);
-	while (i--)
-		kfree(voice_sense->kw[i]);
-bkg_alloc_err:
 sysfs_init_err:
-	kfree(voice_sense->vs);
-vs_alloc_err:
-	kfree(voice_sense);
 voice_sense_alloc_err:
 	return rc;
 }
