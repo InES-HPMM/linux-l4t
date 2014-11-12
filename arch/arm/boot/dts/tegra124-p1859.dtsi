@@ -77,11 +77,16 @@
 			gpio-controller;
 			#gpio-cells = <2>;
 			reg = <0x75>;
-			gpio-init-names = "default";
+			gpio-init-names = "default", "wlan-default";
 			gpio-init-0 = <&pca9539_default>;
+			gpio-init-1 = <&pca9539_wlan_default>;
 			pca9539_default: default {
-				 gpio-output-high = <0 3 4 5 7 9 13 14 15>;
-			 };
+				gpio-output-low = <4>;
+				gpio-output-high = <0 3 5 7 9 13 14 15>;
+			};
+			pca9539_wlan_default: wlan-default {
+				gpio-output-high = <4>;
+			};
 		};
 	};
 
