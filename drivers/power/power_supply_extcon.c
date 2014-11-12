@@ -128,9 +128,27 @@ static struct power_supply_cables psy_cables[] = {
 		.ac_online = 1,
 	},
 	{
+		.name	= "ACA RID-B",
+		.dt_cable_name = "ACA RID-B",
+		.print_str = "USB ACA RID-B Charger",
+		.ac_online = 1,
+	},
+	{
+		.name	= "ACA RID-C",
+		.dt_cable_name = "ACA RID-C",
+		.print_str = "USB ACA RID-C Charger",
+		.ac_online = 1,
+	},
+	{
 		.name	= "Y-cable",
 		.dt_cable_name = "y-cable",
 		.print_str = "Y cable",
+		.ac_online = 1,
+	},
+	{
+		.name	= "ACA RID-A",
+		.dt_cable_name = "ACA RID-A",
+		.print_str = "ACA RID-A cable",
 		.ac_online = 1,
 	},
 };
@@ -345,7 +363,8 @@ static int psy_extcon_probe(struct platform_device *pdev)
 
 		psy_cable->ec_cable = NULL;
 		ext_name = pdata->extcon_name;
-		if (!strcmp(psy_cable->name, "Y-cable"))
+		if (!strcmp(psy_cable->name, "Y-cable") ||
+				!strcmp(psy_cable->name, "ACA RID-A"))
 			ext_name = pdata->y_cable_extcon_name;
 		if (!ext_name) {
 			dev_info(psy_extcon->dev, "No extname for cable %s\n",
@@ -366,10 +385,12 @@ static int psy_extcon_probe(struct platform_device *pdev)
 register_cable:
 		ret = extcon_register_cable_interest(&psy_cable->ec_cable_nb,
 				psy_cable->ec_cable, &psy_cable->nb);
-		if (ret < 0)
+		if (ret < 0) {
+			psy_cable->ec_cable = NULL;
 			dev_err(psy_extcon->dev,
 				"Cable %s registration failed: %d\n",
 				psy_cable->name, ret);
+		}
 	}
 
 	spin_lock(&psy_extcon->lock);
