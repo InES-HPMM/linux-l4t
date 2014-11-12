@@ -271,11 +271,11 @@ struct mods_priv {
 #endif
 
 /* PCI */
-#define MODS_PCI_GET_SLOT(mybus, devfn)					     \
+#define MODS_PCI_GET_SLOT(mydomain, mybus, devfn)			     \
 ({									     \
 	struct pci_dev *__dev = NULL;					     \
 	while ((__dev = pci_get_device(PCI_ANY_ID, PCI_ANY_ID, __dev))) {    \
-		if (pci_domain_nr(__dev->bus) == 0			     \
+		if (pci_domain_nr(__dev->bus) == mydomain		     \
 		    && __dev->bus->number == mybus			     \
 		    && __dev->devfn == devfn)				     \
 			break;						     \
@@ -334,6 +334,8 @@ void mods_shutdown_clock_api(void);
 int esc_mods_alloc_pages(struct file *, struct MODS_ALLOC_PAGES *);
 int esc_mods_device_alloc_pages(struct file *,
 			       struct MODS_DEVICE_ALLOC_PAGES *);
+int esc_mods_device_alloc_pages_new(struct file *,
+				    struct MODS_DEVICE_ALLOC_PAGES_NEW *);
 int esc_mods_free_pages(struct file *, struct MODS_FREE_PAGES *);
 int esc_mods_set_mem_type(struct file *, struct MODS_MEMORY_TYPE *);
 int esc_mods_get_phys_addr(struct file *,
@@ -351,30 +353,54 @@ int esc_mods_eval_acpi_method(struct file *,
 			     struct MODS_EVAL_ACPI_METHOD *);
 int esc_mods_eval_dev_acpi_method(struct file *,
 				 struct MODS_EVAL_DEV_ACPI_METHOD *);
+int esc_mods_eval_dev_acpi_method_new(struct file *,
+				      struct MODS_EVAL_DEV_ACPI_METHOD_NEW *);
 int esc_mods_acpi_get_ddc(struct file *, struct MODS_ACPI_GET_DDC *);
+int esc_mods_acpi_get_ddc_new(struct file *, struct MODS_ACPI_GET_DDC_NEW *);
 #endif
 /* pci */
 #ifdef CONFIG_PCI
 int esc_mods_find_pci_dev(struct file *, struct MODS_FIND_PCI_DEVICE *);
+int esc_mods_find_pci_dev_new(struct file *,
+			      struct MODS_FIND_PCI_DEVICE_NEW *);
 int esc_mods_find_pci_class_code(struct file *,
 				struct MODS_FIND_PCI_CLASS_CODE *);
+int esc_mods_find_pci_class_code_new(struct file *,
+				     struct MODS_FIND_PCI_CLASS_CODE_NEW *);
 int esc_mods_pci_get_bar_info(struct file *, struct MODS_PCI_GET_BAR_INFO *);
+int esc_mods_pci_get_bar_info_new(struct file *,
+				  struct MODS_PCI_GET_BAR_INFO_NEW *);
 int esc_mods_pci_get_irq(struct file *, struct MODS_PCI_GET_IRQ *);
+int esc_mods_pci_get_irq_new(struct file *,
+			     struct MODS_PCI_GET_IRQ_NEW *);
 int esc_mods_pci_read(struct file *, struct MODS_PCI_READ *);
+int esc_mods_pci_read_new(struct file *, struct MODS_PCI_READ_NEW *);
 int esc_mods_pci_write(struct file *, struct MODS_PCI_WRITE *);
+int esc_mods_pci_write_new(struct file *, struct MODS_PCI_WRITE_NEW *);
 int esc_mods_pci_bus_add_dev(struct file *,
-			    struct MODS_PCI_BUS_ADD_DEVICES *);
+			     struct MODS_PCI_BUS_ADD_DEVICES *);
 int esc_mods_pio_read(struct file *, struct MODS_PIO_READ *);
 int esc_mods_pio_write(struct file *, struct MODS_PIO_WRITE  *);
 int esc_mods_device_numa_info(struct file *,
 			     struct MODS_DEVICE_NUMA_INFO  *);
+int esc_mods_device_numa_info_new(struct file *,
+				  struct MODS_DEVICE_NUMA_INFO_NEW  *);
 #endif
 /* irq */
 int esc_mods_register_irq(struct file *, struct MODS_REGISTER_IRQ *);
+int esc_mods_register_irq_new(struct file *,
+			      struct MODS_REGISTER_IRQ_NEW *);
 int esc_mods_unregister_irq(struct file *, struct MODS_REGISTER_IRQ *);
+int esc_mods_unregister_irq_new(struct file *,
+				struct MODS_REGISTER_IRQ_NEW *);
 int esc_mods_query_irq(struct file *, struct MODS_QUERY_IRQ *);
+int esc_mods_query_irq_new(struct file *, struct MODS_QUERY_IRQ_NEW *);
 int esc_mods_set_irq_mask(struct file *, struct MODS_SET_IRQ_MASK *);
+int esc_mods_set_irq_mask_new(struct file *,
+			      struct MODS_SET_IRQ_MASK_NEW *);
 int esc_mods_irq_handled(struct file *, struct MODS_REGISTER_IRQ *);
+int esc_mods_irq_handled_new(struct file *,
+			     struct MODS_REGISTER_IRQ_NEW *);
 /* clock */
 #ifdef CONFIG_ARCH_TEGRA
 int esc_mods_get_clock_handle(struct file *,

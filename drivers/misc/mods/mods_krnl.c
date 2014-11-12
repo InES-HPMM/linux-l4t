@@ -780,10 +780,22 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   esc_mods_find_pci_dev, MODS_FIND_PCI_DEVICE);
 		break;
 
+	case MODS_ESC_FIND_PCI_DEVICE_NEW:
+		MODS_IOCTL(MODS_ESC_FIND_PCI_DEVICE_NEW,
+			   esc_mods_find_pci_dev_new,
+			   MODS_FIND_PCI_DEVICE_NEW);
+		break;
+
 	case MODS_ESC_FIND_PCI_CLASS_CODE:
 		MODS_IOCTL(MODS_ESC_FIND_PCI_CLASS_CODE,
 			   esc_mods_find_pci_class_code,
 			   MODS_FIND_PCI_CLASS_CODE);
+		break;
+
+	case MODS_ESC_FIND_PCI_CLASS_CODE_NEW:
+		MODS_IOCTL(MODS_ESC_FIND_PCI_CLASS_CODE_NEW,
+			   esc_mods_find_pci_class_code_new,
+			   MODS_FIND_PCI_CLASS_CODE_NEW);
 		break;
 
 	case MODS_ESC_PCI_GET_BAR_INFO:
@@ -792,19 +804,42 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   MODS_PCI_GET_BAR_INFO);
 		break;
 
+	case MODS_ESC_PCI_GET_BAR_INFO_NEW:
+		MODS_IOCTL(MODS_ESC_PCI_GET_BAR_INFO_NEW,
+			   esc_mods_pci_get_bar_info_new,
+			   MODS_PCI_GET_BAR_INFO_NEW);
+		break;
+
 	case MODS_ESC_PCI_GET_IRQ:
 		MODS_IOCTL(MODS_ESC_PCI_GET_IRQ,
 			   esc_mods_pci_get_irq,
 			   MODS_PCI_GET_IRQ);
 		break;
 
+	case MODS_ESC_PCI_GET_IRQ_NEW:
+		MODS_IOCTL(MODS_ESC_PCI_GET_IRQ_NEW,
+			   esc_mods_pci_get_irq_new,
+			   MODS_PCI_GET_IRQ_NEW);
+		break;
+
 	case MODS_ESC_PCI_READ:
 		MODS_IOCTL(MODS_ESC_PCI_READ, esc_mods_pci_read, MODS_PCI_READ);
+		break;
+
+	case MODS_ESC_PCI_READ_NEW:
+		MODS_IOCTL(MODS_ESC_PCI_READ_NEW,
+			   esc_mods_pci_read_new, MODS_PCI_READ_NEW);
 		break;
 
 	case MODS_ESC_PCI_WRITE:
 		MODS_IOCTL_NORETVAL(MODS_ESC_PCI_WRITE,
 				    esc_mods_pci_write, MODS_PCI_WRITE);
+		break;
+
+	case MODS_ESC_PCI_WRITE_NEW:
+		MODS_IOCTL_NORETVAL(MODS_ESC_PCI_WRITE_NEW,
+				    esc_mods_pci_write_new,
+				    MODS_PCI_WRITE_NEW);
 		break;
 
 	case MODS_ESC_PCI_BUS_ADD_DEVICES:
@@ -828,6 +863,12 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   esc_mods_device_numa_info,
 			   MODS_DEVICE_NUMA_INFO);
 		break;
+
+	case MODS_ESC_DEVICE_NUMA_INFO_NEW:
+		MODS_IOCTL(MODS_ESC_DEVICE_NUMA_INFO_NEW,
+			   esc_mods_device_numa_info_new,
+			   MODS_DEVICE_NUMA_INFO_NEW);
+		break;
 #endif
 
 	case MODS_ESC_ALLOC_PAGES:
@@ -839,6 +880,12 @@ static long mods_krnl_ioctl(struct file  *fp,
 		MODS_IOCTL(MODS_ESC_DEVICE_ALLOC_PAGES,
 			   esc_mods_device_alloc_pages,
 			   MODS_DEVICE_ALLOC_PAGES);
+		break;
+
+	case MODS_ESC_DEVICE_ALLOC_PAGES_NEW:
+		MODS_IOCTL(MODS_ESC_DEVICE_ALLOC_PAGES_NEW,
+			   esc_mods_device_alloc_pages_new,
+			   MODS_DEVICE_ALLOC_PAGES_NEW);
 		break;
 
 	case MODS_ESC_FREE_PAGES:
@@ -885,9 +932,21 @@ static long mods_krnl_ioctl(struct file  *fp,
 				    esc_mods_register_irq, MODS_REGISTER_IRQ);
 		break;
 
+	case MODS_ESC_REGISTER_IRQ_NEW:
+		MODS_IOCTL_NORETVAL(MODS_ESC_REGISTER_IRQ_NEW,
+				    esc_mods_register_irq_new,
+				    MODS_REGISTER_IRQ_NEW);
+		break;
+
 	case MODS_ESC_UNREGISTER_IRQ:
 		MODS_IOCTL_NORETVAL(MODS_ESC_UNREGISTER_IRQ,
 				    esc_mods_unregister_irq, MODS_REGISTER_IRQ);
+		break;
+
+	case MODS_ESC_UNREGISTER_IRQ_NEW:
+		MODS_IOCTL_NORETVAL(MODS_ESC_UNREGISTER_IRQ_NEW,
+				    esc_mods_unregister_irq_new,
+				    MODS_REGISTER_IRQ_NEW);
 		break;
 
 	case MODS_ESC_QUERY_IRQ:
@@ -895,14 +954,31 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   esc_mods_query_irq, MODS_QUERY_IRQ);
 		break;
 
+	case MODS_ESC_QUERY_IRQ_NEW:
+		MODS_IOCTL(MODS_ESC_QUERY_IRQ_NEW,
+			   esc_mods_query_irq_new, MODS_QUERY_IRQ_NEW);
+		break;
+
 	case MODS_ESC_SET_IRQ_MASK:
 		MODS_IOCTL_NORETVAL(MODS_ESC_SET_IRQ_MASK,
 				    esc_mods_set_irq_mask, MODS_SET_IRQ_MASK);
 		break;
 
+	case MODS_ESC_SET_IRQ_MASK_NEW:
+		MODS_IOCTL_NORETVAL(MODS_ESC_SET_IRQ_MASK_NEW,
+				    esc_mods_set_irq_mask_new,
+				    MODS_SET_IRQ_MASK_NEW);
+		break;
+
 	case MODS_ESC_IRQ_HANDLED:
 		MODS_IOCTL_NORETVAL(MODS_ESC_IRQ_HANDLED,
 				    esc_mods_irq_handled, MODS_REGISTER_IRQ);
+		break;
+
+	case MODS_ESC_IRQ_HANDLED_NEW:
+		MODS_IOCTL_NORETVAL(MODS_ESC_IRQ_HANDLED_NEW,
+				    esc_mods_irq_handled_new,
+				    MODS_REGISTER_IRQ_NEW);
 		break;
 
 #ifdef CONFIG_ACPI
@@ -917,9 +993,20 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   MODS_EVAL_DEV_ACPI_METHOD);
 		break;
 
+	case MODS_ESC_EVAL_DEV_ACPI_METHOD_NEW:
+		MODS_IOCTL(MODS_ESC_EVAL_DEV_ACPI_METHOD_NEW,
+			   esc_mods_eval_dev_acpi_method_new,
+			   MODS_EVAL_DEV_ACPI_METHOD_NEW);
+		break;
+
 	case MODS_ESC_ACPI_GET_DDC:
 		MODS_IOCTL(MODS_ESC_ACPI_GET_DDC,
 			   esc_mods_acpi_get_ddc, MODS_ACPI_GET_DDC);
+		break;
+
+	case MODS_ESC_ACPI_GET_DDC_NEW:
+		MODS_IOCTL(MODS_ESC_ACPI_GET_DDC_NEW,
+			   esc_mods_acpi_get_ddc_new, MODS_ACPI_GET_DDC_NEW);
 		break;
 
 #elif defined(CONFIG_ARCH_TEGRA)

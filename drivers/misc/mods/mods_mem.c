@@ -430,6 +430,9 @@ static struct MODS_PHYS_CHUNK *mods_find_phys_chunk(
 	u32			page_offs;
 	u32			i;
 
+	if (!p_mem_info)
+		return NULL;
+
 	pages_left = offset >> PAGE_SHIFT;
 	page_offs  = offset & (~PAGE_MASK);
 
@@ -455,8 +458,8 @@ static struct MODS_PHYS_CHUNK *mods_find_phys_chunk(
  * ESCAPE CALL FUNCTONS *
  ************************/
 
-int esc_mods_device_alloc_pages(struct file                    *fp,
-				struct MODS_DEVICE_ALLOC_PAGES *p)
+int esc_mods_device_alloc_pages_new(struct file	*fp,
+				    struct MODS_DEVICE_ALLOC_PAGES_NEW *p)
 {
 	struct MODS_MEM_INFO *p_mem_info;
 	u32    num_pages;
@@ -518,7 +521,8 @@ int esc_mods_device_alloc_pages(struct file                    *fp,
 	if (p->pci_device.bus || p->pci_device.device) {
 		unsigned int devfn = PCI_DEVFN(p->pci_device.device,
 					       p->pci_device.function);
-		struct pci_dev *dev = MODS_PCI_GET_SLOT(p->pci_device.bus,
+		struct pci_dev *dev = MODS_PCI_GET_SLOT(p->pci_device.domain,
+							p->pci_device.bus,
 							devfn);
 		if (!dev) {
 			LOG_EXT();
@@ -569,21 +573,51 @@ int esc_mods_device_alloc_pages(struct file                    *fp,
 	return ret;
 }
 
+int esc_mods_device_alloc_pages(struct file                    *fp,
+				struct MODS_DEVICE_ALLOC_PAGES *p)
+{
+	int retval;
+	struct MODS_DEVICE_ALLOC_PAGES_NEW dev_alloc_pages = {0};
+	LOG_ENT();
+
+	dev_alloc_pages.num_bytes		= p->num_bytes;
+	dev_alloc_pages.contiguous		= p->contiguous;
+	dev_alloc_pages.address_bits		= p->address_bits;
+	dev_alloc_pages.attrib			= p->attrib;
+	dev_alloc_pages.pci_device.domain	= 0;
+	dev_alloc_pages.pci_device.bus		= p->pci_device.bus;
+	dev_alloc_pages.pci_device.device	= p->pci_device.device;
+	dev_alloc_pages.pci_device.function	= p->pci_device.function;
+
+	retval = esc_mods_device_alloc_pages_new(fp, &dev_alloc_pages);
+	if (!retval)
+		p->memory_handle = dev_alloc_pages.memory_handle;
+
+	LOG_EXT();
+	return retval;
+}
+
 int esc_mods_alloc_pages(struct file *fp, struct MODS_ALLOC_PAGES *p)
 {
-	struct MODS_DEVICE_ALLOC_PAGES dev_alloc_pages;
+	int retval;
+	struct MODS_DEVICE_ALLOC_PAGES_NEW dev_alloc_pages;
 	LOG_ENT();
+
 	dev_alloc_pages.num_bytes	    = p->num_bytes;
 	dev_alloc_pages.contiguous	    = p->contiguous;
 	dev_alloc_pages.address_bits	    = p->address_bits;
 	dev_alloc_pages.attrib		    = p->attrib;
+	dev_alloc_pages.pci_device.domain   = 0;
 	dev_alloc_pages.pci_device.bus	    = 0;
 	dev_alloc_pages.pci_device.device   = 0;
 	dev_alloc_pages.pci_device.function = 0;
-	if (!esc_mods_device_alloc_pages(fp, &dev_alloc_pages))
+
+	retval = esc_mods_device_alloc_pages_new(fp, &dev_alloc_pages);
+	if (!retval)
 		p->memory_handle = dev_alloc_pages.memory_handle;
+
 	LOG_EXT();
-	return 0;
+	return retval;
 }
 
 int esc_mods_free_pages(struct file *fp, struct MODS_FREE_PAGES *p)

@@ -537,7 +537,7 @@ void mods_free_channel(unsigned char channel)
 
 #ifdef CONFIG_PCI
 static int mods_register_pci_irq(struct file *pfile,
-				 struct MODS_REGISTER_IRQ *p)
+				 struct MODS_REGISTER_IRQ_NEW *p)
 {
 	struct pci_dev *dev;
 	unsigned int devfn;
@@ -552,7 +552,7 @@ static int mods_register_pci_irq(struct file *pfile,
 
 	/* Get the PCI device structure for the specified device from kernel */
 	devfn = PCI_DEVFN(p->dev.device, p->dev.function);
-	dev = MODS_PCI_GET_SLOT(p->dev.bus, devfn);
+	dev = MODS_PCI_GET_SLOT(p->dev.domain, p->dev.bus, devfn);
 	if (!dev) {
 		LOG_EXT();
 		return ERROR;
@@ -561,7 +561,8 @@ static int mods_register_pci_irq(struct file *pfile,
 	/* Determine if the interrupt is already hooked */
 	if (mods_lookup_irq(0, dev, 0) == IRQ_FOUND) {
 		mods_error_printk(
-		    "IRQ for device %x:%02x.%x has already been registered\n",
+		 "IRQ for device %04x:%x:%02x.%x has already been registered\n",
+		    (unsigned)p->dev.domain,
 		    (unsigned)p->dev.bus,
 		    (unsigned)p->dev.device,
 		    (unsigned)p->dev.function);
@@ -574,7 +575,8 @@ static int mods_register_pci_irq(struct file *pfile,
 #ifdef CONFIG_PCI_MSI
 		if (0 == pci_find_capability(dev, PCI_CAP_ID_MSI)) {
 			mods_error_printk(
-				"device %x:%02x.%x does not support MSI\n",
+				"device %04x:%x:%02x.%x does not support MSI\n",
+				(unsigned)p->dev.domain,
 				(unsigned)p->dev.bus,
 				(unsigned)p->dev.device,
 				(unsigned)p->dev.function);
@@ -589,7 +591,8 @@ static int mods_register_pci_irq(struct file *pfile,
 
 	/* Enable device on the PCI bus */
 	if (mods_enable_device(private_data, dev)) {
-		mods_error_printk("unable to enable device %x:%02x.%x\n",
+		mods_error_printk("unable to enable device %04x:%x:%02x.%x\n",
+				  (unsigned)p->dev.domain,
 				  (unsigned)p->dev.bus,
 				  (unsigned)p->dev.device,
 				  (unsigned)p->dev.function);
@@ -602,10 +605,11 @@ static int mods_register_pci_irq(struct file *pfile,
 	if (p->type == MODS_IRQ_TYPE_MSI) {
 		if (0 != pci_enable_msi(dev)) {
 			mods_error_printk(
-				"unable to enable MSI on device %x:%02x.%x\n",
-				(unsigned)p->dev.bus,
-				(unsigned)p->dev.device,
-				(unsigned)p->dev.function);
+			    "unable to enable MSI on device %04x:%x:%02x.%x\n",
+			    (unsigned)p->dev.domain,
+			    (unsigned)p->dev.bus,
+			    (unsigned)p->dev.device,
+			    (unsigned)p->dev.function);
 			return ERROR;
 		}
 	}
@@ -626,7 +630,7 @@ static int mods_register_pci_irq(struct file *pfile,
 #endif /* CONFIG_PCI */
 
 static int mods_register_cpu_irq(struct file *pfile,
-				 struct MODS_REGISTER_IRQ *p)
+				 struct MODS_REGISTER_IRQ_NEW *p)
 {
 	unsigned char channel;
 	unsigned int irq;
@@ -658,7 +662,7 @@ static int mods_register_cpu_irq(struct file *pfile,
 
 #ifdef CONFIG_PCI
 static int mods_unregister_pci_irq(struct file *pfile,
-				   struct MODS_REGISTER_IRQ *p)
+				   struct MODS_REGISTER_IRQ_NEW *p)
 {
 	struct mods_priv *pmp = get_all_data();
 	struct dev_irq_map *del = NULL;
@@ -675,7 +679,7 @@ static int mods_unregister_pci_irq(struct file *pfile,
 
 	/* Get the PCI device structure for the specified device from kernel */
 	devfn = PCI_DEVFN(p->dev.device, p->dev.function);
-	dev = MODS_PCI_GET_SLOT(p->dev.bus, devfn);
+	dev = MODS_PCI_GET_SLOT(p->dev.domain, p->dev.bus, devfn);
 	if (!dev) {
 		LOG_EXT();
 		return ERROR;
@@ -684,7 +688,8 @@ static int mods_unregister_pci_irq(struct file *pfile,
 	/* Determine if the interrupt is already hooked by this client */
 	if (mods_lookup_irq(channel, dev, 0) == IRQ_NOT_FOUND) {
 		mods_error_printk(
-			"IRQ for device %x:%02x.%x not hooked, can't unhook\n",
+			"IRQ for device %04x:%x:%02x.%x not hooked, can't unhook\n",
+			(unsigned)p->dev.domain,
 			(unsigned)p->dev.bus,
 			(unsigned)p->dev.device,
 			(unsigned)p->dev.function);
@@ -703,10 +708,11 @@ static int mods_unregister_pci_irq(struct file *pfile,
 			list_del(&del->list);
 			mods_debug_printk(DEBUG_ISR,
 				"unregistered %s IRQ 0x%x for device "
-				"%x:%02x.%x\n",
+				"%04x:%x:%02x.%x\n",
 				(del->type == MODS_IRQ_TYPE_MSI)
 					? "MSI" : "INTx",
 				del->dev->irq,
+				(unsigned)p->dev.domain,
 				(unsigned)p->dev.bus,
 				(unsigned)p->dev.device,
 				(unsigned)p->dev.function);
@@ -721,7 +727,7 @@ static int mods_unregister_pci_irq(struct file *pfile,
 #endif
 
 static int mods_unregister_cpu_irq(struct file *pfile,
-				   struct MODS_REGISTER_IRQ *p)
+				   struct MODS_REGISTER_IRQ_NEW *p)
 {
 	struct mods_priv *pmp = get_all_data();
 	struct dev_irq_map *del = NULL;
@@ -771,7 +777,8 @@ static int mods_unregister_cpu_irq(struct file *pfile,
  * ESCAPE CALL FUNCTIONS *
  *************************/
 
-int esc_mods_register_irq(struct file *pfile, struct MODS_REGISTER_IRQ *p)
+int esc_mods_register_irq_new(struct file *pfile,
+			      struct MODS_REGISTER_IRQ_NEW *p)
 {
 	if (p->type == MODS_IRQ_TYPE_CPU) {
 		return mods_register_cpu_irq(pfile, p);
@@ -785,7 +792,21 @@ int esc_mods_register_irq(struct file *pfile, struct MODS_REGISTER_IRQ *p)
 	}
 }
 
-int esc_mods_unregister_irq(struct file *pfile, struct MODS_REGISTER_IRQ *p)
+int esc_mods_register_irq(struct file *pfile,
+			  struct MODS_REGISTER_IRQ *p)
+{
+	struct MODS_REGISTER_IRQ_NEW register_irq = { {0} };
+	register_irq.dev.domain		= 0;
+	register_irq.dev.bus		= p->dev.bus;
+	register_irq.dev.device		= p->dev.device;
+	register_irq.dev.function	= p->dev.function;
+	register_irq.type		= p->type;
+
+	return esc_mods_register_irq_new(pfile, &register_irq);
+}
+
+int esc_mods_unregister_irq_new(struct file *pfile,
+				struct MODS_REGISTER_IRQ_NEW *p)
 {
 	if (p->type == MODS_IRQ_TYPE_CPU) {
 		return mods_unregister_cpu_irq(pfile, p);
@@ -798,7 +819,20 @@ int esc_mods_unregister_irq(struct file *pfile, struct MODS_REGISTER_IRQ *p)
 	}
 }
 
-int esc_mods_query_irq(struct file *pfile, struct MODS_QUERY_IRQ *p)
+int esc_mods_unregister_irq(struct file *pfile,
+			    struct MODS_REGISTER_IRQ *p)
+{
+	struct MODS_REGISTER_IRQ_NEW register_irq = { {0} };
+	register_irq.dev.domain		= 0;
+	register_irq.dev.bus		= p->dev.bus;
+	register_irq.dev.device		= p->dev.device;
+	register_irq.dev.function	= p->dev.function;
+	register_irq.type		= p->type;
+
+	return esc_mods_unregister_irq_new(pfile, &register_irq);
+}
+
+int esc_mods_query_irq_new(struct file *pfile, struct MODS_QUERY_IRQ_NEW *p)
 {
 	unsigned char channel;
 	struct irq_q_info *q = NULL;
@@ -826,10 +860,12 @@ int esc_mods_query_irq(struct file *pfile, struct MODS_QUERY_IRQ *p)
 		unsigned int index = q->head & (MODS_MAX_IRQS - 1);
 		struct pci_dev *dev = q->data[index].dev;
 		if (dev) {
+			p->irq_list[i].dev.domain = pci_domain_nr(dev->bus);
 			p->irq_list[i].dev.bus = dev->bus->number;
 			p->irq_list[i].dev.device = PCI_SLOT(dev->devfn);
 			p->irq_list[i].dev.function = PCI_FUNC(dev->devfn);
 		} else {
+			p->irq_list[i].dev.domain = 0;
 			p->irq_list[i].dev.bus = q->data[index].irq;
 			p->irq_list[i].dev.device = 0xFFU;
 			p->irq_list[i].dev.function = 0xFFU;
@@ -839,8 +875,9 @@ int esc_mods_query_irq(struct file *pfile, struct MODS_QUERY_IRQ *p)
 		/* Print info about IRQ status returned */
 		if (dev) {
 			mods_debug_printk(DEBUG_ISR_DETAILED,
-				"retrieved IRQ for %x:%02x.%x, time=%uus, "
+				"retrieved IRQ for %04x:%x:%02x.%x, time=%uus, "
 				"delay=%uus\n",
+				(unsigned)p->irq_list[i].dev.domain,
 				(unsigned)p->irq_list[i].dev.bus,
 				(unsigned)p->irq_list[i].dev.device,
 				(unsigned)p->irq_list[i].dev.function,
@@ -866,7 +903,29 @@ int esc_mods_query_irq(struct file *pfile, struct MODS_QUERY_IRQ *p)
 	return OK;
 }
 
-int esc_mods_set_irq_mask(struct file *pfile, struct MODS_SET_IRQ_MASK *p)
+int esc_mods_query_irq(struct file *pfile,
+		       struct MODS_QUERY_IRQ *p)
+{
+	int retval, i;
+	struct MODS_QUERY_IRQ_NEW query_irq = { { {0} } };
+
+	retval = esc_mods_query_irq_new(pfile, &query_irq);
+	if (retval)
+		return retval;
+
+	for (i = 0; i < MODS_MAX_IRQS; i++) {
+		p->irq_list[i].dev.bus	  = query_irq.irq_list[i].dev.bus;
+		p->irq_list[i].dev.device = query_irq.irq_list[i].dev.device;
+		p->irq_list[i].dev.function
+					  = query_irq.irq_list[i].dev.function;
+		p->irq_list[i].delay	  = query_irq.irq_list[i].delay;
+	}
+	p->more = query_irq.more;
+	return OK;
+}
+
+int esc_mods_set_irq_mask_new(struct file *pfile,
+			      struct MODS_SET_IRQ_MASK_NEW *p)
 {
 	struct mods_priv *pmp = get_all_data();
 	unsigned long flags = 0;
@@ -889,14 +948,16 @@ int esc_mods_set_irq_mask(struct file *pfile, struct MODS_SET_IRQ_MASK *p)
 	if (p->irq_type == MODS_IRQ_TYPE_CPU) {
 		mods_debug_printk(
 			DEBUG_ISR,
-			"set CPU IRQ 0x%x mask &0x%x |0x%x addr=0x%llx\n",
+			"set CPU IRQ 0x%x mask &0x%llx |0x%llx addr=0x%llx\n",
 			(unsigned)p->dev.bus,
 			p->and_mask, p->or_mask,
 			p->aperture_addr + p->reg_offset);
 	} else {
 		mods_debug_printk(
 			DEBUG_ISR,
-			"set dev %x:%02x.%x IRQ mask &0x%x |0x%x addr=0x%llx\n",
+			"set dev %04x:%x:%02x.%x IRQ mask"
+			"&0x%llx |0x%llx addr=0x%llx\n",
+			(unsigned)p->dev.domain,
 			(unsigned)p->dev.bus,
 			(unsigned)p->dev.device,
 			(unsigned)p->dev.function,
@@ -920,7 +981,7 @@ int esc_mods_set_irq_mask(struct file *pfile, struct MODS_SET_IRQ_MASK *p)
 #ifdef CONFIG_PCI
 		/* Get the PCI dev struct for the specified device from kernel*/
 		unsigned int devfn = PCI_DEVFN(p->dev.device, p->dev.function);
-		dev = MODS_PCI_GET_SLOT(p->dev.bus, devfn);
+		dev = MODS_PCI_GET_SLOT(p->dev.domain, p->dev.bus, devfn);
 		if (!dev) {
 			LOG_EXT();
 			spin_unlock_irqrestore(&pmp->lock, flags);
@@ -979,7 +1040,27 @@ int esc_mods_set_irq_mask(struct file *pfile, struct MODS_SET_IRQ_MASK *p)
 	return ret;
 }
 
-int esc_mods_irq_handled(struct file *pfile, struct MODS_REGISTER_IRQ *p)
+int esc_mods_set_irq_mask(struct file *pfile,
+			  struct MODS_SET_IRQ_MASK *p)
+{
+	struct MODS_SET_IRQ_MASK_NEW set_irq_mask = {0};
+	set_irq_mask.aperture_addr	= p->aperture_addr;
+	set_irq_mask.aperture_size	= p->aperture_size;
+	set_irq_mask.reg_offset		= p->reg_offset;
+	set_irq_mask.and_mask		= p->and_mask;
+	set_irq_mask.or_mask		= p->or_mask;
+	set_irq_mask.dev.domain		= 0;
+	set_irq_mask.dev.bus		= p->dev.bus;
+	set_irq_mask.dev.device		= p->dev.device;
+	set_irq_mask.dev.function	= p->dev.function;
+	set_irq_mask.irq_type		= p->irq_type;
+	set_irq_mask.mask_type		= p->mask_type;
+
+	return esc_mods_set_irq_mask_new(pfile, &set_irq_mask);
+}
+
+int esc_mods_irq_handled_new(struct file *pfile,
+			     struct MODS_REGISTER_IRQ_NEW *p)
 {
 	struct mods_priv *pmp = get_all_data();
 	unsigned long flags = 0;
@@ -1022,4 +1103,17 @@ int esc_mods_irq_handled(struct file *pfile, struct MODS_REGISTER_IRQ *p)
 	spin_unlock_irqrestore(&pmp->lock, flags);
 
 	return ret;
+}
+
+int esc_mods_irq_handled(struct file *pfile,
+			 struct MODS_REGISTER_IRQ *p)
+{
+	struct MODS_REGISTER_IRQ_NEW register_irq = { {0} };
+	register_irq.dev.domain		= 0;
+	register_irq.dev.bus		= p->dev.bus;
+	register_irq.dev.device		= p->dev.device;
+	register_irq.dev.function	= p->dev.function;
+	register_irq.type		= p->type;
+
+	return esc_mods_irq_handled_new(pfile, &register_irq);
 }

@@ -156,7 +156,7 @@ static int mods_extract_acpi_object(
 
 static int mods_eval_acpi_method(struct file		      *pfile,
 				 struct MODS_EVAL_ACPI_METHOD *p,
-				 struct mods_pci_dev	      *pdevice)
+				 struct mods_pci_dev_new      *pdevice)
 {
 	int ret = OK;
 	int i;
@@ -171,14 +171,16 @@ static int mods_eval_acpi_method(struct file		      *pfile,
 		unsigned int devfn;
 		struct pci_dev *dev;
 
-		mods_debug_printk(DEBUG_ACPI, "ACPI %s for device %x:%02x.%x\n",
+		mods_debug_printk(DEBUG_ACPI,
+				  "ACPI %s for device %04x:%x:%02x.%x\n",
 				  p->method_name,
+				  (unsigned)pdevice->domain,
 				  (unsigned)pdevice->bus,
 				  (unsigned)pdevice->device,
 				  (unsigned)pdevice->function);
 
 		devfn = PCI_DEVFN(pdevice->device, pdevice->function);
-		dev = MODS_PCI_GET_SLOT(pdevice->bus, devfn);
+		dev = MODS_PCI_GET_SLOT(pdevice->domain, pdevice->bus, devfn);
 		if (!dev) {
 			mods_error_printk("ACPI: PCI device not found\n");
 			return -EINVAL;
@@ -254,23 +256,9 @@ static int mods_eval_acpi_method(struct file		      *pfile,
 	return ret;
 }
 
-/*************************
- * ESCAPE CALL FUNCTIONS *
- *************************/
-
-int esc_mods_eval_acpi_method(struct file *pfile,
-			      struct MODS_EVAL_ACPI_METHOD *p)
-{
-	return mods_eval_acpi_method(pfile, p, 0);
-}
-
-int esc_mods_eval_dev_acpi_method(struct file *pfile,
-				  struct MODS_EVAL_DEV_ACPI_METHOD *p)
-{
-	return mods_eval_acpi_method(pfile, &p->method, &p->device);
-}
-
-int esc_mods_acpi_get_ddc(struct file *pfile, struct MODS_ACPI_GET_DDC *p)
+static int mods_acpi_get_ddc(struct file *pfile,
+			     struct MODS_ACPI_GET_DDC_NEW *p,
+			     struct mods_pci_dev_new *pci_device)
 {
 	acpi_status status;
 	struct acpi_device *device = NULL;
@@ -284,15 +272,17 @@ int esc_mods_acpi_get_ddc(struct file *pfile, struct MODS_ACPI_GET_DDC *p)
 	acpi_handle lcd_dev_handle	= NULL;
 
 	mods_debug_printk(DEBUG_ACPI,
-			  "ACPI _DDC (EDID) for device %x:%02x.%x\n",
-			  (unsigned)p->device.bus,
-			  (unsigned)p->device.device,
-			  (unsigned)p->device.function);
+			  "ACPI _DDC (EDID) for device %04x:%x:%02x.%x\n",
+			  (unsigned)pci_device->domain,
+			  (unsigned)pci_device->bus,
+			  (unsigned)pci_device->device,
+			  (unsigned)pci_device->function);
 
 	{
-		unsigned int devfn = PCI_DEVFN(p->device.device,
-					       p->device.function);
-		struct pci_dev *dev = MODS_PCI_GET_SLOT(p->device.bus, devfn);
+		unsigned int devfn = PCI_DEVFN(pci_device->device,
+					       pci_device->function);
+		struct pci_dev *dev = MODS_PCI_GET_SLOT(pci_device->domain,
+							pci_device->bus, devfn);
 		if (!dev) {
 			mods_error_printk("ACPI: PCI device not found\n");
 			return -EINVAL;
@@ -341,21 +331,24 @@ int esc_mods_acpi_get_ddc(struct file *pfile, struct MODS_ACPI_GET_DDC *p)
 
 			lcd_dev_handle = dev->handle;
 			mods_debug_printk(DEBUG_ACPI,
-				"ACPI: Found LCD 0x%x on device %x:%02x.%x\n",
-				(unsigned)device_id,
-				(unsigned)p->device.bus,
-				(unsigned)p->device.device,
-				(unsigned)p->device.function);
+			    "ACPI: Found LCD 0x%x on device %04x:%x:%02x.%x\n",
+			    (unsigned)device_id,
+			    (unsigned)p->device.domain,
+			    (unsigned)p->device.bus,
+			    (unsigned)p->device.device,
+			    (unsigned)p->device.function);
 			break;
 		}
 
 	}
 
 	if (lcd_dev_handle == NULL) {
-		mods_error_printk("ACPI: LCD not found for device %x:%02x.%x\n",
-				  (unsigned)p->device.bus,
-				  (unsigned)p->device.device,
-				  (unsigned)p->device.function);
+		mods_error_printk(
+			"ACPI: LCD not found for device %04x:%x:%02x.%x\n",
+			(unsigned)p->device.domain,
+			(unsigned)p->device.bus,
+			(unsigned)p->device.device,
+			(unsigned)p->device.function);
 		return -EINVAL;
 	}
 
@@ -402,4 +395,49 @@ int esc_mods_acpi_get_ddc(struct file *pfile, struct MODS_ACPI_GET_DDC *p)
 
 	kfree(output.pointer);
 	return OK;
+}
+
+/*************************
+ * ESCAPE CALL FUNCTIONS *
+ *************************/
+
+int esc_mods_eval_acpi_method(struct file *pfile,
+			      struct MODS_EVAL_ACPI_METHOD *p)
+{
+	return mods_eval_acpi_method(pfile, p, 0);
+}
+
+int esc_mods_eval_dev_acpi_method_new(struct file *pfile,
+				      struct MODS_EVAL_DEV_ACPI_METHOD_NEW *p)
+{
+	return mods_eval_acpi_method(pfile, &p->method, &p->device);
+}
+
+int esc_mods_eval_dev_acpi_method(struct file *pfile,
+				  struct MODS_EVAL_DEV_ACPI_METHOD *p)
+{
+	struct mods_pci_dev_new device = {0};
+	device.domain		= 0;
+	device.bus		= p->device.bus;
+	device.device		= p->device.device;
+	device.function		= p->device.function;
+	return mods_eval_acpi_method(pfile, &p->method, &device);
+}
+
+int esc_mods_acpi_get_ddc_new(struct file *pfile,
+			      struct MODS_ACPI_GET_DDC_NEW *p)
+{
+	return mods_acpi_get_ddc(pfile, p, &p->device);
+}
+
+int esc_mods_acpi_get_ddc(struct file *pfile, struct MODS_ACPI_GET_DDC *p)
+{
+	struct MODS_ACPI_GET_DDC_NEW *pp = (struct MODS_ACPI_GET_DDC_NEW *) p;
+	struct mods_pci_dev_new device = {0};
+	device.domain	= 0;
+	device.bus	= p->device.bus;
+	device.device	= p->device.device;
+	device.function	= p->device.function;
+
+	return mods_acpi_get_ddc(pfile, pp, &device);
 }
