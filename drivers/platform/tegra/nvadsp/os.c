@@ -677,26 +677,31 @@ static int __nvadsp_os_start(void)
 #if !CONFIG_SYSTEM_FPGA
 	u32 val;
 #endif
-	int ret;
+	int ret = 0;
 
 	dev = &priv.pdev->dev;
 	drv_data = platform_get_drvdata(priv.pdev);
 
-	dev_info(dev, "Copying EVP...\n");
+	dev_dbg(dev, "Copying EVP...\n");
 	copy_io_in_l(drv_data->state.evp_ptr,
 		     drv_data->state.evp,
 		     AMC_EVP_SIZE);
 
 	if (drv_data->adsp_cpu_clk) {
-		dev_info(dev, "setting adsp cpu to %lu...\n", LOAD_ADSP_FREQ);
+		dev_dbg(dev, "setting adsp cpu to %lu...\n", LOAD_ADSP_FREQ);
 		clk_set_rate(drv_data->adsp_cpu_clk, LOAD_ADSP_FREQ);
+	} else {
+		ret = -EINVAL;
+		goto end;
 	}
 
-	dev_info(dev, "Starting ADSP OS...\n");
 	if (drv_data->adsp_clk) {
-		dev_info(dev, "deasserting adsp...\n");
+		dev_dbg(dev, "deasserting adsp...\n");
 		tegra_periph_reset_deassert(drv_data->adsp_clk);
 		udelay(200);
+	} else {
+		ret = -EINVAL;
+		goto end;
 	}
 
 #if !CONFIG_SYSTEM_FPGA
@@ -705,24 +710,34 @@ static int __nvadsp_os_start(void)
 
 	dev_info(dev, "waiting for ADSP OS to boot up...\n");
 	ret = wait_for_adsp_os_load_complete();
-	dev_info(dev, "waiting for ADSP OS to boot up...Done.\n");
+	if (ret) {
+		dev_err(dev, "Unable to start ADSP OS\n");
+		goto end;
+	}
+	dev_info(dev, "ADSP OS boot up... Done!\n");
 
 #ifdef CONFIG_TEGRA_ADSP_DFS
-	if (adsp_dfs_core_init(priv.pdev)) {
+	ret = adsp_dfs_core_init(priv.pdev);
+	if (ret) {
 		dev_err(dev, "adsp dfs initialization failed\n");
-		return -EINVAL;
+		goto err;
 	}
 #endif
 
 #ifdef CONFIG_TEGRA_ADSP_ACTMON
-	if (ape_actmon_init(priv.pdev)) {
+	ret = ape_actmon_init(priv.pdev);
+	if (ret) {
 		dev_err(dev, "ape actmon initialization failed\n");
-		return -EINVAL;
+		goto err;
 	}
 #endif
 
 	drv_data->adsp_os_loaded = true;
-	return 0;
+end:
+	return ret;
+err:
+	nvadsp_os_stop();
+	return ret;
 }
 
 int nvadsp_os_start(void)
