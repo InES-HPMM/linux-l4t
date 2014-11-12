@@ -505,9 +505,6 @@ static int qspi_write_en(struct qspi *flash,
 				__func__, status);
 			return status;
 		}
-		pr_debug("%s: WE/D: %d x%x\n",
-			dev_name(&flash->spi->dev), is_enable, regval);
-
 	} while ((regval & WEL_ENABLE) != comp);
 
 	return status;
@@ -542,7 +539,6 @@ static int wait_till_ready(struct qspi *flash, uint8_t is_sleep)
 				__func__, status);
 			return status;
 		}
-		pr_debug("WIP RDSR1: x%x\n", regval);
 	} while ((regval & WIP_ENABLE) == WIP_ENABLE);
 
 	return status;
@@ -561,7 +557,7 @@ static int erase_chip(struct qspi *flash)
 	struct spi_message m;
 	int status;
 
-	pr_info("%s: %s %lldKiB\n",
+	pr_debug("%s: %s %lldKiB\n",
 		dev_name(&flash->spi->dev), __func__,
 		(long long)(flash->mtd.size >> 10));
 
@@ -605,16 +601,17 @@ static int erase_chip(struct qspi *flash)
  *
  * Returns 0 if successful, non-zero otherwise.
  */
-static int erase_sector(struct qspi *flash, u32 offset)
+static int erase_sector(struct qspi *flash, u32 offset,
+				uint8_t erase_opcode, u32 size)
 {
 	uint8_t cmd_addr_buf[5];
 	struct spi_transfer t[1];
 	struct spi_message m;
 	int err = 0;
 
-	pr_info("%s: %s %dKiB at 0x%08x\n",
+	pr_debug("%s: %s %dKiB at 0x%08x\n",
 		dev_name(&flash->spi->dev),
-		__func__, flash->mtd.erasesize / 1024, offset);
+		__func__, size / 1024, offset);
 
 	/* Send write enable, then erase commands. */
 	err = qspi_write_en(flash, TRUE, TRUE);
@@ -624,7 +621,7 @@ static int erase_sector(struct qspi *flash, u32 offset)
 	}
 
 	/* Set up command buffer. */
-	cmd_addr_buf[0] = flash->erase_opcode;
+	cmd_addr_buf[0] = erase_opcode;
 	cmd_addr_buf[1] = (offset >> 24) & 0xFF;
 	cmd_addr_buf[2] = (offset >> 16) & 0xFF;
 	cmd_addr_buf[3] = (offset >> 8) & 0xFF;
@@ -674,7 +671,7 @@ static int qspi_erase(struct mtd_info *mtd, struct erase_info *instr)
 	u32 addr, len;
 	uint32_t rem;
 
-	pr_info("%s: %s at 0x%llx, len %lld\n",
+	pr_debug("%s: %s at 0x%llx, len %lld\n",
 		dev_name(&flash->spi->dev),
 		__func__, (long long)instr->addr,
 		(long long)instr->len);
@@ -703,10 +700,35 @@ static int qspi_erase(struct mtd_info *mtd, struct erase_info *instr)
 		/* "sector"-at-a-time erase */
 	} else {
 		while (len) {
-			if (erase_sector(flash, addr)) {
+			if (erase_sector(flash, addr,
+				flash->erase_opcode, mtd->erasesize)) {
 				instr->state = MTD_ERASE_FAILED;
 				mutex_unlock(&flash->lock);
 				return -EIO;
+			}
+			/* Take care of subsectors erase if required */
+			if (flash->flash_info->n_subsectors) {
+				struct  flash_info *flinfo = flash->flash_info;
+				u32 ssaddr = addr;
+				u32 eaddr = min((addr + mtd->erasesize),
+							flinfo->ss_endoffset);
+
+				while ((ssaddr >= flinfo->ss_soffset) &&
+					((ssaddr + flinfo->ss_size) <= eaddr)) {
+
+					pr_debug("%s: Erasing subblock @ x%x, len x%x\n",
+						dev_name(&flash->spi->dev),
+						ssaddr, flinfo->ss_size);
+
+					if (erase_sector(flash, ssaddr,
+						flinfo->ss_erase_opcode,
+							flinfo->ss_size)) {
+						instr->state = MTD_ERASE_FAILED;
+						mutex_unlock(&flash->lock);
+						return -EIO;
+					}
+					ssaddr += flinfo->ss_size;
+				}
 			}
 			addr += mtd->erasesize;
 			len -= mtd->erasesize;
@@ -741,7 +763,7 @@ static int qspi_read(struct mtd_info *mtd, loff_t from, size_t len,
 	bool is_ddr = false;
 	u32 speed;
 
-	pr_info("%s: %s from 0x%08x, len %zd\n",
+	pr_debug("%s: %s from 0x%08x, len %zd\n",
 		dev_name(&flash->spi->dev),
 		__func__, (u32)from, len);
 
@@ -909,7 +931,7 @@ static int qspi_write(struct mtd_info *mtd, loff_t to, size_t len,
 	bool is_ddr = false;
 	u32 speed;
 
-	pr_info("%s: %s to 0x%08x, len %zd\n", dev_name(&flash->spi->dev),
+	pr_debug("%s: %s to 0x%08x, len %zd\n", dev_name(&flash->spi->dev),
 			__func__, (u32)to, len);
 
 	/* Set Controller data Parameters
@@ -1239,6 +1261,7 @@ static int qspi_probe(struct spi_device *spi)
 		return -ENOMEM;
 
 	flash->spi = spi;
+	flash->flash_info = info;
 	mutex_init(&flash->lock);
 
 	dev_set_drvdata(&spi->dev, flash);
@@ -1270,6 +1293,20 @@ static int qspi_probe(struct spi_device *spi)
 
 	flash->addr_width = ADDRESS_WIDTH;
 	cdata = flash->spi->controller_data;
+
+	if (info->n_subsectors) {
+		info->ss_endoffset = info->ss_soffset +
+					info->ss_size * info->n_subsectors;
+		if (info->ss_endoffset > flash->mtd.size) {
+			dev_err(&spi->dev, "%s SSErr %x %x %x %x\n", id->name,
+				info->n_subsectors, info->ss_soffset,
+					info->ss_size, flash->mtd.size);
+			return -EINVAL;
+		}
+		dev_info(&spi->dev, "%s SSG %x %x %x %x\n", id->name,
+				info->n_subsectors, info->ss_soffset,
+					info->ss_size, flash->mtd.size);
+	}
 
 	dev_info(&spi->dev, "%s (%lld Kbytes)\n", id->name,
 			(long long)flash->mtd.size >> 10);

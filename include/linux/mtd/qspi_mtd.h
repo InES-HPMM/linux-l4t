@@ -215,12 +215,18 @@ struct qcmdset cmd_info_table[OPERATION_MAX_LIMIT] = {
 #define JEDEC_MFR(_jedec_id)	((_jedec_id) >> 16)
 
 #define INFO(_jedec_id, _ext_id, _sector_size,		\
-		 _n_sectors, _page_size, _flags)	\
+		 _n_sectors, _subsector_size,		\
+		_n_subsectors, _subsectors_soffset,	\
+		_ss_erase_opcode, _page_size, _flags)	\
 	((kernel_ulong_t)&(struct flash_info) {		\
 	 .jedec_id = (_jedec_id),			\
 	 .ext_id = (_ext_id),				\
 	 .sector_size = (_sector_size),			\
 	 .n_sectors = (_n_sectors),			\
+	 .ss_size = (_subsector_size),			\
+	 .n_subsectors = (_n_subsectors),		\
+	 .ss_soffset = (_subsectors_soffset),		\
+	 .ss_erase_opcode = (_ss_erase_opcode),		\
 	 .page_size = (_page_size),			\
 	 .flags = (_flags),				\
 	 })
@@ -235,6 +241,7 @@ struct qspi {
 	struct qcmdset		cmd_table;
 	u8			curr_cmd_mode;
 	u8			is_quad_set;
+	struct	flash_info	*flash_info;
 };
 
 /*
@@ -255,6 +262,12 @@ struct flash_info {
 	unsigned	sector_size;
 	u16		n_sectors;
 
+	u16		n_subsectors;
+	unsigned	ss_size;
+	unsigned	ss_soffset;
+	unsigned	ss_endoffset;
+	unsigned	ss_erase_opcode;
+
 	u16		page_size;
 	u16		addr_width;
 
@@ -266,8 +279,12 @@ static const struct spi_device_id qspi_ids[] = {
 	/* Spansion -- single (large) sector size only, at least
 	 * for the chips listed here (without boot sectors).
 	 */
-	{ "s25fl512s",  INFO(0x012018, 0x0000, 64 * 1024, 256, 256, 0)},
-	{ "MT25QL512AB",  INFO(0x20BA20, 0x0000, 256 * 1024, 256, 256, 0)},
+	{	"s25fl512s",
+		INFO(0x012018, 0, 64 * 1024, 256, 4 * 1024, 8, 0, 0x21, 256, 0)
+	},
+	{	"MT25QL512AB",
+		INFO(0x20BA20, 0, 256 * 1024, 256, 0, 0, 0, 0, 256, 0)
+	},
 	{ },
 };
 
