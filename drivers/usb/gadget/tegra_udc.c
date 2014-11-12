@@ -2929,7 +2929,8 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		return -ENODEV;
 #endif
 
-	the_udc = udc = kzalloc(sizeof(struct tegra_udc), GFP_KERNEL);
+	the_udc = udc = devm_kzalloc(&pdev->dev,
+				sizeof(struct tegra_udc), GFP_KERNEL);
 	if (udc == NULL) {
 		ERR("malloc udc failed\n");
 		return -ENOMEM;
@@ -3198,8 +3199,6 @@ err_rel_mem_region:
 	release_mem_region(res->start, res->end - res->start + 1);
 
 err_kfree:
-	kfree(udc);
-
 	return err;
 }
 
