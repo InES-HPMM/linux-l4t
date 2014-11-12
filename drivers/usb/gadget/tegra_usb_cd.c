@@ -368,13 +368,6 @@ static int tegra_usb_cd_probe(struct platform_device *pdev)
 		goto err_kfree;
 	}
 
-	if (!request_mem_region(res->start, res->end - res->start + 1,
-				driver_name)) {
-		err = -EBUSY;
-		dev_err(&pdev->dev, "request mem region failed\n");
-		goto err_kfree;
-	}
-
 	ucd->regs = ioremap(res->start, resource_size(res));
 	if (!ucd->regs) {
 		err = -ENOMEM;
