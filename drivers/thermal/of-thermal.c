@@ -636,7 +636,7 @@ static int thermal_of_get_trip_type(struct device_node *np,
  */
 static int thermal_of_populate_trip(struct device_node *np,
 				    struct __thermal_trip *trip,
-				    u32 *trip_writable)
+				    bool *trip_writable)
 {
 	int prop;
 	int ret;
@@ -661,10 +661,7 @@ static int thermal_of_populate_trip(struct device_node *np,
 		return ret;
 	}
 
-	if (of_property_read_bool(np, "writable"))
-		*trip_writable = 1;
-	else
-		*trip_writable = 0;
+	*trip_writable = of_property_read_bool(np, "writable");
 
 	/* Required for cooling map matching */
 	trip->np = np;
@@ -693,7 +690,7 @@ thermal_of_build_thermal_zone(struct device_node *np, u64 *mask)
 	struct __thermal_zone *tz;
 	int ret, i;
 	u32 prop;
-	u32 trip_writable = 0;
+	bool trip_writable;
 	u64 m = 0;
 
 	if (!np) {
@@ -738,12 +735,14 @@ thermal_of_build_thermal_zone(struct device_node *np, u64 *mask)
 
 	i = 0;
 	for_each_child_of_node(child, gchild) {
-		ret = thermal_of_populate_trip(gchild, &tz->trips[i++],
-								&trip_writable);
+		trip_writable = false;
+		ret = thermal_of_populate_trip(gchild, &tz->trips[i],
+					       &trip_writable);
 		if (ret)
 			goto free_trips;
-		m <<= 1;
-		m |= trip_writable;
+		if (trip_writable)
+			m |= 1ULL << i;
+		i++;
 	}
 
 	of_node_put(child);
