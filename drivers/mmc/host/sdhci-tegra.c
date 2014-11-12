@@ -1454,6 +1454,7 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	if (plat->uhs_mask & MMC_MASK_HS400) {
 		host->mmc->caps2 &= ~MMC_CAP2_HS400;
 		host->mmc->caps2 &= ~MMC_CAP2_EN_STROBE;
+		host->mmc->caps2 &= ~MMC_CAP2_HS533;
 	}
 
 #ifdef CONFIG_MMC_SDHCI_TEGRA_HS200_DISABLE
@@ -1534,6 +1535,9 @@ static unsigned long get_nearest_clock_freq(unsigned long pll_rate,
 	unsigned long result;
 	int div;
 	int index = 1;
+
+	if (pll_rate <= desired_rate)
+		return pll_rate;
 
 	div = pll_rate / desired_rate;
 	if (div > MAX_DIVISOR_VALUE) {
@@ -4568,6 +4572,8 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 	.nvquirks = TEGRA_SDHCI_NVQUIRKS |
 		    NVQUIRK_SET_TRIM_DELAY |
 		    NVQUIRK_ENABLE_DDR50 |
+		    NVQUIRK_ENABLE_HS200 |
+		    NVQUIRK_ENABLE_HS400 |
 		    NVQUIRK_ENABLE_AUTO_CMD23 |
 		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
 		    NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD |
@@ -4656,6 +4662,8 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 			"nvidia,enable-ext-loopback");
 	plat->disable_clock_gate = of_property_read_bool(np,
 		"disable-clock-gate");
+	plat->enable_hs533_mode =
+		of_property_read_bool(np, "nvidia,enable-hs533-mode");
 	of_property_read_u8(np, "default-drv-type", &plat->default_drv_type);
 	plat->en_io_trim_volt = of_property_read_bool(np,
 			"nvidia,en-io-trim-volt");
@@ -5205,6 +5213,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	if (soc_data->nvquirks & NVQUIRK_ENABLE_HS400)
 		host->mmc->caps2 |= MMC_CAP2_HS400;
+
+	if ((plat->enable_hs533_mode) && (host->mmc->caps2 & MMC_CAP2_HS400))
+		host->mmc->caps2 |= MMC_CAP2_HS533;
 
 	if (soc_data->nvquirks & NVQUIRK_ENABLE_AUTO_CMD23)
 		host->mmc->caps |= MMC_CAP_CMD23;
