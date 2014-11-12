@@ -25,94 +25,94 @@
 		max77620@3c {
 			regulators {
 				sd0 {
-					regulator-enable-ramp-delay = <60>;
-					regulator-disable-ramp-delay = <860>;
+					regulator-enable-ramp-delay = <120>;
+					regulator-disable-ramp-delay = <1720>;
 					regulator-ramp-delay = <27500>;
-					regulator-ramp-delay-scale = <200>;
+					regulator-ramp-delay-scale = <400>;
 				};
 
 				sd1 {
-					regulator-enable-ramp-delay = <60>;
-					regulator-disable-ramp-delay = <14600>;
+					regulator-enable-ramp-delay = <120>;
+					regulator-disable-ramp-delay = <29200>;
 					regulator-ramp-delay = <27500>;
-					regulator-ramp-delay-scale = <200>;
+					regulator-ramp-delay-scale = <400>;
 				};
 
 				sd2 {
-					regulator-enable-ramp-delay = <82>;
-					regulator-disable-ramp-delay = <3660>;
+					regulator-enable-ramp-delay = <164>;
+					regulator-disable-ramp-delay = <7320>;
 					regulator-ramp-delay = <27500>;
-					regulator-ramp-delay-scale = <200>;
+					regulator-ramp-delay-scale = <400>;
 				};
 
 				sd3 {
-					regulator-enable-ramp-delay = <102>;
-					regulator-disable-ramp-delay = <29000>;
+					regulator-enable-ramp-delay = <204>;
+					regulator-disable-ramp-delay = <58000>;
 					regulator-ramp-delay = <27500>;
-					regulator-ramp-delay-scale = <200>;
+					regulator-ramp-delay-scale = <400>;
 				};
 
 				ldo0 {
-					regulator-enable-ramp-delay = <44>;
-					regulator-disable-ramp-delay = <2240>;
+					regulator-enable-ramp-delay = <88>;
+					regulator-disable-ramp-delay = <4480>;
 					regulator-ramp-delay = <100000>;
-					regulator-ramp-delay-scale = <400>;
+					regulator-ramp-delay-scale = <800>;
 				};
 
 				ldo1 {
-					regulator-enable-ramp-delay = <48>;
-					regulator-disable-ramp-delay = <1580>;
+					regulator-enable-ramp-delay = <96>;
+					regulator-disable-ramp-delay = <3160>;
 					regulator-ramp-delay = <100000>;
-					regulator-ramp-delay-scale = <550>;
+					regulator-ramp-delay-scale = <1050>;
 				};
 
 				ldo2 {
-					regulator-enable-ramp-delay = <62>;
-					regulator-disable-ramp-delay = <2580>;
+					regulator-enable-ramp-delay = <124>;
+					regulator-disable-ramp-delay = <5160>;
 					regulator-ramp-delay = <100000>;
-					regulator-ramp-delay-scale = <400>;
+					regulator-ramp-delay-scale = <800>;
 				};
 
 				ldo3 {
-					regulator-enable-ramp-delay = <28>;
-					regulator-disable-ramp-delay = <394>;
+					regulator-enable-ramp-delay = <56>;
+					regulator-disable-ramp-delay = <788>;
 					regulator-ramp-delay = <100000>;
-					regulator-ramp-delay-scale = <100>;
+					regulator-ramp-delay-scale = <200>;
 				};
 
 				ldo4 {
-					regulator-enable-ramp-delay = <9>;
-					regulator-disable-ramp-delay = <284>;
+					regulator-enable-ramp-delay = <18>;
+					regulator-disable-ramp-delay = <568>;
 					regulator-ramp-delay = <100000>;
-					regulator-ramp-delay-scale = <100>;
+					regulator-ramp-delay-scale = <200>;
 				};
 
 				ldo5 {
-					regulator-enable-ramp-delay = <150>;
-					regulator-disable-ramp-delay = <3680>;
+					regulator-enable-ramp-delay = <300>;
+					regulator-disable-ramp-delay = <7360>;
 					regulator-ramp-delay = <100000>;
-					regulator-ramp-delay-scale = <550>;
+					regulator-ramp-delay-scale = <1100>;
 				};
 
 				ldo6 {
-					regulator-enable-ramp-delay = <102>;
-					regulator-disable-ramp-delay = <2360>;
+					regulator-enable-ramp-delay = <204>;
+					regulator-disable-ramp-delay = <4720>;
 					regulator-ramp-delay = <100000>;
-					regulator-ramp-delay-scale = <400>;
+					regulator-ramp-delay-scale = <800>;
 				};
 
 				ldo7 {
-					regulator-enable-ramp-delay = <56>;
-					regulator-disable-ramp-delay = <5860>;
+					regulator-enable-ramp-delay = <112>;
+					regulator-disable-ramp-delay = <11720>;
 					regulator-ramp-delay = <100000>;
-					regulator-ramp-delay-scale = <550>;
+					regulator-ramp-delay-scale = <1100>;
 				};
 
 				ldo8 {
-					regulator-enable-ramp-delay = <24>;
-					regulator-disable-ramp-delay = <3080>;
+					regulator-enable-ramp-delay = <48>;
+					regulator-disable-ramp-delay = <6160>;
 					regulator-ramp-delay = <100000>;
-					regulator-ramp-delay-scale = <266>;
+					regulator-ramp-delay-scale = <500>;
 				};
 			};
 		};
