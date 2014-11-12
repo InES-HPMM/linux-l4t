@@ -1640,6 +1640,8 @@ static int es755_codec_write(struct snd_soc_codec *codec, unsigned int reg,
 	struct escore_priv *escore = &escore_priv;
 	int ret = 0;
 	u8 state_changed = 0;
+	u32 sync_cmd = (ES_SYNC_CMD << 16) | ES_SYNC_POLLING;
+	u32 sync_ack;
 
 	if (reg > ES_MAX_REGISTER) {
 		/*dev_err(codec->dev, "write out of range reg %d", reg);*/
@@ -1677,6 +1679,24 @@ static int es755_codec_write(struct snd_soc_codec *codec, unsigned int reg,
 		dev_err(codec->dev, "codec reg %x write err %d\n",
 			reg, ret);
 		goto out;
+	}
+
+	if (reg == ES_HP_L_GAIN) {
+		ret = escore_cmd(escore, sync_cmd, &sync_ack);
+		if (ret < 0) {
+			pr_err("%s(): firmware load failed sync write\n",
+				__func__);
+			goto out;
+		}
+	}
+
+	if (reg == ES_HP_R_GAIN) {
+		ret = escore_cmd(escore, sync_cmd, &sync_ack);
+		if (ret < 0) {
+			pr_err("%s(): firmware load failed sync write\n",
+				__func__);
+			goto out;
+		}
 	}
 	escore->reg_cache[reg].value = value;
 

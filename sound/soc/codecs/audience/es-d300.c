@@ -42,8 +42,8 @@
 #include "es-d300.h"
 
 /* Base route preset for Simultaneous playback and capture using PT */
-#define PT_BASE_ROUTE	0x90311780
-#define CSOUT2_BASE_ROUTE	0x9031177E
+#define PT_BASE_ROUTE	0x80311780
+#define CSOUT2_BASE_ROUTE	0x8031177E
 
 struct cachedcmd_t {
 	u8 reg;
@@ -164,16 +164,16 @@ static const u16 es300_output_mux_text_to_api[] = {
 };
 
 static const u32 es_base_route_preset[ALGO_MAX] = {
-	[VP] = 0x90311771,
-	[VP_MM] = 0x90311777,
-	[PASSTHRU_VP] = 0x9031177A,
-	[AUDIOZOOM] = 0x90311774,
+	[VP] = 0x80311771,
+	[VP_MM] = 0x80311777,
+	[PASSTHRU_VP] = 0x8031177A,
+	[AUDIOZOOM] = 0x80311774,
 #if defined(CONFIG_SND_SOC_ES_SLIM)
-	[MM] = 0x90311773,
-	[PASSTHRU] = 0x90311776,
+	[MM] = 0x80311773,
+	[PASSTHRU] = 0x80311776,
 #else
-	[MM] = 0x90311772,
-	[PASSTHRU] = 0x9031177D,
+	[MM] = 0x80311772,
+	[PASSTHRU] = 0x8031177D,
 #endif
 };
 

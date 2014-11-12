@@ -343,17 +343,6 @@ static int es_dac_enable(struct snd_soc_dapm_widget *w,
 		break;
 	}
 
-	/* writing cached HP_L gain and HPL_CTRL to HW,
-	 * firmware resets this register space to detecting
-	 * wired accessory
-	 */
-	val = snd_soc_read(codec, ES_HP_L_GAIN);
-	snd_soc_write(codec, ES_HP_L_GAIN, 0);
-	snd_soc_write(codec, ES_HP_L_GAIN, val);
-	val = snd_soc_read(codec, ES_HP_L_CTRL);
-	snd_soc_write(codec, ES_HP_L_CTRL, 2);
-	snd_soc_write(codec, ES_HP_L_CTRL, val);
-
 	/* find which DAC is enabled */
 	val = snd_soc_read(codec, ES_DAC_CTRL);
 	snd_soc_update_bits(codec, ES_DAC_DIG_EN, ES_DAC0_LEFT_EN_MASK |
@@ -426,10 +415,10 @@ const struct snd_soc_dapm_widget es_codec_dapm_widgets[] = {
 	SND_SOC_DAPM_LINE("AUXOUTR", NULL),
 
 	/* Microphone bias */
-	SND_SOC_DAPM_SUPPLY("MICHS Bias", ES_MICBIAS_CTRL,
+	/*SND_SOC_DAPM_SUPPLY("MICHS Bias", ES_MICBIAS_CTRL,
 		ES_MBIASHS_MODE_SHIFT, 0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("MIC0 Bias", ES_MICBIAS_CTRL,
-		ES_MBIAS0_MODE_SHIFT, 0, NULL, 0),
+		ES_MBIAS0_MODE_SHIFT, 0, NULL, 0), */
 	SND_SOC_DAPM_SUPPLY("MIC1 Bias", ES_MICBIAS_CTRL,
 		ES_MBIAS1_MODE_SHIFT, 0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("MIC2 Bias", ES_MICBIAS_CTRL,
@@ -507,8 +496,8 @@ static const struct snd_soc_dapm_route intercon[] = {
 
 	/* Capture path */
 
-	{"MICHS", NULL, "MICHS Bias"},
-	{"MIC0", NULL, "MIC0 Bias"},
+	/*{"MICHS", NULL, "MICHS Bias"},
+	{"MIC0", NULL, "MIC0 Bias"},*/
 	{"MIC1", NULL, "MIC1 Bias"},
 	{"MIC2", NULL, "MIC2 Bias"},
 
