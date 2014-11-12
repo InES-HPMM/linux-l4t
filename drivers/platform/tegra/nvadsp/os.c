@@ -100,6 +100,8 @@ struct nvadsp_os_data {
 	struct nvadsp_debug_log	logger;
 	struct work_struct	restart_os_work;
 	int			adsp_num_crashes;
+	bool			adsp_os_fw_loaded;
+	struct mutex		fw_load_lock;
 };
 
 static struct nvadsp_os_data priv;
@@ -595,14 +597,18 @@ int nvadsp_os_load(void)
 	struct nvadsp_drv_data *drv_data;
 	const struct firmware *fw;
 	struct device *dev;
-	int ret;
+	int ret = 0;
 	void *ptr;
 
+	mutex_lock(&priv.fw_load_lock);
 	if (!priv.pdev) {
 		pr_err("ADSP Driver is not initialized\n");
 		ret = -EINVAL;
 		goto end;
 	}
+
+	if (priv.adsp_os_fw_loaded)
+		goto end;
 
 	dev = &priv.pdev->dev;
 
@@ -658,7 +664,9 @@ int nvadsp_os_load(void)
 	update_nvadsp_app_shared_ptr(ptr);
 	drv_data->shared_adsp_os_data = ptr;
 	priv.os_firmware = fw;
+	priv.adsp_os_fw_loaded = true;
 
+	mutex_unlock(&priv.fw_load_lock);
 	return 0;
 
 deallocate_os_memory:
@@ -666,6 +674,7 @@ deallocate_os_memory:
 release_firmware:
 	release_firmware(fw);
 end:
+	mutex_unlock(&priv.fw_load_lock);
 	return ret;
 }
 EXPORT_SYMBOL(nvadsp_os_load);
@@ -978,7 +987,7 @@ int nvadsp_os_probe(struct platform_device *pdev)
 	writel(DISABLE_MBOX2_EMPTY_INT, priv.misc_base + HWMBOX2_REG);
 
 	INIT_WORK(&priv.restart_os_work, nvadsp_os_restart);
-
+	mutex_init(&priv.fw_load_lock);
 end:
 	return ret;
 }
