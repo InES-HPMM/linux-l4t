@@ -1982,7 +1982,8 @@ static bool utmi_phy_apple_charger_2000ma_detect(struct tegra_usb_phy *phy)
 	val &= ~DIV_DET_EN;
 	writel(val, base + USB_PHY_VBUS_WAKEUP_ID);
 
-	if ((val & VOP_DIV2P7_DET) && (val & VON_DIV2P0_DET))
+	if (((val & VOP_DIV2P7_DET) && (val & VON_DIV2P0_DET))
+		|| ((val & VOP_DIV2P7_DET) && (val & VON_DIV2P7_DET)))
 		ret = true;
 
 	utmi_phy_set_dp_dm_pull_up_down(phy, org_flags);
