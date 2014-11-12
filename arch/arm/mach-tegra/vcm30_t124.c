@@ -36,6 +36,7 @@
 #include "board.h"
 #include "board-common.h"
 #include <linux/platform/tegra/clock.h>
+#include <linux/tegra_fiq_debugger.h>
 #include "devices.h"
 #include "gpio-names.h"
 #include "iomap.h"
@@ -646,3 +647,11 @@ int __init tegra_vcm30_t124_suspend_init(void)
 	tegra_init_suspend(&vcm30_t124_suspend_data);
 	return 0;
 }
+
+int __init tegra_vcm30_t124_fiq_debugger(void)
+{
+	tegra_serial_debug_init(TEGRA_DEBUG_UART_BASE, INT_WDT_CPU,
+			NULL, -1, -1);
+	return 0;
+}
+device_initcall(tegra_vcm30_t124_fiq_debugger);
