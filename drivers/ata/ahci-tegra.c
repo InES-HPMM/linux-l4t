@@ -415,11 +415,6 @@ enum clk_gate_state {
 	CLK_ON,
 };
 
-struct tegra_qc_list {
-	struct list_head list;
-	struct ata_queued_cmd *qc;
-};
-
 /*
  *  tegra_ahci_host_priv is the extension of ahci_host_priv
  *  with extra fields: idle_timer, pg_save, pg_state, etc.
@@ -447,7 +442,6 @@ struct tegra_ahci_host_priv {
 	int			pexp_gpio_low;
 	enum tegra_chipid	cid;
 	struct tegra_sata_soc_data *soc_data;
-	struct list_head        qc_list;
 	struct tegra_prod_list	*prod_list;
 	void __iomem		*base_list[6];
 };
@@ -484,9 +478,8 @@ static bool tegra_ahci_pad_resume(struct ata_host *host);
 static bool tegra_ahci_pad_suspend(struct ata_host *host);
 static void tegra_ahci_abort_pad_suspend(struct ata_host *host);
 #endif
-static unsigned int tegra_ahci_qc_issue(struct ata_queued_cmd *qc);
-static int tegra_ahci_hardreset(struct ata_link *link, unsigned int *class,
-				unsigned long deadline);
+static int tegra_ahci_port_suspend(struct ata_port *ap, pm_message_t mesg);
+static int tegra_ahci_port_resume(struct ata_port *ap);
 static int tegra_ahci_runtime_suspend(struct device *dev);
 static int tegra_ahci_runtime_resume(struct device *dev);
 #endif
@@ -505,8 +498,8 @@ static struct ata_port_operations tegra_ahci_ops = {
 	.inherits	= &ahci_ops,
 #ifdef CONFIG_PM
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
-	.qc_issue	= tegra_ahci_qc_issue,
-	.hardreset	= tegra_ahci_hardreset,
+	.port_suspend           = tegra_ahci_port_suspend,
+	.port_resume            = tegra_ahci_port_resume,
 #endif
 #endif
 };
@@ -2044,37 +2037,41 @@ static int tegra_ahci_resume(struct platform_device *pdev)
 	return 0;
 }
 #else
-static int tegra_ahci_queue_one_qc(struct tegra_ahci_host_priv *tegra_hpriv,
-		struct ata_queued_cmd *qc)
+static int tegra_ahci_port_suspend(struct ata_port *ap, pm_message_t mesg)
 {
-	struct tegra_qc_list *qc_list;
+	struct ata_host *host = ap->host;
+	struct tegra_ahci_host_priv *tegra_hpriv = host->private_data;
+	int ret = 0;
 
-	qc_list = kmalloc(sizeof(struct tegra_qc_list), GFP_ATOMIC);
-	if (!qc_list) {
-		dev_err(tegra_hpriv->dev, "failed to alloc qc_list\n");
-		return AC_ERR_SYSTEM;
+	ret = ahci_ops.port_suspend(ap, mesg);
+
+	if (ret == 0) {
+		pm_runtime_mark_last_busy(&tegra_hpriv->pdev->dev);
+		pm_runtime_put_sync_autosuspend(&g_tegra_hpriv->pdev->dev);
 	}
-	qc_list->qc = qc;
-	list_add_tail(&(qc_list->list), &(tegra_hpriv->qc_list));
-	return 0;
+
+	return ret;
+
 }
 
-static void tegra_ahci_dequeue_qcs(struct tegra_ahci_host_priv *tegra_hpriv)
+static int tegra_ahci_port_resume(struct ata_port *ap)
 {
-	struct list_head *list, *next;
-	struct tegra_qc_list *qc_list;
-	struct ata_queued_cmd *qc;
+	struct ata_host *host = ap->host;
+	struct tegra_ahci_host_priv *tegra_hpriv = host->private_data;
+	int ret = 0;
 
-	/* now qc_issue all qcs in the qc_list */
-	list_for_each_safe(list, next, &tegra_hpriv->qc_list) {
-		qc_list = list_entry(list, struct tegra_qc_list, list);
-		qc = qc_list->qc;
-		ahci_ops.qc_issue(qc);
-		list_del(list);
-		kfree(qc_list);
+	ret = pm_runtime_get_sync(&tegra_hpriv->pdev->dev);
+	if (ret < 0) {
+		dev_err(&tegra_hpriv->pdev->dev,
+				"%s(%d) Failed to resume the devcie err=%d\n",
+				__func__, __LINE__, ret);
+		return AC_ERR_SYSTEM;
 	}
 
-	pm_runtime_mark_last_busy(&g_tegra_hpriv->pdev->dev);
+	ret = ahci_ops.port_resume(ap);
+
+	return ret;
+
 }
 
 static int tegra_ahci_suspend_common(struct platform_device *pdev,
@@ -2209,12 +2206,10 @@ static int tegra_ahci_runtime_resume(struct device *dev)
 #else
 	err = tegra_ahci_pad_resume(host);
 #endif
-	if (err) {
-		tegra_ahci_dequeue_qcs(g_tegra_hpriv);
+	if (err)
 		return 0;
-	} else {
+	else
 		return -EBUSY;
-	}
 }
 #endif
 
@@ -3010,62 +3005,6 @@ static bool tegra_ahci_pad_resume(struct ata_host *host)
 	return true;
 }
 #endif
-
-static unsigned int tegra_ahci_qc_issue(struct ata_queued_cmd *qc)
-{
-	struct ata_port *ap = qc->ap;
-	struct ata_host *host = ap->host;
-	struct tegra_ahci_host_priv *tegra_hpriv = host->private_data;
-	int ret = 0;
-
-	ret = pm_runtime_get(&tegra_hpriv->pdev->dev);
-	if (ret < 0) {
-		dev_err(&g_tegra_hpriv->pdev->dev,
-				"%s(%d) Failed to resume the devcie err=%d\n",
-				__func__, __LINE__, ret);
-		return AC_ERR_SYSTEM;
-	}
-
-	if (!pm_runtime_suspended(&g_tegra_hpriv->pdev->dev)) {
-		tegra_ahci_dequeue_qcs(g_tegra_hpriv);
-		ret = ahci_ops.qc_issue(qc);
-	} else {
-		ret = tegra_ahci_queue_one_qc(tegra_hpriv, qc);
-	}
-
-	pm_runtime_mark_last_busy(&g_tegra_hpriv->pdev->dev);
-	pm_runtime_put_autosuspend(&g_tegra_hpriv->pdev->dev);
-
-	return ret;
-}
-
-static int tegra_ahci_hardreset(struct ata_link *link, unsigned int *class,
-				unsigned long deadline)
-{
-	int rc = 0;
-
-	rc = pm_runtime_get(&g_tegra_hpriv->pdev->dev);
-	if (rc < 0) {
-			dev_err(&g_tegra_hpriv->pdev->dev,
-							"%s(%d) Failed to resume the devcie err=%d\n",
-							__func__, __LINE__, rc);
-			return AC_ERR_SYSTEM;
-	}
-
-	if (!pm_runtime_suspended(&g_tegra_hpriv->pdev->dev)) {
-			tegra_ahci_dequeue_qcs(g_tegra_hpriv);
-			rc = ahci_ops.hardreset(link, class, deadline);
-	} else {
-			dev_err(&g_tegra_hpriv->pdev->dev,
-							"%s(%d) Controller is suspended\n",
-							__func__, __LINE__);
-			rc = AC_ERR_HOST_BUS;
-	}
-	pm_runtime_mark_last_busy(&g_tegra_hpriv->pdev->dev);
-	pm_runtime_put_autosuspend(&g_tegra_hpriv->pdev->dev);
-
-	return rc;
-}
 #endif
 #endif
 
@@ -3323,9 +3262,6 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 		goto fail;
 #ifdef CONFIG_PM
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
-
-	INIT_LIST_HEAD(&tegra_hpriv->qc_list);
-
 	rc = pm_runtime_set_active(dev);
 
 	if (rc) {
@@ -3336,6 +3272,7 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 					TEGRA_AHCI_DEFAULT_IDLE_TIME);
 		pm_runtime_use_autosuspend(dev);
 		pm_suspend_ignore_children(dev, true);
+		pm_runtime_get_noresume(&tegra_hpriv->pdev->dev);
 		pm_runtime_enable(dev);
 	}
 #endif
