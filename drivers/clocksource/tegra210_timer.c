@@ -128,8 +128,6 @@ static void tegra210_timer_setup(struct tegra210_clockevent *tevt)
 	clockevents_config_and_register(&tevt->evt, tegra210_timer_freq,
 					1, /* min */
 					0x1fffffff); /* 29 bits */
-	enable_irq(tevt->evt.irq);
-
 #ifdef CONFIG_SMP
 	if (irq_force_affinity(tevt->evt.irq, cpumask_of(cpu))) {
 		pr_err("%s: cannot set irq %d affinity to CPU%d\n",
@@ -137,6 +135,7 @@ static void tegra210_timer_setup(struct tegra210_clockevent *tevt)
 		BUG();
 	}
 #endif
+	enable_irq(tevt->evt.irq);
 }
 
 static void tegra210_timer_stop(struct tegra210_clockevent *tevt)
@@ -169,12 +168,6 @@ u32 notrace tegra_read_usec_raw(void)
 	return __raw_readl(tegra210_timer_reg_base + TIMERUS_CNTR_1US);
 }
 
-static int tegra_timer_suspend(void)
-{
-	usec_config = __raw_readl(tegra210_timer_reg_base + TIMERUS_USEC_CFG);
-	return 0;
-}
-
 static void tegra_timer_resume(void)
 {
 	__raw_writel(usec_config, tegra210_timer_reg_base + TIMERUS_USEC_CFG);
@@ -195,9 +188,8 @@ static void tegra_timer_restore(void)
 }
 
 static struct syscore_ops tegra_timer_syscore_ops = {
-	.suspend = tegra_timer_suspend,
+	/* .suspend and .save are NULL because they aren't necessary */
 	.resume = tegra_timer_resume,
-	.save = tegra_timer_suspend,
 	.restore = tegra_timer_restore,
 };
 
@@ -302,14 +294,6 @@ static void __init tegra210_timer_init(struct device_node *np)
 
 	/* boot cpu is online */
 	tevt = &per_cpu(tegra210_evt, 0);
-#ifdef CONFIG_SMP
-	ret = irq_set_affinity(tevt->evt.irq, cpumask_of(0));
-	if (ret) {
-		pr_err("%s: set timer IRQ affinity to CPU0: %d\n",
-		       __func__, ret);
-		BUG();
-	}
-#endif
 	tegra210_timer_setup(tevt);
 
 	clocks_calc_mult_shift(&timer_us_mult, &timer_us_shift,
