@@ -82,12 +82,26 @@ is required:
 				gpio6, gpio7
 
 		Optional properties:
-			function, bias-disable, bias-pull-up, bias-pull-down,
-			bias-high-impedance, drive-open-drain.
+			function, drive-push-pull, drive-open-drain.
+				Definitions are in the pinmux dt binding
+			devicetree/bindings/pinctrl/pinctrl-bindings.txt
+			Absense of properties will leave the configuration
+			on default.
 
 			Valid values for function properties are:
 				gpio, lpm-control-in, fps-out, 32k-out,
 				sd0-dvs-in, sd1-dvs-in, reference-out
+			Theres is also customised property for the GPIO1,
+				GPIO2 and GPIO3.
+			- maxim,fps-source: FPS source for the gpios. Valid
+				values are FPS_SRC_0, FPS_SRC_1, FPS_SRC_2
+				and FPS_SRC_NONE.
+				Absense of this property will leave the pin on
+				default.
+			- maxim,fps-power-up-period: Power up period/slot on
+				given FPS. Valid values are 0 to 7.
+			- maxim,fps-power-down-period: Power down period/slot
+				on given FPS. Valid values are 0 to 7.
 
 Regulators:
 ===========
