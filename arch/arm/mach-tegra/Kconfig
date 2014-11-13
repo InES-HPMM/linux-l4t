@@ -791,7 +791,7 @@ config TEGRA_USE_SIMON
 
 config AID_FUSE
 	bool "Support AID fuse reads"
-	default n if !ARCH_TEGRA_13x_SOC
+	default n if (ARCH_TEGRA_12x_SOC && !ARCH_TEGRA_13x_SOC)
 	default y
 	help
 	  When enabled, allows sysfs reads of the AID fuse, which contains

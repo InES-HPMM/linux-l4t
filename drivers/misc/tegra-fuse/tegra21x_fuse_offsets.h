@@ -67,6 +67,12 @@
 #define ODM_LOCK_START_OFFSET		0x0
 #define ODM_LOCK_START_BIT		6
 
+/* AID */
+#ifdef CONFIG_AID_FUSE
+#define AID_START_OFFSET			0x67
+#define AID_START_BIT				2
+#endif
+
 /* reserved_odm0 -> reserved_odm7 */
 #define ODM_RESERVED_DEVSEL_START_OFFSET	0x2E
 #define ODM_RESERVED_START_BIT			17
