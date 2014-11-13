@@ -792,6 +792,7 @@ EXPORT_SYMBOL(nvadsp_os_start);
 
 static int __nvadsp_os_suspend(void)
 {
+	struct device *dev = &priv.pdev->dev;
 	uint16_t com_mid = ADSP_COM_MBOX_ID;
 	int ret;
 
@@ -807,14 +808,14 @@ static int __nvadsp_os_suspend(void)
 			       "adsp_com_mbox",
 			       NULL, NULL);
 	if (ret) {
-		pr_err("failed to open adsp com mbox\n");
+		dev_err(dev, "failed to open adsp com mbox\n");
 		goto out;
 	}
 
 	ret = nvadsp_mbox_send(&adsp_com_mbox, ADSP_OS_SUSPEND,
 			       NVADSP_MBOX_SMSG, true, UINT_MAX);
 	if (ret) {
-		pr_err("failed to send with adsp com mbox\n");
+		dev_err(dev, "failed to send with adsp com mbox\n");
 		goto out;
 	}
 
@@ -823,13 +824,13 @@ static int __nvadsp_os_suspend(void)
 
 	ret = nvadsp_mbox_close(&adsp_com_mbox);
 	if (ret) {
-		pr_err("failed to close adsp com mbox\n");
+		dev_err(dev, "failed to close adsp com mbox\n");
 		goto out;
 	}
 
 	ret = pm_runtime_put_sync(&priv.pdev->dev);
 	if (ret) {
-		pr_err("failed in pm_runtime_put_sync\n");
+		dev_err(dev, "failed in pm_runtime_put_sync\n");
 		goto out;
 	}
  out:
