@@ -58,8 +58,8 @@ struct tegra_adf_capabilities {
 
 #define TEGRA_ADF_FLIP_FLAG_INVERT_H		(1 << 0)
 #define TEGRA_ADF_FLIP_FLAG_INVERT_V		(1 << 1)
-#define TEGRA_ADF_FLIP_FLAG_TILED		(1 << 2)
-#define TEGRA_ADF_FLIP_FLAG_CURSOR		(1 << 3)
+#define TEGRA_ADF_FLIP_FLAG_TILED			(1 << 2)
+#define TEGRA_ADF_FLIP_FLAG_CURSOR			(1 << 3)
 #define TEGRA_ADF_FLIP_FLAG_GLOBAL_ALPHA	(1 << 4)
 #define TEGRA_ADF_FLIP_FLAG_BLOCKLINEAR		(1 << 5)
 #define TEGRA_ADF_FLIP_FLAG_SCAN_COLUMN		(1 << 6)

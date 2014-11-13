@@ -541,32 +541,32 @@ static void tegra_adf_set_windowattr_basic(struct tegra_dc_win *win,
 		u32 format, u32 w, u32 h)
 {
 	win->flags = TEGRA_WIN_FLAG_ENABLED;
-	if (attr->blend == TEGRA_DC_EXT_BLEND_PREMULT)
+	if (attr->blend == TEGRA_ADF_BLEND_PREMULT)
 		win->flags |= TEGRA_WIN_FLAG_BLEND_PREMULT;
-	else if (attr->blend == TEGRA_DC_EXT_BLEND_COVERAGE)
+	else if (attr->blend == TEGRA_ADF_BLEND_COVERAGE)
 		win->flags |= TEGRA_WIN_FLAG_BLEND_COVERAGE;
-	if (attr->flags & TEGRA_DC_EXT_FLIP_FLAG_TILED)
+	if (attr->flags & TEGRA_ADF_FLIP_FLAG_TILED)
 		win->flags |= TEGRA_WIN_FLAG_TILED;
-	if (attr->flags & TEGRA_DC_EXT_FLIP_FLAG_INVERT_H)
+	if (attr->flags & TEGRA_ADF_FLIP_FLAG_INVERT_H)
 		win->flags |= TEGRA_WIN_FLAG_INVERT_H;
-	if (attr->flags & TEGRA_DC_EXT_FLIP_FLAG_INVERT_V)
+	if (attr->flags & TEGRA_ADF_FLIP_FLAG_INVERT_V)
 		win->flags |= TEGRA_WIN_FLAG_INVERT_V;
-	if (attr->flags & TEGRA_DC_EXT_FLIP_FLAG_GLOBAL_ALPHA)
+	if (attr->flags & TEGRA_ADF_FLIP_FLAG_GLOBAL_ALPHA)
 		win->global_alpha = attr->global_alpha;
 	else
 		win->global_alpha = 255;
 #if defined(CONFIG_TEGRA_DC_SCAN_COLUMN)
-	if (attr->flags & TEGRA_DC_EXT_FLIP_FLAG_SCAN_COLUMN)
+	if (attr->flags & TEGRA_ADF_FLIP_FLAG_SCAN_COLUMN)
 		win->flags |= TEGRA_WIN_FLAG_SCAN_COLUMN;
 #endif
 #if defined(CONFIG_TEGRA_DC_BLOCK_LINEAR)
-	if (attr->flags & TEGRA_DC_EXT_FLIP_FLAG_BLOCKLINEAR) {
+	if (attr->flags & TEGRA_ADF_FLIP_FLAG_BLOCKLINEAR) {
 		win->flags |= TEGRA_WIN_FLAG_BLOCKLINEAR;
 		win->block_height_log2 = attr->block_height_log2;
 	}
 #endif
 #if defined(CONFIG_TEGRA_DC_INTERLACE)
-	if (attr->flags & TEGRA_DC_EXT_FLIP_FLAG_INTERLACE)
+	if (attr->flags & TEGRA_ADF_FLIP_FLAG_INTERLACE)
 		win->flags |= TEGRA_WIN_FLAG_INTERLACE;
 #endif
 
@@ -668,7 +668,7 @@ static void tegra_adf_dev_post(struct adf_device *dev, struct adf_post *cfg,
 		win = tegra_dc_get_window(adf_info->dc, index);
 
 #if 0
-		if (flip_win->flags & TEGRA_DC_EXT_FLIP_FLAG_CURSOR)
+		if (flip_win->flags & TEGRA_ADF_FLIP_FLAG_CURSOR)
 			skip_flip = true;
 
 		mutex_lock(&ext_win->queue_lock);
