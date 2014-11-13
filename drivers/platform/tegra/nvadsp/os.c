@@ -908,14 +908,14 @@ end:
 }
 EXPORT_SYMBOL(nvadsp_os_stop);
 
-void nvadsp_os_suspend(void)
+int nvadsp_os_suspend(void)
 {
 	struct nvadsp_drv_data *drv_data;
-	int ret;
+	int ret = -EINVAL;
 
 	if (!priv.pdev) {
 		pr_err("ADSP Driver is not initialized\n");
-		return;
+		goto end;
 	}
 
 	/*
@@ -923,19 +923,23 @@ void nvadsp_os_suspend(void)
 	 * APE can be reset only once.
 	 */
 	if (tegra_platform_is_linsim())
-		return;
+		goto end;
 
 	drv_data = platform_get_drvdata(priv.pdev);
 
 	mutex_lock(&priv.os_run_lock);
 	/* check if os is running else exit */
-	if (!priv.os_running)
-		goto end;
+	if (!priv.os_running) {
+		ret = 0;
+		goto unlock;
+	}
 	ret = __nvadsp_os_suspend();
 	if (!ret)
 		priv.os_running = drv_data->adsp_os_running = false;
-end:
+unlock:
 	mutex_unlock(&priv.os_run_lock);
+end:
+	return ret;
 }
 EXPORT_SYMBOL(nvadsp_os_suspend);
 
