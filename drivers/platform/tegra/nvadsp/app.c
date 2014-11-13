@@ -28,6 +28,7 @@
 
 #include "aram_manager.h"
 #include "os.h"
+#include "dev.h"
 
 #define APP_LOADER_MBOX_ID		1
 
@@ -379,11 +380,24 @@ void update_nvadsp_app_shared_ptr(void *ptr)
 nvadsp_app_handle_t
 nvadsp_app_load(const char *appname, const char *appfile)
 {
-	struct device *dev = &priv.pdev->dev;
 	struct nvadsp_app_service *ser = NULL;
 	struct app_load_stats stats = { };
+	struct nvadsp_drv_data *drv_data;
 	struct adsp_module *mod;
+	struct device *dev;
 	uint32_t *token;
+
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
+		goto end;
+	}
+
+	drv_data = platform_get_drvdata(priv.pdev);
+	dev = &priv.pdev->dev;
+
+	if (!drv_data->adsp_os_running)
+		goto end;
+
 
 	RECORD_STAT(stats.ns_time_load);
 	RECORD_STAT(stats.ns_time_service_parse);
@@ -634,13 +648,28 @@ nvadsp_app_info_t *nvadsp_app_init(nvadsp_app_handle_t handle,
 					nvadsp_app_args_t *app_args)
 {
 	struct nvadsp_app_service *ser = (void *)handle;
-	struct device *dev = &priv.pdev->dev;
+	struct app_init_stats stats = { };
+	struct nvadsp_drv_data *drv_data;
 	nvadsp_app_info_t *app;
 	unsigned long flags;
+	struct device *dev;
 	uint32_t *token;
 	int *state;
 	int *id;
-	struct app_init_stats stats = { };
+
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
+		goto err_value;
+	}
+
+	drv_data = platform_get_drvdata(priv.pdev);
+	dev = &priv.pdev->dev;
+
+	if (!drv_data->adsp_os_running)
+		goto err_value;
+
+	if (IS_ERR_OR_NULL(handle))
+		goto err_value;
 
 	RECORD_STAT(stats.ns_time_app_init);
 	EQUATE_STAT(stats.ns_time_app_alloc, stats.ns_time_app_init);
@@ -704,7 +733,10 @@ nvadsp_app_info_t *nvadsp_app_init(nvadsp_app_handle_t handle,
 	dev_dbg(dev, "app %s instance %d initilized\n",
 			app->name, app->instance_id);
 	dev_dbg(dev, "app %s has %d instances\n", ser->name, ser->instance);
-	goto end;
+
+	RECORD_STAT(stats.ns_time_app_init);
+	print_init_stats(ser->file, &stats, dev);
+	return app;
 
 free_instance_memory:
 	free_instance_memory(app, ser->mem_size);
@@ -712,11 +744,6 @@ free_app:
 	kfree(app);
 err_value:
 	app = ERR_PTR(-ENOMEM);
-end:
-
-	RECORD_STAT(stats.ns_time_app_init);
-	print_init_stats(ser->file, &stats, dev);
-
 	return app;
 }
 EXPORT_SYMBOL(nvadsp_app_init);
@@ -736,10 +763,25 @@ static int native_adsp_app_deinit(nvadsp_app_info_t *app)
 
 int nvadsp_app_deinit(nvadsp_app_info_t *app)
 {
-	struct device *dev = &priv.pdev->dev;
+	struct nvadsp_drv_data *drv_data;
 	unsigned long flags;
-	int ret = -1;
+	struct device *dev;
+	int ret = -EINVAL;
 	int *state;
+
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
+		goto end;
+	}
+
+	drv_data = platform_get_drvdata(priv.pdev);
+	dev = &priv.pdev->dev;
+
+	if (!drv_data->adsp_os_running)
+		goto end;
+
+	if (IS_ERR_OR_NULL(app))
+		goto end;
 
 	state = (int *)&app->state;
 	/* check and update state of app atomically */
@@ -784,6 +826,7 @@ int nvadsp_app_deinit(nvadsp_app_info_t *app)
 	} else {
 		spin_unlock_irqrestore(&state_lock, flags);
 	}
+end:
 	return ret;
 }
 EXPORT_SYMBOL(nvadsp_app_deinit);
@@ -803,10 +846,26 @@ static int native_adsp_app_unload(struct nvadsp_app_service *ser)
 
 void nvadsp_app_unload(nvadsp_app_handle_t handle)
 {
-	struct nvadsp_app_service *ser = (struct nvadsp_app_service *)handle;
-	struct device *dev = &priv.pdev->dev;
+	struct nvadsp_drv_data *drv_data;
+	struct nvadsp_app_service *ser;
+	struct device *dev;
 	int ret;
 
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
+		return;
+	}
+
+	drv_data = platform_get_drvdata(priv.pdev);
+	dev = &priv.pdev->dev;
+
+	if (!drv_data->adsp_os_running)
+		return;
+
+	if (IS_ERR_OR_NULL(handle))
+		return;
+
+	ser = (struct nvadsp_app_service *)handle;
 	if (ser->instance) {
 		dev_err(dev, "cannot unload app %s, has instances %d\n",
 				ser->name, ser->instance);
@@ -831,13 +890,29 @@ EXPORT_SYMBOL(nvadsp_app_unload);
 
 int nvadsp_app_start(nvadsp_app_info_t *app)
 {
-	struct nvadsp_app_service *ser = (void *)app->handle;
-	struct device *dev = &priv.pdev->dev;
 	struct app_start_stats stats = { };
+	struct nvadsp_drv_data *drv_data;
+	struct nvadsp_app_service *ser;
 	unsigned long flags;
+	struct device *dev;
 	int ret = -EINVAL;
 	int *state;
 
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
+		goto end;
+	}
+
+	drv_data = platform_get_drvdata(priv.pdev);
+	dev = &priv.pdev->dev;
+
+	if (!drv_data->adsp_os_running)
+		goto end;
+
+	if (IS_ERR_OR_NULL(app))
+		goto end;
+
+	ser = (void *)app->handle;
 	state = (int *)&app->state;
 
 	/*
@@ -881,8 +956,8 @@ int nvadsp_app_start(nvadsp_app_info_t *app)
 	} else {
 		spin_unlock_irqrestore(&state_lock, flags);
 	}
-end:
 	print_start_stats(ser->file, &stats, dev);
+end:
 	return ret;
 }
 EXPORT_SYMBOL(nvadsp_app_start);

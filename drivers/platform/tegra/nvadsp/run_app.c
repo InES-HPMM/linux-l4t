@@ -418,6 +418,7 @@ nvadsp_app_info_t *nvadsp_run_app(nvadsp_os_handle_t os_handle,
 {
 	union app_loader_message message = {};
 	nvadsp_app_handle_t service_handle;
+	struct nvadsp_drv_data *drv_data;
 	nvadsp_app_info_t *info =  NULL;
 	struct app_loader_data *data;
 	struct device *dev;
@@ -428,7 +429,15 @@ nvadsp_app_info_t *nvadsp_run_app(nvadsp_os_handle_t os_handle,
 		goto end;
 	}
 
+	drv_data = platform_get_drvdata(priv.pdev);
 	dev = &priv.pdev->dev;
+
+	if (!drv_data->adsp_os_running)
+		goto end;
+
+	if (IS_ERR_OR_NULL(appfile))
+		goto end;
+
 	data = &message.data;
 	service_handle = app_load(appfile);
 	if (!service_handle) {
