@@ -1,0 +1,9 @@
+/ {
+	spi@7000da00 {
+		spi-touch@0 {
+			platform-id = <RM_PLATFORM_L005>;
+			gpio-sensor-select1;
+		};
+	};
+
+};

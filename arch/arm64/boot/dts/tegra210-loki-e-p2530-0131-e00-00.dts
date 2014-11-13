@@ -21,6 +21,7 @@
 #include "tegra210-loki-e-p2530-common.dtsi"
 #include "panel-j-720p-5-0.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-emc-a00.dtsi"
+#include "tegra210-platforms/tegra210-loki-e-touch-p2530-01xx.dtsi"
 
 / {
 	model = "loki_e_base";
