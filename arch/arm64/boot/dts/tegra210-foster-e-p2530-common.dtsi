@@ -117,6 +117,7 @@
 	xusb_pad_ctl: padctl@0 {
 		nvidia,ss_portmap = <0x0321>;
 		nvidia,lane_owner = <0xF056>; /* Use 0xF to disable lane assign */
+		nvidia,otg_portmap = <0x0100>;
 		status = "okay";
 	};
 

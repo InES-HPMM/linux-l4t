@@ -160,7 +160,8 @@ MODULE_PARM_DESC(min_irq_interval_us, "minimum irq interval in microseconds");
 
 static int nvudc_ep_disable(struct usb_ep *_ep);
 
-static inline void xudc_set_port_power(struct nv_udc_s *nvudc, bool on)
+static inline void xudc_update_otg_port_ownership(
+			struct nv_udc_s *nvudc, bool host_owns_port)
 {
 	u32 portsc;
 	struct device *dev = nvudc->dev;
@@ -170,27 +171,10 @@ static inline void xudc_set_port_power(struct nv_udc_s *nvudc, bool on)
 		return;
 	}
 
-	if (on) {
-		if (tegra_xhci_hcd->driver &&
-				tegra_xhci_hcd->driver->hub_control)
-			tegra_xhci_hcd->driver->hub_control(tegra_xhci_hcd,
-				ClearPortFeature, USB_PORT_FEAT_POWER, 1, 0, 0);
-
-		usleep_range(100, 200);
-		if (tegra_xhci_hcd->driver &&
-				tegra_xhci_hcd->driver->reset_sspi)
-			tegra_xhci_hcd->driver->reset_sspi(tegra_xhci_hcd, 0);
-
-		if (tegra_xhci_hcd->driver &&
-				tegra_xhci_hcd->driver->hub_control)
-			tegra_xhci_hcd->driver->hub_control(tegra_xhci_hcd,
-				SetPortFeature, USB_PORT_FEAT_POWER, 1, 0, 0);
-	} else {
-		if (tegra_xhci_hcd->driver &&
-				tegra_xhci_hcd->driver->hub_control)
-			tegra_xhci_hcd->driver->hub_control(tegra_xhci_hcd,
-				ClearPortFeature, USB_PORT_FEAT_POWER, 1, 0, 0);
-	}
+	if (tegra_xhci_hcd->driver &&
+		tegra_xhci_hcd->driver->update_otg_port_ownership)
+		tegra_xhci_hcd->driver->update_otg_port_ownership(
+			tegra_xhci_hcd, host_owns_port);
 }
 
 static inline void enable_pad_protection(bool devmode)
@@ -305,12 +289,12 @@ static void irq_work(struct work_struct *work)
 		enable_pad_protection(0);
 
 		/* set PP */
-		xudc_set_port_power(nvudc, true);
+		xudc_update_otg_port_ownership(nvudc, true);
 		xudc_enable_vbus(nvudc);
 	} else {
 		/* clear PP */
 		xudc_disable_vbus(nvudc);
-		xudc_set_port_power(nvudc, false);
+		xudc_update_otg_port_ownership(nvudc, false);
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 			USB2_VBUS_ID_0_ID_OVERRIDE,
 			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
@@ -3465,12 +3449,12 @@ static ssize_t debug_store(struct device *_dev, struct device_attribute *attr,
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 			USB2_VBUS_ID_0_ID_OVERRIDE,
 			USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND);
-		xudc_set_port_power(nvudc, true);
+		xudc_update_otg_port_ownership(nvudc, true);
 	}
 	if (sysfs_streq(buf, "enable_device")) {
 		msg_info(nvudc->dev, "AppleOTG: setting up device mode\n");
 		nvudc->id_grounded = false;
-		xudc_set_port_power(nvudc, false);
+		xudc_update_otg_port_ownership(nvudc, false);
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 			USB2_VBUS_ID_0_ID_OVERRIDE,
 			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
@@ -4943,13 +4927,6 @@ static int tegra_xudc_exit_elpg(struct nv_udc_s *nvudc)
 	/* disable wakeup interrupt */
 	tegra_xhci_hs_wake_on_interrupts(TEGRA_XUSB_USB2_P0, false);
 
-	/* disable SS wake interrupt and detection logic */
-	if (nvudc->is_ss_port_active) {
-		tegra_xhci_ss_wake_on_interrupts((1 << nvudc->ss_port), false);
-		tegra_xhci_ss_vcore((1 << nvudc->ss_port), false);
-		tegra_xhci_ss_wake_signal((1 << nvudc->ss_port), false);
-	}
-
 	/* register restore */
 	nvudc_plat_fpci_ipfs_init(nvudc);
 	set_interrupt_moderation(nvudc, min_irq_interval_us);
@@ -4998,12 +4975,6 @@ static int tegra_xudc_enter_elpg(struct nv_udc_s *nvudc)
 	/* enable wakeup interrupt */
 	tegra_xhci_hs_wake_on_interrupts(TEGRA_XUSB_USB2_P0, true);
 
-	/* enable SS wakeup interrupt and wake detection */
-	if (nvudc->is_ss_port_active) {
-		tegra_xhci_ss_wake_on_interrupts((1 << nvudc->ss_port), true);
-		tegra_xhci_ss_wake_signal((1 << nvudc->ss_port), true);
-	}
-
 	/* disable clock */
 	clk_disable(nvudc->dev_clk);
 	clk_disable(nvudc->ss_clk);
@@ -5022,10 +4993,6 @@ static int tegra_xudc_enter_elpg(struct nv_udc_s *nvudc)
 		mutex_unlock(&nvudc->elpg_lock);
 		return ret;
 	}
-	/* enable SS wake detection logic*/
-	if (nvudc->is_ss_port_active)
-		tegra_xhci_ss_vcore((1 << nvudc->ss_port), true);
-
 	nvudc->is_elpg = true;
 
 	mutex_unlock(&nvudc->elpg_lock);

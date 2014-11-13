@@ -342,6 +342,9 @@ static void debug_print_portsc(struct xhci_hcd *xhci)
 	}
 }
 static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra);
+static void tegra_xhci_reset_sspi(struct tegra_xhci_hcd *tegra, uint port);
+static void tegra_xhci_update_otg_port_ownership(struct usb_hcd *hcd,
+		bool host_owns_port);
 
 static bool is_otg_host(struct tegra_xhci_hcd *tegra)
 {
@@ -383,15 +386,17 @@ static void pmc_init(struct tegra_xhci_hcd *tegra)
 			utmi_pad_count, GFP_KERNEL);
 
 	for (pad = 0; pad < utmi_pad_count; pad++) {
-		if (BIT(XUSB_UTMI_INDEX + pad) & tegra->bdata->portmap) {
+		if ((BIT(XUSB_UTMI_INDEX + pad) & tegra->bdata->portmap) ||
+			(pad == tegra->otg_portnum)) {
 			dev_dbg(dev, "%s utmi pad %d\n", __func__, pad);
 			pmc = &pmc_data[pad];
-			if (tegra->soc_config->pmc_portmap)
+			if (tegra->soc_config->pmc_portmap) {
 				pmc->instance = PMC_PORTMAP_MASK(
 						tegra->soc_config->pmc_portmap,
 						pad);
-			else
+			} else {
 				pmc->instance = pad;
+			}
 			pmc->phy_type = TEGRA_USB_PHY_INTF_UTMI;
 			pmc->port_speed = USB_PMC_PORT_SPEED_UNKNOWN;
 			pmc->controller_type = TEGRA_USB_3_0;
@@ -445,6 +450,12 @@ static void pmc_setup_wake_detect(struct tegra_xhci_hcd *tegra)
 			} else
 				pmc->pmc_ops->setup_pmc_wake_detect(pmc);
 		}
+	}
+	if (tegra->otg_port_owned) {
+		pad = tegra->otg_portnum;
+		pmc = &pmc_data[pad];
+		pmc->port_speed = update_speed(tegra, pad);
+		pmc->pmc_ops->setup_pmc_wake_detect(pmc);
 	}
 }
 
@@ -2358,10 +2369,8 @@ static int get_host_controlled_ports(struct tegra_xhci_hcd *tegra)
 
 	enabled_ports = tegra->bdata->portmap;
 
-	if ((padctl_readl(tegra, padregs->usb2_port_cap_0)
-			& USB2_PORT_CAP_MASK(0))
-			!= (USB2_PORT_CAP_HOST(0)))
-		enabled_ports &= ~(TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_SS_P0);
+	if (tegra->otg_port_owned)
+		enabled_ports |= tegra->bdata->otg_portmap;
 
 	return enabled_ports;
 }
@@ -2735,6 +2744,40 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 	}
 }
 
+/* Called when exiting elpg */
+static void tegra_init_otg_port(struct tegra_xhci_hcd *tegra)
+{
+	struct xhci_hcd	*xhci = tegra->xhci;
+	struct usb_hcd *hcd = xhci_to_hcd(xhci);
+
+	u32 portsc;
+
+	if (!tegra->otg_port_owned || !tegra->otg_port_power_on)
+		/* Nop if we don't own port or we just got ownership */
+		return;
+
+	if (!(tegra->bdata->otg_portmap & 0xff))
+		/* Nop if no ss otg ports */
+		return;
+
+	/* If we are exiting ELPG due to device connected to otg port, then
+	* need to do below code.
+	*/
+
+	/* Prior to resetting sspi, need to ensure PortSc.PP is off. */
+	portsc = xhci_readl(xhci, xhci->usb3_ports[tegra->otg_portnum]);
+	portsc &= ~PORT_POWER;
+	xhci_writel(xhci, portsc, xhci->usb3_ports[tegra->otg_portnum]);
+
+	tegra_xhci_reset_sspi(tegra, tegra->otg_portnum);
+
+	/* turn on PortSc.PP. */
+	portsc = xhci_readl(xhci, xhci->usb3_ports[tegra->otg_portnum]);
+	portsc |= PORT_POWER;
+	xhci_writel(xhci, portsc, xhci->usb3_ports[tegra->otg_portnum]);
+
+	tegra->otg_port_power_on = false;
+}
 /* Host ELPG Exit triggered by PADCTL irq */
 /**
  * tegra_xhci_host_partition_elpg_exit - bring XUSBC partition out from elpg
@@ -2877,6 +2920,8 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 		jiffies_to_msecs(jiffies - tegra->last_jiffies));
 
 	tegra->host_pwr_gated = false;
+
+	tegra_init_otg_port(tegra);
 out:
 	return ret;
 }
@@ -3504,20 +3549,66 @@ static int tegra_xhci_update_hub_device(struct usb_hcd *hcd,
 	return xhci_update_hub_device(hcd, hdev, tt, mem_flags);
 }
 
-static void tegra_xhci_reset_sspi(struct usb_hcd *hcd, u8 pi)
+static void tegra_xhci_reset_sspi(struct tegra_xhci_hcd *tegra, uint port)
+{
+	struct device *dev = &tegra->pdev->dev;
+	u32 msec_to_wait = 10;
+
+	dev_dbg(dev, "%s\n", __func__);
+	csb_write(tegra, XUSB_CSB_RST_SSPI, (1 << port));
+	while ((csb_read(tegra, XUSB_CSB_RST_SSPI) == (1 << port))
+			&& msec_to_wait--)
+		usleep_range(1000, 2000);
+
+	dev_dbg(dev, "%s XUSB_CSB_RST_SSPI[%d] cleared\n", __func__, port);
+	csb_write(tegra, XUSB_FALC_SS_PVTPORTSC1 + (port * 0x80), 0x2b0);
+}
+
+static void tegra_xhci_update_otg_port_ownership(
+		struct usb_hcd *hcd, bool host_owns_port)
 {
 	struct tegra_xhci_hcd *tegra = hcd_to_tegra_xhci(hcd);
 	struct device *dev = &tegra->pdev->dev;
 	u32 msec_to_wait = 10;
 
-	dev_dbg(dev, "%s\n", __func__);
-	csb_write(tegra, XUSB_CSB_RST_SSPI, (1 << pi));
-	while ((csb_read(tegra, XUSB_CSB_RST_SSPI) == (0x1 << pi))
-			&& msec_to_wait--)
-		usleep_range(1000, 2000);
+	if (tegra->otg_port_owned && !host_owns_port) {
+		/* Port has transitioned to not owned */
+		if (tegra->bdata->otg_portmap & 0xff)
+			/* Only need to clear pp for ss */
+			xhci_hub_control(hcd, ClearPortFeature,
+				USB_PORT_FEAT_POWER,
+				tegra->otg_portnum + 1, 0, 0);
+	}
 
-	dev_dbg(dev, "%s XUSB_CSB_RST_SSPI[%d] cleared\n", __func__, pi);
-	csb_write(tegra, XUSB_FALC_SS_PVTPORTSC1 + (pi * 0x80), 0x2b0);
+	mutex_lock(&tegra->sync_lock);
+	tegra->otg_port_owned = host_owns_port;
+
+	if (!host_owns_port) {
+		/* Nothing left todo if we don't own port */
+		mutex_unlock(&tegra->sync_lock);
+		return;
+	}
+
+	if ((tegra->ss_pwr_gated) || (tegra->hc_in_elpg)) {
+		/* TODO: In real life, OTG driver will cause hcd to exit elpg.
+		 * When this happens, this code can be deleted
+		 */
+		tegra->ss_wake_event = true;
+		tegra->otg_port_power_on = true;
+
+		tegra_xhci_host_partition_elpg_exit(tegra);
+		mutex_unlock(&tegra->sync_lock);
+
+		return;
+	}
+	mutex_unlock(&tegra->sync_lock);
+
+	if (tegra->bdata->otg_portmap & 0xff) {
+		/* We now own a ss otg port */
+		tegra_xhci_reset_sspi(tegra, tegra->otg_portnum);
+		xhci_hub_control(hcd, SetPortFeature, USB_PORT_FEAT_POWER,
+			tegra->otg_portnum + 1, 0, 0);
+	}
 }
 
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
@@ -3624,7 +3715,7 @@ static const struct hc_driver tegra_plat_xhci_driver = {
 	.enable_usb3_lpm_timeout =	xhci_enable_usb3_lpm_timeout,
 	.disable_usb3_lpm_timeout =	xhci_disable_usb3_lpm_timeout,
 #endif
-	.reset_sspi = tegra_xhci_reset_sspi,
+	.update_otg_port_ownership = tegra_xhci_update_otg_port_ownership,
 };
 
 #ifdef CONFIG_PM
@@ -4112,7 +4203,7 @@ static void tegra_xusb_read_board_data(struct tegra_xhci_hcd *tegra)
 	struct device_node *node = tegra->pdev->dev.of_node;
 	struct device_node *padctl;
 	int ret;
-	u32 lane = 0, ss_portmap = 0;
+	u32 lane = 0, ss_portmap = 0, otg_portmap = 0;
 
 	bdata->uses_external_pmic = of_property_read_bool(node,
 					"nvidia,uses_external_pmic");
@@ -4145,6 +4236,11 @@ static void tegra_xusb_read_board_data(struct tegra_xhci_hcd *tegra)
 				, &ss_portmap);
 	if (ss_portmap)
 		bdata->ss_portmap = ss_portmap;
+
+	ret = of_property_read_u32(padctl, "nvidia,otg_portmap"
+				, &otg_portmap);
+	if (otg_portmap)
+		bdata->otg_portmap = otg_portmap;
 
 	ret = of_property_read_u32(padctl, "nvidia,lane_owner"
 				, &lane);
@@ -4545,6 +4641,13 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		}
 	}
 
+	for (pad = 0; pad < tegra->soc_config->utmi_pad_count; pad++) {
+		if (BIT(XUSB_UTMI_INDEX + pad) & tegra->bdata->otg_portmap) {
+			tegra->otg_portnum = pad;
+			break;
+		}
+	}
+
 	/* Enable power rails to the PAD,VBUS
 	 * and pull-up voltage.Initialize the regulators
 	 */
@@ -4681,6 +4784,7 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	int irq;
 	struct xhci_hcd	*xhci;
 	struct usb_hcd	*hcd;
+	u32 portsc;
 
 	ret = load_firmware(tegra, false /* do reset ARU */);
 	if (ret < 0) {
@@ -4819,6 +4923,13 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 
 	if (xhci->quirks & XHCI_LPM_SUPPORT)
 		hcd_to_bus(xhci->shared_hcd)->root_hub->lpm_capable = 1;
+
+	/* For otg port, init PortSc.PP to off. */
+	if (tegra->bdata->otg_portmap & 0xff) {
+		portsc = xhci_readl(xhci, xhci->usb3_ports[tegra->otg_portnum]);
+		portsc &= ~PORT_POWER;
+		xhci_writel(xhci, portsc, xhci->usb3_ports[tegra->otg_portnum]);
+	}
 
 	return 0;
 

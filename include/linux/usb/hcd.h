@@ -358,7 +358,8 @@ struct hc_driver {
 	int	(*disable_usb3_lpm_timeout)(struct usb_hcd *,
 			struct usb_device *, enum usb3_link_state state);
 	int	(*find_raw_port_number)(struct usb_hcd *, int);
-	void	(*reset_sspi) (struct usb_hcd *, u8 pi);
+	void	(*update_otg_port_ownership) (
+			struct usb_hcd *, bool host_owns_port);
 };
 
 extern int usb_hcd_link_urb_to_ep(struct usb_hcd *hcd, struct urb *urb);

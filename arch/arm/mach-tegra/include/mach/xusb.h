@@ -86,6 +86,7 @@ struct tegra_xusb_board_data {
 	 * ss_portmap[0:3] = SS0 map, ss_portmap[4:7] = SS1 map
 	 */
 	u32	ss_portmap;
+	u32	otg_portmap;
 	u32	ulpicap;
 	u32	lane_owner;
 	bool uses_external_pmic;
