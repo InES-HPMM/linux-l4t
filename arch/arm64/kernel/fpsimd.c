@@ -296,18 +296,21 @@ static inline void fpsimd_cpu_hotplug_init(void) { }
 #endif /* CONFIG_CPU_HOTPLUG */
 
 #ifdef CONFIG_CPU_PM
+static DEFINE_PER_CPU(struct fpsimd_state, fpsimd_cached_state);
+
 static int fpsimd_cpu_pm_notifier(struct notifier_block *self,
 				  unsigned long cmd, void *v)
 {
 	switch (cmd) {
 	case CPU_PM_ENTER:
-		if (current->mm && !test_thread_flag(TIF_FOREIGN_FPSTATE))
-			fpsimd_save_state(&current->thread.fpsimd_state);
-		this_cpu_write(fpsimd_last_state, NULL);
+		if (current->mm)
+			fpsimd_save_state(this_cpu_ptr(&fpsimd_cached_state));
+		else
+			this_cpu_write(fpsimd_last_state, NULL);
 		break;
 	case CPU_PM_EXIT:
 		if (current->mm)
-			set_thread_flag(TIF_FOREIGN_FPSTATE);
+			fpsimd_load_state(this_cpu_ptr(&fpsimd_cached_state));
 		break;
 	case CPU_PM_ENTER_FAILED:
 	default:
