@@ -102,6 +102,8 @@ struct nvadsp_os_data {
 	int			adsp_num_crashes;
 	bool			adsp_os_fw_loaded;
 	struct mutex		fw_load_lock;
+	bool			os_running;
+	struct mutex		os_run_lock;
 };
 
 static struct nvadsp_os_data priv;
@@ -117,6 +119,8 @@ static int map_idx;
 static struct nvadsp_mbox adsp_com_mbox;
 
 static DECLARE_COMPLETION(entered_wfe);
+
+static void __nvadsp_os_stop(bool);
 #ifdef CONFIG_DEBUG_FS
 
 static int adsp_logger_open(struct inode *inode, struct file *file)
@@ -740,26 +744,49 @@ static int __nvadsp_os_start(void)
 		goto err;
 	}
 #endif
-	drv_data->adsp_os_loaded = true;
 end:
 	return ret;
 err:
-	nvadsp_os_stop();
+	__nvadsp_os_stop(true);
 	return ret;
 }
 
 int nvadsp_os_start(void)
 {
-	int ret;
+	struct nvadsp_drv_data *drv_data;
+	struct device *dev;
+	int ret = 0;
 
 	if (!priv.pdev) {
 		pr_err("ADSP Driver is not initialized\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto end;
 	}
 
-	ret = pm_runtime_get_sync(&priv.pdev->dev);
+	drv_data = platform_get_drvdata(priv.pdev);
+	dev = &priv.pdev->dev;
 
-	return __nvadsp_os_start();
+	/* check if fw is loaded then start the adsp os */
+	if (!priv.adsp_os_fw_loaded) {
+		dev_err(dev, "Call to nvadsp_os_load not made\n");
+		ret = -EINVAL;
+		goto end;
+	}
+
+	mutex_lock(&priv.os_run_lock);
+	/* if adsp is started/running exit gracefully */
+	if (priv.os_running)
+		goto unlock;
+
+	ret = pm_runtime_get_sync(&priv.pdev->dev);
+	if (ret)
+		goto unlock;
+	ret = __nvadsp_os_start();
+	priv.os_running = drv_data->adsp_os_running = ret ? false : true;
+unlock:
+	mutex_unlock(&priv.os_run_lock);
+end:
+	return ret;
 }
 EXPORT_SYMBOL(nvadsp_os_start);
 
@@ -860,12 +887,36 @@ static void __nvadsp_os_stop(bool reload)
 
 void nvadsp_os_stop(void)
 {
+	struct nvadsp_drv_data *drv_data;
+
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
+		return;
+	}
+
+	drv_data = platform_get_drvdata(priv.pdev);
+
+	mutex_lock(&priv.os_run_lock);
+	/* check if os is running else exit */
+	if (!priv.os_running)
+		goto end;
 	__nvadsp_os_stop(true);
+	priv.os_running = drv_data->adsp_os_running = false;
+end:
+	mutex_unlock(&priv.os_run_lock);
 }
 EXPORT_SYMBOL(nvadsp_os_stop);
 
 void nvadsp_os_suspend(void)
 {
+	struct nvadsp_drv_data *drv_data;
+	int ret;
+
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
+		return;
+	}
+
 	/*
 	 * No os suspend/stop on linsim as
 	 * APE can be reset only once.
@@ -873,7 +924,17 @@ void nvadsp_os_suspend(void)
 	if (tegra_platform_is_linsim())
 		return;
 
-	__nvadsp_os_suspend();
+	drv_data = platform_get_drvdata(priv.pdev);
+
+	mutex_lock(&priv.os_run_lock);
+	/* check if os is running else exit */
+	if (!priv.os_running)
+		goto end;
+	ret = __nvadsp_os_suspend();
+	if (!ret)
+		priv.os_running = drv_data->adsp_os_running = false;
+end:
+	mutex_unlock(&priv.os_run_lock);
 }
 EXPORT_SYMBOL(nvadsp_os_suspend);
 
@@ -988,6 +1049,7 @@ int nvadsp_os_probe(struct platform_device *pdev)
 
 	INIT_WORK(&priv.restart_os_work, nvadsp_os_restart);
 	mutex_init(&priv.fw_load_lock);
+	mutex_init(&priv.os_run_lock);
 end:
 	return ret;
 }
