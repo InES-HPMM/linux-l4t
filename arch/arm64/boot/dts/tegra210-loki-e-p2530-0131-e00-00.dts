@@ -37,6 +37,7 @@
 		/* tegradc.0 */
 		dc@54200000 {
 			status = "okay";
+			dvdd_lcd-supply = <&vdd_disp_3v3>;
 			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
 			nvidia,emc-clk-rate = <204000000>;
 			nvidia,cmu-enable = <1>;
@@ -55,11 +56,15 @@
 			nvidia,dsi-controller-vs = <DSI_VS_1>;
 			status = "okay";
 			panel-j-720p-5-0 {
-				nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
 				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
+				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(H, 7) 0>; /* PH7 */
+				nvidia,panel-bl-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
-				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
+				disp-default-out {
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
+					nvidia,out-rotation = <270>;
+				};
 			};
 		};
 	};
