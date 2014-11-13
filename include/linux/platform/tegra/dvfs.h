@@ -474,18 +474,4 @@ static inline void tegra_dvfs_set_dfll_tune_trimmers(
 	d->dfll_data.tune_trimmers = tune_trimmers;
 }
 
-static inline int tegra_dvfs_rail_get_nominal_millivolts(struct dvfs_rail *rail)
-{
-	if (rail)
-		return rail->nominal_millivolts;
-	return -ENOENT;
-}
-
-static inline int tegra_dvfs_rail_get_boot_level(struct dvfs_rail *rail)
-{
-	if (rail)
-		return rail->boot_millivolts ? : rail->nominal_millivolts;
-	return -ENOENT;
-}
-
 #endif

@@ -23,6 +23,7 @@
 #include <linux/pm_qos.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/clk/tegra.h>
 
 #include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>
@@ -62,7 +63,7 @@ static int core_cap_level_set(int level, int core_nominal_mv)
 	int ret = 0;
 
 	if (!core_cap_table) {
-		int mv = tegra_dvfs_rail_get_boot_level(tegra_core_rail);
+		int mv = tegra_dvfs_get_core_boot_level();
 		if (level == mv) {
 			core_buses_cap.level = level;
 			return 0;
@@ -99,7 +100,7 @@ static int core_cap_update(void)
 {
 	int new_level;
 	int core_nominal_mv =
-		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
+		tegra_dvfs_get_core_nominal_millivolts();
 	if (core_nominal_mv <= 0)
 		return -ENOENT;
 
@@ -305,7 +306,7 @@ int __init tegra_init_core_cap(
 		return -EINVAL;
 
 	user_core_cap.level =
-		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
+		tegra_dvfs_get_core_nominal_millivolts();
 	if (user_core_cap.level <= 0)
 		return -ENOENT;
 

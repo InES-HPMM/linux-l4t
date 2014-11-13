@@ -54,6 +54,7 @@ static DEFINE_MUTEX(rail_disable_lock);
 
 static int dvfs_rail_update(struct dvfs_rail *rail);
 
+/* For accessors below use nominal voltage as default */
 static int tegra_dvfs_rail_get_disable_level(struct dvfs_rail *rail)
 {
 	return rail->disable_millivolts ? : rail->nominal_millivolts;
@@ -62,6 +63,20 @@ static int tegra_dvfs_rail_get_disable_level(struct dvfs_rail *rail)
 static int tegra_dvfs_rail_get_suspend_level(struct dvfs_rail *rail)
 {
 	return rail->suspend_millivolts ? : rail->nominal_millivolts;
+}
+
+static int tegra_dvfs_rail_get_boot_level(struct dvfs_rail *rail)
+{
+	if (rail)
+		return rail->boot_millivolts ? : rail->nominal_millivolts;
+	return -ENOENT;
+}
+
+static int tegra_dvfs_rail_get_nominal_millivolts(struct dvfs_rail *rail)
+{
+	if (rail)
+		return rail->nominal_millivolts;
+	return -ENOENT;
 }
 
 int tegra_dvfs_get_core_override_floor(void)

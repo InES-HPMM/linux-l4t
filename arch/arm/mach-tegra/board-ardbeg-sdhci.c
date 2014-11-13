@@ -29,6 +29,7 @@
 #include <linux/mfd/max77660/max77660-core.h>
 #include <linux/tegra-fuse.h>
 #include <linux/dma-mapping.h>
+#include <linux/clk/tegra.h>
 
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
@@ -37,7 +38,6 @@
 #include "gpio-names.h"
 #include "board.h"
 #include "board-ardbeg.h"
-#include <linux/platform/tegra/dvfs.h>
 #include "iomap.h"
 #include "tegra-board-id.h"
 
@@ -446,14 +446,14 @@ int __init ardbeg_sdhci_init(void)
 	struct board_info board_info;
 
 	nominal_core_mv =
-		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
+		tegra_dvfs_get_core_nominal_millivolts();
 	if (nominal_core_mv) {
 		tegra_sdhci_platform_data0.nominal_vcore_mv = nominal_core_mv;
 		tegra_sdhci_platform_data2.nominal_vcore_mv = nominal_core_mv;
 		tegra_sdhci_platform_data3.nominal_vcore_mv = nominal_core_mv;
 	}
 	min_vcore_override_mv =
-		tegra_dvfs_rail_get_override_floor(tegra_core_rail);
+		tegra_dvfs_get_core_override_floor();
 	if (min_vcore_override_mv) {
 		tegra_sdhci_platform_data0.min_vcore_override_mv =
 			min_vcore_override_mv;
@@ -462,7 +462,7 @@ int __init ardbeg_sdhci_init(void)
 		tegra_sdhci_platform_data3.min_vcore_override_mv =
 			min_vcore_override_mv;
 	}
-	boot_vcore_mv = tegra_dvfs_rail_get_boot_level(tegra_core_rail);
+	boot_vcore_mv = tegra_dvfs_get_core_boot_level();
 	if (boot_vcore_mv) {
 		tegra_sdhci_platform_data0.boot_vcore_mv = boot_vcore_mv;
 		tegra_sdhci_platform_data2.boot_vcore_mv = boot_vcore_mv;
