@@ -1030,6 +1030,11 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 	else
 		command1 &= ~SPI_LSBIT_FE;
 
+	if (spi->mode & SPI_3WIRE)
+		command1 |= SPI_BIDIROE;
+	else
+		command1 &= ~SPI_BIDIROE;
+
 	command1 &=  ~SPI_BOTH_EN_BIT;
 	if ((t->rx_nbits == SPI_NBITS_DUAL) ||
 			(t->tx_nbits == SPI_NBITS_DUAL))
