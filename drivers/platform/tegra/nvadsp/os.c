@@ -731,7 +731,6 @@ static int __nvadsp_os_start(void)
 		goto err;
 	}
 #endif
-
 	drv_data->adsp_os_loaded = true;
 end:
 	return ret;

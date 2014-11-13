@@ -90,7 +90,7 @@ struct nvadsp_drv_data {
 	struct clk *ahub_clk;
 
 	struct nvadsp_pm_state state;
-	bool adsp_os_loaded;
+	bool adsp_os_running;
 	void *shared_adsp_os_data;
 
 #if CONFIG_TEGRA_ADSP_DFS
