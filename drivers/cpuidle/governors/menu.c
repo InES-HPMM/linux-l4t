@@ -300,8 +300,8 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	data->predicted_us = div_round64(data->expected_us * data->correction_factor[data->bucket],
 					 RESOLUTION * DECAY);
 
-	trace_idle_entry(data->predicted_us);
 	get_typical_interval(data);
+	trace_idle_entry(data->predicted_us);
 
 	/*
 	 * We want to default to C1 (hlt), not to busy polling
