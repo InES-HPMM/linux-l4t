@@ -85,6 +85,7 @@ struct platform_config {
 
 struct bpmp_module {
 	struct list_head entry;
+	char name[MODULE_NAME_LEN];
 	struct dentry *root;
 	u32 handle;
 	u32 size;
@@ -123,26 +124,61 @@ static int bpmp_create_attrs(const struct fops_entry *fent,
 	return 0;
 }
 
-static int bpmp_module_unload_show(void *data, u64 *val)
+static struct bpmp_module *bpmp_find_module(const char *name)
 {
-	struct bpmp_module *m = data;
-	int err;
+	struct bpmp_module *m;
 
-	mutex_lock(&bpmp_lock);
-	err = bpmp_module_unload(device, m->handle);
-	if (err)
-		dev_err(device, "failed to unload module, code=%d\n", err);
-	else
-		debugfs_remove_recursive(m->root);
-	mutex_unlock(&bpmp_lock);
+	list_for_each_entry(m, &modules, entry) {
+		if (!strncmp(m->name, name, MODULE_NAME_LEN))
+			return m;
+	}
 
-	kfree(m);
-	*val = err;
-	return 0;
+	return NULL;
 }
 
-DEFINE_SIMPLE_ATTRIBUTE(bpmp_module_unload_fops, bpmp_module_unload_show,
-		NULL, "%lld\n");
+static ssize_t bpmp_module_unload_store(struct file *file,
+		const char __user *user_buf, size_t count, loff_t *ppos)
+{
+	struct bpmp_module *m;
+	char buf[MODULE_NAME_LEN];
+	char *name;
+	int r;
+
+	if (count >= sizeof(buf))
+		return -EINVAL;
+
+	if (strncpy_from_user(buf, user_buf, count) <= 0)
+		return -EFAULT;
+
+	buf[count] = 0;
+	name = strim(buf);
+
+	mutex_lock(&bpmp_lock);
+
+	m = bpmp_find_module(name);
+	if (!m) {
+		r = -ENODEV;
+		goto clean;
+	}
+
+	r = bpmp_module_unload(device, m->handle);
+	if (r) {
+		dev_err(device, "%s: failed to unload module (%d)\n", name, r);
+		goto clean;
+	}
+
+	debugfs_remove_recursive(m->root);
+	list_del(&m->entry);
+	kfree(m);
+
+clean:
+	mutex_unlock(&bpmp_lock);
+	return r ?: count;
+}
+
+static const struct file_operations bpmp_module_unload_fops = {
+	.write = bpmp_module_unload_store
+};
 
 static int bpmp_module_ready(const char *name, const struct firmware *fw,
 		struct bpmp_module *m)
@@ -186,10 +222,6 @@ static int bpmp_module_ready(const char *name, const struct firmware *fw,
 	if (!debugfs_create_x32("size", S_IRUGO, m->root, &m->size))
 		return -ENOMEM;
 
-	if (!debugfs_create_file("unload", S_IRUSR, m->root, m,
-			&bpmp_module_unload_fops))
-		return -ENOMEM;
-
 	list_add_tail(&m->entry, &modules);
 
 	return 0;
@@ -200,8 +232,7 @@ static ssize_t bpmp_module_load_store(struct file *file,
 {
 	const struct firmware *fw;
 	struct bpmp_module *m;
-	char buf[64];
-	char *name;
+	char buf[MODULE_NAME_LEN];
 	int r;
 
 	if (count >= sizeof(buf))
@@ -211,7 +242,6 @@ static ssize_t bpmp_module_load_store(struct file *file,
 		return -EFAULT;
 
 	buf[count] = 0;
-	name = strim(buf);
 
 	m = kzalloc(sizeof(*m), GFP_KERNEL);
 	if (m == NULL)
@@ -219,15 +249,20 @@ static ssize_t bpmp_module_load_store(struct file *file,
 
 	mutex_lock(&bpmp_lock);
 
-	/* We are more likely to have a duplicate than NOMEM */
-	m->root = debugfs_create_dir(name, module_root);
-	if (!m->root) {
-		dev_err(device, "module %s exist\n", name);
+	strcpy(m->name, strim(buf));
+	if (bpmp_find_module(m->name)) {
+		dev_err(device, "module %s exist\n", m->name);
 		r = -EEXIST;
 		goto clean;
 	}
 
-	r = request_firmware(&fw, name, device);
+	m->root = debugfs_create_dir(m->name, module_root);
+	if (!m->root) {
+		r = -ENOMEM;
+		goto clean;
+	}
+
+	r = request_firmware(&fw, m->name, device);
 	if (r) {
 		dev_err(device, "request_firmware() failed: %d\n", r);
 		goto clean;
@@ -239,10 +274,11 @@ static ssize_t bpmp_module_load_store(struct file *file,
 		goto clean;
 	}
 
-	dev_info(device, "%s: module ready %zu@%p\n", name, fw->size, fw->data);
-	r = bpmp_module_ready(name, fw, m);
+	dev_info(device, "%s: module ready %zu@%p\n",
+			m->name, fw->size, fw->data);
+	r = bpmp_module_ready(m->name, fw, m);
 	release_firmware(fw);
-	uncache_firmware(name);
+	uncache_firmware(m->name);
 
 clean:
 	mutex_unlock(&bpmp_lock);
@@ -281,8 +317,13 @@ static int bpmp_init_modules(struct platform_device *pdev)
 	if (IS_ERR_OR_NULL(module_root))
 		goto clean;
 
-	d = debugfs_create_file("load", S_IRUSR, module_root, pdev,
+	d = debugfs_create_file("load", S_IWUSR, module_root, pdev,
 			&bpmp_module_load_fops);
+	if (IS_ERR_OR_NULL(d))
+		goto clean;
+
+	d = debugfs_create_file("unload", S_IWUSR, module_root, pdev,
+			&bpmp_module_unload_fops);
 	if (IS_ERR_OR_NULL(d))
 		goto clean;
 
