@@ -181,7 +181,10 @@ static void sdhci_dumpregs(struct sdhci_host *host)
 		SDHCI_HOST_VERSION, sdhci_readw(host, SDHCI_HOST_VERSION));
 	pr_err(DRIVER_NAME ": Blk size[0x%03x]: 0x%08x | Blk cnt[0x%03x]:  0x%08x\n",
 		SDHCI_BLOCK_SIZE, sdhci_readw(host, SDHCI_BLOCK_SIZE),
-		SDHCI_BLOCK_COUNT, sdhci_readw(host, SDHCI_BLOCK_COUNT));
+		(host->version > SDHCI_SPEC_400) ? SDHCI_BLOCK_COUNT_32BIT :
+		SDHCI_BLOCK_COUNT, (host->version > SDHCI_SPEC_400) ?
+		sdhci_readw(host, SDHCI_BLOCK_COUNT_32BIT) :
+		sdhci_readw(host, SDHCI_BLOCK_COUNT));
 	pr_err(DRIVER_NAME ": Argument[0x%03x]: 0x%08x | Trn mode[0x%03x]: 0x%08x\n",
 		SDHCI_ARGUMENT, sdhci_readl(host, SDHCI_ARGUMENT),
 		SDHCI_TRANSFER_MODE, sdhci_readw(host, SDHCI_TRANSFER_MODE));
@@ -362,17 +365,23 @@ static void sdhci_reinit(struct sdhci_host *host)
 {
 	sdhci_init(host, 0);
 	/*
-	 * Retuning stuffs are affected by different cards inserted and only
-	 * applicable to UHS-I cards. So reset these fields to their initial
-	 * value when card is removed.
+	 * When tuning mode 1 is selected, the max_block_count value is limited
+	 * to 4MB as per the host specification. Default max_blk_count for a
+	 * host is defined in the spec and this value should be set during
+	 * re-init.
 	 */
 	if (host->flags & SDHCI_USING_RETUNING_TIMER) {
 		host->flags &= ~SDHCI_USING_RETUNING_TIMER;
 
 		del_timer_sync(&host->tuning_timer);
 		host->flags &= ~SDHCI_NEEDS_RETUNING;
-		host->mmc->max_blk_count =
-			(host->quirks & SDHCI_QUIRK_NO_MULTIBLOCK) ? 1 : 65535;
+		if (host->quirks & SDHCI_QUIRK_NO_MULTIBLOCK)
+			host->mmc->max_blk_count = 1;
+		else
+			host->mmc->max_blk_count =
+				(host->version > SDHCI_SPEC_400) ?
+				((1UL << BLOCK_COUNT_32BIT) - 1) :
+				((1 << BLOCK_COUNT_16BIT) - 1);
 	}
 	sdhci_enable_card_detection(host);
 }
@@ -1058,7 +1067,10 @@ static void sdhci_prepare_data(struct sdhci_host *host, struct mmc_command *cmd)
 	/* Set the DMA boundary value and block size */
 	sdhci_writew(host, SDHCI_MAKE_BLKSZ(SDHCI_DEFAULT_BOUNDARY_ARG,
 		data->blksz), SDHCI_BLOCK_SIZE);
-	sdhci_writew(host, data->blocks, SDHCI_BLOCK_COUNT);
+	if (host->version > SDHCI_SPEC_400)
+		sdhci_writew(host, data->blocks, SDHCI_BLOCK_COUNT_32BIT);
+	else
+		sdhci_writew(host, data->blocks, SDHCI_BLOCK_COUNT);
 }
 
 static void sdhci_set_transfer_mode(struct sdhci_host *host,
@@ -4161,7 +4173,7 @@ int sdhci_add_host(struct sdhci_host *host)
 	host->version = sdhci_readw(host, SDHCI_HOST_VERSION);
 	host->version = (host->version & SDHCI_SPEC_VER_MASK)
 				>> SDHCI_SPEC_VER_SHIFT;
-	if (host->version > SDHCI_SPEC_400) {
+	if (host->version > SDHCI_SPEC_410) {
 		pr_err("%s: Unknown controller version (%d). "
 			"You may experience problems.\n", mmc_hostname(mmc),
 			host->version);
@@ -4613,7 +4625,13 @@ out_dma_alloc:
 	/*
 	 * Maximum block count.
 	 */
-	mmc->max_blk_count = (host->quirks & SDHCI_QUIRK_NO_MULTIBLOCK) ? 1 : 65535;
+	if (host->quirks & SDHCI_QUIRK_NO_MULTIBLOCK)
+		mmc->max_blk_count = 1;
+	else
+		mmc->max_blk_count = (host->version > SDHCI_SPEC_400) ?
+				((1UL << BLOCK_COUNT_32BIT) - 1) :
+				((1 << BLOCK_COUNT_16BIT) - 1);
+
 #ifdef CONFIG_CMD_DUMP
 	mmc->dbg_host_cnt = 0;
 #endif

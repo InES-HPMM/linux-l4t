@@ -384,6 +384,8 @@ struct mmc_host {
 	unsigned int		max_req_size;	/* maximum number of bytes in one req */
 	unsigned int		max_blk_size;	/* maximum size of one mmc block */
 	unsigned int		max_blk_count;	/* maximum number of blocks in one req */
+#define BLOCK_COUNT_16BIT	16
+#define BLOCK_COUNT_32BIT	32
 	unsigned int		max_discard_to;	/* max. discard timeout in ms */
 
 	/* private data */

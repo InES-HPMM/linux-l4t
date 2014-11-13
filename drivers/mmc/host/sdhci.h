@@ -28,6 +28,8 @@
 #define SDHCI_DMA_ADDRESS	0x00
 #define SDHCI_ARGUMENT2		SDHCI_DMA_ADDRESS
 
+#define SDHCI_BLOCK_COUNT_32BIT	0x00
+
 #define SDHCI_BLOCK_SIZE	0x04
 #define  SDHCI_MAKE_BLKSZ(dma, blksz) (((dma & 0x7) << 12) | (blksz & 0xFFF))
 
@@ -320,6 +322,7 @@
 #define   SDHCI_SPEC_200	1
 #define   SDHCI_SPEC_300	2
 #define   SDHCI_SPEC_400	3
+#define   SDHCI_SPEC_410	4
 
 /*
  * End of controller registers.
