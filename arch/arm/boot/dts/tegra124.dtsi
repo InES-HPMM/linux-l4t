@@ -24,6 +24,7 @@
 #include "tegra124-soc.dtsi"
 #include "tegra124-platforms/tegra124-soctherm.dtsi"
 #include "tegra124-platforms/tegra124-bthrot-cdev.dtsi"
+#include "tegra124-platforms/tegra124-prods.dtsi"
 
 / {
 	compatible = "nvidia,tegra124";

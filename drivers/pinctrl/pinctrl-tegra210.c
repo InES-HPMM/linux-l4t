@@ -3321,35 +3321,6 @@ static int tegra210_gpio_request_enable(unsigned pin)
 	return 0;
 }
 
-static struct tegra_pinctrl_group_config_data t210_pin_drv_group_soc_data[] = {
-	TEGRA_PINCTRL_SET_DRIVE(sdmmc1, 0, 0, 0, 18, 18, 1, 1, 0),
-	TEGRA_PINCTRL_SET_DRIVE(sdmmc3, 0, 0, 0, 18, 18, 1, 1, 0),
-	TEGRA_PINCTRL_SET_DRIVE(sdmmc2, 0, 0, 0, 16, 16, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(sdmmc4, 0, 0, 0, 16, 16, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(gen1_i2c_scl, 0, 0, 0, 31, 0, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(gen1_i2c_sda, 0, 0, 0, 31, 0, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(gen2_i2c_scl, 0, 0, 0, 31, 0, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(gen2_i2c_sda, 0, 0, 0, 31, 0, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(gen3_i2c_scl, 0, 0, 0, 31, 0, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(gen3_i2c_sda, 0, 0, 0, 31, 0, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(cam_i2c_scl, 0, 0, 0, 31, 0, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(cam_i2c_sda, 0, 0, 0, 31, 0, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(pwr_i2c_scl, 0, 0, 0, 31, 0, 0, 0, 0),
-	TEGRA_PINCTRL_SET_DRIVE(pwr_i2c_sda, 0, 0, 0, 31, 0, 0, 0, 0),
-	TEGRA_PINCTRL_SET_PROP(sdmmc1_clk_pm0, 0, 0, 1),
-	TEGRA_PINCTRL_SET_PROP(sdmmc1_cmd_pm1, 0, 0, 1),
-	TEGRA_PINCTRL_SET_PROP(sdmmc1_dat3_pm2, 0, 0, 1),
-	TEGRA_PINCTRL_SET_PROP(sdmmc1_dat2_pm3, 0, 0, 1),
-	TEGRA_PINCTRL_SET_PROP(sdmmc1_dat1_pm4, 0, 0, 1),
-	TEGRA_PINCTRL_SET_PROP(sdmmc1_dat0_pm5, 0, 0, 1),
-	TEGRA_PINCTRL_SET_PROP(sdmmc3_clk_pp0, 0, 0, 1),
-	TEGRA_PINCTRL_SET_PROP(sdmmc3_cmd_pp1, 0, 0, 1),
-	TEGRA_PINCTRL_SET_PROP(sdmmc3_dat3_pp2, 0, 0, 1),
-	TEGRA_PINCTRL_SET_PROP(sdmmc3_dat2_pp3, 0, 0, 1),
-	TEGRA_PINCTRL_SET_PROP(sdmmc3_dat1_pp4, 0, 0, 1),
-	TEGRA_PINCTRL_SET_PROP(sdmmc3_dat0_pp5, 0, 0, 1),
-};
-
 static const struct tegra_pinctrl_soc_data tegra210_pinctrl = {
 	.ngpios = NUM_GPIOS,
 	.pins = tegra210_pins,
@@ -3361,8 +3332,6 @@ static const struct tegra_pinctrl_soc_data tegra210_pinctrl = {
 	.suspend = tegra210_pinctrl_suspend,
 	.resume = tegra210_pinctrl_resume,
 	.gpio_request_enable = tegra210_gpio_request_enable,
-	.config_data = t210_pin_drv_group_soc_data,
-	.nconfig_data = ARRAY_SIZE(t210_pin_drv_group_soc_data),
 };
 
 static int tegra210_pinctrl_probe(struct platform_device *pdev)

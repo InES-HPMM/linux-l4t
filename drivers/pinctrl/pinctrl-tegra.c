@@ -880,83 +880,6 @@ static struct syscore_ops pinctrl_syscore_ops = {
 
 #endif
 
-static int tegra_pinctrl_get_group(struct tegra_pmx *pmx, const char *name)
-{
-	int i;
-
-	for (i = 0; i< pmx->soc->ngroups; ++i) {
-		if (!strcmp(pmx->soc->groups[i].name, name))
-			return i;
-	}
-	return -EINVAL;
-}
-
-static int tegra_pinctrl_set_config(struct pinctrl_dev *pctldev,
-	int pg, int param, int val)
-{
-	unsigned long config;
-
-	config = TEGRA_PINCONF_PACK(param, val);
-	return tegra_pinconf_group_set(pmx->pctl, pg, config);
-}
-
-static void tegra_pinctrl_default_soc_init(struct tegra_pmx *pmx)
-{
-	struct tegra_pinctrl_group_config_data *cdata;
-	int group;
-	int i;
-
-	for (i = 0; i < pmx->soc->nconfig_data; ++i) {
-		cdata = &pmx->soc->config_data[i];
-		group = tegra_pinctrl_get_group(pmx, cdata->name);
-		if (group < 0) {
-			dev_warn(pmx->dev, "Group name %s not found\n",
-				cdata->name);
-			continue;
-		}
-
-		if (pmx->soc->groups[group].hsm_bit >= 0)
-			tegra_pinctrl_set_config(pmx->pctl, group,
-				TEGRA_PINCONF_PARAM_HIGH_SPEED_MODE,
-				cdata->high_speed_mode);
-
-		if (pmx->soc->groups[group].schmitt_bit >= 0)
-			tegra_pinctrl_set_config(pmx->pctl, group,
-				TEGRA_PINCONF_PARAM_SCHMITT,
-				cdata->schmitt);
-
-		if (pmx->soc->groups[group].lpmd_bit >= 0)
-			tegra_pinctrl_set_config(pmx->pctl, group,
-				TEGRA_PINCONF_PARAM_LOW_POWER_MODE,
-				cdata->low_power_mode);
-
-		if (pmx->soc->groups[group].drvdn_bit >= 0)
-			tegra_pinctrl_set_config(pmx->pctl, group,
-				TEGRA_PINCONF_PARAM_DRIVE_DOWN_STRENGTH,
-				cdata->pull_down_strength);
-
-		if (pmx->soc->groups[group].drvup_bit >= 0)
-			tegra_pinctrl_set_config(pmx->pctl, group,
-				TEGRA_PINCONF_PARAM_DRIVE_UP_STRENGTH,
-				cdata->pull_up_strength);
-
-		if (pmx->soc->groups[group].slwf_bit >= 0)
-			tegra_pinctrl_set_config(pmx->pctl, group,
-				TEGRA_PINCONF_PARAM_SLEW_RATE_FALLING,
-				cdata->slew_rate_falling);
-
-		if (pmx->soc->groups[group].slwr_bit >= 0)
-			tegra_pinctrl_set_config(pmx->pctl, group,
-				TEGRA_PINCONF_PARAM_SLEW_RATE_RISING,
-				cdata->slew_rate_rising);
-
-		if (pmx->soc->groups[group].drvtype_reg >= 0)
-			tegra_pinctrl_set_config(pmx->pctl, group,
-					TEGRA_PINCONF_PARAM_DRIVE_TYPE,
-					cdata->drive_type);
-	}
-}
-
 static void pinctrl_clear_parked_bits(struct tegra_pmx *pmx)
 {
 	int i = 0;
@@ -1089,8 +1012,6 @@ int tegra_pinctrl_probe(struct platform_device *pdev,
 	}
 
 	platform_set_drvdata(pdev, pmx);
-
-	tegra_pinctrl_default_soc_init(pmx);
 
 	pinctrl_configure_user_state(pmx->pctl, "drive");
 	pinctrl_configure_user_state(pmx->pctl, "unused");

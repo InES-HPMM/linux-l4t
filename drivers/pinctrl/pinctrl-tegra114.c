@@ -2965,9 +2965,6 @@ static const struct tegra_pingroup tegra114_groups[] = {
 	DRV_PINGROUP(vbus,  0x99c,  2,  3,  4,  12,  5,  20,  5,  28,  2,  30,  2,  N),
 };
 
-static struct tegra_pinctrl_group_config_data t114_pin_drive_group_soc_data[] = {
-	TEGRA_PINCTRL_SET_DRIVE(at2, 0, 0, 0, 48, 55, 0, 0, 0),
-};
 static int tegra114_pinctrl_suspend(u32 *pg_data)
 {
 	int i;
@@ -3030,8 +3027,6 @@ static const struct tegra_pinctrl_soc_data tegra114_pinctrl = {
 	.nfunctions = ARRAY_SIZE(tegra114_functions),
 	.groups = tegra114_groups,
 	.ngroups = ARRAY_SIZE(tegra114_groups),
-	.config_data = t114_pin_drive_group_soc_data,
-	.nconfig_data = ARRAY_SIZE(t114_pin_drive_group_soc_data),
 	.suspend = tegra114_pinctrl_suspend,
 	.resume = tegra114_pinctrl_resume,
 };
