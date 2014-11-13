@@ -132,8 +132,8 @@ static inline int tegra_mc_get_effective_bytes_width(void)
 #endif
 }
 
-unsigned int tegra_emc_bw_to_freq_req(unsigned int bw_kbps);
-unsigned int tegra_emc_freq_req_to_bw(unsigned int freq_kbps);
+unsigned long tegra_emc_bw_to_freq_req(unsigned long bw);
+unsigned long tegra_emc_freq_req_to_bw(unsigned long freq);
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 void         tegra12_mc_latency_allowance_save(u32 **pctx);
 void         tegra12_mc_latency_allowance_restore(u32 **pctx);

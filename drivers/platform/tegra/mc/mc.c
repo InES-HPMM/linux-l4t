@@ -188,34 +188,43 @@ int tegra_mc_get_tiled_memory_bandwidth_multiplier(void)
 		return 1;
 }
 
-/* API to get EMC freq to be requested, for Bandwidth.
- * bw_kbps: BandWidth passed is in KBps.
- * returns freq in KHz
+/*
+ * API to convert BW in bytes/s to clock frequency.
+ *
+ * bw: Bandwidth to convert. It can be in any unit - the resulting frequency
+ *     will be in the same unit as passed. E.g KBps leads to KHz.
  */
-unsigned int tegra_emc_bw_to_freq_req(unsigned int bw_kbps)
+unsigned long tegra_emc_bw_to_freq_req(unsigned long bw)
 {
-	unsigned int freq;
 	unsigned int bytes_per_emc_clk;
 
 	bytes_per_emc_clk = tegra_mc_get_effective_bytes_width() * 2;
-	freq = (bw_kbps + bytes_per_emc_clk - 1) / bytes_per_emc_clk *
-		CONFIG_TEGRA_EMC_TO_DDR_CLOCK;
-	return freq;
+
+	/*
+	 * Round to the nearest Hz, KHz, etc. This is so that the value
+	 * returned by this function will always be >= to the number of
+	 * clock cycles required to satisfy the passed BW.
+	 */
+	return (bw + bytes_per_emc_clk - 1) / bytes_per_emc_clk;
 }
 EXPORT_SYMBOL_GPL(tegra_emc_bw_to_freq_req);
 
-/* API to get EMC bandwidth, for freq that can be requested.
- * freq_khz: Frequency passed is in KHz.
- * returns bandwidth in KBps
+/*
+ * API to convert EMC clock frequency into theoretical available BW. This
+ * does not account for a realistic utilization of the EMC bus. That is the
+ * various overheads (refresh, bank commands, etc) that a real system sees
+ * are not computed.
+ *
+ * freq: Frequency to convert. Like tegra_emc_bw_to_freq_req() it will work
+ *       on any passed order of ten. The result will be on the same order.
  */
-unsigned int tegra_emc_freq_req_to_bw(unsigned int freq_khz)
+unsigned long tegra_emc_freq_req_to_bw(unsigned long freq)
 {
-	unsigned int bw;
 	unsigned int bytes_per_emc_clk;
 
 	bytes_per_emc_clk = tegra_mc_get_effective_bytes_width() * 2;
-	bw = freq_khz * bytes_per_emc_clk / CONFIG_TEGRA_EMC_TO_DDR_CLOCK;
-	return bw;
+
+	return freq * bytes_per_emc_clk;
 }
 EXPORT_SYMBOL_GPL(tegra_emc_freq_req_to_bw);
 
