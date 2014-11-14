@@ -683,6 +683,8 @@ static void arm_smmu_tlb_sync(struct arm_smmu_device *smmu)
 	int count = 0;
 	void __iomem *gr0_base = ARM_SMMU_GR0(smmu);
 
+	writel_relaxed(0, gr0_base + ARM_SMMU_GR0_TLBIALLNSNH); /* FIXME */
+
 	writel_relaxed(0, gr0_base + ARM_SMMU_GR0_sTLBGSYNC);
 	while (readl_relaxed(gr0_base + ARM_SMMU_GR0_sTLBGSTATUS)
 	       & sTLBGSTATUS_GSACTIVE) {
