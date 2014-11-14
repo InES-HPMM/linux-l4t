@@ -274,4 +274,12 @@
 			status = "disabled";
 		};
 	};
+
+	pinmux@70000868 {
+		prod-settings {
+			prod {
+				status = "disabled";
+			};
+		};
+	};
 };
