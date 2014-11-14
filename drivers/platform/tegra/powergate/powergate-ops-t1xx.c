@@ -126,6 +126,10 @@ int tegra1xx_powergate_partition_with_clk_off(int id,
 {
 	int ret = 0;
 
+	/* If first clk_ptr is null, fill clk info for the partition */
+	if (!pg_info->clk_info[0].clk_ptr)
+		get_clk_info(pg_info);
+
 	/* Disable clks for the partition */
 	partition_clk_disable(pg_info);
 
