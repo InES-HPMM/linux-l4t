@@ -279,8 +279,11 @@ static const struct spi_device_id qspi_ids[] = {
 	/* Spansion -- single (large) sector size only, at least
 	 * for the chips listed here (without boot sectors).
 	 */
-	{	"s25fl512s",
+	{	"s25fl128s",
 		INFO(0x012018, 0, 64 * 1024, 256, 4 * 1024, 8, 0, 0x21, 256, 0)
+	},
+	{	"s25fl512s",
+		INFO(0x010220, 0, 256 * 1024, 256, 4 * 1024, 8, 0, 0x21, 256, 0)
 	},
 	{	"MT25QL512AB",
 		INFO(0x20BA20, 0, 256 * 1024, 256, 0, 0, 0, 0, 256, 0)
