@@ -662,6 +662,11 @@ config TEGRA_PROC_POWER_MODEL
 	  A simple model of processor power relating voltage, frequency,
 	  cores, and chip specific data. Used by various drivers.
 
+config NV_GAMEPAD_RESET
+	tristate "Nvidia Gamepad Reset Driver"
+	help
+	 This driver provides an interface that can be used to recover
+	 gamepad uC when needed
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
