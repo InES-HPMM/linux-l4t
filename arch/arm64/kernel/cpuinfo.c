@@ -18,6 +18,7 @@
 #include <asm/cachetype.h>
 #include <asm/cpu.h>
 #include <asm/cputype.h>
+#include <asm/cpufeature.h>
 
 #include <linux/init.h>
 #include <linux/smp.h>
@@ -56,6 +57,9 @@ static void __cpuinfo_store_cpu(struct cpuinfo_arm64 *info)
 	info->reg_id_mmfr3 = read_cpuid(ID_MMFR3_EL1);
 	info->reg_id_pfr0 = read_cpuid(ID_PFR0_EL1);
 	info->reg_id_pfr1 = read_cpuid(ID_PFR1_EL1);
+
+
+	check_local_cpu_errata();
 }
 
 void cpuinfo_store_cpu(void)
