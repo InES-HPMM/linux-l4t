@@ -672,7 +672,6 @@ struct sdhci_tegra {
 	u32 dll_calib;
 	bool en_strobe;
 	unsigned int tuned_tap_delay;
-	bool tuning_mode;
 };
 
 static unsigned int boot_volt_req_refcount;
@@ -1214,18 +1213,6 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 	}
 	sdhci_tegra_set_tap_delay(host, best_tap_value);
 
-	tegra_host->tuning_mode = (uhs == MMC_TIMING_UHS_SDR104) ||
-			(uhs == MMC_TIMING_UHS_SDR50);
-
-	/* T21x: Enable Band Gap trimmers and VIO supply for eMMC all modes
-	 * and for SD/SDIO tunable modes only.
-	 * Wait for 3usec after enabling the trimmers.
-	 */
-	if (!plat->en_io_trim_volt)
-	       return 0;
-
-	vendor_trim_clear_sel_vreg(host,
-		(plat->is_emmc || tegra_host->tuning_mode));
 	return 0;
 }
 
@@ -1437,6 +1424,11 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		misc_ctrl |= (1 << SPARE_OUT_3_OFFSET);
 		sdhci_writel(host, misc_ctrl, SDMMC_IO_SPARE_0);
 	}
+
+	/* SEL_VREG should be 0 for all modes*/
+	if (soc_data->nvquirks2 &
+		NVQUIRK2_DYNAMIC_TRIM_SUPPLY_SWITCH)
+		vendor_trim_clear_sel_vreg(host, true);
 
 	if (soc_data->nvquirks & NVQUIRK_DISABLE_AUTO_CMD23)
 		host->flags &= ~SDHCI_AUTO_CMD23;
@@ -1688,13 +1680,11 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
 #ifndef CONFIG_MMC_PM_DOMAIN
 	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
 #endif
 	u8 ctrl;
 	int ret = 0;
-	bool io_trim_en_config = plat->is_emmc || tegra_host->tuning_mode;
 
 	mutex_lock(&tegra_host->set_clock_mutex);
 	pr_debug("%s %s %u enabled=%u\n", __func__,
@@ -1716,9 +1706,8 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 			ctrl = sdhci_readb(sdhci, SDHCI_VNDR_CLK_CTRL);
 			ctrl |= SDHCI_VNDR_CLK_CTRL_SDMMC_CLK;
 			sdhci_writeb(sdhci, ctrl, SDHCI_VNDR_CLK_CTRL);
-			if ((tegra_host->soc_data->nvquirks2 &
-				NVQUIRK2_DYNAMIC_TRIM_SUPPLY_SWITCH) &&
-				io_trim_en_config) {
+			if (tegra_host->soc_data->nvquirks2 &
+				NVQUIRK2_DYNAMIC_TRIM_SUPPLY_SWITCH) {
 				/* power up / active state */
 				vendor_trim_clear_sel_vreg(sdhci, true);
 			}
@@ -1754,9 +1743,8 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 			clk_disable_unprepare(tegra_host->sclk);
 			tegra_host->is_sdmmc_sclk_on = false;
 		}
-		if ((tegra_host->soc_data->nvquirks2 &
-			NVQUIRK2_DYNAMIC_TRIM_SUPPLY_SWITCH) &&
-			io_trim_en_config) {
+		if (tegra_host->soc_data->nvquirks2 &
+			NVQUIRK2_DYNAMIC_TRIM_SUPPLY_SWITCH){
 			/* power down / idle state */
 			vendor_trim_clear_sel_vreg(sdhci, false);
 		}
