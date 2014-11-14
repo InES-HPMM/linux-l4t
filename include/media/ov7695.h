@@ -38,7 +38,7 @@
 
 #define OV7695_SENSOR_MAX_RETRIES      3 /* max counter for retry I2C access */
 #define OV7695_MAX_FACEDETECT_WINDOWS  5
-#define OV7695_SENSOR_IOCTL_SET_MODE  _IOW('o', 1, struct ov7695_modeinfo)
+#define OV7695_SENSOR_IOCTL_SET_MODE  _IOW('o', 1, struct ov7695_mode)
 #define OV7695_SENSOR_IOCTL_GET_STATUS         _IOR('o', 2, __u8)
 #define OV7695_SENSOR_IOCTL_SET_COLOR_EFFECT   _IOW('o', 3, __u16)
 #define OV7695_SENSOR_IOCTL_SET_WHITE_BALANCE  _IOW('o', 4, __u8)
@@ -48,15 +48,20 @@
 #define OV7695_SENSOR_IOCTL_SET_CAMERA         _IOW('o', 8, __u8)
 #define OV7695_SENSOR_IOCTL_SET_EV             _IOW('o', 9, __s16)
 #define OV7695_SENSOR_IOCTL_GET_EV             _IOR('o', 10, __s16)
+#define OV7695_SENSOR_IOCTL_SET_VFR            _IOW('o', 11, __s16)
+#define OV7695_SENSOR_IOCTL_GET_PROP           _IOR('o', 12, struct ov7695_regs)
 
 struct ov7695_mode {
 	int xres;
 	int yres;
 };
 
-struct ov7695_modeinfo {
-	int xres;
-	int yres;
+struct ov7695_regs {
+	__u8 exp0;
+	__u8 exp1;
+	__u8 exp2;
+	__u8 gain0;
+	__u8 gain1;
 };
 
 #define  AF_CMD_START 0

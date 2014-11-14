@@ -188,6 +188,16 @@ static struct reg_8 mode_640x480_30fps[] = {
 	{OV7695_TABLE_END, 0x01},
 };
 
+static struct reg_8 ov7695_VFR_On[] = {
+	{0x3a00, 0x7c},
+	{OV7695_TABLE_END, 0x0000}
+};
+
+static struct reg_8 ov7695_VFR_Off[] = {
+	{0x3a00, 0x78},
+	{OV7695_TABLE_END, 0x0000}
+};
+
 static struct reg_8 ov7695_Whitebalance_Auto[] = {
 	{0x5200, 0x00},
 	{OV7695_TABLE_END, 0x0000}
@@ -309,7 +319,7 @@ struct ov7695_mode_desc {
 	u16			xres;
 	u16			yres;
 	const struct reg_8 *mode_tbl;
-	struct ov7695_modeinfo	mode_info;
+	struct ov7695_mode	mode_info;
 };
 
 static struct ov7695_mode_desc mode_table[] = {
@@ -691,7 +701,7 @@ err_out:
 }
 #endif	/* CONFIG_DEBUG_FS */
 
-static struct ov7695_modeinfo def_modeinfo = {
+static struct ov7695_mode def_modeinfo = {
 	.xres = 640,
 	.yres = 480,
 };
@@ -717,7 +727,7 @@ static int ov7695_mode_info_init(struct ov7695_info *info)
 {
 	struct ov7695_mode_desc *md = mode_table;
 	const struct reg_8 *mt;
-	struct ov7695_modeinfo *mi;
+	struct ov7695_mode *mi;
 
 	dev_dbg(&info->i2c_client->dev, "%s", __func__);
 	while (md->xres) {
@@ -914,6 +924,50 @@ static long ov7695_ioctl(struct file *file,
 			return -EFAULT;
 
 		return 0;
+	}
+
+	case _IOC_NR(OV7695_SENSOR_IOCTL_SET_VFR):
+	{
+		u8	vfr_enable;
+
+		if (copy_from_user(&vfr_enable, (const void __user *)arg,
+			sizeof(vfr_enable))) {
+			return -EFAULT;
+		}
+		if (vfr_enable) {
+			err = regmap_util_write_table_8(info->regmap,
+					ov7695_VFR_On,
+					NULL, 0, OV7695_WAIT_MS,
+					OV7695_TABLE_END);
+		} else {
+			err = regmap_util_write_table_8(info->regmap,
+					ov7695_VFR_Off,
+					NULL, 0, OV7695_WAIT_MS,
+					OV7695_TABLE_END);
+		}
+		break;
+	}
+
+	case _IOC_NR(OV7695_SENSOR_IOCTL_GET_PROP):
+	{
+		struct ov7695_regs regs;
+
+		err = ov7695_read_reg(info, 0x3500, &regs.exp0);
+		err |= ov7695_read_reg(info, 0x3501, &regs.exp1);
+		err |= ov7695_read_reg(info, 0x3502, &regs.exp2);
+
+		err |= ov7695_read_reg(info, 0x350a, &regs.gain0);
+		err |= ov7695_read_reg(info, 0x350b, &regs.gain1);
+
+		if (copy_to_user((void __user *)arg,
+				&regs,
+				sizeof(struct ov7695_regs))) {
+			dev_info(&info->i2c_client->dev, "%s:Fail copy prop to user space\n",
+				__func__);
+			return -EFAULT;
+		}
+
+		break;
 	}
 
 	default:
