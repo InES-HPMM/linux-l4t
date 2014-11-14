@@ -64,4 +64,36 @@
 		#asids = <120>;
 		ivc_queue = <&tegra_hv 7>;
 	};
+
+	chosen {
+		nvidia,tegra_dvfs_cpu_enable = <0>;
+		nvidia,tegra_dvfs_gpu_enable = <0>;
+	};
+
+	soctherm@0x700E2000 {
+		status = "disabled";
+	};
+
+	i2c@7000d000 {
+		status = "okay";
+
+		max16989@3a {
+			status = "disabled";
+		};
+
+		max16989@38 {
+			status = "disabled";
+		};
+	};
+
+	dfll@70110000 {
+		status = "disabled";
+	};
+
+	gpio: gpio@6000d000 {
+		gpio_default: default {
+		gpio-output-high = <TEGRA_GPIO(R, 0)
+				TEGRA_GPIO(R, 2)>;
+		};
+	};
 };
