@@ -1,5 +1,5 @@
 /*
- * arch/arm/boot/dts/tegra124-ardbeg-p1859.dts
+ * arch/arm/boot/dts/tegra124-android-p1859-hdmiprimary.dts
  *
  * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -21,10 +21,35 @@
  /dts-v1/;
 
 /* This file is for Vibrante 3.0 Android */
+/* To make HDMI primary */
 #include "tegra124-p1859.dtsi"
 
 / {
-        model = "NVIDIA Tegra124 p1859";
-        compatible = "nvidia,p1859", "nvidia,tegra124";
-        nvidia,dtsfilename = __FILE__;
+	model = "NVIDIA Tegra124 p1859";
+	compatible = "nvidia,p1859", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+
+	host1x {
+		sor {
+			panel-a-edp-1080p-14-0 {
+				status = "disabled";
+			};
+		};
+
+		dpaux {
+			status = "disabled";
+		};
+
+		/* tegradc.0 */
+		dc@54200000 {
+			nvidia,dc-flags = <0>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,cmu-enable = <0>;
+		};
+
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "disabled";
+		};
+	};
 };
