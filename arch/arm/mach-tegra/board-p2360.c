@@ -199,7 +199,6 @@ DT_MACHINE_START(P2360, "p2360")
 	.init_irq	= irqchip_init,
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_p2360_dt_init,
-	.restart	= tegra_assert_system_reset,
 	.dt_compat	= p2360_dt_board_compat,
 	.init_late	= tegra_init_late
 MACHINE_END

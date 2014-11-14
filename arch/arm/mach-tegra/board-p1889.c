@@ -265,7 +265,6 @@ DT_MACHINE_START(P1889, "p1889")
 	.init_irq	= irqchip_init,
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_p1889_dt_init,
-	.restart	= tegra_assert_system_reset,
 	.dt_compat	= p1889_dt_board_compat,
 	.init_late	= tegra_init_late
 MACHINE_END

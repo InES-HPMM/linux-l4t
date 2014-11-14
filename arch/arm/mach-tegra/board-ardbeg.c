@@ -1456,7 +1456,6 @@ DT_MACHINE_START(LOKI, "t132loki")
 	.init_irq	= irqchip_init,
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_ardbeg_dt_init,
-	.restart	= tegra_assert_system_reset,
 	.dt_compat	= loki_dt_board_compat,
 	.init_late      = tegra_init_late
 MACHINE_END
@@ -1471,7 +1470,6 @@ DT_MACHINE_START(LAGUNA, "laguna")
 	.init_irq	= irqchip_init,
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_ardbeg_dt_init,
-	.restart	= tegra_assert_system_reset,
 	.dt_compat	= laguna_dt_board_compat,
 	.init_late      = tegra_init_late
 MACHINE_END
@@ -1485,7 +1483,6 @@ DT_MACHINE_START(TN8, "tn8")
 	.init_irq	= irqchip_init,
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_ardbeg_dt_init,
-	.restart	= tegra_assert_system_reset,
 	.dt_compat	= tn8_dt_board_compat,
 	.init_late      = tegra_init_late
 MACHINE_END
@@ -1499,7 +1496,6 @@ DT_MACHINE_START(NORRIN, "norrin")
 	.init_irq	= irqchip_init,
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_ardbeg_dt_init,
-	.restart	= tegra_assert_system_reset,
 	.dt_compat	= norrin_dt_board_compat,
 	.init_late      = tegra_init_late
 MACHINE_END
@@ -1513,7 +1509,6 @@ DT_MACHINE_START(BOWMORE, "bowmore")
 	.init_irq	= irqchip_init,
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_ardbeg_dt_init,
-	.restart	= tegra_assert_system_reset,
 	.dt_compat	= bowmore_dt_board_compat,
 	.init_late      = tegra_init_late
 MACHINE_END
@@ -1527,7 +1522,6 @@ DT_MACHINE_START(ARDBEG, "ardbeg")
 	.init_irq	= irqchip_init,
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_ardbeg_dt_init,
-	.restart	= tegra_assert_system_reset,
 	.dt_compat	= ardbeg_dt_board_compat,
 	.init_late      = tegra_init_late
 MACHINE_END
@@ -1541,7 +1535,6 @@ DT_MACHINE_START(ARDBEG_SATA, "ardbeg_sata")
 	.init_irq	= irqchip_init,
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_ardbeg_dt_init,
-	.restart	= tegra_assert_system_reset,
 	.dt_compat	= ardbeg_sata_dt_board_compat,
 	.init_late      = tegra_init_late
 
@@ -1556,7 +1549,6 @@ DT_MACHINE_START(JETSON_TK1, "jetson-tk1")
 	.init_irq	= irqchip_init,
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_ardbeg_dt_init,
-	.restart	= tegra_assert_system_reset,
 	.dt_compat	= jetson_dt_board_compat,
 	.init_late      = tegra_init_late
 MACHINE_END

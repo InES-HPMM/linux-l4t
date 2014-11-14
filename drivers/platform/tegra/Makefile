@@ -171,3 +171,5 @@ obj-y					+= hier_ictlr/
 obj-$(CONFIG_TEGRA_WDT_RECOVERY)        += wdt-recovery.o
 
 obj-y					+= tegra_prod.o
+
+obj-y					+= reboot.o

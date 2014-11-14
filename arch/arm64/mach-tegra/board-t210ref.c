@@ -520,7 +520,6 @@ DT_MACHINE_START(T210REF, "t210ref")
 	.init_early	= tegra_t210ref_init_early,
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_t210ref_dt_init,
-	.restart	= tegra_assert_system_reset,
 	.dt_compat	= t210ref_dt_board_compat,
 	.init_late      = tegra_init_late,
 MACHINE_END
