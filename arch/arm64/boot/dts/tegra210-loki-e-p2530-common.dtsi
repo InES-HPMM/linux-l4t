@@ -38,6 +38,7 @@
 #include "tegra210-platforms/tegra210-loki-e-keys-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-maxim-charger.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-powermon.dtsi"
+#include "tegra210-platforms/tegra210-edp.dtsi"
 
 / {
 	compatible = "nvidia,loki-e", "nvidia,tegra210";
@@ -402,4 +403,15 @@
 				nvidia,name = "batmon_oc3";
 			};
 	};
+
+	cpu_edp {
+		status = "okay";
+		nvidia,edp_limit = <25000>;
+	};
+
+	gpu_edp {
+		status = "okay";
+		nvidia,edp_limit = <25000>;
+	};
+
 };
