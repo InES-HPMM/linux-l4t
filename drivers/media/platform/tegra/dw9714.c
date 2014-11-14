@@ -87,7 +87,6 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/uaccess.h>
-#include <linux/regmap.h>
 #include <linux/list.h>
 #include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
@@ -119,7 +118,6 @@
 
 struct dw9714_info {
 	struct i2c_client *i2c_client;
-	struct regmap *regmap;
 	struct camera_sync_dev *csync_dev;
 	struct dw9714_platform_data *pdata;
 	struct miscdevice miscdev;
@@ -183,7 +181,7 @@ static int dw9714_i2c_rd16(struct dw9714_info *info, u16 *val)
 	return 0;
 }
 
-static int dw9714_i2c_wr16(struct dw9714_info *info, u16 val)
+static int dw9714_i2c_wr16(struct dw9714_info *info, u16 val, bool mfi)
 {
 	struct i2c_msg msg;
 	u8 buf[2];
@@ -195,8 +193,18 @@ static int dw9714_i2c_wr16(struct dw9714_info *info, u16 val)
 	msg.len = 2;
 	msg.buf = &buf[0];
 
+#ifdef TEGRA_12X_OR_HIGHER_CONFIG
+	if (mfi) {
+		return camera_dev_sync_wr_add_i2c(info->csync_dev, &msg, 1);
+
+	} else {
+		if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
+			return -EIO;
+	}
+#else
 	if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
 		return -EIO;
+#endif
 
 	return 0;
 }
@@ -207,22 +215,28 @@ static int dw9714_position_wr(struct dw9714_info *info, s32 position)
 	s16 data;
 
 	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, position);
-	err = dw9714_i2c_wr16(info, 0xECA3);
+
+#ifdef TEGRA_12X_OR_HIGHER_CONFIG
+	   err = camera_dev_sync_clear(info->csync_dev);
+#endif
+
+	err = dw9714_i2c_wr16(info, 0xECA3, true);
 	if (err)
 		goto dw9714_set_position_fail;
 
-	err = dw9714_i2c_wr16(info, 0xF200|(0x0F<<3));
+	err = dw9714_i2c_wr16(info, 0xF200|(0x0F<<3), true);
 	if (err)
 		goto dw9714_set_position_fail;
 
-	err = dw9714_i2c_wr16(info, 0xDC51);
+	err = dw9714_i2c_wr16(info, 0xDC51, true);
 	if (err)
 		goto dw9714_set_position_fail;
 
 	data = ((position & 0x3FF) << 4) |
 		(0x3 << 2) |
 		(0x0 << 0);
-	err = dw9714_i2c_wr16(info, data);
+
+	err = dw9714_i2c_wr16(info, data, true);
 	if (err)
 		goto dw9714_set_position_fail;
 
@@ -950,10 +964,6 @@ static int dw9714_probe(
 {
 	struct dw9714_info *info;
 	int err;
-	static struct regmap_config dw9714_regmap_config = {
-		.reg_bits = 8,
-		.val_bits = 16,
-	};
 
 	dev_dbg(&client->dev, "%s\n", __func__);
 	pr_info("dw9714: probing focuser.\n");
@@ -973,15 +983,6 @@ static int dw9714_probe(
 		info->pdata = &dw9714_default_pdata;
 		dev_dbg(&client->dev, "%s No platform data.  Using defaults.\n",
 			__func__);
-	}
-
-	info->regmap = devm_regmap_init_i2c(client, &dw9714_regmap_config);
-	if (IS_ERR(info->regmap)) {
-		err = PTR_ERR(info->regmap);
-		dev_err(&client->dev,
-			"Failed to allocate register map: %d\n", err);
-		dw9714_del(info);
-		return -EIO;
 	}
 
 	i2c_set_clientdata(client, info);
@@ -1035,7 +1036,8 @@ static int dw9714_probe(
 	}
 
 #ifdef TEGRA_12X_OR_HIGHER_CONFIG
-	err = camera_dev_add_regmap(&info->csync_dev, "dw9714", info->regmap);
+	err = camera_dev_add_i2cclient(&info->csync_dev,
+						"dw9714", info->i2c_client);
 	if (err < 0) {
 		dev_err(&client->dev, "%s unable i2c frame sync\n", __func__);
 		dw9714_del(info);
