@@ -4315,7 +4315,9 @@ static void __init tegra12_dfll_clk_init(struct clk *c)
 
 static int tegra12_dfll_clk_enable(struct clk *c)
 {
-	return tegra_cl_dvfs_enable(c->u.dfll.cl_dvfs);
+	if (c->state != UNINITIALIZED)
+		return tegra_cl_dvfs_enable(c->u.dfll.cl_dvfs);
+	return 0;
 }
 
 static void tegra12_dfll_clk_disable(struct clk *c)
