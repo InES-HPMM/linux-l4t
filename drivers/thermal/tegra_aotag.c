@@ -386,18 +386,9 @@ static int aotag_init(struct platform_device *pdev)
 	struct device_node *pmc_np = NULL;
 	struct aotag_plat_info_t *pplat = NULL;
 	struct device *dev = PDEV2DEVICE(pdev);
+	struct device_node *np = PDEV2OF_NODE(pdev);
 
-	struct of_device_id pmc_of_match[] = {
-		{ .compatible = "nvidia,tegra210-pmc" },
-		{ .compatible = "nvidia,tegra124-pmc" },
-		{ .compatible = "nvidia,tegra148-pmc" },
-		{ .compatible = "nvidia,tegra114-pmc" },
-		{ .compatible = "nvidia,tegra30-pmc" },
-		{ .compatible = "nvidia,tegra20-pmc" },
-		{}
-	};
-
-	pmc_np = of_find_matching_node(NULL, pmc_of_match);
+	pmc_np = of_parse_phandle(np, "parent-block", 0);
 	if (unlikely(!pmc_np)) {
 		aotag_pdev_print(alert, pdev,
 				"PMC handle not found.\n");
