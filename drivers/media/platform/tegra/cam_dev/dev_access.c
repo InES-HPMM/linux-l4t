@@ -85,13 +85,26 @@ void camera_dev_sync_cb(void *stub)
 
 	mutex_lock(&csyncdev_mutex);
 	list_for_each_entry(itr, &csyncdev_list, list) {
-		for (idx = 0; idx < itr->num_used; idx++) {
-			err = regmap_write(itr->regmap,
-					itr->reg[idx].addr,
-					itr->reg[idx].val);
-			if (err)
-				pr_err("%s unable to write to [%s] device\n",
-					__func__, itr->name);
+		if (itr->regmap) {
+			for (idx = 0; idx < itr->num_used; idx++) {
+				err = regmap_write(itr->regmap,
+						itr->reg[idx].addr,
+						itr->reg[idx].val);
+				if (err)
+					pr_err("%s unable to write to [%s] device regmap\n",
+						__func__, itr->name);
+			}
+		} else if (itr->i2c_client) {
+			for (idx = 0; idx < itr->num_used; idx++) {
+				err = i2c_transfer(itr->i2c_client->adapter,
+						&itr->msg[idx].msg, 1);
+				if (err != 1)
+					pr_err("%s unable to write to [%s] device i2c_transfer\n",
+						__func__, itr->name);
+			}
+		} else {
+			pr_err("%s [%s] Unknown device mechanism\n",
+				__func__, itr->name);
 		}
 		itr->num_used = 0;
 	}
@@ -99,6 +112,45 @@ void camera_dev_sync_cb(void *stub)
 
 	return;
 }
+
+int camera_dev_sync_wr_add_i2c(
+	struct camera_sync_dev *csyncdev,
+	struct i2c_msg *msg, int num)
+{
+	int err = -ENODEV;
+	int i = 0;
+	struct camera_sync_dev *itr = NULL;
+
+	if (csyncdev->name == NULL || !strcmp(csyncdev->name, "")) {
+		err = -EINVAL;
+		goto csync_wr_add_i2c_end;
+	}
+
+	mutex_lock(&csyncdev_mutex);
+	list_for_each_entry(itr, &csyncdev_list, list) {
+		if (!strcmp(itr->name, csyncdev->name)) {
+			if (itr->num_used == CAMERA_REGCACHE_MAX) {
+				err = -ENOSPC;
+			} else {
+				for (i = 0; i < num; i++) {
+					itr->msg[itr->num_used].msg = msg[i];
+					memcpy(itr->msg[itr->num_used].buf,
+								msg[i].buf,
+								msg[i].len);
+					itr->msg[itr->num_used].msg.buf =
+						itr->msg[itr->num_used].buf;
+					itr->num_used++;
+				}
+				err = 0;
+			}
+		}
+	}
+	mutex_unlock(&csyncdev_mutex);
+
+csync_wr_add_i2c_end:
+	return err;
+}
+EXPORT_SYMBOL(camera_dev_sync_wr_add_i2c);
 
 int camera_dev_sync_wr_add(
 	struct camera_sync_dev *csyncdev,
@@ -160,6 +212,50 @@ csyncdev_clear_end:
 	return err;
 }
 EXPORT_SYMBOL(camera_dev_sync_clear);
+
+int camera_dev_add_i2cclient(
+	struct camera_sync_dev **csyncdev,
+	u8 *name,
+	struct i2c_client *i2c_client)
+{
+	int err = 0;
+	struct camera_sync_dev *itr = NULL;
+	struct camera_sync_dev *new_csyncdev = NULL;
+
+	if (name == NULL || !strcmp(name, ""))
+		return -EINVAL;
+
+	mutex_lock(&csyncdev_mutex);
+	list_for_each_entry(itr, &csyncdev_list, list) {
+		if (!strcmp(itr->name, name)) {
+			err = -EEXIST;
+			goto csyncdev_add_i2c_unlock;
+		}
+	}
+	if (!err) {
+		new_csyncdev =
+			kzalloc(sizeof(struct camera_sync_dev), GFP_KERNEL);
+		if (!new_csyncdev) {
+			pr_err("%s memory low!\n", __func__);
+			err = -ENOMEM;
+			goto csyncdev_add_i2c_unlock;
+		}
+		memset(new_csyncdev, 0, sizeof(struct camera_sync_dev));
+		strncpy(new_csyncdev->name, name, sizeof(new_csyncdev->name));
+		INIT_LIST_HEAD(&new_csyncdev->list);
+		new_csyncdev->i2c_client = i2c_client;
+		new_csyncdev->num_used = 0;
+		list_add(&new_csyncdev->list, &csyncdev_list);
+	}
+
+	*csyncdev = new_csyncdev;
+
+csyncdev_add_i2c_unlock:
+	mutex_unlock(&csyncdev_mutex);
+
+	return err;
+}
+EXPORT_SYMBOL(camera_dev_add_i2cclient);
 
 int camera_dev_add_regmap(
 	struct camera_sync_dev **csyncdev,

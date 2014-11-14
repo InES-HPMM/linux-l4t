@@ -125,6 +125,11 @@ struct camera_reg {
 	u32 val;
 };
 
+struct camera_i2c_msg {
+	struct i2c_msg msg;
+	u8 buf[8];
+};
+
 struct regmap_cfg {
 	int addr_bits;
 	int val_bits;
@@ -204,6 +209,8 @@ struct camera_sync_dev {
 	char name[CAMERA_MAX_NAME_LENGTH];
 	struct regmap *regmap;
 	struct camera_reg reg[CAMERA_REGCACHE_MAX];
+	struct i2c_client *i2c_client;
+	struct camera_i2c_msg msg[CAMERA_REGCACHE_MAX];
 	u32 num_used;
 	struct list_head list;
 };
@@ -213,8 +220,13 @@ void camera_dev_sync_cb(void *stub);
 extern int camera_dev_sync_clear(struct camera_sync_dev *csyncdev);
 extern int camera_dev_sync_wr_add(
 	struct camera_sync_dev *csyncdev, u32 offset, u32 val);
+extern int camera_dev_sync_wr_add_i2c(
+	struct camera_sync_dev *csyncdev, struct i2c_msg *msg, int num);
 extern int camera_dev_add_regmap(
 	struct camera_sync_dev **csyncdev, u8 *name, struct regmap *regmap);
+extern int camera_dev_add_i2cclient(
+	struct camera_sync_dev **csyncdev, u8 *name,
+	struct i2c_client *i2c_client);
 
 #endif
 #endif
