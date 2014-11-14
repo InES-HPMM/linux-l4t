@@ -845,7 +845,7 @@ err_out:
  * t210_idle_init
  *
  */
-int __init tegra210_idle_init(void)
+static int __init tegra210_idle_init(void)
 {
 	int ret;
 	unsigned int cpu;
