@@ -415,13 +415,6 @@ static int aotag_init(struct platform_device *pdev)
 
 	dev->platform_data = pplat;
 
-	pplat->reg_info.aotag_base = of_iomap(pdev->dev.of_node, 0);
-	if (IS_ERR_OR_NULL(pplat->reg_info.aotag_base)) {
-		aotag_pdev_print(alert, pdev, "Unable to map aotag resource\n");
-		ret = -ENOMEM;
-		goto out;
-	}
-
 	/*
 	 * reading PMC reg base here from the already parsed pmc DT node,
 	 * rather than adding this (an extra) value to the DT.
