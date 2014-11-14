@@ -586,6 +586,33 @@ enum {
 /* this is the old name. provided for compatibility with old board files. */
 #define dcc_bus ddc_bus
 
+struct tegra_vrr {
+	bool    enable;
+	bool    lastenable;
+	bool    flip;
+	int     vrr_min_fps;
+	int     vrr_max_fps;
+	int     v_front_porch_max;
+	int     v_front_porch_min;
+	int     vfp_extend;
+	int     vfp_shrink;
+	int     v_front_porch;
+	int     v_back_porch;
+
+	s64     curr_flip_us;
+	s64     last_flip_us;
+	int     flip_interval_us;
+	int     frame_len_max;
+	int     frame_len_min;
+	int     frame_len_fluct;
+	int     line_width;
+	int     lines_per_frame_common;
+
+	bool    frame_type;
+	s64     last_frame_us;
+	int     frame_time_delta_us;
+};
+
 struct tegra_dc_out {
 	int				type;
 	unsigned			flags;
@@ -613,6 +640,7 @@ struct tegra_dc_out {
 	struct tegra_hdmi_out		*hdmi_out;
 	struct tegra_dp_out		*dp_out;
 	struct tegra_stereo_out		*stereo;
+	struct tegra_vrr		*vrr;
 
 	unsigned			height; /* mm */
 	unsigned			width; /* mm */
