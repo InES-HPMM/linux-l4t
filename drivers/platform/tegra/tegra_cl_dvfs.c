@@ -3254,13 +3254,16 @@ static int cl_profiles_show(struct seq_file *s, void *data)
 		seq_printf(s, "%3dC.. %5dmV\n", trips[i], get_mv(cld, v));
 	}
 
-	seq_puts(s, "TUNE HIGH:\n");
-	seq_printf(s, "start  %5dmV%9lukHz\n",
-		   get_mv(cld, cld->tune_high_out_start),
-		   cld->tune_high_dvco_rate_min / 1000);
-	seq_printf(s, "min    %5dmV%9lukHz\n",
-		   get_mv(cld, cld->tune_high_out_min),
-		   cld->tune_high_out_rate_min / 1000);
+	if (cld->tune_high_out_rate_min == ULONG_MAX) {
+		seq_puts(s, "TUNE HIGH: NONE\n");
+	} else {
+		seq_puts(s, "TUNE HIGH:\n");
+		seq_printf(s, "min    %5dmV%9lukHz\n",
+			   get_mv(cld, cld->tune_high_out_min),
+			   cld->tune_high_dvco_rate_min / 1000);
+		seq_printf(s, "%-14s%9lukHz\n", "rate threshold",
+			   cld->tune_high_out_rate_min / 1000);
+	}
 
 	seq_printf(s, "THERM FLOORS:%s\n", cld->therm_floors_num ? "" : " NONE");
 	for (i = 0; i < cld->therm_floors_num; i++) {
