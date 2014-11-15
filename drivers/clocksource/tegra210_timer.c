@@ -257,41 +257,34 @@ static void __init tegra210_timer_init(struct device_node *np)
 	 */
 	switch (tegra210_timer_freq) {
 	case 12000000:
-		__raw_writel(0x000b, /* (11+1)/(0+1) */
-			     tegra210_timer_reg_base + TIMERUS_USEC_CFG);
+		usec_config = 0x000b; /* (11+1)/(0+1) */
 		break;
 	case 12800000:
-		__raw_writel(0x043f, /* (63+1)/(4+1) */
-			     tegra210_timer_reg_base + TIMERUS_USEC_CFG);
+		usec_config = 0x043f; /* (63+1)/(4+1) */
 		break;
 	case 13000000:
-		__raw_writel(0x000c, /* (12+1)/(0+1) */
-			     tegra210_timer_reg_base + TIMERUS_USEC_CFG);
+		usec_config = 0x000c; /* (12+1)/(0+1) */
 		break;
 	case 19200000:
-		__raw_writel(0x045f, /* (95+1)/(4+1) */
-			     tegra210_timer_reg_base + TIMERUS_USEC_CFG);
+		usec_config = 0x045f; /* (95+1)/(4+1) */
 		break;
 	case 26000000:
-		__raw_writel(0x0019, /* (25+1)/(0+1) */
-			     tegra210_timer_reg_base + TIMERUS_USEC_CFG);
+		usec_config = 0x0019; /* (25+1)/(0+1) */
 		break;
 	case 16800000:
-		__raw_writel(0x0453, /* (83+1)/(4+1) */
-			     tegra210_timer_reg_base + TIMERUS_USEC_CFG);
+		usec_config = 0x0453; /* (83+1)/(4+1) */
 		break;
 	case 38400000:
-		__raw_writel(0x04bf, /* (191+1)/(4+1) */
-			     tegra210_timer_reg_base + TIMERUS_USEC_CFG);
+		usec_config = 0x04bf; /* (191+1)/(4+1) */
 		break;
 	case 48000000:
-		__raw_writel(0x002f, /* (47+1)/(0+1) */
-			     tegra210_timer_reg_base + TIMERUS_USEC_CFG);
+		usec_config = 0x002f; /* (47+1)/(0+1) */
 		break;
 	default:
 		BUG();
 	}
 
+	__raw_writel(usec_config, tegra210_timer_reg_base + TIMERUS_USEC_CFG);
 	/* boot cpu is online */
 	tevt = &per_cpu(tegra210_evt, 0);
 	tegra210_timer_setup(tevt);
