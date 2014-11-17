@@ -8,4 +8,12 @@ menuconfig PADCTRL
 
 if PADCTRL
 
+config PADCTRL_TEGRA210_PMC
+	bool "Tegra210 PMC PADCTRL driver"
+	depends on ARCH_TEGRA
+	help
+	  This option enables Tegra 210 PMC padctrl driver
+
+	  Tegra210 PMC padctrl driver which controls the pad
+	  to supply either 1.8V or 3.3V.
 endif

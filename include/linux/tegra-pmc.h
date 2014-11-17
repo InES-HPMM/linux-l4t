@@ -22,6 +22,9 @@
 #define __LINUX_TEGRA_PMC_H__
 
 #include <linux/tegra-pm.h>
+#include <linux/device.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 
 extern void tegra_pmc_enable_wake_det(bool enable);
 extern void tegra_pmc_set_dpd_sample(void);
@@ -124,5 +127,20 @@ enum pwrdet_bit {
 };
 
 extern void pwr_detect_bit_write(u32 pwrdet_bit, bool enable);
+
+#ifdef CONFIG_PADCTRL_TEGRA210_PMC
+extern int tegra210_pmc_padctrl_init(struct device *dev,
+		struct device_node *np);
+#endif
+
+
+static inline int tegra_pmc_padctrl_init(struct device *dev,
+                struct device_node *np)
+{
+#ifdef CONFIG_PADCTRL_TEGRA210_PMC
+	return tegra210_pmc_padctrl_init(dev, np);
+#endif
+	return 0;
+}
 
 #endif	/* __LINUX_TEGRA_PMC_H__ */
