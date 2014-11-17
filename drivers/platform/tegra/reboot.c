@@ -88,25 +88,28 @@ static void tegra_reboot_handler(enum reboot_mode mode, const char *cmd)
 	}
 }
 
-static int tegra_reboot_notify(struct notifier_block *nb,
+static int tegra_restart_notify(struct notifier_block *nb,
 			    unsigned long action, void *data)
 {
 	const char *cmd = (char *)data;
-
-	if (action != SYS_RESTART)
-		return NOTIFY_DONE;
+	int ret;
 
 	/* program reboot reason for the bootloader */
-	(void)program_reboot_reason(cmd);
+	ret = program_reboot_reason(cmd);
+	if (ret && pm_power_reset) {
+		pr_info("%s: using %pF()\n", __func__, pm_power_reset);
+		pm_power_reset();
+	}
 
 	return NOTIFY_OK;
 };
 
-static struct notifier_block tegra_reboot_nb = {
-	.notifier_call = tegra_reboot_notify,
+static struct notifier_block tegra_restart_nb = {
+	.notifier_call = tegra_restart_notify,
+	.priority = 129, /* greater than default priority */
 };
 
-static int tegra_register_reboot_notifier(void)
+static int tegra_register_restart_notifier(void)
 {
 	/*
 	 * PSCI v0.2 has support for system reset. If we support v0.2, then
@@ -119,8 +122,8 @@ static int tegra_register_reboot_notifier(void)
 		return -EINVAL;
 	}
 
-	pr_info("Tegra reboot notifier registered.\n");
-	return register_reboot_notifier(&tegra_reboot_nb);
+	pr_info("Tegra restart notifier registered.\n");
+	return register_restart_handler(&tegra_restart_nb);
 }
 
-arch_initcall(tegra_register_reboot_notifier);
+arch_initcall(tegra_register_restart_notifier);
