@@ -83,6 +83,7 @@
 	i2c@7000c400 {
 		nvidia,clock-always-on;
 
+		/* U21 */
 		pca9539_75: pca9546@75 {
 			compatible = "nxp,pca9539";
 			gpio-controller;
@@ -96,7 +97,38 @@
 				gpio-output-high = <0 3 5 7 9 13 14 15>;
 			};
 			pca9539_wlan_default: wlan-default {
+				/* WF_RST_3V3 */
 				gpio-output-high = <4>;
+			};
+		};
+
+		/* U67 */
+		pca9539_76: pca9546@76 {
+			compatible = "nxp,pca9539";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0x76>;
+			gpio-init-names = "dap_default";
+			gpio-init-0 = <&pca9539_dap_default>;
+			pca9539_dap_default: dap_default {
+				/* MUX_DAP_D_SEL, MUX_DAP_D_EN */
+				gpio-output-low = <0 1>;
+			};
+		};
+
+		/* U22 */
+		pca9539_74: pca9546@74 {
+			compatible = "nxp,pca9539";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0x74>;
+			gpio-init-names = "mdm_default";
+			gpio-init-0 = <&pca9539_mdm_default>;
+			pca9539_mdm_default: mdm_default {
+				/* MDM_EN, AP_MDM_RESET_3V3 */
+				gpio-output-low = <9 15>;
+				/* MDM_COLDBOOT */
+				gpio-input = <11>;
 			};
 		};
 	};
@@ -318,6 +350,14 @@
 		compatible = "android,bcmdhd_wlan";
 		wlan-pwr-gpio = <&pca9539_75 3 1>;
 		wlan-rst-gpio = <&pca9539_75 4 1>;
+		status = "okay";
+	};
+	modem {
+		compatible = "nvidia,icera-i500";
+		/* XHCI_UTMI phy type */
+		nvidia,phy-type = <2>;
+		nvidia,mdm-en-gpio = <&pca9539_74 9 GPIO_ACTIVE_HIGH>;
+		nvidia,reset-gpio = <&pca9539_74 15 GPIO_ACTIVE_LOW>;
 		status = "okay";
 	};
 

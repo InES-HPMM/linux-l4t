@@ -219,7 +219,6 @@ static void __init tegra_p1859_late_init(void)
 
 	/* Initialize p1859 board specific devices */
 	p1859_i2c_init();
-	p1859_pca953x_init();
 	p1859_audio_init();
 
 	platform_add_devices(p1859_devices, ARRAY_SIZE(p1859_devices));
