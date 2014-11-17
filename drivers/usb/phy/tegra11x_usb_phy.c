@@ -1119,12 +1119,12 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val |= UTMIP_PHY_ENABLE;
 	writel(val, base + USB_SUSP_CTRL);
 
+	/* Bring UTMIPLL out of IDDQ mode while exiting from reset/suspend */
+	utmi_phy_iddq_override(false);
+
 	val = readl(base + USB_SUSP_CTRL);
 	val &= ~UTMIP_RESET;
 	writel(val, base + USB_SUSP_CTRL);
-
-	/* Bring UTMIPLL out of IDDQ mode while exiting from reset/suspend */
-	utmi_phy_iddq_override(false);
 
 	if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
 		USB_PHY_CLK_VALID, USB_PHY_CLK_VALID, 2600))

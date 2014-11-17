@@ -18,6 +18,7 @@
 #include <mach/xusb.h>
 
 #define UTMIPLL_HW_PWRDN_CFG0			0x52c
+#define   UTMIPLL_LOCK				(1<<31)
 #define   UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE  (1<<1)
 #define   UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL     (1<<0)
 

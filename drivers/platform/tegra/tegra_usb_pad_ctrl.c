@@ -23,6 +23,7 @@
 #include <linux/delay.h>
 #include <linux/tegra-fuse.h>
 #include <linux/clk/tegra.h>
+#include <linux/tegra-powergate.h>
 
 #include <mach/tegra_usb_pad_ctrl.h>
 
@@ -447,14 +448,20 @@ int sata_usb_pad_pll_reset_deassert(void)
 EXPORT_SYMBOL_GPL(sata_usb_pad_pll_reset_deassert);
 
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
-/* Disable SW control of UTMIPLL IDDQ temporarily. */
-int utmi_phy_iddq_override(bool set)
+static bool tegra_xusb_partitions_powergated(void)
 {
-	pr_info("skip utmi_phy_iddq_override(%d)\n", set);
-
-	return 0;
+	if (!tegra_powergate_is_powered(TEGRA_POWERGATE_XUSBB)
+			&& !tegra_powergate_is_powered(TEGRA_POWERGATE_XUSBC))
+		return true;
+	return false;
 }
 #else
+static bool tegra_xusb_partitions_powergated(void)
+{
+	return true;
+}
+#endif
+
 int utmi_phy_iddq_override(bool set)
 {
 	unsigned long val, flags;
@@ -462,9 +469,17 @@ int utmi_phy_iddq_override(bool set)
 
 	spin_lock_irqsave(&utmip_pad_lock, flags);
 	val = readl(clk_base + UTMIPLL_HW_PWRDN_CFG0);
-	if (set && !utmip_pad_count)
+	if (set && !utmip_pad_count) {
+		if (!tegra_xusb_partitions_powergated()) {
+			pr_warn("XUSB partitions are on, trying to assert IDDQ");
+			goto out1;
+		}
+		if (val & UTMIPLL_LOCK) {
+			pr_warn("UTMIPLL is locked, trying to assert IDDQ");
+			goto out1;
+		}
 		val |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
-	else if (!set && utmip_pad_count)
+	} else if (!set && utmip_pad_count)
 		val &= ~UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
 	else
 		goto out1;
@@ -475,7 +490,6 @@ out1:
 	spin_unlock_irqrestore(&utmip_pad_lock, flags);
 	return 0;
 }
-#endif
 EXPORT_SYMBOL_GPL(utmi_phy_iddq_override);
 
 static void utmi_phy_pad(bool enable)

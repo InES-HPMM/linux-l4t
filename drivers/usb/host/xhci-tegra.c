@@ -3345,6 +3345,11 @@ static int tegra_xhci_bus_suspend(struct usb_hcd *hcd)
 		goto tegra_xhci_host_elpg_entry_failed;
 	}
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	utmi_phy_pad_disable();
+	utmi_phy_iddq_override(true);
+#endif
+
 	/* At this point,ensure ss/hs intr enables are always on */
 	tegra_xhci_ss_wake_on_interrupts(host_ports, true);
 	tegra_xhci_hs_wake_on_interrupts(host_ports, true);
@@ -3358,10 +3363,12 @@ static int tegra_xhci_bus_suspend(struct usb_hcd *hcd)
 done:
 	/* pads are disabled only if usb2 root hub in xusb is idle */
 	/* pads will actually be disabled only when all usb2 ports are idle */
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	if (xhci->main_hcd == hcd) {
 		utmi_phy_pad_disable();
 		utmi_phy_iddq_override(true);
 	}
+#endif
 	mutex_unlock(&tegra->sync_lock);
 	return 0;
 
@@ -3399,7 +3406,11 @@ static int tegra_xhci_bus_resume(struct usb_hcd *hcd)
 
 	/* pads are disabled only if usb2 root hub in xusb is idle */
 	/* pads will actually be disabled only when all usb2 ports are idle */
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	if (tegra->ss_pwr_gated && tegra->host_pwr_gated) {
+#else
 	if (xhci->main_hcd == hcd && tegra->usb2_rh_suspend) {
+#endif
 		utmi_phy_pad_enable();
 		utmi_phy_iddq_override(false);
 	}

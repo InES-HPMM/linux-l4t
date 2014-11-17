@@ -556,6 +556,7 @@
 #define PLLU_HW_PWRDN_CFG0_CLK_SWITCH_SWCTL	(1<<0)
 
 #define XUSB_PLL_CFG0				0x534
+#define XUSB_PLL_CFG0_UTMIPLL_LOCK_DLY		(0x3ff<<0)
 #define XUSB_PLL_CFG0_PLLU_LOCK_DLY_SHIFT	14
 #define XUSB_PLL_CFG0_PLLU_LOCK_DLY_MASK	\
 	(0x3ff<<XUSB_PLL_CFG0_PLLU_LOCK_DLY_SHIFT)
@@ -2311,6 +2312,10 @@ static void tegra21_utmi_param_configure(struct clk *c)
 	reg &= ~UTMIPLL_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL;
 	reg |= UTMIPLL_HW_PWRDN_CFG0_USE_LOCKDET;
 	pll_writel_delay(reg, UTMIPLL_HW_PWRDN_CFG0);
+
+	reg = clk_readl(XUSB_PLL_CFG0);
+	reg &= ~XUSB_PLL_CFG0_UTMIPLL_LOCK_DLY;
+	pll_writel_delay(reg, XUSB_PLL_CFG0);
 
 	/* Enable HW control UTMIPLL */
 	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
