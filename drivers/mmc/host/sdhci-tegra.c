@@ -208,6 +208,8 @@
 /*controller does not support cards if 1.8 V is not supported by cards*/
 #define NVQUIRK2_BROKEN_SD2_0_SUPPORT		BIT(3)
 #define NVQUIRK2_DYNAMIC_TRIM_SUPPLY_SWITCH	BIT(4)
+/* Select SDR50 UHS mode for host if the device runs at SDR50 mode on T210 */
+#define NVQUIRK2_SELECT_SDR50_MODE		BIT(5)
 
 /* Common subset of quirks for Tegra3 and later sdmmc controllers */
 #define TEGRA_SDHCI_NVQUIRKS	(NVQUIRK_ENABLE_PADPIPE_CLKEN | \
@@ -1121,6 +1123,7 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
+	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
 
 	ctrl_2 = sdhci_readw(host, SDHCI_HOST_CONTROL2);
 
@@ -1140,7 +1143,10 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 		ctrl_2 |= SDHCI_CTRL_UHS_SDR25;
 		break;
 	case MMC_TIMING_UHS_SDR50:
-		ctrl_2 |= SDHCI_CTRL_UHS_SDR104;
+		if (soc_data->nvquirks2 & NVQUIRK2_SELECT_SDR50_MODE)
+			ctrl_2 |= SDHCI_CTRL_UHS_SDR50;
+		else
+			ctrl_2 |= SDHCI_CTRL_UHS_SDR104;
 		break;
 	case MMC_TIMING_UHS_SDR104:
 	case MMC_TIMING_MMC_HS200:
@@ -1649,7 +1655,8 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 		clk_rate = clock;
 	}
 
-	if (sdhci->mmc->ios.timing == MMC_TIMING_UHS_SDR50)
+	if ((sdhci->mmc->ios.timing == MMC_TIMING_UHS_SDR50) &&
+			tegra_host->soc_data->tuning_freq_list[0])
 		clk_rate = tegra_host->soc_data->tuning_freq_list[0];
 
 	if (tegra_host->max_clk_limit &&
@@ -4620,6 +4627,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 	.nvquirks2 = NVQUIRK2_UPDATE_HW_TUNING_CONFG |
 		     NVQUIRK2_CONFIG_PWR_DET |
 		     NVQUIRK2_BROKEN_SD2_0_SUPPORT |
+		     NVQUIRK2_SELECT_SDR50_MODE |
 		     NVQUIRK2_DYNAMIC_TRIM_SUPPLY_SWITCH,
 };
 
