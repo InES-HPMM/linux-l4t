@@ -161,9 +161,6 @@
 				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
 			};
 		};
-		vii2c {
-			avdd_dsi_csi-supply = <&max77620_gpio7>;
-		};
 	};
 
 
