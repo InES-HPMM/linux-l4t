@@ -93,7 +93,7 @@ struct nvadsp_drv_data {
 	bool adsp_os_running;
 	void *shared_adsp_os_data;
 
-#if CONFIG_TEGRA_ADSP_DFS
+#ifdef CONFIG_TEGRA_ADSP_DFS
 	bool dfs_initialized;
 #endif
 

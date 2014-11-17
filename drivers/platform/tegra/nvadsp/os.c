@@ -748,8 +748,11 @@ static int __nvadsp_os_start(void)
 #endif
 end:
 	return ret;
+
+#ifdef CONFIG_TEGRA_ADSP_DFS
 err:
 	__nvadsp_os_stop(true);
+#endif
 	return ret;
 }
 
