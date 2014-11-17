@@ -4,6 +4,7 @@
  * Copyright (C) 2010 Samsung Electronics Co.Ltd
  * Copyright (C) 2011-2014 Atmel Corporation
  * Copyright (C) 2012 Google, Inc.
+ * Copyright (C) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Joonyoung Shim <jy0922.shim@samsung.com>
  *
@@ -3215,6 +3216,13 @@ static struct mxt_platform_data *mxt_parse_dt(struct i2c_client *client)
 	/* reset gpio */
 	pdata->gpio_reset = of_get_named_gpio_flags(client->dev.of_node,
 		"atmel,reset-gpio", 0, NULL);
+
+	ret = of_property_read_u32(client->dev.of_node, "atmel,irq_flags",
+			(unsigned int *)&pdata->irqflags);
+	if (ret) {
+		dev_warn(&client->dev, "Using default irq_flags");
+		pdata->irqflags = IRQF_TRIGGER_FALLING;
+	}
 
 	of_property_read_string(client->dev.of_node, "atmel,cfg_name",
 				&pdata->cfg_name);
