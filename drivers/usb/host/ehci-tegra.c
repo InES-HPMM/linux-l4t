@@ -374,9 +374,7 @@ static int tegra_ehci_setup(struct usb_hcd *hcd)
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	int retval;
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	u32 val;
-#endif
 
 	/* EHCI registers start at offset 0x100 */
 	ehci->caps = hcd->regs + 0x100;
@@ -384,14 +382,12 @@ static int tegra_ehci_setup(struct usb_hcd *hcd)
 	ehci->has_hostpc = tegra->has_hostpc;
 	ehci->broken_hostpc_phcd = true;
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	ehci->has_hostpc = 1;
 
 	val = readl(hcd->regs + HOSTPC_REG_OFFSET);
 	val &= ~HOSTPC1_DEVLC_STS;
 	val &= ~HOSTPC1_DEVLC_NYT_ASUS;
 	writel(val, hcd->regs + HOSTPC_REG_OFFSET);
-#endif
 	/* switch to host mode */
 	hcd->has_tt = 1;
 
@@ -402,13 +398,11 @@ static int tegra_ehci_setup(struct usb_hcd *hcd)
 	ehci->controller_remote_wakeup = false;
 	tegra_usb_phy_reset(tegra->phy);
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	if (tegra_platform_is_fpga()) {
 		val =  readl(hcd->regs + TEGRA_STREAM_DISABLE);
 		val |= TEGRA_STREAM_DISABLE_OFFSET;
 		writel(val , hcd->regs + TEGRA_STREAM_DISABLE);
 	}
-#endif
 
 	return 0;
 }

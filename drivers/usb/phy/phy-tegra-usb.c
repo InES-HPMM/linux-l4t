@@ -52,8 +52,7 @@
 #define AHB_MEM_PREFETCH_CFG2		0xf0
 #define PREFETCH_ENB			(1 << 31)
 
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC)  || defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
-	defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #define USB_PLL_REG "avdd_usb_pll"
 #else
 #define USB_PLL_REG "avdd_pll_utmip"
@@ -151,15 +150,7 @@ static int tegra_usb_phy_init_ops(struct tegra_usb_phy *phy)
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
 	if (phy->pdata->has_hostpc)
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
-		err = tegra3_usb_phy_init_ops(phy);
-#else
 		err = tegra11x_usb_phy_init_ops(phy);
-#endif
-#if defined (CONFIG_ARCH_TEGRA_2x_SOC)
-	else
-		err = tegra2_usb_phy_init_ops(phy);
-#endif
 	return err;
 }
 
@@ -409,14 +400,12 @@ int tegra_usb_phy_power_on(struct tegra_usb_phy *phy)
 	if (phy->phy_power_on)
 		return status;
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	if (phy->vdd_reg && !phy->vdd_reg_on) {
 		ret = regulator_enable(phy->vdd_reg);
 		if (ret)
 			ERR("can't enable regulator vdd_reg, error %d\n", ret);
 		phy->vdd_reg_on = true;
 	}
-#endif
 
 	/* In device mode clock is turned on by pmu irq handler
 	 * if pmu irq is not available clocks will not be turned off/on
