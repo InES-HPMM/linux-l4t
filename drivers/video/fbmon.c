@@ -1116,18 +1116,19 @@ void fb_edid_add_monspecs(unsigned char *edid, struct fb_monspecs *specs)
 				(edid[pos + 2] << 16);
 
 			/* OUI for hdmi licensing, LLC */
-			if (ieee_reg == 0x000c03)
+			if (ieee_reg == 0x000c03) {
 				specs->misc |= FB_MISC_HDMI;
+				/* HDMI_Video_Format @HDMI 1.4 ch8.2.3*/
+				if (edid[pos + 2] >> 5 != 0) {
+					fb_hvd_parse(edid, &hvd, pos + 3);
+					hdmi_num = hvd.hdmi_vic_len;
+				}
+			}
 
 			/* OUI for hdmi forum */
 			if (ieee_reg == 0xc45dd8)
 				specs->misc |= FB_MISC_HDMI_FORUM;
 
-			/* HDMI_Video_Format @HDMI 1.4 ch8.2.3*/
-			if (edid[pos + 2] >> 5 != 0) {
-				fb_hvd_parse(edid, &hvd, pos + 3);
-				hdmi_num = hvd.hdmi_vic_len;
-			}
 		} else if (type == CEA_DATA_BLOCK_EXT) {
 			u32 ext_type = edid[pos];
 
