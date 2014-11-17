@@ -41,16 +41,12 @@ static int _escore_cmd(struct escore_priv *escore, u32 cmd, u32 *resp)
 	int sr;
 	int err;
 
+	*resp = 0;
 	sr = cmd & BIT(28);
-	cmd_hist[cmd_hist_index].cmd = cmd;
-	cmd_hist[cmd_hist_index].timestamp = jiffies;
-	if (cmd_hist_index == ES_MAX_ROUTE_MACRO_CMD-1)
-		cmd_hist_index = 0;
-	else
-		cmd_hist_index++;
+
 	err = escore->bus.ops.cmd(escore, cmd, resp);
 	if (err || sr)
-		goto cmd_err;
+		goto exit;
 
 	if (resp == 0) {
 		err = -ETIMEDOUT;
@@ -59,7 +55,8 @@ static int _escore_cmd(struct escore_priv *escore, u32 cmd, u32 *resp)
 		escore->bus.last_response = *resp;
 		get_monotonic_boottime(&escore->last_resp_time);
 	}
-cmd_err:
+
+exit:
 	return err;
 }
 
@@ -890,7 +887,6 @@ int escore_wakeup(struct escore_priv *escore)
 	int retry = 20;
 	u32 p_cmd = ES_GET_POWER_STATE << 16;
 
-	mutex_lock(&escore->api_mutex);
 	/* Enable the clocks */
 	if (escore_priv.pdata->esxxx_clk_cb) {
 		escore_priv.pdata->esxxx_clk_cb(1);
@@ -974,7 +970,6 @@ int escore_wakeup(struct escore_priv *escore)
 				__func__, rc);
 
 escore_wakeup_exit:
-	mutex_unlock(&escore->api_mutex);
 	return rc;
 }
 

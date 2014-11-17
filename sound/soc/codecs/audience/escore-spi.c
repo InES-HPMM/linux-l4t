@@ -127,10 +127,12 @@ static int escore_spi_cmd(struct escore_priv *escore,
 	if ((escore->cmd_compl_mode == ES_CMD_COMP_INTR) && !sr)
 		escore->wait_api_intr = 1;
 
+	*resp = 0;
+
 	cmd = cpu_to_be32(cmd);
 	err = escore_spi_write(escore, &cmd, sizeof(cmd));
 	if (err || sr)
-		return err;
+		goto cmd_exit;
 
 	if (escore->cmd_compl_mode == ES_CMD_COMP_INTR) {
 		pr_debug("%s(): Waiting for API interrupt. Jiffies:%lu",
@@ -201,6 +203,7 @@ static int escore_spi_cmd(struct escore_priv *escore,
 	dev_dbg(escore->dev, "%s: err=%d  *resp=0x%08x\n", __func__, err, *resp);
 
 cmd_exit:
+	update_cmd_history(be32_to_cpu(cmd), *resp);
 	return err;
 }
 

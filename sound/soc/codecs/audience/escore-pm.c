@@ -102,6 +102,7 @@ static int escore_non_vs_suspend(struct device *dev)
 		return -EBUSY;
 	}
 
+	mutex_lock(&escore_priv.api_mutex);
 	/* It is assumed that a channels have already been muted */
 	/* Send a SetPowerState command - no respnse */
 	cmd = (ES_SET_POWER_STATE << 16) |
@@ -122,6 +123,7 @@ static int escore_non_vs_suspend(struct device *dev)
 	escore_priv.escore_power_state = escore_priv.non_vs_sleep_state;
 
 suspend_out:
+	mutex_unlock(&escore_priv.api_mutex);
 
 	return ret;
 }
@@ -132,22 +134,25 @@ static int escore_non_vs_resume(struct device *dev)
 	int ret = 0;
 	dev_dbg(dev, "%s()\n", __func__);
 
+	mutex_lock(&escore->api_mutex);
 	ret = escore_wakeup(escore);
 	if (ret) {
 		dev_err(dev, "%s() wakeup failed ret = %d\n", __func__, ret);
 		goto escore_wakeup_fail_recovery;
 	}
 
+	escore->escore_power_state = ES_SET_POWER_STATE_NORMAL;
+	mutex_unlock(&escore->api_mutex);
+
 	dev_dbg(dev, "%s() - out rc =%d\n", __func__, ret);
 
-	escore->escore_power_state = ES_SET_POWER_STATE_NORMAL;
 	return ret;
 
 escore_wakeup_fail_recovery:
 	escore_gpio_reset(&escore_priv);
 	ret = escore_priv.boot_ops.bootup(&escore_priv);
 	escore_priv.escore_power_state = ES_SET_POWER_STATE_NORMAL;
-
+	mutex_unlock(&escore->api_mutex);
 	return ret;
 }
 
@@ -194,14 +199,18 @@ static int escore_runtime_suspend(struct device *dev)
 	 * bring chip into normal mode to enter into desired runtime suspend
 	 * state.
 	 */
+	mutex_lock(&escore->api_mutex);
 	if (escore->escore_power_state == ES_SET_POWER_STATE_MP_SLEEP) {
 		ret = escore_wakeup(escore);
 		if (ret) {
 			dev_err(dev, "%s() wakeup failed ret = %d\n",
 					__func__, ret);
+			mutex_unlock(&escore_priv.api_mutex);
 			goto out;
 		}
+		escore->escore_power_state = ES_SET_POWER_STATE_NORMAL;
 	}
+	mutex_unlock(&escore->api_mutex);
 #ifdef CONFIG_SND_SOC_ES_RUNTIME_SUSPEND_MODE_SLEEP
 	ret = escore_non_vs_suspend(dev);
 #elif defined(CONFIG_SND_SOC_ES_RUNTIME_SUSPEND_MODE_CVQ)
@@ -311,12 +320,16 @@ int escore_system_suspend(struct device *dev)
 			 * Need to bring chip into normal mode before putting
 			 * into suspend state.
 			 */
+			mutex_lock(&escore_priv.api_mutex);
 			ret = escore_wakeup(escore);
 			if (ret) {
 				dev_err(dev, "%s() wakeup failed ret = %d\n",
 						__func__, ret);
+				mutex_unlock(&escore_priv.api_mutex);
 				goto out;
 			}
+			escore->escore_power_state = ES_SET_POWER_STATE_NORMAL;
+			mutex_unlock(&escore_priv.api_mutex);
 		}
 		ret = escore_non_vs_suspend(dev);
 	}

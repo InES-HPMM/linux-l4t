@@ -81,6 +81,7 @@
 /* Standard commands used by all chips */
 
 #define ES_SR_BIT			28
+#define ES_SC_BIT			29
 #define ES_SYNC_CMD			0x8000
 #define ES_SYNC_POLLING			0x0000
 #define ES_SYNC_ACK			0x80000000
@@ -185,7 +186,7 @@
 #define ES_SET_POWER_LEVEL				0x8011
 #define ES_POWER_LEVEL_6				0x0006
 
-#define ES_WAKEUP_TIME				30
+#define ES_WAKEUP_TIME				40
 #define ES_PM_CLOCK_STABILIZATION		1 /* 1ms */
 #define ES_RESP_TOUT_MSEC			20 /* 20ms */
 #define ES_RESP_TOUT				20000 /* 20ms */
@@ -417,6 +418,7 @@ struct escore_voicesense_ops {
 
 struct escore_macro {
 	u32 cmd;
+	u32 resp;
 	unsigned long timestamp;
 };
 
@@ -429,7 +431,9 @@ struct escore_pdata {
 #define ES705_PRESET_ARRAY_SIZE		10
 #endif
 
-#define	ES_MAX_ROUTE_MACRO_CMD		100
+#define	ES_MAX_ROUTE_MACRO_CMD		300
+/* Max size of cmd_history line */
+#define ES_MAX_CMD_HISTORY_LINE_SIZE	100
 extern struct escore_macro cmd_hist[ES_MAX_ROUTE_MACRO_CMD];
 extern int cmd_hist_index;
 
@@ -468,6 +472,7 @@ struct escore_priv {
 	u16 es_vs_route_preset;
 	u16 es_cvs_preset;
 	int es_streaming_mode;
+	int cmd_history_size;
 	int sleep_abort;
 
 	unsigned long pm_time;
@@ -525,7 +530,8 @@ struct escore_priv {
 	int fw_requested;
 	u16 preset;
 	u16 cvs_preset;
-	u16 algo_preset;
+	u16 algo_preset_one;
+	u16 algo_preset_two;
 /* endif 705 */
 
 	struct mutex pm_mutex;
@@ -542,6 +548,7 @@ struct escore_priv {
 	struct cdev cdev_firmware;
 	struct cdev cdev_datablock;
 	struct cdev cdev_datalogging;
+	struct cdev cdev_cmd_history;
 
 	struct task_struct *stream_thread;
 	wait_queue_head_t stream_in_q;
@@ -660,4 +667,13 @@ extern const struct dev_pm_ops escore_pm_ops;
 #define ESCORE_STREAM_ENABLE	1
 #define ESCORE_DATALOGGING_CMD_ENABLE    0x803f0001
 #define ESCORE_DATALOGGING_CMD_DISABLE   0x803f0000
+
+/* Take api_mutex before calling this function */
+static inline void update_cmd_history(u32 cmd, u32 resp)
+{
+	cmd_hist[cmd_hist_index].cmd = cmd;
+	cmd_hist[cmd_hist_index].resp = resp;
+	cmd_hist[cmd_hist_index].timestamp = jiffies;
+	cmd_hist_index = (cmd_hist_index + 1) % ES_MAX_ROUTE_MACRO_CMD;
+}
 #endif /* _ESCORE_H */

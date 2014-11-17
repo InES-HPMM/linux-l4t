@@ -309,55 +309,12 @@ cmd_err:
 
 static DEVICE_ATTR(ping_status, 0444, es755_ping_status_show, NULL);
 
-/* /sys/devices/platform/msm_slim_ctrl.1/es755-codec-gen0/ping_status */
-static ssize_t es755_cmd_history_show(struct device *dev,
-		struct device_attribute *attr,
-				   char *buf)
-{
-	int i = 0, j = 0;
-
-	for (i = cmd_hist_index; i < ES_MAX_ROUTE_MACRO_CMD; i++) {
-		if (cmd_hist[i].cmd)
-			j += snprintf(buf+j,
-					PAGE_SIZE,
-					"cmd=0x%04x 0x%04x,tstamp=%lu\n",
-					cmd_hist[i].cmd>>16,
-					cmd_hist[i].cmd & 0xffff,
-					cmd_hist[i].timestamp);
-	}
-	for (i = 0; i < cmd_hist_index; i++) {
-		if (cmd_hist[i].cmd)
-			j += snprintf(buf+j,
-					PAGE_SIZE,
-					"cmd=0x%04x 0x%04x,tstamp=%lu\n",
-					cmd_hist[i].cmd>>16,
-					cmd_hist[i].cmd & 0xffff,
-					cmd_hist[i].timestamp);
-	}
-	return	j;
-}
-static ssize_t es755_cmd_history_clear(struct device *dev,
-					struct device_attribute *attr,
-					const char *buf, size_t count)
-{
-	pr_info("%s(): requested - %s\n", __func__, buf);
-	if (!strncmp(buf, "clear", 5)) {
-		memset(cmd_hist, 0,  ES_MAX_ROUTE_MACRO_CMD *
-						sizeof(cmd_hist[0]));
-		cmd_hist_index = 0;
-	} else
-		pr_err("%s(): Invalid command: %s\n", __func__, buf);
-	return count;
-}
-static DEVICE_ATTR(cmd_history, 0666, es755_cmd_history_show,
-						es755_cmd_history_clear);
 static struct attribute *core_sysfs_attrs[] = {
 	&dev_attr_route_status.attr,
 	&dev_attr_reset_control.attr,
 	&dev_attr_clock_on.attr,
 	&dev_attr_fw_version.attr,
 	&dev_attr_ping_status.attr,
-	&dev_attr_cmd_history.attr,
 	&dev_attr_pm_enable.attr,
 	NULL
 };
@@ -1682,7 +1639,6 @@ static int es755_codec_write(struct snd_soc_codec *codec, unsigned int reg,
 			goto out;
 		}
 	}
-
 	if (reg == ES_HP_R_GAIN) {
 		ret = escore_cmd(escore, sync_cmd, &sync_ack);
 		if (ret < 0) {
@@ -2062,7 +2018,8 @@ static int es755_mic_config(struct escore_priv *escore)
 	accdet_reg.fields.debounce_timer = accdet_cfg.debounce_timer & (0x3);
 
 	/* This allows detection of both type of headsets: LRGM and LRMG */
-	accdet_reg.fields.mg_sel_force = accdet_cfg.mic_det_enabled & (0x1);
+	/*accdet_reg.fields.mg_sel_force = accdet_cfg.mic_det_enabled & (0x1);*/
+	/* No need to set mg_sel_force bit for LRGM/LRMG detection*/
 
 	pr_debug("%s()\n", __func__);
 
@@ -2089,6 +2046,15 @@ static int es755_button_config(struct escore_priv *escore)
 	btn_ctl4.value = 0;
 
 	/* Config for Button Control 1 */
+
+	rc = escore_read(NULL, ES_BUTTON_CTRL1);
+	if (rc < 0) {
+		pr_err("%s(): Error reading button control 1\n",
+				__func__);
+		goto btn_cfg_exit;
+	}
+	btn_ctl1.value = rc;
+
 	if (btn_cfg->btn_press_settling_time != invalid) {
 		btn_ctl1.fields.btn_press_settling_time =
 			(btn_cfg->btn_press_settling_time & 0x7);
@@ -2105,6 +2071,8 @@ static int es755_button_config(struct escore_priv *escore)
 		update = 1;
 	}
 
+	pr_debug("%s() button value: %x", __func__, btn_ctl1.value);
+
 	if (update) {
 		rc = escore_write(NULL, ES_BUTTON_CTRL1, btn_ctl1.value);
 		if (rc < 0) {
@@ -2114,9 +2082,9 @@ static int es755_button_config(struct escore_priv *escore)
 		}
 		update = 0;
 	}
-
+	/* Leave Button Ctrl2, 3 and 4 as default value in firwmare */
 	/* Config for Button Control 2 */
-	if (btn_cfg->double_btn_timer != invalid) {
+	/*if (btn_cfg->double_btn_timer != invalid) {
 		btn_ctl2.fields.double_btn_timer =
 			(btn_cfg->double_btn_timer & 0xf);
 		update = 1;
@@ -2134,10 +2102,10 @@ static int es755_button_config(struct escore_priv *escore)
 			goto btn_cfg_exit;
 		}
 		update = 0;
-	}
+	}*/
 
 	/* Config for Button Control 3 */
-	if (btn_cfg->long_btn_timer != invalid) {
+	/*if (btn_cfg->long_btn_timer != invalid) {
 		btn_ctl3.fields.long_btn_timer =
 			(btn_cfg->long_btn_timer & 0xf);
 		update = 1;
@@ -2155,10 +2123,10 @@ static int es755_button_config(struct escore_priv *escore)
 			goto btn_cfg_exit;
 		}
 		update = 0;
-	}
+	}*/
 
 	/* Config for Button Control 4 */
-	if (btn_cfg->valid_levels != invalid) {
+	/*if (btn_cfg->valid_levels != invalid) {
 		btn_ctl4.fields.valid_levels =
 			(btn_cfg->valid_levels & 0x3f);
 		update = 1;
@@ -2176,7 +2144,7 @@ static int es755_button_config(struct escore_priv *escore)
 			goto btn_cfg_exit;
 		}
 		update = 0;
-	}
+	}*/
 
 btn_cfg_exit:
 	return rc;
@@ -2223,10 +2191,14 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 		void *dev)
 {
 	struct escore_priv *escore = (struct escore_priv *)dev;
-	union es755_accdet_status_reg accdet_reg;
+	union es755_accdet_status_reg accdet_status_reg;
+	union es755_accdet_reg accdet_reg;
 	int value;
 	int rc = 0;
 	u8 impd_level;
+	u8 mg_sel_force;
+	u8 mg_select;
+	u8 is_invalid_type;
 
 	pr_debug("%s(): Event: 0x%04x\n", __func__, (u32)action);
 
@@ -2239,7 +2211,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 
 		if (ES_PLUG_EVENT(value)) {
 
-			pr_debug("%s(): Plug event\n", __func__);
+			pr_info("%s(): Plug event\n", __func__);
 			/* Enable MIC Detection */
 			rc = es755_mic_config(escore);
 			if (rc < 0) {
@@ -2255,16 +2227,64 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 				goto intr_exit;
 			}
 
-			accdet_reg.value = value;
-			impd_level = accdet_reg.fields.impd_level;
+			accdet_status_reg.value = value;
+			impd_level = accdet_status_reg.fields.impd_level;
 
+			value = escore_read(NULL, ES_ACCDET_CONFIG);
+			if (value < 0) {
+				pr_err("%s(): Accessory detect config failed\n",
+						__func__);
+				goto intr_exit;
+			}
+
+			accdet_reg.value = value;
+			mg_sel_force = accdet_reg.fields.mg_sel_force;
+			mg_select = accdet_reg.fields.mg_select;
+
+			/* Headphone Type Decode Table
+			 *  ---------------------------------------------
+			 * | IMP_LEVEL | MG_SEL_FORCE | MG_SEL | HS_TYPE |
+			 * |   1-5     |       1      |   1    |  LRGM   |
+			 * |   1-5     |       1      |   0    |  LRMG   |
+			 * |   1-5     |       0      |  0/1   |  Inval  |
+			 * |    6      |       1      |   1    |  LRMG   |
+			 * |    6      |       1      |   0    |  LRGM   |
+			 * |    6      |       0      |   1    |  LRMG   |
+			 * |    6      |       0      |   0    |  LRGM   |
+			 * |  > 6      |       X      |   X    |  Inval  |
+			 * |    0      |       X      |   X    |  LRG    |
+			 *  ---------------------------------------------
+			 */
 			if (impd_level) {
-				pr_debug("%s(): Headset detected\n", __func__);
-				if (impd_level < MIC_IMPEDANCE_LEVEL_LRGM)
-					pr_debug("LRMG Headset\n");
-				else if (impd_level == MIC_IMPEDANCE_LEVEL_LRGM)
-					pr_debug("LRGM Headset\n");
-				else {
+				pr_info("%s(): Headset detected\n", __func__);
+
+				is_invalid_type = false;
+				/* MIC Impedence - 1 to 5 */
+				if (impd_level < MIC_IMPEDANCE_LEVEL) {
+					if ((mg_sel_force) && (mg_select))
+						pr_info("LRGM Headset\n");
+					else if ((mg_sel_force) &&
+							(mg_select == false))
+						pr_info("LRMG Headset\n");
+					else
+						is_invalid_type = true;
+				}
+				/* Mic Impedence - 6 */
+				else if (impd_level == MIC_IMPEDANCE_LEVEL) {
+					if ((mg_sel_force) && (mg_select))
+						pr_info("LRMG Headset\n");
+					else if ((mg_sel_force) &&
+							(mg_select == false))
+						pr_info("LRGM Headset\n");
+					else if ((mg_sel_force == false) &&
+							(mg_select))
+						pr_info("LRMG Headset\n");
+					else
+						pr_info("LRGM Headset\n");
+				} else
+					is_invalid_type = true;
+
+				if (is_invalid_type) {
 					pr_err("Invalid type:%d\n", impd_level);
 					rc = -EINVAL;
 					goto intr_exit;
@@ -2279,7 +2299,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 					goto intr_exit;
 
 			} else {
-				pr_debug("%s(): Headphone detected\n",
+				pr_info("%s(): Headphone detected\n",
 						__func__);
 
 				snd_soc_jack_report(escore->jack,
@@ -2288,12 +2308,12 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 			}
 
 			pr_debug("%s(): AccDet status 0x%04x\n", __func__,
-					value);
+					accdet_status_reg.value);
 		} else if (ES_BUTTON_PRESS_EVENT(value)) {
-			pr_debug("%s(): Button event\n", __func__);
+			pr_info("%s(): Button press event\n", __func__);
 
 		} else if (ES_BUTTON_RELEASE_EVENT(value)) {
-			pr_debug("%s(): Button released\n", __func__);
+			pr_info("%s(): Button release event\n", __func__);
 			value = escore_read(NULL, ES_GET_ACCDET_STATUS);
 			if (value < 0) {
 				pr_err("%s(): Accessory detect status failed\n",
@@ -2301,11 +2321,12 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 				goto intr_exit;
 			}
 
-			accdet_reg.value = value;
+			accdet_status_reg.value = value;
 
-			pr_debug("Impd:%d\n", accdet_reg.fields.impd_level);
+			pr_info("Impd:%d\n",
+					accdet_status_reg.fields.impd_level);
 
-			switch (accdet_reg.fields.impd_level) {
+			switch (accdet_status_reg.fields.impd_level) {
 			case 0:
 				snd_soc_jack_report(escore->jack,
 						SND_JACK_BTN_0,
@@ -2332,11 +2353,11 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 						0, SND_JACK_BTN_2);
 				break;
 			default:
-				pr_debug("No report of event\n");
+				pr_info("Release event but impedance not in range\n");
 				break;
 			}
 		} else if (ES_UNPLUG_EVENT(value)) {
-			pr_debug("%s(): Unplug detected\n", __func__);
+			pr_info("%s(): Unplug detected\n", __func__);
 
 			escore->button_config_required = 0;
 			snd_soc_jack_report(escore->jack, 0, JACK_DET_MASK);
@@ -2369,7 +2390,8 @@ irqreturn_t es755_cmd_completion_isr(int irq, void *data)
 irqreturn_t es755_irq_work(int irq, void *data)
 {
 	struct escore_priv *escore = (struct escore_priv *)data;
-	int rc;
+	int retry = ES_EVENT_STATUS_RETRY_COUNT;
+	int rc, ret;
 	u32 cmd = 0;
 	u32 event_type = 0;
 
@@ -2397,6 +2419,27 @@ irqreturn_t es755_irq_work(int irq, void *data)
 	 * Interrupt will put the chip into Normal State
 	 */
 
+	cmd = ES_GET_EVENT << 16;
+
+	mutex_lock(&escore->api_mutex);
+	while (retry) {
+		rc = escore->bus.ops.cmd(escore, cmd, &event_type);
+		if (!rc || !--retry)
+			break;
+		pr_info("%s(): wakeup and retry\n", __func__);
+		ret = escore_wakeup(escore);
+		if (ret) {
+			dev_err(escore->dev, "%s() wakeup failed ret = %d\n",
+								__func__, ret);
+			break;
+		}
+	}
+	if (rc < 0) {
+		pr_err("%s(): Error reading IRQ event: %d\n", __func__, rc);
+		mutex_unlock(&escore->api_mutex);
+		goto irq_exit;
+	}
+
 	if (escore->escore_power_state == escore->non_vs_sleep_state) {
 		escore->escore_power_state = ES_SET_POWER_STATE_NORMAL;
 	} else if (escore->escore_power_state == ES_SET_POWER_STATE_VS_LOWPWR) {
@@ -2413,15 +2456,6 @@ irqreturn_t es755_irq_work(int irq, void *data)
 		escore->defer_intr_config = 1;
 	}
 
-	cmd = ES_GET_EVENT << 16;
-
-	mutex_lock(&escore->api_mutex);
-	rc = escore->bus.ops.cmd(escore, cmd, &event_type);
-	if (rc < 0) {
-		pr_err("%s(): Error reading IRQ event: %d\n", __func__, rc);
-		mutex_unlock(&escore->api_mutex);
-		goto irq_exit;
-	}
 	mutex_unlock(&escore->api_mutex);
 
 	event_type &= ES_MASK_INTR_EVENT;

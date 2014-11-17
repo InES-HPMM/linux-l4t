@@ -232,7 +232,8 @@ static int es300_codec_stop_algo(struct escore_priv *escore)
 	* diffeent route, UCM is responsible to set this algo preset
 	* for every use case
 	*/
-	escore->algo_preset = 0;
+	escore->algo_preset_one = 0;
+	escore->algo_preset_two = 0;
 	clear_chn_mgr_cache();
 exit:
 	return ret;
@@ -515,32 +516,43 @@ static int convert_vp_pt_output_mux_to_cmd(u16 ch_mgr, u8 path_id,
 	u8 i = 2;
 	u8 update_cmds = 1;
 	u16 ep_out = 0, ep_in = 0, filter_in = 0, filter_out = 0;
+	u16 filter_copyin = 0, filter_copyout = 0, copy_in = 0 , copy_out = 0;
 	u16 group = 0;
 
 	switch (ch_mgr) {
 	case TXCHMGR0:
 		filter_out = FILTER_VP;
 		filter_in = FILTER_TXCHANMGR0;
+		filter_copyin = filter_copyout = FILTER_COPY0;
 		ep_out = vp_o1;
 		ep_in = TxChMgr_i0;
+		copy_in = copy_i0;
+		copy_out = copy_o0;
 		group = 0;
 		break;
 	case TXCHMGR1:
-		filter_out = FILTER_VP;
 		filter_in = FILTER_TXCHANMGR1;
-		ep_out = vp_o0;
+		filter_copyout = FILTER_COPY0;
+		copy_out = copy_o1;
 		ep_in = TxChMgr_i0;
 		group = 0;
 		break;
 	case TXCHMGR2:
 		filter_in = FILTER_TXCHANMGR2;
 		ep_in = TxChMgr_i0;
+		filter_out = FILTER_VP;
+		ep_out = vp_o0;
+		group = 0;
+		break;
+	case TXCHMGR3:
+		filter_in = FILTER_TXCHANMGR3;
+		ep_in = TxChMgr_i0;
 		filter_out = FILTER_PASSTHRU;
 		ep_out = pass_o0;
 		group = 1;
 		break;
-	case TXCHMGR3:
-		filter_in = FILTER_TXCHANMGR3;
+	case TXCHMGR4:
+		filter_in = FILTER_TXCHANMGR4;
 		ep_in = TxChMgr_i0;
 		filter_out = FILTER_PASSTHRU;
 		ep_out = pass_o1;
@@ -554,9 +566,25 @@ static int convert_vp_pt_output_mux_to_cmd(u16 ch_mgr, u8 path_id,
 	if (update_cmds) {
 
 		/* Connect OUT endpoints */
-		msg[i++] = ES_API_WORD(ES_CONNECT_CMD,
-				ES300_ENDPOINT(filter_out, OUT, ep_out));
-		msg_len += 4;
+		if (filter_out) {
+			msg[i++] = ES_API_WORD(ES_CONNECT_CMD,
+				 ES300_ENDPOINT(filter_out, OUT, ep_out));
+			msg_len += 4;
+		}
+
+		if (filter_copyin) {
+			msg[i++] = ES_API_WORD(ES_CONNECT_CMD,
+					ES300_ENDPOINT(filter_copyin, IN,
+						copy_in));
+			msg_len += 4;
+		}
+
+		if (filter_copyout) {
+			msg[i++] = ES_API_WORD(ES_CONNECT_CMD,
+					ES300_ENDPOINT(filter_copyout, OUT,
+						copy_out));
+			msg_len += 4;
+		}
 
 		/* Connect IN endpoints */
 		msg[i++] = ES_API_WORD(ES_CONNECT_CMD,
@@ -789,12 +817,20 @@ static int convert_output_mux_to_cmd(struct escore_priv *escore, int reg)
 					path_id, msg, msg_len);
 		break;
 	case PASSTHRU_VP:
+		if (!strncmp(proc_block_output_texts[mux], "VP CSOUT1", 9))
+			ch_mgr = TXCHMGR0;
+		else if (!strncmp(proc_block_output_texts[mux], "VP CSOUT2", 9))
+			ch_mgr = TXCHMGR1;
+		else if (!strncmp(proc_block_output_texts[mux], "VP FEOUT1", 9))
+			ch_mgr = TXCHMGR2;
+
+
 		if (!strncmp(proc_block_output_texts[mux], "Pass AUDOUT1",
 				sizeof("Pass AUDOUT1")-1))
-			ch_mgr = TXCHMGR2;
+			ch_mgr = TXCHMGR3;
 		else if (!strncmp(proc_block_output_texts[mux], "Pass AUDOUT2",
 				sizeof("Pass AUDOUT2")-1))
-			ch_mgr = TXCHMGR3;
+			ch_mgr = TXCHMGR4;
 
 		msg_len = convert_vp_pt_output_mux_to_cmd(ch_mgr, path_id, msg,
 				msg_len);
@@ -977,13 +1013,23 @@ static int es_set_final_route(struct escore_priv *escore)
 	if (!rc)
 		escore_write_msg_list(escore);
 
-	if (escore->algo_preset != 0) {
+	if (escore->algo_preset_one != 0) {
 		usleep_range(5000, 5005);
-		pr_debug("%s:add algo preset: %d", __func__,
-				escore->algo_preset);
-		rc = escore_write(NULL, ES_PRESET, escore->algo_preset);
+		pr_debug("%s:add algo preset one: %d", __func__,
+				escore->algo_preset_one);
+		rc = escore_write(NULL, ES_PRESET, escore->algo_preset_one);
 		if (rc)
-			dev_err(escore_priv.dev, "%s(): Set Preset failed:%d\n",
+			dev_err(escore_priv.dev, "%s(): Set Algo Preset one failed:%d\n",
+				__func__, rc);
+	}
+
+	if (escore->algo_preset_two != 0) {
+		usleep_range(5000, 5005);
+		pr_debug("%s:add algo preset two: %d", __func__,
+				escore->algo_preset_two);
+		rc = escore_write(NULL, ES_PRESET, escore->algo_preset_two);
+		if (rc)
+			dev_err(escore_priv.dev, "%s(): Set Algo Preset two failed:%d\n",
 				__func__, rc);
 	}
 	return rc;
@@ -1233,10 +1279,11 @@ static int es300_codec_enable_i2stx(struct snd_soc_dapm_widget *w,
 			}
 		}
 
-        /* WAR removed the code that checks for ACK from DAI */
-		ret = es_set_final_route(escore);
-		atomic_inc(&escore->active_streams);
-
+		if (escore->i2s_dai_data[dai_id].tx_ch_act ==
+					escore->i2s_dai_data[dai_id].tx_ch_tot) {
+			ret = es_set_final_route(escore);
+			atomic_inc(&escore->active_streams);
+		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		for (j = 0; j < escore->dai_nr; j++) {
@@ -1573,7 +1620,8 @@ static int put_input_route_value(struct snd_kcontrol *kcontrol,
 #endif
 
 exit:
-	pr_debug("put input reg %d val %d\n", reg, mux);
+	pr_err("put input reg %d val %d refcnt: %d\n",
+	     reg, mux, cachedcmd_list[escore->algo_type][reg].refcnt);
 
 	return rc;
 }
@@ -1656,7 +1704,9 @@ static int put_output_route_value(struct snd_kcontrol *kcontrol,
 #endif
 
 exit:
-	pr_debug("put output reg %d val %d\n", reg, mux);
+	pr_err("put output reg %d val %d refcnt: %d\n",
+	    reg, mux, cachedcmd_list[escore->algo_type][reg].refcnt);
+
 	return rc;
 }
 
@@ -1927,7 +1977,7 @@ static int put_lp_route(struct snd_kcontrol *kcontrol,
 	return ret;
 }
 
-static int put_preset_value(struct snd_kcontrol *kcontrol,
+static int put_preset_value_one(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_codec *codec = escore_priv.codec;
@@ -1937,17 +1987,42 @@ static int put_preset_value(struct snd_kcontrol *kcontrol,
 
 	value = ucontrol->value.integer.value[0];
 
-	escore->algo_preset = value;
+	escore->algo_preset_one = value;
 
 	return 0;
 }
 
-static int get_preset_value(struct snd_kcontrol *kcontrol,
+static int get_preset_value_one(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_codec *codec = escore_priv.codec;
 	struct escore_priv *escore = snd_soc_codec_get_drvdata(codec);
-	ucontrol->value.integer.value[0] = escore->algo_preset;
+	ucontrol->value.integer.value[0] = escore->algo_preset_one;
+
+	return 0;
+}
+
+static int put_preset_value_two(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = escore_priv.codec;
+	struct escore_priv *escore = snd_soc_codec_get_drvdata(codec);
+
+	unsigned int value;
+
+	value = ucontrol->value.integer.value[0];
+
+	escore->algo_preset_two = value;
+
+	return 0;
+}
+
+static int get_preset_value_two(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = escore_priv.codec;
+	struct escore_priv *escore = snd_soc_codec_get_drvdata(codec);
+	ucontrol->value.integer.value[0] = escore->algo_preset_two;
 
 	return 0;
 }
@@ -2124,9 +2199,12 @@ static const struct snd_kcontrol_new es_d300_snd_controls[] = {
 			 get_lp_route, put_lp_route),
 	SOC_SINGLE_EXT("Reset", SND_SOC_NOPM, 0, 1, 0,
 			 get_reset, put_reset),
-	SOC_SINGLE_EXT("Algo Preset",
-			SND_SOC_NOPM, 0, 65535, 0, get_preset_value,
-			put_preset_value),
+	SOC_SINGLE_EXT("Algo Preset 1",
+			SND_SOC_NOPM, 0, 65535, 0, get_preset_value_one,
+			put_preset_value_one),
+	SOC_SINGLE_EXT("Algo Preset 2",
+			SND_SOC_NOPM, 0, 65535, 0, get_preset_value_two,
+			put_preset_value_two),
 };
 
 static const struct soc_enum vp_pri_enum =
@@ -2909,6 +2987,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"VP FEIN MUX", "ADC1", "ADC1"},
 	{"VP FEIN MUX", "ADC2", "ADC2"},
 	{"VP FEIN MUX", "ADC3", "ADC3"},
+	{"VP FEIN MUX", "PDMI0", "PDMI0"},
+	{"VP FEIN MUX", "PDMI1", "PDMI1"},
+	{"VP FEIN MUX", "PDMI2", "PDMI2"},
+	{"VP FEIN MUX", "PDMI3", "PDMI3"},
 
 
 	{"VP UITONE1 MUX", "PCM0.0", "PCM0.0 RX"},

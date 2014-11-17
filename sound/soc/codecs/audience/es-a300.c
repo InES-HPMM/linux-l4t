@@ -418,7 +418,7 @@ const struct snd_soc_dapm_widget es_codec_dapm_widgets[] = {
 	/*SND_SOC_DAPM_SUPPLY("MICHS Bias", ES_MICBIAS_CTRL,
 		ES_MBIASHS_MODE_SHIFT, 0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("MIC0 Bias", ES_MICBIAS_CTRL,
-		ES_MBIAS0_MODE_SHIFT, 0, NULL, 0), */
+		ES_MBIAS0_MODE_SHIFT, 0, NULL, 0),*/
 	SND_SOC_DAPM_SUPPLY("MIC1 Bias", ES_MICBIAS_CTRL,
 		ES_MBIAS1_MODE_SHIFT, 0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("MIC2 Bias", ES_MICBIAS_CTRL,
@@ -503,7 +503,7 @@ static const struct snd_soc_dapm_route intercon[] = {
 
 	{"MICHS ON", "Switch", "MICHS"},
 
-	{"MIC0 PGA", NULL, "MIC0"},
+	/*{"MIC0 PGA", NULL, "MIC0"},*/
 	{"MIC0 PGA", NULL, "MICHS ON"},
 	{"MIC1 PGA", NULL, "MIC1"},
 	{"MIC1 PGA", NULL, "MICHS ON"},

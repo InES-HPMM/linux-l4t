@@ -41,20 +41,33 @@ int escore_write_msg_list(struct escore_priv *escore)
 
 	if (!escore)
 		escore = &escore_priv;
+
+	rc = escore_pm_get_sync();
+	if (rc < 0) {
+		pr_err("%s(): Failed to resume :%d\n", __func__, rc);
+		return rc;
+	}
+
 	mutex_lock(&escore->msg_list_mutex);
+	mutex_lock(&escore->api_mutex);
 	list_for_each_entry(entry, &escore->msg_list, list) {
 		memcpy((char *)api_word, entry->msg, entry->msg_len);
 		for (i = 0; i < entry->msg_len / 4; i++) {
-			rc = escore_cmd(escore, api_word[i], &resp);
+			resp = 0;
+			rc = escore->bus.ops.cmd(escore, api_word[i],
+					&resp);
 			if (rc < 0) {
 				pr_err("%s(): failed", __func__);
 				mutex_unlock(&escore->msg_list_mutex);
-				return rc;
+				goto exit;
 			}
 		}
 	}
-	mutex_unlock(&escore->msg_list_mutex);
 
+exit:
+	mutex_unlock(&escore->msg_list_mutex);
+	mutex_unlock(&escore->api_mutex);
+	escore_pm_put_autosuspend();
 	return rc;
 }
 EXPORT_SYMBOL_GPL(escore_write_msg_list);

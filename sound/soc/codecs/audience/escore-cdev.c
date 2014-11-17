@@ -75,6 +75,7 @@ enum {
 	CDEV_STREAMING,
 	CDEV_DATABLOCK,
 	CDEV_DATALOGGING,
+	CDEV_CMD_HISTORY,
 	CDEV_MAX_DEV,
 };
 
@@ -119,6 +120,7 @@ static atomic_t cb_pages_out = ATOMIC_INIT(0);
 #define READBUF_SIZE 128
 static struct timespec read_time;
 static char readbuf[READBUF_SIZE];
+static char *cmd_history_buf;
 
 enum parse_token {
 	PT_NIL, PT_PRESET, PT_ID, PT_HEXWORD
@@ -1347,6 +1349,142 @@ static int datablock_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
+static int cmd_history_open(struct inode *inode, struct file *filp)
+{
+	struct escore_priv *escore;
+	int rc = 0;
+	unsigned major;
+	unsigned minor;
+	int index, i, j = 0;
+
+	pr_debug("called: %s\n", __func__);
+
+	major = imajor(inode);
+	minor = iminor(inode);
+	if (major != cdev_major || minor < 0 || minor >= CDEV_COUNT) {
+		pr_warn("escore: no such device major=%u minor=%u\n",
+			 major, minor);
+		rc = -ENODEV;
+		goto out;
+	}
+
+	escore = container_of((inode)->i_cdev, struct escore_priv,
+			cdev_cmd_history);
+
+	if (inode->i_cdev != &escore->cdev_cmd_history) {
+		pr_err("open: error bad cdev field\n");
+		rc = -ENODEV;
+		goto out;
+	}
+
+	filp->private_data = escore;
+
+	cmd_history_buf = kmalloc(
+		ES_MAX_ROUTE_MACRO_CMD * ES_MAX_CMD_HISTORY_LINE_SIZE,
+		GFP_KERNEL);
+	if (!cmd_history_buf) {
+		dev_err(escore->dev, "%s(): buffer alloc failed\n", __func__);
+		return -ENOMEM;
+	}
+
+	if (filp->f_flags == O_WRONLY)
+		return 0;
+
+	for (i = 0; i < ES_MAX_ROUTE_MACRO_CMD; i++) {
+		index = i + cmd_hist_index;
+		index %= ES_MAX_ROUTE_MACRO_CMD;
+		if (cmd_hist[index].cmd) {
+			j += snprintf(cmd_history_buf + j, PAGE_SIZE,
+					"0x%04x 0x%04x; ",
+					cmd_hist[index].cmd >> 16,
+					cmd_hist[index].cmd & 0xffff);
+			if (cmd_hist[index].resp)
+				j += snprintf(cmd_history_buf + j, PAGE_SIZE,
+						"resp = 0x%04x 0x%04x; ",
+						cmd_hist[index].resp >> 16,
+						cmd_hist[index].resp & 0xffff);
+			j += snprintf(cmd_history_buf + j, PAGE_SIZE,
+						"tstamp=%lu\n",
+						cmd_hist[index].timestamp);
+		}
+	}
+
+	escore->cmd_history_size = j;
+
+out:
+	return rc;
+}
+
+static ssize_t cmd_history_read(struct file *filp, char __user *buf,
+					size_t count, loff_t *f_pos)
+{
+	struct escore_priv * const escore
+			= (struct escore_priv *)filp->private_data;
+	static int done, pos;
+	unsigned int size;
+	int rc;
+
+	if (done || !escore->cmd_history_size) {
+		pr_info("%s() done\n", __func__);
+		done = 0;
+		pos = 0;
+		return 0;
+	}
+
+	size = escore->cmd_history_size > count ?
+			count : escore->cmd_history_size;
+
+	rc = copy_to_user(buf, cmd_history_buf + pos, size);
+	if (rc) {
+		pr_err("%s() error in copy_to_user() %d\n", __func__, rc);
+		return rc;
+	}
+	escore->cmd_history_size -= size;
+	pos += size;
+
+	if (!escore->cmd_history_size)
+		done = 1;
+
+	return	size;
+}
+
+static ssize_t cmd_history_write(struct file *filp, const char __user *buf,
+				size_t count, loff_t *f_pos)
+{
+	int err;
+
+	BUG_ON(!cmd_history_buf);
+
+	err = copy_from_user(cmd_history_buf, buf, count);
+	if (err) {
+		pr_err("%s(): copy_from_user err: %d\n", __func__, err);
+		goto out;
+	}
+
+	pr_info("%s(): requested - %s\n", __func__, cmd_history_buf);
+	if (!strncmp(cmd_history_buf, "clear", 5)) {
+		memset(cmd_hist, 0,  ES_MAX_ROUTE_MACRO_CMD *
+						sizeof(cmd_hist[0]));
+		cmd_hist_index = 0;
+	} else
+		pr_err("%s(): Invalid command: %s\n",
+				__func__, cmd_history_buf);
+out:
+	return (err) ? err : count;
+
+}
+
+static int cmd_history_release(struct inode *inode, struct file *filp)
+{
+	struct escore_priv * const escore
+			= (struct escore_priv *)filp->private_data;
+
+	kfree(cmd_history_buf);
+	cmd_history_buf = NULL;
+	escore->cmd_history_size = 0;
+	return 0;
+}
+
 static const struct file_operations datablock_fops = {
 	.owner = THIS_MODULE,
 	.read = datablock_read,
@@ -1354,6 +1492,15 @@ static const struct file_operations datablock_fops = {
 	.open = datablock_open,
 	.release = datablock_release,
 };
+
+static const struct file_operations cmd_history_fops = {
+	.owner = THIS_MODULE,
+	.read = cmd_history_read,
+	.write = cmd_history_write,
+	.open = cmd_history_open,
+	.release = cmd_history_release,
+};
+
 static int create_cdev(struct escore_priv *escore, struct cdev *cdev,
 		       const struct file_operations *fops, unsigned int index)
 {
@@ -1465,12 +1612,21 @@ int escore_cdev_init(struct escore_priv *escore)
 		goto err_datalogging;
 	dev_dbg(escore->dev, "%s(): datalogging cdev initialized.\n", __func__);
 
+	err = create_cdev(escore, &escore->cdev_cmd_history, &cmd_history_fops,
+			CDEV_CMD_HISTORY);
+	if (err)
+		goto err_cmd_history;
+
+	dev_dbg(escore->dev, "%s(): cmd_history cdev initialized.\n", __func__);
+
 	return err;
 
-err_datalogging:
+err_cmd_history:
 	cdev_destroy(&escore->cdev_datalogging, CDEV_DATALOGGING);
+err_datalogging:
+	cdev_destroy(&escore->cdev_datablock, CDEV_DATABLOCK);
 err_datablock:
-	cdev_destroy(&escore->cdev_firmware, CDEV_STREAMING);
+	cdev_destroy(&escore->cdev_streaming, CDEV_STREAMING);
 err_streaming:
 	cdev_destroy(&escore->cdev_firmware, CDEV_FIRMWARE);
 err_firmware:

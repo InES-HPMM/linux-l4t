@@ -94,6 +94,7 @@
 #define ES_ACCDET_CONFIG_CMD		0x9056
 #define ES_SMOOTH_RATE			0x804E
 #define ES755_FW_DOWNLOAD_MAX_RETRY	5
+#define ES_EVENT_STATUS_RETRY_COUNT	2
 
 /*
  * Stereo widening presets for headphone playback and MM audio algo rate 48K
@@ -108,7 +109,7 @@
 #define ES_MAX_AZ_MODE			2
 #define ES_MAX_AEC_MODE			7
 /* Impedance level for MIC detection */
-#define MIC_IMPEDANCE_LEVEL_LRGM	0x6
+#define MIC_IMPEDANCE_LEVEL		0x6
 
 /* Jack detection mask */
 #define JACK_DET_MASK	(SND_JACK_HEADSET | SND_JACK_BTN_0 | SND_JACK_BTN_1 |\
