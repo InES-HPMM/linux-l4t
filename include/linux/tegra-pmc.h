@@ -29,6 +29,12 @@ extern void tegra_pmc_clear_dpd_sample(void);
 extern void tegra_pmc_remove_dpd_req(void);
 extern void __iomem *tegra_pmc_base;
 
+extern void tegra_pmc_register_update(int offset,
+	unsigned long mask, unsigned long val);
+
+extern void tegra_pmc_pwr_detect_update(unsigned long mask, unsigned long val);
+extern unsigned long tegra_pmc_pwr_detect_get(unsigned long mask);
+
 extern bool tegra_is_dpd_mode;
 
 struct pmc_pm_data {

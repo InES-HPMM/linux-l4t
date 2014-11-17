@@ -83,6 +83,10 @@
 #define PMC_DIRECT_THERMTRIP_CFG_LOCK_MASK	BIT(5)
 #define PMC_DIRECT_THERMTRIP_CFG_EN_MASK	BIT(4)
 
+#define PMC_PWR_DET_ENABLE			0x48
+#define PMC_PWR_DET_VAL				0xE4
+
+
 static u8 tegra_cpu_domains[] = {
 	0xFF,			/* not available for CPU0 */
 	TEGRA_POWERGATE_CPU1,
@@ -90,6 +94,7 @@ static u8 tegra_cpu_domains[] = {
 	TEGRA_POWERGATE_CPU3,
 };
 static DEFINE_SPINLOCK(tegra_powergate_lock);
+static DEFINE_SPINLOCK(tegra_pmc_access_lock);
 
 void __iomem *tegra_pmc_base;
 static bool tegra_pmc_invert_interrupt;
@@ -291,6 +296,44 @@ void tegra_pmc_pmu_interrupt_polarity(bool active_low)
 	tegra_pmc_writel(pmc_ctrl, PMC_CTRL);
 }
 EXPORT_SYMBOL(tegra_pmc_pmu_interrupt_polarity);
+
+static void _tegra_pmc_register_update(int offset,
+		unsigned long mask, unsigned long val)
+{
+	u32 pmc_reg;
+
+	pmc_reg = tegra_pmc_readl(offset);
+	pmc_reg = (pmc_reg & ~mask) | (val & mask);
+	tegra_pmc_writel(pmc_reg, offset);
+}
+
+void tegra_pmc_register_update(int offset,
+		unsigned long mask, unsigned long val)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&tegra_pmc_access_lock, flags);
+	_tegra_pmc_register_update(offset, mask, val);
+	spin_unlock_irqrestore(&tegra_pmc_access_lock, flags);
+}
+EXPORT_SYMBOL(tegra_pmc_register_update);
+
+void tegra_pmc_pwr_detect_update(unsigned long mask, unsigned long val)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&tegra_pmc_access_lock, flags);
+	_tegra_pmc_register_update(PMC_PWR_DET_ENABLE, mask, mask);
+	_tegra_pmc_register_update(PMC_PWR_DET_VAL, mask, val);
+	spin_unlock_irqrestore(&tegra_pmc_access_lock, flags);
+}
+EXPORT_SYMBOL(tegra_pmc_pwr_detect_update);
+
+unsigned long tegra_pmc_pwr_detect_get(unsigned long mask)
+{
+	return tegra_pmc_readl(PMC_PWR_DET_VAL);
+}
+EXPORT_SYMBOL(tegra_pmc_pwr_detect_get);
 
 static int tegra_pmc_get_cpu_powerdomain_id(int cpuid)
 {
