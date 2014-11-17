@@ -26,6 +26,7 @@
 #define TEGRA_MODEM_AUTOSUSPEND	0x01
 #define TEGRA_MODEM_RECOVERY	0x02
 #define TEGRA_USB_HOST_RELOAD	0x04
+#define TEGRA_MODEM_CPU_BOOST	0x08
 
 /* modem operations */
 struct tegra_modem_operations {

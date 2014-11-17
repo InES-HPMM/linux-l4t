@@ -169,18 +169,19 @@ struct tegra_usb_modem {
 /* supported modems */
 static const struct usb_device_id modem_list[] = {
 	{USB_DEVICE(0x1983, 0x0310),	/* Icera 450 rev1 */
-	 .driver_info = TEGRA_MODEM_AUTOSUSPEND,
+	 .driver_info = TEGRA_MODEM_AUTOSUSPEND | TEGRA_MODEM_CPU_BOOST,
 	 },
 	{USB_DEVICE(0x1983, 0x0321),	/* Icera 450 rev2 */
-	 .driver_info = TEGRA_MODEM_AUTOSUSPEND,
+	 .driver_info = TEGRA_MODEM_AUTOSUSPEND | TEGRA_MODEM_CPU_BOOST,
 	 },
 	{USB_DEVICE(0x1983, 0x0327),	/* Icera 450 5AE */
-	 .driver_info = TEGRA_MODEM_AUTOSUSPEND,
+	 .driver_info = TEGRA_MODEM_AUTOSUSPEND | TEGRA_MODEM_CPU_BOOST,
 	 },
 	{USB_DEVICE(0x1983, 0x0427),	/* Icera 500 5AN */
-	 .driver_info = TEGRA_MODEM_AUTOSUSPEND,
+	 .driver_info = TEGRA_MODEM_AUTOSUSPEND | TEGRA_MODEM_CPU_BOOST,
 	 },
 	{USB_DEVICE(0x1983, 0x1005),	/* Icera 500 5AN (BSD) */
+	 .driver_info = TEGRA_MODEM_CPU_BOOST,
 	/* .driver_info = TEGRA_MODEM_AUTOSUSPEND, */
 	 },
 	{USB_DEVICE(0x1983, 0x1007),	/* Icera 500 Bruce */
@@ -298,8 +299,9 @@ static irqreturn_t tegra_usb_modem_boot_thread(int irq, void *data)
 	/* hold wait lock to complete the enumeration */
 	wake_lock_timeout(&modem->wake_lock, WAKELOCK_TIMEOUT_FOR_USB_ENUM);
 
-	/* boost CPU freq */
-	if (!work_pending(&modem->cpu_boost_work))
+	/* boost CPU freq for timing requirements on single flash platforms */
+	if ((modem->capability & TEGRA_MODEM_CPU_BOOST) &&
+	     !work_pending(&modem->cpu_boost_work))
 		queue_work(modem->wq, &modem->cpu_boost_work);
 
 	/* USB disconnect maybe on going... */
