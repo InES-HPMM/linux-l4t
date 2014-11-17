@@ -325,8 +325,7 @@
 /* T210 UPHY Related changes */
 #define XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0		0x860
 #define PLL0_IDDQ				(1 << 0)
-#define PLL0_SLEEP				(1 << 1)
-#define PLL0_SLEEP_DEFAULT			(0x3 << 1)
+#define PLL0_SLEEP				(0x3 << 1)
 #define PLL0_ENABLE				(1 << 3)
 #define PLL0_PWR_OVRD				(1 << 4)
 #define PLL0_LOCKDET_STATUS			(1 << 15)
@@ -1041,7 +1040,8 @@ static void tegra_ahci_uphy_init(void)
 	u32 val;
 	u32 timeout;
 
-	val = PLL0_DCO_CTRL_VAL << 16;
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_5_0);
+	val |= PLL0_DCO_CTRL_VAL << 16;
 	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_5_0);
 
 	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
@@ -1055,16 +1055,25 @@ static void tegra_ahci_uphy_init(void)
 	val = CLR_SATA_USB_UPHY_RST;
 	clk_writel(val, CLK_RST_CONTROLLER_RST_DEV_Y_CLR_0);
 
+
 	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
-	val &= ~(PLL0_SLEEP | PLL0_IDDQ);
+	val &= ~(PLL0_IDDQ);
 	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
 
 	udelay(20);
+
+	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+	val &= ~(PLL0_SLEEP);
+	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
+
+	mdelay(20);
 
 	/* PLL Calibration */
 	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
 	val |= PLL0_CAL_EN;
 	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
+
+	mdelay(1);
 
 	timeout = 200;
 	while (timeout--) {
@@ -1119,7 +1128,7 @@ static void tegra_ahci_uphy_init(void)
 	timeout = 15;
 	while (timeout--) {
 		udelay(1);
-		val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
+		val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_8_0);
 		if (!(val & PLL0_RCAL_DONE))
 			break;
 	}
@@ -1136,7 +1145,7 @@ static void tegra_ahci_uphy_init(void)
 	val |= PLL0_ENABLE;
 	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
 
-	udelay(20);
+	mdelay(20);
 
 	timeout = 15;
 	while (timeout--) {
@@ -1163,17 +1172,15 @@ static void tegra_ahci_uphy_init(void)
 	val |= FORCE_SATA_PAD_IDDQ_DISABLE_MASK0_T210;
 	xusb_writel(val, XUSB_PADCTL_USB3_PAD_MUX_0_T210);
 
-	udelay(200);
-
-	/* SW overrides removal */
+	mdelay(200);
 
 	val = xusb_readl(XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_4_0);
 	val |= (RX_TERM_EN | RX_TERM_OVRD);
 	xusb_writel(val, XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_4_0);
 
+	/* SW overrides removal */
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
 	val &= ~(PADPLL_RESET_SWCTL_MASK);
-	val |= (SATA_PADPLL_SLEEP_IDDQ | SATA_PADPLL_USE_LOCKDET);
 	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
 
 	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
@@ -1190,9 +1197,6 @@ static void tegra_ahci_uphy_init(void)
 
 	udelay(1);
 
-	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
-	val |= PLLE_SATA_SEQ_ENABLE;
-	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
 }
 
 static int tegra_ahci_controller_init(void *hpriv, int lp0)
@@ -1625,7 +1629,7 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	tegra_periph_reset_assert(tegra_hpriv->clk_sata_uphy);
 
 	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
-	val |= (PLL0_PWR_OVRD | PLL0_IDDQ | PLL0_SLEEP_DEFAULT);
+	val |= (PLL0_PWR_OVRD | PLL0_IDDQ | PLL0_SLEEP);
 	val &= ~PLL0_ENABLE;
 	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
 
