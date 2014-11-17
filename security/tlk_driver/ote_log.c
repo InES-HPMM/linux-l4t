@@ -40,8 +40,6 @@ struct circular_buffer {
 	char *buf;
 };
 
-#if defined(CONFIG_OTE_ENABLE_LOGGER)
-
 static int ote_logging_enabled;
 struct circular_buffer *cb;
 
@@ -167,9 +165,6 @@ void ote_print_logs(void)
 	cb->start = cb->end;
 	kfree(buffer);
 }
-#else
-void ote_print_logs(void) {}
-#endif
 
 /*
  * Call function to initialize circular buffer.
@@ -179,8 +174,23 @@ void ote_print_logs(void) {}
 static int __init ote_logger_init(void)
 {
 	uintptr_t smc_args[MAX_EXT_SMC_ARGS];
+	int ret;
 
-#if defined(CONFIG_OTE_ENABLE_LOGGER)
+	/* logger disabled? */
+	ret = ote_property_is_disabled("logger");
+	if (ret == -ENODEV) {
+		/* TLK device node is absent */
+		pr_err("%s: fail (%d)\n", __func__, ret);
+		return ret;
+	} else if (ret == -ENOTSUPP) {
+		/* Node is present, but logger is disabled */
+		smc_args[0] = TE_SMC_INIT_LOGGER;
+		smc_args[1] = 0;
+		tlk_generic_smc(smc_args[0], smc_args[1], 0);
+
+		return ret;
+	}
+
 	if (circ_buf_init(&cb) != 0)
 		return -1;
 
@@ -192,11 +202,6 @@ static int __init ote_logger_init(void)
 		ote_logging_enabled = 1;
 
 	ote_print_logs();
-#else
-	smc_args[0] = TE_SMC_INIT_LOGGER;
-	smc_args[1] = 0;
-	tlk_generic_smc(smc_args[0], smc_args[1], 0);
-#endif
 
 	return 0;
 }

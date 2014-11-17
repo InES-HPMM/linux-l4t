@@ -76,7 +76,14 @@ void tlk_ss_op(void)
 static int __init tlk_ss_init(void)
 {
 	dma_addr_t ss_op_shmem_dma;
-	int32_t ret;
+	int ret;
+
+	/* storage disabled? */
+	ret = ote_property_is_disabled("storage");
+	if (ret) {
+		pr_err("%s: fail (%d)\n", __func__, ret);
+		return ret;
+	}
 
 	/* allocate shared memory buffer */
 	ss_op_shmem = dma_alloc_coherent(NULL, sizeof(struct te_ss_op),

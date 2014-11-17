@@ -243,5 +243,6 @@ int te_handle_ss_ioctl(struct file *file, unsigned int ioctl_num,
 		unsigned long ioctl_param);
 void ote_print_logs(void);
 void tlk_ss_op(void);
+int ote_property_is_disabled(const char *str);
 
 #endif

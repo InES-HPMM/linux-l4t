@@ -29,6 +29,7 @@
 #include <asm/outercache.h>
 #include <linux/list.h>
 #include <linux/dma-mapping.h>
+#include <linux/of.h>
 
 #include "ote_protocol.h"
 
@@ -492,9 +493,27 @@ struct miscdevice tlk_misc_device = {
 	.fops = &tlk_device_fops,
 };
 
+static struct device_node *get_tlk_device_node(void)
+{
+	struct device_node *node;
+
+	node = of_find_compatible_node(NULL, NULL,
+			"nvidia,trusted-little-kernel");
+	if (!node)
+		pr_info("TLK node not present in the FDT\n");
+
+	return node;
+}
+
 static int __init tlk_init(void)
 {
 	int ret;
+
+	/* check if the driver node is present in the device tree */
+	if (get_tlk_device_node() == NULL) {
+		pr_err("%s: fail\n", __func__);
+		return -ENODEV;
+	}
 
 	INIT_LIST_HEAD(&(tlk_dev.used_cmd_list));
 	INIT_LIST_HEAD(&(tlk_dev.free_cmd_list));
@@ -507,3 +526,26 @@ static int __init tlk_init(void)
 }
 
 module_init(tlk_init);
+
+int ote_property_is_disabled(const char *str)
+{
+	struct device_node *tlk;
+	const char *prop;
+
+	/* check if the driver node is present in the device tree */
+	tlk = get_tlk_device_node();
+	if (!tlk) {
+		pr_err("%s: fail\n", __func__);
+		return -ENODEV;
+	}
+
+	if (of_property_read_string(tlk, str, &prop)) {
+		pr_warn("missing \"%s\" property\n", str);
+		return -ENXIO;
+	}
+
+	if (strcmp("enabled", prop))
+		return -ENOTSUPP;
+
+	return 0;
+}
