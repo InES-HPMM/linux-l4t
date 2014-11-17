@@ -27,7 +27,7 @@ config TEGRA_NVADSP_ON_SMMU
 
 config TEGRA_ADSP_DFS
 	bool "Enable ADSP DFS"
-	depends on ARCH_TEGRA_APE
+	depends on TEGRA_NVADSP
 	default n
 	help
 	  Enable ADSP dynamic frequency scaling. Use this config
@@ -37,7 +37,7 @@ config TEGRA_ADSP_DFS
 
 config TEGRA_ADSP_ACTMON
 	bool "Enable ADSP ACTMON"
-	depends on ARCH_TEGRA_APE
+	depends on TEGRA_ADSP_DFS
 	default n
 	help
 	  Enable ADSP actmon. It converts adsp activty to frequency and
