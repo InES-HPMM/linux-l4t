@@ -35,340 +35,109 @@
 #include <linux/of.h>
 #include <linux/delay.h>
 
+/*
+_________________________________________________________
+|CLUSTER		ATID	Processor	Protocol|
+|_______________________________________________________|
+|BCCPLEX,Fast Cluster,	0x40	CPU0		ETMv4	|
+|Big cluster=Atlas=	0x41	CPU1		ETMv4	|
+|Cortex A57		0x42	CPU2		ETMv4	|
+|			0x43	CPU3		ETMv4	|
+|							|
+|LCCPLEX,Slow Cluster,	0x30	CPU0            ETMv4	|
+|Little cluster=	0x31	CPU1		ETMv4	|
+|Apollo=Cortex A53	0x32	CPU2		ETMv4	|
+|			0x33	CPU3		ETMv4	|
+|							|
+|APE, Cortex A9		0x20	CPU0		PFT1.0	|
+|							|
+|STM			0x10	NA		MIPI STP|
+|_______________________________________________________|
+
+*/
+
+#define CSITE_CLK_HIGH 408000000	/* basically undivided pll_p */
+#define CSITE_CLK_LOW  9600000
+
 /* PTM tracer state */
 struct tracectx {
-	struct device	*dev;
-	struct mutex	mutex;
-	void __iomem	*funnel_major_regs;
-	void __iomem	*etf_regs;
-	void __iomem	*replicator_regs;
-	void __iomem	*etr_regs;
-	void __iomem	*cpu_regs[4];
-	void __iomem	*ptm_t210_regs[4];
-	void __iomem	*funnel_bccplex_regs;
-	unsigned long	flags;
-	int		ptm_t210_regs_count;
-	int		cpu_regs_count;
-	int		*last_etf;
-	int		etf_size;
-	bool		dump_initial_etf;
+	struct device   *dev;
+	struct clk	*csite_clk;
+	struct mutex    mutex;
+	void __iomem    *funnel_major_regs;
+	void __iomem    *etf_regs;
+	void __iomem    *replicator_regs;
+	void __iomem    *etr_regs;
+	void __iomem    *funnel_minor_regs;
+	void __iomem    *ape_regs;
+	void __iomem    *cpu_regs[4];
+	void __iomem    *ptm_t210_regs[4];
+	void __iomem    *funnel_bccplex_regs;
+	int             ptm_t210_regs_count;
+	int             cpu_regs_count;
+	int             *etf_buf;
+	int             etf_size;
+	bool            dump_initial_etf;
+	unsigned long   start_address_msb;
+	unsigned long   start_address_lsb;
+	unsigned long   stop_address_msb;
+	unsigned long   stop_address_lsb;
+	int             enable;
+	int             el0_trace;
+	int             branch_broadcast;
+	int             return_stack;
 };
 
-static struct tracectx tracer;
-
-static void etf_save_last(struct tracectx *t)
-{
-	int rrp, rrd, rwp, rwp32, rrp32, max, count = 0, serial, overflow;
-
-	BUG_ON(!t->dump_initial_etf);
-
-	etf_regs_unlock(t);
-
-	/* Manual flush and stop */
-	etf_writel(t, 0x1001, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-	etf_writel(t, 0x1041, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-
-	udelay(1000);
-
-	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_CTL_0);
-
-	/* Get etf data and Check for overflow */
-	overflow = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_STS_0);
-
-	overflow &= 0x01;
-
-	/* Check for data in ETF */
-	rwp = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_RWP_0);
-	rrp = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
-	rrd = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-
-	rwp32 = rwp/4;
-	rrp32 = rrp/4;
-
-	max = rwp32;
-	serial = 0;
-
-	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
-
-	pr_info(" RRP32_L %08x ,RWP32_L %08x\n ", rrp32, rwp32);
-
-	if (!overflow) {
-		pr_info("ETF not overflown. Reading contents to userspace\n");
-		t->etf_size = max * 4;
-		for (count = 0; count < max; count++)
-			t->last_etf[count] = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-	} else {
-		pr_info("ETF overflown. Reading contents to userspace\n");
-		t->etf_size = MAX_ETF_SIZE * 4;
-		/* ETF overflow..the last 4K entries are printed */
-		etf_writel(t, rwp, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
-		/* Read from rwp to end of RAM */
-		for (count = rwp32; count < MAX_ETF_SIZE; count++) {
-			t->last_etf[serial] = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-			serial += 1;
-		}
-		/* Rollover the RRP and read till rwp-1 */
-		etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
-		for (count = 0; count < max; count++) {
-			t->last_etf[serial] = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-			serial += 1;
-		}
-	}
-	etf_regs_lock(t);
-}
-
-static ssize_t last_etf_read(struct file *file, char __user *data,
-	size_t len, loff_t *ppos)
-{
-	struct tracectx *t = file->private_data;
-	size_t ret;
-	int i;
-
-	mutex_lock(&t->mutex);
-
-	for (i = 0; i < t->etf_size/4; i++)
-		pr_info("COUNT: %08x ETF DATA: %08x\n",
-						i, t->last_etf[i]);
-
-	if (copy_to_user(data, (char *) t->last_etf , t->etf_size)) {
-		ret = -EFAULT;
-		goto out;
-	}
-	*ppos += t->etf_size;
-	ret = 0;
-
-out:
-	mutex_unlock(&t->mutex);
-	return ret;
-}
-
-static inline bool trace_isrunning(struct tracectx *t)
-{
-	return !!(t->flags & TRACER_RUNNING);
-}
-
-static int trace_t210_start(struct tracectx *t)
-{
-	int id;
-
-	/* Enabling the ETM */
-	for (id = 0; id < t->ptm_t210_regs_count; id++)
-		ptm_t210_writel(t, id, 1,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
-
-	return 0;
-}
-
-static int trace_t210_stop(struct tracectx *t)
-{
-	int id;
-
-	/* Disabling the ETM */
-	for (id = 0; id < t->ptm_t210_regs_count; id++)
-		ptm_t210_writel(t, id, 0,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
-
-	return 0;
-}
-
-static int etf_open(struct inode *inode, struct file *file)
-{
-	struct miscdevice *miscdev = file->private_data;
-	struct tracectx *t = dev_get_drvdata(miscdev->parent);
-
-	if (NULL == t->etf_regs)
-		return -ENODEV;
-
-	file->private_data = t;
-
-	return nonseekable_open(inode, file);
-}
-
-static ssize_t etf_read(struct file *file, char __user *data,
-	size_t len, loff_t *ppos)
-{
-	int rrp, rrd, rwp, rwp32, rrp32, max, count = 0, serial, overflow;
-	struct tracectx *t = file->private_data;
-	u32 *buf;
-	long length;
-	loff_t pos = *ppos;
-
-	mutex_lock(&t->mutex);
-
-	if (!t->etf_regs)
-		return -ENODEV;
-
-	etf_regs_unlock(t);
-
-	/* Manual flush and stop */
-	etf_writel(t, 0x1001, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-	etf_writel(t, 0x1041, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-
-	udelay(1000);
-
-	/* Disable ETF */
-	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_CTL_0);
-
-	/* Get etf data and Check for overflow */
-	overflow = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_STS_0);
-	pr_info("overflow %x\n", overflow);
-
-	overflow &= 0x01;
-
-	/* Check for data in ETF */
-	rwp = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_RWP_0);
-	rrp = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
-	rrd = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-
-	rwp32 = rwp/4;
-	rrp32 = rrp/4;
-
-	max = rwp32;
-	serial = 0;
-
-	buf = vmalloc(MAX_ETF_SIZE * 4);
-	pr_info(" RRP %08x ,RWP  %08x\n ", rrp32, rwp32);
-
-	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
-
-	if (!overflow) {
-		pr_info("ETF not overflown. Reading contents to userspace\n");
-		length = max * 4;
-		for (count = 0; count < max; count++) {
-			rrd = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-			pr_info("COUNT: %08x  RRP32: %08x ETF DATA: %08x\n",
-							serial, count, rrd);
-			buf[count] = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-			serial += 1;
-		}
-	} else {
-		pr_info("ETF overflown. Reading contents to userspace\n");
-		length = MAX_ETF_SIZE * 4;
-		/* ETF overflow..the last 4K entries are printed */
-		etf_writel(t, rwp, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
-		/* Read from rwp to end of RAM */
-		for (count = rwp32; count < MAX_ETF_SIZE; count++) {
-			rrd = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-			pr_info("COUNT: %08x  RRP32: %08x ETF DATA: %08x\n",
-							serial, count, rrd);
-			buf[count] = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-			serial += 1;
-		}
-		/* Rollover the RRP and read till rwp-1 */
-		etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
-		for (count = 0; count < max; count++) {
-			rrd = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-			pr_info("COUNT: %08x  RRP32: %08x ETF DATA: %08x\n",
-							serial, count, rrd);
-			buf[count] = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-			serial += 1;
-		}
-	}
-	etf_regs_lock(t);
-
-	length -= copy_to_user(data, (u8 *) buf, length);
-	vfree(buf);
-	*ppos = pos + length;
-
-	mutex_unlock(&t->mutex);
-
-	return 0;
-}
-
-static int etf_release(struct inode *inode, struct file *file)
-{
-	/* there's nothing to do here, actually */
-	return 0;
-}
-
-/* use a sysfs file "trace_running" to start/stop tracing */
-static ssize_t trace_running_show(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	char *buf)
-{
-	return sprintf(buf, "%x\n", trace_isrunning(&tracer));
-}
-
-static ssize_t trace_running_store(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	const char *buf, size_t n)
-{
-	unsigned int value;
-	int ret;
-
-	if (sscanf(buf, "%u", &value) != 1)
-		return -EINVAL;
-
-	if (!tracer.etf_regs)
-		return -ENODEV;
-
-	mutex_lock(&tracer.mutex);
-
-	if (value != 0)
-		ret = trace_t210_start(&tracer);
-	else
-		ret = trace_t210_stop(&tracer);
-
-	mutex_unlock(&tracer.mutex);
-
-	return ret ? : n;
-}
-
-#define A(a, b, c, d)   __ATTR(trace_##a, b, \
-	trace_##c##_show, trace_##d##_store)
-static const struct kobj_attribute trace_attr[] = {
-	A(running,      0644, running,      running)
+/* initialising some values of the structure */
+static struct tracectx tracer = {
+	.cpu_regs_count		=	0,
+	.ptm_t210_regs_count	=	0,
+	.start_address_msb	=	0,
+	.start_address_lsb	=	0,
+	.stop_address_msb	=	0xFFFFFFFF,
+	.stop_address_lsb	=	0xFFFFFFFF,
+	.enable			=	0,
+	.el0_trace		=	1,
+	.branch_broadcast	=	1,
+	.return_stack		=	1,
 };
 
-#define clk_readl(reg)  __raw_readl(reg_clk_base + (reg))
-#define clk_writel(value, reg) __raw_writel(value, reg_clk_base + (reg))
-static void __iomem *reg_clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+static struct clk *pll_p, *clk_m;
 
-static const struct file_operations etf_fops = {
-	.owner = THIS_MODULE,
-	.read = etf_read,
-	.open = etf_open,
-	.release = etf_release,
-	.llseek = no_llseek,
-};
-
-static const struct file_operations last_etf_fops = {
-	.owner = THIS_MODULE,
-	.read = last_etf_read,
-	.open = etf_open,
-	.release = etf_release,
-	.llseek = no_llseek,
-};
-
-static struct miscdevice etf_miscdev = {
-	.name = "etf",
-	.minor = MISC_DYNAMIC_MINOR,
-	.fops = &etf_fops,
-};
-
-static struct miscdevice last_etf_miscdev = {
-	.name = "last_etf",
-	.minor = MISC_DYNAMIC_MINOR,
-	.fops = &last_etf_fops,
-};
-
-static void replicator_init(struct tracectx *t)
+static void etf_last_init(struct tracectx *t)
 {
-	/* unlock replicator */
-	replicator_regs_unlock(t);
+	t->dump_initial_etf = true;
 
-	/* disabling the replicator */
-	replicator_writel(t, 0xff ,
-	CORESIGHT_ATBREPLICATOR_HUGO_CXATBREPLICATOR_REGISTERS_IDFILTER1_0);
+	t->etf_buf = devm_kzalloc(t->dev, MAX_ETF_SIZE * sizeof(*t->etf_buf),
+					GFP_KERNEL);
+
+	if (NULL == t->etf_buf)
+		dev_err(t->dev, "failes to allocate memory to hold ETF\n");
+}
+
+static void ape_init(struct tracectx *t)
+{
+	ape_regs_unlock(t);
+
+	ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
+
+	ape_writel(t, 1, CORESIGHT_APE_CPU0_ETM_ETMTECR1_0);
+
+	ape_writel(t, 0x10, CORESIGHT_APE_CPU0_ETM_ETMTEEVR_0);
+
+	ape_writel(t, 0x80000000, CORESIGHT_APE_CPU0_ETM_ETMACVR1_0);
+	ape_writel(t, 0xffffffff, CORESIGHT_APE_CPU0_ETM_ETMACVR2_0);
+
+	ape_writel(t, 0, CORESIGHT_APE_CPU0_ETM_ETMACTR1_0);
+	ape_writel(t, 0, CORESIGHT_APE_CPU0_ETM_ETMACTR2_0);
+
+	ape_writel(t, 0xAA, CORESIGHT_APE_CPU0_ETM_ETMATID_0);
+}
+
+static void cpu_debug_init(struct tracectx *t, int id)
+{
+	cpu_debug_regs_unlock(t, id);
+	cpu_debug_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_DEBUG_OSLAR_EL1_0);
 }
 
 static void ptm_init(struct tracectx *t, int id)
@@ -435,54 +204,42 @@ static void ptm_init(struct tracectx *t, int id)
 	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVMIDCVR0_0);
 	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCIDCCTLR0_0);
 
-	ptm_t210_writel(t, id, 0x1000,
+	/* By default return stack is enabled */
+	ptm_t210_writel(t, id, (t->return_stack ? 0x1000 : 0x8),
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCCONFIGR_0);
 
 	/* Enable Periodic Synchronisation after 256 bytes */
 	ptm_t210_writel(t, id, 8, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSYNCPR_0);
 
 	/* Branch broadcasting control */
-	ptm_t210_writel(t, id, 0x101, CORESIGHT_BCCPLEX_CPU_TRACE_TRCBBCTLR_0);
+	ptm_t210_writel(t, id, (t->branch_broadcast ? 0x101 : 0x01),
+				CORESIGHT_BCCPLEX_CPU_TRACE_TRCBBCTLR_0);
 
 	/* Select Address Range Comparator */
 	ptm_t210_writel(t, id, 0x10000,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCSSCCR0_0);
 
 	/* Program Address range comparator. Use 0 and 1 */
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR0_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR0_0 + 4);
-	ptm_t210_writel(t, id, 0xffffffff,
+	ptm_t210_writel(t, id, t->start_address_msb,
+				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR0_0);
+	ptm_t210_writel(t, id, t->start_address_lsb,
+				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR0_0 + 4);
+	ptm_t210_writel(t, id, t->stop_address_msb,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR1_0);
-	ptm_t210_writel(t, id, 0xffffffff,
+	ptm_t210_writel(t, id, t->stop_address_lsb,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR1_0 + 4);
 
 	/* Program the ARC control register */
 	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR0_0);
 
-	/* Program trace ID register */
-	switch (id) {
-	case 0:
-		ptm_t210_writel(t, id, 0x40,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCTRACEIDR_0);
-		break;
-	case 1:
-		ptm_t210_writel(t, id, 0x41,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCTRACEIDR_0);
-		break;
-	case 2:
-		ptm_t210_writel(t, id, 0x42,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCTRACEIDR_0);
-		break;
-	case 3:
-		ptm_t210_writel(t, id, 0x43,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCTRACEIDR_0);
-		break;
-	default:
-		pr_info("ID out of bounds\n");
-	}
+	/* Program Trace Id register */
+	ptm_t210_writel(t, id, (!(is_lp_cluster()) ?
+			BCCPLEX_BASE_ID : LCCPLEX_BASE_ID) + id,
+			CORESIGHT_BCCPLEX_CPU_TRACE_TRCTRACEIDR_0);
 
 	/* Trace everything with Start/Stop logic started */
-	ptm_t210_writel(t, id, 0xE01, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVICTLR_0);
+	ptm_t210_writel(t, id, (t->el0_trace ? 0xDD0E01 : 0xE01),
+				CORESIGHT_BCCPLEX_CPU_TRACE_TRCVICTLR_0);
 
 	/* Enable ViewInst and Include logic for ARC0. Disable the SSC */
 	ptm_t210_writel(t, id, 1, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVIIECTLR_0);
@@ -493,22 +250,8 @@ static void funnel_bccplex_init(struct tracectx *t)
 	/* unlock BCCPLEX funnel */
 	funnel_bccplex_regs_unlock(t);
 
-	/* set up funnel port 0 and set HT as 0x04 */
-	funnel_bccplex_writel(t, 0x301,
-		CORESIGHT_ATBFUNNEL_BCCPLEX_CXATBFUNNEL_REGS_CTRL_REG_0);
-	funnel_bccplex_readl(t,
-		CORESIGHT_ATBFUNNEL_BCCPLEX_CXATBFUNNEL_REGS_CTRL_REG_0);
-	funnel_bccplex_writel(t, 0x302,
-		CORESIGHT_ATBFUNNEL_BCCPLEX_CXATBFUNNEL_REGS_CTRL_REG_0);
-	funnel_bccplex_readl(t,
-		CORESIGHT_ATBFUNNEL_BCCPLEX_CXATBFUNNEL_REGS_CTRL_REG_0);
-	funnel_bccplex_writel(t, 0x304,
-		CORESIGHT_ATBFUNNEL_BCCPLEX_CXATBFUNNEL_REGS_CTRL_REG_0);
-	funnel_bccplex_readl(t,
-		CORESIGHT_ATBFUNNEL_BCCPLEX_CXATBFUNNEL_REGS_CTRL_REG_0);
-	funnel_bccplex_writel(t, 0x308,
-		CORESIGHT_ATBFUNNEL_BCCPLEX_CXATBFUNNEL_REGS_CTRL_REG_0);
-	funnel_bccplex_readl(t,
+	/* set up all funnel ports  and set HT as 0x04 */
+	funnel_bccplex_writel(t, 0x30F,
 		CORESIGHT_ATBFUNNEL_BCCPLEX_CXATBFUNNEL_REGS_CTRL_REG_0);
 }
 
@@ -517,15 +260,26 @@ static void funnel_major_init(struct tracectx *t)
 	/* unlock  funnel */
 	funnel_major_regs_unlock(t);
 
-	/* enable funnel port 0 and make HT as 0x04 */
-	funnel_major_writel(t, 0x301,
+	/* enable funnel port 0 and 2  and make HT as 0x04 */
+	funnel_major_writel(t, 0x305,
 		CORESIGHT_ATBFUNNEL_HUGO_MAJOR_CXATBFUNNEL_REGS_CTRL_REG_0);
+}
+
+static void funnel_minor_init(struct tracectx *t)
+{
+	/* unlock  funnel */
+	funnel_minor_regs_unlock(t);
+
+	/* enable funnel port 0 and make HT as 0x04 */
+#if 0
+	/* this breaks bccplex tracing, need to investigate */
+	funnel_minor_writel(t, 0x302,
+		CORESIGHT_ATBFUNNEL_MINOR_CXATBFUNNEL_REGS_CTRL_REG_0);
+#endif
 }
 
 static void etf_init(struct tracectx *t)
 {
-	int ret = 0;
-
 	/*unlock ETF */
 	etf_regs_unlock(t);
 
@@ -542,6 +296,476 @@ static void etf_init(struct tracectx *t)
 
 	/* Enable ETF */
 	etf_writel(t, 1, CORESIGHT_ETF_HUGO_CXTMC_REGS_CTL_0);
+}
+
+static void replicator_init(struct tracectx *t)
+{
+	/* unlock replicator */
+	replicator_regs_unlock(t);
+
+	/* disabling the replicator */
+	replicator_writel(t, 0xff ,
+	CORESIGHT_ATBREPLICATOR_HUGO_CXATBREPLICATOR_REGISTERS_IDFILTER1_0);
+}
+
+static int trace_t210_start(struct tracectx *t)
+{
+	int id;
+
+	clk_set_parent(t->csite_clk, pll_p);
+	clk_set_rate(t->csite_clk, CSITE_CLK_HIGH);
+
+	/* Unlock CPU Debug to monitor PC */
+	for (id = 0; id < t->cpu_regs_count; id++)
+		cpu_debug_init(t, id);
+
+	/* Programming PTM */
+	for (id = 0; id < t->ptm_t210_regs_count; id++)
+		ptm_init(t, id);
+
+	/* Programming APE */
+	ape_init(t);
+
+	/* Programming BCCPLEX funnel */
+	funnel_bccplex_init(t);
+
+	/* Programming major funnel */
+	funnel_major_init(t);
+
+	/* Programming minor funnel */
+	funnel_minor_init(t);
+
+	/* programming the ETF */
+	etf_init(t);
+
+	/* programming the replicator */
+	replicator_init(t);
+
+	/* Enabling the ETM */
+	for (id = 0; id < t->ptm_t210_regs_count; id++)
+		ptm_t210_writel(t, id, 1,
+				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
+
+	ape_writel(t, 0x100, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
+
+	return 0;
+}
+
+static int trace_t210_stop(struct tracectx *t)
+{
+	int id;
+
+	/* Disabling the ETM */
+	for (id = 0; id < t->ptm_t210_regs_count; id++)
+		ptm_t210_writel(t, id, 0,
+				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
+
+	ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
+
+	clk_set_parent(t->csite_clk, clk_m);
+	clk_set_rate(t->csite_clk, CSITE_CLK_LOW);
+
+	return 0;
+}
+
+static ssize_t etf_read(struct file *file, char __user *data,
+	size_t len, loff_t *ppos)
+{
+	struct tracectx *t = file->private_data;
+	loff_t pos = *ppos;
+
+	if ((pos + len) >= t->etf_size)
+		len = t->etf_size - pos;
+
+	if ((len > 0) && copy_to_user(data, (u8 *) t->etf_buf+pos, len))
+		return -EFAULT;
+	else {
+		*ppos = pos + len;
+		return len;
+	}
+}
+
+static ssize_t etf_fill_buf(struct tracectx *t)
+{
+	int rrp, rwp, rwp32, rrp32, max, count = 0, serial, overflow;
+
+	mutex_lock(&t->mutex);
+
+	if (!t->etf_regs)
+		return -EINVAL;
+
+	etf_regs_unlock(t);
+
+	/* Manual flush and stop */
+	etf_writel(t, 0x1001, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
+	etf_writel(t, 0x1041, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
+
+	udelay(1000);
+
+	/* Disable ETF */
+	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_CTL_0);
+
+	/* Get etf data and Check for overflow */
+	overflow = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_STS_0);
+
+	overflow &= 0x01;
+
+	/* Check for data in ETF */
+	rwp = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_RWP_0);
+	rrp = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
+
+	rwp32 = rwp/4;
+	rrp32 = rrp/4;
+
+	max = rwp32;
+	serial = 0;
+
+	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
+
+	trace_t210_stop(t);
+
+	if (!overflow) {
+		t->etf_size = max * 4;
+		for (count = 0; count < max; count++) {
+			t->etf_buf[count] = etf_readl(t,
+					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
+			serial += 1;
+		}
+	} else {
+		t->etf_size = MAX_ETF_SIZE * 4;
+		/* ETF overflow..the last 4K entries are printed */
+		etf_writel(t, rwp, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
+		/* Read from rwp to end of RAM */
+		for (count = rwp32; count < MAX_ETF_SIZE; count++) {
+			t->etf_buf[count] = etf_readl(t,
+					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
+			serial += 1;
+		}
+		/* Rollover the RRP and read till rwp-1 */
+		etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
+		for (count = 0; count < max; count++) {
+			t->etf_buf[count] = etf_readl(t,
+					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
+			serial += 1;
+		}
+	}
+	etf_regs_lock(t);
+
+	return t->etf_size;
+}
+
+static int etf_open(struct inode *inode, struct file *file)
+{
+	struct miscdevice *miscdev = file->private_data;
+	struct tracectx *t = dev_get_drvdata(miscdev->parent);
+
+	if (NULL == t->etf_regs)
+		return -ENODEV;
+
+	file->private_data = t;
+
+	etf_fill_buf(t);
+
+	return nonseekable_open(inode, file);
+}
+
+static int etf_release(struct inode *inode, struct file *file)
+{
+	/* there's nothing to do here, actually */
+	return 0;
+}
+
+static void etf_save_last(struct tracectx *t)
+{
+	int rrp, rwp, rwp32, rrp32, max, count = 0, serial, overflow;
+
+	BUG_ON(!t->dump_initial_etf);
+
+	etf_regs_unlock(t);
+
+	/* Manual flush and stop */
+	etf_writel(t, 0x1001, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
+	etf_writel(t, 0x1041, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
+
+	udelay(1000);
+
+	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_CTL_0);
+
+	/* Get etf data and Check for overflow */
+	overflow = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_STS_0);
+
+	overflow &= 0x01;
+
+	/* Check for data in ETF */
+	rwp = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_RWP_0);
+	rrp = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
+
+	rwp32 = rwp/4;
+	rrp32 = rrp/4;
+
+	max = rwp32;
+	serial = 0;
+
+	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
+
+	pr_info(" RRP32_L %08x ,RWP32_L %08x\n ", rrp32, rwp32);
+
+	if (!overflow) {
+		pr_info("ETF not overflown. Reading contents to userspace\n");
+		t->etf_size = max * 4;
+		for (count = 0; count < max; count++)
+			t->etf_buf[count] = etf_readl(t,
+					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
+	} else {
+		pr_info("ETF overflown. Reading contents to userspace\n");
+		t->etf_size = MAX_ETF_SIZE * 4;
+		/* ETF overflow..the last 4K entries are printed */
+		etf_writel(t, rwp, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
+		/* Read from rwp to end of RAM */
+		for (count = rwp32; count < MAX_ETF_SIZE; count++) {
+			t->etf_buf[serial] = etf_readl(t,
+					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
+			serial += 1;
+		}
+		/* Rollover the RRP and read till rwp-1 */
+		etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
+		for (count = 0; count < max; count++) {
+			t->etf_buf[serial] = etf_readl(t,
+					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
+			serial += 1;
+		}
+	}
+	etf_regs_lock(t);
+}
+
+static ssize_t last_etf_read(struct file *file, char __user *data,
+	size_t len, loff_t *ppos)
+{
+	struct tracectx *t = file->private_data;
+	size_t ret;
+	int i;
+
+	mutex_lock(&t->mutex);
+
+	for (i = 0; i < t->etf_size/4; i++)
+		pr_info("COUNT: %08x ETF DATA: %08x\n",
+						i, t->etf_buf[i]);
+
+	if (copy_to_user(data, (char *) t->etf_buf , t->etf_size)) {
+		ret = -EFAULT;
+		goto out;
+	}
+	*ppos += t->etf_size;
+	ret = 0;
+
+out:
+	mutex_unlock(&t->mutex);
+	return ret;
+}
+
+/* use a sysfs file "trace_enable" to start/stop tracing */
+static ssize_t trace_enable_show(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char *buf)
+{
+	return sprintf(buf, "%x\n", tracer.enable);
+}
+
+/* use a sysfs file "trace_el0" to start/stop userspace tracing */
+static ssize_t trace_el0_trace_show(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char *buf)
+{
+	return sprintf(buf, "%x\n", tracer.el0_trace);
+}
+
+/* use a sysfs file "trace_branch_broadcast" to start/stop branch broadcast */
+static ssize_t trace_branch_broadcast_show(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char *buf)
+{
+	return sprintf(buf, "%x\n", tracer.branch_broadcast);
+}
+
+/* use a sysfs file "trace_running" to start/stop return stack mode */
+static ssize_t trace_return_stack_show(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char *buf)
+{
+	return sprintf(buf, "%x\n", tracer.return_stack);
+}
+
+/* use a sysfs file "trace_range_address" to allow user to
+   specify specific areas of code to be traced */
+static ssize_t trace_range_address_show(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char *buf)
+{
+	return sprintf(buf, "%08lx %08lx %08lx %08lx\n",
+			tracer.start_address_msb, tracer.stop_address_lsb,
+			tracer.stop_address_msb, tracer.stop_address_lsb);
+}
+
+static ssize_t trace_enable_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf, size_t n)
+{
+	unsigned int value;
+	int ret;
+
+	if (sscanf(buf, "%u", &value) != 1)
+		return -EINVAL;
+
+	if (!tracer.etf_regs)
+		return -ENODEV;
+
+	mutex_lock(&tracer.mutex);
+
+	if (value != 0) {
+		ret = trace_t210_start(&tracer);
+		tracer.enable = 1;
+	} else {
+		ret = trace_t210_stop(&tracer);
+		tracer.enable = 0;
+	}
+
+	mutex_unlock(&tracer.mutex);
+
+	return ret ? : n;
+}
+
+static ssize_t trace_el0_trace_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf, size_t n)
+{
+	unsigned int el0_trace;
+
+	if (sscanf(buf, "%u", &el0_trace) != 1)
+		return -EINVAL;
+
+	mutex_lock(&tracer.mutex);
+
+	if (el0_trace == 0)
+		tracer.el0_trace = 0;
+
+	mutex_unlock(&tracer.mutex);
+
+	return n;
+}
+
+static ssize_t trace_branch_broadcast_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf, size_t n)
+{
+	unsigned int branch_broadcast;
+
+	if (sscanf(buf, "%u", &branch_broadcast) != 1)
+		return -EINVAL;
+
+	mutex_lock(&tracer.mutex);
+
+	if (branch_broadcast == 0)
+		tracer.branch_broadcast = 0;
+
+	mutex_unlock(&tracer.mutex);
+
+	return n;
+}
+
+static ssize_t trace_return_stack_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf, size_t n)
+{
+	unsigned int return_stack;
+
+	if (sscanf(buf, "%u", &return_stack) != 1)
+		return -EINVAL;
+
+	mutex_lock(&tracer.mutex);
+
+	if (return_stack == 0)
+		tracer.return_stack = 0;
+
+	mutex_unlock(&tracer.mutex);
+
+	return n;
+}
+
+static ssize_t trace_range_address_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char const *buf, size_t n)
+{
+	unsigned int start_address_msb, start_address_lsb,
+				stop_address_msb, stop_address_lsb;
+
+	if (sscanf(buf, "%ul %ul %ul %ul", &start_address_msb,
+			&start_address_lsb, &stop_address_msb,
+			&stop_address_lsb) != 4)
+		return -EINVAL;
+
+	mutex_lock(&tracer.mutex);
+
+	if (start_address_msb < 0 || start_address_lsb < 0 ||
+		start_address_msb > 0xFFFFFFFF || stop_address_msb < 0 ||
+		start_address_lsb > 0xFFFFFFFF || stop_address_lsb < 0 ||
+		stop_address_msb > 0xFFFFFFFF || stop_address_lsb > 0xFFFFFFFF)
+		pr_err("ptm address range invalid\n");
+	else {
+		tracer.start_address_msb = start_address_msb;
+		tracer.start_address_lsb = start_address_lsb;
+		tracer.stop_address_msb  = stop_address_msb;
+		tracer.stop_address_lsb	 = stop_address_lsb;
+	}
+
+	mutex_unlock(&tracer.mutex);
+
+	return n;
+}
+
+#define A(a, b, c, d)   __ATTR(trace_##a, b, \
+	trace_##c##_show, trace_##d##_store)
+static const struct kobj_attribute trace_attr[] = {
+	A(enable,		0644,	enable,		enable),
+	A(el0_trace,		0644,	el0_trace,	el0_trace),
+	A(branch_broadcast,	0644,	branch_broadcast,
+						branch_broadcast),
+	A(return_stack,		0644,	return_stack,
+						return_stack),
+	A(range_address,	0644,	range_address,
+						range_address)
+};
+
+static const struct file_operations etf_fops = {
+	.owner = THIS_MODULE,
+	.read = etf_read,
+	.open = etf_open,
+	.release = etf_release,
+	.llseek = no_llseek,
+};
+
+static const struct file_operations last_etf_fops = {
+	.owner = THIS_MODULE,
+	.read = last_etf_read,
+	.open = etf_open,
+	.release = etf_release,
+	.llseek = no_llseek,
+};
+
+static struct miscdevice etf_miscdev = {
+	.name = "etf",
+	.minor = MISC_DYNAMIC_MINOR,
+	.fops = &etf_fops,
+};
+
+static struct miscdevice last_etf_miscdev = {
+	.name = "last_etf",
+	.minor = MISC_DYNAMIC_MINOR,
+	.fops = &last_etf_fops,
+};
+
+static void etf_nodes(struct tracectx *t)
+{
+	int ret = 0;
 
 	etf_miscdev.parent = t->dev;
 	ret = misc_register(&etf_miscdev);
@@ -556,33 +780,16 @@ static void etf_init(struct tracectx *t)
 	dev_info(t->dev, "ETF is initialized.\n");
 }
 
-static void etf_last_init(struct tracectx *t)
-{
-	t->dump_initial_etf = true;
-
-	t->last_etf = devm_kzalloc(t->dev, MAX_ETF_SIZE * sizeof(*t->last_etf),
-					GFP_KERNEL);
-
-	if (NULL == t->last_etf)
-		dev_err(t->dev, "failes to allocate memory to hold ETF\n");
-}
-
-static void clk_init(void)
-{
-	clk_writel(0x0, CLK_RST_CONTROLLER_CLK_SOURCE_CSITE_0);
-	clk_writel(0x0, CLK_RST_CONTROLLER_CLK_CPUG_MISC2_0);
-	clk_writel(0x2, CLK_RST_CONTROLLER_CLK_CPUG_MISC_0);
-}
-
-static void cpu_debug_init(struct tracectx *t, int id)
-{
-	cpu_debug_regs_unlock(t, id);
-	cpu_debug_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_DEBUG_OSLAR_EL1_0);
-}
-
-static int ptm_t210_init(struct tracectx *t, struct platform_device  *dev)
+static int ptm_probe(struct platform_device  *dev)
 {
 	int i, ret = 0;
+
+	struct tracectx *t = &tracer;
+
+	mutex_lock(&t->mutex);
+	t->dev = &dev->dev;
+	platform_set_drvdata(dev, t);
+
 	for (i = 0; i < dev->num_resources; i++) {
 		struct resource *res;
 		void __iomem *addr;
@@ -625,8 +832,14 @@ static int ptm_t210_init(struct tracectx *t, struct platform_device  *dev)
 				t->ptm_t210_regs[t->ptm_t210_regs_count] = addr;
 				t->ptm_t210_regs_count++;
 				break;
+			case 13:
+				t->funnel_minor_regs = addr;
+				break;
+			case 14:
+				t->ape_regs = addr;
+				break;
 			default:
-				dev_err(&dev->dev, "unknown resourse for the PTM device\n");
+				dev_err(&dev->dev, "unknown resource for the PTM device\n");
 				break;
 		}
 		} else {
@@ -648,15 +861,17 @@ static int ptm_t210_init(struct tracectx *t, struct platform_device  *dev)
 				t->ptm_t210_regs[t->ptm_t210_regs_count] = addr;
 				t->ptm_t210_regs_count++;
 			}
+			if (0 == strncmp("funnel_minor", res->name, 12))
+				t->funnel_minor_regs = addr;
+			if (0 == strncmp("ape", res->name, 3))
+				t->ape_regs = addr;
 		}
 	}
 
 	/* Configure Coresight Clocks */
-	clk_init();
-
-	/* Unlock CPU Debug to monitor PC */
-	for (i = 0; i < t->cpu_regs_count; i++)
-		cpu_debug_init(t, i);
+	t->csite_clk = clk_get_sys("csite", NULL);
+	pll_p = clk_get_sys(NULL, "pll_p");
+	clk_m = clk_get_sys(NULL, "clk_m");
 
 	/* Initialise data structures required for saving trace after reset */
 	etf_last_init(t);
@@ -664,21 +879,8 @@ static int ptm_t210_init(struct tracectx *t, struct platform_device  *dev)
 	/* save ETF contents to DRAM when system is reset */
 	etf_save_last(t);
 
-	/* Programming PTM */
-	for (i = 0; i < t->ptm_t210_regs_count; i++)
-		ptm_init(t, i);
-
-	/* Programming BCCPLEX funnel */
-	funnel_bccplex_init(t);
-
-	/* Programming major funnel */
-	funnel_major_init(t);
-
-	/* programming the ETF */
-	etf_init(t);
-
-	/* programming the replicator */
-	replicator_init(t);
+	/* initialising dev nodes */
+	etf_nodes(t);
 
 	/* create sysfs */
 	for (i = 0; i < ARRAY_SIZE(trace_attr); i++) {
@@ -690,29 +892,11 @@ static int ptm_t210_init(struct tracectx *t, struct platform_device  *dev)
 
 	dev_info(&dev->dev, "PTM driver initialized.\n");
 
-	/* Start the PTM and ETF now */
-	trace_t210_start(t);
-
 out:
 	if (ret)
 		dev_err(&dev->dev, "Failed to start the PTM device\n");
 	mutex_unlock(&t->mutex);
 	return ret;
-}
-
-static int ptm_probe(struct platform_device *dev)
-{
-	struct tracectx *t = &tracer;
-
-	mutex_lock(&t->mutex);
-	t->dev = &dev->dev;
-	platform_set_drvdata(dev, t);
-
-	t->cpu_regs_count = 0;
-	t->ptm_t210_regs_count = 0;
-	ptm_t210_init(t, dev);
-
-	return 0;
 }
 
 static int ptm_remove(struct platform_device *dev)
@@ -730,7 +914,8 @@ static int ptm_remove(struct platform_device *dev)
 	for (i = 0; i < t->cpu_regs_count; i++)
 		devm_iounmap(&dev->dev, t->cpu_regs[i]);
 	devm_iounmap(&dev->dev, t->funnel_major_regs);
-	devm_iounmap(&dev->dev, t->etf_regs);
+	devm_iounmap(&dev->dev, t->funnel_minor_regs);
+	devm_iounmap(&dev->dev, t->ape_regs);
 	devm_iounmap(&dev->dev, t->etr_regs);
 	devm_iounmap(&dev->dev, t->funnel_bccplex_regs);
 	devm_iounmap(&dev->dev, t->replicator_regs);

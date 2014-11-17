@@ -235,6 +235,9 @@
 /* Funnel major Registers */
 #define CORESIGHT_ATBFUNNEL_HUGO_MAJOR_CXATBFUNNEL_REGS_CTRL_REG_0 0x0
 
+/* Funnel Minor registers */
+#define CORESIGHT_ATBFUNNEL_MINOR_CXATBFUNNEL_REGS_CTRL_REG_0 0x0
+
 /* ETF Registers */
 #define CORESIGHT_ETF_HUGO_CXTMC_REGS_RWP_0 0x18
 #define CORESIGHT_ETF_HUGO_CXTMC_REGS_CTL_0 0x20
@@ -327,8 +330,20 @@
 #define CORESIGHT_BCCPLEX_CPU_TRACE_TRCCIDCVR0_0 0x600
 #define CORESIGHT_BCCPLEX_CPU_TRACE_TRCVMIDCVR0_0 0x640
 #define CORESIGHT_BCCPLEX_CPU_TRACE_TRCCIDCCTLR0_0 0x680
+#define BCCPLEX_BASE_ID 0x40
+#define LCCPLEX_BASE_ID 0x30
 
-/* Macro Definitions */
+/* APE registers */
+#define CORESIGHT_APE_CPU0_ETM_ETMCR_0 0x0
+#define CORESIGHT_APE_CPU0_ETM_ETMTECR1_0 0x24
+#define CORESIGHT_APE_CPU0_ETM_ETMTEEVR_0 0x20
+#define CORESIGHT_APE_CPU0_ETM_ETMACVR1_0 0x40
+#define CORESIGHT_APE_CPU0_ETM_ETMACVR2_0 0x44
+#define CORESIGHT_APE_CPU0_ETM_ETMACTR1_0 0x80
+#define CORESIGHT_APE_CPU0_ETM_ETMACTR2_0 0x84
+#define CORESIGHT_APE_CPU0_ETM_ETMATID_0 0x200
+
+/* T210 Macro Definitions */
 #define funnel_major_writel(t, v, x)	__raw_writel((v),	\
 				(t)->funnel_major_regs + (x))
 #define funnel_major_readl(t, x)	__raw_readl(		\
@@ -344,6 +359,20 @@
 					CORESIGHT_LOCKACCESS);
 #define etf_regs_lock(t)	etf_writel((t), 0,		\
 					CORESIGHT_LOCKACCESS)
+
+#define funnel_minor_writel(t, v, x)	__raw_writel((v),	\
+				(t)->funnel_minor_regs + (x))
+#define funnel_minor_readl(t, x)	__raw_readl(		\
+				(t)->funnel_minor_regs + (x))
+#define funnel_minor_regs_unlock(t)	funnel_minor_writel((t),\
+				LOCK_MAGIC, CORESIGHT_LOCKACCESS);
+
+#define ape_writel(t, v, x)		__raw_writel((v),	\
+				(t)->ape_regs + (x))
+#define ape_readl(t, x)			__raw_readl(		\
+				(t)->ape_regs + (x))
+#define ape_regs_unlock(t)	ape_writel((t), LOCK_MAGIC,	\
+					CORESIGHT_LOCKACCESS);
 
 #define replicator_writel(t, v, x)	__raw_writel((v),	\
 						(t)->replicator_regs + (x))
@@ -372,6 +401,7 @@
 #define ptm_t210_regs_unlock(t, id)	ptm_t210_writel((t), id,	\
 					LOCK_MAGIC, CORESIGHT_LOCKACCESS);
 
+/* T124 macro definitions */
 #define etb_writel(t, v, x)	__raw_writel((v), (t)->etb_regs + (x))
 #define etb_readl(t, x)		__raw_readl((t)->etb_regs + (x))
 #define etb_regs_lock(t)	etb_writel((t), 0,		\
