@@ -1,3 +1,4 @@
+GCOV_PROFILE := n
 
 # List of files in the vdso, has to be asm only for now
 

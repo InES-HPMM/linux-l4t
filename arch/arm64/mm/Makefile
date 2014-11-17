@@ -1,3 +1,5 @@
+GCOV_PROFILE := y
+
 subdir-ccflags-y += -Werror
 
 obj-y				:= dma-mapping.o extable.o fault.o init.o \

@@ -8,6 +8,7 @@
 # published by the Free Software Foundation.
 #
 
+GCOV_PROFILE := y
 subdir-ccflags-y	+= -Werror
 
 obj-$(CONFIG_CRYPTO_SHA1_ARM64_CE) += sha1-ce.o
