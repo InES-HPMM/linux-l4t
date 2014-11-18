@@ -474,7 +474,7 @@ void *get_mailbox_shared_region(void)
 static void copy_io_in_l(void *to, const void *from, int sz)
 {
 	int i;
-	for (i = 0; i <= sz; i += 4) {
+	for (i = 0; i < sz; i += 4) {
 		int val = *(int *)(from + i);
 		writel(val, to + i);
 	}
