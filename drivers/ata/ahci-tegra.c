@@ -1181,6 +1181,7 @@ static void tegra_ahci_uphy_init(void)
 	/* SW overrides removal */
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
 	val &= ~(PADPLL_RESET_SWCTL_MASK);
+	val |= (SATA_PADPLL_SLEEP_IDDQ | SATA_PADPLL_USE_LOCKDET);
 	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
 
 	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_2_0);
