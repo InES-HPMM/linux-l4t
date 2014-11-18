@@ -714,8 +714,12 @@ static int bq27441_get_property(struct power_supply *psy,
 		val->intval = chip->capacity_level;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		temperature = bq27441_get_temperature();
-		val->intval = temperature;
+		if (chip->enable_temp_prop) {
+			temperature = bq27441_get_temperature();
+			val->intval = temperature;
+		} else {
+			ret = -EINVAL;
+		}
 		break;
 	default:
 		ret = -EINVAL;
