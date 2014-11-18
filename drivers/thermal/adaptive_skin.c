@@ -1,5 +1,5 @@
 /*
- * drivers/thermal/adaptive_skin_gov.c
+ * drivers/thermal/adaptive_skin.c
  *
  * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
 
@@ -29,23 +29,31 @@
 #define DEFAULT_CPU_ZONE_NAME			"CPU-therm"
 #define DEFAULT_GPU_ZONE_NAME			"GPU-therm"
 
+#define MAX_ERROR_TJ_DELTA			15000
+#define MAX_ERROR_TSKIN_DELTA			5000
 /* Tj delta should be below this value during the transient */
 #define DEFAULT_TJ_TRAN_THRESHOLD		2000
+#define MAX_TJ_TRAN_THRESHOLD			MAX_ERROR_TJ_DELTA
 /* Tj delta should be below this value during the steady */
 #define DEFAULT_TJ_STD_THRESHOLD		3000
+#define MAX_TJ_STD_THRESHOLD			MAX_ERROR_TJ_DELTA
 /* Tj delta from previous value should be below this value
 				after an action in steady */
 #define DEFAULT_TJ_STD_FORCE_UPDATE_THRESHOLD	5000
+#define MAX_TJ_STD_FORCE_UPDATE_THRESHOLD	MAX_ERROR_TJ_DELTA
 #define DEFAULT_TSKIN_TRAN_THRESHOLD		500
+#define MAX_TSKIN_TRAN_THRESHOLD		MAX_ERROR_TSKIN_DELTA
 /* Tskin delta from trip temp should be below this value */
 #define DEFAULT_TSKIN_STD_THRESHOLD		1000
+#define MAX_TSKIN_STD_THRESHOLD			MAX_ERROR_TSKIN_DELTA
 #define DEFAULT_TSKIN_STD_OFFSET		500
 #define FORCE_DROP_THRESHOLD			3000
 
 /* number of pollings */
 #define DEFAULT_FORCE_UPDATE_PERIOD		6
+#define MAX_FORCE_UPDATE_PERIOD			10
 #define DEFAULT_TARGET_STATE_TDP		10
-#define MAX_ALLOWED_POLL			4
+#define MAX_ALLOWED_POLL			4U
 #define POLL_PER_STATE_SHIFT			16
 #define FORCE_UPDATE_MOVEBACK			2
 
@@ -158,11 +166,14 @@ static ssize_t target_state_tdp_store(struct kobject *kobj,
 	if (!sscanf(buf, "%d\n", &val))
 		return -EINVAL;
 
+	if (val <= 0)
+		return -EINVAL;
+
 	max_poll = MAX_ALLOWED_POLL << POLL_PER_STATE_SHIFT;
 
 	gov->target_state_tdp = val;
 	gov->poll_raise_gain = max_poll / (gov->target_state_tdp + 1);
-	gov->poll_drop_gain = max_poll / (gov->target_state_tdp + 1);
+	gov->poll_drop_gain = gov->poll_raise_gain;
 	return count;
 }
 
@@ -194,6 +205,9 @@ static ssize_t fup_period_store(struct kobject *kobj,
 		return -ENODEV;
 
 	if (!sscanf(buf, "%d\n", &val))
+		return -EINVAL;
+
+	if (val > MAX_FORCE_UPDATE_PERIOD || val <= 0)
 		return -EINVAL;
 
 	gov->fup_period = val;
@@ -230,6 +244,9 @@ static ssize_t tj_tran_threshold_store(struct kobject *kobj,
 	if (!sscanf(buf, "%d\n", &val))
 		return -EINVAL;
 
+	if (val > MAX_TJ_TRAN_THRESHOLD || val <= 0)
+		return -EINVAL;
+
 	gov->tj_tran_threshold = val;
 	return count;
 }
@@ -262,6 +279,9 @@ static ssize_t tj_std_threshold_store(struct kobject *kobj,
 		return -ENODEV;
 
 	if (!sscanf(buf, "%d\n", &val))
+		return -EINVAL;
+
+	if (val > MAX_TJ_STD_THRESHOLD || val <= 0)
 		return -EINVAL;
 
 	gov->tj_std_threshold = val;
@@ -298,6 +318,9 @@ static ssize_t tj_std_fup_threshold_store(struct kobject *kobj,
 	if (!sscanf(buf, "%d\n", &val))
 		return -EINVAL;
 
+	if (val > MAX_TJ_STD_FORCE_UPDATE_THRESHOLD || val <= 0)
+		return -EINVAL;
+
 	gov->tj_std_fup_threshold = val;
 	return count;
 }
@@ -332,6 +355,9 @@ static ssize_t tskin_tran_threshold_store(struct kobject *kobj,
 	if (!sscanf(buf, "%d\n", &val))
 		return -EINVAL;
 
+	if (val > MAX_TSKIN_TRAN_THRESHOLD || val <= 0)
+		return -EINVAL;
+
 	gov->tskin_tran_threshold = val;
 	return count;
 }
@@ -364,6 +390,9 @@ static ssize_t tskin_std_threshold_store(struct kobject *kobj,
 		return -ENODEV;
 
 	if (!sscanf(buf, "%d\n", &val))
+		return -EINVAL;
+
+	if (val > MAX_TSKIN_STD_THRESHOLD || val <= 0)
 		return -EINVAL;
 
 	gov->tskin_std_threshold = val;
@@ -427,10 +456,9 @@ static int astg_start(struct thermal_zone_device *tz)
 {
 	struct astg_ctx *gov;
 	struct adaptive_skin_thermal_gov_params *params;
-	int ret, max_poll;
-	int target_state_tdp;
+	int ret, max_poll, target_state_tdp;
 
-	gov = kzalloc(sizeof(struct astg_ctx), GFP_KERNEL);
+	gov = kzalloc(sizeof(*gov), GFP_KERNEL);
 	if (!gov) {
 		dev_err(&tz->device, "%s: Can't alloc governor data\n",
 			DRV_NAME);
@@ -468,15 +496,9 @@ static int astg_start(struct thermal_zone_device *tz)
 
 	max_poll = MAX_ALLOWED_POLL << POLL_PER_STATE_SHIFT;
 	gov->poll_raise_gain = max_poll / (target_state_tdp + 1);
-	gov->poll_drop_gain = max_poll / (target_state_tdp + 1);
+	gov->poll_drop_gain = gov->poll_raise_gain;
 	gov->target_state_tdp = target_state_tdp;
-	gov->raise_cnt = 0;
-	gov->temp_last = 0;
 	gov->fup_period = DEFAULT_FORCE_UPDATE_PERIOD;
-	gov->fup_raise_cnt = 0;
-	gov->fup_drop_cnt = 0;
-	gov->drop_cnt = 0;
-	gov->std_cnt = 0;
 	gov->std_offset = DEFAULT_TSKIN_STD_OFFSET;
 
 	gov->cpu_zone = thermal_zone_device_find(DEFAULT_CPU_ZONE_NAME,
@@ -535,36 +557,34 @@ static int get_target_poll_raise(struct astg_ctx *gov,
 				long cur_state,
 				int is_steady)
 {
-	int target;
+	unsigned target;
 
 	cur_state++;
-	target = (cur_state * gov->poll_raise_gain) >> POLL_PER_STATE_SHIFT;
+	target = (unsigned)(cur_state * gov->poll_raise_gain) >>
+							POLL_PER_STATE_SHIFT;
 
 	if (is_steady)
-		target += 1 + (cur_state >> 3);
+		target += 1 + ((unsigned)cur_state >> 3);
 
-	if (target > MAX_ALLOWED_POLL)
-		return MAX_ALLOWED_POLL;
-
-	return target;
+	return (int)min(target, MAX_ALLOWED_POLL);
 }
 
 static int get_target_poll_drop(struct astg_ctx *gov,
 				long cur_state,
 				int is_steady)
 {
-	int target;
+	unsigned target;
 
-	target = MAX_ALLOWED_POLL - ((cur_state * gov->poll_drop_gain) >>
-							POLL_PER_STATE_SHIFT);
+	target = MAX_ALLOWED_POLL - ((unsigned)(cur_state *
+				gov->poll_drop_gain) >> POLL_PER_STATE_SHIFT);
 
 	if (is_steady)
-		return MAX_ALLOWED_POLL;
+		return (int)MAX_ALLOWED_POLL;
 
-	if (target < 0)
+	if (target > MAX_ALLOWED_POLL)
 		return 0;
 
-	return target;
+	return (int)target;
 }
 
 /*
@@ -575,7 +595,7 @@ static int check_steady(struct astg_ctx *gov, long tz_temp, long trip_temp)
 	int delta;
 
 	delta = tz_temp - trip_temp;
-	delta = delta > 0 ? delta : -delta;
+	delta = abs(delta);
 
 	pr_debug(">> delta : %d\n", delta);
 
@@ -603,7 +623,7 @@ static void astg_init_gov_context(struct astg_ctx *gov, long trip_temp)
 }
 
 
-enum ast_action astg_get_target_action(struct thermal_zone_device *tz,
+static enum ast_action astg_get_target_action(struct thermal_zone_device *tz,
 					struct thermal_cooling_device *cdev,
 					long trip_temp,
 					enum thermal_trend trend)
@@ -841,13 +861,11 @@ static void astg_appy_action(struct thermal_zone_device *tz,
 		astg_update_target_state(instance, action, over_trip);
 
 		if (over_trip > 0) {
-			gov->temp_last =
-				tz_temp > trip_temp + DEFAULT_TSKIN_STD_OFFSET ?
-				trip_temp + DEFAULT_TSKIN_STD_OFFSET : tz_temp;
+			gov->temp_last = min(tz_temp, trip_temp +
+						DEFAULT_TSKIN_STD_OFFSET);
 		} else {
-			gov->temp_last =
-				tz_temp < trip_temp - DEFAULT_TSKIN_STD_OFFSET ?
-				trip_temp - DEFAULT_TSKIN_STD_OFFSET : tz_temp;
+			gov->temp_last = max(tz_temp, trip_temp -
+						DEFAULT_TSKIN_STD_OFFSET);
 		}
 
 		if (is_action_transient_raise(action) &&
@@ -858,9 +876,8 @@ static void astg_appy_action(struct thermal_zone_device *tz,
 				fup_raise_cnt = gov->fup_period -
 							FORCE_UPDATE_MOVEBACK;
 			} else {
-				fup_raise_cnt -= FORCE_UPDATE_MOVEBACK;
-				if (fup_raise_cnt < 0)
-					fup_raise_cnt = 0;
+				fup_raise_cnt = max(0, fup_raise_cnt -
+							FORCE_UPDATE_MOVEBACK);
 			}
 		} else if (is_action_transient_drop(action) &&
 				fup_drop_cnt >= gov->fup_period) {
@@ -870,9 +887,8 @@ static void astg_appy_action(struct thermal_zone_device *tz,
 				fup_drop_cnt = gov->fup_period -
 							FORCE_UPDATE_MOVEBACK;
 			} else {
-				fup_drop_cnt -= FORCE_UPDATE_MOVEBACK;
-				if (fup_drop_cnt < 0)
-					fup_drop_cnt = 0;
+				fup_drop_cnt = max(0, fup_drop_cnt -
+							FORCE_UPDATE_MOVEBACK);
 			}
 		}
 
