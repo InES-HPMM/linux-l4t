@@ -23,6 +23,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/dmapool.h>
 #include <linux/err.h>
+#include <linux/of_gpio.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
@@ -299,6 +300,10 @@ struct tegra_spi_data {
 	unsigned				max_buf_size;
 	bool					is_curr_dma_xfer;
 	bool					variable_length_transfer;
+
+	/* Slave Ready Polarity (true: Active High, false: Active Low) */
+	int					gpio_slave_ready;
+	bool					slave_ready_pol;
 
 	struct completion			rx_dma_complete;
 	struct completion			tx_dma_complete;
@@ -774,6 +779,34 @@ static int check_and_clear_fifo(struct tegra_spi_data *tspi)
 	return 0;
 }
 
+static inline void tegra_spi_slave_busy(struct tegra_spi_data *tspi)
+{
+	int deassert_val;
+
+	if (tspi->slave_ready_pol)
+		deassert_val = 0;
+	else
+		deassert_val = 1;
+
+	/* Deassert ready line to indicate Busy */
+	if (gpio_is_valid(tspi->gpio_slave_ready))
+		gpio_set_value(tspi->gpio_slave_ready, deassert_val);
+}
+
+static inline void tegra_spi_slave_ready(struct tegra_spi_data *tspi)
+{
+	int assert_val;
+
+	if (tspi->slave_ready_pol)
+		assert_val = 1;
+	else
+		assert_val = 0;
+
+	/* Assert ready line to indicate Ready */
+	if (gpio_is_valid(tspi->gpio_slave_ready))
+		gpio_set_value(tspi->gpio_slave_ready, assert_val);
+}
+
 static int tegra_spi_start_dma_based_transfer(
 		struct tegra_spi_data *tspi, struct spi_transfer *t)
 {
@@ -873,10 +906,6 @@ static int tegra_spi_start_dma_based_transfer(
 	tegra_spi_fence(tspi);
 	spin_unlock_irqrestore(&tspi->lock, flags);
 
-	/* Inform client that we are ready now. */
-	if (tspi->spi_slave_ready_callback)
-		tspi->spi_slave_ready_callback(tspi->client_data);
-
 	return ret;
 }
 
@@ -936,10 +965,6 @@ static int tegra_spi_start_cpu_based_transfer(
 	tegra_spi_writel(tspi, val, SPI_COMMAND1);
 	tegra_spi_fence(tspi);
 	spin_unlock_irqrestore(&tspi->lock, flags);
-
-	/* Inform client that we are ready now. */
-	if (tspi->spi_slave_ready_callback)
-		tspi->spi_slave_ready_callback(tspi->client_data);
 
 	return 0;
 }
@@ -1172,6 +1197,13 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 		ret = tegra_spi_start_dma_based_transfer(tspi, t);
 	else
 		ret = tegra_spi_start_cpu_based_transfer(tspi, t);
+
+	tegra_spi_slave_ready(tspi);
+
+	/* Inform client that we are ready now. */
+	if (tspi->spi_slave_ready_callback)
+		tspi->spi_slave_ready_callback(tspi->client_data);
+
 	return ret;
 }
 
@@ -1543,6 +1575,8 @@ static irqreturn_t tegra_spi_isr(int irq, void *context_data)
 	tspi->words_to_transfer = SPI_BLK_CNT(
 				tegra_spi_readl(tspi, SPI_TRANS_STATUS));
 
+	tegra_spi_slave_busy(tspi);
+
 	/* Inform client about controller interrupt. */
 	if (tspi->spi_slave_isr_callback)
 		tspi->spi_slave_isr_callback(tspi->client_data);
@@ -1584,6 +1618,15 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 	if (of_find_property(np, "nvidia,clock-always-on", NULL))
 		pdata->is_clkon_always = true;
 
+	pdata->gpio_slave_ready =
+		of_get_named_gpio(np, "nvidia,gpio-slave-ready", 0);
+
+	/* Set the polarity to active low by default */
+	pdata->slave_ready_pol = false;
+
+	if (of_find_property(np, "nvidia,gpio-slave-ready-active-high", NULL))
+		pdata->slave_ready_pol = true;
+
 	return pdata;
 }
 
@@ -1611,6 +1654,7 @@ static int tegra_spi_probe(struct platform_device *pdev)
 	const struct tegra_spi_chip_data *chip_data = &tegra124_spi_chip_data;
 	int ret, spi_irq;
 	int bus_num;
+	int deassert_val;
 
 	if (pdev->dev.of_node) {
 		bus_num = of_alias_get_id(pdev->dev.of_node, "spi");
@@ -1660,6 +1704,28 @@ static int tegra_spi_probe(struct platform_device *pdev)
 	tspi->dma_req_sel = pdata->dma_req_sel;
 	tspi->clock_always_on = pdata->is_clkon_always;
 	tspi->rx_trig_words = pdata->rx_trig_words;
+
+	tspi->gpio_slave_ready = pdata->gpio_slave_ready;
+
+	if (gpio_is_valid(tspi->gpio_slave_ready))
+		if (gpio_cansleep(tspi->gpio_slave_ready)) {
+			dev_err(&pdev->dev, "Slave Ready GPIO %d is unusable as it can sleep\n",
+					tspi->gpio_slave_ready);
+			tspi->gpio_slave_ready = -EINVAL;
+		}
+
+	tspi->slave_ready_pol = pdata->slave_ready_pol;
+
+	if (gpio_is_valid(tspi->gpio_slave_ready)) {
+		gpio_request(tspi->gpio_slave_ready, "gpio-spi-slave-ready");
+
+		if (tspi->slave_ready_pol)
+			deassert_val = 0;
+		else
+			deassert_val = 1;
+		gpio_direction_output(tspi->gpio_slave_ready, deassert_val);
+	}
+
 	tspi->dev = &pdev->dev;
 	dev_dbg(&pdev->dev, "rx-trigger:%d clock-always-on:%d dma-req:%d\n",
 				tspi->rx_trig_words, tspi->clock_always_on,

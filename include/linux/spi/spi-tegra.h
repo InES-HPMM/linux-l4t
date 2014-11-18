@@ -30,6 +30,8 @@ struct tegra_spi_platform_data {
 	u8 def_chip_select;
 	int rx_trig_words;
 	int ls_bit;
+	int gpio_slave_ready;
+	bool slave_ready_pol;
 };
 
 /*
