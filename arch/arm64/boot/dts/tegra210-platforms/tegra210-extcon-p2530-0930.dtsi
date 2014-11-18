@@ -44,7 +44,12 @@
 	};
 
 	xudc@700d0000 {
-		extcon-cables = <&otg_gpio_extcon 0 &otg_gpio_extcon 1>;
-		extcon-cable-names = "vbus", "id";
+		extcon-cables = <&otg_gpio_extcon 0>;
+		extcon-cable-names = "vbus";
+	};
+
+	xotg {
+		extcon-cables = <&otg_gpio_extcon 1>;
+		extcon-cable-names = "id";
 	};
 };

@@ -139,6 +139,13 @@
 		status = "okay";
 	};
 
+	xotg {
+		nvidia,common_padctl = <&xusb_pad_ctl>;
+		#extcon-cells = <1>;
+		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x01000000>;
+	};
+
 	gpio-ir-receiver {
 		compatible = "gpio-ir-receiver";
 		status = "okay";

@@ -644,11 +644,20 @@
 	};
 
 	xudc@700d0000 {
-		extcon-cables = <&bq2419x 0 &id_gpio_extcon 0>;
-		extcon-cable-names = "vbus", "id";
+		extcon-cables = <&bq2419x 0>;
+		extcon-cable-names = "vbus";
 		#extcon-cells = <1>;
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "disabled";
+	};
+
+	xotg {
+		extcon-cables = <&id_gpio_extcon 0>;
+		extcon-cable-names = "id";
+		#extcon-cells = <1>;
+		nvidia,common_padctl = <&xusb_pad_ctl>;
+		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x01000000>;
 	};
 
 	gpio-keys {

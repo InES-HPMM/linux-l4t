@@ -156,12 +156,15 @@
 	};
 
 	xudc@700d0000 {
-                usb_vbus0-supply = <&battery_reg>;
                 hvdd_usb-supply = <&vdd_3v3>;
                 avdd_pll_utmip-supply = <&max77620_sd3>;
                 avddio_usb-supply = <&max77620_ldo1>;
                 avddio_pll_uerefe-supply = <&max77620_ldo7>;
         };
+
+	xotg {
+		usb_vbus-supply = <&battery_reg>;
+	};
 
 	otg@7d000000 {
 		usb_vbus-supply = <&battery_reg>;
