@@ -1197,6 +1197,9 @@ static void tegra_ahci_uphy_init(void)
 
 	udelay(1);
 
+	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
+	val |= PLLE_SATA_SEQ_ENABLE;
+	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
 }
 
 static int tegra_ahci_controller_init(void *hpriv, int lp0)
