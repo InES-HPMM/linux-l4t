@@ -272,7 +272,7 @@ static ssize_t show_framecount(struct kobject *kobj,
 static struct global_attr framecount_attr = __ATTR(framecount, 0444,
 		show_framecount, NULL);
 
-int __init throughput_init_miscdev(void)
+static int __init throughput_init_miscdev(void)
 {
 	int ret_md, ret_f1, ret_f2;
 
@@ -311,7 +311,7 @@ int __init throughput_init_miscdev(void)
 
 module_init(throughput_init_miscdev);
 
-void __exit throughput_exit_miscdev(void)
+static void __exit throughput_exit_miscdev(void)
 {
 	pr_debug("%s: exiting\n", __func__);
 

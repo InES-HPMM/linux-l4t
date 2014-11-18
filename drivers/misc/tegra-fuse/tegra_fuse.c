@@ -738,7 +738,7 @@ static void wait_for_idle(void)
 	} while ((reg & (0xF << 16)) != STATE_IDLE);
 }
 
-static u32 fuse_cmd_read(u32 addr)
+u32 fuse_cmd_read(u32 addr)
 {
 	u32 reg;
 

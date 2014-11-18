@@ -16,6 +16,8 @@
 
 #include <linux/tegra-fuse.h>
 
+#include "fuse.h"
+
 /*
  * SOC_THERM TSENSOR fuse patterns for these chip families:-
  *   TEGRA_CHIPID_TEGRA12, TEGRA_CHIPID_TEGRA13, TEGRA_CHIPID_TEGRA21
