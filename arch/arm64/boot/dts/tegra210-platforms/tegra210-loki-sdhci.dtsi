@@ -96,6 +96,6 @@
 		pinctrl-3 = <&sdmmc1_clk_schmitt_disable_state>;
 		nvidia,en-io-trim-volt;
 		nvidia,update-pinctrl-settings;
-		nvidia,limit-vddio-max-volt;
+		nvidia,sd-device;
 	};
 };
