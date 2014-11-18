@@ -1,7 +1,7 @@
 /*
  * ahci-tegra.c - AHCI SATA support for TEGRA AHCI device
  *
- * Copyright (c) 2011-2014, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -52,6 +52,7 @@
 #include <linux/tegra-soc.h>
 #include <linux/of_device.h>
 #include "../../arch/arm/mach-tegra/iomap.h"
+#include <linux/tegra_prod.h>
 
 #define DRV_NAME	"tegra-sata"
 #define DRV_VERSION	"1.0"
@@ -448,6 +449,8 @@ struct tegra_ahci_host_priv {
 	enum tegra_chipid	cid;
 	struct tegra_sata_soc_data *soc_data;
 	struct list_head        qc_list;
+	struct tegra_prod_list	*prod_list;
+	void __iomem		*base_list[6];
 };
 
 #ifdef	CONFIG_DEBUG_FS
@@ -788,12 +791,22 @@ static void tegra_ahci_set_pad_cntrl_regs(
 	int	calib_val;
 	int	val;
 	int	i;
+	int	err = 0;
 
 	if (tegra_hpriv->cid == TEGRA_CHIPID_TEGRA21) {
-		scfg_writel(0x5501000, SATA_CHX_PHY_CTRL17_0);
-		scfg_writel(0x55010000, SATA_CHX_PHY_CTRL18_0);
-		scfg_writel(0x1, SATA_CHX_PHY_CTRL20_0);
-		scfg_writel(0x1, SATA_CHX_PHY_CTRL21_0);
+		err = tegra_prod_set_by_name(
+				tegra_hpriv->base_list,
+				"prod",
+				tegra_hpriv->prod_list);
+		if (err) {
+			dev_err(tegra_hpriv->dev,
+					"Prod setting from DT failed\n");
+		} else {
+			scfg_writel(0x5501000, SATA_CHX_PHY_CTRL17_0);
+			scfg_writel(0x55010000, SATA_CHX_PHY_CTRL18_0);
+			scfg_writel(0x1, SATA_CHX_PHY_CTRL20_0);
+			scfg_writel(0x1, SATA_CHX_PHY_CTRL21_0);
+		}
 		return;
 	}
 
@@ -3055,6 +3068,9 @@ static int tegra_ahci_remove_one(struct platform_device *pdev)
 
 	tegra_ahci_controller_remove(pdev);
 
+	if (g_tegra_hpriv->prod_list)
+		tegra_prod_release(&g_tegra_hpriv->prod_list);
+
 	devm_iounmap(&pdev->dev, host->iomap[AHCI_PCI_BAR]);
 	ata_host_detach(host);
 
@@ -3090,7 +3106,7 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	const struct ata_port_info *ppi[] = { &pi, NULL };
 	struct device *dev = &pdev->dev;
 	struct ahci_host_priv *hpriv = NULL;
-	struct tegra_ahci_host_priv *tegra_hpriv;
+	struct tegra_ahci_host_priv *tegra_hpriv = NULL;
 	struct tegra_ahci_platform_data *ahci_pdata;
 	struct ata_host *host = NULL;
 	int n_ports, i, rc = 0;
@@ -3120,7 +3136,7 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	}
 
 	/* acquire bar resources */
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	if (res == NULL)
 		return -EINVAL;
 
@@ -3160,14 +3176,37 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 			tegra_ahci_sata_clk_gate();
 			goto fail;
 		}
+		tegra_hpriv->prod_list = tegra_prod_init(np);
+		if (IS_ERR(tegra_hpriv->prod_list)) {
+			dev_err(dev, "Prod Init failed\n");
+			tegra_hpriv->prod_list = NULL;
+		}
+
 	} else {
 		ahci_pdata = tegra_hpriv->dev->platform_data;
 		tegra_hpriv->pexp_gpio_high = ahci_pdata->pexp_gpio_high;
 		tegra_hpriv->pexp_gpio_low = ahci_pdata->pexp_gpio_low;
+		tegra_hpriv->prod_list = NULL;
 	}
 	tegra_hpriv->cid = cid;
 	tegra_hpriv->pdev = pdev;
 	g_tegra_hpriv = tegra_hpriv;
+
+	/*
+	 * We reserve a table of 6 BARs in tegra_hpriv to store BARs.
+	 * Save the mapped AHCI_PCI_BAR address to the table.
+	 */
+	mmio = devm_ioremap(dev, res->start, resource_size(res));
+	tegra_hpriv->bars_table[AHCI_PCI_BAR] = mmio;
+	hpriv->mmio = mmio;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (res == NULL)
+		return -EINVAL;
+	tegra_hpriv->base_list[0] = devm_ioremap(dev,
+						res->start,
+						resource_size(res));
+	tegra_hpriv->base_list[1] = mmio;
 
 	/* Call tegra init routine */
 	rc = tegra_hpriv->soc_data->controller_init(tegra_hpriv, 0);
@@ -3176,13 +3215,6 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 		goto fail;
 	}
 
-	/*
-	 * We reserve a table of 6 BARs in tegra_hpriv to store BARs.
-	 * Save the mapped AHCI_PCI_BAR address to the table.
-	 */
-	mmio = devm_ioremap(dev, res->start, (res->end-res->start+1));
-	tegra_hpriv->bars_table[AHCI_PCI_BAR] = mmio;
-	hpriv->mmio = mmio;
 
 	/* save initial config */
 	tegra_ahci_save_initial_config(pdev, hpriv);
@@ -3297,6 +3329,9 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	return 0;
 
 fail:
+	if (tegra_hpriv && tegra_hpriv->prod_list)
+		tegra_prod_release(&tegra_hpriv->prod_list);
+
 	if (host) {
 		if (host->iomap[AHCI_PCI_BAR])
 			devm_iounmap(dev, host->iomap[AHCI_PCI_BAR]);
