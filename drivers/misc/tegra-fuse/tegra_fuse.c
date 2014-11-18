@@ -356,6 +356,7 @@ void tegra_fuse_writel(u32 val, unsigned long offset)
 	else
 		__tegra_fuse_writel(val, offset);
 }
+EXPORT_SYMBOL(tegra_fuse_writel);
 
 bool tegra_spare_fuse(int bit)
 {
