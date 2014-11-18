@@ -117,21 +117,21 @@
 		};
 
 		tegra_virt_dam0: dam@70302000 {
-			compatible = "nvidia,tegra124-dam";
+			compatible = "nvidia,tegra124-virt-dam";
 			reg = <0x70302000 0x200>;
 			nvidia,ahub-dam-id = <0>;
 			status = "okay";
 		};
 
 		tegra_virt_dam1: dam@70302200 {
-			compatible = "nvidia,tegra124-dam";
+			compatible = "nvidia,tegra124-virt-dam";
 			reg = <0x70302200 0x200>;
 			nvidia,ahub-dam-id = <1>;
 			status = "okay";
 		};
 
 		tegra_virt_dam2: dam@70302400 {
-			compatible = "nvidia,tegra124-dam";
+			compatible = "nvidia,tegra124-virt-dam";
 			reg = <0x70302400 0x200>;
 			nvidia,ahub-dam-id = <2>;
 			status = "okay";
