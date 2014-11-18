@@ -203,6 +203,7 @@ static struct cma_reserved {
 	struct device *dev;
 } cma_reserved[MAX_CMA_AREAS] __initdata;
 static unsigned cma_reserved_count __initdata;
+static unsigned long cma_total_pages;
 
 static int __init cma_init_reserved_areas(void)
 {
@@ -288,6 +289,7 @@ int __init dma_declare_contiguous(struct device *dev, phys_addr_t size,
 	r->size = size;
 	r->dev = dev;
 	cma_reserved_count++;
+	cma_total_pages += ((unsigned long)size / PAGE_SIZE);
 	pr_info("CMA: reserved %ld MiB at %08lx\n", (unsigned long)size / SZ_1M,
 		(unsigned long)base);
 
@@ -297,6 +299,11 @@ int __init dma_declare_contiguous(struct device *dev, phys_addr_t size,
 err:
 	pr_err("CMA: failed to reserve %ld MiB\n", (unsigned long)size / SZ_1M);
 	return base;
+}
+
+unsigned long cma_get_total_pages(void)
+{
+	return cma_total_pages;
 }
 
 static int __dma_update_pte(pte_t *pte, pgtable_t token, unsigned long addr,
