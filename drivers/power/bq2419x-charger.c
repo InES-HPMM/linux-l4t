@@ -720,13 +720,14 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 	unsigned int val;
 	int check_chg_state = 0;
 
+	mutex_lock(&bq2419x->mutex);
 	if (bq2419x->shutdown_complete)
-		return IRQ_HANDLED;
+		goto out;
 
 	ret = bq2419x_fault_clear_sts(bq2419x, &val);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "fault clear status failed %d\n", ret);
-		return IRQ_NONE;
+		goto out;
 	}
 
 	dev_info(bq2419x->dev, "%s() Irq %d status 0x%02x\n",
@@ -737,7 +738,7 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		ret = bq2419x_disable_otg_mode(bq2419x);
 		if (ret < 0) {
 			bq_chg_err(bq2419x, "otg mode disable failed\n");
-			return IRQ_HANDLED;
+			goto out;
 		}
 	}
 
@@ -755,7 +756,7 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		ret = bq2419x_disable_otg_mode(bq2419x);
 		if (ret < 0) {
 			bq_chg_err(bq2419x, "otg mode disable failed\n");
-			return IRQ_HANDLED;
+			goto out;
 		}
 		break;
 	default:
@@ -772,13 +773,13 @@ sys_stat_read:
 	ret = regmap_read(bq2419x->regmap, BQ2419X_SYS_STAT_REG, &val);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "SYS_STAT_REG read failed %d\n", ret);
-		return IRQ_HANDLED;
+		goto out;
 	}
 
 	bq2419x_extcon_cable_update(bq2419x, val);
 
 	if (!bq2419x->battery_presense)
-		return IRQ_HANDLED;
+		goto out;
 
 #ifdef CONFIG_THERMAL
 	if (val & BQ2419x_THERM_STAT) {
@@ -810,6 +811,8 @@ sys_stat_read:
 			battery_charger_release_wake_lock(bq2419x->bc_dev);
 	}
 
+out:
+	mutex_unlock(&bq2419x->mutex);
 	return IRQ_HANDLED;
 }
 
@@ -1070,7 +1073,13 @@ static ssize_t bq2419x_show_input_charging_current(struct device *dev,
 	unsigned int reg_val;
 	int ret;
 
+	mutex_lock(&bq2419x->mutex);
+	if (bq2419x->shutdown_complete) {
+		mutex_unlock(&bq2419x->mutex);
+		return -EIO;
+	}
 	ret = regmap_read(bq2419x->regmap, BQ2419X_INPUT_SRC_REG, &reg_val);
+	mutex_unlock(&bq2419x->mutex);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "INPUT_SRC read failed: %d\n", ret);
 		return ret;
@@ -1088,8 +1097,14 @@ static ssize_t bq2419x_set_input_charging_current(struct device *dev,
 	int in_current_limit;
 	char *p = (char *)buf;
 
+	mutex_lock(&bq2419x->mutex);
+	if (bq2419x->shutdown_complete) {
+		mutex_unlock(&bq2419x->mutex);
+		return -EIO;
+	}
 	in_current_limit = memparse(p, &p);
 	ret = bq2419x_configure_charging_current(bq2419x, in_current_limit);
+	mutex_unlock(&bq2419x->mutex);
 	if (ret  < 0) {
 		dev_err(dev, "Current %d mA configuration faild: %d\n",
 			in_current_limit, ret);
@@ -1106,7 +1121,13 @@ static ssize_t bq2419x_show_charging_state(struct device *dev,
 	unsigned int reg_val;
 	int ret;
 
+	mutex_lock(&bq2419x->mutex);
+	if (bq2419x->shutdown_complete) {
+		mutex_unlock(&bq2419x->mutex);
+		return -EIO;
+	}
 	ret = regmap_read(bq2419x->regmap, BQ2419X_PWR_ON_REG, &reg_val);
+	mutex_unlock(&bq2419x->mutex);
 	if (ret < 0) {
 		dev_err(dev, "BQ2419X_PWR_ON register read failed: %d\n", ret);
 		return ret;
@@ -1133,16 +1154,23 @@ static ssize_t bq2419x_set_charging_state(struct device *dev,
 	else
 		return -EINVAL;
 
+	mutex_lock(&bq2419x->mutex);
+	if (bq2419x->shutdown_complete) {
+		mutex_unlock(&bq2419x->mutex);
+		return -EIO;
+	}
 	if (enabled)
 		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
 			BQ2419X_ENABLE_CHARGE_MASK, BQ2419X_ENABLE_CHARGE);
 	else
 		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
 			 BQ2419X_ENABLE_CHARGE_MASK, BQ2419X_DISABLE_CHARGE);
+	mutex_unlock(&bq2419x->mutex);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "register update failed, %d\n", ret);
 		return ret;
 	}
+
 	return count;
 }
 
@@ -1154,7 +1182,13 @@ static ssize_t bq2419x_show_input_cable_state(struct device *dev,
 	unsigned int reg_val;
 	int ret;
 
+	mutex_lock(&bq2419x->mutex);
+	if (bq2419x->shutdown_complete) {
+		mutex_unlock(&bq2419x->mutex);
+		return -EIO;
+	}
 	ret = regmap_read(bq2419x->regmap, BQ2419X_INPUT_SRC_REG, &reg_val);
+	mutex_unlock(&bq2419x->mutex);
 	if (ret < 0) {
 		dev_err(dev, "BQ2419X_PWR_ON register read failed: %d\n", ret);
 		return ret;
@@ -1181,6 +1215,11 @@ static ssize_t bq2419x_set_input_cable_state(struct device *dev,
 	else
 		return -EINVAL;
 
+	mutex_lock(&bq2419x->mutex);
+	if (bq2419x->shutdown_complete) {
+		mutex_unlock(&bq2419x->mutex);
+		return -EIO;
+	}
 	if (connect) {
 		bq2419x->emulate_input_disconnected = false;
 		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_INPUT_SRC_REG,
@@ -1190,6 +1229,7 @@ static ssize_t bq2419x_set_input_cable_state(struct device *dev,
 		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_INPUT_SRC_REG,
 				BQ2419X_EN_HIZ, BQ2419X_EN_HIZ);
 	}
+	mutex_unlock(&bq2419x->mutex);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "register update failed, %d\n", ret);
 		return ret;
@@ -1212,7 +1252,13 @@ static ssize_t bq2419x_show_output_charging_current(struct device *dev,
 	int ret;
 	unsigned int data;
 
+	mutex_lock(&bq2419x->mutex);
+	if (bq2419x->shutdown_complete) {
+		mutex_unlock(&bq2419x->mutex);
+		return -EIO;
+	}
 	ret = regmap_read(bq2419x->regmap, BQ2419X_CHRG_CTRL_REG, &data);
+	mutex_unlock(&bq2419x->mutex);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "CHRG_CTRL read failed %d", ret);
 		return ret;
@@ -1237,10 +1283,16 @@ static ssize_t bq2419x_set_output_charging_current(struct device *dev,
 		return -EINVAL;
 	}
 
+	mutex_lock(&bq2419x->mutex);
+	if (bq2419x->shutdown_complete) {
+		mutex_unlock(&bq2419x->mutex);
+		return -EIO;
+	}
 	ichg = bq2419x_val_to_reg(curr_val, BQ2419X_CHARGE_ICHG_OFFSET,
 						64, 6, 0);
 	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_CHRG_CTRL_REG,
 				BQ2419X_CHRG_CTRL_ICHG_MASK, ichg << 2);
+	mutex_unlock(&bq2419x->mutex);
 
 	return count;
 }
