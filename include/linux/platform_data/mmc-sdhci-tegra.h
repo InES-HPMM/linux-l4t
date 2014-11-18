@@ -87,6 +87,7 @@ struct tegra_sdhci_platform_data {
 	bool enb_ext_loopback;
 	bool enable_hs533_mode;
 	bool dynamic_dma_pio_switch;
+	bool is_sd_device;
 };
 
 #endif
