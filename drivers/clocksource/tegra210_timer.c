@@ -28,23 +28,13 @@
 #include <linux/syscore_ops.h>
 #include <linux/tick.h>
 #include <linux/clk.h>
+#include <linux/tegra-timer.h>
 
 static u32 tegra210_timer_freq;
 static void __iomem *tegra210_timer_reg_base;
 phys_addr_t timer_reg_base_pa = 0x60005000;
 static u32 usec_config;
 static u32 timer_us_mult, timer_us_shift;
-
-#define TIMERUS_CNTR_1US 0x10
-#define TIMERUS_USEC_CFG 0x14
-
-#define TIMER10_OFFSET 0x90
-#define TIMER11_OFFSET 0x98
-#define TIMER12_OFFSET 0xa0
-#define TIMER13_OFFSET 0xa8
-
-#define TIMER_PTV 0x0 /* present trigger value register */
-#define TIMER_PCR 0x4 /* present counter value register */
 
 #define TIMER_FOR_CPU(cpu) (TIMER10_OFFSET + (cpu) * 8)
 
