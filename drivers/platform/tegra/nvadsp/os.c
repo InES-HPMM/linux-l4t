@@ -133,8 +133,8 @@ static int adsp_logger_open(struct inode *inode, struct file *file)
 	/* loop till writer is initilized with SOH */
 	do {
 		msleep(20);
-		if (!IS_ERR_OR_NULL(logger->debug_ram_rdr))
-			start = strchr(logger->debug_ram_rdr, SOH);
+		start = !IS_ERR_OR_NULL(logger->debug_ram_rdr) ?
+				strchr(logger->debug_ram_rdr, SOH) : NULL;
 	} while (!start);
 
 	/* maxdiff can be 0, therefore valid */
