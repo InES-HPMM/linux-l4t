@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -16,6 +16,7 @@
 #include <linux/tegra-powergate.h>
 
 #include "powergate-priv.h"
+#include "powergate-ops-t1xx.h"
 
 int tegra1xx_powergate(int id, struct powergate_partition_info *pg_info)
 {

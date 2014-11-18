@@ -167,7 +167,7 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 	return 0;
 }
 
-int __init tegra210_cluster_control_init(void)
+static int __init tegra210_cluster_control_init(void)
 {
 	pg_core_arg = psci_power_state_pack(core_pg);
 	pg_cluster_arg = psci_power_state_pack(cluster_pg);

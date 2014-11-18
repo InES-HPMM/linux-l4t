@@ -27,6 +27,8 @@
 
 #include <linux/platform/tegra/common.h>
 
+#include "tegra_emc_dt_parse.h"
+
 #ifdef CONFIG_OF
 static struct device_node *tegra_emc_ramcode_devnode(
 	struct device_node *np)

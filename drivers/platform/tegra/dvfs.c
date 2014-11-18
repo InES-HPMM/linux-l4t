@@ -106,7 +106,9 @@ unsigned long tegra_dvfs_get_fmax_at_vmin_safe_t(struct clk *c)
 }
 EXPORT_SYMBOL(tegra_dvfs_get_fmax_at_vmin_safe_t);
 
-int tegra_dvfs_round_voltage(int mv, struct rail_alignment *align, bool up)
+static int tegra_dvfs_round_voltage(int mv,
+		struct rail_alignment *align,
+		bool up)
 {
 	if (align->step_uv) {
 		int uv = max(mv * 1000, align->offset_uv) - align->offset_uv;
