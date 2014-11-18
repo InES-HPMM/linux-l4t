@@ -86,6 +86,7 @@ struct tegra_sdhci_platform_data {
 	bool limit_vddio_max_volt;
 	bool enb_ext_loopback;
 	bool enable_hs533_mode;
+	bool dynamic_dma_pio_switch;
 };
 
 #endif
