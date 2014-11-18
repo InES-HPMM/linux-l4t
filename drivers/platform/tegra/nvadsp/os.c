@@ -75,8 +75,8 @@
 /* total number of crashes allowed on adsp */
 #define ALLOWED_CRASHES	2
 
-#define DISABLE_MBOX2_EMPTY_INT	0xFFFFFFFF
-#define ENABLE_MBOX2_EMPTY_INT	0x0
+#define DISABLE_MBOX2_FULL_INT	0x0
+#define ENABLE_MBOX2_FULL_INT	0xFFFFFFFF
 
 #define LOGGER_TIMEOUT	20 /* in ms */
 
@@ -862,9 +862,9 @@ static void __nvadsp_os_stop(bool reload)
 	ape_actmon_exit(priv.pdev);
 #endif
 
-	writel(ENABLE_MBOX2_EMPTY_INT, priv.misc_base + HWMBOX2_REG);
+	writel(ENABLE_MBOX2_FULL_INT, priv.misc_base + HWMBOX2_REG);
 	wait_for_completion(&entered_wfe);
-	writel(DISABLE_MBOX2_EMPTY_INT, priv.misc_base + HWMBOX2_REG);
+	writel(DISABLE_MBOX2_FULL_INT, priv.misc_base + HWMBOX2_REG);
 
 	tegra_periph_reset_assert(drv_data->adsp_clk);
 
@@ -1053,14 +1053,14 @@ int nvadsp_os_probe(struct platform_device *pdev)
 		goto end;
 	}
 
-	ret = tegra_agic_route_interrupt(INT_AMISC_MBOX_EMPTY2,
+	ret = tegra_agic_route_interrupt(INT_AMISC_MBOX_FULL2,
 			TEGRA_AGIC_ADSP);
 	if (ret) {
 		dev_err(dev, "failed to route fiq interrupt\n");
 		goto end;
 	}
 
-	writel(DISABLE_MBOX2_EMPTY_INT, priv.misc_base + HWMBOX2_REG);
+	writel(DISABLE_MBOX2_FULL_INT, priv.misc_base + HWMBOX2_REG);
 
 	INIT_WORK(&priv.restart_os_work, nvadsp_os_restart);
 	mutex_init(&priv.fw_load_lock);
