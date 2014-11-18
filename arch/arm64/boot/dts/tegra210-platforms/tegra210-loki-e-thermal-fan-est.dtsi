@@ -16,18 +16,13 @@
 		secret = <37>;
 		toffset = <0>;
 		polling_period = <1100>;
-		ndevs = <2>;
+		ndevs = <1>;
 		cdev_type = "pwm-fan";
 		tzp_governor_name = "pid_thermal_gov";
 
 		dev1 {
 			dev_data = "Tboard_tegra";
-			coeffs = <50 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
-		};
-
-		dev2 {
-			dev_data = "Tdiode_tegra";
-			coeffs = <50 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+			coeffs = <100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
 		};
 	};
 
@@ -37,9 +32,9 @@
 		num_resources = <0>;
 		shared_data = <&thermal_fan_est_shared_data>;
 		trip_length = <10>;
-		active_trip_temps = <0 57000 63000 74000 85000
+		active_trip_temps = <0 56000 65000 72000 78000
 				140000 150000 160000 170000 180000>;
-		active_hysteresis = <0 20000 7000 10000 10000
+		active_hysteresis = <0 21000 8000 6000 5000
 				0 0 0 0 0>;
 	};
 };
