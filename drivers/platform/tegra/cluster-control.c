@@ -21,6 +21,7 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/notifier.h>
+#include <linux/stop_machine.h>
 #include <linux/tegra_cluster_control.h>
 #include <linux/platform_data/tegra_bpmp.h>
 #include <asm/psci.h>
@@ -52,15 +53,25 @@ static struct psci_power_state cluster_pg __initdata = {
 	.affinity_level = 1,
 };
 
-static void shutdown_core(void *info)
+static DEFINE_PER_CPU(struct cpu_stop_work, shutdown_core_work);
+
+static int shutdown_core(void *info)
 {
 	uintptr_t target_cluster = (uintptr_t)info;
+	unsigned long flag;
 
-	if (target_cluster != is_lp_cluster()) {
-		cpu_pm_enter();
-		cpu_suspend(pg_core_arg, NULL);
-		cpu_pm_exit();
-	}
+	if (target_cluster == is_lp_cluster())
+		return 0;
+
+	local_irq_save(flag);
+
+	cpu_pm_enter();
+	cpu_suspend(pg_core_arg, NULL);
+	cpu_pm_exit();
+
+	local_irq_restore(flag);
+
+	return 0;
 }
 
 static void shutdown_cluster(void)
@@ -94,6 +105,7 @@ static void switch_cluster(enum cluster val)
 	int phys_cpu_id;
 	uintptr_t target_cluster;
 	unsigned long flag;
+	int cpu;
 
 	mutex_lock(&cluster_switch_lock);
 	target_cluster = val;
@@ -122,11 +134,11 @@ static void switch_cluster(enum cluster val)
 	if (bpmp_cpu_mask & 8)
 		cpumask_set_cpu(3, &mask);
 
-	cpumask_clear_cpu(phys_cpu_id, &mask);
+	cpumask_clear_cpu(smp_processor_id(), &mask);
 
-	if (!cpumask_empty(&mask))
-		smp_call_function_many(&mask, shutdown_core,
-					(void *)target_cluster, false);
+	for_each_cpu(cpu, &mask)
+		stop_one_cpu_nowait(cpu, shutdown_core, &target_cluster,
+				&per_cpu(shutdown_core_work, cpu));
 
 	local_irq_save(flag);
 	shutdown_cluster();
