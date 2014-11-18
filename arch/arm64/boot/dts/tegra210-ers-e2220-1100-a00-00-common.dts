@@ -66,6 +66,7 @@
 		uhs-mask = <0x60>;
 		built-in;
 		power-off-rail;
+		disable-clock-gate;
 		status = "okay";
 	};
 
@@ -74,6 +75,7 @@
 		vddio_sdmmc-supply = <&max77620_sd3>;
 		vddio_sd_slot-supply = <&en_vdd_sd3>;
 		power-off-rail;
+		disable-clock-gate;
 		status = "disabled";
 	};
 
@@ -81,12 +83,14 @@
 		uhs-mask = <0x8>;
 		bus-width = <4>;
 		power-off-rail;
+		disable-clock-gate;
 		status = "okay";
 	};
 
 	sdhci@700b0000 {
 		uhs-mask = <0x8>;
 		power-off-rail;
+		disable-clock-gate;
 		status = "okay";
 	};
 
