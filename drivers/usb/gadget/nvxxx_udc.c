@@ -33,6 +33,7 @@
 #include <linux/usb/hcd.h>
 #include <linux/usb/tegra_usb_charger.h>
 #include <linux/delay.h>
+#include <linux/jiffies.h>
 #include <linux/version.h>
 #include <linux/tegra-powergate.h>
 #include <linux/regulator/consumer.h>
@@ -160,6 +161,95 @@ struct xusb_usb2_otg_pad_config {
 static unsigned int min_irq_interval_us;
 module_param(min_irq_interval_us, uint, S_IRUGO);
 MODULE_PARM_DESC(min_irq_interval_us, "minimum irq interval in microseconds");
+
+#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
+static unsigned int boost_cpu_freq = CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ;
+module_param(boost_cpu_freq, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(boost_cpu_freq, "CPU frequency (in KHz) to boost");
+
+#define BOOST_PERIOD		(msecs_to_jiffies(2*1000)) /* 2 seconds */
+#define BOOST_TRIGGER_SIZE	(4096)
+static void tegra_xudc_boost_cpu_freq_fn(struct work_struct *work)
+{
+	struct nv_udc_s *nvudc =
+			container_of(work, struct nv_udc_s, boost_cpufreq_work);
+	unsigned long delay = BOOST_PERIOD;
+	s32 cpufreq_hz = boost_cpu_freq * 1000;
+
+	mutex_lock(&nvudc->boost_cpufreq_lock);
+
+	if (!nvudc->cpufreq_boosted) {
+		dev_dbg(nvudc->dev, "boost cpu freq %d Hz\n", cpufreq_hz);
+		pm_qos_update_request(&nvudc->boost_cpufreq_req, cpufreq_hz);
+		nvudc->cpufreq_boosted = true;
+	}
+
+	if (!nvudc->restore_cpufreq_scheduled) {
+		dev_dbg(nvudc->dev, "%s schedule restore work\n", __func__);
+		schedule_delayed_work(&nvudc->restore_cpufreq_work, delay);
+		nvudc->restore_cpufreq_scheduled = true;
+	}
+
+	nvudc->cpufreq_last_boosted = jiffies;
+
+	mutex_unlock(&nvudc->boost_cpufreq_lock);
+}
+
+static void tegra_xudc_restore_cpu_freq_fn(struct work_struct *work)
+{
+	struct nv_udc_s *nvudc =
+		container_of(work, struct nv_udc_s, restore_cpufreq_work.work);
+	unsigned long delay = BOOST_PERIOD;
+
+	mutex_lock(&nvudc->boost_cpufreq_lock);
+
+	if (time_is_after_jiffies(nvudc->cpufreq_last_boosted + delay)) {
+		dev_dbg(nvudc->dev, "%s schedule restore work\n", __func__);
+		schedule_delayed_work(&nvudc->restore_cpufreq_work, delay);
+		goto done;
+	}
+
+	dev_dbg(nvudc->dev, "%s restore cpufreq\n", __func__);
+	pm_qos_update_request(&nvudc->boost_cpufreq_req, PM_QOS_DEFAULT_VALUE);
+	nvudc->cpufreq_boosted = false;
+	nvudc->restore_cpufreq_scheduled = false;
+
+done:
+	mutex_unlock(&nvudc->boost_cpufreq_lock);
+}
+
+static void tegra_xudc_boost_cpu_init(struct nv_udc_s *nvudc)
+{
+	INIT_WORK(&nvudc->boost_cpufreq_work, tegra_xudc_boost_cpu_freq_fn);
+
+	INIT_DELAYED_WORK(&nvudc->restore_cpufreq_work,
+				tegra_xudc_restore_cpu_freq_fn);
+
+	pm_qos_add_request(&nvudc->boost_cpufreq_req,
+				PM_QOS_CPU_FREQ_MIN, PM_QOS_DEFAULT_VALUE);
+
+	mutex_init(&nvudc->boost_cpufreq_lock);
+}
+
+static void tegra_xudc_boost_cpu_deinit(struct nv_udc_s *nvudc)
+{
+	cancel_work_sync(&nvudc->boost_cpufreq_work);
+	cancel_delayed_work_sync(&nvudc->restore_cpufreq_work);
+
+	pm_qos_remove_request(&nvudc->boost_cpufreq_req);
+	mutex_destroy(&nvudc->boost_cpufreq_lock);
+}
+
+static bool tegra_xudc_boost_cpu_freq(struct nv_udc_s *nvudc)
+{
+	return schedule_work(&nvudc->boost_cpufreq_work);
+}
+#else
+#define BOOST_TRIGGER_SIZE	(UINT_MAX)
+static void tegra_xudc_boost_cpu_init(struct nv_udc_s *unused) {}
+static void tegra_xudc_boost_cpu_deinit(struct nv_udc_s *unused) {}
+static void tegra_xudc_boost_cpu_freq(struct nv_udc_s *unused) {}
+#endif
 
 static int nvudc_ep_disable(struct usb_ep *_ep);
 
@@ -1528,6 +1618,10 @@ nvudc_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 			list_add_tail(&udc_req_ptr->queue, &udc_ep_ptr->queue);
 	}
 	spin_unlock_irqrestore(&nvudc->lock, flags);
+
+	if (!status && (_req->length >= BOOST_TRIGGER_SIZE))
+		tegra_xudc_boost_cpu_freq(nvudc);
+
 	msg_exit(nvudc->dev);
 	return status;
 }
@@ -5282,6 +5376,7 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 
 	wake_lock_init(&nvudc->xudc_vbus, WAKE_LOCK_SUSPEND,
 			"xudc_vbus");
+	tegra_xudc_boost_cpu_init(nvudc);
 	return 0;
 
 err_clocks_disable:
@@ -5309,6 +5404,7 @@ static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 	/* TODO implement synchronization */
 	if (nvudc) {
 		wake_lock_destroy(&nvudc->xudc_vbus);
+		tegra_xudc_boost_cpu_deinit(nvudc);
 		tegra_usb_release_ucd(nvudc->ucd);
 		cancel_work_sync(&nvudc->ucd_work);
 		cancel_work_sync(&nvudc->current_work);
@@ -5339,6 +5435,7 @@ static void tegra_xudc_plat_shutdown(struct platform_device *pdev)
 
 	dev_info(dev, "%s nvudc %p\n", __func__, nvudc);
 
+	tegra_xudc_boost_cpu_deinit(nvudc);
 	nvudc_gadget_pullup(&nvudc->gadget, 0);
 }
 
