@@ -503,7 +503,7 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 		/* Automotive SKU */
 		.speedo_id =  3,
 		.process_id = -1,
-		.max_mv = 1120,
+		.max_mv = 1130,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.thermal_scale = 10,
