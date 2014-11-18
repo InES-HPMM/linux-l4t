@@ -17,6 +17,9 @@
 */
 
 #include <linux/ioctl.h>
+#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
+#include <linux/pm_qos.h>
+#endif
 
 #define NON_STD_CHARGER_DET_TIME_MS 1000
 #define USB_ANDROID_SUSPEND_CURRENT_MA 2
@@ -669,6 +672,15 @@ struct nv_udc_s {
 
 	/* system wake lock */
 	struct wake_lock xudc_vbus;
+#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
+	struct mutex boost_cpufreq_lock;
+	struct pm_qos_request boost_cpufreq_req;
+	struct work_struct boost_cpufreq_work;
+	struct delayed_work restore_cpufreq_work;
+	unsigned long cpufreq_last_boosted;
+	bool cpufreq_boosted;
+	bool restore_cpufreq_scheduled;
+#endif
 };
 
 void free_data_struct(struct nv_udc_s *nvudc);
