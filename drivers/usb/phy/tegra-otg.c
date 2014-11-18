@@ -129,7 +129,8 @@ static struct notifier_block otg_vbus_nb;
 static struct notifier_block otg_id_nb;
 
 enum tegra_connect_type {
-	CONNECT_TYPE_Y_CABLE
+	CONNECT_TYPE_Y_CABLE,
+	CONNECT_TYPE_RID_A,
 };
 
 static inline unsigned long otg_readl(struct tegra_otg *tegra,
@@ -146,6 +147,7 @@ static inline void otg_writel(struct tegra_otg *tegra, unsigned long val,
 
 static char *const tegra_otg_extcon_cable[] = {
 	[CONNECT_TYPE_Y_CABLE] = "Y-cable",
+	[CONNECT_TYPE_RID_A] = "ACA RID-A",
 	NULL,
 };
 
