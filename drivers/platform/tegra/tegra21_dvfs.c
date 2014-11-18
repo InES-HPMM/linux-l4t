@@ -443,6 +443,12 @@ static struct dvfs spi_slave_dvfs_table[] = {
 	CORE_DVFS("sbc4",		-1, -1, 1, KHZ,	  45000,   45000,   45000,   45000,   45000,   45000,   45000,   45000),
 };
 
+static struct dvfs qspi_sdr_dvfs =
+	CORE_DVFS("qspi",		-1, -1, 1, KHZ,	 133000,  133000,  133000,  133000,  133000,  133000,  133000,  133000);
+
+static struct dvfs qspi_ddr_dvfs =
+	CORE_DVFS("qspi",		-1, -1, 1, KHZ,	  80000,   80000,   80000,   80000,   80000,   80000,   80000,   80000);
+
 static int tegra_dvfs_disable_core_set(const char *arg,
 	const struct kernel_param *kp)
 {
@@ -1131,6 +1137,41 @@ static void __init init_spi_dvfs(int soc_speedo_id, int core_process_id,
 }
 
 /*
+ * QSPI DVFS tables are different in SDR and DDR modes. Use SDR tables by
+ * default. Check if DDR mode is specified for enabled QSPI device in DT,
+ * and overwrite DVFS table, respectively.
+ */
+
+static __initdata struct dvfs *qspi_dvfs = &qspi_sdr_dvfs;
+
+static int __init of_update_qspi_dvfs(struct device_node *dn)
+{
+	if (of_device_is_available(dn)) {
+		if (of_get_property(dn, "nvidia,x4-is-ddr", NULL))
+			qspi_dvfs = &qspi_ddr_dvfs;
+	}
+	return 0;
+}
+
+static __initdata struct of_device_id tegra21_dvfs_qspi_of_match[] = {
+	{ .compatible = "nvidia,tegra210-qspi", .data = of_update_qspi_dvfs, },
+	{ },
+};
+
+static void __init init_qspi_dvfs(int soc_speedo_id, int core_process_id,
+				  int core_nominal_mv_index)
+{
+	int i;
+	struct device_node *dn;
+
+	of_tegra_dvfs_init(tegra21_dvfs_qspi_of_match);
+
+	if (match_dvfs_one(qspi_dvfs->clk_name, qspi_dvfs->speedo_id,
+		qspi_dvfs->process_id, soc_speedo_id, core_process_id))
+		tegra_init_dvfs_one(qspi_dvfs, core_nominal_mv_index);
+}
+
+/*
  * Clip sku-based core nominal voltage to core DVFS voltage ladder
  */
 static int __init get_core_nominal_mv_index(int speedo_id)
@@ -1281,6 +1322,8 @@ void __init tegra21x_init_dvfs(void)
 		}
 		init_spi_dvfs(soc_speedo_id, core_process_id,
 			      core_nominal_mv_index);
+		init_qspi_dvfs(soc_speedo_id, core_process_id,
+			       core_nominal_mv_index);
 	}
 
 	/* Initialize matching gpu dvfs entry already found when nominal
