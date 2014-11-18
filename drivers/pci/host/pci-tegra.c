@@ -565,7 +565,7 @@ free:
 	return ERR_PTR(err);
 }
 
-static void __iomem *tegra_pcie_bus_map(struct tegra_pcie *pcie,
+static void *tegra_pcie_bus_map(struct tegra_pcie *pcie,
 							unsigned int busnr)
 {
 	struct tegra_pcie_bus *bus;
@@ -596,7 +596,7 @@ static void __iomem *tegra_pcie_conf_address(struct pci_bus *bus,
 			}
 		}
 	} else {
-		addr = tegra_pcie_bus_map(pcie, bus->number);
+		addr = (void __iomem *)tegra_pcie_bus_map(pcie, bus->number);
 		if (!addr) {
 			dev_err(pcie->dev,
 				"failed to map cfg. space for bus %u\n",
@@ -610,7 +610,7 @@ static void __iomem *tegra_pcie_conf_address(struct pci_bus *bus,
 	return addr;
 }
 
-int tegra_pcie_read_conf(struct pci_bus *bus, unsigned int devfn,
+static int tegra_pcie_read_conf(struct pci_bus *bus, unsigned int devfn,
 				int where, int size, u32 *value)
 {
 	void __iomem *addr;
@@ -630,7 +630,6 @@ int tegra_pcie_read_conf(struct pci_bus *bus, unsigned int devfn,
 
 	return PCIBIOS_SUCCESSFUL;
 }
-EXPORT_SYMBOL(tegra_pcie_read_conf);
 
 static int tegra_pcie_write_conf(struct pci_bus *bus, unsigned int devfn,
 				 int where, int size, u32 value)
@@ -1260,9 +1259,9 @@ static int tegra_pcie_map_resources(struct tegra_pcie *pcie)
 
 	pcie->pads = devm_ioremap_nocache(&pdev->dev, pads->start,
 						resource_size(pads));
-	if (IS_ERR(pcie->pads)) {
+	if (!(pcie->pads)) {
 		dev_err(pcie->dev, "PCIE: Failed to map PAD registers\n");
-		return PTR_ERR(pcie->pads);
+		return -EADDRNOTAVAIL;
 	}
 
 	afi = platform_get_resource_byname(pdev, IORESOURCE_MEM, "afi");
@@ -1279,9 +1278,9 @@ static int tegra_pcie_map_resources(struct tegra_pcie *pcie)
 
 	pcie->afi = devm_ioremap_nocache(&pdev->dev, afi->start,
 						resource_size(afi));
-	if (IS_ERR(pcie->afi)) {
+	if (!(pcie->afi)) {
 		dev_err(pcie->dev, "PCIE: Failed to map AFI registers\n");
-		return PTR_ERR(pcie->afi);
+		return -EADDRNOTAVAIL;
 	}
 
 	/* request configuration space, but remap later, on demand */
@@ -1956,7 +1955,7 @@ static void tegra_pcie_update_lane_width(struct tegra_pcie_port *port)
 		RP_LINK_CONTROL_STATUS_NEG_LINK_WIDTH) >> 20;
 }
 
-void tegra_pcie_check_ports(struct tegra_pcie *pcie)
+static void tegra_pcie_check_ports(struct tegra_pcie *pcie)
 {
 	struct tegra_pcie_port *port, *tmp;
 
@@ -1986,18 +1985,6 @@ void tegra_pcie_check_ports(struct tegra_pcie *pcie)
 		tegra_pcie_port_free(port);
 	}
 }
-EXPORT_SYMBOL(tegra_pcie_check_ports);
-
-int tegra_pcie_get_test_info(void __iomem **regs)
-{
-#if 0 /* FIX THIS */
-	*regs = tegra_pcie.regs;
-	return tegra_pcie.num_ports;
-#else
-	return 0;
-#endif
-}
-EXPORT_SYMBOL(tegra_pcie_get_test_info);
 
 static int tegra_pcie_conf_gpios(struct tegra_pcie *pcie)
 {
@@ -2181,7 +2168,7 @@ skip:
 	return false;
 }
 
-bool tegra_pcie_link_speed(struct tegra_pcie *pcie, bool isGen2)
+static bool tegra_pcie_link_speed(struct tegra_pcie *pcie, bool isGen2)
 {
 	struct pci_dev *pdev = NULL;
 	bool ret = false;
@@ -2195,7 +2182,6 @@ bool tegra_pcie_link_speed(struct tegra_pcie *pcie, bool isGen2)
 	}
 	return ret;
 }
-EXPORT_SYMBOL(tegra_pcie_link_speed);
 
 /* support PLL power down in L1 dynamically based on platform */
 static void tegra_pcie_pll_pdn(struct tegra_pcie *pcie)
@@ -2505,7 +2491,7 @@ static void tegra_pcie_enable_features(struct tegra_pcie *pcie)
 		tegra_pcie_apply_sw_war(port, true);
 	}
 }
-static bool tegra_pcie_enable_msi(struct tegra_pcie *, bool);
+static int tegra_pcie_enable_msi(struct tegra_pcie *, bool);
 static int tegra_pcie_disable_msi(struct tegra_pcie *pcie);
 
 static int tegra_pcie_init(struct tegra_pcie *pcie)
@@ -2597,14 +2583,6 @@ struct msi_map_entry {
 #if (INT_PCI_MSI_NR > 256)
 #error "INT_PCI_MSI_NR too big"
 #endif
-
-void msi_map_release(struct msi_map_entry *entry)
-{
-	if (entry) {
-		entry->used = false;
-		entry->irq = 0;
-	}
-}
 
 static int tegra_msi_alloc(struct tegra_msi *chip)
 {
@@ -2749,7 +2727,7 @@ static const struct irq_domain_ops msi_domain_ops = {
 	.map = tegra_msi_map,
 };
 
-static bool tegra_pcie_enable_msi(struct tegra_pcie *pcie, bool no_init)
+static int tegra_pcie_enable_msi(struct tegra_pcie *pcie, bool no_init)
 {
 	struct platform_device *pdev = to_platform_device(pcie->dev);
 	struct tegra_msi *msi = &pcie->msi;
@@ -3038,8 +3016,8 @@ static int tegra_pcie_parse_dt(struct tegra_pcie *pcie)
 		rp->lanes = value;
 		rp->pcie = pcie;
 		rp->base = devm_ioremap_resource(pcie->dev, &rp->regs);
-		if (IS_ERR(rp->base))
-			return PTR_ERR(rp->base);
+		if (!(rp->base))
+			return -EADDRNOTAVAIL;
 		rp->has_clkreq = of_property_read_bool(port,
 			"nvidia,has_clkreq");
 		rp->status = of_device_is_available(port);
@@ -3687,7 +3665,7 @@ static int tegra_pcie_suspend_noirq(struct device *dev)
 	return tegra_pcie_power_off(pcie, true);
 }
 
-static bool tegra_pcie_enable_msi(struct tegra_pcie *, bool);
+static int tegra_pcie_enable_msi(struct tegra_pcie *, bool);
 
 static int tegra_pcie_resume_noirq(struct device *dev)
 {
