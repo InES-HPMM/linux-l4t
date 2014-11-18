@@ -426,8 +426,7 @@ nvadsp_app_load(const char *appname, const char *appfile)
 		RECORD_STAT(stats.ns_time_native_load);
 		if (!ser->token) {
 			dev_err(dev, "unable to load app %s\n", appname);
-			kfree(ser);
-			goto end;
+			goto err;
 		}
 		spin_lock_init(&ser->lock);
 		INIT_LIST_HEAD(&ser->app_head);
@@ -444,6 +443,9 @@ nvadsp_app_load(const char *appname, const char *appfile)
 	print_load_stats(appfile, &stats, dev);
 end:
 	return ser;
+err:
+	kfree(ser);
+	return NULL;
 }
 EXPORT_SYMBOL(nvadsp_app_load);
 
