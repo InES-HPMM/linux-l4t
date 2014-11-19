@@ -82,14 +82,12 @@ static int enable_app_profiles;
 
 static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
 /* proc_id  0,	1 */
-	{UINT_MAX, UINT_MAX}, /* [0]: threshold_index 0 */
-	{0,	UINT_MAX}, /* [1]: threshold_index 0 */
+	{2119,  UINT_MAX}, /* [0]: threshold_index 0 */
 };
 
 static const u32 gpu_process_speedos[][GPU_PROCESS_CORNERS_NUM] = {
 /* proc_id  0,	1 */
 	{UINT_MAX, UINT_MAX}, /* [0]: threshold_index 0 */
-	{0,	UINT_MAX}, /* [1]: threshold_index 0 */
 };
 
 static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
@@ -102,7 +100,17 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 {
 	switch (sku) {
 	case 0x00: /* Engg sku */
+	case 0x01: /* Engg sku */
+	case 0x07:
+	case 0x17:
+	case 0x27:
 		cpu_speedo_id = 0;
+		soc_speedo_id = 0;
+		gpu_speedo_id = speedo_rev >= 2 ? 1 : 0;
+		threshold_index = 0;
+		break;
+	case 0x13:
+		cpu_speedo_id = 1;
 		soc_speedo_id = 0;
 		gpu_speedo_id = speedo_rev >= 2 ? 1 : 0;
 		threshold_index = 0;
