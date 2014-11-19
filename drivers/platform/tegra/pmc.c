@@ -19,7 +19,9 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/delay.h>
+#include <linux/device.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/of_address.h>
 #include <linux/export.h>
 #include <linux/tegra-pmc.h>
@@ -538,9 +540,17 @@ static void __init tegra_pmc_parse_dt(void)
 	pmc_pm_data.suspend_mode = suspend_mode;
 }
 
+
+static void tegra_pmc_dev_release(struct device *dev)
+{
+}
+static struct device tegra_pmc_dev = { };
+
 static int __init tegra_pmc_init(void)
 {
+	struct device_node *np;
 	u32 val;
+	int ret;
 
 	tegra_pmc_parse_dt();
 
@@ -550,6 +560,27 @@ static int __init tegra_pmc_init(void)
 	else
 		val &= ~PMC_CTRL_INTR_LOW;
 	tegra_pmc_writel(val, PMC_CTRL);
+
+	np = of_find_matching_node(NULL, matches);
+	if (np) {
+		tegra_pmc_dev.release = tegra_pmc_dev_release;
+		tegra_pmc_dev.of_node = np;
+		tegra_pmc_dev.parent = NULL;
+		dev_set_name(&tegra_pmc_dev, "tegra-pmc");
+		ret = device_register(&tegra_pmc_dev);
+		if (ret) {
+			put_device(&tegra_pmc_dev);
+			pr_err("ERROR: tegra-pmc device create failed: %d\n",
+				ret);
+		} else {
+			pr_info("tegra-pmc device create success\n");
+		}
+		ret = tegra_pmc_padctrl_init(&tegra_pmc_dev, np);
+		if (ret) {
+			pr_err("ERROR: Pad control driver init failed: %d\n",
+				ret);
+		}
+	}
 
 	return 0;
 }
