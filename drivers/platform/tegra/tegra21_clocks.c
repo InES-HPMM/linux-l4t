@@ -8185,6 +8185,12 @@ static struct clk_mux_sel mux_pllp_sor_sor1_brick_sor1_src[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_pllp_pllre_clkm[] = {
+	{ .input = &tegra_pll_p,    .value = 0 },
+	{ .input = &tegra_pll_re_out1, .value = 4 },
+	{ .input = &tegra_clk_m,    .value = 6 },
+};
+
 /* Peripheral muxes */
 static struct clk_mux_sel mux_pllp_pllc_clkm[] = {
 	{.input = &tegra_pll_p,     .value = 0},
@@ -9012,7 +9018,7 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("bsea",	"nvavp",		"bsea",	62,	0,	250000000, mux_clk_m, 			0),
 	PERIPH_CLK("bsev",	"tegra-aes",		"bsev",	63,	0,	250000000, mux_clk_m, 			0),
 	PERIPH_CLK("cec",	"tegra_cec",		NULL,	136,	0,	250000000, mux_clk_m,			PERIPH_ON_APB),
-	PERIPH_CLK("csite",	"csite",		NULL,	73,	0x1d4,	144000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("csite",	"csite",		NULL,	73,	0x1d4,	624000000, mux_pllp_pllre_clkm,		MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("la",	"la",			NULL,	76,	0x1f8,	38400000,  mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_ON_APB),
 
 	PERIPH_CLK("owr",	"tegra_w1",		NULL,	71,	0x1cc,	38400000,  mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_ON_APB),
