@@ -182,7 +182,7 @@ static void done(struct tegra_ep *ep, struct tegra_req *req, int status)
 {
 	struct tegra_udc *udc = NULL;
 	unsigned char stopped = ep->stopped;
-	struct ep_td_struct *curr_td, *next_td = 0;
+	struct ep_td_struct *curr_td, *next_td = NULL;
 	int j;
 	int count;
 
@@ -662,7 +662,7 @@ static int tegra_ep_enable(struct usb_ep *_ep,
 	ep->ep.maxpacket = max;
 	ep->desc = desc;
 	ep->stopped = 0;
-	ep->last_td = 0;
+	ep->last_td = NULL;
 	ep->last_dtd_count = 0;
 
 	/* Controller related setup
@@ -746,7 +746,7 @@ static int tegra_ep_disable(struct usb_ep *_ep)
 			}
 		}
 	}
-	ep->last_td =0;
+	ep->last_td = NULL;
 	ep->last_dtd_count = 0;
 	spin_unlock_irqrestore(&udc->lock, flags);
 
