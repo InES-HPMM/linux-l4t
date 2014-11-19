@@ -678,7 +678,8 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	if (pdata == NULL) {
 		if (pdev->dev.of_node) {
 			pdata = tegra_ehci_dt_parse_pdata(pdev);
-			pdev->dev.platform_data = pdata;
+			platform_device_add_data(pdev, pdata,
+				sizeof(struct tegra_usb_platform_data));
 		}
 	} else
 		pdata = dev_get_platdata(&pdev->dev);
