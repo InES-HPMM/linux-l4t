@@ -160,6 +160,7 @@ static struct board_info main_board_info;
 static struct board_info pmu_board_info;
 static struct board_info display_board_info;
 static int panel_id;
+static bool is_hdmi_initialised;
 static struct board_info camera_board_info;
 static int touch_vendor_id;
 static int touch_panel_id;
@@ -1067,6 +1068,18 @@ static int __init tegra_board_panel_id(char *options)
 	return panel_id;
 }
 __setup("display_panel=", tegra_board_panel_id);
+
+bool tegra_is_hdmi_initialised(void)
+{
+	return is_hdmi_initialised;
+}
+static int __init tegra_hdmi_initialised(char *options)
+{
+	char *p = options;
+	is_hdmi_initialised = (bool) memparse(p, &p);
+	return is_hdmi_initialised;
+}
+__setup("is_hdmi_initialised=", tegra_hdmi_initialised);
 
 int tegra_get_touch_vendor_id(void)
 {
