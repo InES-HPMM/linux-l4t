@@ -236,6 +236,12 @@
 		usb_bat_chg-supply = <&battery_charger>;
 	};
 
+	ehci@7d000000 {
+		avdd_usb-supply = <&vdd_3v3>;
+		avdd_pll_utmip-supply = <&max77620_sd3>;
+		usb_vbus-supply = <&usb0_vbus>;
+	};
+
 	xusb@70090000 {
 		usb_vbus0-supply = <&usb0_vbus>;
 		usb_vbus2-supply = <&battery_reg>;
