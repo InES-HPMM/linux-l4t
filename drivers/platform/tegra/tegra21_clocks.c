@@ -7198,12 +7198,12 @@ static struct clk tegra_pll_p = {
 
 static struct clk_mux_sel mux_clk_osc[] = {
 	{ .input = &tegra_clk_osc, .value = 0},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp[] = {
 	{ .input = &tegra_pll_p, .value = 0},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk tegra_pll_p_out_adsp = {
@@ -7436,7 +7436,7 @@ static struct clk_mux_sel mux_pll_e_inputs[] = {
 	{ .input = &tegra_pll_p,	.value = 1},
 	{ .input = &tegra_pll_re_vco,	.value = 2},
 	{ .input = &tegra_pll_re_vco,	.value = 3},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk tegra_pll_e = {
@@ -7527,7 +7527,7 @@ static struct clk_mux_sel mux_d_audio_clk[] = {
 	{ .input = &tegra_sync_source_list[5],	.value = 0xE005},
 	{ .input = &tegra_pll_a_out0,		.value = 0xE006},
 	{ .input = &tegra_sync_source_list[6],	.value = 0xE007},
-	{ 0, 0 }
+	{ NULL, 0 }
 };
 
 static struct clk_mux_sel mux_audio_sync_clk[] =
@@ -7540,7 +7540,7 @@ static struct clk_mux_sel mux_audio_sync_clk[] =
 	{ .input = &tegra_sync_source_list[5],	.value = 5},
 	{ .input = &tegra_pll_a_out0,		.value = 6},
 	{ .input = &tegra_sync_source_list[6],	.value = 7},
-	{ 0, 0 }
+	{ NULL, 0 }
 };
 
 #define AUDIO_SYNC_CLK(_id, _dev, _index)			\
@@ -7591,7 +7591,7 @@ static struct clk_mux_sel mux_pllaout0_##_id##_pllp_clkm[] = {		\
 	{.input = &tegra_clk_audio_list[(_index)], .value = 2},		\
 	{.input = &tegra_pll_p, .value = 4},				\
 	{.input = &tegra_clk_m, .value = 6},				\
-	{ 0, 0},							\
+	{ NULL, 0},							\
 }
 MUX_I2S_SPDIF(audio0, 0);
 MUX_I2S_SPDIF(audio1, 1);
@@ -7605,7 +7605,7 @@ static struct clk_mux_sel mux_pllaout0_audio_2x_pllp_clkm[] = {
 	{.input = &tegra_clk_audio_2x_list[0], .value = 2},
 	{.input = &tegra_pll_p, .value = 4},
 	{.input = &tegra_clk_m, .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 /* Audio sync dmic clocks */
@@ -7634,7 +7634,7 @@ static struct clk_mux_sel mux_pllaout0_##_id##_dmic_pllp_clkm[] = {	\
 	{.input = &tegra_clk_audio_list[(_index)], .value = 1},		\
 	{.input = &tegra_pll_p, .value = 2},				\
 	{.input = &tegra_clk_m, .value = 3},				\
-	{ 0, 0},							\
+	{ NULL, 0},							\
 }
 MUX_AUDIO_DMIC(audio0, 0);
 MUX_AUDIO_DMIC(audio1, 1);
@@ -7647,7 +7647,7 @@ static struct clk_mux_sel mux_clkm_clkm2_clkm4_extern##_id[] = {	\
 	{.input = &tegra_clk_m_div2,	.value = 1},			\
 	{.input = &tegra_clk_m_div4,	.value = 2},			\
 	{.input = NULL,			.value = 3}, /* placeholder */	\
-	{ 0, 0},							\
+	{ NULL, 0},							\
 }
 MUX_EXTERN_OUT(1);
 MUX_EXTERN_OUT(2);
@@ -7707,7 +7707,7 @@ static struct clk_mux_sel mux_cclk_g[] = {
 	{ .input = &tegra_pll_p_out4,	.value = 5},
 	{ .input = &tegra_pll_x,	.value = 8},
 	{ .input = &tegra_dfll_cpu,	.value = 15},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_cclk_lp[] = {
@@ -7716,7 +7716,7 @@ static struct clk_mux_sel mux_cclk_lp[] = {
 	{ .input = &tegra_pll_p_out_cpu, .value = 4},
 	{ .input = &tegra_pll_p_out4,	.value = 5},
 	{ .input = &tegra_pll_x,	.value = 8},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_sclk[] = {
@@ -7728,7 +7728,7 @@ static struct clk_mux_sel mux_sclk[] = {
 	{ .input = &tegra_pll_c4_out1,	.value = 5},
 	{ .input = &tegra_clk_32k,	.value = 6},
 	{ .input = &tegra_pll_c4_out2,	.value = 7},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 /* ADSP cluster clocks */
@@ -7738,7 +7738,7 @@ static struct clk_mux_sel mux_aclk_adsp[] = {
 	{ .input = &tegra_clk_m,	.value = 6},
 	{ .input = &tegra_pll_a,	.value = 7},
 	{ .input = &tegra_pll_a1,	.value = 8},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static void tegra21_adsp_clk_reset(struct clk *c, bool assert)
@@ -7870,7 +7870,7 @@ static struct clk tegra_clk_virtual_cpu_lp = {
 static struct clk_mux_sel mux_cpu_cmplx[] = {
 	{ .input = &tegra_clk_virtual_cpu_g,	.value = 0},
 	{ .input = &tegra_clk_virtual_cpu_lp,	.value = 1},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk tegra_clk_cpu_cmplx = {
@@ -7892,7 +7892,7 @@ static struct clk tegra_clk_sclk_mux = {
 
 static struct clk_mux_sel sclk_mux_out[] = {
 	{ .input = &tegra_clk_sclk_mux, .value = 0},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk tegra_clk_sclk_div = {
@@ -8024,7 +8024,7 @@ static struct clk_mux_sel mux_pllc2_c_c3_pllp_plla1_clkm[] = {
 	{ .input = &tegra_pll_p,  .value = 4},
 	{ .input = &tegra_pll_a1, .value = 6},
 	{ .input = &tegra_clk_m, .value = 7},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllc4_out1_pllc_pllc4_out2_pllp_clkm_plla_pllc4_out0[] = {
@@ -8035,14 +8035,14 @@ static struct clk_mux_sel mux_pllc4_out1_pllc_pllc4_out2_pllp_clkm_plla_pllc4_ou
 	{ .input = &tegra_clk_m,  .value = 5},
 	{ .input = &tegra_pll_a_out0, .value = 6},
 	{ .input = &tegra_pll_c4_out0, .value = 7},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllc_pllp_plla[] = {
 	{ .input = &tegra_pll_c, .value = 2},
 	{ .input = &tegra_pll_p, .value = 4},
 	{ .input = &tegra_pll_a_out0, .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_clkm_pllc_pllp_plla[] = {
@@ -8050,7 +8050,7 @@ static struct clk_mux_sel mux_clkm_pllc_pllp_plla[] = {
 	{ .input = &tegra_pll_c, .value = 1},
 	{ .input = &tegra_pll_p, .value = 2},
 	{ .input = &tegra_pll_a_out0, .value = 3},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllc_pllp_plla1_pllc2_c3_clkm[] = {
@@ -8060,7 +8060,7 @@ static struct clk_mux_sel mux_pllc_pllp_plla1_pllc2_c3_clkm[] = {
 	{ .input = &tegra_pll_c2, .value = 4},
 	{ .input = &tegra_pll_c3, .value = 5},
 	{ .input = &tegra_clk_m, .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllc2_c_c3_pllp_clkm_plla1_pllc4[] = {
@@ -8071,7 +8071,7 @@ static struct clk_mux_sel mux_pllc2_c_c3_pllp_clkm_plla1_pllc4[] = {
 	{ .input = &tegra_clk_m, .value = 5},
 	{ .input = &tegra_pll_a1, .value = 6},
 	{ .input = &tegra_pll_c4_out0, .value = 7},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllc_pllp_plla1_pllc2_c3_clkm_pllc4[] = {
@@ -8082,7 +8082,7 @@ static struct clk_mux_sel mux_pllc_pllp_plla1_pllc2_c3_clkm_pllc4[] = {
 	{ .input = &tegra_pll_c3, .value = 5},
 	{ .input = &tegra_clk_m, .value = 6},
 	{ .input = &tegra_pll_c4_out0, .value = 7},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_plla_pllc4_out0_pllc_pllc4_out1_pllp_clkm_pllc4_out2[] = {
@@ -8093,7 +8093,7 @@ static struct clk_mux_sel mux_plla_pllc4_out0_pllc_pllc4_out1_pllp_clkm_pllc4_ou
 	{ .input = &tegra_pll_p, .value = 4},
 	{ .input = &tegra_pll_c4_out2, .value = 5},
 	{ .input = &tegra_clk_m, .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 /* EMC muxes */
@@ -8108,7 +8108,7 @@ static struct clk_mux_sel mux_pllm_pllc_pllp_clkm[] = {
 	{ .input = &tegra_pll_mb, .value = 5}, /* low jitter PLLMB output */
 	{ .input = &tegra_pll_mb, .value = 6},
 	{ .input = &tegra_pll_p, .value = 7}, /* low jitter PLLP output */
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 
@@ -8118,17 +8118,17 @@ static struct clk_mux_sel mux_pllp_plld_plld2_clkm[] = {
 	{.input = &tegra_pll_d_out0, .value = 2},
 	{.input = &tegra_pll_d2, .value = 5},
 	{.input = &tegra_clk_m, .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_plld_out0[] = {
 	{ .input = &tegra_pll_d_out0,  .value = 0},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_plldp[] = {
 	{ .input = &tegra_pll_dp,  .value = 0},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk tegra_clk_sor0_brick = {
@@ -8145,7 +8145,7 @@ static struct clk tegra_clk_sor0_brick = {
 static struct clk_mux_sel mux_pllp_sor_sor0_brick[] = {
 	{ .input = &tegra_pll_p_out_sor,  .value = 0},
 	{ .input = &tegra_clk_sor0_brick,  .value = 1},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk tegra_clk_sor1_src = {
@@ -8163,7 +8163,7 @@ static struct clk tegra_clk_sor1_src = {
 static struct clk_mux_sel mux_plldp_sor1_src[] = {
 	{ .input = &tegra_pll_dp,  .value = 0},
 	{ .input = &tegra_clk_sor1_src,  .value = 1},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk tegra_clk_sor1_brick = {
@@ -8182,7 +8182,7 @@ static struct clk_mux_sel mux_pllp_sor_sor1_brick_sor1_src[] = {
 	{ .input = &tegra_clk_sor1_brick, .value = 1},
 	{ .input = &tegra_clk_sor1_src, .value = 2},
 	{ .input = &tegra_clk_sor1_brick, .value = 3},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_pllre_clkm[] = {
@@ -8196,7 +8196,7 @@ static struct clk_mux_sel mux_pllp_pllc_clkm[] = {
 	{.input = &tegra_pll_p,     .value = 0},
 	{.input = &tegra_pll_c,     .value = 2},
 	{.input = &tegra_clk_m,     .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_pllc_plla_clkm[] = {
@@ -8204,7 +8204,7 @@ static struct clk_mux_sel mux_pllp_pllc_plla_clkm[] = {
 	{.input = &tegra_pll_c,     .value = 2},
 	{.input = &tegra_pll_a_out0,     .value = 4},
 	{.input = &tegra_clk_m,     .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_pllc_pllc4_out0_pllc4_out1_clkm_pllc4_out2[] = {
@@ -8214,7 +8214,7 @@ static struct clk_mux_sel mux_pllp_pllc_pllc4_out0_pllc4_out1_clkm_pllc4_out2[] 
 	{.input = &tegra_pll_c4_out1,     .value = 5},
 	{.input = &tegra_clk_m,     .value = 6},
 	{.input = &tegra_pll_c4_out2,     .value = 7},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_pllc_pllc_out1_pllc4_out2_pllc4_out1_clkm_pllc4_out0[] = {
@@ -8225,7 +8225,7 @@ static struct clk_mux_sel mux_pllp_pllc_pllc_out1_pllc4_out2_pllc4_out1_clkm_pll
 	{.input = &tegra_pll_c4_out1,       .value = 5},
 	{.input = &tegra_clk_m,             .value = 6},
 	{.input = &tegra_pll_c4_out0,       .value = 7},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0[] = {
@@ -8234,7 +8234,7 @@ static struct clk_mux_sel mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0[] = {
 	{.input = &tegra_pll_c4_out1,       .value = 4},
 	{.input = &tegra_clk_m,             .value = 6},
 	{.input = &tegra_pll_c4_out0,       .value = 7},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_clk_m_pllc4_out2_out1_out0_lj[] = {
@@ -8246,7 +8246,7 @@ static struct clk_mux_sel mux_pllp_clk_m_pllc4_out2_out1_out0_lj[] = {
 	{.input = &tegra_pll_c4_out1,       .value = 5},  /* LJ input */
 	{.input = &tegra_clk_m,             .value = 6},
 	{.input = &tegra_pll_c4_out0,       .value = 7},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_pllc2_c_c3_clkm[] = {
@@ -8255,20 +8255,20 @@ static struct clk_mux_sel mux_pllp_pllc2_c_c3_clkm[] = {
 	{ .input = &tegra_pll_c,  .value = 2},
 	{ .input = &tegra_pll_c3, .value = 3},
 	{ .input = &tegra_clk_m,  .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_pllc_clkm_1[] = {
 	{.input = &tegra_pll_p,     .value = 0},
 	{.input = &tegra_pll_c,     .value = 2},
 	{.input = &tegra_clk_m,     .value = 5},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_clkm_2[] = {
 	{ .input = &tegra_pll_p, .value = 2},
 	{ .input = &tegra_clk_m, .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_clkm_clk32_plle[] = {
@@ -8276,13 +8276,13 @@ static struct clk_mux_sel mux_pllp_clkm_clk32_plle[] = {
 	{ .input = &tegra_clk_m, .value = 2},
 	{ .input = &tegra_clk_32k, .value = 4},
 	{ .input = &tegra_pll_e, .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_clkm[] = {
 	{ .input = &tegra_pll_p, .value = 0},
 	{ .input = &tegra_clk_m, .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_pllp_out3_clkm_clk32k_plla[] = {
@@ -8291,7 +8291,7 @@ static struct clk_mux_sel mux_pllp_pllp_out3_clkm_clk32k_plla[] = {
 	{ .input = &tegra_clk_m, .value = 2},
 	{ .input = &tegra_clk_32k, .value = 3},
 	{ .input = &tegra_pll_a_out0, .value = 4},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_out3_clkm_pllp_pllc4[] = {
@@ -8301,7 +8301,7 @@ static struct clk_mux_sel mux_pllp_out3_clkm_pllp_pllc4[] = {
 	{ .input = &tegra_pll_c4_out0, .value = 5},
 	{ .input = &tegra_pll_c4_out1, .value = 6},
 	{ .input = &tegra_pll_c4_out2, .value = 7},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_pllc_clk32_clkm[] = {
@@ -8309,7 +8309,7 @@ static struct clk_mux_sel mux_pllp_pllc_clk32_clkm[] = {
 	{.input = &tegra_pll_c,     .value = 2},
 	{.input = &tegra_clk_32k,   .value = 4},
 	{.input = &tegra_clk_m,     .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_pllc_clkm_clk32[] = {
@@ -8317,7 +8317,7 @@ static struct clk_mux_sel mux_pllp_pllc_clkm_clk32[] = {
 	{.input = &tegra_pll_c,     .value = 2},
 	{.input = &tegra_clk_m,     .value = 4},
 	{.input = &tegra_clk_32k,   .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_plla_clk32_pllp_clkm_plle[] = {
@@ -8326,14 +8326,14 @@ static struct clk_mux_sel mux_plla_clk32_pllp_clkm_plle[] = {
 	{ .input = &tegra_pll_p,      .value = 2},
 	{ .input = &tegra_clk_m,      .value = 3},
 	{ .input = &tegra_pll_e,      .value = 4},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_clkm_pllp_pllre[] = {
 	{ .input = &tegra_clk_m,  .value = 0},
 	{ .input = &tegra_pll_p_out_xusb, .value = 1},
 	{ .input = &tegra_pll_re_out,  .value = 5},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_clkm_48M_pllp_480M[] = {
@@ -8341,7 +8341,7 @@ static struct clk_mux_sel mux_clkm_48M_pllp_480M[] = {
 	{ .input = &tegra_pll_u_48M,  .value = 2},
 	{ .input = &tegra_pll_p_out_xusb, .value = 4},
 	{ .input = &tegra_pll_u_480M, .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_clkm_pllre_clk32_480M_pllc_ref[] = {
@@ -8351,7 +8351,7 @@ static struct clk_mux_sel mux_clkm_pllre_clk32_480M_pllc_ref[] = {
 	{ .input = &tegra_pll_u_480M, .value = 3},
 	{ .input = &tegra_pll_c,      .value = 4},
 	{ .input = &tegra_pll_ref,    .value = 7},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_out3_pllp_pllc_clkm[] = {
@@ -8359,34 +8359,34 @@ static struct clk_mux_sel mux_pllp_out3_pllp_pllc_clkm[] = {
 	{ .input = &tegra_pll_p,  .value = 1},
 	{ .input = &tegra_pll_c,  .value = 2},
 	{ .input = &tegra_clk_m,  .value = 6},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 /* Single clock source ("fake") muxes */
 static struct clk_mux_sel mux_clk_m[] = {
 	{ .input = &tegra_clk_m, .value = 0},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_pllp_out3[] = {
 	{ .input = &tegra_pll_p_out3, .value = 0},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_clk_32k[] = {
 	{ .input = &tegra_clk_32k, .value = 0},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_clk_usb2_hsic_trk[] = {
 	{ .input = &tegra_clk_usb2_hsic_trk, .value = 0},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk tegra_clk_mc;
 static struct clk_mux_sel mux_clk_mc[] = {
 	{ .input = &tegra_clk_mc, .value = 0},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct raw_notifier_head emc_rate_change_nh;
@@ -8535,7 +8535,7 @@ static DEFINE_MUTEX(cbus_mutex);
 static struct clk_mux_sel mux_clk_cbus[] = {
 	{ .input = &tegra_clk_c2bus, .value = 0},
 	{ .input = &tegra_clk_c3bus, .value = 1},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 #define DUAL_CBUS_CLK(_name, _dev, _con, _parent, _id, _div, _mode)\
@@ -8796,7 +8796,7 @@ static struct clk tegra_clk_isp = {
 
 static struct clk_mux_sel mux_isp[] = {
 	{ .input = &tegra_clk_isp, .value = 0},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct raw_notifier_head cbus_rate_change_nh;
@@ -9247,7 +9247,7 @@ static struct clk tegra_xusb_source_clks[] = {
 static struct clk_mux_sel mux_ss_clk_m[] = {
 	{ .input = &tegra_xusb_source_clks[3], .value = 0},
 	{ .input = &tegra_clk_m,	       .value = 1},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk tegra_xusb_ssp_src = {
@@ -9282,7 +9282,7 @@ static struct clk_mux_sel mux_ss_div2_pllu_60M[] = {
 	{ .input = &tegra_pll_u_60M,    .value = 1},
 	{ .input = &tegra_xusb_source_clks[3], .value = 2},
 	{ .input = &tegra_xusb_source_clks[3], .value = 3},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk tegra_xusb_hs_src = {
@@ -9307,14 +9307,14 @@ static struct clk_mux_sel mux_xusb_host[] = {
 	{ .input = &tegra_xusb_source_clks[1], .value = 1},
 	{ .input = &tegra_xusb_source_clks[2], .value = 2},
 	{ .input = &tegra_xusb_hs_src,         .value = 5},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_xusb_ss[] = {
 	{ .input = &tegra_xusb_ssp_src,	       .value = 3},
 	{ .input = &tegra_xusb_source_clks[0], .value = 0},
 	{ .input = &tegra_xusb_source_clks[1], .value = 1},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk_mux_sel mux_xusb_dev[] = {
@@ -9322,7 +9322,7 @@ static struct clk_mux_sel mux_xusb_dev[] = {
 	{ .input = &tegra_xusb_source_clks[2], .value = 2},
 	{ .input = &tegra_xusb_ssp_src,	       .value = 3},
 	{ .input = &tegra_xusb_hs_src,         .value = 5},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk tegra_xusb_coupled_clks[] = {
