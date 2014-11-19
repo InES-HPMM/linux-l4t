@@ -3596,23 +3596,14 @@ static void tegra_xhci_update_otg_port_ownership(
 				tegra->otg_portnum + 1, NULL, 0);
 	}
 
-	mutex_lock(&tegra->sync_lock);
 	tegra->otg_port_owned = host_owns_port;
 
-
-	if ((tegra->ss_pwr_gated) || (tegra->hc_in_elpg)) {
-		/* TODO: In real life, OTG driver will cause hcd to exit elpg.
-		 * When this happens, this code can be deleted
-		 */
+	if (tegra->hc_in_elpg) {
 		tegra->ss_wake_event = true;
 		tegra->otg_port_ownership_changed = true;
-
-		tegra_xhci_host_partition_elpg_exit(tegra);
-		mutex_unlock(&tegra->sync_lock);
-
+		schedule_work(&tegra->host_elpg_exit_work);
 		return;
 	}
-	mutex_unlock(&tegra->sync_lock);
 
 	if (!host_owns_port) {
 		/* Nothing left todo if we don't own port */
