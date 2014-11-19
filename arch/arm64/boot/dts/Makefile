@@ -28,6 +28,7 @@ dtb-$(CONFIG_MACH_GRENADA) += tegra210-loki-e-p2530-0131-e00-00.dts
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-loki-e-p2530-0131-e01-00.dts
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-loki-e-p2530-0131-e02-00.dts
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-vcm30t210.dtb
+dtb-$(CONFIG_MACH_GRENADA) += tegra210-loki-vcm30t210.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-foster-e-e2581-0930-a00-00.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-foster-e-e2581-0930-a01-00.dtb
 dtb-$(CONFIG_MACH_GRENADA) += tegra210-loki-e-e2581-0031-a00-00.dtb
