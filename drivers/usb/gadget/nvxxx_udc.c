@@ -4930,7 +4930,7 @@ static void t210_program_ss_pad(struct nv_udc_s *nvudc, int port)
 	}
 
 	snprintf(prod_name, sizeof(prod_name), "prod_c_ss%d", port);
-	err = tegra_prod_set_by_name(&nvudc->base_list,
+	err = tegra_prod_set_by_name((void __iomem **)&nvudc->base_list,
 					prod_name, nvudc->prod_list);
 	if (err) {
 		msg_warn(nvudc->dev, "prod set failed\n");
@@ -5081,7 +5081,7 @@ static void fpga_hack_setup_car(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
 	struct device *dev = &pdev->dev;
-	struct clock *c = clk_get_sys(NULL, "xusb_padctl");
+	struct clk *c = clk_get_sys(NULL, "xusb_padctl");
 	u32 val;
 
 	if (!car_base) {

@@ -99,7 +99,7 @@ static void print_usb_plat_data_info(struct tegra_usb_phy *phy)
 	}
 }
 
-struct tegra_usb_phy *get_tegra_phy(struct usb_phy *x)
+static struct tegra_usb_phy *get_tegra_phy(struct usb_phy *x)
 {
 	return (struct tegra_usb_phy *)x;
 }
@@ -313,6 +313,7 @@ void tegra_usb_phy_close(struct usb_phy *x)
 		regulator_put(phy->pllu_reg);
 	}
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_close);
 
 irqreturn_t tegra_usb_phy_irq(struct tegra_usb_phy *phy)
 {
@@ -325,7 +326,7 @@ irqreturn_t tegra_usb_phy_irq(struct tegra_usb_phy *phy)
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_irq);
 
-int tegra_usb_phy_init(struct usb_phy *x)
+static int tegra_usb_phy_init(struct usb_phy *x)
 {
 	int status = 0;
 	struct tegra_usb_phy *phy = get_tegra_phy(x);
@@ -480,6 +481,7 @@ int tegra_usb_phy_suspend(struct tegra_usb_phy *phy)
 
 	return err;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_suspend);
 
 int tegra_usb_phy_post_suspend(struct tegra_usb_phy *phy)
 {
@@ -529,6 +531,7 @@ int tegra_usb_phy_resume(struct tegra_usb_phy *phy)
 	return err;
 
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_resume);
 
 int tegra_usb_phy_post_resume(struct tegra_usb_phy *phy)
 {
@@ -724,6 +727,7 @@ int tegra_usb_phy_set_suspend(struct usb_phy *x, int suspend)
 	else
 		return tegra_usb_phy_resume(phy);
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_set_suspend);
 
 static int tegra_usb_phy_set_clk_freq(struct tegra_usb_phy *phy,
 		enum usb_device_speed speed)

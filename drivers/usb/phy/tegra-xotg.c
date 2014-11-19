@@ -244,7 +244,7 @@ static int xotg_start(void)
 }
 
 /* xotg interrupt handler */
-irqreturn_t xotg_irq(int irq, void *data)
+static irqreturn_t xotg_irq(int irq, void *data)
 {
 	struct xotg *xotg = (struct xotg *)data;
 	unsigned long flags;
@@ -404,7 +404,7 @@ static struct of_device_id tegra_xotg_of_match[] = {
 	{},
 };
 
-struct platform_driver xotg_driver = {
+static struct platform_driver xotg_driver = {
 	.probe = xotg_probe,
 	.remove = __exit_p(xotg_remove),
 	.driver = {

@@ -1137,7 +1137,7 @@ static int tegra_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 
 			/* Point the QH to the first TD of next request */
 			writel((u32) (uintptr_t) next_req->head,
-					&qh->curr_dtd_ptr);
+					(void __iomem *)&qh->curr_dtd_ptr);
 		}
 
 		/* The request hasn't been processed, patch up the TD chain */
@@ -1145,8 +1145,8 @@ static int tegra_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 		struct tegra_req *prev_req;
 
 		prev_req = list_entry(req->queue.prev, struct tegra_req, queue);
-		writel(readl(&req->tail->next_td_ptr),
-				&prev_req->tail->next_td_ptr);
+		writel(readl((void __iomem *)&req->tail->next_td_ptr),
+				(void __iomem *)&prev_req->tail->next_td_ptr);
 	}
 
 	done(ep, req, -ECONNRESET);
@@ -2445,7 +2445,7 @@ static void tegra_udc_set_current_limit_work(struct work_struct *work)
 }
 
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
-void tegra_udc_set_cpu_freq_normal(unsigned long data)
+static void tegra_udc_set_cpu_freq_normal(unsigned long data)
 {
 	set_cpufreq_normal_flag = 1;
 	schedule_work(&the_udc->boost_cpufreq_work);
