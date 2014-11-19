@@ -656,7 +656,7 @@ static struct emc_iso_usage tegra21_emc_iso_usage[] = {
 	DEFINE_REG(TEGRA_EMC0_BASE, EMC_TRAINING_OPT_DQS_IB_VREF_RANK1), \
 	DEFINE_REG(TEGRA_EMC1_BASE, EMC_TRAINING_OPT_DQS_IB_VREF_RANK1), \
 
-#define DEFINE_REG(base, reg) ((base) ? (IO_ADDRESS((base)) + (reg)) : 0)
+#define DEFINE_REG(base, reg) ((base) ? (IO_ADDRESS((base)) + (reg)) : NULL)
 
 /*
  * Currently these are the IO virtual mapped addresses. Once iomap.h is removed
