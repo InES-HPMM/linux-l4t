@@ -483,7 +483,7 @@ static void smmu_flush_ptc(struct smmu_device *smmu, u32 *pte,
 
 static inline void __smmu_flush_ptc_all(struct smmu_device *smmu)
 {
-	__smmu_flush_ptc(smmu, 0, NULL);
+	__smmu_flush_ptc(smmu, NULL, NULL);
 }
 
 static void __smmu_flush_tlb(struct smmu_device *smmu, struct smmu_as *as,
