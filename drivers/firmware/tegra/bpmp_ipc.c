@@ -744,7 +744,7 @@ void bpmp_detach(void)
 	writel(0xffffffff, RES_SEMA_SHRD_SMP_CLR);
 
 	for (i = 0; i < NR_CHANNELS; i++)
-		channel_area[i] = 0;
+		channel_area[i] = NULL;
 }
 
 int bpmp_attach(void)
