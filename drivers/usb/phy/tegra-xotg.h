@@ -17,8 +17,6 @@
 */
 #include<linux/usb/otg.h>
 
-extern struct usb_hcd *tegra_xhci_hcd;
-
 /* nvidia otg controller Structure */
 struct xotg {
 	u8 hs_otg_port;

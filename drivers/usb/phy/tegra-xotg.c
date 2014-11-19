@@ -38,18 +38,10 @@ MODULE_PARM_DESC(xotg_debug_level, "level 0~4");
 
 static const char driver_name[] = "tegra-xotg";
 
-static inline void xotg_update_otg_port_ownership(struct xotg *xotg,
-	bool host_owns_port)
+static void xotg_notify_event(struct xotg *xotg, int event)
 {
-	if (!tegra_xhci_hcd) {
-		xotg_info(xotg->dev, "host driver not loaded yet\n");
-		return;
-	}
-
-	if (tegra_xhci_hcd->driver &&
-			tegra_xhci_hcd->driver->update_otg_port_ownership)
-		tegra_xhci_hcd->driver->update_otg_port_ownership(
-			tegra_xhci_hcd, host_owns_port);
+	xotg->phy.last_event = event;
+	atomic_notifier_call_chain(&xotg->phy.notifier, event, NULL);
 }
 
 static int extcon_id_notifications(struct notifier_block *nb,
@@ -140,11 +132,11 @@ static void nv_vbus_work(struct work_struct *work)
 		xusb_enable_pad_protection(0);
 
 		/* set PP */
-		xotg_update_otg_port_ownership(xotg, true);
+		xotg_notify_event(xotg, USB_EVENT_ID);
 		xotg_enable_vbus(xotg);
 	} else {
 		xotg_disable_vbus(xotg);
-		xotg_update_otg_port_ownership(xotg, false);
+		xotg_notify_event(xotg, USB_EVENT_NONE);
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 			USB2_VBUS_ID_0_ID_OVERRIDE,
 			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);

@@ -344,7 +344,7 @@ static void debug_print_portsc(struct xhci_hcd *xhci)
 }
 static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra);
 static void tegra_xhci_reset_sspi(struct tegra_xhci_hcd *tegra, uint port);
-static void tegra_xhci_update_otg_port_ownership(struct usb_hcd *hcd,
+static void tegra_xhci_update_otg_port_ownership(struct tegra_xhci_hcd *tegra,
 		bool host_owns_port);
 
 static bool is_otg_host(struct tegra_xhci_hcd *tegra)
@@ -3582,15 +3582,16 @@ static void tegra_xhci_reset_sspi(struct tegra_xhci_hcd *tegra, uint port)
 }
 
 static void tegra_xhci_update_otg_port_ownership(
-		struct usb_hcd *hcd, bool host_owns_port)
+		struct tegra_xhci_hcd *tegra, bool host_owns_port)
 {
-	struct tegra_xhci_hcd *tegra = hcd_to_tegra_xhci(hcd);
+	struct xhci_hcd *xhci = tegra->xhci;
+	struct usb_hcd *shared_hcd = xhci->shared_hcd;
 
 	if (tegra->otg_port_owned && !host_owns_port) {
 		/* Port has transitioned to not owned */
 		if (tegra->bdata->otg_portmap & 0xff)
 			/* Only need to clear pp for ss */
-			xhci_hub_control(hcd, ClearPortFeature,
+			xhci_hub_control(shared_hcd, ClearPortFeature,
 				USB_PORT_FEAT_POWER,
 				tegra->otg_portnum + 1, NULL, 0);
 	}
@@ -3621,8 +3622,8 @@ static void tegra_xhci_update_otg_port_ownership(
 	if (tegra->bdata->otg_portmap & 0xff) {
 		/* We now own a ss otg port */
 		tegra_xhci_reset_sspi(tegra, tegra->otg_portnum);
-		xhci_hub_control(hcd, SetPortFeature, USB_PORT_FEAT_POWER,
-			tegra->otg_portnum + 1, NULL, 0);
+		xhci_hub_control(shared_hcd, SetPortFeature,
+			USB_PORT_FEAT_POWER, tegra->otg_portnum + 1, NULL, 0);
 	}
 }
 
@@ -3730,7 +3731,6 @@ static const struct hc_driver tegra_plat_xhci_driver = {
 	.enable_usb3_lpm_timeout =	xhci_enable_usb3_lpm_timeout,
 	.disable_usb3_lpm_timeout =	xhci_disable_usb3_lpm_timeout,
 #endif
-	.update_otg_port_ownership = tegra_xhci_update_otg_port_ownership,
 };
 
 #ifdef CONFIG_PM
@@ -4202,12 +4202,13 @@ static int tegra_xhci_otg_notify(struct notifier_block *nb,
 {
 	struct tegra_xhci_hcd *tegra = container_of(nb,
 					struct tegra_xhci_hcd, otgnb);
+	struct platform_device *pdev = tegra->pdev;
 
-	if ((event == USB_EVENT_ID))
-		if (tegra->hc_in_elpg) {
-			schedule_work(&tegra->host_elpg_exit_work);
-			tegra->host_resume_req = true;
-	}
+	dev_info(&pdev->dev, "received otg event %d\n", event);
+	if (event == USB_EVENT_ID)
+		tegra_xhci_update_otg_port_ownership(tegra, true);
+	else if (event == USB_EVENT_NONE)
+		tegra_xhci_update_otg_port_ownership(tegra, false);
 
 	return NOTIFY_OK;
 }
