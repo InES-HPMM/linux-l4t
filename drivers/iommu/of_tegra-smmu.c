@@ -165,8 +165,11 @@ u64 tegra_smmu_of_get_swgids(struct device *dev,
 	struct of_phandle_iter iter;
 	u64 fixup, swgids = 0;
 
-	if (dev_is_pci(dev))
+	if (dev_is_pci(dev)) {
 		return SWGIDS_ERROR_CODE;
+		swgids = TEGRA_SWGROUP_BIT(AFI);
+		goto try_fixup;
+	}
 
 	of_property_for_each_phandle_with_args(iter, dev->of_node, "iommus",
 					       "#iommu-cells", 0) {
@@ -186,6 +189,7 @@ u64 tegra_smmu_of_get_swgids(struct device *dev,
 
 	swgids = swgids ? swgids : SWGIDS_ERROR_CODE;
 
+try_fixup:
 	fixup = tegra_smmu_fixup_swgids(dev, area);
 
 	if (swgids_is_error(fixup))
