@@ -66,10 +66,11 @@ static void adc_jack_handler(struct work_struct *work)
 	u32 state = 0;
 	int ret, adc_val;
 	int i;
+	int cindex = 0;
 
 	ret = iio_read_channel_raw(data->chan, &adc_val);
 	if (ret < 0) {
-		dev_err(&data->edev.dev, "read channel() error: %d\n", ret);
+		dev_err(data->dev, "read channel() error: %d\n", ret);
 		return;
 	}
 
@@ -81,13 +82,16 @@ static void adc_jack_handler(struct work_struct *work)
 			break;
 		if (def->min_adc <= adc_val && def->max_adc >= adc_val) {
 			state = def->state;
+			cindex = ffs(state) - 1;
 			break;
 		}
 	}
-	/* if no def has met, it means state = 0 (no cables attached) */
 
+	/* if no def has met, it means state = 0 (no cables attached) */
 	extcon_set_state(&data->edev, state);
-	dev_info(&data->edev.dev, "Cable State 0x%02X\n", state);
+	dev_info(data->dev, "ADC read %d Cable State 0x%02X: %s cable\n",
+			 adc_val, state,
+			(state) ? data->cable_names[cindex]: "NO");
 }
 
 static void ecx_extcon_notifier_timer(unsigned long _data)
@@ -150,10 +154,12 @@ static struct adc_jack_pdata *of_get_platform_data(
 	nstates = of_property_count_u32(np, "extcon-adc-jack,states");
 	if (nstates < 0)
 		return ERR_PTR(nstates);
-	if (!nstates)
+	if (!nstates || (nstates % 3))
 		return ERR_PTR(-EINVAL);
 
-	pdata->adc_conditions = devm_kzalloc(&pdev->dev, nstates *
+	nstates = nstates/3;
+
+	pdata->adc_conditions = devm_kzalloc(&pdev->dev, (nstates + 1) *
 				sizeof(*pdata->adc_conditions), GFP_KERNEL);
 	if (!pdata->adc_conditions)
 		return ERR_PTR(-ENOMEM);
@@ -221,6 +227,7 @@ static int adc_jack_probe(struct platform_device *pdev)
 	data->dev = &pdev->dev;
 	data->edev.dev.parent = &pdev->dev;
 	data->edev.supported_cable = pdata->cable_names;
+	data->cable_names = pdata->cable_names;
 
 	/* Check the length of array and set num_cables */
 	for (i = 0; data->edev.supported_cable[i]; i++)
