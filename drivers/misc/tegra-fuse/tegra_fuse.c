@@ -1404,6 +1404,19 @@ static void tegra_set_bct_strapping(void)
 	tegra_chip_bct_strapping = (reg & RAM_ID_MASK) >> RAM_CODE_SHIFT;
 }
 
+u32 tegra_get_fuse_opt_subrevision(void)
+{
+	u8 ret = 0;
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	u32 reg;
+
+	reg = tegra_fuse_readl(FUSE_OPT_SUBREVISION);
+
+	ret = reg & FUSE_OPT_SUBREVISION_MASK;
+#endif
+	return ret;
+}
+
 u32 tegra_get_sku_id(void)
 {
 	return tegra_chip_sku_id;
