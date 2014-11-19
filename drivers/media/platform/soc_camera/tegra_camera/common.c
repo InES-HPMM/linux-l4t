@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -32,6 +32,7 @@
 #include "dev.h"
 #include "bus_client.h"
 #include "t124/t124.h"
+#include "t210/t210.h"
 
 #include "common.h"
 
@@ -716,6 +717,10 @@ static struct of_device_id tegra_vi_of_match[] = {
 	{ .compatible = "nvidia,tegra124-vi",
 		.data = (struct nvhost_device_data *)&t124_vi_info },
 #endif
+#ifdef TEGRA_21X_OR_HIGHER_CONFIG
+	{ .compatible = "nvidia,tegra210-vi",
+		.data = (struct nvhost_device_data *)&t21_vi_info },
+#endif
 	{ },
 };
 
@@ -728,6 +733,10 @@ static int tegra_camera_slcg_handler(struct notifier_block *nb,
 	struct nvhost_device_data *pdata =
 		container_of(nb, struct nvhost_device_data,
 			toggle_slcg_notifier);
+
+	/* Skip this operation for TPG mode */
+	if (tpg_mode)
+		return NOTIFY_OK;
 
 	clk = clk_get(&pdata->pdev->dev, "pll_d");
 	if (IS_ERR(clk))
@@ -837,7 +846,8 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		compat = of_get_property(pdev->dev.of_node,
 					 "compatible", &cplen);
 
-		if (!strcmp(compat, "nvidia,tegra124-vi"))
+		if (!strcmp(compat, "nvidia,tegra124-vi") ||
+		    !strcmp(compat, "nvidia,tegra210-vi"))
 			vi2_register(cam);
 		else
 			vi_register(cam);

@@ -741,6 +741,15 @@ static int vi2_capture_setup(struct tegra_camera *cam)
 				(pdata->port & 0x1) ? 0x0 : 0x10000);
 		cil_regs_write(cam, TEGRA_CSI_CIL_INTERRUPT_MASK, 0x0);
 		cil_regs_write(cam, TEGRA_CSI_CIL_PHY_CONTROL, 0xA);
+		if (pdata->lanes == 4) {
+			regs->cil_base = vi2_cal_regs_base(TEGRA_CSI_CIL_0_BASE,
+							   port + 1);
+			cil_regs_write(cam, TEGRA_CSI_CIL_PAD_CONFIG0, 0x0);
+			cil_regs_write(cam, TEGRA_CSI_CIL_INTERRUPT_MASK, 0x0);
+			cil_regs_write(cam, TEGRA_CSI_CIL_PHY_CONTROL, 0xA);
+			regs->cil_base = vi2_cal_regs_base(TEGRA_CSI_CIL_0_BASE,
+							   port);
+		}
 	}
 
 	/* CSI pixel parser registers setup */
@@ -757,14 +766,13 @@ static int vi2_capture_setup(struct tegra_camera *cam)
 
 	/* CIL PHY register setup */
 	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) ||
-			IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC))
+	    IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC))
 		vi2_capture_setup_cil_phy_t124(cam, pdata->lanes, pdata->port);
 	else {
-		val = cil_phy_reg_read(cam);
-		val = (pdata->port & 0x1) ?
-			((val & 0xFFFF00FF) | 0x0100) :
-			((val & 0xFFFFFF00) | 0x1);
-		cil_phy_reg_write(cam, val);
+		if (pdata->lanes == 4)
+			cil_phy_reg_write(cam, 0x0101);
+		else
+			cil_phy_reg_write(cam, 0x0201);
 	}
 
 	if (cam->tpg_mode) {
