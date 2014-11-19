@@ -834,7 +834,7 @@ static int pinctrl_suspend(void)
 {
 	int i, j;
 	u32 *pg_data = pmx->pg_data;
-	u32 *regs;
+	u32 __iomem *regs;
 
 	if (pmx->soc->suspend) {
 		int ret;
@@ -857,7 +857,7 @@ static void pinctrl_resume(void)
 {
 	int i, j;
 	u32 *pg_data = pmx->pg_data;
-	u32 *regs;
+	u32 __iomem *regs;
 
 	if (pmx->soc->resume) {
 		pmx->soc->resume(pg_data);
