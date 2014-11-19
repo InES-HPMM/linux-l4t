@@ -1912,7 +1912,9 @@ static void tegra_xhci_program_ulpi_pad(struct tegra_xhci_hcd *tegra,
 static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
+#endif
 	u32 reg;
 	u32 ctl0_offset;
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
@@ -2365,8 +2367,6 @@ static void tegra_xhci_release_port_ownership(struct tegra_xhci_hcd *tegra,
 static int get_host_controlled_ports(struct tegra_xhci_hcd *tegra)
 {
 	int enabled_ports = 0;
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
-
 	enabled_ports = tegra->bdata->portmap;
 
 	if (tegra->otg_port_owned)
@@ -2748,8 +2748,6 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 static void tegra_init_otg_port(struct tegra_xhci_hcd *tegra)
 {
 	struct xhci_hcd	*xhci = tegra->xhci;
-	struct usb_hcd *hcd = xhci_to_hcd(xhci);
-
 	u32 portsc;
 
 	if (!tegra->otg_port_owned || !tegra->otg_port_power_on)
@@ -3568,8 +3566,6 @@ static void tegra_xhci_update_otg_port_ownership(
 		struct usb_hcd *hcd, bool host_owns_port)
 {
 	struct tegra_xhci_hcd *tegra = hcd_to_tegra_xhci(hcd);
-	struct device *dev = &tegra->pdev->dev;
-	u32 msec_to_wait = 10;
 
 	if (tegra->otg_port_owned && !host_owns_port) {
 		/* Port has transitioned to not owned */
