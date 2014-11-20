@@ -30,7 +30,7 @@
 #define UTMI1_PORT_OWNER_XUSB   0x1
 #define UTMI2_PORT_OWNER_XUSB   0x2
 #define UTMI3_PORT_OWNER_XUSB   0x4
-#define HSIC1_PORT_OWNER_XUSB   0x8
+#define HSIC_PORT_OWNER_SNPS    0x8
 
 /* Routines exported by vcm30t124 mcm file */
 extern void __init tegra_vcm30_t124_nor_init(void);

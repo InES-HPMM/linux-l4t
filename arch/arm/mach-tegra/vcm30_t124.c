@@ -382,6 +382,31 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 	},
 };
 
+
+static struct tegra_usb_platform_data tegra_ehci2_hsic_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
+	.op_mode    = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.hot_plug = false,
+		.remote_wakeup_supported = false,
+		.power_off_on_suspend = false,
+	},
+};
+static struct tegra_usb_platform_data tegra_ehci3_hsic_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
+	.op_mode    = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.hot_plug = false,
+		.remote_wakeup_supported = false,
+		.power_off_on_suspend = false,
+		},
+};
 static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_device = &tegra_ehci1_device,
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
@@ -397,7 +422,10 @@ void __init tegra_vcm30_t124_usb_init(void)
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
 		tegra_otg_pdata.is_xhci = false;
 		tegra_udc_pdata.u_data.dev.is_xhci = false;
-
+	} else {
+		tegra_otg_pdata.is_xhci = true;
+		tegra_udc_pdata.u_data.dev.is_xhci = true;
+	}
 #if defined(CONFIG_USB_TEGRA_OTG)
 		/* register OTG device */
 		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
@@ -411,15 +439,18 @@ void __init tegra_vcm30_t124_usb_init(void)
 		tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
 		platform_device_register(&tegra_ehci1_device);
 #endif
-	}
-
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 		tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
 		platform_device_register(&tegra_ehci2_device);
+	} else if (usb_port_owner_info & HSIC_PORT_OWNER_SNPS) {
+		tegra_ehci2_device.dev.platform_data = &tegra_ehci2_hsic_pdata;
+		platform_device_register(&tegra_ehci2_device);
 	}
-
 	if (!(usb_port_owner_info & UTMI3_PORT_OWNER_XUSB)) {
 		tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
+		platform_device_register(&tegra_ehci3_device);
+	} else if (usb_port_owner_info & HSIC_PORT_OWNER_SNPS) {
+		tegra_ehci3_device.dev.platform_data = &tegra_ehci3_hsic_pdata;
 		platform_device_register(&tegra_ehci3_device);
 	}
 
