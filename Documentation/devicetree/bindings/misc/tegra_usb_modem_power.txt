@@ -1,0 +1,77 @@
+Modem Power Management Driver
+-----------------------------------------------------------------------------
+This driver is nvidia's Icera modem power management driver. Current actively
+supported modem is Bruce. The driver controls modem power through GPIO and
+supports 3 different PHY interface since T210: EHCI HSIC, XHCI HSIC, and XHCI
+UTMI.
+
+This driver uses device tree to pass all necessary platform data now.
+
+Required properties:
+- compatible: should be "nvidia,icera-i500" for now
+- nvidia,boot-gpio: input GPIO for modem COLDBOOT signal
+- nvidia,mdm-en-gpio: output GPIO for enabling modem
+- nvidia,reset-gpio: output GPIO for hard resetting modem
+
+Optional properties:
+- nvidia,regulator: support for older platform which may need to enable
+                    regulator manually. It's there for backward compatibility
+- nvidia,wake-gpio: input GPIO. Define this GPIO if remote wakeup is through
+                    GPIO, or remote wakeup is supported natively
+- nvidia,mdm-power-report-gpio: input GPIO for modem power report
+- nvidia,mdm-sar0-gpio: output GPIO for modem SAR
+- nvidia,pre-boost-gpio: output GPIO for modem to control pre boost regulator
+- nvidia,num-temp-sensors: integer which specifies temperature sensor count for
+                    modem thermal reporting
+- nvidia,use-xhci-hsic: this property is only set by bootloader SHIM layer
+                    according to odmdata passed. If odmdata bit[26] is set,
+                    this property will be <1> to indicate XHCI HSIC is to
+                    be used as modem interface
+- nvidia,phy-type: integer 0, 1, or 2, which stand for EHCI HSIC, XHCI HSIC,
+                    or XHCI UTMI. This will be set automatically in driver
+                    according to nvidia,use-xhci-hsic property. This is used
+                    currently only for T210 loki E03 to indicate "XHCI UTMI"
+
+Example:
+
+With all properties defined:
+
+    modem {
+        compatible = "nvidia,icera-i500";
+
+        /* regulator */
+        nvidia,regulator = "vdd_wwan_mdm";
+
+        /* GPIO */
+        nvidia,wake-gpio = ...;
+        nvidia,boot-gpio = <&gpio TEGRA_GPIO(K, 6) GPIO_ACTIVE_LOW>;
+        nvidia,mdm-power-report-gpio = ...;
+        nvidia,mdm-sar0-gpio = ...;
+        nvidia,reset-gpio = ...;
+        nvidia,mdm-en-gpio = ...;
+        nvidia,pre-boost-gpio = ...;
+
+        /* temp sensors count */
+        nvidia,num-temp-sensors = <3>;
+
+        /* USB PHY interfaces */
+        nvidia,use-xhci-hsic = <1>;
+        nvidia,phy-type = <1>;
+
+        /* should be disabled by default. Bootloader will determine if this
+           node will be enabled according to TNSPEC. */
+        status = "disabled";
+    };
+
+
+Example node for a T210 ERS board:
+
+    modem {
+        compatible = "nvidia,icera-i500";
+        nvidia,boot-gpio = <&gpio TEGRA_GPIO(K, 6) GPIO_ACTIVE_LOW>;
+        nvidia,mdm-power-report-gpio = <&gpio TEGRA_GPIO(L, 1) GPIO_ACTIVE_LOW>;
+        nvidia,reset-gpio = <&gpio TEGRA_GPIO(L, 0) GPIO_ACTIVE_LOW>;
+        nvidia,mdm-en-gpio = <&gpio TEGRA_GPIO(K, 7) GPIO_ACTIVE_HIGH>;
+        nvidia,num-temp-sensors = <3>;
+        status = "disabled";
+    };

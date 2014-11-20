@@ -165,6 +165,7 @@ struct tegra_usb_modem {
 	int sysedp_file_created;	/* sysedp state file created */
 	enum { EHCI_HSIC = 0, XHCI_HSIC, XHCI_UTMI } phy_type;
 	struct platform_device *modem_thermal_pdev;
+	int pre_boost_gpio;		/* control regulator output voltage */
 };
 
 
@@ -969,6 +970,21 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 	dev_info(&pdev->dev, "set mdm power report gpio:%d\n",
 		pdata->mdm_power_report_gpio);
 
+	gpio = of_get_named_gpio(node, "nvidia,pre-boost-gpio", 0);
+	if (gpio_is_valid(gpio)) {
+		dev_info(&pdev->dev, "set pre boost gpio (%d) to 1\n", gpio);
+		ret = gpio_request(gpio, "MODEM PREBOOST");
+		if (ret) {
+			dev_err(&pdev->dev, "request gpio %d failed\n", gpio);
+			return ret;
+		}
+		gpio_direction_output(gpio, 1);
+		modem->pre_boost_gpio = gpio;
+	} else
+		modem->pre_boost_gpio = -1;
+
+
+
 	/* set GPIO IRQ flags */
 	pdata->wake_irq_flags = pdata->boot_irq_flags =
 		pdata->mdm_power_irq_flags =
@@ -1121,6 +1137,9 @@ static int tegra_usb_modem_suspend(struct platform_device *pdev,
 			pr_info("%s, wake irq=%d, error=%d\n",
 				__func__, modem->boot_irq, ret);
 	}
+
+	if (gpio_is_valid(modem->pre_boost_gpio))
+		gpio_set_value(modem->pre_boost_gpio, 0);
 fail:
 	return ret;
 }
@@ -1129,6 +1148,9 @@ static int tegra_usb_modem_resume(struct platform_device *pdev)
 {
 	struct tegra_usb_modem *modem = platform_get_drvdata(pdev);
 	int ret = 0;
+
+	if (gpio_is_valid(modem->pre_boost_gpio))
+		gpio_set_value(modem->pre_boost_gpio, 1);
 
 	if (modem->boot_irq) {
 		ret = disable_irq_wake(modem->boot_irq);
