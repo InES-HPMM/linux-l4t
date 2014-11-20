@@ -476,69 +476,6 @@ static int etf_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static void etf_save_last(struct tracectx *t)
-{
-	int rrp, rwp, rwp32, rrp32, max, count = 0, serial, overflow;
-
-	BUG_ON(!t->dump_initial_etf);
-
-	etf_regs_unlock(t);
-
-	/* Manual flush and stop */
-	etf_writel(t, 0x1001, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-	etf_writel(t, 0x1041, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-
-	udelay(1000);
-
-	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_CTL_0);
-
-	/* Get etf data and Check for overflow */
-	overflow = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_STS_0);
-
-	overflow &= 0x01;
-
-	/* Check for data in ETF */
-	rwp = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_RWP_0);
-	rrp = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
-
-	rwp32 = rwp/4;
-	rrp32 = rrp/4;
-
-	max = rwp32;
-	serial = 0;
-
-	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
-
-	pr_info(" RRP32_L %08x ,RWP32_L %08x\n ", rrp32, rwp32);
-
-	if (!overflow) {
-		pr_info("ETF not overflown. Reading contents to userspace\n");
-		t->etf_size = max * 4;
-		for (count = 0; count < max; count++)
-			t->etf_buf[count] = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-	} else {
-		pr_info("ETF overflown. Reading contents to userspace\n");
-		t->etf_size = MAX_ETF_SIZE * 4;
-		/* ETF overflow..the last 4K entries are printed */
-		etf_writel(t, rwp, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
-		/* Read from rwp to end of RAM */
-		for (count = rwp32; count < MAX_ETF_SIZE; count++) {
-			t->etf_buf[serial] = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-			serial += 1;
-		}
-		/* Rollover the RRP and read till rwp-1 */
-		etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
-		for (count = 0; count < max; count++) {
-			t->etf_buf[serial] = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-			serial += 1;
-		}
-	}
-	etf_regs_lock(t);
-}
-
 static ssize_t last_etf_read(struct file *file, char __user *data,
 	size_t len, loff_t *ppos)
 {
@@ -787,7 +724,6 @@ static int ptm_probe(struct platform_device  *dev)
 
 	struct tracectx *t = &tracer;
 
-	mutex_lock(&t->mutex);
 	t->dev = &dev->dev;
 	platform_set_drvdata(dev, t);
 
@@ -878,7 +814,7 @@ static int ptm_probe(struct platform_device  *dev)
 	etf_last_init(t);
 
 	/* save ETF contents to DRAM when system is reset */
-	etf_save_last(t);
+	etf_fill_buf(t);
 
 	/* initialising dev nodes */
 	etf_nodes(t);
@@ -896,7 +832,6 @@ static int ptm_probe(struct platform_device  *dev)
 out:
 	if (ret)
 		dev_err(&dev->dev, "Failed to start the PTM device\n");
-	mutex_unlock(&t->mutex);
 	return ret;
 }
 
