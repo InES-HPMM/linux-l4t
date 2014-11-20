@@ -25,8 +25,7 @@
 #include <linux/of_address.h>
 #include <linux/export.h>
 #include <linux/tegra-pmc.h>
-
-
+#include <linux/tegra_prod.h>
 
 #define PMC_CTRL			0x0
 #define PMC_CTRL_INTR_LOW		(1 << 17)
@@ -545,6 +544,7 @@ static void tegra_pmc_dev_release(struct device *dev)
 {
 }
 static struct device tegra_pmc_dev = { };
+static struct tegra_prod_list *prod_list;
 
 static int __init tegra_pmc_init(void)
 {
@@ -575,6 +575,29 @@ static int __init tegra_pmc_init(void)
 		} else {
 			pr_info("tegra-pmc device create success\n");
 		}
+
+		/* Prod setting like platform specific rails */
+		prod_list = tegra_prod_get(&tegra_pmc_dev, NULL);
+		if (IS_ERR(prod_list)) {
+			ret = PTR_ERR(prod_list);
+			dev_info(&tegra_pmc_dev, "prod list not found: %d\n",
+				ret);
+			prod_list = NULL;
+		} else {
+			ret = tegra_prod_set_by_name(&tegra_pmc_base,
+					"prod_c_platform_pad_rail", prod_list);
+			if (ret < 0) {
+				dev_info(&tegra_pmc_dev,
+					"prod setting for rail not found\n");
+			} else {
+				dev_info(&tegra_pmc_dev,
+					"POWER_DET: 0x%08x, POWR_VAL: 0x%08x\n",
+					tegra_pmc_readl(PMC_PWR_DET_ENABLE),
+					tegra_pmc_readl(PMC_PWR_DET_VAL));
+			}
+		}
+
+		/* Register as pad controller */
 		ret = tegra_pmc_padctrl_init(&tegra_pmc_dev, np);
 		if (ret) {
 			pr_err("ERROR: Pad control driver init failed: %d\n",
