@@ -130,6 +130,13 @@
 			vdd_lcd_bl-supply = <&vdd_3v3>;
 		};
 
+		/* tegradc.1 */
+		dc@54240000 {
+			avdd_hdmi-supply = <&max77620_ldo8>;    /* 1V05 */
+			avdd_hdmi_pll-supply = <&max77620_sd3>; /* 1V8 */
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;	/* 5V0 GPIO_PCC7 fixed reg */
+		};
+
 		vi {
 			avdd_dsi_csi-supply = <&max77620_gpio7>;
 		};
