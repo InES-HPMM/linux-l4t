@@ -115,6 +115,10 @@ int adsp_dfs_core_init(struct platform_device *pdev);
 int adsp_dfs_core_exit(struct platform_device *pdev);
 #endif
 
+#ifdef CONFIG_TEGRA_ADSP_ACTMON
+int ape_actmon_probe(struct platform_device *pdev);
+#endif
+
 #ifdef CONFIG_TEGRA_EMC_APE_DFS
 status_t emc_dfs_init(struct platform_device *pdev);
 void emc_dfs_exit(void);

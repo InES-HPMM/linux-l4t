@@ -34,7 +34,8 @@ enum actmon_state {
  */
 struct actmon_dev {
 	u32	reg;
-	u32	glb_status_irq_mask;
+	int	irq;
+
 	const char	*dev_id;
 	const char	*con_id;
 	const char *clk_name;

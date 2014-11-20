@@ -857,12 +857,12 @@ static void __nvadsp_os_stop(bool reload)
 	dev = &priv.pdev->dev;
 	drv_data = platform_get_drvdata(priv.pdev);
 
-#ifdef CONFIG_TEGRA_ADSP_DFS
-	adsp_dfs_core_exit(priv.pdev);
-#endif
-
 #ifdef CONFIG_TEGRA_ADSP_ACTMON
 	ape_actmon_exit(priv.pdev);
+#endif
+
+#ifdef CONFIG_TEGRA_ADSP_DFS
+	adsp_dfs_core_exit(priv.pdev);
 #endif
 
 	writel(ENABLE_MBOX2_FULL_INT, priv.misc_base + HWMBOX2_REG);

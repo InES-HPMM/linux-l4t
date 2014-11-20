@@ -21,7 +21,7 @@
 #include <linux/platform_device.h>
 #include <linux/irqchip/tegra-agic.h>
 
-#include <mach/irqs.h>
+#include <linux/irq.h>
 #include "ape_actmon.h"
 #include "dev.h"
 
@@ -375,17 +375,34 @@ static void actmon_dev_disable(struct actmon_dev *dev)
 	}
 	spin_unlock_irqrestore(&dev->lock, flags);
 }
+static int actmon_dev_probe(struct actmon_dev *dev)
+{
+	int ret;
+
+	dev->irq = tegra_agic_irq_get_virq(INT_AMISC_ACTMON);
+
+	ret = request_threaded_irq(dev->irq, ape_actmon_dev_isr,
+			ape_actmon_dev_fn, IRQ_TYPE_LEVEL_HIGH,
+			dev->clk_name, dev);
+	if (ret) {
+		pr_err("Failed irq %d request for %s\n", dev->irq,
+			dev->clk_name);
+		goto end;
+	}
+	disable_irq(dev->irq);
+end:
+	return ret;
+}
 
 static int actmon_dev_init(struct actmon_dev *dev)
 {
 	int ret;
 	unsigned long freq;
-	int virq;
 
 	spin_lock_init(&dev->lock);
 
 	dev->clk = clk_get_sys(NULL, dev->clk_name);
-	if (IS_ERR(dev->clk)) {
+	if (IS_ERR_OR_NULL(dev->clk)) {
 		pr_err("Failed to find %s.%s clock\n",
 			dev->dev_id, dev->con_id);
 		return -EINVAL;
@@ -407,15 +424,7 @@ static int actmon_dev_init(struct actmon_dev *dev)
 	actmon_dev_enable(dev);
 	clk_prepare_enable(dev->clk);
 
-	virq = tegra_agic_irq_get_virq(INT_AMISC_ACTMON);
-
-	ret = request_threaded_irq(virq, ape_actmon_dev_isr,
-			ape_actmon_dev_fn, IRQF_SHARED, dev->dev_id, dev);
-	if (ret) {
-		pr_err("Failed irq %d request for %s.%s\n",
-		virq, dev->dev_id, dev->con_id);
-		return ret;
-	}
+	enable_irq(dev->irq);
 
 	return 0;
 }
@@ -699,6 +708,19 @@ err_out:
 
 #endif
 
+int ape_actmon_probe(struct platform_device *pdev)
+{
+	int ret = 0;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(actmon_devices); i++) {
+		ret = actmon_dev_probe(actmon_devices[i]);
+		dev_info(&pdev->dev, "%s actmon: %s probe (%d)\n",
+		actmon_devices[i]->clk_name, ret ? "Failed" : "Completed", ret);
+	}
+	return ret;
+}
+
 int ape_actmon_init(struct platform_device *pdev)
 {
 	int i, ret;
@@ -725,7 +747,7 @@ int ape_actmon_init(struct platform_device *pdev)
 
 	for (i = 0; i < ARRAY_SIZE(actmon_devices); i++) {
 		ret = actmon_dev_init(actmon_devices[i]);
-		pr_info("%s : %s initialization (%d)\n",
+		pr_info("%s actmon device: %s initialization (%d)\n",
 		actmon_devices[i]->clk_name, ret ? "Failed" : "Completed", ret);
 	}
 
@@ -748,11 +770,14 @@ int ape_actmon_exit(struct platform_device *pdev)
 
 	for (i = 0; i < ARRAY_SIZE(actmon_devices); i++) {
 		dev = actmon_devices[i];
+		disable_irq(dev->irq);
 		clk_disable_unprepare(dev->clk);
 		clk_put(dev->clk);
 	}
+
 	clk_disable_unprepare(actmon_clk);
 	clk_put(actmon_clk);
+
 	drv->actmon_initialized = false;
 
 	dev_dbg(&pdev->dev, "adsp actmon has exited ....\n");

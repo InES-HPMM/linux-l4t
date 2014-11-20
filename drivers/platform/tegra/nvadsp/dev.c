@@ -470,6 +470,12 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 		goto err;
 #endif
 
+#ifdef CONFIG_TEGRA_ADSP_ACTMON
+	ret = ape_actmon_probe(pdev);
+	if (ret)
+		goto err;
+#endif
+
 	ret = nvadsp_app_module_probe(pdev);
 	if (ret)
 		goto err;
