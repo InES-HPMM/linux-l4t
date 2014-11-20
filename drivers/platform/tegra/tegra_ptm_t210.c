@@ -389,10 +389,10 @@ static ssize_t etf_fill_buf(struct tracectx *t)
 {
 	int rrp, rwp, rwp32, rrp32, max, count = 0, serial, overflow;
 
-	mutex_lock(&t->mutex);
-
 	if (!t->etf_regs)
 		return -EINVAL;
+
+	mutex_lock(&t->mutex);
 
 	etf_regs_unlock(t);
 
@@ -450,6 +450,7 @@ static ssize_t etf_fill_buf(struct tracectx *t)
 		}
 	}
 	etf_regs_lock(t);
+	mutex_unlock(&t->mutex);
 
 	return t->etf_size;
 }
