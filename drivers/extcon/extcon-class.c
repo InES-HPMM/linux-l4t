@@ -979,6 +979,12 @@ out:
 		}
 	}
 
+	if (cindex >= edev->max_supported) {
+		pr_err("ERROR: Cable %s Index %d is not supported\n",
+				cable_name ? cable_name : "", cindex);
+		return ERR_PTR(-EINVAL);
+	}
+
 	*cable_index = cindex;
 	return edev;
 }
