@@ -1491,6 +1491,39 @@ static struct iommu_ops smmu_iommu_ops_default = {
 static const char * const smmu_debugfs_mc[] = { "mc", };
 static const char * const smmu_debugfs_cache[] = {  "tlb", "ptc", };
 
+static void smmu_stats_update(struct smmu_debugfs_info *info)
+{
+	int i;
+	struct smmu_device *smmu = info->smmu;
+	const char * const stats[] = { "hit", "miss", };
+
+	for (i = 0; i < ARRAY_SIZE(stats); i++) {
+		u32 cur, lo, hi;
+		size_t offs;
+
+		lo = info->val[i] & 0xffffffff;
+		hi = info->val[i] >> 32;
+
+		offs = SMMU_STATS_CACHE_COUNT(info->mc, info->cache, i);
+		cur = smmu_read(smmu, offs);
+
+		if (cur < lo) {
+			hi++;
+			dev_info(smmu->dev, "%s is overwrapping\n", stats[i]);
+		}
+		lo = cur;
+		info->val[i] = (u64)hi << 32 | lo;
+	}
+}
+
+static void smmu_stats_timer_fn(unsigned long data)
+{
+	struct smmu_debugfs_info *info = (struct smmu_debugfs_info *)data;
+
+	smmu_stats_update(info);
+	mod_timer(&info->stats_timer, jiffies + msecs_to_jiffies(100));
+}
+
 static ssize_t smmu_debugfs_stats_write(struct file *file,
 					const char __user *buffer,
 					size_t count, loff_t *pos)
@@ -1534,10 +1567,13 @@ static ssize_t smmu_debugfs_stats_write(struct file *file,
 		val &= ~SMMU_CACHE_CONFIG_STATS_ENABLE;
 		val &= ~SMMU_CACHE_CONFIG_STATS_TEST;
 		smmu_write(smmu, val, offs);
+		del_timer_sync(&info->stats_timer);
 		break;
 	case _ON:
 		val |= SMMU_CACHE_CONFIG_STATS_ENABLE;
 		val &= ~SMMU_CACHE_CONFIG_STATS_TEST;
+		info->stats_timer.data = (unsigned long)info;
+		mod_timer(&info->stats_timer, jiffies + msecs_to_jiffies(100));
 		smmu_write(smmu, val, offs);
 		break;
 	case _RESET:
@@ -1545,6 +1581,7 @@ static ssize_t smmu_debugfs_stats_write(struct file *file,
 		smmu_write(smmu, val, offs);
 		val &= ~SMMU_CACHE_CONFIG_STATS_TEST;
 		smmu_write(smmu, val, offs);
+		memset(info->val, 0, sizeof(info->val));
 		break;
 	default:
 		BUG();
@@ -1560,23 +1597,9 @@ static ssize_t smmu_debugfs_stats_write(struct file *file,
 static int smmu_debugfs_stats_show(struct seq_file *s, void *v)
 {
 	struct smmu_debugfs_info *info = s->private;
-	struct smmu_device *smmu = info->smmu;
-	int i;
-	const char * const stats[] = { "hit", "miss", };
 
-
-	for (i = 0; i < ARRAY_SIZE(stats); i++) {
-		u32 val;
-		size_t offs;
-
-		offs = SMMU_STATS_CACHE_COUNT(info->mc, info->cache, i);
-		val = smmu_read(smmu, offs);
-		seq_printf(s, "%s:%08x ", stats[i], val);
-
-		dev_dbg(smmu->dev, "%s() %s %08x @%08llx\n", __func__,
-			stats[i], val, (u64)offs);
-	}
-	seq_printf(s, "\n");
+	smmu_stats_update(info);
+	seq_printf(s, "hit:%016llx miss:%016llx\n", info->val[0], info->val[1]);
 	return 0;
 }
 
@@ -1736,7 +1759,7 @@ static void smmu_debugfs_create(struct smmu_device *smmu)
 
 	bytes = ARRAY_SIZE(smmu_debugfs_mc) * ARRAY_SIZE(smmu_debugfs_cache) *
 		sizeof(*smmu->debugfs_info);
-	smmu->debugfs_info = kmalloc(bytes, GFP_KERNEL);
+	smmu->debugfs_info = kzalloc(bytes, GFP_KERNEL);
 	if (!smmu->debugfs_info)
 		return;
 
@@ -1774,6 +1797,8 @@ static void smmu_debugfs_create(struct smmu_device *smmu)
 						smmu_debugfs_stats_fops);
 			if (!cache)
 				goto err_out;
+
+			setup_timer(&info->stats_timer, smmu_stats_timer_fn, 0);
 		}
 	}
 
