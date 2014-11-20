@@ -1,7 +1,7 @@
 /*
  * drivers/media/video/tegra/nvavp/nvavp_dev.c
  *
- * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -1042,7 +1042,7 @@ static int nvavp_load_ucode(struct nvavp_info *nvavp)
 		ptr = (void *)nvavp_ucode_fw->data;
 
 		if (strncmp((const char *)ptr, "NVAVPAPP", 8)) {
-			dev_info(&nvavp->nvhost_dev->dev,
+			dev_dbg(&nvavp->nvhost_dev->dev,
 				"ucode hdr string mismatch\n");
 			ret = -EINVAL;
 			goto err_req_ucode;
@@ -1115,7 +1115,7 @@ static int nvavp_load_os(struct nvavp_info *nvavp, char *fw_os_file)
 		ptr = (void *)nvavp_os_fw->data;
 
 		if (strncmp((const char *)ptr, "NVAVP-OS", 8)) {
-			dev_info(&nvavp->nvhost_dev->dev,
+			dev_dbg(&nvavp->nvhost_dev->dev,
 				"os hdr string mismatch\n");
 			ret = -EINVAL;
 			goto err_os_bin;
@@ -1144,7 +1144,7 @@ static int nvavp_load_os(struct nvavp_info *nvavp, char *fw_os_file)
 		memcpy(os_info->os_bin, ptr, os_info->size);
 		memset(os_info->data + os_info->size, 0, SZ_1M - os_info->size);
 
-		dev_info(&nvavp->nvhost_dev->dev,
+		dev_dbg(&nvavp->nvhost_dev->dev,
 			"entry=%08x control=%08x debug=%08x size=%d\n",
 			os_info->entry_offset, os_info->control_offset,
 			os_info->debug_offset, os_info->size);
@@ -1154,7 +1154,7 @@ static int nvavp_load_os(struct nvavp_info *nvavp, char *fw_os_file)
 	memcpy(os_info->data, os_info->os_bin, os_info->size);
 	os_info->reset_addr = os_info->phys + os_info->entry_offset;
 
-	dev_info(&nvavp->nvhost_dev->dev,
+	dev_dbg(&nvavp->nvhost_dev->dev,
 		"AVP os at vaddr=%p paddr=%llx reset_addr=%llx\n",
 		os_info->data, (u64)(os_info->phys), (u64)os_info->reset_addr);
 	return 0;
@@ -1190,14 +1190,14 @@ static int nvavp_os_init(struct nvavp_info *nvavp)
 #if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU) /* Tegra2 with AVP MMU */
 	/* paddr is phys address */
 	/* vaddr is AVP_KERNEL_VIRT_BASE */
-	dev_info(&nvavp->nvhost_dev->dev,
+	dev_dbg(&nvavp->nvhost_dev->dev,
 		"using AVP MMU to relocate AVP os\n");
 	sprintf(fw_os_file, "nvavp_os.bin");
 	nvavp->os_info.reset_addr = AVP_KERNEL_VIRT_BASE;
 #elif defined(CONFIG_TEGRA_AVP_KERNEL_ON_SMMU) /* Tegra3 with SMMU */
 	/* paddr is any address behind SMMU */
 	/* vaddr is TEGRA_SMMU_BASE */
-	dev_info(&nvavp->nvhost_dev->dev,
+	dev_dbg(&nvavp->nvhost_dev->dev,
 		"using SMMU at %lx to load AVP kernel\n",
 		(unsigned long)nvavp->os_info.phys);
 	BUG_ON(nvavp->os_info.phys != 0xeff00000
@@ -1207,7 +1207,7 @@ static int nvavp_os_init(struct nvavp_info *nvavp)
 		(unsigned long)nvavp->os_info.phys);
 	nvavp->os_info.reset_addr = nvavp->os_info.phys;
 #else /* nvmem= carveout */
-	dev_info(&nvavp->nvhost_dev->dev,
+	dev_dbg(&nvavp->nvhost_dev->dev,
 		"using nvmem= carveout at %llx to load AVP os\n",
 		(u64)nvavp->os_info.phys);
 	sprintf(fw_os_file, "nvavp_os_%08llx.bin", (u64)nvavp->os_info.phys);
