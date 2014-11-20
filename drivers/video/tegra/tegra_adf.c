@@ -91,6 +91,8 @@ const u8 tegra_adf_fourcc_to_dc_fmt(u32 fourcc)
 		return TEGRA_WIN_FMT_YCbCr420SP;
 	case DRM_FORMAT_NV21:
 		return TEGRA_WIN_FMT_YCrCb420SP;
+	case DRM_FORMAT_NV16:
+		return TEGRA_WIN_FMT_YCbCr422SP;
 	default:
 		BUG();
 	}
@@ -305,6 +307,7 @@ const u32 tegra_adf_formats[] = {
 	DRM_FORMAT_UYVY,
 	DRM_FORMAT_NV12,
 	DRM_FORMAT_NV21,
+	DRM_FORMAT_NV16,
 };
 
 static inline int test_bit_u32(int nr, const u32 *addr)
@@ -538,7 +541,7 @@ static inline dma_addr_t tegra_adf_phys_addr(struct adf_buffer *buf,
 
 static void tegra_adf_set_windowattr_basic(struct tegra_dc_win *win,
 		const struct tegra_adf_flip_windowattr *attr,
-		u32 format, u32 w, u32 h)
+		u32 format)
 {
 	win->flags = TEGRA_WIN_FLAG_ENABLED;
 	if (attr->blend == TEGRA_ADF_BLEND_PREMULT)
@@ -565,6 +568,14 @@ static void tegra_adf_set_windowattr_basic(struct tegra_dc_win *win,
 		win->block_height_log2 = attr->block_height_log2;
 	}
 #endif
+#if defined(CONFIG_TEGRA_DC_CDE)
+	if (attr->flags & TEGRA_ADF_FLIP_FLAG_COMPRESSED) {
+		win->cde.offset_x = attr->cde.offset_x;
+		win->cde.offset_y = attr->cde.offset_y;
+		win->cde.zbc_color = attr->cde.zbc_color;
+		win->cde.ctb_entry = 0x02;
+	}
+#endif
 #if defined(CONFIG_TEGRA_DC_INTERLACE)
 	if (attr->flags & TEGRA_ADF_FLIP_FLAG_INTERLACE)
 		win->flags |= TEGRA_WIN_FLAG_INTERLACE;
@@ -573,8 +584,8 @@ static void tegra_adf_set_windowattr_basic(struct tegra_dc_win *win,
 	win->fmt = tegra_adf_fourcc_to_dc_fmt(format);
 	win->x.full = attr->x;
 	win->y.full = attr->y;
-	win->w.full = dfixed_const(w);
-	win->h.full = dfixed_const(h);
+	win->w.full = attr->w;
+	win->h.full = attr->h;
 	/* XXX verify that this doesn't go outside display's active region */
 	win->out_x = attr->out_x;
 	win->out_y = attr->out_y;
@@ -593,7 +604,7 @@ static void tegra_adf_set_windowattr(struct tegra_adf_info *adf_info,
 		return;
 	}
 
-	tegra_adf_set_windowattr_basic(win, attr, buf->format, buf->w, buf->h);
+	tegra_adf_set_windowattr_basic(win, attr, buf->format);
 
 	win->stride = buf->pitch[0];
 	win->stride_uv = buf->pitch[1];
@@ -616,6 +627,26 @@ static void tegra_adf_set_windowattr(struct tegra_adf_info *adf_info,
 		}
 	}
 #endif
+
+#if defined(CONFIG_TEGRA_DC_CDE)
+	if (attr->flags & TEGRA_DC_EXT_FLIP_FLAG_COMPRESSED) {
+		win->cde.cde_addr = win->phys_addr + attr->cde.offset;
+	} else {
+		win->cde.cde_addr = 0;
+	}
+#endif
+
+	if (attr->flags & TEGRA_ADF_FLIP_FLAG_UPDATE_CSC) {
+		win->csc.yof = attr->csc.yof;
+		win->csc.kyrgb = attr->csc.kyrgb;
+		win->csc.kur = attr->csc.kur;
+		win->csc.kug = attr->csc.kug;
+		win->csc.kub = attr->csc.kub;
+		win->csc.kvr = attr->csc.kvr;
+		win->csc.kvg = attr->csc.kvg;
+		win->csc.kvb = attr->csc.kvb;
+		win->csc_dirty = true;
+	}
 
 	if (tegra_platform_is_silicon()) {
 		dev_WARN_ONCE(&adf_info->base.base.dev, attr->timestamp_ns,
@@ -822,8 +853,7 @@ static int tegra_adf_negotiate_bw(struct tegra_adf_info *adf_info,
 			}
 
 			tegra_adf_set_windowattr_basic(&dc->tmp_wins[idx],
-					attr, fourcc, bw->win[i].w,
-					bw->win[i].h);
+					attr, fourcc);
 		} else {
 			dc->tmp_wins[i].flags = 0;
 		}

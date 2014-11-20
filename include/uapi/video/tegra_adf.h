@@ -64,6 +64,8 @@ struct tegra_adf_capabilities {
 #define TEGRA_ADF_FLIP_FLAG_BLOCKLINEAR		(1 << 5)
 #define TEGRA_ADF_FLIP_FLAG_SCAN_COLUMN		(1 << 6)
 #define TEGRA_ADF_FLIP_FLAG_INTERLACE		(1 << 7)
+#define TEGRA_ADF_FLIP_FLAG_COMPRESSED		(1 << 8)
+#define TEGRA_ADF_FLIP_FLAG_UPDATE_CSC		(1 << 9)
 
 struct tegra_adf_flip_windowattr {
 	__s32	win_index;
@@ -75,6 +77,8 @@ struct tegra_adf_flip_windowattr {
 	 */
 	__u32	x;
 	__u32	y;
+	__u32	w;
+	__u32	h;
 	__u32	out_x;
 	__u32	out_y;
 	__u32	out_w;
@@ -92,6 +96,25 @@ struct tegra_adf_flip_windowattr {
 	__u32	offset_v2;
 	/* Leave some wiggle room for future expansion */
 	__u32   pad2[1];
+
+	union { /* fields for mutually exclusive options */
+		struct { /* used if TEGRA_ADF_FLIP_FLAG_COMPRESSED set */
+			__u32	offset; /* added to buffer base address */
+			__u16	offset_x;
+			__u16	offset_y;
+			__u32	zbc_color;
+		} cde;
+		struct { /* used if TEGRA_ADF_FLIP_FLAG_UPDATE_CSC set */
+			__u16 yof;	/* s.7.0 */
+			__u16 kyrgb;	/*   2.8 */
+			__u16 kur;	/* s.2.8 */
+			__u16 kvr;	/* s.2.8 */
+			__u16 kug;	/* s.1.8 */
+			__u16 kvg;	/* s.1.8 */
+			__u16 kub;	/* s.2.8 */
+			__u16 kvb;	/* s.2.8 */
+		} csc;
+	};
 };
 
 struct tegra_adf_flip {
