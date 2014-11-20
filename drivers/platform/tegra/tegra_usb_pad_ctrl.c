@@ -863,7 +863,7 @@ void xusb_ss_pad_init(int pad, int port_map, u32 cap)
 }
 EXPORT_SYMBOL_GPL(xusb_ss_pad_init);
 
-void usb2_vbus_id_init()
+void usb2_vbus_id_init(void)
 {
 	unsigned long val, flags;
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
