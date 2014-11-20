@@ -2106,10 +2106,6 @@ static void nvudc_resume_state(struct nv_udc_s *nvudc, bool device_init)
 		u_temp2 |= PORTSC_LWS;
 	}
 
-	/* IF this is called because of Port LInk state change Event */
-	if (PORTSC_PLC & u_temp)
-		u_temp2 |= PORTSC_PLC;
-
 	iowrite32(u_temp2, nvudc->mmio_reg_base + PORTSC);
 
 	if (nvudc->device_state == USB_STATE_SUSPENDED) {
@@ -3647,8 +3643,13 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 
 		msg_dbg(nvudc->dev, "PLC is set PORTSC= 0x%x\n",
 				u_temp);
+		/* Clear PLC first */
+		u_temp2 = ioread32(nvudc->mmio_reg_base + PORTSC);
+		u_temp2 = u_temp2 & PORTSC_MASK;
+		u_temp2 |= PORTSC_PLC;
+		iowrite32(u_temp2, nvudc->mmio_reg_base + PORTSC);
 
-		if ((u_temp & PORTSC_PLS_MASK) == XDEV_U3) {
+		if ((u_temp2 & PORTSC_PLS_MASK) == XDEV_U3) {
 			msg_dbg(nvudc->dev, "PLS Suspend (U3)\n");
 			nvudc->resume_state = nvudc->device_state;
 			nvudc->device_state = USB_STATE_SUSPENDED;
@@ -3657,15 +3658,10 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 				nvudc->driver->suspend(&nvudc->gadget);
 				spin_lock(&nvudc->lock);
 			}
-			u_temp2 = ioread32(nvudc->mmio_reg_base + PORTSC);
-			u_temp2 = u_temp2 & PORTSC_MASK;
-			u_temp2 |= PORTSC_PLC;
-			iowrite32(u_temp2, nvudc->mmio_reg_base + PORTSC);
-
 #ifdef OTG_XXX
 			nv_notify_otg(A_BUS_SUSPEND);
 #endif
-		} else if ((((u_temp & PORTSC_PLS_MASK) == XDEV_RESUME)
+		} else if ((((u_temp2 & PORTSC_PLS_MASK) == XDEV_RESUME)
 			&& (nvudc->gadget.speed == USB_SPEED_SUPER)) ||
 			(((u_temp & PORTSC_PLS_MASK) == XDEV_U0)
 			&& (nvudc->gadget.speed < USB_SPEED_SUPER))) {
@@ -3682,11 +3678,6 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 #ifdef OTG_XXX
 			nv_notify_otg(A_BUS_RESUME);
 #endif
-		} else {
-			u_temp2 = ioread32(nvudc->mmio_reg_base + PORTSC);
-			u_temp2 = u_temp2 & PORTSC_MASK;
-			u_temp2 |= PORTSC_PLC;
-			iowrite32(u_temp2, nvudc->mmio_reg_base + PORTSC);
 		}
 	}
 
