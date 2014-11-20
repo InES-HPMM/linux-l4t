@@ -260,7 +260,8 @@ F:	drivers/platform/tegra/pm.c
 F:	drivers/platform/tegra/pmc.c
 F:	drivers/platform/tegra/pm-irq.c
 F:	drivers/platform/tegra/pm-t3.c
-F:	drivers/platform/tegra/powergate*
+F:	drivers/platform/tegra/pm_domains.c
+F:	drivers/platform/tegra/powergate/
 
 SECURE OS:
 M:	Dennis Huang <denhuang@nvidia.com>
