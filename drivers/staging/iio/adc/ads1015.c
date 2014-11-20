@@ -106,8 +106,8 @@ static const struct regmap_config ads1015_regmap_config = {
 };
 
 struct ads1015_adc_threshold_ranges {
-	u32 lower;
-	u32 upper;
+	int lower;
+	int upper;
 };
 
 struct ads1015_property {
@@ -206,8 +206,7 @@ static int ads1015_threshold_update(struct ads1015 *adc, int *adc_val)
 	}
 
 	last_val = (s16)reg_val;
-	last_val = (last_val >> 4);
-	last_val = abs(last_val);
+	last_val = (last_val / 16);
 
 	do {
 		mdelay(adc_prop->retry_delay_ms);
@@ -219,8 +218,7 @@ static int ads1015_threshold_update(struct ads1015 *adc, int *adc_val)
 		}
 
 		cur_val = (s16)reg_val;
-		cur_val = (cur_val >> 4);
-		cur_val = abs(cur_val);
+		cur_val = (cur_val / 16);
 
 		if (cur_val >= (last_val - adc_prop->tolerance) &&
 			cur_val <= (last_val + adc_prop->tolerance))
@@ -263,6 +261,9 @@ static int ads1015_threshold_update(struct ads1015 *adc, int *adc_val)
 		return ret;
 	}
 
+	dev_info(adc->dev,
+		"ADC TH values LTV: UTV: RV: 0x%04x 0x%04x 0x%04x\n",
+		(u16)lower_s16, (u16)upper_s16, reg_val);
 	return 0;
 }
 
@@ -434,8 +435,8 @@ static int ads1015_get_dt_data(struct ads1015 *adc,
 		of_property_read_u32_index(node,
 			"ti,adc-valid-threshold-ranges", i * 2 + 1, &upper_adc);
 
-		adc_prop->threshold_ranges[i].lower = lower_adc;
-		adc_prop->threshold_ranges[i].upper = upper_adc;
+		adc_prop->threshold_ranges[i].lower = (int)lower_adc;
+		adc_prop->threshold_ranges[i].upper = (int)upper_adc;
 	};
 	adc_prop->num_conditions = nranges;
 	return 0;
