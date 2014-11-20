@@ -22,8 +22,8 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/gpio/tegra-gpio.h>
 #include "tegra210-platforms/tegra210-prods.dtsi"
-#include "tegra210-platforms/tegra210-hawkeye-pmic-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-pinmux-p2290-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-hawkeye-power-tree-p2290-1100-a00.dtsi"
 
 / {
 	compatible = "nvidia,hawkeye", "nvidia,tegra210";
