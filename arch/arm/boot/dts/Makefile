@@ -254,7 +254,8 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-p1859-vm_1.dtb \
 	tegra124-p1859-vm_2.dtb \
 	tegra124-p1889.dtb \
-	tegra124-p2360.dtb
+	tegra124-p2360.dtb \
+	tegra124-p1855.dtb
 dtb-$(CONFIG_ARCH_VERSATILE) += versatile-ab.dtb \
 	versatile-pb.dtb
 dtb-$(CONFIG_ARCH_VEXPRESS) += vexpress-v2p-ca5s.dtb \
