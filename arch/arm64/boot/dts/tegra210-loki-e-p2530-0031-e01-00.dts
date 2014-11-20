@@ -9,8 +9,8 @@
 			ti,enable-continuous-mode;
 			ti,continuous-channel-number = <4>;
 			ti,maximum-retries = <6>;
-			ti,adc-valid-threshold-ranges= <0     50
-							64    78
+			ti,adc-valid-threshold-ranges= <(-20)     30
+							40    78
 							382   418
 							220   242
 							122   136
@@ -24,6 +24,11 @@
 			interrupts = <TEGRA_GPIO(A, 2) GPIO_ACTIVE_HIGH>;
 			extcon-adc-jack,irq-flags = <2>;
 			extcon-adc-jack,debounce-ms = <500>;
+			extcon-adc-jack,states = <0x1   (-20)       30
+						0x2     40      78
+						0x4     382     418
+						0x8     220     242
+						0x10    122     136>;
 		};
 
 		extcon@2 {
