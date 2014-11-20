@@ -35,6 +35,7 @@ enum actmon_state {
 struct actmon_dev {
 	u32	reg;
 	int	irq;
+	struct device *device;
 
 	const char	*dev_id;
 	const char	*con_id;

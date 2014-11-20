@@ -268,7 +268,7 @@ static irqreturn_t ape_actmon_dev_fn(int irq, void *dev_id)
 
 	spin_unlock_irqrestore(&dev->lock, flags);
 
-	pr_debug("%s(kHz): avg: %lu,  boost: %lu, target: %lu, current: %lu\n",
+	dev_dbg(dev->device, "%s(kHz): avg: %lu,  boost: %lu, target: %lu, current: %lu\n",
 	dev->clk_name, dev->avg_actv_freq, dev->boost_freq, dev->target_freq,
 	dev->cur_freq);
 
@@ -385,7 +385,7 @@ static int actmon_dev_probe(struct actmon_dev *dev)
 			ape_actmon_dev_fn, IRQ_TYPE_LEVEL_HIGH,
 			dev->clk_name, dev);
 	if (ret) {
-		pr_err("Failed irq %d request for %s\n", dev->irq,
+		dev_err(dev->device, "Failed irq %d request for %s\n", dev->irq,
 			dev->clk_name);
 		goto end;
 	}
@@ -403,8 +403,8 @@ static int actmon_dev_init(struct actmon_dev *dev)
 
 	dev->clk = clk_get_sys(NULL, dev->clk_name);
 	if (IS_ERR_OR_NULL(dev->clk)) {
-		pr_err("Failed to find %s.%s clock\n",
-			dev->dev_id, dev->con_id);
+		dev_err(dev->device, "Failed to find %s clock\n",
+			dev->clk_name);
 		return -EINVAL;
 	}
 
@@ -412,7 +412,7 @@ static int actmon_dev_init(struct actmon_dev *dev)
 
 	ret = clk_set_rate(dev->clk, dev->max_freq);
 	if (ret) {
-		pr_err("failed to set ape.emc freq:%d\n", ret);
+		dev_err(dev->device, "failed to set ape.emc freq:%d\n", ret);
 		BUG_ON(ret);
 	}
 
@@ -714,6 +714,7 @@ int ape_actmon_probe(struct platform_device *pdev)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(actmon_devices); i++) {
+		actmon_devices[i]->device = &pdev->dev;
 		ret = actmon_dev_probe(actmon_devices[i]);
 		dev_info(&pdev->dev, "%s actmon: %s probe (%d)\n",
 		actmon_devices[i]->clk_name, ret ? "Failed" : "Completed", ret);
@@ -733,13 +734,13 @@ int ape_actmon_init(struct platform_device *pdev)
 
 	actmon_clk = clk_get_sys(NULL, "ape");
 	if (!actmon_clk) {
-		pr_err("%s: Failed to find actmon clock\n", __func__);
+		dev_err(&pdev->dev, "Failed to find actmon clock\n");
 		return -EINVAL;
 	}
 
 	ret = clk_prepare_enable(actmon_clk);
 	if (ret) {
-		pr_err("%s: Failed to enable actmon clock\n", __func__);
+		dev_err(&pdev->dev, "Failed to enable actmon clock\n");
 		return -EINVAL;
 	}
 
@@ -747,7 +748,7 @@ int ape_actmon_init(struct platform_device *pdev)
 
 	for (i = 0; i < ARRAY_SIZE(actmon_devices); i++) {
 		ret = actmon_dev_init(actmon_devices[i]);
-		pr_info("%s actmon device: %s initialization (%d)\n",
+		dev_err(&pdev->dev, "%s actmon device: %s initialization (%d)\n",
 		actmon_devices[i]->clk_name, ret ? "Failed" : "Completed", ret);
 	}
 
