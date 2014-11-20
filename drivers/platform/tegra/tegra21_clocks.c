@@ -5367,10 +5367,10 @@ static void tegra21_emc_clk_suspend(struct clk *c, unsigned long rate)
 		return;
 
 	/*
-	 * Scale EMC rate at/below boot rate - required for entering SC7(LP0)
+	 * Scale EMC rate at boot rate - required for entering SC7(LP0)
 	 * on LPDDR4.
 	 */
-	if (rate > c->boot_rate)
+	if (rate != c->boot_rate)
 		tegra21_emc_clk_set_rate(c, c->boot_rate);
 }
 #endif
