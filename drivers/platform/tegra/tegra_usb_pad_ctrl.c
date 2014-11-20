@@ -24,6 +24,7 @@
 #include <linux/tegra-fuse.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-powergate.h>
+#include <linux/syscore_ops.h>
 
 #include <mach/tegra_usb_pad_ctrl.h>
 
@@ -1903,3 +1904,35 @@ void xusb_enable_pad_protection(bool devmode)
 		XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL1(0), otgpad_ctl0);
 }
 EXPORT_SYMBOL_GPL(xusb_enable_pad_protection);
+
+/* save restore below pad control register when cross LP0 */
+struct xusb_padctl_restore_context {
+	u32 padctl_usb3_pad_mux;
+};
+static struct xusb_padctl_restore_context context;
+
+int tegra_xusb_padctl_suspend(void)
+{
+	context.padctl_usb3_pad_mux = tegra_usb_pad_reg_read(
+		XUSB_PADCTL_USB3_PAD_MUX_0);
+	return 0;
+}
+
+void tegra_xusb_padctl_resume(void)
+{
+	tegra_usb_pad_reg_write(XUSB_PADCTL_USB3_PAD_MUX_0,
+		context.padctl_usb3_pad_mux);
+}
+
+static struct syscore_ops tegra_padctl_syscore_ops = {
+	.suspend = tegra_xusb_padctl_suspend,
+	.resume = tegra_xusb_padctl_resume,
+	.save = tegra_xusb_padctl_suspend,
+	.restore = tegra_xusb_padctl_resume,
+};
+static int __init tegra_xusb_padctl_init(void)
+{
+	register_syscore_ops(&tegra_padctl_syscore_ops);
+	return 0;
+}
+late_initcall(tegra_xusb_padctl_init);
