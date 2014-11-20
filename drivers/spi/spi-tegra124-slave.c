@@ -1143,6 +1143,11 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 		command1 |= SPI_BIT_LENGTH(bits_per_word - 1);
 	}
 
+	if (spi->mode & SPI_LSB_FIRST)
+		command1 |= SPI_LSBIT_FE;
+	else
+		command1 &= ~SPI_LSBIT_FE;
+
 	if (tspi->is_packed)
 		command1 |= SPI_PACKED;
 
