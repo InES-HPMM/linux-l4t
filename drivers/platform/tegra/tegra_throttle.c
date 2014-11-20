@@ -443,8 +443,8 @@ static struct throttle_table
 		"ERROR: throttle_table DT not supported for this ARCH\n");
 	return NULL;
 #endif
-	pr_debug("%s: NUM_OF_CAP_FREQS_DT is %d.\n", __func__, NUM_OF_CAP_FREQS_DT);
-	pr_debug("%s: NUM_OF_CAP_FREQS is %d.\n", __func__, NUM_OF_CAP_FREQS);
+	pr_debug("%s: Num CAP Freqs DT %d.\n", __func__, NUM_OF_CAP_FREQS_DT);
+	pr_debug("%s: Num CAP Freqs    %d.\n", __func__, NUM_OF_CAP_FREQS);
 
 	throt_tab = devm_kzalloc(dev,
 			sizeof(struct throttle_table)*num_states, GFP_KERNEL);
@@ -499,6 +499,13 @@ static struct tegra_throttle_data
 
 		if (of_property_read_u32(child, "num_states", &val) == 0)
 			pdata->num_states = val;
+
+		of_get_property(np, "throttle_table", &val);
+		if (pdata->num_states != val) {
+			pr_info("%s: 'throttle_table' size (%d) does not match 'num-states' (%d) in DT.\n",
+				__func__, val, pdata->num_states);
+			return NULL;
+		}
 
 		pdata->throt_tab =
 			throttle_parse_dt_thrt_tbl(dev, child, val);
