@@ -482,6 +482,11 @@ static void pmc_disable_bus_ctrl(struct tegra_xhci_hcd *tegra)
 			pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 0);
 		}
 	}
+	if (tegra->otg_port_owned) {
+		pad = tegra->otg_portnum;
+		pmc = &pmc_data[pad];
+		pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 0);
+	}
 }
 
 static u32 csb_read(struct tegra_xhci_hcd *tegra, u32 addr)
