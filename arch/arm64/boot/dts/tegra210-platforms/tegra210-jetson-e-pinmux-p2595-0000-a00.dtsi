@@ -880,7 +880,7 @@
 
 			touch_clk_pv7 {
 				nvidia,pins = "touch_clk_pv7";
-				nvidia,function = "rsvd1";
+				nvidia,function = "touch";
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
