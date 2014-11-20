@@ -2609,7 +2609,7 @@ static void tegra_ahci_t210_power_up_aux_idle_detector(void)
 	xusb_writel(val, XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0);
 }
 
-static void tegra_ahci_put_sata_in_iddq()
+static void tegra_ahci_put_sata_in_iddq(void)
 {
 	u32 val;
 	u32 dat;
