@@ -354,7 +354,7 @@ static int aotag_get_temp_generic(void *data, long *temp)
 	pdev = (struct platform_device *)data;
 
 	regval = reg_read(pdev, pmc, PMC_TSENSOR_STATUS1);
-	aotag_pdev_print(info, pdev, " TEMP - 0x%x\n", regval);
+	/* aotag_pdev_print(info, pdev, " TEMP - 0x%x\n", regval); */
 	GET_REG(&valid, STATUS1_TEMP_VALID, &regval);
 	if (!valid) {
 		*temp = -125;
@@ -364,12 +364,12 @@ static int aotag_get_temp_generic(void *data, long *temp)
 	GET_REG(&abs, STATUS1_TEMP_ABS, &regval);
 	GET_REG(&fraction, STATUS1_TEMP_FRAC, &regval);
 	GET_REG(&sign, STATUS1_TEMP_SIGN, &regval);
-	aotag_pdev_print(info, pdev, "abs %d, frac %d, sign %d\n", abs,
-			fraction, sign);
+	/* aotag_pdev_print(info, pdev, "abs %d, frac %d, sign %d\n", abs,
+			fraction, sign); */
 	*temp = (abs*2*1000) + (fraction*500);
 	if (sign)
 		*temp = (-1) * (*temp);
-	aotag_print(info, " temp - %ld\n", *temp);
+	/* aotag_print(info, " temp - %ld\n", *temp); */
 out:
 	return ret;
 }
