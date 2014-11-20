@@ -595,7 +595,7 @@ static int tegra_vi_i2c_init(struct tegra_vi_i2c_dev *i2c_dev)
 	unsigned long timeout = jiffies + HZ;
 
 	if (!i2c_dev->reg || !regulator_is_enabled(i2c_dev->reg))
-		return -EFAULT;
+		return -ENODEV;
 
 	tegra_periph_reset_assert(i2c_dev->div_clk);
 	udelay(2);
@@ -1575,7 +1575,7 @@ static int __tegra_vi_i2c_resume_noirq(struct tegra_vi_i2c_dev *i2c_dev)
 		tegra_vi_i2c_clock_enable(i2c_dev);
 
 	ret = tegra_vi_i2c_init(i2c_dev);
-	if (ret)
+	if (ret && ret != -ENODEV)
 		return ret;
 
 	i2c_dev->is_suspended = false;
