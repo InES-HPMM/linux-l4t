@@ -59,6 +59,7 @@
 /* Panel board ID */
 #define    BOARD_E1627    0x065b
 #define    BOARD_E1639    0x0667
+#define    BOARD_E2145    0x0861
 #define    BOARD_E1631    0x065f
 #define    BOARD_PM354    0x0162
 #define    BOARD_E1807    0x070F
