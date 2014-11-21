@@ -34,8 +34,8 @@
  */
 struct adc_jack_cond {
 	u32 state;	/* extcon state value. 0 if invalid */
-	u32 min_adc;
-	u32 max_adc;
+	int min_adc;
+	int max_adc;
 };
 
 /**

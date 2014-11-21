@@ -63,6 +63,7 @@ static void adc_jack_handler(struct work_struct *work)
 	struct adc_jack_data *data = container_of(to_delayed_work(work),
 			struct adc_jack_data,
 			handler);
+	struct adc_jack_cond *def = NULL;
 	u32 state = 0;
 	int ret, adc_val;
 	int i;
@@ -74,10 +75,9 @@ static void adc_jack_handler(struct work_struct *work)
 		return;
 	}
 
-	adc_val = abs(adc_val);
 	/* Get state from adc value with adc_conditions */
 	for (i = 0; i < data->num_conditions; i++) {
-		struct adc_jack_cond *def = &data->adc_conditions[i];
+		def = &data->adc_conditions[i];
 		if (!def->state)
 			break;
 		if (def->min_adc <= adc_val && def->max_adc >= adc_val) {
@@ -86,6 +86,11 @@ static void adc_jack_handler(struct work_struct *work)
 			break;
 		}
 	}
+
+	if (state)
+		dev_info(data->dev,
+			"ADC Lower:Value:Upper = %d:%d:%d, Cable:%d\n",
+			def->min_adc, adc_val, def->max_adc, cindex);
 
 	/* if no def has met, it means state = 0 (no cables attached) */
 	extcon_set_state(&data->edev, state);
@@ -176,8 +181,8 @@ static struct adc_jack_pdata *of_get_platform_data(
 					i * 3 + 2, &max_adc);
 
 		pdata->adc_conditions[i].state = state;
-		pdata->adc_conditions[i].min_adc = min_adc;
-		pdata->adc_conditions[i].max_adc = max_adc;
+		pdata->adc_conditions[i].min_adc = (int) min_adc;
+		pdata->adc_conditions[i].max_adc = (int) max_adc;
 	};
 
 	ncables = of_property_count_strings(np, "extcon-adc-jack,cable-names");
