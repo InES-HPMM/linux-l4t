@@ -396,6 +396,8 @@
 
 #define ptm_t210_writel(t, id, v, x)	writel((v),	\
 						(t)->ptm_t210_regs[id] + (x))
+#define ptm_t210_writeq(t, id, v, x)	writeq((v),	\
+						(t)->ptm_t210_regs[id] + (x))
 #define ptm_t210_readl(t, id, x)	readl(		\
 						(t)->ptm_t210_regs[id] + (x))
 #define ptm_t210_regs_unlock(t, id)	ptm_t210_writel((t), id,	\

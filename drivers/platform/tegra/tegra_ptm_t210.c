@@ -77,10 +77,8 @@ struct tracectx {
 	int             *etf_buf;
 	int             etf_size;
 	bool            dump_initial_etf;
-	unsigned long   start_address_msb;
-	unsigned long   start_address_lsb;
-	unsigned long   stop_address_msb;
-	unsigned long   stop_address_lsb;
+	uintptr_t	start_address;
+	uintptr_t	stop_address;
 	int             enable;
 	int             el0_trace;
 	int             branch_broadcast;
@@ -91,10 +89,8 @@ struct tracectx {
 static struct tracectx tracer = {
 	.cpu_regs_count		=	0,
 	.ptm_t210_regs_count	=	0,
-	.start_address_msb	=	0,
-	.start_address_lsb	=	0,
-	.stop_address_msb	=	0xFFFFFFFF,
-	.stop_address_lsb	=	0xFFFFFFFF,
+	.start_address		=	0,
+	.stop_address		=	0xFFFFFFC100000000,
 	.enable			=	0,
 	.el0_trace		=	1,
 	.branch_broadcast	=	1,
@@ -219,14 +215,10 @@ static void ptm_init(struct tracectx *t, int id)
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCSSCCR0_0);
 
 	/* Program Address range comparator. Use 0 and 1 */
-	ptm_t210_writel(t, id, t->start_address_msb,
+	ptm_t210_writeq(t, id, t->start_address,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR0_0);
-	ptm_t210_writel(t, id, t->start_address_lsb,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR0_0 + 4);
-	ptm_t210_writel(t, id, t->stop_address_msb,
+	ptm_t210_writeq(t, id, t->stop_address,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR1_0);
-	ptm_t210_writel(t, id, t->stop_address_lsb,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR1_0 + 4);
 
 	/* Program the ARC control register */
 	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR0_0);
@@ -542,9 +534,8 @@ static ssize_t trace_range_address_show(struct kobject *kobj,
 	struct kobj_attribute *attr,
 	char *buf)
 {
-	return sprintf(buf, "%08lx %08lx %08lx %08lx\n",
-			tracer.start_address_msb, tracer.stop_address_lsb,
-			tracer.stop_address_msb, tracer.stop_address_lsb);
+	return sprintf(buf, "%16lx %16lx\n",
+			tracer.start_address, tracer.stop_address);
 }
 
 static ssize_t trace_enable_store(struct kobject *kobj,
@@ -636,27 +627,18 @@ static ssize_t trace_range_address_store(struct kobject *kobj,
 	struct kobj_attribute *attr,
 	char const *buf, size_t n)
 {
-	unsigned int start_address_msb, start_address_lsb,
-				stop_address_msb, stop_address_lsb;
+	uintptr_t start_address, stop_address;
 
-	if (sscanf(buf, "%ul %ul %ul %ul", &start_address_msb,
-			&start_address_lsb, &stop_address_msb,
-			&stop_address_lsb) != 4)
+	if (sscanf(buf, "%lx %lx", &start_address, &stop_address) != 2)
+		return -EINVAL;
+
+	if (start_address >= stop_address)
 		return -EINVAL;
 
 	mutex_lock(&tracer.mutex);
 
-	if (start_address_msb < 0 || start_address_lsb < 0 ||
-		start_address_msb > 0xFFFFFFFF || stop_address_msb < 0 ||
-		start_address_lsb > 0xFFFFFFFF || stop_address_lsb < 0 ||
-		stop_address_msb > 0xFFFFFFFF || stop_address_lsb > 0xFFFFFFFF)
-		pr_err("ptm address range invalid\n");
-	else {
-		tracer.start_address_msb = start_address_msb;
-		tracer.start_address_lsb = start_address_lsb;
-		tracer.stop_address_msb  = stop_address_msb;
-		tracer.stop_address_lsb	 = stop_address_lsb;
-	}
+	tracer.start_address= start_address;
+	tracer.stop_address = stop_address;
 
 	mutex_unlock(&tracer.mutex);
 
