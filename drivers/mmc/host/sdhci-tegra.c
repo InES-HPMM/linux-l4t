@@ -1478,15 +1478,6 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		vendor_ctrl &= ~(SDHCI_VNDR_TUN_CTRL1_TUN_STEP_SIZE);
 		sdhci_writel(host, vendor_ctrl, SDHCI_VNDR_TUN_CTRL1_0);
 	}
-	if (plat->dqs_trim_delay) {
-		misc_ctrl = sdhci_readl(host, SDHCI_VNDR_CAP_OVERRIDES_0);
-		misc_ctrl &= ~(SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_MASK <<
-			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT);
-		misc_ctrl |= ((plat->dqs_trim_delay &
-			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_MASK) <<
-			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT);
-		sdhci_writel(host, misc_ctrl, SDHCI_VNDR_CAP_OVERRIDES_0);
-	}
 
 	/* Use timeout clk data timeout counter for generating wr crc status */
 	if (soc_data->nvquirks &
