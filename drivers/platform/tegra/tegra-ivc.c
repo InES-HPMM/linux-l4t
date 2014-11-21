@@ -85,9 +85,31 @@ static inline void ivc_flush_counter(struct ivc *ivc, dma_addr_t handle)
 			DMA_TO_DEVICE);
 }
 
-static inline int ivc_channel_empty(struct ivc_channel_header *ch)
+static inline int ivc_channel_empty(struct ivc *ivc,
+		struct ivc_channel_header *ch)
 {
-	return ACCESS_ONCE(ch->w_count) == ACCESS_ONCE(ch->r_count);
+	/*
+	 * This function performs multiple checks on the same values with
+	 * security implications, so create snapshots with ACCESS_ONCE() to
+	 * ensure that these checks use the same values.
+	 */
+	uint32_t w_count = ACCESS_ONCE(ch->w_count);
+	uint32_t r_count = ACCESS_ONCE(ch->r_count);
+
+	/*
+	 * Perform an over-full check to prevent denial of service attacks where
+	 * a server could be easily fooled into believing that there's an
+	 * extremely large number of frames ready, since receivers are not
+	 * expected to check for full or over-full conditions.
+	 *
+	 * Although the channel isn't empty, this is an invalid case caused by
+	 * a potentially malicious peer, so returning empty is safer, because it
+	 * gives the impression that the channel has gone silent.
+	 */
+	if (w_count - r_count > ivc->nframes)
+		return 1;
+
+	return w_count == ch->r_count;
 }
 
 static inline int ivc_channel_full(struct ivc *ivc,
@@ -130,10 +152,10 @@ static inline void ivc_advance_rx(struct ivc *ivc)
  */
 static inline int ivc_rx_empty(struct ivc *ivc)
 {
-	if (ivc_channel_empty(ivc->rx_channel)) {
+	if (ivc_channel_empty(ivc, ivc->rx_channel)) {
 		ivc_invalidate_counter(ivc, ivc->rx_handle +
 				offsetof(struct ivc_channel_header, w_count));
-		return ivc_channel_empty(ivc->rx_channel);
+		return ivc_channel_empty(ivc, ivc->rx_channel);
 	}
 
 	return 0;
@@ -166,7 +188,7 @@ int tegra_ivc_tx_empty(struct ivc *ivc)
 {
 	ivc_invalidate_counter(ivc, ivc->tx_handle +
 			offsetof(struct ivc_channel_header, r_count));
-	return ivc_channel_empty(ivc->tx_channel);
+	return ivc_channel_empty(ivc, ivc->tx_channel);
 }
 EXPORT_SYMBOL(tegra_ivc_tx_empty);
 
@@ -324,7 +346,7 @@ int tegra_ivc_read_advance(struct ivc *ivc)
 	 * have already observed the channel non-empty. This check is just to
 	 * catch programming errors.
 	 */
-	if (ivc_channel_empty(ivc->rx_channel))
+	if (ivc_channel_empty(ivc, ivc->rx_channel))
 		return -ENOMEM;
 
 	ivc_advance_rx(ivc);
@@ -446,6 +468,23 @@ int tegra_ivc_write_advance(struct ivc *ivc)
 }
 EXPORT_SYMBOL(tegra_ivc_write_advance);
 
+/*
+ * Temporary routine for re-synchronizing the channel across a reboot.
+ */
+int tegra_ivc_channel_sync(struct ivc *ivc)
+{
+	/* This only works when nframes is a power of 2. */
+	if ((ivc->nframes & (ivc->nframes - 1)) != 0) {
+		pr_err("%s: nframes must be a power of 2: %u\n", __func__,
+				ivc->nframes);
+		return -EINVAL;
+	}
+	ivc->w_pos = ivc->tx_channel->w_count % ivc->nframes;
+	ivc->r_pos = ivc->rx_channel->r_count % ivc->nframes;
+	return 0;
+}
+EXPORT_SYMBOL(tegra_ivc_channel_sync);
+
 size_t tegra_ivc_align(size_t size)
 {
 	return (size + (IVC_ALIGN - 1)) & ~(IVC_ALIGN - 1);
@@ -551,6 +590,13 @@ int tegra_ivc_init(struct ivc *ivc, uintptr_t rx_base, uintptr_t tx_base,
 	ivc->frame_size = frame_size;
 	ivc->nframes = nframes;
 	ivc->peer_device = peer_device;
+
+	/*
+	 * These values aren't necessarily correct until the channel has been
+	 * reset.
+	 */
+	ivc->w_pos = 0;
+	ivc->r_pos = 0;
 
 	return 0;
 }

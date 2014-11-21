@@ -39,5 +39,6 @@ int tegra_ivc_write_user(struct ivc *ivc, const void __user *user_buf,
 		size_t size);
 int tegra_ivc_read_user(struct ivc *ivc, void __user *buf, size_t max_read);
 size_t tegra_ivc_align(size_t size);
+int tegra_ivc_channel_sync(struct ivc *ivc);
 
 #endif /* __tegra_ivc_instance_h__ */
