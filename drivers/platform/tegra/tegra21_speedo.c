@@ -39,7 +39,7 @@
 
 #define CPU_PROCESS_CORNERS_NUM		2
 #define GPU_PROCESS_CORNERS_NUM		2
-#define CORE_PROCESS_CORNERS_NUM	2
+#define CORE_PROCESS_CORNERS_NUM	3
 
 #define FUSE_CPU_SPEEDO_0	0x114
 #define FUSE_CPU_SPEEDO_1	0x12c
@@ -91,9 +91,8 @@ static const u32 gpu_process_speedos[][GPU_PROCESS_CORNERS_NUM] = {
 };
 
 static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
-/* proc_id  0,	1 */
-	{1950,  UINT_MAX}, /* [0]: threshold_index 0 */
-	{0,	UINT_MAX}, /* [1]: threshold_index 1 */
+/* proc_id  0,	1      2 */
+	{1950,  2100,  UINT_MAX}, /* [0]: threshold_index 0 */
 };
 
 static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
@@ -341,9 +340,11 @@ int tegra_core_speedo_mv(void)
 	case 0:
 		if (speedo_rev <= 1)
 			return 1000;
-	/* fall thru */
-	case 1:
 		return 1125;
+	case 1:
+		return 1075;
+	case 2:
+		return 1000;
 	default:
 		BUG();
 	}
