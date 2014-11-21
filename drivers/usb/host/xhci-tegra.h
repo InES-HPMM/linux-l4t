@@ -362,7 +362,7 @@ struct tegra_xhci_hcd {
 	u32 cmd_data;
 
 	bool otg_port_owned;
-	bool otg_port_power_on;
+	bool otg_port_ownership_changed;
 	u32  otg_portnum;
 
 	struct regulator **xusb_utmi_vbus_regs;

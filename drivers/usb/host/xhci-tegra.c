@@ -2528,6 +2528,12 @@ static int tegra_xhci_ss_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 
 	must_have_sync_lock(tegra);
 
+	/* if we are exiting elpg due to no longer owning otg port, then
+	 * need to disable wake detect logic
+	 */
+	if (!tegra->otg_port_owned && tegra->otg_port_ownership_changed)
+		host_ports |= tegra->bdata->otg_portmap;
+
 	if (tegra->ss_pwr_gated && (tegra->ss_wake_event ||
 			tegra->hs_wake_event || tegra->host_resume_req)) {
 
@@ -2757,7 +2763,7 @@ static void tegra_init_otg_port(struct tegra_xhci_hcd *tegra)
 	struct xhci_hcd	*xhci = tegra->xhci;
 	u32 portsc;
 
-	if (!tegra->otg_port_owned || !tegra->otg_port_power_on)
+	if (!tegra->otg_port_owned || !tegra->otg_port_ownership_changed)
 		/* Nop if we don't own port or we just got ownership */
 		return;
 
@@ -2781,7 +2787,7 @@ static void tegra_init_otg_port(struct tegra_xhci_hcd *tegra)
 	portsc |= PORT_POWER;
 	xhci_writel(xhci, portsc, xhci->usb3_ports[tegra->otg_portnum]);
 
-	tegra->otg_port_power_on = false;
+	tegra->otg_port_ownership_changed = false;
 }
 /* Host ELPG Exit triggered by PADCTL irq */
 /**
@@ -3586,18 +3592,13 @@ static void tegra_xhci_update_otg_port_ownership(
 	mutex_lock(&tegra->sync_lock);
 	tegra->otg_port_owned = host_owns_port;
 
-	if (!host_owns_port) {
-		/* Nothing left todo if we don't own port */
-		mutex_unlock(&tegra->sync_lock);
-		return;
-	}
 
 	if ((tegra->ss_pwr_gated) || (tegra->hc_in_elpg)) {
 		/* TODO: In real life, OTG driver will cause hcd to exit elpg.
 		 * When this happens, this code can be deleted
 		 */
 		tegra->ss_wake_event = true;
-		tegra->otg_port_power_on = true;
+		tegra->otg_port_ownership_changed = true;
 
 		tegra_xhci_host_partition_elpg_exit(tegra);
 		mutex_unlock(&tegra->sync_lock);
@@ -3605,6 +3606,11 @@ static void tegra_xhci_update_otg_port_ownership(
 		return;
 	}
 	mutex_unlock(&tegra->sync_lock);
+
+	if (!host_owns_port) {
+		/* Nothing left todo if we don't own port */
+		return;
+	}
 
 	if (tegra->bdata->otg_portmap & 0xff) {
 		/* We now own a ss otg port */
