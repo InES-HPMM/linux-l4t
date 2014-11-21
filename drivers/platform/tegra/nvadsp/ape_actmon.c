@@ -15,13 +15,12 @@
 #include <linux/err.h>
 #include <linux/io.h>
 #include <linux/clk.h>
-#include <linux/clk/tegra.h>
 #include <linux/interrupt.h>
 #include <linux/debugfs.h>
 #include <linux/platform_device.h>
 #include <linux/irqchip/tegra-agic.h>
-
 #include <linux/irq.h>
+
 #include "ape_actmon.h"
 #include "dev.h"
 
@@ -396,7 +395,7 @@ end:
 
 static int actmon_dev_init(struct actmon_dev *dev)
 {
-	int ret;
+	int ret = -EINVAL;
 	unsigned long freq;
 
 	spin_lock_init(&dev->lock);
@@ -405,7 +404,7 @@ static int actmon_dev_init(struct actmon_dev *dev)
 	if (IS_ERR_OR_NULL(dev->clk)) {
 		dev_err(dev->device, "Failed to find %s clock\n",
 			dev->clk_name);
-		return -EINVAL;
+		goto end;
 	}
 
 	dev->max_freq = clk_round_rate(dev->clk, ULONG_MAX);
@@ -413,7 +412,7 @@ static int actmon_dev_init(struct actmon_dev *dev)
 	ret = clk_set_rate(dev->clk, dev->max_freq);
 	if (ret) {
 		dev_err(dev->device, "failed to set ape.emc freq:%d\n", ret);
-		BUG_ON(ret);
+		goto err_out;
 	}
 
 	dev->max_freq /= 1000;
@@ -422,11 +421,19 @@ static int actmon_dev_init(struct actmon_dev *dev)
 
 	dev->state = ACTMON_OFF;
 	actmon_dev_enable(dev);
-	clk_prepare_enable(dev->clk);
+	ret = clk_prepare_enable(dev->clk);
+	if (ret) {
+		dev_err(dev->device, "Failed to enable actmon clock\n");
+		actmon_dev_disable(dev);
+		goto err_out;
+	}
 
 	enable_irq(dev->irq);
-
 	return 0;
+err_out:
+	clk_put(dev->clk);
+end:
+	return ret;
 }
 
 /* APE activity monitor: Samples ADSP activity */
@@ -741,6 +748,7 @@ int ape_actmon_init(struct platform_device *pdev)
 	ret = clk_prepare_enable(actmon_clk);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to enable actmon clock\n");
+		clk_put(actmon_clk);
 		return -EINVAL;
 	}
 
