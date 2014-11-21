@@ -96,6 +96,10 @@
 #define SDHCI_VNDR_DLLCAL_CFG_STATUS_DLL_ACTIVE		0x80000000
 
 #define SDHCI_VNDR_TUN_CTRL0_0				0x1c0
+/*MUL_M is defined in [12:6] bits*/
+#define SDHCI_VNDR_TUN_CTRL0_0_MUL_M			0x1FC0
+/* To Set value of [12:6] as 1 */
+#define SDHCI_VNDR_TUN_CTRL0_0_MUL_M_VAL		0x40
 #define SDHCI_VNDR_TUN_CTRL1_0				0x1c4
 /* Enable Re-tuning request only when CRC error is detected
  * in SDR50/SDR104/HS200 modes
@@ -1464,6 +1468,8 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 
 	if (soc_data->nvquirks2 & NVQUIRK2_UPDATE_HW_TUNING_CONFG) {
 		vendor_ctrl = sdhci_readl(host, SDHCI_VNDR_TUN_CTRL0_0);
+		vendor_ctrl &= ~(SDHCI_VNDR_TUN_CTRL0_0_MUL_M);
+		vendor_ctrl |= SDHCI_VNDR_TUN_CTRL0_0_MUL_M_VAL;
 		vendor_ctrl |= SDHCI_VNDR_TUN_CTRL_RETUNE_REQ_EN;
 		vendor_ctrl |= SDHCI_VNDR_TUN_CTRL0_TUN_ITERATIONS;
 		sdhci_writel(host, vendor_ctrl, SDHCI_VNDR_TUN_CTRL0_0);
