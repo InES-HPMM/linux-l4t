@@ -118,6 +118,54 @@
 		};
 	};
 
+	regulators {
+		regulator@1 {
+			regulator-enable-ramp-delay = <720>;
+			regulator-disable-ramp-delay = <14480>;
+		};
+
+		regulator@2 {
+			regulator-enable-ramp-delay = <1056>;
+			regulator-disable-ramp-delay = <2580>;
+		};
+
+		regulator@4 {
+			regulator-enable-ramp-delay = <360>;
+			regulator-disable-ramp-delay = <5880>;
+		};
+
+		regulator@5 {
+			regulator-enable-ramp-delay = <704>;
+			regulator-disable-ramp-delay = <220>;
+		};
+
+		regulator@6 {
+			regulator-enable-ramp-delay = <3000>;
+			regulator-disable-ramp-delay = <584000>;
+		};
+
+		regulator@7 {
+			regulator-enable-ramp-delay = <468>;
+			regulator-disable-ramp-delay = <398>;
+		};
+
+		regulator@12 {
+			regulator-enable-ramp-delay = <340>;
+			regulator-disable-ramp-delay = <6480>;
+		};
+
+			
+		vdd_usb_5v0: regulator@11 {
+			status = "okay";
+			gpio = <&pca9539_76 6 0>;
+		};
+
+		vdd_cdc_1v2_aud: regulator@101 {
+			status = "okay";
+			gpio = <&pca9539_76 9 0>;
+		};
+	};
+
 	efuse@7000f800 {
 		vpp_fuse-supply = <&max77620_sd3>;
 	};
@@ -244,17 +292,5 @@
 	bluedroid_pm {
 		avdd-supply = <&battery_reg>;
 		dvdd-supply = <&max77620_sd3>;
-	};
-
-	regulators {
-		vdd_usb_5v0: regulator@11 {
-			status = "okay";
-			gpio = <&pca9539_76 6 0>;
-		};
-
-		vdd_cdc_1v2_aud: regulator@101 {
-			status = "okay";
-			gpio = <&pca9539_76 9 0>;
-		};
 	};
 };
