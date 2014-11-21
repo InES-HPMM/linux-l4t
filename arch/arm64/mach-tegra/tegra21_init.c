@@ -94,7 +94,7 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "mselect",    "pll_p",        102000000,      true, TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "cl_dvfs_ref", "pll_p",       51000000,       true, TEGRA_CLK_INIT_PLATFORM_SI },
 	{ "cl_dvfs_soc", "pll_p",       51000000,       true, TEGRA_CLK_INIT_PLATFORM_SI },
-	{ "csite",      "clk_m",        9600000,        true },
+	{ "csite",      "pll_p",        408000000,      false},
 	{ "pll_u_out",  NULL,           0,		true },
 	{ "pll_u_out1", NULL,           0,		true },
 	{ "pll_u_out2", NULL,           0,		true },
@@ -135,7 +135,7 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "soc_therm",  "pll_p",        51000000,       false },
 	{ "tsensor",    "clk_m",        500000,         false },
 #endif
-	{ "dbgapb",     NULL,           0,              true },
+	{ "dbgapb",     "clk_m",        9600000,        true },
 	{ "ape",	NULL,	300000000,		true },
 	{ "adsp_cpu",	NULL,	600000000,		false },
 	{ NULL,         NULL,           0,              0},
