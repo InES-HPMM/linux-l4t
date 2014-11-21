@@ -62,7 +62,6 @@ _________________________________________________________
 /* PTM tracer state */
 struct tracectx {
 	struct device   *dev;
-	struct clk	*csite_clk;
 	struct mutex    mutex;
 	void __iomem    *funnel_major_regs;
 	void __iomem    *etf_regs;
@@ -102,7 +101,7 @@ static struct tracectx tracer = {
 	.return_stack		=	1,
 };
 
-static struct clk *pll_p, *clk_m;
+struct clk *csite_clk;
 
 static void etf_last_init(struct tracectx *t)
 {
@@ -312,8 +311,7 @@ static int trace_t210_start(struct tracectx *t)
 {
 	int id;
 
-	clk_set_parent(t->csite_clk, pll_p);
-	clk_set_rate(t->csite_clk, CSITE_CLK_HIGH);
+	clk_enable(csite_clk);
 
 	/* Unlock CPU Debug to monitor PC */
 	for (id = 0; id < t->cpu_regs_count; id++)
@@ -362,8 +360,7 @@ static int trace_t210_stop(struct tracectx *t)
 
 	ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
 
-	clk_set_parent(t->csite_clk, clk_m);
-	clk_set_rate(t->csite_clk, CSITE_CLK_LOW);
+	clk_disable(csite_clk);
 
 	return 0;
 }
@@ -393,7 +390,7 @@ static ssize_t etf_fill_buf(struct tracectx *t)
 		return -EINVAL;
 
 	mutex_lock(&t->mutex);
-
+	clk_enable(csite_clk);
 	etf_regs_unlock(t);
 
 	/* Manual flush and stop */
@@ -422,7 +419,12 @@ static ssize_t etf_fill_buf(struct tracectx *t)
 
 	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
 
-	trace_t210_stop(t);
+	/* Disabling the ETM */
+	for (count = 0; count < t->ptm_t210_regs_count; count++)
+		ptm_t210_writel(t, count, 0,
+				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
+
+	ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
 
 	if (!overflow) {
 		t->etf_size = max * 4;
@@ -450,6 +452,7 @@ static ssize_t etf_fill_buf(struct tracectx *t)
 		}
 	}
 	etf_regs_lock(t);
+	clk_disable(csite_clk);
 	mutex_unlock(&t->mutex);
 
 	return t->etf_size;
@@ -806,9 +809,7 @@ static int ptm_probe(struct platform_device  *dev)
 	}
 
 	/* Configure Coresight Clocks */
-	t->csite_clk = clk_get_sys("csite", NULL);
-	pll_p = clk_get_sys(NULL, "pll_p");
-	clk_m = clk_get_sys(NULL, "clk_m");
+	csite_clk = clk_get_sys("csite", NULL);
 
 	/* Initialise data structures required for saving trace after reset */
 	etf_last_init(t);
