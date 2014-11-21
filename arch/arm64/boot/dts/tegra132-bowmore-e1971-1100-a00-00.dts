@@ -122,6 +122,8 @@
 		};
 
 		battery-charger@6b {
+			/delete-property/interrupt-parent;
+			/delete-property/interrupts;
 			charger {
 				dt-override-status-odm-data = <0x00C00000 0x00400000>;
 			};
