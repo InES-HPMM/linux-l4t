@@ -8791,7 +8791,7 @@ static struct clk tegra_clk_isp = {
 	.reg = 0x144,
 	.max_rate = 1000000000,
 	.inputs = mux_pllc_pllp_plla1_pllc2_c3_clkm_pllc4,
-	.flags = MUX | DIV_U71 | PERIPH_NO_ENB | PERIPH_NO_RESET,
+	.flags = MUX | DIV_U71 | DIV_U71_INT | PERIPH_NO_ENB | PERIPH_NO_RESET,
 };
 
 static struct clk_mux_sel mux_isp[] = {
@@ -9089,7 +9089,7 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("mc_ccpa",	"mc_ccpa",		NULL,	201,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
 	PERIPH_CLK("mc_cdpa",	"mc_cdpa",		NULL,	200,	0,	1066000000, mux_clk_mc,			PERIPH_NO_RESET),
 
-	PERIPH_CLK_SKIP("vic03", "vic03",	NULL,	178,	0x678,	0x6f0, 1000000000, mux_pllc_pllp_plla1_pllc2_c3_clkm,	MUX | DIV_U71),
+	PERIPH_CLK_SKIP("vic03", "vic03",	NULL,	178,	0x678,	0x6f0, 1000000000, mux_pllc_pllp_plla1_pllc2_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_SKIP("msenc", "msenc",	NULL,	219,	0x6a0,	0x6e8, 1000000000, mux_pllc2_c_c3_pllp_plla1_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_SKIP("nvdec", "nvdec",	NULL,	194,	0x698,	0x6f4, 1000000000, mux_pllc2_c_c3_pllp_plla1_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_SKIP("nvjpg", "nvjpg",	NULL,	195,	0x69c,	0x700, 1000000000, mux_pllc2_c_c3_pllp_plla1_clkm,	MUX | DIV_U71 | DIV_U71_INT),
