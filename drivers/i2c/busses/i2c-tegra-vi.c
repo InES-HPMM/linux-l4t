@@ -183,6 +183,7 @@ struct tegra_vi_i2c_dev {
 	struct clk *div_clk;
 	struct clk *fast_clk;
 	struct clk *slow_clk;
+	struct clk *host1x_clk;
 	bool needs_cl_dvfs_clock;
 	struct clk *dvfs_ref_clk;
 	struct clk *dvfs_soc_clk;
@@ -550,11 +551,19 @@ static int tegra_vi_i2c_clock_enable(struct tegra_vi_i2c_dev *i2c_dev)
 	ret = clk_prepare_enable(i2c_dev->slow_clk);
 	if (ret < 0) {
 		dev_err(i2c_dev->dev,
-			"Enabling clow clk failed, err %d\n", ret);
+			"Enabling slow clk failed, err %d\n", ret);
 		goto slow_clk_err;
+	}
+	ret = clk_prepare_enable(i2c_dev->host1x_clk);
+	if (ret < 0) {
+		dev_err(i2c_dev->dev,
+			"Enabling host1x clk failed, err %d\n", ret);
+		goto host1x_clk_err;
 	}
 	return 0;
 
+host1x_clk_err:
+	clk_disable_unprepare(i2c_dev->slow_clk);
 slow_clk_err:
 	clk_disable_unprepare(i2c_dev->div_clk);
 div_clk_err:
@@ -566,6 +575,7 @@ fast_clk_err:
 
 static void tegra_vi_i2c_clock_disable(struct tegra_vi_i2c_dev *i2c_dev)
 {
+	clk_disable_unprepare(i2c_dev->host1x_clk);
 	clk_disable_unprepare(i2c_dev->slow_clk);
 	clk_disable_unprepare(i2c_dev->div_clk);
 	if (i2c_dev->chipdata->has_fast_clock)
@@ -1341,6 +1351,7 @@ static int tegra_vi_i2c_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct clk *div_clk;
 	struct clk *slow_clk;
+	struct clk *host1x_clk;
 	struct clk *fast_clk = NULL;
 	void __iomem *base;
 	int irq;
@@ -1409,6 +1420,12 @@ static int tegra_vi_i2c_probe(struct platform_device *pdev)
 		return PTR_ERR(slow_clk);
 	}
 
+	host1x_clk = devm_clk_get(&pdev->dev, "host1x");
+	if (IS_ERR(host1x_clk)) {
+		dev_err(&pdev->dev, "missing host1x clock");
+		return PTR_ERR(host1x_clk);
+	}
+
 	if (i2c_dev->chipdata->has_fast_clock) {
 		fast_clk = devm_clk_get(&pdev->dev, "fast-clk");
 		if (IS_ERR(fast_clk)) {
@@ -1440,6 +1457,7 @@ skip_pinctrl:
 	i2c_dev->base = base;
 	i2c_dev->div_clk = div_clk;
 	i2c_dev->slow_clk = slow_clk;
+	i2c_dev->host1x_clk = host1x_clk;
 	if (i2c_dev->chipdata->has_fast_clock)
 		i2c_dev->fast_clk = fast_clk;
 	i2c_dev->irq = irq;
