@@ -246,10 +246,12 @@ void tegra_init_speedo_data(void)
 	pr_info("Tegra21: Speedo/IDDQ fuse revision %d\n", speedo_rev);
 	pr_info("Tegra21: CPU Speedo ID %d, Soc Speedo ID %d, Gpu Speedo ID %d\n",
 		cpu_speedo_id, soc_speedo_id, gpu_speedo_id);
-	pr_info("Tegra21: CPU Process ID %d,Soc Process ID %d,Gpu Process ID %d\n",
+	pr_info("Tegra21: CPU Process ID %d, Soc Process ID %d, Gpu Process ID %d\n",
 		 cpu_process_id, core_process_id, gpu_process_id);
 	pr_info("Tegra21: CPU Speedo value %d, Soc Speedo value %d, Gpu Speedo value %d\n",
 		 cpu_speedo_value, soc_speedo_value, gpu_speedo_value);
+	pr_info("Tegra21: CPU IDDQ %d, Soc IDDQ %d, Gpu IDDQ %d\n",
+		cpu_iddq_value, soc_iddq_value, gpu_iddq_value);
 }
 
 int tegra_cpu_process_id(void)
