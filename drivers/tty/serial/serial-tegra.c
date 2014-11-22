@@ -510,6 +510,8 @@ static void tegra_uart_handle_tx_pio(struct tegra_uart_port *tup)
 static void tegra_uart_handle_rx_pio(struct tegra_uart_port *tup,
 		struct tty_port *tty)
 {
+	int copied;
+
 	do {
 		char flag = TTY_NORMAL;
 		unsigned long lsr = 0;
@@ -523,8 +525,12 @@ static void tegra_uart_handle_rx_pio(struct tegra_uart_port *tup,
 		ch = (unsigned char) tegra_uart_read(tup, UART_RX);
 		tup->uport.icount.rx++;
 
-		if (!uart_handle_sysrq_char(&tup->uport, ch) && tty)
-			tty_insert_flip_char(tty, ch, flag);
+		if (!uart_handle_sysrq_char(&tup->uport, ch) && tty) {
+			copied = tty_insert_flip_char_lock(tty, ch, flag);
+			if (copied != 1)
+				dev_err(tup->uport.dev, "RxData PIO to tty layer failed\n");
+		}
+
 	} while (1);
 
 	return;
@@ -542,12 +548,11 @@ static void tegra_uart_copy_rx_to_tty(struct tegra_uart_port *tup,
 	}
 	dma_sync_single_for_cpu(tup->uport.dev, tup->rx_dma_buf_phys,
 				TEGRA_UART_RX_DMA_BUFFER_SIZE, DMA_FROM_DEVICE);
-	copied = tty_insert_flip_string(tty,
+
+	copied = tty_insert_flip_string_lock(tty,
 			((unsigned char *)(tup->rx_dma_buf_virt)), count);
-	if (copied != count) {
-		WARN_ON(1);
-		dev_err(tup->uport.dev, "RxData copy to tty layer failed\n");
-	}
+	if (copied != count)
+		dev_err(tup->uport.dev, "RxData DMA copy to tty layer failed\n");
 	dma_sync_single_for_device(tup->uport.dev, tup->rx_dma_buf_phys,
 				TEGRA_UART_RX_DMA_BUFFER_SIZE, DMA_TO_DEVICE);
 }
