@@ -31,4 +31,8 @@ static inline int tty_insert_flip_string(struct tty_port *port,
 	return tty_insert_flip_string_fixed_flag(port, chars, TTY_NORMAL, size);
 }
 
+extern int tty_insert_flip_char_lock(struct tty_port *port,
+		unsigned char ch, char flag);
+extern int tty_insert_flip_string_lock(struct tty_port *port,
+		const unsigned char *chars, size_t size);
 #endif /* _LINUX_TTY_FLIP_H */

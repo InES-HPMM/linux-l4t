@@ -197,23 +197,21 @@ static struct tty_buffer *tty_buffer_find(struct tty_port *port, size_t size)
 	/* Should possibly check if this fails for the largest buffer we
 	   have queued and recycle that ? */
 }
+
 /**
- *	tty_buffer_request_room		-	grow tty buffer if needed
+ *	_tty_buffer_request_room	-	grow tty buffer if needed
  *	@tty: tty structure
  *	@size: size desired
  *
- *	Make at least size bytes of linear space available for the tty
- *	buffer. If we fail return the size we managed to find.
- *
- *	Locking: Takes port->buf.lock
+ *	Locked version of tty_buffer_request_room() where it should be
+ *  called with buffer locked.
  */
-int tty_buffer_request_room(struct tty_port *port, size_t size)
+int _tty_buffer_request_room(struct tty_port *port, size_t size)
 {
 	struct tty_bufhead *buf = &port->buf;
 	struct tty_buffer *b, *n;
 	int left;
-	unsigned long flags;
-	spin_lock_irqsave(&buf->lock, flags);
+
 	/* OPTIMISATION: We could keep a per tty "zero" sized buffer to
 	   remove this conditional if its worth it. This would be invisible
 	   to the callers */
@@ -235,8 +233,29 @@ int tty_buffer_request_room(struct tty_port *port, size_t size)
 		} else
 			size = left;
 	}
-	spin_unlock_irqrestore(&buf->lock, flags);
 	return size;
+}
+
+/**
+ *	tty_buffer_request_room		-	grow tty buffer if needed
+ *	@tty: tty structure
+ *	@size: size desired
+ *
+ *	Make at least size bytes of linear space available for the tty
+ *	buffer. If we fail return the size we managed to find.
+ *
+ *	Locking: Takes port->buf.lock
+ */
+int tty_buffer_request_room(struct tty_port *port, size_t size)
+{
+	struct tty_bufhead *buf = &port->buf;
+	int left;
+	unsigned long flags;
+
+	spin_lock_irqsave(&buf->lock, flags);
+	left = _tty_buffer_request_room(port, size);
+	spin_unlock_irqrestore(&buf->lock, flags);
+	return left;
 }
 EXPORT_SYMBOL_GPL(tty_buffer_request_room);
 
@@ -315,6 +334,54 @@ int tty_insert_flip_string_flags(struct tty_port *port,
 	return copied;
 }
 EXPORT_SYMBOL(tty_insert_flip_string_flags);
+
+static int tty_insert_flip_string_fixed_flag_lock(struct tty_port *port,
+		const unsigned char *chars, char flag, size_t size)
+{
+	struct tty_bufhead *buf = &port->buf;
+	int copied = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&buf->lock, flags);
+
+	do {
+		int goal = min_t(size_t, size - copied, TTY_BUFFER_PAGE);
+		int space = _tty_buffer_request_room(port, goal);
+		struct tty_buffer *tb = port->buf.tail;
+		/* If there is no space then tb may be NULL */
+		if (unlikely(space == 0)) {
+			pr_err("%s: No space: Requested %d, memory used: %d\n",
+					__func__, size, buf->memory_used);
+			break;
+		}
+		memcpy(tb->char_buf_ptr + tb->used, chars, space);
+		memset(tb->flag_buf_ptr + tb->used, flag, space);
+		tb->used += space;
+		tb->commit = tb->used;
+		copied += space;
+		chars += space;
+		/* There is a small chance that we need to split the data over
+		   several buffers. If this is the case we must loop */
+	} while (unlikely(size > copied));
+	spin_unlock_irqrestore(&buf->lock, flags);
+	return copied;
+}
+
+int tty_insert_flip_char_lock(struct tty_port *port,
+		unsigned char ch, char flag)
+{
+	return tty_insert_flip_string_fixed_flag_lock(port,
+			(const unsigned char *)&ch, flag, 1);
+}
+EXPORT_SYMBOL(tty_insert_flip_char_lock);
+
+int tty_insert_flip_string_lock(struct tty_port *port,
+		const unsigned char *chars, size_t size)
+{
+	return tty_insert_flip_string_fixed_flag_lock(port, chars,
+		TTY_NORMAL, size);
+}
+EXPORT_SYMBOL(tty_insert_flip_string_lock);
 
 /**
  *	tty_schedule_flip	-	push characters to ldisc
