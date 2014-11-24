@@ -158,7 +158,9 @@ static struct snd_compr_codec_caps adsp_compr_codec_caps[] = {
 		.descriptor = {
 			[0] = {
 				.max_ch = 2,
-				.sample_rates = SNDRV_PCM_RATE_8000_48000,
+				.sample_rates = {
+					[0] = SNDRV_PCM_RATE_8000_48000,
+				},
 				.bit_rate = {
 					[0] = 32000,
 					[1] = 64000,
@@ -183,7 +185,9 @@ static struct snd_compr_codec_caps adsp_compr_codec_caps[] = {
 		.descriptor = {
 			[0] = {
 				.max_ch = 2,
-				.sample_rates = SNDRV_PCM_RATE_8000_48000,
+				.sample_rates = {
+					[0] = SNDRV_PCM_RATE_8000_48000,
+				},
 				.bit_rate = {
 					[0] = 32000,
 					[1] = 64000,
