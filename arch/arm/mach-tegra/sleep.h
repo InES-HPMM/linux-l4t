@@ -30,6 +30,7 @@ enum {
 
 #define TEGRA_PWR_DN_AFFINITY_CPU	0
 #define TEGRA_PWR_DN_AFFINITY_CLUSTER	1
+#define TEGRA_PWR_DN_AFFINITY_SYSTEM	2
 #endif
 
 #define TEGRA_POWER_LP1_AUDIO		(1 << 25) /* do not turn off pll-p in LP1 */

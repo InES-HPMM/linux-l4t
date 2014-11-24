@@ -421,7 +421,7 @@ static void cpu_psci_cpu_die(unsigned int cpu)
 
 	ret = psci_ops.cpu_off(state);
 
-	pr_crit("unable to power off CPU%u (%d)\n", cpu, ret);
+	pr_debug("unable to power off CPU%u (%d)\n", cpu, ret);
 }
 
 static int cpu_psci_cpu_kill(unsigned int cpu)
@@ -439,7 +439,7 @@ static int cpu_psci_cpu_kill(unsigned int cpu)
 	for (i = 0; i < 10; i++) {
 		err = psci_ops.affinity_info(cpu_logical_map(cpu), 0);
 		if (err == PSCI_0_2_AFFINITY_LEVEL_OFF) {
-			pr_info("CPU%d killed.\n", cpu);
+			pr_debug("CPU%d killed.\n", cpu);
 			return 1;
 		}
 

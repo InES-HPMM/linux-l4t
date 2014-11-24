@@ -29,25 +29,6 @@
 
 #ifdef CONFIG_PM_SLEEP
 /*
- * tegra_sleep_cpu_finish(unsigned long v2p)
- *
- * enters suspend in LP2 by turning off the mmu and jumping to
- * tegra?_tear_down_cpu
- *
- * At this point, we have already:
- *  - switched to identity mapping
- *  - flushed and disabled dcache
- */
-ENTRY(tegra_sleep_cpu_finish)
-	ldr		x1, =tegra_tear_down_cpu
-	ldr		x1, [x1]
-	add		x1, x1, x0
-	mov		x0, x1
-
-	b		tegra_turn_off_mmu
-ENDPROC(tegra_sleep_cpu_finish)
-
-/*
  * tegra_turn_off_mmu
  *
  * x0 = v2p

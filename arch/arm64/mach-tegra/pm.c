@@ -417,40 +417,7 @@ static void save_pll_state(void)
 	tegra_sctx.cclk_divider = readl(clk_rst + CLK_RESET_CCLK_DIVIDER);
 }
 
-/*
- * Prepares flow controller for transition to suspend state
- *
- * Must always be called on cpu 0.
- */
-static void prepare_flow_controller(void)
-{
-	int cpu = cpu_logical_map(smp_processor_id());
-	unsigned int reg;
-	int i;
-
-	BUG_ON(cpu != 0);
-	reg = readl(FLOW_CTRL_CPU_CSR(cpu));
-	reg &= ~FLOW_CTRL_CSR_WFE_BITMAP;	/* clear wfe bitmap */
-	reg &= ~FLOW_CTRL_CSR_WFI_BITMAP;	/* clear wfi bitmap */
-	reg |= FLOW_CTRL_CSR_INTR_FLAG;		/* clear intr flag */
-	reg |= FLOW_CTRL_CSR_EVENT_FLAG;	/* clear event flag */
-	reg |= FLOW_CTRL_CSR_WFI_CPU0 << cpu;	/* enable power gating on wfi */
-	reg |= FLOW_CTRL_CSR_ENABLE;		/* enable power gating */
-	flowctrl_writel(reg, FLOW_CTRL_CPU_CSR(cpu));
-
-	for (i = 0; i < num_possible_cpus(); i++) {
-		if (i == cpu)
-			continue;
-		reg = readl(FLOW_CTRL_CPU_CSR(i));
-		reg |= FLOW_CTRL_CSR_EVENT_FLAG;
-		reg |= FLOW_CTRL_CSR_INTR_FLAG;
-		flowctrl_writel(reg, FLOW_CTRL_CPU_CSR(i));
-	}
-
-	tegra_gic_cpu_disable(true);
-}
-
-void tegra_psci_suspend_cpu(void *entry_point)
+static int tegra_psci_suspend_cpu(long unsigned int val)
 {
 	struct psci_power_state pps;
 
@@ -458,11 +425,13 @@ void tegra_psci_suspend_cpu(void *entry_point)
 		if (psci_ops.cpu_suspend) {
 			pps.id = TEGRA_ID_CPU_SUSPEND_LP0;
 			pps.type = PSCI_POWER_STATE_TYPE_POWER_DOWN;
-			pps.affinity_level = TEGRA_PWR_DN_AFFINITY_CLUSTER;
+			pps.affinity_level = TEGRA_PWR_DN_AFFINITY_SYSTEM;
 
-			psci_ops.cpu_suspend(pps, virt_to_phys(entry_point));
+			psci_ops.cpu_suspend(pps, __pa(cpu_resume));
 		}
 	}
+
+	return 0;
 }
 
 static void tegra_sleep_core(enum tegra_suspend_mode mode,
@@ -476,17 +445,11 @@ static void tegra_sleep_core(enum tegra_suspend_mode mode,
 		BUG_ON(mode != TEGRA_SUSPEND_LP0);
 
 		trace_smc_sleep_core(NVSEC_SMC_START);
-		tegra_psci_suspend_cpu(tegra_resume);
+		cpu_suspend(v2p, tegra_psci_suspend_cpu);
 		trace_smc_sleep_core(NVSEC_SMC_DONE);
 	}
 
 	tegra_get_suspend_time();
-	cpu_suspend(v2p, tegra_sleep_core_finish);
-}
-
-static inline void tegra_sleep_cpu(unsigned long v2p)
-{
-	cpu_suspend(v2p, tegra_sleep_cpu_finish);
 }
 
 static int tegra_common_suspend(void)
@@ -652,7 +615,7 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 
 		/* No break here. LP0 code falls through to write SCRATCH41 */
 	case TEGRA_SUSPEND_LP1:
-		__raw_writel(virt_to_phys(tegra_resume), pmc + PMC_SCRATCH41);
+		__raw_writel(virt_to_phys(cpu_resume), pmc + PMC_SCRATCH41);
 		wmb();
 		rate = clk_get_rate(tegra_clk_m);
 		break;
@@ -859,15 +822,11 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 
 	cpu_cluster_pm_enter();
 	save_pll_state();
-	prepare_flow_controller();
 
 	if (tegra_get_chipid() != TEGRA_CHIPID_TEGRA13)
 		flush_cache_all();
 
-	if (mode == TEGRA_SUSPEND_LP2)
-		tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
-	else
-		tegra_sleep_core(mode, PHYS_OFFSET - PAGE_OFFSET);
+	tegra_sleep_core(mode, PHYS_OFFSET - PAGE_OFFSET);
 
 	resume_entry_time = 0;
 	if (mode != TEGRA_SUSPEND_LP0)
@@ -1233,11 +1192,7 @@ out:
 #ifdef CONFIG_ARCH_TEGRA_13x_SOC
 	tegra_soc_suspend_init();
 
-	if (!tegra_tear_down_cpu || !tegra_sleep_core_finish) {
-		pr_err("%s: unable to obtain suspend info -- "
-				"disabling LP0\n", __func__);
-		current_suspend_mode = TEGRA_SUSPEND_LP2;
-	}
+	current_suspend_mode = TEGRA_SUSPEND_LP0;
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC

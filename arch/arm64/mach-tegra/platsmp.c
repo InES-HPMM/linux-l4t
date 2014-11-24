@@ -58,7 +58,4 @@ static int tegra_boot_secondary(unsigned int cpu, struct task_struct *idle)
 struct smp_operations tegra_smp_ops __initdata = {
 	.smp_prepare_cpus	= tegra_smp_prepare_cpus,
 	.smp_boot_secondary	= tegra_boot_secondary,
-#if defined(CONFIG_HOTPLUG_CPU) && defined(CONFIG_ARCH_TEGRA_13x_SOC)
-	.cpu_die		= tegra_cpu_die,
-#endif
 };
