@@ -317,4 +317,30 @@ static inline void wait_for_nvadsp_app_complete(nvadsp_app_info_t *info)
 	if (info->state == NVADSP_APP_STATE_STARTED)
 		wait_for_completion(&info->wait_for_app_complete);
 }
+
+/**
+ * wait_for_nvadsp_app_complete_timeout:
+ * @info:  pointer to nvadsp_app_info_t
+ * @timeout:  timeout value in jiffies
+ *
+ * This waits for either a completion of a specific app to be signaled or for a
+ * specified timeout to expire. It is interruptible. The timeout is in jiffies.
+ *
+ * The return value is -ERESTARTSYS if interrupted, 0 if timed out,
+ * positive (at least 1, or number of jiffies left till timeout) if completed.
+ */
+static inline long wait_for_nvadsp_app_complete_timeout(nvadsp_app_info_t *info,
+			unsigned long timeout)
+{
+	int ret = -EINVAL;
+	/*
+	 * wait_for_complete must be called only after app has started
+	 */
+	if (info->state == NVADSP_APP_STATE_STARTED)
+		ret = wait_for_completion_interruptible_timeout(
+			&info->wait_for_app_complete, timeout);
+
+	return ret;
+}
+
 #endif /* __LINUX_TEGRA_NVADSP_H */
