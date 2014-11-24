@@ -71,7 +71,7 @@ static int psy_temp(void)
 	int val;
 
 	if (psy_get_property(POWER_SUPPLY_PROP_TEMP, &val))
-		return 25;
+		return 250;
 	return val;
 }
 
