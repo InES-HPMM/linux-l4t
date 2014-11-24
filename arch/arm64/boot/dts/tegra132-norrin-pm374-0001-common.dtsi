@@ -212,12 +212,6 @@
 		status = "okay";
 	};
 
-	sata@70020000 {
-		status = "okay";
-		nvidia,pexp-gpio = <&tca6416 9 0>;
-		nvidia,enable-sata-port;
-	};
-
 	udc@7d000000 {
 		nvidia,port-otg;
 		nvidia,charging-supported;
