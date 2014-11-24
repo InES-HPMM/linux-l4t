@@ -44,7 +44,7 @@
 #define DPAUX_NODE		"/host1x/dpaux"
 #define SOR1_NODE		"/host1x/sor1"
 #define DPAUX1_NODE		"/host1x/dpaux1"
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC) || defined(CONFIG_TEGRA_NVDISPLAY)
 #define HDMI_NODE		SOR1_NODE
 #else
 #define HDMI_NODE		"/host1x/hdmi"
