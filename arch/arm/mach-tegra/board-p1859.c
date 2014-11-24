@@ -81,29 +81,37 @@ static __initdata struct tegra_clk_init_table e1860_b0x_i2s_clk_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
+static __initdata struct tegra_clk_init_table
+				e1860_b0x_modem_i2s_clk_table[] = {
+/*         clock        parent          rate            enable (always-on) */
+	{ "i2s4_sync",	NULL,		12288000,	false},
+	{ "audio4",	"i2s4_sync",	12288000,	false},
+	{ "audio4_2x",	"audio4",	12288000,	false},
+	{ "i2s2_sync",	NULL,		12288000,	false},
+	{ "audio2",	"i2s2_sync",	12288000,	false},
+	{ "audio2_2x",	"audio2",	12288000,	false},
+	{ "i2s0",	"pll_a_out0",	12288000,	false},
+	{ "i2s1",	"pll_a_out0",	3072000,	false},
+	{ "i2s2",	"pll_a_out0",	512000,	false},
+	{ "i2s3",	"pll_a_out0",	3072000,	false},
+	{ "i2s4",	"pll_a_out0",	1024000,	false},
+	{ "extern1",	"pll_a_out0",	24576000,	false},
+	{ NULL,		NULL,		0,		0},
+};
+
 static int __init e1860_fixed_target_rate_init(void)
 {
 	int modem_id = tegra_get_modem_id();
-
-	struct tegra_clk_init_table e1860_b0x_i2s4_clk_table[] = {
-		{ "i2s4", "pll_a_out0", 1024000, false},
-		{ NULL,    NULL,        0,        0},
-	};
-
-	struct tegra_clk_init_table *clk_table = (is_e1860_b00) ?
-			e1860_b0x_i2s_clk_table : e1860_a0x_i2s_clk_table;
+	struct tegra_clk_init_table *clk_table = (!is_e1860_b00) ?
+			e1860_a0x_i2s_clk_table :
+				modem_id ? e1860_b0x_modem_i2s_clk_table :
+					e1860_b0x_i2s_clk_table;
 
 	/* Set rate of audio clocks */
 	tegra_clk_init_from_table(clk_table);
 
 	/* Set target fixed rate of audio clocks */
 	tegra_vcm30_t124_set_fixed_rate(clk_table);
-
-	/* For voice call in b0x, set i2s4 clock in master mode */
-	if (is_e1860_b00 && modem_id) {
-		tegra_clk_init_from_table(e1860_b0x_i2s4_clk_table);
-		tegra_vcm30_t124_set_fixed_rate(e1860_b0x_i2s4_clk_table);
-	}
 
 	return 0;
 }
@@ -189,8 +197,11 @@ static struct platform_device *p1859_devices[] __initdata = {
 
 static void __init tegra_p1859_early_init(void)
 {
-	struct tegra_clk_init_table *clk_table = (is_e1860_b00) ?
-			e1860_b0x_i2s_clk_table : e1860_a0x_i2s_clk_table;
+	int modem_id = tegra_get_modem_id();
+	struct tegra_clk_init_table *clk_table = (!is_e1860_b00) ?
+			e1860_a0x_i2s_clk_table :
+				modem_id ? e1860_b0x_modem_i2s_clk_table :
+					e1860_b0x_i2s_clk_table;
 
 	/* Early init for vcm30t124 MCM */
 	tegra_vcm30_t124_early_init();
@@ -252,6 +263,12 @@ static const char * const p1859_dt_board_compat[] = {
 	NULL
 };
 
+void __init tegra_p1859_init_late(void)
+{
+	tegra_init_late();
+	p1859_audio_dap_d_sel();
+}
+
 DT_MACHINE_START(P1859, "p1859")
 	.atag_offset	= 0x100,
 	.smp		= smp_ops(tegra_smp_ops),
@@ -262,5 +279,5 @@ DT_MACHINE_START(P1859, "p1859")
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_p1859_dt_init,
 	.dt_compat	= p1859_dt_board_compat,
-	.init_late	= tegra_init_late
+	.init_late	= tegra_p1859_init_late
 MACHINE_END

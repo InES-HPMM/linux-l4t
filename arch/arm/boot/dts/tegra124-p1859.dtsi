@@ -360,6 +360,11 @@
 		nvidia,reset-gpio = <&pca9539_74 15 GPIO_ACTIVE_LOW>;
 		status = "okay";
 	};
+	dap_d_mux {
+		compatible = "nvidia,dap-d-mux";
+		nvidia,dap-d-sel-gpio = <&pca9539_76 0 GPIO_ACTIVE_LOW>;
+		status = "okay";
+	};
 
 	cpu_dfll_pmic_integration {
 		pmic-i2c-address = <0x74>;

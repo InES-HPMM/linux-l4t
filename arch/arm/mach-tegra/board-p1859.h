@@ -26,6 +26,7 @@
 int p1859_wifi_init(void);
 int p1859_regulator_init(void);
 void p1859_audio_init(void);
+void p1859_audio_dap_d_sel(void);
 
 /* External peripheral act as gpio */
 #define MAX77663_IRQ_BASE		TEGRA_NR_IRQS

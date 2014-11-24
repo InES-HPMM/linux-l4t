@@ -20,6 +20,8 @@
 #include <mach/tegra_vcm30t124_pdata.h>
 #include <mach/board_id.h>
 #include <linux/of_platform.h>
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
 #include "board.h"
 
 #define TDM_SLOT_MAP(stream_id, nth_channel, nth_byte)	\
@@ -549,4 +551,23 @@ void __init p1859_audio_init(void)
 
 	for (i = 0; i < ARRAY_SIZE(tegra_spdif_dit); i++)
 		platform_device_register(&tegra_spdif_dit[i]);
+
+}
+
+void __init p1859_audio_dap_d_sel(void)
+{
+	int modem_id = tegra_get_modem_id();
+	struct device_node *np;
+	int gpio;
+
+	if (modem_id) {
+		np = of_find_compatible_node(NULL, NULL, "nvidia,dap-d-mux");
+		if (NULL != np) {
+			gpio = of_get_named_gpio(np,
+				"nvidia,dap-d-sel-gpio", 0);
+			pr_info("dap-d-sel-gpio:%d\n", gpio);
+			if (gpio_is_valid(gpio))
+				gpio_direction_output(gpio, 1);
+		}
+	}
 }
