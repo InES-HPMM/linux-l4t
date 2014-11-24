@@ -757,7 +757,8 @@ static void tegra_uart_stop_rx(struct uart_port *u)
 		dmaengine_tx_status(tup->rx_dma_chan, tup->rx_cookie, &state);
 		async_tx_ack(tup->rx_dma_desc);
 		count = tup->rx_bytes_requested - state.residue;
-		tegra_uart_copy_rx_to_tty(tup, port, count);
+		if (count)
+			tegra_uart_copy_rx_to_tty(tup, port, count);
 		tegra_uart_handle_rx_pio(tup, port);
 	} else {
 		tegra_uart_handle_rx_pio(tup, port);
