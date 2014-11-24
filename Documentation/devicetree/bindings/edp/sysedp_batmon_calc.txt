@@ -13,15 +13,15 @@ Required properties:
 - ibat_lut: This defines the maximum allowed current (in mA) from the
   battery under specific temperature. The property contains several
   sets of combinations of temperature and current with the format of
-  <C mA>. C is the temperature in Celcius, negative values reprented
+  <dC mA>. dC is the temperature in deci Celcius, negative values represented
   with 2's complement. mA is the maximum current battery can supply
-  under this temperature. Take <60 6150> for example, this means that
-  battery can supply 6150mA when temperature is 60 degree
+  under this temperature. Take <600 6150> for example, this means that
+  battery can supply 6150mA when temperature is 600 degrees deci
   Celsius. Entries must be in descending order wrt temperature and
   last entry must be <... 0>.
 - rbat_data: An array of battery impedance (in uOhm) under different temperatures
   and capacity.
-- temp_axis: An array of different temperatures. Negative values are
+- temp_axis: An array of different temperatures in deci Celsius. Negative values are
   represented with 2's complement
 - capacity_axis: An array of capacity battery remains.
 - power_supply : The name of system power supply.
@@ -38,17 +38,17 @@ Example:
 			0 5999850
 		>;
 		ibat_lut = <
-			60 6150
-			40 6150
+			600 6150
+			400 6150
 			0 6150
-			S32_TO_U32(-30) 0
+			S32_TO_U32(-300) 0
 		>;
 		rbat_data = <
 			70000
 			70000
 			90000
 		>;
-		temp_axis = <25>;
+		temp_axis = <250>;
 		capacity_axis = <100 13 0>;
 		power_supply = "battery";
 		r_const = <60000>;
