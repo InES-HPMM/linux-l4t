@@ -129,6 +129,7 @@ struct bq27441_chip {
 	int lasttime_status;
 	int shutdown_complete;
 	int charge_complete;
+	int print_once;
 	bool enable_temp_prop;
 	struct mutex mutex;
 };
@@ -694,15 +695,25 @@ static int bq27441_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = chip->soc;
-		if (chip->soc == 15)
+
+		if (chip->print_once && (chip->soc > 15 || chip->soc < 5))
+			chip->print_once = 0;
+
+		if (chip->soc == 15 && chip->print_once != 15) {
+			chip->print_once = 15;
 			dev_warn(&chip->client->dev,
 			"System Running low on battery - 15 percent\n");
-		if (chip->soc == 10)
+		}
+		if (chip->soc == 10 && chip->print_once != 10) {
+			chip->print_once = 10;
 			dev_warn(&chip->client->dev,
 			"System Running low on battery - 10 percent\n");
-		if (chip->soc == 5)
+		}
+		if (chip->soc == 5 && chip->print_once != 5) {
+			chip->print_once = 5;
 			dev_warn(&chip->client->dev,
 			"System Running low on battery - 5 percent\n");
+		}
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = chip->health;
@@ -870,6 +881,7 @@ static int bq27441_probe(struct i2c_client *client,
 		return -ENODATA;
 
 	chip->full_capacity = 1200;
+	chip->print_once = 0;
 
 	if (chip->pdata->full_capacity)
 		chip->full_capacity = chip->pdata->full_capacity;
