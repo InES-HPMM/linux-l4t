@@ -385,6 +385,7 @@ static int __init tegra_init_pm_domain(void)
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 	pm_genpd_init(&tegra_ape.gpd, &simple_qos_governor, false);
 	tegra_pd_add_sd(&tegra_ape.gpd);
+	pm_genpd_set_poweroff_delay(&tegra_ape.gpd, 3000);
 #endif
 	return 0;
 }
