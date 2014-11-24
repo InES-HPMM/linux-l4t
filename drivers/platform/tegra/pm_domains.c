@@ -256,32 +256,107 @@ static struct tegra_pm_domain tegra_nvavp = {
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
+
+enum {
+	APE_CLK = 0,
+	APB2APE_CLK,
+	ADSP_CLK,
+	APE_MAX_CLK,
+};
+
+struct tegra_ape_clks {
+	char *name;
+	int idx;
+};
+
+static struct tegra_ape_clks ape_pd_clks[] = {
+	{"ape", APE_CLK},
+	{"apb2ape", APB2APE_CLK},
+	{"adsp", ADSP_CLK},
+};
+
+static int tegra_ape_pd_enable_clks(struct tegra_pm_domain *ape_pd)
+{
+	int i;
+	int ret = 0;
+
+	for (i = 0; i < APE_MAX_CLK; i++) {
+		int clk_idx = ape_pd_clks[i].idx;
+
+		if (unlikely(!ape_pd->clk[clk_idx])) {
+			struct clk *clk;
+
+			clk = clk_get_sys(NULL, ape_pd_clks[i].name);
+			if (IS_ERR_OR_NULL(clk)) {
+				pr_err("%s:unable to find %s clock\n"
+				       , __func__, ape_pd_clks[i].name);
+				ret = PTR_ERR(clk);
+				return ret;
+			}
+			ape_pd->clk[clk_idx] = clk;
+		}
+
+		ret = clk_prepare_enable(ape_pd->clk[clk_idx]);
+		if (ret)
+			return ret;
+	}
+	return ret;
+}
+
+static int tegra_ape_pd_disable_clks(struct tegra_pm_domain *ape_pd)
+{
+	int i;
+	int ret = 0;
+
+	for (i = 0; i < APE_MAX_CLK; i++) {
+		int clk_idx = ape_pd_clks[i].idx;
+
+		if (unlikely(!ape_pd->clk[clk_idx])) {
+			struct clk *clk;
+
+			clk = clk_get_sys(NULL, ape_pd_clks[i].name);
+			if (IS_ERR_OR_NULL(clk)) {
+				pr_err("%s:unable to find %s clock\n"
+				       , __func__, ape_pd_clks[i].name);
+				ret = PTR_ERR(clk);
+				return ret;
+			}
+			ape_pd->clk[clk_idx] = clk;
+		}
+
+		/* The adsp clock is already disabled */
+		if (clk_idx == ADSP_CLK)
+			continue;
+
+		clk_disable_unprepare(ape_pd->clk[clk_idx]);
+	}
+	return ret;
+}
+
 static int tegra_ape_power_on(struct generic_pm_domain *genpd)
 {
 	struct tegra_pm_domain *ape_pd;
 	struct pm_domain_data *pdd;
 	int ret = 0;
 
-	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_APE);
+	ape_pd = to_tegra_pd(genpd);
+
+	ret = tegra_ape_pd_enable_clks(ape_pd);
 	if (ret)
 		return ret;
 
-	ape_pd = to_tegra_pd(genpd);
-	if (unlikely(!ape_pd->clk)) {
-		struct clk *ape_clk;
-
-		ape_clk = clk_get_sys(NULL, "ape");
-		if (IS_ERR_OR_NULL(ape_clk)) {
-			pr_err("%s:unable to find ape clock\n", __func__);
-			ret = PTR_ERR(ape_clk);
-			return ret;
-		}
-		ape_pd->clk = ape_clk;
+	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_APE);
+	if (ret) {
+		tegra_ape_pd_disable_clks(ape_pd);
+		return ret;
 	}
 
-	ret = clk_prepare_enable(ape_pd->clk);
-	if (ret)
-		return ret;
+	/*
+	 * The adsp clock shall be enabled only when ADSP cpu is
+	 * on. ADSP cpu is switched on only for ADSP use-cases
+	 * and the ADSP driver enables the adsp clock.
+	 */
+	clk_disable_unprepare(ape_pd->clk[ADSP_CLK]);
 
 	tegra_agic_restore_registers();
 
@@ -303,21 +378,10 @@ static int tegra_ape_power_off(struct generic_pm_domain *genpd)
 	tegra_agic_save_registers();
 
 	ape_pd = to_tegra_pd(genpd);
-	if (likely(ape_pd->clk))
-		clk_disable_unprepare(ape_pd->clk);
-	else {
-		struct clk *ape_clk;
 
-		ape_clk = clk_get_sys(NULL, "ape");
-		if (IS_ERR_OR_NULL(ape_clk)) {
-			pr_err("%s:unable to find ape clock\n", __func__);
-			ret = PTR_ERR(ape_clk);
-			return ret;
-		}
-		clk_disable_unprepare(ape_clk);
-
-		ape_pd->clk = ape_clk;
-	}
+	ret = tegra_ape_pd_disable_clks(ape_pd);
+	if (ret)
+		return ret;
 
 	ret = tegra_powergate_partition(TEGRA_POWERGATE_APE);
 	return ret;

@@ -23,9 +23,11 @@
 #include <linux/clk.h>
 #include <linux/pm_domain.h>
 
+#define PD_MAX_CLK	3
+
 struct tegra_pm_domain {
 	struct generic_pm_domain gpd;
-	struct clk *clk;
+	struct clk *clk[PD_MAX_CLK];
 };
 
 #define to_tegra_pd(_pd) container_of(_pd, struct tegra_pm_domain, gpd);
