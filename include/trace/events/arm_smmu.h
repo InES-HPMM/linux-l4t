@@ -39,11 +39,11 @@ TRACE_EVENT(smmu_map,
 	),
 
 	TP_fast_assign(
-		__entry->asid	= cbndx;
+		__entry->cbndx	= cbndx;
 		__entry->iova	= iova;
 		__entry->phys	= phys;
 		__entry->bytes	= bytes;
-		__entry->attrs	= prot;
+		__entry->prot	= prot;
 	),
 
 	TP_printk("cbndx=%d iova=%pad phys=%pap size=%zu prot=0x%x",
