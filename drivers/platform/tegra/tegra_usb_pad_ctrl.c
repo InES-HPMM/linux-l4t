@@ -27,7 +27,6 @@
 #include <mach/tegra_usb_pad_ctrl.h>
 
 #include "../../../arch/arm/mach-tegra/iomap.h"
-#include "../../../arch/arm/mach-tegra/board.h"
 
 static DEFINE_SPINLOCK(utmip_pad_lock);
 static DEFINE_SPINLOCK(xusb_padctl_lock);
@@ -481,67 +480,11 @@ EXPORT_SYMBOL_GPL(utmi_phy_iddq_override);
 
 static void utmi_phy_pad(bool enable)
 {
-	unsigned long val;
-	int port, xhci_port_present = 0;
-	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
-	enum utmi_phy_pad_owner {SNPS = 0, XUSB};
-	enum utmi_phy_pad_owner utmi1_phy_pad_owner;
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
-	int usb_port_owner_info = tegra_get_usb_port_owner_info();
-#endif
 
 	if (tegra_platform_is_fpga())
 		return;
 
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
-	/* For T210 Initialize pad based on port ownership */
-	utmi1_phy_pad_owner = usb_port_owner_info ? XUSB : SNPS;
-#else
-	utmi1_phy_pad_owner = SNPS;
-#endif
-	switch (utmi1_phy_pad_owner) {
-	case SNPS:
-	if (enable) {
-		val = readl(pad_base + UTMIP_BIAS_CFG0);
-		val &= ~(UTMIP_OTGPD | UTMIP_BIASPD);
-#ifndef CONFIG_ARCH_TEGRA_21x_SOC
-		val |= UTMIP_HSSQUELCH_LEVEL(0x2) | UTMIP_HSDISCON_LEVEL(0x3) |
-				UTMIP_HSDISCON_LEVEL_MSB;
-#endif
-		writel(val, pad_base + UTMIP_BIAS_CFG0);
-		tegra_usb_pad_reg_update(
-			XUSB_PADCTL_USB2_BIAS_PAD_CTL_0, PD_MASK , 0);
-	} else {
-		val = tegra_usb_pad_reg_read(
-					XUSB_PADCTL_USB2_PAD_MUX_0);
-		for (port = 0; port < XUSB_UTMI_COUNT; port++) {
-			if ((val & PAD_PORT_MASK(port)) ==
-						PAD_PORT_XUSB(port))
-				xhci_port_present = 1;
-	}
-
-	val = readl(pad_base + UTMIP_BIAS_CFG0);
-	val |= UTMIP_OTGPD;
-	val |= UTMIP_BIASPD;
-#if defined(CONFIG_TEGRA_XHCI_ENABLE_CDP_PORT)
-	if (xhci_port_present)	/* xhci holds atleast one utmi port */
-		val &= ~UTMIP_BIASPD;
-#endif
-	val &= ~(UTMIP_HSSQUELCH_LEVEL(~0) | UTMIP_HSDISCON_LEVEL(~0) |
-		UTMIP_HSDISCON_LEVEL_MSB);
-	writel(val, pad_base + UTMIP_BIAS_CFG0);
-
-#if defined(CONFIG_TEGRA_XHCI_ENABLE_CDP_PORT)
-	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
-		PD_MASK , 0);
-#else
-	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
-		PD_MASK , PD_MASK);
-#endif
-	}
-	break;
-	case XUSB:
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
 	if (enable) {
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0,
 			BIAS_PAD_MASK, BIAS_PAD_XUSB);
@@ -567,14 +510,56 @@ static void utmi_phy_pad(bool enable)
 		/* for tracking complete */
 		udelay(10);
 	} else {
+
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0,
 			BIAS_PAD_MASK, BIAS_PAD_XUSB);
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
 			PD_MASK, PD_MASK);
 	}
+#else
+	unsigned long val;
+	int port, xhci_port_present = 0;
+	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
+
+	if (enable) {
+		val = readl(pad_base + UTMIP_BIAS_CFG0);
+		val &= ~(UTMIP_OTGPD | UTMIP_BIASPD);
+		val |= UTMIP_HSSQUELCH_LEVEL(0x2) | UTMIP_HSDISCON_LEVEL(0x3) |
+			UTMIP_HSDISCON_LEVEL_MSB;
+		writel(val, pad_base + UTMIP_BIAS_CFG0);
+
+#if defined(CONFIG_USB_XHCI_HCD)
+	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0
+			, PD_MASK , 0);
 #endif
-	break;
+	} else {
+
+		val = tegra_usb_pad_reg_read(XUSB_PADCTL_USB2_PAD_MUX_0);
+		for (port = 0; port < XUSB_UTMI_COUNT; port++) {
+			if ((val & PAD_PORT_MASK(port)) == PAD_PORT_XUSB(port))
+				xhci_port_present = 1;
+		}
+
+		val = readl(pad_base + UTMIP_BIAS_CFG0);
+		val |= UTMIP_OTGPD;
+		val |= UTMIP_BIASPD;
+#if defined(CONFIG_TEGRA_XHCI_ENABLE_CDP_PORT)
+		if (xhci_port_present)	/* xhci holds atleast one utmi port */
+			val &= ~UTMIP_BIASPD;
+#endif
+		val &= ~(UTMIP_HSSQUELCH_LEVEL(~0) | UTMIP_HSDISCON_LEVEL(~0) |
+			UTMIP_HSDISCON_LEVEL_MSB);
+		writel(val, pad_base + UTMIP_BIAS_CFG0);
+
+#if defined(CONFIG_TEGRA_XHCI_ENABLE_CDP_PORT)
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0
+			, PD_MASK , 0);
+#else
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0
+			, PD_MASK , PD_MASK);
+#endif
 	}
+#endif
 }
 
 int utmi_phy_pad_enable(void)
