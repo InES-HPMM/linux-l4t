@@ -471,7 +471,7 @@ static bool tegra210_pg_hotreset_check(u32 status_reg, u32 *status)
 	*status = curr_status;
 	spin_unlock_irqrestore(&tegra210_pg_lock, flags);
 
-	return 0;
+	return true;
 }
 
 static int tegra210_pg_mc_flush(int id)
@@ -533,6 +533,7 @@ static int tegra210_pg_mc_flush_done(int id)
 			break;
 
 		reg_idx = mc_client_bit / 32;
+		mc_client_bit %= 32;
 		rst_control_reg = tegra210_mc_reg[reg_idx].control_reg;
 
 		spin_lock_irqsave(&tegra210_pg_lock, flags);
