@@ -30,7 +30,8 @@
 
 	host1x {
 		dc@54200000 {
-			status = "disabled";
+			status = "okay";
+			nvidia,dc-flags = <0>;
 		};
 	};
 
