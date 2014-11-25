@@ -78,7 +78,8 @@
 #define DISABLE_MBOX2_FULL_INT	0x0
 #define ENABLE_MBOX2_FULL_INT	0xFFFFFFFF
 
-#define LOGGER_TIMEOUT	20 /* in ms */
+#define LOGGER_TIMEOUT		20 /* in ms */
+#define ADSP_WFE_TIMEOUT	5000 /* in ms */
 
 #define LOAD_ADSP_FREQ 51200000lu /* in Hz */
 
@@ -866,8 +867,13 @@ static void __nvadsp_os_stop(bool reload)
 #endif
 
 	writel(ENABLE_MBOX2_FULL_INT, priv.misc_base + HWMBOX2_REG);
-	wait_for_completion(&entered_wfe);
+	err = wait_for_completion_interruptible_timeout(&entered_wfe,
+		msecs_to_jiffies(ADSP_WFE_TIMEOUT));
 	writel(DISABLE_MBOX2_FULL_INT, priv.misc_base + HWMBOX2_REG);
+	if (WARN_ON(err <= 0)) {
+		dev_err(dev, "ADSP is unable to enter wfe state\n");
+		goto end;
+	}
 
 	tegra_periph_reset_assert(drv_data->adsp_clk);
 
@@ -883,11 +889,10 @@ static void __nvadsp_os_stop(bool reload)
 			dev_err(dev, "failed to reload %s\n", NVADSP_FIRMWARE);
 	}
 
+end:
 	err = pm_runtime_put_sync(dev);
 	if (err)
-		pr_err("failed in pm_runtime_put_sync\n");
-
-	return;
+		dev_err(dev, "failed in pm_runtime_put_sync\n");
 }
 
 
