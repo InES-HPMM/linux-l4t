@@ -295,7 +295,7 @@ static const struct fb_videomode modedb[] = {
 const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	{},
 	/* 1: 640x480p @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 640, .yres = 480, .pixclock = 39682,
+	{.refresh = 59, .xres = 640, .yres = 480, .pixclock = 39721,
 	 .left_margin = 48, .right_margin = 16,
 	 .upper_margin = 33, .lower_margin = 10,
 	 .hsync_len = 96, .vsync_len = 2,
@@ -303,7 +303,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_4_3,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 2: 720x480p @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 720, .yres = 480, .pixclock = 37000,
+	{.refresh = 59, .xres = 720, .yres = 480, .pixclock = 37037,
 	 .left_margin = 60, .right_margin = 16,
 	 .upper_margin = 30, .lower_margin = 9,
 	 .hsync_len = 62, .vsync_len = 6,
@@ -311,7 +311,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_4_3,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 3: 720x480p @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 720, .yres = 480, .pixclock = 37000,
+	{.refresh = 59, .xres = 720, .yres = 480, .pixclock = 37037,
 	 .left_margin = 60, .right_margin = 16,
 	 .upper_margin = 30, .lower_margin = 9,
 	 .hsync_len = 62, .vsync_len = 6,
@@ -335,7 +335,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_16_9,
 	 .vmode = FB_VMODE_INTERLACED},
 	/* 6: 720(1440)x480i @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 1440, .yres = 480, .pixclock = 37000,
+	{.refresh = 59, .xres = 1440, .yres = 480, .pixclock = 37037,
 	 .left_margin = 114, .right_margin = 38,
 	 .upper_margin = 15, .lower_margin = 4,
 	 .hsync_len = 124, .vsync_len = 3,
@@ -343,7 +343,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_4_3 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_INTERLACED},
 	/* 7: 720(1440)x480i @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 1440, .yres = 480, .pixclock = 37000,
+	{.refresh = 59, .xres = 1440, .yres = 480, .pixclock = 37037,
 	 .left_margin = 114, .right_margin = 38,
 	 .upper_margin = 15, .lower_margin = 4,
 	 .hsync_len = 124, .vsync_len = 3,
@@ -351,7 +351,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_16_9 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_INTERLACED},
 	/* 8: 720(1440)x240p @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 1440, .yres = 240, .pixclock = 36929,
+	{.refresh = 59, .xres = 1440, .yres = 240, .pixclock = 37037,
 	 .left_margin = 114, .right_margin = 38,
 	 .upper_margin = 15, .lower_margin = 5,
 	 .hsync_len = 124, .vsync_len = 3,
@@ -359,7 +359,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_4_3 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 9: 720(1440)x240p @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 1440, .yres = 240, .pixclock = 36929,
+	{.refresh = 59, .xres = 1440, .yres = 240, .pixclock = 37037,
 	 .left_margin = 114, .right_margin = 38,
 	 .upper_margin = 15, .lower_margin = 5,
 	 .hsync_len = 124, .vsync_len = 3,
@@ -367,7 +367,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_16_9 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 10: 2880x480i @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 2880, .yres = 480, .pixclock = 18500,
+	{.refresh = 59, .xres = 2880, .yres = 480, .pixclock = 18518,
 	 .left_margin = 228, .right_margin = 76,
 	 .upper_margin = 15, .lower_margin = 4,
 	 .hsync_len = 248, .vsync_len = 3,
@@ -375,7 +375,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_4_3 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_INTERLACED},
 	/* 11: 2880x480i @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 2880, .yres = 480, .pixclock = 18500,
+	{.refresh = 59, .xres = 2880, .yres = 480, .pixclock = 18518,
 	 .left_margin = 228, .right_margin = 76,
 	 .upper_margin = 15, .lower_margin = 4,
 	 .hsync_len = 248, .vsync_len = 3,
@@ -383,7 +383,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_16_9 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_INTERLACED},
 	/* 12: 2880x240p @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 2880, .yres = 240, .pixclock = 18464,
+	{.refresh = 59, .xres = 2880, .yres = 240, .pixclock = 18518,
 	 .left_margin = 228, .right_margin = 76,
 	 .upper_margin = 15, .lower_margin = 5,
 	 .hsync_len = 248, .vsync_len = 3,
@@ -391,7 +391,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_4_3 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 13: 2880x240p @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 2880, .yres = 240, .pixclock = 18464,
+	{.refresh = 59, .xres = 2880, .yres = 240, .pixclock = 18518,
 	 .left_margin = 228, .right_margin = 76,
 	 .upper_margin = 15, .lower_margin = 5,
 	 .hsync_len = 248, .vsync_len = 3,
@@ -399,7 +399,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_16_9 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 14: 1440x480p @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 1440, .yres = 480, .pixclock = 18500,
+	{.refresh = 59, .xres = 1440, .yres = 480, .pixclock = 18518,
 	 .left_margin = 120, .right_margin = 32,
 	 .upper_margin = 30, .lower_margin = 9,
 	 .hsync_len = 124, .vsync_len = 6,
@@ -407,7 +407,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_4_3 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 15: 1440x480p @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 1440, .yres = 480, .pixclock = 18500,
+	{.refresh = 59, .xres = 1440, .yres = 480, .pixclock = 18518,
 	 .left_margin = 120, .right_margin = 32,
 	 .upper_margin = 30, .lower_margin = 9,
 	 .hsync_len = 124, .vsync_len = 6,
@@ -471,7 +471,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_16_9 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_INTERLACED},
 	/* 23: 720(1440)x288p @ 50Hz */
-	{.refresh = 50, .xres = 1440, .yres = 288, .pixclock = 36860,
+	{.refresh = 49, .xres = 1440, .yres = 288, .pixclock = 37037,
 	 .left_margin = 138, .right_margin = 24,
 	 .upper_margin = 19, .lower_margin = 4,
 	 .hsync_len = 126, .vsync_len = 3,
@@ -479,7 +479,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_4_3 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 24: 720(1440)x288p @ 50Hz */
-	{.refresh = 50, .xres = 1440, .yres = 288, .pixclock = 36860,
+	{.refresh = 49, .xres = 1440, .yres = 288, .pixclock = 37037,
 	 .left_margin = 138, .right_margin = 24,
 	 .upper_margin = 19, .lower_margin = 4,
 	 .hsync_len = 126, .vsync_len = 3,
@@ -503,7 +503,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_16_9 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_INTERLACED},
 	/* 27: 2880x288p @ 50Hz */
-	{.refresh = 50, .xres = 2880, .yres = 288, .pixclock = 18430,
+	{.refresh = 49, .xres = 2880, .yres = 288, .pixclock = 18518,
 	 .left_margin = 276, .right_margin = 48,
 	 .upper_margin = 19, .lower_margin = 4,
 	 .hsync_len = 252, .vsync_len = 3,
@@ -511,7 +511,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_4_3 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 28: 2880x288p @ 50Hz */
-	{.refresh = 50, .xres = 2880, .yres = 288, .pixclock = 18430,
+	{.refresh = 49, .xres = 2880, .yres = 288, .pixclock = 18518,
 	 .left_margin = 276, .right_margin = 48,
 	 .upper_margin = 19, .lower_margin = 4,
 	 .hsync_len = 252, .vsync_len = 3,
@@ -567,7 +567,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_16_9,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 35: 2880x480p @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 2880, .yres = 480, .pixclock = 9250,
+	{.refresh = 59, .xres = 2880, .yres = 480, .pixclock = 9259,
 	 .left_margin = 240, .right_margin = 64,
 	 .upper_margin = 30, .lower_margin = 9,
 	 .hsync_len = 248, .vsync_len = 6,
@@ -575,7 +575,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_4_3 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 36: 2880x480p @ 59.94Hz/60Hz */
-	{.refresh = 60, .xres = 2880, .yres = 480, .pixclock = 9250,
+	{.refresh = 59, .xres = 2880, .yres = 480, .pixclock = 9259,
 	 .left_margin = 240, .right_margin = 64,
 	 .upper_margin = 30, .lower_margin = 9,
 	 .hsync_len = 248, .vsync_len = 6,
@@ -671,7 +671,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_16_9,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 48: 720x480p @ 119.88/120Hz */
-	{.refresh = 120, .xres = 720, .yres = 480, .pixclock = 18500,
+	{.refresh = 119, .xres = 720, .yres = 480, .pixclock = 18518,
 	 .left_margin = 60, .right_margin = 16,
 	 .upper_margin = 30, .lower_margin = 9,
 	 .hsync_len = 62, .vsync_len = 6,
@@ -679,7 +679,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_4_3,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 49: 720x480p @ 119.88/120Hz */
-	{.refresh = 120, .xres = 720, .yres = 480, .pixclock = 18500,
+	{.refresh = 119, .xres = 720, .yres = 480, .pixclock = 18518,
 	 .left_margin = 60, .right_margin = 16,
 	 .upper_margin = 30, .lower_margin = 9,
 	 .hsync_len = 62, .vsync_len = 6,
@@ -687,7 +687,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_16_9,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 50: 720(1440)x480i @ 119.88/120Hz */
-	{.refresh = 120, .xres = 1440, .yres = 480, .pixclock = 18500,
+	{.refresh = 119, .xres = 1440, .yres = 480, .pixclock = 18518,
 	 .left_margin = 114, .right_margin = 38,
 	 .upper_margin = 15, .lower_margin = 4,
 	 .hsync_len = 124, .vsync_len = 3,
@@ -695,7 +695,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_4_3 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_INTERLACED},
 	/* 51: 720(1440)x480i @ 119.88/120Hz */
-	{.refresh = 120, .xres = 1440, .yres = 480, .pixclock = 18500,
+	{.refresh = 119, .xres = 1440, .yres = 480, .pixclock = 18518,
 	 .left_margin = 114, .right_margin = 38,
 	 .upper_margin = 15, .lower_margin = 4,
 	 .hsync_len = 124, .vsync_len = 3,
@@ -735,7 +735,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_16_9 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_INTERLACED},
 	/* 56: 720x480p @ 239.76/240Hz */
-	{.refresh = 240, .xres = 720, .yres = 480, .pixclock = 9250,
+	{.refresh = 239, .xres = 720, .yres = 480, .pixclock = 9259,
 	 .left_margin = 60, .right_margin = 16,
 	 .upper_margin = 30, .lower_margin = 9,
 	 .hsync_len = 62, .vsync_len = 6,
@@ -743,7 +743,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_4_3,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 57: 720x480p @ 239.76/240Hz */
-	{.refresh = 240, .xres = 720, .yres = 480, .pixclock = 9250,
+	{.refresh = 239, .xres = 720, .yres = 480, .pixclock = 9259,
 	 .left_margin = 60, .right_margin = 16,
 	 .upper_margin = 30, .lower_margin = 9,
 	 .hsync_len = 62, .vsync_len = 6,
@@ -751,7 +751,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_16_9,
 	 .vmode = FB_VMODE_NONINTERLACED},
 	/* 58: 720(1440)x480i @ 239.76/240Hz */
-	{.refresh = 240, .xres = 1440, .yres = 480, .pixclock = 9250,
+	{.refresh = 239, .xres = 1440, .yres = 480, .pixclock = 9259,
 	 .left_margin = 114, .right_margin = 38,
 	 .upper_margin = 15, .lower_margin = 4,
 	 .hsync_len = 124, .vsync_len = 3,
@@ -759,7 +759,7 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .flag = FB_FLAG_RATIO_4_3 | FB_FLAG_PIXEL_REPEAT,
 	 .vmode = FB_VMODE_INTERLACED},
 	/* 59: 720(1440)x480i @ 239.76/240Hz */
-	{.refresh = 240, .xres = 1440, .yres = 480, .pixclock = 9250,
+	{.refresh = 239, .xres = 1440, .yres = 480, .pixclock = 9259,
 	 .left_margin = 114, .right_margin = 38,
 	 .upper_margin = 15, .lower_margin = 4,
 	 .hsync_len = 124, .vsync_len = 3,
