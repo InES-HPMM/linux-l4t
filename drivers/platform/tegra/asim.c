@@ -19,16 +19,69 @@
 #include <linux/tegra-soc.h>
 #include <linux/ioport.h>
 #include <linux/platform_device.h>
+#include <linux/of_device.h>
 
 #include <mach/irqs.h>
 
 #include "iomap.h"
 
-#define ASIM_SHUTDOWN_REG_PHYS       0x538f0ffc
+#define DEFAULT_ASIM_FAKE_RPC_BASE	0x538f0000
+#define ASIM_SHUTDOWN_REG_OFFSET	0xffc
 
 
 static void __iomem *asim_shutdown_reg;
 
+static struct of_device_id tegra_asim_of_match[] = {
+	{ .compatible = "nvidia,tegra210-asim", },
+	{ },
+};
+
+static int tegra_asim_probe(struct platform_device *pdev)
+{
+	if (pdev->dev.of_node) {
+		const struct of_device_id *match;
+
+		match = of_match_device(tegra_asim_of_match, &pdev->dev);
+		if (match) {
+			struct resource *res;
+
+			res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+			asim_shutdown_reg =
+				ioremap(
+					(unsigned long)res->start +
+					(unsigned long)ASIM_SHUTDOWN_REG_OFFSET,
+					4);
+		} else {
+			asim_shutdown_reg = ioremap(
+						DEFAULT_ASIM_FAKE_RPC_BASE +
+						ASIM_SHUTDOWN_REG_OFFSET,
+						4);
+		}
+	} else {
+		asim_shutdown_reg = ioremap(DEFAULT_ASIM_FAKE_RPC_BASE +
+						ASIM_SHUTDOWN_REG_OFFSET,
+						4);
+	}
+
+	return 0;
+}
+
+static int tegra_asim_remove(struct platform_device *pdev)
+{
+	return 0;
+}
+
+static struct platform_driver platform_driver = {
+	.probe = tegra_asim_probe,
+	.remove  = tegra_asim_remove,
+	.driver = {
+		.owner = THIS_MODULE,
+		.name = "asim",
+#ifdef CONFIG_OF
+		.of_match_table = tegra_asim_of_match,
+#endif
+	},
+};
 
 static void asim_power_off(void)
 {
@@ -37,17 +90,21 @@ static void asim_power_off(void)
 	while (1);
 }
 
-static int __init asim_power_off_init(void)
+static int __init asim_init(void)
 {
-	if (tegra_cpu_is_asim()) {
+	if (tegra_cpu_is_asim())
 		pm_power_off = asim_power_off;
-		asim_shutdown_reg = ioremap(ASIM_SHUTDOWN_REG_PHYS, 4);
-	}
 
-	return 0;
+	return platform_driver_register(&platform_driver);
 }
 
-arch_initcall(asim_power_off_init);
+static void __exit asim_exit(void)
+{
+        platform_driver_unregister(&platform_driver);
+}
+
+arch_initcall(asim_init);
+module_exit(asim_exit);
 
 #if defined(CONFIG_SMC91X)
 static struct resource tegra_asim_smc91x_resources[] = {
