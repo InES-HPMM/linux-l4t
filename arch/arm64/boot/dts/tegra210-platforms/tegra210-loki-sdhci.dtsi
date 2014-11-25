@@ -77,7 +77,7 @@
 	};
 
 	sdhci@700b0000 { /* SDMMC1 for uSD card on loki */
-		tap-delay = <2>;
+		tap-delay = <4>;
 		trim-delay = <2>;
 		max-clk-limit = <204000000>;
 		ddr-clk-limit = <48000000>;
