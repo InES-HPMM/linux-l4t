@@ -54,6 +54,9 @@
 #define LED_NVBUTTON 0
 #define LED_TOUCH 1
 
+#define LED_MIN_BRIGHTNESS	0
+#define LED_MAX_BRIGHTNESS	255
+
 struct nvshield_led *g_dev;
 struct class_compat *nvshieldled_compat_class;
 
@@ -161,7 +164,8 @@ static ssize_t set_brightness(struct device *dev,
 	unsigned long brightness_val;
 
 	if (!kstrtoul(buf, 10, &brightness_val)) {
-		led->brightness[LED_NVBUTTON] = (unsigned char)brightness_val;
+//		led->brightness[LED_NVBUTTON] = (unsigned char)brightness_val;
+		led->brightness[LED_NVBUTTON] = (unsigned char)LED_MAX_BRIGHTNESS;
 		send_command(led, LED_NVBUTTON);
 	}
 	return count;
@@ -176,7 +180,11 @@ static ssize_t set_brightness2(struct device *dev,
 	unsigned long brightness_val;
 
 	if (!kstrtoul(buf, 10, &brightness_val)) {
-		led->brightness[LED_TOUCH] = (unsigned char)brightness_val;
+//		led->brightness[LED_TOUCH] = (unsigned char)brightness_val;
+		if (brightness_val <= 20)
+			led->brightness[LED_TOUCH] = (unsigned char)LED_MIN_BRIGHTNESS;
+		else
+			led->brightness[LED_TOUCH] = (unsigned char)LED_MAX_BRIGHTNESS;
 		send_command(led, LED_TOUCH);
 	}
 	return count;
@@ -282,7 +290,7 @@ static ssize_t set_ledstate2(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-static DEVICE_ATTR(brightness, S_IRUGO | S_IWUSR,
+static DEVICE_ATTR(brightness, S_IRUGO,
 		show_brightness, set_brightness);
 static DEVICE_ATTR(state, S_IRUGO | S_IWUSR,
 		show_ledstate, set_ledstate);
