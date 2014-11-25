@@ -37,6 +37,11 @@
 	#size-cells = <2>;
 
 	host1x {
+		hdmi {
+			nvidia,hpd-gpio = <&gpio 0xFFFFFFFF 1>; /* hotplug less HDMI */
+			nvidia,ddc-i2c-bus = <&p1889_hdmi_ddc>;
+		};
+
 		sor {
 			status = "okay";
 			panel-a-edp-1080p-14-0 {
@@ -69,20 +74,8 @@
 		};
 	};
 
-	i2c@7000c400 {
-		nvidia,clock-always-on;
-
-		pca9539_75: pca9546@75 {
-			compatible = "nxp,pca9539";
-			gpio-controller;
-			#gpio-cells = <2>;
-			reg = <0x75>;
-			gpio-init-names = "default";
-			gpio-init-0 = <&pca9539_default>;
-			pca9539_default: default {
-				 gpio-output-high = <0 3 4 5 7 9 13 14 15>;
-			 };
-		};
+	p1889_hdmi_ddc: i2c@7000c400 {
+		clock-frequency = <100000>;
 	};
 
 	i2c@7000d000 {
@@ -118,19 +111,20 @@
 
 	};
 
-	regulators {
-		compatible = "simple-bus";
-		device_type = "fixed-regulators";
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		vdd_sd: regulator@1 {
-			compatible = "regulator-fixed-sync";
-			regulator-name = "vddio_sd_slot-reg";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
-			gpio = <&pca9539_75 11 1>;
-			enable-active-high;
+	i2c@7000c400 {
+		nvidia,clock-always-on;
+		tca6408_20: tca6408@20 {
+			compatible = "ti,tca6408";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0x20>;
+			gpio-init-names = "default";
+			gpio-init-0 = <&tca6408_20_default>;
+			tca6408_20_default: default {
+				gpio-input = <1 2 7>;
+				gpio-output-low = <0 3 6>;
+				gpio-output-high = <4 5>;
+			};
 		};
 	};
 
@@ -139,12 +133,12 @@
 	};
 
 	serial@70006040 {
+		compatible = "nvidia,tegra20-uart";
+		console-port;
 		status = "okay";
 	};
 
 	serial@70006200 {
-		compatible = "nvidia,tegra20-uart";
-		console-port;
 		status = "okay";
 	};
 
@@ -154,7 +148,6 @@
 
 	spi@7000d400 {
 		status = "okay";
-		compatible = "nvidia,tegra114-spi-slave";
 	};
 
 	spi@7000d600 {
@@ -253,21 +246,26 @@
 	};
 
 	sdhci@700b0000 {
+		uhs-mask = <0x7c>;
 		status = "okay";
 	};
 
 	sdhci@700b0600 {
+		uhs-mask = <0x7c>;
 		pwr-off-during-lp0 = <1>;
 		status = "okay";
 	};
 
 	sdhci@700b0200 {
+		/* cd-gpios = <&tca6408_20 1 0>; */
+		/* wp-gpios = <&tca6408_20 2 0>; */
+		uhs-mask = <0x7c>;
 		pwr-off-during-lp0 = <1>;
 		status = "okay";
 	};
 
 	sdhci@700b0400 {
-		vddio_sd_slot-supply = <&vdd_sd>;
+		uhs-mask = <0x7c>;
 		status = "okay";
 	};
 
@@ -278,14 +276,10 @@
 	bluedroid_pm {
 		compatible = "nvidia,tegra-bluedroid_pm";
 		id = <0>;
-		bluedroid_pm,reset-gpio = <&pca9539_75 0 1>;
-		bluedroid_pm,shutdown-gpio = <&pca9539_75 5 1>;
 		status = "okay";
 	};
 	bcmdhd_wlan {
 		compatible = "android,bcmdhd_wlan";
-		wlan-pwr-gpio = <&pca9539_75 3 1>;
-		wlan-rst-gpio = <&pca9539_75 4 1>;
 		status = "okay";
 	};
 
