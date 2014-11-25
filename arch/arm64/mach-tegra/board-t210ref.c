@@ -403,8 +403,6 @@ static void __init tegra_t210ref_late_init(void)
 	tegra_io_dpd_enable(&pexclk2_io);
 
 	t210ref_camera_init();
-
-	t210ref_thermal_sensors_init();
 }
 
 static void __init tegra_t210ref_init_early(void)
