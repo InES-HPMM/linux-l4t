@@ -859,15 +859,15 @@ static int pca953x_resume(struct device *dev)
 		switch (chip->chip_type) {
 		case PCA953X_TYPE:
 			pca953x_write_single(chip, PCA953X_OUTPUT,
-					chip->reg_output[i], i);
+					chip->reg_output[i], i * BANK_SZ);
 			pca953x_write_single(chip, PCA953X_DIRECTION,
-					chip->reg_direction[i], i);
+					chip->reg_direction[i], i * BANK_SZ);
 			break;
 		case PCA957X_TYPE:
 			pca953x_write_single(chip, PCA957X_OUT,
-					chip->reg_output[i], i);
+					chip->reg_output[i], i * BANK_SZ);
 			pca953x_write_single(chip, PCA957X_CFG,
-					chip->reg_direction[i], i);
+					chip->reg_direction[i], i * BANK_SZ);
 			break;
 		default:
 			/* unknown chip type? */
