@@ -770,6 +770,11 @@ int nvadsp_os_start(void)
 	if (ret)
 		goto unlock;
 	ret = __nvadsp_os_start();
+	if (ret) {
+		/* if start fails call pm suspend of adsp driver */
+		pm_runtime_put_sync(&priv.pdev->dev);
+		goto unlock;
+	}
 	priv.os_running = drv_data->adsp_os_running = ret ? false : true;
 unlock:
 	mutex_unlock(&priv.os_run_lock);
