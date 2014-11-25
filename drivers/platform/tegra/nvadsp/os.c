@@ -1029,23 +1029,8 @@ int nvadsp_os_probe(struct platform_device *pdev)
 		goto end;
 	}
 #endif
-	priv.pdev = pdev;
 	priv.misc_base = drv_data->base_regs[AMISC];
 	priv.dram_region = drv_data->dram_region;
-
-#ifdef CONFIG_DEBUG_FS
-	priv.logger.dev = &priv.pdev->dev;
-
-	if (adsp_create_debug_logger(drv_data->adsp_debugfs_root))
-		dev_err(dev,
-			"unable to create adsp debug logger file\n");
-#ifdef CONFIG_TEGRA_ADSP_CONSOLE
-	priv.console.dev = &priv.pdev->dev;
-	if (adsp_create_cnsl(drv_data->adsp_debugfs_root, &priv.console))
-		dev_err(dev,
-		"unable to create adsp console file\n");
-#endif /* CONFIG_TEGRA_ADSP_CONSOLE */
-#endif /* CONFIG_DEBUG_FS */
 
 	ret = devm_request_irq(dev, wdt_virq, adsp_wdt_handler,
 			IRQF_TRIGGER_RISING, "adsp watchdog", &priv);
@@ -1073,6 +1058,19 @@ int nvadsp_os_probe(struct platform_device *pdev)
 	INIT_WORK(&priv.restart_os_work, nvadsp_os_restart);
 	mutex_init(&priv.fw_load_lock);
 	mutex_init(&priv.os_run_lock);
+
+	priv.pdev = pdev;
+#ifdef CONFIG_DEBUG_FS
+	priv.logger.dev = &pdev->dev;
+	if (adsp_create_debug_logger(drv_data->adsp_debugfs_root))
+		dev_err(dev, "unable to create adsp debug logger file\n");
+#ifdef CONFIG_TEGRA_ADSP_CONSOLE
+	priv.console.dev = &pdev->dev;
+	if (adsp_create_cnsl(drv_data->adsp_debugfs_root, &priv.console))
+		dev_err(dev, "unable to create adsp console file\n");
+#endif /* CONFIG_TEGRA_ADSP_CONSOLE */
+#endif /* CONFIG_DEBUG_FS */
+
 end:
 	return ret;
 }

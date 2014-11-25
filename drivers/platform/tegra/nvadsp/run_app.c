@@ -551,16 +551,15 @@ int nvadsp_run_app_module_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "%s\n", __func__);
 
 	dev = &pdev->dev;
-	priv.pdev = pdev;
 	ret = nvadsp_mbox_open(&mbox, &mbox_id,
 		"app_service", nvadsp_app_receive_handler, pdev);
 	if (ret) {
 		dev_err(dev, "unable to open mailbox\n");
 		goto end;
 	}
+	priv.pdev = pdev;
 	INIT_LIST_HEAD(&service_list);
 	drv_data = platform_get_drvdata(pdev);
-
 end:
 	return ret;
 }
