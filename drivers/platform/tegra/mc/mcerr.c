@@ -364,12 +364,22 @@ static void mcerr_default_print(const struct mc_error *err,
 				u32 status, phys_addr_t addr,
 				int secure, int rw, const char *smmu_info)
 {
-	pr_err("[mcerr] (%s) %s: %s\n", client->swgid, client->name, err->msg);
-	pr_err("[mcerr]   status = 0x%08x; addr = 0x%08llx\n", status,
-	       (long long unsigned int)addr);
-	pr_err("[mcerr]   secure: %s, access-type: %s, SMMU fault: %s\n",
-	       secure ? "yes" : "no", rw ? "write" : "read",
-	       smmu_info ? smmu_info : "none");
+	static char str[SZ_512];
+	int idx = 0;
+
+	idx += snprintf(str + idx, sizeof(str) - idx,
+			"[mcerr] (%s) %s: %s\n",
+			client->swgid, client->name, err->msg);
+	idx += snprintf(str + idx, sizeof(str) - idx,
+			"[mcerr]   status = 0x%08x; addr = 0x%08llx\n",
+			status,	(long long unsigned int)addr);
+	idx += snprintf(str + idx, sizeof(str) - idx,
+			"[mcerr]   secure: %s, access-type: %s, SMMU fault: %s\n",
+			secure ? "yes" : "no", rw ? "write" : "read",
+			smmu_info ? smmu_info : "none");
+
+	trace_printk(str);
+	pr_err("%s", str);
 }
 
 /*
