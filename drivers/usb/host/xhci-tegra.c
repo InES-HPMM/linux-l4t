@@ -4199,7 +4199,7 @@ static int tegra_xhci_otg_notify(struct notifier_block *nb,
 					struct tegra_xhci_hcd, otgnb);
 	struct platform_device *pdev = tegra->pdev;
 
-	dev_info(&pdev->dev, "received otg event %d\n", event);
+	dev_info(&pdev->dev, "received otg event %lu\n", event);
 	if (event == USB_EVENT_ID)
 		tegra_xhci_update_otg_port_ownership(tegra, true);
 	else if (event == USB_EVENT_NONE)
