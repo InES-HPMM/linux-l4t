@@ -122,7 +122,7 @@
 	};
 
 	therm_est_sensor {
-		toffset = <4034>;
+		toffset = <708>;
 		subdevs@0 {
 			device_type = "therm-est-subdev";
 			dev-data = "Tdiode";
