@@ -50,6 +50,8 @@ enum tegra_cl_dvfs_pwm_bus {
 #define TEGRA_CL_DVFS_DATA_NEW_NO_USE		(0x1UL << 2)
 /* set if control settings are overridden when CPU is idle */
 #define TEGRA_CL_DVFS_HAS_IDLE_OVERRIDE		(0x1UL << 3)
+/* set if calibration should be deferred for voltage matching force value */
+#define TEGRA_CL_DVFS_DEFER_FORCE_CALIBRATE	(0x1UL << 4)
 
 struct tegra_cl_dvfs_cfg_param {
 	unsigned long	sample_rate;

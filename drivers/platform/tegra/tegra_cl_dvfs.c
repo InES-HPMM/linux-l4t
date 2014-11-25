@@ -1032,9 +1032,28 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 		}
 	}
 
-	/* Defer if we are still sending request force_val - possible when
-	   request updated outside this driver by CPU internal pm controller */
-	if (val == cld->last_req.output) {
+	/*
+	 * Check if we need to defer calibration when voltage is matching
+	 * request force_val.
+	 *
+	 * Considerations for selecting TEGRA_CL_DVFS_DEFER_FORCE_CALIBRATE.
+	 * - if there is no voltage enforcement underneath this driver, no need
+	 * to select defer option.
+	 *
+	 *  - if CPU has internal pm controller that controls voltage while CPU
+	 * cluster is idle, and restores force_val on idle exit, the following
+	 * trade-offs applied:
+	 *
+	 * a) defer: DVCO minimum maybe slightly over-estimated, all frequencies
+	 * below DVCO minimum are skipped-to accurately, but voltage at low
+	 * frequencies would fluctuate between Vmin and Vmin + 1 LUT/PWM step.
+	 * b) don't defer: DVCO minimum rate is underestimated, maybe down to
+	 * calibration_range_min, respectively actual frequencies below DVCO
+	 * minimum are configured higher than requested, but voltage at low
+	 * frequencies is saturated at Vmin.
+	 */
+	if ((val == cld->last_req.output) &&
+	    (cld->p_data->flags & TEGRA_CL_DVFS_DEFER_FORCE_CALIBRATE)) {
 		calibration_timer_update(cld);
 		return;
 	}
@@ -2185,6 +2204,10 @@ static int build_direct_vdd_map(struct tegra_cl_dvfs_platform_data *p_data,
 }
 
 /* cl_dvfs comaptibility tables */
+struct tegra_cl_dvfs_soc_match_data t132_data = {
+	.flags = TEGRA_CL_DVFS_DEFER_FORCE_CALIBRATE,
+};
+
 struct tegra_cl_dvfs_soc_match_data t210_data = {
 	.flags = TEGRA_CL_DVFS_HAS_IDLE_OVERRIDE,
 };
@@ -2192,7 +2215,7 @@ struct tegra_cl_dvfs_soc_match_data t210_data = {
 static struct of_device_id tegra_cl_dvfs_of_match[] = {
 	{ .compatible = "nvidia,tegra114-dfll", },
 	{ .compatible = "nvidia,tegra124-dfll", },
-	{ .compatible = "nvidia,tegra132-dfll", },
+	{ .compatible = "nvidia,tegra132-dfll", .data = &t132_data, },
 	{ .compatible = "nvidia,tegra148-dfll", },
 	{ .compatible = "nvidia,tegra210-dfll", .data = &t210_data, },
 	{ },
@@ -2479,6 +2502,8 @@ static int cl_dvfs_dt_parse_pdata(struct platform_device *pdev,
 		flags |= TEGRA_CL_DVFS_DATA_NEW_NO_USE;
 	if (!of_find_property(dn, "dynamic-output-lut-workaround", NULL))
 		flags |= TEGRA_CL_DVFS_DYN_OUTPUT_CFG;	/* inverse polarity */
+	if (of_find_property(dn, "defer-force-calibrate", NULL))
+		flags |= TEGRA_CL_DVFS_DEFER_FORCE_CALIBRATE;
 	p_data->flags = flags;
 	dev_dbg(&pdev->dev, "DT: flags: 0x%x\n", p_data->flags);
 
@@ -3053,6 +3078,14 @@ static int lock_set(void *data, u64 val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(lock_fops, lock_get, lock_set, "%llu\n");
 
+static int flags_get(void *data, u64 *val)
+{
+	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
+	*val = cld->p_data->flags;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(flags_fops, flags_get, NULL, "0x%llx\n");
+
 static int monitor_get(void *data, u64 *val)
 {
 	u32 v, s;
@@ -3391,6 +3424,10 @@ int __init tegra_cl_dvfs_debug_init(struct clk *dfll_clk)
 
 	cl_dvfs_dentry = debugfs_create_dir("cl_dvfs", dfll_clk->dent);
 	if (!cl_dvfs_dentry)
+		goto err_out;
+
+	if (!debugfs_create_file("flags", S_IRUGO,
+		cl_dvfs_dentry, dfll_clk, &flags_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("monitor", S_IRUGO,
