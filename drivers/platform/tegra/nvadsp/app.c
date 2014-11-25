@@ -979,7 +979,7 @@ int nvadsp_app_module_probe(struct platform_device *pdev)
 	ret = nvadsp_mbox_open(&mbox, &mbox_id, "app_service",
 		nvadsp_app_receive_handler, &priv);
 	if (ret) {
-		pr_info("unable to open mailbox\n");
+		dev_err(&pdev->dev, "unable to open mailbox\n");
 		goto end;
 	}
 	priv.pdev = pdev;
