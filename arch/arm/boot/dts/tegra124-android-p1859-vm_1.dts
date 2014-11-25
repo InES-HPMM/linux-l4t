@@ -262,12 +262,12 @@
 	tegra_hv_wdt {
 		compatible = "nvidia,tegra-hv-wdt";
 		status = "okay";
-		ivc = <&tegra_hv 13>;
+		ivc = <&tegra_hv 15>;
 	};
 
 	iommu {
 		compatible = "nvidia,tegra124-smmu-hv";
-		ivc_queue = <&tegra_hv 11>;
+		ivc_queue = <&tegra_hv 13>;
 
 		domains = <
 			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS)
@@ -317,6 +317,11 @@
 
 		ivc-queue0 = <&tegra_hv 3>;
 		ivc-queue1 = <&tegra_hv 4>;
+		ivc-queue2 = <&tegra_hv 5>;
+
+		vic {
+			compatible = "nvidia,tegra124-vhost-vic";
+		};
 
 		/delete-node/ dpaux;
 		/delete-node/ sor;
@@ -341,8 +346,8 @@
 		reg = <0x0 0x58000000 0x0 0x01000000>;
 		iommus = <&smmu TEGRA_SWGROUP_GPU &smmu TEGRA_SWGROUP_GPUB>;
 
-		ivc-queue2 = <&tegra_hv 5>;
 		ivc-queue3 = <&tegra_hv 6>;
+		ivc-queue4 = <&tegra_hv 7>;
 	};
 
 	chosen {

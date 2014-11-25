@@ -234,7 +234,7 @@
 
 	iommu {
 		compatible = "nvidia,tegra124-smmu-hv";
-		ivc_queue = <&tegra_hv 12>;
+		ivc_queue = <&tegra_hv 14>;
 		domains = <
 			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS)
 			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS1)
@@ -285,8 +285,9 @@
 			<&smmu TEGRA_SWGROUP_HC>,
 			<&smmu TEGRA_SWGROUP_HDA>;
 
-		ivc-queue0 = <&tegra_hv 7>;
-		ivc-queue1 = <&tegra_hv 8>;
+		ivc-queue0 = <&tegra_hv 8>;
+		ivc-queue1 = <&tegra_hv 9>;
+		ivc-queue2 = <&tegra_hv 10>;
 
 		/* tegradc.1 */
 		dc@54240000 {
@@ -306,7 +307,7 @@
 		};
 
 		vic {
-			status = "disabled";
+			compatible = "nvidia,tegra124-vhost-vic";
 		};
 
 		msenc {
@@ -328,8 +329,8 @@
 		reg = <0x0 0x58000000 0x0 0x01000000>;
 		iommus = <&smmu TEGRA_SWGROUP_GPU &smmu TEGRA_SWGROUP_GPUB>;
 
-		ivc-queue2 = <&tegra_hv 9>;
-		ivc-queue3 = <&tegra_hv 10>;
+		ivc-queue3 = <&tegra_hv 11>;
+		ivc-queue4 = <&tegra_hv 12>;
 	};
 
 	/* the virtual serial device node */
@@ -350,7 +351,7 @@
 	tegra_hv_wdt {
 		compatible = "nvidia,tegra-hv-wdt";
 		status = "okay";
-		ivc = <&tegra_hv 14>;
+		ivc = <&tegra_hv 16>;
 	};
 
 	snor {
