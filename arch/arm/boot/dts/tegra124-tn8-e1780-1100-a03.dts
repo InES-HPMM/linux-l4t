@@ -102,5 +102,19 @@
 	sysedp_batmon_calc {
 		dt-override-status-odm-data = <0x00C00000 0x00400000>;
 	};
+
+	therm_est_sensor {
+		subdev {
+			subdev_names = "Tdiode_tegra", "Tboard_tegra";
+
+			coeff_set@0 {
+				toffset = <9793>;
+				coeffs = <
+					2 1 1 1 1 1 1 1 1 1 1 0 1 1 0 0 0 0 (-1) (-7)
+					(-11) (-7) (-5) (-3) (-3) (-2) (-1) 0 0 0 1 1 1 2 2 3 4 6 11 18
+				>;
+			};
+		};
+	};
 };
 

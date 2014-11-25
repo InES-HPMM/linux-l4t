@@ -122,16 +122,16 @@
 	};
 
 	therm_est_sensor {
-		toffset = <708>;
-		subdevs@0 {
-			device_type = "therm-est-subdev";
-			dev-data = "Tdiode";
-			coeffs = "-1 -1 0 -1 0 -1 -1 0 0 0 1 1 1 1 2 2 2 2 3 5";
-		};
-		subdevs@1 {
-			device_type = "therm-est-subdev";
-			dev-data = "Tboard";
-			coeffs = "-3 -1 1 1 2 1 2 1 -1 -1 0 2 3 4 5 3 3 4 6 36";
+		subdev {
+			subdev_names = "Tdiode", "Tboard";
+
+			coeff_set@0 {
+				toffset = <708>;
+				coeffs = <
+					(-1) (-1) 0 (-1) 0 (-1) (-1) 0 0 0 1 1 1 1 2 2 2 2 3 5
+					(-3) (-1) 1 1 2 1 2 1 (-1) (-1) 0 2 3 4 5 3 3 4 6 36
+				>;
+			};
 		};
 	};
 
