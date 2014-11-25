@@ -49,6 +49,30 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 
+			/* guest 0 <-> guest 2 (vhost cmd) */
+			ivc3 {
+				reg = <3>;
+				peers = <0 2>;
+			};
+
+			/* guest 0 <-> guest 2 (vhost intr) */
+			ivc4 {
+				reg = <4>;
+				peers = <0 2>;
+			};
+
+			/* guest 0 <-> guest 2 (vgpu cmd) */
+			ivc5 {
+				reg = <5>;
+				peers = <0 2>;
+			};
+
+			/* guest 0 <-> guest 2 (vgpu intr) */
+			ivc6 {
+				reg = <6>;
+				peers = <0 2>;
+			};
+
 			/* guest 0 <-> guest 1 (smmu server) */
 			ivc7 {
 				reg = <7>;
@@ -93,5 +117,26 @@
 		gpio-output-high = <TEGRA_GPIO(R, 0)
 				TEGRA_GPIO(R, 2)>;
 		};
+	};
+
+	host1x {
+		virtual-dev = <1>;
+
+		ivc-queue0 = <&tegra_hv 3>;
+		ivc-queue1 = <&tegra_hv 4>;
+	};
+
+	gk20a {
+		status = "disabled";
+	};
+
+	gk20a-vgpu {
+		compatible = "nvidia,tegra124-gk20a-vgpu";
+		nvidia,host1x = <&host1x>;
+		reg = <0x0 0x58000000 0x0 0x01000000>;
+		iommus = <&smmu TEGRA_SWGROUP_GPU &smmu TEGRA_SWGROUP_GPUB>;
+
+		ivc-queue2 = <&tegra_hv 5>;
+		ivc-queue3 = <&tegra_hv 6>;
 	};
 };
