@@ -30,7 +30,7 @@
 				reg = <0x0>;
 				ti,rail-name = "VDD_BATT";
 				ti,shunt-resistor-mohm = <5>;
-				ti,current-critical-limit-ma = <6800>;
+				ti,current-critical-limit-ma = <8000>;
 			};
 
 			channel@1 {
