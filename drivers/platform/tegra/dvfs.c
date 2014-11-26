@@ -2189,9 +2189,12 @@ int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate)
 		 * Report error, but continue: DFLL is functional, anyway, and
 		 * no error with proper regulator driver update
 		 */
-		if (regulator_set_vsel_volatile(d->dvfs_rail->reg, true))
-			WARN_ONCE(1, "%s: failed to set vsel volatile\n",
-				  __func__);
+		if (d->dvfs_rail->reg)
+			if (regulator_set_vsel_volatile(d->dvfs_rail->reg,
+							true))
+				WARN_ONCE(1,
+					"%s: failed to set vsel volatile\n",
+					__func__);
 	}
 	mutex_unlock(&dvfs_lock);
 	return 0;
