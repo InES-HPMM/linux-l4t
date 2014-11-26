@@ -222,6 +222,101 @@ module_param(firmware_file, charp, S_IRUGO);
 MODULE_PARM_DESC(firmware_file, FIRMWARE_FILE_HELP);
 
 /* functions */
+#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+static unsigned int boost_cpu_freq = CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ;
+module_param(boost_cpu_freq, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(boost_cpu_freq, "CPU frequency (in KHz) to boost");
+
+#define BOOST_PERIOD		(msecs_to_jiffies(2*1000)) /* 2 seconds */
+static void tegra_xusb_boost_cpu_freq_fn(struct work_struct *work)
+{
+	struct tegra_xhci_hcd *tegra = container_of(work,
+					struct tegra_xhci_hcd,
+					boost_cpufreq_work);
+	unsigned long delay = BOOST_PERIOD;
+	s32 cpufreq_hz = boost_cpu_freq * 1000;
+
+	mutex_lock(&tegra->boost_cpufreq_lock);
+
+	if (!tegra->cpufreq_boosted) {
+		xhci_dbg(tegra->xhci, "boost cpu freq %d Hz\n", cpufreq_hz);
+		pm_qos_update_request(&tegra->boost_cpufreq_req, cpufreq_hz);
+		pm_qos_update_request(&tegra->boost_cpuon_req,
+					PM_QOS_MAX_ONLINE_CPUS_DEFAULT_VALUE);
+		tegra->cpufreq_boosted = true;
+	}
+
+	if (!tegra->restore_cpufreq_scheduled) {
+		xhci_dbg(tegra->xhci, "%s schedule restore work\n", __func__);
+		schedule_delayed_work(&tegra->restore_cpufreq_work, delay);
+		tegra->restore_cpufreq_scheduled = true;
+	}
+
+	tegra->cpufreq_last_boosted = jiffies;
+
+	mutex_unlock(&tegra->boost_cpufreq_lock);
+}
+
+static void tegra_xusb_restore_cpu_freq_fn(struct work_struct *work)
+{
+	struct tegra_xhci_hcd *tegra = container_of(work,
+					struct tegra_xhci_hcd,
+					restore_cpufreq_work.work);
+	unsigned long delay = BOOST_PERIOD;
+
+	mutex_lock(&tegra->boost_cpufreq_lock);
+
+	if (time_is_after_jiffies(tegra->cpufreq_last_boosted + delay)) {
+		xhci_dbg(tegra->xhci, "%s schedule restore work\n", __func__);
+		schedule_delayed_work(&tegra->restore_cpufreq_work, delay);
+		goto done;
+	}
+
+	xhci_dbg(tegra->xhci, "%s restore cpufreq\n", __func__);
+	pm_qos_update_request(&tegra->boost_cpufreq_req, PM_QOS_DEFAULT_VALUE);
+	pm_qos_update_request(&tegra->boost_cpuon_req, PM_QOS_DEFAULT_VALUE);
+	tegra->cpufreq_boosted = false;
+	tegra->restore_cpufreq_scheduled = false;
+
+done:
+	mutex_unlock(&tegra->boost_cpufreq_lock);
+}
+
+static void tegra_xusb_boost_cpu_init(struct tegra_xhci_hcd *tegra)
+{
+	INIT_WORK(&tegra->boost_cpufreq_work, tegra_xusb_boost_cpu_freq_fn);
+
+	INIT_DELAYED_WORK(&tegra->restore_cpufreq_work,
+				tegra_xusb_restore_cpu_freq_fn);
+
+	pm_qos_add_request(&tegra->boost_cpufreq_req,
+				PM_QOS_CPU_FREQ_MIN, PM_QOS_DEFAULT_VALUE);
+
+	pm_qos_add_request(&tegra->boost_cpuon_req,
+				PM_QOS_MIN_ONLINE_CPUS, PM_QOS_DEFAULT_VALUE);
+
+	mutex_init(&tegra->boost_cpufreq_lock);
+}
+
+static void tegra_xusb_boost_cpu_deinit(struct tegra_xhci_hcd *tegra)
+{
+	cancel_work_sync(&tegra->boost_cpufreq_work);
+	cancel_delayed_work_sync(&tegra->restore_cpufreq_work);
+
+	pm_qos_remove_request(&tegra->boost_cpufreq_req);
+	pm_qos_remove_request(&tegra->boost_cpuon_req);
+	mutex_destroy(&tegra->boost_cpufreq_lock);
+}
+
+static bool tegra_xusb_boost_cpu_freq(struct tegra_xhci_hcd *tegra)
+{
+	return schedule_work(&tegra->boost_cpufreq_work);
+}
+#else
+static void tegra_xusb_boost_cpu_init(struct tegra_xhci_hcd *unused) {}
+static void tegra_xusb_boost_cpu_deinit(struct tegra_xhci_hcd *unused) {}
+static void tegra_xusb_boost_cpu_freq(struct tegra_xhci_hcd *unused) {}
+#endif
 static inline struct tegra_xhci_hcd *hcd_to_tegra_xhci(struct usb_hcd *hcd)
 {
 	return (struct tegra_xhci_hcd *) dev_get_drvdata(hcd->self.controller);
@@ -3832,6 +3927,27 @@ static irqreturn_t tegra_xhci_irq(struct usb_hcd *hcd)
 	return iret;
 }
 
+static int tegra_xhci_urb_enqueue(struct usb_hcd *hcd, struct urb *urb,
+			gfp_t mem_flags)
+{
+	int xfertype;
+	struct tegra_xhci_hcd *tegra = hcd_to_tegra_xhci(hcd);
+
+	xfertype = usb_endpoint_type(&urb->ep->desc);
+	switch (xfertype) {
+	case USB_ENDPOINT_XFER_ISOC:
+	case USB_ENDPOINT_XFER_BULK:
+		tegra_xusb_boost_cpu_freq(tegra);
+		break;
+	case USB_ENDPOINT_XFER_INT:
+	case USB_ENDPOINT_XFER_CONTROL:
+	default:
+		/* Do nothing special here */
+		break;
+	}
+	return xhci_urb_enqueue(hcd, urb, mem_flags);
+}
+
 static int tegra_xhci_update_hub_device(struct usb_hcd *hcd,
 		struct usb_device *hdev, struct usb_tt *tt, gfp_t mem_flags)
 {
@@ -3881,7 +3997,7 @@ static const struct hc_driver tegra_plat_xhci_driver = {
 	/*
 	 * managing i/o requests and associated device resources
 	 */
-	.urb_enqueue =		xhci_urb_enqueue,
+	.urb_enqueue =		tegra_xhci_urb_enqueue,
 	.urb_dequeue =		xhci_urb_dequeue,
 	.alloc_dev =		tegra_xhci_alloc_dev,
 	.free_dev =		tegra_xhci_free_dev,
@@ -5252,6 +5368,7 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	hsic_power_create_file(tegra);
 	tegra->init_done = true;
 
+	tegra_xusb_boost_cpu_init(tegra);
 	if (xhci->quirks & XHCI_LPM_SUPPORT)
 		hcd_to_bus(xhci->shared_hcd)->root_hub->lpm_capable = 1;
 
@@ -5292,6 +5409,7 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	if (tegra == NULL)
 		return -EINVAL;
 
+	tegra_xusb_boost_cpu_deinit(tegra);
 	mutex_lock(&tegra->sync_lock);
 
 	for_each_enabled_hsic_pad(pad, tegra) {
@@ -5368,6 +5486,7 @@ static void tegra_xhci_shutdown(struct platform_device *pdev)
 		hcd = xhci_to_hcd(xhci);
 		xhci_shutdown(hcd);
 	}
+	tegra_xusb_boost_cpu_deinit(tegra);
 }
 
 static struct platform_driver tegra_xhci_driver = {
