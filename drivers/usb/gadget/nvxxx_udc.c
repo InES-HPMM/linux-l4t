@@ -3793,11 +3793,6 @@ static int nvudc_gadget_start(struct usb_gadget *gadget,
 	u_temp |= PORTHALT_STCHG_INTR_EN;
 	iowrite32(u_temp, nvudc->mmio_reg_base + PORTHALT);
 
-
-	/* Enable clock gating */
-	/* T210 WAR, Disable BLCG CORE FE */
-	iowrite32(0xFFFB, nvudc->mmio_reg_base + BLCG);
-
 	if (nvudc->pullup) {
 		/* set ENABLE bit */
 		u_temp = ioread32(nvudc->mmio_reg_base + CTRL);
@@ -4321,6 +4316,13 @@ void restore_mmio_reg(struct nv_udc_s *nvudc)
 {
 	u32 reg;
 	dma_addr_t dma;
+
+	/* Enable clock gating */
+	/* T210 WAR, Disable BLCG DFPCI/UFPCI/FE */
+	reg = ioread32(nvudc->mmio_reg_base + BLCG);
+	reg |= BLCG_ALL;
+	reg &= ~(BLCG_DFPCI | BLCG_UFPCI | BLCG_FE);
+	iowrite32(reg, nvudc->mmio_reg_base + BLCG);
 
 	/* restore the event ring info */
 	init_hw_event_ring(nvudc);

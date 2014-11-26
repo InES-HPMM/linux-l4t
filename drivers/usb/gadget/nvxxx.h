@@ -170,7 +170,27 @@
 
 #define HSFSPI_TESTMODE_CTRL        0x0000013C
 
-#define BLCG                        0x00000840
+#define BLCG			0x00000840
+#define BLCG_DFPCI		(1 << 0)
+#define BLCG_UFPCI		(1 << 1)
+#define BLCG_FE			(1 << 2)
+#define BLCG_CORE_BI		(1 << 3)
+#define BLCG_PICLK_BI		(1 << 4)
+#define BLCG_HSFS_PI		(1 << 5)
+#define BLCG_NVWRAP_480M	(1 << 6)
+#define BLCG_NVWRAP_48M		(1 << 7)
+#define BLCG_COREPLL_PWRDN	(1 << 8)
+#define BLCG_IOPLL_0_PWRDN	(1 << 9)
+#define BLCG_IOPLL_1_PWRDN	(1 << 10)
+#define BLCG_IOPLL_2_PWRDN	(1 << 11)
+#define BLCG_IOPLL_3_PWRDN	(1 << 12)
+#define BLCG_SS_PI		(1 << 13)
+#define BLCG_SS_PI_500M		(1 << 14)
+#define BLCG_ALL \
+	(BLCG_DFPCI | BLCG_UFPCI | BLCG_FE | BLCG_CORE_BI | BLCG_PICLK_BI | \
+	 BLCG_HSFS_PI | BLCG_NVWRAP_480M | BLCG_NVWRAP_48M | BLCG_COREPLL_PWRDN | \
+	 BLCG_IOPLL_0_PWRDN | BLCG_IOPLL_1_PWRDN | BLCG_IOPLL_2_PWRDN | \
+	 BLCG_IOPLL_3_PWRDN | BLCG_SS_PI | BLCG_SS_PI_500M)
 
 #define CFG_DEV_FE                  0x0000085C
 #define CFG_DEV_FE_PORTREGSEL(x)	((x) & 0x3)
