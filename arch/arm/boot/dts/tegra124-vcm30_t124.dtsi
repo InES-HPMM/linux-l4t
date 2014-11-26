@@ -164,8 +164,10 @@
 		vmmc-supply = <&vmmc_dummy>;
 		disable-clock-gate;
 		nvidia,disable-auto-cal;
-		status = "disabled";
 		nvidia,update-pinctrl-settings;
+		/* clock freq based on mode */
+		fixed-clock-freq = <25500000 24000000 24000000 47000000 24000000 47000000 94000000 204000000 0 0 0>;
+		status = "disabled";
 	};
 
 	sdhci@700b0600 {
@@ -183,6 +185,8 @@
 		calib-3v3-offsets = <0x615F>;
 		calib-1v8-offsets = <0x615F>;
 		auto-cal-step = <0x7>;
+		/* clock freq based on mode */
+		fixed-clock-freq = <25500000 25500000 51000000 0 0 0 0 0 51000000 188000000 0>;
 		status = "disabled";
 	};
 
@@ -198,6 +202,8 @@
 		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
 		nvidia,disable-auto-cal;
+		/* clock freq based on mode */
+		fixed-clock-freq = <25500000 25500000 51000000 0 0 0 0 0 40800000 80500000 0>;
 		status = "disabled";
 	};
 
@@ -215,6 +221,8 @@
 		nvidia,disable-auto-cal;
 		status = "disabled";
 		nvidia,update-pinctrl-settings;
+		/* clock freq based on mode */
+		fixed-clock-freq = <25500000 24000000 24000000 47000000 24000000 47000000 94000000 204000000 0 0 0>;
 		nvidia,enable-ext-loopback;
 	};
 

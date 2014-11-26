@@ -58,6 +58,18 @@ in HS400 mode.
 - nvidia,enable-hs533-mode: Set this Flag toenable HS533 mode.
 	---> eMMC card does not advertise HS533 mode support in device registers.
 	---> This flag has to be enabled only if the card supports HS533 mode, other wise the consequences are un-known.(Errors will be seen)
+- fixed-clock-freq: The first element is for ID mode. The rest of the entries are for different modes indexed as per ios timings.
+	ID MODE			0
+	MMC_TIMING_LEGACY	1
+	MMC_TIMING_MMC_HS	2
+	MMC_TIMING_SD_HS	3
+	MMC_TIMING_UHS_SDR12	4
+	MMC_TIMING_UHS_SDR25	5
+	MMC_TIMING_UHS_SDR50	6
+	MMC_TIMING_UHS_SDR104	7
+	MMC_TIMING_UHS_DDR50	8
+	MMC_TIMING_MMC_HS200	9
+	MMC_TIMING_MMC_HS400	10
 
 Example:
 
@@ -82,6 +94,7 @@ Example:
 		vddio_sdmmc-supply = <&max77620_sd3>;
 		nvidia,dll-calib-needed;
 		status = "okay";
+		fixed-clock-freq = <25500000 25500000 24000000 47000000 24000000 47000000 94000000 204000000 0 0 0>;
 	};
 
 	sdhci@700b0000 {
