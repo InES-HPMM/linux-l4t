@@ -179,7 +179,7 @@ u64 tegra_smmu_of_get_swgids(struct device *dev,
 			break;
 		}
 
-		swgids |= BIT(ret->args[0]);
+		swgids |= (1ULL << ret->args[0]);
 	}
 
 	swgids = swgids ? swgids : SWGIDS_ERROR_CODE;
