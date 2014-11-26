@@ -44,6 +44,38 @@ static void xotg_notify_event(struct xotg *xotg, int event)
 	atomic_notifier_call_chain(&xotg->phy.notifier, event, NULL);
 }
 
+static ssize_t debug_store(struct device *_dev, struct device_attribute *attr,
+	const char *buf, size_t size)
+{
+	struct xotg *xotg = dev_get_drvdata(_dev);
+
+	if (sysfs_streq(buf, "enable_host")) {
+		xotg_info(xotg->dev, "AppleOTG: setting up host mode\n");
+		xotg->id_grounded = true;
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+			USB2_VBUS_ID_0_VBUS_OVERRIDE, 0);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+			USB2_VBUS_ID_0_ID_OVERRIDE,
+			USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND);
+		/* pad protection for host mode */
+		xusb_enable_pad_protection(0);
+	}
+	if (sysfs_streq(buf, "enable_device")) {
+		xotg_info(xotg->dev, "AppleOTG: setting up device mode\n");
+		xotg->id_grounded = false;
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+			USB2_VBUS_ID_0_ID_OVERRIDE,
+			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+			USB2_VBUS_ID_0_VBUS_OVERRIDE,
+			USB2_VBUS_ID_0_VBUS_OVERRIDE);
+		/* pad protection for device mode */
+		xusb_enable_pad_protection(1);
+	}
+	return size;
+}
+static DEVICE_ATTR(debug, S_IWUSR, NULL, debug_store);
+
 static int extcon_id_notifications(struct notifier_block *nb,
 				   unsigned long event, void *unused)
 {
@@ -399,6 +431,7 @@ static int xotg_probe(struct platform_device *pdev)
 	xotg->pdev = pdev;
 	platform_set_drvdata(pdev, xotg);
 	xotg->phy.type = USB_PHY_TYPE_UNDEFINED;
+	dev_set_drvdata(&pdev->dev, xotg);
 
 	/* store the otg phy */
 	status = usb_add_phy(&xotg->phy, USB_PHY_TYPE_USB3);
@@ -466,6 +499,11 @@ static int xotg_probe(struct platform_device *pdev)
 	xotg->id_extcon_nb.notifier_call = extcon_id_notifications;
 	extcon_register_notifier(xotg->id_extcon_dev,
 						&xotg->id_extcon_nb);
+
+	status = device_create_file(xotg->dev, &dev_attr_debug);
+	if (status)
+		goto error5;
+
 	return status;
 
 error6:
@@ -487,6 +525,7 @@ static int __exit xotg_remove(struct platform_device *pdev)
 {
 	struct xotg *xotg = platform_get_drvdata(pdev);
 
+	device_remove_file(xotg->dev, &dev_attr_debug);
 	extcon_unregister_notifier(xotg->id_extcon_dev,
 		&xotg->id_extcon_nb);
 
