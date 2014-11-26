@@ -32,6 +32,8 @@
 #include "t124/t124.h"
 #include <media/nvc.h>
 #include <media/camera.h>
+
+#include "../camera_platform.h"
 #include "camera_common.h"
 
 /*#define DEBUG_I2C_TRAFFIC*/

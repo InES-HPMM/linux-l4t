@@ -32,21 +32,23 @@
 
 #define GET_POINTER(p, o) ((unsigned long)p + (unsigned long)o)
 
+/* module size = 96 bytes in user space */
 struct cam_module {
 	u32 id;
-	u32 sensor;
-	u32 focuser;
-	u32 flash;
-	u32 rom;
-	u32 reserved[14];
-	u32 pos;
+	u32 reserved0;
+	u64 sensor;
+	u64 focuser;
+	u64 flash;
+	u64 rom;
+	u32 reserved[13];
+	u8 pos;
+	u8 reserved3;
 };
 
 struct dev_profile {
-	u32 off_name;
+	u64 off_name;
 	u32 index;
 	u32 type;
-	u32 reserved0;
 	u64 guid;
 	u32 present;
 	u32 pos;
@@ -55,11 +57,10 @@ struct dev_profile {
 	u8 addr;
 	u8 reserved1[2];
 	u32 addr_byte;
-	u32 reserved2[14];
-	u32 off_drv_name;
-	u32 reserved3[2];
+	u32 reserved2[16];
+	u64 off_drv_name;
+	u32 reserved3[4];
 	u32 dev_id;
-	u32 reserved4[3];
 };
 
 static struct camera_platform_info *cam_desc;
@@ -78,11 +79,15 @@ static char *device_type[] = {
 static void camdbg_dev_prof(struct seq_file *s, void *pl, u32 offset)
 {
 	struct dev_profile *prf = (void *)GET_POINTER(pl, offset);
+	int dtype = prf->type;
+
+	if (dtype < 2 || dtype >= ARRAY_SIZE(device_type))
+		dtype = ARRAY_SIZE(device_type) - 1;
+	else
+		dtype -= 2;
 
 	seq_printf(s, "%016llx %.20s %.20s %1x %1x %.2x %1x %.8x %x %.20s\n",
-		prf->guid,
-		prf->type < ARRAY_SIZE(device_type) ? device_type[prf->type] :
-		device_type[ARRAY_SIZE(device_type) - 1],
+		prf->guid, device_type[dtype],
 		(char *)GET_POINTER(pl, prf->off_drv_name),
 		prf->pos, prf->bus, prf->addr, prf->addr_byte, prf->dev_id,
 		prf->index, (char *)GET_POINTER(pl, prf->off_name));
@@ -111,7 +116,7 @@ static int camera_debugfs_layout(struct seq_file *s)
 	if (!pl)
 		return -EEXIST;
 
-	if (*((u32 *)pl) == 2) { /* version 3 */
+	if (*((u32 *)pl) == 2) { /* version 2 */
 		struct cam_module_layout *pmod =
 			(void *)GET_POINTER(pl, sizeof(*hdr));
 		for (num = 0; num < hdr->mod_num; num++) {

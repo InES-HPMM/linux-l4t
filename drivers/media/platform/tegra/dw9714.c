@@ -98,6 +98,7 @@
 #include <media/camera.h>
 
 #include "nvc_utilities.h"
+#include "camera_platform.h"
 
 #define ENABLE_DEBUGFS_INTERFACE
 
@@ -521,7 +522,7 @@ static int dw9714_param_rd(struct dw9714_info *info, unsigned long arg)
 		dw9714_get_focuser_capabilities(info);
 		data_ptr = &info->nv_config;
 		data_size = sizeof(info->nv_config);
-		dev_err(&info->i2c_client->dev, "%s CAPS\n", __func__);
+		dev_dbg(&info->i2c_client->dev, "%s CAPS\n", __func__);
 		break;
 	case NVC_PARAM_STS:
 		data_ptr = &info->status;
@@ -531,7 +532,7 @@ static int dw9714_param_rd(struct dw9714_info *info, unsigned long arg)
 	case NVC_PARAM_STEREO:
 		data_ptr = &info->s_mode;
 		data_size = sizeof(info->s_mode);
-		dev_err(&info->i2c_client->dev, "%s STEREO: %d\n", __func__,
+		dev_dbg(&info->i2c_client->dev, "%s STEREO: %d\n", __func__,
 			info->s_mode);
 		break;
 	default:

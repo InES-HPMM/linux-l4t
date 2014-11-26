@@ -31,6 +31,7 @@
 #include "t124/t124.h"
 #include <media/ad5823.h>
 #include <media/camera.h>
+#include "camera_platform.h"
 
 #define AD5823_ACTUATOR_RANGE	1023
 #define AD5823_POS_LOW_DEFAULT	(0)

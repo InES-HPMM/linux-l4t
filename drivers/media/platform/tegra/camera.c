@@ -36,6 +36,7 @@
 #include <isp.h>
 #include <media/camera.h>
 
+#include "camera_platform.h"
 #include "cam_dev/camera_common.h"
 
 static struct camera_platform_data camera_dflt_pdata = {
@@ -537,21 +538,21 @@ static int cam_add_device(struct camera_info *cam, unsigned long arg)
 	return 0;
 }
 
-static int camera_add_vchip(struct device *dev, unsigned long arg)
+static int camera_add_vchip(struct camera_info *cam, unsigned long arg)
 {
 	struct virtual_device d_info;
 	void *pchp;
 
-	dev_dbg(dev, "%s\n", __func__);
+	dev_dbg(cam->dev, "%s\n", __func__);
 
 	if (copy_from_user(
 		&d_info, (const void __user *)arg, sizeof(d_info))) {
-		dev_err(dev, "%s copy_from_user err line %d\n",
+		dev_err(cam->dev, "%s copy_from_user err line %d\n",
 			__func__, __LINE__);
 			return -EFAULT;
 	}
 
-	pchp = virtual_chip_add(dev, &d_info);
+	pchp = virtual_chip_add(cam->dev, &d_info);
 
 	if (IS_ERR(pchp))
 		return PTR_ERR(pchp);
@@ -579,7 +580,8 @@ static int camera_get_dt(struct camera_info *cam, unsigned long arg)
 		err = -EFAULT;
 		goto get_dt_end;
 	}
-	if (!err && param.sizeofvalue && param.p_value &&
+
+	if (param.sizeofvalue && param.p_value &&
 		copy_to_user(MAKE_USER_PTR(param.p_value),
 		pdata, param.sizeofvalue)) {
 		dev_err(cam->dev, "%s copy_to_user err line %d\n",
@@ -913,11 +915,12 @@ static long camera_ioctl(struct file *file,
 		err = -ENODEV;
 		goto ioctl_end;
 	}
+	dev_dbg(cam->dev, "%s: %x %lx\n", __func__, cmd, arg);
 
 	/* command distributor */
 	switch (_IOC_NR(cmd)) {
 	case _IOC_NR(CAMERA_IOCTL_CHIP_REG):
-		err = camera_add_vchip(cam_desc.dev, arg);
+		err = camera_add_vchip(cam, arg);
 		break;
 	case _IOC_NR(CAMERA_IOCTL_DEV_REG):
 		err = cam_add_device(cam, arg);
@@ -969,8 +972,7 @@ static long camera_ioctl(struct file *file,
 		err = camera_dpd_ctrl(cam, arg, false);
 		break;
 	default:
-		dev_err(cam->dev, "%s unsupported ioctl: %x\n",
-			__func__, cmd);
+		dev_err(cam->dev, "%s unsupported ioctl: %x\n", __func__, cmd);
 		err = -EINVAL;
 	}
 
@@ -1128,6 +1130,7 @@ static int camera_probe(struct platform_device *dev)
 			camera_dpd_init(cam_desc.dev, pd->dpd_tbl);
 		camera_module_detect(&cam_desc);
 	}
+
 	camera_ref_init();
 	return 0;
 }

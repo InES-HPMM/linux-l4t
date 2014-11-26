@@ -17,13 +17,7 @@
 #ifndef __CAMERA_H__
 #define __CAMERA_H__
 
-#ifdef __KERNEL__
-#include <linux/list.h>
-#include <linux/miscdevice.h>
 #include <linux/i2c.h>
-#include <linux/regmap.h>
-#include <media/nvc.h>
-#endif
 
 #define CAMERA_INT_MASK			0xf0000000
 #define CAMERA_TABLE_WAIT_US		(CAMERA_INT_MASK | 1)
@@ -196,38 +190,10 @@ struct camera_property_info {
 	u32 type;
 };
 
-#ifdef __KERNEL__
-
-#define CAMERA_REGCACHE_MAX		(128)
-
 struct camera_data_blob {
 	char *name;
 	void *data;
 };
 
-struct camera_sync_dev {
-	char name[CAMERA_MAX_NAME_LENGTH];
-	struct regmap *regmap;
-	struct camera_reg reg[CAMERA_REGCACHE_MAX];
-	struct i2c_client *i2c_client;
-	struct camera_i2c_msg msg[CAMERA_REGCACHE_MAX];
-	u32 num_used;
-	struct list_head list;
-};
-
-int camera_dev_sync_init(void);
-void camera_dev_sync_cb(void *stub);
-extern int camera_dev_sync_clear(struct camera_sync_dev *csyncdev);
-extern int camera_dev_sync_wr_add(
-	struct camera_sync_dev *csyncdev, u32 offset, u32 val);
-extern int camera_dev_sync_wr_add_i2c(
-	struct camera_sync_dev *csyncdev, struct i2c_msg *msg, int num);
-extern int camera_dev_add_regmap(
-	struct camera_sync_dev **csyncdev, u8 *name, struct regmap *regmap);
-extern int camera_dev_add_i2cclient(
-	struct camera_sync_dev **csyncdev, u8 *name,
-	struct i2c_client *i2c_client);
-
-#endif
 #endif
 /* __CAMERA_H__ */

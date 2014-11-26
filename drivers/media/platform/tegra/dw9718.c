@@ -97,6 +97,8 @@
 #include <media/dw9718.h>
 #include <media/camera.h>
 
+#include "camera_platform.h"
+
 #define ENABLE_DEBUGFS_INTERFACE
 
 #define dw9718_ID			0x04

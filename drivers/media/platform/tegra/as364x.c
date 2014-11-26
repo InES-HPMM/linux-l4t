@@ -34,6 +34,7 @@
 #include <linux/of_gpio.h>
 #include <media/nvc.h>
 #include <media/as364x.h>
+#include "camera_platform.h"
 
 #include "nvc_utilities.h"
 
