@@ -4308,9 +4308,28 @@ static void tune_cpu_trimmers(bool trim_high)
 }
 #endif
 
+static unsigned long int dfll_boot_khz;
+static int __init dfll_freq_cmd_line(char *line)
+{
+	int status = kstrtoul(line, 0, &dfll_boot_khz);
+	if(status) {
+		pr_err("\n%s:Error in parsing dfll_boot_khz:%d\n",
+			__func__, status);
+		dfll_boot_khz = 0;
+	}
+	return status;
+}
+early_param("dfll_boot_khz", dfll_freq_cmd_line);
+
 static void __init tegra12_dfll_clk_init(struct clk *c)
 {
 	c->ops->init = tegra12_dfll_cpu_late_init;
+
+	/** If boot loader has set dfll clock, then dfll freq is
+	 *  passed in kernel command line from bootloader
+	 */
+	if(dfll_boot_khz)
+		c->rate = dfll_boot_khz * 1000;
 }
 
 static int tegra12_dfll_clk_enable(struct clk *c)
@@ -4322,24 +4341,29 @@ static int tegra12_dfll_clk_enable(struct clk *c)
 
 static void tegra12_dfll_clk_disable(struct clk *c)
 {
-	tegra_cl_dvfs_disable(c->u.dfll.cl_dvfs);
+	if (c->state != UNINITIALIZED)
+		tegra_cl_dvfs_disable(c->u.dfll.cl_dvfs);
 }
 
 static int tegra12_dfll_clk_set_rate(struct clk *c, unsigned long rate)
 {
-	int ret = tegra_cl_dvfs_request_rate(c->u.dfll.cl_dvfs, rate);
+	if ((c->state != UNINITIALIZED) && (c->u.dfll.cl_dvfs)) {
 
-	/*
-	 * Update c->rate with the requested rate.
-	 * Rate returned by tegra_cl_dvfs_request_get rounded to
-	 * DFLL granularity. This ensures correct clock  settings
-	 * when switching back and forth to a clock source with
-	 * different granularity.
-	 */
-	if (!ret)
-		c->rate = rate;
+		int ret = tegra_cl_dvfs_request_rate(c->u.dfll.cl_dvfs, rate);
 
-	return ret;
+		/*
+		 * Update c->rate with the requested rate.
+		 * Rate returned by tegra_cl_dvfs_request_get rounded to
+		 * DFLL granularity. This ensures correct clock  settings
+		 * when switching back and forth to a clock source with
+		 * different granularity.
+		 */
+		if (!ret)
+			c->rate = rate;
+
+		return ret;
+	}
+	return 0;
 }
 
 static void tegra12_dfll_clk_reset(struct clk *c, bool assert)
@@ -4351,10 +4375,13 @@ static void tegra12_dfll_clk_reset(struct clk *c, bool assert)
 static int
 tegra12_dfll_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 {
-	if (p == TEGRA_CLK_DFLL_LOCK)
-		return setting ? tegra_cl_dvfs_lock(c->u.dfll.cl_dvfs) :
-				 tegra_cl_dvfs_unlock(c->u.dfll.cl_dvfs);
-	return -EINVAL;
+	if(c->state != UNINITIALIZED) {
+		if ((p == TEGRA_CLK_DFLL_LOCK) && (c->u.dfll.cl_dvfs))
+			return setting ? tegra_cl_dvfs_lock(c->u.dfll.cl_dvfs) :
+					tegra_cl_dvfs_unlock(c->u.dfll.cl_dvfs);
+		return -EINVAL;
+	}
+	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
