@@ -87,6 +87,9 @@ struct tegra_sdhci_platform_data {
 	bool enable_hs533_mode;
 	bool dynamic_dma_pio_switch;
 	bool is_sd_device;
+	bool is_fix_clock_freq;
+	/*Index 0 is fixed for ID mode. Rest according the MMC_TIMINGS modes*/
+	unsigned int fixed_clk_freq_table[MMC_TIMINGS_MAX_MODES + 1];
 };
 
 #endif
