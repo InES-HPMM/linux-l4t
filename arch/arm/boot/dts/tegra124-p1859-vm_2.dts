@@ -106,6 +106,7 @@
 		virt-snd-slave {
 			compatible = "nvidia,tegra124-virt-machine-slave";
 			cardname = "tegra-virt-pcm-vm2";
+			iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
 		/*
 		** The default asound.conf file for the VMs expect the apbif channels
 		** to be (0, 1, 2, 3) if the apbif_group_id is set to 1 and
@@ -270,6 +271,8 @@
 	iommu {
 		compatible = "nvidia,tegra124-smmu-hv";
 		ivc_queue = <&tegra_hv 12>;
+		domains = <&ppcs_as TEGRA_SWGROUP_CELLS(PPCS2)>;
+
 		address-space-prop {
 			gpu_as: gpu {
 				iova-start = <0x0 0x00100000>;
