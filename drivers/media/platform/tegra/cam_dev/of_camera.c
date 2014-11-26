@@ -1021,10 +1021,17 @@ struct camera_platform_data *of_camera_create_pdata(
 				cbrd = NULL;
 
 			if (cbrd) {
+				const u32 *ret = NULL;
+
 				cbrd->bi = bi;
 				cbrd->busnum = nr;
 				cbrd->of_node = pdev;
 				cbrd->chip = chip;
+				ret = of_get_property(pdev,
+					"skip_camera_install", NULL);
+				if (ret != NULL)
+					cbrd->flags |=
+					 CAMERA_MODULE_FLAG_SKIP_INSTALLD;
 			}
 			bi++;
 		}

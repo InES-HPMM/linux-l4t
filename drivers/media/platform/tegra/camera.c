@@ -735,6 +735,9 @@ static int camera_add_dev_drv(
 	if (!cb || !cb->bi)
 		return 0;
 
+	if (cb->flags & CAMERA_MODULE_FLAG_SKIP_INSTALLD)
+		goto add_dev_forced;
+
 	brd = *cb->bi;
 	if (!adap)
 		adap = i2c_get_adapter(cb->busnum);
@@ -751,6 +754,7 @@ static int camera_add_dev_drv(
 		}
 		cb->flags |= CAMERA_MODULE_FLAG_INSTALLED;
 	}
+add_dev_forced:
 	return 0;
 }
 

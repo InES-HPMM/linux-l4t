@@ -211,6 +211,14 @@ static void camera_auto_detect(struct work_struct *work)
 			dev_num++;
 		}
 		pmod->index = i;
+
+		/* Try to add drivers by module */
+		if (camera_add_drv_by_module(cam_desc->dev, pmod->index)) {
+			dev_notice(cam_desc->dev, "module %d not enabled.\n",
+				pmod->index);
+			continue;
+		}
+
 		pmod++;
 		phdr->mod_num++;
 		phdr->dev_num += dev_num;
@@ -220,6 +228,7 @@ static void camera_auto_detect(struct work_struct *work)
 
 	dev_dbg(cam_desc->dev, "%s: %d modules %d devices detected.\n",
 		__func__, phdr->mod_num, phdr->dev_num);
+
 	pheader = kzalloc(sizeof(*pheader) + sizeof(*pmod) * phdr->mod_num +
 		sizeof(*pdev) * phdr->dev_num, GFP_KERNEL);
 	if (pheader == NULL) {
@@ -239,12 +248,8 @@ static void camera_auto_detect(struct work_struct *work)
 
 	pl = (void *)pml;
 	pml = (void *)(pheader + 1);
+
 	for (i = 0; i < pheader->mod_num; i++) {
-		if (camera_add_drv_by_module(cam_desc->dev, pml->index)) {
-			dev_notice(cam_desc->dev, "module %d not enabled.\n",
-				pml->index);
-			continue;
-		}
 		if (pml->off_sensor) {
 			pdev = (void *)((unsigned long)phdr + pml->off_sensor);
 			*pl = *pdev;
