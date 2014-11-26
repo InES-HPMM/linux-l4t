@@ -570,7 +570,6 @@ struct escore_priv {
 	struct blocking_notifier_head *irq_notifier_list;
 	struct snd_soc_jack *jack;
 	u8 algo_type;
-	u8 algo_rate;
 	u8 vp_asr;
 	u8 pcm_port;
 	u8 cmd_compl_mode;

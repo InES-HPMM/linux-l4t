@@ -881,9 +881,7 @@ static int add_algo_base_route(struct escore_priv *escore)
 {
 	u32 msg;
 	u32 cmd = ES_SYNC_CMD << 16;
-	u32 rate_msg;
 	int rc;
-	u32 filter = 0;
 	int algo = escore->algo_type;
 
 	/* Set unused CHMGRs to NULL */
@@ -905,32 +903,6 @@ static int add_algo_base_route(struct escore_priv *escore)
 		escore_queue_msg_to_list(escore, (char *)&cmd,
 				sizeof(cmd));
 	}
-
-	switch (algo) {
-	case VP:
-		filter = FILTER_VP;
-		break;
-	case MM:
-		filter = FILTER_MM;
-		break;
-	case PASSTHRU:
-		filter = FILTER_PASSTHRU;
-		break;
-	case AUDIOZOOM:
-		filter = FILTER_AZ;
-		break;
-	default:
-		pr_err("%s(): Algorithm rate not supported for algo type:%d\n",
-				__func__, algo);
-	       break;
-	}
-	/* Set algo rate if specified */
-	if (escore->algo_rate && filter) {
-		rate_msg = (ES_SET_RATE_CMD << 16) |
-			((escore->algo_rate << 8) | filter);
-		escore_queue_msg_to_list(escore,
-			(char *)&rate_msg, sizeof(rate_msg));
-	}
 	return rc;
 }
 
@@ -950,6 +922,58 @@ static int es_clear_route(struct escore_priv *escore)
 	}
 
 	return 0;
+}
+
+static int es_set_algo_rate(struct escore_priv *escore, int algo)
+{
+	int rc = 0;
+	u32 filter;
+	u32 rate_msg, resp;
+
+	switch (algo) {
+	case VP:
+	case PASSTHRU_VP:
+		filter = FILTER_VP;
+		break;
+	case MM:
+		filter = FILTER_MM;
+		break;
+	case PASSTHRU:
+		filter = FILTER_PASSTHRU;
+		break;
+	case AUDIOZOOM:
+		filter = FILTER_AZ;
+		break;
+	default:
+		pr_err("%s(): Algorithm rate not supported for algo type:%d\n",
+				__func__, algo);
+		break;
+	}
+	/* Set algo rate if specified */
+	if (cachedcmd_list[escore->algo_type][ES_ALGO_SAMPLE_RATE].reg && filter) {
+
+		usleep_range(5000, 5005);
+		/* Added None as first param in algorithm_rate_enum
+		 * so array index is shifted by 1
+		 */
+		pr_debug("%s(): Algorithm rate :%d\n",
+				__func__, (cachedcmd_list[escore->algo_type][ES_ALGO_SAMPLE_RATE].reg - 1));
+		rate_msg = (ES_SET_RATE_CMD << 16) |
+			(((cachedcmd_list[escore->algo_type][ES_ALGO_SAMPLE_RATE].reg - 1) << 8) | filter);
+		/* SetRate command must be a COMMIT command to come into effect.
+		 * By clearing BIT 29 will clear the STAGE bit in a command
+		 * and make it a COMMIT command.
+		 */
+		/* clear_bit(ES_SC_BIT, (unsigned long *) &rate_msg); */
+		rate_msg &= ~(1 << ES_SC_BIT);
+
+		rc = escore_cmd(escore, rate_msg, &resp);
+		if (rc)
+			pr_err("%s(): Fail to set algorithm rate :%d\n",
+					__func__, rc);
+
+	}
+	return rc;
 }
 
 static int es_set_final_route(struct escore_priv *escore)
@@ -1032,6 +1056,10 @@ static int es_set_final_route(struct escore_priv *escore)
 			dev_err(escore_priv.dev, "%s(): Set Algo Preset two failed:%d\n",
 				__func__, rc);
 	}
+
+	if (cachedcmd_list[escore->algo_type][ES_ALGO_SAMPLE_RATE].reg)
+		rc = es_set_algo_rate(escore, escore->algo_type);
+
 	return rc;
 }
 
@@ -1562,7 +1590,6 @@ static int es300_put_algo_rate(struct snd_kcontrol *kcontrol,
 	unsigned int reg = e->reg;
 	int ret = 0;
 	unsigned int value = ucontrol->value.enumerated.item[0];
-	escore->algo_rate = value;
 	cachedcmd_list[escore->algo_type][reg].reg = value;
 	return ret;
 }
@@ -2071,7 +2098,7 @@ static const struct soc_enum az_algorithm_enum =
 			algorithm_texts);
 
 static const char * const es755_algo_rates_text[] = {
-	"fs=8khz", "fs=16khz", "fs=24khz", "fs=48khz", "fs=96khz", "fs=192khz",
+	"None", "SR_8k", "SR_16k", "SR_24k", "SR_48k", "SR_96k", "SR_192k",
 };
 /*replaced for ES_ALGORITHM_RATE*/
 static const struct soc_enum algorithm_rate_enum =
