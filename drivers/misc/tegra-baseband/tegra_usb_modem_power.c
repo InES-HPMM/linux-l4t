@@ -37,7 +37,6 @@
 #include <linux/sysedp.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
 #include <linux/dma-mapping.h>
-#include <linux/tegra-pmc.h>
 #include <linux/delay.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include <linux/fs.h>
@@ -728,9 +727,6 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 
 	pdata->autosuspend_delay = DEFAULT_AUTOSUSPEND;
 	pdata->short_autosuspend_delay = DEFAULT_SHORT_AUTOSUSPEND;
-
-	/* Clear PWR_DET bit */
-	pwr_detect_bit_write(GPIO_PWR_DET, false);
 
 	/* get modem operations from platform data */
 	modem->ops = (const struct tegra_modem_operations *)pdata->ops;
