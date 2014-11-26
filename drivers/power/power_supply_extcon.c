@@ -386,6 +386,7 @@ register_cable:
 		ret = extcon_register_cable_interest(&psy_cable->ec_cable_nb,
 				psy_cable->ec_cable, &psy_cable->nb);
 		if (ret < 0) {
+			extcon_put_extcon_cable(psy_cable->ec_cable);
 			psy_cable->ec_cable = NULL;
 			dev_err(psy_extcon->dev,
 				"Cable %s registration failed: %d\n",
