@@ -2782,24 +2782,33 @@ int nvudc_handle_exfer_event(struct nv_udc_s *nvudc, struct event_trb_s *event)
 
 		msg_info(nvudc->dev, "CMPL_CODE_SEQNUM_ERR\n");
 
-		udc_req_ptr = list_entry(udc_ep_ptr->queue.next,
-					struct nv_udc_request, queue);
-		req_done(udc_ep_ptr, udc_req_ptr, -EINVAL);
+		/* skip seqnum err event until last one arrives. */
+		if (udc_ep_ptr->deq_pt == udc_ep_ptr->enq_pt) {
+			udc_req_ptr = list_entry(udc_ep_ptr->queue.next,
+						struct nv_udc_request, queue);
+			req_done(udc_ep_ptr, udc_req_ptr, -EINVAL);
 
-		/*drop all the queued setup packet, only
-		* process the latest one.*/
-		nvudc->setup_status = WAIT_FOR_SETUP;
-		if (enq_idx) {
-			nv_setup_pkt = &nvudc->ctrl_req_queue[enq_idx - 1];
-			setup_pkt = &nv_setup_pkt->usbctrlreq;
-			seq_num = nv_setup_pkt->seqnum;
-			/* flash the queue after the latest
-			 * setup pkt got handled.. */
-			memset(nvudc->ctrl_req_queue, 0,
-				sizeof(struct usb_ctrlrequest)
-				* CTRL_REQ_QUEUE_DEPTH);
-			nvudc->ctrl_req_enq_idx = 0;
-			nvudc_handle_setup_pkt(nvudc, setup_pkt, seq_num);
+			/*drop all the queued setup packet, only
+			* process the latest one.*/
+			nvudc->setup_status = WAIT_FOR_SETUP;
+			if (enq_idx) {
+				nv_setup_pkt =
+					&nvudc->ctrl_req_queue[enq_idx - 1];
+				setup_pkt = &nv_setup_pkt->usbctrlreq;
+				seq_num = nv_setup_pkt->seqnum;
+				nvudc_handle_setup_pkt(nvudc, setup_pkt,
+							seq_num);
+				/* flash the queue after the latest
+				 * setup pkt got handled.. */
+				memset(nvudc->ctrl_req_queue, 0,
+					sizeof(struct usb_ctrlrequest)
+					* CTRL_REQ_QUEUE_DEPTH);
+				nvudc->ctrl_req_enq_idx = 0;
+			}
+		} else {
+			msg_info(nvudc->dev,
+			"seqnum err skipped: deq_pt != enq_pt: 0x%p, 0x%p\n",
+				udc_ep_ptr->deq_pt, udc_ep_ptr->enq_pt);
 		}
 		break;
 	}
