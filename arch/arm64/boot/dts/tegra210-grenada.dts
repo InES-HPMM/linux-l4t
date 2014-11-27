@@ -742,15 +742,15 @@
 
 		i2s@702d1000 {
 			pinctrl-names = "dap_active", "dap_inactive";
-			pinctrl-0 = <&dap1_active_state>;
-			pinctrl-1 = <&dap1_inactive_state>;
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
 			status = "okay";
 		};
 
 		i2s@702d1100 {
 			pinctrl-names = "dap_active", "dap_inactive";
-			pinctrl-0 = <&dap2_active_state>;
-			pinctrl-1 = <&dap2_inactive_state>;
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
 			status = "okay";
 		};
 
@@ -763,15 +763,15 @@
 
 		i2s@702d1300 {
 			pinctrl-names = "dap_active", "dap_inactive";
-			pinctrl-0 = <&dap4_active_state>;
-			pinctrl-1 = <&dap4_inactive_state>;
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
 			status = "okay";
 		};
 
 		i2s@702d1400 {
 			pinctrl-names = "dap_active", "dap_inactive";
-			pinctrl-0 = <&dap5_active_state>;
-			pinctrl-1 = <&dap5_inactive_state>;
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
 			status = "okay";
 		};
 
