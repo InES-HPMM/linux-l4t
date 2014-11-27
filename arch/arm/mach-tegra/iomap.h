@@ -1212,6 +1212,6 @@ defined(CONFIG_ARCH_TEGRA_11x_SOC)
 		IO_TO_VIRT_XLATE((n), IO_NOR_PHYS, IO_NOR_VIRT) :	\
 	NULL)
 
-#define IO_ADDRESS(n) (IO_TO_VIRT(n))
+#define IO_ADDRESS(n) ((void __iomem *)IO_TO_VIRT(n))
 
 #endif
