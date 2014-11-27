@@ -4136,7 +4136,7 @@ static bool periph_clk_can_force_safe_rate(struct clk *c)
 static void tegra21_periph_clk_init(struct clk *c)
 {
 	u32 val = clk_readl(c->reg);
-	const struct clk_mux_sel *mux = 0;
+	const struct clk_mux_sel *mux = NULL;
 	const struct clk_mux_sel *sel;
 	if (c->flags & MUX) {
 		for (sel = c->inputs; sel->input != NULL; sel++) {
@@ -5128,7 +5128,7 @@ static DEFINE_SPINLOCK(clk_out_lock);
 
 static void tegra21_clk_out_init(struct clk *c)
 {
-	const struct clk_mux_sel *mux = 0;
+	const struct clk_mux_sel *mux = NULL;
 	const struct clk_mux_sel *sel;
 	u32 val = pmc_readl(c->reg);
 
