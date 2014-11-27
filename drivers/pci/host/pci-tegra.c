@@ -69,11 +69,6 @@
 #define PCI_CFG_SPACE_SIZE		256
 #define PCI_EXT_CFG_SPACE_SIZE	4096
 
-/* register definitions */
-#define AFI_OFFSET							0x3800
-#define PADS_OFFSET							0x3000
-#define RP_OFFSET							0x1000
-
 #define AFI_AXI_BAR0_SZ							0x00
 #define AFI_AXI_BAR1_SZ							0x04
 #define AFI_AXI_BAR2_SZ							0x08
@@ -204,7 +199,7 @@
 #define  PADS_REFCLK_CFG1					0x000000CC
 #define  PADS_REFCLK_BIAS					0x000000D0
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-#define REFCLK_POR_SETTINGS					0x80b880b8
+#define REFCLK_POR_SETTINGS					0x90b890b8
 #else
 #define REFCLK_POR_SETTINGS					0x44ac44ac
 #endif
@@ -330,7 +325,7 @@
 
 
 #define DEBUG 0
-#if DEBUG
+#if DEBUG || defined(CONFIG_PCI_DEBUG)
 #define PR_FUNC_LINE	pr_info("PCIE: %s(%d)\n", __func__, __LINE__)
 #else
 #define PR_FUNC_LINE	do {} while (0)
@@ -730,6 +725,10 @@ static void tegra_pcie_add_bus(struct pci_bus *bus)
 	struct tegra_pcie_bus *tbus;
 	struct tegra_pcie *pcie = sys_to_pcie(bus->sysdata);
 
+	PR_FUNC_LINE;
+	/* bus 0 is root complex whose config space is already mapped */
+	if (!bus->number)
+		return;
 	if (IS_ENABLED(CONFIG_PCI_MSI))
 		bus->msi = &pcie->msi.chip;
 
@@ -1422,14 +1421,14 @@ static int tegra_pcie_power_on(struct tegra_pcie *pcie)
 			goto err_exit;
 		}
 	}
-	err = tegra_pcie_power_ungate(pcie);
-	if (err) {
-		dev_err(pcie->dev, "PCIE: Failed to power ungate\n");
-		goto err_exit;
-	}
 	err = tegra_pcie_map_resources(pcie);
 	if (err) {
 		dev_err(pcie->dev, "PCIE: Failed to map resources\n");
+		goto err_exit;
+	}
+	err = tegra_pcie_power_ungate(pcie);
+	if (err) {
+		dev_err(pcie->dev, "PCIE: Failed to power ungate\n");
 		goto err_exit;
 	}
 	if (tegra_platform_is_fpga()) {
@@ -1664,9 +1663,6 @@ static bool tegra_pcie_port_check_link(struct tegra_pcie_port *port)
 	unsigned long value;
 
 	PR_FUNC_LINE;
-
-	/* override presence detection */
-	tegra_pcie_prsnt_map_override(port, true);
 	do {
 		unsigned int timeout = TEGRA_PCIE_LINKUP_TIMEOUT;
 
@@ -1969,6 +1965,8 @@ static void tegra_pcie_check_ports(struct tegra_pcie *pcie)
 
 		tegra_pcie_port_enable(port);
 		tegra_pcie_enable_rp_features(port);
+		/* override presence detection */
+		tegra_pcie_prsnt_map_override(port, true);
 	}
 	/* Wait for clock to latch (min of 100us) */
 	udelay(100);
@@ -3052,9 +3050,7 @@ static int check_d3hot(struct seq_file *s, void *data)
 		val |= PCI_PM_CTRL_STATE_MASK;
 		pci_write_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL, val);
 	}
-
-	mdelay(1000);
-
+	mdelay(10);
 	list_for_each_entry(port, &pcie->ports, list) {
 		val = rp_readl(port, NV_PCIE2_RP_LTSSM_DBGREG);
 		if (val & PCIE2_RP_LTSSM_DBGREG_LINKFSM15) {
@@ -3124,7 +3120,6 @@ static int config_read(struct seq_file *s, void *data)
 	if (config_offset >= PCI_EXT_CFG_SPACE_SIZE) {
 		seq_printf(s, "Config offset exceeds max (i.e %d) value\n",
 			PCI_EXT_CFG_SPACE_SIZE);
-		goto end;
 	}
 	if (!(config_offset & 0x3)) {
 		/* read 32 */
@@ -3162,7 +3157,6 @@ static int config_write(struct seq_file *s, void *data)
 	if (config_offset >= PCI_EXT_CFG_SPACE_SIZE) {
 		seq_printf(s, "Config offset exceeds max (i.e %d) value\n",
 			PCI_EXT_CFG_SPACE_SIZE);
-		goto end;
 	}
 	if (!(config_offset & 0x3)) {
 		/* write 32 */
