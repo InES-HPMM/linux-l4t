@@ -48,6 +48,12 @@ struct pwr_detect_cell {
 	struct notifier_block	regulator_nb;
 };
 
+struct pwr_detect_hw_chip_data {
+	struct pwr_detect_cell *cells;
+	int ncells;
+	u32 valid_pwr_detect_mask;
+};
+
 static bool pwrdet_rails_found;
 static bool pwrdet_always_on;
 static bool pwrio_always_on;
@@ -79,7 +85,7 @@ static inline u32 pmc_readl(unsigned long addr)
 
 /* Some IO pads does not have power detect cells, but still can/should be
  * turned off when no power - set pwrdet_mask=0 for such pads */
-static struct pwr_detect_cell pwr_detect_cells[] = {
+static struct pwr_detect_cell t124_pwr_detect_cells[] = {
 	POWER_CELL("pwrdet-nand",       (0x1 <<  1), (0x1 <<  1), 0xFFFFFFFF),
 	POWER_CELL("pwrdet-uart",	(0x1 <<  2), (0x1 <<  2), 0xFFFFFFFF),
 	POWER_CELL("pwrdet-bb",		(0x1 <<  3), (0x1 <<  3), 0xFFFFFFFF),
@@ -92,6 +98,52 @@ static struct pwr_detect_cell pwr_detect_cells[] = {
 	POWER_CELL("pwrdet-sdmmc4",		  0, (0x1 << 14), 0xFFFFFFFF),
 	POWER_CELL("pwrdet-hv",		(0x1 << 15), (0x1 << 15), 0xFFFFFFFF),
 };
+
+static struct pwr_detect_cell t210_pwr_detect_cells[] = {
+	POWER_CELL("pwrdet-sys",	BIT(0), BIT(0), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-uart",	BIT(2), BIT(2), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-audio",	BIT(5), BIT(5), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-cam",	BIT(10), BIT(10), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-pex-ctrl",	BIT(11), BIT(11), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-sdmmc1",	BIT(12), BIT(12), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-sdmmc3",	BIT(13), BIT(13), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-sdmmc4",	      0, BIT(14), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-audio-hv",	BIT(18), BIT(18), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-debug",	BIT(19), BIT(19), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-dmic",	BIT(20), BIT(20), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-gpio",	BIT(21), BIT(21), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-spi",	BIT(22), BIT(22), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-spi-hv",	BIT(23), BIT(23), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-sdmmc2",	      0, BIT(24), 0xFFFFFFFF),
+	POWER_CELL("pwrdet-dp",		      0, BIT(25), 0xFFFFFFFF),
+};
+
+static struct pwr_detect_hw_chip_data t124_pwr_detect_cdata = {
+	.cells = t124_pwr_detect_cells,
+	.ncells = ARRAY_SIZE(t124_pwr_detect_cells),
+	.valid_pwr_detect_mask = 0xFFFFFFFFU,
+};
+
+static struct pwr_detect_hw_chip_data t210_pwr_detect_cdata = {
+	.cells = t210_pwr_detect_cells,
+	.ncells = ARRAY_SIZE(t210_pwr_detect_cells),
+	.valid_pwr_detect_mask = BIT(23),
+};
+
+static const struct of_device_id tegra_pwr_detect_of_match[] = {
+	{
+		.compatible = "nvidia,tegra210-pwr-detect",
+		.data = &t210_pwr_detect_cdata,
+	}, {
+		.compatible = "nvidia,tegra124-pwr-detect",
+		.data = &t124_pwr_detect_cdata,
+	}, {
+	},
+};
+MODULE_DEVICE_TABLE(of, tegra_pwr_detect_of_match);
+
+static struct pwr_detect_hw_chip_data *curr_hw_cdata =
+			&t124_pwr_detect_cdata;
 
 void pwr_detect_bit_write(u32 pwrdet_bit, bool enable)
 {
@@ -126,29 +178,36 @@ EXPORT_SYMBOL(pwr_detect_bit_write);
 
 static void pwr_detect_reset(u32 pwrdet_mask)
 {
-	pmc_writel(pwrdet_mask, PMC_PWR_DET_ENABLE);
+	tegra_pmc_register_update(PMC_PWR_DET_ENABLE,
+		curr_hw_cdata->valid_pwr_detect_mask, pwrdet_mask);
 	barrier();
-	pmc_writel(pwrdet_mask, PMC_PWR_DET_VAL);
+	tegra_pmc_register_update(PMC_PWR_DET_VAL,
+		curr_hw_cdata->valid_pwr_detect_mask, pwrdet_mask);
 
 	pmc_readl(PMC_PWR_DET_VAL);
-	pmc_writel(0, PMC_PWR_DET_ENABLE);
+	tegra_pmc_register_update(PMC_PWR_DET_ENABLE,
+		curr_hw_cdata->valid_pwr_detect_mask, 0);
 }
 
 static void pwr_detect_start(u32 pwrdet_mask)
 {
-	pmc_writel(pwrdet_mask, PMC_PWR_DET_ENABLE);
+	tegra_pmc_register_update(PMC_PWR_DET_ENABLE,
+		curr_hw_cdata->valid_pwr_detect_mask, pwrdet_mask);
 	udelay(4);
 
-	pmc_writel(1, PMC_PWR_DET_LATCH);
+	tegra_pmc_register_update(PMC_PWR_DET_LATCH,
+		curr_hw_cdata->valid_pwr_detect_mask, 1);
 	pmc_readl(PMC_PWR_DET_LATCH);
 }
 
 static void pwr_detect_latch(void)
 {
-	pmc_writel(0, PMC_PWR_DET_LATCH);
+	tegra_pmc_register_update(PMC_PWR_DET_LATCH,
+		curr_hw_cdata->valid_pwr_detect_mask, 0);
 
 	pmc_readl(PMC_PWR_DET_VAL);
-	pmc_writel(0, PMC_PWR_DET_ENABLE);
+	tegra_pmc_register_update(PMC_PWR_DET_ENABLE,
+		curr_hw_cdata->valid_pwr_detect_mask, 0);
 }
 
 static void pwr_io_enable(u32 pwrio_mask)
@@ -323,6 +382,7 @@ static int pwr_detect_cell_init_one(struct device *dev,
 static int tegra_pwr_detect_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	const struct of_device_id *match;
 	int i, ret;
 	u32 package_mask;
 	unsigned long flags;
@@ -339,8 +399,19 @@ static int tegra_pwr_detect_probe(struct platform_device *pdev)
 	}
 	package_mask = (i == -1) ? i : (0x1 << i);
 
-	for (i = 0; i < ARRAY_SIZE(pwr_detect_cells); i++) {
-		struct pwr_detect_cell *cell = &pwr_detect_cells[i];
+
+	if (pdev->dev.of_node) {
+		match = of_match_device(of_match_ptr(tegra_pwr_detect_of_match),
+				&pdev->dev);
+		if (!match) {
+			dev_err(&pdev->dev, "Device Not matching\n");
+			return -ENODEV;
+		}
+		curr_hw_cdata = (struct pwr_detect_hw_chip_data *)match->data;
+	}
+
+	for (i = 0; i < curr_hw_cdata->ncells; i++) {
+		struct pwr_detect_cell *cell = &curr_hw_cdata->cells[i];
 
 		if (!(cell->package_mask & package_mask)) {
 			pwrio_disabled_mask |= cell->pwrio_mask;
@@ -383,13 +454,6 @@ static int tegra_pwr_detect_remove(struct platform_device *pdev)
 {
 	return 0;
 }
-
-static const struct of_device_id tegra_pwr_detect_of_match[] = {
-	{ .compatible = "nvidia,tegra210-pwr-detect", },
-	{ .compatible = "nvidia,tegra124-pwr-detect", },
-	{},
-};
-MODULE_DEVICE_TABLE(of, tegra_pwr_detect_of_match);
 
 static struct platform_driver tegra_pwr_detect_driver = {
 	.probe   = tegra_pwr_detect_probe,
