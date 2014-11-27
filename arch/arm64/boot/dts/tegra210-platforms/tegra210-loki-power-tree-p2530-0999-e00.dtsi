@@ -184,13 +184,13 @@
 
 	i2c@7000c000 {
 		icm20628@68 {
-			vlogic-supply = <&max77620_ldo3>;
-			vdd-supply = <&vdd_3v3>;
+			vlogic-supply = <&max77620_sd3>;
+			vdd-supply = <&max77620_ldo3>;
 		};
 
 		ak8963c@0c {
-			vid-supply = <&max77620_ldo3>;
-			vdd-supply = <&vdd_3v3>;
+			vid-supply = <&max77620_sd3>;
+			vdd-supply = <&max77620_ldo3>;
 		};
 
 		jsa1127@39 {
