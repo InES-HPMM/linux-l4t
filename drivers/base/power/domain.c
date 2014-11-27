@@ -2,6 +2,7 @@
  * drivers/base/power/domain.c - Common code related to device power domains.
  *
  * Copyright (C) 2011 Rafael J. Wysocki <rjw@sisk.pl>, Renesas Electronics Corp.
+ * Copyright (c) 2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This file is released under the GPLv2.
  */
@@ -639,6 +640,15 @@ static int pm_genpd_poweroff(struct generic_pm_domain *genpd)
 		    || pdd->dev->power.irq_safe))
 			not_suspended++;
 	}
+
+	/*
+	 * Due to power_off_delay, there will be only one outstanding
+	 * genpd poweroff request while corresponding device(s) will be
+	 * in suspended state. For last active device, the genpd shall
+	 * be ON while genpd poweroff for other devices is being processed.
+	 */
+	if (genpd->power_off_delay && not_suspended == 1)
+		return -EBUSY;
 
 	if (not_suspended > genpd->in_progress)
 		return -EBUSY;
