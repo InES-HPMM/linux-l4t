@@ -1005,7 +1005,7 @@ struct device_node *tegra_primary_panel_get_dt_node(
 				struct tegra_dc_platform_data *pdata);
 struct device_node *tegra_secondary_panel_get_dt_node(
 				struct tegra_dc_platform_data *pdata);
-bool tegra_is_hdmi_initialised(void);
+bool tegra_is_bl_display_initialized(int instance);
 
 void find_dc_node(struct device_node **dc1_node,
 				struct device_node **dc2_node);

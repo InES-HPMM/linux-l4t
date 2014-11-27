@@ -160,7 +160,6 @@ static struct board_info main_board_info;
 static struct board_info pmu_board_info;
 static struct board_info display_board_info;
 static int panel_id;
-static bool is_hdmi_initialised;
 static struct board_info camera_board_info;
 static int touch_vendor_id;
 static int touch_panel_id;
@@ -1072,17 +1071,21 @@ static int __init tegra_board_panel_id(char *options)
 }
 __setup("display_panel=", tegra_board_panel_id);
 
-bool tegra_is_hdmi_initialised(void)
+/* returns true if bl initialized the display */
+bool tegra_is_bl_display_initialized(int instance)
 {
-	return is_hdmi_initialised;
+	/* display initialized implies non-zero
+	 * fb size is passed from bl to kernel
+	 */
+	switch (instance) {
+	case 0:
+		return tegra_bootloader_fb_start && tegra_bootloader_fb_size;
+	case 1:
+		return tegra_bootloader_fb2_start && tegra_bootloader_fb2_size;
+	default:
+		return false;
+	}
 }
-static int __init tegra_hdmi_initialised(char *options)
-{
-	char *p = options;
-	is_hdmi_initialised = (bool) memparse(p, &p);
-	return is_hdmi_initialised;
-}
-__setup("is_hdmi_initialised=", tegra_hdmi_initialised);
 
 int tegra_get_touch_vendor_id(void)
 {
