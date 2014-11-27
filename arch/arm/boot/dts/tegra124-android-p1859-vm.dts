@@ -53,8 +53,6 @@
 			ivc7 {
 				reg = <7>;
 				peers = <0 1>;
-				nframes = <50>;
-				frame-size = <100>;
 			};
 		};
 	};
