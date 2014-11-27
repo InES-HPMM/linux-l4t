@@ -363,7 +363,7 @@ static inline void isomgr_lock(void)
 static inline void isomgr_unlock(void)
 {
 	BUG_ON(isomgr.task != current); /* detect mismatched calls */
-	isomgr.task = 0;
+	isomgr.task = NULL;
 	mutex_unlock(&isomgr.lock);
 }
 
@@ -412,7 +412,7 @@ static void purge_isomgr_client(struct isomgr_client *cp)
 	cp->real_bw = 0;
 	cp->rsvd_mf = 0;
 	cp->real_mf = 0;
-	cp->renegotiate = 0;
+	cp->renegotiate = NULL;
 	cp->realize = false;
 	cp->priv = NULL;
 	cp->sleep_bw = 0;
@@ -964,13 +964,13 @@ static ssize_t isomgr_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf);
 
 static const struct kobj_attribute lt_mf_attr =
-	__ATTR(lt_mf, 0444, isomgr_show, 0);
+	__ATTR(lt_mf, 0444, isomgr_show, NULL);
 static const struct kobj_attribute avail_bw_attr =
-	__ATTR(avail_bw, 0444, isomgr_show, 0);
+	__ATTR(avail_bw, 0444, isomgr_show, NULL);
 static const struct kobj_attribute max_iso_bw_attr =
-	__ATTR(max_iso_bw, 0444, isomgr_show, 0);
+	__ATTR(max_iso_bw, 0444, isomgr_show, NULL);
 static const struct kobj_attribute version_attr =
-	__ATTR(version, 0444, isomgr_show, 0);
+	__ATTR(version, 0444, isomgr_show, NULL);
 
 static const struct attribute *isomgr_attrs[] = {
 	&lt_mf_attr.attr,
@@ -1027,15 +1027,15 @@ static ssize_t isomgr_client_show(struct kobject *kobj,
 }
 
 static const struct isomgr_client_attrs client_attrs = {
-	__ATTR(dedi_bw, 0444, isomgr_client_show, 0),
-	__ATTR(rsvd_bw, 0444, isomgr_client_show, 0),
-	__ATTR(real_bw, 0444, isomgr_client_show, 0),
-	__ATTR(lti,     0444, isomgr_client_show, 0),
-	__ATTR(lto,     0444, isomgr_client_show, 0),
-	__ATTR(rsvd_mf, 0444, isomgr_client_show, 0),
-	__ATTR(real_mf, 0444, isomgr_client_show, 0),
-	__ATTR(sleep_bw, 0444, isomgr_client_show, 0),
-	__ATTR(margin_bw, 0444, isomgr_client_show, 0),
+	__ATTR(dedi_bw, 0444, isomgr_client_show, NULL),
+	__ATTR(rsvd_bw, 0444, isomgr_client_show, NULL),
+	__ATTR(real_bw, 0444, isomgr_client_show, NULL),
+	__ATTR(lti,     0444, isomgr_client_show, NULL),
+	__ATTR(lto,     0444, isomgr_client_show, NULL),
+	__ATTR(rsvd_mf, 0444, isomgr_client_show, NULL),
+	__ATTR(real_mf, 0444, isomgr_client_show, NULL),
+	__ATTR(sleep_bw, 0444, isomgr_client_show, NULL),
+	__ATTR(margin_bw, 0444, isomgr_client_show, NULL),
 };
 
 #define NCATTRS (sizeof(client_attrs) / sizeof(struct kobj_attribute))
@@ -1098,7 +1098,7 @@ static void isomgr_create_sysfs(void)
 	if (sysfs_create_files(isomgr.kobj, isomgr_attrs)) {
 		pr_err("failed to create sysfs files");
 		kobject_del(isomgr.kobj);
-		isomgr.kobj = 0;
+		isomgr.kobj = NULL;
 		return;
 	}
 
