@@ -55,7 +55,7 @@
 #define LED_TOUCH 1
 
 struct nvshield_led *g_dev;
-struct compat_class *nvshieldled_compat_class = NULL;
+struct class_compat *nvshieldled_compat_class;
 
 static const struct usb_device_id nvshield_table[] = {
 	{ USB_DEVICE_AND_INTERFACE_INFO(VID, PID,
@@ -413,6 +413,7 @@ static int nvshieldled_resume(struct usb_interface *interface)
 static int nvshieldled_reset_resume(struct usb_interface *interface)
 {
 	dev_info(&interface->dev, "Nvidia Shield USB reset resume");
+	return 0;
 }
 
 static struct usb_driver shieldled_driver = {
