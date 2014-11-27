@@ -350,7 +350,7 @@ retry:
 			goto exit;
 		} else {
 			retval = dev->bulk_in_filled;
-			printk(KERN_DEBUG "%s : copy_to_user bytes_read =%d\n",
+			pr_debug("%s : copy_to_user bytes_read =%zu\n",
 						__func__, dev->bulk_in_filled);
 			dev->bulk_in_filled = 0;
 			goto success;
