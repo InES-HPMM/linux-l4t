@@ -198,6 +198,7 @@ static struct attribute_group stats_attr_grp = {
 #define LP_TO_G_PERCENTAGE		50
 static u32 lp_to_g_ratio = LP_TO_G_PERCENTAGE;
 static u32 disable_virtualization;
+static struct clk *lp_clock, *g_clock;
 
 unsigned long lp_to_virtual_gfreq(unsigned long lp_freq)
 {
@@ -504,6 +505,21 @@ static int __init tegra_edp_debug_init(struct dentry *cpu_tegra_debugfs_root)
 #endif	/* CONFIG_TEGRA_EDP_LIMITS */
 
 #ifdef CONFIG_DEBUG_FS
+
+static int cpu_edp_safe_get(void *data, u64 *val)
+{
+	struct clk *cluster_clk = data;
+	*val = clk_get_cpu_edp_safe_rate(cluster_clk);
+	return 0;
+}
+static int cpu_edp_safe_set(void *data, u64 val)
+{
+	struct clk *cluster_clk = data;
+	return clk_config_cpu_edp_safe_rate(cpu_clk, cluster_clk, val);
+}
+DEFINE_SIMPLE_ATTRIBUTE(cpu_edp_safe_fops, cpu_edp_safe_get,
+			cpu_edp_safe_set, "%llu\n");
+
 static int __init tegra_virt_debugfs_init(struct dentry *cpu_tegra_debugfs_root)
 {
 #ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
@@ -513,6 +529,14 @@ static int __init tegra_virt_debugfs_init(struct dentry *cpu_tegra_debugfs_root)
 
 	if (!debugfs_create_bool("disable_virtualization", 0644,
 			cpu_tegra_debugfs_root, &disable_virtualization))
+		return -ENOMEM;
+
+	if (!debugfs_create_file("cpu_g_edp_safe_rate", 0644,
+			cpu_tegra_debugfs_root, g_clock, &cpu_edp_safe_fops))
+		return -ENOMEM;
+
+	if (!debugfs_create_file("cpu_lp_edp_safe_rate", 0644,
+			cpu_tegra_debugfs_root, lp_clock, &cpu_edp_safe_fops))
 		return -ENOMEM;
 #endif
 	return 0;
@@ -811,7 +835,6 @@ static unsigned int auto_cluster_enable;
 static unsigned int idle_top_freq;
 static unsigned int idle_bottom_freq;
 static struct delayed_work cluster_switch_work;
-static struct clk *lp_clock, *g_clock;
 
 static void queue_clusterswitch(bool up)
 {

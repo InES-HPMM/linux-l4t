@@ -1241,6 +1241,17 @@ error_1:
 	return -ENOSYS;
 }
 
+int clk_config_cpu_edp_safe_rate(struct clk *cpu, struct clk *cluster_clk,
+				 unsigned long rate)
+{
+	unsigned long flags;
+
+	clk_lock_save(cpu, &flags);
+	cluster_clk->u.cpu.edp_safe_rate = rate;
+	clk_unlock_restore(cpu, &flags);
+
+	return 0;
+}
 
 #define OSC_FREQ_DET			0x58
 #define OSC_FREQ_DET_TRIG		BIT(31)

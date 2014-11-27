@@ -316,6 +316,7 @@ struct clk {
 			struct clk			*main;
 			struct clk			*backup;
 			struct clk			*dynamic;
+			unsigned long			edp_safe_rate;
 			unsigned long			backup_rate;
 			seqcount_t			backup_seqcnt;
 			enum cpu_mode			mode;
@@ -491,6 +492,14 @@ struct clk *tegra_get_clock_by_name(const char *name);
 void tegra_clk_init_from_table(struct tegra_clk_init_table *table);
 
 #ifndef CONFIG_COMMON_CLK
+int clk_config_cpu_edp_safe_rate(struct clk *cpu, struct clk *cluster_clk,
+				 unsigned long rate);
+
+static inline unsigned long clk_get_cpu_edp_safe_rate(struct clk *cluster_clk)
+{
+	return cluster_clk->u.cpu.edp_safe_rate;
+}
+
 static inline void tegra_dfll_set_cl_dvfs_data(struct clk *c, void *cld)
 {
 	if (c->flags & DFLL)
