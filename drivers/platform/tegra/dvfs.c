@@ -79,6 +79,13 @@ static int tegra_dvfs_rail_get_nominal_millivolts(struct dvfs_rail *rail)
 	return -ENOENT;
 }
 
+int tegra_dvfs_rail_get_current_millivolts(struct dvfs_rail *rail)
+{
+	if (rail)
+		return rail->millivolts;
+	return -ENOENT;
+}
+
 int tegra_dvfs_get_core_override_floor(void)
 {
 	return tegra_dvfs_rail_get_override_floor(tegra_core_rail);

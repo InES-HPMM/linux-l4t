@@ -343,6 +343,7 @@ int tegra_dvfs_rail_register_notifier(struct dvfs_rail *rail,
 int tegra_dvfs_rail_unregister_notifier(struct dvfs_rail *rail,
 					struct notifier_block *nb);
 struct dvfs_rail *tegra_dvfs_get_rail_by_name(const char *reg_id);
+int tegra_dvfs_rail_get_current_millivolts(struct dvfs_rail *rail);
 
 int tegra_dvfs_override_core_cap_apply(int level);
 int tegra_dvfs_therm_vmax_core_cap_apply(int *cap_idx, int new_idx, int level);
