@@ -393,7 +393,7 @@ static ssize_t command_write(struct file *filp, const char __user *buf,
 
 		*end = last;
 		parse_have = data + frag - end;
-		pr_debug("used = %u parse_have = %i\n", used, parse_have);
+		pr_debug("used = %zu parse_have = %i\n", used, parse_have);
 		if (parse_have > 0)
 			memmove(parse_buffer, end, parse_have);
 	}
@@ -541,13 +541,13 @@ static ssize_t firmware_write(struct file *filp, const char __user *buf,
 	escore = filp->private_data;
 	BUG_ON(!escore);
 
-	pr_debug("firmware write count=%d bytes\n", count);
+	pr_debug("firmware write count=%zu bytes\n", count);
 
 	wr = bs = 0;
 	while (wr < count) {
 		bs = min(count - wr, FW_BUF_SIZE);
 		BUG_ON(bs == 0);
-		pr_debug("wr=%d bs=%d buf+wr=%p\n", wr, bs, buf + wr);
+		pr_debug("wr=%zu bs=%zu buf+wr=%p\n", wr, bs, buf + wr);
 		ret = copy_from_user(fw_buf, buf + wr, bs);
 		if (ret) {
 			dev_err(escore->dev,
@@ -1259,7 +1259,7 @@ static ssize_t datablock_write(struct file *filp, const char __user *buf,
 	int err = 0;
 
 	BUG_ON(!escore);
-	dev_dbg(escore->dev, "%s() entry: count: %d\n", __func__, count);
+	dev_dbg(escore->dev, "%s() entry: count: %zu\n", __func__, count);
 
 	err = copy_from_user(data_buf, buf, count);
 	if (err) {
