@@ -2742,19 +2742,6 @@ static struct rmi_function_driver function_driver = {
 #endif
 };
 
-static int __init rmi_f11_module_init(void)
-{
-	int error;
-
-	error = driver_register(&function_driver.driver);
-	if (error < 0) {
-		pr_err("%s: register driver failed!\n", __func__);
-		return error;
-	}
-
-	return 0;
-}
-
 static void __exit rmi_f11_module_exit(void)
 {
 	driver_unregister(&function_driver.driver);
@@ -2838,8 +2825,6 @@ rmi_f11_raw_finger_char_dev_write(struct file *filp, const char __user *buf,
 	int retval = 0;
 	struct f11_data *my_instance_data = NULL;
 	struct raw_finger_data_feed_char_dev *char_dev_container = NULL;
-	ssize_t ret_value  = 0;
-	int i = 0;
 	int len;
 
 	if (!filp) {
@@ -2897,11 +2882,9 @@ rmi_f11_raw_finger_char_dev_open(struct inode *inp, struct file *filp)
 			      struct raw_finger_data_feed_char_dev,
 			      raw_data_dev);
 
-	int ret_value = 0;
-
 	filp->private_data = my_dev;
 
-	return ret_value;
+	return 0;
 }
 
 /*
