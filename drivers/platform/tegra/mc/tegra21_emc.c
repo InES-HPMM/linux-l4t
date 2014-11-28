@@ -1805,11 +1805,6 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 				emc_writel(W2P_war, EMC_W2P);
 				emc_writel(TRPab_war, EMC_TRPAB);
 			}
-
-			emc_writel(RP_war, EMC_RP);
-			emc_writel(R2P_war, EMC_R2P);
-			emc_writel(W2P_war, EMC_W2P);
-			emc_writel(TRPab_war, EMC_TRPAB);
 			emc_timing_update(DUAL_CHANNEL);
 		} else {
 			emc_cc_dbg(INFO, "Skipped WAR for bug 200024907\n");
