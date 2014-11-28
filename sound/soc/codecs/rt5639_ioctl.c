@@ -14,7 +14,7 @@
 #include "rt56xx_ioctl.h"
 #include "rt5639_ioctl.h"
 #include "rt5639.h"
-#if (CONFIG_SND_SOC_RT5642_MODULE | CONFIG_SND_SOC_RT5642)
+#if defined(CONFIG_SND_SOC_RT5642_MODULE) || defined(CONFIG_SND_SOC_RT5642)
 #include "rt5639-dsp.h"
 #endif
 
@@ -168,7 +168,7 @@ void get_noise_gate(struct snd_soc_codec *codec, int *noise_gate_en,
 {
 	unsigned int reg = snd_soc_read(codec, RT5639_DRC_AGC_3);
 
-	dev_info("get_noise_gate reg=0x%04x\n", reg);
+	dev_info(codec->dev, "get_noise_gate reg=0x%04x\n", reg);
 	*noise_gate_en = (reg & RT5639_DRC_AGC_NG_MASK) >>
 				RT5639_DRC_AGC_NG_SFT;
 	*noise_gate_hold_en = (reg & RT5639_DRC_AGC_NGH_MASK) >>
@@ -204,7 +204,7 @@ int rt5639_ioctl_common(struct snd_hwdep *hw, struct file *file,
 		dev_err(codec->dev, "copy_from_user faild\n");
 		return -EFAULT;
 	}
-	dev_dbg(codec->dev, "%s(): rt56xx.number=%d, cmd=%d\n",
+	dev_dbg(codec->dev, "%s(): rt56xx.number=%zu, cmd=%d\n",
 			__func__, rt56xx.number, cmd);
 	buf = kmalloc(sizeof(*buf) * rt56xx.number, GFP_KERNEL);
 	if (buf == NULL)
@@ -447,7 +447,7 @@ int rt5639_ioctl_common(struct snd_hwdep *hw, struct file *file,
 		if (copy_to_user(rt56xx.buf, buf, sizeof(*buf) * rt56xx.number))
 			goto err;
 		break;
-#if (CONFIG_SND_SOC_RT5642_MODULE | CONFIG_SND_SOC_RT5642)
+#if defined(CONFIG_SND_SOC_RT5642_MODULE) || defined(CONFIG_SND_SOC_RT5642)
 	case RT_READ_CODEC_DSP_IOCTL:
 	case RT_WRITE_CODEC_DSP_IOCTL:
 	case RT_GET_CODEC_DSP_MODE_IOCTL:
