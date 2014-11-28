@@ -435,7 +435,9 @@ static inline void copy_pdt_entry_to_fd(struct pdt_entry *pdt,
 extern void rmi4_fw_update(struct rmi_device *rmi_dev,
 		struct pdt_entry *f01_pdt, struct pdt_entry *f34_pdt);
 #else
-#define rmi4_fw_update(rmi_dev, f01_pdt, f34_pdt) 0
+static inline void rmi4_fw_update(struct rmi_device *rmi_dev,
+		struct pdt_entry *f01_pdt, struct pdt_entry *f34_pdt)
+{}
 #endif
 
 extern struct rmi_driver rmi_sensor_driver;
