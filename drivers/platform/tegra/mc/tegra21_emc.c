@@ -1752,7 +1752,7 @@ noinline void emc_set_clock(const struct tegra21_emc_table *next_timing,
 		tRTM = fake_timing->dram_timing_regs[RL] +
 			div_o3(3600, source_clock_period) +
 			max_t(u32, div_o3(7500, source_clock_period), 8) +
-			tRPST + 1;
+			tRPST + 1 + nRTP;
 
 		emc_cc_dbg(INFO, "tRTM = %u, EMC_RP = %u\n", tRTM,
 			   next_timing->burst_regs[EMC_RP_INDEX]);
