@@ -1441,23 +1441,7 @@ noinline u32 dll_prelock(const struct tegra21_emc_table *next_timing,
 	 *   Update DLL calibration filter.
 	 */
 	emc_cc_dbg(PRELOCK_STEPS, "Step 4\n");
-	emc_dll_cfg_0 = emc_readl(EMC_DLL_CFG_0);
-	emc_dll_cfg_0 &= EMC_DLL_CFG_0_DDLLCAL_CTRL_IGNORE_START;
-	emc_dll_cfg_0 |= EMC_DLL_CFG_0_DDLLCAL_CTRL_DUAL_PASS_LOCK;
-
-	emc_dll_cfg_0 &= ~(EMC_DLL_CFG_0_DDLLCAL_CTRL_STEP_SIZE_MASK |
-			   EMC_DLL_CFG_0_DDLLCAL_CTRL_END_COUNT_MASK |
-			   EMC_DLL_CFG_0_DDLLCAL_CTRL_FILTER_BITS_MASK |
-			   EMC_DLL_CFG_0_DDLLCAL_CTRL_SAMPLE_COUNT_MASK |
-			   EMC_DLL_CFG_0_DDLLCAL_CTRL_SAMPLE_DELAY_MASK |
-			   EMC_DLL_CFG_0_DDLLCAL_UPDATE_CNT_LIMIT_MASK);
-
-	emc_dll_cfg_0 |= (0xf << EMC_DLL_CFG_0_DDLLCAL_CTRL_STEP_SIZE_SHIFT) |
-		(0xa << EMC_DLL_CFG_0_DDLLCAL_CTRL_END_COUNT_SHIFT) |
-		(0x3 << EMC_DLL_CFG_0_DDLLCAL_CTRL_FILTER_BITS_SHIFT) |
-		(0x4 << EMC_DLL_CFG_0_DDLLCAL_CTRL_SAMPLE_COUNT_SHIFT) |
-		(0xa << EMC_DLL_CFG_0_DDLLCAL_CTRL_SAMPLE_DELAY_SHIFT) |
-		(0xf << EMC_DLL_CFG_0_DDLLCAL_UPDATE_CNT_LIMIT_SHIFT);
+	emc_dll_cfg_0 = next_timing->burst_regs[EMC_DLL_CFG_0_INDEX];
 
 	emc_writel(emc_dll_cfg_0, EMC_DLL_CFG_0);
 
