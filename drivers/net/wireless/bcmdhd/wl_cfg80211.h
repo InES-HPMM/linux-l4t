@@ -596,6 +596,7 @@ struct bcm_cfg80211 {
 	bool bss_pending_op;		/* indicate where there is a pending IF operation */
 	bool roam_offload;
 	bool nan_running;
+	struct rw_semaphore netif_sem;
 };
 
 
@@ -654,13 +655,14 @@ static inline void
 wl_delete_all_netinfo(struct bcm_cfg80211 *cfg)
 {
 	struct net_info *_net_info, *next;
-
+	down_write(&cfg->netif_sem);
 	list_for_each_entry_safe(_net_info, next, &cfg->net_list, list) {
 		list_del(&_net_info->list);
 			if (_net_info->wdev)
 				kfree(_net_info->wdev);
 			kfree(_net_info);
 	}
+	up_write(&cfg->netif_sem);
 	cfg->iface_cnt = 0;
 }
 static inline u32

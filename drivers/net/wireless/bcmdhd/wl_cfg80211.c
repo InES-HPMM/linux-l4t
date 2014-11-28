@@ -10137,6 +10137,7 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 				_net_info->pm_restore = true;
 			}
 			pm = PM_OFF;
+			down_read(&cfg->netif_sem);
 			for_each_ndev(cfg, iter, next) {
 				if (iter->pm_restore)
 					continue;
@@ -10162,6 +10163,7 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 					wl_cfg80211_update_power_mode(iter->ndev);
 				}
 			}
+			up_read(&cfg->netif_sem);
 		} else {
 			/* add PM Enable timer to go to power save mode
 			 * if supplicant control pm mode, it will be cleared or
@@ -10172,6 +10174,7 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 			/*
 			 * before calling pm_enable_timer, we need to set PM -1 for all ndev
 			 */
+			down_read(&cfg->netif_sem);
 			pm = PM_OFF;
 			if (!_net_info->pm_block) {
 				for_each_ndev(cfg, iter, next) {
@@ -10198,7 +10201,7 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 						WL_ERR(("%s:error (%d)\n", iter->ndev->name, err));
 				}
 			}
-
+			up_read(&cfg->netif_sem);
 			if (cfg->pm_enable_work_on) {
 				wl_add_remove_pm_enable_work(cfg, FALSE, WL_HANDLER_DEL);
 			}
@@ -10223,6 +10226,7 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 		/* clear chan information when the net device is disconnected */
 		wl_update_prof(cfg, _net_info->ndev, NULL, &chan, WL_PROF_CHAN);
 		wl_cfg80211_determine_vsdb_mode(cfg);
+		down_read(&cfg->netif_sem);
 		for_each_ndev(cfg, iter, next) {
 			if (iter->pm_restore && iter->pm) {
 				WL_DBG(("%s:restoring power save %s\n",
@@ -10240,6 +10244,7 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 				wl_cfg80211_update_power_mode(iter->ndev);
 			}
 		}
+		up_read(&cfg->netif_sem);
 		wl_cfg80211_concurrent_roam(cfg, 0);
 #if defined(WLTDLS)
 		if (!cfg->vsdb_mode) {
@@ -10269,7 +10274,7 @@ static void wl_dealloc_netinfo(struct work_struct *work)
 {
 	struct net_info *_net_info, *next;
 	struct bcm_cfg80211 *cfg = container_of(work, struct bcm_cfg80211, dealloc_work);
-
+	down_write(&cfg->netif_sem);
 	list_for_each_entry_safe(_net_info, next, &cfg->dealloc_list, list) {
 		list_del(&_net_info->list);
 		if (_net_info->wdev) {
@@ -10283,6 +10288,7 @@ static void wl_dealloc_netinfo(struct work_struct *work)
 		}
 		kfree(_net_info);
 	}
+	up_write(&cfg->netif_sem);
 }
 
 static s32 wl_init_priv(struct bcm_cfg80211 *cfg)
@@ -10306,6 +10312,7 @@ static s32 wl_init_priv(struct bcm_cfg80211 *cfg)
 	set_bit(WL_STATUS_CONNECTED, &cfg->interrested_state);
 	spin_lock_init(&cfg->cfgdrv_lock);
 	mutex_init(&cfg->ioctl_buf_sync);
+	init_rwsem(&cfg->netif_sem);
 	init_waitqueue_head(&cfg->netif_change_event);
 	init_completion(&cfg->send_af_done);
 	init_completion(&cfg->iface_disable);
