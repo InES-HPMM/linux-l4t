@@ -131,10 +131,38 @@ static void max77620_pm_power_off(void *drv_data)
 {
 	struct max77620_poweroff *max77620_poweroff = drv_data;
 	int ret;
+	u8 reg_val;
 
 	dev_info(max77620_poweroff->dev, "Powering off system\n");
 
 	max77620_allow_atomic_xfer(max77620_poweroff->max77620);
+
+	/* Clear power key interrupts */
+	ret = max77620_reg_read(max77620_poweroff->max77620->dev,
+			MAX77620_PWR_SLAVE,
+			MAX77620_REG_ONOFFIRQ, &reg_val);
+	if (ret < 0)
+		dev_err(max77620_poweroff->dev,
+			"Interrupt status reg 0x%x read failed: %d\n",
+			MAX77620_REG_ONOFFIRQ, ret);
+
+	/* Clear RTC interrupts */
+	ret = max77620_reg_read(max77620_poweroff->max77620->dev,
+			MAX77620_RTC_SLAVE,
+			MAX77620_REG_RTCINT, &reg_val);
+	if (ret < 0)
+		dev_err(max77620_poweroff->dev,
+			"RTC Intr. status reg 0x%x read failed: %d\n",
+			MAX77620_REG_RTCINT, ret);
+
+	/* Clear TOP interrupts */
+	ret = max77620_reg_read(max77620_poweroff->max77620->dev,
+			MAX77620_PWR_SLAVE,
+			MAX77620_REG_IRQTOP, &reg_val);
+	if (ret < 0)
+		dev_err(max77620_poweroff->dev,
+			"Interrupt status reg 0x%x read failed: %d\n",
+			MAX77620_REG_IRQTOP, ret);
 
 	if (max77620_poweroff->need_rtc_power_on)
 		max77620_auto_power_on(max77620_poweroff);
