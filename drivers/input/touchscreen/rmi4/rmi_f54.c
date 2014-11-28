@@ -1653,9 +1653,8 @@ int rmi_f54_attention(struct rmi_function_dev *fn_dev,
 	u8 fifo[2];
 	struct rmi_fn_54_data *data = fn_dev->data;
 	int error = 0;
-	int retval;
+	int retval = 0;
 	struct rmi_device *rmi_dev = fn_dev->rmi_dev;
-	struct rmi_driver_data *driver_data = dev_get_drvdata(&rmi_dev->dev);
 	struct rmi_device_platform_data *pdata;
 	int current_block_delay_us;
 	int current_read_delay_us;
@@ -2290,12 +2289,6 @@ static ssize_t rmi_fn_54_data_read(struct file *data_file, struct kobject *kobj,
 	struct rmi_function_dev *fn_dev;
 	struct rmi_fn_54_data *instance_data;
 
-	struct device *parent_dev;
-	struct rmi_device *rmi_dev;
-	struct rmi_device *parent_rmi_dev;
-	struct rmi_driver *parent_rmi_drvr;
-	struct rmi_driver_data *data;
-
 	int i;
 	// int error;
 
@@ -2611,7 +2604,7 @@ MODULE_VERSION(RMI_DRIVER_VERSION);
 */
 
 
-static ssize_t SynSens_char_dev_read(struct file *, const char __user *,
+static ssize_t SynSens_char_dev_read(struct file *, char __user *,
 				     size_t, loff_t *);
 static ssize_t SynSens_char_dev_write(struct file *, const char __user *,
 				      size_t, loff_t *);
@@ -2767,7 +2760,7 @@ raw_data_char_dev_register(struct rmi_fn_54_data *rmi_f54_instance_data)
 
 /* unsigned char junk_char_buf[2048]; */
 
-static ssize_t SynSens_char_dev_read(struct file *filp, const char __user *buf,
+static ssize_t SynSens_char_dev_read(struct file *filp, char __user *buf,
 				     size_t count, loff_t *f_pos)
 {
 	struct rmi_fn_54_data *my_instance_data = NULL;
@@ -2932,13 +2925,13 @@ static ssize_t SynSens_char_dev_write(struct file *filp, const char __user *buf,
 	int retval = 0;
 	pr_info("%s: Write called.\n", __func__);
 	if (!filp) {
-		dev_err(&fn_dev->dev, "%s: called with NULL file pointer\n", __func__);
+		pr_err("%s: called with NULL file pointer\n", __func__);
 		return -EINVAL;
 	}
 	char_dev_container = filp->private_data;
 
 	if (!char_dev_container) {
-		dev_err(&fn_dev->dev, "%s: called with NULL private_data\n", __func__);
+		pr_err("%s: called with NULL private_data\n", __func__);
 		return -EINVAL;
 	}
 	f54 = char_dev_container->my_parents_instance_data;
