@@ -3590,6 +3590,11 @@ static void tegra_xhci_update_otg_port_ownership(
 	struct xhci_hcd *xhci = tegra->xhci;
 	struct usb_hcd *shared_hcd = xhci->shared_hcd;
 
+	/* Skip if ownership doesn't change. */
+	if ((tegra->otg_port_owned && host_owns_port) ||
+		(!tegra->otg_port_owned && !host_owns_port))
+		return;
+
 	if (tegra->otg_port_owned && !host_owns_port) {
 		/* Port has transitioned to not owned */
 		if (tegra->bdata->otg_portmap & 0xff)
