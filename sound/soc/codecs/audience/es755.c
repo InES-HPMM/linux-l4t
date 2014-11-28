@@ -2226,7 +2226,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 
 		if (ES_PLUG_EVENT(value)) {
 
-			pr_info("%s(): Plug event\n", __func__);
+			pr_debug("%s(): Plug event\n", __func__);
 			/* Enable MIC Detection */
 			rc = es755_mic_config(escore);
 			if (rc < 0) {
@@ -2271,7 +2271,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 			 *  ---------------------------------------------
 			 */
 			if (impd_level) {
-				pr_info("%s(): Headset detected\n", __func__);
+				pr_debug("%s(): Headset detected\n", __func__);
 
 				is_invalid_type = false;
 				/* MIC Impedence - 1 to 5 */
@@ -2314,7 +2314,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 					goto intr_exit;
 
 			} else {
-				pr_info("%s(): Headphone detected\n",
+				pr_debug("%s(): Headphone detected\n",
 						__func__);
 
 				snd_soc_jack_report(escore->jack,
@@ -2376,7 +2376,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 				break;
 			}
 		} else if (ES_UNPLUG_EVENT(value)) {
-			pr_info("%s(): Unplug detected\n", __func__);
+			pr_debug("%s(): Unplug detected\n", __func__);
 
 			escore->button_config_required = 0;
 			snd_soc_jack_report(escore->jack, 0, JACK_DET_MASK);
