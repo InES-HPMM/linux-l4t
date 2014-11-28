@@ -10262,7 +10262,11 @@ static void wl_dealloc_netinfo(struct work_struct *work)
 		if (_net_info->wdev) {
 			flush_work(&_net_info->wdev->cleanup_work);
 			WARN_ON(work_pending(&_net_info->wdev->cleanup_work));
+			/* rtnl_lock is required to protect wdev from nl80211_pre_doit
+			 * and nl80211_post_doit calls */
+			rtnl_lock();
 			kfree(_net_info->wdev);
+			rtnl_unlock();
 		}
 		kfree(_net_info);
 	}
