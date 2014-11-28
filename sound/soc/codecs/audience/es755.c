@@ -599,16 +599,9 @@ static void es755_shutdown(struct snd_pcm_substream *substream,
 static int es755_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	struct snd_soc_codec *codec = dai->codec;
-	struct escore_priv *escore = snd_soc_codec_get_drvdata(codec);
-	struct escore_api_access *api_access;
-	int data_justification;
 	int id = DAI_INDEX(dai->id);
-	u8 pcm_port[] = { ES755_PCM_PORT_A,
-		ES755_PCM_PORT_B,
-		ES755_PCM_PORT_C };
-	int rc;
 
-	dev_dbg(codec->dev, "%s(): dai->name = %s, dai->id = %d, fmt = %lx\n",
+	dev_dbg(codec->dev, "%s(): dai->name = %s, dai->id = %d, fmt = %x\n",
 		__func__, dai->name, dai->id, fmt);
 
 
