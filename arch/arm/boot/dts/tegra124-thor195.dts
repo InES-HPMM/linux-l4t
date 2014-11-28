@@ -1,6 +1,6 @@
 /dts-v1/;
 
-#include "tegra124.dtsi"
+#include "tegra124-soc-shield.dtsi"
 #include <dt-bindings/gpio/tegra-gpio.h>
 #include <tegra124-platforms/tegra124-loki-gpio-default.dtsi>
 #include <tegra124-platforms/tegra124-loki-pinmux.dtsi>

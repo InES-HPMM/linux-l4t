@@ -1,4 +1,4 @@
-#include "tegra124.dtsi"
+#include "tegra124-soc-shield.dtsi"
 
 / {
 	serial@70006000 {

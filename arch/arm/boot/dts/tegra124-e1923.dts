@@ -19,7 +19,7 @@
  */
 /dts-v1/;
 
-#include "tegra124.dtsi"
+#include "tegra124-soc-shield.dtsi"
 #include "tegra124-platforms/tegra124-ardbeg-powermon-e1780-1000-a01.dtsi"
 #include "tegra124-platforms/tegra124-e1923-emc.dtsi"
 #include "tegra124-platforms/tegra124-tn8-gpio-e1780-1100-a02.dtsi"

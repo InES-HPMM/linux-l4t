@@ -20,7 +20,7 @@
 
 /dts-v1/;
 
-#include "tegra124.dtsi"
+#include "tegra124-soc-shield.dtsi"
 #include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-pm359-gpio-default.dtsi"
 #include "tegra124-platforms/tegra124-pm359-pinmux.dtsi"

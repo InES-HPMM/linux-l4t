@@ -18,7 +18,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#include "tegra124.dtsi"
+#include "tegra124-soc-shield.dtsi"
 #include <tegra124-platforms/tegra124-vcm30t124-fixed-reg.dtsi>
 
 / {
