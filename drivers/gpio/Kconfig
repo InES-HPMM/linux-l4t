@@ -748,4 +748,12 @@ config GPIO_VIPERBOARD
           River Tech's viperboard.h for detailed meaning
           of the module parameters.
 
+config GPIO_TMPM32X
+	tristate "GPIO support for TMPM32x"
+	depends on MACH_P1889
+	help
+	  Say yes here to access the GPIO signals of TMPM32x
+	  Toshiba MCU. There is only UART channel as a communication
+	  interface between Tegra and MCU chip.
+
 endif
