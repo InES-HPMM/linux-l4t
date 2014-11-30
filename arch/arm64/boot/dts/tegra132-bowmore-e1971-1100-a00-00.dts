@@ -19,7 +19,7 @@
 /dts-v1/;
 
 #define TEGRA132_PACKAGE_IS_MID
-#include "tegra132.dtsi"
+#include "tegra132-soc-shield.dtsi"
 #include "tegra124-platforms/tegra124-tn8-keys-e1780-1100-a02.dtsi"
 #include "tegra124-platforms/tegra124-tn8-power-tree-e1936-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-gpio-e1780-1100-a02.dtsi"

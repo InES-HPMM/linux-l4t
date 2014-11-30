@@ -17,7 +17,7 @@
  */
 
 #define TEGRA132_PACKAGE_IS_MID
-#include "tegra132.dtsi"
+#include "tegra132-soc-shield.dtsi"
 #include "tegra124-platforms/tegra124-pm374-gpio-default.dtsi"
 #include "tegra124-platforms/tegra124-pm374-pinmux.dtsi"
 #include "tegra124-platforms/tegra124-norrin-keys-pm374-0000-a00.dtsi"

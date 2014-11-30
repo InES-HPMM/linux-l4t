@@ -1,7 +1,7 @@
 /dts-v1/;
 
 #define TEGRA132_PACKAGE_IS_MID
-#include "tegra132.dtsi"
+#include "tegra132-soc-shield.dtsi"
 
 / {
 	model = "exuma_sim";

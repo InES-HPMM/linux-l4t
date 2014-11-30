@@ -1,5 +1,5 @@
 #define TEGRA132_PACKAGE_IS_DSC
-#include "tegra132.dtsi"
+#include "tegra132-soc-shield.dtsi"
 
 / {
 	serial@70006000 {
