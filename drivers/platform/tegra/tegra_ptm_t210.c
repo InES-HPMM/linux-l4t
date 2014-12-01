@@ -74,27 +74,45 @@ struct tracectx {
 	void __iomem    *funnel_bccplex_regs;
 	int             ptm_t210_regs_count;
 	int             cpu_regs_count;
-	int             *etf_buf;
-	int             etf_size;
+	int             *trc_buf;
+	int             buf_size;
 	bool            dump_initial_etf;
 	uintptr_t	start_address;
 	uintptr_t	stop_address;
+	uintptr_t       *etr_address_lo;
+	uintptr_t       *etr_address_hi;
 	int             enable;
-	int             el0_trace;
+	int             userspace;
 	int             branch_broadcast;
 	int             return_stack;
+	int             trigger;
+	uintptr_t       trigger_address;
+	int             percent_buffer_after_trigger;
+	int             formatter;
+	int             timestamp;
+	int             cycle_accurate;
+	int             stream_to_dram;
+	int             dram_carveout_kb;
 };
 
 /* initialising some values of the structure */
 static struct tracectx tracer = {
-	.cpu_regs_count		=	0,
-	.ptm_t210_regs_count	=	0,
-	.start_address		=	0,
-	.stop_address		=	0xFFFFFFC100000000,
-	.enable			=	0,
-	.el0_trace		=	1,
-	.branch_broadcast	=	1,
-	.return_stack		=	1,
+	.cpu_regs_count			=	0,
+	.ptm_t210_regs_count		=	0,
+	.start_address			=	0,
+	.stop_address			=	0xFFFFFFC100000000,
+	.enable				=	0,
+	.userspace			=	1,
+	.branch_broadcast		=	1,
+	.return_stack			=	0,
+	.trigger			=	0,
+	.percent_buffer_after_trigger	=	25,
+	.formatter			=	1,
+	.timestamp			=	0,
+	.cycle_accurate			=	0,
+	.trigger_address		=	0,
+	.stream_to_dram			=	0,
+	.dram_carveout_kb		=	DRAM_CARVEOUT_MB * 1024,
 };
 
 struct clk *csite_clk;
@@ -103,10 +121,10 @@ static void etf_last_init(struct tracectx *t)
 {
 	t->dump_initial_etf = true;
 
-	t->etf_buf = devm_kzalloc(t->dev, MAX_ETF_SIZE * sizeof(*t->etf_buf),
+	t->trc_buf = devm_kzalloc(t->dev, MAX_ETF_SIZE * sizeof(*t->trc_buf),
 					GFP_KERNEL);
 
-	if (NULL == t->etf_buf)
+	if (NULL == t->trc_buf)
 		dev_err(t->dev, "failes to allocate memory to hold ETF\n");
 }
 
@@ -126,7 +144,7 @@ static void ape_init(struct tracectx *t)
 	ape_writel(t, 0, CORESIGHT_APE_CPU0_ETM_ETMACTR1_0);
 	ape_writel(t, 0, CORESIGHT_APE_CPU0_ETM_ETMACTR2_0);
 
-	ape_writel(t, 0xAA, CORESIGHT_APE_CPU0_ETM_ETMATID_0);
+	ape_writel(t, 0x20, CORESIGHT_APE_CPU0_ETM_ETMATID_0);
 }
 
 static void cpu_debug_init(struct tracectx *t, int id)
@@ -229,7 +247,7 @@ static void ptm_init(struct tracectx *t, int id)
 			CORESIGHT_BCCPLEX_CPU_TRACE_TRCTRACEIDR_0);
 
 	/* Trace everything with Start/Stop logic started */
-	ptm_t210_writel(t, id, (t->el0_trace ? 0xDD0E01 : 0xE01),
+	ptm_t210_writel(t, id, (t->userspace ? 0xDD0E01 : 0xE01),
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCVICTLR_0);
 
 	/* Enable ViewInst and Include logic for ARC0. Disable the SSC */
@@ -363,10 +381,10 @@ static ssize_t etf_read(struct file *file, char __user *data,
 	struct tracectx *t = file->private_data;
 	loff_t pos = *ppos;
 
-	if ((pos + len) >= t->etf_size)
-		len = t->etf_size - pos;
+	if ((pos + len) >= t->buf_size)
+		len = t->buf_size - pos;
 
-	if ((len > 0) && copy_to_user(data, (u8 *) t->etf_buf+pos, len))
+	if ((len > 0) && copy_to_user(data, (u8 *) t->trc_buf+pos, len))
 		return -EFAULT;
 	else {
 		*ppos = pos + len;
@@ -419,26 +437,26 @@ static ssize_t etf_fill_buf(struct tracectx *t)
 	ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
 
 	if (!overflow) {
-		t->etf_size = max * 4;
+		t->buf_size = max * 4;
 		for (count = 0; count < max; count++) {
-			t->etf_buf[count] = etf_readl(t,
+			t->trc_buf[count] = etf_readl(t,
 					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
 			serial += 1;
 		}
 	} else {
-		t->etf_size = MAX_ETF_SIZE * 4;
+		t->buf_size = MAX_ETF_SIZE * 4;
 		/* ETF overflow..the last 4K entries are printed */
 		etf_writel(t, rwp, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
 		/* Read from rwp to end of RAM */
 		for (count = rwp32; count < MAX_ETF_SIZE; count++) {
-			t->etf_buf[count] = etf_readl(t,
+			t->trc_buf[count] = etf_readl(t,
 					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
 			serial += 1;
 		}
 		/* Rollover the RRP and read till rwp-1 */
 		etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
 		for (count = 0; count < max; count++) {
-			t->etf_buf[count] = etf_readl(t,
+			t->trc_buf[count] = etf_readl(t,
 					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
 			serial += 1;
 		}
@@ -447,7 +465,7 @@ static ssize_t etf_fill_buf(struct tracectx *t)
 	clk_disable(csite_clk);
 	mutex_unlock(&t->mutex);
 
-	return t->etf_size;
+	return t->buf_size;
 }
 
 static int etf_open(struct inode *inode, struct file *file)
@@ -480,15 +498,15 @@ static ssize_t last_etf_read(struct file *file, char __user *data,
 
 	mutex_lock(&t->mutex);
 
-	for (i = 0; i < t->etf_size/4; i++)
+	for (i = 0; i < t->buf_size/4; i++)
 		pr_info("COUNT: %08x ETF DATA: %08x\n",
-						i, t->etf_buf[i]);
+						i, t->trc_buf[i]);
 
-	if (copy_to_user(data, (char *) t->etf_buf , t->etf_size)) {
+	if (copy_to_user(data, (char *) t->trc_buf , t->buf_size)) {
 		ret = -EFAULT;
 		goto out;
 	}
-	*ppos += t->etf_size;
+	*ppos += t->buf_size;
 	ret = 0;
 
 out:
@@ -505,11 +523,11 @@ static ssize_t trace_enable_show(struct kobject *kobj,
 }
 
 /* use a sysfs file "trace_el0" to start/stop userspace tracing */
-static ssize_t trace_el0_trace_show(struct kobject *kobj,
+static ssize_t trace_userspace_show(struct kobject *kobj,
 	struct kobj_attribute *attr,
 	char *buf)
 {
-	return sprintf(buf, "%x\n", tracer.el0_trace);
+	return sprintf(buf, "%x\n", tracer.userspace);
 }
 
 /* use a sysfs file "trace_branch_broadcast" to start/stop branch broadcast */
@@ -536,6 +554,58 @@ static ssize_t trace_range_address_show(struct kobject *kobj,
 {
 	return sprintf(buf, "%16lx %16lx\n",
 			tracer.start_address, tracer.stop_address);
+}
+
+/* use a sysfs file "trace_address_trigger" to allow user to
+   specify specific areas of code to be traced */
+static ssize_t trace_trigger_show(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char *buf)
+{
+	if (tracer.trigger)
+		return sprintf(buf, "Address match is enabled\n Address trigger at %16lx\n", tracer.trigger_address);
+	else
+		return sprintf(buf, "Address match is disabled\n");
+}
+
+static ssize_t trace_timestamp_show(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char *buf)
+{
+	if (tracer.timestamp)
+		return sprintf(buf, "Timestamp is enabled");
+	else
+		return sprintf(buf, "Timestamp is disabled");
+}
+
+static ssize_t trace_cycle_accurate_show(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char *buf)
+{
+	if (tracer.cycle_accurate)
+		return sprintf(buf, "cycle accurate is enabled");
+	else
+		return sprintf(buf, "cycle accurate is disabled");
+}
+
+static ssize_t trace_formatter_show(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char *buf)
+{
+	if (tracer.formatter)
+		return sprintf(buf, "formatter is enabled");
+	else
+		return sprintf(buf, "formatter is disabled");
+}
+
+static ssize_t trace_etr_show(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char *buf)
+{
+	if (tracer.stream_to_dram)
+		return sprintf(buf, "etr is enabled");
+	else
+		return sprintf(buf, "etr is disabled");
 }
 
 static ssize_t trace_enable_store(struct kobject *kobj,
@@ -566,19 +636,19 @@ static ssize_t trace_enable_store(struct kobject *kobj,
 	return ret ? : n;
 }
 
-static ssize_t trace_el0_trace_store(struct kobject *kobj,
+static ssize_t trace_userspace_store(struct kobject *kobj,
 	struct kobj_attribute *attr,
 	const char *buf, size_t n)
 {
-	unsigned int el0_trace;
+	unsigned int userspace;
 
-	if (sscanf(buf, "%u", &el0_trace) != 1)
+	if (sscanf(buf, "%u", &userspace) != 1)
 		return -EINVAL;
 
 	mutex_lock(&tracer.mutex);
 
-	if (el0_trace == 0)
-		tracer.el0_trace = 0;
+	if (userspace == 0)
+		tracer.userspace = 0;
 
 	mutex_unlock(&tracer.mutex);
 
@@ -645,17 +715,124 @@ static ssize_t trace_range_address_store(struct kobject *kobj,
 	return n;
 }
 
+static ssize_t trace_trigger_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf, size_t n)
+{
+	unsigned int trigger, percent_buffer_after_trigger;
+	uintptr_t trigger_address;
+
+	if (sscanf(buf, "%u %lx %u", &trigger, &trigger_address,
+				&percent_buffer_after_trigger) != 3)
+		return -EINVAL;
+
+	if (percent_buffer_after_trigger < 0 &&
+				percent_buffer_after_trigger > 100)
+		return -EINVAL;
+
+	mutex_lock(&tracer.mutex);
+
+	if (trigger) {
+		tracer.trigger = 1;
+		tracer.trigger_address = trigger_address;
+		tracer.percent_buffer_after_trigger =
+				percent_buffer_after_trigger;
+	} else
+		tracer.trigger = 0;
+
+	mutex_unlock(&tracer.mutex);
+
+	return n;
+}
+
+static ssize_t trace_timestamp_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf, size_t n)
+{
+	unsigned int timestamp;
+
+	if (sscanf(buf, "%u", &timestamp) != 1)
+		return -EINVAL;
+
+	mutex_lock(&tracer.mutex);
+
+	tracer.timestamp = (timestamp) ? 1 : 0;
+
+	mutex_unlock(&tracer.mutex);
+
+	return n;
+}
+
+static ssize_t trace_cycle_accurate_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf, size_t n)
+{
+	unsigned int cycle_accurate;
+
+	if (sscanf(buf, "%u", &cycle_accurate) != 1)
+		return -EINVAL;
+
+	mutex_lock(&tracer.mutex);
+
+	tracer.cycle_accurate = (cycle_accurate) ? 1 : 0;
+
+	mutex_unlock(&tracer.mutex);
+
+	return n;
+}
+
+static ssize_t trace_formatter_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf, size_t n)
+{
+	unsigned int formatter;
+
+	if (sscanf(buf, "%u", &formatter) != 1)
+		return -EINVAL;
+
+	mutex_lock(&tracer.mutex);
+
+	tracer.formatter = (!formatter) ? 0 : 1;
+
+	mutex_unlock(&tracer.mutex);
+
+	return n;
+}
+
+static ssize_t trace_etr_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf, size_t n)
+{
+	unsigned int etr;
+
+	if (sscanf(buf, "%u", &etr) != 1)
+		return -EINVAL;
+
+	mutex_lock(&tracer.mutex);
+
+	tracer.stream_to_dram = (etr) ? 1 : 0;
+
+	mutex_unlock(&tracer.mutex);
+
+	return n;
+}
+
 #define A(a, b, c, d)   __ATTR(trace_##a, b, \
 	trace_##c##_show, trace_##d##_store)
 static const struct kobj_attribute trace_attr[] = {
 	A(enable,		0644,	enable,		enable),
-	A(el0_trace,		0644,	el0_trace,	el0_trace),
+	A(userspace,		0644,	userspace,	userspace),
 	A(branch_broadcast,	0644,	branch_broadcast,
 						branch_broadcast),
 	A(return_stack,		0644,	return_stack,
 						return_stack),
 	A(range_address,	0644,	range_address,
-						range_address)
+						range_address),
+	A(trigger,		0644,	trigger,	trigger),
+	A(timestamp,		0644,	timestamp,	timestamp),
+	A(cycle_accurate,	0644,	cycle_accurate,	cycle_accurate),
+	A(formatter,		0644,	formatter,	formatter),
+	A(etr,			0644,	etr,		etr)
 };
 
 static const struct file_operations etf_fops = {
