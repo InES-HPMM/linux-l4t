@@ -2242,7 +2242,7 @@ static ssize_t smmu_context_filter_write(struct file *file,
 	if (kstrtou8_from_user(user_buf, bytes, 10, &cbndx))
 		return -EINVAL;
 
-	if (cbndx > ARM_SMMU_MAX_CBS)
+	if (cbndx > smmu->num_context_banks)
 		return -EINVAL;
 
 	set_bit(cbndx, bitmap);
