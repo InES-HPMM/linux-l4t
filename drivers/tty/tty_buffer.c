@@ -43,6 +43,7 @@ void tty_buffer_free_all(struct tty_port *port)
 	}
 	buf->tail = NULL;
 	buf->memory_used = 0;
+	buf->current_data_count = 0;
 }
 
 /**
@@ -360,6 +361,7 @@ static int tty_insert_flip_string_fixed_flag_lock(struct tty_port *port,
 		tb->commit = tb->used;
 		copied += space;
 		chars += space;
+		buf->current_data_count += space;
 		/* There is a small chance that we need to split the data over
 		   several buffers. If this is the case we must loop */
 	} while (unlikely(size > copied));
@@ -382,6 +384,20 @@ int tty_insert_flip_string_lock(struct tty_port *port,
 		TTY_NORMAL, size);
 }
 EXPORT_SYMBOL(tty_insert_flip_string_lock);
+
+int tty_buffer_get_level(struct tty_port *port)
+{
+	struct tty_bufhead *buf = &port->buf;
+	unsigned long flags;
+	int level_percent = 0;
+	int maximum_size = 65536;
+
+	spin_lock_irqsave(&buf->lock, flags);
+	level_percent = (buf->current_data_count * 100) / maximum_size;
+	spin_unlock_irqrestore(&buf->lock, flags);
+	return level_percent;
+}
+EXPORT_SYMBOL(tty_buffer_get_level);
 
 /**
  *	tty_schedule_flip	-	push characters to ldisc
@@ -527,6 +543,12 @@ static void flush_to_ldisc(struct work_struct *work)
 			disc->ops->receive_buf(tty, char_buf,
 							flag_buf, count);
 			spin_lock_irqsave(&buf->lock, flags);
+
+			if (buf->current_data_count >= count)
+				buf->current_data_count -= count;
+			else
+				buf->current_data_count = 0;
+
 			/* Ldisc or user is trying to flush the buffers.
 			   We may have a deferred request to flush the
 			   input buffer, if so pull the chain under the lock
@@ -610,6 +632,7 @@ void tty_buffer_init(struct tty_port *port)
 	buf->tail = NULL;
 	buf->free = NULL;
 	buf->memory_used = 0;
+	buf->current_data_count = 0;
 	INIT_WORK(&buf->work, flush_to_ldisc);
 }
 

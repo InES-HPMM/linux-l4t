@@ -59,6 +59,7 @@ struct tty_bufhead {
 	struct tty_buffer *free;	/* Free queue head */
 	int memory_used;		/* Buffer space used excluding
 								free queue */
+	int current_data_count;		/* Current data count on the tty */
 };
 /*
  * When a break, frame error, or parity error happens, these codes are
