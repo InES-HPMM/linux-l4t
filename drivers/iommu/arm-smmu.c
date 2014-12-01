@@ -2239,8 +2239,14 @@ static ssize_t smmu_context_filter_write(struct file *file,
 	struct arm_smmu_device *smmu = seqf->private;
 	unsigned long *bitmap = smmu->context_filter;
 
-	if (kstrtou8_from_user(user_buf, bytes, 10, &cbndx))
-		return -EINVAL;
+	if (kstrtou8_from_user(user_buf, bytes, 10, &cbndx)) {
+		size_t bytes;
+
+		bytes = BITS_TO_LONGS(ARM_SMMU_MAX_CBS) * sizeof(long);
+		memset(bitmap, 0, bytes);
+		dev_info(smmu->dev, "resetting context_filter\n");
+		return count;
+	}
 
 	if (cbndx > smmu->num_context_banks)
 		return -EINVAL;
