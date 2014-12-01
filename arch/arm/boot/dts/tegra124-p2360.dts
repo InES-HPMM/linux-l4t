@@ -136,6 +136,8 @@
 
 	spi@7000d400 {
 		status = "okay";
+		compatible = "nvidia,tegra124-spi-slave";
+		nvidia,rx-trigger-words = <0>;
 	};
 
 	spi@7000d600 {
@@ -153,6 +155,8 @@
 
 	spi@7000dc00 {
 		status = "okay";
+		compatible = "nvidia,tegra124-spi-slave";
+		nvidia,rx-trigger-words = <0>;
 	};
 
 	pcie-controller {
