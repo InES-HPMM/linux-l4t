@@ -1279,8 +1279,9 @@ static int arm_smmu_domain_add_master(struct arm_smmu_domain *smmu_domain,
 		       (smmu_domain->cfg.cbndx << S2CR_CBNDX_SHIFT);
 		writel_relaxed(s2cr, gr0_base + ARM_SMMU_GR0_S2CR(idx));
 
-		tegra_smmu_conf_swgroup(smmu, cfg->streamids[i],
-					smmu_domain->cfg.cbndx);
+		if (tegra_platform_is_linsim())
+			tegra_smmu_conf_swgroup(smmu, cfg->streamids[i],
+						smmu_domain->cfg.cbndx);
 	}
 
 	return 0;
@@ -2547,13 +2548,15 @@ static int __init arm_smmu_init(void)
 {
 	int ret;
 
-	mc_base = ioremap_nocache(MC_BASE, MC_SIZE);
-	if (!mc_base)
-		return -EINVAL;
-	else
+	if (tegra_platform_is_linsim()) {
+		mc_base = ioremap_nocache(MC_BASE, MC_SIZE);
+		if (!mc_base)
+			return -EINVAL;
+
 		pr_info("%s(): 0x%08x is mapped to %p\n",
 			__func__, MC_BASE, mc_base);
-	__writel(SMMU_CONFIG_ENABLE, mc_base + SMMU_CONFIG);
+		__writel(SMMU_CONFIG_ENABLE, mc_base + SMMU_CONFIG);
+	}
 
 	ret = platform_driver_register(&arm_smmu_driver);
 	if (ret)
