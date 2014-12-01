@@ -45,6 +45,7 @@
 #include <linux/tty_flip.h>
 #include <linux/platform_data/serial-tegra.h>
 #include <linux/clk/tegra.h>
+#include <linux/timer.h>
 
 #define TEGRA_UART_TYPE				"SERIAL_TEGRA"
 #define TX_EMPTY_STATUS				(UART_LSR_TEMT | UART_LSR_THRE)
@@ -135,6 +136,9 @@ struct tegra_uart_port {
 	int					tx_bytes_requested;
 	int					rx_bytes_requested;
 	bool				use_rx_pio;
+	struct timer_list           timer;
+	int                 timer_timeout_jiffies;
+	bool                enable_rx_buffer_throttle;
 };
 
 static void tegra_uart_start_next_tx(struct tegra_uart_port *tup);
@@ -537,6 +541,31 @@ static void tegra_uart_handle_rx_pio(struct tegra_uart_port *tup,
 	return;
 }
 
+static void tegra_uart_rx_buffer_throttle_timer(unsigned long _data)
+{
+	struct tegra_uart_port *tup = (struct tegra_uart_port *)_data;
+	struct uart_port *u = &tup->uport;
+	struct tty_struct *tty = tty_port_tty_get(&tup->uport.state->port);
+	struct tty_port *port = &tup->uport.state->port;
+	int rx_level;
+	unsigned long flags;
+
+	spin_lock_irqsave(&u->lock, flags);
+
+	rx_level = tty_buffer_get_level(port);
+	if (rx_level < 30) {
+		if (tup->rts_active)
+			set_rts(tup, true);
+	} else {
+		mod_timer(&tup->timer, jiffies + tup->timer_timeout_jiffies);
+	}
+
+	if (tty)
+		tty_kref_put(tty);
+
+	spin_unlock_irqrestore(&u->lock, flags);
+}
+
 static void tegra_uart_copy_rx_to_tty(struct tegra_uart_port *tup,
 		struct tty_port *tty, int count)
 {
@@ -566,6 +595,7 @@ static void tegra_uart_rx_dma_complete(void *args)
 	struct tty_struct *tty = tty_port_tty_get(&tup->uport.state->port);
 	struct tty_port *port = &u->state->port;
 	unsigned long flags;
+	int rx_level = 0;
 
 	async_tx_ack(tup->rx_dma_desc);
 	spin_lock_irqsave(&u->lock, flags);
@@ -579,6 +609,14 @@ static void tegra_uart_rx_dma_complete(void *args)
 		tegra_uart_copy_rx_to_tty(tup, port, count);
 
 	tegra_uart_handle_rx_pio(tup, port);
+
+	if (tup->enable_rx_buffer_throttle) {
+		rx_level = tty_buffer_get_level(port);
+		if (rx_level > 70)
+			mod_timer(&tup->timer,
+					jiffies + tup->timer_timeout_jiffies);
+	}
+
 	if (tty) {
 		tty_flip_buffer_push(port);
 		tty_kref_put(tty);
@@ -586,7 +624,10 @@ static void tegra_uart_rx_dma_complete(void *args)
 	tegra_uart_start_rx_dma(tup);
 
 	/* Activate flow control to start transfer */
-	if (tup->rts_active)
+	if (tup->enable_rx_buffer_throttle) {
+		if ((rx_level <= 70) && tup->rts_active)
+			set_rts(tup, true);
+	} else if (tup->rts_active)
 		set_rts(tup, true);
 
 	spin_unlock_irqrestore(&u->lock, flags);
@@ -598,6 +639,7 @@ static void tegra_uart_handle_rx_dma(struct tegra_uart_port *tup)
 	struct tty_struct *tty = tty_port_tty_get(&tup->uport.state->port);
 	struct tty_port *port = &tup->uport.state->port;
 	int count;
+	int rx_level = 0;
 
 	/* Deactivate flow control to stop sender */
 	if (tup->rts_active)
@@ -613,13 +655,24 @@ static void tegra_uart_handle_rx_dma(struct tegra_uart_port *tup)
 		tegra_uart_copy_rx_to_tty(tup, port, count);
 
 	tegra_uart_handle_rx_pio(tup, port);
+
+	if (tup->enable_rx_buffer_throttle) {
+		rx_level = tty_buffer_get_level(port);
+		if (rx_level > 70)
+			mod_timer(&tup->timer,
+					jiffies + tup->timer_timeout_jiffies);
+	}
+
 	if (tty) {
 		tty_flip_buffer_push(port);
 		tty_kref_put(tty);
 	}
 	tegra_uart_start_rx_dma(tup);
 
-	if (tup->rts_active)
+	if (tup->enable_rx_buffer_throttle) {
+		if ((rx_level <= 70) && tup->rts_active)
+			set_rts(tup, true);
+	} else if (tup->rts_active)
 		set_rts(tup, true);
 }
 
@@ -1286,6 +1339,10 @@ static int tegra_uart_parse_dt(struct platform_device *pdev,
 		tup->use_rx_pio = true;
 		dev_info(&pdev->dev, "RX in PIO mode\n");
 	}
+	tup->enable_rx_buffer_throttle = of_property_read_bool(np,
+			"nvidia,enable-rx-buffer-throttling");
+	if (tup->enable_rx_buffer_throttle)
+		dev_info(&pdev->dev, "Rx buffer throttling enabled\n");
 
 	return 0;
 }
@@ -1402,6 +1459,12 @@ board_file:
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Failed to add uart port, err %d\n", ret);
 		return ret;
+	}
+
+	if (tup->enable_rx_buffer_throttle) {
+		setup_timer(&tup->timer, tegra_uart_rx_buffer_throttle_timer,
+				(unsigned long)tup);
+		tup->timer_timeout_jiffies = msecs_to_jiffies(10);
 	}
 	return ret;
 }
