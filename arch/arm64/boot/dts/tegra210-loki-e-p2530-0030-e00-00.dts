@@ -37,6 +37,7 @@
 		/* tegradc.0 */
 		dc@54200000 {
 			status = "okay";
+			dvdd_lcd-supply = <&vdd_disp_3v3>;
 			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
 			nvidia,emc-clk-rate = <204000000>;
 			nvidia,cmu-enable = <1>;
