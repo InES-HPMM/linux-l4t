@@ -315,4 +315,9 @@ config ARM_SMMU
 	  Say Y here if your SoC includes an IOMMU device implementing
 	  the ARM SMMU architecture.
 
+config ARM_SMMU_WAR
+	bool
+	depends on ARM_SMMU
+	default y
+
 endif # IOMMU_SUPPORT

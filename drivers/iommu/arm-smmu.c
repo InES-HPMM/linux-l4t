@@ -436,6 +436,7 @@ struct arm_smmu_domain {
 static DEFINE_SPINLOCK(arm_smmu_devices_lock);
 static LIST_HEAD(arm_smmu_devices);
 
+#ifdef CONFIG_ARM_SMMU_WAR
 /*
  * linsim hacks: Indirect register accessor
  */
@@ -497,6 +498,7 @@ static inline u32 readl_relaxed(const volatile void __iomem *virt_addr)
 	pr_debug("Indirect read(DATA) val=%08x ctl_addr=%p\n", val, ctl_addr);
 	return val;
 }
+#endif
 
 struct arm_smmu_option_prop {
 	u32 opt;
@@ -1279,7 +1281,8 @@ static int arm_smmu_domain_add_master(struct arm_smmu_domain *smmu_domain,
 		       (smmu_domain->cfg.cbndx << S2CR_CBNDX_SHIFT);
 		writel_relaxed(s2cr, gr0_base + ARM_SMMU_GR0_S2CR(idx));
 
-		if (tegra_platform_is_linsim())
+		if (config_enabled(CONFIG_ARM_SMMU_WAR) &&
+		    tegra_platform_is_linsim())
 			tegra_smmu_conf_swgroup(smmu, cfg->streamids[i],
 						smmu_domain->cfg.cbndx);
 	}
@@ -2548,7 +2551,8 @@ static int __init arm_smmu_init(void)
 {
 	int ret;
 
-	if (tegra_platform_is_linsim()) {
+	if (config_enabled(CONFIG_ARM_SMMU_WAR) &&
+	    tegra_platform_is_linsim()) {
 		mc_base = ioremap_nocache(MC_BASE, MC_SIZE);
 		if (!mc_base)
 			return -EINVAL;
