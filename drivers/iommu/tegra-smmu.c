@@ -1474,6 +1474,50 @@ static void smmu_iommu_domain_destroy(struct iommu_domain *domain)
 	dev_dbg(smmu->dev, "smmu_as@%p\n", as);
 }
 
+static int __smmu_iommu_add_device(struct device *dev, u64 swgids)
+{
+	struct dma_iommu_mapping *map;
+	int err;
+
+	map = tegra_smmu_of_get_mapping(dev, swgids,
+					&smmu_handle->asprops);
+	if (!map) {
+		dev_err(dev, "map creation failed!!!\n");
+		return -ENOMEM;
+	}
+
+	err = arm_iommu_attach_device(dev, map);
+	if (err) {
+		dev_err(dev, "Failed to attach %s\n", dev_name(dev));
+		arm_iommu_release_mapping(map);
+		return err;
+	}
+
+	dev_dbg(dev, "Attached %s to map %p\n", dev_name(dev), map);
+	return 0;
+}
+
+static int smmu_iommu_add_device(struct device *dev)
+{
+	int err;
+	u64 swgids;
+
+	if (!smmu_handle) {
+		dev_err(dev, "No map available yet!!!\n");
+		return -ENODEV;
+	}
+
+	swgids = tegra_smmu_get_swgids(dev);
+	if (swgids_is_error(swgids))
+		return -ENODEV;
+
+	err = __smmu_iommu_add_device(dev, swgids);
+	if (err)
+		return err;
+
+	return 0;
+}
+
 static struct iommu_ops smmu_iommu_ops_default = {
 	.capable	= smmu_iommu_capable,
 	.domain_init	= smmu_iommu_domain_init,
@@ -1484,6 +1528,7 @@ static struct iommu_ops smmu_iommu_ops_default = {
 	.map_sg		= smmu_iommu_map_sg,
 	.unmap		= smmu_iommu_unmap,
 	.iova_to_phys	= smmu_iommu_iova_to_phys,
+	.add_device	= smmu_iommu_add_device,
 	.pgsize_bitmap	= SMMU_IOMMU_PGSIZES,
 };
 
@@ -2079,9 +2124,8 @@ const struct file_operations *smmu_debugfs_stats_fops = &smmu_debugfs_stats_fops
 static int tegra_smmu_device_notifier(struct notifier_block *nb,
 				      unsigned long event, void *_dev)
 {
-	struct dma_iommu_mapping *map;
-	struct device *dev = _dev;
 	u64 swgids;
+	struct device *dev = _dev;
 	const char * const event_to_string[] = {
 		"-----",
 		"ADD_DEVICE",
@@ -2106,24 +2150,7 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 		if (get_dma_ops(dev) != &arm_dma_ops)
 			break;
 
-		if (!smmu_handle) {
-			dev_err(dev, "No map available yet!!!\n");
-			break;
-		}
-
-		map = tegra_smmu_of_get_mapping(dev, swgids,
-						&smmu_handle->asprops);
-		if (!map) {
-			dev_err(dev, "map creation failed!!!\n");
-			break;
-		}
-
-		if (arm_iommu_attach_device(dev, map)) {
-			dev_err(dev, "Failed to attach %s\n", dev_name(dev));
-			arm_iommu_release_mapping(map);
-			break;
-		}
-		dev_dbg(dev, "Attached %s to map %p\n", dev_name(dev), map);
+		__smmu_iommu_add_device(dev, swgids);
 		break;
 	case BUS_NOTIFY_UNBOUND_DRIVER:
 		dev_dbg(dev, "Detaching %s from map %p\n", dev_name(dev),
