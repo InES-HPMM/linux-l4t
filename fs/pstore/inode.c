@@ -385,10 +385,10 @@ int pstore_mkfile(enum pstore_type_id type, char *psname, u64 id, int count,
 		sprintf(name, "dmesg-%s-%lld", psname, id);
 		break;
 	case PSTORE_TYPE_CONSOLE:
-		sprintf(name, "console-%s", psname);
+		sprintf(name, "console-%s-%lld", psname, id);
 		break;
 	case PSTORE_TYPE_FTRACE:
-		sprintf(name, "ftrace-%s", psname);
+		sprintf(name, "ftrace-%s-%lld", psname, id);
 		break;
 	case PSTORE_TYPE_RTRACE:
 		sprintf(name, "rtrace-%s", psname);
