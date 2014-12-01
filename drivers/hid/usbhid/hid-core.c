@@ -325,6 +325,10 @@ static void hid_irq_in(struct urb *urb)
 		clear_bit(HID_IN_RUNNING, &usbhid->iofl);
 		hid_io_error(hid);
 		return;
+	case -EOVERFLOW:	/* Value too large, WAR  */
+		printk("input irq status -75 : RESETTING HID...\n");
+		schedule_work(&usbhid->reset_work);
+		return;
 	default:		/* error */
 		hid_warn(urb->dev, "input irq status %d received\n",
 			 urb->status);
