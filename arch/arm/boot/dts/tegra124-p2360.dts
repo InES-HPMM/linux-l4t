@@ -142,6 +142,11 @@
 
 	spi@7000d600 {
 		status = "okay";
+
+		spi@1 {
+			status = "disabled";
+		};
+
 		spiflash@1 {
 			compatible = "s25fl512s";
 			reg = <1>;
@@ -151,6 +156,10 @@
 
 	spi@7000d800 {
 		status = "okay";
+
+		spi@1 {
+			status = "disabled";
+		};
 	};
 
 	spi@7000dc00 {
