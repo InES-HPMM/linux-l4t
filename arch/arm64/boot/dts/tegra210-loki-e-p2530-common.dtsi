@@ -266,7 +266,7 @@
 	xusb_pad_ctl: padctl@0 {
 		nvidia,ss_portmap = <0x7770>;
 		nvidia,lane_owner = <0xFFFF>; /* Use 0xF to disable lane assign */
-		status = "disabled";
+		status = "okay";
 	};
 
 	xusb@70090000 {
@@ -276,7 +276,7 @@
 		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
 		nvidia,portmap = <0x0400>;
 		nvidia,common_padctl = <&xusb_pad_ctl>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	 xudc@700d0000 {
@@ -285,6 +285,7 @@
 		extcon-cable-names = "vbus";
 				#extcon-cells = <1>;
 				status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x01000000>;
 		};
 
 	xotg {
@@ -293,6 +294,7 @@
 		#extcon-cells = <1>;
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x01000000>;
 	};
 
 	gpu-dvfs-rework {

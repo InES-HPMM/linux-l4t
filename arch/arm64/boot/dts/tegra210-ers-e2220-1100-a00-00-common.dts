@@ -647,7 +647,7 @@
 		nvidia,ss_portmap = <0x2130>;
 		nvidia,lane_owner = <0xFF56>; /* Use 0xF to disable lane assign */
 		nvidia,otg_portmap = <0x0101>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	xusb@70090000 {
@@ -657,7 +657,7 @@
 		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
 		nvidia,portmap = <0x0e0e>;
 		nvidia,common_padctl = <&xusb_pad_ctl>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	xudc@700d0000 {
@@ -666,6 +666,7 @@
 		#extcon-cells = <1>;
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x01000000>;
 	};
 
 	xotg {
@@ -674,6 +675,7 @@
 		#extcon-cells = <1>;
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x01000000>;
 	};
 
 	gpio-keys {
