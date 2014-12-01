@@ -277,8 +277,9 @@ static int tegra_pinctrl_dt_subnode_to_map(struct device *dev,
 	if (num_configs)
 		reserve++;
 	ret = of_property_count_strings(np, "nvidia,pins");
-	if (ret < 0) {
-		dev_err(dev, "could not parse property nvidia,pins\n");
+	if (WARN_ON(ret < 0)) {
+		dev_err(dev, "%s: could not parse property nvidia,pins: %d\n",
+				np->name, ret);
 		goto exit;
 	}
 	reserve *= ret;
