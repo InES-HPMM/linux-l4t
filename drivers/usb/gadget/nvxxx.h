@@ -105,6 +105,7 @@
 #define XDEV_U0		(0x0 << 5)
 #define XDEV_U2		(0x2 << 5)
 #define XDEV_U3		(0x3 << 5)
+#define XDEV_DISABLED	(0x4 << 5)
 #define XDEV_RESUME	(0xf << 5)
 
 #define ECPLO		0x00000040
@@ -668,6 +669,8 @@ struct nv_udc_s {
 	struct work_struct ucd_work;
 	struct work_struct current_work;
 	struct delayed_work non_std_charger_work;
+	struct delayed_work port_reset_war_work;
+	bool wait_for_sec_prc;
 	u32 current_ma;
 
 	struct tegra_prod_list *prod_list;

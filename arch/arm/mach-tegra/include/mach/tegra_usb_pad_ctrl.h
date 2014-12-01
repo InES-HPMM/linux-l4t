@@ -437,6 +437,10 @@ static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
 #define GET_RPD_CTRL(x)			((x & 0x7c000000) >> 26)
 #define USB2_OTG_HS_IREF_CAP			0x0
 
+
+#define XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL0(_p)	\
+	(0x80 + _p * 0x40)
+
 #define XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL1(_p)	\
 	(0x84 + _p * 0x40)
 #define VREG_FIX18	(1 << 6)

@@ -92,6 +92,9 @@ static void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 #define LMPITP_TIMER_VAL	0x978
 
 #define ENABLE_TM 0x10
+#define ZIP	BIT(18)
+#define ZIN	BIT(22)
+
 static struct usb_endpoint_descriptor nvudc_ep0_desc = {
 	.bLength = USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType = USB_DT_ENDPOINT,
@@ -377,6 +380,41 @@ static void tegra_xudc_non_std_charger_work(struct work_struct *work)
 
 	tegra_ucd_set_charger_type(nvudc->ucd,
 			CONNECT_TYPE_NON_STANDARD_CHARGER);
+}
+
+static void tegra_xudc_port_reset_war_work(struct work_struct *work)
+{
+
+	struct nv_udc_s *nvudc =
+		container_of(work, struct nv_udc_s, port_reset_war_work);
+	unsigned long flags;
+
+	dev_info(nvudc->dev, "port_reset_war_work\n");
+	spin_lock_irqsave(&nvudc->lock, flags);
+	if (nvudc->vbus_detected && nvudc->wait_for_sec_prc) {
+		u32 val;
+		u32 pls = ioread32(nvudc->mmio_reg_base + PORTSC);
+		pls &= PORTSC_PLS_MASK;
+		dev_info(nvudc->dev, "pls = %x\n", pls);
+
+		val = tegra_usb_pad_reg_read(
+				XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL0(0));
+
+		dev_info(nvudc->dev, "battery_chrg_otgpad_ctl0 = %x\n", val);
+		if ((pls == XDEV_DISABLED) && ((val & ZIN) || (val & ZIP))) {
+			dev_info(nvudc->dev, "toggle vbus\n");
+			/* PRC doesn't complete in 100ms, toggle the vbus */
+			tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+				USB2_VBUS_ID_0_VBUS_OVERRIDE, 0);
+
+			tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+				USB2_VBUS_ID_0_VBUS_OVERRIDE,
+				USB2_VBUS_ID_0_VBUS_OVERRIDE);
+			nvudc->wait_for_sec_prc = 0;
+		}
+	}
+
+	spin_unlock_irqrestore(&nvudc->lock, flags);
 }
 
 static int extcon_notifications(struct notifier_block *nb,
@@ -3559,6 +3597,10 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 		u_temp2 |= PORTSC_PRC;
 		u_temp2 |= PORTSC_PED;
 		iowrite32(u_temp2, nvudc->mmio_reg_base + PORTSC);
+#define TOGGLE_VBUS_WAIT_MS	100
+		schedule_delayed_work(&nvudc->port_reset_war_work,
+			msecs_to_jiffies(TOGGLE_VBUS_WAIT_MS));
+		nvudc->wait_for_sec_prc = 1;
 	}
 
 	if ((PORTSC_PRC & u_temp) &&
@@ -3591,6 +3633,9 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 		u_temp2 = ioread32(nvudc->mmio_reg_base + ST);
 		if (ST_RC & u_temp2)
 			iowrite32(ST_RC, nvudc->mmio_reg_base + ST);
+
+		cancel_delayed_work(&nvudc->port_reset_war_work);
+		nvudc->wait_for_sec_prc = 0;
 	}
 
 	u_temp = ioread32(nvudc->mmio_reg_base + PORTHALT);
@@ -5361,6 +5406,8 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	INIT_WORK(&nvudc->current_work, tegra_xudc_current_work);
 	INIT_DELAYED_WORK(&nvudc->non_std_charger_work,
 					tegra_xudc_non_std_charger_work);
+	INIT_DELAYED_WORK(&nvudc->port_reset_war_work,
+					tegra_xudc_port_reset_war_work);
 
 	nvudc->pdev.plat = pdev;
 	nvudc->dev = dev;
@@ -5536,6 +5583,7 @@ static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 		cancel_work_sync(&nvudc->ucd_work);
 		cancel_work_sync(&nvudc->current_work);
 		cancel_delayed_work(&nvudc->non_std_charger_work);
+		cancel_delayed_work(&nvudc->port_reset_war_work);
 		usb_del_gadget_udc(&nvudc->gadget);
 		free_data_struct(nvudc);
 		nvudc_plat_clocks_disable(nvudc);
