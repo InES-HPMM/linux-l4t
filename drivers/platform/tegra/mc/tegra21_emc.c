@@ -64,10 +64,34 @@ module_param(emc_enable, bool, 0644);
  * List of sequences supported by the clock change driver.
  */
 struct supported_sequence supported_seqs[] = {
-	{ 0x5, emc_set_clock_r21012, "21012" },
+	/*
+	 * Revision 5 tables takes us up to the 21012 sequence.
+	 */
+	{
+		0x5,
+		emc_set_clock_r21012,
+		NULL,
+		"21012"
+	},
+
+	/*
+	 * This adds the first periodic training code plus a bunch of
+	 * bug fixes.
+	 */
+	{
+		0x6,
+		emc_set_clock_r21015,
+		__do_periodic_emc_compensation_r21015,
+		"21015"
+	},
 
 	/* NULL terminate. */
-	{ 0,   NULL, NULL }
+	{
+		0,
+		NULL,
+		NULL,
+		NULL
+	}
 };
 
 /* Filled in depending on table revision. */
@@ -187,14 +211,14 @@ struct emc_sel {
 static struct emc_sel tegra_emc_clk_sel[TEGRA_EMC_TABLE_MAX_SIZE];
 static struct emc_sel tegra_emc_clk_sel_b[TEGRA_EMC_TABLE_MAX_SIZE];
 static struct tegra21_emc_table start_timing;
-static const struct tegra21_emc_table *emc_timing;
+static struct tegra21_emc_table *emc_timing;
 static unsigned long dram_over_temp_state = DRAM_OVER_TEMP_NONE;
 
 static ktime_t clkchange_time;
 static int clkchange_delay = 100;
 
-static const struct tegra21_emc_table *tegra_emc_table;
-static const struct tegra21_emc_table *tegra_emc_table_derated;
+static struct tegra21_emc_table *tegra_emc_table;
+static struct tegra21_emc_table *tegra_emc_table_derated;
 static int tegra_emc_table_size;
 
 static u32 dram_dev_num;
@@ -299,7 +323,7 @@ static void emc_last_stats_update(int last_sel)
  * They are just used for computing values to put into the real timing
  * registers.
  */
-const struct tegra21_emc_table *get_timing_from_freq(unsigned long freq)
+struct tegra21_emc_table *get_timing_from_freq(unsigned long freq)
 {
 	int i;
 
@@ -355,7 +379,7 @@ void emc_timing_update(int dual_chan)
 }
 
 static inline void set_over_temp_timing(
-	const struct tegra21_emc_table *next_timing, unsigned long state)
+	struct tegra21_emc_table *next_timing, unsigned long state)
 {
 #define REFRESH_X2      1
 #define REFRESH_X4      2
@@ -426,7 +450,7 @@ void emc_set_shadow_bypass(int set)
 		emc_writel(emc_dbg & ~EMC_DBG_WRITE_MUX_ACTIVE, EMC_DBG);
 }
 
-u32 get_dll_state(const struct tegra21_emc_table *next_timing)
+u32 get_dll_state(struct tegra21_emc_table *next_timing)
 {
 	bool next_dll_enabled;
 
@@ -467,8 +491,27 @@ void ccfifo_writel(u32 val, unsigned long addr, u32 delay)
 	       emc_base + EMC_CCFIFO_ADDR);
 }
 
-static void emc_set_clock(const struct tegra21_emc_table *next_timing,
-			  const struct tegra21_emc_table *last_timing,
+u32 emc_do_periodic_compensation(void)
+{
+	int ret = 0;
+
+	/*
+	 * Possible early in the boot. If this happens, return -EAGAIN and let
+	 * the timer just wait until we do the first swap to the real boot freq.
+	 */
+	if (!emc_timing)
+		return -EAGAIN;
+
+	spin_lock(&emc_access_lock);
+	if (seq->periodic_compensation)
+		ret = seq->periodic_compensation(emc_timing);
+	spin_unlock(&emc_access_lock);
+
+	return ret;
+}
+
+static void emc_set_clock(struct tegra21_emc_table *next_timing,
+			  struct tegra21_emc_table *last_timing,
 			  int training, u32 clksrc)
 {
 	seq->set_clock(next_timing, last_timing, training, clksrc);
@@ -553,7 +596,7 @@ default_val:
 	return 2000;
 }
 
-static const struct tegra21_emc_table *emc_get_table(
+static struct tegra21_emc_table *emc_get_table(
 	unsigned long over_temp_state)
 {
 	if ((over_temp_state == DRAM_OVER_TEMP_THROTTLE) &&
@@ -574,8 +617,8 @@ int tegra_emc_set_rate_on_parent(unsigned long rate, struct clk *p)
 {
 	int i;
 	u32 clk_setting;
-	const struct tegra21_emc_table *last_timing;
-	const struct tegra21_emc_table *current_table;
+	struct tegra21_emc_table *last_timing;
+	struct tegra21_emc_table *current_table;
 	unsigned long flags;
 	s64 last_change_delay;
 	struct emc_sel *sel;
@@ -601,6 +644,7 @@ int tegra_emc_set_rate_on_parent(unsigned long rate, struct clk *p)
 	if (!emc_timing) {
 		/* can not assume that boot timing matches dfs table even
 		   if boot frequency matches one of the table nodes */
+		start_timing.burst_regs_num = tegra_emc_table[i].burst_regs_num;
 		emc_get_timing(&start_timing);
 		last_timing = &start_timing;
 	} else
@@ -743,7 +787,7 @@ static inline const struct clk_mux_sel *get_emc_input(u32 val)
 	return sel;
 }
 
-static int find_matching_input(const struct tegra21_emc_table *table,
+static int find_matching_input(struct tegra21_emc_table *table,
 	struct clk *pll_m, struct clk *pll_mb, int sel_idx)
 {
 	u32 div_value = (table->src_sel_reg &
@@ -815,7 +859,7 @@ static int find_matching_input(const struct tegra21_emc_table *table,
 
 static int emc_core_millivolts[MAX_DVFS_FREQS];
 
-static void adjust_emc_dvfs_table(const struct tegra21_emc_table *table,
+static void adjust_emc_dvfs_table(struct tegra21_emc_table *table,
 				  int table_size)
 {
 	int i, j, mv;
@@ -877,8 +921,8 @@ static int purge_emc_table(unsigned long max_rate)
 	return ret;
 }
 
-static int init_emc_table(const struct tegra21_emc_table *table,
-			  const struct tegra21_emc_table *table_der,
+static int init_emc_table(struct tegra21_emc_table *table,
+			  struct tegra21_emc_table *table_der,
 			  int table_size)
 {
 	int i, mv;
@@ -932,16 +976,6 @@ static int init_emc_table(const struct tegra21_emc_table *table,
 	seq = s;
 	pr_info("tegra: Using EMC sequence '%s' for Rev. %d tables\n",
 		s->seq_rev, table[0].rev);
-
-	switch (table[0].rev) {
-	case 0x5:
-		start_timing.burst_regs_num = table[0].burst_regs_num;
-		break;
-	default:
-		pr_err("tegra: invalid EMC DFS table: unknown rev 0x%x\n",
-			table[0].rev);
-		return -ENODATA;
-	}
 
 	if (table_der) {
 		/* Check that the derated table and non-derated table match. */
@@ -1303,8 +1337,8 @@ int tegra_emc_set_over_temp_state(unsigned long state)
 {
 	int offset;
 	unsigned long flags;
-	const struct tegra21_emc_table *current_table;
-	const struct tegra21_emc_table *new_table;
+	struct tegra21_emc_table *current_table;
+	struct tegra21_emc_table *new_table;
 
 	if (dram_type != DRAM_TYPE_LPDDR2 || !emc_timing)
 		return -ENODEV;

@@ -24,8 +24,598 @@
 
 #include "iomap.h"
 
-#define DVFS_CLOCK_CHANGE_VERSION	21012
+#define DVFS_CLOCK_CHANGE_VERSION	21015
 #define EMC_PRELOCK_VERSION		2101
+
+static inline u32 actual_osc_clocks(u32 in)
+{
+	if (in < 0x40)
+		return in * 16;
+	else if (in < 0x80)
+		return 2048;
+	else if (in < 0xc0)
+		return 4096;
+	else
+		return 8192;
+}
+
+static u32 update_clock_tree_delay(struct tegra21_emc_table *last_timing,
+				   struct tegra21_emc_table *next_timing,
+				   u32 dram_dev_num, u32 channel_mode)
+{
+	u32 mrr_req = 0, mrr_data = 0;
+	u32 temp0_0 = 0, temp0_1 = 0, temp1_0 = 0, temp1_1 = 0;
+	s32 tdel = 0, tmdel = 0, adel = 0;
+	u32 cval;
+	u32 last_timing_rate_mhz = last_timing->rate / 1000;
+	u32 next_timing_rate_mhz = next_timing->rate / 1000;
+
+	/*
+	 * Dev0 MSB.
+	 */
+	mrr_req = (2 << EMC_MRR_DEV_SEL_SHIFT) |
+		(19 << EMC_MRR_MA_SHIFT);
+	emc_writel(mrr_req, EMC_MRR);
+
+	WARN(wait_for_update(EMC_EMC_STATUS,
+			     EMC_EMC_STATUS_MRR_DIVLD, 1, 0),
+	     "Timed out waiting for MRR 19 (ch=0)\n");
+	if (channel_mode == DUAL_CHANNEL)
+		WARN(wait_for_update(EMC_EMC_STATUS,
+				     EMC_EMC_STATUS_MRR_DIVLD, 1, 0),
+		     "Timed out waiting for MRR 19 (ch=1)\n");
+
+	mrr_data = (emc_readl(EMC_MRR) & EMC_MRR_DATA_MASK) <<
+		EMC_MRR_DATA_SHIFT;
+
+	temp0_0 = (mrr_data & 0xff) << 8;
+	temp0_1 = mrr_data & 0xff00;
+
+	if (channel_mode == DUAL_CHANNEL) {
+		mrr_data = (emc1_readl(EMC_MRR) & EMC_MRR_DATA_MASK) <<
+			EMC_MRR_DATA_SHIFT;
+		temp1_0 = (mrr_data & 0xff) << 8;
+		temp1_1 = mrr_data & 0xff00;
+	}
+
+	/*
+	 * Dev0 LSB.
+	 */
+	mrr_req = (mrr_req & ~EMC_MRR_MA_MASK) | (18 << EMC_MRR_MA_SHIFT);
+	emc_writel(mrr_req, EMC_MRR);
+
+	WARN(wait_for_update(EMC_EMC_STATUS,
+			     EMC_EMC_STATUS_MRR_DIVLD, 1, 0),
+	     "Timed out waiting for MRR 18 (ch=0)\n");
+	if (channel_mode == DUAL_CHANNEL)
+		WARN(wait_for_update(EMC_EMC_STATUS,
+				     EMC_EMC_STATUS_MRR_DIVLD, 1, 0),
+		     "Timed out waiting for MRR 18 (ch=1)\n");
+
+	mrr_data = (emc_readl(EMC_MRR) & EMC_MRR_DATA_MASK) <<
+		EMC_MRR_DATA_SHIFT;
+
+	temp0_0 |= mrr_data & 0xff;
+	temp0_1 |= (mrr_data & 0xff00) >> 8;
+
+	if (channel_mode == DUAL_CHANNEL) {
+		mrr_data = (emc1_readl(EMC_MRR) & EMC_MRR_DATA_MASK) <<
+			EMC_MRR_DATA_SHIFT;
+		temp1_0 |= (mrr_data & 0xff);
+		temp1_1 |= (mrr_data & 0xff00) >> 8;
+	}
+
+	cval = (1000000 * actual_osc_clocks(last_timing->run_clocks)) /
+		(last_timing_rate_mhz * 2 * temp0_0);
+	tdel = next_timing->current_dram_clktree_c0d0u0 - cval;
+	tmdel = (tdel < 0) ? -1 * tdel : tdel;
+	adel = tmdel;
+
+	if (tmdel * 128 * next_timing_rate_mhz / 1000000 >
+	    next_timing->tree_margin)
+		next_timing->current_dram_clktree_c0d0u0 = cval;
+
+	cval = (1000000 * actual_osc_clocks(last_timing->run_clocks)) /
+		(last_timing_rate_mhz * 2 * temp0_1);
+	tdel = next_timing->current_dram_clktree_c0d0u1 - cval;
+	tmdel = (tdel < 0) ? -1 * tdel : tdel;
+
+	if (tmdel > adel)
+		adel = tmdel;
+
+	if (tmdel * 128 * next_timing_rate_mhz / 1000000 >
+	    next_timing->tree_margin)
+		next_timing->current_dram_clktree_c0d0u1 = cval;
+
+	if (channel_mode == DUAL_CHANNEL) {
+		cval = (1000000 * actual_osc_clocks(last_timing->run_clocks)) /
+			(last_timing_rate_mhz * 2 * temp1_0);
+		tdel = next_timing->current_dram_clktree_c1d0u0 - cval;
+		tmdel = (tdel < 0) ? -1 * tdel : tdel;
+		if (tmdel > adel)
+			adel = tmdel;
+
+		if (tmdel * 128 * next_timing_rate_mhz / 1000000 >
+		     next_timing->tree_margin)
+			next_timing->current_dram_clktree_c1d0u0 = cval;
+
+
+		cval= (1000000 * actual_osc_clocks(last_timing->run_clocks)) /
+			(last_timing_rate_mhz * 2 * temp1_1);
+		tdel = next_timing->current_dram_clktree_c1d0u1 - cval;
+		tmdel = (tdel < 0) ? -1 * tdel : tdel;
+
+		if (tmdel > adel)
+			adel = tmdel;
+
+		if (tmdel * 128 * next_timing_rate_mhz / 1000000 >
+		    next_timing->tree_margin)
+			next_timing->current_dram_clktree_c1d0u1 = cval;
+
+	}
+
+	if (dram_dev_num != TWO_RANK)
+		goto done;
+
+	/*
+	 * Dev1 MSB.
+	 */
+	mrr_req = (1 << EMC_MRR_DEV_SEL_SHIFT) |
+		(19 << EMC_MRR_MA_SHIFT);
+	emc_writel(mrr_req, EMC_MRR);
+
+	WARN(wait_for_update(EMC_EMC_STATUS,
+			     EMC_EMC_STATUS_MRR_DIVLD, 1, 0),
+	     "Timed out waiting for MRR 19 (ch=0)\n");
+	if (channel_mode == DUAL_CHANNEL)
+		WARN(wait_for_update(EMC_EMC_STATUS,
+				     EMC_EMC_STATUS_MRR_DIVLD, 1, 0),
+		     "Timed out waiting for MRR 19 (ch=1)\n");
+
+	mrr_data = (emc_readl(EMC_MRR) & EMC_MRR_DATA_MASK) <<
+		EMC_MRR_DATA_SHIFT;
+
+	temp0_0 = (mrr_data & 0xff) << 8;
+	temp0_1 = mrr_data & 0xff00;
+
+	if (channel_mode == DUAL_CHANNEL) {
+		mrr_data = (emc1_readl(EMC_MRR) & EMC_MRR_DATA_MASK) <<
+			EMC_MRR_DATA_SHIFT;
+		temp1_0 = (mrr_data & 0xff) << 8;
+		temp1_1 = mrr_data & 0xff00;
+	}
+
+	/*
+	 * Dev1 LSB.
+	 */
+	mrr_req = (mrr_req & ~EMC_MRR_MA_MASK) | (18 << EMC_MRR_MA_SHIFT);
+	emc_writel(mrr_req, EMC_MRR);
+
+	WARN(wait_for_update(EMC_EMC_STATUS,
+			     EMC_EMC_STATUS_MRR_DIVLD, 1, 0),
+	     "Timed out waiting for MRR 18 (ch=0)\n");
+	if (channel_mode == DUAL_CHANNEL)
+		WARN(wait_for_update(EMC_EMC_STATUS,
+				     EMC_EMC_STATUS_MRR_DIVLD, 1, 0),
+		     "Timed out waiting for MRR 18 (ch=1)\n");
+
+	mrr_data = (emc_readl(EMC_MRR) & EMC_MRR_DATA_MASK) <<
+		EMC_MRR_DATA_SHIFT;
+
+	temp0_0 |= mrr_data & 0xff;
+	temp0_1 |= (mrr_data & 0xff00) >> 8;
+
+	if (channel_mode == DUAL_CHANNEL) {
+		mrr_data = (emc1_readl(EMC_MRR) & EMC_MRR_DATA_MASK) <<
+			EMC_MRR_DATA_SHIFT;
+		temp1_0 |= (mrr_data & 0xff);
+		temp1_1 |= (mrr_data & 0xff00) >> 8;
+	}
+
+	cval = (1000000 * actual_osc_clocks(last_timing->run_clocks)) /
+		(last_timing_rate_mhz * 2 * temp0_0);
+	tdel = next_timing->current_dram_clktree_c0d1u0 - cval;
+	tmdel = (tdel < 0) ? -1 * tdel : tdel;
+	if (tmdel > adel)
+		adel = tmdel;
+
+	if (tmdel * 128 * next_timing_rate_mhz / 1000000 >
+	    next_timing->tree_margin)
+		next_timing->current_dram_clktree_c0d1u0 = cval;
+
+	cval = (1000000 * actual_osc_clocks(last_timing->run_clocks)) /
+		(last_timing_rate_mhz * 2 * temp0_1);
+	tdel = next_timing->current_dram_clktree_c0d1u1 - cval;
+	tmdel = (tdel < 0) ? -1 * tdel : tdel;
+	if (tmdel > adel)
+		adel = tmdel;
+
+	if (tmdel * 128 * next_timing_rate_mhz / 1000000 >
+	    next_timing->tree_margin)
+		next_timing->current_dram_clktree_c0d1u1 = cval;
+
+	if (channel_mode == DUAL_CHANNEL){
+		cval = (1000000 * actual_osc_clocks(last_timing->run_clocks)) /
+			(last_timing_rate_mhz * 2 * temp1_0);
+		tdel = next_timing->current_dram_clktree_c1d1u0 - cval;
+		tmdel = (tdel < 0) ? -1 * tdel : tdel;
+		if (tmdel > adel)
+			adel = tmdel;
+
+		if (tmdel * 128 * next_timing_rate_mhz / 1000000 >
+		    next_timing->tree_margin)
+			next_timing->current_dram_clktree_c1d1u0 = cval;
+
+		cval = (1000000 * actual_osc_clocks(last_timing->run_clocks)) /
+			(last_timing_rate_mhz * 2 * temp1_1);
+		tdel = next_timing->current_dram_clktree_c1d1u1 - cval;
+		tmdel = (tdel < 0) ? -1 * tdel : tdel;
+		if (tmdel > adel)
+			adel = tmdel;
+
+		if (tmdel * 128 * next_timing_rate_mhz / 1000000 >
+		    next_timing->tree_margin)
+			next_timing->current_dram_clktree_c1d1u1 = cval;
+	}
+
+done:
+	return adel;
+}
+
+static void start_periodic_compensation(void)
+{
+	u32 mpc_req = 0x4b;
+
+	emc_writel(mpc_req, EMC_MPC);
+	mpc_req = emc_readl(EMC_MPC);
+}
+
+/*
+ * The per channel registers dont fit in with the normal set up for making
+ * *_INDEX style enum fields because there are two identical register names
+ * but two channels. Here we define some _INDEX macros to deal with the one
+ * place we need per channel distinctions.
+ */
+#define EMC0_EMC_CMD_BRLSHFT_0_INDEX	0
+#define EMC1_EMC_CMD_BRLSHFT_1_INDEX	1
+#define EMC0_EMC_DATA_BRLSHFT_0_INDEX	2
+#define EMC1_EMC_DATA_BRLSHFT_0_INDEX	3
+#define EMC0_EMC_DATA_BRLSHFT_1_INDEX	4
+#define EMC1_EMC_DATA_BRLSHFT_1_INDEX	5
+#define EMC0_EMC_QUSE_BRLSHFT_0_INDEX	6
+#define EMC1_EMC_QUSE_BRLSHFT_1_INDEX	7
+#define EMC0_EMC_QUSE_BRLSHFT_2_INDEX	8
+#define EMC1_EMC_QUSE_BRLSHFT_3_INDEX	9
+
+/*
+ * Complicated table of registers and fields! Yikes. Essentially this
+ * boils down to (reg_field + (reg_field * 64)).
+ */
+#define TRIM_REG(chan, rank, reg, byte)					\
+	((EMC_PMACRO_OB_DDLL_LONG_DQ_RANK ## rank ## _ ## reg ##	\
+	  _OB_DDLL_LONG_DQ_RANK ## rank ## _BYTE ## byte ## _MASK &	\
+	  next_timing->trim_regs[EMC_PMACRO_OB_DDLL_LONG_DQ_RANK ##	\
+				 rank ## _ ## reg ## _INDEX]) >>	\
+	 EMC_PMACRO_OB_DDLL_LONG_DQ_RANK ## rank ## _ ## reg ##		\
+	 _OB_DDLL_LONG_DQ_RANK ## rank ## _BYTE ## byte ## _SHIFT)	\
+	+								\
+	(((EMC_DATA_BRLSHFT_ ## rank ## _RANK ## rank ## _BYTE ##	\
+	   byte ## _DATA_BRLSHFT_MASK &					\
+	   next_timing->trim_regs_per_ch[EMC ## chan ##			\
+			      _EMC_DATA_BRLSHFT_ ## rank ## _INDEX]) >>	\
+	  EMC_DATA_BRLSHFT_ ## rank ## _RANK ## rank ## _BYTE ##	\
+	  byte ## _DATA_BRLSHFT_SHIFT) * 64)
+
+/*
+ * Compute the temp variable in apply_periodic_compensation_trimmer(). It
+ * reduces to (reg_field | reg_field).
+ */
+#define CALC_TEMP(rank, reg, byte1, byte2, n)				\
+	((new[n] << EMC_PMACRO_OB_DDLL_LONG_DQ_RANK ## rank ## _ ##	\
+	  reg ## _OB_DDLL_LONG_DQ_RANK ## rank ## _BYTE ## byte1 ## _SHIFT) & \
+	 EMC_PMACRO_OB_DDLL_LONG_DQ_RANK ## rank ## _ ## reg ##		\
+	 _OB_DDLL_LONG_DQ_RANK ## rank ## _BYTE ## byte1 ## _MASK)	\
+	|								\
+	((new[n + 1] << EMC_PMACRO_OB_DDLL_LONG_DQ_RANK ## rank ## _ ##	\
+	  reg ## _OB_DDLL_LONG_DQ_RANK ## rank ## _BYTE ## byte2 ## _SHIFT) & \
+	 EMC_PMACRO_OB_DDLL_LONG_DQ_RANK ## rank ## _ ## reg ##		\
+	 _OB_DDLL_LONG_DQ_RANK ## rank ## _BYTE ## byte2 ## _MASK)	\
+
+static u32 apply_periodic_compensation_trimmer(
+		struct tegra21_emc_table *next_timing, u32 offset)
+{
+	u32 i, temp = 0;
+	u32 next_timing_rate_mhz = next_timing->rate / 1000;
+	s32 tree_delta[4];
+	s32 tree_delta_taps[4];
+	s32 new[] = {
+		TRIM_REG(0, 0, 0, 0),
+		TRIM_REG(0, 0, 0, 1),
+		TRIM_REG(0, 0, 1, 2),
+		TRIM_REG(0, 0, 1, 3),
+
+		TRIM_REG(1, 0, 2, 4),
+		TRIM_REG(1, 0, 2, 5),
+		TRIM_REG(1, 0, 3, 6),
+		TRIM_REG(1, 0, 3, 7),
+
+		TRIM_REG(0, 1, 0, 0),
+		TRIM_REG(0, 1, 0, 1),
+		TRIM_REG(0, 1, 1, 2),
+		TRIM_REG(0, 1, 1, 3),
+
+		TRIM_REG(1, 1, 2, 4),
+		TRIM_REG(1, 1, 2, 5),
+		TRIM_REG(1, 1, 3, 6),
+		TRIM_REG(1, 1, 3, 7)
+	};
+
+	switch (offset) {
+	case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_0:
+	case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_1:
+	case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_2:
+	case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_3:
+	case EMC_DATA_BRLSHFT_0:
+		tree_delta[0] = 128 *
+			(next_timing->current_dram_clktree_c0d0u0 -
+			 next_timing->trained_dram_clktree_c0d0u0);
+		tree_delta[1] = 128 *
+			(next_timing->current_dram_clktree_c0d0u1 -
+			 next_timing->trained_dram_clktree_c0d0u1);
+		tree_delta[2] = 128 *
+			(next_timing->current_dram_clktree_c1d0u0 -
+			 next_timing->trained_dram_clktree_c1d0u0);
+		tree_delta[3] = 128 *
+			(next_timing->current_dram_clktree_c1d0u1 -
+			 next_timing->trained_dram_clktree_c1d0u1);
+
+		tree_delta_taps[0] =
+			(tree_delta[0] * (s32)next_timing_rate_mhz) / 1000000;
+		tree_delta_taps[1] =
+			(tree_delta[1] * (s32)next_timing_rate_mhz) / 1000000;
+		tree_delta_taps[2] =
+			(tree_delta[2] * (s32)next_timing_rate_mhz) / 1000000;
+		tree_delta_taps[3] =
+			(tree_delta[3] * (s32)next_timing_rate_mhz) / 1000000;
+
+		for(i = 0; i < 4; i++) {
+			if ((tree_delta_taps[i] > next_timing->tree_margin) ||
+			    (tree_delta_taps[i] <
+			    (-1 * next_timing->tree_margin))) {
+				new[i * 2] = new[i * 2] + tree_delta_taps[i];
+				new[i * 2 + 1] = new[i * 2 + 1]
+					+ tree_delta_taps[i];
+			}
+		}
+
+		if (offset == EMC_DATA_BRLSHFT_0) {
+			for (i = 0; i < 8; i++)
+				new[i] = new[i] / 64;
+		} else {
+			for (i = 0; i < 8; i++)
+				new[i] = new[i] % 64;
+		}
+		break;
+
+	case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_0:
+        case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_1:
+        case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_2:
+        case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_3:
+        case EMC_DATA_BRLSHFT_1:
+		tree_delta[0] = 128 *
+			(next_timing->current_dram_clktree_c0d1u0 -
+			 next_timing->trained_dram_clktree_c0d1u0);
+		tree_delta[1] = 128 *
+			(next_timing->current_dram_clktree_c0d1u1 -
+			 next_timing->trained_dram_clktree_c0d1u1);
+		tree_delta[2] = 128 *
+			(next_timing->current_dram_clktree_c1d1u0 -
+			 next_timing->trained_dram_clktree_c1d1u0);
+		tree_delta[3] = 128 *
+			(next_timing->current_dram_clktree_c1d1u1 -
+			 next_timing->trained_dram_clktree_c1d1u1);
+
+		tree_delta_taps[0] =
+			(tree_delta[0] * (s32)next_timing_rate_mhz) / 1000000;
+		tree_delta_taps[1] =
+			(tree_delta[1] * (s32)next_timing_rate_mhz) / 1000000;
+		tree_delta_taps[2] =
+			(tree_delta[2] * (s32)next_timing_rate_mhz) / 1000000;
+		tree_delta_taps[3] =
+			(tree_delta[3] * (s32)next_timing_rate_mhz) / 1000000;
+
+		for(i = 0; i < 4; i++){
+			if ((tree_delta_taps[i] > next_timing->tree_margin) ||
+			    (tree_delta_taps[i] <
+			     (-1 * next_timing->tree_margin))){
+				new[8 + i * 2] = new[8 + i * 2] +
+					tree_delta_taps[i];
+				new[8 + i * 2 + 1] = new[8 + i * 2 + 1] +
+					tree_delta_taps[i];
+			}
+		}
+
+		if (offset == EMC_DATA_BRLSHFT_1) {
+			for (i = 0; i < 8; i++)
+				new[i + 8] = new[i + 8] / 64;
+		} else {
+			for(i = 0; i < 8; i++)
+				new[i + 8] = new[i + 8] % 64;
+		}
+		break;
+	}
+
+	switch (offset) {
+        case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_0:
+		/* rank, reg, byte1, byte2, n */
+		temp = CALC_TEMP(0, 0, 0, 1, 0);
+		break;
+        case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_1:
+		temp = CALC_TEMP(0, 1, 2, 3, 2);
+		break;
+        case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_2:
+		temp = CALC_TEMP(0, 2, 4, 5, 4);
+		break;
+        case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_3:
+		temp = CALC_TEMP(0, 3, 6, 7, 6);
+		break;
+        case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_0:
+		temp = CALC_TEMP(1, 0, 0, 1, 8);
+		break;
+        case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_1:
+		temp = CALC_TEMP(1, 1, 2, 3, 10);
+		break;
+        case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_2:
+		temp = CALC_TEMP(1, 2, 4, 5, 12);
+		break;
+        case EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_3:
+		temp = CALC_TEMP(1, 3, 6, 7, 14);
+		break;
+	case EMC_DATA_BRLSHFT_0:
+		temp =
+		((new[0] << EMC_DATA_BRLSHFT_0_RANK0_BYTE0_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_0_RANK0_BYTE0_DATA_BRLSHFT_MASK) |
+		((new[1] << EMC_DATA_BRLSHFT_0_RANK0_BYTE1_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_0_RANK0_BYTE1_DATA_BRLSHFT_MASK) |
+		((new[2] << EMC_DATA_BRLSHFT_0_RANK0_BYTE2_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_0_RANK0_BYTE2_DATA_BRLSHFT_MASK) |
+		((new[3] << EMC_DATA_BRLSHFT_0_RANK0_BYTE3_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_0_RANK0_BYTE3_DATA_BRLSHFT_MASK) |
+		((new[4] << EMC_DATA_BRLSHFT_0_RANK0_BYTE4_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_0_RANK0_BYTE4_DATA_BRLSHFT_MASK) |
+		((new[5] << EMC_DATA_BRLSHFT_0_RANK0_BYTE5_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_0_RANK0_BYTE5_DATA_BRLSHFT_MASK) |
+		((new[6] << EMC_DATA_BRLSHFT_0_RANK0_BYTE6_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_0_RANK0_BYTE6_DATA_BRLSHFT_MASK) |
+		((new[7] << EMC_DATA_BRLSHFT_0_RANK0_BYTE7_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_0_RANK0_BYTE7_DATA_BRLSHFT_MASK);
+		break;
+	case EMC_DATA_BRLSHFT_1:
+		temp =
+		((new[8] << EMC_DATA_BRLSHFT_1_RANK1_BYTE0_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_1_RANK1_BYTE0_DATA_BRLSHFT_MASK) |
+		((new[9] << EMC_DATA_BRLSHFT_1_RANK1_BYTE1_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_1_RANK1_BYTE1_DATA_BRLSHFT_MASK) |
+		((new[10] <<
+			    EMC_DATA_BRLSHFT_1_RANK1_BYTE2_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_1_RANK1_BYTE2_DATA_BRLSHFT_MASK) |
+		((new[11] <<
+			    EMC_DATA_BRLSHFT_1_RANK1_BYTE3_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_1_RANK1_BYTE3_DATA_BRLSHFT_MASK) |
+		((new[12] <<
+			    EMC_DATA_BRLSHFT_1_RANK1_BYTE4_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_1_RANK1_BYTE4_DATA_BRLSHFT_MASK) |
+		((new[13] <<
+			    EMC_DATA_BRLSHFT_1_RANK1_BYTE5_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_1_RANK1_BYTE5_DATA_BRLSHFT_MASK) |
+		((new[14] <<
+			    EMC_DATA_BRLSHFT_1_RANK1_BYTE6_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_1_RANK1_BYTE6_DATA_BRLSHFT_MASK) |
+		((new[15] <<
+			    EMC_DATA_BRLSHFT_1_RANK1_BYTE7_DATA_BRLSHFT_SHIFT) &
+			    EMC_DATA_BRLSHFT_1_RANK1_BYTE7_DATA_BRLSHFT_MASK);
+		break;
+	default:
+		break;
+	}
+
+	return temp;
+}
+
+u32 __do_periodic_emc_compensation_r21015(
+			struct tegra21_emc_table *current_timing)
+{
+	u32 dram_dev_num;
+	u32 channel_mode;
+	u32 emc_cfg,emc_cfg_o;
+	u32 emc_dbg_o;
+	u32 del, i;
+	u32 list[] = {
+		EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_0,
+		EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_1,
+		EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_2,
+		EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_3,
+		EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_0,
+		EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_1,
+		EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_2,
+		EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_3,
+		EMC_DATA_BRLSHFT_0,
+		EMC_DATA_BRLSHFT_1
+	};
+	u32 items = ARRAY_SIZE(list);
+
+	emc_dbg_o = emc_readl(EMC_DBG);
+	emc_cfg_o = emc_readl(EMC_CFG);
+	emc_cfg = emc_cfg_o & ~(EMC_CFG_DYN_SELF_REF | EMC_CFG_DRAM_ACPD |
+				EMC_CFG_DRAM_CLKSTOP_PD |
+				EMC_CFG_DRAM_CLKSTOP_PD);
+
+	channel_mode = !!(current_timing->burst_regs[EMC_FBIO_CFG7_INDEX] &
+			  (1 << 2));
+	dram_dev_num = 1 + (mc_readl(MC_EMEM_ADR_CFG) & 0x1);
+
+	if (current_timing->periodic_training) {
+		/*
+		 * 1. Power optimizations should be off.
+		 */
+		emc_set_shadow_bypass(ACTIVE);
+		emc_writel(emc_cfg, EMC_CFG);
+		emc_set_shadow_bypass(ASSEMBLY);
+
+		wait_for_update(EMC_EMC_STATUS,
+				EMC_EMC_STATUS_DRAM_IN_POWERDOWN_MASK, 0, 0);
+		if (channel_mode)
+			wait_for_update(EMC_EMC_STATUS,
+				EMC_EMC_STATUS_DRAM_IN_POWERDOWN_MASK, 0, 1);
+
+		wait_for_update(EMC_EMC_STATUS,
+				EMC_EMC_STATUS_DRAM_IN_SELF_REFRESH_MASK, 0, 0);
+		if (channel_mode)
+			wait_for_update(EMC_EMC_STATUS,
+				EMC_EMC_STATUS_DRAM_IN_SELF_REFRESH_MASK, 0, 1);
+
+		/*
+		 * 2. osc kick off - this assumes training and dvfs have set
+		 *    correct MR23.
+		 */
+		start_periodic_compensation();
+
+		/*
+		 * 3. Let dram capture its clock tree delays.
+		 */
+		udelay((actual_osc_clocks(current_timing->run_clocks) * 1000) /
+		       current_timing->rate + 1);
+
+		/*
+		 * 4. Check delta wrt previous values (save value if margin
+		 *    exceeds what is set in table).
+		 */
+		del = update_clock_tree_delay(current_timing, current_timing,
+					      dram_dev_num, channel_mode);
+
+		/*
+		 * 5. Apply compensation w.r.t. trained values (if clock tree
+		 *    has drifted more than the set margin).
+		 */
+		if (current_timing->tree_margin <
+		    ((del * 128 * (current_timing->rate / 1000)) / 1000000)) {
+			for (i = 0; i < items; i++) {
+				u32 tmp = apply_periodic_compensation_trimmer(
+						       current_timing, list[i]);
+				emc_writel(tmp, list[i]);
+			}
+		}
+
+		emc_writel(emc_cfg_o, EMC_CFG);
+
+		/*
+		 * 6. Timing update actally applies the new trimmers.
+		 */
+		emc_timing_update(channel_mode);
+	}
+
+	return 0;
+}
 
 /*
  * Source clock period is in picoseconds. Returns the ramp down wait time in
@@ -176,9 +766,9 @@ static u32 do_dvfs_power_ramp_down(u32 clk, int flip_backward,
 /*
  * Similar to do_dvfs_power_ramp_down() except this does the power ramp up.
  */
-static u32 do_dvfs_power_ramp_up(u32 clk, int flip_backward,
-				 struct tegra21_emc_table *last_timing,
-				 struct tegra21_emc_table *next_timing)
+noinline u32 do_dvfs_power_ramp_up(u32 clk, int flip_backward,
+				   struct tegra21_emc_table *last_timing,
+				   struct tegra21_emc_table *next_timing)
 {
 	u32 pmacro_cmd_pad;
 	u32 pmacro_dq_pad;
@@ -311,7 +901,7 @@ static u32 do_dvfs_power_ramp_up(u32 clk, int flip_backward,
  * Change the DLL's input clock. Used during the DLL prelock sequence.
  */
 static void change_dll_src(struct tegra21_emc_table *next_timing,
-			   u32 clksrc)
+			     u32 clksrc)
 {
 	u32 out_enb_x;
 	u32 dll_setting = next_timing->dll_clk_src;
@@ -365,7 +955,7 @@ static void change_dll_src(struct tegra21_emc_table *next_timing,
  * Prelock the DLL.
  */
 static u32 dll_prelock(struct tegra21_emc_table *next_timing,
-		       int dvfs_with_training, u32 clksrc)
+			 int dvfs_with_training, u32 clksrc)
 {
 	u32 emc_dig_dll_status;
 	u32 dll_locked;
@@ -536,7 +1126,7 @@ static void dll_disable(int channel_mode)
 /*
  * Do the clock change sequence.
  */
-void emc_set_clock_r21012(struct tegra21_emc_table *next_timing,
+void emc_set_clock_r21015(struct tegra21_emc_table *next_timing,
 			  struct tegra21_emc_table *last_timing,
 			  int training, u32 clksrc)
 {
@@ -660,9 +1250,13 @@ void emc_set_clock_r21012(struct tegra21_emc_table *next_timing,
 	u32 W2P_war;
 	u32 tRPST;
 
+	u32 mrw_req;
+	u32 adel = 0, compensate_trimmer_applicable = 0;
+	u32 next_timing_rate_mhz = next_timing->rate / 1000;
+
 	static u32 fsp_for_next_freq;
 
-	emc_cc_dbg(INFO, "Running clock change.");
+	emc_cc_dbg(INFO, "Running clock change.\n");
 	ccfifo_index = 0;
 
 	fake_timing = get_timing_from_freq(last_timing->rate);
@@ -696,7 +1290,6 @@ void emc_set_clock_r21012(struct tegra21_emc_table *next_timing,
 	tZQCAL_lpddr4_fc_adj = (source_clock_period > zqcal_before_cc_cutoff) ?
 		tZQCAL_lpddr4 / destination_clock_period :
 		(tZQCAL_lpddr4 - tFC_lpddr4) / destination_clock_period;
-
 	emc_dbg_o = emc_readl(EMC_DBG);
 	emc_pin_o = emc_readl(EMC_PIN);
 	emc_cfg_pipe_clk_o = emc_readl(EMC_CFG_PIPE_CLK);
@@ -730,8 +1323,37 @@ void emc_set_clock_r21012(struct tegra21_emc_table *next_timing,
 	 *   Pre DVFS SW sequence.
 	 */
 	emc_cc_dbg(STEPS, "Step 1\n");
-	emc_cc_dbg(SUB_STEPS, "Step 1.1: Bug 200024907 - Patch RP R2P");
+	emc_set_shadow_bypass(ACTIVE);
+	emc_writel(emc_cfg, EMC_CFG);
+	emc_writel(emc_sel_dpd_ctrl, EMC_SEL_DPD_CTRL);
+	emc_set_shadow_bypass(ASSEMBLY);
 
+	if (next_timing->periodic_training) {
+		wait_for_update(EMC_EMC_STATUS,
+				EMC_EMC_STATUS_DRAM_IN_POWERDOWN_MASK, 0, 0);
+		if (channel_mode)
+			wait_for_update(EMC_EMC_STATUS,
+				EMC_EMC_STATUS_DRAM_IN_POWERDOWN_MASK, 0, 1);
+
+		wait_for_update(EMC_EMC_STATUS,
+				EMC_EMC_STATUS_DRAM_IN_SELF_REFRESH_MASK, 0, 0);
+		if (channel_mode)
+			wait_for_update(EMC_EMC_STATUS,
+				EMC_EMC_STATUS_DRAM_IN_SELF_REFRESH_MASK, 0, 1);
+
+		start_periodic_compensation();
+
+		udelay(((1000 * actual_osc_clocks(last_timing->run_clocks)) /
+			last_timing->rate) + 2);
+		adel = update_clock_tree_delay(fake_timing, next_timing,
+					       dram_dev_num, channel_mode);
+		compensate_trimmer_applicable =
+			next_timing->periodic_training &&
+			((adel * 128 * next_timing_rate_mhz) / 1000000) >
+			next_timing->tree_margin;
+	}
+
+	emc_cc_dbg(SUB_STEPS, "Step 1.1: Bug 200024907 - Patch RP R2P");
 	if (opt_war_200024907) {
 		nRTP = 16;
 		if (source_clock_period >= 1000000/1866) /* 535.91 ps */
@@ -1074,6 +1696,10 @@ void emc_set_clock_r21012(struct tegra21_emc_table *next_timing,
 		__raw_writel(wval, (void __iomem *)var);
 	}
 
+	mrw_req = (23 << EMC_MRW_MRW_MA_SHIFT) |
+		(next_timing->run_clocks & EMC_MRW_MRW_OP_MASK);
+	emc_writel(mrw_req, EMC_MRW);
+
 	/* Per channel burst registers. */
 	emc_cc_dbg(SUB_STEPS, "Writing burst_regs_per_ch\n");
 	for (i = 0; i < next_timing->burst_regs_per_ch_num; i++) {
@@ -1128,18 +1754,44 @@ void emc_set_clock_r21012(struct tegra21_emc_table *next_timing,
 	/* Trimmers. */
 	emc_cc_dbg(SUB_STEPS, "Writing trim_regs\n");
 	for (i = 0; i < next_timing->trim_regs_num; i++) {
+		u64 trim_reg;
+
 		if (!trim_reg_off[i])
 			continue;
 
-		emc_cc_dbg(REG_LISTS, "(%u) 0x%08x => 0x%p\n",
-			   i, next_timing->trim_regs[i],
-			   trim_reg_off[i]);
-		__raw_writel(next_timing->trim_regs[i], trim_reg_off[i]);
+		trim_reg = (u64)trim_reg_off[i] & 0xfff;
+		if (compensate_trimmer_applicable &&
+		    (trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_0 ||
+		     trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_1 ||
+		     trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_2 ||
+		     trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_3 ||
+		     trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_0 ||
+		     trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_1 ||
+		     trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_2 ||
+		     trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_3 ||
+		     trim_reg == EMC_DATA_BRLSHFT_0 ||
+		     trim_reg == EMC_DATA_BRLSHFT_1)) {
+			u32 reg =
+				apply_periodic_compensation_trimmer(next_timing,
+								    trim_reg);
+			emc_cc_dbg(REG_LISTS, "(%u) 0x%08x => 0x%p\n", i, reg,
+				   trim_reg_off[i]);
+			__raw_writel(reg, trim_reg_off[i]);
+		} else {
+			emc_cc_dbg(REG_LISTS, "(%u) 0x%08x => 0x%p\n",
+				   i, next_timing->trim_regs[i],
+				   trim_reg_off[i]);
+			__raw_writel(next_timing->trim_regs[i],
+				     trim_reg_off[i]);
+		}
+
 	}
 
 	/* Per channel trimmers. */
 	emc_cc_dbg(SUB_STEPS, "Writing trim_regs_per_ch\n");
 	for (i = 0; i < next_timing->trim_regs_per_ch_num; i++) {
+		u64 trim_reg;
+
 		if (!trim_perch_reg_off[i])
 			continue;
 
@@ -1148,11 +1800,32 @@ void emc_set_clock_r21012(struct tegra21_emc_table *next_timing,
 		    (u64)IO_ADDRESS(TEGRA_EMC1_BASE))
 			continue;
 
-		emc_cc_dbg(REG_LISTS, "(%u) 0x%08x => 0x%p\n",
-			   i, next_timing->trim_regs_per_ch[i],
-			   trim_perch_reg_off[i]);
-		__raw_writel(next_timing->trim_regs_per_ch[i],
-			     trim_perch_reg_off[i]);
+		trim_reg = (u64)trim_perch_reg_off[i] & 0xfff;
+		if (compensate_trimmer_applicable &&
+		    (trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_0 ||
+		     trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_1 ||
+		     trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_2 ||
+		     trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_3 ||
+		     trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_0 ||
+		     trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_1 ||
+		     trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_2 ||
+		     trim_reg == EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_3 ||
+		     trim_reg == EMC_DATA_BRLSHFT_0 ||
+		     trim_reg == EMC_DATA_BRLSHFT_1)) {
+			u32 reg =
+				apply_periodic_compensation_trimmer(next_timing,
+							    trim_reg);
+			emc_cc_dbg(REG_LISTS, "(%u) 0x%08x => 0x%p\n",
+				   i, reg, trim_perch_reg_off[i]);
+			__raw_writel(reg,
+				     trim_perch_reg_off[i]);
+		} else {
+			emc_cc_dbg(REG_LISTS, "(%u) 0x%08x => 0x%p\n",
+				   i, next_timing->trim_regs_per_ch[i],
+				   trim_perch_reg_off[i]);
+			__raw_writel(next_timing->trim_regs_per_ch[i],
+				     trim_perch_reg_off[i]);
+		}
 	}
 
 	emc_cc_dbg(SUB_STEPS, "Writing burst_mc_regs\n");
@@ -1363,7 +2036,8 @@ void emc_set_clock_r21012(struct tegra21_emc_table *next_timing,
 				   div_o3(1000 *
 					  next_timing->dram_timing_regs[T_PDEX],
 					  destination_clock_period));
-			ccfifo_writel(0, EMC_SELF_REF, 0);
+			ccfifo_writel(EMC_SELF_REF_ACTIVE_SELF_REF,
+				      EMC_SELF_REF, 0);
 			ccfifo_writel(0, EMC_REF, 0);
 			ccfifo_writel(2 << EMC_ZQ_CAL_DEV_SEL_SHIFT |
 				      EMC_ZQ_CAL_ZQ_LATCH_CMD,
@@ -1389,7 +2063,8 @@ void emc_set_clock_r21012(struct tegra21_emc_table *next_timing,
 
 			ccfifo_writel((mr13_flip_fspop & 0xfffffff7) |
 				      0x0c000000, EMC_MRW3, 0);
-			ccfifo_writel(0, EMC_SELF_REF, 0);
+			ccfifo_writel(EMC_SELF_REF_ACTIVE_SELF_REF,
+				      EMC_SELF_REF, 0);
 			ccfifo_writel(0, EMC_REF, 0);
 
 			ccfifo_writel(1 << EMC_ZQ_CAL_DEV_SEL_SHIFT |
@@ -1408,7 +2083,8 @@ void emc_set_clock_r21012(struct tegra21_emc_table *next_timing,
 				   div_o3(1000 *
 					  next_timing->dram_timing_regs[T_PDEX],
 					  destination_clock_period));
-			ccfifo_writel(0, EMC_SELF_REF, 0);
+			ccfifo_writel(EMC_SELF_REF_ACTIVE_SELF_REF,
+				      EMC_SELF_REF, 0);
 			ccfifo_writel(0, EMC_REF, 0);
 
 			ccfifo_writel(EMC_ZQ_CAL_ZQ_LATCH_CMD, EMC_ZQ_CAL,

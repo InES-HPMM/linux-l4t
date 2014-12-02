@@ -84,6 +84,7 @@ int tegra_emc_set_over_temp_state(unsigned long state);
 
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 int tegra_emc_set_rate_on_parent(unsigned long rate, struct clk *p);
+u32 emc_do_periodic_compensation(void);
 #else
 int tegra_emc_set_rate(unsigned long rate);
 bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,

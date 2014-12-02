@@ -187,6 +187,26 @@ struct tegra21_emc_table {
 	u32  training_pattern; /* Unused */
 	u32  trained;
 
+	u32 periodic_training;
+	u32 trained_dram_clktree_c0d0u0;
+	u32 trained_dram_clktree_c0d0u1;
+	u32 trained_dram_clktree_c0d1u0;
+	u32 trained_dram_clktree_c0d1u1;
+	u32 trained_dram_clktree_c1d0u0;
+	u32 trained_dram_clktree_c1d0u1;
+	u32 trained_dram_clktree_c1d1u0;
+	u32 trained_dram_clktree_c1d1u1;
+	u32 current_dram_clktree_c0d0u0;
+	u32 current_dram_clktree_c0d0u1;
+	u32 current_dram_clktree_c0d1u0;
+	u32 current_dram_clktree_c0d1u1;
+	u32 current_dram_clktree_c1d0u0;
+	u32 current_dram_clktree_c1d0u1;
+	u32 current_dram_clktree_c1d1u0;
+	u32 current_dram_clktree_c1d1u1;
+	u32 run_clocks;
+	u32 tree_margin;
+
 	int  burst_regs_num;
 	int  burst_regs_per_ch_num;
 	int  trim_regs_num;
