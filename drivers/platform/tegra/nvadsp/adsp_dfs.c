@@ -69,7 +69,7 @@ struct adsp_dfs_policy {
 	bool enable;
  /*
  * update_freq_flag = TRUE, ADSP ACKed the new freq
- *					= FALSE, ADSP NACKed the new freq
+ *		= FALSE, ADSP NACKed the new freq
  */
 	bool update_freq_flag;
 
@@ -144,8 +144,6 @@ static int adsp_dfs_rc_callback(
 	unsigned long freq = rate / 1000;
 	int old_index, new_index;
 
-	actmon_rate_change(freq);
-
 	mutex_lock(&policy_mutex);
 	/* update states */
 	adspfreq_stats_update();
@@ -158,8 +156,7 @@ static int adsp_dfs_rc_callback(
 
 	mutex_unlock(&policy_mutex);
 
-	pr_debug("policy->cur:%lu\n", policy->cur);
-	/* TBD: Communicate ADSP about new freq */
+	actmon_rate_change(freq);
 
 	return NOTIFY_OK;
 };
@@ -191,11 +188,16 @@ static unsigned long update_policy(unsigned long tfreq)
 	int index;
 	int ret;
 
-	old_freq = policy->cur;
-
 	tfreq = adsp_get_target_freq(tfreq * 1000, &index);
 	if (!tfreq) {
 		pr_info("unable set the target freq\n");
+		return 0;
+	}
+
+	old_freq = policy->cur;
+
+	if ((tfreq / 1000) == old_freq) {
+		pr_debug("old and new target_freq is same\n");
 		return 0;
 	}
 
@@ -205,8 +207,6 @@ static unsigned long update_policy(unsigned long tfreq)
 		policy->update_freq_flag = false;
 		return 0;
 	}
-
-	tfreq = clk_get_rate(policy->adsp_clk) / 1000;
 
 	mutex_lock(&policy_mutex);
 
@@ -474,24 +474,36 @@ err_out:
 	return ret;
 }
 #endif
-
+/*
+ * Set target freq.
+ * @params:
+  * freq: adsp freq in KHz
+*/
 void adsp_cpu_set_rate(unsigned long freq)
 {
+	mutex_lock(&policy_mutex);
+
 	if (!policy->enable) {
 		pr_info("adsp dfs policy is not enabled\n");
-		return;
+		goto exit_out;
 	}
 
-	if (!freq || freq == policy->cur)
-		return;
-
+	if (!freq || (freq == policy->cur)) {
+		pr_info("old and target_freq is same, exit out\n");
+		goto exit_out;
+	}
 	if (freq < policy->min)
 		freq = policy->min;
 	else if (freq > policy->max)
 		freq = policy->max;
 
+	mutex_unlock(&policy_mutex);
+
 	if (freq)
 		update_policy(freq);
+	return ;
+exit_out:
+	mutex_unlock(&policy_mutex);
 }
 
 /* Should be called after ADSP os is loaded */
