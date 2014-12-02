@@ -7,11 +7,9 @@
 		wlan_default: wlan-default {
 			gpio-input = <
 				TEGRA_GPIO(H, 2)
-				TEGRA_GPIO(I, 1)
 				>;
 			gpio-output-high = <
 				TEGRA_GPIO(H, 0)
-				TEGRA_GPIO(I, 0)
 				>;
 		};
 	};
