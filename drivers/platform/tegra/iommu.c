@@ -161,12 +161,6 @@ static struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	{ .name = "tegra30-spdif",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 						  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegradc.0", .swgids = TEGRA_SWGROUP_BIT(DC) |
-					 TEGRA_SWGROUP_BIT(DCB) |
-	 TEGRA_SWGROUP_BIT(DC12), },
-	{ .name = "tegradc.1", .swgids = TEGRA_SWGROUP_BIT(DC) |
-					 TEGRA_SWGROUP_BIT(DCB) |
-	 TEGRA_SWGROUP_BIT(DC12), },
 	{ .name = "tegra_bb",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
