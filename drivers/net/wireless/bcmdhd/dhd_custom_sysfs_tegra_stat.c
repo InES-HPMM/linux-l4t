@@ -62,19 +62,19 @@ stat_work_func(struct work_struct *work)
 	wl_cnt_t *cnt;
 	int i;
 
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	/* create stat request */
 	cnt = kmalloc(sizeof(wl_cnt_t), GFP_KERNEL);
 	if (!cnt) {
-		pr_err("%s: kmalloc(wl_cnt_t) failed\n", __func__);
+//		pr_err("%s: kmalloc(wl_cnt_t) failed\n", __func__);
 		goto fail;
 	}
 
 	/* send stat request */
 	if (wldev_iovar_getbuf(net, "counters", NULL, 0,
 		(void *) cnt, sizeof(wl_cnt_t), NULL) != BCME_OK) {
-		pr_err("%s: wldev_iovar_getbuf() failed\n", __func__);
+//		pr_err("%s: wldev_iovar_getbuf() failed\n", __func__);
 		kfree(cnt);
 		goto fail;
 	}

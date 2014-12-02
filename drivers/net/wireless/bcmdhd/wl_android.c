@@ -53,6 +53,10 @@
 #include <wl_cfgnan.h>
 #endif /* WL_NAN */
 
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+#include "dhd_custom_sysfs_tegra.h"
+#endif
+
 #include <proto/802.1d.h>
 /*
  * Android private command strings, PLEASE define new private commands here
@@ -689,6 +693,9 @@ int wl_android_wifi_on(struct net_device *dev)
 		DHD_ERROR(("%s: dev is null\n", __FUNCTION__));
 		return -EINVAL;
 	}
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	tegra_sysfs_resume();
+#endif
 
 	dhd_net_if_lock(dev);
 	if (!g_wifi_on) {
@@ -742,6 +749,9 @@ int wl_android_wifi_off(struct net_device *dev)
 		DHD_TRACE(("%s: dev is null\n", __FUNCTION__));
 		return -EINVAL;
 	}
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	tegra_sysfs_suspend();
+#endif
 
 	dhd_net_if_lock(dev);
 	if (g_wifi_on) {

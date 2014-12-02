@@ -83,11 +83,13 @@ tegra_sysfs_register(struct device *dev)
 	}
 
 	/* start sysfs work */
+#if 0
 	tegra_sysfs_histogram_ping_work_start();
 	tegra_sysfs_histogram_rssi_work_start();
 	tegra_sysfs_histogram_scan_work_start();
 	tegra_sysfs_histogram_stat_work_start();
 	tegra_sysfs_histogram_tcpdump_work_start();
+#endif
 
 	return 0;
 }

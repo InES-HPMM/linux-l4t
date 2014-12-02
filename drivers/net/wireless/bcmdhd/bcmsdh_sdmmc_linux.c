@@ -44,6 +44,10 @@
 #include <linux/wlan_plat.h>
 #endif
 
+#ifdef	CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+#include "dhd_custom_sysfs_tegra.h"
+#endif
+
 #if !defined(SDIO_VENDOR_ID_BROADCOM)
 #define SDIO_VENDOR_ID_BROADCOM		0x02d0
 #endif /* !defined(SDIO_VENDOR_ID_BROADCOM) */
@@ -276,6 +280,10 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 		return  -EINVAL;
 	}
 
+#ifdef	CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	tegra_sysfs_suspend();
+#endif
+
 	/* keep power while host suspended */
 	err = sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
 	if (err) {
@@ -305,6 +313,9 @@ static int bcmsdh_sdmmc_resume(struct device *pdev)
 #if defined(OOB_INTR_ONLY)
 	bcmsdh_resume(sdioh->bcmsdh);
 #endif 
+#ifdef	CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	tegra_sysfs_resume();
+#endif
 
 	smp_mb();
 	return 0;

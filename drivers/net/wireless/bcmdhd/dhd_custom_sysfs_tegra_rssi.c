@@ -38,7 +38,7 @@ rssi_work_func(struct work_struct *work)
 	int err;
 	int i;
 
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	/* create rssi request */
 	memset(&scb_val, 0, sizeof(scb_val));
@@ -47,7 +47,7 @@ rssi_work_func(struct work_struct *work)
 	/* send rssi request */
 	err = wldev_ioctl(net, WLC_GET_RSSI, &scb_val, sizeof(scb_val), false);
 	if (err) {
-		pr_err("%s: wldev_ioctl(WLC_GET_RSSI) failed\n", __func__);
+//		pr_err("%s: wldev_ioctl(WLC_GET_RSSI) failed\n", __func__);
 		goto fail;
 	}
 
