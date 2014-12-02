@@ -36,6 +36,7 @@ static void __exit nvdumper_debugfs_exit(void);
 #define NVDUMPER_CLEAN      0xf000caf3U
 #define NVDUMPER_DIRTY      0x2badfaceU
 #define NVDUMPER_DIRTY_DUMP 0xdeadbeefU
+#define NVDUMPER_WDT_DUMP   0x2badbeefU
 
 #define RW_MODE (S_IWUSR | S_IRUGO)
 
@@ -101,6 +102,7 @@ static int __init nvdumper_init(void)
 		break;
 	case NVDUMPER_DIRTY:
 	case NVDUMPER_DIRTY_DUMP:
+	case NVDUMPER_WDT_DUMP:
 		pr_info("nvdumper: last reboot was dirty\n");
 		break;
 	default:
@@ -131,6 +133,8 @@ static int __init nvdumper_init(void)
 		set_dirty_state(NVDUMPER_DIRTY_DUMP);
 	else if (item->ramdump.flag == 2)
 		set_dirty_state(NVDUMPER_DIRTY);
+	else if (item->ramdump.flag == 3)
+		set_dirty_state(NVDUMPER_WDT_DUMP);
 	else
 		set_dirty_state(NVDUMPER_CLEAN);
 
@@ -225,6 +229,8 @@ static ssize_t nvdumper_write_set(struct file *file, const char __user *buf,
 		set_dirty_state(NVDUMPER_DIRTY);
 	else if (!strcmp(nvdumper_set_str, "dirty_dump"))
 		set_dirty_state(NVDUMPER_DIRTY_DUMP);
+	else if (!strcmp(nvdumper_set_str, "wdt_dump"))
+		set_dirty_state(NVDUMPER_WDT_DUMP);
 	else
 		strcpy(nvdumper_set_str, "unknown");
 
