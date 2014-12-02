@@ -99,6 +99,8 @@ struct adsp_freq_stats {
 
 static struct adsp_dfs_policy *policy;
 static struct adsp_freq_stats freq_stats;
+static struct device *device;
+
 static DEFINE_MUTEX(policy_mutex);
 
 static unsigned long adsp_get_target_freq(unsigned long tfreq, int *index)
@@ -190,27 +192,27 @@ static unsigned long update_policy(unsigned long tfreq)
 
 	tfreq = adsp_get_target_freq(tfreq * 1000, &index);
 	if (!tfreq) {
-		pr_info("unable set the target freq\n");
+		dev_info(device, "unable get the target freq\n");
 		return 0;
 	}
 
 	old_freq = policy->cur;
 
 	if ((tfreq / 1000) == old_freq) {
-		pr_debug("old and new target_freq is same\n");
+		dev_dbg(device, "old and new target_freq is same\n");
 		return 0;
 	}
 
 	ret = clk_set_rate(policy->adsp_clk, tfreq);
 	if (ret) {
-		pr_err("failed to set adsp freq:%d\n", ret);
+		dev_err(device, "failed to set adsp freq:%d\n", ret);
 		policy->update_freq_flag = false;
 		return 0;
 	}
 
 	mutex_lock(&policy_mutex);
 
-	pr_debug("sending change in freq:%lu\n", tfreq);
+	dev_dbg(device, "sending change in freq:%lu\n", tfreq);
 	/*
 	 * Ask adsp to do action upon change in freq. ADSP and Host need to
 	 * maintain the same freq table.
@@ -218,14 +220,14 @@ static unsigned long update_policy(unsigned long tfreq)
 	ret = nvadsp_mbox_send(mbx, index,
 				NVADSP_MBOX_SMSG, true, 100);
 	if (ret) {
-		pr_err("%s:host to adsp, mbox_send failure ....\n", __func__);
+		dev_err(device, "%s:host to adsp, mbox_send failure ....\n", __func__);
 		policy->update_freq_flag = false;
 		goto fail;
 	}
 
 	ret = nvadsp_mbox_recv(&policy->mbox, &reply, true, MBOX_TIMEOUT);
 	if (ret) {
-		pr_err("%s:host to adsp,  mbox_receive failure ....\n",
+		dev_err(device, "%s:host to adsp,  mbox_receive failure ....\n",
 		__func__);
 		policy->update_freq_flag = false;
 		goto fail;
@@ -234,19 +236,19 @@ static unsigned long update_policy(unsigned long tfreq)
 	switch (reply) {
 	case ACK:
 		/* Set Update freq flag */
-		pr_debug("adsp freq change status:ACK\n");
+		dev_dbg(device, "adsp freq change status:ACK\n");
 		policy->update_freq_flag = true;
 		break;
 	case NACK:
 		/* Set Update freq flag */
-		pr_debug("adsp freq change status:NACK\n");
+		dev_dbg(device, "adsp freq change status:NACK\n");
 		policy->update_freq_flag = false;
 		break;
 	default:
-		pr_err("Error: adsp freq change status\n");
+		dev_err(device, "Error: adsp freq change status\n");
 	}
 
-	pr_debug("%s:status received from adsp: %s, tfreq:%lu\n", __func__,
+	dev_dbg(device, "%s:status received from adsp: %s, tfreq:%lu\n", __func__,
 		(policy->update_freq_flag == true ? "ACK" : "NACK"), tfreq);
 
 fail:
@@ -255,7 +257,7 @@ fail:
 	if (!policy->update_freq_flag) {
 		ret = clk_set_rate(policy->adsp_clk, old_freq * 1000);
 		if (ret) {
-			pr_err("failed to resume adsp freq:%lu\n", old_freq);
+			dev_err(device, "failed to resume adsp freq:%lu\n", old_freq);
 			policy->update_freq_flag = false;
 		}
 
@@ -298,7 +300,7 @@ static int policy_min_set(void *data, u64 val)
 	unsigned long min = (unsigned long)val;
 
 	if (!policy->enable) {
-		pr_info("adsp dfs policy is not enabled\n");
+		dev_err(device, "adsp dfs policy is not enabled\n");
 		return -EINVAL;
 	}
 
@@ -330,7 +332,7 @@ static int policy_max_set(void *data, u64 val)
 	unsigned long max = (unsigned long)val;
 
 	if (!policy->enable) {
-		pr_info("adsp dfs policy is not enabled\n");
+		dev_err(device, "adsp dfs policy is not enabled\n");
 		return -EINVAL;
 	}
 
@@ -362,7 +364,7 @@ static int policy_cur_set(void *data, u64 val)
 	unsigned long cur = (unsigned long)val;
 
 	if (policy->enable) {
-		pr_info("adsp dfs is enabled, should be disabled first\n");
+		dev_err(device, "adsp dfs is enabled, should be disabled first\n");
 		return -EINVAL;
 	}
 
@@ -484,12 +486,12 @@ void adsp_cpu_set_rate(unsigned long freq)
 	mutex_lock(&policy_mutex);
 
 	if (!policy->enable) {
-		pr_info("adsp dfs policy is not enabled\n");
+		dev_info(device, "adsp dfs policy is not enabled\n");
 		goto exit_out;
 	}
 
 	if (!freq || (freq == policy->cur)) {
-		pr_info("old and target_freq is same, exit out\n");
+		dev_info(device, "old and target_freq is same, exit out\n");
 		goto exit_out;
 	}
 	if (freq < policy->min)
@@ -517,6 +519,7 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 	if (drv->dfs_initialized)
 		return 0;
 
+	device = &pdev->dev;
 	policy = &dfs_policy;
 	policy->adsp_clk = clk_get_sys(NULL, policy->clk_name);
 	if (IS_ERR_OR_NULL(policy->adsp_clk)) {
