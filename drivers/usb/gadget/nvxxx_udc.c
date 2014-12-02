@@ -2124,6 +2124,13 @@ static void nvudc_resume_state(struct nv_udc_s *nvudc, bool device_init)
 		iowrite32(u_temp, nvudc->mmio_reg_base + CFG_DEV_FE);
 	}
 
+	/* If the time difference between SW clearing the Pause bit
+	*  and SW ringing doorbell was very little (less than 200ns),
+	*  this could lead to the doorbell getting dropped and the
+	*  corresponding transfer not completing.
+	*  WAR: add 500ns delay before ringing the door bell
+	*/
+	ndelay(500);
 	/* ring door bell for the paused endpoints */
 	doorbell_for_unpause(nvudc, ep_paused);
 }
