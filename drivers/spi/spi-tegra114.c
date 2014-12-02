@@ -1618,10 +1618,10 @@ static int tegra_spi_probe(struct platform_device *pdev)
 	}
 	tspi->phys = r->start;
 	tspi->base = devm_request_and_ioremap(&pdev->dev, r);
-	if (!tspi->base) {
+	if (IS_ERR(tspi->base)) {
 		dev_err(&pdev->dev,
 			"Cannot request memregion/iomap dma address\n");
-		ret = -EADDRNOTAVAIL;
+		ret = PTR_ERR(tspi->base);
 		goto exit_free_master;
 	}
 
