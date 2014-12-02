@@ -146,9 +146,6 @@
 #define TEGRA_SATA_OOB_CLOCK_FREQ_HZ		(272*1000*1000)
 
 #define APB_PMC_SATA_PWRGT_0_REG		0x1ac
-#define APBDEV_PMC_PWRGATE_TOGGLE_0		0x30
-#define APBDEV_PMC_PWRGATE_STATUS_0		0x38
-#define APBDEV_PMC_REMOVE_CLAMPING_CMD_0	0x34
 
 #define CLK_RST_SATA_PLL_CFG0_REG		0x490
 #define CLK_RST_SATA_PLL_CFG1_REG		0x494
@@ -457,8 +454,6 @@ static int tegra_ahci_init_one(struct platform_device *pdev);
 static int tegra_ahci_controller_init(void *hpriv, int lp0);
 static int tegra_ahci_t210_controller_init(void *hpriv, int lp0);
 static int tegra_ahci_remove_one(struct platform_device *pdev);
-static void tegra_ahci_set_clk_rst_cnt_rst_dev(void);
-static void tegra_ahci_clr_clk_rst_cnt_rst_dev(void);
 static void tegra_ahci_pad_config(void);
 static void tegra_ahci_put_sata_in_iddq(void);
 static void tegra_ahci_iddqlane_config(void);
@@ -939,6 +934,8 @@ static void tegra_first_level_clk_gate(void)
 	g_tegra_hpriv->clk_state = CLK_OFF;
 }
 
+#if defined(CONFIG_TEGRA_SATA_IDLE_POWERGATE) && \
+	!defined(CONFIG_TEGRA_AHCI_CONTEXT_RESTORE)
 static int tegra_first_level_clk_ungate(void)
 {
 	int ret = 0;
@@ -982,6 +979,7 @@ clk_sata_enb_error:
 	pr_err("%s: unable to enable %s clock\n", __func__, err_clk_name);
 	return -ENODEV;
 }
+#endif
 
 static int tegra_request_pexp_gpio(struct tegra_ahci_host_priv *tegra_hpriv)
 {
@@ -1281,8 +1279,6 @@ static int tegra_ahci_controller_init(void *hpriv, int lp0)
 		tegra_periph_reset_deassert(clk_sata);
 		tegra_periph_reset_deassert(clk_sata_oob);
 		tegra_periph_reset_deassert(clk_sata_cold);
-
-		tegra_ahci_clr_clk_rst_cnt_rst_dev();
 	}
 
 	if (!lp0) {
@@ -1292,9 +1288,6 @@ static int tegra_ahci_controller_init(void *hpriv, int lp0)
 			goto exit;
 		}
 	}
-
-	val = 0x100;
-	pmc_writel(val, APBDEV_PMC_REMOVE_CLAMPING_CMD_0);
 
 	/* SATA_PADPLL_RESET_OVERRIDE_VALUE=1 and SATA_PADPLL_RESET_SWCTL=1 */
 	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
@@ -1318,7 +1311,7 @@ static int tegra_ahci_controller_init(void *hpriv, int lp0)
 	udelay(3);
 
 #if defined(CONFIG_TEGRA_SILICON_PLATFORM)
-	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_SATA);
+	err = tegra_unpowergate_partition(TEGRA_POWERGATE_SATA);
 	if (err) {
 		pr_err("%s: ** failed to turn-on SATA (0x%x) **\n",
 				__func__, err);
@@ -1396,7 +1389,6 @@ static int tegra_ahci_controller_init(void *hpriv, int lp0)
 		tegra_periph_reset_deassert(clk_sata_oob);
 		tegra_periph_reset_deassert(clk_sata_cold);
 
-		tegra_ahci_clr_clk_rst_cnt_rst_dev();
 	}
 
 	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
@@ -1693,7 +1685,7 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	udelay(3);
 
 #if defined(CONFIG_TEGRA_SILICON_PLATFORM)
-	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_SATA);
+	err = tegra_unpowergate_partition(TEGRA_POWERGATE_SATA);
 	if (err) {
 		pr_err("%s: ** failed to turn-on SATA (0x%x) **\n",
 				__func__, err);
@@ -1895,8 +1887,6 @@ static int tegra_ahci_controller_suspend(struct platform_device *pdev)
 
 	spin_unlock_irqrestore(&host->lock, flags);
 
-	tegra_first_level_clk_gate();
-
 	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
 		u32 val;
 
@@ -1938,12 +1928,6 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev)
 		val = xusb_readl(XUSB_PADCTL_ELPG_PROGRAM_0_0);
 		val &= ~AUX_MUX_LP0_CLAMP_EN_EARLY;
 		xusb_writel(val, XUSB_PADCTL_ELPG_PROGRAM_0_0);
-	}
-
-	err = tegra_first_level_clk_ungate();
-	if (err < 0) {
-		pr_err("%s: flcg ungate failed\n", __func__);
-		return err;
 	}
 
 	spin_lock_irqsave(&host->lock, flags);
@@ -2650,34 +2634,6 @@ static void tegra_ahci_put_sata_in_iddq(void)
 	}
 }
 
-static void tegra_ahci_clr_clk_rst_cnt_rst_dev(void)
-{
-	u32 val;
-
-	val = clk_readl(CLK_RST_CONTROLLER_RST_DEV_V_CLR_0);
-	val |= (SWR_SATA_OOB_RST | SWR_SATA_RST);
-	clk_writel(val, CLK_RST_CONTROLLER_RST_DEV_V_CLR_0);
-
-	val = clk_readl(CLK_RST_CONTROLLER_RST_DEV_W_CLR_0);
-	val |= SWR_SATACOLD_RST;
-	clk_writel(val, CLK_RST_CONTROLLER_RST_DEV_W_CLR_0);
-
-}
-static void tegra_ahci_set_clk_rst_cnt_rst_dev(void)
-{
-
-	u32 val;
-
-	val = clk_readl(CLK_RST_CONTROLLER_RST_DEV_V_CLR_0);
-	val &= ~(SWR_SATA_OOB_RST | SWR_SATA_RST);
-	clk_writel(val, CLK_RST_CONTROLLER_RST_DEV_V_CLR_0);
-
-	val = clk_readl(CLK_RST_CONTROLLER_RST_DEV_W_CLR_0);
-	val &= ~SWR_SATACOLD_RST;
-	clk_writel(val, CLK_RST_CONTROLLER_RST_DEV_W_CLR_0);
-
-}
-
 static void tegra_ahci_pad_config(void)
 {
 	u32 val;
@@ -2754,8 +2710,6 @@ static bool tegra_ahci_power_gate(struct ata_host *host)
 	val |= DEVSLP_OVERRIDE;
 	misc_writel(val, SATA_AUX_MISC_CNTL_1_REG);
 
-	tegra_ahci_set_clk_rst_cnt_rst_dev();
-
 	/* abort PG if there are errors occurred */
 	if (tegra_ahci_check_errors(host)) {
 		dev_err(host->dev, "** pg: errors; abort power gating **\n");
@@ -2767,15 +2721,6 @@ static bool tegra_ahci_power_gate(struct ata_host *host)
 		return false;
 	}
 	tegra_ahci_put_sata_in_iddq();
-
-	val = pmc_readl(APBDEV_PMC_PWRGATE_TOGGLE_0);
-	val |= PARTID_VALUE;
-	val |= START;
-	pmc_writel(val, APBDEV_PMC_PWRGATE_TOGGLE_0);
-
-	val = pmc_readl(APBDEV_PMC_PWRGATE_STATUS_0);
-	val &= ~SAX_MASK;
-	pmc_writel(val, APBDEV_PMC_PWRGATE_STATUS_0);
 
 	/* power off the sata */
 	status = tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_SATA);
@@ -2804,15 +2749,6 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host)
 	if (tegra_hpriv->cid == TEGRA_CHIPID_TEGRA21)
 		tegra_ahci_t210_power_up_aux_idle_detector();
 
-	val = pmc_readl(APBDEV_PMC_PWRGATE_TOGGLE_0);
-	val |= PARTID_VALUE;
-	val |= START;
-	pmc_writel(val, APBDEV_PMC_PWRGATE_TOGGLE_0);
-
-	val = pmc_readl(APBDEV_PMC_PWRGATE_STATUS_0);
-	val |= SAX_MASK;
-	pmc_writel(val, APBDEV_PMC_PWRGATE_STATUS_0);
-
 	status = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_SATA);
 	if (status) {
 		dev_err(host->dev, "** failed to turn-on SATA (0x%x) **\n",
@@ -2836,8 +2772,6 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host)
 		tegra_ahci_t210_power_up_uphy();
 		tegra_ahci_t210_power_up_uphy_padpll();
 	}
-
-	tegra_ahci_clr_clk_rst_cnt_rst_dev();
 
 #ifdef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
 	/* restore registers */
