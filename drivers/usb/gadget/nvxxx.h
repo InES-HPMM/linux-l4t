@@ -194,6 +194,7 @@
 
 #define CFG_DEV_FE                  0x0000085C
 #define CFG_DEV_FE_PORTREGSEL(x)	((x) & 0x3)
+#define CFG_DEV_FE_INFINITE_SS_RETRY	(1 << 29)
 
 #define CFG_DEV_SSPI_XFER           0x00000858
 

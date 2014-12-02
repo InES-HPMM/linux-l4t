@@ -119,6 +119,9 @@ module_param(disable_lpm, bool, S_IRUGO|S_IWUSR);
 static bool war_poll_trbst_max = true;
 module_param(war_poll_trbst_max, bool, S_IRUGO|S_IWUSR);
 
+static bool enable_fe_infinite_ss_retry = true;
+module_param(enable_fe_infinite_ss_retry, bool, S_IRUGO|S_IWUSR);
+
 #ifdef PRIME_NOT_RCVD_WAR
 /* With some hosts, after they reject the stream, they are not sending the
  * PRIME packet for the Device to know when to restart a stream. In that case
@@ -4078,6 +4081,14 @@ u32 reset_data_struct(struct nv_udc_s *nvudc)
 	u_temp &= PORTREGSEL_MASK;
 	u_temp |= CFG_DEV_FE_PORTREGSEL(0);
 	iowrite32(u_temp, nvudc->mmio_reg_base + CFG_DEV_FE);
+
+	if (enable_fe_infinite_ss_retry) {
+		/* enable FE_INFINITE_SS_RETRY */
+		u_temp = ioread32(nvudc->mmio_reg_base + CFG_DEV_FE);
+		u_temp |= CFG_DEV_FE_INFINITE_SS_RETRY;
+		iowrite32(u_temp, nvudc->mmio_reg_base + CFG_DEV_FE);
+	}
+
 	return 0;
 }
 
@@ -4346,6 +4357,13 @@ void restore_mmio_reg(struct nv_udc_s *nvudc)
 	iowrite32(nvudc->mmio_reg.portsc, nvudc->mmio_reg_base + PORTSC);
 
 	iowrite32(nvudc->mmio_reg.portpm, nvudc->mmio_reg_base + PORTPM);
+
+	if (enable_fe_infinite_ss_retry) {
+		/* enable FE_INFINITE_SS_RETRY */
+		reg = ioread32(nvudc->mmio_reg_base + CFG_DEV_FE);
+		reg |= CFG_DEV_FE_INFINITE_SS_RETRY;
+		iowrite32(reg, nvudc->mmio_reg_base + CFG_DEV_FE);
+	}
 
 	/* restore the control register
 	* this has to be done at last, because ENABLE bit should not be set
