@@ -185,9 +185,6 @@ static void __init p1859_i2c_init(void)
 
 static struct platform_device *p1859_devices[] __initdata = {
 	&tegra_rtc_device,
-#if defined(CONFIG_TEGRA_WATCHDOG)
-	&tegra_wdt0_device,
-#endif
 };
 
 static void __init tegra_p1859_early_init(void)
