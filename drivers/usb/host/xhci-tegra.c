@@ -3750,7 +3750,6 @@ tegra_xhci_suspend(struct platform_device *pdev,
 {
 	struct tegra_xhci_hcd *tegra = platform_get_drvdata(pdev);
 	struct xhci_hcd *xhci = tegra->xhci;
-	int host_ports = get_host_controlled_ports(tegra);
 	int ret = 0;
 	int pad = 0;
 
@@ -3768,9 +3767,6 @@ tegra_xhci_suspend(struct platform_device *pdev,
 		return -EBUSY;
 	}
 	mutex_unlock(&tegra->sync_lock);
-
-	tegra_xhci_ss_wake_on_interrupts(host_ports, false);
-	tegra_xhci_hs_wake_on_interrupts(host_ports, false);
 
 	/* enable_irq_wake for ss ports */
 	ret = enable_irq_wake(tegra->padctl_irq);
