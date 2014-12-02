@@ -1,0 +1,16 @@
+#include "tegra210-loki-e-p2530-0031-e02-00.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+
+	xusb@70090000 {
+		/* enable UTMI pad1 */
+		nvidia,portmap = <0x600>;
+		usb_vbus1-supply = <&battery_reg>;
+	};
+
+	modem {
+		/* XHCI UTMI */
+		nvidia,phy-type=<2>;
+	};
+};

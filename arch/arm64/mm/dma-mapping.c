@@ -373,7 +373,7 @@ static void __dma_free_remap(void *cpu_addr, size_t size)
 	vunmap(cpu_addr);
 }
 
-#define DEFAULT_DMA_COHERENT_POOL_SIZE	SZ_256K
+#define DEFAULT_DMA_COHERENT_POOL_SIZE	SZ_1M
 
 struct dma_pool {
 	size_t size;
