@@ -152,7 +152,7 @@ config TEGRA_DC_BLOCK_LINEAR
 
 config TEGRA_DC_INTERLACE
 	bool
-	depends on TEGRA_DC && (ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC)
+	depends on TEGRA_DC && (ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC || TEGRA_NVDISPLAY)
 	default y
 	help
 	  Support output in interlaced formats on chips that support it.
