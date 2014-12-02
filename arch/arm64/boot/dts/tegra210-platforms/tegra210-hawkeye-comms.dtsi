@@ -1,0 +1,14 @@
+#include "tegra210-comms.dtsi"
+
+/ {
+	bcm4329_wlan2_ {
+		compatible = "nvidia,tegra-bcmdhd2-wlan";
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(I, 1) 0x14>;
+		wlan-pwr-gpio = <&gpio TEGRA_GPIO(I, 0) 0>;
+/*
+		wlan-rst-gpio = <&gpio TEGRA_GPIO(I, xxx) 0>;
+*/
+		status = "disabled";
+	};
+};
