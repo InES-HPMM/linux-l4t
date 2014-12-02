@@ -550,6 +550,7 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 	u16 link_state = 0;
 	u16 wake_mask = 0;
 	u16 timeout = 0;
+	u16 test_selector = 0;
 
 	max_ports = xhci_get_ports(hcd, &port_array);
 	bus_state = &xhci->bus_state[hcd_index(hcd)];
@@ -715,6 +716,8 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			wake_mask = wIndex & 0xff00;
 		/* The MSB of wIndex is the U1/U2 timeout */
 		timeout = (wIndex & 0xff00) >> 8;
+		if (wValue == USB_PORT_FEAT_TEST)
+			test_selector = (wIndex & 0xff00) >> 8;
 		wIndex &= 0xff;
 		if (!wIndex || wIndex > max_ports)
 			goto error;
@@ -888,6 +891,27 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			temp = xhci_readl(xhci, port_array[wIndex] + 1);
 			temp &= ~PORT_U2_TIMEOUT_MASK;
 			temp |= PORT_U2_TIMEOUT(timeout);
+			xhci_writel(xhci, temp, port_array[wIndex] + 1);
+			break;
+		/* XHCI 4.19.6 */
+		case USB_PORT_FEAT_TEST:
+			/*
+			 * Test modes are only supported
+			 * on USB 2.0 protocol Root Hub ports,
+			 */
+			if (hcd->speed != HCD_USB2)
+				goto error;
+
+			if (!test_selector || test_selector > 5)
+				goto error;
+
+			if (xhci_halt(xhci))
+				goto error;
+
+			/* Start test mode in PORTPMSC */
+			temp = xhci_readl(xhci, port_array[wIndex] + 1);
+			temp = xhci_port_state_to_neutral(temp);
+			temp |= test_selector << 28;
 			xhci_writel(xhci, temp, port_array[wIndex] + 1);
 			break;
 		default:
