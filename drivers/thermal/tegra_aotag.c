@@ -314,7 +314,7 @@ static int aotag_update_shutdown_temp(struct platform_device *pdev)
 	}
 
 	reg = 0;
-	temp = (ps_info->shutdown_temp)/2000;
+	temp = (ps_info->shutdown_temp)/1000;
 	FILL_REG_OR(temp, THRESH3_CFG, &reg);
 	reg_write(pdev, pmc, reg, PMC_AOTAG_THRESH3_CFG);
 	aotag_pdev_print(info, pdev, "shutdown temperature - %d\n",
@@ -366,7 +366,7 @@ static int aotag_get_temp_generic(void *data, long *temp)
 	GET_REG(&sign, STATUS1_TEMP_SIGN, &regval);
 	/* aotag_pdev_print(info, pdev, "abs %d, frac %d, sign %d\n", abs,
 			fraction, sign); */
-	*temp = (abs*2*1000) + (fraction*500);
+	*temp = (abs*1000) + (fraction*500);
 	if (sign)
 		*temp = (-1) * (*temp);
 	/* aotag_print(info, " temp - %ld\n", *temp); */
@@ -692,6 +692,11 @@ static int aotag_read_fuses(struct platform_device *pdev)
 	 */
 	aotag_pdev_print(alert, pdev, "thermA-%d, thermB-%d\n",
 			ps_info->therm_a, ps_info->therm_b);
+
+	/* convert to 0.5C precision */
+	ps_info->therm_a *= 2;
+	ps_info->therm_b *= 2;
+
 	reg = 0;
 	FILL_REG_OR(ps_info->therm_a, CONFIG2_THERM_A, &reg);
 	FILL_REG_OR(ps_info->therm_b, CONFIG2_THERM_B, &reg);
