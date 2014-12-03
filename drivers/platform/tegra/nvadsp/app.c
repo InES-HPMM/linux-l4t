@@ -33,6 +33,7 @@
 #define APP_LOADER_MBOX_ID		1
 
 #define ADSP_OS_LOAD_TIMEOUT		5000 /* 5000 ms */
+#define APP_FRAME_WAIT_TIMEOUT		5000 /* 5000 ms */
 
 #define OS_LOAD_COMPLETE		0x01
 #define LOAD_APP			0x03
@@ -176,12 +177,19 @@ static inline void print_start_stats(const char *appfile,
 #endif
 }
 
+
+static inline int wait_for_app_frame_timeout(struct completion *complete)
+{
+	unsigned long timeout = msecs_to_jiffies(APP_FRAME_WAIT_TIMEOUT);
+	return wait_for_completion_interruptible_timeout(complete, timeout);
+}
+
+
 static void app_complete_notifier(struct work_struct *work)
 {
 	nvadsp_app_info_t *app = container_of(work,
 			struct nvadsp_app_info, complete_work);
 
-	wait_for_nvadsp_app_complete(app);
 	app->complete_status_notifier(app, ADSP_APP_COMPLETE_STATUS,
 			app->return_status);
 }
@@ -202,6 +210,12 @@ static void notify_update_nvadsp_app_complete(struct app_complete_data *data)
 	spin_lock_irqsave(&state_lock, flags);
 	*state = NVADSP_APP_STATE_INITIALIZED;
 	spin_unlock_irqrestore(&state_lock, flags);
+	/*
+	 * schedule the work if there is notifier call back and adsp app
+	 * instance has started
+	 */
+	if (app->complete_status_notifier)
+		schedule_work(&app->complete_work);
 
 	/* notify app instance has completed */
 	complete_all(&app->wait_for_app_complete);
@@ -293,16 +307,15 @@ static int native_adsp_app_start(nvadsp_app_info_t *app,
 	struct app_start_stats *stats)
 {
 	struct app_start_data *data = &shared->app_start;
-	int32_t status;
+	int32_t status = -EINVAL;
 
 	data->ptr = app->token;
 	data->stack_size = app->stack_size;
 
 	nvadsp_mbox_send(&mbox, APP_START, NVADSP_MBOX_SMSG, true, 100);
-	wait_for_completion(&app_start_status);
+	status = (wait_for_app_frame_timeout(&app_start_status) <= 0)
+			? status : data->status;
 	native_adsp_app_start_stats(stats, data);
-
-	status = data->status;
 	memset(data, 0, sizeof(struct app_start_data));
 
 	return status;
@@ -344,7 +357,7 @@ static inline void native_adsp_load_stats(struct app_load_stats *stats,
 static uint32_t native_adsp_load_app(struct nvadsp_app_service *ser,
 	struct app_load_stats *stats)
 {
-	uint32_t status;
+	uint32_t status = 0;
 	struct app_load_data *data = &shared->app_load;
 
 	memcpy(&data->mem_size, ser->mem_size,
@@ -363,10 +376,10 @@ static uint32_t native_adsp_load_app(struct nvadsp_app_service *ser,
 
 	RECORD_STAT(stats->ns_time_load_wait_time);
 	RECORD_STAT(ns_time_native_load_complete);
-	wait_for_completion(&load_app_status);
+	status = (wait_for_app_frame_timeout(&load_app_status) <= 0)
+			? status : data->ser;
 	RECORD_STAT(stats->ns_time_load_wait_time);
 	native_adsp_load_stats(stats, data);
-	status = data->ser;
 	memset(data, 0, sizeof(struct app_load_data));
 
 	return status;
@@ -605,7 +618,7 @@ native_adsp_app_init(nvadsp_app_info_t *app,
 	const struct nvadsp_app_service *ser, nvadsp_app_args_t *app_args,
 	struct app_init_stats *stats)
 {
-	uint32_t token;
+	uint32_t token = 0;
 	struct app_init_data *data = &shared->app_init;
 	adsp_app_iova_mem_t *iova_mem = &app->iova_mem;
 
@@ -633,14 +646,10 @@ native_adsp_app_init(nvadsp_app_info_t *app,
 
 	/* call the adsp app init function on ADSP */
 	nvadsp_mbox_send(&mbox, APP_INIT, NVADSP_MBOX_SMSG, true, 100);
-	wait_for_completion(&app_init_status);
+	/* store the app instance structure if successful */
+	token = (wait_for_app_frame_timeout(&app_init_status) <= 0)
+			? token : data->app_token;
 	native_adsp_init_stats(stats, data);
-	/*
-	 * store the app instance structure and clearing the value in the shared
-	 * memory.
-	 */
-	token = data->app_token;
-
 	/* clear shared app init data structure */
 	memset(data, 0, sizeof(struct app_init_data));
 	return token;
@@ -753,12 +762,12 @@ EXPORT_SYMBOL(nvadsp_app_init);
 static int native_adsp_app_deinit(nvadsp_app_info_t *app)
 {
 	struct app_deinit_data *data = &shared->app_deinit;
-	int32_t status;
+	int32_t status = -EINVAL;
 
 	data->ptr = app->token;
 	nvadsp_mbox_send(&mbox, APP_DEINIT, NVADSP_MBOX_SMSG, true, 100);
-	wait_for_completion(&app_deinit_status);
-	status = data->status;
+	status = (wait_for_app_frame_timeout(&app_deinit_status) <= 0)
+			? status : data->status;
 	memset(data, 0, sizeof(struct app_deinit_data));
 	return status;
 }
@@ -836,12 +845,12 @@ EXPORT_SYMBOL(nvadsp_app_deinit);
 static int native_adsp_app_unload(struct nvadsp_app_service *ser)
 {
 	struct app_unload_data *data = &shared->app_unload;
-	int32_t status;
+	int32_t status = -EINVAL;
 
 	data->ser = ser->token;
 	nvadsp_mbox_send(&mbox, APP_UNLOAD, NVADSP_MBOX_SMSG, true, 100);
-	wait_for_completion(&app_unload_status);
-	status = data->status;
+	status = (wait_for_app_frame_timeout(&app_unload_status) <= 0)
+			? status : data->status;
 	memset(data, 0, sizeof(struct app_deinit_data));
 	return status;
 }
@@ -949,12 +958,6 @@ int nvadsp_app_start(nvadsp_app_info_t *app)
 			spin_unlock_irqrestore(&state_lock, flags);
 			goto end;
 		}
-		/*
-		 * schedule the work if there is notifier call back and adsp
-		 * app instance has started
-		 */
-		if (app->complete_status_notifier)
-			schedule_work(&app->complete_work);
 	} else {
 		spin_unlock_irqrestore(&state_lock, flags);
 	}
