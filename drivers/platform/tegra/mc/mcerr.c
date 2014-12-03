@@ -267,9 +267,19 @@ static irqreturn_t tegra_mc_error_thread(int irq, void *data)
 	if (mcerr_throttle_enabled && count >= MAX_PRINTS) {
 		schedule_delayed_work(&unthrottle_prints_work, HZ/2);
 		if (count == MAX_PRINTS)
-			pr_err("Too many MC errors; throttling prints\n");
+			pr_debug("Too many MC errors; throttling prints\n");
 		goto out;
 	}
+
+	/*
+	 * if SWGRP is mpcorer or mpcorelpr and  violated the VPR requirements
+	 * skip the err print. This is usually result of speculative fetches on
+	 * VPR memory.
+	 */
+	if ((client_id == 0x27 || client_id == 0x26) &&
+		((intr & mc_int_mask) == MC_INT_DECERR_VPR) &&
+		!smmu_info)
+		goto out;
 
 	chip_specific.mcerr_print(fault, client, status, addr, secure, write,
 				  smmu_info);
