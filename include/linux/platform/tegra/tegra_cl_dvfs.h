@@ -52,6 +52,9 @@ enum tegra_cl_dvfs_pwm_bus {
 #define TEGRA_CL_DVFS_HAS_IDLE_OVERRIDE		(0x1UL << 3)
 /* set if calibration should be deferred for voltage matching force value */
 #define TEGRA_CL_DVFS_DEFER_FORCE_CALIBRATE	(0x1UL << 4)
+/* set if request scale is applied in open loop (not set: enforce 1:1 scale) */
+#define TEGRA_CL_DVFS_SCALE_IN_OPEN_LOOP		(0x1UL << 5)
+
 
 struct tegra_cl_dvfs_cfg_param {
 	unsigned long	sample_rate;
