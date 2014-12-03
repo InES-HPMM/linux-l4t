@@ -33,6 +33,6 @@ struct gpio_init_pin_info {
 	int value; /* Value if it is output*/
 };
 
-int tegra_gpio_get_bank_int_nr(int gpio);
+extern int tegra_gpio_get_bank_int_nr(int gpio);
 
 #endif

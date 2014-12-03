@@ -128,6 +128,7 @@ int tegra_gpio_get_bank_int_nr(int gpio)
 	irq = tegra_gpio_banks[bank].irq;
 	return irq;
 }
+EXPORT_SYMBOL(tegra_gpio_get_bank_int_nr);
 
 static void tegra_gpio_enable(int gpio)
 {
