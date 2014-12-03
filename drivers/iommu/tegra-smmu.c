@@ -70,7 +70,9 @@ enum {
 
 static struct device *save_smmu_device;
 
-static size_t smmu_flush_all_th_pages = SZ_512; /* number of threshold pages */
+/* number of threshold map/unmap pages */
+static size_t smmu_flush_all_th_map_pages = SZ_512;
+static size_t smmu_flush_all_th_unmap_pages = SZ_512;
 
 enum {
 	IOMMMS_PROPS_TEGRA_SWGROUP_BIT_HI = 0,
@@ -839,7 +841,7 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 	u32 *pdir = page_address(as->pdir_page);
 	struct smmu_device *smmu = as->smmu;
 	unsigned long iova_base = iova;
-	bool flush_all = (total > smmu_flush_all_th_pages) ? true : false;
+	bool flush_all = (total > smmu_flush_all_th_unmap_pages) ? true : false;
 
 	while (total > 0) {
 		int ptn = SMMU_ADDR_TO_PTN(iova);
@@ -1003,7 +1005,7 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 {
 	int err = 0;
 	unsigned long iova_base = iova;
-	bool flush_all = (npages > smmu_flush_all_th_pages) ? true : false;
+	bool flush_all = (npages > smmu_flush_all_th_map_pages) ? true : false;
 	struct smmu_as *as = domain_to_as(domain, iova);
 	u32 *pdir = page_address(as->pdir_page);
 	struct smmu_device *smmu = as->smmu;
@@ -1858,8 +1860,10 @@ static void smmu_debugfs_create(struct smmu_device *smmu)
 		}
 	}
 
-	debugfs_create_size_t("flush_all_threshold_pages", S_IWUSR | S_IRUSR,
-			      root, &smmu_flush_all_th_pages);
+	debugfs_create_size_t("flush_all_threshold_map_pages", S_IWUSR | S_IRUSR,
+			      root, &smmu_flush_all_th_map_pages);
+	debugfs_create_size_t("flush_all_threshold_unmap_pages", S_IWUSR | S_IRUSR,
+			      root, &smmu_flush_all_th_unmap_pages);
 	return;
 
 err_out:
