@@ -23,8 +23,8 @@
 #include "tegra124-p1855.dtsi"
 
 / {
-	model = "NVIDIA Tegra124 p1859";
-	compatible = "nvidia,p1859", "nvidia,tegra124";
+	model = "NVIDIA Tegra124 p1855";
+	compatible = "nvidia,p1855", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 
 	/* Nothing else to be added. p1855.dtsi is complete */

@@ -199,6 +199,15 @@ config MACH_P1889
          ADAS(Advanced driver asistance systems) for whole-vehicle
          experience.
 
+config MACH_P1855
+       bool "P1855 vcm30t124 (Automotive) board"
+       depends on ARCH_TEGRA_VCM30T124
+       help
+         Support for NVIDIA P1855 Automotive Development platform.
+	 P1855 Board have interfaces which can be used for testing
+	 certain T124 Pheripherals for all it's possible combinations
+	 which is not normally possible with Jetson.
+
 config MACH_LAGUNA
 	 bool "LAGUNA board"
 	 depends on ARCH_TEGRA_12x_SOC || ARCH_TEGRA_11x_SOC

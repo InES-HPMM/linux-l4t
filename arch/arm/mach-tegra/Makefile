@@ -131,6 +131,9 @@ obj-${CONFIG_MACH_P1889}                += board-p1889-audio.o
 obj-${CONFIG_MACH_P2360}                += board-p2360.o
 obj-${CONFIG_MACH_P2360}                += board-p2360-power.o
 
+obj-${CONFIG_MACH_P1855}                += board-p1855.o
+obj-${CONFIG_MACH_P1855}                += board-p1855-power.o
+
 obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
 obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o
 
