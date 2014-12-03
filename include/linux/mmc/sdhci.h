@@ -252,7 +252,7 @@ struct sdhci_host {
 	struct delayed_work	delayed_clk_gate_wrk;
 	bool			is_clk_on;
 #ifdef CONFIG_DEBUG_FS
-	bool			enable_sdhci_perf_stats;
+	unsigned int		enable_sdhci_perf_stats;
 #endif
 	int			clk_gate_tmout_ticks;
 
