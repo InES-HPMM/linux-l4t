@@ -1181,34 +1181,46 @@ static size_t smmu_iommu_unmap(struct iommu_domain *domain, unsigned long iova,
 	return unmapped;
 }
 
-static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
-					   dma_addr_t iova)
+static size_t __smmu_iommu_iova_to_phys(struct smmu_as *as, dma_addr_t iova,
+					phys_addr_t *pa, int *npte)
 {
-	struct smmu_as *as = domain_to_as(domain, iova);
-	unsigned long flags;
 	int pdn = SMMU_ADDR_TO_PDN(iova);
 	u32 *pdir = page_address(as->pdir_page);
-	phys_addr_t pa = 0;
+	size_t bytes = ~0;
 
-	spin_lock_irqsave(&as->lock, flags);
-
+	*pa = ~0;
+	*npte = 0;
 	if (pdir[pdn] & _PDE_NEXT) {
 		u32 *pte;
-		unsigned int *count;
 		struct page *page;
+		unsigned int *count;
 
 		pte = locate_pte(as, iova, false, &page, &count);
-		if (pte) {
-			unsigned long pfn = *pte & SMMU_PFN_MASK;
-			pa = PFN_PHYS(pfn);
-		}
-	} else {
-		pa = pdir[pdn] << SMMU_PDE_SHIFT;
+		if (!pte)
+			return ~0;
+		*pa = PFN_PHYS(*pte & SMMU_PFN_MASK);
+		*pa += iova & (PAGE_SIZE - 1);
+		bytes = PAGE_SIZE;
+		*npte = *count;
+	} else if (pdir[pdn]) {
+		*pa =  pdir[pdn] << SMMU_PDE_SHIFT;
+		*pa += iova & (SZ_4M - 1);
+		bytes = SZ_4M;
 	}
 
-	dev_dbg(as->smmu->dev, "iova:%pad pfn:%pap asid:%d\n",
-		&iova, &pa, as->asid);
+	return bytes;
+}
 
+static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
+					dma_addr_t iova)
+{
+	struct smmu_as *as = domain_to_as(domain, iova);
+	phys_addr_t pa;
+	int unused;
+	unsigned long flags;
+
+	spin_lock_irqsave(&as->lock, flags);
+	__smmu_iommu_iova_to_phys(as, iova, &pa, &unused);
 	spin_unlock_irqrestore(&as->lock, flags);
 	return pa;
 }
@@ -1241,6 +1253,7 @@ char *debug_dma_platformdata(struct device *dev)
 #endif
 
 static const struct file_operations smmu_ptdump_fops;
+static const struct file_operations smmu_iova2pa_fops;
 
 static void debugfs_create_as(struct smmu_as *as)
 {
@@ -1254,6 +1267,8 @@ static void debugfs_create_as(struct smmu_as *as)
 	as->debugfs_root = dent;
 	debugfs_create_file("iovainfo", S_IRUSR, as->debugfs_root,
 			    as, &smmu_ptdump_fops);
+	debugfs_create_file("iova_to_phys", S_IRUSR, as->debugfs_root,
+			    as, &smmu_iova2pa_fops);
 }
 
 static struct smmu_as *smmu_as_alloc_default(void)
@@ -1879,6 +1894,66 @@ static const struct file_operations smmu_ptdump_fops = {
 };
 
 
+static dma_addr_t tegra_smmu_inquired_iova;
+static phys_addr_t tegra_smmu_inquired_phys;
+static size_t tegra_smmu_inquired_bytes;
+static int tegra_smmu_inquired_npte;
+
+static int smmu_iova2pa_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "iova=%pa pa=%pa bytes=%zx npte=%d\n",
+		   &tegra_smmu_inquired_iova,
+		   &tegra_smmu_inquired_phys,
+		   tegra_smmu_inquired_bytes,
+		   tegra_smmu_inquired_npte);
+	return 0;
+}
+
+static int smmu_iova2pa_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, smmu_iova2pa_show, inode->i_private);
+}
+
+static ssize_t smmu_debugfs_iova2pa_write(struct file *file,
+					  const char __user *buffer,
+					  size_t count, loff_t *pos)
+{
+	int ret;
+	struct smmu_as *as = file_inode(file)->i_private;
+	char str[] = "0123456789abcdef";
+
+	count = min_t(size_t, strlen(str), count);
+	if (copy_from_user(str, buffer, count))
+		return -EINVAL;
+
+#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
+	ret = sscanf(str, "%Lx", &tegra_smmu_inquired_iova);
+#else
+	ret = sscanf(str, "%lx", &tegra_smmu_inquired_iova);
+#endif
+	if (ret != 1)
+		return -EINVAL;
+
+	tegra_smmu_inquired_bytes =
+		__smmu_iommu_iova_to_phys(as, tegra_smmu_inquired_iova,
+					  &tegra_smmu_inquired_phys,
+					  &tegra_smmu_inquired_npte);
+
+	pr_info("iova=%pa pa=%pa bytes=%zx npte=%d\n",
+		&tegra_smmu_inquired_iova, &tegra_smmu_inquired_phys,
+		tegra_smmu_inquired_bytes, tegra_smmu_inquired_npte);
+
+	return count;
+}
+
+static const struct file_operations smmu_iova2pa_fops = {
+	.open		= smmu_iova2pa_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+	.write		= smmu_debugfs_iova2pa_write,
+};
+
 static void smmu_debugfs_create(struct smmu_device *smmu)
 {
 	int i;
@@ -2310,4 +2385,3 @@ module_exit(tegra_smmu_exit);
 MODULE_DESCRIPTION("IOMMU API for SMMU in Tegra SoC");
 MODULE_AUTHOR("Hiroshi DOYU <hdoyu@nvidia.com>");
 MODULE_LICENSE("GPL v2");
-
