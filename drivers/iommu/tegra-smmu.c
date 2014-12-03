@@ -467,19 +467,18 @@ static void __smmu_flush_ptc(struct smmu_device *smmu, u32 *pte,
 {
 	u32 val;
 
-	if (!pte) {
-		smmu_write(smmu, SMMU_PTC_FLUSH_TYPE_ALL, SMMU_PTC_FLUSH);
+	if (WARN_ON(!virt_addr_valid(pte)))
 		return;
-	}
 
 	if (WARN_ON(!pfn_valid(page_to_pfn(page))))
 		return;
 
 	val = VA_PAGE_TO_PA_HI(pte, page);
 	smmu_write(smmu, val, SMMU_PTC_FLUSH_1);
-	val = SMMU_PTC_FLUSH_TYPE_ADR |
-		(VA_PAGE_TO_PA(pte, page) & SMMU_PTC_FLUSH_ADR_MASK);
 
+	val = VA_PAGE_TO_PA(pte, page);
+	val &= SMMU_PTC_FLUSH_ADR_MASK;
+	val |= SMMU_PTC_FLUSH_TYPE_ADR;
 	smmu_write(smmu, val, SMMU_PTC_FLUSH);
 }
 
@@ -492,7 +491,7 @@ static void smmu_flush_ptc(struct smmu_device *smmu, u32 *pte,
 
 static inline void __smmu_flush_ptc_all(struct smmu_device *smmu)
 {
-	__smmu_flush_ptc(smmu, NULL, NULL);
+	smmu_write(smmu, SMMU_PTC_FLUSH_TYPE_ALL, SMMU_PTC_FLUSH);
 }
 
 static void __smmu_flush_tlb(struct smmu_device *smmu, struct smmu_as *as,
