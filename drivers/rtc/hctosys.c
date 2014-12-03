@@ -52,6 +52,35 @@ int rtc_hctosys(void)
 		goto err_invalid;
 	}
 
+#ifdef CONFIG_RTC_SPEC_2006_TEST
+	if ((tm.tm_year + 1900) < 2013) {
+		tm.tm_year = 113;
+		tm.tm_mon = 0;
+		tm.tm_mday = 1;
+		tm.tm_hour = 0;
+		tm.tm_min = 0;
+		tm.tm_sec = 0;
+		tm.tm_wday = 0;
+	}
+
+	err = rtc_set_time(rtc, &tm);
+	if (err) {
+		dev_err(rtc->dev.parent,
+			"hctosys: unable to set the hardware clock: %d\n", err);
+		goto err_read;
+	}
+
+	/* Read back from HW */
+	err = rtc_read_time(rtc, &tm);
+	if (!err)
+		err = rtc_valid_tm(&tm);
+	if (err) {
+		dev_err(rtc->dev.parent,
+			"hctosys: unable to set new time: %d\n", err);
+		goto err_read;
+	}
+#endif
+
 	rtc_tm_to_time(&tm, &tv.tv_sec);
 
 	err = do_settimeofday(&tv);

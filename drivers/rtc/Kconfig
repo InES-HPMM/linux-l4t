@@ -25,6 +25,14 @@ config RTC_HCTOSYS
 	  the value read from a specified RTC device. This is useful to avoid
 	  unnecessary fsck runs at boot time, and to network better.
 
+config RTC_SPEC_2006_TEST
+	bool "Set time to 2013-1-1:00:00:00 if earlier for SPEC 2006 Test"
+	default y
+	help
+	  If this is set to yes then system time is set to 2013-1-1:00:00:00
+	  if this is earlier than this to run the SPEC2006 tests without
+	  setting the new time explictly.
+
 config RTC_SYSTOHC
 	bool "Set the RTC time based on NTP synchronization"
 	default y
