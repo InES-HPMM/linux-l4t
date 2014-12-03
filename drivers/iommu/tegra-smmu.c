@@ -982,6 +982,7 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 		fn = __smmu_iommu_map_page;
 		break;
 	case SZ_4M:
+		BUG_ON(config_enabled(CONFIG_TEGRA_IOMMU_SMMU_NO4MB));
 		fn = __smmu_iommu_map_largepage;
 		break;
 	default:
@@ -1085,8 +1086,10 @@ static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova,
 	int pdn = SMMU_ADDR_TO_PDN(iova);
 	u32 *pdir = page_address(as->pdir_page);
 
-	if (!(pdir[pdn] & _PDE_NEXT))
+	if (!(pdir[pdn] & _PDE_NEXT)) {
+		BUG_ON(config_enabled(CONFIG_TEGRA_IOMMU_SMMU_NO4MB));
 		return __smmu_iommu_unmap_largepage(as, iova);
+	}
 
 	return __smmu_iommu_unmap_pages(as, iova, bytes);
 }

@@ -21,7 +21,11 @@
 #include <linux/platform_device.h>
 
 /* bitmap of the page sizes currently supported */
+#ifdef CONFIG_TEGRA_IOMMU_SMMU_NO4MB
+#define SMMU_IOMMU_PGSIZES			SZ_4K
+#else
 #define SMMU_IOMMU_PGSIZES			(SZ_4K | SZ_4M)
+#endif
 
 #define SMMU_CONFIG				0x10
 #define SMMU_CONFIG_DISABLE			0

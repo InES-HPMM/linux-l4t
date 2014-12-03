@@ -184,6 +184,12 @@ config TEGRA_IOMMU_SMMU_NOPTC
 	help
 	  For debugging purpose, disable IOMMU cache(PTC)
 
+config TEGRA_IOMMU_SMMU_NO4MB
+	bool "Disable 4MB page for Tegra SMMU"
+	depends on TEGRA_IOMMU_SMMU
+	help
+	  For debugging purpose, disable 4MB page and only use 4KB
+
 config TEGRA_IOMMU_SMMU_HV
 	bool "Tegra SMMU IOMMU virtualization Support"
 	depends on TEGRA_IOMMU_SMMU && TEGRA_HV_MANAGER
