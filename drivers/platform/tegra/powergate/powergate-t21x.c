@@ -527,7 +527,7 @@ static int tegra210_pg_mc_flush_done(int id)
 	unsigned long flags;
 	int reg_idx;
 
-	for (idx = 0; idx <= MAX_HOTRESET_CLIENT_NUM; idx++) {
+	for (idx = 0; idx < MAX_HOTRESET_CLIENT_NUM; idx++) {
 		mc_client_bit = tegra210_pg_mc_info[id].hot_reset_clients[idx];
 		if (mc_client_bit == MC_CLIENT_LAST)
 			break;
