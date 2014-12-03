@@ -6,6 +6,9 @@
 
 #include <linux/ktime.h>
 #include <linux/tracepoint.h>
+#include <linux/ftrace_event.h>
+
+#define TPS(x)  tracepoint_string(x)
 
 DECLARE_EVENT_CLASS(cpu,
 
@@ -157,21 +160,26 @@ DEFINE_EVENT(cpu, cpu_frequency,
 	TP_ARGS(frequency, cpu_id)
 );
 
-TRACE_EVENT(machine_suspend,
+TRACE_EVENT(suspend_resume,
 
-	TP_PROTO(unsigned int state),
+	TP_PROTO(const char *action, int val, bool start),
 
-	TP_ARGS(state),
+	TP_ARGS(action, val, start),
 
 	TP_STRUCT__entry(
-		__field(	u32,		state		)
+		__field(const char *, action)
+		__field(int, val)
+		__field(bool, start)
 	),
 
 	TP_fast_assign(
-		__entry->state = state;
+		__entry->action = action;
+		__entry->val = val;
+		__entry->start = start;
 	),
 
-	TP_printk("state=%lu", (unsigned long)__entry->state)
+	TP_printk("%s[%u] %s", __entry->action, (unsigned int)__entry->val,
+		(__entry->start)?"begin":"end")
 );
 
 DECLARE_EVENT_CLASS(wakeup_source,
