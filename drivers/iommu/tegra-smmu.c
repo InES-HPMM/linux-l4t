@@ -472,6 +472,9 @@ static void __smmu_flush_ptc(struct smmu_device *smmu, u32 *pte,
 		return;
 	}
 
+	if (WARN_ON(!pfn_valid(page_to_pfn(page))))
+		return;
+
 	val = VA_PAGE_TO_PA_HI(pte, page);
 	smmu_write(smmu, val, SMMU_PTC_FLUSH_1);
 	val = SMMU_PTC_FLUSH_TYPE_ADR |
