@@ -128,8 +128,12 @@ static void __tegra210_enter_c7(int cpu)
 	unsigned long arg = psci_power_state_pack(ps);
 
 	cpu_pm_enter();
-	flowctrl_write_cc4_ctrl(cpu, 0xffffffff);
-	cpu_retention_enable(7);
+
+	if (!is_lp_cluster()) {
+		flowctrl_write_cc4_ctrl(cpu, 0xffffffff);
+		cpu_retention_enable(7);
+	}
+
 	cpu_suspend(arg, NULL);
 	cpu_retention_enable(0);
 	flowctrl_write_cc4_ctrl(cpu, 0);
