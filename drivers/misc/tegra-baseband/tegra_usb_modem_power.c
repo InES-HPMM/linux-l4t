@@ -166,6 +166,9 @@ struct tegra_usb_modem {
 	enum { EHCI_HSIC = 0, XHCI_HSIC, XHCI_UTMI } phy_type;
 	struct platform_device *modem_thermal_pdev;
 	int pre_boost_gpio;		/* control regulator output voltage */
+	int modem_state_file_created;	/* modem_state sysfs created */
+	enum { AIRPLANE = 0, RAT_3G_LTE, RAT_2G} modem_power_state;
+	struct mutex modem_state_lock;
 };
 
 
@@ -723,6 +726,83 @@ static ssize_t load_unload_usb_host(struct device *dev,
 static DEVICE_ATTR(load_host, S_IRUSR | S_IWUSR, show_usb_host,
 		   load_unload_usb_host);
 
+/* Export a new sysfs for the user land (RIL) to notify modem state
+ * Airplane mode = 0
+ * 3G/LTE mode = 1
+ * 2G mode = 2
+*/
+static ssize_t show_modem_state(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct tegra_usb_modem *modem = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", modem->modem_power_state);
+}
+
+static ssize_t set_modem_state(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct tegra_usb_modem *modem = dev_get_drvdata(dev);
+	int modem_state_value;
+
+	if (sscanf(buf, "%d", &modem_state_value) != 1)
+		return -EINVAL;
+
+	mutex_lock(&modem->modem_state_lock);
+	switch (modem_state_value) {
+	case AIRPLANE:
+		modem->modem_power_state = modem_state_value;
+
+		/* Release BYPASS */
+		if (regulator_allow_bypass(modem->regulator, false))
+			dev_warn(dev,
+			"failed to set modem regulator in non bypass mode\n");
+
+		/* auto PFM mode*/
+		if (regulator_set_mode(modem->regulator, REGULATOR_MODE_NORMAL))
+			dev_warn(dev,
+			"failed to set modem regulator in normal mode\n");
+		break;
+	case RAT_2G:
+		modem->modem_power_state = modem_state_value;
+
+		/* Release BYPASS */
+		if (regulator_allow_bypass(modem->regulator, true))
+			dev_warn(dev,
+			"failed to set modem regulator in bypass mode\n");
+
+		/* forced PWM  mode*/
+		if (regulator_set_mode(modem->regulator, REGULATOR_MODE_FAST))
+			dev_warn(dev,
+			"failed to set modem regulator in fast mode\n");
+		break;
+	case RAT_3G_LTE:
+		modem->modem_power_state = modem_state_value;
+
+		/* Release BYPASS */
+		if (regulator_allow_bypass(modem->regulator, true))
+			dev_warn(dev,
+			"failed to set modem regulator in bypass mode\n");
+
+		/* auto PFM mode*/
+		if (regulator_set_mode(modem->regulator, REGULATOR_MODE_NORMAL))
+			dev_warn(dev,
+			"failed to set modem regulator in normal mode\n");
+		break;
+	default:
+		dev_warn(dev, "%s: wrong modem power state:%d\n", __func__,
+		modem_state_value);
+	}
+	mutex_unlock(&modem->modem_state_lock);
+
+	return count;
+}
+
+static DEVICE_ATTR(modem_state, S_IRUSR | S_IWUSR, show_modem_state,
+			set_modem_state);
+
+
 static struct tegra_usb_phy_platform_ops tegra_usb_modem_platform_ops = {
 	.post_remote_wakeup = tegra_usb_modem_post_remote_wakeup,
 };
@@ -843,6 +923,20 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	else
 		dev_set_name(&pdev->dev, "MDM");
 
+	/* create sysfs node for RIL to report modem power state */
+	/* only if a regulator has been requested          */
+	modem->modem_state_file_created = 0;
+	if (pdata->regulator_name) {
+		ret = device_create_file(&pdev->dev, &dev_attr_modem_state);
+		if (ret) {
+			dev_err(&pdev->dev,
+			"can't create modem state sysfs file\n");
+			goto error;
+		}
+		modem->modem_state_file_created = 1;
+		mutex_init(&modem->modem_state_lock);
+	}
+
 	/* create work queue platform_driver_registe */
 	modem->wq = create_workqueue("tegra_usb_mdm_queue");
 	INIT_DELAYED_WORK(&modem->recovery_work, tegra_usb_modem_recovery);
@@ -888,6 +982,9 @@ error:
 
 	if (modem->mdm_power_irq)
 		free_irq(modem->mdm_power_irq, modem);
+
+	if (modem->modem_state_file_created)
+		device_remove_file(&pdev->dev, &dev_attr_modem_state);
 
 	return ret;
 }
@@ -937,6 +1034,24 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 			regulator_put(modem->regulator);
 			return ret;
 		}
+
+		dev_info(&pdev->dev, "set modem regulator:%s\n",
+		pdata->regulator_name);
+
+		/* Enable regulator bypass */
+		if (regulator_allow_bypass(modem->regulator, true))
+			dev_warn(&pdev->dev,
+			"failed to set modem regulator in bypass mode\n");
+		else
+			dev_info(&pdev->dev, "set regulator in bypass mode");
+
+		/* Enable autoPFM */
+		if (regulator_set_mode(modem->regulator, REGULATOR_MODE_NORMAL))
+			dev_warn(&pdev->dev,
+			"failed to set modem regulator in normal mode\n");
+		else
+			dev_info(&pdev->dev,
+			"set modem regulator in normal mode");
 	}
 
 	/* determine phy type */
@@ -1012,6 +1127,9 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 		}
 		gpio_direction_output(gpio, 0);
 		gpio_export(gpio, false);
+
+		/* also create a dedicated sysfs for the modem-sar0 gpio */
+		gpio_export_link(&pdev->dev, "modem_sar", gpio);
 	}
 
 	gpio = of_get_named_gpio(node, "nvidia,reset-gpio", 0);
@@ -1029,6 +1147,9 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 		dev_info(&pdev->dev, "set MODEM RESET (%d) to 1\n", gpio);
 		gpio_direction_output(gpio, 1);
 		gpio_export(gpio, false);
+
+		/* also create a dedicated sysfs for the modem-reset gpio */
+		gpio_export_link(&pdev->dev, "modem_reset", gpio);
 	}
 
 	return 0;
@@ -1085,6 +1206,9 @@ static int __exit tegra_usb_modem_remove(struct platform_device *pdev)
 
 	if (modem->sysfs_file_created)
 		device_remove_file(&pdev->dev, &dev_attr_load_host);
+
+	if (modem->modem_state_file_created)
+		device_remove_file(&pdev->dev, &dev_attr_modem_state);
 
 	if (!IS_ERR(modem->regulator))
 		regulator_put(modem->regulator);

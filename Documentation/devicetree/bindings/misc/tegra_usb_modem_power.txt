@@ -8,29 +8,32 @@ UTMI.
 This driver uses device tree to pass all necessary platform data now.
 
 Required properties:
-- compatible: should be "nvidia,icera-i500" for now
-- nvidia,boot-gpio: input GPIO for modem COLDBOOT signal
-- nvidia,mdm-en-gpio: output GPIO for enabling modem
-- nvidia,reset-gpio: output GPIO for hard resetting modem
+--------------------
+- compatible: should be "nvidia,icera-i500" for now.
+- nvidia,boot-gpio: input GPIO for modem COLDBOOT signal.
+- nvidia,mdm-en-gpio: output GPIO for enabling modem.
+- nvidia,reset-gpio: output GPIO for hard resetting modem.
 
 Optional properties:
-- nvidia,regulator: support for older platform which may need to enable
-                    regulator manually. It's there for backward compatibility
+-------------------
+- nvidia,regulator: support for platform which may need to enable regulator
+		    manually.
 - nvidia,wake-gpio: input GPIO. Define this GPIO if remote wakeup is through
-                    GPIO, or remote wakeup is supported natively
-- nvidia,mdm-power-report-gpio: input GPIO for modem power report
-- nvidia,mdm-sar0-gpio: output GPIO for modem SAR
-- nvidia,pre-boost-gpio: output GPIO for modem to control pre boost regulator
+                    GPIO, or remote wakeup is supported natively.
+- nvidia,mdm-power-report-gpio: input GPIO for modem power report.
+- nvidia,mdm-sar0-gpio: output GPIO for modem SAR.
+- nvidia,pre-boost-gpio: output GPIO for modem to control pre boost regulator.
+                         IN USE FOR T210 LOKI ONLY (P2530 E03 mother board only)
 - nvidia,num-temp-sensors: integer which specifies temperature sensor count for
-                    modem thermal reporting
+                    modem thermal reporting.
 - nvidia,use-xhci-hsic: this property is only set by bootloader SHIM layer
                     according to odmdata passed. If odmdata bit[26] is set,
                     this property will be <1> to indicate XHCI HSIC is to
-                    be used as modem interface
+                    be used as modem interface.
 - nvidia,phy-type: integer 0, 1, or 2, which stand for EHCI HSIC, XHCI HSIC,
                     or XHCI UTMI. This will be set automatically in driver
                     according to nvidia,use-xhci-hsic property. This is used
-                    currently only for T210 loki E03 to indicate "XHCI UTMI"
+                    currently only for T210 loki E03 to indicate "XHCI UTMI".
 
 Example:
 
@@ -64,7 +67,7 @@ With all properties defined:
     };
 
 
-Example node for a T210 ERS board:
+Example node for a T210 ERS board (E2220):
 
     modem {
         compatible = "nvidia,icera-i500";
