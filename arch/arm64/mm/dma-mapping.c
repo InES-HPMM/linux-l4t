@@ -1643,16 +1643,23 @@ ____iommu_create_mapping(struct device *dev, dma_addr_t *req,
 				break;
 
 		len = (j - i) << PAGE_SHIFT;
-		ret = pg_iommu_map(mapping, iova, phys, len,
-				   (ulong)attrs);
+		ret = iommu_map(mapping->domain, iova, phys, len, (ulong)attrs);
 		if (ret < 0)
 			goto fail;
 		iova += len;
 		i = j;
 	}
+
+	if (iommu_get_num_pf_pages(mapping, attrs)) {
+		int err = iommu_map(mapping->domain, iova, iova_gap_phys,
+				    PF_PAGES_SIZE, (ulong)attrs);
+		if (err)
+			goto fail;
+	}
+
 	return dma_addr;
 fail:
-	pg_iommu_unmap(mapping, dma_addr, iova-dma_addr, (ulong)attrs);
+	iommu_unmap(mapping->domain, dma_addr, iova - dma_addr);
 	__free_iova(mapping, dma_addr, size, attrs);
 	return DMA_ERROR_CODE;
 }
