@@ -97,5 +97,6 @@
 		nvidia,en-io-trim-volt;
 		nvidia,update-pinctrl-settings;
 		nvidia,sd-device;
+		uhs-mask = <0x4>;
 	};
 };
