@@ -34,6 +34,5 @@ struct gpio_init_pin_info {
 };
 
 int tegra_gpio_get_bank_int_nr(int gpio);
-int tegra_is_gpio(int);
 
 #endif

@@ -134,13 +134,6 @@ static void tegra_gpio_enable(int gpio)
 	tegra_gpio_mask_write(GPIO_MSK_CNF(gpio), gpio, 1);
 }
 
-int tegra_is_gpio(int gpio)
-{
-	return (tegra_gpio_readl(GPIO_CNF(gpio)) >> GPIO_BIT(gpio)) & 0x1;
-}
-EXPORT_SYMBOL(tegra_is_gpio);
-
-
 static void tegra_gpio_disable(int gpio)
 {
 	tegra_gpio_mask_write(GPIO_MSK_CNF(gpio), gpio, 0);
