@@ -25,14 +25,6 @@
 
 #define TEGRA_NR_GPIOS		INT_GPIO_NR
 
-struct gpio_init_pin_info {
-	char name[16];
-	int gpio_nr;
-	bool is_gpio;
-	bool is_input;
-	int value; /* Value if it is output*/
-};
-
 extern int tegra_gpio_get_bank_int_nr(int gpio);
 
 #endif
