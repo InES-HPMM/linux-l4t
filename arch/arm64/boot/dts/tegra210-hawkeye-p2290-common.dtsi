@@ -36,6 +36,7 @@
 #include "tegra210-platforms/tegra210-hawkeye-touch.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-sensor-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-camera-p2290-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-hawkeye-modem-p2290-1100-a00.dtsi"
 
 /* TODO: comm's dtsi should be included after GPIO dtsi */
 #include "tegra210-platforms/tegra210-hawkeye-comms.dtsi"

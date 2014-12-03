@@ -69,4 +69,8 @@
 		avdd_pll_utmip-supply = <&max77620_sd3>;
 		usb_vbus-supply = <&usb0_vbus>;
 	};
+
+	modem {
+		vdd-supply = <&tps61280>;
+	};
 };
