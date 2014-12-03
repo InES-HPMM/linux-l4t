@@ -172,6 +172,18 @@ config TEGRA_IOMMU_SMMU
 	  space through the SMMU (System Memory Management Unit)
 	  hardware included on Tegra SoCs.
 
+config TEGRA_IOMMU_SMMU_NOTLB
+	bool "Disable TLB for Tegra SMMU"
+	depends on TEGRA_IOMMU_SMMU
+	help
+	  For debugging purpose, disable IOMMU cache(TLB)
+
+config TEGRA_IOMMU_SMMU_NOPTC
+	bool "Disable PTC for Tegra SMMU"
+	depends on TEGRA_IOMMU_SMMU
+	help
+	  For debugging purpose, disable IOMMU cache(PTC)
+
 config TEGRA_IOMMU_SMMU_HV
 	bool "Tegra SMMU IOMMU virtualization Support"
 	depends on TEGRA_IOMMU_SMMU && TEGRA_HV_MANAGER

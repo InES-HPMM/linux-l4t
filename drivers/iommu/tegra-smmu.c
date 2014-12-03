@@ -426,6 +426,9 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 	val = SMMU_PTC_CONFIG_RESET_VAL;
 	val |= SMMU_PTC_REQ_LIMIT;
 
+	if (config_enabled(CONFIG_TEGRA_IOMMU_SMMU_NOPTC))
+		val &= ~SMMU_PTC_CONFIG_CACHE__ENABLE;
+
 	smmu_write(smmu, val, SMMU_CACHE_CONFIG(_PTC));
 
 	val = SMMU_TLB_CONFIG_RESET_VAL;
@@ -436,6 +439,9 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 		val |= SMMU_TLB_CONFIG_ACTIVE_LINES__VALUE << 1;
 	else  /* T210. */
 		val |= (SMMU_TLB_CONFIG_ACTIVE_LINES__VALUE * 3);
+
+	if (config_enabled(CONFIG_TEGRA_IOMMU_SMMU_NOTLB))
+		val &= ~SMMU_TLB_CONFIG_ACTIVE_LINES__MASK;
 
 	smmu_write(smmu, val, SMMU_CACHE_CONFIG(_TLB));
 
