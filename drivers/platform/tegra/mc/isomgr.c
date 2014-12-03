@@ -307,7 +307,8 @@ static struct isoclient_info *get_iso_client_info(void)
 		break;
 	case TEGRA_CHIPID_TEGRA21:
 		cinfo = tegra21x_isoclients;
-		iso_bw_percentage = 50;
+		iso_bw_percentage = 45; /* Hack: Should be determined based on
+					   DRAM type. */
 		break;
 	default:
 		cinfo = tegra_null_isoclients;
