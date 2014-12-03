@@ -153,11 +153,71 @@ TRACE_EVENT(pm_qos_request,
 		  (unsigned long)__entry->request)
 );
 
+#define pm_verb_symbolic(event) \
+	__print_symbolic(event, \
+		{ PM_EVENT_SUSPEND, "suspend" }, \
+		{ PM_EVENT_RESUME, "resume" }, \
+		{ PM_EVENT_FREEZE, "freeze" }, \
+		{ PM_EVENT_QUIESCE, "quiesce" }, \
+		{ PM_EVENT_HIBERNATE, "hibernate" }, \
+		{ PM_EVENT_THAW, "thaw" }, \
+		{ PM_EVENT_RESTORE, "restore" }, \
+		{ PM_EVENT_RECOVER, "recover" })
+
 DEFINE_EVENT(cpu, cpu_frequency,
 
 	TP_PROTO(unsigned int frequency, unsigned int cpu_id),
 
 	TP_ARGS(frequency, cpu_id)
+);
+
+TRACE_EVENT(device_pm_callback_start,
+
+	TP_PROTO(struct device *dev, const char *pm_ops, int event_in),
+
+	TP_ARGS(dev, pm_ops, event_in),
+
+	TP_STRUCT__entry(
+		__string(device, dev_name(dev))
+		__string(driver, dev_driver_string(dev))
+		__string(parent, dev->parent ? dev_name(dev->parent) : "none")
+		__string(pm_ops, pm_ops ? pm_ops : "none ")
+		__field(int, event)
+	),
+
+	TP_fast_assign(
+		__assign_str(device, dev_name(dev));
+		__assign_str(driver, dev_driver_string(dev));
+		__assign_str(parent, dev->parent ? dev_name(dev->parent) : "none");
+		__assign_str(pm_ops, pm_ops ? pm_ops : "none ");
+		__entry->event = event_in;
+	),
+
+	TP_printk("%s %s, parent: %s, %s[%s]", __get_str(driver),
+		__get_str(device), __get_str(parent), __get_str(pm_ops),
+		pm_verb_symbolic(__entry->event))
+);
+
+TRACE_EVENT(device_pm_callback_end,
+
+	TP_PROTO(struct device *dev, int error_in),
+
+	TP_ARGS(dev, error_in),
+
+	TP_STRUCT__entry(
+		__string(device, dev_name(dev))
+		__string(driver, dev_driver_string(dev))
+		__field(int, error)
+	),
+
+	TP_fast_assign(
+		__assign_str(device, dev_name(dev));
+		__assign_str(driver, dev_driver_string(dev));
+		__entry->error = error_in;
+	),
+
+	TP_printk("%s %s, err=%d",
+		__get_str(driver), __get_str(device), __entry->error)
 );
 
 TRACE_EVENT(suspend_resume,
