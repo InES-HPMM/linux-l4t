@@ -1405,7 +1405,7 @@ static int tegra21_cpu_cmplx_clk_set_rate(struct clk *c, unsigned long rate)
 static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 {
 	int ret;
-	unsigned int flags, delay;
+	unsigned int flags = 0, delay = 0;
 	const struct clk_mux_sel *sel;
 	unsigned long rate = clk_get_rate(c->parent);
 	struct clk *dfll = c->parent->u.cpu.dynamic ? : p->u.cpu.dynamic;
@@ -1449,9 +1449,11 @@ static int tegra21_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 				__func__, c->name, p->name, rate);
 		return -ECANCELED;
 	}
-	flags = TEGRA_POWER_CLUSTER_IMMEDIATE;
-	flags |= TEGRA_POWER_CLUSTER_PART_DEFAULT;
-	delay = 0;
+	if (!flags) {
+		flags = TEGRA_POWER_CLUSTER_IMMEDIATE;
+		flags |= TEGRA_POWER_CLUSTER_PART_DEFAULT;
+		delay = 0;
+	}
 	flags |= (p->u.cpu.mode == MODE_LP) ? TEGRA_POWER_CLUSTER_LP :
 		TEGRA_POWER_CLUSTER_G;
 
