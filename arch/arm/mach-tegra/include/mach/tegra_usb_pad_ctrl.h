@@ -57,7 +57,7 @@ static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
 		return PEX_P1;
 	else if (laneowner == 0x2)
 		return PEX_P2;
-	else if (laneowner == 0x2)
+	else if (laneowner == 0x3)
 		return PEX_P3;
 	else if (laneowner == 0x4)
 		return PEX_P4;
