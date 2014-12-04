@@ -25,6 +25,7 @@
 #include "tegra210-platforms/tegra210-hawkeye-pinmux-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-power-tree-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-hawkeye-touch.dtsi"
 
 /* TODO: comm's dtsi should be included after GPIO dtsi */
 #include "tegra210-platforms/tegra210-hawkeye-comms.dtsi"
