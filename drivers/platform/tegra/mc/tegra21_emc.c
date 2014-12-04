@@ -156,6 +156,10 @@ static struct emc_iso_usage tegra21_emc_iso_usage[] = {
 		80, get_iso_bw_os_idle
 	},
 	{
+		BIT(EMC_USER_DC2),
+		80, get_iso_bw_os_idle
+	},
+	{
 		BIT(EMC_USER_DC1) | BIT(EMC_USER_DC2),
 		50, get_iso_bw_general
 	},
