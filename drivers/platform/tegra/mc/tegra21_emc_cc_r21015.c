@@ -24,7 +24,10 @@
 
 #include "iomap.h"
 
-#define DVFS_CLOCK_CHANGE_VERSION	21015
+/*
+ * This clock change is actually equivalent to 21018 now.
+ */
+#define DVFS_CLOCK_CHANGE_VERSION	21018
 #define EMC_PRELOCK_VERSION		2101
 
 static inline u32 actual_osc_clocks(u32 in)
@@ -558,9 +561,8 @@ u32 __do_periodic_emc_compensation_r21015(
 		/*
 		 * 1. Power optimizations should be off.
 		 */
-		emc_set_shadow_bypass(ACTIVE);
 		emc_writel(emc_cfg, EMC_CFG);
-		emc_set_shadow_bypass(ASSEMBLY);
+		emc_timing_update(channel_mode);
 
 		wait_for_update(EMC_EMC_STATUS,
 				EMC_EMC_STATUS_DRAM_IN_POWERDOWN_MASK, 0, 0);
@@ -1323,6 +1325,29 @@ void emc_set_clock_r21015(struct tegra21_emc_table *next_timing,
 	 *   Pre DVFS SW sequence.
 	 */
 	emc_cc_dbg(STEPS, "Step 1\n");
+	emc_cc_dbg(STEPS, "Step 1.1: Disable DLL temporarily.\n");
+	tmp = emc_readl(EMC_CFG_DIG_DLL);
+	tmp &= ~EMC_CFG_DIG_DLL_CFG_DLL_EN;
+	emc_writel(tmp, EMC_CFG_DIG_DLL);
+
+	emc_timing_update(channel_mode);
+	wait_for_update(EMC_CFG_DIG_DLL,
+			EMC_CFG_DIG_DLL_CFG_DLL_EN, 0, 0);
+	if (channel_mode)
+		wait_for_update(EMC_CFG_DIG_DLL,
+				EMC_CFG_DIG_DLL_CFG_DLL_EN, 0, 1);
+
+	emc_cc_dbg(STEPS, "Step 1.2: Disable AUTOCAL temporarily.\n");
+	emc_auto_cal_config = next_timing->emc_auto_cal_config;
+	auto_cal_en = emc_auto_cal_config & EMC_AUTO_CAL_CONFIG_AUTO_CAL_ENABLE;
+	emc_auto_cal_config &= ~EMC_AUTO_CAL_CONFIG_AUTO_CAL_START;
+	emc_auto_cal_config |=  EMC_AUTO_CAL_CONFIG_AUTO_CAL_MEASURE_STALL;
+	emc_auto_cal_config |=  EMC_AUTO_CAL_CONFIG_AUTO_CAL_UPDATE_STALL;
+	emc_auto_cal_config |=  auto_cal_en;
+	emc_writel(emc_auto_cal_config, EMC_AUTO_CAL_CONFIG);
+	emc_readl(EMC_AUTO_CAL_CONFIG); /* Flush write. */
+
+	emc_cc_dbg(STEPS, "Step 1.3: Disable other power features.\n");
 	emc_set_shadow_bypass(ACTIVE);
 	emc_writel(emc_cfg, EMC_CFG);
 	emc_writel(emc_sel_dpd_ctrl, EMC_SEL_DPD_CTRL);
@@ -1527,14 +1552,6 @@ void emc_set_clock_r21015(struct tegra21_emc_table *next_timing,
 	 *   Prepare autocal for the clock change.
 	 */
 	emc_cc_dbg(STEPS, "Step 3\n");
-	emc_auto_cal_config = next_timing->emc_auto_cal_config;
-	auto_cal_en = emc_auto_cal_config & EMC_AUTO_CAL_CONFIG_AUTO_CAL_ENABLE;
-	emc_auto_cal_config &= ~EMC_AUTO_CAL_CONFIG_AUTO_CAL_START;
-	emc_auto_cal_config |=  EMC_AUTO_CAL_CONFIG_AUTO_CAL_MEASURE_STALL;
-	emc_auto_cal_config |=  EMC_AUTO_CAL_CONFIG_AUTO_CAL_UPDATE_STALL;
-	emc_auto_cal_config |=  auto_cal_en;
-	emc_writel(emc_auto_cal_config, EMC_AUTO_CAL_CONFIG);
-
 	emc_set_shadow_bypass(ACTIVE);
 	emc_writel(next_timing->emc_auto_cal_config2, EMC_AUTO_CAL_CONFIG2);
 	emc_writel(next_timing->emc_auto_cal_config3, EMC_AUTO_CAL_CONFIG3);
@@ -1696,9 +1713,11 @@ void emc_set_clock_r21015(struct tegra21_emc_table *next_timing,
 		__raw_writel(wval, (void __iomem *)var);
 	}
 
-	mrw_req = (23 << EMC_MRW_MRW_MA_SHIFT) |
-		(next_timing->run_clocks & EMC_MRW_MRW_OP_MASK);
-	emc_writel(mrw_req, EMC_MRW);
+	if (dram_type == DRAM_TYPE_LPDDR4) {
+		mrw_req = (23 << EMC_MRW_MRW_MA_SHIFT) |
+			(next_timing->run_clocks & EMC_MRW_MRW_OP_MASK);
+		emc_writel(mrw_req, EMC_MRW);
+	}
 
 	/* Per channel burst registers. */
 	emc_cc_dbg(SUB_STEPS, "Writing burst_regs_per_ch\n");
@@ -2036,8 +2055,7 @@ void emc_set_clock_r21015(struct tegra21_emc_table *next_timing,
 				   div_o3(1000 *
 					  next_timing->dram_timing_regs[T_PDEX],
 					  destination_clock_period));
-			ccfifo_writel(EMC_SELF_REF_ACTIVE_SELF_REF,
-				      EMC_SELF_REF, 0);
+			ccfifo_writel(0, EMC_SELF_REF, 0);
 			ccfifo_writel(0, EMC_REF, 0);
 			ccfifo_writel(2 << EMC_ZQ_CAL_DEV_SEL_SHIFT |
 				      EMC_ZQ_CAL_ZQ_LATCH_CMD,
@@ -2063,8 +2081,7 @@ void emc_set_clock_r21015(struct tegra21_emc_table *next_timing,
 
 			ccfifo_writel((mr13_flip_fspop & 0xfffffff7) |
 				      0x0c000000, EMC_MRW3, 0);
-			ccfifo_writel(EMC_SELF_REF_ACTIVE_SELF_REF,
-				      EMC_SELF_REF, 0);
+			ccfifo_writel(0, EMC_SELF_REF, 0);
 			ccfifo_writel(0, EMC_REF, 0);
 
 			ccfifo_writel(1 << EMC_ZQ_CAL_DEV_SEL_SHIFT |
@@ -2083,8 +2100,7 @@ void emc_set_clock_r21015(struct tegra21_emc_table *next_timing,
 				   div_o3(1000 *
 					  next_timing->dram_timing_regs[T_PDEX],
 					  destination_clock_period));
-			ccfifo_writel(EMC_SELF_REF_ACTIVE_SELF_REF,
-				      EMC_SELF_REF, 0);
+			ccfifo_writel(0, EMC_SELF_REF, 0);
 			ccfifo_writel(0, EMC_REF, 0);
 
 			ccfifo_writel(EMC_ZQ_CAL_ZQ_LATCH_CMD, EMC_ZQ_CAL,
@@ -2235,6 +2251,7 @@ void emc_set_clock_r21015(struct tegra21_emc_table *next_timing,
 	tmp |= EMC_CFG_DIG_DLL_CFG_DLL_STALL_ALL_TRAFFIC;
 	tmp &= ~EMC_CFG_DIG_DLL_CFG_DLL_STALL_RW_UNTIL_LOCK;
 	tmp &= ~EMC_CFG_DIG_DLL_CFG_DLL_STALL_ALL_UNTIL_LOCK;
+	tmp &= ~EMC_CFG_DIG_DLL_CFG_DLL_EN;
 	tmp = (tmp & ~EMC_CFG_DIG_DLL_CFG_DLL_MODE_MASK) |
 		(2 << EMC_CFG_DIG_DLL_CFG_DLL_MODE_SHIFT);
 	emc_writel(tmp, EMC_CFG_DIG_DLL);
@@ -2330,7 +2347,20 @@ void emc_set_clock_r21015(struct tegra21_emc_table *next_timing,
 	/* Step 30:
 	 *   Re-enable autocal.
 	 */
-	emc_cc_dbg(STEPS, "Step 30\n");
+	emc_cc_dbg(STEPS, "Step 30: Re-enable DLL and AUTOCAL\n");
+	if (next_timing->burst_regs[EMC_CFG_DIG_DLL_INDEX] &
+	    EMC_CFG_DIG_DLL_CFG_DLL_EN) {
+		tmp = emc_readl(EMC_CFG_DIG_DLL);
+		tmp |=  EMC_CFG_DIG_DLL_CFG_DLL_STALL_ALL_TRAFFIC;
+		tmp |=  EMC_CFG_DIG_DLL_CFG_DLL_EN;
+		tmp &= ~EMC_CFG_DIG_DLL_CFG_DLL_STALL_RW_UNTIL_LOCK;
+		tmp &= ~EMC_CFG_DIG_DLL_CFG_DLL_STALL_ALL_UNTIL_LOCK;
+		tmp =  (tmp & ~EMC_CFG_DIG_DLL_CFG_DLL_MODE_MASK) |
+			(2 << EMC_CFG_DIG_DLL_CFG_DLL_MODE_SHIFT);
+		emc_writel(tmp, EMC_CFG_DIG_DLL);
+		emc_timing_update(channel_mode);
+	}
+
 	emc_auto_cal_config = next_timing->emc_auto_cal_config;
 	emc_writel(emc_auto_cal_config, EMC_AUTO_CAL_CONFIG);
 
