@@ -29,7 +29,7 @@
 #define IOBRICK_DCC_THRESHOLD		2400
 #define DVFS_FGCG_MID_SPEED_THRESHOLD	600
 
-/* Uncomment to enable emc debugging. */
+/* Uncomment to enable emc debugging on boot. */
 /* #define EMC_CC_DBG */
 #define emc_cc_dbg(mask, fmt, ...)					\
 	do {								\

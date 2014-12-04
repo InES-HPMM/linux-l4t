@@ -1590,6 +1590,10 @@ static int tegra_emc_debug_init(void)
 		emc_debugfs_root, (u32 *)&clkchange_delay))
 		goto err_out;
 
+	if (!debugfs_create_u32("cc_dbg", S_IRUGO | S_IWUSR,
+				emc_debugfs_root, (u32 *)&emc_dbg_mask))
+		goto err_out;
+
 	/*
 	 * Reading dram temperature supported only for LP DDR variants,
 	 * Currently two variants of DDR are supported i.e. LPDDR2 and DDR3
