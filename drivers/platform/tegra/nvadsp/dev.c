@@ -197,7 +197,7 @@ static int nvadsp_clocks_enable(struct platform_device *pdev)
 	}
 	dev_dbg(dev, "ahub clock enabled\n");
 
-	drv_data->ape_clk = clk_get_sys(NULL, "ape");
+	drv_data->ape_clk = clk_get_sys(NULL, "adsp.ape");
 	if (IS_ERR_OR_NULL(drv_data->ape_clk)) {
 		dev_err(dev, "unable to find ape clock\n");
 		ret = PTR_ERR(drv_data->ape_clk);

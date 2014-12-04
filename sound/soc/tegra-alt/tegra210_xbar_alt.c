@@ -863,7 +863,7 @@ static int tegra210_xbar_probe(struct platform_device *pdev)
 		goto err_clk_put;
 	}
 
-	xbar->clk_ape = clk_get_sys(NULL, "ape");
+	xbar->clk_ape = clk_get_sys(NULL, "xbar.ape");
 	if (IS_ERR(xbar->clk_ape)) {
 		dev_err(&pdev->dev, "Can't retrieve ape clock\n");
 		ret = PTR_ERR(xbar->clk_ape);

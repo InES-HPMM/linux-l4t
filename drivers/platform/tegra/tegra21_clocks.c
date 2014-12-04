@@ -8495,6 +8495,26 @@ static struct clk tegra_clk_mselect = {
 	.rate_change_nh = &mselect_rate_change_nh,
 };
 
+static struct raw_notifier_head ape_rate_change_nh;
+
+static struct clk tegra_clk_ape = {
+	.name      = "ape",
+	.ops       = &tegra_1xbus_clk_ops,
+	.reg       = 0x6c0,
+	.inputs    = mux_plla_pllc4_out0_pllc_pllc4_out1_pllp_clkm_pllc4_out2,
+	.flags     = MUX | DIV_U71 | PERIPH_ON_APB,
+	.shared_bus_flags = SHARED_BUS_RETENTION,
+	.max_rate  = 408000000,
+	.min_rate  = 12000000,
+	.u.periph = {
+		.clk_num   = 198,
+		.pll_low = &tegra_pll_p,
+		.pll_high = &tegra_pll_p,
+		.threshold = 408000000,
+	},
+	.rate_change_nh = &ape_rate_change_nh,
+};
+
 static struct raw_notifier_head c2bus_rate_change_nh;
 static struct raw_notifier_head c3bus_rate_change_nh;
 
@@ -8998,7 +9018,6 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("dmic1",	"tegra210-dmic.0",	NULL,	161,	0x64c,	 12288000, mux_pllaout0_audio0_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("dmic2",	"tegra210-dmic.1",	NULL,	162,	0x650,	 12288000, mux_pllaout0_audio1_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("dmic3",	"tegra210-dmic.2",	NULL,	197,	0x6bc,	 12288000, mux_pllaout0_audio2_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
-	PERIPH_CLK("ape",	NULL,			"ape",	198,	0x6c0,	408000000, mux_plla_pllc4_out0_pllc_pllc4_out1_pllp_clkm_pllc4_out2, MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("apb2ape",	NULL,		    "apb2ape",	107,	0,	38400000,  mux_clk_m,			PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("maud",	"maud",			NULL,	202,	0x6d4,	300000000, mux_pllp_pllp_out3_clkm_clk32k_plla,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("pwm",	"tegra-pwm",		NULL,	17,	0x110,	 48000000, mux_pllp_pllc_clk32_clkm,		MUX | DIV_U71 | PERIPH_ON_APB),
@@ -9204,6 +9223,12 @@ static struct clk tegra_list_clks[] = {
 	SHARED_CLK("pcie.mselect",	  "tegra_pcie", "mselect",   &tegra_clk_mselect, NULL,  0, 0),
 	SHARED_LIMIT("cap.vcore.mselect", "cap.vcore.mselect", NULL, &tegra_clk_mselect, NULL,  0, SHARED_CEILING),
 	SHARED_CLK("override.mselect",    "override.mselect",  NULL, &tegra_clk_mselect, NULL,  0, SHARED_OVERRIDE),
+
+	SHARED_CLK("adma.ape",		NULL,           "adma.ape",  &tegra_clk_ape, NULL,  0, 0),
+	SHARED_CLK("adsp.ape",		NULL,           "adsp.ape",  &tegra_clk_ape, NULL,  0, 0),
+	SHARED_CLK("xbar.ape",		NULL,           "xbar.ape",  &tegra_clk_ape, NULL,  0, 0),
+	SHARED_LIMIT("cap.vcore.ape",	"cap.vcore.ape", NULL,       &tegra_clk_ape, NULL,  0, SHARED_CEILING),
+	SHARED_CLK("override.ape",	"override.ape",  NULL,       &tegra_clk_ape, NULL,  0, SHARED_OVERRIDE),
 };
 
 /* VI, ISP buses */
@@ -9572,6 +9597,7 @@ static struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_mc,
 	&tegra_clk_host1x,
 	&tegra_clk_mselect,
+	&tegra_clk_ape,
 	&tegra_clk_c2bus,
 	&tegra_clk_c3bus,
 	&tegra_clk_gpu_gate,

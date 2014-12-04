@@ -1215,7 +1215,7 @@ static int tegra_adma_probe(struct platform_device *pdev)
 		return PTR_ERR(tdma->dma_clk);
 	}
 
-	tdma->ape_clk = clk_get_sys(NULL, "ape");
+	tdma->ape_clk = clk_get_sys(NULL, "adma.ape");
 	if (IS_ERR(tdma->ape_clk)) {
 		dev_err(&pdev->dev, "Error: Missing APE clock\n");
 		return PTR_ERR(tdma->ape_clk);

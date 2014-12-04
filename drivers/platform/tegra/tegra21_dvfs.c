@@ -1534,6 +1534,7 @@ static struct core_dvfs_cap_table tegra21_core_cap_table[] = {
 	{ .cap_name = "cap.vcore.emc" },
 	{ .cap_name = "cap.vcore.host1x" },
 	{ .cap_name = "cap.vcore.mselect" },
+	{ .cap_name = "cap.vcore.ape" },
 };
 
 static struct core_bus_limit_table tegra21_gpu_cap_syfs = {
