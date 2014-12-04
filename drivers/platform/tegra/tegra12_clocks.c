@@ -4334,14 +4334,14 @@ static void __init tegra12_dfll_clk_init(struct clk *c)
 
 static int tegra12_dfll_clk_enable(struct clk *c)
 {
-	if (c->state != UNINITIALIZED)
+	if ((c->state != UNINITIALIZED) && (c->u.dfll.cl_dvfs))
 		return tegra_cl_dvfs_enable(c->u.dfll.cl_dvfs);
 	return 0;
 }
 
 static void tegra12_dfll_clk_disable(struct clk *c)
 {
-	if (c->state != UNINITIALIZED)
+	if ((c->state != UNINITIALIZED) && (c->u.dfll.cl_dvfs))
 		tegra_cl_dvfs_disable(c->u.dfll.cl_dvfs);
 }
 
@@ -4390,7 +4390,7 @@ static void tegra12_dfll_clk_resume(struct clk *c)
 	if (!(clk_readlx(c->reg) & DFLL_BASE_RESET))
 		return;		/* already resumed */
 
-	if (c->state != UNINITIALIZED) {
+	if ((c->state != UNINITIALIZED) && (c->u.dfll.cl_dvfs)) {
 		tegra_periph_reset_deassert(c);
 		tegra_cl_dvfs_resume(c->u.dfll.cl_dvfs);
 	}
