@@ -628,6 +628,7 @@ enum tegra_revision tegra_chip_get_revision(void)
 
 	return tegra_id.revision;
 }
+EXPORT_SYMBOL(tegra_chip_get_revision);
 
 unsigned int tegra_get_minor_rev(void)
 {
@@ -1417,6 +1418,7 @@ u32 tegra_get_fuse_opt_subrevision(void)
 #endif
 	return ret;
 }
+EXPORT_SYMBOL(tegra_get_fuse_opt_subrevision);
 
 u32 tegra_get_sku_id(void)
 {
