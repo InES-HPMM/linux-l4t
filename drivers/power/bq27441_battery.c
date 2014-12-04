@@ -74,6 +74,10 @@
 #define BQ27441_DATA_BLOCK_CLASS	0x3E
 #define BQ27441_DATA_BLOCK		0x3F
 
+#define BQ27441_QMAX_CELL_1		0x40
+#define BQ27441_QMAX_CELL_2		0x41
+#define BQ27441_RESERVE_CAP_1		0x43
+#define BQ27441_RESERVE_CAP_2		0x44
 #define BQ27441_DESIGN_CAPACITY_1	0x4A
 #define BQ27441_DESIGN_CAPACITY_2	0x4B
 #define BQ27441_DESIGN_ENERGY_1		0x4C
@@ -124,6 +128,8 @@ struct bq27441_chip {
 	int v_chg_term;
 	u32 cc_gain;
 	u32 cc_delta;
+	u32 qmax_cell;
+	u32 reserve_cap;
 
 	int lasttime_soc;
 	int lasttime_status;
@@ -381,11 +387,12 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	int old_taper_rate;
 	int old_terminate_voltage;
 	int old_v_chg_term;
+	u32 old_qmax_cell;
+	u32 old_reserve_cap;
 	int flags_lsb;
 
 	unsigned long timeout = jiffies + HZ;
 	int ret;
-
 
 	flags_lsb = bq27441_read_byte(client, BQ27441_FLAGS);
 
@@ -428,6 +435,10 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 
 	/* read all the old values that we want to update */
 
+	old_qmax_cell = bq27441_read_word(client, BQ27441_QMAX_CELL_1);
+
+	old_reserve_cap = bq27441_read_word(client, BQ27441_RESERVE_CAP_1);
+
 	old_des_cap = bq27441_read_word(client, BQ27441_DESIGN_CAPACITY_1);
 
 	old_des_energy = bq27441_read_word(client, BQ27441_DESIGN_ENERGY_1);
@@ -437,15 +448,18 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	old_terminate_voltage = bq27441_read_word(client,
 						BQ27441_TERMINATE_VOLTAGE_1);
 
-
 	dev_info(&chip->client->dev, "FG values:\n capacity old: %d new: %d\n"
 			"design_energy old:%d new:%d\n"
 			"taper_rate old:%d new:%d\n"
+			"qmax_cell old:%d new:%d\n"
+			"reserve_cap old:%d new:%d\n"
 			"terminate_voltage old:%d new:%d\n"
 			"itpor flag:%d checksum:%d\n",
 			be16_to_cpu(old_des_cap), chip->full_capacity,
 			be16_to_cpu(old_des_energy), chip->design_energy,
 			be16_to_cpu(old_taper_rate), chip->taper_rate,
+			be16_to_cpu(old_qmax_cell), chip->qmax_cell,
+			be16_to_cpu(old_reserve_cap), chip->reserve_cap,
 			be16_to_cpu(old_terminate_voltage),
 			chip->terminate_voltage,
 			(flags_lsb & BQ27441_FLAGS_ITPOR), old_csum);
@@ -486,6 +500,26 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 
 
 	/* update new config to fuel gauge */
+	ret = bq27441_write_byte(client, BQ27441_QMAX_CELL_1,
+					(chip->qmax_cell & 0xFF00) >> 8);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_QMAX_CELL_2,
+					chip->qmax_cell & 0xFF);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_RESERVE_CAP_1,
+					(chip->reserve_cap & 0xFF00) >> 8);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_RESERVE_CAP_2,
+					chip->reserve_cap & 0xFF);
+	if (ret < 0)
+		goto fail;
+
 	ret = bq27441_write_byte(client, BQ27441_DESIGN_CAPACITY_1,
 					(chip->full_capacity & 0xFF00) >> 8);
 	if (ret < 0)
@@ -534,6 +568,10 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 		- ((old_des_energy >> 8) & 0xFF)
 		- (old_taper_rate & 0xFF)
 		- ((old_taper_rate >> 8) & 0xFF)
+		- (old_qmax_cell & 0xFF)
+		- ((old_qmax_cell >> 8) & 0xFF)
+		- (old_reserve_cap & 0xFF)
+		- ((old_reserve_cap >> 8) & 0xFF)
 		- (old_terminate_voltage & 0xFF)
 		- ((old_terminate_voltage >> 8) & 0xFF)) % 256;
 
@@ -543,6 +581,10 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 				+ ((chip->design_energy & 0xFF00) >> 8)
 				+ (chip->taper_rate & 0xFF)
 				+ ((chip->taper_rate & 0xFF00) >> 8)
+				+ (chip->qmax_cell & 0xFF)
+				+ ((chip->qmax_cell & 0xFF00) >> 8)
+				+ (chip->reserve_cap & 0xFF)
+				+ ((chip->reserve_cap & 0xFF00) >> 8)
 				+ (chip->terminate_voltage & 0xFF)
 				+ ((chip->terminate_voltage & 0xFF00) >> 8)
 				)) % 256);
@@ -838,6 +880,12 @@ static void of_bq27441_parse_platform_data(struct i2c_client *client,
 	if (!of_property_read_u32(np, "ti,cc-delta", &tmp))
 		pdata->cc_delta = tmp;
 
+	if (!of_property_read_u32(np, "ti,qmax-cell", &tmp))
+		pdata->qmax_cell = tmp;
+
+	if (!of_property_read_u32(np, "ti,reserve-cap-mah", &tmp))
+		pdata->reserve_cap = tmp;
+
 	if (!of_property_read_string(np, "ti,tz-name", &pstr))
 		pdata->tz_name = pstr;
 	else
@@ -897,6 +945,10 @@ static int bq27441_probe(struct i2c_client *client,
 		chip->cc_gain = chip->pdata->cc_gain;
 	if (chip->pdata->cc_delta)
 		chip->cc_delta = chip->pdata->cc_delta;
+	if (chip->pdata->qmax_cell)
+		chip->qmax_cell = chip->pdata->qmax_cell;
+	if (chip->pdata->reserve_cap)
+		chip->reserve_cap = chip->pdata->reserve_cap;
 	chip->enable_temp_prop = chip->pdata->enable_temp_prop;
 
 	dev_info(&client->dev, "Battery capacity is %d\n", chip->full_capacity);
