@@ -686,7 +686,6 @@ static int tegra210_suspend_dram(enum tegra_suspend_mode mode)
 {
 	int err = 0;
 	unsigned long arg;
-	int cpu = smp_processor_id();
 	struct psci_power_state ps = {
 		.id = TEGRA210_CPUIDLE_SC7,
 		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
@@ -705,10 +704,7 @@ static int tegra210_suspend_dram(enum tegra_suspend_mode mode)
 	}
 
 	if (mode == TEGRA_SUSPEND_LP1) {
-		if (tegra_bpmp_do_idle(cpu, TEGRA_PM_CC7,
-					TEGRA_PM_SC4) != 0)
-			return -ENXIO;
-
+		tegra_bpmp_enable_suspend(TEGRA_PM_SC4, 0);
 		ps.id = TEGRA210_CPUIDLE_CC7;
 		ps.affinity_level = 1;
 
@@ -724,12 +720,7 @@ static int tegra210_suspend_dram(enum tegra_suspend_mode mode)
 		return err;
 	}
 
-	if (tegra_bpmp_do_idle(cpu, TEGRA_PM_CC7,
-				TEGRA_PM_SC7) != 0) {
-		err = -ENXIO;
-		goto fail;
-	}
-
+	tegra_bpmp_enable_suspend(TEGRA_PM_SC7, 0);
 	tegra_pm_prepare_sc7();
 	trace_cpu_suspend(CPU_SUSPEND_START, tegra_rtc_read_ms());
 	tegra_get_suspend_time();
