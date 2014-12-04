@@ -678,7 +678,7 @@ int escore_slim_cmd(struct escore_priv *escore, u32 cmd, u32 *resp)
 		if (escore->cmd_compl_mode == ES_CMD_COMP_INTR) {
 			pr_debug("%s(): Waiting for API interrupt. Jiffies:%lu",
 					__func__, jiffies);
-			err = wait_for_completion_timeout(&escore->rising_edge,
+			err = wait_for_completion_timeout(&escore->cmd_compl,
 					msecs_to_jiffies(ES_RESP_TOUT_MSEC));
 			if (!err) {
 				pr_debug("%s(): API Interrupt wait timeout\n",
@@ -1028,22 +1028,6 @@ int escore_slim_boot_finish(struct escore_priv *escore)
 	int sync_retry = ES_SYNC_MAX_RETRY;
 
 	dev_dbg(escore->dev, "%s(): finish fw download\n", __func__);
-	/* Utilize gpio-a for boot finish */
-	if (escore->pdata->gpioa_gpio != -1) {
-		rc = wait_for_completion_timeout(&escore->falling_edge,
-				msecs_to_jiffies(ES_SBL_RESP_TOUT));
-		if (!rc) {
-			pr_err("%s(): Boot Finish response timed out\n",
-				__func__);
-			rc = -ETIMEDOUT;
-		} else {
-			pr_info("%s(): firmware load success\n", __func__);
-			rc = 0;
-		}
-		return rc;
-	}
-
-	/* Use Polling method if gpio-a is not defined */
 
 	if (escore->mode == VOICESENSE) {
 		sync_cmd = (ES_SYNC_CMD << 16) | ES_SYNC_INTR_RISING_EDGE;

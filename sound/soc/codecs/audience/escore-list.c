@@ -58,15 +58,14 @@ int escore_write_msg_list(struct escore_priv *escore)
 					&resp);
 			if (rc < 0) {
 				pr_err("%s(): failed", __func__);
-				mutex_unlock(&escore->msg_list_mutex);
 				goto exit;
 			}
 		}
 	}
 
 exit:
-	mutex_unlock(&escore->msg_list_mutex);
 	mutex_unlock(&escore->api_mutex);
+	mutex_unlock(&escore->msg_list_mutex);
 	escore_pm_put_autosuspend();
 	return rc;
 }

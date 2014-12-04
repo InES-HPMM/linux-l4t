@@ -911,6 +911,9 @@ int escore_wakeup(struct escore_priv *escore)
 		msleep(ES_PM_CLOCK_STABILIZATION);
 	}
 
+	if (escore->pri_intf == ES_SPI_INTF)
+		msleep(ES_WAKEUP_TIME);
+
 	do {
 		/* Toggle the wakeup pin H->L the L->H */
 		if (escore->wakeup_intf == ES_UART_INTF &&
@@ -942,7 +945,6 @@ int escore_wakeup(struct escore_priv *escore)
 		cmd |= escore->pdata->gpio_a_irq_type;
 
 		if (escore->pri_intf == ES_SPI_INTF) {
-			msleep(ES_WAKEUP_TIME);
 			rc = escore_priv.bus.ops.cmd(escore, p_cmd, &rsp);
 			if (rc < 0)
 				break;

@@ -523,9 +523,12 @@ int escore_pm_get_sync(void)
 {
 	int ret = 0;
 	dev_dbg(escore_priv.dev, "%s()\n", __func__);
-	if (escore_priv.pm_enable == 1) {
-		if (!escore_priv.system_suspend)
-			ret = pm_runtime_get_sync(escore_priv.dev);
+	if (mutex_trylock(&escore_priv.pm_mutex)) {
+		if (escore_priv.pm_enable == 1) {
+			if (!escore_priv.system_suspend)
+				ret = pm_runtime_get_sync(escore_priv.dev);
+		}
+		mutex_unlock(&escore_priv.pm_mutex);
 	}
 	return ret;
 }
@@ -534,11 +537,15 @@ void escore_pm_put_autosuspend(void)
 {
 	int ret = 0;
 	dev_dbg(escore_priv.dev, "%s()\n", __func__);
-	if (escore_priv.pm_enable == 1 && !escore_priv.system_suspend) {
-		pm_runtime_mark_last_busy(escore_priv.dev);
-		ret = pm_runtime_put_sync_autosuspend(escore_priv.dev);
-		if (ret)
-			dev_err(escore_priv.dev, "%s() - failed\n", __func__);
+	if (mutex_trylock(&escore_priv.pm_mutex)) {
+		if (escore_priv.pm_enable == 1 && !escore_priv.system_suspend) {
+			pm_runtime_mark_last_busy(escore_priv.dev);
+			ret = pm_runtime_put_sync_autosuspend(escore_priv.dev);
+			if (ret)
+				dev_err(escore_priv.dev, "%s() - failed\n",
+						__func__);
+		}
+		mutex_unlock(&escore_priv.pm_mutex);
 	}
 
 	return;
