@@ -89,7 +89,7 @@ EXPORT_SYMBOL(system_serial_high);
 #ifdef CONFIG_ARM64_MACH_FRAMEWORK
 struct machine_desc *machine_desc __initdata;
 #endif
-DECLARE_BITMAP(cpu_hwcaps, NCAPS);
+DECLARE_BITMAP(cpu_hwcaps, ARM64_NCAPS);
 
 phys_addr_t __fdt_pointer __initdata;
 
