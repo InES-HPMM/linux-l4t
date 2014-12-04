@@ -1126,13 +1126,10 @@ static struct dma_chan *tegra_dma_of_xlate(struct of_phandle_args *dma_spec,
 {
 	struct tegra_adma *tdma = ofdma->of_dma_data;
 	struct dma_chan *chan;
-	struct tegra_adma_chan *tdc;
 
 	chan = dma_get_any_slave_channel(&tdma->dma_dev);
 	if (!chan)
 		return NULL;
-
-	tdc = to_tegra_adma_chan(chan);
 
 	return chan;
 }
