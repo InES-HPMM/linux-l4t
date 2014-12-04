@@ -183,3 +183,10 @@ int bpmp_query_tag(uint32_t phys)
 {
 	return __bpmp_rpc(MRQ_QUERY_TAG, &phys, sizeof(phys), NULL, 0);
 }
+
+void tegra_bpmp_enable_suspend(int mode, int flags)
+{
+	int mb[] = { mode, flags };
+	int r = bpmp_post(MRQ_ENABLE_SUSPEND, &mb, sizeof(mb));
+	WARN_ON(r);
+}

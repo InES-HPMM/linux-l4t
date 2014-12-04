@@ -55,6 +55,7 @@ void tegra_bpmp_get_smmu_data(phys_addr_t *start, size_t *size);
 int tegra_bpmp_do_idle(int cpu, int ccxtl, int scx);
 int tegra_bpmp_tolerate_idle(int cpu, int ccxtl, int scx_tl);
 int tegra_bpmp_scx_enable(int scx);
+void tegra_bpmp_enable_suspend(int mode, int flags);
 int tegra_bpmp_switch_cluster(int cpu);
 void tegra_bpmp_trace_printk(void);
 int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz,
@@ -75,6 +76,7 @@ static inline int tegra_bpmp_do_idle(int cpu, int ccxtl, int scx)
 static inline int tegra_bpmp_tolerate_idle(int cpu, int ccxtl, int scx_tl)
 { return -ENODEV; }
 static inline int tegra_bpmp_scx_enable(int scx) { return -ENODEV; }
+static inline void tegra_bpmp_enable_suspend(int mode, int flags) {}
 static inline int tegra_bpmp_switch_cluster(int cpu) { return -ENODEV; }
 static inline void tegra_bpmp_trace_printk(void) {}
 static inline int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz,
