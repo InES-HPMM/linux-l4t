@@ -1293,6 +1293,8 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 
 		mmc_card_set_hs400(card);
 		mmc_card_clr_highspeed(card);
+		if (max_dtr == MMC_HS533_MAX_DTR)
+			mmc_card_set_hs533(card);
 		mmc_set_clock(host, max_dtr);
 		err = mmc_select_powerclass(card, EXT_CSD_DDR_BUS_WIDTH_8,
 				ext_csd);
