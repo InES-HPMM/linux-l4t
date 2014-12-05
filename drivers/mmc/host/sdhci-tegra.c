@@ -93,6 +93,12 @@
 #define SDHCI_VNDR_DLLCAL_CFG				0x1b0
 #define SDHCI_VNDR_DLLCAL_CFG_EN_CALIBRATE		0x80000000
 
+#define SDHCI_VNDR_DLL_CTRL0_0				0x1b4
+#define SDHCI_VNDR_DLL_CTRL0_0_TX_DLY_SHIFT		7
+#define SDHCI_VNDR_DLL_CTRL0_0_TX_DLY_MASK		0x7F
+#define SDHCI_VNDR_DLL_CTRL0_0_TX_DLY_OFFSET		0x7C
+
+
 #define SDHCI_VNDR_DLLCAL_CFG_STATUS			0x1bc
 #define SDHCI_VNDR_DLLCAL_CFG_STATUS_DLL_ACTIVE		0x80000000
 
@@ -677,7 +683,6 @@ struct sdhci_tegra {
 	struct pinctrl_state *schmitt_disable[2];
 	struct pinctrl_state *sdmmc_pad_ctrl[MMC_TIMINGS_MAX_MODES];
 	int drive_group_sel;
-	u32 dll_calib;
 	bool en_strobe;
 	unsigned int tuned_tap_delay;
 };
@@ -1778,9 +1783,19 @@ static void tegra_sdhci_en_strobe(struct sdhci_host *host)
 static void tegra_sdhci_do_dll_calibration(struct sdhci_host *sdhci)
 {
 	u32 dll_cfg;
+	u32 dll_ctrl0;
 	unsigned timeout = 5;
-	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+
+	/* Program TX_DLY_CODE_OFFSET Value for HS533 mode*/
+	if (sdhci->mmc->card->state & MMC_STATE_HIGHSPEED_533) {
+		dll_ctrl0 = sdhci_readl(sdhci, SDHCI_VNDR_DLL_CTRL0_0);
+		dll_ctrl0 &= ~(SDHCI_VNDR_DLL_CTRL0_0_TX_DLY_MASK <<
+			SDHCI_VNDR_DLL_CTRL0_0_TX_DLY_SHIFT);
+		dll_ctrl0 |= ((SDHCI_VNDR_DLL_CTRL0_0_TX_DLY_OFFSET &
+				SDHCI_VNDR_DLL_CTRL0_0_TX_DLY_MASK) <<
+			SDHCI_VNDR_DLL_CTRL0_0_TX_DLY_SHIFT);
+		sdhci_writel(sdhci, dll_ctrl0, SDHCI_VNDR_DLL_CTRL0_0);
+	}
 
 	dll_cfg = sdhci_readl(sdhci, SDHCI_VNDR_DLLCAL_CFG);
 	dll_cfg |= SDHCI_VNDR_DLLCAL_CFG_EN_CALIBRATE;
@@ -1801,7 +1816,6 @@ static void tegra_sdhci_do_dll_calibration(struct sdhci_host *sdhci)
 	if (!timeout) {
 		dev_err(mmc_dev(sdhci->mmc), "DLL calibration is failed\n");
 	}
-	tegra_host->dll_calib = sdhci_readl(sdhci, SDHCI_VNDR_DLLCAL_CFG);
 }
 
 static void tegra_sdhci_update_sdmmc_pinctrl_register(struct sdhci_host *sdhci,
