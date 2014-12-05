@@ -1504,7 +1504,8 @@ static int __init enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
 	}
 	d->num_freqs = i;
 
-	if (d->auto_dvfs) {
+	/* Any auto DVFS clock, or shared bus with manual DVFS can sleep */
+	if (d->auto_dvfs || c->ops->shared_bus_update) {
 		c->auto_dvfs = true;
 		clk_set_cansleep(c);
 	}
