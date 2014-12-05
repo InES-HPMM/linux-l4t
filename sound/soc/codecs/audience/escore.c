@@ -879,6 +879,23 @@ escore_int_osc_exit:
 	return rc;
 }
 
+static int escore_recover_wkup_failure(struct escore_priv *escore)
+{
+	int ret;
+	ret = escore->boot_ops.bootup(escore);
+	if (ret) {
+		pr_err("%s recovery failed in bootup\n", __func__);
+		return ret;
+	}
+	escore->escore_power_state = ES_SET_POWER_STATE_NORMAL;
+
+	if (escore->recover_wkup_failure)
+		ret = escore->recover_wkup_failure(escore);
+
+	if (ret)
+		pr_err("%s failed to reset codec config\n", __func__);
+	return ret;
+}
 int escore_wakeup(struct escore_priv *escore)
 {
 	u32 cmd = ES_SYNC_CMD << 16;
@@ -952,6 +969,12 @@ int escore_wakeup(struct escore_priv *escore)
 	if (escore->pdata->gpioa_gpio != -1)
 		escore->cmd_compl_mode = ES_CMD_COMP_INTR;
 
+	if  (rc) {
+		rc = escore_recover_wkup_failure(escore);
+		if (rc)
+			pr_debug("%s failed to recover\n", __func__);
+		return rc;
+	}
 	/* Set the Smooth Mute rate to Zero */
 	cmd = ES_SET_SMOOTH_MUTE << 16 | ES_SMOOTH_MUTE_ZERO;
 	rc = escore->bus.ops.cmd(escore, cmd, &rsp);

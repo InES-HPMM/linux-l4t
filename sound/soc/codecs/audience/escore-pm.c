@@ -149,9 +149,6 @@ static int escore_non_vs_resume(struct device *dev)
 	return ret;
 
 escore_wakeup_fail_recovery:
-	escore_gpio_reset(&escore_priv);
-	ret = escore_priv.boot_ops.bootup(&escore_priv);
-	escore_priv.escore_power_state = ES_SET_POWER_STATE_NORMAL;
 	mutex_unlock(&escore->api_mutex);
 	return ret;
 }

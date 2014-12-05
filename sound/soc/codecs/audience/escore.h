@@ -463,6 +463,7 @@ struct escore_priv {
 	int (*sleep)(struct escore_priv *escore);
 	int (*wakeup)(struct escore_priv *escore);
 	int (*escore_uart_wakeup)(struct escore_priv *escore);
+	int (*recover_wkup_failure)(struct escore_priv *escore);
 
 	int pm_use_vs;
 	int pm_enable;
@@ -594,6 +595,7 @@ struct escore_priv {
 #ifdef CONFIG_ARCH_MSM8974
 	bool i2c_pull_up;
 #endif
+	bool codec_clk_en;
 };
 
 #define escore_resp(obj) ((obj)->bus.last_response)

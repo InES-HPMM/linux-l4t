@@ -111,21 +111,26 @@ static int es755_clk_ctl(int enable)
 {
 	int ret = 0;
 
+	if (enable == escore_priv.codec_clk_en)
+		return 0;
+
 	if (enable)
 #ifdef CONFIG_QPNP_CLKDIV
 		ret = qpnp_clkdiv_enable(codec_clk);
 #else
-	ret = clk_enable(codec_clk);
+		ret = clk_enable(codec_clk);
 #endif
 	else
 #ifdef CONFIG_QPNP_CLKDIV
 		ret = qpnp_clkdiv_disable(codec_clk);
 #else
-	clk_disable(codec_clk);
+		clk_disable(codec_clk);
 #endif
 
-	if (EINVAL != ret)
+	if (EINVAL != ret) {
+		escore_priv.codec_clk_en = !!enable;
 		ret = 0;
+	}
 
 	return ret;
 }
@@ -1992,8 +1997,7 @@ pdata->gpiob_gpio = of_get_named_gpio(dev->of_node,
 	codec_clk = clk_get(dev, "es755-mclk");
 #endif
 	if (IS_ERR(codec_clk)) {
-		dev_err(dev,
-				"%s: Failed to request es755 mclk from pmic %ld\n",
+		dev_err(dev, "%s: Failed to request es755 mclk from pmic %ld\n",
 				__func__, PTR_ERR(codec_clk));
 		pdata->esxxx_clk_cb = NULL;
 	} else {
@@ -2149,6 +2153,17 @@ static int es755_button_config(struct escore_priv *escore)
 btn_cfg_exit:
 	return rc;
 
+}
+
+static int es755_recover_wakeup_failure(struct escore_priv *es755)
+{
+	int rc;
+
+	es_d300_reset_cmdcache();
+	rc = es755_config_jack(es755);
+	if (rc)
+		pr_err("%s Failed to configure jack detection\n", __func__);
+	return rc;
 }
 
 /* Notifier callback to configure the Interrupts:
@@ -2666,6 +2681,7 @@ int es755_core_probe(struct device *dev)
 	}
 
 	escore_priv.boot_ops.bootup = es755_bootup;
+	escore_priv.recover_wkup_failure = es755_recover_wakeup_failure;
 	escore_priv.soc_codec_dev_escore = &soc_codec_dev_es755;
 	escore_priv.dai = es755_dai;
 	escore_priv.dai_nr = ES_NUM_CODEC_DAIS;
@@ -2823,6 +2839,7 @@ static __init int es755_init(void)
 
 	escore_pm_init();
 
+	escore_priv.codec_clk_en = false;
 	escore_priv.device_name  = "elemental-addr";
 	escore_priv.interface_device_name  = "slim-ifd";
 	escore_priv.interface_device_elem_addr_name  =
