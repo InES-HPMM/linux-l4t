@@ -5363,6 +5363,15 @@ static void tegra21_emc_sync_plls(struct clk *emc,
 }
 
 #ifdef CONFIG_PM_SLEEP
+
+/*
+ * WAR: fixing SC7 entry rate is to ensure stable boot up after SC7 resume on
+ * LP4 platforms. This ensures that there are no MRWs necesary by the bootrom
+ * when waking the DRAM (since the MRs will already have valid settings for 204
+ * MHz). Problem is that the BR is not aware of what FSP is in use.
+ */
+#define FIXED_SC7_ENTRY_RATE	204000000
+
 static void tegra21_emc_clk_suspend(struct clk *c, unsigned long rate)
 {
 	/* No change if other than LPDDR4 */
@@ -5377,8 +5386,8 @@ static void tegra21_emc_clk_suspend(struct clk *c, unsigned long rate)
 	 * Scale EMC rate at boot rate - required for entering SC7(LP0)
 	 * on LPDDR4.
 	 */
-	if (rate != c->boot_rate)
-		tegra21_emc_clk_set_rate(c, c->boot_rate);
+	if (rate != FIXED_SC7_ENTRY_RATE)
+		tegra21_emc_clk_set_rate(c, FIXED_SC7_ENTRY_RATE);
 }
 #endif
 
