@@ -21,12 +21,20 @@
 #include "tegra210-soc-shield.dtsi"
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/gpio/tegra-gpio.h>
+
+/* camera control gpio definitions */
+#define CAM_PWDN_FQ	TEGRA_GPIO(T, 0)
+#define CAM_PWDN_RQ	TEGRA_GPIO(S, 7)
+#define CAM_RST		TEGRA_GPIO(S, 4)
+#define CAM_PWDN_AF	TEGRA_GPIO(S, 5)
+
 #include "tegra210-platforms/tegra210-prods.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-pinmux-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-power-tree-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-touch.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-sensor-p2290-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-hawkeye-camera-p2290-1100-a00.dtsi"
 
 /* TODO: comm's dtsi should be included after GPIO dtsi */
 #include "tegra210-platforms/tegra210-hawkeye-comms.dtsi"
@@ -51,6 +59,65 @@
 	gpio-keys {
 		home {
 			status = "disabled";
+		};
+	};
+
+
+	i2c@546c0000 {
+		avdd_dsi_csi-supply = <&mipi_1v2>;
+	};
+
+	camera-pcl {
+		profiles {
+			ov5693@2_0036 {
+				use_of_node = "yes";
+				dev_name = "ov5693";
+				num = <1>;
+				vana-supply = <&max77620_ldo3>;
+				vif-supply = <&en_vdd_cam>;
+				cam2-gpios = <&gpio CAM_PWDN_FQ 0>;
+				reset-gpios = <&gpio CAM_RST 0>;
+			};
+			ov5693@2_0010 {
+				use_of_node = "yes";
+				dev_name = "ov5693";
+				num = <0>;
+				vana-supply = <&max77620_ldo3>;
+				vif-supply = <&en_vdd_cam>;
+				cam2-gpios = <&gpio CAM_PWDN_RQ 0>;
+			};
+			ad5823@2_000c {
+				use_of_node = "yes";
+				vdd-supply = <&max77620_ldo3>;
+				vif-supply = <&en_vdd_cam>;
+				af-pwdn-gpios = <&gpio CAM_PWDN_AF 0>;
+			};
+		};
+
+		dpd {
+			compatible = "nvidia,csi-dpd";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			default-enable;
+			num = <6>;
+			csia {
+				reg = <0x0 0x0 0x0 0x0>;
+			};
+			csib {
+				reg = <0x0 0x1 0x0 0x0>;
+			};
+			csic {
+				reg = <0x1 0x0a 0x0 0x0>;
+			};
+			csid {
+				reg = <0x1 0x0b 0x0 0x0>;
+			};
+			csie {
+				reg = <0x1 0x0c 0x0 0x0>;
+			};
+			csif {
+				reg = <0x1 0x0d 0x0 0x0>;
+			};
 		};
 	};
 };
