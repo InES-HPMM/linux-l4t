@@ -252,6 +252,12 @@
 		ivc = <&tegra_hv 2>;
 	};
 
+	tegra_hv_wdt {
+		compatible = "nvidia,tegra-hv-wdt";
+		status = "okay";
+		ivc = <&tegra_hv 13>;
+	};
+
 	iommu {
 		compatible = "nvidia,tegra124-smmu-hv";
 		ivc_queue = <&tegra_hv 11>;

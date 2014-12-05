@@ -266,6 +266,16 @@ config TEGRA_WATCHDOG
 	  To compile this driver as a module, choose M here: the
 	  module will be called tegra_wdt.
 
+config TEGRA_HV_WATCHDOG
+	tristate "Tegra Hypervisor watchdog"
+	depends on TEGRA_HV_MANAGER
+	help
+	  Say Y here to include support for the watchdog timer
+	  embedded in NVIDIA Tegra Hypervisor systems.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tegra_hv_wdt.
+
 config TEGRA_WATCHDOG_ENABLE_ON_PROBE
 	tristate "Turn on Tegra watchdog at system start up"
 	depends on ARCH_TEGRA && TEGRA_WATCHDOG

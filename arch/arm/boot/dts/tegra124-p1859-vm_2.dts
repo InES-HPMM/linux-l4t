@@ -312,6 +312,12 @@
 		ivc = <&tegra_hv 2>;
 	};
 
+	tegra_hv_wdt {
+		compatible = "nvidia,tegra-hv-wdt";
+		status = "okay";
+		ivc = <&tegra_hv 14>;
+	};
+
 	snor {
 		status = "disabled";
 	};

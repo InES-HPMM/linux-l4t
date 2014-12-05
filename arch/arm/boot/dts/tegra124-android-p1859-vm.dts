@@ -31,6 +31,7 @@
 	 */
 	tegra_hv: hyp {
 		compatible = "nvidia,tegra-hv";
+		status = "okay";
 	};
 };
 
@@ -41,44 +42,10 @@
         compatible = "nvidia,p1859", "nvidia,tegra124";
         nvidia,dtsfilename = __FILE__;
 
-	hyp {
+	tegra_hv_wdt {
+		compatible = "nvidia,tegra-hv-wdt";
 		status = "okay";
-
-		server-to-peers = <0>;
-		queues {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			/* guest 0 <-> guest 2 (vhost cmd) */
-			ivc3 {
-				reg = <3>;
-				peers = <0 2>;
-			};
-
-			/* guest 0 <-> guest 2 (vhost intr) */
-			ivc4 {
-				reg = <4>;
-				peers = <0 2>;
-			};
-
-			/* guest 0 <-> guest 2 (vgpu cmd) */
-			ivc5 {
-				reg = <5>;
-				peers = <0 2>;
-			};
-
-			/* guest 0 <-> guest 2 (vgpu intr) */
-			ivc6 {
-				reg = <6>;
-				peers = <0 2>;
-			};
-
-			/* guest 0 <-> guest 1 (smmu server) */
-			ivc7 {
-				reg = <7>;
-				peers = <0 1>;
-			};
-		};
+		ivc_queue = <&tegra_hv 8>;
 	};
 
 	iommu {
