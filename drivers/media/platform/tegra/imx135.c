@@ -3873,21 +3873,21 @@ static ssize_t imx135_debugfs_write(
 	if (copy_from_user(&buffer, buf, sizeof(buffer)))
 		goto debugfs_write_fail;
 
-	if (sscanf(buf, "0x%x 0x%x", &address, &data) == 2)
+	if (sscanf(buffer, "0x%x 0x%x", &address, &data) == 2)
 		goto set_attr;
-	if (sscanf(buf, "0X%x 0X%x", &address, &data) == 2)
+	if (sscanf(buffer, "0X%x 0X%x", &address, &data) == 2)
 		goto set_attr;
-	if (sscanf(buf, "%d %d", &address, &data) == 2)
+	if (sscanf(buffer, "%d %d", &address, &data) == 2)
 		goto set_attr;
 
-	if (sscanf(buf, "0x%x 0x%x", &address, &data) == 1)
+	if (sscanf(buffer, "0x%x 0x%x", &address, &data) == 1)
 		goto read;
-	if (sscanf(buf, "0X%x 0X%x", &address, &data) == 1)
+	if (sscanf(buffer, "0X%x 0X%x", &address, &data) == 1)
 		goto read;
-	if (sscanf(buf, "%d %d", &address, &data) == 1)
+	if (sscanf(buffer, "%d %d", &address, &data) == 1)
 		goto read;
 
-	dev_err(&i2c_client->dev, "SYNTAX ERROR: %s\n", buf);
+	dev_err(&i2c_client->dev, "SYNTAX ERROR: %s\n", buffer);
 	return -EFAULT;
 
 set_attr:
