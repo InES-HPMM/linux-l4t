@@ -2509,6 +2509,11 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 	/* set port ownership to SNPS */
 	tegra_xhci_release_port_ownership(tegra, true);
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	utmi_phy_pad_disable();
+	utmi_phy_iddq_override(true);
+#endif
+
 	xhci_dbg(xhci, "%s: PMC_UTMIP_UHSIC_SLEEP_CFG_0 = %x\n", __func__,
 		tegra_usb_pmc_reg_read(PMC_UTMIP_UHSIC_SLEEP_CFG_0));
 
@@ -2817,6 +2822,11 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 
 	if (!tegra->hc_in_elpg)
 		return 0;
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	utmi_phy_pad_enable();
+	utmi_phy_iddq_override(false);
+#endif
 
 	clk_enable(tegra->emc_clk);
 	if (tegra->soc_config->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2)
@@ -3345,11 +3355,6 @@ static int tegra_xhci_bus_suspend(struct usb_hcd *hcd)
 		goto tegra_xhci_host_elpg_entry_failed;
 	}
 
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
-	utmi_phy_pad_disable();
-	utmi_phy_iddq_override(true);
-#endif
-
 	/* At this point,ensure ss/hs intr enables are always on */
 	tegra_xhci_ss_wake_on_interrupts(host_ports, true);
 	tegra_xhci_hs_wake_on_interrupts(host_ports, true);
@@ -3406,14 +3411,12 @@ static int tegra_xhci_bus_resume(struct usb_hcd *hcd)
 
 	/* pads are disabled only if usb2 root hub in xusb is idle */
 	/* pads will actually be disabled only when all usb2 ports are idle */
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
-	if (tegra->ss_pwr_gated && tegra->host_pwr_gated) {
-#else
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	if (xhci->main_hcd == hcd && tegra->usb2_rh_suspend) {
-#endif
 		utmi_phy_pad_enable();
 		utmi_phy_iddq_override(false);
 	}
+#endif
 	if (tegra->usb2_rh_suspend && tegra->usb3_rh_suspend) {
 		if (tegra->ss_pwr_gated && tegra->host_pwr_gated)
 			tegra_xhci_host_partition_elpg_exit(tegra);
