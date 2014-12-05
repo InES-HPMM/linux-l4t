@@ -202,6 +202,8 @@
 
 #define EMMC2_PAD_CFGPADCTRL_OFFSET	0x1C8
 #define EMMC4_PAD_CFGPADCTRL_OFFSET	0x1E0
+#define DRV_BANK	0
+#define MUX_BANK	1
 
 #define EMMC_DPD_PARKING(x)	(x << EMMC_PARKING_BIT)
 #define EMMC_PARKING_BIT	0xE
@@ -3286,17 +3288,13 @@ static void tegra210_pinctrl_resume(u32 *pg_data)
 	}
 
 	/* Clear parking bit for EMMC IO brick pads */
-	reg_value = tegra_pinctrl_readl(tegra210_groups[i].drv_bank,
-					EMMC2_PAD_CFGPADCTRL_OFFSET);
+	reg_value = tegra_pinctrl_readl(DRV_BANK, EMMC2_PAD_CFGPADCTRL_OFFSET);
 	reg_value &= ~(EMMC_DPD_PARKING(PARKING_SET));
-	tegra_pinctrl_writel(reg_value, tegra210_groups[i].drv_bank,
-					EMMC2_PAD_CFGPADCTRL_OFFSET);
+	tegra_pinctrl_writel(reg_value, DRV_BANK, EMMC2_PAD_CFGPADCTRL_OFFSET);
 
-	reg_value = tegra_pinctrl_readl(tegra210_groups[i].drv_bank,
-					EMMC4_PAD_CFGPADCTRL_OFFSET);
+	reg_value = tegra_pinctrl_readl(DRV_BANK, EMMC4_PAD_CFGPADCTRL_OFFSET);
 	reg_value &= ~(EMMC_DPD_PARKING(PARKING_SET));
-	tegra_pinctrl_writel(reg_value, tegra210_groups[i].drv_bank,
-					EMMC4_PAD_CFGPADCTRL_OFFSET);
+	tegra_pinctrl_writel(reg_value, DRV_BANK, EMMC4_PAD_CFGPADCTRL_OFFSET);
 
 	tegra_pmc_enable_wake_det(false);
 	tegra_pmc_clear_dpd_sample();
