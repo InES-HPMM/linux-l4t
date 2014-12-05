@@ -349,7 +349,8 @@ static void __dma_clear_buffer(struct page *page, size_t size)
 }
 
 struct page *dma_alloc_at_from_contiguous(struct device *dev, int count,
-				       unsigned int align, phys_addr_t at_addr)
+				       unsigned int align, phys_addr_t at_addr,
+				       bool map_non_cached)
 {
 	unsigned long mask, pfn, pageno, start = 0;
 	struct cma *cma = dev_get_cma_area(dev);
@@ -420,6 +421,9 @@ retry:
 		__dma_remap(page, count << PAGE_SHIFT,
 			pgprot_dmacoherent(PAGE_KERNEL));
 		__dma_clear_buffer(page, count << PAGE_SHIFT);
+		if(map_non_cached)
+			__dma_remap(page, count << PAGE_SHIFT,
+				pgprot_noncached(PAGE_KERNEL));
 	}
 	return page;
 }
@@ -438,7 +442,7 @@ retry:
 struct page *dma_alloc_from_contiguous(struct device *dev, int count,
 				       unsigned int align)
 {
-	return dma_alloc_at_from_contiguous(dev, count, align, 0);
+	return dma_alloc_at_from_contiguous(dev, count, align, 0, false);
 }
 
 /**
