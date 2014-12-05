@@ -317,6 +317,14 @@ static int xotg_start(struct xotg *xotg)
 	return 0;
 }
 
+static irqreturn_t xotg_phy_wake_isr(int irq, void *data)
+{
+	struct xotg *xotg = (struct xotg *)data;
+
+	xotg_dbg(xotg->dev, "irq %d", irq);
+	return IRQ_HANDLED;
+}
+
 /* xotg interrupt handler */
 static irqreturn_t xotg_irq(int irq, void *data)
 {
@@ -415,6 +423,22 @@ static int xotg_probe(struct platform_device *pdev)
 		goto error3;
 	}
 
+	/* register phy wake isr */
+	res = platform_get_resource(pdev, IORESOURCE_IRQ, 1);
+	if (!res) {
+		xotg_err(xotg->dev, "irq resource 1 doesn't exist\n");
+		goto error4;
+	}
+	xotg->usb_irq = res->start;
+
+	status = devm_request_irq(&pdev->dev, xotg->usb_irq, xotg_phy_wake_isr,
+			IRQF_SHARED | IRQF_TRIGGER_HIGH,
+			"xotg_phy_wake_isr", xotg);
+	if (status != 0) {
+		xotg_err(xotg->dev, "usb_irq register fail %d\n", status);
+		goto error4;
+	}
+
 	xotg->vbus_enabled = false;
 	INIT_WORK(&xotg->vbus_work, nv_vbus_work);
 
@@ -423,14 +447,14 @@ static int xotg_probe(struct platform_device *pdev)
 	if (IS_ERR_OR_NULL(xotg->usb_vbus_reg)) {
 		xotg_err(xotg->dev, "usb_vbus regulator not found: %ld\n",
 			PTR_ERR(xotg->usb_vbus_reg));
-		goto error4;
+		goto error5;
 	}
 
 	/* start OTG */
 	status = xotg_start(xotg);
 	if (status) {
 		xotg_err(xotg->dev, "xotg_start failed\n");
-		goto error5;
+		goto error6;
 	}
 
 	/* extcon for id pin */
@@ -444,8 +468,10 @@ static int xotg_probe(struct platform_device *pdev)
 						&xotg->id_extcon_nb);
 	return status;
 
-error5:
+error6:
 	devm_regulator_put(xotg->usb_vbus_reg);
+error5:
+	devm_free_irq(&pdev->dev, xotg->usb_irq, xotg);
 error4:
 	devm_free_irq(&pdev->dev, xotg->nv_irq, xotg);
 error3:
@@ -466,6 +492,7 @@ static int __exit xotg_remove(struct platform_device *pdev)
 
 	devm_regulator_put(xotg->usb_vbus_reg);
 	devm_free_irq(&pdev->dev, xotg->nv_irq, xotg);
+	devm_free_irq(&pdev->dev, xotg->usb_irq, xotg);
 	usb_remove_phy(&xotg->phy);
 
 	kfree(xotg->phy.otg);
@@ -486,6 +513,7 @@ static int xotg_resume_platform(struct device *dev)
 
 	xotg_info(xotg->dev, "%s\n", __func__);
 
+	disable_irq_wake(xotg->usb_irq);
 	/* restore USB2_ID register */
 	tegra_usb_pad_reg_write(XUSB_PADCTL_USB2_VBUS_ID_0, xotg->usb2_id);
 
@@ -496,13 +524,22 @@ static int xotg_suspend_platform(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct xotg *xotg = platform_get_drvdata(pdev);
+	int ret = 0;
 
 	xotg_info(xotg->dev, "%s\n", __func__);
 
 	/* save USB2_ID register */
 	xotg->usb2_id = tegra_usb_pad_reg_read(XUSB_PADCTL_USB2_VBUS_ID_0);
 
-	return 0;
+	/* enable_irq_wake for otg port wakes */
+	ret = enable_irq_wake(xotg->usb_irq);
+	if (ret < 0) {
+		xotg_err(xotg->dev,
+		"Couldn't enable otg port wakeup, irq=%d, error=%d\n",
+		xotg->usb_irq, ret);
+	}
+
+	return ret;
 }
 
 static const struct dev_pm_ops tegra_xotg_pm_ops = {

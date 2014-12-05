@@ -27,6 +27,7 @@ struct xotg {
 	spinlock_t lock;
 	struct mutex vbus_lock;
 	int nv_irq;
+	int usb_irq;
 	int id;
 
 	/* vbus */
