@@ -292,7 +292,6 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	},
 	[TEGRA_POWERGATE_XUSBA] = {
 		.name = "xusba",
-		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "xusb_ss", .clk_type = CLK_AND_RST },
 		},
@@ -309,7 +308,6 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	},
 	[TEGRA_POWERGATE_XUSBB] = {
 		.name = "xusbb",
-		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "xusb_dev", .clk_type = CLK_AND_RST },
 		},
@@ -326,7 +324,6 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 	},
 	[TEGRA_POWERGATE_XUSBC] = {
 		.name = "xusbc",
-		.disable_after_boot = true,
 		.clk_info = {
 			[0] = { .clk_name = "xusb_host", .clk_type = CLK_AND_RST },
 		},
@@ -858,6 +855,10 @@ static int tegra210_pg_init_refcount(void)
 		(tegra_powergate_is_powered(TEGRA_POWERGATE_DISA) ? 1 : 0) +
 		(tegra_powergate_is_powered(TEGRA_POWERGATE_DISB) ? 1 : 0) +
 		(tegra_powergate_is_powered(TEGRA_POWERGATE_VE) ? 1 : 0);
+
+	tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
+	tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
+	tegra_powergate_partition(TEGRA_POWERGATE_XUSBC);
 
 	return 0;
 }
