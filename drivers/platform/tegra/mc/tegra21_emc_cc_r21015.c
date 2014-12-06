@@ -547,17 +547,18 @@ u32 __do_periodic_emc_compensation_r21015(
 	};
 	u32 items = ARRAY_SIZE(list);
 
-	emc_dbg_o = emc_readl(EMC_DBG);
-	emc_cfg_o = emc_readl(EMC_CFG);
-	emc_cfg = emc_cfg_o & ~(EMC_CFG_DYN_SELF_REF | EMC_CFG_DRAM_ACPD |
-				EMC_CFG_DRAM_CLKSTOP_PD |
-				EMC_CFG_DRAM_CLKSTOP_PD);
-
-	channel_mode = !!(current_timing->burst_regs[EMC_FBIO_CFG7_INDEX] &
-			  (1 << 2));
-	dram_dev_num = 1 + (mc_readl(MC_EMEM_ADR_CFG) & 0x1);
-
 	if (current_timing->periodic_training) {
+
+		emc_dbg_o = emc_readl(EMC_DBG);
+		emc_cfg_o = emc_readl(EMC_CFG);
+		emc_cfg = emc_cfg_o & ~(EMC_CFG_DYN_SELF_REF | EMC_CFG_DRAM_ACPD |
+					EMC_CFG_DRAM_CLKSTOP_PD |
+					EMC_CFG_DRAM_CLKSTOP_PD);
+
+		channel_mode = !!(current_timing->burst_regs[EMC_FBIO_CFG7_INDEX] &
+				  (1 << 2));
+		dram_dev_num = 1 + (mc_readl(MC_EMEM_ADR_CFG) & 0x1);
+
 		/*
 		 * 1. Power optimizations should be off.
 		 */
