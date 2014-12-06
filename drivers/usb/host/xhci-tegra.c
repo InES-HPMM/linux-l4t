@@ -2836,7 +2836,8 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 
 	must_have_sync_lock(tegra);
 
-	if (!tegra->hc_in_elpg)
+	/* let system call resume() routine first if in lp0 */
+	if (!tegra->hc_in_elpg || tegra->system_in_lp0)
 		return 0;
 
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
@@ -3814,6 +3815,10 @@ tegra_xhci_suspend(struct platform_device *pdev,
 	if (XUSB_DEVICE_ID_T114 != tegra->device_id)
 		usb3_phy_pad_disable();
 
+	mutex_lock(&tegra->sync_lock);
+	tegra->system_in_lp0 = true;
+	mutex_unlock(&tegra->sync_lock);
+
 	return ret;
 }
 
@@ -3857,6 +3862,10 @@ tegra_xhci_resume(struct platform_device *pdev)
 		if (sata_usb_pad_pll_reset_deassert())
 			dev_err(&pdev->dev, "error deassert sata pll\n");
 	}
+
+	mutex_lock(&tegra->sync_lock);
+	tegra->system_in_lp0 = false;
+	mutex_unlock(&tegra->sync_lock);
 
 	return 0;
 }

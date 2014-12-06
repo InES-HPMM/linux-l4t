@@ -401,6 +401,7 @@ struct tegra_xhci_hcd {
 	bool usb2_rh_suspend;
 	bool usb3_rh_suspend;
 	bool hc_in_elpg;
+	bool system_in_lp0;
 
 	/* otg transceiver */
 	struct usb_phy *transceiver;
