@@ -39,6 +39,7 @@ struct xotg {
 	struct notifier_block id_extcon_nb;
 	bool id_grounded;
 	bool device_connected;
+	u32 usb2_id;
 };
 
 extern int xotg_debug_level;

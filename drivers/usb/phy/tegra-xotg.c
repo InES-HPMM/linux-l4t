@@ -361,6 +361,7 @@ static int xotg_probe(struct platform_device *pdev)
 	xotg->phy.dev = &pdev->dev;
 	xotg->dev = &pdev->dev;
 	xotg->pdev = pdev;
+	platform_set_drvdata(pdev, xotg);
 	xotg->phy.type = USB_PHY_TYPE_UNDEFINED;
 
 	/* store the otg phy */
@@ -450,6 +451,37 @@ static struct of_device_id tegra_xotg_of_match[] = {
 	{},
 };
 
+static int xotg_resume_platform(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xotg *xotg = platform_get_drvdata(pdev);
+
+	xotg_info(xotg->dev, "%s\n", __func__);
+
+	/* restore USB2_ID register */
+	tegra_usb_pad_reg_write(XUSB_PADCTL_USB2_VBUS_ID_0, xotg->usb2_id);
+
+	return 0;
+}
+
+static int xotg_suspend_platform(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xotg *xotg = platform_get_drvdata(pdev);
+
+	xotg_info(xotg->dev, "%s\n", __func__);
+
+	/* save USB2_ID register */
+	xotg->usb2_id = tegra_usb_pad_reg_read(XUSB_PADCTL_USB2_VBUS_ID_0);
+
+	return 0;
+}
+
+static const struct dev_pm_ops tegra_xotg_pm_ops = {
+	.suspend = xotg_suspend_platform,
+	.resume = xotg_resume_platform,
+};
+
 static struct platform_driver xotg_driver = {
 	.probe = xotg_probe,
 	.remove = __exit_p(xotg_remove),
@@ -457,6 +489,7 @@ static struct platform_driver xotg_driver = {
 		.name = driver_name,
 		.owner = THIS_MODULE,
 		.of_match_table = tegra_xotg_of_match,
+		.pm = &tegra_xotg_pm_ops,
 	},
 };
 
