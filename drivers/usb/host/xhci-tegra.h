@@ -376,6 +376,7 @@ struct tegra_xhci_hcd {
 	struct work_struct mbox_work;
 	struct work_struct ss_elpg_exit_work;
 	struct work_struct host_elpg_exit_work;
+	struct work_struct xotg_vbus_work;
 
 	struct clk *host_clk;
 	struct clk *ss_clk;

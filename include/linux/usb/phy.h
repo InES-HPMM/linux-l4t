@@ -18,6 +18,7 @@ enum usb_phy_events {
 	USB_EVENT_ID,           /* id was grounded */
 	USB_EVENT_CHARGER,      /* usb dedicated charger */
 	USB_EVENT_ENUMERATED,   /* gadget driver enumerated */
+	USB_EVENT_HANDLE_OTG_PP,   /* power on/off otg portsc.pp */
 };
 
 /* associate a type with PHY */

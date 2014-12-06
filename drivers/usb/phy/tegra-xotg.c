@@ -57,9 +57,11 @@ static int extcon_id_notifications(struct notifier_block *nb,
 			&& !xotg->id_grounded) {
 		xotg_info(xotg->dev, "USB_ID pin grounded\n");
 		xotg->id_grounded = true;
+		xotg->phy.state = OTG_STATE_A_IDLE;
 	} else if (xotg->id_grounded) {
 		xotg_info(xotg->dev, "USB_ID pin floating\n");
 		xotg->id_grounded = false;
+		xotg->phy.state = OTG_STATE_B_IDLE;
 	} else {
 		xotg_info(xotg->dev, "USB_ID pin status unchanged\n");
 		goto done;
@@ -123,26 +125,10 @@ static void nv_vbus_work(struct work_struct *work)
 {
 	struct xotg *xotg = container_of(work, struct xotg, vbus_work);
 
-	if (xotg->id_grounded) {
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
-			USB2_VBUS_ID_0_ID_OVERRIDE,
-			USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND);
-
-		/* pad protection for host mode */
-		xusb_enable_pad_protection(0);
-
-		/* set PP */
+	if (xotg->id_grounded)
 		xotg_notify_event(xotg, USB_EVENT_ID);
-		xotg_enable_vbus(xotg);
-	} else {
-		xotg_disable_vbus(xotg);
+	else
 		xotg_notify_event(xotg, USB_EVENT_NONE);
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
-			USB2_VBUS_ID_0_ID_OVERRIDE,
-			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
-		/* pad protection for device mode */
-		xusb_enable_pad_protection(1);
-	}
 }
 
 /* will be called from the HCD during its initialization */
@@ -190,7 +176,44 @@ static int xotg_notify_connect(struct usb_phy *phy, enum usb_device_speed speed)
 	xotg_info(xotg->dev, "speed = 0x%d\n", speed);
 	spin_lock_irqsave(&xotg->lock, flags);
 	xotg->device_connected = true;
+	xotg->phy.state = OTG_STATE_A_HOST;
 	spin_unlock_irqrestore(&xotg->lock, flags);
+	return 0;
+}
+
+static int xotg_set_vbus(struct usb_phy *phy, int on)
+{
+	struct xotg *xotg = container_of(phy, struct xotg, phy);
+	unsigned long flags;
+
+	if (on) {
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+			USB2_VBUS_ID_0_ID_OVERRIDE,
+			USB2_VBUS_ID_0_ID_OVERRIDE_RID_GND);
+
+		/* pad protection for host mode */
+		xusb_enable_pad_protection(0);
+
+		/* set PP */
+		xotg_notify_event(xotg, USB_EVENT_HANDLE_OTG_PP);
+		xotg_enable_vbus(xotg);
+	} else {
+		spin_lock_irqsave(&xotg->lock, flags);
+		if (!xotg->device_connected) {
+			spin_unlock_irqrestore(&xotg->lock, flags);
+			xotg_disable_vbus(xotg);
+			xotg_notify_event(xotg, USB_EVENT_HANDLE_OTG_PP);
+			tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+				USB2_VBUS_ID_0_ID_OVERRIDE,
+				USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
+
+			/* pad protection for device mode */
+			xusb_enable_pad_protection(1);
+		} else {
+			spin_unlock_irqrestore(&xotg->lock, flags);
+		}
+	}
+
 	return 0;
 }
 
@@ -203,7 +226,11 @@ static int xotg_notify_disconnect(struct usb_phy *phy,
 	xotg_info(xotg->dev, "speed = 0x%d\n", speed);
 	spin_lock_irqsave(&xotg->lock, flags);
 	xotg->device_connected = false;
+	xotg->phy.state = OTG_STATE_A_IDLE;
 	spin_unlock_irqrestore(&xotg->lock, flags);
+
+	if (!xotg->id_grounded)
+		xotg_set_vbus(phy, 0);
 
 	return 0;
 }
@@ -236,6 +263,7 @@ static void xotg_struct_init(struct xotg *xotg)
 
 	xotg->phy.label = "Nvidia USB XOTG PHY";
 	xotg->phy.set_power = xotg_set_power;
+	xotg->phy.set_vbus = xotg_set_vbus;
 	xotg->phy.notify_connect = xotg_notify_connect;
 	xotg->phy.notify_disconnect = xotg_notify_disconnect;
 
