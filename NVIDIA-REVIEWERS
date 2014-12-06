@@ -216,6 +216,7 @@ F:	arch/arm/mach-tegra/cpuquiet.c
 F:	arch/arm/mach-tegra/sysfs-cluster.c
 F:	drivers/cpufreq/
 F:	drivers/cpuidle/
+X:	drivers/cpuidle/coupled.c
 F:	drivers/cpuquiet/
 F:	drivers/input/input-cfboost.c
 F:	drivers/platform/tegra/cpu-tegra.c
