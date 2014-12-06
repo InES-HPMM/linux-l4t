@@ -19,7 +19,6 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/reboot.h>
-#include <linux/debugfs.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include "../../../arch/arm/mach-tegra/board.h"
@@ -30,8 +29,8 @@
 #include "../../../arch/arm/mach-tegra/include/mach/nct.h"
 #endif
 
-static void __init nvdumper_debugfs_init(void);
-static void __exit nvdumper_debugfs_exit(void);
+static void __init nvdumper_sysfs_init(void);
+static void __exit nvdumper_sysfs_exit(void);
 
 #define NVDUMPER_CLEAN      0xf000caf3U
 #define NVDUMPER_DIRTY      0x2badfaceU
@@ -110,7 +109,7 @@ static int __init nvdumper_init(void)
 		break;
 	}
 
-	nvdumper_debugfs_init();
+	nvdumper_sysfs_init();
 
 #ifdef CONFIG_TEGRA_USE_NCT
 	item = kzalloc(sizeof(*item), GFP_KERNEL);
@@ -164,7 +163,7 @@ err_out0:
 
 static void __exit nvdumper_exit(void)
 {
-	nvdumper_debugfs_exit();
+	nvdumper_sysfs_exit();
 	nvdumper_regdump_exit();
 	nvdumper_dbg_footprint_exit();
 	unregister_reboot_notifier(&nvdumper_reboot_notifier);
@@ -172,56 +171,25 @@ static void __exit nvdumper_exit(void)
 	iounmap(nvdumper_ptr);
 }
 
-#ifdef CONFIG_DEBUG_FS
-
-static struct dentry *nvdumper_dbg_dentry;
-static struct dentry *nvdumper_set_dbg_dentry;
 static char *nvdumper_set_str = "dirty_dump";
+static struct kobject *nvdumper_kobj;
 
-static int nvdumper_reboot_state_show(struct seq_file *s, void *data)
+static ssize_t nvdumper_set_show(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char *buf)
 {
-	seq_puts(s, nvdumper_set_str);
-	seq_puts(s, "\n");
-	return 0;
+	return sprintf(buf, "%s\n", nvdumper_set_str);
 }
 
-static int nvdumper_dbg_open(struct inode *inode, struct file *file)
+static ssize_t nvdumper_set_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf, size_t n)
 {
-	return single_open(file, nvdumper_reboot_state_show, inode->i_private);
-}
-
-static const struct file_operations nvdumper_dbg_fops = {
-	.open		= nvdumper_dbg_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-};
-
-static int nvdumper_set_state_show(struct seq_file *s, void *data)
-{
-	seq_puts(s, nvdumper_set_str);
-	seq_puts(s, "\n");
-	return 0;
-}
-
-static int nvdumper_set_dbg_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, nvdumper_set_state_show, inode->i_private);
-}
-
-static ssize_t nvdumper_write_set(struct file *file, const char __user *buf,
-				size_t count, loff_t *ppos)
-{
-	size_t count_copy;
-
-	if (count < 1)
+	if (n < 1)
 		return 0;
 
-	count_copy = copy_from_user(nvdumper_set_str, buf, count);
-	if (count_copy != 0)
-		return 0;
-
-	nvdumper_set_str[count-1] = '\0';
+	sprintf(nvdumper_set_str, "%s", buf);
+	nvdumper_set_str[n-1] = '\0';
 
 	if (!strcmp(nvdumper_set_str, "clean"))
 		set_dirty_state(NVDUMPER_CLEAN);
@@ -234,26 +202,41 @@ static ssize_t nvdumper_write_set(struct file *file, const char __user *buf,
 	else
 		strcpy(nvdumper_set_str, "unknown");
 
-	pr_err("nvdumper_set was updated to %s\n", nvdumper_set_str);
+	pr_info("nvdumper_set was updated to %s\n", nvdumper_set_str);
 
-	return count;
+	return n;
 }
 
-static const struct file_operations nvdumper_set_dbg_fops = {
-	.open		= nvdumper_set_dbg_open,
-	.read		= seq_read,
-	.write		= nvdumper_write_set,
-	.llseek		= seq_lseek,
-	.release	= single_release,
+static ssize_t nvdumper_prev_show(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char *buf)
+{
+	return sprintf(buf, "%s\n", nvdumper_set_str);
+}
+
+static const struct kobj_attribute nvdumper_attr[] = {
+	__ATTR(nvdumper_set, 0644, nvdumper_set_show, nvdumper_set_store),
+	__ATTR(nvdumper_prev, 0444, nvdumper_prev_show, NULL),
 };
 
-static void __init nvdumper_debugfs_init(void)
+static void __init nvdumper_sysfs_init(void)
 {
-	nvdumper_dbg_dentry = debugfs_create_file("nvdumper_prev", S_IRUGO,
-			NULL, NULL, &nvdumper_dbg_fops);
+	int i, ret = 0;
 
-	if (!nvdumper_dbg_dentry)
+	nvdumper_kobj = kobject_create_and_add("nvdumper", kernel_kobj);
+
+	if (!nvdumper_kobj) {
+		pr_err("unable to create nvdumper kernel object!\n");
 		return;
+	}
+
+	/* create sysfs */
+	for (i = 0; i < ARRAY_SIZE(nvdumper_attr); i++) {
+		ret = sysfs_create_file(nvdumper_kobj, &nvdumper_attr[i].attr);
+		if (ret)
+			pr_err("failed to create %s\n",
+				nvdumper_attr[i].attr.name);
+	}
 
 	switch (nvdumper_last_reboot) {
 	case NVDUMPER_CLEAN:
@@ -269,30 +252,18 @@ static void __init nvdumper_debugfs_init(void)
 		nvdumper_set_str = "dirty\n";
 		break;
 	}
+}
 
-	nvdumper_set_dbg_dentry = debugfs_create_file("nvdumper_set",
-			S_IRUGO | S_IWUGO, NULL, NULL, &nvdumper_set_dbg_fops);
-	if (!nvdumper_set_dbg_dentry)
+static void __exit nvdumper_sysfs_exit(void)
+{
+	int i;
+
+	if (!nvdumper_kobj)
 		return;
+
+	for (i = 0; i < ARRAY_SIZE(nvdumper_attr); i++)
+		sysfs_remove_file(nvdumper_kobj, &nvdumper_attr[i].attr);
 }
-
-static void __exit nvdumper_debugfs_exit(void)
-{
-	debugfs_remove(nvdumper_dbg_dentry);
-	debugfs_remove(nvdumper_set_dbg_dentry);
-}
-
-#else
-
-static void __init nvdumper_debugfs_init(void)
-{
-}
-
-static void __exit nvdumper_debugfs_exit(void)
-{
-}
-
-#endif
 
 arch_initcall(nvdumper_init);
 module_exit(nvdumper_exit);
