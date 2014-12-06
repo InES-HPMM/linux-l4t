@@ -730,6 +730,31 @@ static int trc_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
+#ifdef CONFIG_HOTPLUG_CPU
+static int ptm_cpu_hotplug_notifier(struct notifier_block *self,
+	unsigned long action, void *hcpu)
+{
+	long cpu = (long)hcpu;
+	switch (action) {
+	case CPU_STARTING:
+		if (tracer.enable) {
+			ptm_init(&tracer, cpu);
+			ptm_t210_writel(&tracer, cpu, 1,
+				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
+		}
+		break;
+	default:
+		break;
+	}
+	return NOTIFY_OK;
+}
+
+/* configure per-CPU trace unit in hotplug path */
+static struct notifier_block ptm_cpu_hotplug_notifier_block = {
+	.notifier_call = ptm_cpu_hotplug_notifier,
+};
+#endif
+
 /* use a sysfs file "trace_enable" to start/stop tracing */
 static ssize_t trace_enable_show(struct kobject *kobj,
 	struct kobj_attribute *attr,
@@ -1223,6 +1248,10 @@ static int ptm_probe(struct platform_device  *dev)
 				trace_attr[i].attr.name);
 	}
 
+#ifdef CONFIG_HOTPLUG_CPU
+	register_cpu_notifier(&ptm_cpu_hotplug_notifier_block);
+#endif
+
 	dev_info(&dev->dev, "PTM driver initialized.\n");
 
 out:
@@ -1235,6 +1264,10 @@ static int ptm_remove(struct platform_device *dev)
 {
 	struct tracectx *t = &tracer;
 	int i;
+
+#ifdef CONFIG_HOTPLUG_CPU
+	unregister_cpu_notifier(&ptm_cpu_hotplug_notifier_block);
+#endif
 
 	for (i = 0; i < ARRAY_SIZE(trace_attr); i++)
 		sysfs_remove_file(&dev->dev.kobj, &trace_attr[i].attr);
