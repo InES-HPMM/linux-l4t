@@ -159,9 +159,52 @@ static int xotg_set_host(struct usb_otg *otg, struct usb_bus *host)
 	/* set the hs_otg_port here for the usbcore/HCD to be able
 	 * to access it by setting it in the usb_bus structure
 	 */
-	otg->host->otg_port = xotg->hs_otg_port;
+	otg->host->otg_port = xotg->hs_otg_port + 1;
 
 	extcon_id_notifications(&xotg->id_extcon_nb, 0, NULL);
+	return 0;
+}
+
+/* will be called from the HCD during its USB3 shared_hcd initialization */
+static int xotg_set_xhci_host(struct usb_otg *otg, struct usb_bus *host)
+{
+	struct xotg *xotg = container_of(otg->phy, struct xotg, phy);
+
+	xotg_info(xotg->dev, "xhcihost = 0x%p\n", host);
+	if (!otg || !host)
+		return -1;
+
+	otg->xhcihost = host;
+	/* set the otg_port here for the usbcore/HCD to be able
+	 * to access it by setting it in the usb_bus structure
+	 */
+	otg->xhcihost->otg_port = xotg->ss_otg_port + 1;
+	return 0;
+}
+
+static int xotg_notify_connect(struct usb_phy *phy, enum usb_device_speed speed)
+{
+	struct xotg *xotg = container_of(phy, struct xotg, phy);
+	unsigned long flags;
+
+	xotg_info(xotg->dev, "speed = 0x%d\n", speed);
+	spin_lock_irqsave(&xotg->lock, flags);
+	xotg->device_connected = true;
+	spin_unlock_irqrestore(&xotg->lock, flags);
+	return 0;
+}
+
+static int xotg_notify_disconnect(struct usb_phy *phy,
+		enum usb_device_speed speed)
+{
+	struct xotg *xotg = container_of(phy, struct xotg, phy);
+	unsigned long flags;
+
+	xotg_info(xotg->dev, "speed = 0x%d\n", speed);
+	spin_lock_irqsave(&xotg->lock, flags);
+	xotg->device_connected = false;
+	spin_unlock_irqrestore(&xotg->lock, flags);
+
 	return 0;
 }
 
@@ -193,17 +236,22 @@ static void xotg_struct_init(struct xotg *xotg)
 
 	xotg->phy.label = "Nvidia USB XOTG PHY";
 	xotg->phy.set_power = xotg_set_power;
+	xotg->phy.notify_connect = xotg_notify_connect;
+	xotg->phy.notify_disconnect = xotg_notify_disconnect;
 
 	xotg->phy.otg->phy = &xotg->phy;
 	xotg->phy.otg->set_host = xotg_set_host;
+	xotg->phy.otg->set_xhci_host = xotg_set_xhci_host;
 	xotg->phy.otg->set_peripheral = xotg_set_peripheral;
 
 	/* initial states */
 	xotg_dbg(xotg->dev, "UNDEFINED\n");
 	xotg->phy.state = OTG_STATE_UNDEFINED;
 
-	/* hs_otg_port = 0 */
+	/* hs_otg_port = 0 , ss_otg_port = 0 */
 	xotg->hs_otg_port = 0;
+	xotg->ss_otg_port = 0;
+	xotg->device_connected = false;
 
 	/* set default_a to 0 */
 	xotg->phy.otg->default_a = 0;

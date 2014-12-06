@@ -4856,6 +4856,9 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 		goto err_put_usb2_hcd;
 	}
 
+	if (!IS_ERR_OR_NULL(tegra->transceiver))
+		hcd->phy = tegra->transceiver;
+
 	irq = res->start;
 	ret = usb_add_hcd(hcd, irq, IRQF_SHARED);
 	if (ret) {
@@ -4882,6 +4885,9 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	 * is called by usb_add_hcd().
 	 */
 	*((struct xhci_hcd **) xhci->shared_hcd->hcd_priv) = xhci;
+
+	if (!IS_ERR_OR_NULL(tegra->transceiver))
+		xhci->shared_hcd->phy = tegra->transceiver;
 
 	ret = usb_add_hcd(xhci->shared_hcd, irq, IRQF_SHARED);
 	if (ret) {
@@ -4963,6 +4969,8 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 		tegra->otgnb.notifier_call = tegra_xhci_otg_notify;
 		usb_register_notifier(tegra->transceiver, &tegra->otgnb);
 		otg_set_host(tegra->transceiver->otg, &hcd->self);
+		otg_set_xhci_host(tegra->transceiver->otg,
+			&xhci->shared_hcd->self);
 	}
 
 	return 0;

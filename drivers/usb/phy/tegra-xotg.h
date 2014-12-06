@@ -20,6 +20,7 @@
 /* nvidia otg controller Structure */
 struct xotg {
 	u8 hs_otg_port;
+	u8 ss_otg_port;
 	struct usb_phy phy;
 	struct device *dev;
 	struct platform_device *pdev;
@@ -37,6 +38,7 @@ struct xotg {
 	struct extcon_dev *id_extcon_dev;
 	struct notifier_block id_extcon_nb;
 	bool id_grounded;
+	bool device_connected;
 };
 
 extern int xotg_debug_level;
