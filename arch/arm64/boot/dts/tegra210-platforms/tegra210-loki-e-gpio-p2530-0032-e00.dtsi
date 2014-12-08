@@ -66,7 +66,6 @@
 				TEGRA_GPIO(V, 5)
 				TEGRA_GPIO(Z, 4)
 				TEGRA_GPIO(G, 2)
-				TEGRA_GPIO(G, 3)
 				TEGRA_GPIO(K, 1)
 				TEGRA_GPIO(K, 2)
 				TEGRA_GPIO(K, 3)
@@ -85,6 +84,7 @@
 				>;
 			gpio-output-high = <
 				TEGRA_GPIO(H, 1)
+				TEGRA_GPIO(G, 3)
 				TEGRA_GPIO(E, 7)
 				>;
 			gpio-suspend-output-low = <TEGRA_GPIO(V, 4)

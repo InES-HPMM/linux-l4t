@@ -177,6 +177,7 @@
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3300000>;
 			gpio = <&gpio TEGRA_GPIO(G, 3) 0>;
+			regulator-boot-on;
 			enable-active-high;
 		};
 	};
