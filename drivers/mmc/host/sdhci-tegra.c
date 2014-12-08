@@ -2038,8 +2038,8 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 			"setting 1.8V failed %d. Revert to 3.3V\n", rc);
 		signal_voltage = MMC_SIGNAL_VOLTAGE_330;
 		rc = tegra_sdhci_configure_regulators(tegra_host,
-			CONFIG_REG_SET_VOLT, SDHOST_HIGH_VOLT_MIN,
-			SDHOST_HIGH_VOLT_MAX);
+			CONFIG_REG_SET_VOLT, tegra_host->vddio_min_uv,
+			tegra_host->vddio_max_uv);
 	}
 	if (gpio_is_valid(plat->power_gpio)) {
 		if (signal_voltage == MMC_SIGNAL_VOLTAGE_330) {
