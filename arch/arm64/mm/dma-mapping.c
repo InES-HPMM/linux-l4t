@@ -2304,6 +2304,7 @@ bool device_is_iommuable(struct device *dev)
 	return (dev->archdata.dma_ops == &iommu_ops) ||
 		(dev->archdata.dma_ops == &iommu_coherent_ops);
 }
+EXPORT_SYMBOL(device_is_iommuable);
 
 static inline void __dummy_common(void)
 { WARN(1, "DMA API should be called after ->probe() is done.\n"); }
