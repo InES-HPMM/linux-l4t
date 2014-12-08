@@ -2641,7 +2641,7 @@ static int ov5693_platform_power_on(struct ov5693_power_rail *pw)
 	struct ov5693_info *info = container_of(pw, struct ov5693_info,
 						regulators);
 
-	if (info->pdata && info->pdata->power_on)
+	if (info->pdata->power_on)
 		return info->pdata->power_on(pw);
 
 	if (info->pdata->use_vcm_vdd) {
@@ -2685,7 +2685,7 @@ static int ov5693_platform_power_off(struct ov5693_power_rail *pw)
 	struct ov5693_info *info = container_of(pw, struct ov5693_info,
 						regulators);
 
-	if (info->pdata && info->pdata->power_off)
+	if (info->pdata->power_off)
 		return info->pdata->power_off(pw);
 
 	usleep_range(21, 25);
@@ -3127,8 +3127,6 @@ static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	{
 		u32 powerlevel = (u32) arg;
 
-		if (!info->pdata)
-			break;
 		if (powerlevel > NVC_PWR_ON) {
 			dev_err(&info->i2c_client->dev,
 				"%s:Invalid power level.\n",
@@ -3318,7 +3316,7 @@ static void ov5693_sdata_init(struct ov5693_info *info)
 	struct nvc_imager_static_nvc *static_info;
 
 	memcpy(&info->sdata, &ov5693_dflt_sdata, sizeof(info->sdata));
-	if (!info->pdata || !info->pdata->static_info)
+	if (!info->pdata->static_info)
 		return;
 
 	static_info = info->pdata->static_info;
