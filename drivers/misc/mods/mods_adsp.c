@@ -40,6 +40,8 @@ int esc_mods_adsp_stop(struct file *pfile)
 int esc_mods_adsp_run_app(struct file *pfile, struct MODS_ADSP_RUN_APP_INFO *p)
 {
 	int rc = -1;
+	int max_retry = 3;
+	int rcount = 0;
 	nvadsp_app_handle_t handle;
 	nvadsp_app_info_t *p_app_info;
 	nvadsp_app_args_t app_args;
@@ -59,23 +61,35 @@ int esc_mods_adsp_run_app(struct file *pfile, struct MODS_ADSP_RUN_APP_INFO *p)
 
 	if (!p_app_info) {
 		mods_error_printk("init adsp app fail");
+		nvadsp_app_unload(handle);
 		return -1;
 	}
 
 	rc = nvadsp_app_start(p_app_info);
 	if (rc) {
 		mods_error_printk("start adsp app fail");
-		return -1;
+		goto failed;
 	}
 
-	if (p_app_info->state == NVADSP_APP_STATE_STARTED) {
-		rc = wait_for_completion_timeout(&p_app_info->wait_for_app_complete,
-				msecs_to_jiffies(p->timeout));
-		if (!rc) {
+	while (rcount++ < max_retry) {
+		rc = wait_for_nvadsp_app_complete_timeout(p_app_info,
+						msecs_to_jiffies(p->timeout));
+		if (rc == -ERESTARTSYS)
+			continue;
+		else if (rc == 0) {
 			mods_error_printk("app timeout(%d)", p->timeout);
-			return -1;
-		}
+			rc = -1;
+		} else if (rc < 0) {
+			mods_error_printk("run app failed, err=%d\n", rc);
+			rc = -1;
+		} else
+			rc = 0;
+		break;
 	}
 
-	return OK;
+failed:
+	nvadsp_app_deinit(p_app_info);
+	nvadsp_app_unload(handle);
+
+	return rc;
 }
