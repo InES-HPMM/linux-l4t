@@ -40,6 +40,7 @@
 #define USE_ONEBIT_DEPOP 0 /* for one bit depop */
 /* #define USE_EQ */
 #define VERSION "0.8.5 alsa 1.0.24"
+#define FUTURE_USE 0
 
 struct rt5639_init_reg {
 	u8 reg;
@@ -689,7 +690,7 @@ int rt5639_conn_mux_path(struct snd_soc_codec *codec,
 	if (update) {
 		snd_soc_dapm_sync(dapm);
 
-		kcontrol = &w->kcontrols[0];
+		kcontrol = (struct snd_kcontrol_new *)&w->kcontrols[0];
 		em = (struct soc_enum *)kcontrol->private_value;
 		for (i = 0; i < em->max; i++)
 			if (!(strcmp(path_name, em->texts[i])))
@@ -1814,6 +1815,10 @@ static int rt5639_hp_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+/* Commenting out rt5639_mono_event  as it is not currently
+ * used, but may be required in future.
+ */
+#if FUTURE_USE
 static int rt5639_mono_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
@@ -1836,6 +1841,7 @@ static int rt5639_mono_event(struct snd_soc_dapm_widget *w,
 
 	return 0;
 }
+#endif
 
 static int rt5639_lout_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
@@ -2888,7 +2894,7 @@ static ssize_t rt5639_index_store(struct device *dev,
 	unsigned int val = 0, addr = 0;
 	int i;
 
-	dev_info(codec->dev, "register \"%s\" count=%d\n", buf, count);
+	dev_info(codec->dev, "register \"%s\" count=%zu\n", buf, count);
 	for (i = 0; i < count; i++) { /*address*/
 		if (*(buf+i) <= '9' && *(buf+i) >= '0')
 			addr = (addr << 4) | (*(buf+i)-'0');
@@ -2960,7 +2966,7 @@ static ssize_t rt5639_codec_store(struct device *dev,
 	unsigned int val = 0, addr = 0;
 	int i;
 
-	dev_info(codec->dev, "register \"%s\" count=%d\n", buf, count);
+	dev_info(codec->dev, "register \"%s\" count=%zu\n", buf, count);
 	for (i = 0; i < count; i++) {/*address*/
 		if (*(buf+i) <= '9' && *(buf+i) >= '0')
 			addr = (addr << 4) | (*(buf+i)-'0');
@@ -3003,7 +3009,7 @@ static ssize_t rt5639_codec_adb_show(struct device *dev,
 	struct i2c_client *client = to_i2c_client(dev);
 	struct rt5639_priv *rt5639 = i2c_get_clientdata(client);
 	struct snd_soc_codec *codec = rt5639->codec;
-	unsigned int val;
+	unsigned int val = 0;
 	int cnt = 0, i;
 
 	for (i = 0; i < rt5639->adb_reg_num; i++) {
