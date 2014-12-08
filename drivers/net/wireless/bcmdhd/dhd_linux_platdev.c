@@ -553,6 +553,7 @@ static void wifi_plat_dev_drv_shutdown(struct platform_device *pdev)
 	ASSERT(dhd_wifi_platdata->num_adapters == 1);
 	adapter = &dhd_wifi_platdata->adapters[0];
 
+	adapter->skip_hang_evt = TRUE;
 	wifi_platform_set_power(adapter, FALSE, 0);
 }
 
