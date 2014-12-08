@@ -303,7 +303,8 @@ extern const struct file_operations *smmu_debugfs_stats_fops;
 extern int tegra_smmu_probe_hv(struct platform_device *pdev,
 					struct smmu_device *smmu);
 #else
-int tegra_smmu_probe_hv(struct platform_device *pdev, struct smmu_device *smmu)
+static inline int tegra_smmu_probe_hv(struct platform_device *pdev,
+	struct smmu_device *smmu)
 {
 	return -EINVAL;
 }
