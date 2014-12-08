@@ -38,6 +38,7 @@
 #include <linux/tegra-soc.h>
 #include <linux/tegra-fuse.h>
 #include <../../arch/arm/mach-tegra/iomap.h>
+#include <linux/platform/tegra/common.h>
 
 #ifdef CONFIG_ARM64
 #include <asm/mmu.h>
