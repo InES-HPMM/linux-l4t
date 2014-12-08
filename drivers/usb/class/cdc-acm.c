@@ -1471,7 +1471,6 @@ static void acm_disconnect(struct usb_interface *intf)
 	struct acm *acm = usb_get_intfdata(intf);
 	struct usb_device *usb_dev = interface_to_usbdev(intf);
 	struct tty_struct *tty;
-	struct urb *res;
 	int i;
 
 	dev_dbg(&intf->dev, "%s\n", __func__);
