@@ -731,6 +731,11 @@ static int dhd_pm_callback(struct notifier_block *nfb, unsigned long action, voi
 		break;
 	}
 
+	/* FIXME: dhd_wlfc_suspend acquires wd wakelock and calling
+	   in this function is breaking LP0. So moving this function
+	   call to dhd_set_suspend. Need to enable it after fixing
+	   wd wakelock issue. */
+#if 0
 #if defined(SUPPORT_P2P_GO_PS)
 #ifdef PROP_TXSTATUS
 	if (suspend) {
@@ -741,6 +746,7 @@ static int dhd_pm_callback(struct notifier_block *nfb, unsigned long action, voi
 		dhd_wlfc_resume(&dhdinfo->pub);
 #endif
 #endif /* defined(SUPPORT_P2P_GO_PS) */
+#endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && (LINUX_VERSION_CODE <= \
 	KERNEL_VERSION(2, 6, 39))
@@ -1406,6 +1412,13 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 						DHD_ERROR(("failed to set nd_ra_filter (%d)\n",
 							ret));
 				}
+#if defined(SUPPORT_P2P_GO_PS)
+#ifdef PROP_TXSTATUS
+				DHD_OS_WAKE_LOCK_WAIVE(dhd);
+				dhd_wlfc_suspend(dhd);
+				DHD_OS_WAKE_LOCK_RESTORE(dhd);
+#endif
+#endif /* defined(SUPPORT_P2P_GO_PS) */
 			} else {
 #ifdef PKT_FILTER_SUPPORT
 				dhd->early_suspended = 0;
@@ -1447,6 +1460,12 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 						DHD_ERROR(("failed to set nd_ra_filter (%d)\n",
 							ret));
 				}
+#if defined(SUPPORT_P2P_GO_PS)
+#ifdef PROP_TXSTATUS
+				dhd_wlfc_resume(dhd);
+#endif
+#endif /* defined(SUPPORT_P2P_GO_PS) */
+
 			}
 	}
 	dhd_suspend_unlock(dhd);
