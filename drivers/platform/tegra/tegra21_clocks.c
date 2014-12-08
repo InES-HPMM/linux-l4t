@@ -9849,7 +9849,7 @@ bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 
 /* Internal LA may request some clocks to be enabled on init via TRANSACTION
    SCRATCH register settings */
-void __init tegra21x_clk_init_la(void)
+static void __init tegra21x_clk_init_la(void)
 {
 	struct clk *c;
 	u32 reg = readl((void *)

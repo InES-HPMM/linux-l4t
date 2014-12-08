@@ -31,6 +31,7 @@
 #include <mach/irqs.h>
 
 #include <linux/platform/tegra/clock.h>
+#include <linux/tegra_pm_domains.h>
 #include "iomap.h"
 
 #define ACTMON_GLB_STATUS			0x00

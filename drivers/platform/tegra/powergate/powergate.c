@@ -38,6 +38,7 @@
 
 #include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/common.h>
+#include "board.h"
 #include "powergate-priv.h"
 
 static struct powergate_ops *pg_ops;

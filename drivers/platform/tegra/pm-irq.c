@@ -32,6 +32,7 @@
 #include <linux/syscore_ops.h>
 #include <linux/irqchip/tegra.h>
 #include <linux/tegra-pmc.h>
+#include "board.h"
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_LATCH_WAKEUPS	(1 << 5)

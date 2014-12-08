@@ -106,7 +106,7 @@ static struct notifier_block tegra_reboot_nb = {
 	.notifier_call = tegra_reboot_notify,
 };
 
-int tegra_register_reboot_notifier(void)
+static int tegra_register_reboot_notifier(void)
 {
 	/*
 	 * PSCI v0.2 has support for system reset. If we support v0.2, then

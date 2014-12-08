@@ -5,8 +5,8 @@
 
 GCOV_PROFILE := y
 
-subdir-ccflags-y += -Werror
-
+subdir-ccflags-y += -Werror \
+		    -I$(srctree)/arch/arm/mach-tegra
 obj-$(CONFIG_TEGRA_POWERGATE) += powergate.o
 obj-$(CONFIG_TEGRA_POWERGATE) += powergate-ops-t1xx.o
 ifeq ($(CONFIG_TEGRA_POWERGATE),y)

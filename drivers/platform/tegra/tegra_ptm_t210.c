@@ -115,7 +115,7 @@ static struct tracectx tracer = {
 	.dram_carveout_kb		=	DRAM_CARVEOUT_MB * 1024,
 };
 
-struct clk *csite_clk;
+static struct clk *csite_clk;
 
 static void etf_last_init(struct tracectx *t)
 {
