@@ -430,6 +430,10 @@
 				nvidia,consumer_name = "sdhci-tegra.0";
 				nvidia,states = <0 1785>;
 			};
+			consumer10 {
+				nvidia,consumer_name = "shieldled";
+				nvidia,states = <0 40 79 119 159 198 238 278 317 357 397>;
+			};
 		};
 	};
 
