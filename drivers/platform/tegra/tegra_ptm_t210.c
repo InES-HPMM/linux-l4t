@@ -72,7 +72,6 @@ struct tracectx {
 	void __iomem	*etr_regs;
 	void __iomem	*funnel_minor_regs;
 	void __iomem	*ape_regs;
-	void __iomem	*cpu_regs[CONFIG_NR_CPUS];
 	void __iomem	*ptm_t210_regs[CONFIG_NR_CPUS];
 	void __iomem	*funnel_bccplex_regs;
 	uintptr_t	*etr_address;
@@ -146,13 +145,6 @@ static void ape_init(struct tracectx *t)
 	ape_writel(t, 0x20, CORESIGHT_APE_CPU0_ETM_ETMATID_0);
 
 	dev_dbg(t->dev, "APE is initialized.\n");
-}
-
-/* Initialise the core debug registers */
-static void cpu_debug_init(struct tracectx *t, int id)
-{
-	cpu_debug_regs_unlock(t, id);
-	cpu_debug_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_DEBUG_OSLAR_EL1_0);
 }
 
 /* Initialise the PTM registers */
@@ -316,6 +308,7 @@ static void ptm_init(struct tracectx *t, int id)
 			ptm_t210_writel(t, id, 0x3,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCTSCTLR_0);
 	}
+	smp_wmb();
 	dev_dbg(t->dev, "PTM%d initialized.\n", id);
 }
 
@@ -475,10 +468,6 @@ static int trace_t210_start(struct tracectx *t)
 
 	clk_enable(csite_clk);
 
-	/* Unlock CPU Debug to monitor PC */
-	for_each_online_cpu(id)
-		cpu_debug_init(t, id);
-
 	/* Programming PTM */
 	for_each_online_cpu(id)
 		ptm_init(t, id);
@@ -508,9 +497,11 @@ static int trace_t210_start(struct tracectx *t)
 		replicator_init(t);
 
 		/* Enabling the ETM */
-		for_each_online_cpu(id)
+		for_each_online_cpu(id) {
 			ptm_t210_writel(t, id, 1,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
+			smp_wmb();
+		}
 	}
 
 	return 0;
@@ -1200,20 +1191,13 @@ static int ptm_probe(struct platform_device  *dev)
 		case 6:
 		case 7:
 		case 8:
-			if (dbg_cnt < CONFIG_NR_CPUS)
-				t->cpu_regs[dbg_cnt++] = addr;
-			break;
-		case 9:
-		case 10:
-		case 11:
-		case 12:
 			if (ptm_cnt < CONFIG_NR_CPUS)
 				t->ptm_t210_regs[ptm_cnt++] = addr;
 			break;
-		case 13:
+		case 9:
 			t->funnel_minor_regs = addr;
 			break;
-		case 14:
+		case 10:
 			t->ape_regs = addr;
 			break;
 		default:
@@ -1274,8 +1258,6 @@ static int ptm_remove(struct platform_device *dev)
 
 	for (i = 0; i < CONFIG_NR_CPUS; i++)
 		devm_iounmap(&dev->dev, t->ptm_t210_regs[i]);
-	for (i = 0; i < CONFIG_NR_CPUS; i++)
-		devm_iounmap(&dev->dev, t->cpu_regs[i]);
 	devm_iounmap(&dev->dev, t->funnel_major_regs);
 	devm_iounmap(&dev->dev, t->funnel_minor_regs);
 	devm_iounmap(&dev->dev, t->ape_regs);
