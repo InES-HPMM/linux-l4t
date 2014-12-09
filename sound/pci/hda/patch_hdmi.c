@@ -1311,10 +1311,8 @@ static void hdmi_present_sense(struct hdmi_spec_per_pin *per_pin, int repoll)
 
 	if (eld->eld_valid) {
 
-		if (!pin_eld->info.lpcm_sad_ready) {
-			memset(&eld->info, 0, sizeof(struct parsed_hdmi_eld));
-			hdmi_update_lpcm_sad_eld(codec, pin_nid, eld);
-		}
+		memset(&eld->info, 0, sizeof(struct parsed_hdmi_eld));
+		hdmi_update_lpcm_sad_eld(codec, pin_nid, eld);
 
 		if (snd_hdmi_get_eld(codec, pin_nid, eld->eld_buffer,
 						     &eld->eld_size) < 0)
