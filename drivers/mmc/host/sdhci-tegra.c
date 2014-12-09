@@ -195,7 +195,7 @@
 /* Shadow write xfer mode reg and write it alongwith CMD register */
 #define NVQUIRK_SET_PIPE_STAGES_MASK_0		BIT(21)
 #define NVQUIRK_HIGH_FREQ_TAP_PROCEDURE		BIT(22)
-/* Disable SDMMC3 external loopback */
+/* Disable external loopback for all sdmmc devices*/
 #define NVQUIRK_DISABLE_EXTERNAL_LOOPBACK	BIT(23)
 /* Select fix tap hole margins */
 #define NVQUIRK_SELECT_FIXED_TAP_HOLE_MARGINS	BIT(24)
@@ -1413,9 +1413,7 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	if (soc_data->nvquirks & NVQUIRK_SET_PIPE_STAGES_MASK_0)
 		misc_ctrl &= ~SDHCI_VNDR_MISC_CTRL_PIPE_STAGES_MASK;
 
-	/* External loopback is valid for sdmmc3 only */
-	if ((soc_data->nvquirks & NVQUIRK_DISABLE_EXTERNAL_LOOPBACK) &&
-		(plat->enb_ext_loopback)) {
+	if (plat->enb_ext_loopback) {
 		if ((tegra_host->tuning_status == TUNING_STATUS_DONE)
 			&& (host->mmc->pm_flags &
 			MMC_PM_KEEP_POWER)) {
@@ -4560,8 +4558,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra11 = {
 		    NVQUIRK_ENABLE_DDR50 |
 		    NVQUIRK_ENABLE_HS200 |
 		    NVQUIRK_ENABLE_AUTO_CMD23 |
-		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
-		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK,
+		    NVQUIRK_INFINITE_ERASE_TIMEOUT,
 	.parent_clk_list = {"pll_p", "pll_c"},
 	.tuning_freq_list = {81600000, 156000000, 200000000},
 	.t2t_coeffs = t11x_tuning_coeffs,
@@ -4589,8 +4586,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra12 = {
 		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
 		    NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD |
 		    NVQUIRK_HIGH_FREQ_TAP_PROCEDURE |
-		    NVQUIRK_SET_CALIBRATION_OFFSETS |
-		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK,
+		    NVQUIRK_SET_CALIBRATION_OFFSETS,
 	.parent_clk_list = {"pll_p", "pll_c"},
 	.tuning_freq_list = {81600000, 136000000, 200000000},
 	.t2t_coeffs = t12x_tuning_coeffs,
