@@ -20,5 +20,6 @@
 #define __OTE_PROTOCOL_H__
 
 int te_set_vpr_params(void *vpr_base, size_t vpr_size);
+void te_restore_keyslots(void);
 
 #endif

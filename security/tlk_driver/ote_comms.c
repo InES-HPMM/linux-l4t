@@ -415,6 +415,23 @@ int te_set_vpr_params(void *vpr_base, size_t vpr_size)
 }
 EXPORT_SYMBOL(te_set_vpr_params);
 
+void te_restore_keyslots(void)
+{
+	uint32_t retval;
+
+	/* Share the same lock used when request is send from user side */
+	mutex_lock(&smc_lock);
+
+	retval = send_smc(TE_SMC_TA_EVENT, TA_EVENT_RESTORE_KEYS, 0);
+
+	mutex_unlock(&smc_lock);
+
+	if (retval != OTE_SUCCESS) {
+		pr_err("%s: smc failed err (0x%x)\n", __func__, retval);
+	}
+}
+EXPORT_SYMBOL(te_restore_keyslots);
+
 /*
  * Open session SMC (supporting client-based te_open_session() calls)
  */
