@@ -220,7 +220,7 @@ DECLARE_WAIT_QUEUE_HEAD(dhd_dpc_wait);
 extern void dhd_enable_oob_intr(struct dhd_bus *bus, bool enable);
 #endif 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
-static void dhd_hang_process(void *dhd_info, void *event_data, u8 event);
+static void dhd_hang_process(void *dhd_pub, void *event_data, u8 event);
 #endif 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
 MODULE_LICENSE("GPL v2");
@@ -7272,12 +7272,12 @@ dhd_dev_pno_get_for_batch(struct net_device *dev, char *buf, int bufsize)
 #endif /* PNO_SUPPORT */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
-static void dhd_hang_process(void *dhd_info, void *event_info, u8 event)
+static void dhd_hang_process(void *dhd_pub, void *event_info, u8 event)
 {
 	dhd_info_t *dhd;
 	struct net_device *dev;
 
-	dhd = (dhd_info_t *)dhd_info;
+	dhd = (dhd_info_t *)((dhd_pub_t *)dhd_pub)->info;
 	dev = dhd->iflist[0]->net;
 
 	if (dev) {
