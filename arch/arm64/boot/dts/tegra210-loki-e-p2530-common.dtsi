@@ -633,4 +633,8 @@
 			};
 		};
 	};
+
+	rollback-protection {
+		status = "okay";
+	};
 };
