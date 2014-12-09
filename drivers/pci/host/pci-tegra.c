@@ -923,7 +923,7 @@ static void handle_sb_intr(struct tegra_pcie *pcie)
 	mesg = afi_readl(pcie, AFI_MSG_0);
 	if (mesg & AFI_MSG_INTX_MASK)
 		/* notify device isr for INTx messages from pcie devices */
-		dev_info(pcie->dev,
+		dev_dbg(pcie->dev,
 			"Legacy INTx interrupt occurred %x\n", mesg);
 	else if (mesg & AFI_MSG_PM_PME_MASK) {
 		struct tegra_pcie_port *port, *tmp;
