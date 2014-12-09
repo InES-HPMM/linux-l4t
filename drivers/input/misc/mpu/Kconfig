@@ -2,7 +2,7 @@
 # inv-mpu drivers for Invensense MPU devices and combos
 #
 
-config INV_MPU
+config NVI_INPUT_MPU
     tristate "Invensense MPU devices"
     depends on I2C && SYSFS && INPUT
     default n

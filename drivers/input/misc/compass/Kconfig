@@ -2,7 +2,7 @@
 # Kconfig for stand-alone compass input device drivers
 #
 
-config INV_AK8975
+config NVI_INPUT_AK89xx
     tristate "Invensense AKM AK8975 compass input device driver"
     depends on I2C && SYSFS && INPUT && INPUT_EVDEV
     default n
