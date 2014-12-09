@@ -72,7 +72,7 @@
 	};
 
 	sdhci@700b0000 {
-		uhs-mask = <0xc>;
+		uhs-mask = <0x8>;
 		power-off-rail;
 		nvidia,update-pinctrl-settings;
 		pinctrl-names = "sdmmc_schmitt_enable", "sdmmc_schmitt_disable", "sdmmc_clk_schmitt_enable", "sdmmc_clk_schmitt_disable", "sdmmc_drv_code", "sdmmc_default_drv_code";
