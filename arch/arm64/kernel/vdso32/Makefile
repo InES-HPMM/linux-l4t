@@ -37,7 +37,7 @@ $(obj-vdso32): %.o: %.c
 	$(call if_changed_dep,vdso32cm)
 
 # filter out options that the aarch32 compiler does not allow
-bad-aaarch32-flags := -mgeneral-regs-only -mno-android
+bad-aaarch32-flags := -mgeneral-regs-only -mno-android -pg
 lc_flags = $(filter-out $(bad-aaarch32-flags),$(c_flags))
 
 # actual build commands
