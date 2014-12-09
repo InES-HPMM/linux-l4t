@@ -4368,7 +4368,6 @@ static int tegra_sdhci_reboot_notify(struct notifier_block *nb,
 	struct sdhci_tegra *tegra_host =
 		container_of(nb, struct sdhci_tegra, reboot_notify);
 	int err;
-	struct sdhci_host *sdhci = dev_get_drvdata(tegra_host->dev);
 
 	switch (event) {
 	case SYS_RESTART:
@@ -4378,10 +4377,6 @@ static int tegra_sdhci_reboot_notify(struct notifier_block *nb,
 		if (err)
 			pr_err("Disable regulator in reboot notify failed %d\n",
 				err);
-
-		/* disable runtime pm callbacks */
-		pr_debug("%s: %s line=%d\n", mmc_hostname(sdhci->mmc), __func__, __LINE__);
-		__pm_runtime_disable(tegra_host->dev, false);
 
 		return NOTIFY_OK;
 	}
@@ -5497,6 +5492,16 @@ static int sdhci_tegra_remove(struct platform_device *pdev)
 	return rc;
 }
 
+static void sdhci_tegra_shutdown(struct platform_device *pdev)
+{
+	struct sdhci_host *host = platform_get_drvdata(pdev);
+	dev_dbg(&pdev->dev, " %s shutting down\n",
+		mmc_hostname(host->mmc));
+#ifdef CONFIG_MMC_RTPM
+	pm_runtime_forbid(&pdev->dev);
+#endif
+}
+
 static struct platform_driver sdhci_tegra_driver = {
 	.driver		= {
 		.name	= "sdhci-tegra",
@@ -5506,6 +5511,7 @@ static struct platform_driver sdhci_tegra_driver = {
 	},
 	.probe		= sdhci_tegra_probe,
 	.remove		= sdhci_tegra_remove,
+	.shutdown	= sdhci_tegra_shutdown,
 };
 
 module_platform_driver(sdhci_tegra_driver);
