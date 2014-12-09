@@ -175,7 +175,6 @@ static inline void vbus_detected(struct nv_udc_s *nvudc)
 		USB2_VBUS_ID_0_VBUS_OVERRIDE, USB2_VBUS_ID_0_VBUS_OVERRIDE);
 
 	nvudc->vbus_detected = true;
-	pm_runtime_get(nvudc->dev);
 	wake_lock(&nvudc->xudc_vbus);
 }
 
@@ -235,14 +234,29 @@ static void tegra_xudc_ucd_work(struct work_struct *work)
 	struct nv_udc_s *nvudc =
 		container_of(work, struct nv_udc_s, ucd_work);
 	struct device *dev = nvudc->dev;
+	unsigned long flags;
 	int ret;
-
-	if (nvudc->ucd == NULL)
-		return;
+	u32 temp;
 
 	if (nvudc->vbus_detected) {
-		nvudc->connect_type =
-			tegra_ucd_detect_cable_and_set_current(nvudc->ucd);
+		pm_runtime_get_sync(nvudc->dev);
+		spin_lock_irqsave(&nvudc->lock, flags);
+		temp = ioread32(nvudc->mmio_reg_base + CTRL);
+		temp &= ~CTRL_ENABLE;
+		iowrite32(temp, nvudc->mmio_reg_base + CTRL);
+		spin_unlock_irqrestore(&nvudc->lock, flags);
+
+		if (nvudc->ucd != NULL)
+			nvudc->connect_type =
+				tegra_ucd_detect_cable_and_set_current(
+						nvudc->ucd);
+
+		spin_lock_irqsave(&nvudc->lock, flags);
+		temp = ioread32(nvudc->mmio_reg_base + CTRL);
+		temp |= CTRL_ENABLE;
+		iowrite32(temp, nvudc->mmio_reg_base + CTRL);
+		spin_unlock_irqrestore(&nvudc->lock, flags);
+
 		if (nvudc->connect_type == CONNECT_TYPE_SDP)
 			schedule_delayed_work(&nvudc->non_std_charger_work,
 				msecs_to_jiffies(NON_STD_CHARGER_DET_TIME_MS));
@@ -253,7 +267,9 @@ static void tegra_xudc_ucd_work(struct work_struct *work)
 		}
 	} else {
 		cancel_delayed_work(&nvudc->non_std_charger_work);
-		tegra_ucd_set_charger_type(nvudc->ucd, CONNECT_TYPE_NONE);
+		if (nvudc->ucd != NULL)
+			tegra_ucd_set_charger_type(nvudc->ucd,
+						CONNECT_TYPE_NONE);
 	}
 }
 
