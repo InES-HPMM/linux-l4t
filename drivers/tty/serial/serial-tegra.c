@@ -596,9 +596,18 @@ static void tegra_uart_rx_dma_complete(void *args)
 	struct tty_port *port = &u->state->port;
 	unsigned long flags;
 	int rx_level = 0;
+	struct dma_tx_state state;
+	enum dma_status status;
 
-	async_tx_ack(tup->rx_dma_desc);
 	spin_lock_irqsave(&u->lock, flags);
+	async_tx_ack(tup->rx_dma_desc);
+
+	status = dmaengine_tx_status(tup->rx_dma_chan,
+			tup->rx_cookie, &state);
+	if (status == DMA_IN_PROGRESS) {
+		dev_info(tup->uport.dev, "RX DMA is in progress\n");
+		goto done;
+	}
 
 	/* Deactivate flow control to stop sender */
 	if (tup->rts_active)
@@ -629,7 +638,7 @@ static void tegra_uart_rx_dma_complete(void *args)
 			set_rts(tup, true);
 	} else if (tup->rts_active)
 		set_rts(tup, true);
-
+done:
 	spin_unlock_irqrestore(&u->lock, flags);
 }
 
