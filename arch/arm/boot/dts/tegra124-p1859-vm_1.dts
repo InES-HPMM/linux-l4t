@@ -245,9 +245,20 @@
 		status = "disabled";
 	};
 
+	sdhci@700b0600 {
+		status = "disabled";
+	};
+
 	dma@60020000 {
 		dma-channels = <16>;
 		status = "okay";
+	};
+
+	tegra_hv_storage {
+		compatible = "nvidia,tegra-hv-storage";
+		status = "okay";
+		instance = <0>;
+		ivc = <&tegra_hv 23>;
 	};
 
 	tegra_hv_comm {
