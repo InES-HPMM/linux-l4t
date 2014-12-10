@@ -83,8 +83,7 @@ void
 tegra_sysfs_histogram_rssi_work_stop(void)
 {
 	pr_info("%s\n", __func__);
-	cancel_delayed_work(&rssi_work);
-	flush_scheduled_work();
+	cancel_delayed_work_sync(&rssi_work);
 }
 
 ssize_t

@@ -49,8 +49,7 @@ void
 tegra_sysfs_histogram_stat_work_stop(void)
 {
 	pr_info("%s\n", __func__);
-	cancel_delayed_work(&stat_work);
-	flush_scheduled_work();
+	cancel_delayed_work_sync(&stat_work);
 }
 
 static void
