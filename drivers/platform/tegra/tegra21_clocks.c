@@ -9357,6 +9357,8 @@ static struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("cpu.emc",	"tegra-cpu", "cpu_emc",	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("disp1.emc",	"tegradc.0",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW, BIT(EMC_USER_DC1)),
 	SHARED_EMC_CLK("disp2.emc",	"tegradc.1",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW, BIT(EMC_USER_DC2)),
+	SHARED_EMC_CLK("disp1.la.emc",	"tegradc.0",	"emc.la", &tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("disp2.la.emc",	"tegradc.1",	"emc.la", &tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("usbd.emc",	"tegra-udc.0",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("usb1.emc",	"tegra-ehci.0",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("usb2.emc",	"tegra-ehci.1",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
