@@ -253,4 +253,29 @@ void *tegra_ivc_write_get_next_frame(struct ivc *ivc);
 int tegra_hv_ivc_write_advance(struct tegra_hv_ivc_cookie *ivck);
 int tegra_ivc_write_advance(struct ivc *ivc);
 
+struct tegra_hv_ivm_cookie {
+	uint64_t ipa;
+	uint64_t size;
+	unsigned peer_vmid;
+	void *reserved;
+};
+
+/**
+ * tegra_hv_mempool_reserve - reserve a mempool for use
+ * @dn		Ignored
+ * @id		Id of the requested mempool.
+ *
+ * Returns a cookie representing the mempool on success, otherwise an ERR_PTR.
+ */
+struct tegra_hv_ivm_cookie *tegra_hv_mempool_reserve(struct device_node *dn,
+		unsigned id);
+
+/**
+ * tegra_hv_mempool_release - release a reserved mempool
+ * @ck		Cookie returned by tegra_hv_mempool_reserve().
+ *
+ * Returns 0 on success or a negative error code otherwise.
+ */
+int tegra_hv_mempool_unreserve(struct tegra_hv_ivm_cookie *ck);
+
 #endif
