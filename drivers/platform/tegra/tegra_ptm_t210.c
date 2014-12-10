@@ -72,7 +72,7 @@ struct tracectx {
 	void __iomem	*etr_regs;
 	void __iomem	*funnel_minor_regs;
 	void __iomem	*ape_regs;
-	void __iomem	*ptm_t210_regs[CONFIG_NR_CPUS];
+	void __iomem	*ptm_regs[CONFIG_NR_CPUS];
 	void __iomem	*funnel_bccplex_regs;
 	uintptr_t	*etr_address;
 	int		*trc_buf;
@@ -155,88 +155,88 @@ static void ptm_init(struct tracectx *t, int id)
 	int trcstat_idle, trccfg;
 
 	/* Power up the CPU PTM */
-	ptm_t210_writel(t, id, 8, CORESIGHT_BCCPLEX_CPU_TRACE_TRCPDCR_0);
+	ptm_writel(t, id, 8, CORESIGHT_BCCPLEX_CPU_TRACE_TRCPDCR_0);
 
 	/* Unlock the COU PTM */
-	ptm_t210_regs_unlock(t, id);
+	ptm_regs_unlock(t, id);
 
 	/* clear OS lock */
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCOSLAR_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCOSLAR_0);
 
 	/* clear main enable bit to enable register programming */
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
 
 	trcstat_idle = 0x0;
 	while (trcstat_idle == 0x0) { /* wait till IDLE bit is set */
 		/*Read the IDLE bit in CORESIGHT_BCCPLEX_CPU0_TRACE_TRC_0 */
-		trcstat_idle = ptm_t210_readl(t, id,
+		trcstat_idle = ptm_readl(t, id,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCSTAT_0);
 		trcstat_idle = trcstat_idle & 0x1;
 	}
 
 	/* Clear uninitialised flopes , else we get event packets */
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCEVENTCTL1R_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCEVENTCTL0R_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCTSCTLR_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCCCTLR_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVISSCTLR_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQEVR0_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQEVR1_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQEVR2_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQRSTEVR_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQSTR_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCEXTINSELR_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTRLDVR0_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTRLDVR1_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTCTLR0_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTCTLR1_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTVR0_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTVR1_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR2_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR3_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR4_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR5_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR6_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR7_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR8_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR9_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR10_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR11_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR12_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR13_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR14_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR15_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSSCSR0_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR0_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR1_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR2_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR3_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR4_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR5_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR6_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR7_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR0_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR1_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR2_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR3_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR4_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR5_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR6_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR7_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCIDCVR0_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVMIDCVR0_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCIDCCTLR0_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVIIECTLR_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCBBCTLR_0);
-	ptm_t210_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSTALLCTLR_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCEVENTCTL1R_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCEVENTCTL0R_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCTSCTLR_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCCCTLR_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVISSCTLR_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQEVR0_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQEVR1_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQEVR2_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQRSTEVR_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQSTR_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCEXTINSELR_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTRLDVR0_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTRLDVR1_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTCTLR0_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTCTLR1_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTVR0_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTVR1_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR2_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR3_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR4_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR5_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR6_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR7_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR8_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR9_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR10_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR11_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR12_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR13_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR14_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR15_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSSCSR0_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR0_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR1_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR2_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR3_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR4_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR5_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR6_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR7_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR0_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR1_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR2_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR3_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR4_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR5_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR6_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR7_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCIDCVR0_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVMIDCVR0_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCIDCCTLR0_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVIIECTLR_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCBBCTLR_0);
+	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSTALLCTLR_0);
 
 	/* Configure basic controls RS, BB, TS, VMID, Context tracing */
-	trccfg = ptm_t210_readl(t, id,
+	trccfg = ptm_readl(t, id,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCCONFIGR_0);
 
 	if (t->branch_broadcast) {
 		trccfg = trccfg | (1<<3);
-		ptm_t210_writel(t, id, 0x101,
+		ptm_writel(t, id, 0x101,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCBBCTLR_0);
 	}
 	if (t->return_stack)
@@ -245,69 +245,69 @@ static void ptm_init(struct tracectx *t, int id)
 		trccfg = trccfg | (1<<11);
 	if (t->cycle_count) {
 		trccfg = trccfg | (1<<4);
-		ptm_t210_writel(t, id, t->cycle_count,
+		ptm_writel(t, id, t->cycle_count,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCCCCTLR_0);
 	}
-	ptm_t210_writel(t, id, trccfg,
+	ptm_writel(t, id, trccfg,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCCONFIGR_0);
 
 	/* Enable Periodic Synchronisation after 1024 bytes */
-	ptm_t210_writel(t, id, 0xa, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSYNCPR_0);
+	ptm_writel(t, id, 0xa, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSYNCPR_0);
 
 	/* Program Trace ID register */
-	ptm_t210_writel(t, id, (!(is_lp_cluster()) ?
+	ptm_writel(t, id, (!(is_lp_cluster()) ?
 			BCCPLEX_BASE_ID : LCCPLEX_BASE_ID) + id,
 			CORESIGHT_BCCPLEX_CPU_TRACE_TRCTRACEIDR_0);
 
 	/* Program Address range comparator. Use 0 and 1 */
-	ptm_t210_writeq(t, id, t->start_address,
+	ptm_writeq(t, id, t->start_address,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR0_0);
-	ptm_t210_writeq(t, id, t->stop_address,
+	ptm_writeq(t, id, t->stop_address,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR1_0);
 
 	/* control user space tracing */
-	ptm_t210_writel(t, id, (t->userspace ? 0x0 : 0x1000),
+	ptm_writel(t, id, (t->userspace ? 0x0 : 0x1000),
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR0_0);
-	ptm_t210_writel(t, id, (t->userspace ? 0x0 : 0x1000),
+	ptm_writel(t, id, (t->userspace ? 0x0 : 0x1000),
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR1_0);
 
 	/* Select Resource 2 to include ARC0 */
-	ptm_t210_writel(t, id, 0x50001,
+	ptm_writel(t, id, 0x50001,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR2_0);
 
 	/* Enable ViewInst and Include logic for ARC0. Disable the SSC */
-	ptm_t210_writel(t, id, 1, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVIIECTLR_0);
+	ptm_writel(t, id, 1, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVIIECTLR_0);
 
 	/* Select Start/Stop as Started. And select Resource 2 as the Event */
-	ptm_t210_writel(t, id, 0xE02, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVICTLR_0);
+	ptm_writel(t, id, 0xE02, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVICTLR_0);
 
 	/* Trace everything till Address match packet hits. Use Single Shot
 	comparator and generate Event Packet */
 	if (t->trigger) {
 		/* SAC2 for Address Match on which to trigger */
-		ptm_t210_writeq(t, id, t->trigger_address,
+		ptm_writeq(t, id, t->trigger_address,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR2_0);
-		ptm_t210_writel(t, id, t->userspace ? 0x0 : 0x1000,
+		ptm_writel(t, id, t->userspace ? 0x0 : 0x1000,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR2_0);
 		/* Select SAC2 for SSC0 and enable SSC to re-fire on match */
-		ptm_t210_writel(t, id, 0x4,
+		ptm_writel(t, id, 0x4,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCSSCCR0_0);
 		/* Clear SSC Status bit 31 */
-		ptm_t210_writel(t, id, 0x0,
+		ptm_writel(t, id, 0x0,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCSSCSR0_0);
 		/* Select Resource 3 to include SSC0 */
-		ptm_t210_writel(t, id, 0x30001,
+		ptm_writel(t, id, 0x30001,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR3_0);
 		/* Select Resource3 as part of Event0 */
-		ptm_t210_writel(t, id, 0x3,
+		ptm_writel(t, id, 0x3,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCEVENTCTL0R_0);
 		/* Insert ATB packet with ATID=0x7D and Payload=Master ATID.
 		ETF can use this to Stop and flush based on this */
-		ptm_t210_writel(t, id, 0x800,
+		ptm_writel(t, id, 0x800,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCEVENTCTL1R_0);
 		if (t->timestamp)
 			/* insert global timestamp if enabled */
-			ptm_t210_writel(t, id, 0x3,
+			ptm_writel(t, id, 0x3,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCTSCTLR_0);
 	}
 	smp_wmb();
@@ -500,7 +500,7 @@ static int trace_t210_start(struct tracectx *t)
 
 		/* Enabling the ETM */
 		for_each_online_cpu(id) {
-			ptm_t210_writel(t, id, 1,
+			ptm_writel(t, id, 1,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
 			smp_wmb();
 		}
@@ -517,7 +517,7 @@ static int trace_t210_stop(struct tracectx *t)
 	if (!t->ape)
 		/* Disabling the ETM */
 		for_each_online_cpu(id)
-			ptm_t210_writel(t, id, 0,
+			ptm_writel(t, id, 0,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
 	else
 		/* Disable APE traces */
@@ -636,7 +636,7 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 
 		/* Disabling the ETM */
 		for_each_online_cpu(count)
-			ptm_t210_writel(t, count, 0,
+			ptm_writel(t, count, 0,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
 
 		ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
@@ -668,7 +668,7 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 
 		/* Disabling the ETM */
 		for_each_online_cpu(count)
-			ptm_t210_writel(t, count, 0,
+			ptm_writel(t, count, 0,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
 
 		ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
@@ -732,7 +732,7 @@ static int ptm_cpu_hotplug_notifier(struct notifier_block *self,
 	case CPU_STARTING:
 		if (tracer.enable) {
 			ptm_init(&tracer, cpu);
-			ptm_t210_writel(&tracer, cpu, 1,
+			ptm_writel(&tracer, cpu, 1,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
 		}
 		break;
@@ -1015,7 +1015,7 @@ static int ptm_probe(struct platform_device  *dev)
 		case 7:
 		case 8:
 			if (ptm_cnt < CONFIG_NR_CPUS)
-				t->ptm_t210_regs[ptm_cnt++] = addr;
+				t->ptm_regs[ptm_cnt++] = addr;
 			break;
 		case 9:
 			t->funnel_minor_regs = addr;
@@ -1080,7 +1080,7 @@ static int ptm_remove(struct platform_device *dev)
 	mutex_lock(&t->mutex);
 
 	for (i = 0; i < CONFIG_NR_CPUS; i++)
-		devm_iounmap(&dev->dev, t->ptm_t210_regs[i]);
+		devm_iounmap(&dev->dev, t->ptm_regs[i]);
 	devm_iounmap(&dev->dev, t->funnel_major_regs);
 	devm_iounmap(&dev->dev, t->funnel_minor_regs);
 	devm_iounmap(&dev->dev, t->ape_regs);

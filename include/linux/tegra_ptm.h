@@ -366,10 +366,8 @@
 #define funnel_major_regs_unlock(t)	funnel_major_writel((t), \
 				LOCK_MAGIC, CORESIGHT_LOCKACCESS);
 
-#define etf_writel(t, v, x)		writel((v),	\
-				(t)->etf_regs + (x))
-#define etf_readl(t, x)			readl(		\
-				(t)->etf_regs + (x))
+#define etf_writel(t, v, x) writel((v), (t)->etf_regs + (x))
+#define etf_readl(t, x)     readl((t)->etf_regs + (x))
 #define etf_regs_unlock(t)	etf_writel((t), LOCK_MAGIC,	\
 					CORESIGHT_LOCKACCESS);
 #define etf_regs_lock(t)	etf_writel((t), 0,		\
@@ -418,18 +416,7 @@
 					LOCK_MAGIC, CORESIGHT_LOCKACCESS);
 #define cpu_debug_readl(t, id, x)	readl((t)->cpu_regs[id] + (x))
 
-#define ptm_t210_writel(t, id, v, x)	writel((v),	\
-						(t)->ptm_t210_regs[id] + (x))
-#define ptm_t210_writeq(t, id, v, x)	writeq((v),	\
-						(t)->ptm_t210_regs[id] + (x))
-#define ptm_t210_readl(t, id, x)	readl(		\
-						(t)->ptm_t210_regs[id] + (x))
-#define ptm_t210_readq(t, id, x)        readq(		\
-						(t)->ptm_t210_regs[id] + (x))
-#define ptm_t210_regs_unlock(t, id)	ptm_t210_writel((t), id,	\
-					LOCK_MAGIC, CORESIGHT_LOCKACCESS);
 
-/* T124 macro definitions */
 #define etb_writel(t, v, x)	writel((v), (t)->etb_regs + (x))
 #define etb_readl(t, x)		readl((t)->etb_regs + (x))
 #define etb_regs_lock(t)	etb_writel((t), 0,		\
@@ -452,9 +439,10 @@
 #define  tpiu_regs_unlock(t)	tpiu_writel((t), LOCK_MAGIC,	\
 						CORESIGHT_LOCKACCESS)
 
-#define  ptm_writel(t, id, v, x)	writel((v),		\
-						(t)->ptm_regs[(id)] + (x))
+#define  ptm_writel(t, id, v, x) writel((v), (t)->ptm_regs[(id)] + (x))
 #define  ptm_readl(t, id, x)	readl((t)->ptm_regs[(id)] + (x))
+#define  ptm_writeq(t, id, v, x) writeq((v), (t)->ptm_regs[id] + (x))
+#define  ptm_readq(t, id, x)     readq((t)->ptm_regs[id] + (x))
 #define  ptm_regs_lock(t, id)	ptm_writel((t), (id), 0,	\
 						CORESIGHT_LOCKACCESS);
 #define  ptm_regs_unlock(t, id)	ptm_writel((t), (id),		\
