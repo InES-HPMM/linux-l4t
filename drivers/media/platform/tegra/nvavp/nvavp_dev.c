@@ -1236,7 +1236,10 @@ err_exit:
 static int nvavp_init(struct nvavp_info *nvavp, int channel_id)
 {
 	int ret = 0;
-	int video_initialized = 0, audio_initialized = 0;
+	int video_initialized = 0;
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+	int audio_initialized = 0;
+#endif
 
 	nvavp->init_task = current;
 
@@ -1848,7 +1851,7 @@ int nvavp_enable_audio_clocks(nvavp_clientctx_t client, u32 clk_id)
 }
 EXPORT_SYMBOL_GPL(nvavp_enable_audio_clocks);
 
-int nvavp_disable_audio_clocks(nvavp_clientctx_t client, u32_clk_id)
+int nvavp_disable_audio_clocks(nvavp_clientctx_t client, u32 clk_id)
 {
 	return 0;
 }
@@ -1904,12 +1907,19 @@ static int tegra_nvavp_open(struct nvavp_info *nvavp,
 		nvavp->refcount++;
 		if (IS_VIDEO_CHANNEL_ID(channel_id))
 			nvavp->video_refcnt++;
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 		if (IS_AUDIO_CHANNEL_ID(channel_id))
 			nvavp->audio_refcnt++;
+#endif
 	}
 
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	trace_tegra_nvavp_open(channel_id, nvavp->refcount,
 				nvavp->video_refcnt, nvavp->audio_refcnt);
+#else
+	trace_tegra_nvavp_open(channel_id, nvavp->refcount,
+				nvavp->video_refcnt, 0);
+#endif
 
 	clientctx->nvavp = nvavp;
 	clientctx->iova_handles = RB_ROOT;
@@ -1998,11 +2008,18 @@ static int tegra_nvavp_release(struct nvavp_clientctx *clientctx,
 
 	if (IS_VIDEO_CHANNEL_ID(channel_id))
 		nvavp->video_refcnt--;
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	if (IS_AUDIO_CHANNEL_ID(channel_id))
 		nvavp->audio_refcnt--;
+#endif
 
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	trace_tegra_nvavp_release(channel_id, nvavp->refcount,
 				nvavp->video_refcnt, nvavp->audio_refcnt);
+#else
+	trace_tegra_nvavp_release(channel_id, nvavp->refcount,
+				nvavp->video_refcnt, 0);
+#endif
 
 out:
 	nvavp_remove_iova_mapping(clientctx);
@@ -2606,8 +2623,13 @@ static int tegra_nvavp_runtime_suspend(struct device *dev)
 		}
 	}
 
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	trace_tegra_nvavp_runtime_suspend(nvavp->refcount, nvavp->video_refcnt,
 				nvavp->audio_refcnt);
+#else
+	trace_tegra_nvavp_runtime_suspend(nvavp->refcount,
+			nvavp->video_refcnt, 0);
+#endif
 
 	mutex_unlock(&nvavp->open_lock);
 
@@ -2628,8 +2650,13 @@ static int tegra_nvavp_runtime_resume(struct device *dev)
 		nvavp_init(nvavp, NVAVP_AUDIO_CHANNEL);
 #endif
 
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	trace_tegra_nvavp_runtime_resume(nvavp->refcount, nvavp->video_refcnt,
 				nvavp->audio_refcnt);
+#else
+	trace_tegra_nvavp_runtime_resume(nvavp->refcount,
+			nvavp->video_refcnt, 0);
+#endif
 
 	mutex_unlock(&nvavp->open_lock);
 
