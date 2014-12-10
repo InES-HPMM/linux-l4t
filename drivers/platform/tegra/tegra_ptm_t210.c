@@ -79,18 +79,20 @@ struct tracectx {
 	int		buf_size;
 	uintptr_t	start_address;
 	uintptr_t	stop_address;
-	int		enable;
-	int		userspace;
-	int		branch_broadcast;
-	int		return_stack;
+
+	unsigned long	enable;
+	unsigned long	userspace;
+	unsigned long	branch_broadcast;
+	unsigned long	return_stack;
+	unsigned long	formatter;
+	unsigned long	timestamp;
+	unsigned long	etr;
+	unsigned long	ape;
+
 	int		trigger;
 	uintptr_t	trigger_address;
 	unsigned int	percent_after_trigger;
-	int		formatter;
-	int		timestamp;
 	unsigned int	cycle_count;
-	int		stream_to_dram;
-	int		ape;
 	int		dram_carveout_kb;
 };
 
@@ -108,7 +110,7 @@ static struct tracectx tracer = {
 	.timestamp			=	0,
 	.cycle_count			=	0,
 	.trigger_address		=	0,
-	.stream_to_dram			=	0,
+	.etr			=	0,
 	.ape				=	0,
 	.dram_carveout_kb		=	DRAM_CARVEOUT_MB * 1024,
 };
@@ -365,7 +367,7 @@ static void etf_init(struct tracectx *t)
 
 	/* Enabling capturing of trace data and Circular mode */
 
-	if (t->stream_to_dram) {
+	if (t->etr) {
 		etf_writel(t, 2, CORESIGHT_ETF_HUGO_CXTMC_REGS_MODE_0);
 		etf_writel(t, 1, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
 	} else {
@@ -489,7 +491,7 @@ static int trace_t210_start(struct tracectx *t)
 		/* programming the ETF */
 		etf_init(t);
 
-		if (t->stream_to_dram)
+		if (t->etr)
 			/* Program the ETR */
 			etr_init(t);
 
@@ -562,7 +564,7 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 	etr_regs_unlock(t);
 
 	if (t->trigger_address) {
-		if (t->stream_to_dram == 1) {
+		if (t->etr == 1) {
 			trig_stat = 0;
 			while (trig_stat == 0) {
 				trig_stat = etr_readl(t,
@@ -590,7 +592,7 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 			}
 		}
 	} else {
-		if (t->stream_to_dram == 1) {
+		if (t->etr == 1) {
 			/* Manual flush and stop */
 			etr_writel(t, 0x1001,
 					CORESIGHT_ETR_HUGO_CXTMC_REGS_FFCR_0);
@@ -620,7 +622,7 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 	/* Disable ETF */
 	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_CTL_0);
 
-	if (t->stream_to_dram == 1) {
+	if (t->etr == 1) {
 		etr_writel(t, 0, CORESIGHT_ETR_HUGO_CXTMC_REGS_CTL_0);
 
 		rwp = etr_readl(t, CORESIGHT_ETR_HUGO_CXTMC_REGS_RWP_0);
@@ -746,50 +748,6 @@ static struct notifier_block ptm_cpu_hotplug_notifier_block = {
 };
 #endif
 
-/* use a sysfs file "trace_enable" to start/stop tracing */
-static ssize_t trace_enable_show(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	char *buf)
-{
-	if (tracer.enable)
-		return sprintf(buf, "PTM tracing is enabled\n");
-	else
-		return sprintf(buf, "PTM tracing is disabled\n");
-}
-
-/* use a sysfs file "trace_userspace" to start/stop userspace tracing */
-static ssize_t trace_userspace_show(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	char *buf)
-{
-	if (tracer.userspace)
-		return sprintf(buf, "Userspace tracing is enabled\n");
-	else
-		return sprintf(buf, "Userspace tracing is disabled\n");
-}
-
-/* use a sysfs file "trace_branch_broadcast" to start/stop branch broadcast */
-static ssize_t trace_branch_broadcast_show(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	char *buf)
-{
-	if (tracer.branch_broadcast)
-		return sprintf(buf, "branch broadcast is enabled\n");
-	else
-		return sprintf(buf, "branch broadcast is disabled\n");
-}
-
-/* use a sysfs file "trace_running" to start/stop return stack mode */
-static ssize_t trace_return_stack_show(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	char *buf)
-{
-	if (tracer.return_stack)
-		return sprintf(buf, "Return stack is enabled\n");
-	else
-		return sprintf(buf, "Return stack is disabled\n");
-}
-
 /* use a sysfs file "trace_range_address" to allow user to
    specify specific areas of code to be traced */
 static ssize_t trace_range_address_show(struct kobject *kobj,
@@ -813,18 +771,6 @@ static ssize_t trace_trigger_show(struct kobject *kobj,
 		return sprintf(buf, "Address match is disabled\n");
 }
 
-/* use a sysfs file "trace_timestamp" to allow/disallow timestamps
-   to be traced */
-static ssize_t trace_timestamp_show(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	char *buf)
-{
-	if (tracer.timestamp)
-		return sprintf(buf, "Timestamp is enabled");
-	else
-		return sprintf(buf, "Timestamp is disabled");
-}
-
 /* use a sysfs file "trace_cycle_count" to allow/disallow cycle count
    to be captured */
 static ssize_t trace_cycle_count_show(struct kobject *kobj,
@@ -836,38 +782,6 @@ static ssize_t trace_cycle_count_show(struct kobject *kobj,
 				tracer.cycle_count);
 	else
 		return sprintf(buf, "cycle accurate is disabled");
-}
-
-/* use a sysfs file "trace_formatter" to enable/diable formatter */
-static ssize_t trace_formatter_show(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	char *buf)
-{
-	if (tracer.formatter)
-		return sprintf(buf, "formatter is enabled");
-	else
-		return sprintf(buf, "formatter is disabled");
-}
-
-/* use a sysfs file "trace_etr" to enable/diable etr mode */
-static ssize_t trace_etr_show(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	char *buf)
-{
-	if (tracer.stream_to_dram)
-		return sprintf(buf, "etr is enabled");
-	else
-		return sprintf(buf, "etr is disabled");
-}
-
-/* use a sysfs file "trace_etr" to enable/diable APE traces */
-static ssize_t trace_ape_show(struct kobject *kobj,
-				struct kobj_attribute *attr, char *buf)
-{
-	if (tracer.ape)
-		return sprintf(buf, "APE is enabled");
-	else
-		return sprintf(buf, "APE is disabled");
 }
 
 static ssize_t trace_enable_store(struct kobject *kobj,
@@ -896,64 +810,6 @@ static ssize_t trace_enable_store(struct kobject *kobj,
 	mutex_unlock(&tracer.mutex);
 
 	return ret ? : n;
-}
-
-static ssize_t trace_userspace_store(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	const char *buf, size_t n)
-{
-	unsigned int userspace;
-
-	if (sscanf(buf, "%u", &userspace) != 1)
-		return -EINVAL;
-
-	mutex_lock(&tracer.mutex);
-
-	tracer.userspace = (userspace) ? 1 : 0;
-
-	mutex_unlock(&tracer.mutex);
-
-	return n;
-}
-
-static ssize_t trace_branch_broadcast_store(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	const char *buf, size_t n)
-{
-	unsigned int branch_broadcast;
-
-	if (sscanf(buf, "%u", &branch_broadcast) != 1)
-		return -EINVAL;
-
-	mutex_lock(&tracer.mutex);
-
-	tracer.branch_broadcast = (!branch_broadcast) ? 0 : 1;
-
-	tracer.return_stack = ((~tracer.branch_broadcast) & 0x1);
-
-	mutex_unlock(&tracer.mutex);
-
-	return n;
-}
-
-static ssize_t trace_return_stack_store(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	const char *buf, size_t n)
-{
-	unsigned int return_stack;
-
-	if (sscanf(buf, "%u", &return_stack) != 1)
-		return -EINVAL;
-
-	mutex_lock(&tracer.mutex);
-
-	tracer.return_stack = (return_stack) ? 1 : 0;
-
-	tracer.branch_broadcast = ((~tracer.return_stack) & 0x1);
-
-	mutex_unlock(&tracer.mutex);
-
-	return n;
 }
 
 static ssize_t trace_range_address_store(struct kobject *kobj,
@@ -1006,24 +862,6 @@ static ssize_t trace_trigger_store(struct kobject *kobj,
 	return n;
 }
 
-static ssize_t trace_timestamp_store(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	const char *buf, size_t n)
-{
-	unsigned int timestamp;
-
-	if (sscanf(buf, "%u", &timestamp) != 1)
-		return -EINVAL;
-
-	mutex_lock(&tracer.mutex);
-
-	tracer.timestamp = (timestamp) ? 1 : 0;
-
-	mutex_unlock(&tracer.mutex);
-
-	return n;
-}
-
 static ssize_t trace_cycle_count_store(struct kobject *kobj,
 	struct kobj_attribute *attr,
 	const char *buf, size_t n)
@@ -1042,59 +880,44 @@ static ssize_t trace_cycle_count_store(struct kobject *kobj,
 	return n;
 }
 
-static ssize_t trace_formatter_store(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	const char *buf, size_t n)
-{
-	unsigned int formatter;
-
-	if (sscanf(buf, "%u", &formatter) != 1)
-		return -EINVAL;
-
-	mutex_lock(&tracer.mutex);
-
-	tracer.formatter = (!formatter) ? 0 : 1;
-
-	mutex_unlock(&tracer.mutex);
-
-	return n;
+#define define_show_state_func(_name) \
+static ssize_t trace_##_name##_show(struct kobject *kobj, \
+				struct kobj_attribute *attr, \
+				char *buf) \
+{ \
+	return sprintf(buf, "%lu\n", tracer._name); \
 }
 
-static ssize_t trace_etr_store(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	const char *buf, size_t n)
-{
-	unsigned int etr;
+define_show_state_func(enable)
+define_show_state_func(userspace)
+define_show_state_func(branch_broadcast)
+define_show_state_func(return_stack)
+define_show_state_func(timestamp)
+define_show_state_func(formatter)
+define_show_state_func(etr)
+define_show_state_func(ape)
 
-	if (sscanf(buf, "%u", &etr) != 1)
-		return -EINVAL;
-
-	mutex_lock(&tracer.mutex);
-
-	tracer.stream_to_dram = (etr) ? 1 : 0;
-
-	mutex_unlock(&tracer.mutex);
-
-	return n;
+#define define_store_state_func(_name) \
+static ssize_t trace_##_name##_store(struct kobject *kboj, \
+				struct kobj_attribute *attr, \
+				const char *buf, size_t n) \
+{ \
+	unsigned long value; \
+	if (kstrtoul(buf, 0, &value)) \
+		return -EINVAL; \
+	mutex_lock(&tracer.mutex); \
+	tracer._name = (value) ? 1 : 0; \
+	mutex_unlock(&tracer.mutex); \
+	return n; \
 }
 
-static ssize_t trace_ape_store(struct kobject *kobj,
-	struct kobj_attribute *attr,
-	const char *buf, size_t n)
-{
-	unsigned int ape;
-
-	if (sscanf(buf, "%u", &ape) != 1)
-		return -EINVAL;
-
-	mutex_lock(&tracer.mutex);
-
-	tracer.ape = (ape) ? 1 : 0;
-
-	mutex_unlock(&tracer.mutex);
-
-	return n;
-}
+define_store_state_func(userspace)
+define_store_state_func(branch_broadcast)
+define_store_state_func(return_stack)
+define_store_state_func(timestamp)
+define_store_state_func(formatter)
+define_store_state_func(etr)
+define_store_state_func(ape)
 
 #define A(a, b, c, d)   __ATTR(trace_##a, b, \
 	trace_##c##_show, trace_##d##_store)
