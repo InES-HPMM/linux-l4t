@@ -91,6 +91,7 @@ static void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 #define PING_TBRST_VAL	0x6
 #define LMPITP_TIMER_VAL	0x978
 
+#define ENABLE_TM 0x10
 static struct usb_endpoint_descriptor nvudc_ep0_desc = {
 	.bLength = USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType = USB_DT_ENDPOINT,
@@ -2442,6 +2443,13 @@ void ep0_req_complete(struct nv_udc_ep *udc_ep_ptr)
 	default:
 		if (nvudc->setup_fn_call_back)
 			nvudc->setup_fn_call_back(nvudc);
+
+		if (nvudc->set_tm & ENABLE_TM) {
+			iowrite32(PORT_TM_CTRL(nvudc->set_tm),
+				nvudc->mmio_reg_base + PORT_TM);
+			nvudc->set_tm = 0;
+		}
+
 		nvudc->setup_status = WAIT_FOR_SETUP;
 		break;
 	}
@@ -2881,8 +2889,7 @@ bool setfeaturesrequest(struct nv_udc_s *nvudc, u8 RequestType, u8 bRequest, u16
 				goto set_feature_error;
 
 			u_pattern = index >> 8;
-			iowrite32(u_pattern, nvudc->mmio_reg_base
-				+ HSFSPI_TESTMODE_CTRL);
+			nvudc->set_tm = PORT_TM_CTRL(u_pattern) | ENABLE_TM;
 			break;
 		}
 #ifdef OTG

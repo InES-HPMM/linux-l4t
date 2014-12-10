@@ -638,6 +638,7 @@ struct nv_udc_s {
 	u32 num_evts_processed;
 	u32 iso_delay;
 	u32 stream_rejected;
+	u32 set_tm;
 	struct mmio_reg_s mmio_reg;
 
 	/* mmio regions */
