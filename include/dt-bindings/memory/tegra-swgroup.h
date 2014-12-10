@@ -95,6 +95,19 @@
 						TEGRA_SWGROUP_BIT(x3) | \
 						TEGRA_SWGROUP_BIT(x4) | \
 						TEGRA_SWGROUP_BIT(x5))
+#define TEGRA_SWGROUP_CELLS12(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12) \
+				TWO_U32_OF_U64( TEGRA_SWGROUP_BIT(x1) | \
+						TEGRA_SWGROUP_BIT(x2) | \
+						TEGRA_SWGROUP_BIT(x3) | \
+						TEGRA_SWGROUP_BIT(x4) | \
+						TEGRA_SWGROUP_BIT(x5) | \
+						TEGRA_SWGROUP_BIT(x6) | \
+						TEGRA_SWGROUP_BIT(x7) | \
+						TEGRA_SWGROUP_BIT(x8) | \
+						TEGRA_SWGROUP_BIT(x9) | \
+						TEGRA_SWGROUP_BIT(x10)| \
+						TEGRA_SWGROUP_BIT(x11)| \
+						TEGRA_SWGROUP_BIT(x12))
 #define TEGRA_SWGROUP_MAX	64
 
 #define SWGIDS_ERROR_CODE	(~0ULL)
