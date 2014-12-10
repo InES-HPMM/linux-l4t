@@ -18,11 +18,11 @@
 / {
 	i2c@7000c000 {
 		nv_foster_led@09 {
-			compatible = "nvidia,nv_foster_led";
+			compatible = "nvidia,cy8c_led";
+			label = "led_lightbar";
 			reg = <0x09>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-
 		};
 	};
 };
