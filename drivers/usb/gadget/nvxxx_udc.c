@@ -5241,9 +5241,9 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	}
 
 	if (nvudc->bdata.otg_portmap & (0xff << XUSB_UTMI_INDEX)) {
-		nvudc->phy = usb_get_phy(USB_PHY_TYPE_USB2);
+		nvudc->phy = usb_get_phy(USB_PHY_TYPE_USB3);
 		if (IS_ERR_OR_NULL(nvudc->phy)) {
-			dev_err(dev, "USB_PHY_TYPE_USB2 not found\n");
+			dev_err(dev, "USB_PHY_TYPE_USB3 not found\n");
 			nvudc->phy = NULL;
 			goto err_clocks_disable;
 		} else {

@@ -210,10 +210,8 @@ static void xotg_struct_init(struct xotg *xotg)
 }
 
 /* start the OTG controller */
-static int xotg_start(void)
+static int xotg_start(struct xotg *xotg)
 {
-	struct usb_phy *phy = usb_get_phy(USB_PHY_TYPE_USB2);
-	struct xotg *xotg = container_of(phy, struct xotg, phy);
 	u32 reg;
 
 	/* clear interrupts */
@@ -318,7 +316,7 @@ static int xotg_probe(struct platform_device *pdev)
 	xotg->phy.type = USB_PHY_TYPE_UNDEFINED;
 
 	/* store the otg phy */
-	status = usb_add_phy(&xotg->phy, USB_PHY_TYPE_USB2);
+	status = usb_add_phy(&xotg->phy, USB_PHY_TYPE_USB3);
 	if (status) {
 		xotg_err(xotg->dev, "usb_add_phy failed\n");
 		goto error2;
@@ -352,7 +350,7 @@ static int xotg_probe(struct platform_device *pdev)
 	}
 
 	/* start OTG */
-	status = xotg_start();
+	status = xotg_start(xotg);
 	if (status) {
 		xotg_err(xotg->dev, "xotg_start failed\n");
 		goto error5;
