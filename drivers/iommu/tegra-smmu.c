@@ -553,7 +553,7 @@ static void flush_ptc_and_tlb_range(struct smmu_device *smmu,
 	while (iova < end) {
 		int i;
 
-		__smmu_flush_ptc(smmu, pte, page);
+		smmu_flush_ptc(smmu, pte, page);
 		pte += smmu->ptc_cache_size / PAGE_SIZE;
 
 		for (i = 0; i < smmu->ptc_cache_size / unit; i++) {
