@@ -15,9 +15,9 @@
 
 / {
 	thermal-fan-est {
-		active_trip_temps = <0 45000 56000 64000 70000
+		active_trip_temps = <0 51000 63000 71000 130000
 				140000 150000 160000 170000 180000>;
-		active_hysteresis = <0 13000 10000 7000 5000
+		active_hysteresis = <0 16000 11000 7000 5000
 				0 0 0 0 0>;
 	};
 };
