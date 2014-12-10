@@ -56,6 +56,8 @@
 #define BQ27441_TEMPERATURE		0x02
 #define BQ27441_VOLTAGE			0x04
 #define BQ27441_FLAGS			0x06
+#define BQ27441_FLAGS_1			0x07
+#define BQ27441_FLAGS_FC_DETECT		BIT(1)
 #define BQ27441_FLAGS_ITPOR		(1 << 5)
 #define BQ27441_NOMINAL_AVAIL_CAPACITY	0x08
 #define BQ27441_FULL_AVAIL_CAPACITY	0x0a
@@ -99,6 +101,7 @@
 struct bq27441_chip {
 	struct i2c_client		*client;
 	struct delayed_work		work;
+	struct delayed_work		fc_work;
 	struct power_supply		battery;
 	struct bq27441_platform_data	*pdata;
 	struct battery_gauge_dev	*bg_dev;
@@ -134,6 +137,7 @@ struct bq27441_chip {
 	int charge_complete;
 	int print_once;
 	bool enable_temp_prop;
+	bool full_charge_state;
 	struct mutex mutex;
 };
 
@@ -819,15 +823,34 @@ static struct battery_gauge_info bq27441_bgi = {
 	.bg_ops = &bq27441_bg_ops,
 };
 
+static void bq27441_fc_work(struct work_struct *work)
+{
+	struct bq27441_chip *chip;
+	chip = container_of(to_delayed_work(work),
+				struct bq27441_chip, fc_work);
+
+	dev_info(&chip->client->dev, "Full charge status: %d\n",
+					chip->full_charge_state);
+	battery_gauge_fc_state(chip->bg_dev, chip->full_charge_state);
+}
+
 static irqreturn_t bq27441_irq(int id, void *dev)
 {
 	struct bq27441_chip *chip = dev;
 	struct i2c_client *client = chip->client;
+	int flags_msb;
 
 	bq27441_update_soc_voltage(chip);
 	power_supply_changed(&chip->battery);
 	dev_info(&client->dev, "%s() Battery Voltage %dmV and SoC %d%%\n",
 				__func__, chip->vcell, chip->soc);
+
+	flags_msb = bq27441_read_byte(chip->client, BQ27441_FLAGS_1);
+	if (chip->full_charge_state !=
+				(flags_msb & BQ27441_FLAGS_FC_DETECT)) {
+		chip->full_charge_state = flags_msb & BQ27441_FLAGS_FC_DETECT;
+		schedule_delayed_work(&chip->fc_work, 0);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -910,6 +933,7 @@ static int bq27441_probe(struct i2c_client *client,
 
 	chip->full_capacity = 1200;
 	chip->print_once = 0;
+	chip->full_charge_state = 0;
 
 	if (chip->pdata->full_capacity)
 		chip->full_capacity = chip->pdata->full_capacity;
@@ -991,6 +1015,8 @@ static int bq27441_probe(struct i2c_client *client,
 	INIT_DEFERRABLE_WORK(&chip->work, bq27441_work);
 	schedule_delayed_work(&chip->work, 0);
 
+	INIT_DELAYED_WORK(&chip->fc_work, bq27441_fc_work);
+
 	if (client->irq) {
 		ret = devm_request_threaded_irq(&client->dev, client->irq,
 			NULL, bq27441_irq,
@@ -1013,6 +1039,7 @@ static int bq27441_probe(struct i2c_client *client,
 	return 0;
 irq_reg_error:
 	cancel_delayed_work_sync(&chip->work);
+	cancel_delayed_work_sync(&chip->fc_work);
 bg_err:
 	power_supply_unregister(&chip->battery);
 error:

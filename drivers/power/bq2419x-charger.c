@@ -393,7 +393,7 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 		dev_err(bq2419x->dev, "VOLT_CTRL update failed: %d\n", ret);
 
 	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_TIME_CTRL_REG,
-			BQ2419X_TIME_JEITA_ISET, 0);
+			BQ2419X_TIME_JEITA_ISET | BQ2419x_EN_CHARGE_TERM, 0);
 	if (ret < 0)
 		dev_err(bq2419x->dev, "TIME_CTRL update failed: %d\n", ret);
 
@@ -1339,6 +1339,26 @@ static const struct attribute_group bq2419x_attr_group = {
 	.attrs = bq2419x_attributes,
 };
 
+static int bq2419x_charger_termination_configure(
+		struct battery_charger_dev *bc_dev, int full_charge_state)
+{
+	struct bq2419x_chip *bq2419x = battery_charger_get_drvdata(bc_dev);
+	int ret;
+
+	dev_err(bq2419x->dev, "Configure charge termination: %d\n",
+				full_charge_state);
+
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_TIME_CTRL_REG,
+			BQ2419x_EN_CHARGE_TERM, (full_charge_state ?
+			BQ2419x_EN_CHARGE_TERM : 0));
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "TIME_CTRL update failed: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 static int bq2419x_charger_get_status(struct battery_charger_dev *bc_dev)
 {
 	struct bq2419x_chip *bq2419x = battery_charger_get_drvdata(bc_dev);
@@ -1348,6 +1368,7 @@ static int bq2419x_charger_get_status(struct battery_charger_dev *bc_dev)
 
 static struct battery_charging_ops bq2419x_charger_bci_ops = {
 	.get_charging_status = bq2419x_charger_get_status,
+	.charge_term_configure = bq2419x_charger_termination_configure,
 };
 
 static struct battery_charger_info bq2419x_charger_bci = {

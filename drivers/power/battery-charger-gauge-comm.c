@@ -527,6 +527,30 @@ int battery_gauge_get_battery_current(struct battery_gauge_dev *bg_dev,
 }
 EXPORT_SYMBOL_GPL(battery_gauge_get_battery_current);
 
+int battery_gauge_fc_state(struct battery_gauge_dev *bg_dev,
+					int fullcharge_state)
+{
+	struct battery_charger_dev *node;
+	int ret = 0;
+
+	if (!bg_dev)
+		return -EINVAL;
+
+	mutex_lock(&charger_gauge_list_mutex);
+
+	list_for_each_entry(node, &charger_list, list) {
+		if (node->cell_id != bg_dev->cell_id)
+			continue;
+		if (node->ops && node->ops->charge_term_configure)
+			ret = node->ops->charge_term_configure(node,
+				fullcharge_state);
+	}
+
+	mutex_unlock(&charger_gauge_list_mutex);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(battery_gauge_fc_state);
+
 struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 	struct battery_gauge_info *bgi, void *drv_data)
 {

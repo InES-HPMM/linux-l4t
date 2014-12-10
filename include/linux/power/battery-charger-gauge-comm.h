@@ -48,6 +48,8 @@ struct battery_charging_ops {
 	int (*thermal_configure)(struct battery_charger_dev *bct_dev,
 		int temp, bool enable_charger, bool enable_charg_half_current,
 		int battery_voltage);
+	int (*charge_term_configure)(struct battery_charger_dev *bc_dev,
+		int fc_state);
 };
 
 struct battery_charger_info {
@@ -102,5 +104,7 @@ int battery_gauge_get_scaled_soc(struct battery_gauge_dev *bg_dev,
 		int actual_soc_semi, int thresod_soc);
 int battery_gauge_get_adjusted_soc(struct battery_gauge_dev *bg_dev,
 		int min_soc, int max_soc, int actual_soc_semi);
+int battery_gauge_fc_state(struct battery_gauge_dev *bg_dev,
+					int fullcharge_state);
 
 #endif /* _LINUX_POWER_BATTERY_CHARGER_GAUGE_COMM_H */
