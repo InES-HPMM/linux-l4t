@@ -162,3 +162,5 @@ config TEGRA_IVC
 	help
 	  Enable the Tegra IVC library, which implements a lockless, shared-
 	  memory queue.
+
+trysource "../kernel-t18x/drivers/platform/tegra/Kconfig"
