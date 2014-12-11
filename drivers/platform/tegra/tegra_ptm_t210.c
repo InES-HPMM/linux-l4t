@@ -850,8 +850,9 @@ static ssize_t trace_trigger_store(struct kobject *kobj,
 				&percent_after_trigger) != 3)
 		return -EINVAL;
 
-	if ( percent_after_trigger > 100)
-		percent_after_trigger = 100;
+	/* max 99% to leave room for preventing buffer overwrite */
+	if (percent_after_trigger >= 100)
+		percent_after_trigger = 99;
 
 	mutex_lock(&tracer.mutex);
 
