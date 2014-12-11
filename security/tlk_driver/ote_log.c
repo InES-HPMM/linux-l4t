@@ -186,7 +186,7 @@ static int __init ote_logger_init(void)
 		/* Node is present, but logger is disabled */
 		smc_args[0] = TE_SMC_INIT_LOGGER;
 		smc_args[1] = 0;
-		tlk_generic_smc(smc_args[0], smc_args[1], 0);
+		send_smc(smc_args[0], smc_args[1], 0);
 
 		return ret;
 	}
@@ -198,7 +198,7 @@ static int __init ote_logger_init(void)
 	smc_args[1] = (uintptr_t)cb;
 
 	/* enable logging only if secure firmware supports it */
-	if (!tlk_generic_smc(smc_args[0], smc_args[1], 0))
+	if (!send_smc(smc_args[0], smc_args[1], 0))
 		ote_logging_enabled = 1;
 
 	ote_print_logs();

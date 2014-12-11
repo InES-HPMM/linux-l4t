@@ -24,25 +24,6 @@ ENTRY(_tlk_generic_smc)
 	ret
 ENDPROC(_tlk_generic_smc)
 
-	/* allows MAX_EXT_SMC_ARGS (r0-r11) to be passed in registers */
-
-/* uint32_t tlk_extended_smc(uint32_t *regs) */
-ENTRY(_tlk_extended_smc)
-	/*
-	 * Allows MAX_EXT_SMC_ARGS (r0-r11) to be passed in registers
-	 * (for aarch64, these are scratch, so no need to save them)
-	 */
-	mov	x12, x0
-	ldp	x0, x1, [x12], #16
-	ldp	x2, x3, [x12], #16
-	ldp	x4, x5, [x12], #16
-	ldp	x6, x7, [x12], #16
-	ldp	x8, x9, [x12], #16
-	ldp	x10, x11, [x12], #16
-	smc	#0
-	ret
-ENDPROC(_tlk_extended_smc)
-
 ENTRY(tlk_fiq_glue_aarch64)
 	sub	sp, sp, #S_FRAME_SIZE - S_LR
 	stp	x0, x1, [sp, #-16]!
@@ -78,13 +59,5 @@ ENTRY(_tlk_generic_smc)
 	smc	#0
 	mov	pc, lr
 ENDPROC(_tlk_generic_smc)
-
-ENTRY(_tlk_extended_smc)
-	stmfd	sp!, {r4-r12}	@ save reg state
-	mov	r12, r0		@ reg ptr to r12
-	ldmia	r12, {r0-r11}	@ load arg regs
-	smc	#0
-	ldmfd	sp!, {r4-r12}	@ restore saved regs
-ENDPROC(_tlk_extended_smc)
 
 #endif

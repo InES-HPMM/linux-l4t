@@ -203,7 +203,7 @@ static struct te_session *te_get_session(struct tlk_context *context,
 
 #ifdef CONFIG_SMP
 cpumask_t saved_cpu_mask;
-static void switch_cpumask_to_cpu0(void)
+static long switch_cpumask_to_cpu0(void)
 {
 	long ret;
 	cpumask_t local_cpu_mask = CPU_MASK_NONE;
@@ -213,6 +213,8 @@ static void switch_cpumask_to_cpu0(void)
 	ret = sched_setaffinity(0, &local_cpu_mask);
 	if (ret)
 		pr_err("%s: sched_setaffinity #1 -> 0x%lX", __func__, ret);
+
+	return ret;
 }
 
 static void restore_cpumask(void)
@@ -222,17 +224,24 @@ static void restore_cpumask(void)
 		pr_err("%s: sched_setaffinity #2 -> 0x%lX", __func__, ret);
 }
 #else
-static inline void switch_cpumask_to_cpu0(void) {};
+static inline long switch_cpumask_to_cpu0(void) { return 0; };
 static inline void restore_cpumask(void) {};
 #endif
 
-uint32_t tlk_generic_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2)
+struct tlk_smc_work_args {
+	uint32_t arg0;
+	uintptr_t arg1;
+	uint32_t arg2;
+};
+
+static long tlk_generic_smc_on_cpu0(void *args)
 {
+	struct tlk_smc_work_args *work;
 	uint32_t retval;
 
-	switch_cpumask_to_cpu0();
+	work = (struct tlk_smc_work_args *)args;
+	retval = _tlk_generic_smc(work->arg0, work->arg1, work->arg2);
 
-	retval = _tlk_generic_smc(arg0, arg1, arg2);
 	while (retval == TE_ERROR_PREEMPT_BY_IRQ ||
 	       retval == TE_ERROR_PREEMPT_BY_FS) {
 		if (retval == TE_ERROR_PREEMPT_BY_FS)
@@ -240,30 +249,47 @@ uint32_t tlk_generic_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2)
 		retval = _tlk_generic_smc(TE_SMC_RESTART, 0, 0);
 	}
 
-	restore_cpumask();
-
 	/* Print TLK logs if any */
 	ote_print_logs();
 
 	return retval;
 }
 
-uint32_t tlk_extended_smc(uintptr_t *regs)
+uint32_t send_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2)
 {
-	uint32_t retval;
+	long ret;
+	struct tlk_smc_work_args work_args;
 
-	switch_cpumask_to_cpu0();
+	work_args.arg0 = arg0;
+	work_args.arg1 = arg1;
+	work_args.arg2 = arg2;
 
-	retval = _tlk_extended_smc(regs);
-	while (retval == TE_ERROR_PREEMPT_BY_IRQ)
-		retval = _tlk_generic_smc(TE_SMC_RESTART, 0, 0);
+	if (current->flags &
+	    (PF_WQ_WORKER | PF_NO_SETAFFINITY | PF_KTHREAD)) {
+		int cpu = cpu_logical_map(get_cpu());
+		put_cpu();
 
-	restore_cpumask();
+		/* workers don't change CPU. depending on the CPU, execute
+		 * directly or sched work */
+		if (cpu == 0 && (current->flags & PF_WQ_WORKER))
+			return tlk_generic_smc_on_cpu0(&work_args);
+		else
+			return work_on_cpu(0,
+					tlk_generic_smc_on_cpu0, &work_args);
+	}
 
-	/* Print TLK logs if any */
-	ote_print_logs();
+	/* switch to CPU0 */
+	ret = switch_cpumask_to_cpu0();
+	if (ret) {
+		/* not able to switch, schedule work on CPU0 */
+		ret = work_on_cpu(0, tlk_generic_smc_on_cpu0, &work_args);
+	} else {
+		/* switched to CPU0 */
+		ret = tlk_generic_smc_on_cpu0(&work_args);
+		restore_cpumask();
+	}
 
-	return retval;
+	return ret;
 }
 
 /*
@@ -280,28 +306,7 @@ static void do_smc(struct te_request *request, struct tlk_device *dev)
 			(char *)(uintptr_t)request->params - dev->req_param_buf;
 	}
 
-	tlk_generic_smc(request->type, smc_args, smc_params);
-}
-
-struct tlk_smc_work_args {
-	uint32_t arg0;
-	uintptr_t arg1;
-	uint32_t arg2;
-};
-
-static long tlk_generic_smc_on_cpu0(void *args)
-{
-	struct tlk_smc_work_args *work;
-	int cpu = cpu_logical_map(smp_processor_id());
-	uint32_t retval;
-
-	BUG_ON(cpu != 0);
-
-	work = (struct tlk_smc_work_args *)args;
-	retval = _tlk_generic_smc(work->arg0, work->arg1, work->arg2);
-	while (retval == TE_ERROR_PREEMPT_BY_IRQ)
-		retval = _tlk_generic_smc(TE_SMC_RESTART, 0, 0);
-	return retval;
+	(void)send_smc(request->type, smc_args, smc_params);
 }
 
 /*
@@ -322,27 +327,7 @@ int te_set_vpr_params(void *vpr_base, size_t vpr_size)
 	/* Share the same lock used when request is send from user side */
 	mutex_lock(&smc_lock);
 
-	if (current->flags &
-	    (PF_WQ_WORKER | PF_NO_SETAFFINITY | PF_KTHREAD)) {
-		struct tlk_smc_work_args work_args;
-		int cpu = cpu_logical_map(get_cpu());
-
-		put_cpu();
-		work_args.arg0 = TE_SMC_PROGRAM_VPR;
-		work_args.arg1 = (uintptr_t)vpr_base;
-		work_args.arg2 = vpr_size;
-
-		/* workers don't change CPU. depending on the CPU, execute
-		 * directly or sched work */
-		if (cpu == 0 && (current->flags & PF_WQ_WORKER))
-			retval = tlk_generic_smc_on_cpu0(&work_args);
-		else
-			retval = work_on_cpu(0,
-					tlk_generic_smc_on_cpu0, &work_args);
-	} else {
-		retval = tlk_generic_smc(TE_SMC_PROGRAM_VPR,
-					(uintptr_t)vpr_base, vpr_size);
-	}
+	retval = send_smc(TE_SMC_PROGRAM_VPR, (uintptr_t)vpr_base, vpr_size);
 
 	mutex_unlock(&smc_lock);
 

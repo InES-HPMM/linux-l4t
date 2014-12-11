@@ -49,10 +49,8 @@ extern struct mutex smc_lock;
 extern struct tlk_device tlk_dev;
 extern void tlk_fiq_glue_aarch64(void);
 
+uint32_t send_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2);
 uint32_t _tlk_generic_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2);
-uint32_t tlk_generic_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2);
-uint32_t _tlk_extended_smc(uintptr_t *args);
-uint32_t tlk_extended_smc(uintptr_t *args);
 void tlk_irq_handler(void);
 
 /* errors returned by secure world in reponse to SMC calls */

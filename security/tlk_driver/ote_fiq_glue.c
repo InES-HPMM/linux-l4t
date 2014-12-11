@@ -41,7 +41,7 @@ int fiq_glue_register_handler(struct fiq_glue_handler *handler)
 
 	current_handler = handler;
 
-	ret = tlk_generic_smc(TE_SMC_REGISTER_FIQ_GLUE,
+	ret = send_smc(TE_SMC_REGISTER_FIQ_GLUE,
 			(uintptr_t)tlk_fiq_glue_aarch64, 0);
 	if (ret)
 		pr_err("%s: failed to register FIQ glue\n", __func__);

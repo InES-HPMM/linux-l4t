@@ -93,7 +93,7 @@ static int __init tlk_ss_init(void)
 		return -ENOMEM;
 	}
 
-	ret = tlk_generic_smc(TE_SMC_SS_REGISTER_HANDLER,
+	ret = send_smc(TE_SMC_SS_REGISTER_HANDLER,
 			(uintptr_t)ss_op_shmem, 0);
 	if (ret != 0) {
 		dma_free_coherent(NULL, sizeof(struct te_ss_op),
