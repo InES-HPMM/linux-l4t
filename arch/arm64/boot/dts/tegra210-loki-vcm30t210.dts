@@ -55,6 +55,11 @@
 			reg = <0>;
 			spi-max-frequency = <13000000>;
 		};
+		spi@1 {
+			compatible = "spidev";
+			reg = <1>;
+			spi-max-frequency = <13000000>;
+		};
 	};
 	spi@7000d800 {
 		compatible = "nvidia,tegra210-spi-slave";
@@ -113,7 +118,7 @@
 	};
 
 	pinmux: pinmux@700008d4 {
-		pinmux_default: common {
+		pinmux_unused_lowpower: unused_lowpower {
 			qspi_cs_n_pee1 {
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 			};
@@ -121,6 +126,63 @@
 			qspi_io2_pee4 {
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+
+			spi2_miso_pb5 {
+				nvidia,function = "spi2";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+
+			spi2_sck_pb6 {
+				nvidia,function = "spi2";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+
+			spi2_cs0_pb7 {
+				nvidia,function = "spi2";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+
+			spi2_cs1_pdd0 {
+				nvidia,function = "spi2";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+
+			spi2_mosi_pb4 {
+				nvidia,function = "spi2";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+		};
+
+		pinmux_default: common {
+			usb_vbus_en0_pcc4 {
+				nvidia,pins = "usb_vbus_en0_pcc4";
+				nvidia,function = "usb";
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,open-drain = <TEGRA_PIN_DISABLE>;
+				nvidia,io-high-voltage = <TEGRA_PIN_DISABLE>;
+			};
+
+			usb_vbus_en1_pcc5 {
+				nvidia,pins = "usb_vbus_en1_pcc5";
+				nvidia,function = "usb";
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,open-drain = <TEGRA_PIN_DISABLE>;
+				nvidia,io-high-voltage = <TEGRA_PIN_DISABLE>;
 			};
 		};
 	};
