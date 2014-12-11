@@ -140,7 +140,7 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 	{ "i2c2",		"pll_p",	408000000,	false},
 	{ "i2c3",		"pll_p",	408000000,	false},
 	{ "i2c4",		"pll_p",	408000000,	false},
-	{ "i2c5",		"pll_p",	408000000,	false},
+	{ "i2c5",		"pll_p",	102000000,	false},
 	{ "i2c6",		"pll_p",	408000000,	false},
 
 	{ "sdmmc2",		"pll_p",	48000000,	false},

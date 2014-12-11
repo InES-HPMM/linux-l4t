@@ -135,6 +135,7 @@
 
 	i2c@7000d000 {
 		status = "okay";
+		nvidia,clock-always-on;
 
 		max16989@3a {
 			compatible = "maxim,max16989";
