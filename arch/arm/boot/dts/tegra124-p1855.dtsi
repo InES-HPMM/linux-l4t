@@ -79,6 +79,48 @@
 				gpio-output-high = <4>;
 			};
 		};
+		/*######################################################################
+		# IO-EXP pin #   E1855 usage          #  X4_X1 config  # X2_X1 config  #
+		########################################################################
+		# IO_0_0     #  PEX_CLKBUF1_OE1*      #  O/P HIGH      # O/P LOW       #
+		# IO_0_1     #  PEX_CLKBUF1_OE6*      #  O/P LOW       # O/P HIGH      #
+		# IO_0_2     #  PEX_CLKBUF1_PD_EN_R*  #  O/P HIGH      # O/P HIGH      #
+		# IO_0_3     #  PEX_CLKBUF0_OE1       #  O/P LOW       # O/P HIGH      #
+		# IO_0_4     #  PEX_CLKBUF0_OE6       #  O/P HIGH      # O/P LOW       #
+		# IO_0_5     #  PEX_CLKBUF0_PD_EN_R   #  O/P HIGH      # O/P HIGH      #
+		# IO_0_6     #  NC                    #  NA            # NA            #
+		# IO_0_7     #  NC                    #  NA            # NA            #
+
+		# IO_1_0     #  PEX0_USB_L1_MUX1_SEL  #  O/P LOW       # O/P HIGH      #
+		# IO_1_1     #  PEX1_USB_L0_MUX2_SEL  #  O/P LOW       # O/P HIGH      #
+		# IO_1_2     #  PEX01_L2_MUX3_SEL     #  O/P LOW       # O/P HIGH      #
+		# IO_1_3     #  PEX0_L2_L3_MUX4_SEL   #  O/P LOW       # O/P HIGH      #
+		# IO_1_4     #  NC                    #  NA            # NA            #
+		# IO_1_5     #  NC                    #  NA            # NA            #
+		# IO_1_6     #  NC                    #  NA            # NA            #
+		# IO_1_7     #  NC                    #  NA            # NA            #
+		######################################################################*/
+		pca9555_26: pca9555@26 {
+			compatible = "nxp,pca9555";
+			gpio-controller;
+			reg = <0x26>;
+			gpio-init-names = "default", "pcie-lane-map_14", "pcie-lane-map_12";
+			gpio-init-0 = <&pca9555_lane_map_default>;
+			gpio-init-1 = <&pca9555_lane_map_14>;
+			gpio-init-2 = <&pca9555_lane_map_12>;
+			pca9555_lane_map_default: default {
+				status = "okay";
+				gpio-output-low = <0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15>;
+			};
+			pca9555_lane_map_14: pcie-lane-map_14 {
+				status = "disabled";
+				gpio-output-high = <0 2 4 5>;
+			};
+			pca9555_lane_map_12: pcie-lane-map_12 {
+				status = "disabled";
+				gpio-output-high = <1 2 3 5 8 9 10 11>;
+			};
+		};
 	};
 
 	i2c@7000d000 {
