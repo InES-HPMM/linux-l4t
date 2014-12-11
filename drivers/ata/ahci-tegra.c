@@ -415,6 +415,16 @@ enum clk_gate_state {
 	CLK_ON,
 };
 
+enum sata_connectors {
+	MINI_SATA,
+	MICRO_SATA,
+	SLIMLINE_SATA,
+	E_SATA,
+	E_SATA_P,
+	SATA_EXPRESS,
+	STANDARD_SATA,
+};
+
 /*
  *  tegra_ahci_host_priv is the extension of ahci_host_priv
  *  with extra fields: idle_timer, pg_save, pg_state, etc.
@@ -429,6 +439,7 @@ struct tegra_ahci_host_priv {
 	struct platform_device *pdev;
 	void			*pg_save;
 	enum sata_state		pg_state;
+	enum sata_connectors	sata_connector;
 	struct clk		*clk_sata;
 	struct clk		*clk_sata_oob;
 	struct clk		*clk_sata_cold;
@@ -1419,6 +1430,13 @@ static int tegra_ahci_controller_init(void *hpriv, int lp0)
 	val &= ~NVA2SATA_OOB_ON_POR_MASK;
 	misc_writel(val, SATA_AUX_MISC_CNTL_1_REG);
 
+	if (tegra_hpriv->sata_connector != MINI_SATA) {
+		/* Disable DEVSLP Feature */
+		val = misc_readl(SATA_AUX_MISC_CNTL_1_REG);
+		val &= ~SDS_SUPPORT;
+		misc_writel(val, SATA_AUX_MISC_CNTL_1_REG);
+	}
+
 	val = sata_readl(SATA_CONFIGURATION_0_OFFSET);
 	val |= EN_FPCI;
 	sata_writel(val, SATA_CONFIGURATION_0_OFFSET);
@@ -1736,6 +1754,13 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	val = misc_readl(SATA_AUX_MISC_CNTL_1_REG);
 	val &= ~NVA2SATA_OOB_ON_POR_MASK;
 	misc_writel(val, SATA_AUX_MISC_CNTL_1_REG);
+
+	if (tegra_hpriv->sata_connector != MINI_SATA) {
+		/* Disable DEVSLP Feature */
+		val = misc_readl(SATA_AUX_MISC_CNTL_1_REG);
+		val &= ~SDS_SUPPORT;
+		misc_writel(val, SATA_AUX_MISC_CNTL_1_REG);
+	}
 
 	val = sata_readl(SATA_CONFIGURATION_0_OFFSET);
 	val |= EN_FPCI;
@@ -3117,6 +3142,10 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 			dev_err(dev, "Not able to find enable-sata-port property\n");
 			tegra_ahci_sata_clk_gate();
 			goto fail;
+		}
+		if (of_property_read_u32(np, "nvidia,sata-connector-type",
+			&tegra_hpriv->sata_connector) < 0) {
+			tegra_hpriv->sata_connector = MINI_SATA;
 		}
 		tegra_hpriv->prod_list = tegra_prod_init(np);
 		if (IS_ERR(tegra_hpriv->prod_list)) {
