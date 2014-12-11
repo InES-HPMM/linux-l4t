@@ -329,6 +329,8 @@
 #define TEGRA_PCIE_MSELECT_CLK_408				408000000
 #define TEGRA_PCIE_XCLK_500					500000000
 #define TEGRA_PCIE_XCLK_250					250000000
+#define TEGRA_PCIE_EMC_CLK_102					102000000
+#define TEGRA_PCIE_EMC_CLK_508					508000000
 
 
 #define DEBUG 0
@@ -392,6 +394,7 @@ struct tegra_pcie {
 
 	struct clk		*pcie_xclk;
 	struct clk		*pcie_mselect;
+	struct clk		*pcie_emc;
 
 	struct list_head ports;
 	int num_ports;
@@ -429,9 +432,10 @@ struct tegra_pcie_bus {
 
 /* used to avoid successive hotplug disconnect or connect */
 static bool hotplug_event;
-/* pcie mselect & xclk rate */
+/* pcie mselect, xclk and emc rate */
 static unsigned long tegra_pcie_mselect_rate = TEGRA_PCIE_MSELECT_CLK_204;
 static unsigned long tegra_pcie_xclk_rate = TEGRA_PCIE_XCLK_250;
+static unsigned long tegra_pcie_emc_rate = TEGRA_PCIE_EMC_CLK_102;
 static u32 is_gen2_speed;
 static u16 bdf;
 static u16 config_offset;
@@ -917,9 +921,6 @@ static irqreturn_t gpio_pcie_detect_isr(int irq, void *arg)
 	schedule_work(&pcie->hotplug_detect);
 	return IRQ_HANDLED;
 }
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-static void raise_emc_freq(struct tegra_pcie *pcie);
-#endif
 
 static void handle_sb_intr(struct tegra_pcie *pcie)
 {
@@ -942,10 +943,6 @@ static void handle_sb_intr(struct tegra_pcie *pcie)
 		rp_writel(port, mesg, NV_PCIE2_RP_RSR);
 	} else
 		afi_writel(pcie, mesg, AFI_MSG_0);
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-	if (mesg & AFI_MSG_RP_INT_MASK)
-		raise_emc_freq(pcie);
-#endif
 }
 
 static irqreturn_t tegra_pcie_isr(int irq, void *arg)
@@ -1241,6 +1238,11 @@ static int tegra_pcie_power_ungate(struct tegra_pcie *pcie)
 		dev_err(pcie->dev, "PCIE: pciex clk enable failed: %d\n", err);
 		return err;
 	}
+	err = clk_prepare_enable(pcie->pcie_emc);
+	if (err) {
+		dev_err(pcie->dev, "PCIE:  emc clk enable failed: %d\n", err);
+		return err;
+	}
 
 	return 0;
 }
@@ -1472,6 +1474,8 @@ static int tegra_pcie_power_off(struct tegra_pcie *pcie, bool all)
 		clk_disable(pcie->pcie_mselect);
 	if (pcie->pcie_xclk)
 		clk_disable(pcie->pcie_xclk);
+	if (pcie->pcie_emc)
+		clk_disable(pcie->pcie_emc);
 	err = tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
 	if (err)
 		goto err_exit;
@@ -1507,6 +1511,12 @@ static int tegra_pcie_clocks_get(struct tegra_pcie *pcie)
 			"%s: unable to get PCIE mselect clock\n", __func__);
 		return -EINVAL;
 	}
+	pcie->pcie_emc = clk_get_sys("tegra_pcie", "emc");
+	if (IS_ERR_OR_NULL(pcie->pcie_emc)) {
+		dev_err(pcie->dev,
+			"%s: unable to get PCIE emc clock\n", __func__);
+		return -EINVAL;
+	}
 	return 0;
 }
 
@@ -1517,6 +1527,8 @@ static void tegra_pcie_clocks_put(struct tegra_pcie *pcie)
 		clk_put(pcie->pcie_xclk);
 	if (pcie->pcie_mselect)
 		clk_put(pcie->pcie_mselect);
+	if (pcie->pcie_emc)
+		clk_put(pcie->pcie_emc);
 }
 
 static int tegra_pcie_get_resources(struct tegra_pcie *pcie)
@@ -1545,6 +1557,10 @@ static int tegra_pcie_get_resources(struct tegra_pcie *pcie)
 		return err;
 
 	err = clk_set_rate(pcie->pcie_xclk, tegra_pcie_xclk_rate);
+	if (err)
+		return err;
+
+	err = clk_set_rate(pcie->pcie_emc, tegra_pcie_emc_rate);
 	if (err)
 		return err;
 
@@ -1708,43 +1724,6 @@ retry:
 
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static bool t210_war;
-static bool is_all_gen2(void)
-{
-	struct pci_dev *pdev = NULL;
-	u16 lnk_spd;
-
-	PR_FUNC_LINE;
-	for_each_pci_dev(pdev) {
-		pcie_capability_read_word(pdev, PCI_EXP_LNKSTA, &lnk_spd);
-		lnk_spd &= PCI_EXP_LNKSTA_CLS;
-		if (lnk_spd != PCI_EXP_LNKSTA_CLS_5_0GB)
-			return false;
-	}
-	return true;
-}
-
-static void raise_emc_freq(struct tegra_pcie *pcie)
-{
-	PR_FUNC_LINE;
-
-	/* raise emc freq to 508MHz to reach expected gen2 */
-	/* bandwidth if all have gen2 enabled, bug#1452749 */
-	if (t210_war && is_all_gen2()) {
-		struct clk *emc_clk;
-		emc_clk = clk_get_sys("tegra_pcie", "emc");
-		if (IS_ERR_OR_NULL(emc_clk)) {
-			dev_err(pcie->dev, "unable to get emc clk\n");
-			goto fail;
-		}
-		if (clk_enable(emc_clk)) {
-			dev_err(pcie->dev, "emc clk enable failed\n");
-			goto fail;
-		}
-		clk_set_rate(emc_clk, 508000000);
-	}
-fail:
-	return;
-}
 #endif
 static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 				bool enum_done)
@@ -1770,7 +1749,6 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 			if (pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT)
 				pdev->msi_enabled = 0;
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-		raise_emc_freq(pcie);
 		/* handle MBIST issue for PCIE */
 		/* Disable PCA after enumeration to save power */
 		data = rp_readl(port, NV_PCIE2_RP_VEND_CTL2);
@@ -2104,23 +2082,30 @@ static int tegra_pcie_scale_voltage(struct tegra_pcie *pcie, bool isGen2)
 	PR_FUNC_LINE;
 	if (isGen2) {
 		if (tegra_pcie_xclk_rate == TEGRA_PCIE_XCLK_500 &&
-			tegra_pcie_mselect_rate == TEGRA_PCIE_MSELECT_CLK_408)
+			tegra_pcie_mselect_rate == TEGRA_PCIE_MSELECT_CLK_408 &&
+			tegra_pcie_emc_rate == TEGRA_PCIE_EMC_CLK_508)
 			goto skip;
 		/* Scale up voltage for Gen2 speed */
 		tegra_pcie_xclk_rate = TEGRA_PCIE_XCLK_500;
 		tegra_pcie_mselect_rate = TEGRA_PCIE_MSELECT_CLK_408;
+		tegra_pcie_emc_rate = TEGRA_PCIE_EMC_CLK_508;
 	} else {
 		if (tegra_pcie_xclk_rate == TEGRA_PCIE_XCLK_250 &&
-			tegra_pcie_mselect_rate == TEGRA_PCIE_MSELECT_CLK_204)
+			tegra_pcie_mselect_rate == TEGRA_PCIE_MSELECT_CLK_204 &&
+			tegra_pcie_emc_rate == TEGRA_PCIE_EMC_CLK_102)
 			goto skip;
 		/* Scale down voltage for Gen1 speed */
 		tegra_pcie_xclk_rate = TEGRA_PCIE_XCLK_250;
 		tegra_pcie_mselect_rate = TEGRA_PCIE_MSELECT_CLK_204;
+		tegra_pcie_emc_rate = TEGRA_PCIE_EMC_CLK_102;
 	}
 	err = clk_set_rate(pcie->pcie_xclk, tegra_pcie_xclk_rate);
 	if (err)
 		return err;
 	err = clk_set_rate(pcie->pcie_mselect, tegra_pcie_mselect_rate);
+	if (err)
+		return err;
+	err = clk_set_rate(pcie->pcie_emc, tegra_pcie_emc_rate);
 skip:
 	return err;
 

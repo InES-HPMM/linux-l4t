@@ -8447,6 +8447,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("vic.emc",	"tegra_vic03.0",	"emc",  &tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("vic_shared.emc",	"tegra_vic03.0",	"emc_shared",  &tegra_clk_emc, NULL, 0, SHARED_BW, 0),
 	SHARED_EMC_CLK("battery.emc",	"battery_edp",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
+	SHARED_EMC_CLK("pcie.emc",      "tegra_pcie",           "emc",  &tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_LIMIT("floor.emc",	"floor.emc",	NULL,	&tegra_clk_emc, NULL,  0, 0),
 	SHARED_LIMIT("floor.profile.emc", "profile.emc", "floor", &tegra_clk_emc, NULL,  0, 0),
 
