@@ -92,6 +92,9 @@ struct nvadsp_app_service {
 	const struct app_mem_size *mem_size;
 	int generated_instance_id;
 	struct adsp_module *mod;
+#ifdef CONFIG_DEBUG_FS
+	struct dentry *debugfs;
+#endif
 };
 
 /* nvadsp app loader private structure */
@@ -101,9 +104,209 @@ struct nvadsp_app_priv_struct {
 	struct nvadsp_mbox mbox;
 	struct list_head service_list;
 	struct mutex service_lock_list;
+#ifdef CONFIG_DEBUG_FS
+	struct dentry *adsp_app_debugfs_root;
+#endif
 };
 
 static struct nvadsp_app_priv_struct priv;
+
+#ifdef CONFIG_DEBUG_FS
+static int dump_binary_in_2bytes_app_file_node(struct seq_file *s, void *data)
+{
+	struct nvadsp_app_service *ser = s->private;
+	struct adsp_module *mod = ser->mod;
+	u32 adsp_ptr;
+	u16 *ptr;
+	int i;
+
+	adsp_ptr = mod->adsp_module_ptr;
+	ptr = (u16 *)mod->module_ptr;
+	for (i = 0; i < mod->size; i += 2)
+		seq_printf(s, "0x%x : 0x%04x\n", adsp_ptr + i, *(ptr + i));
+
+	return 0;
+}
+
+
+static int dump_binary_in_words_app_file_node(struct seq_file *s, void *data)
+{
+	struct nvadsp_app_service *ser = s->private;
+	struct adsp_module *mod = ser->mod;
+	u32 adsp_ptr;
+	u32 *ptr;
+	int i;
+
+	adsp_ptr = mod->adsp_module_ptr;
+	ptr = (u32 *)mod->module_ptr;
+	for (i = 0; i < mod->size; i += 4)
+		seq_printf(s, "0x%x : 0x%08x\n", adsp_ptr + i, *(ptr + i));
+
+	return 0;
+}
+
+static int host_load_addr_app_file_node(struct seq_file *s, void *data)
+{
+	struct nvadsp_app_service *ser = s->private;
+	struct adsp_module *mod = ser->mod;
+
+	seq_printf(s, "%p\n", mod->module_ptr);
+
+	return 0;
+}
+
+static int adsp_load_addr_app_file_node(struct seq_file *s, void *data)
+{
+	struct nvadsp_app_service *ser = s->private;
+	struct adsp_module *mod = ser->mod;
+
+	seq_printf(s, "0x%x\n", mod->adsp_module_ptr);
+
+	return 0;
+}
+
+static int size_app_file_node(struct seq_file *s, void *data)
+{
+	struct nvadsp_app_service *ser = s->private;
+	struct adsp_module *mod = ser->mod;
+
+	seq_printf(s, "%lu\n", mod->size);
+
+	return 0;
+}
+
+static int dram_app_file_node(struct seq_file *s, void *data)
+{
+	const struct app_mem_size *mem_size = s->private;
+
+	seq_printf(s, "%llu\n", mem_size->dram);
+
+	return 0;
+}
+
+static int dram_shared_app_file_node(struct seq_file *s, void *data)
+{
+	const struct app_mem_size *mem_size = s->private;
+
+	seq_printf(s, "%llu\n", mem_size->dram_shared);
+
+	return 0;
+}
+
+static int dram_shared_wc_app_file_node(struct seq_file *s, void *data)
+{
+	const struct app_mem_size *mem_size = s->private;
+
+	seq_printf(s, "%llu\n", mem_size->dram_shared_wc);
+
+	return 0;
+}
+
+static int aram_app_file_node(struct seq_file *s, void *data)
+{
+	const struct app_mem_size *mem_size = s->private;
+
+	seq_printf(s, "%llu\n", mem_size->aram);
+
+	return 0;
+}
+
+static int aram_exclusive_app_file_node(struct seq_file *s, void *data)
+{
+	const struct app_mem_size *mem_size = s->private;
+
+	seq_printf(s, "%llu\n", mem_size->aram_x);
+
+	return 0;
+}
+
+#define ADSP_APP_CREATE_FOLDER(x, root) \
+	do  {\
+		x = debugfs_create_dir(#x, root); \
+		if (IS_ERR_OR_NULL(x)) { \
+			dev_err(dev, "unable to create app %s folder\n", #x); \
+			ret = -ENOENT; \
+			goto rm_debug_root; \
+		} \
+	} while (0)
+
+#define ADSP_APP_CREATE_FILE(x, priv, root) \
+	do { \
+		if (IS_ERR_OR_NULL(debugfs_create_file(#x, S_IRUGO, root, \
+			priv, &x##_node_operations))) { \
+			dev_err(dev, "unable tp create app %s file\n", #x); \
+			ret = -ENOENT; \
+			goto rm_debug_root; \
+		} \
+	} while (0)
+
+#define ADSP_APP_FILE_OPERATION(x) \
+static int x##_open(struct inode *inode, struct file *file) \
+{ \
+	return single_open(file, x##_app_file_node, inode->i_private); \
+} \
+\
+static const struct file_operations x##_node_operations = { \
+	.open = x##_open, \
+	.read = seq_read, \
+	.llseek = seq_lseek, \
+	.release = single_release, \
+};
+
+ADSP_APP_FILE_OPERATION(dump_binary_in_2bytes);
+ADSP_APP_FILE_OPERATION(dump_binary_in_words);
+ADSP_APP_FILE_OPERATION(host_load_addr);
+ADSP_APP_FILE_OPERATION(adsp_load_addr);
+ADSP_APP_FILE_OPERATION(size);
+
+ADSP_APP_FILE_OPERATION(dram);
+ADSP_APP_FILE_OPERATION(dram_shared);
+ADSP_APP_FILE_OPERATION(dram_shared_wc);
+ADSP_APP_FILE_OPERATION(aram);
+ADSP_APP_FILE_OPERATION(aram_exclusive);
+
+static int create_adsp_app_debugfs(struct nvadsp_app_service *ser)
+{
+
+	struct app_mem_size *mem_size = (struct app_mem_size *)ser->mem_size;
+	struct device *dev = &priv.pdev->dev;
+	struct dentry *instance_mem_sizes;
+	struct dentry *root;
+	int ret = 0;
+
+	root = debugfs_create_dir(ser->name,
+			priv.adsp_app_debugfs_root);
+	if (IS_ERR_OR_NULL(root)) {
+		ret = -EINVAL;
+		goto err_out;
+	}
+
+	ADSP_APP_CREATE_FILE(dump_binary_in_2bytes, ser, root);
+	ADSP_APP_CREATE_FILE(dump_binary_in_words, ser, root);
+	ADSP_APP_CREATE_FILE(host_load_addr, ser, root);
+	ADSP_APP_CREATE_FILE(adsp_load_addr, ser, root);
+	ADSP_APP_CREATE_FILE(size, ser, root);
+	ADSP_APP_CREATE_FOLDER(instance_mem_sizes, root);
+	ADSP_APP_CREATE_FILE(dram, mem_size, instance_mem_sizes);
+	ADSP_APP_CREATE_FILE(dram_shared, mem_size, instance_mem_sizes);
+	ADSP_APP_CREATE_FILE(dram_shared_wc, mem_size, instance_mem_sizes);
+	ADSP_APP_CREATE_FILE(aram, mem_size, instance_mem_sizes);
+	ADSP_APP_CREATE_FILE(aram_exclusive, mem_size, instance_mem_sizes);
+
+	root = ser->debugfs;
+	return 0;
+rm_debug_root:
+	debugfs_remove_recursive(root);
+err_out:
+	return ret;
+}
+
+static int __init adsp_app_debug_init(struct dentry *root)
+{
+	priv.adsp_app_debugfs_root = debugfs_create_dir("adsp_apps", root);
+	return IS_ERR_OR_NULL(priv.adsp_app_debugfs_root) ? -ENOMEM : 0;
+}
+#endif /* CONFIG_DEBUG_FS */
 
 static struct nvadsp_app_service *get_loaded_service(const char *appfile)
 {
@@ -147,6 +350,9 @@ static nvadsp_app_handle_t app_load(const char *appfile)
 
 		/* add the app instance service to the list */
 		list_add_tail(&ser->node, &priv.service_list);
+#ifdef CONFIG_DEBUG_FS
+		create_adsp_app_debugfs(ser);
+#endif
 		dev_dbg(dev, "loaded app %s\n", ser->name);
 	}
 	mutex_unlock(&priv.service_lock_list);
@@ -659,6 +865,9 @@ void nvadsp_app_unload(nvadsp_app_handle_t handle)
 	}
 
 	list_del(&ser->node);
+#ifdef CONFIG_DEBUG_FS
+	debugfs_remove_recursive(ser->debugfs);
+#endif
 	unload_adsp_module(ser->mod);
 	devm_kfree(dev, ser);
 	mutex_unlock(&priv.service_lock_list);
@@ -739,9 +948,12 @@ int wait_for_adsp_os_load_complete(void)
 
 int nvadsp_app_module_probe(struct platform_device *pdev)
 {
-	int ret;
+#ifdef CONFIG_DEBUG_FS
+	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
+#endif
 	uint16_t mbox_id = APP_LOADER_MBOX_ID;
 	struct device *dev = &pdev->dev;
+	int ret;
 
 	dev_info(dev, "%s\n", __func__);
 
@@ -755,6 +967,11 @@ int nvadsp_app_module_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&priv.service_list);
 	init_completion(&priv.os_load_complete);
 	mutex_init(&priv.service_lock_list);
+
+#ifdef CONFIG_DEBUG_FS
+	if (adsp_app_debug_init(drv_data->adsp_debugfs_root))
+		dev_err(&pdev->dev, "unable to create adsp apps debugfs\n");
+#endif
 end:
 	return ret;
 }
