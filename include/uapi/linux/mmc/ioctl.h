@@ -50,7 +50,7 @@ struct mmc_ioc_cmd {
  */
 struct mmc_combo_cmd_info {
 	__u8 num_of_combo_cmds;
-	struct mmc_ioc_cmd *mmc_ioc_cmd_list;
+	__u64 mmc_ioc_cmd_list;
 };
 
 #define MMC_IOC_CMD _IOWR(MMC_BLOCK_MAJOR, 0, struct mmc_ioc_cmd)
