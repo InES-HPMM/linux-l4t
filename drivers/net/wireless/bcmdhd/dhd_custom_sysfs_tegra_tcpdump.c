@@ -68,6 +68,7 @@ int tcpdump_tail;
 unsigned long tcpdump_serial_no;
 tcpdump_pkt_t tcpdump_pkt[TCPDUMP_MAXSIZ / sizeof(tcpdump_pkt_t)];
 int tcpdump_maxpkt = sizeof(tcpdump_pkt) / sizeof(tcpdump_pkt[0]);
+static int pkt_save = 1;
 
 static void
 tcpdump_set_maxpkt(int maxpkt)
@@ -97,6 +98,10 @@ tcpdump_pkt_save(char tag, const char *netif, const char *func, int line,
 
 	/* check if tcpdump enabled */
 	if (tcpdump_maxpkt <= 0)
+		return;
+
+	/* check if tcpdump packet save enable*/
+	if (pkt_save == 0)
 		return;
 
 	/* copy tcpdump pkt */
@@ -291,6 +296,12 @@ tegra_sysfs_histogram_tcpdump_store(struct device *dev,
 		maxpkt = sizeof(tcpdump_pkt) / sizeof(tcpdump_pkt[0]);
 	} else if (strncmp(buf, "disable", 7) == 0) {
 		maxpkt = 0;
+	} else if (strncmp(buf, "stop", 4) == 0) {
+		pkt_save = 0;
+		return count;
+	} else if (strncmp(buf, "start", 5) == 0) {
+		pkt_save = 1;
+		return count;
 	} else {
 		maxpkt = -1;
 		err = kstrtoint(buf, 0, &maxpkt);
