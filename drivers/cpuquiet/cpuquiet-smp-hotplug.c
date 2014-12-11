@@ -52,6 +52,7 @@ static DEFINE_MUTEX(cpq_lock_stats);
 
 static struct kobject *auto_sysfs_kobject;
 static struct work_struct idle_stop_work;
+static struct work_struct apply_constraints_work;
 
 static struct {
 	cputime64_t time_up_total;
@@ -143,7 +144,7 @@ static int violates_constraints(int cpus)
 	return 0;
 }
 
-static void apply_constraints(void)
+static void apply_constraints(struct work_struct *work)
 {
 	int action, cpu;
 	bool up = true;
@@ -265,7 +266,7 @@ static int wake_cpu(unsigned int cpunumber, bool sync)
 static int min_cpus_notify(struct notifier_block *nb, unsigned long n,
 					void *p)
 {
-	apply_constraints();
+	schedule_work(&apply_constraints_work);
 
 	return NOTIFY_OK;
 }
@@ -273,7 +274,7 @@ static int min_cpus_notify(struct notifier_block *nb, unsigned long n,
 static int max_cpus_notify(struct notifier_block *nb, unsigned long n,
 					void *p)
 {
-	apply_constraints();
+	schedule_work(&apply_constraints_work);
 
 	return NOTIFY_OK;
 }
@@ -347,7 +348,7 @@ static void enable_callback(struct cpuquiet_attribute *attr)
 
 	mutex_unlock(&cpuquiet_lock);
 
-	apply_constraints();
+	schedule_work(&apply_constraints_work);
 
 	schedule_work(&idle_stop_work);
 }
@@ -499,6 +500,7 @@ static int cpuquiet_init(void)
 
 	init_waitqueue_head(&wait_cpu);
 	INIT_WORK(&idle_stop_work, &idle_stop_governor);
+	INIT_WORK(&apply_constraints_work, &apply_constraints);
 
 	hotplug_timeout = msecs_to_jiffies(HOTPLUG_DELAY_MS);
 
