@@ -340,11 +340,6 @@
 	xusb@70090000 {
 		prod-settings {
 			#prod-cells = <4>;
-			prod_c_bias {
-			    prod = <
-				3 0x00000284 0xffffffc0 0x0000003b
-			    >;
-			};
 			prod_c_utmi0 {
 			    prod = <
 				3 0x00000084 0xffffffbf 0x00000040
