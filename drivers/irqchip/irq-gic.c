@@ -719,7 +719,7 @@ static void __init gic_init_fiq(struct gic_chip_data *gic,
 				irq_hw_number_t first_irq,
 				unsigned int num_irqs)
 {
-	void __iomem *dist_base = gic_data_dist_base(gic_data);
+	void __iomem *dist_base = gic_data_dist_base(gic);
 	int i;
 
 	/*
