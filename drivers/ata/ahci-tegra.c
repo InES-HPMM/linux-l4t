@@ -135,6 +135,8 @@
 
 #define CLAMP_TXCLK_ON_SLUMBER			(1 << 13)
 #define CLAMP_TXCLK_ON_DEVSLP			(1 << 24)
+#define SHUTDOWN_TXCLK_ON_DEVSLP		(1 << 22)
+#define SHUTDOWN_TXCLK_ON_SLUMBER		(1 << 6)
 #define NO_CLAMP_SHUT_DOWN			(1 << 3)
 
 #define TEGRA_SATA_IO_SPACE_OFFSET		4
@@ -1780,6 +1782,11 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	val = scfg_readl(T_SATA0_AHCI_HBA_CAP_BKDR);
 	val |= (HOST_CAP_ALPM | HOST_CAP_SSC | HOST_CAP_PART);
 	scfg_writel(val, T_SATA0_AHCI_HBA_CAP_BKDR);
+
+	val = bar5_readl(AHCI_HBA_PLL_CTRL_0);
+	val |= (SHUTDOWN_TXCLK_ON_SLUMBER | SHUTDOWN_TXCLK_ON_DEVSLP);
+	val &= ~NO_CLAMP_SHUT_DOWN;
+	bar5_writel(val, AHCI_HBA_PLL_CTRL_0);
 
 	val = scfg_readl(SATA0_CFG_35_0);
 	val |= (IDP_INDEX);
