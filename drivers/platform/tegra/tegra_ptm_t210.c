@@ -266,9 +266,9 @@ static void ptm_init(struct tracectx *t, int id)
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR1_0);
 
 	/* control user space tracing */
-	ptm_writel(t, id, (t->userspace ? 0x0 : 0x1000),
+	ptm_writel(t, id, (t->userspace ? 0x0 : 0x1100),
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR0_0);
-	ptm_writel(t, id, (t->userspace ? 0x0 : 0x1000),
+	ptm_writel(t, id, (t->userspace ? 0x0 : 0x1100),
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR1_0);
 
 	/* Select Resource 2 to include ARC0 */
@@ -279,7 +279,12 @@ static void ptm_init(struct tracectx *t, int id)
 	ptm_writel(t, id, 1, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVIIECTLR_0);
 
 	/* Select Start/Stop as Started. And select Resource 2 as the Event */
-	ptm_writel(t, id, 0xE02, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVICTLR_0);
+	if (t->userspace)
+		ptm_writel(t, id, 0xE02,
+			CORESIGHT_BCCPLEX_CPU_TRACE_TRCVICTLR_0);
+	else
+		ptm_writel(t, id, 0x110E02,
+			CORESIGHT_BCCPLEX_CPU_TRACE_TRCVICTLR_0);
 
 	/* Trace everything till Address match packet hits. Use Single Shot
 	comparator and generate Event Packet */
@@ -287,7 +292,7 @@ static void ptm_init(struct tracectx *t, int id)
 		/* SAC2 for Address Match on which to trigger */
 		ptm_writeq(t, id, t->trigger_address,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR2_0);
-		ptm_writel(t, id, t->userspace ? 0x0 : 0x1000,
+		ptm_writel(t, id, t->userspace ? 0x0 : 0x1100,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR2_0);
 		/* Select SAC2 for SSC0 and enable SSC to re-fire on match */
 		ptm_writel(t, id, 0x4,
