@@ -120,4 +120,36 @@
 			};
 		};
 	};
+
+	extcon {
+		id_gpio_extcon: extcon@0 {
+			compatible = "extcon-gpio";
+			reg = <0x0>;
+			extcon-gpio,name = "ID";
+			gpio = <&max77620 0 0>;
+			extcon-gpio,connection-state-low;
+			extcon-gpio,cable-name = "USB-Host";
+			#extcon-cells = <1>;
+		};
+	};
+
+	udc@7d000000 {
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&bq2419x 0>;
+		extcon-cable-names = "vbus";
+		#extcon-cells = <1>;
+		dt-override-status-odm-data = <0x01000000 0x00000000>;
+	};
+
+        otg@7d000000 {
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&bq2419x 0 &id_gpio_extcon 0>;
+		extcon-cable-names = "vbus", "id";
+		#extcon-cells = <1>;
+		dt-override-status-odm-data = <0x01000000 0x00000000>;
+        };
 };
