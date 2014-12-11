@@ -243,6 +243,39 @@ static struct isoclient_info tegra21x_isoclients[] = {
 		.dev_name = "tegradc.1",
 		.emc_clk_name = "emc",
 	},
+#ifdef CONFIG_VI_ONE_DEVICE
+	{
+		.client = TEGRA_ISO_CLIENT_VI_0,
+		.name = "vi_0",
+		.dev_name = "tegra_vi",
+		.emc_clk_name = "emc",
+	},
+#else
+	{
+		.client = TEGRA_ISO_CLIENT_VI_0,
+		.name = "vi_0",
+		.dev_name = "tegra_vi.0",
+		.emc_clk_name = "emc",
+	},
+	{
+		.client = TEGRA_ISO_CLIENT_VI_1,
+		.name = "vi_1",
+		.dev_name = "tegra_vi.1",
+		.emc_clk_name = "emc",
+	},
+#endif
+	{
+		.client = TEGRA_ISO_CLIENT_ISP_A,
+		.name = "isp_a",
+		.dev_name = "tegra_isp.0",
+		.emc_clk_name = "emc",
+	},
+	{
+		.client = TEGRA_ISO_CLIENT_ISP_B,
+		.name = "isp_b",
+		.dev_name = "tegra_isp.1",
+		.emc_clk_name = "emc",
+	},
 	/* This must be last entry*/
 	{
 		.client = TEGRA_ISO_CLIENT_COUNT,
