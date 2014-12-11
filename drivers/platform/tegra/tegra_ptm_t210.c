@@ -235,14 +235,13 @@ static void ptm_init(struct tracectx *t, int id)
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCCONFIGR_0);
 
 	if (t->branch_broadcast) {
-		trccfg = trccfg | (1<<3);
 		ptm_writel(t, id, 0x101,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCBBCTLR_0);
 	}
-	if (t->return_stack)
-		trccfg = trccfg | (1<<12);
-	if (t->timestamp)
-		trccfg = trccfg | (1<<11);
+
+	trccfg = trccfg | (t->branch_broadcast << 3) | (t->return_stack << 12) |
+			(t->timestamp<<11);
+
 	if (t->cycle_count) {
 		trccfg = trccfg | (1<<4);
 		ptm_writel(t, id, t->cycle_count,
@@ -315,7 +314,6 @@ static void ptm_init(struct tracectx *t, int id)
 			ptm_writel(t, id, 0x3,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCTSCTLR_0);
 	}
-	smp_wmb();
 	dev_dbg(t->dev, "PTM%d initialized.\n", id);
 }
 
@@ -388,19 +386,11 @@ static void etf_init(struct tracectx *t)
 			etf_writel(t, 0x1120,
 					CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
 		}
-		if ((!t->formatter)) {
-			ffcr = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-			ffcr &= ~1;
-			etf_writel(t, ffcr,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-		} else {
-			ffcr = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-			ffcr |= 1;
-			etf_writel(t, ffcr,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-		}
+
+		ffcr = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
+		ffcr &= ~1;
+		ffcr |= t->formatter;
+		etf_writel(t, ffcr, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
 	}
 	/* Enable ETF */
 	etf_writel(t, 1, CORESIGHT_ETF_HUGO_CXTMC_REGS_CTL_0);
@@ -507,8 +497,9 @@ static int trace_t210_start(struct tracectx *t)
 		for_each_online_cpu(id) {
 			ptm_writel(t, id, 1,
 				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
-			smp_wmb();
 		}
+		dsb();
+		isb();
 	}
 
 	return 0;
@@ -554,7 +545,7 @@ static ssize_t trc_read(struct file *file, char __user *data,
 /* this function copies traces from the ETF to an array */
 static ssize_t trc_fill_buf(struct tracectx *t)
 {
-	int rwp, rwp32, max, count = 0, serial, overflow;
+	int rwp, max, count, serial, overflow;
 	int trig_stat, tmcready, top_of_buffer;
 
 	if (!t->etf_regs)
@@ -605,21 +596,25 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 					CORESIGHT_ETR_HUGO_CXTMC_REGS_FFCR_0);
 			tmcready = 0;
 			while (tmcready == 0) {
-				trig_stat = etr_readl(t,
+				tmcready = etr_readl(t,
 					CORESIGHT_ETR_HUGO_CXTMC_REGS_STS_0);
-				tmcready = (trig_stat >> 2) & 0x1;
+				tmcready = (tmcready >> 2) & 0x1;
 			}
 		} else {
 			/* Manual flush and stop */
 			etf_writel(t, 0x1001,
 					CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
+			dsb();
+			isb();
 			etf_writel(t, 0x1041,
 					CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
+			dsb();
+			isb();
 			tmcready = 0;
 			while (tmcready == 0) {
-				trig_stat = etf_readl(t,
+				tmcready = etf_readl(t,
 					CORESIGHT_ETF_HUGO_CXTMC_REGS_STS_0);
-				tmcready = (trig_stat >> 2) & 0x1;
+				tmcready = (tmcready >> 2) & 0x1;
 			}
 		}
 	}
@@ -634,7 +629,6 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 		 /* Get etf data and Check for overflow */
 		overflow = etr_readl(t, CORESIGHT_ETR_HUGO_CXTMC_REGS_STS_0);
 		overflow &= 0x01;
-		rwp32 = rwp/4;
 		max = rwp;
 		top_of_buffer = (uintptr_t)t->etr_address;
 		serial = 0;
@@ -662,14 +656,12 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 			serial += 1;
 		}
 	} else {
-		/* Check for data in ETF */
+		/* save write pointer */
 		rwp = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_RWP_0);
 
-		/* Get etf data and Check for overflow */
+		/* check current status for overflow */
 		overflow = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_STS_0);
 		overflow &= 0x1;
-
-		etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
 
 		/* Disabling the ETM */
 		for_each_online_cpu(count)
@@ -678,19 +670,22 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 
 		ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
 
-		if (overflow) {
-			t->buf_size = MAX_ETF_SIZE * 4;
-			/* ETF overflow..the last 4K entries are printed */
-			etf_writel(t, rwp, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
-			/* Read from rwp to end of RAM */
-			rwp >>= 2;
-			for (count = rwp; count < MAX_ETF_SIZE - 1; count++) {
-				t->trc_buf[count] = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
-			}
-		}
-		/* Rollover the RRP and read till rwp-1 */
+		/* by default, start reading from 0 */
+		t->buf_size = rwp;
 		etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
+
+		if (overflow) {
+			/* in case of overflow, the size is max ETF size */
+			t->buf_size = MAX_ETF_SIZE * 4;
+			/* start from RWP for read */
+			etf_writel(t, rwp, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
+			rwp = MAX_ETF_SIZE;
+		} else
+			rwp >>= 2;
+		/*
+		 * start from either RWP in case of overflow, or 0 in case
+		 * no overflow. take advantage of RRP rollover
+		 */
 		for (count = 0; count < rwp-1; count++) {
 			t->trc_buf[count] = etf_readl(t,
 					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
@@ -782,11 +777,7 @@ static ssize_t trace_cycle_count_show(struct kobject *kobj,
 	struct kobj_attribute *attr,
 	char *buf)
 {
-	if (tracer.cycle_count)
-		return sprintf(buf, "cycle count threshold: %x",
-				tracer.cycle_count);
-	else
-		return sprintf(buf, "cycle accurate is disabled");
+	return sprintf(buf, "%u\n", tracer.cycle_count);
 }
 
 static ssize_t trace_enable_store(struct kobject *kobj,
