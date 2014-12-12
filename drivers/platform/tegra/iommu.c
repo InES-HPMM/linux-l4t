@@ -170,7 +170,6 @@ static struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{ .name = "vi",	.swgids = TEGRA_SWGROUP_BIT(VI), },
 	{ .name = "therm_est",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra124-apbdma",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-nor",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 	{ .name = dummy_name,	.swgids = TEGRA_SWGROUP_BIT(PPCS) },
 #endif
