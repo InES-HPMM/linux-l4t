@@ -51,8 +51,8 @@
 	};
 
 	pcie-controller {
-		hvdd-pex-supply = <&reg_3v3_supply>;
-		hvdd-pex-pll-e-supply = <&reg_3v3_supply>;
+		hvdd-pex-supply = <&as3722_gpio2_supply>;
+		hvdd-pex-pll-e-supply = <&as3722_gpio2_supply>;
 		dvddio-pex-supply = <&as3722_sd4>;
 		avddio-pex-supply = <&as3722_sd4>;
 		avdd-pex-pll-supply = <&as3722_sd4>;
