@@ -4291,6 +4291,7 @@ static int tegra_enable_xusb_clk(struct tegra_xhci_hcd *tegra,
 		goto enable_ss_clk_failed;
 	}
 
+	clk_set_rate(tegra->emc_clk, 0);
 	err = clk_enable(tegra->emc_clk);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to enable xusb.emc clk\n");
