@@ -69,7 +69,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_cpu = {
 	.stats = {
 		.bin_uV = 6250, /* 6.25mV */
 	},
-	.version = "p4v13",
+	.version = "p4v19",
 };
 
 static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
@@ -155,7 +155,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.speedo_id = 0,
 		.process_id = 0,
 		.dfll_tune_data  = {
-			.tune0		= 0x0000C0FF,
+			.tune0		= 0xFFEAD0FF,
 			.tune1		= 0x020091D9,
 			.droop_rate_min = 1000000,
 			.min_millivolts = 870,
@@ -170,10 +170,25 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.speedo_id = 0,
 		.process_id = 1,
 		.dfll_tune_data  = {
-			.tune0		= 0x0000C0FF,
+			.tune0		= 0xFFEAD0FF,
+			.tune1		= 0x020091D9,
+			.droop_rate_min = 1000000,
+			.min_millivolts = 850,
+		},
+		.pll_tune_data = {
+			.min_millivolts = 950,
+		},
+		.max_mv = 1225,
+		CPU_CVB_TABLE,
+	},
+	{
+		.speedo_id = 0,
+		.process_id = 2,
+		.dfll_tune_data  = {
+			.tune0		= 0xFFEAD0FF,
 			.tune1		= 0x025501D0,
 			.droop_rate_min = 1000000,
-			.min_millivolts = 870,
+			.min_millivolts = 850,
 		},
 		.pll_tune_data = {
 			.min_millivolts = 950,
@@ -183,9 +198,9 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	},
 	{
 		.speedo_id = 1,
-		.process_id = 0,
+		.process_id = 1,
 		.dfll_tune_data  = {
-			.tune0		= 0x0000C0FF,
+			.tune0		= 0xFFEAD0FF,
 			.tune1		= 0x020091D9,
 			.droop_rate_min = 1000000,
 			.min_millivolts = 850,
@@ -198,9 +213,9 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	},
 	{
 		.speedo_id = 1,
-		.process_id = 1,
+		.process_id = 2,
 		.dfll_tune_data  = {
-			.tune0		= 0x0000C0FF,
+			.tune0		= 0xFFEAD0FF,
 			.tune1		= 0x025501D0,
 			.droop_rate_min = 1000000,
 			.min_millivolts = 850,
@@ -253,9 +268,27 @@ static unsigned long cpu_lp_max_freq[] = {
 static struct cpu_cvb_dvfs cpu_lp_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 0,
-		.process_id = -1,
+		.process_id = 0,
 		.pll_tune_data = {
 			.min_millivolts = 870,
+		},
+		.max_mv = 1225,
+		CPU_LP_CVB_TABLE,
+	},
+	{
+		.speedo_id = 0,
+		.process_id = 1,
+		.pll_tune_data = {
+			.min_millivolts = 850,
+		},
+		.max_mv = 1225,
+		CPU_LP_CVB_TABLE,
+	},
+	{
+		.speedo_id = 0,
+		.process_id = 2,
+		.pll_tune_data = {
+			.min_millivolts = 850,
 		},
 		.max_mv = 1225,
 		CPU_LP_CVB_TABLE,
