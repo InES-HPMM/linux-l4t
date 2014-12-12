@@ -167,7 +167,7 @@ static ssize_t mselect_timeout_store(struct device *device,
 static DEVICE_ATTR(mselect_timeout, S_IWUSR | S_IRUGO, mselect_timeout_show,
 		mselect_timeout_store);
 
-void tegra_mselect_create_sysfs(struct platform_device *pdev)
+static void tegra_mselect_create_sysfs(struct platform_device *pdev)
 {
 	int error;
 
@@ -177,7 +177,7 @@ void tegra_mselect_create_sysfs(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to create sysfs attributes!\n");
 }
 
-void tegra_mselect_remove_sysfs(struct platform_device *pdev)
+static void tegra_mselect_remove_sysfs(struct platform_device *pdev)
 {
 	device_remove_file(&pdev->dev, &dev_attr_mselect_timeout);
 }
