@@ -3916,16 +3916,16 @@ static void tegra_sdhci_post_resume(struct sdhci_host *sdhci)
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	bool dll_calib_req = false;
 
-	/* Turn OFF the clocks if the device is not present */
-	if ((!tegra_host->card_present || !sdhci->mmc->card) &&
-		tegra_host->clk_enabled)
-		tegra_sdhci_set_clock(sdhci, 0);
-
 	dll_calib_req = (sdhci->mmc->card &&
 		(sdhci->mmc->card->type == MMC_TYPE_MMC) &&
 		(sdhci->mmc->ios.timing == MMC_TIMING_MMC_HS400));
 	if (dll_calib_req)
 		tegra_sdhci_do_dll_calibration(sdhci);
+
+	/* Turn OFF the clocks if the device is not present */
+	if ((!tegra_host->card_present || !sdhci->mmc->card) &&
+		tegra_host->clk_enabled)
+		tegra_sdhci_set_clock(sdhci, 0);
 }
 
 /*
