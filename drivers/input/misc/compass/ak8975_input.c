@@ -24,6 +24,10 @@
 
 #define AKM_VERSION			(23)
 #define AKM_NAME			"akm89xx"
+#define AKM89xx_COMPATIBLE_NAME	"akm89xx-input"
+#define AKM8963_COMPATIBLE_NAME	"ak8963-input"
+#define AKM8972_COMPATIBLE_NAME	"ak8972-input"
+#define AKM8975_COMPATIBLE_NAME	"ak8975-input"
 #define AKM_HW_DELAY_POR_MS		(50)
 #define AKM_HW_DELAY_TSM_MS		(10)	/* Time Single Measurement */
 #define AKM_HW_DELAY_US			(100)
@@ -325,7 +329,7 @@ static int akm_port_free(struct akm_inf *inf, int port)
 	int err = 0;
 
 	if ((inf->use_mpu) && (inf->port_id[port] >= 0)) {
-		err = nvi_mpu_port_free(inf->port_id[port]);
+		err = nvi_input_mpu_port_free(inf->port_id[port]);
 		if (!err)
 			inf->port_id[port] = -1;
 	}
@@ -372,7 +376,7 @@ static int akm_nvi_mpu_bypass_request(struct akm_inf *inf)
 
 	if (inf->use_mpu) {
 		for (i = 0; i < AKM_MPU_RETRY_COUNT; i++) {
-			err = nvi_mpu_bypass_request(true);
+			err = nvi_input_mpu_bypass_request(true);
 			if ((!err) || (err == -EPERM))
 				break;
 
@@ -389,7 +393,7 @@ static int akm_nvi_mpu_bypass_release(struct akm_inf *inf)
 	int err = 0;
 
 	if (inf->use_mpu)
-		err = nvi_mpu_bypass_release();
+		err = nvi_input_mpu_bypass_release();
 	return err;
 }
 
@@ -412,7 +416,7 @@ static int akm_port_enable(struct akm_inf *inf, int port, bool enable)
 	int err = 0;
 
 	if (enable != inf->port_en[port]) {
-		err = nvi_mpu_enable(inf->port_id[port],
+		err = nvi_input_mpu_enable(inf->port_id[port],
 				     enable, inf->fifo_enable);
 		if (!err)
 			inf->port_en[port] = enable;
@@ -479,7 +483,7 @@ static int akm_mode_wr(struct akm_inf *inf, bool reset,
 					    (mode_new > AKM_CNTL1_MODE_SINGLE))
 			err = akm_wr(inf, AKM_REG_CNTL1, mode);
 		if (mode_new <= AKM_CNTL1_MODE_SINGLE) {
-			err |= nvi_mpu_data_out(inf->port_id[WR], mode);
+			err |= nvi_input_mpu_data_out(inf->port_id[WR], mode);
 			if (mode_new)
 				err |= akm_ports_enable(inf, true);
 		} else {
@@ -500,7 +504,7 @@ static int akm_delay(struct akm_inf *inf, unsigned int delay_us)
 	int err = 0;
 
 	if (inf->use_mpu)
-		err |= nvi_mpu_delay_us(inf->port_id[RD],
+		err |= nvi_input_mpu_delay_us(inf->port_id[RD],
 					(unsigned int)delay_us);
 	if (!err) {
 		if (inf->dev_id == COMPASS_ID_AK8963) {
@@ -1251,7 +1255,7 @@ static int akm_sysfs_create(struct akm_inf *inf)
 		dev_err(&inf->i2c->dev, "%s ERR %d\n", __func__, err);
 		return err;
 	}
-	err = nvi_mpu_sysfs_register(&inf->idev->dev.kobj, AKM_NAME);
+	err = nvi_input_mpu_sysfs_register(&inf->idev->dev.kobj, AKM_NAME);
 	if (err)
 		dev_err(&inf->i2c->dev, "%s ERR %d\n", __func__, err);
 	return err;
@@ -1306,7 +1310,7 @@ static int akm_id(struct akm_inf *inf)
 		nmp.addr = inf->i2c->addr | 0x80;
 		nmp.reg = AKM_REG_WIA;
 		nmp.ctrl = 1;
-		err = nvi_mpu_dev_valid(&nmp, &val);
+		err = nvi_input_mpu_dev_valid(&nmp, &val);
 		/* see mpu.h for possible return values */
 		dev_dbg(&inf->i2c->dev, "%s AUTO ID=%x err=%d\n",
 			__func__, val, err);
@@ -1327,7 +1331,7 @@ static int akm_id(struct akm_inf *inf)
 		nmp.shutdown_bypass = false;
 		nmp.handler = &akm_mpu_handler;
 		nmp.ext_driver = (void *)inf;
-		err = nvi_mpu_port_alloc(&nmp);
+		err = nvi_input_mpu_port_alloc(&nmp);
 		dev_dbg(&inf->i2c->dev, "%s MPU port/err=%d\n",
 			__func__, err);
 		if (err < 0)
@@ -1343,7 +1347,7 @@ static int akm_id(struct akm_inf *inf)
 		nmp.shutdown_bypass = false;
 		nmp.handler = NULL;
 		nmp.ext_driver = NULL;
-		err = nvi_mpu_port_alloc(&nmp);
+		err = nvi_input_mpu_port_alloc(&nmp);
 		dev_dbg(&inf->i2c->dev, "%s MPU port/err=%d\n",
 			__func__, err);
 		if (err < 0) {
@@ -1501,20 +1505,20 @@ akm_probe_again:
 }
 
 static const struct i2c_device_id akm_i2c_device_id[] = {
-	{AKM_NAME, 0},
-	{"ak8963", 0},
-	{"ak8972", 0},
-	{"ak8975", 0},
+	{AKM89xx_COMPATIBLE_NAME, 0},
+	{AKM8963_COMPATIBLE_NAME, 0},
+	{AKM8972_COMPATIBLE_NAME, 0},
+	{AKM8975_COMPATIBLE_NAME, 0},
 	{}
 };
 
 MODULE_DEVICE_TABLE(i2c, akm_i2c_device_id);
 
 static const struct of_device_id akm_of_match[] = {
-	{ .compatible = "ak,ak89xx", },
-	{ .compatible = "ak,ak8963", },
-	{ .compatible = "ak,ak8972", },
-	{ .compatible = "ak,ak8975", },
+	{ .compatible = "ak,ak89xx-input", },
+	{ .compatible = "ak,ak8963-input", },
+	{ .compatible = "ak,ak8972-input", },
+	{ .compatible = "ak,ak8975-input", },
 	{ },
 };
 

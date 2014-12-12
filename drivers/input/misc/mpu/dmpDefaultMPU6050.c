@@ -1,5 +1,6 @@
 /*
 * Copyright (C) 2012 Invensense, Inc.
+* Copyright (c) 2013-2014 NVIDIA CORPORATION.  All rights reserved.
 *
 * This software is licensed under the terms of the GNU General Public
 * License version 2, as published by the Free Software Foundation, and
@@ -276,7 +277,7 @@ static const struct tKeyLabel dmpTConfig[] = {
 
 static struct tKeyLabel keys[NUM_KEYS];
 
-unsigned short inv_dmp_get_address(unsigned short key)
+unsigned short nvi_input_inv_dmp_get_address(unsigned short key)
 {
 	static int isSorted;
 	if (!isSorted) {
