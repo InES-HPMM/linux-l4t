@@ -434,9 +434,11 @@ struct tegra_dc_mode {
 #define TEGRA_DC_MODE_FLAG_NEG_H_SYNC	(1 << 1)
 #define TEGRA_DC_MODE_FLAG_NEG_DE		(1 << 2)
 
-/* aspect ratio. 0 means unspecified or default. */
-#define TEGRA_DC_MODE_AVI_M_4_3		0x1
+#define TEGRA_DC_MODE_AVI_M_NO_DATA	0x0
+#define TEGRA_DC_MODE_AVI_M_4_3	0x1
 #define TEGRA_DC_MODE_AVI_M_16_9	0x2
+#define TEGRA_DC_MODE_AVI_M_64_27	0x3	/* dummy, no avi m support */
+#define TEGRA_DC_MODE_AVI_M_256_135	0x4	/* dummy, no avi m support */
 
 enum {
 	TEGRA_DC_OUT_RGB,
