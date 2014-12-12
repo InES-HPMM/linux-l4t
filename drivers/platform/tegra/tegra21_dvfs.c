@@ -98,7 +98,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_gpu = {
 	.stats = {
 		.bin_uV = 6250, /* 6.25mV */
 	},
-	.version = "p4v09",
+	.version = "p4v16",
 };
 
 static struct dvfs_rail *tegra21_dvfs_rails[] = {
@@ -308,7 +308,7 @@ static unsigned long gpu_max_freq[] = {
 		{  998400, { }, {  2113578,   -66709,      793,      538,   -11452,      -44 }, }, \
 		{ 0,	   { }, { }, }, \
 	}, \
-	.cvb_vmin = {   0, { }, {   890000,        0,        0 }, }
+	.cvb_vmin = {   0, { }, {   840000,        0,        0 }, }
 
 #define FIXED_FREQ_CVB_TABLE	\
 	.freqs_mult = KHZ,	\
