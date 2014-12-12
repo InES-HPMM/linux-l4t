@@ -35,6 +35,9 @@
 
 #include "zram_drv.h"
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/zram_drv.h>
+
 /* Globals */
 static int zram_major;
 static struct zram *zram_devices;
@@ -459,6 +462,7 @@ static int zram_bvec_read(struct zram *zram, struct bio_vec *bvec,
 	unsigned char *user_mem, *uncmem = NULL;
 	struct zram_meta *meta = zram->meta;
 	page = bvec->bv_page;
+	trace_zram_bvec_read(zram->disksize);
 
 	bit_spin_lock(ZRAM_ACCESS, &meta->table[index].value);
 	if (unlikely(!meta->table[index].handle) ||
@@ -528,6 +532,7 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec, u32 index,
 	struct zcomp_strm *zstrm;
 	bool locked = false;
 	unsigned long alloced_pages;
+	trace_zram_bvec_write(zram->disksize);
 
 	page = bvec->bv_page;
 	if (is_partial_io(bvec)) {
