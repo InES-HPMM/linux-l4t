@@ -229,7 +229,6 @@ static int __init tegra_simon_init_gpu(void)
  * met, next grading is always separated by the grading interval from the last
  * successful grading.
  */
-extern int tegra_cl_dvfs_clamp_at_vmin(struct tegra_cl_dvfs *cld, bool clamp);
 static int tegra_simon_cpu_grading_cb(
 	struct notifier_block *nb, unsigned long rate, void *v)
 {

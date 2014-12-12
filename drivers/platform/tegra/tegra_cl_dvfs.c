@@ -3078,6 +3078,7 @@ int tegra_cl_dvfs_clamp_at_vmin(struct tegra_cl_dvfs *cld, bool clamp)
 	clk_unlock_restore(cld->dfll_clk, &flags);
 	return ret;
 }
+EXPORT_SYMBOL(tegra_cl_dvfs_clamp_at_vmin);
 
 #ifdef CONFIG_DEBUG_FS
 
