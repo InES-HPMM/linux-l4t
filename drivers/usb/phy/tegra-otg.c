@@ -79,7 +79,6 @@ struct tegra_otg {
 	struct platform_device *pdev;
 	struct device dev;
 	struct tegra_usb_otg_data *pdata;
-	struct device_node *ehci_node;
 	struct usb_phy phy;
 	unsigned long int_status;
 	unsigned long int_mask;
@@ -102,7 +101,6 @@ struct tegra_otg {
 	bool support_pmu_vbus;
 	bool support_usb_id;
 	bool support_pmu_id;
-	enum tegra_usb_id_detection id_det_type;
 	struct extcon_dev *id_extcon_dev;
 	struct extcon_dev *vbus_extcon_dev;
 	struct extcon_dev *aca_nv_extcon_dev;
@@ -358,9 +356,7 @@ static void tegra_otg_vbus_enable(struct regulator *vbus_reg, int on)
 static void tegra_start_host(struct tegra_otg *tegra)
 {
 	struct tegra_usb_otg_data *pdata = tegra->pdata;
-	struct platform_device *pdev = NULL;
-	struct device_node *ehci_node = tegra->ehci_node;
-	struct property *status_prop;
+	struct platform_device *pdev, *ehci_device = pdata->ehci_device;
 	int val;
 
 	DBG("%s(%d) Begin\n", __func__, __LINE__);
@@ -373,58 +369,28 @@ static void tegra_start_host(struct tegra_otg *tegra)
 		return;
 	}
 
-	/* if this node is unavailable, we're unable to register it later */
-	if (ehci_node) {
-		if (!of_device_is_available(ehci_node)) {
-			pr_info("%s(): enable ehci node\n", __func__);
-			status_prop = of_find_property(ehci_node,
-			"status", NULL);
-			if (!status_prop) {
-				pr_err("%s(): error getting status property\n",
-					__func__);
-				return;
-			}
-			strcpy((char *)status_prop->value, "okay");
-		}
-		/* we have to hard-code EHCI device name here for now */
-		if (ehci_node) {
-			pdev = of_platform_device_create(ehci_node,
-							"tegra-ehci.0", NULL);
-			if (!pdev) {
-				pr_info("%s: error registering EHCI\n",
-								__func__);
-				return;
-			}
-		}
-	}
+	/* prepare device structure for registering host*/
+	pdev = platform_device_alloc(ehci_device->name, ehci_device->id);
+	if (!pdev)
+		return ;
 
-	/* prepare device structure for registering host */
-	if (!pdev) {
-		struct platform_device *ehci_device = pdata->ehci_device;
-		pdev = platform_device_alloc(ehci_device->name,
-							ehci_device->id);
-		if (!pdev)
-			return;
+	val = platform_device_add_resources(pdev, ehci_device->resource,
+			ehci_device->num_resources);
+	if (val)
+		goto error;
 
-		val = platform_device_add_resources(pdev,
-			ehci_device->resource, ehci_device->num_resources);
-		if (val)
-			goto error;
+	pdev->dev.dma_mask = ehci_device->dev.dma_mask;
+	pdev->dev.coherent_dma_mask = ehci_device->dev.coherent_dma_mask;
 
-		pdev->dev.dma_mask = ehci_device->dev.dma_mask;
-		pdev->dev.coherent_dma_mask =
-					ehci_device->dev.coherent_dma_mask;
+	val = platform_device_add_data(pdev, pdata->ehci_pdata,
+			sizeof(struct tegra_usb_platform_data));
+	if (val)
+		goto error;
 
-		val = platform_device_add_data(pdev, pdata->ehci_pdata,
-				sizeof(struct tegra_usb_platform_data));
-		if (val)
-			goto error;
-
-		val = platform_device_add(pdev);
-		if (val) {
-			pr_err("%s: platform_device_add failed\n", __func__);
-			goto error;
-		}
+	val = platform_device_add(pdev);
+	if (val) {
+		pr_err("%s: platform_device_add failed\n", __func__);
+		goto error;
 	}
 
 	tegra->pdev = pdev;
@@ -450,12 +416,7 @@ static void tegra_stop_host(struct tegra_otg *tegra)
 	}
 	if (pdev) {
 		/* unregister host from otg */
-		if (!tegra->ehci_node)
-			platform_device_unregister(pdev);
-		else {
-			of_device_unregister(pdev);
-			of_node_put(tegra->ehci_node);
-		}
+		platform_device_unregister(pdev);
 		tegra->pdev = NULL;
 	}
 
@@ -787,7 +748,7 @@ static int tegra_otg_set_suspend(struct usb_phy *phy, int suspend)
 
 static void tegra_otg_set_id_detection_type(struct tegra_otg *tegra)
 {
-	switch (tegra->id_det_type) {
+	switch (tegra->pdata->ehci_pdata->id_det_type) {
 	case TEGRA_USB_ID:
 		tegra->support_usb_id = true;
 		break;
@@ -804,8 +765,7 @@ static void tegra_otg_set_id_detection_type(struct tegra_otg *tegra)
 }
 
 static struct tegra_usb_otg_data *tegra_otg_dt_parse_pdata(
-	struct platform_device *pdev, struct tegra_otg_soc_data *soc_data,
-	struct tegra_otg *tegra)
+	struct platform_device *pdev, struct tegra_otg_soc_data *soc_data)
 {
 	struct tegra_usb_otg_data *pdata;
 	struct device_node *np = pdev->dev.of_node;
@@ -816,42 +776,30 @@ static struct tegra_usb_otg_data *tegra_otg_dt_parse_pdata(
 	if (!np)
 		return NULL;
 
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
-	/* get EHCI device/pdata handle */
-	if (!tegra->ehci_node) {
-		tegra->ehci_node = of_parse_phandle(np, "nvidia,hc-device", 0);
-		if (!tegra->ehci_node) {
-			dev_err(&pdev->dev, "can't find nvidia,ehci\n");
-			return NULL;
-		}
-	}
-#endif
 	pdata = devm_kzalloc(&pdev->dev, sizeof(struct tegra_usb_otg_data),
 			GFP_KERNEL);
 	if (!pdata) {
 		dev_err(&pdev->dev, "Can't allocate platform data\n");
 		return ERR_PTR(-ENOMEM);
 	}
+
 	pdata->is_xhci = of_property_read_bool(np, "nvidia,enable-xhci-host");
 #ifdef CONFIG_ARM64
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
 		pdata->is_xhci = false;
 #endif
-
-	if (!tegra->ehci_node) {
-		pdata->ehci_device = soc_data->ehci_device;
-		pdata->ehci_pdata = soc_data->ehci_pdata;
-		pdata->ehci_pdata->u_data.host.support_y_cable =
-		   of_property_read_bool(np, "nvidia,enable-y-cable-detection");
-		pdata->ehci_pdata->support_pmu_vbus = of_property_read_bool(np,
+	pdata->ehci_device = soc_data->ehci_device;
+	pdata->ehci_pdata = soc_data->ehci_pdata;
+	pdata->ehci_pdata->u_data.host.support_y_cable =
+	       of_property_read_bool(np, "nvidia,enable-y-cable-detection");
+	pdata->ehci_pdata->support_pmu_vbus = of_property_read_bool(np,
 					"nvidia,enable-pmu-vbus-detection");
-		pdata->ehci_pdata->u_data.host.turn_off_vbus_on_lp0 =
+	pdata->ehci_pdata->u_data.host.turn_off_vbus_on_lp0 =
 		of_property_read_bool(np, "nvidia,turn-off-vbus-in-lp0");
-		of_property_read_u32(np, "nvidia,id-detection-type",
+	of_property_read_u32(np, "nvidia,id-detection-type",
 			&pdata->ehci_pdata->id_det_type);
-		pdata->ehci_pdata->vbus_extcon_dev_name = NULL;
-		pdata->ehci_pdata->id_extcon_dev_name = NULL;
-	}
+	pdata->ehci_pdata->vbus_extcon_dev_name = NULL;
+	pdata->ehci_pdata->id_extcon_dev_name = NULL;
 
 	return pdata;
 }
@@ -918,7 +866,7 @@ MODULE_DEVICE_TABLE(of, tegra_otg_of_match);
 
 static int tegra_otg_conf(struct platform_device *pdev)
 {
-	struct tegra_usb_otg_data *pdata;
+	struct tegra_usb_otg_data *pdata, *dev_pdata;
 	struct tegra_otg *tegra;
 	struct tegra_otg_soc_data *soc_data;
 	const struct of_device_id *match;
@@ -939,10 +887,13 @@ static int tegra_otg_conf(struct platform_device *pdev)
 		}
 
 		soc_data = (struct tegra_otg_soc_data *)match->data;
-		pdata = tegra_otg_dt_parse_pdata(pdev, soc_data, tegra);
+		pdata = tegra_otg_dt_parse_pdata(pdev, soc_data);
 		tegra->support_aca_nv_cable =
 				of_property_read_bool(pdev->dev.of_node,
 					"nvidia,enable-aca-nv-charger-detection");
+		dev_pdata = dev_get_platdata(&pdev->dev);
+		if (dev_pdata)
+			pdata->is_xhci = dev_pdata->is_xhci;
 	} else {
 		pdata = dev_get_platdata(&pdev->dev);
 	}
@@ -976,26 +927,13 @@ static int tegra_otg_conf(struct platform_device *pdev)
 
 	tegra->interrupt_mode = true;
 	tegra->suspended = true;
-	tegra->y_cable_conn = false;
-	tegra->pdata = pdata;
-
-	if (!tegra->ehci_node) {
-		tegra->turn_off_vbus_on_lp0 =
+	tegra->turn_off_vbus_on_lp0 =
 			pdata->ehci_pdata->u_data.host.turn_off_vbus_on_lp0;
-		tegra->support_y_cable =
-				pdata->ehci_pdata->u_data.host.support_y_cable;
-		tegra->support_pmu_vbus = pdata->ehci_pdata->support_pmu_vbus;
-		tegra->id_det_type = pdata->ehci_pdata->id_det_type;
-	} else {
-		tegra->turn_off_vbus_on_lp0 = of_property_read_bool(
-			pdev->dev.of_node, "nvidia,turn-off-vbus-in-lp0");
-		tegra->support_y_cable = of_property_read_bool(
-			pdev->dev.of_node, "nvidia,enable-y-cable-detection");
-		tegra->support_pmu_vbus = of_property_read_bool(
-			pdev->dev.of_node, "nvidia,enable-pmu-vbus-detection");
-		of_property_read_u32(pdev->dev.of_node,
-			"nvidia,id-detection-type", &tegra->id_det_type);
-	}
+	tegra->support_y_cable =
+			pdata->ehci_pdata->u_data.host.support_y_cable;
+	tegra->y_cable_conn = false;
+	tegra->support_pmu_vbus = pdata->ehci_pdata->support_pmu_vbus;
+	tegra->pdata = pdata;
 	tegra_otg_set_id_detection_type(tegra);
 
 	tegra->phy.dev = &pdev->dev;
