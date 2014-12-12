@@ -2026,14 +2026,15 @@ void emc_set_clock_r21015(struct tegra21_emc_table *next_timing,
 	 */
 	emc_cc_dbg(STEPS, "Step 15\n");
 
-	if (source_clock_period <= zqcal_before_cc_cutoff)
-		zq_latch_dvfs_wait_time =
-			(tZQCAL_lpddr4_fc_adj - (ramp_up_wait + ramp_down_wait))
-			/ destination_clock_period;
-	else
+	if (source_clock_period <= zqcal_before_cc_cutoff) {
+		s32 t = (s32)(ramp_up_wait + ramp_down_wait) /
+			(s32)destination_clock_period;
+		zq_latch_dvfs_wait_time = (s32)tZQCAL_lpddr4_fc_adj - t;
+	} else {
 		zq_latch_dvfs_wait_time = tZQCAL_lpddr4_fc_adj -
 			div_o3(1000 * next_timing->dram_timing_regs[T_PDEX],
 			       destination_clock_period);
+	}
 
 	emc_cc_dbg(INFO, "tZQCAL_lpddr4_fc_adj = %u\n", tZQCAL_lpddr4_fc_adj);
 	emc_cc_dbg(INFO, "destination_clock_period = %u\n",
