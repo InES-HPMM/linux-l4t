@@ -3414,12 +3414,6 @@ static int tegra_xhci_bus_resume(struct usb_hcd *hcd)
 #ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	if (xhci->main_hcd == hcd && tegra->usb2_rh_suspend) {
 		utmi_phy_pad_enable();
-		err = tegra_prod_set_by_name(&tegra->base_list[0],
-					"prod_c_bias", tegra->prod_list);
-		if (err < 0) {
-			dev_err(&tegra->pdev->dev,
-				"%s() failed with err %d\n", __func__, err);
-		}
 		utmi_phy_iddq_override(false);
 	}
 #endif
@@ -4776,18 +4770,13 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 
 	/* Program the XUSB pads to take ownership of ports */
 	tegra_xhci_padctl_portmap_and_caps(tegra);
+
 	/* Release XUSB wake logic state latching */
 	tegra_xhci_ss_wake_signal(tegra->bdata->portmap, false);
 	tegra_xhci_ss_vcore(tegra->bdata->portmap, false);
 
 	/* Perform USB2.0 pad tracking */
 	utmi_phy_pad_enable();
-	val = tegra_prod_set_by_name(&tegra->base_list[0], "prod_c_bias",
-					tegra->prod_list);
-	if (val < 0)
-		dev_err(&pdev->dev, "%s() prod setting failed with err %d\n",
-			__func__, val);
-
 	utmi_phy_iddq_override(false);
 
 	platform_set_drvdata(pdev, tegra);

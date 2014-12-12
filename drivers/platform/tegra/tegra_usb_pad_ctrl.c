@@ -508,6 +508,12 @@ static void utmi_phy_pad(bool enable)
 			TRK_DONE_RESET_TIMER_MASK, TRK_DONE_RESET_TIMER);
 
 		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
+			HS_SQUELCH_LEVEL(~0), HS_SQUELCH_LEVEL(2));
+
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
+			HS_DISCON_LEVEL(~0), HS_DISCON_LEVEL(7));
+
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
 			PD_MASK, 0);
 
 		udelay(1);
