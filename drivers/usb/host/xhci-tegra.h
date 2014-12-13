@@ -418,6 +418,7 @@ struct tegra_xhci_hcd {
 	void __iomem *base_list[4];
 
 	bool init_done;
+	bool clock_enable_done;
 };
 
 #define NOT_SUPPORTED	0xFFFFFFFF

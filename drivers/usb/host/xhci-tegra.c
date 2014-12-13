@@ -1603,8 +1603,12 @@ get_pll_re_vco_clk_failed:
 
 static void tegra_xusb_partitions_clk_deinit(struct tegra_xhci_hcd *tegra)
 {
-	clk_disable(tegra->ss_clk);
-	clk_disable(tegra->host_clk);
+	if (tegra->clock_enable_done) {
+		clk_disable(tegra->ss_clk);
+		clk_disable(tegra->host_clk);
+		clk_disable(tegra->emc_clk);
+		tegra->clock_enable_done = false;
+	}
 	if (tegra->soc_config->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2)
 		clk_disable(tegra->pll_re_vco_clk);
 	tegra->ss_clk = NULL;
@@ -1612,6 +1616,7 @@ static void tegra_xusb_partitions_clk_deinit(struct tegra_xhci_hcd *tegra)
 	tegra->ss_src_clk = NULL;
 	tegra->clk_m = NULL;
 	tegra->pll_u_480M = NULL;
+	tegra->emc_clk = NULL;
 	if (tegra->soc_config->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2)
 		tegra->pll_re_vco_clk = NULL;
 }
@@ -3983,6 +3988,8 @@ static int tegra_enable_xusb_clk(struct tegra_xhci_hcd *tegra,
 		goto eanble_emc_clk_failed;
 	}
 
+	tegra->clock_enable_done = true;
+
 	return 0;
 
 eanble_emc_clk_failed:
@@ -4795,7 +4802,7 @@ err_deinit_tegra_xusb_regulator:
 	tegra_xusb_regulator_deinit(tegra);
 err_deinit_xusb_partition_clk:
 	if (tegra->transceiver)
-		usb_unregister_notifier(tegra->transceiver, &tegra->otgnb);
+		usb_put_phy(tegra->transceiver);
 
 	tegra_xusb_partitions_clk_deinit(tegra);
 
@@ -5018,8 +5025,10 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 
 	tegra_xusb_regulator_deinit(tegra);
 
-	if (tegra->transceiver)
+	if (tegra->transceiver) {
+		usb_put_phy(tegra->transceiver);
 		usb_unregister_notifier(tegra->transceiver, &tegra->otgnb);
+	}
 
 	tegra_usb2_clocks_deinit(tegra);
 	if (!tegra->hc_in_elpg)
