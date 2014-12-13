@@ -853,26 +853,20 @@ static int pca953x_suspend(struct device *dev)
 static int pca953x_resume(struct device *dev)
 {
 	struct pca953x_chip *chip = i2c_get_clientdata(to_i2c_client(dev));
-	int i;
 
-	for (i = 0; i < NBANK(chip); i++) {
-		switch (chip->chip_type) {
-		case PCA953X_TYPE:
-			pca953x_write_single(chip, PCA953X_OUTPUT,
-					chip->reg_output[i], i * BANK_SZ);
-			pca953x_write_single(chip, PCA953X_DIRECTION,
-					chip->reg_direction[i], i * BANK_SZ);
-			break;
-		case PCA957X_TYPE:
-			pca953x_write_single(chip, PCA957X_OUT,
-					chip->reg_output[i], i * BANK_SZ);
-			pca953x_write_single(chip, PCA957X_CFG,
-					chip->reg_direction[i], i * BANK_SZ);
-			break;
-		default:
-			/* unknown chip type? */
-			return 0;
-		}
+	switch (chip->chip_type) {
+	case PCA953X_TYPE:
+		pca953x_write_regs(chip, PCA953X_OUTPUT, chip->reg_output);
+		pca953x_write_regs(chip, PCA953X_DIRECTION,
+				chip->reg_direction);
+		break;
+	case PCA957X_TYPE:
+		pca953x_write_regs(chip, PCA957X_OUT, chip->reg_output);
+		pca953x_write_regs(chip, PCA957X_CFG, chip->reg_direction);
+		break;
+	default:
+		/* unknown chip type? */
+		return 0;
 	}
 	return 0;
 }
