@@ -4602,8 +4602,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	 * Once we have dma capability bindings this can go away.
 	 */
 	tegra->tegra_xusb_dmamask = DMA_BIT_MASK(64);
-	if (!pdev->dev.dma_mask)
-		pdev->dev.dma_mask = &tegra->tegra_xusb_dmamask;
+	pdev->dev.dma_mask = &tegra->tegra_xusb_dmamask;
 
 	tegra->pdev = pdev;
 	tegra_xusb_read_calib_data(tegra);
