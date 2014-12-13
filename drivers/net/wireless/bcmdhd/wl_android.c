@@ -694,7 +694,7 @@ int wl_android_wifi_on(struct net_device *dev)
 		return -EINVAL;
 	}
 #ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
-	tegra_sysfs_resume();
+	tegra_sysfs_on();
 #endif
 
 	dhd_net_if_lock(dev);
@@ -750,7 +750,7 @@ int wl_android_wifi_off(struct net_device *dev)
 		return -EINVAL;
 	}
 #ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
-	tegra_sysfs_suspend();
+	tegra_sysfs_off();
 #endif
 
 	dhd_net_if_lock(dev);

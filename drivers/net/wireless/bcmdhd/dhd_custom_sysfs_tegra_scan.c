@@ -21,7 +21,7 @@
 void
 tegra_sysfs_histogram_scan_work_start(void)
 {
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	/* placeholder for scan work */
 
@@ -30,7 +30,7 @@ tegra_sysfs_histogram_scan_work_start(void)
 void
 tegra_sysfs_histogram_scan_work_stop(void)
 {
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	/* placeholder for scan work */
 
@@ -43,7 +43,7 @@ tegra_sysfs_histogram_scan_show(struct device *dev,
 {
 	static int i;
 
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	if (!i) {
 		i++;
@@ -60,7 +60,7 @@ tegra_sysfs_histogram_scan_store(struct device *dev,
 	struct device_attribute *attr,
 	const char *buf, size_t count)
 {
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	return count;
 }

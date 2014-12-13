@@ -49,7 +49,7 @@ ping_work_func(struct work_struct *work)
 void
 tegra_sysfs_histogram_ping_work_start(void)
 {
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 	if (ping_rate_ms > 0)
 		schedule_delayed_work(&ping_work,
 			msecs_to_jiffies(ping_rate_ms));
@@ -58,7 +58,7 @@ tegra_sysfs_histogram_ping_work_start(void)
 void
 tegra_sysfs_histogram_ping_work_stop(void)
 {
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 	cancel_delayed_work_sync(&ping_work);
 }
 
@@ -70,7 +70,7 @@ tegra_sysfs_histogram_ping_show(struct device *dev,
 #if 1
 	static int i;
 
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	if (!i) {
 		i++;
@@ -95,7 +95,7 @@ tegra_sysfs_histogram_ping_store(struct device *dev,
 	int err;
 	unsigned int uint, a, b, c, d;
 
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	if (strncmp(buf, "enable", 6) == 0) {
 		pr_info("%s: starting ping delayed work...\n", __func__);

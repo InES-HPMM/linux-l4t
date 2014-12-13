@@ -73,7 +73,7 @@ fail:
 void
 tegra_sysfs_histogram_rssi_work_start(void)
 {
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 	if (rssi_rate_ms > 0)
 		schedule_delayed_work(&rssi_work,
 			msecs_to_jiffies(rssi_rate_ms));
@@ -82,7 +82,7 @@ tegra_sysfs_histogram_rssi_work_start(void)
 void
 tegra_sysfs_histogram_rssi_work_stop(void)
 {
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 	cancel_delayed_work_sync(&rssi_work);
 }
 
@@ -93,7 +93,7 @@ tegra_sysfs_histogram_rssi_show(struct device *dev,
 {
 	static int i;
 
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	if (!i) {
 		i++;
@@ -113,7 +113,7 @@ tegra_sysfs_histogram_rssi_store(struct device *dev,
 	int err;
 	unsigned int uint;
 
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	if (strncmp(buf, "enable", 6) == 0) {
 		pr_info("%s: starting rssi delayed work...\n", __func__);

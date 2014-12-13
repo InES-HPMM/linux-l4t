@@ -168,7 +168,7 @@ tegra_sysfs_histogram_tcpdump_tx(struct sk_buff *skb,
 void
 tegra_sysfs_histogram_tcpdump_work_start(void)
 {
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	/* placeholder for tcpdump work */
 
@@ -177,7 +177,7 @@ tegra_sysfs_histogram_tcpdump_work_start(void)
 void
 tegra_sysfs_histogram_tcpdump_work_stop(void)
 {
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	/* placeholder for tcpdump work */
 
@@ -191,7 +191,7 @@ tegra_sysfs_histogram_tcpdump_show(struct device *dev,
 #if 0
 	static int i;
 
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	if (!i) {
 		i++;
@@ -207,7 +207,7 @@ tegra_sysfs_histogram_tcpdump_show(struct device *dev,
 	unsigned long flags;
 	int i, m, n;
 
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 #define TCPDUMP_PKT_MAXSTRLEN\
 	(\
@@ -228,7 +228,7 @@ tegra_sysfs_histogram_tcpdump_show(struct device *dev,
 			return (s - buf);
 		} else if (tcpdump_head == tcpdump_tail) {
 			spin_unlock_irqrestore(&tcpdump_lock, flags);
-			pr_info("%s: no more tcpdump pkt(s)!\n", __func__);
+//			pr_info("%s: no more tcpdump pkt(s)!\n", __func__);
 			return (s - buf);
 		} else {
 			i = tcpdump_head++;
@@ -279,7 +279,7 @@ tegra_sysfs_histogram_tcpdump_store(struct device *dev,
 	int maxpkt;
 	int err;
 
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	if (strncmp(buf, "enable", 6) == 0) {
 		maxpkt = sizeof(tcpdump_pkt) / sizeof(tcpdump_pkt[0]);
@@ -315,7 +315,7 @@ tegra_debugfs_histogram_tcpdump_read(struct file *filp,
 	char buf[PAGE_SIZE];
 	ssize_t size, chunk;
 
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	for (size = 0; size + PAGE_SIZE <= count; size += chunk) {
 		chunk = tegra_sysfs_histogram_tcpdump_show(dev, attr, buf);
@@ -334,6 +334,6 @@ ssize_t
 tegra_debugfs_histogram_tcpdump_write(struct file *filp,
 	const char __user *buff, size_t count, loff_t *offp)
 {
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 	return count;
 }

@@ -36,6 +36,12 @@ void
 tegra_sysfs_unregister(struct device *dev);
 
 void
+tegra_sysfs_on(void);
+
+void
+tegra_sysfs_off(void);
+
+void
 tegra_sysfs_suspend(void);
 
 void

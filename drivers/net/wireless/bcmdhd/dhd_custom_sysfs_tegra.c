@@ -117,10 +117,48 @@ tegra_sysfs_unregister(struct device *dev)
 
 }
 
+static int tegra_sysfs_wifi_on;
+
+void
+tegra_sysfs_on(void)
+{
+	pr_info("%s\n", __func__);
+
+	tegra_sysfs_wifi_on = 1;
+
+	/* resume (start) sysfs work */
+	tegra_sysfs_histogram_ping_work_start();
+	tegra_sysfs_histogram_rssi_work_start();
+	tegra_sysfs_histogram_scan_work_start();
+	tegra_sysfs_histogram_stat_work_start();
+	tegra_sysfs_histogram_tcpdump_work_start();
+
+}
+
+void
+tegra_sysfs_off(void)
+{
+	pr_info("%s\n", __func__);
+
+	tegra_sysfs_wifi_on = 0;
+
+	/* suspend (stop) sysfs work */
+	tegra_sysfs_histogram_tcpdump_work_stop();
+	tegra_sysfs_histogram_stat_work_stop();
+	tegra_sysfs_histogram_scan_work_stop();
+	tegra_sysfs_histogram_rssi_work_stop();
+	tegra_sysfs_histogram_ping_work_stop();
+
+}
+
 void
 tegra_sysfs_suspend(void)
 {
 	pr_info("%s\n", __func__);
+
+	/* do nothing if wifi off */
+	if (!tegra_sysfs_wifi_on)
+		return;
 
 	/* suspend (stop) sysfs work */
 	tegra_sysfs_histogram_tcpdump_work_stop();
@@ -135,6 +173,10 @@ void
 tegra_sysfs_resume(void)
 {
 	pr_info("%s\n", __func__);
+
+	/* do nothing if wifi off */
+	if (!tegra_sysfs_wifi_on)
+		return;
 
 	/* resume (start) sysfs work */
 	tegra_sysfs_histogram_ping_work_start();

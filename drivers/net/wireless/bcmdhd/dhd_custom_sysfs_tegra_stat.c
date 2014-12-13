@@ -39,7 +39,7 @@ tegra_sysfs_histogram_stat_work_run(unsigned int ms)
 void
 tegra_sysfs_histogram_stat_work_start(void)
 {
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 	if (stat_rate_ms > 0)
 		schedule_delayed_work(&stat_work,
 			msecs_to_jiffies(stat_rate_ms));
@@ -48,7 +48,7 @@ tegra_sysfs_histogram_stat_work_start(void)
 void
 tegra_sysfs_histogram_stat_work_stop(void)
 {
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 	cancel_delayed_work_sync(&stat_work);
 }
 
@@ -111,7 +111,7 @@ tegra_sysfs_histogram_stat_show(struct device *dev,
 {
 	static int i;
 
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	if (!i) {
 		i++;
@@ -131,7 +131,7 @@ tegra_sysfs_histogram_stat_store(struct device *dev,
 	int err;
 	unsigned int uint;
 
-	pr_info("%s\n", __func__);
+//	pr_info("%s\n", __func__);
 
 	if (strncmp(buf, "enable", 6) == 0) {
 		pr_info("%s: starting stat delayed work...\n", __func__);
