@@ -149,8 +149,11 @@ int tegra_unpowergate_partition(int id);
 bool tegra_powergate_check_clamping(int id);
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 int slcg_register_notifier(int id, struct notifier_block *nb);
+int slcg_unregister_notifier(int id, struct notifier_block *nb);
 #else
 static inline int slcg_register_notifier(int id, struct notifier_block *nb)
+{ return 0; }
+static inline int slcg_unregister_notifier(int id, struct notifier_block *nb)
 { return 0; }
 #endif
 #endif /* _MACH_TEGRA_POWERGATE_H_ */

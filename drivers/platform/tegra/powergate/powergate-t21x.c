@@ -904,6 +904,19 @@ int slcg_register_notifier(int id, struct notifier_block *nb)
 
 	return raw_notifier_chain_register(&pg_info->slcg_notifier, nb);
 }
+EXPORT_SYMBOL(slcg_register_notifier);
+
+int slcg_unregister_notifier(int id, struct notifier_block *nb)
+{
+	struct powergate_partition_info *pg_info =
+			&tegra210_pg_partition_info[id];
+
+	if (!pg_info || !nb)
+		return -EINVAL;
+
+	return raw_notifier_chain_unregister(&pg_info->slcg_notifier, nb);
+}
+EXPORT_SYMBOL(slcg_unregister_notifier);
 
 static int __init tegra210_disable_boot_partitions(void)
 {
