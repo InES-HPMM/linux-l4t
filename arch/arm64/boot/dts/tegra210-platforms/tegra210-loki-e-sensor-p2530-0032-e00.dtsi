@@ -19,12 +19,12 @@
 		jsa1127@39 {
 			compatible = "solteamopto,jsa1127";
 			reg = <0x39>;
-			light_uncalibrated_lo = <3700>;
-			light_calibrated_lo = <40000>;
-			light_uncalibrated_hi = <15000>;
-			light_calibrated_hi = <200000>;
-			light_threshold_lo = <200>;
-			light_threshold_hi = <1000>;
+			light_threshold_lo = <0>;
+			light_threshold_hi = <0>;
+			light_resolution_ival = <20>;
+			light_resolution_fval = <0>;
+			light_max_range_ival = <6553>;
+			light_max_range_fval = <400000>;
 		};
 	};
 
