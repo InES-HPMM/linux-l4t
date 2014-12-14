@@ -393,10 +393,25 @@ struct sdhci_ops {
 	void	(*get_max_pio_transfer_limits)(struct sdhci_host *sdhci);
 };
 
+static inline void sdhci_check_host_clock(struct sdhci_host *host)
+{
+	if (!host->is_clk_on) {
+		if (host->ops->set_clock) {
+			if (host->mmc->ios.clock) {
+				host->ops->set_clock(host,
+					host->mmc->ios.clock);
+			} else {
+				host->ops->set_clock(host, 400000);
+			}
+		}
+	}
+}
+
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS
 
 static inline void sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 {
+	sdhci_check_host_clock(host);
 	if (unlikely(host->ops->write_l))
 		host->ops->write_l(host, val, reg);
 	else
@@ -405,6 +420,7 @@ static inline void sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 
 static inline void sdhci_writew(struct sdhci_host *host, u16 val, int reg)
 {
+	sdhci_check_host_clock(host);
 	if (unlikely(host->ops->write_w))
 		host->ops->write_w(host, val, reg);
 	else
@@ -413,6 +429,7 @@ static inline void sdhci_writew(struct sdhci_host *host, u16 val, int reg)
 
 static inline void sdhci_writeb(struct sdhci_host *host, u8 val, int reg)
 {
+	sdhci_check_host_clock(host);
 	if (unlikely(host->ops->write_b))
 		host->ops->write_b(host, val, reg);
 	else
@@ -421,6 +438,7 @@ static inline void sdhci_writeb(struct sdhci_host *host, u8 val, int reg)
 
 static inline u32 sdhci_readl(struct sdhci_host *host, int reg)
 {
+	sdhci_check_host_clock(host);
 	if (unlikely(host->ops->read_l))
 		return host->ops->read_l(host, reg);
 	else
@@ -429,6 +447,7 @@ static inline u32 sdhci_readl(struct sdhci_host *host, int reg)
 
 static inline u16 sdhci_readw(struct sdhci_host *host, int reg)
 {
+	sdhci_check_host_clock(host);
 	if (unlikely(host->ops->read_w))
 		return host->ops->read_w(host, reg);
 	else
@@ -437,6 +456,7 @@ static inline u16 sdhci_readw(struct sdhci_host *host, int reg)
 
 static inline u8 sdhci_readb(struct sdhci_host *host, int reg)
 {
+	sdhci_check_host_clock(host);
 	if (unlikely(host->ops->read_b))
 		return host->ops->read_b(host, reg);
 	else
@@ -447,31 +467,37 @@ static inline u8 sdhci_readb(struct sdhci_host *host, int reg)
 
 static inline void sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 {
+	sdhci_check_host_clock(host);
 	writel(val, host->ioaddr + reg);
 }
 
 static inline void sdhci_writew(struct sdhci_host *host, u16 val, int reg)
 {
+	sdhci_check_host_clock(host);
 	writew(val, host->ioaddr + reg);
 }
 
 static inline void sdhci_writeb(struct sdhci_host *host, u8 val, int reg)
 {
+	sdhci_check_host_clock(host);
 	writeb(val, host->ioaddr + reg);
 }
 
 static inline u32 sdhci_readl(struct sdhci_host *host, int reg)
 {
+	sdhci_check_host_clock(host);
 	return readl(host->ioaddr + reg);
 }
 
 static inline u16 sdhci_readw(struct sdhci_host *host, int reg)
 {
+	sdhci_check_host_clock(host);
 	return readw(host->ioaddr + reg);
 }
 
 static inline u8 sdhci_readb(struct sdhci_host *host, int reg)
 {
+	sdhci_check_host_clock(host);
 	return readb(host->ioaddr + reg);
 }
 
