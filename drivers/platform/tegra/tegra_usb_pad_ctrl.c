@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -775,14 +775,13 @@ void xusb_utmi_pad_init(int pad, u32 cap, bool external_pmic)
 			&term_range_adj, &rpd_ctl, &hs_iref_cap);
 
 	val = readl(pad_base + ctl0_offset);
-	val &= ~(USB2_OTG_HS_CURR_LVL |	USB2_OTG_PD
-			| USB2_OTG_PD2 | USB2_OTG_PD_ZI);
+	val &= ~(USB2_OTG_HS_CURR_LVL | USB2_OTG_PD2 | USB2_OTG_PD_ZI);
 	val |= hs_curr_level_pad;
 	writel(val, pad_base + ctl0_offset);
 
 	val = readl(pad_base + ctl1_offset);
 	val &= ~(USB2_OTG_TERM_RANGE_ADJ | RPD_CTRL
-			| USB2_OTG_PD_DR | USB2_OTG_HS_IREF_CAP
+			| USB2_OTG_HS_IREF_CAP
 			| USB2_OTG_PD_CHRP_FORCE_POWERUP
 			| USB2_OTG_PD_DISC_FORCE_POWERUP);
 	val |= (rpd_ctl << 26) |

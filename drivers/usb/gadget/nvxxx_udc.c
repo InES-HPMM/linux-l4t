@@ -323,7 +323,10 @@ static inline void vbus_detected(struct nv_udc_s *nvudc)
 		return; /* nothing to do */
 
 	xusb_enable_pad_protection(1);
-
+	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_OTG_PAD_CTL_0(0),
+		USB2_OTG_PD, 0);
+	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_OTG_PAD_CTL_1(0),
+		USB2_OTG_PD_DR, 0);
 	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 		USB2_VBUS_ID_0_VBUS_OVERRIDE, USB2_VBUS_ID_0_VBUS_OVERRIDE);
 
@@ -341,6 +344,10 @@ static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 		USB2_VBUS_ID_0_VBUS_OVERRIDE, 0);
 
+	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_OTG_PAD_CTL_0(0),
+		USB2_OTG_PD, USB2_OTG_PD);
+	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_OTG_PAD_CTL_1(0),
+		USB2_OTG_PD_DR, USB2_OTG_PD_DR);
 	portsc = ioread32(nvudc->mmio_reg_base + PORTSC);
 
 	/* war for disconnect in U2 or RESUME state */
