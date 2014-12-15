@@ -3231,6 +3231,38 @@ end:
 	return 0;
 }
 
+static int power_down(struct seq_file *s, void *data)
+{
+	struct tegra_pcie_port *port = NULL;
+	struct tegra_pcie *pcie = (struct tegra_pcie *)(s->private);
+	u16 val;
+	bool pass = false;
+
+	val = afi_readl(pcie, AFI_PCIE_PME);
+	val |= AFI_PCIE_PME_TURN_OFF;
+	afi_writel(pcie, val, AFI_PCIE_PME);
+	do {
+		val = afi_readl(pcie, AFI_PCIE_PME);
+	} while(!(val & AFI_PCIE_PME_ACK));
+
+	mdelay(1);
+	list_for_each_entry(port, &pcie->ports, list) {
+		val = rp_readl(port, NV_PCIE2_RP_LTSSM_DBGREG);
+		if (val & PCIE2_RP_LTSSM_DBGREG_LINKFSM16) {
+			pass = true;
+			goto out;
+		}
+	}
+
+out:
+	if (pass)
+		seq_printf(s, "[pass: pcie_power_down]\n");
+	else
+		seq_printf(s, "[fail: pcie_power_down]\n");
+	pr_info("PCIE power_down test END..\n");
+	return 0;
+}
+
 static int apply_lane_width(struct seq_file *s, void *data)
 {
 	unsigned int new;
@@ -3543,6 +3575,7 @@ DEFINE_ENTRY(config_read)
 DEFINE_ENTRY(config_write)
 DEFINE_ENTRY(aspm_l11)
 DEFINE_ENTRY(aspm_l1ss)
+DEFINE_ENTRY(power_down)
 
 /* Port specific */
 DEFINE_ENTRY(apply_lane_width)
@@ -3738,6 +3771,12 @@ static int tegra_pcie_debugfs_init(struct tegra_pcie *pcie)
 
 	d = create_tegra_pcie_debufs_file("check_d3hot",
 					&check_d3hot_fops, pcie->debugfs,
+					(void *)pcie);
+	if (!d)
+		goto remove;
+
+	d = create_tegra_pcie_debufs_file("power_down",
+					&power_down_fops, pcie->debugfs,
 					(void *)pcie);
 	if (!d)
 		goto remove;
