@@ -462,4 +462,8 @@
 			status = "disabled";
 		};
 	};
+
+	therm_est_sensor {
+		status = "okay";
+	};
 };

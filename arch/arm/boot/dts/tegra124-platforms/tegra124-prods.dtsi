@@ -21,7 +21,7 @@
 		prod-settings {
 			#prod-cells = <4>;
 			prod {
-				status = "okay";
+				status = "disabled";
 				nvidia,prod-boot-init;
 				prod = <0 0x28 0x0E0E0FF3 0x00605008
 					0 0x2C 0x0E0E0FF3 0x00605008

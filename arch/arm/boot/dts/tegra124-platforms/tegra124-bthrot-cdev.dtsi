@@ -27,7 +27,7 @@
 			cooling-min-state = <0>;
 			cooling-max-state = <20>;
 			#cooling-cells = <2>;
-			status = "okay";
+			status = "disabled";
 			throttle_table = <
 				/*CPU		GPU			C2BUS		C3BUS		SCLK		EMC	*/
 				2000000		804000		480000		756000		384000		924000
@@ -72,7 +72,7 @@
 			cooling-min-state = <0>;
 			cooling-max-state = <83>;
 			#cooling-cells = <2>;
-			status = "okay";
+			status = "disabled";
 			throttle_table = <
 				/*CPU		GPU		C2BUS		C3BUS		SCLK		EMC	*/
 				2295000		782800		480000		756000		384000		924000
@@ -166,7 +166,7 @@
 			cooling-min-state = <0>;
 			cooling-max-state = <83>;
 			#cooling-cells = <2>;
-			status = "okay";
+			status = "disabled";
 			throttle_table = <
 				/*CPU		GPU		C2BUS		C3BUS		SCLK		EMC	*/
 				2295000		4294967295	4294967295	4294967295	4294967295	4294967295
@@ -260,7 +260,7 @@
 			cooling-min-state = <0>;
 			cooling-max-state = <1>;
 			#cooling-cells = <2>;
-			status = "okay";
+			status = "disabled";
 			throttle_table = <
 				/*CPU		GPU		C2BUS		C3BUS		SCLK		EMC	*/
 				1122000		391000		288000		420000		252000		396000

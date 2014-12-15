@@ -44,6 +44,11 @@
 
 	pinmux@70000868 {
 		status = "okay";
+		prod-settings {
+			prod {
+				status = "okay";
+			};
+		};
 	};
 
 	gpio@6000d000 {
@@ -394,5 +399,24 @@
 
 	cpu_edp {
 		status = "okay";
+	};
+
+	therm_est_sensor {
+		status = "okay";
+	};
+
+	bthrot_cdev {
+		skin_balanced {
+			status = "okay";
+		};
+		gpu_balanced {
+			status = "okay";
+		};
+		cpu_balanced {
+			status = "okay";
+		};
+		emergency_balanced {
+			status = "okay";
+		};
 	};
 };
