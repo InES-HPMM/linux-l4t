@@ -4939,7 +4939,9 @@ static void t210_program_ss_pad(struct nv_udc_s *nvudc, int port)
 	char prod_name[] = "prod_c_ssX";
 	int err = 0;
 
-	nvudc->prod_list = tegra_prod_init(node);
+	if (!nvudc->prod_list)
+		nvudc->prod_list = tegra_prod_init(node);
+
 	if (IS_ERR(nvudc->prod_list)) {
 		msg_warn(nvudc->dev, "prod list init failed with error %d\n",
 			PTR_ERR(nvudc->prod_list));
