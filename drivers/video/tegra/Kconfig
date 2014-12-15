@@ -368,13 +368,14 @@ config VI_ONE_DEVICE
 config TEGRA_DC_FAKE_PANEL_SUPPORT
 	bool "Enables fake panel and NULL OR support"
 	depends on TEGRA_DC
-	default n
+	default y
 	help
 	  Select Y to enable support for the
 	  Display Controller to output to
 	  fake panel or NULL Output Resource.
 	  Used for silicon characterization and
-	  should not be enabled for production.
+	  automated testing. should not be enabled
+	  for production.
 
 config NVHOST_BONDOUT_CHECK
 	bool "Check device presence through bondout registers"
