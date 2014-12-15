@@ -2519,7 +2519,6 @@ static int tegra_pcie_init(struct tegra_pcie *pcie)
 		pci_common_init_dev(pcie->dev, &tegra_pcie_hw);
 	} else {
 		dev_err(pcie->dev, "PCIE: no ports detected\n");
-		err = -EPROBE_DEFER;
 		goto fail_enum;
 	}
 	tegra_pcie_enable_features(pcie);
