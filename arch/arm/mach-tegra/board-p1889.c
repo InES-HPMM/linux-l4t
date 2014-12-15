@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-p1889.c
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -219,7 +219,6 @@ static void __init tegra_p1889_late_init(void)
 
 	/* Initialize p1889 board specific devices */
 	p1889_i2c_init();
-	p1889_pca953x_init();
 	p1889_audio_init();
 
 	platform_add_devices(p1889_devices, ARRAY_SIZE(p1889_devices));
