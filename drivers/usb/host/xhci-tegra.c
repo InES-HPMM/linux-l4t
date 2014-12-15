@@ -140,6 +140,11 @@ struct log_entry {
 	u8 owner;
 };
 
+enum build_info_log {
+	LOG_NONE = 0,
+	LOG_MEMORY
+};
+
 /* Usb3 Firmware Cfg Table */
 struct cfgtbl {
 	u32 boot_loadaddr_in_imem;
@@ -190,7 +195,9 @@ struct cfgtbl {
 	u32 SS_low_power_entry_timeout;
 	u8 num_hsic_port;
 	u8 ss_portmap;
-	u8 padding[138]; /* padding bytes to makeup 256-bytes cfgtbl */
+	u8 build_log:4;
+	u8 build_type:4;
+	u8 padding[137]; /* padding bytes to makeup 256-bytes cfgtbl */
 };
 
 static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra);
@@ -2261,8 +2268,10 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 	}
 
 	/* update the phys_log_buffer and total_entries here */
-	cfg_tbl->phys_addr_log_buffer = tegra->log.phys_addr;
-	cfg_tbl->total_log_entries = FW_LOG_COUNT;
+	if (test_bit(FW_LOG_CONTEXT_VALID, &tegra->log.flags)) {
+		cfg_tbl->phys_addr_log_buffer = tegra->log.phys_addr;
+		cfg_tbl->total_log_entries = FW_LOG_COUNT;
+	}
 
 	phys_addr_lo = tegra->firmware.dma;
 	phys_addr_lo += sizeof(struct cfgtbl);
@@ -3355,10 +3364,12 @@ static int tegra_xhci_bus_suspend(struct usb_hcd *hcd)
 	tegra_xhci_hs_wake_on_interrupts(host_ports, true);
 
 	/* In ELPG, firmware log context is gone. Rewind shared log buffer. */
-	if (fw_log_wait_empty_timeout(tegra, 100))
-		xhci_warn(xhci, "%s still has logs\n", __func__);
-	tegra->log.dequeue = tegra->log.virt_addr;
-	tegra->log.seq = 0;
+	if (test_bit(FW_LOG_CONTEXT_VALID, &tegra->log.flags)) {
+		if (fw_log_wait_empty_timeout(tegra, 100))
+			xhci_warn(xhci, "%s still has logs\n", __func__);
+		tegra->log.dequeue = tegra->log.virt_addr;
+		tegra->log.seq = 0;
+	}
 
 done:
 	/* pads are disabled only if usb2 root hub in xusb is idle */
@@ -3563,7 +3574,8 @@ static irqreturn_t tegra_xhci_irq(struct usb_hcd *hcd)
 		iret = xhci_irq(hcd);
 	spin_unlock(&tegra->lock);
 
-	wake_up_interruptible(&tegra->log.intr_wait);
+	if (test_bit(FW_LOG_CONTEXT_VALID, &tegra->log.flags))
+		wake_up_interruptible(&tegra->log.intr_wait);
 
 	return iret;
 }
@@ -3911,6 +3923,9 @@ static void init_filesystem_firmware_done(const struct firmware *fw,
 	fw_size = fw_cfgtbl->fwimg_len;
 	dev_info(&pdev->dev, "Firmware File: %s (%zu Bytes)\n",
 			firmware_file, fw_size);
+
+	if (fw_cfgtbl->build_log == LOG_MEMORY)
+		fw_log_init(tegra);
 
 	fw_data = dma_alloc_coherent(&pdev->dev, fw_size,
 			&fw_dma, GFP_KERNEL);
@@ -4777,7 +4792,6 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	utmi_phy_iddq_override(false);
 
 	platform_set_drvdata(pdev, tegra);
-	fw_log_init(tegra);
 	ret = init_firmware(tegra);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "failed to init firmware\n");
