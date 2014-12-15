@@ -100,6 +100,8 @@ struct adsp_freq_stats {
 static struct adsp_dfs_policy *policy;
 static struct adsp_freq_stats freq_stats;
 static struct device *device;
+static struct clk *ape_emc_clk;
+
 
 static DEFINE_MUTEX(policy_mutex);
 
@@ -127,6 +129,38 @@ static unsigned long adsp_get_target_freq(unsigned long tfreq, int *index)
 	}
 
 	return 0;
+}
+
+/*
+ * Static adsp freq to emc freq lookup table
+ *
+ * arg:
+ *	adspfreq - adsp freq in KHz
+ * return:
+ *	0 - min emc freq
+ *	> 0 - expected emc freq at this adsp freq
+*/
+static u32 adsp_to_emc_freq(u32 adspfreq)
+{
+	int size;
+
+	size = sizeof(adsp_cpu_freq_table) / sizeof(adsp_cpu_freq_table[0]);
+
+	/*
+	 * Vote on memory bus frequency based on adsp frequency
+	 * cpu rate is in kHz, emc rate is in Hz
+	 */
+	if (adspfreq >= adsp_cpu_freq_table[size - 1])
+		return 665600;	/* adsp >= Max freq, emc max */
+	else if (adspfreq >= 665600)
+		return 408000;	/* adsp >= 665.6 MHz, emc 408 MHz */
+	else if (adspfreq >= 409600)
+		return 204000;	/* adsp >= 409.6 MHz, emc 204 MHz */
+	else if (adspfreq >= 204800)
+		return 102000;	/* adsp >= 204.8 MHz, emc 102 MHz */
+	else
+		return 0;		/* emc min */
+
 }
 
 static void adspfreq_stats_update(void)
@@ -184,9 +218,10 @@ static struct adsp_dfs_policy dfs_policy =  {
  */
 static unsigned long update_policy(unsigned long tfreq)
 {
-	enum adsp_dfs_reply reply;
 	struct nvadsp_mbox *mbx = &policy->mbox;
+	enum adsp_dfs_reply reply;
 	unsigned long old_freq;
+	u32 efreq;
 	int index;
 	int ret;
 
@@ -208,6 +243,14 @@ static unsigned long update_policy(unsigned long tfreq)
 		dev_err(device, "failed to set adsp freq:%d\n", ret);
 		policy->update_freq_flag = false;
 		return 0;
+	}
+
+	efreq = adsp_to_emc_freq(tfreq / 1000);
+	ret = clk_set_rate(ape_emc_clk, efreq * 1000);
+	if (ret) {
+		dev_err(device, "failed to set ape.emc clk:%d\n", ret);
+		policy->update_freq_flag = false;
+		goto err_out;
 	}
 
 	mutex_lock(&policy_mutex);
@@ -254,10 +297,18 @@ static unsigned long update_policy(unsigned long tfreq)
 fail:
 	mutex_unlock(&policy_mutex);
 
+err_out:
 	if (!policy->update_freq_flag) {
 		ret = clk_set_rate(policy->adsp_clk, old_freq * 1000);
 		if (ret) {
 			dev_err(device, "failed to resume adsp freq:%lu\n", old_freq);
+			policy->update_freq_flag = false;
+		}
+
+		efreq = adsp_to_emc_freq(old_freq / 1000);
+		ret = clk_set_rate(ape_emc_clk, efreq * 1000);
+		if (ret) {
+			dev_err(device, "failed to set ape.emc clk:%d\n", ret);
 			policy->update_freq_flag = false;
 		}
 
@@ -306,7 +357,7 @@ static int policy_min_set(void *data, u64 val)
 
 	if (!min || ((min < policy->cpu_min) || (min == policy->min)))
 		return -EINVAL;
-	else if (min >=  policy->cpu_max)
+	else if (min >= policy->cpu_max)
 		min = policy->cpu_max;
 
 	if (min > policy->cur)
@@ -490,7 +541,7 @@ void adsp_cpu_set_rate(unsigned long freq)
 		goto exit_out;
 	}
 
-	if (!freq || (freq == policy->cur)) {
+	if (freq == policy->cur) {
 		dev_info(device, "old and target_freq is same, exit out\n");
 		goto exit_out;
 	}
@@ -525,6 +576,20 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 	if (IS_ERR_OR_NULL(policy->adsp_clk)) {
 		dev_err(&pdev->dev, "unable to find ahub clock\n");
 		ret = PTR_ERR(policy->adsp_clk);
+		goto end;
+	}
+
+	/* Change emc freq as per the adsp to emc lookup table */
+	ape_emc_clk = clk_get_sys("ape", "emc");
+	if (IS_ERR_OR_NULL(ape_emc_clk)) {
+		dev_err(device, "unable to find ape.emc clock\n");
+		ret = PTR_ERR(policy->adsp_clk);
+		goto end;
+	}
+
+	ret = clk_prepare_enable(ape_emc_clk);
+	if (ret) {
+		dev_err(device, "unable to enable ape.emc clock\n");
 		goto end;
 	}
 
@@ -575,6 +640,12 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 end:
 	if (policy->adsp_clk)
 		clk_put(policy->adsp_clk);
+
+	if (ape_emc_clk) {
+		clk_disable_unprepare(ape_emc_clk);
+		clk_put(ape_emc_clk);
+	}
+
 	return ret;
 }
 
@@ -591,9 +662,15 @@ int adsp_dfs_core_exit(struct platform_device *pdev)
 	tegra_unregister_clk_rate_notifier(policy->adsp_clk,
 					   &policy->rate_change_nb);
 
-	clk_put(policy->adsp_clk);
-	drv->dfs_initialized = false;
+	if (policy->adsp_clk)
+		clk_put(policy->adsp_clk);
 
+	if (ape_emc_clk) {
+		clk_disable_unprepare(ape_emc_clk);
+		clk_put(ape_emc_clk);
+	}
+
+	drv->dfs_initialized = false;
 	dev_dbg(&pdev->dev, "adsp dfs has exited ....\n");
 
 	return ret;
