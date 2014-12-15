@@ -226,7 +226,7 @@ struct smmu_as {
 	struct list_head        client;
 	spinlock_t              client_lock; /* for client list */
 
-	u32                     tegra_hv_comm_chan;
+	int                     tegra_hv_comm_chan;
 	spinlock_t              tegra_hv_comm_chan_lock;
 	struct dentry           *debugfs_root;
 };
@@ -275,8 +275,8 @@ struct smmu_device {
 	const struct tegra_smmu_chip_data *chip_data;
 	struct list_head asprops;
 
-	u32     tegra_hv_comm_chan;
-	u32     tegra_hv_debug_chan;
+	int     tegra_hv_comm_chan;
+	int     tegra_hv_debug_chan;
 
 	u32             num_as;
 	struct smmu_as  as[0];          /* Run-time allocated array */
