@@ -69,7 +69,7 @@ config TEGRA_DC
 
 config TEGRA_DC_CMU
 	bool "Tegra Color Management Unit"
-	depends on TEGRA_DC
+	depends on TEGRA_DC && !TEGRA_NVDISPLAY
 	default y
 	help
 	  Say Y here to enable Tegra color management unit.
