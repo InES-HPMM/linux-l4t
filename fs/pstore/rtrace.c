@@ -25,6 +25,8 @@
 #include <linux/cache.h>
 #include <linux/pstore.h>
 #include <asm/barrier.h>
+#include <asm/page.h>
+#include <asm/io.h>
 #include "internal.h"
 
 struct rtrace_state {
@@ -40,9 +42,10 @@ static int notrace pstore_rtrace_enabled(void)
 }
 
 noinline void notrace pstore_rtrace_call(enum rtrace_event_type log_type,
-					void *data)
+					void *data, long val)
 {
 	unsigned long flags;
+	unsigned long phys;
 	struct pstore_rtrace_record rec = {};
 
 	if (!pstore_rtrace_enabled())
@@ -53,7 +56,8 @@ noinline void notrace pstore_rtrace_call(enum rtrace_event_type log_type,
 	rec.cpu = raw_smp_processor_id();
 	rec.event = log_type;
 	rec.caller = __builtin_return_address(0);
-	rec.raddr = data;
+	rec.value = val;
+	rec.raddr = virt_to_phys_in_hw(data);
 	psinfo->write_buf(PSTORE_TYPE_RTRACE, 0, NULL, 0, (void *)&rec,
 			  sizeof(rec), psinfo);
 
@@ -81,7 +85,6 @@ static ssize_t pstore_rtrace_knob_write(struct file *f, const char __user *buf,
 	rtrace.enabled = on;
 out:
 	ret = count;
-err:
 	mutex_unlock(&pstore_rtrace_lock);
 
 	return ret;

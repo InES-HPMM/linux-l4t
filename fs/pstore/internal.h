@@ -44,6 +44,7 @@ struct pstore_rtrace_record {
 	unsigned int event;
 	unsigned long caller;
 	unsigned long raddr;
+	long value;
 };
 
 static inline void

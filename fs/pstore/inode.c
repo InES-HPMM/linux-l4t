@@ -173,9 +173,16 @@ static int pstore_rtrace_seq_show(struct seq_file *s, void *v)
 	struct pstore_rtrace_seq_data *data = v;
 	struct pstore_rtrace_record *rec = (void *)(ps->data + data->off);
 
-	seq_printf(s, "%d %c %p <- %p  %pF\n",
-		rec->cpu, rec->event == RTRACE_READ ? 'R' : 'W',
-		rec->raddr, rec->caller, (void *)rec->caller);
+	if (rec->event == RTRACE_WRITE)
+		seq_printf(s, "%d %c %p %x <- %p  %pF\n",
+			rec->cpu, rec->event == RTRACE_READ ? 'R' : 'W',
+			(void *)rec->raddr, (unsigned int)rec->value,
+			(void *)rec->caller, (void *)rec->caller);
+	else
+		seq_printf(s, "%d %c %p <- %p  %pF\n",
+			rec->cpu, rec->event == RTRACE_READ ? 'R' : 'W',
+			(void *)rec->raddr, (void *)rec->caller,
+			(void *)rec->caller);
 
 	return 0;
 }

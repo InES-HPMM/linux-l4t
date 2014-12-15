@@ -65,7 +65,7 @@ extern void __raw_readsl(const void __iomem *addr, void *data, int longlen);
  */
 static inline void __raw_writew(u16 val, volatile void __iomem *addr)
 {
-	pstore_rtrace_call(RTRACE_WRITE, (void __force *)addr);
+	pstore_rtrace_call(RTRACE_WRITE, (void __force *)addr, (long)val);
 	asm volatile("strh %1, %0"
 		     : "+Q" (*(volatile u16 __force *)addr)
 		     : "r" (val));
@@ -74,7 +74,7 @@ static inline void __raw_writew(u16 val, volatile void __iomem *addr)
 static inline u16 __raw_readw(const volatile void __iomem *addr)
 {
 	u16 val;
-	pstore_rtrace_call(RTRACE_READ, (void __force *)addr);
+	pstore_rtrace_call(RTRACE_READ, (void __force *)addr, 0);
 	asm volatile("ldrh %1, %0"
 		     : "+Q" (*(volatile u16 __force *)addr),
 		       "=r" (val));
@@ -84,7 +84,7 @@ static inline u16 __raw_readw(const volatile void __iomem *addr)
 
 static inline void __raw_writeb(u8 val, volatile void __iomem *addr)
 {
-	pstore_rtrace_call(RTRACE_WRITE, (void __force *)addr);
+	pstore_rtrace_call(RTRACE_WRITE, (void __force *)addr, (long)val);
 	asm volatile("strb %1, %0"
 		     : "+Qo" (*(volatile u8 __force *)addr)
 		     : "r" (val));
@@ -92,7 +92,7 @@ static inline void __raw_writeb(u8 val, volatile void __iomem *addr)
 
 static inline void __raw_writel(u32 val, volatile void __iomem *addr)
 {
-	pstore_rtrace_call(RTRACE_WRITE, (void __force *)addr);
+	pstore_rtrace_call(RTRACE_WRITE, (void __force *)addr, (long)val);
 	asm volatile("str %1, %0"
 		     : "+Qo" (*(volatile u32 __force *)addr)
 		     : "r" (val));
@@ -101,7 +101,7 @@ static inline void __raw_writel(u32 val, volatile void __iomem *addr)
 static inline u8 __raw_readb(const volatile void __iomem *addr)
 {
 	u8 val;
-	pstore_rtrace_call(RTRACE_READ, (void __force *)addr);
+	pstore_rtrace_call(RTRACE_READ, (void __force *)addr, 0);
 	asm volatile("ldrb %1, %0"
 		     : "+Qo" (*(volatile u8 __force *)addr),
 		       "=r" (val));
@@ -111,11 +111,35 @@ static inline u8 __raw_readb(const volatile void __iomem *addr)
 static inline u32 __raw_readl(const volatile void __iomem *addr)
 {
 	u32 val;
-	pstore_rtrace_call(RTRACE_READ, (void __force *)addr);
+	pstore_rtrace_call(RTRACE_READ, (void __force *)addr, 0);
 	asm volatile("ldr %1, %0"
 		     : "+Qo" (*(volatile u32 __force *)addr),
 		       "=r" (val));
 	return val;
+}
+
+/*
+ * this function just returns virtual address for now. a reference
+ * implementation is provided, but it has not been verified yet, so
+ * do not enable it.
+ */
+static inline unsigned long notrace virt_to_phys_in_hw(void *addr)
+{
+	/*
+	 * following is a reference implementation, it needs to be
+	 * verified
+
+	unsigned long phys;
+	asm volatile("mcr p15, 0, %1, c7, c8, 0\n"
+		"isb\n"
+		"mrc p15, 0, %0, c7, c4, 0\n"
+		: "=r"(phys) : "r"(addr) :);
+	if (phys & 1)
+		return (unsigned long)addr;
+	else
+		return (phys & 0xfffff000) | ((unsigned long)addr & 0xfff);
+	*/
+	return (unsigned long)addr;
 }
 
 /*

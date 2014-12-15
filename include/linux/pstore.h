@@ -75,10 +75,11 @@ enum rtrace_event_type {
 };
 
 #ifdef CONFIG_PSTORE_RTRACE
-extern void pstore_rtrace_call(enum rtrace_event_type log_type, void *data);
+extern void pstore_rtrace_call(enum rtrace_event_type log_type, void *data,
+				long val);
 #else
 static inline void
-pstore_rtrace_call(enum rtrace_event_type log_type, void *data)
+pstore_rtrace_call(enum rtrace_event_type log_type, void *data, long val)
 { }
 #endif
 
