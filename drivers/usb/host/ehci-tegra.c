@@ -214,7 +214,8 @@ static void tegra_ehci_boost_cpu_frequency_work(struct work_struct *work)
 		struct tegra_ehci_hcd, boost_cpu_freq_work.work);
 	if (tegra->cpu_boost_in_work) {
 		tegra->boost_requested = true;
-		if (tegra->boost_enable)
+		if (tegra->boost_enable &&
+			(tegra_ehci_port_speed(tegra->ehci) == USB_SPEED_HIGH))
 			pm_qos_update_request(
 				&tegra->boost_cpu_freq_req,
 				(s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ * 1000);
