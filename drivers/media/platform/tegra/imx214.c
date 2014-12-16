@@ -191,7 +191,9 @@ static int imx214_set_mode(struct imx214_info *info, struct imx214_mode *mode)
 			 mode->coarse_time, mode->gain, mode->hdr_en);
 
 	if (mode->hdr_en == true) {
-		if (mode->xres == 4096 && mode->yres == 3072) {
+		if (mode->xres == 4096 && mode->yres == 2304) {
+			sensor_mode = IMX214_MODE_4096X2304_HDR;
+		} else if (mode->xres == 4096 && mode->yres == 3072) {
 			sensor_mode = IMX214_MODE_4096X3072_HDR;
 		} else if (mode->xres == 3840 && mode->yres == 2160) {
 			sensor_mode = IMX214_MODE_3840X2160_HDR;
@@ -205,7 +207,9 @@ static int imx214_set_mode(struct imx214_info *info, struct imx214_mode *mode)
 			return -EINVAL;
 		}
 	} else {
-		if (mode->xres == 4096 && mode->yres == 3072) {
+		if (mode->xres == 4096 && mode->yres == 2304) {
+			sensor_mode = IMX214_MODE_4096X2304;
+		} else if (mode->xres == 4096 && mode->yres == 3072) {
 			sensor_mode = IMX214_MODE_4096X3072;
 		} else if (mode->xres == 3840 && mode->yres == 2160) {
 			sensor_mode = IMX214_MODE_3840X2160;
