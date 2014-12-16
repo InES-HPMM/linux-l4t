@@ -403,6 +403,7 @@ struct tegra_pcie {
 	struct tegra_pci_platform_data *plat_data;
 	struct tegra_pcie_soc_data *soc_data;
 	struct dentry *debugfs;
+	struct delayed_work detect_delay;
 };
 
 struct tegra_pcie_port {
@@ -2775,6 +2776,9 @@ static int tegra_pcie_disable_msi(struct tegra_pcie *pcie)
 
 	PR_FUNC_LINE;
 
+	if (pcie->pcie_power_enabled == 0)
+		return 0;
+
 	/* mask the MSI interrupt */
 	value = afi_readl(pcie, AFI_INTR_MASK);
 	value &= ~AFI_INTR_MASK_MSI_MASK;
@@ -2811,6 +2815,8 @@ static void tegra_pcie_read_plat_data(struct tegra_pcie *pcie)
 	struct device_node *node = pcie->dev->of_node;
 
 	PR_FUNC_LINE;
+	of_property_read_u32(node, "nvidia,boot-detect-delay",
+			&pcie->plat_data->boot_detect_delay);
 	pcie->plat_data->gpio_hot_plug =
 		of_get_named_gpio(node, "nvidia,hot-plug-gpio", 0);
 	pcie->plat_data->gpio_wake =
@@ -3691,6 +3697,38 @@ remove:
 	return -ENOMEM;
 }
 
+static int tegra_pcie_probe_complete(struct tegra_pcie *pcie)
+{
+	int ret = 0;
+	struct platform_device *pdev = to_platform_device(pcie->dev);
+
+	PR_FUNC_LINE;
+	ret = tegra_pcie_init(pcie);
+	if (ret)
+		return ret;
+
+	if (IS_ENABLED(CONFIG_DEBUG_FS)) {
+		int ret = tegra_pcie_debugfs_init(pcie);
+		if (ret < 0)
+			dev_err(&pdev->dev, "failed to setup debugfs: %d\n",
+				ret);
+	}
+
+	return 0;
+}
+
+static void pcie_delayed_detect(struct work_struct *work)
+{
+	struct tegra_pcie *pcie;
+	int ret = 0;
+
+	pcie = container_of(work, struct tegra_pcie, detect_delay.work);
+	ret = tegra_pcie_probe_complete(pcie);
+	if (ret) {
+		return;
+	}
+}
+
 static int tegra_pcie_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -3711,6 +3749,7 @@ static int tegra_pcie_probe(struct platform_device *pdev)
 	if (!pcie)
 		return -ENOMEM;
 
+	platform_set_drvdata(pdev, pcie);
 	pcie->dev = &pdev->dev;
 
 	/* use DT way to init platform data */
@@ -3746,6 +3785,7 @@ static int tegra_pcie_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&pcie->buses);
 	INIT_LIST_HEAD(&pcie->ports);
 	INIT_LIST_HEAD(&pcie->sys);
+	INIT_DELAYED_WORK(&pcie->detect_delay, pcie_delayed_detect);
 
 	ret = tegra_pcie_parse_dt(pcie);
 	if (ret < 0)
@@ -3754,25 +3794,20 @@ static int tegra_pcie_probe(struct platform_device *pdev)
 	/* Enable Runtime PM for PCIe, TODO: Need to add PCIe host device */
 	pm_runtime_enable(pcie->dev);
 
-	ret = tegra_pcie_init(pcie);
-	if (ret) {
-		devm_release_resource(pcie->dev, &pcie->all);
-
-		__pm_runtime_disable(pcie->dev, false);
-		tegra_pd_remove_device(pcie->dev);
+	if (pcie->plat_data->boot_detect_delay) {
+		unsigned long delay =
+			msecs_to_jiffies(pcie->plat_data->boot_detect_delay);
+		schedule_delayed_work(&pcie->detect_delay, delay);
 		return ret;
 	}
 
-	if (IS_ENABLED(CONFIG_DEBUG_FS)) {
-		int err = tegra_pcie_debugfs_init(pcie);
-		if (err < 0)
-			dev_err(&pdev->dev, "failed to setup debugfs: %d\n",
-				err);
+	ret = tegra_pcie_probe_complete(pcie);
+	if (ret) {
+		devm_release_resource(pcie->dev, &pcie->all);
+		pm_runtime_disable(pcie->dev);
+		tegra_pd_remove_device(pcie->dev);
 	}
-
-	platform_set_drvdata(pdev, pcie);
-
-	return 0;
+	return ret;
 }
 
 static int tegra_pcie_remove(struct platform_device *pdev)
@@ -3781,9 +3816,11 @@ static int tegra_pcie_remove(struct platform_device *pdev)
 	struct tegra_pcie_bus *bus;
 
 	PR_FUNC_LINE;
+	pm_runtime_disable(pcie->dev);
+	if (cancel_delayed_work_sync(&pcie->detect_delay))
+		return 0;
 	if (IS_ENABLED(CONFIG_DEBUG_FS))
 		tegra_pcie_debugfs_exit(pcie);
-
 	pci_common_exit(&pcie->sys);
 	list_for_each_entry(bus, &pcie->buses, list) {
 		vunmap(bus->area->addr);
@@ -3794,6 +3831,7 @@ static int tegra_pcie_remove(struct platform_device *pdev)
 	tegra_pcie_detach(pcie);
 	tegra_pd_remove_device(pcie->dev);
 	tegra_pcie_power_off(pcie, true);
+	tegra_pcie_clocks_put(pcie);
 
 	return 0;
 }

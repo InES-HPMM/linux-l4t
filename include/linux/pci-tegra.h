@@ -30,5 +30,6 @@ struct tegra_pci_platform_data {
 	int gpio_wake; /* GPIO num to support WAKE from LP0 */
 	int gpio_x1_slot; /* GPIO num to enable x1 slot */
 	u32 lane_map; /* lane mux info in byte nibbles */
+	u32 boot_detect_delay; /* program delay in detection */
 };
 #endif

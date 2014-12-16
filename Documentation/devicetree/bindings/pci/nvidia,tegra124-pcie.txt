@@ -75,6 +75,12 @@ Required properties:
 - nvidia,presence-detection-gpio: Board specific, represents the present detection
   pin status
 
+Optional Properties:
+- nvidia,boot-detect-delay: minimum delay in miliseconds before card detection
+  during boot after PCIe power and clock are stable. This is useful when the
+  attached devices do not conform to the PCIe specification, and do not respond
+  to enumeration within the time mandated by the PCIe specification.
+
 Example:
 
 SoC DTSI:
