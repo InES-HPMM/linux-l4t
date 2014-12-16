@@ -285,4 +285,9 @@
 			status = "okay";
 		};
 	};
+
+	/* Disable XUSB3 to make PCIe both ports work */
+        xusb_pad_ctl: padctl@0 {
+                nvidia,lane_owner = <0xFF56>; /* Use 0xF to disable lane assign */
+        };
 };
