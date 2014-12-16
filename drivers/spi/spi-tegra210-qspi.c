@@ -1283,7 +1283,7 @@ static struct tegra_qspi_platform_data *tegra_qspi_parse_dt(
 				of_dma, 2) >= 0)
 		pdata->dma_req_sel = of_dma[1];
 
-	prop = of_get_property(np, "qspi-max-frequency", NULL);
+	prop = of_get_property(np, "spi-max-frequency", NULL);
 	if (prop)
 		pdata->qspi_max_frequency = be32_to_cpup(prop);
 
@@ -1328,7 +1328,7 @@ static int tegra_qspi_probe(struct platform_device *pdev)
 	}
 
 	if (!pdata->qspi_max_frequency)
-		pdata->qspi_max_frequency = 13000000; /* 13MHz */
+		pdata->qspi_max_frequency = 133000000; /* 133MHz */
 
 	master = spi_alloc_master(&pdev->dev, sizeof(*tqspi));
 	if (!master) {
