@@ -28,6 +28,7 @@
 #include <linux/of.h>
 #include <linux/pwm.h>
 #include <linux/platform_device.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/slab.h>
 
 #define PWM_ENABLE	(1 << 31)
@@ -45,6 +46,9 @@ struct tegra_pwm_chip {
 	struct clk		*clk;
 
 	void __iomem		*mmio_base;
+	struct pinctrl		*pinctrl;
+	struct pinctrl_state	*suspend_state;
+	struct pinctrl_state	*resume_state;
 };
 
 static inline struct tegra_pwm_chip *to_tegra_pwm_chip(struct pwm_chip *chip)
@@ -215,6 +219,25 @@ static int tegra_pwm_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	pwm->pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (IS_ERR(pwm->pinctrl))
+		pwm->pinctrl = NULL;
+
+	if (pwm->pinctrl) {
+		pwm->suspend_state = pinctrl_lookup_state(pwm->pinctrl,
+						"suspend");
+		if (IS_ERR(pwm->suspend_state))
+			pwm->suspend_state = NULL;
+
+		pwm->resume_state = pinctrl_lookup_state(pwm->pinctrl,
+						"resume");
+		if (IS_ERR(pwm->resume_state))
+			pwm->resume_state = NULL;
+
+		if (pwm->suspend_state && pwm->resume_state)
+			dev_info(&pdev->dev,
+				"Pinconfig found for suspend/resume\n");
+	}
 	return 0;
 }
 
@@ -241,6 +264,44 @@ static int tegra_pwm_remove(struct platform_device *pdev)
 	return pwmchip_remove(&pc->chip);
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int tegra_pwm_suspend(struct device *dev)
+{
+	struct tegra_pwm_chip *pc = dev_get_drvdata(dev);
+	int ret;
+
+	if (pc->pinctrl && pc->suspend_state) {
+		ret = pinctrl_select_state(pc->pinctrl, pc->suspend_state);
+		if (ret < 0) {
+			dev_err(dev, "setting pin suspend state failed :%d\n",
+				ret);
+			return ret;
+		}
+	}
+	return 0;
+}
+
+static int tegra_pwm_resume(struct device *dev)
+{
+	struct tegra_pwm_chip *pc = dev_get_drvdata(dev);
+	int ret;
+
+	if (pc->pinctrl && pc->resume_state) {
+		ret = pinctrl_select_state(pc->pinctrl, pc->resume_state);
+		if (ret < 0) {
+			dev_err(dev, "setting pin resume state failed :%d\n",
+				ret);
+			return ret;
+		}
+	}
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops tegra_pwm_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(tegra_pwm_suspend, tegra_pwm_resume)
+};
+
 static const struct of_device_id tegra_pwm_of_match[] = {
 	{ .compatible = "nvidia,tegra20-pwm" },
 	{ .compatible = "nvidia,tegra30-pwm" },
@@ -255,6 +316,7 @@ static struct platform_driver tegra_pwm_driver = {
 	.driver = {
 		.name = "tegra-pwm",
 		.of_match_table = tegra_pwm_of_match,
+		.pm = &tegra_pwm_pm_ops,
 	},
 	.probe = tegra_pwm_probe,
 	.remove = tegra_pwm_remove,
