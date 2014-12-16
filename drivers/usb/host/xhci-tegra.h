@@ -31,6 +31,9 @@
 
 #include <mach/xusb.h>
 
+#ifdef CONFIG_USB_OTG_WAKELOCK
+extern void otgwl_acquire_temp_lock(void);
+#endif
 #define XUSB_CSB_MP_L2IMEMOP_TRIG				0x00101A14
 #define XUSB_CSB_MEMPOOL_L2IMEMOP_RESULT			0x00101A18
 #define XUSB_CSB_MP_APMAP					0x0010181C

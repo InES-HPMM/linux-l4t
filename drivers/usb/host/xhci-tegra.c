@@ -219,10 +219,17 @@ static void set_port_cdp(struct tegra_xhci_hcd *tegra, bool enable, int pad);
 static void init_filesystem_firmware_done(const struct firmware *fw,
 					void *context);
 
+struct work_struct tegra_xhci_reinit_work;
+static void xhci_reinit_work(struct work_struct *work);
+static bool reinit_started;
 static struct tegra_usb_pmc_data *pmc_data;
 static struct tegra_usb_pmc_data pmc_hsic_data[XUSB_HSIC_COUNT];
 static void save_ctle_context(struct tegra_xhci_hcd *tegra,
 	u8 port)  __attribute__ ((unused));
+
+static bool en_hcd_reinit;
+module_param(en_hcd_reinit, bool, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(en_hcd_reinit, "Enable hcd reinit when hc died");
 
 static char *firmware_file = "";
 #define FIRMWARE_FILE_HELP	\
@@ -4139,6 +4146,20 @@ static void tegra_xhci_reset_otg_sspi_work(struct work_struct *work)
 		tegra->otg_portnum + 1, NULL, 0);
 }
 
+static int tegra_xhci_hcd_reinit(struct usb_hcd *hcd)
+{
+	if (en_hcd_reinit) {
+#ifdef CONFIG_USB_OTG_WAKELOCK
+		otgwl_acquire_temp_lock();
+#endif
+		INIT_WORK(&tegra_xhci_reinit_work, xhci_reinit_work);
+		schedule_work(&tegra_xhci_reinit_work);
+	} else {
+		pr_info("%s: hcd_reinit is disabled\n", __func__);
+	}
+	return 0;
+}
+
 static const struct hc_driver tegra_plat_xhci_driver = {
 	.description =		"tegra-xhci",
 	.product_desc =		"Nvidia xHCI Host Controller",
@@ -4192,6 +4213,7 @@ static const struct hc_driver tegra_plat_xhci_driver = {
 
 	.enable_usb3_lpm_timeout =	xhci_enable_usb3_lpm_timeout,
 	.disable_usb3_lpm_timeout =	xhci_disable_usb3_lpm_timeout,
+	.hcd_reinit =	tegra_xhci_hcd_reinit,
 };
 
 #ifdef CONFIG_PM
@@ -4417,6 +4439,7 @@ static void deinit_filesystem_firmware(struct tegra_xhci_hcd *tegra)
 			tegra->firmware.data, tegra->firmware.dma);
 	}
 
+	csb_write(tegra, XUSB_CSB_MP_ILOAD_BASE_LO, 0);
 	memset(&tegra->firmware, 0, sizeof(tegra->firmware));
 }
 static int init_firmware(struct tegra_xhci_hcd *tegra)
@@ -5557,6 +5580,7 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 			&xhci->shared_hcd->self);
 	}
 
+	reinit_started = false;
 	return 0;
 
 err_remove_usb3_hcd:
@@ -5575,6 +5599,9 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 {
 	struct tegra_xhci_hcd *tegra = platform_get_drvdata(pdev);
 	unsigned pad;
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	u32 port;
+#endif
 
 	if (tegra == NULL)
 		return -EINVAL;
@@ -5585,6 +5612,8 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 		hsic_pad_disable(tegra, pad);
 		hsic_power_rail_disable(tegra);
 	}
+
+	pm_runtime_disable(&pdev->dev);
 
 	if (tegra->init_done) {
 		struct xhci_hcd	*xhci = NULL;
@@ -5603,14 +5632,32 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 		hcd = xhci_to_hcd(xhci);
 
 		devm_free_irq(&pdev->dev, tegra->usb3_irq, tegra);
+		devm_free_irq(&pdev->dev, tegra->usb2_irq, tegra);
 		devm_free_irq(&pdev->dev, tegra->padctl_irq, tegra);
 		devm_free_irq(&pdev->dev, tegra->smi_irq, tegra);
 		usb_remove_hcd(xhci->shared_hcd);
 		usb_put_hcd(xhci->shared_hcd);
 		usb_remove_hcd(hcd);
 		usb_put_hcd(hcd);
-	}
+		kfree(xhci);
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+		/* By default disable the BATTERY_CHRG_OTGPAD for all ports */
+		for (port = 0; port <= XUSB_UTMI_COUNT; port++)
+			t210_disable_battery_circuit(tegra, port);
+#endif
+		for_each_enabled_utmi_pad(pad, tegra)
+			xusb_utmi_pad_deinit(pad);
+
+		for_each_ss_pad(pad, tegra->soc_config->ss_pad_count) {
+			if (tegra->bdata->portmap & (1 << pad))
+				xusb_ss_pad_deinit(pad);
+		}
+		if (XUSB_DEVICE_ID_T114 != tegra->device_id)
+			usb3_phy_pad_disable();
+
+		tegra->init_done = false;
+	}
 	deinit_firmware(tegra);
 	fw_log_deinit(tegra);
 
@@ -5620,6 +5667,11 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	if (xusb_use_sata_lane(tegra)) {
 		if (sata_usb_pad_pll_reset_assert())
 			pr_err("error assert sata pll\n");
+	}
+
+	if (!tegra->hc_in_elpg) {
+		tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
+		tegra_powergate_partition(TEGRA_POWERGATE_XUSBC);
 	}
 
 	tegra_xusb_regulator_deinit(tegra);
@@ -5642,6 +5694,8 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 
 	hsic_power_remove_file(tegra);
+	mutex_destroy(&tegra->sync_lock);
+	mutex_destroy(&tegra->mbox_lock);
 	mutex_unlock(&tegra->sync_lock);
 
 	return 0;
@@ -5689,4 +5743,14 @@ static int tegra_xhci_register_plat(void)
 static void tegra_xhci_unregister_plat(void)
 {
 	platform_driver_unregister(&tegra_xhci_driver);
+}
+
+static void xhci_reinit_work(struct work_struct *work)
+{
+	if (reinit_started == false) {
+		reinit_started = true;
+		tegra_xhci_unregister_plat();
+		usleep_range(10, 20);
+		tegra_xhci_register_plat();
+	}
 }

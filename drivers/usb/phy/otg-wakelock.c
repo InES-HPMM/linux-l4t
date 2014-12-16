@@ -109,6 +109,12 @@ static void otgwl_handle_event(unsigned long event)
 	spin_unlock_irqrestore(&otgwl_spinlock, irqflags);
 }
 
+void otgwl_acquire_temp_lock(void)
+{
+	otgwl_handle_event(USB_EVENT_NONE);
+}
+EXPORT_SYMBOL(otgwl_acquire_temp_lock);
+
 static int otgwl_otg_notifications(struct notifier_block *nb,
 				   unsigned long event, void *unused)
 {
