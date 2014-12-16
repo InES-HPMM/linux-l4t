@@ -2115,6 +2115,7 @@ late_initcall(tegra_release_bootloader_fb);
 static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
 	[TEGRA_REVISION_UNKNOWN] = "unknown",
 	[TEGRA_REVISION_A01]     = "A01",
+	[TEGRA_REVISION_A01q]    = "A01Q",
 	[TEGRA_REVISION_A02]     = "A02",
 	[TEGRA_REVISION_A03]     = "A03",
 	[TEGRA_REVISION_A03p]    = "A03 prime",

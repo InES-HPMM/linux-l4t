@@ -95,6 +95,7 @@ static DEVICE_ATTR(aid, 0444, tegra_fuse_show, NULL);
 static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
 	[TEGRA_REVISION_UNKNOWN] = "unknown",
 	[TEGRA_REVISION_A01]     = "A01",
+	[TEGRA_REVISION_A01q]    = "A01Q",
 	[TEGRA_REVISION_A02]     = "A02",
 	[TEGRA_REVISION_A03]     = "A03",
 	[TEGRA_REVISION_A03p]    = "A03 prime",
@@ -480,6 +481,7 @@ static struct chip_revision tegra_chip_revisions[] = {
 	CHIP_REVISION(TEGRA14, 1, 2, 0,   A02),
 	CHIP_REVISION(TEGRA12, 1, 1, 0,   A01),
 	CHIP_REVISION(TEGRA21, 1, 1, 0,   A01),
+	CHIP_REVISION(TEGRA21, 1, 1, 'q', A01q),
 };
 
 static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
@@ -554,11 +556,23 @@ static void tegra_set_tegraid(u32 chipid,
 	}
 }
 
+static void tegra_fuse_cfg_reg_visible(void)
+{
+	/* Make all fuse registers visible */
+	u32 reg = readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
+	reg |= BIT(28);
+	writel(reg, IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
+}
+
 static void tegra_get_tegraid_from_hw(void)
 {
 	u32 cid;
 	u32 nlist;
 	char *priv = NULL;
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	u32 opt_subrevision;
+	char prime;
+#endif
 
 #ifndef CONFIG_ARM64
 	cid = tegra_read_chipid();
@@ -602,6 +616,21 @@ static void tegra_get_tegraid_from_hw(void)
 	cid = readl(apb_misc + 0x804);
 	nlist = readl(apb_misc + 0x860);
 	iounmap(apb_misc);
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	tegra_fuse_cfg_reg_visible();
+	opt_subrevision = tegra_get_fuse_opt_subrevision();
+	if (opt_subrevision == 1) {
+		prime = 'p';
+		priv = &prime;
+	} else if (opt_subrevision == 2) {
+		prime = 'q';
+		priv = &prime;
+	} else if (opt_subrevision == 3) {
+		prime = 'r';
+		priv = &prime;
+	}
 #endif
 
 	tegra_set_tegraid((cid >> 8) & 0xff,
@@ -1433,14 +1462,6 @@ u32 tegra_get_chip_id(void)
 u32 tegra_get_bct_strapping(void)
 {
 	return tegra_chip_bct_strapping;
-}
-
-static void tegra_fuse_cfg_reg_visible(void)
-{
-	/* Make all fuse registers visible */
-	u32 reg = readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
-	reg |= BIT(28);
-	writel(reg, IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
 }
 
 void tegra_init_fuse(void)
