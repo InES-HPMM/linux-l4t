@@ -79,11 +79,7 @@ static int tegra210_enter_hvc(struct cpuidle_device *dev,
 {
 	/* TODO: fix the counter */
 	flowctrl_write_cc4_ctrl(dev->cpu, 0xfffffffd);
-	cpu_retention_enable(7);
-
 	cpu_do_idle();
-
-	cpu_retention_enable(0);
 	flowctrl_write_cc4_ctrl(dev->cpu, 0);
 
 	return index;
@@ -94,11 +90,7 @@ static int tegra210_enter_retention(struct cpuidle_device *dev,
 {
 	/* TODO: fix the counter */
 	flowctrl_write_cc4_ctrl(dev->cpu, 0xffffffff);
-	cpu_retention_enable(7);
-
 	cpu_do_idle();
-
-	cpu_retention_enable(0);
 	flowctrl_write_cc4_ctrl(dev->cpu, 0);
 
 	return index;
@@ -131,11 +123,9 @@ static void __tegra210_enter_c7(int cpu)
 
 	if (!is_lp_cluster()) {
 		flowctrl_write_cc4_ctrl(cpu, 0xffffffff);
-		cpu_retention_enable(7);
 	}
 
 	cpu_suspend(arg, NULL);
-	cpu_retention_enable(0);
 	flowctrl_write_cc4_ctrl(cpu, 0);
 	cpu_pm_exit();
 }

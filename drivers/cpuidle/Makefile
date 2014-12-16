@@ -11,4 +11,3 @@ obj-$(CONFIG_CPU_IDLE_CALXEDA) += cpuidle-calxeda.o
 obj-$(CONFIG_ARCH_KIRKWOOD) += cpuidle-kirkwood.o
 obj-${CONFIG_CPU_IDLE_DENVER} += cpuidle-denver.o
 obj-$(CONFIG_CPU_IDLE_TEGRA210) += cpuidle-tegra210.o
-obj-$(CONFIG_CPU_IDLE_TEGRA210) += cpuidle-tegra210-proc.o
