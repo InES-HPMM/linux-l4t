@@ -3,7 +3,7 @@
 / {
 	i2c@7000c000 {
 		mpu6515@69 {
-			compatible = "invensense,mpu6515";
+			compatible = "invensense,mpu6515-input";
 			reg = <0x69>;
 			interrupt-parent = <&gpio>;
 			interrupts = <144 0x01>;
@@ -18,7 +18,7 @@
 		};
 
 		ak8963c@0d {
-			compatible = "ak,ak8963";
+			compatible = "ak,ak8963-input";
 			reg = <0x0d>;
 			orientation = [ff 00 00 00 01 00 00 00 ff];
 			config = "mpu";
