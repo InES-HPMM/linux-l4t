@@ -771,8 +771,6 @@ static ssize_t trace_userspace_show(struct kobject *kobj,
 	struct kobj_attribute *attr,
 	char *buf)
 {
-	return sprintf(buf, "%x\n", tracer.userspace);
-
 	if (tracer.userspace)
 		return sprintf(buf, "Userspace tracing is enabled\n");
 	else
