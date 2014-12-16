@@ -32,6 +32,12 @@
 #define TCPDUMP_DATA_MAXSIZ	64
 #endif
 
+#if defined(CONFIG_MACH_ARDBEG)
+#define TCPDUMP_MAXSIZ		(1 * 1024 * 1024)
+#elif defined(CONFIG_MACH_T132REF)
+#define TCPDUMP_MAXSIZ		(3 * 1024 * 1024)
+#endif
+
 #ifndef TCPDUMP_MAXSIZ
 #define TCPDUMP_MAXSIZ		(6 * 1024 * 1024)
 #endif
