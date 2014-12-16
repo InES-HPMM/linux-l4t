@@ -437,12 +437,12 @@ struct arm_smmu_domain {
 static DEFINE_SPINLOCK(arm_smmu_devices_lock);
 static LIST_HEAD(arm_smmu_devices);
 
+static struct arm_smmu_device *smmu_handle; /* assmu only one smmu device */
+
 #ifdef CONFIG_ARM_SMMU_WAR
 /*
  * linsim hacks: Indirect register accessor
  */
-static struct arm_smmu_device *smmu_handle; /* assmu only one smmu device */
-
 #undef readl_relaxed
 #undef writel_relaxed
 #undef writel
@@ -1247,6 +1247,7 @@ static void arm_smmu_master_free_smrs(struct arm_smmu_device *smmu,
 	kfree(smrs);
 }
 
+#ifdef CONFIG_ARM_SMMU_WAR
 /* HACK: c-model uses legacy swgroup interface */
 static void tegra_smmu_conf_swgroup(struct arm_smmu_device *smmu, int swgid,
 				    u8 cbndx)
@@ -1261,6 +1262,12 @@ static void tegra_smmu_conf_swgroup(struct arm_smmu_device *smmu, int swgid,
 	pr_info("%s() ASID_0=0x%zx val=0x%08x streamID=%d cbndx=%d\n",
 		__func__, offs, val, swgid, cbndx);
 }
+#else
+static inline void tegra_smmu_conf_swgroup(struct arm_smmu_device *smmu,
+					   int swgid, u8 cbndx)
+{
+}
+#endif
 
 static int arm_smmu_domain_add_master(struct arm_smmu_domain *smmu_domain,
 				      struct arm_smmu_master_cfg *cfg)
@@ -2564,8 +2571,8 @@ static int __init arm_smmu_init(void)
 {
 	int ret;
 
-	if (config_enabled(CONFIG_ARM_SMMU_WAR) &&
-	    tegra_platform_is_linsim()) {
+#ifdef CONFIG_ARM_SMMU_WAR
+	if (tegra_platform_is_linsim()) {
 		mc_base = ioremap_nocache(MC_BASE, MC_SIZE);
 		if (!mc_base)
 			return -EINVAL;
@@ -2574,7 +2581,7 @@ static int __init arm_smmu_init(void)
 			__func__, MC_BASE, mc_base);
 		__writel(SMMU_CONFIG_ENABLE, mc_base + SMMU_CONFIG);
 	}
-
+#endif
 	ret = platform_driver_register(&arm_smmu_driver);
 	if (ret)
 		return ret;
