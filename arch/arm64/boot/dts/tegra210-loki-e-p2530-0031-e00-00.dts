@@ -36,4 +36,8 @@
 		nvidia,portmap = <0x600>;
 		usb_vbus1-supply = <&battery_reg>;
 	};
+
+	touch-leds-pwm-rework {
+		status = "disabled";
+	};
 };

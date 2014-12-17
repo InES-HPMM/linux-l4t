@@ -26,4 +26,8 @@
 	udc@7d000000 {
 		nvidia,dcp-current-limit-ma = <3000>;
 	};
+
+	touch-leds-pwm-rework {
+		status = "okay";
+	};
 };
