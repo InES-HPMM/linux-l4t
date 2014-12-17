@@ -333,24 +333,24 @@
 					regulator-consumer-device = "0-0077";
 				};
 				c21 {
-					regulator-consumer-supply = "vi2c";
-					regulator-consumer-device = "2-0030";
-				};
-				c22 {
 					regulator-consumer-supply = "avdd_pll_utmip";
 					regulator-consumer-device = "tegra-udc.0";
 				};
-				c23 {
+				c22 {
 					regulator-consumer-supply = "avdd_pll_utmip";
 					regulator-consumer-device = "tegra-ehci.0";
 				};
-				c24 {
+				c23 {
 					regulator-consumer-supply = "avdd_pll_utmip";
 					regulator-consumer-device = "tegra-ehci.1";
 				};
-				c25 {
+				c24 {
 					regulator-consumer-supply = "avdd_pll_utmip";
 					regulator-consumer-device = "tegra-ehci.2";
+				};
+				c25 {
+					regulator-consumer-supply = "avdd_pll_utmip";
+					regulator-consumer-device = "tegra-xhci";
 				};
 			};
 		};
