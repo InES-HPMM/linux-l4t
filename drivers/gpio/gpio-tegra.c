@@ -429,7 +429,6 @@ static int tegra_gpio_suspend(void)
 
 static int tegra_update_lp1_gpio_wake(struct irq_data *d, bool enable)
 {
-#ifdef CONFIG_PM_SLEEP
 	struct tegra_gpio_bank *bank = irq_data_get_irq_chip_data(d);
 	u32 mask;
 	u32 port_index;
@@ -447,7 +446,6 @@ static int tegra_update_lp1_gpio_wake(struct irq_data *d, bool enable)
 		bank->wake_enb[port_index] |= mask;
 	else
 		bank->wake_enb[port_index] &= ~mask;
-#endif
 
 	return 0;
 }
