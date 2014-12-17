@@ -280,6 +280,29 @@
 		};
 	};
 
+       i2c@7000c400 {
+                tps61280: tps61280@75 {
+                        reg = <0x75>;
+                        compatible = "ti,tps61280";
+                        status = "disabled";
+                        regulator-name = "vdd-modem";
+                        regulator-min-microvolt = <3500000>;
+                        regulator-max-microvolt = <4000000>;
+                        regulator-init-microvolt = <3600000>;
+                        regulator-boot-on;
+                        regulator-always-on;
+                        regulator-bypass-on;
+
+                        ti,enable-en-pin-control;
+                        ti,en-pin-gpio = <&gpio TEGRA_GPIO(E, 0) 0>;
+                        ti,enable-bypass-pin-control;
+                        ti,bypass-pin-gpio = <&gpio TEGRA_GPIO(E, 5) 0>;
+                        ti,enable-vsel-controlled-mode;
+                        ti,vsel-pin-gpio = <&gpio TEGRA_GPIO(E, 1) 0>;
+                        #thermal-sensor-cells = <0>;
+                };
+        };
+
 	i2c@7000c500 {
 		bq2419x: battery-charger@6b {
 			compatible = "ti,bq2419x";
