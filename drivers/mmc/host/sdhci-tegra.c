@@ -683,6 +683,8 @@ struct sdhci_tegra {
 	struct pinctrl *pinctrl_sdmmc;
 	struct pinctrl_state *schmitt_enable[2];
 	struct pinctrl_state *schmitt_disable[2];
+	struct pinctrl_state *drv_code_strength;
+	struct pinctrl_state *default_drv_code_strength;
 	struct pinctrl_state *sdmmc_pad_ctrl[MMC_TIMINGS_MAX_MODES];
 	int drive_group_sel;
 	bool en_strobe;
@@ -1844,9 +1846,25 @@ static void tegra_sdhci_update_sdmmc_pinctrl_register(struct sdhci_host *sdhci,
 	if (set) {
 		set_schmitt[0] = tegra_host->schmitt_enable[0];
 		set_schmitt[1] = tegra_host->schmitt_enable[1];
+
+		if (!IS_ERR_OR_NULL(tegra_host->drv_code_strength)) {
+			ret = pinctrl_select_state(tegra_host->pinctrl_sdmmc,
+				tegra_host->drv_code_strength);
+			if (ret < 0)
+				dev_warn(mmc_dev(sdhci->mmc),
+				"setting drive code strength failed\n");
+		}
 	} else {
 		set_schmitt[0] = tegra_host->schmitt_disable[0];
 		set_schmitt[1] = tegra_host->schmitt_disable[1];
+
+		if (!IS_ERR_OR_NULL(tegra_host->default_drv_code_strength)) {
+			ret = pinctrl_select_state(tegra_host->pinctrl_sdmmc,
+				tegra_host->default_drv_code_strength);
+			if (ret < 0)
+				dev_warn(mmc_dev(sdhci->mmc),
+				"setting default drive code strength failed\n");
+		}
 	}
 
 	for (i = 0; i < 2; i++) {
@@ -4855,6 +4873,17 @@ static int sdhci_tegra_init_pinctrl_info(struct device *dev,
 					dev_warn(dev, "setting schmitt state failed\n");
 			}
 		}
+		tegra_host->drv_code_strength =
+			pinctrl_lookup_state(tegra_host->pinctrl_sdmmc,
+			"sdmmc_drv_code");
+		if (IS_ERR_OR_NULL(tegra_host->drv_code_strength))
+			dev_dbg(dev, "Missing sdmmc drive code state\n");
+
+		tegra_host->default_drv_code_strength =
+			pinctrl_lookup_state(tegra_host->pinctrl_sdmmc,
+			"sdmmc_default_drv_code");
+		if (IS_ERR_OR_NULL(tegra_host->default_drv_code_strength))
+			dev_dbg(dev, "Missing sdmmc default drive code state\n");
 
 		/* Apply the default_mode settings to all modes of SD/MMC
 		   initially and then later update the pad strengths depending
