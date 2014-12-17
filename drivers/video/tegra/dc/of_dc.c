@@ -135,9 +135,12 @@ static int out_type_from_pn(struct device_node *panel_node)
 			"disp-default-out");
 	if (default_out_np && !of_property_read_u32(default_out_np,
 		"nvidia,out-type", &temp)) {
+		of_node_put(default_out_np);
 		return (int)temp;
-	} else
+	} else {
+		of_node_put(default_out_np);
 		return -EINVAL;
+	}
 }
 
 static int parse_dc_out_type(struct device_node *np,
@@ -153,6 +156,9 @@ static int parse_dc_out_type(struct device_node *np,
 		np_target_disp = tegra_secondary_panel_get_dt_node(NULL);
 
 	out_type = out_type_from_pn(np_target_disp);
+
+	of_node_put(np_target_disp);
+
 	if (out_type >= 0) {
 		default_out->type = out_type;
 		return 0;
@@ -505,7 +511,8 @@ static int parse_tmds_config(struct platform_device *ndev,
 			GFP_KERNEL);
 		if (!default_out->hdmi_out->tmds_config) {
 			dev_err(&ndev->dev, "not enough memory\n");
-			return -ENOMEM;
+			err = -ENOMEM;
+			goto fail_tmds_config;
 		}
 		addr = (u8 *)default_out->hdmi_out->tmds_config;
 		for_each_child_of_node(tmds_np, entry) {
@@ -516,11 +523,13 @@ static int parse_tmds_config(struct platform_device *ndev,
 		}
 	}
 success_tmds_config:
+	of_node_put(tmds_np);
 	return 0;
 
 fail_tmds_config:
 	pr_err("%s: a parse error\n", __func__);
-	return -EINVAL;
+	of_node_put(tmds_np);
+	return err;
 }
 
 static int parse_sd_settings(struct device_node *np,
@@ -1066,7 +1075,7 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 			OF_DC_LOG("dsi video BURST_MODE_FASTEST_SPEED\n");
 		else {
 			pr_err("invalid dsi video burst mode\n");
-			return NULL;
+			goto parse_dsi_settings_fail;
 		}
 	}
 	if (!of_property_read_u32(np_dsi_panel,
@@ -1082,7 +1091,7 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 			OF_DC_LOG("dsi pixel format 24BIT_P\n");
 		else {
 			pr_err("invalid dsi pixel format\n");
-			return NULL;
+			goto parse_dsi_settings_fail;
 		}
 	}
 	if (!of_property_read_u32(np_dsi_panel,
@@ -1109,7 +1118,7 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 			OF_DC_LOG("dsi virtual channel 3\n");
 		else {
 			pr_err("invalid dsi virtual ch\n");
-			return NULL;
+			goto parse_dsi_settings_fail;
 		}
 	}
 	if (!of_property_read_u32(np_dsi_panel, "nvidia,dsi-instance", &temp)) {
@@ -1120,7 +1129,7 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 			OF_DC_LOG("dsi instance 1\n");
 		else {
 			pr_err("invalid dsi instance\n");
-			return NULL;
+			goto parse_dsi_settings_fail;
 		}
 	}
 	if (!of_property_read_u32(np_dsi_panel,
@@ -1213,7 +1222,7 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 			OF_DC_LOG("dsi video type COMMAND_MODE\n");
 		else {
 			pr_err("invalid dsi video data type\n");
-			return NULL;
+			goto parse_dsi_settings_fail;
 		}
 	}
 	if (!of_property_read_u32(np_dsi_panel,
@@ -1225,7 +1234,7 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 			OF_DC_LOG("dsi video clock mode TX_ONLY\n");
 		else {
 			pr_err("invalid dsi video clk mode\n");
-			return NULL;
+			goto parse_dsi_settings_fail;
 		}
 	}
 	if (!of_property_read_u32(np_dsi_panel,
@@ -1243,7 +1252,7 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 		IS_ERR_OR_NULL(dsi->dsi_init_cmd)) {
 		dev_err(&ndev->dev,
 			"dsi: copy init cmd from dt failed\n");
-		return NULL;
+		goto parse_dsi_settings_fail;
 	};
 
 	if (!of_property_read_u32(np_dsi_panel,
@@ -1261,7 +1270,7 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 		IS_ERR_OR_NULL(dsi->dsi_suspend_cmd)) {
 		dev_err(&ndev->dev,
 			"dsi: copy suspend cmd from dt failed\n");
-		return NULL;
+		goto parse_dsi_settings_fail;
 	};
 
 	if (!of_property_read_u32(np_dsi_panel,
@@ -1279,7 +1288,7 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 		IS_ERR_OR_NULL(dsi->dsi_early_suspend_cmd)) {
 		dev_err(&ndev->dev,
 			"dsi: copy early suspend cmd from dt failed\n");
-		return NULL;
+		goto parse_dsi_settings_fail;
 	};
 
 	if (!of_property_read_u32(np_dsi_panel,
@@ -1297,7 +1306,7 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 		IS_ERR_OR_NULL(dsi->dsi_late_resume_cmd)) {
 		dev_err(&ndev->dev,
 			"dsi: copy late resume cmd from dt failed\n");
-		return NULL;
+		goto parse_dsi_settings_fail;
 	};
 
 	dsi->pkt_seq =
@@ -1307,7 +1316,7 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 	if (IS_ERR(dsi->pkt_seq)) {
 		dev_err(&ndev->dev,
 			"dsi pkt seq from dt fail\n");
-		return NULL;
+		goto parse_dsi_settings_fail;
 	}
 
 	if (!of_property_read_u32(np_dsi_panel,
@@ -1432,8 +1441,11 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 					 dsi->boardinfo.display_boardid,
 					 dsi->boardinfo.display_boardversion);
 	}
-
 	return np_dsi_panel;
+
+parse_dsi_settings_fail:
+	of_node_put(np_dsi_panel);
+	return NULL;
 }
 
 static int parse_lt_setting(struct device_node *np,
@@ -1531,13 +1543,13 @@ static struct device_node *parse_dp_settings(struct platform_device *ndev,
 				GFP_KERNEL);
 			if (!dpout->lt_settings) {
 				pr_err("not enough memory\n");
-				return NULL;
+				goto parse_dp_settings_fail;
 			}
 			addr = (u8 *)dpout->lt_settings;
 			for_each_child_of_node(np_dp_lt_set, entry) {
 				err = parse_lt_setting(entry, addr);
 				if (err)
-					return NULL;
+					goto parse_dp_settings_fail;
 				addr += sizeof(
 					struct tegra_dc_dp_lt_settings);
 			}
@@ -1555,7 +1567,12 @@ static struct device_node *parse_dp_settings(struct platform_device *ndev,
 		OF_DC_LOG("link_bw %d\n", dpout->link_bw);
 	}
 
+	of_node_put(np_dp_lt_set);
 	return np_dp_panel;
+parse_dp_settings_fail:
+	of_node_put(np_dp_lt_set);
+	of_node_put(np_dp_panel);
+	return NULL;
 }
 
 static struct device_node *parse_lvds_settings(struct platform_device *ndev,
@@ -1777,10 +1794,13 @@ struct device_node *tegra_get_panel_node_out_type_check
 	if (np_def_out)
 		of_property_read_u32(np_def_out,
 			"nvidia,out-type", &temp);
-	if (temp == out_type)
+	if (temp == out_type) {
+		of_node_put(np_def_out);
 		return np_panel;
-	else {
+	} else {
 		pr_err("target panel node has not proper out type\n");
+		of_node_put(np_def_out);
+		of_node_put(np_panel);
 		return NULL;
 	}
 }
@@ -2155,12 +2175,23 @@ struct tegra_dc_platform_data
 #endif
 
 	dev_info(&ndev->dev, "DT parsed successfully\n");
+	of_node_put(default_out_np);
+	of_node_put(timings_np);
+	of_node_put(sd_np);
+#ifdef CONFIG_TEGRA_DC_CMU
+	of_node_put(cmu_np);
+#endif
+	of_node_put(np_target_disp);
 	of_node_put(np_dsi);
 	of_node_put(np_sor);
 	of_node_put(np_hdmi);
 	return pdata;
 
 fail_parse:
+	of_node_put(sd_np);
+#ifdef CONFIG_TEGRA_DC_CMU
+	of_node_put(cmu_np);
+#endif
 	of_node_put(np_dsi);
 	of_node_put(np_sor);
 	of_node_put(np_hdmi);
