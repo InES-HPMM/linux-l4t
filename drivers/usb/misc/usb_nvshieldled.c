@@ -23,6 +23,7 @@
 #include <linux/slab.h>
 #include <linux/reboot.h>
 #include <linux/notifier.h>
+#include <linux/of.h>
 
 #define DRIVER_AUTHOR "Jun Yan, juyan@nvidia.com"
 #define DRIVER_DESC "NVIDIA Shield USB LED Driver"
@@ -77,6 +78,7 @@ enum led_state {
 
 struct nvshield_led {
 	struct usb_device	*udev;
+	bool			pwm_enabled;
 	unsigned char		brightness[LED_NUM];
 	enum led_state		state[LED_NUM];
 };
@@ -164,8 +166,12 @@ static ssize_t set_brightness(struct device *dev,
 	unsigned long brightness_val;
 
 	if (!kstrtoul(buf, 10, &brightness_val)) {
-//		led->brightness[LED_NVBUTTON] = (unsigned char)brightness_val;
-		led->brightness[LED_NVBUTTON] = (unsigned char)LED_MAX_BRIGHTNESS;
+		if (led->pwm_enabled)
+			led->brightness[LED_NVBUTTON] =
+					(unsigned char)brightness_val;
+		else
+			led->brightness[LED_NVBUTTON] =
+					(unsigned char)LED_MAX_BRIGHTNESS;
 		send_command(led, LED_NVBUTTON);
 	}
 	return count;
@@ -180,11 +186,17 @@ static ssize_t set_brightness2(struct device *dev,
 	unsigned long brightness_val;
 
 	if (!kstrtoul(buf, 10, &brightness_val)) {
-//		led->brightness[LED_TOUCH] = (unsigned char)brightness_val;
-		if (brightness_val <= 20)
-			led->brightness[LED_TOUCH] = (unsigned char)LED_MIN_BRIGHTNESS;
-		else
-			led->brightness[LED_TOUCH] = (unsigned char)LED_MAX_BRIGHTNESS;
+		if (led->pwm_enabled)
+			led->brightness[LED_TOUCH] =
+					(unsigned char)brightness_val;
+		else {
+			if (brightness_val <= 20)
+				led->brightness[LED_TOUCH] =
+					(unsigned char)LED_MIN_BRIGHTNESS;
+			else
+				led->brightness[LED_TOUCH] =
+					(unsigned char)LED_MAX_BRIGHTNESS;
+		}
 		send_command(led, LED_TOUCH);
 	}
 	return count;
@@ -321,12 +333,22 @@ static int nvshieldled_probe(struct usb_interface *interface,
 	struct usb_device *udev = interface_to_usbdev(interface);
 	struct nvshield_led *dev = NULL;
 	int retval = -ENOMEM;
+	struct device_node *np;
 
 	dev = kzalloc(sizeof(struct nvshield_led), GFP_KERNEL);
 	if (dev == NULL) {
 		dev_err(&interface->dev, "out of memory\n");
 		goto error_mem;
 	}
+
+	np = of_find_node_by_name(NULL, "touch-leds-pwm-rework");
+	if (np)
+		dev->pwm_enabled = of_device_is_available(np);
+
+	if (dev->pwm_enabled)
+		dev_info(&interface->dev, "Enabling LED PWM\n");
+	else
+		dev_info(&interface->dev, "Disabling LED PWM\n");
 
 	dev->udev = usb_get_dev(udev);
 	dev->state[LED_NVBUTTON] = LED_NORMAL;
