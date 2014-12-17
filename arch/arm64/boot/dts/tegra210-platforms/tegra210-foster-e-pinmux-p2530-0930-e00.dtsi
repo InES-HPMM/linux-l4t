@@ -1371,6 +1371,22 @@
 			};
 		};
 
+		sdmmc1_drv_code_1_8V: sdmmc1_drv_code {
+			sdmmc1 {
+				nvidia,pins = "drive_sdmmc1";
+				nvidia,pull-down-strength = <21>;
+				nvidia,pull-up-strength = <17>;
+			};
+		};
+
+		sdmmc1_default_drv_code_3_3V: sdmmc1_default_drv_code {
+			sdmmc1 {
+				nvidia,pins = "drive_sdmmc1";
+				nvidia,pull-down-strength = <18>;
+				nvidia,pull-up-strength = <18>;
+			};
+		};
+
 		sdmmc3_schmitt_enable_state: sdmmc3_schmitt_enable {
 			sdmmc3 {
 				 nvidia,pins = "sdmmc3_cmd_pp1", "sdmmc3_dat0_pp5", "sdmmc3_dat1_pp4", "sdmmc3_dat2_pp3", "sdmmc3_dat3_pp2";
@@ -1396,6 +1412,22 @@
 			sdmmc3 {
 				 nvidia,pins = "sdmmc3_clk_pp0";
 				 nvidia,schmitt = <TEGRA_PIN_DISABLE>;
+			};
+		};
+
+		sdmmc3_drv_code_1_8V: sdmmc3_drv_code {
+			sdmmc3 {
+				nvidia,pins = "drive_sdmmc3";
+				nvidia,pull-down-strength = <21>;
+				nvidia,pull-up-strength = <17>;
+			};
+		};
+
+		sdmmc3_default_drv_code_3_3V: sdmmc3_default_drv_code {
+			sdmmc3 {
+				nvidia,pins = "drive_sdmmc3";
+				nvidia,pull-down-strength = <18>;
+				nvidia,pull-up-strength = <18>;
 			};
 		};
 	};
