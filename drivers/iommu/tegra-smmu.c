@@ -846,17 +846,16 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 	while (total > 0) {
 		int ptn = SMMU_ADDR_TO_PTN(iova);
 		int pdn = SMMU_ADDR_TO_PDN(iova);
-		struct page *page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
+		struct page *page;
 		u32 *ptbl;
 		u32 *pte;
 		int count;
 
-		if (!pfn_valid(page_to_pfn(page))) {
-			total -= SMMU_PDN_TO_ADDR(pdn + 1) - iova;
-			iova = SMMU_PDN_TO_ADDR(pdn + 1);
-			continue;
-		}
+		if (!(pdir[pdn] & _PDE_NEXT))
+			break;
 
+		page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
+		BUG_ON(!pfn_valid(page_to_pfn(page)));
 		ptbl = page_address(page);
 		pte = &ptbl[ptn];
 		count = min_t(int, SMMU_PTBL_COUNT - ptn, total);
@@ -888,7 +887,8 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 		total -= count;
 	}
 
-	if (flush_all)
+	bytes -= total << PAGE_SHIFT;
+	if (bytes && flush_all)
 		flush_ptc_and_tlb_as(as, iova_base,
 				     iova_base + bytes);
 
@@ -1092,6 +1092,8 @@ static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova,
 
 	if (!(pdir[pdn] & _PDE_NEXT)) {
 		BUG_ON(config_enabled(CONFIG_TEGRA_IOMMU_SMMU_NO4MB));
+		BUG_ON(!IS_ALIGNED(iova, SZ_4M));
+
 		return __smmu_iommu_unmap_largepage(as, iova);
 	}
 
