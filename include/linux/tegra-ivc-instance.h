@@ -1,7 +1,7 @@
 /*
- * Inter-VM Commuinication
+ * Inter-VM Communication
  *
- * Copyright (C) 2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2014-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2.  This program is licensed "as is" without any warranty of any
@@ -14,6 +14,8 @@
 
 #include <linux/dma-mapping.h>
 #include <linux/device.h>
+
+#define IVC_ALIGN 64
 
 struct ivc_channel_header;
 
@@ -32,8 +34,6 @@ struct ivc {
 int tegra_ivc_init(struct ivc *ivc, uintptr_t rx_base, uintptr_t tx_base,
 		unsigned nframes, unsigned frame_size,
 		struct device *peer_device, void (*notify)(struct ivc *));
-int tegra_ivc_init_shared_memory(uintptr_t rx_base, uintptr_t tx_base,
-		unsigned nframes, unsigned frame_size);
 unsigned tegra_ivc_total_queue_size(unsigned queue_size);
 int tegra_ivc_write_user(struct ivc *ivc, const void __user *user_buf,
 		size_t size);

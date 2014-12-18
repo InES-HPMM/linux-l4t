@@ -1,7 +1,7 @@
 /*
- * Inter-VM Commuinication
+ * Inter-VM Communication
  *
- * Copyright (C) 2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2014-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2.  This program is licensed "as is" without any warranty of any
@@ -52,17 +52,60 @@ static inline void ivc_mb(void)
 
 #endif
 
-#define IVC_ALIGN 64
+/*
+ * IVC channel reset protocol.
+ *
+ * Each end uses its tx_channel.state to indicate its synchronization state.
+ */
+enum ivc_state {
+	/*
+	 * This value is zero for backwards compatibility with services that
+	 * assume channels to be initially zeroed. Such channels are in an
+	 * initially valid state, but cannot be asynchronously reset, and must
+	 * maintain a valid state at all times.
+	 *
+	 * The transmitting end can enter the established state from the sync or
+	 * ack state when it observes the receiving endpoint in the ack or
+	 * established state, indicating that has cleared the counters in our
+	 * rx_channel.
+	 */
+	ivc_state_established = 0,
 
+	/*
+	 * If an endpoint is observed in the sync state, the remote endpoint is
+	 * allowed to clear the counters it owns asynchronously with respect to
+	 * the current endpoint. Therefore, the current endpoint is no longer
+	 * allowed to communicate.
+	 */
+	ivc_state_sync,
+
+	/*
+	 * When the transmitting end observes the receiving end in the sync
+	 * state, it can clear the w_count and r_count and transition to the ack
+	 * state. If the remote endpoint observes us in the ack state, it can
+	 * return to the established state once it has cleared its counters.
+	 */
+	ivc_state_ack
+};
+
+/*
+ * This structure is divided into two-cache aligned parts, the first is only
+ * written through the tx_channel pointer, while the second is only written
+ * through the rx_channel pointer. This delineates ownership of the cache lines,
+ * which is critical to performance and necessary in non-cache coherent
+ * implementations.
+ */
 struct ivc_channel_header {
 	union {
 		struct {
+			/* fields owned by the transmitting end */
 			uint32_t w_count;
 			uint32_t state;
 		};
 		uint8_t w_align[IVC_ALIGN];
 	};
 	union {
+		/* fields owned by the receiving end */
 		uint32_t r_count;
 		uint8_t r_align[IVC_ALIGN];
 	};
@@ -145,42 +188,55 @@ static inline void ivc_advance_rx(struct ivc *ivc)
 		ivc->r_pos++;
 }
 
-/*
- * These helpers avoid unnecessary invalidations when performing repeated
- * accesses to an IVC channel by checking the old queue pointers first.
- * Synchronization is only necessary when these pointers indicate empty/full.
- */
-static inline int ivc_rx_empty(struct ivc *ivc)
+static inline int ivc_check_read(struct ivc *ivc)
 {
-	if (ivc_channel_empty(ivc, ivc->rx_channel)) {
-		ivc_invalidate_counter(ivc, ivc->rx_handle +
-				offsetof(struct ivc_channel_header, w_count));
-		return ivc_channel_empty(ivc, ivc->rx_channel);
-	}
+	/*
+	 * tx_channel->state is set locally, so it is not synchronized with
+	 * state from the remote peer. The remote peer cannot reset its
+	 * transmit counters until we've acknowledged its synchronization
+	 * request, so no additional synchronization is required because an
+	 * asynchronous transition of rx_channel->state to ivc_state_ack is not
+	 * allowed.
+	 */
+	if (ivc->tx_channel->state != ivc_state_established)
+		return -ECONNRESET;
 
-	return 0;
+	/*
+	* Avoid unnecessary invalidations when performing repeated accesses to
+	* an IVC channel by checking the old queue pointers first.
+	* Synchronization is only necessary when these pointers indicate empty
+	* or full.
+	*/
+	if (!ivc_channel_empty(ivc, ivc->rx_channel))
+		return 0;
+
+	ivc_invalidate_counter(ivc, ivc->rx_handle +
+			offsetof(struct ivc_channel_header, w_count));
+	return ivc_channel_empty(ivc, ivc->rx_channel) ? -ENOMEM : 0;
 }
 
-static inline int ivc_tx_full(struct ivc *ivc)
+static inline int ivc_check_write(struct ivc *ivc)
 {
-	if (ivc_channel_full(ivc, ivc->tx_channel)) {
-		ivc_invalidate_counter(ivc, ivc->tx_handle +
-				offsetof(struct ivc_channel_header, r_count));
-		return ivc_channel_full(ivc, ivc->tx_channel);
-	}
+	if (ivc->tx_channel->state != ivc_state_established)
+		return -ECONNRESET;
 
-	return 0;
+	if (!ivc_channel_full(ivc, ivc->tx_channel))
+		return 0;
+
+	ivc_invalidate_counter(ivc, ivc->tx_handle +
+			offsetof(struct ivc_channel_header, r_count));
+	return ivc_channel_full(ivc, ivc->tx_channel) ? -ENOMEM : 0;
 }
 
 int tegra_ivc_can_read(struct ivc *ivc)
 {
-	return !ivc_rx_empty(ivc);
+	return ivc_check_read(ivc) == 0;
 }
 EXPORT_SYMBOL(tegra_ivc_can_read);
 
 int tegra_ivc_can_write(struct ivc *ivc)
 {
-	return !ivc_tx_full(ivc);
+	return ivc_check_write(ivc) == 0;
 }
 EXPORT_SYMBOL(tegra_ivc_can_write);
 
@@ -241,14 +297,16 @@ static int ivc_read_frame(struct ivc *ivc, void *buf, void __user *user_buf,
 		size_t max_read)
 {
 	const void *src;
+	int result;
 
 	BUG_ON(buf && user_buf);
 
 	if (max_read > ivc->frame_size)
 		return -E2BIG;
 
-	if (ivc_rx_empty(ivc))
-		return -ENOMEM;
+	result = ivc_check_read(ivc);
+	if (result)
+		return result;
 
 	/*
 	 * Order observation of w_pos potentially indicating new data before
@@ -297,12 +355,14 @@ EXPORT_SYMBOL(tegra_ivc_read_user);
 int tegra_ivc_read_peek(struct ivc *ivc, void *buf, size_t off, size_t count)
 {
 	const void *src;
+	int result;
 
 	if (off > ivc->frame_size || off + count > ivc->frame_size)
 		return -E2BIG;
 
-	if (ivc_rx_empty(ivc))
-		return -ENOMEM;
+	result = ivc_check_read(ivc);
+	if (result)
+		return result;
 
 	/*
 	 * Order observation of w_pos potentially indicating new data before
@@ -324,8 +384,9 @@ EXPORT_SYMBOL(tegra_ivc_read_peek);
 /* directly peek at the next frame rx'ed */
 void *tegra_ivc_read_get_next_frame(struct ivc *ivc)
 {
-	if (ivc_rx_empty(ivc))
-		return ERR_PTR(-ENOMEM);
+	int result = ivc_check_read(ivc);
+	if (result)
+		return ERR_PTR(result);
 
 	/*
 	 * Order observation of w_pos potentially indicating new data before
@@ -346,8 +407,9 @@ int tegra_ivc_read_advance(struct ivc *ivc)
 	 * have already observed the channel non-empty. This check is just to
 	 * catch programming errors.
 	 */
-	if (ivc_channel_empty(ivc, ivc->rx_channel))
-		return -ENOMEM;
+	int result = ivc_check_read(ivc);
+	if (result)
+		return result;
 
 	ivc_advance_rx(ivc);
 	ivc_flush_counter(ivc, ivc->rx_handle +
@@ -362,14 +424,16 @@ static int ivc_write_frame(struct ivc *ivc, const void *buf,
 		const void __user *user_buf, size_t size)
 {
 	void *p;
+	int result;
 
 	BUG_ON(buf && user_buf);
 
 	if (size > ivc->frame_size)
 		return -E2BIG;
 
-	if (ivc_tx_full(ivc))
-		return -ENOMEM;
+	result = ivc_check_write(ivc);
+	if (result)
+		return result;
 
 	p = ivc_frame_pointer(ivc, ivc->tx_channel, ivc->w_pos);
 
@@ -422,12 +486,14 @@ int tegra_ivc_write_poke(struct ivc *ivc, const void *buf, size_t off,
 		size_t count)
 {
 	void *dest;
+	int result;
 
 	if (off > ivc->frame_size || off + count > ivc->frame_size)
 		return -E2BIG;
 
-	if (ivc_channel_full(ivc, ivc->tx_channel))
-		return -ENOMEM;
+	result = ivc_check_write(ivc);
+	if (result)
+		return result;
 
 	dest = ivc_frame_pointer(ivc, ivc->tx_channel, ivc->w_pos);
 	memcpy(dest + off, buf, count);
@@ -439,8 +505,9 @@ EXPORT_SYMBOL(tegra_ivc_write_poke);
 /* directly poke at the next frame to be tx'ed */
 void *tegra_ivc_write_get_next_frame(struct ivc *ivc)
 {
-	if (ivc_tx_full(ivc))
-		return ERR_PTR(-ENOMEM);
+	int result = ivc_check_write(ivc);
+	if (result)
+		return ERR_PTR(result);
 
 	return ivc_frame_pointer(ivc, ivc->tx_channel, ivc->w_pos);
 }
@@ -449,8 +516,9 @@ EXPORT_SYMBOL(tegra_ivc_write_get_next_frame);
 /* advance the tx buffer */
 int tegra_ivc_write_advance(struct ivc *ivc)
 {
-	if (ivc_channel_full(ivc, ivc->tx_channel))
-		return -ENOMEM;
+	int result = ivc_check_write(ivc);
+	if (result)
+		return result;
 
 	ivc_flush_frame(ivc, ivc->tx_handle, ivc->w_pos, 0, ivc->frame_size);
 
@@ -467,6 +535,73 @@ int tegra_ivc_write_advance(struct ivc *ivc)
 	return 0;
 }
 EXPORT_SYMBOL(tegra_ivc_write_advance);
+
+void tegra_ivc_channel_reset(struct ivc *ivc)
+{
+	ivc->tx_channel->state = ivc_state_sync;
+	ivc_flush_counter(ivc, ivc->tx_handle +
+			offsetof(struct ivc_channel_header, w_count));
+	ivc->notify(ivc);
+}
+EXPORT_SYMBOL(tegra_ivc_channel_reset);
+
+int tegra_ivc_channel_notified(struct ivc *ivc)
+{
+	enum ivc_state peer_state;
+
+	/* Copy the receiver's state out of shared memory. */
+	ivc_invalidate_counter(ivc, ivc->rx_handle +
+			offsetof(struct ivc_channel_header, w_count));
+	peer_state = ACCESS_ONCE(ivc->rx_channel->state);
+
+	if (peer_state == ivc_state_sync || peer_state == ivc_state_ack) {
+
+		/*
+		 * Order observation of ivc_state_sync before stores clearing
+		 * tx_channel.
+		 */
+		ivc_rmb();
+		ivc->tx_channel->w_count = 0;
+		ivc->rx_channel->r_count = 0;
+
+		ivc->w_pos = 0;
+		ivc->r_pos = 0;
+
+		/*
+		 * Ensure that counters appear cleared before new state can be
+		 * observed.
+		 */
+		ivc_wmb();
+
+		/*
+		 * If the other end has already cleared its counters, skip to
+		 * established.
+		 */
+		ivc->tx_channel->state = peer_state == ivc_state_sync ?
+			ivc_state_ack : ivc_state_established;
+		ivc_flush_counter(ivc, ivc->tx_handle +
+				offsetof(struct ivc_channel_header, w_count));
+
+		ivc->notify(ivc);
+
+	} else if (ivc->tx_channel->state == ivc_state_ack &&
+			(peer_state == ivc_state_ack ||
+			peer_state == ivc_state_established)) {
+		/*
+		 * Order observation of peer state before storing to tx_channel.
+		 */
+		ivc_rmb();
+
+		ivc->tx_channel->state = ivc_state_established;
+		ivc_flush_counter(ivc, ivc->tx_handle +
+				offsetof(struct ivc_channel_header, w_count));
+		if (peer_state != ivc_state_established)
+			ivc->notify(ivc);
+	}
+
+	return ivc->tx_channel->state == ivc_state_established ? 0 : -EAGAIN;
+}
+EXPORT_SYMBOL(tegra_ivc_channel_notified);
 
 /*
  * Temporary routine for re-synchronizing the channel across a reboot.
@@ -502,12 +637,17 @@ unsigned tegra_ivc_total_queue_size(unsigned queue_size)
 }
 EXPORT_SYMBOL(tegra_ivc_total_queue_size);
 
-int tegra_ivc_init_shared_memory(uintptr_t queue_base1, uintptr_t queue_base2,
+static int check_ivc_params(uintptr_t queue_base1, uintptr_t queue_base2,
 		unsigned nframes, unsigned frame_size)
 {
 	BUG_ON(offsetof(struct ivc_channel_header, w_count) & (IVC_ALIGN - 1));
 	BUG_ON(offsetof(struct ivc_channel_header, r_count) & (IVC_ALIGN - 1));
 	BUG_ON(sizeof(struct ivc_channel_header) & (IVC_ALIGN - 1));
+
+	if ((uint64_t)nframes * (uint64_t)frame_size >= 0x100000000) {
+		pr_err("nframes * frame_size overflows\n");
+		return -EINVAL;
+	}
 
 	/*
 	 * The headers must at least be aligned enough for counters
@@ -543,14 +683,8 @@ int tegra_ivc_init_shared_memory(uintptr_t queue_base1, uintptr_t queue_base2,
 		}
 	}
 
-	memset((void *)queue_base1, 0, sizeof(struct ivc_channel_header) +
-			frame_size * nframes);
-	memset((void *)queue_base2, 0, sizeof(struct ivc_channel_header) +
-			frame_size * nframes);
-
 	return 0;
 }
-EXPORT_SYMBOL(tegra_ivc_init_shared_memory);
 
 int tegra_ivc_init(struct ivc *ivc, uintptr_t rx_base, uintptr_t tx_base,
 		unsigned nframes, unsigned frame_size,
@@ -558,8 +692,11 @@ int tegra_ivc_init(struct ivc *ivc, uintptr_t rx_base, uintptr_t tx_base,
 {
 	size_t queue_size;
 
+	int result = check_ivc_params(rx_base, tx_base, nframes, frame_size);
+	if (result)
+		return result;
+
 	BUG_ON(!ivc);
-	BUG_ON((uint64_t)nframes * (uint64_t)frame_size >= 0x100000000);
 	BUG_ON(!notify);
 
 	queue_size = tegra_ivc_total_queue_size(nframes * frame_size);
