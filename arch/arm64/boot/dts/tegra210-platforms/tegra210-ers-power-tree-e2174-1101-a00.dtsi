@@ -304,4 +304,12 @@
 		avdd-supply = <&battery_reg>;
 		dvdd-supply = <&max77620_sd3>;
 	};
+
+	tegra210-vrail-test {
+		compatible = "nvidia,tegra-vin-test";
+		vddio-sdmmc3-supply = <&max77620_ldo2>;
+		vddio-sdmmc4-supply = <&max77620_sd3>;
+		vddio-sdmmc1-supply =  <&max77620_sd3>;
+		vddio-sdmmc2-supply = <&max77620_sd3>;
+	};
 };
