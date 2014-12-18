@@ -938,14 +938,16 @@ int escore_wakeup(struct escore_priv *escore)
 		/* Give the device time to "wakeup" */
 		msleep(ES_WAKEUP_TIME);
 
-	if (escore->pdata->gpioa_gpio != -1)
-		cmd |= escore->pdata->gpio_a_irq_type;
+		if (escore->pdata->gpioa_gpio != -1)
+			cmd |= escore->pdata->gpio_a_irq_type;
 
 		if (escore->pri_intf == ES_SPI_INTF) {
 			rc = escore_priv.bus.ops.cmd(escore, p_cmd, &rsp);
-			if (rc < 0)
-				break;
-
+			if (rc < 0) {
+				pr_err("%s() - failed check power status\n",
+							__func__);
+				continue;
+			}
 			if  ((rsp != ES_PS_NORMAL) && (rsp != ES_PS_OVERLAY)) {
 				rc = -1;
 				continue;

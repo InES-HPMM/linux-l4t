@@ -30,20 +30,25 @@
 #define AUDOUT4		22
 
 /* set data path - port number values */
-#define PCM0	0
-#define PCM1	1
-#define PCM2	2
-#define SBUS	5
-#define PDMI0	6
-#define PDMI1	7
-#define PDMI2	8
-#define PDMI3	9
-#define ADC0	0x18
-#define ADC1	0x0C
-#define ADC2	0x0D
-#define ADC3	0x0F
-#define DAC0	0x15
-#define DAC1	0x17
+enum {
+	PCM0 = 0x0,
+	PCM1,
+	PCM2,
+	SBUS = 0x5,
+	PDMI0,
+	PDMI1,
+	PDMI2,
+	PDMI3,
+	PDMO0,
+	PDMO1,
+	ADC1 = 0x0C,
+	ADC2 = 0x0D,
+	ADC3 = 0x0F,
+	DAC0 = 0x15,
+	DAC1 = 0x17,
+	ADC0 = 0x18,
+	PORT_MAX,
+};
 
 #define DATA_PATH(xpath, xport, xchan) ((xpath << 10) | (xport << 5) | (xchan))
 
@@ -59,6 +64,8 @@
 #define MM_TXCHMGR_MAX 6
 #define VP_MM_RXCHMGR_MAX 10
 #define VP_MM_TXCHMGR_MAX 5
+#define PT_VP_RXCHMGR_MAX 6
+#define PT_VP_TXCHMGR_MAX 6
 
 enum {
 	ES_VP_NONE,
@@ -250,6 +257,17 @@ struct es_ch_mgr_max {
 	u8 tx;
 };
 
+/* Switch Settings used in PT+VP Algorithm */
+#define SWIN0_I0	0
+#define SWIN0_I1	1
+#define SWIN1_I0	2
+#define SWIN1_I1	3
+#define SWIN2_I0	4
+#define SWIN2_I1	5
+#define SWOUT0_O1	6
+#define SWOUT1_O1	7
+#define SWOUT2_O1	8
+#define SWOUT3_O1	9
 
 /* TODO: Create a 2D array to map endpoint values
  * with path IDs. */

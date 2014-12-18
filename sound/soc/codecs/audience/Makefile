@@ -1,5 +1,5 @@
 snd-soc-es705-escore-objs := es705_escore.o escore-pm.o escore.o escore-list.o
-snd-soc-es755-objs := es755.o escore.o escore-pm.o escore-list.o es-d300.o es-a300.o
+snd-soc-es755-objs := es755.o escore.o escore-pm.o escore-list.o es-d300.o es-a300.o es-d300-route.o
 snd-soc-escore-slim-objs += escore-slim.o
 snd-soc-escore-i2s-objs += escore-i2s.o
 snd-soc-escore-i2c-objs += escore-i2c.o

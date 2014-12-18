@@ -148,7 +148,7 @@ static int escore_spi_cmd(struct escore_priv *escore,
 		}
 	}
 
-	usleep_range(ES_SPI_1MS_DELAY, ES_SPI_1MS_DELAY + 50);
+	usleep_range(ES_SPI_RETRY_DELAY, ES_SPI_RETRY_DELAY + 50);
 
 	do {
 		--retry;

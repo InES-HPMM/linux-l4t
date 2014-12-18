@@ -80,8 +80,8 @@
 
 /* Standard commands used by all chips */
 
-#define ES_SR_BIT			28
-#define ES_SC_BIT			29
+#define ES_SR_BIT			28 /* Suppress Response Bit */
+#define ES_SC_BIT			29 /* Stage/Commit bit */
 #define ES_SYNC_CMD			0x8000
 #define ES_SYNC_POLLING			0x0000
 #define ES_SYNC_ACK			0x80000000
@@ -198,9 +198,9 @@
 #define ES_MAX_FIN_RETRIES		\
 			(ES_FIN_TOUT / ES_FIN_POLL_TOUT)
 
-#define ES_SPI_RETRY_DELAY 1000  /*  1ms */
-#define ES_SPI_MAX_RETRIES 500 /* Number of retries */
-#define ES_SPI_CONT_RETRY 25 /* Retry for read without delay */
+#define ES_SPI_RETRY_DELAY 5000  /*  5ms */
+#define ES_SPI_MAX_RETRIES 20 /* Number of retries */
+#define ES_SPI_CONT_RETRY 5 /* Retry for read without delay */
 #define ES_SPI_1MS_DELAY 1000  /*1 ms*/
 
 #define ES_UART_WAKE_CMD	0xa
@@ -571,6 +571,7 @@ struct escore_priv {
 	struct snd_soc_jack *jack;
 	u8 algo_type;
 	u8 vp_asr;
+	u8 vp_aec;
 	u8 pcm_port;
 	u8 cmd_compl_mode;
 	u8 wait_api_intr;
@@ -580,6 +581,9 @@ struct escore_priv {
 	u8 button_config_required;
 	u8 defer_intr_config;
 	u8 can_mpsleep;
+	u8 output_mode;
+	u8 capture_mode;
+	u8 active_ip;
 	u32 dhwpt_cmd;
 	int intf_probed;
 	char *device_name;

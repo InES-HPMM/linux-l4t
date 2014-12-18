@@ -434,7 +434,6 @@ int es755_bootup(struct escore_priv *es755)
 	return rc;
 }
 
-
 static int es755_slim_set_channel_map(struct snd_soc_dai *dai,
 				      unsigned int tx_num,
 				      unsigned int *tx_slot,
@@ -614,11 +613,13 @@ static int es755_hw_params(struct snd_pcm_substream *substream,
 	case 2:
 	case 3:
 	case 4:
-		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			escore->i2s_dai_data[id].rx_ch_tot = channels;
-		else
+			escore->i2s_dai_data[id].rx_ch_act = 0;
+		} else {
 			escore->i2s_dai_data[id].tx_ch_tot = channels;
-
+			escore->i2s_dai_data[id].tx_ch_act = 0;
+		}
 		break;
 	default:
 		dev_err(codec->dev,
@@ -722,10 +723,8 @@ static int es755_hw_params(struct snd_pcm_substream *substream,
 	api_access->write_msg[0] |=  ES_API_WORD(ES_SET_DEV_PARAM_ID,
 			(pcm_port[id] << 8));
 
-	if (i2s_dai_data[id].port_mode == ES_PCM_PORT_MASTER)
-		clock_control = rate;
+	clock_control = rate | (i2s_dai_data[id].port_mode << 8);
 
-	clock_control |= (i2s_dai_data[id].port_mode << 8);
 	rc = escore_write(codec, ES_PORT_CLOCK_CONTROL, clock_control);
 	if (rc) {
 		pr_err("%s(): Preparing write message failed\n",
@@ -1788,7 +1787,6 @@ int es755_detect(struct snd_soc_codec *codec, struct snd_soc_jack *jack)
 }
 EXPORT_SYMBOL_GPL(es755_detect);
 
-
 static struct esxxx_platform_data *es755_populate_dt_pdata(struct device *dev)
 {
 	struct esxxx_platform_data *pdata;
@@ -2226,7 +2224,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 
 		if (ES_PLUG_EVENT(value)) {
 
-			pr_debug("%s(): Plug event\n", __func__);
+			pr_info("%s(): Plug event\n", __func__);
 			/* Enable MIC Detection */
 			rc = es755_mic_config(escore);
 			if (rc < 0) {
@@ -2282,7 +2280,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 			 *  ---------------------------------------------
 			 */
 			if (impd_level) {
-				pr_debug("%s(): Headset detected\n", __func__);
+				pr_info("%s(): Headset detected\n", __func__);
 
 				is_invalid_type = false;
 				/* MIC Impedence - 1 to 5 */
@@ -2325,7 +2323,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 					goto intr_exit;
 
 			} else {
-				pr_debug("%s(): Headphone detected\n",
+				pr_info("%s(): Headphone detected\n",
 						__func__);
 
 				snd_soc_jack_report(escore->jack,
@@ -2354,10 +2352,10 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 
 			switch (accdet_status_reg.fields.impd_level) {
 			case 0:
+
 			/* Need to support case 1 as a lot of the headsets give
 			out impedance level 1 for play/pause button. */
 			case 1:
-
 				snd_soc_jack_report(escore->jack,
 						SND_JACK_BTN_0,
 						JACK_DET_MASK);
@@ -2387,7 +2385,6 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 				break;
 			}
 		} else if (ES_UNPLUG_EVENT(value)) {
-			pr_debug("%s(): Unplug detected\n", __func__);
 			value = escore_read(NULL, ES_GET_ACCDET_STATUS);
 			if (value < 0) {
 				pr_err("%s(): Accessory detect status fail %d",
@@ -2405,6 +2402,8 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 				       __func__);
 				goto intr_exit;
 			}
+
+			pr_info("%s(): Unplug detected\n", __func__);
 
 			escore->button_config_required = 0;
 			snd_soc_jack_report(escore->jack, 0, JACK_DET_MASK);
