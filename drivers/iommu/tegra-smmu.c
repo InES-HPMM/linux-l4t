@@ -582,7 +582,8 @@ static void free_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
 	if (pdir[pdn] != _PDE_VACANT(pdn)) {
 		dev_dbg(as->smmu->dev, "pdn: %x\n", pdn);
 
-		__free_page(SMMU_EX_PTBL_PAGE(pdir[pdn]));
+		if (pdir[pdn] & _PDE_NEXT)
+			__free_page(SMMU_EX_PTBL_PAGE(pdir[pdn]));
 		pdir[pdn] = _PDE_VACANT(pdn);
 		FLUSH_CPU_DCACHE(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
 		if (!flush)
@@ -927,8 +928,14 @@ static int __smmu_iommu_map_pfn_default(struct smmu_as *as, dma_addr_t iova,
 	if (WARN_ON(!pte))
 		return -ENOMEM;
 
-	if (*pte == _PTE_VACANT(iova))
-		(*count)++;
+	if (*pte != _PTE_VACANT(iova)) {
+		phys_addr_t pa = PFN_PHYS(pfn);
+
+		WARN(1, "asid=%d iova=%pa pa=%pa prot=%lx *pte=%x\n",
+		     as->asid, &iova, &pa, prot, *pte);
+		return -EINVAL;
+	}
+	(*count)++;
 
 	if (dma_get_attr(DMA_ATTR_READ_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_WRITABLE;
@@ -959,8 +966,9 @@ static int __smmu_iommu_map_largepage(struct smmu_as *as, dma_addr_t iova,
 	u32 *pdir = (u32 *)page_address(as->pdir_page);
 	int attrs = _PDE_ATTR;
 
-	if (pdir[pdn] != _PDE_VACANT(pdn))
-		return -EINVAL;
+	BUG_ON(!IS_ALIGNED(iova, SZ_4M));
+	BUG_ON(!IS_ALIGNED(pa, SZ_4M));
+	BUG_ON(pdir[pdn] != _PDE_VACANT(pdn));
 
 	if (dma_get_attr(DMA_ATTR_READ_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_WRITABLE;
@@ -1045,9 +1053,10 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 				spin_unlock_irqrestore(&as->lock, flags);
 				break;
 			}
-
-		} else {
+		} else if (pdir[pdn] & _PDE_NEXT) {
 			tbl_page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
+		} else {
+			BUG();
 		}
 
 		ptbl = page_address(tbl_page);
@@ -1090,20 +1099,28 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 	return err;
 }
 
-static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova,
+static size_t __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova,
 	size_t bytes)
 {
 	int pdn = SMMU_ADDR_TO_PDN(iova);
 	u32 *pdir = page_address(as->pdir_page);
+	size_t unmapped;
 
-	if (!(pdir[pdn] & _PDE_NEXT)) {
+	if (pdir[pdn] == _PDE_VACANT(pdn)) {
+		WARN(1, "No map: as=%d iova=%pa bytes=%zx\n",
+		     as->asid, &iova, bytes);
+		unmapped = 0;
+	} else if (pdir[pdn] & _PDE_NEXT) {
+		unmapped = __smmu_iommu_unmap_pages(as, iova, bytes);
+	} else {
 		BUG_ON(config_enabled(CONFIG_TEGRA_IOMMU_SMMU_NO4MB));
 		BUG_ON(!IS_ALIGNED(iova, SZ_4M));
+		BUG_ON(bytes < SZ_4M);
 
-		return __smmu_iommu_unmap_largepage(as, iova);
+		unmapped = __smmu_iommu_unmap_largepage(as, iova);
 	}
 
-	return __smmu_iommu_unmap_pages(as, iova, bytes);
+	return unmapped;
 }
 
 static size_t smmu_iommu_unmap(struct iommu_domain *domain, unsigned long iova,
