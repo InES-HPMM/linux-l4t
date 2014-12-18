@@ -212,14 +212,15 @@ static struct emc_sel tegra_emc_clk_sel[TEGRA_EMC_TABLE_MAX_SIZE];
 static struct emc_sel tegra_emc_clk_sel_b[TEGRA_EMC_TABLE_MAX_SIZE];
 static struct tegra21_emc_table start_timing;
 static struct tegra21_emc_table *emc_timing;
-static unsigned long dram_over_temp_state = DRAM_OVER_TEMP_NONE;
+unsigned long dram_over_temp_state = DRAM_OVER_TEMP_NONE;
 
 static ktime_t clkchange_time;
 static int clkchange_delay = 100;
 
-static struct tegra21_emc_table *tegra_emc_table;
-static struct tegra21_emc_table *tegra_emc_table_derated;
-static int tegra_emc_table_size;
+struct tegra21_emc_table *tegra_emc_table;
+struct tegra21_emc_table *tegra_emc_table_derated;
+int tegra_emc_table_size;
+static u32 current_clksrc;
 
 static u32 dram_dev_num;
 static u32 dram_type = -1;
@@ -378,8 +379,8 @@ void emc_timing_update(int dual_chan)
 	}
 }
 
-static inline void set_over_temp_timing(
-	struct tegra21_emc_table *next_timing, unsigned long state)
+void set_over_temp_timing(struct tegra21_emc_table *next_timing,
+			  unsigned long state)
 {
 #define REFRESH_X2      1
 #define REFRESH_X4      2
@@ -402,10 +403,12 @@ static inline void set_over_temp_timing(
 		REFRESH_SPEEDUP(dsr_cntrl, REFRESH_X2);
 		break;
 	case DRAM_OVER_TEMP_REFRESH_X4:
-	case DRAM_OVER_TEMP_THROTTLE:
 		REFRESH_SPEEDUP(ref, REFRESH_X4);
 		REFRESH_SPEEDUP(pre_ref, REFRESH_X4);
 		REFRESH_SPEEDUP(dsr_cntrl, REFRESH_X4);
+		break;
+	case DRAM_OVER_TEMP_THROTTLE:
+		/* Handled in derated tables for T210. */
 		break;
 	default:
 	WARN(1, "%s: Failed to set dram over temp state %lu\n",
@@ -481,7 +484,6 @@ void ccfifo_writel(u32 val, unsigned long addr, u32 delay)
 {
 	/* Index into CCFIFO - for keeping track of how many writes we
 	 * generate. */
-
 	emc_cc_dbg(CCFIFO, "[%d] (%u) 0x%08x => 0x%03lx\n",
 		   ccfifo_index, delay, val, addr);
 	ccfifo_index++;
@@ -514,6 +516,7 @@ static void emc_set_clock(struct tegra21_emc_table *next_timing,
 			  struct tegra21_emc_table *last_timing,
 			  int training, u32 clksrc)
 {
+	current_clksrc = clksrc;
 	seq->set_clock(next_timing, last_timing, training, clksrc);
 }
 
@@ -596,8 +599,7 @@ default_val:
 	return 2000;
 }
 
-static struct tegra21_emc_table *emc_get_table(
-	unsigned long over_temp_state)
+struct tegra21_emc_table *emc_get_table(unsigned long over_temp_state)
 {
 	if ((over_temp_state == DRAM_OVER_TEMP_THROTTLE) &&
 	    (tegra_emc_table_derated != NULL))
@@ -785,6 +787,67 @@ static inline const struct clk_mux_sel *get_emc_input(u32 val)
 			break;
 	}
 	return sel;
+}
+
+/*
+ * Copy training params and registers from source to destination tables. This
+ * treats each table pointer as one table as opposed to an array of tables.
+ *
+ * For comparison emc_copy_table_params() instead treats src and dst as arrays.
+ */
+void __emc_copy_table_params(struct tegra21_emc_table *src,
+			     struct tegra21_emc_table *dst, int flags)
+{
+	int j;
+
+#define COPY_PARAM(field)				\
+	do {						\
+		dst->field = src->field;		\
+	} while (0)
+
+	if (flags & EMC_COPY_TABLE_PARAM_PERIODIC_FIELDS) {
+		/* The periodic_training state params. */
+		COPY_PARAM(trained_dram_clktree_c0d0u0);
+		COPY_PARAM(trained_dram_clktree_c0d0u1);
+		COPY_PARAM(trained_dram_clktree_c0d1u0);
+		COPY_PARAM(trained_dram_clktree_c0d1u1);
+		COPY_PARAM(trained_dram_clktree_c1d0u0);
+		COPY_PARAM(trained_dram_clktree_c1d0u1);
+		COPY_PARAM(trained_dram_clktree_c1d1u0);
+		COPY_PARAM(trained_dram_clktree_c1d1u1);
+		COPY_PARAM(current_dram_clktree_c0d0u0);
+		COPY_PARAM(current_dram_clktree_c0d0u1);
+		COPY_PARAM(current_dram_clktree_c0d1u0);
+		COPY_PARAM(current_dram_clktree_c0d1u1);
+		COPY_PARAM(current_dram_clktree_c1d0u0);
+		COPY_PARAM(current_dram_clktree_c1d0u1);
+		COPY_PARAM(current_dram_clktree_c1d1u0);
+		COPY_PARAM(current_dram_clktree_c1d1u1);
+	}
+
+	if (flags & EMC_COPY_TABLE_PARAM_TRIM_REGS) {
+		/* Trim register values of which some are trained. */
+		for (j = 0; j < src->trim_regs_per_ch_num; j++)
+			dst->trim_regs_per_ch[j] =
+				src->trim_regs_per_ch[j];
+
+		for (j = 0; j < src->trim_regs_num; j++)
+			dst->trim_regs[j] = src->trim_regs[j];
+
+		for (j = 0; j < src->burst_regs_per_ch_num; j++)
+			dst->burst_regs_per_ch[j] =
+				src->burst_regs_per_ch[j];
+	}
+}
+
+void emc_copy_table_params(struct tegra21_emc_table *src,
+			   struct tegra21_emc_table *dst,
+			   int table_size, int flags)
+{
+	int i;
+
+	for (i = 0; i < table_size; i++)
+		__emc_copy_table_params(&src[i], &dst[i], flags);
 }
 
 static int find_matching_input(struct tegra21_emc_table *table,
@@ -988,6 +1051,17 @@ static int init_emc_table(struct tegra21_emc_table *table,
 				return -EINVAL;
 			}
 		}
+
+		/* Copy trained trimmers from the normal table to the derated
+		 * table for LP4. This saves training time in the BL since.
+		 * Trimmers are the same for derated and non-derated tables.
+		 */
+		if (tegra_emc_get_dram_type() == DRAM_TYPE_LPDDR4)
+			emc_copy_table_params(table, table_der,
+					tegra_emc_table_size,
+					EMC_COPY_TABLE_PARAM_PERIODIC_FIELDS |
+					EMC_COPY_TABLE_PARAM_TRIM_REGS);
+
 		pr_info("tegra: emc: Derated table is valid.\n");
 	}
 
@@ -1276,7 +1350,8 @@ int tegra_emc_set_over_temp_state(unsigned long state)
 	struct tegra21_emc_table *current_table;
 	struct tegra21_emc_table *new_table;
 
-	if (dram_type != DRAM_TYPE_LPDDR2 || !emc_timing)
+	if ((dram_type != DRAM_TYPE_LPDDR2 &&
+	     dram_type != DRAM_TYPE_LPDDR4) || !emc_timing)
 		return -ENODEV;
 
 	if (state > DRAM_OVER_TEMP_THROTTLE)
@@ -1299,13 +1374,14 @@ int tegra_emc_set_over_temp_state(unsigned long state)
 	dram_over_temp_state = state;
 
 	if (current_table != new_table) {
+		pr_info("Setting new emc_timing + table (%ld)\n", state);
 		offset = emc_timing - current_table;
 		emc_set_clock(&new_table[offset], emc_timing, 0,
-			new_table[offset].src_sel_reg |
-			EMC_CLK_FORCE_CC_TRIGGER);
+			      current_clksrc | EMC_CLK_FORCE_CC_TRIGGER);
 		emc_timing = &new_table[offset];
 		tegra_mc_divider_update(emc);
 	} else {
+		pr_info("Setting new emc_timing (%ld)\n", state);
 		set_over_temp_timing(emc_timing, state);
 		emc_timing_update(0);
 		if (state != DRAM_OVER_TEMP_NONE)

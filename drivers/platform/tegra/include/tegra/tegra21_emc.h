@@ -604,12 +604,22 @@ void emc_set_shadow_bypass(int set);
 u32  get_dll_state(struct tegra21_emc_table *next_timing);
 u32  div_o3(u32 a, u32 b);
 void ccfifo_writel(u32 val, unsigned long addr, u32 delay);
+struct tegra21_emc_table *emc_get_table(unsigned long over_temp_state);
+void __emc_copy_table_params(struct tegra21_emc_table *src,
+			     struct tegra21_emc_table *dst, int flags);
+void set_over_temp_timing(struct tegra21_emc_table *next_timing,
+			  unsigned long state);
 
 extern int ccfifo_index;
 extern void __iomem *emc_base;
 extern void __iomem *emc1_base;
 extern void __iomem *mc_base;
 extern void __iomem *clk_base;
+extern unsigned long dram_over_temp_state;
+
+extern struct tegra21_emc_table *tegra_emc_table;
+extern struct tegra21_emc_table *tegra_emc_table_derated;
+extern int tegra_emc_table_size;
 
 /*
  * EMC register lists.
@@ -633,6 +643,10 @@ void emc_set_clock_r21015(struct tegra21_emc_table *next_timing,
 			  int training, u32 clksrc);
 u32  __do_periodic_emc_compensation_r21015(
 			  struct tegra21_emc_table *current_timing);
+
+#define EMC_COPY_TABLE_PARAM_PERIODIC_FIELDS	0x1
+#define EMC_COPY_TABLE_PARAM_TRIM_REGS		0x2
+
 enum {
 	DLL_CHANGE_NONE = 0,
 	DLL_CHANGE_ON,

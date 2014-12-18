@@ -1074,6 +1074,9 @@ void emc_set_clock_r21012(struct tegra21_emc_table *next_timing,
 		__raw_writel(wval, (void __iomem *)var);
 	}
 
+	/* SW addition: do EMC refresh adjustment here. */
+	set_over_temp_timing(next_timing, dram_over_temp_state);
+
 	/* Per channel burst registers. */
 	emc_cc_dbg(SUB_STEPS, "Writing burst_regs_per_ch\n");
 	for (i = 0; i < next_timing->burst_regs_per_ch_num; i++) {
