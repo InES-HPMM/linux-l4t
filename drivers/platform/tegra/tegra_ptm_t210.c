@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_ptm.c
  *
- * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -36,6 +36,7 @@
 #include <linux/of.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
+#include <linux/cpu_pm.h>
 
 /*
 _________________________________________________________
@@ -58,8 +59,8 @@ _________________________________________________________
 
 */
 
-#define CSITE_CLK_HIGH 408000000	/* basically undivided pll_p */
-#define CSITE_CLK_LOW  9600000
+#define TRACE_STATUS_PMSTABLE 2
+#define TRACE_STATUS_IDLE     1
 
 /* PTM tracer state */
 struct tracectx {
@@ -79,6 +80,8 @@ struct tracectx {
 	int		buf_size;
 	uintptr_t	start_address;
 	uintptr_t	stop_address;
+
+	u32		reg_ctx[CONFIG_NR_CPUS][100];
 
 	unsigned long	enable;
 	unsigned long	userspace;
@@ -149,94 +152,300 @@ static void ape_init(struct tracectx *t)
 	dev_dbg(t->dev, "APE is initialized.\n");
 }
 
+static inline void ptm_check_trace_stable(struct tracectx *t, int id, int bit)
+{
+	int trcstat_idle;
+
+	trcstat_idle = 0x0;
+	while (trcstat_idle == 0x0) {
+		trcstat_idle = ptm_readl(t, id, TRCSTAT);
+		trcstat_idle = trcstat_idle & bit;
+	}
+}
+
+#define SAVE_PTM(reg) (t->reg_ctx[id][cnt++] = ptm_readl(t, id, (reg)))
+
+static void ptm_save(struct tracectx *t, int id)
+{
+	int cnt = 0;
+
+	dsb();
+	isb();
+
+	ptm_regs_unlock(t, id);
+	ptm_os_lock(t, id);
+	ptm_check_trace_stable(t, id, TRACE_STATUS_PMSTABLE);
+
+	/* main cfg and control registers */
+	SAVE_PTM(TRCPRGCTLR);
+	SAVE_PTM(TRCPROCSELR);
+	SAVE_PTM(TRCCONFIGR);
+	SAVE_PTM(TRCEVENTCTL0R);
+	SAVE_PTM(TRCEVENTCTL1R);
+	SAVE_PTM(TRCQCTLR);
+	SAVE_PTM(TRCTRACEIDR);
+	SAVE_PTM(TRCSTALLCTLR);
+	SAVE_PTM(TRCTSCTLR);
+	SAVE_PTM(TRCSYNCPR);
+	SAVE_PTM(TRCCCCTLR);
+	SAVE_PTM(TRCBBCTLR);
+
+	/* filtering control registers */
+	SAVE_PTM(TRCVICTLR);
+	SAVE_PTM(TRCVIIECTLR);
+	SAVE_PTM(TRCVISSCTLR);
+	SAVE_PTM(TRCVIPCSSCTLR);
+
+	/* derived resources registers */
+	SAVE_PTM(TRCSEQEVR0);
+	SAVE_PTM(TRCSEQEVR1);
+	SAVE_PTM(TRCSEQEVR1);
+	SAVE_PTM(TRCSEQRSTEVR);
+	SAVE_PTM(TRCSEQSTR);
+	SAVE_PTM(TRCCNTRLDVR0);
+	SAVE_PTM(TRCCNTRLDVR1);
+	SAVE_PTM(TRCCNTVR0);
+	SAVE_PTM(TRCCNTVR1);
+	SAVE_PTM(TRCCNTCTLR0);
+	SAVE_PTM(TRCCNTCTLR1);
+	SAVE_PTM(TRCEXTINSELR);
+
+	/* resource selection registers */
+	SAVE_PTM(TRCRSCTLR2);
+	SAVE_PTM(TRCRSCTLR3);
+	SAVE_PTM(TRCRSCTLR4);
+	SAVE_PTM(TRCRSCTLR5);
+	SAVE_PTM(TRCRSCTLR6);
+	SAVE_PTM(TRCRSCTLR7);
+	SAVE_PTM(TRCRSCTLR8);
+	SAVE_PTM(TRCRSCTLR9);
+	SAVE_PTM(TRCRSCTLR10);
+	SAVE_PTM(TRCRSCTLR11);
+	SAVE_PTM(TRCRSCTLR12);
+	SAVE_PTM(TRCRSCTLR13);
+	SAVE_PTM(TRCRSCTLR14);
+	SAVE_PTM(TRCRSCTLR15);
+
+	/* comparator registers */
+	SAVE_PTM(TRCACVR0);
+	SAVE_PTM(TRCACVR0+4);
+	SAVE_PTM(TRCACVR1);
+	SAVE_PTM(TRCACVR1+4);
+	SAVE_PTM(TRCACVR2);
+	SAVE_PTM(TRCACVR2+4);
+	SAVE_PTM(TRCACVR3);
+	SAVE_PTM(TRCACVR3+4);
+	SAVE_PTM(TRCACVR4);
+	SAVE_PTM(TRCACVR4+4);
+	SAVE_PTM(TRCACVR5);
+	SAVE_PTM(TRCACVR5+4);
+	SAVE_PTM(TRCACVR6);
+	SAVE_PTM(TRCACVR6+4);
+	SAVE_PTM(TRCACVR7);
+	SAVE_PTM(TRCACVR7+4);
+
+	SAVE_PTM(TRCACATR0);
+	SAVE_PTM(TRCACATR1);
+	SAVE_PTM(TRCACATR2);
+	SAVE_PTM(TRCACATR3);
+	SAVE_PTM(TRCACATR4);
+	SAVE_PTM(TRCACATR5);
+	SAVE_PTM(TRCACATR6);
+	SAVE_PTM(TRCACATR7);
+
+	SAVE_PTM(TRCCIDCVR0);
+	SAVE_PTM(TRCCIDCCTLR0);
+	SAVE_PTM(TRCVMIDCVR0);
+
+	/* single-shot comparator registers */
+	SAVE_PTM(TRCSSCCR0);
+	SAVE_PTM(TRCSSCSR0);
+
+	/* claim tag registers */
+	SAVE_PTM(TRCCLAIMCLR);
+
+	ptm_check_trace_stable(t, id, TRACE_STATUS_IDLE);
+}
+
+#define RESTORE_PTM(reg) ptm_writel(t, id, t->reg_ctx[id][cnt++], reg)
+
+static void ptm_restore(struct tracectx *t, int id)
+{
+	int cnt = 0;
+	ptm_regs_unlock(t, id);
+	ptm_os_lock(t, id);
+
+	/* main cfg and control registers */
+	RESTORE_PTM(TRCPRGCTLR);
+	RESTORE_PTM(TRCPROCSELR);
+	RESTORE_PTM(TRCCONFIGR);
+	RESTORE_PTM(TRCEVENTCTL0R);
+	RESTORE_PTM(TRCEVENTCTL1R);
+	RESTORE_PTM(TRCQCTLR);
+	RESTORE_PTM(TRCTRACEIDR);
+	RESTORE_PTM(TRCSTALLCTLR);
+	RESTORE_PTM(TRCTSCTLR);
+	RESTORE_PTM(TRCSYNCPR);
+	RESTORE_PTM(TRCCCCTLR);
+	RESTORE_PTM(TRCBBCTLR);
+
+	/* filtering control registers */
+	RESTORE_PTM(TRCVICTLR);
+	RESTORE_PTM(TRCVIIECTLR);
+	RESTORE_PTM(TRCVISSCTLR);
+	RESTORE_PTM(TRCVIPCSSCTLR);
+
+	/* derived resources registers */
+	RESTORE_PTM(TRCSEQEVR0);
+	RESTORE_PTM(TRCSEQEVR1);
+	RESTORE_PTM(TRCSEQEVR1);
+	RESTORE_PTM(TRCSEQRSTEVR);
+	RESTORE_PTM(TRCSEQSTR);
+	RESTORE_PTM(TRCCNTRLDVR0);
+	RESTORE_PTM(TRCCNTRLDVR1);
+	RESTORE_PTM(TRCCNTVR0);
+	RESTORE_PTM(TRCCNTVR1);
+	RESTORE_PTM(TRCCNTCTLR0);
+	RESTORE_PTM(TRCCNTCTLR1);
+	RESTORE_PTM(TRCEXTINSELR);
+
+	/* resource selection registers */
+	RESTORE_PTM(TRCRSCTLR2);
+	RESTORE_PTM(TRCRSCTLR3);
+	RESTORE_PTM(TRCRSCTLR4);
+	RESTORE_PTM(TRCRSCTLR5);
+	RESTORE_PTM(TRCRSCTLR6);
+	RESTORE_PTM(TRCRSCTLR7);
+	RESTORE_PTM(TRCRSCTLR8);
+	RESTORE_PTM(TRCRSCTLR9);
+	RESTORE_PTM(TRCRSCTLR10);
+	RESTORE_PTM(TRCRSCTLR11);
+	RESTORE_PTM(TRCRSCTLR12);
+	RESTORE_PTM(TRCRSCTLR13);
+	RESTORE_PTM(TRCRSCTLR14);
+	RESTORE_PTM(TRCRSCTLR15);
+
+	/* comparator registers */
+	RESTORE_PTM(TRCACVR0);
+	RESTORE_PTM(TRCACVR0+4);
+	RESTORE_PTM(TRCACVR1);
+	RESTORE_PTM(TRCACVR1+4);
+	RESTORE_PTM(TRCACVR2);
+	RESTORE_PTM(TRCACVR2+4);
+	RESTORE_PTM(TRCACVR3);
+	RESTORE_PTM(TRCACVR3+4);
+	RESTORE_PTM(TRCACVR4);
+	RESTORE_PTM(TRCACVR4+4);
+	RESTORE_PTM(TRCACVR5);
+	RESTORE_PTM(TRCACVR5+4);
+	RESTORE_PTM(TRCACVR6);
+	RESTORE_PTM(TRCACVR6+4);
+	RESTORE_PTM(TRCACVR7);
+	RESTORE_PTM(TRCACVR7+4);
+
+	RESTORE_PTM(TRCACATR0);
+	RESTORE_PTM(TRCACATR1);
+	RESTORE_PTM(TRCACATR2);
+	RESTORE_PTM(TRCACATR3);
+	RESTORE_PTM(TRCACATR4);
+	RESTORE_PTM(TRCACATR5);
+	RESTORE_PTM(TRCACATR6);
+	RESTORE_PTM(TRCACATR7);
+
+	RESTORE_PTM(TRCCIDCVR0);
+	RESTORE_PTM(TRCCIDCCTLR0);
+	RESTORE_PTM(TRCVMIDCVR0);
+
+	/* single-shot comparator registers */
+	RESTORE_PTM(TRCSSCCR0);
+	RESTORE_PTM(TRCSSCSR0);
+
+	/* claim tag registers */
+	RESTORE_PTM(TRCCLAIMSET);
+
+	ptm_os_unlock(t, id);
+}
+
 /* Initialise the PTM registers */
 static void ptm_init(struct tracectx *t, int id)
 {
-	int trcstat_idle, trccfg;
+	int trccfg;
 
 	/* Power up the CPU PTM */
-	ptm_writel(t, id, 8, CORESIGHT_BCCPLEX_CPU_TRACE_TRCPDCR_0);
+	ptm_writel(t, id, 8, TRCPDCR);
 
-	/* Unlock the COU PTM */
+	/* Unlock the CPU PTM */
 	ptm_regs_unlock(t, id);
 
 	/* clear OS lock */
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCOSLAR_0);
+	ptm_writel(t, id, 0, TRCOSLAR);
 
 	/* clear main enable bit to enable register programming */
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
+	ptm_writel(t, id, 0, TRCPRGCTLR);
 
-	trcstat_idle = 0x0;
-	while (trcstat_idle == 0x0) { /* wait till IDLE bit is set */
-		/*Read the IDLE bit in CORESIGHT_BCCPLEX_CPU0_TRACE_TRC_0 */
-		trcstat_idle = ptm_readl(t, id,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCSTAT_0);
-		trcstat_idle = trcstat_idle & 0x1;
-	}
+	ptm_check_trace_stable(t, id, TRACE_STATUS_IDLE);
 
 	/* Clear uninitialised flopes , else we get event packets */
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCEVENTCTL1R_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCEVENTCTL0R_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCTSCTLR_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCCCTLR_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVISSCTLR_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQEVR0_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQEVR1_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQEVR2_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQRSTEVR_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSEQSTR_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCEXTINSELR_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTRLDVR0_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTRLDVR1_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTCTLR0_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTCTLR1_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTVR0_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCNTVR1_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR2_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR3_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR4_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR5_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR6_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR7_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR8_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR9_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR10_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR11_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR12_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR13_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR14_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR15_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSSCSR0_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR0_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR1_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR2_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR3_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR4_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR5_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR6_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR7_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR0_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR1_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR2_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR3_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR4_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR5_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR6_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR7_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCIDCVR0_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVMIDCVR0_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCCIDCCTLR0_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVIIECTLR_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCBBCTLR_0);
-	ptm_writel(t, id, 0, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSTALLCTLR_0);
+	ptm_writel(t, id, 0, TRCEVENTCTL1R);
+	ptm_writel(t, id, 0, TRCEVENTCTL0R);
+	ptm_writel(t, id, 0, TRCTSCTLR);
+	ptm_writel(t, id, 0, TRCCCCTLR);
+	ptm_writel(t, id, 0, TRCVISSCTLR);
+	ptm_writel(t, id, 0, TRCSEQEVR0);
+	ptm_writel(t, id, 0, TRCSEQEVR1);
+	ptm_writel(t, id, 0, TRCSEQEVR2);
+	ptm_writel(t, id, 0, TRCSEQRSTEVR);
+	ptm_writel(t, id, 0, TRCSEQSTR);
+	ptm_writel(t, id, 0, TRCEXTINSELR);
+	ptm_writel(t, id, 0, TRCCNTRLDVR0);
+	ptm_writel(t, id, 0, TRCCNTRLDVR1);
+	ptm_writel(t, id, 0, TRCCNTCTLR0);
+	ptm_writel(t, id, 0, TRCCNTCTLR1);
+	ptm_writel(t, id, 0, TRCCNTVR0);
+	ptm_writel(t, id, 0, TRCCNTVR1);
+	ptm_writel(t, id, 0, TRCRSCTLR2);
+	ptm_writel(t, id, 0, TRCRSCTLR3);
+	ptm_writel(t, id, 0, TRCRSCTLR4);
+	ptm_writel(t, id, 0, TRCRSCTLR5);
+	ptm_writel(t, id, 0, TRCRSCTLR6);
+	ptm_writel(t, id, 0, TRCRSCTLR7);
+	ptm_writel(t, id, 0, TRCRSCTLR8);
+	ptm_writel(t, id, 0, TRCRSCTLR9);
+	ptm_writel(t, id, 0, TRCRSCTLR10);
+	ptm_writel(t, id, 0, TRCRSCTLR11);
+	ptm_writel(t, id, 0, TRCRSCTLR12);
+	ptm_writel(t, id, 0, TRCRSCTLR13);
+	ptm_writel(t, id, 0, TRCRSCTLR14);
+	ptm_writel(t, id, 0, TRCRSCTLR15);
+	ptm_writel(t, id, 0, TRCSSCSR0);
+	ptm_writel(t, id, 0, TRCACVR0);
+	ptm_writel(t, id, 0, TRCACVR1);
+	ptm_writel(t, id, 0, TRCACVR2);
+	ptm_writel(t, id, 0, TRCACVR3);
+	ptm_writel(t, id, 0, TRCACVR4);
+	ptm_writel(t, id, 0, TRCACVR5);
+	ptm_writel(t, id, 0, TRCACVR6);
+	ptm_writel(t, id, 0, TRCACVR7);
+	ptm_writel(t, id, 0, TRCACATR0);
+	ptm_writel(t, id, 0, TRCACATR1);
+	ptm_writel(t, id, 0, TRCACATR2);
+	ptm_writel(t, id, 0, TRCACATR3);
+	ptm_writel(t, id, 0, TRCACATR4);
+	ptm_writel(t, id, 0, TRCACATR5);
+	ptm_writel(t, id, 0, TRCACATR6);
+	ptm_writel(t, id, 0, TRCACATR7);
+	ptm_writel(t, id, 0, TRCCIDCVR0);
+	ptm_writel(t, id, 0, TRCVMIDCVR0);
+	ptm_writel(t, id, 0, TRCCIDCCTLR0);
+	ptm_writel(t, id, 0, TRCVIIECTLR);
+	ptm_writel(t, id, 0, TRCBBCTLR);
+	ptm_writel(t, id, 0, TRCSTALLCTLR);
 
 	/* Configure basic controls RS, BB, TS, VMID, Context tracing */
-	trccfg = ptm_readl(t, id,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCCONFIGR_0);
+	trccfg = ptm_readl(t, id, TRCCONFIGR);
 
 	if (t->branch_broadcast) {
-		ptm_writel(t, id, 0x101,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCBBCTLR_0);
+		ptm_writel(t, id, 0x101, TRCBBCTLR);
 	}
 
 	trccfg = trccfg | (t->branch_broadcast << 3) | (t->return_stack << 12) |
@@ -244,75 +453,62 @@ static void ptm_init(struct tracectx *t, int id)
 
 	if (t->cycle_count) {
 		trccfg = trccfg | (1<<4);
-		ptm_writel(t, id, t->cycle_count,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCCCCTLR_0);
+		ptm_writel(t, id, t->cycle_count, TRCCCCTLR);
 	}
-	ptm_writel(t, id, trccfg,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCCONFIGR_0);
+	ptm_writel(t, id, trccfg, TRCCONFIGR);
 
 	/* Enable Periodic Synchronisation after 1024 bytes */
-	ptm_writel(t, id, 0xa, CORESIGHT_BCCPLEX_CPU_TRACE_TRCSYNCPR_0);
+	ptm_writel(t, id, 0xa, TRCSYNCPR);
 
 	/* Program Trace ID register */
 	ptm_writel(t, id, (!(is_lp_cluster()) ?
 			BCCPLEX_BASE_ID : LCCPLEX_BASE_ID) + id,
-			CORESIGHT_BCCPLEX_CPU_TRACE_TRCTRACEIDR_0);
+			TRCTRACEIDR);
 
 	/* Program Address range comparator. Use 0 and 1 */
-	ptm_writeq(t, id, t->start_address,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR0_0);
-	ptm_writeq(t, id, t->stop_address,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR1_0);
+	ptm_writeq(t, id, t->start_address, TRCACVR0);
+	ptm_writeq(t, id, t->stop_address, TRCACVR1);
 
 	/* control user space tracing */
-	ptm_writel(t, id, (t->userspace ? 0x0 : 0x1100),
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR0_0);
-	ptm_writel(t, id, (t->userspace ? 0x0 : 0x1100),
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR1_0);
+	ptm_writel(t, id, (t->userspace ? 0x0 : 0x1100), TRCACATR0);
+	ptm_writel(t, id, (t->userspace ? 0x0 : 0x1100), TRCACATR1);
 
 	/* Select Resource 2 to include ARC0 */
-	ptm_writel(t, id, 0x50001,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR2_0);
+	ptm_writel(t, id, 0x50001, TRCRSCTLR2);
 
 	/* Enable ViewInst and Include logic for ARC0. Disable the SSC */
-	ptm_writel(t, id, 1, CORESIGHT_BCCPLEX_CPU_TRACE_TRCVIIECTLR_0);
+	ptm_writel(t, id, 1, TRCVIIECTLR);
 
 	/* Select Start/Stop as Started. And select Resource 2 as the Event */
 	if (t->userspace)
-		ptm_writel(t, id, 0xE02,
-			CORESIGHT_BCCPLEX_CPU_TRACE_TRCVICTLR_0);
+		ptm_writel(t, id, 0xE02, TRCVICTLR);
 	else
-		ptm_writel(t, id, 0x110E02,
-			CORESIGHT_BCCPLEX_CPU_TRACE_TRCVICTLR_0);
+		ptm_writel(t, id, 0x110E02, TRCVICTLR);
 
 	/* Trace everything till Address match packet hits. Use Single Shot
 	comparator and generate Event Packet */
 	if (t->trigger) {
 		/* SAC2 for Address Match on which to trigger */
-		ptm_writeq(t, id, t->trigger_address,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACVR2_0);
-		ptm_writel(t, id, t->userspace ? 0x0 : 0x1100,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCACATR2_0);
+		ptm_writeq(t, id, t->trigger_address, TRCACVR2);
+		ptm_writel(t, id, t->userspace ? 0x0 : 0x1100, TRCACATR2);
 		/* Select SAC2 for SSC0 and enable SSC to re-fire on match */
 		ptm_writel(t, id, 0x4,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCSSCCR0_0);
+				TRCSSCCR0);
 		/* Clear SSC Status bit 31 */
-		ptm_writel(t, id, 0x0,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCSSCSR0_0);
+		ptm_writel(t, id, 0x0, TRCSSCSR0);
 		/* Select Resource 3 to include SSC0 */
-		ptm_writel(t, id, 0x30001,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCRSCTLR3_0);
+		ptm_writel(t, id, 0x30001, TRCRSCTLR3);
 		/* Select Resource3 as part of Event0 */
 		ptm_writel(t, id, 0x3,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCEVENTCTL0R_0);
+				TRCEVENTCTL0R);
 		/* Insert ATB packet with ATID=0x7D and Payload=Master ATID.
 		ETF can use this to Stop and flush based on this */
 		ptm_writel(t, id, 0x800,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCEVENTCTL1R_0);
+				TRCEVENTCTL1R);
 		if (t->timestamp)
 			/* insert global timestamp if enabled */
 			ptm_writel(t, id, 0x3,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCTSCTLR_0);
+				TRCTSCTLR);
 	}
 	dev_dbg(t->dev, "PTM%d initialized.\n", id);
 }
@@ -495,8 +691,7 @@ static int trace_t210_start(struct tracectx *t)
 
 		/* Enabling the ETM */
 		for_each_online_cpu(id) {
-			ptm_writel(t, id, 1,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
+			ptm_writel(t, id, 1, TRCPRGCTLR);
 		}
 		dsb();
 		isb();
@@ -513,8 +708,7 @@ static int trace_t210_stop(struct tracectx *t)
 	if (!t->ape)
 		/* Disabling the ETM */
 		for_each_online_cpu(id)
-			ptm_writel(t, id, 0,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
+			ptm_writel(t, id, 0, TRCPRGCTLR);
 	else
 		/* Disable APE traces */
 		ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
@@ -635,8 +829,7 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 
 		/* Disabling the ETM */
 		for_each_online_cpu(count)
-			ptm_writel(t, count, 0,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
+			ptm_writel(t, count, 0, TRCPRGCTLR);
 
 		ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
 
@@ -665,8 +858,7 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 
 		/* Disabling the ETM */
 		for_each_online_cpu(count)
-			ptm_writel(t, count, 0,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
+			ptm_writel(t, count, 0, TRCPRGCTLR);
 
 		ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
 
@@ -723,6 +915,32 @@ static int trc_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
+#ifdef CONFIG_CPU_PM
+static int ptm_cpu_pm_notifier(struct notifier_block *self,
+	unsigned long action, void *hcpu)
+{
+	int ret = NOTIFY_OK;
+	long cpu = (long)hcpu;
+
+	switch (action) {
+	case CPU_PM_ENTER:
+		if (tracer.enable)
+			ptm_save(&tracer, cpu);
+	case CPU_PM_EXIT:
+		if (tracer.enable)
+			ptm_restore(&tracer, cpu);
+		break;
+	default:
+		ret = NOTIFY_DONE;
+	}
+	return ret;
+}
+
+static struct notifier_block ptm_cpu_pm_notifier_block = {
+	.notifier_call = ptm_cpu_pm_notifier,
+};
+#endif
+
 #ifdef CONFIG_HOTPLUG_CPU
 static int ptm_cpu_hotplug_notifier(struct notifier_block *self,
 	unsigned long action, void *hcpu)
@@ -732,8 +950,7 @@ static int ptm_cpu_hotplug_notifier(struct notifier_block *self,
 	case CPU_STARTING:
 		if (tracer.enable) {
 			ptm_init(&tracer, cpu);
-			ptm_writel(&tracer, cpu, 1,
-				CORESIGHT_BCCPLEX_CPU_TRACE_TRCPRGCTLR_0);
+			ptm_writel(&tracer, cpu, 1, TRCPRGCTLR);
 		}
 		break;
 	default:
@@ -1050,6 +1267,9 @@ static int ptm_probe(struct platform_device  *dev)
 				trace_attr[i].attr.name);
 	}
 
+#ifdef CONFIG_CPU_PM
+	cpu_pm_register_notifier(&ptm_cpu_pm_notifier_block);
+#endif
 #ifdef CONFIG_HOTPLUG_CPU
 	register_cpu_notifier(&ptm_cpu_hotplug_notifier_block);
 #endif
@@ -1067,6 +1287,9 @@ static int ptm_remove(struct platform_device *dev)
 	struct tracectx *t = &tracer;
 	int i;
 
+#ifdef CONFIG_CPU_PM
+	cpu_pm_unregister_notifier(&ptm_cpu_pm_notifier_block);
+#endif
 #ifdef CONFIG_HOTPLUG_CPU
 	unregister_cpu_notifier(&ptm_cpu_hotplug_notifier_block);
 #endif
