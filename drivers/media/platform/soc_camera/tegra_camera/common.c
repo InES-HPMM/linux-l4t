@@ -22,6 +22,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
+#include <linux/clk/tegra.h>
 #include <linux/tegra_pm_domains.h>
 
 #include <mach/powergate.h>
@@ -846,6 +847,55 @@ static struct of_device_id tegra_vi_of_match[] = {
 	{ },
 };
 
+static int tegra_camera_slcg_handler(struct notifier_block *nb,
+		unsigned long action, void *data)
+{
+	struct clk *clk;
+	int ret = 0;
+
+	struct nvhost_device_data *pdata =
+		container_of(nb, struct nvhost_device_data,
+			toggle_slcg_notifier);
+
+	clk = clk_get(&pdata->pdev->dev, "pll_d");
+	if (IS_ERR(clk))
+		return -EINVAL;
+
+	/* Make CSI sourced from PLL_D */
+	ret = tegra_clk_cfg_ex(clk, TEGRA_CLK_PLLD_CSI_OUT_ENB, 1);
+	if (ret) {
+		dev_err(&pdata->pdev->dev,
+		"%s: failed to select CSI source pll_d: %d\n",
+		__func__, ret);
+		return ret;
+	}
+
+	/* Enable PLL_D */
+	ret = clk_prepare_enable(clk);
+	if (ret) {
+		dev_err(&pdata->pdev->dev, "Can't enable pll_d: %d\n", ret);
+		return ret;
+	}
+
+	udelay(1);
+
+	/* Disable PLL_D */
+	clk_disable_unprepare(clk);
+
+	/* Restore CSI source */
+	ret = tegra_clk_cfg_ex(clk, TEGRA_CLK_MIPI_CSI_OUT_ENB, 1);
+	if (ret) {
+		dev_err(&pdata->pdev->dev,
+		"%s: failed to restore csi source: %d\n",
+		__func__, ret);
+		return ret;
+	}
+
+	clk_put(clk);
+
+	return NOTIFY_OK;
+}
+
 static int tegra_camera_probe(struct platform_device *pdev)
 {
 	struct tegra_camera_dev *cam;
@@ -893,6 +943,7 @@ static int tegra_camera_probe(struct platform_device *pdev)
 
 	cam->ndata = ndata;
 	cam->ndev = pdev;
+	ndata->pdev = pdev;
 
 	cam->ici.priv = cam;
 	cam->ici.v4l2_dev.dev = &pdev->dev;
@@ -962,6 +1013,15 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	cam->reg_base = ndata->aperture[0];
 
 	/* Match the nvhost_module_init VENC powergating */
+	if (ndata->slcg_notifier_enable &&
+			(ndata->powergate_ids[0] != -1)) {
+		ndata->toggle_slcg_notifier.notifier_call =
+		&tegra_camera_slcg_handler;
+
+		slcg_register_notifier(ndata->powergate_ids[0],
+			&ndata->toggle_slcg_notifier);
+	}
+
 	tegra_unpowergate_partition(TEGRA_POWERGATE_VENC);
 	nvhost_module_init(pdev);
 
@@ -1001,10 +1061,16 @@ static int tegra_camera_remove(struct platform_device *pdev)
 	struct soc_camera_host *ici = to_soc_camera_host(&pdev->dev);
 	struct tegra_camera_dev *cam = container_of(ici,
 					struct tegra_camera_dev, ici);
+	struct nvhost_device_data *ndata = cam->ndata;
 
 	soc_camera_host_unregister(ici);
 
 	platform_set_drvdata(pdev, cam->ndata);
+	if (ndata->slcg_notifier_enable &&
+	    (ndata->powergate_ids[0] != -1))
+		slcg_unregister_notifier(ndata->powergate_ids[0],
+					 &ndata->toggle_slcg_notifier);
+
 	nvhost_client_device_release(pdev);
 	cam->ndata->aperture[0] = NULL;
 
