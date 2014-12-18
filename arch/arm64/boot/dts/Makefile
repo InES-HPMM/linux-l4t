@@ -26,6 +26,7 @@ dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-foster-e-p2530-0930-e02-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-foster-e-hdd-p2530-0932-e00-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-foster-e-hdd-p2530-0932-e01-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-foster-e-hdd-p2530-0932-e02-00.dtb
+dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-foster-e-hdd-rpmb-p2530-0931-e02-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-loki-e-p2530-0031-e00-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-loki-e-p2530-0031-e01-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-loki-e-p2530-0031-e02-00.dtb
