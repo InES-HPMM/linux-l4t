@@ -5597,7 +5597,11 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	setbit(eventmask, WLC_E_PFN_BSSID_NET_LOST);
 #endif /* PNO_SUPPORT */
 	/* enable dongle roaming event */
+	/* WLC_E_ROAM event is depricated for bcm4354
+	   WLC_E_BSSID event is used for roaming in bcm4354*/
+#ifndef DISABLE_ROAM_EVENT
 	setbit(eventmask, WLC_E_ROAM);
+#endif /* DISABLE_ROAM_EVENT */
 	setbit(eventmask, WLC_E_BSSID);
 #ifdef WLTDLS
 	setbit(eventmask, WLC_E_TDLS_PEER_EVENT);
