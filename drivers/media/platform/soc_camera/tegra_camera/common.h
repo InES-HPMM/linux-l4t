@@ -18,6 +18,9 @@
 #define _TEGRA_CAMERA_COMMON_H_
 
 #include <linux/videodev2.h>
+#include <linux/nvhost.h>
+#include <mach/powergate.h>
+
 
 #include <media/videobuf2-dma-contig.h>
 #include <media/soc_camera.h>
@@ -41,12 +44,12 @@ struct tegra_camera_buffer {
 	dma_addr_t			start_addr_v;
 };
 
-static struct tegra_camera_buffer *to_tegra_vb(struct vb2_buffer *vb)
+static inline  struct tegra_camera_buffer *to_tegra_vb(struct vb2_buffer *vb)
 {
 	return container_of(vb, struct tegra_camera_buffer, vb);
 }
 
-struct tegra_camera_dev;
+struct tegra_camera;
 
 struct tegra_camera_clk {
 	const char	*name;
@@ -56,30 +59,19 @@ struct tegra_camera_clk {
 };
 
 struct tegra_camera_ops {
-	int (*clks_init)(struct tegra_camera_dev *cam, int port);
-	void (*clks_deinit)(struct tegra_camera_dev *cam);
-	void (*clks_enable)(struct tegra_camera_dev *cam);
-	void (*clks_disable)(struct tegra_camera_dev *cam);
-
-	void (*capture_clean)(struct tegra_camera_dev *vi2_cam);
-	int (*capture_setup)(struct tegra_camera_dev *vi2_cam);
-	int (*capture_start)(struct tegra_camera_dev *vi2_cam,
-			     struct tegra_camera_buffer *buf);
-	int (*capture_stop)(struct tegra_camera_dev *vi2_cam, int port);
-
-	void (*init_syncpts)(struct tegra_camera_dev *vi2_cam);
-	void (*free_syncpts)(struct tegra_camera_dev *vi2_cam);
-	void (*incr_syncpts)(struct tegra_camera_dev *vi2_cam);
-	void (*save_syncpts)(struct tegra_camera_dev *vi2_cam);
-
-	void (*activate)(struct tegra_camera_dev *vi2_cam);
-	void (*deactivate)(struct tegra_camera_dev *vi2_cam);
+	int (*init)(struct tegra_camera *cam);
+	void (*deinit)(struct tegra_camera *cam);
+	int (*activate)(struct tegra_camera *cam,
+		 int port);
+	void (*deactivate)(struct tegra_camera *cam);
 	int (*port_is_valid)(int port);
+	int (*capture_frame)(struct tegra_camera *cam,
+		 struct tegra_camera_buffer *buf);
 };
 
-struct tegra_camera_dev {
+struct tegra_camera {
 	struct soc_camera_host		ici;
-	struct platform_device		*ndev;
+	struct platform_device		*pdev;
 	struct nvhost_device_data	*ndata;
 
 	struct regulator		*reg;
@@ -125,7 +117,7 @@ struct tegra_camera_dev {
 #define TC_VI_REG_RD(dev, offset) readl(dev->reg_base + offset)
 #define TC_VI_REG_WT(dev, offset, val) writel(val, dev->reg_base + offset)
 
-int vi2_register(struct tegra_camera_dev *cam);
-int vi_register(struct tegra_camera_dev *cam);
+int vi_register(struct tegra_camera *cam);
+int vi2_register(struct tegra_camera *cam);
 
 #endif

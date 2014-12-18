@@ -15,8 +15,12 @@
  */
 
 #include <linux/delay.h>
+#include <linux/kernel.h>
 #include <linux/clk.h>
 #include <linux/platform_device.h>
+#include <linux/reset.h>
+#include <linux/regulator/consumer.h>
+#include <linux/nvhost.h>
 
 #include <media/soc_camera.h>
 #include <media/soc_mediabus.h>
@@ -25,7 +29,11 @@
 #include <mach/clk.h>
 
 #include "nvhost_syncpt.h"
+#include "nvhost_acm.h"
+#include "bus_client.h"
 #include "common.h"
+
+#define TEGRA_SYNCPT_RETRY_COUNT	10
 
 #define TEGRA_SYNCPT_VI_WAIT_TIMEOUT                    200
 #define TEGRA_SYNCPT_CSI_WAIT_TIMEOUT                   200
@@ -302,9 +310,53 @@ static struct tegra_camera_clk vi_clks[] = {
 #endif
 };
 
-static int vi_clks_init(struct tegra_camera_dev *cam, int port)
+static void vi_init_syncpts(struct tegra_camera *cam)
 {
-	struct platform_device *pdev = cam->ndev;
+	cam->syncpt_id_csi_a = nvhost_get_syncpt_client_managed("vi_csi_A");
+
+	cam->syncpt_id_csi_b = nvhost_get_syncpt_client_managed("vi_csi_B");
+
+	cam->syncpt_id_vip = nvhost_get_syncpt_client_managed("vi_vip");
+}
+
+static void vi_free_syncpts(struct tegra_camera *cam)
+{
+	nvhost_free_syncpt(cam->syncpt_id_csi_a);
+
+	nvhost_free_syncpt(cam->syncpt_id_csi_b);
+
+	nvhost_free_syncpt(cam->syncpt_id_vip);
+}
+
+static void vi_save_syncpts(struct tegra_camera *cam)
+{
+	u32 val;
+
+	if (!nvhost_syncpt_read_ext_check(cam->pdev,
+			cam->syncpt_id_csi_a, &val))
+		cam->syncpt_csi_a = val;
+
+	if (!nvhost_syncpt_read_ext_check(cam->pdev,
+			cam->syncpt_id_csi_b, &val))
+		cam->syncpt_csi_b = val;
+
+	if (!nvhost_syncpt_read_ext_check(cam->pdev,
+			cam->syncpt_id_vip, &val))
+		cam->syncpt_vip = val;
+}
+
+static void vi_incr_syncpts(struct tegra_camera *cam)
+{
+	nvhost_syncpt_cpu_incr_ext(cam->pdev, cam->syncpt_id_csi_a);
+
+	nvhost_syncpt_cpu_incr_ext(cam->pdev, cam->syncpt_id_csi_b);
+
+	nvhost_syncpt_cpu_incr_ext(cam->pdev, cam->syncpt_id_vip);
+}
+
+static int vi_clock_init(struct tegra_camera *cam, int port)
+{
+	struct platform_device *pdev = cam->pdev;
 	struct tegra_camera_clk *clks;
 	int i;
 
@@ -328,13 +380,99 @@ static int vi_clks_init(struct tegra_camera_dev *cam, int port)
 	return 0;
 }
 
-static void vi_clks_deinit(struct tegra_camera_dev *cam)
+static void vi_unpowergate(struct tegra_camera *cam)
+{
+	/*
+	 * Powergating DIS must powergate VE partition. Camera
+	 * module needs to increase the ref-count of disa to
+	 * avoid itself powergated by DIS inadvertently.
+	 */
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	tegra_unpowergate_partition(TEGRA_POWERGATE_DISA);
+#endif
+}
+
+static void vi_powergate(struct tegra_camera *cam)
+{
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	tegra_powergate_partition(TEGRA_POWERGATE_DISA);
+#endif
+}
+
+static void vi_clock_deinit(struct tegra_camera *cam)
 {
 	/* We don't need cleanup for devm_clk_get() */
 	return;
 }
 
-static void vi_clks_enable(struct tegra_camera_dev *cam)
+static void vi_ops_deinit(struct tegra_camera *cam)
+{
+	struct platform_device *pdev = cam->pdev;
+
+	nvhost_client_device_release(pdev);
+	cam->ndata->aperture[0] = NULL;
+	vi_free_syncpts(cam);
+}
+
+static int vi_ops_init(struct tegra_camera *cam)
+{
+	struct platform_device *pdev = cam->pdev;
+	struct nvhost_device_data *ndata = cam->ndata;
+	int err;
+
+	/* Init syncpts */
+	vi_init_syncpts(cam);
+
+	/* Init Regulator */
+	cam->reg = devm_regulator_get(&pdev->dev, cam->regulator_name);
+	if (IS_ERR_OR_NULL(cam->reg)) {
+		dev_err(&pdev->dev, "%s: couldn't get regulator %s, err %ld\n",
+			__func__, cam->regulator_name, PTR_ERR(cam->reg));
+		cam->reg = NULL;
+		goto exit;
+	}
+
+	mutex_init(&ndata->lock);
+	platform_set_drvdata(pdev, ndata);
+	err = nvhost_client_device_get_resources(pdev);
+	if (err) {
+		dev_err(&pdev->dev, "%s: nvhost get resources failed %d\n",
+				__func__, err);
+		goto exit;
+	}
+
+	if (!ndata->aperture[0]) {
+		if (ndata->master) {
+			struct nvhost_device_data *master_ndata =
+				ndata->master->dev.platform_data;
+			ndata->aperture[0] = master_ndata->aperture[0];
+		} else {
+			dev_err(&pdev->dev, "%s: failed to map register base\n",
+				__func__);
+			err = -ENXIO;
+			goto exit;
+		}
+	}
+
+	/* Match the nvhost_module_init VENC powergating */
+	vi_unpowergate(cam);
+	nvhost_module_init(pdev);
+
+	err = nvhost_client_device_init(pdev);
+	if (err) {
+		dev_err(&pdev->dev, "%s: nvhost init failed %d\n",
+				__func__, err);
+		goto exit;
+	}
+
+	return 0;
+
+exit:
+	vi_ops_deinit(cam);
+	return 0;
+}
+
+static void vi_clock_start(struct tegra_camera *cam)
 {
 	struct tegra_camera_clk *clks;
 	int i;
@@ -378,7 +516,7 @@ static void vi_clks_enable(struct tegra_camera_dev *cam)
 	}
 }
 
-static void vi_clks_disable(struct tegra_camera_dev *cam)
+static void vi_clock_stop(struct tegra_camera *cam)
 {
 	struct tegra_camera_clk *clks;
 	int i;
@@ -403,51 +541,7 @@ static void vi_clks_disable(struct tegra_camera_dev *cam)
 	}
 }
 
-static void vi_init_syncpts(struct tegra_camera_dev *cam)
-{
-	cam->syncpt_id_csi_a = nvhost_get_syncpt_client_managed("vi_csi_A");
-
-	cam->syncpt_id_csi_b = nvhost_get_syncpt_client_managed("vi_csi_B");
-
-	cam->syncpt_id_vip = nvhost_get_syncpt_client_managed("vi_vip");
-}
-
-static void vi_free_syncpts(struct tegra_camera_dev *cam)
-{
-	nvhost_free_syncpt(cam->syncpt_id_csi_a);
-
-	nvhost_free_syncpt(cam->syncpt_id_csi_b);
-
-	nvhost_free_syncpt(cam->syncpt_id_vip);
-}
-
-static void vi_save_syncpts(struct tegra_camera_dev *cam)
-{
-	u32 val;
-
-	if (!nvhost_syncpt_read_ext_check(cam->ndev,
-			cam->syncpt_id_csi_a, &val))
-		cam->syncpt_csi_a = val;
-
-	if (!nvhost_syncpt_read_ext_check(cam->ndev,
-			cam->syncpt_id_csi_b, &val))
-		cam->syncpt_csi_b = val;
-
-	if (!nvhost_syncpt_read_ext_check(cam->ndev,
-			cam->syncpt_id_vip, &val))
-		cam->syncpt_vip = val;
-}
-
-static void vi_incr_syncpts(struct tegra_camera_dev *cam)
-{
-	nvhost_syncpt_cpu_incr_ext(cam->ndev, cam->syncpt_id_csi_a);
-
-	nvhost_syncpt_cpu_incr_ext(cam->ndev, cam->syncpt_id_csi_b);
-
-	nvhost_syncpt_cpu_incr_ext(cam->ndev, cam->syncpt_id_vip);
-}
-
-static void vi_capture_clean(struct tegra_camera_dev *cam)
+static void vi_capture_clean(struct tegra_camera *cam)
 {
 	TC_VI_REG_WT(cam, TEGRA_CSI_VI_INPUT_STREAM_CONTROL, 0x00000000);
 	TC_VI_REG_WT(cam, TEGRA_CSI_HOST_INPUT_STREAM_CONTROL, 0x00000000);
@@ -470,7 +564,62 @@ static void vi_capture_clean(struct tegra_camera_dev *cam)
 	TC_VI_REG_WT(cam, TEGRA_CSI_DEBUG_COUNTER_2, 0x0);
 }
 
-static void vi_capture_setup_csi_a(struct tegra_camera_dev *cam,
+static int vi_activate(struct tegra_camera *cam,
+				      int port)
+{
+	int ret = 0;
+
+	/* Init Clocks */
+	vi_clock_init(cam, port);
+	vi_clock_start(cam);
+
+	ret = nvhost_module_busy_ext(cam->pdev);
+	if (ret) {
+		dev_err(&cam->pdev->dev, "nvhost module is busy\n");
+		goto exit;
+	}
+
+	/* Enable external power */
+	if (cam->reg) {
+		ret = regulator_enable(cam->reg);
+		if (ret)
+			dev_err(&cam->pdev->dev, "enabling regulator failed\n");
+	}
+
+
+	/* Unpowergate VE */
+	vi_unpowergate(cam);
+
+	vi_capture_clean(cam);
+
+	cam->sof = 1;
+
+	return 0;
+
+exit:
+	vi_clock_stop(cam);
+	vi_clock_deinit(cam);
+	return ret;
+}
+
+static void vi_deactivate(struct tegra_camera *cam)
+{
+	vi_clock_stop(cam);
+	vi_clock_deinit(cam);
+
+	/* Powergate VE */
+	vi_powergate(cam);
+
+	/* Disable external power */
+	if (cam->reg)
+		regulator_disable(cam->reg);
+
+	nvhost_module_idle_ext(cam->pdev);
+
+	cam->sof = 0;
+}
+
+static void vi_capture_setup_csi_a(struct tegra_camera *cam,
 				   struct soc_camera_device *icd,
 				   u32 hdr)
 {
@@ -550,7 +699,7 @@ static void vi_capture_setup_csi_a(struct tegra_camera_dev *cam,
 
 }
 
-static void vi_capture_setup_csi_b(struct tegra_camera_dev *cam,
+static void vi_capture_setup_csi_b(struct tegra_camera *cam,
 				   struct soc_camera_device *icd,
 				   u32 hdr)
 {
@@ -619,7 +768,7 @@ static void vi_capture_setup_csi_b(struct tegra_camera_dev *cam,
 	TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND, 0x0000f002);
 }
 
-static void vi_capture_setup_vip(struct tegra_camera_dev *cam,
+static void vi_capture_setup_vip(struct tegra_camera *cam,
 					   struct soc_camera_device *icd,
 					   u32 input_control)
 {
@@ -658,7 +807,7 @@ static void vi_capture_setup_vip(struct tegra_camera_dev *cam,
 }
 
 static int vi_capture_output_channel_setup(
-		struct tegra_camera_dev *cam,
+		struct tegra_camera *cam,
 		struct soc_camera_device *icd)
 {
 	struct soc_camera_subdev_desc *ssdesc = &icd->sdesc->subdev_desc;
@@ -702,7 +851,7 @@ static int vi_capture_output_channel_setup(
 			output_format = 0x9;
 		break;
 	default:
-		dev_err(&cam->ndev->dev, "Wrong output format %d\n",
+		dev_err(&cam->pdev->dev, "Wrong output format %d\n",
 			output_fourcc);
 		return -EINVAL;
 	}
@@ -764,7 +913,7 @@ static int vi_capture_output_channel_setup(
 
 		TC_VI_REG_WT(cam, TEGRA_VI_VI_ENABLE_2, 0x00000000);
 	} else {
-		dev_err(&cam->ndev->dev, "Wrong output channel %d\n",
+		dev_err(&cam->pdev->dev, "Wrong output channel %d\n",
 			buf->output_channel);
 		return -EINVAL;
 	}
@@ -773,7 +922,7 @@ static int vi_capture_output_channel_setup(
 }
 
 
-static int vi_capture_setup(struct tegra_camera_dev *cam)
+static int vi_capture_setup(struct tegra_camera *cam)
 {
 	struct vb2_buffer *vb = cam->active;
 	struct tegra_camera_buffer *buf = to_tegra_vb(vb);
@@ -812,7 +961,7 @@ static int vi_capture_setup(struct tegra_camera_dev *cam)
 		hdr = 43;
 		break;
 	default:
-		dev_err(&cam->ndev->dev, "Input format %d is not supported\n",
+		dev_err(&cam->pdev->dev, "Input format %d is not supported\n",
 			input_code);
 		return -EINVAL;
 	}
@@ -839,7 +988,7 @@ static int vi_capture_setup(struct tegra_camera_dev *cam)
 	return vi_capture_output_channel_setup(cam, icd);
 }
 
-static int vi_capture_buffer_setup(struct tegra_camera_dev *cam,
+static int vi_capture_buffer_setup(struct tegra_camera *cam,
 			struct tegra_camera_buffer *buf)
 {
 	struct soc_camera_device *icd = buf->icd;
@@ -878,14 +1027,14 @@ static int vi_capture_buffer_setup(struct tegra_camera_dev *cam,
 			TC_VI_REG_WT(cam, TEGRA_VI_VB0_START_ADDRESS_SECOND,
 					buf->start_addr);
 		} else {
-			dev_err(&cam->ndev->dev, "Wrong output channel %d\n",
+			dev_err(&cam->pdev->dev, "Wrong output channel %d\n",
 				buf->output_channel);
 			return -EINVAL;
 		}
 	break;
 
 	default:
-		dev_err(&cam->ndev->dev, "Wrong host format %d\n",
+		dev_err(&cam->pdev->dev, "Wrong host format %d\n",
 			icd->current_fmt->host_fmt->fourcc);
 		return -EINVAL;
 	}
@@ -893,7 +1042,7 @@ static int vi_capture_buffer_setup(struct tegra_camera_dev *cam,
 	return 0;
 }
 
-static int vi_capture_start(struct tegra_camera_dev *cam,
+static int vi_capture_start(struct tegra_camera *cam,
 				      struct tegra_camera_buffer *buf)
 {
 	struct soc_camera_device *icd = buf->icd;
@@ -913,7 +1062,7 @@ static int vi_capture_start(struct tegra_camera_dev *cam,
 		cam->syncpt_csi_a++;
 		TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND,
 				0x0000f005);
-		err = nvhost_syncpt_wait_timeout_ext(cam->ndev,
+		err = nvhost_syncpt_wait_timeout_ext(cam->pdev,
 				cam->syncpt_id_csi_a,
 				cam->syncpt_csi_a,
 				TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
@@ -923,7 +1072,7 @@ static int vi_capture_start(struct tegra_camera_dev *cam,
 		cam->syncpt_csi_b++;
 		TC_VI_REG_WT(cam, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND,
 				0x0000f005);
-		err = nvhost_syncpt_wait_timeout_ext(cam->ndev,
+		err = nvhost_syncpt_wait_timeout_ext(cam->pdev,
 				cam->syncpt_id_csi_b,
 				cam->syncpt_csi_b,
 				TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
@@ -933,7 +1082,7 @@ static int vi_capture_start(struct tegra_camera_dev *cam,
 		cam->syncpt_vip++;
 		TC_VI_REG_WT(cam, TEGRA_VI_CAMERA_CONTROL,
 				0x00000001);
-		err = nvhost_syncpt_wait_timeout_ext(cam->ndev,
+		err = nvhost_syncpt_wait_timeout_ext(cam->pdev,
 				cam->syncpt_id_vip,
 				cam->syncpt_csi_a,
 				TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
@@ -968,14 +1117,14 @@ static int vi_capture_start(struct tegra_camera_dev *cam,
 	} else {
 		u32 vip_input_status;
 
-		dev_warn(&cam->ndev->dev, "Timeout on VI syncpt\n");
-		dev_warn(&cam->ndev->dev, "buffer_addr = 0x%08x\n",
+		dev_warn(&cam->pdev->dev, "Timeout on VI syncpt\n");
+		dev_warn(&cam->pdev->dev, "buffer_addr = 0x%08x\n",
 			buf->buffer_addr);
 
 		vip_input_status = TC_VI_REG_RD(cam,
 			TEGRA_VI_VIP_INPUT_STATUS);
 
-		dev_warn(&cam->ndev->dev,
+		dev_warn(&cam->pdev->dev,
 			"VIP_INPUT_STATUS = 0x%08x\n",
 			vip_input_status);
 	}
@@ -983,13 +1132,14 @@ static int vi_capture_start(struct tegra_camera_dev *cam,
 	return err;
 }
 
-static int vi_capture_stop(struct tegra_camera_dev *cam, int port)
+static int vi_capture_stop(struct tegra_camera *cam, int port)
 {
-	struct tegra_camera_buffer *buf = to_tegra_vb(cam->active);
+	struct vb2_buffer *vb = cam->active;
+	struct tegra_camera_buffer *buf = to_tegra_vb(vb);
 	int err;
 
 	if (vi_port_is_csi(port))
-		err = nvhost_syncpt_wait_timeout_ext(cam->ndev,
+		err = nvhost_syncpt_wait_timeout_ext(cam->pdev,
 			cam->syncpt_id_vip,
 			cam->syncpt_vip,
 			TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
@@ -1003,7 +1153,7 @@ static int vi_capture_stop(struct tegra_camera_dev *cam, int port)
 		u32 ppstatus;
 		u32 cilstatus;
 
-		dev_warn(&cam->ndev->dev, "Timeout on VI syncpt\n");
+		dev_warn(&cam->pdev->dev, "Timeout on VI syncpt\n");
 
 		if (buf->output_channel == 0)
 			buffer_addr = TC_VI_REG_RD(cam,
@@ -1012,19 +1162,19 @@ static int vi_capture_stop(struct tegra_camera_dev *cam, int port)
 			buffer_addr = TC_VI_REG_RD(cam,
 					   TEGRA_VI_VB0_BASE_ADDRESS_SECOND);
 		else {
-			dev_err(&cam->ndev->dev, "Wrong output channel %d\n",
+			dev_err(&cam->pdev->dev, "Wrong output channel %d\n",
 				buf->output_channel);
 			return -EINVAL;
 		}
 
-		dev_warn(&cam->ndev->dev, "buffer_addr = 0x%08x\n",
+		dev_warn(&cam->pdev->dev, "buffer_addr = 0x%08x\n",
 			buffer_addr);
 
 		ppstatus = TC_VI_REG_RD(cam,
 					TEGRA_CSI_CSI_PIXEL_PARSER_STATUS);
 		cilstatus = TC_VI_REG_RD(cam,
 					 TEGRA_CSI_CSI_CIL_STATUS);
-		dev_warn(&cam->ndev->dev,
+		dev_warn(&cam->pdev->dev,
 			"PPSTATUS = 0x%08x, CILSTATUS = 0x%08x\n",
 			ppstatus, cilstatus);
 	}
@@ -1032,48 +1182,71 @@ static int vi_capture_stop(struct tegra_camera_dev *cam, int port)
 	return err;
 }
 
-static void vi_unpowergate(struct tegra_camera_dev *cam)
+static int vi_capture_frame(struct tegra_camera *cam,
+			     struct tegra_camera_buffer *buf)
 {
-	/*
-	 * Powergating DIS must powergate VE partition. Camera
-	 * module needs to increase the ref-count of disa to
-	 * avoid itself powergated by DIS inadvertently.
-	 */
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	tegra_unpowergate_partition(TEGRA_POWERGATE_DISA);
-#endif
-}
+	struct vb2_buffer *vb = cam->active;
+	struct soc_camera_device *icd = buf->icd;
+	struct soc_camera_subdev_desc *ssdesc = &icd->sdesc->subdev_desc;
+	struct tegra_camera_platform_data *pdata = ssdesc->drv_priv;
+	int port = pdata->port;
+	int retry = TEGRA_SYNCPT_RETRY_COUNT;
+	int err;
 
-static void vi_powergate(struct tegra_camera_dev *cam)
-{
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	tegra_powergate_partition(TEGRA_POWERGATE_DISA);
-#endif
+	/* Setup capture registers */
+	vi_capture_setup(cam);
+
+	vi_incr_syncpts(cam);
+
+	while (retry) {
+		err = vi_capture_start(cam, buf);
+		/* Capturing succeed, stop capturing */
+		vi_capture_stop(cam, port);
+		if (err) {
+			retry--;
+			vi_incr_syncpts(cam);
+			vi_save_syncpts(cam);
+
+			continue;
+		}
+		break;
+	}
+
+	/* Reset hardware for too many errors */
+	if (!retry) {
+		vi_deactivate(cam);
+		mdelay(5);
+		vi_activate(cam, port);
+	}
+
+	spin_lock_irq(&cam->videobuf_queue_lock);
+
+	do_gettimeofday(&vb->v4l2_buf.timestamp);
+	vb->v4l2_buf.field = cam->field;
+	if (port == TEGRA_CAMERA_PORT_CSI_A)
+		vb->v4l2_buf.sequence = cam->sequence_a++;
+	else if (port == TEGRA_CAMERA_PORT_CSI_B)
+		vb->v4l2_buf.sequence = cam->sequence_b++;
+
+	vb2_buffer_done(vb, err < 0 ? VB2_BUF_STATE_ERROR : VB2_BUF_STATE_DONE);
+
+	cam->num_frames++;
+
+	spin_unlock_irq(&cam->videobuf_queue_lock);
+
+	return err;
 }
 
 struct tegra_camera_ops vi_ops = {
-	.clks_init = vi_clks_init,
-	.clks_deinit = vi_clks_deinit,
-	.clks_enable = vi_clks_enable,
-	.clks_disable = vi_clks_disable,
-
-	.capture_clean = vi_capture_clean,
-	.capture_setup = vi_capture_setup,
-	.capture_start = vi_capture_start,
-	.capture_stop = vi_capture_stop,
-
-	.activate = vi_unpowergate,
-	.deactivate = vi_powergate,
-
-	.init_syncpts = vi_init_syncpts,
-	.free_syncpts = vi_free_syncpts,
-	.save_syncpts = vi_save_syncpts,
-	.incr_syncpts = vi_incr_syncpts,
-
+	.init		= vi_ops_init,
+	.deinit		= vi_ops_deinit,
+	.activate	= vi_activate,
+	.deactivate	= vi_deactivate,
 	.port_is_valid = vi_port_is_valid,
+	.capture_frame	= vi_capture_frame,
 };
 
-int vi_register(struct tegra_camera_dev *cam)
+int vi_register(struct tegra_camera *cam)
 {
 	/* Init regulator */
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
