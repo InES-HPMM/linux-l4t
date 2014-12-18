@@ -4,3 +4,16 @@ config VIDEO_TEGRA
 	select VIDEOBUF2_DMA_CONTIG
 	---help---
 	  This is a v4l2 driver for the Tegra camera interface
+
+config VIDEO_TEGRA_VI
+	bool "Tegra soc_camera host VI driver"
+	depends on VIDEO_TEGRA
+	default y
+	---help---
+	This is the v4l2 driver for the VI-style Tegra camera interface
+
+config VIDEO_TEGRA_BYPASS
+	bool "Tegra soc_camera host SCF bypass driver"
+	depends on VIDEO_TEGRA
+	---help---
+	This is the v4l2 driver for the SCF-style Tegra camera interface

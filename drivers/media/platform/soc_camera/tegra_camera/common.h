@@ -119,5 +119,6 @@ struct tegra_camera {
 
 int vi_register(struct tegra_camera *cam);
 int vi2_register(struct tegra_camera *cam);
+int bypass_register(struct tegra_camera *cam);
 
 #endif

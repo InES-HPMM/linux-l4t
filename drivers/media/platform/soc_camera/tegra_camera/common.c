@@ -830,6 +830,7 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	spin_lock_init(&cam->videobuf_queue_lock);
 	mutex_init(&cam->work_mutex);
 
+#if IS_ENABLED(CONFIG_VIDEO_TEGRA_VI)
 	if (pdev->dev.of_node) {
 		int cplen;
 		const char *compat;
@@ -848,6 +849,10 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		vi_register(cam);
 #endif
 	}
+
+#elif IS_ENABLED(CONFIG_VIDEO_TEGRA_BYPASS)
+	bypass_register(cam);
+#endif
 
 	cam_ops = cam->ops;
 
