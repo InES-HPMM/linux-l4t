@@ -49,12 +49,6 @@
 					gpio-controller;
 					#gpio-cells = <2>;
 					reg = <0x76>;
-					gpio-init-names = "default";
-					gpio-init-0 = <&pca9539_76_default>;
-					pca9539_76_default: default {
-						gpio-output-low = <12 14 15>;
-						gpio-output-high = <5 6 11 13>;
-					};
 				};
 			};
 		};

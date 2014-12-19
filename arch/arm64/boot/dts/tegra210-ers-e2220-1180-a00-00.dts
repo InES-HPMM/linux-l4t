@@ -215,6 +215,16 @@
 			compatible = "ad,ad1937";
 			reg = <0x05>;
 		};
+		pca9546@71 {
+			i2c@3 {
+				gpio@76 {
+					default {
+						gpio-output-low = <12 14 15>;
+						gpio-output-high = <5 6 11 13>;
+					};
+				};
+			};
+		};
 	};
 
 	i2c@546c0000 {
