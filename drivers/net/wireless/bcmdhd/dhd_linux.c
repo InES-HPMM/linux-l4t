@@ -108,17 +108,14 @@
 #ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
 #include "dhd_custom_sysfs_tegra.h"
 
-#define netif_rx(skb)\
+#define RX_CAPTURE(skb)\
 	{\
 		tegra_sysfs_histogram_tcpdump_rx(skb, __func__, __LINE__);\
-		netif_rx(skb);\
 	}\
 
-#define netif_rx_ni(skb)\
-	{\
-		tegra_sysfs_histogram_tcpdump_rx(skb, __func__, __LINE__);\
-		netif_rx_ni(skb);\
-	}\
+#else
+
+#define RX_CAPTURE(skb)
 
 #endif
 
@@ -2722,6 +2719,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 		dhd_htsf_addrxts(dhdp, pktbuf);
 #endif
 		/* Strip header, count, deliver upward */
+		RX_CAPTURE(skb);
 		skb_pull(skb, ETH_HLEN);
 
 		/* Process special event packets and then discard them */

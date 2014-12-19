@@ -144,12 +144,17 @@ tcpdump_pkt_save(char tag, const char *netif, const char *func, int line,
 
 }
 
+#define ETHER_TYPE_BRCM_REV 0x6c88
+
 void
 tegra_sysfs_histogram_tcpdump_rx(struct sk_buff *skb,
 	const char *func, int line)
 {
 	struct net_device *netdev = skb ? skb->dev : NULL;
 	char *netif = netdev ? netdev->name : "";
+
+	if (skb->protocol == ETHER_TYPE_BRCM_REV)
+		return;
 
 	pr_debug_ratelimited("%s: %s(%d): %s\n", __func__, func, line, netif);
 
