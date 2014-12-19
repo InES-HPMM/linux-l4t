@@ -758,10 +758,9 @@ err2:
 
 void usb_release_bos_descriptor(struct usb_device *dev)
 {
-	struct device *ddev = &dev->dev;
 	if (dev->bos) {
-		devm_kfree(ddev, dev->bos->desc);
-		devm_kfree(ddev, dev->bos);
+		kfree(dev->bos->desc);
+		kfree(dev->bos);
 		dev->bos = NULL;
 	}
 }
@@ -776,7 +775,7 @@ int usb_get_bos_descriptor(struct usb_device *dev)
 	int length, total_len, num, i;
 	int ret;
 
-	bos = devm_kzalloc(ddev, sizeof(struct usb_bos_descriptor), GFP_KERNEL);
+	bos = kzalloc(sizeof(struct usb_bos_descriptor), GFP_KERNEL);
 	if (!bos)
 		return -ENOMEM;
 
@@ -786,23 +785,23 @@ int usb_get_bos_descriptor(struct usb_device *dev)
 		dev_err(ddev, "unable to get BOS descriptor\n");
 		if (ret >= 0)
 			ret = -ENOMSG;
-		devm_kfree(ddev, bos);
+		kfree(bos);
 		return ret;
 	}
 
 	length = bos->bLength;
 	total_len = le16_to_cpu(bos->wTotalLength);
 	num = bos->bNumDeviceCaps;
-	devm_kfree(ddev, bos);
+	kfree(bos);
 	if (total_len < length)
 		return -EINVAL;
 
-	dev->bos = devm_kzalloc(ddev, sizeof(struct usb_host_bos), GFP_KERNEL);
+	dev->bos = kzalloc(sizeof(struct usb_host_bos), GFP_KERNEL);
 	if (!dev->bos)
 		return -ENOMEM;
 
 	/* Now let's get the whole BOS descriptor set */
-	buffer = devm_kzalloc(ddev, total_len, GFP_KERNEL);
+	buffer = kzalloc(total_len, GFP_KERNEL);
 	if (!buffer) {
 		ret = -ENOMEM;
 		goto err;
