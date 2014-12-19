@@ -314,6 +314,10 @@
 		dvdd-supply = <&max77620_sd3>;
 	};
 
+	pwm-fan {
+		vdd-fan-supply = <&vdd_fan>;
+	};
+
 	power-detect {
 		pwrdet-sys-supply = <&max77620_sd3>;
 		pwrdet-uart-supply = <&max77620_sd3>;

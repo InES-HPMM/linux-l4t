@@ -215,4 +215,8 @@
 		avdd-supply = <&battery_reg>;
 		dvdd-supply = <&max77620_sd3>;
 	};
+
+	pwm-fan {
+		vdd-fan-supply = <&vdd_fan>;
+	};
 };
