@@ -19,6 +19,7 @@
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/memory/tegra-swgroup.h>
+#include <dt-bindings/ata/ahci-tegra.h>
 
 / {
 	compatible = "nvidia,tegra124";
