@@ -846,9 +846,13 @@ static irqreturn_t bq27441_irq(int id, void *dev)
 				__func__, chip->vcell, chip->soc);
 
 	flags_msb = bq27441_read_byte(chip->client, BQ27441_FLAGS_1);
-	if (chip->full_charge_state !=
-				(flags_msb & BQ27441_FLAGS_FC_DETECT)) {
-		chip->full_charge_state = flags_msb & BQ27441_FLAGS_FC_DETECT;
+	chip->full_charge_state = flags_msb & BQ27441_FLAGS_FC_DETECT;
+	if (chip->soc == BQ27441_BATTERY_FULL || chip->full_charge_state) {
+		chip->full_charge_state = 1;
+		schedule_delayed_work(&chip->fc_work, 0);
+	} else if (chip->soc < BQ27441_BATTERY_FULL &&
+					chip->full_charge_state) {
+		chip->full_charge_state = 0;
 		schedule_delayed_work(&chip->fc_work, 0);
 	}
 
