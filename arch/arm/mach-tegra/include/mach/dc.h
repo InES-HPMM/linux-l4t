@@ -670,6 +670,23 @@ struct tegra_dc_out {
 struct tegra_dc;
 struct nvmap_handle_ref;
 
+#if defined(CONFIG_TEGRA_CSC_V2)
+struct tegra_dc_csc_v2 {
+	u32 r2r;
+	u32 g2r;
+	u32 b2r;
+	u32 const2r;
+	u32 r2g;
+	u32 g2g;
+	u32 b2g;
+	u32 const2g;
+	u32 r2b;
+	u32 g2b;
+	u32 b2b;
+	u32 const2b;
+};
+#endif
+
 struct tegra_dc_csc {
 	unsigned short yof;
 	unsigned short kyrgb;
@@ -735,7 +752,11 @@ struct tegra_dc_win {
 	unsigned		out_h;
 	unsigned		z;
 
+#if defined(CONFIG_TEGRA_CSC_V2)
+	struct tegra_dc_csc_v2	csc;
+#else
 	struct tegra_dc_csc	csc;
+#endif
 	bool			csc_dirty;
 
 	int			dirty;
@@ -951,7 +972,11 @@ void tegra_dc_config_pwm(struct tegra_dc *dc, struct tegra_dc_pwm_params *cfg);
 
 int tegra_dsi_send_panel_short_cmd(struct tegra_dc *dc, u8 *pdata, u8 data_len);
 
+#if defined(CONFIG_TEGRA_CSC_V2)
+int tegra_nvdisp_update_csc(struct tegra_dc *dc, int win_index);
+#else
 int tegra_dc_update_csc(struct tegra_dc *dc, int win_index);
+#endif
 
 int tegra_dc_update_lut(struct tegra_dc *dc, int win_index, int fboveride);
 
