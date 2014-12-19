@@ -1270,30 +1270,6 @@ int get_pwr_i2c_clk_rate(void)
 }
 __setup("pwr_i2c=", tegra_get_pwr_i2c_clk_rate);
 
-static bool pmic_wdt_disable;
-bool is_pmic_wdt_disabled_at_boot(void)
-{
-	return pmic_wdt_disable;
-}
-
-static int parse_arg_pmic_wdt_disable(char *options)
-{
-	/* no kernel command line argument "watchdog" interpreted as
-	 * watchdog enable
-	 */
-	pmic_wdt_disable = false;
-	if (!(strcmp(options, "enable")))
-		pmic_wdt_disable = false;
-	else if (!(strcmp(options, "disable")))
-		pmic_wdt_disable = true;
-	/* kernel command line from fastboot does not support
-	 * other values
-	 */
-
-	return 0;
-}
-__setup("watchdog=", parse_arg_pmic_wdt_disable);
-
 #ifdef CONFIG_OF
 void find_dc_node(struct device_node **dc1_node,
 		struct device_node **dc2_node) {
