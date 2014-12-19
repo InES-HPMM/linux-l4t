@@ -118,6 +118,110 @@ struct clk *tegra_get_clock_by_name(const char *name)
 }
 EXPORT_SYMBOL(tegra_get_clock_by_name);
 
+void tegra_shared_bus_stats_allocate(struct clk *c, struct bus_stats *stats)
+{
+	void *p;
+
+	if (!stats || !stats->users_num || !stats->rates_num)
+		return;
+
+	if (stats->time_table) {
+		pr_err("%s: %s stats already allocated\n", __func__, c->name);
+		return;
+	}
+
+	if (stats->users_num > STATS_USERS_LIST_SIZE) {
+		WARN(1, "%s: %s stats users num %d exceeds max %d\n", __func__,
+		       c->name, stats->users_num, STATS_USERS_LIST_SIZE);
+		return;
+	}
+
+	p = kzalloc(sizeof(cputime64_t) * stats->rates_num *
+		    (stats->users_num + 1), GFP_KERNEL); /* +1 row for sum */
+	if (!p) {
+		pr_err("%s: failed to allocate %s stats\n", __func__, c->name);
+		return;
+	}
+	stats->time_table = p;
+
+	stats->new_cap_idx = stats->users_num;
+	stats->new_floor_idx = stats->users_num;
+	stats->last_user_idx = stats->users_num;
+
+	stats->new_rate_idx = stats->rates_num;
+	stats->last_rate_idx = stats->rates_num;
+}
+
+void tegra_shared_bus_stats_update(
+	struct bus_stats *stats, int user_idx, int rate_idx)
+{
+	u64 cur_jiffies = get_jiffies_64();
+	cputime64_t *time_cell;
+
+	if (!stats || !stats->time_table)
+		return;
+
+	if ((stats->last_rate_idx < stats->rates_num) &&
+	    (stats->last_user_idx < stats->users_num)) {
+		time_cell = stats->time_table + stats->last_rate_idx +
+			stats->last_user_idx * stats->rates_num;
+		*time_cell += jiffies64_to_cputime64(cur_jiffies -
+			stats->last_update);
+	}
+
+	stats->last_user_idx = user_idx;
+	stats->last_rate_idx = rate_idx;
+	stats->last_update = cur_jiffies;
+}
+
+int tegra_shared_bus_stats_copy_to_buffer(
+	struct clk *c, struct bus_stats *stats, char *buf, int len)
+{
+	int i, j;
+	char *str = buf;
+	char *end = buf + len;
+	unsigned long flags;
+	cputime64_t *total_at_rate;
+
+	clk_lock_save(c, &flags);
+
+	if (!stats || !stats->time_table) {
+		str += scnprintf(str, end - str,
+			"%s stats not allocated\n", c->name);
+		goto _out;
+	}
+	total_at_rate = stats->time_table + stats->rates_num * stats->users_num;
+	memset(total_at_rate, 0, sizeof(cputime64_t) * stats->rates_num);
+
+	tegra_shared_bus_stats_update(stats,
+		stats->last_user_idx, stats->last_rate_idx);
+
+	for (i = 0; i < stats->users_num; i++) {
+		cputime64_t *t = stats->time_table + stats->rates_num * i;
+		for (j = 0; j < stats->rates_num; j++) {
+			str += scnprintf(str, end - str, "%-10llu ",
+					   cputime64_to_clock_t(t[j]));
+			total_at_rate[j] += t[j];
+		}
+		str += scnprintf(str, end - str, "%s\n",
+				 stats->users_list[i]->name);
+	}
+
+	for (j = 0; j < stats->rates_num; j++)
+		str += scnprintf(str, end - str, "%-10llu ",
+				   cputime64_to_clock_t(total_at_rate[j]));
+	str += scnprintf(str, end - str, "total_at_rate\n");
+
+	if (str == end) {
+		pr_err("%s: %s stats buffer overflow\n", __func__, c->name);
+		str += scnprintf(buf, end - buf, "!!stats buffer overflow!!\n");
+	}
+
+_out:
+	clk_unlock_restore(c, &flags);
+	return str - buf;
+}
+
 static void clk_stats_update(struct clk *c)
 {
 	u64 cur_jiffies = get_jiffies_64();

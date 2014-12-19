@@ -346,9 +346,10 @@ int __init tegra_init_core_cap(
 	container_of(nb, struct core_bus_limit_table, qos_nb)
 
 #define MAX_BUS_NUM	8
+#define MAX_BUS_ATTR	3
 
 static DEFINE_MUTEX(bus_limit_lock);
-static const struct attribute *bus_attributes[2 * MAX_BUS_NUM + 1];
+static const struct attribute *bus_attributes[MAX_BUS_ATTR * MAX_BUS_NUM + 1];
 
 static int _floor_update(struct core_bus_limit_table *bus_limit,
 			 unsigned long qos_limit_level)
@@ -593,6 +594,8 @@ int __init tegra_init_shared_bus_floor(
 	container_of(attr, struct core_bus_rates_table, rate_attr)
 #define available_rates_to_bus(attr) \
 	container_of(attr, struct core_bus_rates_table, available_rates_attr)
+#define time_at_rate_to_bus(attr) \
+	container_of(attr, struct core_bus_rates_table, time_at_user_rate_attr)
 
 
 static ssize_t
@@ -616,10 +619,25 @@ bus_available_rates_show(struct kobject *kobj, struct kobj_attribute *attr,
 		if (!rate || ((n + 10) > PAGE_SIZE))
 			break;
 
-		n += sprintf(&buf[n], "%lu ", rate);
+		n += sprintf(&buf[n], "%-10lu ", rate);
 	}
 	n = n ? n-1 : 0;
 	n += sprintf(&buf[n], "\n");
+	return n;
+}
+
+static ssize_t
+time_at_user_rate_show(struct kobject *kobj, struct kobj_attribute *attr,
+		       char *buf)
+{
+	struct core_bus_rates_table *bus = time_at_rate_to_bus(attr);
+	struct clk *c = bus->bus_clk;
+	ssize_t n = bus_available_rates_show(
+		kobj, &bus->available_rates_attr, buf);
+
+	if (n < PAGE_SIZE)
+		n += tegra_shared_bus_stats_copy_to_buffer(
+			c, c->stats.histogram, buf + n, PAGE_SIZE - n);
 	return n;
 }
 
@@ -669,6 +687,13 @@ int __init tegra_init_sysfs_shared_bus_rate(
 		table[i].available_rates_attr.show = bus_available_rates_show;
 		bus_attributes[j++] = &table[i].rate_attr.attr;
 		bus_attributes[j++] = &table[i].available_rates_attr.attr;
+
+		if (c->stats.histogram) {
+			table[i].time_at_user_rate_attr.show =
+				time_at_user_rate_show;
+			bus_attributes[j++] =
+				&table[i].time_at_user_rate_attr.attr;
+		}
 	}
 	bus_attributes[j] = NULL;
 

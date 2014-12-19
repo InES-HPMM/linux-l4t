@@ -1,7 +1,7 @@
 /*
  * drivers/platfrom/tegra/tegra_core_sysfs_limits.h
  *
- * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -43,6 +43,7 @@ struct core_bus_rates_table {
 	struct clk *bus_clk;
 	struct kobj_attribute rate_attr;
 	struct kobj_attribute available_rates_attr;
+	struct kobj_attribute time_at_user_rate_attr;
 	unsigned long available_rates[MAX_DVFS_FREQS];
 };
 

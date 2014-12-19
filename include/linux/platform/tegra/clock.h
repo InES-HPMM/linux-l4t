@@ -52,6 +52,7 @@
 #include <asm/cputime.h>
 
 #define MAX_SAME_LIMIT_SKU_IDS	16
+#define STATS_USERS_LIST_SIZE	16
 
 struct clk;
 
@@ -197,7 +198,21 @@ struct clk_ops {
 	long		(*round_rate_updown)(struct clk *, unsigned long, bool);
 };
 
+struct bus_stats {
+	cputime64_t	*time_table;
+	struct clk	*users_list[STATS_USERS_LIST_SIZE];
+	int		users_num;
+	int		rates_num;
+	int		new_cap_idx;
+	int		new_floor_idx;
+	int		new_rate_idx;
+	int		last_user_idx;
+	int		last_rate_idx;
+	u64		last_update;
+};
+
 struct clk_stats {
+	struct bus_stats *histogram;
 	cputime64_t 	time_on;
 	u64 		last_update;
 };
@@ -344,6 +359,7 @@ struct clk {
 			u32				client_div;
 			enum shared_bus_users_mode	mode;
 			u32				usage_flag;
+			int				stats_idx;
 		} shared_bus_user;
 		struct {
 			struct tegra_clk_export_ops	*ops;
@@ -489,9 +505,16 @@ void tegra21x_init_clocks(void);
 void tegra11x_clk_init_la(void);
 void tegra_common_init_clock(void);
 struct clk *tegra_get_clock_by_name(const char *name);
+
 void tegra_clk_init_from_table(struct tegra_clk_init_table *table);
 
 #ifndef CONFIG_COMMON_CLK
+void tegra_shared_bus_stats_allocate(struct clk *c, struct bus_stats *stats);
+int tegra_shared_bus_stats_copy_to_buffer(
+	struct clk *c, struct bus_stats *stats, char *buf, int len);
+void tegra_shared_bus_stats_update(
+	struct bus_stats *stats, int user_idx, int rate_idx);
+
 int clk_config_cpu_edp_safe_rate(struct clk *cpu, struct clk *cluster_clk,
 				 unsigned long rate);
 
