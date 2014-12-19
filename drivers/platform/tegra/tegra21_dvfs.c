@@ -1564,6 +1564,8 @@ static struct core_bus_rates_table tegra21_gpu_rates_sysfs = {
 	.rate_attr = {.attr = {.name = "gpu_rate", .mode = 0444} },
 	.available_rates_attr = {
 		.attr = {.name = "gpu_available_rates", .mode = 0444} },
+	.time_at_user_rate_attr = {
+		.attr = {.name = "gpu_time_at_user_rate", .mode = 0444} },
 };
 
 

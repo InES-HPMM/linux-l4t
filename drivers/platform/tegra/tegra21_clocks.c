@@ -8808,6 +8808,7 @@ static struct clk_ops tegra_clk_gbus_ops = {
 
 static struct raw_notifier_head gbus_rate_change_nh;
 static wait_queue_head_t gbus_poll_rate;
+struct bus_stats gpu_histogram;
 
 static struct clk tegra_clk_gbus = {
 	.name      = "gbus",
@@ -8815,6 +8816,9 @@ static struct clk tegra_clk_gbus = {
 	.parent    = &tegra_clk_gpu_ref,
 	.max_rate  = 1300000000,
 	.shared_bus_flags = SHARED_BUS_RETENTION,
+	.stats = {
+		.histogram = &gpu_histogram,
+	},
 	.rate_change_nh = &gbus_rate_change_nh,
 	.debug_poll_qh  = &gbus_poll_rate,
 };
