@@ -46,30 +46,37 @@
 	};
 
 	serial@70006000 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
 		status = "disabled";
 	};
 
 	serial@70006040 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
 		status = "disabled";
 	};
 
 	serial@70006300 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
 		status = "disabled";
 	};
 
 	spi@7000d400 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
 		status = "disabled";
 	};
 
 	spi@7000d600 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
 		status = "disabled";
 	};
 
 	spi@7000d800 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
 		status = "disabled";
 	};
 
 	spi@7000dc00 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
 		status = "disabled";
 	};
 
@@ -319,6 +326,7 @@
 	};
 
 	snor {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
 		status = "disabled";
 	};
 

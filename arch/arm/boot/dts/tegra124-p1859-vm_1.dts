@@ -338,6 +338,41 @@
 		status = "disabled";
 	};
 
+	serial@70006000 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
+	serial@70006040 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
+	serial@70006300 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
+	spi@7000d400 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
+	spi@7000d600 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
+	spi@7000d800 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
+	spi@7000dc00 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
 	i2c@7000d000 {
 		status = "okay";
 
@@ -359,5 +394,10 @@
 		gpio-output-high = <TEGRA_GPIO(R, 0)
 				TEGRA_GPIO(R, 2)>;
 		};
+	};
+
+	snor {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
 	};
 };
