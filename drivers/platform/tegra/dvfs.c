@@ -2201,6 +2201,16 @@ int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate)
 	return 0;
 }
 
+/*
+ * Clear rail DFLL control mode, and re-sync s/w DVFS state with target rate as
+ * specified by the caller:
+ * - if target rate is non zero, set it as new DVFS rate for the respective
+ * clock domain, and scale voltage using PLL mode DVFS table, unless scaling is
+ * disabled. In the latter case voltage is set to fixed disabled level always.
+ * - if target rate is zero, preserve DVFS rate set under DFLL mode, and don't
+ * change voltage, unless scaling is disabled. In the latter case voltage is set
+ * to fixed disabled level always.
+ */
 int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate)
 {
 	int ret = 0;
@@ -2217,14 +2227,18 @@ int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate)
 		 */
 		d->dvfs_rail->millivolts--;
 
-		/* Update voltage using pll dvfs table per caller request */
-		if (rate) {
-			if (d->dvfs_rail->disabled) {
-				d->dvfs_rail->disabled = false;
-				__tegra_dvfs_rail_disable(d->dvfs_rail);
-			}
-			ret = __tegra_dvfs_set_rate(d, rate);
+		/* Restore rail disabled level always */
+		if (d->dvfs_rail->disabled) {
+			d->dvfs_rail->disabled = false;
+			__tegra_dvfs_rail_disable(d->dvfs_rail);
 		}
+
+		/*
+		 * Set dvfs rate, and voltage using pll dvfs table per caller
+		 * request. Preserve dvfs rate if target is not specified.
+		 */
+		if (rate)
+			ret = __tegra_dvfs_set_rate(d, rate);
 	}
 	mutex_unlock(&dvfs_lock);
 	return ret;
