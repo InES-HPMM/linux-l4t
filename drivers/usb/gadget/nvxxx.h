@@ -682,6 +682,7 @@ struct nv_udc_s {
 	bool cpufreq_boosted;
 	bool restore_cpufreq_scheduled;
 #endif
+	u16 device_id;
 };
 
 void free_data_struct(struct nv_udc_s *nvudc);
@@ -784,6 +785,7 @@ extern int debug_level;
 #define TERMINATION_2				(0x7e8)
 
 /* fpci mmio registers */
+#define XUSB_DEV_CFG_0				(0x0)
 #define XUSB_DEV_CFG_1				(0x4)
 #define  IO_SPACE_ENABLED			(1 << 0)
 #define  MEMORY_SPACE_ENABLED			(1 << 1)
@@ -885,3 +887,6 @@ extern int debug_level;
 #define RX_EQ_CTRL_H(x)			(((x) & 0xffffffff) << 0)
 
 #define XUSB_VBUS				(0xc60)
+
+#define XUSB_DEVICE_ID_T210			0x0FAD
+#define XUSB_IS_T210(t)	(t->device_id == XUSB_DEVICE_ID_T210)

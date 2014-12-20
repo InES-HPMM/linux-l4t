@@ -4487,12 +4487,14 @@ void restore_mmio_reg(struct nv_udc_s *nvudc)
 	u32 reg;
 	dma_addr_t dma;
 
-	/* Enable clock gating */
-	/* T210 WAR, Disable BLCG DFPCI/UFPCI/FE */
-	reg = ioread32(nvudc->mmio_reg_base + BLCG);
-	reg |= BLCG_ALL;
-	reg &= ~(BLCG_DFPCI | BLCG_UFPCI | BLCG_FE);
-	iowrite32(reg, nvudc->mmio_reg_base + BLCG);
+	if (XUSB_IS_T210(nvudc)) {
+		/* Enable clock gating */
+		/* T210 WAR, Disable BLCG DFPCI/UFPCI/FE */
+		reg = ioread32(nvudc->mmio_reg_base + BLCG);
+		reg |= BLCG_ALL;
+		reg &= ~(BLCG_DFPCI | BLCG_UFPCI | BLCG_FE);
+		iowrite32(reg, nvudc->mmio_reg_base + BLCG);
+	}
 
 	/* restore the event ring info */
 	init_hw_event_ring(nvudc);
@@ -5301,6 +5303,7 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	struct nv_udc_s *nvudc;
 	int i;
 	int err;
+	u32 val;
 
 	if (!dev->dma_mask)
 		dev->dma_mask = &dev->coherent_dma_mask;
@@ -5390,6 +5393,9 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 
 	spin_lock_init(&nvudc->lock);
 	mutex_init(&nvudc->elpg_lock);
+
+	val = ioread32(nvudc->fpci + XUSB_DEV_CFG_0);
+	nvudc->device_id = (val >> 16) & 0xffff;
 
 	for (i = 0; i < 32; i++)
 		nvudc->udc_ep[i].nvudc = nvudc;
