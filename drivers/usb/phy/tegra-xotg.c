@@ -166,12 +166,13 @@ static void nv_vbus_work(struct work_struct *work)
 /* will be called from the HCD during its initialization */
 static int xotg_set_host(struct usb_otg *otg, struct usb_bus *host)
 {
-	struct xotg *xotg = container_of(otg->phy, struct xotg, phy);
-
-	xotg_info(xotg->dev, "host = 0x%p\n", host);
+	struct xotg *xotg;
 
 	if (!otg || !host)
 		return -1;
+
+	xotg = container_of(otg->phy, struct xotg, phy);
+	xotg_info(xotg->dev, "host = 0x%p\n", host);
 
 	otg->host = host;
 	/* set the hs_otg_port here for the usbcore/HCD to be able
@@ -186,11 +187,13 @@ static int xotg_set_host(struct usb_otg *otg, struct usb_bus *host)
 /* will be called from the HCD during its USB3 shared_hcd initialization */
 static int xotg_set_xhci_host(struct usb_otg *otg, struct usb_bus *host)
 {
-	struct xotg *xotg = container_of(otg->phy, struct xotg, phy);
+	struct xotg *xotg;
 
-	xotg_info(xotg->dev, "xhcihost = 0x%p\n", host);
 	if (!otg || !host)
 		return -1;
+
+	xotg = container_of(otg->phy, struct xotg, phy);
+	xotg_info(xotg->dev, "xhcihost = 0x%p\n", host);
 
 	otg->xhcihost = host;
 	/* set the otg_port here for the usbcore/HCD to be able
@@ -270,11 +273,13 @@ static int xotg_notify_disconnect(struct usb_phy *phy,
 /* will be called from the PCD */
 static int xotg_set_peripheral(struct usb_otg *otg, struct usb_gadget *gadget)
 {
-	struct xotg *xotg = container_of(otg->phy, struct xotg, phy);
+	struct xotg *xotg;
 
-	xotg_info(xotg->dev, "usb_gadget = 0x%p\n", gadget);
 	if (!otg || !gadget)
 		return -1;
+
+	xotg = container_of(otg->phy, struct xotg, phy);
+	xotg_info(xotg->dev, "usb_gadget = 0x%p\n", gadget);
 
 	otg->gadget = gadget;
 
