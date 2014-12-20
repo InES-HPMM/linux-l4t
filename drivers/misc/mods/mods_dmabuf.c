@@ -1,7 +1,7 @@
 /*
  * mods_dmabuf.c - This file is part of NVIDIA MODS kernel driver.
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA MODS kernel driver is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License,
@@ -50,10 +50,11 @@ int esc_mods_dmabuf_get_phys_addr(struct file *filp,
 	struct dma_buf *dmabuf = NULL;
 	struct dma_buf_attachment *attachment = NULL;
 	struct sg_table *sgt = NULL;
-	struct sg_page_iter piter;
-	const unsigned int subpage_ofs = op->offset & (PAGE_SIZE - 1);
-	phys_addr_t page_phys_addr = 0;
-	unsigned int contig_pages = 0;
+	unsigned int remaining_offset = op->offset;
+	phys_addr_t physical_address = 0;
+	unsigned int segment_size = 0;
+	struct scatterlist *sg;
+	unsigned int sg_index;
 
 	if (op->offset > UINT_MAX)
 		return -EINVAL;
@@ -76,29 +77,29 @@ int esc_mods_dmabuf_get_phys_addr(struct file *filp,
 		goto buf_map_fail;
 	}
 
-	for_each_sg_page(sgt->sgl, &piter, sgt->nents,
-			 op->offset >> PAGE_SHIFT) {
-		struct page *pg = sg_page_iter_page(&piter);
-
-		if (!contig_pages) {
-			/* first page */
-			page_phys_addr = page_to_phys(pg);
-			contig_pages = 1;
-		} else if (page_to_phys(pg) ==
-			   page_phys_addr + PAGE_SIZE * contig_pages) {
-			/* contiguous */
-			++contig_pages;
+	for_each_sg(sgt->sgl, sg, sgt->nents, sg_index) {
+		if (remaining_offset >= sg->length) {
+			/* haven't reached segment yet, or empty sg */
+			remaining_offset -= sg->length;
+		} else if (segment_size == 0) {
+			/* first sg in segment */
+			physical_address = sg_phys(sg) + remaining_offset;
+			segment_size = sg->length - remaining_offset;
+			remaining_offset = 0;
+		} else if (sg_phys(sg) == physical_address + segment_size) {
+			/* contiguous sg; append to segment */
+			segment_size += sg->length;
 		} else {
-			/* discontiguous page */
+			/* discontiguous sg; end segment */
 			break;
 		}
 	}
 
-	if (contig_pages == 0) {
+	if (segment_size == 0) {
 		err = -EINVAL;
 	} else {
-		op->physical_address = page_phys_addr + subpage_ofs;
-		op->segment_size = (contig_pages * PAGE_SIZE) - subpage_ofs;
+		op->physical_address = physical_address;
+		op->segment_size = segment_size;
 	}
 
 	dma_buf_unmap_attachment(attachment, sgt, DMA_BIDIRECTIONAL);
