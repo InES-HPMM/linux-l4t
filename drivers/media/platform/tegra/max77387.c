@@ -999,10 +999,10 @@ static int max77387_enter_offmode(struct max77387_info *info, bool op_off)
 	return err;
 }
 
-#ifdef CONFIG_PM
-static int max77387_suspend(struct i2c_client *client, pm_message_t msg)
+#ifdef CONFIG_PM_SLEEP
+static int max77387_suspend(struct device *dev)
 {
-	struct max77387_info *info = i2c_get_clientdata(client);
+	struct max77387_info *info = dev_get_drvdata(dev);
 
 	dev_info(info->dev, "Suspending\n");
 	info->regs.regs_stale = true;
@@ -1010,15 +1010,16 @@ static int max77387_suspend(struct i2c_client *client, pm_message_t msg)
 	return 0;
 }
 
-static int max77387_resume(struct i2c_client *client)
+static int max77387_resume(struct device *dev)
 {
-	struct max77387_info *info = i2c_get_clientdata(client);
+	struct max77387_info *info = dev_get_drvdata(dev);
 
 	dev_info(info->dev, "Resuming\n");
 	info->regs.regs_stale = true;
 
 	return 0;
 }
+#endif /* CONFIG_PM_SLEEP */
 
 static void max77387_shutdown(struct i2c_client *client)
 {
@@ -1029,7 +1030,6 @@ static void max77387_shutdown(struct i2c_client *client)
 	max77387_enter_offmode(info, true);
 	info->regs.regs_stale = true;
 }
-#endif
 
 static int max77387_power_off(struct max77387_info *info)
 {
@@ -1844,6 +1844,10 @@ static int max77387_debugfs_init(struct max77387_info *info)
 	return -EFAULT;
 }
 
+static const struct dev_pm_ops max77387_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(max77387_suspend, max77387_resume)
+};
+
 static const struct i2c_device_id max77387_id[] = {
 	{ "max77387", 0 },
 	{ },
@@ -1853,15 +1857,12 @@ static struct i2c_driver max77387_drv = {
 	.driver = {
 		.name = "max77387",
 		.owner = THIS_MODULE,
+		.pm = &max77387_pm_ops,
 	},
 	.id_table = max77387_id,
 	.probe = max77387_probe,
 	.remove = max77387_remove,
-#ifdef CONFIG_PM
 	.shutdown = max77387_shutdown,
-	.suspend  = max77387_suspend,
-	.resume   = max77387_resume,
-#endif
 };
 
 module_i2c_driver(max77387_drv);

@@ -787,24 +787,25 @@ static int as364x_strobe(struct as364x_info *info, int t_on)
 	return gpio_direction_output(gpio, lact ^ (t_on & 1));
 }
 
-#ifdef CONFIG_PM
-static int as364x_suspend(struct i2c_client *client, pm_message_t msg)
+#ifdef CONFIG_PM_SLEEP
+static int as364x_suspend(struct device *dev)
 {
-	struct as364x_info *info = i2c_get_clientdata(client);
+	struct as364x_info *info = dev_get_drvdata(dev);
 
-	dev_info(&client->dev, "Suspending %s\n", info->dev_cap->name);
+	dev_info(dev, "Suspending %s\n", info->dev_cap->name);
 
 	return 0;
 }
 
-static int as364x_resume(struct i2c_client *client)
+static int as364x_resume(struct device *dev)
 {
-	struct as364x_info *info = i2c_get_clientdata(client);
+	struct as364x_info *info = dev_get_drvdata(dev);
 
-	dev_info(&client->dev, "Resuming %s\n", info->dev_cap->name);
+	dev_info(dev, "Resuming %s\n", info->dev_cap->name);
 
 	return 0;
 }
+#endif /* CONFIG_PM_SLEEP */
 
 static void as364x_shutdown(struct i2c_client *client)
 {
@@ -814,7 +815,6 @@ static void as364x_shutdown(struct i2c_client *client)
 
 	as364x_set_leds(info, 3, 0, 0);
 }
-#endif
 
 static int as364x_power_on(struct as364x_info *info)
 {
@@ -1784,19 +1784,20 @@ static int as364x_debugfs_init(struct as364x_info *info)
 	return -EFAULT;
 }
 
+static const struct dev_pm_ops as364x_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(as364x_suspend, as364x_resume)
+};
+
 static struct i2c_driver as364x_driver = {
 	.driver = {
 		.name = "as364x",
 		.owner = THIS_MODULE,
+		.pm = &as364x_pm_ops,
 	},
 	.id_table = as364x_id,
 	.probe = as364x_probe,
 	.remove = as364x_remove,
-#ifdef CONFIG_PM
 	.shutdown = as364x_shutdown,
-	.suspend  = as364x_suspend,
-	.resume   = as364x_resume,
-#endif
 };
 
 module_i2c_driver(as364x_driver);
