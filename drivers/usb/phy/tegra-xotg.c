@@ -514,9 +514,12 @@ static int xotg_resume_platform(struct device *dev)
 	xotg_info(xotg->dev, "%s\n", __func__);
 
 	disable_irq_wake(xotg->usb_irq);
-	/* restore USB2_ID register */
-	tegra_usb_pad_reg_write(XUSB_PADCTL_USB2_VBUS_ID_0, xotg->usb2_id);
-
+	/* restore USB2_ID register except when xudc driver updated it
+	 * due to lp0 wake by connecting device mode cable
+	 */
+	if (xotg->phy.state != OTG_STATE_B_PERIPHERAL)
+		tegra_usb_pad_reg_write(XUSB_PADCTL_USB2_VBUS_ID_0,
+			xotg->usb2_id);
 	return 0;
 }
 

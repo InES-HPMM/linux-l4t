@@ -265,6 +265,7 @@ static inline void vbus_detected(struct nv_udc_s *nvudc)
 		USB2_VBUS_ID_0_VBUS_OVERRIDE, USB2_VBUS_ID_0_VBUS_OVERRIDE);
 
 	nvudc->vbus_detected = true;
+	nvudc->phy->state = OTG_STATE_B_PERIPHERAL;
 	wake_lock(&nvudc->xudc_vbus);
 }
 
@@ -304,6 +305,7 @@ static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 	}
 
 	nvudc->vbus_detected = false;
+	nvudc->phy->state = OTG_STATE_B_IDLE;
 	pm_runtime_put_autosuspend(nvudc->dev);
 	wake_unlock(&nvudc->xudc_vbus);
 }
