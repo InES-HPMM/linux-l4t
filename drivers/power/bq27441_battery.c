@@ -98,6 +98,16 @@
 
 #define BQ27441_MAX_REGS		0x7F
 
+#define BQ27441_DESIGN_CAPACITY_DEFAULT		7800
+#define BQ27441_DESIGN_ENERGY_DEFAULT		28080
+#define BQ27441_TAPER_RATE_DEFAULT		100
+#define BQ27441_TERMINATE_VOLTAGE_DEFAULT	3200
+#define BQ27441_VAT_CHG_TERM_DEFAULT		4100
+#define BQ27441_CC_GAIN_DEFAULT		0x7F7806C9
+#define BQ27441_CC_DELTA_DEFAULT	0x940D197A
+#define BQ27441_QMAX_CELL_DEFAULT	16384
+#define BQ27441_RESERVE_CAP_DEFAULT	0
+
 struct bq27441_chip {
 	struct i2c_client		*client;
 	struct delayed_work		work;
@@ -864,39 +874,72 @@ static void of_bq27441_parse_platform_data(struct i2c_client *client,
 {
 	u32 tmp;
 	char const *pstr;
+	bool dt_param_not_found = 0;
 	struct device_node *np = client->dev.of_node;
 
 	if (!of_property_read_u32(np, "ti,design-capacity", &tmp))
 		pdata->full_capacity = (unsigned long)tmp;
+	else {
+		dt_param_not_found = 1;
+		dev_warn(&client->dev, "fail to read design-capacity\n");
+	}
 
 	if (!of_property_read_u32(np, "ti,design-energy", &tmp))
 		pdata->full_energy = (unsigned long)tmp;
+	else {
+		dt_param_not_found = 1;
+		dev_warn(&client->dev, "fail to read design-energy\n");
+	}
 
 	if (!of_property_read_u32(np, "ti,taper-rate", &tmp))
 		pdata->taper_rate = (unsigned long)tmp;
+	else {
+		dt_param_not_found = 1;
+		dev_warn(&client->dev, "fail to read taper-rate\n");
+	}
 
 	if (!of_property_read_u32(np, "ti,terminate-voltage", &tmp))
 		pdata->terminate_voltage = (unsigned long)tmp;
+	else {
+		dt_param_not_found = 1;
+		dev_warn(&client->dev, "fail to read terminate-voltage\n");
+	}
 
 	if (!of_property_read_u32(np, "ti,v-at-chg-term", &tmp))
 		pdata->v_at_chg_term = (unsigned long)tmp;
 
 	if (!of_property_read_u32(np, "ti,cc-gain", &tmp))
 		pdata->cc_gain = tmp;
+	else {
+		dt_param_not_found = 1;
+		dev_warn(&client->dev, "fail to read cc-gain\n");
+	}
 
 	if (!of_property_read_u32(np, "ti,cc-delta", &tmp))
 		pdata->cc_delta = tmp;
+	else {
+		dt_param_not_found = 1;
+		dev_warn(&client->dev, "fail to read cc-delta\n");
+	}
 
 	if (!of_property_read_u32(np, "ti,qmax-cell", &tmp))
 		pdata->qmax_cell = tmp;
+	else {
+		dt_param_not_found = 1;
+		dev_warn(&client->dev, "fail to read qmax-cell\n");
+	}
 
 	if (!of_property_read_u32(np, "ti,reserve-cap-mah", &tmp))
 		pdata->reserve_cap = tmp;
+	else {
+		dt_param_not_found = 1;
+		dev_warn(&client->dev, "fail to read reserve-cap-mah\n");
+	}
 
 	if (!of_property_read_string(np, "ti,tz-name", &pstr))
 		pdata->tz_name = pstr;
 	else
-		dev_err(&client->dev, "Failed to read tz-name\n");
+		dev_warn(&client->dev, "Failed to read tz-name\n");
 
 	if (!of_property_read_u32(np, "ti,kernel-threshold-soc", &tmp))
 		pdata->threshold_soc = tmp;
@@ -908,6 +951,8 @@ static void of_bq27441_parse_platform_data(struct i2c_client *client,
 
 	pdata->enable_temp_prop = of_property_read_bool(np,
 					"ti,enable-temp-prop");
+
+	WARN_ON(dt_param_not_found);
 }
 
 static int bq27441_probe(struct i2c_client *client,
@@ -939,24 +984,21 @@ static int bq27441_probe(struct i2c_client *client,
 	chip->print_once = 0;
 	chip->full_charge_state = 0;
 
-	if (chip->pdata->full_capacity)
-		chip->full_capacity = chip->pdata->full_capacity;
-	if (chip->pdata->full_energy)
-		chip->design_energy = chip->pdata->full_energy;
-	if (chip->pdata->taper_rate)
-		chip->taper_rate = chip->pdata->taper_rate;
-	if (chip->pdata->terminate_voltage)
-		chip->terminate_voltage = chip->pdata->terminate_voltage;
-	if (chip->pdata->v_at_chg_term)
-		chip->v_chg_term = chip->pdata->v_at_chg_term;
-	if (chip->pdata->cc_gain)
-		chip->cc_gain = chip->pdata->cc_gain;
-	if (chip->pdata->cc_delta)
-		chip->cc_delta = chip->pdata->cc_delta;
-	if (chip->pdata->qmax_cell)
-		chip->qmax_cell = chip->pdata->qmax_cell;
-	if (chip->pdata->reserve_cap)
-		chip->reserve_cap = chip->pdata->reserve_cap;
+	chip->full_capacity = chip->pdata->full_capacity ?:
+				BQ27441_DESIGN_CAPACITY_DEFAULT;
+	chip->design_energy = chip->pdata->full_energy ?:
+				BQ27441_DESIGN_ENERGY_DEFAULT;
+	chip->taper_rate = chip->pdata->taper_rate ?:
+				BQ27441_TAPER_RATE_DEFAULT;
+	chip->terminate_voltage = chip->pdata->terminate_voltage ?:
+				BQ27441_TERMINATE_VOLTAGE_DEFAULT;
+	chip->v_chg_term = chip->pdata->v_at_chg_term ?:
+				BQ27441_VAT_CHG_TERM_DEFAULT;
+	chip->cc_gain = chip->pdata->cc_gain ?: BQ27441_CC_GAIN_DEFAULT;
+	chip->cc_delta = chip->pdata->cc_delta ?: BQ27441_CC_DELTA_DEFAULT;
+	chip->qmax_cell = chip->pdata->qmax_cell ?: BQ27441_QMAX_CELL_DEFAULT;
+	chip->reserve_cap = chip->pdata->reserve_cap ?:
+				BQ27441_RESERVE_CAP_DEFAULT;
 	chip->enable_temp_prop = chip->pdata->enable_temp_prop;
 
 	dev_info(&client->dev, "Battery capacity is %d\n", chip->full_capacity);
