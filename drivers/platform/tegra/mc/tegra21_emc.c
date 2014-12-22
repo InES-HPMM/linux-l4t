@@ -63,7 +63,7 @@ module_param(emc_enable, bool, 0644);
 /*
  * List of sequences supported by the clock change driver.
  */
-struct supported_sequence supported_seqs[] = {
+static struct supported_sequence supported_seqs[] = {
 	/*
 	 * Revision 5 tables takes us up to the 21012 sequence.
 	 */
@@ -95,7 +95,7 @@ struct supported_sequence supported_seqs[] = {
 };
 
 /* Filled in depending on table revision. */
-struct supported_sequence *seq;
+static struct supported_sequence *seq;
 
 /* TODO: cleanup to not use iomap.h */
 void __iomem *emc_base = IO_ADDRESS(TEGRA_EMC_BASE);
