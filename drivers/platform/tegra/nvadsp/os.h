@@ -245,7 +245,6 @@ int nvadsp_os_probe(struct platform_device *);
 int nvadsp_app_module_probe(struct platform_device *);
 int nvadsp_run_app_module_probe(struct platform_device *);
 int adsp_add_load_mappings(phys_addr_t, void *, int);
-void *get_mailbox_shared_region(void);
 struct elf32_shdr *nvadsp_get_section(const struct firmware *, char *);
 struct global_sym_info *find_global_symbol(const char *);
 void update_nvadsp_app_shared_ptr(void *);

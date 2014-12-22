@@ -835,7 +835,7 @@ struct adsp_module *load_adsp_module(const char *appname, const char *appfile,
 	struct device *dev, struct app_load_stats *stats)
 {
 	struct load_info info = { };
-	struct adsp_module *mod;
+	struct adsp_module *mod = NULL;
 	const struct firmware *fw;
 	struct elf32_shdr *data_shdr;
 	struct elf32_shdr *shared_shdr;
@@ -864,19 +864,19 @@ struct adsp_module *load_adsp_module(const char *appname, const char *appfile,
 	if (ret) {
 		dev_err(dev,
 			"%s is not an elf file\n", appfile);
-		return ERR_PTR(ret);
+		goto error_release_fw;
 	}
 
 #if !CONFIG_USE_STATIC_APP_LOAD
 	/* Figure out module layout, and allocate all the memory. */
 	mod = layout_and_allocate(&info);
 	if (IS_ERR(mod))
-		return mod;
+		goto error_release_fw;
 #else
 	mod = kzalloc(sizeof(struct adsp_module), GFP_KERNEL);
 	if (!mod) {
 		dev_err(dev, "Unable to create module\n");
-		return mod;
+		goto error_release_fw;
 	}
 #endif
 
@@ -924,21 +924,26 @@ struct adsp_module *load_adsp_module(const char *appname, const char *appfile,
 	/* Fix up syms, so that st_value is a pointer to location. */
 	ret = simplify_symbols(mod, &info);
 	if (ret) {
-		dev_err(dev,
-			"Unable to simplify symbols error value %d\n", ret);
-		unload_adsp_module(mod);
-		return ERR_PTR(ret);
+		dev_err(dev, "Unable to simplify symbols\n");
+		goto unload_module;
 	}
 
 	dev_dbg(dev, "applying relocation\n");
 	ret = apply_relocations(mod, &info);
 	if (ret) {
 		dev_err(dev, "relocation failed\n");
-		unload_adsp_module(mod);
-		return ERR_PTR(ret);
+		goto unload_module;
 	}
+
 #endif
-	return mod;
+error_release_fw:
+	release_firmware(fw);
+	return IS_ERR_VALUE(ret) ? ERR_PTR(ret) : mod;
+
+unload_module:
+	unload_adsp_module(mod);
+	release_firmware(fw);
+	return ERR_PTR(ret);
 }
 
 void unload_adsp_module(struct adsp_module *mod)

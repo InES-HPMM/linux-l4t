@@ -427,14 +427,12 @@ static void *get_debug_ram(const struct firmware *fw, int *size)
 	return nvadsp_da_to_va_mappings(addr, *size);
 }
 
-void *get_mailbox_shared_region(void)
+static void *get_mailbox_shared_region(const struct firmware *fw)
 {
-	const struct firmware *fw;
 	struct device *dev;
 	struct elf32_shdr *shdr;
 	int addr;
 	int size;
-	int ret;
 
 	if (!priv.pdev) {
 		pr_err("ADSP Driver is not initialized\n");
@@ -442,13 +440,6 @@ void *get_mailbox_shared_region(void)
 	}
 
 	dev = &priv.pdev->dev;
-
-	ret = request_firmware(&fw, NVADSP_FIRMWARE, dev);
-	if (ret < 0) {
-		dev_err(dev, "reqest firmware for %s failed with %d\n",
-					NVADSP_FIRMWARE, ret);
-		return ERR_PTR(ret);
-	}
 
 	shdr = nvadsp_get_section(fw, MAILBOX_REGION);
 	if (!shdr) {
@@ -649,7 +640,7 @@ int nvadsp_os_load(void)
 		dev_err(dev, "Memory allocation dynamic apps failed\n");
 		goto deallocate_os_memory;
 	}
-	ptr = get_mailbox_shared_region();
+	ptr = get_mailbox_shared_region(fw);
 	update_nvadsp_app_shared_ptr(ptr);
 	drv_data->shared_adsp_os_data = ptr;
 	priv.os_firmware = fw;
