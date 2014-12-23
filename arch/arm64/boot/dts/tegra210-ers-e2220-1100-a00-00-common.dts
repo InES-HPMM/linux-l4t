@@ -44,6 +44,8 @@
 #include "tegra210-platforms/tegra210-ers-camera-e2249-1002-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-pwm-fan-e2220-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-edp.dtsi"
+#include "tegra210-platforms/tegra210-ers-thermal-nct72-e2220-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi"
 #include <dt-bindings/sound/tegra-asoc-alt.h>
 #include <dt-bindings/platform/t210/t210.h>
 
@@ -1012,6 +1014,12 @@
 				up_compensation = <20>;
 				down_compensation = <20>;
 			};
+		};
+		Tboard_tegra {
+			status = "okay";
+		};
+		Tdiode_tegra {
+			status = "okay";
 		};
 	};
 

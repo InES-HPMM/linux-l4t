@@ -40,6 +40,8 @@
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
 #include "tegra210-platforms/tegra210-edp.dtsi"
 #include "tegra210-platforms/tegra210-audio.dtsi"
+#include "tegra210-platforms/tegra210-ers-thermal-nct72-e2220-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi"
 
 /* TODO: comm's dtsi should be included after GPIO dtsi */
 #include "tegra210-platforms/tegra210-hawkeye-comms.dtsi"
@@ -68,11 +70,9 @@
 		};
 	};
 
-
 	i2c@546c0000 {
 		avdd_dsi_csi-supply = <&mipi_1v2>;
 	};
-
 
 	spi@7000d400 {
 		status = "okay";
@@ -184,6 +184,12 @@
 			srate = <48000>;
 			num-channel = <2>;
 			name-prefix = "z";
+		};
+	};
+
+	i2c@7000c500 {
+		tegra_nct72: onsemi,nct72@4c {
+			vdd-supply = <&vdd_3v3>;
 		};
 	};
 
@@ -321,5 +327,13 @@
 	gpu_edp {
 		status = "okay";
 		nvidia,edp_limit = <12000>;
+	};
+	thermal-zones {
+		Tboard_tegra {
+			status = "okay";
+		};
+		Tdiode_tegra {
+			status = "okay";
+		};
 	};
 };
