@@ -412,6 +412,7 @@ struct tegra_pcie_port {
 	void __iomem *base;
 	unsigned int index;
 	unsigned int lanes;
+	int gpio_presence_detection;
 	bool disable_clock_request;
 	int status;
 	struct dentry *port_debugfs;
@@ -1971,7 +1972,12 @@ static void tegra_pcie_check_ports(struct tegra_pcie *pcie)
 		tegra_pcie_port_enable(port);
 		tegra_pcie_enable_rp_features(port);
 		/* override presence detection */
-		tegra_pcie_prsnt_map_override(port, true);
+		if (gpio_is_valid(port->gpio_presence_detection))
+			tegra_pcie_prsnt_map_override(port,
+				!(gpio_get_value_cansleep(
+					port->gpio_presence_detection)));
+		else
+			tegra_pcie_prsnt_map_override(port, true);
 	}
 	/* Wait for clock to latch (min of 100us) */
 	udelay(100);
@@ -1993,6 +1999,7 @@ static void tegra_pcie_check_ports(struct tegra_pcie *pcie)
 static int tegra_pcie_conf_gpios(struct tegra_pcie *pcie)
 {
 	int irq, err = 0;
+	struct tegra_pcie_port *port, *tmp;
 
 	PR_FUNC_LINE;
 	if (gpio_is_valid(pcie->plat_data->gpio_hot_plug)) {
@@ -2068,6 +2075,21 @@ static int tegra_pcie_conf_gpios(struct tegra_pcie *pcie)
 				"%s: pcie_wake gpio_direction_input failed %d\n",
 					__func__, err);
 			return err;
+		}
+	}
+
+	list_for_each_entry_safe(port, tmp, &pcie->ports, list) {
+		if (gpio_is_valid(port->gpio_presence_detection)) {
+			err = devm_gpio_request_one(pcie->dev,
+					port->gpio_presence_detection,
+					GPIOF_DIR_IN,
+					"pcie_presence_detection");
+			if (err < 0) {
+				dev_err(pcie->dev,
+					"%s: pcie_prsnt gpio_request failed %d\n",
+					__func__, err);
+				return err;
+			}
 		}
 	}
 	return 0;
@@ -2965,6 +2987,10 @@ static int tegra_pcie_parse_dt(struct tegra_pcie *pcie)
 				err);
 			return err;
 		}
+
+		rp->gpio_presence_detection =
+			of_get_named_gpio(port,
+				"nvidia,presence-detection-gpio", 0);
 
 		INIT_LIST_HEAD(&rp->list);
 		rp->index = index;
