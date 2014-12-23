@@ -2805,6 +2805,8 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 /* Called when exiting elpg */
 static void tegra_init_otg_port(struct tegra_xhci_hcd *tegra)
 {
+	if (XUSB_DEVICE_ID_T210 != tegra->device_id)
+		return;
 
 	/* perform reset_sspi WAR if we were in otg_host mode with
 	 * only otg cable connected during lp0 entry and now we are in
@@ -4696,14 +4698,6 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra->base_list[2] = tegra->ipfs_base;
 	tegra->base_list[3] = tegra->padctl_base;
 
-	if (tegra->bdata->otg_portmap & (0xff << XUSB_UTMI_INDEX)) {
-		tegra->transceiver = usb_get_phy(USB_PHY_TYPE_USB3);
-		if (IS_ERR_OR_NULL(tegra->transceiver)) {
-			dev_err(&pdev->dev, "failed to get usb phy\n");
-			tegra->transceiver = NULL;
-		}
-	}
-
 	for (pad = 0; pad < tegra->soc_config->utmi_pad_count; pad++) {
 		if (BIT(XUSB_UTMI_INDEX + pad) & tegra->bdata->otg_portmap) {
 			tegra->otg_portnum = pad;
@@ -4783,6 +4777,18 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "XUSB device id = 0x%x (%s)\n", tegra->device_id,
 		XUSB_IS_T114(tegra) ? "T114" : XUSB_IS_T124(tegra) ? "T124" :
 		XUSB_IS_T210(tegra) ? "T210" : "UNKNOWN");
+
+	if ((tegra->bdata->otg_portmap & (0xff << XUSB_UTMI_INDEX)) ||
+		(tegra->bdata->portmap & TEGRA_XUSB_USB2_P0)) {
+		if (XUSB_DEVICE_ID_T124 == tegra->device_id)
+			tegra->transceiver = usb_get_phy(USB_PHY_TYPE_USB2);
+		else if (XUSB_DEVICE_ID_T210 == tegra->device_id)
+			tegra->transceiver = usb_get_phy(USB_PHY_TYPE_USB3);
+		if (IS_ERR_OR_NULL(tegra->transceiver)) {
+			dev_err(&pdev->dev, "failed to get usb phy\n");
+			tegra->transceiver = NULL;
+		}
+	}
 
 	tegra->padregs = soc_config->padctl_offsets;
 
