@@ -1,7 +1,7 @@
 /*
 * nvxxx_udc.c - Nvidia device mode implementation
 *
-* Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+* Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -639,6 +639,13 @@ static int nvudc_ep_enable(struct usb_ep *ep,
 	dev = nvudc->dev;
 	msg_entry(dev);
 
+	spin_lock_irqsave(&nvudc->lock, flags);
+
+	if (nvudc->elpg_is_processing) {
+		spin_unlock_irqrestore(&nvudc->lock, flags);
+		msg_exit(dev);
+		return -ESHUTDOWN;
+	}
 	/* setup endpoint context for regular endpoint
 	   the endpoint context for control endpoint has been
 	   setted up in probe function */
@@ -650,6 +657,8 @@ static int nvudc_ep_enable(struct usb_ep *ep,
 				msg_err(dev, "too many isoc eps %d\n",
 						nvudc->g_isoc_eps);
 				nvudc->g_isoc_eps--;
+				spin_unlock_irqrestore(&nvudc->lock, flags);
+				msg_exit(dev);
 				return -EBUSY;
 			}
 			is_isoc_ep = true;
@@ -673,7 +682,9 @@ static int nvudc_ep_enable(struct usb_ep *ep,
 			vaddr = dma_alloc_coherent(nvudc->dev, len,
 					&dma, GFP_ATOMIC);
 			if (!vaddr) {
+				spin_unlock_irqrestore(&nvudc->lock, flags);
 				msg_err(dev, "failed to allocate trb ring\n");
+				msg_exit(dev);
 				return -ENOMEM;
 			}
 
@@ -699,7 +710,7 @@ static int nvudc_ep_enable(struct usb_ep *ep,
 	}
 
 	msg_dbg(dev, "num_enabled_eps = %d\n", nvudc->num_enabled_eps);
-	spin_lock_irqsave(&nvudc->lock, flags);
+
 	if (nvudc->device_state == USB_STATE_ADDRESS) {
 		u32 reg;
 		reg = ioread32(nvudc->mmio_reg_base + CTRL);
@@ -837,6 +848,13 @@ static int nvudc_ep_disable(struct usb_ep *_ep)
 	}
 
 	spin_lock_irqsave(&nvudc->lock, flags);
+
+	if (nvudc->elpg_is_processing) {
+		spin_unlock_irqrestore(&nvudc->lock, flags);
+		msg_exit(nvudc->dev);
+		return -ESHUTDOWN;
+	}
+
 	msg_dbg(nvudc->dev, "EPDCI = 0x%x\n", udc_ep->DCI);
 
 	/* HW will pause the endpoint first while reload ep,
@@ -1563,6 +1581,13 @@ nvudc_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 
 	spin_lock_irqsave(&nvudc->lock, flags);
 
+	if (nvudc->elpg_is_processing) {
+		spin_unlock_irqrestore(&nvudc->lock, flags);
+		msg_exit(nvudc->dev);
+		return -ESHUTDOWN;
+	}
+
+
 	if (!udc_ep_ptr->tran_ring_ptr ||
 		!udc_req_ptr->usb_req.complete ||
 		!udc_req_ptr->usb_req.buf ||
@@ -1731,6 +1756,13 @@ nvudc_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 	msg_dbg(nvudc->dev, "EPDCI = 0x%x\n", udc_ep->DCI);
 
 	spin_lock_irqsave(&nvudc->lock, flags);
+
+	if (nvudc->elpg_is_processing) {
+		spin_unlock_irqrestore(&nvudc->lock, flags);
+		msg_exit(nvudc->dev);
+		return -ESHUTDOWN;
+	}
+
 	if (ep_state == EP_STATE_RUNNING) {
 
 		msg_dbg(nvudc->dev, "EP_STATE_RUNNING\n");
@@ -1908,6 +1940,13 @@ static int nvudc_ep_set_halt(struct usb_ep *_ep, int value)
 	}
 
 	spin_lock_irqsave(&nvudc->lock, flags);
+
+	if (nvudc->elpg_is_processing) {
+		spin_unlock_irqrestore(&nvudc->lock, flags);
+		msg_exit(nvudc->dev);
+		return -ESHUTDOWN;
+	}
+
 	status = ep_halt(udc_ep_ptr, value);
 	spin_unlock_irqrestore(&nvudc->lock, flags);
 
@@ -4853,6 +4892,7 @@ static int tegra_xudc_exit_elpg(struct nv_udc_s *nvudc)
 {
 	int ret = 0;
 	struct device *dev = nvudc->dev;
+	unsigned long flags;
 
 	mutex_lock(&nvudc->elpg_lock);
 
@@ -4863,6 +4903,10 @@ static int tegra_xudc_exit_elpg(struct nv_udc_s *nvudc)
 	}
 
 	dev_dbg(dev, "Exit device controller ELPG\n");
+
+	spin_lock_irqsave(&nvudc->lock, flags);
+	nvudc->elpg_is_processing = true;
+	spin_unlock_irqrestore(&nvudc->lock, flags);
 
 	/* enable power rail */
 	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_XUSBA);
@@ -4882,6 +4926,10 @@ static int tegra_xudc_exit_elpg(struct nv_udc_s *nvudc)
 	/* enable clocks */
 	clk_enable(nvudc->dev_clk);
 	clk_enable(nvudc->ss_clk);
+
+	spin_lock_irqsave(&nvudc->lock, flags);
+	nvudc->elpg_is_processing = false;
+	spin_unlock_irqrestore(&nvudc->lock, flags);
 
 	/* disable wakeup interrupt */
 	tegra_xhci_hs_wake_on_interrupts(TEGRA_XUSB_USB2_P0, false);
@@ -4905,6 +4953,7 @@ static int tegra_xudc_enter_elpg(struct nv_udc_s *nvudc)
 	u32 reg;
 	int ret;
 	struct device *dev = nvudc->dev;
+	unsigned long flags;
 
 	mutex_lock(&nvudc->elpg_lock);
 
@@ -4934,6 +4983,10 @@ static int tegra_xudc_enter_elpg(struct nv_udc_s *nvudc)
 	/* enable wakeup interrupt */
 	tegra_xhci_hs_wake_on_interrupts(TEGRA_XUSB_USB2_P0, true);
 
+	spin_lock_irqsave(&nvudc->lock, flags);
+	nvudc->elpg_is_processing = true;
+	spin_unlock_irqrestore(&nvudc->lock, flags);
+
 	/* disable clock */
 	clk_disable(nvudc->dev_clk);
 	clk_disable(nvudc->ss_clk);
@@ -4952,6 +5005,10 @@ static int tegra_xudc_enter_elpg(struct nv_udc_s *nvudc)
 		mutex_unlock(&nvudc->elpg_lock);
 		return ret;
 	}
+
+	spin_lock_irqsave(&nvudc->lock, flags);
+	nvudc->elpg_is_processing = false;
+	spin_unlock_irqrestore(&nvudc->lock, flags);
 
 	nvudc->is_elpg = true;
 

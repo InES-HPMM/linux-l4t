@@ -1,7 +1,7 @@
 /*
 * nvxxx.h - Nvidia device mode implementation
 *
-* Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+* Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -601,6 +601,7 @@ struct nv_udc_s {
 	bool binded;
 	bool pullup;
 	bool is_elpg;
+	bool elpg_is_processing;
 	u32 act_bulk_ep;
 	u32 num_enabled_eps;
 	u32 g_isoc_eps;
