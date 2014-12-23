@@ -436,6 +436,7 @@ struct tegra_ahci_host_priv {
 	enum sata_state		pg_state;
 	struct clk		*clk_sata;
 	struct clk		*clk_sata_oob;
+	struct clk		*clk_sata_cold;
 	struct clk		*clk_sata_aux;
 	struct clk		*clk_pllp;
 	struct clk		*clk_cml1;
@@ -1535,128 +1536,134 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 			pr_err("%s: fails to get rails (%d)\n", __func__, err);
 			goto exit;
 		}
-
-	}
-	err = tegra_ahci_power_on_rails(tegra_hpriv);
-	if (err) {
-		pr_err("%s: fails to power on rails (%d)\n", __func__, err);
-		goto exit;
-	}
-
-	if (!lp0) {
+		err = tegra_ahci_power_on_rails(tegra_hpriv);
+		if (err) {
+			pr_err("%s: fails to power on rails (%d)\n",
+					__func__, err);
+			goto exit;
+		}
 		err = tegra_request_pexp_gpio(tegra_hpriv);
 		if (err < 0) {
 			tegra_free_pexp_gpio(tegra_hpriv);
 			goto exit;
 		}
+
+		clk_sata_uphy = clk_get_sys(NULL, "sata_uphy");
+		if (IS_ERR_OR_NULL(clk_sata_uphy)) {
+			pr_err("%s: unable to get sata_uphy clock Errone is %d\n",
+					__func__, (int) PTR_ERR(clk_sata_uphy));
+			err = PTR_ERR(clk_sata_uphy);
+			goto exit;
+		}
+		tegra_hpriv->clk_sata_uphy = clk_sata_uphy;
+
+		clk_cml1 = clk_get_sys(NULL, "cml1");
+		if (IS_ERR_OR_NULL(clk_cml1)) {
+			pr_err("%s: unable to get cml1 clock Errone is %d\n",
+					__func__, (int) PTR_ERR(clk_cml1));
+			err = PTR_ERR(clk_cml1);
+			goto exit;
+		}
+		tegra_hpriv->clk_cml1 = clk_cml1;
+
+		/* pll_p is the parent of tegra_sata and tegra_sata_oob */
+		clk_pllp = clk_get_sys(NULL, "pll_p");
+		if (IS_ERR_OR_NULL(clk_pllp)) {
+			pr_err("%s: unable to get PLL_P clock\n", __func__);
+			err = PTR_ERR(clk_pllp);
+			goto exit;
+		}
+		tegra_hpriv->clk_pllp = clk_pllp;
+
+		clk_sata = clk_get_sys("tegra_sata", NULL);
+		if (IS_ERR_OR_NULL(clk_sata)) {
+			pr_err("%s: unable to get SATA clock\n", __func__);
+			err = PTR_ERR(clk_sata);
+			goto exit;
+		}
+		tegra_hpriv->clk_sata = clk_sata;
+
+		clk_sata_oob = clk_get_sys("tegra_sata_oob", NULL);
+		if (IS_ERR_OR_NULL(clk_sata_oob)) {
+			pr_err("%s: unable to get SATA OOB clock\n", __func__);
+			err = PTR_ERR(clk_sata_oob);
+			goto exit;
+		}
+		tegra_hpriv->clk_sata_oob = clk_sata_oob;
+
+		clk_sata_cold = clk_get_sys("tegra_sata_cold", NULL);
+		if (IS_ERR_OR_NULL(clk_sata_cold)) {
+			pr_err("%s: unable to get SATA COLD clock\n", __func__);
+			err = PTR_ERR(clk_sata_cold);
+			goto exit;
+		}
+		tegra_hpriv->clk_sata_cold = clk_sata_cold;
+
+		tegra_hpriv->clk_sata_aux = clk_get_sys("tegra_sata_aux", NULL);
+		if (IS_ERR_OR_NULL(tegra_hpriv->clk_sata_aux)) {
+			pr_err("%s: unable to get SATA AUX clock\n", __func__);
+			err = PTR_ERR(tegra_hpriv->clk_sata_aux);
+			goto exit;
+		}
+
+
 	}
 
-	clk_sata_uphy = clk_get_sys(NULL, "sata_uphy");
-	if (IS_ERR_OR_NULL(clk_sata_uphy)) {
-		pr_err("%s: unable to get sata_uphy clock Errone is %d\n",
-				__func__, (int) PTR_ERR(clk_sata_uphy));
-		err = PTR_ERR(clk_sata_uphy);
-		goto exit;
-	}
-	tegra_hpriv->clk_sata_uphy = clk_sata_uphy;
-	tegra_periph_reset_assert(clk_sata_uphy);
+	tegra_periph_reset_assert(tegra_hpriv->clk_sata_uphy);
 
 	val = xusb_readl(XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
 	val |= (PLL0_PWR_OVRD | PLL0_IDDQ | PLL0_SLEEP_DEFAULT);
 	val &= ~PLL0_ENABLE;
 	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
 
-	clk_cml1 = clk_get_sys(NULL, "cml1");
-	if (IS_ERR_OR_NULL(clk_cml1)) {
-		pr_err("%s: unable to get cml1 clock Errone is %d\n",
-				__func__, (int) PTR_ERR(clk_cml1));
-		err = PTR_ERR(clk_cml1);
-		goto exit;
-	}
-	tegra_hpriv->clk_cml1 = clk_cml1;
-	if (clk_prepare_enable(clk_cml1)) {
+	if (clk_prepare_enable(tegra_hpriv->clk_cml1)) {
 		pr_err("%s: unable to enable cml1 clock\n", __func__);
 		err = -ENODEV;
 		goto exit;
 	}
-	tegra_periph_reset_deassert(clk_sata_uphy);
+	tegra_periph_reset_deassert(tegra_hpriv->clk_sata_uphy);
 
 	tegra_ahci_uphy_init();
 
-
-	/* pll_p is the parent of tegra_sata and tegra_sata_oob */
-	clk_pllp = clk_get_sys(NULL, "pll_p");
-	if (IS_ERR_OR_NULL(clk_pllp)) {
-		pr_err("%s: unable to get PLL_P clock\n", __func__);
-		err = PTR_ERR(clk_pllp);
-		goto exit;
-	}
-
-	clk_sata = clk_get_sys("tegra_sata", NULL);
-	if (IS_ERR_OR_NULL(clk_sata)) {
-		pr_err("%s: unable to get SATA clock\n", __func__);
-		err = PTR_ERR(clk_sata);
-		goto exit;
-	}
-
-	clk_sata_oob = clk_get_sys("tegra_sata_oob", NULL);
-	if (IS_ERR_OR_NULL(clk_sata_oob)) {
-		pr_err("%s: unable to get SATA OOB clock\n", __func__);
-		err = PTR_ERR(clk_sata_oob);
-		goto exit;
-	}
-
-	clk_sata_cold = clk_get_sys("tegra_sata_cold", NULL);
-	if (IS_ERR_OR_NULL(clk_sata_cold)) {
-		pr_err("%s: unable to get SATA COLD clock\n", __func__);
-		err = PTR_ERR(clk_sata_cold);
-		goto exit;
-	}
-
-	tegra_hpriv->clk_sata_aux = clk_get_sys("tegra_sata_aux", NULL);
-	if (IS_ERR_OR_NULL(tegra_hpriv->clk_sata_aux)) {
-		pr_err("%s: unable to get SATA AUX clock\n", __func__);
-		err = PTR_ERR(tegra_hpriv->clk_sata_aux);
-		goto exit;
-	}
-
-	tegra_hpriv->clk_sata = clk_sata;
-	tegra_hpriv->clk_sata_oob = clk_sata_oob;
-	tegra_hpriv->clk_pllp = clk_pllp;
-
-	tegra_periph_reset_assert(clk_sata);
-	tegra_periph_reset_assert(clk_sata_oob);
-	tegra_periph_reset_assert(clk_sata_cold);
+	tegra_periph_reset_assert(tegra_hpriv->clk_sata);
+	tegra_periph_reset_assert(tegra_hpriv->clk_sata_oob);
+	tegra_periph_reset_assert(tegra_hpriv->clk_sata_cold);
 	udelay(10);
 
 
 	/* need to establish both clocks divisors before setting clk sources */
-	clk_set_rate(clk_sata, clk_get_rate(clk_sata)/10);
-	clk_set_rate(clk_sata_oob, clk_get_rate(clk_sata_oob)/10);
+	clk_set_rate(tegra_hpriv->clk_sata,
+			clk_get_rate(tegra_hpriv->clk_sata)/10);
+	clk_set_rate(tegra_hpriv->clk_sata_oob,
+			clk_get_rate(tegra_hpriv->clk_sata_oob)/10);
 
 	/* set SATA clk and SATA_OOB clk source */
-	clk_set_parent(clk_sata, clk_pllp);
-	clk_set_parent(clk_sata_oob, clk_pllp);
+	clk_set_parent(tegra_hpriv->clk_sata,
+			tegra_hpriv->clk_pllp);
+	clk_set_parent(tegra_hpriv->clk_sata_oob,
+			tegra_hpriv->clk_pllp);
 
 	/* Configure SATA clocks */
 	/* Core clock runs at 108MHz */
-	if (clk_set_rate(clk_sata, TEGRA_SATA_CORE_CLOCK_FREQ_HZ)) {
+	if (clk_set_rate(tegra_hpriv->clk_sata,
+			TEGRA_SATA_CORE_CLOCK_FREQ_HZ)) {
 		err = -ENODEV;
 		goto exit;
 	}
 	/* OOB clock runs at 216MHz */
-	if (clk_set_rate(clk_sata_oob, TEGRA_SATA_OOB_CLOCK_FREQ_HZ)) {
+	if (clk_set_rate(tegra_hpriv->clk_sata_oob,
+			TEGRA_SATA_OOB_CLOCK_FREQ_HZ)) {
 		err = -ENODEV;
 		goto exit;
 	}
 
-	if (clk_prepare_enable(clk_sata)) {
+	if (clk_prepare_enable(tegra_hpriv->clk_sata)) {
 		pr_err("%s: unable to enable SATA clock\n", __func__);
 		err = -ENODEV;
 		goto exit;
 	}
 
-	if (clk_prepare_enable(clk_sata_oob)) {
+	if (clk_prepare_enable(tegra_hpriv->clk_sata_oob)) {
 		pr_err("%s: unable to enable SATA OOB clock\n", __func__);
 		err = -ENODEV;
 		goto exit;
@@ -1668,9 +1675,11 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 		goto exit;
 	}
 
-	tegra_periph_reset_deassert(clk_sata);
-	tegra_periph_reset_deassert(clk_sata_oob);
-	tegra_periph_reset_deassert(clk_sata_cold);
+	g_tegra_hpriv->clk_state = CLK_ON;
+
+	tegra_periph_reset_deassert(tegra_hpriv->clk_sata);
+	tegra_periph_reset_deassert(tegra_hpriv->clk_sata_oob);
+	tegra_periph_reset_deassert(tegra_hpriv->clk_sata_cold);
 
 	/* select internal CML ref clk
 	 * select PLLE as input to IO phy */
@@ -1807,20 +1816,20 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 
 exit:
 
-	if (!IS_ERR_OR_NULL(clk_pllp))
-		clk_put(clk_pllp);
-	if (!IS_ERR_OR_NULL(clk_sata))
-		clk_put(clk_sata);
-	if (!IS_ERR_OR_NULL(clk_sata_oob))
-		clk_put(clk_sata_oob);
+	if (!IS_ERR_OR_NULL(tegra_hpriv->clk_pllp))
+		clk_put(tegra_hpriv->clk_pllp);
+	if (!IS_ERR_OR_NULL(tegra_hpriv->clk_sata))
+		clk_put(tegra_hpriv->clk_sata);
+	if (!IS_ERR_OR_NULL(tegra_hpriv->clk_sata_oob))
+		clk_put(tegra_hpriv->clk_sata_oob);
 	if (!IS_ERR_OR_NULL(tegra_hpriv->clk_sata_aux))
 		clk_put(tegra_hpriv->clk_sata_aux);
-	if (!IS_ERR_OR_NULL(clk_sata_cold))
-		clk_put(clk_sata_cold);
-	if (!IS_ERR_OR_NULL(clk_cml1))
-		clk_put(clk_cml1);
+	if (!IS_ERR_OR_NULL(tegra_hpriv->clk_sata_cold))
+		clk_put(tegra_hpriv->clk_sata_cold);
+	if (!IS_ERR_OR_NULL(tegra_hpriv->clk_cml1))
+		clk_put(tegra_hpriv->clk_cml1);
 
-	if (err) {
+	if (err && !lp0) {
 		/* turn off all SATA power rails; ignore returned status */
 		tegra_ahci_power_off_rails(tegra_hpriv,
 			tegra_hpriv->soc_data->num_sata_regulators);
@@ -1869,10 +1878,6 @@ static int tegra_ahci_controller_suspend(struct platform_device *pdev)
 	unsigned long flags;
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
-
-	/* stop the idle timer */
-	if (timer_pending(&tegra_hpriv->idle_timer))
-		del_timer_sync(&tegra_hpriv->idle_timer);
 
 	spin_lock_irqsave(&host->lock, flags);
 	if (tegra_hpriv->pg_state == SATA_OFF)
@@ -2158,7 +2163,13 @@ static int tegra_ahci_resume(struct device *dev)
 	}
 
 	ata_host_resume(host);
-
+#ifdef CONFIG_PM
+#ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
+	pm_runtime_disable(&pdev->dev);
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+#endif
+#endif
 	return 0;
 }
 
@@ -2739,6 +2750,7 @@ static bool tegra_ahci_power_gate(struct ata_host *host)
 
 	if (tegra_hpriv->cid == TEGRA_CHIPID_TEGRA21)
 		tegra_ahci_t210_power_down_aux_idle_detector();
+	tegra_hpriv->pg_state = SATA_OFF;
 
 	return true;
 }
@@ -2838,6 +2850,7 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host)
 	val = pmc_readl(APB_PMC_SATA_PWRGT_0_REG);
 	val &= ~PG_INFO_MASK;
 	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
+	tegra_hpriv->pg_state = SATA_ON;
 
 	return true;
 }
