@@ -844,8 +844,8 @@ dhdsdio_clk_kso_init(dhd_bus_t *bus)
 }
 
 #define KSO_DBG(x)
-#define KSO_WAIT_US 50
-#define KSO_WAIT_MS 1
+#define KSO_WAIT_US 500000
+#define KSO_WAIT_MS 500
 #define KSO_SLEEP_RETRY_COUNT 20
 #define ERROR_BCME_NODEVICE_MAX 1
 
@@ -881,10 +881,7 @@ dhdsdio_clk_kso_enab(dhd_bus_t *bus, bool on)
 
 		KSO_DBG(("%s> KSO wr/rd retry:%d, ERR:%x \n", __FUNCTION__, try_cnt, err));
 
-		if (((try_cnt + 1) % KSO_SLEEP_RETRY_COUNT) == 0) {
-			OSL_SLEEP(KSO_WAIT_MS);
-		} else
-			OSL_DELAY(KSO_WAIT_US);
+		OSL_SLEEP(KSO_WAIT_MS);
 
 		bcmsdh_cfg_write(bus->sdh, SDIO_FUNC_1, SBSDIO_FUNC1_SLEEPCSR, wr_val, &err);
 	} while (try_cnt++ < MAX_KSO_ATTEMPTS);
@@ -1059,12 +1056,7 @@ dhdsdio_clk_devsleep_iovar(dhd_bus_t *bus, bool on)
 		{
 			err = bcmsdh_gpioout(bus->sdh, GPIO_DEV_WAKEUP, TRUE);  /* GPIO_1 is on */
 		}
-		do {
-			err = dhdsdio_clk_kso_enab(bus, TRUE);
-			if (err)
-				OSL_SLEEP(10);
-		} while ((err != 0) && (++retry < 3));
-
+		err = dhdsdio_clk_kso_enab(bus, TRUE);
 		if (err != 0) {
 			DHD_ERROR(("ERROR: kso set failed retry: %d\n", retry));
 			err = 0; /* continue anyway */
