@@ -3648,10 +3648,18 @@ static void tegra21_plle_clk_disable(struct clk *c)
 	u32 val;
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
-	/* FIXME: do we need to restore other s/w controls ? */
+	/* If enable PLLE HW sequencer, SW do not need to disable PLLE */
+	val = clk_readl(PLLE_AUX);
+	if (val & PLLE_AUX_SEQ_ENABLE)
+		return;
+
 	val = clk_readl(c->reg);
 	val &= ~PLLE_BASE_ENABLE;
 	clk_writel(val, c->reg);
+
+	val = clk_readl(PLLE_AUX);
+	val |= PLLE_AUX_ENABLE_SWCTL | PLLE_AUX_SS_SWCTL;
+	clk_writel(val, PLLE_AUX);
 
 	val = clk_readl(c->reg + c->u.pll.misc0);
 	val |= PLLE_MISC_IDDQ_SW_CTRL | PLLE_MISC_IDDQ_SW_VALUE;
@@ -3669,6 +3677,12 @@ static int tegra21_plle_clk_enable(struct clk *c)
 	if (c->state == ON) {
 		/* BL left plle enabled - don't change configuartion */
 		pr_warn("%s: pll_e is already enabled\n", __func__);
+		return 0;
+	}
+
+	val = clk_readl(PLLE_AUX);
+	if (val & PLLE_AUX_SEQ_ENABLE) {
+		pr_warn("%s: pll_e hw sequencer is already on\n", __func__);
 		return 0;
 	}
 
