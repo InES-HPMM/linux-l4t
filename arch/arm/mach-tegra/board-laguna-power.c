@@ -28,7 +28,6 @@
 #include <linux/gpio.h>
 #include <linux/regulator/userspace-consumer.h>
 #include <linux/pid_thermal_gov.h>
-#include <linux/power/bq2471x-charger.h>
 #include <linux/tegra-pmc.h>
 
 #include <asm/mach-types.h>
@@ -48,19 +47,6 @@
 #include <linux/platform/tegra/tegra_cl_dvfs.h>
 #include "devices.h"
 #include "iomap.h"
-
-struct bq2471x_platform_data laguna_bq2471x_pdata = {
-	.charge_broadcast_mode = 1,
-	.gpio_active_low = 1,
-	.gpio = TEGRA_GPIO_PK3,
-};
-
-static struct i2c_board_info __initdata bq2471x_boardinfo[] = {
-	{
-		I2C_BOARD_INFO("bq2471x", 0x09),
-		.platform_data  = &laguna_bq2471x_pdata,
-	},
-};
 
 static struct tegra_suspend_platform_data laguna_suspend_data = {
 	.cpu_timer	= 2000,
@@ -167,10 +153,6 @@ int __init laguna_regulator_init(void)
 	laguna_cl_dvfs_init();
 #endif
 	tegra_pmc_pmu_interrupt_polarity(true);
-
-	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
-		i2c_register_board_info(1, bq2471x_boardinfo,
-			ARRAY_SIZE(bq2471x_boardinfo));
 
 	return 0;
 }
