@@ -4573,7 +4573,8 @@ void restore_mmio_reg(struct nv_udc_s *nvudc)
 		/* T210 WAR, Disable BLCG DFPCI/UFPCI/FE */
 		reg = ioread32(nvudc->mmio_reg_base + BLCG);
 		reg |= BLCG_ALL;
-		reg &= ~(BLCG_DFPCI | BLCG_UFPCI | BLCG_FE);
+		reg &= ~(BLCG_DFPCI | BLCG_UFPCI | BLCG_FE |
+			BLCG_COREPLL_PWRDN);
 		iowrite32(reg, nvudc->mmio_reg_base + BLCG);
 	}
 
