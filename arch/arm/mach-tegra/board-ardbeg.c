@@ -1147,30 +1147,6 @@ static void __init ardbeg_sysedp_dynamic_capping_init(void)
 	}
 }
 
-static void __init ardbeg_sysedp_batmon_init(void)
-{
-	struct board_info bi;
-
-	if (!IS_ENABLED(CONFIG_SYSEDP_FRAMEWORK))
-		return;
-
-	tegra_get_board_info(&bi);
-
-	switch (bi.board_id) {
-	case BOARD_E1780:
-		if (bi.sku != 1100)
-			shield_sysedp_batmon_init();
-		break;
-	case BOARD_PM358:
-	case BOARD_PM359:
-	case BOARD_PM375:
-	default:
-		break;
-	}
-}
-
-
-
 static void __init tegra_ardbeg_early_init(void)
 {
 	ardbeg_sysedp_init();
@@ -1309,7 +1285,6 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_setup_bluedroid_pm();
 #endif
 	ardbeg_sysedp_dynamic_capping_init();
-	ardbeg_sysedp_batmon_init();
 }
 
 static void __init tegra_ardbeg_init_early(void)
