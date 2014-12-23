@@ -26,10 +26,10 @@
 
 #include <linux/types.h>
 #include <linux/errno.h>
-#include <linux/power_supply.h>
 #include <linux/memory.h>
 #include <linux/tegra_smmu.h>
 #include <linux/reboot.h>
+#include <linux/platform_device.h>
 
 /*
  * OF is always used on ARM64
@@ -253,7 +253,6 @@ int tegra_get_modem_id(void);
 int tegra_get_commchip_id(void);
 u8 get_power_config(void);
 u8 get_display_config(void);
-enum power_supply_type get_power_supply_type(void);
 enum audio_codec_type get_audio_codec_type(void);
 int get_maximum_core_current_supported(void);
 int get_emc_max_dvfs(void);

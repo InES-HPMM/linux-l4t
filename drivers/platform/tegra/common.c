@@ -178,7 +178,6 @@ int tegra_with_secure_firmware;
 
 static int pmu_core_edp;
 static int board_panel_type;
-static enum power_supply_type pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
 static int pwr_i2c_clk = 400;
 static u8 power_config;
 static u8 display_config;
@@ -1122,24 +1121,6 @@ static int __init tegra_board_display_config(char *options)
 	return 1;
 }
 __setup("display-config=", tegra_board_display_config);
-
-enum power_supply_type get_power_supply_type(void)
-{
-	return pow_supply_type;
-}
-static int __init tegra_board_power_supply_type(char *options)
-{
-	if (!strcmp(options, "Adapter"))
-		pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
-	if (!strcmp(options, "Mains"))
-		pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
-	else if (!strcmp(options, "Battery"))
-		pow_supply_type = POWER_SUPPLY_TYPE_BATTERY;
-	else
-		return 0;
-	return 1;
-}
-__setup("power_supply=", tegra_board_power_supply_type);
 
 int get_core_edp(void)
 {
