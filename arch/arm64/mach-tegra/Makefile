@@ -43,7 +43,6 @@ obj-${CONFIG_MACH_T132REF}              += board-t132ref-norrin-power.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-norrin-memory.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-power.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-sdhci.o
-obj-${CONFIG_MACH_T132REF}              += board-t132ref-sysedp.o
 obj-${CONFIG_MACH_T132REF}              += board-t132ref-tn8-sysedp.o
 obj-${CONFIG_MACH_T132REF}              += panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_T132REF}              += panel-s-edp-uhdtv-15-6.o

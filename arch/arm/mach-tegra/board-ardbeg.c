@@ -1098,11 +1098,8 @@ static void __init ardbeg_sysedp_init(void)
 
 	switch (bi.board_id) {
 	case BOARD_E1780:
-		if (bi.sku == 1100) {
+		if (bi.sku == 1100)
 			tn8_new_sysedp_init();
-		}
-		else
-			shield_new_sysedp_init();
 		break;
 	case BOARD_E1971:
 	case BOARD_E1922:
@@ -1129,8 +1126,6 @@ static void __init ardbeg_sysedp_dynamic_capping_init(void)
 	case BOARD_E1780:
 		if (bi.sku == 1100)
 			tn8_sysedp_dynamic_capping_init();
-		else
-			shield_sysedp_dynamic_capping_init();
 		break;
 	case BOARD_E1971:
 	case BOARD_E1922:
