@@ -734,6 +734,12 @@ static u32 *locate_pte(struct smmu_as *as,
 	if (pdir[pdn] != _PDE_VACANT(pdn)) {
 		/* Mapped entry table already exists */
 		*ptbl_page_p = SMMU_EX_PTBL_PAGE(pdir[pdn]);
+		if (!(pdir[pdn] & _PDE_NEXT)) {
+			WARN(1, "asid=%d iova=%pa pdir[%d]=0x%x ptbl=%p, ptn=%d\n",
+			     as->asid, &iova, pdn, pdir[pdn],
+			     page_address(*ptbl_page_p), ptn);
+			return NULL;
+		}
 	} else if (!allocate) {
 		return NULL;
 	} else {
