@@ -12,6 +12,9 @@ Recommended properties:
                      Documentation/devicetree/bindings/spi/spi-bus.txt
 Optional properties:
 - nvidia,clock-always-on: Enable clock of spi always.
+- nvidia,maximum-dma-buffer-size: Maximum dma buffer size per transfer.
+	If this is not available then 16K will be default. The value should
+	be unit of byte.
 
 spi-client device controller properties:
   Below properties should be defined under 'controller-data' child node

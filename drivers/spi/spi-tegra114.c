@@ -1466,6 +1466,7 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 	struct device_node *np = pdev->dev.of_node;
 	struct device_node *nc = NULL;
 	struct device_node *found_nc = NULL;
+	u32 pval;
 	int len;
 	int ret;
 
@@ -1481,6 +1482,10 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 
 	if (of_find_property(np, "nvidia,clock-always-on", NULL))
 		pdata->is_clkon_always = true;
+
+	ret = of_property_read_u32(np, "nvidia,maximum-dma-buffer-size", &pval);
+	if (!ret)
+		pdata->max_dma_buffer_size = pval;
 
 	/* when no client is defined, default chipselect is zero */
 	pdata->def_chip_select = 0;
@@ -1636,7 +1641,9 @@ static int tegra_spi_probe(struct platform_device *pdev)
 	}
 
 	tspi->max_buf_size = SPI_FIFO_DEPTH << 2;
-	tspi->dma_buf_size = DEFAULT_SPI_DMA_BUF_LEN;
+	tspi->dma_buf_size = (pdata->max_dma_buffer_size) ?
+				pdata->max_dma_buffer_size :
+				DEFAULT_SPI_DMA_BUF_LEN;
 	tspi->spi_max_frequency = pdata->spi_max_frequency;
 	tspi->min_div = 0;
 
