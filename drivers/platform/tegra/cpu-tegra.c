@@ -55,6 +55,7 @@ static struct clk *emc_clk;
 
 static unsigned long policy_max_speed[CONFIG_NR_CPUS];
 static unsigned long target_cpu_speed[CONFIG_NR_CPUS];
+static bool preserve_cpu_speed;
 static DEFINE_MUTEX(tegra_cpu_lock);
 static bool is_suspended;
 static int suspend_index;
@@ -1220,10 +1221,12 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 	unsigned long rate;
 
 	if (event == PM_SUSPEND_PREPARE) {
-		pm_qos_update_request(&cpufreq_min_req,
-			freq_table[suspend_index].frequency);
-		pm_qos_update_request(&cpufreq_max_req,
-			freq_table[suspend_index].frequency);
+		if (!preserve_cpu_speed) {
+			pm_qos_update_request(&cpufreq_min_req,
+				freq_table[suspend_index].frequency);
+			pm_qos_update_request(&cpufreq_max_req,
+				freq_table[suspend_index].frequency);
+		}
 
 		mutex_lock(&tegra_cpu_lock);
 		is_suspended = true;
@@ -1251,10 +1254,12 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 			freq);
 		mutex_unlock(&tegra_cpu_lock);
 
-		pm_qos_update_request(&cpufreq_max_req,
-			PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE);
-		pm_qos_update_request(&cpufreq_min_req,
-			PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+		if (!preserve_cpu_speed) {
+			pm_qos_update_request(&cpufreq_max_req,
+				PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE);
+			pm_qos_update_request(&cpufreq_min_req,
+				PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+		}
 	}
 
 	return NOTIFY_OK;
@@ -1381,6 +1386,7 @@ static int __init tegra_cpufreq_init(void)
 
 	freq_table = table_data->freq_table;
 
+	preserve_cpu_speed = table_data->preserve_across_suspend;
 	cpu_suspend_freq = tegra_cpu_suspend_freq();
 	if (cpu_suspend_freq == 0) {
 		suspend_index = table_data->suspend_index;

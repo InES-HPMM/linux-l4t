@@ -9223,6 +9223,9 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 	if (freq_table_data.freq_table)
 		return &freq_table_data;
 
+	if (tegra_is_soc_automotive_speedo())
+		freq_table_data.preserve_across_suspend = true;
+
 	/* Clean table */
 	for (i = 0; i < CPU_FREQ_TABLE_MAX_SIZE; i++) {
 		freq_table[i].index = i;

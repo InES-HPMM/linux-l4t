@@ -602,11 +602,20 @@ static inline void clk_lock_init(struct clk *c)
 #ifdef CONFIG_CPU_FREQ
 struct cpufreq_frequency_table;
 
+/**
+  * freq_table: List of frequencies allowed for cpu.
+  * throttle_lowest_index: Lowest throttling frequency index.
+  * throttle_highest_index: Highest throttling frequency index.
+  * suspend_index: Suspend frequency index.
+  * preserve_across_suspend: Preserve cpu frequency even after suspend
+  *			     for restoring during resume.
+  */
 struct tegra_cpufreq_table_data {
 	struct cpufreq_frequency_table *freq_table;
 	int throttle_lowest_index;
 	int throttle_highest_index;
 	int suspend_index;
+	bool preserve_across_suspend;
 };
 struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void);
 unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate);
