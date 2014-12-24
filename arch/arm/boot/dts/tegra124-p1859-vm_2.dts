@@ -233,14 +233,14 @@
 		address-space-prop {
 			gpu_as: gpu {
 				iova-start = <0x0 0x00100000>;
-				iova-size = <0x0 0x7FEFFFFF>;
+				iova-size = <0x0 0x7BEFFFFF>;
 				alignment = <0xFFFFF>;
 				num-pf-page = <0>;
 				gap-page = <0>;
 				};
 			host1x_as: host1x {
 				iova-start = <0x0 0x00100000>;
-				iova-size = <0x0 0x7FEFFFFF>;
+				iova-size = <0x0 0x7BEFFFFF>;
 				alignment = <0xFFFFF>;
 				num-pf-page = <0>;
 				gap-page = <0>;
