@@ -27,6 +27,10 @@ spi-client device controller properties:
 - nvidia,cs-hold-clk-count: CS hold timing parameter.
 - nvidia,cs-inactive-cycles: Cycles to be inactive between two packets.
   CS Inactive between packets is disabled if value of this is zero.
+- nvidia,clk-delay-between-packets: Clock delay  between packets by keeping
+		CS active. For this, it is required to pass the Chip select
+		as GPIO.
+- nvidia,chipselect-gpio: Chipselect GPIO number as per gpio binding.
 
 Example:
 spi@7000d600 {
