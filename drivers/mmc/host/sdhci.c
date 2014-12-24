@@ -157,6 +157,14 @@ static inline int sdhci_runtime_pm_put(struct sdhci_host *host)
 {
 	return 0;
 }
+static inline int sdhci_runtime_resume_host(struct sdhci_host *host)
+{
+	return 0;
+}
+static inline int sdhci_runtime_suspend_host(struct sdhci_host *host)
+{
+	return 0;
+}
 #endif
 
 static void sdhci_dumpregs(struct sdhci_host *host)
