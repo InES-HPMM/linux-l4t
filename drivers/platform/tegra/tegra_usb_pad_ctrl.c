@@ -1911,14 +1911,14 @@ struct xusb_padctl_restore_context {
 };
 static struct xusb_padctl_restore_context context;
 
-int tegra_xusb_padctl_suspend(void)
+static int tegra_xusb_padctl_suspend(void)
 {
 	context.padctl_usb3_pad_mux = tegra_usb_pad_reg_read(
 		XUSB_PADCTL_USB3_PAD_MUX_0);
 	return 0;
 }
 
-void tegra_xusb_padctl_resume(void)
+static void tegra_xusb_padctl_resume(void)
 {
 	tegra_usb_pad_reg_write(XUSB_PADCTL_USB3_PAD_MUX_0,
 		context.padctl_usb3_pad_mux);
