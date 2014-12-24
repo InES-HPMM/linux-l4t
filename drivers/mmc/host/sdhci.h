@@ -4,7 +4,7 @@
  * Header file for Host Controller registers and I/O accessors.
  *
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
- *  Copyright (c) 2011-2014, NVIDIA CORPORATION. All Rights Reserved.
+ *  Copyright (c) 2011-2015, NVIDIA CORPORATION. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -514,6 +514,7 @@ static inline void *sdhci_priv(struct sdhci_host *host)
 
 extern void sdhci_card_detect(struct sdhci_host *host);
 extern int sdhci_add_host(struct sdhci_host *host);
+extern void sdhci_runtime_forbid(struct sdhci_host *host);
 extern void sdhci_remove_host(struct sdhci_host *host, int dead);
 
 #ifdef CONFIG_PM

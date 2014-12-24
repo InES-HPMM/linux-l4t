@@ -254,6 +254,8 @@ struct sdhci_host {
 
 	struct delayed_work	delayed_clk_gate_wrk;
 	bool			is_clk_on;
+	bool			runtime_pm_init_done;
+	bool			runtime_pm_enable_dcg;
 #ifdef CONFIG_DEBUG_FS
 	unsigned int		enable_sdhci_perf_stats;
 #endif

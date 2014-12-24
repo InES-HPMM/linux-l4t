@@ -2,7 +2,7 @@
  *  linux/drivers/mmc/host/sdhci.c - Secure Digital Host Controller Interface driver
  *
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
- *  Copyright (C) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ *  Copyright (C) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,7 +46,6 @@
 #include "sdhci.h"
 
 #define DRIVER_NAME "sdhci"
-#define DEFAULT_SDHOST_FREQ     50000000
 
 #define DBG(f, x...) \
 	pr_debug(DRIVER_NAME " [%s()]: " f, __func__, ## x)
@@ -94,6 +93,9 @@ void dbg_add_host_log(struct mmc_host *host, int type, int cmd, int arg)
 	spin_unlock_irqrestore(&host->cmd_dump_lock, flags);
 }
 #endif
+
+/* MMC_RTPM timeout */
+#define MMC_RTPM_MSEC_TMOUT 10
 
 /* SDIO 1msec timeout, but use 10msec timeout for HZ=100 */
 #define SDIO_CLK_GATING_TICK_TMOUT ((HZ >= 1000) ? (HZ / 1000) : 1)
@@ -3649,14 +3651,6 @@ int sdhci_resume_host(struct sdhci_host *host)
 		disable_irq_wake(host->irq);
 	}
 
-#if defined(CONFIG_MMC_RTPM)
-	if (!host->clock || !host->mmc->ios.clock) {
-		if (host->ops->set_clock)
-			host->ops->set_clock(host, DEFAULT_SDHOST_FREQ);
-		sdhci_set_clock(host, DEFAULT_SDHOST_FREQ);
-	}
-#endif
-
 	if ((host->mmc->pm_flags & MMC_PM_KEEP_POWER) &&
 	    (host->quirks2 & SDHCI_QUIRK2_HOST_OFF_CARD_ON)) {
 		/* Card keeps power but host controller does not */
@@ -4612,6 +4606,19 @@ out_dma_alloc:
 		(host->flags & SDHCI_USE_SDMA) ? "DMA" : "PIO");
 
 	sdhci_enable_card_detection(host);
+
+	pm_runtime_enable(mmc_dev(mmc));
+	pm_runtime_use_autosuspend(mmc_dev(mmc));
+	if (host->quirks2 & SDHCI_QUIRK2_MMC_RTPM) {
+		/*
+		 * Below Autosuspend delay can be increased/decreased based on
+		 * power and perf data
+		 */
+		pm_runtime_set_autosuspend_delay(mmc_dev(mmc),
+			MMC_RTPM_MSEC_TMOUT);
+	}
+	host->runtime_pm_init_done = true;
+
 #ifdef CONFIG_DEBUG_FS
 	/* Add debugfs nodes */
 	sdhci_debugfs_init(host);
@@ -4635,6 +4642,12 @@ untasklet:
 }
 
 EXPORT_SYMBOL_GPL(sdhci_add_host);
+
+void sdhci_runtime_forbid(struct sdhci_host *host)
+{
+	pm_runtime_forbid(mmc_dev(host->mmc));
+}
+EXPORT_SYMBOL_GPL(sdhci_runtime_forbid);
 
 void sdhci_remove_host(struct sdhci_host *host, int dead)
 {

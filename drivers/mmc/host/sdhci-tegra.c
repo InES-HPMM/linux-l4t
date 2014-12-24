@@ -291,9 +291,6 @@
 #define TAP_CMD_TRIM_DEFAULT_VOLTAGE	1
 #define TAP_CMD_TRIM_HIGH_VOLTAGE	2
 
-/* Some boards show reset during boot if RTPM TMOUT is 10msec */
-#define MMC_RTPM_MSEC_TMOUT 20
-
 /* Max number of clock parents for sdhci is fixed to 2 */
 #define TEGRA_SDHCI_MAX_PLL_SOURCE 2
 /*
@@ -1739,15 +1736,15 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-#if !defined(CONFIG_MMC_RTPM)
 	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
-#endif
+	struct tegra_sdhci_platform_data *plat;
 	u8 ctrl;
 	int ret = 0;
 
 	mutex_lock(&tegra_host->set_clock_mutex);
 	pr_debug("%s %s %u enabled=%u\n", __func__,
 		mmc_hostname(sdhci->mmc), clock, tegra_host->clk_enabled);
+	plat = pdev->dev.platform_data;
 	if (clock) {
 		if (!tegra_host->clk_enabled) {
 			ret = clk_prepare_enable(pltfm_host->clk);
@@ -1757,9 +1754,11 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 				mutex_unlock(&tegra_host->set_clock_mutex);
 				return;
 			}
-#ifndef CONFIG_MMC_RTPM
-			pm_runtime_get_sync(&pdev->dev);
-#endif
+			if (sdhci->runtime_pm_init_done &&
+				IS_RTPM_DELAY_CG(plat->rtpm_type)) {
+				sdhci->runtime_pm_enable_dcg = true;
+				pm_runtime_get_sync(&pdev->dev);
+			}
 			tegra_host->clk_enabled = true;
 			sdhci->is_clk_on = true;
 			ctrl = sdhci_readb(sdhci, SDHCI_VNDR_CLK_CTRL);
@@ -1813,9 +1812,12 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 
 		tegra_host->clk_enabled = false;
 		sdhci->is_clk_on = false;
-#ifndef CONFIG_MMC_RTPM
-		pm_runtime_put_sync(&pdev->dev);
-#endif
+		if (sdhci->runtime_pm_init_done &&
+			sdhci->runtime_pm_enable_dcg &&
+			IS_RTPM_DELAY_CG(plat->rtpm_type)) {
+			sdhci->runtime_pm_enable_dcg = false;
+			pm_runtime_put_sync(&pdev->dev);
+		}
 		clk_disable_unprepare(pltfm_host->clk);
 	}
 	mutex_unlock(&tegra_host->set_clock_mutex);
@@ -4122,8 +4124,11 @@ static int show_disableclkgating_value(void *data, u64 *value)
 static int set_disableclkgating_value(void *data, u64 value)
 {
 	struct sdhci_host *host = (struct sdhci_host *)data;
+	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
+	struct tegra_sdhci_platform_data *plat;
 	if (host != NULL) {
 		struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+		plat = pdev->dev.platform_data;
 		if (pltfm_host != NULL) {
 			struct sdhci_tegra *tegra_host = pltfm_host->priv;
 			/* Set the CAPS2 register to reflect
@@ -4134,12 +4139,14 @@ static int set_disableclkgating_value(void *data, u64 value)
 					host->mmc->ops->set_ios(host->mmc,
 						&host->mmc->ios);
 					tegra_host->dbg_cfg.clk_ungated = true;
-					host->mmc->caps2 &=
-						~MMC_CAP2_CLOCK_GATING;
+					if (IS_RTPM_DELAY_CG(plat->rtpm_type))
+						host->mmc->caps2 &=
+							~MMC_CAP2_CLOCK_GATING;
 				} else {
 					tegra_host->dbg_cfg.clk_ungated = false;
-					host->mmc->caps2 |=
-						MMC_CAP2_CLOCK_GATING;
+					if (IS_RTPM_DELAY_CG(plat->rtpm_type))
+						host->mmc->caps2 |=
+							MMC_CAP2_CLOCK_GATING;
 				}
 			}
 		}
@@ -4743,6 +4750,7 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 						struct platform_device *pdev)
 {
 	int val;
+	int ret;
 	struct tegra_sdhci_platform_data *plat;
 	struct device_node *np = pdev->dev.of_node;
 	u32 bus_width;
@@ -4834,6 +4842,11 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	}
 	plat->enable_autocal_slew_override = of_property_read_bool(np,
 					"nvidia,auto-cal-slew-override");
+	ret = of_property_read_u32(np, "nvidia,runtime-pm-type",
+		&plat->rtpm_type);
+	/* use delayed clock gate if runtime type not specified explicitly */
+	if (ret < 0)
+		plat->rtpm_type = RTPM_TYPE_DELAY_CG;
 
 	return plat;
 }
@@ -5053,9 +5066,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	host = sdhci_pltfm_init(pdev, soc_data->pdata);
 
-	/* sdio delayed clock gate quirk in sdhci_host used */
-	host->quirks2 |= SDHCI_QUIRK2_DELAYED_CLK_GATE;
-
 	if (IS_ERR(host))
 		return PTR_ERR(host);
 
@@ -5065,18 +5075,26 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	if (plat == NULL) {
 		plat = sdhci_tegra_dt_parse_pdata(pdev);
-		pr_debug("%s: %s line=%d disable-clock-gate=%d\n",
-			mmc_hostname(host->mmc), __func__,
-			__LINE__, plat->disable_clock_gate);
+		pr_info("%s: %s line=%d runtime pm type=%s, disable-clock-gate=%d\n",
+			mmc_hostname(host->mmc), __func__, __LINE__,
+			GET_RTPM_TYPE(plat->rtpm_type),
+			plat->disable_clock_gate);
 	} else {
 		pr_err("%s using board files instead of DT\n",
 			mmc_hostname(host->mmc));
+		plat->rtpm_type = RTPM_TYPE_DELAY_CG;
 	}
 	if (plat == NULL) {
 		dev_err(mmc_dev(host->mmc), "missing platform data\n");
 		rc = -ENXIO;
 		goto err_no_plat;
 	}
+
+	/* sdio delayed clock gate quirk in sdhci_host used */
+	if (IS_RTPM_DELAY_CG(plat->rtpm_type))
+		host->quirks2 |= SDHCI_QUIRK2_DELAYED_CLK_GATE;
+	if (IS_MMC_RTPM(plat->rtpm_type))
+		host->quirks2 |= SDHCI_QUIRK2_MMC_RTPM;
 
 	if (sdhci_tegra_check_bondout(plat->id)) {
 		dev_err(mmc_dev(host->mmc), "bonded out\n");
@@ -5274,18 +5292,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	}
 
 	tegra_pd_add_device(&pdev->dev);
-	pm_runtime_enable(&pdev->dev);
-	pm_runtime_use_autosuspend(&pdev->dev);
-#ifdef CONFIG_MMC_RTPM
-	/*
-	 * Below Autosuspend delay can be increased/decreased based on
-	 * power and perf data
-	 */
-	if (host->quirks2 & SDHCI_QUIRK2_MMC_RTPM)
-		pm_runtime_set_autosuspend_delay(&pdev->dev,
-			MMC_RTPM_MSEC_TMOUT);
-#endif
-
 	/* Get the ddr clock */
 	tegra_host->ddr_clk = clk_get(mmc_dev(host->mmc), "ddr");
 	if (IS_ERR(tegra_host->ddr_clk)) {
@@ -5318,9 +5324,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (clk_get_parent(pltfm_host->clk) == tegra_host->pll_source[0].pll)
 		tegra_host->is_parent_pll_source_1 = true;
 
-#if !defined(CONFIG_MMC_RTPM)
-	pm_runtime_get_sync(&pdev->dev);
-#endif
 	rc = clk_prepare_enable(pltfm_host->clk);
 	if (rc != 0)
 		goto err_clk_put;
@@ -5423,22 +5426,11 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (plat->en_freq_scaling && (plat->max_clk_limit > low_freq))
 		host->mmc->caps2 |= MMC_CAP2_FREQ_SCALING;
 
-#ifdef CONFIG_MMC_RTPM
-	/* MMC runtime PM clock gate has preference over delayed clock gate */
-	/* If precedence changes SDHCI_QUIRK2_MMC_RTPM quirk2 needs update */
-	host->quirks2 |= SDHCI_QUIRK2_MMC_RTPM;
-	if (!plat->disable_clock_gate) {
-		pr_debug("Force disable delayed clock gate since MMC RTPM enabled\n");
-		plat->disable_clock_gate = true;
-	}
-#endif
-
-	if (!plat->disable_clock_gate)
-		host->mmc->caps2 |= MMC_CAP2_CLOCK_GATING;
-
 	if (plat->pwr_off_during_lp0)
 		host->mmc->caps2 |= MMC_CAP2_NO_SLEEP_CMD;
 
+	if (IS_RTPM_DELAY_CG(plat->rtpm_type) && (!plat->disable_clock_gate))
+		host->mmc->caps2 |= MMC_CAP2_CLOCK_GATING;
 	tegra_host->nominal_vcore_mv =
 		tegra_dvfs_get_core_nominal_millivolts();
 	tegra_host->min_vcore_override_mv =
@@ -5501,9 +5493,6 @@ err_add_host:
 	else
 		clk_disable_unprepare(tegra_host->sdr_clk);
 
-#if !defined(CONFIG_MMC_RTPM)
-	pm_runtime_put_sync(&pdev->dev);
-#endif
 err_clk_put:
 	if (tegra_host->ddr_clk)
 		clk_put(tegra_host->ddr_clk);
@@ -5561,9 +5550,6 @@ static int sdhci_tegra_remove(struct platform_device *pdev)
 			clk_disable_unprepare(tegra_host->ddr_clk);
 		else
 			clk_disable_unprepare(tegra_host->sdr_clk);
-#if !defined(CONFIG_MMC_RTPM)
-		pm_runtime_put_sync(&pdev->dev);
-#endif
 	}
 
 	if (tegra_host->ddr_clk)
@@ -5585,11 +5571,12 @@ static int sdhci_tegra_remove(struct platform_device *pdev)
 
 static void sdhci_tegra_shutdown(struct platform_device *pdev)
 {
+#ifdef CONFIG_MMC_RTPM
 	struct sdhci_host *host = platform_get_drvdata(pdev);
 	dev_dbg(&pdev->dev, " %s shutting down\n",
 		mmc_hostname(host->mmc));
-#ifdef CONFIG_MMC_RTPM
-	pm_runtime_forbid(&pdev->dev);
+	/* applies to delayed clock gate RTPM and MMC RTPM cases */
+	sdhci_runtime_forbid(host);
 #endif
 }
 

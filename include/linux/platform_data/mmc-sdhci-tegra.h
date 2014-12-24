@@ -40,6 +40,18 @@
 #define MMC_MASK_HS200		0x20
 #define MMC_MASK_HS400		0x40
 
+/* runtime power management implementation type */
+enum {
+	RTPM_TYPE_DELAY_CG = 0,
+	RTPM_TYPE_MMC
+};
+
+#define IS_MMC_RTPM(type)	(type == RTPM_TYPE_MMC)
+#define IS_RTPM_DELAY_CG(type)	(type == RTPM_TYPE_DELAY_CG)
+#define GET_RTPM_TYPE(type) \
+		(IS_RTPM_DELAY_CG(type) ? "delayed clock gate rtpm" : \
+		"mmc rtpm coupled with clock gate")
+
 struct tegra_sdhci_platform_data {
 	bool pwrdet_support;
 	int cd_gpio;
@@ -90,6 +102,7 @@ struct tegra_sdhci_platform_data {
 	/*Index 0 is fixed for ID mode. Rest according the MMC_TIMINGS modes*/
 	unsigned int fixed_clk_freq_table[MMC_TIMINGS_MAX_MODES + 1];
 	bool enable_autocal_slew_override;
+	unsigned int rtpm_type;
 };
 
 #endif
