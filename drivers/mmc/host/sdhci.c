@@ -1840,8 +1840,10 @@ static void sdhci_en_strobe(struct mmc_host *mmc)
 
 	host = mmc_priv(mmc);
 
+	sdhci_runtime_pm_get(host);
 	if (host->ops->en_strobe)
 		host->ops->en_strobe(host);
+	sdhci_runtime_pm_put(host);
 }
 /* Execute DLL calibration once for MMC device if it is
  * enumerated in HS400 mode at 200MHz clock freq before
@@ -1853,8 +1855,10 @@ static void sdhci_post_init(struct mmc_host *mmc)
 
 	host = mmc_priv(mmc);
 
+	sdhci_runtime_pm_get(host);
 	if (host->ops->post_init)
 		host->ops->post_init(host);
+	sdhci_runtime_pm_put(host);
 }
 /*****************************************************************************\
  *                                                                           *
@@ -1990,7 +1994,8 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 	u8 ctrl;
 
 	/* cancel delayed clk gate work */
-	cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
+	if (host->quirks2 & SDHCI_QUIRK2_DELAYED_CLK_GATE)
+		cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
 
 	/* Do any required preparations prior to setting ios */
 	if (host->ops->platform_ios_config_enter)
@@ -2721,6 +2726,7 @@ static void sdhci_card_event(struct mmc_host *mmc)
 	struct sdhci_host *host = mmc_priv(mmc);
 	unsigned long flags;
 
+	sdhci_runtime_pm_get(host);
 	spin_lock_irqsave(&host->lock, flags);
 
 	/* Check host->mrq_cmd first in case we are runtime suspended */
@@ -2750,6 +2756,7 @@ static void sdhci_card_event(struct mmc_host *mmc)
 	}
 
 	spin_unlock_irqrestore(&host->lock, flags);
+	sdhci_runtime_pm_put(host);
 }
 
 int sdhci_enable(struct mmc_host *mmc)
@@ -2760,7 +2767,8 @@ int sdhci_enable(struct mmc_host *mmc)
 		return 0;
 
 	/* cancel delayed clk gate work */
-	cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
+	if (host->quirks2 & SDHCI_QUIRK2_DELAYED_CLK_GATE)
+		cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
 
 	sysedp_set_state(host->sysedpc, 1);
 
@@ -3589,7 +3597,8 @@ int sdhci_suspend_host(struct sdhci_host *host)
 	}
 
 	/* cancel delayed clk gate work */
-	cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
+	if (host->quirks2 & SDHCI_QUIRK2_DELAYED_CLK_GATE)
+		cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
 
 	/*
 	 * If host clock is disabled but the register access requires host
@@ -3636,6 +3645,7 @@ int sdhci_resume_host(struct sdhci_host *host)
 	struct mmc_host *mmc = host->mmc;
 
 	host->suspend_task = current;
+
 	sdhci_runtime_resume_host(host);
 
 	if (host->flags & (SDHCI_USE_SDMA | SDHCI_USE_ADMA)) {
@@ -3764,6 +3774,7 @@ int sdhci_runtime_suspend_host(struct sdhci_host *host)
 			sdhci_set_clock(host, 0);
 			if (host->ops->set_clock)
 				host->ops->set_clock(host, 0);
+			sysedp_set_state(host->sysedpc, 0);
 		}
 		goto lbl_end;
 	}
@@ -3811,6 +3822,7 @@ int sdhci_runtime_resume_host(struct sdhci_host *host)
 				host->ops->set_clock(host,
 					host->mmc->ios.clock);
 			sdhci_set_clock(host, host->mmc->ios.clock);
+			sysedp_set_state(host->sysedpc, 1);
 		}
 
 		spin_lock_irqsave(&host->lock, flags);
@@ -4059,6 +4071,7 @@ err_root:
 }
 #endif
 
+/* runtime pm is not enabled before add host */
 int sdhci_add_host(struct sdhci_host *host)
 {
 	struct mmc_host *mmc;
@@ -4653,6 +4666,7 @@ void sdhci_remove_host(struct sdhci_host *host, int dead)
 {
 	unsigned long flags;
 
+	sdhci_runtime_pm_get(host);
 	if (dead) {
 		spin_lock_irqsave(&host->lock, flags);
 
@@ -4725,6 +4739,7 @@ void sdhci_remove_host(struct sdhci_host *host, int dead)
 	host->adma_desc = NULL;
 	host->align_buffer = NULL;
 
+	sdhci_runtime_pm_put(host);
 	sysedp_free_consumer(host->sysedpc);
 	host->sysedpc = NULL;
 }

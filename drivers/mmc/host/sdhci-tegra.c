@@ -5324,6 +5324,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (clk_get_parent(pltfm_host->clk) == tegra_host->pll_source[0].pll)
 		tegra_host->is_parent_pll_source_1 = true;
 
+	/* enable clocks first time */
 	rc = clk_prepare_enable(pltfm_host->clk);
 	if (rc != 0)
 		goto err_clk_put;
@@ -5448,7 +5449,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (tegra_host->nominal_vcore_mv <= tegra_host->boot_vcore_mv)
 		plat->en_nominal_vcore_tuning = false;
 
-	INIT_DELAYED_WORK(&host->delayed_clk_gate_wrk, delayed_clk_gate_cb);
+	if (IS_RTPM_DELAY_CG(plat->rtpm_type))
+		INIT_DELAYED_WORK(&host->delayed_clk_gate_wrk,
+			delayed_clk_gate_cb);
 	rc = sdhci_add_host(host);
 	if (rc)
 		goto err_add_host;

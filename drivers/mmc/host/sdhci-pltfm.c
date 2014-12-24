@@ -4,7 +4,7 @@
  *
  * Copyright (c) 2007, 2011 Freescale Semiconductor, Inc.
  * Copyright (c) 2009 MontaVista Software, Inc.
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Authors: Xiaobo Xie <X.Xie@freescale.com>
  *	    Anton Vorontsov <avorontsov@ru.mvista.com>
@@ -259,10 +259,20 @@ static int sdhci_pltfm_suspend(struct device *dev)
 	return ret;
 }
 
+#if defined(CONFIG_MMC_RTPM)
+static int sdhci_runtime_resume(struct device *dev);
+#endif
+
 static int sdhci_pltfm_resume(struct device *dev)
 {
 	struct sdhci_host *host = dev_get_drvdata(dev);
 	int ret = 0;
+
+#if defined(CONFIG_MMC_RTPM)
+	ret = sdhci_runtime_resume(dev);
+	if (ret)
+		dev_err(dev, "sdhci runtime resume failed, error = %d\n", ret);
+#endif
 
 	if (host->ops && host->ops->resume)
 		ret = host->ops->resume(host);
