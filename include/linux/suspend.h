@@ -46,6 +46,8 @@ enum suspend_stat_step {
 	SUSPEND_SUSPEND,
 	SUSPEND_SUSPEND_LATE,
 	SUSPEND_SUSPEND_NOIRQ,
+	SUSPEND_SUSPEND_NOIRQ_LATE,
+	SUSPEND_RESUME_NOIRQ_EARLY,
 	SUSPEND_RESUME_NOIRQ,
 	SUSPEND_RESUME_EARLY,
 	SUSPEND_RESUME
@@ -59,9 +61,11 @@ struct suspend_stats {
 	int	failed_suspend;
 	int	failed_suspend_late;
 	int	failed_suspend_noirq;
+	int	failed_suspend_noirq_late;
 	int	failed_resume;
 	int	failed_resume_early;
 	int	failed_resume_noirq;
+	int	failed_resume_noirq_early;
 #define	REC_FAILED_NUM	2
 	int	last_failed_dev;
 	char	failed_devs[REC_FAILED_NUM][40];

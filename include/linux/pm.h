@@ -295,6 +295,12 @@ struct dev_pm_ops {
 	int (*thaw_noirq)(struct device *dev);
 	int (*poweroff_noirq)(struct device *dev);
 	int (*restore_noirq)(struct device *dev);
+	int (*suspend_noirq_late)(struct device *dev);
+	int (*resume_noirq_early)(struct device *dev);
+	int (*freeze_noirq_late)(struct device *dev);
+	int (*thaw_noirq_early)(struct device *dev);
+	int (*poweroff_noirq_late)(struct device *dev);
+	int (*restore_noirq_early)(struct device *dev);
 	int (*runtime_suspend)(struct device *dev);
 	int (*runtime_resume)(struct device *dev);
 	int (*runtime_idle)(struct device *dev);
