@@ -72,6 +72,10 @@ in HS400 mode.
 	MMC_TIMING_MMC_HS400	10
 - nvidia,auto-cal-slew-override: flag to set AUTO_CAL_SLW_OVERRIDE bit in SDMMC_AUTO_CAL_CONFIG_0 register.
 - nvidia,enable-cq: Set this flag to enable CQ.
+- nvidia,runtime-pm-type: Flag indicates the runtime power management implementation to use as follows:
+	---> 0 indicates runtime power management implementation is used along with an independent custom delayed clock gate implementation.
+	---> 1 indicates MMC runtime power management coupled clock gate is enabled.
+	When this flag is not specified explicitly the value is assumed to be 0.
 - cd_wakeup_incapable: Set this flag to disable card detect event as wake source.
 
 Example:
@@ -96,6 +100,7 @@ Example:
 		calib-1v8-offsets = <0x0202>;
 		vddio_sdmmc-supply = <&max77620_sd3>;
 		nvidia,dll-calib-needed;
+		nvidia,runtime-pm-type = <1>;
 		status = "okay";
 		fixed-clock-freq = <25500000 25500000 24000000 47000000 24000000 47000000 94000000 204000000 0 0 0>;
 	};
