@@ -1353,13 +1353,15 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	 * page.
 	 */
 	if (swgids & TEGRA_SWGROUP_BIT(AVPC)) {
-		struct page *page;
+		dma_addr_t iova = 0;
+		struct dma_map_ops *ops = get_dma_ops(dev);
 
-		page = as->smmu->avp_vector_page;
-		__smmu_iommu_map_pfn(as, 0, page_to_pfn(page), 0);
-
-		pr_debug("Reserve \"page zero\" \
-			for AVP vectors using a common dummy\n");
+		iova = ops->iova_alloc_at(dev, &iova, PAGE_SIZE, NULL);
+		if (iova != DMA_ERROR_CODE) {
+			unsigned long pfn =
+				page_to_pfn(as->smmu->avp_vector_page);
+			__smmu_iommu_map_pfn(as, 0, pfn, 0);
+		}
 	}
 
 	dev_dbg(smmu->dev, "%s is attached\n", dev_name(dev));
