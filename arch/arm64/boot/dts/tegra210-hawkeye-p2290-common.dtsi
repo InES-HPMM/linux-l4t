@@ -43,6 +43,7 @@
 #include "tegra210-platforms/tegra210-hawkeye-comms.dtsi"
 
 / {
+	model = "hawkeye";
 	compatible = "nvidia,hawkeye", "nvidia,tegra210";
 	nvidia,fastboot-usb-pid = <0xb420>;
 
