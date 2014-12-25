@@ -72,6 +72,8 @@ Required properties:
 - nvidia,lane-map: Each nibble represent lane width starting from lowest
   nibble being RP0. Example:- 0x14 has lane width=4 for RP0 and width=1 for RP1
   valid values: 0xYZ, Y={0,1}, Z={0,1,2,4}
+- nvidia,presence-detection-gpio: Board specific, represents the present detection
+  pin status
 
 Example:
 

@@ -114,10 +114,12 @@
 		status = "okay";
 		pci@1,0 {
 			status = "okay";
+			nvidia,presence-detection-gpio = <&pca9539_76 1 0>;
 		};
 
 		pci@2,0 {
 			status = "okay";
+			nvidia,presence-detection-gpio = <&pca9539_76 2 0>;
 		};
 	};
 
