@@ -76,7 +76,7 @@
  *		as published by the Free Software Foundation; either version
  *		2 of the License, or (at your option) any later version.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  */
 
 #define pr_fmt(fmt) "UDP: " fmt
@@ -2187,9 +2187,7 @@ static void udp4_format_sock(struct sock *sp, struct seq_file *f,
 	__be32 src  = inet->inet_rcv_saddr;
 	__u16 destp	  = ntohs(inet->inet_dport);
 	__u16 srcp	  = ntohs(inet->inet_sport);
-	unsigned long cmdline = __get_free_page(GFP_TEMPORARY);
-	if (cmdline == NULL)
-		return;
+	char cmdline[128] = {'\0'};
 
 	seq_printf(f, "%5d: %08X:%04X %08X:%04X"
 		" %02X %08X:%08X %02X:%08lX %08X %5d %8d %lu %d %pK %d %s%n",
@@ -2202,7 +2200,6 @@ static void udp4_format_sock(struct sock *sp, struct seq_file *f,
 		atomic_read(&sp->sk_refcnt), sp,
 		atomic_read(&sp->sk_drops),
 		sk_get_waiting_task_cmdline(sp, cmdline), len);
-	free_page(cmdline);
 }
 
 int udp4_seq_show(struct seq_file *seq, void *v)

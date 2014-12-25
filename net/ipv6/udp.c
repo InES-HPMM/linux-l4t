@@ -20,7 +20,7 @@
  *      as published by the Free Software Foundation; either version
  *      2 of the License, or (at your option) any later version.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  */
 
 #include <linux/errno.h>
@@ -1371,9 +1371,7 @@ static void udp6_sock_seq_show(struct seq_file *seq, struct sock *sp, int bucket
 	struct ipv6_pinfo *np = inet6_sk(sp);
 	const struct in6_addr *dest, *src;
 	__u16 destp, srcp;
-	unsigned long cmdline = __get_free_page(GFP_TEMPORARY);
-	if (cmdline == NULL)
-		return;
+	char cmdline[128] = {'\0'};
 
 	dest  = &np->daddr;
 	src   = &np->rcv_saddr;
@@ -1397,7 +1395,6 @@ static void udp6_sock_seq_show(struct seq_file *seq, struct sock *sp, int bucket
 		   atomic_read(&sp->sk_refcnt), sp,
 		   atomic_read(&sp->sk_drops),
 		   sk_get_waiting_task_cmdline(sp, cmdline));
-	free_page(cmdline);
 }
 
 int udp6_seq_show(struct seq_file *seq, void *v)

@@ -49,7 +49,7 @@
  *	Alexey Kuznetsov		allow both IPv4 and IPv6 sockets to bind
  *					a single port at the same time.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  */
 
 #define pr_fmt(fmt) "TCP: " fmt
@@ -2666,9 +2666,7 @@ static void get_tcp4_sock(struct sock *sk, struct seq_file *f, int i, int *len)
 	__u16 destp = ntohs(inet->inet_dport);
 	__u16 srcp = ntohs(inet->inet_sport);
 	int rx_queue;
-	unsigned long cmdline = __get_free_page(GFP_TEMPORARY);
-	if (cmdline == NULL)
-		return;
+	char cmdline[128] = {'\0'};
 
 	if (icsk->icsk_pending == ICSK_TIME_RETRANS ||
 	    icsk->icsk_pending == ICSK_TIME_EARLY_RETRANS ||
@@ -2715,8 +2713,6 @@ static void get_tcp4_sock(struct sock *sk, struct seq_file *f, int i, int *len)
 		    (tcp_in_initial_slowstart(tp) ? -1 : tp->snd_ssthresh),
 		sk_get_waiting_task_cmdline(sk, cmdline),
 		len);
-
-	free_page(cmdline);
 }
 
 static void get_timewait4_sock(const struct inet_timewait_sock *tw,
