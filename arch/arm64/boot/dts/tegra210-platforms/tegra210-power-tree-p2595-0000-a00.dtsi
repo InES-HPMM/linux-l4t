@@ -70,28 +70,19 @@
 			gpio = <&gpio TEGRA_GPIO(CC, 4) 0>;
 			enable-active-high;
 			gpio-open-drain;
+			vin-supply = <&vdd_3v3>;
 		};
 
-		usb_vbus2: regulator@15 {
+		usb_vbus3: regulator@15 {
 			compatible = "regulator-fixed-sync";
 			reg = <15>;
-			regulator-name = "usb-vbus2";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
-			enable-active-high;
-			gpio-open-drain;
-		};
-
-		usb_vbus3: regulator@16 {
-			compatible = "regulator-fixed-sync";
-			reg = <16>;
 			regulator-name = "usb-vbus3";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
 			gpio = <&gpio TEGRA_GPIO(D, 4) 0>;
 			enable-active-high;
 			gpio-open-drain;
+			vin-supply = <&vdd_3v3>;
 		};
 	};
 	i2c@7000c000 {
@@ -157,9 +148,9 @@
 
 	xusb@70090000 {
 		usb_vbus0-supply = <&battery_reg>;
-		usb_vbus1-supply = <&usb_vbus1>;
-		usb_vbus2-supply = <&usb_vbus2>;
-		usb_vbus3-supply = <&usb_vbus3>;
+		usb_vbus1-supply = <&usb_vbus3>;
+		usb_vbus2-supply = <&usb_vbus1>;
+		usb_vbus3-supply = <&vdd_3v3>;
 		hvdd_usb-supply = <&vdd_3v3>;
 		avdd_pll_utmip-supply = <&max77620_sd3>;
 		vddio_hsic-supply = <&max77620_ldo0>;
