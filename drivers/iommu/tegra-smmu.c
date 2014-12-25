@@ -1099,6 +1099,30 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 	return err;
 }
 
+/* Remap a 4MB large page entry to 1024 * 4KB pages entries */
+static void __smmu_iommu_remap_largepage(struct smmu_as *as, dma_addr_t iova)
+{
+	int pdn = SMMU_ADDR_TO_PDN(iova);
+	u32 *pdir = page_address(as->pdir_page);
+	phys_addr_t pa = pdir[pdn] << SMMU_PDE_SHIFT;
+	size_t unmapped;
+	int i;
+
+	BUG_ON(!IS_ALIGNED(iova, SZ_4M));
+	BUG_ON(pdir[pdn] & _PDE_NEXT);
+
+	unmapped = __smmu_iommu_unmap_largepage(as, iova);
+	BUG_ON(unmapped != SZ_4M);
+	for (i = 0; i < unmapped / SZ_4K; i++) {
+		int err;
+
+		err = __smmu_iommu_map_page(as, iova, pa, 0); /* FIXME: prot */
+		BUG_ON(err);
+		iova += SZ_4K;
+		pa += SZ_4K;
+	}
+}
+
 static size_t __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova,
 	size_t bytes)
 {
@@ -1112,12 +1136,15 @@ static size_t __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova,
 		unmapped = 0;
 	} else if (pdir[pdn] & _PDE_NEXT) {
 		unmapped = __smmu_iommu_unmap_pages(as, iova, bytes);
-	} else {
+	} else if (bytes >= SZ_4M) {
 		BUG_ON(config_enabled(CONFIG_TEGRA_IOMMU_SMMU_NO4MB));
 		BUG_ON(!IS_ALIGNED(iova, SZ_4M));
-		BUG_ON(bytes < SZ_4M);
 
 		unmapped = __smmu_iommu_unmap_largepage(as, iova);
+	} else {
+		pr_warn("Unmapping %zx@%pa 4MB entry as=%d\n", bytes, &iova, as->asid);
+		__smmu_iommu_remap_largepage(as, iova);
+		unmapped = __smmu_iommu_unmap_pages(as, iova, bytes);
 	}
 
 	return unmapped;
