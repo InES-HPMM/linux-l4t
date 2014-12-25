@@ -194,6 +194,9 @@
 #define ARU_ULPI_REGACCESS_CMD_MASK		0x1
 #define ARU_ULPI_REGACCESS_DATA_MASK	0xff0000
 
+#define ARU_CONTEXT_HS_PLS_SUSPEND	3
+#define ARU_CONTEXT_HS_PLS_FS_MODE	6
+
 #define GET_SS_PORTMAP(map, p)		(((map) >> 4*(p)) & 0xF)
 
 #define reg_dump(_dev, _base, _reg)					\

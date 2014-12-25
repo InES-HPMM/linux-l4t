@@ -642,4 +642,7 @@ void xusb_utmi_pad_deinit(int pad);
 void xusb_ss_pad_deinit(int pad);
 void usb3_phy_pad_disable(void);
 void xusb_enable_pad_protection(bool);
+
+void xusb_utmi_pad_driver_power(int port, bool on);
+
 #endif

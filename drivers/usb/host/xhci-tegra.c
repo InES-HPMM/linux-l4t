@@ -353,6 +353,13 @@ static inline void must_have_sync_lock(struct tegra_xhci_hcd *tegra)
 		&& (_pad >= 0);	\
 		_pad = find_next_enabled_utmi_pad(_tegra_xhci_hcd, _pad + 1))
 
+#define for_each_enabled_utmi_pad_with_otg(_pad, _tegra_xhci_hcd)	\
+	for (_pad = find_next_enabled_utmi_pad_with_otg(_tegra_xhci_hcd, 0); \
+		(_pad < (_tegra_xhci_hcd->soc_config->utmi_pad_count))	\
+		&& (_pad >= 0);	\
+		_pad = \
+		find_next_enabled_utmi_pad_with_otg(_tegra_xhci_hcd, _pad + 1))
+
 #define for_each_enabled_hsic_pad(_pad, _tegra_xhci_hcd)		\
 	for (_pad = find_next_enabled_hsic_pad(_tegra_xhci_hcd, 0);	\
 	    (_pad < XUSB_HSIC_COUNT) && (_pad >= 0);			\
@@ -362,6 +369,14 @@ static inline int find_next_enabled_pad(struct tegra_xhci_hcd *tegra,
 						int start, int last)
 {
 	unsigned long portmap = tegra->bdata->portmap;
+	return find_next_bit(&portmap, last , start);
+}
+
+static inline int find_next_enabled_pad_with_otg(struct tegra_xhci_hcd *tegra,
+						int start, int last)
+{
+	unsigned long portmap = tegra->bdata->portmap |
+				tegra->bdata->otg_portmap;
 	return find_next_bit(&portmap, last , start);
 }
 
@@ -386,6 +401,19 @@ static inline int find_next_enabled_utmi_pad(struct tegra_xhci_hcd *tegra,
 	if ((curr_pad < 0) || (curr_pad >= utmi_pads))
 		return -1;
 	return find_next_enabled_pad(tegra, start, last) - XUSB_UTMI_INDEX;
+}
+
+static inline int find_next_enabled_utmi_pad_with_otg(
+	struct tegra_xhci_hcd *tegra, int curr_pad)
+{
+	int utmi_pads = tegra->soc_config->utmi_pad_count;
+	int start = XUSB_UTMI_INDEX + curr_pad;
+	int last = XUSB_UTMI_INDEX + utmi_pads;
+
+	if ((curr_pad < 0) || (curr_pad >= utmi_pads))
+		return -1;
+	return find_next_enabled_pad_with_otg(tegra, start, last) -
+					XUSB_UTMI_INDEX;
 }
 
 static inline int find_next_enabled_ss_pad(struct tegra_xhci_hcd *tegra,
@@ -2130,6 +2158,17 @@ static void tegra_xhci_program_ulpi_pad(struct tegra_xhci_hcd *tegra,
 	 */
 }
 
+static void tegra_xhci_program_utmip_power_lp0_exit(
+	struct tegra_xhci_hcd *tegra, u8 port)
+{
+	u8 hs_pls = (tegra->sregs.hs_pls >> (4 * port)) & 0xf;
+	if (hs_pls == ARU_CONTEXT_HS_PLS_SUSPEND ||
+		hs_pls == ARU_CONTEXT_HS_PLS_FS_MODE)
+		xusb_utmi_pad_driver_power(port, true);
+	else
+		xusb_utmi_pad_driver_power(port, false);
+}
+
 static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
@@ -2140,6 +2179,9 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 	xusb_utmi_pad_init(port, USB2_PORT_CAP_HOST(port)
 			, tegra->bdata->uses_external_pmic);
 #endif
+
+	if (tegra->lp0_exit)
+		tegra_xhci_program_utmip_power_lp0_exit(tegra, port);
 
 	/*Release OTG port if not in host mode*/
 	if ((port == 0) && !is_otg_host(tegra))
@@ -2203,6 +2245,10 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 					tegra->prod_list);
 		tegra_xhci_program_utmip_pad(tegra, pad);
 	}
+
+	if (tegra->otg_port_owned && tegra->lp0_exit)
+		tegra_xhci_program_utmip_power_lp0_exit(tegra,
+				tegra->otg_portnum);
 
 	for_each_enabled_hsic_pad(pad, tegra) {
 		sprintf(prod_name, XUSB_PROD_PREFIX_HSIC "%d", pad);
@@ -3963,6 +4009,60 @@ static int tegra_xhci_urb_enqueue(struct usb_hcd *hcd, struct urb *urb,
 	return xhci_urb_enqueue(hcd, urb, mem_flags);
 }
 
+static int tegra_xhci_hub_control(struct usb_hcd *hcd, u16 type_req,
+		u16 value, u16 index, char *buf, u16 length)
+{
+	int ret;
+	int port = (index & 0xff) - 1;
+
+	/* power on before port resume */
+	if (hcd->speed == HCD_USB2) {
+		if ((type_req == ClearPortFeature) &&
+			(value == USB_PORT_FEAT_SUSPEND))
+			xusb_utmi_pad_driver_power(port, true);
+	}
+
+	ret = xhci_hub_control(hcd, type_req, value, index, buf, length);
+
+	/* power off after port suspend */
+	if ((hcd->speed == HCD_USB2) && (ret == 0)) {
+		if ((type_req == SetPortFeature) &&
+			(value == USB_PORT_FEAT_SUSPEND))
+			xusb_utmi_pad_driver_power(port, false);
+	}
+
+	return ret;
+}
+
+static int tegra_xhci_hub_status_data(struct usb_hcd *hcd, char *buf)
+{
+	if (hcd->speed == HCD_USB2) {
+		struct xhci_hcd *xhci = hcd_to_xhci(hcd);
+		struct tegra_xhci_hcd *tegra = hcd_to_tegra_xhci(hcd);
+		int port;
+
+		for_each_enabled_utmi_pad_with_otg(port, tegra) {
+			u32 portsc = xhci_readl(xhci, xhci->usb2_ports[port]);
+			if (portsc == 0xffffffff)
+				break;
+
+			/* power on for remote wakeup event */
+			if ((portsc & PORT_PLS_MASK) == XDEV_RESUME)
+				xusb_utmi_pad_driver_power(port, true);
+
+			/* power on/off for connect/disconnect event */
+			if (portsc & PORT_CSC) {
+				if (portsc & PORT_CONNECT)
+					xusb_utmi_pad_driver_power(port, true);
+				else
+					xusb_utmi_pad_driver_power(port, false);
+			}
+		}
+	}
+
+	return xhci_hub_status_data(hcd, buf);
+}
+
 static int tegra_xhci_update_hub_device(struct usb_hcd *hcd,
 		struct usb_device *hdev, struct usb_tt *tt, gfp_t mem_flags)
 {
@@ -4033,8 +4133,8 @@ static const struct hc_driver tegra_plat_xhci_driver = {
 	.get_frame_number =	xhci_get_frame,
 
 	/* Root hub support */
-	.hub_control =		xhci_hub_control,
-	.hub_status_data =	xhci_hub_status_data,
+	.hub_control =		tegra_xhci_hub_control,
+	.hub_status_data =	tegra_xhci_hub_status_data,
 
 #ifdef CONFIG_PM
 	.bus_suspend =		tegra_xhci_bus_suspend,

@@ -775,8 +775,8 @@ void xusb_utmi_pad_init(int pad, u32 cap, bool external_pmic)
 			&term_range_adj, &rpd_ctl, &hs_iref_cap);
 
 	val = readl(pad_base + ctl0_offset);
-	val &= ~(USB2_OTG_HS_CURR_LVL | USB2_OTG_PD2 | USB2_OTG_PD_ZI);
-	val |= hs_curr_level_pad;
+	val &= ~(USB2_OTG_HS_CURR_LVL | USB2_OTG_PD_ZI);
+	val |= hs_curr_level_pad | USB2_OTG_PD | USB2_OTG_PD2;
 	writel(val, pad_base + ctl0_offset);
 
 	val = readl(pad_base + ctl1_offset);
@@ -786,7 +786,7 @@ void xusb_utmi_pad_init(int pad, u32 cap, bool external_pmic)
 			| USB2_OTG_PD_DISC_FORCE_POWERUP);
 	val |= (rpd_ctl << 26) |
 		(term_range_adj << 3) |
-		(hs_iref_cap << 9);
+		(hs_iref_cap << 9) | USB2_OTG_PD_DR;
 	writel(val, pad_base + ctl1_offset);
 
 	batry_chg_1 = XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL1(pad);
@@ -820,6 +820,35 @@ void xusb_utmi_pad_init(int pad, u32 cap, bool external_pmic)
 			, batry_chg_1, readl(pad_base + batry_chg_1));
 }
 EXPORT_SYMBOL_GPL(xusb_utmi_pad_init);
+
+void xusb_utmi_pad_driver_power(int pad, bool on)
+{
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	u32 ctl0_val, ctl1_val, ctl0_offset, ctl1_offset;
+	unsigned long flags;
+
+	ctl0_offset = XUSB_PADCTL_USB2_OTG_PAD_CTL_0(pad);
+	ctl1_offset = XUSB_PADCTL_USB2_OTG_PAD_CTL_1(pad);
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+
+	ctl0_val = readl(pad_base + ctl0_offset);
+	ctl1_val = readl(pad_base + ctl1_offset);
+
+	if (on) {
+		ctl0_val &= ~(USB2_OTG_PD | USB2_OTG_PD2);
+		ctl1_val &= ~(USB2_OTG_PD_DR);
+	} else {
+		ctl0_val |= USB2_OTG_PD | USB2_OTG_PD2;
+		ctl1_val |= USB2_OTG_PD_DR;
+	}
+
+	writel(ctl0_val, pad_base + ctl0_offset);
+	writel(ctl1_val, pad_base + ctl1_offset);
+
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+}
+EXPORT_SYMBOL_GPL(xusb_utmi_pad_driver_power);
 
 void xusb_ss_pad_deinit(int pad)
 {
