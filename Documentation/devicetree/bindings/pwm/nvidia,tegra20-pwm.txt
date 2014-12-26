@@ -9,6 +9,11 @@ Required properties:
   first cell specifies the per-chip index of the PWM to use and the second
   cell is the period in nanoseconds.
 
+
+Optional properties:
+- pwm,use-pretty-good-alogorithm: Use pretty good algorithm for the 10Hz to
+	30KHz to get better divisor and multiplier.
+
 Example:
 
 	pwm: pwm@7000a000 {
