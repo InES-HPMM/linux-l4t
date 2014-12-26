@@ -156,5 +156,9 @@
 		compatible = "pwm-backlight";
 		status = "okay";
 	};
+
+	pwm@7000a000 {
+		pwm,use-pretty-good-alogorithm;
+	};
 };
 

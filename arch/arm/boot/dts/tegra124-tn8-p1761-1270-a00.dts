@@ -125,5 +125,9 @@
 	sysedp_batmon_calc {
 		dt-override-status-odm-data = <0x00C00000 0x00400000>;
 	};
+
+	pwm@7000a000 {
+		pwm,use-pretty-good-alogorithm;
+	};
 };
 
