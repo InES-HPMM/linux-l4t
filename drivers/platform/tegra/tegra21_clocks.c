@@ -8770,7 +8770,7 @@ static struct clk_ops tegra_clk_gbus_ops = {
 
 static struct raw_notifier_head gbus_rate_change_nh;
 static wait_queue_head_t gbus_poll_rate;
-struct bus_stats gpu_histogram;
+static struct bus_stats gpu_histogram;
 
 static struct clk tegra_clk_gbus = {
 	.name      = "gbus",
