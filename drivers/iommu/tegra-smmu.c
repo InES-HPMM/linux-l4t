@@ -1237,7 +1237,7 @@ static void debugfs_create_as(struct smmu_as *as)
 		return;
 	as->debugfs_root = dent;
 	debugfs_create_file("iovainfo", S_IRUSR, as->debugfs_root,
-			    as + as->asid, &smmu_ptdump_fops);
+			    as, &smmu_ptdump_fops);
 }
 
 static struct smmu_as *smmu_as_alloc_default(void)
