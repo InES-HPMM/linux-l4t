@@ -968,7 +968,11 @@ static int __smmu_iommu_map_largepage(struct smmu_as *as, dma_addr_t iova,
 
 	BUG_ON(!IS_ALIGNED(iova, SZ_4M));
 	BUG_ON(!IS_ALIGNED(pa, SZ_4M));
-	BUG_ON(pdir[pdn] != _PDE_VACANT(pdn));
+	if (pdir[pdn] != _PDE_VACANT(pdn)) {
+		WARN(1, "asid=%d iova=%pa (new)pa=%pa pdir[%d]=0x%x\n",
+		     as->asid, &iova, &pa, pdn, pdir[pdn]);
+		return -EINVAL;
+	}
 
 	if (dma_get_attr(DMA_ATTR_READ_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_WRITABLE;
