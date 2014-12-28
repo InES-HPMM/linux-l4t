@@ -18,6 +18,7 @@
 #include <linux/interrupt.h>
 #include <linux/debugfs.h>
 #include <linux/platform_device.h>
+#include <linux/platform/tegra/clock.h>
 #include <linux/irqchip/tegra-agic.h>
 #include <linux/irq.h>
 
@@ -79,6 +80,7 @@
 static unsigned long actmon_sampling_period;
 static struct clk *actmon_clk;
 static unsigned long actmon_clk_freq;
+struct notifier_block ape_clk_rc_nb;
 
 static void __iomem *actmon_base;
 
@@ -803,13 +805,15 @@ void actmon_rate_change(unsigned long freq)
 	unsigned long flags;
 
 	spin_lock_irqsave(&dev->lock, flags);
-
 	dev->cur_freq = freq;
-	if (dev->type == ACTMON_FREQ_SAMPLER) {
+	if (dev->state == ACTMON_ON && dev->type == ACTMON_FREQ_SAMPLER) {
 		actmon_dev_wmark_set(dev);
 		actmon_wmb();
 	}
 	spin_unlock_irqrestore(&dev->lock, flags);
+
+	/* change ape rate as half of adsp rate */
+	clk_set_rate(actmon_clk, freq * 500);
 };
 
 int ape_actmon_probe(struct platform_device *pdev)
@@ -826,11 +830,38 @@ int ape_actmon_probe(struct platform_device *pdev)
 	return ret;
 }
 
+static int ape_actmon_rc_cb(
+	struct notifier_block *nb, unsigned long rate, void *v)
+{
+	struct actmon_dev *dev = &actmon_dev_adsp;
+	unsigned long flags;
+	u32 init_cnt;
+
+	if (dev->state != ACTMON_ON) {
+		dev_dbg(dev->device, "adsp actmon is not ON\n");
+		goto exit_out;
+	}
+
+	actmon_dev_disable(dev);
+
+	spin_lock_irqsave(&dev->lock, flags);
+	init_cnt = actmon_readl(offs(ACTMON_DEV_AVG_COUNT));
+	/* update sample period to maintain number of clock */
+	actmon_clk_freq = rate / 1000; /* in KHz */
+	actmon_update_sample_period(ACTMON_DEFAULT_SAMPLING_PERIOD);
+	actmon_writel(init_cnt, offs(ACTMON_DEV_INIT_AVG));
+	spin_unlock_irqrestore(&dev->lock, flags);
+
+	actmon_dev_enable(dev);
+exit_out:
+	return NOTIFY_OK;
+}
 int ape_actmon_init(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
 	static void __iomem *amisc_base;
 	u32 sample_period_in_clks;
+	struct clk *p;
 	u32 val = 0;
 	int i, ret;
 
@@ -843,14 +874,34 @@ int ape_actmon_init(struct platform_device *pdev)
 	actmon_clk = clk_get_sys(NULL, "adsp.ape");
 	if (!actmon_clk) {
 		dev_err(&pdev->dev, "Failed to find actmon clock\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_out;
 	}
 
 	ret = clk_prepare_enable(actmon_clk);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to enable actmon clock\n");
-		clk_put(actmon_clk);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_out;
+	}
+	ape_clk_rc_nb.notifier_call = ape_actmon_rc_cb;
+
+	/*
+	 * "adsp.ape" clk is shared bus user clock and "ape" is bus clock
+	 * but rate change notification should come from bus clock itself.
+	 */
+	p = clk_get_parent(actmon_clk);
+	if (!p) {
+		dev_err(&pdev->dev, "Failed to find actmon parent clock\n");
+		ret = -EINVAL;
+		goto clk_err_out;
+	}
+
+	ret = tegra_register_clk_rate_notifier(p, &ape_clk_rc_nb);
+	if (ret) {
+		dev_err(&pdev->dev, "Registration fail: %s rate change notifier for %s\n",
+			p->name, actmon_clk->name);
+		goto clk_err_out;
 	}
 
 	actmon_clk_freq = clk_get_rate(actmon_clk) / 1000; /* in KHz */
@@ -900,6 +951,13 @@ int ape_actmon_init(struct platform_device *pdev)
 
 	dev_dbg(&pdev->dev, "adsp actmon initialized ....\n");
 	return 0;
+clk_err_out:
+	if (actmon_clk)
+		clk_disable_unprepare(actmon_clk);
+err_out:
+	if (actmon_clk)
+		clk_put(actmon_clk);
+	return ret;
 }
 
 int ape_actmon_exit(struct platform_device *pdev)
@@ -915,6 +973,9 @@ int ape_actmon_exit(struct platform_device *pdev)
 		clk_disable_unprepare(dev->clk);
 		clk_put(dev->clk);
 	}
+
+	tegra_unregister_clk_rate_notifier(clk_get_parent(actmon_clk),
+		&ape_clk_rc_nb);
 
 	clk_disable_unprepare(actmon_clk);
 	clk_put(actmon_clk);
