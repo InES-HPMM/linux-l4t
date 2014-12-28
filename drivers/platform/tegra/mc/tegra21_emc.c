@@ -25,6 +25,7 @@
 #include <linux/hrtimer.h>
 #include <linux/pasr.h>
 #include <linux/slab.h>
+#include <linux/dma-mapping.h>
 #include <linux/platform_device.h>
 #include <linux/tegra-soc.h>
 #include <linux/platform_data/tegra_emc_pdata.h>
@@ -1144,16 +1145,25 @@ static int init_emc_table(struct tegra21_emc_table *table,
 }
 
 #ifdef CONFIG_PASR
+struct pasr_mask {
+	u32 device0_mask;
+	u32 device1_mask;
+};
+
+static struct pasr_mask *pasr_mask_virt;
+static struct pasr_mask *pasr_mask_phys;
+
+static bool is_pasr_supported(void)
+{
+	return (dram_type == DRAM_TYPE_LPDDR2 ||
+		dram_type == DRAM_TYPE_LPDDR4);
+}
+
 void tegra_bpmp_pasr_mask(uint32_t phys)
 {
 	int mb[] = { phys };
 	int r = tegra_bpmp_send(MRQ_PASR_MASK, &mb, sizeof(mb));
 	WARN_ON(r);
-}
-
-static bool tegra21_is_lpddr3(void)
-{
-	return (dram_type == DRAM_TYPE_LPDDR2);
 }
 
 static void tegra21_pasr_apply_mask(u16 *mem_reg, void *cookie)
@@ -1164,7 +1174,11 @@ static void tegra21_pasr_apply_mask(u16 *mem_reg, void *cookie)
 	val = TEGRA_EMC_MODE_REG_17 | *mem_reg;
 	val |= device << TEGRA_EMC_MRW_DEV_SHIFT;
 
-	emc_writel(val, EMC_MRW);
+	if (device == TEGRA_EMC_MRW_DEV1)
+		pasr_mask_virt->device0_mask = val;
+
+	if (device == TEGRA_EMC_MRW_DEV2)
+		pasr_mask_virt->device1_mask = val;
 
 	pr_debug("%s: cookie = %d mem_reg = 0x%04x val = 0x%08x\n", __func__,
 			(int)(uintptr_t)cookie, *mem_reg, val);
@@ -1190,12 +1204,29 @@ static int tegra21_pasr_enable(const char *arg, const struct kernel_param *kp)
 	unsigned int old_pasr_enable;
 	void *cookie;
 	int num_devices;
+	u32 regval;
 	u64 device_size;
-	u64 size_mul;
+	u64 subp_addr_mode;
+	u64 dram_width;
+	u64 num_channels;
 	int ret = 0;
 
-	if (!tegra21_is_lpddr3())
+	if (!is_pasr_supported() || !pasr_mask_virt)
 		return -ENOSYS;
+
+	regval = emc_readl(EMC_FBIO_CFG7);
+	subp_addr_mode = (regval & (0x1 << 13)) == 0 ? 32 : 16;
+	num_channels = (regval & (0x1 << 2)) == 0 ? 1 : 2;
+
+	regval = emc_readl(EMC_FBIO_CFG5);
+	dram_width = (regval & (0x1 << 4)) == 0 ? 32 : 64;
+
+	device_size = 1 << ((mc_readl(MC_EMEM_ADR_CFG_DEV0) >>
+				MC_EMEM_DEV_SIZE_SHIFT) &
+				MC_EMEM_DEV_SIZE_MASK);
+
+	device_size = device_size * (dram_width/subp_addr_mode);
+	device_size = device_size * num_channels;
 
 	old_pasr_enable = pasr_enable;
 	param_set_int(arg, kp);
@@ -1204,7 +1235,6 @@ static int tegra21_pasr_enable(const char *arg, const struct kernel_param *kp)
 		return ret;
 
 	num_devices = 1 << (mc_readl(MC_EMEM_ADR_CFG) & BIT(0));
-	size_mul = 1 << ((emc_readl(EMC_FBIO_CFG5) >> 4) & BIT(0));
 
 	/* Cookie represents the device number to write to MRW register.
 	 * 0x2 to for only dev0, 0x1 for dev1.
@@ -1220,11 +1250,6 @@ static int tegra21_pasr_enable(const char *arg, const struct kernel_param *kp)
 		cookie = (void *)(int)TEGRA_EMC_MRW_DEV2;
 		/* Next device is located after first device, so read DEV0 size
 		 * to decide base address for DEV1 */
-		device_size = 1 << ((mc_readl(MC_EMEM_ADR_CFG_DEV0) >>
-					MC_EMEM_DEV_SIZE_SHIFT) &
-					MC_EMEM_DEV_SIZE_MASK);
-		device_size = device_size * size_mul * SZ_4M;
-
 		tegra21_pasr_remove_mask(TEGRA_DRAM_BASE + device_size, cookie);
 	} else {
 		cookie = (void *)(int)TEGRA_EMC_MRW_DEV1;
@@ -1238,11 +1263,6 @@ static int tegra21_pasr_enable(const char *arg, const struct kernel_param *kp)
 
 		/* Next device is located after first device, so read DEV0 size
 		 * to decide base address for DEV1 */
-		device_size = 1 << ((mc_readl(MC_EMEM_ADR_CFG_DEV0) >>
-					MC_EMEM_DEV_SIZE_SHIFT) &
-					MC_EMEM_DEV_SIZE_MASK);
-		device_size = device_size * size_mul * SZ_4M;
-
 		ret = tegra21_pasr_set_mask(TEGRA_DRAM_BASE + device_size, cookie);
 	}
 
@@ -1255,6 +1275,31 @@ static struct kernel_param_ops tegra21_pasr_enable_ops = {
 	.get = param_get_int,
 };
 module_param_cb(pasr_enable, &tegra21_pasr_enable_ops, &pasr_enable, 0644);
+
+static int tegra21_pasr_init(struct device *dev)
+{
+	dma_addr_t phys;
+	void *shared_virt;
+
+	shared_virt = dma_alloc_coherent(dev,
+				sizeof(struct pasr_mask), &phys, GFP_KERNEL);
+	if (!shared_virt)
+		return -ENOMEM;
+
+	pasr_mask_virt = (struct pasr_mask *)shared_virt;
+	pasr_mask_phys = (struct pasr_mask *)phys;
+
+	pasr_mask_virt->device0_mask = TEGRA_EMC_MODE_REG_17 |
+			(TEGRA_EMC_MRW_DEV1 << TEGRA_EMC_MRW_DEV_SHIFT);
+	pasr_mask_virt->device1_mask = TEGRA_EMC_MODE_REG_17 |
+			(TEGRA_EMC_MRW_DEV2 << TEGRA_EMC_MRW_DEV_SHIFT);
+
+	tegra_bpmp_pasr_mask((uint32_t)phys);
+
+	return 0;
+}
+#else
+static inline int tegra21_pasr_init(struct device *dev) { return 0; };
 #endif
 
 /* FIXME: add to clock resume */
@@ -1759,6 +1804,9 @@ out:
 		if (!IS_ERR_VALUE(rate))
 			tegra_clk_preset_emc_monitor(rate);
 	}
+
+	if (tegra21_pasr_init(&pdev->dev))
+		dev_err(&pdev->dev, "PASR init failed\n");
 
 	return err;
 }
