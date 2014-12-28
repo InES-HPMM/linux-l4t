@@ -211,4 +211,8 @@ static inline bool tegra_platform_is_fpga(void)
 
 bool tegra_bonded_out_dev(enum tegra_bondout_dev);
 
+extern void tegra_set_tegraid(u32 chipid, u32 major, u32 minor,
+	u32 nlist, u32 patch, const char *priv);
+extern void tegra_get_tegraid_from_hw(void);
+
 #endif /* __LINUX_TEGRA_SOC_H_ */

@@ -520,9 +520,8 @@ static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 	return revision;
 }
 
-static void tegra_set_tegraid(u32 chipid,
-					u32 major, u32 minor,
-					u32 nlist, u32 patch, const char *priv)
+void tegra_set_tegraid(u32 chipid, u32 major, u32 minor,
+	u32 nlist, u32 patch, const char *priv)
 {
 	tegra_id.chipid  = (enum tegra_chipid) chipid;
 	tegra_id.major   = major;
@@ -564,7 +563,8 @@ static void tegra_fuse_cfg_reg_visible(void)
 	writel(reg, IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
 }
 
-static void tegra_get_tegraid_from_hw(void)
+/* Overridable by implementation of future platforms */
+__weak void tegra_get_tegraid_from_hw(void)
 {
 	u32 cid;
 	u32 nlist;
