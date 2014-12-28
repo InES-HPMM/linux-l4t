@@ -95,6 +95,9 @@ struct tegra_smmu_chip_data {
 	int num_asids;
 };
 
+static size_t __smmu_iommu_iova_to_phys(struct smmu_as *as, dma_addr_t iova,
+					phys_addr_t *pa, int *npte);
+
 struct smmu_as *domain_to_as(struct iommu_domain *_domain,
 						unsigned long iova)
 {
@@ -969,8 +972,13 @@ static int __smmu_iommu_map_largepage(struct smmu_as *as, dma_addr_t iova,
 	BUG_ON(!IS_ALIGNED(iova, SZ_4M));
 	BUG_ON(!IS_ALIGNED(pa, SZ_4M));
 	if (pdir[pdn] != _PDE_VACANT(pdn)) {
-		WARN(1, "asid=%d iova=%pa (new)pa=%pa pdir[%d]=0x%x\n",
-		     as->asid, &iova, &pa, pdn, pdir[pdn]);
+		phys_addr_t stale;
+		size_t bytes;
+		int npte;
+
+		bytes = __smmu_iommu_iova_to_phys(as, iova, &stale, &npte);
+		WARN(1, "asid=%d iova=%pa (new)pa=%pa (stale)pa=%pa bytes=%zx pdir[%d]=0x%x npte=%d\n",
+		     as->asid, &iova, &pa, &stale, bytes, pdn, pdir[pdn], npte);
 		return -EINVAL;
 	}
 
