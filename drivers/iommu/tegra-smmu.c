@@ -1929,7 +1929,7 @@ static ssize_t smmu_debugfs_iova2pa_write(struct file *file,
 #ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
 	ret = sscanf(str, "%Lx", &tegra_smmu_inquired_iova);
 #else
-	ret = sscanf(str, "%lx", &tegra_smmu_inquired_iova);
+	ret = sscanf(str, "%x", (u32 *)&tegra_smmu_inquired_iova);
 #endif
 	if (ret != 1)
 		return -EINVAL;
