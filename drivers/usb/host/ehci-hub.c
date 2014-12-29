@@ -478,7 +478,11 @@ static int ehci_bus_resume (struct usb_hcd *hcd)
 	/* msleep for 20ms only if code is trying to resume port */
 	if (resume_needed) {
 		spin_unlock_irq(&ehci->lock);
+#ifdef CONFIG_USB_EHCI_TEGRA
+		usleep_range(20000, 21000);
+#else
 		msleep(20);
+#endif
 		spin_lock_irq(&ehci->lock);
 		if (ehci->shutdown)
 			goto shutdown;
