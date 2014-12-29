@@ -152,7 +152,7 @@ static inline int ivc_channel_empty(struct ivc *ivc,
 	if (w_count - r_count > ivc->nframes)
 		return 1;
 
-	return w_count == ch->r_count;
+	return w_count == r_count;
 }
 
 static inline int ivc_channel_full(struct ivc *ivc,
@@ -164,6 +164,18 @@ static inline int ivc_channel_full(struct ivc *ivc,
 	 */
 	return ACCESS_ONCE(ch->w_count) - ACCESS_ONCE(ch->r_count)
 		>= ivc->nframes;
+}
+
+static inline uint32_t ivc_channel_avail_count(struct ivc *ivc,
+		struct ivc_channel_header *ch)
+{
+	/*
+	 * This function isn't expected to be used in scenarios where an
+	 * over-full situation can lead to denial of service attacks. See the
+	 * comment in ivc_channel_empty() for an explanation about special
+	 * over-full considerations.
+	 */
+	return ACCESS_ONCE(ch->w_count) - ACCESS_ONCE(ch->r_count);
 }
 
 static inline void ivc_advance_tx(struct ivc *ivc)
@@ -334,7 +346,19 @@ static int ivc_read_frame(struct ivc *ivc, void *buf, void __user *user_buf,
 	ivc_advance_rx(ivc);
 	ivc_flush_counter(ivc, ivc->rx_handle +
 			offsetof(struct ivc_channel_header, r_count));
-	ivc->notify(ivc);
+
+	/*
+	 * Ensure our write to r_pos occurs before our read from w_pos.
+	 */
+	ivc_mb();
+
+	/*
+	 * Notify only upon transition from full to non-full.
+	 * The available count can only asynchronously increase, so the
+	 * worst possible side-effect will be a spurious notification.
+	 */
+	if (ivc_channel_avail_count(ivc, ivc->rx_channel) == ivc->nframes - 1)
+		ivc->notify(ivc);
 
 	return (int)max_read;
 }
@@ -414,7 +438,19 @@ int tegra_ivc_read_advance(struct ivc *ivc)
 	ivc_advance_rx(ivc);
 	ivc_flush_counter(ivc, ivc->rx_handle +
 			offsetof(struct ivc_channel_header, r_count));
-	ivc->notify(ivc);
+
+	/*
+	 * Ensure our write to r_pos occurs before our read from w_pos.
+	 */
+	ivc_mb();
+
+	/*
+	 * Notify only upon transition from full to non-full.
+	 * The available count can only asynchronously increase, so the
+	 * worst possible side-effect will be a spurious notification.
+	 */
+	if (ivc_channel_avail_count(ivc, ivc->rx_channel) == ivc->nframes - 1)
+		ivc->notify(ivc);
 
 	return 0;
 }
@@ -463,7 +499,19 @@ static int ivc_write_frame(struct ivc *ivc, const void *buf,
 	ivc_advance_tx(ivc);
 	ivc_flush_counter(ivc, ivc->tx_handle +
 			offsetof(struct ivc_channel_header, w_count));
-	ivc->notify(ivc);
+
+	/*
+	 * Ensure our write to w_pos occurs before our read from r_pos.
+	 */
+	ivc_mb();
+
+	/*
+	 * Notify only upon transition from empty to non-empty.
+	 * The available count can only asynchronously decrease, so the
+	 * worst possible side-effect will be a spurious notification.
+	 */
+	if (ivc_channel_avail_count(ivc, ivc->tx_channel) == 1)
+		ivc->notify(ivc);
 
 	return (int)size;
 }
@@ -530,7 +578,19 @@ int tegra_ivc_write_advance(struct ivc *ivc)
 	ivc_advance_tx(ivc);
 	ivc_flush_counter(ivc, ivc->tx_handle +
 			offsetof(struct ivc_channel_header, w_count));
-	ivc->notify(ivc);
+
+	/*
+	 * Ensure our write to w_pos occurs before our read from r_pos.
+	 */
+	ivc_mb();
+
+	/*
+	 * Notify only upon transition from empty to non-empty.
+	 * The available count can only asynchronously decrease, so the
+	 * worst possible side-effect will be a spurious notification.
+	 */
+	if (ivc_channel_avail_count(ivc, ivc->tx_channel) == 1)
+		ivc->notify(ivc);
 
 	return 0;
 }
