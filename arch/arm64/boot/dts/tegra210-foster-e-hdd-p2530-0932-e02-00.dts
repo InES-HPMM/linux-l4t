@@ -1,7 +1,7 @@
 /*
  * arch/arm64/boot/dts/tegra210-foster-e-hdd-p2530-0932-e00-00.dts
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "tegra210-platforms/tegra210-loki-e-emc-e01.dtsi"
 #include "tegra210-platforms/tegra210-foster-powermon-p2530-0930-e01.dtsi"
 #include "tegra210-platforms/tegra210-foster-e-led-p1961-b00.dtsi"
+#include "tegra210-platforms/tegra210-foster-e-cpc-p1963.dtsi"
 
 / {
 	model = "foster_e_hdd";
@@ -44,12 +45,4 @@
 		status = "disabled";
 	};
 
-	i2c@7000c000 {
-		cpc: cpc@11 {
-			compatible = "nvidia,cpc";
-			reg = <0x11>;
-			interrupt-parent = <&gpio>;
-			interrupts = <TEGRA_GPIO(A, 0) 0x0>;
-		};
-	};
 };
