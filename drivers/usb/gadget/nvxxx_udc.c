@@ -159,6 +159,23 @@ struct xusb_usb2_otg_pad_config {
 	u32 ls_rslew;
 };
 
+struct xudc_chip_id {
+	char *name;
+	u16 device_id;
+};
+
+static struct xudc_chip_id xudc_chip_ids[] =  {
+	{
+		.name = "T210",
+		.device_id = XUDC_DEVICE_ID_T210,
+	},
+	{
+		.name = "T186",
+		.device_id = XUDC_DEVICE_ID_T186,
+	},
+	{ }
+};
+
 #define DEFAULT_MIN_IRQ_INTERVAL	(1000) /* 1 ms */
 /* disable interrupt moderation to boost the performance on silicon bringup */
 static unsigned int min_irq_interval_us;
@@ -316,6 +333,35 @@ int nvudc_set_port_state(struct usb_gadget *gadget, u8 pls)
 	return 0;
 }
 
+static char *xudc_get_chip_name(struct nv_udc_s *nvudc)
+{
+	char *name = "UNKNOWN";
+	struct xudc_chip_id *id = xudc_chip_ids;
+
+	do {
+		if (id->device_id == nvudc->device_id) {
+			name = id->name;
+			break;
+		}
+		id++;
+	} while (id->name != NULL);
+
+	return name;
+}
+
+static void init_chip(struct nv_udc_s *nvudc)
+{
+	if (nvudc->device_id == XUDC_DEVICE_ID_T210) {
+		/*
+		 * init T210 specific features here
+		 */
+	} else if (nvudc->device_id == XUDC_DEVICE_ID_T186) {
+		/*
+		 * init T186 specific features here
+		 */
+	}
+}
+
 /* must hold nvudc->lock */
 static inline void vbus_detected(struct nv_udc_s *nvudc)
 {
@@ -351,7 +397,8 @@ static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 	portsc = ioread32(nvudc->mmio_reg_base + PORTSC);
 
 	/* war for disconnect in U2 or RESUME state */
-	if (nvudc->gadget.speed == USB_SPEED_SUPER &&
+	if (XUDC_IS_T210(nvudc) &&
+		nvudc->gadget.speed == USB_SPEED_SUPER &&
 		((portsc & PORTSC_PLS_MASK) == XDEV_RESUME ||
 		((portsc & PORTSC_PLS_MASK) == XDEV_U2))) {
 		u32 reg;
@@ -3459,11 +3506,14 @@ void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 		"bRequest=%d, wValue=0x%.4x, wIndex=%d, wLength=%d\n",
 		setup_pkt->bRequest, wValue, wIndex, wLength);
 
-	/* war for ctrl request with seq_num = 0xfffe or 0xffff */
-	if (seq_num == 0xfffe || seq_num == 0xffff) {
-		set_ep_halt(nvudc, 0, "war: ctrl seq_num = 0xfffe/0xffff");
-		nvudc->setup_status = WAIT_FOR_SETUP;
-		return;
+	if (XUDC_IS_T210(nvudc)) {
+		/* war for ctrl request with seq_num = 0xfffe or 0xffff */
+		if (seq_num == 0xfffe || seq_num == 0xffff) {
+			set_ep_halt(nvudc, 0,
+				"war: ctrl seq_num = 0xfffe/0xffff");
+			nvudc->setup_status = WAIT_FOR_SETUP;
+			return;
+		}
 	}
 
 	nvudc->setup_status = SETUP_PKT_PROCESS_IN_PROGRESS;
@@ -4603,6 +4653,11 @@ static int nvudc_probe_pci(struct pci_dev *pdev, const struct pci_device_id
 	INIT_LIST_HEAD(&nvudc_dev->gadget.ep_list);
 	nvudc_dev->gadget.max_speed = USB_SPEED_SUPER;
 	nvudc_dev->gadget.name = driver_name;
+	nvudc_dev->device_id = pdev->device;
+
+	dev_info(&pdev->dev, "xudc device id = 0x%04x (%s)\n",
+		nvudc_dev->device_id, xudc_get_chip_name(nvudc_dev));
+	init_chip(nvudc_dev);
 
 	if (pci_enable_device(pdev) < 0) {
 		retval = -ENODEV;
@@ -4767,7 +4822,7 @@ void restore_mmio_reg(struct nv_udc_s *nvudc)
 	u32 reg;
 	dma_addr_t dma;
 
-	if (XUSB_IS_T210(nvudc)) {
+	if (XUDC_IS_T210(nvudc)) {
 		/* Enable clock gating */
 		/* T210 WAR, Disable BLCG DFPCI/UFPCI/FE */
 		reg = ioread32(nvudc->mmio_reg_base + BLCG);
@@ -5702,6 +5757,10 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	nvudc->gadget.name = driver_name;
 	nvudc->gadget.max_speed = USB_SPEED_SUPER;
 
+	dev_info(&pdev->dev, "xudc device id = 0x%04x (%s)\n",
+		nvudc->device_id, xudc_get_chip_name(nvudc));
+	init_chip(nvudc);
+
 	nvudc->mmio_reg_base = nvudc->base; /* TODO support device context */
 
 	err = reset_data_struct(nvudc);
@@ -5850,8 +5909,16 @@ static DEFINE_PCI_DEVICE_TABLE(nvpci_ids) = {
 	{
 		.class = ((PCI_CLASS_SERIAL_USB << 8) | 0xfe),
 		.class_mask = ~0,
-		.vendor = 0x10de,
-		.device = 0x0fad,
+		.vendor = XUDC_VENDOR_ID,
+		.device = XUDC_DEVICE_ID_T210,
+		.subvendor = PCI_ANY_ID,
+		.subdevice = PCI_ANY_ID,
+	},
+	{
+		.class = ((PCI_CLASS_SERIAL_USB << 8) | 0xfe),
+		.class_mask = ~0,
+		.vendor = XUDC_VENDOR_ID,
+		.device = XUDC_DEVICE_ID_T186,
 		.subvendor = PCI_ANY_ID,
 		.subdevice = PCI_ANY_ID,
 	},

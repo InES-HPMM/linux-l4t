@@ -24,6 +24,16 @@
 #define NON_STD_CHARGER_DET_TIME_MS 1000
 #define USB_ANDROID_SUSPEND_CURRENT_MA 2
 
+/* VENDOR ID */
+#define XUDC_VENDOR_ID		0x10de
+
+/* DEVICE ID */
+#define XUDC_DEVICE_ID_T210	0x0fad
+#define XUDC_DEVICE_ID_T186	0x10e2
+
+#define XUDC_IS_T210(t)	(t->device_id == XUDC_DEVICE_ID_T210)
+#define XUDC_IS_T186(t)	(t->device_id == XUDC_DEVICE_ID_T186)
+
 /*
  * Register definitions
  */
@@ -917,5 +927,3 @@ extern int debug_level;
 
 #define XUSB_VBUS				(0xc60)
 
-#define XUSB_DEVICE_ID_T210			0x0FAD
-#define XUSB_IS_T210(t)	(t->device_id == XUSB_DEVICE_ID_T210)
