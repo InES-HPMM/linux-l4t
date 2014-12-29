@@ -78,6 +78,9 @@
 			gpio-output-high = <
 				TEGRA_GPIO(V, 7)
 				>;
+			gpio-suspend-output-low = <
+				TEGRA_GPIO(V, 4)
+				>;
 		};
 	};
 };
