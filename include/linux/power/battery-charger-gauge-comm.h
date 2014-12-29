@@ -40,6 +40,7 @@ struct battery_gauge_ops {
 				enum battery_charger_status status);
 	int (*set_current_broadcast) (struct battery_gauge_dev *bg_device);
 	int (*get_battery_temp)(void);
+	int (*get_battery_soc)(struct battery_gauge_dev *bg_device);
 };
 
 struct battery_charging_ops {
@@ -50,6 +51,8 @@ struct battery_charging_ops {
 		int battery_voltage);
 	int (*charge_term_configure)(struct battery_charger_dev *bc_dev,
 		int fc_state);
+	int (*input_voltage_configure)(struct battery_charger_dev *bc_dev,
+		int soc);
 };
 
 struct battery_charger_info {
@@ -106,5 +109,8 @@ int battery_gauge_get_adjusted_soc(struct battery_gauge_dev *bg_dev,
 		int min_soc, int max_soc, int actual_soc_semi);
 int battery_gauge_fc_state(struct battery_gauge_dev *bg_dev,
 					int fullcharge_state);
+int battery_gauge_report_battery_soc(struct battery_gauge_dev *bg_dev,
+		int battery_soc);
+int battery_gauge_get_battery_soc(struct battery_charger_dev *bc_dev);
 
 #endif /* _LINUX_POWER_BATTERY_CHARGER_GAUGE_COMM_H */

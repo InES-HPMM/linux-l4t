@@ -100,6 +100,7 @@
 #define BQ2419x_FAULT_CHRG_THERMAL		0x20
 #define BQ2419x_FAULT_CHRG_SAFTY		0x30
 #define BQ2419x_FAULT_BAT_FAULT			BIT(3)
+#define BQ2419x_CHARGING_FAULT_MASK		0xFF
 
 #define BQ2419x_FAULT_NTC_FAULT			0x07
 #define BQ2419x_TREG				0x03
@@ -155,8 +156,11 @@ struct bq2419x_charger_platform_data {
 	u32 *temp_range;
 	u32 *chg_current_limit;
 	u32 *chg_thermal_voltage_limit;
+	u32 *soc_range;
+	u32 *input_voltage_soc_limit;
 	u32 auto_recharge_time_supend;
 	u32 auto_rechg_power_on_time;
+	int n_soc_profile;
 };
 
 /*
