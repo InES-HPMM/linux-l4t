@@ -1066,11 +1066,6 @@ static void tegra12_super_clk_init(struct clk *c)
 	    (val & SUPER_LP_DIV2_BYPASS))
 		c->parent = c->parent->parent;
 
-	/* Update parent in case when LP CPU PLLX DIV2 bypassed */
-	if ((c->flags & DIV_2) && (c->parent->flags & PLLX) &&
-	    (val & SUPER_LP_DIV2_BYPASS))
-		c->parent = c->parent->parent;
-
 	if (c->flags & DIV_U71) {
 		c->mul = 2;
 		c->div = 2;
