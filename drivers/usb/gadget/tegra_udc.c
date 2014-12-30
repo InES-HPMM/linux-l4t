@@ -1687,6 +1687,9 @@ static int tegra_vbus_draw(struct usb_gadget *gadget, unsigned mA)
 
 	udc = container_of(gadget, struct tegra_udc, gadget);
 
+	if (udc->connect_type == CONNECT_TYPE_DCP_MAXIM)
+		return 0;
+
 	/* Some hosts during booting first supply vbus and then
 	   send setup packets after x seconds. In this case we detect
 	   as non-standard. Handle this case by setting to SDP */
