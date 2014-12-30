@@ -107,6 +107,11 @@
 #define CMD_MAXLINKSPEED	"MAXLINKSPEED"
 #define CMD_RXRATESTATS 	"RXRATESTATS"
 #define CMD_AMPDU_SEND_DELBA	"AMPDU_SEND_DELBA"
+
+/* Commands for iovar settings */
+#define CMD_SETIOVAR		"SETIOVAR"
+#define CMD_GETIOVAR		"GETIOVAR"
+
 /* CCX Private Commands */
 
 #ifdef PNO_SUPPORT
@@ -1423,6 +1428,82 @@ int wl_keep_alive_set(struct net_device *dev, char* extra, int total_len)
 	return res;
 }
 
+static int wl_android_get_iovar(struct net_device *dev, char *command,
+					int total_len)
+{
+	int skip = strlen(CMD_GETIOVAR) + 1;
+	char iovbuf[WLC_IOCTL_SMLEN];
+	s32 param = -1;
+	int bytes_written = 0;
+
+	if (strlen(command) < skip ) {
+		DHD_ERROR(("%s: Invalid command length", __func__));
+		return BCME_BADARG;
+	}
+
+	DHD_INFO(("%s: command buffer %s command length:%d\n",
+			__func__, (command + skip), strlen(command + skip)));
+
+	/* Initiate get_iovar command */
+	memset(iovbuf, 0, sizeof(iovbuf));
+	bytes_written = wldev_iovar_getbuf(dev, (command + skip), &param,
+				sizeof(param), iovbuf, sizeof(iovbuf), NULL);
+
+	/* Check for errors, log the error and reset bytes written value */
+	if (bytes_written < 0) {
+		DHD_ERROR(("%s: get iovar failed (error=%d)\n",
+				__func__, bytes_written));
+		bytes_written = 0;
+	} else {
+		snprintf(command, total_len, iovbuf);
+		bytes_written = snprintf(command, total_len,
+					"%d:%s", dtoh32(param), iovbuf);
+		DHD_INFO(("%s: param:%d iovbuf:%s strlen(iovbuf):%d"
+				" bytes_written:%d\n", __func__, param, iovbuf,
+				strlen(iovbuf), bytes_written));
+	}
+
+	return bytes_written;
+}
+
+static int wl_android_set_iovar(struct net_device *dev, char *command,
+					int total_len)
+{
+	int skip = strlen(CMD_GETIOVAR) + 1;
+	char iovbuf[WLC_IOCTL_SMLEN];
+	char iovar[WLC_IOCTL_SMLEN];
+	s32 param = -1;
+	int bytes_written = 0;
+	int ret = -1;
+
+	if (strlen(command) < skip ) {
+		DHD_ERROR(("Short command length"));
+		return BCME_BADARG;
+	}
+
+	DHD_INFO(("%s: command buffer:%s command length:%d\n",
+			__func__, (command + skip), strlen(command + skip)));
+
+	/* Parse command and get iovbuf and param values */
+	memset(iovbuf, 0, sizeof(iovbuf));
+	memset(iovar, 0, sizeof(iovbuf));
+	ret = sscanf((command + skip), "%s %d:%s", iovar, &param, iovbuf);
+	if (ret < 3) {
+		DHD_ERROR(("%s: Failed to get Parameter %d\n", __func__, ret));
+		return BCME_BADARG;
+	}
+	DHD_INFO(("%s: iovar:%s param:%d iovbuf:%s strlen(iovbuf):%d\n", __func__,
+			iovar, param, iovbuf, strlen(iovbuf)));
+
+	bytes_written = wldev_iovar_setbuf(dev, iovar, &param,
+				sizeof(param), iovbuf, sizeof(iovbuf), NULL);
+	if (bytes_written < 0)
+		DHD_ERROR(("%s: set iovar failed (error=%d)\n",
+				__func__, bytes_written));
+
+	return bytes_written;
+}
+
 int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 {
 #define PRIVATE_COMMAND_MAX_LEN	8192
@@ -1666,6 +1747,10 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		int enable = *(command + strlen(CMD_ROAM_OFFLOAD) + 1) - '0';
 		bytes_written = wl_cfg80211_enable_roam_offload(net, enable);
 	}
+	else if (strnicmp(command, CMD_GETIOVAR, strlen(CMD_GETIOVAR)) == 0)
+		bytes_written = wl_android_get_iovar(net, command, priv_cmd.total_len);
+	else if (strnicmp(command, CMD_SETIOVAR, strlen(CMD_GETIOVAR)) == 0)
+		bytes_written = wl_android_set_iovar(net, command, priv_cmd.total_len);
 	else {
 		DHD_ERROR(("Unknown PRIVATE command %s - ignored\n", command));
 		snprintf(command, 3, "OK");
