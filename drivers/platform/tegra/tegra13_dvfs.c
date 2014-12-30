@@ -703,7 +703,7 @@ static void __init set_cpu_dfll_vmin_data(
 
 	/* First install fixed Vmin profile */
 	tegra_dvfs_rail_init_vmin_thermal_profile(d->vmin_trips_table,
-		d->therm_floors_table, rail, &cpu_dvfs->dfll_data);
+		d->therm_floors_table, rail, &d->dfll_tune_data);
 
 	if (!rail->therm_mv_floors || !rail->therm_mv_floors_num ||
 	    !d->cvb_vmin.cvb_dfll_param.c0)
@@ -744,7 +744,7 @@ static void __init set_cpu_dfll_vmin_data(
 	 * table)
 	 */
 	tegra_dvfs_rail_init_vmin_thermal_profile(d->vmin_trips_table,
-		cpu_vmin, rail, &cpu_dvfs->dfll_data);
+		cpu_vmin, rail, &d->dfll_tune_data);
 }
 
 
@@ -859,7 +859,7 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 #ifndef CONFIG_TEGRA_CPU_VOLT_CAP
 	tegra_dvfs_rail_init_vmax_thermal_profile(
 		vdd_cpu_vmax_trips_table, vdd_cpu_therm_caps_table,
-		rail, &cpu_dvfs->dfll_data);
+		rail, &d->dfll_tune_data);
 
 #endif
 	if (cpu_dvfs->speedo_id == 0)
