@@ -17,7 +17,7 @@
 
 #include "tegra210-pmic-p2530-max7762x.dtsi"
 #include "tegra210-fixed-p2530-max7762x.dtsi"
-#include "tegra210-power-dvfs-p2530-0930.dtsi"
+#include "tegra210-ers-power-dvfs-e2174-1101-a00.dtsi"
 
 / {
 
