@@ -359,6 +359,7 @@ static void tegra_xudc_ucd_work(struct work_struct *work)
 		}
 	} else {
 		cancel_delayed_work(&nvudc->non_std_charger_work);
+		nvudc->current_ma = 0;
 		if (nvudc->ucd != NULL)
 			tegra_ucd_set_charger_type(nvudc->ucd,
 						CONNECT_TYPE_NONE);
