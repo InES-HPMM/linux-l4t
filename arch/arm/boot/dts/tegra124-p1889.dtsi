@@ -31,10 +31,19 @@
 #include <tegra124-platforms/tegra124-p1889-pinmux.dtsi>
 #include <panel-a-edp-1080p-14-0.dtsi>
 #include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
+#include <dt-bindings/gpio/tmpm32x-gpio.h>
 
 / {
 	#address-cells = <2>;
 	#size-cells = <2>;
+
+	mcu_gpio: tmpm32x-gpio {
+		compatible = "nvidia,tmpm32x-gpio";
+		gpio-controller;
+		#gpio-cells = <2>;
+		nvidia,ttyport = "/dev/ttyTHS2";
+		status = "okay";
+	};
 
 	host1x {
 		hdmi {
@@ -290,10 +299,12 @@
 	bluedroid_pm {
 		compatible = "nvidia,tegra-bluedroid_pm";
 		id = <0>;
+		bluedroid_pm,shutdown-gpio = <&mcu_gpio TMPM32X_GPIO(D, 2) GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
 	bcmdhd_wlan {
 		compatible = "android,bcmdhd_wlan";
+		wlan-pwr-gpio = <&mcu_gpio TMPM32X_GPIO(D, 1) GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
 
