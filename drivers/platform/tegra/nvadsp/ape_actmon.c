@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -77,12 +77,8 @@
 #define ACTMON_DEFAULT_SAMPLING_PERIOD	20
 #define AVG_COUNT_THRESHOLD		100000
 
-static unsigned long actmon_sampling_period;
-static struct clk *actmon_clk;
-static unsigned long actmon_clk_freq;
-struct notifier_block ape_clk_rc_nb;
-
-static void __iomem *actmon_base;
+static struct actmon ape_actmon;
+static struct actmon *apemon;
 
 /* APE activity monitor: Samples ADSP activity */
 static struct actmon_dev actmon_dev_adsp = {
@@ -164,11 +160,11 @@ static struct actmon_dev *actmon_devices[] = {
 
 static inline u32 actmon_readl(u32 offset)
 {
-	return __raw_readl(actmon_base + offset);
+	return __raw_readl(apemon->base + offset);
 }
 static inline void actmon_writel(u32 val, u32 offset)
 {
-	__raw_writel(val, actmon_base + offset);
+	__raw_writel(val, apemon->base + offset);
 }
 static inline void actmon_wmb(void)
 {
@@ -187,12 +183,12 @@ static void actmon_update_sample_period(unsigned long period)
 	u32 sample_period_in_clks;
 	u32 val = 0;
 
-	actmon_sampling_period = period;
+	apemon->sampling_period = period;
 	/*
 	 * sample_period_in_clks <1..255> = (actmon_clk_freq<1..40800> *
 	 * actmon_sample_period <10ms..40ms>) / SAMPLE_MS_DIVIDER(65536)
 	 */
-	sample_period_in_clks = (actmon_clk_freq * actmon_sampling_period) /
+	sample_period_in_clks = (apemon->freq * apemon->sampling_period) /
 		SAMPLE_MS_DIVIDER;
 
 	val = actmon_readl(ACTMON_DEV_CTRL);
@@ -207,9 +203,9 @@ static inline void actmon_dev_up_wmark_set(struct actmon_dev *dev)
 {
 	u32 val;
 	unsigned long freq = (dev->type == ACTMON_FREQ_SAMPLER) ?
-					 dev->cur_freq : actmon_clk_freq;
+					 dev->cur_freq : apemon->freq;
 
-	val = freq * actmon_sampling_period;
+	val = freq * apemon->sampling_period;
 	actmon_writel(do_percent(val, dev->boost_up_threshold),
 				  offs(ACTMON_DEV_UP_WMARK));
 }
@@ -218,9 +214,9 @@ static inline void actmon_dev_down_wmark_set(struct actmon_dev *dev)
 {
 	u32 val;
 	unsigned long freq = (dev->type == ACTMON_FREQ_SAMPLER) ?
-				 dev->cur_freq : actmon_clk_freq;
+				 dev->cur_freq : apemon->freq;
 
-	val = freq * actmon_sampling_period;
+	val = freq * apemon->sampling_period;
 	actmon_writel(do_percent(val, dev->boost_down_threshold),
 				  offs(ACTMON_DEV_DOWN_WMARK));
 }
@@ -229,9 +225,9 @@ static inline void actmon_dev_wmark_set(struct actmon_dev *dev)
 {
 	u32 val;
 	unsigned long freq = (dev->type == ACTMON_FREQ_SAMPLER) ?
-				 dev->cur_freq : actmon_clk_freq;
+				 dev->cur_freq : apemon->freq;
 
-	val = freq * actmon_sampling_period;
+	val = freq * apemon->sampling_period;
 
 	actmon_writel(do_percent(val, dev->boost_up_threshold),
 					  offs(ACTMON_DEV_UP_WMARK));
@@ -245,7 +241,7 @@ static inline void actmon_dev_avg_wmark_set(struct actmon_dev *dev)
 	 * band: delta from current count to be set for avg upper
 	 * and lower thresholds
 	 */
-	u32 band = dev->avg_band_freq * actmon_sampling_period;
+	u32 band = dev->avg_band_freq * apemon->sampling_period;
 	u32 avg = dev->avg_count;
 
 	actmon_writel(avg + band, offs(ACTMON_DEV_AVG_UP_WMARK));
@@ -258,10 +254,10 @@ static unsigned long actmon_dev_avg_freq_get(struct actmon_dev *dev)
 	u64 val;
 
 	if (dev->type == ACTMON_FREQ_SAMPLER)
-		return dev->avg_count / actmon_sampling_period;
+		return dev->avg_count / apemon->sampling_period;
 
 	val = (u64) dev->avg_count * dev->cur_freq;
-	do_div(val , actmon_clk_freq * actmon_sampling_period);
+	do_div(val , apemon->freq * apemon->sampling_period);
 	return (u32)val;
 }
 
@@ -379,12 +375,12 @@ static void actmon_dev_configure(struct actmon_dev *dev,
 		 *			increament raw_count/ actmon_count
 		 *			 by one.
 		 */
-		dev->avg_count = dev->cur_freq * actmon_sampling_period;
+		dev->avg_count = dev->cur_freq * apemon->sampling_period;
 		dev->avg_band_freq = dev->max_freq *
 						 ACTMON_DEFAULT_AVG_BAND / 1000;
 	} else {
-		dev->avg_count = actmon_clk_freq * actmon_sampling_period;
-		dev->avg_band_freq = actmon_clk_freq *
+		dev->avg_count = apemon->freq * apemon->sampling_period;
+		dev->avg_band_freq = apemon->freq *
 					 ACTMON_DEFAULT_AVG_BAND / 1000;
 	}
 	actmon_writel(dev->avg_count, offs(ACTMON_DEV_INIT_AVG));
@@ -681,7 +677,7 @@ DEFINE_SIMPLE_ATTRIBUTE(state_fops, state_get, state_set, "%llu\n");
 /* Get period in msec */
 static int period_get(void *data, u64 *val)
 {
-	*val = actmon_sampling_period;
+	*val = apemon->sampling_period;
 	return 0;
 }
 /* Set period in msec */
@@ -813,7 +809,7 @@ void actmon_rate_change(unsigned long freq)
 	spin_unlock_irqrestore(&dev->lock, flags);
 
 	/* change ape rate as half of adsp rate */
-	clk_set_rate(actmon_clk, freq * 500);
+	clk_set_rate(apemon->clk, freq * 500);
 };
 
 int ape_actmon_probe(struct platform_device *pdev)
@@ -847,7 +843,7 @@ static int ape_actmon_rc_cb(
 	spin_lock_irqsave(&dev->lock, flags);
 	init_cnt = actmon_readl(offs(ACTMON_DEV_AVG_COUNT));
 	/* update sample period to maintain number of clock */
-	actmon_clk_freq = rate / 1000; /* in KHz */
+	apemon->freq = rate / 1000; /* in KHz */
 	actmon_update_sample_period(ACTMON_DEFAULT_SAMPLING_PERIOD);
 	actmon_writel(init_cnt, offs(ACTMON_DEV_INIT_AVG));
 	spin_unlock_irqrestore(&dev->lock, flags);
@@ -868,45 +864,46 @@ int ape_actmon_init(struct platform_device *pdev)
 	if (drv->actmon_initialized)
 		return 0;
 
-	actmon_base = drv->base_regs[AMISC] + ACTMON_REG_OFFSET;
+	apemon = &ape_actmon;
+	apemon->base = drv->base_regs[AMISC] + ACTMON_REG_OFFSET;
 	amisc_base = drv->base_regs[AMISC];
 
-	actmon_clk = clk_get_sys(NULL, "adsp.ape");
-	if (!actmon_clk) {
+	apemon->clk = clk_get_sys(NULL, "adsp.ape");
+	if (!apemon->clk) {
 		dev_err(&pdev->dev, "Failed to find actmon clock\n");
 		ret = -EINVAL;
 		goto err_out;
 	}
 
-	ret = clk_prepare_enable(actmon_clk);
+	ret = clk_prepare_enable(apemon->clk);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to enable actmon clock\n");
 		ret = -EINVAL;
 		goto err_out;
 	}
-	ape_clk_rc_nb.notifier_call = ape_actmon_rc_cb;
+	apemon->clk_rc_nb.notifier_call = ape_actmon_rc_cb;
 
 	/*
 	 * "adsp.ape" clk is shared bus user clock and "ape" is bus clock
 	 * but rate change notification should come from bus clock itself.
 	 */
-	p = clk_get_parent(actmon_clk);
+	p = clk_get_parent(apemon->clk);
 	if (!p) {
 		dev_err(&pdev->dev, "Failed to find actmon parent clock\n");
 		ret = -EINVAL;
 		goto clk_err_out;
 	}
 
-	ret = tegra_register_clk_rate_notifier(p, &ape_clk_rc_nb);
+	ret = tegra_register_clk_rate_notifier(p, &apemon->clk_rc_nb);
 	if (ret) {
 		dev_err(&pdev->dev, "Registration fail: %s rate change notifier for %s\n",
-			p->name, actmon_clk->name);
+			p->name, apemon->clk->name);
 		goto clk_err_out;
 	}
 
-	actmon_clk_freq = clk_get_rate(actmon_clk) / 1000; /* in KHz */
+	apemon->freq = clk_get_rate(apemon->clk) / 1000; /* in KHz */
 
-	actmon_sampling_period = ACTMON_DEFAULT_SAMPLING_PERIOD;
+	apemon->sampling_period = ACTMON_DEFAULT_SAMPLING_PERIOD;
 
 	/*
 	 * sample period as no of actmon clocks
@@ -917,7 +914,7 @@ int ape_actmon_init(struct platform_device *pdev)
 	 * 10ms = 204000 * 10 APE cycles
 	 * SAMPLE_MS_DIVIDER is an arbitrary number
 	 */
-	sample_period_in_clks = (actmon_clk_freq * actmon_sampling_period)
+	sample_period_in_clks = (apemon->freq * apemon->sampling_period)
 		/ SAMPLE_MS_DIVIDER;
 
 	/* set ms mode */
@@ -952,11 +949,11 @@ int ape_actmon_init(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "adsp actmon initialized ....\n");
 	return 0;
 clk_err_out:
-	if (actmon_clk)
-		clk_disable_unprepare(actmon_clk);
+	if (apemon->clk)
+		clk_disable_unprepare(apemon->clk);
 err_out:
-	if (actmon_clk)
-		clk_put(actmon_clk);
+	if (apemon->clk)
+		clk_put(apemon->clk);
 	return ret;
 }
 
@@ -974,11 +971,11 @@ int ape_actmon_exit(struct platform_device *pdev)
 		clk_put(dev->clk);
 	}
 
-	tegra_unregister_clk_rate_notifier(clk_get_parent(actmon_clk),
-		&ape_clk_rc_nb);
+	tegra_unregister_clk_rate_notifier(clk_get_parent(apemon->clk),
+		&apemon->clk_rc_nb);
 
-	clk_disable_unprepare(actmon_clk);
-	clk_put(actmon_clk);
+	clk_disable_unprepare(apemon->clk);
+	clk_put(apemon->clk);
 
 	drv->actmon_initialized = false;
 

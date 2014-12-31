@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -71,6 +71,15 @@ struct actmon_dev {
 	spinlock_t	lock;
 
 };
+
+struct actmon {
+	struct clk *clk;
+	unsigned long freq;
+	unsigned long sampling_period;
+	struct notifier_block clk_rc_nb;
+	void __iomem *base;
+};
+
 int ape_actmon_init(struct platform_device *pdev);
 int ape_actmon_exit(struct platform_device *pdev);
 void actmon_rate_change(unsigned long freq);
