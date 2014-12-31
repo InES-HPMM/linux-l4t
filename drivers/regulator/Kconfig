@@ -399,6 +399,13 @@ config REGULATOR_PCF50633
 	 Say Y here to support the voltage regulators and convertors
 	 on PCF50633
 
+config REGULATOR_PINMUX_FIXED
+	tristate "Pinmux based fixed voltage regulator support"
+	help
+	  This driver provides support for fixed voltage regulators
+	  based on pinmux state. The regulator can be controlled by
+	  changign the pimux states.
+
 config REGULATOR_PWM
 	tristate "PWM based voltage regulator support"
 	depends on PWM
