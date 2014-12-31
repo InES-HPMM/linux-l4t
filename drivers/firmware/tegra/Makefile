@@ -1,3 +1,3 @@
-obj-y	+= bpmp_abi.o
-obj-y	+= bpmp_dev.o
-obj-y	+= bpmp_ipc.o
+obj-y					+= bpmp.o
+obj-y					+= bpmp_abi.o
+obj-y					+= mail.o

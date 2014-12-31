@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -20,8 +20,8 @@
 #include <linux/ktime.h>
 #include <linux/platform_data/tegra_bpmp.h>
 #include <linux/slab.h>
+#include "bpmp.h"
 #include "bpmp_abi.h"
-#include "bpmp_private.h"
 
 int bpmp_ping(void)
 {

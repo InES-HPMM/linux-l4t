@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -14,8 +14,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _BPMP_PRIVATE_H
-#define _BPMP_PRIVATE_H
+#ifndef _DRIVERS_BPMP_H
+#define _DRIVERS_BPMP_H
 
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
