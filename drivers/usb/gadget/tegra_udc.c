@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Description:
  * High-speed USB device controller driver.
@@ -1410,7 +1410,11 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 		max_ua = 0;
 		/* Notify if HOST(SDP/CDP) is connected */
 		if ((udc->prev_connect_type == CONNECT_TYPE_SDP) ||
-			(udc->prev_connect_type == CONNECT_TYPE_CDP))
+			(udc->prev_connect_type == CONNECT_TYPE_CDP) ||
+			(udc->prev_connect_type ==
+				CONNECT_TYPE_ACA_NV_CHARGER) ||
+			(udc->prev_connect_type == CONNECT_TYPE_ACA_RID_B) ||
+			(udc->prev_connect_type == CONNECT_TYPE_ACA_RID_C))
 			tegra_udc_notify_event(udc, USB_EVENT_NONE);
 		break;
 	case CONNECT_TYPE_SDP:
