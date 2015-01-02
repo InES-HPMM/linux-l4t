@@ -603,6 +603,11 @@ static int __init tegra_pmc_init(void)
 			pr_err("ERROR: Pad control driver init failed: %d\n",
 				ret);
 		}
+
+		ret = tegra_boorom_pmc_init(&tegra_pmc_dev);
+		if (ret < 0)
+			pr_err("ERROR: Bootrom PMC config failed: %d\n", ret);
+	
 	}
 
 	return 0;

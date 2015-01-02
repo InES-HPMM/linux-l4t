@@ -143,4 +143,18 @@ static inline int tegra_pmc_padctrl_init(struct device *dev,
 	return 0;
 }
 
+#ifdef CONFIG_TEGRA210_BOOTROM_PMC
+extern int tegra210_boorom_pmc_init(struct device *dev);
+#endif
+
+static inline int tegra_boorom_pmc_init(struct device *dev)
+{
+#ifdef CONFIG_TEGRA210_BOOTROM_PMC
+	return tegra210_boorom_pmc_init(dev);
+#else
+	return 0;
+#endif
+}
+
+
 #endif	/* __LINUX_TEGRA_PMC_H__ */
