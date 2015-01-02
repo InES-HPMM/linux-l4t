@@ -20,6 +20,16 @@
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 
+#define NR_CHANNELS		12
+#define MSG_SZ			32
+#define MSG_DATA_SZ		24
+
+#define NR_THREAD_CH		4
+
+#define NR_MRQS			32
+#define __MRQ_ATTRS		0xff000000
+#define __MRQ_INDEX(id)		((id) & ~__MRQ_ATTRS)
+
 struct fops_entry {
 	char *name;
 	const struct file_operations *fops;
@@ -31,12 +41,21 @@ struct bpmp_cpuidle_state {
 	const char *name;
 };
 
+struct mb_data {
+	int code;
+	int flags;
+	u8 data[MSG_DATA_SZ];
+};
+
+extern struct mb_data *channel_area[NR_CHANNELS];
+
 #ifdef CONFIG_DEBUG_FS
 extern struct bpmp_cpuidle_state plat_cpuidle_state[];
 #endif
 
 extern struct device *device;
 extern struct mutex bpmp_lock;
+extern int connected;
 
 int bpmp_clk_init(struct platform_device *pdev);
 int bpmp_platdbg_init(struct dentry *root, struct platform_device *pdev);

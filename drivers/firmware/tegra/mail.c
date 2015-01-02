@@ -50,24 +50,10 @@
 #define THREAD_CH_INDEX(i)	(i - CPU0_OB_CH1)
 #define PER_CPU_IB_CH(i)	(CPU0_IB_CH + i)
 
-#define NR_THREAD_CH		4
 #define ALL_FREE		0xaaaaaaaa
 #define CHANNEL_TIMEOUT		USEC_PER_SEC
 #define THREAD_CH_TIMEOUT	USEC_PER_SEC
 
-#define __MRQ_INDEX(id)		((id) & ~__MRQ_ATTRS)
-
-/*
- * IPC message format
- * @code: either an MRQ number (outgoing) or an error code (incoming)
- * @flags: message flags
- * @data: MRQ specifc args (outgoing) or result (incoming)
- */
-struct mb_data {
-	int code;
-	int flags;
-	u8 data[MSG_DATA_SZ];
-};
 
 struct mrq_handler_data {
 	bpmp_mrq_handler handler;
@@ -81,9 +67,9 @@ static int cpu_mrqs[] = {
 
 static struct mrq_handler_data mrq_handlers[ARRAY_SIZE(cpu_mrqs)];
 static uint8_t mrq_handler_index[NR_MRQS];
-static struct mb_data *channel_area[NR_CHANNELS];
+struct mb_data *channel_area[NR_CHANNELS];
 static struct completion completion[NR_THREAD_CH];
-static int connected;
+int connected;
 static DEFINE_SPINLOCK(lock);
 
 /*

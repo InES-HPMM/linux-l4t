@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -37,10 +37,6 @@
 #define CPU2_IB_CH		10
 #define CPU3_IB_CH		11
 
-#define NR_CHANNELS		12
-#define MSG_SZ			32
-#define MSG_DATA_SZ		24
-
 #define CPU_OB_IRQ		INT_SHR_SEM_OUTBOX_IBF
 #define CPU0_IB_IRQ		INT_SHR_SEM_INBOX_IBF
 #define CPU1_IB_IRQ		INT_SHR_SEM_INBOX_IBE
@@ -50,7 +46,6 @@
 #define DO_ACK			(1 << 0)
 #define RING_DOORBELL		(1 << 1)
 
-#define __MRQ_ATTRS		0xff000000
 #define __MRQ_PUBLIC		(1 << 31)
 
 #define MRQ_PING		(0 | __MRQ_PUBLIC)
@@ -72,6 +67,5 @@
 #define MRQ_SCLK_SKIP_SET_RATE	16
 #define MRQ_ENABLE_SUSPEND	17
 
-#define NR_MRQS			32
 
 #endif
