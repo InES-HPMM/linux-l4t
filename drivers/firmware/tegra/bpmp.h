@@ -26,6 +26,15 @@ struct fops_entry {
 	mode_t mode;
 };
 
+struct bpmp_cpuidle_state {
+	int id;
+	const char *name;
+};
+
+#ifdef CONFIG_DEBUG_FS
+extern struct bpmp_cpuidle_state plat_cpuidle_state[];
+#endif
+
 extern struct device *device;
 extern struct mutex bpmp_lock;
 

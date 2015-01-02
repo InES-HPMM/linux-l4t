@@ -45,6 +45,17 @@ static struct clk *emc_clk;
 static phys_addr_t loadfw_phys;
 static void *loadfw_virt;
 
+struct bpmp_cpuidle_state plat_cpuidle_state[] = {
+	{ TEGRA_PM_CC4, "CC4" },
+	{ TEGRA_PM_CC6, "CC6" },
+	{ TEGRA_PM_CC7, "CC7" },
+	{ TEGRA_PM_SC2, "SC2" },
+	{ TEGRA_PM_SC3, "SC3" },
+	{ TEGRA_PM_SC4, "SC4" },
+	{ TEGRA_PM_SC7, "SC7" },
+	{ 0, NULL }
+};
+
 struct fw_header {
 	uint32_t magic;
 	uint32_t version;

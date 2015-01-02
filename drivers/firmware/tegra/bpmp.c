@@ -294,11 +294,6 @@ clean:
 	return -EFAULT;
 }
 
-struct bpmp_cpuidle_state {
-	int id;
-	const char *name;
-};
-
 static int bpmp_cpuidle_name_show(struct seq_file *file, void *data)
 {
 	struct bpmp_cpuidle_state *state = file->private;
@@ -343,19 +338,9 @@ static const struct fops_entry cpuidle_attrs[] = {
 	{ NULL, NULL, 0 }
 };
 
-static struct bpmp_cpuidle_state cpuidle_state[] = {
-	{ TEGRA_PM_CC4, "CC4" },
-	{ TEGRA_PM_CC6, "CC6" },
-	{ TEGRA_PM_CC7, "CC7" },
-	{ TEGRA_PM_SC2, "SC2" },
-	{ TEGRA_PM_SC3, "SC3" },
-	{ TEGRA_PM_SC4, "SC4" },
-	{ TEGRA_PM_SC7, "SC7" }
-};
-
-static int bpmp_create_cpuidle_debug(int index, struct dentry *parent)
+static int bpmp_create_cpuidle_debug(int index, struct dentry *parent,
+		struct bpmp_cpuidle_state *state)
 {
-	struct bpmp_cpuidle_state *state;
 	struct dentry *top;
 	char name[16];
 
@@ -364,12 +349,12 @@ static int bpmp_create_cpuidle_debug(int index, struct dentry *parent)
 	if (IS_ERR_OR_NULL(top))
 		return -EFAULT;
 
-	state = &cpuidle_state[index];
 	return bpmp_create_attrs(cpuidle_attrs, top, state);
 }
 
 static int bpmp_init_cpuidle_debug(struct dentry *root)
 {
+	struct bpmp_cpuidle_state *state;
 	struct dentry *d;
 	unsigned int i;
 
@@ -377,8 +362,8 @@ static int bpmp_init_cpuidle_debug(struct dentry *root)
 	if (IS_ERR_OR_NULL(d))
 		return -EFAULT;
 
-	for (i = 0; i < ARRAY_SIZE(cpuidle_state); i++) {
-		if (bpmp_create_cpuidle_debug(i, d))
+	for (i = 0, state = plat_cpuidle_state; state->name; i++, state++) {
+		if (bpmp_create_cpuidle_debug(i, d, state))
 			return -EFAULT;
 	}
 
