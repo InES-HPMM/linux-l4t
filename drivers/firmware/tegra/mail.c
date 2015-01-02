@@ -67,7 +67,7 @@ static int cpu_mrqs[] = {
 
 static struct mrq_handler_data mrq_handlers[ARRAY_SIZE(cpu_mrqs)];
 static uint8_t mrq_handler_index[NR_MRQS];
-struct mb_data *channel_area[NR_CHANNELS];
+struct channel_data channel_area[NR_CHANNELS];
 static struct completion completion[NR_THREAD_CH];
 int connected;
 static DEFINE_SPINLOCK(lock);
@@ -142,7 +142,7 @@ static void bpmp_ring_doorbell(void)
 
 uint32_t tegra_bpmp_mail_readl(int ch, int offset)
 {
-	u32 *data = (u32 *)(channel_area[ch]->data + offset);
+	u32 *data = (u32 *)(channel_area[ch].ib->data + offset);
 	return *data;
 }
 EXPORT_SYMBOL(tegra_bpmp_mail_readl);
@@ -157,11 +157,11 @@ void tegra_bpmp_mail_return_data(int ch, int code, void *data, int sz)
 		return;
 	}
 
-	p = channel_area[ch];
+	p = channel_area[ch].ob;
 	p->code = code;
 	memcpy(p->data, data, sz);
 
-	flags = p->flags;
+	flags = channel_area[ch].ib->flags;
 	bpmp_ack_master(ch, flags);
 	if (flags & RING_DOORBELL)
 		bpmp_ring_doorbell();
@@ -189,7 +189,7 @@ static void bpmp_dispatch_mrq(int ch)
 	struct mrq_handler_data *h;
 	unsigned int i;
 
-	p = channel_area[ch];
+	p = channel_area[ch].ib;
 	i = __MRQ_INDEX(p->code);
 
 	if (i >= NR_MRQS)
@@ -219,7 +219,7 @@ static struct completion *bpmp_completion_obj(int ch)
 
 static void bpmp_signal_thread(int ch)
 {
-	struct mb_data *p = channel_area[ch];
+	struct mb_data *p = channel_area[ch].ib;
 	struct completion *w;
 
 	if (!(p->flags & RING_DOORBELL))
@@ -296,7 +296,7 @@ static int bpmp_wait_master_free(int ch)
 
 static void __bpmp_write_ch(int ch, int mrq, int flags, void *data, int sz)
 {
-	struct mb_data *p = channel_area[ch];
+	struct mb_data *p = channel_area[ch].ib;
 
 	p->code = mrq;
 	p->flags = flags;
@@ -354,7 +354,7 @@ static int bpmp_write_threaded_ch(int *ch, int mrq, void *data, int sz)
 
 static int __bpmp_read_ch(int ch, void *data, int sz)
 {
-	struct mb_data *p = channel_area[ch];
+	struct mb_data *p = channel_area[ch].ob;
 	if (data)
 		memcpy(data, p->data, sz);
 	bpmp_free_master(ch);
@@ -702,6 +702,7 @@ static void *bpmp_channel_area(int ch)
 
 static int bpmp_connect(void)
 {
+	struct mb_data *p;
 	int i;
 
 	if (connected)
@@ -712,9 +713,12 @@ static int bpmp_connect(void)
 		return -ENODEV;
 
 	for (i = 0; i < NR_CHANNELS; i++) {
-		channel_area[i] = bpmp_channel_area(i);
-		if (!channel_area[i])
+		p = bpmp_channel_area(i);
+		if (!p)
 			return -EFAULT;
+
+		channel_area[i].ib = p;
+		channel_area[i].ob = p;
 	}
 
 	connected = 1;
@@ -729,8 +733,10 @@ void bpmp_detach(void)
 	connected = 0;
 	writel(0xffffffff, RES_SEMA_SHRD_SMP_CLR);
 
-	for (i = 0; i < NR_CHANNELS; i++)
-		channel_area[i] = NULL;
+	for (i = 0; i < NR_CHANNELS; i++) {
+		channel_area[i].ib = NULL;
+		channel_area[i].ob = NULL;
+	}
 }
 
 int bpmp_attach(void)

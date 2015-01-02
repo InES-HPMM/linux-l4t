@@ -42,12 +42,17 @@ struct bpmp_cpuidle_state {
 };
 
 struct mb_data {
-	int code;
-	int flags;
+	int32_t code;
+	int32_t flags;
 	u8 data[MSG_DATA_SZ];
+} __packed;
+
+struct channel_data {
+	struct mb_data *ib;
+	struct mb_data *ob;
 };
 
-extern struct mb_data *channel_area[NR_CHANNELS];
+extern struct channel_data channel_area[NR_CHANNELS];
 
 #ifdef CONFIG_DEBUG_FS
 extern struct bpmp_cpuidle_state plat_cpuidle_state[];
