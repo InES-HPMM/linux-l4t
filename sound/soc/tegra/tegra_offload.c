@@ -838,14 +838,14 @@ static int tegra_offload_pcm_new(struct snd_soc_pcm_runtime *rtd)
 
 
 	dev_vdbg(dev, "%s", __func__);
-	dev_err(pcm->card->dev, "Allocating for stream playback\n");
+	dev_info(pcm->card->dev, "Allocating for stream playback\n");
 	ret = tegra_offload_dma_allocate(rtd , SNDRV_PCM_STREAM_PLAYBACK,
 			tegra_offload_pcm_hardware_playback.buffer_bytes_max);
 	if (ret < 0) {
 		dev_err(pcm->card->dev, "failing in pcm_new:1 goto err");
 		goto err;
 	}
-	dev_err(pcm->card->dev, "Allocating for stream capture\n");
+	dev_info(pcm->card->dev, "Allocating for stream capture\n");
 	ret = tegra_offload_dma_allocate(rtd , SNDRV_PCM_STREAM_CAPTURE,
 			tegra_offload_pcm_hardware_capture.buffer_bytes_max);
 	if (ret < 0) {
@@ -860,11 +860,11 @@ static void tegra_offload_pcm_free(struct snd_pcm *pcm)
 {
 	pr_debug("%s", __func__);
 	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream) {
-		dev_err(pcm->card->dev, "PCM free for stream playback\n");
+		dev_info(pcm->card->dev, "PCM free for stream playback\n");
 		tegra_offload_dma_free(pcm, SNDRV_PCM_STREAM_PLAYBACK);
 	}
 	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream) {
-		dev_err(pcm->card->dev, "PCM free for stream capture\n");
+		dev_info(pcm->card->dev, "PCM free for stream capture\n");
 		tegra_offload_dma_free(pcm, SNDRV_PCM_STREAM_CAPTURE);
 	}
 }
