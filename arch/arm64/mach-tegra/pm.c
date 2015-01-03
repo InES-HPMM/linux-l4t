@@ -204,9 +204,6 @@ static struct clk *tegra_clk_m;
 static struct tegra_suspend_platform_data *pdata;
 static enum tegra_suspend_mode current_suspend_mode = TEGRA_SUSPEND_NONE;
 
-void (*tegra_tear_down_cpu)(void);
-int (*tegra_sleep_core_finish)(unsigned long v2p);
-
 bool tegra_is_dpd_mode = false;
 
 bool tegra_dvfs_is_dfll_bypass(void)
