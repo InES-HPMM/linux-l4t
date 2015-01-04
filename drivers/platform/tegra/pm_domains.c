@@ -23,6 +23,7 @@
 #include <linux/tegra-powergate.h>
 #include <soc/tegra/tegra_bpmp.h>
 #include <linux/irqchip/tegra-agic.h>
+#include <linux/slab.h>
 
 #ifdef CONFIG_TEGRA_MC_DOMAINS
 #define TEGRA_PD_DEV_CALLBACK(callback, dev)			\
@@ -46,11 +47,6 @@
 		__ret = __routine(dev);				\
 	__ret;							\
 })
-
-struct domain_client {
-	const char *name;
-	struct generic_pm_domain *domain;
-};
 
 #ifdef CONFIG_PM_SLEEP
 
@@ -228,33 +224,6 @@ static int tegra_core_power_off(struct generic_pm_domain *genpd)
 	return 0;
 }
 
-static struct tegra_pm_domain tegra_sdhci3 = {
-	.gpd.name = "tegra_sdhci.3",
-	.gpd.power_off = tegra_core_power_off,
-	.gpd.power_on = tegra_core_power_on,
-	.gpd.power_off_delay = 5000,
-};
-
-static struct tegra_pm_domain tegra_sdhci2 = {
-	.gpd.name = "tegra_sdhci.2",
-	.gpd.power_off = tegra_core_power_off,
-	.gpd.power_on = tegra_core_power_on,
-	.gpd.power_off_delay = 5000,
-};
-#endif
-
-static struct tegra_pm_domain tegra_mc_clk = {
-	.gpd.name = "tegra_mc_clk",
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
-	.gpd.power_off = tegra_mc_clk_power_off,
-	.gpd.power_on = tegra_mc_clk_power_on,
-#endif
-};
-
-#ifndef CONFIG_ARCH_TEGRA_21x_SOC
-static struct tegra_pm_domain tegra_nvavp = {
-	.gpd.name = "tegra_nvavp",
-};
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
@@ -389,6 +358,190 @@ static int tegra_ape_power_off(struct generic_pm_domain *genpd)
 	return ret;
 }
 
+#endif
+
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+
+typedef int (*of_tegra_pd_init_cb_t)(struct generic_pm_domain *);
+
+static int __init tegra_init_mc_clk(struct generic_pm_domain *pd)
+{
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	pd->power_off = tegra_mc_clk_power_off;
+	pd->power_on = tegra_mc_clk_power_on;
+#endif
+	return 0;
+}
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+static int __init tegra_init_ape(struct generic_pm_domain *pd)
+{
+	pd->power_off = tegra_ape_power_off;
+	pd->power_on = tegra_ape_power_on;
+
+	return 0;
+}
+#else
+static int __init tegra_init_ape(struct generic_pm_domain *pd)
+{
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_MMC_PM_DOMAIN
+static int __init tegra_init_sdhci(struct generic_pm_domain *pd)
+{
+	pd->power_off = tegra_core_power_off;
+	pd->power_on = tegra_core_power_on;
+
+	return 0;
+}
+#else
+static inline int __init tegra_init_sdhci(struct generic_pm_domain *pd)
+{
+	return 0;
+}
+#endif
+
+static const struct of_device_id tegra21x_pd_match[] __initconst = {
+	{.compatible = "nvidia,tegra210-mc-clk-pd", .data = tegra_init_mc_clk},
+	{.compatible = "nvidia,tegra210-ape-pd", .data = tegra_init_ape },
+	{.compatible = "nvidia.tegra210-nvavp-pd", .data = NULL},
+	{.compatible = "nvidia,tegra210-sdhci3-pd", .data = tegra_init_sdhci},
+	{.compatible = "nvidia,tegra210-sdhci2-pd", .data = tegra_init_sdhci},
+	{},
+};
+
+static int __init tegra_init_pd(struct device_node *np)
+{
+	struct tegra_pm_domain *tpd;
+	struct generic_pm_domain *gpd;
+	of_tegra_pd_init_cb_t tpd_init_cb;
+	const struct of_device_id *match = of_match_node(tegra21x_pd_match, np);
+	bool is_off = false;
+
+	tpd = (struct tegra_pm_domain *)kzalloc
+			(sizeof(struct tegra_pm_domain), GFP_KERNEL);
+	if (!tpd) {
+		pr_err("Failed to allocate memory for %s domain\n",
+					of_node_full_name(np));
+		return -ENOMEM;
+	}
+
+	gpd = &tpd->gpd;
+	gpd->name = (char *)np->name;
+	tpd_init_cb = match->data;
+
+	if (tpd_init_cb)
+		tpd_init_cb(gpd);
+
+	if (of_property_read_bool(np, "is_off"))
+		is_off = true;
+
+	pm_genpd_init(gpd, &simple_qos_governor, is_off);
+	pm_genpd_set_poweroff_delay(gpd, 3000);
+	of_genpd_add_provider_simple(np, gpd);
+	gpd->of_node = of_node_get(np);
+
+	genpd_pm_subdomain_attach(gpd);
+	return 0;
+}
+
+static int __init tegra_init_pm_domain(void)
+{
+	struct device_node *np;
+	int ret = 0;
+
+	for_each_matching_node(np, tegra21x_pd_match) {
+		ret = tegra_init_pd(np);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
+}
+core_initcall(tegra_init_pm_domain);
+
+void tegra_pd_add_device(struct device *dev)
+{
+	device_set_wakeup_capable(dev, 1);
+	pm_genpd_dev_need_save(dev, false);
+	pm_genpd_add_callbacks(dev, &tegra_pd_ops, NULL);
+}
+EXPORT_SYMBOL(tegra_pd_add_device);
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+void tegra_ape_pd_add_device(struct device *dev)
+{
+	pm_genpd_dev_need_save(dev, true);
+}
+EXPORT_SYMBOL(tegra_ape_pd_add_device);
+
+void tegra_ape_pd_remove_device(struct device *dev)
+{
+}
+EXPORT_SYMBOL(tegra_ape_pd_remove_device);
+#endif
+
+void tegra_pd_remove_device(struct device *dev)
+{
+}
+EXPORT_SYMBOL(tegra_pd_remove_device);
+
+void tegra_pd_add_sd(struct generic_pm_domain *sd)
+{
+	int ret;
+	ret = genpd_pm_subdomain_attach(sd);
+	if (ret)
+		pr_err("Failure to add %s domain\n", sd->name);
+}
+EXPORT_SYMBOL(tegra_pd_add_sd);
+
+void tegra_pd_remove_sd(struct generic_pm_domain *sd)
+{
+	int ret;
+	ret = genpd_pm_subdomain_detach(sd);
+	if (ret)
+		pr_err("Failure to remove %s domain\n", sd->name);
+}
+EXPORT_SYMBOL(tegra_pd_remove_sd);
+
+#else
+
+struct domain_client {
+	const char *name;
+	struct generic_pm_domain *domain;
+};
+
+#ifdef CONFIG_MMC_PM_DOMAIN
+static struct tegra_pm_domain tegra_sdhci3 = {
+	.gpd.name = "tegra_sdhci.3",
+	.gpd.power_off = tegra_core_power_off,
+	.gpd.power_on = tegra_core_power_on,
+	.gpd.power_off_delay = 5000,
+};
+
+static struct tegra_pm_domain tegra_sdhci2 = {
+	.gpd.name = "tegra_sdhci.2",
+	.gpd.power_off = tegra_core_power_off,
+	.gpd.power_on = tegra_core_power_on,
+	.gpd.power_off_delay = 5000,
+};
+#endif
+
+static struct tegra_pm_domain tegra_mc_clk = {
+	.gpd.name = "tegra_mc_clk",
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	.gpd.power_off = tegra_mc_clk_power_off,
+	.gpd.power_on = tegra_mc_clk_power_on,
+#endif
+};
+
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
+static struct tegra_pm_domain tegra_nvavp = {
+	.gpd.name = "tegra_nvavp",
+};
+#else
 static struct tegra_pm_domain tegra_ape = {
 	.gpd.name = "tegra_ape",
 	.gpd.power_off = tegra_ape_power_off,
@@ -529,6 +682,7 @@ void tegra_ape_pd_remove_device(struct device *dev)
 	pm_genpd_remove_device(&tegra_ape.gpd, dev);
 }
 EXPORT_SYMBOL(tegra_ape_pd_remove_device);
+#endif
 #endif
 
 #else
