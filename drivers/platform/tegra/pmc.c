@@ -87,6 +87,8 @@
 #define PMC_PWR_DET_ENABLE			0x48
 #define PMC_PWR_DET_VAL				0xE4
 
+/* Scratch 250: Bootrom i2c command base */
+#define PMC_BR_COMMAND_BASE		0x908
 
 static u8 tegra_cpu_domains[] = {
 	0xFF,			/* not available for CPU0 */
@@ -318,6 +320,12 @@ void tegra_pmc_register_update(int offset,
 	spin_unlock_irqrestore(&tegra_pmc_access_lock, flags);
 }
 EXPORT_SYMBOL(tegra_pmc_register_update);
+
+void tegra_pmc_write_bootrom_command(u32 command_offset, unsigned long val)
+{
+	tegra_pmc_writel(val, command_offset + PMC_BR_COMMAND_BASE);
+}
+EXPORT_SYMBOL(tegra_pmc_write_bootrom_command);
 
 void tegra_pmc_pwr_detect_update(unsigned long mask, unsigned long val)
 {

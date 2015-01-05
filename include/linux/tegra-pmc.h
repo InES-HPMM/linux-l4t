@@ -34,6 +34,8 @@ extern void __iomem *tegra_pmc_base;
 
 extern void tegra_pmc_register_update(int offset,
 	unsigned long mask, unsigned long val);
+extern void tegra_pmc_write_bootrom_command(u32 command_offset,
+	unsigned long val);
 
 extern void tegra_pmc_pwr_detect_update(unsigned long mask, unsigned long val);
 extern unsigned long tegra_pmc_pwr_detect_get(unsigned long mask);
