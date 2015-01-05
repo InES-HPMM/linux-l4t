@@ -29,6 +29,7 @@
 #include <linux/audit.h>
 #include <linux/ipv6.h>
 #include <net/ipv6.h>
+#include <linux/kmemleak.h>
 #include "avc.h"
 #include "avc_ss.h"
 #include "classmap.h"
@@ -275,6 +276,7 @@ static struct avc_node *avc_alloc_node(void)
 	if (!node)
 		goto out;
 
+	kmemleak_not_leak(node);
 	INIT_HLIST_NODE(&node->list);
 	avc_cache_stats_incr(allocations);
 
