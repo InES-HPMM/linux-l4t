@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra21_clocks.c
  *
- * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2015 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -9169,11 +9169,7 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK_SKIP("msenc", "msenc",	NULL,	219,	0x6a0,	0x6e8, 1000000000, mux_pllc2_c_c3_pllp_plla1_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_SKIP("nvdec", "nvdec",	NULL,	194,	0x698,	0x6f4, 1000000000, mux_pllc2_c_c3_pllp_plla1_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_SKIP("nvjpg", "nvjpg",	NULL,	195,	0x69c,	0x700, 1000000000, mux_pllc2_c_c3_pllp_plla1_clkm,	MUX | DIV_U71 | DIV_U71_INT),
-#ifdef CONFIG_TEGRA_SE_ON_CBUS
 	PERIPH_CLK_SKIP("se",	"se",		NULL,	127,	0x42c,	0x704, 1000000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
-#else
-	PERIPH_CLK_SKIP("se",	"tegra21-se",	NULL,	127,	0x42c,	0x704, 1000000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
-#endif
 	PERIPH_CLK_SKIP("tsec",	"tegra_tsec",	"tsec",	83,	0x1f4,	0x708,	408000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_SKIP("tsecb", "tsecb",	NULL,	206,	0x6d8,	0x70c, 1000000000, mux_pllp_pllc2_c_c3_clkm,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_SKIP("ispa",	"isp",		"ispa",	23,	0,	0x6f8, 1000000000, mux_isp,				PERIPH_ON_APB),
