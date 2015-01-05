@@ -5,7 +5,7 @@
  * Author: Mike Rapoport <mike@compulab.co.il>
  *
  * Based on NVIDIA PCIe driver
- * Copyright (c) 2008-2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2008-2015, NVIDIA Corporation. All rights reserved.
  *
  * Bits taken from arch/arm/mach-dove/pcie.c
  *
@@ -170,6 +170,7 @@
 #define AFI_PLLE_CONTROL					0x160
 #define AFI_PLLE_CONTROL_BYPASS_PADS2PLLE_CONTROL		(1 << 9)
 #define AFI_PLLE_CONTROL_PADS2PLLE_CONTROL_EN			(1 << 1)
+#define AFI_PLLE_CONTROL_PCIE2PLLE_CONTROL_EN			(1 << 0)
 
 #define AFI_PEXBIAS_CTRL_0					0x168
 #define AFI_WR_SCRATCH_0					0x120
@@ -265,6 +266,7 @@
 #define NV_PCIE2_RP_VEND_CTL0					0x00000F44
 #define PCIE2_RP_VEND_CTL0_DSK_RST_PULSE_WIDTH_MASK		(0xF << 12)
 #define PCIE2_RP_VEND_CTL0_DSK_RST_PULSE_WIDTH			(0x9 << 12)
+#define PCIE2_RP_VEND_CTL0_ALLOW_ALL_DS_RO		(1 << 24)
 
 #define NV_PCIE2_RP_VEND_CTL1					0x00000F48
 #define PCIE2_RP_VEND_CTL1_ERPT				(1 << 13)
@@ -1121,6 +1123,7 @@ static int tegra_pcie_enable_controller(struct tegra_pcie *pcie)
 	val = afi_readl(pcie, AFI_PLLE_CONTROL);
 	val &= ~AFI_PLLE_CONTROL_BYPASS_PADS2PLLE_CONTROL;
 	val |= AFI_PLLE_CONTROL_PADS2PLLE_CONTROL_EN;
+	val |= AFI_PLLE_CONTROL_PCIE2PLLE_CONTROL_EN;
 	afi_writel(pcie, val, AFI_PLLE_CONTROL);
 
 	afi_writel(pcie, 0, AFI_PEXBIAS_CTRL_0);
@@ -1816,6 +1819,7 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 		data = rp_readl(port, NV_PCIE2_RP_VEND_CTL0);
 		data &= ~PCIE2_RP_VEND_CTL0_DSK_RST_PULSE_WIDTH_MASK;
 		data |= PCIE2_RP_VEND_CTL0_DSK_RST_PULSE_WIDTH;
+		data |= PCIE2_RP_VEND_CTL0_ALLOW_ALL_DS_RO;
 		rp_writel(port, data, NV_PCIE2_RP_VEND_CTL0);
 
 		/* Do timer settings only if clk25m freq equal to 19.2 MHz */
