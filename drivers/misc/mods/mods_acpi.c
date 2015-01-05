@@ -1,7 +1,7 @@
 /*
  * mods_acpi.c - This file is part of NVIDIA MODS kernel driver.
  *
- * Copyright (c) 2008-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2008-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA MODS kernel driver is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License,
@@ -156,7 +156,7 @@ static int mods_extract_acpi_object(
 
 static int mods_eval_acpi_method(struct file		      *pfile,
 				 struct MODS_EVAL_ACPI_METHOD *p,
-				 struct mods_pci_dev_new      *pdevice)
+				 struct mods_pci_dev_2	      *pdevice)
 {
 	int ret = OK;
 	int i;
@@ -257,8 +257,8 @@ static int mods_eval_acpi_method(struct file		      *pfile,
 }
 
 static int mods_acpi_get_ddc(struct file *pfile,
-			     struct MODS_ACPI_GET_DDC_NEW *p,
-			     struct mods_pci_dev_new *pci_device)
+			     struct MODS_ACPI_GET_DDC_2 *p,
+			     struct mods_pci_dev_2 *pci_device)
 {
 	acpi_status status;
 	struct acpi_device *device = NULL;
@@ -407,8 +407,8 @@ int esc_mods_eval_acpi_method(struct file *pfile,
 	return mods_eval_acpi_method(pfile, p, 0);
 }
 
-int esc_mods_eval_dev_acpi_method_new(struct file *pfile,
-				      struct MODS_EVAL_DEV_ACPI_METHOD_NEW *p)
+int esc_mods_eval_dev_acpi_method_2(struct file *pfile,
+				    struct MODS_EVAL_DEV_ACPI_METHOD_2 *p)
 {
 	return mods_eval_acpi_method(pfile, &p->method, &p->device);
 }
@@ -416,7 +416,7 @@ int esc_mods_eval_dev_acpi_method_new(struct file *pfile,
 int esc_mods_eval_dev_acpi_method(struct file *pfile,
 				  struct MODS_EVAL_DEV_ACPI_METHOD *p)
 {
-	struct mods_pci_dev_new device = {0};
+	struct mods_pci_dev_2 device = {0};
 	device.domain		= 0;
 	device.bus		= p->device.bus;
 	device.device		= p->device.device;
@@ -424,16 +424,16 @@ int esc_mods_eval_dev_acpi_method(struct file *pfile,
 	return mods_eval_acpi_method(pfile, &p->method, &device);
 }
 
-int esc_mods_acpi_get_ddc_new(struct file *pfile,
-			      struct MODS_ACPI_GET_DDC_NEW *p)
+int esc_mods_acpi_get_ddc_2(struct file *pfile,
+			    struct MODS_ACPI_GET_DDC_2 *p)
 {
 	return mods_acpi_get_ddc(pfile, p, &p->device);
 }
 
 int esc_mods_acpi_get_ddc(struct file *pfile, struct MODS_ACPI_GET_DDC *p)
 {
-	struct MODS_ACPI_GET_DDC_NEW *pp = (struct MODS_ACPI_GET_DDC_NEW *) p;
-	struct mods_pci_dev_new device = {0};
+	struct MODS_ACPI_GET_DDC_2 *pp = (struct MODS_ACPI_GET_DDC_2 *) p;
+	struct mods_pci_dev_2 device = {0};
 	device.domain	= 0;
 	device.bus	= p->device.bus;
 	device.device	= p->device.device;

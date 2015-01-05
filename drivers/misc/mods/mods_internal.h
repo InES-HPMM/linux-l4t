@@ -1,7 +1,7 @@
 /*
  * mods_internal.h - This file is part of NVIDIA MODS kernel driver.
  *
- * Copyright (c) 2008-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2008-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA MODS kernel driver is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License,
@@ -333,78 +333,78 @@ void mods_shutdown_clock_api(void);
 /* mem */
 int esc_mods_alloc_pages(struct file *, struct MODS_ALLOC_PAGES *);
 int esc_mods_device_alloc_pages(struct file *,
-			       struct MODS_DEVICE_ALLOC_PAGES *);
-int esc_mods_device_alloc_pages_new(struct file *,
-				    struct MODS_DEVICE_ALLOC_PAGES_NEW *);
+				struct MODS_DEVICE_ALLOC_PAGES *);
+int esc_mods_device_alloc_pages_2(struct file *,
+				  struct MODS_DEVICE_ALLOC_PAGES_2 *);
 int esc_mods_free_pages(struct file *, struct MODS_FREE_PAGES *);
 int esc_mods_set_mem_type(struct file *, struct MODS_MEMORY_TYPE *);
 int esc_mods_get_phys_addr(struct file *,
-			  struct MODS_GET_PHYSICAL_ADDRESS *);
+			   struct MODS_GET_PHYSICAL_ADDRESS *);
 int esc_mods_get_mapped_phys_addr(struct file *,
 			  struct MODS_GET_PHYSICAL_ADDRESS *);
 int esc_mods_virtual_to_phys(struct file *,
-			    struct MODS_VIRTUAL_TO_PHYSICAL *);
+			     struct MODS_VIRTUAL_TO_PHYSICAL *);
 int esc_mods_phys_to_virtual(struct file *,
-			    struct MODS_PHYSICAL_TO_VIRTUAL *);
+			     struct MODS_PHYSICAL_TO_VIRTUAL *);
 int esc_mods_memory_barrier(struct file *);
 /* acpi */
 #ifdef CONFIG_ACPI
 int esc_mods_eval_acpi_method(struct file *,
-			     struct MODS_EVAL_ACPI_METHOD *);
+			      struct MODS_EVAL_ACPI_METHOD *);
 int esc_mods_eval_dev_acpi_method(struct file *,
-				 struct MODS_EVAL_DEV_ACPI_METHOD *);
-int esc_mods_eval_dev_acpi_method_new(struct file *,
-				      struct MODS_EVAL_DEV_ACPI_METHOD_NEW *);
+				  struct MODS_EVAL_DEV_ACPI_METHOD *);
+int esc_mods_eval_dev_acpi_method_2(struct file *,
+				    struct MODS_EVAL_DEV_ACPI_METHOD_2 *);
 int esc_mods_acpi_get_ddc(struct file *, struct MODS_ACPI_GET_DDC *);
-int esc_mods_acpi_get_ddc_new(struct file *, struct MODS_ACPI_GET_DDC_NEW *);
+int esc_mods_acpi_get_ddc_2(struct file *, struct MODS_ACPI_GET_DDC_2 *);
 #endif
 /* pci */
 #ifdef CONFIG_PCI
 int esc_mods_find_pci_dev(struct file *, struct MODS_FIND_PCI_DEVICE *);
-int esc_mods_find_pci_dev_new(struct file *,
-			      struct MODS_FIND_PCI_DEVICE_NEW *);
+int esc_mods_find_pci_dev_2(struct file *,
+			    struct MODS_FIND_PCI_DEVICE_2 *);
 int esc_mods_find_pci_class_code(struct file *,
-				struct MODS_FIND_PCI_CLASS_CODE *);
-int esc_mods_find_pci_class_code_new(struct file *,
-				     struct MODS_FIND_PCI_CLASS_CODE_NEW *);
+				 struct MODS_FIND_PCI_CLASS_CODE *);
+int esc_mods_find_pci_class_code_2(struct file *,
+				   struct MODS_FIND_PCI_CLASS_CODE_2 *);
 int esc_mods_pci_get_bar_info(struct file *, struct MODS_PCI_GET_BAR_INFO *);
-int esc_mods_pci_get_bar_info_new(struct file *,
-				  struct MODS_PCI_GET_BAR_INFO_NEW *);
+int esc_mods_pci_get_bar_info_2(struct file *,
+				struct MODS_PCI_GET_BAR_INFO_2 *);
 int esc_mods_pci_get_irq(struct file *, struct MODS_PCI_GET_IRQ *);
-int esc_mods_pci_get_irq_new(struct file *,
-			     struct MODS_PCI_GET_IRQ_NEW *);
+int esc_mods_pci_get_irq_2(struct file *,
+			   struct MODS_PCI_GET_IRQ_2 *);
 int esc_mods_pci_read(struct file *, struct MODS_PCI_READ *);
-int esc_mods_pci_read_new(struct file *, struct MODS_PCI_READ_NEW *);
+int esc_mods_pci_read_2(struct file *, struct MODS_PCI_READ_2 *);
 int esc_mods_pci_write(struct file *, struct MODS_PCI_WRITE *);
-int esc_mods_pci_write_new(struct file *, struct MODS_PCI_WRITE_NEW *);
+int esc_mods_pci_write_2(struct file *, struct MODS_PCI_WRITE_2 *);
 int esc_mods_pci_bus_add_dev(struct file *,
 			     struct MODS_PCI_BUS_ADD_DEVICES *);
 int esc_mods_pio_read(struct file *, struct MODS_PIO_READ *);
 int esc_mods_pio_write(struct file *, struct MODS_PIO_WRITE  *);
 int esc_mods_device_numa_info(struct file *,
-			     struct MODS_DEVICE_NUMA_INFO  *);
-int esc_mods_device_numa_info_new(struct file *,
-				  struct MODS_DEVICE_NUMA_INFO_NEW  *);
+			      struct MODS_DEVICE_NUMA_INFO  *);
+int esc_mods_device_numa_info_2(struct file *,
+				struct MODS_DEVICE_NUMA_INFO_2  *);
 #endif
 /* irq */
 int esc_mods_register_irq(struct file *, struct MODS_REGISTER_IRQ *);
-int esc_mods_register_irq_new(struct file *,
-			      struct MODS_REGISTER_IRQ_NEW *);
+int esc_mods_register_irq_2(struct file *,
+			    struct MODS_REGISTER_IRQ_2 *);
 int esc_mods_unregister_irq(struct file *, struct MODS_REGISTER_IRQ *);
-int esc_mods_unregister_irq_new(struct file *,
-				struct MODS_REGISTER_IRQ_NEW *);
+int esc_mods_unregister_irq_2(struct file *,
+			      struct MODS_REGISTER_IRQ_2 *);
 int esc_mods_query_irq(struct file *, struct MODS_QUERY_IRQ *);
-int esc_mods_query_irq_new(struct file *, struct MODS_QUERY_IRQ_NEW *);
+int esc_mods_query_irq_2(struct file *, struct MODS_QUERY_IRQ_2 *);
 int esc_mods_set_irq_mask(struct file *, struct MODS_SET_IRQ_MASK *);
-int esc_mods_set_irq_mask_new(struct file *,
-			      struct MODS_SET_IRQ_MASK_NEW *);
+int esc_mods_set_irq_mask_2(struct file *,
+			    struct MODS_SET_IRQ_MASK_2 *);
 int esc_mods_irq_handled(struct file *, struct MODS_REGISTER_IRQ *);
-int esc_mods_irq_handled_new(struct file *,
-			     struct MODS_REGISTER_IRQ_NEW *);
+int esc_mods_irq_handled_2(struct file *,
+			   struct MODS_REGISTER_IRQ_2 *);
 /* clock */
 #ifdef CONFIG_ARCH_TEGRA
 int esc_mods_get_clock_handle(struct file *,
-			     struct MODS_GET_CLOCK_HANDLE *);
+			      struct MODS_GET_CLOCK_HANDLE *);
 int esc_mods_set_clock_rate(struct file *, struct MODS_CLOCK_RATE *);
 int esc_mods_get_clock_rate(struct file *, struct MODS_CLOCK_RATE *);
 int esc_mods_get_clock_max_rate(struct file *, struct MODS_CLOCK_RATE *);
@@ -414,13 +414,13 @@ int esc_mods_get_clock_parent(struct file *, struct MODS_CLOCK_PARENT *);
 int esc_mods_enable_clock(struct file *, struct MODS_CLOCK_HANDLE *);
 int esc_mods_disable_clock(struct file *, struct MODS_CLOCK_HANDLE *);
 int esc_mods_is_clock_enabled(struct file *pfile,
-			     struct MODS_CLOCK_ENABLED *p);
+			      struct MODS_CLOCK_ENABLED *p);
 int esc_mods_clock_reset_assert(struct file *,
-			       struct MODS_CLOCK_HANDLE *);
+				struct MODS_CLOCK_HANDLE *);
 int esc_mods_clock_reset_deassert(struct file *,
-				 struct MODS_CLOCK_HANDLE *);
+				  struct MODS_CLOCK_HANDLE *);
 int esc_mods_flush_cpu_cache_range(struct file *,
-				  struct MODS_FLUSH_CPU_CACHE_RANGE *);
+				   struct MODS_FLUSH_CPU_CACHE_RANGE *);
 #ifdef CONFIG_TEGRA_DC
 int esc_mods_tegra_dc_config_possible(struct file *,
 				struct MODS_TEGRA_DC_CONFIG_POSSIBLE *);

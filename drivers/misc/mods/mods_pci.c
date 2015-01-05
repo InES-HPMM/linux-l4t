@@ -1,7 +1,7 @@
 /*
  * mods_pci.c - This file is part of NVIDIA MODS kernel driver.
  *
- * Copyright (c) 2008-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2008-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA MODS kernel driver is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License,
@@ -25,8 +25,8 @@
  * PCI ESCAPE FUNCTIONS *
  ************************/
 
-int esc_mods_find_pci_dev_new(struct file *pfile,
-			      struct MODS_FIND_PCI_DEVICE_NEW *p)
+int esc_mods_find_pci_dev_2(struct file *pfile,
+			    struct MODS_FIND_PCI_DEVICE_2 *p)
 {
 	struct pci_dev *dev;
 	int index = 0;
@@ -85,8 +85,8 @@ int esc_mods_find_pci_dev(struct file *pfile,
 	return -EINVAL;
 }
 
-int esc_mods_find_pci_class_code_new(struct file *pfile,
-				     struct MODS_FIND_PCI_CLASS_CODE_NEW *p)
+int esc_mods_find_pci_class_code_2(struct file *pfile,
+				   struct MODS_FIND_PCI_CLASS_CODE_2 *p)
 {
 	struct pci_dev *dev;
 	int index = 0;
@@ -139,8 +139,8 @@ int esc_mods_find_pci_class_code(struct file *pfile,
 	return -EINVAL;
 }
 
-int esc_mods_pci_get_bar_info_new(struct file *pfile,
-				  struct MODS_PCI_GET_BAR_INFO_NEW *p)
+int esc_mods_pci_get_bar_info_2(struct file *pfile,
+				struct MODS_PCI_GET_BAR_INFO_2 *p)
 {
 	struct pci_dev *dev;
 	unsigned int devfn, bar_resource_offset, i;
@@ -187,14 +187,14 @@ int esc_mods_pci_get_bar_info(struct file *pfile,
 			      struct MODS_PCI_GET_BAR_INFO *p)
 {
 	int retval;
-	struct MODS_PCI_GET_BAR_INFO_NEW get_bar_info = { {0} };
+	struct MODS_PCI_GET_BAR_INFO_2 get_bar_info = { {0} };
 	get_bar_info.pci_device.domain		= 0;
 	get_bar_info.pci_device.bus		= p->pci_device.bus;
 	get_bar_info.pci_device.device		= p->pci_device.device;
 	get_bar_info.pci_device.function	= p->pci_device.function;
 	get_bar_info.bar_index			= p->bar_index;
 
-	retval = esc_mods_pci_get_bar_info_new(pfile, &get_bar_info);
+	retval = esc_mods_pci_get_bar_info_2(pfile, &get_bar_info);
 	if (retval)
 		return retval;
 
@@ -203,8 +203,8 @@ int esc_mods_pci_get_bar_info(struct file *pfile,
 	return OK;
 }
 
-int esc_mods_pci_get_irq_new(struct file *pfile,
-			     struct MODS_PCI_GET_IRQ_NEW *p)
+int esc_mods_pci_get_irq_2(struct file *pfile,
+			   struct MODS_PCI_GET_IRQ_2 *p)
 {
 	struct pci_dev *dev;
 	unsigned int devfn;
@@ -230,13 +230,13 @@ int esc_mods_pci_get_irq(struct file *pfile,
 			 struct MODS_PCI_GET_IRQ *p)
 {
 	int retval;
-	struct MODS_PCI_GET_IRQ_NEW get_irq = { {0} };
+	struct MODS_PCI_GET_IRQ_2 get_irq = { {0} };
 	get_irq.pci_device.domain	= 0;
 	get_irq.pci_device.bus		= p->pci_device.bus;
 	get_irq.pci_device.device	= p->pci_device.device;
 	get_irq.pci_device.function	= p->pci_device.function;
 
-	retval = esc_mods_pci_get_irq_new(pfile, &get_irq);
+	retval = esc_mods_pci_get_irq_2(pfile, &get_irq);
 	if (retval)
 		return retval;
 
@@ -244,15 +244,15 @@ int esc_mods_pci_get_irq(struct file *pfile,
 	return OK;
 }
 
-int esc_mods_pci_read_new(struct file *pfile, struct MODS_PCI_READ_NEW *p)
+int esc_mods_pci_read_2(struct file *pfile, struct MODS_PCI_READ_2 *p)
 {
-	struct pci_bus *bus;
+	struct pci_dev *dev;
 	unsigned int devfn;
 
 	devfn = PCI_DEVFN(p->pci_device.device, p->pci_device.function);
-	bus = pci_find_bus(p->pci_device.domain, p->pci_device.bus);
+	dev = MODS_PCI_GET_SLOT(p->pci_device.domain, p->pci_device.bus, devfn);
 
-	if (bus == NULL)
+	if (dev == NULL)
 		return -EINVAL;
 
 	mods_debug_printk(DEBUG_PCICFG,
@@ -265,16 +265,13 @@ int esc_mods_pci_read_new(struct file *pfile, struct MODS_PCI_READ_NEW *p)
 	p->data = 0;
 	switch (p->data_size) {
 	case 1:
-		pci_bus_read_config_byte(bus, devfn, p->address,
-					 (u8 *) &p->data);
+		pci_read_config_byte(dev, p->address, (u8 *) &p->data);
 		break;
 	case 2:
-		pci_bus_read_config_word(bus, devfn, p->address,
-					 (u16 *) &p->data);
+		pci_read_config_word(dev, p->address, (u16 *) &p->data);
 		break;
 	case 4:
-		pci_bus_read_config_dword(bus, devfn, p->address,
-					  (u32 *) &p->data);
+		pci_read_config_dword(dev, p->address, (u32 *) &p->data);
 		break;
 	default:
 		return -EINVAL;
@@ -285,7 +282,7 @@ int esc_mods_pci_read_new(struct file *pfile, struct MODS_PCI_READ_NEW *p)
 int esc_mods_pci_read(struct file *pfile, struct MODS_PCI_READ *p)
 {
 	int retval;
-	struct MODS_PCI_READ_NEW pci_read = { {0} };
+	struct MODS_PCI_READ_2 pci_read = { {0} };
 	pci_read.pci_device.domain	= 0;
 	pci_read.pci_device.bus		= p->bus_number;
 	pci_read.pci_device.device	= p->device_number;
@@ -293,7 +290,7 @@ int esc_mods_pci_read(struct file *pfile, struct MODS_PCI_READ *p)
 	pci_read.address		= p->address;
 	pci_read.data_size		= p->data_size;
 
-	retval = esc_mods_pci_read_new(pfile, &pci_read);
+	retval = esc_mods_pci_read_2(pfile, &pci_read);
 	if (retval)
 		return retval;
 
@@ -301,9 +298,9 @@ int esc_mods_pci_read(struct file *pfile, struct MODS_PCI_READ *p)
 	return OK;
 }
 
-int esc_mods_pci_write_new(struct file *pfile, struct MODS_PCI_WRITE_NEW *p)
+int esc_mods_pci_write_2(struct file *pfile, struct MODS_PCI_WRITE_2 *p)
 {
-	struct pci_bus *bus;
+	struct pci_dev *dev;
 	unsigned int devfn;
 
 	mods_debug_printk(DEBUG_PCICFG,
@@ -315,9 +312,9 @@ int esc_mods_pci_write_new(struct file *pfile, struct MODS_PCI_WRITE_NEW *p)
 			  (int) p->address, (int) p->data_size, (int) p->data);
 
 	devfn = PCI_DEVFN(p->pci_device.device, p->pci_device.function);
-	bus = pci_find_bus(p->pci_device.domain, p->pci_device.bus);
+	dev = MODS_PCI_GET_SLOT(p->pci_device.domain, p->pci_device.bus, devfn);
 
-	if (bus == NULL) {
+	if (dev == NULL) {
 		mods_error_printk(
 		  "pci write to %04x:%x:%02x.%x, addr 0x%04x, size %d failed\n",
 		    (unsigned)p->pci_device.domain,
@@ -331,13 +328,13 @@ int esc_mods_pci_write_new(struct file *pfile, struct MODS_PCI_WRITE_NEW *p)
 
 	switch (p->data_size) {
 	case 1:
-		pci_bus_write_config_byte(bus, devfn, p->address, p->data);
+		pci_write_config_byte(dev, p->address, p->data);
 		break;
 	case 2:
-		pci_bus_write_config_word(bus, devfn, p->address, p->data);
+		pci_write_config_word(dev, p->address, p->data);
 		break;
 	case 4:
-		pci_bus_write_config_dword(bus, devfn, p->address, p->data);
+		pci_write_config_dword(dev, p->address, p->data);
 		break;
 	default:
 		return -EINVAL;
@@ -348,7 +345,7 @@ int esc_mods_pci_write_new(struct file *pfile, struct MODS_PCI_WRITE_NEW *p)
 int esc_mods_pci_write(struct file *pfile,
 		       struct MODS_PCI_WRITE *p)
 {
-	struct MODS_PCI_WRITE_NEW pci_write = { {0} };
+	struct MODS_PCI_WRITE_2 pci_write = { {0} };
 	pci_write.pci_device.domain	= 0;
 	pci_write.pci_device.bus	= p->bus_number;
 	pci_write.pci_device.device	= p->device_number;
@@ -357,7 +354,7 @@ int esc_mods_pci_write(struct file *pfile,
 	pci_write.data			= p->data;
 	pci_write.data_size		= p->data_size;
 
-	return esc_mods_pci_write_new(pfile, &pci_write);
+	return esc_mods_pci_write_2(pfile, &pci_write);
 }
 
 int esc_mods_pci_bus_add_dev(struct file *pfile,
@@ -422,8 +419,8 @@ int esc_mods_pio_write(struct file *pfile, struct MODS_PIO_WRITE  *p)
 	return OK;
 }
 
-int esc_mods_device_numa_info_new(struct file *fp,
-				  struct MODS_DEVICE_NUMA_INFO_NEW *p)
+int esc_mods_device_numa_info_2(struct file *fp,
+				struct MODS_DEVICE_NUMA_INFO_2 *p)
 {
 #ifdef MODS_HAS_DEV_TO_NUMA_NODE
 	unsigned int devfn = PCI_DEVFN(p->pci_device.device,
@@ -478,13 +475,13 @@ int esc_mods_device_numa_info(struct file *fp,
 			      struct MODS_DEVICE_NUMA_INFO *p)
 {
 	int retval, i;
-	struct MODS_DEVICE_NUMA_INFO_NEW numa_info = { {0} };
+	struct MODS_DEVICE_NUMA_INFO_2 numa_info = { {0} };
 	numa_info.pci_device.domain	= 0;
 	numa_info.pci_device.bus	= p->pci_device.bus;
 	numa_info.pci_device.device	= p->pci_device.device;
 	numa_info.pci_device.function	= p->pci_device.function;
 
-	retval = esc_mods_device_numa_info_new(fp, &numa_info);
+	retval = esc_mods_device_numa_info_2(fp, &numa_info);
 	if (retval)
 		return retval;
 

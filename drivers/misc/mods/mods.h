@@ -1,7 +1,7 @@
 /*
  * mods.h - This file is part of NVIDIA MODS kernel driver.
  *
- * Copyright (c) 2008-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2008-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA MODS kernel driver is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License,
@@ -24,7 +24,7 @@
 
 /* Driver version */
 #define MODS_DRIVER_VERSION_MAJOR 3
-#define MODS_DRIVER_VERSION_MINOR 54
+#define MODS_DRIVER_VERSION_MINOR 56
 #define MODS_DRIVER_VERSION ((MODS_DRIVER_VERSION_MAJOR << 8) | \
 			     ((MODS_DRIVER_VERSION_MINOR/10) << 4) | \
 			     (MODS_DRIVER_VERSION_MINOR%10))
@@ -35,7 +35,7 @@
 /* ** ESCAPE INTERFACE STRUCTURE					     */
 /* ************************************************************************* */
 
-struct mods_pci_dev_new {
+struct mods_pci_dev_2 {
 	__u16 domain;
 	__u16 bus;
 	__u16 device;
@@ -60,14 +60,14 @@ struct MODS_ALLOC_PAGES {
 	__u64	memory_handle;
 };
 
-/* MODS_ESC_DEVICE_ALLOC_PAGES_NEW */
-struct MODS_DEVICE_ALLOC_PAGES_NEW {
+/* MODS_ESC_DEVICE_ALLOC_PAGES_2 */
+struct MODS_DEVICE_ALLOC_PAGES_2 {
 	/* IN */
 	__u32			num_bytes;
 	__u32			contiguous;
 	__u32			address_bits;
 	__u32			attrib;
-	struct mods_pci_dev_new pci_device;
+	struct mods_pci_dev_2 pci_device;
 
 	/* OUT */
 	__u64			memory_handle;
@@ -132,15 +132,15 @@ struct MODS_FLUSH_CPU_CACHE_RANGE {
 	__u32 flags;
 };
 
-/* MODS_ESC_FIND_PCI_DEVICE_NEW */
-struct MODS_FIND_PCI_DEVICE_NEW {
+/* MODS_ESC_FIND_PCI_DEVICE_2 */
+struct MODS_FIND_PCI_DEVICE_2 {
 	/* IN */
 	__u32	device_id;
 	__u32	vendor_id;
 	__u32	index;
 
 	/* OUT */
-	struct mods_pci_dev_new pci_device;
+	struct mods_pci_dev_2 pci_device;
 };
 
 /* MODS_ESC_FIND_PCI_DEVICE */
@@ -156,14 +156,14 @@ struct MODS_FIND_PCI_DEVICE {
 	__u32	  function_number;
 };
 
-/* MODS_ESC_FIND_PCI_CLASS_CODE_NEW */
-struct MODS_FIND_PCI_CLASS_CODE_NEW {
+/* MODS_ESC_FIND_PCI_CLASS_CODE_2 */
+struct MODS_FIND_PCI_CLASS_CODE_2 {
 	/* IN */
 	__u32	class_code;
 	__u32	index;
 
 	/* OUT */
-	struct mods_pci_dev_new pci_device;
+	struct mods_pci_dev_2 pci_device;
 };
 
 /* MODS_ESC_FIND_PCI_CLASS_CODE */
@@ -178,10 +178,10 @@ struct MODS_FIND_PCI_CLASS_CODE {
 	__u32	function_number;
 };
 
-/* MODS_ESC_PCI_GET_BAR_INFO_NEW */
-struct MODS_PCI_GET_BAR_INFO_NEW {
+/* MODS_ESC_PCI_GET_BAR_INFO_2 */
+struct MODS_PCI_GET_BAR_INFO_2 {
 	/* IN */
-	struct mods_pci_dev_new pci_device;
+	struct mods_pci_dev_2 pci_device;
 	__u32			bar_index;
 
 	/* OUT */
@@ -200,10 +200,10 @@ struct MODS_PCI_GET_BAR_INFO {
 	__u64 bar_size;
 };
 
-/* MODS_ESC_PCI_GET_IRQ_NEW */
-struct MODS_PCI_GET_IRQ_NEW {
+/* MODS_ESC_PCI_GET_IRQ_2 */
+struct MODS_PCI_GET_IRQ_2 {
 	/* IN */
-	struct mods_pci_dev_new pci_device;
+	struct mods_pci_dev_2 pci_device;
 
 	/* OUT */
 	__u32 irq;
@@ -218,10 +218,10 @@ struct MODS_PCI_GET_IRQ {
 	__u32 irq;
 };
 
-/* MODS_ESC_PCI_READ_NEW */
-struct MODS_PCI_READ_NEW {
+/* MODS_ESC_PCI_READ_2 */
+struct MODS_PCI_READ_2 {
 	/* IN */
-	struct mods_pci_dev_new pci_device;
+	struct mods_pci_dev_2 pci_device;
 	__u32			address;
 	__u32			data_size;
 
@@ -242,10 +242,10 @@ struct MODS_PCI_READ {
 	__u32	 data;
 };
 
-/* MODS_ESC_PCI_WRITE_NEW */
-struct MODS_PCI_WRITE_NEW {
+/* MODS_ESC_PCI_WRITE_2 */
+struct MODS_PCI_WRITE_2 {
 	/* IN */
-	struct mods_pci_dev_new pci_device;
+	struct mods_pci_dev_2 pci_device;
 	__u32			address;
 	__u32			data;
 	__u32			data_size;
@@ -314,12 +314,12 @@ struct MODS_IRQ {
 	__u64		 phys;	/* the memory physical address */
 };
 
-/* MODS_ESC_REGISTER_IRQ_NEW */
-/* MODS_ESC_UNREGISTER_IRQ_NEW */
-/* MODS_ESC_IRQ_HANDLED_NEW */
-struct MODS_REGISTER_IRQ_NEW {
+/* MODS_ESC_REGISTER_IRQ_2 */
+/* MODS_ESC_UNREGISTER_IRQ_2 */
+/* MODS_ESC_IRQ_HANDLED_2 */
+struct MODS_REGISTER_IRQ_2 {
 	/* IN */
-	struct mods_pci_dev_new dev;  /* device which generates the interrupt */
+	struct mods_pci_dev_2 dev;  /* device which generates the interrupt */
 	__u8			type; /* MODS_IRQ_TYPE_* */
 };
 
@@ -333,10 +333,10 @@ struct MODS_REGISTER_IRQ {
 	__u8		    type;  /* MODS_IRQ_TYPE_* */
 };
 
-struct mods_irq_new {
+struct mods_irq_2 {
 	__u32			delay; /* delay in ns between the irq occuring
 					  and MODS querying for it */
-	struct mods_pci_dev_new dev;  /* device which generated the interrupt */
+	struct mods_pci_dev_2 dev;  /* device which generated the interrupt */
 };
 
 struct mods_irq {
@@ -349,10 +349,10 @@ struct mods_irq {
 
 #define MODS_MAX_IRQS 32
 
-/* MODS_ESC_QUERY_IRQ_NEW */
-struct MODS_QUERY_IRQ_NEW {
+/* MODS_ESC_QUERY_IRQ_2 */
+struct MODS_QUERY_IRQ_2 {
 	/* OUT */
-	struct mods_irq_new irq_list[MODS_MAX_IRQS];
+	struct mods_irq_2 irq_list[MODS_MAX_IRQS];
 	__u8		    more;	/* indicates that more interrupts
 					   are waiting */
 };
@@ -368,8 +368,8 @@ struct MODS_QUERY_IRQ {
 #define MODS_IRQ_TYPE_MSI  1
 #define MODS_IRQ_TYPE_CPU  2
 
-/* MODS_ESC_SET_IRQ_MASK_NEW */
-struct MODS_SET_IRQ_MASK_NEW {
+/* MODS_ESC_SET_IRQ_MASK_2 */
+struct MODS_SET_IRQ_MASK_2 {
 	/* IN */
 	__u64			aperture_addr;/* physical address of aperture */
 	__u32			aperture_size;/* size of the mapped region */
@@ -379,7 +379,7 @@ struct MODS_SET_IRQ_MASK_NEW {
 						 the irq mask register */
 	__u64			or_mask;      /* or mask for setting bits in
 						 the irq mask register */
-	struct mods_pci_dev_new dev;	      /* device identifying interrupt
+	struct mods_pci_dev_2 dev;	      /* device identifying interrupt
 						 for which the mask will be
 						 applied */
 	__u8			irq_type;     /* irq type */
@@ -442,13 +442,13 @@ struct MODS_EVAL_ACPI_METHOD {
 	__u32		    out_status;
 };
 
-/* MODS_ESC_EVAL_DEV_ACPI_METHOD_NEW */
-struct MODS_EVAL_DEV_ACPI_METHOD_NEW {
+/* MODS_ESC_EVAL_DEV_ACPI_METHOD_2 */
+struct MODS_EVAL_DEV_ACPI_METHOD_2 {
 	/* IN OUT */
 	struct MODS_EVAL_ACPI_METHOD method;
 
 	/* IN */
-	struct mods_pci_dev_new device;
+	struct mods_pci_dev_2 device;
 };
 
 /* MODS_ESC_EVAL_DEV_ACPI_METHOD */
@@ -460,14 +460,14 @@ struct MODS_EVAL_DEV_ACPI_METHOD {
 	struct mods_pci_dev device;
 };
 
-/* MODS_ESC_ACPI_GET_DDC_NEW */
-struct MODS_ACPI_GET_DDC_NEW {
+/* MODS_ESC_ACPI_GET_DDC_2 */
+struct MODS_ACPI_GET_DDC_2 {
 	/* OUT */
 	__u32			out_data_size;
 	__u8			out_buffer[ACPI_MAX_BUFFER_LENGTH];
 
 	/* IN */
-	struct mods_pci_dev_new device;
+	struct mods_pci_dev_2 device;
 };
 
 /* MODS_ESC_ACPI_GET_DDC */
@@ -553,10 +553,10 @@ struct MODS_CLOCK_ENABLED {
 #else
 #define MAX_CPU_MASKS 32  /* 32 masks of 32bits = 1024 CPUs max */
 #endif
-/* MODS_ESC_DEVICE_NUMA_INFO_NEW */
-struct MODS_DEVICE_NUMA_INFO_NEW {
+/* MODS_ESC_DEVICE_NUMA_INFO_2 */
+struct MODS_DEVICE_NUMA_INFO_2 {
 	/* IN */
-	struct mods_pci_dev_new pci_device;
+	struct mods_pci_dev_2 pci_device;
 
 	/* OUT */
 	__s32  node;
@@ -791,37 +791,37 @@ struct MODS_ADSP_RUN_APP_INFO {
 #define MODS_ESC_GET_MAPPED_PHYSICAL_ADDRESS	\
 		   _IOWR(MODS_IOC_MAGIC, 56,	\
 			 struct MODS_GET_PHYSICAL_ADDRESS)
-#define MODS_ESC_DEVICE_ALLOC_PAGES_NEW		\
-		   _IOWR(MODS_IOC_MAGIC, 57, struct MODS_DEVICE_ALLOC_PAGES_NEW)
-#define MODS_ESC_FIND_PCI_DEVICE_NEW		\
-		   _IOWR(MODS_IOC_MAGIC, 58, struct MODS_FIND_PCI_DEVICE_NEW)
-#define MODS_ESC_FIND_PCI_CLASS_CODE_NEW	\
+#define MODS_ESC_DEVICE_ALLOC_PAGES_2		\
+		   _IOWR(MODS_IOC_MAGIC, 57, struct MODS_DEVICE_ALLOC_PAGES_2)
+#define MODS_ESC_FIND_PCI_DEVICE_2		\
+		   _IOWR(MODS_IOC_MAGIC, 58, struct MODS_FIND_PCI_DEVICE_2)
+#define MODS_ESC_FIND_PCI_CLASS_CODE_2		\
 		   _IOWR(MODS_IOC_MAGIC, 59,	\
-			 struct MODS_FIND_PCI_CLASS_CODE_NEW)
-#define MODS_ESC_PCI_GET_BAR_INFO_NEW		\
-		   _IOWR(MODS_IOC_MAGIC, 60, struct MODS_PCI_GET_BAR_INFO_NEW)
-#define MODS_ESC_PCI_GET_IRQ_NEW		\
-		   _IOWR(MODS_IOC_MAGIC, 61, struct MODS_PCI_GET_IRQ_NEW)
-#define MODS_ESC_PCI_READ_NEW			\
-		   _IOWR(MODS_IOC_MAGIC, 62, struct MODS_PCI_READ_NEW)
-#define MODS_ESC_PCI_WRITE_NEW			\
-		    _IOW(MODS_IOC_MAGIC, 63, struct MODS_PCI_WRITE_NEW)
-#define MODS_ESC_REGISTER_IRQ_NEW		\
-		    _IOW(MODS_IOC_MAGIC, 64, struct MODS_REGISTER_IRQ_NEW)
-#define MODS_ESC_UNREGISTER_IRQ_NEW		\
-		    _IOW(MODS_IOC_MAGIC, 65, struct MODS_REGISTER_IRQ_NEW)
-#define MODS_ESC_IRQ_HANDLED_NEW		\
-		    _IOW(MODS_IOC_MAGIC, 66, struct MODS_REGISTER_IRQ_NEW)
-#define MODS_ESC_QUERY_IRQ_NEW			\
-		    _IOR(MODS_IOC_MAGIC, 67, struct MODS_QUERY_IRQ_NEW)
-#define MODS_ESC_SET_IRQ_MASK_NEW		\
-		    _IOW(MODS_IOC_MAGIC, 68, struct MODS_SET_IRQ_MASK_NEW)
-#define MODS_ESC_EVAL_DEV_ACPI_METHOD_NEW	\
+			 struct MODS_FIND_PCI_CLASS_CODE_2)
+#define MODS_ESC_PCI_GET_BAR_INFO_2		\
+		   _IOWR(MODS_IOC_MAGIC, 60, struct MODS_PCI_GET_BAR_INFO_2)
+#define MODS_ESC_PCI_GET_IRQ_2			\
+		   _IOWR(MODS_IOC_MAGIC, 61, struct MODS_PCI_GET_IRQ_2)
+#define MODS_ESC_PCI_READ_2			\
+		   _IOWR(MODS_IOC_MAGIC, 62, struct MODS_PCI_READ_2)
+#define MODS_ESC_PCI_WRITE_2			\
+		    _IOW(MODS_IOC_MAGIC, 63, struct MODS_PCI_WRITE_2)
+#define MODS_ESC_REGISTER_IRQ_2			\
+		    _IOW(MODS_IOC_MAGIC, 64, struct MODS_REGISTER_IRQ_2)
+#define MODS_ESC_UNREGISTER_IRQ_2		\
+		    _IOW(MODS_IOC_MAGIC, 65, struct MODS_REGISTER_IRQ_2)
+#define MODS_ESC_IRQ_HANDLED_2			\
+		    _IOW(MODS_IOC_MAGIC, 66, struct MODS_REGISTER_IRQ_2)
+#define MODS_ESC_QUERY_IRQ_2			\
+		    _IOR(MODS_IOC_MAGIC, 67, struct MODS_QUERY_IRQ_2)
+#define MODS_ESC_SET_IRQ_MASK_2			\
+		    _IOW(MODS_IOC_MAGIC, 68, struct MODS_SET_IRQ_MASK_2)
+#define MODS_ESC_EVAL_DEV_ACPI_METHOD_2		\
 		   _IOWR(MODS_IOC_MAGIC, 69,	\
-			 struct MODS_EVAL_DEV_ACPI_METHOD_NEW)
-#define MODS_ESC_DEVICE_NUMA_INFO_NEW		\
-		   _IOWR(MODS_IOC_MAGIC, 70, struct MODS_DEVICE_NUMA_INFO_NEW)
-#define MODS_ESC_ACPI_GET_DDC_NEW		\
-		   _IOWR(MODS_IOC_MAGIC, 71, struct MODS_ACPI_GET_DDC_NEW)
+			 struct MODS_EVAL_DEV_ACPI_METHOD_2)
+#define MODS_ESC_DEVICE_NUMA_INFO_2		\
+		   _IOWR(MODS_IOC_MAGIC, 70, struct MODS_DEVICE_NUMA_INFO_2)
+#define MODS_ESC_ACPI_GET_DDC_2			\
+		   _IOWR(MODS_IOC_MAGIC, 71, struct MODS_ACPI_GET_DDC_2)
 
 #endif /* _MODS_H_  */

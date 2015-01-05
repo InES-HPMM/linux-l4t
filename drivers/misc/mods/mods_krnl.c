@@ -1,7 +1,7 @@
 /*
  * mods_krnl.c - This file is part of NVIDIA MODS kernel driver.
  *
- * Copyright (c) 2008-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2008-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA MODS kernel driver is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License,
@@ -780,10 +780,10 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   esc_mods_find_pci_dev, MODS_FIND_PCI_DEVICE);
 		break;
 
-	case MODS_ESC_FIND_PCI_DEVICE_NEW:
-		MODS_IOCTL(MODS_ESC_FIND_PCI_DEVICE_NEW,
-			   esc_mods_find_pci_dev_new,
-			   MODS_FIND_PCI_DEVICE_NEW);
+	case MODS_ESC_FIND_PCI_DEVICE_2:
+		MODS_IOCTL(MODS_ESC_FIND_PCI_DEVICE_2,
+			   esc_mods_find_pci_dev_2,
+			   MODS_FIND_PCI_DEVICE_2);
 		break;
 
 	case MODS_ESC_FIND_PCI_CLASS_CODE:
@@ -792,10 +792,10 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   MODS_FIND_PCI_CLASS_CODE);
 		break;
 
-	case MODS_ESC_FIND_PCI_CLASS_CODE_NEW:
-		MODS_IOCTL(MODS_ESC_FIND_PCI_CLASS_CODE_NEW,
-			   esc_mods_find_pci_class_code_new,
-			   MODS_FIND_PCI_CLASS_CODE_NEW);
+	case MODS_ESC_FIND_PCI_CLASS_CODE_2:
+		MODS_IOCTL(MODS_ESC_FIND_PCI_CLASS_CODE_2,
+			   esc_mods_find_pci_class_code_2,
+			   MODS_FIND_PCI_CLASS_CODE_2);
 		break;
 
 	case MODS_ESC_PCI_GET_BAR_INFO:
@@ -804,10 +804,10 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   MODS_PCI_GET_BAR_INFO);
 		break;
 
-	case MODS_ESC_PCI_GET_BAR_INFO_NEW:
-		MODS_IOCTL(MODS_ESC_PCI_GET_BAR_INFO_NEW,
-			   esc_mods_pci_get_bar_info_new,
-			   MODS_PCI_GET_BAR_INFO_NEW);
+	case MODS_ESC_PCI_GET_BAR_INFO_2:
+		MODS_IOCTL(MODS_ESC_PCI_GET_BAR_INFO_2,
+			   esc_mods_pci_get_bar_info_2,
+			   MODS_PCI_GET_BAR_INFO_2);
 		break;
 
 	case MODS_ESC_PCI_GET_IRQ:
@@ -816,19 +816,19 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   MODS_PCI_GET_IRQ);
 		break;
 
-	case MODS_ESC_PCI_GET_IRQ_NEW:
-		MODS_IOCTL(MODS_ESC_PCI_GET_IRQ_NEW,
-			   esc_mods_pci_get_irq_new,
-			   MODS_PCI_GET_IRQ_NEW);
+	case MODS_ESC_PCI_GET_IRQ_2:
+		MODS_IOCTL(MODS_ESC_PCI_GET_IRQ_2,
+			   esc_mods_pci_get_irq_2,
+			   MODS_PCI_GET_IRQ_2);
 		break;
 
 	case MODS_ESC_PCI_READ:
 		MODS_IOCTL(MODS_ESC_PCI_READ, esc_mods_pci_read, MODS_PCI_READ);
 		break;
 
-	case MODS_ESC_PCI_READ_NEW:
-		MODS_IOCTL(MODS_ESC_PCI_READ_NEW,
-			   esc_mods_pci_read_new, MODS_PCI_READ_NEW);
+	case MODS_ESC_PCI_READ_2:
+		MODS_IOCTL(MODS_ESC_PCI_READ_2,
+			   esc_mods_pci_read_2, MODS_PCI_READ_2);
 		break;
 
 	case MODS_ESC_PCI_WRITE:
@@ -836,10 +836,10 @@ static long mods_krnl_ioctl(struct file  *fp,
 				    esc_mods_pci_write, MODS_PCI_WRITE);
 		break;
 
-	case MODS_ESC_PCI_WRITE_NEW:
-		MODS_IOCTL_NORETVAL(MODS_ESC_PCI_WRITE_NEW,
-				    esc_mods_pci_write_new,
-				    MODS_PCI_WRITE_NEW);
+	case MODS_ESC_PCI_WRITE_2:
+		MODS_IOCTL_NORETVAL(MODS_ESC_PCI_WRITE_2,
+				    esc_mods_pci_write_2,
+				    MODS_PCI_WRITE_2);
 		break;
 
 	case MODS_ESC_PCI_BUS_ADD_DEVICES:
@@ -864,10 +864,10 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   MODS_DEVICE_NUMA_INFO);
 		break;
 
-	case MODS_ESC_DEVICE_NUMA_INFO_NEW:
-		MODS_IOCTL(MODS_ESC_DEVICE_NUMA_INFO_NEW,
-			   esc_mods_device_numa_info_new,
-			   MODS_DEVICE_NUMA_INFO_NEW);
+	case MODS_ESC_DEVICE_NUMA_INFO_2:
+		MODS_IOCTL(MODS_ESC_DEVICE_NUMA_INFO_2,
+			   esc_mods_device_numa_info_2,
+			   MODS_DEVICE_NUMA_INFO_2);
 		break;
 #endif
 
@@ -882,10 +882,10 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   MODS_DEVICE_ALLOC_PAGES);
 		break;
 
-	case MODS_ESC_DEVICE_ALLOC_PAGES_NEW:
-		MODS_IOCTL(MODS_ESC_DEVICE_ALLOC_PAGES_NEW,
-			   esc_mods_device_alloc_pages_new,
-			   MODS_DEVICE_ALLOC_PAGES_NEW);
+	case MODS_ESC_DEVICE_ALLOC_PAGES_2:
+		MODS_IOCTL(MODS_ESC_DEVICE_ALLOC_PAGES_2,
+			   esc_mods_device_alloc_pages_2,
+			   MODS_DEVICE_ALLOC_PAGES_2);
 		break;
 
 	case MODS_ESC_FREE_PAGES:
@@ -932,10 +932,10 @@ static long mods_krnl_ioctl(struct file  *fp,
 				    esc_mods_register_irq, MODS_REGISTER_IRQ);
 		break;
 
-	case MODS_ESC_REGISTER_IRQ_NEW:
-		MODS_IOCTL_NORETVAL(MODS_ESC_REGISTER_IRQ_NEW,
-				    esc_mods_register_irq_new,
-				    MODS_REGISTER_IRQ_NEW);
+	case MODS_ESC_REGISTER_IRQ_2:
+		MODS_IOCTL_NORETVAL(MODS_ESC_REGISTER_IRQ_2,
+				    esc_mods_register_irq_2,
+				    MODS_REGISTER_IRQ_2);
 		break;
 
 	case MODS_ESC_UNREGISTER_IRQ:
@@ -943,10 +943,10 @@ static long mods_krnl_ioctl(struct file  *fp,
 				    esc_mods_unregister_irq, MODS_REGISTER_IRQ);
 		break;
 
-	case MODS_ESC_UNREGISTER_IRQ_NEW:
-		MODS_IOCTL_NORETVAL(MODS_ESC_UNREGISTER_IRQ_NEW,
-				    esc_mods_unregister_irq_new,
-				    MODS_REGISTER_IRQ_NEW);
+	case MODS_ESC_UNREGISTER_IRQ_2:
+		MODS_IOCTL_NORETVAL(MODS_ESC_UNREGISTER_IRQ_2,
+				    esc_mods_unregister_irq_2,
+				    MODS_REGISTER_IRQ_2);
 		break;
 
 	case MODS_ESC_QUERY_IRQ:
@@ -954,9 +954,9 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   esc_mods_query_irq, MODS_QUERY_IRQ);
 		break;
 
-	case MODS_ESC_QUERY_IRQ_NEW:
-		MODS_IOCTL(MODS_ESC_QUERY_IRQ_NEW,
-			   esc_mods_query_irq_new, MODS_QUERY_IRQ_NEW);
+	case MODS_ESC_QUERY_IRQ_2:
+		MODS_IOCTL(MODS_ESC_QUERY_IRQ_2,
+			   esc_mods_query_irq_2, MODS_QUERY_IRQ_2);
 		break;
 
 	case MODS_ESC_SET_IRQ_MASK:
@@ -964,10 +964,10 @@ static long mods_krnl_ioctl(struct file  *fp,
 				    esc_mods_set_irq_mask, MODS_SET_IRQ_MASK);
 		break;
 
-	case MODS_ESC_SET_IRQ_MASK_NEW:
-		MODS_IOCTL_NORETVAL(MODS_ESC_SET_IRQ_MASK_NEW,
-				    esc_mods_set_irq_mask_new,
-				    MODS_SET_IRQ_MASK_NEW);
+	case MODS_ESC_SET_IRQ_MASK_2:
+		MODS_IOCTL_NORETVAL(MODS_ESC_SET_IRQ_MASK_2,
+				    esc_mods_set_irq_mask_2,
+				    MODS_SET_IRQ_MASK_2);
 		break;
 
 	case MODS_ESC_IRQ_HANDLED:
@@ -975,10 +975,10 @@ static long mods_krnl_ioctl(struct file  *fp,
 				    esc_mods_irq_handled, MODS_REGISTER_IRQ);
 		break;
 
-	case MODS_ESC_IRQ_HANDLED_NEW:
-		MODS_IOCTL_NORETVAL(MODS_ESC_IRQ_HANDLED_NEW,
-				    esc_mods_irq_handled_new,
-				    MODS_REGISTER_IRQ_NEW);
+	case MODS_ESC_IRQ_HANDLED_2:
+		MODS_IOCTL_NORETVAL(MODS_ESC_IRQ_HANDLED_2,
+				    esc_mods_irq_handled_2,
+				    MODS_REGISTER_IRQ_2);
 		break;
 
 #ifdef CONFIG_ACPI
@@ -993,10 +993,10 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   MODS_EVAL_DEV_ACPI_METHOD);
 		break;
 
-	case MODS_ESC_EVAL_DEV_ACPI_METHOD_NEW:
-		MODS_IOCTL(MODS_ESC_EVAL_DEV_ACPI_METHOD_NEW,
-			   esc_mods_eval_dev_acpi_method_new,
-			   MODS_EVAL_DEV_ACPI_METHOD_NEW);
+	case MODS_ESC_EVAL_DEV_ACPI_METHOD_2:
+		MODS_IOCTL(MODS_ESC_EVAL_DEV_ACPI_METHOD_2,
+			   esc_mods_eval_dev_acpi_method_2,
+			   MODS_EVAL_DEV_ACPI_METHOD_2);
 		break;
 
 	case MODS_ESC_ACPI_GET_DDC:
@@ -1004,9 +1004,9 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   esc_mods_acpi_get_ddc, MODS_ACPI_GET_DDC);
 		break;
 
-	case MODS_ESC_ACPI_GET_DDC_NEW:
-		MODS_IOCTL(MODS_ESC_ACPI_GET_DDC_NEW,
-			   esc_mods_acpi_get_ddc_new, MODS_ACPI_GET_DDC_NEW);
+	case MODS_ESC_ACPI_GET_DDC_2:
+		MODS_IOCTL(MODS_ESC_ACPI_GET_DDC_2,
+			   esc_mods_acpi_get_ddc_2, MODS_ACPI_GET_DDC_2);
 		break;
 
 #elif defined(CONFIG_ARCH_TEGRA)

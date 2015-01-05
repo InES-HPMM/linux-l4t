@@ -1,7 +1,7 @@
 /*
  * mods_mem.c - This file is part of NVIDIA MODS kernel driver.
  *
- * Copyright (c) 2008-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2008-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA MODS kernel driver is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License,
@@ -458,8 +458,8 @@ static struct MODS_PHYS_CHUNK *mods_find_phys_chunk(
  * ESCAPE CALL FUNCTONS *
  ************************/
 
-int esc_mods_device_alloc_pages_new(struct file	*fp,
-				    struct MODS_DEVICE_ALLOC_PAGES_NEW *p)
+int esc_mods_device_alloc_pages_2(struct file	*fp,
+				  struct MODS_DEVICE_ALLOC_PAGES_2 *p)
 {
 	struct MODS_MEM_INFO *p_mem_info;
 	u32    num_pages;
@@ -577,7 +577,7 @@ int esc_mods_device_alloc_pages(struct file                    *fp,
 				struct MODS_DEVICE_ALLOC_PAGES *p)
 {
 	int retval;
-	struct MODS_DEVICE_ALLOC_PAGES_NEW dev_alloc_pages = {0};
+	struct MODS_DEVICE_ALLOC_PAGES_2 dev_alloc_pages = {0};
 	LOG_ENT();
 
 	dev_alloc_pages.num_bytes		= p->num_bytes;
@@ -589,7 +589,7 @@ int esc_mods_device_alloc_pages(struct file                    *fp,
 	dev_alloc_pages.pci_device.device	= p->pci_device.device;
 	dev_alloc_pages.pci_device.function	= p->pci_device.function;
 
-	retval = esc_mods_device_alloc_pages_new(fp, &dev_alloc_pages);
+	retval = esc_mods_device_alloc_pages_2(fp, &dev_alloc_pages);
 	if (!retval)
 		p->memory_handle = dev_alloc_pages.memory_handle;
 
@@ -600,7 +600,7 @@ int esc_mods_device_alloc_pages(struct file                    *fp,
 int esc_mods_alloc_pages(struct file *fp, struct MODS_ALLOC_PAGES *p)
 {
 	int retval;
-	struct MODS_DEVICE_ALLOC_PAGES_NEW dev_alloc_pages;
+	struct MODS_DEVICE_ALLOC_PAGES_2 dev_alloc_pages;
 	LOG_ENT();
 
 	dev_alloc_pages.num_bytes	    = p->num_bytes;
@@ -612,7 +612,7 @@ int esc_mods_alloc_pages(struct file *fp, struct MODS_ALLOC_PAGES *p)
 	dev_alloc_pages.pci_device.device   = 0;
 	dev_alloc_pages.pci_device.function = 0;
 
-	retval = esc_mods_device_alloc_pages_new(fp, &dev_alloc_pages);
+	retval = esc_mods_device_alloc_pages_2(fp, &dev_alloc_pages);
 	if (!retval)
 		p->memory_handle = dev_alloc_pages.memory_handle;
 
