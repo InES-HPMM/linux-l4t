@@ -23,6 +23,7 @@
 
 struct tegra_bootrom_block {
 	const char *name;
+	int address;
 	bool reg_8bits;
 	bool data_8bits;
 	bool i2c_controller;
@@ -49,7 +50,7 @@ static int tegra_bootrom_get_commands_from_dt(struct device *dev,
 	int *command_ptr;
 	struct tegra_bootrom_block *block;
 	int nblocks;
-	u32 reg, data;
+	u32 reg, data, pval;
 	u32 *wr_commands;
 	int count, nblock, ncommands, i, reg_shift;
 	int ret;
@@ -103,6 +104,13 @@ static int tegra_bootrom_get_commands_from_dt(struct device *dev,
 	for_each_child_of_node(br_np, child) {
 		block = &bcommands->blocks[nblock];
 
+		ret = of_property_read_u32(child, "reg", &pval);
+		if (ret) {
+			dev_err(dev, "Reg property missing on block %s\n",
+					child->name);
+			return ret;
+		}
+		block->address = pval;
 		of_property_read_string(child, "nvidia,command-names",
 				&block->name);
 		block->reg_8bits = !of_property_read_bool(child,
