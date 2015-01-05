@@ -178,6 +178,22 @@ config TEGRA_DC_CLOCK_GEN2
 	help
 	  T12x redefined pll usages for pll_d and pll_d2.
 
+config TEGRA_CSC
+	bool "Tegra Color Space Converter (version 1)"
+	depends on TEGRA_DC && !TEGRA_NVDISPLAY
+	default y
+	help
+	  Color Space converter support for Tegra display controller.
+	  This will only be enabled for chips that support 3X3 CSC matrices.
+
+config TEGRA_CSC_V2
+	bool "Tegra Color Space Converter (version 2)"
+	depends on TEGRA_DC && TEGRA_NVDISPLAY
+	default y
+	help
+	  Color Space converter support for Tegra display controller.
+	  This will only be enabled for chips that support 4X3 CSC matrices.
+
 config TEGRA_NVSD
 	bool "Tegra SmartDimmer"
 	depends on TEGRA_DC && !TEGRA_NVDISPLAY
