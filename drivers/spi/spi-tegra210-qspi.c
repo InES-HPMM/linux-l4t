@@ -1,7 +1,7 @@
 /*
  * QSPI driver for NVIDIA's Tegra210 QUAD SPI Controller.
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -765,6 +765,14 @@ static int tegra_qspi_validate_request(struct spi_device *spi,
 				t->bits_per_word);
 		return -EINVAL;
 	}
+
+	if (((t->bits_per_word == 16) && (t->len & 0x1)) ||
+		((t->bits_per_word == 32) && (t->len & 0x3))) {
+		dev_err(tqspi->dev, "unaligned len = %d, bits_per_word = %d not supported\n",
+				t->len, t->bits_per_word);
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
@@ -1080,7 +1088,7 @@ static irqreturn_t handle_cpu_based_xfer(struct tegra_qspi_data *tqspi)
 	else
 		tqspi->cur_pos = tqspi->cur_rx_pos;
 
-	if (tqspi->cur_pos == t->len) {
+	if (tqspi->cur_pos >= t->len) {
 		complete(&tqspi->xfer_completion);
 		goto exit;
 	}
@@ -1155,7 +1163,7 @@ static irqreturn_t handle_dma_based_xfer(struct tegra_qspi_data *tqspi)
 	else
 		tqspi->cur_pos = tqspi->cur_rx_pos;
 
-	if (tqspi->cur_pos == t->len) {
+	if (tqspi->cur_pos >= t->len) {
 		complete(&tqspi->xfer_completion);
 		goto exit;
 	}
