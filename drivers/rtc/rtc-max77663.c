@@ -511,7 +511,7 @@ static int max77663_rtc_preinit(struct max77663_rtc *rtc)
 
 	/* Configure Binary mode and 24hour mode */
 	val = HR_MODE_MASK;
-	ret = max77663_rtc_write(rtc, MAX77663_RTC_CTRL, &val, 1, 0);
+	ret = max77663_rtc_write(rtc, MAX77663_RTC_CTRL, &val, 1, 1);
 	if (ret < 0) {
 		dev_err(rtc->dev, "preinit: Failed to set rtc control\n");
 		return ret;
