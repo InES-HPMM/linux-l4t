@@ -177,7 +177,7 @@ ifneq ($(CONFIG_BCM4354),)
   DHDCFLAGS += -DCUSTOM_SDIO_F2_BLKSIZE=256
 
 # Make same as proven good value from other platform
-  DHDCFLAGS += -DCUSTOM_DPC_PRIO_SETTING=99
+  DHDCFLAGS += -DCUSTOM_DPC_PRIO_SETTING=45
 
 # Define on/off delay
   DHDCFLAGS += -DWIFI_TURNON_DELAY=200
