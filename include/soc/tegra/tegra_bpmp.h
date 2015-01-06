@@ -19,30 +19,36 @@
 
 #include <linux/kernel.h>
 
+#define __MRQ_PUBLIC		(1 << 31)
+
+#define MRQ_PING		(0 | __MRQ_PUBLIC)
+#define MRQ_QUERY_TAG		1
+#define MRQ_DO_IDLE		2
+#define MRQ_TOLERATE_IDLE	3
+#define MRQ_MODULE_LOAD		4
+#define MRQ_MODULE_UNLOAD	5
+#define MRQ_SWITCH_CLUSTER	6
+#define MRQ_TRACE_MODIFY	7
+#define MRQ_WRITE_TRACE		8
+#define MRQ_THREADED_PING	(9 | __MRQ_PUBLIC)
+#define MRQ_CPUIDLE_USAGE	10
+#define MRQ_MODULE_MAIL		(11 | __MRQ_PUBLIC)
+#define MRQ_SCX_ENABLE		12
+#define MRQ_INIT_NR_CPUS	13
+#define MRQ_BPMPIDLE_USAGE	(14 | __MRQ_PUBLIC)
+#define MRQ_HEAP_USAGE		(15 | __MRQ_PUBLIC)
+#define MRQ_SCLK_SKIP_SET_RATE	16
+#define MRQ_ENABLE_SUSPEND	17
+
 /* Tegra PM states as known to BPMP */
-#define TEGRA_PM_C0	0
-#define TEGRA_PM_C1	1
-#define TEGRA_PM_C2	2
-#define TEGRA_PM_C3	3
-#define TEGRA_PM_C4	4
-#define TEGRA_PM_C5	5
-#define TEGRA_PM_C6	6
-#define TEGRA_PM_C7	7
-#define TEGRA_PM_CC0	8
 #define TEGRA_PM_CC1	9
-#define TEGRA_PM_CC2	10
-#define TEGRA_PM_CC3	11
 #define TEGRA_PM_CC4	12
-#define TEGRA_PM_CC5	13
 #define TEGRA_PM_CC6	14
 #define TEGRA_PM_CC7	15
-#define TEGRA_PM_SC0	16
 #define TEGRA_PM_SC1	17
 #define TEGRA_PM_SC2	18
 #define TEGRA_PM_SC3	19
 #define TEGRA_PM_SC4	20
-#define TEGRA_PM_SC5	21
-#define TEGRA_PM_SC6	22
 #define TEGRA_PM_SC7	23
 
 typedef void (*bpmp_mrq_handler)(int mrq, void *data, int ch);

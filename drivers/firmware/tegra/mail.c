@@ -27,7 +27,9 @@
 #include <soc/tegra/tegra_bpmp.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "bpmp.h"
-#include "bpmp_abi.h"
+
+#define DO_ACK			(1 << 0)
+#define RING_DOORBELL		(1 << 1)
 
 #define CHANNEL_TIMEOUT		USEC_PER_SEC
 #define THREAD_CH_TIMEOUT	USEC_PER_SEC

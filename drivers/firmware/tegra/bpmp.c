@@ -30,7 +30,6 @@
 #include <soc/tegra/tegra_bpmp.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "bpmp.h"
-#include "bpmp_abi.h"
 
 #define BPMP_MODULE_MAGIC		0x646f6d
 #define SHARED_SIZE			512

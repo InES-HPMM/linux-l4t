@@ -21,7 +21,6 @@
 #include <linux/slab.h>
 #include <soc/tegra/tegra_bpmp.h>
 #include "bpmp.h"
-#include "bpmp_abi.h"
 
 int bpmp_ping(void)
 {

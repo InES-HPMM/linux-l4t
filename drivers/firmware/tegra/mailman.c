@@ -19,7 +19,6 @@
 #include <linux/spinlock.h>
 #include <soc/tegra/tegra_bpmp.h>
 #include "bpmp.h"
-#include "bpmp_abi.h"
 
 #define NUM_MRQ_HANDLERS	8
 
