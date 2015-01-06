@@ -54,19 +54,6 @@
 #define CHANNEL_TIMEOUT		USEC_PER_SEC
 #define THREAD_CH_TIMEOUT	USEC_PER_SEC
 
-
-struct mrq_handler_data {
-	bpmp_mrq_handler handler;
-	void *data;
-};
-
-static int cpu_mrqs[] = {
-	MRQ_PING,
-	MRQ_MODULE_MAIL
-};
-
-static struct mrq_handler_data mrq_handlers[ARRAY_SIZE(cpu_mrqs)];
-static uint8_t mrq_handler_index[NR_MRQS];
 struct channel_data channel_area[NR_CHANNELS];
 static struct completion completion[NR_THREAD_CH];
 int connected;
@@ -174,41 +161,6 @@ void tegra_bpmp_mail_return(int ch, int code, int v)
 }
 EXPORT_SYMBOL(tegra_bpmp_mail_return);
 
-static void bpmp_mrq_ping(int code, void *data, int ch)
-{
-	int challenge;
-	int reply;
-	challenge = tegra_bpmp_mail_readl(ch, 0);
-	reply = challenge  << (smp_processor_id() + 1);
-	tegra_bpmp_mail_return(ch, 0, reply);
-}
-
-static void bpmp_dispatch_mrq(int ch)
-{
-	struct mb_data *p;
-	struct mrq_handler_data *h;
-	unsigned int i;
-
-	p = channel_area[ch].ib;
-	i = __MRQ_INDEX(p->code);
-
-	if (i >= NR_MRQS)
-		goto err_out;
-
-	if (!mrq_handler_index[i])
-		goto err_out;
-
-	h = mrq_handlers + mrq_handler_index[i] - 1;
-	if (!h->handler)
-		goto err_out;
-
-	h->handler(p->code, h->data, ch);
-	return;
-
-err_out:
-	tegra_bpmp_mail_return(ch, -EINVAL, 0);
-}
-
 static struct completion *bpmp_completion_obj(int ch)
 {
 	int i = ch - CPU0_OB_CH1;
@@ -255,7 +207,7 @@ static irqreturn_t bpmp_inbox_irq(int irq, void *data)
 	bpmp_ack_doorbell(irq);
 
 	if (bpmp_slave_signalled(ch))
-		bpmp_dispatch_mrq(ch);
+		bpmp_handle_mail(channel_area[ch].ib->code, ch);
 
 	spin_lock_irqsave(&lock, flags);
 
@@ -472,138 +424,7 @@ int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz)
 }
 EXPORT_SYMBOL(tegra_bpmp_rpc);
 
-static int bpmp_request_mrq(int mrq, bpmp_mrq_handler handler, void *data)
-{
-	struct mrq_handler_data *ph;
-	unsigned long f;
-	unsigned int i;
 
-	i = __MRQ_INDEX(mrq);
-	if (i >= NR_MRQS)
-		return -EINVAL;
-
-	if (!mrq_handler_index[i])
-		return -EINVAL;
-
-	spin_lock_irqsave(&lock, f);
-
-	ph = mrq_handlers + mrq_handler_index[i] - 1;
-	if (ph->handler) {
-		spin_unlock_irqrestore(&lock, f);
-		return -EEXIST;
-	}
-
-	ph->handler = handler;
-	ph->data = data;
-
-	spin_unlock_irqrestore(&lock, f);
-	return 0;
-}
-
-static LIST_HEAD(module_mrq_list);
-
-struct module_mrq {
-	struct list_head link;
-	uint32_t base;
-	bpmp_mrq_handler handler;
-	void *data;
-};
-
-static struct module_mrq *bpmp_find_module_mrq(uint32_t module_base)
-{
-	struct module_mrq *item;
-
-	list_for_each_entry(item, &module_mrq_list, link) {
-		if (item->base == module_base)
-			return item;
-	}
-
-	return NULL;
-}
-
-static void bpmp_mrq_module_mail(int code, void *data, int ch)
-{
-	unsigned long flags;
-	struct module_mrq *item;
-	uint32_t base;
-
-	base = tegra_bpmp_mail_readl(ch, 0);
-
-	spin_lock_irqsave(&lock, flags);
-	item = bpmp_find_module_mrq(base);
-	if (item)
-		item->handler(code, item->data, ch);
-	else
-		tegra_bpmp_mail_return(ch, -ENODEV, 0);
-	spin_unlock_irqrestore(&lock, flags);
-}
-
-int tegra_bpmp_request_module_mrq(uint32_t module_base,
-		bpmp_mrq_handler handler, void *data)
-{
-	struct module_mrq *item;
-	unsigned long flags;
-
-	if (!module_base || !handler)
-		return -EINVAL;
-
-	item = kmalloc(sizeof(*item), GFP_KERNEL);
-	if (!item)
-		return -ENOMEM;
-
-	item->base = module_base;
-	item->handler = handler;
-	item->data = data;
-
-	spin_lock_irqsave(&lock, flags);
-
-	if (bpmp_find_module_mrq(module_base)) {
-		spin_unlock_irqrestore(&lock, flags);
-		kfree(item);
-		return -EEXIST;
-	}
-
-	list_add(&item->link, &module_mrq_list);
-	spin_unlock_irqrestore(&lock, flags);
-	return 0;
-}
-EXPORT_SYMBOL(tegra_bpmp_request_module_mrq);
-
-void tegra_bpmp_cancel_module_mrq(uint32_t module_base)
-{
-	struct module_mrq *item;
-	unsigned long flags;
-
-	if (!module_base)
-		return;
-
-	spin_lock_irqsave(&lock, flags);
-	item = bpmp_find_module_mrq(module_base);
-	if (item)
-		list_del(&item->link);
-	spin_unlock_irqrestore(&lock, flags);
-
-	kfree(item);
-}
-EXPORT_SYMBOL(tegra_bpmp_cancel_module_mrq);
-
-static int bpmp_mrq_init(void)
-{
-	int i;
-	int j;
-	int r;
-
-	for (i = 0; i < ARRAY_SIZE(cpu_mrqs); i++) {
-		j = __MRQ_INDEX(cpu_mrqs[i]);
-		mrq_handler_index[j] = i + 1;
-	}
-
-	r = bpmp_request_mrq(MRQ_PING, bpmp_mrq_ping, NULL);
-	if (r)
-		return r;
-
-	return bpmp_request_mrq(MRQ_MODULE_MAIL, bpmp_mrq_module_mail, NULL);
-}
 
 static void bpmp_init_completion(void)
 {
@@ -765,9 +586,9 @@ int bpmp_mail_init(struct platform_device *pdev)
 		return r;
 	}
 
-	r = bpmp_mrq_init();
+	r = bpmp_mailman_init();
 	if (r) {
-		dev_err(&pdev->dev, "mrq init failed (%d)\n", r);
+		dev_err(&pdev->dev, "mailman init failed (%d)\n", r);
 		return r;
 	}
 

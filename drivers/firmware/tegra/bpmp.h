@@ -73,6 +73,8 @@ int bpmp_create_attrs(const struct fops_entry *fent, struct dentry *parent,
 
 int bpmp_attach(void);
 void bpmp_detach(void);
+int bpmp_mailman_init(void);
+void bpmp_handle_mail(int mrq, int ch);
 
 /* should be called from non-preemptible context */
 int bpmp_post(int mrq, void *data, int sz);
