@@ -1,7 +1,7 @@
 /*
  * arch/arm/boot/dts/tegra124-tn8-p1761-1270-a02.dts
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -88,6 +88,9 @@
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
 				disp-default-out {
 					nvidia,out-rotation = <180>;
+				};
+				smartdimmer {
+					status = "disabled";
 				};
 			};
 		};
