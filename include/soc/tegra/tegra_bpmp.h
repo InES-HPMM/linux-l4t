@@ -70,8 +70,6 @@ int tegra_bpmp_send_receive_atomic(int mrq, void *ob_data, int ob_sz,
 		void *ib_data, int ib_sz);
 int tegra_bpmp_send_receive(int mrq, void *ob_data, int ob_sz,
 		void *ib_data, int ib_sz);
-int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz,
-		void *ib_data, int ib_sz);
 int tegra_bpmp_request_mrq(int mrq, bpmp_mrq_handler handler, void *data);
 int tegra_bpmp_cancel_mrq(int mrq);
 int tegra_bpmp_request_module_mrq(uint32_t module_base,
@@ -91,8 +89,6 @@ static inline int tegra_bpmp_send(int mrq, void *data, int sz)
 static inline int tegra_bpmp_send_receive_atomic(int mrq, void *ob_data,
 		int ob_sz, void *ib_data, int ib_sz) { return -ENODEV; }
 static inline int tegra_bpmp_send_receive(int mrq, void *ob_data, int ob_sz,
-		void *ib_data, int ib_sz) { return -ENODEV; }
-static inline int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz,
 		void *ib_data, int ib_sz) { return -ENODEV; }
 static inline int tegra_bpmp_request_mrq(int mrq, bpmp_mrq_handler handler,
 		void *data) { return -ENODEV; }
