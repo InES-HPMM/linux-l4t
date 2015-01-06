@@ -97,6 +97,20 @@ int unregister_cluster_switch_notifier(struct notifier_block *notifier)
 						notifier);
 }
 
+static int tegra_bpmp_switch_cluster(int cpu)
+{
+	int32_t mb = cpu_to_le32(cpu);
+	int32_t on_cpus;
+
+	if (tegra_bpmp_send_receive_atomic(MRQ_SWITCH_CLUSTER, &mb, sizeof(mb),
+			&on_cpus, sizeof(on_cpus))) {
+		WARN_ON(1);
+		return -EFAULT;
+	}
+
+	return le32_to_cpu(on_cpus);
+}
+
 /* Must be called with the hotplug lock held */
 static void switch_cluster(enum cluster val)
 {
