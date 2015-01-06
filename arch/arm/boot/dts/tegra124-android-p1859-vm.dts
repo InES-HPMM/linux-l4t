@@ -45,7 +45,7 @@
 	tegra_hv_wdt {
 		compatible = "nvidia,tegra-hv-wdt";
 		status = "okay";
-		ivc_queue = <&tegra_hv 8>;
+		ivc = <&tegra_hv 8>;
 	};
 
 	iommu {
