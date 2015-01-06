@@ -642,6 +642,14 @@ static const char *lp_state[TEGRA_MAX_SUSPEND_MODE] = {
 };
 
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+
+static void tegra_bpmp_enable_suspend(int mode, int flags)
+{
+	int32_t mb[] = { cpu_to_le32(mode), cpu_to_le32(flags) };
+	int r = tegra_bpmp_send(MRQ_ENABLE_SUSPEND, &mb, sizeof(mb));
+	WARN_ON(r);
+}
+
 static int tegra210_suspend_dram(enum tegra_suspend_mode mode)
 {
 	int err = 0;

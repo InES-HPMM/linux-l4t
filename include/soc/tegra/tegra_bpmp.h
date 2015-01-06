@@ -64,7 +64,6 @@ void tegra_bpmp_init_early(void);
 void tegra_bpmp_sclk_skip_set_rate(unsigned long input_rate,
 		unsigned long rate);
 int tegra_bpmp_scx_enable(int scx);
-void tegra_bpmp_enable_suspend(int mode, int flags);
 void tegra_bpmp_trace_printk(void);
 int tegra_bpmp_send(int mrq, void *data, int sz);
 int tegra_bpmp_send_receive_atomic(int mrq, void *ob_data, int ob_sz,
@@ -86,7 +85,6 @@ static inline void tegra_bpmp_init_early(void) {}
 static inline void tegra_bpmp_sclk_skip_set_rate(unsigned long input_rate,
 		unsigned long rate) {}
 static inline int tegra_bpmp_scx_enable(int scx) { return -ENODEV; }
-static inline void tegra_bpmp_enable_suspend(int mode, int flags) {}
 static inline void tegra_bpmp_trace_printk(void) {}
 static inline int tegra_bpmp_send(int mrq, void *data, int sz)
 { return -ENODEV; }
