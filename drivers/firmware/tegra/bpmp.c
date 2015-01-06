@@ -181,7 +181,8 @@ static int bpmp_module_ready(const char *name, const struct firmware *fw,
 		return -EINVAL;
 	}
 
-	if (memcmp(hdr->parent_tag, firmware_tag, sz)) {
+	if (memcmp(hdr->parent_tag, firmware_tag, sz) &&
+			!IS_ENABLED(CONFIG_ARCH_TEGRA_18x_SOC)) {
 		dev_err(device, "%s: bad module - tag mismatch\n", name);
 		memcpy(fmt, firmware_tag, sz);
 		fmt[sz] = 0;
@@ -410,6 +411,9 @@ int bpmp_get_fwtag(void)
 {
 	unsigned long flags;
 	int r;
+
+	if (IS_ENABLED(CONFIG_ARCH_TEGRA_18x_SOC))
+		return 0;
 
 	spin_lock_irqsave(&shared_lock, flags);
 	r = tegra_bpmp_send_receive_atomic(MRQ_QUERY_TAG,
@@ -697,6 +701,7 @@ static int bpmp_probe(struct platform_device *pdev)
 }
 
 static const struct of_device_id bpmp_of_matches[] = {
+	{ .compatible = "nvidia,tegra186-bpmp" },
 	{ .compatible = "nvidia,tegra210-bpmp" },
 	{}
 };

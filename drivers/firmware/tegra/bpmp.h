@@ -21,11 +21,16 @@
 #include <linux/platform_device.h>
 #include <soc/tegra/tegra_bpmp.h>
 
-#define NR_CHANNELS		12
 #define MSG_SZ			32
 #define MSG_DATA_SZ		24
 
+#ifdef CONFIG_ARCH_TEGRA_18x_SOC
+#define NR_CHANNELS		14
+#define NR_THREAD_CH		7
+#else
+#define NR_CHANNELS		12
 #define NR_THREAD_CH		4
+#endif
 
 #define NR_MRQS			32
 #define __MRQ_ATTRS		0xff000000

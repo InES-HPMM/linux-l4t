@@ -28,8 +28,14 @@
 #define DO_ACK			(1 << 0)
 #define RING_DOORBELL		(1 << 1)
 
+/* FIXME: reduce this to 1 sec (WAR for linsim irq bug) */
+#ifdef CONFIG_ARCH_TEGRA_18x_SOC
+#define CHANNEL_TIMEOUT		(60 * USEC_PER_SEC)
+#define THREAD_CH_TIMEOUT	(60 * USEC_PER_SEC)
+#else
 #define CHANNEL_TIMEOUT		USEC_PER_SEC
 #define THREAD_CH_TIMEOUT	USEC_PER_SEC
+#endif
 
 struct channel_data channel_area[NR_CHANNELS];
 static struct completion completion[NR_THREAD_CH];
