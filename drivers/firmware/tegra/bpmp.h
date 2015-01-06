@@ -71,7 +71,6 @@ int bpmp_init_modules(struct platform_device *pdev);
 void bpmp_cleanup_modules(void);
 int bpmp_create_attrs(const struct fops_entry *fent, struct dentry *parent,
 		void *data);
-
 int bpmp_attach(void);
 void bpmp_detach(void);
 int bpmp_mailman_init(void);
@@ -103,15 +102,5 @@ static inline int bpmp_threaded_rpc(int mrq, void *ob_data, int ob_sz,
 { return tegra_bpmp_send_receive(mrq, ob_data, ob_sz, ib_data, ib_sz); }
 
 int __bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz);
-int bpmp_ping(void);
-int bpmp_module_load(struct device *dev, const void *base, u32 size,
-		u32 *handle);
-int bpmp_module_unload(struct device *dev, u32 handle);
-int bpmp_cpuidle_usage(int state);
-uint64_t bpmp_cpuidle_time(int state);
-int bpmp_write_trace(uint32_t phys, int size, int *eof);
-int bpmp_modify_trace_mask(uint32_t clr, uint32_t set);
-int bpmp_init_cpus_present(int nr_cpus);
-int bpmp_query_tag(uint32_t phys);
 
 #endif

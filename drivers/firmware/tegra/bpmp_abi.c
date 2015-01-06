@@ -22,22 +22,6 @@
 #include <soc/tegra/tegra_bpmp.h>
 #include "bpmp.h"
 
-int bpmp_ping(void)
-{
-	unsigned long flags;
-	ktime_t tm;
-	int r;
-
-	/* disable local irqs so we can call the atomic IPC api */
-	local_irq_save(flags);
-	tm = ktime_get();
-	r = bpmp_rpc(MRQ_PING, NULL, 0, NULL, 0);
-	tm = ktime_sub(ktime_get(), tm);
-	local_irq_restore(flags);
-
-	return r ?: ktime_to_us(tm);
-}
-
 /*
  * Coordinates the cluster idle entries (CC6 & deeper)
  *
@@ -86,36 +70,6 @@ int tegra_bpmp_scx_enable(int scx)
 	return bpmp_post(MRQ_SCX_ENABLE, &scx, sizeof(scx));
 }
 
-int bpmp_module_load(struct device *dev, const void *base, u32 size,
-		u32 *handle)
-{
-	void *virt;
-	dma_addr_t phys;
-	struct { u32 phys; u32 size; } __packed msg;
-	int r;
-
-	virt = dma_alloc_coherent(dev, size, &phys, GFP_KERNEL);
-	if (virt == NULL)
-		return -ENOMEM;
-
-	memcpy(virt, base, size);
-
-	msg.phys = phys;
-	msg.size = size;
-
-	r = bpmp_threaded_rpc(MRQ_MODULE_LOAD, &msg, sizeof(msg),
-			handle, sizeof(*handle));
-
-	dma_free_coherent(dev, size, virt, phys);
-	return r;
-}
-
-int bpmp_module_unload(struct device *dev, u32 handle)
-{
-	return bpmp_threaded_rpc(MRQ_MODULE_UNLOAD, &handle, sizeof(handle),
-			NULL, 0);
-}
-
 /*
  * Cluster switch coordinator.
  * Returns the online cpu mask in current cluster.
@@ -136,39 +90,6 @@ int tegra_bpmp_switch_cluster(int cpu)
 	return on_cpus;
 }
 
-int bpmp_cpuidle_usage(int state)
-{
-	struct { int usage; uint64_t time; } ib;
-	return bpmp_threaded_rpc(MRQ_CPUIDLE_USAGE, &state, sizeof(state),
-			&ib, sizeof(ib)) ?: ib.usage;
-}
-
-uint64_t bpmp_cpuidle_time(int state)
-{
-	struct { int usage; uint64_t time; } ib;
-	return bpmp_threaded_rpc(MRQ_CPUIDLE_USAGE, &state, sizeof(state),
-			&ib, sizeof(ib)) ?: ib.time;
-}
-
-int bpmp_write_trace(uint32_t phys, int size, int *eof)
-{
-	uint32_t ob[] = { phys, size };
-	return __bpmp_rpc(MRQ_WRITE_TRACE, ob, sizeof(ob), eof, sizeof(*eof));
-}
-
-int bpmp_modify_trace_mask(uint32_t clr, uint32_t set)
-{
-	uint32_t ob[] = { clr, set };
-	uint32_t new;
-	return bpmp_threaded_rpc(MRQ_TRACE_MODIFY, ob, sizeof(ob),
-			&new, sizeof(new)) ?: new;
-}
-
-int bpmp_init_cpus_present(int nr_cpus)
-{
-	return bpmp_post(MRQ_INIT_NR_CPUS, &nr_cpus, sizeof(nr_cpus));
-}
-
 void tegra_bpmp_sclk_skip_set_rate(unsigned long input_rate,
 		unsigned long rate)
 {
@@ -176,11 +97,6 @@ void tegra_bpmp_sclk_skip_set_rate(unsigned long input_rate,
 	int r;
 	r = __bpmp_rpc(MRQ_SCLK_SKIP_SET_RATE, &mb, sizeof(mb), NULL, 0);
 	WARN_ON(r);
-}
-
-int bpmp_query_tag(uint32_t phys)
-{
-	return __bpmp_rpc(MRQ_QUERY_TAG, &phys, sizeof(phys), NULL, 0);
 }
 
 void tegra_bpmp_enable_suspend(int mode, int flags)

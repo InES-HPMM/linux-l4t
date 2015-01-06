@@ -15,17 +15,14 @@
  */
 
 #include <linux/debugfs.h>
-#include <linux/delay.h>
 #include <linux/dma-mapping.h>
 #include <linux/firmware.h>
-#include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
-#include <linux/tegra_smmu.h>
 #include <linux/uaccess.h>
 #include <soc/tegra/tegra_bpmp.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
@@ -91,6 +88,36 @@ static struct bpmp_module *bpmp_find_module(const char *name)
 	}
 
 	return NULL;
+}
+
+static int bpmp_module_load(struct device *dev, const void *base, u32 size,
+		u32 *handle)
+{
+	void *virt;
+	dma_addr_t phys;
+	struct { u32 phys; u32 size; } __packed msg;
+	int r;
+
+	virt = dma_alloc_coherent(dev, size, &phys, GFP_KERNEL);
+	if (virt == NULL)
+		return -ENOMEM;
+
+	memcpy(virt, base, size);
+
+	msg.phys = phys;
+	msg.size = size;
+
+	r = tegra_bpmp_send_receive(MRQ_MODULE_LOAD, &msg, sizeof(msg),
+			handle, sizeof(*handle));
+
+	dma_free_coherent(dev, size, virt, phys);
+	return r;
+}
+
+static int bpmp_module_unload(struct device *dev, u32 handle)
+{
+	return tegra_bpmp_send_receive(MRQ_MODULE_UNLOAD,
+			&handle, sizeof(handle), NULL, 0);
 }
 
 static ssize_t bpmp_module_unload_store(struct file *file,
@@ -314,14 +341,24 @@ static const struct file_operations cpuidle_name_fops = {
 static int bpmp_cpuidle_usage_show(void *data, u64 *val)
 {
 	struct bpmp_cpuidle_state *state = data;
-	*val = bpmp_cpuidle_usage(state->id);
+	struct { int usage; uint64_t time; } mb;
+	int id = state->id;
+	int ret;
+	ret = tegra_bpmp_send_receive(MRQ_CPUIDLE_USAGE, &id, sizeof(id),
+			&mb, sizeof(mb));
+	*val = ret ?: mb.usage;
 	return 0;
 }
 
 static int bpmp_cpuidle_time_show(void *data, u64 *val)
 {
 	struct bpmp_cpuidle_state *state = data;
-	*val = bpmp_cpuidle_time(state->id);
+	struct { int usage; uint64_t time; } mb;
+	int id = state->id;
+	int ret;
+	ret = tegra_bpmp_send_receive(MRQ_CPUIDLE_USAGE, &id, sizeof(id),
+			&mb, sizeof(mb));
+	*val = ret ?: mb.time;
 	return 0;
 }
 
@@ -373,17 +410,42 @@ int bpmp_get_fwtag(void)
 {
 	unsigned long flags;
 	int r;
+
 	spin_lock_irqsave(&shared_lock, flags);
-	r = bpmp_query_tag(shared_phys);
-	memcpy(firmware_tag, shared_virt, sizeof(firmware_tag));
+	r = tegra_bpmp_send_receive_atomic(MRQ_QUERY_TAG,
+			&shared_phys, sizeof(shared_phys), NULL, 0);
+	if (!r)
+		memcpy(firmware_tag, shared_virt, sizeof(firmware_tag));
 	spin_unlock_irqrestore(&shared_lock, flags);
+
 	return r;
 }
 
 static int bpmp_ping_show(void *data, u64 *val)
 {
-	*val = bpmp_ping();
+	unsigned long flags;
+	ktime_t tm;
+	int ret;
+	int challenge = 1;
+	int reply;
+
+	local_irq_save(flags);
+	tm = ktime_get();
+	ret = tegra_bpmp_send_receive_atomic(MRQ_PING,
+			&challenge, sizeof(challenge), &reply, sizeof(reply));
+	tm = ktime_sub(ktime_get(), tm);
+	local_irq_restore(flags);
+
+	*val = ret ?: ktime_to_us(tm);
 	return 0;
+}
+
+static int bpmp_modify_trace_mask(uint32_t clr, uint32_t set)
+{
+	uint32_t mb[] = { clr, set };
+	uint32_t new;
+	return tegra_bpmp_send_receive(MRQ_TRACE_MODIFY, mb, sizeof(mb),
+			&new, sizeof(new)) ?: new;
 }
 
 static int bpmp_trace_enable_show(void *data, u64 *val)
@@ -411,11 +473,13 @@ DEFINE_SIMPLE_ATTRIBUTE(trace_disable_fops, NULL,
 static int bpmp_copy_trace(struct seq_file *file, dma_addr_t phys, void *virt,
 		int size)
 {
+	uint32_t mb[] = { phys, size };
 	int ret;
 	int eof = 0;
 
 	while (!eof) {
-		ret = bpmp_write_trace(phys, size, &eof);
+		ret = tegra_bpmp_send_receive(MRQ_WRITE_TRACE, mb, sizeof(mb),
+				&eof, sizeof(eof));
 		if (ret < 0)
 			return ret;
 		seq_write(file, virt, ret);
@@ -511,8 +575,8 @@ static ssize_t bpmp_mrq_write(struct file *file, const char __user *user_buf,
 		goto complete;
 	}
 
-	ret = tegra_bpmp_rpc(outbox_data[0], outbox_data + 1, MSG_DATA_SZ,
-			inbox_data + 1, MSG_DATA_SZ);
+	ret = tegra_bpmp_send_receive(outbox_data[0], outbox_data + 1,
+			MSG_DATA_SZ, inbox_data + 1, MSG_DATA_SZ);
 
 complete:
 	inbox_data[0] = ret;
@@ -586,13 +650,15 @@ int bpmp_get_fwtag(void) { return 0; }
 
 void tegra_bpmp_trace_printk(void)
 {
+	uint32_t mb[] = { shared_phys, SHARED_SIZE };
 	unsigned long flags;
 	int eof = 0;
 
 	spin_lock_irqsave(&shared_lock, flags);
 
 	while (!eof) {
-		if (bpmp_write_trace(shared_phys, SHARED_SIZE, &eof) <= 0)
+		if (tegra_bpmp_send_receive_atomic(MRQ_WRITE_TRACE,
+				mb, sizeof(mb), &eof, sizeof(eof)))
 			goto done;
 		pr_info("%s", (char *)shared_virt);
 	}
