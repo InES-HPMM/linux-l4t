@@ -169,6 +169,17 @@
 	backlight {
 		compatible = "pwm-backlight";
 		status = "okay";
+		panel-a-wuxga-8-0-bl {
+			/* Kernel applies bl_measured[] to map 125 to 135 for
+			 *  backlight linearity.
+			 * Setting kernel default brightness level to 125 to
+			 *  match bootloader default brightness level 135 for
+			 *  seamless boot.
+			 * For detail, see bl-measured property in
+			 *  /backlight/panel-a-wuxga-8-0-bl.
+			 */
+			default-brightness = <125>;
+		};
 	};
 
 	pwm@7000a000 {
