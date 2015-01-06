@@ -76,6 +76,17 @@ void bpmp_detach(void);
 int bpmp_mailman_init(void);
 void bpmp_handle_mail(int mrq, int ch);
 
+void bpmp_ring_doorbell(void);
+uint32_t bpmp_mail_token(void);
+void bpmp_mail_token_set(uint32_t val);
+void bpmp_mail_token_clr(uint32_t val);
+int bpmp_thread_ch_index(int ch);
+int bpmp_ob_channel(void);
+int bpmp_thread_ch(int idx);
+int bpmp_init_irq(struct platform_device *pdev);
+int bpmp_connect(void);
+void bpmp_handle_irq(int ch);
+
 /* should be called from non-preemptible context */
 int bpmp_post(int mrq, void *data, int sz);
 

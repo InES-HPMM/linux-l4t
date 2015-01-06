@@ -29,28 +29,8 @@
 #include "bpmp.h"
 #include "bpmp_abi.h"
 
-#define TEGRA_ATOMICS_BASE	0x70016000
-#define ATOMICS_AP0_TRIGGER	IO_ADDRESS(TEGRA_ATOMICS_BASE + 0x000)
-#define ATOMICS_AP0_RESULT(id)	IO_ADDRESS(TEGRA_ATOMICS_BASE + 0xc00 + id * 4)
-#define TRIGGER_ID_SHIFT	16
-#define TRIGGER_CMD_GET		4
-
-#define ICTLR_REG_BASE(irq)	IO_ADDRESS(TEGRA_PRIMARY_ICTLR_BASE + (((irq) - 32) >> 5) * 0x100)
-#define ICTLR_FIR_SET(irq)	(ICTLR_REG_BASE(irq) + 0x18)
-#define ICTLR_FIR_CLR(irq)	(ICTLR_REG_BASE(irq) + 0x1c)
-#define FIR_BIT(irq)		(1 << ((irq) & 0x1f))
-
 #define TIMERUS_CNTR_1US	IO_ADDRESS(TEGRA_TMR1_BASE + 0x10)
 
-#define RES_SEMA_SHRD_SMP_STA	IO_ADDRESS(TEGRA_RES_SEMA_BASE + 0x00)
-#define RES_SEMA_SHRD_SMP_SET	IO_ADDRESS(TEGRA_RES_SEMA_BASE + 0x04)
-#define RES_SEMA_SHRD_SMP_CLR	IO_ADDRESS(TEGRA_RES_SEMA_BASE + 0x08)
-
-#define THREAD_CH(i)		(CPU0_OB_CH1 + i)
-#define THREAD_CH_INDEX(i)	(i - CPU0_OB_CH1)
-#define PER_CPU_IB_CH(i)	(CPU0_IB_CH + i)
-
-#define ALL_FREE		0xaaaaaaaa
 #define CHANNEL_TIMEOUT		USEC_PER_SEC
 #define THREAD_CH_TIMEOUT	USEC_PER_SEC
 
@@ -60,8 +40,7 @@ int connected;
 static DEFINE_SPINLOCK(lock);
 
 /*
- * How the RES_SEMA_SHRD_SMP bits are interpretted
- * as token states.
+ * How the token bits are interpretted
  *
  * SL_SIGL (b00): slave ch in signalled state
  * SL_QUED (b01): slave ch is in queue
@@ -80,7 +59,7 @@ static DEFINE_SPINLOCK(lock);
 
 static u32 bpmp_ch_sta(int ch)
 {
-	return __raw_readl(RES_SEMA_SHRD_SMP_STA) & CH_MASK(ch);
+	return bpmp_mail_token() & CH_MASK(ch);
 }
 
 static bool bpmp_master_free(int ch)
@@ -100,12 +79,12 @@ static bool bpmp_master_acked(int ch)
 
 static void bpmp_signal_slave(int ch)
 {
-	__raw_writel(CH_MASK(ch), RES_SEMA_SHRD_SMP_CLR);
+	bpmp_mail_token_clr(CH_MASK(ch));
 }
 
 static void bpmp_ack_master(int ch, int flags)
 {
-	writel(MA_ACKD(ch), RES_SEMA_SHRD_SMP_SET);
+	bpmp_mail_token_set(MA_ACKD(ch));
 
 	/*
 	 * We have to violate the bit modification rule while
@@ -113,18 +92,13 @@ static void bpmp_ack_master(int ch, int flags)
 	 * the channel won't be in ACKD state forever.
 	 */
 	if (!(flags & DO_ACK))
-		writel(MA_ACKD(ch) ^ MA_FREE(ch), RES_SEMA_SHRD_SMP_CLR);
+		bpmp_mail_token_clr(MA_ACKD(ch) ^ MA_FREE(ch));
 }
 
 /* MA_ACKD to MA_FREE */
 static void bpmp_free_master(int ch)
 {
-	writel(MA_ACKD(ch) ^ MA_FREE(ch), RES_SEMA_SHRD_SMP_CLR);
-}
-
-static void bpmp_ring_doorbell(void)
-{
-	writel(FIR_BIT(CPU_OB_IRQ), ICTLR_FIR_SET(CPU_OB_IRQ));
+	bpmp_mail_token_clr(MA_ACKD(ch) ^ MA_FREE(ch));
 }
 
 uint32_t tegra_bpmp_mail_readl(int ch, int offset)
@@ -163,10 +137,8 @@ EXPORT_SYMBOL(tegra_bpmp_mail_return);
 
 static struct completion *bpmp_completion_obj(int ch)
 {
-	int i = ch - CPU0_OB_CH1;
-	if (i < 0 || i >= NR_THREAD_CH)
-		return NULL;
-	return completion + i;
+	int i = bpmp_thread_ch_index(ch);
+	return i < 0 ? NULL : completion + i;
 }
 
 static void bpmp_signal_thread(int ch)
@@ -189,39 +161,27 @@ static void bpmp_signal_thread(int ch)
 /* bit mask of thread channels waiting for completion */
 static unsigned int to_complete;
 
-static void bpmp_ack_doorbell(int irq)
+void bpmp_handle_irq(int ch)
 {
-	writel(FIR_BIT(irq), ICTLR_FIR_CLR(irq));
-}
-
-static irqreturn_t bpmp_inbox_irq(int irq, void *data)
-{
-	unsigned long flags;
-	int ch;
 	int i;
 
 	if (!connected)
-		return IRQ_HANDLED;
-
-	ch = (long)data;
-	bpmp_ack_doorbell(irq);
+		return;
 
 	if (bpmp_slave_signalled(ch))
 		bpmp_handle_mail(channel_area[ch].ib->code, ch);
 
-	spin_lock_irqsave(&lock, flags);
+	spin_lock(&lock);
 
 	for (i = 0; i < NR_THREAD_CH && to_complete; i++) {
-		ch = THREAD_CH(i);
+		ch = bpmp_thread_ch(i);
 		if (bpmp_master_acked(ch) && (to_complete & 1 << ch)) {
 			to_complete &= ~(1 << ch);
 			bpmp_signal_thread(ch);
 		}
 	}
 
-	spin_unlock_irqrestore(&lock, flags);
-
-	return IRQ_HANDLED;
+	spin_unlock(&lock);
 }
 
 static unsigned int usec_counter(void)
@@ -269,11 +229,6 @@ static int bpmp_write_ch(int ch, int mrq, int flags, void *data, int sz)
 	return 0;
 }
 
-static int bpmp_ob_channel(void)
-{
-	return smp_processor_id() + CPU0_OB_CH0;
-}
-
 static int tch_free = (1 << NR_THREAD_CH) - 1;
 static struct semaphore tch_sem =
 		__SEMAPHORE_INITIALIZER(tch_sem, NR_THREAD_CH);
@@ -291,7 +246,7 @@ static int bpmp_write_threaded_ch(int *ch, int mrq, void *data, int sz)
 	spin_lock_irqsave(&lock, flags);
 
 	i = __ffs(tch_free);
-	*ch = THREAD_CH(i);
+	*ch = bpmp_thread_ch(i);
 
 	ret = bpmp_master_free(*ch) ? 0 : -EFAULT;
 	if (!ret) {
@@ -316,11 +271,14 @@ static int __bpmp_read_ch(int ch, void *data, int sz)
 static int bpmp_read_ch(int ch, void *data, int sz)
 {
 	unsigned long flags;
+	int tchi;
 	int r;
+
+	tchi = bpmp_thread_ch_index(ch);
 
 	spin_lock_irqsave(&lock, flags);
 	r = __bpmp_read_ch(ch, data, sz);
-	tch_free |= (1 << THREAD_CH_INDEX(ch));
+	tch_free |= (1 << tchi);
 	spin_unlock_irqrestore(&lock, flags);
 
 	up(&tch_sem);
@@ -424,155 +382,11 @@ int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz)
 }
 EXPORT_SYMBOL(tegra_bpmp_rpc);
 
-
-
 static void bpmp_init_completion(void)
 {
 	int i;
 	for (i = 0; i < NR_THREAD_CH; i++)
 		init_completion(completion + i);
-}
-
-static int cpu_irqs[] = { CPU0_IB_IRQ, CPU1_IB_IRQ, CPU2_IB_IRQ, CPU3_IB_IRQ };
-
-static void bpmp_irq_set_affinity(int cpu)
-{
-	int nr_cpus = num_present_cpus();
-	int r;
-	int i;
-
-	for (i = cpu; i < ARRAY_SIZE(cpu_irqs); i += nr_cpus) {
-		r = irq_set_affinity(cpu_irqs[i], cpumask_of(cpu));
-		WARN_ON(r);
-	}
-}
-
-static void bpmp_irq_clr_affinity(int cpu)
-{
-	int nr_cpus = num_present_cpus();
-	int new_cpu;
-	int r;
-	int i;
-
-	for (i = cpu; i < ARRAY_SIZE(cpu_irqs); i += nr_cpus) {
-		new_cpu = cpumask_any_but(cpu_online_mask, cpu);
-		r = irq_set_affinity(cpu_irqs[i], cpumask_of(new_cpu));
-		WARN_ON(r);
-	}
-}
-
-/*
- * When a CPU is being hot unplugged, the incoming
- * doorbell irqs must be moved to another CPU
- */
-static int bpmp_cpu_notify(struct notifier_block *nb, unsigned long action,
-		void *data)
-{
-	int cpu = (long)data;
-
-	switch (action) {
-	case CPU_DOWN_PREPARE:
-	case CPU_DOWN_PREPARE_FROZEN:
-		bpmp_irq_clr_affinity(cpu);
-		break;
-	case CPU_ONLINE:
-	case CPU_ONLINE_FROZEN:
-		bpmp_irq_set_affinity(cpu);
-		break;
-	}
-
-	return NOTIFY_OK;
-}
-
-static struct notifier_block bpmp_cpu_nb = {
-	.notifier_call = bpmp_cpu_notify
-};
-
-static int bpmp_init_irq(struct platform_device *pdev)
-{
-	const char *n = dev_name(&pdev->dev);
-	long ch;
-	int r;
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(cpu_irqs); i++) {
-		ch = PER_CPU_IB_CH(i);
-		r = request_irq(cpu_irqs[i], bpmp_inbox_irq, 0, n, (void *)ch);
-		if (r)
-			return r;
-	}
-
-	r = register_cpu_notifier(&bpmp_cpu_nb);
-	if (r)
-		return r;
-
-	for_each_present_cpu(i)
-		bpmp_irq_set_affinity(i);
-
-	return 0;
-}
-
-/* Channel area is setup by BPMP before signalling handshake */
-static void *bpmp_channel_area(int ch)
-{
-	u32 a;
-	writel(ch << TRIGGER_ID_SHIFT | TRIGGER_CMD_GET, ATOMICS_AP0_TRIGGER);
-	a = readl(ATOMICS_AP0_RESULT(ch));
-	return a ? IO_ADDRESS(a) : NULL;
-}
-
-static int bpmp_connect(void)
-{
-	struct mb_data *p;
-	int i;
-
-	if (connected)
-		return 0;
-
-	/* handshake */
-	if (!readl(RES_SEMA_SHRD_SMP_STA))
-		return -ENODEV;
-
-	for (i = 0; i < NR_CHANNELS; i++) {
-		p = bpmp_channel_area(i);
-		if (!p)
-			return -EFAULT;
-
-		channel_area[i].ib = p;
-		channel_area[i].ob = p;
-	}
-
-	connected = 1;
-
-	return 0;
-}
-
-void bpmp_detach(void)
-{
-	int i;
-
-	connected = 0;
-	writel(0xffffffff, RES_SEMA_SHRD_SMP_CLR);
-
-	for (i = 0; i < NR_CHANNELS; i++) {
-		channel_area[i].ib = NULL;
-		channel_area[i].ob = NULL;
-	}
-}
-
-int bpmp_attach(void)
-{
-	int i;
-
-	WARN_ON(connected);
-
-	for (i = 0; i < MSEC_PER_SEC * 60; i += 20) {
-		if (!bpmp_connect())
-			return 0;
-		msleep(20);
-	}
-
-	return -ETIMEDOUT;
 }
 
 int bpmp_mail_init(struct platform_device *pdev)
@@ -594,11 +408,7 @@ int bpmp_mail_init(struct platform_device *pdev)
 
 	r = bpmp_connect();
 	dev_info(&pdev->dev, "bpmp_connect returned %d\n", r);
-
-	/* Ignore connection failures - bpmp can be loaded post boot
-	 * TODO: remove this after POR bootflow is ready
-	 */
-	return 0;
+	return r;
 }
 
 void tegra_bpmp_init_early(void)
