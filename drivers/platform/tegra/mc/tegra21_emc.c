@@ -32,6 +32,7 @@
 #include <soc/tegra/tegra_bpmp.h>
 
 #include <asm/cputime.h>
+#include <asm/uaccess.h>
 
 #include <tegra/tegra21_emc.h>
 #include <tegra/mc-regs-t21x.h>
@@ -1625,6 +1626,204 @@ static u8 get_iso_bw_general(unsigned long iso_bw)
 
 static struct dentry *emc_debugfs_root;
 
+struct emc_table_array {
+	u32 *array;
+	u32  length;
+};
+
+static ssize_t emc_table_entry_array_write(struct file *filp,
+					   const char __user *buff,
+					   size_t len, loff_t *off)
+{
+	char kbuff[64];
+	u32 offs, value, buff_size;
+	int ret;
+	struct emc_table_array *arr =
+		((struct seq_file *)filp->private_data)->private;
+
+	buff_size = min_t(size_t, 64, len);
+
+	if (copy_from_user(kbuff, buff, buff_size))
+		return -EFAULT;
+
+	ret = sscanf(kbuff, "%u %x", &offs, &value);
+	if (ret != 2)
+		return -EINVAL;
+
+	if (offs < 0 || offs >= arr->length)
+		return -EINVAL;
+
+	pr_info("Setting reg_list: offs=%d, value = 0x%08x\n", offs, value);
+	arr->array[offs] = value;
+
+	return len;
+}
+
+static int emc_table_entry_array_show(struct seq_file *s, void *data)
+{
+	struct emc_table_array *arr = s->private;
+	int i;
+
+	for (i = 0; i < arr->length; i++)
+		seq_printf(s, "%-4d - 0x%08x\n", i, arr->array[i]);
+
+	return 0;
+}
+
+static int emc_table_entry_array_open(struct inode *inode, struct file *filp)
+{
+	return single_open(filp, emc_table_entry_array_show, inode->i_private);
+}
+
+static const struct file_operations emc_table_entry_array_fops = {
+	.open		= emc_table_entry_array_open,
+	.write		= emc_table_entry_array_write,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int emc_table_entry_create(struct dentry *parent,
+				  struct tegra21_emc_table *table)
+{
+#define RW 0664
+#define RO 0444
+#define __T_FIELD(dentry, table, field, mode, size, ux)			\
+	debugfs_create_ ## ux ## size(__stringify(field),		\
+				      mode, dentry,			\
+				      &(table->field));			\
+
+#define __T_ARRAY(dentry, table, __array, __size)			\
+	do {								\
+		static struct emc_table_array array_data_ ## __array;	\
+									\
+		array_data_ ## __array.array = table->__array;		\
+		array_data_ ## __array.length = table->__size;		\
+		debugfs_create_file(__stringify(__array), RW, dentry,	\
+				    &array_data_ ## __array,		\
+				    &emc_table_entry_array_fops);	\
+	} while (0)
+
+	char name[16];
+	struct dentry *table_dir, *array_dir;
+
+	snprintf(name, 16, "%lu", table->rate);
+
+	table_dir = debugfs_create_dir(name, parent);
+	if (!table_dir)
+		return -ENODEV;
+
+	/*
+	 * Not all table params can be modified... So some are read only, others
+	 * are read write.
+	 */
+	__T_FIELD(table_dir, table, rev,                             RO, 8,  x);
+	__T_FIELD(table_dir, table, needs_training,                  RO, 32, x);
+	__T_FIELD(table_dir, table, training_pattern,                RO, 32, x);
+	__T_FIELD(table_dir, table, trained,                         RO, 32, x);
+	__T_FIELD(table_dir, table, periodic_training,               RO, 32, x);
+	__T_FIELD(table_dir, table, trained_dram_clktree_c0d0u0,     RO, 32, x);
+	__T_FIELD(table_dir, table, trained_dram_clktree_c0d0u1,     RO, 32, x);
+	__T_FIELD(table_dir, table, trained_dram_clktree_c0d1u0,     RO, 32, x);
+	__T_FIELD(table_dir, table, trained_dram_clktree_c0d1u1,     RO, 32, x);
+	__T_FIELD(table_dir, table, trained_dram_clktree_c1d0u0,     RO, 32, x);
+	__T_FIELD(table_dir, table, trained_dram_clktree_c1d0u1,     RO, 32, x);
+	__T_FIELD(table_dir, table, trained_dram_clktree_c1d1u0,     RO, 32, x);
+	__T_FIELD(table_dir, table, trained_dram_clktree_c1d1u1,     RO, 32, x);
+	__T_FIELD(table_dir, table, current_dram_clktree_c0d0u0,     RO, 32, x);
+	__T_FIELD(table_dir, table, current_dram_clktree_c0d0u1,     RO, 32, x);
+	__T_FIELD(table_dir, table, current_dram_clktree_c0d1u0,     RO, 32, x);
+	__T_FIELD(table_dir, table, current_dram_clktree_c0d1u1,     RO, 32, x);
+	__T_FIELD(table_dir, table, current_dram_clktree_c1d0u0,     RO, 32, x);
+	__T_FIELD(table_dir, table, current_dram_clktree_c1d0u1,     RO, 32, x);
+	__T_FIELD(table_dir, table, current_dram_clktree_c1d1u0,     RO, 32, x);
+	__T_FIELD(table_dir, table, current_dram_clktree_c1d1u1,     RO, 32, x);
+	__T_FIELD(table_dir, table, run_clocks,                      RO, 32, u);
+	__T_FIELD(table_dir, table, tree_margin,                     RO, 32, x);
+	__T_FIELD(table_dir, table, burst_regs_num,                  RO, 32, u);
+	__T_FIELD(table_dir, table, burst_regs_per_ch_num,           RO, 32, u);
+	__T_FIELD(table_dir, table, trim_regs_num,                   RO, 32, u);
+	__T_FIELD(table_dir, table, burst_mc_regs_num,               RO, 32, u);
+	__T_FIELD(table_dir, table, la_scale_regs_num,               RO, 32, u);
+	__T_FIELD(table_dir, table, vref_regs_num,                   RO, 32, u);
+	__T_FIELD(table_dir, table, training_mod_regs_num,           RO, 32, u);
+	__T_FIELD(table_dir, table, dram_timing_regs_num,            RO, 32, u);
+	__T_FIELD(table_dir, table, min_mrs_wait,                    RW, 32, x);
+	__T_FIELD(table_dir, table, emc_mrw,                         RW, 32, x);
+	__T_FIELD(table_dir, table, emc_mrw2,                        RW, 32, x);
+	__T_FIELD(table_dir, table, emc_mrw3,                        RW, 32, x);
+	__T_FIELD(table_dir, table, emc_mrw4,                        RW, 32, x);
+	__T_FIELD(table_dir, table, emc_mrw9,                        RW, 32, x);
+	__T_FIELD(table_dir, table, emc_mrs,                         RW, 32, x);
+	__T_FIELD(table_dir, table, emc_emrs,                        RW, 32, x);
+	__T_FIELD(table_dir, table, emc_emrs2,                       RW, 32, x);
+	__T_FIELD(table_dir, table, emc_auto_cal_config,             RW, 32, x);
+	__T_FIELD(table_dir, table, emc_auto_cal_config2,            RW, 32, x);
+	__T_FIELD(table_dir, table, emc_auto_cal_config3,            RW, 32, x);
+	__T_FIELD(table_dir, table, emc_auto_cal_config4,            RW, 32, x);
+	__T_FIELD(table_dir, table, emc_auto_cal_config5,            RW, 32, x);
+	__T_FIELD(table_dir, table, emc_auto_cal_config6,            RW, 32, x);
+	__T_FIELD(table_dir, table, emc_auto_cal_config7,            RW, 32, x);
+	__T_FIELD(table_dir, table, emc_auto_cal_config8,            RW, 32, x);
+	__T_FIELD(table_dir, table, emc_cfg_2,                       RW, 32, x);
+	__T_FIELD(table_dir, table, emc_sel_dpd_ctrl,                RW, 32, x);
+	__T_FIELD(table_dir, table, emc_fdpd_ctrl_cmd_no_ramp,       RW, 32, x);
+	__T_FIELD(table_dir, table, dll_clk_src,                     RO, 32, x);
+	__T_FIELD(table_dir, table, clk_out_enb_x_0_clk_enb_emc_dll, RO, 32, x);
+	__T_FIELD(table_dir, table, clock_change_latency,            RO, 32, x);
+
+	/*
+	 * Now for the arrays.
+	 */
+	array_dir = debugfs_create_dir("reg_lists", table_dir);
+	if (!array_dir)
+		return 0;
+
+	__T_ARRAY(array_dir, table, burst_regs, burst_regs_num);
+	__T_ARRAY(array_dir, table, burst_regs_per_ch, burst_regs_per_ch_num);
+	__T_ARRAY(array_dir, table, shadow_regs_ca_train, burst_regs_num);
+	__T_ARRAY(array_dir, table, shadow_regs_quse_train, burst_regs_num);
+	__T_ARRAY(array_dir, table, shadow_regs_rdwr_train, burst_regs_num);
+	__T_ARRAY(array_dir, table, trim_regs, trim_regs_num);
+	__T_ARRAY(array_dir, table, trim_regs_per_ch, trim_regs_per_ch_num);
+	__T_ARRAY(array_dir, table, vref_regs, vref_regs_num);
+	__T_ARRAY(array_dir, table, dram_timing_regs, dram_timing_regs_num);
+	__T_ARRAY(array_dir, table, training_mod_regs, training_mod_regs_num);
+	__T_ARRAY(array_dir, table, burst_mc_regs, burst_mc_regs_num);
+	__T_ARRAY(array_dir, table, la_scale_regs, la_scale_regs_num);
+
+	return 0;
+}
+
+static int emc_init_table_debug(struct dentry *emc_root,
+				struct tegra21_emc_table *regular_tbl,
+				struct tegra21_emc_table *derated_tbl)
+{
+	struct dentry *tables_dir, *regular, *derated = NULL;
+	int i;
+
+	tables_dir = debugfs_create_dir("tables", emc_root);
+	if (!tables_dir)
+		return -ENODEV;
+
+	regular = debugfs_create_dir("regular", tables_dir);
+	if (!regular)
+		return -ENODEV;
+	if (derated_tbl) {
+		derated = debugfs_create_dir("derated", tables_dir);
+		if (!regular)
+			return -ENODEV;
+	}
+
+	for (i = 0; i < tegra_emc_table_size; i++) {
+		emc_table_entry_create(regular, &regular_tbl[i]);
+		if (derated)
+			emc_table_entry_create(derated, &derated_tbl[i]);
+	}
+
+	return 0;
+}
+
 static int emc_stats_show(struct seq_file *s, void *data)
 {
 	int i;
@@ -1764,6 +1963,9 @@ static int tegra_emc_debug_init(void)
 	if (!debugfs_create_file("table_info", S_IRUGO,
 				 emc_debugfs_root, NULL, &emc_table_info_fops))
 		goto err_out;
+
+	emc_init_table_debug(emc_debugfs_root,
+			     tegra_emc_table, tegra_emc_table_derated);
 
 	return 0;
 
