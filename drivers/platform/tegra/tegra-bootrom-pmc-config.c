@@ -99,8 +99,8 @@ static int tegra_bootrom_get_commands_from_dt(struct device *dev,
 		count += ret / 2;
 	}
 
-	sz_bcommand = (sizeof(*bcommands) + 0x3) &~0x3;;
-	sz_blocks = (sizeof(*block) + 0x3) &~0x3;;
+	sz_bcommand = (sizeof(*bcommands) + 0x3) & ~0x3;
+	sz_blocks = (sizeof(*block) + 0x3) & ~0x3;
 	bcommands = devm_kzalloc(dev,  sz_bcommand + nblocks * sz_blocks +
 			count * sizeof(u32), GFP_KERNEL);
 	if (!bcommands)
@@ -151,7 +151,7 @@ static int tegra_bootrom_get_commands_from_dt(struct device *dev,
 			of_property_read_u32_index(child,
 				"nvidia,write-commands", i * 2 + 1, &data);
 
-			wr_commands[i] = (reg << reg_shift) | data;
+			wr_commands[i] = (data << reg_shift) | reg;
 		}
 		block->ncommands = ncommands;
 		nblock++;
@@ -167,11 +167,11 @@ static int tegra210_configure_pmc_scratch(struct device *dev,
 	int i, j, k;
 	u32 command;
 	int reg_offset = 1;
-	u32 reg_mask, data_mask;
-	int reg_shift, command_pw;
+	u32 reg_data_mask;
+	int command_pw;
 	u32 block_add, block_val, csum;
 
-	for (i =0; i < br_commands->nblocks; ++i) {
+	for (i = 0; i < br_commands->nblocks; ++i) {
 		block = &br_commands->blocks[i];
 
 		command = block->address & PMC_BR_COMMAND_I2C_ADD_MASK;
@@ -187,41 +187,33 @@ static int tegra210_configure_pmc_scratch(struct device *dev,
 				PMC_BR_COMMAND_CTRL_ID_MASK) <<
 					PMC_BR_COMMAND_CTRL_ID_SHIFT;
 
-		// Checksum will be added later
+		/* Checksum will be added after parsing from reg/data */
 		tegra_pmc_write_bootrom_command(reg_offset * 4, command);
 		block_add = reg_offset * 4;
 		block_val = command;
 		reg_offset++;
 
-		reg_mask = (block->reg_8bits) ?
-				PMC_REG_8bit_MASK : PMC_REG_16bit_MASK;
-		data_mask = (block->data_8bits) ?
-				PMC_REG_8bit_MASK : PMC_REG_16bit_MASK;
-		reg_shift = (block->data_8bits) ? 8 : 16;
 		command_pw = (block->reg_8bits && block->data_8bits) ? 2 : 1;
+		reg_data_mask = (command_pw == 1) ? 0xFFFF : 0xFFFFFFFFUL;
 		csum = 0;
 
 		for (j = 0; j < block->ncommands; j += command_pw) {
-			command = (block->commands[j] >> reg_shift) & reg_mask;
-			command |=  (block->commands[j] & data_mask) << reg_shift;
-
+			command = block->commands[j] & reg_data_mask;
 			if (command_pw == 2) {
 				j++;
 				if (j == block->ncommands)
 					goto reg_update;
 			}
 
-			command |= ((block->commands[j] >> reg_shift) &
-						reg_mask) << 16;
-			command |=  (block->commands[j] & data_mask) << 24;
-
+			command |= (block->commands[j] & reg_data_mask) << 16;
 reg_update:
-			tegra_pmc_write_bootrom_command(reg_offset * 4, command);
-			for (k =0; k < 4; ++k)
+			tegra_pmc_write_bootrom_command(reg_offset * 4,
+						command);
+			for (k = 0; k < 4; ++k)
 				csum += (command >> (k * 8)) & 0xFF;
 			reg_offset++;
 		}
-		for (k =0; k < 4; ++k)
+		for (k = 0; k < 4; ++k)
 			csum += (block_val >> (k * 8)) & 0xFF;
 		csum = 0x100 - csum;
 		block_val = (block_val & 0xFF00FFFF) | ((csum & 0xFF) << 16);
