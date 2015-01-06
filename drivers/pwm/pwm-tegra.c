@@ -136,7 +136,7 @@ static int tegra_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 
 	val = (u32)c << PWM_DUTY_SHIFT;
 
-	if (pc->pretty_good_algo && (period_ns > HZ_10) && (period_ns < HZ_30K)) {
+	if (pc->pretty_good_algo && (period_ns < HZ_10) && (period_ns > HZ_30K)) {
 		rate = tegra_get_optimal_rate(pc, duty_ns, period_ns);
 		if (rate >= 0)
 			goto timing_done;
