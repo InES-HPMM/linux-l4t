@@ -21,14 +21,11 @@
 #include "bpmp.h"
 #include "bpmp_abi.h"
 
+#define NUM_MRQ_HANDLERS	8
+
 struct mrq_handler_data {
 	bpmp_mrq_handler handler;
 	void *data;
-};
-
-static int cpu_mrqs[] = {
-	MRQ_PING,
-	MRQ_MODULE_MAIL
 };
 
 struct module_mrq {
@@ -39,36 +36,73 @@ struct module_mrq {
 };
 
 static LIST_HEAD(module_mrq_list);
-static struct mrq_handler_data mrq_handlers[ARRAY_SIZE(cpu_mrqs)];
+static struct mrq_handler_data mrq_handlers[NUM_MRQ_HANDLERS];
 static uint8_t mrq_handler_index[NR_MRQS];
 static DEFINE_SPINLOCK(lock);
 
-static int bpmp_request_mrq(int mrq, bpmp_mrq_handler handler, void *data)
+int tegra_bpmp_cancel_mrq(int mrq)
 {
-	struct mrq_handler_data *ph;
-	unsigned long f;
-	unsigned int i;
+	const int sz = ARRAY_SIZE(mrq_handlers);
+	unsigned long flags;
+	int idx;
+	int i;
 
-	i = __MRQ_INDEX(mrq);
-	if (i >= NR_MRQS)
+	idx  = __MRQ_INDEX(mrq);
+	if (idx >= NR_MRQS)
 		return -EINVAL;
 
-	if (!mrq_handler_index[i])
-		return -EINVAL;
+	spin_lock_irqsave(&lock, flags);
 
-	spin_lock_irqsave(&lock, f);
-
-	ph = mrq_handlers + mrq_handler_index[i] - 1;
-	if (ph->handler) {
-		spin_unlock_irqrestore(&lock, f);
-		return -EEXIST;
+	i = mrq_handler_index[idx];
+	if (i >= sz) {
+		spin_unlock_irqrestore(&lock, flags);
+		return -ENODEV;
 	}
 
-	ph->handler = handler;
-	ph->data = data;
+	mrq_handlers[i].handler = NULL;
+	mrq_handlers[i].data = NULL;
+	mrq_handler_index[idx] = sz;
 
-	spin_unlock_irqrestore(&lock, f);
+	spin_unlock_irqrestore(&lock, flags);
 	return 0;
+}
+
+int tegra_bpmp_request_mrq(int mrq, bpmp_mrq_handler handler, void *data)
+{
+	const int sz = ARRAY_SIZE(mrq_handlers);
+	unsigned long flags;
+	unsigned int id;
+	int i;
+	int r = 0;
+
+	id = __MRQ_INDEX(mrq);
+	if (id >= NR_MRQS || !handler)
+		return -EINVAL;
+
+	spin_lock_irqsave(&lock, flags);
+
+	if (mrq_handler_index[id] != sz) {
+		r = -EEXIST;
+		goto out;
+	}
+
+	for (i = 0; i < sz; i++) {
+		if (!mrq_handlers[i].handler)
+			break;
+	}
+
+	if (i >= sz) {
+		r = -EOVERFLOW;
+		goto out;
+	}
+
+	mrq_handlers[i].handler = handler;
+	mrq_handlers[i].data = data;
+	mrq_handler_index[id] = i;
+
+out:
+	spin_unlock_irqrestore(&lock, flags);
+	return r;
 }
 
 static struct module_mrq *bpmp_find_module_mrq(uint32_t module_base)
@@ -85,19 +119,15 @@ static struct module_mrq *bpmp_find_module_mrq(uint32_t module_base)
 
 static void bpmp_mrq_module_mail(int code, void *data, int ch)
 {
-	unsigned long flags;
 	struct module_mrq *item;
 	uint32_t base;
 
 	base = tegra_bpmp_mail_readl(ch, 0);
-
-	spin_lock_irqsave(&lock, flags);
 	item = bpmp_find_module_mrq(base);
 	if (item)
 		item->handler(code, item->data, ch);
 	else
 		tegra_bpmp_mail_return(ch, -ENODEV, 0);
-	spin_unlock_irqrestore(&lock, flags);
 }
 
 void tegra_bpmp_cancel_module_mrq(uint32_t module_base)
@@ -127,7 +157,7 @@ int tegra_bpmp_request_module_mrq(uint32_t module_base,
 	if (!module_base || !handler)
 		return -EINVAL;
 
-	item = kmalloc(sizeof(*item), GFP_KERNEL);
+	item = kzalloc(sizeof(*item), GFP_KERNEL);
 	if (!item)
 		return -ENOMEM;
 
@@ -160,43 +190,39 @@ static void bpmp_mrq_ping(int code, void *data, int ch)
 
 void bpmp_handle_mail(int mrq, int ch)
 {
-	struct mb_data *p;
 	struct mrq_handler_data *h;
-	unsigned int i;
+	int i;
 
-	p = channel_area[ch].ib;
-	i = __MRQ_INDEX(p->code);
+	i = __MRQ_INDEX(mrq);
+	if (i >= NR_MRQS) {
+		tegra_bpmp_mail_return(ch, -EINVAL, 0);
+		return;
+	}
 
-	if (i >= NR_MRQS)
-		goto err_out;
+	spin_lock(&lock);
 
-	if (!mrq_handler_index[i])
-		goto err_out;
+	i = mrq_handler_index[i];
+	h = mrq_handlers + i;
+	if (!h->handler) {
+		spin_unlock(&lock);
+		tegra_bpmp_mail_return(ch, -ENODEV, 0);
+		return;
+	}
 
-	h = mrq_handlers + mrq_handler_index[i] - 1;
-	if (!h->handler)
-		goto err_out;
-
-	h->handler(p->code, h->data, ch);
-	return;
-
-err_out:
-	tegra_bpmp_mail_return(ch, -EINVAL, 0);
+	h->handler(mrq, h->data, ch);
+	spin_unlock(&lock);
 }
 
 int bpmp_mailman_init(void)
 {
 	int i;
-	int j;
 	int r;
 
-	for (i = 0; i < ARRAY_SIZE(cpu_mrqs); i++) {
-		j = __MRQ_INDEX(cpu_mrqs[i]);
-		mrq_handler_index[j] = i + 1;
-	}
+	for (i = 0; i < ARRAY_SIZE(mrq_handler_index); i++)
+		mrq_handler_index[i] = ARRAY_SIZE(mrq_handlers);
 
-	r = bpmp_request_mrq(MRQ_PING, bpmp_mrq_ping, NULL);
-	r = r ?: bpmp_request_mrq(MRQ_MODULE_MAIL,
+	r = tegra_bpmp_request_mrq(MRQ_PING, bpmp_mrq_ping, NULL);
+	r = r ?: tegra_bpmp_request_mrq(MRQ_MODULE_MAIL,
 			bpmp_mrq_module_mail, NULL);
 	return r;
 }

@@ -65,6 +65,8 @@ int tegra_bpmp_switch_cluster(int cpu);
 void tegra_bpmp_trace_printk(void);
 int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz,
 		void *ib_data, int ib_sz);
+int tegra_bpmp_request_mrq(int mrq, bpmp_mrq_handler handler, void *data);
+int tegra_bpmp_cancel_mrq(int mrq);
 int tegra_bpmp_request_module_mrq(uint32_t module_base,
 		bpmp_mrq_handler handler, void *data);
 void tegra_bpmp_cancel_module_mrq(uint32_t module_base);
@@ -85,6 +87,9 @@ static inline int tegra_bpmp_switch_cluster(int cpu) { return -ENODEV; }
 static inline void tegra_bpmp_trace_printk(void) {}
 static inline int tegra_bpmp_rpc(int mrq, void *ob_data, int ob_sz,
 		void *ib_data, int ib_sz) { return -ENODEV; }
+static inline int tegra_bpmp_request_mrq(int mrq, bpmp_mrq_handler handler,
+		void *data) { return -ENODEV; }
+static inline int tegra_bpmp_cancel_mrq(int mrq) { return -ENODEV; }
 static inline int tegra_bpmp_request_module_mrq(uint32_t module_base,
 		bpmp_mrq_handler handler, void *data) { return -ENODEV; }
 static inline void tegra_bpmp_cancel_module_mrq(uint32_t module_base) {}
