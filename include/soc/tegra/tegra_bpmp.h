@@ -63,8 +63,6 @@ static inline void tegra_bpmp_get_smmu_data(phys_addr_t *start, size_t *size) {}
 void tegra_bpmp_init_early(void);
 void tegra_bpmp_sclk_skip_set_rate(unsigned long input_rate,
 		unsigned long rate);
-int tegra_bpmp_do_idle(int cpu, int ccxtl, int scx);
-int tegra_bpmp_tolerate_idle(int cpu, int ccxtl, int scx_tl);
 int tegra_bpmp_scx_enable(int scx);
 void tegra_bpmp_enable_suspend(int mode, int flags);
 int tegra_bpmp_switch_cluster(int cpu);
@@ -88,10 +86,6 @@ void tegra_bpmp_mail_return_data(int ch, int code, void *data, int sz);
 static inline void tegra_bpmp_init_early(void) {}
 static inline void tegra_bpmp_sclk_skip_set_rate(unsigned long input_rate,
 		unsigned long rate) {}
-static inline int tegra_bpmp_do_idle(int cpu, int ccxtl, int scx)
-{ return -ENODEV; }
-static inline int tegra_bpmp_tolerate_idle(int cpu, int ccxtl, int scx_tl)
-{ return -ENODEV; }
 static inline int tegra_bpmp_scx_enable(int scx) { return -ENODEV; }
 static inline void tegra_bpmp_enable_suspend(int mode, int flags) {}
 static inline int tegra_bpmp_switch_cluster(int cpu) { return -ENODEV; }

@@ -66,6 +66,30 @@ struct t210_idle_state {
 			int index);
 };
 
+static int tegra_bpmp_do_idle(int cpu, int ccxtl, int scxtl)
+{
+	int32_t tl;
+	int32_t data[3];
+
+	data[0] = cpu_to_le32(cpu);
+	data[1] = cpu_to_le32(ccxtl);
+	data[2] = cpu_to_le32(scxtl);
+
+	return tegra_bpmp_send_receive_atomic(MRQ_DO_IDLE, data, sizeof(data),
+			&tl, sizeof(tl)) ?: tl;
+}
+
+static int tegra_bpmp_tolerate_idle(int cpu, int ccxtl, int scxtl)
+{
+	int32_t data[3];
+
+	data[0] = cpu_to_le32(cpu);
+	data[1] = cpu_to_le32(ccxtl);
+	data[2] = cpu_to_le32(scxtl);
+
+	return tegra_bpmp_send(MRQ_TOLERATE_IDLE, data, sizeof(data));
+}
+
 static int csite_dbg_nopwrdown(void)
 {
 	u64 csite_dbg;
