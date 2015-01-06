@@ -1221,8 +1221,6 @@ static void iommu_mapping_list_del(struct dma_iommu_mapping *mapping)
 static inline int iommu_get_num_pf_pages(struct dma_iommu_mapping *mapping,
 					 struct dma_attrs *attrs)
 {
-	int count = 0;
-
 	/* XXX: give priority to DMA_ATTR_SKIP_IOVA_GAP */
 	if (dma_get_attr(DMA_ATTR_SKIP_IOVA_GAP, attrs))
 		return 0;
@@ -1230,9 +1228,16 @@ static inline int iommu_get_num_pf_pages(struct dma_iommu_mapping *mapping,
 	/* XXX: currently we support only 1 prefetch page */
 	WARN_ON(mapping->num_pf_page > prefetch_page_count);
 
-	count += mapping->num_pf_page;
-	count += mapping->gap_page ? gap_page_count : 0;
-	return count;
+	return mapping->num_pf_page;
+}
+
+static inline int iommu_gap_pg_count(struct dma_iommu_mapping *mapping,
+				     struct dma_attrs *attrs)
+{
+	if (dma_get_attr(DMA_ATTR_SKIP_IOVA_GAP, attrs))
+		return 0;
+
+	return mapping->gap_page ? gap_page_count : 0;
 }
 
 static int pg_iommu_map(struct dma_iommu_mapping *mapping, unsigned long iova,
@@ -1360,6 +1365,7 @@ static inline dma_addr_t __alloc_iova(struct dma_iommu_mapping *mapping,
 		 (1 << mapping->order) - 1) >> mapping->order;
 
 	count += iommu_get_num_pf_pages(mapping, attrs);
+	count += iommu_gap_pg_count(mapping, attrs);
 
 	if (order > mapping->order)
 		align = (1 << (order - mapping->order)) - 1;
@@ -1390,6 +1396,7 @@ static dma_addr_t __alloc_iova_at(struct dma_iommu_mapping *mapping,
 		 (1 << mapping->order) - 1) >> mapping->order;
 
 	count += iommu_get_num_pf_pages(mapping, attrs);
+	count += iommu_gap_pg_count(mapping, attrs);
 
 	bytes = count << (mapping->order + PAGE_SHIFT);
 
@@ -1446,6 +1453,7 @@ static inline void __free_iova(struct dma_iommu_mapping *mapping,
 	unsigned long flags;
 
 	count += iommu_get_num_pf_pages(mapping, attrs);
+	count += iommu_gap_pg_count(mapping, attrs);
 
 	spin_lock_irqsave(&mapping->lock, flags);
 	bitmap_clear(mapping->bitmap, start, count);
