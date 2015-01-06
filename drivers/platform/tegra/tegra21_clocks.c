@@ -137,6 +137,7 @@
 #define PERIPH_CLK_SOURCE_EMC		0x19c
 #define PERIPH_CLK_SOURCE_EMC_MC_SAME	(1<<16)
 #define PERIPH_CLK_SOURCE_EMC_DIV2_EN	(1<<15)
+#define PERIPH_CLK_SOURCE_QSPI_DIV2_EN	(1<<8)
 #define PERIPH_CLK_SOURCE_LA		0x1f8
 #define PERIPH_CLK_SOURCE_NUM1 \
 	((PERIPH_CLK_SOURCE_LA - PERIPH_CLK_SOURCE_I2S1) / 4)
@@ -4357,6 +4358,38 @@ static struct clk_ops tegra_periph_clk_ops = {
 	.set_rate		= &tegra21_periph_clk_set_rate,
 	.round_rate		= &tegra21_periph_clk_round_rate,
 	.reset			= &tegra21_periph_clk_reset,
+};
+
+static int tegra21_qspi_clk_cfg_ex(struct clk *c,
+		enum tegra_clk_ex_param p, u32 setting)
+{
+	if (p == TEGRA_CLK_QSPI_DIV2_ENB) {
+		u32 div2_val = 0;
+		u32 val = clk_readl(c->reg);
+
+		div2_val = val & PERIPH_CLK_SOURCE_QSPI_DIV2_EN;
+
+		if (setting && !div2_val) {
+			val |= PERIPH_CLK_SOURCE_QSPI_DIV2_EN;
+			clk_writel_delay(val, c->reg);
+		} else if (!setting && div2_val) {
+			val &= ~PERIPH_CLK_SOURCE_QSPI_DIV2_EN;
+			clk_writel_delay(val, c->reg);
+		}
+		return 0;
+	}
+	return -EINVAL;
+}
+
+static struct clk_ops tegra_qspi_clk_ops = {
+	.init			= &tegra21_periph_clk_init,
+	.enable			= &tegra21_periph_clk_enable,
+	.disable		= &tegra21_periph_clk_disable,
+	.set_parent		= &tegra21_periph_clk_set_parent,
+	.set_rate		= &tegra21_periph_clk_set_rate,
+	.round_rate		= &tegra21_periph_clk_round_rate,
+	.reset			= &tegra21_periph_clk_reset,
+	.clk_cfg_ex		= &tegra21_qspi_clk_cfg_ex,
 };
 
 /* Supper skipper ops */
@@ -9073,7 +9106,7 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("hda2codec_2x", "tegra30-hda", "hda2codec",  111,	0x3e4,	 48000000, mux_pllp_pllc_plla_clkm,		MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("hda2hdmi",	"tegra30-hda",	   "hda2hdmi",	128,	0,	408000000,  mux_clk_m,				PERIPH_ON_APB),
 
-	PERIPH_CLK("qspi",	"qspi",			NULL,	211,	0x6c4, 133000000, mux_pllp_pllc_pllc_out1_pllc4_out2_pllc4_out1_clkm_pllc4_out0, MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK_EX("qspi",	"qspi",			NULL,	211,	0x6c4, 133000000, mux_pllp_pllc_pllc_out1_pllc4_out2_pllc4_out1_clkm_pllc4_out0, MUX | DIV_U71 | PERIPH_ON_APB, &tegra_qspi_clk_ops),
 	PERIPH_CLK("sbc1",	"spi-tegra114.0",	NULL,	41,	0x134,  65000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc2",	"spi-tegra114.1",	NULL,	44,	0x118,  65000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc3",	"spi-tegra114.2",	NULL,	46,	0x11c,  65000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
