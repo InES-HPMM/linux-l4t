@@ -2,7 +2,7 @@
  * drivers/base/power/domain.c - Common code related to device power domains.
  *
  * Copyright (C) 2011 Rafael J. Wysocki <rjw@sisk.pl>, Renesas Electronics Corp.
- * Copyright (c) 2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This file is released under the GPLv2.
  */
@@ -2544,26 +2544,30 @@ static int __init pm_genpd_debug_init(void)
 	list_for_each_entry_reverse(gpd, &gpd_list, gpd_list_node) {
 		domain_dir = debugfs_create_dir(gpd->name, rootdir);
 		if (!domain_dir)
-			return -ENOMEM;
+			goto error;
 
 		d = debugfs_create_file("status", S_IRUGO, domain_dir,
 				gpd, &genpd_status_fops);
 		if (!d)
-			return -ENOMEM;
+			goto error;
 
 		d = debugfs_create_file("power_on_time", S_IRUGO, domain_dir,
 				gpd, &genpd_power_on_time_fops);
 		if (!d)
-			return -ENOMEM;
+			goto error;
 
 		d = debugfs_create_file("power_off_time", S_IRUGO, domain_dir,
 				gpd, &genpd_power_off_time_fops);
 		if (!d)
-			return -ENOMEM;
+			goto error;
 	}
 
 	mutex_unlock(&gpd_list_lock);
 	return 0;
+
+error:
+	mutex_unlock(&gpd_list_lock);
+	return -ENOMEM;
 }
 late_initcall(pm_genpd_debug_init);
 #endif
