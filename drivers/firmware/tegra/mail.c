@@ -29,8 +29,6 @@
 #include "bpmp.h"
 #include "bpmp_abi.h"
 
-#define TIMERUS_CNTR_1US	IO_ADDRESS(TEGRA_TMR1_BASE + 0x10)
-
 #define CHANNEL_TIMEOUT		USEC_PER_SEC
 #define THREAD_CH_TIMEOUT	USEC_PER_SEC
 
@@ -184,21 +182,16 @@ void bpmp_handle_irq(int ch)
 	spin_unlock(&lock);
 }
 
-static unsigned int usec_counter(void)
-{
-	return __raw_readl(TIMERUS_CNTR_1US);
-}
-
 static int bpmp_wait_master_free(int ch)
 {
-	unsigned int start;
+	ktime_t start;
 
 	if (bpmp_master_free(ch))
 		return 0;
 
-	start = usec_counter();
+	start = ktime_get();
 
-	while (usec_counter() - start < CHANNEL_TIMEOUT) {
+	while (ktime_us_delta(ktime_get(), start) < CHANNEL_TIMEOUT) {
 		if (bpmp_master_free(ch))
 			return 0;
 	}
@@ -287,9 +280,14 @@ static int bpmp_read_ch(int ch, void *data, int sz)
 
 static int bpmp_wait_ack(int ch)
 {
-	unsigned int start = usec_counter();
+	ktime_t start;
 
-	while (usec_counter() - start < CHANNEL_TIMEOUT) {
+	if (bpmp_master_acked(ch))
+		return 0;
+
+	start = ktime_get();
+
+	while (ktime_us_delta(ktime_get(), start) < CHANNEL_TIMEOUT) {
 		if (bpmp_master_acked(ch))
 			return 0;
 	}
