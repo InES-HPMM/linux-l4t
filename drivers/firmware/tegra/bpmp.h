@@ -19,6 +19,7 @@
 
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
+#include <soc/tegra/tegra_bpmp.h>
 
 #define NR_CHANNELS		12
 #define MSG_SZ			32
@@ -88,14 +89,18 @@ int bpmp_connect(void);
 void bpmp_handle_irq(int ch);
 
 /* should be called from non-preemptible context */
-int bpmp_post(int mrq, void *data, int sz);
+static inline int bpmp_post(int mrq, void *data, int sz)
+{ return tegra_bpmp_send(mrq, data, sz); }
 
 /* should be called from non-preemptible context */
-int bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz);
+static inline int bpmp_rpc(int mrq, void *ob_data, int ob_sz,
+		void *ib_data, int ib_sz)
+{ return tegra_bpmp_send_receive_atomic(mrq, ob_data, ob_sz, ib_data, ib_sz); }
 
 /* should be called from sleepable context */
-int bpmp_threaded_rpc(int mrq, void *ob_data, int ob_sz,
-		void *ib_data, int ib_sz);
+static inline int bpmp_threaded_rpc(int mrq, void *ob_data, int ob_sz,
+		void *ib_data, int ib_sz)
+{ return tegra_bpmp_send_receive(mrq, ob_data, ob_sz, ib_data, ib_sz); }
 
 int __bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz);
 int bpmp_ping(void);

@@ -14,11 +14,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <linux/completion.h>
 #include <linux/cpu.h>
-#include <linux/delay.h>
 #include <linux/interrupt.h>
-#include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/notifier.h>
 #include <linux/semaphore.h>
@@ -297,8 +294,7 @@ static int bpmp_wait_ack(int ch)
 	return -ETIMEDOUT;
 }
 
-/* One-way: do not wait for ACK */
-int bpmp_post(int mrq, void *data, int sz)
+int tegra_bpmp_send(int mrq, void *data, int sz)
 {
 	unsigned long flags;
 	int ch;
@@ -318,8 +314,9 @@ int bpmp_post(int mrq, void *data, int sz)
 	return r;
 }
 
-/* Atomic */
-int bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz)
+/* should be called with local irqs disabled */
+int tegra_bpmp_send_receive_atomic(int mrq, void *ob_data, int ob_sz,
+		void *ib_data, int ib_sz)
 {
 	int ch;
 	int r;
@@ -339,9 +336,9 @@ int bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz)
 
 	return __bpmp_read_ch(ch, ib_data, ib_sz);
 }
+EXPORT_SYMBOL(tegra_bpmp_send_receive_atomic);
 
-/* Non atomic */
-int bpmp_threaded_rpc(int mrq, void *ob_data, int ob_sz,
+int tegra_bpmp_send_receive(int mrq, void *ob_data, int ob_sz,
 		void *ib_data, int ib_sz)
 {
 	struct completion *w;
@@ -364,6 +361,7 @@ int bpmp_threaded_rpc(int mrq, void *ob_data, int ob_sz,
 
 	return bpmp_read_ch(ch, ib_data, ib_sz);
 }
+EXPORT_SYMBOL(tegra_bpmp_send_receive);
 
 int __bpmp_rpc(int mrq, void *ob_data, int ob_sz, void *ib_data, int ib_sz)
 {
