@@ -2,7 +2,7 @@
  * drivers/cpufreq/cpufreq_interactive.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2012-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1283,6 +1283,11 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			sysfs_remove_group(get_governor_parent_kobj(policy),
 					get_sysfs_attr());
 			common_tunables = NULL;
+			if (tunables->above_hispeed_delay !=
+				default_above_hispeed_delay)
+				kfree(tunables->above_hispeed_delay);
+			if (tunables->target_loads != default_target_loads)
+				kfree(tunables->target_loads);
 			kfree(tunables);
 		}
 
