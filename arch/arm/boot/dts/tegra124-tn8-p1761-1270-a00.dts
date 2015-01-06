@@ -87,6 +87,7 @@
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
 				disp-default-out {
 					nvidia,out-rotation = <180>;
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE TEGRA_DC_OUT_INITIALIZED_MODE>;
 				};
 				smartdimmer {
 					status = "disabled";
