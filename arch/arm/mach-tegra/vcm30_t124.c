@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/vcm30_t124.c
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -103,10 +103,10 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 	{ "dam0",		"pll_p",	40000000,	false},
 	{ "dam1",		"pll_p",	40000000,	false},
 	{ "dam2",		"pll_p",	40000000,	false},
-	{ "adx",		"pll_p",	24600000,	false},
-	{ "adx1",		"pll_p",	24600000,	false},
-	{ "amx",		"pll_p",	24600000,	false},
-	{ "amx1",		"pll_p",	24600000,	false},
+	{ "adx",		"pll_p",	24000000,	false},
+	{ "adx1",		"pll_p",	24000000,	false},
+	{ "amx",		"pll_p",	24000000,	false},
+	{ "amx1",		"pll_p",	24000000,	false},
 	{ "d_audio",		"pll_p",	48000000,	false},
 
 	{ "spdif_out",		"pll_a_out0",	6144000,	false},
@@ -210,10 +210,10 @@ static  __initdata struct tegra_clk_init_table
 	SET_FIXED_TARGET_RATE("spdif_in",	48000000),
 	SET_FIXED_TARGET_RATE("spdif_out",	6144000),
 	SET_FIXED_TARGET_RATE("d_audio",	48000000),
-	SET_FIXED_TARGET_RATE("adx",		24600000),
-	SET_FIXED_TARGET_RATE("adx1",		24600000),
-	SET_FIXED_TARGET_RATE("amx",		24600000),
-	SET_FIXED_TARGET_RATE("amx1",		24600000),
+	SET_FIXED_TARGET_RATE("adx",		24000000),
+	SET_FIXED_TARGET_RATE("adx1",		24000000),
+	SET_FIXED_TARGET_RATE("amx",		24000000),
+	SET_FIXED_TARGET_RATE("amx1",		24000000),
 
 	SET_FIXED_TARGET_RATE("cilab",		102000000),
 	SET_FIXED_TARGET_RATE("cilcd",		102000000),
