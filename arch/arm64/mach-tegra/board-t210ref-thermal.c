@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-t210ref-thermal.c
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -186,7 +186,8 @@ int __init t210ref_thermal_sensors_init(void)
 			ARRAY_SIZE(t210ref_skin_i2c_nct72_board_info));
 #endif
 	} else if (board_info.board_id == BOARD_P2530 ||
-			board_info.board_id == BOARD_P2595) {
+			board_info.board_id == BOARD_P2595 ||
+			board_info.board_id == BOARD_E2581) {
 	/* E2530 has thermal sensor on GEN1-I2C i.e. instance 0 */
 		i2c_register_board_info(0, t210ref_i2c_nct72_board_info,
 				ARRAY_SIZE(t210ref_i2c_nct72_board_info));
