@@ -76,11 +76,24 @@ static int __nvmap_page_pool_fill_lots_locked(struct nvmap_page_pool *pool,
  */
 static void pp_clean_cache(struct nvmap_page_pool *pool)
 {
-	if (pool->contains_dirty_pages) {
+	struct page *page;
+	u32 dirty_pages = pool->dirty_pages;
+
+	if (!dirty_pages)
+		return;
+	if (dirty_pages >= (cache_maint_inner_threshold >> PAGE_SHIFT)) {
 		inner_clean_cache_all();
 		outer_clean_all();
-		pool->contains_dirty_pages = false;
+	} else {
+		list_for_each_entry_reverse(page, &pool->page_list, lru) {
+			nvmap_clean_cache_page(page);
+			dirty_pages--;
+			if (!dirty_pages)
+				break;
+		}
+		BUG_ON(dirty_pages);
 	}
+	pool->dirty_pages = 0;
 }
 
 static inline struct page *get_zero_list_page(struct nvmap_page_pool *pool)
@@ -168,13 +181,6 @@ static void nvmap_pp_do_background_zero_pages(struct nvmap_page_pool *pool)
 out:
 	for (; ret < i; ret++)
 		__free_page(pending_zero_pages[ret]);
-
-	/* clean cache in the background so that allocations immediately
-	 * after fill don't suffer the cache clean overhead.
-	 */
-	mutex_lock(&pool->lock);
-	pp_clean_cache(pool);
-	mutex_unlock(&pool->lock);
 }
 
 /*
@@ -196,10 +202,18 @@ static int nvmap_background_zero_thread(void *arg)
 	sched_setscheduler(current, SCHED_IDLE, &param);
 
 	while (!kthread_should_stop()) {
-		while (nvmap_bg_should_run(pool)) {
+		while (nvmap_bg_should_run(pool))
 			nvmap_pp_do_background_zero_pages(pool);
-		}
 
+		/* clean cache in the background so that allocations immediately
+		 * after fill don't suffer the cache clean overhead.
+		 */
+		if (pool->dirty_pages >=
+		    (cache_maint_inner_threshold >> PAGE_SHIFT)) {
+			mutex_lock(&pool->lock);
+			pp_clean_cache(pool);
+			mutex_unlock(&pool->lock);
+		}
 		wait_event_freezable(nvmap_bg_wait,
 				nvmap_bg_should_run(pool) ||
 				kthread_should_stop());
@@ -300,8 +314,6 @@ static int __nvmap_page_pool_fill_lots_locked(struct nvmap_page_pool *pool,
 	if (!enable_pp)
 		return 0;
 
-	pool->contains_dirty_pages = true;
-
 	real_nr = min_t(u32, pool->max - pool->count, nr);
 	if (real_nr == 0)
 		return 0;
@@ -314,6 +326,7 @@ static int __nvmap_page_pool_fill_lots_locked(struct nvmap_page_pool *pool,
 		list_add_tail(&pages[ind++]->lru, &pool->page_list);
 	}
 
+	pool->dirty_pages += ind;
 	pool->count += ind;
 	pp_fill_add(pool, ind);
 
