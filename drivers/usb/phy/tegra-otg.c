@@ -3,7 +3,7 @@
  *
  * OTG transceiver driver for Tegra UTMI phy
  *
- * Copyright (C) 2010-2014 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2010-2015 NVIDIA CORPORATION. All rights reserved.
  * Copyright (C) 2010 Google, Inc.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -967,13 +967,45 @@ static struct tegra_usb_platform_data tegra_ehci_utmi_pdata = {
 	},
 };
 
+static struct tegra_usb_platform_data tegra12x_ehci_utmi_pdata = {
+	.port_otg = true,
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = false,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.hot_plug = false,
+		.remote_wakeup_supported = false,
+		.power_off_on_suspend = false,
+		.turn_off_vbus_on_lp0 = true,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 15,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+		.vbus_oc_map = 0x4,
+	},
+};
+
 static struct tegra_otg_soc_data tegra_soc_data = {
 	.ehci_device = &tegra_ehci_device,
 	.ehci_pdata = &tegra_ehci_utmi_pdata,
 };
 
+static struct tegra_otg_soc_data tegra12x_soc_data = {
+	.ehci_device = &tegra_ehci_device,
+	.ehci_pdata = &tegra12x_ehci_utmi_pdata,
+};
+
 static struct of_device_id tegra_otg_of_match[] = {
 	{.compatible = "nvidia,tegra132-otg", .data = &tegra_soc_data, },
+	{.compatible = "nvidia,tegra124-otg", .data = &tegra12x_soc_data, },
 };
 MODULE_DEVICE_TABLE(of, tegra_otg_of_match);
 
