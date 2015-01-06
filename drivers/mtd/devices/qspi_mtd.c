@@ -3,7 +3,7 @@
  *
  * Author: Mike Lavender, mike@steroidmicros.com
  * Copyright (c) 2005, Intec Automation Inc.
- * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -759,10 +759,6 @@ static int qspi_read(struct mtd_info *mtd, loff_t from, size_t len,
 	struct tegra_qspi_device_controller_data *cdata
 				= flash->spi->controller_data;
 
-	u8 bus_width = X1, num_dummy_cycles = 0;
-	bool is_ddr = false;
-	u32 speed;
-
 	pr_debug("%s: %s from 0x%08x, len %zd\n",
 		dev_name(&flash->spi->dev),
 		__func__, (u32)from, len);
@@ -774,28 +770,20 @@ static int qspi_read(struct mtd_info *mtd, loff_t from, size_t len,
 	 * Set DDR/SDR, X1/X4 and Dummy Cycles from DT
 	 */
 
-	if (!cdata) {
+	if (cdata) {
 		if (len > cdata->x1_len_limit) {
-			is_ddr = cdata->x4_is_ddr;
-			bus_width = cdata->x4_bus_speed;
-			num_dummy_cycles = cdata->x4_dymmy_cycle;
-			speed = cdata->x4_bus_speed;
-			if (is_ddr)
+			if (cdata->x4_is_ddr) {
 				copy_cmd_default(&flash->cmd_table,
 					&cmd_info_table[DDR_QUAD_IO_READ]);
-			else
+			} else {
 				copy_cmd_default(&flash->cmd_table,
 					&cmd_info_table[QUAD_IO_READ]);
+			}
 		} else {
-			is_ddr = false;
-			bus_width = cdata->x1_bus_speed;
-			num_dummy_cycles = cdata->x1_dymmy_cycle;
-			speed = cdata->x1_bus_speed;
 			copy_cmd_default(&flash->cmd_table,
 					&cmd_info_table[NORMAL_READ]);
 		}
 	} else {
-		/* FIXME: Enable DDR MODE */
 		copy_cmd_default(&flash->cmd_table,
 					&cmd_info_table[QUAD_IO_READ]);
 	}
@@ -927,10 +915,6 @@ static int qspi_write(struct mtd_info *mtd, loff_t to, size_t len,
 	struct tegra_qspi_device_controller_data *cdata =
 					flash->spi->controller_data;
 
-	u8 bus_width = X1, num_dummy_cycles = 0;
-	bool is_ddr = false;
-	u32 speed;
-
 	pr_debug("%s: %s to 0x%08x, len %zd\n", dev_name(&flash->spi->dev),
 			__func__, (u32)to, len);
 
@@ -938,25 +922,18 @@ static int qspi_write(struct mtd_info *mtd, loff_t to, size_t len,
 	 * Set DDR/SDR, X1/X4 and Dummy Cycles from DT
 	 */
 
-	if (!cdata) {
+	if (cdata) {
 		if (len > cdata->x1_len_limit) {
-			is_ddr = cdata->x4_is_ddr;
-			bus_width = cdata->x4_bus_speed;
-			num_dummy_cycles = cdata->x4_dymmy_cycle;
-			speed = cdata->x4_bus_speed;
 			copy_cmd_default(&flash->cmd_table,
 				&cmd_info_table[QPI_PAGE_PROGRAM]);
 		} else {
-			is_ddr = false;
-			bus_width = cdata->x1_bus_speed;
-			num_dummy_cycles = cdata->x1_dymmy_cycle;
-			speed = cdata->x1_bus_speed;
 			copy_cmd_default(&flash->cmd_table,
 					&cmd_info_table[PAGE_PROGRAM]);
 		}
-	} else
+	} else {
 		copy_cmd_default(&flash->cmd_table,
 				&cmd_info_table[QPI_PAGE_PROGRAM]);
+	}
 
 	cmd_addr_buf[0] = opcode = flash->cmd_table.qcmd.op_code;
 	cmd_addr_buf[1] = (offset >> 24) & 0xFF;

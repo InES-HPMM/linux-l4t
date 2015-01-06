@@ -158,7 +158,6 @@
 #define MAX_CHIP_SELECT				2
 #define QSPI_FIFO_DEPTH				64
 #define QSPI_FIFO_FLUSH_MAX_DELAY		2000
-#define QSPI_DEBUG_BUILD			1
 
 struct tegra_qspi_data {
 	struct device				*dev;
@@ -781,7 +780,7 @@ static int tegra_qspi_start_transfer_one(struct spi_device *spi,
 		bool is_single_xfer)
 {
 	struct tegra_qspi_data *tqspi = spi_master_get_devdata(spi->master);
-	u32 speed, qspi_setting = 0, qspi_cs_timing2 = 0;
+	u32 speed,  qspi_cs_timing2 = 0;
 	u8 bits_per_word;
 	unsigned total_fifo_words;
 	int ret;
@@ -801,30 +800,42 @@ static int tegra_qspi_start_transfer_one(struct spi_device *spi,
 	tqspi->rx_status = 0;
 	total_fifo_words = tegra_qspi_calculate_curr_xfer_param(spi, tqspi, t);
 
-#if QSPI_DEBUG_BUILD
-	/* Use parameters like bus width/ddr from delay_usecs
-	 * in debug build
-	 */
-	speed = t->speed_hz;
-	qspi_setting = t->delay_usecs;
-	is_ddr = get_sdr_ddr(qspi_setting);
-	bus_width = get_bus_width(qspi_setting);
-	num_dummy_cycles = get_dummy_cyl(qspi_setting);
-#else
-	if (!cdata) {
+	if (cdata) {
 		if ((t->len - tqspi->cur_pos) >  cdata->x1_len_limit) {
-			is_ddr = cdata->x4_is_ddr;
-			bus_width = cdata->x4_bus_speed;
 			num_dummy_cycles =  cdata->x4_dymmy_cycle;
-			speed = cdata->x4-bus-speed;
+			speed = cdata->x4_bus_speed;
 		} else {
 			is_ddr = false;
-			bus_width = cdata->x1_bus_speed;
 			num_dummy_cycles =  cdata->x1_dymmy_cycle;
-			speed = cdata->x1-bus-speed;
+			speed = cdata->x1_bus_speed;
+		}
+	} else {
+		dev_err(tqspi->dev, "Controller Data is NULL\n");
+		return -EINVAL;
+	}
+	/*
+	 * NOTE:
+	 * 1.Bus width can be x4 even for command/addr for QPI commands.
+	 *   So caller requested bus width should be considered.
+	 * 2. is_ddr is not applicable for write. Write is always in SDR mode.
+	 */
+	is_ddr = get_sdr_ddr(t->delay_usecs);
+	bus_width = get_bus_width(t->delay_usecs);
+
+	if (is_ddr) {
+		ret = tegra_clk_cfg_ex(tqspi->clk, TEGRA_CLK_QSPI_DIV2_ENB, 1);
+		if (ret) {
+			dev_err(tqspi->dev, "Failed to set clk DIV2 %d\n", ret);
+			return -EINVAL;
+		}
+	} else if (!cdata->ifddr_div2_sdr) {
+		ret = tegra_clk_cfg_ex(tqspi->clk, TEGRA_CLK_QSPI_DIV2_ENB, 0);
+		if (ret) {
+			dev_err(tqspi->dev, "Failed to reset clk DIV2\n");
+			return -EINVAL;
 		}
 	}
-#endif
+
 	ret = tegra_qspi_validate_request(spi, tqspi, t, is_ddr);
 	if (ret)
 		return ret;
@@ -912,6 +923,7 @@ static int tegra_qspi_start_transfer_one(struct spi_device *spi,
 		ret = tegra_qspi_start_dma_based_transfer(tqspi, t);
 	else
 		ret = tegra_qspi_start_cpu_based_transfer(tqspi, t);
+
 	return ret;
 }
 
@@ -1268,7 +1280,11 @@ static struct tegra_qspi_device_controller_data
 
 	prop = of_get_property(data_np, "nvidia,x4-is-ddr", NULL);
 	if (prop)
-		cdata->x4_is_ddr = true;
+		cdata->x4_is_ddr = be32_to_cpup(prop);
+
+	prop = of_get_property(data_np, "nvidia,ifddr-div2-sdr", NULL);
+	if (prop)
+		cdata->ifddr_div2_sdr = be32_to_cpup(prop);
 
 	return cdata;
 }
