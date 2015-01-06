@@ -30,10 +30,12 @@
 #include <linux/kallsyms.h>
 #include <linux/clk.h>
 #include <asm/sections.h>
+#include <asm/cacheflush.h>
 #include <linux/cpu.h>
 #include "pm.h"
 #include <linux/tegra_ptm.h>
 #include <linux/of.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
 #include <linux/cpu_pm.h>
@@ -75,8 +77,11 @@ struct tracectx {
 	void __iomem	*ape_regs;
 	void __iomem	*ptm_regs[CONFIG_NR_CPUS];
 	void __iomem	*funnel_bccplex_regs;
-	uintptr_t	*etr_address;
+	void __iomem	*tpiu_regs;
+	phys_addr_t	etr_address;
+	int		etr_size;
 	int		*trc_buf;
+	u8		*etr_buf;
 	int		buf_size;
 	uintptr_t	start_address;
 	uintptr_t	stop_address;
@@ -96,7 +101,6 @@ struct tracectx {
 	uintptr_t	trigger_address;
 	unsigned int	percent_after_trigger;
 	unsigned int	cycle_count;
-	int		dram_carveout_kb;
 };
 
 /* initialising some values of the structure */
@@ -115,7 +119,6 @@ static struct tracectx tracer = {
 	.trigger_address		=	0,
 	.etr			=	0,
 	.ape				=	0,
-	.dram_carveout_kb		=	DRAM_CARVEOUT_MB * 1024,
 };
 
 static struct clk *csite_clk;
@@ -523,7 +526,7 @@ static void funnel_bccplex_init(struct tracectx *t)
 	funnel_bccplex_writel(t, 0x30F,
 		CORESIGHT_ATBFUNNEL_BCCPLEX_CXATBFUNNEL_REGS_CTRL_REG_0);
 
-	dev_info(t->dev, "Funnel bccplex initialized.\n");
+	dev_dbg(t->dev, "Funnel bccplex initialized.\n");
 }
 
 /* Initialise the funnel major registers */
@@ -536,7 +539,7 @@ static void funnel_major_init(struct tracectx *t)
 	funnel_major_writel(t, 0x305,
 		CORESIGHT_ATBFUNNEL_HUGO_MAJOR_CXATBFUNNEL_REGS_CTRL_REG_0);
 
-	dev_info(t->dev, "Funnel Major initialized.\n");
+	dev_dbg(t->dev, "Funnel Major initialized.\n");
 }
 
 /* Initialise the funnel minor registers */
@@ -561,36 +564,29 @@ static void etf_init(struct tracectx *t)
 	etf_regs_unlock(t);
 
 	/* Reset RWP and RRP when disabled */
-	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RWP_0);
-	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
+	etf_writel(t, 0, CXTMC_REGS_RWP_0);
+	etf_writel(t, 0, CXTMC_REGS_RRP_0);
 
 	/* Enabling capturing of trace data and Circular mode */
-
-	if (t->etr) {
-		etf_writel(t, 2, CORESIGHT_ETF_HUGO_CXTMC_REGS_MODE_0);
-		etf_writel(t, 1, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-	} else {
-		etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_MODE_0);
-		if (t->trigger) {
-			/* Capture data for specified cycles after TRIGIN */
-			words_after_trigger = (t->percent_after_trigger
-					* MAX_ETF_SIZE) / 100;
-			etf_writel(t, words_after_trigger,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_TRG_0);
-			/* Flush on Trigin, insert trigger and stop on
-							Flush Complete */
-			etf_writel(t, 0x1120,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-		}
-
-		ffcr = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
-		ffcr &= ~1;
-		ffcr |= t->formatter;
-		etf_writel(t, ffcr, CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
+	etf_writel(t, 0, CXTMC_REGS_MODE_0);
+	if (t->trigger) {
+		/* Capture data for specified cycles after TRIGIN */
+		words_after_trigger = (t->percent_after_trigger
+				* MAX_ETF_SIZE) / 100;
+		etf_writel(t, words_after_trigger, CXTMC_REGS_TRG_0);
+		/* Flush on Trigin, insert trigger and stop on
+						Flush Complete */
+		etf_writel(t, 0x1120, CXTMC_REGS_FFCR_0);
 	}
+
+	ffcr = etf_readl(t, CXTMC_REGS_FFCR_0);
+	ffcr &= ~1;
+	ffcr |= t->formatter;
+	etf_writel(t, ffcr, CXTMC_REGS_FFCR_0);
+
 	/* Enable ETF */
-	etf_writel(t, 1, CORESIGHT_ETF_HUGO_CXTMC_REGS_CTL_0);
-	dev_info(t->dev, "ETF initialized.\n");
+	etf_writel(t, 1, CXTMC_REGS_CTL_0);
+	dev_dbg(t->dev, "ETF initialized.\n");
 }
 
 /* Initialise the replicator registers*/
@@ -606,51 +602,59 @@ static void replicator_init(struct tracectx *t)
 	dev_dbg(t->dev, "Replicator initialized.\n");
 }
 
+static void tpiu_init(struct tracectx *t)
+{
+	tpiu_regs_unlock(t);
+	tpiu_writel(t, 0x1040, TPIU_FF_CTRL);
+	tpiu_regs_lock(t);
+}
+
 /* Initialise the ETR registers */
 static void etr_init(struct tracectx *t)
 {
-	int size_dwords, words_after_trigger, ffcr;
-	dma_addr_t dma_handle;
+	int words_after_trigger, ffcr;
+
+	__flush_dcache_area(phys_to_virt(t->etr_address), t->etr_size);
+
+	/* trace data is passing through ETF to ETR */
+	etf_regs_unlock(t);
+
+	/* to use ETR, ETF must be configured as HW FiFo first */
+	etf_writel(t, 0x2, CXTMC_REGS_MODE_0);
+	/* enable formatter, required in HW FiFo mode */
+	etf_writel(t, 0x1, CXTMC_REGS_FFCR_0);
+	/* enable ETF capture */
+	etf_writel(t, 1, CXTMC_REGS_CTL_0);
+
+	etf_regs_lock(t);
 
 	etr_regs_unlock(t);
 
-	size_dwords = (t->dram_carveout_kb * 1024)/4;
+	etr_writel(t, (t->etr_size >> 2), CXTMC_REGS_RSZ_0);
+	etr_writel(t, 0, CXTMC_REGS_MODE_0); /* circular mode */
 
-	etr_writel(t, size_dwords, CORESIGHT_ETR_HUGO_CXTMC_REGS_RSZ_0);
-	etr_writel(t, 0, CORESIGHT_ETR_HUGO_CXTMC_REGS_MODE_0);
-	etr_writel(t, 0x300, CORESIGHT_ETR_HUGO_CXTMC_REGS_AXICTL_0);
-
-	if (!t->etr_address)
-		t->etr_address = dma_zalloc_coherent(t->dev,
-				t->dram_carveout_kb, &dma_handle, GFP_KERNEL);
+	/* non-secure, no SG mode, WrBurstLen 0x3 */
+	etr_writel(t, 0x300, CXTMC_REGS_AXICTL_0);
 
 	/*allocate space for ETR */
-	etr_writel(t, (uintptr_t)t->etr_address,
-					CORESIGHT_ETR_HUGO_CXTMC_REGS_DBALO_0);
-	etr_writel(t, (uintptr_t)t->etr_address + t->dram_carveout_kb * 1024,
-					CORESIGHT_ETR_HUGO_CXTMC_REGS_DBAHI_0);
+	etr_writeq(t, (uintptr_t)t->etr_address, CXTMC_REGS_DBALO_0);
 
 	if (t->trigger) {
 		/* Capture data for specified cycles after seeing the TRIGIN */
 		words_after_trigger = t->percent_after_trigger *
-						size_dwords / 100 ;
-		etf_writel(t, words_after_trigger,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_TRG_0);
+						(t->etr_size >> 2) / 100;
+		etr_writel(t, words_after_trigger,
+					CXTMC_REGS_TRG_0);
 		/* Flush on Trigin, insert trigger and Stop on Flush Complete */
-		etf_writel(t, 0x1120, CORESIGHT_ETR_HUGO_CXTMC_REGS_FFCR_0);
+		etr_writel(t, 0x1120, CXTMC_REGS_FFCR_0);
 	}
-	if ((!t->formatter)) {
-		ffcr = etr_readl(t, CORESIGHT_ETR_HUGO_CXTMC_REGS_FFCR_0);
-		ffcr &= ~1;
-		etr_writel(t, ffcr, CORESIGHT_ETR_HUGO_CXTMC_REGS_FFCR_0);
-	} else {
-		ffcr = etr_readl(t, CORESIGHT_ETR_HUGO_CXTMC_REGS_FFCR_0);
-		ffcr |= 1;
-		etr_writel(t, ffcr, CORESIGHT_ETR_HUGO_CXTMC_REGS_FFCR_0);
-	}
+	ffcr = etr_readl(t, CXTMC_REGS_FFCR_0);
+	ffcr &= ~1;
+	ffcr |= t->formatter;
+	etr_writel(t, ffcr, CXTMC_REGS_FFCR_0);
 
 	/* Enable ETF */
-	etr_writel(t, 1, CORESIGHT_ETR_HUGO_CXTMC_REGS_CTL_0);
+	etr_writel(t, 1, CXTMC_REGS_CTL_0);
 	dev_dbg(t->dev, "ETR initialized.\n");
 }
 
@@ -679,15 +683,18 @@ static int trace_t210_start(struct tracectx *t)
 		/* Programming major funnel */
 		funnel_major_init(t);
 
-		/* programming the ETF */
-		etf_init(t);
-
 		if (t->etr)
 			/* Program the ETR */
 			etr_init(t);
+		else
+			/* programming the ETF */
+			etf_init(t);
 
 		/* programming the replicator */
 		replicator_init(t);
+
+		/* disable tpiu */
+		tpiu_init(t);
 
 		/* Enabling the ETM */
 		for_each_online_cpu(id) {
@@ -723,24 +730,36 @@ static ssize_t trc_read(struct file *file, char __user *data,
 	size_t len, loff_t *ppos)
 {
 	struct tracectx *t = file->private_data;
+	phys_addr_t start = virt_to_phys(t->etr_buf);
 	loff_t pos = *ppos;
 
 	if ((pos + len) >= t->buf_size)
 		len = t->buf_size - pos;
 
-	if ((len > 0) && copy_to_user(data, (u8 *) t->trc_buf+pos, len))
-		return -EFAULT;
-	else {
-		*ppos = pos + len;
-		return len;
+	if (len > 0) {
+		if (t->etr) {
+			if (start + pos + len > t->etr_address + t->etr_size)
+				len = t->etr_address + t->etr_size - start -
+					pos;
+			if (copy_to_user(data, t->etr_buf+pos, len))
+				return -EFAULT;
+			if (start + pos + len == t->etr_address + t->etr_size)
+				t->etr_buf = phys_to_virt(t->etr_address);
+		} else {
+			if (copy_to_user(data, (u8 *) t->trc_buf+pos, len))
+				return -EFAULT;
+		}
 	}
+
+	*ppos = pos + len;
+	return len;
 }
 
 /* this function copies traces from the ETF to an array */
 static ssize_t trc_fill_buf(struct tracectx *t)
 {
-	int rwp, max, count, serial, overflow;
-	int trig_stat, tmcready, top_of_buffer;
+	int rwp, count, overflow;
+	int trig_stat, tmcready;
 
 	if (!t->etf_regs)
 		return -EINVAL;
@@ -754,78 +773,71 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 	etr_regs_unlock(t);
 
 	if (t->trigger_address) {
-		if (t->etr == 1) {
+		if (t->etr) {
 			trig_stat = 0;
 			while (trig_stat == 0) {
-				trig_stat = etr_readl(t,
-					CORESIGHT_ETR_HUGO_CXTMC_REGS_STS_0);
+				trig_stat = etr_readl(t, CXTMC_REGS_STS_0);
 				trig_stat = (trig_stat >> 1) & 0x1;
 			}
 			tmcready = 0;
 			while (tmcready == 0) {
-				trig_stat = etr_readl(t,
-					CORESIGHT_ETR_HUGO_CXTMC_REGS_STS_0);
+				trig_stat = etr_readl(t, CXTMC_REGS_STS_0);
 				tmcready = (trig_stat >> 2) & 0x1;
 			}
 		} else {
 			trig_stat = 0;
 			while (trig_stat == 0) {
-				trig_stat = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_STS_0);
+				trig_stat = etf_readl(t, CXTMC_REGS_STS_0);
 				trig_stat = (trig_stat >> 1) & 0x1;
 			}
 			tmcready = 0;
 			while (tmcready == 0) {
-				trig_stat = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_STS_0);
+				trig_stat = etf_readl(t, CXTMC_REGS_STS_0);
 				tmcready = (trig_stat >> 2) & 0x1;
 			}
 		}
 	} else {
 		if (t->etr == 1) {
 			/* Manual flush and stop */
-			etr_writel(t, 0x1001,
-					CORESIGHT_ETR_HUGO_CXTMC_REGS_FFCR_0);
-			etr_writel(t, 0x1041,
-					CORESIGHT_ETR_HUGO_CXTMC_REGS_FFCR_0);
+			etr_writel(t, 0x1001, CXTMC_REGS_FFCR_0);
+			dsb();
+			isb();
+			etr_writel(t, 0x1041, CXTMC_REGS_FFCR_0);
+			dsb();
+			isb();
 			tmcready = 0;
 			while (tmcready == 0) {
 				tmcready = etr_readl(t,
-					CORESIGHT_ETR_HUGO_CXTMC_REGS_STS_0);
+					CXTMC_REGS_STS_0);
 				tmcready = (tmcready >> 2) & 0x1;
 			}
 		} else {
 			/* Manual flush and stop */
-			etf_writel(t, 0x1001,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
+			etf_writel(t, 0x1001, CXTMC_REGS_FFCR_0);
 			dsb();
 			isb();
-			etf_writel(t, 0x1041,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_FFCR_0);
+			etf_writel(t, 0x1041, CXTMC_REGS_FFCR_0);
 			dsb();
 			isb();
 			tmcready = 0;
 			while (tmcready == 0) {
 				tmcready = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_STS_0);
+					CXTMC_REGS_STS_0);
 				tmcready = (tmcready >> 2) & 0x1;
 			}
 		}
 	}
 
-	/* Disable ETF */
-	etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_CTL_0);
-
 	if (t->etr == 1) {
-		etr_writel(t, 0, CORESIGHT_ETR_HUGO_CXTMC_REGS_CTL_0);
+		/* Disable ETR */
+		etr_writel(t, 0, CXTMC_REGS_CTL_0);
 
-		rwp = etr_readl(t, CORESIGHT_ETR_HUGO_CXTMC_REGS_RWP_0);
-		 /* Get etf data and Check for overflow */
-		overflow = etr_readl(t, CORESIGHT_ETR_HUGO_CXTMC_REGS_STS_0);
+		/* save write pointer */
+		rwp = etr_readl(t, CXTMC_REGS_RWP_0);
+
+		 /* Get etr data and Check for overflow */
+		overflow = etr_readl(t, CXTMC_REGS_STS_0);
 		overflow &= 0x01;
-		max = rwp;
-		top_of_buffer = (uintptr_t)t->etr_address;
-		serial = 0;
 
 		/* Disabling the ETM */
 		for_each_online_cpu(count)
@@ -833,27 +845,21 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 
 		ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
 
-		t->buf_size = max - (uintptr_t)t->etr_address;
+		t->buf_size = rwp - (t->etr_address & 0xffffffff);
+		t->etr_buf = phys_to_virt(t->etr_address);
 		if (overflow) {
-			t->buf_size = top_of_buffer - rwp;
-			for (count = rwp; count < top_of_buffer; count += 4) {
-				t->trc_buf[count] = etf_readl(t,
-				CORESIGHT_ETR_HUGO_CXTMC_REGS_RWP_0);
-			serial += 1;
-			}
-		}
-		for (count = (uintptr_t)t->etr_address;
-						count < max; count += 4) {
-			t->trc_buf[count] = etf_readl(t,
-				CORESIGHT_ETR_HUGO_CXTMC_REGS_RWP_0);
-			serial += 1;
+			t->etr_buf += t->buf_size;
+			t->buf_size = t->etr_size;
 		}
 	} else {
+		/* Disable ETF */
+		etf_writel(t, 0, CXTMC_REGS_CTL_0);
+
 		/* save write pointer */
-		rwp = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_RWP_0);
+		rwp = etf_readl(t, CXTMC_REGS_RWP_0);
 
 		/* check current status for overflow */
-		overflow = etf_readl(t, CORESIGHT_ETF_HUGO_CXTMC_REGS_STS_0);
+		overflow = etf_readl(t, CXTMC_REGS_STS_0);
 		overflow &= 0x1;
 
 		/* Disabling the ETM */
@@ -864,13 +870,13 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 
 		/* by default, start reading from 0 */
 		t->buf_size = rwp;
-		etf_writel(t, 0, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
+		etf_writel(t, 0, CXTMC_REGS_RRP_0);
 
 		if (overflow) {
 			/* in case of overflow, the size is max ETF size */
 			t->buf_size = MAX_ETF_SIZE * 4;
 			/* start from RWP for read */
-			etf_writel(t, rwp, CORESIGHT_ETF_HUGO_CXTMC_REGS_RRP_0);
+			etf_writel(t, rwp, CXTMC_REGS_RRP_0);
 			rwp = MAX_ETF_SIZE;
 		} else
 			rwp >>= 2;
@@ -879,8 +885,7 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 		 * no overflow. take advantage of RRP rollover
 		 */
 		for (count = 0; count < rwp-1; count++) {
-			t->trc_buf[count] = etf_readl(t,
-					CORESIGHT_ETF_HUGO_CXTMC_REGS_RRD_0);
+			t->trc_buf[count] = etf_readl(t, CXTMC_REGS_RRD_0);
 		}
 	}
 	etf_regs_lock(t);
@@ -1183,12 +1188,12 @@ static void trc_nodes(struct tracectx *t)
 	if (ret)
 		dev_err(t->dev, "failes to register /dev/last_trc\n");
 
-	dev_info(t->dev, "Trace nodes are initialized.\n");
+	dev_dbg(t->dev, "Trace nodes are initialized.\n");
 }
 
 static int ptm_probe(struct platform_device  *dev)
 {
-	int i, dbg_cnt = 0, ptm_cnt = 0, ret = 0;
+	int i, ptm_cnt = 0, ret = 0;
 
 	struct tracectx *t = &tracer;
 
@@ -1222,19 +1227,22 @@ static int ptm_probe(struct platform_device  *dev)
 			t->etr_regs = addr;
 			break;
 		case 4:
-			t->funnel_bccplex_regs = addr;
+			t->tpiu_regs = addr;
 			break;
 		case 5:
+			t->funnel_bccplex_regs = addr;
+			break;
 		case 6:
 		case 7:
 		case 8:
+		case 9:
 			if (ptm_cnt < CONFIG_NR_CPUS)
 				t->ptm_regs[ptm_cnt++] = addr;
 			break;
-		case 9:
+		case 10:
 			t->funnel_minor_regs = addr;
 			break;
-		case 10:
+		case 11:
 			t->ape_regs = addr;
 			break;
 		default:
@@ -1245,7 +1253,6 @@ static int ptm_probe(struct platform_device  *dev)
 	}
 
 	WARN_ON(ptm_cnt < num_possible_cpus());
-	WARN_ON(dbg_cnt < num_possible_cpus());
 
 	/* Configure Coresight Clocks */
 	csite_clk = clk_get_sys("csite", NULL);
@@ -1274,7 +1281,7 @@ static int ptm_probe(struct platform_device  *dev)
 	register_cpu_notifier(&ptm_cpu_hotplug_notifier_block);
 #endif
 
-	dev_info(&dev->dev, "PTM driver initialized.\n");
+	dev_dbg(&dev->dev, "PTM driver initialized.\n");
 
 out:
 	if (ret)
@@ -1305,6 +1312,7 @@ static int ptm_remove(struct platform_device *dev)
 	devm_iounmap(&dev->dev, t->funnel_minor_regs);
 	devm_iounmap(&dev->dev, t->ape_regs);
 	devm_iounmap(&dev->dev, t->etr_regs);
+	devm_iounmap(&dev->dev, t->tpiu_regs);
 	devm_iounmap(&dev->dev, t->funnel_bccplex_regs);
 	devm_iounmap(&dev->dev, t->replicator_regs);
 	t->etf_regs = NULL;
@@ -1346,3 +1354,10 @@ static int __init tegra_ptm_driver_init(void)
 }
 device_initcall(tegra_ptm_driver_init);
 
+static int __init ptm_etr_carveout_setup(struct reserved_mem *rmem)
+{
+	tracer.etr_address = rmem->base;
+	tracer.etr_size = rmem->size;
+	return 0;
+}
+RESERVEDMEM_OF_DECLARE(ptm, "nvidia,ptm-carveout", ptm_etr_carveout_setup);
