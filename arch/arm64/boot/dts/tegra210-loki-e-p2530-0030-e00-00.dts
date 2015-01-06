@@ -30,6 +30,7 @@
 		compatible = "pwm-backlight";
 		status = "okay";
 		pwms = <&tegra_pwm 0 29334>;
+		disable-on-kernel-charging;
 	};
 
 	host1x {

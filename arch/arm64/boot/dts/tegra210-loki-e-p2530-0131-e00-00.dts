@@ -30,6 +30,7 @@
 	backlight {
 		compatible = "pwm-backlight";
 		status = "okay";
+		disable-on-kernel-charging;
 		panel-j-720p-5-0-bl {
 			pwms = <&tegra_pwm 0 29334>;
 		};
