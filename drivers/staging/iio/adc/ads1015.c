@@ -155,6 +155,7 @@ static int ads1015_start_conversion(struct ads1015 *adc, int chan)
 	int timeout = 10;
 
 	reg_val = adc->config;
+	reg_val |= (ADS1015_SINGLE_SHOT_MODE << ADS1015_OPERATION_MODE_SHIFT);
 	reg_val &= ~ADS1015_INPUT_MULTIPLEXER_MASK;
 	reg_val |= (channel_mux_val << ADS1015_INPUT_MULTIPLEXER_SHIFT);
 	ret = ads1015_write(adc->rmap, ADS1015_CONFIG_REG, reg_val);
@@ -297,7 +298,8 @@ static int ads1015_read_raw(struct iio_dev *iodev,
 
 	mutex_lock(&iodev->mlock);
 
-	if (adc->adc_prop.is_continuous_mode) {
+	if ((adc->adc_prop.is_continuous_mode) &&
+		(chan->channel == adc->adc_prop.channel_number)) {
 		ret = ads1015_threshold_update(adc, val);
 		goto done;
 	}
@@ -316,6 +318,15 @@ static int ads1015_read_raw(struct iio_dev *iodev,
 	}
 	rval = (s16)reg_val;
 	*val = (rval >> 4);
+
+	/* if device is enabled in cotinuous mode set it here again */
+	if (adc->adc_prop.is_continuous_mode) {
+		ret = ads1015_write(adc->rmap, ADS1015_CONFIG_REG, adc->config);
+		if (ret < 0) {
+			dev_err(adc->dev, "CONFIG reg write failed %d\n", ret);
+			return ret;
+		}
+	}
 done:
 	mutex_unlock(&iodev->mlock);
 	if (!ret)
