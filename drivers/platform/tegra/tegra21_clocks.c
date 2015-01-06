@@ -4508,6 +4508,17 @@ static int tegra21_clk_super_skip_enable(struct clk *c)
 	return 0;
 }
 
+#ifdef CONFIG_TEGRA_BPMP_SCLK_SKIP
+static void tegra_bpmp_sclk_skip_set_rate(unsigned long input_rate,
+		unsigned long rate)
+{
+	uint32_t mb[] = { cpu_to_le32(input_rate), cpu_to_le32(rate) };
+	int r = tegra_bpmp_send_receive_atomic(MRQ_SCLK_SKIP_SET_RATE,
+			&mb, sizeof(mb), NULL, 0);
+	WARN_ON(r);
+}
+#endif
+
 static int tegra21_clk_super_skip_set_rate(struct clk *c, unsigned long rate)
 {
 	u32 val, mul, div;
