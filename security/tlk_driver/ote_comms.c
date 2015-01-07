@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2015 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -232,7 +232,7 @@ static void te_release_mem_buffer(struct te_shmem_desc *shmem_desc)
 	}
 	kfree(shmem_desc->pages);
 
-	if (shmem_desc->is_locked) {
+	if (shmem_desc->is_locked && current->mm) {
 		status = sys_munlock((unsigned long)shmem_desc->buffer,
 							shmem_desc->size);
 		if (status)
