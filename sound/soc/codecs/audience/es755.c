@@ -2352,9 +2352,6 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 
 			switch (accdet_status_reg.fields.impd_level) {
 			case 0:
-
-			/* Need to support case 1 as a lot of the headsets give
-			out impedance level 1 for play/pause button. */
 			case 1:
 				snd_soc_jack_report(escore->jack,
 						SND_JACK_BTN_0,

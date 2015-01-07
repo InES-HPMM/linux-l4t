@@ -583,7 +583,6 @@ struct escore_priv {
 	u8 can_mpsleep;
 	u8 output_mode;
 	u8 capture_mode;
-	u8 active_ip;
 	u32 dhwpt_cmd;
 	int intf_probed;
 	char *device_name;
