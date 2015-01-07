@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-t210ref-sensors.c
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -13,7 +13,9 @@
  * more details.
  */
 
+#include <linux/i2c.h>
 #include <linux/platform_device.h>
+#include <media/imx214.h>
 #include <media/soc_camera.h>
 #include <media/soc_camera_platform.h>
 #include <media/tegra_v4l2_camera.h>
@@ -85,11 +87,54 @@ static struct platform_device t210ref_soc_camera_device = {
 };
 #endif
 
+#if IS_ENABLED(CONFIG_SOC_CAMERA_IMX214)
+static int t210ref_imx214_power(struct device *dev, int enable)
+{
+	return 0;
+}
+
+static struct imx214_platform_data t210ref_imx214_data;
+
+static struct i2c_board_info t210ref_imx214_camera_i2c_device = {
+	I2C_BOARD_INFO("imx214_v4l2", 0x1a),
+	.platform_data = &t210ref_imx214_data,
+};
+
+static struct tegra_camera_platform_data t210ref_imx214_camera_platform_data = {
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.port			= TEGRA_CAMERA_PORT_CSI_A,
+	.lanes			= 4,
+	.continuous_clk		= 0,
+};
+
+static struct soc_camera_link imx214_iclink = {
+	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
+	.board_info	= &t210ref_imx214_camera_i2c_device,
+	.module_name	= "imx214_v4l2",
+	.i2c_adapter_id	= 6, /* VI2 I2C controller */
+	.power		= t210ref_imx214_power,
+	.priv		= &t210ref_imx214_camera_platform_data,
+};
+
+static struct platform_device t210ref_imx214_soc_camera_device = {
+	.name	= "soc-camera-pdrv",
+	.id	= 0,
+	.dev	= {
+		.platform_data = &imx214_iclink,
+	},
+};
+#endif
+
 int t210ref_camera_init(void)
 {
 	pr_debug("%s: ++\n", __func__);
 #if IS_ENABLED(CONFIG_SOC_CAMERA_PLATFORM)
 	platform_device_register(&t210ref_soc_camera_device);
+#endif
+
+#if IS_ENABLED(CONFIG_SOC_CAMERA_IMX214)
+	platform_device_register(&t210ref_imx214_soc_camera_device);
 #endif
 
 	return 0;
