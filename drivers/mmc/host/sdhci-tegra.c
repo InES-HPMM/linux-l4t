@@ -49,6 +49,7 @@
 #include <linux/tegra-soc.h>
 #include <linux/tegra-fuse.h>
 #include <linux/tegra-pmc.h>
+#include <linux/padctrl/padctrl.h>
 
 #include <linux/platform_data/mmc-sdhci-tegra.h>
 #include <linux/platform/tegra/common.h>
@@ -690,6 +691,7 @@ struct sdhci_tegra {
 	int drive_group_sel;
 	bool en_strobe;
 	unsigned int tuned_tap_delay;
+	struct padctrl *sdmmc_padctrl;
 };
 
 static unsigned int boot_volt_req_refcount;
@@ -2142,6 +2144,7 @@ static int tegra_sdhci_configure_regulators(struct sdhci_tegra *tegra_host,
 	int vddio_new;
 	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
 	const struct tegra_sdhci_platform_data *plat;
+	struct sdhci_host *sdhci = dev_get_drvdata(tegra_host->dev);
 
 	switch (option) {
 	case CONFIG_REG_EN:
@@ -2171,10 +2174,16 @@ static int tegra_sdhci_configure_regulators(struct sdhci_tegra *tegra_host,
 				plat = tegra_host->plat;
 				/* set pwrdet sdmmc1 before set 3.3 V */
 				if ((vddio_prev < min_uV) &&
-					(min_uV >= SDHOST_HIGH_VOLT_2V8)) {
-					if (plat->pwrdet_support)
-						pwr_detect_bit_write(
-							plat->pwrdet_bit, true);
+					(min_uV >= SDHOST_HIGH_VOLT_2V8) &&
+					plat->pwrdet_support &&
+					tegra_host->sdmmc_padctrl) {
+					rc = padctrl_set_voltage(
+						tegra_host->sdmmc_padctrl,
+						SDHOST_HIGH_VOLT_3V3);
+					if (rc)
+						dev_err(mmc_dev(sdhci->mmc),
+						"padcontrol set volt failed:"
+						" %d\n", rc);
 				}
 			}
 			rc = regulator_set_voltage(tegra_host->vdd_io_reg,
@@ -2185,17 +2194,15 @@ static int tegra_sdhci_configure_regulators(struct sdhci_tegra *tegra_host,
 				plat = tegra_host->plat;
 				/* clear pwrdet sdmmc1 after set 1.8 V */
 				if ((vddio_new <= vddio_prev) &&
-					(vddio_new == SDHOST_LOW_VOLT_MAX)) {
-					if (plat->pwrdet_support) {
-						pwr_detect_bit_write(
-							plat->pwrdet_bit,
-							false);
-						pr_debug("sdmmc pwrdet-bit=%d: %s line=%d, regulator set, min_uV=%d, max_uV=%d, vddio prev=%d, new=%d\n",
-							plat->pwrdet_bit,
-							__func__, __LINE__,
-							min_uV, max_uV,
-							vddio_prev, vddio_new);
-					}
+					(vddio_new == SDHOST_LOW_VOLT_MAX) &&
+					plat->pwrdet_support &&
+					tegra_host->sdmmc_padctrl) {
+					rc = padctrl_set_voltage(
+					tegra_host->sdmmc_padctrl, vddio_new);
+					if (rc)
+						dev_err(mmc_dev(sdhci->mmc),
+						"padcontrol set volt failed:"
+						" %d\n", rc);
 				}
 			}
 		}
@@ -4788,7 +4795,6 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 			plat->mmc_data.ocr_mask = MMC_OCR_3V3_MASK;
 	}
 	plat->pwrdet_support = of_property_read_bool(np, "pwrdet-support");
-	of_property_read_u32(np, "pwrdet-bit", &plat->pwrdet_bit);
 	if (of_find_property(np, "fixed-clock-freq", NULL)) {
 		plat->is_fix_clock_freq = true;
 		of_property_read_u32_array(np,
@@ -4871,6 +4877,14 @@ static int sdhci_tegra_init_pinctrl_info(struct device *dev,
 
 	if (!np)
 		return 0;
+
+	if (plat->pwrdet_support) {
+		tegra_host->sdmmc_padctrl = devm_padctrl_get(dev, "sdmmc");
+		if (IS_ERR(tegra_host->sdmmc_padctrl)) {
+			ret = PTR_ERR(tegra_host->sdmmc_padctrl);
+			tegra_host->sdmmc_padctrl = NULL;
+		}
+	}
 
 	if (plat->update_pinctrl_settings) {
 		tegra_host->pinctrl_sdmmc = devm_pinctrl_get(dev);
