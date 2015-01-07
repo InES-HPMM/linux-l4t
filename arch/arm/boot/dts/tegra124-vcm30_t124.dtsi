@@ -253,6 +253,16 @@
 		};
 	};
 
+	udc@7d000000 {
+		nvidia,port-otg;
+		status = "okay";
+	};
+
+	otg@7d000000 {
+		nvidia,id-detection-type = <2>;
+		status = "okay";
+	};
+
 	dfll@70110000 {
 		board-params = <&{/cpu_dfll_board_params}>;
 		i2c-pmic-integration = <&{/cpu_dfll_pmic_integration}>;

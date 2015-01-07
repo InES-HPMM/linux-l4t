@@ -1,7 +1,7 @@
 /*
  * arch/arm/boot/dts/tegra124-p1859-lk.dts
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -76,6 +76,16 @@
 	};
 
 	spi@7000dc00 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	udc@7d000000 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	otg@7d000000 {
 		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
 		status = "disabled";
 	};

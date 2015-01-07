@@ -270,42 +270,10 @@ void __init tegra_vcm30_t124_therm_mon_init(void)
 #endif
 }
 
-static struct tegra_usb_platform_data tegra_udc_pdata = {
-#if defined(CONFIG_USB_TEGRA_OTG)
-	.port_otg = true,
-#else
-	.port_otg = false,
-#endif
-	.has_hostpc = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-	.op_mode = TEGRA_USB_OPMODE_DEVICE,
-	.u_data.dev = {
-		.vbus_pmu_irq = 0,
-		.charging_supported = false,
-		.remote_wakeup_supported = false,
-	},
-	.u_cfg.utmi = {
-		.hssync_start_delay = 0,
-		.idle_wait_delay = 17,
-		.elastic_limit = 16,
-		.term_range_adj = 6,
-		.xcvr_setup = 63,
-		.xcvr_setup_offset = 6,
-		.xcvr_use_fuses = 1,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
-		.xcvr_use_lsb = 1,
-	},
-};
-
 /* USB/UDC/OTG devices */
+#if !defined(CONFIG_USB_TEGRA_OTG)
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
-#if defined(CONFIG_USB_TEGRA_OTG)
-	.port_otg = true,
-	.id_det_type = TEGRA_USB_VIRTUAL_ID,
-#else
 	.port_otg = false,
-#endif
 	.has_hostpc = true,
 	.unaligned_dma_buf_supported = false,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
@@ -329,7 +297,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.vbus_oc_map = 0x4,
 	},
 };
-
+#endif
 
 static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.port_otg = false,
@@ -408,10 +376,6 @@ static struct tegra_usb_platform_data tegra_ehci3_hsic_pdata = {
 		.power_off_on_suspend = false,
 		},
 };
-static struct tegra_usb_otg_data tegra_otg_pdata = {
-	.ehci_device = &tegra_ehci1_device,
-	.ehci_pdata = &tegra_ehci1_utmi_pdata,
-};
 
 /* wakeup IDs corresponding to XHCI usage*/
 #define USB3_UTMIP_WAKEUP 41
@@ -420,25 +384,12 @@ void __init tegra_vcm30_t124_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
+#if !defined(CONFIG_USB_TEGRA_OTG)
+	/* register host mode */
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
-		tegra_otg_pdata.is_xhci = false;
-		tegra_udc_pdata.u_data.dev.is_xhci = false;
-	} else {
-		tegra_otg_pdata.is_xhci = true;
-		tegra_udc_pdata.u_data.dev.is_xhci = true;
-	}
-#if defined(CONFIG_USB_TEGRA_OTG)
-		/* register OTG device */
-		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
-		platform_device_register(&tegra_otg_device);
-
-		/* Setup the udc platform data */
-		tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
-		platform_device_register(&tegra_udc_device);
-#else
-		/* register host mode */
 		tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
 		platform_device_register(&tegra_ehci1_device);
+	}
 #endif
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 		tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
@@ -480,6 +431,12 @@ static struct of_dev_auxdata tegra_vcm30_t124_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-isp", TEGRA_ISPB_BASE, "isp.1", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-tsec", TEGRA_TSEC_BASE, "tsec", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-vic", TEGRA_VIC_BASE, "vic03.0", NULL),
+#if defined(CONFIG_USB_TEGRA_OTG)
+	OF_DEV_AUXDATA("nvidia,tegra124-udc", TEGRA_USB_BASE, "tegra-udc.0",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-otg", TEGRA_USB_BASE, "tegra-otg",
+			NULL),
+#endif
 	OF_DEV_AUXDATA("nvidia,tegra124-xhci", 0x70090000, "tegra-xhci", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-nvavp", 0x60001000, "nvavp", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-pwm", 0x7000a000, "tegra-pwm", NULL),
