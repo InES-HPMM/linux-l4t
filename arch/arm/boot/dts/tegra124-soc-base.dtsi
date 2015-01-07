@@ -27,6 +27,12 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
+	aliases {
+		ehci0 = &ehci1;
+		ehci1 = &ehci2;
+		ehci2 = &ehci3;
+	};
+
 	mc {
 		compatible = "nvidia,tegra-mc";
 
@@ -947,6 +953,30 @@
 		reg = <0x0 0x7d000000 0x0 0x4000>;
 		interrupts = <0 20 0x04>;
 		iommus = <&smmu TEGRA_SWGROUP_PPCS1>;
+		status = "disabled";
+	};
+
+	ehci1: ehci@7d000000 {
+		compatible = "nvidia,tegra124-ehci";
+		reg = <0x0 0x7d000000 0x0 0x4000>;
+		interrupts = <0 20 0x04>;
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "disabled";
+	};
+
+	ehci2: ehci@7d004000 {
+		compatible = "nvidia,tegra124-ehci";
+		reg = <0x0 0x7d004000 0x0 0x4000>;
+		interrupts = <0 21 0x04>;
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "disabled";
+	};
+
+	ehci3: ehci@7d008000 {
+		compatible = "nvidia,tegra124-ehci";
+		reg = <0x0 0x7d008000 0x0 0x4000>;
+		interrupts = <0 97 0x04>;
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
 		status = "disabled";
 	};
 
