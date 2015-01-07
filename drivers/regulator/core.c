@@ -31,6 +31,7 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/module.h>
+#include <linux/jiffies.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/regulator.h>
@@ -120,6 +121,28 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 static struct regulator *create_regulator(struct regulator_dev *rdev,
 					  struct device *dev,
 					  const char *supply_name);
+
+static u32 rdev_time_range[] = {0, 500, 1000, 2000, 5000, 10000, 20000, 100000};
+static u32 rdev_time_step[] = {25, 50, 100, 200, 500, 1000, 5000};
+static int rdev_get_time_profile_index(u32 us)
+{
+	int index = 0;
+	int i;
+	int nrange = ARRAY_SIZE(rdev_time_range);
+
+	for (i = 0; i < nrange - 1; i++) {
+		if (us < rdev_time_range[i + 1]) {
+			index += (us - rdev_time_range[i]) / rdev_time_step[i];
+			break;
+		}
+
+		index += (rdev_time_range[i + 1] - rdev_time_range[i]) /
+					rdev_time_step[i];
+	}
+	if (us > rdev_time_range[nrange - 1])
+		index++;
+	return index;
+}
 
 static const char *rdev_get_name(struct regulator_dev *rdev)
 {
@@ -2784,8 +2807,10 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 	unsigned int selector;
 	int old_selector = -1;
 	bool tried_change = false;
+	u64 start_jiff, end_jiff;
 
 	trace_regulator_set_voltage(rdev_get_name(rdev), min_uV, max_uV);
+	start_jiff = get_jiffies_64();
 
 	min_uV += rdev->constraints->uV_offset;
 	max_uV += rdev->constraints->uV_offset;
@@ -2897,6 +2922,23 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 
 	trace_regulator_set_voltage_complete(rdev_get_name(rdev), best_val);
 
+	if (rdev->set_volt_profile.enable_profiling) {
+		unsigned long diff_jiff, us;
+		int index;
+
+		end_jiff = get_jiffies_64();
+		diff_jiff = end_jiff - start_jiff;
+		us = jiffies_to_usecs(diff_jiff);
+
+		if (rdev->set_volt_profile.min_time > us)
+			rdev->set_volt_profile.min_time = us;
+		if (rdev->set_volt_profile.max_time < us)
+			rdev->set_volt_profile.max_time = us;
+		index = rdev_get_time_profile_index(us);
+		if (rdev->set_volt_profile.max_index < index)
+			rdev->set_volt_profile.max_index = index;
+		rdev->set_volt_profile.occurance_count[index]++;
+	}
 	return ret;
 }
 
@@ -4083,6 +4125,7 @@ static int add_regulator_attributes(struct regulator_dev *rdev)
 		if (status < 0)
 			return status;
 	}
+
 	if (ops->get_current_limit) {
 		status = device_create_file(dev, &dev_attr_microamps);
 		if (status < 0)
@@ -4184,8 +4227,61 @@ static int add_regulator_attributes(struct regulator_dev *rdev)
 	return status;
 }
 
+#ifdef CONFIG_DEBUG_FS
+static int set_voltage_tp_read_file(struct seq_file *s, void *data)
+{
+	struct regulator_dev *rdev = s->private;
+	int i;
+	int min_t, max_t;
+	int range_count, step_count;
+
+	if (!rdev->set_volt_profile.enable_profiling) {
+		seq_puts(s, "Time Profiling not enabled\n");
+		return 0;
+	}
+
+	mutex_lock(&rdev->mutex);
+	seq_printf(s, "min_time: %d\n", rdev->set_volt_profile.min_time);
+	seq_printf(s, "max_time: %d\n", rdev->set_volt_profile.max_time);
+	seq_puts(s, "Time(us):  Count\n");
+	range_count = 0;
+	step_count = 0;
+	max_t = 0;
+	for (i = 0; i <= rdev->set_volt_profile.max_index; i++) {
+		min_t = max_t;
+		max_t = min_t + rdev_time_step[step_count];
+		if (max_t >= rdev_time_range[range_count + 1]) {
+			range_count++;
+			step_count++;
+		}
+		if (!rdev->set_volt_profile.occurance_count[i])
+			continue;
+		seq_printf(s, "%d - %d : %llu\n", min_t, max_t,
+				rdev->set_volt_profile.occurance_count[i]);
+	}
+	mutex_unlock(&rdev->mutex);
+	return 0;
+}
+
+static int set_voltage_tp_open_file(struct inode *inode, struct file *file)
+{
+	return single_open(file,  set_voltage_tp_read_file, inode->i_private);
+}
+#endif
+
+static const struct file_operations set_voltage_tp_fops = {
+#ifdef CONFIG_DEBUG_FS
+	.open = set_voltage_tp_open_file,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+#endif
+};
+
 static void rdev_init_debugfs(struct regulator_dev *rdev)
 {
+	struct regulator_ops    *ops = rdev->desc->ops;
+
 	rdev->debugfs = debugfs_create_dir(rdev_get_name(rdev), debugfs_root);
 	if (!rdev->debugfs) {
 		rdev_warn(rdev, "Failed to create debugfs directory\n");
@@ -4198,6 +4294,12 @@ static void rdev_init_debugfs(struct regulator_dev *rdev)
 			   &rdev->open_count);
 	debugfs_create_u32("bypass_count", 0444, rdev->debugfs,
 			   &rdev->bypass_count);
+	if (ops->set_voltage || ops->set_voltage_sel) {
+		debugfs_create_u32("timing_profile", 0644, rdev->debugfs,
+			   &rdev->set_volt_profile.enable_profiling);
+		debugfs_create_file("set_voltage_time_profile", 0444,
+				rdev->debugfs, rdev, &set_voltage_tp_fops);
+	}
 }
 
 /**
