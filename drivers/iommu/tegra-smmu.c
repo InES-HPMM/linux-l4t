@@ -739,9 +739,10 @@ static u32 *locate_pte(struct smmu_as *as,
 		/* Mapped entry table already exists */
 		*ptbl_page_p = SMMU_EX_PTBL_PAGE(pdir[pdn]);
 		if (!(pdir[pdn] & _PDE_NEXT)) {
-			WARN(1, "asid=%d iova=%pa pdir[%d]=0x%x ptbl=%p, ptn=%d\n",
-			     as->asid, &iova, pdn, pdir[pdn],
-			     page_address(*ptbl_page_p), ptn);
+			WARN(1, "error:locate pte req on pde mapping, asid=%d "
+				"iova=%pa pdir[%d]=0x%x ptbl=%p, ptn=%d\n",
+				as->asid, &iova, pdn, pdir[pdn],
+				page_address(*ptbl_page_p), ptn);
 			return NULL;
 		}
 	} else if (!allocate) {
@@ -875,16 +876,20 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 		if (pte) {
 			int i;
 			unsigned int *rest = &as->pte_count[pdn];
-			size_t bytes = sizeof(*pte) * count;
+			size_t pte_bytes = sizeof(*pte) * count;
 
-			for (i = 0; i < count; i++)
+			for (i = 0; i < count; i++) {
+				if (pte[i] == _PTE_VACANT(iova + i * PAGE_SIZE))
+					WARN(1, "error:unmap req on vacant pte, iova=%llx",
+						(u64)(iova + i * PAGE_SIZE));
 				trace_smmu_set_pte(as->asid,
 						   iova + i * PAGE_SIZE, 0,
 						   PAGE_SIZE, 0);
+			}
 			*rest -= count;
 			if (*rest) {
-				memset(pte, 0, bytes);
-				FLUSH_CPU_DCACHE(pte, page, bytes);
+				memset(pte, 0, pte_bytes);
+				FLUSH_CPU_DCACHE(pte, page, pte_bytes);
 			} else {
 				free_ptbl(as, iova, !flush_all);
 			}
@@ -935,8 +940,9 @@ static int __smmu_iommu_map_pfn_default(struct smmu_as *as, dma_addr_t iova,
 	if (*pte != _PTE_VACANT(iova)) {
 		phys_addr_t pa = PFN_PHYS(pfn);
 
-		WARN(1, "asid=%d iova=%pa pa=%pa prot=%lx *pte=%x\n",
-		     as->asid, &iova, &pa, prot, *pte);
+		WARN(1, "error:map req on already mapped pte, asid=%d iova=%pa "
+			"pa=%pa prot=%lx *pte=%x\n",
+			as->asid, &iova, &pa, prot, *pte);
 		return -EINVAL;
 	}
 	(*count)++;
@@ -978,8 +984,9 @@ static int __smmu_iommu_map_largepage(struct smmu_as *as, dma_addr_t iova,
 		int npte;
 
 		bytes = __smmu_iommu_iova_to_phys(as, iova, &stale, &npte);
-		WARN(1, "asid=%d iova=%pa (new)pa=%pa (stale)pa=%pa bytes=%zx pdir[%d]=0x%x npte=%d\n",
-		     as->asid, &iova, &pa, &stale, bytes, pdn, pdir[pdn], npte);
+		WARN(1, "map req on already mapped pde, asid=%d iova=%pa "
+			"(new)pa=%pa (stale)pa=%pa bytes=%zx pdir[%d]=0x%x npte=%d\n",
+			as->asid, &iova, &pa, &stale, bytes, pdn, pdir[pdn], npte);
 		return -EINVAL;
 	}
 
@@ -1017,7 +1024,7 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 		fn = __smmu_iommu_map_largepage;
 		break;
 	default:
-		WARN(1,  "%lld not supported\n", (u64)bytes);
+		WARN(1,  "map of size %zu is not supported\n", bytes);
 		return -EINVAL;
 	}
 
@@ -1127,7 +1134,9 @@ static int __smmu_iommu_remap_largepage(struct smmu_as *as, dma_addr_t iova)
 	BUG_ON(!IS_ALIGNED(iova, SZ_4M));
 	BUG_ON(pdir[pdn] & _PDE_NEXT);
 
-	/* Prepare L2 in advance */
+	WARN(1, "split 4MB mapping into 4KB mappings upon partial unmap req,"
+		"iova=%pa", &iova);
+	/* Prepare L2 page table in advance */
 	if (IS_ENABLED(CONFIG_PREEMPT) && !in_atomic())
 		gfp = GFP_KERNEL;
 	page = alloc_page(gfp);
@@ -1153,8 +1162,9 @@ static size_t __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova,
 	u32 *pdir = page_address(as->pdir_page);
 
 	if (pdir[pdn] == _PDE_VACANT(pdn)) {
-		WARN(1, "No map: as=%d iova=%pa bytes=%zx\n",
-		     as->asid, &iova, bytes);
+		WARN(1, "error:unmap req on vacant pde: as=%d "
+			"iova=%pa bytes=%zx\n",
+			as->asid, &iova, bytes);
 		return 0;
 	} else if (pdir[pdn] & _PDE_NEXT) {
 		return __smmu_iommu_unmap_pages(as, iova, bytes);
@@ -1375,6 +1385,7 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	int idx;
 	unsigned long as_bitmap[1];
 	unsigned long as_alloc_bitmap = 0;
+	static bool map_avp_vector = true;
 
 	client = tegra_smmu_find_client(smmu_handle, dev);
 	if (!client)
@@ -1442,16 +1453,15 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	 * Reserve "page zero" for AVP vectors using a common dummy
 	 * page.
 	 */
-	if (swgids & TEGRA_SWGROUP_BIT(AVPC)) {
-		dma_addr_t iova = 0;
-		struct dma_map_ops *ops = get_dma_ops(dev);
+	if (map_avp_vector && (swgids & TEGRA_SWGROUP_BIT(AVPC))) {
+		struct page *page;
 
-		iova = ops->iova_alloc_at(dev, &iova, PAGE_SIZE, NULL);
-		if (iova != DMA_ERROR_CODE) {
-			unsigned long pfn =
-				page_to_pfn(as->smmu->avp_vector_page);
-			__smmu_iommu_map_pfn(as, 0, pfn, 0);
-		}
+		map_avp_vector = false;
+		page = as->smmu->avp_vector_page;
+		__smmu_iommu_map_pfn(as, 0, page_to_pfn(page), 0);
+
+		pr_debug("Reserve \"page zero\" \
+			for AVP vectors using a common dummy\n");
 	}
 
 	dev_dbg(smmu->dev, "%s is attached\n", dev_name(dev));
