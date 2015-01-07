@@ -308,6 +308,19 @@ static int pwm_regulator_probe(struct platform_device *pdev)
 	return 0;
 }
 
+
+#ifdef CONFIG_PM_SLEEP
+static int pwm_regulator_resume(struct device *dev)
+{
+	struct pwm_regulator *preg = dev_get_drvdata(dev);
+	pwm_regulator_set_voltage_sel(preg->rdev, preg->curr_selector);
+	return 0;
+}
+#endif
+static const struct dev_pm_ops pwm_regulator_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(NULL, pwm_regulator_resume)
+};
+
 static const struct of_device_id pwm_regulator_of_match[] = {
 	{ .compatible = "regulator-pwm", },
 	{},
@@ -318,6 +331,7 @@ static struct platform_driver pwm_regulator_driver = {
 	.driver = {
 		.name	= "regulator-pwm",
 		.owner  = THIS_MODULE,
+		.pm = &pwm_regulator_pm_ops,
 		.of_match_table = pwm_regulator_of_match,
 	},
 	.probe	= pwm_regulator_probe,
