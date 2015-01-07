@@ -370,4 +370,5 @@ config DMATEST
 	  Simple DMA test client. Say N unless you're debugging a
 	  DMA Device driver.
 
+trysource "../kernel-t18x/drivers/dma/Kconfig"
 endif
