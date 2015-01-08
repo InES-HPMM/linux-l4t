@@ -1,7 +1,7 @@
 /*
  * drivers/cpuidle/cpuidle-t210.c
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -486,7 +486,7 @@ static int tegra210_enter_state(struct cpuidle_device *dev,
 	return t210_idle_states[i].enter(dev, drv, i);
 }
 
-static int __init tegra210_cpuidle_register(int cpu)
+static int tegra210_cpuidle_register(int cpu)
 {
 	int ret;
 	struct cpuidle_driver *drv;
@@ -795,7 +795,7 @@ static int idle_write(void *data, u64 val)
 
 DEFINE_SIMPLE_ATTRIBUTE(duration_us_fops, NULL, idle_write, "%llu\n");
 
-static int __init debugfs_init(void)
+static int debugfs_init(void)
 {
 	struct dentry *dfs_file;
 
@@ -833,23 +833,16 @@ err_out:
 	debugfs_remove_recursive(cpuidle_debugfs_root);
 	return -ENOMEM;
 }
+#else
+static inline int debugfs_init(void) { return 0; }
 #endif
 
-/*
- * t210_idle_init
- *
- */
-static int __init tegra210_idle_init(void)
+static int tegra210_cpuidle_probe(struct platform_device *pdev)
 {
 	int ret;
 	unsigned int cpu;
 
 	pr_info("Tegra210 cpuidle driver\n");
-	if (!of_machine_is_compatible("nvidia,tegra210")) {
-		pr_err("%s: not on T210\n", __func__);
-		return -ENODEV;
-	}
-
 	do_cc4_init();
 	register_syscore_ops(&tegra210_syscore_ops);
 
@@ -859,9 +852,26 @@ static int __init tegra210_idle_init(void)
 			return ret;
 	}
 
-#ifdef CONFIG_DEBUG_FS
 	debugfs_init();
-#endif
 	return register_cpu_notifier(&tegra210_cpu_nb);
 }
-device_initcall(tegra210_idle_init);
+
+static const struct of_device_id tegra210_cpuidle_of[] = {
+	{ .compatible = "nvidia,tegra210-cpuidle" },
+	{}
+};
+
+static struct platform_driver tegra210_cpuidle_driver = {
+	.probe = tegra210_cpuidle_probe,
+	.driver = {
+		.owner = THIS_MODULE,
+		.name = "cpuidle",
+		.of_match_table = of_match_ptr(tegra210_cpuidle_of)
+	}
+};
+
+static __init int tegra210_cpuidle_init(void)
+{
+	return platform_driver_register(&tegra210_cpuidle_driver);
+}
+device_initcall(tegra210_cpuidle_init);
