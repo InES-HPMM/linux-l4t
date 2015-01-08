@@ -38,6 +38,7 @@
 #include <linux/tick.h>
 #include <linux/irq.h>
 #include <linux/tegra_cluster_control.h>
+#include <linux/regulator/consumer.h>
 #include "../../kernel/irq/internals.h"
 
 #include <asm/suspend.h>
@@ -837,12 +838,41 @@ err_out:
 static inline int debugfs_init(void) { return 0; }
 #endif
 
+static void tegra210_cc4_volt_init(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct regulator *reg;
+	uint32_t uv;
+	int r;
+
+	/* If cc4-microvolt is not found, assume not max77621 */
+	if (of_property_read_u32(dev->of_node, "cc4-microvolt", &uv))
+		return;
+
+	reg = regulator_get(dev, "vdd-cpu");
+	if (!reg)
+		goto err_out;
+
+	r = regulator_set_sleep_voltage(reg, uv - 100000, uv + 100000);
+	if (r) {
+		dev_err(dev, "failed to set retention voltage: %d\n", r);
+		goto err_out;
+	}
+
+	dev_info(dev, "retention voltage is %u uv\n", uv);
+	return;
+
+err_out:
+	WARN_ON(0);
+}
+
 static int tegra210_cpuidle_probe(struct platform_device *pdev)
 {
 	int ret;
 	unsigned int cpu;
 
 	pr_info("Tegra210 cpuidle driver\n");
+	tegra210_cc4_volt_init(pdev);
 	do_cc4_init();
 	register_syscore_ops(&tegra210_syscore_ops);
 
