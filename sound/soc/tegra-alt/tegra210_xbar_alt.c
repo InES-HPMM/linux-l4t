@@ -1,7 +1,7 @@
 /*
  * tegra210_xbar_alt.c - Tegra210 XBAR driver
  *
- * Copyright (c) 2014 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -810,6 +810,23 @@ static struct of_dev_auxdata tegra210_xbar_auxdata[] = {
 	OF_DEV_AUXDATA("nvidia,tegra210-spdif", 0x702d6000, "tegra210-spdif", NULL),
 	{}
 };
+
+
+int tegra210_xbar_set_clock(unsigned long rate)
+{
+	int ret = 0;
+
+	ret = clk_set_rate(xbar->clk_parent, rate);
+	if (ret)
+		pr_info("Failed to set clock rate of pll_a_out0\n");
+
+	ret = clk_set_rate(xbar->clk, rate);
+	if (ret)
+		pr_info("Failed to set clock rate of ahub\n");
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra210_xbar_set_clock);
 
 static int tegra210_xbar_probe(struct platform_device *pdev)
 {
