@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/mc.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2014, NVIDIA Corporation.  All rights reserved.
+ * Copyright (C) 2011-2015, NVIDIA Corporation.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -280,14 +280,23 @@ int tegra_mc_flush(int id)
 
 	timeout = 0;
 	do {
+		bool exit = false;
 		udelay(10);
 		rst_stat = 0;
 		ret = tegra_stable_hotreset_check(rst_stat_reg, &rst_stat);
-		if ((timeout++ > 100) && (tegra_platform_is_qt() ||
-			tegra_platform_is_fpga())) {
-			pr_warn("%s flush %d timeout\n", __func__, id);
-			break;
+
+		timeout++;
+
+		/* keep lower timeout if we are running in qt or fpga */
+		exit |= (timeout > 100) && (tegra_platform_is_qt() ||
+			tegra_platform_is_fpga());
+		/* otherwise have huge timeout (~1s) */
+		exit |= timeout > 100000;
+		if (exit) {
+			WARN(1, "%s flush %d timeout\n", __func__, id);
+			return -ETIMEDOUT;
 		}
+
 		if (!ret)
 			continue;
 	} while (!(rst_stat & (1 << id)));
