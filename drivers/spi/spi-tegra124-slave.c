@@ -1,7 +1,7 @@
 /*
  * SPI driver for NVIDIA's Tegra124 SPI Controller.
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -1107,6 +1107,7 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 	struct tegra_spi_data *tspi = spi_master_get_devdata(spi->master);
 	struct tegra_spi_device_controller_data *cdata = spi->controller_data;
 	u32 speed;
+	u32 core_speed;
 	u8 bits_per_word;
 	unsigned total_fifo_words;
 	int ret;
@@ -1119,15 +1120,24 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 	if (!speed)
 		speed = tspi->spi_max_frequency;
 
-	speed = speed * 4;
+	/* To maintain min 1.5x and max 4x ratio between
+	 * slave core clk and interface clk */
+	core_speed = speed * 4;
+	if (core_speed > tspi->spi_max_frequency)
+		core_speed = tspi->spi_max_frequency;
 
-	if (speed != tspi->cur_speed) {
-		ret = clk_set_rate(tspi->clk, speed);
+	if (core_speed < ((speed * 3) >> 1)) {
+		dev_err(tspi->dev, "Cannot set requested clk freq %d\n", speed);
+		return -EINVAL;
+	}
+
+	if (core_speed != tspi->cur_speed) {
+		ret = clk_set_rate(tspi->clk, core_speed);
 		if (ret) {
 			dev_err(tspi->dev, "Failed to set clk freq %d\n", ret);
 			return -EINVAL;
 		}
-		tspi->cur_speed = speed;
+		tspi->cur_speed = core_speed;
 	}
 
 	tspi->cur_spi = spi;
