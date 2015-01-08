@@ -1,7 +1,7 @@
 /*
  * arch/arm/boot/dts/tegra124-p2360.dts
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -202,5 +202,24 @@
 		pmic-i2c-voltage-register = <0x07>;
 		i2c-fs-rate = <400000>;
 		sel-conversion-slope = <1>;
+	};
+
+	isc-mgr.2 {
+		compatible = "nvidia,isc-mgr";
+		pwdn-gpios = <&gpio TEGRA_GPIO(I, 5) GPIO_ACTIVE_HIGH
+			&gpio TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH
+			&gpio TEGRA_GPIO(K, 0) GPIO_ACTIVE_HIGH
+			&gpio TEGRA_GPIO(K, 1) GPIO_ACTIVE_HIGH
+			&gpio TEGRA_GPIO(Q, 1) GPIO_ACTIVE_HIGH>;
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(S, 3) 2>; /* gpio PS3 : falling edge sensitive */
+		status = "okay";
+	};
+
+	isc-mgr.0 {
+		compatible = "nvidia,isc-mgr";
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(R, 3) 2>; /* gpio PR3 : falling edge sensitive */
+		status = "okay";
 	};
 };
