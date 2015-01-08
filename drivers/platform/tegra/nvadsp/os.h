@@ -3,7 +3,7 @@
  *
  * A header file containing data structures shared with ADSP OS
  *
- * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -65,102 +65,6 @@ struct app_mem_size {
 	uint64_t aram;
 	uint64_t aram_x;
 };
-
-struct app_load_data {
-	struct app_mem_size mem_size;
-#if CONFIG_USE_STATIC_APP_LOAD
-	int8_t service_name[NVADSP_NAME_SZ];
-#else
-	uint32_t adsp_mod_ptr;
-	uint64_t adsp_mod_size;
-#endif
-	uint32_t ser;
-#if RECORD_STATS
-	uint64_t map_time;
-	uint64_t app_load_time;
-	uint64_t adsp_send_status_time;
-	uint64_t timestamp;
-	uint64_t receive_timestamp;
-#endif
-} __packed;
-
-struct app_init_data {
-	uint32_t ser;
-	uint64_t host_ref;
-	uint32_t app_token; /* holds the address of the app structure */
-	uint32_t dram_data_ptr;
-	uint32_t dram_shared_ptr;
-	uint32_t dram_shared_wc_ptr;
-	uint32_t aram_ptr;
-	uint32_t aram_flag;
-	uint32_t aram_x_ptr;
-	uint32_t aram_x_flag;
-	nvadsp_app_args_t app_args;
-#if RECORD_STATS
-	uint64_t app_init_time;
-	uint64_t app_mem_instance_map;
-	uint64_t app_init_call;
-	uint64_t adsp_send_status_time;
-	uint64_t timestamp;
-	uint64_t receive_timestamp;
-#endif
-} __packed;
-
-
-struct app_deinit_data {
-	uint32_t ptr;
-	uint32_t status;
-} __packed;
-
-struct app_start_data {
-	uint32_t ptr;
-	uint32_t stack_size;
-	uint32_t status;
-#if RECORD_STATS
-	uint64_t app_start_time;
-	uint64_t app_thread_creation_time;
-	uint64_t app_thread_detach_time;
-	uint64_t app_thread_resume_time;
-	uint64_t insert_queue_head_time;
-	uint64_t thread_yield_time;
-	uint64_t thread_resched_time;
-	uint64_t kevlog_thread_switch_time;
-	uint64_t thread_context_switch_time;
-	uint64_t adsp_send_status_time;
-	uint64_t timestamp;
-	uint64_t receive_timestamp;
-#endif
-} __packed;
-
-struct app_complete_data {
-	uint64_t host_ref;
-	int32_t app_status;
-	int32_t copy_complete;
-} __packed;
-
-struct app_unload_data {
-	uint32_t	ser;
-	int32_t		status;
-} __packed;
-
-union app_loader_msgq {
-	msgq_t msgq;
-	struct {
-		int32_t header[MSGQ_HEADER_WSIZE];
-		int32_t queue[MSGQ_MAX_QUEUE_WSIZE];
-	};
-};
-
-struct shared_mem_struct {
-	struct app_load_data		app_load;
-	struct app_init_data		app_init;
-	struct app_start_data		app_start;
-	struct app_deinit_data		app_deinit;
-	struct app_complete_data	app_complete;
-	struct app_unload_data		app_unload;
-	union app_loader_msgq		app_loader_send_message;
-	union app_loader_msgq		app_loader_recv_message;
-} __packed;
 
 enum adsp_os_cmd {
 	ADSP_OS_SUSPEND,
@@ -243,7 +147,6 @@ struct app_start_stats {
 
 int nvadsp_os_probe(struct platform_device *);
 int nvadsp_app_module_probe(struct platform_device *);
-int nvadsp_run_app_module_probe(struct platform_device *);
 int adsp_add_load_mappings(phys_addr_t, void *, int);
 struct elf32_shdr *nvadsp_get_section(const struct firmware *, char *);
 struct global_sym_info *find_global_symbol(const char *);
