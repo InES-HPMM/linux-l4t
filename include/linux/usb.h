@@ -332,11 +332,17 @@ struct usb_bus {
 	u8 otg_port;			/* 0, or number of OTG/HNP port */
 	unsigned is_b_host:1;		/* true during some HNP roleswitches */
 	unsigned b_hnp_enable:1;	/* OTG: did A-Host enable HNP? */
+	unsigned hnp_support:1;		/* OTG: HNP is supported on OTG port */
+	unsigned otgv13_hnp:1;		/* OTG: Indicates if hnp is required
+					 * irrespective of host_request flag
+					 */
 	unsigned no_stop_on_short:1;    /*
 					 * Quirk: some controllers don't stop
 					 * the ep queue on a short transfer
 					 * with the URB_SHORT_NOT_OK flag set.
 					 */
+	int otgp_supported;		/* Bit 0: SRP, Bit 1: HNP, Bit 2: RSP */
+	struct delayed_work hnp_polling_work;
 	unsigned sg_tablesize;		/* 0 or largest number of sg list entries */
 
 	int devnum_next;		/* Next open device number in
