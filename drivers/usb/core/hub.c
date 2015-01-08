@@ -3977,6 +3977,9 @@ void usb_enable_lpm(struct usb_device *udev)
 			udev->state < USB_STATE_DEFAULT)
 		return;
 
+	if (!(udev->quirks & USB_QUIRK_ENABLE_U1U2))
+		return;
+
 	udev->lpm_disable_count--;
 	hcd = bus_to_hcd(udev->bus);
 	/* Double check that we can both enable and disable LPM.

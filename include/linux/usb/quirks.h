@@ -35,4 +35,7 @@
 
 #define USB_QUIRK_OTG_COMPLIANCE	0x00000080
 
+/* device can handle u1/u2 power states well */
+#define USB_QUIRK_ENABLE_U1U2		0x00000400
+
 #endif /* __LINUX_USB_QUIRKS_H */

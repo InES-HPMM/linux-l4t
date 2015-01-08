@@ -160,6 +160,9 @@ static const struct usb_device_id usb_quirk_list[] = {
 	/* Protocol and OTG Electrical Test Device */
 	{ USB_DEVICE(0x1a0a, 0x0200), .driver_info = USB_QUIRK_OTG_COMPLIANCE },
 
+	/* Sandisk Extreme USB 3.0 64GB */
+	{ USB_DEVICE(0x0781, 0x5580), .driver_info = USB_QUIRK_ENABLE_U1U2 },
+
 	{ }  /* terminating entry must be last */
 };
 
