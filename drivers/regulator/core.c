@@ -103,6 +103,7 @@ struct regulator {
 	struct device_attribute dev_attr;
 	struct regulator_dev *rdev;
 	struct dentry *debugfs;
+	struct dentry *pdebugfs;
 	int use_count;
 };
 
@@ -1444,6 +1445,8 @@ static struct regulator *create_regulator(struct regulator_dev *rdev,
 				   &regulator->min_uV);
 		debugfs_create_u32("max_uV", 0444, regulator->debugfs,
 				   &regulator->max_uV);
+		debugfs_create_u32("enable_count", 0444, regulator->debugfs,
+				   &regulator->use_count);
 	}
 
 	if (rdev->constraints->max_uV &&
@@ -4281,11 +4284,24 @@ static const struct file_operations set_voltage_tp_fops = {
 static void rdev_init_debugfs(struct regulator_dev *rdev)
 {
 	struct regulator_ops    *ops = rdev->desc->ops;
+	char parent_reg[REG_STR_SIZE];
+	int size;
 
 	rdev->debugfs = debugfs_create_dir(rdev_get_name(rdev), debugfs_root);
 	if (!rdev->debugfs) {
 		rdev_warn(rdev, "Failed to create debugfs directory\n");
 		return;
+	}
+
+	size = scnprintf(parent_reg, REG_STR_SIZE, "/sys/class/regulator/%s",
+			dev_name(&rdev->dev));
+	if (size >= REG_STR_SIZE) {
+		rdev_warn(rdev, "Symlink path is more than string size\n");
+	} else {
+		rdev->pdebugfs = debugfs_create_symlink("regulator",
+						rdev->debugfs, parent_reg);
+		if (!rdev->pdebugfs)
+			rdev_warn(rdev, "Failed to create parent debugfs\n");
 	}
 
 	debugfs_create_u32("use_count", 0444, rdev->debugfs,
@@ -4413,8 +4429,10 @@ regulator_register(const struct regulator_desc *regulator_desc,
 	}
 
 	/* set regulator constraints */
-	if (init_data)
+	if (init_data) {
 		constraints = &init_data->constraints;
+		rdev->machine_constraints = true;
+	}
 
 	ret = set_machine_constraints(rdev, constraints);
 	if (ret < 0)
@@ -4789,6 +4807,112 @@ static ssize_t supply_map_read_file(struct file *file, char __user *user_buf,
 
 	return ret;
 }
+
+static int list_power_tree(struct seq_file *s, void *unused)
+{
+	struct regulator_dev *r;
+	struct regulator_dev *in_r;
+	struct regulator *supply;
+	struct regulator *consumer;
+	int on;
+
+	mutex_lock(&regulator_list_mutex);
+
+	list_for_each_entry(r, &regulator_list, list) {
+		seq_printf(s, "----%s (%s)----\n", dev_name(&r->dev),
+					rdev_get_name(r));
+		supply =  r->supply;
+		if (supply) {
+			in_r = supply->rdev;
+			seq_printf(s, "\tInput Supply: %s\n",
+					dev_name(&in_r->dev));
+		}
+		mutex_lock(&r->mutex);
+		if (list_empty(&r->consumer_list))
+			seq_puts(s, "\tNo Consumer List:\n");
+		else
+			seq_puts(s, "\tConsumer List:\n");
+		list_for_each_entry(consumer, &r->consumer_list, list) {
+			seq_printf(s, "\t\t%s: %s [%u:%u:%u]\n",
+				consumer->supply_name,
+				(consumer->use_count) ? "ON" : "OFF",
+				consumer->min_uV, consumer->uA_load,
+				consumer->max_uV);
+		}
+		mutex_unlock(&r->mutex);
+		on = (r->use_count) || (r->machine_constraints &&
+					r->constraints->always_on);
+		seq_printf(s, "\tStates: %s\n", (on) ? "ON" : "OFF");
+		seq_printf(s, "\t\tOpen Count: %u\n", r->open_count);
+		seq_printf(s, "\t\tEnable Count: %u\n", r->use_count);
+		if (!r->machine_constraints) {
+			seq_puts(s, "\tNo machine constraints:\n");
+			continue;
+		}
+		seq_puts(s, "\tMachine Constraints:\n");
+		seq_printf(s, "\t\tMin Microvolt: %d\n",
+						r->constraints->min_uV);
+		seq_printf(s, "\t\tMax Microvolt: %d\n",
+						r->constraints->max_uV);
+		seq_printf(s, "\t\tInit Microvolt: %d\n",
+						r->constraints->init_uV);
+		seq_printf(s, "\t\tAlways ON: %u\n",
+						r->constraints->always_on);
+		seq_printf(s, "\t\tBoot ON: %u\n", r->constraints->boot_on);
+		seq_printf(s, "\t\tBoot OFF: %u\n", r->constraints->boot_off);
+		seq_printf(s, "\t\tEnable Time: %d\n",
+						_regulator_get_enable_time(r));
+		seq_printf(s, "\t\tDisable Time: %d\n",
+						_regulator_get_disable_time(r));
+		seq_printf(s, "\t\tRamp Delay: %u\n",
+						r->constraints->ramp_delay);
+	}
+	mutex_unlock(&regulator_list_mutex);
+	return 0;
+}
+
+static int list_rail_states(struct seq_file *s, void *unused)
+{
+	struct regulator_dev *r;
+	int on;
+
+	mutex_lock(&regulator_list_mutex);
+
+	list_for_each_entry(r, &regulator_list, list) {
+		seq_printf(s, "%s (%s): ", dev_name(&r->dev), rdev_get_name(r));
+		on = (r->use_count) || (r->machine_constraints &&
+					r->constraints->always_on);
+		seq_printf(s, "%s", (on) ? "ON" : "OFF");
+		seq_printf(s, "(%u) ", r->use_count);
+		if (r->machine_constraints && r->constraints->always_on)
+			seq_puts(s, "Always ON\n");
+		else
+			seq_puts(s, "\n");
+	}
+	mutex_unlock(&regulator_list_mutex);
+	return 0;
+}
+
+static int list_rail_voltages(struct seq_file *s, void *unused)
+{
+	struct regulator_dev *r;
+	int ret;
+
+	mutex_lock(&regulator_list_mutex);
+
+	list_for_each_entry(r, &regulator_list, list) {
+		mutex_lock(&r->mutex);
+		ret = _regulator_get_voltage(r);
+		mutex_unlock(&r->mutex);
+		seq_printf(s, "%s (%s): ", dev_name(&r->dev), rdev_get_name(r));
+		if (ret < 0)
+			seq_printf(s, "Error %d\n", ret);
+		else
+			seq_printf(s, "%d uV\n", ret);
+	}
+	mutex_unlock(&regulator_list_mutex);
+	return 0;
+}
 #endif
 
 static const struct file_operations supply_map_fops = {
@@ -4797,6 +4921,28 @@ static const struct file_operations supply_map_fops = {
 	.llseek = default_llseek,
 #endif
 };
+
+#ifdef CONFIG_DEBUG_FS
+#define SINGLE_DEBUG_FS_RW(_name, _rfun)				\
+static int _name##_open_file(struct inode *inode, struct file *file)	\
+{									\
+	return single_open(file, _rfun, inode->i_private);		\
+}									\
+									\
+static const struct file_operations _name##_fops = {			\
+	.open = _name##_open_file,					\
+	.read = seq_read,						\
+	.llseek = seq_lseek,						\
+	.release = single_release,					\
+}
+#else
+#define SINGLE_DEBUG_FS_RW(_name, _rfun)				\
+static const struct file_operations _name##_fops = {}
+#endif
+
+SINGLE_DEBUG_FS_RW(power_tree, list_power_tree);
+SINGLE_DEBUG_FS_RW(rail_states, list_rail_states);
+SINGLE_DEBUG_FS_RW(rail_voltages, list_rail_voltages);
 
 static int __init regulator_init(void)
 {
@@ -4810,6 +4956,15 @@ static int __init regulator_init(void)
 
 	debugfs_create_file("supply_map", 0444, debugfs_root, NULL,
 			    &supply_map_fops);
+
+	debugfs_create_file("power_tree", 0444, debugfs_root, NULL,
+			    &power_tree_fops);
+
+	debugfs_create_file("rail_states", 0444, debugfs_root, NULL,
+			    &rail_states_fops);
+
+	debugfs_create_file("rail_voltages", 0444, debugfs_root, NULL,
+			    &rail_voltages_fops);
 
 	regulator_dummy_init();
 
