@@ -4,7 +4,7 @@
  * Copyright (C) 2008 Google, Inc.
  * Author: Mike Lockwood <lockwood@android.com>
  *         Benoit Goby <benoit@android.com>
- * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1824,6 +1824,9 @@ static int android_bind(struct usb_composite_dev *cdev)
 		return id;
 	strings_dev[STRING_MANUFACTURER_IDX].id = id;
 	device_desc.iManufacturer = id;
+
+	if (gadget_is_otg(cdev->gadget))
+		android_config_driver.descriptors = otg_desc;
 
 	id = usb_string_id(cdev);
 	if (id < 0)

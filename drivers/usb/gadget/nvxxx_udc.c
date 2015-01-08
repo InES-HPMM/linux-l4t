@@ -84,7 +84,6 @@ static void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 #define NVUDC_INT_EP_TD_RING_SIZE	8
 #define EVENT_RING_SIZE			4096
 
-#define IOCTL_HOST_FLAG_ENABLED		1
 #define PORTSC_MASK     0xFF15FFFF
 #define PORTREGSEL_MASK	0xFFFFFFFC
 #define POLL_TBRST_MAX_VAL	0xB0
@@ -285,6 +284,38 @@ static void tegra_xudc_notify_event(struct nv_udc_s *nvudc)
 	spin_unlock(&nvudc->phy->sync_lock);
 }
 
+int nvudc_set_port_state(struct usb_gadget *gadget, u8 pls)
+{
+	struct nv_udc_s *nvudc = container_of(gadget, struct nv_udc_s, gadget);
+	u32 u_temp;
+	unsigned long flags;
+
+	if (!nvudc) {
+		msg_err(the_controller->dev, "nvudc is NULL\n");
+		return 0;
+	}
+
+	spin_lock_irqsave(&nvudc->lock, flags);
+
+	if (nvudc->elpg_is_processing) {
+		spin_unlock_irqrestore(&nvudc->lock, flags);
+		return -ESHUTDOWN;
+	}
+	msg_dbg(nvudc->dev, "pls: %d speed:%s\n", pls,
+		(nvudc->gadget.speed == USB_SPEED_SUPER) ? "super" :
+		(nvudc->gadget.speed == USB_SPEED_HIGH) ? "high" :
+		(nvudc->gadget.speed == USB_SPEED_FULL) ? "full" : "unknown");
+
+	u_temp = ioread32(nvudc->mmio_reg_base + PORTSC);
+	u_temp &= PORTSC_MASK;
+	u_temp &= ~PORTSC_PLS(~0);
+	u_temp |= PORTSC_PLS(pls);
+	u_temp |= PORTSC_LWS;
+	iowrite32(u_temp, nvudc->mmio_reg_base + PORTSC);
+	spin_unlock_irqrestore(&nvudc->lock, flags);
+	return 0;
+}
+
 /* must hold nvudc->lock */
 static inline void vbus_detected(struct nv_udc_s *nvudc)
 {
@@ -297,7 +328,6 @@ static inline void vbus_detected(struct nv_udc_s *nvudc)
 		USB2_VBUS_ID_0_VBUS_OVERRIDE, USB2_VBUS_ID_0_VBUS_OVERRIDE);
 
 	nvudc->vbus_detected = true;
-	nvudc->phy->state = OTG_STATE_B_PERIPHERAL;
 }
 
 /* must hold nvudc->lock */
@@ -336,7 +366,6 @@ static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 	}
 
 	nvudc->vbus_detected = false;
-	nvudc->phy->state = OTG_STATE_B_IDLE;
 	pm_runtime_put_autosuspend(nvudc->dev);
 }
 
@@ -2384,6 +2413,7 @@ static struct usb_gadget_ops nvudc_gadget_ops = {
 	.udc_start = nvudc_gadget_start,
 	.udc_stop = nvudc_gadget_stop,
 	.vbus_draw = nvudc_vbus_draw,
+	.set_port_state = nvudc_set_port_state,
 };
 
 static void nvudc_gadget_release(struct device *dev)
@@ -3050,20 +3080,37 @@ bool setfeaturesrequest(struct nv_udc_s *nvudc, u8 RequestType, u8 bRequest, u16
 		case USB_DEVICE_TEST_MODE:
 		{
 			u32 u_pattern;
-			if (nvudc->gadget.speed != USB_SPEED_HIGH)
+			if (nvudc->gadget.speed > USB_SPEED_HIGH)
 				goto set_feature_error;
 
 			if (nvudc->device_state < USB_STATE_DEFAULT)
 				goto set_feature_error;
 
 			u_pattern = index >> 8;
-			nvudc->set_tm = PORT_TM_CTRL(u_pattern) | ENABLE_TM;
+			/* TESTMODE is only defined for high speed device */
+			if (nvudc->gadget.speed == USB_SPEED_HIGH)
+				nvudc->set_tm = PORT_TM_CTRL(u_pattern)
+					| ENABLE_TM;
+			if (u_pattern == TEST_MODE_OTG_HNP_REQD) {
+				msg_dbg(nvudc->dev, "received OTG_HNP_REQD\n");
+				nvudc->gadget.rcvd_otg_hnp_reqd = 1;
+			}
 			break;
 		}
-#ifdef OTG
 		case USB_DEVICE_B_HNP_ENABLE:
-			nvudc->gadget.b_hnp_enable = 1;
-			nv_notify_otg(B_HNP_ENABLE);
+			if (set_feat) {
+				nvudc->gadget.b_hnp_enable = 1;
+			} else {
+				/* b_hnp_enable is only cleared on a bus reset
+				 * or at the end of a session. It cannot be
+				 * cleared with a ClearFeature(b_hnp_enable)
+				 * command.
+				 */
+				msg_dbg(nvudc->dev,
+					"stall clear_feature(b_hnp_enable)\n");
+				status = -EINVAL;
+				goto set_feature_error;
+			}
 			break;
 		case USB_DEVICE_A_HNP_SUPPORT:
 			nvudc->gadget.a_hnp_support = 1;
@@ -3071,7 +3118,6 @@ bool setfeaturesrequest(struct nv_udc_s *nvudc, u8 RequestType, u8 bRequest, u16
 		case USB_DEVICE_A_ALT_HNP_SUPPORT:
 			nvudc->gadget.a_alt_hnp_support = 1;
 			break;
-#endif
 		default:
 			goto set_feature_error;
 		}
@@ -3132,14 +3178,20 @@ void getstatusrequest(struct nv_udc_s *nvudc, u8 RequestType, u16 value,
 		goto get_status_error;
 	}
 
-	msg_dbg(nvudc->dev, "Get status request RequestType = 0x%x\n",
-			RequestType);
+	msg_dbg(nvudc->dev, "Get status request RequestType = 0x%x Index=%x\n",
+			RequestType, index);
 	if ((RequestType & USB_RECIP_MASK) == USB_RECIP_DEVICE) {
 		msg_dbg(nvudc->dev, "Get status request Device request\n");
-		if (index == 0xF000) {
-			if (IOCTL_HOST_FLAG_ENABLED) {
-#define USB_HOST_REQUEST_FLAG   1
-				temp = NV_BIT(USB_HOST_REQUEST_FLAG);
+		if (index == USB_DEVICE_OTG_STATUS_SELECTOR) {
+			/* set HOST_REQUEST_FLAG if otg_hnp_reqd received OR
+			 * user on peripheral side requesting to become host.
+			 */
+			if (nvudc->gadget.rcvd_otg_hnp_reqd ||
+				nvudc->gadget.request_hnp) {
+				msg_dbg(nvudc->dev, "set HOST_REQUEST_FLAG\n");
+				temp = HOST_REQUEST_FLAG;
+				if (nvudc->gadget.request_hnp)
+					nvudc->gadget.request_hnp = 0;
 			}
 		} else if (index) {
 			status = -EINVAL;
@@ -3220,7 +3272,10 @@ get_status_error:
 		*(u16 *)udc_req_ptr->usb_req.buf = cpu_to_le64(temp);
 		msg_dbg(nvudc->dev, "usb_req.buf = 0x%x\n",
 				*((u16 *)udc_req_ptr->usb_req.buf));
-		udc_req_ptr->usb_req.length = 2;
+		if (index == USB_DEVICE_OTG_STATUS_SELECTOR)
+			udc_req_ptr->usb_req.length = 1;
+		else
+			udc_req_ptr->usb_req.length = 2;
 	}
 	udc_req_ptr->usb_req.status = status;
 	udc_req_ptr->usb_req.actual = 0;
@@ -3844,10 +3899,6 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 			update_ep0_maxpacketsize(nvudc);
 
 			portpm_config_war(nvudc);
-
-#ifdef OTG_XXX
-			nv_notify_otg(A_CONN);
-#endif
 		} else {
 			msg_dbg(nvudc->dev, "disconnect\n");
 			nvudc_reset(nvudc);
@@ -3880,6 +3931,10 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 		iowrite32(u_temp2, nvudc->mmio_reg_base + PORTSC);
 
 		if ((u_temp2 & PORTSC_PLS_MASK) == XDEV_U3) {
+#ifdef CONFIG_USB_OTG
+			if (nvudc->phy)
+				usb_phy_set_suspend(nvudc->phy, 1);
+#endif
 			msg_dbg(nvudc->dev, "PLS Suspend (U3)\n");
 			nvudc->resume_state = nvudc->device_state;
 			nvudc->device_state = USB_STATE_SUSPENDED;
@@ -3888,14 +3943,14 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 				nvudc->driver->suspend(&nvudc->gadget);
 				spin_lock(&nvudc->lock);
 			}
-#ifdef OTG_XXX
-			nv_notify_otg(A_BUS_SUSPEND);
-#endif
 		} else if ((((u_temp2 & PORTSC_PLS_MASK) == XDEV_RESUME)
 			&& (nvudc->gadget.speed == USB_SPEED_SUPER)) ||
 			(((u_temp & PORTSC_PLS_MASK) == XDEV_U0)
 			&& (nvudc->gadget.speed < USB_SPEED_SUPER))) {
-
+#ifdef CONFIG_USB_OTG
+			if (nvudc->phy)
+				usb_phy_set_suspend(nvudc->phy, 0);
+#endif
 			msg_dbg(nvudc->dev, "PLS Resume\n");
 
 			nvudc_resume_state(nvudc, 0);
@@ -3905,9 +3960,6 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 				nvudc->driver->resume(&nvudc->gadget);
 				spin_lock(&nvudc->lock);
 			}
-#ifdef OTG_XXX
-			nv_notify_otg(A_BUS_RESUME);
-#endif
 		} else if ((u_temp2 & PORTSC_PLS_MASK) == XDEV_INACTIVE) {
 			schedule_delayed_work(&nvudc->plc_reset_war_work,
 				msecs_to_jiffies(TOGGLE_VBUS_WAIT_MS));
@@ -4422,6 +4474,8 @@ u32 reset_data_struct(struct nv_udc_s *nvudc)
 	nvudc->g_isoc_eps = 0;
 	nvudc->ctrl_seq_num = 0;
 	nvudc->dev_addr = 0;
+	nvudc->gadget.b_hnp_enable = 0;
+	nvudc->gadget.rcvd_otg_hnp_reqd = 0;
 
 	if (tegra_platform_is_fpga())
 		fpga_hack_setup_vbus_sense_and_termination(nvudc);
