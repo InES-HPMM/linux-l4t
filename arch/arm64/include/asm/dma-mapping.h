@@ -23,6 +23,8 @@
 
 #include <asm-generic/dma-coherent.h>
 
+#include <asm/dma-iommu.h>
+
 #define ARCH_HAS_DMA_GET_REQUIRED_MASK
 
 #define PG_PROT_KERNEL PAGE_KERNEL
@@ -278,12 +280,38 @@ dma_map_linear_attrs(struct device *dev, phys_addr_t pa, size_t size,
 {
 	dma_addr_t da, req = pa;
 	void *va = phys_to_virt(pa);
+	DEFINE_DMA_ATTRS(_attrs);
 
 	da = dma_iova_alloc_at(dev, &req, size, attrs);
 	if (da == DMA_ERROR_CODE) {
-		DEFINE_DMA_ATTRS(_attrs);
+		struct dma_iommu_mapping *map;
+		dma_addr_t end = pa + size;
+		size_t bytes = 0;
+
 		switch (req) {
 		case -ENXIO:
+			map = to_dma_iommu_mapping(dev);
+			dev_info(dev, "Trying to IOVA linear map %pa-%pa outside of as:%pa-%pa\n",
+				 &pa, &end, &map->base, &map->end);
+
+			if ((pa >= map->base) && (pa < map->end)) {
+				req = pa;
+				bytes = map->end - pa;
+			} else if ((end > map->base) && (end <= map->end)) {
+				req = map->base;
+				bytes = end - map->base;
+			}
+
+			/* Partially reserve within IOVA map */
+			if (bytes) {
+				da = dma_iova_alloc_at(dev, &req, bytes, attrs);
+				if (da == DMA_ERROR_CODE)
+					return DMA_ERROR_CODE;
+
+				if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
+					dma_sync_single_for_device(NULL, da, bytes, dir);
+			}
+
 			/* Allow to map outside of map */
 			if (!attrs)
 				attrs = &_attrs;
