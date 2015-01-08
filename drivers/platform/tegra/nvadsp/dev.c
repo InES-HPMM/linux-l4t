@@ -476,12 +476,7 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 #endif
-
 	ret = nvadsp_app_module_probe(pdev);
-	if (ret)
-		goto err;
-
-	ret = nvadsp_run_app_module_probe(pdev);
 	if (ret)
 		goto err;
 

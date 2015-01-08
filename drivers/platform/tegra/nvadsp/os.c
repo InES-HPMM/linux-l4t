@@ -645,7 +645,6 @@ int nvadsp_os_load(void)
 		goto deallocate_os_memory;
 	}
 	ptr = get_mailbox_shared_region(fw);
-	update_nvadsp_app_shared_ptr(ptr);
 	drv_data->shared_adsp_os_data = ptr;
 	priv.os_firmware = fw;
 	priv.adsp_os_fw_loaded = true;

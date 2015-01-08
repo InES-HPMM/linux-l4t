@@ -213,6 +213,10 @@ enum {
 };
 
 enum adsp_app_status_msg {
+	OS_LOAD_COMPLETE,
+	RUN_ADSP_APP,
+	ADSP_APP_INIT,
+	ADSP_APP_START,
 	ADSP_APP_START_STATUS,
 	ADSP_APP_COMPLETE_STATUS
 };
@@ -285,12 +289,12 @@ typedef struct nvadsp_app_info {
 	app_complete_status_notifier complete_status_notifier;
 	struct work_struct complete_work;
 	enum adsp_app_status_msg status_msg;
+	void *priv;
 } nvadsp_app_info_t;
 
-nvadsp_app_handle_t __must_check
-nvadsp_app_load(const char *, const char *);
-nvadsp_app_info_t __must_check
-*nvadsp_app_init(nvadsp_app_handle_t, nvadsp_app_args_t *);
+nvadsp_app_handle_t __must_check nvadsp_app_load(const char *, const char *);
+nvadsp_app_info_t __must_check *nvadsp_app_init(nvadsp_app_handle_t,
+		nvadsp_app_args_t *);
 void nvadsp_app_unload(nvadsp_app_handle_t);
 int __must_check nvadsp_app_start(nvadsp_app_info_t *);
 int nvadsp_app_stop(nvadsp_app_info_t *);
