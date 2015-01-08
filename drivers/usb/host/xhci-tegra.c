@@ -2618,6 +2618,36 @@ static int get_host_controlled_ports(struct tegra_xhci_hcd *tegra)
 	return enabled_ports;
 }
 
+static int get_wake_sources_for_host_controlled_ports(int enabled_ports)
+{
+	int wake_events = 0;
+
+	if (enabled_ports & TEGRA_XUSB_USB2_P0)
+		wake_events |= USB2_PORT0_WAKEUP_EVENT;
+	if (enabled_ports & TEGRA_XUSB_USB2_P1)
+		wake_events |= USB2_PORT1_WAKEUP_EVENT;
+	if (enabled_ports & TEGRA_XUSB_USB2_P2)
+		wake_events |= USB2_PORT2_WAKEUP_EVENT;
+	if (enabled_ports & TEGRA_XUSB_USB2_P3)
+		wake_events |= USB2_PORT3_WAKEUP_EVENT;
+
+	if (enabled_ports & TEGRA_XUSB_SS_P0)
+		wake_events |= SS_PORT0_WAKEUP_EVENT;
+	if (enabled_ports & TEGRA_XUSB_SS_P1)
+		wake_events |= SS_PORT1_WAKEUP_EVENT;
+	if (enabled_ports & TEGRA_XUSB_SS_P2)
+		wake_events |= SS_PORT2_WAKEUP_EVENT;
+	if (enabled_ports & TEGRA_XUSB_SS_P3)
+		wake_events |= SS_PORT3_WAKEUP_EVENT;
+
+	if (enabled_ports & TEGRA_XUSB_HSIC_P0)
+		wake_events |= USB2_HSIC_PORT0_WAKEUP_EVENT;
+	if (enabled_ports & TEGRA_XUSB_HSIC_P1)
+		wake_events |= USB2_HSIC_PORT1_WAKEUP_EVENT;
+
+	return wake_events;
+}
+
 /* SS ELPG Entry initiated by fw */
 static int tegra_xhci_ss_elpg_entry(struct tegra_xhci_hcd *tegra)
 {
@@ -3011,7 +3041,7 @@ static void tegra_init_otg_port(struct tegra_xhci_hcd *tegra)
 	 * (ID_OVRD == FLOAT) soon after lp0 exit.
 	 */
 	if (tegra->lp0_exit && tegra->transceiver &&
-		(tegra->transceiver->state == OTG_STATE_A_IDLE) &&
+		(tegra->transceiver->state == OTG_STATE_A_WAIT_BCON) &&
 		tegra->otg_port_owned &&
 		!tegra->otg_port_ownership_changed)
 		tegra_xhci_handle_otg_port_change(tegra);
@@ -3486,9 +3516,20 @@ static irqreturn_t tegra_xhci_padctl_irq(int irq, void *ptrdev)
 	/* Check the intr cause. Could be  USB2 or HSIC or SS wake events */
 	elpg_program0 = tegra_usb_pad_reg_read(padregs->elpg_program_0);
 
-	/* Clear the interrupt cause. We already read the intr status. */
-	tegra_xhci_ss_wake_on_interrupts(host_ports, false);
-	tegra_xhci_hs_wake_on_interrupts(host_ports, false);
+	/* filter out all wake events */
+	elpg_program0 &= get_wake_sources_for_host_controlled_ports(host_ports);
+
+	/* Clear the interrupt cause if it's for host.
+	 * We already read the intr status.
+	 */
+	if (elpg_program0) {
+		tegra_xhci_ss_wake_on_interrupts(host_ports, false);
+		tegra_xhci_hs_wake_on_interrupts(host_ports, false);
+	} else {
+		xhci_info(xhci, "padctl interrupt is not for xhci\n");
+		spin_unlock(&tegra->lock);
+		return IRQ_NONE;
+	}
 
 	xhci_dbg(xhci, "%s: elpg_program0 = %x\n", __func__, elpg_program0);
 	xhci_dbg(xhci, "%s: PMC REGISTER = %x\n", __func__,
@@ -3520,10 +3561,6 @@ static irqreturn_t tegra_xhci_padctl_irq(int irq, void *ptrdev)
 		xhci_dbg(xhci, "[%s] schedule host_elpg_exit_work\n",
 			__func__);
 		schedule_work(&tegra->host_elpg_exit_work);
-	} else {
-		xhci_info(xhci, "padctl interrupt is not for xhci\n");
-		spin_unlock(&tegra->lock);
-		return IRQ_NONE;
 	}
 	spin_unlock(&tegra->lock);
 	return IRQ_HANDLED;
@@ -5241,6 +5278,9 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	xhci = hcd_to_xhci(hcd);
 	tegra->xhci = xhci;
 
+	if (!IS_ERR_OR_NULL(tegra->transceiver))
+		xhci->phy = tegra->transceiver;
+
 	xhci->shared_hcd = usb_create_shared_hcd(driver, &pdev->dev,
 						dev_name(&pdev->dev), hcd);
 	if (!xhci->shared_hcd) {
@@ -5248,6 +5288,8 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 		ret = -ENOMEM;
 		goto err_remove_usb2_hcd;
 	}
+	if (!IS_ERR_OR_NULL(tegra->transceiver))
+		xhci->shared_hcd->phy = tegra->transceiver;
 
 	/*
 	 * Set the xHCI pointer before xhci_plat_setup() (aka hcd_driver.reset)

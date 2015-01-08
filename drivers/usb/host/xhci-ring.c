@@ -66,6 +66,7 @@
 
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
+#include <linux/usb/phy.h>
 #include "xhci.h"
 
 static int handle_cmd_in_cmd_wait_list(struct xhci_hcd *xhci,
@@ -1610,6 +1611,7 @@ static void handle_port_status(struct xhci_hcd *xhci,
 	struct xhci_bus_state *bus_state;
 	__le32 __iomem **port_array;
 	bool bogus_port_status = false;
+	struct usb_device *udev;
 
 	/* Port status change events always have a successful completion code */
 	if (GET_COMP_CODE(le32_to_cpu(event->generic.field[2])) != COMP_SUCCESS) {
@@ -1739,6 +1741,42 @@ static void handle_port_status(struct xhci_hcd *xhci,
 		xhci_test_and_clear_bit(xhci, port_array, faked_port_index,
 					PORT_PLC);
 
+	/* notify the otg driver of B's connection logic to detect a connect
+	 * event of the B-device goes here
+	 */
+	xhci_dbg(xhci, "otg_port = %d, fake_port_index = %d, speed = %s\n",
+		hcd->self.otg_port, faked_port_index,
+		(hcd->speed == HCD_USB3) ? "SS" : "HS/FS/LS");
+
+	/* check if the otg_port caused port status change */
+	if (hcd->self.otg_port == (faked_port_index + 1) && (temp & PORT_CSC)) {
+		enum usb_device_speed speed = USB_SPEED_UNKNOWN;
+
+		xhci_dbg(xhci, "otgport caused portstatus 0x%x change\n", temp);
+
+		if (DEV_LOWSPEED(temp))
+			speed = USB_SPEED_LOW;
+		else if (DEV_FULLSPEED(temp))
+			speed = USB_SPEED_FULL;
+		else if (DEV_HIGHSPEED(temp))
+			speed = USB_SPEED_HIGH;
+		else if (DEV_SUPERSPEED(temp))
+			speed = USB_SPEED_SUPER;
+
+		/* now check if the port status change is because of
+		 * connect or disconnect
+		 */
+		udev = xhci->devs[slot_id]->udev;
+		if (((temp & PORT_PLS_MASK) == XDEV_U0) ||
+			((temp & PORT_PLS_MASK) == XDEV_POLLING)) {
+			if (hcd->phy)
+				usb_phy_notify_connect(hcd->phy, speed);
+		} else if (((temp & PORT_PLS_MASK) == XDEV_U3) ||
+				((temp & PORT_PLS_MASK) == XDEV_RXDETECT)) {
+			if (hcd->phy)
+				usb_phy_notify_disconnect(hcd->phy, speed);
+		}
+	}
 cleanup:
 	/* Update event ring dequeue pointer before dropping the lock */
 	inc_deq(xhci, xhci->event_ring);

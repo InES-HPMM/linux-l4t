@@ -279,6 +279,9 @@ struct xhci_op_regs {
 #define XDEV_U2		(0x2 << 5)
 #define XDEV_U3		(0x3 << 5)
 #define XDEV_RESUME	(0xf << 5)
+#define XDEV_DISABLED	(0x4 << 5)
+#define XDEV_RXDETECT	(0x5 << 5)
+#define XDEV_POLLING	(0x7 << 5)
 /* true: port has power (see HCC_PPC) */
 #define PORT_POWER	(1 << 9)
 /* bits 10:13 indicate device speed:
@@ -1417,6 +1420,7 @@ struct xhci_hcd {
 
 	spinlock_t	lock;
 
+	struct usb_phy  *phy;
 	/* packed release number */
 	u8		sbrn;
 	u16		hci_version;

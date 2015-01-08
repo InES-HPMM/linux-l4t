@@ -22,6 +22,7 @@
 
 #include <linux/gfp.h>
 #include <asm/unaligned.h>
+#include <linux/usb/otg.h>
 
 #include "xhci.h"
 
@@ -764,6 +765,25 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			spin_lock_irqsave(&xhci->lock, flags);
 
 			xhci_set_link_state(xhci, port_array, wIndex, XDEV_U3);
+
+#ifdef CONFIG_USB_OTG
+			/* Now port state is U3/suspend state
+			 * call start_hnp
+			 * first notify the otg driver
+			 */
+			xhci_dbg(xhci, "otg_port = %d, b_hnp_enable=%d\n",
+				hcd->self.otg_port, hcd->self.b_hnp_enable);
+
+			if (hcd->self.otg_port == (wIndex + 1)) {
+				/* A-Host is suspending signal to B-device
+				 * if HNP is enabled to start hnp & switch roles
+				 */
+				if (hcd->phy)
+					usb_phy_set_suspend(hcd->phy, 1);
+				if (hcd->self.b_hnp_enable)
+					otg_start_hnp(xhci->phy->otg);
+			}
+#endif
 
 			spin_unlock_irqrestore(&xhci->lock, flags);
 			msleep(10); /* wait device to enter */
