@@ -1657,9 +1657,11 @@ static void tegra_pcie_port_enable(struct tegra_pcie_port *port)
 
 	PR_FUNC_LINE;
 
-	/* enable reference clock */
+	/* enable reference clock. Enable SW override so as to allow device
+	   to get enumerated. SW override will be removed after enumeration
+	*/
 	value = afi_readl(port->pcie, ctrl);
-	value |= AFI_PEX_CTRL_REFCLK_EN;
+	value |= (AFI_PEX_CTRL_REFCLK_EN | AFI_PEX_CTRL_OVERRIDE_EN);
 	/* t124 doesn't support pll power down due to RTL bug and some */
 	/* platforms don't support clkreq, both needs to disable clkreq and */
 	/* enable refclk override to have refclk always ON independent of EP */
@@ -1753,6 +1755,7 @@ static bool t210_war;
 static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 				bool enum_done)
 {
+	unsigned long ctrl;
 	unsigned int data;
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	struct tegra_pcie *pcie = port->pcie;
@@ -1769,6 +1772,13 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 		t210_war = 1;
 #endif
 	if (enum_done) {
+		if (!port->disable_clock_request) {
+			/* Remove SW override for REFCLK */
+			ctrl = tegra_pcie_port_get_pex_ctrl(port);
+			data = afi_readl(port->pcie, ctrl);
+			data &= ~(AFI_PEX_CTRL_OVERRIDE_EN);
+			afi_writel(port->pcie, data, ctrl);
+		}
 		/* disable msi for port driver to avoid panic */
 		for_each_pci_dev(pdev)
 			if (pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT)
@@ -3006,7 +3016,7 @@ static int tegra_pcie_parse_dt(struct tegra_pcie *pcie)
 		if (!(rp->base))
 			return -EADDRNOTAVAIL;
 		rp->disable_clock_request = of_property_read_bool(port,
-			"nvidia,disable_clock_request");
+			"nvidia,disable-clock-request");
 		rp->status = of_device_is_available(port);
 
 		list_add_tail(&rp->list, &pcie->ports);
