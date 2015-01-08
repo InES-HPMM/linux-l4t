@@ -2,7 +2,7 @@
  * tegra30_avp.c - Tegra AVP audio driver
  *
  * Author: Sumit Bhattacharya <sumitb@nvidia.com>
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -368,6 +368,7 @@ static int tegra30_avp_load_ucode(void)
 err_cmd_buf_mem_free:
 	tegra30_avp_mem_free(&audio_avp->cmd_buf_mem);
 err_param_mem_free:
+	audio_avp->audio_engine = NULL;
 	tegra30_avp_mem_free(&audio_avp->param_mem);
 err_ucode_mem_free:
 	tegra30_avp_mem_free(&audio_avp->ucode_mem);
