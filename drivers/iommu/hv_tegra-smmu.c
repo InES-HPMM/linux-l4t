@@ -1,7 +1,7 @@
 /*
  * Virtual IOMMU driver for SMMU on Tegra 12x series SoCs and later.
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -29,6 +29,7 @@
 #include <linux/dma-attrs.h>
 #include "tegra-smmu.h"
 #include "hv_tegra-smmu-lib.h"
+#include <linux/debugfs.h>
 
 static struct smmu_device *smmu_handle; /* assume only one smmu device */
 
@@ -119,6 +120,18 @@ err_out:
 	return err;
 }
 
+static void debugfs_create_as_hv(struct smmu_as *as)
+{
+	struct dentry *dent;
+	char name[] = "as000";
+
+	sprintf(name, "as%03d", as->asid);
+	dent = debugfs_create_dir(name, as->smmu->debugfs_root);
+	if (!dent)
+		return;
+	as->debugfs_root = dent;
+}
+
 /* Make sure not to call this with as lock held */
 static struct smmu_as *smmu_as_alloc_hv(void)
 {
@@ -145,10 +158,11 @@ static struct smmu_as *smmu_as_alloc_hv(void)
 				as->tegra_hv_comm_chan = chan;
 				spin_unlock_irqrestore(lock, flags);
 
-			/* we maintain local page table to perform iova to
-			 * pa(ipa) conversions locally.
-			 */
+				/* we maintain local page table to perform iova to
+				 * pa(ipa) conversions locally.
+				 */
 				alloc_pdir_hv(as);
+				debugfs_create_as_hv(as);
 				return as;
 			} else {
 				spin_unlock_irqrestore(lock, flags);
