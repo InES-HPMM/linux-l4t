@@ -1,7 +1,7 @@
 /*
  * tegra210_xbar_alt.h - TEGRA210 XBAR registers
  *
- * Copyright (c) 2014 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -160,6 +160,7 @@ void tegra210_xbar_read_ahubram(struct regmap *regmap, unsigned int reg_ctrl,
 				unsigned int reg_data, unsigned int ram_offset,
 				unsigned int *data, size_t size);
 int tegra210_xbar_read_reg (unsigned int reg, unsigned int *val);
+int tegra210_xbar_set_clock(unsigned long rate);
 
 struct tegra210_xbar_soc_data {
 	const struct regmap_config *regmap_config;
