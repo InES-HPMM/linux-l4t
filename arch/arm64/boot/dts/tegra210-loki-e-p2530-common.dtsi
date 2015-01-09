@@ -300,7 +300,6 @@
 		nvidia,portmap = <0x0400>;
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "okay";
-		disable-on-kernel-charging;
 	};
 
 	 xudc@700d0000 {
