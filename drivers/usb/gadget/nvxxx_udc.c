@@ -703,6 +703,7 @@ static int nvudc_ep_enable(struct usb_ep *ep,
 			nvudc->act_bulk_ep |= BIT(udc_ep->DCI);
 
 		udc_ep->enq_pt = udc_ep->first_trb;
+		udc_ep->deq_pt = udc_ep->first_trb;
 		udc_ep->pcs = 1;
 		udc_ep->tran_ring_full = false;
 		nvudc->num_enabled_eps++;
@@ -785,6 +786,7 @@ static void req_done(struct nv_udc_ep *udc_ep,
 			struct nv_udc_request *udc_req, int status)
 {
 	struct nv_udc_s *nvudc = udc_ep->nvudc;
+
 
 	if (likely(udc_req->usb_req.status == -EINPROGRESS))
 		udc_req->usb_req.status = status;
@@ -1181,10 +1183,6 @@ int nvudc_queue_trbs(struct nv_udc_ep *udc_ep_ptr,
 	u32 num_trbs_ava = 0;
 	struct usb_request *usb_req = &udc_req_ptr->usb_req;
 	struct ep_cx_s *p_ep_cx = nvudc->p_epcx + udc_ep_ptr->DCI;
-	u32 deq_pt_lo = p_ep_cx->ep_dw2 & EP_CX_TR_DQPT_LO_MASK;
-	u32 deq_pt_hi = p_ep_cx->ep_dw3;
-	u64 dq_pt_addr = (u64)deq_pt_lo + ((u64)deq_pt_hi << 32);
-	struct transfer_trb_s *dq_pt;
 	u64 buff_len_temp = 0;
 	u32 i, j = 1;
 	struct transfer_trb_s *enq_pt = udc_ep_ptr->enq_pt;
@@ -1199,9 +1197,6 @@ int nvudc_queue_trbs(struct nv_udc_ep *udc_ep_ptr,
 	bool need_zlp = false;
 
 	msg_dbg(nvudc->dev, "nvudc_queue_trbs\n");
-	msg_dbg(nvudc->dev, "dq_pt_addr = 0x%x\n", (unsigned
-				int)dq_pt_addr);
-	dq_pt = tran_trb_dma_to_virt(udc_ep_ptr, dq_pt_addr);
 
 	if (!b_isoc) {
 		if (udc_req_ptr->usb_req.zero == 1 &&
@@ -1215,7 +1210,7 @@ int nvudc_queue_trbs(struct nv_udc_ep *udc_ep_ptr,
 	td_size = num_trbs_needed;
 
 	num_trbs_ava = room_on_ring(nvudc, xfer_ring_size, p_xfer_ring,
-			udc_ep_ptr->enq_pt, (struct transfer_trb_s *)dq_pt);
+			udc_ep_ptr->enq_pt, udc_ep_ptr->deq_pt);
 
 
 	/* trb_buf_addr points to the addr of the buffer that we write in
@@ -1338,8 +1333,8 @@ int nvudc_queue_trbs(struct nv_udc_ep *udc_ep_ptr,
 		}
 	}
 
-
-	udc_req_ptr->td_start = udc_ep_ptr->enq_pt;
+	if (!udc_req_ptr->trbs_needed)
+		udc_req_ptr->td_start = udc_ep_ptr->enq_pt;
 	udc_ep_ptr->enq_pt = enq_pt;
 	udc_req_ptr->buff_len_left = buffer_length;
 	udc_req_ptr->trbs_needed = td_size;
@@ -1360,18 +1355,13 @@ int nvudc_queue_ctrl(struct nv_udc_ep *udc_ep_ptr,
 	struct ep_cx_s *p_ep_cx = nvudc->p_epcx;
 	u8 ep_state = XHCI_GETF(EP_CX_EP_STATE, p_ep_cx->ep_dw0);
 	struct transfer_trb_s *enq_pt = udc_ep_ptr->enq_pt;
-	u32 deq_pt_lo = p_ep_cx->ep_dw2 & EP_CX_TR_DQPT_LO_MASK;
-	struct transfer_trb_s *dq_pt;
-	u32 deq_pt_hi = p_ep_cx->ep_dw3;
-	u64 dq_pt_addr = (u64)deq_pt_lo + ((u64)deq_pt_hi << 32);
+	struct transfer_trb_s *dq_pt = udc_ep_ptr->deq_pt;
 	struct usb_request *usb_req = &udc_req_ptr->usb_req;
 	struct transfer_trb_s *p_trb;
 	u32 transfer_length;
 	u32 td_size = 0;
 	u8 IOC;
 	u8 dir = 0;
-
-	dq_pt = tran_trb_dma_to_virt(udc_ep_ptr, dq_pt_addr);
 
 	msg_entry(nvudc->dev);
 	msg_dbg(nvudc->dev, "num_of_trbs_needed = 0x%x\n", num_of_trbs_needed);
@@ -2324,6 +2314,7 @@ int init_ep0(struct nv_udc_s *nvudc)
 
 	memset(udc_ep->first_trb, 0, udc_ep->tran_ring_info.len);
 	udc_ep->enq_pt = udc_ep->first_trb;
+	udc_ep->deq_pt = udc_ep->first_trb;
 	udc_ep->tran_ring_full = false;
 
 	dw = 0;
@@ -2526,6 +2517,38 @@ void handle_cmpl_code_success(struct nv_udc_s *nvudc, struct event_trb_s *event,
 	}
 }
 
+void update_dequeue_pt(struct event_trb_s *event, struct nv_udc_ep *udc_ep)
+{
+	u32 deq_pt_lo = event->trb_pointer_lo;
+	u32 deq_pt_hi = event->trb_pointer_hi;
+	u64 dq_pt_addr = (u64)deq_pt_lo + ((u64)deq_pt_hi << 32);
+	struct transfer_trb_s *deq_pt;
+
+	deq_pt = tran_trb_dma_to_virt(udc_ep, dq_pt_addr);
+	deq_pt++;
+
+	if (XHCI_GETF(TRB_TYPE, deq_pt->trb_dword3) == TRB_TYPE_LINK)
+		deq_pt = udc_ep->tran_ring_ptr;
+	udc_ep->deq_pt = deq_pt;
+
+}
+
+void advance_dequeue_pt(struct nv_udc_ep *udc_ep)
+{
+	struct nv_udc_request *udc_req;
+	if (!list_empty(&udc_ep->queue)) {
+		udc_req = list_entry(udc_ep->queue.next,
+				struct nv_udc_request,
+				queue);
+
+		if (udc_req->td_start)
+			udc_ep->deq_pt = udc_req->td_start;
+		else
+			udc_ep->deq_pt = udc_ep->enq_pt;
+	} else
+		udc_ep->deq_pt = udc_ep->enq_pt;
+}
+
 int nvudc_handle_exfer_event(struct nv_udc_s *nvudc, struct event_trb_s *event)
 {
 	u8 ep_index = XHCI_GETF(EVE_TRB_ENDPOINT_ID, event->eve_trb_dword3);
@@ -2539,6 +2562,8 @@ int nvudc_handle_exfer_event(struct nv_udc_s *nvudc, struct event_trb_s *event)
 	if (!udc_ep_ptr->tran_ring_ptr || XHCI_GETF(EP_CX_EP_STATE,
 				p_ep_cx->ep_dw0) == EP_STATE_DISABLED)
 		return -ENODEV;
+
+	update_dequeue_pt(event, udc_ep_ptr);
 
 	comp_code = XHCI_GETF(EVE_TRB_COMPL_CODE, event->eve_trb_dword2);
 
@@ -2600,6 +2625,10 @@ int nvudc_handle_exfer_event(struct nv_udc_s *nvudc, struct event_trb_s *event)
 		} else
 			msg_dbg(nvudc->dev, "ep dir in\n");
 		trbs_dequeued = true;
+
+		/* Advance the dequeue pointer to next TD */
+		advance_dequeue_pt(udc_ep_ptr);
+
 		break;
 	}
 	case CMPL_CODE_HOST_REJECTED:

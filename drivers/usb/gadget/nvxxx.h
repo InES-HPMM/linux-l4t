@@ -538,6 +538,7 @@ struct nv_udc_ep {
 		struct transfer_trb_s *last_trb;
 	};
 	struct transfer_trb_s *enq_pt;
+	struct transfer_trb_s *deq_pt;
 	u8 pcs;
 #ifdef PRIME_NOT_RCVD_WAR
 	u8 stream_rejected_retry_count;
