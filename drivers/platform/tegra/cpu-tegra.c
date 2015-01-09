@@ -327,7 +327,8 @@ static unsigned int sysedp_cap_speed(unsigned int requested_speed)
 				 cpumask_weight(&edp_cpumask), eff_cpupwr,
 				 cur_cpupwr_freqcap);
 		}
-		trace_sysedp_max_cpu_pwr(eff_cpupwr, cur_cpupwr_freqcap);
+		trace_sysedp_max_cpu_pwr(cpumask_weight(&edp_cpumask),
+					 eff_cpupwr, cur_cpupwr_freqcap);
 	}
 
 	if (cur_cpupwr_freqcap && requested_speed > cur_cpupwr_freqcap)

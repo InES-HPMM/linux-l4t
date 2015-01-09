@@ -119,7 +119,8 @@ static void apply_caps(struct tegra_sysedp_devcap *devcap)
 
 	if (do_trace)
 		trace_sysedp_dynamic_capping(new.cpupwr, new.gpu,
-					     new.emc, gpu_busy);
+					     new.emc, gpu_busy,
+					     capping_device_platdata->gpu_cap_as_mw);
 	pr_caps(&cur_caps, &new);
 	cur_caps = new;
 }
