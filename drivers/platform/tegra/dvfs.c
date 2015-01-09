@@ -5,7 +5,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2014 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2010-2015 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -643,11 +643,25 @@ static int connect_to_regulator(struct dvfs_rail *rail, struct device *dev,
 		rail->reg = reg;
 	}
 
-	v = regulator_enable(rail->reg);
-	if (v < 0) {
-		pr_err("tegra_dvfs: failed on enabling regulator %s\n, err %d",
-			rail->reg_id, v);
-		return v;
+	/*
+	 * Enable regulator for
+	 * - CPU and core rails always. From s/w prospective these are always
+	 *   on rails (turned on/off by side-band h/w); DVFS just synchronizes
+	 *   initial usage count with h/w state.
+	 * - GPU rail on Tegra12/13. Although this rail has in-band s/w control,
+	 *   Tegra12 GPU power-ungating depends on DVFS enabling regulator
+	 *   the 1st time.
+	 *
+	 * Skip regulator enable for GPU rail on Tegra21. It will be done by
+	 * power-ungating procedure via in-band regulator interface.
+	 */
+	if (!rail->in_band_pm || !IS_ENABLED(CONFIG_ARCH_TEGRA_21x_SOC)) {
+		v = regulator_enable(rail->reg);
+		if (v < 0) {
+			pr_err("tegra_dvfs: failed on enabling regulator %s\n, err %d",
+				rail->reg_id, v);
+			return v;
+		}
 	}
 
 	v = regulator_get_voltage(rail->reg);
