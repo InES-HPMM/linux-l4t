@@ -3996,6 +3996,7 @@ tegra_xhci_suspend(struct platform_device *pdev,
 	int pad = 0;
 
 	mutex_lock(&tegra->sync_lock);
+
 	if (!tegra->init_done) {
 		xhci_warn(xhci, "%s: xhci probe not done\n",
 				__func__);
@@ -4008,7 +4009,6 @@ tegra_xhci_suspend(struct platform_device *pdev,
 		mutex_unlock(&tegra->sync_lock);
 		return -EBUSY;
 	}
-	mutex_unlock(&tegra->sync_lock);
 
 	/* enable_irq_wake for ss ports */
 	ret = enable_irq_wake(tegra->padctl_irq);
@@ -4057,8 +4057,8 @@ tegra_xhci_suspend(struct platform_device *pdev,
 	if (XUSB_DEVICE_ID_T114 != tegra->device_id)
 		usb3_phy_pad_disable();
 
-	mutex_lock(&tegra->sync_lock);
 	tegra->system_in_lp0 = true;
+
 	mutex_unlock(&tegra->sync_lock);
 
 	return ret;
@@ -4074,13 +4074,13 @@ tegra_xhci_resume(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 
 	mutex_lock(&tegra->sync_lock);
+
 	if (!tegra->init_done) {
 		xhci_warn(xhci, "%s: xhci probe not done\n",
 				__func__);
 		mutex_unlock(&tegra->sync_lock);
 		return -EBUSY;
 	}
-	mutex_unlock(&tegra->sync_lock);
 
 	tegra->last_jiffies = jiffies;
 
@@ -4105,8 +4105,8 @@ tegra_xhci_resume(struct platform_device *pdev)
 			dev_err(&pdev->dev, "error deassert sata pll\n");
 	}
 
-	mutex_lock(&tegra->sync_lock);
 	tegra->system_in_lp0 = false;
+
 	mutex_unlock(&tegra->sync_lock);
 
 	return 0;
