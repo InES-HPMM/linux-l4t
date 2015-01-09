@@ -880,6 +880,8 @@ static void of_register_spi_devices(struct spi_master *master)
 			spi->mode |= SPI_CS_HIGH;
 		if (of_find_property(nc, "spi-3wire", NULL))
 			spi->mode |= SPI_3WIRE;
+		if (of_find_property(nc, "spi-lsbyte-first", NULL))
+			spi->mode |= SPI_LSBYTE_FIRST;
 
 		/* Device DUAL/QUAD mode */
 		prop = of_get_property(nc, "spi-tx-bus-width", &len);
