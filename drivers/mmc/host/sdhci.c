@@ -1277,7 +1277,10 @@ static void update_stat(struct sdhci_host *host, u32 blk_size, u32 blk_count,
 			break;
 		stat = stat->next;
 	}
+	/* allocation skipped in finish call */
 	if (!stat) {
+		if (!is_start_stat)
+			goto end;
 		/* allocate an entry */
 		stat = add_entry_sorted(host, blk_size, blk_count, data_flags);
 		if (!stat) {
