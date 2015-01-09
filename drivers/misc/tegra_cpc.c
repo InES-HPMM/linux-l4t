@@ -35,6 +35,10 @@
 #include <linux/types.h>
 #include <linux/tegra_cpc.h>
 
+#define CPC_I2C_DEADLINE_MS 200
+
+#define TEGRA_CPC_DEBUG 0
+
 /* local data structures */
 struct cpc_i2c_host {
 	struct i2c_client *i2c_client;
@@ -46,186 +50,247 @@ struct cpc_i2c_host {
 	struct completion complete;
 };
 
+/*
+   There will be at most one uC instance per board
+ */
 static atomic_t cpc_in_use;
 static struct cpc_i2c_host *cpc_host;
 
-static int cpc_read_data(struct i2c_client *client, u8 cmd,
-					void *data, u16 length)
+/*
+   Given a buffer, construct a CPC packet. Returns the actually occupied size of
+   the buffer. Would BUG if the given buffer is not long enough
+ */
+static int cpc_build_packet(struct i2c_client *client,
+				u8 buffer[], unsigned int buf_size_byte,
+				u8 cmd_id, cpc_data_len length,
+				const void *data, const void *hmac)
+{
+	unsigned int cur_data_index = CPC_DATA_INDEX;
+
+	unsigned int required_buf_size = CPC_HEADER_SIZE;
+	required_buf_size += data ? length : 0;
+	required_buf_size += hmac ? CPC_HMAC_SIZE : 0;
+
+	dev_dbg(&client->dev,
+		"%s cmd %08x len %u buffer size %u reqd %u\n",
+		__func__, cmd_id, length, buf_size_byte, required_buf_size);
+
+	if (unlikely(buf_size_byte < required_buf_size)) {
+		dev_err(&client->dev,
+			"Buffer (%u) too small for data (%u)\n",
+			buf_size_byte, required_buf_size);
+		return -EINVAL;
+	}
+
+	buffer[CPC_CMD_ID_INDEX] = cmd_id;
+	buffer[CPC_DATALEN_INDEX] = length;
+
+	if (data) {
+		memcpy(&buffer[cur_data_index], data, length);
+		cur_data_index += length;
+	}
+
+	if (hmac)
+		memcpy(&buffer[cur_data_index], hmac, CPC_HMAC_SIZE);
+
+	return required_buf_size;
+}
+
+static int cpc_send_i2c_msg(struct i2c_client *client, struct i2c_msg *msgs,
+				unsigned int num_msg)
 {
 	int err;
-	struct i2c_msg msg[2];
+	err = i2c_transfer(client->adapter, msgs, num_msg);
+	if (unlikely(err != num_msg)) {
+		dev_err(&client->dev,
+			"%s: i2c transfer failed. Transferred %u out of %u\n",
+			__func__, err, num_msg);
+		return -EINVAL;
+	}
+	return 0;
+}
 
-	if (!client->adapter)
+/*
+   Issues a given read command and copies the resulting data
+   to the data_buf parameter.
+
+   data_len indicates how many bytes of real data uC would return upon the
+   request
+
+   total_len indicates how many bytes of all data uC would return upon the
+   request. data_len and total_len would be different if security data such as
+   HMAC is expected to be returned. sizeof(data_buf) must be >= total_len
+ */
+static int cpc_read_data(struct i2c_client *client, u8 cmd,
+			cpc_data_len data_len, void *data_buf,
+			unsigned int total_len)
+{
+	struct i2c_msg msg[2];
+	int packet_len;
+
+	/*
+	   The read command will not send any data. The uC may send more data
+	   then length bytes, if HMAC is involved
+
+	   The buffer for reading the data back has to be big enough to hold
+	   the maximum value which can be expressed by the size of cpc_data_len
+	*/
+	u8 buffer_req[CPC_HEADER_SIZE];
+	u8 *buffer_resp = data_buf;
+
+	if (unlikely(!client->adapter))
 		return -ENODEV;
+
+	if ( unlikely(
+		(!data_len) ||
+		(!total_len) ||
+		(data_len > CPC_MAX_DATA_SIZE) ||
+		(total_len > data_len + CPC_HMAC_SIZE))) {
+		dev_err(&client->dev,
+			"%s: invalid range. Expected: 0 < data_len %d <= %d\n",
+			__func__, data_len, CPC_MAX_DATA_SIZE);
+		dev_err(&client->dev,
+			"%s: invalid range. Expected: 0 < total_len %d <= %d\n",
+			__func__, total_len, data_len + CPC_MAX_DATA_SIZE);
+		return -EINVAL;
+	}
 
 	/*
 	   First put header of CPC read command. Start with the write mode flag,
 	   to communicate which command we are sending. Then read the response
 	   on the bus
+	 */
+
+	packet_len = cpc_build_packet(client, buffer_req,
+				sizeof(buffer_req),
+				cmd, data_len, NULL, NULL);
+	if (packet_len <= 0)
+		return -EINVAL;
+
+	msg[0].addr = client->addr;
+	msg[0].len = (__u16) packet_len;
+	msg[0].flags = 0;
+	msg[0].buf = buffer_req;
+
+	/*
+	   The second i2c packet is empty, as it is only a buffer space for
+	   reading the requested data back
 	*/
-	msg[0].addr = client->addr;
-	msg[0].flags = 0;
-	msg[0].len = 1;
-	msg[0].buf = cmd;
-
 	msg[1].addr = client->addr;
+	msg[1].len = total_len;
 	msg[1].flags = I2C_M_RD;
-	msg[1].len = length;
-	msg[1].buf = data;
-
-
-	err = i2c_transfer(client->adapter, msg, 2);
-	if (err != 2) {
-		pr_warn("%s: i2c transfer failed\n", __func__);
-		return -EINVAL;
-	}
-
-	return 0;
+	msg[1].buf = buffer_resp;
+	return cpc_send_i2c_msg(client, msg,
+		sizeof(msg) / sizeof(struct i2c_msg));
 }
 
+/*
+ * Executes a write command. length is the size of data only, not including hmac
+ */
 static int cpc_write_data(struct i2c_client *client, u8 cmd,
-				void *data, u8 length, void *hmac)
+				const void *data, cpc_data_len length,
+				const void *hmac)
 {
-	int err;
-	struct i2c_msg msg[4];
-	u8 command = cmd;
+	struct i2c_msg msg[1];
+	int packet_len;
+	u8 buffer_req[CPC_HEADER_SIZE + CPC_MAX_DATA_SIZE + CPC_HMAC_SIZE];
 
 	if (!client->adapter)
 		return -ENODEV;
 
 	/* first put header of CPC write command */
+	packet_len = cpc_build_packet(client, buffer_req,
+				sizeof(buffer_req), cmd,
+				length, data, hmac);
+	if (packet_len <= 0)
+		return -EINVAL;
+
 	msg[0].addr = client->addr;
+	msg[0].len = (__u16) packet_len;
 	msg[0].flags = 0;
-	msg[0].len = 1;
-	msg[0].buf = &command;
+	msg[0].buf = buffer_req;
 
-	msg[1].addr = client->addr;
-	msg[1].flags = 0;
-	msg[1].len = sizeof(length);
-	msg[1].buf = &length;
+	return cpc_send_i2c_msg(client, msg,
+		sizeof(msg) / sizeof(struct i2c_msg));
+}
 
-	msg[2].addr = client->addr;
-	msg[2].flags = 0;
-	msg[2].len = length;
-	msg[2].buf = data;
+static int _cpc_do_data(struct cpc_i2c_host *cpc, struct cpc_frame_t *fr)
+{
+	int err = 0;
+	u8 buffer[CPC_MAX_DATA_SIZE + CPC_HMAC_SIZE];
+	cpc_data_len data_len = fr->len;
+	unsigned int total_len  = fr->len;
 
-	msg[3].addr = client->addr;
-	msg[3].flags = 0;
-	msg[3].len = CPC_HMAC_SIZE;
-	msg[3].buf = hmac;
-
-
-	err = i2c_transfer(client->adapter, msg, 4);
-	if (err != 4) {
-		pr_err("cpc: i2c transfer failed, for cmd %x\n", cmd);
+	if (unlikely(
+		(data_len == 0) ||
+		(data_len > CPC_MAX_DATA_SIZE) ||
+		(data_len + CPC_HMAC_SIZE > sizeof(buffer)))) {
+		dev_dbg(&cpc->i2c_client->dev,
+			"The requested size is invalid:%u", data_len);
 		return -EINVAL;
 	}
 
-	return err;
-}
-
-static int cpc_write_key(struct i2c_client *client, u8 cmd,
-						void *hmac, u8 length)
-{
-	int err;
-	struct i2c_msg msg[2];
-	u8 command = cmd;
-
-	if (!client->adapter)
-		return -ENODEV;
-
-	/* first put header of CPC write command */
-	msg[0].addr = client->addr;
-	msg[0].flags = 0;
-	msg[0].len = 1;
-	msg[0].buf = &command;
-
-	msg[1].addr = client->addr;
-	msg[1].flags = 0;
-	msg[1].len = length;
-	msg[1].buf = hmac;
-
-	err = i2c_transfer(client->adapter, msg, 2);
-	if (err != 2) {
-		pr_err("cpc: i2c transfer failed, for cmd %x\n", cmd);
-		return -EINVAL;
-	}
-
-	return err;
-}
-
-static void _cpc_do_data(struct cpc_i2c_host *cpc, struct cpc_frame_t *fr)
-{
-	__u32 write_counter = 0;
-	u8 status = 0;
-
+	memset(buffer, 0, sizeof(buffer));
+	fr->result = CPC_RESULT_UNKNOWN_REQUEST;
 	mutex_lock(&cpc->lock);
 	switch (fr->req_or_resp) {
 	case CPC_READ_M_COUNT:
-		/* mcounter size = 4 */
-		cpc_read_data(cpc->i2c_client, fr->req_or_resp,
-						&write_counter, 4);
-		fr->write_counter = write_counter;
+		err = cpc_read_data(cpc->i2c_client, fr->req_or_resp, data_len,
+						buffer, total_len);
+		if (err)
+			goto fail;
 
-		cpc_read_data(cpc->i2c_client, CPC_GET_RESULT, &status, 1);
-		fr->result = status;
+		memcpy(&fr->write_counter, &buffer[0], CPC_COUNTER_SIZE);
 		break;
 
 	case CPC_READ_FRAME:
-		cpc_read_data(cpc->i2c_client, fr->req_or_resp,
-				fr->data, fr->len);
+		total_len += CPC_HMAC_SIZE;
+		err = cpc_read_data(cpc->i2c_client, fr->req_or_resp, data_len,
+				buffer, total_len);
+		if (err)
+			goto fail;
 
-		cpc_read_data(cpc->i2c_client, CPC_GET_RESULT, &status, 1);
-		fr->result = status;
+		memcpy(&fr->data, &buffer[0], data_len);
+		memcpy(&fr->hmac, &buffer[data_len], CPC_HMAC_SIZE);
 		break;
 
 	case CPC_WRITE_FRAME:
 		init_completion(&cpc->complete);
-		cpc_write_data(cpc->i2c_client, fr->req_or_resp, fr->data,
-				fr->len, fr->hmac);
+		err = cpc_write_data(cpc->i2c_client, fr->req_or_resp, fr->data,
+				data_len, fr->hmac);
+		if (err)
+			goto fail;
 
 		if (!wait_for_completion_timeout(&cpc->complete,
-						msecs_to_jiffies(200))) {
+				msecs_to_jiffies(CPC_I2C_DEADLINE_MS))) {
 			pr_err("%s timeout on write complete\n", __func__);
-			fr->result = CPC_WR_FAIL;
-			/*
-			   TODO: break
-			 */
+			fr->result = CPC_RESULT_WRITE_FAILURE;
 		}
-
-		cpc_read_data(cpc->i2c_client, CPC_GET_RESULT, &status, 1);
-		fr->result = status;
 		break;
-
-	case CPC_PROGRAM_KEY:
-		init_completion(&cpc->complete);
-		cpc_write_key(cpc->i2c_client, fr->req_or_resp,
-						fr->hmac, CPC_HMAC_SIZE);
-
-		if (!wait_for_completion_timeout(&cpc->complete,
-						msecs_to_jiffies(200))) {
-			pr_err("%s timeout on write complete\n", __func__);
-			fr->result = CPC_KEY_FAIL;
-			/*
-			   TODO: break
-			 */
-		}
-
-		cpc_read_data(cpc->i2c_client, CPC_GET_RESULT, &status, 1);
-		fr->result = status;
-		break;
-
 	default:
-		pr_warn("unsupported CPC command\n");
+		err = -EINVAL;
+		pr_warn("unsupported CPC command id %08x\n", fr->req_or_resp);
+		goto fail;
 	}
-	fr->req_or_resp = fr->req_or_resp<<8;
+	err = cpc_read_data(cpc->i2c_client, CPC_GET_RESULT,
+			sizeof(fr->result), &fr->result,
+			sizeof(fr->result));
+fail:
 	mutex_unlock(&cpc->lock);
+
+	dev_dbg(&cpc->i2c_client->dev,
+			"%s execution result:cmd %08x len %u total_len %u\n"
+			"\tresult %08x counter %u\n", __func__, fr->req_or_resp,
+			data_len, total_len, fr->result, fr->write_counter);
+	dev_dbg(&cpc->i2c_client->dev,
+			"data %02x %02x %02x %02x\n",
+			fr->data[3], fr->data[2], fr->data[1], fr->data[0]);
+	return err;
 }
 
 static irqreturn_t cpc_irq(int irq, void *data)
 {
 	struct cpc_i2c_host *cpc = data;
-
 	complete(&cpc->complete);
 	return IRQ_HANDLED;
 }
@@ -255,43 +320,62 @@ static long cpc_ioctl(struct file *file,
 			unsigned int cmd, unsigned long arg)
 {
 	struct cpc_i2c_host *cpc = file->private_data;
-	struct cpc_frame_t *cpc_fr;
+	struct cpc_frame_t *cpc_fr = 0;
+	long err = 0;
 
-	if (_IOC_TYPE(cmd) != NVCPC_IOC_MAGIC)
-		return -ENOTTY;
+	if (_IOC_TYPE(cmd) != NVCPC_IOC_MAGIC) {
+		err = -ENOTTY;
+		goto fail;
+	}
 
-	if (_IOC_NR(cmd) > NVCPC_IOCTL_DO_IO)
-		return -ENOTTY;
+	if (_IOC_NR(cmd) > NVCPC_IOCTL_DO_IO) {
+		err = -ENOTTY;
+		goto fail;
+	}
 
 	switch (cmd) {
 	case NVCPC_IOCTL_DO_IO:
 		cpc_fr = kmalloc(sizeof(struct cpc_frame_t), GFP_KERNEL);
-		if (cpc_fr == NULL) {
-			pr_err("%s: failed to allocate mem\n", __func__);
-			return -ENOMEM;
+		if (!cpc_fr) {
+			pr_err("%s: failed to allocate memory\n", __func__);
+			err = -ENOMEM;
+			goto fail;
 		}
 
 		if (copy_from_user(cpc_fr, (const void __user *)arg,
 					sizeof(struct cpc_frame_t))) {
-			kfree(cpc_fr);
-			return -EFAULT;
+			err = -EFAULT;
+			goto fail;
 		}
 
-		_cpc_do_data(cpc, cpc_fr);
+		if (cpc_fr->len >
+			(sizeof(cpc_fr->hmac) + sizeof(cpc_fr->data))) {
+			err = -EINVAL;
+			goto fail;
+		}
+
+		if (!cpc_fr->len) {
+			err = -EINVAL;
+			goto fail;
+		}
+
+		err = _cpc_do_data(cpc, cpc_fr);
 
 		if (copy_to_user((void __user *)arg, cpc_fr,
 					sizeof(struct cpc_frame_t))) {
-			kfree(cpc_fr);
-			return -EFAULT;
+			err = -EFAULT;
+			goto fail;
 		}
-		kfree(cpc_fr);
 		break;
 	default:
 		pr_err("CPC: unsupported ioctl\n");
-		return -EINVAL;
+		err =  -EINVAL;
+		goto fail;
 	}
 
-	return 0;
+fail:
+	kfree(cpc_fr);
+	return err;
 }
 
 static const struct file_operations cpc_dev_fops = {
@@ -315,17 +399,20 @@ static int cpc_i2c_probe(struct i2c_client *client,
 {
 	int status;
 
+	/* Initialize stack variables and structures */
 	cpc_host = kzalloc(sizeof(struct cpc_i2c_host), GFP_KERNEL);
 	if (!cpc_host) {
 		pr_err("unable to allocate memory\n");
 		return -ENOMEM;
 	}
 
+	/* Setup I2C */
 	cpc_host->i2c_client = client;
 	i2c_set_clientdata(client, cpc_host);
 	cpc_host->irq = client->irq;
 	mutex_init(&cpc_host->lock);
 
+	/* Setup IRQ */
 	status = request_threaded_irq(cpc_host->irq, cpc_irq, NULL,
 				IRQF_TRIGGER_RISING, "cpc_irq", cpc_host);
 	if (status) {
@@ -336,7 +423,7 @@ static int cpc_i2c_probe(struct i2c_client *client,
 	/* TODO: check for CP DRM controller status. Make sure it's ready
 	 */
 
-	/* setup misc device for userspace io*/
+	/* setup misc device for userspace io */
 	if (misc_register(&cpc_dev)) {
 		pr_err("%s: misc device register failed\n", __func__);
 		status = -ENOMEM;
