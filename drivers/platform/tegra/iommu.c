@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -34,7 +34,7 @@ phys_addr_t __weak tegra_fb_start, tegra_fb_size,
 
 static struct iommu_linear_map tegra_fb_linear_map[16]; /* Terminated with 0 */
 
-#ifdef CONFIG_TEGRA_BPMP
+#if defined(CONFIG_TEGRA_BPMP) && defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static struct iommu_linear_map tegra_bpmp_linear_map[2];
 static void tegra_bpmp_linear_set(void)
 {
