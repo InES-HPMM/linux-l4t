@@ -1,7 +1,7 @@
 /*
  * arch/arm/boot/dts/tegra124-platforms/tegra124-tn8-e1736-pmic.dtsi
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -148,7 +148,6 @@
 						regulator-min-microvolt = <700000>;
 						regulator-max-microvolt = <1400000>;
 						regulator-init-microvolt = <1000000>;
-						regulator-boot-on;
 
 						consumers {
 							c1 {
