@@ -708,18 +708,15 @@ static int connect_to_regulator(struct dvfs_rail *rail, struct device *dev,
 	}
 
 	/*
-	 * Enable regulator for
-	 * - CPU and core rails always. From s/w prospective these are always
-	 *   on rails (turned on/off by side-band h/w); DVFS just synchronizes
-	 *   initial usage count with h/w state.
-	 * - GPU rail on Tegra12/13. Although this rail has in-band s/w control,
-	 *   Tegra12 GPU power-ungating depends on DVFS enabling regulator
-	 *   the 1st time.
+	 * Enable regulator for CPU and core rails. From s/w prospective these
+	 * are always on rails (turned on/off by side-band h/w); DVFS just
+	 * synchronizes initial usage count with h/w state.
 	 *
-	 * Skip regulator enable for GPU rail on Tegra21. It will be done by
-	 * power-ungating procedure via in-band regulator interface.
+	 * Skip regulator enable for GPU rail. This rail is under s/w control,
+	 * and it will be enabled by GPU power-ungating procedure via regulator
+	 * interface.
 	 */
-	if (!rail->in_band_pm || !IS_ENABLED(CONFIG_ARCH_TEGRA_21x_SOC)) {
+	if (!rail->in_band_pm) {
 		v = regulator_enable(rail->reg);
 		if (v < 0) {
 			pr_err("tegra_dvfs: failed on enabling regulator %s\n, err %d",
