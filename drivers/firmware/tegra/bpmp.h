@@ -20,7 +20,24 @@
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 
-int bpmp_ipc_init(struct platform_device *pdev);
+struct fops_entry {
+	char *name;
+	const struct file_operations *fops;
+	mode_t mode;
+};
+
+extern struct device *device;
+extern struct mutex bpmp_lock;
+
+int bpmp_clk_init(struct platform_device *pdev);
+int bpmp_platdbg_init(struct dentry *root, struct platform_device *pdev);
+int bpmp_mail_init(struct platform_device *pdev);
+int bpmp_get_fwtag(void);
+int bpmp_init_modules(struct platform_device *pdev);
+void bpmp_cleanup_modules(void);
+int bpmp_create_attrs(const struct fops_entry *fent, struct dentry *parent,
+		void *data);
+
 int bpmp_attach(void);
 void bpmp_detach(void);
 

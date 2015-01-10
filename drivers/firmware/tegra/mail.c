@@ -762,7 +762,7 @@ int bpmp_attach(void)
 	return -ETIMEDOUT;
 }
 
-int bpmp_ipc_init(struct platform_device *pdev)
+int bpmp_mail_init(struct platform_device *pdev)
 {
 	int r;
 

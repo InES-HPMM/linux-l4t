@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -47,11 +47,16 @@
 
 typedef void (*bpmp_mrq_handler)(int mrq, void *data, int ch);
 
+#if defined(CONFIG_TEGRA_BPMP) && defined(CONFIG_ARCH_TEGRA_21x_SOC)
+void tegra_bpmp_get_smmu_data(phys_addr_t *start, size_t *size);
+#else
+static inline void tegra_bpmp_get_smmu_data(phys_addr_t *start, size_t *size) {}
+#endif
+
 #ifdef CONFIG_TEGRA_BPMP
 void tegra_bpmp_init_early(void);
 void tegra_bpmp_sclk_skip_set_rate(unsigned long input_rate,
 		unsigned long rate);
-void tegra_bpmp_get_smmu_data(phys_addr_t *start, size_t *size);
 int tegra_bpmp_do_idle(int cpu, int ccxtl, int scx);
 int tegra_bpmp_tolerate_idle(int cpu, int ccxtl, int scx_tl);
 int tegra_bpmp_scx_enable(int scx);
@@ -70,7 +75,6 @@ void tegra_bpmp_mail_return_data(int ch, int code, void *data, int sz);
 static inline void tegra_bpmp_init_early(void) {}
 static inline void tegra_bpmp_sclk_skip_set_rate(unsigned long input_rate,
 		unsigned long rate) {}
-static inline void tegra_bpmp_get_smmu_data(phys_addr_t *start, size_t *size) {}
 static inline int tegra_bpmp_do_idle(int cpu, int ccxtl, int scx)
 { return -ENODEV; }
 static inline int tegra_bpmp_tolerate_idle(int cpu, int ccxtl, int scx_tl)
