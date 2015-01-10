@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/tegra12_clocks.c
  *
- * Copyright (C) 2011-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2011-2015 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -9279,7 +9279,10 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 			if (freq > g_vmin_freq)
 				freq_table[i++].frequency = g_vmin_freq;
 		}
-		freq_table[i++].frequency = freq;
+
+		/* Skip duplicated frequency (may happen on LP CPU only) */
+		if (freq_table[i-1].frequency != freq)
+			freq_table[i++].frequency = freq;
 
 		if (freq == max_freq)
 			break;
