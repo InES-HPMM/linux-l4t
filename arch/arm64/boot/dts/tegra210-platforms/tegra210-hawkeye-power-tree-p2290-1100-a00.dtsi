@@ -54,6 +54,10 @@
 		};
 	};
 
+	i2c@546c0000 {
+		bus-pullup-supply = <&battery_reg>;
+	};
+
 	udc@7d000000 {
 		avdd_usb-supply = <&vdd_3v3>;
 		avdd_pll_utmip-supply = <&max77620_sd3>;

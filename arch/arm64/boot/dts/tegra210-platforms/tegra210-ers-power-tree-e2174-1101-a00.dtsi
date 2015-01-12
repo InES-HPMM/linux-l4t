@@ -227,6 +227,10 @@
 		};
 	};
 
+	i2c@546c0000 {
+		bus-pullup-supply = <&battery_reg>;
+	};
+
 	xusb@70090000 {
 		usb_vbus0-supply = <&usb0_vbus>;
 		usb_vbus1-supply = <&vdd_usb_5v0>;
