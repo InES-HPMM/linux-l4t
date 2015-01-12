@@ -40,6 +40,12 @@
 #include <tegra/mc.h>
 #include <tegra/mcerr.h>
 
+#define MC_PRINT(fmt, ...) \
+do { \
+	trace_printk(fmt, ##__VA_ARGS__); \
+	pr_err(fmt, ##__VA_ARGS__); \
+} while (0)
+
 static bool mcerr_throttle_enabled = true;
 
 static int arb_intr_mma_set(const char *arg, const struct kernel_param *kp);
@@ -267,7 +273,7 @@ static irqreturn_t tegra_mc_error_thread(int irq, void *data)
 	if (mcerr_throttle_enabled && count >= MAX_PRINTS) {
 		schedule_delayed_work(&unthrottle_prints_work, HZ/2);
 		if (count == MAX_PRINTS)
-			pr_err("Too many MC errors; throttling prints\n");
+			MC_PRINT("Too many MC errors; throttling prints\n");
 		goto out;
 	}
 
@@ -316,6 +322,8 @@ static irqreturn_t tegra_mc_error_hard_irq(int irq, void *data)
 		return IRQ_NONE;
 	}
 
+	trace_printk("istatus=%x, estatus=%x, eaddr=%x\n",
+		intr, mc_readl(MC_ERR_STATUS), mc_readl(MC_ERR_ADR));
 	/*
 	 * We have an interrupt; disable the rest until this one is handled.
 	 * This means we will potentially miss interrupts. We can live with
@@ -364,22 +372,12 @@ static void mcerr_default_print(const struct mc_error *err,
 				u32 status, phys_addr_t addr,
 				int secure, int rw, const char *smmu_info)
 {
-	static char str[SZ_512];
-	int idx = 0;
-
-	idx += snprintf(str + idx, sizeof(str) - idx,
-			"[mcerr] (%s) %s: %s\n",
-			client->swgid, client->name, err->msg);
-	idx += snprintf(str + idx, sizeof(str) - idx,
-			"[mcerr]   status = 0x%08x; addr = 0x%08llx\n",
-			status,	(long long unsigned int)addr);
-	idx += snprintf(str + idx, sizeof(str) - idx,
-			"[mcerr]   secure: %s, access-type: %s, SMMU fault: %s\n",
-			secure ? "yes" : "no", rw ? "write" : "read",
-			smmu_info ? smmu_info : "none");
-
-	trace_printk(str);
-	pr_err("%s", str);
+	MC_PRINT("[mcerr] (%s) %s: %s\n", client->swgid, client->name, err->msg);
+	MC_PRINT("[mcerr]   status = 0x%08x; addr = 0x%08llx\n", status,
+	       (long long unsigned int)addr);
+	MC_PRINT("[mcerr]   secure: %s, access-type: %s, SMMU fault: %s\n",
+	       secure ? "yes" : "no", rw ? "write" : "read",
+	       smmu_info ? smmu_info : "none");
 }
 
 /*
