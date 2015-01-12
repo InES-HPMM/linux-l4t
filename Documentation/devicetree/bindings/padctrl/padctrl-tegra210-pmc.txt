@@ -1,0 +1,25 @@
+This describe DT binding of the pad controller driver for Tegra 210 pmc.
+
+Required properties:
+- Compatible: Must be nvidia,tegra210-pmc.
+- #padcontroller-cells: Number of padctrl arguments. It must be 1.
+
+The pad id is passed as the argument and this is defined as macro at
+	include/dt-bindings/padctrl/tegra210-pads.h
+Example: SDMMC1 pad is 6 and SDMMC3 is 7.
+
+	tegra_pmc: pmc@7000e400 {
+		compatible = "nvidia,tegra210-pmc";
+		reg = <0x0 0x7000e400 0x0 0x400>;
+		#padcontroller-cells = <1>;
+		status = "disabled";
+	};
+
+
+	sdhci@700b0400 {
+		compatible = "nvidia,tegra210-sdhci";
+		::::
+		pad-controllers = <&tegra_pmc TEGRA210_PAD_SDMMC3>;
+		pad-names = "sdmmc";
+		::::
+	};
