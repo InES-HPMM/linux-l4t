@@ -810,6 +810,10 @@ static int vi2_capture_setup(struct tegra_camera *cam)
 		format = TEGRA_IMAGE_FORMAT_T_R16_I;
 		data_type = TEGRA_IMAGE_DT_RAW10;
 		image_size = icd->user_width * 10 / 8;
+	} else if (icd->current_fmt->code == V4L2_MBUS_FMT_SRGGB12_1X12) {
+		format = TEGRA_IMAGE_FORMAT_T_R16_I;
+		data_type = TEGRA_IMAGE_DT_RAW12;
+		image_size = icd->user_width * 12 / 8;
 	}
 
 	csi_regs_write(cam, TEGRA_VI_CSI_IMAGE_DEF,
@@ -842,6 +846,7 @@ static int vi2_capture_buffer_setup(struct tegra_camera *cam,
 	case V4L2_PIX_FMT_SGBRG8:
 	case V4L2_PIX_FMT_SBGGR10:
 	case V4L2_PIX_FMT_SRGGB10:
+	case V4L2_PIX_FMT_SRGGB12:
 	case V4L2_PIX_FMT_RGB32:
 		csi_regs_write(cam,
 			       TEGRA_VI_CSI_SURFACE0_OFFSET_MSB +

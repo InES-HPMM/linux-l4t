@@ -118,6 +118,13 @@ static const struct soc_mbus_pixelfmt tegra_camera_bayer_formats[] = {
 		.packing		= SOC_MBUS_PACKING_EXTEND16,
 		.order			= SOC_MBUS_ORDER_LE,
 	},
+	{
+		.fourcc			= V4L2_PIX_FMT_SRGGB12,
+		.name			= "Bayer 12 RGRG.. GBGB..",
+		.bits_per_sample	= 16,
+		.packing		= SOC_MBUS_PACKING_EXTEND16,
+		.order			= SOC_MBUS_ORDER_LE,
+	},
 };
 
 static const struct soc_mbus_pixelfmt tegra_camera_rgb_formats[] = {
@@ -179,6 +186,7 @@ static int tegra_camera_init_buffer(struct tegra_camera_buffer *buf)
 	case V4L2_PIX_FMT_SGBRG8:
 	case V4L2_PIX_FMT_SBGGR10:
 	case V4L2_PIX_FMT_SRGGB10:
+	case V4L2_PIX_FMT_SRGGB12:
 	case V4L2_PIX_FMT_RGB32:
 		buf->buffer_addr = vb2_dma_contig_plane_dma_addr(&buf->vb, 0);
 		buf->start_addr = buf->buffer_addr;
@@ -529,6 +537,7 @@ static int tegra_camera_get_formats(struct soc_camera_device *icd,
 	case V4L2_MBUS_FMT_SGBRG8_1X8:
 	case V4L2_MBUS_FMT_SBGGR10_1X10:
 	case V4L2_MBUS_FMT_SRGGB10_1X10:
+	case V4L2_MBUS_FMT_SRGGB12_1X12:
 		formats = tegra_camera_bayer_formats;
 		num_formats = ARRAY_SIZE(tegra_camera_bayer_formats);
 		break;
