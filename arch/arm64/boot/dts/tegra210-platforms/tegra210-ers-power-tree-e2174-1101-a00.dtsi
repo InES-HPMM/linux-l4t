@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -160,6 +160,20 @@
 			gpio = <&pca9539_76 6 0>;
 		};
 
+		vdd_usb_oc_5v0: regulator@21 {
+			compatible = "regulator-pinmux-fixed";
+			reg = <21>;
+			status = "okay";
+			regulator-name = "vdd-usb-oc-5v0";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			vin-supply = <&vdd_3v3>;
+			enable-active-high;
+			pinctrl-names = "enable", "disable";
+			pinctrl-0 = <&regulator_enable_state>;
+			pinctrl-1 = <&regulator_disable_state>;
+		};
+
 		vdd_cdc_1v2_aud: regulator@101 {
 			status = "okay";
 			gpio = <&pca9539_76 9 0>;
@@ -233,9 +247,9 @@
 
 	xusb@70090000 {
 		usb_vbus0-supply = <&usb0_vbus>;
-		usb_vbus1-supply = <&vdd_usb_5v0>;
-		usb_vbus2-supply = <&vdd_usb_5v0>;
-		usb_vbus3-supply = <&vdd_usb_5v0>;
+		usb_vbus1-supply = <&vdd_usb_oc_5v0>;
+		usb_vbus2-supply = <&vdd_usb_oc_5v0>;
+		usb_vbus3-supply = <&vdd_usb_oc_5v0>;
 		hvdd_usb-supply = <&vdd_3v3>;
 		avdd_pll_utmip-supply = <&max77620_sd3>;
 		vddio_hsic-supply = <&max77620_ldo0>;
