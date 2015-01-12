@@ -363,6 +363,7 @@ struct usb_bus {
 	struct mon_bus *mon_bus;	/* non-null when associated */
 	int monitored;			/* non-zero when monitored */
 #endif
+	bool skip_resume;
 };
 
 /* ----------------------------------------------------------------------- */

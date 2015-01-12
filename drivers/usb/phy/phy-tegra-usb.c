@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -931,3 +931,12 @@ void tegra_usb_phy_pmc_disable(struct tegra_usb_phy *phy)
 		phy->ops->pmc_disable(phy);
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_pmc_disable);
+
+bool tegra_usb_phy_is_pmc_wake(struct tegra_usb_phy *phy)
+{
+	bool status = 0;
+	if (phy->ops && phy->ops->is_pmc_wakeup)
+		status = phy->ops->is_pmc_wakeup(phy);
+	return status;
+}
+EXPORT_SYMBOL_GPL(tegra_usb_phy_is_pmc_wake);

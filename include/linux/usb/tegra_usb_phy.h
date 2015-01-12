@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2010 Google, Inc.
- * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -142,6 +142,8 @@ bool tegra_usb_phy_apple_500ma_charger_detected(struct tegra_usb_phy *phy);
  *  or not, returns true if remote/hotplug wake is detected.
  */
 bool tegra_usb_phy_pmc_wakeup(struct tegra_usb_phy *phy);
+
+bool tegra_usb_phy_is_pmc_wake(struct tegra_usb_phy *phy);
 
 void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy);
 

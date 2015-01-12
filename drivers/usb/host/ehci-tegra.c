@@ -80,6 +80,7 @@ struct tegra_ehci_hcd {
 	struct delayed_work boost_cpu_freq_work;
 	struct pm_qos_request boost_cpu_freq_req;
 #endif
+	bool is_skip_resume_enabled;
 };
 
 struct dma_align_buffer {
@@ -237,7 +238,10 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 	}
 	if (tegra_usb_phy_pmc_wakeup(tegra->phy)) {
 		ehci_dbg(ehci, "pmc interrupt detected\n");
-		wake_lock_timeout(&tegra->ehci_wake_lock, HZ);
+		if (tegra->is_skip_resume_enabled) {
+			wake_lock(&tegra->ehci_wake_lock);
+			hcd_to_bus(hcd)->skip_resume = false;
+		}
 		usb_hcd_resume_root_hub(hcd);
 		spin_unlock(&ehci->lock);
 		return irq_status;
@@ -430,8 +434,13 @@ static int tegra_ehci_bus_suspend(struct usb_hcd *hcd)
 	err = ehci_bus_suspend(hcd);
 	if (err)
 		tegra->bus_suspended_fail = true;
-	else
+	else {
 		usb_phy_set_suspend(get_usb_phy(tegra->phy), 1);
+		if (tegra->is_skip_resume_enabled) {
+			hcd_to_bus(hcd)->skip_resume = true;
+			wake_unlock(&tegra->ehci_wake_lock);
+		}
+	}
 	mutex_unlock(&tegra->sync_lock);
 	EHCI_DBG("%s() END\n", __func__);
 
@@ -445,6 +454,8 @@ static int tegra_ehci_bus_resume(struct usb_hcd *hcd)
 	EHCI_DBG("%s() BEGIN\n", __func__);
 
 	mutex_lock(&tegra->sync_lock);
+	if (tegra->is_skip_resume_enabled)
+		wake_lock(&tegra->ehci_wake_lock);
 	usb_phy_set_suspend(get_usb_phy(tegra->phy), 0);
 	err = ehci_bus_resume(hcd);
 	mutex_unlock(&tegra->sync_lock);
@@ -797,6 +808,13 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	}
 
 	tegra->ehci = hcd_to_ehci(hcd);
+	if (pdata->phy_intf == TEGRA_USB_PHY_INTF_HSIC) {
+		hcd_to_bus(hcd)->skip_resume = pdata->u_data.host.skip_resume;
+		tegra->is_skip_resume_enabled = pdata->u_data.host.skip_resume;
+	} else if (pdata->phy_intf == TEGRA_USB_PHY_INTF_UTMI) {
+		hcd_to_bus(hcd)->skip_resume = false;
+		tegra->is_skip_resume_enabled = false;
+	}
 
 	if (pdata->port_otg) {
 		tegra->transceiver =
@@ -841,6 +859,8 @@ static int tegra_ehci_resume(struct platform_device *pdev)
 	int err = 0;
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 	struct tegra_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
+
 	if (tegra->irq) {
 		err = disable_irq_wake(tegra->irq);
 		if (err < 0)
@@ -848,30 +868,42 @@ static int tegra_ehci_resume(struct platform_device *pdev)
 				"Couldn't disable USB host mode wakeup, irq=%d, "
 				"error=%d\n", tegra->irq, err);
 	}
+
+	if (tegra->is_skip_resume_enabled) {
+		if (tegra_usb_phy_is_pmc_wake(tegra->phy))
+			hcd_to_bus(hcd)->skip_resume = false;
+	}
+
 	if (pdata->u_data.host.turn_off_vbus_on_lp0) {
 		tegra_usb_enable_vbus(tegra->phy, true);
 		if (pdata->port_otg)
 			tegra_ehci_notify_event(tegra, USB_EVENT_ID);
 	}
-	return tegra_usb_phy_power_on(tegra->phy);
+	if (tegra->is_skip_resume_enabled)
+		return 0;
+	else
+		return tegra_usb_phy_power_on(tegra->phy);
+
 }
 
 static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 	struct tegra_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
-	int err;
+	int err = -EBUSY;
 
 	/* bus suspend could have failed because of remote wakeup resume */
 	if (tegra->bus_suspended_fail)
-		return -EBUSY;
+		return err;
 	else {
-		err = tegra_usb_phy_power_off(tegra->phy);
-		if (err < 0)
-			return err;
-		if (pdata->u_data.host.turn_off_vbus_on_lp0) {
-			tegra_usb_enable_vbus(tegra->phy, false);
-			tegra_usb_phy_pmc_disable(tegra->phy);
+		if (!tegra->is_skip_resume_enabled) {
+			err = tegra_usb_phy_power_off(tegra->phy);
+			if (err < 0)
+				return err;
+			if (pdata->u_data.host.turn_off_vbus_on_lp0) {
+				tegra_usb_enable_vbus(tegra->phy, false);
+				tegra_usb_phy_pmc_disable(tegra->phy);
+			}
 		}
 		if (tegra->irq) {
 			err = enable_irq_wake(tegra->irq);
