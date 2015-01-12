@@ -32,6 +32,93 @@
 
 static struct smmu_device *smmu_handle; /* assume only one smmu device */
 
+/* Function pointers holding native implementation */
+static int (*__smmu_iommu_map_pfn_native)(struct smmu_as *as, dma_addr_t iova,
+					unsigned long pfn, unsigned long prot);
+static int (*__smmu_iommu_map_largepage_native)(struct smmu_as *as,
+			dma_addr_t iova, phys_addr_t pa, unsigned long prot);
+static size_t (*__smmu_iommu_unmap_native)(struct smmu_as *as,
+						dma_addr_t iova, size_t bytes);
+static int (*__smmu_iommu_map_sg_native)(struct iommu_domain *domain,
+						unsigned long iova,
+						struct scatterlist *sgl,
+						int npages, unsigned long prot);
+
+/* These functions don't do anything on hypervisor implementation */
+static void flush_ptc_and_tlb_hv(struct smmu_device *smmu, struct smmu_as *as,
+					dma_addr_t iova, u32 *pte,
+					struct page *page, int is_pde)
+{
+	return;
+}
+
+static void flush_ptc_and_tlb_range_hv(struct smmu_device *smmu,
+					struct smmu_as *as, dma_addr_t iova,
+					u32 *pte,
+					struct page *page, size_t count)
+{
+	return;
+}
+
+static void flush_ptc_and_tlb_as_hv(struct smmu_as *as, dma_addr_t start,
+					dma_addr_t end)
+{
+	return;
+}
+
+static int alloc_pdir_hv(struct smmu_as *as)
+{
+	u32 *pdir;
+	unsigned long flags;
+	int pdn, err = 0;
+	struct smmu_device *smmu = as->smmu;
+	struct page *page;
+	unsigned int *cnt;
+
+	/*
+	 * do the allocation, then grab as->lock
+	 */
+	cnt = devm_kzalloc(smmu->dev,
+				sizeof(cnt[0]) * SMMU_PDIR_COUNT,
+				GFP_KERNEL);
+	page = alloc_page(GFP_KERNEL | __GFP_DMA);
+
+	spin_lock_irqsave(&as->lock, flags);
+
+	if (as->pdir_page) {
+		/* We raced, free the redundant */
+		err = -EAGAIN;
+		goto err_out;
+	}
+
+	if (!page || !cnt) {
+		dev_err(smmu->dev, "failed to allocate at %s\n", __func__);
+		err = -ENOMEM;
+		goto err_out;
+	}
+
+	as->pdir_page = page;
+	as->pte_count = cnt;
+
+	pdir = page_address(as->pdir_page);
+
+	for (pdn = 0; pdn < SMMU_PDIR_COUNT; pdn++)
+		pdir[pdn] = _PDE_VACANT(pdn);
+
+	spin_unlock_irqrestore(&as->lock, flags);
+
+	return 0;
+
+err_out:
+	spin_unlock_irqrestore(&as->lock, flags);
+
+	if (page)
+		__free_page(page);
+	if (cnt)
+		devm_kfree(smmu->dev, cnt);
+	return err;
+}
+
 /* Make sure not to call this with as lock held */
 static struct smmu_as *smmu_as_alloc_hv(void)
 {
@@ -57,6 +144,11 @@ static struct smmu_as *smmu_as_alloc_hv(void)
 			if (chan >= 0) {
 				as->tegra_hv_comm_chan = chan;
 				spin_unlock_irqrestore(lock, flags);
+
+			/* we maintain local page table to perform iova to
+			 * pa(ipa) conversions locally.
+			 */
+				alloc_pdir_hv(as);
 				return as;
 			} else {
 				spin_unlock_irqrestore(lock, flags);
@@ -84,6 +176,8 @@ static void smmu_as_free_hv(struct smmu_domain *dom,
 		spin_lock_irqsave(lock, flags);
 		tegra_hv_smmu_comm_chan_free(dom->as[idx]->tegra_hv_comm_chan);
 		dom->as[idx]->tegra_hv_comm_chan = COMM_CHAN_UNASSIGNED;
+		/* Free the local copy */
+		free_pdir(dom->as[idx]);
 		dom->as[idx] = NULL;
 		spin_unlock_irqrestore(lock, flags);
 	}
@@ -126,6 +220,17 @@ static int __smmu_iommu_map_pfn_hv(struct smmu_as *as, dma_addr_t iova,
 {
 	int attrs = as->pte_attr;
 
+	int err;
+
+	/* we maintain local page table to perform iova to pa(ipa)
+	 * conversions locally.
+	 * Native driver has all the logic to map the pages so
+	 * directly using the function.
+	 */
+	err = __smmu_iommu_map_pfn_native(as, iova, pfn, prot);
+	if (err)
+		return err;
+
 	if (dma_get_attr(DMA_ATTR_READ_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_WRITABLE;
 	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
@@ -147,6 +252,16 @@ static int __smmu_iommu_map_largepage_hv(struct smmu_as *as, dma_addr_t iova,
 					phys_addr_t pa, unsigned long prot)
 {
 	int attrs = _PDE_ATTR;
+	int err;
+
+	/* we maintain local page table to perform iova to pa(ipa)
+	 * conversions locally.
+	 * Native driver has all the logic to map the pages so
+	 * directly using the function.
+	 */
+	err = __smmu_iommu_map_largepage_native(as, iova, pa, prot);
+	if (err)
+		return err;
 
 	if (dma_get_attr(DMA_ATTR_READ_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_WRITABLE;
@@ -199,6 +314,15 @@ static int smmu_iommu_map_sg_hv(struct iommu_domain *domain,
 	size_t sg_remaining = sg_num_pages(sgl);
 	unsigned long sg_pfn = page_to_pfn(sg_page(sgl));
 
+	/* we maintain local page table to perform iova to pa(ipa)
+	 * conversions locally.
+	 * Native driver has all the logic to map sg so
+	 * directly using the function.
+	 */
+	err = __smmu_iommu_map_sg_native(domain, iova, sgl, npages, prot);
+	if (err)
+		return err;
+
 	if (dma_get_attr(DMA_ATTR_READ_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_WRITABLE;
 	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
@@ -246,31 +370,17 @@ static size_t smmu_iommu_unmap_hv(struct iommu_domain *domain,
 	dev_dbg(as->smmu->dev, "[%d] %pad\n", as->asid, &iova);
 
 	spin_lock_irqsave(&as->lock, flags);
+
+	/* we maintain local page table to perform iova to pa(ipa)
+	 * conversions locally.
+	 * Native driver has all the logic to unmap pages so
+	 * directly using the function.
+	 */
+	__smmu_iommu_unmap_native(as, iova, bytes);
+
 	unmapped = __smmu_iommu_unmap_hv(as, iova, bytes);
 	spin_unlock_irqrestore(&as->lock, flags);
 	return unmapped;
-}
-
-static phys_addr_t smmu_iommu_iova_to_phys_hv(struct iommu_domain *domain,
-							dma_addr_t iova)
-{
-	struct smmu_as *as = domain_to_as(domain, iova);
-	u64 pa;
-	unsigned long flags;
-	int err = 0;
-
-	spin_lock_irqsave(&as->lock, flags);
-	err = libsmmu_iova_to_phys(as->tegra_hv_comm_chan, as->asid, iova, &pa);
-	spin_unlock_irqrestore(&as->lock, flags);
-
-	if (err < 0) {
-		dev_err(as->smmu->dev,  "Failed iova_to_phys\n");
-		return PTR_ERR(NULL);
-	}
-	dev_dbg(as->smmu->dev, "iova:%pad pfn:%pa asid:%d\n",
-						&iova, &pa, as->asid);
-
-	return pa;
 }
 
 static void smmu_domain_destroy_hv(struct smmu_device *smmu, struct smmu_as *as)
@@ -441,6 +551,14 @@ int tegra_smmu_probe_hv(struct platform_device *pdev,
 	if (err)
 		goto exit_probe_hv;
 
+	/* Keep track of the native functions as we need these
+	 * for creating local page tables
+	 */
+	__smmu_iommu_map_pfn_native = __smmu_iommu_map_pfn;
+	__smmu_iommu_map_largepage_native = __smmu_iommu_map_largepage;
+	__smmu_iommu_unmap_native = __smmu_iommu_unmap;
+	__smmu_iommu_map_sg_native = __smmu_iommu_map_sg;
+
 	/* Update default functions */
 	__smmu_iommu_map_pfn = __smmu_iommu_map_pfn_hv;
 	__smmu_client_set_hwgrp = smmu_client_set_hwgrp_hv;
@@ -449,13 +567,15 @@ int tegra_smmu_probe_hv(struct platform_device *pdev,
 	smmu_domain_destroy = smmu_domain_destroy_hv;
 	__tegra_smmu_suspend = tegra_smmu_suspend_hv;
 	__tegra_smmu_resume = tegra_smmu_resume_hv;
+	flush_ptc_and_tlb = flush_ptc_and_tlb_hv;
+	flush_ptc_and_tlb_range = flush_ptc_and_tlb_range_hv;
+	flush_ptc_and_tlb_as = flush_ptc_and_tlb_as_hv;
 	smmu_debugfs_stats_fops = &smmu_debugfs_stats_fops_hv;
 
 	/* update iommu_ops for hv */
 	smmu_iommu_ops->map = smmu_iommu_map_hv;
 	smmu_iommu_ops->map_sg = smmu_iommu_map_sg_hv;
 	smmu_iommu_ops->unmap = smmu_iommu_unmap_hv;
-	smmu_iommu_ops->iova_to_phys = smmu_iommu_iova_to_phys_hv;
 
 	BUG_ON(cmpxchg(&smmu_handle, NULL, smmu));
 	return 0;

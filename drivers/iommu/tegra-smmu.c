@@ -517,7 +517,7 @@ static inline void __smmu_flush_tlb_section(struct smmu_as *as, dma_addr_t iova)
 	__smmu_flush_tlb(as->smmu, as, iova, 1);
 }
 
-static void flush_ptc_and_tlb(struct smmu_device *smmu,
+static void flush_ptc_and_tlb_default(struct smmu_device *smmu,
 			      struct smmu_as *as, dma_addr_t iova,
 			      u32 *pte, struct page *page, int is_pde)
 {
@@ -544,7 +544,7 @@ static void ____smmu_flush_tlb_range(struct smmu_device *smmu, dma_addr_t iova,
 }
 #endif
 
-static void flush_ptc_and_tlb_range(struct smmu_device *smmu,
+static void flush_ptc_and_tlb_range_default(struct smmu_device *smmu,
 				    struct smmu_as *as, dma_addr_t iova,
 				    u32 *pte, struct page *page,
 				    size_t count)
@@ -650,7 +650,7 @@ static void __smmu_flush_tlb_as(struct smmu_as *as, dma_addr_t iova,
 }
 #endif
 
-static void flush_ptc_and_tlb_as(struct smmu_as *as, dma_addr_t start,
+static void flush_ptc_and_tlb_as_default(struct smmu_as *as, dma_addr_t start,
 				 dma_addr_t end)
 {
 	struct smmu_device *smmu = as->smmu;
@@ -660,7 +660,7 @@ static void flush_ptc_and_tlb_as(struct smmu_as *as, dma_addr_t start,
 	FLUSH_SMMU_REGS(smmu);
 }
 
-static void free_pdir(struct smmu_as *as)
+void free_pdir(struct smmu_as *as)
 {
 	unsigned long addr;
 	int count;
@@ -969,7 +969,7 @@ static int __smmu_iommu_map_page(struct smmu_as *as, dma_addr_t iova,
 	return __smmu_iommu_map_pfn(as, iova, pfn, prot);
 }
 
-static int __smmu_iommu_map_largepage(struct smmu_as *as, dma_addr_t iova,
+static int __smmu_iommu_map_largepage_default(struct smmu_as *as, dma_addr_t iova,
 				 phys_addr_t pa, unsigned long prot)
 {
 	int pdn = SMMU_ADDR_TO_PDN(iova);
@@ -1155,7 +1155,7 @@ static int __smmu_iommu_remap_largepage(struct smmu_as *as, dma_addr_t iova)
 	return 0;
 }
 
-static size_t __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova,
+static size_t __smmu_iommu_unmap_default(struct smmu_as *as, dma_addr_t iova,
 				 size_t bytes)
 {
 	int pdn = SMMU_ADDR_TO_PDN(iova);
@@ -2294,9 +2294,17 @@ struct smmu_as *(*smmu_as_alloc)(void) = smmu_as_alloc_default;
 void (*smmu_as_free)(struct smmu_domain *dom, unsigned long as_alloc_bitmap) = smmu_as_free_default;
 void (*smmu_domain_destroy)(struct smmu_device *smmu, struct smmu_as *as) = __smmu_domain_destroy;
 int (*__smmu_iommu_map_pfn)(struct smmu_as *as, dma_addr_t iova, unsigned long pfn, unsigned long prot) = __smmu_iommu_map_pfn_default;
+int (*__smmu_iommu_map_largepage)(struct smmu_as *as, dma_addr_t iova, phys_addr_t pa, unsigned long prot) = __smmu_iommu_map_largepage_default;
+size_t (*__smmu_iommu_unmap)(struct smmu_as *as, dma_addr_t iova, size_t bytes) = __smmu_iommu_unmap_default;
+int (*__smmu_iommu_map_sg)(struct iommu_domain *domain, unsigned long iova, struct scatterlist *sgl, int npages, unsigned long prot) = smmu_iommu_map_sg;
 int (*__tegra_smmu_suspend)(struct device *dev) = tegra_smmu_suspend_default;
 int (*__tegra_smmu_resume)(struct device *dev) = tegra_smmu_resume_default;
 int (*__tegra_smmu_probe)(struct platform_device *pdev, struct smmu_device *smmu) = tegra_smmu_probe_default;
+
+void (*flush_ptc_and_tlb)(struct smmu_device *smmu, struct smmu_as *as, dma_addr_t iova, u32 *pte, struct page *page, int is_pde) = flush_ptc_and_tlb_default;
+void (*flush_ptc_and_tlb_range)(struct smmu_device *smmu, struct smmu_as *as, dma_addr_t iova, u32 *pte, struct page *page, size_t count) = flush_ptc_and_tlb_range_default;
+void (*flush_ptc_and_tlb_as)(struct smmu_as *as, dma_addr_t start, dma_addr_t end) = flush_ptc_and_tlb_as_default;
+
 struct iommu_ops *smmu_iommu_ops = &smmu_iommu_ops_default;
 const struct file_operations *smmu_debugfs_stats_fops = &smmu_debugfs_stats_fops_default;
 

@@ -294,8 +294,6 @@ extern struct smmu_as *(*smmu_as_alloc) (void);
 extern void (*smmu_as_free) (struct smmu_domain *dom,
 				unsigned long as_alloc_bitmap);
 extern void (*smmu_domain_destroy) (struct smmu_device *smmu, struct smmu_as *as);
-extern int (*__smmu_iommu_map_pfn) (struct smmu_as *as, dma_addr_t iova,
-					unsigned long pfn, unsigned long prot);
 extern int (*__tegra_smmu_suspend) (struct device *dev);
 extern int (*__tegra_smmu_resume) (struct device *dev);
 extern int (*__tegra_smmu_probe)(struct platform_device *pdev,
@@ -303,9 +301,19 @@ extern int (*__tegra_smmu_probe)(struct platform_device *pdev,
 extern struct iommu_ops *smmu_iommu_ops;
 extern const struct file_operations *smmu_debugfs_stats_fops;
 
+extern int (*__smmu_iommu_map_pfn)(struct smmu_as *as, dma_addr_t iova, unsigned long pfn, unsigned long prot);
+extern int (*__smmu_iommu_map_largepage)(struct smmu_as *as, dma_addr_t iova, phys_addr_t pa, unsigned long prot);
+extern size_t (*__smmu_iommu_unmap)(struct smmu_as *as, dma_addr_t iova, size_t bytes);
+extern int (*__smmu_iommu_map_sg)(struct iommu_domain *domain, unsigned long iova, struct scatterlist *sgl, int npages, unsigned long prot);
+
+extern void (*flush_ptc_and_tlb)(struct smmu_device *smmu, struct smmu_as *as, dma_addr_t iova, u32 *pte, struct page *page, int is_pde);
+extern void (*flush_ptc_and_tlb_range)(struct smmu_device *smmu, struct smmu_as *as, dma_addr_t iova, u32 *pte, struct page *page, size_t count);
+extern void (*flush_ptc_and_tlb_as)(struct smmu_as *as, dma_addr_t start, dma_addr_t end);
+
 #ifdef CONFIG_TEGRA_HV_MANAGER
 extern int tegra_smmu_probe_hv(struct platform_device *pdev,
 					struct smmu_device *smmu);
+void free_pdir(struct smmu_as *as);
 #else
 static inline int tegra_smmu_probe_hv(struct platform_device *pdev,
 	struct smmu_device *smmu)
