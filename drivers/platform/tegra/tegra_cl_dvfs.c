@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/tegra_cl_dvfs.c
  *
- * Copyright (c) 2012-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2015 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -256,6 +256,8 @@ struct tegra_cl_dvfs {
 
 	struct hrtimer			tune_timer;
 	ktime_t				tune_delay;
+	u8				tune_out_last;
+
 	struct timer_list		calibration_timer;
 	unsigned long			calibration_delay;
 	ktime_t				last_calibration;
@@ -837,6 +839,7 @@ static void set_output_limits(struct tegra_cl_dvfs *cld, u8 out_min, u8 out_max)
 static void cl_dvfs_set_force_out_min(struct tegra_cl_dvfs *cld);
 static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 {
+	bool sample_tune_out_last = false;
 	u8 cap_gb = CL_DVFS_CAP_GUARD_BAND_STEPS;
 	u8 out_max, out_min;
 	u8 out_cap = get_output_cap(cld, req);
@@ -849,6 +852,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 			hrtimer_start(&cld->tune_timer, cld->tune_delay,
 				      HRTIMER_MODE_REL);
 			cl_dvfs_set_force_out_min(cld);
+			sample_tune_out_last = true;
 		}
 		break;
 
@@ -901,6 +905,13 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 	out_max = max(out_max, cld->force_out_min);
 
 	set_output_limits(cld, out_min, out_max);
+
+	/* Must be sampled after new out_min is set */
+	if (sample_tune_out_last && is_i2c(cld)) {
+		u32 val = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
+		cld->tune_out_last =
+			(val >> CL_DVFS_I2C_STS_I2C_LAST_SHIFT) & OUT_MASK;
+	}
 }
 
 static void set_ol_config(struct tegra_cl_dvfs *cld)
@@ -948,7 +959,23 @@ static enum hrtimer_restart tune_timer_cb(struct hrtimer *timer)
 			(val >> CL_DVFS_I2C_STS_I2C_LAST_SHIFT) & OUT_MASK :
 			out_min; /* no way to stall PWM: out_last >= out_min */
 
-		if (!(val & CL_DVFS_I2C_STS_I2C_REQ_PENDING) &&
+		/*
+		 * Update high tune settings if both last I2C value and minimum
+		 * output are above high range output threshold, provided I2C
+		 * transaction that might be in flight when minimum output was
+		 * set has been completed. The latter condition is true if no
+		 * transaction is pending or I2C last value has changed since
+		 * minimum limit was set.
+		 *
+		 * Since PWM mode never has pending indicator set, high tune
+		 * settings are updated always.
+		 */
+		if (!(val & CL_DVFS_I2C_STS_I2C_REQ_PENDING) ||
+		    (cld->tune_out_last != out_last)) {
+			cld->tune_out_last = cld->num_voltages;
+		}
+
+		if ((cld->tune_out_last == cld->num_voltages) &&
 		    (out_last >= cld->tune_high_out_min)  &&
 		    (out_min >= cld->tune_high_out_min)) {
 			udelay(CL_DVFS_OUTPUT_RAMP_DELAY);
