@@ -285,6 +285,11 @@
 #define NV_PCIE2_RP_VEND_CTL2					0x00000FA8
 #define PCIE2_RP_VEND_CTL2_PCA_ENABLE				(1 << 7)
 
+#define NV_PCIE2_RP_PRIV_XP_CONFIG				0x00000FAC
+#define NV_PCIE2_RP_PRIV_XP_CONFIG_LOW_PWR_DURATION_MASK	0x3
+
+#define NV_PCIE2_RP_PRIV_XP_DURATION_IN_LOW_PWR_100NS	0x00000FB0
+
 #define NV_PCIE2_RP_ECTL_5_R1					0x00000E90
 #define PCIE2_RP_ECTL_5_R1_RX_EQ_CTRL_L_1C			(0x55010000)
 #define NV_PCIE2_RP_ECTL_6_R1					0x00000E94
@@ -323,6 +328,10 @@
 #define PCIE2_RP_L1_PM_SUBSTATES_2_CYA_MICROSECOND		(0x13 << 13)
 #define PCIE2_RP_L1_PM_SUBSTATES_2_CYA_MICROSECOND_COMP_MASK	(0xF << 21)
 #define PCIE2_RP_L1_PM_SUBSTATES_2_CYA_MICROSECOND_COMP	(0x2 << 21)
+
+#define PCIE2_RP_L1_PM_SS_CONTROL		0x00000148
+#define PCIE2_RP_L1_PM_SS_CONTROL_ASPM_L11_ENABLE	0x00000008
+#define PCIE2_RP_L1_PM_SS_CONTROL_ASPM_L12_ENABLE	0x00000004
 
 #define TEGRA_PCIE_MSELECT_CLK_204				204000000
 #define TEGRA_PCIE_MSELECT_CLK_408				408000000
@@ -439,6 +448,7 @@ static u32 is_gen2_speed;
 static u16 bdf;
 static u16 config_offset;
 static u32 config_val;
+static u16 config_aspm_state;
 
 static inline struct tegra_pcie *sys_to_pcie(struct pci_sys_data *sys)
 {
@@ -3252,7 +3262,7 @@ static int apply_lane_width(struct seq_file *s, void *data)
 	return 0;
 }
 
-static int aspm(struct seq_file *s, void *data)
+static int aspm_state_cnt(struct seq_file *s, void *data)
 {
 	u32 val, cs;
 	struct tegra_pcie_port *port = (struct tegra_pcie_port *)(s->private);
@@ -3274,6 +3284,79 @@ static int aspm(struct seq_file *s, void *data)
 		seq_printf(s, "Link L1 entry count : %u\n", val);
 	} else
 		seq_printf(s, "Link L1 entry count : %s\n", "disabled");
+
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	cs = rp_readl(port, PCIE2_RP_L1_PM_SS_CONTROL);
+	/* RESETting the count value is not possible by any means
+		because of HW Bug : 200034278 */
+	/*	check if L1.1 is enabled */
+	if (cs & PCIE2_RP_L1_PM_SS_CONTROL_ASPM_L11_ENABLE) {
+		val = rp_readl(port, NV_PCIE2_RP_L1_1_ENTRY_COUNT);
+		seq_printf(s, "Link L1.1 entry count : %u\n", (val & 0xFFFF));
+	} else
+		seq_printf(s, "Link L1.1 entry count : %s\n", "disabled");
+	/*	check if L1.2 is enabled */
+	if (cs & PCIE2_RP_L1_PM_SS_CONTROL_ASPM_L12_ENABLE) {
+		val = rp_readl(port, NV_PCIE2_RP_L1_2_ENTRY_COUNT);
+		seq_printf(s, "Link L1.2 entry count : %u\n", (val & 0xFFFF));
+	} else
+		seq_printf(s, "Link L1.2 entry count : %s\n", "disabled");
+#endif
+	return 0;
+}
+
+static char *aspm_states[] = {
+	"Tx-L0s",
+	"Rx-L0s",
+	"L1",
+	"IDLE ((Tx-L0s && Rx-L0s) + L1)"
+};
+
+static int list_aspm_states(struct seq_file *s, void *data)
+{
+	u32 i = 0;
+	seq_printf(s, "----------------------------------------------------\n");
+	seq_printf(s, "Note: Duration of link's residency is calcualated\n");
+	seq_printf(s, "      only for one of the ASPM states at a time\n");
+	seq_printf(s, "----------------------------------------------------\n");
+	seq_printf(s, "write(echo) number from below table corresponding to\n");
+	seq_printf(s, "one of the ASPM states for which link duration needs\n");
+	seq_printf(s, "to be calculated to 'config_aspm_state'\n");
+	seq_printf(s, "-----------------\n");
+	for (i = 0; i < ARRAY_SIZE(aspm_states); i++)
+		seq_printf(s, "%d : %s\n", i, aspm_states[i]);
+	seq_printf(s, "-----------------\n");
+	return 0;
+}
+
+static int apply_aspm_state(struct seq_file *s, void *data)
+{
+	u32 val;
+	struct tegra_pcie_port *port = (struct tegra_pcie_port *)(s->private);
+
+	if (config_aspm_state > ARRAY_SIZE(aspm_states)) {
+		seq_printf(s, "Invalid ASPM state : %u\n", config_aspm_state);
+		list_aspm_states(s, data);
+	} else {
+		val = rp_readl(port, NV_PCIE2_RP_PRIV_XP_CONFIG);
+		val &= ~NV_PCIE2_RP_PRIV_XP_CONFIG_LOW_PWR_DURATION_MASK;
+		val |= config_aspm_state;
+		rp_writel(port, val, NV_PCIE2_RP_PRIV_XP_CONFIG);
+		seq_printf(s, "Configured for ASPM-%s state...\n",
+			aspm_states[config_aspm_state]);
+	}
+	return 0;
+}
+
+static int get_aspm_duration(struct seq_file *s, void *data)
+{
+	u32 val;
+	struct tegra_pcie_port *port = (struct tegra_pcie_port *)(s->private);
+
+	val = rp_readl(port, NV_PCIE2_RP_PRIV_XP_DURATION_IN_LOW_PWR_100NS);
+	/* 52.08 = 1000 / 19.2MHz is rounded to 52	*/
+	seq_printf(s, "ASPM-%s duration = %d ns\n",
+		aspm_states[config_aspm_state], (u32)((val * 100)/52));
 	return 0;
 }
 
@@ -3465,7 +3548,10 @@ DEFINE_ENTRY(aspm_l1ss)
 
 /* Port specific */
 DEFINE_ENTRY(apply_lane_width)
-DEFINE_ENTRY(aspm)
+DEFINE_ENTRY(aspm_state_cnt)
+DEFINE_ENTRY(list_aspm_states)
+DEFINE_ENTRY(apply_aspm_state)
+DEFINE_ENTRY(get_aspm_duration)
 
 static int tegra_pcie_port_debugfs_init(struct tegra_pcie_port *port)
 {
@@ -3490,9 +3576,33 @@ static int tegra_pcie_port_debugfs_init(struct tegra_pcie_port *port)
 	if (!d)
 		goto remove;
 
-	d = debugfs_create_file("aspm", S_IRUGO,
+	d = debugfs_create_file("aspm_state_cnt", S_IRUGO,
 					port->port_debugfs, (void *)port,
-					&aspm_fops);
+					&aspm_state_cnt_fops);
+	if (!d)
+		goto remove;
+
+	d = debugfs_create_u16("config_aspm_state", S_IWUGO | S_IRUGO,
+					port->port_debugfs,
+					&config_aspm_state);
+	if (!d)
+		goto remove;
+
+	d = debugfs_create_file("apply_aspm_state", S_IRUGO,
+					port->port_debugfs, (void *)port,
+					&apply_aspm_state_fops);
+	if (!d)
+		goto remove;
+
+	d = debugfs_create_file("list_aspm_states", S_IRUGO,
+					port->port_debugfs, (void *)port,
+					&list_aspm_states_fops);
+	if (!d)
+		goto remove;
+
+	d = debugfs_create_file("get_aspm_duration", S_IRUGO,
+					port->port_debugfs, (void *)port,
+					&get_aspm_duration_fops);
 	if (!d)
 		goto remove;
 
