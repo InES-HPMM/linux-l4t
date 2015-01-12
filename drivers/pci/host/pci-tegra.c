@@ -266,7 +266,6 @@
 #define NV_PCIE2_RP_VEND_CTL0					0x00000F44
 #define PCIE2_RP_VEND_CTL0_DSK_RST_PULSE_WIDTH_MASK		(0xF << 12)
 #define PCIE2_RP_VEND_CTL0_DSK_RST_PULSE_WIDTH			(0x9 << 12)
-#define PCIE2_RP_VEND_CTL0_ALLOW_ALL_DS_RO		(1 << 24)
 
 #define NV_PCIE2_RP_VEND_CTL1					0x00000F48
 #define PCIE2_RP_VEND_CTL1_ERPT				(1 << 13)
@@ -1813,7 +1812,6 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 		data = rp_readl(port, NV_PCIE2_RP_VEND_CTL0);
 		data &= ~PCIE2_RP_VEND_CTL0_DSK_RST_PULSE_WIDTH_MASK;
 		data |= PCIE2_RP_VEND_CTL0_DSK_RST_PULSE_WIDTH;
-		data |= PCIE2_RP_VEND_CTL0_ALLOW_ALL_DS_RO;
 		rp_writel(port, data, NV_PCIE2_RP_VEND_CTL0);
 
 		/* Do timer settings only if clk25m freq equal to 19.2 MHz */
