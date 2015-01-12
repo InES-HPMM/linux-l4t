@@ -1,7 +1,7 @@
 /*
  * Driver for TI,ADS1015 ADC
  *
- * Copyright (c) 2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2014 - 2015, NVIDIA Corporation. All rights reserved.
  *
  * Author: Mallikarjun Kasoju <mkasoju@nvidia.com>
  *         Laxman Dewangan <ldewangan@nvidia.com>
@@ -246,6 +246,7 @@ static int ads1015_threshold_update(struct ads1015 *adc, int *adc_val)
 	if (!in_valid_range) {
 		dev_info(adc->dev,
 			"Not in valid threshold range. Val: %d\n", cur_val);
+		WARN_ON(1);
 		return  0;
 	}
 
