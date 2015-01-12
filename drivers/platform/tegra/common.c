@@ -2,7 +2,7 @@
  * drivers/platform/tegra/common.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2010-2015 NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -1500,6 +1500,7 @@ int tegra_get_modem_id(void)
 {
 	return modem_id;
 }
+EXPORT_SYMBOL(tegra_get_modem_id);
 
 __setup("modem_id=", tegra_modem_id);
 
@@ -1515,6 +1516,7 @@ int tegra_get_usb_port_owner_info(void)
 {
 	return usb_port_owner_info;
 }
+EXPORT_SYMBOL(tegra_get_usb_port_owner_info);
 
 __setup("usb_port_owner_info=", tegra_usb_port_owner_info);
 

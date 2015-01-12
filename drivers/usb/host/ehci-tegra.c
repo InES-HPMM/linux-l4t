@@ -2,7 +2,7 @@
  * EHCI-compliant USB host controller driver for NVIDIA Tegra SoCs
  *
  * Copyright (c) 2010 Google, Inc.
- * Copyright (c) 2009-2014 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2009-2015 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -538,14 +538,13 @@ static DEVICE_ATTR(boost_enable, 0644,
 static struct tegra_usb_platform_data *tegra_ehci_dt_parse_pdata(
 		struct platform_device *pdev)
 {
-#ifdef CONFIG_ARM64
 	struct tegra_usb_platform_data *pdata;
 	struct device_node *np = pdev->dev.of_node;
 	u32 val;
 	bool is_intf_utmi;
 	int err;
 	u32 instance;
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_13x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	int modem_id = tegra_get_modem_id();
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 #endif
@@ -567,13 +566,16 @@ static struct tegra_usb_platform_data *tegra_ehci_dt_parse_pdata(
 		of_property_read_bool(np, "nvidia,unaligned-dma-buf-supported");
 
 	is_intf_utmi = of_property_read_bool(np, "nvidia,is-intf-utmi");
+	if (is_intf_utmi)
+		pdata->phy_intf = TEGRA_USB_PHY_INTF_UTMI;
+
 	instance = of_alias_get_id(pdev->dev.of_node, "ehci");
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	if (instance == 1) {
 		pdata->phy_intf = TEGRA_USB_PHY_INTF_HSIC;
 		tegra_set_wake_source(42, INT_USB2);
 	}
-#else
+#elif defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	if (instance == 1 && modem_id) {
 		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)) {
 			pdata->phy_intf = TEGRA_USB_PHY_INTF_HSIC;
@@ -651,9 +653,6 @@ static struct tegra_usb_platform_data *tegra_ehci_dt_parse_pdata(
 	}
 
 	return pdata;
-#else
-	return NULL;
-#endif
 }
 
 static int tegra_ehci_probe(struct platform_device *pdev)
@@ -942,6 +941,7 @@ static void tegra_ehci_hcd_shutdown(struct platform_device *pdev)
 static struct of_device_id tegra_ehci_of_match[] = {
 	{ .compatible = "nvidia,tegra20-ehci", },
 	{ .compatible = "nvidia,tegra132-ehci", },
+	{ .compatible = "nvidia,tegra124-ehci", },
 	{ },
 };
 
