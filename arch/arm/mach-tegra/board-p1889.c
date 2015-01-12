@@ -41,9 +41,7 @@
 
 #define EXTERNAL_PMU_INT_N_WAKE         18
 
-static int is_e1860_b00;
-
-static __initdata struct tegra_clk_init_table e1860_a0x_i2s_clk_table[] = {
+static __initdata struct tegra_clk_init_table e1889_i2s_clk_table[] = {
 /*
  * audio clock tables based on baseboard revision. These rates will be set
  * early on during boot up. Also, they will remain fixed throughout.
@@ -55,7 +53,10 @@ static __initdata struct tegra_clk_init_table e1860_a0x_i2s_clk_table[] = {
 	{ "i2s2_sync",	NULL,		12288000,	false},
 	{ "audio2",	"i2s2_sync",	12288000,	false},
 	{ "audio2_2x",	"audio2",	12288000,	false},
-	{ "i2s0",	"pll_a_out0",	3072000,	false},
+	{ "i2s0_sync",	NULL,		12288000,	false},
+	{ "audio0",	"i2s0_sync",	12288000,	false},
+	{ "audio0_2x",	"audio0",	12288000,	false},
+	{ "i2s0",	"audio0_2x",	12288000,	false},
 	{ "i2s1",	"pll_a_out0",	3072000,	false},
 	{ "i2s2",	"audio2_2x",	12288000,	false},
 	{ "i2s3",	"pll_a_out0",	3072000,	false},
@@ -64,34 +65,10 @@ static __initdata struct tegra_clk_init_table e1860_a0x_i2s_clk_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-static __initdata struct tegra_clk_init_table e1860_b0x_i2s_clk_table[] = {
-/*         clock        parent          rate            enable (always-on) */
-	{ "i2s4_sync",	NULL,		12288000,	false},
-	{ "audio4",	"i2s4_sync",	12288000,	false},
-	{ "audio4_2x",	"audio4",	12288000,	false},
-	{ "i2s2_sync",	NULL,		12288000,	false},
-	{ "audio2",	"i2s2_sync",	12288000,	false},
-	{ "audio2_2x",	"audio2",	12288000,	false},
-	{ "i2s0",	"pll_a_out0",	12288000,	false},
-	{ "i2s1",	"pll_a_out0",	3072000,	false},
-	{ "i2s2",	"pll_a_out0",	512000,	false},
-	{ "i2s3",	"pll_a_out0",	3072000,	false},
-	{ "i2s4",	"audio4_2x",	12288000,	false},
-	{ "extern1",	"pll_a_out0",	24576000,	false},
-	{ NULL,		NULL,		0,		0},
-};
-
-static int __init e1860_fixed_target_rate_init(void)
+static int __init e1889_fixed_target_rate_init(void)
 {
-	int modem_id = tegra_get_modem_id();
 
-	struct tegra_clk_init_table e1860_b0x_i2s4_clk_table[] = {
-		{ "i2s4", "pll_a_out0", 1024000, false},
-		{ NULL,    NULL,        0,        0},
-	};
-
-	struct tegra_clk_init_table *clk_table = (is_e1860_b00) ?
-			e1860_b0x_i2s_clk_table : e1860_a0x_i2s_clk_table;
+	struct tegra_clk_init_table *clk_table = e1889_i2s_clk_table;
 
 	/* Set rate of audio clocks */
 	tegra_clk_init_from_table(clk_table);
@@ -99,27 +76,9 @@ static int __init e1860_fixed_target_rate_init(void)
 	/* Set target fixed rate of audio clocks */
 	tegra_vcm30_t124_set_fixed_rate(clk_table);
 
-	/* For voice call in b0x, set i2s4 clock in master mode */
-	if (is_e1860_b00 && modem_id) {
-		tegra_clk_init_from_table(e1860_b0x_i2s4_clk_table);
-		tegra_vcm30_t124_set_fixed_rate(e1860_b0x_i2s4_clk_table);
-	}
-
 	return 0;
 }
 
-/* I2C devices */
-static struct i2c_board_info __initdata ak4618_board_info = {
-	I2C_BOARD_INFO("ak4618", 0x10),
-};
-
-static struct i2c_board_info __initdata wm8731_board_info = {
-	I2C_BOARD_INFO("wm8731", 0x1a),
-};
-
-static struct i2c_board_info __initdata ad1937_board_info = {
-	I2C_BOARD_INFO("ad1937", 0x07),
-};
 
 /* Display panel/HDMI */
 static int p1889_dev_dummy(struct device *dev)
@@ -176,12 +135,6 @@ static void p1889_panel_init(void)
 	bus_register_notifier(&platform_bus_type, &platform_nb);
 }
 
-static void __init p1889_i2c_init(void)
-{
-	i2c_register_board_info(0, &ak4618_board_info, 1);
-	i2c_register_board_info(0, &wm8731_board_info, 1);
-	i2c_register_board_info(0, &ad1937_board_info, 1);
-}
 
 static struct platform_device *p1889_devices[] __initdata = {
 	&tegra_rtc_device,
@@ -192,15 +145,14 @@ static struct platform_device *p1889_devices[] __initdata = {
 
 static void __init tegra_p1889_early_init(void)
 {
-	struct tegra_clk_init_table *clk_table = (is_e1860_b00) ?
-			e1860_b0x_i2s_clk_table : e1860_a0x_i2s_clk_table;
+	struct tegra_clk_init_table *clk_table = e1889_i2s_clk_table;
 
 	/* Early init for vcm30t124 MCM */
 	tegra_vcm30_t124_early_init();
 
 	/* Board specific clock POR */
 	tegra_clk_init_from_table(clk_table);
-	e1860_fixed_target_rate_init();
+	e1889_fixed_target_rate_init();
 
 	tegra_clk_verify_parents();
 
@@ -218,7 +170,7 @@ static void __init tegra_p1889_late_init(void)
 	tegra_vcm30_t124_usb_init();
 
 	/* Initialize p1889 board specific devices */
-	p1889_i2c_init();
+	p1889_pca953x_init();
 	p1889_audio_init();
 
 	platform_add_devices(p1889_devices, ARRAY_SIZE(p1889_devices));
@@ -239,8 +191,6 @@ static void __init tegra_p1889_late_init(void)
 
 static void __init tegra_p1889_dt_init(void)
 {
-	is_e1860_b00 = tegra_is_board(NULL, "61860", NULL, "300", NULL);
-
 	tegra_p1889_early_init();
 
 #ifdef CONFIG_USE_OF
