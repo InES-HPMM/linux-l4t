@@ -952,6 +952,7 @@
 		compatible = "nvidia,tegra124-otg";
 		reg = <0x0 0x7d000000 0x0 0x4000>;
 		interrupts = <0 20 0x04>;
+		nvidia,hc-device = <&ehci1>;
 		iommus = <&smmu TEGRA_SWGROUP_PPCS1>;
 		status = "disabled";
 	};
