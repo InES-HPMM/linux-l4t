@@ -1,7 +1,7 @@
 /*
  * arch/arm/boot/dts/tegra124-p1859-vm_1.dts
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -391,8 +391,11 @@
 
 	gpio: gpio@6000d000 {
 		gpio_default: default {
-		gpio-output-high = <TEGRA_GPIO(R, 0)
-				TEGRA_GPIO(R, 2)>;
+		gpio-output-low = <TEGRA_GPIO(K, 3)
+				TEGRA_GPIO(W, 5)
+				TEGRA_GPIO(R, 3)
+				TEGRA_GPIO(R, 5)
+				TEGRA_GPIO(R, 6)>;
 		};
 	};
 
