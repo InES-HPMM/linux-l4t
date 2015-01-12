@@ -228,6 +228,7 @@ struct tegra_vi_i2c_dev {
 	bool bit_banging_xfer_after_shutdown;
 	bool is_shutdown;
 	struct notifier_block pm_nb;
+	struct regulator *pull_up_supply;
 };
 
 static void i2c_writel(struct tegra_vi_i2c_dev *i2c_dev, u32 val,
@@ -1167,18 +1168,30 @@ static int tegra_vi_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	int num)
 {
 	struct tegra_vi_i2c_dev *i2c_dev = i2c_get_adapdata(adap);
-	int i;
+	int i = 0;
 	int ret = 0;
 	BUG_ON(!rt_mutex_is_locked(&(adap->bus_lock)));
 	if (i2c_dev->is_suspended)
 		return -EBUSY;
 
-	if ((i2c_dev->is_shutdown || adap->atomic_xfer_only)
-		&& i2c_dev->bit_banging_xfer_after_shutdown)
-		return tegra_vi_i2c_gpio_xfer(adap, msgs, num);
+	ret = regulator_enable(i2c_dev->pull_up_supply);
+	if (ret < 0) {
+		dev_err(i2c_dev->dev, "Pull up regulator supply failed: %d\n",
+			ret);
+		return ret;
+	}
 
-	if (adap->atomic_xfer_only)
-		return -EBUSY;
+	if ((i2c_dev->is_shutdown || adap->atomic_xfer_only)
+		&& i2c_dev->bit_banging_xfer_after_shutdown) {
+		ret = tegra_vi_i2c_gpio_xfer(adap, msgs, num);
+		i = num;
+		goto end;
+	}
+
+	if (adap->atomic_xfer_only) {
+		ret = -EBUSY;
+		goto end;
+	}
 
 	i2c_dev->msgs = msgs;
 	i2c_dev->msgs_num = num;
@@ -1245,6 +1258,8 @@ i2c_xfer_pwr_fail:
 	i2c_dev->msgs = NULL;
 	i2c_dev->msgs_num = 0;
 
+end:
+	regulator_disable(i2c_dev->pull_up_supply);
 	return ret ?: i;
 }
 
@@ -1453,6 +1468,14 @@ static int tegra_vi_i2c_probe(struct platform_device *pdev)
 	}
 
 skip_pinctrl:
+
+	i2c_dev->pull_up_supply = devm_regulator_get(&pdev->dev, "bus-pullup");
+	if (IS_ERR(i2c_dev->pull_up_supply)) {
+		ret = PTR_ERR(i2c_dev->pull_up_supply);
+		dev_err(&pdev->dev, "bus-pullup regulator not found: %d\n",
+			ret);
+		return ret;
+	}
 
 	i2c_dev->base = base;
 	i2c_dev->div_clk = div_clk;
