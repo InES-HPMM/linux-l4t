@@ -2218,7 +2218,13 @@ int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate)
 		 * Report error, but continue: DFLL is functional, anyway, and
 		 * no error with proper regulator driver update
 		 */
+#ifndef CONFIG_TEGRA_DVFS_RAIL_CONNECT_ALL
+/*
+ * When dvfs connection to regulator is not guaranteed,
+ * virtualization environment Guest use case.
+ */
 		if (d->dvfs_rail->reg)
+#endif
 			if (regulator_set_vsel_volatile(d->dvfs_rail->reg,
 							true))
 				WARN_ONCE(1,
@@ -2246,7 +2252,14 @@ int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate)
 	mutex_lock(&dvfs_lock);
 	if (d->dvfs_rail->dfll_mode) {
 		d->dvfs_rail->dfll_mode = false;
-		regulator_set_vsel_volatile(d->dvfs_rail->reg, false);
+#ifndef CONFIG_TEGRA_DVFS_RAIL_CONNECT_ALL
+/*
+ * When dvfs connection to regulator is not guaranteed,
+ * virtualization environment Guest use case.
+ */
+		if (d->dvfs_rail->reg)
+#endif
+			regulator_set_vsel_volatile(d->dvfs_rail->reg, false);
 
 		/*
 		 * avoid false detection of matching target (voltage in

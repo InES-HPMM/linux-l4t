@@ -4303,28 +4303,17 @@ static void tune_cpu_trimmers(bool trim_high)
 }
 #endif
 
-static unsigned long int dfll_boot_khz;
-static int __init dfll_freq_cmd_line(char *line)
-{
-	int status = kstrtoul(line, 0, &dfll_boot_khz);
-	if(status) {
-		pr_err("\n%s:Error in parsing dfll_boot_khz:%d\n",
-			__func__, status);
-		dfll_boot_khz = 0;
-	}
-	return status;
-}
-early_param("dfll_boot_khz", dfll_freq_cmd_line);
-
 static void __init tegra12_dfll_clk_init(struct clk *c)
 {
+	unsigned long int dfll_boot_req_khz = tegra_dfll_boot_req_khz();
 	c->ops->init = tegra12_dfll_cpu_late_init;
 
-	/** If boot loader has set dfll clock, then dfll freq is
-	 *  passed in kernel command line from bootloader
+	/*
+	 * If boot loader has set dfll clock, then dfll freq is
+	 * passed in kernel command line from bootloader
 	 */
-	if(dfll_boot_khz)
-		c->rate = dfll_boot_khz * 1000;
+	if (dfll_boot_req_khz)
+		c->rate = dfll_boot_req_khz * 1000;
 }
 
 static int tegra12_dfll_clk_enable(struct clk *c)
@@ -4370,7 +4359,7 @@ static void tegra12_dfll_clk_reset(struct clk *c, bool assert)
 static int
 tegra12_dfll_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 {
-	if(c->state != UNINITIALIZED) {
+	if ((c->state != UNINITIALIZED) && (c->u.dfll.cl_dvfs)) {
 		if ((p == TEGRA_CLK_DFLL_LOCK) && (c->u.dfll.cl_dvfs))
 			return setting ? tegra_cl_dvfs_lock(c->u.dfll.cl_dvfs) :
 					tegra_cl_dvfs_unlock(c->u.dfll.cl_dvfs);
@@ -8959,6 +8948,7 @@ static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	int ret;
 	struct clk *cpu = &tegra_clk_virtual_cpu_g;
+	unsigned long int dfll_boot_req_khz = tegra_dfll_boot_req_khz();
 
 	if (!cpu || !cpu->dvfs) {
 		pr_err("%s: CPU dvfs is not present\n", __func__);
@@ -8966,10 +8956,27 @@ static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 	}
 	tegra_dvfs_set_dfll_tune_trimmers(cpu->dvfs, tune_cpu_trimmers);
 
-	/* release dfll clock source reset, init cl_dvfs control logic, and
-	   move dfll to initialized state, so it can be used as CPU source */
+	/* release dfll clock source reset */
 	tegra_periph_reset_deassert(c);
+
+	/*
+	 * Init cl_dvfs control logic, and move dfll to
+	 * initialized state, so it can be used as CPU source
+	 */
 	ret = tegra_init_cl_dvfs();
+
+	/* If cpu clock source is already dfll */
+	if (dfll_boot_req_khz) {
+		use_dfll = DFLL_RANGE_ALL_RATES;
+		c->state = ON;
+		tegra_dvfs_set_dfll_range(cpu->dvfs, use_dfll);
+		if (!ret)
+			tegra_cl_dvfs_debug_init(c);
+		pr_info("Tegra CPU DFLL from Boot loader with use_dfll = %d\n",
+			use_dfll);
+		return;
+	}
+
 	if (!ret) {
 		c->state = OFF;
 		if (tegra_platform_is_silicon()) {

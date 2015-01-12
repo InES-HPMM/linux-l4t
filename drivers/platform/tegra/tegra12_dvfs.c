@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/tegra12_dvfs.c
  *
- * Copyright (c) 2012-2014 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2015 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -848,6 +848,13 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 			rail->simon_vmin_offs_num = 0;
 		}
 	}
+
+	/*
+	 * If boot loader has set dfll clock, then dfll freq is
+	 * passed in kernel command line from bootloader
+	 */
+	if (tegra_dfll_boot_req_khz())
+		rail->dfll_mode = true;
 
 	return 0;
 }

@@ -6,7 +6,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (c) 2010-2014, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2010-2015, NVIDIA Corporation.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -507,6 +507,14 @@ void tegra_common_init_clock(void);
 struct clk *tegra_get_clock_by_name(const char *name);
 
 void tegra_clk_init_from_table(struct tegra_clk_init_table *table);
+
+/**
+  * Returns dfll requested booting frequency, which
+  * is configured by bootloader as cpu clock source.
+  * If booting with different cpu clock source then,
+  * returns 0.
+  */
+unsigned long int tegra_dfll_boot_req_khz(void);
 
 #ifndef CONFIG_COMMON_CLK
 void tegra_shared_bus_stats_allocate(struct clk *c, struct bus_stats *stats);
