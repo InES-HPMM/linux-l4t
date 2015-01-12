@@ -145,37 +145,6 @@ MODULE_DEVICE_TABLE(of, tegra_pwr_detect_of_match);
 static struct pwr_detect_hw_chip_data *curr_hw_cdata =
 			&t124_pwr_detect_cdata;
 
-void pwr_detect_bit_write(u32 pwrdet_bit, bool enable)
-{
-	unsigned int pwrdet_mask;
-	pwrdet_mask = pmc_readl(PMC_PWR_DET_ENABLE);
-	switch (pwrdet_bit) {
-	case SPI_HV_PWR_DET:
-	case AUDIO_HV_PWR_DET:
-	case SDMMC1_PWR_DET:
-	case SDMMC3_PWR_DET:
-	case GPIO_PWR_DET:
-		if (!(pwrdet_mask & (BIT(pwrdet_bit)))) {
-			pwrdet_mask |= BIT(pwrdet_bit);
-			pmc_writel(pwrdet_mask, PMC_PWR_DET_ENABLE);
-		}
-		pwrdet_mask = pmc_readl(PMC_PWR_DET_VAL);
-		if ((pwrdet_mask & (BIT(pwrdet_bit))) && !enable) {
-			pwrdet_mask &= ~(BIT(pwrdet_bit));
-			pmc_writel(pwrdet_mask, PMC_PWR_DET_VAL);
-			udelay(100);
-		} else if (enable && !(pwrdet_mask & (BIT(pwrdet_bit)))) {
-			pwrdet_mask |= BIT(pwrdet_bit);
-			pmc_writel(pwrdet_mask, PMC_PWR_DET_VAL);
-			udelay(100);
-		}
-		break;
-	default:
-		return;
-	}
-}
-EXPORT_SYMBOL(pwr_detect_bit_write);
-
 static void pwr_detect_reset(u32 pwrdet_mask)
 {
 	tegra_pmc_register_update(PMC_PWR_DET_ENABLE,

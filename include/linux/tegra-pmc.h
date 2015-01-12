@@ -120,16 +120,6 @@ extern void tegra_pmc_config_thermal_trip(struct tegra_thermtrip_pmic_data *data
 extern void tegra_pmc_enable_thermal_trip(void);
 extern void tegra_pmc_lock_thermal_shutdown(void);
 
-enum pwrdet_bit {
-	SPI_HV_PWR_DET = 23,
-	AUDIO_HV_PWR_DET = 18,
-	SDMMC1_PWR_DET = 12,
-	SDMMC3_PWR_DET = 13,
-	GPIO_PWR_DET = 21
-};
-
-extern void pwr_detect_bit_write(u32 pwrdet_bit, bool enable);
-
 #ifdef CONFIG_PADCTRL_TEGRA210_PMC
 extern int tegra210_pmc_padctrl_init(struct device *dev,
 		struct device_node *np);
