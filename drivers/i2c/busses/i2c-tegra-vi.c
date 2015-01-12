@@ -1637,18 +1637,7 @@ static struct platform_driver tegra_vii2c_driver = {
 	},
 };
 
-static int __init tegra_vii2c_init_driver(void)
-{
-	return platform_driver_register(&tegra_vii2c_driver);
-}
-
-static void __exit tegra_vii2c_exit_driver(void)
-{
-	platform_driver_unregister(&tegra_vii2c_driver);
-}
-
-subsys_initcall(tegra_vii2c_init_driver);
-module_exit(tegra_vii2c_exit_driver);
+module_platform_driver(tegra_vii2c_driver);
 
 MODULE_DESCRIPTION("nVidia Tegra VI-I2C Bus Controller driver");
 MODULE_LICENSE("GPL v2");
