@@ -1,7 +1,7 @@
 /*
  * USB LED Driver for NVIDIA Shield
  *
- * Copyright (c) 2013-2014, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2013-2015, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -25,6 +25,7 @@
 #include <linux/notifier.h>
 #include <linux/of.h>
 #include <linux/sysedp.h>
+#include <linux/kobject.h>
 
 #define DRIVER_AUTHOR "Jun Yan, juyan@nvidia.com"
 #define DRIVER_DESC "NVIDIA Shield USB LED Driver"
@@ -82,6 +83,7 @@ enum led_state {
 struct nvshield_led {
 	struct usb_device	*udev;
 	bool			pwm_enabled;
+	bool			nvshieldled_state;
 	unsigned char		brightness[LED_NUM];
 	enum led_state		state[LED_NUM];
 	struct sysedp_consumer	*sysedpc;
@@ -384,10 +386,28 @@ static int nvshieldled_probe(struct usb_interface *interface,
 		dev_info(&interface->dev, "Disabling LED PWM\n");
 
 	dev->udev = usb_get_dev(udev);
-	dev->state[LED_NVBUTTON] = LED_NORMAL;
-	dev->brightness[LED_NVBUTTON] = 255;
-	dev->state[LED_TOUCH] = LED_NORMAL;
-	dev->brightness[LED_TOUCH] = 255;
+	np = of_find_node_by_name(NULL, "usb_nvshield_led");
+	if (np) {
+		dev->nvshieldled_state = of_device_is_available(np);
+		if (dev->nvshieldled_state) {
+			dev->state[LED_NVBUTTON] = LED_NORMAL;
+			dev->brightness[LED_NVBUTTON] = 255;
+			dev->state[LED_TOUCH] = LED_NORMAL;
+			dev->brightness[LED_TOUCH] = 0;
+		} else {
+			dev->state[LED_NVBUTTON] = LED_OFF;
+			dev->brightness[LED_NVBUTTON] = 255;
+			dev->state[LED_TOUCH] = LED_OFF;
+			dev->brightness[LED_TOUCH] = 0;
+			send_command(dev, LED_TOUCH);
+			send_command(dev, LED_NVBUTTON);
+		}
+	} else {
+		dev->state[LED_NVBUTTON] = LED_NORMAL;
+		dev->brightness[LED_NVBUTTON] = 255;
+		dev->state[LED_TOUCH] = LED_NORMAL;
+		dev->brightness[LED_TOUCH] = 255;
+	}
 
 	if (np) {
 		if (of_property_read_string(np, "edp-consumer-name",
@@ -421,6 +441,12 @@ static int nvshieldled_probe(struct usb_interface *interface,
 		goto error4;
 	dev_info(&interface->dev, "Nvidia Shield LED attached\n");
 
+	retval = kobject_uevent(&interface->dev.kobj, KOBJ_CHANGE);
+	if (retval)
+		dev_info(&interface->dev, "sent uevent successfully\n");
+	else
+		dev_info(&interface->dev, "failed to send uevent\n");
+
 	retval = register_reboot_notifier(&nvshieldled_notifier);
 	if (retval)
 		goto error5;
@@ -433,6 +459,14 @@ static int nvshieldled_probe(struct usb_interface *interface,
 					&interface->dev, NULL);
 	if (retval)
 		goto error7;
+
+	retval = kobject_uevent(
+			(*(struct kobject**)nvshieldled_compat_class),
+								KOBJ_CHANGE);
+	if (retval)
+		dev_info(&interface->dev, "sent uevent successfully\n");
+	else
+		dev_info(&interface->dev, "failed to send uevent\n");
 
 	return 0;
 
