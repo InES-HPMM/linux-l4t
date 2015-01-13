@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-p1859-audio.c
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -244,6 +244,8 @@ static const struct snd_soc_dapm_route tegra_voice_call_audio_map[] = {
 	{"x IN6",	NULL,	"Mic-x"},
 	{"Spdif-out",	NULL,	"y OUT"},
 	{"y IN",	NULL,	"Spdif-in"},
+	{"BT-out",	NULL,	"b OUT"},
+	{"b IN",	NULL,	"BT-in"},
 };
 
 static struct tegra_vcm30t124_platform_data tegra_e1860_a0x_pdata = {
@@ -487,10 +489,57 @@ static struct tegra_vcm30t124_platform_data tegra_voice_call_pdata = {
 		.params.channels_min = 2,
 		.params.channels_max = 2,
 	},
-	.dev_num = 2,
+	.dai_config[2] = {
+		.link_name = "bt-playback",
+		.cpu_name = "tegra30-i2s.2",
+		.codec_name = "spdif-dit.1",
+		.codec_dai_name = "dit-hifi",
+		.cpu_dai_name = "I2S2",
+		.codec_prefix = "b",
+		.bclk_ratio = 1,
+		.tx_mask = 1,
+		.rx_mask = 1,
+		.dai_fmt = SND_SOC_DAIFMT_DSP_A |
+			SND_SOC_DAIFMT_IB_IF |
+			SND_SOC_DAIFMT_CBM_CFM,
+		.params.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.params.rate_min = 8000,
+		.params.rate_max = 8000,
+		.params.channels_min = 1,
+		.params.channels_max = 1,
+	},
+	.dev_num = 3,
 	/* initialize DAPM routes */
 	.dapm_routes = tegra_voice_call_audio_map,
 	.num_dapm_routes = ARRAY_SIZE(tegra_voice_call_audio_map),
+	/* initialize AMX config */
+	.amx_config[0] = {
+		.slot_map = tegra_p1859_amx_slot_map,
+		.slot_size = ARRAY_SIZE(tegra_p1859_amx_slot_map),
+		.in_params = tegra_p1859_amx_input_params,
+		.out_params = tegra_p1859_amx_output_params,
+	},
+	.amx_config[1] = {
+		.slot_map = tegra_p1859_amx_slot_map,
+		.slot_size = ARRAY_SIZE(tegra_p1859_amx_slot_map),
+		.in_params = tegra_p1859_amx_input_params,
+		.out_params = tegra_p1859_amx_output_params,
+	},
+	.num_amx = 2,
+	/* initialize ADX config */
+	.adx_config[0] = {
+		.slot_map = tegra_p1859_adx_slot_map,
+		.slot_size = ARRAY_SIZE(tegra_p1859_adx_slot_map),
+		.in_params = tegra_p1859_adx_input_params,
+		.out_params = tegra_p1859_adx_output_params,
+	},
+	.adx_config[1] = {
+		.slot_map = tegra_p1859_adx_slot_map,
+		.slot_size = ARRAY_SIZE(tegra_p1859_adx_slot_map),
+		.in_params = tegra_p1859_adx_input_params,
+		.out_params = tegra_p1859_adx_output_params,
+	},
+	.num_adx = 2,
 	/* initialize DAM input sampling rate */
 	.dam_in_srate = tegra_voice_call_in_srate,
 	.num_dam = 2,
