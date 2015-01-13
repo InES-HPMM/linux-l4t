@@ -83,6 +83,20 @@
 	i2c@7000c400 {
 		nvidia,clock-always-on;
 
+		/* U17 of p1892 */
+		pca9539_77: pca9546@77 {
+			compatible = "nxp,pca9539";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0x77>;
+			gpio-init-names = "aggreg_default";
+			gpio-init-0 = <&pca9539_aggreg_default>;
+			pca9539_aggreg_default: aggreg_default {
+				gpio-output-low = <7 8>;
+				gpio-output-high = <1>;
+			};
+		};
+
 		/* U21 */
 		pca9539_75: pca9546@75 {
 			compatible = "nxp,pca9539";
@@ -379,5 +393,24 @@
 			gpios = <&gpio TEGRA_GPIO(S, 4) GPIO_ACTIVE_LOW>;
 			gpio-key,wakeup;
 		};
+	};
+
+	isc-mgr.0 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <0>;
+		csi-port = <0>;
+		pwdn-gpios = <&pca9539_77 1 GPIO_ACTIVE_HIGH
+				&pca9539_77 7 GPIO_ACTIVE_LOW>;
+		/* default-power-on; */
+		status = "okay";
+	};
+
+	isc-mgr.1 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <0>;
+		csi-port = <2>;
+		pwdn-gpios = <&pca9539_77 8 GPIO_ACTIVE_LOW>;
+		/* default-power-on; */
+		status = "okay";
 	};
 };
