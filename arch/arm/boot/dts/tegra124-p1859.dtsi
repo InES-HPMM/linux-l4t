@@ -330,11 +330,6 @@
 
 	sdhci@700b0400 {
 		vddio_sd_slot-supply = <&vdd_sd>;
-		nvidia,update-pinctrl-settings;
-		pinctrl-names = "default_mode", "uhs_sdr50_mode", "uhs_sdr104_mode";
-		pinctrl-0 = <&sdmmc3_hs_mode>;
-		pinctrl-1 = <&sdmmc3_uhs_sdr50_mode>;
-		pinctrl-2 = <&sdmmc3_uhs_sdr104_mode>;
 		status = "okay";
 	};
 
