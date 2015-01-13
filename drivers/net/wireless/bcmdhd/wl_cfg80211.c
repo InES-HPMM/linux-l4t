@@ -83,6 +83,7 @@
 
 #ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
 #include "dhd_custom_sysfs_tegra.h"
+#include "dhd_custom_sysfs_tegra_scan.h"
 #endif
 
 
@@ -2000,6 +2001,9 @@ static void wl_scan_prep(struct wl_scan_params *params, struct cfg80211_scan_req
 	params->home_time = -1;
 	params->channel_num = 0;
 	memset(&params->ssid, 0, sizeof(wlc_ssid_t));
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	TEGRA_SCAN_PREPARE(params, request)
+#endif
 
 	WL_SCAN(("Preparing Scan request\n"));
 	WL_SCAN(("nprobes=%d\n", params->nprobes));
@@ -2083,10 +2087,23 @@ static void wl_scan_prep(struct wl_scan_params *params, struct cfg80211_scan_req
 	        htod32((n_ssids << WL_SCAN_PARAMS_NSSID_SHIFT) |
 	               (n_channels & WL_SCAN_PARAMS_COUNT_MASK));
 
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	/* skip original code for single channel scan parameter override if
+	 * processing scan request from one of the scan work(s)
+	 * - the scan request in the scan work(s) has specific scan parameters
+	 *   which should not be overridden
+	 */
+	TEGRA_SCAN_WORK_ACTIVE_CHECK(request,
+		goto skip_single_channel_scan_parameter_override)
+#endif
 	if (n_channels == 1) {
 		params->active_time = htod32(WL_SCAN_CONNECT_DWELL_TIME_MS);
 		params->nprobes = htod32(params->active_time / WL_SCAN_JOIN_PROBE_INTERVAL_MS);
 	}
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+skip_single_channel_scan_parameter_override:
+	;
+#endif
 }
 
 static s32
@@ -2637,6 +2654,24 @@ wl_cfg80211_scan(struct wiphy *wiphy, struct net_device *ndev,
 
 	WL_DBG(("Enter \n"));
 	RETURN_EIO_IF_NOT_UP(cfg);
+
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	{
+		int status = wifi_scan_request(wl_cfg80211_scan,
+			wiphy, ndev, request);
+		if (status > 0) {
+			WIFI_SCAN_DEBUG("%s: substituted wifi scan policy"
+				" with %d rule(s)\n",
+				__func__, status);
+			return (0);
+		} else if (status < 0) {
+			WIFI_SCAN_DEBUG("%s: wifi scan policy active\n",
+				__func__);
+			return (status);
+		}
+		/* continue scan request if status is 0 */
+	}
+#endif
 
 	err = __wl_cfg80211_scan(wiphy, ndev, request, NULL);
 	if (unlikely(err)) {
@@ -4788,7 +4823,13 @@ static s32 wl_cfg80211_suspend(struct wiphy *wiphy)
 		wl_set_drv_status(cfg, SCAN_ABORTING, iter->ndev);
 	spin_lock_irqsave(&cfg->cfgdrv_lock, flags);
 	if (cfg->scan_request) {
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+		TEGRA_SCAN_DONE(cfg->scan_request, true)
+#endif
 		cfg80211_scan_done(cfg->scan_request, true);
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+skip_cfg80211_scan_done:
+#endif
 		cfg->scan_request = NULL;
 	}
 	for_each_ndev(cfg, iter, next) {
@@ -7251,6 +7292,10 @@ wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 	WL_PNO(("ssids:%d pno_time:%d pno_repeat:%d pno_freq:%d\n",
 		request->n_ssids, pno_time, pno_repeat, pno_freq_expo_max));
 
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	TEGRA_PNO_SCAN_PREPARE(request,
+		pno_time, pno_repeat, pno_freq_expo_max)
+#endif
 
 	if (!request || !request->n_ssids || !request->n_match_sets) {
 		WL_ERR(("Invalid sched scan req!! n_ssids:%d\n",
@@ -8958,7 +9003,13 @@ scan_done_out:
 	del_timer_sync(&cfg->scan_timeout);
 	spin_lock_irqsave(&cfg->cfgdrv_lock, flags);
 	if (cfg->scan_request) {
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+		TEGRA_SCAN_DONE(cfg->scan_request, false)
+#endif
 		cfg80211_scan_done(cfg->scan_request, false);
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+skip_cfg80211_scan_done:
+#endif
 		cfg->scan_request = NULL;
 	}
 	spin_unlock_irqrestore(&cfg->cfgdrv_lock, flags);
@@ -9768,7 +9819,13 @@ static s32 wl_notify_escan_complete(struct bcm_cfg80211 *cfg,
 	}
 #endif /* WL_SCHED_SCAN */
 	if (likely(cfg->scan_request)) {
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+		TEGRA_SCAN_DONE(cfg->scan_request, aborted)
+#endif
 		cfg80211_scan_done(cfg->scan_request, aborted);
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+skip_cfg80211_scan_done:
+#endif
 		cfg->scan_request = NULL;
 	}
 	if (p2p_is_on(cfg))
@@ -11321,7 +11378,13 @@ if (bcmdhd_prop_txstatus_vsdb) {
 
 	spin_lock_irqsave(&cfg->cfgdrv_lock, flags);
 	if (cfg->scan_request) {
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+		TEGRA_SCAN_DONE(cfg->scan_request, true)
+#endif
 		cfg80211_scan_done(cfg->scan_request, true);
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+skip_cfg80211_scan_done:
+#endif
 		cfg->scan_request = NULL;
 	}
 	spin_unlock_irqrestore(&cfg->cfgdrv_lock, flags);
@@ -12592,7 +12655,13 @@ int wl_cfg80211_scan_stop(bcm_struct_cfgdev *cfgdev)
 #else
 	if (cfg->scan_request && cfg->scan_request->dev == cfgdev) {
 #endif
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+		TEGRA_SCAN_DONE(cfg->scan_request, true)
+#endif
 		cfg80211_scan_done(cfg->scan_request, true);
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+skip_cfg80211_scan_done:
+#endif
 		cfg->scan_request = NULL;
 		clear_flag = 1;
 	}

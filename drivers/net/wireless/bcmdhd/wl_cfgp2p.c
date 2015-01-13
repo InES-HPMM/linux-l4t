@@ -48,6 +48,11 @@
 #include <wldev_common.h>
 #include <wl_android.h>
 
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+#include "dhd_custom_sysfs_tegra.h"
+#include "dhd_custom_sysfs_tegra_scan.h"
+#endif
+
 static s8 scanparambuf[WLC_IOCTL_SMLEN];
 static s8 g_mgmt_ie_buf[2048];
 static bool
@@ -783,6 +788,16 @@ wl_cfgp2p_escan(struct bcm_cfg80211 *cfg, struct net_device *dev, u16 active,
 #define P2PAPI_SCAN_AF_SEARCH_DWELL_TIME_MS 100
 
 	struct net_device *pri_dev = wl_to_p2p_bss_ndev(cfg, P2PAPI_BSSCFG_PRIMARY);
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	if (num_chans > 70) {
+		WIFI_SCAN_DEBUG("%s:"
+			" wifi scan rule substituted too many channels (%lu)"
+			" - fixing by reducing number of scan channels\n",
+			__func__,
+			(unsigned long) num_chans);
+		num_chans = 70;
+	}
+#endif
 	/* Allocate scan params which need space for 3 channels and 0 ssids */
 	eparams_size = (WL_SCAN_PARAMS_FIXED_SIZE +
 	    OFFSETOF(wl_escan_params_t, params)) +
@@ -895,6 +910,18 @@ wl_cfgp2p_escan(struct bcm_cfg80211 *cfg, struct net_device *dev, u16 active,
 	}
 
 	CFGP2P_INFO(("\n"));
+
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	{
+		struct cfg80211_scan_request *request
+			= cfg->scan_request;
+		wl_scan_params_t *params
+			= &(eparams->params);
+		if (request) {
+			TEGRA_P2P_SCAN_PREPARE(params, request)
+		}
+	}
+#endif
 
 	ret = wldev_iovar_setbuf_bsscfg(pri_dev, "p2p_scan",
 		memblk, memsize, cfg->ioctl_buf, WLC_IOCTL_MAXLEN, bssidx, &cfg->ioctl_buf_sync);
