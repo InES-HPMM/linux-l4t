@@ -108,6 +108,7 @@
 
 #ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
 #include "dhd_custom_sysfs_tegra.h"
+#include "dhd_custom_sysfs_tegra_scan.h"
 
 #define RX_CAPTURE(skb)\
 	{\
@@ -2342,6 +2343,11 @@ dhd_start_xmit(struct sk_buff *skb, struct net_device *net)
 		return NETDEV_TX_BUSY;
 #endif
 	}
+
+	/* if wifi scan is blocked waiting for tx packet, unblock it */
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	TEGRA_SCAN_TX_PKT_CHECK(skb, ifidx)
+#endif
 
 	/* re-align socket buffer if "skb->data" is odd address */
 	if (((unsigned long)(skb->data)) & 0x1) {
