@@ -2468,9 +2468,14 @@ static int tegra_dvfs_rail_set_clk_switch_cdev_state(
 	int ret = 0;
 	enum dfll_range use_dfll;
 	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	/**
+	 * For First time , initiate dfll range control, irrespective
+	 * of thermal state
+	 */
+	static int first = 1;
 
 	if (CONFIG_TEGRA_USE_DFLL_RANGE == TEGRA_USE_DFLL_CDEV_CNTRL) {
-		if (rail->therm_scale_idx != cur_state) {
+		if ((rail->therm_scale_idx != cur_state) || first) {
 			rail->therm_scale_idx = cur_state;
 			if (rail->therm_scale_idx == 0)
 				use_dfll = DFLL_RANGE_NONE;
@@ -2478,6 +2483,7 @@ static int tegra_dvfs_rail_set_clk_switch_cdev_state(
 				use_dfll = DFLL_RANGE_ALL_RATES;
 
 			ret = tegra_clk_dfll_range_control(use_dfll);
+			first = 0;
 		}
 	} else {
 		pr_warn("\n%s: Not Allowed:", __func__);
