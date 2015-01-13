@@ -1,7 +1,7 @@
 /*
  * tegra132-soc-base.dtsi: SOC specific DTSI file with all node disabled.
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -55,7 +55,8 @@
 	pinmux: pinmux@70000868 {
 		compatible = "nvidia,tegra124-pinmux";
 		reg = <0x0 0x70000868 0x0 0x164		/* Pad control registers */
-		       0x0 0x70003000 0x0 0x434>;	/* Mux registers */
+		       0x0 0x70003000 0x0 0x434		/* Mux registers */
+		       0x0 0x70000820 0x0 0x8>;		/* MIPI pad control */
 		#gpio-range-cells = <3>;
 		status = "disabled";
 	};
