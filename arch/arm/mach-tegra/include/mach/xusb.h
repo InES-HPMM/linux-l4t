@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/xusb.h
  *
- * Copyright (c) 2013-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2015 NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Ajay Gupta <ajayg@nvidia.com>
@@ -79,6 +79,23 @@ struct tegra_xusb_hsic_config {
 	u8 pretend_connect;
 };
 
+enum vbus_en_type {
+	VBUS_FIXED = 0, /* VBUS enabled by GPIO, without PADCTL OC detection */
+	VBUS_FIXED_OC,  /* VBUS enabled by GPIO, with PADCTL detection */
+	VBUS_EN_OC,     /* VBUS enabled by XUSB PADCTL */
+};
+
+enum vbus_en_pin {
+	VBUS_EN0 = 0,
+	VBUS_EN1,
+	VBUS_EN2,
+};
+
+struct usb_vbus_en_oc {
+	enum vbus_en_type type;
+	enum vbus_en_pin pin;
+};
+
 struct tegra_xusb_board_data {
 	u32	portmap;
 	/*
@@ -95,6 +112,7 @@ struct tegra_xusb_board_data {
 	u32 portcap;
 	struct tegra_xusb_hsic_config hsic[XUSB_HSIC_COUNT];
 	const char *firmware_file_dt;
+	struct usb_vbus_en_oc *vbus_en_oc;
 };
 
 struct tegra_xusb_platform_data {

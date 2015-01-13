@@ -1,7 +1,7 @@
 /*
  * xhci-tegra.h - Nvidia xHCI host controller related data
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -377,6 +377,7 @@ struct tegra_xhci_hcd {
 	struct work_struct ss_elpg_exit_work;
 	struct work_struct host_elpg_exit_work;
 	struct work_struct xotg_vbus_work;
+	struct work_struct oc_handling_work;
 
 	struct clk *host_clk;
 	struct clk *ss_clk;

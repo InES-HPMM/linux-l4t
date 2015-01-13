@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -334,6 +334,10 @@ static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
 #define XUSB_PADCTL_USB2_PORT_CAP_0		0x8
 #define USB2_OTG_PORT_CAP(_p, val)	((val & 0x3) << (_p * 4))
 
+#define CLK_RST_PLLU_HW_PWRDN_CFG0_0	0x530
+#define PLLU_CLK_ENABLE_OVERRIDE_VALUE	(1 << 3)
+#define PLLU_SEQ_IN_SWCTL				(1 << 4)
+
 /* PAD MUX */
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 /* XUSB_PADCTL_USB2_PAD_MUX_0 */
@@ -405,9 +409,17 @@ static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
 
 #define XUSB_PADCTL_VBUS_OC_MAP_0	0x18
 #define VBUS_OC_MAP(_p, val)	((val & 0xf) << ((_p * 5) + 1))
+#define VBUS_ENABLE(x)	  (1 << ((x)*5))
+#define OC_DISABLE		(0xf)
 
 #define XUSB_PADCTL_OC_DET_0	0x1c
 #define VBUS_EN_OC_MAP(x, v)	0x0
+#define SET_OC_DETECTED(x)			(1 << (x))
+#define OC_DETECTED(x)				(1 << (8 + (x)))
+#define OC_DETECTED_VBUS_PAD(x)		(1 << (12 + (x)))
+#define OC_DETECTED_VBUS_PAD_MASK	(0xf << 12)
+#define OC_DETECTED_INTR_ENABLE(x)	(1 << (20 + (x)))
+#define OC_DETECTED_INTR_ENABLE_VBUS_PAD(x)	(1 << (24 + (x)))
 
 #define XUSB_PADCTL_USB2_OTG_PAD_CTL_0(_p)	(0x88 + _p * 0x40)
 #define USB2_OTG_HS_CURR_LVL	(0x3F << 0)
@@ -506,11 +518,19 @@ static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
 
 #define XUSB_PADCTL_VBUS_OC_MAP_0	0x0
 #define VBUS_OC_MAP(_p, val)	0x0
+#define VBUS_ENABLE(x)	  0x0
+#define OC_DISABLE		0x0
 
 #define XUSB_PADCTL_OC_DET_0	0x18
 #define VBUS_EN_OC_MAP(x, v) \
 	(((x) == 2) ? \
 	(((v) & 0x7) << 5) : (((v) & 0x7) << (10 + 3 * (x))))
+#define SET_OC_DETECTED(x)			(1 << (x))
+#define OC_DETECTED(x)				(1 << (16 + (x)))
+#define OC_DETECTED_VBUS_PAD(x)		(1 << (20 + (x)))
+#define OC_DETECTED_VBUS_PAD_MASK	(0x7 << 20)
+#define OC_DETECTED_INTR_ENABLE(x)	(1 << (24 + (x)))
+#define OC_DETECTED_INTR_ENABLE_VBUS_PAD(x)	(1 << (28 + (x)))
 
 #define XUSB_PADCTL_USB2_OTG_PAD_CTL_0(_p)	(0xa0 + _p * 0x4)
 #define USB2_OTG_HS_CURR_LVL	(0x3F << 0)
