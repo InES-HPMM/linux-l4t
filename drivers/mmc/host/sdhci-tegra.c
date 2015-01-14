@@ -4475,12 +4475,25 @@ static void tegra_sdhci_ios_config_enter(struct sdhci_host *sdhci,
 static void tegra_sdhci_ios_config_exit(struct sdhci_host *sdhci,
 				struct mmc_ios *ios)
 {
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	int err;
 	/*
 	 * Do any required handling for retuning requests before powering off
 	 * the host.
 	 */
-	if (ios->power_mode == MMC_POWER_OFF)
+	if (ios->power_mode == MMC_POWER_OFF) {
 		tegra_sdhci_power_off(sdhci, ios->power_mode);
+		err = tegra_sdhci_configure_regulators(tegra_host,
+				CONFIG_REG_DIS, 0, 0);
+		if (err)
+			pr_err("Disable regulators failed in ios:%d\n", err);
+	} else{
+		err = tegra_sdhci_configure_regulators(tegra_host,
+				CONFIG_REG_EN, 0, 0);
+		if (err)
+			pr_err("Enable regulator failed in ios:%d\n", err);
+	}
 
 	/*
 	 * In case of power off, turn off controller clock now as all the
