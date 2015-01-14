@@ -11,7 +11,8 @@ Optional properties:
 - nvidia,has-hostpc: Specifies if the controller supports hostpc property.
 - nvidia,unaligned-dma-buf-supported: Specify if unaligned dma buffer are supported by controller.
 - nvidia,power-off-on-suspend: Specifies the phy to turnoff on bus_suspend.
-- nvidia,is-intf-utmi: Specify the phy type is UTMI, if not specified defaults to HSIC.
+- nvidia,is-intf-utmi: Specify the phy type is UTMI.
+- nvidia,is-intf-hsic: Specify the phy type is HSIC.
 - nvidia,remote-wakeup-supported: Specifies if the controller has support for remote-wakeup.
 - avdd_usb-supply: regulator supply for avdd_usb
 - avdd_pll_utmip-supply: regulator supply for avdd_pll_utmi
