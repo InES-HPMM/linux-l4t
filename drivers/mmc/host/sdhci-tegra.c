@@ -5359,6 +5359,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	}
 	host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
 
+	if (plat->cd_wakeup_incapable)
+		host->mmc->pm_flags &= ~MMC_PM_IGNORE_PM_NOTIFY;
+
 	/* disable access to boot partitions */
 	host->mmc->caps2 |= MMC_CAP2_BOOTPART_NOACC;
 
