@@ -732,6 +732,7 @@ static int batmon_probe(struct platform_device *pdev)
 
 static const struct of_device_id batmon_calc_of_match[] = {
 	{ .compatible = "nvidia,tegra124-sysedp_batmon_calc", },
+	{ },
 };
 MODULE_DEVICE_TABLE(of, batmon_calc_of_match);
 

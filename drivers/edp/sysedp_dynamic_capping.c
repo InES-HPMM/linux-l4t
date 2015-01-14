@@ -638,6 +638,7 @@ static int sysedp_dynamic_capping_probe(struct platform_device *pdev)
 
 static const struct of_device_id sysedp_dynamic_capping_of_match[] = {
 	{ .compatible = "nvidia,tegra124-sysedp-dynamic-capping", },
+	{ },
 };
 MODULE_DEVICE_TABLE(of, sysedp_dynamic_capping_of_match);
 
