@@ -268,10 +268,6 @@
 		};
 	};
 
-	nvmap {
-		compatible = "nvidia,carveouts";
-	};
-
 	host1x {
 		reg = <0x0 0x50000000 0x0 0x00030000>;
 
@@ -357,5 +353,16 @@
 	chosen {
 		nvidia,tegra_dvfs_cpu_enable = <0>;
 		nvidia,tegra_dvfs_gpu_enable = <0>;
+	};
+
+	tegra_carveouts {
+		compatible = "nvidia,carveouts";
+		status = "okay";
+		ivm_carveouts {
+			carveout0 {
+				ivm = <&tegra_hv 0>;
+				alloc = <1>;
+			};
+		};
 	};
 };

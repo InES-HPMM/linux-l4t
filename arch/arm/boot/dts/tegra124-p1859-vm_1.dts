@@ -406,4 +406,15 @@
 		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
 		status = "okay";
 	};
+
+	tegra_carveouts {
+		compatible = "nvidia,carveouts";
+		status = "okay";
+		ivm_carveouts {
+			carveout0 {
+				ivm = <&tegra_hv 0>;
+				alloc = <0>;
+			};
+		};
+	};
 };
