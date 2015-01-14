@@ -1247,7 +1247,6 @@ int nvudc_queue_trbs(struct nv_udc_ep *udc_ep_ptr,
 	struct transfer_trb_s *p_xfer_ring = udc_ep_ptr->tran_ring_ptr;
 	u32 num_trbs_ava = 0;
 	struct usb_request *usb_req = &udc_req_ptr->usb_req;
-	struct ep_cx_s *p_ep_cx = nvudc->p_epcx + udc_ep_ptr->DCI;
 	u64 buff_len_temp = 0;
 	u32 i, j = 1;
 	struct transfer_trb_s *enq_pt = udc_ep_ptr->enq_pt;
@@ -1312,12 +1311,14 @@ int nvudc_queue_trbs(struct nv_udc_ep *udc_ep_ptr,
 			}
 		}
 
-		count = num_trbs_ava;
+		/* always keep one trb for zlp. */
+		count = num_trbs_ava - (need_zlp ? 1 : 0);
 		full_td = false;
 		msg_dbg(nvudc->dev, "TRB Ring Full. Avail: 0x%x Req: 0x%x\n",
 						num_trbs_ava, num_trbs_needed);
 		udc_ep_ptr->tran_ring_full = true;
 	}
+
 	msg_dbg(nvudc->dev, "queue_trbs count = 0x%x\n", count);
 	for (i = 0; i < count; i++) {
 		if (buffer_length > TRB_MAX_BUFFER_SIZE)
@@ -1355,26 +1356,15 @@ int nvudc_queue_trbs(struct nv_udc_ep *udc_ep_ptr,
 				intr_on_compl, 0, 0, 1, 0, 0, 1);
 		} else {
 			u8 pcs = udc_ep_ptr->pcs;
-			/*
-			   if ((!udc_ep_ptr->csb) &&
-			   (usb_endpoint_dir_out(udc_ep_ptr->desc)))
-			   msg_dbg(nvudc->dev, "regular bulk out\n");
-			   if (!udc_ep_ptr->first_bulk_t_rBQueued)
-			   udc_ep_ptr->first_bulk_t_rBQueued = enq_pt;
-			   udc_ep_ptr->last_bulk_t_rBQueued = enq_pt;
-			   udc_ep_ptr->num_of_trbs++;
-			   chain_bit = 1;
-			   pcs ^= 0x1;
-			 */
-		if (udc_ep_ptr->comp_desc
+			if (udc_ep_ptr->comp_desc
 				&& usb_ss_max_streams(udc_ep_ptr->comp_desc)) {
-			setup_trb(nvudc, enq_pt, usb_req, buff_len_temp,
+				setup_trb(nvudc, enq_pt, usb_req, buff_len_temp,
 					trb_buf_addr, td_size-1,
 					pcs, TRB_TYPE_XFER_STREAM, short_pkt,
 					chain_bit, intr_on_compl, 0, 0, 0, 0,
 					udc_req_ptr->usb_req.stream_id, 0);
-		} else {
-			setup_trb(nvudc, enq_pt, usb_req, buff_len_temp,
+			} else {
+				setup_trb(nvudc, enq_pt, usb_req, buff_len_temp,
 					trb_buf_addr, td_size-1,
 					pcs, TRB_TYPE_XFER_NORMAL, short_pkt,
 					chain_bit, intr_on_compl, 0, 0, 0, 0, 0,
@@ -1399,7 +1389,7 @@ int nvudc_queue_trbs(struct nv_udc_ep *udc_ep_ptr,
 	}
 
 	if (!udc_req_ptr->trbs_needed)
-		udc_req_ptr->td_start = udc_ep_ptr->enq_pt;
+		udc_req_ptr->first_trb = udc_ep_ptr->enq_pt;
 	udc_ep_ptr->enq_pt = enq_pt;
 	udc_req_ptr->buff_len_left = buffer_length;
 	udc_req_ptr->trbs_needed = td_size;
@@ -1407,6 +1397,14 @@ int nvudc_queue_trbs(struct nv_udc_ep *udc_ep_ptr,
 	if (need_zlp && udc_req_ptr->buff_len_left == 0 &&
 			!udc_ep_ptr->tran_ring_full)
 		nvudc_queue_zlp_td(nvudc, udc_ep_ptr);
+
+	if (udc_req_ptr->buff_len_left == 0) {
+		/* It is actually last trb of a request plus 1 */
+		if (udc_ep_ptr->enq_pt == udc_ep_ptr->tran_ring_ptr)
+			udc_req_ptr->last_trb = udc_ep_ptr->link_trb - 1;
+		else
+			udc_req_ptr->last_trb = udc_ep_ptr->enq_pt - 1;
+	}
 
 	return 0;
 }
@@ -1449,7 +1447,7 @@ int nvudc_queue_ctrl(struct nv_udc_ep *udc_ep_ptr,
 			msg_dbg(nvudc->dev, "Setup Data Stage TRBs\n");
 			/* Transfer ring is empty
 			   setup data stage TRBs */
-			udc_req_ptr->td_start = udc_ep_ptr->enq_pt;
+			udc_req_ptr->first_trb = udc_ep_ptr->enq_pt;
 
 			if (nvudc->setup_status ==  DATA_STAGE_XFER)
 				dir = 1;
@@ -1530,6 +1528,13 @@ int nvudc_queue_ctrl(struct nv_udc_ep *udc_ep_ptr,
 				msg_dbg(nvudc->dev, "DB register 0x%x\n", dw);
 				iowrite32(dw, nvudc->mmio_reg_base + DB);
 			}
+
+			if (udc_ep_ptr->enq_pt == udc_ep_ptr->tran_ring_ptr)
+				udc_req_ptr->last_trb = udc_ep_ptr->link_trb
+								- 1;
+			else
+				udc_req_ptr->last_trb = udc_ep_ptr->enq_pt
+								- 1;
 		} else {
 			/* we process one setup request at a time, so ring
 			 * should already be empty.*/
@@ -1572,6 +1577,7 @@ int nvudc_build_td(struct nv_udc_ep *udc_ep_ptr,
 			(buffer_length % TRB_MAX_BUFFER_SIZE))
 			num_trbs_needed += 1;
 	}
+
 	msg_dbg(nvudc->dev, "buf_len = %ld, num_trb_needed = %d",
 	(unsigned long)buffer_length, num_trbs_needed);
 
@@ -1605,6 +1611,7 @@ int nvudc_build_td(struct nv_udc_ep *udc_ep_ptr,
 		iowrite32(u_temp, nvudc->mmio_reg_base + DB);
 
 	} else {
+		/* interrupt endpoint */
 		status = nvudc_queue_trbs(udc_ep_ptr, udc_req_ptr, 0,
 				NVUDC_INT_EP_TD_RING_SIZE,
 				num_trbs_needed, buffer_length);
@@ -1615,6 +1622,16 @@ int nvudc_build_td(struct nv_udc_ep *udc_ep_ptr,
 	}
 
 	return status;
+}
+
+void clear_req_container(struct nv_udc_request *udc_req_ptr)
+{
+	udc_req_ptr->buff_len_left = 0;
+	udc_req_ptr->trbs_needed = 0;
+	udc_req_ptr->all_trbs_queued = 0;
+	udc_req_ptr->first_trb = NULL;
+	udc_req_ptr->last_trb = NULL;
+	udc_req_ptr->short_pkt = 0;
 }
 
 static int
@@ -1659,12 +1676,8 @@ nvudc_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 	}
 
 	/* Clearing the Values of the NV_UDC_REQUEST container */
-	udc_req_ptr->buff_len_left = 0;
-	udc_req_ptr->trbs_needed = 0;
+	clear_req_container(udc_req_ptr);
 	udc_req_ptr->mapped = 0;
-	udc_req_ptr->all_trbs_queued = 0;
-	udc_req_ptr->td_start = NULL;
-	udc_req_ptr->short_pkt = 0;
 
 	if (usb_endpoint_xfer_control(udc_ep_ptr->desc) &&
 				(_req->length == 0)) {
@@ -1757,46 +1770,75 @@ u32 actual_data_xfered(struct nv_udc_ep *udc_ep, struct nv_udc_request *udc_req)
 	return udc_req->usb_req.length - data_left;
 }
 
-void flush_xfer_ring(struct nv_udc_ep *udc_ep_ptr,
-		struct nv_udc_request *udc_req_ptr, u8 num_trbs)
+void squeeze_xfer_ring(struct nv_udc_ep *udc_ep_ptr,
+		struct nv_udc_request *udc_req_ptr)
 {
 	struct nv_udc_s *nvudc = udc_ep_ptr->nvudc;
-	struct transfer_trb_s *enq_pt = udc_req_ptr->td_start;
-	struct transfer_trb_s *dq_pt;
-	struct ep_cx_s *p_ep_cx = nvudc->p_epcx + udc_ep_ptr->DCI;
-	u32 deq_pt_lo = p_ep_cx->ep_dw2 & EP_CX_TR_DQPT_LO_MASK;
-	u32 deq_pt_hi = p_ep_cx->ep_dw3;
-	u64   dq_pt_addr = (u64)deq_pt_lo + ((u64)deq_pt_hi << 32);
+	struct transfer_trb_s *temp = udc_req_ptr->first_trb;
+	struct nv_udc_request *next_req;
 
-	dq_pt = tran_trb_dma_to_virt(udc_ep_ptr, dq_pt_addr);
+	while (temp != udc_ep_ptr->enq_pt) {
+		temp->data_buf_ptr_lo = 0;
+		temp->data_buf_ptr_hi = 0;
+		temp->trb_dword2 = 0;
+		temp->trb_dword3 = 0;
 
-	while ((enq_pt+1) != dq_pt) {
-		enq_pt->data_buf_ptr_lo = 0;
-		enq_pt->data_buf_ptr_hi = 0;
-		enq_pt->trb_dword2 = 0;
-		enq_pt->trb_dword3 = 0;
+		temp++;
 
-		enq_pt++;
-
-		if (XHCI_GETF(TRB_TYPE, enq_pt->trb_dword3) == TRB_TYPE_LINK)
-			enq_pt = udc_ep_ptr->tran_ring_ptr;
+		if (XHCI_GETF(TRB_TYPE, temp->trb_dword3) == TRB_TYPE_LINK)
+			temp = udc_ep_ptr->tran_ring_ptr;
 	}
 
+	/* Update the new enq_ptr starting from the deleted req */
+	udc_ep_ptr->enq_pt = udc_req_ptr->first_trb;
+
+	if (udc_ep_ptr->tran_ring_full == true)
+		udc_ep_ptr->tran_ring_full = false;
+
+	next_req = list_entry(udc_req_ptr->queue.next,
+				struct nv_udc_request, queue);
+
+	list_for_each_entry_from(next_req, &udc_ep_ptr->queue, queue) {
+		next_req->usb_req.status = -EINPROGRESS;
+		next_req->usb_req.actual = 0;
+
+		/* clear the values of the nv_udc_request container */
+		clear_req_container(next_req);
+
+		if (udc_ep_ptr->tran_ring_full)
+			break;
+		else {
+			/* push the request to the transfer ring */
+			nvudc_build_td(udc_ep_ptr, next_req);
+		}
+	}
 }
 
-	static int
+bool is_pointer_less_than(struct transfer_trb_s *a, struct transfer_trb_s *b,
+	struct nv_udc_ep *udc_ep)
+{
+	if ((b > a) && ((udc_ep->enq_pt >= b) || (udc_ep->enq_pt < a)))
+		return true;
+	if ((b < a) && ((udc_ep->enq_pt >= b) && (udc_ep->enq_pt < a)))
+		return true;
+	return false;
+}
+
+static int
 nvudc_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 {
 	struct nv_udc_ep *udc_ep;
 	struct nv_udc_s *nvudc;
 	u32 u_temp, u_temp2 = 0;
 	struct nv_udc_request *udc_req;
-	int ret = 0;
 	struct ep_cx_s *p_ep_cx;
 	u8 ep_state;
 	struct nv_udc_request *p_new_udc_req;
 	u64 new_dq_pt;
 	unsigned long flags;
+	struct transfer_trb_s *pause_pt;
+	u32 deq_pt_lo, deq_pt_hi;
+	u64 dq_pt_addr;
 
 	if (!_ep || !_req)
 		return -EINVAL;
@@ -1836,6 +1878,9 @@ nvudc_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 
 		iowrite32(u_temp2, nvudc->mmio_reg_base + EP_STCHG);
 		msg_dbg(nvudc->dev, "clear the state change register\n");
+
+		poll_ep_thread_active(nvudc->dev, "ep_dequeue()",
+			NV_BIT(udc_ep->DCI));
 	}
 
 
@@ -1845,18 +1890,50 @@ nvudc_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 	}
 
 	if (&udc_req->usb_req != _req) {
-		ret = -EINVAL;
 		msg_dbg(nvudc->dev,
 			" did not find the request in request queue\n");
-		goto dqerr;
+		spin_unlock_irqrestore(&nvudc->lock, flags);
+		return -EINVAL;
+	}
+	/* Request hasn't been queued to transfer ring yet
+	* dequeue it from sw queue only
+	*/
+	if (!udc_req->first_trb) {
+		req_done(udc_ep, udc_req, -ECONNRESET);
+		return 0;
 	}
 
-	if (udc_ep->queue.next == &udc_req->queue) {
-		msg_dbg(nvudc->dev, "head of the request queue\n");
+	deq_pt_lo = p_ep_cx->ep_dw2 & EP_CX_TR_DQPT_LO_MASK;
+	deq_pt_hi = p_ep_cx->ep_dw3;
+	dq_pt_addr = (u64)deq_pt_lo + ((u64)deq_pt_hi << 32);
+	pause_pt = tran_trb_dma_to_virt(udc_ep, dq_pt_addr);
 
-		/* this request is handling by hw or is completed but haven't
-		 * got dequeue yet update dequeue pointer to next TD.
-		 */
+	if (is_pointer_less_than(pause_pt, udc_req->first_trb, udc_ep)) {
+		msg_dbg(nvudc->dev, "squeeze_xfer_ring\n");
+		/* HW hasn't process the request yet */
+		squeeze_xfer_ring(udc_ep, udc_req);
+		req_done(udc_ep, udc_req, -ECONNRESET);
+	} else if (udc_req->last_trb &&
+		is_pointer_less_than(udc_req->last_trb, pause_pt, udc_ep)) {
+		/* Request has been completed by HW
+		* There must be transfer events pending in event ring, and
+		* it will be processed later once interrupt context gets spin
+		* lock.
+		* Gadget driver free the request without checking the return
+		* value of usb_ep_dequeue, so we have to complete the request
+		* here and drop the transfer event later.
+		*/
+		dev_dbg(nvudc->dev,
+			" Request has been complete by HW, reject request\n");
+		req_done(udc_ep, udc_req, -ECONNRESET);
+		spin_unlock_irqrestore(&nvudc->lock, flags);
+		return -EINVAL;
+
+	} else {
+		/* Request has been partially completed by HW */
+
+		msg_dbg(nvudc->dev,
+			" Request has been partially completed by HW\n");
 		udc_req->usb_req.actual = actual_data_xfered(udc_ep, udc_req);
 
 		if (udc_req->queue.next == &udc_ep->queue) {
@@ -1872,9 +1949,15 @@ nvudc_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 			 */
 			p_new_udc_req = list_entry(udc_req->queue.next,
 					struct nv_udc_request, queue);
-			new_dq_pt = tran_trb_virt_to_dma(udc_ep,
-					p_new_udc_req->td_start);
-			msg_dbg(nvudc->dev, "more requests pending\n");
+			if (p_new_udc_req && p_new_udc_req->first_trb) {
+				new_dq_pt = tran_trb_virt_to_dma(udc_ep,
+					p_new_udc_req->first_trb);
+			} else {
+				/* transfer ring was full, next request hasn't
+				* been queued to transfer ring yet */
+				 new_dq_pt = tran_trb_virt_to_dma(udc_ep,
+						udc_ep->enq_pt);
+			}
 		}
 
 		p_ep_cx->ep_dw2 = lower_32_bits(new_dq_pt)
@@ -1895,63 +1978,11 @@ nvudc_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 			nvudc->mmio_reg_base + EP_RELOAD);
 		poll_reload(nvudc->dev, "ep_dequeue()", NV_BIT(udc_ep->DCI));
 
-		if (udc_ep->tran_ring_full == true) {
-			udc_ep->tran_ring_full = false;
-			queue_pending_trbs(udc_ep);
-		}
-
-	} else if (udc_req->td_start == NULL) {
-		msg_dbg(nvudc->dev, "udc_req->td_start == NULL\n");
-		/* this request is in the software queue, but haven't write to
-		 * the transfer ring yet */
-		req_done(udc_ep, udc_req, -ECONNRESET);
-	} else {
-		/* request was written to the transfer ring, but haven't
-		 * processed by HW yet.*/
-		u32 xfer_ring_size;
-		struct nv_udc_request *next_req;
-		msg_dbg(nvudc->dev, "haven't process by HW yet.\n");
-
-		if (usb_endpoint_xfer_control(udc_ep->desc))
-			xfer_ring_size = NVUDC_CONTROL_EP_TD_RING_SIZE;
-		else if (usb_endpoint_xfer_isoc(udc_ep->desc))
-			xfer_ring_size = NVUDC_ISOC_EP_TD_RING_SIZE;
-		else if (usb_endpoint_xfer_bulk(udc_ep->desc))
-			xfer_ring_size = NVUDC_BULK_EP_TD_RING_SIZE;
-		else
-			xfer_ring_size = NVUDC_INT_EP_TD_RING_SIZE;
-
-		flush_xfer_ring(udc_ep, udc_req, xfer_ring_size);
-		/* Update the new enq_ptr starting from the deleted req */
-		udc_ep->enq_pt = udc_req->td_start;
-
-		if (udc_ep->tran_ring_full == true)
-			udc_ep->tran_ring_full = false;
-
-		next_req = list_entry(udc_req->queue.next,
-					struct nv_udc_request,	queue);
-
-		list_for_each_entry_from(next_req, &udc_ep->queue, queue) {
-			next_req->usb_req.status = -EINPROGRESS;
-			next_req->usb_req.actual = 0;
-
-			/* The follwing variable being non zero means that
-			* some trbs's of a request are queued in the ring
-			* and only the remaining have to be added when
-			* build_TD is called. When we flush the transfer
-			* ring before, these trb's are flushed. So we should
-			* clear this variable so that all the trb's are again
-			* added to the ring
-			*/
-			if (next_req->trbs_needed != 0)
-				next_req->trbs_needed = 0;
-
-			if (udc_ep->tran_ring_full == false) {
-				/* push the request to the transfer ring */
-				ret = nvudc_build_td(udc_ep, next_req);
-			}
-		}
-		req_done(udc_ep, udc_req, -ECONNRESET);
+		/* For big TD, we generated completion event every 5 TRBS.
+		* So, we do not need to update sw dequeue pointer here.
+		* Wait for interrupt context to update it.
+		* Do not need to queue more trbs also.
+		*/
 	}
 
 	/* clear PAUSE bit and reresume data transfer */
@@ -1965,10 +1996,9 @@ nvudc_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 		iowrite32(NV_BIT(udc_ep->DCI), nvudc->mmio_reg_base + EP_STCHG);
 	}
 
-dqerr:
 	spin_unlock_irqrestore(&nvudc->lock, flags);
 	msg_exit(nvudc->dev);
-	return ret;
+	return 0;
 }
 
 /*
@@ -2576,7 +2606,6 @@ void handle_cmpl_code_success(struct nv_udc_s *nvudc, struct event_trb_s *event,
 					trb_transfer_length;
 		msg_dbg(nvudc->dev, "Actual data xfer = 0x%x, tx_len = 0x%x\n",
 			udc_req_ptr->usb_req.actual, trb_transfer_length);
-
 		req_done(udc_ep_ptr, udc_req_ptr, 0);
 
 		if (!udc_ep_ptr->desc) {
@@ -2612,12 +2641,44 @@ void advance_dequeue_pt(struct nv_udc_ep *udc_ep)
 				struct nv_udc_request,
 				queue);
 
-		if (udc_req->td_start)
-			udc_ep->deq_pt = udc_req->td_start;
+		if (udc_req->first_trb)
+			udc_ep->deq_pt = udc_req->first_trb;
 		else
 			udc_ep->deq_pt = udc_ep->enq_pt;
 	} else
 		udc_ep->deq_pt = udc_ep->enq_pt;
+}
+
+bool is_request_dequeued(struct nv_udc_s *nvudc, struct nv_udc_ep *udc_ep,
+		struct event_trb_s *event)
+{
+	struct nv_udc_request *udc_req;
+	u32 trb_pt_lo = event->trb_pointer_lo;
+	u32 trb_pt_hi = event->trb_pointer_hi;
+	u64 trb_addr = (u64)trb_pt_lo + ((u64)trb_pt_hi << 32);
+	struct transfer_trb_s *trb_pt;
+	bool status = true;
+
+	if (udc_ep->DCI == 0)
+		return false;
+
+	trb_pt = tran_trb_dma_to_virt(udc_ep, trb_addr);
+	list_for_each_entry(udc_req, &udc_ep->queue, queue) {
+		if ((trb_pt == udc_req->last_trb) ||
+			(trb_pt == udc_req->first_trb)) {
+			status = false;
+			break;
+		}
+
+		if (is_pointer_less_than(trb_pt, udc_req->last_trb, udc_ep) &&
+			is_pointer_less_than(udc_req->first_trb, trb_pt,
+				udc_ep)) {
+			status = false;
+			break;
+		}
+	}
+
+	return status;
 }
 
 int nvudc_handle_exfer_event(struct nv_udc_s *nvudc, struct event_trb_s *event)
@@ -2636,8 +2697,13 @@ int nvudc_handle_exfer_event(struct nv_udc_s *nvudc, struct event_trb_s *event)
 
 	update_dequeue_pt(event, udc_ep_ptr);
 
-	comp_code = XHCI_GETF(EVE_TRB_COMPL_CODE, event->eve_trb_dword2);
+	if (is_request_dequeued(nvudc, udc_ep_ptr, event)) {
+		trbs_dequeued = true;
+		dev_dbg(nvudc->dev, "WARNING: Drop the transfer event\n");
+		goto queue_more_trbs;
+	}
 
+	comp_code = XHCI_GETF(EVE_TRB_COMPL_CODE, event->eve_trb_dword2);
 
 	switch (comp_code) {
 	case CMPL_CODE_SUCCESS:
@@ -2854,6 +2920,7 @@ int nvudc_handle_exfer_event(struct nv_udc_s *nvudc, struct event_trb_s *event)
 		break;
 	}
 
+queue_more_trbs:
 	/* If there are some trbs dequeued by HW and the ring
 	 * was full before, then schedule any pending TRB's
 	 */

@@ -171,6 +171,7 @@
 #define PORT_TM	0x00000070
 #define PORT_TM_CTRL(x)	((x) & 0xf)
 
+#define EP_THREAD_ACTIVE	0x00000074
 #define EP_STOPPED	0x00000078
 
 #define HSFSPI_TESTMODE_CTRL        0x0000013C
@@ -509,7 +510,8 @@ struct nv_udc_request {
 	bool mapped;
 	u64 buff_len_left;
 	u32 trbs_needed;
-	struct transfer_trb_s *td_start;
+	struct transfer_trb_s *first_trb;
+	struct transfer_trb_s *last_trb;
 	bool all_trbs_queued;
 	bool short_pkt;
 };
@@ -760,6 +762,28 @@ void nvudc_handle_event(struct nv_udc_s *nvudc, struct event_trb_s *event);
 		if (_i == (EP_STOPPED_REG_TIMEOUT_IN_USECS*20)) {	\
 			msg_dbg(dev, "EP_STOPPED Timeout: "_fmt"\n");	\
 		}							\
+	} while (0)
+
+/*
+* macro to poll EP_THREAD_ACTIVE reg for specific endpoint.
+* If we exceed polling limit, a console message is printed.
+* _fmt must be enclosed * in ""
+* as it is string identifier into dev_dbg().
+*/
+#define EP_ACTIVE_TIMEOUT_IN_USECS 100
+#define poll_ep_thread_active(dev, _fmt, _val)                         \
+	do {                                                            \
+		u32     _i, _reg;                                       \
+		for (_i = 0; _i < (EP_ACTIVE_TIMEOUT_IN_USECS*20); _i++) {\
+			_reg = ioread32(nvudc->mmio_reg_base            \
+				+ EP_THREAD_ACTIVE);                    \
+			if ((_reg & _val) == 0)                         \
+				break;                                  \
+			ndelay(50);                                     \
+		}                                                       \
+		if (_i == (EP_ACTIVE_TIMEOUT_IN_USECS*20)) {    \
+			msg_dbg(dev, "EP_ACTIVE Timeout: "_fmt"\n");    \
+		}                                                       \
 	} while (0)
 
 extern int debug_level;
