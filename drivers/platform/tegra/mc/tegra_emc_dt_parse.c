@@ -170,6 +170,9 @@ static void *tegra_emc_dt_parse_pdata_comp(const char *emc_mode,
 #elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
 			PNE_U32(iter, "nvidia,needs-training", needs_training);
 			PNE_U32(iter, "nvidia,trained", trained);
+
+			if (tables[i].rev < 0x6)
+				goto skip_periodic_training_params;
 			PNE_U32(iter, "nvidia,periodic_training",
 				periodic_training);
 			PNE_U32(iter, "nvidia,trained_dram_clktree_c0d0u0",
@@ -206,6 +209,8 @@ static void *tegra_emc_dt_parse_pdata_comp(const char *emc_mode,
 				current_dram_clktree_c1d1u1);
 			PNE_U32(iter, "nvidia,run_clocks", run_clocks);
 			PNE_U32(iter, "nvidia,tree_margin", tree_margin);
+
+skip_periodic_training_params:
 			PNE_U32(iter, "nvidia,burst-regs-per-ch-num",
 				burst_regs_per_ch_num);
 			PNE_U32(iter, "nvidia,trim-regs-num", trim_regs_num);
