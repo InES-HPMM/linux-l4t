@@ -1,7 +1,7 @@
 /*
  * arch/arm/boot/dts/tegra124-p1855.dtsi
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -317,6 +317,23 @@
 	};
 
 	snor {
+		status = "okay";
+	};
+
+	ehci@7d000000 {
+		nvidia,is-intf-utmi;
+		status = "disabled";
+	};
+
+	ehci@7d004000 {
+		nvidia,is-intf-hsic;
+		nvidia,unaligned-dma-buf-supported;
+		status = "okay";
+	};
+
+	ehci@7d008000 {
+		nvidia,is-intf-hsic;
+		nvidia,unaligned-dma-buf-supported;
 		status = "okay";
 	};
 

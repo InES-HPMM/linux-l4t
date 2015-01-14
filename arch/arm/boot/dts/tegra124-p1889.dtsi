@@ -300,6 +300,21 @@
 		status = "okay";
 	};
 
+	ehci@7d000000 {
+		nvidia,is-intf-utmi;
+		status = "disabled";
+	};
+
+	ehci@7d004000 {
+		nvidia,is-intf-utmi;
+		status = "okay";
+	};
+
+	ehci@7d008000 {
+		nvidia,is-intf-utmi;
+		status = "okay";
+	};
+
 	bluedroid_pm {
 		compatible = "nvidia,tegra-bluedroid_pm";
 		id = <0>;

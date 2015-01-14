@@ -80,6 +80,16 @@
 		status = "disabled";
 	};
 
+	ehci@7d004000 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
+	ehci@7d008000 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+		status = "disabled";
+	};
+
 	udc@7d000000 {
 		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
 		status = "disabled";
