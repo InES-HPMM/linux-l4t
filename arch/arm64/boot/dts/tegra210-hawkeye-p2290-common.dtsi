@@ -38,6 +38,7 @@
 #include "tegra210-platforms/tegra210-hawkeye-camera-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-modem-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
+#include "tegra210-platforms/tegra210-edp.dtsi"
 
 /* TODO: comm's dtsi should be included after GPIO dtsi */
 #include "tegra210-platforms/tegra210-hawkeye-comms.dtsi"
@@ -195,5 +196,15 @@
 		pinctrl-2 = <&sdmmc1_clk_schmitt_enable_state>;
 		pinctrl-3 = <&sdmmc1_clk_schmitt_disable_state>;
 		status = "disabled";
+	};
+
+	cpu_edp {
+		status = "okay";
+		nvidia,edp_limit = <12000>;
+	};
+
+	gpu_edp {
+		status = "okay";
+		nvidia,edp_limit = <12000>;
 	};
 };
