@@ -541,7 +541,7 @@ static struct tegra_usb_platform_data *tegra_ehci_dt_parse_pdata(
 	struct tegra_usb_platform_data *pdata;
 	struct device_node *np = pdev->dev.of_node;
 	u32 val;
-	bool is_intf_utmi;
+	bool is_intf_utmi, is_intf_hsic;
 	int err;
 	u32 instance;
 #if defined(CONFIG_ARCH_TEGRA_13x_SOC)
@@ -568,6 +568,14 @@ static struct tegra_usb_platform_data *tegra_ehci_dt_parse_pdata(
 	is_intf_utmi = of_property_read_bool(np, "nvidia,is-intf-utmi");
 	if (is_intf_utmi)
 		pdata->phy_intf = TEGRA_USB_PHY_INTF_UTMI;
+
+	is_intf_hsic = of_property_read_bool(np, "nvidia,is-intf-hsic");
+	if (is_intf_hsic)
+		pdata->phy_intf = TEGRA_USB_PHY_INTF_HSIC;
+
+	/* If both the interfaces are selected,
+	 * DT contains wrong information */
+	BUG_ON(is_intf_hsic && is_intf_utmi);
 
 	instance = of_alias_get_id(pdev->dev.of_node, "ehci");
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
