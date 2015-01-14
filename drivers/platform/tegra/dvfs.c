@@ -3076,9 +3076,14 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
 		int thermal_mv_floor = 0;
+		int vmin = rail->min_millivolts;
 
-		seq_printf(s, "%s %d mV%s:\n", rail->reg_id,
-			   rail->stats.off ? 0 : rail->millivolts,
+		d = list_first_entry(&rail->dvfs, struct dvfs, reg_node);
+		if (rail->dfll_mode)
+			vmin = d->dfll_data.min_millivolts;
+
+		seq_printf(s, "%s %d mV%s%s:\n", rail->reg_id, rail->millivolts,
+			   rail->stats.off ? " OFF" : " ON",
 			   rail->dfll_mode ? " dfll mode" :
 				rail->disabled ? " disabled" : "");
 		list_for_each_entry(rel, &rail->relationships_from, from_node) {
@@ -3093,7 +3098,7 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 		}
 		seq_printf(s, "   nominal    %-7d mV\n",
 			   rail->nominal_millivolts);
-		seq_printf(s, "   minimum    %-7d mV\n", rail->min_millivolts);
+		seq_printf(s, "   minimum    %-7d mV\n", vmin);
 		seq_printf(s, "   offset     %-7d mV\n", rail->dbg_mv_offs);
 
 		thermal_mv_floor = tegra_dvfs_rail_get_thermal_floor(rail);
