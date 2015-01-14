@@ -265,6 +265,8 @@ static int _cpc_do_data(struct cpc_i2c_host *cpc, struct cpc_frame_t *fr)
 				msecs_to_jiffies(CPC_I2C_DEADLINE_MS))) {
 			pr_err("%s timeout on write complete\n", __func__);
 			fr->result = CPC_RESULT_WRITE_FAILURE;
+			err = -ETIMEDOUT;
+			goto fail;
 		}
 		break;
 	default:
@@ -397,7 +399,7 @@ static struct miscdevice cpc_dev = {
 static int cpc_i2c_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
-	int status;
+	int err = 0;
 
 	/* Initialize stack variables and structures */
 	cpc_host = kzalloc(sizeof(struct cpc_i2c_host), GFP_KERNEL);
@@ -413,30 +415,53 @@ static int cpc_i2c_probe(struct i2c_client *client,
 	mutex_init(&cpc_host->lock);
 
 	/* Setup IRQ */
-	status = request_threaded_irq(cpc_host->irq, cpc_irq, NULL,
-				IRQF_TRIGGER_RISING, "cpc_irq", cpc_host);
-	if (status) {
-		pr_err("%s: request irq failed %d\n", __func__, status);
-		goto fail;
+	if (cpc_host->irq < 0) {
+		dev_err(&client->dev,
+			"Unable to enable IRQ\n");
+		err = -EINVAL;
+		goto pre_irq_fail;
+	} else {
+		/*
+		   In case the IRQ fires before complete is initialized,
+		   initialize complete now and over write later
+
+		   Another option is to disable IRQ until the host is
+		   ready to handle the IRQ, but that causes recurring burden
+		   of re-enabling and re-disabling IRQ
+		*/
+		init_completion(&cpc_host->complete);
+		err = request_threaded_irq(cpc_host->irq, cpc_irq, NULL,
+					IRQF_TRIGGER_FALLING,
+					dev_name(&client->dev), cpc_host);
+		if (err) {
+			dev_err(&client->dev, "%s: request irq failed %d\n",
+				__func__, err);
+			err = -EINVAL;
+			goto pre_irq_fail;
+		}
 	}
 
-	/* TODO: check for CP DRM controller status. Make sure it's ready
+
+	/* TODO: check for CP DRM controller err. Make sure it's ready
 	 */
 
 	/* setup misc device for userspace io */
 	if (misc_register(&cpc_dev)) {
 		pr_err("%s: misc device register failed\n", __func__);
-		status = -ENOMEM;
+		err = -ENOMEM;
 		goto fail;
 	}
 
 	dev_info(&client->dev, "host driver for CPC\n");
 	return 0;
+
 fail:
+	free_irq(cpc_host->irq, cpc_host);
+pre_irq_fail:
 	dev_set_drvdata(&client->dev, NULL);
 	mutex_destroy(&cpc_host->lock);
 	kfree(cpc_host);
-	return status;
+	return err;
 }
 
 static int cpc_i2c_remove(struct i2c_client *client)
@@ -444,6 +469,7 @@ static int cpc_i2c_remove(struct i2c_client *client)
 	struct cpc_i2c_host *cpc_host = dev_get_drvdata(&client->dev);
 
 	mutex_destroy(&cpc_host->lock);
+	free_irq(cpc_host->irq, cpc_host);
 	kfree(cpc_host);
 	cpc_host = NULL;
 	return 0;
