@@ -76,10 +76,16 @@
 		power-supply,y-cable-extcon-dev = "tegra-otg";
 	};
 
+	usb-devices {
+		maxim-charger {
+			maxim,max-board-vbus-voltage-uv = <12000000>;
+		};
+	};
+
 	i2c@7000c400 {
 		 battery-gauge@0b {
 			onsemi,kernel-threshold-soc = <2>;
-			onsemi,kernel-maximum-soc = <100>;
+			onsemi,kernel-maximum-soc = <99>;
 			io-channels = <&ina3221x INA3221_CHAN_INDEX(0, CURRENT, NORMAL)>;
 			io-channel-names = "battery-current";
 			dt-override-status-odm-data = <0x00C00000 0x00400000>;
@@ -91,8 +97,8 @@
 				ti,temp-range = <10 15 25 45 60>;
 				ti,charge-thermal-voltage-limit = <4352 4352 4352 4352 4200>;
 				ti,charge-current-limit = <1040 1040 2600 5200 2600>;
-				ti,soc-range = <94 100>;
-				ti,input-voltage-soc-limit = <4680 4760>;
+				ti,soc-range = <50 60 70 80 85 90 95 101>;
+				ti,input-voltage-soc-limit = <4200 4280 4360 4440 4520 4600 4680 4760>;
 				ti,charge-term-current-limit-milliamp = <1>;
 				dt-override-status-odm-data = <0x00C00000 0x00400000>;
 			};
