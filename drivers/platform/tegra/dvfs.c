@@ -1010,9 +1010,13 @@ static int predict_non_alt_millivolts(struct clk *c, const int *millivolts,
 				      unsigned long rate)
 {
 	int i;
+	int vmin = c->dvfs->dvfs_rail->min_millivolts;
 
 	if (!millivolts)
 		return -ENODEV;
+
+	if (millivolts == dvfs_get_millivolts_dfll(c->dvfs))
+		vmin = c->dvfs->dfll_data.min_millivolts;
 
 	for (i = 0; i < c->dvfs->num_freqs; i++) {
 		if (rate <= c->dvfs->freqs[i])
@@ -1022,7 +1026,7 @@ static int predict_non_alt_millivolts(struct clk *c, const int *millivolts,
 	if (i == c->dvfs->num_freqs)
 		i--;
 
-	return max(millivolts[i], c->dvfs->dvfs_rail->min_millivolts);
+	return max(millivolts[i], vmin);
 }
 
 /*
