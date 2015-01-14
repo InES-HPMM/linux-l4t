@@ -9241,7 +9241,7 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("bsev",	"tegra-aes",		"bsev",	63,	0,	250000000, mux_clk_m, 			0),
 	PERIPH_CLK("cec",	"tegra_cec",		NULL,	136,	0,	250000000, mux_clk_m,			PERIPH_ON_APB),
 	PERIPH_CLK("csite",	"csite",		NULL,	73,	0x1d4,	624000000, mux_pllp_pllre_clkm,		MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("la",	"la",			NULL,	76,	0x1f8,	38400000,  mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("la",	"la",			NULL,	76,	0x1f8,	408000000,  mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_ON_APB),
 
 	PERIPH_CLK("owr",	"tegra_w1",		NULL,	71,	0x1cc,	38400000,  mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c1",	"tegra21-i2c.0",   "div-clk",	12,	0x124,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
