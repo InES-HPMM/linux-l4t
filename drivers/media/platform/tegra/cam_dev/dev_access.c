@@ -1,7 +1,7 @@
 /*
  * dev_access.c - functions to access hw and resources
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -123,7 +123,7 @@ int camera_dev_sync_wr_add_i2c(
 	int i = 0;
 	struct camera_sync_dev *itr = NULL;
 
-	if (csyncdev->name == NULL || !strcmp(csyncdev->name, "")) {
+	if (!strcmp(csyncdev->name, "")) {
 		err = -EINVAL;
 		goto csync_wr_add_i2c_end;
 	}
