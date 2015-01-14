@@ -2111,8 +2111,12 @@ static int tegra_ahci_runtime_suspend(struct device *dev)
 	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	int err = 0;
 	bool pg_ok;
+	u32 port_status = 0;
 
-	if (tegra_ahci_are_all_ports_idle(host)) {
+	port_status = tegra_ahci_get_port_status();
+	port_status = (port_status & 0xF00) >> 8;
+
+	if (tegra_ahci_are_all_ports_idle(host) && port_status >= 0x6) {
 		/* if all ports are in idle, do power-gate */
 #ifdef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
 		pg_ok = tegra_ahci_power_gate(host);
