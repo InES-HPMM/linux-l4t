@@ -1,7 +1,7 @@
 /*
  * arch/arm64/boot/dts/tegra210-loki-e-p2530-0031-e00-00.dts
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,5 +27,13 @@
 	modem {
 		/* pre boost regulator gpio */
 		nvidia,pre-boost-gpio = <&gpio TEGRA_GPIO(E, 5) GPIO_ACTIVE_HIGH>;
+		/* using XHCI UTMI */
+		nvidia,phy-type = <2>;
+	};
+
+	xusb@70090000 {
+		/* enable UTMI pad 1 */
+		nvidia,portmap = <0x600>;
+		usb_vbus1-supply = <&battery_reg>;
 	};
 };
