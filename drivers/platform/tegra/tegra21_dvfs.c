@@ -75,7 +75,6 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_cpu = {
 static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
 	.reg_id = "vdd_core",
 	.max_millivolts = 1300,
-	.min_millivolts = 825,
 	.step = VDD_SAFE_STEP,
 	.step_up = 1300,
 	.vmin_cdev = &core_vmin_cdev,
@@ -1454,6 +1453,9 @@ void __init tegra21x_init_dvfs(void)
 	}
 	tegra21_dvfs_rail_vdd_core.nominal_millivolts =
 		core_millivolts[core_nominal_mv_index];
+	tegra21_dvfs_rail_vdd_core.min_millivolts =
+		max(tegra21_dvfs_rail_vdd_core.min_millivolts,
+		core_millivolts[0]);
 
 	/*
 	 * Construct fast and slow CPU DVFS tables from CVB data; find maximum
