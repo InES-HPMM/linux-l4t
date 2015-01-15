@@ -1918,7 +1918,12 @@ int tegra_dvfs_rail_power_up(struct dvfs_rail *rail)
 			tegra_dvfs_rail_on(rail, ktime_get());
 	}
 	mutex_unlock(&dvfs_lock);
-	return ret;
+
+	/* Return error only on silicon */
+	if (ret && tegra_platform_is_silicon())
+		return ret;
+
+	return 0;
 }
 
 int tegra_dvfs_rail_power_down(struct dvfs_rail *rail)
@@ -1935,7 +1940,12 @@ int tegra_dvfs_rail_power_down(struct dvfs_rail *rail)
 			tegra_dvfs_rail_off(rail, ktime_get());
 	}
 	mutex_unlock(&dvfs_lock);
-	return ret;
+
+	/* Return error only on silicon */
+	if (ret && tegra_platform_is_silicon())
+		return ret;
+
+	return 0;
 }
 
 bool tegra_dvfs_is_rail_up(struct dvfs_rail *rail)
