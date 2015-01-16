@@ -40,6 +40,6 @@
 /*
 		wlan-rst-gpio = <&gpio TEGRA_GPIO(I, xxx) 0>;
 */
-		status = "okay";
+		status = "disabled";
 	};
 };
