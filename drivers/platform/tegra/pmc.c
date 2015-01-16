@@ -47,6 +47,8 @@
 #define PMC_IO_DPD_REQ		0x1B8
 #define PMC_IO_DPD2_REQ		0x1C0
 
+#define PMC_TSC_MULT		0x2b4
+
 #define PMC_CNTRL2		0x440
 #define PMC_WAKE_DET_EN		BIT(9)
 
@@ -553,6 +555,7 @@ static int __init tegra_pmc_init(void)
 {
 	struct device_node *np;
 	u32 val;
+	unsigned long tsc_rate;
 	int ret;
 
 	tegra_pmc_parse_dt();
@@ -563,6 +566,12 @@ static int __init tegra_pmc_init(void)
 	else
 		val &= ~PMC_CTRL_INTR_LOW;
 	tegra_pmc_writel(val, PMC_CTRL);
+
+	val = tegra_pmc_readl(PMC_TSC_MULT);
+	val &= ~0xffff;
+	tsc_rate = clk_get_rate(clk_get_sys("timer", NULL));
+	val |= (tsc_rate >> 11);
+	tegra_pmc_writel(val, PMC_TSC_MULT);
 
 	np = of_find_matching_node(NULL, matches);
 	if (np) {
