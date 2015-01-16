@@ -41,6 +41,8 @@
 #include "tegra210-platforms/tegra210-therm-est.dtsi"
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-keys-p2290-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-hawkeye-powermon.dtsi"
+#include "tegra210-platforms/tegra210-sysedp.dtsi"
 
 /* TODO: comm's dtsi should be included after GPIO dtsi */
 #include "tegra210-platforms/tegra210-hawkeye-comms.dtsi"
@@ -494,6 +496,58 @@
         watchdog@60005100 {
                 dt-override-status-odm-data = <0x00010000 0x00010000>;
         };
+	
+	thermal-zones {
+		Tboard_tegra {
+			status = "okay";
+		};
+		Tdiode_tegra {
+			status = "okay";
+		};
+	};
+
+	sysedp {
+		compatible = "nvidia,tegra124-sysedp";
+		nvidia,margin = <0>;
+		nvidia,min_budget = <0>;
+		nvidia,initial_budget = <20000>;
+		consumers {
+			consumer1 {
+				nvidia,consumer_name = "primary-wifi";
+				nvidia,states = <0 1020>;
+			};
+			consumer2 {
+				/* internal eMMC */
+				nvidia,consumer_name = "sdhci-tegra.3";
+				nvidia,states = <0 1785>;
+			};
+			consumer3 {
+				nvidia,consumer_name = "codec+speaker";
+				nvidia,states = <0 1270>;
+			};
+			consumer4 {
+				nvidia,consumer_name = "pwm-backlight";
+				nvidia,states = <20 241 461 681 902 1122 1342 1563 1783 2003 2223>;
+			};
+			consumer5 {
+				/* SD card */
+				nvidia,consumer_name = "sdhci-tegra.2";
+				nvidia,states = <0 1785>;
+			};
+			consumer6 {
+				/* rear camera */
+				nvidia,consumer_name = "ov5693";
+				nvidia,states = <0 300>;
+			};
+			/* front camera place holder */
+			/* consumer7 { }; */
+		};
+	};
+
+	bcmdhd_wlan {
+		/* broadcom wifi edp consumer name */
+		edp-consumer-name = "primary-wifi";
+	};
 
 	cpu_edp {
 		status = "okay";
@@ -712,6 +766,58 @@
 		};
 		Tdiode_tegra {
 			status = "okay";
+		};
+	};
+
+	sysedp-dynamic-capping {
+		compatible = "nvidia,tegra124-sysedp-dynamic-capping";
+		nvidia,throttle_depth = <75>;
+		nvidia,cap_method = <3>;
+		nvidia,core_gain = <120>;
+	};
+
+	sysedp_reactive_capping@1 {
+		compatible = "nvidia,tegra124-sysedp_reactive_capping";
+		nvidia,max_capping_mw = <15000>;
+		nvidia,step_alarm_mw = <1000>;
+		nvidia,step_relax_mw = <500>;
+		nvidia,relax_ms = <250>;
+		interrupt-parent = <&soctherm>;
+		interrupts = <1 0x2002>;
+			sysedpc {
+				nvidia,name = "voltmon_oc1";
+			};
+	};
+
+	sysedp_reactive_capping@3 {
+		compatible = "nvidia,tegra124-sysedp_reactive_capping";
+		nvidia,max_capping_mw = <15000>;
+		nvidia,step_alarm_mw = <1000>;
+		nvidia,step_relax_mw = <500>;
+		nvidia,relax_ms = <250>;
+		interrupt-parent = <&soctherm>;
+		interrupts = <3 0x2002>;
+			sysedpc {
+				nvidia,name = "batmon_oc3";
+			};
+	};
+
+	i2c@7000c400 {
+		ina3221x@40 {
+			/* rail VDD_BATT */
+			channel@0 {
+				ti,shunt-resistor-mohm = <5>;
+				ti,current-warning-limit-ma = <8000>;
+				ti,current-critical-limit-ma = <9000>;
+			};
+			/* rail VDD_VBUS */
+			channel@1 {
+				ti,shunt-resistor-mohm = <5>;
+			};
+			/* rail VDD_MODEM */
+			channel@2 {
+				ti,shunt-resistor-mohm = <5>;
+			};
 		};
 	};
 
