@@ -1671,6 +1671,31 @@ int of_alias_get_id(struct device_node *np, const char *stem)
 }
 EXPORT_SYMBOL_GPL(of_alias_get_id);
 
+/**
+ * of_alias_get_max_id - Get maximim alias id for the given stem
+ * @stem:	Alias stem of the given device_node
+ *
+ * The function travels the lookup table to get maximum alias id for
+ * the given alias stem.  It returns the maximum alias id if find it.
+ */
+int of_alias_get_max_id(const char *stem)
+{
+	struct alias_prop *app;
+	int id = -ENODEV;
+
+	mutex_lock(&of_aliases_mutex);
+	list_for_each_entry(app, &aliases_lookup, link) {
+		if (strcmp(app->stem, stem) != 0)
+			continue;
+
+		id = (app->id > id) ? app->id : id;
+	}
+	mutex_unlock(&of_aliases_mutex);
+
+	return id;
+}
+EXPORT_SYMBOL_GPL(of_alias_get_max_id);
+
 const __be32 *of_prop_next_u32(struct property *prop, const __be32 *cur,
 			       u32 *pu)
 {

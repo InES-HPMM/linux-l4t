@@ -301,6 +301,7 @@ extern void of_phandle_iter_next(struct of_phandle_iter *iter);
 
 extern void of_alias_scan(void * (*dt_alloc)(u64 size, u64 align));
 extern int of_alias_get_id(struct device_node *np, const char *stem);
+extern int of_alias_get_max_id(const char *stem);
 
 extern int of_machine_is_compatible(const char *compat);
 
@@ -526,6 +527,11 @@ static inline void of_phandle_iter_next(struct of_phandle_iter *iter)
 static inline int of_alias_get_id(struct device_node *np, const char *stem)
 {
 	return -ENOSYS;
+}
+
+static inline int of_alias_get_max_id(const char *stem)
+{
+	return -ENODEV;
 }
 
 static inline int of_machine_is_compatible(const char *compat)
