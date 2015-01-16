@@ -76,6 +76,7 @@
 			reg = <0x0c>;
 			ti,enable-gpio = <&gpio TEGRA_GPIO(R, 4) 0>; /*PR4*/
 			ti,power-on-delay = <4>;
+			ti,power-off-delay = <3>;
 		};
 	};
 
