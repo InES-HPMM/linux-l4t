@@ -6,6 +6,9 @@ Required properties:
 - interrupts: Should contain SPI interrupts.
 - nvidia,dma-request-selector : The Tegra DMA controller's phandle and
   request selector for this SPI controller.
+- nvidia,clk-pin: Name of the tegra pin selected for controller clock input.
+	It is require to disable external clock while programing/resetting
+	the controller.
 
 Recommended properties:
 - spi-max-frequency: Maximum SPI clocking speed of device in Hz. For slave,
@@ -33,4 +36,5 @@ spi@7000d600 {
 	#size-cells = <0>;
 	status = "disabled";
 	nvidia,slave-ready-gpio = <&gpio TEGRA_GPIO(I, 3) GPIO_ACTIVE_LOW>; /*PI3*/
+	nvidia,clk-pin = "gpio_x5_aud_px5";
 };

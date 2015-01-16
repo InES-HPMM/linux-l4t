@@ -204,6 +204,7 @@
 	spi@7000d400 {
 		status = "okay";
 		compatible = "nvidia,tegra124-spi-slave";
+		nvidia,clk-pin = "gpio_x5_aud_px5";
 		nvidia,rx-trigger-words = <0>;
 		spi-max-frequency = <48000000>;
 	};
