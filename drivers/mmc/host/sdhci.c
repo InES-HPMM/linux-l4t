@@ -2945,7 +2945,7 @@ static void sdhci_tasklet_finish(unsigned long param)
 {
 	struct sdhci_host *host;
 	unsigned long flags;
-	struct mmc_request *mrq;
+	struct mmc_request *mrq = NULL;
 
 	host = (struct sdhci_host *)param;
 
