@@ -9262,7 +9262,7 @@ static struct clk tegra_list_clks[] = {
 
 	PERIPH_CLK("vi_sensor",	 NULL,		"vi_sensor",	164,	0x1a8,	408000000, mux_pllc_pllp_plla,		MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("vi_sensor2", NULL,		"vi_sensor2",	165,	0x658,	408000000, mux_pllc_pllp_plla,		MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
+	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	 38400000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
 	PERIPH_CLK("disp1",	"tegradc.0",		NULL,	27,	0x138, 1500000000, mux_pllp_plld_plld2_clkm,	MUX),
 	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c, 1500000000, mux_pllp_plld_plld2_clkm,	MUX),
 	PERIPH_CLK_EX("sor0",	"sor0",			NULL,	182,	0x414,	600000000, mux_pllp_sor_sor0_brick,		MUX,	&tegra_sor0_clk_ops),
