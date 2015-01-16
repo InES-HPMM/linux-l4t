@@ -37,7 +37,7 @@
 #define TEGRA21_GPU_SPEEDO_OFFS 75
 
 
-#define CPU_PROCESS_CORNERS_NUM		3
+#define CPU_PROCESS_CORNERS_NUM		2
 #define GPU_PROCESS_CORNERS_NUM		2
 #define CORE_PROCESS_CORNERS_NUM	3
 
@@ -81,9 +81,9 @@ static int speedo_rev;
 static int enable_app_profiles;
 
 static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
-/* proc_id  0,	  1,         2 */
-	{2060, 2119,  UINT_MAX}, /* [0]: threshold_index 0 */
-	{   0, 2119,  UINT_MAX}, /* [1]: threshold_index 1 */
+/* proc_id  0,	      1 */
+	{2119,  UINT_MAX}, /* [0]: threshold_index 0 */
+	{2119,  UINT_MAX}, /* [1]: threshold_index 1 */
 };
 
 static const u32 gpu_process_speedos[][GPU_PROCESS_CORNERS_NUM] = {
@@ -115,7 +115,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 		cpu_speedo_id = 1;
 		soc_speedo_id = 0;
 		gpu_speedo_id = speedo_rev >= 2 ? 1 : 0;
-		threshold_index = 1;
+		threshold_index = 0;
 		break;
 	default:
 		pr_warn("Tegra21: Unknown SKU %d\n", sku);
