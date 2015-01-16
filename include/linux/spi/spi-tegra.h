@@ -33,6 +33,7 @@ struct tegra_spi_platform_data {
 	int gpio_slave_ready;
 	bool slave_ready_active_high;
 	int max_dma_buffer_size;
+	const char *clk_pin;
 };
 
 /*
