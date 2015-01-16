@@ -61,10 +61,8 @@
 							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_EXIT_SLEEP_MODE 0x0 0x0>,
 							<TEGRA_DSI_DELAY_MS 120>,
 							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_SET_DISPLAY_ON 0x0 0x0>,
-							<TEGRA_DSI_DELAY_MS 20>,
-							<TEGRA_DSI_SEND_FRAME 1>,
-							<TEGRA_DSI_DELAY_MS 120>;
-				nvidia,dsi-n-init-cmd = <16>;
+							<TEGRA_DSI_DELAY_MS 20>;
+				nvidia,dsi-n-init-cmd = <14>;
 				nvidia,dsi-suspend-cmd =
 							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_SET_DISPLAY_OFF 0x0 0x0>,
 							<TEGRA_DSI_DELAY_MS 50>,
