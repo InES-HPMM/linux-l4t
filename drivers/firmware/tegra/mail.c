@@ -21,10 +21,10 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/notifier.h>
-#include <linux/platform_data/tegra_bpmp.h>
 #include <linux/semaphore.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <soc/tegra/tegra_bpmp.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "bpmp.h"
 #include "bpmp_abi.h"

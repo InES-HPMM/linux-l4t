@@ -27,7 +27,7 @@
 #include <linux/cpufreq.h>
 #include <linux/syscore_ops.h>
 #include <linux/platform_device.h>
-#include <linux/platform_data/tegra_bpmp.h>
+#include <soc/tegra/tegra_bpmp.h>
 
 #include <asm/clkdev.h>
 #include <asm/arch_timer.h>

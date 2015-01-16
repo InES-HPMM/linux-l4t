@@ -15,9 +15,9 @@
  */
 
 #include <linux/kernel.h>
-#include <linux/platform_data/tegra_bpmp.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <soc/tegra/tegra_bpmp.h>
 #include "bpmp.h"
 #include "bpmp_abi.h"
 

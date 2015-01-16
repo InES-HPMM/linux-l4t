@@ -23,10 +23,10 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
-#include <linux/platform_data/tegra_bpmp.h>
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
 #include <mach/clk.h>
+#include <soc/tegra/tegra_bpmp.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "bpmp.h"
 

@@ -21,7 +21,7 @@
 #include <linux/module.h>
 #include <linux/cpuidle.h>
 #include <linux/of_platform.h>
-#include <linux/platform_data/tegra_bpmp.h>
+#include <soc/tegra/tegra_bpmp.h>
 #include <linux/tegra-soc.h>
 #include <linux/cpu_pm.h>
 #include <linux/io.h>

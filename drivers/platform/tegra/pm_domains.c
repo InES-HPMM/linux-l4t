@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/pm_domains.c
  *
- * Copyright (c) 2012-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION. All rights reserved.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -21,7 +21,7 @@
 #include <linux/pm_domain.h>
 #include <linux/tegra_pm_domains.h>
 #include <linux/tegra-powergate.h>
-#include <linux/platform_data/tegra_bpmp.h>
+#include <soc/tegra/tegra_bpmp.h>
 #include <linux/irqchip/tegra-agic.h>
 
 #ifdef CONFIG_TEGRA_MC_DOMAINS
