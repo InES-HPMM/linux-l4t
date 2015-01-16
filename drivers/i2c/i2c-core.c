@@ -1448,6 +1448,20 @@ void i2c_clients_command(struct i2c_adapter *adap, unsigned int cmd, void *arg)
 }
 EXPORT_SYMBOL(i2c_clients_command);
 
+static int __init i2c_first_dynamic_bus_num_init(void)
+{
+	int max_bus;
+
+	max_bus = of_alias_get_max_id("i2c");
+	if (max_bus > 0)
+		__i2c_first_dynamic_bus_num = max_bus + 1;
+
+	pr_info("I2C first dynamic bus number based on alias = %d\n",
+			__i2c_first_dynamic_bus_num);
+
+	return 0;
+}
+
 static int __init i2c_init(void)
 {
 	int retval;
@@ -1455,6 +1469,9 @@ static int __init i2c_init(void)
 	retval = bus_register(&i2c_bus_type);
 	if (retval)
 		return retval;
+
+	i2c_first_dynamic_bus_num_init();
+
 #ifdef CONFIG_I2C_COMPAT
 	i2c_adapter_compat_class = class_compat_register("i2c-adapter");
 	if (!i2c_adapter_compat_class) {
