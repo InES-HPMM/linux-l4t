@@ -8531,13 +8531,11 @@ static struct clk_mux_sel mux_clkm_48M_pllp_480M[] = {
 	{ NULL, 0},
 };
 
-static struct clk_mux_sel mux_clkm_pllre_clk32_480M_pllc_ref[] = {
+static struct clk_mux_sel mux_clkm_pllre_clk32_480M[] = {
 	{ .input = &tegra_clk_m,      .value = 0},
 	{ .input = &tegra_pll_re_out, .value = 1},
 	{ .input = &tegra_clk_32k,    .value = 2},
 	{ .input = &tegra_pll_u_480M, .value = 3},
-	{ .input = &tegra_pll_c,      .value = 4},
-	{ .input = &tegra_pll_ref,    .value = 7},
 	{ NULL, 0},
 };
 
@@ -9476,7 +9474,7 @@ static struct clk tegra_xusb_source_clks[] = {
 	PERIPH_CLK("xusb_host_src",	XUSB_ID, "host_src",	143,	0x600,	112000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("xusb_falcon_src",	XUSB_ID, "falcon_src",	143,	0x604,	336000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("xusb_fs_src",	NULL, "fs_src",		143,	0x608,	 48000000, mux_clkm_48M_pllp_480M,	MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK_EX("xusb_ss_src",	NULL, "ss_src",		143,	0x610,	120000000, mux_clkm_pllre_clk32_480M_pllc_ref,	MUX | DIV_U71 | PERIPH_NO_RESET, &tegra_xusb_ss_ops),
+	PERIPH_CLK_EX("xusb_ss_src",	NULL, "ss_src",		143,	0x610,	120000000, mux_clkm_pllre_clk32_480M,	MUX | DIV_U71 | PERIPH_NO_RESET, &tegra_xusb_ss_ops),
 	PERIPH_CLK("xusb_dev_src",	XUDC_ID, "dev_src",	95,	0x60c,	112000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_ON_APB),
 	SHARED_EMC_CLK("xusb.emc",	XUSB_ID, "emc",	&tegra_clk_emc,	NULL,	0,	SHARED_BW, 0),
 };
