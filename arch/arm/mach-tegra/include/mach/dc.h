@@ -726,12 +726,23 @@ struct tegra_dc_csc {
 	unsigned short kvb;
 };
 
+#if defined(CONFIG_TEGRA_LUT)
 /* palette lookup table */
 struct tegra_dc_lut {
 	u8 r[256];
 	u8 g[256];
 	u8 b[256];
 };
+#endif
+
+#if defined(CONFIG_TEGRA_LUT_V2)
+/* palette lookup table */
+struct tegra_dc_lut {
+	u64 *rgb;
+	dma_addr_t phy_addr;
+	size_t size;
+};
+#endif
 
 struct tegra_dc_cmu_csc {
 	u16 krr;
