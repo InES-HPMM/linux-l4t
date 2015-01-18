@@ -39,7 +39,7 @@
 #include "panel-a-edp-1080p-14-0.dtsi"
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-dp-e2220-1100-a00.dtsi"
-#include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-keys-e2220-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-camera-e2249-1002-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-pwm-fan-e2220-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-edp.dtsi"

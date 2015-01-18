@@ -31,7 +31,7 @@
 #include "tegra210-platforms/tegra210-prods.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-pinmux-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-power-tree-p2290-1100-a00.dtsi"
-#include "tegra210-platforms/tegra210-ers-keys-e2141-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-keys-e2220-1100-a00.dtsi"
 #include "panel-a-1080p-14-0.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-touch.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-sensor-p2290-1100-a00.dtsi"
