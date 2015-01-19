@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/tegra_soctherm.c
  *
- * Copyright (c) 2011-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -265,6 +265,8 @@ static const int MIN_LOW_TEMP = -127000;
 #define TH_INTR_POS_PD0_MASK		0x1
 #define TH_INTR_POS_PU0_SHIFT		0
 #define TH_INTR_POS_PU0_MASK		0x1
+
+#define EDP_CLK_EN			0x2f0
 
 #define OC1_CFG				0x310
 #define OC1_CFG_LONG_LATENCY_SHIFT	6
@@ -2962,6 +2964,10 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 	soctherm_adjust_zone(THERM_GPU);
 	soctherm_adjust_zone(THERM_MEM);
 #endif
+	/*
+	 * Disable the soc_therm block activity logic clk
+	 */
+	soctherm_writel(0, EDP_CLK_EN);
 
 	return 0;
 }
