@@ -254,7 +254,7 @@ struct smmu_device {
 	char            *name;
 	struct device   *dev;
 	u64             swgids;         /* memory client ID bitmap */
-	u32             ptc_cache_size; /* u32 is ok as ptc_cache_size < 4 GB */
+	u32		ptc_cache_line;
 
 	struct rb_root  clients;
 

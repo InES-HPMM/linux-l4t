@@ -549,22 +549,26 @@ static void flush_ptc_and_tlb_range_default(struct smmu_device *smmu,
 				    u32 *pte, struct page *page,
 				    size_t count)
 {
-	size_t unit = SZ_16K;
+	int tlb_cache_line = 32; /* after T124 */
+	int ptc_iova_line = (smmu->ptc_cache_line / sizeof(*pte)) << SMMU_PAGE_SHIFT;
+	int tlb_iova_line = (tlb_cache_line / sizeof(*pte)) << SMMU_PAGE_SHIFT;
 	dma_addr_t end = iova + count * PAGE_SIZE;
 
-	iova = round_down(iova, unit);
+	BUG_ON(smmu->ptc_cache_line < tlb_cache_line);
+
+	iova = round_down(iova, ptc_iova_line);
 	while (iova < end) {
 		int i;
 
 		smmu_flush_ptc(smmu, pte, page);
-		pte += smmu->ptc_cache_size / PAGE_SIZE;
+		pte += smmu->ptc_cache_line / sizeof(*pte);
 
-		for (i = 0; i < smmu->ptc_cache_size / unit; i++) {
+		for (i = 0; i < ptc_iova_line / tlb_iova_line; i++) {
 			u32 val;
 
 			val = SMMU_TLB_FLUSH_VA(iova, GROUP);
 			smmu_write(smmu, val, SMMU_TLB_FLUSH);
-			iova += unit;
+			iova += tlb_iova_line;
 		}
 	}
 
@@ -2124,8 +2128,8 @@ static int tegra_smmu_probe_default(struct platform_device *pdev,
 		goto __exit_probe;
 
 	if (of_property_read_u32(dev->of_node, "ptc-cache-size",
-				 &smmu->ptc_cache_size))
-		goto __exit_probe;
+				 &smmu->ptc_cache_line))
+		smmu->ptc_cache_line = 64;
 
 	for (i = 0; i < smmu->num_translation_enable; i++)
 		smmu->translation_enable[i] = ~0;
