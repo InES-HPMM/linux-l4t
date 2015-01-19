@@ -267,6 +267,19 @@ void of_gpiochip_init(struct gpio_chip *chip)
 				chip->direction_output(chip, pval, 1);
 		}
 
+		count = of_property_count_u32(np_config, "gpio-to-sfio");
+		for (i = 0; i < count; ++i) {
+			found = true;
+			ret = of_property_read_u32_index(np_config,
+					"gpio-to-sfio", i, &pval);
+			if (!ret) {
+				if (chip->request)
+					chip->request(chip, pval);
+				if (chip->free)
+					chip->free(chip, pval);
+			}
+		}
+
 		if (found) {
 			statename = NULL;
 			/* Determine whether gpio-init-names property names the state */
