@@ -1723,6 +1723,64 @@ static void cl_dvfs_disable_clocks(struct tegra_cl_dvfs *cld)
 	clk_disable(cld->soc_clk);
 }
 
+static int sync_tune_state(struct tegra_cl_dvfs *cld)
+{
+	u32 val = cl_dvfs_readl(cld, CL_DVFS_TUNE0);
+	if (cld->tune0_low == val)
+		set_tune_state(cld, TEGRA_CL_DVFS_TUNE_LOW);
+	else if (cld->tune0_high == val)
+		set_tune_state(cld, TEGRA_CL_DVFS_TUNE_HIGH);
+	else {
+		pr_err("\n %s: Failed to sync cl_dvfs tune state\n", __func__);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+/*
+ * When bootloader enables cl_dvfs, then this function
+ * can be used to set cl_dvfs sw sate to be in sync with
+ * cl_dvfs HW sate.
+ */
+static int cl_dvfs_sync(struct tegra_cl_dvfs *cld)
+{
+	u32 val;
+	int status;
+	unsigned long int rate;
+	unsigned long int dfll_boot_req_khz = tegra_dfll_boot_req_khz();
+
+	output_enable(cld);
+
+	val = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ) &
+		CL_DVFS_FREQ_REQ_SCALE_MASK;
+	cld->last_req.scale = val >> CL_DVFS_FREQ_REQ_SCALE_SHIFT;
+	cld->last_req.rate = dfll_boot_req_khz * 1000;
+	cld->last_req.freq = GET_REQUEST_FREQ(cld->last_req.rate,
+						cld->ref_rate);
+	val = cld->last_req.freq;
+	rate = GET_REQUEST_RATE(val, cld->ref_rate);
+	if (find_safe_output(cld, rate, &(cld->last_req.output))) {
+		pr_err("%s: Failed to find safe output for rate %lu\n",
+			__func__, rate);
+		return -EINVAL;
+	}
+	cld->last_req.cap = cld->last_req.output;
+	cld->mode = TEGRA_CL_DVFS_CLOSED_LOOP;
+	status = sync_tune_state(cld);
+	if (status)
+		return status;
+	return 0;
+}
+
+static bool is_cl_dvfs_closed_loop(struct tegra_cl_dvfs *cld)
+{
+	u32 mode;
+	mode = cl_dvfs_readl(cld, CL_DVFS_CTRL) + 1;
+	if (mode == TEGRA_CL_DVFS_CLOSED_LOOP)
+		return true;
+	return false;
+}
+
 static int cl_dvfs_init(struct tegra_cl_dvfs *cld)
 {
 	int ret, gpio, flags;
@@ -1797,9 +1855,18 @@ static int cl_dvfs_init(struct tegra_cl_dvfs *cld)
 	/* Setup PMU interface */
 	cl_dvfs_init_out_if(cld);
 
-	/* Configure control registers in disabled mode and disable clocks */
-	cl_dvfs_init_cntrl_logic(cld);
-	cl_dvfs_disable_clocks(cld);
+	if (is_cl_dvfs_closed_loop(cld)) {
+		ret = cl_dvfs_sync(cld);
+		if (ret)
+			return ret;
+	} else {
+		/*
+		 * Configure control registers in disabled mode
+		 * and disable clocks
+		 */
+		cl_dvfs_init_cntrl_logic(cld);
+		cl_dvfs_disable_clocks(cld);
+	}
 
 	/* Set target clock cl_dvfs data */
 	tegra_dfll_set_cl_dvfs_data(cld->dfll_clk, cld);
