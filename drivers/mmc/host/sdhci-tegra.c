@@ -3827,6 +3827,7 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 		if (tuning_data->tuning_done && !force_retuning)
 			continue;
 
+		/* set clock freq also needed for MMC_RTPM */
 		SDHCI_TEGRA_DBG("%s: Setting tuning freq%d\n",
 			mmc_hostname(sdhci->mmc), tuning_data->freq_hz);
 		tegra_sdhci_set_clock(sdhci, tuning_data->freq_hz);
@@ -3893,7 +3894,11 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 	const struct tegra_sdhci_platform_data *plat;
 	unsigned int cd_irq;
 
-	tegra_sdhci_set_clock(sdhci, 0);
+	if (sdhci->is_clk_on) {
+		pr_debug("%s suspend force clk off\n",
+			mmc_hostname(sdhci->mmc));
+		tegra_sdhci_set_clock(sdhci, 0);
+	}
 
 	/* Disable the power rails if any */
 	if (tegra_host->card_present) {
@@ -3942,7 +3947,11 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 	}
 
 	/* Setting the min identification clock of freq 400KHz */
-	tegra_sdhci_set_clock(sdhci, 400000);
+	if (!sdhci->is_clk_on) {
+		pr_debug("%s: resume force clk ON\n",
+			mmc_hostname(sdhci->mmc));
+		tegra_sdhci_set_clock(sdhci, 400000);
+	}
 
 	/* Enable the power rails if any */
 	if (tegra_host->card_present) {
@@ -3979,9 +3988,12 @@ static void tegra_sdhci_post_resume(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
+	struct tegra_sdhci_platform_data *plat;
 	bool dll_calib_req = false;
 	bool is_sdhci_clk_turned_on = false;
 
+	plat = pdev->dev.platform_data;
 	dll_calib_req = (sdhci->mmc->card &&
 		(sdhci->mmc->card->type == MMC_TYPE_MMC) &&
 		(sdhci->mmc->ios.timing == MMC_TIMING_MMC_HS400));
@@ -4000,7 +4012,8 @@ static void tegra_sdhci_post_resume(struct sdhci_host *sdhci)
 
 	/* Turn OFF the clocks if the device is not present */
 	if ((!tegra_host->card_present || !sdhci->mmc->card) &&
-		tegra_host->clk_enabled)
+		tegra_host->clk_enabled &&
+		(IS_RTPM_DELAY_CG(plat->rtpm_type)))
 		tegra_sdhci_set_clock(sdhci, 0);
 }
 
@@ -4342,10 +4355,11 @@ static ssize_t sdhci_handle_boost_mode_tap(struct device *dev,
 	struct sdhci_host *host = dev_get_drvdata(dev);
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
+	struct tegra_sdhci_platform_data *plat;
 	struct tegra_tuning_data *tuning_data;
 	u32 present_state;
 	u8 timeout;
-	bool clk_set_for_tap_prog = false;
 
 	tap_cmd = memparse(p, &p);
 
@@ -4369,16 +4383,15 @@ static ssize_t sdhci_handle_boost_mode_tap(struct device *dev,
 	}
 
 	tegra_host->tap_cmd = tap_cmd;
+	plat = pdev->dev.platform_data;
 	tuning_data = sdhci_tegra_get_tuning_data(host, host->max_clk);
 	/* Check if host clock is enabled */
 	if (!tegra_host->clk_enabled) {
 		/* Nothing to do if the host is not powered ON */
 		if (host->mmc->ios.power_mode != MMC_POWER_ON)
 			return count;
-		else {
+		else if (IS_RTPM_DELAY_CG(plat->rtpm_type))
 			tegra_sdhci_set_clock(host, host->mmc->ios.clock);
-			clk_set_for_tap_prog = true;
-		}
 	} else {
 		timeout = 10;
 		/* Wait for any on-going data transfers */
@@ -4405,10 +4418,8 @@ static ssize_t sdhci_handle_boost_mode_tap(struct device *dev,
 		break;
 	}
 	spin_unlock(&host->lock);
-	if (clk_set_for_tap_prog) {
+	if (IS_RTPM_DELAY_CG(plat->rtpm_type))
 		tegra_sdhci_set_clock(host, 0);
-		clk_set_for_tap_prog = false;
-	}
 	return count;
 }
 
@@ -4452,17 +4463,25 @@ static void tegra_sdhci_ios_config_enter(struct sdhci_host *sdhci,
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct clk *new_mode_clk;
+	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
+	struct tegra_sdhci_platform_data *plat;
 	bool change_clk = false;
 
 	/*
 	 * Tegra sdmmc controllers require clock to be enabled for any register
 	 * access. Set the minimum controller clock if no clock is requested.
 	 */
-	if (!sdhci->clock && !ios->clock) {
-		tegra_sdhci_set_clock(sdhci, sdhci->mmc->f_min);
-		sdhci->clock = sdhci->mmc->f_min;
-	} else if (ios->clock && (ios->clock != sdhci->clock)) {
-		tegra_sdhci_set_clock(sdhci, ios->clock);
+	plat = pdev->dev.platform_data;
+	if (!IS_RTPM_DELAY_CG(plat->rtpm_type)) {
+		if (ios->clock && (ios->clock != sdhci->clock))
+			tegra_sdhci_set_clock(sdhci, ios->clock);
+	} else {
+		if (!sdhci->clock && !ios->clock) {
+			tegra_sdhci_set_clock(sdhci, sdhci->mmc->f_min);
+			sdhci->clock = sdhci->mmc->f_min;
+		} else if (ios->clock && (ios->clock != sdhci->clock)) {
+			tegra_sdhci_set_clock(sdhci, ios->clock);
+		}
 	}
 
 	/*
@@ -4483,6 +4502,7 @@ static void tegra_sdhci_ios_config_enter(struct sdhci_host *sdhci,
 		}
 
 		if (change_clk) {
+			/* below clock on/off also needed for MMC_RTPM */
 			tegra_sdhci_set_clock(sdhci, 0);
 			pltfm_host->clk = new_mode_clk;
 			/* Restore the previous frequency */
@@ -4499,6 +4519,10 @@ static void tegra_sdhci_ios_config_exit(struct sdhci_host *sdhci,
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	int err;
+	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
+	struct tegra_sdhci_platform_data *plat;
+
+	plat = pdev->dev.platform_data;
 	/*
 	 * Do any required handling for retuning requests before powering off
 	 * the host.
@@ -4520,8 +4544,10 @@ static void tegra_sdhci_ios_config_exit(struct sdhci_host *sdhci,
 	 * In case of power off, turn off controller clock now as all the
 	 * required register accesses are already done.
 	 */
-	if (!ios->clock && !sdhci->mmc->skip_host_clkgate)
-		tegra_sdhci_set_clock(sdhci, 0);
+	if (!ios->clock && !sdhci->mmc->skip_host_clkgate) {
+		if (IS_RTPM_DELAY_CG(plat->rtpm_type))
+			tegra_sdhci_set_clock(sdhci, 0);
+	}
 }
 
 static int tegra_sdhci_get_drive_strength(struct sdhci_host *sdhci,

@@ -238,6 +238,9 @@ int sdhci_pltfm_unregister(struct platform_device *pdev)
 EXPORT_SYMBOL_GPL(sdhci_pltfm_unregister);
 
 #ifdef CONFIG_PM
+#if defined(CONFIG_MMC_RTPM)
+static int sdhci_runtime_suspend(struct device *dev);
+#endif
 static int sdhci_pltfm_suspend(struct device *dev)
 {
 	struct sdhci_host *host = dev_get_drvdata(dev);
@@ -248,6 +251,12 @@ static int sdhci_pltfm_suspend(struct device *dev)
 		dev_err(dev, "suspend failed, error = %d\n", ret);
 		return ret;
 	}
+#if defined(CONFIG_MMC_RTPM)
+	/* disable sdmmc clock before suspend */
+	ret = sdhci_runtime_suspend(dev);
+	if (ret)
+		dev_err(dev, "sdhci runtime suspend failed, error = %d\n", ret);
+#endif
 
 	if (host->ops && host->ops->suspend)
 		ret = host->ops->suspend(host);
@@ -269,6 +278,7 @@ static int sdhci_pltfm_resume(struct device *dev)
 	int ret = 0;
 
 #if defined(CONFIG_MMC_RTPM)
+	/* enable SDMMC clock during resume */
 	ret = sdhci_runtime_resume(dev);
 	if (ret)
 		dev_err(dev, "sdhci runtime resume failed, error = %d\n", ret);

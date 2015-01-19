@@ -135,6 +135,8 @@ void dbg_add_host_log(struct mmc_host *host, int type, int cmd, int arg)
 
 #endif
 
+#define MIN_SDMMC_FREQ 400000
+
 static unsigned int debug_quirks;
 static unsigned int debug_quirks2;
 
@@ -3560,7 +3562,6 @@ int sdhci_suspend_host(struct sdhci_host *host)
 	struct mmc_host *mmc = host->mmc;
 
 	host->suspend_task = current;
-	sdhci_runtime_resume_host(host);
 
 	if (host->ops->platform_suspend)
 		host->ops->platform_suspend(host);
@@ -3591,7 +3592,6 @@ int sdhci_suspend_host(struct sdhci_host *host)
 
 		sdhci_enable_card_detection(host);
 
-		sdhci_runtime_suspend_host(host);
 		host->suspend_task = NULL;
 		return ret;
 	}
@@ -3606,7 +3606,8 @@ int sdhci_suspend_host(struct sdhci_host *host)
 	 * the clock.
 	 */
 	if (host->quirks2 & SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK)
-		if (!host->clock && host->ops->set_clock)
+		if ((!host->clock && host->ops->set_clock) &&
+			(host->quirks2 & SDHCI_QUIRK2_DELAYED_CLK_GATE))
 			host->ops->set_clock(host, max(mmc->ios.clock, mmc->f_min));
 
 	if (mmc->pm_flags & MMC_PM_KEEP_POWER)
@@ -3617,7 +3618,8 @@ int sdhci_suspend_host(struct sdhci_host *host)
 		sdhci_mask_irqs(host, SDHCI_INT_ALL_MASK);
 
 		if (host->quirks2 & SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK)
-			if (!host->clock && host->ops->set_clock)
+			if ((!host->clock && host->ops->set_clock) &&
+			(host->quirks2 & SDHCI_QUIRK2_DELAYED_CLK_GATE))
 				host->ops->set_clock(host, 0);
 
 		if (host->irq)
@@ -3627,11 +3629,11 @@ int sdhci_suspend_host(struct sdhci_host *host)
 		enable_irq_wake(host->irq);
 
 		if (host->quirks2 & SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK)
-			if (!host->clock && host->ops->set_clock)
+			if ((!host->clock && host->ops->set_clock) &&
+			(host->quirks2 & SDHCI_QUIRK2_DELAYED_CLK_GATE))
 				host->ops->set_clock(host, 0);
 	}
 
-	sdhci_runtime_suspend_host(host);
 	host->suspend_task = NULL;
 
 	return ret;
@@ -3646,7 +3648,6 @@ int sdhci_resume_host(struct sdhci_host *host)
 
 	host->suspend_task = current;
 
-	sdhci_runtime_resume_host(host);
 
 	if (host->flags & (SDHCI_USE_SDMA | SDHCI_USE_ADMA)) {
 		if (host->ops->enable_dma)
@@ -3812,19 +3813,26 @@ int sdhci_runtime_resume_host(struct sdhci_host *host)
 {
 	unsigned long flags;
 	int ret = 0, host_flags = host->flags;
+	unsigned int freq;
 
 	if (!(host->quirks2 & SDHCI_QUIRK2_MMC_RTPM))
 		return 0;
 
 	if (host->quirks2 & SDHCI_QUIRK2_NON_STD_RTPM) {
 		if (host->mmc->ios.clock) {
-			if (host->ops->set_clock)
-				host->ops->set_clock(host,
-					host->mmc->ios.clock);
-			sdhci_set_clock(host, host->mmc->ios.clock);
-			sysedp_set_state(host->sysedpc, 1);
+			freq = host->mmc->ios.clock;
+		} else {
+			if (!host->mmc->f_min)
+				host->mmc->f_min = MIN_SDMMC_FREQ;
+			freq = host->mmc->f_min;
+			host->clock = freq;
 		}
 
+		if (host->ops->set_clock)
+			host->ops->set_clock(host, freq);
+		sdhci_set_clock(host, freq);
+
+		sysedp_set_state(host->sysedpc, 1);
 		spin_lock_irqsave(&host->lock, flags);
 		host->runtime_suspended = false;
 		spin_unlock_irqrestore(&host->lock, flags);
