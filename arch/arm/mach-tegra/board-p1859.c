@@ -92,7 +92,7 @@ static __initdata struct tegra_clk_init_table
 	{ "audio2_2x",	"audio2",	12288000,	false},
 	{ "i2s0",	"pll_a_out0",	12288000,	false},
 	{ "i2s1",	"pll_a_out0",	3072000,	false},
-	{ "i2s2",	"pll_a_out0",	512000,	false},
+	{ "i2s2",	"audio2_2x",	12288000,	false},
 	{ "i2s3",	"pll_a_out0",	3072000,	false},
 	{ "i2s4",	"pll_a_out0",	1024000,	false},
 	{ "extern1",	"pll_a_out0",	24576000,	false},
