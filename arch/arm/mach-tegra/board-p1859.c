@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-p1859.c
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -116,6 +116,30 @@ static int __init e1860_fixed_target_rate_init(void)
 	return 0;
 }
 
+static __initdata struct tegra_clk_init_table p1859_gpu_696mhz_clk[] = {
+	 { "gk20a.gbus",         NULL,           696000000,      false},
+	 { NULL,         NULL,           0,              0},
+};
+static __initdata struct tegra_clk_init_table p1859_gpu_780mhz_clk[] = {
+	 { "gk20a.gbus",         NULL,           780000000,      false},
+	 { NULL,         NULL,           0,              0},
+};
+
+/*
+ * Set GPU default clock rate, based on p1859 board revision
+ * On  older boards maximum gpu clock allowed is 696Mhz only.
+ */
+static void __init p1859_gpu_clk_rate_init(void)
+{
+	int sku_rev;
+	sku_rev = tegra_board_get_skurev("61859");
+
+	if (sku_rev < 300)
+		tegra_clk_init_from_table(p1859_gpu_696mhz_clk);
+	else
+		tegra_clk_init_from_table(p1859_gpu_780mhz_clk);
+}
+
 /* I2C devices */
 static struct i2c_board_info __initdata ak4618_board_info = {
 	I2C_BOARD_INFO("ak4618", 0x10),
@@ -209,6 +233,7 @@ static void __init tegra_p1859_early_init(void)
 	/* Board specific clock POR */
 	tegra_clk_init_from_table(clk_table);
 	e1860_fixed_target_rate_init();
+	p1859_gpu_clk_rate_init();
 
 	tegra_clk_verify_parents();
 
