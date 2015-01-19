@@ -55,7 +55,7 @@
 	};
 
 	i2c@546c0000 {
-		bus-pullup-supply = <&battery_reg>;
+		bus-pullup-supply = <&en_vdd_cam>;
 	};
 
 	udc@7d000000 {
