@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2010 Google, Inc.
  *
- * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -5053,7 +5053,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	plat = pdev->dev.platform_data;
 
 	if (plat == NULL) {
-		pr_err("%s Parsing DT data\n", mmc_hostname(host->mmc));
 		plat = sdhci_tegra_dt_parse_pdata(pdev);
 		pr_debug("%s: %s line=%d disable-clock-gate=%d\n",
 			mmc_hostname(host->mmc), __func__,
