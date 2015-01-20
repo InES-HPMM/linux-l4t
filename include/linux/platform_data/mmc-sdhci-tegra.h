@@ -104,6 +104,7 @@ struct tegra_sdhci_platform_data {
 	bool enable_autocal_slew_override;
 	unsigned int rtpm_type;
 	bool enable_cq;
+	bool en_strobe; /* Enable enhance strobe mode for eMMC */
 };
 
 #endif

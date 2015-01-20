@@ -224,14 +224,12 @@
 #define NVQUIRK2_CONFIG_PWR_DET			BIT(0)
 /* Enable T210 specific SDMMC WAR - Tuning Step Size, Tuning Iterations*/
 #define NVQUIRK2_UPDATE_HW_TUNING_CONFG		BIT(1)
-/* Enable Enhanced strobe mode support */
-#define NVQUIRK2_EN_STROBE_SUPPORT		BIT(2)
 /*controller does not support cards if 1.8 V is not supported by cards*/
-#define NVQUIRK2_BROKEN_SD2_0_SUPPORT		BIT(3)
-#define NVQUIRK2_DYNAMIC_TRIM_SUPPLY_SWITCH	BIT(4)
+#define NVQUIRK2_BROKEN_SD2_0_SUPPORT		BIT(2)
+#define NVQUIRK2_DYNAMIC_TRIM_SUPPLY_SWITCH	BIT(3)
 /* Select SDR50 UHS mode for host if the device runs at SDR50 mode on T210 */
-#define NVQUIRK2_SELECT_SDR50_MODE		BIT(5)
-#define NVQUIRK2_ADD_DELAY_AUTO_CALIBRATION	BIT(6)
+#define NVQUIRK2_SELECT_SDR50_MODE		BIT(4)
+#define NVQUIRK2_ADD_DELAY_AUTO_CALIBRATION	BIT(5)
 
 /* Common subset of quirks for Tegra3 and later sdmmc controllers */
 #define TEGRA_SDHCI_NVQUIRKS	(NVQUIRK_ENABLE_PADPIPE_CLKEN | \
@@ -694,7 +692,6 @@ struct sdhci_tegra {
 	struct pinctrl_state *default_drv_code_strength;
 	struct pinctrl_state *sdmmc_pad_ctrl[MMC_TIMINGS_MAX_MODES];
 	int drive_group_sel;
-	bool en_strobe;
 	unsigned int tuned_tap_delay;
 	struct padctrl *sdmmc_padctrl;
 };
@@ -714,7 +711,7 @@ static void sdhci_tegra_set_trim_delay(struct sdhci_host *sdhci,
 	unsigned int trim_delay);
 static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 	unsigned char signal_voltage);
-static void tegra_sdhci_do_dll_calibration(struct sdhci_host *sdhci);
+static void tegra_sdhci_post_init(struct sdhci_host *sdhci);
 static void tegra_sdhci_en_strobe(struct sdhci_host *sdhci);
 static void tegra_sdhci_update_sdmmc_pinctrl_register(struct sdhci_host *sdhci,
 		bool set);
@@ -1846,22 +1843,26 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 
 static void tegra_sdhci_en_strobe(struct sdhci_host *host)
 {
-	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
-	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	u32 vndr_ctrl;
 
 	vndr_ctrl = sdhci_readl(host, SDHCI_VNDR_SYS_SW_CTRL);
 	vndr_ctrl |= (1 <<
 		SDHCI_VNDR_SYS_SW_CTRL_STROBE_SHIFT);
 	sdhci_writel(host, vndr_ctrl, SDHCI_VNDR_SYS_SW_CTRL);
-	tegra_host->en_strobe = true;
 }
 
-static void tegra_sdhci_do_dll_calibration(struct sdhci_host *sdhci)
+static void tegra_sdhci_post_init(struct sdhci_host *sdhci)
 {
 	u32 dll_cfg;
 	u32 dll_ctrl0;
 	unsigned timeout = 5;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+
+	if ((sdhci->mmc->card->ext_csd.strobe_support) &&
+			(sdhci->mmc->caps2 & MMC_CAP2_EN_STROBE) &&
+			tegra_host->plat->en_strobe)
+		tegra_sdhci_en_strobe(sdhci);
 
 	/* Program TX_DLY_CODE_OFFSET Value for HS533 mode*/
 	if (sdhci->mmc->card->state & MMC_STATE_HIGHSPEED_533) {
@@ -4034,7 +4035,7 @@ static void tegra_sdhci_post_resume(struct sdhci_host *sdhci)
 				is_sdhci_clk_turned_on = true;
 			}
 		}
-		tegra_sdhci_do_dll_calibration(sdhci);
+		tegra_sdhci_post_init(sdhci);
 		if (is_sdhci_clk_turned_on)
 			tegra_sdhci_set_clock(sdhci, 0);
 	}
@@ -4696,8 +4697,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.dfs_gov_get_target_freq	= sdhci_tegra_get_target_freq,
 #endif
 	.get_drive_strength	= tegra_sdhci_get_drive_strength,
-	.post_init	= tegra_sdhci_do_dll_calibration,
-	.en_strobe	= tegra_sdhci_en_strobe,
+	.post_init	= tegra_sdhci_post_init,
 	.dump_host_cust_regs	= tegra_sdhci_dumpregs,
 	.get_max_tuning_loop_counter = sdhci_tegra_get_max_tuning_loop_counter,
 	.config_tap_delay	= tegra_sdhci_config_tap,
@@ -4877,6 +4877,8 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 			"nvidia,en-io-trim-volt");
 	plat->is_emmc = of_property_read_bool(np, "nvidia,is-emmc");
 	plat->is_sd_device = of_property_read_bool(np, "nvidia,sd-device");
+	plat->en_strobe =
+		of_property_read_bool(np, "nvidia,enable-strobe-mode");
 
 	if (!of_property_read_u32(np, "mmc-ocr-mask", &val)) {
 		if (val == 0)
@@ -5469,7 +5471,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (soc_data->nvquirks & NVQUIRK_ENABLE_AUTO_CMD23)
 		host->mmc->caps |= MMC_CAP_CMD23;
 
-	if (soc_data->nvquirks2 & NVQUIRK2_EN_STROBE_SUPPORT)
+	if ((host->mmc->caps2 & MMC_CAP2_HS400) && (plat->en_strobe))
 		host->mmc->caps2 |= MMC_CAP2_EN_STROBE;
 
 	if (plat->enable_cq)
