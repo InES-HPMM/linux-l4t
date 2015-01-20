@@ -336,6 +336,5 @@ config ARM_SMMU
 config ARM_SMMU_WAR
 	bool
 	depends on ARM_SMMU
-	default y
 
 endif # IOMMU_SUPPORT
