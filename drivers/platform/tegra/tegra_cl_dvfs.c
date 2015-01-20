@@ -2138,11 +2138,22 @@ static int tegra_cl_dvfs_get_output(void *data)
 	return val;
 }
 
-static void tegra_cl_dvfs_bypass_dev_register(struct tegra_cl_dvfs *cld,
-					      struct platform_device *byp_dev)
+static void cl_dvfs_init_pwm_bypass(struct tegra_cl_dvfs *cld,
+					   struct platform_device *byp_dev)
 {
 	struct tegra_dfll_bypass_platform_data *p_data =
 		byp_dev->dev.platform_data;
+
+	int vinit = cld->p_data->u.pmu_pwm.init_uV;
+	int vmin = cld->p_data->u.pmu_pwm.min_uV;
+	int vstep = cld->p_data->u.pmu_pwm.step_uV;
+
+	/* Sync initial voltage and setup bypass callbacks */
+	if ((vinit >= vmin) && vstep) {
+		unsigned int vsel = DIV_ROUND_UP((vinit - vmin), vstep);
+		tegra_cl_dvfs_force_output(cld, vsel);
+	}
+
 	p_data->set_bypass_sel = tegra_cl_dvfs_force_output;
 	p_data->get_bypass_sel = tegra_cl_dvfs_get_output;
 	p_data->dfll_data = cld;
@@ -2385,7 +2396,7 @@ static int dt_parse_pwm_regulator(struct platform_device *pdev,
 	struct device_node *r_dn, struct tegra_cl_dvfs_platform_data *p_data)
 {
 	unsigned long val;
-	int min_uV, max_uV, step_uV;
+	int min_uV, max_uV, step_uV, init_uV;
 	struct of_phandle_args args;
 	struct platform_device *rdev = of_find_device_by_node(r_dn);
 
@@ -2409,6 +2420,7 @@ static int dt_parse_pwm_regulator(struct platform_device *pdev,
 	/* voltage boundaries and step */
 	OF_READ_U32(r_dn, regulator-min-microvolt, min_uV);
 	OF_READ_U32(r_dn, regulator-max-microvolt, max_uV);
+	OF_READ_U32(r_dn, regulator-init-microvolt, init_uV);
 
 	step_uV = (max_uV - min_uV) / (MAX_CL_DVFS_VOLTAGES - 1);
 	if (step_uV <= 0) {
@@ -2422,6 +2434,7 @@ static int dt_parse_pwm_regulator(struct platform_device *pdev,
 
 	p_data->u.pmu_pwm.min_uV = min_uV;
 	p_data->u.pmu_pwm.step_uV = step_uV;
+	p_data->u.pmu_pwm.init_uV = init_uV;
 
 	/*
 	 * For pwm regulator access from the regulator driver, without
@@ -2801,8 +2814,7 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	if ((p_data->pmu_if == TEGRA_CL_DVFS_PMU_PWM) &&
 	    p_data->u.pmu_pwm.dfll_bypass_dev) {
 		clk_enable(cld->soc_clk);
-		tegra_cl_dvfs_bypass_dev_register(
-			cld, p_data->u.pmu_pwm.dfll_bypass_dev);
+		cl_dvfs_init_pwm_bypass(cld, p_data->u.pmu_pwm.dfll_bypass_dev);
 	}
 
 	/* Register SiMon notifier */
