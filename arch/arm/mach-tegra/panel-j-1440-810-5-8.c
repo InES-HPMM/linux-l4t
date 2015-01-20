@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/panel-j-1440-810-5-8.c
  *
- * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -589,9 +589,17 @@ static struct tegra_dsi_out dsi_j_1440_810_5_8_pdata = {
 static int dsi_j_1440_810_5_8_disable(struct device *dev)
 {
 	/* Delay b/w DSI data/clk disable and panel reset */
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	udelay(4000);
+#else
 	usleep_range(3000, 5000);
+#endif
 	gpio_direction_output(en_panel_rst, 0);
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	udelay(4000);
+#else
 	usleep_range(3000, 5000);
+#endif
 
 	if (vdd_lcd_bl)
 		regulator_disable(vdd_lcd_bl);
