@@ -1289,6 +1289,20 @@ static int utmi_phy_resume(struct tegra_usb_phy *phy)
 			usb_phy_bringup_host_controller(phy);
 			utmi_phy_restore_end(phy);
 		} else {
+			writel(USB_USBCMD_RS, base + USB_USBCMD);
+
+			if (usb_phy_reg_status_wait(base + USB_USBCMD,
+				USB_USBCMD_RS, USB_USBCMD_RS, 2500) < 0) {
+				pr_err("%s: timeout waiting for run bit\n",
+								__func__);
+			}
+
+			/* Enable Port Power */
+			val = readl(base + USB_PORTSC);
+			val |= USB_PORTSC_PP;
+			writel(val, base + USB_PORTSC);
+			udelay(10);
+
 			pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 0);
 			phy->pmc_remote_wakeup = false;
 			phy->pmc_hotplug_wakeup = false;
@@ -1312,19 +1326,6 @@ static int utmi_phy_resume(struct tegra_usb_phy *phy)
 			val &= ~HOSTPC1_DEVLC_PTS(~0);
 			val |= HOSTPC1_DEVLC_STS;
 			writel(val, base + HOSTPC1_DEVLC);
-
-			writel(USB_USBCMD_RS, base + USB_USBCMD);
-
-			if (usb_phy_reg_status_wait(base + USB_USBCMD,
-				USB_USBCMD_RS, USB_USBCMD_RS, 2500) < 0) {
-				pr_err("%s: timeout waiting for run bit\n", __func__);
-			}
-
-			/* Enable Port Power */
-			val = readl(base + USB_PORTSC);
-			val |= USB_PORTSC_PP;
-			writel(val, base + USB_PORTSC);
-			udelay(10);
 
 			DBG("USB_USBSTS[0x%x] USB_PORTSC[0x%x]\n",
 			readl(base + USB_USBSTS), readl(base + USB_PORTSC));
