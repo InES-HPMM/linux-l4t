@@ -64,6 +64,10 @@ typedef struct wifi_adapter_info {
 	uint		bus_num;
 	uint		slot_num;
 	struct sysedp_consumer *sysedpc;
+#ifdef NV_COUNTRY_CODE
+	int		n_country;
+	struct cntry_locales_custom *country_code_map;
+#endif
 } wifi_adapter_info_t;
 
 typedef struct bcmdhd_wifi_platdata {

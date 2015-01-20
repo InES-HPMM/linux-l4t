@@ -258,7 +258,7 @@ const struct cntry_locales_custom translate_custom_table[] = {
 */
 void get_customized_country_code(void *adapter, char *country_iso_code, wl_country_t *cspec)
 {
-#if defined(CUSTOMER_HW2) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
+#if !defined(CUSTOM_COUNTRY_LOCALE) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
 
 	struct cntry_locales_custom *cloc_ptr;
 
@@ -274,11 +274,29 @@ void get_customized_country_code(void *adapter, char *country_iso_code, wl_count
 #else
 	int size, i;
 
-	size = ARRAYSIZE(translate_custom_table);
 
 	if (cspec == 0)
 		 return;
 
+#ifdef NV_COUNTRY_CODE
+	wifi_adapter_info_t *wifi_adapter = (wifi_adapter_info_t *)adapter;
+	if (wifi_adapter->n_country == 0)
+		 return;
+
+	for (i = 0; i < wifi_adapter->n_country; i++) {
+		if (strncmp(country_iso_code, wifi_adapter->country_code_map[i].iso_abbrev, 2) == 0) {
+			memcpy(cspec->ccode,
+				wifi_adapter->country_code_map[i].custom_locale, 2);
+			cspec->rev = wifi_adapter->country_code_map[i].custom_locale_rev;
+			return;
+		}
+	}
+	/* set default country code at index 0 */
+	memcpy(cspec->ccode, wifi_adapter->country_code_map[0].custom_locale, 2);
+	cspec->rev = wifi_adapter->country_code_map[0].custom_locale_rev;
+	return;
+#endif
+	size = ARRAYSIZE(translate_custom_table);
 	if (size == 0)
 		 return;
 
@@ -290,6 +308,7 @@ void get_customized_country_code(void *adapter, char *country_iso_code, wl_count
 			return;
 		}
 	}
+
 #ifdef EXAMPLE_TABLE
 	/* if no country code matched return first universal code from translate_custom_table */
 	memcpy(cspec->ccode, translate_custom_table[0].custom_locale, WLC_CNTRY_BUF_SZ);

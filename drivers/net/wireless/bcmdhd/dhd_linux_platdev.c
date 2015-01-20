@@ -36,6 +36,7 @@
 #include <dhd_bus.h>
 #include <dhd_linux.h>
 #include <wl_android.h>
+#include <wl_iw.h>
 #if defined(CONFIG_WIFI_CONTROL_FUNC)
 #include <linux/wlan_plat.h>
 #endif
@@ -329,6 +330,74 @@ void *wifi_platform_get_country_code(wifi_adapter_info_t *adapter, char *ccode)
 	return NULL;
 }
 
+#ifdef NV_COUNTRY_CODE
+static int wifi_platform_get_country_code_map(struct device_node *node,
+						wifi_adapter_info_t *adapter)
+{
+	struct device_node *np_country;
+	struct device_node *child;
+	struct cntry_locales_custom *country;
+	int n_country;
+	int ret;
+	int i;
+	char *strptr;
+
+	np_country = of_get_child_by_name(node, "country_code_map");
+	if (!np_country) {
+		DHD_ERROR(("%s: could not get country_code_map\n", __func__));
+		return -1;
+	}
+
+	n_country = of_get_child_count(np_country);
+	if (!n_country) {
+		DHD_ERROR(("%s: n_country\n", __func__));
+		return -1;
+	}
+
+	country = kmalloc(n_country * sizeof(struct cntry_locales_custom), GFP_KERNEL);
+	if (!country) {
+		DHD_ERROR(("%s: fail to allocate memory\n", __func__));
+		return -1;
+	}
+	memset(country, 0, sizeof(country));
+
+	i = 0;
+	for_each_child_of_node(np_country, child) {
+		ret = of_property_read_string(child, "iso_abbrev", &strptr);
+		if (ret) {
+			DHD_ERROR(("%s:read error iso_abbrev %s\n", __func__, child->name));
+			goto fail;
+		} else {
+			strncpy(country[i].iso_abbrev, strptr, 3);
+		}
+
+		ret = of_property_read_string(child, "custom_locale", &strptr);
+		if (ret) {
+			DHD_ERROR(("%s:read error custom_locale  %s\n", __func__, child->name));
+			goto fail;
+		} else {
+			strncpy(country[i].custom_locale, strptr, 3);
+		}
+
+		ret = of_property_read_u32(child, "custom_locale_rev", &country[i].custom_locale_rev);
+		if (ret) {
+			DHD_ERROR(("%s:read error custom_locale_rev %s\n", __func__, child->name));
+			goto fail;
+		}
+		i++;
+	}
+
+	adapter->country_code_map = country;
+	adapter->n_country = n_country;
+	return 0;
+fail:
+	kfree(country);
+	adapter->country_code_map = NULL;
+	adapter->n_country = 0;
+	return -1;
+}
+#endif
+
 static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
 {
 	struct resource *resource;
@@ -366,6 +435,10 @@ static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
 		} else {
 			adapter->sysedpc = sysedp_create_consumer("primary-wifi", adapter->edp_name);
 		}
+#ifdef NV_COUNTRY_CODE
+		if (wifi_platform_get_country_code_map(node, adapter))
+			DHD_ERROR(("%s:platform country code map is not available\n", __func__));
+#endif
 	} else {
 		resource = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "bcmdhd_wlan_irq");
 		if (resource == NULL)
