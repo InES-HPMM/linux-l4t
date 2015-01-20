@@ -22,4 +22,8 @@
 
 / {
 	nvidia,dtsfilename = __FILE__;
+
+	udc@7d000000 {
+		nvidia,dcp-current-limit-ma = <3000>;
+	};
 };
