@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/isomgr.c
  *
- * Copyright (c) 2012-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -108,6 +108,7 @@ struct isoclient_info {
 };
 
 static struct isoclient_info *isoclient_info;
+static int                    isoclients;
 static bool client_valid[TEGRA_ISO_CLIENT_COUNT];
 static int iso_bw_percentage = 100;
 
@@ -285,35 +286,45 @@ static struct isoclient_info tegra21x_isoclients[] = {
 
 static void isomgr_scatter(int client);
 
-static struct isoclient_info *get_iso_client_info(void)
+static struct isoclient_info *get_iso_client_info(int *length)
 {
 	enum tegra_chipid cid;
 	struct isoclient_info *cinfo;
+	int len;
 
 	cid = tegra_get_chipid();
 	switch (cid) {
 	case TEGRA_CHIPID_TEGRA11:
 		cinfo = tegra11x_isoclients;
+		len = ARRAY_SIZE(tegra11x_isoclients);
 		iso_bw_percentage = 50;
 		break;
 	case TEGRA_CHIPID_TEGRA14:
 		cinfo = tegra14x_isoclients;
+		len = ARRAY_SIZE(tegra14x_isoclients);
 		iso_bw_percentage = 50;
 		break;
 	case TEGRA_CHIPID_TEGRA12:
 	case TEGRA_CHIPID_TEGRA13:
 		cinfo = tegra12x_isoclients;
+		len = ARRAY_SIZE(tegra12x_isoclients);
 		iso_bw_percentage = 50;
 		break;
 	case TEGRA_CHIPID_TEGRA21:
 		cinfo = tegra21x_isoclients;
 		iso_bw_percentage = 45; /* Hack: Should be determined based on
 					   DRAM type. */
+		len = ARRAY_SIZE(tegra21x_isoclients);
 		break;
 	default:
 		cinfo = tegra_null_isoclients;
+		len = 0;
 		break;
 	}
+
+	if (length)
+		*length = len;
+
 	return cinfo;
 }
 
@@ -1136,8 +1147,8 @@ static void isomgr_create_sysfs(void)
 		return;
 	}
 
-	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; i++) {
-		if (client_valid[i])
+	for (i = 0; i < isoclients; i++) {
+		if (isoclient_info[i].name)
 			isomgr_create_client(isoclient_info[i].client,
 					     isoclient_info[i].name);
 	}
@@ -1153,7 +1164,7 @@ int __init isomgr_init(void)
 	unsigned int max_emc_bw;
 
 	mutex_init(&isomgr.lock);
-	isoclient_info = get_iso_client_info();
+	isoclient_info = get_iso_client_info(&isoclients);
 
 	for (i = 0; ; i++) {
 		if (isoclient_info[i].name)
@@ -1181,10 +1192,13 @@ int __init isomgr_init(void)
 		isomgr.avail_bw = isomgr.max_iso_bw;
 	}
 
-	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; i++) {
-		atomic_set(&isomgr_clients[i].kref.refcount, 0);
-		init_completion(&isomgr_clients[i].cmpl);
-		if (client_valid[i]) {
+	for (i = 0; i < isoclients; i++) {
+		if (isoclient_info[i].name) {
+			enum tegra_iso_client c = isoclient_info[i].client;
+
+			atomic_set(&isomgr_clients[c].kref.refcount, 0);
+			init_completion(&isomgr_clients[c].cmpl);
+
 			isomgr_clients[i].emc_clk = clk_get_sys(
 					isoclient_info[i].dev_name,
 					isoclient_info[i].emc_clk_name);
