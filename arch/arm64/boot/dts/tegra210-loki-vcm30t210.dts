@@ -588,4 +588,10 @@
 	tegra-aotag {
 		status = "disabled";
 	};
+
+	i2c@7000c400 {
+		ina3221x@40 {
+			status = "disabled";
+		};
+	};
 };
