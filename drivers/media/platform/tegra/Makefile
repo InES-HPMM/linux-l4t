@@ -10,6 +10,7 @@ ccflags-y	+= -Idrivers/video/tegra/host
 ccflags-y	+= -Idrivers/video/tegra/host/isp
 ccflags-y	+= -Idrivers/platform/tegra/include
 obj-$(CONFIG_TEGRA_NVAVP)	+= nvavp/
+obj-$(CONFIG_TEGRA_NVAVP_VIRT)	+= nvavp-virt/
 CFLAGS_tegra_dtv.o       = -Werror
 CFLAGS_tegra_dtv.o       = -DDEBUG
 obj-$(CONFIG_TEGRA_DTV)		+= tegra_dtv.o

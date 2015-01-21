@@ -159,6 +159,10 @@
 		msenc {
 			compatible = "nvidia,tegra124-vhost-msenc";
 		};
+		
+		nvavp {
+			status = "disabled";
+		};
 	};
 
 	gk20a {
@@ -173,5 +177,14 @@
 
 		ivc-queue3 = <&tegra_hv 6>;
 		ivc-queue4 = <&tegra_hv 7>;
+	};
+
+	avp-virt {
+		status = "okay";
+		compatible = "nvidia,tegra124-avp-virt";
+		iommus = <&smmu TEGRA_SWGROUP_AVPC>,
+			 <&smmu TEGRA_SWGROUP_A9AVP>,
+			 <&smmu TEGRA_SWGROUP_VDE>;
+		ivc_queue = <&tegra_hv 21>;
 	};
 };

@@ -317,6 +317,10 @@
 		tsec {
 			status = "disabled";
 		};
+
+		nvavp {
+			status = "disabled";
+		};
 	};
 
 	gk20a {
@@ -376,5 +380,13 @@
 				alloc = <1>;
 			};
 		};
+	};
+
+	avp-virt {
+		compatible = "nvidia,tegra124-avp-virt";
+		iommus = <&smmu TEGRA_SWGROUP_AVPC>,
+			 <&smmu TEGRA_SWGROUP_A9AVP>,
+			 <&smmu TEGRA_SWGROUP_VDE>;
+		ivc_queue = <&tegra_hv 22>;
 	};
 };
