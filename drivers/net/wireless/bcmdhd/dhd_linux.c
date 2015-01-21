@@ -2999,7 +2999,7 @@ static int
 dhd_dpc_thread(void *data)
 {
 	unsigned long timeout;
-	unsigned int loopcnt;
+	unsigned int loopcnt, count;
 	tsk_ctl_t *tsk = (tsk_ctl_t *)data;
 	dhd_info_t *dhd = (dhd_info_t *)tsk->parent;
 
@@ -3036,17 +3036,21 @@ dhd_dpc_thread(void *data)
 				dhd_os_wd_timer_extend(&dhd->pub, TRUE);
 				timeout = jiffies + msecs_to_jiffies(100);
 				loopcnt = 0;
+				count = 0;
 				while (dhd_bus_dpc(dhd->pub.bus)) {
 					++loopcnt;
 					if (time_after(jiffies, timeout) &&
 						(loopcnt % 1000 == 0)) {
-						DHD_ERROR(("%s is consuming "
-							"too much time. %uth "
-							"iteration\b",
-							__func__, loopcnt));
+						count++;
+						timeout = jiffies +
+							msecs_to_jiffies(100);
 					}
 					/* process all data */
 				}
+				if (count)
+					DHD_ERROR(("%s is consuming too much time"
+						" Looped %u times for 1000 iterations in 100ms timeout\n",
+						__func__, count));
 				dhd_os_wd_timer_extend(&dhd->pub, FALSE);
 				DHD_OS_WAKE_UNLOCK(&dhd->pub);
 
