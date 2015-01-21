@@ -485,7 +485,9 @@ static void tegra_common_resume(void)
 static void tegra_pm_sc7_set(void)
 {
 	u32 reg, boot_flag;
-	unsigned long rate = 32768;
+	unsigned long rate;
+
+	rate = clk_get_rate(tegra_pclk);
 
 	reg = readl(pmc + PMC_CTRL);
 	reg |= TEGRA_POWER_PWRREQ_OE;
