@@ -64,6 +64,8 @@ _________________________________________________________
 #define TRACE_STATUS_PMSTABLE 2
 #define TRACE_STATUS_IDLE     1
 
+#define ADDR_REG_PAIRS 4
+
 /* PTM tracer state */
 struct tracectx {
 	struct device	*dev;
@@ -83,8 +85,9 @@ struct tracectx {
 	int		*trc_buf;
 	u8		*etr_buf;
 	int		buf_size;
-	uintptr_t	start_address;
-	uintptr_t	stop_address;
+	uintptr_t	start_address[ADDR_REG_PAIRS];
+	uintptr_t	stop_address[ADDR_REG_PAIRS];
+	u8		start_stop_mask;
 
 	u32		reg_ctx[CONFIG_NR_CPUS][100];
 
@@ -105,8 +108,8 @@ struct tracectx {
 
 /* initialising some values of the structure */
 static struct tracectx tracer = {
-	.start_address			=	0,
-	.stop_address			=	0xFFFFFFC100000000,
+	.start_address			=	{ 0 },
+	.stop_address			=	{ 0xFFFFFFC100000000 },
 	.enable				=	0,
 	.userspace			=	0,
 	.branch_broadcast		=	1,
@@ -119,6 +122,7 @@ static struct tracectx tracer = {
 	.trigger_address		=	0,
 	.etr			=	0,
 	.ape				=	0,
+	.start_stop_mask		=	0x3
 };
 
 static struct clk *csite_clk;
@@ -328,7 +332,7 @@ static void ptm_restore(struct tracectx *t, int id)
 	RESTORE_PTM(TRCRSCTLR14);
 	RESTORE_PTM(TRCRSCTLR15);
 
-	/* comparator registers */
+	/* address comparator registers */
 	RESTORE_PTM(TRCACVR0);
 	RESTORE_PTM(TRCACVR0+4);
 	RESTORE_PTM(TRCACVR1);
@@ -346,6 +350,7 @@ static void ptm_restore(struct tracectx *t, int id)
 	RESTORE_PTM(TRCACVR7);
 	RESTORE_PTM(TRCACVR7+4);
 
+	/* address comparator access type registers */
 	RESTORE_PTM(TRCACATR0);
 	RESTORE_PTM(TRCACATR1);
 	RESTORE_PTM(TRCACATR2);
@@ -372,7 +377,8 @@ static void ptm_restore(struct tracectx *t, int id)
 /* Initialise the PTM registers */
 static void ptm_init(struct tracectx *t, int id)
 {
-	int trccfg;
+	int trccfg, i;
+	u32 level_val;
 
 	/* Power up the CPU PTM */
 	ptm_writel(t, id, 8, TRCPDCR);
@@ -447,6 +453,7 @@ static void ptm_init(struct tracectx *t, int id)
 	/* Configure basic controls RS, BB, TS, VMID, Context tracing */
 	trccfg = ptm_readl(t, id, TRCCONFIGR);
 
+	/* enable BB for address range in TRCACVR0/TRCACVR1 pair */
 	if (t->branch_broadcast) {
 		ptm_writel(t, id, 0x101, TRCBBCTLR);
 	}
@@ -454,6 +461,7 @@ static void ptm_init(struct tracectx *t, int id)
 	trccfg = trccfg | (t->branch_broadcast << 3) | (t->return_stack << 12) |
 			(t->timestamp<<11);
 
+	/* set cycle count threshold */
 	if (t->cycle_count) {
 		trccfg = trccfg | (1<<4);
 		ptm_writel(t, id, t->cycle_count, TRCCCCTLR);
@@ -468,19 +476,27 @@ static void ptm_init(struct tracectx *t, int id)
 			BCCPLEX_BASE_ID : LCCPLEX_BASE_ID) + id,
 			TRCTRACEIDR);
 
-	/* Program Address range comparator. Use 0 and 1 */
-	ptm_writeq(t, id, t->start_address, TRCACVR0);
-	ptm_writeq(t, id, t->stop_address, TRCACVR1);
+	/* Program Address range comparators */
+	for (i = 0; i < ADDR_REG_PAIRS; i++) {
+		if ((t->start_stop_mask >> (i*2)) & 0x3) {
+			ptm_writeq(t, id, t->start_address[i],
+					TRCACVR0 + 8 * i * 2);
+			ptm_writeq(t, id, t->stop_address[i],
+					TRCACVR0 + 8 * (i * 2 + 1));
+		}
+	}
 
-	/* control user space tracing */
-	ptm_writel(t, id, (t->userspace ? 0x0 : 0x1100), TRCACATR0);
-	ptm_writel(t, id, (t->userspace ? 0x0 : 0x1100), TRCACATR1);
+	/* control user space tracing for each address range */
+	level_val = (t->userspace ? 0x0 : 0x1100);
+	for (i = 0; i < ADDR_REG_PAIRS*2; i++)
+		ptm_writel(t, id, level_val, TRCACATR0 + 8 * i);
 
-	/* Select Resource 2 to include ARC0 */
-	ptm_writel(t, id, 0x50001, TRCRSCTLR2);
+	/* Select Resource 2 to include all ARC */
+	ptm_writel(t, id, 0x5000f, TRCRSCTLR2);
 
-	/* Enable ViewInst and Include logic for ARC0. Disable the SSC */
-	ptm_writel(t, id, 1, TRCVIIECTLR);
+	/* Enable ViewInst and Include logic for ARC. Disable the SSC */
+	/* this is unecessary in addition to start/stop programming */
+	/*ptm_writel(t, id, 0xf, TRCVIIECTLR);*/
 
 	/* Select Start/Stop as Started. And select Resource 2 as the Event */
 	if (t->userspace)
@@ -976,8 +992,20 @@ static ssize_t trace_range_address_show(struct kobject *kobj,
 	struct kobj_attribute *attr,
 	char *buf)
 {
-	return sprintf(buf, "start address : %16lx\n stop address : %16lx\n",
-			tracer.start_address, tracer.stop_address);
+	int i;
+
+	/* clear buffer */
+	sprintf(buf + strlen(buf),
+		"start address 0 : %16lx\nstop address 0  : %16lx\n",
+		tracer.start_address[0], tracer.stop_address[0]);
+
+	for (i = 1; i < ADDR_REG_PAIRS; i++) {
+		sprintf(buf + strlen(buf),
+			"start address %d : %16lx\nstop address %d  : %16lx\n",
+			i, tracer.start_address[i], i, tracer.stop_address[i]);
+	}
+
+	return strlen(buf);
 }
 
 /* use a sysfs file "trace_address_trigger" to allow user to
@@ -1034,21 +1062,41 @@ static ssize_t trace_range_address_store(struct kobject *kobj,
 	struct kobj_attribute *attr,
 	char const *buf, size_t n)
 {
-	uintptr_t start_address, stop_address;
+	uintptr_t start_address[ADDR_REG_PAIRS], stop_address[ADDR_REG_PAIRS];
+	int cnt, i;
 
-	if (sscanf(buf, "%lx %lx", &start_address, &stop_address) != 2)
+	cnt = sscanf(buf, "%lx %lx %lx %lx %lx %lx %lx %lx",
+		&start_address[0], &stop_address[0],
+		&start_address[1], &stop_address[1],
+		&start_address[2], &stop_address[2],
+		&start_address[3], &stop_address[3]);
+	if (cnt % 2)
 		return -EINVAL;
 
-	if (start_address >= stop_address)
+	if (cnt > ADDR_REG_PAIRS * 2)
 		return -EINVAL;
 
 	mutex_lock(&tracer.mutex);
+	tracer.start_stop_mask = 0;
+	for (i = 0; i < cnt / 2; i++) {
+		if (start_address[i] >= stop_address[i]) {
+			mutex_unlock(&tracer.mutex);
+			return -EINVAL;
+		}
 
-	tracer.start_address= start_address;
-	tracer.stop_address = stop_address;
+		tracer.start_address[i] = start_address[i];
+		tracer.stop_address[i] = stop_address[i];
+		tracer.start_stop_mask += 0x3 << (i * 2);
+	}
+
+	/* clear remaining address pairs */
+	while (i < ADDR_REG_PAIRS) {
+		tracer.start_address[i] = 0;
+		tracer.stop_address[i] = 0;
+		i++;
+	}
 
 	mutex_unlock(&tracer.mutex);
-
 	return n;
 }
 
