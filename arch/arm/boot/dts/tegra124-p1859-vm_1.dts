@@ -316,9 +316,6 @@
 			status = "disabled";
 		};
 
-		vi {
-			status = "disabled";
-		};
 	};
 
 	gk20a {
