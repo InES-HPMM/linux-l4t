@@ -36,10 +36,62 @@
 #include <linux/tegra_cpc.h>
 
 #define CPC_I2C_DEADLINE_MS 200
-
 #define TEGRA_CPC_DEBUG 0
 
-/* local data structures */
+/*
+	Helper macro section
+*/
+
+/* returns 0 on a successful copy. Returns -ENOMEM otherwise */
+inline int tegra_cpc_serialize_field_n(u8 **dest, u8 *source, size_t len,
+	size_t *rem_buf_size)
+{
+	if (unlikely(*rem_buf_size < len))
+		return -ENOMEM;
+	memcpy(*dest, source, len);
+	(*rem_buf_size) -= len;
+	(*dest) = &((*dest)[len]);
+	return 0;
+}
+
+#define TEGRA_CPC_SERIALIZE_FIELD(dest, source, rem_buf_len) \
+	tegra_cpc_serialize_field_n(dest, (u8 *) &source, sizeof(source), \
+		rem_buf_len)
+
+/* returns 0 on a successful copy. Returns -ENOMEM otherwise */
+inline int tegra_cpc_deserialize_field_n(u8 *dest, u8 **source, size_t len,
+	size_t *rem_buf_size)
+{
+	if (unlikely(*rem_buf_size < len))
+		return -ENOMEM;
+	memcpy(dest, *source, len);
+	(*rem_buf_size) -= len;
+	(*source) = &((*source)[len]);
+	return 0;
+}
+
+#define TEGRA_CPC_DESERIALIZE_FIELD(dest, source, rem_buf_len) \
+	tegra_cpc_deserialize_field_n((u8 *) &dest, source, sizeof(dest), \
+		rem_buf_len)
+
+#define TEGRA_CPC_COPY_TO_VAR(var, source) \
+	memcpy(&var, source, sizeof(source))
+
+inline int tegra_cpc_verify_fr_len(u8 length, struct i2c_client *i2c_client)
+{
+	if (unlikely((length == 0) ||
+		(length > CPC_MAX_DATA_SIZE))) {
+		dev_err(&i2c_client->dev,
+			"The requested size is invalid: %u",
+			(unsigned int) length);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+/*
+	Local data structure section
+*/
 struct cpc_i2c_host {
 	struct i2c_client *i2c_client;
 	struct regmap *regmap;
@@ -50,82 +102,173 @@ struct cpc_i2c_host {
 	struct completion complete;
 };
 
-/*
-   There will be at most one uC instance per board
- */
+/* There will be at most one uC instance per board */
 static atomic_t cpc_in_use;
 static struct cpc_i2c_host *cpc_host;
 
 /*
-   Given a buffer, construct a CPC packet. Returns the actually occupied size of
-   the buffer. Would BUG if the given buffer is not long enough
- */
-static int cpc_build_packet(struct i2c_client *client,
-				u8 buffer[], unsigned int buf_size_byte,
-				u8 cmd_id, cpc_data_len length,
-				const void *data, const void *hmac)
-{
-	unsigned int cur_data_index = CPC_DATA_INDEX;
+   Serialization and deserialization logic
 
-	unsigned int required_buf_size = CPC_HEADER_SIZE;
-	required_buf_size += data ? length : 0;
-	required_buf_size += hmac ? CPC_HMAC_SIZE : 0;
+   serialize functions assume buffer is enough to hold the entire fr, and
+   that the content of fr has been verified already
 
-	dev_dbg(&client->dev,
-		"%s cmd %08x len %u buffer size %u reqd %u\n",
-		__func__, cmd_id, length, buf_size_byte, required_buf_size);
+   deserialize function assumes that the buffer is enough to hold the fr
+*/
 
-	if (unlikely(buf_size_byte < required_buf_size)) {
-		dev_err(&client->dev,
-			"Buffer (%u) too small for data (%u)\n",
-			buf_size_byte, required_buf_size);
-		return -EINVAL;
-	}
+/* read counter */
+static int cpc_serialize_read_counter(struct tegra_cpc_frame *fr, u8 buffer[],
+	size_t buf_size) {
 
-	buffer[CPC_CMD_ID_INDEX] = cmd_id;
-	buffer[CPC_DATALEN_INDEX] = length;
+	size_t rem_buf_size = buf_size;
+	struct tegra_cpc_read_counter_data *fr_cmd = &fr->cmd_data.read_counter;
 
-	if (data) {
-		memcpy(&buffer[cur_data_index], data, length);
-		cur_data_index += length;
-	}
+	if (TEGRA_CPC_SERIALIZE_FIELD(&buffer, fr->req, &rem_buf_size) ||
+		TEGRA_CPC_SERIALIZE_FIELD(&buffer, fr_cmd->nonce,
+			&rem_buf_size) ||
+		TEGRA_CPC_SERIALIZE_FIELD(&buffer, fr_cmd->derivation_value,
+			&rem_buf_size))
+		return -ENOMEM;
 
-	if (hmac)
-		memcpy(&buffer[cur_data_index], hmac, CPC_HMAC_SIZE);
-
-	return required_buf_size;
+	return buf_size - rem_buf_size;
 }
 
+static inline size_t cpc_deserialize_size_read_counter(
+		struct tegra_cpc_frame *fr) {
+	struct tegra_cpc_read_counter_data *fr_cmd = &fr->cmd_data.read_counter;
+	return sizeof(fr_cmd->hmac) + sizeof(fr_cmd->write_counter);
+}
+
+static int cpc_deserialize_read_counter(struct tegra_cpc_frame *fr, u8 buffer[],
+		size_t rem_buf_size) {
+	struct tegra_cpc_read_counter_data *fr_cmd = &fr->cmd_data.read_counter;
+
+	if (TEGRA_CPC_DESERIALIZE_FIELD(fr_cmd->hmac, &buffer, &rem_buf_size) ||
+		TEGRA_CPC_DESERIALIZE_FIELD(fr_cmd->write_counter, &buffer,
+			&rem_buf_size))
+		return -ENOMEM;
+	return 0;
+}
+
+/* write frame */
+static int cpc_serialize_write_frame(struct tegra_cpc_frame *fr, u8 buffer[],
+		size_t buf_size) {
+
+	size_t rem_buf_size = buf_size;
+	struct tegra_cpc_write_frame_data *fr_cmd = &fr->cmd_data.write_frame;
+	size_t oneshot_copy_size = sizeof(fr_cmd->nonce) +
+		sizeof(fr_cmd->write_counter) + fr_cmd->length;
+
+	if (TEGRA_CPC_SERIALIZE_FIELD(&buffer, fr->req, &rem_buf_size) ||
+		TEGRA_CPC_SERIALIZE_FIELD(&buffer, fr_cmd->hmac,
+			&rem_buf_size) ||
+		TEGRA_CPC_SERIALIZE_FIELD(&buffer, fr_cmd->length,
+			&rem_buf_size))
+		return -ENOMEM;
+
+	rem_buf_size -= oneshot_copy_size;
+	if (rem_buf_size < 0)
+		return -ENOMEM;
+
+	memcpy(buffer, &fr_cmd->nonce, oneshot_copy_size);
+	return buf_size - rem_buf_size;
+}
+
+/* read frame */
+static int cpc_serialize_read_frame(struct tegra_cpc_frame *fr, u8 buffer[],
+		size_t buf_size) {
+	size_t rem_buf_size = buf_size;
+	struct tegra_cpc_read_frame_data *fr_cmd = &fr->cmd_data.read_frame;
+
+	if (TEGRA_CPC_SERIALIZE_FIELD(&buffer, fr->req, &rem_buf_size) ||
+		TEGRA_CPC_SERIALIZE_FIELD(&buffer, fr_cmd->nonce,
+			&rem_buf_size) ||
+		TEGRA_CPC_SERIALIZE_FIELD(&buffer, fr_cmd->length,
+			&rem_buf_size))
+		return -ENOMEM;
+
+	return buf_size - rem_buf_size;
+}
+
+static inline size_t cpc_deserialize_size_read_frame(
+		struct tegra_cpc_frame *fr) {
+	struct tegra_cpc_read_frame_data *fr_cmd = &fr->cmd_data.read_frame;
+	return sizeof(fr_cmd->hmac) + fr_cmd->length;
+}
+
+static int cpc_deserialize_read_frame(struct tegra_cpc_frame *fr, u8 buffer[],
+		size_t rem_buf_size) {
+	struct tegra_cpc_read_frame_data *fr_cmd = &fr->cmd_data.read_frame;
+
+	if (TEGRA_CPC_DESERIALIZE_FIELD(fr_cmd->hmac, &buffer, &rem_buf_size) ||
+		tegra_cpc_deserialize_field_n(fr_cmd->data, &buffer,
+			fr_cmd->length, &rem_buf_size))
+		return -ENOMEM;
+	return 0;
+}
+
+/* Get Status */
+static int cpc_serialize_get_status(struct tegra_cpc_frame *fr, u8 buffer[],
+		size_t buf_size) {
+	size_t rem_buf_size = buf_size;
+
+	/* get status can run without any data from the user space */
+	u8 req = CPC_GET_RESULT;
+	if (TEGRA_CPC_SERIALIZE_FIELD(&buffer, req, &rem_buf_size))
+		return -ENOMEM;
+	return buf_size - rem_buf_size;
+}
+
+static inline size_t cpc_deserialize_size_get_status(
+		struct tegra_cpc_frame *fr) {
+	return sizeof(fr->hmac) + sizeof(fr->result) +
+		sizeof(fr->nonce);
+}
+
+static int cpc_deserialize_get_status(struct tegra_cpc_frame *fr, u8 buffer[],
+		size_t rem_buf_size) {
+	TEGRA_CPC_DESERIALIZE_FIELD(fr->hmac, &buffer, &rem_buf_size);
+	TEGRA_CPC_DESERIALIZE_FIELD(fr->result, &buffer, &rem_buf_size);
+	TEGRA_CPC_DESERIALIZE_FIELD(fr->nonce, &buffer, &rem_buf_size);
+	return 0;
+}
+
+/*
+   I2C related section
+ */
 static int cpc_send_i2c_msg(struct i2c_client *client, struct i2c_msg *msgs,
 				unsigned int num_msg)
 {
 	int err;
 	err = i2c_transfer(client->adapter, msgs, num_msg);
 	if (unlikely(err != num_msg)) {
-		dev_err(&client->dev,
-			"%s: i2c transfer failed. Transferred %u out of %u\n",
-			__func__, err, num_msg);
+		if (err < 0)
+			dev_err(&client->dev,
+				"%s: i2c transfer failed. Error: %d\n",
+				__func__, err);
+
+		if (err >= 0)
+			dev_err(&client->dev,
+				"%s: i2c transfer failed. Transferred %d/%u\n",
+				__func__, err, num_msg);
 		return -EINVAL;
 	}
 	return 0;
 }
 
 /*
-   Issues a given read command and copies the resulting data
-   to the data_buf parameter.
+   Issues a given read command and perform deserialization of the read data
 
-   data_len indicates how many bytes of real data uC would return upon the
-   request
-
-   total_len indicates how many bytes of all data uC would return upon the
-   request. data_len and total_len would be different if security data such as
-   HMAC is expected to be returned. sizeof(data_buf) must be >= total_len
+   Assumes the caller has performed all error checks on fr
  */
-static int cpc_read_data(struct i2c_client *client, u8 cmd,
-			cpc_data_len data_len, void *data_buf,
-			unsigned int total_len)
+static int cpc_read_data(struct i2c_client *client, struct tegra_cpc_frame *fr,
+	int (*cpc_serialization_strategy)
+		(struct tegra_cpc_frame *fr, u8 buffer[], size_t buf_size),
+	int expected_resp_len,
+	int (*cpc_deserialization_strategy)
+		(struct tegra_cpc_frame *fr, u8 buffer[], size_t buf_size))
 {
 	struct i2c_msg msg[2];
+	int ret = 0;
 	int packet_len;
 
 	/*
@@ -135,25 +278,11 @@ static int cpc_read_data(struct i2c_client *client, u8 cmd,
 	   The buffer for reading the data back has to be big enough to hold
 	   the maximum value which can be expressed by the size of cpc_data_len
 	*/
-	u8 buffer_req[CPC_HEADER_SIZE];
-	u8 *buffer_resp = data_buf;
+	u8 buffer_req[sizeof(struct tegra_cpc_frame)];
+	u8 buffer_resp[sizeof(struct tegra_cpc_frame)];
 
 	if (unlikely(!client->adapter))
 		return -ENODEV;
-
-	if ( unlikely(
-		(!data_len) ||
-		(!total_len) ||
-		(data_len > CPC_MAX_DATA_SIZE) ||
-		(total_len > data_len + CPC_HMAC_SIZE))) {
-		dev_err(&client->dev,
-			"%s: invalid range. Expected: 0 < data_len %d <= %d\n",
-			__func__, data_len, CPC_MAX_DATA_SIZE);
-		dev_err(&client->dev,
-			"%s: invalid range. Expected: 0 < total_len %d <= %d\n",
-			__func__, total_len, data_len + CPC_MAX_DATA_SIZE);
-		return -EINVAL;
-	}
 
 	/*
 	   First put header of CPC read command. Start with the write mode flag,
@@ -161,50 +290,55 @@ static int cpc_read_data(struct i2c_client *client, u8 cmd,
 	   on the bus
 	 */
 
-	packet_len = cpc_build_packet(client, buffer_req,
-				sizeof(buffer_req),
-				cmd, data_len, NULL, NULL);
-	if (packet_len <= 0)
+	packet_len = cpc_serialization_strategy(fr, buffer_req,
+		sizeof(buffer_req));
+	if (unlikely(packet_len <= 0)) {
+		dev_err(&client->dev, "Serialization failure: %d\n",
+			packet_len);
 		return -EINVAL;
+	}
 
 	msg[0].addr = client->addr;
 	msg[0].len = (__u16) packet_len;
 	msg[0].flags = 0;
 	msg[0].buf = buffer_req;
-
 	/*
 	   The second i2c packet is empty, as it is only a buffer space for
 	   reading the requested data back
 	*/
 	msg[1].addr = client->addr;
-	msg[1].len = total_len;
+	msg[1].len = expected_resp_len;
 	msg[1].flags = I2C_M_RD;
 	msg[1].buf = buffer_resp;
-	return cpc_send_i2c_msg(client, msg,
+	ret = cpc_send_i2c_msg(client, msg,
 		sizeof(msg) / sizeof(struct i2c_msg));
+	if (unlikely(ret))
+		return ret;
+
+	ret = cpc_deserialization_strategy(fr, buffer_resp, expected_resp_len);
+	return ret;
 }
 
 /*
- * Executes a write command. length is the size of data only, not including hmac
+ * Executes a write command.
  */
-static int cpc_write_data(struct i2c_client *client, u8 cmd,
-				const void *data, cpc_data_len length,
-				const void *hmac)
-{
+static int cpc_write_data(struct i2c_client *client, struct tegra_cpc_frame *fr,
+	int (*cpc_serialization_strategy)
+		(struct tegra_cpc_frame *fr, u8 buffer[], size_t buf_size)) {
 	struct i2c_msg msg[1];
 	int packet_len;
-	u8 buffer_req[CPC_HEADER_SIZE + CPC_MAX_DATA_SIZE + CPC_HMAC_SIZE];
+	u8 buffer_req[sizeof(struct tegra_cpc_frame)];
 
-	if (!client->adapter)
+	if (unlikely(!client->adapter))
 		return -ENODEV;
 
-	/* first put header of CPC write command */
-	packet_len = cpc_build_packet(client, buffer_req,
-				sizeof(buffer_req), cmd,
-				length, data, hmac);
-	if (packet_len <= 0)
+	packet_len = cpc_serialization_strategy(fr, buffer_req,
+		sizeof(buffer_req));
+	if (unlikely(packet_len <= 0)) {
+		dev_err(&client->dev, "Serialization failure: %d\n",
+			packet_len);
 		return -EINVAL;
-
+	}
 	msg[0].addr = client->addr;
 	msg[0].len = (__u16) packet_len;
 	msg[0].flags = 0;
@@ -214,87 +348,104 @@ static int cpc_write_data(struct i2c_client *client, u8 cmd,
 		sizeof(msg) / sizeof(struct i2c_msg));
 }
 
-static int _cpc_do_data(struct cpc_i2c_host *cpc, struct cpc_frame_t *fr)
+/*
+	Command from user space handling section
+*/
+/* Error checks against the content of data struct must be done here */
+static int _cpc_do_data(struct cpc_i2c_host *cpc, struct tegra_cpc_frame *fr)
 {
-	int err = 0;
-	u8 buffer[CPC_MAX_DATA_SIZE + CPC_HMAC_SIZE];
-	cpc_data_len data_len = fr->len;
-	unsigned int total_len  = fr->len;
+	int err;
+	u32 req_nonce;
+	u32 resp_nonce;
 
-	if (unlikely(
-		(data_len == 0) ||
-		(data_len > CPC_MAX_DATA_SIZE) ||
-		(data_len + CPC_HMAC_SIZE > sizeof(buffer)))) {
-		dev_dbg(&cpc->i2c_client->dev,
-			"The requested size is invalid:%u", data_len);
-		return -EINVAL;
-	}
-
-	memset(buffer, 0, sizeof(buffer));
-	fr->result = CPC_RESULT_UNKNOWN_REQUEST;
 	mutex_lock(&cpc->lock);
-	switch (fr->req_or_resp) {
-	case CPC_READ_M_COUNT:
-		err = cpc_read_data(cpc->i2c_client, fr->req_or_resp, data_len,
-						buffer, total_len);
-		if (err)
-			goto fail;
+	fr->result = CPC_RESULT_UNKNOWN_REQUEST;
 
-		memcpy(&fr->write_counter, &buffer[0], CPC_COUNTER_SIZE);
+	/* Each command's input error checked here */
+	switch (fr->req) {
+	case CPC_READ_M_COUNT:
+		TEGRA_CPC_COPY_TO_VAR(req_nonce,
+			fr->cmd_data.read_counter.nonce);
+		err = cpc_read_data(cpc->i2c_client, fr,
+			cpc_serialize_read_counter,
+			cpc_deserialize_size_read_counter(fr),
+			cpc_deserialize_read_counter);
 		break;
 
 	case CPC_READ_FRAME:
-		total_len += CPC_HMAC_SIZE;
-		err = cpc_read_data(cpc->i2c_client, fr->req_or_resp, data_len,
-				buffer, total_len);
-		if (err)
+		if (tegra_cpc_verify_fr_len(fr->cmd_data.read_frame.length,
+				cpc->i2c_client)) {
+			fr->result = CPC_RESULT_DATA_LENGTH_MISMATCH;
+			err = -EINVAL;
 			goto fail;
-
-		memcpy(&fr->data, &buffer[0], data_len);
-		memcpy(&fr->hmac, &buffer[data_len], CPC_HMAC_SIZE);
+		}
+		TEGRA_CPC_COPY_TO_VAR(req_nonce, fr->cmd_data.read_frame.nonce);
+		err = cpc_read_data(cpc->i2c_client, fr,
+			cpc_serialize_read_frame,
+			cpc_deserialize_size_read_frame(fr),
+			cpc_deserialize_read_frame);
 		break;
 
 	case CPC_WRITE_FRAME:
-		init_completion(&cpc->complete);
-		err = cpc_write_data(cpc->i2c_client, fr->req_or_resp, fr->data,
-				data_len, fr->hmac);
-		if (err)
-			goto fail;
-
-		if (!wait_for_completion_timeout(&cpc->complete,
-				msecs_to_jiffies(CPC_I2C_DEADLINE_MS))) {
-			pr_err("%s timeout on write complete\n", __func__);
-			fr->result = CPC_RESULT_WRITE_FAILURE;
-			err = -ETIMEDOUT;
+		if (tegra_cpc_verify_fr_len(fr->cmd_data.write_frame.length,
+				cpc->i2c_client)) {
+			fr->result = CPC_RESULT_DATA_LENGTH_MISMATCH;
+			err = -EINVAL;
 			goto fail;
 		}
+		init_completion(&cpc->complete);
+		TEGRA_CPC_COPY_TO_VAR(req_nonce,
+			fr->cmd_data.write_frame.nonce);
+		err = cpc_write_data(cpc->i2c_client, fr,
+				cpc_serialize_write_frame);
+
+		if (!err && !wait_for_completion_timeout(&cpc->complete,
+				msecs_to_jiffies(CPC_I2C_DEADLINE_MS))) {
+			dev_err(&cpc->i2c_client->dev,
+				"%s timeout on write complete\n", __func__);
+			fr->result = CPC_RESULT_WRITE_FAILURE;
+			err = -ETIMEDOUT;
+		}
 		break;
+
 	default:
 		err = -EINVAL;
-		pr_warn("unsupported CPC command id %08x\n", fr->req_or_resp);
+		dev_err(&cpc->i2c_client->dev,
+			"unsupported CPC command id %08x\n", fr->req);
+	}
+
+	if (err)
+		goto fail;
+
+	/* get status should run only when a command was ran successfully */
+	err = cpc_read_data(cpc->i2c_client, fr,
+		cpc_serialize_get_status,
+		cpc_deserialize_size_get_status(fr),
+		cpc_deserialize_get_status);
+
+	if (unlikely(err)) {
+		dev_err(&cpc->i2c_client->dev,
+			"failed to run get status command: %d\n", err);
+		fr->result = CPC_RESULT_UNEXPECTED_CONDITION;
 		goto fail;
 	}
-	err = cpc_read_data(cpc->i2c_client, CPC_GET_RESULT,
-			sizeof(fr->result), &fr->result,
-			sizeof(fr->result));
+
+	/*
+	  The request was sent to uC, and uC responded.
+	  Make sure the response is for the request sent.
+	*/
+	TEGRA_CPC_COPY_TO_VAR(resp_nonce, fr->nonce);
+	if (unlikely(req_nonce != resp_nonce)) {
+		dev_err(&cpc->i2c_client->dev,
+			"Request nonce (%08x) mismatching response nonce (%08x)\n",
+			req_nonce, resp_nonce);
+		err = -EINVAL;
+		fr->result = CPC_RESULT_UNEXPECTED_CONDITION;
+	}
+
 fail:
 	mutex_unlock(&cpc->lock);
-
-	dev_dbg(&cpc->i2c_client->dev,
-			"%s execution result:cmd %08x len %u total_len %u\n"
-			"\tresult %08x counter %u\n", __func__, fr->req_or_resp,
-			data_len, total_len, fr->result, fr->write_counter);
-	dev_dbg(&cpc->i2c_client->dev,
-			"data %02x %02x %02x %02x\n",
-			fr->data[3], fr->data[2], fr->data[1], fr->data[0]);
 	return err;
-}
-
-static irqreturn_t cpc_irq(int irq, void *data)
-{
-	struct cpc_i2c_host *cpc = data;
-	complete(&cpc->complete);
-	return IRQ_HANDLED;
 }
 
 static int cpc_open(struct inode *inode, struct file *filp)
@@ -322,7 +473,7 @@ static long cpc_ioctl(struct file *file,
 			unsigned int cmd, unsigned long arg)
 {
 	struct cpc_i2c_host *cpc = file->private_data;
-	struct cpc_frame_t *cpc_fr = 0;
+	struct tegra_cpc_frame *cpc_fr = 0;
 	long err = 0;
 
 	if (_IOC_TYPE(cmd) != NVCPC_IOC_MAGIC) {
@@ -337,7 +488,7 @@ static long cpc_ioctl(struct file *file,
 
 	switch (cmd) {
 	case NVCPC_IOCTL_DO_IO:
-		cpc_fr = kmalloc(sizeof(struct cpc_frame_t), GFP_KERNEL);
+		cpc_fr = kmalloc(sizeof(struct tegra_cpc_frame), GFP_KERNEL);
 		if (!cpc_fr) {
 			pr_err("%s: failed to allocate memory\n", __func__);
 			err = -ENOMEM;
@@ -345,26 +496,15 @@ static long cpc_ioctl(struct file *file,
 		}
 
 		if (copy_from_user(cpc_fr, (const void __user *)arg,
-					sizeof(struct cpc_frame_t))) {
+					sizeof(struct tegra_cpc_frame))) {
 			err = -EFAULT;
-			goto fail;
-		}
-
-		if (cpc_fr->len >
-			(sizeof(cpc_fr->hmac) + sizeof(cpc_fr->data))) {
-			err = -EINVAL;
-			goto fail;
-		}
-
-		if (!cpc_fr->len) {
-			err = -EINVAL;
 			goto fail;
 		}
 
 		err = _cpc_do_data(cpc, cpc_fr);
 
 		if (copy_to_user((void __user *)arg, cpc_fr,
-					sizeof(struct cpc_frame_t))) {
+					sizeof(struct tegra_cpc_frame))) {
 			err = -EFAULT;
 			goto fail;
 		}
@@ -380,6 +520,19 @@ fail:
 	return err;
 }
 
+/*
+	IRQ handling section
+*/
+static irqreturn_t cpc_irq(int irq, void *data)
+{
+	struct cpc_i2c_host *cpc = data;
+	complete(&cpc->complete);
+	return IRQ_HANDLED;
+}
+
+/*
+	Driver setup section
+*/
 static const struct file_operations cpc_dev_fops = {
 	.owner = THIS_MODULE,
 	.open = cpc_open,
@@ -499,7 +652,7 @@ static struct i2c_driver cpc_i2c_driver = {
 
 module_i2c_driver(cpc_i2c_driver);
 
-MODULE_AUTHOR("Vinayak Pane");
+MODULE_AUTHOR("Sang-Hun Lee");
 MODULE_DESCRIPTION("Content protection misc driver");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("i2c:cpc_i2c");

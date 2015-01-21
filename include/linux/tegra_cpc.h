@@ -48,48 +48,117 @@ enum result_t {
 	CPC_RESULT_CONTROLLER_BUSY
 };
 
-/*
-   Packets to uC will have the format below
-	CMD_ID		Type of command. req_resp_t
-	DATA_LEN	indicates the length of valid data. For a read type,
-			this would be the number of bytes the host would be
-			reading from the CPC. For write, this would be the
-			number of bytes in the data field which actually
-			represent data. Does not include the number of bytes
-			occupied by HMAC, whether HMAC is present or not
-	DATA		Empty for read. Contains CPC_DATA + CPC_HMAC for write
- */
-
-#define CPC_MAX_DATA_SIZE	4
+#define CPC_MAX_DATA_SIZE	48
 #define CPC_KEY_SIZE		32
 #define CPC_HMAC_SIZE		32
-#define CPC_RESULT_SIZE		1
-#define CPC_DATALEN_SIZE	1
-#define CPC_CMDID_SIZE		1
+#define CPC_DERIVATION_SIZE	28
+#define CPC_NONCE_SIZE		4
 #define CPC_COUNTER_SIZE	4
-#define CPC_HEADER_SIZE		(CPC_DATALEN_SIZE + CPC_CMDID_SIZE)
 
 /*
- * Size of various CPC frame components in bytes
- * The header is everything up to, but not including, the data
+  CPC field description
+
+  req		is a command ID
+  result	is the status as returned by uC. If the communication to uC was
+		not succesful, this value will be set by the host
+  len		is the byte indicating how many bytes in data are valid data
+		For read, this tells the kernel what is the expected size of
+		data which will be returned by uC
+		For write, this tells the kernel how many bytes in the data
+		field are valid data.
+		The range of this is 0 < n && n <= CPC_MAX_DATA_SIZE
+  nonce		is the counter which will be used for HMAC calculation. It is
+		also used to correlate the response to the request. Host
+		uses this value to match the response and the request
+  write_counter	is the counter which indicates how many successful commits have
+		been made by uC for the life time of uC
+  data		is the field which the client of uC could use to send / receive
+		data which will be stored permanently by uC.
+  derivation_value
+		This field should be used to pass the unique data during
+		read counter, which will be used for encryption later by
+		both parties
+  HMAC		is the field which the client of uC could use to authenticate
+		packets sent to and received from uC. If this field does not
+		match uC's expectation, the packet will be rejected.
+		HMAC is sent last tegra=>uC
+		HMAC is sent first uC=>tegra
+*/
+
+/*
+  Structs used for serialization and deserialization. The implementation is
+  order sensitive. Any change to the struct would require a change to
+  oneshot serialization / deserialization
+
+  Notation: "Used for *" applies to all fields below until the end of struct
  */
-#define CPC_CMD_ID_INDEX	0
-#define CPC_DATALEN_INDEX	1
-#define CPC_DATA_INDEX		2
 
-typedef	u8		cpc_data_len;
+struct tegra_cpc_read_counter_data {
+	/* Used for request */
+	__u8 nonce[CPC_NONCE_SIZE];
 
-/* CPC frame layout */
-struct cpc_frame_t {
+	/* Used for response */
+	__u8 write_counter[CPC_COUNTER_SIZE];
+	/* Used for request */
+	__u8 derivation_value[CPC_DERIVATION_SIZE];
+	/* Used for response */
 	__u8 hmac[CPC_HMAC_SIZE];
+} __packed;
+
+struct tegra_cpc_write_frame_data {
+	/* Used for request */
+	__u8 length;
+	__u8 nonce[CPC_NONCE_SIZE];
+	__u8 write_counter[CPC_COUNTER_SIZE];
 	__u8 data[CPC_MAX_DATA_SIZE];
-	__u32 write_counter;
-	__u8 len;
-	__u8 result;
-	__u8 req_or_resp;
+	__u8 hmac[CPC_HMAC_SIZE];
+} __packed;
+
+struct tegra_cpc_read_frame_data {
+	/* Used for request */
+	__u8 length;
+	__u8 nonce[CPC_NONCE_SIZE];
+
+	/* Not used by kernel or uC as of now */
+	__u8 write_counter[CPC_COUNTER_SIZE];
+
+	/* Used for response */
+	__u8 data[CPC_MAX_DATA_SIZE];
+	__u8 hmac[CPC_HMAC_SIZE];
+} __packed;
+
+union tegra_cpc_cmd_data {
+	struct tegra_cpc_read_counter_data read_counter;
+	struct tegra_cpc_read_frame_data read_frame;
+	struct tegra_cpc_write_frame_data write_frame;
 };
 
+struct tegra_cpc_frame {
+	/* Used for request */
+	__u8 req;
+
+	/* Used for both request and response */
+	union tegra_cpc_cmd_data cmd_data;
+
+	/* Used for response of GET_STATUS */
+	__u8 hmac[CPC_HMAC_SIZE];
+	__u8 result;
+	__u8 nonce[CPC_NONCE_SIZE];
+} __packed;
+
+#define CPC_CMD_FIELD_SIZE(target_type, field) \
+	sizeof(((struct target_type *) 0)->field)
+
+#define CPC_FIELD_SIZE(field) \
+	CPC_CMD_FIELD_SIZE(struct tegra_cpc_frame, field)
+
 #define NVCPC_IOC_MAGIC 'C'
-#define NVCPC_IOCTL_DO_IO	_IOWR(NVCPC_IOC_MAGIC, 2, struct cpc_frame_t)
+
+/*
+  Returns 0 if a communication with uC was successful, regardless of operation
+  pass or fail.
+*/
+#define NVCPC_IOCTL_DO_IO	_IOWR(NVCPC_IOC_MAGIC, 2, \
+					struct tegra_cpc_frame)
 
 #endif
