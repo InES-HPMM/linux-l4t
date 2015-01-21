@@ -657,6 +657,7 @@ struct tegra_dc_out {
 	int				ddc_bus;
 	int				hotplug_gpio;
 	int				hotplug_state; /* 0 normal 1 force on */
+	int				hpd_wait_ms;  /* DP HPD wait in mSec */
 	const char			*parent_clk;
 	const char			*parent_clk_backup;
 

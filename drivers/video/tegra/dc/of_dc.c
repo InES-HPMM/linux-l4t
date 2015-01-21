@@ -345,6 +345,11 @@ static int parse_disp_default_out(struct platform_device *ndev,
 			default_out->hotplug_gpio = hotplug_gpio;
 	}
 
+	if (!of_property_read_u32(np, "nvidia,hpd-wait-ms", &temp)) {
+		default_out->hpd_wait_ms = (unsigned)temp;
+		OF_DC_LOG("%u hpd-wait-ms in mSec\n", default_out->hpd_wait_ms);
+	}
+
 	if (!of_property_read_u32(np, "nvidia,out-max-pixclk", &temp)) {
 		default_out->max_pixclock = (unsigned)temp;
 		OF_DC_LOG("%u max_pixclock in pico second unit\n",

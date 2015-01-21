@@ -1808,13 +1808,15 @@ static void tegra_dp_hpd_config(struct tegra_dc_dp_data *dp)
 static int tegra_dp_hpd_plug(struct tegra_dc_dp_data *dp)
 {
 #define TEGRA_DP_HPD_PLUG_TIMEOUT_MS	500
+	int tmo_ms = dp->dc->out->hpd_wait_ms;
 	u32 val;
 	int err = 0;
 
+	tmo_ms = tmo_ms ?: TEGRA_DP_HPD_PLUG_TIMEOUT_MS; /*default time out */
 	might_sleep();
 
 	if (!tegra_platform_is_silicon()) {
-		msleep(TEGRA_DP_HPD_PLUG_TIMEOUT_MS);
+		msleep(tmo_ms);
 		return 0;
 	}
 
@@ -1825,7 +1827,7 @@ static int tegra_dp_hpd_plug(struct tegra_dc_dp_data *dp)
 	if (likely(val & DPAUX_DP_AUXSTAT_HPD_STATUS_PLUGGED))
 		err = 0;
 	else if (!wait_for_completion_timeout(&dp->hpd_plug,
-		msecs_to_jiffies(TEGRA_DP_HPD_PLUG_TIMEOUT_MS)))
+		msecs_to_jiffies(tmo_ms)))
 		err = -ENODEV;
 
 	tegra_dp_int_dis(dp, DPAUX_INTR_EN_AUX_PLUG_EVENT);
