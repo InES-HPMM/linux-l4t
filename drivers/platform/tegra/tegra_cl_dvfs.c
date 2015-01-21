@@ -2005,11 +2005,13 @@ static int tegra_cl_dvfs_suspend_cl(struct device *dev)
 	cld->suspended_force_out = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
 	clk_unlock_restore(cld->dfll_clk, &flags);
 
+	pr_debug("%s: closed loop thermal control suspended\n", __func__);
+
 	return 0;
 }
 
 static const struct dev_pm_ops tegra_cl_dvfs_pm_ops = {
-	.suspend = tegra_cl_dvfs_suspend_cl,
+	.suspend_noirq = tegra_cl_dvfs_suspend_cl,
 };
 #endif
 
