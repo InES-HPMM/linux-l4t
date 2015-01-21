@@ -4099,7 +4099,7 @@ tegra_xhci_resume(struct platform_device *pdev)
 	mutex_lock(&tegra->sync_lock);
 
 	if (!tegra->init_done) {
-		xhci_warn(xhci, "%s: xhci probe not done\n",
+		pr_warn("%s: tegra xhci probe not done\n",
 				__func__);
 		mutex_unlock(&tegra->sync_lock);
 		return -EBUSY;
