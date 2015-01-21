@@ -1,0 +1,19 @@
+config TEGRA_NVAVP_VIRT
+	bool "Enable support for Tegra NVAVP virtual driver"
+	depends on ARCH_TEGRA && TEGRA_GRHOST && !TEGRA_NVAVP_AUDIO
+	default n
+	help
+	  Enables support for the push-buffer mechanism based driver for the Tegra
+	  multimedia framework. Exports the Tegra nvavp interface on device node
+	  /dev/tegra_avpchannel.
+
+	  If unsure, say N
+
+config TEGRA_NVAVP_ENCRYPTED_STREAMS
+        bool "Enable support for decoding AES excrypted streams in AVP"
+        depends on TEGRA_NVAVP_VIRT
+        default n
+        help
+          Enables support for decoding DRM encrypted video streams in AVP.
+
+          If unsure, say N

@@ -1,0 +1,17 @@
+Device-Tree bindings for tegra nvavp virtualization client driver
+
+Required properties:
+- compatible: value should be "nvidia,tegra124-avp-virt"
+- iommus: should contain reference to the smmu SWID of AVPC, A9AVP and VDE
+- ivc_queue: should contain reference to IVC queue number for server interaction
+
+Note: nvavp should be disabled in the DT, when the avp-virt node is used.
+Example:
+	avp-virt {
+		compatible = "nvidia,tegra124-avp-virt";
+		iommus = <&smmu TEGRA_SWGROUP_AVPC>,
+			 <&smmu TEGRA_SWGROUP_A9AVP>,
+			 <&smmu TEGRA_SWGROUP_VDE>;
+		ivc_queue = <&tegra_hv 21>;
+	};
+
