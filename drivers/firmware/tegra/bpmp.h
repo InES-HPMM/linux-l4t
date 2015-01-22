@@ -62,6 +62,9 @@ extern struct channel_data channel_area[NR_CHANNELS];
 
 #ifdef CONFIG_DEBUG_FS
 extern struct bpmp_cpuidle_state plat_cpuidle_state[];
+int bpmp_fwdebug_init(struct dentry *root);
+#else
+static inline int bpmp_fwdebug_init(struct dentry *root) { return -ENODEV; }
 #endif
 
 extern struct device *device;

@@ -468,11 +468,18 @@ static int bpmp_trace_disable_store(void *data, u64 val)
 	return bpmp_modify_trace_mask(val, 0);
 }
 
+static int bpmp_mount_show(void *data, u64 *val)
+{
+	*val = bpmp_fwdebug_init(bpmp_root);
+	return 0;
+}
+
 DEFINE_SIMPLE_ATTRIBUTE(bpmp_ping_fops, bpmp_ping_show, NULL, "%lld\n");
 DEFINE_SIMPLE_ATTRIBUTE(trace_enable_fops, bpmp_trace_enable_show,
 		bpmp_trace_enable_store, "%lld\n");
 DEFINE_SIMPLE_ATTRIBUTE(trace_disable_fops, NULL,
 		bpmp_trace_disable_store, "%lld\n");
+DEFINE_SIMPLE_ATTRIBUTE(bpmp_mount_fops, bpmp_mount_show, NULL, "%lld\n");
 
 static int bpmp_copy_trace(struct seq_file *file, dma_addr_t phys, void *virt,
 		int size)
@@ -618,6 +625,7 @@ static const struct fops_entry root_attrs[] = {
 	{ "trace", &trace_fops, S_IRUGO },
 	{ "tag", &bpmp_tag_fops, S_IRUGO },
 	{ "mrq", &bpmp_mrq_fops, S_IRUGO | S_IWUSR },
+	{ "mount", &bpmp_mount_fops, S_IRUGO },
 	{ NULL, NULL, 0 }
 };
 
