@@ -2,7 +2,7 @@
  * tegra124_virt_apbif_slave.h - Header file for
  *    tegra124_virt_apbif_slave driver
  *
- * Copyright (c) 2014 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -86,6 +86,20 @@
 /* AMX regs */
 #define TEGRA_AMX_IN_CH_CTRL		0x04
 #define TEGRA_AMX_IN_CH_ENABLE		1
+#define TEGRA_AMX_AUDIOCIF_AUDIO_BITS_SHIFT	12
+#define TEGRA_AMX_AUDIOCIF_AUDIO_BITS_MASK \
+		(7 << TEGRA_AMX_AUDIOCIF_AUDIO_BITS_SHIFT)
+#define TEGRA_ADX_AUDIOCIF_AUDIO_BITS_SHIFT	8
+#define TEGRA_ADX_AUDIOCIF_AUDIO_BITS_MASK \
+		(7 << TEGRA_ADX_AUDIOCIF_AUDIO_BITS_SHIFT)
+
+#define TEGRA_AMX_AUDIOCIF_CH0_CTRL_0	0x1c
+#define TEGRA_AMX_AUDIOCIF_CH_CTRL_0(ch) \
+	(TEGRA_AMX_AUDIOCIF_CH0_CTRL_0 + (4 * ch))
+
+#define TEGRA_ADX_AUDIOCIF_CH0_CTRL_0	0x1c
+#define TEGRA_ADX_AUDIOCIF_CH_CTRL_0(ch) \
+	(TEGRA_ADX_AUDIOCIF_CH0_CTRL_0 + (4 * ch))
 
 /* DAM regs */
 #define TEGRA_DAM_IN_CH_ENABLE		0x01
@@ -123,6 +137,8 @@ struct tegra124_virt_apbif_slave_data {
 	unsigned int amx_in_channel[MAX_APBIF_IDS];
 	unsigned int dam_id[MAX_APBIF_IDS];
 	unsigned int dam_in_channel[MAX_APBIF_IDS];
+	unsigned int adx_id[MAX_APBIF_IDS];
+	unsigned int adx_out_channel[MAX_APBIF_IDS];
 	struct tegra124_virt_audio_cif cif;
 	struct slave_remap_add phandle;
 };

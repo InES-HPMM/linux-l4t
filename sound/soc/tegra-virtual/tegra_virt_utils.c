@@ -1,7 +1,7 @@
 /*
  * tegra_virt_utils.c - Utilities for tegra124_virt_apbif_slave
  *
- * Copyright (c) 2011-2014 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2015 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -36,6 +36,11 @@ const resource_size_t apbif_phy_base[MAX_APBIF_IDS] = {
 const resource_size_t amx_phy_base[AMX_MAX_INSTANCE] = {
 	TEGRA_AMX_BASE(0),
 	TEGRA_AMX_BASE(1),
+};
+
+const resource_size_t adx_phy_base[ADX_MAX_INSTANCE] = {
+	TEGRA_ADX_BASE(0),
+	TEGRA_ADX_BASE(1),
 };
 
 const resource_size_t audio_amx_offset[AMX_TOTAL_CHANNEL] = {
@@ -100,6 +105,8 @@ int create_ioremap(struct device *dev, struct slave_remap_add *phandle)
 		sizeof(phandle->apbif_base[0])*MAX_APBIF_IDS);
 	memset(phandle->amx_base, 0,
 		sizeof(phandle->amx_base[0])*AMX_MAX_INSTANCE);
+	memset(phandle->adx_base, 0,
+		sizeof(phandle->adx_base[0])*ADX_MAX_INSTANCE);
 	memset(phandle->dam_base, 0,
 		sizeof(phandle->dam_base[0])*DAM_MAX_INSTANCE);
 	phandle->audio_base = NULL;
@@ -115,6 +122,13 @@ int create_ioremap(struct device *dev, struct slave_remap_add *phandle)
 		phandle->amx_base[i] = devm_ioremap(dev, amx_phy_base[i],
 			TEGRA_AMX_UNIT_SIZE);
 		if (phandle->amx_base[i] == NULL)
+			goto remap_fail;
+	}
+
+	for (i = 0; i < ADX_MAX_INSTANCE; i++) {
+		phandle->adx_base[i] = devm_ioremap(dev, adx_phy_base[i],
+			TEGRA_ADX_UNIT_SIZE);
+		if (phandle->adx_base[i] == NULL)
 			goto remap_fail;
 	}
 
@@ -156,6 +170,14 @@ void remove_ioremap(struct device *dev, struct slave_remap_add *phandle)
 			devm_iounmap(dev,
 				(void __iomem *)(phandle->amx_base[i]));
 			phandle->amx_base[i] = NULL;
+		}
+	}
+
+	for (i = 0; i < ADX_MAX_INSTANCE; i++) {
+		if (phandle->adx_base[i] != NULL) {
+			devm_iounmap(dev,
+				(void __iomem *)(phandle->adx_base[i]));
+			phandle->adx_base[i] = NULL;
 		}
 	}
 
@@ -389,5 +411,63 @@ void tegra_find_dam_amx_info(unsigned long arg)
 
 	data->amx_id[data->apbif_id] = amx_idx;
 	data->amx_in_channel[data->apbif_id] = ch_idx;
+	return;
+}
+
+void tegra_find_adx_info(unsigned long arg)
+{
+	int adx_idx, ch_idx;
+	unsigned int value;
+	unsigned int reg;
+	struct tegra_virt_utils_data *data =
+			(struct tegra_virt_utils_data *) arg;
+	struct slave_remap_add *phandle = &(data->phandle);
+
+	adx_idx = ADX_MAX_INSTANCE;
+	ch_idx = ADX_MAX_CHANNEL;
+	reg = TEGRA_AUDIO_APBIF_OFFSET(data->apbif_id);
+	value = reg_read(phandle->audio_base, reg);
+	if (!value) {
+		reg += AUDIO_PART_1_OFFSET;
+		value = reg_read(phandle->audio_base, reg);
+	}
+	switch (value) {
+	case ADX0_TX0:
+		adx_idx = 0;
+		ch_idx = 0;
+		break;
+	case ADX0_TX1:
+		adx_idx = 0;
+		ch_idx = 1;
+		break;
+	case ADX0_TX2:
+		adx_idx = 0;
+		ch_idx = 2;
+		break;
+	case ADX0_TX3:
+		adx_idx = 0;
+		ch_idx = 3;
+		break;
+	case ADX1_TX0:
+		adx_idx = 1;
+		ch_idx = 0;
+		break;
+	case ADX1_TX1:
+		adx_idx = 1;
+		ch_idx = 1;
+		break;
+	case ADX1_TX2:
+		adx_idx = 1;
+		ch_idx = 2;
+		break;
+	case ADX1_TX3:
+		adx_idx = 1;
+		ch_idx = 3;
+		break;
+	default:
+		break;
+	}
+	data->adx_id[data->apbif_id] = adx_idx;
+	data->adx_out_channel[data->apbif_id] = ch_idx;
 	return;
 }

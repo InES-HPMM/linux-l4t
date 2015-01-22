@@ -1,7 +1,7 @@
 /*
  * tegra_virt_utils.h - Utilities for tegra124_virt_apbif_slave
  *
- * Copyright (c) 2011-2014 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2015 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -22,10 +22,14 @@
 #define TEGRA_APBIF4_BASE		0x70300200
 #define TEGRA_DAM_BASE			0x70302000
 #define TEGRA_AMX0_BASE			0x70303000
+#define TEGRA_ADX0_BASE			0x70303800
 #define TEGRA_AUDIO_BASE		0x70300800
 #define TEGRA_AUDIO_AMX0_OFFSET		0x5c
 #define TEGRA_AUDIO_AMX1_OFFSET		0x78
-#define TEGRA_AUDIO_AMX_UNIT_SIZE		0x004
+#define TEGRA_AUDIO_AMX_UNIT_SIZE	0x004
+#define TEGRA_AUDIO_APBIF0_OFFSET	0x00
+#define TEGRA_AUDIO_APBIF4_OFFSET	0x44
+#define TEGRA_AUDIO_APBIF_UNIT_SIZE	0x004
 #define TEGRA_AUDIO_SIZE				0x200
 
 #define TEGRA_AUDIO_DAM_OFFSET0     0x24
@@ -34,6 +38,7 @@
 /* define the unit sizes */
 #define TEGRA_ABPIF_UNIT_SIZE	0x20
 #define TEGRA_AMX_UNIT_SIZE		0x100
+#define TEGRA_ADX_UNIT_SIZE		0x100
 #define TEGRA_DAM_UNIT_SIZE		0x200
 
 #define TEGRA_DAM_CH0_CTRL_0		0x10
@@ -52,6 +57,8 @@
 	(resource_size_t)(TEGRA_DAM_BASE + id * TEGRA_DAM_UNIT_SIZE)
 #define TEGRA_AMX_BASE(id)		\
 	(resource_size_t)(TEGRA_AMX0_BASE + id * TEGRA_AMX_UNIT_SIZE)
+#define TEGRA_ADX_BASE(id)		\
+	(resource_size_t)(TEGRA_ADX0_BASE + id * TEGRA_ADX_UNIT_SIZE)
 #define TEGRA_AUDIO_AMX_OFFSET(id)	\
 	(resource_size_t)((id < 4) ? \
 		(TEGRA_AUDIO_AMX0_OFFSET + id * TEGRA_AUDIO_AMX_UNIT_SIZE) : \
@@ -60,8 +67,15 @@
 #define TEGRA_AUDIO_DAM_OFFSET(id) \
 	(resource_size_t)((TEGRA_AUDIO_DAM_OFFSET0 + \
 		id * TEGRA_AUDIO_DAM_UNIT_SIZE))
+#define TEGRA_AUDIO_APBIF_OFFSET(id)	\
+	(resource_size_t)((id < 4) ? \
+		(TEGRA_AUDIO_APBIF0_OFFSET + \
+			id * TEGRA_AUDIO_APBIF_UNIT_SIZE) : \
+			(TEGRA_AUDIO_APBIF4_OFFSET + \
+			 (id - 4) * TEGRA_AUDIO_APBIF_UNIT_SIZE))
 
 #define AMX_MAX_CHANNEL		4
+#define ADX_MAX_CHANNEL		4
 #define DAM_MAX_CHANNEL		2
 #define AMX_TOTAL_CHANNEL	8
 #define DAM_MAX_INSTANCE	3
@@ -208,6 +222,13 @@ enum {
 	AMX_MAX_INSTANCE
 };
 
+/* ADX ids */
+enum {
+	ADX_INSTANCE_0 = 0,
+	ADX_INSTANCE_1,
+	ADX_MAX_INSTANCE
+};
+
 /* APBIF ids */
 enum {
 	APBIF_ID_0 = 0,
@@ -242,6 +263,7 @@ struct tegra_virt_cif {
 struct slave_remap_add {
 	void *apbif_base[MAX_APBIF_IDS];
 	void *amx_base[AMX_MAX_INSTANCE];
+	void *adx_base[ADX_MAX_INSTANCE];
 	void *dam_base[DAM_MAX_INSTANCE];
 	void *audio_base;
 };
@@ -252,6 +274,8 @@ struct tegra_virt_utils_data {
 	unsigned int amx_in_channel[MAX_APBIF_IDS];
 	unsigned int dam_id[MAX_APBIF_IDS];
 	unsigned int dam_in_channel[MAX_APBIF_IDS];
+	unsigned int adx_id[MAX_APBIF_IDS];
+	unsigned int adx_out_channel[MAX_APBIF_IDS];
 	struct tegra_virt_cif cif;
 	struct slave_remap_add phandle;
 };
@@ -261,6 +285,7 @@ void reg_write(void *base_address,
 unsigned int reg_read(void *base_address,
 				unsigned int reg);
 void tegra_find_dam_amx_info(unsigned long data);
+void tegra_find_adx_info(unsigned long data);
 int create_ioremap(struct device *dev, struct slave_remap_add *phandle);
 void remove_ioremap(struct device *dev, struct slave_remap_add *phandle);
 

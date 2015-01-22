@@ -1,7 +1,7 @@
 /*
  * tegra124_virt_apbif_slave.c - Tegra APBIF slave driver
  *
- * Copyright (c) 2011-2014 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2015 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -43,12 +43,15 @@ static int tegra124_virt_apbif_hw_params(struct snd_pcm_substream *substream,
 	struct tegra124_virt_apbif_slave_data *data = &apbif_slave->slave_data;
 	struct tegra124_virt_audio_cif *cif_conf = &data->cif;
 	struct slave_remap_add *phandle = &(data->phandle);
-	int ret = 0, value;
+	int ret = 0, value, amx_id, amx_channel, adx_id, adx_channel;
 
 	data->apbif_id = dai->id;
 
 	/* find amx channel for latest amixer settings */
 	tegra_find_dam_amx_info((unsigned long)data);
+
+	/* find adx channel for latest amixer settings */
+	tegra_find_adx_info((unsigned long)data);
 
 	/* initialize the audio cif */
 	cif_conf->audio_channels = params_channels(params);
@@ -75,6 +78,31 @@ static int tegra124_virt_apbif_hw_params(struct snd_pcm_substream *substream,
 		dev_err(dev, "Wrong format!\n");
 		return -EINVAL;
 	}
+
+	amx_id = data->amx_id[dai->id];
+	amx_channel = data->amx_in_channel[dai->id];
+	adx_id = data->adx_id[dai->id];
+	adx_channel = data->adx_out_channel[dai->id];
+	/* If APBIF is connected to AMX set the audio_bits */
+	/* in accordance with that set in AMX CIF */
+	if ((!substream->stream) &&
+		(amx_id < AMX_MAX_INSTANCE) &&
+		(amx_channel < AMX_MAX_CHANNEL)) {
+		value = reg_read(phandle->amx_base[amx_id],
+				TEGRA_AMX_AUDIOCIF_CH_CTRL_0(amx_channel));
+		cif_conf->audio_bits =
+			((value & TEGRA_AMX_AUDIOCIF_AUDIO_BITS_MASK) >>
+					TEGRA_AMX_AUDIOCIF_AUDIO_BITS_SHIFT);
+	} else if ((substream->stream) &&
+			(adx_id < ADX_MAX_INSTANCE) &&
+			(adx_channel < ADX_MAX_CHANNEL)) {
+		value = reg_read(phandle->adx_base[adx_id],
+				TEGRA_ADX_AUDIOCIF_CH_CTRL_0(adx_channel));
+		cif_conf->audio_bits =
+			((value & TEGRA_ADX_AUDIOCIF_AUDIO_BITS_MASK) >>
+					TEGRA_ADX_AUDIOCIF_AUDIO_BITS_SHIFT);
+	}
+
 	cif_conf->direction = substream->stream;
 	cif_conf->threshold = 0;
 	cif_conf->expand = 0;
