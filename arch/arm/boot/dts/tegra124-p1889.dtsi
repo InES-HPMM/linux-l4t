@@ -1,7 +1,7 @@
 /*
  * arch/arm/boot/dts/tegra124-p1889.dts
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -88,6 +88,10 @@
 	};
 
 	i2c@7000c000 {
+		saf775x@1c {
+			compatible = "saf775x";
+			reg = <0x1c>;
+		};
 		touch-controller@4b {
 			compatible = "atmel,maxtouch";
 			reg = <0x4b>;
