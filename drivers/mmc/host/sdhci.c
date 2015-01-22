@@ -1102,32 +1102,26 @@ static void get_kbps_from_size_n_usec_32bit(
 }
 
 static void get_kbps_from_size_n_usec_64bit(
-		u64 size_in_bits_x1000, u32 time_usecs,
+		u64 size_in_bits_x1000, u64 time_usecs,
 		u32 *speed_in_kbps)
 {
-	u32 speed_32bit;
-	u64 cp_size_bits_x1000;
-	u32 cp_usecs;
 	int i;
 
-	cp_size_bits_x1000 = size_in_bits_x1000;
-	cp_usecs = time_usecs;
 	/* convert 64 bit into 32 bits */
 	i = 0;
-	while (!(IS_32_BIT(cp_size_bits_x1000) && IS_32_BIT(cp_usecs))) {
+	while (!(IS_32_BIT(size_in_bits_x1000) && IS_32_BIT(time_usecs))) {
 		/* shift right both the operands bytes and time */
-		cp_size_bits_x1000 >>= 1;
-		cp_usecs >>= 1;
+		size_in_bits_x1000 >>= 1;
+		time_usecs >>= 1;
 		i++;
 	}
 	if (i)
-		pr_debug("%s right shifted operands by %d, size=%lld, time=%d usec\n",
+		pr_debug("%s right shifted operands by %d, size=%lld, time=%lld usec\n",
 			__func__, i, size_in_bits_x1000, time_usecs);
 	/* check for 32 bit operations first */
 	get_kbps_from_size_n_usec_32bit(
-		(u32)cp_size_bits_x1000, cp_usecs,
-		&speed_32bit);
-	*speed_in_kbps = speed_32bit;
+		(u32)size_in_bits_x1000, (u32)time_usecs,
+		speed_in_kbps);
 	return;
 }
 
@@ -3921,6 +3915,9 @@ static int show_sdhci_perf_stats(struct seq_file *s, void *data)
 	u32 last_perf_in_class;
 	struct data_stat_entry *stat = NULL;
 	char buf[250];
+	u64 my_total_bytes;
+	u64 my_total_usecs;
+	unsigned int overall_avg_perf2;
 
 	seq_printf(s, "SDHCI(%s): perf statistics stat_size=%d\n",
 		mmc_hostname(host->mmc),
@@ -3936,6 +3933,8 @@ static int show_sdhci_perf_stats(struct seq_file *s, void *data)
 		seq_puts(s,
 		"         Size        (R/W)        transfer         Bytes     Transfers       Time(usec)     Bytes           Duration           Perf            Perf                Perf       Perf\n");
 	}
+	my_total_bytes = 0;
+	my_total_usecs = 0;
 	for (i = 0; i < host->sdhci_data_stat.stat_size; i++) {
 		if (!stat)
 			stat = host->sdhci_data_stat.head;
@@ -3953,8 +3952,10 @@ static int show_sdhci_perf_stats(struct seq_file *s, void *data)
 			(((u32)stat->current_transferred_bytes << 3) * 1000),
 			stat->duration_usecs,
 			&last_perf_in_class);
+		my_total_bytes += stat->total_bytes;
+		my_total_usecs += stat->total_usecs;
 		snprintf(buf, 250,
-			"%2d    %4d           %c       %8d    %16lld    %8d        %8d    %8d            %8d           %8d         %8d         %8d    %8d\n",
+			"%2d    %4d           %c       %8d    %16lld    %8d        %16lld    %8d            %8d           %8d         %8d         %8d    %8d\n",
 			(i + 1),
 			stat->stat_blk_size,
 			stat->is_read ? 'R' : 'W',
@@ -3971,6 +3972,14 @@ static int show_sdhci_perf_stats(struct seq_file *s, void *data)
 			);
 		seq_puts(s, buf);
 	}
+	get_kbps_from_size_n_usec_64bit(
+		((my_total_bytes << 3) * 1000),
+		my_total_usecs, &overall_avg_perf2);
+	snprintf(buf, 250,
+		"Total_bytes=%lldB, time=%lldusecs, overall kbps=%d\n",
+		my_total_bytes, my_total_usecs,
+		overall_avg_perf2);
+	seq_puts(s, buf);
 
 	return 0;
 }

@@ -25,7 +25,7 @@ struct data_stat_entry {
 	u32 min_kbps;
 	ktime_t start_ktime;
 	u32 duration_usecs;
-	u32 total_usecs;
+	u64 total_usecs;
 	u32 total_transfers;
 	u32 current_transferred_bytes;
 	u64 total_bytes;
