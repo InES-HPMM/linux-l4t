@@ -197,6 +197,26 @@
 		};
 	};
 
+	adsp_audio {
+		compr-ops = <1>;
+		num-plugin = <3>;
+		plugin-info-1 {
+			plugin-name = "mp3-dec1";
+			firmware-name = "nvmp3dec.elf";
+			widget-name = "MP3-DEC1";
+		};
+		plugin-info-2 {
+			plugin-name = "mp3-dec2";
+			firmware-name = "nvmp3dec.elf";
+			widget-name = "MP3-DEC2";
+		};
+		plugin-info-3 {
+			plugin-name = "spkprot";
+			firmware-name = "nvspkprot.elf";
+			widget-name = "SPKPROT-SW";
+		};
+	};
+
 	extcon {
 		extcon@0 {
 			status = "disabled";
