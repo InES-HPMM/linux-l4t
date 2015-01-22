@@ -1889,11 +1889,9 @@ static int tegra_ahci_controller_suspend(struct platform_device *pdev)
 {
 	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	struct tegra_ahci_host_priv *tegra_hpriv;
-	unsigned long flags;
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
 
-	spin_lock_irqsave(&host->lock, flags);
 	if (tegra_hpriv->pg_state == SATA_OFF)
 		dev_dbg(host->dev, "suspend: SATA already power gated\n");
 	else {
@@ -1902,16 +1900,13 @@ static int tegra_ahci_controller_suspend(struct platform_device *pdev)
 		dev_dbg(host->dev, "suspend: power gating SATA...\n");
 		pg_ok = tegra_ahci_power_gate(host);
 		if (pg_ok) {
-			tegra_hpriv->pg_state = SATA_OFF;
 			dev_dbg(host->dev, "suspend: SATA is power gated\n");
 		} else {
 			tegra_ahci_abort_power_gate(host);
-			spin_unlock_irqrestore(&host->lock, flags);
 			return -EBUSY;
 		}
 	}
 
-	spin_unlock_irqrestore(&host->lock, flags);
 
 	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
 		u32 val;
@@ -1929,7 +1924,6 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev)
 {
 	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	struct tegra_ahci_host_priv *tegra_hpriv;
-	unsigned long flags;
 	int err;
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
@@ -1956,15 +1950,12 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev)
 		xusb_writel(val, XUSB_PADCTL_ELPG_PROGRAM_0_0);
 	}
 
-	spin_lock_irqsave(&host->lock, flags);
 	if (tegra_hpriv->pg_state == SATA_ON) {
 		dev_dbg(host->dev, "resume: SATA already powered on\n");
 	} else {
 		dev_dbg(host->dev, "resume: powering on SATA...\n");
 		tegra_ahci_power_un_gate(host);
-		tegra_hpriv->pg_state = SATA_ON;
 	}
-	spin_unlock_irqrestore(&host->lock, flags);
 	tegra_first_level_clk_gate();
 
 	return 0;
