@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -178,8 +178,7 @@
 						((page_to_phys(page) >> SMMU_PDIR_SHIFT) | (attr))
 #define SMMU_MK_PDE(page, attr)			\
 						(u32)((page_to_phys(page) >> SMMU_PDE_SHIFT) | (attr))
-#define SMMU_EX_PTBL_PAGE(pde)			\
-						pfn_to_page((u32)(pde) & SMMU_PFN_MASK)
+#define SMMU_EX_PTBL_PAGE(pde)			phys_to_page((phys_addr_t)(pde & SMMU_PFN_MASK) << SMMU_PDE_SHIFT)
 #define SMMU_PFN_TO_PTE(pfn, attr)		(u32)((pfn) | (attr))
 
 #define SMMU_ASID_ENABLE(asid, idx)		(((asid) << (idx * 8)) | (1 << 31))
