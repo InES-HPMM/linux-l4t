@@ -810,4 +810,7 @@ config AID_FUSE
 	  When enabled, allows sysfs reads of the AID fuse, which contains
 	  the chip family ID and a chip-unique Tegra ID. Supported on t132.
 
+config BOARD_HAS_PWR_INT_WAKE_SOURCE
+	bool "Enable PMC PWR INT wake source(WAKE18)"
+	default n
 endif
