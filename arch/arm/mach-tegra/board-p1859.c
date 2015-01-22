@@ -273,8 +273,10 @@ static void __init tegra_p1859_late_init(void)
 	isomgr_init();
 	p1859_panel_init();
 
+#ifdef CONFIG_BOARD_HAS_PWR_INT_WAKE_SOURCE
 	/* Enable PMC wake source PWR_INT_N (Jetson TK1 Pro, Switch SW2) */
 	tegra_pm_irq_set_wake(EXTERNAL_PMU_INT_N_WAKE, true);
+#endif
 }
 
 static void __init tegra_p1859_dt_init(void)
