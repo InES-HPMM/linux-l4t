@@ -3,7 +3,7 @@
  *
  * arch/arm64/boot/dts/tegra210-ers-e2220-1100-a00-00.dts
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@
 #include "tegra210-platforms/tegra210-ers-pinmux-e2220-1180-a00.dtsi"
 #include "tegra210-platforms/tegra210-comms.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
+#include "tegra210-platforms/tegra210-audio.dtsi"
 #include "panel-j-1440-810-5-8.dtsi"
 #include "panel-a-wuxga-8-0.dtsi"
 #include "panel-s-wqxga-10-1.dtsi"

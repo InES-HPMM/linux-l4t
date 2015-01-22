@@ -33,6 +33,7 @@
 #include "tegra210-platforms/tegra210-ers-pinmux-e2220-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-comms.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
+#include "tegra210-platforms/tegra210-audio.dtsi"
 #include "panel-j-1440-810-5-8.dtsi"
 #include "panel-a-wuxga-8-0.dtsi"
 #include "panel-s-wqxga-10-1.dtsi"
