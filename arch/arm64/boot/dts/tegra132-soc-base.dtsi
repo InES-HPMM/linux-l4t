@@ -17,6 +17,7 @@
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/memory/tegra-swgroup.h>
+#include "tegra132-platforms/tegra132-prods.dtsi"
 
 #include "denver.dtsi"
 
