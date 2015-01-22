@@ -385,7 +385,6 @@ struct sdhci_ops {
 	int	(*get_drive_strength)(struct sdhci_host *host,
 		unsigned int max_dtr, int host_drv, int card_drv);
 	void	(*post_init)(struct sdhci_host *host);
-	void	(*en_strobe)(struct sdhci_host *host);
 	void	(*dump_host_cust_regs)(struct sdhci_host *host);
 	int	(*get_max_tuning_loop_counter)(struct sdhci_host *sdhci);
 	void	(*config_tap_delay)(struct sdhci_host *host, u8 option);

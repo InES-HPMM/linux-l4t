@@ -1839,17 +1839,6 @@ static int sdhci_set_power(struct sdhci_host *host, unsigned short power)
 	return power;
 }
 
-static void sdhci_en_strobe(struct mmc_host *mmc)
-{
-	struct sdhci_host *host;
-
-	host = mmc_priv(mmc);
-
-	sdhci_runtime_pm_get(host);
-	if (host->ops->en_strobe)
-		host->ops->en_strobe(host);
-	sdhci_runtime_pm_put(host);
-}
 /* Execute DLL calibration once for MMC device if it is
  * enumerated in HS400 mode at 200MHz clock freq before
  * starting any data transfer.
@@ -2932,7 +2921,6 @@ static const struct mmc_host_ops sdhci_ops = {
 #endif
 	.select_drive_strength		= sdhci_select_drive_strength,
 	.post_init	= sdhci_post_init,
-	.en_strobe	= sdhci_en_strobe,
 	.init_card	= sdhci_init_card,
 };
 

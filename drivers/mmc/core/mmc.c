@@ -953,14 +953,36 @@ static int mmc_select_hs400(struct mmc_card *card)
 
 	host = card->host;
 
-	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-				 EXT_CSD_BUS_WIDTH,
-				 EXT_CSD_DDR_BUS_WIDTH_8,
-				 card->ext_csd.generic_cmd6_time);
-	if (err) {
-		dev_err(mmc_dev(host),
-			"switch to DDR 8bit mode failed%d\n", err);
-		return err;
+	/*
+	 * If device supports enhanced strobe mode also then set both
+	 * DDR 8bit and enhanced strobe bit together using single
+	 * switch (CMD6) command.
+	 */
+	if (card->ext_csd.strobe_support &&
+			(host->caps2 & MMC_CAP2_EN_STROBE)) {
+		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+				EXT_CSD_BUS_WIDTH,
+				EXT_CSD_DDR_BUS_WIDTH_8 | EXT_CSD_STROBE_MODE,
+				card->ext_csd.generic_cmd6_time);
+		if (!err) {
+			pr_info("%s: switch to strobe mode is successful\n",
+					mmc_hostname(card->host));
+		} else {
+			dev_err(mmc_dev(host),
+				"switch to DDR 8bit & strobe mode failed: %d\n",
+				err);
+			return err;
+		}
+	} else {
+		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+				EXT_CSD_BUS_WIDTH,
+				EXT_CSD_DDR_BUS_WIDTH_8,
+				card->ext_csd.generic_cmd6_time);
+		if (err) {
+			dev_err(mmc_dev(host),
+				"switch to DDR 8bit mode failed: %d\n", err);
+			return err;
+		}
 	}
 
 	/* switch to HS400 mode */
@@ -1309,25 +1331,6 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 
 		pr_info("%s: switch to HS400 mode is successful\n",
 				mmc_hostname(card->host));
-
-		if (card->ext_csd.strobe_support &&
-			(host->caps2 & MMC_CAP2_EN_STROBE)) {
-			err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-				EXT_CSD_BUS_WIDTH, EXT_CSD_STROBE_MODE,
-				card->ext_csd.generic_cmd6_time);
-			if (err) {
-				dev_err(mmc_dev(host), "switch to enhanced strobe mode is failed%d\n",
-						err);
-			} else {
-				pr_info("%s: switch to enhanced strobe mode is successful\n",
-						mmc_hostname(card->host));
-				if (card->host->ops->en_strobe) {
-					mmc_host_clk_hold(card->host);
-					card->host->ops->en_strobe(card->host);
-					mmc_host_clk_release(card->host);
-				}
-			}
-		}
 
 		mmc_card_set_hs400(card);
 		mmc_card_clr_highspeed(card);
