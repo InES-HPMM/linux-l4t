@@ -3,7 +3,7 @@
  *
  * NVIDIA Tegra specific power events.
  *
- * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 
 #include <linux/ktime.h>
 #include <linux/tracepoint.h>
+#include <linux/sched.h>
 
 #ifndef _NV_PWR_EVENT_AVOID_DOUBLE_DEFINING
 #define _NV_PWR_EVENT_AVOID_DOUBLE_DEFINING
