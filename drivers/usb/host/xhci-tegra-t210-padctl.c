@@ -2,7 +2,7 @@
  * xhci-tegra-t210-padctl.c - Nvidia xHCI host padctl driver
 
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,7 +18,6 @@
  */
 
 #include <linux/platform_device.h>
-#include <linux/tegra_prod.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 #include "xhci-tegra.h"
 #include "xhci-tegra-t210-padreg.h"
@@ -77,28 +76,14 @@
 #define PADCTL_USB2_BATTERY_CHRG_OTGPAD_BASE 0x84
 #define VREG_FIX18_OFFSET 0x6
 
-#define XUSB_PROD_PREFIX_UTMI	"prod_c_utmi"
-#define XUSB_PROD_PREFIX_HSIC	"prod_c_hsic"
-#define XUSB_PROD_PREFIX_SS	"prod_c_ss"
-
 void t210_program_utmi_pad(struct tegra_xhci_hcd *tegra, u8 port)
 {
-	char prod_name[15];
-
-	sprintf(prod_name, XUSB_PROD_PREFIX_UTMI "%d", port);
-	tegra_prod_set_by_name(&tegra->base_list[0], prod_name,
-				tegra->prod_list);
 	xusb_utmi_pad_init(port, USB2_PORT_CAP_HOST(port)
 		, tegra->bdata->uses_external_pmic);
 }
 
 void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port)
 {
-	char prod_name[15];
-
-	sprintf(prod_name, XUSB_PROD_PREFIX_SS "%d", port);
-	tegra_prod_set_by_name(&tegra->base_list[0], prod_name,
-					tegra->prod_list);
 	xusb_ss_pad_init(port, GET_SS_PORTMAP(tegra->bdata->ss_portmap, port)
 			, XUSB_HOST_MODE);
 }
@@ -107,7 +92,6 @@ int t210_hsic_pad_enable(struct tegra_xhci_hcd *tegra, u8 pad)
 {
 	struct device *dev = &tegra->pdev->dev;
 	u32 mask, val;
-	char prod_name[15];
 
 	if (pad >= 2) {
 		dev_err(dev, "%s invalid HSIC pad number %d\n", __func__, pad);
@@ -115,10 +99,6 @@ int t210_hsic_pad_enable(struct tegra_xhci_hcd *tegra, u8 pad)
 	}
 
 	dev_dbg(dev, "%s pad %u\n", __func__, pad);
-
-	sprintf(prod_name, XUSB_PROD_PREFIX_HSIC "%d", pad);
-	tegra_prod_set_by_name(&tegra->base_list[0], prod_name,
-				tegra->prod_list);
 
 	/* keep HSIC in RESET */
 	mask = RPD_DATA | RPD_STROBE | RPU_DATA | RPU_STROBE;
