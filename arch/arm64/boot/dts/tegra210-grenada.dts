@@ -1112,14 +1112,14 @@
 	};
 
 	pcie-controller {
-		status = "okay";
+		status = "disabled";
 
 		pci@1,0 {
-			status = "okay";
+			status = "disabled";
 		};
 
 		pci@2,0 {
-			status = "okay";
+			status = "disabled";
 		};
 	};
 

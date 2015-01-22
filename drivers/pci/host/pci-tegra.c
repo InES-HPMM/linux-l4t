@@ -3946,15 +3946,11 @@ static struct platform_driver __refdata tegra_pcie_driver = {
 
 static int __init tegra_pcie_init_driver(void)
 {
-	if (tegra_platform_is_linsim() || tegra_platform_is_qt())
-		return 0;
 	return platform_driver_register(&tegra_pcie_driver);
 }
 
 static void __exit_refok tegra_pcie_exit_driver(void)
 {
-	if (tegra_platform_is_linsim() || tegra_platform_is_qt())
-		return;
 	platform_driver_unregister(&tegra_pcie_driver);
 }
 
