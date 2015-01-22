@@ -85,10 +85,13 @@ static int gamepad_reset_remove(struct platform_device *pdev)
 	return 0;
 }
 
-int gamepad_reset_gpio = -1;
+static int gamepad_reset_gpio = -1;
 void gamepad_reset_war(void)
 {
 	int ret;
+
+	if (gamepad_reset_gpio < 0)
+		return;
 
 	ret = gpio_request(gamepad_reset_gpio, "GAMEPAD_RST");
 	if (ret < 0) {
