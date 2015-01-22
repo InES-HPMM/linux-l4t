@@ -3253,6 +3253,10 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	if (!tegra_ahci_get_port_status()) {
 		dev_dbg(dev, "Drive not present\n");
 		tegra_ahci_controller_suspend(pdev);
+		if (tegra_hpriv && tegra_hpriv->prod_list) {
+			tegra_prod_release(&tegra_hpriv->prod_list);
+			tegra_hpriv->prod_list = NULL;
+		}
 		return -ENODEV;
 	}
 
