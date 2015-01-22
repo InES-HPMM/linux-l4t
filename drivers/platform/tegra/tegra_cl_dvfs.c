@@ -1831,8 +1831,20 @@ void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld)
 	cld->last_req = req;
 	if (mode != TEGRA_CL_DVFS_DISABLED) {
 		set_mode(cld, TEGRA_CL_DVFS_OPEN_LOOP);
-		WARN(mode > TEGRA_CL_DVFS_OPEN_LOOP,
-		     "DFLL was left locked in suspend\n");
+		if (WARN(mode > TEGRA_CL_DVFS_OPEN_LOOP,
+			 "DFLL was left locked in suspend\n"))
+			return;
+	}
+
+	/* Re-enable bypass output if it was forced before suspend */
+	if ((cld->p_data->u.pmu_pwm.dfll_bypass_dev) &&
+	    (cld->suspended_force_out & CL_DVFS_OUTPUT_FORCE_ENABLE)) {
+		if (!cld->safe_dvfs->dfll_data.is_bypass_down ||
+		    !cld->safe_dvfs->dfll_data.is_bypass_down()) {
+			cl_dvfs_wmb(cld);
+			output_enable(cld);
+			udelay(CL_DVFS_OUTPUT_RAMP_DELAY);
+		}
 	}
 }
 
