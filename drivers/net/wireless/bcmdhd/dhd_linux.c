@@ -240,6 +240,7 @@ extern bool dhd_wlfc_skip_fc(void);
 extern void dhd_wlfc_plat_init(void *dhd);
 extern void dhd_wlfc_plat_deinit(void *dhd);
 #endif /* PROP_TXSTATUS */
+extern int dhd_slpauto_config(dhd_pub_t *dhd, s32 val);
 
 #if LINUX_VERSION_CODE == KERNEL_VERSION(2, 6, 15)
 const char *
@@ -8692,3 +8693,22 @@ int dhd_l2_filter_block_ping(dhd_pub_t *pub, void *pktbuf, int ifidx)
 	return BCME_ERROR;
 }
 #endif /* DHD_L2_FILTER */
+
+int
+dhd_set_slpauto_mode(struct net_device *dev, s32 val)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+	int ret;
+
+	if (!dhd)
+		return -1;
+
+	DHD_ERROR(("Setting dhd auto sleep(dhd_slpauto) to %s\n",
+			val ? "enable" : "disable"));
+	dhd_os_sdlock(&dhd->pub);
+	val = htod32(val);
+	ret = dhd_slpauto_config(&dhd->pub, val);
+	dhd_os_sdunlock(&dhd->pub);
+
+	return ret;
+}

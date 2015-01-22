@@ -127,6 +127,7 @@
 
 #define	CMD_HAPD_MAC_FILTER	"HAPD_MAC_FILTER"
 
+#define	CMD_AUTOSLEEP		"AUTOSLEEP"
 
 
 #define CMD_ROAM_OFFLOAD			"SETROAMOFFLOAD"
@@ -207,6 +208,8 @@ int wl_cfg80211_get_p2p_noa(struct net_device *net, char* buf, int len)
 int wl_cfg80211_set_p2p_ps(struct net_device *net, char* buf, int len)
 { return 0; }
 #endif /* WK_CFG80211 */
+
+extern int dhd_set_slpauto_mode(struct net_device *dev, s32 val);
 
 
 #ifdef ENABLE_4335BT_WAR
@@ -848,6 +851,21 @@ int wl_android_set_roam_mode(struct net_device *dev, char *command, int total_le
 		DHD_ERROR(("%s: succeeded to set roaming Mode %d, error = %d\n",
 		__FUNCTION__, mode, error));
 	return 0;
+}
+
+int wl_android_set_slpauto(struct net_device *dev, char *command, int total_len)
+{
+	int error = 0;
+	char slpauto_enable = 0;
+
+	slpauto_enable = command[strlen(CMD_AUTOSLEEP) + 1] - '0';
+	error = dhd_set_slpauto_mode(dev, slpauto_enable);
+	if (error) {
+		DHD_ERROR(("Failed to %s auto sleep, error = %d\n",
+			slpauto_enable ? "enable" : "disable", error));
+	}
+
+	return error;
 }
 
 int wl_android_set_ibss_beacon_ouidata(struct net_device *dev, char *command, int total_len)
@@ -1751,6 +1769,10 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		bytes_written = wl_android_get_iovar(net, command, priv_cmd.total_len);
 	else if (strnicmp(command, CMD_SETIOVAR, strlen(CMD_GETIOVAR)) == 0)
 		bytes_written = wl_android_set_iovar(net, command, priv_cmd.total_len);
+	else if (strnicmp(command, CMD_AUTOSLEEP, strlen(CMD_AUTOSLEEP)) == 0) {
+		bytes_written = wl_android_set_slpauto(net, command,
+			priv_cmd.total_len);
+	}
 	else {
 		DHD_ERROR(("Unknown PRIVATE command %s - ignored\n", command));
 		snprintf(command, 3, "OK");
