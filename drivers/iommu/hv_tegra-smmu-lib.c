@@ -1,7 +1,7 @@
 /*
  * IVC based Library for SMMU services.
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -47,6 +47,13 @@ static int ivc_send(struct tegra_hv_smmu_comm_chan *comm_chan,
 	}
 
 	ret = tegra_hv_ivc_write(comm_chan->ivck, msg, size);
+	/* Assumption here is server will not reset the ivc channel
+	 * for a active guest.
+	 * If we have reached here that means ivc chanel went to
+	 * established state.
+	 */
+	BUG_ON(ret == -ECONNRESET);
+
 	if (ret != size) {
 		ret = -EIO;
 		goto fail;
@@ -170,13 +177,20 @@ void ivc_rx(struct tegra_hv_ivc_cookie *ivck)
 		/* Message available */
 		struct tegra_hv_smmu_comm_chan *comm_chan = NULL;
 		int comm_chan_id;
-		u32 len = 0;
+		int ret = 0;
 		struct smmu_ivc_msg rx_msg;
 
 		memset(&rx_msg, 0, sizeof(struct smmu_ivc_msg));
-		len = tegra_hv_ivc_read(ivck, &rx_msg,
+		ret = tegra_hv_ivc_read(ivck, &rx_msg,
 					sizeof(struct smmu_ivc_msg));
-		if (len != sizeof(struct smmu_ivc_msg)) {
+		/* Assumption here is server will not reset the ivc channel
+		 * for a active guest.
+		 * If we have reached here that means ivc chanel went to
+		 * established state.
+		 */
+		BUG_ON(ret == -ECONNRESET);
+
+		if (ret != sizeof(struct smmu_ivc_msg)) {
 			dev_err(saved_smmu_comm_dev->dev,
 				"IVC read failure (msg size error)\n");
 			goto fail;
@@ -334,6 +348,17 @@ int tegra_hv_smmu_comm_init(struct device *dev)
 
 	smmu_comm_dev->ivck = ivck;
 	smmu_comm_dev->dev = dev;
+
+	/* set ivc channel to invalid state */
+	tegra_hv_ivc_channel_reset(ivck);
+
+	/* Poll to enter established state
+	 * Sync -> Established
+	 * Client driver is polling based so we can't move forward till
+	 * ivc queue communication path is established.
+	 */
+	while (tegra_hv_ivc_channel_notified(ivck))
+		;
 
 	spin_lock_init(&smmu_comm_dev->ivck_rx_lock);
 	spin_lock_init(&smmu_comm_dev->ivck_tx_lock);
