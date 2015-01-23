@@ -2,7 +2,7 @@
  * Header for MultiMediaCard (MMC)
  *
  * Copyright 2002 Hewlett-Packard Company
- * Copyright (c) 2014, NVIDIA CORPORATION. All Rights Reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION. All Rights Reserved.
  *
  * Use consistent with the GNU GPL is permitted,
  * provided that this copyright notice is
@@ -399,6 +399,8 @@ struct _mmc_csd {
 						/* DDR mode @1.8V I/O */
 #define EXT_CSD_CARD_TYPE_UHS_DDR_1_2V	(1<<7)	/* Card can run at 200MHz */
 						/* DDR mode @1.2V I/O */
+#define EXT_CSD_CARD_TYPE_HS400		(EXT_CSD_CARD_TYPE_UHS_DDR_1_8V \
+					| EXT_CSD_CARD_TYPE_UHS_DDR_1_2V)
 
 #define EXT_CSD_BUS_WIDTH_1	0	/* Card is in 1 bit mode */
 #define EXT_CSD_BUS_WIDTH_4	1	/* Card is in 4 bit mode */

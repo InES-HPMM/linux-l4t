@@ -4,7 +4,7 @@
  *  Copyright (C) 2003-2004 Russell King, All Rights Reserved.
  *  Copyright (C) 2005-2007 Pierre Ossman, All Rights Reserved.
  *  MMCv4 support Copyright (C) 2006 Philip Langdale, All Rights Reserved.
- *  Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ *  Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -1293,7 +1293,8 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	/*
 	 * Indicate HS400 DDR mode (if supported).
 	 */
-	if (mmc_card_hs200(card) && (host->caps2 & MMC_CAP2_HS400)) {
+	if (mmc_card_hs200(card) && (host->caps2 & MMC_CAP2_HS400) &&
+			(card->ext_csd.card_type & EXT_CSD_CARD_TYPE_HS400)) {
 		/* switch to High Speed mode before switching to HS400 mode */
 		err = mmc_select_highspeed(card);
 		if (err)
