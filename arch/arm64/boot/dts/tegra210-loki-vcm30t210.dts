@@ -146,15 +146,19 @@
 	};
 
 	udc@7d000000 {
-		status = "okay";
+		status = "disabled";
 	};
 
 	otg@7d000000 {
-		status = "okay";
+		status = "disabled";
 	};
 
 	xudc@700d0000 {
-		status = "disabled";
+		status = "okay";
+	};
+
+	xotg {
+		status = "okay";
 	};
 
 	pinmux: pinmux@700008d4 {
