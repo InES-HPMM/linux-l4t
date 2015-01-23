@@ -501,6 +501,10 @@ static inline u32 readl_relaxed(const volatile void __iomem *virt_addr)
 }
 #endif
 
+void __weak platform_override_streamid(int streamid)
+{
+}
+
 struct arm_smmu_option_prop {
 	u32 opt;
 	const char *prop;
@@ -638,6 +642,7 @@ static int register_smmu_master(struct arm_smmu_device *smmu,
 			return -ERANGE;
 		}
 		master->cfg.streamids[i] = streamid;
+		platform_override_streamid(streamid);
 	}
 	return insert_smmu_master(smmu, master);
 }
