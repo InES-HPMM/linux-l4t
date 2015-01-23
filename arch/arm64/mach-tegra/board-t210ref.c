@@ -324,6 +324,7 @@ static struct tegra_suspend_platform_data t210ref_suspend_data = {
 	.suspend_mode   = TEGRA_SUSPEND_LP0,
 	.core_timer     = 0x257e,
 	.core_off_timer = 10,
+	.cpu_suspend_freq = 204000,
 	.corereq_high   = true,
 	.sysclkreq_high = true,
 };
