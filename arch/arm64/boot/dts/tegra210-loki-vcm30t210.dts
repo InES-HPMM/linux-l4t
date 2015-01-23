@@ -379,6 +379,13 @@
 		};
 	};
 
+	/* enable I2S4_CYA bit to select i2s4b pin */
+	ahub {
+		i2s@702d1300 {
+			enable-cya;
+		};
+	};
+
 	sound_ref {
 		compatible = "nvidia,tegra-audio-t210ref";
 		nvidia,model = "tegra-snd-t210ref";
