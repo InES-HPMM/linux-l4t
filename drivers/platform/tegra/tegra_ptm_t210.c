@@ -67,6 +67,7 @@ _________________________________________________________
 #define TRACE_STATUS_IDLE     1
 
 #define ADDR_REG_PAIRS 4
+#define ADDR_REGS 8
 
 /* PTM tracer state */
 struct tracectx {
@@ -103,7 +104,8 @@ struct tracectx {
 	unsigned long	ape;
 
 	int		trigger;
-	uintptr_t	trigger_address;
+	uintptr_t	trigger_address[ADDR_REGS];
+	u8		trigger_mask;
 	unsigned int	percent_after_trigger;
 	unsigned int	cycle_count;
 };
@@ -121,10 +123,11 @@ static struct tracectx tracer = {
 	.formatter			=	1,
 	.timestamp			=	0,
 	.cycle_count			=	0,
-	.trigger_address		=	0,
+	.trigger_address		=	{ 0 },
 	.etr			=	0,
 	.ape				=	0,
-	.start_stop_mask		=	0x3
+	.start_stop_mask		=	0x3,
+	.trigger_mask			=	0
 };
 
 static struct clk *csite_clk;
@@ -380,7 +383,7 @@ static void ptm_restore(struct tracectx *t, int id)
 static void ptm_init(struct tracectx *t, int id)
 {
 	int trccfg, i;
-	u32 level_val;
+	u32 level_val, addr_mask;
 
 	/* Power up the CPU PTM */
 	ptm_writel(t, id, 8, TRCPDCR);
@@ -491,13 +494,23 @@ static void ptm_init(struct tracectx *t, int id)
 		}
 	}
 
+	for (i = 0; i < ADDR_REGS; i++)
+		if ((t->trigger_mask >> i) & 0x1)
+			ptm_writeq(t, id, t->trigger_address[i],
+					TRCACVR0 + 8 * i);
+
 	/* control user space tracing for each address range */
 	level_val = (t->userspace ? 0x0 : 0x1100);
-	for (i = 0; i < ADDR_REG_PAIRS*2; i++)
+	for (i = 0; i < ADDR_REGS; i++)
 		ptm_writel(t, id, level_val, TRCACATR0 + 8 * i);
 
 	/* Select Resource 2 to include all ARC */
-	ptm_writel(t, id, 0x5000f, TRCRSCTLR2);
+	addr_mask = 0x50000;
+	for (i = 0; i < ADDR_REG_PAIRS; i++)
+		if ((t->start_stop_mask >> (i * 2)) & 0x3)
+			addr_mask += (0x1 << i);
+
+	ptm_writel(t, id, addr_mask, TRCRSCTLR2);
 
 	/* Enable ViewInst and Include logic for ARC. Disable the SSC */
 	/* this is unecessary in addition to start/stop programming */
@@ -512,12 +525,8 @@ static void ptm_init(struct tracectx *t, int id)
 	/* Trace everything till Address match packet hits. Use Single Shot
 	comparator and generate Event Packet */
 	if (t->trigger) {
-		/* SAC2 for Address Match on which to trigger */
-		ptm_writeq(t, id, t->trigger_address, TRCACVR2);
-		ptm_writel(t, id, t->userspace ? 0x0 : 0x1100, TRCACATR2);
 		/* Select SAC2 for SSC0 and enable SSC to re-fire on match */
-		ptm_writel(t, id, 0x4,
-				TRCSSCCR0);
+		ptm_writel(t, id, t->trigger_mask, TRCSSCCR0);
 		/* Clear SSC Status bit 31 */
 		ptm_writel(t, id, 0x0, TRCSSCSR0);
 		/* Select Resource 3 to include SSC0 */
@@ -527,12 +536,10 @@ static void ptm_init(struct tracectx *t, int id)
 				TRCEVENTCTL0R);
 		/* Insert ATB packet with ATID=0x7D and Payload=Master ATID.
 		ETF can use this to Stop and flush based on this */
-		ptm_writel(t, id, 0x800,
-				TRCEVENTCTL1R);
+		ptm_writel(t, id, 0x800, TRCEVENTCTL1R);
 		if (t->timestamp)
 			/* insert global timestamp if enabled */
-			ptm_writel(t, id, 0x3,
-				TRCTSCTLR);
+			ptm_writel(t, id, 0x3, TRCTSCTLR);
 	}
 	dev_dbg(t->dev, "PTM%d initialized.\n", id);
 }
@@ -795,7 +802,7 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 	etf_regs_unlock(t);
 	etr_regs_unlock(t);
 
-	if (t->trigger_address) {
+	if (t->trigger) {
 		if (t->etr) {
 			trig_stat = 0;
 			while (trig_stat == 0) {
@@ -1014,14 +1021,32 @@ static ssize_t trace_range_address_show(struct kobject *kobj,
 	int i;
 
 	/* clear buffer */
-	sprintf(buf + strlen(buf),
-		"start address 0 : %16lx\nstop address 0  : %16lx\n",
-		tracer.start_address[0], tracer.stop_address[0]);
+	if (tracer.trigger_mask & 0x3)
+		sprintf(buf + strlen(buf),
+			"start address 0 : TRIG\nstop address 0  : TRIG\n");
+	else if (tracer.start_stop_mask & 0x3)
+		sprintf(buf + strlen(buf),
+			"start address 0 : %16lx\nstop address 0  : %16lx\n",
+			tracer.start_address[0], tracer.stop_address[0]);
+	else
+		sprintf(buf + strlen(buf),
+			"start address 0 : free\nstop address 0  : free\n");
 
 	for (i = 1; i < ADDR_REG_PAIRS; i++) {
-		sprintf(buf + strlen(buf),
-			"start address %d : %16lx\nstop address %d  : %16lx\n",
-			i, tracer.start_address[i], i, tracer.stop_address[i]);
+		if ((tracer.trigger_mask >> (i * 2)) & 0x3)
+			sprintf(buf + strlen(buf),
+				"start address %d : TRIG\nstop address %d  : TRIG\n",
+				i, i);
+		else if ((tracer.start_stop_mask >> (i*2)) & 0x3)
+			sprintf(buf + strlen(buf),
+				"start address %d : %16lx\nstop address %d  : %16lx\n",
+				i, tracer.start_address[i],
+				i, tracer.stop_address[i]);
+		else
+			sprintf(buf + strlen(buf),
+				"start address %d : free\nstop address %d  : free\n",
+				i, i);
+
 	}
 
 	return strlen(buf);
@@ -1033,9 +1058,17 @@ static ssize_t trace_trigger_show(struct kobject *kobj,
 	struct kobj_attribute *attr,
 	char *buf)
 {
-	if (tracer.trigger)
-		return sprintf(buf, "Address match is enabled\n"
-			"Address trigger at %16lx\n", tracer.trigger_address);
+	int i;
+	if (tracer.trigger) {
+		sprintf(buf, "Address match is enabled\n");
+		for (i = 0; i < ADDR_REG_PAIRS * 2; i++) {
+			if ((tracer.trigger_mask >> i) & 0x1)
+				sprintf(buf + strlen(buf),
+					"Address trigger at %16lx\n",
+					tracer.trigger_address[i]);
+		}
+		return strlen(buf);
+	}
 	else
 		return sprintf(buf, "Address match is disabled\n");
 }
@@ -1083,6 +1116,7 @@ static ssize_t trace_range_address_store(struct kobject *kobj,
 {
 	uintptr_t start_address[ADDR_REG_PAIRS], stop_address[ADDR_REG_PAIRS];
 	int cnt, i;
+	int addr_pair = 0;
 
 	cnt = sscanf(buf, "%lx %lx %lx %lx %lx %lx %lx %lx",
 		&start_address[0], &stop_address[0],
@@ -1092,30 +1126,36 @@ static ssize_t trace_range_address_store(struct kobject *kobj,
 	if (cnt % 2)
 		return -EINVAL;
 
-	if (cnt > ADDR_REG_PAIRS * 2)
-		return -EINVAL;
-
 	mutex_lock(&tracer.mutex);
+
 	tracer.start_stop_mask = 0;
-	for (i = 0; i < cnt / 2; i++) {
-		if (start_address[i] >= stop_address[i]) {
+
+	for (i = 0; i < ADDR_REG_PAIRS; i++) {
+		if (start_address[addr_pair] >= stop_address[addr_pair]) {
 			mutex_unlock(&tracer.mutex);
 			return -EINVAL;
 		}
 
-		tracer.start_address[i] = start_address[i];
-		tracer.stop_address[i] = stop_address[i];
-		tracer.start_stop_mask += 0x3 << (i * 2);
-	}
+		if ((tracer.trigger_mask >> (i * 2)) & 0x3)
+			continue;
 
-	/* clear remaining address pairs */
-	while (i < ADDR_REG_PAIRS) {
-		tracer.start_address[i] = 0;
-		tracer.stop_address[i] = 0;
-		i++;
+		tracer.start_address[i] = start_address[addr_pair];
+		tracer.stop_address[i] = stop_address[addr_pair];
+		tracer.start_stop_mask += (0x3 << (i*2));
+		addr_pair++;
+		if (addr_pair == cnt/2) {
+			i++;
+			break;
+		}
 	}
 
 	mutex_unlock(&tracer.mutex);
+
+	if (addr_pair < cnt/2) {
+		pr_info("Tegra PTM: Not enough address registers for request\n");
+		return -EINVAL;
+	}
+
 	return n;
 }
 
@@ -1124,26 +1164,55 @@ static ssize_t trace_trigger_store(struct kobject *kobj,
 	const char *buf, size_t n)
 {
 	unsigned int trigger, percent_after_trigger;
-	uintptr_t trigger_address;
+	uintptr_t trigger_address[ADDR_REG_PAIRS * 2];
+	int cnt, i;
+	int trig_pos = 0;
 
-	if (sscanf(buf, "%u %lx %u", &trigger, &trigger_address,
-				&percent_after_trigger) != 3)
+	cnt = sscanf(buf, "%u %u %lx %lx %lx %lx %lx %lx %lx %lx",
+		&trigger, &percent_after_trigger,
+		&trigger_address[0], &trigger_address[1],
+		&trigger_address[2], &trigger_address[3],
+		&trigger_address[4], &trigger_address[5],
+		&trigger_address[6], &trigger_address[7]);
+	if (cnt < 3)
 		return -EINVAL;
+
+	/* adjust count to equal number of trigger points */
+	cnt -= 2;
 
 	/* max 99% to leave room for preventing buffer overwrite */
 	if (percent_after_trigger >= 100)
 		percent_after_trigger = 99;
 
 	mutex_lock(&tracer.mutex);
+	tracer.trigger_mask = 0;
 
-	if (trigger) {
-		tracer.trigger = 1;
-		tracer.trigger_address = trigger_address;
-		tracer.percent_after_trigger = percent_after_trigger;
-	} else
+	if (!trigger) {
 		tracer.trigger = 0;
+		mutex_unlock(&tracer.mutex);
+		return n;
+	}
+
+	tracer.trigger = 1;
+	tracer.percent_after_trigger = percent_after_trigger;
+	for (i = 0; i < ADDR_REG_PAIRS * 2; i++) {
+		if ((tracer.start_stop_mask >> i) & 0x1)
+			continue;
+
+		tracer.trigger_address[i] = trigger_address[trig_pos];
+		tracer.trigger_mask += (1 << i);
+		trig_pos++;
+		if (trig_pos == cnt)
+			break;
+
+	}
 
 	mutex_unlock(&tracer.mutex);
+
+	if (trig_pos != cnt) {
+		pr_info("Tegra PTM: Not enough address registers for request\n");
+		return -EINVAL;
+	}
 
 	return n;
 }
