@@ -10,6 +10,7 @@ config TEGRA_NVADSP
 config TEGRA_APE_AGIC
 	bool "Enable AGIC interrupt controller"
 	depends on ARCH_TEGRA_APE
+	select FIQ
 	default n
 	help
 	  The AGIC interrupt controller is based on GIC 400. Use this
