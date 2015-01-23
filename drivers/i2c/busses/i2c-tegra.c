@@ -1265,6 +1265,14 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	if (adap->atomic_xfer_only)
 		return -EBUSY;
 
+	for (i = 0; i < num; i++) {
+		if (msgs[i].len > 4096) {
+			dev_err(i2c_dev->dev, "msg len %d not supported, supports upto 4096\n",
+					msgs[i].len);
+			return -EINVAL;
+		}
+	}
+
 	i2c_dev->msgs = msgs;
 	i2c_dev->msgs_num = num;
 
