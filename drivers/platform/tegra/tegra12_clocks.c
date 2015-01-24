@@ -420,6 +420,8 @@
 #define PLLSS_CTRL2_DEFAULT_VALUE \
 	((PLLSS_SDM_SSC_STEP << 16) | (PLLSS_SDM_DIN << 0))
 
+#define PLLSS_CFG_EN_SSC		(0x1 << 30)
+
 /* PLLSS configuration */
 #define PLLSS_MISC_KVCO			0
 #define PLLSS_MISC_SETUP		0
@@ -3749,15 +3751,30 @@ static void tegra12_pllss_clk_init(struct clk *c)
 static int tegra12_pllss_clk_enable(struct clk *c)
 {
 	u32 val;
+	bool ssc_enabled = false;
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
 	pll_do_iddq(c, PLL_BASE, PLLSS_BASE_IDDQ, false);
+
+	val = clk_readl(c->reg + PLLSS_CFG(c));
+	if (val & PLLSS_CFG_EN_SSC) {
+		val &= ~PLLSS_CFG_EN_SSC;
+		clk_writel(val, c->reg + PLLSS_CFG(c));
+		ssc_enabled = true;
+	}
 
 	val = clk_readl(c->reg + PLL_BASE);
 	val |= PLL_BASE_ENABLE;
 	clk_writel(val, c->reg + PLL_BASE);
 
 	tegra12_pll_clk_wait_for_lock(c, c->reg + PLL_BASE, PLLSS_BASE_LOCK);
+
+	if (ssc_enabled) {
+		val = clk_readl(c->reg + PLLSS_CFG(c));
+		val |= PLLSS_CFG_EN_SSC;
+		pll_writel_delay(val, c->reg + PLLSS_CFG(c));
+	}
+
 	return 0;
 }
 
