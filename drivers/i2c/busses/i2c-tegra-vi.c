@@ -1174,13 +1174,6 @@ static int tegra_vi_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	if (i2c_dev->is_suspended)
 		return -EBUSY;
 
-	ret = regulator_enable(i2c_dev->pull_up_supply);
-	if (ret < 0) {
-		dev_err(i2c_dev->dev, "Pull up regulator supply failed: %d\n",
-			ret);
-		return ret;
-	}
-
 	if ((i2c_dev->is_shutdown || adap->atomic_xfer_only)
 		&& i2c_dev->bit_banging_xfer_after_shutdown) {
 		ret = tegra_vi_i2c_gpio_xfer(adap, msgs, num);
@@ -1259,7 +1252,6 @@ i2c_xfer_pwr_fail:
 	i2c_dev->msgs_num = 0;
 
 end:
-	regulator_disable(i2c_dev->pull_up_supply);
 	return ret ?: i;
 }
 
@@ -1472,9 +1464,20 @@ skip_pinctrl:
 	i2c_dev->pull_up_supply = devm_regulator_get(&pdev->dev, "bus-pullup");
 	if (IS_ERR(i2c_dev->pull_up_supply)) {
 		ret = PTR_ERR(i2c_dev->pull_up_supply);
+		if (ret  == -EPROBE_DEFER)
+			return -EPROBE_DEFER;
 		dev_err(&pdev->dev, "bus-pullup regulator not found: %d\n",
 			ret);
-		return ret;
+		i2c_dev->pull_up_supply = NULL;
+	}
+
+	if (i2c_dev->pull_up_supply) {
+		ret = regulator_enable(i2c_dev->pull_up_supply);
+		if (ret < 0) {
+			dev_err(i2c_dev->dev, "Pull up regulator supply failed: %d\n",
+				ret);
+			return ret;
+		}
 	}
 
 	i2c_dev->base = base;
