@@ -484,7 +484,7 @@ static void tegra_common_resume(void)
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static void tegra_pm_sc7_set(void)
 {
-	u32 reg, boot_flag;
+	u32 reg;
 	unsigned long rate;
 
 	rate = clk_get_rate(tegra_pclk);
@@ -497,14 +497,6 @@ static void tegra_pm_sc7_set(void)
 		reg |= TEGRA_POWER_CPU_PWRREQ_OE;
 
 	reg &= ~TEGRA_POWER_EFFECT_LP0;
-
-	/* Enable DPD sample to trigger sampling pads data and direction
-	 * in which pad will be driven during lp0 mode*/
-	writel(0x1, pmc + PMC_DPD_SAMPLE);
-
-	/* Set warmboot flag */
-	boot_flag = readl(pmc + PMC_SCRATCH0);
-	pmc_32kwritel(boot_flag | 1, PMC_SCRATCH0);
 
 	pmc_32kwritel(tegra_lp0_vec_start, PMC_SCRATCH1);
 
