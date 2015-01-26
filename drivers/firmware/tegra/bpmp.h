@@ -21,8 +21,8 @@
 #include <linux/platform_device.h>
 #include <soc/tegra/tegra_bpmp.h>
 
-#define MSG_SZ			32
-#define MSG_DATA_SZ		24
+#define MSG_SZ			128
+#define MSG_DATA_SZ		120
 
 #ifdef CONFIG_ARCH_TEGRA_18x_SOC
 #define NR_CHANNELS		14
