@@ -51,22 +51,28 @@ static inline  struct tegra_camera_buffer *to_tegra_vb(struct vb2_buffer *vb)
 
 struct tegra_camera;
 
-struct tegra_camera_clk {
-	const char	*name;
-	struct clk	*clk;
-	u32		freq;
-	int		use_devname;
-};
-
 struct tegra_camera_ops {
-	int (*init)(struct tegra_camera *cam);
-	void (*deinit)(struct tegra_camera *cam);
 	int (*activate)(struct tegra_camera *cam,
 		 int port);
 	void (*deactivate)(struct tegra_camera *cam);
-	int (*port_is_valid)(int port);
+	s32 (*bytes_per_line)(u32 width, const struct soc_mbus_pixelfmt *mf);
+
+	/*
+	 * If we want to ignore the subdev and have our camera host do its
+	 * own thing (for example, test pattern), then have
+	 * ignore_subdev_fmt() return true and make get_formats() return
+	 * the format we want to support.
+	 */
+	bool (*ignore_subdev_fmt)(struct tegra_camera *cam);
+	int (*get_formats)(struct soc_camera_device *icd, unsigned int idx,
+			   struct soc_camera_format_xlate *xlate);
+	int (*try_mbus_fmt)(struct v4l2_subdev *sd,
+			    struct v4l2_mbus_framefmt *mf);
+	int (*s_mbus_fmt)(struct v4l2_subdev *sd,
+			  struct v4l2_mbus_framefmt *mf);
+	bool (*port_is_valid)(int port);
 	int (*capture_frame)(struct tegra_camera *cam,
-		 struct tegra_camera_buffer *buf);
+			     struct tegra_camera_buffer *buf);
 };
 
 struct cam_regs_config {
@@ -79,52 +85,25 @@ struct cam_regs_config {
 
 struct tegra_camera {
 	struct soc_camera_host		ici;
+
+	/* These should be set prior to calling tegra_camera_probe(). */
 	struct platform_device		*pdev;
-	struct nvhost_device_data	*ndata;
-
-	struct regulator		*reg;
-	const char			*regulator_name;
-
-	struct tegra_camera_clk		*clks;
-	int				num_clks;
-
+	char				card[32];
+	u32				version;
 	struct tegra_camera_ops		*ops;
 
-	void __iomem			*reg_base;
-	struct cam_regs_config		regs;
 	spinlock_t			videobuf_queue_lock;
 	struct list_head		capture;
 	struct vb2_buffer		*active;
 	struct vb2_alloc_ctx		*alloc_ctx;
 	enum v4l2_field			field;
-	int				sequence_a;
-	int				sequence_b;
 
 	struct work_struct		work;
 	struct mutex			work_mutex;
 
-	/* syncpt ids */
-	u32				syncpt_id;
-	u32				syncpt_thresh;
-
-	/* Back compatitble to T30/T20 */
-	u32				syncpt_id_csi_a;
-	u32				syncpt_id_csi_b;
-	u32				syncpt_id_vip;
-
-	/* syncpt values */
-	u32				syncpt_csi_a;
-	u32				syncpt_csi_b;
-	u32				syncpt_vip;
-
 	/* Debug */
 	int				num_frames;
 	int				enable_refcnt;
-
-	/* Test Pattern Generator mode */
-	int				tpg_mode;
-
-	int				sof;
 };
 
 #define TC_VI_REG_RD(dev, offset) readl(dev->reg_base + offset)
@@ -149,8 +128,10 @@ struct tegra_camera {
 #define tpg_regs_read(cam, offset) \
 		TC_VI_REG_RD(cam, cam->regs.tpg_base + offset)
 
-int vi_register(struct tegra_camera *cam);
 int vi2_register(struct tegra_camera *cam);
-int bypass_register(struct tegra_camera *cam);
+
+int tegra_camera_init(struct platform_device *pdev, struct tegra_camera *cam);
+void tegra_camera_deinit(struct platform_device *pdev,
+			 struct tegra_camera *cam);
 
 #endif

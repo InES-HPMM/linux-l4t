@@ -5,12 +5,12 @@ config VIDEO_TEGRA
 	---help---
 	  This is a v4l2 driver for the Tegra camera interface
 
-config VIDEO_TEGRA_VI
-	bool "Tegra soc_camera host VI driver"
+config VIDEO_TEGRA_VI2
+	bool "Tegra soc_camera host VI2 driver"
 	depends on VIDEO_TEGRA
 	default y
 	---help---
-	This is the v4l2 driver for the VI-style Tegra camera interface
+	This is the v4l2 driver for the VI2-style Tegra camera interface
 
 config VIDEO_TEGRA_BYPASS
 	bool "Tegra soc_camera host SCF bypass driver"
