@@ -61,6 +61,8 @@ _________________________________________________________
 
 */
 
+#define ETR_SIZE (16 << 20) /* ETR size: 16MB */
+
 #define TRACE_STATUS_PMSTABLE 2
 #define TRACE_STATUS_IDLE     1
 
@@ -80,8 +82,8 @@ struct tracectx {
 	void __iomem	*ptm_regs[CONFIG_NR_CPUS];
 	void __iomem	*funnel_bccplex_regs;
 	void __iomem	*tpiu_regs;
-	phys_addr_t	etr_address;
-	int		etr_size;
+	u8		*etr_address;
+	uintptr_t	etr_ll;
 	int		*trc_buf;
 	u8		*etr_buf;
 	int		buf_size;
@@ -630,7 +632,7 @@ static void etr_init(struct tracectx *t)
 {
 	int words_after_trigger, ffcr;
 
-	__flush_dcache_area(phys_to_virt(t->etr_address), t->etr_size);
+	__flush_dcache_area(t->etr_address, ETR_SIZE);
 
 	/* trace data is passing through ETF to ETR */
 	etf_regs_unlock(t);
@@ -646,19 +648,19 @@ static void etr_init(struct tracectx *t)
 
 	etr_regs_unlock(t);
 
-	etr_writel(t, (t->etr_size >> 2), CXTMC_REGS_RSZ_0);
+	etr_writel(t, (ETR_SIZE >> 2), CXTMC_REGS_RSZ_0);
 	etr_writel(t, 0, CXTMC_REGS_MODE_0); /* circular mode */
 
-	/* non-secure, no SG mode, WrBurstLen 0x3 */
-	etr_writel(t, 0x300, CXTMC_REGS_AXICTL_0);
+	/* non-secure, SG mode, WrBurstLen 0x3 */
+	etr_writel(t, 0x380, CXTMC_REGS_AXICTL_0);
 
 	/*allocate space for ETR */
-	etr_writeq(t, (uintptr_t)t->etr_address, CXTMC_REGS_DBALO_0);
+	etr_writeq(t, virt_to_phys((void *)t->etr_ll), CXTMC_REGS_DBALO_0);
 
 	if (t->trigger) {
 		/* Capture data for specified cycles after seeing the TRIGIN */
 		words_after_trigger = t->percent_after_trigger *
-						(t->etr_size >> 2) / 100;
+						(ETR_SIZE >> 2) / 100;
 		etr_writel(t, words_after_trigger,
 					CXTMC_REGS_TRG_0);
 		/* Flush on Trigin, insert trigger and Stop on Flush Complete */
@@ -746,7 +748,7 @@ static ssize_t trc_read(struct file *file, char __user *data,
 	size_t len, loff_t *ppos)
 {
 	struct tracectx *t = file->private_data;
-	phys_addr_t start = virt_to_phys(t->etr_buf);
+	u8 *start = t->etr_buf;
 	loff_t pos = *ppos;
 
 	if ((pos + len) >= t->buf_size)
@@ -754,13 +756,13 @@ static ssize_t trc_read(struct file *file, char __user *data,
 
 	if (len > 0) {
 		if (t->etr) {
-			if (start + pos + len > t->etr_address + t->etr_size)
-				len = t->etr_address + t->etr_size - start -
+			if (start + pos + len > t->etr_address + ETR_SIZE)
+				len = t->etr_address + ETR_SIZE - start -
 					pos;
 			if (copy_to_user(data, t->etr_buf+pos, len))
 				return -EFAULT;
-			if (start + pos + len == t->etr_address + t->etr_size)
-				t->etr_buf = phys_to_virt(t->etr_address);
+			if (start + pos + len == t->etr_address + ETR_SIZE)
+				t->etr_buf = t->etr_address;
 		} else {
 			if (copy_to_user(data, (u8 *) t->trc_buf+pos, len))
 				return -EFAULT;
@@ -776,6 +778,8 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 {
 	int rwp, count, overflow;
 	int trig_stat, tmcready;
+	u64 rwp64;
+	u32 pfn;
 
 	if (!t->etf_regs)
 		return -EINVAL;
@@ -850,6 +854,18 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 
 		/* save write pointer */
 		rwp = etr_readl(t, CXTMC_REGS_RWP_0);
+		rwp64 = etr_readl(t, CXTMC_REGS_RWPHI_0);
+		rwp64 = (rwp64 << 32) | rwp;
+
+		pfn = rwp64 >> PAGE_SHIFT;
+		for (count = 0; count < PAGE_SIZE; count++) {
+			/* pfn in scatter gather table is b[31..4] */
+			if (pfn == (*(u32 *)(t->etr_ll + (count << 2)) >> 4))
+				break;
+		}
+		count %= PAGE_SIZE;
+		t->etr_buf = t->etr_address + (count << PAGE_SHIFT);
+		t->etr_buf += (rwp64 & (PAGE_SIZE-1));
 
 		 /* Get etr data and Check for overflow */
 		overflow = etr_readl(t, CXTMC_REGS_STS_0);
@@ -861,11 +877,11 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 
 		ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
 
-		t->buf_size = rwp - (t->etr_address & 0xffffffff);
-		t->etr_buf = phys_to_virt(t->etr_address);
+		t->buf_size = t->etr_buf - t->etr_address;
+		t->etr_buf = t->etr_address;
 		if (overflow) {
 			t->etr_buf += t->buf_size;
-			t->buf_size = t->etr_size;
+			t->buf_size = ETR_SIZE;
 		}
 	} else {
 		/* Disable ETF */
@@ -1147,6 +1163,60 @@ static ssize_t trace_cycle_count_store(struct kobject *kobj,
 	return n;
 }
 
+static void tmc_build_sg_table(void)
+{
+	unsigned long pfn;
+	void *virt;
+	u32 index;
+	u32 *sg_ptr;
+
+	virt = tracer.etr_address;
+	sg_ptr = (u32 *)tracer.etr_ll;
+	for (index = 0; index < PAGE_SIZE; index++) {/* 4k entries in total */
+		pfn = vmalloc_to_pfn(virt);
+		virt += PAGE_SIZE;
+		*sg_ptr++ = (pfn << 4) | 0x2;
+	}
+	*(--sg_ptr) = (pfn << 4) | 0x1;
+	__flush_dcache_area((void *)tracer.etr_ll, PAGE_SIZE << 2);
+}
+
+static ssize_t trace_etr_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf, size_t n)
+{
+	unsigned int etr_enable;
+
+	if (sscanf(buf, "%u", &etr_enable) != 1)
+		return -EINVAL;
+	tracer.etr = etr_enable ? 1 : 0;
+	if (tracer.etr_address && !tracer.etr) {
+		vfree(tracer.etr_address);
+		tracer.etr_address = NULL;
+		free_pages(tracer.etr_ll, 2);
+		tracer.etr_ll = 0;
+	} else if (tracer.etr_address) {
+		BUG_ON(!tracer.etr);
+		return n; /* enabling, but already enabled */
+	} else if (tracer.etr) {
+		tracer.etr_address = vmalloc(ETR_SIZE);
+		if (tracer.etr_address) {
+			/*
+			 * each page holds entries for 1K pages, i.e. 4MB data
+			 * so 16MB needs 4 pages, hence order 2
+			 */
+			tracer.etr_ll = __get_free_pages(GFP_KERNEL, 2);
+			if (!tracer.etr_ll) {
+				vfree(tracer.etr_address);
+				tracer.etr = 0;
+			} else
+				tmc_build_sg_table();
+		} else
+			tracer.etr = 0;
+	}
+	return n;
+}
+
 #define define_show_state_func(_name) \
 static ssize_t trace_##_name##_show(struct kobject *kobj, \
 				struct kobj_attribute *attr, \
@@ -1183,7 +1253,6 @@ define_store_state_func(branch_broadcast)
 define_store_state_func(return_stack)
 define_store_state_func(timestamp)
 define_store_state_func(formatter)
-define_store_state_func(etr)
 define_store_state_func(ape)
 
 #define A(a, b, c, d)   __ATTR(trace_##a, b, \
@@ -1401,11 +1470,3 @@ static int __init tegra_ptm_driver_init(void)
 	return 0;
 }
 device_initcall(tegra_ptm_driver_init);
-
-static int __init ptm_etr_carveout_setup(struct reserved_mem *rmem)
-{
-	tracer.etr_address = rmem->base;
-	tracer.etr_size = rmem->size;
-	return 0;
-}
-RESERVEDMEM_OF_DECLARE(ptm, "nvidia,ptm-carveout", ptm_etr_carveout_setup);
