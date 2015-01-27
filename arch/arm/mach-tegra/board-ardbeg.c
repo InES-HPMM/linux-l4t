@@ -1393,6 +1393,11 @@ static const char * const tn8_dt_board_compat[] = {
 	NULL
 };
 
+static const char * const green_arrow_dt_board_compat[] = {
+	"nvidia,green-arrow",
+	NULL
+};
+
 static const char * const ardbeg_sata_dt_board_compat[] = {
 	"nvidia,ardbeg_sata",
 	NULL
@@ -1456,6 +1461,19 @@ DT_MACHINE_START(TN8, "tn8")
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_ardbeg_dt_init,
 	.dt_compat	= tn8_dt_board_compat,
+	.init_late      = tegra_init_late
+MACHINE_END
+
+DT_MACHINE_START(GREEN_ARROW, "green-arrow")
+	.atag_offset	= 0x100,
+	.smp		= smp_ops(tegra_smp_ops),
+	.map_io		= tegra_map_common_io,
+	.reserve	= tegra_ardbeg_reserve,
+	.init_early	= tegra_ardbeg_init_early,
+	.init_irq	= irqchip_init,
+	.init_time	= clocksource_of_init,
+	.init_machine	= tegra_ardbeg_dt_init,
+	.dt_compat	= green_arrow_dt_board_compat,
 	.init_late      = tegra_init_late
 MACHINE_END
 

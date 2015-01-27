@@ -1,0 +1,35 @@
+/*
+ * tegra124-green-arrow-p2267-base-a00.dts: DTS file for Green Arrow base
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+/dts-v1/;
+
+#include "tegra124-soc-shield.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-p2267-io-common.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-p2267-powertree-e1936-1000-a00.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 Green Arrow FFD";
+	compatible = "nvidia,green-arrow", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
+		linux,initrd-start = <0x85000000>;
+		linux,initrd-end = <0x851bc400>;
+	};
+};
