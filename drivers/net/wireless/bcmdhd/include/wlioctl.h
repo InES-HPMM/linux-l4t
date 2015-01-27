@@ -1941,6 +1941,11 @@ typedef struct {
 	uint32	pciereset;	/* Secondary Bus Reset issued by driver */
 	uint32	cfgrestore;	/* configspace restore by driver */
 	uint32	reinitreason[NREINITREASONCOUNT]; /* reinitreason counters; 0: Unknown reason */
+	uint32  rxrtry;		/* num of received packets with retry bit on */
+	uint32	txmpdu;		/* number of MPDUs txed.  */
+	uint32	rxnodelim;	/* number of occasions that no valid delimiter is detected
+				 * by ampdu parser.
+				 */
 } wl_cnt_t;
 
 typedef struct {
