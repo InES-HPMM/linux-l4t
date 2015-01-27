@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/tegra_clocks_ops.h
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -96,6 +96,7 @@ int tegra_pll_clk_wait_for_lock(struct clk *c, u32 lock_reg, u32 lock_bits);
 
 void tegra_pll_out_clk_init(struct clk *c);
 int tegra_pll_out_clk_enable(struct clk *c);
+void tegra_pll_out_clk_disable(struct clk *c);
 int tegra_pll_out_clk_set_rate(struct clk *c, unsigned long rate);
 
 #ifdef CONFIG_PM_SLEEP

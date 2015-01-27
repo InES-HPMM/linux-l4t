@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/tegra_clocks_pll.c
  *
- * Copyright (c) 2014 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2014-2015 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -614,6 +614,10 @@ int tegra_pll_out_clk_enable(struct clk *c)
 	return 0;
 }
 
+void tegra_pll_out_clk_disable(struct clk *c)
+{
+}
+
 void tegra_pll_out_clk_init(struct clk *c)
 {
 	u32 p, val;
@@ -621,7 +625,7 @@ void tegra_pll_out_clk_init(struct clk *c)
 	struct clk *pll = c->parent;
 	struct clk_pll_div_layout *divs = pll->u.pll.div_layout;
 
-	c->state = ON;
+	c->state = c->parent->state;
 	c->max_rate = pll->u.pll.vco_max;
 	c->min_rate = pll->u.pll.vco_min;
 

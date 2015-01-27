@@ -3860,12 +3860,14 @@ module_param_cb(use_dfll, &tegra21_use_dfll_ops, &use_dfll, 0644);
 static struct clk_ops tegra_pll_out_ops = {
 	.init			= tegra_pll_out_clk_init,
 	.enable			= tegra_pll_out_clk_enable,
+	.disable		= tegra_pll_out_clk_disable,
 	.set_rate		= tegra_pll_out_clk_set_rate,
 };
 
 static struct clk_ops tegra_pll_out_fixed_ops = {
 	.init			= tegra_pll_out_clk_init,
 	.enable			= tegra_pll_out_clk_enable,
+	.disable		= tegra_pll_out_clk_disable,
 };
 
 static void tegra21_pllu_out_clk_init(struct clk *c)
@@ -3881,7 +3883,7 @@ static void tegra21_pllu_out_clk_init(struct clk *c)
 	if (!(val & PLLU_BASE_OVERRIDE)) {
 		struct clk_pll_div_layout *divs = pll->u.pll.div_layout;
 
-		c->state = ON;
+		c->state = c->parent->state;
 		c->max_rate = pll->u.pll.vco_max;
 
 		p = (val & divs->pdiv_mask) >> divs->pdiv_shift;
@@ -3901,6 +3903,7 @@ static void tegra21_pllu_out_clk_init(struct clk *c)
 static struct clk_ops tegra_pllu_out_ops = {
 	.init			= tegra21_pllu_out_clk_init,
 	.enable			= tegra_pll_out_clk_enable,
+	.disable		= tegra_pll_out_clk_disable,
 	.set_rate		= tegra_pll_out_clk_set_rate,
 };
 
@@ -3915,7 +3918,7 @@ static void tegra21_pllp_out_clk_init(struct clk *c)
 	 * fixed output rate.
 	 */
 	if (!(val & PLLP_BASE_OVERRIDE)) {
-		c->state = ON;
+		c->state = c->parent->state;
 		c->max_rate = pll->u.pll.vco_max;
 		c->div = pll->u.pll.fixed_rate / c->u.pll.fixed_rate;
 		c->mul = 1;
@@ -3932,6 +3935,7 @@ static void tegra21_pllp_out_clk_init(struct clk *c)
 static struct clk_ops tegra_pllp_out_ops = {
 	.init			= tegra21_pllp_out_clk_init,
 	.enable			= tegra_pll_out_clk_enable,
+	.disable		= tegra_pll_out_clk_disable,
 	.set_rate		= tegra_pll_out_clk_set_rate,
 };
 
