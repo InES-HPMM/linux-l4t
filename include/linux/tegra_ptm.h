@@ -299,6 +299,7 @@
 #define TRCCNTCTLR1   0x154
 #define TRCCNTVR0     0x160
 #define TRCCNTVR1     0x164
+#define TRCIDR3       0x1ec
 #define TRCRSCTLR2    0x208
 #define TRCRSCTLR3    0x20c
 #define TRCRSCTLR4    0x210

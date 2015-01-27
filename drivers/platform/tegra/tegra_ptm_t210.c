@@ -466,6 +466,9 @@ static void ptm_init(struct tracectx *t, int id)
 	/* set cycle count threshold */
 	if (t->cycle_count) {
 		trccfg = trccfg | (1<<4);
+		i = ptm_readl(t, id, TRCIDR3) & 0xFFF;
+		if (t->cycle_count < i)
+			t->cycle_count = i;
 		ptm_writel(t, id, t->cycle_count, TRCCCCTLR);
 	}
 	ptm_writel(t, id, trccfg, TRCCONFIGR);
