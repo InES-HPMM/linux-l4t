@@ -25,6 +25,12 @@ Required properties:
 	- Throttle power (milliwatts): The amount of power returned to the system
 	  when the SOC_THERM OC signal throttles the CPU and GPU frequencies.
 	  This is the amount of power with 100% throttle depth.
+	- CPU Priority GPU Supplemental Frequency (kHz) (Optional): Maximum GPU
+	  frequency allowed when the CPU has the priority. (See
+	  nvidia,gpu_supp_freq).
+	- CPU Priority GPU Supplemental Frequency (kHz) (Optional): Maximum GPU
+	  frequency allowed when the GPU has the priority. (See
+	  nvidia,gpu_supp_freq).
   Note that the order of AP Power must start with the smallest power and
   should increase for each entry.
 - nvidia,core_gain: The percentage of gain applied to the AP+DRAM budget power.
@@ -44,6 +50,13 @@ Optional properties:
 - nvidia,gpu_cap_as_mw: if present, this property indicates that the
   GPU caps are power limits in mW as opposed to frequency limits in
   kHz
+- nvidia,gpu_supp_freq: This property must to be used in tandem with
+  nvidia,gpu_cap_as_mw. If present, this property indicates that there
+  are two additional columns in the nvidia,corecap tables, which contain
+  the gpu frequency tables in KHz corresponding to a typical part at 70C.
+  These columns are required if the GPU caps are expressed in terms of mW
+  instead of KHz, to supplement the information available to choose
+  between GPU priority mode vs CPU Priority Mode.
 
 Example:
 	sysedp-dynamic-capping {
@@ -64,11 +77,12 @@ Example 2:
 	sysedp-dynamic-capping {
 		compatible = "nvidia,tegra124-sysedp-dynamic-capping";
 		nvidia,gpu_cap_as_mw;
+		nvidia,gpu_supp_freq;
 		nvidia,corecap = <
-		   5000   2000 1200 933000   2000 1200 933000    500
-		  10000   7000 1200 933000   3500 3800 933000   2000
-		  15000  10000 2400 933000   4000 6000 933000   4000
-		  20000  10000 5000 933000   5000 7000 933000   8000
+		   5000   2000 1200 933000   2000 1200 933000    500   77  77
+		  10000   7000 1200 933000   3500 3800 933000   2000  231 308
+		  15000  10000 2400 933000   4000 6000 933000   4000  384 538
+		  20000  10000 5000 933000   5000 7000 933000   8000  461 768
 		>;
 		nvidia,core_gain = <100>;
 		nvidia,init_req_watts = <20000>;

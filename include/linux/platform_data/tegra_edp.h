@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -30,6 +30,7 @@ struct tegra_sysedp_devcap {
 	unsigned int cpu_power;
 	unsigned int gpu_cap; /* may be freq or power */
 	unsigned int emcfreq;
+	unsigned int gpu_supp_freq;
 };
 
 struct tegra_sysedp_corecap {
@@ -54,6 +55,7 @@ struct tegra_sysedp_platform_data {
 	unsigned int pthrot_ratio;
 	unsigned int cap_method;
 	bool gpu_cap_as_mw;
+	bool gpu_supp_freq;
 };
 
 #if defined(CONFIG_EDP_FRAMEWORK) || defined(CONFIG_SYSEDP_FRAMEWORK)

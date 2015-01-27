@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -132,12 +132,18 @@ static inline bool gpu_priority(void)
 	/* NOTE: the policy for selecting between the GPU priority
 	 * mode and the CPU priority mode depends on whether GPU
 	 * caps are expressed in mW or kHz. The policy is "smarter"
-	 * when capping is in terms of kHz.
+	 * when capping is in terms of kHz. So, if GPU caps are
+	 * expressed in mW, it is highly preferred to use supplemental
+	 * GPU capping tables expressed in KHz, as well.
 	 */
-	if (!capping_device_platdata->gpu_cap_as_mw)
+	if ((!capping_device_platdata->gpu_cap_as_mw) ||
+		(capping_device_platdata->gpu_cap_as_mw &&
+					capping_device_platdata->gpu_supp_freq))
 		prefer_gpu = prefer_gpu
-			&& (fgpu > (cur_corecap->cpupri.gpu_cap
-				    * priority_bias / 100));
+			&& (fgpu > ((capping_device_platdata->gpu_supp_freq ?
+					cur_corecap->cpupri.gpu_supp_freq :
+						cur_corecap->cpupri.gpu_cap)
+					  * priority_bias / 100));
 
 	return force_gpu_pri || prefer_gpu;
 }
@@ -488,13 +494,28 @@ static void of_sysedp_dynamic_capping_get_pdata(struct platform_device *pdev,
 	if (!obj_ptr)
 		return;
 
+	obj_ptr->gpu_supp_freq =
+		!!of_find_property(np, "nvidia,gpu_supp_freq", NULL);
+
 	ptr = of_get_property(np, "nvidia,corecap", &lenp);
 	if (!ptr)
 		return;
-	n = lenp / sizeof(struct tegra_sysedp_corecap);
+
+	if (obj_ptr->gpu_supp_freq) {
+		if (lenp % (sizeof(u32)*10)) {
+			dev_err(&pdev->dev, "sysedp_dynamic_capping: corecap needs to be a multiple of 10 u32s!\n");
+			return;
+		}
+		n = lenp / (sizeof(u32)*10);
+	} else {
+		if (lenp % (sizeof(u32)*8)) {
+			dev_err(&pdev->dev, "sysedp_dynamic_capping: corecap needs to be a multiple of 8 u32s!\n");
+			return;
+		}
+		n = lenp / (sizeof(u32)*8);
+	}
+
 	if (!n)
-		return;
-	if (lenp % sizeof(struct tegra_sysedp_corecap))
 		return;
 
 	obj_ptr->corecap = devm_kzalloc(&pdev->dev,
@@ -516,8 +537,7 @@ static void of_sysedp_dynamic_capping_get_pdata(struct platform_device *pdev,
 		return;
 	}
 
-	for (idx = 0, i = 0; idx < n; idx++,
-		i += sizeof(struct tegra_sysedp_corecap)/sizeof(u32)) {
+	for (idx = 0, i = 0; idx < n; idx++) {
 		obj_ptr->corecap[idx].power            = u32_ptr[i];
 		obj_ptr->corecap[idx].cpupri.cpu_power = u32_ptr[i+1];
 		obj_ptr->corecap[idx].cpupri.gpu_cap   = u32_ptr[i+2];
@@ -526,6 +546,14 @@ static void of_sysedp_dynamic_capping_get_pdata(struct platform_device *pdev,
 		obj_ptr->corecap[idx].gpupri.gpu_cap   = u32_ptr[i+5];
 		obj_ptr->corecap[idx].gpupri.emcfreq   = u32_ptr[i+6];
 		obj_ptr->corecap[idx].pthrot           = u32_ptr[i+7];
+		if (obj_ptr->gpu_supp_freq) {
+			obj_ptr->corecap[idx].cpupri.gpu_supp_freq =
+								u32_ptr[i+8];
+			obj_ptr->corecap[idx].gpupri.gpu_supp_freq =
+								u32_ptr[i+9];
+			i += 10;
+		} else
+			i += 8;
 	}
 	obj_ptr->corecap_size = n;
 	kfree(u32_ptr);
