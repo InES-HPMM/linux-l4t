@@ -716,7 +716,7 @@ struct device_type sd_type = {
 /*
  * Fetch CID from card.
  */
-int mmc_sd_get_cid(struct mmc_host *host, u32 ocr, u32 *cid, u32 *rocr)
+int mmc_sd_get_cid(struct mmc_host *host, u32 ocr, u32 *cid, u32 *rocr, u8 enable_uhs)
 {
 	int err;
 	u32 max_current;
@@ -752,7 +752,7 @@ try_again:
 	 * to switch to 1.8V signaling level. If the card has failed
 	 * repeatedly to switch however, skip this.
 	 */
-	if (retries && mmc_host_uhs(host))
+	if (retries && mmc_host_uhs(host) && enable_uhs)
 		ocr |= SD_OCR_S18R;
 
 	/*
@@ -942,11 +942,12 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 	int err;
 	u32 cid[4];
 	u32 rocr = 0;
-
+	u8 enable_uhs = 1;
 	BUG_ON(!host);
 	WARN_ON(!host->claimed);
 
-	err = mmc_sd_get_cid(host, ocr, cid, &rocr);
+retry:
+	err = mmc_sd_get_cid(host, ocr, cid, &rocr, enable_uhs);
 	if (err)
 		return err;
 
@@ -1004,9 +1005,19 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 	/* Initialization sequence for UHS-I cards */
 	if (rocr & SD_ROCR_S18A) {
 		err = mmc_sd_init_uhs_card(card);
-		if (err)
-			goto free_card;
-
+		if (err) {
+			if(enable_uhs) {
+				dev_info(mmc_dev(host),
+					"Initialization of UHS-1 card failed,"
+					"falling back to HS mode%d\n",
+					err);
+				mmc_power_cycle(host);
+				enable_uhs = 0;
+				ocr &= ~SD_OCR_S18R;
+				goto retry;
+			} else
+				goto free_card;
+		}
 		/* Card is an ultra-high-speed card */
 		mmc_sd_card_set_uhs(card);
 	} else {
@@ -1056,7 +1067,6 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 					"DFS is enabled successfully\n");
 		}
 #endif
-
 	return 0;
 
 free_card:
