@@ -303,7 +303,7 @@ struct tegra_spi_data {
 
 	/* Slave Ready Polarity (true: Active High, false: Active Low) */
 	int					gpio_slave_ready;
-	bool					slave_ready_pol;
+	bool					slave_ready_active_high;
 
 	struct completion			rx_dma_complete;
 	struct completion			tx_dma_complete;
@@ -783,7 +783,7 @@ static inline void tegra_spi_slave_busy(struct tegra_spi_data *tspi)
 {
 	int deassert_val;
 
-	if (tspi->slave_ready_pol)
+	if (tspi->slave_ready_active_high)
 		deassert_val = 0;
 	else
 		deassert_val = 1;
@@ -797,7 +797,7 @@ static inline void tegra_spi_slave_ready(struct tegra_spi_data *tspi)
 {
 	int assert_val;
 
-	if (tspi->slave_ready_pol)
+	if (tspi->slave_ready_active_high)
 		assert_val = 1;
 	else
 		assert_val = 0;
@@ -1601,6 +1601,7 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 	struct tegra_spi_platform_data *pdata;
 	const unsigned int *prop;
 	struct device_node *np = pdev->dev.of_node;
+	enum of_gpio_flags gpio_flags;
 	u32 of_dma[2];
 
 	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
@@ -1629,13 +1630,13 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 		pdata->is_clkon_always = true;
 
 	pdata->gpio_slave_ready =
-		of_get_named_gpio(np, "nvidia,gpio-slave-ready", 0);
+		of_get_named_gpio_flags(np, "nvidia,slave-ready-gpio", 0,
+				&gpio_flags);
 
-	/* Set the polarity to active low by default */
-	pdata->slave_ready_pol = false;
-
-	if (of_find_property(np, "nvidia,gpio-slave-ready-active-high", NULL))
-		pdata->slave_ready_pol = true;
+	if (gpio_flags & OF_GPIO_ACTIVE_LOW)
+		pdata->slave_ready_active_high = false;
+	else
+		pdata->slave_ready_active_high = true;
 
 	return pdata;
 }
@@ -1724,12 +1725,12 @@ static int tegra_spi_probe(struct platform_device *pdev)
 			tspi->gpio_slave_ready = -EINVAL;
 		}
 
-	tspi->slave_ready_pol = pdata->slave_ready_pol;
+	tspi->slave_ready_active_high = pdata->slave_ready_active_high;
 
 	if (gpio_is_valid(tspi->gpio_slave_ready)) {
 		gpio_request(tspi->gpio_slave_ready, "gpio-spi-slave-ready");
 
-		if (tspi->slave_ready_pol)
+		if (tspi->slave_ready_active_high)
 			deassert_val = 0;
 		else
 			deassert_val = 1;

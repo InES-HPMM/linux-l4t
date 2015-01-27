@@ -16,12 +16,10 @@ Optional properties:
 - nvidia,maximum-dma-buffer-size: Maximum dma buffer size per transfer.
 	If this is not available then 16K will be default. The value should
 	be unit of byte.
-- nvidia,gpio-slave-ready: OUT GPIO from slave to report slave status. This
+- nvidia,slave-ready-gpio: OUT GPIO from slave to report slave status. This
 	GPIO, when asserted, implies slave controller is ready for transaction.
 	When this GPIO is de-asserted, the master cannot initiate transaction
 	with this slave.
-- nvidia,gpio-slave-ready-active-high: Set the slave ready GPIO polarity to
-	active high.
 
 Example:
 spi@7000d600 {
@@ -34,6 +32,5 @@ spi@7000d600 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	status = "disabled";
-	nvidia,gpio-slave-ready = <&gpio TEGRA_GPIO(I, 3) 0>; /*PI3*/
-	nvidia,gpio-slave-ready-active-high;
+	nvidia,slave-ready-gpio = <&gpio TEGRA_GPIO(I, 3) GPIO_ACTIVE_LOW>; /*PI3*/
 };
