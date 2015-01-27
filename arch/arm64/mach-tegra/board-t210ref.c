@@ -1,7 +1,7 @@
  /*
  * arch/arm64/mach-tegra/board-t210ref.c
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -479,12 +479,12 @@ static void __init tegra_t210ref_reserve(void)
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM) || \
 		defined(CONFIG_TEGRA_NO_CARVEOUT)
 	ulong carveout_size = 0;
-	ulong fb2_size = SZ_16M;
+	ulong fb2_size = SZ_64M + SZ_8M;
 #else
 	ulong carveout_size = SZ_1G;
 	ulong fb2_size = SZ_4M;
 #endif
-	ulong fb1_size = SZ_16M + SZ_2M;
+	ulong fb1_size = SZ_64M + SZ_8M;
 	ulong vpr_size = 186 * SZ_1M;
 
 #if defined(CONFIG_TEGRA_NVADSP) && \
