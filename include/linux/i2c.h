@@ -434,6 +434,7 @@ struct i2c_adapter {
 	struct list_head userspace_clients;
 
 	struct i2c_bus_recovery_info *bus_recovery_info;
+	unsigned long bus_clk_rate;
 };
 #define to_i2c_adapter(d) container_of(d, struct i2c_adapter, dev)
 
