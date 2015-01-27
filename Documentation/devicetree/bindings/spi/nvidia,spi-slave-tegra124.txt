@@ -22,9 +22,6 @@ Optional properties:
 	with this slave.
 - nvidia,gpio-slave-ready-active-high: Set the slave ready GPIO polarity to
 	active high.
-- nvidia,clk-pin: Name of the tegra pin selected for controller clock input.
-	It is require to disable external clock while programing/reseting
-	the controller.
 
 Example:
 spi@7000d600 {
@@ -39,5 +36,4 @@ spi@7000d600 {
 	status = "disabled";
 	nvidia,gpio-slave-ready = <&gpio TEGRA_GPIO(I, 3) 0>; /*PI3*/
 	nvidia,gpio-slave-ready-active-high;
-	nvidia,clk-pin = "gpio_x5_aud_px5";
 };

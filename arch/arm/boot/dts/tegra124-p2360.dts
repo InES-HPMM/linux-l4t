@@ -137,7 +137,6 @@
 	spi@7000d400 {
 		status = "okay";
 		compatible = "nvidia,tegra124-spi-slave";
-		nvidia,clk-pin = "gpio_x5_aud_px5";
 		nvidia,gpio-slave-ready = <&gpio TEGRA_GPIO(K, 4) 0>; /*PK4*/
 		nvidia,gpio-slave-ready-active-high;
 		nvidia,rx-trigger-words = <0>;
@@ -168,7 +167,6 @@
 	spi@7000dc00 {
 		status = "okay";
 		compatible = "nvidia,tegra124-spi-slave";
-		nvidia,clk-pin = "ulpi_nxt_py2";
 		nvidia,gpio-slave-ready = <&gpio TEGRA_GPIO(I, 3) 0>; /*PI3*/
 		nvidia,gpio-slave-ready-active-high;
 		nvidia,rx-trigger-words = <0>;
