@@ -23,6 +23,17 @@ config TOUCHSCREEN_LR388K7
 	To compile this driver as a module, choose M here: the
 	module will be called lr388k7.
 
+config TOUCHSCREEN_NVTOUCH
+	tristate "Nvidia touchdriver extension"
+	depends on TOUCHSCREEN_LR388K7
+	help
+	Say Y here if you have a LR388K7 and want to enable
+	addtional Nvidia touchdriver features.
+
+	If unsure, say N.
+
+	Compilation of this driver as a module is not supported
+
 config TOUCHSCREEN_88PM860X
 	tristate "Marvell 88PM860x touchscreen"
 	depends on MFD_88PM860X
