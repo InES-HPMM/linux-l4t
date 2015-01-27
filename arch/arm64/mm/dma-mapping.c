@@ -693,7 +693,7 @@ static void *__dma_alloc(struct device *dev, size_t size, dma_addr_t *handle,
 #ifdef CONFIG_DMA_API_DEBUG
 	u64 limit = (mask + 1) & ~mask;
 	if (limit && size >= limit) {
-		dev_warn(dev, "coherent allocation too big (requested %#x mask %#llx)\n",
+		dev_warn(dev, "coherent allocation too big (requested %#zx mask %#llx)\n",
 			size, mask);
 		return NULL;
 	}
