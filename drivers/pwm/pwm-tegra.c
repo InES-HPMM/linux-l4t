@@ -122,7 +122,8 @@ static int tegra_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 {
 	struct tegra_pwm_chip *pc = to_tegra_pwm_chip(chip);
 	unsigned long long c;
-	unsigned long rate, hz;
+	unsigned long hz;
+	int rate;
 	u32 val = 0;
 	int err;
 
