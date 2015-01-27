@@ -115,6 +115,7 @@ struct rtc_device
 	struct work_struct irqwork;
 	/* Some hardware can't support UIE mode */
 	int uie_unsupported;
+	bool system_shutting;
 
 #ifdef CONFIG_RTC_INTF_DEV_UIE_EMUL
 	struct work_struct uie_task;
@@ -140,6 +141,7 @@ extern struct rtc_device *devm_rtc_device_register(struct device *dev,
 extern void rtc_device_unregister(struct rtc_device *rtc);
 extern void devm_rtc_device_unregister(struct device *dev,
 					struct rtc_device *rtc);
+void rtc_device_shutdown(struct rtc_device *rtc);
 
 extern int rtc_read_time(struct rtc_device *rtc, struct rtc_time *tm);
 extern int rtc_set_time(struct rtc_device *rtc, struct rtc_time *tm);
