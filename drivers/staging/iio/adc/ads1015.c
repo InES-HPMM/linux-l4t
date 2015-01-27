@@ -190,6 +190,7 @@ static int ads1015_threshold_update(struct ads1015 *adc, int *adc_val)
 	struct ads1015_adc_threshold_ranges *thres_range;
 	u16 reg_val = 0;
 	int ret;
+	int lower, upper;
 	s16 lower_s16;
 	s16 upper_s16;
 	int i;
@@ -231,23 +232,36 @@ static int ads1015_threshold_update(struct ads1015 *adc, int *adc_val)
 		last_val = cur_val;
 	} while (--max_retry > 0);
 
+	lower = -2047;
+	upper = 2047;
 	for (i = 0; i < adc_prop->num_conditions; i++) {
 		thres_range = &adc_prop->threshold_ranges[i];
 		if (thres_range->lower <= cur_val &&
 			thres_range->upper >= cur_val) {
-			lower_s16 = (s16) (thres_range->lower * 16);
-			upper_s16 = (s16) (thres_range->upper * 16);
+			lower = thres_range->lower;
+			upper = thres_range->upper;
 			in_valid_range = true;
 			break;
+		}
+
+		if (thres_range->upper < cur_val) {
+			if (lower < thres_range->upper)
+				lower = thres_range->upper;
+		}
+
+		if (thres_range->lower > cur_val) {
+			if (upper > thres_range->lower)
+				upper = thres_range->lower;
 		}
 	}
 
 	*adc_val = cur_val;
+	lower_s16 = (s16) (lower * 16);
+	upper_s16 = (s16)(upper * 16);
 	if (!in_valid_range) {
 		dev_info(adc->dev,
 			"Not in valid threshold range. Val: %d\n", cur_val);
 		WARN_ON(1);
-		return  0;
 	}
 
 	ret = ads1015_write(adc->rmap, ADS1015_LO_THRESH_REG, (u16)lower_s16);
