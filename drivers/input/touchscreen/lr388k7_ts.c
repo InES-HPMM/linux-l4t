@@ -32,6 +32,12 @@
 #include <linux/uaccess.h>
 #include <linux/workqueue.h>
 
+
+#ifdef CONFIG_TOUCHSCREEN_NVTOUCH
+#include "nvtouch/nvtouch_kernel.h"
+u8 nvtouch_data[20000];
+#endif
+
 /* DEBUG */
 #ifndef DEBUG_LR388K7
 #define DEBUG_LR388K7
@@ -669,6 +675,41 @@ static void lr388k7_event_handler(u8 u8Status)
 		 */
 		if (g_st_state.b_is_init_finish) {
 
+#ifdef CONFIG_TOUCHSCREEN_NVTOUCH
+			int  raw_data_size = g_u32_raw_data_size +
+				K7_DATA_READ_SIZE;
+
+			n_ret = lr388k7_read_data((u8 *)nvtouch_data);
+
+			if (nvtouch_get_driver_mode() !=
+				NVTOUCH_DRIVER_CONFIG_MODE_VENDOR_ONLY) {
+				if (n_ret)
+					nvtouch_kernel_process(nvtouch_data,
+							raw_data_size,
+							g_u8_mode);
+				else
+					pr_err("lr388k7_read_data failed.\n");
+			}
+
+
+
+			if (nvtouch_get_driver_mode() !=
+				NVTOUCH_DRIVER_CONFIG_MODE_NVTOUCH_ONLY) {
+				/*
+				 *	Get pointer of queue buffer
+				 */
+				p_q_buf = lr388k7_enqueue_start();
+				if (p_q_buf) {
+					memcpy(p_q_buf, nvtouch_data,
+							raw_data_size);
+					if (n_ret)
+						lr388k7_enqueue_finish();
+				}
+			}
+			/* Nvtouch end */
+
+
+#else
 			/*
 			 * Get pointer of queue buffer
 			 */
@@ -680,6 +721,8 @@ static void lr388k7_event_handler(u8 u8Status)
 			} else {
 				lr388k7_read_spec_size();
 			}
+#endif
+
 		} else {
 			lr388k7_read_spec_size();
 		}
@@ -729,6 +772,10 @@ static void lr388k7_work_handler(struct work_struct *work)
 			"[WARN] work handler is called regardless of b_is_suspended\n");
 		return;
 	}
+
+#ifdef CONFIG_TOUCHSCREEN_NVTOUCH
+	nvtouch_kernel_timestamp_touch_irq();
+#endif
 
 	mutex_lock(&ts->mutex);
 
@@ -949,11 +996,21 @@ static ssize_t lr388k7_ts_version_show(struct device *dev,
 	struct device_attribute *attr,
 	char *buf)
 {
+
+#ifdef CONFIG_TOUCHSCREEN_NVTOUCH
+	return sprintf(buf, "FW %d, Driver %d, Module %d, %s\n",
+			g_st_state.u16fw_ver,
+			K7_DRIVER_VERSION,
+			g_st_state.u16module_ver,
+			nvtouch_kernel_get_version_string()
+			);
+#else
 	return sprintf(buf, "FW %d, Driver %d, Module %d\n",
 		       g_st_state.u16fw_ver,
 		       K7_DRIVER_VERSION,
 		       g_st_state.u16module_ver
 		       );
+#endif
 }
 
 static ssize_t lr388k7_ts_version_store(struct device *dev,
@@ -1412,6 +1469,55 @@ static void lr388k7_touch_report(void *p)
 	}
 
 	u8_num = p_touch_report->u8_num_of_touch;
+
+#ifdef CONFIG_TOUCHSCREEN_NVTOUCH
+
+	/* Send events to nvtouch (for tracing or reporting) */
+	{
+		/* report events through the same interface with nvtouch */
+		struct nvtouch_events *nv_events =
+			nvtouch_kernel_get_vendor_events_ptr();
+		for (i = 0; i < u8_num; i++) {
+
+			if (ts->flip_x)
+				p_touch_report->tc[i].x =
+				(ts->max_x - p_touch_report->tc[i].x) < 0 ?
+				0 : ts->max_x - p_touch_report->tc[i].x;
+			if (ts->flip_y)
+				p_touch_report->tc[i].y =
+				(ts->max_y - p_touch_report->tc[i].y) < 0 ?
+				0 : ts->max_y - p_touch_report->tc[i].y;
+			if (ts->swap_xy) {
+				u16 tmp;
+				tmp = p_touch_report->tc[i] . x;
+				p_touch_report->tc[i].x =
+					p_touch_report->tc[i].y;
+				p_touch_report->tc[i].y = tmp;
+			}
+
+			nv_events->events[i].tracking_id =
+				p_touch_report->tc[i].id;
+			nv_events->events[i].position_y =
+				p_touch_report->tc[i].x;
+			nv_events->events[i].position_x =
+				p_touch_report->tc[i].y;
+			nv_events->events[i].pressure = p_touch_report->tc[i].z;
+			nv_events->events[i].tool = NVTOUCH_EVENT_TOOL_PEN;
+			nv_events->timestamp = nvtouch_get_time_us();
+		}
+		nv_events->event_count = u8_num;
+	}
+
+	if ((nvtouch_get_driver_mode() !=
+		NVTOUCH_DRIVER_CONFIG_MODE_VENDOR_ONLY)
+		&& (nvtouch_get_driver_mode() !=
+		NVTOUCH_DRIVER_CONFIG_MODE_VENDOR_DTA)
+	) {
+		/* events will be reported via nvtouch */
+		kfree(p_touch_report);
+		return;
+	}
+#endif
 
 	if (u8_num == 0) {
 		if (ts->b_eraser_active) {
@@ -1897,6 +2003,11 @@ static long dev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	switch (cmd & 0xFFFF) {
 	case LR388K7_IOCTL_TOUCH_REPORT:
+#ifdef CONFIG_TOUCHSCREEN_NVTOUCH
+		if (nvtouch_get_driver_mode() ==
+			NVTOUCH_DRIVER_CONFIG_MODE_NVTOUCH_ONLY)
+			break;
+#endif
 		lr388k7_touch_report((void *) arg);
 		break;
 
@@ -2479,6 +2590,11 @@ static int lr388k7_probe(struct spi_device *spi)
 	device_enable_async_suspend(dev);
 
 	dev_info(dev, "[EXIT] probe\n");
+
+#ifdef CONFIG_TOUCHSCREEN_NVTOUCH
+	nvtouch_kernel_init(58, 37, 15360, 9600, 0, 1, input_dev);
+	pr_info("NvTouch init completed\n");
+#endif
 	return 0;
 
  err_clear_drvdata:
