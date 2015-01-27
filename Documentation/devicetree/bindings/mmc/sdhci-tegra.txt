@@ -77,6 +77,7 @@ in HS400 mode.
 	---> 1 indicates MMC runtime power management coupled clock gate is enabled.
 	When this flag is not specified explicitly the value is assumed to be 0.
 - cd_wakeup_incapable: Set this flag to disable card detect event as wake source.
+- nvidia,enable-strobe-mode: Enable enhance strobe mode when eMMC device runs at HS400 mode.
 
 Example:
 
