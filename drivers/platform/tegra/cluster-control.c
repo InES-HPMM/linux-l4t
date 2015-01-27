@@ -43,8 +43,8 @@ static unsigned long pg_core_arg, pg_cluster_arg;
 
 static struct psci_power_state core_pg __initdata = {
 	.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
-	.id = 31,
-	.affinity_level = 0,
+	.id = 30,
+	.affinity_level = 1,
 };
 
 static struct psci_power_state cluster_pg __initdata = {
