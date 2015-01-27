@@ -140,7 +140,7 @@ static void __tegra210_enter_c7(int cpu)
 	struct psci_power_state ps = {
 		.id = TEGRA210_CPUIDLE_C7,
 		.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
-		.affinity_level = 0,
+		.affinity_level = 1,
 	};
 	unsigned long arg = psci_power_state_pack(ps);
 
