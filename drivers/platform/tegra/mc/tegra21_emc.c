@@ -84,7 +84,7 @@ static struct supported_sequence supported_seqs[] = {
 		0x6,
 		emc_set_clock_r21015,
 		__do_periodic_emc_compensation_r21015,
-		"21015"
+		"21018"
 	},
 
 	/* NULL terminate. */
