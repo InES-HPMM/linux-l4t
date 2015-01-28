@@ -43,6 +43,7 @@
 #include <linux/tegra-fuse.h>
 #include <linux/tegra_pm_domains.h>
 #include <linux/tegra_prod.h>
+#include <linux/tegra-soc.h>
 
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/tegra_usb_pmc.h>
@@ -5460,6 +5461,12 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	if (ret) {
 		dev_err(&pdev->dev, "failed to add usb3hcd, error = %d\n", ret);
 		goto err_put_usb3_hcd;
+	}
+
+	if (is_tegra_hypervisor_mode()) {
+		pm_runtime_disable(&hcd_to_bus(hcd)->root_hub->dev);
+		pm_runtime_disable(
+			&hcd_to_bus(xhci->shared_hcd)->root_hub->dev);
 	}
 
 	device_init_wakeup(&hcd->self.root_hub->dev, 1);
