@@ -357,6 +357,9 @@ static int ivc_read_frame(struct ivc *ivc, void *buf, void __user *user_buf,
 	 * The available count can only asynchronously increase, so the
 	 * worst possible side-effect will be a spurious notification.
 	 */
+	ivc_invalidate_counter(ivc, ivc->rx_handle +
+		offsetof(struct ivc_channel_header, w_count));
+
 	if (ivc_channel_avail_count(ivc, ivc->rx_channel) == ivc->nframes - 1)
 		ivc->notify(ivc);
 
@@ -449,6 +452,9 @@ int tegra_ivc_read_advance(struct ivc *ivc)
 	 * The available count can only asynchronously increase, so the
 	 * worst possible side-effect will be a spurious notification.
 	 */
+	ivc_invalidate_counter(ivc, ivc->rx_handle +
+		offsetof(struct ivc_channel_header, w_count));
+
 	if (ivc_channel_avail_count(ivc, ivc->rx_channel) == ivc->nframes - 1)
 		ivc->notify(ivc);
 
@@ -510,6 +516,9 @@ static int ivc_write_frame(struct ivc *ivc, const void *buf,
 	 * The available count can only asynchronously decrease, so the
 	 * worst possible side-effect will be a spurious notification.
 	 */
+	ivc_invalidate_counter(ivc, ivc->tx_handle +
+		offsetof(struct ivc_channel_header, r_count));
+
 	if (ivc_channel_avail_count(ivc, ivc->tx_channel) == 1)
 		ivc->notify(ivc);
 
@@ -589,6 +598,9 @@ int tegra_ivc_write_advance(struct ivc *ivc)
 	 * The available count can only asynchronously decrease, so the
 	 * worst possible side-effect will be a spurious notification.
 	 */
+	ivc_invalidate_counter(ivc, ivc->tx_handle +
+		offsetof(struct ivc_channel_header, r_count));
+
 	if (ivc_channel_avail_count(ivc, ivc->tx_channel) == 1)
 		ivc->notify(ivc);
 
