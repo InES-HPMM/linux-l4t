@@ -240,7 +240,9 @@ extern bool dhd_wlfc_skip_fc(void);
 extern void dhd_wlfc_plat_init(void *dhd);
 extern void dhd_wlfc_plat_deinit(void *dhd);
 #endif /* PROP_TXSTATUS */
+#ifdef BCMSDIO
 extern int dhd_slpauto_config(dhd_pub_t *dhd, s32 val);
+#endif
 
 #if LINUX_VERSION_CODE == KERNEL_VERSION(2, 6, 15)
 const char *
@@ -8697,6 +8699,7 @@ int dhd_l2_filter_block_ping(dhd_pub_t *pub, void *pktbuf, int ifidx)
 int
 dhd_set_slpauto_mode(struct net_device *dev, s32 val)
 {
+#ifdef BCMSDIO
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
 	int ret;
 
@@ -8711,4 +8714,7 @@ dhd_set_slpauto_mode(struct net_device *dev, s32 val)
 	dhd_os_sdunlock(&dhd->pub);
 
 	return ret;
+#else
+	return BCME_UNSUPPORTED;
+#endif
 }
