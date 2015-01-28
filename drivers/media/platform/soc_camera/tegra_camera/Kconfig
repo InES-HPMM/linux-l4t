@@ -12,7 +12,7 @@ config VIDEO_TEGRA_VI2
 	---help---
 	This is the v4l2 driver for the VI2-style Tegra camera interface
 
-config VIDEO_TEGRA_BYPASS
+config VIDEO_TEGRA_VI_BYPASS
 	bool "Tegra soc_camera host SCF bypass driver"
 	depends on VIDEO_TEGRA
 	---help---
