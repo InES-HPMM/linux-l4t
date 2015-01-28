@@ -382,6 +382,32 @@ static void tegra_xudc_non_std_charger_work(struct work_struct *work)
 			CONNECT_TYPE_NON_STANDARD_CHARGER);
 }
 
+static void tegra_xudc_plc_reset_war_work(struct work_struct *work)
+{
+	struct nv_udc_s *nvudc =
+		container_of(work, struct nv_udc_s, plc_reset_war_work);
+	unsigned long flags;
+
+	dev_info(nvudc->dev, "plc_reset_war_work\n");
+	spin_lock_irqsave(&nvudc->lock, flags);
+	if (nvudc->wait_for_csc) {
+		u32 pls = ioread32(nvudc->mmio_reg_base + PORTSC);
+		pls &= PORTSC_PLS_MASK;
+
+		if (pls == XDEV_INACTIVE) {
+			dev_info(nvudc->dev, "toggle vbus\n");
+			tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+				USB2_VBUS_ID_0_VBUS_OVERRIDE, 0);
+
+			tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+				USB2_VBUS_ID_0_VBUS_OVERRIDE,
+				USB2_VBUS_ID_0_VBUS_OVERRIDE);
+			nvudc->wait_for_csc = 0;
+		}
+	}
+	spin_unlock_irqrestore(&nvudc->lock, flags);
+}
+
 static void tegra_xudc_port_reset_war_work(struct work_struct *work)
 {
 
@@ -3741,6 +3767,10 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 		u_temp2 |= PORTSC_CSC;
 		iowrite32(u_temp2, nvudc->mmio_reg_base + PORTSC);
 
+		if (nvudc->wait_for_csc) {
+			cancel_delayed_work(&nvudc->plc_reset_war_work);
+			nvudc->wait_for_csc = 0;
+		}
 	}
 
 	if (PORTSC_PLC & u_temp) {
@@ -3782,6 +3812,10 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 #ifdef OTG_XXX
 			nv_notify_otg(A_BUS_RESUME);
 #endif
+		} else if ((u_temp2 & PORTSC_PLS_MASK) == XDEV_INACTIVE) {
+			schedule_delayed_work(&nvudc->plc_reset_war_work,
+				msecs_to_jiffies(TOGGLE_VBUS_WAIT_MS));
+			nvudc->wait_for_csc = 1;
 		}
 	}
 
@@ -5417,6 +5451,8 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 					tegra_xudc_non_std_charger_work);
 	INIT_DELAYED_WORK(&nvudc->port_reset_war_work,
 					tegra_xudc_port_reset_war_work);
+	INIT_DELAYED_WORK(&nvudc->plc_reset_war_work,
+					tegra_xudc_plc_reset_war_work);
 
 	nvudc->pdev.plat = pdev;
 	nvudc->dev = dev;
@@ -5593,6 +5629,7 @@ static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 		cancel_work_sync(&nvudc->current_work);
 		cancel_delayed_work(&nvudc->non_std_charger_work);
 		cancel_delayed_work(&nvudc->port_reset_war_work);
+		cancel_delayed_work(&nvudc->plc_reset_war_work);
 		usb_del_gadget_udc(&nvudc->gadget);
 		free_data_struct(nvudc);
 		nvudc_plat_clocks_disable(nvudc);
