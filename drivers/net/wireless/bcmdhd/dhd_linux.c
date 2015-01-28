@@ -128,6 +128,10 @@
 
 #endif
 
+#ifdef CONFIG_BCMDHD_CUSTOM_PM_QOS_TEGRA
+#include "dhd_custom_pm_qos_tegra.h"
+#endif
+
 #ifdef WLMEDIA_HTSF
 #include <linux/time.h>
 #include <htsf.h>
@@ -2304,6 +2308,10 @@ dhd_start_xmit(struct sk_buff *skb, struct net_device *net)
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
+#ifdef CONFIG_BCMDHD_CUSTOM_PM_QOS_TEGRA
+	tegra_pm_qos_net_tx(skb);
+#endif
+
 	DHD_OS_WAKE_LOCK(&dhd->pub);
 	DHD_PERIM_LOCK_TRY(DHD_FWDER_UNIT(dhd), TRUE);
 
@@ -2817,6 +2825,9 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 		}
 
 		if (in_interrupt()) {
+#ifdef CONFIG_BCMDHD_CUSTOM_PM_QOS_TEGRA
+			tegra_pm_qos_net_rx(skb);
+#endif
 			netif_rx(skb);
 		} else {
 			if (dhd->rxthread_enabled) {
@@ -2833,6 +2844,9 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 				 * by netif_rx_ni(), but in earlier kernels, we need
 				 * to do it manually.
 				 */
+#ifdef CONFIG_BCMDHD_CUSTOM_PM_QOS_TEGRA
+				tegra_pm_qos_net_rx(skb);
+#endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
 				netif_rx_ni(skb);
 #else
@@ -3147,6 +3161,9 @@ dhd_rxf_thread(void *data)
 				void *skbnext = PKTNEXT(pub->osh, skb);
 				PKTSETNEXT(pub->osh, skb, NULL);
 
+#ifdef CONFIG_BCMDHD_CUSTOM_PM_QOS_TEGRA
+				tegra_pm_qos_net_rx(skb);
+#endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
 				netif_rx_ni(skb);
 #else
@@ -3260,6 +3277,9 @@ dhd_sched_rxf(dhd_pub_t *dhdp, void *skb)
 		while (skbp) {
 			void *skbnext = PKTNEXT(dhdp->osh, skbp);
 			PKTSETNEXT(dhdp->osh, skbp, NULL);
+#ifdef CONFIG_BCMDHD_CUSTOM_PM_QOS_TEGRA
+			tegra_pm_qos_net_rx(skbp);
+#endif
 			netif_rx_ni(skbp);
 			skbp = skbnext;
 		}
@@ -6595,6 +6615,9 @@ dhd_module_cleanup(void)
 static void __exit
 dhd_module_exit(void)
 {
+#ifdef CONFIG_BCMDHD_CUSTOM_PM_QOS_TEGRA
+	tegra_pm_qos_exit();
+#endif
 	dhd_module_cleanup();
 	unregister_reboot_notifier(&dhd_reboot_notifier);
 }
@@ -6606,6 +6629,10 @@ dhd_module_init(void)
 	int retry = POWERUP_MAX_RETRY;
 
 	DHD_ERROR(("%s in\n", __FUNCTION__));
+
+#ifdef CONFIG_BCMDHD_CUSTOM_PM_QOS_TEGRA
+	tegra_pm_qos_init();
+#endif
 
 	DHD_PERIM_RADIO_INIT();
 
@@ -7066,6 +7093,9 @@ dhd_sendup_log(dhd_pub_t *dhdp, void *data, int data_len)
 		skb_pull(skb, ETH_HLEN);
 
 		/* Send the packet */
+#ifdef CONFIG_BCMDHD_CUSTOM_PM_QOS_TEGRA
+		tegra_pm_qos_net_rx(skb);
+#endif
 		if (in_interrupt()) {
 			netif_rx(skb);
 		} else {
