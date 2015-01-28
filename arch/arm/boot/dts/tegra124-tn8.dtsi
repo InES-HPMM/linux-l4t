@@ -108,6 +108,13 @@
 		nvidia,edp_limit = <12000>;
 	};
 
+	extcon {
+		compatible = "simple-bus";
+		device_type = "external-connection";
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
 	gpu_edp {
 		nvidia,edp_limit = <11200>;
 	};
