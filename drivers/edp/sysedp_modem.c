@@ -114,8 +114,6 @@ static int sysedp_modem_probe(struct platform_device *pdev)
 		goto irq_error;
 	}
 
-	disable_irq_wake(data->mdm_power_irq);
-
 	ret = device_create_file(&pdev->dev, &dev_attr_sysedp_state);
 	if (ret) {
 		dev_err(&pdev->dev, "can't create edp sysfs file\n");
