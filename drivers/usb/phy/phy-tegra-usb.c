@@ -200,18 +200,23 @@ static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 	int err = 0, ret;
 
 	if (tegra_platform_is_silicon()) {
-		phy->pllu_reg = regulator_get(&phy->pdev->dev, USB_PLL_REG);
-		if (IS_ERR_OR_NULL(phy->pllu_reg)) {
-			ERR("Couldn't get regulator %s: %ld\n", USB_PLL_REG,
-				PTR_ERR(phy->pllu_reg));
-			err = phy->pllu_reg ? PTR_ERR(phy->pllu_reg) : -ENODEV;
-			phy->pllu_reg = NULL;
-			return err;
+		if (phy->pdata->phy_intf == TEGRA_USB_PHY_INTF_UTMI) {
+			phy->pllu_reg =
+				regulator_get(&phy->pdev->dev, USB_PLL_REG);
+			if (IS_ERR_OR_NULL(phy->pllu_reg)) {
+				ERR("Couldn't get regulator %s: %ld\n",
+					USB_PLL_REG, PTR_ERR(phy->pllu_reg));
+				err = phy->pllu_reg ? PTR_ERR(phy->pllu_reg) :
+						-ENODEV;
+				phy->pllu_reg = NULL;
+				return err;
+			}
+			ret = regulator_enable(phy->pllu_reg);
+			if (ret)
+				ERR(
+				"can't enable regulator pllu_reg, error %d\n",
+				ret);
 		}
-		ret = regulator_enable(phy->pllu_reg);
-		if (ret)
-			ERR("can't enable regulator pllu_reg, error %d\n", ret);
-
 		phy->pllu_clk = clk_get_sys(NULL, "pll_u");
 		if (IS_ERR(phy->pllu_clk)) {
 			ERR("inst:[%d] Can't get pllu_clk clock\n", phy->inst);
@@ -862,18 +867,21 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 			tegra_clk_prepare_enable(phy->ctrlr_clk);
 		}
 	} else {
-		phy->vbus_reg = regulator_get(&pdev->dev, "usb_vbus");
-		if (IS_ERR_OR_NULL(phy->vbus_reg)) {
-			ERR("failed regulator_get vdd_vbus_usb:%ld,inst:%d\n",
-				PTR_ERR(phy->vbus_reg),	phy->inst);
-			phy->vbus_reg = NULL;
-		}
+		if (phy->pdata->phy_intf == TEGRA_USB_PHY_INTF_UTMI) {
+			phy->vbus_reg = regulator_get(&pdev->dev, "usb_vbus");
+			if (IS_ERR_OR_NULL(phy->vbus_reg)) {
+				ERR(
+				"failed regulator_get vdd_vbus_usb:%ld, inst:%d\n",
+				PTR_ERR(phy->vbus_reg), phy->inst);
+				phy->vbus_reg = NULL;
+			}
 
-		usb_host_vbus_enable(phy, true);
-		/* Fixme: Need delay to stablize the vbus on USB1
-		   this must be fixed properly */
-		if (phy->inst == 0)
-			msleep(1000);
+			usb_host_vbus_enable(phy, true);
+			/* Fixme: Need delay to stablize the vbus on USB1
+			   this must be fixed properly */
+			if (phy->inst == 0)
+				msleep(1000);
+		}
 	}
 	err = tegra_usb_phy_init_ops(phy);
 	if (err) {
