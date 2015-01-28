@@ -1720,13 +1720,6 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	val |= REFCLK_SEL_INT_CML;
 	misc_writel(val, SATA_AUX_PAD_PLL_CNTL_1_REG);
 
-	/* wait for SATA_PADPLL_IDDQ2LANE_SLUMBER_DLY = 3 microseconds. */
-	val = clk_readl(CLK_RST_SATA_PLL_CFG1_REG);
-	val &= ~IDDQ2LANE_SLUMBER_DLY_MASK;
-	val |= IDDQ2LANE_SLUMBER_DLY_3MS;
-	clk_writel(val, CLK_RST_SATA_PLL_CFG1_REG);
-	udelay(3);
-
 #if defined(CONFIG_TEGRA_SILICON_PLATFORM)
 	err = tegra_unpowergate_partition(TEGRA_POWERGATE_SATA);
 	if (err) {
@@ -2800,9 +2793,10 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host)
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
 
-	tegra_ahci_iddqlane_config();
 	if (tegra_hpriv->cid == TEGRA_CHIPID_TEGRA21)
 		tegra_ahci_t210_power_up_aux_idle_detector();
+	else
+		tegra_ahci_iddqlane_config();
 
 	status = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_SATA);
 	if (status) {
