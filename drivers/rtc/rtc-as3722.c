@@ -239,6 +239,14 @@ static int as3722_rtc_remove(struct platform_device *pdev)
 	return 0;
 }
 
+void as3722_rtc_shutdown(struct platform_device *pdev)
+{
+	struct as3722_rtc *as3722_rtc = platform_get_drvdata(pdev);
+
+	as3722_rtc_alarm_irq_enable(as3722_rtc->dev, 0);
+	rtc_device_shutdown(as3722_rtc->rtc);
+}
+
 #ifdef CONFIG_PM_SLEEP
 static int as3722_rtc_suspend(struct device *dev)
 {
@@ -286,6 +294,7 @@ static const struct dev_pm_ops as3722_rtc_pm_ops = {
 static struct platform_driver as3722_rtc_driver = {
 	.probe = as3722_rtc_probe,
 	.remove = as3722_rtc_remove,
+	.shutdown = as3722_rtc_shutdown,
 	.driver = {
 		.name = "as3722-rtc",
 		.pm = &as3722_rtc_pm_ops,
