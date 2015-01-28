@@ -95,3 +95,12 @@ config BCMDHD_TEGRA_REGION_BASED_NVRAM
 	depends on BCMDHD
 	---help---
 	  Enable dynamic region based selection of nvram parameters.
+
+config BCMDHD_CUSTOM_PM_QOS_TEGRA
+	bool "Custom PM QOS for Tegra platform"
+	depends on BCMDHD
+	default y
+	---help---
+	  Enable custom PM QOS for Tegra platform.
+	  Dynamically boosts clock frequencies based on network traffic
+	  requirements.
