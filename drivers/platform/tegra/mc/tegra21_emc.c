@@ -840,7 +840,7 @@ void __emc_copy_table_params(struct tegra21_emc_table *src,
 	}
 }
 
-void emc_copy_table_params(struct tegra21_emc_table *src,
+static void emc_copy_table_params(struct tegra21_emc_table *src,
 			   struct tegra21_emc_table *dst,
 			   int table_size, int flags)
 {
