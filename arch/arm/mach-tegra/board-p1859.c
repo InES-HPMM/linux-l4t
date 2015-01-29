@@ -134,9 +134,11 @@ static void __init p1859_gpu_clk_rate_init(void)
 	int sku_rev;
 	sku_rev = tegra_board_get_skurev("61859");
 
-	if (sku_rev < 300)
+	if (sku_rev < 300) {
+		struct clk *c = tegra_get_clock_by_name("gbus");
+		tegra_init_max_rate(c, 696000000);
 		tegra_clk_init_from_table(p1859_gpu_696mhz_clk);
-	else
+	} else
 		tegra_clk_init_from_table(p1859_gpu_780mhz_clk);
 }
 
