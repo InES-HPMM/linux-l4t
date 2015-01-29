@@ -297,10 +297,14 @@ static void ptm_restore(struct tracectx *t)
 }
 
 /* Initialise the PTM registers */
-static void ptm_init(struct tracectx *t, int id)
+static void ptm_init(void *p_info)
 {
+	u32 id, level_val, addr_mask;
 	int trccfg, i;
-	u32 level_val, addr_mask;
+	struct tracectx *t;
+
+	t = (struct tracectx *)p_info;
+	id = raw_smp_processor_id();
 
 	/* Power up the CPU PTM */
 	ptm_writel(t, id, 8, TRCPDCR);
@@ -458,6 +462,8 @@ static void ptm_init(struct tracectx *t, int id)
 			/* insert global timestamp if enabled */
 			ptm_writel(t, id, 0x3, TRCTSCTLR);
 	}
+	ptm_writel(t, id, 1, TRCPRGCTLR);
+
 	dev_dbg(t->dev, "PTM%d initialized.\n", id);
 }
 
@@ -606,13 +612,7 @@ static void etr_init(struct tracectx *t)
 /* This function enables PTM traces */
 static int trace_t210_start(struct tracectx *t)
 {
-	int id;
-
 	clk_enable(csite_clk);
-
-	/* Programming PTM */
-	for_each_online_cpu(id)
-		ptm_init(t, id);
 
 	if (t->ape) {
 		/* Programming APE */
@@ -642,9 +642,7 @@ static int trace_t210_start(struct tracectx *t)
 		tpiu_init(t);
 
 		/* Enabling the ETM */
-		for_each_online_cpu(id) {
-			ptm_writel(t, id, 1, TRCPRGCTLR);
-		}
+		on_each_cpu(ptm_init, t, false);
 		dsb();
 		isb();
 	}
@@ -652,15 +650,20 @@ static int trace_t210_start(struct tracectx *t)
 	return 0;
 }
 
+void ptm_disable(void *p_info)
+{
+	struct tracectx *t = (struct tracectx *)p_info;
+	u32 id = raw_smp_processor_id();
+
+	ptm_writel(t, id, 0, TRCPRGCTLR);
+}
+
 /* Disable the traces */
 static int trace_t210_stop(struct tracectx *t)
 {
-	int id;
-
 	if (!t->ape)
 		/* Disabling the ETM */
-		for_each_online_cpu(id)
-			ptm_writel(t, id, 0, TRCPRGCTLR);
+		on_each_cpu(ptm_disable, &tracer, true);
 	else
 		/* Disable APE traces */
 		ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
@@ -799,11 +802,11 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 		overflow &= 0x01;
 
 		/* Disabling the ETM */
-		for_each_online_cpu(count)
-			ptm_writel(t, count, 0, TRCPRGCTLR);
-
-		ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
-
+		if (t->enable) {
+			on_each_cpu(ptm_disable, t, true);
+			ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
+			t->enable = 0;
+		}
 		t->buf_size = t->etr_buf - t->etr_address;
 		t->etr_buf = t->etr_address;
 		if (overflow) {
@@ -822,10 +825,11 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 		overflow &= 0x1;
 
 		/* Disabling the ETM */
-		for_each_online_cpu(count)
-			ptm_writel(t, count, 0, TRCPRGCTLR);
-
-		ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
+		if (t->enable) {
+			on_each_cpu(ptm_disable, t, true);
+			ape_writel(t, 0x500, CORESIGHT_APE_CPU0_ETM_ETMCR_0);
+			t->enable = 0;
+		}
 
 		/* by default, start reading from 0 */
 		t->buf_size = rwp;
@@ -909,12 +913,10 @@ static struct notifier_block ptm_cpu_pm_notifier_block = {
 static int ptm_cpu_hotplug_notifier(struct notifier_block *self,
 	unsigned long action, void *hcpu)
 {
-	long cpu = (long)hcpu;
 	switch (action) {
 	case CPU_STARTING:
 		if (tracer.enable) {
-			ptm_init(&tracer, cpu);
-			ptm_writel(&tracer, cpu, 1, TRCPRGCTLR);
+			ptm_init(&tracer);
 		}
 		break;
 	default:
@@ -1004,7 +1006,7 @@ static ssize_t trace_enable_store(struct kobject *kobj,
 	const char *buf, size_t n)
 {
 	unsigned int value;
-	int ret;
+	int ret = -EAGAIN;
 
 	if (sscanf(buf, "%u", &value) != 1)
 		return -EINVAL;
@@ -1015,16 +1017,19 @@ static ssize_t trace_enable_store(struct kobject *kobj,
 	mutex_lock(&tracer.mutex);
 
 	if (value) {
-		ret = trace_t210_start(&tracer);
+		if (!tracer.enable)
+			ret = trace_t210_start(&tracer);
 		tracer.enable = 1;
 	} else {
-		ret = trace_t210_stop(&tracer);
-		tracer.enable = 0;
+		if (tracer.enable) {
+			tracer.enable = 0;
+			ret = trace_t210_stop(&tracer);
+		}
 	}
 
 	mutex_unlock(&tracer.mutex);
 
-	return ret ? : n;
+	return ret ? ret : n;
 }
 
 static ssize_t trace_range_address_store(struct kobject *kobj,
