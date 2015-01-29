@@ -439,3 +439,12 @@ config NVHOST_BONDOUT_CHECK
 	  Say Y here if you want to check nvhost client unit presence
 	  in pre-silicon systems.
 	  If unsure, say N
+
+config NVDEC_BOOTLOADER
+	bool "Enable use of nvdec bootloader"
+	depends on ARCH_TEGRA
+	default n
+	help
+	  Say Y here if you want to enable nvdec bootloader
+	  If unsure, say N
+
