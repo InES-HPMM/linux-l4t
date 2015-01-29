@@ -103,6 +103,7 @@ struct tegra_sdhci_platform_data {
 	unsigned int fixed_clk_freq_table[MMC_TIMINGS_MAX_MODES + 1];
 	bool enable_autocal_slew_override;
 	unsigned int rtpm_type;
+	bool enable_cq;
 };
 
 #endif

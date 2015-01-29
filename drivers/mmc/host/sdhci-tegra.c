@@ -4868,11 +4868,15 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	}
 	plat->enable_autocal_slew_override = of_property_read_bool(np,
 					"nvidia,auto-cal-slew-override");
+
 	ret = of_property_read_u32(np, "nvidia,runtime-pm-type",
 		&plat->rtpm_type);
 	/* use delayed clock gate if runtime type not specified explicitly */
 	if (ret < 0)
 		plat->rtpm_type = RTPM_TYPE_DELAY_CG;
+
+	plat->enable_cq =
+		of_property_read_bool(np, "nvidia,enable-cq");
 
 	return plat;
 }
@@ -5437,6 +5441,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	if (soc_data->nvquirks2 & NVQUIRK2_EN_STROBE_SUPPORT)
 		host->mmc->caps2 |= MMC_CAP2_EN_STROBE;
+
+	if (plat->enable_cq)
+		host->mmc->caps2 |= MMC_CAP2_CQ;
 
 	host->mmc->caps2 |= MMC_CAP2_CACHE_CTRL;
 	host->mmc->caps2 |= MMC_CAP2_PACKED_CMD;
