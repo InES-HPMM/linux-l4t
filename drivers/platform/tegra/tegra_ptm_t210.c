@@ -277,12 +277,8 @@ static void ptm_save(struct tracectx *t)
 	isb();
 
 	ptm_regs_unlock(t, id);
-	ptm_os_lock(t, id);
-	ptm_check_trace_stable(t, id, TRACE_STATUS_PMSTABLE);
 
 	PTM_REG_SAVE_RESTORE_LIST;
-
-	ptm_check_trace_stable(t, id, TRACE_STATUS_IDLE);
 }
 
 #undef SAVE_RESTORE_PTM
