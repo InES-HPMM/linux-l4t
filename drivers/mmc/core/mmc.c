@@ -582,11 +582,12 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 
 	/* eMMC v5 or later */
 	if (card->ext_csd.rev >= 7) {
-		card->ext_csd.cmdq_support = ext_csd[EXT_CSD_CMDQ_SUPPORT];
 	/*
 	 * Set card->ext_csd.cmdq_support to 0 to disable CQ.
 	 */
-		card->ext_csd.cmdq_support = 0; /* Disabling CQ now (re-eanble after QA) */
+		if (card->host->caps2 & MMC_CAP2_CQ)
+			card->ext_csd.cmdq_support =
+			ext_csd[EXT_CSD_CMDQ_SUPPORT];
 
 		if (card->ext_csd.cmdq_support) {
 			card->ext_csd.cmdq_depth = ext_csd[EXT_CSD_CMDQ_DEPTH];
