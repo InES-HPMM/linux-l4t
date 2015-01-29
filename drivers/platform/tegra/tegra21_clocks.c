@@ -9282,7 +9282,6 @@ static struct clk tegra_list_clks[] = {
 
 	PERIPH_CLK("usbd",	"tegra-udc.0",		NULL,	22,	0,	480000000, mux_clk_m,			0),
 	PERIPH_CLK("usb2",	"tegra-ehci.1",		NULL,	58,	0,	480000000, mux_clk_m,			0),
-	PERIPH_CLK("usb3",	"tegra-ehci.2",		NULL,	59,	0,	480000000, mux_clk_m,			PERIPH_NO_ENB | PERIPH_NO_RESET),
 	PERIPH_CLK("hsic_trk",	NULL,		  "hsic_trk",	209,	0,	38400000, mux_clk_usb2_hsic_trk,	PERIPH_NO_RESET),
 	PERIPH_CLK("usb2_trk",	NULL,		  "usb2_trk",	210,	0,	38400000, mux_clk_usb2_hsic_trk,	PERIPH_NO_RESET),
 
