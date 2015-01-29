@@ -798,7 +798,7 @@ static struct platform_device modem_edp_device = {
 	.id = -1,
 	.num_resources = 0,
 	.dev = {
-		.platform_data = 0,
+		.platform_data = NULL,
 	},
 };
 
