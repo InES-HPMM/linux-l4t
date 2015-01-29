@@ -71,7 +71,7 @@ in HS400 mode.
 	MMC_TIMING_MMC_HS200	9
 	MMC_TIMING_MMC_HS400	10
 - nvidia,auto-cal-slew-override: flag to set AUTO_CAL_SLW_OVERRIDE bit in SDMMC_AUTO_CAL_CONFIG_0 register.
-
+- nvidia,enable-cq: Set this flag to enable CQ.
 - cd_wakeup_incapable: Set this flag to disable card detect event as wake source.
 
 Example:
