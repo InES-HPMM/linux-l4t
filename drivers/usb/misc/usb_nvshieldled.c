@@ -24,6 +24,7 @@
 #include <linux/reboot.h>
 #include <linux/notifier.h>
 #include <linux/of.h>
+#include <linux/sysedp.h>
 
 #define DRIVER_AUTHOR "Jun Yan, juyan@nvidia.com"
 #define DRIVER_DESC "NVIDIA Shield USB LED Driver"
@@ -57,6 +58,8 @@
 
 #define LED_MIN_BRIGHTNESS	0
 #define LED_MAX_BRIGHTNESS	255
+#define MAX_EDP_BRIGHTNESS	511
+#define NUM_EDP_STATES		11
 
 struct nvshield_led *g_dev;
 struct class_compat *nvshieldled_compat_class;
@@ -81,6 +84,7 @@ struct nvshield_led {
 	bool			pwm_enabled;
 	unsigned char		brightness[LED_NUM];
 	enum led_state		state[LED_NUM];
+	struct sysedp_consumer	*sysedpc;
 };
 
 static unsigned char brightness_table[256] = {
@@ -157,6 +161,16 @@ static ssize_t show_brightness2(struct device *dev,
 	return sprintf(buf, "%d\n", led->brightness[LED_TOUCH]);
 }
 
+static unsigned int compute_edp_state(unsigned long brightness1,
+				unsigned long brightness2)
+{
+	unsigned long effective_brightness = brightness1 + brightness2;
+	unsigned int edp_state = (effective_brightness /
+			((MAX_EDP_BRIGHTNESS - LED_MIN_BRIGHTNESS) /
+			NUM_EDP_STATES)) - 1;
+	return edp_state;
+}
+
 static ssize_t set_brightness(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t count)
@@ -164,6 +178,7 @@ static ssize_t set_brightness(struct device *dev,
 	struct usb_interface *intf = to_usb_interface(dev);
 	struct nvshield_led *led = usb_get_intfdata(intf);
 	unsigned long brightness_val;
+	unsigned int edp_state;
 
 	if (!kstrtoul(buf, 10, &brightness_val)) {
 		if (led->pwm_enabled)
@@ -172,7 +187,15 @@ static ssize_t set_brightness(struct device *dev,
 		else
 			led->brightness[LED_NVBUTTON] =
 					(unsigned char)LED_MAX_BRIGHTNESS;
-		send_command(led, LED_NVBUTTON);
+		edp_state = compute_edp_state(brightness_val,
+					led->brightness[LED_TOUCH]);
+		if (edp_state > sysedp_get_state(led->sysedpc)) {
+			sysedp_set_state(led->sysedpc, edp_state);
+			send_command(led, LED_NVBUTTON);
+		} else {
+			send_command(led, LED_NVBUTTON);
+			sysedp_set_state(led->sysedpc, edp_state);
+		}
 	}
 	return count;
 }
@@ -184,6 +207,7 @@ static ssize_t set_brightness2(struct device *dev,
 	struct usb_interface *intf = to_usb_interface(dev);
 	struct nvshield_led *led = usb_get_intfdata(intf);
 	unsigned long brightness_val;
+	unsigned int edp_state;
 
 	if (!kstrtoul(buf, 10, &brightness_val)) {
 		if (led->pwm_enabled)
@@ -197,7 +221,15 @@ static ssize_t set_brightness2(struct device *dev,
 				led->brightness[LED_TOUCH] =
 					(unsigned char)LED_MAX_BRIGHTNESS;
 		}
-		send_command(led, LED_TOUCH);
+		edp_state = compute_edp_state(brightness_val,
+					led->brightness[LED_NVBUTTON]);
+		if (edp_state > sysedp_get_state(led->sysedpc)) {
+			sysedp_set_state(led->sysedpc, edp_state);
+			send_command(led, LED_TOUCH);
+		} else {
+			send_command(led, LED_TOUCH);
+			sysedp_set_state(led->sysedpc, edp_state);
+		}
 	}
 	return count;
 }
@@ -334,6 +366,7 @@ static int nvshieldled_probe(struct usb_interface *interface,
 	struct nvshield_led *dev = NULL;
 	int retval = -ENOMEM;
 	struct device_node *np;
+	char *edp_name;
 
 	dev = kzalloc(sizeof(struct nvshield_led), GFP_KERNEL);
 	if (dev == NULL) {
@@ -355,6 +388,21 @@ static int nvshieldled_probe(struct usb_interface *interface,
 	dev->brightness[LED_NVBUTTON] = 255;
 	dev->state[LED_TOUCH] = LED_NORMAL;
 	dev->brightness[LED_TOUCH] = 255;
+
+	if (np) {
+		if (of_property_read_string(np, "edp-consumer-name",
+						&edp_name)) {
+			dev_info(&interface->dev,
+				"property 'edp-consumer-name' missing or \
+				invalid. Setting LED EDP consumer name as \
+				'shieldled' \n");
+			dev->sysedpc = sysedp_create_consumer("shieldled",
+								"shieldled");
+		} else {
+			dev->sysedpc = sysedp_create_consumer(edp_name,
+								edp_name);
+		}
+	}
 
 	usb_set_intfdata(interface, dev);
 	g_dev = dev;
@@ -419,6 +467,8 @@ static void nvshieldled_disconnect(struct usb_interface *interface)
 	device_remove_file(&interface->dev, &dev_attr_state);
 	device_remove_file(&interface->dev, &dev_attr_brightness2);
 	device_remove_file(&interface->dev, &dev_attr_state2);
+	sysedp_free_consumer(dev->sysedpc);
+
 	class_compat_unregister(nvshieldled_compat_class);
 
 	usb_set_intfdata(interface, NULL);
