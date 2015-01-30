@@ -304,6 +304,9 @@ struct nvhost_device_data {
 
 	/* Is the device already forced on? */
 	bool forced_on;
+
+	/* Override flag for a device */
+	bool forced_map_on_open;
 };
 
 
