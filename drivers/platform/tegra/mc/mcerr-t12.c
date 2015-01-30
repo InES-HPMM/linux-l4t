@@ -174,7 +174,7 @@ static int mcerr_t12x_debugfs_show(struct seq_file *s, void *v)
 	int do_print;
 
 	seq_printf(s, fmt_hdr,
-		   "swgid", "client", "decerr", "secerr", "smmuerr",
+		   "swgroup", "client", "decerr", "secerr", "smmuerr",
 		   "apberr", "decerr-VPR", "secerr-SEC",
 		   "decerr-MTS", "unknown");
 	for (i = 0; i < ARRAY_SIZE(mc_clients); i++) {
@@ -190,7 +190,7 @@ static int mcerr_t12x_debugfs_show(struct seq_file *s, void *v)
 		}
 		if (do_print)
 			seq_printf(s, fmt_cli,
-				   mc_clients[i].swgid,
+				   mc_clients[i].swgroup,
 				   mc_clients[i].name,
 				   mc_clients[i].intr_counts[0],
 				   mc_clients[i].intr_counts[1],

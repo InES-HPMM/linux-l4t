@@ -369,7 +369,7 @@ static void mcerr_default_print(const struct mc_error *err,
 
 	idx += snprintf(str + idx, sizeof(str) - idx,
 			"[mcerr] (%s) %s: %s\n",
-			client->swgid, client->name, err->msg);
+			client->swgroup, client->name, err->msg);
 	idx += snprintf(str + idx, sizeof(str) - idx,
 			"[mcerr]   status = 0x%08x; addr = 0x%08llx\n",
 			status,	(long long unsigned int)addr);
@@ -390,7 +390,7 @@ static int mcerr_default_debugfs_show(struct seq_file *s, void *v)
 	int i, j;
 	int do_print;
 
-	seq_printf(s, "%-24s %-24s %-9s %-9s %-9s %-9s\n", "swgid", "client",
+	seq_printf(s, "%-24s %-24s %-9s %-9s %-9s %-9s\n", "swgroup", "client",
 		   "decerr", "secerr", "smmuerr", "unknown");
 	for (i = 0; i < chip_specific.nr_clients; i++) {
 		do_print = 0;
@@ -406,7 +406,7 @@ static int mcerr_default_debugfs_show(struct seq_file *s, void *v)
 		if (do_print)
 			seq_printf(s, "%-24s %-24s %-9u %-9u %-9u %-9u\n",
 				   mc_clients[i].name,
-				   mc_clients[i].swgid,
+				   mc_clients[i].swgroup,
 				   mc_clients[i].intr_counts[0],
 				   mc_clients[i].intr_counts[1],
 				   mc_clients[i].intr_counts[2],

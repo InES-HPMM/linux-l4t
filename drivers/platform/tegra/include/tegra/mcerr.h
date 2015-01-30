@@ -188,7 +188,7 @@ struct mcerr_chip_specific {
 	unsigned int	 nr_clients;
 };
 
-#define client(_swgid, _name) { .swgid = _swgid, .name = _name }
+#define client(_swgroup, _name) { .swgroup = _swgroup, .name = _name }
 #define MC_ERR(_sig, _msg, _flags, _stat_reg, _addr_reg)		\
 	{ .sig = _sig, .msg = _msg, .flags = _flags,			\
 			.stat_reg = _stat_reg, .addr_reg = _addr_reg }
