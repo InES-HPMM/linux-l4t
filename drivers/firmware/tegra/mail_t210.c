@@ -203,41 +203,37 @@ static void *bpmp_channel_area(int ch)
 	return a ? IO_ADDRESS(a) : NULL;
 }
 
-int bpmp_connect(void)
+int __bpmp_connect(void)
 {
 	void *p;
 	int i;
-	int r;
 
 	if (connected)
 		return 0;
 
 	/* handshake */
-	if (!readl(RES_SEMA_SHRD_SMP_STA)) {
-		r = -ENODEV;
-		goto err_out;
-	}
+	if (!readl(RES_SEMA_SHRD_SMP_STA))
+		return -ENODEV;
 
 	for (i = 0; i < NR_CHANNELS; i++) {
 		p = bpmp_channel_area(i);
-		if (!p) {
-			r = -EFAULT;
-			goto err_out;
-		}
-
+		if (!p)
+			return -EFAULT;
 		channel_area[i].ib = p;
 		channel_area[i].ob = p;
 	}
 
 	connected = 1;
 	return 0;
+}
 
-err_out:
+int bpmp_connect(void)
+{
 	/* firmware loaded after boot */
 	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC))
 		return 0;
 
-	return r;
+	return __bpmp_connect();
 }
 
 void bpmp_detach(void)
@@ -260,7 +256,7 @@ int bpmp_attach(void)
 	WARN_ON(connected);
 
 	for (i = 0; i < MSEC_PER_SEC * 60; i += 20) {
-		if (!bpmp_connect())
+		if (!__bpmp_connect())
 			return 0;
 		msleep(20);
 	}
