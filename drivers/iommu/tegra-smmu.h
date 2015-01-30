@@ -189,6 +189,7 @@
 #define SMMU_CLIENT_CONF0			0x40
 
 struct smmu_domain {
+	struct iommu_domain *iommu_domain;
 	struct smmu_as *as[MAX_AS_PER_DEV];
 	unsigned long bitmap[1];
 };

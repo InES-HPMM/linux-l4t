@@ -1530,6 +1530,7 @@ static int smmu_iommu_domain_init(struct iommu_domain *domain)
 		return -ENOMEM;
 
 	domain->priv = smmu_domain;
+	smmu_domain->iommu_domain = domain;
 
 	domain->geometry.aperture_start = smmu->iovmm_base;
 	domain->geometry.aperture_end   = smmu->iovmm_base +
@@ -1916,6 +1917,36 @@ static const struct file_operations smmu_ptdump_fops = {
 	.release	= single_release,
 };
 
+void smmu_dump_pagetable(int swgid, dma_addr_t fault)
+{
+	struct rb_node *n;
+	static char str[SZ_512] = "No valid page table\n";
+
+	for (n = rb_first(&smmu_handle->clients); n; n = rb_next(n)) {
+		size_t bytes;
+		phys_addr_t pa;
+		u32 npte;
+		struct smmu_client *c =
+			container_of(n, struct smmu_client, node);
+		struct smmu_as *as;
+
+		if (!(c->swgids & (1ULL << swgid)))
+			continue;
+
+		as = domain_to_as(c->domain->iommu_domain, fault);
+		if (!as)
+			continue;
+
+		bytes =	__smmu_iommu_iova_to_phys(as, fault, &pa, &npte);
+		snprintf(str, sizeof(str),
+			 "fault_address=%pa pa=%pa bytes=%zx #pte=%d in L2\n",
+			 &fault, &pa, bytes, npte);
+		break;
+	}
+
+	trace_printk(str);
+	pr_err("%s", str);
+}
 
 static dma_addr_t tegra_smmu_inquired_iova;
 static phys_addr_t tegra_smmu_inquired_phys;
