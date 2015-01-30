@@ -305,11 +305,11 @@ static struct tegra_io_dpd pexclk2_io = {
 };
 
 static struct tegra_suspend_platform_data t210ref_suspend_data = {
-	.cpu_timer      = 700,
+	.cpu_timer      = 1700,
 	.cpu_off_timer  = 300,
 	.suspend_mode   = TEGRA_SUSPEND_LP0,
 	.core_timer     = 0x257e,
-	.core_off_timer = 10,
+	.core_off_timer = 640,
 	.cpu_suspend_freq = 204000,
 	.corereq_high   = true,
 	.sysclkreq_high = true,
