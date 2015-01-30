@@ -266,28 +266,39 @@ static inline void ptm_check_trace_stable(struct tracectx *t, int id, int bit)
 		SAVE_RESTORE_PTM(TRCCLAIMCLR); \
 	} while (0);
 
-#define SAVE_RESTORE_PTM(reg) (t->reg_ctx[id][cnt++] = ptm_readl(t, id, (reg)))
+#define SAVE_RESTORE_PTM(reg) \
+	(addr[cnt++] = readl_relaxed(reg_base + reg))
 
 static void ptm_save(struct tracectx *t)
 {
+	u32 *addr;
 	int cnt = 0;
 	int id = raw_smp_processor_id();
+	void __iomem *reg_base;
 
 	dsb();
 	isb();
 
+	addr = t->reg_ctx[id];
+	reg_base = t->ptm_regs[id];
+
 	ptm_regs_unlock(t, id);
 
 	PTM_REG_SAVE_RESTORE_LIST;
+	rmb();
 }
 
 #undef SAVE_RESTORE_PTM
-#define SAVE_RESTORE_PTM(reg) ptm_writel(t, id, t->reg_ctx[id][cnt++], reg)
+#define SAVE_RESTORE_PTM(reg) ptm_writel(t, id, addr[cnt++], reg)
 
 static void ptm_restore(struct tracectx *t)
 {
+	u32 *addr;
 	int cnt = 0;
 	int id = raw_smp_processor_id();
+
+	addr = t->reg_ctx[id];
+
 	ptm_regs_unlock(t, id);
 	ptm_os_lock(t, id);
 
