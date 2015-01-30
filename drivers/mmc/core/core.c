@@ -5,7 +5,7 @@
  *  SD support Copyright (C) 2004 Ian Molton, All Rights Reserved.
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
  *  MMCv4 support Copyright (C) 2006 Philip Langdale, All Rights Reserved.
- *  Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ *  Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -186,14 +186,14 @@ void mmc_cmd_dump(struct mmc_host *host)
 	int i;
 	int tag = -1;
 	unsigned long flags;
-	dev_info("-------------------------------------------------------------------------------\n");
+	pr_info("-------------------------------------------------------------------------------\n");
 	spin_lock_irqsave(&host->cmd_dump_lock, flags);
 	for (i = host->dbg_host_cnt; i < dbg_max_cnt; i++) {
 		if (host->dbg_run_host_log_dat[i].cmd == MMC_QUEUED_TASK_PARAMS &&
 			(host->dbg_run_host_log_dat[i].type == 0)) {
 				tag =
 				(host->dbg_run_host_log_dat[i].arg >> 16) & 0xf;
-				dev_info("%d [%5llu.%06llu]%2d %2d 0x%08x tag=%d type=%s\n",
+				pr_info("%d [%5llu.%06llu]%2d %2d 0x%08x tag=%d type=%s\n",
 				i, host->dbg_run_host_log_dat[i].time_sec,
 				host->dbg_run_host_log_dat[i].time_usec,
 				host->dbg_run_host_log_dat[i].type,
@@ -207,7 +207,7 @@ void mmc_cmd_dump(struct mmc_host *host)
 				&& !host->dbg_run_host_log_dat[i].type) {
 				tag =
 				(host->dbg_run_host_log_dat[i].arg >> 16) & 0xf;
-				dev_info("%d [%5llu.%06llu]%2d %2d 0x%08x tag=%d\n",
+				pr_info("%d [%5llu.%06llu]%2d %2d 0x%08x tag=%d\n",
 					i,
 					host->dbg_run_host_log_dat[i].time_sec,
 					host->dbg_run_host_log_dat[i].time_usec,
@@ -215,7 +215,7 @@ void mmc_cmd_dump(struct mmc_host *host)
 					host->dbg_run_host_log_dat[i].cmd,
 					host->dbg_run_host_log_dat[i].arg, tag);
 		} else
-			dev_info("%d [%5llu.%06llu]%2d %2d 0x%08x\n", i,
+			pr_info("%d [%5llu.%06llu]%2d %2d 0x%08x\n", i,
 				host->dbg_run_host_log_dat[i].time_sec,
 				host->dbg_run_host_log_dat[i].time_usec,
 				host->dbg_run_host_log_dat[i].type,
@@ -228,7 +228,7 @@ void mmc_cmd_dump(struct mmc_host *host)
 			!host->dbg_run_host_log_dat[i].type) {
 			tag =
 			(host->dbg_run_host_log_dat[i].arg >> 16) & 0xf;
-			dev_info("%d [%5llu.%06llu]%2d %2d 0x%08x tag=%d type=%s\n",
+			pr_info("%d [%5llu.%06llu]%2d %2d 0x%08x tag=%d type=%s\n",
 				i,
 				host->dbg_run_host_log_dat[i].time_sec,
 				host->dbg_run_host_log_dat[i].time_usec,
@@ -242,14 +242,14 @@ void mmc_cmd_dump(struct mmc_host *host)
 			host->dbg_run_host_log_dat[i].cmd == MMC_EXECUTE_WRITE_TASK) &&
 			!host->dbg_run_host_log_dat[i].type) {
 			tag = (host->dbg_run_host_log_dat[i].arg >> 16) & 0xf;
-			dev_info("%d [%5llu.%06llu]%2d %2d 0x%08x tag=%d\n", i,
+			pr_info("%d [%5llu.%06llu]%2d %2d 0x%08x tag=%d\n", i,
 				host->dbg_run_host_log_dat[i].time_sec,
 				host->dbg_run_host_log_dat[i].time_usec,
 				host->dbg_run_host_log_dat[i].type,
 				host->dbg_run_host_log_dat[i].cmd,
 				host->dbg_run_host_log_dat[i].arg, tag);
 		} else
-			dev_info("%d [%5llu.%06llu]%2d %2d 0x%08x\n", i,
+			pr_info("%d [%5llu.%06llu]%2d %2d 0x%08x\n", i,
 				host->dbg_run_host_log_dat[i].time_sec,
 				host->dbg_run_host_log_dat[i].time_usec,
 				host->dbg_run_host_log_dat[i].type,
