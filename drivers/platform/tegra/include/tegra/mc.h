@@ -33,6 +33,7 @@ extern int mc_intr_count;
 struct mc_client {
 	const char *name;
 	const char *swgroup;
+	const int swgid;
 	unsigned int intr_counts[MC_MAX_INTR_COUNT];
 };
 
