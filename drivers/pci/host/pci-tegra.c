@@ -2505,7 +2505,7 @@ static int tegra_pcie_init(struct tegra_pcie *pcie)
 	err = tegra_pcie_conf_gpios(pcie);
 	if (err) {
 		dev_err(pcie->dev, "PCIE: configuring gpios failed\n");
-		goto fail_enable_pads;
+		goto fail_release_resource;
 	}
 	/* setup the AFI address translations */
 	tegra_pcie_setup_translations(pcie);
@@ -2516,7 +2516,7 @@ static int tegra_pcie_init(struct tegra_pcie *pcie)
 			dev_err(&pdev->dev,
 				"failed to enable MSI support: %d\n",
 				err);
-			goto fail_enable_pads;
+			goto fail_release_resource;
 		}
 	}
 
@@ -2540,8 +2540,6 @@ static int tegra_pcie_init(struct tegra_pcie *pcie)
 fail_enum:
 	if (IS_ENABLED(CONFIG_PCI_MSI))
 		tegra_pcie_disable_msi(pcie);
-fail_enable_pads:
-	tegra_pcie_enable_pads(pcie, false);
 fail_release_resource:
 	tegra_pcie_power_off(pcie, true);
 	tegra_pcie_disable_regulators(pcie);
