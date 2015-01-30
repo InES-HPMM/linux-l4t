@@ -354,6 +354,10 @@ static void mcerr_default_info_update(struct mc_client *c, u32 stat)
 		c->intr_counts[3]++;
 }
 
+void __weak smmu_dump_pagetable(int swgid, dma_addr_t addr)
+{
+}
+
 /*
  * This will print at least 8 hex digits for address. If the address is bigger
  * then more digits will be printed but the full 16 hex digits for a 64 bit
@@ -380,6 +384,9 @@ static void mcerr_default_print(const struct mc_error *err,
 
 	trace_printk(str);
 	pr_err("%s", str);
+
+	if (smmu_info)
+		smmu_dump_pagetable(client->swgid, addr);
 }
 
 /*
