@@ -3,7 +3,7 @@
  *
  * A header file for Host driver for ADSP and APE
  *
- * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -88,6 +88,7 @@ struct nvadsp_drv_data {
 	struct clk *adsp_cpu_clk;
 	struct clk *uartape_clk;
 	struct clk *ahub_clk;
+	long max_adsp_freq;
 
 	struct nvadsp_pm_state state;
 	bool adsp_os_running;

@@ -486,21 +486,7 @@ static int actmon_dev_init(struct actmon_dev *dev)
 		goto err_enable;
 	}
 
-	dev->max_freq = clk_round_rate(dev->clk, ULONG_MAX);
-
-	/*
-	 * Set max clk to initialize the avg threshold which is equal to max
-	 * device clocks weighted by count_weight within a sample_period
-	 */
-	ret = clk_set_rate(dev->clk, dev->max_freq);
-	if (ret) {
-		dev_err(dev->device, "unable to set %s clock\n",
-			dev->clk_name);
-		goto err_out;
-	}
-	dev->max_freq /= 1000;
-	freq = clk_get_rate(dev->clk) / 1000;
-
+	dev->max_freq = freq = clk_get_rate(dev->clk) / 1000;
 	actmon_dev_configure(dev, freq);
 
 	dev->state = ACTMON_OFF;
@@ -508,8 +494,6 @@ static int actmon_dev_init(struct actmon_dev *dev)
 	enable_irq(dev->irq);
 	return 0;
 
-err_out:
-	clk_disable_unprepare(dev->clk);
 err_enable:
 	clk_put(dev->clk);
 end:
@@ -900,7 +884,7 @@ int ape_actmon_init(struct platform_device *pdev)
 		goto clk_err_out;
 	}
 
-	apemon->freq = clk_get_rate(apemon->clk) / 1000; /* in KHz */
+	apemon->freq = drv->max_adsp_freq / 1000; /* in KHz */
 
 	apemon->sampling_period = ACTMON_DEFAULT_SAMPLING_PERIOD;
 

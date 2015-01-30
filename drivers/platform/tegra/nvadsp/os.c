@@ -5,7 +5,7 @@
  * Copyright (C) 2011 Texas Instruments, Inc.
  * Copyright (C) 2011 Google, Inc.
  *
- * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -81,7 +81,11 @@
 #define LOGGER_TIMEOUT		20 /* in ms */
 #define ADSP_WFE_TIMEOUT	5000 /* in ms */
 
-#define LOAD_ADSP_FREQ 51200000lu /* in Hz */
+#define MIN_ADSP_FREQ 51200000lu /* in Hz */
+
+struct adsp_os_args {
+	int32_t timer_prescalar;
+};
 
 struct nvadsp_debug_log {
 	struct device *dev;
@@ -662,7 +666,9 @@ EXPORT_SYMBOL(nvadsp_os_load);
 static int __nvadsp_os_start(void)
 {
 	struct nvadsp_drv_data *drv_data;
+	struct adsp_os_args *args;
 	struct device *dev;
+	long max_adsp_freq;
 #if !CONFIG_SYSTEM_FPGA
 	u32 val;
 #endif
@@ -675,10 +681,27 @@ static int __nvadsp_os_start(void)
 	copy_io_in_l(drv_data->state.evp_ptr,
 		     drv_data->state.evp,
 		     AMC_EVP_SIZE);
-
+	args = drv_data->shared_adsp_os_data;
 	if (drv_data->adsp_cpu_clk) {
-		dev_dbg(dev, "setting adsp cpu to %lu...\n", LOAD_ADSP_FREQ);
-		clk_set_rate(drv_data->adsp_cpu_clk, LOAD_ADSP_FREQ);
+		max_adsp_freq = clk_round_rate(drv_data->adsp_cpu_clk,
+				ULONG_MAX);
+		args->timer_prescalar = max_adsp_freq / MIN_ADSP_FREQ;
+		max_adsp_freq = MIN_ADSP_FREQ * args->timer_prescalar;
+		/*
+		 * timer interval = (prescalar + 1) * (count + 1) / periph_freq
+		 * therefore for 0 count,
+		 * 1 / TIMER_CLK_HZ =  (prescalar + 1) / periph_freq
+		 * Hence, prescalar = periph_freq / TIMER_CLK_HZ - 1
+		 */
+		args->timer_prescalar--;
+		drv_data->max_adsp_freq = max_adsp_freq;
+		ret = clk_set_rate(drv_data->adsp_cpu_clk, max_adsp_freq);
+		if (ret)
+			goto end;
+
+		dev_dbg(dev, "adsp cpu frequncy %lu and timer prescalar %x\n",
+			clk_get_rate(drv_data->adsp_cpu_clk),
+			args->timer_prescalar);
 	} else {
 		ret = -EINVAL;
 		goto end;
