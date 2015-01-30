@@ -1245,16 +1245,8 @@ int xhci_bus_resume(struct usb_hcd *hcd)
 					xhci, port_index + 1);
 			if (slot_id)
 				xhci_ring_device(xhci, slot_id);
-		} else{
+		} else
 			xhci_writel(xhci, temp, port_array[port_index]);
-			/* FIXME: Remove below 20ms delay when we have correct
-			* solution for error message
-			* "xhci_bus_suspend failed -16"
-			*/
-			spin_unlock_irqrestore(&xhci->lock, flags);
-			msleep(20);
-			spin_lock_irqsave(&xhci->lock, flags);
-		}
 
 		if (hcd->speed != HCD_USB3) {
 			/* disable remote wake up for USB 2.0 */
