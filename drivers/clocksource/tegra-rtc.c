@@ -180,7 +180,6 @@ static struct irqaction tegra_rtc_irq = {
 	.irq		= INT_RTC,
 };
 
-#ifdef CONFIG_TEGRA_LP0_IN_IDLE
 static int tegra_rtc_alarm_irq_enable(unsigned int enable)
 {
 	u32 status;
@@ -217,14 +216,18 @@ void tegra_rtc_set_trigger(unsigned long cycles)
 	else
 		tegra_rtc_alarm_irq_enable(0);
 }
-#endif
 
 static unsigned int alarm_period;
+static unsigned int alarm_period_msec;
 
 static int tegra_debug_pm_suspend(void)
 {
 	if (alarm_period)
 		tegra_rtc_set_alarm(alarm_period);
+
+	if (alarm_period_msec)
+		tegra_rtc_set_trigger(alarm_period_msec * 1000);
+
 	return 0;
 }
 
@@ -245,6 +248,14 @@ static int alarm_set(void *data, u64 val)
 
 DEFINE_SIMPLE_ATTRIBUTE(alarm_fops, NULL, alarm_set, "%llu\n");
 
+static int alarm_msec_set(void *data, u64 val)
+{
+	alarm_period_msec = val;
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(alarm_msec_fops, NULL, alarm_msec_set, "%llu\n");
+
 static struct dentry *pm_dentry;
 
 static int debugfs_init(void)
@@ -256,6 +267,9 @@ static int debugfs_init(void)
 		return -ENOMEM;
 
 	if (!debugfs_create_file("alarm", S_IWUSR, root, NULL, &alarm_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("alarm_msec", S_IWUSR, root, NULL, &alarm_msec_fops))
 		goto err_out;
 
 	pm_dentry = root;
