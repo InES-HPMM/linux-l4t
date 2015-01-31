@@ -23,6 +23,7 @@
 #define TCPDUMP_TAG_FREE	'?'
 #define TCPDUMP_TAG_RX		'<'
 #define TCPDUMP_TAG_TX		'>'
+#define TCPDUMP_TAG_TIME	'@'
 
 #ifndef TCPDUMP_NETIF_MAXSIZ
 #define TCPDUMP_NETIF_MAXSIZ	16
@@ -71,7 +72,14 @@ int tcpdump_maxpkt = sizeof(tcpdump_pkt) / sizeof(tcpdump_pkt[0]);
 static int pkt_save = 1;
 static int pkt_rx_save = 1;
 static int pkt_tx_save = 1;
+static int insert_dummy_timepacket;
+static struct timespec time_stamp;
 
+struct dummy_time {
+	unsigned long time_sec;
+	unsigned long jiffies;
+	unsigned long time_nsec;
+} dt;
 static void
 tcpdump_set_maxpkt(int maxpkt)
 {
@@ -140,8 +148,11 @@ tcpdump_pkt_save(char tag, const char *netif, const char *func, int line,
 	pkt.serial_no = tcpdump_serial_no++;
 	pkt.time = jiffies;
 	tcpdump_pkt[i] = pkt;
+	if (tcpdump_maxpkt != 0 && tcpdump_tail == 1) {
+//		pr_info("%s: head %d %d\n", __func__, tcpdump_tail, tcpdump_maxpkt);
+		insert_dummy_timepacket = 1;
+	}
 	spin_unlock_irqrestore(&tcpdump_lock, flags);
-
 	/* TODO - analyze packet jitter / etc. */
 
 }
@@ -184,6 +195,15 @@ tegra_sysfs_histogram_tcpdump_tx(struct sk_buff *skb,
 
 	tcpdump_pkt_save(TCPDUMP_TAG_TX, netif, func, line,
 		skb->data, skb_headlen(skb), skb->data_len);
+	if (insert_dummy_timepacket == 1) {
+		insert_dummy_timepacket = 0;
+		dt.jiffies = jiffies;
+		getnstimeofday(&time_stamp);
+		dt.time_sec = time_stamp.tv_sec;
+		dt.time_nsec = time_stamp.tv_nsec;
+		tcpdump_pkt_save(TCPDUMP_TAG_TIME, netif, "dummy_time",
+			0, (unsigned char *) &dt, sizeof(struct dummy_time), 0);
+	}
 }
 
 void
