@@ -17,6 +17,7 @@
 /dts-v1/;
 
 #include "tegra124-soc-shield.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-pinmux-p2267-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-p2267-io-common.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-p2267-powertree-e1936-1000-a00.dtsi"
 
