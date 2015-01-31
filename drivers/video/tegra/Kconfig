@@ -356,6 +356,13 @@ config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 	  Say Y here to force to convert carveout memory requests to
 	  I/O virtual memory requests.
 
+config NVMAP_CONVERT_IOVMM_TO_CARVEOUT
+	bool "Convert IOVMM to carveout"
+	depends on TEGRA_NVMAP && IOMMU_API && !NVMAP_CONVERT_CARVEOUT_TO_IOVMM
+	help
+	  Say Y here to force to convert I/O virtual memory requests to
+	  carveout memory requests.
+
 config TEGRA_NVHDCP
 	bool "Support NVHDCP content protection on HDMI"
 	depends on TEGRA_HDMI
