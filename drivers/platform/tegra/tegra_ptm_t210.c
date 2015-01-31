@@ -106,7 +106,6 @@ struct tracectx {
 	int		trigger;
 	uintptr_t	trigger_address[ADDR_REGS];
 	u8		trigger_mask;
-	unsigned int	percent_after_trigger;
 	unsigned int	cycle_count;
 };
 
@@ -119,7 +118,6 @@ static struct tracectx tracer = {
 	.branch_broadcast		=	1,
 	.return_stack			=	0,
 	.trigger			=	0,
-	.percent_after_trigger		=	25,
 	.formatter			=	1,
 	.timestamp			=	0,
 	.cycle_count			=	0,
@@ -533,7 +531,7 @@ static void etf_init(struct tracectx *t)
 	etf_writel(t, 0, CXTMC_REGS_MODE_0);
 	if (t->trigger) {
 		/* Capture data for specified cycles after TRIGIN */
-		words_after_trigger = (t->percent_after_trigger
+		words_after_trigger = (t->trigger
 				* MAX_ETF_SIZE) / 100;
 		etf_writel(t, words_after_trigger, CXTMC_REGS_TRG_0);
 		/* Flush on Trigin, insert trigger and stop on
@@ -603,8 +601,7 @@ static void etr_init(struct tracectx *t)
 
 	if (t->trigger) {
 		/* Capture data for specified cycles after seeing the TRIGIN */
-		words_after_trigger = t->percent_after_trigger *
-						(ETR_SIZE >> 2) / 100;
+		words_after_trigger = t->trigger * (ETR_SIZE >> 2) / 100;
 		etr_writel(t, words_after_trigger,
 					CXTMC_REGS_TRG_0);
 		/* Flush on Trigin, insert trigger and Stop on Flush Complete */
@@ -1096,38 +1093,34 @@ static ssize_t trace_trigger_store(struct kobject *kobj,
 	struct kobj_attribute *attr,
 	const char *buf, size_t n)
 {
-	unsigned int trigger, percent_after_trigger;
+	unsigned int trigger = 0;
 	uintptr_t trigger_address[ADDR_REG_PAIRS * 2];
 	int cnt, i;
 	int trig_pos = 0;
 
-	cnt = sscanf(buf, "%u %u %lx %lx %lx %lx %lx %lx %lx %lx",
-		&trigger, &percent_after_trigger,
+	cnt = sscanf(buf, "%u %lx %lx %lx %lx %lx %lx %lx %lx",
+		&trigger,
 		&trigger_address[0], &trigger_address[1],
 		&trigger_address[2], &trigger_address[3],
 		&trigger_address[4], &trigger_address[5],
 		&trigger_address[6], &trigger_address[7]);
-	if (cnt < 3)
+	if (cnt-- < 1)
 		return -EINVAL;
 
-	/* adjust count to equal number of trigger points */
-	cnt -= 2;
-
 	/* max 99% to leave room for preventing buffer overwrite */
-	if (percent_after_trigger >= 100)
-		percent_after_trigger = 99;
+	if (trigger >= 100)
+		trigger = 99;
 
 	mutex_lock(&tracer.mutex);
 	tracer.trigger_mask = 0;
 
-	if (!trigger) {
+	if (!trigger || !cnt) {
 		tracer.trigger = 0;
 		mutex_unlock(&tracer.mutex);
 		return n;
 	}
 
-	tracer.trigger = 1;
-	tracer.percent_after_trigger = percent_after_trigger;
+	tracer.trigger = trigger;
 	for (i = 0; i < ADDR_REG_PAIRS * 2; i++) {
 		if ((tracer.start_stop_mask >> i) & 0x1)
 			continue;
