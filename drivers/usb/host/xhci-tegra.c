@@ -155,6 +155,9 @@ enum build_info_log {
 };
 
 /* Usb3 Firmware Cfg Table */
+#define	FW_MAJOR_VERSION(x)	(((x) >> 24) & 0xff)
+#define	FW_MINOR_VERSION(x)	(((x) >> 16) & 0xff)
+#define	FW_LOG_TYPE_DMA_SYS_MEM	(0x1)
 struct cfgtbl {
 	u32 boot_loadaddr_in_imem;
 	u32 boot_codedfi_offset;
@@ -2545,9 +2548,14 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 	time_to_tm(fw_time, 0, &fw_tm);
 	dev_info(&pdev->dev,
 		"Firmware timestamp: %ld-%02d-%02d %02d:%02d:%02d UTC, "\
+		"Version: %02x.%02x %s, "\
 		"Falcon state 0x%x\n", fw_tm.tm_year + 1900,
 		fw_tm.tm_mon + 1, fw_tm.tm_mday, fw_tm.tm_hour,
 		fw_tm.tm_min, fw_tm.tm_sec,
+		FW_MAJOR_VERSION(cfg_tbl->version_id),
+		FW_MINOR_VERSION(cfg_tbl->version_id),
+		(cfg_tbl->build_log == FW_LOG_TYPE_DMA_SYS_MEM) ?
+			"debug" : "release",
 		csb_read(tegra, XUSB_FALC_CPUCTL));
 
 	/* return fail if firmware status is not good */
