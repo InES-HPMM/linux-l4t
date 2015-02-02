@@ -2438,6 +2438,7 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 	struct xhci_cap_regs __iomem *cap_regs;
 	struct xhci_op_regs __iomem *op_regs;
 	int pad, ss_pads;
+	unsigned long delay;
 
 	/* Program SS port map config */
 	ss_pads = tegra->soc_config->ss_pad_count;
@@ -2518,7 +2519,21 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 	csb_write(tegra, XUSB_FALC_IMFILLRNG1, HwReg);
 
 	csb_write(tegra, XUSB_FALC_DMACTL, 0);
-	msleep(50);
+
+	/* wait for RESULT_VLD to get set */
+	delay = jiffies + msecs_to_jiffies(10);
+	do {
+		usleep_range(50, 60);
+		usbsts = csb_read(tegra, XUSB_CSB_MEMPOOL_L2IMEMOP_RESULT);
+	} while (!(usbsts & XUSB_CSB_MEMPOOL_L2IMEMOP_RESULT_VLD) &&
+		time_is_after_jiffies(delay));
+
+	if (time_is_before_jiffies(delay) &&
+		!(usbsts & XUSB_CSB_MEMPOOL_L2IMEMOP_RESULT_VLD)) {
+		dev_err(&pdev->dev, "DMA controller not ready 0x08%x\n",
+			csb_read(tegra, XUSB_CSB_MEMPOOL_L2IMEMOP_RESULT));
+		return -EFAULT;
+	}
 
 	csb_write(tegra, XUSB_FALC_BOOTVEC, cfg_tbl->boot_codetag);
 
