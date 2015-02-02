@@ -304,11 +304,11 @@ extern int (*__smmu_iommu_map_sg)(struct iommu_domain *domain, unsigned long iov
 extern void (*flush_ptc_and_tlb)(struct smmu_device *smmu, struct smmu_as *as, dma_addr_t iova, u32 *pte, struct page *page, int is_pde);
 extern void (*flush_ptc_and_tlb_range)(struct smmu_device *smmu, struct smmu_as *as, dma_addr_t iova, u32 *pte, struct page *page, size_t count);
 extern void (*flush_ptc_and_tlb_as)(struct smmu_as *as, dma_addr_t start, dma_addr_t end);
+extern void (*free_pdir)(struct smmu_as *as);
 
 #ifdef CONFIG_TEGRA_HV_MANAGER
 extern int tegra_smmu_probe_hv(struct platform_device *pdev,
 					struct smmu_device *smmu);
-void free_pdir(struct smmu_as *as);
 #else
 static inline int tegra_smmu_probe_hv(struct platform_device *pdev,
 	struct smmu_device *smmu)

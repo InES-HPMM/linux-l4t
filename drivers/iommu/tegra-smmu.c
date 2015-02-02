@@ -650,7 +650,7 @@ static void flush_ptc_and_tlb_as_default(struct smmu_as *as, dma_addr_t start,
 	FLUSH_SMMU_REGS(smmu);
 }
 
-void free_pdir(struct smmu_as *as)
+static void free_pdir_default(struct smmu_as *as)
 {
 	unsigned long addr;
 	int count;
@@ -2346,6 +2346,7 @@ int (*__tegra_smmu_probe)(struct platform_device *pdev, struct smmu_device *smmu
 void (*flush_ptc_and_tlb)(struct smmu_device *smmu, struct smmu_as *as, dma_addr_t iova, u32 *pte, struct page *page, int is_pde) = flush_ptc_and_tlb_default;
 void (*flush_ptc_and_tlb_range)(struct smmu_device *smmu, struct smmu_as *as, dma_addr_t iova, u32 *pte, struct page *page, size_t count) = flush_ptc_and_tlb_range_default;
 void (*flush_ptc_and_tlb_as)(struct smmu_as *as, dma_addr_t start, dma_addr_t end) = flush_ptc_and_tlb_as_default;
+void (*free_pdir)(struct smmu_as *as) = free_pdir_default;
 
 struct iommu_ops *smmu_iommu_ops = &smmu_iommu_ops_default;
 const struct file_operations *smmu_debugfs_stats_fops = &smmu_debugfs_stats_fops_default;
