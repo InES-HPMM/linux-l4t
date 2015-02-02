@@ -274,7 +274,7 @@
 
 	i2c@7000c400 {
 		battery-charger@6b {
-			compatible = "ti,bq2419x-st8";
+			compatible = "ti,bq2419x";
 			reg = <0x6b>;
 
 			interrupt-parent = <&gpio>;
@@ -284,16 +284,9 @@
 				status = "disabled";
 				regulator-name = "batt_regulator";
 				regulator-max-microamp = <3000000>;
-				ti,watchdog-timeout = <40>;
-				ti,rtc-alarm-time = <3600>;
-				ti,auto-recharge-time = <1800>;
 				ti,disbale-suspend-during-charging;
 				ti,charge-voltage-limit-millivolt = <4200>;
 				ti,charge-term-current-limit-milliamp = <260>;
-				ti,temp-range = <10 15 60>;
-				ti,charge-current-limit = <1024 2048 5200>;
-				ti,thermal-zone = "Battery";
-				ti,temp-polling-time-sec = <5>;
 				ti,ir-comp-voltage-millivolt = <1>;
 				ti,ir-comp-resister-ohm = <70>;
 			};
@@ -301,18 +294,13 @@
 			usb0_vbus: vbus {
 				regulator-name = "vbus_regulator";
 				ti,otg-iusb-gpio = <&gpio TEGRA_GPIO(I, 4) 0>;
-				consumers {
-					c1 {
-						regulator-consumer-supply = "usb_vbus";
-						regulator-consumer-device = "tegra-ehci.0";
-					};
-
-					c2 {
-						regulator-consumer-supply = "usb_vbus";
-						regulator-consumer-device = "tegra-otg";
-					};
-				};
 			};
+		};
+
+		battery-gauge@55 {
+			status = "disabled";
+			compatible = "ti,bq27441";
+			reg = <0x55>;
 		};
 	};
 };
