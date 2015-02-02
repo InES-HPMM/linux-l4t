@@ -2897,6 +2897,8 @@ static const struct tegra_function tegra210_functions[] = {
 		.hsm_reg = PINGROUP_REG_Y(r),			\
 		.drv_reg = -1,					\
 		.drvtype_reg = -1,				\
+		.ioreset_bit = -1,				\
+		.rcv_sel_bit = -1,				\
 	}
 
 #define DRV_PINGROUP_Y(r) ((r) - DRV_PINGROUP_REG_A)
@@ -2916,6 +2918,10 @@ static const struct tegra_function tegra210_functions[] = {
 		.lock_reg = -1,					\
 		.parked_reg = -1,				\
 		.lpmd_bit = -1,					\
+		.ioreset_bit = -1,				\
+		.rcv_sel_bit = -1,				\
+		.hsm_bit = -1,					\
+		.schmitt_bit = -1,				\
 		.drvtype_reg = -1,				\
 		.drv_reg = DRV_PINGROUP_Y(r),		\
 		.drv_bank = 0,					\
