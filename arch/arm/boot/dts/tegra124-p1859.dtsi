@@ -82,6 +82,7 @@
 
 	i2c@7000c400 {
 		nvidia,clock-always-on;
+		clock-frequency = <50000>;
 
 		/* U17 of p1892 */
 		pca9539_77: pca9546@77 {
