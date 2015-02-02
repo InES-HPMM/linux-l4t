@@ -642,4 +642,10 @@
 	rollback-protection {
 		status = "okay";
 	};
+
+	usb_nvshield_led {
+		status = "okay";
+		edp-consumer-name = "shieldled";
+		disable-on-kernel-charging;
+	};
 };
