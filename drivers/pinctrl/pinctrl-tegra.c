@@ -35,6 +35,7 @@
 #include <linux/tegra_prod.h>
 
 #include <linux/pinctrl/pinconf-tegra.h>
+#include <linux/platform_data/gpio-tegra.h>
 
 #include "core.h"
 #include "pinctrl-tegra.h"
@@ -772,8 +773,31 @@ static void tegra_pinconf_group_dbg_show(struct pinctrl_dev *pctldev,
 	s8 bank, bit, width;
 	s16 reg;
 	u32 val;
+	int function;
+	const char *name;
+	int is_gpio, dir, gpio;
 
 	g = &pmx->soc->groups[group];
+	if (g->mux_reg >= 0) {
+		gpio = g->pins[0];
+		ret = tegra_gpio_is_enabled(gpio, &is_gpio, &dir);
+		if (ret < 0) {
+			dev_err(pctldev->dev,
+				"group %s pin gpio enquery failed: %d\n",
+					g->name, ret);
+			return;
+		}
+		if (!is_gpio) {
+			val = pmx_readl(pmx, g->mux_bank, g->mux_reg);
+			i = val & (0x3 << g->mux_bit);
+			function = g->funcs[i];
+			name = tegra_pinctrl_get_func_name(pctldev, function);
+			seq_printf(s, "\n\tfunction=%s", name);
+		} else {
+			seq_printf(s, "\n\tfunction= gpio-%s",
+					(dir) ? "input" : "output");
+		}
+	}
 
 	for (i = 0; i < ARRAY_SIZE(cfg_params); i++) {
 		ret = tegra_pinconf_reg(pmx, g, cfg_params[i].param, false,
