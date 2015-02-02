@@ -1488,7 +1488,9 @@ static void tegra_pm_enter_resume(void)
 
 static void tegra_pm_enter_shutdown(void)
 {
-	suspend_cpu_dfll_mode(0);
+	/* For Guest machine, don't do dfll suspend */
+	if (!is_tegra_hypervisor_mode())
+		suspend_cpu_dfll_mode(0);
 	pr_info("Shutting down tegra ...\n");
 }
 
