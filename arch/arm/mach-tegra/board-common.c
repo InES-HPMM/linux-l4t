@@ -2,7 +2,7 @@
  * board-common.c: Implement function which is common across
  * different boards.
  *
- * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -248,3 +248,14 @@ bool tegra_is_port_available_from_dt(int uart_port)
 			__func__, uart_dt_nodes[uart_port]);
 	return false;
 }
+
+bool is_tegra_hypervisor_mode(void)
+{
+#ifdef CONFIG_OF
+	return of_property_read_bool(of_chosen,
+		"nvidia,tegra-hypervisor-mode");
+#else
+	return false;
+#endif
+}
+EXPORT_SYMBOL(is_tegra_hypervisor_mode);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -175,18 +175,8 @@ int tegra_get_lane_owner_info(void);
 
 int tegra_split_mem_active(void);
 
-#ifdef CONFIG_OF
-static inline bool is_tegra_hypervisor_mode(void)
-{
-	return of_property_read_bool(of_chosen,
-			"nvidia,tegra-hypervisor-mode");
-}
-#else
-static inline bool is_tegra_hypervisor_mode(void)
-{
-	return false;
-}
-#endif
+/* check if in hypervisor mode */
+bool is_tegra_hypervisor_mode(void);
 
 void tegra_get_netlist_revision(u32 *netlist, u32* patchid);
 bool tegra_cpu_is_asim(void);
