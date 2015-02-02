@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/asim.c
  *
- * Copyright (C) 2010-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2010-2015 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -105,34 +105,3 @@ static void __exit asim_exit(void)
 
 arch_initcall(asim_init);
 module_exit(asim_exit);
-
-#if defined(CONFIG_SMC91X)
-static struct resource tegra_asim_smc91x_resources[] = {
-	[0] = {
-		.start	= TEGRA_SIM_ETH_BASE,
-		.end	= TEGRA_SIM_ETH_BASE + TEGRA_SIM_ETH_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	[1] = {
-		.start	= IRQ_ETH,
-		.end	= IRQ_ETH,
-		.flags	= IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device tegra_asim_smc91x_device = {
-	.name	   = "smc91x",
-	.id	     = 0,
-	.num_resources  = ARRAY_SIZE(tegra_asim_smc91x_resources),
-	.resource       = tegra_asim_smc91x_resources,
-};
-
-static int __init asim_enet_smc91x_init(void)
-{
-	if (tegra_cpu_is_asim() && !tegra_cpu_is_dsim())
-		platform_device_register(&tegra_asim_smc91x_device);
-	return 0;
-}
-
-rootfs_initcall(asim_enet_smc91x_init);
-#endif

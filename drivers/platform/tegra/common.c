@@ -2207,45 +2207,6 @@ void __init tegra_init_late(void)
 	tegra_powergate_debugfs_init();
 }
 
-#if defined(CONFIG_SMSC911X)
-static struct resource tegra_smsc911x_resources[] = {
-	[0] = {
-		.start		= 0x4E000000,
-		.end		= 0x4E000000 + SZ_64K - 1,
-		.flags		= IORESOURCE_MEM,
-	},
-	[1] = {
-		.start		= IRQ_ETH,
-		.end		= IRQ_ETH,
-		.flags		= IORESOURCE_IRQ,
-	},
-};
-
-static struct smsc911x_platform_config tegra_smsc911x_config = {
-	.flags          = SMSC911X_USE_32BIT,
-	.irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_HIGH,
-	.irq_type       = SMSC911X_IRQ_TYPE_PUSH_PULL,
-	.phy_interface  = PHY_INTERFACE_MODE_MII,
-};
-
-static struct platform_device tegra_smsc911x_device = {
-	.name              = "smsc911x",
-	.id                = 0,
-	.resource          = tegra_smsc911x_resources,
-	.num_resources     = ARRAY_SIZE(tegra_smsc911x_resources),
-	.dev.platform_data = &tegra_smsc911x_config,
-};
-
-static int __init enet_smsc911x_init(void)
-{
-	if (!tegra_cpu_is_dsim() && !tegra_platform_is_qt())
-		platform_device_register(&tegra_smsc911x_device);
-	return 0;
-}
-
-rootfs_initcall(enet_smsc911x_init);
-#endif
-
 int tegra_split_mem_active(void)
 {
 	return tegra_split_mem_set;
