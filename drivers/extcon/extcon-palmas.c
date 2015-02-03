@@ -7,7 +7,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Graeme Gregory <gg@slimlogic.co.uk>
  * Author: Kishon Vijay Abraham I <kishon@ti.com>
@@ -263,7 +263,7 @@ static void palmas_enable_irq(struct palmas_usb *palmas_usb)
 		PALMAS_USB_VBUS_CTRL_SET_VBUS_ACT_COMP);
 
 	palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
-		PALMAS_USB_ID_CTRL_CLEAR, PALMAS_USB_ID_CTRL_SET_ID_SRC_5U);
+		PALMAS_USB_ID_CTRL_CLEAR, 0xFF);
 	palmas_write(palmas_usb->palmas, PALMAS_USB_OTG_BASE,
 		PALMAS_USB_ID_CTRL_SET, PALMAS_USB_ID_CTRL_SET_ID_SRC_16U |
 				PALMAS_USB_ID_CTRL_SET_ID_ACT_COMP);
