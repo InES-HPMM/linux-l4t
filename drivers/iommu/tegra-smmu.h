@@ -96,9 +96,6 @@
 #define SMMU_STATS_CACHE_COUNT(mc, cache, hitmiss)	\
 	(SMMU_STATS_CACHE_COUNT_BASE + 8 * cache + 4 * hitmiss)
 
-#define SMMU_TRANSLATION_ENABLE_0		0x228
-#define SMMU_TRANSLATION_ENABLE_4		0xb98
-
 #define SMMU_AFI_ASID				0x238   /* PCIE */
 
 #define SMMU_SWGRP_ASID_BASE			SMMU_AFI_ASID
@@ -263,8 +260,6 @@ struct smmu_device {
 	/*
 	 * Register image savers for suspend/resume
 	 */
-	u32 num_translation_enable;
-	u32 translation_enable[5];
 	u32 num_asid_security;
 	u32 asid_security[8];
 

@@ -1,7 +1,7 @@
 /*
  * IOMMU driver for SMMU on Tegra 3 series SoCs and later.
  *
- * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -391,16 +391,6 @@ static void smmu_flush_regs(struct smmu_device *smmu, int enable)
 	FLUSH_SMMU_REGS(smmu);
 }
 
-static int translation_enable_offset(int i)
-{
-	if (i < 4)
-		return SMMU_TRANSLATION_ENABLE_0 + i * sizeof(u32);
-	else if (i == 4)
-		return SMMU_TRANSLATION_ENABLE_4;
-	else
-		BUG();
-}
-
 static void smmu_setup_regs(struct smmu_device *smmu)
 {
 	int i;
@@ -419,10 +409,6 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 		list_for_each_entry(c, &as->client, list)
 			__smmu_client_set_hwgrp(c, c->swgids, 1);
 	}
-
-	for (i = 0; i < smmu->num_translation_enable; i++)
-		smmu_write(smmu, smmu->translation_enable[i],
-			   translation_enable_offset(i));
 
 	for (i = 0; i < smmu->num_asid_security; i++)
 		smmu_write(smmu,
@@ -2107,10 +2093,6 @@ static int tegra_smmu_suspend_default(struct device *dev)
 	int i;
 	struct smmu_device *smmu = dev_get_drvdata(dev);
 
-	for (i = 0; i < smmu->num_translation_enable; i++)
-		smmu->translation_enable[i] = smmu_read(smmu,
-				translation_enable_offset(i));
-
 	for (i = 0; i < smmu->num_asid_security; i++)
 		smmu->asid_security[i] =
 			smmu_read(smmu, smmu_asid_security_ofs[i]);
@@ -2163,7 +2145,6 @@ static int tegra_smmu_probe_default(struct platform_device *pdev,
 	int err = -EINVAL;
 	struct resource *regs, *regs2;
 	struct device *dev = &pdev->dev;
-	int i;
 
 	regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	regs2 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
@@ -2183,10 +2164,6 @@ static int tegra_smmu_probe_default(struct platform_device *pdev,
 	if (of_property_read_u64(dev->of_node, "swgid-mask", &smmu->swgids))
 		goto __exit_probe;
 
-	if (of_property_read_u32(dev->of_node, "#num-translation-enable",
-				 &smmu->num_translation_enable))
-		goto __exit_probe;
-
 	if (of_property_read_u32(dev->of_node, "#num-asid-security",
 				 &smmu->num_asid_security))
 		goto __exit_probe;
@@ -2194,9 +2171,6 @@ static int tegra_smmu_probe_default(struct platform_device *pdev,
 	if (of_property_read_u32(dev->of_node, "ptc-cache-size",
 				 &smmu->ptc_cache_line))
 		smmu->ptc_cache_line = 64;
-
-	for (i = 0; i < smmu->num_translation_enable; i++)
-		smmu->translation_enable[i] = ~0;
 
 	smmu_setup_regs(smmu);
 
