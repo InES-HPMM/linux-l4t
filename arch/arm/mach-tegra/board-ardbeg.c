@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-ardbeg.c
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -377,9 +377,6 @@ static struct platform_device norrin_audio_device_max98090 = {
 
 static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_rtc_device,
-#if !defined(CONFIG_ARM64)
-	&tegra_udc_device,
-#endif
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && !defined(CONFIG_USE_OF)
 	&tegra12_se_device,
 #endif
@@ -531,6 +528,10 @@ static void ardbeg_usb_init(void)
 	struct board_info bi;
 	tegra_get_pmu_board_info(&bi);
 
+	/* ST8 is supported through DT, return */
+	if (board_info.board_id == BOARD_P1761)
+		return;
+
 #if !defined(CONFIG_ARM64)
 	if (board_info.sku == 1100 || board_info.board_id == BOARD_P1761 ||
 					board_info.board_id == BOARD_E1784)
@@ -624,7 +625,9 @@ static void ardbeg_usb_init(void)
 
 	/* Setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+
 #if !defined(CONFIG_ARM64)
+	platform_device_register(&tegra_udc_device);
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 		if (!modem_id) {
 			if ((bi.board_id != BOARD_P1761) &&
@@ -781,6 +784,10 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra132-ehci", 0x7d008000, "tegra-ehci.2",
 			NULL),
 #endif
+	OF_DEV_AUXDATA("nvidia,tegra124-udc", TEGRA_USB_BASE, "tegra-udc.0",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-otg", TEGRA_USB_BASE, "tegra-otg",
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
 		NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-gk20a", TEGRA_GK20A_BAR0_BASE,

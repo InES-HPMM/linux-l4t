@@ -36,6 +36,7 @@
 		spi3 = &spi3;
 		spi4 = &spi4;
 		spi5 = &spi5;
+		udc0 = &udc;
 	};
 
 	mc {
@@ -136,6 +137,14 @@
 	};
 
 	spi@7000de00 {
+		status = "disabled";
+	};
+
+	udc@7d000000 {
+		status = "disabled";
+	};
+
+	otg@7d000000 {
 		status = "disabled";
 	};
 

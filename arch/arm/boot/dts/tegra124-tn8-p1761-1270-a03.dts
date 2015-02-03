@@ -187,5 +187,24 @@
 	pwm@7000a000 {
 		pwm,use-pretty-good-alogorithm;
 	};
+
+	udc@7d000000 {
+		nvidia,id-detection-type = <1>;
+		nvidia,enable-pmu-vbus-detection;
+		extcon-cables = <&palmas_extcon 0>;
+		extcon-cable-names = "vbus";
+		extcon-cable-names = "vbus", "aca-nv", "aca-rb", "aca-rc";
+		#extcon-cells = <1>;
+		status = "okay";
+	};
+
+	otg@7d000000 {
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
+		extcon-cable-names = "vbus", "id";
+		#extcon-cells = <1>;
+		status = "okay";
+	};
 };
 

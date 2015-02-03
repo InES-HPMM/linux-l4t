@@ -119,4 +119,13 @@
 		nvidia,edp_limit = <11200>;
 	};
 
+	udc@7d000000 {
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		nvidia,turn-off-vbus-in-lp0;
+		nvidia,dcp-current-limit-ma = <3000>;
+		nvidia,qc2-input-voltage = <2>;
+		nvidia,qc2-current-limit-ma = <1200>;
+	};
+
 };
