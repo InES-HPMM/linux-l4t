@@ -37,6 +37,7 @@
 #include <linux/syscore_ops.h>
 #include <linux/tegra-soc.h>
 #include <linux/irqchip/tegra.h>
+#include <linux/platform_data/gpio-tegra.h>
 
 #define GPIO_BANK(x)		((x) >> 5)
 #define GPIO_PORT(x)		(((x) >> 3) & 0x3)
@@ -130,6 +131,19 @@ int tegra_gpio_get_bank_int_nr(int gpio)
 	return irq;
 }
 EXPORT_SYMBOL(tegra_gpio_get_bank_int_nr);
+
+int tegra_gpio_is_enabled(int gpio, int *is_gpio, int *is_input)
+{
+	u32 conf, oe;
+	u32 bit = GPIO_BIT(gpio);
+
+	conf = tegra_gpio_readl(GPIO_CNF(gpio));
+	oe = tegra_gpio_readl(GPIO_OE(gpio));
+	*is_gpio = (conf & BIT(bit)) ? 1 : 0;
+	*is_input = (oe & BIT(bit)) ? 0 : 1;
+	return 0;
+}
+EXPORT_SYMBOL(tegra_gpio_is_enabled);
 
 static void tegra_gpio_enable(int gpio)
 {

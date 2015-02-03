@@ -26,5 +26,6 @@
 #define TEGRA_NR_GPIOS		INT_GPIO_NR
 
 extern int tegra_gpio_get_bank_int_nr(int gpio);
+extern int tegra_gpio_is_enabled(int gpio, int *is_gpio, int *is_input);
 
 #endif
