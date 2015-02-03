@@ -28,6 +28,7 @@
 #include <linux/syscore_ops.h>
 #include <linux/platform_device.h>
 #include <soc/tegra/tegra_bpmp.h>
+#include <dt-bindings/clk/tegra210-clk.h>
 
 #include <asm/clkdev.h>
 #include <asm/arch_timer.h>
@@ -6584,6 +6585,7 @@ static struct clk_ops tegra_clk_coupled_gate_ops = {
 /* Clock definitions */
 static struct clk tegra_clk_32k = {
 	.name = "clk_32k",
+	.clk_id = TEGRA210_CLK_ID_CLK_32K,
 	.rate = 32768,
 	.ops  = NULL,
 	.max_rate = 32768,
@@ -6591,6 +6593,7 @@ static struct clk tegra_clk_32k = {
 
 static struct clk tegra_clk_osc = {
 	.name      = "osc",
+	.clk_id    = TEGRA210_CLK_ID_CLK_OSC,
 	.flags     = ENABLE_ON_INIT,
 	.ops       = &tegra_osc_ops,
 	.max_rate  = 48000000,
@@ -6598,6 +6601,7 @@ static struct clk tegra_clk_osc = {
 
 static struct clk tegra_clk_m = {
 	.name      = "clk_m",
+	.clk_id    = TEGRA210_CLK_ID_CLK_M,
 	.flags     = ENABLE_ON_INIT,
 	.parent    = &tegra_clk_osc,
 	.ops       = &tegra_clk_m_ops,
@@ -6606,6 +6610,7 @@ static struct clk tegra_clk_m = {
 
 static struct clk tegra_clk_m_div2 = {
 	.name      = "clk_m_div2",
+	.clk_id    = TEGRA210_CLK_ID_CLK_M_DIV2,
 	.ops       = &tegra_clk_m_div_ops,
 	.parent    = &tegra_clk_m,
 	.mul       = 1,
@@ -6616,6 +6621,7 @@ static struct clk tegra_clk_m_div2 = {
 
 static struct clk tegra_clk_m_div4 = {
 	.name      = "clk_m_div4",
+	.clk_id    = TEGRA210_CLK_ID_CLK_M_DIV4,
 	.ops       = &tegra_clk_m_div_ops,
 	.parent    = &tegra_clk_m,
 	.mul       = 1,
@@ -6626,6 +6632,7 @@ static struct clk tegra_clk_m_div4 = {
 
 static struct clk tegra_pll_ref = {
 	.name      = "pll_ref",
+	.clk_id    = TEGRA210_CLK_ID_PLL_REF,
 	.flags     = ENABLE_ON_INIT,
 	.ops       = &tegra_pll_ref_ops,
 	.parent    = &tegra_clk_osc,
@@ -6663,6 +6670,7 @@ static struct clk_pll_div_layout pllcx_div_layout = {
 
 static struct clk tegra_pll_c = {
 	.name      = "pll_c",
+	.clk_id    = TEGRA210_CLK_ID_PLL_C,
 	.ops       = &tegra_pllcx_ops,
 	.reg       = 0x80,
 	.parent    = &tegra_pll_ref,
@@ -6690,6 +6698,7 @@ static struct clk tegra_pll_c = {
 
 static struct clk tegra_pll_c_out1 = {
 	.name      = "pll_c_out1",
+	.clk_id    = TEGRA210_CLK_ID_PLL_C_OUT1,
 	.ops       = &tegra_pll_div_ops,
 	.flags     = DIV_U71 | PERIPH_ON_CBUS,
 	.parent    = &tegra_pll_c,
@@ -6700,6 +6709,7 @@ static struct clk tegra_pll_c_out1 = {
 
 static struct clk tegra_pll_c2 = {
 	.name      = "pll_c2",
+	.clk_id    = TEGRA210_CLK_ID_PLL_C2,
 	.ops       = &tegra_pllcx_ops,
 	.reg       = 0x4e8,
 	.parent    = &tegra_pll_ref,
@@ -6727,6 +6737,7 @@ static struct clk tegra_pll_c2 = {
 
 static struct clk tegra_pll_c3 = {
 	.name      = "pll_c3",
+	.clk_id    = TEGRA210_CLK_ID_PLL_C3,
 	.ops       = &tegra_pllcx_ops,
 	.reg       = 0x4fc,
 	.parent    = &tegra_pll_ref,
@@ -6754,6 +6765,7 @@ static struct clk tegra_pll_c3 = {
 
 static struct clk tegra_pll_a1 = {
 	.name      = "pll_a1",
+	.clk_id    = TEGRA210_CLK_ID_PLL_A1,
 	.ops       = &tegra_pllcx_ops,
 	.reg       = 0x6a4,
 	.parent    = &tegra_pll_ref,
@@ -6823,6 +6835,7 @@ static struct clk_pll_div_layout plla_div_layout = {
 
 static struct clk tegra_pll_a = {
 	.name      = "pll_a",
+	.clk_id    = TEGRA210_CLK_ID_PLL_A,
 	.ops       = &tegra_plla_ops,
 	.reg       = 0xb0,
 	.parent    = &tegra_pll_ref,
@@ -6848,6 +6861,7 @@ static struct clk tegra_pll_a = {
 
 static struct clk tegra_pll_a_out0 = {
 	.name      = "pll_a_out0",
+	.clk_id    = TEGRA210_CLK_ID_PLL_A_OUT0,
 	.ops       = &tegra_pll_div_ops,
 	.flags     = DIV_U71,
 	.parent    = &tegra_pll_a,
@@ -6892,6 +6906,7 @@ static struct clk_pll_div_layout plld_div_layout = {
 
 static struct clk tegra_pll_d = {
 	.name      = "pll_d",
+	.clk_id    = TEGRA210_CLK_ID_PLL_D,
 	.flags     = PLLD,
 	.ops       = &tegra_plld_ops,
 	.reg       = 0xd0,
@@ -6918,6 +6933,7 @@ static struct clk tegra_pll_d = {
 
 static struct clk tegra_pll_d_out0 = {
 	.name      = "pll_d_out0",
+	.clk_id    = TEGRA210_CLK_ID_PLL_D_OUT0,
 	.ops       = &tegra_pll_div_ops,
 	.flags     = DIV_2 | PLLD,
 	.parent    = &tegra_pll_d,
@@ -6961,6 +6977,7 @@ static struct clk_pll_div_layout plldss_div_layout = {
 
 static struct clk tegra_pll_d2 = {
 	.name      = "pll_d2",
+	.clk_id    = TEGRA210_CLK_ID_PLL_D2,
 	.ops       = &tegra_plld2_ops,
 	.reg       = 0x4b8,
 	.parent    = &tegra_pll_ref,	/* s/w policy, always tegra_pll_ref */
@@ -7008,6 +7025,7 @@ static struct clk_pll_controls plldp_controls = {
 
 static struct clk tegra_pll_dp = {
 	.name      = "pll_dp",
+	.clk_id    = TEGRA210_CLK_ID_PLL_DP,
 	.flags     = PLL_FIXED,
 	.ops       = &tegra_plldp_ops,
 	.reg       = 0x590,
@@ -7064,6 +7082,7 @@ static struct clk_pll_div_layout pllc4_div_layout = {
 
 static struct clk tegra_pll_c4_vco = {
 	.name      = "pll_c4",
+	.clk_id    = TEGRA210_CLK_ID_PLL_C4,
 	.ops       = &tegra_pllc4_vco_ops,
 	.reg       = 0x5a4,
 	.parent    = &tegra_pll_ref,	/* s/w policy, always tegra_pll_ref */
@@ -7088,12 +7107,14 @@ static struct clk tegra_pll_c4_vco = {
 
 static struct clk tegra_pll_c4_out0 = {
 	.name      = "pll_c4_out0",
+	.clk_id    = TEGRA210_CLK_ID_PLL_C4_OUT0,
 	.ops       = &tegra_pll_out_ops,
 	.parent    = &tegra_pll_c4_vco,
 };
 
 static struct clk tegra_pll_c4_out1 = {
 	.name      = "pll_c4_out1",
+	.clk_id    = TEGRA210_CLK_ID_PLL_C4_OUT1,
 	.ops       = &tegra_pll_out_fixed_ops,
 	.parent    = &tegra_pll_c4_vco,
 	.mul       = 1,
@@ -7102,6 +7123,7 @@ static struct clk tegra_pll_c4_out1 = {
 
 static struct clk tegra_pll_c4_out2 = {
 	.name      = "pll_c4_out2",
+	.clk_id    = TEGRA210_CLK_ID_PLL_C4_OUT2,
 	.ops       = &tegra_pll_out_fixed_ops,
 	.parent    = &tegra_pll_c4_vco,
 	.mul       = 1,
@@ -7110,6 +7132,7 @@ static struct clk tegra_pll_c4_out2 = {
 
 static struct clk tegra_pll_c4_out3 = {
 	.name      = "pll_c4_out3",
+	.clk_id    = TEGRA210_CLK_ID_PLL_C4_OUT3,
 	.ops       = &tegra_pll_div_ops,
 	.flags     = DIV_U71,
 	.parent    = &tegra_pll_c4_out0,
@@ -7147,6 +7170,7 @@ static struct clk_pll_div_layout pllre_div_layout = {
 
 static struct clk tegra_pll_re_vco = {
 	.name      = "pll_re_vco",
+	.clk_id    = TEGRA210_CLK_ID_PLL_RE,
 	.ops       = &tegra_pllre_vco_ops,
 	.reg       = 0x4c4,
 	.parent    = &tegra_pll_ref,
@@ -7171,12 +7195,14 @@ static struct clk tegra_pll_re_vco = {
 
 static struct clk tegra_pll_re_out = {
 	.name      = "pll_re_out",
+	.clk_id    = TEGRA210_CLK_ID_PLL_RE_OUT,
 	.ops       = &tegra_pll_out_ops,
 	.parent    = &tegra_pll_re_vco,
 };
 
 static struct clk tegra_pll_re_out1 = {
 	.name      = "pll_re_out1",
+	.clk_id    = TEGRA210_CLK_ID_PLL_RE_OUT1,
 	.ops       = &tegra_pll_div_ops,
 	.flags     = DIV_U71,
 	.parent    = &tegra_pll_re_vco,
@@ -7222,6 +7248,7 @@ static struct clk_pll_div_layout pllx_div_layout = {
 
 static struct clk tegra_pll_x = {
 	.name      = "pll_x",
+	.clk_id    = TEGRA210_CLK_ID_PLL_X,
 	.flags     = PLLX,
 	.ops       = &tegra_pllx_ops,
 	.reg       = 0xe0,
@@ -7291,6 +7318,7 @@ static struct clk_pll_div_layout pllm_div_layout = {
 
 static struct clk tegra_pll_m = {
 	.name      = "pll_m",
+	.clk_id    = TEGRA210_CLK_ID_PLL_M,
 	.flags     = PLLM,
 	.ops       = &tegra_pllm_ops,
 	.reg       = 0x90,
@@ -7323,6 +7351,7 @@ static struct clk_pll_controls pllmb_controls = {
 
 static struct clk tegra_pll_mb = {
 	.name      = "pll_mb",
+	.clk_id    = TEGRA210_CLK_ID_PLL_MB,
 	.ops       = &tegra_pllmb_ops,
 	.reg       = 0x5e8,
 	.parent    = &tegra_pll_ref,
@@ -7362,6 +7391,7 @@ static struct clk_pll_controls pllp_controls = {
 
 static struct clk tegra_pll_p = {
 	.name      = "pll_p",
+	.clk_id    = TEGRA210_CLK_ID_PLL_P,
 	.flags     = ENABLE_ON_INIT | PLL_FIXED,
 	.ops       = &tegra_pllp_vco_ops,
 	.reg       = 0xa0,
@@ -7399,6 +7429,7 @@ static struct clk_mux_sel mux_pllp[] = {
 
 static struct clk tegra_pll_p_out_adsp = {
 	.name      = "pll_p_out_adsp",
+	.clk_id    = TEGRA210_CLK_ID_PLL_P_OUT_ADSP,
 	.ops       = &tegra_periph_clk_ops,
 	.inputs    = mux_pllp,
 	.flags     = PERIPH_NO_RESET,
@@ -7410,6 +7441,7 @@ static struct clk tegra_pll_p_out_adsp = {
 
 static struct clk tegra_pll_p_out_cpu = {
 	.name      = "pll_p_out_cpu",
+	.clk_id    = TEGRA210_CLK_ID_PLL_P_OUT_CPU,
 	.ops       = &tegra_periph_clk_ops,
 	.inputs    = mux_pllp,
 	.flags     = PERIPH_NO_RESET,
@@ -7421,6 +7453,7 @@ static struct clk tegra_pll_p_out_cpu = {
 
 static struct clk tegra_pll_p_out_hsio = {
 	.name      = "pll_p_out_hsio",
+	.clk_id    = TEGRA210_CLK_ID_PLL_P_OUT_HSIO,
 	.ops       = &tegra_pll_div_ops,
 	.parent    = &tegra_pll_p,
 	.reg       = 0x680,
@@ -7429,6 +7462,7 @@ static struct clk tegra_pll_p_out_hsio = {
 
 static struct clk tegra_pll_p_out_xusb = {
 	.name      = "pll_p_out_xusb",
+	.clk_id    = TEGRA210_CLK_ID_PLL_P_OUT_XUSB,
 	.ops       = &tegra_pll_div_ops,
 	.parent    = &tegra_pll_p_out_hsio,
 	.reg       = 0x680,
@@ -7437,6 +7471,7 @@ static struct clk tegra_pll_p_out_xusb = {
 
 static struct clk tegra_pll_p_out2 = {
 	.name      = "pll_p_out2",
+	.clk_id    = TEGRA210_CLK_ID_PLL_P_OUT2,
 	.flags     = PLL_FIXED,
 	.ops       = &tegra_pllp_out_ops,
 	.parent    = &tegra_pll_p,
@@ -7447,6 +7482,7 @@ static struct clk tegra_pll_p_out2 = {
 
 static struct clk tegra_pll_p_out3 = {
 	.name      = "pll_p_out3",
+	.clk_id    = TEGRA210_CLK_ID_PLL_P_OUT3,
 	.ops       = &tegra_pll_div_ops,
 	.flags     = DIV_U71 | DIV_U71_FIXED,
 	.parent    = &tegra_pll_p,
@@ -7457,6 +7493,7 @@ static struct clk tegra_pll_p_out3 = {
 
 static struct clk tegra_pll_p_out4 = {
 	.name      = "pll_p_out4",
+	.clk_id    = TEGRA210_CLK_ID_PLL_P_OUT4,
 	.ops       = &tegra_pll_div_ops,
 	.flags     = DIV_U71 | DIV_U71_INT | DIV_U71_FIXED,
 	.parent    = &tegra_pll_p_out_cpu,
@@ -7467,6 +7504,7 @@ static struct clk tegra_pll_p_out4 = {
 
 static struct clk tegra_pll_p_out5 = {
 	.name      = "pll_p_out5",
+	.clk_id    = TEGRA210_CLK_ID_PLL_P_OUT5,
 	.ops       = &tegra_pll_div_ops,
 	.flags     = DIV_U71 | DIV_U71_FIXED,
 	.parent    = &tegra_pll_p,
@@ -7477,6 +7515,7 @@ static struct clk tegra_pll_p_out5 = {
 
 static struct clk tegra_pll_p_out_sor = {
 	.name      = "sor_safe",
+	.clk_id    = TEGRA210_CLK_ID_PLL_P_OUT_SOR,
 	.lookup    = {
 		.dev_id = "sor_safe",
 	},
@@ -7509,6 +7548,7 @@ static struct clk_pll_controls pllu_controls = {
 
 static struct clk tegra_pll_u_vco = {
 	.name      = "pll_u",
+	.clk_id    = TEGRA210_CLK_ID_PLL_U,
 	.flags     = PLLU | PLL_FIXED,
 	.ops       = &tegra_pllu_vco_ops,
 	.reg       = 0xc0,
@@ -7536,6 +7576,7 @@ static struct clk tegra_pll_u_vco = {
 
 static struct clk tegra_pll_u_out = {
 	.name      = "pll_u_out",
+	.clk_id    = TEGRA210_CLK_ID_PLL_U_OUT,
 	.flags     = PLLU | PLL_FIXED,
 	.ops       = &tegra_pllu_out_ops,
 	.parent    = &tegra_pll_u_vco,
@@ -7546,6 +7587,7 @@ static struct clk tegra_pll_u_out = {
 
 static struct clk tegra_pll_u_out1 = {
 	.name      = "pll_u_out1",
+	.clk_id    = TEGRA210_CLK_ID_PLL_U_OUT1,
 	.ops       = &tegra_pll_div_ops,
 	.flags     = DIV_U71 | DIV_U71_FIXED,
 	.parent    = &tegra_pll_u_out,
@@ -7559,6 +7601,7 @@ static struct clk tegra_pll_u_out1 = {
 
 static struct clk tegra_pll_u_out2 = {
 	.name      = "pll_u_out2",
+	.clk_id    = TEGRA210_CLK_ID_PLL_U_OUT2,
 	.ops       = &tegra_pll_div_ops,
 	.flags     = DIV_U71 | DIV_U71_FIXED,
 	.parent    = &tegra_pll_u_out,
@@ -7572,6 +7615,7 @@ static struct clk tegra_pll_u_out2 = {
 
 static struct clk tegra_pll_u_480M = {
 	.name      = "pll_u_480M",
+	.clk_id    = TEGRA210_CLK_ID_PLL_U_480M,
 	.flags     = PLLU,
 	.ops       = &tegra_pll_div_ops,
 	.reg       = 0xc0,
@@ -7583,6 +7627,7 @@ static struct clk tegra_pll_u_480M = {
 
 static struct clk tegra_pll_u_60M = {
 	.name      = "pll_u_60M",
+	.clk_id    = TEGRA210_CLK_ID_PLL_U_60M,
 	.flags     = PLLU,
 	.ops       = &tegra_pll_div_ops,
 	.reg       = 0xc0,
@@ -7594,6 +7639,7 @@ static struct clk tegra_pll_u_60M = {
 
 static struct clk tegra_pll_u_48M = {
 	.name      = "pll_u_48M",
+	.clk_id    = TEGRA210_CLK_ID_PLL_U_48M,
 	.flags     = PLLU,
 	.ops       = &tegra_pll_div_ops,
 	.reg       = 0xc0,
@@ -7605,6 +7651,7 @@ static struct clk tegra_pll_u_48M = {
 
 static struct clk tegra_dfll_cpu = {
 	.name      = "dfll_cpu",
+	.clk_id    = TEGRA210_CLK_ID_DFLL_CPU,
 	.flags     = DFLL,
 	.ops       = &tegra_dfll_ops,
 	.reg	   = 0x2f4,
@@ -8003,6 +8050,7 @@ static struct clk tegra_clk_aclk_adsp = {
 static struct raw_notifier_head adsp_cpu_rate_change_nh;
 static struct clk tegra_clk_virtual_adsp_cpu = {
 	.name      = "adsp_cpu",
+	.clk_id    = TEGRA210_CLK_ID_ADSP_CPU,
 	.parent    = &tegra_clk_aclk_adsp,
 	.ops       = &tegra_adsp_cpu_ops,
 	.max_rate  = 1200000000,
@@ -8034,6 +8082,7 @@ static struct clk tegra_clk_cclk_lp = {
 
 static struct clk tegra_clk_virtual_cpu_g = {
 	.name      = "cpu_g",
+	.clk_id    = TEGRA210_CLK_ID_CPU_G,
 	.parent    = &tegra_clk_cclk_g,
 	.ops       = &tegra_cpu_ops,
 	.max_rate  = 3000000000UL,
@@ -8047,6 +8096,7 @@ static struct clk tegra_clk_virtual_cpu_g = {
 
 static struct clk tegra_clk_virtual_cpu_lp = {
 	.name      = "cpu_lp",
+	.clk_id    = TEGRA210_CLK_ID_CPU_LP,
 	.parent    = &tegra_clk_cclk_lp,
 	.ops       = &tegra_cpu_ops,
 	.max_rate  = 1350000000,
@@ -9273,7 +9323,7 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2c2",	"tegra21-i2c.1",   "div-clk",	54,	0x198,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB, 0),
 	PERIPH_CLK("i2c3",	"tegra21-i2c.2",   "div-clk",	67,	0x1b8,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB, 0),
 	PERIPH_CLK("i2c4",	"tegra21-i2c.3",   "div-clk",	103,	0x3c4,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB, 0),
-	PERIPH_CLK("i2c5",	"tegra21-i2c.4",   "div-clk",	47,	0x128,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB, 0),
+	PERIPH_CLK("i2c5",	"tegra21-i2c.4",   "div-clk",	47,	0x128,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB, TEGRA210_CLK_ID_I2C5),
 	PERIPH_CLK("i2c6",	"tegra21-i2c.5",   "div-clk",	166,	0x65c,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB, 0),
 	PERIPH_CLK("vii2c",	"tegra21-i2c.6",   "vii2c",	208,	0x6c8, 136000000, mux_pllp_pllc_clkm,	MUX | DIV_U16 | PERIPH_ON_APB, 0),
 	PERIPH_CLK("i2cslow",	"tegra21-i2c.6",   "i2cslow",	81,	0x3fc,	50000000,  mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71 | PERIPH_ON_APB, 0),
@@ -9323,8 +9373,8 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("extern3",	"extern3",		NULL,	122,	0x3f4,	408000000, mux_plla_clk32_pllp_clkm_plle,	MUX | DIV_U71, 0),
 	PERIPH_CLK("pcie",	"tegra-pcie",		"pcie",	70,	0,	250000000, mux_clk_m, 			0, 0),
 	PERIPH_CLK("afi",	"tegra-pcie",		"afi",	72,	0,	250000000, mux_clk_m, 			0, 0),
-	PERIPH_CLK("cl_dvfs_ref", "tegra_cl_dvfs",	"ref",	155,	0x62c,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB, 0),
-	PERIPH_CLK("cl_dvfs_soc", "tegra_cl_dvfs",	"soc",	155,	0x630,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB, 0),
+	PERIPH_CLK("cl_dvfs_ref", "tegra_cl_dvfs",	"ref",	155,	0x62c,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB, TEGRA210_CLK_ID_DFLL_REF),
+	PERIPH_CLK("cl_dvfs_soc", "tegra_cl_dvfs",	"soc",	155,	0x630,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB, TEGRA210_CLK_ID_DFLL_SOC),
 	PERIPH_CLK("soc_therm",	"soc_therm",		NULL,   78,	0x644,	136000000, mux_clkm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_ON_APB, 0),
 
 	PERIPH_CLK("dp2",	"dp2",			NULL,	152,	0,	38400000, mux_clk_m,			PERIPH_ON_APB, 0),
@@ -10054,6 +10104,12 @@ static void tegra21_init_one_clock(struct clk *c)
 		c->lookup.con_id = c->name;
 	c->lookup.clk = c;
 	clkdev_add(&c->lookup);
+
+	/* Sanity check for clock IDs within CLK_OUT_ENB_NUM */
+	if (c->clk_id && (c->clk_id < CLK_OUT_ENB_NUM * 32) &&
+	    (c->clk_id != c->u.periph.clk_num))
+		WARN(1, "%s clock id %u does not match enable bit %u\n",
+		     c->name, c->clk_id, c->u.periph.clk_num);
 }
 
 void tegra_edp_throttle_cpu_now(u8 factor)
