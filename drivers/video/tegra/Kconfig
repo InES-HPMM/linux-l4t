@@ -350,7 +350,7 @@ config TEGRA_NVSR
 
 config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 	bool "Convert carveout to IOVMM"
-	depends on TEGRA_NVMAP && IOMMU_API
+	depends on TEGRA_NVMAP && IOMMU_API && !ARCH_TEGRA_18x_SOC
 	default y
 	help
 	  Say Y here to force to convert carveout memory requests to
@@ -358,7 +358,8 @@ config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 
 config NVMAP_CONVERT_IOVMM_TO_CARVEOUT
 	bool "Convert IOVMM to carveout"
-	depends on TEGRA_NVMAP && IOMMU_API && !NVMAP_CONVERT_CARVEOUT_TO_IOVMM
+	depends on TEGRA_NVMAP && IOMMU_API && ARCH_TEGRA_18x_SOC
+	default y
 	help
 	  Say Y here to force to convert I/O virtual memory requests to
 	  carveout memory requests.
