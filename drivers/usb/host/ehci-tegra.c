@@ -627,48 +627,60 @@ static struct tegra_usb_platform_data *tegra_ehci_dt_parse_pdata(
 	if (pdata->phy_intf == TEGRA_USB_PHY_INTF_UTMI) {
 		err = of_property_read_u32(np,
 					"nvidia,hssync-start-delay", &val);
-		pdata->u_cfg.utmi.hssync_start_delay = val;
+		if (!err)
+			pdata->u_cfg.utmi.hssync_start_delay = val;
 
 		err = of_property_read_u32(np,
 			"nvidia,idle-wait-delay", &val);
-		pdata->u_cfg.utmi.idle_wait_delay = val;
+		if (!err)
+			pdata->u_cfg.utmi.idle_wait_delay = val;
 
 		err = of_property_read_u32(np, "nvidia,elastic-limit", &val);
-		pdata->u_cfg.utmi.elastic_limit = val;
+		if (!err)
+			pdata->u_cfg.utmi.elastic_limit = val;
 
 		err = of_property_read_u32(np,
 					"nvidia,term-range-adj", &val);
-		pdata->u_cfg.utmi.term_range_adj = val;
+		if (!err)
+			pdata->u_cfg.utmi.term_range_adj = val;
 
 		err = of_property_read_u32(np, "nvidia,xcvr-setup", &val);
-		pdata->u_cfg.utmi.xcvr_setup = val;
+		if (!err)
+			pdata->u_cfg.utmi.xcvr_setup = val;
 
 		err = of_property_read_u32(np, "nvidia,xcvr-lsfslew", &val);
-		pdata->u_cfg.utmi.xcvr_lsfslew = val;
+		if (!err)
+			pdata->u_cfg.utmi.xcvr_lsfslew = val;
 
 		err = of_property_read_u32(np, "nvidia,xcvr-lsrslew", &val);
-		pdata->u_cfg.utmi.xcvr_lsrslew = val;
+		if (!err)
+			pdata->u_cfg.utmi.xcvr_lsrslew = val;
 
 		err = of_property_read_u32(np,
 					"nvidia,xcvr-setup-offset", &val);
-		pdata->u_cfg.utmi.xcvr_setup_offset = val;
+		if (!err)
+			pdata->u_cfg.utmi.xcvr_setup_offset = val;
 
 		err = of_property_read_u32(np, "nvidia,xcvr-use-lsb", &val);
-		pdata->u_cfg.utmi.xcvr_use_lsb = val;
+		if (!err)
+			pdata->u_cfg.utmi.xcvr_use_lsb = val;
 
 		pdata->u_cfg.utmi.xcvr_use_fuses =
 			of_property_read_bool(np, "nvidia,xcvr-use-fuses");
 
 		err = of_property_read_u32(np, "nvidia,vbus-oc-map", &val);
-		pdata->u_cfg.utmi.vbus_oc_map = val;
+		if (!err)
+			pdata->u_cfg.utmi.vbus_oc_map = val;
 
 		err = of_property_read_u32(np,
 				"nvidia,xcvr-hsslew-lsb", &val);
-		pdata->u_cfg.utmi.xcvr_hsslew_lsb = val;
+		if (!err)
+			pdata->u_cfg.utmi.xcvr_hsslew_lsb = val;
 
 		err = of_property_read_u32(np,
 				"nvidia,xcvr-hsslew-msb", &val);
-		pdata->u_cfg.utmi.xcvr_hsslew_msb = val;
+		if (!err)
+			pdata->u_cfg.utmi.xcvr_hsslew_msb = val;
 	}
 
 	return pdata;
