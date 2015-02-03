@@ -19,9 +19,7 @@
 
 #include <linux/kernel.h>
 
-#define __MRQ_PUBLIC		(1 << 31)
-
-#define MRQ_PING		(0 | __MRQ_PUBLIC)
+#define MRQ_PING		0
 #define MRQ_QUERY_TAG		1
 #define MRQ_DO_IDLE		2
 #define MRQ_TOLERATE_IDLE	3
@@ -30,17 +28,17 @@
 #define MRQ_SWITCH_CLUSTER	6
 #define MRQ_TRACE_MODIFY	7
 #define MRQ_WRITE_TRACE		8
-#define MRQ_THREADED_PING	(9 | __MRQ_PUBLIC)
+#define MRQ_THREADED_PING	9
 #define MRQ_CPUIDLE_USAGE	10
-#define MRQ_MODULE_MAIL		(11 | __MRQ_PUBLIC)
+#define MRQ_MODULE_MAIL		11
 #define MRQ_SCX_ENABLE		12
 #define MRQ_INIT_NR_CPUS	13
-#define MRQ_BPMPIDLE_USAGE	(14 | __MRQ_PUBLIC)
-#define MRQ_HEAP_USAGE		(15 | __MRQ_PUBLIC)
+#define MRQ_BPMPIDLE_USAGE	14
+#define MRQ_HEAP_USAGE		15
 #define MRQ_SCLK_SKIP_SET_RATE	16
 #define MRQ_ENABLE_SUSPEND	17
 #define MRQ_PASR_MASK		18
-#define MRQ_DEBUGFS		(19 | __MRQ_PUBLIC)
+#define MRQ_DEBUGFS		19
 
 /* Tegra PM states as known to BPMP */
 #define TEGRA_PM_CC1	9
