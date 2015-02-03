@@ -253,6 +253,7 @@ struct clk {
 	bool			cansleep;
 	bool			set_disabled_div;
 	u32			flags;
+	u32			clk_id;
 	const char		*name;
 
 	u32			refcnt;

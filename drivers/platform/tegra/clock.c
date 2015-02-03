@@ -102,6 +102,36 @@ static DEFINE_MUTEX(clock_list_lock);
 static LIST_HEAD(clocks);
 static unsigned long osc_freq;
 
+#ifdef CONFIG_OF
+struct clk *of_clk_get_from_provider(struct of_phandle_args *clkspec)
+{
+	u32 clk_id;
+	struct clk *c;
+
+	if (!clkspec->args_count) {
+		pr_err("%s: no clock id is specified\n", __func__);
+		return ERR_PTR(-ENOENT);
+	}
+
+	clk_id = clkspec->args[0];
+	if (!clk_id) {
+		pr_err("%s: clock id 0 is not assigned\n", __func__);
+		return ERR_PTR(-ENOENT);
+	}
+
+	mutex_lock(&clock_list_lock);
+	list_for_each_entry(c, &clocks, node) {
+		if (c->clk_id == clk_id) {
+			mutex_unlock(&clock_list_lock);
+			return c;
+		}
+	}
+	mutex_unlock(&clock_list_lock);
+	pr_err("%s: tegra clock %u not found\n", __func__, clk_id);
+	return ERR_PTR(-ENOENT);
+}
+#endif
+
 struct clk *tegra_get_clock_by_name(const char *name)
 {
 	struct clk *c;
