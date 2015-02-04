@@ -117,7 +117,13 @@
 #define SDHCI_VNDR_TUN_CTRL0_TUN_HW_TAP			0x20000
 #define TUNING_WORD_SEL_MASK 				0x7
 /*value 4 in 13 to 15 bits indicates 256 iterations*/
-#define SDHCI_VNDR_TUN_CTRL0_TUN_ITERATIONS		0x8000
+#define SDHCI_VNDR_TUN_CTRL0_TUN_ITERATIONS_MASK	0x7
+#define SDHCI_VNDR_TUN_CTRL0_TUN_ITERATIONS_SHIFT	13
+/* Value 2 in NUM_TUNING_ITERATIONS indicates 128 iterations */
+#define HW_TUNING_128_TRIES				2
+/* Value 4 in NUM_TUNING_ITERATIONS indicates 256 iterations */
+#define HW_TUNING_256_TRIES				4
+
 #define SDHCI_VNDR_TUN_CTRL1_TUN_STEP_SIZE		0x77
 
 
@@ -753,6 +759,21 @@ static void tegra_sdhci_dumpregs(struct sdhci_host *sdhci)
 
 static int sdhci_tegra_get_max_tuning_loop_counter(struct sdhci_host *sdhci)
 {
+	u16 hw_tuning_iterations;
+	u32 vendor_ctrl;
+
+	if (sdhci->mmc->ios.timing == MMC_TIMING_UHS_SDR50)
+		hw_tuning_iterations = HW_TUNING_256_TRIES;
+	else
+		hw_tuning_iterations = HW_TUNING_128_TRIES;
+
+	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_TUN_CTRL0_0);
+	vendor_ctrl &=	~(SDHCI_VNDR_TUN_CTRL0_TUN_ITERATIONS_MASK <<
+			SDHCI_VNDR_TUN_CTRL0_TUN_ITERATIONS_SHIFT);
+	vendor_ctrl |= (hw_tuning_iterations <<
+			SDHCI_VNDR_TUN_CTRL0_TUN_ITERATIONS_SHIFT);
+	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_TUN_CTRL0_0);
+
 	return 257;
 }
 
@@ -1499,7 +1520,6 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		vendor_ctrl &= ~(SDHCI_VNDR_TUN_CTRL0_0_MUL_M);
 		vendor_ctrl |= SDHCI_VNDR_TUN_CTRL0_0_MUL_M_VAL;
 		vendor_ctrl |= SDHCI_VNDR_TUN_CTRL_RETUNE_REQ_EN;
-		vendor_ctrl |= SDHCI_VNDR_TUN_CTRL0_TUN_ITERATIONS;
 		sdhci_writel(host, vendor_ctrl, SDHCI_VNDR_TUN_CTRL0_0);
 
 		vendor_ctrl = sdhci_readl(host, SDHCI_VNDR_TUN_CTRL1_0);
