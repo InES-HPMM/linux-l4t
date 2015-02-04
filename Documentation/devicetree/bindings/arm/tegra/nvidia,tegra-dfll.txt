@@ -1,7 +1,8 @@
-NVIDIA Tegra DFLL clock source data in the SoC DTS file:
+NVIDIA Tegra DFLL clock source node. Tegra SoC DTS level data.
 
 Required properties:
 - compatible : Must be one of the following
+	"nvidia,tegra210-dfll"
 	"nvidia,tegra132-dfll"
 	"nvidia,tegra124-dfll"
 	"nvidia,tegra148-dfll"
@@ -13,10 +14,14 @@ Required properties:
   range as the first one.
 - out-clock-name : Must contain a "dfll_cpu" string, name of the DFLL output
   clock.
+- clock-names : required for "nvidia,tegra210-dfll" compatible device only.
+  Must list the following names: "dfll_cpu", "ref", "soc", "i2c", "safe_dvfs".
+- clocks : required for "nvidia,tegra210-dfll" compatible device only.
+  Must provide Tegra CAR phandle and clock specifier pairs for each clock in
+  the clock-names list.
 
 Optional properties:
 - status : device availability -- managed by the DT integration code.
-  Should be set to "disabled" in the SoC DTS file.
 
 Examples:
 
@@ -35,8 +40,20 @@ dfll@70040084 {
 	status = "disabled";
 };
 
+dfll-max77621@70110000 {
+	status = "disabled";
+	compatible = "nvidia,tegra210-dfll";
+	reg = <0x0 0x70110000 0x0 0x400>;
+	out-clock-name="dfll_cpu";
+	clocks = <&tegra_car TEGRA210_CLK_ID_DFLL_CPU>,
+		 <&tegra_car TEGRA210_CLK_ID_DFLL_SOC>,
+		 <&tegra_car TEGRA210_CLK_ID_DFLL_REF>,
+		 <&tegra_car TEGRA210_CLK_ID_CPU_G>,
+		 <&tegra_car TEGRA210_CLK_ID_I2C5>;
+	clock-names = "dfll_cpu", "soc", "ref", "safe_dvfs", "i2c";
+};
 
-NVIDIA Tegra DFLL clock source data in the board DTS file
+NVIDIA Tegra DFLL clock source node. DTS board level data.
 
 Required properties:
 - board-params : phandle pointing to the board-specific configuration data
@@ -54,7 +71,6 @@ Optional properties:
   fields, this property should be set.
 
 - status : device availability -- managed by the DT integration code.
-  Should be set to "okay" if the DFLL is to be used on this board type.
 
 - i2c-pmic-integration : phandle pointing to the integration data for
   PMIC controlled by this DFLL instance via I2C interface.
@@ -75,7 +91,7 @@ dfll@70110000 {
 };
 
 
-DFLL board params node in the board DTS file
+DFLL board parameters node
 
 Required properties:
 - sample-rate : control loop sample rate (in Hz).
@@ -109,7 +125,7 @@ cpu_dfll_board_params {
 };
 
 
-DFLL I2C PMIC integration node in the board DTS file
+DFLL I2C PMIC integration node
 
 Required properties:
 - pmic-i2c-address : PMIC I2C bus address.
@@ -140,7 +156,7 @@ cpu_dfll_pmic_integration {
         pmic-undershoot-gb = <100>;
 };
 
-DFLL PWM PMIC integration subnode in the board DTS file
+DFLL PWM PMIC integration node
 
 Required properties:
 - compatible : Must be one of the following
