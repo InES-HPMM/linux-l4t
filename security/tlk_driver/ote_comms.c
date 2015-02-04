@@ -463,6 +463,8 @@ void te_open_session(struct te_opensession *cmd,
 	if (request->result) {
 		/* release any persistent mem buffers if we failed */
 		te_release_mem_buffers(&session->inactive_persist_shmem_list);
+
+		kfree(session);
 	} else {
 		/* otherwise mark active any persistent mem buffers */
 		te_activate_persist_mem_buffers(session);
