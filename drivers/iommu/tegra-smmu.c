@@ -1953,6 +1953,36 @@ static phys_addr_t tegra_smmu_inquired_phys;
 static size_t tegra_smmu_inquired_bytes;
 static int tegra_smmu_inquired_npte;
 
+static void smmu_dump_phys_page(struct seq_file *m, phys_addr_t phys)
+{
+	ulong addr, base;
+	phys_addr_t paddr;
+	ulong offset;
+
+	offset = round_down(phys & ~PAGE_MASK, 16);
+
+	base = (ulong) kmap(phys_to_page(phys));
+	addr = round_down(base + (phys & ~PAGE_MASK), 16);
+	paddr = (phys & PAGE_MASK) + (addr - base);
+
+	for (; addr < base + PAGE_SIZE; addr += 16, paddr += 16) {
+		u32 *ptr = (u32 *)addr;
+		char buffer[127];
+		snprintf(buffer, 127,
+			 "%pa: 0x%08x 0x%08x 0x%08x 0x%08x",
+			 &paddr, *ptr, *(ptr + 1), *(ptr + 2), *(ptr + 3));
+		if (m)
+			seq_printf(m, "\n%s", buffer);
+		else
+			pr_debug("\n%s", buffer);
+	}
+	kunmap(phys_to_page(phys));
+	if (m)
+		seq_printf(m, "\n");
+	else
+		pr_debug("\n");
+}
+
 static int smmu_iova2pa_show(struct seq_file *m, void *v)
 {
 	seq_printf(m, "iova=%pa pa=%pa bytes=%zx npte=%d\n",
@@ -1960,6 +1990,9 @@ static int smmu_iova2pa_show(struct seq_file *m, void *v)
 		   &tegra_smmu_inquired_phys,
 		   tegra_smmu_inquired_bytes,
 		   tegra_smmu_inquired_npte);
+
+	/* pass m if you want to print in seq file */
+	smmu_dump_phys_page(NULL, tegra_smmu_inquired_phys);
 	return 0;
 }
 
