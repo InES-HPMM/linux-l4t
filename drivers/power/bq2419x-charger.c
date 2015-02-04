@@ -1,7 +1,7 @@
 /*
  * bq2419x-charger.c -- BQ24190/BQ24192/BQ24192i/BQ24193 Charger driver
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  * Author: Syed Rafiuddin <srafiuddin@nvidia.com>
@@ -494,7 +494,6 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 	int val;
 
 	dev_info(bq2419x->dev, "Setting charging current %d\n", max_uA/1000);
-	msleep(200);
 	bq2419x->chg_status = BATTERY_DISCHARGING;
 
 	if (!bq2419x->is_otg_connected) {
