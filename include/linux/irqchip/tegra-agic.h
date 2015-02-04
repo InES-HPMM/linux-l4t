@@ -3,7 +3,7 @@
  *
  * Header file for managing AGIC interrupt controller
  *
- * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -104,7 +104,7 @@
 #define INT_WFE				85
 
 /* AMISC Actmon interrupt */
-#define INT_AMISC_ACTMON    87
+#define INT_ADSP_ACTMON			87
 
 enum tegra_agic_cpu {
 	TEGRA_AGIC_APE_HOST = 0,

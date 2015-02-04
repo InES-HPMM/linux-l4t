@@ -450,7 +450,7 @@ static int actmon_dev_probe(struct actmon_dev *dev)
 {
 	int ret;
 
-	dev->irq = tegra_agic_irq_get_virq(INT_AMISC_ACTMON);
+	dev->irq = tegra_agic_irq_get_virq(INT_ADSP_ACTMON);
 
 	ret = request_threaded_irq(dev->irq, ape_actmon_dev_isr,
 			ape_actmon_dev_fn, IRQ_TYPE_LEVEL_HIGH,
