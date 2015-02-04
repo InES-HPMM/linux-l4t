@@ -1,7 +1,7 @@
 /*
  * drivers/misc/bluedroid_pm.c
  *
- * Copyright (c) 2014, NVIDIA Corporation. All rights reserved.
+ # Copyright (c) 2013-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -508,8 +508,12 @@ static struct platform_driver bluedroid_pm_driver = {
 static ssize_t lpm_read_proc(struct file *file, char __user *buf, size_t size,
 					loff_t *ppos)
 {
-	char *msg = "lpm_read";
+	char msg[50];
+	struct bluedroid_pm_data *bluedroid_pm = PDE_DATA(file_inode(file));
 
+	sprintf(msg, "BT LPM Status: TX %x, RX %x\n",
+			bluedroid_pm_gpio_get_value(bluedroid_pm->ext_wake),
+			bluedroid_pm_gpio_get_value(bluedroid_pm->host_wake));
 	return simple_read_from_buffer(buf, size, ppos, msg, strlen(msg));
 }
 
