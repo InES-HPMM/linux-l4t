@@ -761,16 +761,6 @@ static ssize_t set_modem_state(struct device *dev,
 static DEVICE_ATTR(modem_state, S_IRUSR | S_IWUSR, show_modem_state,
 			set_modem_state);
 
-static ssize_t store_sysedp_state(struct device *dev,
-				struct device_attribute *attr,
-				const char *buf, size_t count)
-{
-	dev_dbg(dev, "%s: disabled\n", __func__);
-
-	return count;
-}
-static DEVICE_ATTR(sysedp_state, S_IWUSR, NULL, store_sysedp_state);
-
 static struct tegra_usb_phy_platform_ops tegra_usb_modem_platform_ops = {
 	.post_remote_wakeup = tegra_usb_modem_post_remote_wakeup,
 };
@@ -924,13 +914,6 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 		modem_edp_device.dev.platform_data = &edpdata;
 		modem->modem_edp_pdev = &modem_edp_device;
 		platform_device_register(modem->modem_edp_pdev);
-		/* to be removed once RIL uses new path */
-		ret = device_create_file(&pdev->dev, &dev_attr_sysedp_state);
-		if (ret) {
-			dev_err(&pdev->dev,
-			"can't create modem state sysfs file\n");
-			goto error;
-		}
 	}
 
 	/* start modem */
