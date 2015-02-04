@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -848,16 +848,13 @@ static irqreturn_t bq27441_irq(int id, void *dev)
 {
 	struct bq27441_chip *chip = dev;
 	struct i2c_client *client = chip->client;
-	int flags_msb;
 
 	bq27441_update_soc_voltage(chip);
 	power_supply_changed(&chip->battery);
 	dev_info(&client->dev, "%s() Battery Voltage %dmV and SoC %d%%\n",
 				__func__, chip->vcell, chip->soc);
 
-	flags_msb = bq27441_read_byte(chip->client, BQ27441_FLAGS_1);
-	chip->full_charge_state = flags_msb & BQ27441_FLAGS_FC_DETECT;
-	if (chip->soc == BQ27441_BATTERY_FULL || chip->full_charge_state) {
+	if (chip->soc == BQ27441_BATTERY_FULL && !chip->full_charge_state) {
 		chip->full_charge_state = 1;
 		schedule_delayed_work(&chip->fc_work, 0);
 	} else if (chip->soc < BQ27441_BATTERY_FULL &&
@@ -1081,6 +1078,11 @@ static int bq27441_probe(struct i2c_client *client,
 
 	dev_info(&client->dev, "Battery Voltage %dmV and SoC %d%%\n",
 			chip->vcell, chip->soc);
+
+	if (chip->soc == BQ27441_BATTERY_FULL && !chip->full_charge_state) {
+		chip->full_charge_state = 1;
+		schedule_delayed_work(&chip->fc_work, 0);
+	}
 
 	return 0;
 irq_reg_error:
