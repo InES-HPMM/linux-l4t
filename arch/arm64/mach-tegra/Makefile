@@ -10,7 +10,9 @@ subdir-ccflags-y := -Werror
 # Assemblies
 obj-y += reset-handler.o trampoline.o
 
-obj-$(CONFIG_SMP) += platsmp.o
+ifeq ($(CONFIG_SMP),y)
+obj-$(CONFIG_ARCH_TEGRA_13x_SOC)      += platsmp.o
+endif
 
 # Temp board files (should be gone when we go DT)
 
