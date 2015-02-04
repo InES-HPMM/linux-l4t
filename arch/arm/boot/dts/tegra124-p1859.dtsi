@@ -225,14 +225,17 @@
 
 	spi@7000d600 {
 		status = "okay";
+		nvidia,maximum-dma-buffer-size = <65536>;
 	};
 
 	spi@7000d800 {
 		status = "okay";
+		nvidia,maximum-dma-buffer-size = <65536>;
 	};
 
 	spi@7000dc00 {
 		status = "okay";
+		nvidia,maximum-dma-buffer-size = <65536>;
 	};
 
 	xusb@70090000 {

@@ -146,6 +146,7 @@
 
 	spi@7000d600 {
 		status = "okay";
+		nvidia,maximum-dma-buffer-size = <65536>;
 
 		spi@1 {
 			status = "disabled";
@@ -160,7 +161,7 @@
 
 	spi@7000d800 {
 		status = "okay";
-
+		nvidia,maximum-dma-buffer-size = <65536>;
 		spi@1 {
 			status = "disabled";
 		};
