@@ -9,6 +9,7 @@ Optional properties:
 - regulator-max-microamp: largest current consumers may set
 - regulator-always-on: boolean, regulator should never be disabled
 - regulator-boot-on: bootloader/firmware enabled regulator
+- regulator-boot-off: Off the regulator during init.
 - <name>-supply: phandle to the parent supply/regulator node
 - regulator-ramp-delay: ramp delay for regulator(in uV/uS)
 - regulator-init-microvolt: Initial microvolt need to be set during registration

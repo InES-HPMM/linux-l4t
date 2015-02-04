@@ -119,6 +119,9 @@ static void of_get_regulation_constraints(struct device_node *np,
 	if (of_find_property(np, "regulator-boot-on", NULL))
 		constraints->boot_on = true;
 
+	if (of_find_property(np, "regulator-boot-off", NULL))
+		constraints->boot_off = true;
+
 	if (of_find_property(np, "regulator-always-on", NULL))
 		constraints->always_on = true;
 	else /* status change should be possible if not always on. */
