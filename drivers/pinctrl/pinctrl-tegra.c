@@ -1048,6 +1048,25 @@ void tegra_pinctrl_writel(u32 val, u32 bank, u32 reg)
 }
 EXPORT_SYMBOL_GPL(tegra_pinctrl_writel);
 
+int tegra_pinctrl_config_prod(struct device *dev, const char *prod_name)
+{
+	int ret;
+
+	if (!pmx) {
+		dev_err(dev, "Pincontrol driver is not initialised yet\n");
+		return -EIO;
+	}
+
+	ret = tegra_prod_set_by_name(pmx->regs, prod_name, pmx->prod_list);
+	if (ret < 0) {
+		dev_err(pmx->dev, "Prod config %s for device %s failed: %d\n",
+			prod_name, dev_name(dev), ret);
+		return ret;
+	}
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tegra_pinctrl_config_prod);
+
 #ifdef	CONFIG_DEBUG_FS
 
 #include <linux/debugfs.h>

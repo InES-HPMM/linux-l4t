@@ -79,4 +79,9 @@ enum tegra_pinconf_param {
 #define TEGRA_PINCONF_UNPACK_PARAM(_conf_) ((_conf_) >> 16)
 #define TEGRA_PINCONF_UNPACK_ARG(_conf_) ((_conf_) & 0xffff)
 
+struct device;
+
+extern int tegra_pinctrl_config_prod(struct device *dev,
+		const char *prod_name);
+
 #endif
