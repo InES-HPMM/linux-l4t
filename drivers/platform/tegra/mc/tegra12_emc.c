@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/tegra12_emc.c
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -1114,7 +1114,7 @@ int tegra_emc_set_rate(unsigned long rate)
 
 long tegra_emc_round_rate_updown(unsigned long rate, bool up)
 {
-	int i;
+	int i, last_i;
 	unsigned long table_rate;
 
 	if (!tegra_emc_table)
@@ -1125,24 +1125,31 @@ long tegra_emc_round_rate_updown(unsigned long rate, bool up)
 
 	pr_debug("%s: %lu\n", __func__, rate);
 
+	/* clamp incoming rate to max */
+	if (rate > clk_get_max_rate(emc))
+		rate = clk_get_max_rate(emc);
+
 	/* Table entries specify rate in kHz */
 	rate = rate / 1000;
 
 	i = get_start_idx(rate);
+	last_i = -1;
+	table_rate = 0;
 	for (; i < tegra_emc_table_size; i++) {
 		if (tegra_emc_clk_sel[i].input == NULL)
 			continue;	/* invalid entry */
 
 		table_rate = tegra_emc_table[i].rate;
 		if (table_rate >= rate) {
-			if (!up && i && (table_rate > rate)) {
-				i--;
+			if (!up && (last_i != -1) && (table_rate > rate)) {
+				i = last_i;
 				table_rate = tegra_emc_table[i].rate;
 			}
 			pr_debug("%s: using %lu\n", __func__, table_rate);
 			last_round_idx = i;
 			return table_rate * 1000;
 		}
+		last_i = i;
 	}
 
 	return -EINVAL;
