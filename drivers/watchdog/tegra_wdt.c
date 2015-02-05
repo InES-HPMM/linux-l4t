@@ -275,18 +275,18 @@ static int tegra_wdt_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_PM
-static int tegra_wdt_suspend(struct platform_device *pdev, pm_message_t state)
+#ifdef CONFIG_PM_SLEEP
+static int tegra_wdt_suspend(struct device *dev)
 {
-	struct tegra_wdt *tegra_wdt = platform_get_drvdata(pdev);
+	struct tegra_wdt *tegra_wdt = dev_get_drvdata(dev);
 
 	__tegra_wdt_disable(tegra_wdt);
 	return 0;
 }
 
-static int tegra_wdt_resume(struct platform_device *pdev)
+static int tegra_wdt_resume(struct device *dev)
 {
-	struct tegra_wdt *tegra_wdt = platform_get_drvdata(pdev);
+	struct tegra_wdt *tegra_wdt = dev_get_drvdata(dev);
 
 	if (watchdog_active(&tegra_wdt->wdt))
 		__tegra_wdt_enable(tegra_wdt);
@@ -294,6 +294,8 @@ static int tegra_wdt_resume(struct platform_device *pdev)
 	return 0;
 }
 #endif
+
+SIMPLE_DEV_PM_OPS(tegra_wdt_pm_ops, tegra_wdt_suspend, tegra_wdt_resume);
 
 static const struct of_device_id tegra_wdt_match[] = {
 	{ .compatible = "nvidia,tegra-wdt", },
@@ -303,13 +305,10 @@ static const struct of_device_id tegra_wdt_match[] = {
 static struct platform_driver tegra_wdt_driver = {
 	.probe		= tegra_wdt_probe,
 	.remove		= tegra_wdt_remove,
-#ifdef CONFIG_PM
-	.suspend	= tegra_wdt_suspend,
-	.resume		= tegra_wdt_resume,
-#endif
 	.driver		= {
 		.owner	= THIS_MODULE,
 		.name	= "tegra_wdt",
+		.pm	= &tegra_wdt_pm_ops,
 		.of_match_table = of_match_ptr(tegra_wdt_match),
 	},
 };
