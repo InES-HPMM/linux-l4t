@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -316,14 +316,15 @@
 
 			battery_charger: charger {
 				status = "disabled";
+				dt-override-status-odm-data = <0x00C00000 0x00400000>;
 				regulator-name = "batt_regulator";
 				regulator-max-microamp = <3000000>;
 				ti,disbale-suspend-during-charging;
-				ti,charge-voltage-limit-millivolt = <4200>;
-				ti,charge-term-current-limit-milliamp = <384>;
-				ti,ir-comp-voltage-millivolt = <112>;
-				ti,ir-comp-resister-ohm = <70>;
-				ti,pre-charge-current-limit-milliamp = <768>;
+				ti,charge-voltage-limit-millivolt = <4352>;
+				ti,charge-term-current-limit-milliamp = <128>;
+				ti,ir-comp-voltage-millivolt = <1>;
+				ti,ir-comp-resister-ohm = <1>;
+				ti,pre-charge-current-limit-milliamp = <256>;
 				ti,thermal-regulation-threshold-degc = <120>;
 			};
 
@@ -335,15 +336,14 @@
 
 		battery-gauge@55 {
 			status = "disabled";
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
 			compatible = "ti,bq27441";
 			reg = <0x55>;
-			ti,design-capacity = <7700>;
-			ti,design-energy = <27720>;
-			ti,taper-rate = <167>;
-			ti,terminate-voltage = <3150>;
-			ti,v-at-chg-term = <4190>;
-			ti,cc-gain = <0x7F738FE1>;
-			ti,cc-delta = <0x940A8F4A>;
+			ti,design-capacity = <5200>;
+			ti,design-energy = <19760>;
+			ti,taper-rate = <318>;
+			ti,terminate-voltage = <2700>;
+			ti,v-at-chg-term = <4340>;
 		};
 	};
 
