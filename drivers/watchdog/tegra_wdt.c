@@ -181,16 +181,19 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	struct resource *res_src, *res_wdt;
 	struct tegra_wdt *tegra_wdt;
 	struct device_node *np = pdev->dev.of_node;
+	u32 pval = 0;
 	int ret = 0;
-	bool enable_on_init = 0;
+	bool enable_on_init;
 
 	if (!tegra_platform_is_silicon()) {
 		dev_info(&pdev->dev, "no watchdog support in pre-silicon");
 		return -EPERM;
 	}
 
-	if (of_find_property(np, "nvidia,enable-on-init", NULL))
-		enable_on_init = true;
+	enable_on_init = of_property_read_bool(np, "nvidia,enable-on-init");
+	ret = of_property_read_u32(np, "nvidia,heartbeat-init", &pval);
+	if (!ret)
+		heartbeat = pval;
 
 	tegra_wdt = devm_kzalloc(&pdev->dev, sizeof(*tegra_wdt), GFP_KERNEL);
 	if (!tegra_wdt) {
@@ -202,7 +205,7 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	tegra_wdt->wdt.ops = &tegra_wdt_ops;
 	tegra_wdt->wdt.min_timeout = MIN_WDT_PERIOD;
 	tegra_wdt->wdt.max_timeout = MAX_WDT_PERIOD;
-	tegra_wdt->wdt.timeout = 120;
+	tegra_wdt->wdt.timeout = heartbeat;
 
 	res_src = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	res_wdt = platform_get_resource(pdev, IORESOURCE_MEM, 1);
@@ -330,8 +333,7 @@ MODULE_AUTHOR("NVIDIA Corporation");
 MODULE_DESCRIPTION("Tegra Watchdog Driver");
 
 module_param(heartbeat, int, 0);
-MODULE_PARM_DESC(heartbeat,
-		 "Watchdog heartbeat period in seconds");
+MODULE_PARM_DESC(heartbeat, "Watchdog heartbeat period in seconds");
 
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:tegra_wdt");
