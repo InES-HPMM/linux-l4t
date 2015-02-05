@@ -185,8 +185,8 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	int ret = 0;
 	bool enable_on_init;
 
-	if (!tegra_platform_is_silicon()) {
-		dev_info(&pdev->dev, "no watchdog support in pre-silicon");
+	if (!np) {
+		dev_err(&pdev->dev, "Supprot registration from DT only");
 		return -EPERM;
 	}
 
@@ -297,6 +297,7 @@ static const struct of_device_id tegra_wdt_match[] = {
 	{ .compatible = "nvidia,tegra-wdt", },
 	{}
 };
+MODULE_DEVICE_TABLE(of, tegra_wdt_match);
 
 static struct platform_driver tegra_wdt_driver = {
 	.probe		= tegra_wdt_probe,
