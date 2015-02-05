@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-loki.c
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -552,7 +552,6 @@ static struct tegra_usb_modem_power_platform_data baseband_pdata = {
 				    IRQF_TRIGGER_FALLING |
 				    IRQF_ONESHOT,
 	.autosuspend_delay = 2000,
-	.short_autosuspend_delay = 50,
 	.tegra_ehci_device = &tegra_ehci2_device,
 	.tegra_ehci_pdata = &tegra_ehci2_hsic_baseband_pdata,
 	.mdm_power_report_gpio = -1,

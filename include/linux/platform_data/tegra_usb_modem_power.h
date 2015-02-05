@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,7 +48,6 @@ struct tegra_usb_modem_power_platform_data {
 	int boot_gpio;			/* modem boot gpio */
 	unsigned long boot_irq_flags;	/* modem boot irq flags */
 	int autosuspend_delay;		/* autosuspend delay in milliseconds */
-	int short_autosuspend_delay;	/* short autosuspend delay in ms */
 	const struct platform_device *tegra_ehci_device; /* USB host device */
 	struct tegra_usb_platform_data *tegra_ehci_pdata;
 	int mdm_power_report_gpio;	/* modem power increase report gpio */
