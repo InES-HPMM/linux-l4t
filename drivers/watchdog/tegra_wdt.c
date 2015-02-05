@@ -215,18 +215,16 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 		return -ENOENT;
 	}
 
-	tegra_wdt->wdt_source = devm_request_and_ioremap(&pdev->dev, res_src);
-	if (!tegra_wdt->wdt_source) {
-		dev_err(&pdev->dev,
-				"Cannot request memregion/iomap res_src\n");
-		return -EADDRNOTAVAIL;
+	tegra_wdt->wdt_source = devm_ioremap_resource(&pdev->dev, res_src);
+	if (IS_ERR(tegra_wdt->wdt_source)) {
+		dev_err(&pdev->dev, "Cannot request memregion/iomap res_src\n");
+		return PTR_ERR(tegra_wdt->wdt_source);
 	}
 
-	tegra_wdt->wdt_timer = devm_request_and_ioremap(&pdev->dev, res_wdt);
-	if (!tegra_wdt->wdt_timer) {
-		dev_err(&pdev->dev,
-				"Cannot request memregion/iomap res_wdt\n");
-		return -EADDRNOTAVAIL;
+	tegra_wdt->wdt_timer = devm_ioremap_resource(&pdev->dev, res_wdt);
+	if (IS_ERR(tegra_wdt->wdt_timer)) {
+		dev_err(&pdev->dev, "Cannot request memregion/iomap res_wdt\n");
+		return PTR_ERR(tegra_wdt->wdt_timer);
 	}
 
 	/* tmrsrc will be used to set WDT_CFG */
@@ -235,11 +233,6 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	else
 		tegra_wdt->tmrsrc = ((int) (3 + ((res_wdt->start & 0xff) -
 							0x50) / 8)) % 10;
-	if (!tegra_wdt->wdt_source || !tegra_wdt->wdt_timer) {
-		dev_err(&pdev->dev, "unable to map registers\n");
-		ret = -ENOMEM;
-		goto fail;
-	}
 
 	tegra_wdt_disable(&tegra_wdt->wdt);
 	writel(TIMER_PCR_INTR, tegra_wdt->wdt_timer + TIMER_PCR);
@@ -256,15 +249,15 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	ret = watchdog_register_device(&tegra_wdt->wdt);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to register watchdog device\n");
-		goto fail;
+		if (enable_on_init)
+			tegra_wdt_disable(&tegra_wdt->wdt);
+		return ret;
 	}
 
 	platform_set_drvdata(pdev, tegra_wdt);
 
 	dev_info(&pdev->dev, "%s done\n", __func__);
 	return 0;
-fail:
-	return ret;
 }
 
 static int tegra_wdt_remove(struct platform_device *pdev)
