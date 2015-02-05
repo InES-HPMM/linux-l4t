@@ -52,6 +52,8 @@
  * struct max8973_regulator_platform_data - max8973 regulator platform data.
  *
  * @reg_init_data: The regulator init data.
+ * @junction_temp_warning: Junction temp warning threshold, temp is in
+ *              milli-celcius i.e. 120000 for 120degC.
  * @control_flags: Control flags which are ORed value of above flags to
  *		configure device.
  * @enable_ext_control: Enable the voltage enable/disable through external
@@ -68,6 +70,7 @@
 struct max8973_regulator_platform_data {
 	struct regulator_init_data *reg_init_data;
 	unsigned long control_flags;
+	int junction_temp_warning;
 	bool enable_ext_control;
 	bool enable_dvs_sleep_control;
 	int dvs_gpio;

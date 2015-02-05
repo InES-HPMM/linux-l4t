@@ -78,6 +78,7 @@
 #define MAX8973_WDTMR_ENABLE				BIT(6)
 #define MAX8973_DISCH_ENBABLE				BIT(5)
 #define MAX8973_FT_ENABLE				BIT(4)
+#define MAX77621_T_JUNCTION_120				BIT(7)
 
 #define MAX8973_CKKADV_TRIP_DISABLE			0xC
 #define MAX8973_CKKADV_TRIP_75mV_PER_US			0x0
@@ -99,7 +100,8 @@
 #define MAX77621_CHIPID_TJINT_S				BIT(0)
 
 #define MAX77621_NORMAL_OPERATING_TEMP			100000
-#define MAX77621_TJINT_WARNING_TEMP			140000
+#define MAX77621_TJINT_WARNING_TEMP_120			120000
+#define MAX77621_TJINT_WARNING_TEMP_140			140000
 
 
 enum device_id {
@@ -121,6 +123,7 @@ struct max8973_chip {
 	int curr_vout_reg;
 	int sleep_vout_reg;
 	int curr_gpio_val;
+	int junction_temp_warning;
 	struct regulator_ops ops;
 	enum device_id id;
 	int irq;
@@ -372,6 +375,10 @@ static int max8973_init_dcdc(struct max8973_chip *max,
 	if (pdata->control_flags & MAX8973_CONTROL_FREQ_SHIFT_9PER_ENABLE)
 		control1 |= MAX8973_FREQSHIFT_9PER;
 
+	if ((max->id == MAX77621) && (pdata->junction_temp_warning ==
+					MAX77621_TJINT_WARNING_TEMP_120))
+		control2 |=  MAX77621_T_JUNCTION_120;
+
 	if (!(pdata->control_flags & MAX8973_CONTROL_PULL_DOWN_ENABLE))
 		control2 |= MAX8973_DISCH_ENBABLE;
 
@@ -459,7 +466,7 @@ static int max8973_thermal_read_temp(void *data, long *temp)
 
 	/* + 1 to trigger cdev */
 	if (val & MAX77621_CHIPID_TJINT_S)
-		*temp = 140000 + 1000;
+		*temp = mchip->junction_temp_warning + 1000;
 	else
 		*temp = MAX77621_NORMAL_OPERATING_TEMP;
 	return 0;
@@ -558,6 +565,15 @@ static struct max8973_regulator_platform_data *max8973_parse_dt(
 	ret = of_property_read_u32(np, "maxim,control-flags", &pval);
 	if (!ret)
 		pdata->control_flags = pval;
+
+	ret = of_property_read_u32(np, "maxim,junction-temp-warning", &pval);
+	if (!ret)
+		 pdata->junction_temp_warning = pval;
+	pdata->junction_temp_warning = (pdata->junction_temp_warning <
+					MAX77621_TJINT_WARNING_TEMP_120) ?
+					MAX77621_TJINT_WARNING_TEMP_120 :
+					MAX77621_TJINT_WARNING_TEMP_140;
+
 	pdata->reg_init_data = of_get_regulator_init_data(dev, np);
 	return pdata;
 }
@@ -654,6 +670,7 @@ static int max8973_probe(struct i2c_client *client,
 		}
 	}
 
+	max->junction_temp_warning = pdata->junction_temp_warning;
 	max->enable_gpio = pdata->enable_gpio;
 	max->dvs_gpio = pdata->dvs_gpio;
 	max->enable_external_control = pdata->enable_ext_control;

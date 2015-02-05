@@ -23,6 +23,9 @@ Optional properties:
 - maxim,sleep-on-dvs: Boolean, enable sleep control through DVS pin. When
 		this property is available then property dvs-default-state
 		will tell dvs pin state for active state of the rail.
+- maxim,junction-temp-warning: Junction temp thrshold for which warnign
+		generated. This is milli-celcius like for 120degC, it is
+		120000.
 
 Example:
 
