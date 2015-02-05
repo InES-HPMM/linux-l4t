@@ -57,8 +57,9 @@ struct tegra_wdt {
 /*
  * For spinlock lockup detection to work, the heartbeat should be 2*lockup
  * for cases where the spinlock disabled irqs.
+ * must be greater than MIN_WDT_PERIOD and lower than MAX_WDT_PERIOD
  */
-static int heartbeat = 120; /* must be greater than MIN_WDT_PERIOD and lower than MAX_WDT_PERIOD */
+static int heartbeat = 120;
 
 static inline struct tegra_wdt *to_tegra_wdt(struct watchdog_device *wdt)
 {
@@ -66,22 +67,22 @@ static inline struct tegra_wdt *to_tegra_wdt(struct watchdog_device *wdt)
 }
 
 #define TIMER_PTV			0
- #define TIMER_EN			(1 << 31)
- #define TIMER_PERIODIC			(1 << 30)
+#define TIMER_EN			(1 << 31)
+#define TIMER_PERIODIC			(1 << 30)
 #define TIMER_PCR			0x4
- #define TIMER_PCR_INTR			(1 << 30)
+#define TIMER_PCR_INTR			(1 << 30)
 #define WDT_CFG				(0)
- #define WDT_CFG_PERIOD			(1 << 4)
- #define WDT_CFG_INT_EN			(1 << 12)
- #define WDT_CFG_SYS_RST_EN		(1 << 14)
- #define WDT_CFG_PMC2CAR_RST_EN		(1 << 15)
+#define WDT_CFG_PERIOD			(1 << 4)
+#define WDT_CFG_INT_EN			(1 << 12)
+#define WDT_CFG_SYS_RST_EN		(1 << 14)
+#define WDT_CFG_PMC2CAR_RST_EN		(1 << 15)
 #define WDT_STATUS			(4)
- #define WDT_INTR_STAT			(1 << 1)
+#define WDT_INTR_STAT			(1 << 1)
 #define WDT_CMD				(8)
- #define WDT_CMD_START_COUNTER		(1 << 0)
- #define WDT_CMD_DISABLE_COUNTER	(1 << 1)
+#define WDT_CMD_START_COUNTER		(1 << 0)
+#define WDT_CMD_DISABLE_COUNTER		(1 << 1)
 #define WDT_UNLOCK			(0xC)
- #define WDT_UNLOCK_PATTERN		(0xC45A << 0)
+#define WDT_UNLOCK_PATTERN		(0xC45A << 0)
 #define MAX_NR_CPU_WDT			0x4
 
 static int __tegra_wdt_ping(struct tegra_wdt *tegra_wdt)
@@ -152,7 +153,8 @@ static int tegra_wdt_ping(struct watchdog_device *wdt)
 }
 
 
-static int tegra_wdt_set_timeout(struct watchdog_device *wdt, unsigned int timeout)
+static int tegra_wdt_set_timeout(struct watchdog_device *wdt,
+	unsigned int timeout)
 {
 	tegra_wdt_disable(wdt);
 	wdt->timeout = timeout;
@@ -228,7 +230,8 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	if ((res_wdt->start & 0xff) < 0x50)
 		tegra_wdt->tmrsrc = 1 + (res_wdt->start & 0xf) / 8;
 	else
-		tegra_wdt->tmrsrc = ((int) (3 + ((res_wdt->start & 0xff) - 0x50) / 8)) % 10;
+		tegra_wdt->tmrsrc = ((int) (3 + ((res_wdt->start & 0xff) -
+							0x50) / 8)) % 10;
 	if (!tegra_wdt->wdt_source || !tegra_wdt->wdt_timer) {
 		dev_err(&pdev->dev, "unable to map registers\n");
 		ret = -ENOMEM;
