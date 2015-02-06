@@ -100,13 +100,29 @@ static struct platform_device *p2360_devices[] __initdata = {
 #endif
 };
 
+static __initdata struct tegra_clk_init_table p2360_fixed_rate_clk_table[] = {
+	{ "gk20a.gbus",	NULL,	600000000,	false},
+	{ "cpu_g",	NULL,	1524000000,	true},
+	{ NULL,		NULL,	0,		0},
+};
+
 static void __init tegra_p2360_early_init(void)
 {
+	struct clk *c;
+
 	/* Early init for vcm30t124 MCM */
 	tegra_vcm30_t124_early_init();
 
 	/* Board specific clock POR */
-	/* BLANK */
+	c = tegra_get_clock_by_name("gbus");
+	tegra_init_min_rate(c, 600000000);
+	tegra_init_max_rate(c, 600000000);
+
+	c = tegra_get_clock_by_name("cpu_g");
+	tegra_init_min_rate(c, 1524000000);
+	tegra_init_max_rate(c, 1524000000);
+
+	tegra_vcm30_t124_set_fixed_rate(p2360_fixed_rate_clk_table);
 
 	tegra_clk_verify_parents();
 
