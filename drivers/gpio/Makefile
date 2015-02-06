@@ -2,7 +2,6 @@
 
 GCOV_PROFILE := y
 
-ccflags-y += -Werror
 ccflags-$(CONFIG_DEBUG_GPIO)	+= -DDEBUG
 
 obj-$(CONFIG_GPIO_DEVRES)	+= devres.o
