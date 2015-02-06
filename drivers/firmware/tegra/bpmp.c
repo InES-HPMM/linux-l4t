@@ -339,34 +339,62 @@ static const struct file_operations cpuidle_name_fops = {
 	.release = single_release
 };
 
-static int bpmp_cpuidle_usage_show(void *data, u64 *val)
+static int __bpmp_cpuidle_show(struct seq_file *file, bool show_time)
 {
-	struct bpmp_cpuidle_state *state = data;
-	struct { int usage; uint64_t time; } mb;
-	int id = state->id;
+	struct bpmp_cpuidle_state *state = file->private;
+	struct { uint64_t usage; uint64_t time; } __packed mb[3];
+	uint32_t id = state->id;
 	int ret;
+
 	ret = tegra_bpmp_send_receive(MRQ_CPUIDLE_USAGE, &id, sizeof(id),
 			&mb, sizeof(mb));
-	*val = ret ?: mb.usage;
+	if (ret) {
+		seq_printf(file, "%d\n", ret);
+		return ret;
+	}
+
+	if (show_time) {
+		seq_printf(file, "%llu (%llu, %llu)\n",
+				mb[0].time, mb[1].time, mb[2].time);
+	} else {
+		seq_printf(file, "%llu (%llu, %llu)\n",
+				mb[0].usage, mb[1].usage, mb[2].usage);
+	}
+
 	return 0;
 }
 
-static int bpmp_cpuidle_time_show(void *data, u64 *val)
+static int bpmp_cpuidle_usage_show(struct seq_file *file, void *data)
 {
-	struct bpmp_cpuidle_state *state = data;
-	struct { int usage; uint64_t time; } mb;
-	int id = state->id;
-	int ret;
-	ret = tegra_bpmp_send_receive(MRQ_CPUIDLE_USAGE, &id, sizeof(id),
-			&mb, sizeof(mb));
-	*val = ret ?: mb.time;
-	return 0;
+	return __bpmp_cpuidle_show(file, false);
 }
 
-DEFINE_SIMPLE_ATTRIBUTE(cpuidle_usage_fops, bpmp_cpuidle_usage_show,
-		NULL, "%lld\n");
-DEFINE_SIMPLE_ATTRIBUTE(cpuidle_time_fops, bpmp_cpuidle_time_show,
-		NULL, "%lld\n");
+static int bpmp_cpuidle_usage_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, bpmp_cpuidle_usage_show, inode->i_private);
+}
+
+static const struct file_operations cpuidle_usage_fops = {
+	.open = bpmp_cpuidle_usage_open,
+	.read = seq_read,
+	.release = single_release
+};
+
+static int bpmp_cpuidle_time_show(struct seq_file *file, void *data)
+{
+	return __bpmp_cpuidle_show(file, true);
+}
+
+static int bpmp_cpuidle_time_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, bpmp_cpuidle_time_show, inode->i_private);
+}
+
+static const struct file_operations cpuidle_time_fops = {
+	.open = bpmp_cpuidle_time_open,
+	.read = seq_read,
+	.release = single_release
+};
 
 static const struct fops_entry cpuidle_attrs[] = {
 	{ "name", &cpuidle_name_fops, S_IRUGO },
