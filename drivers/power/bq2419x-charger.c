@@ -740,6 +740,8 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 			bq_chg_err(bq2419x, "otg mode disable failed\n");
 			goto out;
 		}
+		regulator_notifier_call_chain(bq2419x->vbus_rdev,
+				REGULATOR_EVENT_OVER_CURRENT, NULL);
 	}
 
 	if (!bq2419x->battery_presense)
@@ -758,6 +760,9 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 			bq_chg_err(bq2419x, "otg mode disable failed\n");
 			goto out;
 		}
+		if (bq2419x->is_otg_connected)
+			regulator_notifier_call_chain(bq2419x->vbus_rdev,
+				REGULATOR_EVENT_OVER_TEMP, NULL);
 		break;
 	default:
 		break;
