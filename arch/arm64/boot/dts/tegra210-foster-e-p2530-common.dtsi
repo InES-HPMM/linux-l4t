@@ -165,7 +165,7 @@
 		compatible = "gpio-ir-receiver";
 		status = "okay";
 		gpios = <&gpio TEGRA_GPIO(CC, 3) GPIO_ACTIVE_LOW>;
-		min-delay = <500>;
+		min-delay = <250>;
 		linux,rc-map-name = "rc-nvidia-nec";
 		allowed-protos = <0x0 0x400>;
 	};

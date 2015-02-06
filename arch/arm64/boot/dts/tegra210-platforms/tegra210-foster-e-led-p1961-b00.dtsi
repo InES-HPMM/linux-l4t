@@ -21,6 +21,7 @@
 			compatible = "nvidia,cy8c_led";
 			label = "led_lightbar";
 			reg = <0x09>;
+			default-brightness = <255>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 		};
