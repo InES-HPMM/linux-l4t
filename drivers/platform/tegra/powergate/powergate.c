@@ -130,6 +130,7 @@ int tegra_powergate_set(int id, bool new_state)
 			toggle_timeout--;
 		} while ((status != new_state) && (toggle_timeout > 0));
 
+		toggle_timeout = 10;
 		contention_timeout--;
 	} while ((status != new_state) && (contention_timeout > 0));
 
