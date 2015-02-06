@@ -30,5 +30,28 @@
 			regulator-max-microvolt = <5000000>;
 			regulator-always-on;
 		};
+
+		vdd_ts_1v8: regulator@1 {
+			compatible = "regulator-fixed-sync";
+			reg = <1>;
+			regulator-name = "vdd_ts_1v8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&gpio TEGRA_GPIO(K, 1) 0>;
+			enable-active-high;
+			vin-supply = <&palmas_smps8>;
+		};
+
+		avdd_ts_3v3: regulator@2 {
+			compatible = "regulator-fixed-sync";
+			reg = <2>;
+			regulator-name = "avdd_ts_3v3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&palmas_gpio 2 0>;
+			enable-active-high;
+			vin-supply = <&ldousb_reg>;
+		};
+
 	};
 };
