@@ -1771,7 +1771,7 @@ static void android_maxim14675_set_voltage(void)
 	struct device_node *np;
 
 	np = of_find_node_by_path("/usb-devices/maxim-charger");
-	if (np  && !of_property_read_u32(np,
+	if (np && !of_property_read_u32(np,
 			"maxim,max-board-vbus-voltage-uv",
 			&voltage))
 		pr_info("%s: max_voltage (vbus) = %d\n",
@@ -1786,7 +1786,7 @@ static void android_maxim14675_set_voltage(void)
 	else
 		max_voltage = voltage;
 
-	pr_info("%s: max_voltage (vbus) = %d\n",
+	pr_info("%s: max_voltage (vbus) = %dmV\n",
 			__func__, max_voltage);
 	min_voltage = ((min_voltage - 2000) / 1000) * 20;
 	max_voltage = ((max_voltage - 2000) / 1000) * 20;

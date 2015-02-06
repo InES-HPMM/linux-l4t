@@ -1519,7 +1519,7 @@ static bool cdp_charger_detection(struct tegra_usb_phy *phy)
 		__func__, __LINE__,
 		readl(base + UTMIP_BAT_CHRG_CFG0));
 
-	msleep(10);
+	msleep(TDPSRC_CON_MS);
 
 	val = readl(base + USB_PHY_VBUS_WAKEUP_ID);
 	if (val & VDAT_DET_STS) {
@@ -1565,6 +1565,17 @@ static bool maxim_charger_detection(struct tegra_usb_phy *phy)
 		utmi_phy_set_dp_dm_pull_up_down(phy, org_flags);
 	} else {
 		status = true;
+		/* Force wall charger to reset if detected as booting */
+		if (system_state != SYSTEM_RUNNING) {
+			/* Ensure we start from an initial state */
+			writel(0, base + UTMIP_BAT_CHRG_CFG0);
+			utmi_phy_set_dp_dm_pull_up_down(phy, 0);
+			org_flags = utmi_phy_set_dp_dm_pull_up_down(phy,
+					FORCE_PULLDN_DP | FORCE_PULLDN_DM);
+			ssleep(3);
+			msleep(500);
+			utmi_phy_set_dp_dm_pull_up_down(phy, org_flags);
+		}
 		DBG("%s: Maxim Charger detected\n", __func__);
 	}
 
@@ -1618,8 +1629,7 @@ static bool utmi_phy_qc2_charger_detect(struct tegra_usb_phy *phy,
 	 * we force the D+ and D- Pull Up down which will reset a
 	 * QC2 charger but have no effect on a normal DCP.
 	 */
-	if (!phy->qc2_no_reset) {
-		phy->qc2_no_reset = true;
+	if (system_state != SYSTEM_RUNNING) {
 		org_flags = utmi_phy_set_dp_dm_pull_up_down(phy,
 			FORCE_PULLDN_DP | FORCE_PULLDN_DM);
 		ssleep(1);
