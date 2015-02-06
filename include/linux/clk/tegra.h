@@ -152,6 +152,17 @@ struct clk *tegra_get_clock_by_name(const char *name);
 int tegra_is_clk_enabled(struct clk *clk);
 int tegra_dvfs_use_alt_freqs_on_clk(struct clk *c, bool use_alt_freq);
 
+/* To be implemented for COMMON CLK framework */
+/* Get max rate safe at min voltage in all t-ranges; return zero if unknown */
+static inline unsigned long tegra_dvfs_get_fmax_at_vmin_safe_t(struct clk *c)
+{
+	return 0;
+}
+static inline long tegra_emc_round_rate_updown(unsigned long rate, bool up)
+{
+	return 0;
+}
+
 #else
 static inline void tegra_clocks_init(void)
 {}
