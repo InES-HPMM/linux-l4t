@@ -47,6 +47,12 @@
 				status = "disabled";
 			};
 
+			watchdog {
+				compatible = "ti,palmas-watchdog";
+				ti,watchdog-init-timeout = <64>;
+				status = "disabled";
+			};
+
 			pinmux {
 				compatible = "ti,tps65913-pinctrl";
 				pinctrl-names = "default";
