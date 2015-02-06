@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -482,6 +482,7 @@ static struct chip_revision tegra_chip_revisions[] = {
 	CHIP_REVISION(TEGRA12, 1, 1, 0,   A01),
 	CHIP_REVISION(TEGRA21, 1, 1, 0,   A01),
 	CHIP_REVISION(TEGRA21, 1, 1, 'q', A01q),
+	CHIP_REVISION(TEGRA21, 1, 2, 0,   A02),
 };
 
 static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
