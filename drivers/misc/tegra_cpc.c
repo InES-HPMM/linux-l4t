@@ -1,7 +1,7 @@
 /*
  * tegra_cpc.c - Access CPC storage blocks through i2c bus
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -232,6 +232,36 @@ static int cpc_deserialize_get_status(struct tegra_cpc_frame *fr, u8 buffer[],
 	return 0;
 }
 
+/* Get Version */
+static int cpc_serialize_get_version(struct tegra_cpc_frame *fr, u8 buffer[],
+		size_t buf_size) {
+	size_t rem_buf_size = buf_size;
+	struct tegra_cpc_get_version_data *fr_cmd = &fr->cmd_data.get_version;
+	u8 req = CPC_GET_VERSION;
+	if (TEGRA_CPC_SERIALIZE_FIELD(&buffer, req, &rem_buf_size) ||
+		TEGRA_CPC_SERIALIZE_FIELD(&buffer, fr_cmd->nonce,
+		&rem_buf_size))
+		return -ENOMEM;
+	return buf_size - rem_buf_size;
+}
+
+static inline size_t cpc_deserialize_size_get_version(
+		struct tegra_cpc_frame *fr) {
+	struct tegra_cpc_get_version_data *fr_cmd = &fr->cmd_data.get_version;
+	return sizeof(fr_cmd->major_ver) + sizeof(fr_cmd->minor_ver);
+}
+
+static int cpc_deserialize_get_version(struct tegra_cpc_frame *fr, u8 buffer[],
+		size_t rem_buf_size) {
+	struct tegra_cpc_get_version_data *fr_cmd = &fr->cmd_data.get_version;
+	if (TEGRA_CPC_DESERIALIZE_FIELD(fr_cmd->minor_ver, &buffer,
+		&rem_buf_size) ||
+		TEGRA_CPC_DESERIALIZE_FIELD(fr_cmd->major_ver, &buffer,
+			&rem_buf_size))
+		return -ENOMEM;
+	return 0;
+}
+
 /*
    I2C related section
  */
@@ -406,6 +436,15 @@ static int _cpc_do_data(struct cpc_i2c_host *cpc, struct tegra_cpc_frame *fr)
 			fr->result = CPC_RESULT_WRITE_FAILURE;
 			err = -ETIMEDOUT;
 		}
+		break;
+
+	case CPC_GET_VERSION:
+		TEGRA_CPC_COPY_TO_VAR(req_nonce,
+			fr->cmd_data.get_version.nonce);
+		err = cpc_read_data(cpc->i2c_client, fr,
+			cpc_serialize_get_version,
+			cpc_deserialize_size_get_version(fr),
+			cpc_deserialize_get_version);
 		break;
 
 	default:

@@ -1,7 +1,7 @@
 /*
  * tegra_cpc.c - Access CPC storage blocks through i2c bus
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,8 @@ enum req_resp_t {
 	CPC_READ_M_COUNT = 0x2,
 	CPC_WRITE_FRAME,
 	CPC_READ_FRAME,
-	CPC_GET_RESULT = 0x5
+	CPC_GET_RESULT = 0x5,
+	CPC_GET_VERSION = 0x6,
 };
 
 enum result_t {
@@ -54,6 +55,8 @@ enum result_t {
 #define CPC_DERIVATION_SIZE	28
 #define CPC_NONCE_SIZE		4
 #define CPC_COUNTER_SIZE	4
+#define CPC_MAJOR_VER_SIZE	3
+#define CPC_MINOR_VER_SIZE	1
 
 /*
   CPC field description
@@ -127,10 +130,20 @@ struct tegra_cpc_read_frame_data {
 	__u8 hmac[CPC_HMAC_SIZE];
 } __packed;
 
+struct tegra_cpc_get_version_data {
+	/* Used for request */
+	__u8 nonce[CPC_NONCE_SIZE];
+
+	/* Used for response */
+	__u8 minor_ver[CPC_MINOR_VER_SIZE];
+	__u8 major_ver[CPC_MAJOR_VER_SIZE];
+} __packed;
+
 union tegra_cpc_cmd_data {
 	struct tegra_cpc_read_counter_data read_counter;
 	struct tegra_cpc_read_frame_data read_frame;
 	struct tegra_cpc_write_frame_data write_frame;
+	struct tegra_cpc_get_version_data get_version;
 };
 
 struct tegra_cpc_frame {
