@@ -41,6 +41,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/tegra-pm.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/pinctrl/pinconf-tegra.h>
 
 #include <asm/unaligned.h>
 
@@ -1558,6 +1559,7 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 	int bus_num = -1;
 	struct pinctrl *pin;
 	struct pinctrl_state *s;
+	char prod_name[15];
 
 	if (pdev->dev.of_node) {
 		match = of_match_device(of_match_ptr(tegra_i2c_of_match), &pdev->dev);
@@ -1729,6 +1731,13 @@ skip_pinctrl:
 		return ret;
 	}
 	i2c_dev->cont_id = i2c_dev->adapter.nr & PACKET_HEADER0_CONT_ID_MASK;
+	if (pdata->is_high_speed_enable) {
+		sprintf(prod_name, "i2c%d_hs_prod", i2c_dev->cont_id);
+		ret = tegra_pinctrl_config_prod(&pdev->dev, prod_name);
+		if (ret < 0)
+			dev_warn(&pdev->dev, "Failed to set %s setting\n",
+					prod_name);
+	}
 
 	i2c_dev->pm_nb.notifier_call = tegra_i2c_pm_notifier;
 
