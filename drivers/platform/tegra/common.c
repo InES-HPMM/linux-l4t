@@ -286,7 +286,6 @@ void ahb_gizmo_writel(unsigned long val, void __iomem *reg)
 static int modem_id;
 static int commchip_id;
 static int sku_override;
-static int debug_uart_port_id;
 static bool uart_over_sd;
 static enum audio_codec_type audio_codec_name;
 static enum image_type board_image_type = system_image;
@@ -1182,18 +1181,15 @@ static int __init tegra_debug_uartport(char *info)
 {
 	char *p = info;
 	unsigned long long port_id;
+	int uart_port_id;
 
 	if (p[6] == ',') {
-		if (p[7] == '-') {
-			debug_uart_port_id = -1;
-		} else {
+		if (p[7] != '-') {
 			port_id = memparse(p + 7, &p);
-			debug_uart_port_id = (int) port_id;
-			if (debug_uart_port_id == 5)
+			uart_port_id = (int) port_id;
+			if (uart_port_id == 5)
 				uart_over_sd = true;
 		}
-	} else {
-		debug_uart_port_id = -1;
 	}
 
 	return 1;
@@ -1202,16 +1198,6 @@ static int __init tegra_debug_uartport(char *info)
 bool is_uart_over_sd_enabled(void)
 {
 	return uart_over_sd;
-}
-
-void set_sd_uart_port_id(int port_id)
-{
-	debug_uart_port_id = port_id;
-}
-
-int get_tegra_uart_debug_port_id(void)
-{
-	return debug_uart_port_id;
 }
 __setup("debug_uartport=", tegra_debug_uartport);
 
