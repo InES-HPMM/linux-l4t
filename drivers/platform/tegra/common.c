@@ -1177,6 +1177,25 @@ static int __init tegra_memory_type(char *options)
 }
 __setup("memtype=", tegra_memory_type);
 
+static int tegra_get_uart_over_sd_property(void)
+{
+	struct device_node *np;
+	u32 pval;
+	int ret;
+
+	np = of_find_node_by_path("/chosen");
+	if (!np)
+		return -EINVAL;
+
+	ret = of_property_read_u32(np, "nvidia,debug-console-over-sd", &pval);
+	if (ret < 0) {
+		pr_err("/chosen/nvidia,debug-console-over-sd read failed: %d\n",
+			ret);
+		return ret;
+	}
+	return (int)pval;
+}
+
 static int __init tegra_debug_uartport(char *info)
 {
 	char *p = info;
@@ -1197,6 +1216,15 @@ static int __init tegra_debug_uartport(char *info)
 
 bool is_uart_over_sd_enabled(void)
 {
+	static bool dt_parsed = 0;
+	int ret;
+
+	if (!dt_parsed) {
+		dt_parsed = 1;
+		ret = tegra_get_uart_over_sd_property();
+		if (ret == 1)
+			 uart_over_sd = true;
+	}
 	return uart_over_sd;
 }
 __setup("debug_uartport=", tegra_debug_uartport);
