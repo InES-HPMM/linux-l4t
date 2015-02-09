@@ -122,7 +122,6 @@ static inline void tegra_clear_framebuffer(unsigned long to, unsigned long size)
 {
 	__tegra_clear_framebuffer(NULL, to, size);
 }
-bool is_tegra_debug_uartport_hs(void);
 int get_tegra_uart_debug_port_id(void);
 bool is_uart_over_sd_enabled(void);
 int get_sd_uart_port_id(void);

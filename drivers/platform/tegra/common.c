@@ -155,7 +155,6 @@ unsigned long nvdumper_reserved;
 #endif
 bool tegra_lp0_vec_relocate;
 unsigned long tegra_grhost_aperture = ~0ul;
-static   bool is_tegra_debug_uart_hsport;
 static struct board_info main_board_info;
 static struct board_info pmu_board_info;
 static struct board_info display_board_info;
@@ -1183,10 +1182,6 @@ static int __init tegra_debug_uartport(char *info)
 {
 	char *p = info;
 	unsigned long long port_id;
-	if (!strncmp(p, "hsport", 6))
-		is_tegra_debug_uart_hsport = true;
-	else if (!strncmp(p, "lsport", 6))
-		is_tegra_debug_uart_hsport = false;
 
 	if (p[6] == ',') {
 		if (p[7] == '-') {
@@ -1202,11 +1197,6 @@ static int __init tegra_debug_uartport(char *info)
 	}
 
 	return 1;
-}
-
-bool is_tegra_debug_uartport_hs(void)
-{
-	return is_tegra_debug_uart_hsport;
 }
 
 bool is_uart_over_sd_enabled(void)
