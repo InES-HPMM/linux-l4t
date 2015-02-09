@@ -309,7 +309,6 @@ static struct of_dev_auxdata tegra_vcm30_t124_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-ehci", TEGRA_USB3_BASE, "tegra-ehci.2", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-xhci", 0x70090000, "tegra-xhci", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-nvavp", 0x60001000, "nvavp", NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-pwm", 0x7000a000, "tegra-pwm", NULL),
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
 	OF_DEV_AUXDATA("nvidia,tegra124-se", TEGRA_SE_BASE, "tegra12-se", NULL),
 #endif

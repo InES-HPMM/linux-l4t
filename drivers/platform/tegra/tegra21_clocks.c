@@ -9281,7 +9281,7 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("dmic3",	"tegra210-dmic.2",	NULL,	197,	0x6bc,	 12288000, mux_pllaout0_audio2_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, 0),
 	PERIPH_CLK("apb2ape",	NULL,		    "apb2ape",	107,	0,	38400000,  mux_clk_m,			PERIPH_NO_RESET | PERIPH_ON_APB, 0),
 	PERIPH_CLK("maud",	"maud",			NULL,	202,	0x6d4,	102000000, mux_pllp_pllp_out3_clkm_clk32k_plla,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, 0),
-	PERIPH_CLK("pwm",	"tegra-pwm",		NULL,	17,	0x110,	 48000000, mux_pllp_pllc_clk32_clkm,		MUX | DIV_U71 | PERIPH_ON_APB, 0),
+	PERIPH_CLK("pwm",	"7000a000.pwm",		NULL,	17,	0x110,	 48000000, mux_pllp_pllc_clk32_clkm,		MUX | DIV_U71 | PERIPH_ON_APB, 0),
 	D_AUDIO_CLK("d_audio",	"tegra210-axbar",	"ahub",	106,	0x3d0,	 98304000, mux_d_audio_clk,			MUX | DIV_U71 | PERIPH_ON_APB, 0),
 	PERIPH_CLK("hda",	"tegra30-hda",		"hda",  125,	0x428,	102000000, mux_pllp_pllc_clkm,			MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_HDA),
 	PERIPH_CLK("hda2hdmi",	"tegra30-hda",	   "hda2hdmi",	128,	0,	 48000000,  mux_hda2codec_2x,				PERIPH_ON_APB, TEGRA210_CLK_ID_HDA2HDMI),

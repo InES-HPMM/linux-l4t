@@ -259,7 +259,6 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-xudc", 0x700D0000, "tegra-xudc",
 			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-pwm", 0x7000a000, "tegra-pwm", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-camera", 0, "pcl-generic",
 			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-dc", TEGRA_DISPLAY_BASE, "tegradc.0",
