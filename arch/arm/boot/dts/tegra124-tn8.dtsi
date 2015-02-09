@@ -129,4 +129,8 @@
 		nvidia,qc2-current-limit-ma = <1200>;
 	};
 
+	watchdog@60005100 {
+		nvidia,enable-on-init;
+		nvidia,heartbeat-init = <120>;
+	};
 };
