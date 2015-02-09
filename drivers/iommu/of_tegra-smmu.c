@@ -56,6 +56,7 @@ struct dma_iommu_mapping *tegra_smmu_of_get_mapping(struct device *dev,
 
 	list_for_each_entry(tmp, asprops, list) {
 		struct dma_iommu_mapping *map;
+		int order = get_order(SZ_64K);
 
 		if (!(swgids & tmp->swgid_mask))
 			continue;
@@ -67,9 +68,12 @@ struct dma_iommu_mapping *tegra_smmu_of_get_mapping(struct device *dev,
 		if (tmp->map)
 			return tmp->map;
 
+		if (config_enabled(CONFIG_ARCH_TEGRA_21x_SOC))
+			order = get_order(96 * SZ_1K);
+
 		map = arm_iommu_create_mapping(&platform_bus_type,
 					       (dma_addr_t)tmp->iova_start,
-					       (size_t)tmp->iova_size, 0);
+					       (size_t)tmp->iova_size, order);
 		if (IS_ERR(map)) {
 			dev_err(dev, "fail to create iommu map prop=%p\n", tmp);
 			goto err_out;
