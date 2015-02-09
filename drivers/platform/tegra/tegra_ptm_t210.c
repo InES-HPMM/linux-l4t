@@ -658,7 +658,7 @@ static int trace_t210_start(struct tracectx *t)
 	return 0;
 }
 
-void ptm_disable(void *p_info)
+static void ptm_disable(void *p_info)
 {
 	struct tracectx *t = (struct tracectx *)p_info;
 	u32 id = raw_smp_processor_id();
