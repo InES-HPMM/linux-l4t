@@ -19,11 +19,6 @@
 #include <dt-bindings/pinctrl/pinctrl-tegra.h>
 
 / {
-	i2c@7000d000 {
-		pinctrl-names = "hs_mode";
-		pinctrl-0 = <&pwr_i2c_hs_drive>;
-	};
-
 	pinmux: pinmux@700008d4 {
 		status = "okay";
 		pinctrl-names = "default", "drive", "unused";
@@ -1401,30 +1396,6 @@
 			sdmmc3 {
 				 nvidia,pins = "sdmmc3_clk_pp0";
 				 nvidia,schmitt = <TEGRA_PIN_DISABLE>;
-			};
-		};
-
-		pwr_i2c_hs_drive: pwr_i2c_drive {
-			drive_pwr_i2c_scl {
-				nvidia,pins = "drive_pwr_i2c_scl";
-				nvidia,pull-down-strength = <31>;
-				nvidia,pull-up-strength = <31>;
-			};
-
-			drive_pwr_i2c_sda {
-				nvidia,pins = "drive_pwr_i2c_sda";
-				nvidia,pull-down-strength = <31>;
-				nvidia,pull-up-strength = <31>;
-			};
-
-			pwr_i2c_scl_py3 {
-				nvidia,pins = "pwr_i2c_scl_py3";
-				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
-			};
-
-			pwr_i2c_sda_py4 {
-				nvidia,pins = "pwr_i2c_sda_py4";
-				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
 			};
 		};
 
