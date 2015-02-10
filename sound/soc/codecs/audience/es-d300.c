@@ -52,7 +52,7 @@ struct cachedcmd_t prev_cmdlist[ES_API_ADDR_MAX];
 struct channel_id {
 	u8 tx_chan_id;
 	u8 rx_chan_id;
-} channel_ids[PORT_MAX];
+} channel_ids[ALGO_MAX][PORT_MAX];
 
 static struct cachedcmd_t **cachedcmd_list;
 static int es_vp_tx;
@@ -78,21 +78,15 @@ static int es_az_rx;
 #define OUTPUT_PT_COPY		(OUTPUT_AO1 | OUTPUT_MO2)
 
 /* Mask to keep track of chmgrs set by UCM */
-static u16 chn_mgr_mask;
+static u16 chn_mgr_mask[ALGO_MAX];
 
 static const u8 pcm_port[] = { 0x0, 0xA, 0xB, 0xC };
-static u8 chn_mgr_cache[MAX_CHMGR];
 static int loopback_mode;
 
 static const u32 pt_vp_aec_msgblk[] = {
 	0xB0640528,
 	0xB0640134,
 };
-
-static void clear_chn_mgr_cache(void)
-{
-	memset(chn_mgr_cache, 0x0, sizeof(chn_mgr_cache));
-}
 
 static const char * const proc_block_input_texts[] = {
 	"None",
@@ -297,11 +291,7 @@ static int es300_codec_stop_algo(struct escore_priv *escore)
 	}
 
 	escore->current_preset = 0;
-	chn_mgr_mask = 0; /* reset mask */
-	clear_chn_mgr_cache();
 
-	/* Clear the channel_ids for all ports */
-	memset(channel_ids, 0x0, sizeof(channel_ids));
 	return ret;
 }
 
@@ -370,7 +360,7 @@ static int convert_input_mux_to_cmd(struct escore_priv *escore, int reg)
 				ES300_PATH_ID(RXCHMGR3, path_id));
 
 			msg_len = 8;
-			chn_mgr_mask |= 1 << RXCHMGR3;
+			chn_mgr_mask[escore->algo_type] |= 1 << RXCHMGR3;
 			update_chmgr_mask = 0;
 
 		}
@@ -406,7 +396,7 @@ static int convert_input_mux_to_cmd(struct escore_priv *escore, int reg)
 					ES300_PATH_ID(ch_mgr, path_id));
 
 			msg_len = 8;
-			chn_mgr_mask |= 1 << ch_mgr;
+			chn_mgr_mask[escore->algo_type] |= 1 << ch_mgr;
 			update_chmgr_mask = 0;
 		}
 		break;
@@ -438,19 +428,21 @@ static int convert_input_mux_to_cmd(struct escore_priv *escore, int reg)
 					ES300_PATH_ID(ch_mgr, path_id));
 
 			msg_len = 8;
-			chn_mgr_mask |= 1 << ch_mgr;
+			chn_mgr_mask[escore->algo_type] |= 1 << ch_mgr;
 			update_chmgr_mask = 0;
 		}
 		break;
 	case VP:
-		prepare_mux_cmd(reg, msg, &msg_len, &chn_mgr_mask,
+		prepare_mux_cmd(reg, msg, &msg_len,
+				&chn_mgr_mask[escore->algo_type],
 				&es_vp_mux_info, CMD_INPUT);
 		msg[0] |= value;
 		update_chmgr_mask = 0;
 		break;
 
 	case PASSTHRU_VP:
-		prepare_mux_cmd(reg, msg, &msg_len, &chn_mgr_mask,
+		prepare_mux_cmd(reg, msg, &msg_len,
+				&chn_mgr_mask[escore->algo_type],
 				&es_pt_vp_mux_info, CMD_INPUT);
 		msg[0] |= value;
 		update_chmgr_mask = 0;
@@ -458,11 +450,12 @@ static int convert_input_mux_to_cmd(struct escore_priv *escore, int reg)
 	}
 
 	port = (msg[0] >> 9) & 0x1f;
-	update_chan_id(&msg[0], channel_ids[port].rx_chan_id);
-	channel_ids[port].rx_chan_id++;
+	update_chan_id(&msg[0],
+			channel_ids[escore->algo_type][port].rx_chan_id);
+	channel_ids[escore->algo_type][port].rx_chan_id++;
 
 	if (update_chmgr_mask)
-		chn_mgr_mask |= 1 << ch_mgr;
+		chn_mgr_mask[escore->algo_type] |= 1 << ch_mgr;
 
 	return escore_queue_msg_to_list(escore, (char *)msg, msg_len);
 }
@@ -490,7 +483,8 @@ static int convert_output_mux_to_cmd(struct escore_priv *escore, int reg)
 	switch (escore->algo_type) {
 	case VP:
 		prepare_mux_cmd(mux, msg, &msg_len,
-				&chn_mgr_mask, &es_vp_mux_info, CMD_OUTPUT);
+				&chn_mgr_mask[escore->algo_type],
+				&es_vp_mux_info, CMD_OUTPUT);
 		for (i = 0; i < ARRAY_SIZE(es_out_mux_map); i++) {
 			if (es_out_mux_map[i].mux_id == reg) {
 				msg[0] |= es_out_mux_map[i].port_desc;
@@ -508,7 +502,8 @@ static int convert_output_mux_to_cmd(struct escore_priv *escore, int reg)
 		break;
 	case PASSTHRU_VP:
 		prepare_mux_cmd(mux, msg, &msg_len,
-				&chn_mgr_mask, &es_pt_vp_mux_info, CMD_OUTPUT);
+				&chn_mgr_mask[escore->algo_type],
+				&es_pt_vp_mux_info, CMD_OUTPUT);
 		for (i = 0; i < ARRAY_SIZE(es_out_mux_map); i++) {
 			if (es_out_mux_map[i].mux_id == reg) {
 				msg[0] |= es_out_mux_map[i].port_desc;
@@ -521,8 +516,9 @@ static int convert_output_mux_to_cmd(struct escore_priv *escore, int reg)
 	}
 
 	port = (msg[0] >> 9) & 0x1f;
-	update_chan_id(&msg[0], channel_ids[port].tx_chan_id);
-	channel_ids[port].tx_chan_id++;
+	update_chan_id(&msg[0],
+			channel_ids[escore->algo_type][port].tx_chan_id);
+	channel_ids[escore->algo_type][port].tx_chan_id++;
 
 	if (update_msgs) {
 		msg[0] |= ES300_DATA_PATH(0, 0, ch_mgr);
@@ -530,7 +526,7 @@ static int convert_output_mux_to_cmd(struct escore_priv *escore, int reg)
 	}
 
 	if (update_chmgr_mask)
-		chn_mgr_mask |= 1 << ch_mgr;
+		chn_mgr_mask[escore->algo_type] |= 1 << ch_mgr;
 
 	return escore_queue_msg_to_list(escore, (char *)msg, msg_len);
 }
@@ -539,15 +535,13 @@ static void set_chmgr_null(struct escore_priv *escore)
 {
 	u32 msg = ES_SET_MUX_NULL;
 	int i;
-
-	pr_debug("%s: mask %04x\n", __func__, chn_mgr_mask);
+	u16 mask = chn_mgr_mask[escore->algo_type];
+	pr_debug("%s: mask %04x\n", __func__, mask);
 
 	/* Set RXCHMGR NULL */
 	for (i = 0; i < es_chn_mgr_max[escore->algo_type].rx; i++) {
-		if (chn_mgr_mask & (1 << i) || chn_mgr_cache[i]) {
-			chn_mgr_cache[i] = 1;
+		if (mask & (1 << i))
 			continue;
-		}
 		msg |= i;
 		escore_queue_msg_to_list(escore, (char *)&msg, sizeof(msg));
 		msg &= ES_SET_MUX_NULL_MASK;
@@ -555,11 +549,8 @@ static void set_chmgr_null(struct escore_priv *escore)
 
 	/* Set TXCHMGR NULL */
 	for (i = 0; i < es_chn_mgr_max[escore->algo_type].tx; i++) {
-		if (chn_mgr_mask & (1 << (i + TXCHMGR0)) ||
-				chn_mgr_cache[i + TXCHMGR0]) {
-			chn_mgr_cache[i + TXCHMGR0] = 1;
+		if (mask & (1 << (i + TXCHMGR0)))
 			continue;
-		}
 		msg |= i + TXCHMGR0;
 		escore_queue_msg_to_list(escore, (char *)&msg, sizeof(msg));
 		msg &= ES_SET_MUX_NULL_MASK;
@@ -691,11 +682,27 @@ static int es_set_final_route(struct escore_priv *escore)
 		if (!memcmp(prev_cmdlist, cachedcmd_list[escore->algo_type],
 					sizeof(prev_cmdlist))) {
 			pr_debug("%s(): Skip same preset %x\n", __func__, preset);
-			goto set_algo_preset;
+			return 0;
 		}
 		es300_codec_stop_algo(escore);
 	}
 
+	/* If the new use-case is started and still there are pending streams
+	 * from previous use-case, just go ahead and write the new route to
+	 * firmware after stopping the current route. The stream count will
+	 * anyway will be decremented when the HAL layer stops the PCM stream
+	 * of previous use-case. */
+	if (unlikely(atomic_read(&escore->active_streams)))
+		es300_codec_stop_algo(escore);
+
+	escore_flush_msg_list(escore);
+
+	/* Reset the channel manager mask */
+	chn_mgr_mask[escore->algo_type] = 0;
+
+	/* Reset channel ids */
+	memset(&channel_ids[escore->algo_type], 0x0,
+			sizeof(channel_ids[escore->algo_type]));
 	escore_flush_msg_list(escore);
 
 	for (i = ES_PRIMARY_MUX; i <= ES_PASSIN4_MUX; i++) {
@@ -797,10 +804,6 @@ static int es_set_final_route(struct escore_priv *escore)
 		}
 	}
 
-	if (cachedcmd_list[escore->algo_type][ES_ALGO_SAMPLE_RATE].reg)
-		rc = es_set_algo_rate(escore, escore->algo_type);
-
-set_algo_preset:
 	if (escore->algo_preset_one != 0) {
 		usleep_range(5000, 5005);
 		pr_debug("%s:add algo preset one: %d", __func__,
@@ -822,6 +825,9 @@ set_algo_preset:
 				__func__, rc);
 		escore->algo_preset_two = 0;
 	}
+
+	if (cachedcmd_list[escore->algo_type][ES_ALGO_SAMPLE_RATE].reg)
+		rc = es_set_algo_rate(escore, escore->algo_type);
 
 	return rc;
 }
@@ -948,7 +954,6 @@ static int es300_codec_enable_slimrx(struct snd_soc_dapm_widget *w,
 					escore->slim_dai_data[dai_id].rate);
 				atomic_inc(&escore->active_streams);
 			}
-
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
@@ -1362,6 +1367,27 @@ static int es300_put_algo_state(struct snd_kcontrol *kcontrol,
 
 	if (value)
 		escore->algo_type = algo_type;
+	else {
+		/* During the disable sequence the algo_type will not be
+		 * updated. Use the algo_type_off as the array index to reset
+		 * the kcontrols and update cachedcmd_list. Consider the
+		 * following scenario:
+		 *
+		 * 1. Simultaneous playback and capture is running (PT_VP)
+		 * 2. Playback is stopped
+		 * 3. Disable sequence of Playback clears cachedcmd_list for PB
+		 * 4. VoIP incoming call executes enable sequence for RX. Algo
+		 * type is VP in this case.
+		 * 5. Capture is stopped and the disable sequence of capture
+		 * resets the kcontrols. But as the algo_type is changed to VP,
+		 * wrong index of cachedcmd_list will be updated.
+		 *
+		 * To avoid this, while resetting the MUXes, use the
+		 * algo_type_off variable as index to cachedcmd_list for correct
+		 * algo type.
+		 */
+		escore->algo_type_off = algo_type;
+	}
 out:
 	return ret;
 }
@@ -1406,6 +1432,7 @@ static int put_input_route_value(struct snd_kcontrol *kcontrol,
 	unsigned int reg = e->reg;
 	int mux = ucontrol->value.enumerated.item[0];
 	int rc = 0;
+	u8 algo_type;
 
 	if (mux >= ARRAY_SIZE(proc_block_input_texts) || mux < 0) {
 		pr_err("%s(): Invalid input mux:%d Max valid value:%lu\n",
@@ -1413,7 +1440,9 @@ static int put_input_route_value(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 
-	cachedcmd_list[escore->algo_type][reg].reg = mux;
+	algo_type = (mux) ? escore->algo_type : escore->algo_type_off;
+
+	cachedcmd_list[algo_type][reg].reg = mux;
 
 	if (!mux && atomic_read(&escore->active_streams))
 		goto exit;
@@ -1463,7 +1492,8 @@ static int put_output_route_value(struct snd_kcontrol *kcontrol,
 	unsigned int reg = e->reg;
 	int rc = 0;
 	int mux = ucontrol->value.enumerated.item[0];
-	int prev_mux = cachedcmd_list[escore->algo_type][reg].reg;
+	int prev_mux;
+	u8 algo_type;
 
 	if (mux >= ARRAY_SIZE(proc_block_output_texts) || mux < 0) {
 		pr_err("%s(): Invalid output mux:%d Max valid value:%lu\n",
@@ -1471,25 +1501,29 @@ static int put_output_route_value(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 	/* VP CSOUT signals Tx init and VP FEOUT signals Rx init */
-	if (strncmp(proc_block_output_texts[mux], "VP CSOUT", 8) == 0) {
+	if (escore->algo_type == VP &&
+		strncmp(proc_block_output_texts[mux], "VP CSOUT", 8) == 0) {
 		es_vp_tx = ES_VP_TX_INIT;
-	} else if (strncmp(proc_block_output_texts[mux], "VP FEOUT1", 9) == 0) {
+	} else if (escore->algo_type == VP &&
+		strncmp(proc_block_output_texts[mux], "VP FEOUT1", 9) == 0) {
 		es_vp_rx = ES_VP_RX_INIT;
-	} else if (strncmp(proc_block_output_texts[mux],
+	} else if (escore->algo_type == AUDIOZOOM &&
+			strncmp(proc_block_output_texts[mux],
 				"AudioZoom CSOUT", 15) == 0) {
 		es_az_tx = ES_AZ_TX_INIT;
-	} else if (strncmp(proc_block_output_texts[mux],
+	} else if (escore->algo_type == AUDIOZOOM &&
+			strncmp(proc_block_output_texts[mux],
 				"AudioZoom AOUT1", 15) == 0) {
 		es_az_rx = ES_AZ_RX_INIT;
 	}
 
-	cachedcmd_list[escore->algo_type][reg].reg = mux;
+	algo_type = (mux) ? escore->algo_type : escore->algo_type_off;
 
-	if (!mux && atomic_read(&escore->active_streams))
-		goto exit;
+	prev_mux = cachedcmd_list[algo_type][reg].reg;
+	cachedcmd_list[algo_type][reg].reg = mux;
 
 	/* Request of clearing the VP output */
-	if (!mux && prev_mux) {
+	if (!mux && prev_mux && algo_type == VP) {
 		if (!strncmp(proc_block_output_texts[prev_mux],
 					"VP CSOUT", sizeof("VP CSOUT") - 1))
 			es_vp_tx = ES_VP_NONE;
@@ -1497,6 +1531,10 @@ static int put_output_route_value(struct snd_kcontrol *kcontrol,
 					"VP FEOUT1", sizeof("VP FEOUT1") - 1))
 			es_vp_rx = ES_VP_NONE;
 	}
+
+	if (!mux && atomic_read(&escore->active_streams))
+		goto exit;
+
 #if (defined(CONFIG_ARCH_OMAP) || defined(CONFIG_ARCH_EXYNOS) || \
 	defined(CONFIG_X86_32) || defined(CONFIG_ARCH_TEGRA))
 	rc = snd_soc_dapm_mux_update_power(widget, kcontrol, mux, e);
@@ -1598,7 +1636,6 @@ static int put_reset(struct snd_kcontrol *kcontrol,
 {
 	pr_debug("%s()\n", __func__);
 	es_d300_reset_cmdcache();
-	clear_chn_mgr_cache();
 	es_vp_tx = ES_VP_NONE;
 	es_vp_rx = ES_VP_NONE;
 	es_az_tx = ES_AZ_NONE;

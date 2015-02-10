@@ -1356,6 +1356,7 @@ static int cmd_history_open(struct inode *inode, struct file *filp)
 	unsigned major;
 	unsigned minor;
 	int index, i, j = 0;
+	struct timespec *ts;
 
 	pr_debug("called: %s\n", __func__);
 
@@ -1394,6 +1395,10 @@ static int cmd_history_open(struct inode *inode, struct file *filp)
 		index = i + cmd_hist_index;
 		index %= ES_MAX_ROUTE_MACRO_CMD;
 		if (cmd_hist[index].cmd) {
+			ts = &cmd_hist[index].timestamp;
+			j += snprintf(cmd_history_buf + j, PAGE_SIZE,
+					"[%5lu.%03lu] ",
+					ts->tv_sec, ts->tv_nsec / (1000*1000));
 			j += snprintf(cmd_history_buf + j, PAGE_SIZE,
 					"0x%04x 0x%04x; ",
 					cmd_hist[index].cmd >> 16,
@@ -1403,9 +1408,7 @@ static int cmd_history_open(struct inode *inode, struct file *filp)
 						"resp = 0x%04x 0x%04x; ",
 						cmd_hist[index].resp >> 16,
 						cmd_hist[index].resp & 0xffff);
-			j += snprintf(cmd_history_buf + j, PAGE_SIZE,
-						"tstamp=%lu\n",
-						cmd_hist[index].timestamp);
+			j += snprintf(cmd_history_buf + j, PAGE_SIZE, "\n");
 		}
 	}
 

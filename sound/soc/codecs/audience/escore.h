@@ -419,7 +419,7 @@ struct escore_voicesense_ops {
 struct escore_macro {
 	u32 cmd;
 	u32 resp;
-	unsigned long timestamp;
+	struct timespec timestamp;
 };
 
 struct escore_pdata {
@@ -569,7 +569,7 @@ struct escore_priv {
 
 	struct blocking_notifier_head *irq_notifier_list;
 	struct snd_soc_jack *jack;
-	u8 algo_type;
+	u8 algo_type, algo_type_off;
 	u8 vp_asr;
 	u8 vp_aec;
 	u8 pcm_port;
@@ -677,7 +677,7 @@ static inline void update_cmd_history(u32 cmd, u32 resp)
 {
 	cmd_hist[cmd_hist_index].cmd = cmd;
 	cmd_hist[cmd_hist_index].resp = resp;
-	cmd_hist[cmd_hist_index].timestamp = jiffies;
+	get_monotonic_boottime(&cmd_hist[cmd_hist_index].timestamp);
 	cmd_hist_index = (cmd_hist_index + 1) % ES_MAX_ROUTE_MACRO_CMD;
 }
 #endif /* _ESCORE_H */

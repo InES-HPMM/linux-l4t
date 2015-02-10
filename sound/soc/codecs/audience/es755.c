@@ -23,6 +23,7 @@
 #include "es755-access.h"
 #include "es-d300.h"
 #include "es-a300-reg.h"
+#include "escore-version.h"
 #include <linux/sort.h>
 #ifdef CONFIG_QPNP_CLKDIV
 #include <linux/qpnp/clkdiv.h>
@@ -314,6 +315,14 @@ cmd_err:
 
 static DEVICE_ATTR(ping_status, 0444, es755_ping_status_show, NULL);
 
+static ssize_t escore_version_show(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%s\n", ESCORE_VERSION);
+}
+static DEVICE_ATTR(escore_version, 0444, escore_version_show, NULL);
+
 static struct attribute *core_sysfs_attrs[] = {
 	&dev_attr_route_status.attr,
 	&dev_attr_reset_control.attr,
@@ -321,6 +330,7 @@ static struct attribute *core_sysfs_attrs[] = {
 	&dev_attr_fw_version.attr,
 	&dev_attr_ping_status.attr,
 	&dev_attr_pm_enable.attr,
+	&dev_attr_escore_version.attr,
 	NULL
 };
 
@@ -2157,7 +2167,6 @@ static int es755_recover_wakeup_failure(struct escore_priv *es755)
 {
 	int rc;
 
-	es_d300_reset_cmdcache();
 	rc = es755_config_jack(es755);
 	if (rc)
 		pr_err("%s Failed to configure jack detection\n", __func__);
