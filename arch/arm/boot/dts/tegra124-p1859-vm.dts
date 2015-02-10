@@ -63,25 +63,34 @@
 			&common_as TEGRA_SWGROUP_CELLS(SDMMC2A)
 			&common_as TEGRA_SWGROUP_CELLS(SDMMC3A)
 			&common_as TEGRA_SWGROUP_CELLS(SDMMC4A)
-			&host1x_as TEGRA_SWGROUP_CELLS12(EPP, HC, HDA, VDE, VI, ISP, ISP2B, VIC, MSENC, TSEC, AVPC, A9AVP)
+			&host1x_as TEGRA_SWGROUP_CELLS9(EPP, HC, HDA, VI, ISP, ISP2B, VIC, MSENC, TSEC)
+			&nvavp_as TEGRA_SWGROUP_CELLS3(AVPC, A9AVP, VDE)
 			&common_as 0xFFFFFFFF 0xFFFFFFFF>;
 
 		address-space-prop {
 			gpu_as: gpu {
-				iova-start = <0x0 0x00100000>;
-				iova-size = <0x0 0xFBEFFFFF>;
+				iova-start = <0x0 0x80100000>;
+				iova-size = <0x0 0x7BEFFFFF>;
 				alignment = <0xFFFFF>;
 				num-pf-page = <0>;
 				gap-page = <0>;
-				};
+			};
 
 			host1x_as: host1x {
 				iova-start = <0x0 0x80000000>;
-				iova-size = <0x0 0x7BFFFFFF>;
+				iova-size = <0x0 0x77EFFFFF>;
 				alignment = <0xFFFFF>;
 				num-pf-page = <0>;
 				gap-page = <0>;
-				};
+			};
+
+			nvavp_as: nvavp {
+				iova-start = <0x0 0x80000000>;
+				iova-size = <0x0 0x67FFFFFF>;
+				alignment = <0xFFFFF>;
+				num-pf-page = <0>;
+				gap-page = <0>;
+			};
 		};
 	};
 
@@ -122,6 +131,10 @@
 
 	host1x {
 		virtual-dev = <1>;
+
+		iommus = <&smmu TEGRA_SWGROUP_EPP>,
+			<&smmu TEGRA_SWGROUP_HC>,
+			<&smmu TEGRA_SWGROUP_HDA>;
 
 		ivc-queue0 = <&tegra_hv 3>;
 		ivc-queue1 = <&tegra_hv 4>;
