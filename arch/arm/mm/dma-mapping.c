@@ -2391,13 +2391,6 @@ arm_iommu_create_mapping(struct bus_type *bus, dma_addr_t base, size_t size,
 	struct dma_iommu_mapping *mapping;
 	int err = -ENOMEM;
 
-	/*
-	 * Upstream kernel is modified to remove order. To mimic the same
-	 * behavior downstream, it is enough to keep order = 0.
-	 * So, do not allow non zero order.
-	 */
-	BUG_ON(order);
-
 	if (!count)
 		return ERR_PTR(-EINVAL);
 
