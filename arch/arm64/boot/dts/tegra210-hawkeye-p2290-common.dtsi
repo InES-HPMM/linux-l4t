@@ -75,6 +75,30 @@
 		avdd_dsi_csi-supply = <&mipi_1v2>;
 	};
 
+	i2c@7000c400 {
+		status = "okay";
+		backlight: lp8557-backlight@2c {
+			   status = "okay";
+			   compatible = "ti,lp8557";
+			   reg = <0x2c>;
+
+			   bl-name = "lp8557-backlight";
+			   init-brt = /bits/ 8 <0xFF>; /* Max brightness */
+			   dev-ctrl = /bits/ 8 <0x00>; /* PWM */
+			   pwm-period = <29334>;
+
+			   pwm-names = "lp8557";
+			   pwms = <&tegra_pwm 0 29334>;
+
+				/* 3 LED string */
+			   rom_14h {
+				   rom-addr = /bits/ 8 <0x14>;
+				   rom-val = /bits/ 8 <0x87>;
+			   };
+
+		   };
+	};
+
 	spi@7000d400 {
 		status = "okay";
 		earSmart: earSmart-codec@0 {
@@ -501,6 +525,11 @@
 		Tdiode_tegra {
 			status = "okay";
 		};
+	};
+
+	backlight {
+		status = "okay";
+		disable-on-kernel-charging;
 	};
 
 	host1x {
