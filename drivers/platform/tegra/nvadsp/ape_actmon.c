@@ -74,7 +74,7 @@
 /* milli second divider as SAMPLE_TICK*/
 #define SAMPLE_MS_DIVIDER			65536
 /* Sample period in ms */
-#define ACTMON_DEFAULT_SAMPLING_PERIOD	20
+#define ACTMON_DEFAULT_SAMPLING_PERIOD	10
 #define AVG_COUNT_THRESHOLD		100000
 
 static struct actmon ape_actmon;
@@ -89,16 +89,16 @@ static struct actmon_dev actmon_dev_adsp = {
 	.suspend_freq = 51200,
 
 	/* min step by which we want to boost in case of sudden boost request */
-	.boost_freq_step = 51200,
+	.boost_freq_step = 102400,
 
 	/* % of boost freq for boosting up  */
-	.boost_up_coef = 800,
+	.boost_up_coef = 1600,
 
 	/*
 	 * % of boost freq for boosting down. Should be boosted down by
 	 * exponential down
 	 */
-	.boost_down_coef = 50,
+	.boost_down_coef = 80,
 
 	/*
 	 * % of device freq collected in a sample period set as boost up
@@ -113,19 +113,19 @@ static struct actmon_dev actmon_dev_adsp = {
 	 * threshold. boost interrupt is generated when actmon_count(raw_count)
 	 * crosses this threshold consecutively by down_wmark_window.
 	 */
-	.boost_down_threshold = 70,
+	.boost_down_threshold = 75,
 
 	/*
 	 * No of times raw counts hits the up_threshold to generate an
 	 * interrupt
 	 */
-	.up_wmark_window = 4,
+	.up_wmark_window = 1,
 
 	/*
 	 * No of times raw counts hits the down_threshold to generate an
 	 * interrupt.
 	 */
-	.down_wmark_window = 2,
+	.down_wmark_window = 8,
 
 	/*
 	 * No of samples = 2^ avg_window_log2 for calculating exponential moving
@@ -225,7 +225,7 @@ static inline void actmon_dev_wmark_set(struct actmon_dev *dev)
 {
 	u32 val;
 	unsigned long freq = (dev->type == ACTMON_FREQ_SAMPLER) ?
-				 dev->cur_freq : apemon->freq;
+				 dev->target_freq : apemon->freq;
 
 	val = freq * apemon->sampling_period;
 
@@ -332,7 +332,6 @@ static irqreturn_t ape_actmon_dev_fn(int irq, void *dev_id)
 	freq += dev->boost_freq;
 
 	dev->target_freq = freq;
-
 	spin_unlock_irqrestore(&dev->lock, flags);
 
 	dev_dbg(dev->device, "%s(kHz): avg: %lu,  boost: %lu, target: %lu, current: %lu\n",
