@@ -291,7 +291,6 @@ void __init tegra_vcm30_t124_usb_init(void)
  * clk_get and clk_enable to work properly
  */
 static struct of_dev_auxdata tegra_vcm30_t124_auxdata_lookup[] __initdata = {
-	T124_UART_OF_DEV_AUXDATA,
 	T124_I2C_OF_DEV_AUXDATA,
 	T124_SPI_OF_DEV_AUXDATA,
 

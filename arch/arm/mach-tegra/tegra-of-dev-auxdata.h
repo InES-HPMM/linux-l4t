@@ -65,16 +65,6 @@
         OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000d000, "tegra12-i2c.4", NULL),  \
         OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000d100, "tegra12-i2c.5", NULL)
 
-#define T124_UART_OF_DEV_AUXDATA \
-        OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006000, "serial-tegra.0", NULL), \
-        OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006040, "serial-tegra.1", NULL), \
-        OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006200, "serial-tegra.2", NULL), \
-        OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006300, "serial-tegra.3", NULL), \
-        OF_DEV_AUXDATA("nvidia,tegra20-uart", 0x70006000, "serial8250.0", NULL), \
-        OF_DEV_AUXDATA("nvidia,tegra20-uart", 0x70006040, "serial8250.1", NULL), \
-        OF_DEV_AUXDATA("nvidia,tegra20-uart", 0x70006200, "serial8250.2", NULL), \
-        OF_DEV_AUXDATA("nvidia,tegra20-uart", 0x70006300, "serial8250.3", NULL)
-
 #define T124_SDMMC_OF_DEV_AUXDATA \
         OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0600, "sdhci-tegra.3", NULL),  \
         OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0400, "sdhci-tegra.2", NULL),  \
