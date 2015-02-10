@@ -508,6 +508,7 @@ static int nvadsp_remove(struct platform_device *pdev)
 #ifdef CONFIG_OF
 static const struct of_device_id nvadsp_of_match[] = {
 	{ .compatible = "nvidia,tegra210-adsp", .data = NULL, },
+	{ .compatible = "nvidia,tegra18x-adsp", .data = NULL, },
 	{},
 };
 #endif
