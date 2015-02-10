@@ -320,8 +320,6 @@ static struct of_dev_auxdata tegra_vcm30_t124_auxdata_lookup[] __initdata = {
 			"gk20a.0", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-msenc", TEGRA_MSENC_BASE, "msenc",
 			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-apbdma", 0x60020000, "tegra-apbdma",
-			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-ahub", 0x70300000, "tegra30-ahub-apbif",
 			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-virt-ahub-master", 0x70300000,

@@ -595,8 +595,6 @@ static void loki_modem_init(void)
 #ifdef CONFIG_USE_OF
 struct of_dev_auxdata loki_auxdata_lookup[] __initdata = {
 	T124_SPI_OF_DEV_AUXDATA,
-	OF_DEV_AUXDATA("nvidia,tegra124-apbdma", 0x60020000, "tegra-apbdma",
-				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-se", 0x70012000, "tegra12-se", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
 		NULL),
