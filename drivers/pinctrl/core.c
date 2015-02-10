@@ -889,7 +889,14 @@ static struct pinctrl *create_pinctrl(struct device *dev)
 			mutex_unlock(&pinctrl_maps_mutex);
 			return ERR_PTR(ret);
 		}
+		if (ret < 0) {
+			dev_err(dev, "add setting for %s:map %s failed:%d\n",
+				devname, map->name, ret);
+			goto break_loop;
+		}
 	}
+
+break_loop:
 	mutex_unlock(&pinctrl_maps_mutex);
 
 	if (ret < 0) {
@@ -1822,6 +1829,9 @@ struct pinctrl_dev *pinctrl_register(struct pinctrl_desc *pctldesc,
 						    PINCTRL_STATE_SLEEP);
 		if (IS_ERR(pctldev->hog_sleep))
 			dev_dbg(dev, "failed to lookup the sleep state\n");
+	} else {
+		dev_err(dev, "pinctrl_get failed: %ld\n", PTR_ERR(pctldev->p));
+		goto out_err;
 	}
 
 	pinctrl_init_device_debugfs(pctldev);
