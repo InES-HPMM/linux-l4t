@@ -770,7 +770,6 @@ static void ardbeg_modem_init(void)
 
 #ifdef CONFIG_USE_OF
 static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
-	T124_SPI_OF_DEV_AUXDATA,
 	OF_DEV_AUXDATA("nvidia,tegra124-se", 0x70012000, "tegra12-se", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra132-dtv", 0x7000c300, "dtv", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-dtv", 0x7000c300, "dtv", NULL),
