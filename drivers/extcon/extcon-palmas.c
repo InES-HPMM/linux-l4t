@@ -49,9 +49,9 @@ enum palmas_usb_cable_id {
 static char const *palmas_extcon_cable[] = {
 	[0] = "USB",
 	[1] = "USB-Host",
-	[2] = "USB-ID-A",
-	[3] = "USB-ID-B",
-	[4] = "USB-ID-C",
+	[2] = "ACA-A",
+	[3] = "ACA-B",
+	[4] = "ACA-C",
 	NULL,
 };
 
