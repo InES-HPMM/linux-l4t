@@ -63,8 +63,6 @@ static struct i2c_board_info __initdata max77663_regulators[] = {
 
 int __init p2360_regulator_init(void)
 {
-	tegra_pmc_pmu_interrupt_polarity(true);
-
 	i2c_register_board_info(4, max77663_regulators,
 				ARRAY_SIZE(max77663_regulators));
 

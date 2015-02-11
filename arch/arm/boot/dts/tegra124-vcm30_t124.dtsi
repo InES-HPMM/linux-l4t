@@ -130,6 +130,11 @@
 		nvidia,firmware_file = "tegra_xusb_firmware";
 	};
 
+	pmc@7000e400 {
+		status = "okay";
+		nvidia,invert-interrupt;
+	};
+
 	pcie-controller {
 		nvidia,port0_status = <1>;
 		nvidia,port1_status = <1>;
