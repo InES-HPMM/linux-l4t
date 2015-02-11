@@ -2019,6 +2019,7 @@ int tegra_dvfs_rail_unregister_notifier(struct dvfs_rail *rail,
 
 bool tegra_dvfs_rail_updating(struct clk *clk)
 {
+	wmb();
 	return (!clk ? false :
 		(!clk->dvfs ? false :
 		 (!clk->dvfs->dvfs_rail ? false :
