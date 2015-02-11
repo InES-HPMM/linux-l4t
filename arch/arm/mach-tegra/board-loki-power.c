@@ -277,8 +277,6 @@ int __init loki_rail_alignment_init(void)
 
 int __init loki_regulator_init(void)
 {
-	tegra_pmc_pmu_interrupt_polarity(true);
-
 	platform_device_register(&power_supply_extcon_device);
 
 	loki_cl_dvfs_init();

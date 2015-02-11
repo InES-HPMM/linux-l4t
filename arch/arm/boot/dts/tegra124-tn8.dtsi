@@ -45,6 +45,7 @@
 
 	pmc@7000e400 {
 		status = "okay";
+		nvidia,invert-interrupt;
 		nvidia,cpu-suspend-freq = <204000>;
 	};
 

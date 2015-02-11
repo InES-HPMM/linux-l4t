@@ -334,16 +334,12 @@ int __init ardbeg_regulator_init(void)
 	case BOARD_E1733:
 	case BOARD_E1734:
 	case BOARD_E1735:
-		tegra_pmc_pmu_interrupt_polarity(true);
-		break;
-
 	case BOARD_E1736:
 	case BOARD_E1936:
 	case BOARD_E1769:
 	case BOARD_P1761:
 	case BOARD_P1765:
-		tegra_pmc_pmu_interrupt_polarity(true);
-		return 0;
+		break;
 	default:
 		pr_warn("PMU board id 0x%04x is not supported\n",
 			pmu_board_info.board_id);

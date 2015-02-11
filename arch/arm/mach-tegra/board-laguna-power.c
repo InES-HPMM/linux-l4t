@@ -152,8 +152,6 @@ int __init laguna_regulator_init(void)
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	laguna_cl_dvfs_init();
 #endif
-	tegra_pmc_pmu_interrupt_polarity(true);
-
 	return 0;
 }
 
