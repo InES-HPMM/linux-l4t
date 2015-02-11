@@ -607,6 +607,7 @@ static int tegra210_pg_gpu_powergate(int id)
 	udelay(10);
 
 	pmc_write(0x1, PMC_GPU_RG_CONTROL);
+	pmc_read(PMC_GPU_RG_CONTROL);
 
 	udelay(10);
 
@@ -671,6 +672,7 @@ static int tegra210_pg_gpu_unpowergate(int id)
 	udelay(10);
 
 	pmc_write(0, PMC_GPU_RG_CONTROL);
+	pmc_read(PMC_GPU_RG_CONTROL);
 
 	udelay(10);
 
