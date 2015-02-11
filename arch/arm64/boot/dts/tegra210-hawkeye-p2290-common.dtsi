@@ -61,6 +61,28 @@
 	chosen {
 	};
 
+	serial@70006000 {
+		compatible = "nvidia,tegra210-uart", "nvidia,tegra114-hsuart";
+		console-port;
+		sqa-automation-port;
+		status = "okay";
+	};
+
+	serial@70006040 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006200 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006300 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
 	pmc@7000e400 {
 		nvidia,invert-interrupt;
 	};
