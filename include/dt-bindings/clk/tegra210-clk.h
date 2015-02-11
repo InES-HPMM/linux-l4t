@@ -21,13 +21,41 @@
  * way.
  */
 #define TEGRA210_CLK_ID_CAR_BASE	0   /* Not assigned to any clock */
-/* FIXME: IDs 1 ... 127 to be assigned */
-#define TEGRA210_CLK_ID_I2C5		128
+/* FIXME: IDs 1 ... 5 to be assigned */
+#define TEGRA210_CLK_ID_UARTA		6
+#define TEGRA210_CLK_ID_UARTB		7
+/* FIXME: IDs 8 ... 11 to be assigned */
+#define TEGRA210_CLK_ID_I2C1		12
+/* FIXME: IDs 13 ... 40 to be assigned */
+#define TEGRA210_CLK_ID_SBC1		41
+/* FIXME: IDs 42 ... 43 to be assigned */
+#define TEGRA210_CLK_ID_SBC2		44
+/* FIXME: ID 45 to be assigned */
+#define TEGRA210_CLK_ID_SBC3		46
+#define TEGRA210_CLK_ID_I2C5		47
+/* FIXME: IDs 48 ... 53 to be assigned */
+#define TEGRA210_CLK_ID_I2C2		54
+#define TEGRA210_CLK_ID_UARTC		55
+/* FIXME: IDs 56 ... 64 to be assigned */
+#define TEGRA210_CLK_ID_UARTD		65
+/* FIXME: ID 66 to be assigned */
+#define TEGRA210_CLK_ID_I2C3		67
+#define TEGRA210_CLK_ID_SBC4		68
+/* FIXME: IDs 69 ... 80 to be assigned */
+#define TEGRA210_CLK_ID_I2CSLOW		81
+/* FIXME: IDs 82 ... 102 to be assigned */
+#define TEGRA210_CLK_ID_I2C4		103
+/* FIXME: IDs 104 ... 127 to be assigned */
+#define TEGRA210_CLK_ID_HDA2HDMI	128
 /* FIXME: IDs 129 ... 154 to be assigned */
 #define TEGRA210_CLK_ID_DFLL_SOC	155
-/* FIXME: IDs 156 ... 186 to be assigned */
+/* FIXME: IDs 156 ... 165 to be assigned */
+#define TEGRA210_CLK_ID_I2C6		166
+/* FIXME: IDs 167 ... 186 to be assigned */
 #define TEGRA210_CLK_ID_PLL_P_OUT_ADSP	187
-/* FIXME: IDs 156 ... 221 to be assigned */
+/* FIXME: IDs 188 ... 211 to be assigned */
+#define TEGRA210_CLK_ID_UARTAPE		212
+/* FIXME: IDs 213 ... 221 to be assigned */
 #define TEGRA210_CLK_ID_PLL_P_OUT_SOR	222
 #define TEGRA210_CLK_ID_PLL_P_OUT_CPU	223
 
