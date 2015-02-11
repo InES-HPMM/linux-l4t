@@ -231,6 +231,7 @@
 #define NVQUIRK2_DYNAMIC_TRIM_SUPPLY_SWITCH	BIT(4)
 /* Select SDR50 UHS mode for host if the device runs at SDR50 mode on T210 */
 #define NVQUIRK2_SELECT_SDR50_MODE		BIT(5)
+#define NVQUIRK2_ADD_DELAY_AUTO_CALIBRATION	BIT(6)
 
 /* Common subset of quirks for Tegra3 and later sdmmc controllers */
 #define TEGRA_SDHCI_NVQUIRKS	(NVQUIRK_ENABLE_PADPIPE_CLKEN | \
@@ -1969,6 +1970,10 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 	}
 	sdhci_writel(sdhci, val, SDMMC_SDMEMCOMPPADCTRL);
 
+	/* Wait for 1us after e_input is enabled*/
+	if (soc_data->nvquirks2 & NVQUIRK2_ADD_DELAY_AUTO_CALIBRATION)
+		udelay(1);
+
 	/* Enable Auto Calibration*/
 	val = sdhci_readl(sdhci, SDMMC_AUTO_CAL_CONFIG);
 	val |= SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_ENABLE;
@@ -1999,6 +2004,10 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 			SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_STEP_OFFSET_SHIFT);
 	}
 	sdhci_writel(sdhci, val, SDMMC_AUTO_CAL_CONFIG);
+
+	/* Wait for 1us after auto calibration is enabled*/
+	if (soc_data->nvquirks2 & NVQUIRK2_ADD_DELAY_AUTO_CALIBRATION)
+		udelay(1);
 
 	/* Wait until the calibration is done */
 	do {
@@ -4781,6 +4790,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 		     NVQUIRK2_CONFIG_PWR_DET |
 		     NVQUIRK2_BROKEN_SD2_0_SUPPORT |
 		     NVQUIRK2_SELECT_SDR50_MODE |
+		     NVQUIRK2_ADD_DELAY_AUTO_CALIBRATION |
 		     NVQUIRK2_DYNAMIC_TRIM_SUPPLY_SWITCH,
 };
 
