@@ -141,4 +141,13 @@
 		pwrdet-dp-supply = <&max77620_sd3>;
 	};
 
+	thermal-zones {
+		PMIC-Die-max77621-0 {
+			status = "okay";
+		};
+
+		PMIC-Die-max77621-1 {
+			status = "okay";
+		};
+	};
 };
