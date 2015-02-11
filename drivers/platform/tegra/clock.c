@@ -1351,8 +1351,8 @@ int tegra_clk_dfll_range_control(enum dfll_range use_dfll)
 	}
 
 	clk_lock_save(c->parent, &p_flags);
-	old_use_dfll = tegra_dvfs_get_dfll_range(c->parent->dvfs);
-	ret = tegra_dvfs_set_dfll_range(c->parent->dvfs, use_dfll);
+	ret = tegra_dvfs_swap_dfll_range(c->parent->dvfs, use_dfll,
+					 &old_use_dfll);
 	if (!ret) {
 		/* Get the current parent clock running rate and
 		   set it to new parent clock */

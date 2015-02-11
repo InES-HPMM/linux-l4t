@@ -358,6 +358,9 @@ int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate);
 int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate);
 int tegra_clk_dfll_range_control(enum dfll_range use_dfll);
 bool tegra_dvfs_is_dfll_scale(struct dvfs *d, unsigned long rate);
+bool tegra_dvfs_is_dfll_range(struct dvfs *d, unsigned long rate);
+int tegra_dvfs_swap_dfll_range(struct dvfs *d, int range, int *old_range);
+int tegra_dvfs_set_dfll_range(struct dvfs *d, int range);
 
 struct tegra_cooling_device *tegra_dvfs_get_cpu_vmax_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_cpu_vmin_cdev(void);
@@ -419,32 +422,6 @@ bool tegra_dvfs_is_dfll_bypass(void);
 static inline bool tegra_dvfs_rail_is_dfll_mode(struct dvfs_rail *rail)
 {
 	return rail ? rail->dfll_mode : false;
-}
-
-static inline bool tegra_dvfs_is_dfll_range(struct dvfs *d, unsigned long rate)
-{
-	return (d->dfll_data.range == DFLL_RANGE_ALL_RATES) ||
-		((d->dfll_data.range == DFLL_RANGE_HIGH_RATES) &&
-		(rate >= d->dfll_data.use_dfll_rate_min));
-}
-
-static inline int tegra_dvfs_get_dfll_range(struct dvfs *d)
-{
-	if (d)
-		return d->dfll_data.range;
-	return -ENOENT;
-}
-
-static inline int tegra_dvfs_set_dfll_range(struct dvfs *d, int range)
-{
-	if (!d->dfll_millivolts)
-		return -ENOSYS;
-
-	if ((range < DFLL_RANGE_NONE) || (range > DFLL_RANGE_HIGH_RATES))
-		return -EINVAL;
-
-	d->dfll_data.range = range;
-	return 0;
 }
 
 static inline void tegra_dvfs_rail_mode_updating(struct dvfs_rail *rail,

@@ -125,7 +125,14 @@ static int tegra_dvfs_round_voltage(int mv,
 	return mv;
 }
 
-static bool tegra_dvfs_is_dfll_range_entry(struct dvfs *d, unsigned long rate)
+static bool dvfs_is_dfll_range(struct dvfs *d, unsigned long rate)
+{
+	return (d->dfll_data.range == DFLL_RANGE_ALL_RATES) ||
+		((d->dfll_data.range == DFLL_RANGE_HIGH_RATES) &&
+		(rate >= d->dfll_data.use_dfll_rate_min));
+}
+
+static bool dvfs_is_dfll_range_entry(struct dvfs *d, unsigned long rate)
 {
 	bool ret;
 
@@ -145,16 +152,73 @@ static bool tegra_dvfs_is_dfll_range_entry(struct dvfs *d, unsigned long rate)
 	 * On SoC with HMP cluster it is guarnteed that for any rate in DFLL
 	 * range, DFLL is used immediately after the cluster switch.
 	 */
-	ret |= !d->cur_rate && tegra_dvfs_is_dfll_range(d, rate);
+	ret |= !d->cur_rate && dvfs_is_dfll_range(d, rate);
 #endif
 	return ret;
 }
 
-bool tegra_dvfs_is_dfll_scale(struct dvfs *d, unsigned long rate)
+static bool dvfs_is_dfll_scale(struct dvfs *d, unsigned long rate)
 {
 	return d->dfll_millivolts &&
 		(tegra_dvfs_rail_is_dfll_mode(d->dvfs_rail) ||
-		tegra_dvfs_is_dfll_range_entry(d, rate));
+		dvfs_is_dfll_range_entry(d, rate));
+}
+
+bool tegra_dvfs_is_dfll_scale(struct dvfs *d, unsigned long rate)
+{
+	bool ret;
+
+	mutex_lock(&dvfs_lock);
+	ret = dvfs_is_dfll_scale(d, rate);
+	mutex_unlock(&dvfs_lock);
+
+	return ret;
+}
+
+bool tegra_dvfs_is_dfll_range(struct dvfs *d, unsigned long rate)
+{
+	bool ret;
+
+	mutex_lock(&dvfs_lock);
+	ret = dvfs_is_dfll_range(d, rate);
+	mutex_unlock(&dvfs_lock);
+
+	return ret;
+}
+
+static int validate_range(struct dvfs *d, int range)
+{
+	if (!d->dfll_millivolts)
+		return -ENOSYS;
+
+	if ((range < DFLL_RANGE_NONE) || (range > DFLL_RANGE_HIGH_RATES))
+		return -EINVAL;
+
+	return 0;
+}
+
+int tegra_dvfs_swap_dfll_range(struct dvfs *d, int range, int *old_range)
+{
+	int ret = validate_range(d, range);
+
+	mutex_lock(&dvfs_lock);
+	*old_range = d->dfll_data.range;
+	if (!ret)
+		d->dfll_data.range = range;
+	mutex_unlock(&dvfs_lock);
+	return ret;
+}
+
+int tegra_dvfs_set_dfll_range(struct dvfs *d, int range)
+{
+	int ret = validate_range(d, range);
+	if (ret)
+		return ret;
+
+	mutex_lock(&dvfs_lock);
+	d->dfll_data.range = range;
+	mutex_unlock(&dvfs_lock);
+	return 0;
 }
 
 void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
@@ -741,7 +805,7 @@ static int dvfs_rail_get_thermal_floor_dfll(struct dvfs_rail *rail)
 
 static int dvfs_get_peak_thermal_floor(struct dvfs *d, unsigned long rate)
 {
-	bool dfll_range = tegra_dvfs_is_dfll_range(d, rate);
+	bool dfll_range = dvfs_is_dfll_range(d, rate);
 
 	if (!dfll_range && d->dvfs_rail->therm_mv_floors)
 		return d->dvfs_rail->therm_mv_floors[0];
@@ -772,14 +836,14 @@ static const int *dvfs_get_millivolts_pll(struct dvfs *d)
 
 static const int *dvfs_get_peak_millivolts(struct dvfs *d, unsigned long rate)
 {
-	bool dfll_range = tegra_dvfs_is_dfll_range(d, rate);
+	bool dfll_range = dvfs_is_dfll_range(d, rate);
 	return dfll_range ? dvfs_get_millivolts_dfll(d) :
 		d->peak_millivolts ? : dvfs_get_millivolts_pll(d);
 }
 
 static const int *dvfs_get_scale_millivolts(struct dvfs *d, unsigned long rate)
 {
-	if (tegra_dvfs_is_dfll_scale(d, rate))
+	if (dvfs_is_dfll_scale(d, rate))
 		return dvfs_get_millivolts_dfll(d);
 
 	return dvfs_get_millivolts_pll(d);
@@ -798,7 +862,7 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 
 	/* On entry to dfll range limit 1st step to range bottom (full ramp of
 	   voltage/rate is completed automatically in dfll mode) */
-	if (tegra_dvfs_is_dfll_range_entry(d, rate))
+	if (dvfs_is_dfll_range_entry(d, rate))
 		rate = d->dfll_data.use_dfll_rate_min;
 
 	if (rate > freqs[d->num_freqs - 1]) {
@@ -1117,7 +1181,7 @@ int tegra_dvfs_predict_mv_at_hz_no_tfloor(struct clk *c, unsigned long rate)
 	}
 
 	mutex_lock(&dvfs_lock);
-	millivolts = tegra_dvfs_is_dfll_range(c->dvfs, rate) ?
+	millivolts = dvfs_is_dfll_range(c->dvfs, rate) ?
 		dvfs_get_millivolts_dfll(c->dvfs) :
 		dvfs_get_millivolts_pll(c->dvfs);
 	mv = predict_millivolts(c, millivolts, rate);
@@ -1145,7 +1209,7 @@ int tegra_dvfs_predict_mv_at_hz_cur_tfloor(struct clk *c, unsigned long rate)
 	rail = c->dvfs->dvfs_rail;
 
 	mutex_lock(&dvfs_lock);
-	if (tegra_dvfs_is_dfll_range(c->dvfs, rate)) {
+	if (dvfs_is_dfll_range(c->dvfs, rate)) {
 		millivolts = dvfs_get_millivolts_dfll(c->dvfs);
 		mv = predict_millivolts(c, millivolts, rate);
 		if (mv >= 0)
