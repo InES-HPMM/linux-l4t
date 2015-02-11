@@ -82,15 +82,6 @@
 
 #define SMMU_PTC_FLUSH_1			0x9b8
 
-#define SMMU_ASID_SECURITY			0x38
-#define SMMU_ASID_SECURITY_1			0x3c
-#define SMMU_ASID_SECURITY_2			0x9e0
-#define SMMU_ASID_SECURITY_3			0x9e4
-#define SMMU_ASID_SECURITY_4			0x9e8
-#define SMMU_ASID_SECURITY_5			0x9ec
-#define SMMU_ASID_SECURITY_6			0x9f0
-#define SMMU_ASID_SECURITY_7			0x9f4
-
 #define SMMU_STATS_CACHE_COUNT_BASE		0x1f0
 
 #define SMMU_STATS_CACHE_COUNT(mc, cache, hitmiss)	\
@@ -256,12 +247,6 @@ struct smmu_device {
 	struct rb_root  clients;
 
 	struct page *avp_vector_page;   /* dummy page shared by all AS's */
-
-	/*
-	 * Register image savers for suspend/resume
-	 */
-	u32 num_asid_security;
-	u32 asid_security[8];
 
 	struct dentry *debugfs_root;
 	struct smmu_debugfs_info *debugfs_info;

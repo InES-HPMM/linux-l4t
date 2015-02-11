@@ -80,17 +80,6 @@ enum {
 	IOMMUS_PROPS_AS = 2,
 };
 
-static const u32 smmu_asid_security_ofs[] = {
-	SMMU_ASID_SECURITY,
-	SMMU_ASID_SECURITY_1,
-	SMMU_ASID_SECURITY_2,
-	SMMU_ASID_SECURITY_3,
-	SMMU_ASID_SECURITY_4,
-	SMMU_ASID_SECURITY_5,
-	SMMU_ASID_SECURITY_6,
-	SMMU_ASID_SECURITY_7,
-};
-
 struct tegra_smmu_chip_data {
 	int num_asids;
 };
@@ -409,10 +398,6 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 		list_for_each_entry(c, &as->client, list)
 			__smmu_client_set_hwgrp(c, c->swgids, 1);
 	}
-
-	for (i = 0; i < smmu->num_asid_security; i++)
-		smmu_write(smmu,
-			   smmu->asid_security[i], smmu_asid_security_ofs[i]);
 
 	val = SMMU_PTC_CONFIG_RESET_VAL;
 	val |= SMMU_PTC_REQ_LIMIT;
@@ -2090,13 +2075,6 @@ err_out:
 
 static int tegra_smmu_suspend_default(struct device *dev)
 {
-	int i;
-	struct smmu_device *smmu = dev_get_drvdata(dev);
-
-	for (i = 0; i < smmu->num_asid_security; i++)
-		smmu->asid_security[i] =
-			smmu_read(smmu, smmu_asid_security_ofs[i]);
-
 	return 0;
 }
 
@@ -2162,10 +2140,6 @@ static int tegra_smmu_probe_default(struct platform_device *pdev,
 	}
 
 	if (of_property_read_u64(dev->of_node, "swgid-mask", &smmu->swgids))
-		goto __exit_probe;
-
-	if (of_property_read_u32(dev->of_node, "#num-asid-security",
-				 &smmu->num_asid_security))
 		goto __exit_probe;
 
 	if (of_property_read_u32(dev->of_node, "ptc-cache-size",
