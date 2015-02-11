@@ -322,11 +322,13 @@
 		compatible = "nvidia,tegra-audio-t210ref-mobile-es755";
 		nvidia,model = "tegra-snd-t210ref-mobile-es755";
 		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(E, 6) GPIO_ACTIVE_HIGH>;
-		nvidia,num-codec-link = <3>;
+		nvidia,num-codec-link = <4>;
 
 		nvidia,audio-routing =
 			"y Headphone", 	"y OUT",
 			"y IN",		"y Mic",
+			"k Headphone", 	"k OUT",
+			"k IN",		"k Mic",
 			"z Headphone", 	"z OUT",
 			"z IN",		"z Mic",
 			"z IN",		"z OUT";
@@ -383,6 +385,23 @@
 			srate = <48000>;
 			num-channel = <2>;
 			name-prefix = "z";
+		};
+		nvidia,dai-link-4 {
+			link-name = "baseband";
+			cpu-dai = <&tegra_i2s4>;
+			codec-dai = <&spdif_dit3>;
+			cpu-dai-name = "I2S4";
+			codec-dai-name = "dit-hifi";
+			format = "i2s";
+			bitclock-slave;
+			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
+			bit-format = "s16_le";
+			bclk_ratio = <0>;
+			srate = <16000>;
+			num-channel = <2>;
+			name-prefix = "k";
 		};
 	};
 
