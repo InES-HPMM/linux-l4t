@@ -560,6 +560,9 @@ static int __init tegra_pmc_init(void)
 
 	tegra_pmc_parse_dt();
 
+	pr_err("PMC: Setting PMIC interrupt active-%s\n",
+		(tegra_pmc_invert_interrupt) ? "low" : "high");
+
 	val = tegra_pmc_readl(PMC_CTRL);
 	if (tegra_pmc_invert_interrupt)
 		val |= PMC_CTRL_INTR_LOW;
