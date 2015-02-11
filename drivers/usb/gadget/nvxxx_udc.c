@@ -257,6 +257,34 @@ static void tegra_xudc_boost_cpu_freq(struct nv_udc_s *unused) {}
 
 static int nvudc_ep_disable(struct usb_ep *_ep);
 
+static void tegra_xudc_notify_event(struct nv_udc_s *nvudc)
+{
+	enum usb_phy_events event = USB_EVENT_NONE;
+
+	switch (nvudc->connect_type) {
+	case CONNECT_TYPE_SDP:
+	case CONNECT_TYPE_CDP:
+		event = USB_EVENT_VBUS;
+		break;
+	case CONNECT_TYPE_APPLE_1000MA:
+	case CONNECT_TYPE_APPLE_2000MA:
+	case CONNECT_TYPE_APPLE_500MA:
+	case CONNECT_TYPE_DCP:
+	case CONNECT_TYPE_DCP_MAXIM:
+	case CONNECT_TYPE_DCP_QC2:
+	case CONNECT_TYPE_NON_STANDARD_CHARGER:
+		event = USB_EVENT_CHARGER;
+		break;
+	default:
+		event = USB_EVENT_NONE;
+	}
+
+	spin_lock(&nvudc->phy->sync_lock);
+	nvudc->phy->last_event = event;
+	atomic_notifier_call_chain(&nvudc->phy->notifier, event, NULL);
+	spin_unlock(&nvudc->phy->sync_lock);
+}
+
 /* must hold nvudc->lock */
 static inline void vbus_detected(struct nv_udc_s *nvudc)
 {
@@ -270,7 +298,6 @@ static inline void vbus_detected(struct nv_udc_s *nvudc)
 
 	nvudc->vbus_detected = true;
 	nvudc->phy->state = OTG_STATE_B_PERIPHERAL;
-	wake_lock(&nvudc->xudc_vbus);
 }
 
 /* must hold nvudc->lock */
@@ -311,7 +338,6 @@ static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 	nvudc->vbus_detected = false;
 	nvudc->phy->state = OTG_STATE_B_IDLE;
 	pm_runtime_put_autosuspend(nvudc->dev);
-	wake_unlock(&nvudc->xudc_vbus);
 }
 
 static void tegra_xudc_current_work(struct work_struct *work)
@@ -364,10 +390,13 @@ static void tegra_xudc_ucd_work(struct work_struct *work)
 	} else {
 		cancel_delayed_work(&nvudc->non_std_charger_work);
 		nvudc->current_ma = 0;
-		if (nvudc->ucd != NULL)
+		if (nvudc->ucd != NULL) {
 			tegra_ucd_set_charger_type(nvudc->ucd,
 						CONNECT_TYPE_NONE);
+			nvudc->connect_type = CONNECT_TYPE_NONE;
+		}
 	}
+	tegra_xudc_notify_event(nvudc);
 }
 
 static void tegra_xudc_non_std_charger_work(struct work_struct *work)
@@ -5659,9 +5688,6 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	nvudc->vbus_extcon_nb.notifier_call = extcon_notifications;
 	extcon_register_notifier(nvudc->vbus_extcon_dev,
 						&nvudc->vbus_extcon_nb);
-
-	wake_lock_init(&nvudc->xudc_vbus, WAKE_LOCK_SUSPEND,
-			"xudc_vbus");
 	tegra_xudc_boost_cpu_init(nvudc);
 	return 0;
 
@@ -5689,7 +5715,6 @@ static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 
 	/* TODO implement synchronization */
 	if (nvudc) {
-		wake_lock_destroy(&nvudc->xudc_vbus);
 		tegra_xudc_boost_cpu_deinit(nvudc);
 		tegra_usb_release_ucd(nvudc->ucd);
 		cancel_work_sync(&nvudc->ucd_work);

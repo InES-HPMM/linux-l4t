@@ -680,9 +680,6 @@ struct nv_udc_s {
 
 	struct tegra_prod_list *prod_list;
 	void __iomem *base_list[4];
-
-	/* system wake lock */
-	struct wake_lock xudc_vbus;
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
 	struct mutex boost_cpufreq_lock;
 	struct pm_qos_request boost_cpufreq_req;

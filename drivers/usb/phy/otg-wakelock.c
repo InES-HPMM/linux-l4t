@@ -2,7 +2,7 @@
  * otg-wakelock.c
  *
  * Copyright (C) 2011 Google, Inc.
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -145,8 +145,11 @@ static int __init otg_wakelock_init(void)
 	phy = usb_get_phy(USB_PHY_TYPE_USB2);
 
 	if (IS_ERR(phy)) {
-		pr_err("%s: No USB transceiver found\n", __func__);
-		return PTR_ERR(phy);
+		phy = usb_get_phy(USB_PHY_TYPE_USB3);
+		if (IS_ERR(phy)) {
+			pr_err("%s: No USB transceiver found\n", __func__);
+			return PTR_ERR(phy);
+		}
 	}
 	otgwl_xceiv = phy;
 

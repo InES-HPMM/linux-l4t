@@ -1,7 +1,7 @@
 /*
 * tegra-xotg.c - Nvidia XOTG implementation
 *
-* Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+* Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -40,8 +40,12 @@ static const char driver_name[] = "tegra-xotg";
 
 static void xotg_notify_event(struct xotg *xotg, int event)
 {
+	spin_lock(&xotg->phy.sync_lock);
+
 	xotg->phy.last_event = event;
 	atomic_notifier_call_chain(&xotg->phy.notifier, event, NULL);
+
+	spin_unlock(&xotg->phy.sync_lock);
 }
 
 static ssize_t debug_store(struct device *_dev, struct device_attribute *attr,
