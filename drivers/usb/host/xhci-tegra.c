@@ -309,6 +309,10 @@ static void tegra_xusb_boost_cpu_init(struct tegra_xhci_hcd *tegra)
 
 static void tegra_xusb_boost_cpu_deinit(struct tegra_xhci_hcd *tegra)
 {
+	if (!pm_qos_request_active(&tegra->boost_cpufreq_req)) {
+		pr_warn("deinit call when cpu boost not initialized\n");
+		return;
+	}
 	cancel_work_sync(&tegra->boost_cpufreq_work);
 	cancel_delayed_work_sync(&tegra->restore_cpufreq_work);
 
@@ -5469,9 +5473,9 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	pm_runtime_enable(&pdev->dev);
 
 	hsic_power_create_file(tegra);
+	tegra_xusb_boost_cpu_init(tegra);
 	tegra->init_done = true;
 
-	tegra_xusb_boost_cpu_init(tegra);
 	if (xhci->quirks & XHCI_LPM_SUPPORT)
 		hcd_to_bus(xhci->shared_hcd)->root_hub->lpm_capable = 1;
 
@@ -5512,7 +5516,6 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	if (tegra == NULL)
 		return -EINVAL;
 
-	tegra_xusb_boost_cpu_deinit(tegra);
 	mutex_lock(&tegra->sync_lock);
 
 	for_each_enabled_hsic_pad(pad, tegra) {
@@ -5524,6 +5527,7 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 		struct xhci_hcd	*xhci = NULL;
 		struct usb_hcd *hcd = NULL;
 
+		tegra_xusb_boost_cpu_deinit(tegra);
 		utmi_phy_pad_disable();
 		utmi_phy_iddq_override(true);
 
