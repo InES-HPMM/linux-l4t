@@ -9328,7 +9328,7 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("vii2c",	"tegra21-i2c.6",   "vii2c",	208,	0x6c8, 136000000, mux_pllp_pllc_clkm,	MUX | DIV_U16 | PERIPH_ON_APB, 0),
 	PERIPH_CLK("i2cslow",	"tegra21-i2c.6",   "i2cslow",	81,	0x3fc,	50000000,  mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71 | PERIPH_ON_APB, 0),
 	PERIPH_CLK("mipibif",	"mipibif",		NULL,	173,	0x660,	408000000,  mux_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB, 0),
-	PERIPH_CLK("mipi-cal",	"mipi-cal",		NULL,	56,	0,	60000000,  mux_clk_m, PERIPH_ON_APB, 0),
+	PERIPH_CLK("mipi-cal",	"mipi-cal",		NULL,	56,	0,	102000000,  mux_clk_m, PERIPH_ON_APB, 0),
 	PERIPH_CLK("uarta",	"serial-tegra.0",	NULL,	6,	0x178, 1190400000, mux_pllp_pllc_pllc4_out0_pllc4_out1_clkm_pllc4_out2,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB, 0),
 	PERIPH_CLK("uartb",	"serial-tegra.1",	NULL,	7,	0x17c, 1190400000, mux_pllp_pllc_pllc4_out0_pllc4_out1_clkm_pllc4_out2,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB, 0),
 	PERIPH_CLK("uartc",	"serial-tegra.2",	NULL,	55,	0x1a0, 1190400000, mux_pllp_pllc_pllc4_out0_pllc4_out1_clkm_pllc4_out2,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB, 0),
