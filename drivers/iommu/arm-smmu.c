@@ -438,6 +438,7 @@ static DEFINE_SPINLOCK(arm_smmu_devices_lock);
 static LIST_HEAD(arm_smmu_devices);
 
 static struct arm_smmu_device *smmu_handle; /* assmu only one smmu device */
+static u32 arm_smmu_skip_mapping; /* For debug */
 
 #ifdef CONFIG_ARM_SMMU_WAR
 /*
@@ -1765,9 +1766,13 @@ static int arm_smmu_handle_mapping(struct arm_smmu_domain *smmu_domain,
 
 	if (test_bit(cfg->cbndx, smmu->context_filter)) {
 		trace_smmu_map(cfg->cbndx, iova, paddr, size, prot);
-		pr_debug("cbndx=%d iova=%pad paddr=%pap size=%zx prot=%x\n",
-			 cfg->cbndx, &iova, &paddr, size, prot);
+		pr_debug("cbndx=%d iova=%pad paddr=%pap size=%zx prot=%x skip=%d\n",
+			 cfg->cbndx, &iova, &paddr, size, prot,
+			 arm_smmu_skip_mapping);
 	}
+
+	if (arm_smmu_skip_mapping)
+		return 0;
 
 	spin_lock_irqsave(&smmu_domain->lock, flags);
 	pgd += pgd_index(iova);
@@ -2375,6 +2380,8 @@ static void arm_smmu_debugfs_create(struct arm_smmu_device *smmu)
 	debugfs_create_file("context_filter", S_IRUGO | S_IWUSR,
 			    smmu->debugfs_root, smmu,
 			    &smmu_context_filter_fops);
+	debugfs_create_bool("skip_mapping",  S_IRUGO | S_IWUSR,
+			    smmu->debugfs_root, &arm_smmu_skip_mapping);
 	return;
 
 err_out:
