@@ -112,7 +112,6 @@ void set_power_timers(unsigned long us_on, unsigned long us_off);
 bool tegra_pmc_cpu_is_powered(int cpuid);
 int tegra_pmc_cpu_power_on(int cpuid);
 int tegra_pmc_cpu_remove_clamping(int cpuid);
-void tegra_pmc_pmu_interrupt_polarity(bool active_low);
 struct pmc_pm_data *tegra_get_pm_data(void);
 
 extern void tegra_pmc_config_thermal_trip(struct tegra_thermtrip_pmic_data *data);
