@@ -45,6 +45,22 @@
 		};
 	};
 
+	i2c@7000c000 {
+		/* U17 of p1892 */
+		pca9539_77: pca9546@77 {
+			compatible = "nxp,pca9539";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0x77>;
+			gpio-init-names = "aggreg_default";
+			gpio-init-0 = <&pca9539_aggreg_default>;
+			pca9539_aggreg_default: aggreg_default {
+				gpio-output-low = <7 8>;
+				gpio-output-high = <1>;
+			};
+		};
+	};
+
 	i2c@7000c400 {
 		ad1937z: ad193x.1-0007@07 {
 			compatible = "ad,ad1937";
