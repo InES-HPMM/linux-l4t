@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/mc/tegra_emc_dt_parse.c
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -151,7 +151,7 @@ static void *tegra_emc_dt_parse_pdata_comp(const char *emc_mode,
 				burst_up_down_regs_num);
 			PNE_U32(iter, "nvidia,emc-zcal-cnt-long",
 				emc_zcal_cnt_long);
-			PNE_U32(iter, "nvidia,emc-ctt-term-ctrl",
+			PNE_U32(iter, "nvidia,emc-ctt-term_ctrl",
 				emc_ctt_term_ctrl);
 			PNE_U32(iter, "nvidia,emc-cfg", emc_cfg);
 			PNE_U32(iter, "nvidia,emc-cfg-dig-dll",
