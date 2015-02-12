@@ -145,6 +145,10 @@ Following are properties of regulator subnode.
 			This property is only applicable for SD0.
 		maxim,disable-active-discharge: Boolean, disable active
 			discharge.
+		maxim,disable-remote-sense-on-suspend: Boolean, disable
+			remote sense on suspend and re-enable on resume.
+			If this property is not there then no change on
+			configuration.
 
 Backup Battery:
 ==============

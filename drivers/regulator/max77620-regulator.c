@@ -52,6 +52,8 @@ struct max77620_regulator_info {
 	u8 volt_mask;
 	u8 power_mode_mask;
 	u8 power_mode_shift;
+	u8 remote_sense_addr;
+	u8 remote_sense_mask;
 	struct regulator_desc desc;
 };
 
@@ -59,6 +61,7 @@ struct max77620_regulator_pdata {
 	bool glpm_enable;
 	bool en2_ctrl_sd0;
 	bool sd_fsrade_disable;
+	bool disable_remote_sense_on_suspend;
 	struct regulator_init_data *reg_idata;
 	int fps_src;
 	int fps_pd_period;
@@ -592,14 +595,17 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 	return 0;
 }
 
+#define MAX77620_SD_CNF2_ROVS_EN_NONE 	0
 #define REGULATOR_SD(_id, _name, _sname, _volt_mask, _min_uV, _max_uV,	\
-		_step_uV)						\
+		_step_uV, _rs_add, _rs_mask)				\
 	[MAX77620_REGULATOR_ID_##_id] = {			\
 		.type = MAX77620_REGULATOR_TYPE_SD,			\
 		.volt_mask =  MAX77620_##_volt_mask##_VOLT_MASK,	\
 		.volt_addr = MAX77620_REG_##_id,		\
 		.cfg_addr = MAX77620_REG_##_id##_CFG,		\
 		.fps_addr = MAX77620_REG_FPS_##_id,		\
+		.remote_sense_addr = _rs_add,			\
+		.remote_sense_mask = MAX77620_SD_CNF2_ROVS_EN_##_rs_mask, \
 		.min_uV = _min_uV,				\
 		.max_uV = _max_uV,				\
 		.step_uV = _step_uV,				\
@@ -628,6 +634,7 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 		.volt_addr = MAX77620_REG_##_id##_CFG,		\
 		.cfg_addr = MAX77620_REG_##_id##_CFG2,		\
 		.fps_addr = MAX77620_REG_FPS_##_id,		\
+		.remote_sense_addr = 0xFF,			\
 		.min_uV = _min_uV,				\
 		.max_uV = _max_uV,				\
 		.step_uV = _step_uV,				\
@@ -650,10 +657,10 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 	}
 
 static struct max77620_regulator_info max77620_regs_info[MAX77620_NUM_REGS] = {
-	REGULATOR_SD(SD0, sd0, "in-sd0", SD0, 600000, 1400000, 12500),
-	REGULATOR_SD(SD1, sd1, "in-sd1", SD1, 600000, 1550000, 12500),
-	REGULATOR_SD(SD2, sd2, "in-sd2", SDX, 600000, 3787500, 12500),
-	REGULATOR_SD(SD3, sd3, "in-sd3", SDX, 600000, 3787500, 12500),
+	REGULATOR_SD(SD0, sd0, "in-sd0", SD0, 600000, 1400000, 12500, 0x22, SD0),
+	REGULATOR_SD(SD1, sd1, "in-sd1", SD1, 600000, 1550000, 12500, 0x22, SD1),
+	REGULATOR_SD(SD2, sd2, "in-sd2", SDX, 600000, 3787500, 12500, 0xFF, NONE),
+	REGULATOR_SD(SD3, sd3, "in-sd3", SDX, 600000, 3787500, 12500, 0xFF, NONE),
 
 	REGULATOR_LDO(LDO0, ldo0, "in-ldo0-1", N, 800000, 2375000, 25000),
 	REGULATOR_LDO(LDO1, ldo1, "in-ldo0-1", N, 800000, 2375000, 25000),
@@ -723,6 +730,9 @@ static int max77620_get_regulator_dt_data(struct platform_device *pdev,
 
 		reg_pdata->sd_fsrade_disable = of_property_read_bool(reg_node,
 						"maxim,disable-active-discharge");
+		reg_pdata->disable_remote_sense_on_suspend =
+				of_property_read_bool(reg_node,
+				"maxim,disable-remote-sense-on-suspend");
 
 		ret = of_property_read_u32(reg_node, "maxim,fps-source", &prop);
 		if (!ret)
@@ -800,11 +810,71 @@ static int max77620_regulator_probe(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int max77620_regulator_suspend(struct device *dev)
+{
+	struct max77620_regulator *pmic = dev_get_drvdata(dev);
+	struct max77620_regulator_pdata *reg_pdata;
+	struct max77620_regulator_info *rinfo;
+	struct device *parent = pmic->dev->parent;
+	int id;
+	int ret;
+
+	for (id = 0; id < MAX77620_NUM_REGS; ++id) {
+		reg_pdata = &pmic->reg_pdata[id];
+		rinfo = pmic->rinfo[id];
+		if (reg_pdata->disable_remote_sense_on_suspend &&
+				(rinfo->remote_sense_addr != 0xFF)) {
+			ret = max77620_reg_update(parent, MAX77620_PWR_SLAVE,
+				rinfo->remote_sense_addr,
+				rinfo->remote_sense_mask, 0);
+			if (ret < 0)
+				dev_err(dev, "Reg 0x%02x update failed: %d\n",
+					rinfo->remote_sense_addr, ret);
+		}
+	}
+	return 0;
+}
+
+static int max77620_regulator_resume(struct device *dev)
+{
+	struct max77620_regulator *pmic = dev_get_drvdata(dev);
+	struct max77620_regulator_pdata *reg_pdata;
+	struct max77620_regulator_info *rinfo;
+	struct device *parent = pmic->dev->parent;
+	int id;
+	int ret;
+
+	for (id = 0; id < MAX77620_NUM_REGS; ++id) {
+		reg_pdata = &pmic->reg_pdata[id];
+		rinfo = pmic->rinfo[id];
+
+		if (reg_pdata->disable_remote_sense_on_suspend &&
+				(rinfo->remote_sense_addr != 0xFF)) {
+			ret = max77620_reg_update(parent, MAX77620_PWR_SLAVE,
+				rinfo->remote_sense_addr,
+				rinfo->remote_sense_mask,
+				rinfo->remote_sense_mask);
+			if (ret < 0)
+				dev_err(dev, "Reg 0x%02x update failed: %d\n",
+					rinfo->remote_sense_addr, ret);
+		}
+	}
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops max77620_regulator_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(max77620_regulator_suspend,
+			max77620_regulator_resume)
+};
+
 static struct platform_driver max77620_regulator_driver = {
 	.probe = max77620_regulator_probe,
 	.driver = {
 		.name = "max77620-pmic",
 		.owner = THIS_MODULE,
+		.pm = &max77620_regulator_pm_ops,
 	},
 };
 
