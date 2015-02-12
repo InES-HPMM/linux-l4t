@@ -36,7 +36,7 @@ void actmon_rate_change(unsigned long freq)
 
 #define MBOX_TIMEOUT 1000 /* in ms */
 #define HOST_ADSP_DFS_MBOX_ID 3
-
+#define BOOST_COUNT 1
 enum adsp_dfs_reply {
 	ACK,
 	NACK,
@@ -67,7 +67,9 @@ static unsigned long adsp_cpu_freq_table[] = {
 
 struct adsp_dfs_policy {
 	bool enable;
- /*
+/* count to override adsp dynamic freq scaling using actmon */
+	u32 instant_boost_count;
+/*
  * update_freq_flag = TRUE, ADSP ACKed the new freq
  *		= FALSE, ADSP NACKed the new freq
  */
@@ -559,6 +561,48 @@ void adsp_cpu_set_rate(unsigned long freq)
 
 	if (!policy->enable) {
 		dev_dbg(device, "adsp dfs policy is not enabled\n");
+		goto exit_out;
+	}
+
+	if (policy->instant_boost_count && freq < policy->cur) {
+		freq = policy->cur;
+		policy->instant_boost_count--;
+	}
+
+	if (freq < policy->min)
+		freq = policy->min;
+	else if (freq > policy->max)
+		freq = policy->max;
+
+	freq = update_freq(freq);
+	if (freq)
+		policy->cur = freq;
+exit_out:
+	mutex_unlock(&policy_mutex);
+}
+
+/*
+ * Enable/disable DFS and set target freq.
+ *
+ * @params:
+ * freq: adsp freq in KHz
+ * dfs:
+ *		0 - disable dynamic scaling and set constant freq
+ *		1 - enable dynamic scaling and override adsp freq
+ *		with passed value BOOST_COUNT times
+ */
+void adsp_update_dfs(unsigned long freq, bool dfs)
+{
+	mutex_lock(&policy_mutex);
+
+	if (dfs) {
+		policy->enable = true;
+		policy->instant_boost_count = BOOST_COUNT;
+	} else
+		policy->enable = false;
+
+	if (freq == policy->cur) {
+		dev_info(device, "old and target_freq is same, exit out\n");
 		goto exit_out;
 	}
 

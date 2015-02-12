@@ -1,7 +1,7 @@
 /*
  * A Header file for managing ADSP/APE
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -342,5 +342,16 @@ static inline long wait_for_nvadsp_app_complete_timeout(nvadsp_app_info_t *info,
 
 	return ret;
 }
+
+#ifdef CONFIG_TEGRA_ADSP_DFS
+/*
+ * Set adsp freq.
+ * It sets adsp freq and communicate ADSP OS to adjust the timers.
+ * Disable dfs if adsp is requried to run at constant freq.
+ * freq : freq in KHz
+ * dfs : 0 for disable, 1 for enable
+ */
+void adsp_update_dfs(unsigned long freq, bool dfs);
+#endif
 
 #endif /* __LINUX_TEGRA_NVADSP_H */
