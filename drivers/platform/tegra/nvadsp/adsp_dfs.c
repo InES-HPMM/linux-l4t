@@ -3,7 +3,7 @@
  *
  * adsp dynamic frequency scaling
  *
- * Copyright (C) 2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2015, NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -77,8 +77,8 @@ struct adsp_dfs_policy {
 	unsigned long min;    /* in kHz */
 	unsigned long max;    /* in kHz */
 	unsigned long cur;    /* in kHz */
-	unsigned long cpu_min;    /* in kHz */
-	unsigned long cpu_max;    /* in kHz */
+	unsigned long cpu_min;    /* ADSP min freq(KHz). Remain unchanged */
+	unsigned long cpu_max;    /* ADSP max freq(KHz). Remain unchanged */
 
 	struct clk *adsp_clk;
 	struct notifier_block rate_change_nb;
@@ -139,7 +139,7 @@ static unsigned long adsp_get_target_freq(unsigned long tfreq, int *index)
  * return:
  *	0 - min emc freq
  *	> 0 - expected emc freq at this adsp freq
-*/
+ */
 static u32 adsp_to_emc_freq(u32 adspfreq)
 {
 	int size;
@@ -180,18 +180,13 @@ static int adsp_dfs_rc_callback(
 	unsigned long freq = rate / 1000;
 	int old_index, new_index;
 
-	mutex_lock(&policy_mutex);
 	/* update states */
 	adspfreq_stats_update();
-	policy->cur = freq;
 
 	old_index = freq_stats.last_index;
 	adsp_get_target_freq(policy->cur * 1000, &new_index);
 	if (old_index != new_index)
 		freq_stats.last_index = new_index;
-
-	mutex_unlock(&policy_mutex);
-
 	actmon_rate_change(freq);
 
 	return NOTIFY_OK;
@@ -205,10 +200,10 @@ static struct adsp_dfs_policy dfs_policy =  {
 	},
 };
 
-/**
- * update_policy - update adsp freq and ask adsp to work post change
- *		in freq tasks
- * tfreq - target frequency
+/*
+ * update_freq - update adsp freq and ask adsp to change timer as
+ * change in adsp freq.
+ * tfreq - target frequency in KHz
  * return - final freq got set.
  *		- 0, incase of error.
  *
@@ -216,14 +211,14 @@ static struct adsp_dfs_policy dfs_policy =  {
  * change notifier, when freq is changed in hw
  *
  */
-static unsigned long update_policy(unsigned long tfreq)
+static unsigned long update_freq(unsigned long tfreq)
 {
-	struct nvadsp_mbox *mbx = &policy->mbox;
-	enum adsp_dfs_reply reply;
-	unsigned long old_freq;
 	u32 efreq;
 	int index;
 	int ret;
+	unsigned long old_freq;
+	enum adsp_dfs_reply reply;
+	struct nvadsp_mbox *mbx = &policy->mbox;
 
 	tfreq = adsp_get_target_freq(tfreq * 1000, &index);
 	if (!tfreq) {
@@ -253,8 +248,6 @@ static unsigned long update_policy(unsigned long tfreq)
 		goto err_out;
 	}
 
-	mutex_lock(&policy_mutex);
-
 	dev_dbg(device, "sending change in freq:%lu\n", tfreq);
 	/*
 	 * Ask adsp to do action upon change in freq. ADSP and Host need to
@@ -265,7 +258,7 @@ static unsigned long update_policy(unsigned long tfreq)
 	if (ret) {
 		dev_err(device, "%s:host to adsp, mbox_send failure ....\n", __func__);
 		policy->update_freq_flag = false;
-		goto fail;
+		goto err_out;
 	}
 
 	ret = nvadsp_mbox_recv(&policy->mbox, &reply, true, MBOX_TIMEOUT);
@@ -273,7 +266,7 @@ static unsigned long update_policy(unsigned long tfreq)
 		dev_err(device, "%s:host to adsp,  mbox_receive failure ....\n",
 		__func__);
 		policy->update_freq_flag = false;
-		goto fail;
+		goto err_out;
 	}
 
 	switch (reply) {
@@ -294,9 +287,6 @@ static unsigned long update_policy(unsigned long tfreq)
 	dev_dbg(device, "%s:status received from adsp: %s, tfreq:%lu\n", __func__,
 		(policy->update_freq_flag == true ? "ACK" : "NACK"), tfreq);
 
-fail:
-	mutex_unlock(&policy_mutex);
-
 err_out:
 	if (!policy->update_freq_flag) {
 		ret = clk_set_rate(policy->adsp_clk, old_freq * 1000);
@@ -314,7 +304,7 @@ err_out:
 
 		tfreq = old_freq;
 	}
-	return tfreq;
+	return tfreq / 1000;
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -325,14 +315,20 @@ err_out:
 /* Get adsp dfs staus: 0: disabled, 1: enabled */
 static int dfs_enable_get(void *data, u64 *val)
 {
+	mutex_lock(&policy_mutex);
 	*val = policy->enable;
+	mutex_unlock(&policy_mutex);
+
 	return 0;
 }
 
 /* Enable/disable adsp dfs */
 static int dfs_enable_set(void *data, u64 val)
 {
+	mutex_lock(&policy_mutex);
 	policy->enable = (bool) val;
+	mutex_unlock(&policy_mutex);
+
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(enable_fops, dfs_enable_get,
@@ -341,31 +337,39 @@ DEFINE_SIMPLE_ATTRIBUTE(enable_fops, dfs_enable_get,
 /* Get adsp dfs policy min freq(KHz) */
 static int policy_min_get(void *data, u64 *val)
 {
+	mutex_lock(&policy_mutex);
 	*val = policy->min;
+	mutex_unlock(&policy_mutex);
+
 	return 0;
 }
 
 /* Set adsp dfs policy min freq(Khz) */
 static int policy_min_set(void *data, u64 val)
 {
+	int ret = -EINVAL;
 	unsigned long min = (unsigned long)val;
 
+	mutex_lock(&policy_mutex);
 	if (!policy->enable) {
 		dev_err(device, "adsp dfs policy is not enabled\n");
-		return -EINVAL;
+		goto exit_out;
 	}
 
 	if (!min || ((min < policy->cpu_min) || (min == policy->min)))
-		return -EINVAL;
+		goto exit_out;
 	else if (min >= policy->cpu_max)
 		min = policy->cpu_max;
 
 	if (min > policy->cur)
-			policy->min = update_policy(min);
-	else
-		policy->min = min;
+		min = update_freq(min);
 
-	return 0;
+	if (min)
+		policy->cur = policy->min = min;
+	ret = 0;
+exit_out:
+	mutex_unlock(&policy_mutex);
+	return ret;
 }
 DEFINE_SIMPLE_ATTRIBUTE(min_fops, policy_min_get,
 	policy_min_set, "%llu\n");
@@ -373,31 +377,39 @@ DEFINE_SIMPLE_ATTRIBUTE(min_fops, policy_min_get,
 /* Get adsp dfs policy max freq(KHz) */
 static int policy_max_get(void *data, u64 *val)
 {
+	mutex_lock(&policy_mutex);
 	*val = policy->max;
+	mutex_unlock(&policy_mutex);
 	return 0;
 }
 
 /* Set adsp dfs policy max freq(KHz) */
 static int policy_max_set(void *data, u64 val)
 {
+	int ret = -EINVAL;
 	unsigned long max = (unsigned long)val;
 
+	mutex_lock(&policy_mutex);
 	if (!policy->enable) {
 		dev_err(device, "adsp dfs policy is not enabled\n");
-		return -EINVAL;
+		goto exit_out;
 	}
 
 	if (!max || ((max > policy->cpu_max) || (max == policy->max)))
-		return -EINVAL;
+		goto exit_out;
+
 	else if (max <=  policy->cpu_min)
 		max = policy->cpu_min;
 
 	if (max < policy->cur)
-			policy->max = update_policy(max);
-	else
-		policy->max = max;
+		max = update_freq(max);
 
-	return 0;
+	if (max)
+		policy->cur = policy->max = max;
+	ret = 0;
+exit_out:
+	mutex_unlock(&policy_mutex);
+	return ret;
 }
 DEFINE_SIMPLE_ATTRIBUTE(max_fops, policy_max_get,
 	policy_max_set, "%llu\n");
@@ -405,22 +417,27 @@ DEFINE_SIMPLE_ATTRIBUTE(max_fops, policy_max_get,
 /* Get adsp dfs policy's current freq */
 static int policy_cur_get(void *data, u64 *val)
 {
+	mutex_lock(&policy_mutex);
 	*val = policy->cur;
+	mutex_unlock(&policy_mutex);
+
 	return 0;
 }
 
 /* Set adsp dfs policy cur freq(Khz) */
 static int policy_cur_set(void *data, u64 val)
 {
+	int ret = -EINVAL;
 	unsigned long cur = (unsigned long)val;
 
+	mutex_lock(&policy_mutex);
 	if (policy->enable) {
 		dev_err(device, "adsp dfs is enabled, should be disabled first\n");
-		return -EINVAL;
+		goto exit_out;
 	}
 
 	if (!cur || cur == policy->cur)
-		return -EINVAL;
+		goto exit_out;
 
 	/* Check tfreq policy sanity */
 	if (cur < policy->min)
@@ -428,9 +445,13 @@ static int policy_cur_set(void *data, u64 val)
 	else if (cur > policy->max)
 		cur = policy->max;
 
-	cur = update_policy(cur);
-
-	return 0;
+	cur = update_freq(cur);
+	if (cur)
+		policy->cur = cur;
+	ret = 0;
+exit_out:
+	mutex_unlock(&policy_mutex);
+	return ret;
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(cur_fops, policy_cur_get,
@@ -530,31 +551,24 @@ err_out:
 /*
  * Set target freq.
  * @params:
-  * freq: adsp freq in KHz
-*/
+ * freq: adsp freq in KHz
+ */
 void adsp_cpu_set_rate(unsigned long freq)
 {
 	mutex_lock(&policy_mutex);
 
 	if (!policy->enable) {
-		dev_info(device, "adsp dfs policy is not enabled\n");
+		dev_dbg(device, "adsp dfs policy is not enabled\n");
 		goto exit_out;
 	}
 
-	if (freq == policy->cur) {
-		dev_info(device, "old and target_freq is same, exit out\n");
-		goto exit_out;
-	}
 	if (freq < policy->min)
 		freq = policy->min;
 	else if (freq > policy->max)
 		freq = policy->max;
-
-	mutex_unlock(&policy_mutex);
-
+	freq = update_freq(freq);
 	if (freq)
-		update_policy(freq);
-	return ;
+		policy->cur = freq;
 exit_out:
 	mutex_unlock(&policy_mutex);
 }
