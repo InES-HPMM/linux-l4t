@@ -161,6 +161,7 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_NON_STD_RTPM			(1<<15)
 /*Controller skips tuning if it is already done*/
 #define SDHCI_QUIRK2_SKIP_TUNING			(1<<16)
+#define SDHCI_QUIRK2_PERIODIC_CALIBRATION		(1<<17)
 
 	unsigned int  acmd12_ctrl;
 	unsigned int  ier;
@@ -263,6 +264,8 @@ struct sdhci_host {
 	unsigned int		enable_sdhci_perf_stats;
 #endif
 	int			clk_gate_tmout_ticks;
+	ktime_t timestamp;
+	bool is_calibration_done;
 
 	struct task_struct *suspend_task;
 

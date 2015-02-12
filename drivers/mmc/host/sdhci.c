@@ -1433,6 +1433,8 @@ static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 	int flags;
 	u32 mask;
 	unsigned long timeout;
+	ktime_t cur_time;
+	s64 period_time;
 
 	WARN_ON(host->cmd);
 
@@ -1538,6 +1540,19 @@ static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 				host->mmc);
 	}
 #endif
+	if ((host->quirks2 & SDHCI_QUIRK2_PERIODIC_CALIBRATION) &&
+		((cmd->opcode == MMC_WRITE_MULTIPLE_BLOCK) ||
+		 (cmd->opcode == MMC_WRITE_BLOCK)) &&
+		host->is_calibration_done) {
+		cur_time = ktime_get();
+		period_time = ktime_to_ms(ktime_sub(cur_time,
+					host->timestamp));
+		if (period_time >= SDHCI_PERIODIC_CALIB_TIMEOUT)
+			if (host->ops->switch_signal_voltage_exit)
+				host->ops->switch_signal_voltage_exit(host,
+						host->mmc->ios.signal_voltage);
+	}
+
 	host->command = SDHCI_MAKE_CMD(cmd->opcode, flags);
 	sdhci_writew(host, host->command, SDHCI_COMMAND);
 }
