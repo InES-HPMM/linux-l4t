@@ -3666,6 +3666,13 @@ static int tegra_xhci_bus_suspend(struct usb_hcd *hcd)
 
 	mutex_lock(&tegra->sync_lock);
 
+	if (!tegra->init_done) {
+		xhci_warn(xhci, "%s: xhci probe not done\n",
+				__func__);
+		mutex_unlock(&tegra->sync_lock);
+		return -EBUSY;
+	}
+
 	if (xhci->shared_hcd == hcd) {
 		tegra->usb3_rh_suspend = true;
 		xhci_dbg(xhci, "%s: usb3 root hub\n", __func__);
@@ -5268,6 +5275,7 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	if (!IS_ERR_OR_NULL(tegra->transceiver))
 		hcd->phy = tegra->transceiver;
 
+	platform_set_drvdata(pdev, tegra);
 	irq = res->start;
 	ret = usb_add_hcd(hcd, irq, IRQF_SHARED);
 	if (ret) {
@@ -5275,11 +5283,8 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 		goto err_put_usb2_hcd;
 	}
 
-	/* USB 2.0 roothub is stored in the platform_device now. */
-	hcd = dev_get_drvdata(&pdev->dev);
 	xhci = hcd_to_xhci(hcd);
 	tegra->xhci = xhci;
-	platform_set_drvdata(pdev, tegra);
 
 	xhci->shared_hcd = usb_create_shared_hcd(driver, &pdev->dev,
 						dev_name(&pdev->dev), hcd);
