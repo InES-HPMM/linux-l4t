@@ -396,7 +396,10 @@ static void __init map_mem(void)
 	 * gives us PGDIR_SIZE memory starting from PHYS_OFFSET (which must be
 	 * aligned to 2MB as per Documentation/arm64/booting.txt).
 	 */
-	limit = PHYS_OFFSET + PGDIR_SIZE;
+	if (PGDIR_SIZE > SZ_512M)
+		limit = PHYS_OFFSET + SZ_512M;
+	else
+		limit = PHYS_OFFSET + PGDIR_SIZE;
 	memblock_set_current_limit(limit);
 
 	/* map all the memory banks */
