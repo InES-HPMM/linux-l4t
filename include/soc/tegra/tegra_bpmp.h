@@ -39,6 +39,7 @@
 #define MRQ_HEAP_USAGE		(15 | __MRQ_PUBLIC)
 #define MRQ_SCLK_SKIP_SET_RATE	16
 #define MRQ_ENABLE_SUSPEND	17
+#define MRQ_PASR_MASK		18
 #define MRQ_DEBUGFS		(19 | __MRQ_PUBLIC)
 
 /* Tegra PM states as known to BPMP */

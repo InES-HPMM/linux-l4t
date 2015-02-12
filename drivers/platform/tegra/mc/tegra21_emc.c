@@ -28,6 +28,7 @@
 #include <linux/platform_device.h>
 #include <linux/tegra-soc.h>
 #include <linux/platform_data/tegra_emc_pdata.h>
+#include <soc/tegra/tegra_bpmp.h>
 
 #include <asm/cputime.h>
 
@@ -1143,6 +1144,13 @@ static int init_emc_table(struct tegra21_emc_table *table,
 }
 
 #ifdef CONFIG_PASR
+void tegra_bpmp_pasr_mask(uint32_t phys)
+{
+	int mb[] = { phys };
+	int r = tegra_bpmp_send(MRQ_PASR_MASK, &mb, sizeof(mb));
+	WARN_ON(r);
+}
+
 static bool tegra21_is_lpddr3(void)
 {
 	return (dram_type == DRAM_TYPE_LPDDR2);
