@@ -2096,6 +2096,13 @@ static const struct snd_soc_dapm_route max98090_audio_map[] = {
 	{"DACL", NULL, "LTENL Mux"},
 	{"DACR", NULL, "LTENR Mux"},
 
+	{"STENL Mux", "Sidetone Left", "ADCL"},
+	{"STENL Mux", "Sidetone Left", "DMICL"},
+	{"STENR Mux", "Sidetone Right", "ADCR"},
+	{"STENR Mux", "Sidetone Right", "DMICR"},
+	{"DACL", NULL, "STENL Mux"},
+	{"DACR", NULL, "STENL Mux"},
+
 	{"AIFINL", NULL, "SHDN"},
 	{"AIFINR", NULL, "SHDN"},
 	{"AIFINL", NULL, "VCM"},
