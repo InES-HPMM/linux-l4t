@@ -195,6 +195,7 @@ struct uart_port {
 	unsigned char		irq_wake;
 	unsigned char		unused[2];
 	void			*private_data;		/* generic platform data pointer */
+	bool			enable_rx_poll_timer;
 };
 
 static inline int serial_port_in(struct uart_port *up, int offset)

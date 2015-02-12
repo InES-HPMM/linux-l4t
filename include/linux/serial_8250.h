@@ -98,6 +98,8 @@ struct uart_8250_port {
 	/* 8250 specific callbacks */
 	int			(*dl_read)(struct uart_8250_port *);
 	void			(*dl_write)(struct uart_8250_port *, int);
+	struct timer_list	rx_poll_timer;
+	int			rx_poll_timeout_jiffies;
 };
 
 int serial8250_register_8250_port(struct uart_8250_port *);

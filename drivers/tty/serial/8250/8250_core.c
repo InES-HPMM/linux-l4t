@@ -1601,6 +1601,23 @@ static int serial8250_tegra_handle_irq(struct uart_port *port)
 	return 1;
 }
 
+static void serial8250_tegra_rx_poll_timer(unsigned long _data)
+{
+	struct uart_8250_port *up = (struct uart_8250_port *)_data;
+	unsigned char status;
+	unsigned long flags;
+	struct uart_port *port = &up->port;
+
+	spin_lock_irqsave(&port->lock, flags);
+	status = serial_port_in(port, UART_LSR);
+
+	if (status & (UART_LSR_DR | UART_LSR_BI))
+		status = serial8250_rx_chars(up, status);
+
+	mod_timer(&up->rx_poll_timer, jiffies + up->rx_poll_timeout_jiffies);
+	spin_unlock_irqrestore(&port->lock, flags);
+}
+
 #ifdef CONFIG_ARCH_TEGRA
 void tegra_serial_handle_break(struct uart_port *p)
 {
@@ -2283,6 +2300,10 @@ dont_test_tx_en:
 		inb_p(icp);
 	}
 
+	if (port->enable_rx_poll_timer)
+		mod_timer(&up->rx_poll_timer,
+				jiffies + up->rx_poll_timeout_jiffies);
+
 	return 0;
 }
 
@@ -2783,6 +2804,12 @@ static void serial8250_config_port(struct uart_port *port, int flags)
 #endif
 		if (port->flags & UPF_BUGGY_UART)
 			port->handle_irq = serial8250_tegra_handle_irq;
+
+		if (port->enable_rx_poll_timer) {
+			setup_timer(&up->rx_poll_timer, serial8250_tegra_rx_poll_timer,
+					(unsigned long) up);
+			up->rx_poll_timeout_jiffies = msecs_to_jiffies(1000);
+		}
 	}
 
 	if (port->type != PORT_UNKNOWN && flags & UART_CONFIG_IRQ)
@@ -3393,6 +3420,8 @@ int serial8250_register_8250_port(struct uart_8250_port *up)
 			uart->dl_write = up->dl_write;
 		if (up->dma)
 			uart->dma = up->dma;
+		if (up->port.enable_rx_poll_timer)
+			uart->port.enable_rx_poll_timer = true;
 
 		if (serial8250_isa_config != NULL)
 			serial8250_isa_config(0, &uart->port,

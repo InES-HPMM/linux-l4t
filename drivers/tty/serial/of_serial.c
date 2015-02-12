@@ -120,6 +120,10 @@ static int of_platform_serial_setup(struct platform_device *ofdev,
 		cmp_ret = of_device_is_compatible(np, "nvidia,tegra210-uart");
 		if (!cmp_ret)
 			port->flags |= UPF_BUGGY_UART;
+		port->enable_rx_poll_timer = of_property_read_bool(np,
+				"enable-rx-poll-timer");
+		if (port->enable_rx_poll_timer)
+			dev_info(&ofdev->dev, "RX periodic polling enabled\n");
 	}
 
 	return 0;
