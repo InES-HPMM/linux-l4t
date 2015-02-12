@@ -328,6 +328,9 @@
 #define SDHCI_MAX_DIV_SPEC_200	256
 #define SDHCI_MAX_DIV_SPEC_300	2046
 
+/* Time (in milli sec) interval to run auto calibration */
+#define SDHCI_PERIODIC_CALIB_TIMEOUT	100
+
 /*
  * Host SDMA buffer boundary. Valid values from 4K to 512K in powers of 2.
  */

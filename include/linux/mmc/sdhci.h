@@ -159,6 +159,7 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_NON_STD_TUN_CARD_CLOCK		(1<<13)
 #define SDHCI_QUIRK2_NON_STD_TUNING_LOOP_CNTR		(1<<14)
 #define SDHCI_QUIRK2_NON_STD_RTPM			(1<<15)
+#define SDHCI_QUIRK2_PERIODIC_CALIBRATION		(1<<16)
 
 	unsigned int  acmd12_ctrl;
 	unsigned int  ier;
@@ -261,6 +262,8 @@ struct sdhci_host {
 	unsigned int		enable_sdhci_perf_stats;
 #endif
 	int			clk_gate_tmout_ticks;
+	ktime_t timestamp;
+	bool is_calibration_done;
 
 	struct task_struct *suspend_task;
 
