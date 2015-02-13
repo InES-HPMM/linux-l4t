@@ -489,7 +489,6 @@ static void debug_print_portsc(struct xhci_hcd *xhci)
 	}
 }
 static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra);
-static void tegra_xhci_reset_sspi(struct tegra_xhci_hcd *tegra, uint port);
 
 static bool is_otg_host(struct tegra_xhci_hcd *tegra)
 {
@@ -740,6 +739,56 @@ timeout:
 	reg_dump(dev, base, XUSB_CFG_ARU_MBOX_OWNER);
 	mutex_unlock(&tegra->mbox_lock);
 	return -ETIMEDOUT;
+}
+
+/**
+ * ack_fw_message_send_sync - send FW message and block until receiving FW ACK
+ *	This function will block until FW ack is received.
+ * @return	0 if FW returns MBOX_CMD_ACK (success)
+ *		-EINVAL if FW returns MBOX_CMD_NACK (failure)
+ *		-EPIPE if FW returns a mbox type other than ACK or NACK
+ *		-ETIMEOUT if either sending or waiting for FW ack times out
+ *		-ERESTARTSYS if the wait has been interrupted by a signal
+ */
+static int ack_fw_message_send_sync(struct tegra_xhci_hcd *tegra,
+	enum MBOX_CMD_TYPE type, u32 data)
+{
+	int ret = 0;
+
+	mutex_lock(&tegra->mbox_lock_ack);
+	tegra->fw_ack = 0;
+
+	/* send mbox message */
+	ret = fw_message_send(tegra, type, data);
+	if (ret)
+		goto out;
+
+	/* wait for FW ACK with 20ms timeout */
+	ret = wait_event_interruptible_timeout(tegra->fw_ack_wq,
+			tegra->fw_ack, msecs_to_jiffies(20));
+	if (ret == 0) {
+		dev_warn(&tegra->pdev->dev, "%s: timeout waiting for FW msg\n",
+				__func__);
+		ret = -ETIMEDOUT;
+		goto out;
+	} else if (ret == -ERESTARTSYS) {
+		dev_warn(&tegra->pdev->dev, "%s: interrupted when waiting\n",
+				__func__);
+		goto out;
+	}
+
+	/* we have got FW ACK here, check what FW returns */
+	dev_dbg(&tegra->pdev->dev, "%s: FW ack type:%u\n",
+			__func__, tegra->fw_ack);
+	if (tegra->fw_ack == MBOX_CMD_ACK)
+		ret = 0;
+	else if (tegra->fw_ack == MBOX_CMD_NACK)
+		ret = -EINVAL;
+	else
+		ret = -EPIPE; /* violation in mailbox protocol */
+out:
+	mutex_unlock(&tegra->mbox_lock_ack);
+	return ret;
 }
 
 /**
@@ -2381,30 +2430,16 @@ static void tegra_xhci_handle_otg_port_change(struct tegra_xhci_hcd *tegra)
 {
 	struct xhci_hcd *xhci = tegra->xhci;
 	struct platform_device *pdev = tegra->pdev;
-	unsigned long flags;
 
 	dev_info(&pdev->dev, "otg port pp %s\n",
 			tegra->otg_port_owned ? "on" : "off");
 
-	spin_lock_irqsave(&tegra->lock, flags);
-	if (tegra->otg_port_owned) {
-		/* We now own a ss otg port */
+	if (tegra->otg_port_owned)
+		schedule_work(&tegra->reset_otg_sspi_work);
+	else
 		xhci_hub_control(xhci->shared_hcd, ClearPortFeature,
 			USB_PORT_FEAT_POWER,
 			tegra->otg_portnum + 1, NULL, 0);
-
-		tegra_xhci_reset_sspi(tegra, tegra->otg_portnum);
-
-		xhci_hub_control(xhci->shared_hcd, SetPortFeature,
-			USB_PORT_FEAT_POWER,
-			tegra->otg_portnum + 1, NULL, 0);
-	} else {
-		/* We don't own ss otg port */
-		xhci_hub_control(xhci->shared_hcd, ClearPortFeature,
-			USB_PORT_FEAT_POWER,
-			tegra->otg_portnum + 1, NULL, 0);
-	}
-	spin_unlock_irqrestore(&tegra->lock, flags);
 }
 
 /* This function restores XUSB registers from device context */
@@ -3317,13 +3352,9 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 	/* get the mbox message from firmware */
 	fw_msg = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_DATA_OUT);
 
+	/* TODO: check data_in for the corresponding SW-initiated mbox */
 	data_in = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_DATA_IN);
-	if (data_in) {
-		dev_warn(&tegra->pdev->dev, "%s data_in 0x%x\n",
-			__func__, data_in);
-		mutex_unlock(&tegra->mbox_lock);
-		return;
-	}
+	dev_dbg(&tegra->pdev->dev, "%s data_in 0x%x\n", __func__, data_in);
 
 	/* get cmd type and cmd data */
 	tegra->cmd_type = (fw_msg >> CMD_TYPE_SHIFT) & CMD_TYPE_MASK;
@@ -3446,10 +3477,16 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 #endif
 
 	case MBOX_CMD_ACK:
-		xhci_dbg(xhci, "%s firmware responds with ACK\n", __func__);
-		break;
 	case MBOX_CMD_NACK:
-		xhci_warn(xhci, "%s firmware responds with NACK\n", __func__);
+		if (tegra->cmd_type == MBOX_CMD_ACK)
+			xhci_dbg(xhci, "%s firmware responds ACK\n", __func__);
+		else
+			xhci_warn(xhci, "%s firmware responds NACK\n",
+					__func__);
+
+		/* inform processes that needs FW ACK */
+		tegra->fw_ack = tegra->cmd_type;
+		wake_up_interruptible(&tegra->fw_ack_wq);
 		break;
 	default:
 		xhci_err(xhci, "%s: invalid cmdtype %d\n",
@@ -4079,19 +4116,26 @@ static int tegra_xhci_update_hub_device(struct usb_hcd *hcd,
 	return xhci_update_hub_device(hcd, hdev, tt, mem_flags);
 }
 
-static void tegra_xhci_reset_sspi(struct tegra_xhci_hcd *tegra, uint port)
+static void tegra_xhci_reset_otg_sspi_work(struct work_struct *work)
 {
-	struct device *dev = &tegra->pdev->dev;
-	u32 msec_to_wait = 10;
+	struct tegra_xhci_hcd *tegra = container_of(work, struct tegra_xhci_hcd,
+			reset_otg_sspi_work);
+	struct xhci_hcd *xhci = tegra->xhci;
 
-	dev_dbg(dev, "%s\n", __func__);
-	csb_write(tegra, XUSB_CSB_RST_SSPI, (1 << port));
-	while ((csb_read(tegra, XUSB_CSB_RST_SSPI) == (1 << port))
-			&& msec_to_wait--)
-		usleep_range(1000, 2000);
+	dev_dbg(&tegra->pdev->dev, "%s\n", __func__);
+	/* set PP=0 */
+	xhci_hub_control(xhci->shared_hcd, ClearPortFeature,
+		USB_PORT_FEAT_POWER,
+		tegra->otg_portnum + 1, NULL, 0);
 
-	dev_dbg(dev, "%s XUSB_CSB_RST_SSPI[%d] cleared\n", __func__, port);
-	csb_write(tegra, XUSB_FALC_SS_PVTPORTSC1 + (port * 0x80), 0x2b0);
+	/* reset OTG port SSPI */
+	ack_fw_message_send_sync(tegra, MBOX_CMD_RESET_SSPI,
+			BIT(tegra->otg_portnum + 1));
+
+	/* set PP=1 */
+	xhci_hub_control(xhci->shared_hcd, SetPortFeature,
+		USB_PORT_FEAT_POWER,
+		tegra->otg_portnum + 1, NULL, 0);
 }
 
 static const struct hc_driver tegra_plat_xhci_driver = {
@@ -5074,6 +5118,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	mutex_init(&tegra->sync_lock);
 	spin_lock_init(&tegra->lock);
 	mutex_init(&tegra->mbox_lock);
+	mutex_init(&tegra->mbox_lock_ack);
 
 	tegra->init_done = false;
 
@@ -5427,6 +5472,12 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 
 	/* do oc handling work */
 	INIT_WORK(&tegra->oc_handling_work, tegra_xhci_handle_oc_condition);
+
+	/* do otg port reset sspi work initialization */
+	INIT_WORK(&tegra->reset_otg_sspi_work, tegra_xhci_reset_otg_sspi_work);
+
+	/* FW mailbox ACK wait queue initialization */
+	init_waitqueue_head(&tegra->fw_ack_wq);
 
 	/* Register interrupt handler for SMI line to handle mailbox
 	 * interrupt from firmware

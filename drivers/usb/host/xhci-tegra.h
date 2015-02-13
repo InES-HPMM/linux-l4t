@@ -365,9 +365,12 @@ struct tegra_xhci_hcd {
 
 	/* mailbox variables */
 	struct mutex mbox_lock;
+	struct mutex mbox_lock_ack; /* for sending mbox which needs FW ACK */
 	u32 mbox_owner;
 	u32 cmd_type;
 	u32 cmd_data;
+	u32 fw_ack;		    /* storing the mbox cmd_type from FW */
+	wait_queue_head_t fw_ack_wq;/* sleep support for FW to SW mbox ack */
 
 	bool otg_port_owned;
 	bool otg_port_ownership_changed;
@@ -386,6 +389,7 @@ struct tegra_xhci_hcd {
 	struct work_struct host_elpg_exit_work;
 	struct work_struct xotg_vbus_work;
 	struct work_struct oc_handling_work;
+	struct work_struct reset_otg_sspi_work;
 
 	struct clk *host_clk;
 	struct clk *ss_clk;
