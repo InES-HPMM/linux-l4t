@@ -4923,7 +4923,7 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 		"disable-clock-gate");
 	plat->enable_hs533_mode =
 		of_property_read_bool(np, "nvidia,enable-hs533-mode");
-	of_property_read_u8(np, "default-drv-type", &plat->default_drv_type);
+	of_property_read_u32(np, "default-drv-type", &plat->default_drv_type);
 	plat->en_io_trim_volt = of_property_read_bool(np,
 			"nvidia,en-io-trim-volt");
 	plat->is_emmc = of_property_read_bool(np, "nvidia,is-emmc");
