@@ -292,7 +292,7 @@
 
 			uart2_cts_pg3 {
 				nvidia,pins = "uart2_cts_pg3";
-				nvidia,function = "ub3";
+				nvidia,function = "uartb";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -300,7 +300,7 @@
 
 			uart2_rts_pg2 {
 				nvidia,pins = "uart2_rts_pg2";
-				nvidia,function = "ub3";
+				nvidia,function = "uartb";
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -308,7 +308,7 @@
 
 			uart2_rx_pg1 {
 				nvidia,pins = "uart2_rx_pg1";
-				nvidia,function = "ub3";
+				nvidia,function = "uartb";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -316,7 +316,7 @@
 
 			uart2_tx_pg0 {
 				nvidia,pins = "uart2_tx_pg0";
-				nvidia,function = "ub3";
+				nvidia,function = "uartb";
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
