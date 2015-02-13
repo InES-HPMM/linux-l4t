@@ -291,7 +291,9 @@ static int tegra_wdt_resume(struct device *dev)
 }
 #endif
 
-SIMPLE_DEV_PM_OPS(tegra_wdt_pm_ops, tegra_wdt_suspend, tegra_wdt_resume);
+static const struct dev_pm_ops tegra_wdt_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(tegra_wdt_suspend, tegra_wdt_resume)
+};
 
 static const struct of_device_id tegra_wdt_match[] = {
 	{ .compatible = "nvidia,tegra-wdt", },
