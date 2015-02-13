@@ -89,22 +89,17 @@ static int extcon_id_notifications(struct notifier_block *nb,
 
 	spin_lock_irqsave(&xotg->lock, flags);
 
-	if (extcon_get_cable_state(xotg->id_extcon_dev, "USB-Host")
-			&& !xotg->id_grounded) {
+	if (extcon_get_cable_state(xotg->id_extcon_dev, "USB-Host")) {
 		xotg_info(xotg->dev, "USB_ID pin grounded\n");
 		xotg->id_grounded = true;
 		xotg->phy.state = OTG_STATE_A_IDLE;
-	} else if (xotg->id_grounded) {
+	} else {
 		xotg_info(xotg->dev, "USB_ID pin floating\n");
 		xotg->id_grounded = false;
 		xotg->phy.state = OTG_STATE_B_IDLE;
-	} else {
-		xotg_info(xotg->dev, "USB_ID pin status unchanged\n");
-		goto done;
 	}
 
 	schedule_work(&xotg->vbus_work);
-done:
 	spin_unlock_irqrestore(&xotg->lock, flags);
 	return NOTIFY_DONE;
 }
@@ -172,19 +167,24 @@ static int xotg_set_host(struct usb_otg *otg, struct usb_bus *host)
 {
 	struct xotg *xotg;
 
-	if (!otg || !host)
-		return -1;
+	if (!otg)
+		return -ENODEV;
 
-	xotg = container_of(otg->phy, struct xotg, phy);
-	xotg_info(xotg->dev, "host = 0x%p\n", host);
+	if (host) {
+		xotg = container_of(otg->phy, struct xotg, phy);
+		xotg_info(xotg->dev, "host = 0x%p\n", host);
 
-	otg->host = host;
-	/* set the hs_otg_port here for the usbcore/HCD to be able
-	 * to access it by setting it in the usb_bus structure
-	 */
-	otg->host->otg_port = xotg->hs_otg_port + 1;
+		otg->host = host;
+		/* set the hs_otg_port here for the usbcore/HCD to be able
+		 * to access it by setting it in the usb_bus structure
+		 */
+		otg->host->otg_port = xotg->hs_otg_port + 1;
 
-	extcon_id_notifications(&xotg->id_extcon_nb, 0, NULL);
+		extcon_id_notifications(&xotg->id_extcon_nb, 0, NULL);
+	} else {
+		otg->host = NULL;
+		otg->host->otg_port = 0;
+	}
 	return 0;
 }
 
@@ -193,17 +193,22 @@ static int xotg_set_xhci_host(struct usb_otg *otg, struct usb_bus *host)
 {
 	struct xotg *xotg;
 
-	if (!otg || !host)
-		return -1;
+	if (!otg)
+		return -ENODEV;
 
-	xotg = container_of(otg->phy, struct xotg, phy);
-	xotg_info(xotg->dev, "xhcihost = 0x%p\n", host);
+	if (host) {
+		xotg = container_of(otg->phy, struct xotg, phy);
+		xotg_info(xotg->dev, "xhcihost = 0x%p\n", host);
 
-	otg->xhcihost = host;
-	/* set the otg_port here for the usbcore/HCD to be able
-	 * to access it by setting it in the usb_bus structure
-	 */
-	otg->xhcihost->otg_port = xotg->ss_otg_port + 1;
+		otg->xhcihost = host;
+		/* set the otg_port here for the usbcore/HCD to be able
+		 * to access it by setting it in the usb_bus structure
+		 */
+		otg->xhcihost->otg_port = xotg->ss_otg_port + 1;
+	} else {
+		otg->xhcihost = NULL;
+		otg->xhcihost->otg_port = 0;
+	}
 	return 0;
 }
 

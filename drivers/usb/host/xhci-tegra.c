@@ -5413,6 +5413,8 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	if (tegra->transceiver) {
 		usb_put_phy(tegra->transceiver);
 		usb_unregister_notifier(tegra->transceiver, &tegra->otgnb);
+		otg_set_host(tegra->transceiver->otg, NULL);
+		otg_set_xhci_host(tegra->transceiver->otg, NULL);
 	}
 
 	tegra_usb2_clocks_deinit(tegra);
