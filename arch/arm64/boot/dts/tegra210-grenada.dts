@@ -32,6 +32,8 @@
 / {
 	model = "grenada";
 	compatible = "nvidia,grenada", "nvidia,tegra210";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,dtbbuildtime = __DATE__, __TIME__;
 
 	chosen {
 		bootargs ="mem=1024M@2048M console=ttyS0,115200 earlyprintk=uart8250-32bit,0x70006000";
