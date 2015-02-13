@@ -1,7 +1,7 @@
 /*
  * CY8C4014 LED chip driver
  *
- * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -167,6 +167,9 @@ static int cy8c_led_probe(struct i2c_client *client,
 	data = devm_kzalloc(&client->dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
+
+	/* enable print in show/get */
+	data->client = client;
 
 	of_led_parse_pdata(client, data);
 
