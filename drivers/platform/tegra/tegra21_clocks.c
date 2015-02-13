@@ -7516,9 +7516,6 @@ static struct clk tegra_pll_p_out5 = {
 static struct clk tegra_pll_p_out_sor = {
 	.name      = "sor_safe",
 	.clk_id    = TEGRA210_CLK_ID_PLL_P_OUT_SOR,
-	.lookup    = {
-		.dev_id = "sor_safe",
-	},
 	.ops       = &tegra_periph_clk_ops,
 	.inputs    = mux_pllp,
 	.flags     = PERIPH_NO_RESET,
@@ -8374,9 +8371,6 @@ static struct clk_mux_sel mux_plldp[] = {
 
 static struct clk tegra_clk_sor0_brick = {
 	.name = "sor0_brick",
-	.lookup = {
-		.dev_id = "sor0_brick",
-	},
 	.ops = &tegra_sor_brick_ops,
 	.max_rate = 600000000,
 	.inputs = mux_plldp,
@@ -8391,9 +8385,6 @@ static struct clk_mux_sel mux_pllp_sor_sor0_brick[] = {
 
 static struct clk tegra_clk_sor1_src = {
 	.name = "sor1_src",
-	.lookup = {
-		.dev_id = "sor1_src",
-	},
 	.ops = &tegra_periph_clk_ops,
 	.reg = 0x410,
 	.max_rate = 600000000,
@@ -8409,9 +8400,6 @@ static struct clk_mux_sel mux_plldp_sor1_src[] = {
 
 static struct clk tegra_clk_sor1_brick = {
 	.name = "sor1_brick",
-	.lookup = {
-		.dev_id = "sor1_brick",
-	},
 	.ops = &tegra_sor_brick_ops,
 	.max_rate = 600000000,
 	.inputs = mux_plldp_sor1_src,
@@ -9340,8 +9328,8 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	 38400000, mux_clk_m,			PERIPH_ON_APB,	0, &tegra_dtv_clk_ops),
 	PERIPH_CLK("disp1",	"tegradc.0",		NULL,	27,	0x138, 1500000000, mux_pllp_plld_plld2_clkm,	MUX, 0),
 	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c, 1500000000, mux_pllp_plld_plld2_clkm,	MUX, 0),
-	PERIPH_CLK_EX("sor0",	"sor0",			NULL,	182,	0x414,	600000000, mux_pllp_sor_sor0_brick,		MUX,	0, &tegra_sor0_clk_ops),
-	PERIPH_CLK_EX("sor1",	"sor1",			NULL,	183,	0x410,	600000000, mux_pllp_sor_sor1_brick_sor1_src, 	MUX,	0, &tegra_sor1_clk_ops),
+	PERIPH_CLK_EX("sor0",	NULL,			"sor0",	182,	0x414,	600000000, mux_pllp_sor_sor0_brick,		MUX,	0, &tegra_sor0_clk_ops),
+	PERIPH_CLK_EX("sor1",	NULL,			"sor1",	183,	0x410,	600000000, mux_pllp_sor_sor1_brick_sor1_src,	MUX,	0, &tegra_sor1_clk_ops),
 	PERIPH_CLK_EX("dpaux",	"dpaux",		NULL,	181,	0,	 24000000, mux_pllp,			0, 0, &tegra_dpaux_clk_ops),
 	PERIPH_CLK_EX("dpaux1",	"dpaux1",		NULL,	207,	0,	 24000000, mux_pllp,			0, 0, &tegra_dpaux_clk_ops),
 
