@@ -69,6 +69,9 @@ _________________________________________________________
 #define ADDR_REG_PAIRS 4
 #define ADDR_REGS 8
 
+#define AFREADY_LOOP_MAX 100
+#define AFREADY_LOOP_MS 4
+
 /* PTM tracer state */
 struct tracectx {
 	struct device	*dev;
@@ -714,7 +717,7 @@ static ssize_t trc_read(struct file *file, char __user *data,
 /* this function copies traces from the ETF to an array */
 static ssize_t trc_fill_buf(struct tracectx *t)
 {
-	int rwp, count, overflow;
+	int rwp, count = 0, overflow;
 	int trig_stat, tmcready;
 	u64 rwp64;
 	u32 pfn;
@@ -737,22 +740,28 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 				trig_stat = etr_readl(t, CXTMC_REGS_STS_0);
 				trig_stat = (trig_stat >> 1) & 0x1;
 			}
-			tmcready = 0;
-			while (tmcready == 0) {
+			do {
 				trig_stat = etr_readl(t, CXTMC_REGS_STS_0);
 				tmcready = (trig_stat >> 2) & 0x1;
-			}
+				if (++count > AFREADY_LOOP_MAX)
+					break;
+				if (!tmcready)
+					mdelay(AFREADY_LOOP_MS);
+			} while (!tmcready);
 		} else {
 			trig_stat = 0;
 			while (trig_stat == 0) {
 				trig_stat = etf_readl(t, CXTMC_REGS_STS_0);
 				trig_stat = (trig_stat >> 1) & 0x1;
 			}
-			tmcready = 0;
-			while (tmcready == 0) {
+			do {
 				trig_stat = etf_readl(t, CXTMC_REGS_STS_0);
 				tmcready = (trig_stat >> 2) & 0x1;
-			}
+				if (++count > AFREADY_LOOP_MAX)
+					break;
+				if (!tmcready)
+					mdelay(AFREADY_LOOP_MS);
+			} while (!tmcready);
 		}
 	} else {
 		if (t->etr == 1) {
@@ -763,12 +772,14 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 			etr_writel(t, 0x1041, CXTMC_REGS_FFCR_0);
 			dsb();
 			isb();
-			tmcready = 0;
-			while (tmcready == 0) {
-				tmcready = etr_readl(t,
-					CXTMC_REGS_STS_0);
+			do {
+				tmcready = etr_readl(t, CXTMC_REGS_STS_0);
 				tmcready = (tmcready >> 2) & 0x1;
-			}
+				if (++count > AFREADY_LOOP_MAX)
+					break;
+				if (!tmcready)
+					mdelay(AFREADY_LOOP_MS);
+			} while (!tmcready);
 		} else {
 			/* Manual flush and stop */
 			etf_writel(t, 0x1001, CXTMC_REGS_FFCR_0);
@@ -777,12 +788,14 @@ static ssize_t trc_fill_buf(struct tracectx *t)
 			etf_writel(t, 0x1041, CXTMC_REGS_FFCR_0);
 			dsb();
 			isb();
-			tmcready = 0;
-			while (tmcready == 0) {
-				tmcready = etf_readl(t,
-					CXTMC_REGS_STS_0);
+			do {
+				tmcready = etf_readl(t, CXTMC_REGS_STS_0);
 				tmcready = (tmcready >> 2) & 0x1;
-			}
+				if (++count > AFREADY_LOOP_MAX)
+					break;
+				if (!tmcready)
+					mdelay(AFREADY_LOOP_MS);
+			} while (!tmcready);
 		}
 	}
 
