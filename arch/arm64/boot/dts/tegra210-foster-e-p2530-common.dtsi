@@ -55,6 +55,10 @@
 		status = "disabled";
 	};
 
+	sdhci@700b0000 {
+		default-drv-type = <1>;
+	};
+
 	ahub {
 		i2s@702d1100 {
 			pinctrl-names = "dap_active", "dap_inactive";
