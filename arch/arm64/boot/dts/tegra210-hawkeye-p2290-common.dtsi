@@ -538,7 +538,7 @@
 			status = "okay";
 			/* TODO: Needed? */
 			/* dvdd_lcd-supply = <&vdd_disp_3v3>; */
-			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			/* nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>; */
 			nvidia,emc-clk-rate = <204000000>;
 			nvidia,cmu-enable = <1>;
 			nvidia,fb-bpp = <32>; /* bits per pixel */
