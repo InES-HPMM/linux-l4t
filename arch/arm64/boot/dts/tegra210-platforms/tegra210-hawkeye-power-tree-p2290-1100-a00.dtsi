@@ -121,4 +121,24 @@
 			avdd_dsi_csi-supply = <&mipi_1v2>;
 		};
 	};
+
+	power-detect {
+		pwrdet-sys-supply = <&max77620_sd3>;
+		pwrdet-uart-supply = <&max77620_sd3>;
+		pwrdet-audio-supply = <&max77620_sd3>;
+		pwrdet-cam-supply = <&max77620_sd3>;
+		pwrdet-pex-ctrl-supply = <&max77620_sd3>;
+		pwrdet-sdmmc1-supply = <&max77620_sd3>;
+		pwrdet-sdmmc3-supply = <&max77620_ldo2>;
+		pwrdet-sdmmc4-supply = <&max77620_sd3>;
+		pwrdet-audio-hv-supply = <&max77620_sd3>;
+		pwrdet-debug-supply = <&max77620_sd3>;
+		pwrdet-dmic-supply = <&max77620_sd3>;
+		pwrdet-gpio-supply = <&max77620_sd3>;
+		pwrdet-spi-supply = <&max77620_sd3>;
+		pwrdet-spi-hv-supply = <&max77620_sd3>;
+		pwrdet-sdmmc2-supply = <&max77620_sd3>;
+		pwrdet-dp-supply = <&max77620_sd3>;
+	};
+
 };
