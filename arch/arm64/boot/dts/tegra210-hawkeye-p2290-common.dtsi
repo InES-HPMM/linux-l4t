@@ -82,7 +82,7 @@
 			   compatible = "ti,lp8557";
 			   reg = <0x2c>;
 
-			   bl-name = "lp8557-backlight";
+			   bl-name = "pwm-backlight"; /* Match liblights naming expectations */
 			   init-brt = /bits/ 8 <0xFF>; /* Max brightness */
 			   dev-ctrl = /bits/ 8 <0x00>; /* PWM */
 			   pwm-period = <29334>;
