@@ -191,7 +191,8 @@ u64 tegra_smmu_of_get_swgids(struct device *dev,
 
 	if (swgids_is_error(swgids)) {
 		dev_notice(dev,
-			   "No DT found, got swgids from fixup(%llx)\n", fixup);
+			"No iommus property found in DT node, got swgids from fixup(%llx)\n",
+			fixup);
 		return fixup;
 	}
 
