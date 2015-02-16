@@ -400,6 +400,13 @@ enum {
 	AHCI_PCI_BAR = 5,
 };
 
+enum port_runtime_status {
+	PORT_RUNTIME_ACTIVE = 1,
+	PORT_RUNTIME_PARTIAL = 2,
+	PORT_RUNTIME_SLUMBER = 6,
+	PORT_RUNTIME_DEVSLP = 8,
+};
+
 enum port_idle_status {
 	PORT_IS_NOT_IDLE,
 	PORT_IS_IDLE,
@@ -2073,7 +2080,50 @@ static int tegra_ahci_port_suspend(struct ata_port *ap, pm_message_t mesg)
 {
 	struct ata_host *host = ap->host;
 	struct tegra_ahci_host_priv *tegra_hpriv = host->private_data;
+	struct ata_link *link;
+	struct ata_device *dev;
 	int ret = 0;
+	u32 port_status = 0;
+	int enter_slumber_timeout = 50;
+	int i;
+
+	ata_for_each_link(link, ap, PMP_FIRST) {
+		if (link->flags & ATA_LFLAG_NO_LPM) {
+			ata_link_info(link, "No LPM on this link\n");
+			continue;
+		}
+		ata_for_each_dev(dev, link, ENABLED) {
+			bool hipm = ata_id_has_hipm(dev->id);
+			bool dipm = ata_id_has_dipm(dev->id) &&
+				(!(link->ap->flags & ATA_FLAG_NO_DIPM));
+
+			if (hipm || dipm) {
+				for (i = 0; i < enter_slumber_timeout; i++) {
+					port_status =
+						tegra_ahci_get_port_status();
+					port_status =
+						(port_status & 0xF00) >> 8;
+					if (port_status < PORT_RUNTIME_SLUMBER)
+						mdelay(10);
+					else
+						break;
+				}
+
+				if (port_status < PORT_RUNTIME_SLUMBER) {
+					ata_link_err(link,
+						"Link didn't enter LPM\n");
+					return -EBUSY;
+				} else {
+					port_status = 0;
+					ata_link_info(link,
+							"Link entered LPM\n");
+				}
+			} else {
+				ata_dev_info(dev,
+						"does not support HIPM/DIPM\n");
+			}
+		}
+	}
 
 	ret = ahci_ops.port_suspend(ap, mesg);
 
@@ -2155,12 +2205,8 @@ static int tegra_ahci_runtime_suspend(struct device *dev)
 	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	int err = 0;
 	bool pg_ok;
-	u32 port_status = 0;
 
-	port_status = tegra_ahci_get_port_status();
-	port_status = (port_status & 0xF00) >> 8;
-
-	if (tegra_ahci_are_all_ports_idle(host) && port_status >= 0x6) {
+	if (tegra_ahci_are_all_ports_idle(host)) {
 		/* if all ports are in idle, do power-gate */
 #ifdef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
 		pg_ok = tegra_ahci_power_gate(host);
