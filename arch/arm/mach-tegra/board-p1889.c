@@ -41,12 +41,13 @@
 
 #define EXTERNAL_PMU_INT_N_WAKE         18
 
-static __initdata struct tegra_clk_init_table e1889_i2s_clk_table[] = {
+static __initdata struct tegra_clk_init_table p1889_clk_init_table[] = {
 /*
  * audio clock tables based on baseboard revision. These rates will be set
  * early on during boot up. Also, they will remain fixed throughout.
  */
 /*         clock        parent          rate            enable (always-on) */
+	{ "blink",	"clk_32k",		32768,	true},
 	{ "i2s4_sync",	NULL,		12288000,	false},
 	{ "audio4",	"i2s4_sync",	12288000,	false},
 	{ "audio4_2x",	"audio4",	12288000,	false},
@@ -65,10 +66,10 @@ static __initdata struct tegra_clk_init_table e1889_i2s_clk_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-static int __init e1889_fixed_target_rate_init(void)
+static int __init p1889_fixed_target_rate_init(void)
 {
 
-	struct tegra_clk_init_table *clk_table = e1889_i2s_clk_table;
+	struct tegra_clk_init_table *clk_table = p1889_clk_init_table;
 
 	/* Set rate of audio clocks */
 	tegra_clk_init_from_table(clk_table);
@@ -145,14 +146,14 @@ static struct platform_device *p1889_devices[] __initdata = {
 
 static void __init tegra_p1889_early_init(void)
 {
-	struct tegra_clk_init_table *clk_table = e1889_i2s_clk_table;
+	struct tegra_clk_init_table *clk_table = p1889_clk_init_table;
 
 	/* Early init for vcm30t124 MCM */
 	tegra_vcm30_t124_early_init();
 
 	/* Board specific clock POR */
 	tegra_clk_init_from_table(clk_table);
-	e1889_fixed_target_rate_init();
+	p1889_fixed_target_rate_init();
 
 	tegra_clk_verify_parents();
 
