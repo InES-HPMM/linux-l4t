@@ -130,6 +130,21 @@
 		   };
 	};
 
+	adma@702e2000  {
+		interrupts = <0 24 0x04
+			      0 25 0x04
+			      0 26 0x04
+			      0 27 0x04
+			      0 28 0x04
+			      0 29 0x04
+			      0 30 0x04
+			      0 31 0x04
+			      0 32 0x04
+			      0 33 0x04>;
+		dma-channels = <10>;
+		status = "okay";
+	};
+
 	spi@7000d400 {
 		status = "okay";
 		earSmart: earSmart-codec@0 {
