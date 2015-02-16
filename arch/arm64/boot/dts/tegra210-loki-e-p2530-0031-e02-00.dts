@@ -6,7 +6,7 @@
 
 	i2c@7000c400 {
 		ads1015@4a {
-			ti,adc-valid-threshold-ranges= <(-20)     76
+			ti,adc-valid-threshold-ranges= <(-100)     76
 							200   309
 							1049  1263
 							673   848
@@ -16,7 +16,7 @@
 	};
 	extcon {
 		extcon@1 {
-			extcon-adc-jack,states = <0x1    (-20)     76
+			extcon-adc-jack,states = <0x1    (-100)     76
 						  0x2    200   309
 						  0x4    1049  1263
 						  0x8    673   848
