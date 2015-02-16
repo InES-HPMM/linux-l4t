@@ -152,6 +152,15 @@
 		};
 	};
 
+	modem {
+		compatible = "nvidia,icera-i500";
+		/* XHCI_UTMI phy type */
+		nvidia,phy-type = <2>;
+		nvidia,mdm-en-gpio = <&tca6408_20 0 GPIO_ACTIVE_HIGH>;
+		nvidia,reset-gpio = <&gpio TEGRA_GPIO(R, 1) GPIO_ACTIVE_LOW>;
+		status = "okay";
+	};
+
 	serial@70006000 {
 		status = "okay";
 	};
