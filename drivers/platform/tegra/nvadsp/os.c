@@ -111,6 +111,10 @@ struct nvadsp_os_data {
 	struct mutex		fw_load_lock;
 	bool			os_running;
 	struct mutex		os_run_lock;
+	dma_addr_t		adsp_os_addr;
+	size_t			adsp_os_size;
+	dma_addr_t		app_alloc_addr;
+	size_t			app_size;
 };
 
 static struct nvadsp_os_data priv;
@@ -601,8 +605,8 @@ static int allocate_memory_for_adsp_os(void)
 	int ret = 0;
 
 #if defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
-	addr = ADSP_SMMU_LOAD_ADDR;
-	size = ADSP_SMMU_SIZE;
+	addr = priv.adsp_os_addr;
+	size = priv.adsp_os_size;
 	dram_va = dma_alloc_at_coherent(dev, size, &addr, GFP_KERNEL);
 	if (!dram_va) {
 		dev_err(dev, "unable to allocate SMMU pages\n");
@@ -635,9 +639,9 @@ end:
 static void deallocate_memory_for_adsp_os(struct device *dev)
 {
 #if defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
-	void *va = nvadsp_da_to_va_mappings(ADSP_SMMU_LOAD_ADDR,
-			ADSP_SMMU_SIZE);
-	dma_free_coherent(dev, ADSP_SMMU_SIZE, va, ADSP_SMMU_LOAD_ADDR);
+	void *va = nvadsp_da_to_va_mappings(priv.adsp_os_addr,
+			priv.adsp_os_size);
+	dma_free_coherent(dev, priv.adsp_os_addr, va, priv.adsp_os_size);
 #endif
 }
 
@@ -698,7 +702,7 @@ int nvadsp_os_load(void)
 		goto deallocate_os_memory;
 	}
 
-	ret = dram_app_mem_init(ADSP_APP_MEM_SMMU_ADDR, ADSP_APP_MEM_SIZE);
+	ret = dram_app_mem_init(priv.app_alloc_addr, priv.app_size);
 	if (ret) {
 		dev_err(dev, "Memory allocation dynamic apps failed\n");
 		goto deallocate_os_memory;
@@ -1117,6 +1121,11 @@ int __init nvadsp_os_probe(struct platform_device *pdev)
 #endif
 	priv.misc_base = drv_data->base_regs[AMISC];
 	priv.dram_region = drv_data->dram_region;
+
+	priv.adsp_os_addr = drv_data->adsp_mem[ADSP_OS_ADDR];
+	priv.adsp_os_size = drv_data->adsp_mem[ADSP_OS_SIZE];
+	priv.app_alloc_addr = drv_data->adsp_mem[ADSP_APP_ADDR];
+	priv.app_size = drv_data->adsp_mem[ADSP_APP_SIZE];
 
 	ret = devm_request_irq(dev, wdt_virq, adsp_wdt_handler,
 			IRQF_TRIGGER_RISING, "adsp watchdog", &priv);

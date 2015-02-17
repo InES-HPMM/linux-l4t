@@ -4,13 +4,18 @@ Tegra ADSP bindings
 The Audio DSP (ADSP) handles audio related modules.
 
 Required properties:
- - compatible:	should be set to "nvidia,tegra210-adsp" for t210
-				&
-		should be set to "nvidia,tegra18x-adsp" for t186
- - reg:		should contain ADSP registers' location and length
+ - compatible:		should be set to "nvidia,tegra210-adsp" for t210
+ - reg:			should contain ADSP registers' location and length
+ - nvidia,adsp_mem:	should contain Memory address and sizes of ADSP OS, APP, ARAM
 
 Example:
 	adsp {
-		compatible = "nvidia,tegra210-adsp";
-		reg = <0x70080000 0x1000>;
+	     compatible = "nvidia,tegra210-adsp";
+	     reg = <0x0 0x702ef000 0x0 0x1000>, /* AMC */
+		   <0x0 0x702ec000 0x0 0x2000>, /* AMISC */
+		   <0x0 0x702ee000 0x0 0x1000>, /* ABRIDGE */
+		   <0x0 0x01000000 0x0 0x6f2c0000>, /* DRAM MAP1 */
+		   <0x0 0x70300000 0x0 0x8fd00000>; /* DRAM MAP2 */
+	     nvidia,adsp_mem = <0x80300000 0x01000000>, /* ADSP OS */
+			       <0x80B00000 0x00800000>; /* ADSP APP */
 	};
