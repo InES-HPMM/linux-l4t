@@ -149,6 +149,10 @@
 		PMIC-Die-max77621-1 {
 			status = "okay";
 		};
+
+                PMIC-Die-tps61280 {
+                        status = "okay";
+                };
 	};
 
 	sound {
