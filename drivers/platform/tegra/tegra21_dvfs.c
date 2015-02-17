@@ -106,12 +106,6 @@ static struct dvfs_rail *tegra21_dvfs_rails[] = {
 	&tegra21_dvfs_rail_vdd_gpu,
 };
 
-void __init tegra21x_vdd_cpu_align(int step_uv, int offset_uv)
-{
-	tegra21_dvfs_rail_vdd_cpu.alignment.step_uv = step_uv;
-	tegra21_dvfs_rail_vdd_cpu.alignment.offset_uv = offset_uv;
-}
-
 /* FIXME: Remove after bringup */
 #define BRINGUP_CVB_V_MARGIN	25
 #define BRINGUP_CVB_V_MARGIN_EX	5
