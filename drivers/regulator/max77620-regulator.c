@@ -460,6 +460,9 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 	u8 val, mask;
 	int ret;
 
+	if (!ridata)
+		return 0;
+
 	/* Update power mode */
 	ret = max77620_regulator_get_power_mode(reg, id);
 	if (ret < 0)
@@ -709,6 +712,10 @@ static int max77620_get_regulator_dt_data(struct platform_device *pdev,
 
 		reg_node = max77620_regulator_matches[id].of_node;
 		reg_pdata->reg_idata = max77620_regulator_matches[id].init_data;
+
+		if (!reg_pdata->reg_idata)
+			continue;
+
 		reg_pdata->glpm_enable = of_property_read_bool(reg_node,
 					"maxim,enable-group-low-power");
 		reg_pdata->en2_ctrl_sd0 = of_property_read_bool(reg_node,
