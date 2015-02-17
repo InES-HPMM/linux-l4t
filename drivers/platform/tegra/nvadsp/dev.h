@@ -45,6 +45,15 @@ enum {
 	ADSP_MAX_DRAM_MAP
 };
 
+enum adsp_mem_dt {
+	ADSP_LOAD_ADDR,
+	ADSP_OS_SIZE,
+	ADSP_APP_ADDR,
+	ADSP_APP_SIZE,
+	ADSP_MEM_END,
+};
+
+
 #define AMISC_REGS	0x2000
 
 #define AMISC_ADSP_L2_REGFILEBASE	0x10
@@ -102,6 +111,7 @@ struct nvadsp_drv_data {
 #ifdef CONFIG_TEGRA_ADSP_ACTMON
 	bool actmon_initialized;
 #endif
+	u32 adsp_mem[ADSP_MEM_END];
 };
 
 #define ADSP_CONFIG	0x04

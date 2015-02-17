@@ -361,15 +361,37 @@ read_again:
 }
 EXPORT_SYMBOL(nvadsp_get_timestamp_counter);
 
+static int __init nvadsp_parse_dt(struct platform_device *pdev)
+{
+	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
+	struct device *dev = &pdev->dev;
+	struct device_node *of_node;
+	u32 *adsp_mem;
+	int iter;
+
+	adsp_mem = drv_data->adsp_mem;
+	of_node = dev->of_node;
+
+	for (iter = 0; iter < ADSP_MEM_END; iter++) {
+		if (of_property_read_u32_index(dev->of_node, "nvidia,adsp_mem",
+			iter, &adsp_mem[iter])) {
+			dev_err(dev, "adsp dt %d not found\n", iter);
+			return -EINVAL;
+		}
+	}
+	return 0;
+
+}
+
 static int __init nvadsp_probe(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv_data;
+	struct device *dev = &pdev->dev;
 	struct resource *res = NULL;
 	void __iomem *base = NULL;
 	int ret = 0;
 	int iter;
 	int dram_iter;
-	struct device *dev = &pdev->dev;
 
 	dev_info(dev, "in probe()...\n");
 
@@ -380,6 +402,9 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto out;
 	}
+
+	platform_set_drvdata(pdev, drv_data);
+	nvadsp_parse_dt(pdev);
 
 #if CONFIG_DEBUG_FS
 	if (adsp_debug_init(drv_data))
