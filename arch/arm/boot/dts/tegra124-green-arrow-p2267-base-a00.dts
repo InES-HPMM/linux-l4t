@@ -22,6 +22,7 @@
 #include "tegra124-platforms/tegra124-green-arrow-p2267-powertree-e1936-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-keys-p1761-1270-a03.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-touch.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-p2267-sensor-1000-a00.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 Green Arrow FFD";
