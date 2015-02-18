@@ -404,7 +404,7 @@
 						regulator-max-microvolt = <3000000>;
 					};
 
-					ldo4 {
+					ldo4_reg: ldo4 {
 						regulator-name = "avdd-cam1";
 						regulator-min-microvolt = <2700000>;
 						regulator-max-microvolt = <2700000>;
@@ -458,7 +458,7 @@
 						regulator-max-microvolt = <1800000>;
 					};
 
-					ldo7 {
+					ldo7_reg: ldo7 {
 						regulator-name = "avdd-cam-af";
 						regulator-min-microvolt = <2700000>;
 						regulator-max-microvolt = <2700000>;

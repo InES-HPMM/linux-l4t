@@ -225,5 +225,26 @@
 		status = "disabled";
 	};
 
+	camera-pcl {
+		profiles {
+			ov5693_1: ov5693@2_0010 {
+				use_of_node = "yes";
+				dev_name = "ov5693";
+				num = <0>;
+				avdd_ov5693-supply = <&ldo4_reg>;
+				vdd_af1-supply = <&ldo7_reg>;
+				dovdd-supply = <&vdd_cam_af>;
+				reset-gpios = <&gpio TEGRA_GPIO(BB, 5) 0>;
+			};
+			ov5693_2: ov5693@2_0036 {
+				use_of_node = "yes";
+				dev_name = "ov5693";
+				num = <1>;
+				vana-supply = <&ldo7_reg>;
+				vif-supply = <&vdd_cam_af>;
+				cam2-gpios = <&gpio TEGRA_GPIO(BB, 6) 0>;
+			};
+		};
+	};
 };
 

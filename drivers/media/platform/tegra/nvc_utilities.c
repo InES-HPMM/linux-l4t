@@ -58,6 +58,8 @@ static void nvc_imager_dump(
 	pr_info("    mclk_on_vgp0:           %d\n", cap->mclk_on_vgp0);
 	pr_info("    min_blank_time_width:   %d\n", cap->min_blank_time_width);
 	pr_info("    min_blank_time_height:  %d\n", cap->min_blank_time_height);
+	pr_info("    focuser_guid:           %llx\n", cap->focuser_guid);
+	pr_info("    torch_guid:             %llx\n", cap->torch_guid);
 
 	if (stc == NULL)
 		return;
@@ -173,6 +175,11 @@ int nvc_imager_parse_caps(struct device_node *np,
 		imager_cap->adjustable_flash_timing = (u8)temp_prop_read;
 	}
 	imager_cap->is_hdr = of_property_read_bool(np, "cap-hdr-enabled");
+	of_property_read_u64(np, "cap-focuser_guid",
+				&imager_cap->focuser_guid);
+	of_property_read_u64(np, "cap-torch_guid",
+				&imager_cap->torch_guid);
+
 	if (imager_static == NULL)
 		goto imager_parse_caps_done;
 
