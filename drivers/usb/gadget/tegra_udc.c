@@ -1669,9 +1669,15 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		    (udc->connect_type == CONNECT_TYPE_ACA_RID_B) ||
 		    (udc->connect_type == CONNECT_TYPE_ACA_RID_C))
 			dr_controller_run(udc);
-	} else if (udc->vbus_active && is_active && udc->support_aca_rid)
-		/* handle rid_b -> rid_c, rid_c/rid_b -> vbus, vbus -> rid_c/rid_b */
-		tegra_detect_cable_type(udc);
+	} else if (udc->vbus_active && is_active && udc->support_aca_rid) {
+		/* handle rid_b -> rid_c */
+		/* rid_c/rid_b -> vbus */
+		/* vbus -> rid_c/rid_b */
+
+		/* If MAXIM do not call cable_detect. resets vbus */
+		if (udc->connect_type != CONNECT_TYPE_DCP_MAXIM)
+			tegra_detect_cable_type(udc);
+	}
 	mutex_unlock(&udc->sync_lock);
 
 	return 0;
