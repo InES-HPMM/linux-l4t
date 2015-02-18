@@ -61,6 +61,18 @@
 	chosen {
 	};
 
+	gpio@6000d000 {
+		default {
+			gpio-output-high = <TEGRA_GPIO(DD, 0)>;
+		};
+
+		uart_over_jack {
+			status = "disabled";
+			gpio-output-low = <TEGRA_GPIO(DD, 0)>;
+			dt-override-status-odm-data = <0x80000000 0x80000000>;
+		};
+	};
+
 	serial@70006000 {
 		compatible = "nvidia,tegra210-uart", "nvidia,tegra114-hsuart";
 		console-port;
