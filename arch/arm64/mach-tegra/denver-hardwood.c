@@ -82,6 +82,7 @@ static int TRACER_IRQS[] = { 48, 54 };
 static int osdump_irq = 54;
 
 static u64 osdump_version;
+static bool one_irq_per_cpu;
 
 static char *tracer_names;
 static u64 tracer_names_size;
@@ -97,6 +98,8 @@ static DEFINE_MUTEX(hardwood_init_lock);
 /* Thread for probing buffers when some CPUs are hot-unplugged */
 static struct task_struct *agent_thread;
 static bool agent_stopped;
+static bool agent_signaled;
+static spinlock_t agent_lock;
 
 static void hardwood_init_agent(void);
 
@@ -111,17 +114,21 @@ static irqreturn_t hardwood_handler(int irq, void *dev_id)
 	struct hardwood_device *dev = (struct hardwood_device *) dev_id;
 
 	pr_debug("IRQ%d received\n", irq);
-
-	if (num_online_cpus() == N_CPU) {
-		/* All CPUs are online, waking up target CPU */
+	if (one_irq_per_cpu && num_online_cpus() == N_CPU) {
+		/* All CPUs online and IRQ is per-cpu; wake target CPU */
 		dev->signaled = 1;
 		wake_up_interruptible(&dev->wait_q);
 		pr_debug("CPU%d is interrupted\n", dev->cpu);
 	} else {
-		if (agent_thread->state != TASK_RUNNING) {
-			/* Some CPUs are offline, waking up agent */
+		bool already_running;
+		spin_lock(&agent_lock);
+		agent_signaled = true;
+		already_running = agent_thread->state == TASK_RUNNING;
+		spin_unlock(&agent_lock);
+		if (!already_running) {
+			/* Some CPUs offline or IRQ shared; use agent */
 			wake_up_process(agent_thread);
-			pr_debug("Agent is interrupted\n");
+			pr_debug("Agent wake by CPU%d interrupt\n", dev->cpu);
 		}
 	}
 
@@ -277,7 +284,7 @@ static bool is_buffer_ready(int cpu, int buf)
 	u64 status;
 	u64 bytes_used;
 
-	pr_debug("Probing buffer %d:%d", cpu, buf);
+	pr_debug("Probing buffer %d:%d\n", cpu, buf);
 
 	hw_run_cmd(HW_CMD(cpu, buf, HARDWOOD_GET_BYTES_USED));
 	hw_get_data(&bytes_used);
@@ -288,10 +295,10 @@ static bool is_buffer_ready(int cpu, int buf)
 	status &= 0xff;
 
 	if ((bytes_used > 0) && (status == 1))
-		pr_debug("buffer %d:%d is READY (used=%llu, status=%llu)..",
+		pr_debug("buffer %d:%d is READY (used=%llu, status=%llu).\n",
 			cpu, buf, bytes_used, status);
 	else
-		pr_debug("buffer %d:%d is BUSY (used=%llu, status=%llu).",
+		pr_debug("buffer %d:%d is BUSY (used=%llu, status=%llu).\n",
 			cpu, buf, bytes_used, status);
 
 	return (bytes_used > 0) && (status == 1);
@@ -304,7 +311,7 @@ static bool check_buffers(struct hardwood_device *dev, bool lock)
 	if (lock)
 		spin_lock(&dev->buf_status_lock);
 
-	pr_debug("++ buf_status = %lx, occupied = %lx",
+	pr_debug("++ buf_status = %lx, occupied = %lx\n",
 		dev->buf_status, dev->buf_occupied);
 
 	/* Poll each buffer */
@@ -318,7 +325,7 @@ static bool check_buffers(struct hardwood_device *dev, bool lock)
 	if (lock)
 		spin_unlock(&dev->buf_status_lock);
 
-	pr_debug("-- buf_status = %lx, occupied = %lx",
+	pr_debug("-- buf_status = %lx, occupied = %lx\n",
 		dev->buf_status, dev->buf_occupied);
 
 	return dev->buf_status != 0;
@@ -328,14 +335,26 @@ static int agent_thread_fn(void *data)
 {
 	int cpu;
 	struct hardwood_device *dev;
+	bool already_signaled;
 	while (!agent_stopped) {
-		pr_debug("agent: start waiting\n");
-		set_current_state(TASK_INTERRUPTIBLE);
-		schedule();
+		/* spinlock needed because IRQ happening after if() and before
+		 * set_current_state() could cause us to miss the IRQ */
+		spin_lock_irq(&agent_lock);
+		already_signaled = agent_signaled;
+		if (!already_signaled)
+			set_current_state(TASK_INTERRUPTIBLE);
+		spin_unlock_irq(&agent_lock);
 
-		/* woken up by interrupt */
-		pr_debug("agent: woken up\n");
+		if (already_signaled) {
+			/* signaled during last pass, so do not sleep */
+			pr_debug("agent: still signaled; continuing\n");
+		} else {
+			schedule();
+			/* woken up by interrupt */
+			pr_debug("agent: woken up by IRQ\n");
+		}
 		set_current_state(TASK_RUNNING);
+		agent_signaled = false;
 
 		for (cpu = 0; cpu < N_CPU; ++cpu) {
 			pr_debug("agent: checking CPU %d\n", cpu);
@@ -366,8 +385,9 @@ ssize_t hardwood_read(struct file *file, char __user *p, size_t s, loff_t *r)
 		return 0;
 	}
 
-	pr_debug("buf_status = %lx, occupied = %lx",
-		dev->buf_status, dev->buf_occupied);
+	pr_debug("core = %d, buf_status = %lx, occupied = %lx\n",
+		 dev == &hardwood_devs[0] ? 0 : 1, dev->buf_status,
+		 dev->buf_occupied);
 
 	/* Check if any buffers is available NOW */
 	spin_lock(&dev->buf_status_lock);
@@ -410,8 +430,9 @@ ssize_t hardwood_read(struct file *file, char __user *p, size_t s, loff_t *r)
 	}
 
 	if (buf_id >= 0) {
-		pr_debug("buf_status = %lx, buf_id = %d\n",
-			dev->buf_status, buf_id);
+		pr_debug("core = %d, buf_status = %lx, buf_id = %d\n",
+			dev == &hardwood_devs[0] ? 0 : 1, dev->buf_status,
+			buf_id);
 		BUG_ON(!is_buffer_ready(dev->cpu, buf_id));
 
 		/* Invalidate the cache */
@@ -544,6 +565,9 @@ static inline int hardwood_late_init(void)
 	/* use mutex b/c below code might sleep */
 	mutex_lock(&hardwood_init_lock);
 	if (!hardwood_init_done) {
+		/* Have the 2 CPUs share an IRQ if supported */
+		one_irq_per_cpu = osdump_version < OSDUMP_VER_OSDUMP_IRQS;
+
 		hardwood_init_agent();
 
 		config_num_buffers();
@@ -601,6 +625,7 @@ static struct notifier_block hardwood_cpu_notifier = {
 
 static void hardwood_init_agent(void)
 {
+	spin_lock_init(&agent_lock);
 	if (osdump_version < OSDUMP_VER_OSDUMP_IRQS)
 		register_hotcpu_notifier(&hardwood_cpu_notifier);
 	agent_thread = kthread_create(agent_thread_fn, 0, "hardwood-agent");
@@ -670,7 +695,7 @@ static __init void init_one_cpu(int cpu)
 	misc_register(&hdev->dev);
 	minor_map[cpu] = hdev->dev.minor;
 	dev = hdev->dev.this_device;
-	pr_debug("minor for cpu[%d] is %d", cpu, minor_map[cpu]);
+	pr_debug("minor for cpu[%d] is %d\n", cpu, minor_map[cpu]);
 
 	if (osdump_version >= OSDUMP_VER_OSDUMP_IRQS) {
 		BUG_ON(osdump_irq < 32 || osdump_irq > 1024);
