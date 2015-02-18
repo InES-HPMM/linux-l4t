@@ -1,7 +1,7 @@
 /*
  * tegra_usb_charger: Tegra USB charger detection driver.
  *
- * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  * Rakesh Babu Bodla <rbodla@nvidia.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -325,9 +325,10 @@ static int tegra_usb_cd_conf(struct platform_device *pdev,
 	/* Get the vbus current regulator for charging */
 	ucd->vbus_reg = regulator_get(&pdev->dev, "usb_bat_chg");
 	if (IS_ERR(ucd->vbus_reg)) {
+		err = PTR_ERR(ucd->vbus_reg);
 		dev_info(&pdev->dev,
-				"usb_bat_chg regulator not registered:"
-				" USB charging will not be enabled\n");
+				"usb_bat_chg regulator not registered: "
+				"USB charging disabled, err = %d\n", err);
 		ucd->vbus_reg = NULL;
 	}
 
@@ -476,7 +477,7 @@ static void __exit tegra_usb_cd_exit(void)
 	platform_driver_unregister(&tegra_usb_cd_driver);
 }
 
-subsys_initcall(tegra_usb_cd_init);
+device_initcall(tegra_usb_cd_init);
 module_exit(tegra_usb_cd_exit);
 
 MODULE_DESCRIPTION("Tegra USB charger detection driver");
