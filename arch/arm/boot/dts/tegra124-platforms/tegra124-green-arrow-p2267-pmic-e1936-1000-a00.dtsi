@@ -282,6 +282,7 @@
 
 			battery_charger: charger {
 				status = "disabled";
+				dt-override-status-odm-data = <0x00C00000 0x00400000>;
 				regulator-name = "batt_regulator";
 				regulator-max-microamp = <3000000>;
 				ti,disbale-suspend-during-charging;
@@ -299,8 +300,14 @@
 
 		battery-gauge@55 {
 			status = "disabled";
+			dt-override-status-odm-data = <0x00C00000 0x00400000>;
 			compatible = "ti,bq27441";
 			reg = <0x55>;
+			ti,design-capacity = <5200>;
+			ti,design-energy = <19760>;
+			ti,taper-rate = <318>;
+			ti,terminate-voltage = <2700>;
+			ti,v-at-chg-term = <4340>;
 		};
 	};
 };
