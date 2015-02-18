@@ -2570,7 +2570,7 @@ static int handle_tx_event(struct xhci_hcd *xhci,
 					goto cleanup;
 				}
 				/* HC is busted, give up! */
-				xhci_err(xhci,
+				xhci_err_ratelimited(xhci,
 					"ERROR Transfer event TRB DMA ptr not "
 					"part of current TD\n");
 				return -ESHUTDOWN;
