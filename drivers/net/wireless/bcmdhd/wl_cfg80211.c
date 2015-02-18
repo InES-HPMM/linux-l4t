@@ -8368,6 +8368,8 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 					/* In case this event comes while associating another AP */
 #endif /* ESCAN_RESULT_PATCH */
 					wl_bss_connect_done(cfg, ndev, e, data, false);
+				/* Clear driver status as CONNECTING since the link is already down */
+				wl_clr_drv_status(cfg, CONNECTING, ndev);
 			}
 			wl_clr_drv_status(cfg, DISCONNECTING, ndev);
 
@@ -8381,8 +8383,10 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 			/* Clean up any pending scan request */
 			if (cfg->scan_request)
 				wl_notify_escan_complete(cfg, ndev, true, true);
-			if (wl_get_drv_status(cfg, CONNECTING, ndev))
+			if (wl_get_drv_status(cfg, CONNECTING, ndev)) {
 				wl_bss_connect_done(cfg, ndev, e, data, false);
+				wl_clr_drv_status(cfg, CONNECTING, ndev);
+			}
 		} else {
 			WL_DBG(("%s nothing\n", __FUNCTION__));
 		}
