@@ -73,9 +73,9 @@ static const struct file_operations aram_dump_fops = {
 };
 #endif
 
-int aram_init(void)
+int aram_init(unsigned long addr, unsigned long size)
 {
-	aram_handle = create_mem_manager("ARAM", ARAM_START, ARAM_SIZE);
+	aram_handle = create_mem_manager("ARAM", addr, size);
 	if (IS_ERR(aram_handle)) {
 		pr_err("ERROR: failed to create aram memory_manager");
 		return PTR_ERR(aram_handle);

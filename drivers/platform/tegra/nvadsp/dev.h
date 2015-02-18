@@ -45,11 +45,17 @@ enum {
 	ADSP_MAX_DRAM_MAP
 };
 
+/*
+ * Note: These enums should be aligned to the adsp_mem node mentioned in the
+ * device tree
+*/
 enum adsp_mem_dt {
 	ADSP_OS_ADDR,
 	ADSP_OS_SIZE,
 	ADSP_APP_ADDR,
 	ADSP_APP_SIZE,
+	ARAM_ALIAS_0_ADDR,
+	ARAM_ALIAS_0_SIZE,
 	ADSP_MEM_END,
 };
 

@@ -18,14 +18,7 @@
 
 #include "mem_manager.h"
 
-/*
- * use ALIAS 0 addresses as default as the loader only needs to allocate memory
- * for aram.
- */
-#define ARAM_START	0x00400000
-#define ARAM_SIZE	SZ_64K
-
-int aram_init(void);
+int aram_init(unsigned long addr, unsigned long size);
 void aram_exit(void);
 
 void *aram_request(const char *name, size_t size);

@@ -365,12 +365,10 @@ static int __init nvadsp_parse_dt(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
-	struct device_node *of_node;
 	u32 *adsp_mem;
 	int iter;
 
 	adsp_mem = drv_data->adsp_mem;
-	of_node = dev->of_node;
 
 	for (iter = 0; iter < ADSP_MEM_END; iter++) {
 		if (of_property_read_u32_index(dev->of_node, "nvidia,adsp_mem",
@@ -389,9 +387,11 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct resource *res = NULL;
 	void __iomem *base = NULL;
+	uint32_t aram_addr;
+	uint32_t aram_size;
+	int dram_iter;
 	int ret = 0;
 	int iter;
-	int dram_iter;
 
 	dev_info(dev, "in probe()...\n");
 
@@ -502,7 +502,9 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
-	ret = aram_init();
+	aram_addr = drv_data->adsp_mem[ARAM_ALIAS_0_ADDR];
+	aram_size = drv_data->adsp_mem[ARAM_ALIAS_0_SIZE];
+	ret = aram_init(aram_addr, aram_size);
 	if (ret)
 		dev_err(dev, "Failed to init aram\n");
 err:
