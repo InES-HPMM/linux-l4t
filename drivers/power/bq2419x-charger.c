@@ -681,9 +681,7 @@ static int bq2419x_fault_clear_sts(struct bq2419x_chip *bq2419x,
 			((reg09_2 & BQ2419x_FAULT_CHRG_FAULT_MASK) ==
 				BQ2419x_FAULT_CHRG_SAFTY))
 			reg09 |= BQ2419x_FAULT_CHRG_SAFTY;
-		else if (((reg09_1 & BQ2419x_FAULT_CHRG_FAULT_MASK) ==
-				BQ2419x_FAULT_CHRG_INPUT) ||
-			((reg09_2 & BQ2419x_FAULT_CHRG_FAULT_MASK) ==
+		else if (((reg09_2 & BQ2419x_FAULT_CHRG_FAULT_MASK) ==
 				BQ2419x_FAULT_CHRG_INPUT))
 			reg09 |= BQ2419x_FAULT_CHRG_INPUT;
 		else if (((reg09_1 & BQ2419x_FAULT_CHRG_FAULT_MASK) ==
