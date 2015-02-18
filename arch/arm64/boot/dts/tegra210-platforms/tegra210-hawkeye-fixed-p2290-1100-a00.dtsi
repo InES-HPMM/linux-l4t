@@ -50,6 +50,12 @@
 			regulator-always-on;
 			gpio = <&max77620 3 0>;
 			enable-active-high;
+			consumers {
+				c1 {
+					regulator-consumer-supply = "avdd_usb";
+					regulator-consumer-device = "tegra-ehci.1";
+				};
+			};
 		};
 
 		mipi_1v2: regulator@3 {
