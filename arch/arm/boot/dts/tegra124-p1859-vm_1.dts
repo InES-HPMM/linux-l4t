@@ -309,6 +309,45 @@
 		};
 	};
 
+	i2c@7000c000 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 18>;
+	};
+
+	i2c@7000c400 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 18>;
+	};
+
+	i2c@7000c500 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 18>;
+	};
+
+	i2c@7000c700 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 18>;
+	};
+
+	i2c@7000d000 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 18>;
+		status = "okay";
+
+		max16989@3a {
+			status = "disabled";
+		};
+
+		max16989@38 {
+			status = "disabled";
+		};
+	};
+
+	i2c@7000d100 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 18>;
+	};
+
 	host1x {
 		virtual-dev = <1>;
 
@@ -409,18 +448,6 @@
 	spi@7000dc00 {
 		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
 		status = "okay";
-	};
-
-	i2c@7000d000 {
-		status = "okay";
-
-		max16989@3a {
-			status = "disabled";
-		};
-
-		max16989@38 {
-			status = "disabled";
-		};
 	};
 
 	dfll@70110000 {

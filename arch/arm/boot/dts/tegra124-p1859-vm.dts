@@ -95,16 +95,29 @@
 		};
 	};
 
-	chosen {
-		nvidia,tegra_dvfs_cpu_enable = <0>;
-		nvidia,tegra_dvfs_gpu_enable = <0>;
+	i2c@7000c000 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 11>;
 	};
 
-	soctherm@0x700E2000 {
-		status = "disabled";
+	i2c@7000c400 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 11>;
+	};
+
+	i2c@7000c500 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 11>;
+	};
+
+	i2c@7000c700 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 11>;
 	};
 
 	i2c@7000d000 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 11>;
 		status = "okay";
 
 		max16989@3a {
@@ -114,6 +127,20 @@
 		max16989@38 {
 			status = "disabled";
 		};
+	};
+
+	i2c@7000d100 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 11>;
+	};
+
+	chosen {
+		nvidia,tegra_dvfs_cpu_enable = <0>;
+		nvidia,tegra_dvfs_gpu_enable = <0>;
+	};
+
+	soctherm@0x700E2000 {
+		status = "disabled";
 	};
 
 	dfll@70110000 {
