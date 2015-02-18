@@ -469,7 +469,7 @@ static int bpmp_populate_dir(struct seqbuf *seqbuf, struct dentry *parent,
 
 static DEFINE_MUTEX(lock);
 
-int bpmp_fwdebug_recreate(void *buf, size_t bufsize, struct dentry *root)
+static int bpmp_fwdebug_recreate(void *buf, size_t bufsize, struct dentry *root)
 {
 	struct seqbuf seqbuf;
 	int err;
