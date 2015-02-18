@@ -4838,7 +4838,7 @@ tegra21_sor0_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 {
 	if (p == TEGRA_CLK_SOR_CLK_SEL) {
 		int i = setting ? 1 : 0;
-		return tegra21_periph_clk_set_parent(c, c->inputs[i].input);
+		return clk_set_parent_locked(c, c->inputs[i].input);
 	}
 	return -EINVAL;
 }
@@ -4904,7 +4904,7 @@ tegra21_sor1_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 	 * always selects the 1st match for requested parent, so effectively
 	 * setting 3 is reduced to 1.
 	 */
-	return tegra21_sor1_clk_set_parent(c, c->inputs[setting].input);
+	return clk_set_parent_locked(c, c->inputs[setting].input);
 }
 
 static struct clk_ops tegra_sor1_clk_ops = {
