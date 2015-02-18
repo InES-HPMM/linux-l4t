@@ -4,6 +4,13 @@ Required properties:
 - Compatible: Must be nvidia,tegra210-pmc.
 - #padcontroller-cells: Number of padctrl arguments. It must be 1.
 
+Optional properties:
+-platform-io-pad-voltage: Array of U32 data with IO rail ID and related
+	volatge for that pad. Example
+		platform-io-pad-voltage = <TEGRA210_PAD_GPIO IO_RAIL_VOLTAGE_1_8V
+					TEGRA210_PAD_AUDIO_HV IO_RAIL_VOLTAGE_3_3V>;
+		The driver intialise the io pad voltage during registration.
+
 The pad id is passed as the argument and this is defined as macro at
 	include/dt-bindings/padctrl/tegra210-pads.h
 Example: SDMMC1 pad is 6 and SDMMC3 is 7.
@@ -13,6 +20,8 @@ Example: SDMMC1 pad is 6 and SDMMC3 is 7.
 		reg = <0x0 0x7000e400 0x0 0x400>;
 		#padcontroller-cells = <1>;
 		status = "disabled";
+		platform-io-pad-voltage = <TEGRA210_PAD_GPIO IO_RAIL_VOLTAGE_1_8V
+					TEGRA210_PAD_AUDIO_HV IO_RAIL_VOLTAGE_3_3V>;
 	};
 
 
