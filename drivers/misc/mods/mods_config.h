@@ -31,13 +31,21 @@
 #ifdef CONFIG_DEBUG_FS
 #define MODS_HAS_DEBUGFS 1
 #endif
+#if defined(CONFIG_TEGRA_KFUSE)
 #define MODS_HAS_KFUSE 1
+#endif
 #ifdef CONFIG_DMA_SHARED_BUFFER
 #define MODS_HAS_DMABUF 1
 #endif
 #define MODS_MULTI_INSTANCE_DEFAULT_VALUE 1
 #define MODS_HAS_IORESOURCE_MEM_64 1
 #undef MODS_HAS_NEW_ACPI_HANDLE /* new in 3.13 */
+#if defined(CONFIG_ARCH_TEGRA) || defined(CONFIG_PLATFORM_TEGRA)
+#define MODS_TEGRA 1
+#endif
+#if defined(CONFIG_TEGRA_CLK_FRAMEWORK)
+#define MODS_HAS_CLOCK 1
+#endif
 
 #endif /* _MODS_CONFIG_H_  */
 

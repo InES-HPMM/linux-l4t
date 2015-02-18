@@ -220,7 +220,7 @@ struct mods_priv {
 #	define MODS_SET_MEMORY_WC MODS_SET_MEMORY_UC
 #	define MODS_SET_MEMORY_WB(addr, pages) \
 	       change_page_attr(virt_to_page(addr), pages, PAGE_KERNEL)
-#elif (defined(CONFIG_ARCH_TEGRA) && !defined(CONFIG_CPA) && \
+#elif (defined(MODS_TEGRA) && !defined(CONFIG_CPA) && \
 	  !defined(CONFIG_ARCH_TEGRA_3x_SOC)) || defined(CONFIG_PPC64)
 #	define MODS_SET_MEMORY_UC(addr, pages) 0
 #	define MODS_SET_MEMORY_WC(addr, pages) 0
@@ -323,7 +323,7 @@ int mods_unregister_all_alloc(struct file *fp);
 struct MODS_MEM_INFO *mods_find_alloc(struct file *, u64);
 
 /* clock */
-#ifdef CONFIG_ARCH_TEGRA
+#ifdef MODS_TEGRA
 void mods_init_clock_api(void);
 void mods_shutdown_clock_api(void);
 #endif
@@ -402,7 +402,7 @@ int esc_mods_irq_handled(struct file *, struct MODS_REGISTER_IRQ *);
 int esc_mods_irq_handled_2(struct file *,
 			   struct MODS_REGISTER_IRQ_2 *);
 /* clock */
-#ifdef CONFIG_ARCH_TEGRA
+#ifdef MODS_TEGRA
 int esc_mods_get_clock_handle(struct file *,
 			      struct MODS_GET_CLOCK_HANDLE *);
 int esc_mods_set_clock_rate(struct file *, struct MODS_CLOCK_RATE *);
@@ -461,7 +461,7 @@ static inline int mods_init_tegradc(void) { return 0; }
 static inline void mods_exit_tegradc(void) {}
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA) && defined(MODS_HAS_DMABUF)
+#if defined(MODS_TEGRA) && defined(MODS_HAS_DMABUF)
 int mods_init_dmabuf(void);
 void mods_exit_dmabuf(void);
 #else

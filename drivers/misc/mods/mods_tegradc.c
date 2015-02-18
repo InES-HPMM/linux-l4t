@@ -1,7 +1,7 @@
 /*
  * mods_tegradc.c - This file is part of NVIDIA MODS kernel driver.
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA MODS kernel driver is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License,
@@ -20,7 +20,9 @@
 #include <linux/uaccess.h>
 #include <mach/dc.h>
 #include <../drivers/video/tegra/dc/dc_priv.h>
+#if defined(CONFIG_TEGRA_NVSD)
 #include <../drivers/video/tegra/dc/nvsd.h>
+#endif
 #include <../arch/arm/mach-tegra/include/mach/dc.h>
 #include "mods_internal.h"
 #include <../drivers/platform/tegra/include/tegra/mc.h>
@@ -247,7 +249,9 @@ int esc_mods_tegra_dc_setup_sd(struct file *fp,
 			(args->lut[i] >> 16) & 0xff;
 	}
 
+#if defined(CONFIG_TEGRA_NVSD)
 	nvsd_init(dc, sd_settings);
+#endif
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	tegra_dc_io_start(dc);
 	val = tegra_dc_readl(dc, DC_DISP_SD_CONTROL);
@@ -272,6 +276,7 @@ int esc_mods_tegra_dc_setup_sd(struct file *fp,
 
 int mods_init_tegradc(void)
 {
+#if defined(CONFIG_TEGRA_NVSD)
 	int i;
 	int ret = 0;
 	LOG_ENT();
@@ -291,10 +296,14 @@ int mods_init_tegradc(void)
 	}
 	LOG_EXT();
 	return ret;
+#else
+	return 0;
+#endif
 }
 
 void mods_exit_tegradc(void)
 {
+#if defined(CONFIG_TEGRA_NVSD)
 	int i;
 	LOG_ENT();
 	for (i = 0; i < TEGRA_MAX_DC; i++) {
@@ -307,4 +316,5 @@ void mods_exit_tegradc(void)
 		if (dc->enabled)
 			nvsd_init(dc, dc->out->sd_settings);
 	}
+#endif
 }

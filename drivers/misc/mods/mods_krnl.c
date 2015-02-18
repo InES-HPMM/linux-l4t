@@ -102,7 +102,7 @@ static int __init mods_init_module(void)
 
 	mods_init_irq();
 
-#ifdef CONFIG_ARCH_TEGRA
+#if defined(MODS_HAS_CLOCK)
 	mods_init_clock_api();
 #endif
 
@@ -139,7 +139,7 @@ static void __exit mods_exit_module(void)
 
 	misc_deregister(&mods_dev);
 
-#ifdef CONFIG_ARCH_TEGRA
+#if defined(MODS_HAS_CLOCK)
 	mods_shutdown_clock_api();
 #endif
 
@@ -1009,7 +1009,7 @@ static long mods_krnl_ioctl(struct file  *fp,
 			   esc_mods_acpi_get_ddc_2, MODS_ACPI_GET_DDC_2);
 		break;
 
-#elif defined(CONFIG_ARCH_TEGRA)
+#elif defined(MODS_TEGRA)
 	case MODS_ESC_EVAL_ACPI_METHOD:
 	case MODS_ESC_EVAL_DEV_ACPI_METHOD:
 	case MODS_ESC_ACPI_GET_DDC:
@@ -1032,7 +1032,7 @@ static long mods_krnl_ioctl(struct file  *fp,
 				    esc_mods_set_driver_para, MODS_SET_PARA);
 		break;
 
-#ifdef CONFIG_ARCH_TEGRA
+#if defined(MODS_HAS_CLOCK)
 	case MODS_ESC_GET_CLOCK_HANDLE:
 		MODS_IOCTL(MODS_ESC_GET_CLOCK_HANDLE,
 			   esc_mods_get_clock_handle, MODS_GET_CLOCK_HANDLE);
@@ -1096,7 +1096,8 @@ static long mods_krnl_ioctl(struct file  *fp,
 				    esc_mods_clock_reset_deassert,
 				    MODS_CLOCK_HANDLE);
 		break;
-
+#endif
+#if defined(MODS_TEGRA)
 	case MODS_ESC_FLUSH_CPU_CACHE_RANGE:
 		MODS_IOCTL_NORETVAL(MODS_ESC_FLUSH_CPU_CACHE_RANGE,
 				    esc_mods_flush_cpu_cache_range,
@@ -1120,7 +1121,7 @@ static long mods_krnl_ioctl(struct file  *fp,
 				esc_mods_memory_barrier);
 		break;
 
-#ifdef CONFIG_ARCH_TEGRA
+#ifdef MODS_TEGRA
 	case MODS_ESC_DMABUF_GET_PHYSICAL_ADDRESS:
 		MODS_IOCTL(MODS_ESC_DMABUF_GET_PHYSICAL_ADDRESS,
 			   esc_mods_dmabuf_get_phys_addr,
