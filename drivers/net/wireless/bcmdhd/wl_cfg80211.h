@@ -597,6 +597,7 @@ struct bcm_cfg80211 {
 	bool roam_offload;
 	bool nan_running;
 	struct rw_semaphore netif_sem;
+	struct semaphore net_wdev_sema;
 };
 
 
@@ -640,7 +641,9 @@ wl_remove_netinfo(struct bcm_cfg80211 *cfg, struct net_device *ndev)
 			list_del(&_net_info->list);
 			cfg->iface_cnt--;
 			if (_net_info->wdev) {
+				down_interruptible(&cfg->net_wdev_sema);
 				ndev->ieee80211_ptr = NULL;
+				up(&cfg->net_wdev_sema);
 			}
 			INIT_LIST_HEAD(&_net_info->list);
 			list_add(&_net_info->list, &cfg->dealloc_list);
@@ -655,15 +658,25 @@ static inline void
 wl_delete_all_netinfo(struct bcm_cfg80211 *cfg)
 {
 	struct net_info *_net_info, *next;
+	down_interruptible(&cfg->net_wdev_sema);
 	down_write(&cfg->netif_sem);
 	list_for_each_entry_safe(_net_info, next, &cfg->net_list, list) {
 		list_del(&_net_info->list);
-			if (_net_info->wdev)
+			if (_net_info->wdev) {
+				if (cfg->wdev == _net_info->wdev)
+					cfg->wdev = NULL;
+				else if (cfg->p2p_wdev == _net_info->wdev)
+					cfg->p2p_wdev = NULL;
+				else
+					WL_ERR(("Unknown wdev freed\n"));
 				kfree(_net_info->wdev);
+				_net_info->wdev = NULL;
+			}
 			kfree(_net_info);
 	}
 	up_write(&cfg->netif_sem);
 	cfg->iface_cnt = 0;
+	up(&cfg->net_wdev_sema);
 }
 static inline u32
 wl_get_status_all(struct bcm_cfg80211 *cfg, s32 status)

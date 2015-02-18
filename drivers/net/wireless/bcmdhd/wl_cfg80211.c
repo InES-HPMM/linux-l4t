@@ -8059,7 +8059,7 @@ wl_notify_connect_status_ap(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	channel_info_t ci;
 #else
 	struct station_info sinfo;
-#endif 
+#endif
 
 	WL_DBG(("event %d status %d reason %d\n", event, ntoh32(e->status), reason));
 	/* if link down, bsscfg is disabled. */
@@ -10282,6 +10282,7 @@ static void wl_dealloc_netinfo(struct work_struct *work)
 {
 	struct net_info *_net_info, *next;
 	struct bcm_cfg80211 *cfg = container_of(work, struct bcm_cfg80211, dealloc_work);
+	down_interruptible(&cfg->net_wdev_sema);
 	down_write(&cfg->netif_sem);
 	list_for_each_entry_safe(_net_info, next, &cfg->dealloc_list, list) {
 		list_del(&_net_info->list);
@@ -10291,12 +10292,20 @@ static void wl_dealloc_netinfo(struct work_struct *work)
 			/* rtnl_lock is required to protect wdev from nl80211_pre_doit
 			 * and nl80211_post_doit calls */
 			rtnl_lock();
+			if (cfg->wdev == _net_info->wdev)
+				cfg->wdev = NULL;
+			else if (cfg->p2p_wdev == _net_info->wdev)
+				cfg->p2p_wdev = NULL;
+			else
+				WL_ERR(("Unknown wdev freeed!\n"));
 			kfree(_net_info->wdev);
+			_net_info->wdev = NULL;
 			rtnl_unlock();
 		}
 		kfree(_net_info);
 	}
 	up_write(&cfg->netif_sem);
+	up(&cfg->net_wdev_sema);
 }
 
 static s32 wl_init_priv(struct bcm_cfg80211 *cfg)
@@ -10321,6 +10330,7 @@ static s32 wl_init_priv(struct bcm_cfg80211 *cfg)
 	spin_lock_init(&cfg->cfgdrv_lock);
 	mutex_init(&cfg->ioctl_buf_sync);
 	init_rwsem(&cfg->netif_sem);
+	sema_init(&cfg->net_wdev_sema, 1);
 	init_waitqueue_head(&cfg->netif_change_event);
 	init_completion(&cfg->send_af_done);
 	init_completion(&cfg->iface_disable);
@@ -10624,6 +10634,7 @@ static s32 wl_event_handler(void *data)
 			 * there is no corresponding bsscfg for P2P interface. Map it to p2p0
 			 * interface.
 			 */
+			down_interruptible(&cfg->net_wdev_sema);
 #if defined(WL_CFG80211_P2P_DEV_IF)
 			if (WL_IS_P2P_DEV_EVENT(e) && (cfg->p2p_wdev)) {
 				cfgdev = bcmcfg_to_p2p_wdev(cfg);
@@ -10650,11 +10661,16 @@ static s32 wl_event_handler(void *data)
 				cfgdev = bcmcfg_to_prmry_ndev(cfg);
 #endif /* WL_CFG80211_P2P_DEV_IF */
 			}
-			if (e->etype < WLC_E_LAST && cfg->evt_handler[e->etype]) {
-				cfg->evt_handler[e->etype] (cfg, cfgdev, &e->emsg, e->edata);
+			if (e->etype < WLC_E_LAST && cfg->evt_handler[e->etype]
+				&& cfgdev) {
+				if (cfgdev->netdev &&
+					cfgdev->netdev->ieee80211_ptr)
+					cfg->evt_handler[e->etype] (cfg,
+						cfgdev, &e->emsg, e->edata);
 			} else {
 				WL_DBG(("Unknown Event (%d): ignoring\n", e->etype));
 			}
+			up(&cfg->net_wdev_sema);
 			wl_put_event(e);
 		}
 		DHD_OS_WAKE_UNLOCK(cfg->pub);
