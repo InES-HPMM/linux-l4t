@@ -1788,8 +1788,8 @@ static void android_maxim14675_set_voltage(void)
 
 	pr_info("%s: max_voltage (vbus) = %dmV\n",
 			__func__, max_voltage);
-	min_voltage = ((min_voltage - 2000) / 1000) * 20;
-	max_voltage = ((max_voltage - 2000) / 1000) * 20;
+	min_voltage = ((min_voltage - 2000) * 20) / 1000;
+	max_voltage = ((max_voltage - 2000) * 20) / 1000;
 
 	memset(buf, 0, sizeof(buf));
 	strcpy(maxim_string, "    gr8rFiV8US");
