@@ -31,7 +31,7 @@
 /* FIXME: reduce this to 1 sec (WAR for linsim irq bug) */
 #ifdef CONFIG_ARCH_TEGRA_18x_SOC
 #define CHANNEL_TIMEOUT		(60 * USEC_PER_SEC)
-#define THREAD_CH_TIMEOUT	(60 * USEC_PER_SEC)
+#define THREAD_CH_TIMEOUT	(600 * USEC_PER_SEC)
 #else
 #define CHANNEL_TIMEOUT		USEC_PER_SEC
 #define THREAD_CH_TIMEOUT	USEC_PER_SEC
