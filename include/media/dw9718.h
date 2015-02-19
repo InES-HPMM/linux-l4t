@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -36,6 +36,7 @@ struct dw9718_platform_data {
 	int (*power_on)(struct dw9718_power_rail *pw);
 	int (*power_off)(struct dw9718_power_rail *pw);
 	int (*detect)(void *buf, size_t size);
+	bool support_mfi;
 };
 
 /* Register Definitions */
