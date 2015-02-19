@@ -23,14 +23,9 @@
 #include <dt-bindings/gpio/tegra-gpio.h>
 #include <dt-bindings/padctrl/tegra210-pads.h>
 
-/* camera control gpio definitions */
-#define CAM_PWDN_FQ	TEGRA_GPIO(T, 0)
-#define CAM_PWDN_RQ	TEGRA_GPIO(S, 7)
-#define CAM_RST		TEGRA_GPIO(S, 4)
-#define CAM_PWDN_AF	TEGRA_GPIO(S, 5)
-
 #include "tegra210-platforms/tegra210-prods.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-pinmux-p2290-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-hawkeye-gpio-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-power-tree-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2220-1100-a00.dtsi"
 #include "panel-a-wuxga-8-0.dtsi"
@@ -267,28 +262,28 @@
 
 	camera-pcl {
 		profiles {
-			ov5693@2_0036 {
+			ov5693@x_0036 {
 				use_of_node = "yes";
 				dev_name = "ov5693";
 				num = <1>;
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
-				cam2-gpios = <&gpio CAM_PWDN_FQ 0>;
-				reset-gpios = <&gpio CAM_RST 0>;
+				cam2-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
 			};
-			ov5693@2_0010 {
+			ov5693@x_0010 {
 				use_of_node = "yes";
 				dev_name = "ov5693";
 				num = <0>;
-				vana-supply = <&max77620_ldo3>;
-				vif-supply = <&en_vdd_cam>;
-				cam2-gpios = <&gpio CAM_PWDN_RQ 0>;
+				avdd-supply = <&max77620_ldo3>;
+				dvdd-supply = <&max77620_ldo3>;
+				dovdd-supply = <&en_vdd_cam>;
+				cam2-gpios = <&gpio TEGRA_GPIO(S, 7) 1>;
 			};
-			ad5823@2_000c {
+			ad5823@x_000c {
 				use_of_node = "yes";
 				vdd-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
-				af-pwdn-gpios = <&gpio CAM_PWDN_AF 0>;
+				af-pwdn-gpios = <&gpio TEGRA_GPIO(S, 5) 1>;
 			};
 		};
 
