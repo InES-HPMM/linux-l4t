@@ -540,6 +540,10 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("tsensor",		-1, -1, 1, KHZ,	  19200,   19200,   19200,   19200,   19200,   19200,   19200,   19200,   19200,   19200,   19200,   19200,   19200),
 };
 
+static struct dvfs sor1_dp_dvfs_table[] = {
+	CORE_DVFS("sor1",		-1, -1, 1, KHZ,	 162000,  270000,  270000,  270000,  540000,  540000,  540000,  540000,  540000,  540000,  540000,  540000,  540000),
+};
+
 static struct dvfs spi_dvfs_table[] = {
 	CORE_DVFS("sbc1",		-1, -1, 1, KHZ,	  35000,   50000,   50000,   65000,   65000,   65000,   65000,   65000,   65000,   65000,   65000,   65000,   65000),
 	CORE_DVFS("sbc2",		-1, -1, 1, KHZ,	  35000,   50000,   50000,   65000,   65000,   65000,   65000,   65000,   65000,   65000,   65000,   65000,   65000),
@@ -1190,7 +1194,6 @@ static void __init init_gpu_dvfs_table(int *gpu_max_freq_index)
 	BUG_ON((i == ARRAY_SIZE(gpu_cvb_dvfs_table)) || ret);
 }
 
-
 /*
  * SPI DVFS tables are different in master and in slave mode. Use master tables
  * by default. Check if slave mode is specified for enabled SPI devices in DT,
@@ -1284,6 +1287,30 @@ static void __init init_qspi_dvfs(int soc_speedo_id, int core_process_id,
 	if (match_dvfs_one(qspi_dvfs->clk_name, qspi_dvfs->speedo_id,
 		qspi_dvfs->process_id, soc_speedo_id, core_process_id))
 		tegra_init_dvfs_one(qspi_dvfs, core_nominal_mv_index);
+}
+
+/*
+ * SOR1 in HDMI and DP modes has different DVFS tables. The HDMI table is
+ * specified as primary, and DP mode table is installed as alternative one.
+ */
+static void __init init_sor1_dp_dvfs(int soc_speedo_id, int core_process_id)
+{
+	int i;
+	struct dvfs *alt_d = &sor1_dp_dvfs_table[0];
+	struct clk *c = tegra_get_clock_by_name(alt_d->clk_name);
+
+	if (!c || !c->dvfs) {
+		pr_err("tegra21_dvfs: invalid clock %s for alt dvfs\n",
+			alt_d->clk_name);
+		return;
+	}
+
+	if (match_dvfs_one(alt_d->clk_name, alt_d->speedo_id, alt_d->process_id,
+			   soc_speedo_id, core_process_id)) {
+		for (i = 0; i < c->dvfs->num_freqs; i++)
+			alt_d->freqs[i] *= alt_d->freqs_mult;
+		tegra_dvfs_alt_freqs_install_always(c->dvfs, alt_d->freqs);
+	}
 }
 
 /*
@@ -1442,6 +1469,7 @@ void __init tegra21x_init_dvfs(void)
 			      core_nominal_mv_index);
 		init_qspi_dvfs(soc_speedo_id, core_process_id,
 			       core_nominal_mv_index);
+		init_sor1_dp_dvfs(soc_speedo_id, core_process_id);
 	}
 
 	/* Initialize matching gpu dvfs entry already found when nominal
