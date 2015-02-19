@@ -50,6 +50,7 @@ obj-$(CONFIG_REGULATOR_MAX15569) += max15569-regulator.o
 obj-$(CONFIG_REGULATOR_AS3720) += as3720-regulator.o
 obj-$(CONFIG_REGULATOR_TPS6591X) += tps6591x-regulator.o
 obj-$(CONFIG_REGULATOR_TPS65090) += tps65090-regulator.o
+obj-$(CONFIG_REGULATOR_TPS65132) += tps65132-regulator.o
 obj-$(CONFIG_REGULATOR_MC13783) += mc13783-regulator.o
 obj-$(CONFIG_REGULATOR_MC13892) += mc13892-regulator.o
 obj-$(CONFIG_REGULATOR_MC13XXX_CORE) +=  mc13xxx-regulator-core.o
