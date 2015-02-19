@@ -221,6 +221,22 @@ static int bq27441_write_byte(struct i2c_client *client, u8 reg, u8 value)
 	return ret;
 }
 
+static int bq27441_get_battery_soc(struct battery_gauge_dev *bg_dev)
+{
+	struct bq27441_chip *chip = battery_gauge_get_drvdata(bg_dev);
+	int val;
+
+	val = bq27441_read_word(chip->client, BQ27441_STATE_OF_CHARGE);
+	if (val < 0)
+		dev_err(&chip->client->dev, "%s: err %d\n", __func__, val);
+	else
+		val =  battery_gauge_get_adjusted_soc(chip->bg_dev,
+				chip->pdata->threshold_soc,
+				chip->pdata->maximum_soc, val * 100);
+
+	return val;
+}
+
 static int bq27441_update_soc_voltage(struct bq27441_chip *chip)
 {
 	int val;
@@ -278,6 +294,7 @@ static void bq27441_work(struct work_struct *work)
 	}
 
 	mutex_unlock(&chip->mutex);
+	battery_gauge_report_battery_soc(chip->bg_dev, chip->soc);
 	schedule_delayed_work(&chip->work, BQ27441_DELAY);
 }
 
@@ -826,6 +843,7 @@ done:
 static struct battery_gauge_ops bq27441_bg_ops = {
 	.update_battery_status = bq27441_update_battery_status,
 	.get_battery_temp = bq27441_get_temperature,
+	.get_battery_soc = bq27441_get_battery_soc,
 };
 
 static struct battery_gauge_info bq27441_bgi = {

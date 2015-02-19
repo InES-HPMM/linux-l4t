@@ -58,6 +58,7 @@
 #define BQ2419X_PRE_CHG_TERM_OFFSET	128
 #define BQ2419X_CHARGE_VOLTAGE_OFFSET	3504
 #define BQ2419x_OTG_ENABLE_TIME		msecs_to_jiffies(30000)
+#define BQ2419X_PC_USB_LP0_THRESHOLD	95
 
 /* input current limit */
 static const unsigned int iinlim[] = {
@@ -115,6 +116,7 @@ struct bq2419x_chip {
 	bool				wake_lock_released;
 	int				last_temp;
 	bool				shutdown_complete;
+	bool				charging_disabled_on_suspend;
 	struct bq2419x_reg_info		input_src;
 	struct bq2419x_reg_info		chg_current_control;
 	struct bq2419x_reg_info		prechg_term_control;
@@ -1564,6 +1566,7 @@ static int bq2419x_probe(struct i2c_client *client,
 	bq2419x->is_otg_connected = 0;
 	bq2419x->shutdown_complete = 0;
 	bq2419x->wake_lock_released = false;
+	bq2419x->charging_disabled_on_suspend = 0;
 
 	ret = bq2419x_show_chip_version(bq2419x);
 	if (ret < 0) {
@@ -1784,12 +1787,27 @@ static int bq2419x_suspend(struct device *dev)
 {
 	struct bq2419x_chip *bq2419x = dev_get_drvdata(dev);
 	int ret = 0;
+	int battery_soc = 0;
 
 	if (device_may_wakeup(bq2419x->dev) && (bq2419x->irq > 0))
 		enable_irq_wake(bq2419x->irq);
 
 	if (!bq2419x->battery_presense)
 		return 0;
+
+	battery_soc = battery_gauge_get_battery_soc(bq2419x->bc_dev);
+	if (battery_soc > BQ2419X_PC_USB_LP0_THRESHOLD &&
+			(bq2419x->in_current_limit <= 500) &&
+			!bq2419x->is_otg_connected) {
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
+				BQ2419X_ENABLE_CHARGE_MASK,
+				BQ2419X_DISABLE_CHARGE);
+		if (ret < 0)
+			dev_err(bq2419x->dev,
+				"REG update failed: err %d\n", ret);
+		else
+			bq2419x->charging_disabled_on_suspend = true;
+	}
 
 	if (!bq2419x->cable_connected)
 		goto end;
@@ -1805,6 +1823,17 @@ static int bq2419x_suspend(struct device *dev)
 		if (ret < 0)
 			dev_err(bq2419x->dev,
 			"Config of charging failed: %d\n", ret);
+		if (battery_soc > BQ2419X_PC_USB_LP0_THRESHOLD &&
+					!bq2419x->is_otg_connected) {
+			ret = regmap_update_bits(bq2419x->regmap,
+				BQ2419X_PWR_ON_REG, BQ2419X_ENABLE_CHARGE_MASK,
+				BQ2419X_DISABLE_CHARGE);
+			if (ret < 0)
+				dev_err(bq2419x->dev,
+					"REG update failed: err %d\n", ret);
+			else
+				bq2419x->charging_disabled_on_suspend = true;
+		}
 	} else
 		dev_info(bq2419x->dev, "Battery charging with high current\n");
 
@@ -1820,6 +1849,16 @@ static int bq2419x_resume(struct device *dev)
 
 	if (device_may_wakeup(bq2419x->dev) && (bq2419x->irq > 0))
 		disable_irq_wake(bq2419x->irq);
+
+	if (bq2419x->charging_disabled_on_suspend) {
+		bq2419x->charging_disabled_on_suspend = false;
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
+				BQ2419X_ENABLE_CHARGE_MASK,
+				BQ2419X_ENABLE_CHARGE);
+		if (ret < 0)
+			dev_err(bq2419x->dev,
+				"register update failed: err %d\n", ret);
+	}
 
 	ret = regmap_read(bq2419x->regmap, BQ2419X_SYS_STAT_REG, &val);
 	if (ret < 0) {
