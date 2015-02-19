@@ -157,7 +157,9 @@ static inline void gic_set_base_accessor(struct gic_chip_data *data,
 
 static struct gic_chip_data *tegra_agic;
 static bool tegra_agic_suspended;
+#ifdef CONFIG_CPU_PM
 static int gic_notifier(struct notifier_block *, unsigned long, void *);
+#endif
 
 int tegra_agic_irq_get_virq(int irq)
 {
@@ -308,6 +310,7 @@ int tegra_agic_route_interrupt(int irq, enum tegra_agic_cpu cpu)
 }
 EXPORT_SYMBOL_GPL(tegra_agic_route_interrupt);
 
+#ifdef CONFIG_CPU_PM
 void tegra_agic_save_registers(void)
 {
 	BUG_ON(!tegra_agic);
@@ -325,6 +328,7 @@ void tegra_agic_restore_registers(void)
 			MOD_DOMAIN_POWER_ON, NULL);
 }
 EXPORT_SYMBOL_GPL(tegra_agic_restore_registers);
+#endif
 #endif
 
 static inline bool gic_data_fiq_enable(struct gic_chip_data *data)
