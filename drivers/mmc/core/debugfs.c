@@ -525,6 +525,42 @@ static int mmc_dbg_ext_csd_eol_get(void *data, u64 *val)
 DEFINE_SIMPLE_ATTRIBUTE(mmc_dbg_ext_csd_eol_fops,
 			mmc_dbg_ext_csd_eol_get, NULL, "%llu\n");
 
+static int mmc_dbg_ext_csd_bkops_status_get(void *data, u64 *val)
+{
+	struct mmc_card *card = data;
+	return mmc_get_ext_csd_byte_val(card, val, EXT_CSD_BKOPS_STATUS);
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(mmc_dbg_ext_csd_bkops_status_fops,
+			mmc_dbg_ext_csd_bkops_status_get, NULL, "%u\n");
+
+static int mmc_dbg_ext_csd_bkops_support_get(void *data, u64 *val)
+{
+	struct mmc_card *card = data;
+	return mmc_get_ext_csd_byte_val(card, val, EXT_CSD_BKOPS_SUPPORT);
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(mmc_dbg_ext_csd_bkops_support_fops,
+			mmc_dbg_ext_csd_bkops_support_get, NULL, "%u\n");
+
+static int mmc_dbg_ext_csd_hpi_support_get(void *data, u64 *val)
+{
+	struct mmc_card *card = data;
+	return mmc_get_ext_csd_byte_val(card, val, EXT_CSD_HPI_FEATURES);
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(mmc_dbg_ext_csd_hpi_support_fops,
+		mmc_dbg_ext_csd_hpi_support_get, NULL, "%u\n");
+
+static int mmc_dbg_ext_csd_pon_notify_get(void *data, u64 *val)
+{
+	struct mmc_card *card = data;
+	return mmc_get_ext_csd_byte_val(card, val,
+			EXT_CSD_POWER_OFF_NOTIFICATION);
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(mmc_dbg_ext_csd_pon_notify_fops,
+		mmc_dbg_ext_csd_pon_notify_get, NULL, "%u\n");
 
 static int mmc_dbg_ext_csd_life_time_type_a(void *data, u64 *val)
 {
@@ -701,6 +737,18 @@ void mmc_add_card_debugfs(struct mmc_card *card)
 			goto err;
 		if (!debugfs_create_file("firmware_version", S_IRUSR, root,
 					card, &mmc_dbg_ext_csd_fw_v_fops))
+			goto err;
+		if (!debugfs_create_file("bkops_status", S_IRUSR, root, card,
+					&mmc_dbg_ext_csd_bkops_status_fops))
+			goto err;
+		if (!debugfs_create_file("bkops_support", S_IRUSR, root, card,
+					&mmc_dbg_ext_csd_bkops_support_fops))
+			goto err;
+		if (!debugfs_create_file("poweron_notify", S_IRUSR, root, card,
+					&mmc_dbg_ext_csd_pon_notify_fops))
+			goto err;
+		if (!debugfs_create_file("hpi_support", S_IRUSR, root, card,
+					&mmc_dbg_ext_csd_hpi_support_fops))
 			goto err;
 	}
 
