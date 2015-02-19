@@ -179,6 +179,7 @@
 					CAMERA_WAITUS(10)
 					CAMERA_END
 					>;
+				support_mfi;
 			};
 		};
 	};
