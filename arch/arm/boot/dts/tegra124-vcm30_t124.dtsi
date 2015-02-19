@@ -69,6 +69,7 @@
 
 	spi@7000d400 {
 		status = "disabled";
+		nvidia,clk-parents = "pll_p";
 		spi@0 {
 			compatible = "spidev";
 			reg = <0>;
@@ -82,6 +83,7 @@
 
 	spi@7000d600 {
 		status = "disabled";
+		nvidia,clk-parents = "pll_p";
 		spi@1 {
 			compatible = "spidev";
 			reg = <1>;
@@ -91,6 +93,7 @@
 
 	spi@7000d800 {
 		status = "disabled";
+		nvidia,clk-parents = "pll_p";
 		spi@1 {
 			compatible = "spidev";
 			reg = <1>;
@@ -100,6 +103,7 @@
 
 	spi@7000dc00 {
 		status = "disabled";
+		nvidia,clk-parents = "pll_p";
 		spi@0 {
 			compatible = "spidev";
 			reg = <0>;
