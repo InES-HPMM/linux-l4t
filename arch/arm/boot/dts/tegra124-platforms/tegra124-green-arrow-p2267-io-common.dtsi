@@ -41,6 +41,11 @@
 
 	i2c@7000d000 {
 		nvidia,bit-banging-xfer-after-shutdown;
+
+		rt5639: rt5639@1c {
+			compatible = "realtek,rt5639";
+			reg = <0x1c>;
+		};
 	};
 
 	spi@7000d400 {
@@ -102,5 +107,17 @@
 			#extcon-cells = <1>;
 			status = "disabled";
 		};
+	};
+
+	sound {
+		compatible = "nvidia,tegra-audio-rt5639";
+		nvidia,codec_name = "rt5639.0-001c";
+		nvidia,codec_dai_name = "rt5639-aif1";
+		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(R, 2) 0>;
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(H, 4) 0>;
+		nvidia,use_codec_jd_irq = <1>;
+		nvidia,i2s-param-hifi = <1 1 2 16 48000 2 1536000>;
+		nvidia,i2s-param-bt = <3 1 0 16 8000 1 512000>;
+		nvidia,i2s-param-baseband = <0 1 2 16 16000 2 1024000>;
 	};
 };

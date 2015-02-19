@@ -232,10 +232,13 @@ static void ardbeg_i2c_init(void)
 	struct board_info board_info;
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_PM374) {
-		i2c_register_board_info(0, &max98090_board_info, 1);
-	} else if (board_info.board_id != BOARD_PM359)
-		i2c_register_board_info(0, &rt5639_board_info, 1);
+	if(!of_machine_is_compatible("nvidia,green-arrow"))
+	{
+		if (board_info.board_id == BOARD_PM374) {
+			i2c_register_board_info(0, &max98090_board_info, 1);
+		} else if (board_info.board_id != BOARD_PM359)
+			i2c_register_board_info(0, &rt5639_board_info, 1);
+	}
 
 	if (board_info.board_id == BOARD_PM359 ||
 		board_info.board_id == BOARD_PM358 ||
@@ -831,6 +834,8 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 #ifdef CONFIG_TEGRA_CEC_SUPPORT
 	OF_DEV_AUXDATA("nvidia,tegra124-cec", 0x70015000, "tegra_cec", NULL),
 #endif
+	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0x0, "tegra-snd-rt5639",
+		NULL),
 	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power", NULL),
 	OF_DEV_AUXDATA("nvidia,ptm", 0x7081c000, "ptm", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
@@ -1208,12 +1213,20 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_xusb_init();
 #endif
 	ardbeg_i2c_init();
-	ardbeg_audio_init();
+
+	if(!of_machine_is_compatible("nvidia,green-arrow"))
+		ardbeg_audio_init();
+
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));
-	if (board_info.board_id == BOARD_PM374)	/* Norrin ERS */
-		platform_device_register(&norrin_audio_device_max98090);
-	else if (board_info.board_id != BOARD_PM359)
-		platform_device_register(&ardbeg_audio_device_rt5639);
+
+	if(!of_machine_is_compatible("nvidia,green-arrow"))
+	{
+		if (board_info.board_id == BOARD_PM374)	/* Norrin ERS */
+			platform_device_register(&norrin_audio_device_max98090);
+		else if (board_info.board_id != BOARD_PM359)
+			platform_device_register(&ardbeg_audio_device_rt5639);
+	}
+
 	tegra_io_dpd_init();
 	if (board_info.board_id == BOARD_E2548 ||
 			board_info.board_id == BOARD_P2530)
