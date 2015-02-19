@@ -939,10 +939,21 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 }
 
 /*
- * Some clocks may have alternative frequency ladder that provides lower minimum
- * voltage at the same rate (or complimentary: higher maximum rate at the same
- * voltage). Interfaces below allows dvfs clients to install such ladder, and
- * switch between primary and alternative frequencies in flight.
+ * Some clocks may have alternative frequency ladder charcterized for different
+ * operation mode of the respective module. Interfaces below allows dvfs clients
+ * to install such ladder, and then switch between primary and alternative
+ * frequencies in flight.
+ *
+ * Two installation interface are provided:
+ * a) installation with validation that alterantive ladder consistently provides
+ *   same/higher rate limit at the same voltage across entire voltage range;
+ *   used if dvfs client switches mode at any frequency with safe order:
+ *   - primary-to-alternative: mode switch 1st, then dvfs ladder switch
+ *   - alternative-to-primary: dvfs ladder switch 1st, then mode switch
+ *
+ * b) installation "as is", no validation; used if dvfs client switches mode at
+ *    safe (low or disabled) frequency only, with any order of mode and ladder
+ *    switches.
  */
 static int alt_freqs_validate(struct dvfs *d, unsigned long *alt_freqs)
 {
@@ -974,6 +985,14 @@ int tegra_dvfs_alt_freqs_install(struct dvfs *d, unsigned long *alt_freqs)
 	return ret;
 }
 
+void tegra_dvfs_alt_freqs_install_always(
+	struct dvfs *d, unsigned long *alt_freqs)
+{
+	mutex_lock(&dvfs_lock);
+	d->alt_freqs = alt_freqs;
+	mutex_unlock(&dvfs_lock);
+}
+
 int tegra_dvfs_use_alt_freqs_on_clk(struct clk *c, bool use_alt_freq)
 {
 	int ret = -ENOENT;
@@ -986,25 +1005,13 @@ int tegra_dvfs_use_alt_freqs_on_clk(struct clk *c, bool use_alt_freq)
 		if (d->use_alt_freqs != use_alt_freq) {
 			d->use_alt_freqs = use_alt_freq;
 			ret = __tegra_dvfs_set_rate(d, d->cur_rate);
-		}
-	}
-
-	mutex_unlock(&dvfs_lock);
-	return ret;
-}
-
-int tegra_dvfs_alt_freqs_set(struct dvfs *d, unsigned long *alt_freqs)
-{
-	int ret = 0;
-
-	mutex_lock(&dvfs_lock);
-
-	if (d->alt_freqs != alt_freqs) {
-		ret = alt_freqs_validate(d, alt_freqs);
-		if (!ret) {
-			d->use_alt_freqs = !!alt_freqs;
-			d->alt_freqs = alt_freqs;
-			ret = __tegra_dvfs_set_rate(d, d->cur_rate);
+			if (ret) {
+				ret = -EINVAL;
+				d->use_alt_freqs = !use_alt_freq;
+				__tegra_dvfs_set_rate(d, d->cur_rate);
+				pr_err("%s: %s: %s alt dvfs failed\n", __func__,
+				       c->name, use_alt_freq ? "set" : "clear");
+			}
 		}
 	}
 

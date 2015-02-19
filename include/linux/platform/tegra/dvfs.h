@@ -5,7 +5,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (c) 2010-2014 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2010-2015 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -348,7 +348,8 @@ int tegra_dvfs_override_core_cap_apply(int level);
 int tegra_dvfs_therm_vmax_core_cap_apply(int *cap_idx, int new_idx, int level);
 
 int tegra_dvfs_alt_freqs_install(struct dvfs *d, unsigned long *alt_freqs);
-int tegra_dvfs_alt_freqs_set(struct dvfs *d, unsigned long *alt_freqs);
+void tegra_dvfs_alt_freqs_install_always(
+	struct dvfs *d, unsigned long *alt_freqs);
 int tegra_dvfs_replace_voltage_table(struct dvfs *d, const int *new_millivolts);
 
 int tegra_dvfs_butterfly_throttle(struct clk *c1, unsigned long *rate1,
