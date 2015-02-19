@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -24,6 +24,8 @@
 #define AD5823_IOCTL_SET_POSITION _IOW('o', 2, u32)
 #define AD5823_IOCTL_SET_CAL_DATA _IOW('o', 3, struct ad5823_cal_data)
 #define AD5823_IOCTL_SET_CONFIG _IOW('o', 4, struct nv_focuser_config)
+#define AD5823_IOCTL_GET_FEATURES _IOR('o', 5, u32)
+#define AD5823_IOCTL_SET_FEATURES _IOW('o', 6, u32)
 
 /* address */
 #define AD5823_RESET                (0x1)
@@ -58,6 +60,7 @@ struct ad5823_platform_data {
 	int (*power_on)(struct ad5823_platform_data *);
 	int (*power_off)(struct ad5823_platform_data *);
 	int pwr_dev;
+	bool support_mfi;
 };
 #endif  /* __AD5820_H__ */
 
