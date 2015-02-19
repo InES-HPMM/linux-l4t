@@ -933,6 +933,7 @@ static struct dw9718_platform_data ardbeg_dw9718_data = {
 	.power_on = ardbeg_dw9718_power_on,
 	.power_off = ardbeg_dw9718_power_off,
 	.detect = ardbeg_dw9718_detect,
+	.support_mfi = true,
 };
 
 static int ardbeg_dw9714_power_on(struct dw9714_power_rail *pw)
@@ -997,6 +998,7 @@ static struct dw9714_platform_data ardbeg_dw9714_data = {
 	.cap = &dw9714_cap,
 	.power_on = ardbeg_dw9714_power_on,
 	.power_off = ardbeg_dw9714_power_off,
+	.support_mfi = true,
 };
 
 static struct as364x_platform_data ardbeg_as3648_data = {
@@ -1439,6 +1441,7 @@ static struct ad5823_platform_data ardbeg_ad5823_pdata = {
 	.gpio = CAM_AF_PWDN,
 	.power_on	= ardbeg_ad5823_power_on,
 	.power_off	= ardbeg_ad5823_power_off,
+	.support_mfi = true,
 };
 
 static struct camera_data_blob ardbeg_camera_lut[] = {
