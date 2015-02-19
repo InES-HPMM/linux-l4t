@@ -433,6 +433,31 @@ void te_restore_keyslots(void)
 EXPORT_SYMBOL(te_restore_keyslots);
 
 /*
+ * VRR Set Buffer
+ *
+ * Called from the DC driver and implemented as a monitor fastcall
+ * to avoid taking the smc_lock. This call passes in the physical
+ * address for the shared memory buffer.
+ */
+int te_vrr_set_buf(phys_addr_t addr)
+{
+	return _tlk_generic_smc(TE_SMC_VRR_SET_BUF, addr, 0);
+}
+EXPORT_SYMBOL(te_vrr_set_buf);
+
+/*
+ * VRR Sec
+ *
+ * Called from the DC driver and implemented as a monitor fastcall
+ * to avoid taking the smc_lock.
+ */
+void te_vrr_sec(void)
+{
+	_tlk_generic_smc(TE_SMC_VRR_SEC, 0, 0);
+}
+EXPORT_SYMBOL(te_vrr_sec);
+
+/*
  * Open session SMC (supporting client-based te_open_session() calls)
  */
 void te_open_session(struct te_opensession *cmd,

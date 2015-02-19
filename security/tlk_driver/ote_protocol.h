@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2015 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -128,6 +128,8 @@ enum {
 	/* SIP (SOC specific) calls.  */
 	TE_SMC_PROGRAM_VPR		= 0x82000003,
 	TE_SMC_REGISTER_FIQ_GLUE	= 0x82000005,
+	TE_SMC_VRR_SET_BUF		= 0x82000011,
+	TE_SMC_VRR_SEC			= 0x82000012,
 };
 
 enum {
