@@ -9257,6 +9257,7 @@ static DEFINE_MUTEX(sbus_cross_mutex);
 }
 
 static struct clk tegra_list_clks[] = {
+	PERIPH_CLK("ahbdma",	"ahbdma",		NULL,	33,	0,	38400000,  mux_clk_m,			0, 0),
 	PERIPH_CLK("apbdma",	"tegra-apbdma",		NULL,	34,	0,	38400000,  mux_clk_m,			0, 0),
 	PERIPH_CLK("rtc",	"rtc-tegra",		NULL,	4,	0,	32768,     mux_clk_32k,			PERIPH_NO_RESET | PERIPH_ON_APB, TEGRA210_CLK_ID_RTC),
 	PERIPH_CLK("timer",	"timer",		NULL,	5,	0,	38400000,  mux_clk_m,			0, TEGRA210_CLK_ID_TIMER),
