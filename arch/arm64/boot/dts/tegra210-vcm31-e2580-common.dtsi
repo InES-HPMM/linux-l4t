@@ -189,7 +189,7 @@
 	};
 
 	host1x {
-		status = "disabled";
+		status = "okay";
 		/* tegradc.0 */
 		dc@54200000 {
 			status = "okay";
