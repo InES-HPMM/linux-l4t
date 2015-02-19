@@ -183,6 +183,7 @@
 					CAMERA_WAITUS(10)
 					CAMERA_END
 					>;
+				support_mfi;
 			};
 			as3648_1: as3648@2_0030 {
 				index = <4>;
@@ -321,6 +322,7 @@
 					CAMERA_WAITUS(10)
 					CAMERA_END
 					>;
+				support_mfi;
 			};
 		};
 	};
