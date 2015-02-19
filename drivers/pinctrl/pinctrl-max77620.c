@@ -37,7 +37,6 @@
 #include "pinctrl-utils.h"
 
 #define MAX77620_PIN_NUM 8
-#define MAX77620_PIN_PPDRV_MASK 1
 
 enum max77620_pin_ppdrv {
 	MAX77620_PIN_UNCONFIG_DRV,
@@ -334,12 +333,14 @@ static int max77620_pinconf_set(struct pinctrl_dev *pctldev,
 	int mask, shift;
 	int addr, ret;
 
+	WARN_ON(1);
+
 	switch (param) {
 	case PIN_CONFIG_DRIVE_OPEN_DRAIN:
 		val = param_val ? 0 : 1;
 		max77620_reg_update(max77620_pci->max77620->dev,
 			MAX77620_PWR_SLAVE, MAX77620_REG_GPIO0 + pin,
-			MAX77620_PIN_PPDRV_MASK, val);
+			MAX77620_CNFG_GPIO_DRV_MASK, val);
 		max77620_pci->pin_info[pin].drv_type = val ?
 			MAX77620_PIN_PP_DRV : MAX77620_PIN_OD_DRV;
 		break;
@@ -348,7 +349,7 @@ static int max77620_pinconf_set(struct pinctrl_dev *pctldev,
 		val = param_val ? 1 : 0;
 		max77620_reg_update(max77620_pci->max77620->dev,
 			MAX77620_PWR_SLAVE, MAX77620_REG_GPIO0 + pin,
-			MAX77620_PIN_PPDRV_MASK, val);
+			MAX77620_CNFG_GPIO_DRV_MASK, val);
 		max77620_pci->pin_info[pin].drv_type = val ?
 			MAX77620_PIN_PP_DRV : MAX77620_PIN_OD_DRV;
 		break;
