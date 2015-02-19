@@ -357,6 +357,16 @@ static const int core_millivolts[MAX_DVFS_FREQS] = {
  * display: display driver calls tegra_dvfs_set_rate manually;
  * it is necessary because display clock divider is internal to the display
  * block, and controlled by driver directly.
+ *
+ * uart: has internal clock divider controlled by driver directly; respectively
+ * defined as manual DVFS clock (however, UART is voltage independent, so no DVFS
+ * is enabled on UART clocks, and driver does not call tegra_dvfs_set_rate).
+ *
+ * i2c5: power-i2c transport for PMIC voltage control; voltage independent -
+ * possible deadlock, otherwise.
+ *
+ * pwm: transport for OVR voltage control; voltage independent - possible
+ * deadlock, otherwise.
  */
 static struct dvfs core_dvfs_table[] = {
 	/* Clock limits for internal blocks, PLLs */
@@ -509,7 +519,22 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("sata",		-1, -1, 1, KHZ,	      1,  102000,  102000,  102000,  102000,  102000,  102000,  102000,  102000,  102000,  102000,  102000,  102000),
 	CORE_DVFS("sata_oob",		-1, -1, 1, KHZ,	      1,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000),
 	CORE_DVFS("pciex",		-1, -1, 1, KHZ,	      1,  500000,  500000,  500000,  500000,  500000,  500000,  500000,  500000,  500000,  500000,  500000,  500000),
+
+	CORE_DVFS("i2c1",		-1, -1, 1, KHZ,	 136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000),
+	CORE_DVFS("i2c2",		-1, -1, 1, KHZ,	 136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000),
+	CORE_DVFS("i2c3",		-1, -1, 1, KHZ,	 136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000),
+	CORE_DVFS("i2c4",		-1, -1, 1, KHZ,	 136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000),
+	CORE_DVFS("i2c5",		-1, -1, 1, KHZ,	 136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000),
+	CORE_DVFS("i2c6",		-1, -1, 1, KHZ,	 136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000),
+	CORE_DVFS("vii2c",		-1, -1, 1, KHZ,	 136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000),
+
 	CORE_DVFS("pwm",		-1, -1, 1, KHZ,	  48000,   48000,   48000,   48000,   48000,   48000,   48000,   48000,   48000,   48000,   48000,   48000,   48000),
+
+	CORE_DVFS("uarta",		-1, -1, 0, KHZ,	 204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000),
+	CORE_DVFS("uartb",		-1, -1, 0, KHZ,	 204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000),
+	CORE_DVFS("uartc",		-1, -1, 0, KHZ,	 204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000),
+	CORE_DVFS("uartd",		-1, -1, 0, KHZ,	 204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000),
+	CORE_DVFS("uartape",		-1, -1, 0, KHZ,	 204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000,  204000),
 
 	CORE_DVFS("soc_therm",		-1, -1, 1, KHZ,	 136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000,  136000),
 	CORE_DVFS("tsensor",		-1, -1, 1, KHZ,	  19200,   19200,   19200,   19200,   19200,   19200,   19200,   19200,   19200,   19200,   19200,   19200,   19200),
