@@ -1617,8 +1617,13 @@ void __init tegra_init_dvfs_one(struct dvfs *d, int max_freq_index)
 	}
 	d->max_millivolts = d->dvfs_rail->nominal_millivolts;
 
-	/* No need to enable DVFS on clock reaching max rate at min voltage */
-	if (d->freqs[0] * d->freqs_mult >= c->max_rate)
+	/*
+	 * No need to enable DVFS on clock reaching max rate at min voltage,
+	 * or when same frequency limit is specified for the entire voltage
+	 * range.
+	 */
+	if ((d->freqs[0] * d->freqs_mult >= c->max_rate) ||
+	    (d->freqs[0] == d->freqs[max_freq_index]))
 		return;
 
 	ret = enable_dvfs_on_clk(c, d);
