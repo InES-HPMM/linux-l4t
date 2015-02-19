@@ -24,6 +24,8 @@
 #include <mach/io_dpd.h>
 #include <media/nvc.h>
 
+#include <linux/platform_data/gpio-tegra.h>
+
 #define NUM_OF_SEQSTACK			16
 #define SIZEOF_I2C_BUF			32
 
