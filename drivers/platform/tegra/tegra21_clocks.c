@@ -8620,6 +8620,7 @@ static struct raw_notifier_head emc_rate_change_nh;
 
 static struct clk tegra_clk_sata = {
 	.name      = "sata",
+	.clk_id = TEGRA210_CLK_ID_SATA,
 	.lookup    = {
 		.dev_id = "tegra_sata",
 	},
@@ -8635,6 +8636,7 @@ static struct clk tegra_clk_sata = {
 
 static struct clk tegra_sata_aux_clk = {
 	.name      = "sata_aux",
+	.clk_id	= TEGRA210_CLK_ID_SATA_AUX,
 	.lookup    = {
 		.dev_id = "tegra_sata_aux",
 	},
@@ -9055,6 +9057,7 @@ static struct clk_mux_sel mux_isp[] = {
 
 static struct clk tegra_clk_hda2codec_2x = {
 	.name = "hda2codec_2x",
+	.clk_id = TEGRA210_CLK_ID_HDA2CODEC_2X,
 	.lookup = {
 		.dev_id = "tegra30-hda",
 		.con_id = "hda2codec",
@@ -9255,8 +9258,8 @@ static DEFINE_MUTEX(sbus_cross_mutex);
 
 static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("apbdma",	"tegra-apbdma",		NULL,	34,	0,	38400000,  mux_clk_m,			0, 0),
-	PERIPH_CLK("rtc",	"rtc-tegra",		NULL,	4,	0,	32768,     mux_clk_32k,			PERIPH_NO_RESET | PERIPH_ON_APB, 0),
-	PERIPH_CLK("timer",	"timer",		NULL,	5,	0,	38400000,  mux_clk_m,			0, 0),
+	PERIPH_CLK("rtc",	"rtc-tegra",		NULL,	4,	0,	32768,     mux_clk_32k,			PERIPH_NO_RESET | PERIPH_ON_APB, TEGRA210_CLK_ID_RTC),
+	PERIPH_CLK("timer",	"timer",		NULL,	5,	0,	38400000,  mux_clk_m,			0, TEGRA210_CLK_ID_TIMER),
 	PERIPH_CLK("spare1",	"spare1",		NULL,	192,	0,	38400000,  mux_clk_m,			0, 0),
 	PERIPH_CLK("axiap",	"axiap",		NULL,	196,	0,	38400000,  mux_clk_m,			0, 0),
 	PERIPH_CLK("iqc1",	"tegra210-iqc.0",	NULL,	221,	0,	38400000,  mux_clk_m,			PERIPH_NO_RESET | PERIPH_ON_APB, 0),
@@ -9279,7 +9282,7 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("maud",	"maud",			NULL,	202,	0x6d4,	102000000, mux_pllp_pllp_out3_clkm_clk32k_plla,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, 0),
 	PERIPH_CLK("pwm",	"tegra-pwm",		NULL,	17,	0x110,	 48000000, mux_pllp_pllc_clk32_clkm,		MUX | DIV_U71 | PERIPH_ON_APB, 0),
 	D_AUDIO_CLK("d_audio",	"tegra210-axbar",	"ahub",	106,	0x3d0,	 98304000, mux_d_audio_clk,			MUX | DIV_U71 | PERIPH_ON_APB, 0),
-	PERIPH_CLK("hda",	"tegra30-hda",		"hda",  125,	0x428,	102000000, mux_pllp_pllc_clkm,			MUX | DIV_U71 | PERIPH_ON_APB, 0),
+	PERIPH_CLK("hda",	"tegra30-hda",		"hda",  125,	0x428,	102000000, mux_pllp_pllc_clkm,			MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_HDA),
 	PERIPH_CLK("hda2hdmi",	"tegra30-hda",	   "hda2hdmi",	128,	0,	 48000000,  mux_hda2codec_2x,				PERIPH_ON_APB, TEGRA210_CLK_ID_HDA2HDMI),
 
 	PERIPH_CLK_EX("qspi",	"qspi",			NULL,	211,	0x6c4, 133000000, mux_pllp_pllc_pllc_out1_pllc4_out2_pllc4_out1_clkm_pllc4_out0, MUX | DIV_U71 | PERIPH_ON_APB, 0, &tegra_qspi_clk_ops),
@@ -9287,8 +9290,8 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("sbc2",	"spi-tegra114.1",	NULL,	44,	0x118,  65000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_SBC2),
 	PERIPH_CLK("sbc3",	"spi-tegra114.2",	NULL,	46,	0x11c,  65000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_SBC3),
 	PERIPH_CLK("sbc4",	"spi-tegra114.3",	NULL,	68,	0x1b4,  65000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_SBC4),
-	PERIPH_CLK("sata_oob",	"tegra_sata_oob",	NULL,	123,	0x420,	204000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB, 0),
-	PERIPH_CLK("sata_cold",	"tegra_sata_cold",	NULL,	129,	0,	38400000,  mux_clk_m,		PERIPH_ON_APB, 0),
+	PERIPH_CLK("sata_oob",	"tegra_sata_oob",	NULL,	123,	0x420,	204000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_SATA_OOB),
+	PERIPH_CLK("sata_cold",	"tegra_sata_cold",	NULL,	129,	0,	38400000,  mux_clk_m,		PERIPH_ON_APB, TEGRA210_CLK_ID_SATA_COLD),
 	PERIPH_CLK("sdmmc1",	"sdhci-tegra.0",	NULL,	14,	0x150,	204000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | PERIPH_ON_APB, 0),
 	PERIPH_CLK("sdmmc3",	"sdhci-tegra.2",	NULL,	69,	0x1bc,	204000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | PERIPH_ON_APB, 0),
 	PERIPH_CLK("sdmmc1_ddr", "sdhci-tegra.0",	"ddr",	14,	0x150,	 96000000, mux_pllp_pllc4_out2_pllc4_out1_clkm_pllc4_out0,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB, 0),
@@ -9355,10 +9358,10 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("uart_mipi_cal", "uart_mipi_cal",	NULL,	177,	0x66c,	102000000, mux_pllp_out3_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET, 0),
 	PERIPH_CLK("dbgapb",	"dbgapb",		NULL,	185,	0x718,	136000000, mux_pllp_clkm_2,		MUX | DIV_U71 | PERIPH_NO_RESET, 0),
 	PERIPH_CLK("tsensor",	"tegra-tsensor",	NULL,	100,	0x3b8,	 19200000, mux_pllp_pllc_clkm_clk32,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, 0),
-	PERIPH_CLK("actmon",	"actmon",		NULL,	119,	0x3e8,	204000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71, 0),
-	PERIPH_CLK("extern1",	"extern1",		NULL,	120,	0x3ec,	408000000, mux_plla_clk32_pllp_clkm_plle,	MUX | DIV_U71, 0),
-	PERIPH_CLK("extern2",	"extern2",		NULL,	121,	0x3f0,	408000000, mux_plla_clk32_pllp_clkm_plle,	MUX | DIV_U71, 0),
-	PERIPH_CLK("extern3",	"extern3",		NULL,	122,	0x3f4,	408000000, mux_plla_clk32_pllp_clkm_plle,	MUX | DIV_U71, 0),
+	PERIPH_CLK("actmon",	"actmon",		NULL,	119,	0x3e8,	204000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71, TEGRA210_CLK_ID_ACTMON),
+	PERIPH_CLK("extern1",	"extern1",		NULL,	120,	0x3ec,	408000000, mux_plla_clk32_pllp_clkm_plle,	MUX | DIV_U71, TEGRA210_CLK_ID_EXTERN1),
+	PERIPH_CLK("extern2",	"extern2",		NULL,	121,	0x3f0,	408000000, mux_plla_clk32_pllp_clkm_plle,	MUX | DIV_U71, TEGRA210_CLK_ID_EXTERN2),
+	PERIPH_CLK("extern3",	"extern3",		NULL,	122,	0x3f4,	408000000, mux_plla_clk32_pllp_clkm_plle,	MUX | DIV_U71, TEGRA210_CLK_ID_EXTERN3),
 	PERIPH_CLK("pcie",	"tegra-pcie",		"pcie",	70,	0,	250000000, mux_clk_m, 			0, 0),
 	PERIPH_CLK("afi",	"tegra-pcie",		"afi",	72,	0,	250000000, mux_clk_m, 			0, 0),
 	PERIPH_CLK("cl_dvfs_ref", "tegra_cl_dvfs",	"ref",	155,	0x62c,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB, TEGRA210_CLK_ID_DFLL_REF),
