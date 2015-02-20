@@ -137,6 +137,11 @@ static __initdata struct tegra_clk_init_table vcm30_t124_clk_init_table[] = {
 
 	{ "automotive.host1x",	NULL,		282000000,	true},
 
+	{ "pll_e",		NULL,		2400000000u,	true},
+
+	{ "sata_oob",		"pll_p",	204000000,	false},
+	{ "sata",		"pll_p",	204000000,	false},
+
 	{ "i2c1",		"pll_p",	408000000,	false},
 	{ "i2c2",		"pll_p",	408000000,	false},
 	{ "i2c3",		"pll_p",	408000000,	false},
@@ -186,6 +191,10 @@ static  __initdata struct tegra_clk_init_table
 	SET_FIXED_TARGET_RATE("pll_c_out1",	282000000),
 #endif
 	SET_FIXED_TARGET_RATE("pll_p",		408000000),
+
+	SET_FIXED_TARGET_RATE("pll_e",		2400000000u),
+	SET_FIXED_TARGET_RATE("sata_oob",	204000000),
+	SET_FIXED_TARGET_RATE("sata",		204000000),
 
 	SET_FIXED_TARGET_RATE("sclk",		282000000),
 	SET_FIXED_TARGET_RATE("hclk",		282000000),
