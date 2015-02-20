@@ -19,6 +19,7 @@
 #include <dt-bindings/regulator/regulator.h>
 #include <dt-bindings/gpio/tegra-gpio.h>
 #include <dt-bindings/thermal/thermal.h>
+#include <dt-bindings/interrupt-controller/irq.h>
 
 / {
 	i2c@7000d000 {
@@ -28,7 +29,7 @@
 			compatible = "maxim,max77621";
 			reg = <0x1b>;
 			interrupt-parent = <&gpio>;
-			interrupts = <TEGRA_GPIO(Y, 1) 0>;
+			interrupts = <TEGRA_GPIO(Y, 1) IRQF_TRIGGER_FALLING>;
 			regulator-name = "vdd-cpu";
 			regulator-min-microvolt = <606250>;
 			regulator-max-microvolt = <1400000>;
@@ -46,7 +47,7 @@
 			compatible = "maxim,max77621";
 			reg = <0x1c>;
 			interrupt-parent = <&gpio>;
-			interrupts = <TEGRA_GPIO(A, 1) 0>;
+			interrupts = <TEGRA_GPIO(A, 1) IRQF_TRIGGER_FALLING>;
 			regulator-name = "vdd-gpu";
 			regulator-min-microvolt = <606250>;
 			regulator-max-microvolt = <1400000>;
