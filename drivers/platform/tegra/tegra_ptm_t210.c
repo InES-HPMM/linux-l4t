@@ -72,6 +72,9 @@ _________________________________________________________
 #define AFREADY_LOOP_MAX 100
 #define AFREADY_LOOP_MS 4
 
+#define CPU_DUMP_BUFF_SZ 64    /* size of dump buffer in bytes
+				  (word size * reg num) */
+
 /* PTM tracer state */
 struct tracectx {
 	struct device	*dev;
@@ -110,6 +113,7 @@ struct tracectx {
 	uintptr_t	trigger_address[ADDR_REGS];
 	u8		trigger_mask;
 	unsigned int	cycle_count;
+	char		cpu_dump_buffer[CPU_DUMP_BUFF_SZ];
 };
 
 /* initialising some values of the structure */
@@ -128,7 +132,8 @@ static struct tracectx tracer = {
 	.etr			=	0,
 	.ape				=	0,
 	.start_stop_mask		=	0x3,
-	.trigger_mask			=	0
+	.trigger_mask			=	0,
+	.cpu_dump_buffer		=	{ 0 }
 };
 
 static struct clk *csite_clk;
@@ -684,6 +689,33 @@ static int trace_t210_stop(struct tracectx *t)
 	return 0;
 }
 
+static void trc_read_regs(struct tracectx *p_info)
+{
+	struct tracectx *t = (struct tracectx *)p_info;
+	int reg_num = 16;
+	u32 id = raw_smp_processor_id();
+	u32 *cpu_data = (u32 *) &t->cpu_dump_buffer[id * reg_num * sizeof(u32)];
+	int i = 0;
+
+	cpu_data[i++] = ptm_readl(t, id, TRCTRACEIDR);
+	cpu_data[i++] = ptm_readl(t, id, TRCCONFIGR);
+	cpu_data[i++] = ptm_readl(t, id, TRCACVR0);
+	cpu_data[i++] = ptm_readl(t, id, TRCACVR0 + 0x4);
+	cpu_data[i++] = ptm_readl(t, id, TRCACVR1);
+	cpu_data[i++] = ptm_readl(t, id, TRCACVR1 + 0x4);
+	cpu_data[i++] = ptm_readl(t, id, TRCACVR2);
+	cpu_data[i++] = ptm_readl(t, id, TRCACVR2 + 0x4);
+	/* reserved for future use */
+	cpu_data[i++] = 0x00000000;
+	cpu_data[i++] = 0x00000000;
+	cpu_data[i++] = 0x00000000;
+	cpu_data[i++] = 0x00000000;
+	cpu_data[i++] = 0x00000000;
+	cpu_data[i++] = 0x00000000;
+	cpu_data[i++] = 0x00000000;
+	cpu_data[i++] = 0x00000000;
+}
+
 /* This function transfers the traces from kernel space to user space */
 static ssize_t trc_read(struct file *file, char __user *data,
 	size_t len, loff_t *ppos)
@@ -691,27 +723,51 @@ static ssize_t trc_read(struct file *file, char __user *data,
 	struct tracectx *t = file->private_data;
 	u8 *start = t->etr_buf;
 	loff_t pos = *ppos;
+	loff_t dump_len = 0;
 
-	if ((pos + len) >= t->buf_size)
-		len = t->buf_size - pos;
+	if ((pos + len) >= t->buf_size + CPU_DUMP_BUFF_SZ)
+		len = t->buf_size + CPU_DUMP_BUFF_SZ - pos;
 
+	/* add register config to beginning of returned data if we are reading
+	 * from beginning */
+	if (*ppos < CPU_DUMP_BUFF_SZ) {
+		if (len <= CPU_DUMP_BUFF_SZ - pos) {
+			if (copy_to_user(data, t->cpu_dump_buffer + pos, len))
+				return -EFAULT;
+			return len;
+		} else {
+			if (copy_to_user(data, t->cpu_dump_buffer + pos,
+				CPU_DUMP_BUFF_SZ - pos))
+				return -EFAULT;
+			dump_len = CPU_DUMP_BUFF_SZ - pos;
+			len -= dump_len;
+			pos += dump_len;
+		}
+	}
 	if (len > 0) {
 		if (t->etr) {
 			if (start + pos + len > t->etr_address + ETR_SIZE)
 				len = t->etr_address + ETR_SIZE - start -
 					pos;
-			if (copy_to_user(data, t->etr_buf+pos, len))
+			if (copy_to_user(data + dump_len, t->etr_buf+pos, len))
 				return -EFAULT;
 			if (start + pos + len == t->etr_address + ETR_SIZE)
 				t->etr_buf = t->etr_address;
 		} else {
-			if (copy_to_user(data, (u8 *) t->trc_buf+pos, len))
+			if (copy_to_user(data + dump_len,
+				(u8 *)t->trc_buf+pos, len))
 				return -EFAULT;
 		}
 	}
 
-	*ppos = pos + len;
-	return len;
+
+	if (*ppos < CPU_DUMP_BUFF_SZ) {
+		*ppos += (len + dump_len);
+		return len + dump_len;
+	} else {
+		*ppos += len;
+		return len;
+	}
 }
 
 /* this function copies traces from the ETF to an array */
@@ -894,6 +950,9 @@ static int trc_open(struct inode *inode, struct file *file)
 	file->private_data = t;
 
 	trc_fill_buf(t);
+
+	/* all cores have the same configuration */
+	trc_read_regs(t);
 
 	return nonseekable_open(inode, file);
 }
