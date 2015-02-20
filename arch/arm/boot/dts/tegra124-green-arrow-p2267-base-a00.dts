@@ -26,6 +26,7 @@
 #include "tegra124-platforms/tegra124-green-arrow-dfll.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-camera-p2267-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-usb-devices.dtsi"
+#include "tegra124-platforms/tegra124-tn8-hdmi-p1761-1270-a03.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 Green Arrow FFD";
