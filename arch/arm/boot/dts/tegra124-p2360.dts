@@ -36,6 +36,7 @@
 		sor {
 			status = "okay";
 			panel-lvds-800-480 {
+				status = "okay";
 				disp-default-out {
 					nvidia,out-max-pixclk = <3367>;
 				};

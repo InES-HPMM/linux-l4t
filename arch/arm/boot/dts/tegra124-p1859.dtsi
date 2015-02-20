@@ -40,6 +40,7 @@
 		sor {
 			status = "okay";
 			panel-a-edp-1080p-14-0 {
+				status = "okay";
 				disp-default-out {
 					nvidia,out-max-pixclk = <3367>;
 					nvidia,dither = <TEGRA_DC_ORDERED_DITHER>;
