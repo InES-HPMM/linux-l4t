@@ -862,7 +862,7 @@ err_out:
 static inline int debugfs_init(void) { return 0; }
 #endif
 
-static void tegra210_cc4_volt_init(struct platform_device *pdev)
+static int tegra210_cc4_volt_init(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct regulator *reg;
@@ -871,11 +871,13 @@ static void tegra210_cc4_volt_init(struct platform_device *pdev)
 
 	/* If cc4-microvolt is not found, assume not max77621 */
 	if (of_property_read_u32(dev->of_node, "cc4-microvolt", &uv))
-		return;
+		return 0;
 
 	reg = regulator_get(dev, "vdd-cpu");
-	if (!reg)
-		goto err_out;
+	if (IS_ERR(reg)) {
+		dev_err(dev, "vdd-cpu regulator get failed\n");
+		return PTR_ERR(reg);
+	}
 
 	r = regulator_set_sleep_voltage(reg, uv - 100000, uv + 100000);
 	if (r) {
@@ -884,10 +886,11 @@ static void tegra210_cc4_volt_init(struct platform_device *pdev)
 	}
 
 	dev_info(dev, "retention voltage is %u uv\n", uv);
-	return;
+	return 0;
 
 err_out:
 	WARN_ON(0);
+	return 0;
 }
 
 static int tegra210_cpuidle_probe(struct platform_device *pdev)
@@ -896,7 +899,12 @@ static int tegra210_cpuidle_probe(struct platform_device *pdev)
 	unsigned int cpu;
 
 	pr_info("Tegra210 cpuidle driver\n");
-	tegra210_cc4_volt_init(pdev);
+	ret = tegra210_cc4_volt_init(pdev);
+	if (ret == -EPROBE_DEFER) {
+		pr_info("Tegra210 cpuidle driver triggering delayed probe\n");
+		return ret;
+	}
+
 	do_cc4_init();
 	register_syscore_ops(&tegra210_syscore_ops);
 
