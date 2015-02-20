@@ -8,7 +8,7 @@
  *  Copyright (c) 2004 Takashi Iwai <tiwai@suse.de>
  *                     PeiSen Hou <pshou@realtek.com.tw>
  *
- *   Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
+ *   Copyright (C) 2013-2015 NVIDIA Corporation. All rights reserved.
  *
  *  This program is free software; you can redistribute it and/or modify it
  *  under the terms of the GNU General Public License as published by the Free
@@ -1792,6 +1792,7 @@ static void azx_stream_reset(struct azx *chip, struct azx_dev *azx_dev)
 	       --timeout)
 		;
 	val &= ~SD_CTL_STREAM_RESET;
+	udelay(100); /* WAR: Delay added to avoid mcerr */
 	azx_sd_writeb(azx_dev, SD_CTL, val);
 	udelay(3);
 
