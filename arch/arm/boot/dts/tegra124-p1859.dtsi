@@ -346,6 +346,10 @@
 
 	sata@70020000 {
 		status = "okay";
+		nvidia,gen1-amp = /bits/8 <0x12>;
+		nvidia,gen2-amp = /bits/8 <0x18>;
+		nvidia,gen1-peak = /bits/8 <0x4>;
+		nvidia,gen2-peak = /bits/8 <0xA>;
 	};
 
 	sdhci@700b0000 {
