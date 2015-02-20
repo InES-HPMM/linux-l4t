@@ -37,12 +37,17 @@
 		nvidia,enable-sata-port;
 	};
 
+	/* this sku has both eSATA and eMMC */
+
 	sdhci@700b0600 {
-		status="disabled";
+		status="okay";
 	};
+	rollback-protection {
+		status = "okay";
+	};
+
 	pwm-leds {
 		compatible = "pwm-leds";
 		status = "disabled";
 	};
-
 };
