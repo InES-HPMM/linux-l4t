@@ -425,6 +425,14 @@ enum sata_connectors {
 	STANDARD_SATA,
 };
 
+/* Sata Pad Cntrl Values */
+struct sata_pad_cntrl {
+	u8 gen1_tx_amp;
+	u8 gen1_tx_peak;
+	u8 gen2_tx_amp;
+	u8 gen2_tx_peak;
+};
+
 /*
  *  tegra_ahci_host_priv is the extension of ahci_host_priv
  *  with extra fields: idle_timer, pg_save, pg_state, etc.
@@ -455,6 +463,8 @@ struct tegra_ahci_host_priv {
 	struct tegra_sata_soc_data *soc_data;
 	struct tegra_prod_list	*prod_list;
 	void __iomem		*base_list[6];
+	struct sata_pad_cntrl	pad_val;
+	bool			dt_contains_padval;
 };
 
 #ifdef	CONFIG_DEBUG_FS
@@ -744,15 +754,7 @@ static inline u32 fuse_readl(u32 offset)
 	return val;
 }
 
-/* Sata Pad Cntrl Values */
-struct sata_pad_cntrl {
-	u8 gen1_tx_amp;
-	u8 gen1_tx_peak;
-	u8 gen2_tx_amp;
-	u8 gen2_tx_peak;
-};
-
-static const struct sata_pad_cntrl sata_calib_pad_val[] = {
+static struct sata_pad_cntrl sata_calib_pad_val[] = {
 	{	/* SATA_CALIB[1:0]  = 00 */
 		0x18,
 		0x04,
@@ -1215,7 +1217,7 @@ static int tegra_ahci_controller_init(void *hpriv, int lp0)
 	struct clk *clk_sata_cold = NULL;
 	struct clk *clk_pllp = NULL;
 	struct clk *clk_cml1 = NULL;
-	int err;
+	int err, calib_val;
 	u32 val;
 	u32 timeout;
 
@@ -1443,6 +1445,19 @@ static int tegra_ahci_controller_init(void *hpriv, int lp0)
 
 	val |= CLK_OVERRIDE;
 	sata_writel(val, SATA_CONFIGURATION_0_OFFSET);
+
+	if (tegra_hpriv->dt_contains_padval == 1) {
+		calib_val = fuse_readl(FUSE_SATA_CALIB_OFFSET) &
+				FUSE_SATA_CALIB_MASK;
+		sata_calib_pad_val[calib_val].gen1_tx_amp =
+				tegra_hpriv->pad_val.gen1_tx_amp;
+		sata_calib_pad_val[calib_val].gen1_tx_peak =
+				tegra_hpriv->pad_val.gen1_tx_peak;
+		sata_calib_pad_val[calib_val].gen2_tx_amp =
+				tegra_hpriv->pad_val.gen2_tx_amp;
+		sata_calib_pad_val[calib_val].gen2_tx_peak =
+				tegra_hpriv->pad_val.gen2_tx_peak;
+	}
 
 	/* program sata pad control based on the fuse */
 	tegra_ahci_set_pad_cntrl_regs(tegra_hpriv);
@@ -3124,6 +3139,25 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 						&pdev->dev);
 		if (!match)
 			return -ENODEV;
+
+		/*
+		*of_property_read_u8 does not overwrite the third argument,
+		*if corresponding dt node does not exist.So it is safe to
+		*call this function without checking presence of dt node.
+		*/
+		tegra_hpriv->dt_contains_padval = 1;
+		if (of_property_read_u8(np, "nvidia,gen1-amp",
+			&tegra_hpriv->pad_val.gen1_tx_amp) != 0)
+			tegra_hpriv->dt_contains_padval = 0;
+		if (of_property_read_u8(np, "nvidia,gen2-amp",
+			&tegra_hpriv->pad_val.gen2_tx_amp) != 0)
+			tegra_hpriv->dt_contains_padval = 0;
+		if (of_property_read_u8(np, "nvidia,gen1-peak",
+			&tegra_hpriv->pad_val.gen1_tx_peak) != 0)
+			tegra_hpriv->dt_contains_padval = 0;
+		if (of_property_read_u8(np, "nvidia,gen2-peak",
+			&tegra_hpriv->pad_val.gen2_tx_peak) != 0)
+			tegra_hpriv->dt_contains_padval = 0;
 		tegra_hpriv->soc_data =
 				(struct tegra_sata_soc_data *)match->data;
 		pdev->dev.coherent_dma_mask = DMA_BIT_MASK(64);
