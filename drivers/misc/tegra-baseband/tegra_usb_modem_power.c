@@ -523,10 +523,6 @@ static int mdm_request_irq(struct tegra_usb_modem *modem,
 {
 	int ret;
 
-	ret = gpio_request(irq_gpio, label);
-	if (ret)
-		return ret;
-
 	/* enable IRQ for GPIO */
 	*irq = gpio_to_irq(irq_gpio);
 
@@ -991,7 +987,8 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 			dev_warn(&pdev->dev,
 			"failed to set modem regulator in bypass mode\n");
 		else
-			dev_info(&pdev->dev, "set regulator in bypass mode");
+			dev_info(&pdev->dev,
+			"set modem regulator in bypass mode");
 
 		/* Enable autoPFM */
 		if (regulator_set_mode(modem->regulator, REGULATOR_MODE_NORMAL))
@@ -1000,6 +997,9 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 		else
 			dev_info(&pdev->dev,
 			"set modem regulator in normal mode");
+
+		/* Set modem_power_state */
+		modem->modem_power_state = RAT_3G_LTE;
 	}
 
 	/* determine phy type */
@@ -1019,18 +1019,34 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 	if (prop)
 		pdata->num_temp_sensors = be32_to_cpup(prop);
 
-	/* GPIO */
+	/* Configure input GPIOs */
 	gpio = of_get_named_gpio(node, "nvidia,wake-gpio", 0);
 	pdata->wake_gpio = gpio_is_valid(gpio) ? gpio : -1;
-	dev_info(&pdev->dev, "set wake gpio:%d\n", pdata->wake_gpio);
+	dev_info(&pdev->dev, "set MDM_WAKE_AP gpio:%d\n", pdata->wake_gpio);
+	if (gpio_is_valid(gpio)) {
+		ret = gpio_request(gpio, "MDM_WAKE_AP");
+		if (ret) {
+			dev_err(&pdev->dev, "request gpio %d failed\n", gpio);
+			return ret;
+		}
+		gpio_direction_input(gpio);
+	}
 
 	gpio = of_get_named_gpio(node, "nvidia,boot-gpio", 0);
 	pdata->boot_gpio = gpio_is_valid(gpio) ? gpio : -1;
-	dev_info(&pdev->dev, "set boot gpio:%d\n", pdata->boot_gpio);
+	dev_info(&pdev->dev, "set MDM_COLDBOOT gpio:%d\n", pdata->boot_gpio);
+	if (gpio_is_valid(gpio)) {
+		ret = gpio_request(gpio, "MDM_COLDBOOT");
+		if (ret) {
+			dev_err(&pdev->dev, "request gpio %d failed\n", gpio);
+			return ret;
+		}
+		gpio_direction_input(gpio);
+	}
 
 	gpio = of_get_named_gpio(node, "nvidia,mdm-power-report-gpio", 0);
 	pdata->mdm_power_report_gpio = gpio_is_valid(gpio) ? gpio : -1;
-	dev_info(&pdev->dev, "set mdm power report gpio:%d\n",
+	dev_info(&pdev->dev, "set MDM_PWR_REPORT gpio:%d\n",
 		pdata->mdm_power_report_gpio);
 
 	gpio = of_get_named_gpio(node, "nvidia,pre-boost-gpio", 0);
@@ -1053,7 +1069,7 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 		pdata->mdm_power_irq_flags =
 		IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
 
-	/* initialize necessary GPIO and start modem here */
+	/* initialize necessary output GPIO and start modem here */
 	gpio = of_get_named_gpio(node, "nvidia,mdm-en-gpio", 0);
 	if (gpio_is_valid(gpio)) {
 		dev_info(&pdev->dev, "set MODEM EN (%d) to 1\n", gpio);
