@@ -127,6 +127,7 @@ struct max8973_chip {
 	struct regulator_ops ops;
 	enum device_id id;
 	int irq;
+	int irq_flags;
 	struct thermal_zone_device *tz_device;
 };
 
@@ -497,7 +498,8 @@ static int max8973_thermal_init(struct max8973_chip *mchip)
 	}
 
 	ret = request_threaded_irq(mchip->irq, NULL, max8973_thermal_irq,
-			IRQF_ONESHOT | IRQF_SHARED, dev_name(mchip->dev), mchip);
+			IRQF_ONESHOT | mchip->irq_flags,
+			dev_name(mchip->dev), mchip);
 	if (ret < 0) {
 		dev_err(mchip->dev, "request irq %d failed: %d\n",
 			mchip->irq, ret);
@@ -540,10 +542,12 @@ static const struct regmap_config max8973_regmap_config = {
 };
 
 static struct max8973_regulator_platform_data *max8973_parse_dt(
-		struct device *dev)
+		struct i2c_client *client)
 {
 	struct max8973_regulator_platform_data *pdata;
+	struct device *dev = &client->dev;
 	struct device_node *np = dev->of_node;
+	struct irq_data *irq_data = irq_get_irq_data(client->irq);
 	int ret;
 	u32 pval;
 
@@ -575,6 +579,11 @@ static struct max8973_regulator_platform_data *max8973_parse_dt(
 					MAX77621_TJINT_WARNING_TEMP_140;
 
 	pdata->reg_init_data = of_get_regulator_init_data(dev, np);
+
+	if (irq_data) {
+		pdata->irq_flags = irqd_get_trigger_type(irq_data);
+		dev_info(dev, "Irq flag is 0x%08x\n", pdata->irq_flags);
+	}
 	return pdata;
 }
 
@@ -597,7 +606,7 @@ static int max8973_probe(struct i2c_client *client,
 
 	pdata = client->dev.platform_data;
 	if (!pdata && client->dev.of_node)
-		pdata = max8973_parse_dt(&client->dev);
+		pdata = max8973_parse_dt(client);
 
 	if (!pdata) {
 		dev_err(&client->dev, "No Platform data");
@@ -670,6 +679,7 @@ static int max8973_probe(struct i2c_client *client,
 		}
 	}
 
+	max->irq_flags = pdata->irq_flags;
 	max->junction_temp_warning = pdata->junction_temp_warning;
 	max->enable_gpio = pdata->enable_gpio;
 	max->dvs_gpio = pdata->dvs_gpio;
