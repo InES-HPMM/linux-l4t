@@ -1,7 +1,7 @@
 /*
  * include/linux/tegra_soctherm.h
  *
- * Copyright (c) 2011-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -105,6 +105,8 @@ struct soctherm_therm {
 	struct thermal_trip_info trips[THERMAL_MAX_TRIPS];
 	struct thermal_zone_params *tzp;
 	struct thermal_zone_device *tz;
+	bool en_hw_pllx_offsetting;
+	int pllx_offset_max;
 };
 
 struct soctherm_throttle_dev {
