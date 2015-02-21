@@ -66,6 +66,11 @@ static const int MIN_LOW_TEMP = -127000;
 #define BPTT				(bits_per_temp_threshold)
 #define BPTT_MASK			((1 << BPTT) - 1)
 
+/*
+ * default 'max' value of the HW PLLX offsetting feature
+ */
+#define PLLX_OFFSET_MAX			10
+
 #define CTL_LVL0_CPU0			0x0
 #define CTL_LVL0_CPU0_STATUS_MASK	0x3
 #define CTL_LVL0_CPU0_STATUS_SHIFT	0
@@ -265,6 +270,22 @@ static const int MIN_LOW_TEMP = -127000;
 #define TH_INTR_POS_PD0_MASK		0x1
 #define TH_INTR_POS_PU0_SHIFT		0
 #define TH_INTR_POS_PU0_MASK		0x1
+
+#define TH_TS_PLLX_OFFSETTING			0x1e4
+#define TH_TS_EN_HW_PLLX_OFFSET_MEM_SHIFT	2
+#define TH_TS_EN_HW_PLLX_OFFSET_MEM_MASK	1
+#define TH_TS_EN_HW_PLLX_OFFSET_GPU_SHIFT	1
+#define TH_TS_EN_HW_PLLX_OFFSET_GPU_MASK	1
+#define TH_TS_EN_HW_PLLX_OFFSET_CPU_SHIFT	0
+#define TH_TS_EN_HW_PLLX_OFFSET_CPU_MASK	1
+
+#define TH_TS_PLLX_OFFSET_MAX		0x1ec
+#define TH_TS_PLLX_MAX_MEM_OFFSET_SHIFT	16
+#define TH_TS_PLLX_MAX_MEM_OFFSET_MASK	0xff
+#define TH_TS_PLLX_MAX_GPU_OFFSET_SHIFT	8
+#define TH_TS_PLLX_MAX_GPU_OFFSET_MASK	0xff
+#define TH_TS_PLLX_MAX_CPU_OFFSET_SHIFT	0
+#define TH_TS_PLLX_MAX_CPU_OFFSET_MASK	0xff
 
 #define EDP_CLK_EN			0x2f0
 
@@ -2820,7 +2841,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 	struct soctherm_therm *therm;
 	int i, j;
 	long rem;
-	u32 r;
+	u32 r, en_hw_off_reg, hw_off_max_reg;
 
 #ifdef CONFIG_THERMAL
 	struct soctherm_sensor_common_params *scp = &pp->sensor_params.scp;
@@ -2863,14 +2884,51 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 		}
 	}
 
+	r = en_hw_off_reg = hw_off_max_reg = 0;
 	/* Program hotspot offsets per THERM */
-	r = REG_SET(0, TS_HOTSPOT_OFF_CPU,
+	r = REG_SET(r, TS_HOTSPOT_OFF_CPU,
 		    plat->therm[THERM_CPU].hotspot_offset / 1000);
 	r = REG_SET(r, TS_HOTSPOT_OFF_GPU,
 		    plat->therm[THERM_GPU].hotspot_offset / 1000);
 	r = REG_SET(r, TS_HOTSPOT_OFF_MEM,
 		    plat->therm[THERM_MEM].hotspot_offset / 1000);
 	soctherm_writel(r, TS_HOTSPOT_OFF);
+
+	/*
+	 * For some versions of platforms, HW PLLX offsetting feature
+	 * is needed, which is configurable via DT. For such cases, enable the
+	 * HW offsetting feature
+	 *
+	 * The HW offsetting feature and the SW feature DO NOT compete with
+	 * each other, once the HW feature is enabled, HW offsetting is followed
+	 * and SW offsetting is ignored/deasserted
+	 */
+	if (plat->therm[THERM_CPU].en_hw_pllx_offsetting) {
+		en_hw_off_reg = REG_SET(en_hw_off_reg,
+				TH_TS_EN_HW_PLLX_OFFSET_CPU, 1);
+		hw_off_max_reg = REG_SET(
+				hw_off_max_reg, TH_TS_PLLX_MAX_CPU_OFFSET,
+				plat->therm[THERM_CPU].hotspot_offset / 1000);
+	}
+
+	if (plat->therm[THERM_GPU].en_hw_pllx_offsetting) {
+		en_hw_off_reg = REG_SET(en_hw_off_reg,
+				TH_TS_EN_HW_PLLX_OFFSET_GPU, 1);
+		hw_off_max_reg = REG_SET(
+				hw_off_max_reg, TH_TS_PLLX_MAX_GPU_OFFSET,
+				plat->therm[THERM_GPU].hotspot_offset / 1000);
+	}
+
+	if (plat->therm[THERM_MEM].en_hw_pllx_offsetting) {
+		en_hw_off_reg = REG_SET(en_hw_off_reg,
+				TH_TS_EN_HW_PLLX_OFFSET_MEM, 1);
+		hw_off_max_reg = REG_SET(
+				hw_off_max_reg, TH_TS_PLLX_MAX_MEM_OFFSET,
+				plat->therm[THERM_MEM].hotspot_offset / 1000);
+	}
+
+	soctherm_writel(hw_off_max_reg, TH_TS_PLLX_OFFSET_MAX);
+	soctherm_writel(en_hw_off_reg, TH_TS_PLLX_OFFSETTING);
 
 	/* configure low, med and heavy levels for CCROC NV_THERM */
 	if (IS_T13X) {
@@ -3503,7 +3561,10 @@ static int regs_show(struct seq_file *s, void *data)
 		state = REG_GET(r, TS_CPU0_CONFIG2_THERM_A);
 		seq_printf(s, "Therm_A/B(%d/", state);
 		state = REG_GET(r, TS_CPU0_CONFIG2_THERM_B);
-		seq_printf(s, "%d)\n", (s16)state);
+		seq_printf(s, "%d) ", (s16)state);
+
+		seq_printf(s, "HW offsetting %d\n",
+				pp->therm[i].en_hw_pllx_offsetting);
 	}
 
 	r = soctherm_readl(TS_PDIV);
@@ -4368,6 +4429,18 @@ static void soctherm_thermctl_parse(struct platform_device *pdev)
 			continue;
 		if (!of_property_read_u32(np, "hotspot-offset", &val))
 			pp->therm[id].hotspot_offset = val;
+
+		pp->therm[id].en_hw_pllx_offsetting = of_property_read_bool(np,
+				"enable-hw-pllx-offsetting");
+		if (pp->therm[id].en_hw_pllx_offsetting) {
+			/*
+			 * pllx-offset-max is an optional property in DT
+			 */
+			if (!of_property_read_u32(np, "pllx-offset-max", &val))
+				pp->therm[id].pllx_offset_max = val;
+			else
+				pp->therm[id].pllx_offset_max = PLLX_OFFSET_MAX;
+		}
 	}
 }
 
