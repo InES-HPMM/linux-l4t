@@ -54,6 +54,11 @@
 		};
 	};
 
+	cpuidle {
+		vdd-cpu-supply = <&cpu_max77621_reg>;
+		cc4-microvolt = <606250>;
+	};
+
 	i2c@546c0000 {
 		bus-pullup-supply = <&en_vdd_cam>;
 	};
