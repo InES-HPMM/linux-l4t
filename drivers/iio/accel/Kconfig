@@ -52,4 +52,14 @@ config IIO_ST_ACCEL_SPI_3AXIS
 	depends on IIO_ST_ACCEL_3AXIS
 	depends on IIO_ST_SENSORS_SPI
 
+config NVS_AIS328DQ
+	tristate "STMicroelectronics accelerometer AIS328DQ"
+	depends on I2C
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	select NVS_IIO
+	help
+	  Say yes here to build support for STMicroelectronics AIS328DQ
+	  accelerometer using NVS (NVidia Sensor framework).
+
 endmenu
