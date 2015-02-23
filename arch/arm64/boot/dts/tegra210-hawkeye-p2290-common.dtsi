@@ -1076,4 +1076,13 @@
 			};
 		};
 	};
+
+	soctherm@0x700E2000 {
+		therm_cpu {
+			enable-hw-pllx-offsetting;
+		};
+		therm_gpu {
+			enable-hw-pllx-offsetting;
+		};
+	};
 };
