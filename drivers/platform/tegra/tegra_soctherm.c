@@ -4364,7 +4364,7 @@ static void soctherm_thermctl_parse(struct platform_device *pdev)
 			continue;
 		if (of_property_read_u32(np, "thermal-sensor-id", &id))
 			continue;
-		if (!soctherm_of_expose_therm(&pdev->dev, &pp->therm[id]))
+		if (soctherm_of_expose_therm(&pdev->dev, &pp->therm[id]))
 			continue;
 		if (!of_property_read_u32(np, "hotspot-offset", &val))
 			pp->therm[id].hotspot_offset = val;
