@@ -53,6 +53,7 @@ struct battery_charging_ops {
 		int fc_state);
 	int (*input_voltage_configure)(struct battery_charger_dev *bc_dev,
 		int soc);
+	int (*get_input_current_limit)(struct battery_charger_dev *bc_dev);
 };
 
 struct battery_charger_info {
@@ -67,6 +68,7 @@ struct battery_gauge_info {
 	int cell_id;
 	const char *tz_name;
 	const char *current_channel_name;
+	const char *input_power_channel_name;
 	struct battery_gauge_ops *bg_ops;
 };
 
@@ -112,5 +114,8 @@ int battery_gauge_fc_state(struct battery_gauge_dev *bg_dev,
 int battery_gauge_report_battery_soc(struct battery_gauge_dev *bg_dev,
 		int battery_soc);
 int battery_gauge_get_battery_soc(struct battery_charger_dev *bc_dev);
+int battery_gauge_get_input_current_limit(struct battery_gauge_dev *bg_dev);
+int battery_gauge_get_input_power(struct battery_gauge_dev *bg_dev,
+		int *power_mw);
 
 #endif /* _LINUX_POWER_BATTERY_CHARGER_GAUGE_COMM_H */

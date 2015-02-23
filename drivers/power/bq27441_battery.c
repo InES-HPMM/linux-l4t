@@ -112,6 +112,10 @@
 #define BQ27441_OPCONFIG_1	0x40
 #define BQ27441_OPCONFIG_2	0x41
 
+#define BQ27441_CHARGE_CURNT_THRESHOLD	2000
+#define BQ27441_INPUT_POWER_THRESHOLD		7000
+#define BQ27441_BATTERY_SOC_THRESHOLD		90
+
 struct bq27441_chip {
 	struct i2c_client		*client;
 	struct delayed_work		work;
@@ -832,6 +836,7 @@ static enum power_supply_property bq27441_battery_props[] = {
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
+	POWER_SUPPLY_PROP_CHARGER_STANDARD,
 	POWER_SUPPLY_PROP_TEMP,
 };
 
@@ -842,6 +847,7 @@ static int bq27441_get_property(struct power_supply *psy,
 	struct bq27441_chip *chip = container_of(psy,
 				struct bq27441_chip, battery);
 	int temperature;
+	int power_mw = 0, input_curnt_ma = 0;
 	int ret = 0;
 
 	mutex_lock(&chip->mutex);
@@ -886,6 +892,23 @@ static int bq27441_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
 		val->intval = chip->capacity_level;
+		break;
+	case POWER_SUPPLY_PROP_CHARGER_STANDARD:
+		val->strval = "unknown";
+		input_curnt_ma = battery_gauge_get_input_current_limit(
+							chip->bg_dev);
+
+		battery_gauge_get_input_power(chip->bg_dev, &power_mw);
+		power_mw = abs(power_mw);
+
+		if (input_curnt_ma >= BQ27441_CHARGE_CURNT_THRESHOLD &&
+				power_mw <= BQ27441_INPUT_POWER_THRESHOLD &&
+				chip->soc < BQ27441_BATTERY_SOC_THRESHOLD)
+			val->strval = "sub-standard";
+		else if (input_curnt_ma == 0 && power_mw == 0)
+			val->strval = "no-charger";
+		else
+			val->strval = "standard";
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		if (chip->enable_temp_prop) {
