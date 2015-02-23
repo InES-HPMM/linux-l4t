@@ -29,6 +29,7 @@
 #include "tegra210-platforms/tegra210-hawkeye-power-tree-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2220-1170-a00.dtsi"
 #include "panel-a-wuxga-8-0.dtsi"
+#include "tegra210-platforms/tegra210-hawkeye-emc-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-touch.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-sensor-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-camera-p2290-1100-a00.dtsi"
