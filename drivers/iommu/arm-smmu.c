@@ -433,6 +433,7 @@ struct arm_smmu_cfg {
 struct arm_smmu_domain {
 	struct arm_smmu_device		*smmu;
 	struct arm_smmu_cfg		cfg;
+	struct page *arm_dummy_page;   /* dummy page for faulted address*/
 	spinlock_t			lock;
 };
 
@@ -1104,6 +1105,11 @@ static int arm_smmu_domain_init(struct iommu_domain *domain)
 	smmu_domain->cfg.pgd = pgd;
 
 	spin_lock_init(&smmu_domain->lock);
+
+	smmu_domain->arm_dummy_page = alloc_page(GFP_KERNEL | __GFP_ZERO);
+	if (!smmu_domain->arm_dummy_page)
+		return -ENOMEM;
+
 	domain->priv = smmu_domain;
 	return 0;
 
@@ -1185,6 +1191,7 @@ static void arm_smmu_domain_destroy(struct iommu_domain *domain)
 	 */
 	arm_smmu_destroy_domain_context(domain);
 	arm_smmu_free_pgtables(smmu_domain);
+	__free_page(smmu_domain->arm_dummy_page);
 	kfree(smmu_domain);
 }
 
@@ -1915,6 +1922,25 @@ static void __arm_smmu_release_pci_iommudata(void *data)
 	kfree(data);
 }
 
+static int arm_iommu_fault(struct iommu_domain *domain, struct device *dev,
+		unsigned long iova, int flags, void *token)
+{
+	struct arm_smmu_domain *smmu_domain = domain->priv;
+
+	dev_err(dev, "iommu fault: iova 0x%lx flags 0x%x\n",
+		iova, flags);
+
+	if (arm_smmu_skip_mapping)
+		arm_smmu_skip_mapping = 0;
+
+	arm_smmu_handle_mapping(smmu_domain, iova,
+		page_to_phys(smmu_domain->arm_dummy_page),
+				PAGE_SIZE, 0);
+	arm_smmu_tlb_inv_context(smmu_domain);
+
+	return 0;
+}
+
 static int arm_smmu_add_device(struct device *dev)
 {
 	struct arm_smmu_device *smmu;
@@ -1988,6 +2014,8 @@ out_put_group:
 	ret = arm_iommu_attach_device(dev, mapping);
 	if (ret)
 		goto err_attach_dev;
+
+	iommu_set_fault_handler(mapping->domain, arm_iommu_fault, 0);
 
 	return 0;
 
