@@ -1343,6 +1343,16 @@ static const struct attribute_group bq2419x_attr_group = {
 	.attrs = bq2419x_attributes,
 };
 
+static int bq2419x_get_input_current_limit(struct battery_charger_dev *bc_dev)
+{
+	struct bq2419x_chip *bq2419x = battery_charger_get_drvdata(bc_dev);
+
+	if (!bq2419x->cable_connected)
+		return 0;
+
+	return bq2419x->in_current_limit;
+}
+
 static int bq2419x_charger_termination_configure(
 		struct battery_charger_dev *bc_dev, int full_charge_state)
 {
@@ -1373,6 +1383,7 @@ static int bq2419x_charger_get_status(struct battery_charger_dev *bc_dev)
 static struct battery_charging_ops bq2419x_charger_bci_ops = {
 	.get_charging_status = bq2419x_charger_get_status,
 	.charge_term_configure = bq2419x_charger_termination_configure,
+	.get_input_current_limit = bq2419x_get_input_current_limit,
 };
 
 static struct battery_charger_info bq2419x_charger_bci = {
