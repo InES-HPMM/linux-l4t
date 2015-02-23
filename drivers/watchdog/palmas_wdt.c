@@ -47,6 +47,7 @@ struct palmas_wdt {
 	int irq;
 	int locked;
 	int watchdog_timer_initial_period;
+	int interrupt_mode;
 };
 
 static irqreturn_t palmas_wdt_irq(int irq, void *data)
@@ -157,6 +158,8 @@ static int palmas_wdt_probe(struct platform_device *pdev)
 			"ti,watchdog-init-timeout", &pval);
 		if (!ret)
 			wdt->watchdog_timer_initial_period = pval;
+		wdt->interrupt_mode = of_property_read_bool(pdev->dev.of_node,
+					"ti,watchdog-interrupt-mode");
 	}
 
 	wdt->dev = &pdev->dev;
@@ -211,8 +214,9 @@ static int palmas_wdt_probe(struct platform_device *pdev)
 		}
 	}
 
+	regval = (wdt->interrupt_mode) ? PALMAS_WATCHDOG_MODE : 0;
 	ret = palmas_update_bits(wdt->palmas, PALMAS_PMU_CONTROL_BASE,
-			PALMAS_WATCHDOG, PALMAS_WATCHDOG_MODE, 0);
+			PALMAS_WATCHDOG, PALMAS_WATCHDOG_MODE, regval);
 	if (ret < 0) {
 		dev_err(wdt->dev, "WATCHDOG update failed: %d\n", ret);
 		goto scrub;
