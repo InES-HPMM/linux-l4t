@@ -59,7 +59,7 @@
 	};
 
 	gpio@6000d000 {
-		default {
+		audio_over_jack {
 			gpio-output-high = <TEGRA_GPIO(DD, 0)>;
 		};
 
