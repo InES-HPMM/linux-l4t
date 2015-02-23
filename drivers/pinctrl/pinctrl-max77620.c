@@ -333,8 +333,6 @@ static int max77620_pinconf_set(struct pinctrl_dev *pctldev,
 	int mask, shift;
 	int addr, ret;
 
-	WARN_ON(1);
-
 	switch (param) {
 	case PIN_CONFIG_DRIVE_OPEN_DRAIN:
 		val = param_val ? 0 : 1;
