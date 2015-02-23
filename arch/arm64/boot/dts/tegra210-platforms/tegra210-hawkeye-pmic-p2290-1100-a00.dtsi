@@ -299,6 +299,8 @@
                         regulator-min-microvolt = <3500000>;
                         regulator-max-microvolt = <4000000>;
                         regulator-init-microvolt = <3600000>;
+                        regulator-min-microamp = <4500000>;
+                        regulator-max-microamp = <4500000>;
                         regulator-boot-on;
                         regulator-always-on;
                         regulator-bypass-on;
