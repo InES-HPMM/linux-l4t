@@ -22,6 +22,8 @@
 #include <tegra124-platforms/tegra124-vcm30t124-fixed-reg.dtsi>
 
 / {
+	nvidia,dtbbuildtime = __DATE__, __TIME__;
+
 	#address-cells = <2>;
 	#size-cells = <2>;
 
