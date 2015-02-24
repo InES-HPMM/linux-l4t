@@ -25,6 +25,19 @@ static inline int of_driver_match_device(struct device *dev,
 	return of_match_device(drv->of_match_table, dev) != NULL;
 }
 
+static inline const void *of_get_match_device_data(
+		const struct of_device_id *matches, const struct device *dev)
+{
+	const struct of_device_id *match;
+
+	match = of_match_device(matches, dev);
+	if (!match) {
+		dev_err(dev, "Error: No device match found\n");
+		return NULL;
+	}
+	return match->data;
+}
+
 extern struct platform_device *of_dev_get(struct platform_device *dev);
 extern void of_dev_put(struct platform_device *dev);
 
