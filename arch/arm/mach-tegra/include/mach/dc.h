@@ -591,6 +591,7 @@ enum {
 #define dcc_bus ddc_bus
 
 struct tegra_vrr {
+	bool    capability;
 	bool    enable;
 	bool    lastenable;
 	bool    flip;
@@ -615,6 +616,15 @@ struct tegra_vrr {
 	bool    frame_type;
 	s64     last_frame_us;
 	int     frame_time_delta_us;
+
+	int	max_adj_pct;
+	int	max_flip_pct;
+	int	max_dc_balance;
+	int	max_inc_pct;
+
+	int	dc_balance;
+	int	frame_avg_pct;
+	int	fluct_avg_pct;
 };
 
 struct tegra_dc_out {
