@@ -115,46 +115,49 @@ enum max77660_ids {
 	MAX77620_THERMAL_ID,
 };
 
+#define MAX77620_SUB_MODULE_RES(_name, _id)			\
+	[MAX77620_##_id##_ID] = {				\
+		.name = "max77620-"#_name,			\
+		.num_resources	= ARRAY_SIZE(_name##_resources), \
+		.resources	= &_name##_resources[0],	\
+		.id = MAX77620_##_id##_ID,			\
+	}
+
+#define MAX77620_SUB_MODULE_NO_RES(_name, _id)			\
+	[MAX77620_##_id##_ID] = {				\
+		.name = "max77620-"#_name,			\
+		.id = MAX77620_##_id##_ID,			\
+	}
+
 static struct mfd_cell max77620_children[] = {
-	[MAX77620_GPIO_ID] = {
-		.name = "max77620-gpio",
-		.num_resources	= ARRAY_SIZE(gpio_resources),
-		.resources	= &gpio_resources[0],
-		.id = MAX77620_GPIO_ID,
-	},
-	[MAX77620_PMIC_ID] = {
-		.name = "max77620-pmic",
-		.id = MAX77620_PMIC_ID,
-	},
-	[MAX77620_RTC_ID] = {
-		.name = "max77620-rtc",
-		.num_resources	= ARRAY_SIZE(rtc_resources),
-		.resources	= &rtc_resources[0],
-		.id = MAX77620_RTC_ID,
-	},
-	[MAX77620_PINCTRL_ID] = {
-		.name = "max77620-pinctrl",
-		.id = MAX77620_PINCTRL_ID,
-	},
-	[MAX77620_CLK_ID] = {
-		.name = "max77620-clk",
-		.id = MAX77620_CLK_ID,
-	},
-	[MAX77620_POWER_OFF_ID] = {
-		.name = "max77620-power-off",
-		.id = MAX77620_POWER_OFF_ID,
-	},
-	[MAX77620_WDT_ID] = {
-		.name = "max77620-wdt",
-		.id = MAX77620_WDT_ID,
-	},
-	[MAX77620_THERMAL_ID] = {
-		.name = "max77620-thermal",
-		.num_resources	= ARRAY_SIZE(thermal_resources),
-		.resources	= &thermal_resources[0],
-		.id = MAX77620_THERMAL_ID,
+	MAX77620_SUB_MODULE_RES(gpio, GPIO),
+	MAX77620_SUB_MODULE_NO_RES(pmic, PMIC),
+	MAX77620_SUB_MODULE_RES(rtc, RTC),
+	MAX77620_SUB_MODULE_NO_RES(pinctrl, PINCTRL),
+	MAX77620_SUB_MODULE_NO_RES(clk, CLK),
+	MAX77620_SUB_MODULE_NO_RES(power-off, POWER_OFF),
+	MAX77620_SUB_MODULE_NO_RES(wdt, WDT),
+	MAX77620_SUB_MODULE_RES(thermal, THERMAL),
+};
+
+struct max77620_sub_modules {
+	struct mfd_cell *cells;
+	int ncells;
+};
+
+static const struct max77620_sub_modules max77620_cells = {
+	.cells = max77620_children,
+	.ncells = ARRAY_SIZE(max77620_children),
+};
+
+static const struct of_device_id max77620_of_match[] = {
+	{
+		.compatible = "maxim,max77620",
+		.data = &max77620_cells,
+	}, {
 	},
 };
+MODULE_DEVICE_TABLE(of, max77620_of_match);
 
 int max77620_top_irq_chip_pre_irq(void *data)
 {
@@ -499,6 +502,7 @@ static int max77620_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
 	struct device_node *node = client->dev.of_node;
+	const struct max77620_sub_modules *children;
 	struct max77620_chip *chip;
 	int i = 0;
 	int ret = 0;
@@ -507,6 +511,10 @@ static int max77620_probe(struct i2c_client *client,
 		dev_err(&client->dev, "Device is not from DT\n");
 		return -ENODEV;
 	}
+
+	children = of_get_match_device_data(max77620_of_match, &client->dev);
+	if (!children)
+		return -ENODEV;
 
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (chip == NULL) {
@@ -574,8 +582,8 @@ static int max77620_probe(struct i2c_client *client,
 		goto fail_free_irq;
 	}
 
-	ret =  mfd_add_devices(&client->dev, -1, max77620_children,
-			ARRAY_SIZE(max77620_children), NULL, 0,
+	ret =  mfd_add_devices(&client->dev, -1, children->cells,
+			children->ncells, NULL, 0,
 			regmap_irq_get_domain(chip->top_irq_data));
 	if (ret < 0) {
 		dev_err(&client->dev, "mfd add dev fail %d\n", ret);
@@ -680,6 +688,7 @@ static struct i2c_driver max77620_driver = {
 		.name = "max77620",
 		.owner = THIS_MODULE,
 		.pm = &max77620_pm_ops,
+		.of_match_table = max77620_of_match,
 	},
 	.probe = max77620_probe,
 	.remove = max77620_remove,
