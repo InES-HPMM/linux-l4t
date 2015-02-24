@@ -287,6 +287,10 @@ static const int MIN_LOW_TEMP = -127000;
 #define TH_TS_PLLX_MAX_CPU_OFFSET_SHIFT	0
 #define TH_TS_PLLX_MAX_CPU_OFFSET_MASK	0xff
 
+#define TH_TS_VALID			0x1e0
+#define TH_TS_VALID_GPU_SHIFT		9
+#define TH_TS_VALID_GPU_MASK		0x1
+
 #define EDP_CLK_EN			0x2f0
 
 #define OC1_CFG				0x310
@@ -483,6 +487,7 @@ static void __iomem *clk_reset_base;
 static void __iomem *clk13_rst_base;
 
 static DEFINE_MUTEX(soctherm_suspend_resume_lock);
+static DEFINE_MUTEX(soctherm_tsensor_lock);
 
 static int soctherm_suspend(struct device *dev);
 static int soctherm_resume(struct device *dev);
@@ -3432,6 +3437,22 @@ void tegra_soctherm_adjust_core_zone(bool high_voltage_range)
 		soctherm_adjust_zone(THERM_MEM);
 	}
 #endif
+}
+
+/**
+ * tegra_soctherm_gpu_tsens_invalidate() - Allow external clients (PG driver
+ * etc.) to validate/invalidate the GPU tsosc.
+ * @control:	true/false to invalidate/validate.
+ */
+int tegra_soctherm_gpu_tsens_invalidate(bool control)
+{
+	u32 r = 0;
+	mutex_lock(&soctherm_tsensor_lock);
+	r = soctherm_readl(TH_TS_VALID);
+	r = REG_SET(r, TH_TS_VALID_GPU, control);
+	soctherm_writel(r, TH_TS_VALID);
+	mutex_unlock(&soctherm_tsensor_lock);
+	return 0;
 }
 
 #ifdef CONFIG_DEBUG_FS
