@@ -90,6 +90,7 @@
 
 	serial@70006300 {
 		compatible = "nvidia,tegra114-hsuart";
+		dma-names = "tx";
 		status = "okay";
 	};
 
