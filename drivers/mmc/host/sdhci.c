@@ -1101,14 +1101,14 @@ static void sdhci_set_transfer_mode(struct sdhci_host *host,
 }
 
 #ifdef CONFIG_DEBUG_FS
-static void get_kbps_from_size_n_usec_32bit(
+static void sdhci_div32(
 		u32 size_in_bits_x1000, u32 time_usecs,
 		u32 *speed_in_kbps)
 {
 	*speed_in_kbps = DIV_ROUND_CLOSEST(size_in_bits_x1000, time_usecs);
 }
 
-static void get_kbps_from_size_n_usec_64bit(
+static void sdhci_div64(
 		u64 size_in_bits_x1000, u64 time_usecs,
 		u32 *speed_in_kbps)
 {
@@ -1126,7 +1126,7 @@ static void get_kbps_from_size_n_usec_64bit(
 		pr_debug("%s right shifted operands by %d, size=%lld, time=%lld usec\n",
 			__func__, i, size_in_bits_x1000, time_usecs);
 	/* check for 32 bit operations first */
-	get_kbps_from_size_n_usec_32bit(
+	sdhci_div32(
 		(u32)size_in_bits_x1000, (u32)time_usecs,
 		speed_in_kbps);
 	return;
@@ -1315,7 +1315,7 @@ static void update_stat(struct sdhci_host *host, u32 blk_size, u32 blk_count,
 		t = ktime_get();
 		stat->duration_usecs = ktime_us_delta(t, stat->start_ktime);
 		stat->current_transferred_bytes = (blk_size * blk_count);
-		get_kbps_from_size_n_usec_32bit(
+		sdhci_div32(
 			(((u32)stat->current_transferred_bytes << 3) * 1000),
 			stat->duration_usecs,
 			&new_kbps);
@@ -3921,9 +3921,13 @@ static int show_sdhci_perf_stats(struct seq_file *s, void *data)
 	u32 last_perf_in_class;
 	struct data_stat_entry *stat = NULL;
 	char buf[250];
-	u64 my_total_bytes;
-	u64 my_total_usecs;
-	unsigned int overall_avg_perf2;
+	u64 total_rd_bytes;
+	u64 total_wr_bytes;
+	u64 total_rd_usecs;
+	u64 total_wr_usecs;
+	unsigned int overall_avg_rd_perf2;
+	unsigned int overall_avg_wr_perf2;
+	int rd_percent, wr_percent;
 
 	seq_printf(s, "SDHCI(%s): perf statistics stat_size=%d\n",
 		mmc_hostname(host->mmc),
@@ -3939,8 +3943,10 @@ static int show_sdhci_perf_stats(struct seq_file *s, void *data)
 		seq_puts(s,
 		"         Size        (R/W)        transfer         Bytes     Transfers       Time(usec)     Bytes           Duration           Perf            Perf                Perf       Perf\n");
 	}
-	my_total_bytes = 0;
-	my_total_usecs = 0;
+	total_rd_bytes = 0;
+	total_wr_bytes = 0;
+	total_rd_usecs = 0;
+	total_wr_usecs = 0;
 	for (i = 0; i < host->sdhci_data_stat.stat_size; i++) {
 		if (!stat)
 			stat = host->sdhci_data_stat.head;
@@ -3951,15 +3957,20 @@ static int show_sdhci_perf_stats(struct seq_file *s, void *data)
 				mmc_hostname(host->mmc), __func__, i);
 			break;
 		}
-		get_kbps_from_size_n_usec_64bit(
+		sdhci_div64(
 			((stat->total_bytes << 3) * 1000),
 			stat->total_usecs, &avg_perf2);
-		get_kbps_from_size_n_usec_32bit(
+		sdhci_div32(
 			(((u32)stat->current_transferred_bytes << 3) * 1000),
 			stat->duration_usecs,
 			&last_perf_in_class);
-		my_total_bytes += stat->total_bytes;
-		my_total_usecs += stat->total_usecs;
+		if (stat->is_read) {
+			total_rd_bytes += stat->total_bytes;
+			total_rd_usecs += stat->total_usecs;
+		} else {
+			total_wr_bytes += stat->total_bytes;
+			total_wr_usecs += stat->total_usecs;
+		}
 		snprintf(buf, 250,
 			"%2d    %4d           %c       %8d    %16lld    %8d        %16lld    %8d            %8d           %8d         %8d         %8d    %8d\n",
 			(i + 1),
@@ -3978,13 +3989,29 @@ static int show_sdhci_perf_stats(struct seq_file *s, void *data)
 			);
 		seq_puts(s, buf);
 	}
-	get_kbps_from_size_n_usec_64bit(
-		((my_total_bytes << 3) * 1000),
-		my_total_usecs, &overall_avg_perf2);
+	sdhci_div64(
+		((total_rd_bytes << 3) * 1000),
+		total_rd_usecs, &overall_avg_rd_perf2);
+	sdhci_div64(
+		(total_rd_bytes * 1000),
+		(total_rd_bytes + total_wr_bytes), &rd_percent);
 	snprintf(buf, 250,
-		"Total_bytes=%lldB, time=%lldusecs, overall kbps=%d\n",
-		my_total_bytes, my_total_usecs,
-		overall_avg_perf2);
+		"Read Total_bytes=%lldB, time=%lldusecs, overall kbps=%d Rd percent=%d.%d\n",
+		total_rd_bytes, total_rd_usecs,
+		overall_avg_rd_perf2,
+		(rd_percent / 10), (rd_percent % 10));
+	seq_puts(s, buf);
+	sdhci_div64(
+		((total_wr_bytes << 3) * 1000),
+		total_wr_usecs, &overall_avg_wr_perf2);
+	sdhci_div64(
+		(total_wr_bytes * 1000),
+		(total_rd_bytes + total_wr_bytes), &wr_percent);
+	snprintf(buf, 250,
+		"Write Total_bytes=%lldB, time=%lldusecs, overall kbps=%d, Wr percent=%d.%d\n",
+		total_wr_bytes, total_wr_usecs,
+		overall_avg_wr_perf2,
+		(wr_percent / 10), (wr_percent % 10));
 	seq_puts(s, buf);
 
 	return 0;
