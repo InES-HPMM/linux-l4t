@@ -348,6 +348,12 @@ config TEGRA_NVSR
 	help
 	   Say Y here to enable NVSR support.
 
+config TEGRA_VRR
+	bool "Enable VRR Support"
+	default  n
+	help
+	  Say Y here to support VRR.
+
 config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 	bool "Convert carveout to IOVMM"
 	depends on TEGRA_NVMAP && IOMMU_API && !NVMAP_CONVERT_IOVMM_TO_CARVEOUT
