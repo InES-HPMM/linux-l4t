@@ -182,6 +182,7 @@ struct soctherm_platform_data {
 int __init tegra_soctherm_init(struct soctherm_platform_data *data);
 void tegra_soctherm_adjust_cpu_zone(bool high_voltage_range);
 void tegra_soctherm_adjust_core_zone(bool high_voltage_range);
+int tegra_soctherm_gpu_tsens_invalidate(bool control);
 #else
 static inline int tegra_soctherm_init(struct soctherm_platform_data *data)
 {
@@ -191,6 +192,8 @@ static inline void tegra_soctherm_adjust_cpu_zone(bool high_voltage_range)
 { }
 static inline void tegra_soctherm_adjust_core_zone(bool high_voltage_range)
 { }
+static int tegra_soctherm_gpu_tsens_invalidate(bool control)
+{ return 0; }
 #endif
 
 #endif /* __TEGRA_SOCTHERM_H */
