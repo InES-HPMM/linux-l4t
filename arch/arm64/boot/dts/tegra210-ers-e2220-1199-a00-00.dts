@@ -18,7 +18,7 @@
  *
  */
 
-#include "tegra210-ers-e2220-1100-a00-00-common.dts"
+#include "tegra210-ers-e2220-1170-a00-00-common.dts"
 #include "tegra210-platforms/tegra210-ers-1199-emc.dtsi"
 
 / {

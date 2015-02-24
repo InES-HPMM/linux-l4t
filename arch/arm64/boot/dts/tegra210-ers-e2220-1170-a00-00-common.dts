@@ -1,7 +1,7 @@
 /*
  * T210- DSC
  *
- * arch/arm64/boot/dts/tegra210-ers-e2220-1100-a00-00.dts
+ * arch/arm64/boot/dts/tegra210-ers-e2220-1170-a00-00.dts
  *
  * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -25,12 +25,12 @@
 /memreserve/ 0x80000000 0x00020000;
 
 #include "tegra210-common.dtsi"
-#include "tegra210-platforms/tegra210-ers-extgpio-e2220-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-extgpio-e2220-1170-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-power-tree-e2174-1101-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-e2220-powermon-e2174-1100-a00-00.dtsi"
 #include "tegra210-platforms/tegra210-ers-sensor-e2160-1000-a00.dtsi"
-#include "tegra210-platforms/tegra210-ers-gpio-e2220-1100-a00.dtsi"
-#include "tegra210-platforms/tegra210-ers-pinmux-e2220-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-gpio-e2220-1170-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-pinmux-e2220-1170-a00.dtsi"
 #include "tegra210-platforms/tegra210-comms.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
 #include "tegra210-platforms/tegra210-audio.dtsi"
@@ -39,12 +39,12 @@
 #include "panel-s-wqxga-10-1.dtsi"
 #include "panel-a-edp-1080p-14-0.dtsi"
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
-#include "tegra210-platforms/tegra210-ers-dp-e2220-1100-a00.dtsi"
-#include "tegra210-platforms/tegra210-ers-keys-e2220-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-dp-e2220-1170-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-keys-e2220-1170-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-camera-e2249-1002-a00.dtsi"
-#include "tegra210-platforms/tegra210-ers-pwm-fan-e2220-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-pwm-fan-e2220-1170-a00.dtsi"
 #include "tegra210-platforms/tegra210-edp.dtsi"
-#include "tegra210-platforms/tegra210-ers-thermal-nct72-e2220-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-thermal-nct72-e2220-1170-a00.dtsi"
 #include "tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi"
 #include <dt-bindings/sound/tegra-asoc-alt.h>
 #include <dt-bindings/platform/t210/t210.h>

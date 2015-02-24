@@ -25,7 +25,7 @@
 /memreserve/ 0x80000000 0x00020000;
 
 #include "tegra210-common.dtsi"
-#include "tegra210-platforms/tegra210-ers-extgpio-e2220-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-extgpio-e2220-1170-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-power-tree-e2174-1101-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-sensor-e2160-1000-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-gpio-e2190-1100-a00.dtsi"
@@ -35,9 +35,9 @@
 #include "tegra210-platforms/tegra210-audio.dtsi"
 #include "panel-a-wuxga-8-0.dtsi"
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
-#include "tegra210-platforms/tegra210-ers-keys-e2220-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-keys-e2220-1170-a00.dtsi"
 #include "tegra210-platforms/tegra210-edp.dtsi"
-#include "tegra210-platforms/tegra210-ers-thermal-nct72-e2220-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-ers-thermal-nct72-e2220-1170-a00.dtsi"
 #include "tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi"
 
 / {

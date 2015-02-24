@@ -15,7 +15,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#include "tegra210-ers-e2220-1100-a00-00-common.dts"
+#include "tegra210-ers-e2220-1170-a00-00-common.dts"
 #include "tegra210-platforms/tegra210-ers-emc.dtsi"
 
 / {
