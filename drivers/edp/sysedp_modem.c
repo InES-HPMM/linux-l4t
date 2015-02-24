@@ -102,6 +102,7 @@ static int sysedp_modem_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to request gpio\n");
 		goto gpio_error;
 	}
+	gpio_direction_input(data->mdm_power_report_gpio);
 
 	data->mdm_power_irq = gpio_to_irq(data->mdm_power_report_gpio);
 
