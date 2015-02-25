@@ -1,7 +1,7 @@
 * Capella CM3217 ambient light sensor
 
 Required properties:
-- compatible: must be "capella,cm3217"
+- compatible: must be "capella,cm3217-siio"
 - reg: i2c address of the device. It should be 0x10.
 - vdd-supply: regulator supply for the chip
 
@@ -17,7 +17,7 @@ Optional propertied:
 
 Example:
 	cm3217@10 {
-		compatible = "capella,cm3217";
+		compatible = "capella,cm3217-siio";
 		reg = <0x10>;
 		vdd-supply = <&palmas_smps9>;
 		illuminance,integration-time = "480000";

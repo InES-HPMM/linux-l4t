@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+/* Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -472,7 +472,7 @@ err_wq:
 }
 
 static const struct i2c_device_id cm3217_i2c_device_id[] = {
-	{"cm3217", 0},
+	{"cm3217-siio", 0},
 	{}
 };
 
@@ -490,7 +490,7 @@ static void cm3217_shutdown(struct i2c_client *client)
 
 #ifdef CONFIG_OF
 static const struct of_device_id cm3217_of_match[] = {
-	{ .compatible = "capella,cm3217", },
+	{ .compatible = "capella,cm3217-siio", },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, cm3217_of_match);
