@@ -352,6 +352,11 @@
 				custom_locale = "E0";
 				custom_locale_rev = <994>;
 			};
+			CC27 {
+				iso_abbrev = "IN";
+				custom_locale = "Q2";
+				custom_locale_rev = <998>;
+			};
 		};
 	};
 };
