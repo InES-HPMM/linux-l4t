@@ -27,7 +27,7 @@
 		};
 
 		cm3217@10 {
-			compatible = "capella,cm3217";
+			compatible = "capella,cm3217-siio";
 			reg = <0x10>;
 			vdd-supply = <&palmas_smps9>;
 			illuminance,resolution = "8740";
