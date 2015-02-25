@@ -3,7 +3,7 @@
  *
  * NVIDIA Tegra210 device tree board support
  *
- * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -21,5 +21,6 @@
 
 int t210_emc_init(void);
 int tegra21_emc_init(void);
+int t210ref_camera_init(void);
 
 #endif

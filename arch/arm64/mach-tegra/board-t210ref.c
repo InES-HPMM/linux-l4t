@@ -86,7 +86,6 @@
 #include "board.h"
 #include "board-panel.h"
 #include "board-common.h"
-#include "board-t210ref.h"
 #include "board-touch-raydium.h"
 #include "board-touch-maxim_sti.h"
 #include <linux/platform/tegra/clock.h>
@@ -100,6 +99,8 @@
 #include <linux/platform/tegra/dvfs.h>
 #include <linux/platform/tegra/tegra12_emc.h>
 #include "board-t210.h"
+
+#define UTMI1_PORT_OWNER_XUSB 0x1
 
 static struct tegra_usb_platform_data tegra_udc_pdata;
 static struct tegra_usb_otg_data tegra_otg_pdata;

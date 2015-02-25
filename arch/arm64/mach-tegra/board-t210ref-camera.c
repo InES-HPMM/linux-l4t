@@ -19,7 +19,7 @@
 #include <media/soc_camera.h>
 #include <media/soc_camera_platform.h>
 #include <media/tegra_v4l2_camera.h>
-#include "board-t210ref.h"
+#include "board-t210.h"
 /*
  * Soc Camera platform driver for testing
  */
