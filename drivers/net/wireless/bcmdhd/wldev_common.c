@@ -31,6 +31,12 @@
 
 #include <wldev_common.h>
 #include <bcmutils.h>
+#ifdef TEGRA_REGION_BASED_NVRAM
+#include <dngl_stats.h>
+#include <dhd.h>
+#include "nvram_params.h"
+#endif
+
 
 #define htod32(i) (i)
 #define htod16(i) (i)
@@ -338,6 +344,13 @@ int wldev_set_band(
 int wldev_set_country(
 	struct net_device *dev, char *country_code, bool notify, bool user_enforced)
 {
+#ifdef TEGRA_REGION_BASED_NVRAM
+	if (nv_dhd_set_nvram_params(country_code, dev)) {
+		WLDEV_ERROR(("nvram params changed for country code: %s: Reload f/w\n", country_code));
+		return 0;
+	} else
+		return -1;
+#else /* TEGRA_REGION_BASED_NVRAM */
 	int error = -1;
 	wl_country_t cspec = {{0}, 0, {0}};
 	scb_val_t scbval;
@@ -382,6 +395,7 @@ int wldev_set_country(
 			__FUNCTION__, country_code, cspec.ccode, cspec.rev));
 	}
 	return 0;
+#endif /* TEGRA_REGION_BASED_NVRAM */
 }
 
 /* tuning performance for miracast */

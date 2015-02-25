@@ -83,6 +83,11 @@
 #include <dhd_bus.h>
 #include <dhd_proto.h>
 #include <dhd_dbg.h>
+
+#ifdef TEGRA_REGION_BASED_NVRAM
+#include "nvram_params.h"
+#endif
+
 #ifdef CONFIG_HAS_WAKELOCK
 #include <linux/wakelock.h>
 #endif
@@ -2263,6 +2268,47 @@ dhd_sendpkt(dhd_pub_t *dhdp, int ifidx, void *pktbuf)
 
 	return ret;
 }
+
+#ifdef TEGRA_REGION_BASED_NVRAM
+/* Set nvram based on country code.
+ * Return 1 if nvram has changed and firmware needs to be reloaded
+ * Return 0 otherwise
+ */
+
+int
+nv_dhd_set_nvram_params(char *country_code, struct net_device *net) {
+	int ret = 0;
+	char *nvram_code;
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(net);
+
+	nvram_code = country_to_nvram_code(country_code);
+
+	DHD_ERROR(("%s: current country_code: %s, new country_code: %s\n",
+		__func__, current_ccode, country_code));
+	DHD_ERROR(("%s: current nvram_code: %s, new nvram_code: %s\n",
+		__func__, current_nvram_code, nvram_code));
+
+	if (strncmp(country_code, current_ccode, COUNTRY_CODE_LEN) == 0) {
+		DHD_ERROR(("%s: Country code unchanged: %s\n", __func__, country_code));
+		ret = 0;
+	} else if (strncmp(nvram_code, current_nvram_code, COUNTRY_CODE_LEN) == 0) {
+		DHD_ERROR(("%s: no change in nvram require\n", __func__));
+		strncpy(current_ccode, country_code, COUNTRY_CODE_LEN);
+		ret = 0;
+	} else {
+		strncpy(current_nvram_code, nvram_code, COUNTRY_CODE_LEN);
+		strncpy(current_ccode, country_code, COUNTRY_CODE_LEN);
+		get_nvram_param(nvram_code);
+		dhd_bus_set_nvram_params(dhd->pub.bus, nvram_params);
+		ret = 1;
+	}
+
+	if (nvram_code)
+		kfree(nvram_code);
+
+	return ret;
+}
+#endif /* TEGRA_REGION_BASED_NVRAM */
 
 int BCMFASTPATH
 dhd_start_xmit(struct sk_buff *skb, struct net_device *net)

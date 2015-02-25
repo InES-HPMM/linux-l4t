@@ -188,6 +188,10 @@ ifneq ($(CONFIG_BCMDHD_PCIE),)
   DHDCFLAGS += -DPCIE_FULL_DONGLE -DBCMPCIE -DCUSTOM_DPC_PRIO_SETTING=-1
 endif
 
+ifneq ($(CONFIG_BCMDHD_TEGRA_REGION_BASED_NVRAM),)
+  DHDCFLAGS += -DTEGRA_REGION_BASED_NVRAM
+endif
+
 #EXTRA_LDFLAGS += --strip-debug
 
 EXTRA_CFLAGS += $(DHDCFLAGS) -DDHD_DEBUG
@@ -219,6 +223,10 @@ ifneq ($(CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA),)
   DHDOFILES += dhd_custom_sysfs_tegra_scan.o
   DHDOFILES += dhd_custom_sysfs_tegra_stat.o
   DHDOFILES += dhd_custom_sysfs_tegra_tcpdump.o
+endif
+
+ifneq ($(CONFIG_BCMDHD_TEGRA_REGION_BASED_NVRAM),)
+  DHDOFILES += nvram_params.o
 endif
 
 bcmdhd-objs := $(DHDOFILES)

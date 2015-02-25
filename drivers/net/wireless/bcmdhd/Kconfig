@@ -85,3 +85,9 @@ config BCMDHD_CUSTOM_SYSFS_TEGRA
 	default y
 	---help---
 	  Enable custom sysfs for Tegra platform.
+
+config BCMDHD_TEGRA_REGION_BASED_NVRAM
+	bool "Region based nvram/country code selection for Tegra platform"
+	depends on BCMDHD
+	---help---
+	  Enable dynamic region based selection of nvram parameters.

@@ -66,6 +66,10 @@
 #include <dhdioctl.h>
 #include <sdiovar.h>
 
+#ifdef TEGRA_REGION_BASED_NVRAM
+#include "nvram_params.h"
+#endif /* TEGRA_REGION_BASED_NVRAM */
+
 #ifdef PROP_TXSTATUS
 #include <dhd_wlfc.h>
 #endif
@@ -7707,6 +7711,10 @@ dhdsdio_download_nvram(struct dhd_bus *bus)
 	char *bufp;
 	char *pnv_path;
 	bool nvram_file_exists;
+#ifdef TEGRA_REGION_BASED_NVRAM
+	char country_code[COUNTRY_CODE_LEN];
+	char *nvram_code;
+#endif
 
 	pnv_path = bus->nv_path;
 
@@ -7728,6 +7736,30 @@ dhdsdio_download_nvram(struct dhd_bus *bus)
 	}
 
 	/* Download variables */
+#ifdef TEGRA_REGION_BASED_NVRAM
+	if (bus->nvram_params == NULL) {
+		if (get_country_code_fs(country_code)) {
+			/* nvram is not yet set */
+			if (set_country_code_fs("XV")) {
+				DHD_ERROR(("%s: Setting default country code/nvram for XV fail\n", __func__));
+				goto err;
+			} else {
+				DHD_ERROR(("%s: Setting default country code/nvram for XV\n", __func__));
+				strncpy(current_ccode, "XV", 2);
+			}
+		} else {
+			DHD_ERROR(("%s:set saved country code  :%s\n", __func__, country_code));
+			strncpy(current_ccode, country_code, 2);
+		}
+		nvram_code = country_to_nvram_code(current_ccode);
+		strncpy(current_nvram_code, nvram_code, 2);
+		get_nvram_param(nvram_code);
+		bus->nvram_params = nvram_params;
+	}
+	len = strlen(bus->nvram_params);
+	ASSERT(len <= MAX_NVRAMBUF_SIZE);
+	memcpy(memblock, bus->nvram_params, len);
+#else
 	if (nvram_file_exists) {
 		len = dhd_os_get_image_block(memblock, MAX_NVRAMBUF_SIZE, image);
 	}
@@ -7736,6 +7768,7 @@ dhdsdio_download_nvram(struct dhd_bus *bus)
 		ASSERT(len <= MAX_NVRAMBUF_SIZE);
 		memcpy(memblock, bus->nvram_params, len);
 	}
+#endif /* TEGRA_REGION_BASED_NVRAM */
 	if (len > 0 && len < MAX_NVRAMBUF_SIZE) {
 		bufp = (char *)memblock;
 		bufp[len] = 0;
