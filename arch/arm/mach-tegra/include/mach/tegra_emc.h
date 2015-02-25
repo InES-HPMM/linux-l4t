@@ -90,6 +90,8 @@ u32 emc_do_periodic_compensation(void);
 int tegra_emc_set_rate(unsigned long rate);
 bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
 		unsigned long *parent_rate, unsigned long *backup_rate);
+static inline u32 emc_do_periodic_compensation(void)
+{ return 0; }
 #endif
 long tegra_emc_round_rate(unsigned long rate);
 long tegra_emc_round_rate_updown(unsigned long rate, bool up);

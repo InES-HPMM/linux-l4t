@@ -609,6 +609,10 @@ void __emc_copy_table_params(struct tegra21_emc_table *src,
 			     struct tegra21_emc_table *dst, int flags);
 void set_over_temp_timing(struct tegra21_emc_table *next_timing,
 			  unsigned long state);
+void tegra_emc_timer_mr4_start(void);
+void tegra_emc_timer_mr4_stop(void);
+void tegra_emc_timer_training_start(void);
+void tegra_emc_timer_training_stop(void);
 
 extern int ccfifo_index;
 extern void __iomem *emc_base;

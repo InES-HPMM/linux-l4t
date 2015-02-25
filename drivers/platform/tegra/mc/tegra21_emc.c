@@ -524,6 +524,13 @@ static void emc_set_clock(struct tegra21_emc_table *next_timing,
 {
 	current_clksrc = clksrc;
 	seq->set_clock(next_timing, last_timing, training, clksrc);
+
+	if (next_timing->periodic_training)
+		tegra_emc_timer_training_start();
+	else
+		tegra_emc_timer_training_stop();
+
+	/* EMC freq dependent MR4 polling. */
 }
 
 static inline void emc_get_timing(struct tegra21_emc_table *timing)
@@ -1431,14 +1438,12 @@ int tegra_emc_set_over_temp_state(unsigned long state)
 	dram_over_temp_state = state;
 
 	if (current_table != new_table) {
-		pr_info("Setting new emc_timing + table (%ld)\n", state);
 		offset = emc_timing - current_table;
 		emc_set_clock(&new_table[offset], emc_timing, 0,
 			      current_clksrc | EMC_CLK_FORCE_CC_TRIGGER);
 		emc_timing = &new_table[offset];
 		tegra_mc_divider_update(emc);
 	} else {
-		pr_info("Setting new emc_timing (%ld)\n", state);
 		set_over_temp_timing(emc_timing, state);
 		emc_timing_update(0);
 		if (state != DRAM_OVER_TEMP_NONE)
