@@ -1167,6 +1167,17 @@ static unsigned long predict_hz_at_mv_max_tfloor(struct clk *c, int mv)
 	return rate;
 }
 
+unsigned long tegra_dvfs_predict_hz_at_mv_max_tfloor(struct clk *c, int mv)
+{
+	unsigned long rate;
+
+	mutex_lock(&dvfs_lock);
+	rate = predict_hz_at_mv_max_tfloor(c, mv);
+	mutex_unlock(&dvfs_lock);
+	return rate;
+}
+EXPORT_SYMBOL(tegra_dvfs_predict_hz_at_mv_max_tfloor);
+
 /*
  * Predict minimum voltage required to run target clock at specified rate.
  * Evaluate target clock domain V/F relation, and apply proper PLL or
