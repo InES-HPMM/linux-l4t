@@ -819,9 +819,9 @@ static void __init tegra_loki_reserve(void)
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM) || \
 		defined(CONFIG_TEGRA_NO_CARVEOUT)
 	/* 1920*1200*4*2 = 18432000 bytes */
-	tegra_reserve4(0, SZ_16M + SZ_2M, SZ_16M, 186 * SZ_1M);
+	tegra_reserve4(0, 0, 0, 186 * SZ_1M);
 #else
-	tegra_reserve4(SZ_1G, SZ_16M + SZ_2M, SZ_4M, 186 * SZ_1M);
+	tegra_reserve4(SZ_1G, 0, 0, 186 * SZ_1M);
 #endif
 }
 
