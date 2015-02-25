@@ -200,6 +200,18 @@
 		};
 	};
 
+	ahub {
+		i2s@702d1100 {
+			pinctrl-names = "dap_active", "dap_inactive";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			regulator-supplies = "vdd-1v8-spi-hv", "vdd-1v8-spi-hv-bias";
+			vdd-1v8-spi-hv-supply = <&max77620_sd3>;
+			vdd-1v8-spi-hv-bias-supply = <&max77620_sd3>;
+			fsync-width = <0>;
+		};
+	};
+
 	sound {
 		compatible = "nvidia,tegra-audio-t210ref-mobile-es755";
 		nvidia,model = "tegra-snd-t210ref-mobile-es755";
