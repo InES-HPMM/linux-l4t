@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2008 Atmel Corporation
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -128,6 +128,12 @@ static int mmc_ios_show(struct seq_file *s, void *data)
 		break;
 	case MMC_TIMING_SD_HS:
 		str = "sd high-speed";
+		break;
+	case MMC_TIMING_UHS_SDR12:
+		str = "sd uhs SDR12";
+		break;
+	case MMC_TIMING_UHS_SDR25:
+		str = "sd uhs SDR25";
 		break;
 	case MMC_TIMING_UHS_SDR50:
 		str = "sd uhs SDR50";

@@ -37,6 +37,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/pinctrl/pinconf-tegra.h>
 #include <linux/dma-mapping.h>
+#include <linux/uaccess.h>
 
 #ifndef CONFIG_ARM64
 #include <asm/gpio.h>
@@ -4427,6 +4428,277 @@ err_root:
 	return;
 }
 
+/*
+ * Simulate the card remove and insert
+ * set req to true to insert the card
+ * set req to false to remove the card
+ */
+static int sdhci_tegra_carddetect(struct sdhci_host *sdhost, bool req)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhost);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct platform_device *pdev = to_platform_device(mmc_dev(sdhost->mmc));
+	struct tegra_sdhci_platform_data *plat;
+	int err = 0;
+
+	plat = pdev->dev.platform_data;
+	/*
+	 *check if card is inserted physically before performing
+	 *virtual remove or insertion
+	 */
+	if (gpio_is_valid(plat->cd_gpio) &&
+		(gpio_get_value_cansleep(plat->cd_gpio) != 0)) {
+		err = -ENXIO;
+		dev_err(mmc_dev(sdhost->mmc),
+				"Card not inserted in slot\n");
+		goto err_config;
+	}
+
+	/* Ignore the request if card already in requested state*/
+	if (tegra_host->card_present == req) {
+		dev_info(mmc_dev(sdhost->mmc),
+				"Card already in requested state\n");
+		goto err_config;
+	} else
+		tegra_host->card_present = req;
+
+	if (tegra_host->card_present) {
+		err = tegra_sdhci_configure_regulators(tegra_host,
+			CONFIG_REG_EN, 0, 0);
+		if (err) {
+			dev_err(mmc_dev(sdhost->mmc),
+				"Failed to enable card regulators %d\n", err);
+			goto err_config;
+		}
+		/*sdcard power up time max 37msec*/
+		usleep_range(40000, 41000);
+	} else {
+		err = tegra_sdhci_configure_regulators(tegra_host,
+			CONFIG_REG_DIS, 0 , 0);
+		if (err) {
+			dev_err(mmc_dev(sdhost->mmc),
+				"Failed to disable card regulators %d\n", err);
+			goto err_config;
+		}
+		/*sdcard power down time min 1ms*/
+		usleep_range(1000, 2000);
+
+		/*
+		 * Set retune request as tuning should be done next time
+		 * a card is inserted.
+		 */
+		tegra_host->tuning_status = TUNING_STATUS_RETUNE;
+		tegra_host->force_retune = true;
+	}
+	tasklet_schedule(&sdhost->card_tasklet);
+err_config:
+	return err;
+};
+
+static int get_card_insert(void *data, u64 *val)
+{
+	struct sdhci_host *sdhost = data;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhost);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+
+	*val = tegra_host->card_present;
+
+	return 0;
+}
+
+static int set_card_insert(void *data, u64 val)
+{
+	struct sdhci_host *sdhost = data;
+	int err = 0;
+
+	if (val > 1) {
+		err = -EINVAL;
+		dev_err(mmc_dev(sdhost->mmc),
+			"Usage error. Use 0 to remove, 1 to insert %d\n", err);
+		goto err_detect;
+	}
+
+	if (sdhost->mmc->caps & MMC_CAP_NONREMOVABLE) {
+		err = -EINVAL;
+		dev_err(mmc_dev(sdhost->mmc),
+		    "usage error, Supports only SDCARD hosts only %d\n", err);
+		goto err_detect;
+	}
+
+	err = sdhci_tegra_carddetect(sdhost, val == 1);
+err_detect:
+	return err;
+}
+
+static ssize_t get_bus_timing(struct file *file, char __user *user_buf,
+				   size_t count, loff_t *ppos)
+{
+	struct sdhci_host *host = file->private_data;
+	unsigned int len = 0;
+	char buf[16];
+
+	static const char *const sdhci_tegra_timing[] = {
+		[MMC_TIMING_LEGACY]	= "legacy",
+		[MMC_TIMING_MMC_HS]	= "highspeed",
+		[MMC_TIMING_SD_HS]	= "highspeed",
+		[MMC_TIMING_UHS_SDR12]	= "SDR12",
+		[MMC_TIMING_UHS_SDR25]	= "SDR25",
+		[MMC_TIMING_UHS_SDR50]	= "SDR50",
+		[MMC_TIMING_UHS_SDR104]	= "SDR104",
+		[MMC_TIMING_UHS_DDR50]	= "DDR50",
+		[MMC_TIMING_MMC_HS200]	= "HS200",
+		[MMC_TIMING_MMC_HS400]	= "HS400",
+	};
+
+	len = snprintf(buf, sizeof(buf), "%s\n",
+			sdhci_tegra_timing[host->mmc->ios.timing]);
+	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
+}
+
+static ssize_t set_bus_timing(struct file *file,
+				 const char __user *userbuf,
+				 size_t count, loff_t *ppos)
+{
+	struct sdhci_host *sdhost = file->private_data;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhost);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	char buf[16];
+	int err = 0;
+	u32 mask = 0;
+	u32 timing_req = 0;
+
+	/* Ignore the request if card is not yet removed*/
+	if (tegra_host->card_present != 0) {
+		dev_err(mmc_dev(sdhost->mmc),
+		    "Sdcard not removed. Set bus timing denied\n");
+		err = -EINVAL;
+		goto err_detect;
+	}
+
+	if (copy_from_user(buf, userbuf, min(count, sizeof(buf)))) {
+		err = -EFAULT;
+		goto err_detect;
+	}
+
+	buf[count-1] = '\0';
+
+	/*prepare the temp mask to mask higher host timing modes wrt user
+	 *requested one
+	 */
+	mask = ~(MMC_CAP_SD_HIGHSPEED | MMC_CAP_UHS_DDR50
+			    | MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25
+			    | MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR104);
+	if (strcmp(buf, "highspeed") == 0) {
+		timing_req = MMC_CAP_SD_HIGHSPEED;
+		mask |= MMC_CAP_SD_HIGHSPEED;
+	} else if (strcmp(buf, "SDR12") == 0) {
+		timing_req = MMC_CAP_UHS_SDR12;
+		mask |= (MMC_CAP_SD_HIGHSPEED | MMC_CAP_UHS_SDR12);
+	} else if (strcmp(buf, "SDR25") == 0) {
+		timing_req = MMC_CAP_UHS_SDR25;
+		mask |= (MMC_CAP_SD_HIGHSPEED | MMC_CAP_UHS_SDR12
+			| MMC_CAP_UHS_SDR25);
+	} else if (strcmp(buf, "SDR50") == 0) {
+		timing_req = MMC_CAP_UHS_SDR50;
+		mask |= (MMC_CAP_SD_HIGHSPEED | MMC_CAP_UHS_SDR12
+			| MMC_CAP_UHS_SDR25 | MMC_CAP_UHS_SDR50);
+	} else if (strcmp(buf, "SDR104") == 0) {
+		timing_req = MMC_CAP_UHS_SDR104;
+		mask |= (MMC_CAP_SD_HIGHSPEED | MMC_CAP_UHS_SDR12
+			| MMC_CAP_UHS_SDR25 | MMC_CAP_UHS_SDR50
+			| MMC_CAP_UHS_SDR104 | MMC_CAP_UHS_DDR50);
+	} else if (strcmp(buf, "DDR50") == 0) {
+		timing_req = MMC_CAP_UHS_DDR50;
+		mask |= (MMC_CAP_SD_HIGHSPEED | MMC_CAP_UHS_SDR12
+			| MMC_CAP_UHS_SDR25 | MMC_CAP_UHS_SDR50
+			| MMC_CAP_UHS_DDR50);
+	} else if (strcmp(buf, "legacy")) {
+		err = -EINVAL;
+		dev_err(mmc_dev(sdhost->mmc),
+			"Invalid bus timing requested %d\n", err);
+		goto err_detect;
+	}
+
+	/*Checks if user requested mode is supported by host*/
+	if (timing_req && (!(sdhost->caps_timing_orig & timing_req))) {
+		err = -EINVAL;
+		dev_err(mmc_dev(sdhost->mmc),
+			"Timing not supported by Host %d\n", err);
+		goto err_detect;
+	}
+
+	/*
+	 *Limit the capability of host upto user requested timing
+	 */
+	sdhost->mmc->caps |= sdhost->caps_timing_orig;
+	sdhost->mmc->caps &= mask;
+
+	dev_dbg(mmc_dev(sdhost->mmc),
+		"Host Bus Timing limited to %s mode\n", buf);
+	dev_dbg(mmc_dev(sdhost->mmc),
+		"when sdcard is inserted next time, bus timing");
+	dev_dbg(mmc_dev(sdhost->mmc),
+		"gets selected based on card speed caps");
+	return count;
+
+err_detect:
+	return err;
+}
+
+
+static const struct file_operations sdhci_host_bus_timing_fops = {
+	.read		= get_bus_timing,
+	.write		= set_bus_timing,
+	.open		= simple_open,
+	.owner		= THIS_MODULE,
+	.llseek		= default_llseek,
+};
+
+DEFINE_SIMPLE_ATTRIBUTE(sdhci_tegra_card_insert_fops, get_card_insert, set_card_insert,
+	"%llu\n");
+static void sdhci_tegra_misc_debugfs(struct sdhci_host *host)
+{
+	struct dentry *root = host->debugfs_root;
+	unsigned saved_line;
+
+	/*backup original host timing capabilities as debugfs may override it later*/
+	host->caps_timing_orig = host->mmc->caps &
+				(MMC_CAP_SD_HIGHSPEED | MMC_CAP_UHS_DDR50
+				| MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25
+				| MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR104);
+
+	if (!root) {
+		root = debugfs_create_dir(dev_name(mmc_dev(host->mmc)), NULL);
+		if (IS_ERR_OR_NULL(root)) {
+			saved_line = __LINE__;
+			goto err_root;
+		}
+		host->debugfs_root = root;
+	}
+
+	if (!debugfs_create_file("bus_timing", S_IRUSR | S_IWUSR, root, host,
+				&sdhci_host_bus_timing_fops)) {
+		saved_line = __LINE__;
+		goto err_node;
+	}
+
+	if (!debugfs_create_file("card_insert", S_IRUSR | S_IWUSR, root, host,
+			&sdhci_tegra_card_insert_fops)) {
+		saved_line = __LINE__;
+		goto err_node;
+	}
+
+	return;
+
+err_node:
+	debugfs_remove_recursive(root);
+	host->debugfs_root = NULL;
+err_root:
+	pr_err("%s %s: Failed to initialize debugfs functionality at line=%d\n", __func__,
+		mmc_hostname(host->mmc), saved_line);
+	return;
+}
+
 static ssize_t sdhci_handle_boost_mode_tap(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -5586,6 +5858,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		}
 	}
 	sdhci_tegra_error_stats_debugfs(host);
+	sdhci_tegra_misc_debugfs(host);
 	device_create_file(&pdev->dev, &dev_attr_cmd_state);
 
 	/* Enable async suspend/resume to reduce LP0 latency */

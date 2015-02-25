@@ -2,7 +2,7 @@
  *  linux/include/linux/mmc/sdhci.h - Secure Digital Host Controller Interface
  *
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
- *  Copyright (c) 2013-2014, NVIDIA CORPORATION. All Rights Reserved.
+ *  Copyright (c) 2013-2015, NVIDIA CORPORATION. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -237,6 +237,7 @@ struct sdhci_host {
 
 	u32 caps;		/* Alternative CAPABILITY_0 */
 	u32 caps1;		/* Alternative CAPABILITY_1 */
+	u32 caps_timing_orig;	/* Save the original host timing caps*/
 
 	unsigned int            ocr_avail_sdio;	/* OCR bit masks */
 	unsigned int            ocr_avail_sd;
