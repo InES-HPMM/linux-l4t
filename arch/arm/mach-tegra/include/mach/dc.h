@@ -106,6 +106,7 @@ enum {
 enum {
 	TEGRA_DSI_GANGED_SYMMETRIC_LEFT_RIGHT = 1,
 	TEGRA_DSI_GANGED_SYMMETRIC_EVEN_ODD = 2,
+	TEGRA_DSI_GANGED_SYMMETRIC_LEFT_RIGHT_OVERLAP = 3,
 };
 
 enum {
@@ -354,6 +355,9 @@ struct tegra_dsi_out {
 	u8		video_clock_mode;
 	u8		video_burst_mode;
 	u8		ganged_type;
+	u16		ganged_overlap;
+	bool		ganged_swap_links;
+	bool		ganged_write_to_all_links;
 
 	u8		suspend_aggr;
 

@@ -68,7 +68,7 @@ NVIDIA TEGRA124 Display Serial Interface
  - nvidia,dsi-pkt-seq: custom packet sequence since some panels need non standard packet sequence.
  - nvidia,dsi-te-gpio: specifies a GPIO used for dsi panel TE signal.
  - nvidia,nvidia,dsi-ganged-type: specifies dsi ganged type. 1 for TEGRA_DSI_GANGED_SYMMETRIC_LEFT_RIGHT,
-   2 for TEGRA_DSI_GANGED_SYMMETRIC_EVEN_ODD.
+   2 for TEGRA_DSI_GANGED_SYMMETRIC_EVEN_ODD, 3 for TEGRA_DSI_GANGED_SYMMETRIC_LEFT_RIGHT_OVERLAP
  - nvidia,dsi-phy-hsdexit: dsi phy timing, t_hsdexit_ns.
  - nvidia,dsi-phy-hstrail: dsi phy timing, t_hstrail_ns.
  - nvidia,dsi-phy-datzero: dsi phy timing, t_datzero_ns.
@@ -83,6 +83,11 @@ NVIDIA TEGRA124 Display Serial Interface
  - nvidia,dsi-phy-taget: dsi phy timing, t_taget_ns.
  - nvidia,dsi-phy-tasure: dsi phy timing, t_tasure_ns.
  - nvidia,dsi-phy-tago: dsi phy timing, t_tago_ns.
+ - nvidia,dsi-ganged-overlap: ganged symmetric left/right overlap mode overlap region, in pixels
+ - nvidia,dsi-ganged-swap-links: swap DSIA and DSIB in ganged mode (for ganged panels where DSIB connects
+   to master DSI controller IC), 1 for true and 0 for false.
+ - nvidia,dsi-ganged-write-to-all-links: write DSI host and panel commands to both links, with exception of
+   setting up per-link ganged mode start address and range, 1 for true and 0 for false.
 
  - Child nodes represent node of modes, output settings,
    smart dimmer settings, color management unit settings.
