@@ -226,9 +226,11 @@ static inline size_t cpc_deserialize_size_get_status(
 
 static int cpc_deserialize_get_status(struct tegra_cpc_frame *fr, u8 buffer[],
 		size_t rem_buf_size) {
-	TEGRA_CPC_DESERIALIZE_FIELD(fr->hmac, &buffer, &rem_buf_size);
-	TEGRA_CPC_DESERIALIZE_FIELD(fr->result, &buffer, &rem_buf_size);
-	TEGRA_CPC_DESERIALIZE_FIELD(fr->nonce, &buffer, &rem_buf_size);
+	if (TEGRA_CPC_DESERIALIZE_FIELD(fr->hmac, &buffer, &rem_buf_size) ||
+		TEGRA_CPC_DESERIALIZE_FIELD(fr->result, &buffer,
+			&rem_buf_size) ||
+		TEGRA_CPC_DESERIALIZE_FIELD(fr->nonce, &buffer, &rem_buf_size))
+		return -ENOMEM;
 	return 0;
 }
 
