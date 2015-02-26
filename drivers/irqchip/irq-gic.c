@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2002 ARM Limited, All Rights Reserved.
  *
- *  Copyright (C) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *  Copyright (C) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -522,14 +522,6 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 	unsigned int cpu, shift = (gic_irq(d) % 4) * 8;
 	struct gic_chip_data *gic = irq_data_get_irq_chip_data(d);
 	u32 val, mask, bit;
-#ifdef CONFIG_GIC_SET_MULTIPLE_CPUS
-	struct irq_desc *desc = irq_to_desc(d->irq);
-#endif
-
-	if (!force)
-		cpu = cpumask_any_and(mask_val, cpu_online_mask);
-	else
-		cpu = cpumask_first(mask_val);
 
 	if (!force)
 		cpu = cpumask_any_and(mask_val, cpu_online_mask);
@@ -549,13 +541,6 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 	raw_spin_lock(&irq_controller_lock);
 	val = readl_relaxed(reg) & ~mask;
 	val |= bit;
-#ifdef CONFIG_GIC_SET_MULTIPLE_CPUS
-	if (desc && desc->affinity_hint) {
-		struct cpumask mask_hint;
-		if (cpumask_and(&mask_hint, desc->affinity_hint, mask_val))
-			val |= (*cpumask_bits(&mask_hint) << shift) & mask;
-	}
-#endif
 	writel_relaxed(val, reg);
 
 	if (gic->arch_extn && gic->arch_extn->irq_set_affinity)
