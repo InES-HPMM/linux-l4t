@@ -5,7 +5,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1367,6 +1367,7 @@ int tegra_clk_dfll_range_control(enum dfll_range use_dfll)
 	clk_unlock_restore(c->parent, &p_flags);
 	clk_unlock_restore(c, &c_flags);
 	tegra_update_cpu_edp_limits();
+	tegra_cpu_volt_cap_apply(NULL, 0, 0);
 	return ret;
 
 error_1:

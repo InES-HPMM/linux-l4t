@@ -7,7 +7,7 @@
  *	Colin Cross <ccross@google.com>
  *	Based on arch/arm/plat-omap/cpu-omap.c, (C) 2005 Nokia Corporation
  *
- * Copyright (C) 2010-2014 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2010-2015 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -200,6 +200,7 @@ static struct attribute_group stats_attr_grp = {
 static u32 lp_to_g_ratio = LP_TO_G_PERCENTAGE;
 static u32 disable_virtualization;
 static struct clk *lp_clock, *g_clock;
+static int volt_cap_level;
 
 unsigned long lp_to_virtual_gfreq(unsigned long lp_freq)
 {
@@ -522,6 +523,20 @@ static int cpu_edp_safe_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(cpu_edp_safe_fops, cpu_edp_safe_get,
 			cpu_edp_safe_set, "%llu\n");
 
+static int __init tegra_cap_debugfs_init(struct dentry *cpu_tegra_debugfs_root)
+{
+	if (!debugfs_create_u32("cap_kHz", 0444, cpu_tegra_debugfs_root,
+				&volt_capped_speed))
+		return -ENOMEM;
+
+#ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
+	if (!debugfs_create_u32("cap_mv", 0444, cpu_tegra_debugfs_root,
+				&volt_cap_level))
+		return -ENOMEM;
+#endif
+	return 0;
+}
+
 static int __init tegra_virt_debugfs_init(struct dentry *cpu_tegra_debugfs_root)
 {
 #ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
@@ -609,6 +624,9 @@ static int __init tegra_cpu_debug_init(void)
 		return -ENOMEM;
 
 	if (tegra_edp_debug_init(cpu_tegra_debugfs_root))
+		goto err_out;
+
+	if (tegra_cap_debugfs_init(cpu_tegra_debugfs_root))
 		goto err_out;
 
 	if (tegra_virt_debugfs_init(cpu_tegra_debugfs_root))
@@ -794,13 +812,75 @@ _out:
 
 #ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
 
+static int update_volt_cap(struct clk *cluster_clk, int level,
+			   unsigned int *capped_speed)
+{
+#ifndef CONFIG_TEGRA_CPU_VOLT_CAP
+	unsigned long cap_rate, flags;
+
+	/*
+	 * If CPU is on DFLL clock, cap level is already applied by DFLL control
+	 * loop directly - no cap speed to be set. Otherwise, convert cap level
+	 * to cap speed. Hold cpu_clk lock to avoid race with rail mode change.
+	 */
+	clk_lock_save(cpu_clk, &flags);
+	if (!level || tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
+		cap_rate = 0;
+	else
+		cap_rate = tegra_dvfs_predict_hz_at_mv_max_tfloor(
+			cluster_clk, level);
+	clk_unlock_restore(cpu_clk, &flags);
+
+	if (!IS_ERR_VALUE(cap_rate)) {
+		volt_cap_level = level;
+		*capped_speed = cap_rate / 1000;
+		pr_debug("%s: Updated capped speed to %ukHz (cap level %dmV)\n",
+			__func__, *capped_speed, level);
+		return 0;
+	}
+
+	pr_err("%s: Failed to find capped speed for cap level %dmV\n",
+		__func__, level);
+#endif
+	return -EINVAL;
+}
+
+int tegra_cpu_volt_cap_apply(int *cap_idx, int new_idx, int level)
+{
+	int ret;
+	unsigned int capped_speed;
+	struct clk *cluster_clk;
+
+	mutex_lock(&tegra_cpu_lock);
+	if (cap_idx)
+		*cap_idx = new_idx;	/* protect index update by cpu mutex */
+	else
+		level = volt_cap_level; /* keep current level if no index*/
+
+	cluster_clk = is_lp_cluster() ? lp_clock : g_clock;
+	ret = update_volt_cap(cluster_clk, level, &capped_speed);
+	if (!ret) {
+		if (volt_capped_speed != capped_speed) {
+			volt_capped_speed = capped_speed;
+			tegra_cpu_set_speed_cap_locked(NULL);
+		}
+	}
+	mutex_unlock(&tegra_cpu_lock);
+
+	return ret;
+}
+
 static int tegra_cluster_switch_locked(struct clk *cpu_clk, struct clk *new_clk)
 {
 	int ret;
+	unsigned int capped_speed;
 
 	ret = clk_set_parent(cpu_clk, new_clk);
 	if (ret)
 		return ret;
+
+	if (!update_volt_cap(new_clk, volt_cap_level, &capped_speed))
+		volt_capped_speed = capped_speed;
 
 	tegra_cpu_set_speed_cap_locked(NULL);
 

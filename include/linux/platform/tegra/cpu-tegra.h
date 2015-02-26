@@ -1,7 +1,7 @@
 /*
  * linux/platform/tegra/cpu-tegra.h
  *
- * Copyright (c) 2011-2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -74,9 +74,12 @@ static inline struct tegra_cooling_device *tegra_vc_get_cdev(void)
 
 #ifdef CONFIG_TEGRA_HMP_CLUSTER_CONTROL
 unsigned long lp_to_virtual_gfreq(unsigned long lp_freq);
+int tegra_cpu_volt_cap_apply(int *cap_idx, int new_idx, int level);
 #else
 static inline unsigned long lp_to_virtual_gfreq(unsigned long freq)
 { return freq; }
+static inline int tegra_cpu_volt_cap_apply(int *cap_idx, int new_idx, int level)
+{ return -ENOSYS; }
 #endif
 
 #endif /* __MACH_TEGRA_CPU_TEGRA_H */
