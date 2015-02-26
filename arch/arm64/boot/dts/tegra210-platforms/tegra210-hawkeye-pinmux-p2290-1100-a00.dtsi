@@ -718,10 +718,10 @@
 			pex_wake_n_pa2 {
 				nvidia,pins = "pex_wake_n_pa2";
 				nvidia,function = "rsvd1";
-				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
-				nvidia,io-high-voltage = <TEGRA_PIN_ENABLE>;
+				nvidia,io-high-voltage = <TEGRA_PIN_DISABLE>;
 			};
 
 			sata_led_active_pa5 {
