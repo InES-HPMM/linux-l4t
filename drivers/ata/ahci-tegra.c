@@ -2092,6 +2092,7 @@ static int tegra_ahci_port_resume(struct ata_port *ap)
 {
 	struct ata_host *host = ap->host;
 	struct tegra_ahci_host_priv *tegra_hpriv = host->private_data;
+	struct ata_link *link = NULL;
 	int ret = 0;
 
 	ret = pm_runtime_get_sync(&tegra_hpriv->pdev->dev);
@@ -2102,7 +2103,13 @@ static int tegra_ahci_port_resume(struct ata_port *ap)
 		return AC_ERR_SYSTEM;
 	}
 
+	ata_for_each_link(link, ap, HOST_FIRST) {
+		link->eh_info.action &= ~ATA_EH_RESET;
+	}
+
 	ret = ahci_ops.port_resume(ap);
+
+	ata_eh_thaw_port(ap);
 
 	return ret;
 
