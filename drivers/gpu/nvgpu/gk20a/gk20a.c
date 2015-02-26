@@ -1624,7 +1624,7 @@ void gk20a_reset(struct gk20a *g, u32 units)
  *
  * In success, this call MUST be balanced by caller with __gk20a_do_unidle()
  */
-int __gk20a_do_idle(struct platform_device *pdev)
+int __gk20a_do_idle(struct platform_device *pdev, bool force_reset)
 {
 	struct gk20a *g = get_gk20a(pdev);
 	struct gk20a_platform *platform = dev_get_drvdata(&pdev->dev);
@@ -1642,6 +1642,9 @@ int __gk20a_do_idle(struct platform_device *pdev)
 	/* check if it is already railgated ? */
 	if (platform->is_railgated(pdev))
 		return 0;
+
+	/* check if global force_reset flag is set */
+	force_reset |= platform->force_reset_in_do_idle;
 
 	/* prevent suspend by incrementing usage counter */
 	pm_runtime_get_noresume(&pdev->dev);
@@ -1669,7 +1672,7 @@ int __gk20a_do_idle(struct platform_device *pdev)
 	 */
 	pm_runtime_put_sync(&pdev->dev);
 
-	if (platform->can_railgate && !platform->force_reset_in_do_idle) {
+	if (platform->can_railgate && !force_reset) {
 		/* add sufficient delay to allow GPU to rail gate */
 		msleep(platform->railgate_delay);
 
@@ -1722,7 +1725,7 @@ int gk20a_do_idle(void)
 			of_find_matching_node(NULL, tegra_gk20a_of_match);
 	struct platform_device *pdev = of_find_device_by_node(node);
 
-	int ret =  __gk20a_do_idle(pdev);
+	int ret =  __gk20a_do_idle(pdev, true);
 
 	of_node_put(node);
 
