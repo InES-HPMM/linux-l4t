@@ -1,0 +1,33 @@
+* Nvidia Tegra124 AHCI SATA Controller
+
+SATA nodes are defined to describe on-chip Serial ATA controllers.
+Each SATA controller should have its own node.
+
+Required properties:
+- compatible            : compatible list, contains "nvidia,tegra124-ahci-sata"
+- interrupts            : <interrupt mapping for SATA IRQ>
+- reg                   : <registers mapping>
+- nvidia,gen1-amp       : AMP feild of sata PHY control Register
+                          T_SATA0_CHX_PHY_CTRL1_GEN1
+- nvidia,gen2-amp       : AMP feild of sata PHY control Register
+                          T_SATA0_CHX_PHY_CTRL1_GEN2
+- nvidia,gen1-peak      : PEAK feild of sata PHY control Register
+                          T_SATA0_CHX_PHY_CTRL1_GEN1
+- nvidia,gen2-peak      : PEAK feild of sata PHY control Register
+                          T_SATA0_CHX_PHY_CTRL1_GEN2
+- nvidia,l2p_fifo_depth : T_SATA0_FIFO_L2P_FIFO_DEPTH feild of
+                          T_SATA0_FIFO register
+Example:
+        sata@70020000 {
+                compatible = "nvidia,tegra124-ahci-sata";
+                reg = <0x0 0x70021000 0x0 0x00001000>,
+                        <0x0 0x70027000 0x0 0x00002000>;
+                interrupts = <0 23 0x04>;
+                iommus = <&smmu TEGRA_SWGROUP_SATA2>;
+                status = "disabled";
+                vidia,gen1-amp = /bits/8 <0x12>;
+                nvidia,gen2-amp = /bits/8 <0x18>;
+                nvidia,gen1-peak = /bits/8 <0x4>;
+                nvidia,gen2-peak = /bits/8 <0xA>;
+                nvidia,l2p_fifo_depth = /bits/8 <0x7>;
+        };
