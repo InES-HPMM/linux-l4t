@@ -4,7 +4,7 @@
  * Author:
  *	Colin Cross <ccross@android.com>
  *
- * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -231,14 +231,15 @@ int tegra_pm_irq_set_wake_type(int wake, int flow_type)
 
 /* translate lp0 wake sources back into irqs to catch edge triggered wakeups */
 static void tegra_pm_irq_syscore_resume_helper(
-	unsigned long wake_status,
+	u32 wake_status,
 	unsigned int index)
 {
 	int wake;
 	int irq;
 	struct irq_desc *desc;
 
-	for_each_set_bit(wake, &wake_status, sizeof(wake_status) * 8) {
+	for_each_set_bit(wake, (unsigned long *)&wake_status,
+		sizeof(wake_status) * 8) {
 		irq = tegra_wake_to_irq(wake + 32 * index);
 		if (!irq) {
 			pr_info("Resume caused by WAKE%d\n",
@@ -264,13 +265,12 @@ static void tegra_pm_irq_syscore_resume_helper(
 
 static void tegra_pm_irq_syscore_resume(void)
 {
-	unsigned long long wake_status = read_pmc_wake_status();
+	u64 wake_status = read_pmc_wake_status();
 
 	pr_info("Wake Status[31:0]  = 0x%x\n", (u32)wake_status);
-	tegra_pm_irq_syscore_resume_helper((unsigned long)wake_status, 0);
+	tegra_pm_irq_syscore_resume_helper((u32)wake_status, 0);
 	pr_info("Wake Status[63:32] = 0x%x\n", (u32)(wake_status >> 32));
-	tegra_pm_irq_syscore_resume_helper(
-		(unsigned long)(wake_status >> 32), 1);
+	tegra_pm_irq_syscore_resume_helper((u32)(wake_status >> 32), 1);
 }
 
 #ifdef DEBUG_WAKE_SOURCE
