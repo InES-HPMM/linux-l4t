@@ -154,5 +154,14 @@
 			gpio = <&gpio TEGRA_GPIO(K, 3) 0>;
 			enable-active-high;
 		};
+		en_vdd_cam_1v2: regulator@13 {
+			compatible = "regulator-fixed-sync";
+			reg = <13>;
+			regulator-name = "vdd-cam-1v2";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			gpio = <&gpio TEGRA_GPIO(E, 4) 0>;
+			enable-active-high;
+		};
 	};
 };
