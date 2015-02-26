@@ -45,11 +45,14 @@
 #include "f_ecm.c"
 #include "f_eem.c"
 #include "f_ncm.c"
-#include "u_ether.c"
 #ifdef CONFIG_TARGET_CORE
 #define UASP_ANDROID_GADGET
 #include "tcm_usb_gadget.c"
 #endif
+#ifdef CONFIG_USB_TEGRA_DIGITIZER
+#include "f_digitizer.c"
+#endif
+#include "u_ether.c"
 
 MODULE_AUTHOR("Mike Lockwood");
 MODULE_DESCRIPTION("Android Composite USB Driver");
@@ -584,6 +587,49 @@ static struct android_usb_function mtp_function = {
 	.bind_config	= mtp_function_bind_config,
 	.ctrlrequest	= mtp_function_ctrlrequest,
 };
+
+#ifdef CONFIG_USB_TEGRA_DIGITIZER
+#define MAX_TEGRA_DIGITIZER_DEV_NUM		1
+static int digitizer_function_init(struct android_usb_function *f,
+					struct usb_composite_dev *cdev)
+{
+	return tegra_digitizer_setup(cdev->gadget, MAX_TEGRA_DIGITIZER_DEV_NUM);
+}
+
+static void digitizer_function_cleanup(struct android_usb_function *f)
+{
+	tegra_digitizer_cleanup();
+}
+#define TEGRA_DIGITIZER_DEV_IDX		0
+static int digitizer_function_bind_config(struct android_usb_function *f,
+					struct usb_configuration *c)
+{
+	int ret;
+	ret = tegra_digitizer_bind_config(c, &digitizer_report_desc,
+					TEGRA_DIGITIZER_DEV_IDX);
+	if (ret) {
+		pr_info("%s: digitizer_function_bind_config digitizer failed: %d\n",
+					__func__, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static void digitizer_function_unbind_config(struct android_usb_function *f,
+					struct usb_configuration *c)
+{
+	tegra_digitizer_unbind_config();
+}
+
+static struct android_usb_function digitizer_function = {
+	.name		= "digitizer",
+	.init		= digitizer_function_init,
+	.cleanup	= digitizer_function_cleanup,
+	.bind_config	= digitizer_function_bind_config,
+	.unbind_config	= digitizer_function_unbind_config,
+};
+#endif
 
 /* PTP function is same as MTP with slightly different interface descriptor */
 static struct android_usb_function ptp_function = {
@@ -1338,6 +1384,9 @@ static struct android_usb_function *supported_functions[] = {
 	&nvusb_function,
 #ifdef CONFIG_TARGET_CORE
 	&uasp_function,
+#endif
+#ifdef CONFIG_USB_TEGRA_DIGITIZER
+	&digitizer_function,
 #endif
 	NULL
 };
