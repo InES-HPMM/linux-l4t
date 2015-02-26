@@ -1428,6 +1428,8 @@ static int __init tegra12_dvfs_init_core_cap(void)
 	}
 
 	/* core cap must be initialized for vmax cdev operations */
+	tegra12_dvfs_rail_vdd_core.apply_vmax_cap =
+		tegra_dvfs_therm_vmax_core_cap_apply;
 	tegra_dvfs_rail_register_vmax_cdev(&tegra12_dvfs_rail_vdd_core);
 
 	tegra_core_cap_debug_init();

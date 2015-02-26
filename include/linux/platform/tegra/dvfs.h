@@ -129,6 +129,9 @@ struct dvfs_rail {
 	/* Trips for clock source switch cooling device */
 	struct tegra_cooling_device *clk_switch_cdev;
 
+	/* Vmax capping method */
+	int (*apply_vmax_cap)(int *cap_idx, int new_idx, int cap_mv);
+
 	struct rail_alignment alignment;
 	struct rail_stats stats;
 	const char *version;

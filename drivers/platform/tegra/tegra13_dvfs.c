@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/tegra13_dvfs.c
  *
- * Copyright (c) 2012-2014 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2015 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1331,6 +1331,8 @@ static int __init tegra13_dvfs_init_core_cap(void)
 	}
 
 	/* core cap must be initialized for vmax cdev operations */
+	tegra13_dvfs_rail_vdd_core.apply_vmax_cap =
+		tegra_dvfs_therm_vmax_core_cap_apply;
 	tegra_dvfs_rail_register_vmax_cdev(&tegra13_dvfs_rail_vdd_core);
 
 	tegra_core_cap_debug_init();
