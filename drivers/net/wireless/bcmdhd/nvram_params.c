@@ -39,6 +39,8 @@ char *country_to_nvram_code(char *country_code)
 
 	if (strncmp(country_code, "US", COUNTRY_CODE_LEN) == 0) {
 		strncpy(nvram_code, "US", 2);
+	} else if (strncmp(country_code, "IN", COUNTRY_CODE_LEN) == 0) {
+		strncpy(nvram_code, "US", 2);
 	} else if (strncmp(country_code, "CA", COUNTRY_CODE_LEN) == 0) {
 		strncpy(nvram_code, "US", 2);
 	} else if (strncmp(country_code, "EU", COUNTRY_CODE_LEN) == 0) {
