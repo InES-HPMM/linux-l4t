@@ -108,7 +108,7 @@
 #define   UTMIP_XCVR_SETUP_MSB(x)		(((x) & 0x7) << 22)
 #define   UTMIP_XCVR_HSSLEW_MSB(x)		(((x) & 0x7f) << 25)
 #define   UTMIP_XCVR_HSSLEW_LSB(x)		(((x) & 0x3) << 4)
-#define   UTMIP_XCVR_MAX_OFFSET		2
+#define   UTMIP_XCVR_MAX_OFFSET		0x10
 #define   UTMIP_XCVR_SETUP_MAX_VALUE	0x7f
 #define   UTMIP_XCVR_SETUP_MIN_VALUE	0
 #define   XCVR_SETUP_MSB_CALIB(x) ((x) >> 4)
