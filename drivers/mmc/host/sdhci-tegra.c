@@ -5137,6 +5137,11 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	if (plat == NULL) {
 		plat = sdhci_tegra_dt_parse_pdata(pdev);
+		if (plat == NULL) {
+			dev_err(mmc_dev(host->mmc), "missing platform data\n");
+			rc = -ENXIO;
+			goto err_no_plat;
+		}
 		pr_info("%s: %s line=%d runtime pm type=%s, disable-clock-gate=%d\n",
 			mmc_hostname(host->mmc), __func__, __LINE__,
 			GET_RTPM_TYPE(plat->rtpm_type),
@@ -5145,11 +5150,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		pr_err("%s using board files instead of DT\n",
 			mmc_hostname(host->mmc));
 		plat->rtpm_type = RTPM_TYPE_DELAY_CG;
-	}
-	if (plat == NULL) {
-		dev_err(mmc_dev(host->mmc), "missing platform data\n");
-		rc = -ENXIO;
-		goto err_no_plat;
 	}
 
 	/* sdio delayed clock gate quirk in sdhci_host used */
