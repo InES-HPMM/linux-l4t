@@ -73,6 +73,9 @@ static int tegra210_pmc_padctrl_set_voltage(struct padctrl_dev *pad_dev,
 	int val;
 	int i;
 
+	if ((voltage != 1800000) && (voltage != 3300000))
+		return -EINVAL;
+
 	for (i = 0; i < ARRAY_SIZE(tegra210_pads); ++i) {
 		if (tegra210_pads[i].pad_id == pad_id)
 			break;
