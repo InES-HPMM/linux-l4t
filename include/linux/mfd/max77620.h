@@ -402,6 +402,7 @@ struct max77620_chip {
 	bool shutdown;
 	bool sleep_enable;
 	bool enable_global_lpm;
+	bool avoid_rtc_bulk_write;
 
 	int es_minor_version;
 	int es_major_version;
@@ -431,7 +432,7 @@ static inline int max77620_reg_writes(struct device *dev, int sid,
 	struct max77620_chip *chip = dev_get_drvdata(dev);
 	int ret = 0;
 
-	if (sid == MAX77620_RTC_SLAVE) {
+	if ((sid == MAX77620_RTC_SLAVE) && (!chip->avoid_rtc_bulk_write)) {
 		/* RTC registers support sequential writing */
 		ret = regmap_bulk_write(chip->rmap[sid], reg, val, len);
 	} else {

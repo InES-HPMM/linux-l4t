@@ -526,6 +526,10 @@ static int max77620_probe(struct i2c_client *client,
 	chip->dev = &client->dev;
 	chip->irq_base = -1;
 	chip->chip_irq = client->irq;
+
+	if (node)
+		chip->avoid_rtc_bulk_write =  of_property_read_bool(node,
+					"maxim,avoid-rtc-bulk-register-write");
 	mutex_init(&chip->mutex_config);
 
 	for (i = 0; i < MAX77620_NUM_SLAVES; i++) {
