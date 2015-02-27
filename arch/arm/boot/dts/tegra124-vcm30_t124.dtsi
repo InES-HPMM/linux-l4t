@@ -305,7 +305,7 @@
 		nvidia,xcvr-lsrslew = <2>;
 		nvidia,xcvr-use-fuses;
 		nvidia,vbus-oc-map = <5>;
-		nvidia,xcvr-setup-offset = <0>;
+		nvidia,xcvr-setup-offset = <1>;
 		status = "okay";
 	};
 
@@ -322,7 +322,7 @@
 		nvidia,xcvr-lsrslew = <2>;
 		nvidia,xcvr-use-fuses;
 		nvidia,vbus-oc-map = <5>;
-		nvidia,xcvr-setup-offset = <0>;
+		nvidia,xcvr-setup-offset = <2>;
 		status = "okay";
 	};
 
