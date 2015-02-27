@@ -27,8 +27,9 @@
 
 #include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>
-#include "board.h"
 #include <linux/platform/tegra/tegra_cl_dvfs.h>
+#include <linux/platform/tegra/cpu-tegra.h>
+#include "board.h"
 #include "tegra_core_sysfs_limits.h"
 
 static bool tegra_dvfs_cpu_disabled;
@@ -52,6 +53,13 @@ static int vdd_cpu_therm_floors_table[MAX_THERMAL_LIMITS];
 static struct tegra_cooling_device cpu_vmin_cdev = {
 	.compatible = "nvidia,tegra210-rail-vmin-cdev",
 };
+static int vdd_cpu_vmax_trips_table[MAX_THERMAL_LIMITS];
+static int vdd_cpu_therm_caps_table[MAX_THERMAL_LIMITS];
+#ifndef CONFIG_TEGRA_CPU_VOLT_CAP
+static struct tegra_cooling_device cpu_vmax_cdev = {
+	.compatible = "nvidia,tegra210-rail-vmax-cdev",
+};
+#endif
 
 static struct tegra_cooling_device gpu_vts_cdev = {
 	.compatible = "nvidia,tegra210-rail-scaling-cdev",
@@ -63,6 +71,9 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_cpu = {
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
 	.vmin_cdev = &cpu_vmin_cdev,
+#ifndef CONFIG_TEGRA_CPU_VOLT_CAP
+	.vmax_cdev = &cpu_vmax_cdev,
+#endif
 	.alignment = {
 		.step_uv = 6250, /* 6.25mV */
 	},
@@ -968,6 +979,13 @@ static int __init init_cpu_rail_thermal_profile(struct dvfs *cpu_dvfs)
 			rail->vmin_cdev = NULL;
 	}
 
+	if (rail->vmax_cdev) {
+		if (tegra_dvfs_rail_of_init_vmax_thermal_profile(
+			vdd_cpu_vmax_trips_table, vdd_cpu_therm_caps_table,
+			rail, &cpu_dvfs->dfll_data))
+			rail->vmax_cdev = NULL;
+	}
+
 	return 0;
 }
 
@@ -1546,6 +1564,31 @@ static struct core_bus_rates_table tegra21_gpu_rates_sysfs = {
 		.attr = {.name = "gpu_time_at_user_rate", .mode = 0444} },
 };
 
+static void __init tegra21_dvfs_register_vmax_cdevs(void)
+{
+	struct dvfs_rail *rail;
+
+	/*
+	 * CPU Vmax cooling device registration for pll mode:
+	 * - Use CPU capping method provided by CPUFREQ platform driver
+	 * - Skip registration if most aggressive cap is above maximum voltage
+	 */
+	rail = &tegra21_dvfs_rail_vdd_cpu;
+	rail->apply_vmax_cap = tegra_cpu_volt_cap_apply;
+	if (rail->vmax_cdev) {
+		int i = rail->vmax_cdev->trip_temperatures_num;
+		if (i && rail->therm_mv_caps[i-1] < rail->nominal_millivolts)
+			tegra_dvfs_rail_register_vmax_cdev(rail);
+	}
+}
+
+/*
+ * Initialize core capping interfaces. It can happen only after DVFS is ready.
+ * Therefore this late initcall must be invoked after clock late initcall where
+ * DVFS is initialized -- assured by the order in Make file. In addition core
+ * Vmax cooling device operation depends on core cap interface. Hence, register
+ * all Vmax cooling devices here as well.
+ */
 static int __init tegra21_dvfs_init_core_cap(void)
 {
 	int ret = 0;
@@ -1553,6 +1596,7 @@ static int __init tegra21_dvfs_init_core_cap(void)
 	if (tegra_platform_is_qt())
 		return 0;
 
+	/* Init core voltage cap interface */
 	cap_kobj = kobject_create_and_add("tegra_cap", kernel_kobj);
 	if (!cap_kobj) {
 		pr_err("tegra21_dvfs: failed to create sysfs cap object\n");
@@ -1571,6 +1615,10 @@ static int __init tegra21_dvfs_init_core_cap(void)
 	tegra_core_cap_debug_init();
 	pr_info("tegra dvfs: tegra sysfs cap interface is initialized\n");
 
+	/* Register all Vmax cooling devices */
+	tegra21_dvfs_register_vmax_cdevs();
+
+	/* Init core shared buses rate limit interfaces */
 	gpu_kobj = kobject_create_and_add("tegra_gpu", kernel_kobj);
 	if (!gpu_kobj) {
 		pr_err("tegra21_dvfs: failed to create sysfs gpu object\n");
@@ -1595,6 +1643,7 @@ static int __init tegra21_dvfs_init_core_cap(void)
 		return 0;
 	}
 
+	/* Init core shared buses rate inforamtion interfaces */
 	ret = tegra_init_sysfs_shared_bus_rate(&tegra21_gpu_rates_sysfs,
 					       1, gpu_kobj);
 	if (ret) {
