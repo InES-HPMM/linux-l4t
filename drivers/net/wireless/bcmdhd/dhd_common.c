@@ -1594,7 +1594,11 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 		DHD_EVENT(("MACEVENT: %s, MAC %s\n", event_name, eabuf));
 		break;
 #endif
-
+	case WLC_E_ESCAN_RESULT:
+		 DHD_ISCAN(("MACEVENT: %s %d, MAC %s, status %d, reason %d, auth %d\n",
+			event_name, event_type, eabuf, (int)status, (int)reason,
+			(int)auth_type));
+		break;
 	default:
 		DHD_EVENT(("MACEVENT: %s %d, MAC %s, status %d, reason %d, auth %d\n",
 		       event_name, event_type, eabuf, (int)status, (int)reason,
