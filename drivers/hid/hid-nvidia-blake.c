@@ -1,7 +1,7 @@
 /*
  * HID driver for NVIDIA Shield Wireless Joystick
  *
- * Copyright (c) 2013-2014, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2013-2015, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -508,7 +508,7 @@ static int nvidia_probe(struct hid_device *hdev, const struct hid_device_id *id)
 	loc->y = TOUCHPAD_DEFAULT_Y;
 	loc->action = 0;
 	loc->speed = DEFAULT_SPEED;
-	loc->mode = MOUSE_MODE;
+	loc->mode = DISABLED_MODE;
 	hid_set_drvdata(hdev, loc);
 
 	/* Parse the HID report now */
