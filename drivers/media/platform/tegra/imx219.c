@@ -534,6 +534,7 @@ imx219_ioctl(struct file *file,
 	{
 		dev_dbg(&info->i2c_client->dev,
 			"IMX219_IOCTL_SET_FLASH_MODE not used\n");
+		return -ENODEV;/* not support on sensor strobe */
 	}
 	case IMX219_IOCTL_GET_FLASH_CAP:
 		return -ENODEV;/* not support on sensor strobe */
