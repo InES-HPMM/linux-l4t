@@ -27,6 +27,7 @@
 #include <linux/notifier.h>
 #include <linux/regulator/consumer.h>
 #include <linux/module.h>
+#include <linux/padctrl/padctrl.h>
 #include <linux/tegra-soc.h>
 #include <linux/tegra-fuse.h>
 #include <linux/tegra-pmc.h>
@@ -41,11 +42,16 @@
 
 struct pwr_detect_cell {
 	const char		*reg_id;
+	const char		*pad_name;
 	u32			pwrdet_mask;
 	u32			pwrio_mask;
 	u32			package_mask;
 
 	struct notifier_block	regulator_nb;
+	int			min_uv;
+	int			max_uv;
+	struct regulator	*regulator;
+	struct padctrl		*padctrl;
 };
 
 struct pwr_detect_hw_chip_data {
@@ -75,9 +81,10 @@ static inline u32 pmc_readl(unsigned long addr)
 }
 
 
-#define POWER_CELL(_reg_id, _pwrdet_mask, _pwrio_mask, _package_mask)	\
+#define POWER_CELL(_reg_id, _pwrdet_mask, _pwrio_mask, _package_mask) 	\
 	{								\
-		.reg_id = _reg_id,					\
+		.reg_id = "pwrdet-"#_reg_id,				\
+		.pad_name = #_reg_id,					\
 		.pwrdet_mask = _pwrdet_mask,				\
 		.pwrio_mask = _pwrio_mask,				\
 		.package_mask = _package_mask,				\
@@ -86,36 +93,36 @@ static inline u32 pmc_readl(unsigned long addr)
 /* Some IO pads does not have power detect cells, but still can/should be
  * turned off when no power - set pwrdet_mask=0 for such pads */
 static struct pwr_detect_cell t124_pwr_detect_cells[] = {
-	POWER_CELL("pwrdet-nand",       (0x1 <<  1), (0x1 <<  1), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-uart",	(0x1 <<  2), (0x1 <<  2), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-bb",		(0x1 <<  3), (0x1 <<  3), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-audio",	(0x1 <<  5), (0x1 <<  5), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-mipi",		  0, (0x1 <<  9), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-cam",	(0x1 << 10), (0x1 << 10), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-pex-ctl",	(0x1 << 11), (0x1 << 11), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-sdmmc1",	(0x1 << 12), (0x1 << 12), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-sdmmc3",	(0x1 << 13), (0x1 << 13), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-sdmmc4",		  0, (0x1 << 14), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-hv",		(0x1 << 15), (0x1 << 15), 0xFFFFFFFF),
+	POWER_CELL(nand,       (0x1 <<  1), (0x1 <<  1), 0xFFFFFFFF),
+	POWER_CELL(uart,	(0x1 <<  2), (0x1 <<  2), 0xFFFFFFFF),
+	POWER_CELL(bb,		(0x1 <<  3), (0x1 <<  3), 0xFFFFFFFF),
+	POWER_CELL(audio,	(0x1 <<  5), (0x1 <<  5), 0xFFFFFFFF),
+	POWER_CELL(mipi,		  0, (0x1 <<  9), 0xFFFFFFFF),
+	POWER_CELL(cam,		(0x1 << 10), (0x1 << 10), 0xFFFFFFFF),
+	POWER_CELL(pex-ctl,	(0x1 << 11), (0x1 << 11), 0xFFFFFFFF),
+	POWER_CELL(sdmmc1,	(0x1 << 12), (0x1 << 12), 0xFFFFFFFF),
+	POWER_CELL(sdmmc3,	(0x1 << 13), (0x1 << 13), 0xFFFFFFFF),
+	POWER_CELL(sdmmc4,		  0, (0x1 << 14), 0xFFFFFFFF),
+	POWER_CELL(hv,		(0x1 << 15), (0x1 << 15), 0xFFFFFFFF),
 };
 
 static struct pwr_detect_cell t210_pwr_detect_cells[] = {
-	POWER_CELL("pwrdet-sys",	BIT(0), BIT(0), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-uart",	BIT(2), BIT(2), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-audio",	BIT(5), BIT(5), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-cam",	BIT(10), BIT(10), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-pex-ctrl",	BIT(11), BIT(11), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-sdmmc1",	BIT(12), BIT(12), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-sdmmc3",	BIT(13), BIT(13), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-sdmmc4",	      0, BIT(14), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-audio-hv",	BIT(18), BIT(18), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-debug",	BIT(19), BIT(19), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-dmic",	BIT(20), BIT(20), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-gpio",	BIT(21), BIT(21), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-spi",	BIT(22), BIT(22), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-spi-hv",	BIT(23), BIT(23), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-sdmmc2",	      0, BIT(24), 0xFFFFFFFF),
-	POWER_CELL("pwrdet-dp",		      0, BIT(25), 0xFFFFFFFF),
+	POWER_CELL(sys,	BIT(0), BIT(0), 0xFFFFFFFF),
+	POWER_CELL(uart,	BIT(2), BIT(2), 0xFFFFFFFF),
+	POWER_CELL(audio,	BIT(5), BIT(5), 0xFFFFFFFF),
+	POWER_CELL(cam,	BIT(10), BIT(10), 0xFFFFFFFF),
+	POWER_CELL(pex-ctrl,	BIT(11), BIT(11), 0xFFFFFFFF),
+	POWER_CELL(sdmmc1,	BIT(12), BIT(12), 0xFFFFFFFF),
+	POWER_CELL(sdmmc3,	BIT(13), BIT(13), 0xFFFFFFFF),
+	POWER_CELL(sdmmc4,	      0, BIT(14), 0xFFFFFFFF),
+	POWER_CELL(audio-hv,	BIT(18), BIT(18), 0xFFFFFFFF),
+	POWER_CELL(debug,	BIT(19), BIT(19), 0xFFFFFFFF),
+	POWER_CELL(dmic,	BIT(20), BIT(20), 0xFFFFFFFF),
+	POWER_CELL(gpio,	BIT(21), BIT(21), 0xFFFFFFFF),
+	POWER_CELL(spi,	BIT(22), BIT(22), 0xFFFFFFFF),
+	POWER_CELL(spi-hv,	BIT(23), BIT(23), 0xFFFFFFFF),
+	POWER_CELL(sdmmc2,	      0, BIT(24), 0xFFFFFFFF),
+	POWER_CELL(dp,		      0, BIT(25), 0xFFFFFFFF),
 };
 
 static struct pwr_detect_hw_chip_data t124_pwr_detect_cdata = {
@@ -322,10 +329,13 @@ static int pwrdet_notify_cb(struct notifier_block *nb,
 }
 
 static int pwr_detect_cell_init_one(struct device *dev,
-	struct pwr_detect_cell *cell, u32 *disabled_mask)
+	struct pwr_detect_cell *cell, u32 *disabled_mask,
+	bool enable_pad_volt_config)
 {
 	int ret;
 	struct regulator *regulator;
+	struct padctrl *padctrl;
+	int min_uv, max_uv;
 
 	regulator = devm_regulator_get(dev, cell->reg_id);
 	if (IS_ERR(regulator)) {
@@ -333,6 +343,32 @@ static int pwr_detect_cell_init_one(struct device *dev,
 		dev_err(dev, "regulator %s not found: %d\n",
 				cell->reg_id, ret);
 		return ret;
+	}
+
+	ret = regulator_get_constraint_voltages(regulator, &min_uv, &max_uv);
+	if (!ret) {
+		if (min_uv == max_uv)
+			dev_info(dev, "Rail %s is having fixed voltage %d\n",
+					 cell->reg_id, min_uv);
+		else
+			dev_info(dev, "Rail %s is having voltages: %d:%d\n",
+					 cell->reg_id, min_uv, max_uv);
+	}
+	cell->regulator = regulator;
+	cell->min_uv = min_uv;
+	cell->max_uv = max_uv;
+	if (enable_pad_volt_config && cell->pwrdet_mask &&
+		(min_uv == max_uv)) {
+		padctrl = devm_padctrl_get(dev, cell->pad_name);
+		if (!IS_ERR(padctrl)) {
+			ret = padctrl_set_voltage(padctrl, min_uv);
+			if (ret < 0) {
+				dev_err(dev,
+					"IO pad %s volt %d config failed: %d\n",
+					cell->reg_id, min_uv, ret);
+			}
+			cell->padctrl = padctrl;
+		}
 	}
 
 	cell->regulator_nb.notifier_call = pwrdet_notify_cb;
@@ -356,6 +392,7 @@ static int tegra_pwr_detect_probe(struct platform_device *pdev)
 	u32 package_mask;
 	unsigned long flags;
 	bool rails_found = true;
+	bool enable_pad_volt_config = false;
 
 	if (!tegra_platform_is_silicon())
 		return -ENOSYS;
@@ -377,6 +414,9 @@ static int tegra_pwr_detect_probe(struct platform_device *pdev)
 			return -ENODEV;
 		}
 		curr_hw_cdata = (struct pwr_detect_hw_chip_data *)match->data;
+
+		enable_pad_volt_config = of_property_read_bool(dev->of_node,
+					"nvidia,auto-pad-voltage-config");
 	}
 
 	for (i = 0; i < curr_hw_cdata->ncells; i++) {
@@ -387,7 +427,8 @@ static int tegra_pwr_detect_probe(struct platform_device *pdev)
 			continue;
 		}
 
-		ret = pwr_detect_cell_init_one(dev, cell, &pwrio_disabled_mask);
+		ret = pwr_detect_cell_init_one(dev, cell, &pwrio_disabled_mask,
+							enable_pad_volt_config);
 		if (ret) {
 			dev_err(dev,
 			"regulator to power detect cell map %s failed: %d\n",
