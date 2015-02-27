@@ -464,6 +464,10 @@
 		status = "disabled";
 	};
 
+        watchdog@60005100 {
+                dt-override-status-odm-data = <0x00010000 0x00010000>;
+        };
+
 	cpu_edp {
 		status = "okay";
 		nvidia,edp_limit = <12000>;
