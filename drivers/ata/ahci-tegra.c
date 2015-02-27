@@ -353,6 +353,7 @@
 #define AUX_RX_TERM_EN				(1 << 18)
 #define AUX_TX_IDDQ				(1 << 0)
 #define AUX_TX_IDDQ_OVRD			(1 << 1)
+#define AUX_RX_IDLE_TH(x)			(x << 24)
 
 #define XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_4_0	0x96c
 #define RX_TERM_EN				(1 << 21)
@@ -1172,6 +1173,7 @@ static void tegra_ahci_uphy_init(void)
 	/* Misc Programing including Lane AUX IDDQ removal */
 	val = xusb_readl(XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0);
 	val |= (AUX_RX_MODE_OVRD | AUX_RX_IDLE_EN);
+	val = (val & ~AUX_RX_IDLE_TH(0x3)) | AUX_RX_IDLE_TH(0x1);
 	xusb_writel(val, XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0);
 
 	val = xusb_readl(XUSB_PADCTL_ELPG_PROGRAM_1_0);
