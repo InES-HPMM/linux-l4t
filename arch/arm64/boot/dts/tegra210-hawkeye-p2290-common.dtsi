@@ -616,6 +616,10 @@
 		};
 	};
 
+	gpu-dvfs-rework {
+		status = "okay";
+	};
+
 	thermal-zones {
 		CPU-therm {
 			thermal-zone-params {
