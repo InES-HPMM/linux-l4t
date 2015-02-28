@@ -1345,7 +1345,7 @@ int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 }
 
 #ifdef CONFIG_TEGRA_CORE_CAP
-
+#ifdef CONFIG_TEGRA_CORE_VOLT_CAP
 /* Core voltage and bus cap object and tables */
 static struct kobject *cap_kobj;
 static struct kobject *gpu_kobj;
@@ -1495,5 +1495,5 @@ static int __init tegra12_dvfs_init_core_cap(void)
 	return 0;
 }
 late_initcall(tegra12_dvfs_init_core_cap);
-
+#endif
 #endif

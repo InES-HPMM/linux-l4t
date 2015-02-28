@@ -1508,6 +1508,7 @@ int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 	return 0;
 }
 
+#ifdef CONFIG_TEGRA_CORE_VOLT_CAP
 /* Core voltage and bus cap object and tables */
 static struct kobject *cap_kobj;
 static struct kobject *gpu_kobj;
@@ -1545,10 +1546,12 @@ static struct core_bus_rates_table tegra21_gpu_rates_sysfs = {
 		.attr = {.name = "gpu_time_at_user_rate", .mode = 0444} },
 };
 
-
 static int __init tegra21_dvfs_init_core_cap(void)
 {
 	int ret = 0;
+
+	if (tegra_platform_is_qt())
+		return 0;
 
 	cap_kobj = kobject_create_and_add("tegra_cap", kernel_kobj);
 	if (!cap_kobj) {
@@ -1556,12 +1559,9 @@ static int __init tegra21_dvfs_init_core_cap(void)
 		return 0;
 	}
 
-	if (!tegra_platform_is_qt())
-		ret = tegra_init_core_cap(
-			tegra21_core_cap_table,
+	ret = tegra_init_core_cap(tegra21_core_cap_table,
 			ARRAY_SIZE(tegra21_core_cap_table),
 			core_millivolts, ARRAY_SIZE(core_millivolts), cap_kobj);
-
 	if (ret) {
 		pr_err("tegra21_dvfs: failed to init core cap interface (%d)\n",
 		       ret);
@@ -1609,3 +1609,4 @@ static int __init tegra21_dvfs_init_core_cap(void)
 	return 0;
 }
 late_initcall(tegra21_dvfs_init_core_cap);
+#endif
