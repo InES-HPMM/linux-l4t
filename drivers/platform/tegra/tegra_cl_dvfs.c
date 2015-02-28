@@ -1182,7 +1182,7 @@ static u8 find_mv_out_cap(struct tegra_cl_dvfs *cld, int mv)
 
 	for (cap = 0; cap < cld->num_voltages; cap++) {
 		uv = cld->out_map[cap]->reg_uV;
-		if (uv >= mv * 1000)
+		if (uv / 1000 >= mv)
 			return is_i2c(cld) ? cap : cld->out_map[cap]->reg_value;
 	}
 	return get_output_top(cld);	/* maximum possible output */
@@ -1195,7 +1195,7 @@ static u8 find_mv_out_floor(struct tegra_cl_dvfs *cld, int mv)
 
 	for (floor = 0; floor < cld->num_voltages; floor++) {
 		uv = cld->out_map[floor]->reg_uV;
-		if (uv > mv * 1000) {
+		if (uv / 1000 > mv) {
 			if (!floor)	/* minimum possible output */
 				return get_output_bottom(cld);
 			break;
