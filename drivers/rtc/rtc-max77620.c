@@ -247,12 +247,6 @@ static inline int max77620_rtc_do_irq(struct max77620_rtc *rtc)
 	u8 irq_status;
 	int ret;
 
-	ret = max77620_rtc_update_buffer(rtc, 0);
-	if (ret < 0) {
-		dev_err(rtc->dev, "rtc_irq: Failed to get rtc update buffer\n");
-		return ret;
-	}
-
 	ret = max77620_reg_read(parent, MAX77620_RTC_SLAVE,
 					MAX77620_REG_RTCINT, &irq_status);
 	if (ret < 0) {
@@ -476,7 +470,7 @@ static int max77620_rtc_preinit(struct max77620_rtc *rtc)
 		return ret;
 	}
 
-	max77620_rtc_read(rtc, MAX77620_REG_RTCINT, &val, 1, 1);
+	max77620_rtc_read(rtc, MAX77620_REG_RTCINT, &val, 1, 0);
 
 	/* Configure Binary mode and 24hour mode */
 	val = MAX77620_HRMODEM_MASK;
