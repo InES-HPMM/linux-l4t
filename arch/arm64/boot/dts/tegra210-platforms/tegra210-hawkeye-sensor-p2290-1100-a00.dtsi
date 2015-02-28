@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 			reg = <0x69>;
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(X, 2) 0x01>;
-			invensense,orientation = [ff 00 00 00 ff 00 00 00 01];
+			invensense,orientation = [00 ff 00 ff 00 00 00 00 ff];
 		};
 
 		ak8963c@0d {
