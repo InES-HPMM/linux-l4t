@@ -229,11 +229,28 @@ static int smmu_client_set_hwgrp_hv(struct smmu_client *c, u64 map, int on)
 	return err;
 }
 
+static int smmu_iommu_add_sg_ent(struct smmu_as *as,
+					int idx,
+					uint64_t pa,
+					uint64_t count)
+{
+	struct smmu_sg_ent *sgent = as->mempool_base;
+
+	if (idx >= as->mempool_num_ent)
+		return -EINVAL;
+
+	sgent += idx;
+
+	sgent->ipa = pa;
+	sgent->count = count;
+
+	return 0;
+}
+
 static int __smmu_iommu_map_pfn_hv(struct smmu_as *as, dma_addr_t iova,
 					unsigned long pfn, unsigned long prot)
 {
 	int attrs = as->pte_attr;
-
 	int err;
 
 	/* we maintain local page table to perform iova to pa(ipa)
@@ -250,8 +267,11 @@ static int __smmu_iommu_map_pfn_hv(struct smmu_as *as, dma_addr_t iova,
 	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_READABLE;
 
+	if (smmu_iommu_add_sg_ent(as, 0, __pfn_to_phys(pfn), 1))
+		BUG();
+
 	return libsmmu_map_page(as->tegra_hv_comm_chan, as->asid, iova,
-					__pfn_to_phys(pfn), 1, attrs);
+					1, attrs);
 }
 
 static int __smmu_iommu_map_page_hv(struct smmu_as *as, dma_addr_t iova,
@@ -315,6 +335,7 @@ static int smmu_iommu_map_hv(struct iommu_domain *domain, unsigned long iova,
 	return err;
 }
 
+
 static int smmu_iommu_map_sg_hv(struct iommu_domain *domain,
 					unsigned long iova,
 					struct scatterlist *sgl, int npages,
@@ -333,6 +354,7 @@ static int smmu_iommu_map_sg_hv(struct iommu_domain *domain,
 	 * Native driver has all the logic to map sg so
 	 * directly using the function.
 	 */
+
 	err = __smmu_iommu_map_sg_native(domain, iova, sgl, npages, prot);
 	if (err)
 		return err;
@@ -342,29 +364,37 @@ static int smmu_iommu_map_sg_hv(struct iommu_domain *domain,
 	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_READABLE;
 
+	spin_lock_irqsave(&as->lock, flags);
+
 	while (total > 0) {
-		phys_addr_t pa;
+		uint64_t iova_incr = 0;
+		int idx = 0;
 
-		spin_lock_irqsave(&as->lock, flags);
-		pa = PFN_PHYS(sg_pfn);
-		err = libsmmu_map_page(as->tegra_hv_comm_chan, as->asid,
-						iova, pa, sg_remaining, attrs);
-		if (err < 0) {
-			spin_unlock_irqrestore(&as->lock, flags);
-			goto fail;
-		}
-		iova += (sg_remaining * PAGE_SIZE);
-		total -= sg_remaining;
+		while (total > 0 &&
+			!smmu_iommu_add_sg_ent(as, idx++,
+				PFN_PHYS(sg_pfn), sg_remaining)) {
 
-		sgl = sg_next(sgl);
-		if (sgl) {
-			sg_pfn = page_to_pfn(sg_page(sgl));
-			sg_remaining = sg_num_pages(sgl);
+			iova_incr += (sg_remaining * PAGE_SIZE);
+			total -= sg_remaining;
+			sgl = sg_next(sgl);
+
+			if (sgl) {
+				sg_pfn = page_to_pfn(sg_page(sgl));
+				sg_remaining = sg_num_pages(sgl);
+			}
+
+			BUG_ON(!sgl && total);
 		}
-		spin_unlock_irqrestore(&as->lock, flags);
-		BUG_ON(!sgl && total);
+
+		err = libsmmu_map_page(as->tegra_hv_comm_chan, as->asid, iova,
+								idx, attrs);
+		if (err < 0)
+			break;
+
+		iova += iova_incr;
 	}
-fail:
+
+	spin_unlock_irqrestore(&as->lock, flags);
 	return err;
 }
 
@@ -384,7 +414,6 @@ static size_t smmu_iommu_unmap_hv(struct iommu_domain *domain,
 	dev_dbg(as->smmu->dev, "[%d] %pad\n", as->asid, &iova);
 
 	spin_lock_irqsave(&as->lock, flags);
-
 	/* we maintain local page table to perform iova to pa(ipa)
 	 * conversions locally.
 	 * Native driver has all the logic to unmap pages so
@@ -393,6 +422,7 @@ static size_t smmu_iommu_unmap_hv(struct iommu_domain *domain,
 	__smmu_iommu_unmap_native(as, iova, bytes);
 
 	unmapped = __smmu_iommu_unmap_hv(as, iova, bytes);
+
 	spin_unlock_irqrestore(&as->lock, flags);
 	return unmapped;
 }
@@ -521,6 +551,8 @@ int tegra_smmu_probe_hv(struct platform_device *pdev,
 	int chan = 0;
 	int num_as = 0;
 	int i;
+	struct smmu_sg_ent *sgent_base = NULL;
+	int sg_pool_size, max_sg_ent, as_max_sg_ent;
 
 	err = tegra_hv_smmu_comm_init(dev);
 	if (err)
@@ -553,11 +585,19 @@ int tegra_smmu_probe_hv(struct platform_device *pdev,
 	else
 		smmu->num_as = num_as;
 
+
+	libsmmu_get_mempool_params((void **)&sgent_base, &sg_pool_size);
+	max_sg_ent = sg_pool_size / sizeof(struct smmu_sg_ent);
+	as_max_sg_ent = max_sg_ent / smmu->num_as;
+
 	for (i = 0; i < smmu->num_as; i++) {
 		struct smmu_as *as = &smmu->as[i];
 
 		as->tegra_hv_comm_chan = COMM_CHAN_UNASSIGNED;
 		spin_lock_init(&as->tegra_hv_comm_chan_lock);
+
+		as->mempool_base = (void *) (sgent_base + ((as_max_sg_ent * as->asid)));
+		as->mempool_num_ent = as_max_sg_ent;
 	}
 
 	/* Get the swgids for this guest */

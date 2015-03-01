@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -24,13 +24,14 @@ extern int libsmmu_attach_hwgrp(int comm_chan_id, u32 asid, u32 hwgrp);
 extern int libsmmu_detach_hwgrp(int comm_chan_id, u32 hwgrp);
 extern int libsmmu_map_large_page(int comm_chan_id, u32 asid, u64 iova, u64 pa,
 								int attr);
-extern int libsmmu_map_page(int comm_chan_id, u32 asid, u64 iova, u64 ipa,
-				int count, int attr);
+extern int libsmmu_map_page(int comm_chan_id, u32 asid, u64 iova, int count,
+								int attr);
 extern int libsmmu_unmap(int comm_chan_id, u32 asid, u64 iova, u64 bytes);
 extern int libsmmu_iova_to_phys(int comm_chan_id, u32 asid, u64 iova, u64 *ipa);
 extern int libsmmu_connect(int comm_chan_id);
 extern int libsmmu_debug_op(int comm_chan_id, u32 op, u64 op_data_in,
 							u64 *op_data_out);
+extern int libsmmu_get_mempool_params(void **base, int *size);
 extern int tegra_hv_smmu_comm_chan_alloc(void);
 extern void tegra_hv_smmu_comm_chan_free(int chan_id);
 extern int tegra_hv_smmu_comm_init(struct device *dev);
@@ -67,6 +68,11 @@ enum rx_state_t {
 	RX_DONE,
 };
 
+struct smmu_sg_ent {
+	uint64_t ipa;
+	uint64_t count;
+};
+
 struct drv_ctxt {
 	unsigned int asid;
 	unsigned int hwgrp;
@@ -86,6 +92,7 @@ struct smmu_info {
 	struct smmu_resource window;
 	uint64_t swgids;
 };
+
 
 struct smmu_ivc_msg {
 	unsigned int s_marker;
@@ -116,6 +123,8 @@ struct tegra_hv_smmu_comm_chan {
 
 struct tegra_hv_smmu_comm_dev {
 	struct tegra_hv_ivc_cookie *ivck;
+	struct tegra_hv_ivm_cookie *ivm;
+	void *virt_ivm_base;
 	struct device *dev;
 	spinlock_t ivck_rx_lock;
 	spinlock_t ivck_tx_lock;
