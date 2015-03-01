@@ -365,20 +365,37 @@ static int __init nvadsp_parse_dt(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
+	u32 *adsp_reset;
 	u32 *adsp_mem;
 	int iter;
 
+	adsp_reset = drv_data->unit_fpga_reset;
 	adsp_mem = drv_data->adsp_mem;
 
 	for (iter = 0; iter < ADSP_MEM_END; iter++) {
 		if (of_property_read_u32_index(dev->of_node, "nvidia,adsp_mem",
 			iter, &adsp_mem[iter])) {
-			dev_err(dev, "adsp mem node %d not found\n", iter);
+			dev_err(dev, "adsp memory dt %d not found\n", iter);
 			return -EINVAL;
 		}
 	}
-	return 0;
 
+	drv_data->adsp_unit_fpga = of_property_read_bool(dev->of_node,
+				"nvidia,adsp_unit_fpga");
+
+	if (drv_data->adsp_unit_fpga) {
+		for (iter = 0; iter < ADSP_UNIT_FPGA_RESET_END; iter++) {
+			if (of_property_read_u32_index(dev->of_node,
+				"nvidia,adsp_unit_fpga_reset", iter,
+				&adsp_reset[iter])) {
+				dev_err(dev, "adsp reset dt %d not found\n",
+					iter);
+				return -EINVAL;
+			}
+		}
+	}
+
+	return 0;
 }
 
 static int __init nvadsp_probe(struct platform_device *pdev)
@@ -433,10 +450,13 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 			goto out;
 		}
 
+		if (!drv_data->adsp_unit_fpga && iter == UNIT_FPGA_RST)
+			continue;
+
 		base = devm_ioremap_resource(dev, res);
 		if (IS_ERR(base)) {
-			dev_err(dev,
-				"Failed to remap AMISC resource\n");
+			dev_err(dev, "Failed to iomap resource reg[%d]\n",
+				iter);
 			ret = PTR_ERR(base);
 			goto out;
 		}

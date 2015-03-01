@@ -21,14 +21,10 @@
 
 #define CONFIG_ADSP_DRAM_LOG_WITH_TAG	1
 #define CONFIG_USE_STATIC_APP_LOAD	0
-#define CONFIG_SYSTEM_FPGA		1
 /* enable profiling of load init start */
 #define RECORD_STATS			0
 
 #define SYM_NAME_SZ 128
-
-#define APE_FPGA_MISC_RST_DEVICES 0x702dc800 /*1882048512*/
-#define APE_RESET (1 << 6)
 
 #define AMC_EVP_RESET_VEC_0		0x700
 #define AMC_EVP_UNDEF_VEC_0		0x704

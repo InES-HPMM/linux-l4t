@@ -36,6 +36,7 @@ enum {
 	AMC,
 	AMISC,
 	ABRIDGE,
+	UNIT_FPGA_RST,
 	APE_MAX_REG
 };
 
@@ -57,6 +58,12 @@ enum adsp_mem_dt {
 	ARAM_ALIAS_0_ADDR,
 	ARAM_ALIAS_0_SIZE,
 	ADSP_MEM_END,
+};
+
+enum adsp_unit_fpga_reset {
+	ADSP_ASSERT,
+	ADSP_DEASSERT,
+	ADSP_UNIT_FPGA_RESET_END,
 };
 
 
@@ -118,6 +125,8 @@ struct nvadsp_drv_data {
 	bool actmon_initialized;
 #endif
 	u32 adsp_mem[ADSP_MEM_END];
+	bool adsp_unit_fpga;
+	u32 unit_fpga_reset[ADSP_UNIT_FPGA_RESET_END];
 };
 
 #define ADSP_CONFIG	0x04

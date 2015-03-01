@@ -95,9 +95,7 @@ struct nvadsp_debug_log {
 };
 
 struct nvadsp_os_data {
-#if !CONFIG_SYSTEM_FPGA
-	void __iomem		*reset_reg;
-#endif
+	void __iomem		*unit_fpga_reset_reg;
 	const struct firmware	*os_firmware;
 	struct platform_device	*pdev;
 	struct global_sym_info	*adsp_glo_sym_tbl;
@@ -726,28 +724,61 @@ end:
 }
 EXPORT_SYMBOL(nvadsp_os_load);
 
-static int __nvadsp_os_start(void)
+static int deassert_adsp(struct nvadsp_drv_data *drv_data)
 {
-	struct nvadsp_shared_mem *shared_mem;
-	struct nvadsp_drv_data *drv_data;
-	struct nvadsp_os_args *os_args;
-	struct device *dev;
+	struct device *dev = &priv.pdev->dev;
+
+	if (drv_data->adsp_unit_fpga) {
+		dev_info(dev, "De-asserting ADSP UNIT-FPGA\n");
+		writel(drv_data->unit_fpga_reset[ADSP_DEASSERT],
+				priv.unit_fpga_reset_reg);
+		return 0;
+	}
+
+	if (drv_data->adsp_clk) {
+		dev_dbg(dev, "deasserting adsp...\n");
+		tegra_periph_reset_deassert(drv_data->adsp_clk);
+		udelay(200);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int assert_adsp(struct nvadsp_drv_data *drv_data)
+{
+	struct device *dev = &priv.pdev->dev;
+
+	if (drv_data->adsp_unit_fpga) {
+		if (drv_data->unit_fpga_reset[ADSP_ASSERT]) {
+			dev_info(dev, "Asserting ADSP UNIT-FPGA\n");
+			writel(drv_data->unit_fpga_reset[ADSP_ASSERT],
+				priv.unit_fpga_reset_reg);
+		}
+		return 0;
+	}
+
+	if (drv_data->adsp_clk) {
+		tegra_periph_reset_assert(drv_data->adsp_clk);
+		udelay(200);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int set_adsp_clks_and_timer_prescalar(struct nvadsp_drv_data *drv_data)
+{
+	struct nvadsp_shared_mem *shared_mem = drv_data->shared_adsp_os_data;
+	struct nvadsp_os_args *os_args = &shared_mem->os_args;
+	struct device *dev = &priv.pdev->dev;
 	long max_adsp_freq;
-#if !CONFIG_SYSTEM_FPGA
-	u32 val;
-#endif
-	int ret = 0;
+	int ret = -EINVAL;
 
-	dev = &priv.pdev->dev;
-	drv_data = platform_get_drvdata(priv.pdev);
+	/* on Unit-FPGA do not set clocks, return Sucess */
+	if (drv_data->adsp_unit_fpga)
+		return 0;
 
-	dev_dbg(dev, "Copying EVP...\n");
-	copy_io_in_l(drv_data->state.evp_ptr,
-		     drv_data->state.evp,
-		     AMC_EVP_SIZE);
-
-	shared_mem = drv_data->shared_adsp_os_data;
-	os_args = &shared_mem->os_args;
 	if (drv_data->adsp_cpu_clk) {
 		max_adsp_freq = clk_round_rate(drv_data->adsp_cpu_clk,
 				ULONG_MAX);
@@ -762,29 +793,42 @@ static int __nvadsp_os_start(void)
 		os_args->timer_prescalar--;
 		drv_data->max_adsp_freq = max_adsp_freq;
 		ret = clk_set_rate(drv_data->adsp_cpu_clk, max_adsp_freq);
-		if (ret)
-			goto end;
 
 		dev_dbg(dev, "adsp cpu frequncy %lu and timer prescalar %x\n",
 			clk_get_rate(drv_data->adsp_cpu_clk),
 			os_args->timer_prescalar);
-	} else {
-		ret = -EINVAL;
-		goto end;
+
 	}
 
-	if (drv_data->adsp_clk) {
-		dev_dbg(dev, "deasserting adsp...\n");
-		tegra_periph_reset_deassert(drv_data->adsp_clk);
-		udelay(200);
-	} else {
-		ret = -EINVAL;
-		goto end;
-	}
+	return ret;
+}
 
-#if !CONFIG_SYSTEM_FPGA
-	writel(APE_RESET, priv.reset_reg);
-#endif
+static int __nvadsp_os_start(void)
+{
+	struct nvadsp_drv_data *drv_data;
+	struct device *dev;
+	int ret = 0;
+
+	dev = &priv.pdev->dev;
+	drv_data = platform_get_drvdata(priv.pdev);
+
+
+	dev_dbg(dev, "ADSP is booting on %s\n",
+		drv_data->adsp_unit_fpga ? "UNIT-FPGA" : "SILICON");
+
+	assert_adsp(drv_data);
+
+	dev_dbg(dev, "Copying EVP...\n");
+	copy_io_in_l(drv_data->state.evp_ptr,
+		     drv_data->state.evp,
+		     AMC_EVP_SIZE);
+
+	ret = set_adsp_clks_and_timer_prescalar(drv_data);
+	if (ret)
+		goto end;
+	ret = deassert_adsp(drv_data);
+	if (ret)
+		goto end;
 
 	dev_info(dev, "waiting for ADSP OS to boot up...\n");
 	ret = wait_for_adsp_os_load_complete();
@@ -913,8 +957,7 @@ static int __nvadsp_os_suspend(void)
 
 	drv_data->adsp_os_suspended = true;
 
-	tegra_periph_reset_assert(drv_data->adsp_clk);
-	udelay(200);
+	assert_adsp(drv_data);
 
 	ret = pm_runtime_put_sync(&priv.pdev->dev);
 	if (ret) {
@@ -957,8 +1000,7 @@ static void __nvadsp_os_stop(bool reload)
 		goto end;
 	}
 
-	tegra_periph_reset_assert(drv_data->adsp_clk);
-	udelay(200);
+	assert_adsp(drv_data);
 
 	if (reload) {
 		struct nvadsp_debug_log *logger = &priv.logger;
@@ -1092,14 +1134,16 @@ static  irqreturn_t adsp_wfi_handler(int irq, void *arg)
 static irqreturn_t adsp_wdt_handler(int irq, void *arg)
 {
 	struct nvadsp_os_data *data = arg;
+	struct nvadsp_drv_data *drv_data;
 	struct device *dev = &data->pdev->dev;
 
-#if CONFIG_SYSTEM_FPGA
-	dev_crit(dev, "ADSP OS Hanged or Crashed! Restarting...\n");
-	schedule_work(&data->restart_os_work);
-#else
-	dev_crit(dev, "ADSP OS Hanged or Crashed!\n");
-#endif
+	drv_data = platform_get_drvdata(data->pdev);
+	if (!drv_data->adsp_unit_fpga) {
+		dev_crit(dev, "ADSP OS Hanged or Crashed! Restarting...\n");
+		schedule_work(&data->restart_os_work);
+	} else {
+		dev_crit(dev, "ADSP OS Hanged or Crashed!\n");
+	}
 	return IRQ_HANDLED;
 }
 
@@ -1111,14 +1155,7 @@ int __init nvadsp_os_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	int ret = 0;
 
-#if !CONFIG_SYSTEM_FPGA
-	priv.reset_reg = ioremap(APE_FPGA_MISC_RST_DEVICES, 1);
-	if (!priv.reset_reg) {
-		dev_err(dev, "unable to map reset addr\n");
-		ret = -EINVAL;
-		goto end;
-	}
-#endif
+	priv.unit_fpga_reset_reg = drv_data->base_regs[UNIT_FPGA_RST];
 	priv.misc_base = drv_data->base_regs[AMISC];
 	priv.dram_region = drv_data->dram_region;
 
