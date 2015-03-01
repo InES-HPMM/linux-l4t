@@ -21,6 +21,7 @@
 #include <linux/tegra-ivc.h>
 #include <linux/spinlock.h>
 #include <linux/hardirq.h>
+#include <asm/io.h>
 
 #include "hv_tegra-smmu-lib.h"
 
@@ -312,9 +313,10 @@ void tegra_hv_smmu_comm_chan_free(int comm_chan_id)
 
 int tegra_hv_smmu_comm_init(struct device *dev)
 {
-	int err, ivc_queue;
+	int err, ivc_queue, ivm_id;
 	struct device_node *dn, *hv_dn;
-	struct tegra_hv_ivc_cookie *ivck = NULL;
+	struct tegra_hv_ivc_cookie *ivck;
+	struct tegra_hv_ivm_cookie *ivm;
 	struct tegra_hv_smmu_comm_dev *smmu_comm_dev;
 
 	dn = dev->of_node;
@@ -342,12 +344,31 @@ int tegra_hv_smmu_comm_init(struct device *dev)
 		return -EINVAL;
 	}
 
+	err = of_property_read_u32_index(dn, "mempool_id", 1, &ivm_id);
+	if (err != 0) {
+		dev_err(dev, "Failed to read ivc mempool property\n");
+		err = -EINVAL;
+		goto fail_reserve;
+	}
+
+	ivm = tegra_hv_mempool_reserve(hv_dn, ivm_id);
+	if (IS_ERR_OR_NULL(ivm)) {
+		dev_err(dev, "Failed to reserve mempool id %d\n", ivm_id);
+		err = -EINVAL;
+		goto fail_reserve;
+	}
+
 	smmu_comm_dev = devm_kzalloc(dev, sizeof(*smmu_comm_dev), GFP_KERNEL);
-	if (!smmu_comm_dev)
-		return -ENOMEM;
+	if (!smmu_comm_dev) {
+		err = -ENOMEM;
+		goto fail_mempool_reserve;
+	}
 
 	smmu_comm_dev->ivck = ivck;
+	smmu_comm_dev->ivm = ivm;
 	smmu_comm_dev->dev = dev;
+
+	smmu_comm_dev->virt_ivm_base = ioremap_cached(ivm->ipa, ivm->size);
 
 	/* set ivc channel to invalid state */
 	tegra_hv_ivc_channel_reset(ivck);
@@ -365,6 +386,12 @@ int tegra_hv_smmu_comm_init(struct device *dev)
 	spin_lock_init(&smmu_comm_dev->lock);
 	saved_smmu_comm_dev = smmu_comm_dev;
 	return 0;
+
+fail_mempool_reserve:
+	tegra_hv_mempool_unreserve(ivm);
+fail_reserve:
+	tegra_hv_ivc_unreserve(ivck);
+	return err;
 }
 
 void print_server_error(const struct device *dev, int err)
@@ -390,6 +417,18 @@ void print_server_error(const struct device *dev, int err)
 		return;
 	}
 	return;
+}
+
+/* get mempool base address used for storing sg entries
+ */
+int libsmmu_get_mempool_params(void **base, int *size)
+{
+	struct tegra_hv_smmu_comm_dev *comm_dev = saved_smmu_comm_dev;
+
+	*base = comm_dev->virt_ivm_base;
+	*size = comm_dev->ivm->size;
+
+	return 0;
 }
 
 /* get the max number of supported asid's from server
@@ -627,8 +666,8 @@ int libsmmu_map_large_page(int comm_chan_id, u32 asid, u64 iova, u64 ipa,
  * Create iova -> pa tranlations
  * Guest specified ipa is converted to pa
  */
-int libsmmu_map_page(int comm_chan_id, u32 asid, u64 iova, u64 ipa,
-			int count, int attr)
+int libsmmu_map_page(int comm_chan_id, u32 asid, u64 iova,
+				int num_ent, int attr)
 {
 	int err;
 	struct smmu_ivc_msg tx_msg, rx_msg;
@@ -651,8 +690,9 @@ int libsmmu_map_page(int comm_chan_id, u32 asid, u64 iova, u64 ipa,
 
 	dctxt->asid = asid;
 	dctxt->iova = iova;
-	dctxt->ipa = ipa;
-	dctxt->count = count;
+	dctxt->ipa = 0;
+	/* count of number of entries in mempool */
+	dctxt->count = num_ent;
 	dctxt->attr = attr;
 
 	err = ivc_send_recv(MAP_PAGE, comm_chan, &tx_msg, &rx_msg);

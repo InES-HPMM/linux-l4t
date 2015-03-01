@@ -214,6 +214,8 @@ struct smmu_as {
 	struct list_head        client;
 	spinlock_t              client_lock; /* for client list */
 
+	void			*mempool_base;
+	int			mempool_num_ent;
 	int                     tegra_hv_comm_chan;
 	spinlock_t              tegra_hv_comm_chan_lock;
 	struct dentry           *debugfs_root;
