@@ -20,9 +20,9 @@
 #include "tegra124-platforms/tegra124-green-arrow-pinmux-p2267-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-p2267-io-common.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-p2267-powertree-e1936-1000-a00.dtsi"
-#include "tegra124-platforms/tegra124-tn8-keys-p1761-1270-a03.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-touch.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-p2267-sensor-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-keys-p2267-1000-a00.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 Green Arrow FFD";
@@ -35,11 +35,5 @@
 		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
-	};
-
-	gpio-keys {
-		camera_focus {
-			status = "disabled";
-		};
 	};
 };
