@@ -55,6 +55,9 @@
 #include <mach/msm_pcie.h>
 #endif
 #endif /* CONFIG_ARCH_MSM */
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+#include "dhd_custom_sysfs_tegra.h"
+#endif
 
 #define PCI_CFG_RETRY 		10
 #define OS_HANDLE_MAGIC		0x1234abcd	/* Magic # to recognize osh */
@@ -212,6 +215,9 @@ static int dhdpcie_pci_resume(struct pci_dev *pdev)
 static int dhdpcie_suspend_dev(struct pci_dev *dev)
 {
 	int ret;
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	tegra_sysfs_suspend();
+#endif
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
 	dhdpcie_info_t *pch = pci_get_drvdata(dev);
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)) */
@@ -252,6 +258,11 @@ static int dhdpcie_resume_dev(struct pci_dev *dev)
 		printf("%s:pci_set_power_state error %d \n", __FUNCTION__, err);
 		return err;
 	}
+
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	tegra_sysfs_resume();
+#endif
+
 	return err;
 }
 
@@ -355,6 +366,13 @@ dhdpcie_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	}
 #endif	/* CUSTOMER_HW5 && CONFIG_ARCH_MSM */
 
+	if (!dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64))) {
+		DHD_INFO(("64-bit DMA supported\n"));
+	} else if (!dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32))) {
+		DHD_INFO(("32-bit DMA supported\n"));
+	} else {
+		DHD_INFO(("No suitable DMA available\n"));
+	}
 	if (dhdpcie_init (pdev)) {
 		DHD_ERROR(("%s: PCIe Enumeration failed\n", __FUNCTION__));
 		return -ENODEV;

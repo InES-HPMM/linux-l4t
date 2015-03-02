@@ -48,6 +48,11 @@
 #include <wldev_common.h>
 #include <wl_android.h>
 
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+#include "dhd_custom_sysfs_tegra.h"
+#include "dhd_custom_sysfs_tegra_scan.h"
+#endif
+
 #if defined(P2PONEINT)
 #include <dngl_stats.h>
 #include <dhd.h>
@@ -622,7 +627,7 @@ wl_cfgp2p_set_p2p_mode(struct bcm_cfg80211 *cfg, u8 mode, u32 channel, u16 liste
 #if defined(P2P_DISCOVERY_WAR)
 	if (mode == WL_P2P_DISC_ST_LISTEN || mode == WL_P2P_DISC_ST_SEARCH) {
 		if (!cfg->p2p->vif_created) {
-			if (wldev_iovar_setint(wl_to_prmry_ndev(cfg), "mpc", 0) < 0) {
+			if (wldev_iovar_setint(bcmcfg_to_prmry_ndev(cfg), "mpc", 0) < 0) {
 				WL_ERR(("mpc disabling failed\n"));
 			}
 		}
@@ -851,6 +856,16 @@ wl_cfgp2p_escan(struct bcm_cfg80211 *cfg, struct net_device *dev, u16 active,
 #define P2PAPI_SCAN_AF_SEARCH_DWELL_TIME_MS 100
 
 	struct net_device *pri_dev = wl_to_p2p_bss_ndev(cfg, P2PAPI_BSSCFG_PRIMARY);
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	if (num_chans > 70) {
+		WIFI_SCAN_DEBUG("%s:"
+			" wifi scan rule substituted too many channels (%lu)"
+			" - fixing by reducing number of scan channels\n",
+			__func__,
+			(unsigned long) num_chans);
+		num_chans = 70;
+	}
+#endif
 	/* Allocate scan params which need space for 3 channels and 0 ssids */
 	eparams_size = (WL_SCAN_PARAMS_FIXED_SIZE +
 	    OFFSETOF(wl_escan_params_t, params)) +
@@ -963,6 +978,18 @@ wl_cfgp2p_escan(struct bcm_cfg80211 *cfg, struct net_device *dev, u16 active,
 	}
 
 	CFGP2P_INFO(("\n"));
+
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	{
+		struct cfg80211_scan_request *request
+			= cfg->scan_request;
+		wl_scan_params_t *params
+			= &(eparams->params);
+		if (request) {
+			TEGRA_P2P_SCAN_PREPARE(params, request)
+		}
+	}
+#endif
 
 	ret = wldev_iovar_setbuf_bsscfg(pri_dev, "p2p_scan",
 		memblk, memsize, cfg->ioctl_buf, WLC_IOCTL_MAXLEN, bssidx, &cfg->ioctl_buf_sync);
@@ -1129,6 +1156,9 @@ wl_cfgp2p_set_management_ie(struct bcm_cfg80211 *cfg, struct net_device *ndev, s
 	curr_ie_buf = g_mgmt_ie_buf;
 	CFGP2P_DBG((" bssidx %d, pktflag : 0x%02X\n", bssidx, pktflag));
 
+	if (!cfg)
+		return -EINVAL;
+
 #ifdef DUAL_STA
 	if ((cfg->p2p != NULL) && ((bssidx == 0) || (bssidx != cfg->cfgdev_bssidx))) {
 #else
@@ -1246,7 +1276,8 @@ wl_cfgp2p_set_management_ie(struct bcm_cfg80211 *cfg, struct net_device *ndev, s
 			}
 		}
 
-		if (mgmt_ie_buf != NULL) {
+		if (mgmt_ie_buf != NULL && mgmt_ie_len != NULL &&
+			curr_ie_buf != NULL) {
 			if (parsed_ie_buf_len && (parsed_ie_buf_len == *mgmt_ie_len) &&
 			     (memcmp(mgmt_ie_buf, curr_ie_buf, parsed_ie_buf_len) == 0)) {
 				CFGP2P_INFO(("Previous mgmt IE is equals to current IE"));
@@ -1963,6 +1994,12 @@ void
 wl_cfgp2p_generate_bss_mac(struct ether_addr *primary_addr,
             struct ether_addr *out_dev_addr, struct ether_addr *out_int_addr)
 {
+
+	if ((out_dev_addr == NULL) || (out_int_addr == NULL)) {
+		WL_ERR(("Invalid input data\n"));
+		return;
+	}
+
 	memset(out_dev_addr, 0, sizeof(*out_dev_addr));
 	memset(out_int_addr, 0, sizeof(*out_int_addr));
 
@@ -2912,6 +2949,7 @@ wl_cfgp2p_del_p2p_disc_if(struct wireless_dev *wdev, struct bcm_cfg80211 *cfg)
 	}
 
 	cfg80211_unregister_wdev(wdev);
+	cancel_work_sync(&wdev->cleanup_work);
 
 	if (rollback_lock)
 		rtnl_unlock();

@@ -640,7 +640,7 @@ dhd_pktid_map_clear(dhd_pktid_map_handle_t *handle)
 		if (locker->inuse == TRUE) { /* numbered key still in use */
 			locker->inuse = FALSE; /* force open the locker */
 			DHD_TRACE(("%s free id%d\n", __FUNCTION__, nkey));
-			DMA_UNMAP(osh, (uint32)locker->physaddr, locker->len,
+			DMA_UNMAP(osh, locker->physaddr, locker->len,
 				locker->dma, 0, 0);
 			PKTFREE(osh, (ulong*)locker->pkt, FALSE);
 		}
@@ -2000,7 +2000,7 @@ dhd_prot_txstatus_process(dhd_pub_t *dhd, void * buf, uint16 msglen)
 	unsigned long flags;
 	uint32 pktid;
 	void *pkt;
-	ulong pa;
+	dmaaddr_t pa;
 	uint32 pa_len;
 	void *secdma;
 	/* locks required to protect circular buffer accesses */

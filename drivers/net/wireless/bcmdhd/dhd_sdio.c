@@ -25,6 +25,7 @@
  */
 
 #include <typedefs.h>
+#include "dynamic.h"
 #include <osl.h>
 #include <bcmsdh.h>
 
@@ -425,7 +426,7 @@ static bool retrydata;
 
 static uint watermark = 8;
 static uint mesbusyctrl = 0;
-static const uint firstread = DHD_FIRSTREAD;
+uint firstread = DHD_FIRSTREAD;
 
 /* Retry count for register access failures */
 static const uint retry_limit = 2;
@@ -808,8 +809,6 @@ dhdsdio_sr_init(dhd_bus_t *bus)
 		(SDIOD_CCCR_BRCM_CARDCAP_CMD14_SUPPORT | SDIOD_CCCR_BRCM_CARDCAP_CMD14_EXT));
 #endif /* USE_CMD14 */
 
-	dhdsdio_devcap_set(bus, SDIOD_CCCR_BRCM_CARDCAP_CMD_NODEC);
-
 	bcmsdh_cfg_write(bus->sdh, SDIO_FUNC_1,
 		SBSDIO_FUNC1_CHIPCLKCSR, SBSDIO_FORCE_HT, &err);
 
@@ -849,8 +848,8 @@ dhdsdio_clk_kso_init(dhd_bus_t *bus)
 }
 
 #define KSO_DBG(x)
-#define KSO_WAIT_US 50
-#define KSO_WAIT_MS 1
+#define KSO_WAIT_US 500000
+#define KSO_WAIT_MS 500
 #define KSO_SLEEP_RETRY_COUNT 20
 #define ERROR_BCME_NODEVICE_MAX 1
 
@@ -872,7 +871,7 @@ dhdsdio_clk_kso_enab(dhd_bus_t *bus, bool on)
 		cmp_val = SBSDIO_FUNC1_SLEEPCSR_KSO_MASK |  SBSDIO_FUNC1_SLEEPCSR_DEVON_MASK;
 		bmask = cmp_val;
 
-		OSL_SLEEP(3);
+		OSL_SLEEP(5);
 	} else {
 		/* Put device to sleep, turn off  KSO  */
 		cmp_val = 0;
@@ -886,10 +885,7 @@ dhdsdio_clk_kso_enab(dhd_bus_t *bus, bool on)
 
 		KSO_DBG(("%s> KSO wr/rd retry:%d, ERR:%x \n", __FUNCTION__, try_cnt, err));
 
-		if (((try_cnt + 1) % KSO_SLEEP_RETRY_COUNT) == 0) {
-			OSL_SLEEP(KSO_WAIT_MS);
-		} else
-			OSL_DELAY(KSO_WAIT_US);
+		OSL_SLEEP(KSO_WAIT_MS);
 
 		bcmsdh_cfg_write(bus->sdh, SDIO_FUNC_1, SBSDIO_FUNC1_SLEEPCSR, wr_val, &err);
 	} while (try_cnt++ < MAX_KSO_ATTEMPTS);
@@ -1064,12 +1060,7 @@ dhdsdio_clk_devsleep_iovar(dhd_bus_t *bus, bool on)
 		{
 			err = bcmsdh_gpioout(bus->sdh, GPIO_DEV_WAKEUP, TRUE);  /* GPIO_1 is on */
 		}
-		do {
-			err = dhdsdio_clk_kso_enab(bus, TRUE);
-			if (err)
-				OSL_SLEEP(10);
-		} while ((err != 0) && (++retry < 3));
-
+		err = dhdsdio_clk_kso_enab(bus, TRUE);
 		if (err != 0) {
 			DHD_ERROR(("ERROR: kso set failed retry: %d\n", retry));
 			err = 0; /* continue anyway */
@@ -4361,7 +4352,7 @@ dhd_txglom_enable(dhd_pub_t *dhdp, bool enable)
 		enable = sd_txglom;
 #endif /* BCMSDIOH_STD */
 
-	if (enable) {
+	if (bcmdhd_bcmsdioh_txglom && enable) {
 		rxglom = 1;
 		memset(buf, 0, sizeof(buf));
 		bcm_mkiovar("bus:rxglom", (void *)&rxglom, 4, buf, sizeof(buf));
@@ -5428,7 +5419,7 @@ dhdsdio_readframes(dhd_bus_t *bus, uint maxframes, bool *finished)
 
 			if (delta) {
 				bus->fc_rcvd++;
-				bus->flowcontrol = fcbits;
+				bus->flowcontrol = fcbits & ~(1 << 6);
 			}
 
 			/* Check and update sequence number */
@@ -5597,7 +5588,7 @@ dhdsdio_readframes(dhd_bus_t *bus, uint maxframes, bool *finished)
 
 		if (delta) {
 			bus->fc_rcvd++;
-			bus->flowcontrol = fcbits;
+			bus->flowcontrol = fcbits & ~(1 << 6);
 		}
 
 		/* Check and update sequence number */
@@ -5856,7 +5847,7 @@ dhdsdio_hostmail(dhd_bus_t *bus)
 			bus->fc_xon++;
 
 		bus->fc_rcvd++;
-		bus->flowcontrol = fcbits;
+		bus->flowcontrol = fcbits & ~(1 << 6);
 	}
 
 #ifdef DHD_DEBUG
@@ -8305,3 +8296,30 @@ void dhd_sdio_reg_write(void *h, uint32 addr, uint32 val)
 	dhd_os_sdunlock(bus->dhd);
 }
 #endif /* DEBUGGER */
+
+int
+dhd_slpauto_config(dhd_pub_t *dhd, s32 val)
+{
+	dhd_bus_t *bus = dhd->bus;
+	bool enb;
+
+	if (!bus)
+		return BCME_ERROR;
+
+	if (val < 0 || val > 1)
+		return BCME_BADARG;
+
+	enb = (val) ? TRUE : FALSE;
+	if (enb == dhd_slpauto)
+		return BCME_OK;
+
+	if (bus->sleeping) {
+		dhdsdio_bussleep(bus, FALSE);
+		dhd_slpauto = bus->_slpauto = enb;
+		if (enb)
+			dhdsdio_bussleep(bus, TRUE);
+	} else
+		dhd_slpauto = bus->_slpauto = enb;
+
+	return BCME_OK;
+}

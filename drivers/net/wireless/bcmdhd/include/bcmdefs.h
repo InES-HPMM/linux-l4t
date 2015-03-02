@@ -194,6 +194,17 @@ typedef struct {
 #define PHYSADDR64SUBOFFSET(_pa, _paorg, _offset) \
 	PHYSADDR64SUB((_pa), (_paorg).hiaddr, (_paorg).loaddr, 0, (_offset))
 
+#define PHYSADDRPTR64HI(_pa) ((_pa)->hiaddr)
+#define PHYSADDRPTR64HISET(_pa, _val) \
+	do { \
+		(_pa)->hiaddr = (_val);         \
+	} while (0)
+#define PHYSADDRPTR64LO(_pa) ((_pa)->loaddr)
+#define PHYSADDRPTR64LOSET(_pa, _val) \
+	do { \
+		(_pa)->loaddr = (_val);         \
+	} while (0)
+
 #ifdef BCMDMA64OSL
 typedef dma64addr_t dmaaddr_t;
 #define PHYSADDRHI(_pa) PHYSADDR64HI(_pa)
@@ -214,6 +225,11 @@ typedef dma64addr_t dmaaddr_t;
 	PHYSADDR64SUB64BITDATA(_pa, _paorg, _hi, _lo)
 #define PHYSADDRSUBOFFSET(_pa, _paorg, _offset) \
 	PHYSADDR64SUBOFFSET(_pa, _paorg, _offset)
+#define PHYSADDRPTRHI(_pa) PHYSADDRPTR64HI(_pa)
+#define PHYSADDRPTRHISET(_pa, _val) PHYSADDRPTR64HISET(_pa, _val)
+#define PHYSADDRPTRLO(_pa)  PHYSADDRPTR64LO(_pa)
+#define PHYSADDRPTRLOSET(_pa, _val) PHYSADDRPTR64LOSET(_pa, _val)
+
 #else
 typedef unsigned long dmaaddr_t;
 #define PHYSADDRHI(_pa) (0)

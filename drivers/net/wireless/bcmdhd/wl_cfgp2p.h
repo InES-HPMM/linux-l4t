@@ -399,6 +399,7 @@ wl_cfgp2p_is_p2p_specific_scan(struct cfg80211_scan_request *request);
 #define WL_P2P_WILDCARD_SSID_LEN 7
 #define WL_P2P_INTERFACE_PREFIX "p2p"
 #define WL_P2P_TEMP_CHAN 11
+#define WL_P2P_TEMP_CHAN_5G 36
 #define WL_P2P_AF_STATUS_OFFSET 9
 
 /* If the provision discovery is for JOIN operations,

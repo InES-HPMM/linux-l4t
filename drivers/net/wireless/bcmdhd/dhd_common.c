@@ -81,6 +81,7 @@ int dhd_msg_level = DHD_ERROR_VAL;
 
 
 #include <wl_iw.h>
+#include "dhd_custom_sysfs_tegra.h"
 
 #ifdef SOFTAP
 char fw_path2[MOD_PARAM_PATHLEN];
@@ -92,6 +93,7 @@ uint32 dhd_conn_event;
 uint32 dhd_conn_status;
 uint32 dhd_conn_reason;
 
+extern int disable_proptx;
 #if defined(SHOW_EVENTS) && defined(SHOW_LOGTRACE)
 static int check_event_log_sequence_number(uint32 seq_no);
 #endif /* defined(SHOW_EVENTS) && defined(SHOW_LOGTRACE) */
@@ -419,7 +421,9 @@ dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifidx, wl_ioctl_t *ioc, void *buf, int len)
 #else
 		ret = dhd_prot_ioctl(dhd_pub, ifidx, ioc, buf, len);
 #endif /* defined(WL_WLC_SHIM) */
-
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+		tegra_sysfs_control_pkt(ioc->cmd);
+#endif
 		if (ret && dhd_pub->up) {
 			/* Send hang event only if dhd_open() was success */
 			dhd_os_check_hang(dhd_pub, ifidx, ret);
@@ -617,6 +621,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		if (bcmerror != BCME_OK)
 			goto exit;
 
+		disable_proptx = int_val ? FALSE : TRUE;
 		/* wlfc is already set as desired */
 		if (wlfc_enab == (int_val == 0 ? FALSE : TRUE))
 			goto exit;
@@ -1704,7 +1709,11 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 		DHD_EVENT(("MACEVENT: %s, MAC %s\n", event_name, eabuf));
 		break;
 #endif
-
+	case WLC_E_ESCAN_RESULT:
+		 DHD_ISCAN(("MACEVENT: %s %d, MAC %s, status %d, reason %d, auth %d\n",
+			event_name, event_type, eabuf, (int)status, (int)reason,
+			(int)auth_type));
+		break;
 	default:
 		DHD_EVENT(("MACEVENT: %s %d, MAC %s, status %d, reason %d, auth %d\n",
 		       event_name, event_type, eabuf, (int)status, (int)reason,
