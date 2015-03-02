@@ -1,7 +1,7 @@
 /*
  * drivers/i2c/busses/vii2c-tegra.c
  *
- * Copyright (C) 2014 NVIDIA Corporation.  All rights reserved.
+ * Copyright (C) 2014-2015 NVIDIA Corporation.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1613,14 +1613,8 @@ static int tegra_vi_i2c_suspend_noirq(struct device *dev)
 
 static int __tegra_vi_i2c_resume_noirq(struct tegra_vi_i2c_dev *i2c_dev)
 {
-	int ret;
-
 	if (i2c_dev->is_clkon_always)
 		tegra_vi_i2c_clock_enable(i2c_dev);
-
-	ret = tegra_vi_i2c_init(i2c_dev);
-	if (ret && ret != -ENODEV)
-		return ret;
 
 	i2c_dev->is_suspended = false;
 
