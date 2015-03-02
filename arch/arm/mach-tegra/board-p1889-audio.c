@@ -199,6 +199,8 @@ static const struct snd_soc_dapm_route tegra_p1889_audio_map[] = {
 	{"x IN",	NULL,	"LineIn-x"},
 	{"Headphone-y", NULL,	"y OUT"},
 	{"y IN",	NULL,	"LineIn-y"},
+	{"Headphone-z", NULL,	"z OUT"},
+	{"z IN",	NULL,	"LineIn-z"},
 };
 
 static struct tegra_vcm30t124_platform_data tegra_p1889_pdata = {
@@ -241,7 +243,24 @@ static struct tegra_vcm30t124_platform_data tegra_p1889_pdata = {
 		.params.channels_min = 8,
 		.params.channels_max = 8,
 	},
-	.dev_num = 2,
+	.dai_config[2] = {
+		.link_name = "vc-playback",
+		.cpu_name = "tegra30-i2s.4",
+		.codec_name = "spdif-dit.2",
+		.codec_dai_name = "dit-hifi",
+		.cpu_dai_name = "I2S4",
+		.codec_prefix = "z",
+		.bclk_ratio = 2,
+		.dai_fmt = SND_SOC_DAIFMT_I2S |
+			SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.params.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.params.rate_min = 16000,
+		.params.rate_max = 16000,
+		.params.channels_min = 2,
+		.params.channels_max = 2,
+	},
+	.dev_num = 3,
 	/* initialize AMX config */
 	.amx_config[0] = {
 		.slot_map = tegra_p1889_amx_slot_map,
@@ -288,6 +307,10 @@ static struct platform_device tegra_spdif_dit[] = {
 	[1] = {
 		.name = "spdif-dit",
 		.id = 1,
+	},
+	[2] = {
+		.name = "spdif-dit",
+		.id = 2,
 	},
 };
 
