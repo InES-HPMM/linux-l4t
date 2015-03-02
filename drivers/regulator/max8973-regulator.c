@@ -329,7 +329,7 @@ int max8973_regulator_enable(struct regulator_dev *rdev)
 	int ret;
 	int i;
 
-	if (gpio_is_valid(max->enable_gpio)) {
+	if (max->enable_external_control && gpio_is_valid(max->enable_gpio)) {
 		for (i = 0; i < MAX8973_MAX_REG; ++i) {
 			ret = regmap_write(max->regmap, i,
 						 max->cache_reg_val[i]);
@@ -350,7 +350,7 @@ int max8973_regulator_enable(struct regulator_dev *rdev)
 		return ret;
 	}
 
-	if (gpio_is_valid(max->enable_gpio))
+	if (max->enable_external_control && gpio_is_valid(max->enable_gpio))
 		gpio_set_value_cansleep(max->enable_gpio, 1);
 
 	max->enable_state = true;
@@ -363,7 +363,7 @@ int max8973_regulator_disable(struct regulator_dev *rdev)
 	int ret;
 	int i;
 
-	if (gpio_is_valid(max->enable_gpio)) {
+	if (max->enable_external_control && gpio_is_valid(max->enable_gpio)) {
 		for (i = 0; i < MAX8973_MAX_REG; ++i) {
 			ret = regmap_read(max->regmap, i,
 						&max->cache_reg_val[i]);
@@ -375,7 +375,6 @@ int max8973_regulator_disable(struct regulator_dev *rdev)
 			}
 		}
 		gpio_set_value_cansleep(max->enable_gpio, 0);
-		max->enable_state = false;
 	} else {
 		ret = regmap_update_bits(max->regmap, MAX8973_VOUT,
 						MAX8973_VOUT_ENABLE, 0);
@@ -519,7 +518,7 @@ static int max8973_init_dcdc(struct max8973_chip *max,
 	/* MAX8973: EN pin is ORed with EN bit.
 	 * MAX77621: EN pin is ANDed with shutdown.
 	 */
-	if (max->enable_external_control) {
+	if (max->enable_external_control && gpio_is_valid(max->enable_gpio)) {
 		int en_bit = 0;
 		if (max->id == MAX77621)
 			en_bit = MAX8973_VOUT_ENABLE;
@@ -681,6 +680,7 @@ static int max8973_probe(struct i2c_client *client,
 	struct max8973_regulator_platform_data *pdata;
 	struct regulator_config config = { };
 	struct regulator_dev *rdev;
+	struct regulator_init_data *ridata;
 	struct max8973_chip *max;
 	unsigned int chip_id;
 	int ret;
@@ -749,11 +749,15 @@ static int max8973_probe(struct i2c_client *client,
 	if (!pdata->enable_ext_control) {
 		max->desc.enable_reg = MAX8973_VOUT;
 		max->desc.enable_mask = MAX8973_VOUT_ENABLE;
-	} else if (gpio_is_valid(pdata->enable_gpio)) {
-		gpio_flags = GPIOF_OUT_INIT_LOW;
-		if (pdata->reg_init_data) {
-			if (pdata->reg_init_data->constraints.always_on ||
-				pdata->reg_init_data->constraints.boot_on)
+	}
+
+	if (gpio_is_valid(pdata->enable_gpio)) {
+		gpio_flags = GPIOF_OUT_INIT_HIGH;
+		if (pdata->enable_ext_control) {
+			gpio_flags = GPIOF_OUT_INIT_LOW;
+			ridata = pdata->reg_init_data;
+			if (ridata && (ridata->constraints.always_on ||
+				ridata->constraints.boot_on))
 				gpio_flags = GPIOF_OUT_INIT_HIGH;
 		}
 		ret = devm_gpio_request_one(&client->dev, pdata->enable_gpio,
@@ -812,7 +816,7 @@ static int max8973_probe(struct i2c_client *client,
 		}
 	}
 
-	if (gpio_is_valid(max->enable_gpio)) {
+	if (max->enable_external_control && gpio_is_valid(max->enable_gpio)) {
 		for (reg = 0; reg < MAX8973_MAX_REG; ++reg) {
 			ret = regmap_read(max->regmap, reg,
 					&max->cache_reg_val[reg]);
