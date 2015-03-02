@@ -116,7 +116,8 @@ void tegra_clk_init_from_table(struct tegra_clk_init_table *table)
 void tegra_periph_reset_deassert(struct clk *c)
 {
 	struct clk_tegra *clk = to_clk_tegra(__clk_get_hw(c));
-	BUG_ON(!clk->reset);
+	if (WARN_ON(!clk->reset))
+		return;
 	clk->reset(__clk_get_hw(c), false);
 }
 EXPORT_SYMBOL(tegra_periph_reset_deassert);
@@ -124,7 +125,8 @@ EXPORT_SYMBOL(tegra_periph_reset_deassert);
 void tegra_periph_reset_assert(struct clk *c)
 {
 	struct clk_tegra *clk = to_clk_tegra(__clk_get_hw(c));
-	BUG_ON(!clk->reset);
+	if (WARN_ON(!clk->reset))
+		return;
 	clk->reset(__clk_get_hw(c), true);
 }
 EXPORT_SYMBOL(tegra_periph_reset_assert);
