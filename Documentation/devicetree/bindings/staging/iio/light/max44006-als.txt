@@ -1,7 +1,7 @@
 * MAX44006 ambient light sensor
 
 Required properties:
-- compatible: must be "maxim,max44006"
+- compatible: must be "maxim,max44006-siio"
 - reg: i2c address of the device. It should be 0x44.
 - vcc-supply: regulator supply for the chip
 
@@ -12,7 +12,7 @@ Optional propertied:
 Example:
 
 	max44006@44 {
-		compatible = "maxim,max44006";
+		compatible = "maxim,max44006-siio";
 		reg = <0x44>;
 		vcc-supply = <&palmas_smps8>;
 		maxim,gain = <1>;

@@ -4,7 +4,7 @@
  * IIO Light driver for monitoring ambient light intensity in lux and proximity
  * ir.
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -558,7 +558,7 @@ static int max44005_probe(struct i2c_client *client,
 	}
 
 	/* MAX44006 ALS does not use vled. */
-	if (of_device_is_compatible(client->dev.of_node, "maxim,max44006"))
+	if (of_device_is_compatible(client->dev.of_node, "maxim,max44006-siio"))
 		goto finish;
 
 	chip->supply[LED] = regulator_get(&client->dev, "vled");
@@ -670,7 +670,7 @@ static void max44005_shutdown(struct i2c_client *client)
 }
 
 static const struct i2c_device_id max44005_id[] = {
-	{"max44005", 0},
+	{"max44005-siio", 0},
 	{}
 };
 
@@ -678,8 +678,8 @@ MODULE_DEVICE_TABLE(i2c, max44005_id);
 
 #ifdef CONFIG_OF
 static const struct of_device_id max44005_of_match[] = {
-	{.compatible = "maxim,max44005", },
-	{.compatible = "maxim,max44006", },
+	{.compatible = "maxim,max44005-siio", },
+	{.compatible = "maxim,max44006-siio", },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, max44005_of_match);
