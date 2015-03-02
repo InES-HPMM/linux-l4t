@@ -8775,6 +8775,10 @@ static struct clk tegra_sata_aux_clk = {
 static struct clk tegra_clk_emc = {
 	.name = "emc",
 	.clk_id	= TEGRA210_CLK_ID_EMC,
+	.lookup = {
+		.dev_id = "tegra_emc",
+		.con_id = "emc",
+	},
 	.ops = &tegra_emc_clk_ops,
 	.reg = 0x19c,
 	.max_rate = 1800000000,
