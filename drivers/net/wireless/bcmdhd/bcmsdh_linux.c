@@ -49,6 +49,12 @@ extern void dhdsdio_isr(void * args);
 #endif /* defined(CONFIG_ARCH_ODIN) */
 #include <dhd_linux.h>
 
+#ifdef	CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+#include "dhd_custom_sysfs_tegra.h"
+#endif
+
+extern int bcmdhd_irq_number;
+
 /* driver info, initialized when bcmsdh_register is called */
 static bcmsdh_driver_t drvinfo = {NULL, NULL, NULL, NULL};
 
@@ -183,6 +189,12 @@ void* bcmsdh_probe(osl_t *osh, void *dev, void *sdioh, void *adapter_info, uint 
 		goto err;
 	}
 
+#ifdef	CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	if (tegra_sysfs_register(dev) < 0) {
+		pr_err("%s: tegra_sysfs_register() failed\n", __func__);
+		goto err;
+	}
+#endif
 	return bcmsdh;
 
 	/* error handling */
@@ -197,6 +209,11 @@ err:
 int bcmsdh_remove(bcmsdh_info_t *bcmsdh)
 {
 	bcmsdh_os_info_t *bcmsdh_osinfo = bcmsdh->os_cxt;
+
+#ifdef	CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	if (bcmsdh_osinfo->dev)
+		tegra_sysfs_unregister(bcmsdh_osinfo->dev);
+#endif
 
 #if !defined(CONFIG_HAS_WAKELOCK) && (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 36))
 	if (bcmsdh_osinfo->dev)
@@ -352,10 +369,11 @@ int bcmsdh_oob_intr_register(bcmsdh_info_t *bcmsdh, bcmsdh_cb_fn_t oob_irq_handl
 		SDLX_MSG(("%s: request_irq failed with %d\n", __FUNCTION__, err));
 		return err;
 	}
+	bcmdhd_irq_number = (int)bcmsdh_osinfo->oob_irq_num;
 
-		err = enable_irq_wake(bcmsdh_osinfo->oob_irq_num);
-		if (!err)
-			bcmsdh_osinfo->oob_irq_wake_enabled = TRUE;
+	err = enable_irq_wake(bcmsdh_osinfo->oob_irq_num);
+	if (!err)
+		bcmsdh_osinfo->oob_irq_wake_enabled = TRUE;
 	bcmsdh_osinfo->oob_irq_enabled = TRUE;
 	bcmsdh_osinfo->oob_irq_registered = TRUE;
 	return err;

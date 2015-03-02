@@ -54,12 +54,20 @@ typedef struct wifi_adapter_info {
 	const char	*name;
 	uint		irq_num;
 	uint		intr_flags;
+	int             wlan_pwr;
+	int             wlan_rst;
+	const char	*edp_name;
 	const char	*fw_path;
 	const char	*nv_path;
 	void		*wifi_plat_data;	/* wifi ctrl func, for backward compatibility */
 	uint		bus_type;
 	uint		bus_num;
 	uint		slot_num;
+	struct sysedp_consumer *sysedpc;
+#ifdef NV_COUNTRY_CODE
+	int		n_country;
+	struct cntry_locales_custom *country_code_map;
+#endif
 } wifi_adapter_info_t;
 
 typedef struct bcmdhd_wifi_platdata {

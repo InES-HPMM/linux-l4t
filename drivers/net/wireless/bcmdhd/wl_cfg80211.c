@@ -25,6 +25,7 @@
  */
 /* */
 #include <typedefs.h>
+#include "dynamic.h"
 #include <linuxver.h>
 #include <osl.h>
 #include <linux/kernel.h>
@@ -79,6 +80,11 @@
 	according to Kernel version and is supported only in Android-JB
 #endif /* !WL_ENABLE_P2P_IF && !WL_CFG80211_P2P_DEV_IF */
 #endif /* WL11U */
+
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+#include "dhd_custom_sysfs_tegra.h"
+#include "dhd_custom_sysfs_tegra_scan.h"
+#endif
 
 
 #define IW_WSEC_ENABLED(wsec)   ((wsec) & (WEP_ENABLED | TKIP_ENABLED | AES_ENABLED))
@@ -210,7 +216,11 @@ static const struct ieee80211_iface_limit common_if_limits[] = {
 static const struct ieee80211_iface_combination
 common_iface_combinations[] = {
 	{
-	.num_different_channels = NUM_DIFF_CHANNELS,
+#ifndef CONFIG_BCMDHD_DISABLE_MCC
+	.num_different_channels = 2,
+#else
+	.num_different_channels = 1,
+#endif
 	.max_interfaces = 4,
 	.limits = common_if_limits,
 	.n_limits = ARRAY_SIZE(common_if_limits),
@@ -1265,7 +1275,7 @@ static chanspec_t wl_cfg80211_get_shared_freq(struct wiphy *wiphy)
 #endif
 {
 	chanspec_t chspec;
-	int err = 0;
+	int cur_band, err = 0;
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	struct net_device *dev = bcmcfg_to_prmry_ndev(cfg);
 	struct ether_addr bssid;
@@ -1277,7 +1287,15 @@ static chanspec_t wl_cfg80211_get_shared_freq(struct wiphy *wiphy)
 		 * via set_channel (cfg80211 API).
 		 */
 		WL_DBG(("Not associated. Return a temp channel. \n"));
-		return wl_ch_host_to_driver(WL_P2P_TEMP_CHAN);
+		err = wldev_ioctl(dev, WLC_GET_BAND, &cur_band, sizeof(int), false);
+		if (unlikely(err)) {
+			WL_ERR(("Get band failed\n"));
+			return wl_ch_host_to_driver(WL_P2P_TEMP_CHAN);
+		}
+		if (cur_band == WLC_BAND_5G)
+			return wl_ch_host_to_driver(WL_P2P_TEMP_CHAN_5G);
+		else
+			return wl_ch_host_to_driver(WL_P2P_TEMP_CHAN);
 	}
 
 
@@ -1347,9 +1365,11 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 		return ERR_PTR(-EINVAL);
 
 #ifdef PROP_TXSTATUS_VSDB
+if (bcmdhd_prop_txstatus_vsdb) {
 #if defined(BCMSDIO)
 	dhd = (dhd_pub_t *)(cfg->pub);
 #endif 
+}
 #endif /* PROP_TXSTATUS_VSDB */
 #if defined(SUPPORT_AP_POWERSAVE)
 	dhd = (dhd_pub_t *)(cfg->pub);
@@ -1361,6 +1381,11 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 	if (unlikely(!wl_get_drv_status(cfg, READY, primary_ndev))) {
 		WL_ERR(("device is not ready\n"));
 		return ERR_PTR(-ENODEV);
+	}
+
+	if (wl_get_drv_status(cfg, CONNECTING, primary_ndev)) {
+		WL_ERR(("Already AP connection going on\n"));
+		return -EBUSY;
 	}
 
 	WL_DBG(("if name: %s, type: %d\n", name, type));
@@ -1420,10 +1445,12 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 		ASSERT(cfg->p2p); /* ensure expectation of p2p initialization */
 
 #ifdef PROP_TXSTATUS_VSDB
+if (bcmdhd_prop_txstatus_vsdb) {
 #if defined(BCMSDIO)
 		if (!dhd)
 			return ERR_PTR(-ENODEV);
 #endif 
+}
 #endif /* PROP_TXSTATUS_VSDB */
 		if (!cfg->p2p)
 			return ERR_PTR(-ENODEV);
@@ -1442,6 +1469,7 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 
 		wl_cfg80211_scan_abort(cfg);
 #ifdef PROP_TXSTATUS_VSDB
+if (bcmdhd_prop_txstatus_vsdb) {
 #if defined(BCMSDIO)
 		if (!cfg->wlfc_on && !disable_proptx) {
 			dhd_wlfc_get_enable(dhd, &enabled);
@@ -1455,6 +1483,7 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 			cfg->wlfc_on = true;
 		}
 #endif 
+}
 #endif /* PROP_TXSTATUS_VSDB */
 
 		/* In concurrency case, STA may be already associated in a particular channel.
@@ -1581,6 +1610,7 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 			memset(cfg->p2p->vir_ifname, '\0', IFNAMSIZ);
 			cfg->p2p->vif_created = false;
 #ifdef PROP_TXSTATUS_VSDB
+if (bcmdhd_prop_txstatus_vsdb) {
 #if defined(BCMSDIO)
 			dhd_wlfc_get_enable(dhd, &enabled);
 		if (enabled && cfg->wlfc_on && dhd->op_mode != DHD_FLAG_HOSTAP_MODE &&
@@ -1589,6 +1619,7 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 			cfg->wlfc_on = false;
 		}
 #endif 
+}
 #endif /* PROP_TXSTATUS_VSDB */
 		}
 	}
@@ -1618,6 +1649,9 @@ wl_cfg80211_del_virtual_iface(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev)
 	if (!(dhd->chan_isvht80))
 		dhd_set_cpucore(dhd, FALSE);
 #endif /* CUSTOM_SET_CPUCORE */
+	if (!cfg)
+		return -EINVAL;
+
 #if defined(WL_CFG80211_P2P_DEV_IF)
 	if (cfgdev->iftype == NL80211_IFTYPE_P2P_DEVICE) {
 		return wl_cfgp2p_del_p2p_disc_if(cfgdev, cfg);
@@ -1738,6 +1772,9 @@ wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
 	dhd_pub_t *dhd = (dhd_pub_t *)(cfg->pub);
 
 	WL_DBG(("Enter type %d\n", type));
+
+	if (!cfg)
+		return -EINVAL;
 	switch (type) {
 	case NL80211_IFTYPE_MONITOR:
 	case NL80211_IFTYPE_WDS:
@@ -1991,6 +2028,7 @@ static s32 wl_cfg80211_handle_ifdel(struct bcm_cfg80211 *cfg, wl_if_event_info *
 		cfg->p2p->vif_created = false;
 
 #ifdef PROP_TXSTATUS_VSDB
+if (bcmdhd_prop_txstatus_vsdb) {
 #if defined(BCMSDIO)
 		dhd_wlfc_get_enable(dhd, &enabled);
 		if (enabled && cfg->wlfc_on && dhd->op_mode != DHD_FLAG_HOSTAP_MODE &&
@@ -1999,6 +2037,7 @@ static s32 wl_cfg80211_handle_ifdel(struct bcm_cfg80211 *cfg, wl_if_event_info *
 			cfg->wlfc_on = false;
 		}
 #endif 
+}
 #endif /* PROP_TXSTATUS_VSDB */
 	}
 
@@ -2082,6 +2121,9 @@ static void wl_scan_prep(struct wl_scan_params *params, struct cfg80211_scan_req
 	params->home_time = -1;
 	params->channel_num = 0;
 	memset(&params->ssid, 0, sizeof(wlc_ssid_t));
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	TEGRA_SCAN_PREPARE(params, request)
+#endif
 
 	WL_SCAN(("Preparing Scan request\n"));
 	WL_SCAN(("nprobes=%d\n", params->nprobes));
@@ -2165,10 +2207,23 @@ static void wl_scan_prep(struct wl_scan_params *params, struct cfg80211_scan_req
 	        htod32((n_ssids << WL_SCAN_PARAMS_NSSID_SHIFT) |
 	               (n_channels & WL_SCAN_PARAMS_COUNT_MASK));
 
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	/* skip original code for single channel scan parameter override if
+	 * processing scan request from one of the scan work(s)
+	 * - the scan request in the scan work(s) has specific scan parameters
+	 *   which should not be overridden
+	 */
+	TEGRA_SCAN_WORK_ACTIVE_CHECK(request,
+		goto skip_single_channel_scan_parameter_override)
+#endif
 	if (n_channels == 1) {
 		params->active_time = htod32(WL_SCAN_CONNECT_DWELL_TIME_MS);
 		params->nprobes = htod32(params->active_time / WL_SCAN_JOIN_PROBE_INTERVAL_MS);
 	}
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+skip_single_channel_scan_parameter_override:
+	;
+#endif
 }
 
 static s32
@@ -2475,6 +2530,7 @@ wl_do_escan(struct bcm_cfg80211 *cfg, struct wiphy *wiphy, struct net_device *nd
 			passive_channel_skip));
 	}
 
+	TEGRA_SYSFS_HISTOGRAM_SCAN_REQUEST(ndev, request, sizeof(*request))
 	err = wl_run_escan(cfg, ndev, request, WL_SCAN_ACTION_START);
 
 	if (passive_channel_skip) {
@@ -2627,6 +2683,7 @@ __wl_cfg80211_scan(struct wiphy *wiphy, struct net_device *ndev,
 					goto scan_out;
 				}
 #ifdef WL11U
+if (bcmdhd_wl11u) {
 				if ((interworking_ie = wl_cfg80211_find_interworking_ie(
 					(u8 *)request->ie, request->ie_len)) != NULL) {
 					err = wl_cfg80211_add_iw_ie(cfg, ndev, bssidx,
@@ -2650,6 +2707,7 @@ __wl_cfg80211_scan(struct wiphy *wiphy, struct net_device *ndev,
 					memset(cfg->iw_ie, 0, IW_IES_MAX_BUF_LEN);
 					/* we don't care about error */
 				}
+}
 #endif /* WL11U */
 				err = wl_cfgp2p_set_management_ie(cfg, ndev, bssidx,
 					VNDR_IE_PRBREQ_FLAG, (u8 *)request->ie,
@@ -2767,6 +2825,24 @@ wl_cfg80211_scan(struct wiphy *wiphy, struct net_device *ndev,
 #ifdef P2PONEINT
 	ndev = bcmcfg_to_prmry_ndev(cfg);
 	WL_DBG(("scan use  [dev name %s ] \n", ndev->name));
+#endif
+
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	{
+		int status = wifi_scan_request(wl_cfg80211_scan,
+			wiphy, ndev, request);
+		if (status > 0) {
+			WIFI_SCAN_DEBUG("%s: substituted wifi scan policy"
+				" with %d rule(s)\n",
+				__func__, status);
+			return (0);
+		} else if (status < 0) {
+			WIFI_SCAN_DEBUG("%s: wifi scan policy active\n",
+				__func__);
+			return (status);
+		}
+		/* continue scan request if status is 0 */
+	}
 #endif
 
 	err = __wl_cfg80211_scan(wiphy, ndev, request, NULL);
@@ -4192,6 +4268,7 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 
 	if (wl_cfgp2p_find_idx(cfg, dev, &bssidx) != BCME_OK) {
 		WL_ERR(("Find p2p index from dev(%p) failed\n", dev));
+		wl_clr_drv_status(cfg, CONNECTING, dev);
 		kfree(ext_join_params);
 		return BCME_ERROR;
 	}
@@ -4490,7 +4567,8 @@ wl_add_keyext(struct wiphy *wiphy, struct net_device *dev,
 		}
 		swap_key_from_BE(&key);
 		/* need to guarantee EAPOL 4/4 send out before set key */
-		dhd_wait_pend8021x(dev);
+		if (mode != WL_MODE_AP)
+			dhd_wait_pend8021x(dev);
 		err = wldev_iovar_setbuf_bsscfg(dev, "wsec_key", &key, sizeof(key),
 			cfg->ioctl_buf, WLC_IOCTL_MAXLEN, bssidx, &cfg->ioctl_buf_sync);
 		if (unlikely(err)) {
@@ -4643,6 +4721,10 @@ wl_cfg80211_del_key(struct wiphy *wiphy, struct net_device *dev,
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	s32 err = 0;
 	s32 bssidx;
+
+	if (!cfg)
+		return -EINVAL;
+
 	if (wl_cfgp2p_find_idx(cfg, dev, &bssidx) != BCME_OK) {
 		WL_ERR(("Find p2p index from dev(%p) failed\n", dev));
 		return BCME_ERROR;
@@ -5000,7 +5082,13 @@ static s32 wl_cfg80211_suspend(struct wiphy *wiphy)
 		wl_set_drv_status(cfg, SCAN_ABORTING, iter->ndev);
 	spin_lock_irqsave(&cfg->cfgdrv_lock, flags);
 	if (cfg->scan_request) {
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+		TEGRA_SCAN_DONE(cfg->scan_request, true)
+#endif
 		cfg80211_scan_done(cfg->scan_request, true);
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+skip_cfg80211_scan_done:
+#endif
 		cfg->scan_request = NULL;
 	}
 	for_each_ndev(cfg, iter, next) {
@@ -5218,6 +5306,9 @@ wl_cfg80211_remain_on_channel(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev,
 	struct ether_addr primary_mac;
 	struct net_device *ndev = NULL;
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+
+	if (!cfg)
+		return -EINVAL;
 
 	ndev = cfgdev_to_wlc_ndev(cfgdev, cfg);
 
@@ -5652,11 +5743,13 @@ wl_cfg80211_send_action_frame(struct wiphy *wiphy, struct net_device *dev,
 	af_params->dwell_time = WL_DWELL_TIME;
 
 #ifdef WL11U
+if (bcmdhd_wl11u) {
 #if defined(WL_CFG80211_P2P_DEV_IF)
 	ndev = dev;
 #else
 	ndev = ndev_to_cfgdev(cfgdev);
 #endif /* WL_CFG80211_P2P_DEV_IF */
+}
 #endif /* WL11U */
 
 	category = action_frame->data[DOT11_ACTION_CAT_OFF];
@@ -5730,8 +5823,10 @@ wl_cfg80211_send_action_frame(struct wiphy *wiphy, struct net_device *dev,
 		config_af_params.search_channel = false;
 	}
 #ifdef WL11U
+if (bcmdhd_wl11u) {
 	if (ndev == bcmcfg_to_prmry_ndev(cfg))
 		config_af_params.search_channel = false;
+}
 #endif /* WL11U */
 
 #ifdef VSDB
@@ -5755,10 +5850,12 @@ wl_cfg80211_send_action_frame(struct wiphy *wiphy, struct net_device *dev,
 	}
 
 #ifdef WL11U
+if (bcmdhd_wl11u) {
 	/* handling DFS channel exceptions */
 	if (!wl_cfg80211_check_DFS_channel(cfg, af_params, action_frame->data, action_frame->len)) {
 		return false;	/* the action frame was blocked */
 	}
+}
 #endif /* WL11U */
 
 	/* set status and destination address before sending af */
@@ -5934,6 +6031,9 @@ wl_cfg80211_mgmt_tx(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev,
 	s8 eabuf[ETHER_ADDR_STR_LEN];
 
 	WL_DBG(("Enter \n"));
+
+	if (!cfg)
+		return -EINVAL;
 
 	dev = cfgdev_to_wlc_ndev(cfgdev, cfg);
 
@@ -6159,22 +6259,26 @@ wl_cfg80211_set_channel(struct wiphy *wiphy, struct net_device *dev,
 	s32 _chan;
 	chanspec_t chspec = 0;
 	chanspec_t fw_chspec = 0;
-	u32 bw = WL_CHANSPEC_BW_20;
+	u32 bw = WL_CHANSPEC_BW_40;
+	u32 chanspec = 0;
+	struct net_info *iter, *next;
 
 	s32 err = BCME_OK;
-	s32 bw_cap = 0;
-	struct {
-		u32 band;
-		u32 bw_cap;
-	} param = {0, 0};
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 #ifdef CUSTOM_SET_CPUCORE
-	dhd_pub_t *dhd =  (dhd_pub_t *)(cfg->pub);
+	dhd_pub_t *dhd;
 #endif /* CUSTOM_SET_CPUCORE */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0))
 	enum nl80211_channel_type channel_type = NL80211_CHAN_HT20;
 #endif 
+
+	if (!cfg)
+		return -EINVAL;
+
+#ifdef CUSTOM_SET_CPUCORE
+	dhd =  (dhd_pub_t *)(cfg->pub);
+#endif /* CUSTOM_SET_CPUCORE */
 
 #ifndef P2PONEINT
 	dev = ndev_to_wlc_ndev(dev, cfg);
@@ -6205,34 +6309,34 @@ wl_cfg80211_set_channel(struct wiphy *wiphy, struct net_device *dev,
 	goto set_channel;
 #endif 
 
-	if (chan->band == IEEE80211_BAND_5GHZ) {
-		param.band = WLC_BAND_5G;
-		err = wldev_iovar_getbuf(dev, "bw_cap", &param, sizeof(param),
-			cfg->ioctl_buf, WLC_IOCTL_SMLEN, &cfg->ioctl_buf_sync);
-		if (err) {
-			if (err != BCME_UNSUPPORTED) {
-				WL_ERR(("bw_cap failed, %d\n", err));
-				return err;
-			} else {
-				err = wldev_iovar_getint(dev, "mimo_bw_cap", &bw_cap);
-				if (err) {
-					WL_ERR(("error get mimo_bw_cap (%d)\n", err));
+	/* In 5GHz band If AP is connected in 20 MHz then follow AP's bw
+	   else 40MHz by default. */
+	for_each_ndev(cfg, iter, next) {
+		/* In case interface name is not wlan0 put the right
+		   interface name. */
+		if(!strncmp(iter->ndev->name, "wlan0", strlen("wlan0"))) {
+			if (wl_get_drv_status(cfg, CONNECTED, iter->ndev)) {
+				if (chan->band == IEEE80211_BAND_5GHZ) {
+					if(wldev_iovar_getint(iter->ndev,
+						"chanspec", (s32 *)&chanspec) == BCME_OK) {
+						chanspec = wl_chspec_driver_to_host(chanspec);
+						/* bits 11,12 and 13 starting from 0 are bw
+						   bits. So, values formed with these bits
+						   are 0 ,1, 2, 3, 4, 5, 6 which are mapped
+						   to 5, 10, 20 ,40 ,80, 160, 80+80 MHz
+						   respectively. In below case, 0x1000 = 2
+						   which is for 20 MHz */
+						if((chanspec & 0x3800) == 0x1000)
+							bw = WL_CHANSPEC_BW_20;
+					}
+				} else {
+					/* In 2.4 GHz supported bw is 20 MHz */
+					bw = WL_CHANSPEC_BW_20;
 				}
-				if (bw_cap != WLC_N_BW_20ALL)
-					bw = WL_CHANSPEC_BW_40;
 			}
-		} else {
-			if (WL_BW_CAP_80MHZ(cfg->ioctl_buf[0]))
-				bw = WL_CHANSPEC_BW_80;
-			else if (WL_BW_CAP_40MHZ(cfg->ioctl_buf[0]))
-				bw = WL_CHANSPEC_BW_40;
-			else
-				bw = WL_CHANSPEC_BW_20;
-
 		}
+	}
 
-	} else if (chan->band == IEEE80211_BAND_2GHZ)
-		bw = WL_CHANSPEC_BW_20;
 set_channel:
 	chspec = wf_channel2chspec(_chan, bw);
 	if (wf_chspec_valid(chspec)) {
@@ -7061,6 +7165,9 @@ wl_cfg80211_del_station(
 		return 0;
 	}
 
+	if (!cfg)
+		return -EINVAL;
+
 	dev = ndev_to_wlc_ndev(ndev, cfg);
 
 	if (p2p_is_on(cfg)) {
@@ -7144,6 +7251,10 @@ wl_cfg80211_start_ap(
 	u32 dev_role = 0;
 
 	WL_DBG(("Enter \n"));
+
+	if (!cfg)
+		return -EINVAL;
+
 	if (dev == bcmcfg_to_prmry_ndev(cfg)) {
 		WL_DBG(("Start AP req on primary iface: Softap\n"));
 		dev_role = NL80211_IFTYPE_AP;
@@ -7251,6 +7362,10 @@ wl_cfg80211_stop_ap(
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 
 	WL_DBG(("Enter \n"));
+
+	if (!cfg)
+		return -EINVAL;
+
 	if (dev == bcmcfg_to_prmry_ndev(cfg)) {
 		dev_role = NL80211_IFTYPE_AP;
 	}
@@ -7335,6 +7450,8 @@ wl_cfg80211_change_beacon(
 
 	WL_DBG(("Enter \n"));
 
+	if (!cfg)
+		return -EINVAL;
 	if (dev == bcmcfg_to_prmry_ndev(cfg)) {
 		dev_role = NL80211_IFTYPE_AP;
 	}
@@ -7355,6 +7472,12 @@ wl_cfg80211_change_beacon(
 		(bssidx == wl_to_p2p_bss_bssidx(cfg,
 		P2PAPI_BSSCFG_CONNECTION))) {
 		dev_role = NL80211_IFTYPE_P2P_GO;
+	}
+
+	if (dev_role == 0) {
+		WL_ERR(("Unknown device role!\n"));
+		err = BCME_ERROR;
+		goto fail;
 	}
 
 	if (!check_dev_role_integrity(cfg, dev_role))
@@ -7414,6 +7537,9 @@ wl_cfg80211_add_set_beacon(struct wiphy *wiphy, struct net_device *dev,
 	WL_DBG(("interval (%d) dtim_period (%d) head_len (%d) tail_len (%d)\n",
 		info->interval, info->dtim_period, info->head_len, info->tail_len));
 
+	if (!cfg)
+		return -EINVAL;
+
 	if (dev == bcmcfg_to_prmry_ndev(cfg)) {
 		dev_role = NL80211_IFTYPE_AP;
 	}
@@ -7434,6 +7560,12 @@ wl_cfg80211_add_set_beacon(struct wiphy *wiphy, struct net_device *dev,
 		(bssidx == wl_to_p2p_bss_bssidx(cfg,
 		P2PAPI_BSSCFG_CONNECTION))) {
 		dev_role = NL80211_IFTYPE_P2P_GO;
+	}
+
+	if (dev_role == 0) {
+		WL_ERR(("Unknown device role!\n"));
+		err = BCME_ERROR;
+		goto fail;
 	}
 
 	if (!check_dev_role_integrity(cfg, dev_role))
@@ -7567,12 +7699,20 @@ wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 	int ret = 0;
 
 	WL_DBG(("Enter \n"));
+
+	if (!cfg)
+		return -EINVAL;
+
 	WL_PNO((">>> SCHED SCAN START\n"));
 	WL_PNO(("Enter n_match_sets:%d   n_ssids:%d \n",
 		request->n_match_sets, request->n_ssids));
 	WL_PNO(("ssids:%d pno_time:%d pno_repeat:%d pno_freq:%d \n",
 		request->n_ssids, pno_time, pno_repeat, pno_freq_expo_max));
 
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	TEGRA_PNO_SCAN_PREPARE(request,
+		pno_time, pno_repeat, pno_freq_expo_max)
+#endif
 
 	if (!request || !request->n_ssids || !request->n_match_sets) {
 		WL_ERR(("Invalid sched scan req!! n_ssids:%d \n", request->n_ssids));
@@ -7622,6 +7762,10 @@ wl_cfg80211_sched_scan_stop(struct wiphy *wiphy, struct net_device *dev)
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 
 	WL_DBG(("Enter \n"));
+
+	if (!cfg)
+		return -EINVAL;
+
 	WL_PNO((">>> SCHED SCAN STOP\n"));
 
 	if (dhd_dev_pno_stop_for_ssid(dev) < 0)
@@ -8065,7 +8209,7 @@ static s32 wl_setup_wiphy(struct wireless_dev *wdev, struct device *sdiofunc_dev
 	 * to allow bssid & freq to be sent down to driver even if
 	 * FW ROAM is advertised.
 	 */
-	wdev->wiphy->flags |= WIPHY_FLAG_SUPPORTS_FW_ROAM;
+	/* wdev->wiphy->flags |= WIPHY_FLAG_SUPPORTS_FW_ROAM; */
 #endif 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0))
 	wdev->wiphy->flags |= WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL |
@@ -8394,7 +8538,7 @@ wl_notify_connect_status_ap(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	channel_info_t ci;
 #else
 	struct station_info sinfo;
-#endif 
+#endif
 
 	WL_DBG(("event %d status %d reason %d\n", event, ntoh32(e->status), reason));
 	/* if link down, bsscfg is disabled. */
@@ -8673,7 +8817,8 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 		if (wl_is_linkup(cfg, e, ndev)) {
 			wl_link_up(cfg);
 			act = true;
-			if (!wl_get_drv_status(cfg, DISCONNECTING, ndev)) {
+			if (!wl_get_drv_status(cfg, DISCONNECTING, ndev) ||
+			    wl_get_drv_status(cfg, CONNECTING, ndev)) {
 					printk("wl_bss_connect_done succeeded with " MACDBG "\n",
 						MAC2STRDBG((u8*)(&e->addr)));
 					wl_bss_connect_done(cfg, ndev, e, data, true);
@@ -8745,6 +8890,8 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 					/* In case this event comes while associating another AP */
 #endif /* ESCAN_RESULT_PATCH */
 					wl_bss_connect_done(cfg, ndev, e, data, false);
+				/* Clear driver status as CONNECTING since the link is already down */
+				wl_clr_drv_status(cfg, CONNECTING, ndev);
 			}
 			wl_clr_drv_status(cfg, DISCONNECTING, ndev);
 
@@ -8758,8 +8905,10 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 			/* Clean up any pending scan request */
 			if (cfg->scan_request)
 				wl_notify_escan_complete(cfg, ndev, true, true);
-			if (wl_get_drv_status(cfg, CONNECTING, ndev))
+			if (wl_get_drv_status(cfg, CONNECTING, ndev)) {
 				wl_bss_connect_done(cfg, ndev, e, data, false);
+				wl_clr_drv_status(cfg, CONNECTING, ndev);
+			}
 		} else {
 			WL_DBG(("%s nothing\n", __FUNCTION__));
 		}
@@ -9231,7 +9380,8 @@ wl_bss_connect_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 		wl_notify_escan_complete(cfg, ndev, true, true);
 	}
 #endif /* ESCAN_RESULT_PATCH */
-	if (wl_get_drv_status(cfg, CONNECTING, ndev)) {
+	if (wl_get_drv_status(cfg, CONNECTING, ndev) &&
+		(e->event_type == WLC_E_SET_SSID)) {
 		wl_cfg80211_scan_abort(cfg);
 		wl_clr_drv_status(cfg, CONNECTING, ndev);
 		if (completed) {
@@ -9265,6 +9415,9 @@ wl_bss_connect_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 #endif /* CUSTOM_SET_CPUCORE */
 
 		}
+		/* Update the cfg layer with the lates active channels available */
+		wl_update_wiphybands(NULL, true);
+
 		cfg80211_connect_result(ndev,
 			curbssid,
 			conn_info->req_ie,
@@ -9404,13 +9557,20 @@ wl_notify_scan_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	bss_list->version = dtoh32(bss_list->version);
 	bss_list->count = dtoh32(bss_list->count);
 
+	TEGRA_SYSFS_HISTOGRAM_SCAN_RESULTS(ndev, bss_list, bss_list->buflen)
 	err = wl_inform_bss(cfg);
 
 scan_done_out:
 	del_timer_sync(&cfg->scan_timeout);
 	spin_lock_irqsave(&cfg->cfgdrv_lock, flags);
 	if (cfg->scan_request) {
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+		TEGRA_SCAN_DONE(cfg->scan_request, false)
+#endif
 		cfg80211_scan_done(cfg->scan_request, false);
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+skip_cfg80211_scan_done:
+#endif
 		cfg->scan_request = NULL;
 	}
 	spin_unlock_irqrestore(&cfg->cfgdrv_lock, flags);
@@ -10179,7 +10339,7 @@ wl_cfg80211_netdev_notifier_call(struct notifier_block * nb,
 
 		case NETDEV_UNREGISTER:
 			/* after calling list_del_rcu(&wdev->list) */
-			wl_dealloc_netinfo(cfg, dev);
+			wl_remove_netinfo(cfg, dev);
 			break;
 		case NETDEV_GOING_DOWN:
 			/* At NETDEV_DOWN state, wdev_cleanup_work work will be called.
@@ -10284,7 +10444,13 @@ static s32 wl_notify_escan_complete(struct bcm_cfg80211 *cfg,
 	}
 #endif /* WL_SCHED_SCAN */
 	if (likely(cfg->scan_request)) {
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+		TEGRA_SCAN_DONE(cfg->scan_request, aborted)
+#endif
 		cfg80211_scan_done(cfg->scan_request, aborted);
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+skip_cfg80211_scan_done:
+#endif
 		cfg->scan_request = NULL;
 	}
 	if (p2p_is_on(cfg))
@@ -10590,10 +10756,8 @@ static s32 wl_escan_handler(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	}
 	else if (status == WLC_E_STATUS_SUCCESS) {
 #if defined(P2P_DISCOVERY_WAR)
-		if (cfg->p2p_net && cfg->scan_request &&
-			cfg->scan_request->dev == cfg->p2p_net &&
-			!cfg->p2p->vif_created) {
-			if (wldev_iovar_setint(wl_to_prmry_ndev(cfg), "mpc", 1) < 0) {
+		if (scan_req_match(cfg) && !cfg->p2p->vif_created) {
+			if (wldev_iovar_setint(bcmcfg_to_prmry_ndev(cfg), "mpc", 1) < 0) {
 				WL_ERR(("mpc enabling back failed\n"));
 			}
 		}
@@ -10622,10 +10786,8 @@ static s32 wl_escan_handler(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	}
 	else if (status == WLC_E_STATUS_ABORT) {
 #if defined(P2P_DISCOVERY_WAR)
-		if (cfg->p2p_net && cfg->scan_request &&
-			cfg->scan_request->dev == cfg->p2p_net &&
-			!cfg->p2p->vif_created) {
-			if (wldev_iovar_setint(wl_to_prmry_ndev(cfg), "mpc", 1) < 0) {
+		if (scan_req_match(cfg) && !cfg->p2p->vif_created) {
+			if (wldev_iovar_setint(bcmcfg_to_prmry_ndev(cfg), "mpc", 1) < 0) {
 				WL_ERR(("mpc enabling back failed\n"));
 			}
 		}
@@ -10799,6 +10961,7 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 				_net_info->pm_restore = true;
 			}
 			pm = PM_OFF;
+			down_read(&cfg->netif_sem);
 			for_each_ndev(cfg, iter, next) {
 				if (iter->pm_restore)
 					continue;
@@ -10824,6 +10987,7 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 					wl_cfg80211_update_power_mode(iter->ndev);
 				}
 			}
+			up_read(&cfg->netif_sem);
 		} else {
 			/* add PM Enable timer to go to power save mode
 			 * if supplicant control pm mode, it will be cleared or
@@ -10834,6 +10998,7 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 			/*
 			 * before calling pm_enable_timer, we need to set PM -1 for all ndev
 			 */
+			down_read(&cfg->netif_sem);
 			pm = PM_OFF;
 			if (!_net_info->pm_block) {
 				for_each_ndev(cfg, iter, next) {
@@ -10860,7 +11025,7 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 						WL_ERR(("%s:error (%d)\n", iter->ndev->name, err));
 				}
 			}
-
+			up_read(&cfg->netif_sem);
 			if (cfg->pm_enable_work_on) {
 				wl_add_remove_pm_enable_work(cfg, FALSE, WL_HANDLER_DEL);
 			}
@@ -10886,6 +11051,7 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 		/* clear chan information when the net device is disconnected */
 		wl_update_prof(cfg, _net_info->ndev, NULL, &chan, WL_PROF_CHAN);
 		wl_cfg80211_determine_vsdb_mode(cfg);
+		down_read(&cfg->netif_sem);
 		for_each_ndev(cfg, iter, next) {
 			if (iter->pm_restore && iter->pm) {
 				WL_DBG(("%s:restoring power save %s\n",
@@ -10903,6 +11069,7 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 				wl_cfg80211_update_power_mode(iter->ndev);
 			}
 		}
+		up_read(&cfg->netif_sem);
 		wl_cfg80211_concurrent_roam(cfg, 0);
 #if defined(WLTDLS)
 		if (!cfg->vsdb_mode) {
@@ -10930,6 +11097,36 @@ static s32 wl_init_scan(struct bcm_cfg80211 *cfg)
 	return err;
 }
 
+static void wl_dealloc_netinfo(struct work_struct *work)
+{
+	struct net_info *_net_info, *next;
+	struct bcm_cfg80211 *cfg = container_of(work, struct bcm_cfg80211, dealloc_work);
+	down_interruptible(&cfg->net_wdev_sema);
+	down_write(&cfg->netif_sem);
+	list_for_each_entry_safe(_net_info, next, &cfg->dealloc_list, list) {
+		list_del(&_net_info->list);
+		if (_net_info->wdev) {
+			flush_work(&_net_info->wdev->cleanup_work);
+			WARN_ON(work_pending(&_net_info->wdev->cleanup_work));
+			/* rtnl_lock is required to protect wdev from nl80211_pre_doit
+			 * and nl80211_post_doit calls */
+			rtnl_lock();
+			if (cfg->wdev == _net_info->wdev)
+				cfg->wdev = NULL;
+			else if (cfg->p2p_wdev == _net_info->wdev)
+				cfg->p2p_wdev = NULL;
+			else
+				WL_ERR(("Unknown wdev freeed!\n"));
+			kfree(_net_info->wdev);
+			_net_info->wdev = NULL;
+			rtnl_unlock();
+		}
+		kfree(_net_info);
+	}
+	up_write(&cfg->netif_sem);
+	up(&cfg->net_wdev_sema);
+}
+
 static s32 wl_init_priv(struct bcm_cfg80211 *cfg)
 {
 	struct wiphy *wiphy = bcmcfg_to_wiphy(cfg);
@@ -10951,6 +11148,8 @@ static s32 wl_init_priv(struct bcm_cfg80211 *cfg)
 	set_bit(WL_STATUS_CONNECTED, &cfg->interrested_state);
 	spin_lock_init(&cfg->cfgdrv_lock);
 	mutex_init(&cfg->ioctl_buf_sync);
+	init_rwsem(&cfg->netif_sem);
+	sema_init(&cfg->net_wdev_sema, 1);
 	init_waitqueue_head(&cfg->netif_change_event);
 	init_completion(&cfg->send_af_done);
 	init_completion(&cfg->iface_disable);
@@ -10970,6 +11169,8 @@ static s32 wl_init_priv(struct bcm_cfg80211 *cfg)
 	wl_init_prof(cfg, ndev);
 	wl_link_down(cfg);
 	DNGL_FUNC(dhd_cfg80211_init, (cfg));
+	INIT_LIST_HEAD(&cfg->dealloc_list);
+	INIT_WORK(&cfg->dealloc_work, wl_dealloc_netinfo);
 
 	return err;
 }
@@ -11326,6 +11527,7 @@ static s32 wl_event_handler(void *data)
 			 * there is no corresponding bsscfg for P2P interface. Map it to p2p0
 			 * interface.
 			 */
+			down_interruptible(&cfg->net_wdev_sema);
 #if defined(WL_CFG80211_P2P_DEV_IF)
 #ifdef P2PONEINT
 			if ((wl_is_p2p_event(e) == TRUE) && (cfg->p2p_wdev)) {
@@ -11372,11 +11574,14 @@ static s32 wl_event_handler(void *data)
 				cfgdev = bcmcfg_to_prmry_ndev(cfg);
 #endif /* WL_CFG80211_P2P_DEV_IF */
 			}
-			if (e->etype < WLC_E_LAST && cfg->evt_handler[e->etype]) {
-				cfg->evt_handler[e->etype] (cfg, cfgdev, &e->emsg, e->edata);
+			if (e->etype < WLC_E_LAST && cfg->evt_handler[e->etype]
+				&& cfgdev) {
+				cfg->evt_handler[e->etype] (cfg,
+						cfgdev, &e->emsg, e->edata);
 			} else {
 				WL_DBG(("Unknown Event (%d): ignoring\n", e->etype));
 			}
+			up(&cfg->net_wdev_sema);
 			wl_put_event(e);
 		}
 		DHD_OS_WAKE_UNLOCK(cfg->pub);
@@ -12107,7 +12312,11 @@ static s32 __wl_cfg80211_down(struct bcm_cfg80211 *cfg)
 	u32 bssidx = 0;
 #ifdef PROP_TXSTATUS_VSDB
 #if defined(BCMSDIO)
-	dhd_pub_t *dhd =  (dhd_pub_t *)(cfg->pub);
+	dhd_pub_t *dhd;
+if (bcmdhd_prop_txstatus_vsdb) {
+	dhd =  (dhd_pub_t *)(cfg->pub);
+}
+
 #endif 
 #endif /* PROP_TXSTATUS_VSDB */
 	WL_DBG(("In\n"));
@@ -12121,6 +12330,7 @@ static s32 __wl_cfg80211_down(struct bcm_cfg80211 *cfg)
 	if (cfg->p2p_supported) {
 		wl_clr_p2p_status(cfg, GO_NEG_PHASE);
 #ifdef PROP_TXSTATUS_VSDB
+if (bcmdhd_prop_txstatus_vsdb) {
 #if defined(BCMSDIO)
 		if (cfg->p2p->vif_created) {
 			bool enabled = false;
@@ -12132,6 +12342,7 @@ static s32 __wl_cfg80211_down(struct bcm_cfg80211 *cfg)
 			}
 		}
 #endif 
+}
 #endif /* PROP_TXSTATUS_VSDB */
 	}
 
@@ -12152,7 +12363,13 @@ static s32 __wl_cfg80211_down(struct bcm_cfg80211 *cfg)
 
 	spin_lock_irqsave(&cfg->cfgdrv_lock, flags);
 	if (cfg->scan_request) {
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+		TEGRA_SCAN_DONE(cfg->scan_request, true)
+#endif
 		cfg80211_scan_done(cfg->scan_request, true);
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+skip_cfg80211_scan_done:
+#endif
 		cfg->scan_request = NULL;
 	}
 	spin_unlock_irqrestore(&cfg->cfgdrv_lock, flags);
@@ -12196,12 +12413,14 @@ static s32 __wl_cfg80211_down(struct bcm_cfg80211 *cfg)
 #endif /* defined (DUAL_STA) || defined (DUAL_STA_STATIC_IF) */
 
 #ifdef WL11U
+if (bcmdhd_wl11u) {
 	/* Clear interworking element. */
 	if (cfg->wl11u) {
 		cfg->wl11u = FALSE;
 		cfg->iw_ie_len = 0;
 		memset(cfg->iw_ie, 0, IW_IES_MAX_BUF_LEN);
 	}
+}
 #endif /* WL11U */
 
 	DNGL_FUNC(dhd_cfg80211_down, (cfg));
@@ -12745,6 +12964,10 @@ wl_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *dev,
 	struct bcm_cfg80211 *cfg;
 	tdls_iovar_t info;
 	cfg = g_bcm_cfg;
+
+	if (!cfg)
+		return -EINVAL;
+
 	memset(&info, 0, sizeof(tdls_iovar_t));
 	if (peer)
 		memcpy(&info.ea, peer, ETHER_ADDR_LEN);
@@ -13551,7 +13774,13 @@ int wl_cfg80211_scan_stop(bcm_struct_cfgdev *cfgdev)
 #else
 	if (cfg->scan_request && cfg->scan_request->dev == cfgdev) {
 #endif
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+		TEGRA_SCAN_DONE(cfg->scan_request, true)
+#endif
 		cfg80211_scan_done(cfg->scan_request, true);
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+skip_cfg80211_scan_done:
+#endif
 		cfg->scan_request = NULL;
 		clear_flag = 1;
 	}

@@ -29,6 +29,8 @@
 #include <linux/kthread.h>
 #include <linux/netdevice.h>
 
+#include "dynamic.h"
+
 #include <wldev_common.h>
 #include <bcmutils.h>
 
@@ -448,13 +450,16 @@ int wldev_set_country(
 }
 
 /* tuning performance for miracast */
+
 int wldev_miracast_tuning(
 	struct net_device *dev, char *command, int total_len)
 {
 	int error = 0;
 	int mode = 0;
 	int ampdu_mpdu;
-	int roam_off;
+	int ampdu_rx_tid = -1;
+	int disable_interference_mitigation = 0;
+	int auto_interference_mitigation = -1;
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 	int mchan_algo;
 	int mchan_bw;
@@ -465,15 +470,15 @@ int wldev_miracast_tuning(
 		return -1;
 	}
 
-	WLDEV_ERROR(("mode: %d\n", mode));
+set_mode:
+
 
 	if (mode == 0) {
 		/* Normal mode: restore everything to default */
+#ifdef CUSTOM_AMPDU_MPDU
+		ampdu_mpdu = CUSTOM_AMPDU_MPDU;
+#else
 		ampdu_mpdu = -1;	/* FW default */
-#if defined(ROAM_ENABLE)
-		roam_off = 0;	/* roam enable */
-#elif defined(DISABLE_BUILTIN_ROAM)
-		roam_off = 1;	/* roam disable */
 #endif
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 		mchan_algo = 0;	/* Default */
@@ -483,9 +488,6 @@ int wldev_miracast_tuning(
 	else if (mode == 1) {
 		/* Miracast source mode */
 		ampdu_mpdu = 8;	/* for tx latency */
-#if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
-		roam_off = 1; /* roam disable */
-#endif
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 		mchan_algo = 1;	/* BW based */
 		mchan_bw = 25;	/* 25:75 */
@@ -493,16 +495,42 @@ int wldev_miracast_tuning(
 	}
 	else if (mode == 2) {
 		/* Miracast sink/PC Gaming mode */
-		ampdu_mpdu = -1;	/* FW default */
-#if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
-		roam_off = 1; /* roam disable */
-#endif
+		ampdu_mpdu = 8;	/* FW default */
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 		mchan_algo = 0;	/* Default */
 		mchan_bw = 50;	/* 50:50 */
 #endif /* VSDB_BW_ALLOCATE_ENABLE */
-	}
-	else {
+	} else if (mode == 3) {
+		ampdu_rx_tid = 0;
+		mode = 2;
+		goto set_mode;
+	} else if (mode == 4) {
+		ampdu_rx_tid = 0x7f;
+		mode = 0;
+		goto set_mode;
+	} else if (mode == 5) {
+		/* Blake connected mode, disable interference mitigation */
+		error = wldev_ioctl(dev, WLC_SET_INTERFERENCE_OVERRIDE_MODE,
+			&disable_interference_mitigation, sizeof(int), true);
+		if (error) {
+			WLDEV_ERROR((
+				"Failed to set interference_override: mode:%d, error:%d\n",
+				mode, error));
+			return -1;
+		}
+		return error;
+	} else if (mode == 6) {
+		/* No Blake connected, enable auto interference mitigation */
+		error = wldev_ioctl(dev, WLC_SET_INTERFERENCE_OVERRIDE_MODE,
+			&auto_interference_mitigation, sizeof(int), true);
+		if (error) {
+			WLDEV_ERROR((
+				"Failed to set interference_override: mode:%d, error:%d\n",
+				mode, error));
+			return -1;
+		}
+		return error;
+	} else {
 		WLDEV_ERROR(("Unknown mode: %d\n", mode));
 		return -1;
 	}
@@ -515,16 +543,11 @@ int wldev_miracast_tuning(
 		return -1;
 	}
 
-#if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
-	error = wldev_iovar_setint(dev, "roam_off", roam_off);
-	if (error) {
-		WLDEV_ERROR(("Failed to set roam_off: mode:%d, error:%d\n",
-			mode, error));
-		return -1;
-	}
-#endif /* ROAM_ENABLE || DISABLE_BUILTIN_ROAM */
+	if (ampdu_rx_tid != -1)
+		dhd_set_ampdu_rx_tid(dev, ampdu_rx_tid);
 
 #ifdef VSDB_BW_ALLOCATE_ENABLE
+if (bcmdhd_vsdb_bw_allocate_enable) {
 	error = wldev_iovar_setint(dev, "mchan_algo", mchan_algo);
 	if (error) {
 		WLDEV_ERROR(("Failed to set mchan_algo: mode:%d, error:%d\n",
@@ -538,6 +561,7 @@ int wldev_miracast_tuning(
 			mode, error));
 		return -1;
 	}
+}
 #endif /* VSDB_BW_ALLOCATE_ENABLE */
 
 	return error;
@@ -666,4 +690,113 @@ int wldev_get_assoc_resp_ie(
 done:
 
 	return bytes_written;
+}
+
+int wldev_get_max_linkspeed(
+	struct net_device *dev, char *command, int total_len)
+{
+	wl_assoc_info_t *assoc_info;
+	char smbuf[WLC_IOCTL_SMLEN];
+	char bssid[6], null_bssid[6];
+	int resp_ies_len = 0;
+	int bytes_written = 0;
+	int error, i;
+
+	bzero(bssid, 6);
+	bzero(null_bssid, 6);
+
+	/* Check Association */
+	error = wldev_ioctl(dev, WLC_GET_BSSID, &bssid, sizeof(bssid), 0);
+	if (error == BCME_NOTASSOCIATED) {
+		/* Not associated */
+		bytes_written += snprintf(&command[bytes_written],
+					total_len, "-1");
+		goto done;
+	} else if (error < 0) {
+		WLDEV_ERROR(("WLC_GET_BSSID failed = %d\n", error));
+		return -1;
+	} else if (memcmp(bssid, null_bssid, ETHER_ADDR_LEN) == 0) {
+		/*  Zero BSSID: Not associated */
+		bytes_written += snprintf(&command[bytes_written],
+					total_len, "-1");
+		goto done;
+	}
+	/* Get assoc_info */
+	bzero(smbuf, sizeof(smbuf));
+	error = wldev_iovar_getbuf(dev, "assoc_info", NULL, 0, smbuf,
+				sizeof(smbuf), NULL);
+	if (error < 0) {
+		WLDEV_ERROR(("get assoc_info failed = %d\n", error));
+		return -1;
+	}
+
+	assoc_info = (wl_assoc_info_t *)smbuf;
+	resp_ies_len = dtoh32(assoc_info->resp_len) -
+				sizeof(struct dot11_assoc_resp);
+
+	/* Retrieve assoc resp IEs */
+	if (resp_ies_len) {
+		error = wldev_iovar_getbuf(dev, "assoc_resp_ies", NULL, 0,
+					smbuf, sizeof(smbuf), NULL);
+		if (error < 0) {
+			WLDEV_ERROR(("get assoc_resp_ies failed = %d\n",
+				error));
+			return -1;
+		}
+
+		{
+			int maxRate = 0;
+			struct dot11IE {
+				unsigned char ie;
+				unsigned char len;
+				unsigned char data[0];
+			} *dot11IE = (struct dot11IE *)smbuf;
+			int remaining = resp_ies_len;
+
+			while (1) {
+				if (remaining < 2)
+					break;
+				if (remaining < dot11IE->len + 2)
+					break;
+				switch (dot11IE->ie) {
+				case 0x01: /* supported rates */
+				case 0x32: /* extended supported rates */
+					for (i = 0; i < dot11IE->len; i++) {
+						int rate = ((dot11IE->data[i] &
+								0x7f) / 2);
+						if (rate > maxRate)
+							maxRate = rate;
+					}
+					break;
+				case 0x2d: /* HT capabilities */
+				case 0x3d: /* HT operation */
+					/* 11n supported */
+					maxRate = 150; /* Just return an 11n
+					rate for now. Could implement detailed
+					parser later. */
+					break;
+				default:
+					break;
+				}
+
+				/* next IE */
+				dot11IE = (struct dot11IE *)
+				((unsigned char *)dot11IE + dot11IE->len + 2);
+				remaining -= (dot11IE->len + 2);
+			}
+			bytes_written += snprintf(&command[bytes_written],
+						total_len, "MaxLinkSpeed %d",
+						maxRate);
+			goto done;
+			}
+	} else {
+		WLDEV_ERROR(("Zero Length assoc resp ies = %d\n",
+			resp_ies_len));
+		return -1;
+	}
+
+done:
+
+	return bytes_written;
+
 }

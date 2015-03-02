@@ -117,8 +117,8 @@ enum dhd_op_flags {
 #define MAX_CNTL_RX_TIMEOUT 1
 #endif /* MAX_CNTL_RX_TIMEOUT */
 
-#define DHD_SCAN_ASSOC_ACTIVE_TIME	40 /* ms: Embedded default Active setting from DHD */
-#define DHD_SCAN_UNASSOC_ACTIVE_TIME 80 /* ms: Embedded def. Unassoc Active setting from DHD */
+#define DHD_SCAN_ASSOC_ACTIVE_TIME	35 /* ms: Embedded default Active setting from DHD */
+#define DHD_SCAN_UNASSOC_ACTIVE_TIME 65 /* ms: Embedded def. Unassoc Active setting from DHD */
 #define DHD_SCAN_PASSIVE_TIME		130 /* ms: Embedded default Passive setting from DHD */
 
 #ifndef POWERUP_MAX_RETRY
@@ -920,7 +920,9 @@ extern uint dhd_force_tx_queueing;
 #endif
 
 #define DEFAULT_WIFI_TURNOFF_DELAY		0
+#ifndef WIFI_TURNOFF_DELAY
 #define WIFI_TURNOFF_DELAY		DEFAULT_WIFI_TURNOFF_DELAY
+#endif /* WIFI_TURNOFF_DELAY */
 
 #define DEFAULT_WIFI_TURNON_DELAY		200
 #ifndef WIFI_TURNON_DELAY
