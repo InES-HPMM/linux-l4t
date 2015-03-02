@@ -95,6 +95,7 @@
 
 			palmas_extcon: extcon {
 				compatible = "ti,palmas-usb";
+				ti,wakeup;
 				#extcon-cells = <1>;
 				ti,enable-id-detection;
 				ti,enable-vbus-detection;
