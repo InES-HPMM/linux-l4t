@@ -81,7 +81,15 @@ enum tegra_pinconf_param {
 
 struct device;
 
+#ifndef CONFIG_PINCTRL_TEGRA
+static inline int tegra_pinctrl_config_prod(struct device *dev,
+		const char *prod_name)
+{
+	return 0;
+}
+#else
 extern int tegra_pinctrl_config_prod(struct device *dev,
 		const char *prod_name);
+#endif
 
 #endif
