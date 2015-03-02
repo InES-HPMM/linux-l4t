@@ -712,7 +712,7 @@ config I2C_STU300
 
 config I2C_TEGRA
 	tristate "NVIDIA Tegra internal I2C controller"
-	depends on ARCH_TEGRA
+	depends on ARCH_TEGRA || PLATFORM_TEGRA
 	select I2C_ALGO_BUSCLEAR
 	select I2C_ALGOBIT
 	help
