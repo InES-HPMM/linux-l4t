@@ -323,7 +323,7 @@ static int max8973_set_ramp_delay(struct regulator_dev *rdev,
 	return ret_val;
 }
 
-int max8973_regulator_enable(struct regulator_dev *rdev)
+static int max8973_regulator_enable(struct regulator_dev *rdev)
 {
 	struct max8973_chip *max = rdev_get_drvdata(rdev);
 	int ret;
@@ -357,7 +357,7 @@ int max8973_regulator_enable(struct regulator_dev *rdev)
 	return 0;
 }
 
-int max8973_regulator_disable(struct regulator_dev *rdev)
+static int max8973_regulator_disable(struct regulator_dev *rdev)
 {
 	struct max8973_chip *max = rdev_get_drvdata(rdev);
 	int ret;
