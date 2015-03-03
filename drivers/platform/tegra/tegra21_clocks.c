@@ -9495,6 +9495,7 @@ static struct clk tegra_visp_clks[] = {
 	SHARED_CONNECT("vi.cbus",	"vi.cbus",	NULL,	&tegra_clk_cbus,   "vi",    0, 0, 0),
 	SHARED_CONNECT("isp.cbus",	"isp.cbus",	NULL,	&tegra_clk_cbus,   "isp",   0, 0, 0),
 	SHARED_CLK("override.cbus",	"override.cbus", NULL,	&tegra_clk_cbus,    NULL,   0, SHARED_OVERRIDE, 0),
+	SHARED_LIMIT("cap.vcore.cbus",	"cap.vcore.cbus", NULL,	&tegra_clk_cbus,    NULL,   0, SHARED_CEILING, 0),
 
 #ifndef CONFIG_VI_ONE_DEVICE
 	SHARED_CLK("via.vi.cbus",	"via.vi",	NULL,	&tegra_visp_clks[0], NULL,   0, 0, 0),

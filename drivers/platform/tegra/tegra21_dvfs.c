@@ -1534,6 +1534,7 @@ static struct kobject *gpu_kobj;
 static struct core_dvfs_cap_table tegra21_core_cap_table[] = {
 	{ .cap_name = "cap.vcore.c2bus" },
 	{ .cap_name = "cap.vcore.c3bus" },
+	{ .cap_name = "cap.vcore.cbus" },
 	{ .cap_name = "cap.vcore.sclk" },
 	{ .cap_name = "cap.vcore.emc" },
 	{ .cap_name = "cap.vcore.host1x" },
