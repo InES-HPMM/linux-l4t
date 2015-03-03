@@ -37,6 +37,7 @@ enum pstore_type_id {
 	PSTORE_TYPE_CONSOLE	= 2,
 	PSTORE_TYPE_FTRACE	= 3,
 	PSTORE_TYPE_RTRACE	= 4,
+	PSTORE_TYPE_PMSG	= 5, /* Backport: 7 in upstream 3.19.0-rc3 */
 	PSTORE_TYPE_UNKNOWN	= 255
 };
 
