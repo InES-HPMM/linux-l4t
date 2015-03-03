@@ -62,10 +62,10 @@ dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-hawkeye-p2290-2306-a01-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-hawkeye-p2290-3306-a01-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-hawkeye-ffpb-e2295-a00-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-odin-fp-01-01.dtb
-dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl33823014.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl34000094.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl34116551.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-fpga-cl34078409.dtb
+dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl34324618.dtb
 targets += $(dtb-y)
 
 DTC_FLAGS := -i $(srctree)/arch/arm/boot/dts
