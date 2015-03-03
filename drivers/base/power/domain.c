@@ -350,7 +350,7 @@ static int __pm_genpd_poweron(struct generic_pm_domain *genpd)
 	 */
 	list_for_each_entry(link, &genpd->slave_links, slave_node) {
 		genpd_sd_counter_inc(link->master);
-		genpd->status = GPD_STATE_WAIT_MASTER;
+		__update_genpd_status(genpd, GPD_STATE_WAIT_MASTER);
 
 		mutex_unlock(&genpd->lock);
 
