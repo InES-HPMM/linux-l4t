@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra12x_la.c
  *
- * Copyright (C) 2013-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -409,7 +409,7 @@ static void program_ptsa(void)
 	writel(p->usbx_ptsa_max, T12X_MC_RA(USBX_PTSA_MAX_0));
 
 	writel(p->usbd_ptsa_min, T12X_MC_RA(USBD_PTSA_MIN_0));
-	writel(p->usbd_ptsa_min, T12X_MC_RA(USBD_PTSA_MAX_0));
+	writel(p->usbd_ptsa_max, T12X_MC_RA(USBD_PTSA_MAX_0));
 
 	writel(p->ftop_ptsa_min, T12X_MC_RA(FTOP_PTSA_MIN_0));
 	writel(p->ftop_ptsa_max, T12X_MC_RA(FTOP_PTSA_MAX_0));
@@ -478,7 +478,7 @@ static void save_ptsa(void)
 	p->r0_dis_ptsa_max = readl(T12X_MC_RA(R0_DIS_PTSA_MAX_0));
 
 	p->r0_disb_ptsa_min = readl(T12X_MC_RA(R0_DISB_PTSA_MIN_0));
-	p->r0_disb_ptsa_min = readl(T12X_MC_RA(R0_DISB_PTSA_MAX_0));
+	p->r0_disb_ptsa_max = readl(T12X_MC_RA(R0_DISB_PTSA_MAX_0));
 
 	p->vd_ptsa_min = readl(T12X_MC_RA(VD_PTSA_MIN_0));
 	p->vd_ptsa_max = readl(T12X_MC_RA(VD_PTSA_MAX_0));
@@ -490,7 +490,7 @@ static void save_ptsa(void)
 	p->gk_ptsa_max = readl(T12X_MC_RA(GK_PTSA_MAX_0));
 
 	p->vicpc_ptsa_min = readl(T12X_MC_RA(VICPC_PTSA_MIN_0));
-	p->vicpc_ptsa_min = readl(T12X_MC_RA(VICPC_PTSA_MAX_0));
+	p->vicpc_ptsa_max = readl(T12X_MC_RA(VICPC_PTSA_MAX_0));
 
 	p->apb_ptsa_min = readl(T12X_MC_RA(APB_PTSA_MIN_0));
 	p->apb_ptsa_max = readl(T12X_MC_RA(APB_PTSA_MAX_0));
