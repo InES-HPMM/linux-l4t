@@ -30,20 +30,12 @@
 #include <linux/gpio.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include <linux/regmap.h>
 #include <media/nvc.h>
 #include <media/imx132.h>
+#include "regmap_util.h"
 #include "nvc_utilities.h"
 
-#ifdef CONFIG_DEBUG_FS
-#include <media/nvc_debugfs.h>
-#endif
-
-#define IMX132_SIZEOF_I2C_BUF 16
-
-struct imx132_reg {
-	u16 addr;
-	u16 val;
-};
 
 struct imx132_info {
 	struct miscdevice		miscdev_info;
@@ -54,10 +46,7 @@ struct imx132_info {
 	struct imx132_platform_data	*pdata;
 	atomic_t			in_use;
 	struct clk			*mclk;
-#ifdef CONFIG_DEBUG_FS
-	struct nvc_debugfs_info debugfs_info;
-#endif
-
+	struct regmap 		*regmap;
 };
 
 #define IMX132_TABLE_WAIT_MS 0
@@ -70,7 +59,7 @@ struct imx132_info {
 static struct regulator *imx132_ext_reg1;
 static struct regulator *imx132_ext_reg2;
 
-static struct imx132_reg mode_1920x1080[] = {
+static const struct reg_8 mode_1976x1144_one_lane[] = {
 	/* Stand by */
 	{0x0100, 0x00},
 	{0x0101, 0x03},
@@ -171,17 +160,13 @@ static struct imx132_reg mode_1920x1080[] = {
 	{0x3342, 0x00},
 	{0x3348, 0xE0},
 
-	/* Shutter gain Settings */
-	{0x0202, 0x04},
-	{0x0203, 0x33},
-
 	/* Streaming */
 	{0x0100, 0x01},
 	{IMX132_TABLE_WAIT_MS, IMX132_WAIT_MS},
 	{IMX132_TABLE_END, 0x00}
 };
 
-static struct imx132_reg mode_1976x1200[] = {
+static const struct reg_8 mode_1976x1144_two_lane[] = {
 	/* Stand by */
 	{0x0100, 0x00},
 	{0x0101, 0x03},
@@ -209,21 +194,21 @@ static struct imx132_reg mode_1976x1200[] = {
 
 	/* Mode Setting */
 	{0x0340, 0x04},
-	{0x0341, 0xCA},
+	{0x0341, 0x92},
 	{0x0342, 0x08},
 	{0x0343, 0xC8},
 	{0x0344, 0x00},
 	{0x0345, 0x00},
 	{0x0346, 0x00},
-	{0x0347, 0x00},
+	{0x0347, 0x1C},
 	{0x0348, 0x07},
 	{0x0349, 0xB7},
 	{0x034A, 0x04},
-	{0x034B, 0xAF},
+	{0x034B, 0x93},
 	{0x034C, 0x07},
 	{0x034D, 0xB8},
 	{0x034E, 0x04},
-	{0x034F, 0xB0},
+	{0x034F, 0x78},
 	{0x0381, 0x01},
 	{0x0383, 0x01},
 	{0x0385, 0x01},
@@ -282,10 +267,6 @@ static struct imx132_reg mode_1976x1200[] = {
 	{0x3342, 0x00},
 	{0x3348, 0xE0},
 
-	/* Shutter gain Settings */
-	{0x0202, 0x04},
-	{0x0203, 0x33},
-
 	/* Streaming */
 	{0x0100, 0x01},
 	{IMX132_TABLE_WAIT_MS, IMX132_WAIT_MS},
@@ -293,23 +274,17 @@ static struct imx132_reg mode_1976x1200[] = {
 };
 
 enum {
-	IMX132_MODE_1920X1080,
-	IMX132_MODE_1976X1200,
+	IMX132_MODE_1976X1144_ONE_LANE,
+	IMX132_MODE_1976X1144_TWO_LANE,
 };
 
-static struct imx132_reg *mode_table[] = {
-	[IMX132_MODE_1920X1080] = mode_1920x1080,
-	[IMX132_MODE_1976X1200] = mode_1976x1200,
+static const struct reg_8 *mode_table[] = {
+	[IMX132_MODE_1976X1144_ONE_LANE] = mode_1976x1144_one_lane,
+	[IMX132_MODE_1976X1144_TWO_LANE] = mode_1976x1144_two_lane,
 };
 
 static inline void
-msleep_range(unsigned int delay_base)
-{
-	usleep_range(delay_base*1000, delay_base*1000+500);
-}
-
-static inline void
-imx132_get_frame_length_regs(struct imx132_reg *regs, u32 frame_length)
+imx132_get_frame_length_regs(struct reg_8 *regs, u32 frame_length)
 {
 	regs->addr = IMX132_FRAME_LEN_LINES_15_8;
 	regs->val = (frame_length >> 8) & 0xff;
@@ -318,7 +293,7 @@ imx132_get_frame_length_regs(struct imx132_reg *regs, u32 frame_length)
 }
 
 static inline void
-imx132_get_coarse_time_regs(struct imx132_reg *regs, u32 coarse_time)
+imx132_get_coarse_time_regs(struct reg_8 *regs, u32 coarse_time)
 {
 	regs->addr = IMX132_COARSE_INTEGRATION_TIME_15_8;
 	regs->val = (coarse_time >> 8) & 0xff;
@@ -327,132 +302,10 @@ imx132_get_coarse_time_regs(struct imx132_reg *regs, u32 coarse_time)
 }
 
 static inline void
-imx132_get_gain_reg(struct imx132_reg *regs, u16 gain)
+imx132_get_gain_reg(struct reg_8 *regs, u16 gain)
 {
 	regs->addr = IMX132_ANA_GAIN_GLOBAL;
 	regs->val = gain;
-}
-
-static int
-imx132_read_reg(struct i2c_client *client, u16 addr, u8 *val)
-{
-	int err;
-	struct i2c_msg msg[2];
-	unsigned char data[3];
-
-	if (!client->adapter)
-		return -ENODEV;
-
-	msg[0].addr = client->addr;
-	msg[0].flags = 0;
-	msg[0].len = 2;
-	msg[0].buf = data;
-
-	/* high byte goes out first */
-	data[0] = (u8) (addr >> 8);
-	data[1] = (u8) (addr & 0xff);
-
-	msg[1].addr = client->addr;
-	msg[1].flags = I2C_M_RD;
-	msg[1].len = 1;
-	msg[1].buf = data + 2;
-
-	err = i2c_transfer(client->adapter, msg, 2);
-
-	if (err != 2)
-		return -EINVAL;
-
-	*val = data[2];
-
-	return 0;
-}
-
-static int
-imx132_write_reg(struct i2c_client *client, u16 addr, u8 val)
-{
-	int err;
-	struct i2c_msg msg;
-	unsigned char data[3];
-
-	if (!client->adapter)
-		return -ENODEV;
-
-	data[0] = (u8) (addr >> 8);
-	data[1] = (u8) (addr & 0xff);
-	data[2] = (u8) (val & 0xff);
-
-	msg.addr = client->addr;
-	msg.flags = 0;
-	msg.len = 3;
-	msg.buf = data;
-
-	err = i2c_transfer(client->adapter, &msg, 1);
-	if (err == 1)
-		return 0;
-
-	dev_err(&client->dev, "%s:i2c write failed, %x = %x\n",
-			__func__, addr, val);
-
-	return err;
-}
-
-static int imx132_i2c_wr_blk(struct i2c_client *client, u8 *buf, int len)
-{
-	struct i2c_msg msg;
-	msg.addr = client->addr;
-	msg.flags = 0;
-	msg.len = len;
-	msg.buf = buf;
-	if (i2c_transfer(client->adapter, &msg, 1) != 1)
-		return -EIO;
-	return 0;
-}
-
-static int
-imx132_write_table(struct i2c_client *client,
-			 const struct imx132_reg table[],
-			 const struct imx132_reg override_list[],
-			 int num_override_regs)
-{
-	int err;
-	u8 i2c_transfer_buf[IMX132_SIZEOF_I2C_BUF];
-	const struct imx132_reg *next;
-	const struct imx132_reg *n_next;
-	u8 *b_ptr = i2c_transfer_buf;
-	u16 buf_count = 0;
-
-	for (next = table; next->addr != IMX132_TABLE_END; next++) {
-		if (next->addr == IMX132_TABLE_WAIT_MS) {
-			msleep_range(next->val);
-			continue;
-		}
-
-		if (!buf_count) {
-			b_ptr = i2c_transfer_buf;
-			*b_ptr++ = next->addr >> 8;
-			*b_ptr++ = next->addr & 0xFF;
-			buf_count = 2;
-		}
-		*b_ptr++ = next->val;
-		buf_count++;
-		n_next = next + 1;
-		if ((n_next->addr == next->addr + 1) &&
-			(n_next->addr != IMX132_TABLE_WAIT_MS) &&
-			(buf_count < IMX132_SIZEOF_I2C_BUF) &&
-			(n_next->addr != IMX132_TABLE_END))
-				continue;
-
-		err = imx132_i2c_wr_blk(client, i2c_transfer_buf, buf_count);
-		if (err) {
-			pr_err("%s:imx132_write_table:%d", __func__, err);
-			return err;
-		}
-
-		buf_count = 0;
-
-	}
-
-	return 0;
 }
 
 static int
@@ -461,16 +314,16 @@ imx132_set_mode(struct imx132_info *info, struct imx132_mode *mode)
 	struct device *dev = &info->i2c_client->dev;
 	int sensor_mode;
 	int err;
-	struct imx132_reg reg_list[5];
+	struct reg_8 reg_list[5];
 
-	dev_info(dev, "%s: res [%ux%u] framelen %u coarsetime %u gain %u\n",
-		__func__, mode->xres, mode->yres,
+	dev_info(dev, "%s: res [%ux%ux%d] framelength %u coarsetime %u gain %u\n",
+		__func__, mode->xres, mode->yres, info->pdata->cap->data_lanes,
 		mode->frame_length, mode->coarse_time, mode->gain);
 
-	if ((mode->xres == 1920) && (mode->yres == 1080)) {
-		sensor_mode = IMX132_MODE_1920X1080;
-	} else if ((mode->xres == 1976) && (mode->yres == 1200)) {
-		sensor_mode = IMX132_MODE_1976X1200;
+	if ((mode->xres == 1976) && (mode->yres == 1144) && (info->pdata->cap->data_lanes == 1)) {
+		sensor_mode = IMX132_MODE_1976X1144_ONE_LANE;
+	} else if ((mode->xres == 1976) && (mode->yres == 1144) && (info->pdata->cap->data_lanes == 2)) {
+		sensor_mode = IMX132_MODE_1976X1144_TWO_LANE;
 	} else {
 		dev_err(dev, "%s: invalid resolution to set mode %d %d\n",
 			__func__, mode->xres, mode->yres);
@@ -485,8 +338,11 @@ imx132_set_mode(struct imx132_info *info, struct imx132_mode *mode)
 	imx132_get_coarse_time_regs(reg_list + 2, mode->coarse_time);
 	imx132_get_gain_reg(reg_list + 4, mode->gain);
 
-	err = imx132_write_table(info->i2c_client, mode_table[sensor_mode],
-			reg_list, 5);
+	err = regmap_util_write_table_8(info->regmap,
+					mode_table[sensor_mode],
+					reg_list, 5,
+					IMX132_TABLE_WAIT_MS,
+					IMX132_TABLE_END);
 	if (err)
 		return err;
 
@@ -508,28 +364,28 @@ imx132_set_frame_length(struct imx132_info *info,
 				u32 frame_length,
 				bool group_hold)
 {
-	struct imx132_reg reg_list[2];
+	struct reg_8 reg_list[2];
 	int i = 0;
 	int ret;
 
 	imx132_get_frame_length_regs(reg_list, frame_length);
 
 	if (group_hold) {
-		ret = imx132_write_reg(info->i2c_client,
+		ret = regmap_write(info->regmap,
 					IMX132_GROUP_PARAM_HOLD, 0x01);
 		if (ret)
 			return ret;
 	}
 
 	for (i = 0; i < NUM_OF_FRAME_LEN_REG; i++) {
-		ret = imx132_write_reg(info->i2c_client, reg_list[i].addr,
+		ret = regmap_write(info->regmap, reg_list[i].addr,
 			reg_list[i].val);
 		if (ret)
 			return ret;
 	}
 
 	if (group_hold) {
-		ret = imx132_write_reg(info->i2c_client,
+		ret = regmap_write(info->regmap,
 					IMX132_GROUP_PARAM_HOLD, 0x0);
 		if (ret)
 			return ret;
@@ -545,13 +401,13 @@ imx132_set_coarse_time(struct imx132_info *info,
 {
 	int ret;
 
-	struct imx132_reg reg_list[2];
+	struct reg_8 reg_list[2];
 	int i = 0;
 
 	imx132_get_coarse_time_regs(reg_list, coarse_time);
 
 	if (group_hold) {
-		ret = imx132_write_reg(info->i2c_client,
+		ret = regmap_write(info->regmap,
 					IMX132_GROUP_PARAM_HOLD,
 					0x01);
 		if (ret)
@@ -559,14 +415,14 @@ imx132_set_coarse_time(struct imx132_info *info,
 	}
 
 	for (i = 0; i < NUM_OF_COARSE_TIME_REG; i++) {
-		ret = imx132_write_reg(info->i2c_client, reg_list[i].addr,
+		ret = regmap_write(info->regmap, reg_list[i].addr,
 			reg_list[i].val);
 		if (ret)
 			return ret;
 	}
 
 	if (group_hold) {
-		ret = imx132_write_reg(info->i2c_client,
+		ret = regmap_write(info->regmap,
 					IMX132_GROUP_PARAM_HOLD, 0x0);
 		if (ret)
 			return ret;
@@ -578,23 +434,23 @@ static int
 imx132_set_gain(struct imx132_info *info, u16 gain, bool group_hold)
 {
 	int ret;
-	struct imx132_reg reg_list;
+	struct reg_8 reg_list;
 
 	imx132_get_gain_reg(&reg_list, gain);
 
 	if (group_hold) {
-		ret = imx132_write_reg(info->i2c_client,
+		ret = regmap_write(info->regmap,
 					IMX132_GROUP_PARAM_HOLD, 0x1);
 		if (ret)
 			return ret;
 	}
 
-	ret = imx132_write_reg(info->i2c_client, reg_list.addr, reg_list.val);
+	ret = regmap_write(info->regmap, reg_list.addr, reg_list.val);
 	if (ret)
 		return ret;
 
 	if (group_hold) {
-		ret = imx132_write_reg(info->i2c_client,
+		ret = regmap_write(info->regmap,
 					IMX132_GROUP_PARAM_HOLD, 0x0);
 		if (ret)
 			return ret;
@@ -619,7 +475,7 @@ imx132_set_group_hold(struct imx132_info *info, struct imx132_ae *ae)
 		groupHoldEnabled = true;
 
 	if (groupHoldEnabled) {
-		ret = imx132_write_reg(info->i2c_client,
+		ret = regmap_write(info->regmap,
 					IMX132_GROUP_PARAM_HOLD, 0x1);
 		if (ret)
 			return ret;
@@ -633,7 +489,7 @@ imx132_set_group_hold(struct imx132_info *info, struct imx132_ae *ae)
 		imx132_set_frame_length(info, ae->frame_length, false);
 
 	if (groupHoldEnabled) {
-		ret = imx132_write_reg(info->i2c_client,
+		ret = regmap_write(info->regmap,
 					IMX132_GROUP_PARAM_HOLD, 0x0);
 		if (ret)
 			return ret;
@@ -658,8 +514,8 @@ static int imx132_get_fuse_id(struct imx132_info *info)
 	msleep_range(IMX132_FUSE_ID_DELAY);
 
 	for (i = 0; i < IMX132_FUSE_ID_SIZE ; i++) {
-		ret |= imx132_read_reg(info->i2c_client,
-					IMX132_FUSE_ID_REG + i, &bak);
+		ret |= regmap_read(info->regmap,
+					IMX132_FUSE_ID_REG + i, (unsigned int *) &bak);
 		info->fuse_id.data[i] = bak;
 	}
 
@@ -722,7 +578,7 @@ imx132_ioctl(struct file *file,
 		if (copy_to_user((void __user *)arg,
 				&info->fuse_id,
 				sizeof(struct nvc_fuseid))) {
-			dev_info(dev, "%s:Fail copy fuse id to user space\n",
+			dev_err(dev, "%s:Fail copy fuse id to user space\n",
 				__func__);
 			return -EFAULT;
 		}
@@ -733,11 +589,23 @@ imx132_ioctl(struct file *file,
 		struct imx132_ae ae;
 		if (copy_from_user(&ae, (const void __user *)arg,
 				sizeof(struct imx132_ae))) {
-			dev_info(dev, "%s:fail group hold\n", __func__);
+			dev_err(dev, "%s:fail group hold\n", __func__);
 			return -EFAULT;
 		}
 		return imx132_set_group_hold(info, &ae);
 	}
+
+	case _IOC_NR(IMX132_IOCTL_GET_CAPS):
+		if (copy_to_user((void __user *)arg,
+				 info->pdata->cap,
+				 sizeof(struct nvc_imager_cap))) {
+			dev_err(&info->i2c_client->dev,
+				"%s copy_to_user err line %d\n",
+				__func__, __LINE__);
+			return -EFAULT;
+		}
+
+		return 0;
 	default:
 		dev_err(dev, "%s:unknown cmd.\n", __func__);
 		return -EINVAL;
@@ -748,7 +616,7 @@ imx132_ioctl(struct file *file,
 static int imx132_get_extra_regulators(void)
 {
 	if (!imx132_ext_reg1) {
-		imx132_ext_reg1 = regulator_get(NULL, "imx132_reg1");
+		imx132_ext_reg1 = devm_regulator_get(NULL, "imx132_reg1");
 		if (WARN_ON(IS_ERR(imx132_ext_reg1))) {
 			pr_err("%s: can't get regulator imx132_reg1: %ld\n",
 				__func__, PTR_ERR(imx132_ext_reg1));
@@ -758,7 +626,7 @@ static int imx132_get_extra_regulators(void)
 	}
 
 	if (!imx132_ext_reg2) {
-		imx132_ext_reg2 = regulator_get(NULL, "imx132_reg2");
+		imx132_ext_reg2 = devm_regulator_get(NULL, "imx132_reg2");
 		if (unlikely(WARN_ON(IS_ERR(imx132_ext_reg2)))) {
 			pr_err("%s: can't get regulator imx132_reg2: %ld\n",
 				__func__, PTR_ERR(imx132_ext_reg2));
@@ -894,7 +762,7 @@ imx132_open(struct inode *inode, struct file *file)
 	info = container_of(miscdev, struct imx132_info, miscdev_info);
 	/* check if the device is in use */
 	if (atomic_xchg(&info->in_use, 1)) {
-		dev_info(&info->i2c_client->dev, "%s:BUSY!\n", __func__);
+		dev_err(&info->i2c_client->dev, "%s:BUSY!\n", __func__);
 		return -EBUSY;
 	}
 
@@ -968,12 +836,12 @@ static int imx132_power_put(struct imx132_power_rail *pw)
 }
 
 static int imx132_regulator_get(struct imx132_info *info,
-	struct regulator **vreg, char vreg_name[])
+	struct regulator **vreg, const char vreg_name[])
 {
 	struct regulator *reg = NULL;
 	int err = 0;
 
-	reg = regulator_get(&info->i2c_client->dev, vreg_name);
+	reg = devm_regulator_get(&info->i2c_client->dev, vreg_name);
 	if (unlikely(IS_ERR(reg))) {
 		dev_err(&info->i2c_client->dev, "%s %s ERR: %p\n",
 			__func__, vreg_name, reg);
@@ -991,9 +859,9 @@ static int imx132_power_get(struct imx132_info *info)
 {
 	struct imx132_power_rail *pw = &info->power;
 
-	imx132_regulator_get(info, &pw->dvdd, "vdig"); /* digital 1.2v */
-	imx132_regulator_get(info, &pw->avdd, "vana_imx132"); /* analog 2.7v */
-	imx132_regulator_get(info, &pw->iovdd, "vif"); /* interface 1.8v */
+	imx132_regulator_get(info, &pw->dvdd, info->pdata->regulators.dvdd); /* digital 1.2v */
+	imx132_regulator_get(info, &pw->avdd, info->pdata->regulators.avdd); /* analog 2.7v */
+	imx132_regulator_get(info, &pw->iovdd, info->pdata->regulators.iovdd); /* interface 1.8v */
 
 	return 0;
 }
@@ -1025,24 +893,50 @@ static struct imx132_platform_data *imx132_parse_dt(struct i2c_client *client)
 {
 	struct device_node *np = client->dev.of_node;
 	struct imx132_platform_data *board_info_pdata;
-	const struct of_device_id *match;
+	const char *sname;
+	int ret;
+	int num;
 
-	match = of_match_device(imx132_of_match, &client->dev);
-	if (!match) {
-		dev_err(&client->dev, "Failed to find matching dt id\n");
-		return NULL;
-	}
-
-	board_info_pdata = devm_kzalloc(&client->dev, sizeof(*board_info_pdata),
+	board_info_pdata = devm_kzalloc(&client->dev, sizeof(*board_info_pdata)
+			+ sizeof(*board_info_pdata->cap) + sizeof(*board_info_pdata->static_info),
 			GFP_KERNEL);
 	if (!board_info_pdata) {
 		dev_err(&client->dev, "Failed to allocate pdata\n");
 		return NULL;
 	}
 
-	board_info_pdata->cam2_gpio = of_get_named_gpio(np, "cam2_gpios", 0);
+	board_info_pdata->cap = (void *)(board_info_pdata + 1);
+	board_info_pdata->static_info = (void *)(board_info_pdata->cap + 1);
 
+	board_info_pdata->cam2_gpio = of_get_named_gpio(np, "cam2-gpios", 0);
 	board_info_pdata->ext_reg = of_property_read_bool(np, "nvidia,ext_reg");
+	of_property_read_string(np, "clocks", &board_info_pdata->mclk_name);
+
+	num = 0;
+	do {
+		ret = of_property_read_string_index(
+			np, "regulators", num, &sname);
+		if (ret < 0)
+			break;
+		switch (num) {
+		case 0:
+			board_info_pdata->regulators.avdd = sname;
+			board_info_pdata->regulators.dvdd = NULL;
+			board_info_pdata->regulators.iovdd = NULL;
+			break;
+		case 1:
+			board_info_pdata->regulators.dvdd = sname;
+			break;
+		case 2:
+			board_info_pdata->regulators.iovdd = sname;
+			break;
+		default:
+			break;
+		}
+		num++;
+	} while (num < 3);
+
+	nvc_imager_parse_caps(np, board_info_pdata->cap, board_info_pdata->static_info);
 
 	return board_info_pdata;
 }
@@ -1054,6 +948,10 @@ imx132_probe(struct i2c_client *client,
 	struct imx132_info *info;
 	const char *mclk_name;
 	int err = 0;
+	static struct regmap_config imx132_regmap_config = {
+		.reg_bits = 16,
+		.val_bits = 8,
+	};
 
 	pr_info("[imx132]: probing sensor.\n");
 
@@ -1072,6 +970,14 @@ imx132_probe(struct i2c_client *client,
 	if (!info->pdata) {
 		pr_err("[imx132]:%s:Unable to get platform data\n", __func__);
 		return -EFAULT;
+	}
+
+	info->regmap = devm_regmap_init_i2c(client, &imx132_regmap_config);
+	if (IS_ERR(info->regmap)) {
+		err = PTR_ERR(info->regmap);
+		dev_err(&client->dev,
+			"Failed to allocate register map: %d\n", err);
+		return err;
 	}
 
 	info->i2c_client = client;
@@ -1102,15 +1008,6 @@ imx132_probe(struct i2c_client *client,
 		__func__);
 	}
 
-#ifdef CONFIG_DEBUG_FS
-	info->debugfs_info.name = imx132_device.name;
-	info->debugfs_info.i2c_client = info->i2c_client;
-	info->debugfs_info.i2c_addr_limit = 0xFFFF;
-	info->debugfs_info.i2c_rd8 = imx132_read_reg;
-	info->debugfs_info.i2c_wr8 = imx132_write_reg;
-	nvc_debugfs_init(&(info->debugfs_info));
-#endif
-
 	return err;
 }
 
@@ -1118,9 +1015,6 @@ static int
 imx132_remove(struct i2c_client *client)
 {
 	struct imx132_info *info = i2c_get_clientdata(client);
-#ifdef CONFIG_DEBUG_FS
-	nvc_debugfs_remove(&info->debugfs_info);
-#endif
 	imx132_power_put(&info->power);
 	misc_deregister(&imx132_device);
 	return 0;
@@ -1137,6 +1031,7 @@ static struct i2c_driver imx132_i2c_driver = {
 	.driver = {
 		.name = "imx132",
 		.owner = THIS_MODULE,
+		.of_match_table = imx132_of_match,
 	},
 	.probe = imx132_probe,
 	.remove = imx132_remove,

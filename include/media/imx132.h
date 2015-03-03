@@ -26,6 +26,7 @@
 #define IMX132_IOCTL_SET_GAIN		_IOW('o', 5, __u16)
 #define IMX132_IOCTL_GET_FUSEID		_IOR('o', 6, struct nvc_fuseid)
 #define IMX132_IOCTL_SET_GROUP_HOLD	_IOW('o', 7, struct imx132_ae)
+#define IMX132_IOCTL_GET_CAPS       _IOR('o', 8, struct nvc_imager_cap)
 
 /* IMX132 registers */
 #define IMX132_GROUP_PARAM_HOLD			(0x0104)
@@ -62,10 +63,19 @@ struct imx132_power_rail {
 	struct regulator *iovdd;
 };
 
+struct imx132_regulators {
+	const char *avdd;
+	const char *dvdd;
+	const char *iovdd;
+};
+
 struct imx132_platform_data {
 	unsigned int cam2_gpio;
 	bool ext_reg;
+	struct imx132_regulators regulators;
 	const char *mclk_name; /* NULL for default */
+	struct nvc_imager_static_nvc *static_info;
+	struct nvc_imager_cap *cap;
 	int (*power_on)(struct imx132_power_rail *pw);
 	int (*power_off)(struct imx132_power_rail *pw);
 };
