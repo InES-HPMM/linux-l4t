@@ -61,8 +61,8 @@
 			t += isomgr_clients[idx].margin_bw; \
 	} \
 	if (t + isomgr.avail_bw != isomgr.max_iso_bw) { \
-		pr_err("bw mismatch, line=%d", __LINE__); \
-		pr_err("t+isomgr.avail_bw=%d, isomgr.max_iso_bw=%d", \
+		pr_err("bw mismatch, line=%d\n", __LINE__); \
+		pr_err("t+isomgr.avail_bw=%d, isomgr.max_iso_bw=%d\n", \
 			t + isomgr.avail_bw, isomgr.max_iso_bw); \
 		BUG(); \
 	} \
@@ -75,7 +75,7 @@
 do { \
 	if (unlikely(!cp || !is_client_valid(client) || \
 		     cp->magic != ISOMGR_MAGIC)) { \
-		pr_err("bad handle %p", handle); \
+		pr_err("bad handle %p\n", handle); \
 		goto validation_fail; \
 	} \
 } while (0)
@@ -83,7 +83,7 @@ do { \
 #define VALIDATE_CLIENT() \
 do { \
 	if (unlikely(!is_client_valid(client))) { \
-		pr_err("invalid client %d", client); \
+		pr_err("invalid client %d\n", client); \
 		goto validation_fail; \
 	} \
 } while (0)
@@ -584,16 +584,16 @@ static tegra_isomgr_handle __tegra_isomgr_register(
 		isomgr.avail_bw += dedi_bw + isomgr.dedi_bw -
 				   isomgr.max_iso_bw;
 		isomgr.max_iso_bw = dedi_bw + isomgr.dedi_bw;
-		pr_info("ISO BW usage:");
+		pr_info("ISO BW usage:\n");
 		for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; i++) {
 			if (!client_valid[i])
 				continue;
-			pr_info("client=%s, iso dedi bw=%dKB",
+			pr_info("client=%s, iso dedi bw=%dKB\n",
 				cname[i],
 				(client == i) ? dedi_bw :
 				isomgr_clients[i].dedi_bw);
 		}
-		pr_info("revisit BW usage of iso clients");
+		pr_info("revisit BW usage of iso clients\n");
 #else
 		pr_err("iso bandwidth %uKB is not available, client %s\n",
 			dedi_bw, cname[client]);
@@ -1128,12 +1128,12 @@ static void isomgr_create_client(int client, const char *name)
 	BUG_ON(cp->client_kobj);
 	cp->client_kobj = kobject_create_and_add(name, isomgr.kobj);
 	if (!cp->client_kobj) {
-		pr_err("failed to create sysfs client dir");
+		pr_err("failed to create sysfs client dir\n");
 		return;
 	}
 	cp->client_attrs = client_attrs;
 	if (sysfs_create_files(cp->client_kobj, &client_attr_list[client][0])) {
-		pr_err("failed to create sysfs client files");
+		pr_err("failed to create sysfs client files\n");
 		kobject_del(cp->client_kobj);
 		return;
 	}
@@ -1146,11 +1146,11 @@ static void isomgr_create_sysfs(void)
 	BUG_ON(isomgr.kobj);
 	isomgr.kobj = kobject_create_and_add("isomgr", kernel_kobj);
 	if (!isomgr.kobj) {
-		pr_err("failed to create kobject");
+		pr_err("failed to create kobject\n");
 		return;
 	}
 	if (sysfs_create_files(isomgr.kobj, isomgr_attrs)) {
-		pr_err("failed to create sysfs files");
+		pr_err("failed to create sysfs files\n");
 		kobject_del(isomgr.kobj);
 		isomgr.kobj = NULL;
 		return;
@@ -1184,7 +1184,7 @@ int __init isomgr_init(void)
 
 	isomgr.emc_clk = clk_get_sys("iso", "emc");
 	if (IS_ERR_OR_NULL(isomgr.emc_clk)) {
-		pr_err("couldn't find iso emc clock. disabling isomgr.");
+		pr_err("couldn't find iso emc clock. disabling isomgr.\n");
 		test_mode = 1;
 		return 0;
 	}
@@ -1193,11 +1193,11 @@ int __init isomgr_init(void)
 		/* With DVFS disabled, bus children cannot get real max emc freq supported
 		 * Only the root parent EMC node is set to max possible rate*/
 		max_emc_clk = clk_round_rate(clk_get_parent(isomgr.emc_clk), ULONG_MAX) / 1000;
-		pr_info("iso emc max clk=%dKHz", max_emc_clk);
+		pr_info("iso emc max clk=%dKHz\n", max_emc_clk);
 		max_emc_bw = tegra_emc_freq_req_to_bw(max_emc_clk);
 		/* ISO clients can use iso_bw_percentage of max emc bw. */
 		isomgr.max_iso_bw = max_emc_bw * iso_bw_percentage / 100;
-		pr_info("max_iso_bw=%dKB", isomgr.max_iso_bw);
+		pr_info("max_iso_bw=%dKB\n", isomgr.max_iso_bw);
 		isomgr.avail_bw = isomgr.max_iso_bw;
 	}
 
@@ -1244,7 +1244,6 @@ retry:
 		if (atomic_read(&cp->kref.refcount))
 			goto retry;
 	}
-	pr_info("done");
 	return 0;
 }
 EXPORT_SYMBOL(tegra_isomgr_enable_test_mode);
