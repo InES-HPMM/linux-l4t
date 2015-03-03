@@ -284,4 +284,5 @@ config PINCTRL_AS3722
 
 endmenu
 
+trysource "../kernel-t18x/drivers/pinctrl/Kconfig"
 endif
