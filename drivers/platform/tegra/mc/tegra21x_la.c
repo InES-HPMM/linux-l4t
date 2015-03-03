@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2014-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -221,7 +221,7 @@ static void t21x_init_ptsa(void)
 	int gd_fpa;
 
 	/* get emc frequency */
-	emc_clk = clk_get(NULL, "emc");
+	emc_clk = clk_get_sys("tegra_emc", "emc");
 	emc_freq_mhz = clk_get_rate(emc_clk) /
 			LA_HZ_TO_MHZ_FACTOR;
 	la_debug("emc clk_rate = %u MHz", emc_freq_mhz);

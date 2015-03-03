@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/latency_allowance.c
  *
- * Copyright (C) 2011-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2011-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -470,7 +470,8 @@ static int __init tegra_latency_allowance_init(void)
 			} else if (cs.la_info_array[i].la_ref_clk_mhz != 0) {
 				/* In this case we need to scale LA with emc
 				   frequency. */
-				struct clk *emc_clk = clk_get(NULL, "emc");
+				struct clk *emc_clk = clk_get_sys("tegra_emc",
+								  "emc");
 				unsigned long emc_freq_mhz =
 							clk_get_rate(emc_clk) /
 							1000000;
