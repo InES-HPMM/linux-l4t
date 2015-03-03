@@ -848,7 +848,7 @@ static int dma_buf_describe(struct seq_file *s)
 		list_for_each_entry(attach_obj, &buf_obj->attachments, node) {
 			seq_printf(s, "\t\t");
 
-			seq_printf(s, "%s\n", attach_obj->dev->init_name);
+			seq_printf(s, "%s\n", dev_name(attach_obj->dev));
 			attach_count++;
 		}
 
