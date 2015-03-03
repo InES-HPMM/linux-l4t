@@ -194,6 +194,7 @@
 		status = "okay";
 		compatible = "nvidia,tegra124-spi-slave";
 		nvidia,rx-trigger-words = <0>;
+		nvidia,clk-pin = "gpio_x5_aud_px5";
 	};
 
 	spi@7000d600 {
