@@ -3775,13 +3775,11 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct tegra_tuning_data *tuning_data;
-	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
 	int err;
 	u16 ctrl_2;
 	u32 misc_ctrl;
 	u8 i, set_retuning = 0;
 	bool force_retuning = false;
-	bool enable_lb_clk;
 
 	/* Tuning is valid only in SDR104 and SDR50 modes */
 	ctrl_2 = sdhci_readw(sdhci, SDHCI_HOST_CONTROL2);
@@ -3799,10 +3797,7 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 		return -EINVAL;
 
 	SDHCI_TEGRA_DBG("%s: Starting freq tuning\n", mmc_hostname(sdhci->mmc));
-	enable_lb_clk = (soc_data->nvquirks &
-			NVQUIRK_DISABLE_EXTERNAL_LOOPBACK) &&
-			tegra_host->plat->enb_ext_loopback;
-	if (enable_lb_clk) {
+	if (tegra_host->plat->enb_ext_loopback) {
 		misc_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_MISC_CTRL);
 		misc_ctrl &= ~(1 <<
 			SDHCI_VNDR_MISC_CTRL_EN_EXT_LOOPBACK_SHIFT);
@@ -3896,7 +3891,7 @@ out:
 	mutex_unlock(&tuning_mutex);
 
 	SDHCI_TEGRA_DBG("%s: Freq tuning done\n", mmc_hostname(sdhci->mmc));
-	if (enable_lb_clk) {
+	if (tegra_host->plat->enb_ext_loopback) {
 		misc_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_MISC_CTRL);
 		if (err) {
 			/* Tuning is failed and card will try to enumerate in
