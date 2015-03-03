@@ -495,8 +495,11 @@
         };
 
 	sdhci@700b0600 {
-		uhs-mask = <0x60>; /* Disabled HS200 mode & HS400 mode */
+		uhs-mask = <0x00>;
 		built-in;
+		nvidia,enable-hs533-mode;
+		pll_source = "pll_p", "pll_c4_out1";
+		max-clk-limit = <266000000>;
 		status = "okay";
 	};
 
