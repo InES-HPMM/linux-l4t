@@ -37,7 +37,9 @@
 #include <linux/tegra-soc.h>
 #include <asm/processor.h>
 #include <asm/current.h>
+
 #include <linux/platform/tegra/isomgr.h>
+#include <linux/platform/tegra/clock.h>
 
 #include <tegra/mc.h>
 
@@ -435,9 +437,14 @@ static void update_mc_clock(void)
 	}
 
 	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; i++) {
-		if (isomgr_clients[i].real_mf != isomgr_clients[i].real_mf_rq &&
-		    !clk_set_rate(isomgr_clients[i].emc_clk,
-			isomgr_clients[i].real_mf * 1000)) {
+		if (isomgr_clients[i].real_mf != isomgr_clients[i].real_mf_rq) {
+			/* Ignore clocks for clients that are non-existent. */
+			if (!isomgr_clients[i].emc_clk)
+				continue;
+
+			if (clk_set_rate(isomgr_clients[i].emc_clk,
+					 isomgr_clients[i].real_mf * 1000))
+				continue;
 
 			if (isomgr_clients[i].real_mf_rq == 0)
 				clk_enable(isomgr_clients[i].emc_clk);
@@ -541,8 +548,10 @@ static void isomgr_scavenge(enum tegra_iso_client client)
 
 static bool is_client_valid(enum tegra_iso_client client)
 {
-	if (unlikely(client < 0 || client >= TEGRA_ISO_CLIENT_COUNT ||
-		     !client_valid[client]))
+	if (unlikely(client < 0 ||
+		     client >= TEGRA_ISO_CLIENT_COUNT ||
+		     !client_valid[client] ||
+		     !isomgr_clients[client].emc_clk))
 		return false;
 	return true;
 }
@@ -1202,12 +1211,13 @@ int __init isomgr_init(void)
 			isomgr_clients[c].emc_clk = clk_get_sys(
 					isoclient_info[i].dev_name,
 					isoclient_info[i].emc_clk_name);
+
 			if (IS_ERR_OR_NULL(isomgr_clients[c].emc_clk)) {
 				pr_err("couldn't find %s %s clock",
 					isoclient_info[i].dev_name,
 					isoclient_info[i].emc_clk_name);
-				pr_err("disabling iso mgr");
-				test_mode = 1;
+
+				isomgr_clients[c].emc_clk = NULL;
 				return 0;
 			}
 		}
