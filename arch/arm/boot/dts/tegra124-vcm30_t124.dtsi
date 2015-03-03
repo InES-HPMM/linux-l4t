@@ -364,4 +364,8 @@
 			};
 		};
 	};
+
+	bthrot_cdev {
+		status = "disabled";
+	};
 };
