@@ -333,6 +333,7 @@ static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
 
 #define XUSB_PADCTL_USB2_PORT_CAP_0		0x8
 #define USB2_OTG_PORT_CAP(_p, val)	((val & 0x3) << (_p * 4))
+#define USB2_PORT_CAP_REVERSE_ID(x) (0x1 << ((4 * (x + 1)) - 1))
 
 #define CLK_RST_PLLU_HW_PWRDN_CFG0_0	0x530
 #define PLLU_CLK_ENABLE_OVERRIDE_VALUE	(1 << 3)
@@ -492,8 +493,17 @@ static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
 #define USB2_VBUS_ID_0_VBUS_WKUP_CHG_INT_EN	(0x1 << 24)
 #define USB2_VBUS_ID_0_INTR_STS_CHG_MASK (USB2_VBUS_ID_0_VBUS_VLD_STS_CHG | \
 					USB2_VBUS_ID_0_VBUS_SESS_VLD_STS_CHG | \
-					USB2_VBUS_ID_0_IDDIG_STS_CHG | \
 					USB2_VBUS_ID_0_VBUS_WKUP_STS_CHG)
+
+#define XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL0_0(x) (0x80 + 0x40 * x)
+#define USB2_BATTERY_CHRG_OTGPAD_GENERATE_SRP		(1 << 31)
+#define USB2_BATTERY_CHRG_OTGPAD_SRP_INTR_EN		(1 << 30)
+#define USB2_BATTERY_CHRG_OTGPAD_SRP_DETECTED		(1 << 29)
+#define USB2_BATTERY_CHRG_OTGPAD_SRP_DETECT_EN		(1 << 28)
+#define USB2_BATTERY_CHRG_OTGPAD_DCD_DETECTED		(1 << 26)
+#define USB2_BATTERY_CHRG_OTGPAD_INTR_STS_CHG_MASK (\
+			USB2_BATTERY_CHRG_OTGPAD_SRP_DETECTED | \
+			USB2_BATTERY_CHRG_OTGPAD_DCD_DETECTED)
 
 #else
 #define XUSB_PADCTL_USB3_PAD_MUX_0		0x134
