@@ -44,6 +44,7 @@ struct max77620_wdt {
 	int				clear_time;
 	bool				otp_wdtt;
 	bool				otp_wdten;
+	bool				enable_on_off;
 };
 
 static int max77620_wdt_start(struct watchdog_device *wdt_dev)
@@ -225,6 +226,14 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	ret = max77620_reg_update(pdev->dev.parent, MAX77620_PWR_SLAVE,
+			MAX77620_REG_CNFGGLBL2, MAX77620_WDTOFFC,
+			MAX77620_WDTOFFC);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "CNFGGLBL2 update failed: %d\n", ret);
+		return ret;
+	}
+
 	if (pnode) {
 		np = of_get_child_by_name(pnode, "watchdog");
 		if (!np) {
@@ -247,6 +256,8 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 
 		wdt->otp_wdtt = of_property_read_bool(np, "maxim,otp-wdtt");
 		wdt->otp_wdten = of_property_read_bool(np, "maxim,otp-wdten");
+		wdt->enable_on_off = of_property_read_bool(np,
+					"maxim,enable-wdt-on-off");
 	} else {
 		wdt->timeout = 64;
 		wdt->clear_time = 60;
@@ -265,6 +276,15 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 	watchdog_set_nowayout(wdt_dev, nowayout);
 	watchdog_set_drvdata(wdt_dev, wdt);
 	platform_set_drvdata(pdev, wdt);
+
+	if (wdt->enable_on_off) {
+		ret = max77620_reg_update(pdev->dev.parent, MAX77620_PWR_SLAVE,
+				MAX77620_REG_CNFGGLBL2, MAX77620_WDTOFFC, 0);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "CNFGGLBL2 update failed: %d\n", ret);
+			return ret;
+		}
+	}
 
 	ret = watchdog_register_device(wdt_dev);
 	if (ret < 0) {
