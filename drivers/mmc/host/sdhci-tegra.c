@@ -1418,6 +1418,16 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	} else {
 		vendor_ctrl |= SDHCI_VNDR_CLK_CTRL_INTERNAL_CLK;
 	}
+	/* For automotive enable feedback clock for non-tuning modes */
+	if (plat->enb_feedback_clock) {
+		if ((tegra_host->tuning_status == TUNING_STATUS_DONE)
+				&& (host->mmc->pm_flags &
+					MMC_PM_KEEP_POWER)) {
+			vendor_ctrl |=
+				SDHCI_VNDR_CLK_CTRL_INPUT_IO_CLK;
+		}
+	}
+
 	if (soc_data->nvquirks & NVQUIRK_SET_TRIM_DELAY) {
 		vendor_ctrl &= ~(SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_MASK <<
 		SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
@@ -3778,6 +3788,7 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 	int err;
 	u16 ctrl_2;
 	u32 misc_ctrl;
+	u32 vendor_ctrl;
 	u8 i, set_retuning = 0;
 	bool force_retuning = false;
 
@@ -3803,6 +3814,13 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 			SDHCI_VNDR_MISC_CTRL_EN_EXT_LOOPBACK_SHIFT);
 		sdhci_writel(sdhci, misc_ctrl, SDHCI_VNDR_MISC_CTRL);
 	}
+	if (tegra_host->plat->enb_feedback_clock) {
+		vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
+		vendor_ctrl |=
+			SDHCI_VNDR_CLK_CTRL_INPUT_IO_CLK;
+		sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_CLK_CTRL);
+	}
+
 	mutex_lock(&tuning_mutex);
 
 	/* Set the tuning command to be used */
@@ -3905,7 +3923,19 @@ out:
 				SDHCI_VNDR_MISC_CTRL_EN_EXT_LOOPBACK_SHIFT);
 		}
 		sdhci_writel(sdhci, misc_ctrl, SDHCI_VNDR_MISC_CTRL);
+
 	}
+	if (tegra_host->plat->enb_feedback_clock) {
+		vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
+		if (err) /* Tuning is failed disable feedback clock */
+			vendor_ctrl &=
+				~SDHCI_VNDR_CLK_CTRL_INPUT_IO_CLK;
+		else
+			vendor_ctrl |=
+				SDHCI_VNDR_CLK_CTRL_INPUT_IO_CLK;
+		sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_CLK_CTRL);
+	}
+
 	return err;
 }
 
@@ -5459,6 +5489,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 				t12x_automotive_tap_hole_margins;
 		soc_data_tegra12.tap_hole_margins_count =
 				ARRAY_SIZE(t12x_automotive_tap_hole_margins);
+		/* feedback clock need to be enabled for non-tuning timing */
+		if (plat->enb_ext_loopback)
+			plat->enb_feedback_clock = true;
 	}
 	host->mmc->pm_caps |= plat->pm_caps;
 	host->mmc->pm_flags |= plat->pm_flags;

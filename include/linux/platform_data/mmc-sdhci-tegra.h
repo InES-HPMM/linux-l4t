@@ -105,6 +105,7 @@ struct tegra_sdhci_platform_data {
 	unsigned int rtpm_type;
 	bool enable_cq;
 	bool en_strobe; /* Enable enhance strobe mode for eMMC */
+	bool enb_feedback_clock;
 };
 
 #endif
