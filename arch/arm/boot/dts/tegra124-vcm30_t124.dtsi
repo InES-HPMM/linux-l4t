@@ -179,6 +179,7 @@
 
 	sata@70020000 {
 		nvidia,enable-sata-port;
+		nvidia,l2p_fifo_depth = /bits/8 <0x7>;
 		status = "disabled";
 	};
 
