@@ -2721,11 +2721,17 @@ static void sdhci_card_event(struct mmc_host *mmc)
 	struct sdhci_host *host = mmc_priv(mmc);
 	unsigned long flags;
 
-	sdhci_runtime_pm_get(host);
+	/* sdhci_runtime_pm_get cannot be called here since
+	 * tasklet/softirq context cannot call
+	 * sleeping function like __pm_runtime_resume
+         */
 	spin_lock_irqsave(&host->lock, flags);
 
 	/* Check host->mrq_cmd first in case we are runtime suspended */
 	if ((host->mrq_cmd || host->mrq_dat) &&
+		/* TODO: check if clocks are already ON when
+		 * mrq_cmd or mrq_dat are enabled
+		 */
 	    !(sdhci_readl(host, SDHCI_PRESENT_STATE) & SDHCI_CARD_PRESENT)) {
 		pr_err("%s: Card removed during transfer!\n",
 			mmc_hostname(host->mmc));
@@ -2751,7 +2757,6 @@ static void sdhci_card_event(struct mmc_host *mmc)
 	}
 
 	spin_unlock_irqrestore(&host->lock, flags);
-	sdhci_runtime_pm_put(host);
 }
 
 int sdhci_enable(struct mmc_host *mmc)
@@ -3763,12 +3768,10 @@ int sdhci_runtime_suspend_host(struct sdhci_host *host)
 		host->runtime_suspended = true;
 		spin_unlock_irqrestore(&host->lock, flags);
 
-		if (host->mmc->ios.clock) {
-			sdhci_set_clock(host, 0);
-			if (host->ops->set_clock)
-				host->ops->set_clock(host, 0);
-			sysedp_set_state(host->sysedpc, 0);
-		}
+		sdhci_set_clock(host, 0);
+		if (host->ops->set_clock)
+			host->ops->set_clock(host, 0);
+		sysedp_set_state(host->sysedpc, 0);
 		goto lbl_end;
 	}
 
