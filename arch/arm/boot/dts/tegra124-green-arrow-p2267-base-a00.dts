@@ -24,6 +24,7 @@
 #include "tegra124-platforms/tegra124-green-arrow-p2267-sensor-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-keys-p2267-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-dfll.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-camera-p2267-1000-a00.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 Green Arrow FFD";
@@ -36,5 +37,34 @@
 		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
+	};
+
+	camera-pcl {
+		profiles {
+			ov5693@x_0010 {
+				use_of_node = "yes";
+				dev_name = "ov5693";
+				num = <0>;
+				avdd-supply = <&ldo4_reg>;
+				dvdd-supply = <&ldo7_reg>;
+				dovdd-supply = <&en_vdd_cam_1v8>;
+				cam2-gpios = <&gpio TEGRA_GPIO(BB, 5) 1>;
+			};
+			ad5823@x_000c {
+				use_of_node = "yes";
+				vdd-supply = <&ldo7_reg>;
+				vif-supply = <&en_vdd_cam_1v8>;
+				af-pwdn-gpios = <&gpio TEGRA_GPIO(BB, 7) 1>;
+			};
+			imx132@x_0036 {
+				use_of_node = "yes";
+				dev_name = "imx132";
+				num = <1>;
+				vana-supply = <&ldo7_reg>;
+				vdig-supply = <&en_vdd_cam_1v2>;
+				vif-supply = <&en_vdd_cam_1v8>;
+				cam2-gpios = <&gpio TEGRA_GPIO(BB, 6) 1>;
+			};
+		};
 	};
 };
