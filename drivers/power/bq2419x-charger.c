@@ -1652,8 +1652,6 @@ static int bq2419x_probe(struct i2c_client *client,
 		goto scrub_mutex;
 	}
 
-	INIT_DELAYED_WORK(&bq2419x->otg_reset_work,
-				bq2419x_otg_reset_work_handler);
 	ret = bq2419x_fault_clear_sts(bq2419x, NULL);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "fault clear status failed %d\n", ret);
@@ -1693,6 +1691,9 @@ skip_bcharger_init:
 		bq2419x_thermal_init_work(&bq2419x->thermal_init_work.work);
 #endif
 	}
+
+	INIT_DELAYED_WORK(&bq2419x->otg_reset_work,
+				bq2419x_otg_reset_work_handler);
 
 	return 0;
 scrub_wq:
