@@ -115,6 +115,23 @@ static void xotg_print_status(struct xotg *xotg)
 	}
 }
 
+static void xotg_roothub_resume(struct xotg *xotg)
+{
+	struct usb_phy *phy = &xotg->phy;
+	struct usb_otg *otg = phy->otg;
+	struct usb_hcd *shared_hcd, *main_hcd;
+
+	if (otg->xhcihost) {
+		shared_hcd = bus_to_hcd(otg->xhcihost);
+		/* let host go in elpg */
+		usb_hcd_resume_root_hub(shared_hcd);
+	}
+	if (otg->host) {
+		main_hcd = bus_to_hcd(otg->host);
+		/* let host go in elpg */
+		usb_hcd_resume_root_hub(main_hcd);
+	}
+}
 static void xotg_notify_event(struct xotg *xotg, int event)
 {
 	spin_lock(&xotg->phy.sync_lock);
@@ -830,12 +847,20 @@ static void xotg_work(struct work_struct *work)
 			state_changed = 1;
 			xotg->xotg_vars.a_srp_det = 0;
 			xotg->phy.state = OTG_STATE_A_IDLE;
-			/* TODO: check if we need to drive the vbus */
 			xotg->phy.otg->default_a = 1;
-			/* A-device. Need to drive the vbus, but
-			 * don't start the VBUS yet
-			 */
-			xotg_drive_vbus(xotg, 1);
+			xotg->xotg_reqs.a_bus_req = 1;
+
+			if (!xotg->xotg_timer_list.b_ssend_srp_tmout) {
+				xotg_dbg(xotg->dev,
+					"del_timer b_ssend_srp_tmr\n");
+				del_timer_sync(
+					&xotg->xotg_timer_list.b_ssend_srp_tmr);
+			} else if (xotg->xotg_timer_list.b_ssend_srp_tmout) {
+				xotg->xotg_timer_list.b_ssend_srp_tmout = 0;
+			}
+			spin_unlock_irqrestore(&xotg->lock, flags);
+			xotg_work(&xotg->otg_work.work);
+			return;
 		} else if (xotg->xotg_vars.b_sess_vld) {
 			xotg_info(xotg->dev, "state b_idle -> b_peripheral\n");
 			state_changed = 1;
@@ -1137,29 +1162,29 @@ static void xotg_work(struct work_struct *work)
 			xotg->xotg_timer_list.b_ssend_srp_tmout = 0;
 			mod_timer(&xotg->xotg_timer_list.b_ssend_srp_tmr,
 				jiffies + msecs_to_jiffies(TB_SSEND_SRP));
+
+			/* ID floating caused host ELPG exit if hcd was in
+			 * ELPG so make sure host enters to ELPG again.
+			 */
+			xotg_roothub_resume(xotg);
 		} else if (!xotg->xotg_reqs.a_bus_drop &&
 				(xotg->xotg_reqs.a_bus_req ||
 					xotg->xotg_vars.a_srp_det)) {
 			/* drive vbus */
-			if (session_supported) {
-				xotg_info(xotg->dev, "state a_idle -> a_wait_vrise\n");
-				xotg->phy.state = OTG_STATE_A_WAIT_VRISE;
-				if (xotg->xotg_vars.a_srp_det)
-					xotg->xotg_vars.a_srp_det = 0;
+			xotg_info(xotg->dev, "state a_idle -> a_wait_vrise\n");
+			xotg->phy.state = OTG_STATE_A_WAIT_VRISE;
+			if (xotg->xotg_vars.a_srp_det)
+				xotg->xotg_vars.a_srp_det = 0;
 
-				xotg_drive_vbus(xotg, 1);
+			xotg_drive_vbus(xotg, 1);
 
-				/* wait for T_A_VBUS_RISE time */
-				xotg_dbg(xotg->dev,
-					"starting TA_VBUS_RISE(100ms) timer\n");
-				xotg->xotg_timer_list.a_wait_vrise_tmout = 0;
-				mod_timer(&xotg->xotg_timer_list.
-					a_wait_vrise_tmr, jiffies +
-					msecs_to_jiffies(TA_VBUS_RISE));
-			} else {
-				xotg_info(xotg->dev, "state a_idle -> a_wait_bcon\n");
-				xotg->phy.state = OTG_STATE_A_WAIT_BCON;
-			}
+			/* wait for T_A_VBUS_RISE time */
+			xotg_dbg(xotg->dev,
+				"starting TA_VBUS_RISE(100ms) timer\n");
+			xotg->xotg_timer_list.a_wait_vrise_tmout = 0;
+			mod_timer(&xotg->xotg_timer_list.
+				a_wait_vrise_tmr, jiffies +
+				msecs_to_jiffies(TA_VBUS_RISE));
 		}
 	}
 	break;
@@ -1251,10 +1276,14 @@ static void xotg_work(struct work_struct *work)
 			xotg_enable_srp_detect(xotg, true);
 
 			xotg->phy.otg->default_a = 1;
-			/* no driving the vbus yet */
 			if (!session_supported)
 				xotg_drive_vbus(xotg, 1);
 		}
+		/* ID ground caused host ELPG exit if hcd was in
+		 * ELPG so make sure host enters to ELPG again.
+		 * Also enable vbus if session is not suppported
+		 */
+		xotg_roothub_resume(xotg);
 		if (state_changed &&
 			!xotg->xotg_timer_list.a_wait_vrise_tmout) {
 			/* delete the timer to wait for vfall */
@@ -1356,19 +1385,12 @@ static void xotg_work(struct work_struct *work)
 			xotg_info(xotg->dev, "state a_host -> a_wait_bcon\n");
 			xotg->phy.state = OTG_STATE_A_WAIT_BCON;
 
-			/* do actions
-			 * start a_wait_bcon_tmout timer only if session is
-			 * supported. Make sure to enable session_supported
-			 * before running PET OTG test for A_SRP/HNP
-			 */
-			if (session_supported) {
-				xotg_dbg(xotg->dev,
-				"starting TA_WAIT_BCON(9sec) timer\n");
-				xotg->xotg_timer_list.a_wait_bcon_tmout = 0;
-				mod_timer(
-				&xotg->xotg_timer_list.a_wait_bcon_tmr,
+			/* do actions */
+			xotg_dbg(xotg->dev,
+			"starting TA_WAIT_BCON(9sec) timer\n");
+			xotg->xotg_timer_list.a_wait_bcon_tmout = 0;
+			mod_timer(&xotg->xotg_timer_list.a_wait_bcon_tmr,
 				jiffies + msecs_to_jiffies(TA_WAIT_BCON));
-			}
 		} else if (!xotg->xotg_reqs.a_bus_req) {
 			xotg_info(xotg->dev, "state a_host -> a_suspend\n");
 			/* TODO: a_bus_drop = !a_bus_req. So, will this
