@@ -2007,6 +2007,7 @@ static struct thermal_cooling_device_ops tegra_cl_dvfs_vmin_cool_ops = {
 static void tegra_cl_dvfs_init_cdev(struct work_struct *work)
 {
 	char *type;
+	char dt_type[THERMAL_NAME_LENGTH];
 	struct device_node *dn;
 	struct tegra_cl_dvfs *cld = container_of(
 		work, struct tegra_cl_dvfs, init_cdev_work);
@@ -2014,9 +2015,10 @@ static void tegra_cl_dvfs_init_cdev(struct work_struct *work)
 	/* just report error - initialized at WC temperature, anyway */
 	if (cld->safe_dvfs->dvfs_rail->vmin_cdev) {
 		type = cld->safe_dvfs->dvfs_rail->vmin_cdev->cdev_type;
+		snprintf(dt_type, sizeof(dt_type), "%s_dfll", type);
 		dn = cld->safe_dvfs->dvfs_rail->vmin_cdev->cdev_dn;
 		cld->vmin_cdev = dn ?
-			thermal_of_cooling_device_register(dn, type,
+			thermal_of_cooling_device_register(dn, dt_type,
 				(void *)cld, &tegra_cl_dvfs_vmin_cool_ops) :
 			thermal_cooling_device_register(type,
 				(void *)cld, &tegra_cl_dvfs_vmin_cool_ops);
@@ -2033,9 +2035,10 @@ static void tegra_cl_dvfs_init_cdev(struct work_struct *work)
 
 	if (cld->safe_dvfs->dvfs_rail->vmax_cdev) {
 		type = cld->safe_dvfs->dvfs_rail->vmax_cdev->cdev_type;
+		snprintf(dt_type, sizeof(dt_type), "%s_dfll", type);
 		dn = cld->safe_dvfs->dvfs_rail->vmax_cdev->cdev_dn;
 		cld->vmax_cdev = dn ?
-			thermal_of_cooling_device_register(dn, type,
+			thermal_of_cooling_device_register(dn, dt_type,
 				(void *)cld, &tegra_cl_dvfs_vmax_cool_ops) :
 			thermal_cooling_device_register(type,
 				(void *)cld, &tegra_cl_dvfs_vmax_cool_ops);
