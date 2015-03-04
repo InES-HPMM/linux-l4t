@@ -369,8 +369,12 @@ static void init_chip(struct nv_udc_s *nvudc)
 /* must hold nvudc->lock */
 static inline void vbus_detected(struct nv_udc_s *nvudc)
 {
+	u32 temp;
+
 	if (nvudc->vbus_detected)
 		return; /* nothing to do */
+
+	msg_info(nvudc->dev, "%s: vbus on detected\n", __func__);
 
 	xusb_enable_pad_protection(1);
 	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_OTG_PAD_CTL_0(0),
@@ -380,6 +384,12 @@ static inline void vbus_detected(struct nv_udc_s *nvudc)
 	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 		USB2_VBUS_ID_0_VBUS_OVERRIDE, USB2_VBUS_ID_0_VBUS_OVERRIDE);
 
+	if (nvudc->pullup) {
+		temp = ioread32(nvudc->mmio_reg_base + CTRL);
+		temp |= CTRL_ENABLE;
+		iowrite32(temp, nvudc->mmio_reg_base + CTRL);
+	}
+
 	nvudc->vbus_detected = true;
 }
 
@@ -387,9 +397,12 @@ static inline void vbus_detected(struct nv_udc_s *nvudc)
 static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 {
 	u32 portsc;
+	u32 temp;
 
 	if (!nvudc->vbus_detected)
 		return; /* nothing to do */
+
+	msg_info(nvudc->dev, "%s: vbus off detected\n", __func__);
 
 	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 		USB2_VBUS_ID_0_VBUS_OVERRIDE, 0);
@@ -423,6 +436,12 @@ static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 		"Directing link to U0, PORTSC: %08x => %08x\n", portsc, reg);
 	}
 
+	if (nvudc->pullup) {
+		temp = ioread32(nvudc->mmio_reg_base + CTRL);
+		temp &= ~CTRL_ENABLE;
+		iowrite32(temp, nvudc->mmio_reg_base + CTRL);
+	}
+
 	nvudc->vbus_detected = false;
 	pm_runtime_put_autosuspend(nvudc->dev);
 }
@@ -443,37 +462,33 @@ static void tegra_xudc_ucd_work(struct work_struct *work)
 	struct nv_udc_s *nvudc =
 		container_of(work, struct nv_udc_s, ucd_work);
 	struct device *dev = nvudc->dev;
+	bool vbus_connected = 0;
 	unsigned long flags;
-	int ret;
 	u32 temp;
 
-	if (nvudc->vbus_detected) {
-		pm_runtime_get_sync(nvudc->dev);
-		spin_lock_irqsave(&nvudc->lock, flags);
-		temp = ioread32(nvudc->mmio_reg_base + CTRL);
-		temp &= ~CTRL_ENABLE;
-		iowrite32(temp, nvudc->mmio_reg_base + CTRL);
-		spin_unlock_irqrestore(&nvudc->lock, flags);
+	msg_entry(nvudc->dev);
 
+	vbus_connected =
+		extcon_get_cable_state(nvudc->vbus_extcon_dev, "USB");
+	if (vbus_connected == nvudc->vbus_detected) {
+		msg_exit(nvudc->dev);
+		return;
+	}
+
+	if (vbus_connected) {
 		if (nvudc->ucd != NULL)
 			nvudc->connect_type =
 				tegra_ucd_detect_cable_and_set_current(
 						nvudc->ucd);
 
-		spin_lock_irqsave(&nvudc->lock, flags);
-		temp = ioread32(nvudc->mmio_reg_base + CTRL);
-		temp |= CTRL_ENABLE;
-		iowrite32(temp, nvudc->mmio_reg_base + CTRL);
-		spin_unlock_irqrestore(&nvudc->lock, flags);
-
 		if (nvudc->connect_type == CONNECT_TYPE_SDP)
 			schedule_delayed_work(&nvudc->non_std_charger_work,
 				msecs_to_jiffies(NON_STD_CHARGER_DET_TIME_MS));
-		if (!pm_runtime_active(dev)) {
-			ret = pm_runtime_get(dev);
-			if (ret)
-				dev_warn(dev, "Fail to runtime resume device\n");
-		}
+
+		pm_runtime_get_sync(nvudc->dev);
+		spin_lock_irqsave(&nvudc->lock, flags);
+		vbus_detected(nvudc);
+		spin_unlock_irqrestore(&nvudc->lock, flags);
 	} else {
 		cancel_delayed_work(&nvudc->non_std_charger_work);
 		nvudc->current_ma = 0;
@@ -482,8 +497,14 @@ static void tegra_xudc_ucd_work(struct work_struct *work)
 						CONNECT_TYPE_NONE);
 			nvudc->connect_type = CONNECT_TYPE_NONE;
 		}
+
+		spin_lock_irqsave(&nvudc->lock, flags);
+		vbus_not_detected(nvudc);
+		spin_unlock_irqrestore(&nvudc->lock, flags);
 	}
+
 	tegra_xudc_notify_event(nvudc);
+	msg_exit(nvudc->dev);
 }
 
 static void tegra_xudc_non_std_charger_work(struct work_struct *work)
@@ -564,27 +585,13 @@ static int extcon_notifications(struct notifier_block *nb,
 {
 	struct nv_udc_s *nvudc =
 			container_of(nb, struct nv_udc_s, vbus_extcon_nb);
-	struct device *dev = nvudc->dev;
-	unsigned long flags;
 
-	spin_lock_irqsave(&nvudc->lock, flags);
-
-	if (!nvudc->pullup) {
-		msg_info(dev, "%s: gadget is not ready yet\n", __func__);
-		goto exit;
-	}
-
-	if (extcon_get_cable_state(nvudc->vbus_extcon_dev, "USB")) {
-		msg_info(dev, "%s: vbus on detected\n", __func__);
-		vbus_detected(nvudc);
-	} else {
-		msg_info(dev, "%s: vbus off detected\n", __func__);
-		vbus_not_detected(nvudc);
-	}
+	msg_entry(nvudc->dev);
 
 	schedule_work(&nvudc->ucd_work);
-exit:
-	spin_unlock_irqrestore(&nvudc->lock, flags);
+
+	msg_exit(nvudc->dev);
+
 	return NOTIFY_DONE;
 }
 
@@ -2418,21 +2425,15 @@ static int nvudc_gadget_pullup(struct usb_gadget *gadget, int is_on)
 	spin_lock_irqsave(&nvudc->lock, flags);
 	temp = ioread32(nvudc->mmio_reg_base + CTRL);
 	if (is_on != nvudc->pullup) {
-		if (is_on) {
-			/* set ENABLE bit */
+		if (is_on && nvudc->vbus_detected)
 			temp |= CTRL_ENABLE;
-		} else {
-			/* clear ENABLE bit */
+		else
 			temp &= ~CTRL_ENABLE;
-		}
-		nvudc->pullup = is_on;
 		iowrite32(temp, nvudc->mmio_reg_base + CTRL);
+		nvudc->pullup = is_on;
 		nvudc->device_state = USB_STATE_DEFAULT;
 	}
 	spin_unlock_irqrestore(&nvudc->lock, flags);
-
-	/* update vbus status */
-	extcon_notifications(&nvudc->vbus_extcon_nb, 0, NULL);
 
 	pm_runtime_put_sync(nvudc->dev);
 	return 0;
@@ -4307,9 +4308,6 @@ static int nvudc_gadget_start(struct usb_gadget *gadget,
 		otg_set_peripheral(nvudc->phy->otg, &nvudc->gadget);
 	}
 
-	/* update vbus status */
-	extcon_notifications(&nvudc->vbus_extcon_nb, 0, NULL);
-
 	pm_runtime_put_sync(nvudc->dev);
 	msg_exit(nvudc->dev);
 	return 0;
@@ -5818,6 +5816,7 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	pm_runtime_set_autosuspend_delay(&pdev->dev, 2000);
 	pm_runtime_enable(&pdev->dev);
 
+	nvudc->vbus_detected = false;
 	nvudc->current_ma = USB_ANDROID_SUSPEND_CURRENT_MA;
 	nvudc->ucd = tegra_usb_get_ucd();
 	if (IS_ERR(nvudc->ucd)) {
@@ -5835,6 +5834,10 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	extcon_register_notifier(nvudc->vbus_extcon_dev,
 						&nvudc->vbus_extcon_nb);
 	tegra_xudc_boost_cpu_init(nvudc);
+
+	/* update vbus status */
+	extcon_notifications(&nvudc->vbus_extcon_nb, 0, NULL);
+
 	return 0;
 
 err_clocks_disable:
