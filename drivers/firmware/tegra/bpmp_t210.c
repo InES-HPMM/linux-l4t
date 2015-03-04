@@ -255,7 +255,7 @@ int bpmp_clk_init(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	emc_clk = clk_get_sys(NULL, "emc");
+	emc_clk = clk_get_sys("tegra_emc", "emc");
 	if (IS_ERR(emc_clk)) {
 		dev_err(dev, "cannot get avp emc clk\n");
 		return -ENODEV;
