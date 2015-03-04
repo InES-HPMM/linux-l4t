@@ -47,6 +47,11 @@ static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS];
 static struct tegra_cooling_device core_vmin_cdev = {
 	.compatible = "nvidia,tegra210-rail-vmin-cdev",
 };
+static int vdd_core_vmax_trips_table[MAX_THERMAL_LIMITS];
+static int vdd_core_therm_caps_table[MAX_THERMAL_LIMITS];
+static struct tegra_cooling_device core_vmax_cdev = {
+	.compatible = "nvidia,tegra210-rail-vmax-cdev",
+};
 
 static int vdd_cpu_vmin_trips_table[MAX_THERMAL_LIMITS];
 static int vdd_cpu_therm_floors_table[MAX_THERMAL_LIMITS];
@@ -96,6 +101,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
 	.step = VDD_SAFE_STEP,
 	.step_up = 1300,
 	.vmin_cdev = &core_vmin_cdev,
+	.vmax_cdev = &core_vmax_cdev,
 	.alignment = {
 		.step_uv = 12500, /* 12.5mV */
 	},
@@ -1006,7 +1012,7 @@ static int __init init_cpu_rail_thermal_profile(struct dvfs *cpu_dvfs)
 /*
  * CPU Vmax cooling device registration for pll mode:
  * - Use CPU capping method provided by CPUFREQ platform driver
- * - Skip registration if most aggressive cap is above maximum voltage
+ * - Skip registration if most aggressive cap is at/above maximum voltage
  */
 static int __init tegra21_dvfs_register_cpu_vmax_cdev(void)
 {
@@ -1322,7 +1328,7 @@ static void __init init_gpu_dvfs_table(int *gpu_max_freq_index)
  *   adjusted for each voltage cap trip-point (in case when GPU thermal
  *   scaling initialization failed, fall back on using WC rate limit across all
  *   thermal ranges).
- * - Skip registration if most aggressive cap is above maximum voltage
+ * - Skip registration if most aggressive cap is at/above maximum voltage
  */
 static int tegra21_gpu_volt_cap_apply(int *cap_idx, int new_idx, int level)
 {
@@ -1538,6 +1544,13 @@ static int __init init_core_rail_thermal_profile(void)
 			rail->vmin_cdev = NULL;
 	}
 
+	if (rail->vmax_cdev) {
+		if (tegra_dvfs_rail_of_init_vmax_thermal_profile(
+			vdd_core_vmax_trips_table, vdd_core_therm_caps_table,
+			rail, NULL))
+			rail->vmax_cdev = NULL;
+	}
+
 	return 0;
 }
 
@@ -1722,9 +1735,22 @@ static struct core_bus_rates_table tegra21_gpu_rates_sysfs = {
 		.attr = {.name = "gpu_time_at_user_rate", .mode = 0444} },
 };
 
+/*
+ * Core Vmax cooling device registration:
+ * - Use VDD_CORE capping method provided by DVFS
+ * - Skip registration if most aggressive cap is at/above maximum voltage
+ */
 static void __init tegra21_dvfs_register_core_vmax_cdev(void)
 {
-	/* FIXME: implement */
+	struct dvfs_rail *rail;
+
+	rail = &tegra21_dvfs_rail_vdd_core;
+	rail->apply_vmax_cap = tegra_dvfs_therm_vmax_core_cap_apply;
+	if (rail->vmax_cdev) {
+		int i = rail->vmax_cdev->trip_temperatures_num;
+		if (i && rail->therm_mv_caps[i-1] < rail->nominal_millivolts)
+			tegra_dvfs_rail_register_vmax_cdev(rail);
+	}
 }
 
 /*
