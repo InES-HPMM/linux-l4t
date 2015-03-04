@@ -27,6 +27,7 @@
 #include "tegra210-platforms/tegra210-hawkeye-pinmux-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-power-tree-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2220-1170-a00.dtsi"
+#include "panel-s-wuxga-7-0.dtsi"
 #include "panel-a-wuxga-8-0.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-emc-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-touch.dtsi"
@@ -118,26 +119,45 @@
 
 	i2c@7000c400 {
 		status = "okay";
-		backlight: lp8557-backlight@2c {
-			   status = "okay";
-			   compatible = "ti,lp8557";
-			   reg = <0x2c>;
+		lp8557-backlight-a-wuxga-8-0@2c {
+			status = "disabled";
+			compatible = "ti,lp8557";
+			reg = <0x2c>;
 
-			   bl-name = "pwm-backlight"; /* Match liblights naming expectations */
-			   init-brt = /bits/ 8 <0xFF>; /* Max brightness */
-			   dev-ctrl = /bits/ 8 <0x00>; /* PWM */
-			   pwm-period = <29334>;
+			bl-name = "pwm-backlight"; /* Match liblights naming expectations */
+			init-brt = /bits/ 8 <0xFF>; /* Max brightness */
+			dev-ctrl = /bits/ 8 <0x00>; /* PWM */
+			pwm-period = <29334>;
 
-			   pwm-names = "lp8557";
-			   pwms = <&tegra_pwm 0 29334>;
+			pwm-names = "lp8557";
+			pwms = <&tegra_pwm 0 29334>;
 
-				/* 3 LED string */
-			   rom_14h {
-				   rom-addr = /bits/ 8 <0x14>;
-				   rom-val = /bits/ 8 <0x87>;
-			   };
+			/* 3 LED string */
+			rom_14h {
+				rom-addr = /bits/ 8 <0x14>;
+				rom-val = /bits/ 8 <0x87>;
+			};
+		};
 
-		   };
+		lp8557-backlight-s-wuxga-7-0@2c {
+			status = "disabled";
+			compatible = "ti,lp8557";
+			reg = <0x2c>;
+
+			bl-name = "pwm-backlight"; /* Match liblights naming expectations */
+			init-brt = /bits/ 8 <0xFF>; /* Max brightness */
+			dev-ctrl = /bits/ 8 <0x00>; /* PWM */
+			pwm-period = <29334>;
+
+			pwm-names = "lp8557";
+			pwms = <&tegra_pwm 0 29334>;
+
+			/* 5 LED string */
+			rom_14h {
+				rom-addr = /bits/ 8 <0x14>;
+				rom-val = /bits/ 8 <0x9f>;
+			};
+		};
 
 		ads1015: ads1015@4a {
 			reg = <0x4a>;
@@ -853,7 +873,15 @@
 				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
-				/* TODO: Needed? */
+				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
+			};
+			panel-s-wuxga-7-0 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
 				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
 				disp-default-out {
 					nvidia,out-rotation = <180>;
