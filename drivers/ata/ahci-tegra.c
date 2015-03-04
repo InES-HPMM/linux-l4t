@@ -167,6 +167,10 @@
 #define CLR_CLK_ENB_SATA_OOB			(1 << 27)
 #define CLR_CLK_ENB_SATA			(1 << 28)
 
+#define T_SATA0_FIFO				0x170
+#define T_SATA0_FIFO_L2P_FIFO_DEPTH_MASK	(0xf<<12)
+#define T_SATA0_FIFO_L2P_FIFO_DEPTH_SHIFT	12
+
 #define CLK_RST_CONTROLLER_PLLE_MISC_0		0x0ec
 #define CLK_RST_CONTROLLER_PLLE_MISC_0_VALUE	0x00070300
 #define CLK_RST_CONTROLLER_PLLE_BASE_0		0xe8
@@ -465,6 +469,7 @@ struct tegra_ahci_host_priv {
 	void __iomem		*base_list[6];
 	struct sata_pad_cntrl	pad_val;
 	bool 			dtContainsPadval;
+	u8 fifo_depth;
 };
 
 #ifdef	CONFIG_DEBUG_FS
@@ -1538,6 +1543,14 @@ static int tegra_ahci_controller_init(void *hpriv, int lp0)
 	val = sata_readl(SATA_INTR_MASK_0_OFFSET);
 	val |= IP_INT_MASK;
 	sata_writel(val, SATA_INTR_MASK_0_OFFSET);
+
+	/* set fifo l2p depth */
+	if (tegra_hpriv->fifo_depth != 0){
+		val = scfg_readl(T_SATA0_FIFO);
+		val &= ~T_SATA0_FIFO_L2P_FIFO_DEPTH_MASK;
+		val |= tegra_hpriv->fifo_depth << T_SATA0_FIFO_L2P_FIFO_DEPTH_SHIFT;
+		scfg_writel(val, T_SATA0_FIFO);
+	}
 
 exit:
 
@@ -3136,10 +3149,10 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 			return -ENODEV;
 
 		/*
-		*of_property_read_u8 does not overwrite the third argument,
-		*if corresponding dt node does not exist.So it is safe to
-		*call this function without checking presence of dt node.
-		*/
+		 *of_property_read_u8 does not overwrite the third argument,
+		 *if corresponding dt node does not exist.So it is safe to
+		 *call this function without checking presence of dt node.
+		 */
 		tegra_hpriv->dtContainsPadval = 1;
 		if (of_property_read_u8(np, "nvidia,gen1-amp",
 			&tegra_hpriv->pad_val.gen1_tx_amp) != 0)
@@ -3153,6 +3166,10 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 		if (of_property_read_u8(np, "nvidia,gen2-peak",
 			&tegra_hpriv->pad_val.gen2_tx_peak) != 0)
 			tegra_hpriv->dtContainsPadval = 0;
+		if (of_property_read_u8(np, "nvidia,l2p_fifo_depth",
+			&tegra_hpriv->fifo_depth) != 0){
+			tegra_hpriv->fifo_depth = 0x0;
+		}
 		tegra_hpriv->soc_data =
 				(struct tegra_sata_soc_data *)match->data;
 		pdev->dev.coherent_dma_mask = DMA_BIT_MASK(64);
