@@ -283,6 +283,7 @@ int pstore_register(struct pstore_info *psi)
 	pstore_register_console();
 	pstore_register_ftrace();
 	pstore_register_rtrace();
+	pstore_register_pmsg();
 
 	if (pstore_update_ms >= 0) {
 		pstore_timer.expires = jiffies +

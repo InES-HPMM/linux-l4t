@@ -101,6 +101,9 @@ struct android_dev {
 	struct usb_composite_dev *cdev;
 	struct device *dev;
 
+	void (*setup_complete)(struct usb_ep *ep,
+				struct usb_request *req);
+
 	bool enabled;
 	int disable_depth;
 	struct mutex mutex;
@@ -1803,6 +1806,9 @@ static int android_bind(struct usb_composite_dev *cdev)
 	struct usb_gadget	*gadget = cdev->gadget;
 	int			id, ret;
 
+	/* Save the default handler */
+	dev->setup_complete = cdev->req->complete;
+
 	/*
 	 * Start disconnected. Userspace will connect the gadget once
 	 * it is done configuring the functions.
@@ -1857,15 +1863,6 @@ static int android_usb_unbind(struct usb_composite_dev *cdev)
 	return 0;
 }
 
-
-static void android_setup_complete(struct usb_ep *ep, struct usb_request *req)
-{
-	if (req->status || req->actual != req->length)
-		DBG((struct usb_composite_dev *) ep->driver_data,
-				"setup complete --> %d, %d/%d\n",
-				req->status, req->actual, req->length);
-}
-
 /* HACK: android needs to override setup for accessory to work */
 static int (*composite_setup_func)(struct usb_gadget *gadget, const struct usb_ctrlrequest *c);
 
@@ -1881,7 +1878,7 @@ android_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *c)
 
 	req->zero = 0;
 	req->length = 0;
-	req->complete = android_setup_complete;
+	req->complete = dev->setup_complete;
 	gadget->ep0->driver_data = cdev;
 
 	list_for_each_entry(f, &dev->enabled_functions, enabled_list) {
