@@ -478,6 +478,9 @@ set_mode:
 		return -1;
 	}
 
+	if (ampdu_rx_tid != -1)
+		dhd_set_ampdu_rx_tid(dev, ampdu_rx_tid);
+
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 	error = wldev_iovar_setint(dev, "mchan_algo", mchan_algo);
 	if (error) {
@@ -493,9 +496,6 @@ set_mode:
 		return -1;
 	}
 #endif /* VSDB_BW_ALLOCATE_ENABLE */
-
-	if (ampdu_rx_tid != -1)
-		dhd_set_ampdu_rx_tid(dev, ampdu_rx_tid);
 
 	return error;
 }
