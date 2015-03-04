@@ -1040,7 +1040,7 @@ static int tegra21_super_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	/*
 	 * In tegra21_cpu_clk_set_plls(), tegra21_sbus_cmplx_set_rate(), and
-	 * tegra21_adsp_cpu_clk_set_rate() this interface is skipped by directly
+	 * tegra21_adsp_bus_clk_set_rate() this interface is skipped by directly
 	 * setting rate of source plls.
 	 */
 	return clk_set_rate(c->parent, rate);
@@ -2144,26 +2144,26 @@ static struct clk_ops tegra_sbus_cmplx_ops = {
 };
 
 /*
- * Virtual ADSP CPU clock operations. Used to hide the sequence of changing
+ * Virtual ADSP bus clock operations. Used to hide the sequence of changing
  * and re-locking ADSP source PLLA1 in flight to configure requested ADSP
  * target rate.
  */
-static void tegra21_adsp_cpu_clk_init(struct clk *c)
+static void tegra21_adsp_bus_clk_init(struct clk *c)
 {
 	c->state = c->parent->state;
 	c->min_rate = c->u.cpu.main->min_rate;
 }
 
-static int tegra21_adsp_cpu_clk_enable(struct clk *c)
+static int tegra21_adsp_bus_clk_enable(struct clk *c)
 {
 	return 0;
 }
 
-static void tegra21_adsp_cpu_clk_disable(struct clk *c)
+static void tegra21_adsp_bus_clk_disable(struct clk *c)
 {
 }
 
-static int tegra21_adsp_cpu_clk_set_rate(struct clk *c, unsigned long rate)
+static int tegra21_adsp_bus_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	int ret = 0;
 	struct clk *main_pll = c->u.cpu.main;
@@ -2236,7 +2236,7 @@ out:
 	return ret;
 }
 
-static long tegra21_adsp_cpu_clk_round_rate(struct clk *c, unsigned long rate)
+static long tegra21_adsp_bus_clk_round_rate(struct clk *c, unsigned long rate)
 {
 	if (rate > c->max_rate)
 		rate = c->max_rate;
@@ -2244,14 +2244,6 @@ static long tegra21_adsp_cpu_clk_round_rate(struct clk *c, unsigned long rate)
 		rate = c->min_rate;
 	return rate;
 }
-
-static struct clk_ops tegra_adsp_cpu_ops = {
-	.init     = tegra21_adsp_cpu_clk_init,
-	.enable   = tegra21_adsp_cpu_clk_enable,
-	.disable  = tegra21_adsp_cpu_clk_disable,
-	.set_rate = tegra21_adsp_cpu_clk_set_rate,
-	.round_rate = tegra21_adsp_cpu_clk_round_rate,
-};
 
 /* Blink output functions */
 static void tegra21_blink_clk_init(struct clk *c)
@@ -8044,18 +8036,27 @@ static struct clk tegra_clk_aclk_adsp = {
 	.max_rate = 1200000000,
 };
 
-static struct raw_notifier_head adsp_cpu_rate_change_nh;
-static struct clk tegra_clk_virtual_adsp_cpu = {
-	.name      = "adsp_cpu",
-	.clk_id    = TEGRA210_CLK_ID_ADSP_CPU,
+static struct clk_ops tegra_adsp_bus_ops = {
+	.init     = tegra21_adsp_bus_clk_init,
+	.enable   = tegra21_adsp_bus_clk_enable,
+	.disable  = tegra21_adsp_bus_clk_disable,
+	.set_rate = tegra21_adsp_bus_clk_set_rate,
+	.round_rate = tegra21_adsp_bus_clk_round_rate,
+	.shared_bus_update = tegra21_clk_shared_connector_update, /* re-use */
+};
+
+static struct raw_notifier_head adsp_bus_rate_change_nh;
+static struct clk tegra_clk_virtual_adsp_bus = {
+	.name      = "adsp_bus",
 	.parent    = &tegra_clk_aclk_adsp,
-	.ops       = &tegra_adsp_cpu_ops,
+	.ops       = &tegra_adsp_bus_ops,
+	.shared_bus_flags = SHARED_BUS_RETENTION,
 	.max_rate  = 1200000000,
 	.u.cpu = {
 		.main      = &tegra_pll_a1,
 		.backup    = &tegra_pll_p_out_adsp,
 	},
-	.rate_change_nh = &adsp_cpu_rate_change_nh,
+	.rate_change_nh = &adsp_bus_rate_change_nh,
 };
 
 /* CPU clusters clocks */
@@ -9489,6 +9490,9 @@ static struct clk tegra_list_clks[] = {
 	SHARED_LIMIT("cap.vcore.ape",	"cap.vcore.ape", NULL,       &tegra_clk_ape, NULL,  0, SHARED_CEILING, 0),
 	SHARED_CLK("override.ape",	"override.ape",  NULL,       &tegra_clk_ape, NULL,  0, SHARED_OVERRIDE, 0),
 
+	SHARED_CLK("adsp_cpu.abus",	NULL,		  "adsp_cpu",	&tegra_clk_virtual_adsp_bus, NULL,  0, 0, TEGRA210_CLK_ID_ADSP_CPU),
+	SHARED_LIMIT("cap.vcore.abus",	"cap.vcore.abus", NULL,		&tegra_clk_virtual_adsp_bus, NULL,  0, SHARED_CEILING, 0),
+	SHARED_CLK("override.abus",	"override.abus",  NULL,		&tegra_clk_virtual_adsp_bus, NULL,  0, SHARED_OVERRIDE, 0),
 };
 
 /* VI, ISP buses */
@@ -9845,7 +9849,7 @@ static struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_hclk,
 	&tegra_clk_pclk,
 	&tegra_clk_aclk_adsp,
-	&tegra_clk_virtual_adsp_cpu,
+	&tegra_clk_virtual_adsp_bus,
 	&tegra_clk_virtual_cpu_g,
 	&tegra_clk_virtual_cpu_lp,
 	&tegra_clk_cpu_cmplx,
@@ -10094,7 +10098,7 @@ static void tegra21_pllp_init_dependencies(unsigned long pllp_rate)
 	div = pllp_rate / adsp_backup_rate;
 	tegra_clk_aclk_adsp.u.cclk.div71 = 2 * div - 2; /* reg settings */
 	backup_rate = pllp_rate / div;
-	tegra_clk_virtual_adsp_cpu.u.cpu.backup_rate = adsp_backup_rate;
+	tegra_clk_virtual_adsp_bus.u.cpu.backup_rate = adsp_backup_rate;
 }
 
 static void tegra21_init_one_clock(struct clk *c)

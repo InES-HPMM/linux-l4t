@@ -677,7 +677,18 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 	}
 
 	if (policy->rate_change_nb.notifier_call) {
-		ret = tegra_register_clk_rate_notifier(policy->adsp_clk,
+		/*
+		 * "adsp_cpu" clk is a shared user of parent adsp_cpu_bus clk;
+		 * rate change notification should come from bus clock itself.
+		 */
+		struct clk *p = clk_get_parent(policy->adsp_clk);
+		if (!p) {
+			dev_err(&pdev->dev, "Failed to find adsp cpu parent clock\n");
+			ret = -EINVAL;
+			goto end;
+		}
+
+		ret = tegra_register_clk_rate_notifier(p,
 			&policy->rate_change_nb);
 		if (ret) {
 			dev_err(&pdev->dev, "rate change notifier err: %s\n",
