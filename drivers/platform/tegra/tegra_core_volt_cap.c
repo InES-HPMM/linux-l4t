@@ -272,7 +272,7 @@ static int __init init_core_cap_one(struct clk *c, unsigned long *freqs)
 			if (rate == next_rate)
 				break;
 
-			next_v = tegra_dvfs_predict_mv_at_hz_max_tfloor(
+			next_v = tegra_dvfs_predict_mv_at_hz_no_tfloor(
 				c->parent, next_rate);
 			if (IS_ERR_VALUE(next_v)) {
 				pr_debug("%s: failed to predict %s mV for rate %lu\n",
