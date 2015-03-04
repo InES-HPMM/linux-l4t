@@ -191,9 +191,9 @@
 	udc@7d000000 {
 		nvidia,id-detection-type = <1>;
 		nvidia,enable-pmu-vbus-detection;
-		extcon-cables = <&palmas_extcon 0>;
-		extcon-cable-names = "vbus";
-		extcon-cable-names = "vbus", "aca-nv", "aca-rb", "aca-rc";
+		nvidia,enable-aca-rid-detection;
+		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 2 &extcon_cable_xlate 5>;
+		extcon-cable-names = "vbus", "aca-rb", "aca-rc";
 		#extcon-cells = <1>;
 		status = "okay";
 	};
@@ -201,8 +201,10 @@
 	otg@7d000000 {
 		nvidia,enable-pmu-vbus-detection;
 		nvidia,id-detection-type = <1>;
-		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
-		extcon-cable-names = "vbus", "id";
+		nvidia,enable-y-cable-detection;
+		nvidia,enable-aca-rid-detection;
+		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 1 &extcon_cable_xlate 2 &extcon_cable_xlate 3 &extcon_cable_xlate 4 &extcon_cable_xlate 5>;
+		extcon-cable-names = "vbus", "id", "aca-ra", "y-cable", "aca-rb", "aca-rc";
 		#extcon-cells = <1>;
 		status = "okay";
 	};
