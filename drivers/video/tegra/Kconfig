@@ -442,7 +442,6 @@ config NVHOST_BONDOUT_CHECK
 
 config NVDEC_BOOTLOADER
 	bool "Enable use of nvdec bootloader"
-	depends on ARCH_TEGRA
 	default n
 	help
 	  Say Y here if you want to enable nvdec bootloader
