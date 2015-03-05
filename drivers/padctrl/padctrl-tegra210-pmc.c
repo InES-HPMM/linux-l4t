@@ -183,6 +183,7 @@ static int tegra210_pmc_parse_io_pad_voltage(struct device_node *np,
 					configs[index + 1]);
 		}
 	}
+	kfree(configs);
 	return 0;
 }
 
