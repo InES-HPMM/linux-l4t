@@ -25,7 +25,6 @@
 
 #include "tegra210-platforms/tegra210-prods.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-pinmux-p2290-1100-a00.dtsi"
-#include "tegra210-platforms/tegra210-hawkeye-gpio-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-power-tree-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2220-1170-a00.dtsi"
 #include "panel-a-wuxga-8-0.dtsi"
@@ -60,6 +59,16 @@
 	};
 
 	gpio@6000d000 {
+		camera_control {
+			gpio-output-low = <
+				TEGRA_GPIO(S, 4)
+				TEGRA_GPIO(S, 5)
+				TEGRA_GPIO(S, 6)
+				TEGRA_GPIO(S, 7)
+				TEGRA_GPIO(T, 0)
+				>;
+		};
+
 		audio_over_jack {
 			gpio-output-high = <TEGRA_GPIO(DD, 0)>;
 		};
