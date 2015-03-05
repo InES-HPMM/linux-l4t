@@ -775,11 +775,12 @@ static void tegra_pinconf_group_dbg_show(struct pinctrl_dev *pctldev,
 	u32 val;
 	int function;
 	const char *name;
-	int is_gpio, dir, gpio;
+	int is_gpio = 0, dir = 0, gpio;
 
 	g = &pmx->soc->groups[group];
 	if (g->mux_reg >= 0) {
 		gpio = g->pins[0];
+
 		ret = tegra_gpio_is_enabled(gpio, &is_gpio, &dir);
 		if (ret < 0) {
 			dev_err(pctldev->dev,
