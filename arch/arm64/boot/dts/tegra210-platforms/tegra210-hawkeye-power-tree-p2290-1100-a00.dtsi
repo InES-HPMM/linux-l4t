@@ -64,7 +64,11 @@
 	};
 
 	spi@7000da00 {
-		spi-touch@0 {
+		spi-touch-raydium19x12@0 {
+			avdd-supply = <&max77620_ldo5>;
+			dvdd-supply = <&max77620_ldo6>;
+		};
+		spi-touch-sharp19x12@0 {
 			avdd-supply = <&max77620_ldo5>;
 			dvdd-supply = <&max77620_ldo6>;
 		};
