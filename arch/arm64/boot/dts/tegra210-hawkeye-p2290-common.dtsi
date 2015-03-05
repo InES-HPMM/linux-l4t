@@ -472,7 +472,7 @@
 	};
 
 	sdhci@700b0200 {
-		uhs-mask = <0x1C>; /* Disabled UHS modes for SDIO */
+		uhs-mask = <0x8>; /* Disabled DDR50 mode for SDIO */
 		nvidia,is-ddr-tap-delay;
 		nvidia,ddr-tap-delay = <0>;
 		status = "okay";
