@@ -439,6 +439,7 @@ static LIST_HEAD(arm_smmu_devices);
 
 static struct arm_smmu_device *smmu_handle; /* assmu only one smmu device */
 static u32 arm_smmu_skip_mapping; /* For debug */
+static u32 arm_smmu_gr0_tlbiallnsnh; /* Insert TLBIALLNSNH at all */
 
 #ifdef CONFIG_ARM_SMMU_WAR
 /*
@@ -689,7 +690,8 @@ static void arm_smmu_tlb_sync(struct arm_smmu_device *smmu)
 	int count = 0;
 	void __iomem *gr0_base = ARM_SMMU_GR0(smmu);
 
-	writel_relaxed(0, gr0_base + ARM_SMMU_GR0_TLBIALLNSNH); /* FIXME */
+	if (tegra_platform_is_linsim() || arm_smmu_gr0_tlbiallnsnh)
+		writel_relaxed(0, gr0_base + ARM_SMMU_GR0_TLBIALLNSNH);
 
 	writel_relaxed(0, gr0_base + ARM_SMMU_GR0_sTLBGSYNC);
 	while (readl_relaxed(gr0_base + ARM_SMMU_GR0_sTLBGSTATUS)
@@ -2382,6 +2384,8 @@ static void arm_smmu_debugfs_create(struct arm_smmu_device *smmu)
 			    &smmu_context_filter_fops);
 	debugfs_create_bool("skip_mapping",  S_IRUGO | S_IWUSR,
 			    smmu->debugfs_root, &arm_smmu_skip_mapping);
+	debugfs_create_bool("gr0_tlbiallnsnh",  S_IRUGO | S_IWUSR,
+			smmu->debugfs_root, &arm_smmu_gr0_tlbiallnsnh);
 	return;
 
 err_out:
