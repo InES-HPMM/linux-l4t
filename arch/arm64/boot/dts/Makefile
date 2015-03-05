@@ -22,6 +22,7 @@ dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-l4t-ers-e2220-1180-a00-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-ers-e2220-1199-a00-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-ers-p2143-1170-a00-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-ers-p2143-1199-a00-00.dtb
+dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-ers-p2143-1180-a00-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-foster-e-p2530-0930-e00-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-foster-e-p2530-0930-e01-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-foster-e-hdd-p2530-0932-e00-00.dtb
