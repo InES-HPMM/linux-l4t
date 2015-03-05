@@ -25,6 +25,7 @@
  */
 /* */
 #include <typedefs.h>
+#include "dynamic.h"
 #include <linuxver.h>
 #include <osl.h>
 #include <linux/kernel.h>
@@ -1328,9 +1329,11 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 		return ERR_PTR(-EINVAL);
 
 #ifdef PROP_TXSTATUS_VSDB
+if (bcmdhd_prop_txstatus_vsdb) {
 #if defined(BCMSDIO)
 	dhd = (dhd_pub_t *)(cfg->pub);
 #endif 
+}
 #endif /* PROP_TXSTATUS_VSDB */
 
 
@@ -1404,10 +1407,12 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 		ASSERT(cfg->p2p); /* ensure expectation of p2p initialization */
 
 #ifdef PROP_TXSTATUS_VSDB
+if (bcmdhd_prop_txstatus_vsdb) {
 #if defined(BCMSDIO)
 		if (!dhd)
 			return ERR_PTR(-ENODEV);
 #endif 
+}
 #endif /* PROP_TXSTATUS_VSDB */
 		if (!cfg->p2p)
 			return ERR_PTR(-ENODEV);
@@ -1426,6 +1431,7 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 
 		wl_cfg80211_scan_abort(cfg);
 #ifdef PROP_TXSTATUS_VSDB
+if (bcmdhd_prop_txstatus_vsdb) {
 #if defined(BCMSDIO)
 		if (!cfg->wlfc_on && !disable_proptx) {
 			dhd_wlfc_get_enable(dhd, &enabled);
@@ -1439,6 +1445,7 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 			cfg->wlfc_on = true;
 		}
 #endif 
+}
 #endif /* PROP_TXSTATUS_VSDB */
 
 		/* In concurrency case, STA may be already associated in a particular channel.
@@ -1531,6 +1538,7 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 			memset(cfg->p2p->vir_ifname, '\0', IFNAMSIZ);
 			cfg->p2p->vif_created = false;
 #ifdef PROP_TXSTATUS_VSDB
+if (bcmdhd_prop_txstatus_vsdb) {
 #if defined(BCMSDIO)
 			dhd_wlfc_get_enable(dhd, &enabled);
 		if (enabled && cfg->wlfc_on && dhd->op_mode != DHD_FLAG_HOSTAP_MODE &&
@@ -1539,6 +1547,7 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
 			cfg->wlfc_on = false;
 		}
 #endif 
+}
 #endif /* PROP_TXSTATUS_VSDB */
 		}
 	}
@@ -1898,6 +1907,7 @@ static s32 wl_cfg80211_handle_ifdel(struct bcm_cfg80211 *cfg, wl_if_event_info *
 		cfg->p2p->vif_created = false;
 
 #ifdef PROP_TXSTATUS_VSDB
+if (bcmdhd_prop_txstatus_vsdb) {
 #if defined(BCMSDIO)
 		dhd_wlfc_get_enable(dhd, &enabled);
 		if (enabled && cfg->wlfc_on && dhd->op_mode != DHD_FLAG_HOSTAP_MODE &&
@@ -1906,6 +1916,7 @@ static s32 wl_cfg80211_handle_ifdel(struct bcm_cfg80211 *cfg, wl_if_event_info *
 			cfg->wlfc_on = false;
 		}
 #endif 
+}
 #endif /* PROP_TXSTATUS_VSDB */
 	}
 
@@ -2494,6 +2505,7 @@ __wl_cfg80211_scan(struct wiphy *wiphy, struct net_device *ndev,
 					goto scan_out;
 				}
 #ifdef WL11U
+if (bcmdhd_wl11u) {
 				if ((interworking_ie = wl_cfg80211_find_interworking_ie(
 					(u8 *)request->ie, request->ie_len)) != NULL) {
 					err = wl_cfg80211_add_iw_ie(cfg, ndev, bssidx,
@@ -2515,6 +2527,7 @@ __wl_cfg80211_scan(struct wiphy *wiphy, struct net_device *ndev,
 					cfg->wl11u = FALSE;
 					/* we don't care about error */
 				}
+}
 #endif /* WL11U */
 				err = wl_cfgp2p_set_management_ie(cfg, ndev, bssidx,
 					VNDR_IE_PRBREQ_FLAG, (u8 *)request->ie,
@@ -5391,11 +5404,13 @@ wl_cfg80211_send_action_frame(struct wiphy *wiphy, struct net_device *dev,
 	af_params->dwell_time = WL_DWELL_TIME;
 
 #ifdef WL11U
+if (bcmdhd_wl11u) {
 #if defined(WL_CFG80211_P2P_DEV_IF)
 	ndev = dev;
 #else
 	ndev = ndev_to_cfgdev(cfgdev);
 #endif /* WL_CFG80211_P2P_DEV_IF */
+}
 #endif /* WL11U */
 
 	category = action_frame->data[DOT11_ACTION_CAT_OFF];
@@ -5469,8 +5484,10 @@ wl_cfg80211_send_action_frame(struct wiphy *wiphy, struct net_device *dev,
 		config_af_params.search_channel = false;
 	}
 #ifdef WL11U
+if (bcmdhd_wl11u) {
 	if (ndev == bcmcfg_to_prmry_ndev(cfg))
 		config_af_params.search_channel = false;
+}
 #endif /* WL11U */
 
 #ifdef VSDB
@@ -5486,10 +5503,12 @@ wl_cfg80211_send_action_frame(struct wiphy *wiphy, struct net_device *dev,
 	}
 
 #ifdef WL11U
+if (bcmdhd_wl11u) {
 	/* handling DFS channel exceptions */
 	if (!wl_cfg80211_check_DFS_channel(cfg, af_params, action_frame->data, action_frame->len)) {
 		return false;	/* the action frame was blocked */
 	}
+}
 #endif /* WL11U */
 
 	/* set status and destination address before sending af */
@@ -11252,7 +11271,10 @@ static s32 __wl_cfg80211_down(struct bcm_cfg80211 *cfg)
 	u32 bssidx = 0;
 #ifdef PROP_TXSTATUS_VSDB
 #if defined(BCMSDIO)
-	dhd_pub_t *dhd =  (dhd_pub_t *)(cfg->pub);
+	dhd_pub_t *dhd;
+if (bcmdhd_prop_txstatus_vsdb) {
+	dhd =  (dhd_pub_t *)(cfg->pub);
+}
 #endif 
 #endif /* PROP_TXSTATUS_VSDB */
 	WL_DBG(("In\n"));
@@ -11266,6 +11288,7 @@ static s32 __wl_cfg80211_down(struct bcm_cfg80211 *cfg)
 	if (cfg->p2p_supported) {
 		wl_clr_p2p_status(cfg, GO_NEG_PHASE);
 #ifdef PROP_TXSTATUS_VSDB
+if (bcmdhd_prop_txstatus_vsdb) {
 #if defined(BCMSDIO)
 		if (cfg->p2p->vif_created) {
 			bool enabled = false;
@@ -11277,6 +11300,7 @@ static s32 __wl_cfg80211_down(struct bcm_cfg80211 *cfg)
 			}
 		}
 #endif 
+}
 #endif /* PROP_TXSTATUS_VSDB */
 	}
 

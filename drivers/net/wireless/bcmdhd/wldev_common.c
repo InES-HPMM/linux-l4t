@@ -29,6 +29,8 @@
 #include <linux/kthread.h>
 #include <linux/netdevice.h>
 
+#include "dynamic.h"
+
 #include <wldev_common.h>
 #include <bcmutils.h>
 
@@ -482,6 +484,7 @@ set_mode:
 		dhd_set_ampdu_rx_tid(dev, ampdu_rx_tid);
 
 #ifdef VSDB_BW_ALLOCATE_ENABLE
+if (bcmdhd_vsdb_bw_allocate_enable) {
 	error = wldev_iovar_setint(dev, "mchan_algo", mchan_algo);
 	if (error) {
 		WLDEV_ERROR(("Failed to set mchan_algo: mode:%d, error:%d\n",
@@ -495,6 +498,7 @@ set_mode:
 			mode, error));
 		return -1;
 	}
+}
 #endif /* VSDB_BW_ALLOCATE_ENABLE */
 
 	return error;

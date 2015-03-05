@@ -25,6 +25,7 @@
  */
 
 #include <typedefs.h>
+#include "dynamic.h"
 #include <osl.h>
 #include <bcmsdh.h>
 
@@ -425,7 +426,7 @@ static bool retrydata;
 
 static uint watermark = 8;
 static uint mesbusyctrl = 0;
-static const uint firstread = DHD_FIRSTREAD;
+uint firstread = DHD_FIRSTREAD;
 
 /* Retry count for register access failures */
 static const uint retry_limit = 2;
@@ -4290,7 +4291,7 @@ dhd_txglom_enable(dhd_pub_t *dhdp, bool enable)
 		enable = sd_txglom;
 #endif /* BCMSDIOH_STD */
 
-	if (enable) {
+	if (bcmdhd_bcmsdioh_txglom && enable) {
 		rxglom = 1;
 		memset(buf, 0, sizeof(buf));
 		bcm_mkiovar("bus:rxglom", (void *)&rxglom, 4, buf, sizeof(buf));

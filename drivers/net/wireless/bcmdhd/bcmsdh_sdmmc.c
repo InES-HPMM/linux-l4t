@@ -24,6 +24,7 @@
  * $Id: bcmsdh_sdmmc.c 459285 2014-03-03 02:54:39Z $
  */
 #include <typedefs.h>
+#include "dynamic.h"
 
 #include <bcmdevs.h>
 #include <bcmendian.h>

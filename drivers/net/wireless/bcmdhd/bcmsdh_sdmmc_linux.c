@@ -25,6 +25,7 @@
  */
 
 #include <typedefs.h>
+#include "dynamic.h"
 #include <bcmutils.h>
 #include <sdio.h>	/* SDIO Device and Protocol Specs */
 #include <bcmsdbus.h>	/* bcmsdh to/from specific controller APIs */
@@ -190,6 +191,73 @@ static void sdioh_remove(struct sdio_func *func)
 	osl_detach(osh);
 }
 
+#ifdef CONFIG_BCMDYNAMIC
+
+int bcmdhd_chipid;
+int bcmdhd_custom_ampdu_ba_wsize;
+extern int dhd_dpc_prio;
+extern int dhd_rxf_prio;
+int bcmdhd_custom_glom_setting;
+int bcmdhd_custom_rxchain;
+extern int firstread;
+int bcmdhd_custom_ampdu_mpdu;
+int bcmdhd_custom_pspretend_thr;
+
+bool bcmdhd_use_custom_ampdu_mpdu;
+bool bcmdhd_use_custom_pspretend_thr;
+
+bool bcmdhd_prop_txstatus_vsdb;
+bool bcmdhd_vsdb_bw_allocate_enable;
+bool bcmdhd_bcmsdioh_txglom;
+bool bcmdhd_bcmsdioh_txglow_highspeed;
+bool bcmdhd_use_wl_txbf;
+bool bcmdhd_use_wl_frameburst;
+bool bcmdhd_disable_roam_event;
+bool bcmdhd_support_p2p_go_ps;
+bool bcmdhd_wl11u;
+bool bcmdhd_dhd_enable_lpc;
+
+static void bcmdhd_dynamic_configure(int chipid)
+{
+	bcmdhd_chipid = chipid;
+	if (chipid == 0x4324) {
+		/* from the old cflags */
+		bcmdhd_custom_ampdu_ba_wsize = 32;
+		dhd_dpc_prio = dhd_rxf_prio = MAX_USER_RT_PRIO/2;
+
+		bcmdhd_prop_txstatus_vsdb = true;
+		bcmdhd_vsdb_bw_allocate_enable = true;
+
+		/* defaults */
+		bcmdhd_custom_glom_setting = DEFAULT_GLOM_VALUE;
+		bcmdhd_custom_ampdu_mpdu = -1;
+	} else if(chipid == 0x4354) {
+		bcmdhd_custom_glom_setting = 8;
+		bcmdhd_custom_rxchain = 1;
+		bcmdhd_custom_ampdu_ba_wsize = 64;
+		firstread = 128;
+		bcmdhd_use_custom_ampdu_mpdu = true;
+		bcmdhd_custom_ampdu_mpdu = 16;
+		bcmdhd_use_custom_pspretend_thr = true;
+		bcmdhd_custom_pspretend_thr = 30;
+		dhd_dpc_prio = dhd_rxf_prio = 99;
+
+		bcmdhd_bcmsdioh_txglom = true;
+		bcmdhd_use_wl_txbf = true;
+		bcmdhd_use_wl_frameburst = true;
+		bcmdhd_disable_roam_event = true;
+		bcmdhd_support_p2p_go_ps = true;
+		bcmdhd_wl11u = true;
+		bcmdhd_dhd_enable_lpc = true;
+	} else {
+		BUG();
+	}
+}
+
+#else
+static void bcmdhd_dynamic_configure(int chipid) {}
+#endif
+
 static int bcmsdh_sdmmc_probe(struct sdio_func *func,
                               const struct sdio_device_id *id)
 {
@@ -203,6 +271,8 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 	sd_info(("sdio_vendor: 0x%04x\n", func->vendor));
 	sd_info(("sdio_device: 0x%04x\n", func->device));
 	sd_info(("Function#: 0x%04x\n", func->num));
+
+	bcmdhd_dynamic_configure(func->device);
 
 	/* 4318 doesn't have function 2 */
 	if ((func->num == 2) || (func->num == 1 && func->device == 0x4)) {

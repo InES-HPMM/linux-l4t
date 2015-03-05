@@ -26,6 +26,7 @@
  */
 
 #include <typedefs.h>
+#include "dynamic.h"
 #include <linuxver.h>
 #include <osl.h>
 #ifdef SHOW_LOGTRACE
@@ -1413,11 +1414,13 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 							ret));
 				}
 #if defined(SUPPORT_P2P_GO_PS)
+if (bcmdhd_support_p2p_go_ps) {
 #ifdef PROP_TXSTATUS
 				DHD_OS_WAKE_LOCK_WAIVE(dhd);
 				dhd_wlfc_suspend(dhd);
 				DHD_OS_WAKE_LOCK_RESTORE(dhd);
 #endif
+}
 #endif /* defined(SUPPORT_P2P_GO_PS) */
 			} else {
 #ifdef PKT_FILTER_SUPPORT
@@ -1461,9 +1464,11 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 							ret));
 				}
 #if defined(SUPPORT_P2P_GO_PS)
+if (bcmdhd_support_p2p_go_ps) {
 #ifdef PROP_TXSTATUS
 				dhd_wlfc_resume(dhd);
 #endif
+}
 #endif /* defined(SUPPORT_P2P_GO_PS) */
 
 			}
@@ -2594,7 +2599,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 		if ((!ifp->net || ifp->net->reg_state != NETREG_REGISTERED) &&
 			(ntoh16(eh->ether_type) != ETHER_TYPE_BRCM)) {
 #else
-		if ((!ifp->net || ifp->net->reg_state != NETREG_REGISTERED || !dhd->pub.up) &&
+		if ((!ifp->net || ifp->net->reg_state != NETREG_REGISTERED || (bcmdhd_prop_txstatus_vsdb && !dhd->pub.up)) &&
 			(ntoh16(eh->ether_type) != ETHER_TYPE_BRCM)) {
 #endif /* PROP_TXSTATUS_VSDB */
 			DHD_ERROR(("%s: net device is NOT registered yet. drop packet\n",
@@ -5419,12 +5424,14 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #endif /* WLTDLS */
 
 #ifdef DHD_ENABLE_LPC
+if (bcmdhd_dhd_enable_lpc) {
 	/* Set lpc 1 */
 	bcm_mkiovar("lpc", (char *)&lpc, 4, iovbuf, sizeof(iovbuf));
 	if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf,
 		sizeof(iovbuf), TRUE, 0)) < 0) {
 		DHD_ERROR(("%s Set lpc failed  %d\n", __FUNCTION__, ret));
 	}
+}
 #endif /* DHD_ENABLE_LPC */
 
 	/* Set PowerSave mode */
@@ -5487,18 +5494,22 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #endif /* defined(KEEP_ALIVE) */
 
 #ifdef USE_WL_TXBF
+if (bcmdhd_use_wl_txbf) {
 	bcm_mkiovar("txbf", (char *)&txbf, 4, iovbuf, sizeof(iovbuf));
 	if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf,
 		sizeof(iovbuf), TRUE, 0)) < 0) {
 		DHD_ERROR(("%s Set txbf failed  %d\n", __FUNCTION__, ret));
 	}
+}
 #endif /* USE_WL_TXBF */
 #ifdef USE_WL_FRAMEBURST
+if (bcmdhd_use_wl_frameburst) {
 	/* Set frameburst to value */
 	if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_FAKEFRAG, (char *)&frameburst,
 		sizeof(frameburst), TRUE, 0)) < 0) {
 		DHD_ERROR(("%s Set frameburst failed  %d\n", __FUNCTION__, ret));
 	}
+}
 #endif /* USE_WL_FRAMEBURST */
 #if defined(CUSTOM_AMPDU_BA_WSIZE)
 	/* Set ampdu ba wsize to 64 or 16 */
@@ -5521,6 +5532,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 
 
 #if defined(CUSTOM_AMPDU_MPDU)
+if (bcmdhd_use_custom_ampdu_mpdu) {
 	ampdu_mpdu = CUSTOM_AMPDU_MPDU;
 	if (ampdu_mpdu != 0 && (ampdu_mpdu <= ampdu_ba_wsize)) {
 		bcm_mkiovar("ampdu_mpdu", (char *)&ampdu_mpdu, 4, iovbuf, sizeof(iovbuf));
@@ -5530,6 +5542,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 				__FUNCTION__, CUSTOM_AMPDU_MPDU, ret));
 		}
 	}
+}
 #endif /* CUSTOM_AMPDU_MPDU */
 
 #if defined(CUSTOM_AMPDU_RELEASE)
@@ -5545,6 +5558,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #endif /* CUSTOM_AMPDU_RELEASE */
 
 #ifdef CUSTOM_PSPRETEND_THR
+if (bcmdhd_use_custom_pspretend_thr) {
 	/* Turn off MPC in AP mode */
 	bcm_mkiovar("pspretend_threshold", (char *)&pspretend_thr, 4,
 		iovbuf, sizeof(iovbuf));
@@ -5553,6 +5567,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		DHD_ERROR(("%s pspretend_threshold for HostAPD failed  %d\n",
 			__FUNCTION__, ret));
 	}
+}
 #endif
 
 	/* Set the rpt_hitxrate to 1 so that link speed updated by WLC_GET_RATE
@@ -5624,7 +5639,9 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	/* WLC_E_ROAM event is depricated for bcm4354
 	   WLC_E_BSSID event is used for roaming in bcm4354*/
 #ifndef DISABLE_ROAM_EVENT
+if (!bcmdhd_disable_roam_event) {
 	setbit(eventmask, WLC_E_ROAM);
+}
 #endif /* DISABLE_ROAM_EVENT */
 	setbit(eventmask, WLC_E_BSSID);
 #ifdef WLTDLS
@@ -5762,8 +5779,9 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	if (disable_proptx ||
 #ifdef PROP_TXSTATUS_VSDB
 		/* enable WLFC only if the firmware is VSDB when it is in STA mode */
+		(bcmdhd_prop_txstatus_vsdb &&
 		(dhd->op_mode != DHD_FLAG_HOSTAP_MODE &&
-		 dhd->op_mode != DHD_FLAG_IBSS_MODE) ||
+		 dhd->op_mode != DHD_FLAG_IBSS_MODE)) ||
 #endif /* PROP_TXSTATUS_VSDB */
 		FALSE) {
 		wlfc_enable = FALSE;
@@ -5803,7 +5821,9 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	}
 #endif
 #ifdef WL11U
+if (bcmdhd_wl11u) {
 	dhd_interworking_enable(dhd);
+}
 #endif /* WL11U */
 
 done:
