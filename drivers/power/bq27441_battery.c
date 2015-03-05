@@ -108,6 +108,10 @@
 #define BQ27441_QMAX_CELL_DEFAULT	16384
 #define BQ27441_RESERVE_CAP_DEFAULT	0
 
+#define BQ27441_OPCTEMPS_MASK	0x01
+#define BQ27441_OPCONFIG_1	0x40
+#define BQ27441_OPCONFIG_2	0x41
+
 struct bq27441_chip {
 	struct i2c_client		*client;
 	struct delayed_work		work;
@@ -296,6 +300,112 @@ static void bq27441_work(struct work_struct *work)
 	mutex_unlock(&chip->mutex);
 	battery_gauge_report_battery_soc(chip->bg_dev, chip->soc);
 	schedule_delayed_work(&chip->work, BQ27441_DELAY);
+}
+
+static int bq27441_battemps_enable(struct bq27441_chip *chip)
+{
+	struct i2c_client *client = chip->client;
+	u8 temp;
+	int ret;
+	int old_opconfig;
+	int old_csum, new_csum;
+	unsigned long timeout = jiffies + HZ;
+
+	/* Unseal the fuel gauge for data access */
+	ret = bq27441_write_byte(client, BQ27441_CONTROL_1, 0x00);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_CONTROL_2, 0x80);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_CONTROL_1, 0x00);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_CONTROL_2, 0x80);
+	if (ret < 0)
+		goto fail;
+
+	/* setup fuel gauge state data block block for ram access */
+	ret = bq27441_write_byte(client, BQ27441_BLOCK_DATA_CONTROL, 0x00);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_DATA_BLOCK_CLASS, 0x40);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_DATA_BLOCK, 0x00);
+	if (ret < 0)
+		goto fail;
+	mdelay(1);
+
+	old_opconfig = bq27441_read_word(client, BQ27441_OPCONFIG_1);
+
+	/* if the TEMPS bit is set seal the fuel gauge and return */
+	if (BQ27441_OPCTEMPS_MASK & be16_to_cpu(old_opconfig)) {
+		dev_info(&chip->client->dev, "FG TEMPS already enabled\n");
+		goto seal;
+	}
+
+	/* read check sum */
+	old_csum = bq27441_read_byte(client, BQ27441_BLOCK_DATA_CHECKSUM);
+
+	/* place the fuel gauge into config update */
+	ret = bq27441_write_byte(client, BQ27441_CONTROL_1, 0x13);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_CONTROL_2, 0x00);
+	if (ret < 0)
+		goto fail;
+
+	while (!(bq27441_read_byte(client, BQ27441_FLAGS) & 0x10)) {
+		if (time_after(jiffies, timeout)) {
+			dev_warn(&chip->client->dev,
+					"timeout waiting for cfg update\n");
+			goto fail;
+		}
+		msleep(1);
+	}
+
+	/* update TEMPS config to fuel gauge */
+	ret = bq27441_write_byte(client, BQ27441_OPCONFIG_2,
+				((old_opconfig >> 8) | BQ27441_OPCTEMPS_MASK));
+	if (ret < 0)
+		goto fail;
+
+	temp = (255 - old_csum
+		- (old_opconfig & 0xFF)
+		- ((old_opconfig >> 8) & 0xFF)) % 256;
+
+	new_csum = 255 - ((temp
+				+ (old_opconfig & 0xFF)
+				+ ((old_opconfig >> 8) |
+				BQ27441_OPCTEMPS_MASK)) % 256);
+
+	ret = bq27441_write_byte(client, BQ27441_BLOCK_DATA_CHECKSUM,
+				new_csum);
+	if (ret < 0)
+		goto fail;
+
+seal:
+	/* seal the fuel gauge before exit */
+	ret = bq27441_write_byte(client, BQ27441_CONTROL_1, 0x20);
+	if (ret < 0)
+		goto fail;
+
+	ret = bq27441_write_byte(client, BQ27441_CONTROL_2, 0x00);
+	if (ret < 0)
+		goto fail;
+
+	return 0;
+
+fail:
+	dev_info(&chip->client->dev, "FG OPCONFIG TEMPS enable failed\n");
+	return -EIO;
 }
 
 static int bq27441_initialize_cc_cal_block(struct bq27441_chip *chip)
@@ -1070,6 +1180,9 @@ static int bq27441_probe(struct i2c_client *client,
 	ret = bq27441_initialize(chip);
 	if (ret < 0)
 		dev_err(&client->dev, "chip init failed - %d\n", ret);
+
+	if (chip->enable_temp_prop)
+		bq27441_battemps_enable(chip);
 
 	bq27441_update_soc_voltage(chip);
 
