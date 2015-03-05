@@ -136,6 +136,8 @@
 			pmic {
 				compatible = "ti,tps65913-pmic", "ti,palmas-pmic";
 				ldo1-in-supply = <&palmas_smps6>;
+				ldo2-in-supply = <&palmas_smps10_out2>;
+				ldo3-in-supply = <&palmas_smps10_out2>;
 				ldo5-in-supply = <&palmas_smps8>;
 				ldo9-in-supply = <&palmas_smps9>;
 				ldoln-in-supply = <&palmas_smps10_out2>;
@@ -197,12 +199,12 @@
 
 					palmas_smps10_out2: smps10_out2 {
 						regulator-name = "vdd-out2-5v0";
-						regulator-min-microvolt = <5000000>;
-						regulator-max-microvolt = <5000000>;
+						regulator-min-microvolt = <3750000>;
+						regulator-max-microvolt = <3750000>;
 					};
 
 					ldo1 {
-						regulator-name = "avdd-pll";
+						regulator-name = "avid-pll";
 						regulator-always-on;
 						regulator-boot-on;
 						ti,roof-floor = <3>;
@@ -210,14 +212,14 @@
 
 					ldo2_reg: ldo2 {
 						regulator-name = "avdd-lcd";
-						regulator-min-microvolt = <3300000>;
-						regulator-max-microvolt = <3300000>;
+						regulator-min-microvolt = <3000000>;
+						regulator-max-microvolt = <3000000>;
 					};
 
 					ldo3_reg: ldo3 {
 						regulator-name = "vdd-touch";
-						regulator-min-microvolt = <3000000>;
-						regulator-max-microvolt = <3000000>;
+						regulator-min-microvolt = <3300000>;
+						regulator-max-microvolt = <3300000>;
 					};
 
 					ldo4_reg: ldo4 {
