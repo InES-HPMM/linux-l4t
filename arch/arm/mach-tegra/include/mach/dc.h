@@ -595,6 +595,7 @@ struct tegra_vrr {
 	bool    enable;
 	bool    lastenable;
 	bool    flip;
+	int     pclk;
 	int     vrr_min_fps;
 	int     vrr_max_fps;
 	int     v_front_porch_max;
@@ -606,6 +607,7 @@ struct tegra_vrr {
 
 	s64     curr_flip_us;
 	s64     last_flip_us;
+	int     flip_count;
 	int     flip_interval_us;
 	int     frame_len_max;
 	int     frame_len_min;
@@ -614,8 +616,17 @@ struct tegra_vrr {
 	int     lines_per_frame_common;
 
 	bool    frame_type;
+	int     frame_count;
+	int	v_count;
+	int	last_v_cnt;
+	int	curr_v_cnt;
 	s64     last_frame_us;
-	int     frame_time_delta_us;
+	s64     curr_frame_us;
+	s64     fe_time_us;
+	int     frame_delta_us;
+	int     frame_interval_us;
+	int     even_frame_us;
+	int     odd_frame_us;
 
 	int	max_adj_pct;
 	int	max_flip_pct;
