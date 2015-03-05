@@ -5500,8 +5500,13 @@ static int nvudc_suspend_platform(struct device *dev)
 
 	nvudc = platform_get_drvdata(pdev);
 
-	if (!pm_runtime_status_suspended(dev))
-		tegra_xudc_enter_elpg(nvudc);
+	if (!pm_runtime_status_suspended(dev)) {
+		err = tegra_xudc_enter_elpg(nvudc);
+		if (err) {
+			dev_err(dev, "Abort entering EPLG\n");
+			return err;
+		}
+	}
 
 	clk_disable(nvudc->pll_e);
 	clk_disable(nvudc->pll_u_480M);
