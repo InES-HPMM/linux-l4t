@@ -67,6 +67,15 @@ static irqreturn_t max77620_thermal_irq(int irq, void *data)
 {
 	struct max77620_therm_zone *ptherm_zone = data;
 
+	if (ptherm_zone->irq_tjalarm1 == irq)
+		dev_info(ptherm_zone->dev,
+			"Junction Temp Alarm1(120C) occured\n");
+	else if (ptherm_zone->irq_tjalarm2 == irq)
+		dev_info(ptherm_zone->dev,
+			"Junction Temp Alarm2(140C) occured\n");
+	else
+		dev_info(ptherm_zone->dev, "Unknown interrupt %d\n", irq);
+
 	thermal_zone_device_update(ptherm_zone->tz_device);
 	return IRQ_HANDLED;
 }
