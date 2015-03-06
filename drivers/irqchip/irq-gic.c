@@ -367,13 +367,13 @@ static void gic_mask_irq(struct irq_data *d)
 	u32 mask = 1 << (gic_irq(d) % 32);
 	u8 curr_cpu = gic_get_cpumask(gic);
 	u32 irq_target = GIC_DIST_TARGET + gic_irq(d);
+	unsigned long flags;
 
 #ifdef CONFIG_TEGRA_APE_AGIC
 	if (!gic->is_percpu && tegra_agic_suspended)
 		return;
 #endif
-
-	raw_spin_lock(&irq_controller_lock);
+	raw_spin_lock_irqsave(&irq_controller_lock, flags);
 	/*
 	 * if it is not per-cpu then we should make sure the irq has
 	 * been routed to CPU.
@@ -387,7 +387,7 @@ static void gic_mask_irq(struct irq_data *d)
 	if (gic->arch_extn && gic->arch_extn->irq_mask)
 		gic->arch_extn->irq_mask(d);
 end:
-	raw_spin_unlock(&irq_controller_lock);
+	raw_spin_unlock_irqrestore(&irq_controller_lock, flags);
 }
 
 static void gic_unmask_irq(struct irq_data *d)
@@ -397,13 +397,14 @@ static void gic_unmask_irq(struct irq_data *d)
 	u32 mask = 1 << (gic_irq(d) % 32);
 	u8 curr_cpu = gic_get_cpumask(gic);
 	u32 irq_target = GIC_DIST_TARGET + gic_irq(d);
+	unsigned long flags;
 
 #ifdef CONFIG_TEGRA_APE_AGIC
 	if (!gic->is_percpu && tegra_agic_suspended)
 		return;
 #endif
 
-	raw_spin_lock(&irq_controller_lock);
+	raw_spin_lock_irqsave(&irq_controller_lock, flags);
 	/*
 	 * if it is not per-cpu then we should make sure the irq has
 	 * been routed to CPU.
@@ -416,7 +417,7 @@ static void gic_unmask_irq(struct irq_data *d)
 		gic->arch_extn->irq_unmask(d);
 	writel_relaxed(mask, gic_dist_base(d) + GIC_DIST_ENABLE_SET + (gic_irq(d) / 32) * 4);
 end:
-	raw_spin_unlock(&irq_controller_lock);
+	raw_spin_unlock_irqrestore(&irq_controller_lock, flags);
 }
 
 static inline void gic_irq_enable(struct irq_data *d)
@@ -468,6 +469,7 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 	bool enabled = false;
 	u32 val;
 	struct gic_chip_data *gic = irq_data_get_irq_chip_data(d);
+	unsigned long flags;
 
 	/* Interrupt configuration for SGIs can't be changed */
 	if (gicirq < 16)
@@ -475,8 +477,7 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 
 	if (type != IRQ_TYPE_LEVEL_HIGH && type != IRQ_TYPE_EDGE_RISING)
 		return -EINVAL;
-
-	raw_spin_lock(&irq_controller_lock);
+	raw_spin_lock_irqsave(&irq_controller_lock, flags);
 
 	if (gic->arch_extn && gic->arch_extn->irq_set_type)
 		gic->arch_extn->irq_set_type(d, type);
@@ -502,7 +503,7 @@ static int gic_set_type(struct irq_data *d, unsigned int type)
 	if (enabled)
 		writel_relaxed(enablemask, base + GIC_DIST_ENABLE_SET + enableoff);
 
-	raw_spin_unlock(&irq_controller_lock);
+	raw_spin_unlock_irqrestore(&irq_controller_lock, flags);
 
 	return 0;
 }
@@ -526,6 +527,7 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 	unsigned int cpu, shift = (gic_irq(d) % 4) * 8;
 	struct gic_chip_data *gic = irq_data_get_irq_chip_data(d);
 	u32 val, mask, bit;
+	unsigned long flags;
 
 	if (!force)
 		cpu = cpumask_any_and(mask_val, cpu_online_mask);
@@ -542,7 +544,7 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 	mask = 0xff << shift;
 	bit = gic_cpu_map[cpu] << shift;
 
-	raw_spin_lock(&irq_controller_lock);
+	raw_spin_lock_irqsave(&irq_controller_lock, flags);
 	val = readl_relaxed(reg) & ~mask;
 	val |= bit;
 	writel_relaxed(val, reg);
@@ -550,7 +552,7 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 	if (gic->arch_extn && gic->arch_extn->irq_set_affinity)
 		gic->arch_extn->irq_set_affinity(d, cpumask_of(cpu), force);
 
-	raw_spin_unlock(&irq_controller_lock);
+	raw_spin_unlock_irqrestore(&irq_controller_lock, flags);
 end:
 	return IRQ_SET_MASK_OK;
 }
