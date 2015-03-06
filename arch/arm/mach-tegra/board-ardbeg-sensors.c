@@ -281,7 +281,7 @@ static struct i2c_board_info ardbeg_ar0261_camera_i2c_device = {
 static struct tegra_camera_platform_data ardbeg_ar0261_camera_platform_data = {
 	.flip_v			= 0,
 	.flip_h			= 0,
-	.port			= TEGRA_CAMERA_PORT_CSI_C,
+	.port			= TEGRA_CAMERA_PORT_CSI_B,
 	.lanes			= 1,
 	.continuous_clk		= 0,
 };
