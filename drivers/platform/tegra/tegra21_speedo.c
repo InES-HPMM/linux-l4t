@@ -100,19 +100,25 @@ static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
 
 static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 {
+	bool shield_sku = false;
+
+#ifdef CONFIG_OF
+	shield_sku = of_property_read_bool(of_chosen,
+					   "nvidia,tegra-shield-sku");
+#endif
 	switch (sku) {
 	case 0x00: /* Engg sku */
 	case 0x01: /* Engg sku */
 	case 0x07:
 	case 0x17:
 	case 0x27:
-		cpu_speedo_id = 0;
+		cpu_speedo_id = shield_sku ? 2 : 0;
 		soc_speedo_id = 0;
 		gpu_speedo_id = speedo_rev >= 2 ? 1 : 0;
 		threshold_index = 0;
 		break;
 	case 0x13:
-		cpu_speedo_id = 1;
+		cpu_speedo_id = shield_sku ? 2 : 1;
 		soc_speedo_id = 0;
 		gpu_speedo_id = speedo_rev >= 2 ? 1 : 0;
 		threshold_index = 0;
