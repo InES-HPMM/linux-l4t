@@ -1,7 +1,7 @@
 /*
  * arch/arm/boot/dts/tegra124-ardbeg-e1780-1000-a00-common.dtsi
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -185,7 +185,6 @@
 		nvidia,mdm-power-report-gpio = <&gpio TEGRA_GPIO(K, 0) GPIO_ACTIVE_LOW>;
 		nvidia,reset-gpio = <&gpio TEGRA_GPIO(S, 3) GPIO_ACTIVE_LOW>;
 		nvidia,mdm-en-gpio = <&gpio TEGRA_GPIO(S, 4) GPIO_ACTIVE_HIGH>;
-		nvidia,mdm-sar0-gpio = <&gpio TEGRA_GPIO(G, 2) GPIO_ACTIVE_LOW>;
 		status = "disabled";
 	};
 
