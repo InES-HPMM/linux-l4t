@@ -40,11 +40,11 @@
 #include <tegra/mc.h>
 #include <tegra/mcerr.h>
 
-#define MC_PRINT(fmt, ...) \
-do { \
-	trace_printk(fmt, ##__VA_ARGS__); \
-	pr_err(fmt, ##__VA_ARGS__); \
-} while (0)
+#define mcerr_pr(fmt, ...)				\
+	do {						\
+		trace_printk(fmt, ##__VA_ARGS__);	\
+		pr_err(fmt, ##__VA_ARGS__);		\
+	} while (0)
 
 static bool mcerr_throttle_enabled = true;
 
@@ -238,12 +238,12 @@ static irqreturn_t tegra_mc_error_thread(int irq, void *data)
 	count = atomic_inc_return(&error_count);
 
 	fault = chip_specific.mcerr_info(intr & mc_int_mask);
-	if (WARN(!fault, "[mcerr] Unknown error! intr sig: 0x%08x\n",
+	if (WARN(!fault, "Unknown error! intr sig: 0x%08x\n",
 		 intr & mc_int_mask))
 		goto out;
 
 	if (fault->flags & E_NO_STATUS) {
-		pr_err("[mcerr] MC fault - no status: %s\n", fault->msg);
+		mcerr_pr("MC fault - no status: %s\n", fault->msg);
 		goto out;
 	}
 
@@ -273,7 +273,7 @@ static irqreturn_t tegra_mc_error_thread(int irq, void *data)
 	if (mcerr_throttle_enabled && count >= MAX_PRINTS) {
 		schedule_delayed_work(&unthrottle_prints_work, HZ/2);
 		if (count == MAX_PRINTS)
-			MC_PRINT("Too many MC errors; throttling prints\n");
+			mcerr_pr("Too many MC errors; throttling prints\n");
 		goto out;
 	}
 
@@ -322,8 +322,8 @@ static irqreturn_t tegra_mc_error_hard_irq(int irq, void *data)
 		return IRQ_NONE;
 	}
 
-	trace_printk("istatus=%x, estatus=%x, eaddr=%x\n",
-		intr, mc_readl(MC_ERR_STATUS), mc_readl(MC_ERR_ADR));
+	trace_printk("MCERR detected.\n");
+
 	/*
 	 * We have an interrupt; disable the rest until this one is handled.
 	 * This means we will potentially miss interrupts. We can live with
@@ -379,12 +379,12 @@ static void mcerr_default_print(const struct mc_error *err,
 	if (smmu_info)
 		smmu_dump_pagetable(client->swgid, addr);
 
-	MC_PRINT("[mcerr] (%d) %s: %s\n", client->swgid, client->name, err->msg);
-	MC_PRINT("[mcerr]   status = 0x%08x; addr = 0x%08llx\n", status,
-	       (long long unsigned int)addr);
-	MC_PRINT("[mcerr]   secure: %s, access-type: %s, SMMU fault: %s\n",
-	       secure ? "yes" : "no", rw ? "write" : "read",
-	       smmu_info ? smmu_info : "none");
+	mcerr_pr("(%d) %s: %s\n", client->swgid, client->name, err->msg);
+	mcerr_pr("  status = 0x%08x; addr = 0x%08llx\n", status,
+		 (long long unsigned int)addr);
+	mcerr_pr("  secure: %s, access-type: %s, SMMU fault: %s\n",
+		 secure ? "yes" : "no", rw ? "write" : "read",
+		 smmu_info ? smmu_info : "none");
 }
 
 /*
