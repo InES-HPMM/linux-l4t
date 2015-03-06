@@ -391,7 +391,7 @@ static int tegra_mc_probe(struct platform_device *pdev)
 	u32 reg;
 #endif
 	const void *prop;
-	struct dentry *mc_debugfs_dir;
+	struct dentry *mc_debugfs_dir = NULL;
 	const struct of_device_id *match;
 
 	if (!pdev->dev.of_node)
@@ -452,12 +452,12 @@ static int tegra_mc_probe(struct platform_device *pdev)
 	mc_writel(reg, MC_EMEM_ARB_OVERRIDE);
 #endif
 
+#ifdef CONFIG_DEBUG_FS
 	mc_debugfs_dir = debugfs_create_dir("mc", NULL);
-	if (mc_debugfs_dir == NULL) {
+	if (mc_debugfs_dir == NULL)
 		pr_err("Failed to make debugfs node: %ld\n",
 		       PTR_ERR(mc_debugfs_dir));
-		return PTR_ERR(mc_debugfs_dir);
-	}
+#endif
 
 	tegra_mcerr_init(mc_debugfs_dir, pdev);
 
