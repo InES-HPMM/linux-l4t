@@ -1345,35 +1345,38 @@ static int smmu_ptdump_show(struct seq_file *s, void *unused)
 	unsigned long addr = 0;
 
 	pgd = cfg->pgd;
-	for (i = 0; i < PTRS_PER_PGD; ++i, pgd++) {
+	for (i = 0; i < PTRS_PER_PGD;
+		++i, pgd++, addr += PGDIR_SIZE) {
 		if (pgd_none(*pgd))
 			continue;
 		pud = pud_offset(pgd, addr);
 		for (j = 0; j < PTRS_PER_PUD; ++j, pud++) {
-			if (pud_none(*pud))
+			if (pud_none(*pud)) {
+				if ((ulong)pgd != (ulong)pud)
+					addr += PUD_SIZE;
 				continue;
+			}
 			pmd = pmd_offset(pud, addr);
-			for (k = 0; k < PTRS_PER_PMD; ++k, pmd++) {
+			for (k = 0; k < PTRS_PER_PMD;
+				++k, pmd++, addr += PMD_SIZE) {
 				if (pmd_none(*pmd))
 					continue;
 				pte = pmd_page_vaddr(*pmd) + pte_index(addr);
-				for (l = 0; l < PTRS_PER_PTE; ++l, pte++) {
+				for (l = 0; l < PTRS_PER_PTE;
+					++l, pte++, addr += PAGE_SIZE) {
 					phys_addr_t pa;
 
-					pa = *pte;
-					pa &= PAGE_MASK;
+					pa = __pfn_to_phys(pte_pfn(*pte));
 					if (!pa)
 						continue;
 					seq_printf(s,
 						   "va=0x%016lx pa=%pap *pte=%pad\n",
 						   addr, &pa, &(*pte));
-					addr += PAGE_SIZE;
 				}
-				addr += PMD_SIZE;
 			}
-			addr += PUD_SIZE;
+			if ((ulong)pgd != (ulong)pud)
+				addr += PUD_SIZE;
 		}
-		addr += PGDIR_SIZE;
 	}
 	return 0;
 }
