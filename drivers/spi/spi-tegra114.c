@@ -1625,6 +1625,9 @@ static struct of_device_id tegra_spi_of_match[] = {
 	}, {
 		.compatible = "nvidia,tegra210-spi",
 		.data       = &tegra210_spi_chip_data,
+	}, {
+		.compatible = "nvidia,tegra186-spi",
+		.data       = &tegra210_spi_chip_data,
 	},
 	{}
 };
