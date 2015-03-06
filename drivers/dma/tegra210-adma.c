@@ -783,7 +783,7 @@ static int get_transfer_param(struct tegra_adma_chan *tdc,
 	enum dma_transfer_direction direction, unsigned long *ahub_fifo_ctrl,
 	unsigned long *ctrl, unsigned long *config)
 {
-
+	u32 burst_size;
 	*ctrl = channel_read(tdc, ADMA_CH_CTRL);
 	*ahub_fifo_ctrl = channel_read(tdc, ADMA_CH_AHUB_FIFO_CTRL);
 	*config = channel_read(tdc, ADMA_CH_CONFIG);
@@ -795,8 +795,10 @@ static int get_transfer_param(struct tegra_adma_chan *tdc,
 	switch (direction) {
 	case DMA_MEM_TO_DEV:
 		*ahub_fifo_ctrl &= ~ADMA_CH_AHUB_FIFO_CTRL_TX_FIFO_SIZE_MASK;
-		*config |= tdc->dma_sconfig.dst_maxburst <<
-				ADMA_CH_CONFIG_BURST_SIZE_SHIFT;
+		burst_size = fls(tdc->dma_sconfig.dst_maxburst);
+		if (!burst_size || burst_size > WORDS_16)
+			burst_size = WORDS_16;
+		*config |= burst_size << ADMA_CH_CONFIG_BURST_SIZE_SHIFT;
 		*ctrl |= MEMORY_TO_AHUB <<
 				ADMA_CH_CTRL_TRANSFER_DIRECTION_SHIFT;
 		*ctrl &= ~ADMA_CH_CTRL_TX_REQUEST_SELECT_MASK;
@@ -807,8 +809,10 @@ static int get_transfer_param(struct tegra_adma_chan *tdc,
 		return 0;
 	case DMA_DEV_TO_MEM:
 		*ahub_fifo_ctrl &= ~ADMA_CH_AHUB_FIFO_CTRL_RX_FIFO_SIZE_MASK;
-		*config |= tdc->dma_sconfig.src_maxburst <<
-				ADMA_CH_CONFIG_BURST_SIZE_SHIFT;
+		burst_size = fls(tdc->dma_sconfig.src_maxburst);
+		if (!burst_size || burst_size > WORDS_16)
+			burst_size = WORDS_16;
+		*config |= burst_size << ADMA_CH_CONFIG_BURST_SIZE_SHIFT;
 		*ctrl |= AHUB_TO_MEMORY <<
 				ADMA_CH_CTRL_TRANSFER_DIRECTION_SHIFT;
 		*ctrl &= ~ADMA_CH_CTRL_RX_REQUEST_SELECT_MASK;
