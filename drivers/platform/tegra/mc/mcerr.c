@@ -40,13 +40,16 @@
 #include <tegra/mc.h>
 #include <tegra/mcerr.h>
 
-#define mcerr_pr(fmt, ...)				\
-	do {						\
-		trace_printk(fmt, ##__VA_ARGS__);	\
-		pr_err(fmt, ##__VA_ARGS__);		\
+#define mcerr_pr(fmt, ...)					\
+	do {							\
+		if (!mcerr_silenced) {				\
+			trace_printk(fmt, ##__VA_ARGS__);	\
+			pr_err(fmt, ##__VA_ARGS__);		\
+		}						\
 	} while (0)
 
 static bool mcerr_throttle_enabled = true;
+static u32  mcerr_silenced;
 
 static int arb_intr_mma_set(const char *arg, const struct kernel_param *kp);
 static int arb_intr_mma_get(char *buff, const struct kernel_param *kp);
@@ -500,6 +503,9 @@ int tegra_mcerr_init(struct dentry *mc_parent, struct platform_device *pdev)
 		goto done;
 	}
 
+	if (!mc_parent)
+		goto done;
+
 	mcerr_debugfs_dir = debugfs_create_dir("err", mc_parent);
 	if (mcerr_debugfs_dir == NULL) {
 		pr_err("Failed to make debugfs node: %ld\n",
@@ -511,6 +517,7 @@ int tegra_mcerr_init(struct dentry *mc_parent, struct platform_device *pdev)
 	debugfs_create_file("mcerr_throttle", S_IRUGO | S_IWUSR,
 			    mcerr_debugfs_dir, NULL,
 			    &mcerr_throttle_debugfs_fops);
+	debugfs_create_u32("quiet", 0644, mcerr_debugfs_dir, &mcerr_silenced);
 
 done:
 	return 0;
