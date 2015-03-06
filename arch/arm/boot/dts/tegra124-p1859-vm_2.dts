@@ -235,6 +235,8 @@
 	iommu {
 		compatible = "nvidia,tegra124-smmu-hv";
 		ivc_queue = <&tegra_hv 14>;
+		mempool_id = <&tegra_hv 2>;
+
 		domains = <
 			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS)
 			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS1)

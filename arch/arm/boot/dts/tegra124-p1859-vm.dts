@@ -51,6 +51,7 @@
 		compatible = "nvidia,tegra124-smmu-hv";
 		#asids = <120>;
 		ivc_queue = <&tegra_hv 8>;
+		mempool_id = <&tegra_hv 0>;
 		domains = <
 			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS)
 			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS1)
