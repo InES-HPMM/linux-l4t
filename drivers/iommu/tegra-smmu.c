@@ -422,7 +422,11 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 	smmu_write(smmu, val, SMMU_CACHE_CONFIG(_TLB));
 
 	smmu_client_ordered(smmu);
-	smmu_flush_regs(smmu, 1);
+	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12))
+		smmu_flush_regs(smmu, 1);
+	else /* T132+ */
+		smmu_flush_regs(smmu, 0);
 
 	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA3
 			|| tegra_get_chipid() == TEGRA_CHIPID_TEGRA11
