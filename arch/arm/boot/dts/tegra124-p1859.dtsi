@@ -419,8 +419,7 @@
 		compatible = "nvidia,isc-mgr";
 		i2c-bus = <0>;
 		csi-port = <0>;
-		pwdn-gpios = <&pca9539_77 1 GPIO_ACTIVE_HIGH
-				&pca9539_77 7 GPIO_ACTIVE_LOW>;
+		pwdn-gpios = <&pca9539_77 1 GPIO_ACTIVE_HIGH>;
 		/* default-power-on; */
 		status = "okay";
 	};
@@ -429,7 +428,6 @@
 		compatible = "nvidia,isc-mgr";
 		i2c-bus = <0>;
 		csi-port = <2>;
-		pwdn-gpios = <&pca9539_77 8 GPIO_ACTIVE_LOW>;
 		/* default-power-on; */
 		status = "okay";
 	};
