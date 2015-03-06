@@ -1081,21 +1081,6 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 		gpio_direction_output(gpio, 1);
 	}
 
-	gpio = of_get_named_gpio(node, "nvidia,mdm-sar0-gpio", 0);
-	if (gpio_is_valid(gpio)) {
-		dev_info(&pdev->dev, "set MODEM SAR0 (%d) to 0\n", gpio);
-		ret = gpio_request(gpio, "MODEM SAR0");
-		if (ret) {
-			dev_err(&pdev->dev, "request gpio %d failed\n", gpio);
-			return ret;
-		}
-		gpio_direction_output(gpio, 0);
-		gpio_export(gpio, false);
-
-		/* also create a dedicated sysfs for the modem-sar0 gpio */
-		gpio_export_link(&pdev->dev, "modem_sar", gpio);
-	}
-
 	gpio = of_get_named_gpio(node, "nvidia,reset-gpio", 0);
 	if (gpio_is_valid(gpio)) {
 		ret = gpio_request(gpio, "MODEM RESET");

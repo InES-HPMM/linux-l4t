@@ -21,7 +21,6 @@ Optional properties:
 - nvidia,wake-gpio: input GPIO. Define this GPIO if remote wakeup is through
                     GPIO, or remote wakeup is supported natively.
 - nvidia,mdm-power-report-gpio: input GPIO for modem power report.
-- nvidia,mdm-sar0-gpio: output GPIO for modem SAR.
 - nvidia,pre-boost-gpio: output GPIO for modem to control pre boost regulator.
                          IN USE FOR T210 LOKI ONLY (P2530 E03 mother board only)
 - nvidia,num-temp-sensors: integer which specifies temperature sensor count for
@@ -49,7 +48,6 @@ With all properties defined:
         nvidia,wake-gpio = ...;
         nvidia,boot-gpio = <&gpio TEGRA_GPIO(K, 6) GPIO_ACTIVE_LOW>;
         nvidia,mdm-power-report-gpio = ...;
-        nvidia,mdm-sar0-gpio = ...;
         nvidia,reset-gpio = ...;
         nvidia,mdm-en-gpio = ...;
         nvidia,pre-boost-gpio = ...;
