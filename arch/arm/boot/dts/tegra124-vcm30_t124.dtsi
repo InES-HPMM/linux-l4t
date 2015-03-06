@@ -134,6 +134,27 @@
 		nvidia,lane_owner = <0x2>; /* PCIE-0, SSP1 and SATA */
 		nvidia,ulpicap = <0>; /* No ulpi support */
 		nvidia,firmware_file = "tegra_xusb_firmware";
+
+		/*Characterization settings*/
+                prod-settings {
+                        #prod-cells = <4>;
+                        prod_c_ss0 {
+                            prod = <
+                                3 0x00000058 0x00000000 0x26ec75f0
+                                3 0x00000068 0x00000000 0x007e08EE
+                                3 0x00000078 0x04ffc000 0x10000000
+                                3 0x00000090 0xfffc0e44 0x00000100
+                            >;
+                        };
+                        prod_c_ss1 {
+                            prod = <
+                                3 0x0000005c 0x00000000 0x26f070f0
+                                3 0x0000006c 0x00000000 0x002008ee
+                                3 0x0000007c 0x04ffc000 0x10000000
+                                3 0x00000094 0xfffc0e44 0x00000100
+                            >;
+                        };
+		};
 	};
 
 	pmc@7000e400 {
