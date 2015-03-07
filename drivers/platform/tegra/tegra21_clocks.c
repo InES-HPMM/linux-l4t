@@ -9463,6 +9463,7 @@ static struct clk tegra_list_clks[] = {
 	SHARED_CLK("gm20b.gbus",	"tegra_gpu.0",		"gpu",	&tegra_clk_gbus, NULL,  0, 0, 0),
 	SHARED_LIMIT("cap.gbus",	"cap.gbus",		NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING, 0),
 	SHARED_LIMIT("edp.gbus",	"edp.gbus",		NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING, 0),
+	SHARED_LIMIT("cap.vgpu.gbus",	"cap.vgpu.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING, 0),
 	SHARED_LIMIT("cap.throttle.gbus", "cap_throttle",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING, 0),
 	SHARED_LIMIT("cap.profile.gbus", "profile.gbus",	"cap",	&tegra_clk_gbus, NULL,  0, SHARED_CEILING, 0),
 	SHARED_CLK("override.gbus",	"override.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_OVERRIDE, 0),
