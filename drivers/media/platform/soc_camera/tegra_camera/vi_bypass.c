@@ -45,20 +45,10 @@ struct vi_bypass_camera {
 	int				num_clks;
 };
 
-static int vi_bypass_activate(struct tegra_camera *cam,
-			      int port)
-{
-	return 0;
-}
-
-static void vi_bypass_deactivate(struct tegra_camera *cam)
-{
-}
-
 static bool vi_bypass_port_is_valid(int port)
 {
 	return (((port) >= TEGRA_CAMERA_PORT_CSI_A) &&
-		((port) <= TEGRA_CAMERA_PORT_CSI_C));
+		((port) <= TEGRA_CAMERA_PORT_CSI_F));
 }
 
 static s32 vi_bypass_bytes_per_line(u32 width,
@@ -67,34 +57,9 @@ static s32 vi_bypass_bytes_per_line(u32 width,
 	return soc_mbus_bytes_per_line(width, mf);
 }
 
-static int vi_bypass_capture_frame(struct tegra_camera *cam,
-				   struct tegra_camera_buffer *buf)
-{
-	struct vb2_buffer *vb = cam->active;
-
-	/*
-	 * TBD: This dummy function just completes a request without actually
-	 * doing anything.
-	 */
-
-	spin_lock_irq(&cam->videobuf_queue_lock);
-
-	do_gettimeofday(&vb->v4l2_buf.timestamp);
-	vb->v4l2_buf.field = cam->field;
-
-	vb2_buffer_done(vb, VB2_BUF_STATE_DONE);
-
-	spin_unlock_irq(&cam->videobuf_queue_lock);
-
-	return 0;
-}
-
 struct tegra_camera_ops vi_bypass_ops = {
-	.activate	= vi_bypass_activate,
-	.deactivate	= vi_bypass_deactivate,
 	.port_is_valid	= vi_bypass_port_is_valid,
 	.bytes_per_line	= vi_bypass_bytes_per_line,
-	.capture_frame	= vi_bypass_capture_frame,
 };
 
 static struct of_device_id vi_bypass_of_match[] = {
