@@ -20,6 +20,7 @@ obj-y                   += panel-lgd-wxga-7-0.o
 obj-y                   += panel-p-wuxga-10-1.o
 obj-y                   += panel-s-wqxga-10-1.o
 obj-y                   += panel-s-wuxga-7-0.o
+obj-y                   += panel-s-wuxga-8-0.o
 obj-y                   += panel-a-1200-800-8-0.o
 obj-y                   += panel-a-1200-1920-8-0.o
 obj-y                   += panel-a-edp-1080p-14-0.o
