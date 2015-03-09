@@ -112,5 +112,25 @@
 			gpio = <&gpio TEGRA_GPIO(R, 0) 0>;
 			enable-active-high;
 		};
+
+		avdd_hdmi: regulator@9 {
+			compatible = "regulator-fixed-sync";
+			reg = <9>;
+			regulator-name = "avdd-hdmi";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&gpio TEGRA_GPIO(N, 5) 0>;
+			enable-active-high;
+		};
+
+		avdd_hdmi_pll: regulator@10 {
+			compatible = "regulator-fixed-sync";
+			reg = <10>;
+			regulator-name = "avdd-hdmi-pll";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			gpio = <&gpio TEGRA_GPIO(N, 5) 0>;
+			enable-active-high;
+		};
 	};
 };
