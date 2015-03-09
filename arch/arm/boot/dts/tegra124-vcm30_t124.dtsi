@@ -374,4 +374,34 @@
 	bthrot_cdev {
 		status = "disabled";
 	};
+
+	/*Re-setting the clock frequencies for visibility*/
+	i2c@7000c000 {
+		clock-frequency = <400000>;
+	};
+
+	i2c@7000c400 {
+		clock-frequency = <100000>;
+	};
+
+	i2c@7000c500 {
+		clock-frequency = <400000>;
+	};
+
+	i2c@7000c700 {
+		clock-frequency = <100000>;
+	};
+
+	i2c@7000d000 {
+		clock-frequency = <400000>;
+	};
+
+	i2c@7000d100 {
+		clock-frequency = <400000>;
+	};
+
+	soctherm@0x700E2000 {
+		soctherm-clock-frequency = <51000000>;
+		tsensor-clock-frequency  = <400000>;
+	};
 };
