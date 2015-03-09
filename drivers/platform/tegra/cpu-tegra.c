@@ -1122,40 +1122,7 @@ static inline void tegra_auto_cluster_switch(void) {}
 static inline void tegra_auto_cluster_switch_exit(void) {}
 #endif
 
-unsigned int tegra_count_slow_cpus(unsigned long speed_limit)
-{
-	unsigned int cnt = 0;
-	int i;
-
-	for_each_online_cpu(i)
-		if (target_cpu_speed[i] <= speed_limit)
-			cnt++;
-	return cnt;
-}
-
-unsigned int tegra_get_slowest_cpu_n(void) {
-	unsigned int cpu = nr_cpu_ids;
-	unsigned long rate = ULONG_MAX;
-	int i;
-
-	for_each_online_cpu(i)
-		if ((i > 0) && (rate > target_cpu_speed[i])) {
-			cpu = i;
-			rate = target_cpu_speed[i];
-		}
-	return cpu;
-}
-
-unsigned long tegra_cpu_lowest_speed(void) {
-	unsigned long rate = ULONG_MAX;
-	int i;
-
-	for_each_online_cpu(i)
-		rate = min(rate, target_cpu_speed[i]);
-	return rate;
-}
-
-unsigned long tegra_cpu_highest_speed(void) {
+static unsigned long tegra_cpu_highest_speed(void) {
 	unsigned long policy_max = ULONG_MAX;
 	unsigned long rate = 0;
 	int i;
