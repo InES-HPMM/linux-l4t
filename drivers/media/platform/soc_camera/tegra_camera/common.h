@@ -30,7 +30,6 @@ struct tegra_camera_buffer {
 	struct vb2_buffer		vb; /* v4l buffer must be first */
 	struct list_head		queue;
 	struct soc_camera_device	*icd;
-	int				output_channel;
 
 	/*
 	 * Various buffer addresses shadowed so we don't have to recalculate
@@ -44,17 +43,26 @@ struct tegra_camera_buffer {
 	dma_addr_t			start_addr_v;
 };
 
-static inline  struct tegra_camera_buffer *to_tegra_vb(struct vb2_buffer *vb)
+static inline struct tegra_camera_buffer *to_tegra_vb(struct vb2_buffer *vb)
 {
 	return container_of(vb, struct tegra_camera_buffer, vb);
 }
 
+static inline struct tegra_camera_platform_data *icd_to_pdata(
+		struct soc_camera_device *icd)
+{
+	struct soc_camera_subdev_desc *ssdesc = &icd->sdesc->subdev_desc;
+	return ssdesc->drv_priv;
+}
+
+#define icd_to_port(icd) (icd_to_pdata(icd)->port)
+#define icd_to_lanes(icd) (icd_to_pdata(icd)->lanes)
+
 struct tegra_camera;
 
 struct tegra_camera_ops {
-	int (*activate)(struct tegra_camera *cam,
-		 int port);
-	void (*deactivate)(struct tegra_camera *cam);
+	int (*add_device)(struct soc_camera_device *icd);
+	void (*remove_device)(struct soc_camera_device *icd);
 	s32 (*bytes_per_line)(u32 width, const struct soc_mbus_pixelfmt *mf);
 
 	/*
@@ -71,16 +79,15 @@ struct tegra_camera_ops {
 	int (*s_mbus_fmt)(struct v4l2_subdev *sd,
 			  struct v4l2_mbus_framefmt *mf);
 	bool (*port_is_valid)(int port);
-	int (*capture_frame)(struct tegra_camera *cam,
-			     struct tegra_camera_buffer *buf);
-};
 
-struct cam_regs_config {
-	u32 csi_base;
-	u32 csi_pp_base;
-	u32 cil_base;
-	u32 cil_phy_base;
-	u32 tpg_base;
+	void (*videobuf_queue)(struct tegra_camera *cam,
+			       struct soc_camera_device *icd,
+			       struct tegra_camera_buffer *buf);
+	void (*videobuf_release)(struct tegra_camera *cam,
+			       struct soc_camera_device *icd,
+			       struct tegra_camera_buffer *buf);
+	int (*stop_streaming)(struct tegra_camera *cam,
+			       struct soc_camera_device *icd);
 };
 
 struct tegra_camera {
@@ -92,41 +99,11 @@ struct tegra_camera {
 	u32				version;
 	struct tegra_camera_ops		*ops;
 
-	spinlock_t			videobuf_queue_lock;
-	struct list_head		capture;
-	struct vb2_buffer		*active;
 	struct vb2_alloc_ctx		*alloc_ctx;
-	enum v4l2_field			field;
-
-	struct work_struct		work;
-	struct mutex			work_mutex;
-
-	/* Debug */
-	int				num_frames;
-	int				enable_refcnt;
 };
 
 #define TC_VI_REG_RD(dev, offset) readl(dev->reg_base + offset)
 #define TC_VI_REG_WT(dev, offset, val) writel(val, dev->reg_base + offset)
-#define csi_regs_write(cam, offset, val) \
-		TC_VI_REG_WT(cam, cam->regs.csi_base + offset, val)
-#define csi_regs_read(cam, offset) \
-		TC_VI_REG_RD(cam, cam->regs.csi_base + offset)
-#define csi_pp_regs_write(cam, offset, val) \
-		TC_VI_REG_WT(cam, cam->regs.csi_pp_base + offset, val)
-#define csi_pp_regs_read(cam, offset) \
-		TC_VI_REG_RD(cam, cam->regs.csi_pp_base + offset)
-#define cil_regs_write(cam, offset, val) \
-		TC_VI_REG_WT(cam, cam->regs.cil_base + offset, val)
-#define cil_regs_read(cam, offset) \
-		TC_VI_REG_RD(cam, cam->regs.cil_base + offset)
-#define cil_phy_reg_write(cam, val) \
-		TC_VI_REG_WT(cam, cam->regs.cil_phy_base, val)
-#define cil_phy_reg_read(cam) TC_VI_REG_RD(cam, cam->regs.cil_phy_base)
-#define tpg_regs_write(cam, offset, val) \
-		TC_VI_REG_WT(cam, cam->regs.tpg_base + offset, val)
-#define tpg_regs_read(cam, offset) \
-		TC_VI_REG_RD(cam, cam->regs.tpg_base + offset)
 
 int vi2_register(struct tegra_camera *cam);
 
