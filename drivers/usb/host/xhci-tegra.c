@@ -219,7 +219,7 @@ static void set_port_cdp(struct tegra_xhci_hcd *tegra, bool enable, int pad);
 static void init_filesystem_firmware_done(const struct firmware *fw,
 					void *context);
 
-struct work_struct tegra_xhci_reinit_work;
+static struct work_struct tegra_xhci_reinit_work;
 static void xhci_reinit_work(struct work_struct *work);
 static bool reinit_started;
 static struct tegra_usb_pmc_data *pmc_data;
