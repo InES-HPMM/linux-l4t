@@ -1,7 +1,7 @@
 / {
 	spi@7000da00 {
-		spi-touch@0 {
-			platform-id = <RM_PLATFORM_L005>;
+		spi-touch14x8@0 {
+			status = "disabled";
 			gpio-sensor-select1;
 		};
 	};
