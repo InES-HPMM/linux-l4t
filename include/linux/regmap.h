@@ -410,6 +410,8 @@ int regcache_volatile_set(struct regmap *map, unsigned int reg,
 
 int regmap_register_patch(struct regmap *map, const struct reg_default *regs,
 			  int num_regs);
+int regmap_system_prod_config(struct device *dev, struct regmap **map,
+		const char *config_np_name);
 
 static inline bool regmap_reg_in_range(unsigned int reg,
 				       const struct regmap_range *range)
