@@ -187,7 +187,7 @@ static void smmu_client_ordered(struct smmu_device *smmu)
  * transaction is complete before initiating activity on the PPSB
  * block.
  */
-#define FLUSH_SMMU_REGS(smmu)	smmu_read(smmu, SMMU_CONFIG)
+#define FLUSH_SMMU_REGS(smmu)	smmu_read(smmu, SMMU_PTB_ASID)
 
 static struct of_device_id tegra_smmu_of_match[];
 
