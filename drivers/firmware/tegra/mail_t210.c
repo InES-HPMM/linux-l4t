@@ -203,7 +203,7 @@ static void *bpmp_channel_area(int ch)
 	return a ? IO_ADDRESS(a) : NULL;
 }
 
-int __bpmp_connect(void)
+static int __bpmp_connect(void)
 {
 	void *p;
 	int i;
