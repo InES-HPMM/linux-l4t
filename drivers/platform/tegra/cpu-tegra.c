@@ -1358,20 +1358,11 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 	if (policy->cpu >= CONFIG_NR_CPUS)
 		return -EINVAL;
 
-	cpu_clk = clk_get_sys(NULL, "cpu");
-	if (IS_ERR(cpu_clk))
-		return PTR_ERR(cpu_clk);
-
-	emc_clk = clk_get_sys("tegra-cpu", "cpu_emc");
-	if (IS_ERR(emc_clk))
-		emc_clk = NULL;
-
 	freq = tegra_getspeed(policy->cpu);
 	if (emc_clk) {
 		clk_set_rate(emc_clk, tegra_emc_cpu_limit(freq));
 		clk_prepare_enable(emc_clk);
 	}
-	clk_prepare_enable(cpu_clk);
 
 	cpufreq_frequency_table_cpuinfo(policy, freq_table);
 	cpufreq_frequency_table_get_attr(freq_table, policy->cpu);
@@ -1478,6 +1469,16 @@ static int __init tegra_cpufreq_init(void)
 		}
 		suspend_index = i;
 	}
+
+	cpu_clk = clk_get_sys(NULL, "cpu");
+	if (IS_ERR(cpu_clk))
+		return PTR_ERR(cpu_clk);
+
+	clk_prepare_enable(cpu_clk);
+
+	emc_clk = clk_get_sys("tegra-cpu", "cpu_emc");
+	if (IS_ERR(emc_clk))
+		emc_clk = NULL;
 
 	ret = tegra_auto_hotplug_init(&tegra_cpu_lock);
 	if (ret)
