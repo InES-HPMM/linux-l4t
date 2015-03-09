@@ -186,7 +186,7 @@
 					regulator-max-microvolt = <1350000>;
 					regulator-always-on;
 					regulator-boot-on;
-					maxim,fps-source = <FPS_SRC_NONE>;
+					maxim,fps-source = <FPS_SRC_1>;
 				};
 
 				max77620_sd3: sd3 {
