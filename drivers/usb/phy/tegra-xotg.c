@@ -36,7 +36,7 @@ int xotg_debug_level = LEVEL_INFO;
 module_param(xotg_debug_level, int, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(xotg_debug_level, "level 0~4");
 
-bool session_supported;
+static bool session_supported;
 module_param(session_supported, bool, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(session_supported, "session supported");
 
@@ -211,7 +211,8 @@ static int extcon_id_notifications(struct notifier_block *nb,
 }
 
 /* allocate a timer_list structure and populate the values */
-int xotg_alloc_timer(struct xotg *xotg, struct timer_list *temp_timer_list,
+static int xotg_alloc_timer(struct xotg *xotg,
+	struct timer_list *temp_timer_list,
 	void (*xotg_timer_comp)(unsigned long), unsigned long expires,
 	unsigned long data)
 {
@@ -230,7 +231,7 @@ int xotg_alloc_timer(struct xotg *xotg, struct timer_list *temp_timer_list,
 	return 0;
 }
 
-void xotg_test_timer_comp(unsigned long data)
+static void xotg_test_timer_comp(unsigned long data)
 {
 	struct xotg *xotg = (struct xotg *)data;
 
@@ -242,7 +243,7 @@ void xotg_test_timer_comp(unsigned long data)
  * SRP wait timer: Time within which the B-device needs to get a
  * response from the A-device after B has initiated the SRP
  */
-void b_srp_response_wait_timer(unsigned long data)
+static void b_srp_response_wait_timer(unsigned long data)
 {
 	struct xotg *xotg = (struct xotg *)data;
 
@@ -255,7 +256,7 @@ void b_srp_response_wait_timer(unsigned long data)
 	schedule_delayed_work(&xotg->otg_work, 0);
 }
 
-void xotg_timer_comp(unsigned long timeout)
+static void xotg_timer_comp(unsigned long timeout)
 {
 	struct usb_phy *phy = usb_get_phy(USB_PHY_TYPE_USB3);
 	struct xotg *xotg = container_of(phy, struct xotg, phy);
@@ -265,7 +266,7 @@ void xotg_timer_comp(unsigned long timeout)
 	schedule_delayed_work(&xotg->otg_work, 0);
 }
 
-void b_srp_done_timer(unsigned long data)
+static void b_srp_done_timer(unsigned long data)
 {
 	struct xotg *xotg = (struct xotg *)data;
 	struct usb_phy *phy = &xotg->phy;
@@ -278,7 +279,7 @@ void b_srp_done_timer(unsigned long data)
 	schedule_delayed_work(&xotg->otg_work, 0);
 }
 
-int xotg_init_timers(struct xotg *xotg)
+static int xotg_init_timers(struct xotg *xotg)
 {
 	int status = 0;
 
@@ -387,7 +388,7 @@ int xotg_init_timers(struct xotg *xotg)
 }
 
 /* function to de-activate timers */
-void xotg_deinit_timers(struct xotg *xotg)
+static void xotg_deinit_timers(struct xotg *xotg)
 {
 	del_timer_sync(&xotg->xotg_timer_list.a_wait_vrise_tmr);
 	del_timer_sync(&xotg->xotg_timer_list.a_wait_vfall_tmr);
@@ -516,7 +517,7 @@ static void xotg_drive_vbus(struct xotg *xotg, bool start)
 	schedule_work(&xotg->vbus_work);
 }
 
-void xotg_enable_srp_detect(struct xotg *xotg, bool enable)
+static void xotg_enable_srp_detect(struct xotg *xotg, bool enable)
 {
 	u8 port = xotg->hs_otg_port;
 	u32 reg = tegra_usb_pad_reg_read(
@@ -551,7 +552,7 @@ static int xotg_generate_srp(struct xotg *xotg)
 	return 0;
 }
 
-const pm_message_t xotg_suspend_state = {
+static const pm_message_t xotg_suspend_state = {
 	/* defined in include/linux/pm.h
 	 * PM_EVENT_ON = 0x0 , no change
 	 * PM_EVENT_FREEZE = 0x1 , system going for hibernate
@@ -561,7 +562,7 @@ const pm_message_t xotg_suspend_state = {
 	.event = 0x1,
 };
 
-int xotg_enable_gadget(struct xotg *xotg, bool start)
+static int xotg_enable_gadget(struct xotg *xotg, bool start)
 {
 	struct usb_phy *phy = &xotg->phy;
 	struct usb_otg *otg = phy->otg;
@@ -600,7 +601,7 @@ int xotg_enable_gadget(struct xotg *xotg, bool start)
 	return 0;
 }
 
-bool xotg_suspend_host(struct xotg *xotg, int port_state)
+static bool xotg_suspend_host(struct xotg *xotg, int port_state)
 {
 	struct usb_phy *phy = &xotg->phy;
 	struct usb_otg *otg = phy->otg;
@@ -616,13 +617,13 @@ bool xotg_suspend_host(struct xotg *xotg, int port_state)
 
 	/* issue roothub command to set the linkstate */
 	hcd->driver->hub_control(hcd, SetPortFeature, USB_PORT_FEAT_LINK_STATE,
-			(port_state << 3) | (xotg->hs_otg_port + 1), 0, 0);
+			(port_state << 3) | (xotg->hs_otg_port + 1), NULL, 0);
 
 	if (port_state == XDEV_DISABLED && otg->xhcihost) {
 		struct usb_hcd *shared_hcd = bus_to_hcd(otg->xhcihost);
 		shared_hcd->driver->hub_control(shared_hcd, SetPortFeature,
 			USB_PORT_FEAT_LINK_STATE, (port_state << 3) |
-			(xotg->ss_otg_port + 1)/* wIndex=1 SS P0 */, 0, 0);
+			(xotg->ss_otg_port + 1)/* wIndex=1 SS P0 */, NULL, 0);
 	}
 	return 0;
 }
@@ -1756,7 +1757,7 @@ static void xotg_struct_init(struct xotg *xotg)
 	xotg->device_connected = false;
 
 	/* app reqs to -1 */
-	memset(&xotg->xotg_reqs, sizeof(struct xotg_app_request), -1);
+	memset(&xotg->xotg_reqs, -1, sizeof(struct xotg_app_request));
 
 	/* also, set the a_bus_drop and a_bus_req to default values so that
 	 * if uA cable is connected, A-device can transition from A_IDLE to
@@ -1766,7 +1767,7 @@ static void xotg_struct_init(struct xotg *xotg)
 	xotg->xotg_reqs.a_bus_req = 1;
 
 	/* nv vars to -1 */
-	memset(&xotg->xotg_vars, sizeof(struct xotg_vars), 0);
+	memset(&xotg->xotg_vars, 0, sizeof(struct xotg_vars));
 
 	/* set default_a to 0 */
 	xotg->phy.otg->default_a = 0;
