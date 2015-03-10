@@ -28,6 +28,9 @@
 #include "tegra124-platforms/tegra124-green-arrow-usb-devices.dtsi"
 #include "tegra124-platforms/tegra124-tn8-hdmi-p1761-1270-a03.dtsi"
 
+/* TODO: comm's dtsi should be included after GPIO dtsi */
+#include "tegra124-platforms/tegra124-green-arrow-comms.dtsi"
+
 / {
 	model = "NVIDIA Tegra124 Green Arrow FFD";
 	compatible = "nvidia,green-arrow", "nvidia,tegra124";
