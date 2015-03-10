@@ -42,13 +42,13 @@
 	thermal-zones {
 		therm_est {
 			polling-delay = <0>;
-			polling-delay-passive = <15000>;
+			polling-delay-passive = <6000>;
 
 			thermal-sensors = <&{/therm_est_sensor}>;
 
 			trips {
 				skin_trip {
-					temperature = <43000>;
+					temperature = <45000>;
 					hysteresis = <0>;
 					type = "passive";
 					writable;
