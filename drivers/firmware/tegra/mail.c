@@ -376,29 +376,38 @@ static void bpmp_init_completion(void)
 		init_completion(completion + i);
 }
 
-int bpmp_mail_init(struct platform_device *pdev)
+static int mail_inited;
+
+int bpmp_mail_init(void)
 {
 	int r;
 
-	bpmp_init_completion();
-	r = bpmp_init_irq(pdev);
+	if (mail_inited)
+		return 0;
+
+	mail_inited = 1;
+
+	r = bpmp_mail_init_prepare();
 	if (r) {
-		dev_err(&pdev->dev, "irq init failed (%d)\n", r);
+		pr_err("bpmp: mail init prepare failed (%d)\n", r);
+		return r;
+	}
+
+	bpmp_init_completion();
+
+	r = bpmp_init_irq();
+	if (r) {
+		pr_err("bpmp: irq init failed (%d)\n", r);
 		return r;
 	}
 
 	r = bpmp_mailman_init();
 	if (r) {
-		dev_err(&pdev->dev, "mailman init failed (%d)\n", r);
+		pr_err("bpmp: mailman init failed (%d)\n", r);
 		return r;
 	}
 
 	r = bpmp_connect();
-	dev_info(&pdev->dev, "bpmp_connect returned %d\n", r);
+	pr_info("bpmp: connect returned %d\n", r);
 	return r;
-}
-
-void tegra_bpmp_init_early(void)
-{
-	bpmp_connect();
 }

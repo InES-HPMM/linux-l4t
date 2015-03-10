@@ -170,16 +170,16 @@ static irqreturn_t bpmp_inbox_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-int bpmp_init_irq(struct platform_device *pdev)
+int bpmp_init_irq(void)
 {
-	const char *n = dev_name(&pdev->dev);
 	long ch;
 	int r;
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(cpu_irqs); i++) {
 		ch = PER_CPU_IB_CH(i);
-		r = request_irq(cpu_irqs[i], bpmp_inbox_irq, 0, n, (void *)ch);
+		r = request_irq(cpu_irqs[i], bpmp_inbox_irq,
+				0, "bpmp", (void *)ch);
 		if (r)
 			return r;
 	}
@@ -262,4 +262,14 @@ int bpmp_attach(void)
 	}
 
 	return -ETIMEDOUT;
+}
+
+int bpmp_mail_init_prepare(void)
+{
+	return 0;
+}
+
+void tegra_bpmp_init_early(void)
+{
+	bpmp_connect();
 }

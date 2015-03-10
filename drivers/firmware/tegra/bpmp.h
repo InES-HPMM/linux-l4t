@@ -71,9 +71,10 @@ extern struct device *device;
 extern struct mutex bpmp_lock;
 extern int connected;
 
+int bpmp_mail_init_prepare(void);
 int bpmp_clk_init(struct platform_device *pdev);
 int bpmp_platdbg_init(struct dentry *root, struct platform_device *pdev);
-int bpmp_mail_init(struct platform_device *pdev);
+int bpmp_mail_init(void);
 int bpmp_get_fwtag(void);
 int bpmp_init_modules(struct platform_device *pdev);
 void bpmp_cleanup_modules(void);
@@ -91,7 +92,7 @@ void bpmp_mail_token_clr(uint32_t val);
 int bpmp_thread_ch_index(int ch);
 int bpmp_ob_channel(void);
 int bpmp_thread_ch(int idx);
-int bpmp_init_irq(struct platform_device *pdev);
+int bpmp_init_irq(void);
 int bpmp_connect(void);
 void bpmp_handle_irq(int ch);
 
