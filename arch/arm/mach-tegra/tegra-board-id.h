@@ -53,6 +53,7 @@
 #define BOARD_PM375   0x0177
 #define BOARD_E2141   0x085D
 #define BOARD_E2581   0x0A15
+#define BOARD_P2267   0x08DB
 
 /* Board SKU */
 #define BOARD_SKU_FOSTER  0x0384
