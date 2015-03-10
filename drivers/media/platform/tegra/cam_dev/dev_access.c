@@ -36,6 +36,8 @@
 #include "../camera_platform.h"
 #include "camera_common.h"
 
+#define I2C_WRITE_MAX_RETRIES 3
+
 /*#define DEBUG_I2C_TRAFFIC*/
 #ifdef DEBUG_I2C_TRAFFIC
 static unsigned char dump_buf[32 + 3 * 16];
@@ -357,6 +359,44 @@ static int camera_dev_wr_blk(
 	return ret;
 }
 
+static int camera_dev_raw_write(
+	struct camera_device *cdev, u8 client_addr, u16 reg, u8 value)
+{
+	int ret = -ENODEV;
+	struct i2c_msg msg;
+	unsigned char data[3];
+	int retry = 0;
+
+	dev_dbg(cdev->dev, "%s %x %x %x\n", __func__, client_addr, reg, value);
+
+	data[0] = (u8) (reg >> 8);
+	data[1] = (u8) (reg & 0xff);
+	data[2] = (u8) (value & 0xff);
+
+	msg.addr = client_addr;
+	msg.flags = 0;
+	msg.len = 3;
+	msg.buf = data;
+
+	do {
+		ret = i2c_transfer(cdev->client->adapter, &msg, 1);
+
+		if (ret == 1)
+			return 0;
+
+		retry++;
+
+		dev_err(cdev->dev, "%s i2c transfer failed, retrying %x\n",
+			__func__, client_addr);
+
+		usleep_range(3000, 3100);
+	} while (retry <= I2C_WRITE_MAX_RETRIES);
+
+	dev_dbg(cdev->dev, "%s %x write done\n", __func__, client_addr);
+
+	return ret;
+}
+
 int camera_dev_parser(
 	struct camera_device *cdev,
 	u32 command, u32 *pdat,
@@ -485,6 +525,28 @@ int camera_dev_parser(
 		dev_dbg(cdev->dev, "Sleep %d uS\n", val);
 		usleep_range(val, val + 20);
 		break;
+	case CAMERA_TABLE_RAW_WRITE:
+	{
+		u8 client_addr, target_value;
+		u16 reg_addr;
+
+		client_addr = (val >> 24) & 0xff;
+		reg_addr = (val >> 8) & 0xffff;
+		target_value = val & 0xff;
+
+		dev_dbg(cdev->dev, "raw write: %x %x %x\n",
+			client_addr, reg_addr, target_value);
+
+		err = camera_dev_raw_write(cdev, client_addr,
+			reg_addr, target_value);
+
+		if (err) {
+			dev_err(cdev->dev, "raw write ERR: %d\n", err);
+			return err;
+		}
+
+		break;
+	}
 	default:
 		if ((command & CAMERA_INT_MASK) == CAMERA_TABLE_DEV_READ) {
 			/* feature: read data in table write function */
