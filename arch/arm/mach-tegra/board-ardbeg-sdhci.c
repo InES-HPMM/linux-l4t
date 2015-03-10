@@ -482,7 +482,8 @@ int __init ardbeg_sdhci_init(void)
 		tegra_sdhci_platform_data2.wp_gpio = ARDBEG_SD_WP;
 
 	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_E1780)
+	if (board_info.board_id == BOARD_E1780 ||
+			board_info.board_id == BOARD_P2267)
 		tegra_sdhci_platform_data2.max_clk_limit = 204000000;
 
 	/* E1780, E2141, E1784 are using interposer E1816, Due to this the
@@ -490,12 +491,14 @@ int __init ardbeg_sdhci_init(void)
 	 * strength to type A for these boards to support 204 Mhz */
 	if ((board_info.board_id == BOARD_E1780) ||
 		(board_info.board_id == BOARD_E2141) ||
-		(board_info.board_id == BOARD_E1784)) {
+		(board_info.board_id == BOARD_E1784) ||
+		(board_info.board_id == BOARD_P2267)) {
 		tegra_sdhci_platform_data0.default_drv_type =
 			MMC_SET_DRIVER_TYPE_A;
 	}
 
-	if (board_info.board_id == BOARD_P1761)
+	if (board_info.board_id == BOARD_P1761 ||
+			board_info.board_id == BOARD_P2267)
 		tegra_sdhci_platform_data0.max_clk_limit = 204000000;
 
 	if (board_info.board_id == BOARD_E1781)
