@@ -161,6 +161,8 @@
 						regulator-max-microvolt = <1400000>;
 						regulator-init-microvolt = <1000000>;
 						regulator-boot-on;
+						ti,roof-floor = <PALMAS_EXT_CONTROL_ENABLE2>;
+						ti,ext-enable-gpio = <&gpio TEGRA_GPIO(R, 5) 0>;
 					};
 
 					palmas_smps6: smps6 {
