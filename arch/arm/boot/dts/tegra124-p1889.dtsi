@@ -394,4 +394,70 @@
 			gpio-key,wakeup;
 		};
 	};
+
+	isc-mgr.0 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <3>;
+		csi-port = <0>;
+		pwdn-gpios = <&gpio TEGRA_GPIO(Q, 1) GPIO_ACTIVE_HIGH	/* GMSL_IN1_PDN */
+			&gpio TEGRA_GPIO(I, 5) GPIO_ACTIVE_HIGH		/* CSI1_TV_EN1 */
+			&gpio TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH		/* CSI1_TV_EN2 */
+			&gpio TEGRA_GPIO(K, 0) GPIO_ACTIVE_HIGH		/* CSI1_TV_EN3 */
+			&gpio TEGRA_GPIO(K, 1) GPIO_ACTIVE_HIGH>;	/* CSI1_TV_EN4 */
+		/* default-power-on; */
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(S, 3) 2>; /* GMSL_IN1_STATUS_OC : falling edge sensitive */
+		status = "okay";
+
+		aggregator@6a {
+			addr = <0x6a>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+
+		serializer0@40 {
+			addr = <0x40>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+
+		sensor0@30 {
+			addr = <0x30>;  /* 7 bit slave address */
+			reg_len = <16>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+	};
+
+	isc-mgr.1 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <2>;
+		csi-port = <2>;
+		pwdn-gpios = <&gpio TEGRA_GPIO(Q, 2) GPIO_ACTIVE_HIGH	/* GMSL_IN2_PDN */
+			&gpio TEGRA_GPIO(K, 3) GPIO_ACTIVE_HIGH		/* CSI2_TV_EN1 */
+			&gpio TEGRA_GPIO(EE, 1) GPIO_ACTIVE_HIGH	/* CSI2_TV_EN2 */
+			&gpio TEGRA_GPIO(R, 5) GPIO_ACTIVE_HIGH		/* CSI2_TV_EN3 */
+			&gpio TEGRA_GPIO(R, 6) GPIO_ACTIVE_HIGH>;	/* CSI2_TV_EN4 */
+		/* default-power-on; */
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(R, 3) 2>; /* GMSL_IN2_STATUS_OC : falling edge sensitive */
+		status = "okay";
+
+		aggregator@6a {
+			addr = <0x6a>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+
+		serializer0@40 {
+			addr = <0x40>;  /* 7 bit slave address */
+			reg_len = <8>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+
+		sensor0@30 {
+			addr = <0x30>;  /* 7 bit slave address */
+			reg_len = <16>;  /* 8 bit register length */
+			dat_len = <8>;  /* 8 bit data length */
+		};
+	};
 };

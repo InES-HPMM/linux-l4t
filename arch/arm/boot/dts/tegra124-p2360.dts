@@ -224,26 +224,26 @@
 		sel-conversion-slope = <1>;
 	};
 
-	isc-mgr.2 {
+	isc-mgr.0 {
 		compatible = "nvidia,isc-mgr";
 		i2c-bus = <2>;
 		csi-port = <0>;
-		pwdn-gpios = <&gpio TEGRA_GPIO(I, 5) GPIO_ACTIVE_HIGH
-			&gpio TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH
-			&gpio TEGRA_GPIO(K, 0) GPIO_ACTIVE_HIGH
-			&gpio TEGRA_GPIO(K, 1) GPIO_ACTIVE_HIGH
-			&gpio TEGRA_GPIO(Q, 1) GPIO_ACTIVE_HIGH>;
-		default-power-on;
+		pwdn-gpios = < &gpio TEGRA_GPIO(Q, 1) GPIO_ACTIVE_HIGH	/* GMSL_IN1_PDN */
+			&gpio TEGRA_GPIO(I, 5) GPIO_ACTIVE_HIGH		/* CSI1_TV_EN1 */
+			&gpio TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH		/* CSI1_TV_EN2 */
+			&gpio TEGRA_GPIO(K, 0) GPIO_ACTIVE_HIGH		/* CSI1_TV_EN3 */
+			&gpio TEGRA_GPIO(K, 1) GPIO_ACTIVE_HIGH>;	/* CSI1_TV_EN4 */
+		/* default-power-on; */
 		interrupt-parent = <&gpio>;
 		interrupts = <TEGRA_GPIO(S, 3) 2>; /* gpio PS3 : falling edge sensitive */
 		status = "okay";
 	};
 
-	isc-mgr.0 {
+	isc-mgr.1 {
 		compatible = "nvidia,isc-mgr";
 		i2c-bus = <3>;
-		csi-port = <1>;
-		default-power-on;
+		csi-port = <2>;
+		/* default-power-on; */
 		interrupt-parent = <&gpio>;
 		interrupts = <TEGRA_GPIO(R, 3) 2>; /* gpio PR3 : falling edge sensitive */
 		status = "okay";

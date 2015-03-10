@@ -444,7 +444,7 @@
 		compatible = "nvidia,isc-mgr";
 		i2c-bus = <0>;
 		csi-port = <0>;
-		pwdn-gpios = <&pca9539_77 1 GPIO_ACTIVE_HIGH>;
+		misc-gpios = <&pca9539_77 1 GPIO_ACTIVE_HIGH>;	/* CSI1 switch */
 		/* default-power-on; */
 		status = "okay";
 	};
