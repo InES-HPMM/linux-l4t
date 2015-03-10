@@ -1,7 +1,7 @@
 /*
  * ssl3250a.c - ssl3250a flash/torch kernel driver
  *
- * Copyright (c) 2011-2014, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2011-2015, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -899,6 +899,15 @@ static int ssl3250a_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void ssl3250a_shutdown(struct i2c_client *client)
+{
+        struct ssl3250a_info *info = i2c_get_clientdata(client);
+
+        dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
+        ssl3250a_pm_wr_s(info, NVC_PWR_OFF);
+        ssl3250a_sync_dis(info);
+}
+
 static int ssl3250a_probe(
 	struct i2c_client *client,
 	const struct i2c_device_id *id)
@@ -977,6 +986,7 @@ static struct i2c_driver ssl3250a_i2c_driver = {
 	.id_table = ssl3250a_id,
 	.probe = ssl3250a_probe,
 	.remove = ssl3250a_remove,
+	.shutdown = ssl3250a_shutdown,
 };
 
 static int __init ssl3250a_init(void)
