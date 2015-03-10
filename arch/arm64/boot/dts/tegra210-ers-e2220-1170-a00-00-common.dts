@@ -114,6 +114,7 @@
 		pinctrl-2 = <&sdmmc1_clk_schmitt_enable_state>;
 		pinctrl-3 = <&sdmmc1_clk_schmitt_disable_state>;
 		nvidia,sd-device;
+		wp-gpios = <&gpio TEGRA_GPIO_PZ3 0>;
 		status = "okay";
 	};
 
