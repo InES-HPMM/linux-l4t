@@ -260,6 +260,25 @@
 		nvidia,maximum-dma-buffer-size = <65536>;
 	};
 
+	extcon {
+		/* ID pin extcon */
+		extcon@0 {
+			status="okay";
+		};
+
+		/* VBUS extcon */
+		extcon@1 {
+			status="okay";
+		};
+	};
+
+	otg@7d000000 {
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&vbus_gpio_extcon 0 &id_gpio_extcon 0>;
+		extcon-cable-names = "vbus", "id";
+		nvidia,enable-pmu-vbus-detection;
+	};
+
 	xusb@70090000 {
 		status = "okay";
 	};
