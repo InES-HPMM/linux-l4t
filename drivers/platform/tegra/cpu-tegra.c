@@ -689,6 +689,9 @@ unsigned int tegra_getspeed(unsigned int cpu)
 	if (cpu >= CONFIG_NR_CPUS)
 		return 0;
 
+	if (!cpu_clk)
+		return 0;
+
 	/*
 	 * Explicitly holding the cpu_clk lock across get_rate and is_lp_cluster
 	 * check to prevent a racy getspeed. Cannot hold tegra_cpu_lock here.
@@ -718,7 +721,10 @@ int tegra_update_cpu_speed(unsigned long rate)
 	int ret = 0;
 	struct cpufreq_freqs freqs;
 	struct cpufreq_freqs actual_freqs;
-	unsigned int mode, mode_limit = cpu_reg_mode_predict_idle_limit();
+	unsigned int mode, mode_limit;
+
+	if (!cpu_clk)
+		return -EINVAL;
 
 	freqs.old = tegra_getspeed(0);
 	actual_freqs.new = rate;
@@ -731,6 +737,7 @@ int tegra_update_cpu_speed(unsigned long rate)
 	if (!IS_ERR_VALUE(rate))
 		actual_freqs.new = rate / 1000;
 
+	mode_limit = cpu_reg_mode_predict_idle_limit();
 	mode = REGULATOR_MODE_NORMAL;
 	if (mode_limit && (mode_limit < actual_freqs.new ||
 	    reg_mode_force_normal)) {
@@ -1169,6 +1176,9 @@ int tegra_cpu_set_speed_cap_locked(unsigned int *speed_cap)
 
 	if (is_suspended)
 		return -EBUSY;
+
+	if (!cpu_clk)
+		return -EINVAL;
 
 	/* Caps based on virtual G-cpu freq */
 	new_speed = tegra_throttle_governor_speed(new_speed);
