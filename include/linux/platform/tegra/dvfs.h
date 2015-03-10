@@ -365,6 +365,7 @@ bool tegra_dvfs_is_dfll_scale(struct dvfs *d, unsigned long rate);
 bool tegra_dvfs_is_dfll_range(struct dvfs *d, unsigned long rate);
 int tegra_dvfs_swap_dfll_range(struct dvfs *d, int range, int *old_range);
 int tegra_dvfs_set_dfll_range(struct dvfs *d, int range);
+int tegra_dvfs_rail_set_reg_volatile(struct dvfs_rail *rail, bool set);
 
 struct tegra_cooling_device *tegra_dvfs_get_cpu_vmax_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_cpu_vmin_cdev(void);

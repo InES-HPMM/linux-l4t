@@ -8987,6 +8987,8 @@ static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 		use_dfll = DFLL_RANGE_ALL_RATES;
 		c->state = ON;
 		tegra_dvfs_set_dfll_range(cpu->dvfs, use_dfll);
+		/* Set regulator acces mode as volatile */
+		tegra_dvfs_rail_set_reg_volatile(tegra_cpu_rail, true);
 		if (!ret)
 			tegra_cl_dvfs_debug_init(c);
 		pr_info("Tegra CPU DFLL from Boot loader with use_dfll = %d\n",

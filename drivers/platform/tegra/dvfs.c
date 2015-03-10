@@ -2292,6 +2292,13 @@ int __init of_tegra_dvfs_rail_get_cdev_trips(
 }
 #endif
 
+int tegra_dvfs_rail_set_reg_volatile(struct dvfs_rail *rail, bool set)
+{
+	if (rail->reg)
+		return regulator_set_vsel_volatile(rail->reg, set);
+	return 0;
+}
+
 int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate)
 {
 	mutex_lock(&dvfs_lock);
@@ -2303,18 +2310,9 @@ int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate)
 		 * Report error, but continue: DFLL is functional, anyway, and
 		 * no error with proper regulator driver update
 		 */
-#ifndef CONFIG_TEGRA_DVFS_RAIL_CONNECT_ALL
-/*
- * When dvfs connection to regulator is not guaranteed,
- * virtualization environment Guest use case.
- */
-		if (d->dvfs_rail->reg)
-#endif
-			if (regulator_set_vsel_volatile(d->dvfs_rail->reg,
-							true))
-				WARN_ONCE(1,
-					"%s: failed to set vsel volatile\n",
-					__func__);
+		if (tegra_dvfs_rail_set_reg_volatile(d->dvfs_rail, true))
+			WARN_ONCE(1, "%s: failed to set vsel volatile\n",
+					 __func__);
 	}
 	mutex_unlock(&dvfs_lock);
 	return 0;
@@ -2337,14 +2335,8 @@ int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate)
 	mutex_lock(&dvfs_lock);
 	if (d->dvfs_rail->dfll_mode) {
 		d->dvfs_rail->dfll_mode = false;
-#ifndef CONFIG_TEGRA_DVFS_RAIL_CONNECT_ALL
-/*
- * When dvfs connection to regulator is not guaranteed,
- * virtualization environment Guest use case.
- */
-		if (d->dvfs_rail->reg)
-#endif
-			regulator_set_vsel_volatile(d->dvfs_rail->reg, false);
+
+		tegra_dvfs_rail_set_reg_volatile(d->dvfs_rail, false);
 
 		/*
 		 * avoid false detection of matching target (voltage in
