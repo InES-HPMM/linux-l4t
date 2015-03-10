@@ -26,11 +26,10 @@
  * corresponding dts
  */
 #include "tegra124-vcm30_t124.dtsi"
-#include <tegra124-platforms/tegra124-p1859-gpio-default.dtsi>
-#include <tegra124-platforms/tegra124-p1859-pinmux.dtsi>
 #include <panel-a-edp-1080p-14-0.dtsi>
 #include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
 #include <tegra124-platforms/tegra124-pmic-vcm30t124-max20024.dtsi>
+#include <dt-bindings/pinctrl/pinctrl-tegra.h>
 
 / {
 	#address-cells = <2>;
@@ -452,5 +451,43 @@
 		csi-port = <2>;
 		/* default-power-on; */
 		status = "okay";
+	};
+
+	pinmux@70000868 {
+		sdmmc1_hs_mode: sdmmc1_hs_mode_drive {
+			drive_sdio1 {
+				nvidia,pins = "drive_sdio1";
+				nvidia,high-speed-mode = <TEGRA_PIN_ENABLE>;
+				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+				nvidia,pull-down-strength = <32>;
+				nvidia,pull-up-strength = <42>;
+				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_SLOWEST>;
+				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_SLOWEST>;
+			};
+		};
+
+		sdmmc1_uhs_sdr50_mode: sdmmc1_uhs_sdr50_mode_drive {
+			drive_sdio1 {
+				nvidia,pins = "drive_sdio1";
+				nvidia,high-speed-mode = <TEGRA_PIN_ENABLE>;
+				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+				nvidia,pull-down-strength = <40>;
+				nvidia,pull-up-strength = <51>;
+				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_SLOWEST>;
+				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_SLOWEST>;
+			};
+		};
+
+		sdmmc1_uhs_sdr104_mode: sdmmc1_uhs_sdr104_mode_drive {
+			drive_sdio1 {
+				nvidia,pins = "drive_sdio1";
+				nvidia,high-speed-mode = <TEGRA_PIN_ENABLE>;
+				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+				nvidia,pull-down-strength = <40>;
+				nvidia,pull-up-strength = <51>;
+				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_SLOWEST>;
+				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_SLOWEST>;
+			};
+		};
 	};
 };

@@ -27,8 +27,6 @@
  */
 
 #include "tegra124-vcm30_t124.dtsi"
-#include <tegra124-platforms/tegra124-p1889-gpio-default.dtsi>
-#include <tegra124-platforms/tegra124-p1889-pinmux.dtsi>
 #include <panel-a-edp-1080p-14-0.dtsi>
 #include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
 #include <dt-bindings/gpio/tmpm32x-gpio.h>
