@@ -178,6 +178,19 @@
 				gpio-output-high = <4 5>;
 			};
 		};
+		a3g4250d_68: a3g4250d@68 {
+			compatible = "stm,a3g4250d";
+			reg = <0x68>;
+		};
+		ais328dq_18: a3g4250d@18 {
+			compatible = "stm,ais328dq";
+			reg = <0x18>;
+		};
+		bmp280_76: bmp280@76 {
+			compatible = "bmp,bmp280";
+			nvi_config = "host";
+			reg = <0x76>;
+		};
 	};
 
 	modem {
