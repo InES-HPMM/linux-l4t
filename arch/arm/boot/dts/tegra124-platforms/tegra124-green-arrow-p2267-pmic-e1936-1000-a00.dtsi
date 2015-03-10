@@ -14,6 +14,7 @@
  */
 
 #include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/mfd/palmas.h>
 
 / {
 	i2c@7000d000 {
@@ -150,7 +151,7 @@
 						regulator-max-microvolt = <1400000>;
 						regulator-always-on;
 						regulator-boot-on;
-						ti,roof-floor = <1>;
+						ti,roof-floor = <PALMAS_EXT_CONTROL_ENABLE1>;
 						ti,config-flags = <8>;
 					};
 
@@ -174,7 +175,7 @@
 						regulator-max-microvolt = <1400000>;
 						regulator-always-on;
 						regulator-boot-on;
-						ti,roof-floor = <3>;
+						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
 					};
 
 					palmas_smps8: smps8 {
@@ -207,7 +208,7 @@
 						regulator-name = "avid-pll";
 						regulator-always-on;
 						regulator-boot-on;
-						ti,roof-floor = <3>;
+						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
 					};
 
 					ldo2_reg: ldo2 {
