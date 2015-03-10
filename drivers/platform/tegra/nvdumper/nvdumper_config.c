@@ -332,3 +332,5 @@ const struct config_option nvdumper_config[] = {
 	(uint64_t)offsetof(struct worker, task)
 }
 };
+
+EXPORT_SYMBOL(nvdumper_config);
