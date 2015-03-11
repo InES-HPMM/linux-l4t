@@ -3,7 +3,7 @@
 *
 * adsp mailbox console driver
 *
-* Copyright (C) 2014, NVIDIA Corporation. All rights reserved.
+* Copyright (C) 2014 - 2015, NVIDIA Corporation. All rights reserved.
 *
 * This software is licensed under the terms of the GNU General Public
 * License version 2, as published by the Free Software Foundation, and
@@ -28,11 +28,15 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/tegra_nvadsp.h>
+#include <linux/platform_device.h>
 
 #include <asm/uaccess.h>
 
+#include "dev.h"
 #include "adsp_console_ioctl.h"
 #include "adsp_console_dbfs.h"
+
+#define USE_RUN_APP_API
 
 static int open_cnt;
 
@@ -42,33 +46,44 @@ static int adsp_consol_open(struct inode *i, struct file *f)
 	int ret;
 	uint16_t snd_mbox_id = 30;
 	struct nvadsp_cnsl *console = i->i_private;
+	struct device *dev = console->dev;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
 
 	if (open_cnt)
 		return -EBUSY;
 	open_cnt++;
+	ret = 0;
+	f->private_data = console;
+	if (!drv_data->adsp_os_running)
+		goto exit_open;
 	ret = nvadsp_mbox_open(&console->shl_snd_mbox, &snd_mbox_id,
 		"adsp_send_cnsl", NULL, NULL);
-	if (ret)
-		pr_err("adsp_consol: Failed to init adsp_consol send mailbox");
-
-	f->private_data = console;
-
+	if (!ret)
+		goto exit_open;
+	pr_err("adsp_consol: Failed to init adsp_consol send mailbox");
+	memset(&console->shl_snd_mbox, 0, sizeof(struct nvadsp_mbox));
+	open_cnt--;
+exit_open:
 	return ret;
 }
 static int adsp_consol_close(struct inode *i, struct file *f)
 {
-	int ret;
+	int ret = 0;
 	struct nvadsp_cnsl *console = i->i_private;
 	struct nvadsp_mbox *mbox = &console->shl_snd_mbox;
+	struct device *dev = console->dev;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
 
 	open_cnt--;
-
+	if (!drv_data->adsp_os_running || (0 == mbox->id))
+		goto exit_close;
 	ret = nvadsp_mbox_close(mbox);
 	if (ret)
 		pr_err("adsp_consol: Failed to close adsp_consol send mailbox)");
-
 	memset(mbox, 0, sizeof(struct nvadsp_mbox));
-
+exit_close:
 	return ret;
 }
 static long
@@ -83,21 +98,50 @@ adsp_consol_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 	struct adsp_consol_run_app_arg_t app_args;
 	struct nvadsp_cnsl *console = f->private_data;
 	struct nvadsp_mbox *mbox;
-
+	struct device *dev = console->dev;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
 	void __user *uarg = (void __user *)arg;
 
 	if (_IOC_TYPE(cmd) != NV_ADSP_CONSOLE_MAGIC)
 		return -EFAULT;
 
+	if ((_IOC_NR(cmd) != _IOC_NR(ADSP_CNSL_LOAD)) &&
+		(!drv_data->adsp_os_running)) {
+		dev_info(dev, "adsp_consol: os not running.");
+		return -EPERM;
+	}
+
+	if ((_IOC_NR(cmd) != _IOC_NR(ADSP_CNSL_LOAD)) &&
+		(0 == console->shl_snd_mbox.id)) {
+		dev_info(dev, "adsp_consol: Mailboxes not open.");
+		return -EPERM;
+	}
+
 	switch (_IOC_NR(cmd)) {
 	case _IOC_NR(ADSP_CNSL_LOAD):
+		ret = 0;
+
+		if (drv_data->adsp_os_running)
+			break;
+		mbxid = 30;
+		mbox = &console->shl_snd_mbox;
 		ret = nvadsp_os_load();
-		if (ret)
-			pr_info("adsp_consol: Failed to load OS.");
-		else
-			ret = nvadsp_os_start();
-		if (ret)
-			pr_info("adsp_consol: Failed to start OS");
+		if (ret) {
+			dev_info(dev, "adsp_consol: Load OS Failed.");
+			break;
+		}
+		ret = nvadsp_os_start();
+		if (ret) {
+			dev_info(dev, "adsp_consol: Start OS Failed.");
+			break;
+		}
+		ret = nvadsp_mbox_open(mbox, &mbxid,
+			"adsp_send_cnsl", NULL, NULL);
+		if (!ret)
+			break;
+		pr_err("adsp_consol: Failed to init adsp_consol send mailbox");
+		memset(mbox, 0, sizeof(struct nvadsp_mbox));
 		break;
 	case _IOC_NR(ADSP_CNSL_RUN_APP):
 		if (!access_ok(0, uarg,
@@ -109,25 +153,49 @@ adsp_consol_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			ret = -EACCES;
 			break;
 		}
+#ifdef USE_RUN_APP_API
+		app_args.ctx2 = (uint64_t)nvadsp_run_app(NULL,
+			app_args.app_name,
+			(nvadsp_app_args_t *)&app_args.args[0],
+			NULL, 0, true);
+		if (!app_args.ctx2) {
+			dev_info(dev, "adsp_consol: unable to run %s\n",
+				app_args.app_name);
+			return -EINVAL;
+		}
+#else
 		app_args.ctx1 = (uint64_t)nvadsp_app_load(app_args.app_path,
 			app_args.app_name);
 		if (!app_args.ctx1) {
-			pr_info("adsp_consol: dynamic app load failed ++++\n");
-			return -1;
+			dev_info(dev,
+				"adsp_consol: dynamic app load failed %s\n",
+				app_args.app_name);
+			return -EINVAL;
 		}
-		pr_info("adsp_consol: calling nvadsp_app_init\n");
+
+		app_args.ctx1 = (uint64_t)nvadsp_app_load(app_args.app_path,
+			app_args.app_name);
+		if (!app_args.ctx1) {
+			dev_info(dev,
+				"adsp_consol: dynamic app load failed %s\n",
+				app_args.app_name);
+			return -EINVAL;
+		}
+		dev_info(dev, "adsp_consol: calling nvadsp_app_init\n");
 		app_args.ctx2 =
 			(uint64_t)nvadsp_app_init((void *)app_args.ctx1, NULL);
 		if (!app_args.ctx2) {
-			pr_info("adsp_consol: unable to initilize the app\n");
-			return -1;
+			dev_info(dev,
+				"adsp_consol: unable to initilize the app\n");
+			return -EINVAL;
 		}
-		pr_info("adsp_consol: calling nvadsp_app_start\n");
+		dev_info(dev, "adsp_consol: calling nvadsp_app_start\n");
 		ret = nvadsp_app_start((void *)app_args.ctx2);
 		if (ret) {
-			pr_info("adsp_consol: unable to start the app\n");
+			dev_info(dev, "adsp_consol: unable to start the app\n");
 			break;
 		}
+#endif
 		ret = copy_to_user((void __user *) arg, &app_args,
 			sizeof(struct adsp_consol_run_app_arg_t));
 		if (ret)
@@ -143,12 +211,20 @@ adsp_consol_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			ret = -EACCES;
 			break;
 		}
+#ifdef USE_RUN_APP_API
+		if (!app_args.ctx2) {
+			ret = -EACCES;
+			break;
+		}
+		nvadsp_exit_app((nvadsp_app_info_t *)app_args.ctx2, false);
+#else
 		if ((!app_args.ctx2) || (!app_args.ctx1)) {
 			ret = -EACCES;
 			break;
 		}
 		nvadsp_app_deinit((void *)app_args.ctx2);
 		nvadsp_app_unload((void *)app_args.ctx1);
+#endif
 		break;
 	case _IOC_NR(ADSP_CNSL_CLR_BUFFER):
 		break;
@@ -163,7 +239,7 @@ adsp_consol_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			break;
 		}
 		mid = (short *)(app_info->mem.shared);
-		pr_info("adsp_consol: open %x\n", *mid);
+		dev_info(dev, "adsp_consol: open %x\n", *mid);
 		mbxid = *mid;
 		ret = nvadsp_mbox_open(&console->app_mbox, &mbxid,
 			"app_mbox", NULL, NULL);
@@ -219,7 +295,7 @@ adsp_consol_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			NVADSP_MBOX_SMSG, 0, 0);
 		break;
 	default:
-		pr_info("adsp_consol: invalid command\n");
+		dev_info(dev, "adsp_consol: invalid command\n");
 		return -EINVAL;
 	}
 	return ret;
