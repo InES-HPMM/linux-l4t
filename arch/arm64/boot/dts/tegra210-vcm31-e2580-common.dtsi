@@ -615,7 +615,7 @@
 
 	adsp_audio {
 		compr-ops = <0>;
-		num-plugin = <2>;
+		num-plugin = <3>;
 		plugin-info-1 {
 			plugin-name = "reverb";
 			firmware-name = "libnvreverbfx.elf";
@@ -626,6 +626,12 @@
 			plugin-name = "wire";
 			firmware-name = "libnvwirefx.elf";
 			widget-name = "WIRE";
+		};
+		plugin-info-3 {
+			plugin-name = "aec";
+			firmware-name = "libnvaecfx.elf";
+			widget-name = "AEC";
+			param-type = <2>; /* SNDRV_CTL_ELEM_TYPE_INTEGER */
 		};
 	};
 
