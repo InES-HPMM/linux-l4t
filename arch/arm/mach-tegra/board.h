@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -227,6 +227,12 @@ enum audio_codec_type {
 enum image_type {
 	system_image = 0,
 	rck_image,
+};
+
+/* Usage Model */
+enum chip_personality {
+	normal = 0,
+	always_on,
 };
 
 void tegra_get_board_info(struct board_info *);

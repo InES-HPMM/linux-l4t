@@ -30,6 +30,7 @@
 
 #include "iomap.h"
 #include <linux/platform/tegra/common.h>
+#include "board.h"
 
 #define TEGRA124_CPU_SPEEDO 2271 /* FIXME: Get Correct Value */
 
@@ -92,6 +93,7 @@ static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
 static void rev_sku_to_speedo_ids(int rev, int sku)
 {
 	int can_boost = tegra_get_sku_override();
+	int chip_personality = tegra_get_chip_personality();
 
 	switch (sku) {
 	case 0x00: /* Engg sku */
@@ -111,6 +113,10 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 		soc_speedo_id = 0;
 		gpu_speedo_id = 1;
 		threshold_index = 0;
+		if (sku == 0x87 && chip_personality == always_on) {
+			cpu_speedo_id = 6;
+			gpu_speedo_id = 4;
+		}
 		break;
 	case 0x07:
 		if (can_boost) {
@@ -311,8 +317,12 @@ int tegra_cpu_speedo_mv(void)
 
 int tegra_core_speedo_mv(void)
 {
+	int chip_personality = tegra_get_chip_personality();
+
 	switch (soc_speedo_id) {
 	case 0:
+		if (chip_personality == always_on)
+			return 1010;
 		return 1150;
 	case 1:
 		return 1150;

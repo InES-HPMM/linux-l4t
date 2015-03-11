@@ -294,6 +294,7 @@ static int emc_max_dvfs;
 static unsigned int memory_type;
 static int usb_port_owner_info;
 static int lane_owner_info;
+static int chip_personality;
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
@@ -988,6 +989,21 @@ early_param("sku_override", tegra_sku_override);
 int tegra_get_sku_override(void)
 {
 	return sku_override;
+}
+
+static int __init tegra_chip_personality(char *id)
+{
+	char *p = id;
+
+	chip_personality = memparse(p, &p);
+
+	return 0;
+}
+early_param("chip_personality", tegra_chip_personality);
+
+int tegra_get_chip_personality(void)
+{
+	return chip_personality;
 }
 
 static int __init tegra_vpr_resize_arg(char *options)
