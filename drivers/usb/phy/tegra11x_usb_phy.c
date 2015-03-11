@@ -952,7 +952,11 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		writel(val, base + USB_SUSP_CTRL);
 	}
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	utmi_phy_pad_disable(phy->prod_list);
+#else
 	utmi_phy_pad_disable();
+#endif
 	utmi_phy_iddq_override(true);
 
 	phy->phy_clk_on = false;
@@ -1032,9 +1036,9 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 		writel(val, base + UTMIP_BAT_CHRG_CFG0);
 	}
 
-	utmi_phy_pad_enable();
 
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	utmi_phy_pad_enable(phy->prod_list);
 	if (phy->prod_list) {
 		val = tegra_prod_set_by_name(&base, "prod", phy->prod_list);
 		if (val < 0) {
@@ -1053,6 +1057,8 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 		val |= UTMIP_HSSQUELCH_LEVEL_NEW(2);
 		writel(val, base + UTMIP_BIAS_CFG2);
 	}
+#else
+	utmi_phy_pad_enable();
 #endif
 
 	val = readl(base + UTMIP_XCVR_CFG0);

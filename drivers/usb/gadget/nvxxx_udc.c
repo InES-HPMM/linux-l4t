@@ -5400,14 +5400,7 @@ static void t210_program_ss_pad(struct nv_udc_s *nvudc, int port)
 	int err = 0;
 
 	if (!nvudc->prod_list)
-		nvudc->prod_list = tegra_prod_init(node);
-
-	if (IS_ERR(nvudc->prod_list)) {
-		msg_warn(nvudc->dev, "prod list init failed with error %d\n",
-			PTR_ERR(nvudc->prod_list));
-		nvudc->prod_list = NULL;
 		goto safesettings;
-	}
 
 	snprintf(prod_name, sizeof(prod_name), "prod_c_ss%d", port);
 	err = tegra_prod_set_by_name((void __iomem **)&nvudc->base_list,
@@ -5435,7 +5428,7 @@ safesettings:
 static int nvudc_plat_pad_deinit(struct nv_udc_s *nvudc)
 {
 	xusb_utmi_pad_deinit(0);
-	utmi_phy_pad_disable();
+	utmi_phy_pad_disable(nvudc->prod_list);
 	utmi_phy_iddq_override(true);
 
 	xusb_ss_pad_deinit(nvudc->ss_port);
@@ -5458,7 +5451,17 @@ static int nvudc_plat_pad_init(struct nv_udc_s *nvudc)
 
 	/* utmi pad init for pad 0 */
 	xusb_utmi_pad_init(0, PORT_CAP(0, PORT_CAP_OTG), false);
-	utmi_phy_pad_enable();
+
+	if (!nvudc->prod_list)
+		nvudc->prod_list = tegra_prod_init(pdev->dev.of_node);
+
+	if (IS_ERR(nvudc->prod_list)) {
+		msg_warn(nvudc->dev, "prod list init failed with error %d\n",
+			PTR_ERR(nvudc->prod_list));
+		nvudc->prod_list = NULL;
+	}
+
+	utmi_phy_pad_enable(nvudc->prod_list);
 	utmi_phy_iddq_override(false);
 
 	if ((nvudc->bdata.ss_portmap & 0xf) == 0x0)

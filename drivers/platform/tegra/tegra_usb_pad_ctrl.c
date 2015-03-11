@@ -493,45 +493,9 @@ out1:
 }
 EXPORT_SYMBOL_GPL(utmi_phy_iddq_override);
 
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 static void utmi_phy_pad(bool enable)
 {
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
-
-	if (tegra_platform_is_fpga())
-		return;
-
-	if (enable) {
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0,
-			BIAS_PAD_MASK, BIAS_PAD_XUSB);
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1,
-			TRK_START_TIMER_MASK, TRK_START_TIMER);
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1,
-			TRK_DONE_RESET_TIMER_MASK, TRK_DONE_RESET_TIMER);
-
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
-			HS_SQUELCH_LEVEL(~0), HS_SQUELCH_LEVEL(2));
-
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
-			HS_DISCON_LEVEL(~0), HS_DISCON_LEVEL(7));
-
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
-			PD_MASK, 0);
-
-		udelay(1);
-
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1,
-			PD_TRK_MASK, 0);
-
-		/* for tracking complete */
-		udelay(10);
-	} else {
-
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0,
-			BIAS_PAD_MASK, BIAS_PAD_XUSB);
-		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
-			PD_MASK, PD_MASK);
-	}
-#else
 	unsigned long val;
 	int port, xhci_port_present = 0;
 	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
@@ -574,7 +538,6 @@ static void utmi_phy_pad(bool enable)
 			, PD_MASK , PD_MASK);
 #endif
 	}
-#endif
 }
 
 int utmi_phy_pad_enable(void)
@@ -638,6 +601,128 @@ out:
 	return 0;
 }
 EXPORT_SYMBOL_GPL(utmi_phy_pad_disable);
+
+#else
+
+void utmi_phy_pad(struct tegra_prod_list *prod_list, bool enable)
+{
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	int val;
+
+	if (IS_ERR_OR_NULL(prod_list))
+		prod_list = NULL;
+
+	if (tegra_platform_is_fpga())
+		return;
+
+	if (enable) {
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0,
+			BIAS_PAD_MASK, BIAS_PAD_XUSB);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1,
+			TRK_START_TIMER_MASK, TRK_START_TIMER);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1,
+			TRK_DONE_RESET_TIMER_MASK, TRK_DONE_RESET_TIMER);
+
+		if (prod_list) {
+			val = tegra_prod_set_by_name(&pad_base, "prod_c_bias",
+							prod_list);
+			if (val < 0) {
+				pr_err("%s(), failed with err:%d\n",
+							__func__, val);
+				goto safe_settings;
+			}
+		} else {
+safe_settings:
+			tegra_usb_pad_reg_update(
+				XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
+				HS_SQUELCH_LEVEL(~0), HS_SQUELCH_LEVEL(2));
+
+			tegra_usb_pad_reg_update(
+				XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
+				HS_DISCON_LEVEL(~0), HS_DISCON_LEVEL(7));
+		}
+
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
+			PD_MASK, 0);
+
+		udelay(1);
+
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_1,
+			PD_TRK_MASK, 0);
+
+		/* for tracking complete */
+		udelay(10);
+	} else {
+
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_PAD_MUX_0,
+			BIAS_PAD_MASK, BIAS_PAD_XUSB);
+		tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_BIAS_PAD_CTL_0,
+			PD_MASK, PD_MASK);
+	}
+}
+
+int utmi_phy_pad_enable(struct tegra_prod_list *prod_list)
+{
+	unsigned long flags;
+	static struct clk *usb2_trk;
+
+	if (!usb2_trk)
+		usb2_trk = clk_get_sys(NULL, "usb2_trk");
+
+	if (!utmi_pad_clk)
+		utmi_pad_clk = clk_get_sys("utmip-pad", NULL);
+
+	clk_enable(utmi_pad_clk);
+	if (!IS_ERR_OR_NULL(usb2_trk))
+		clk_enable(usb2_trk);
+
+	spin_lock_irqsave(&utmip_pad_lock, flags);
+	utmip_pad_count++;
+
+	utmi_phy_pad(prod_list, true);
+
+	spin_unlock_irqrestore(&utmip_pad_lock, flags);
+
+	clk_disable(utmi_pad_clk);
+	if (!IS_ERR_OR_NULL(usb2_trk))
+		clk_disable(usb2_trk);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(utmi_phy_pad_enable);
+
+int utmi_phy_pad_disable(struct tegra_prod_list *prod_list)
+{
+	unsigned long flags;
+	static struct clk *usb2_trk;
+
+	if (!usb2_trk)
+		usb2_trk = clk_get_sys(NULL, "usb2_trk");
+
+	if (!utmi_pad_clk)
+		utmi_pad_clk = clk_get_sys("utmip-pad", NULL);
+
+	clk_enable(utmi_pad_clk);
+	if (!IS_ERR_OR_NULL(usb2_trk))
+		clk_enable(usb2_trk);
+	spin_lock_irqsave(&utmip_pad_lock, flags);
+
+	if (!utmip_pad_count) {
+		pr_err("%s: utmip pad already powered off\n", __func__);
+		goto out;
+	}
+	if (--utmip_pad_count == 0)
+		utmi_phy_pad(prod_list, false);
+out:
+	spin_unlock_irqrestore(&utmip_pad_lock, flags);
+	clk_disable(utmi_pad_clk);
+	if (!IS_ERR_OR_NULL(usb2_trk))
+		clk_disable(usb2_trk);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(utmi_phy_pad_disable);
+#endif
 
 int hsic_trk_enable(void)
 {

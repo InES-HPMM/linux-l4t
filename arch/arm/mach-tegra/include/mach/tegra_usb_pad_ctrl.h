@@ -16,6 +16,7 @@
 #define _TEGRA_USB_PAD_CTRL_INTERFACE_H_
 
 #include <mach/xusb.h>
+#include <linux/tegra_prod.h>
 
 #define UTMIPLL_HW_PWRDN_CFG0			0x52c
 #define   UTMIPLL_LOCK				(1<<31)
@@ -614,8 +615,13 @@ void tegra_xhci_hs_wake_on_interrupts(u32 portmap, bool enable);
 void tegra_xhci_ss_wake_signal(u32 portmap, bool enable);
 void tegra_xhci_ss_vcore(u32 portmap, bool enable);
 
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 int utmi_phy_pad_disable(void);
 int utmi_phy_pad_enable(void);
+#else
+int utmi_phy_pad_disable(struct tegra_prod_list *prod_list);
+int utmi_phy_pad_enable(struct tegra_prod_list *prod_list);
+#endif
 int usb3_phy_pad_enable(u32 lane_owner);
 int pcie_phy_pad_enable(bool enable, int lane_owner);
 
