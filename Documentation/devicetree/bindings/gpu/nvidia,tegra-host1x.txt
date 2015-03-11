@@ -10,6 +10,8 @@ Required properties:
   range in the host1x address space. Should be 1.
 - ranges: The mapping of the host1x address space to the CPU address space.
 - nvidia,memory-clients: memory client ID of the controller.
+- nvidia,ch-base: channel base ID of the controller
+- nvidia,nb-channels: number of channels of the controller
 
 The host1x top-level node defines a number of children, each representing one
 of the following host1x client modules:
@@ -144,6 +146,9 @@ Example:
 		#size-cells = <1>;
 
 		ranges = <0x54000000 0x54000000 0x04000000>;
+
+		nvidia,ch-base = <0>;
+		nvidia,nb-channels = <12>;
 
 		mpe {
 			compatible = "nvidia,tegra20-mpe";
