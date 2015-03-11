@@ -585,6 +585,7 @@ static int max8973_thermal_init(struct max8973_chip *mchip)
 			mchip->irq, ret);
 		goto fail;
 	}
+	return 0;
 
 fail:
 	thermal_zone_of_sensor_unregister(mchip->dev, mchip->tz_device);
