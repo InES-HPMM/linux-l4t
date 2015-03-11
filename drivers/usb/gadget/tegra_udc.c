@@ -2978,6 +2978,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 	struct tegra_udc_soc_data *soc_data;
 	struct tegra_usb_dev_mode_data *dev_pdata;
+	unsigned char xcvr_setup_offset;
 
 	int err = -ENODEV;
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
@@ -3052,6 +3053,13 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		pdata->phy_intf = soc_data->phy_intf;
 		pdata->op_mode = soc_data->op_mode;
 		pdata->u_cfg.utmi = soc_data->utmi;
+
+		/* Note:  setup_offset is actually a signed char value*/
+		if (!of_property_read_u8(pdev->dev.of_node,
+				"nvidia,xcvr-setup-offset",
+				&xcvr_setup_offset))
+			pdata->u_cfg.utmi.xcvr_setup_offset =
+				(signed char)xcvr_setup_offset;
 
 		dev_pdata = dev_get_platdata(&pdev->dev);
 		if (dev_pdata)
