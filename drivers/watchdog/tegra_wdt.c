@@ -25,6 +25,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/fs.h>
+#include <linux/debugfs.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
@@ -176,6 +177,68 @@ static const struct watchdog_ops tegra_wdt_ops = {
 	.set_timeout = tegra_wdt_set_timeout,
 };
 
+#ifdef CONFIG_DEBUG_FS
+
+static int disable_wdt_reset_show(void *data, u64 *val)
+{
+	struct tegra_wdt *tegra_wdt = data;
+
+	*val = readl(tegra_wdt->wdt_source + WDT_CFG) &
+			(WDT_CFG_SYS_RST_EN | WDT_CFG_PMC2CAR_RST_EN)
+			? 0 : 1;
+	return 0;
+}
+
+static int disable_wdt_reset_store(void *data, u64 val)
+{
+	struct tegra_wdt *tegra_wdt = data;
+	u32 cfg;
+
+	cfg = readl(tegra_wdt->wdt_source + WDT_CFG);
+	if (val)
+		cfg &= ~(WDT_CFG_SYS_RST_EN | WDT_CFG_PMC2CAR_RST_EN);
+	else
+		cfg |= WDT_CFG_PMC2CAR_RST_EN;
+
+	writel(WDT_UNLOCK_PATTERN, tegra_wdt->wdt_source + WDT_UNLOCK);
+	writel(WDT_CMD_DISABLE_COUNTER, tegra_wdt->wdt_source + WDT_CMD);
+
+	writel(TIMER_PCR_INTR, tegra_wdt->wdt_timer + TIMER_PCR);
+
+	writel(cfg, tegra_wdt->wdt_source + WDT_CFG);
+	writel(WDT_CMD_START_COUNTER, tegra_wdt->wdt_source + WDT_CMD);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(disable_wdt_reset_fops, disable_wdt_reset_show,
+	disable_wdt_reset_store, "%lld\n");
+
+static void tegra_wdt_debugfs_init(struct tegra_wdt *tegra_wdt)
+{
+	struct dentry *root;
+	struct dentry *retval;
+
+	root = debugfs_create_dir("tegra_wdt", NULL);
+	if (IS_ERR_OR_NULL(root))
+		goto clean;
+
+	retval = debugfs_create_file("disable_wdt_reset", S_IRUGO | S_IWUSR,
+				root, (void *)tegra_wdt, &disable_wdt_reset_fops);
+	if (IS_ERR_OR_NULL(retval))
+		goto clean;
+
+	return;
+clean:
+	pr_warn("tegra_wdt: Failed to create debugfs!\n");
+	if (root)
+		debugfs_remove_recursive(root);
+}
+
+#else /* !CONFIG_DEBUG_FS */
+static inline void tegra_wdt_debugfs_init(struct tegra_wdt* tegra_wdt) { };
+#endif /* CONFIG_DEBUG_FS */
+
 static int tegra_wdt_probe(struct platform_device *pdev)
 {
 	struct resource *res_src, *res_wdt;
@@ -255,6 +318,8 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, tegra_wdt);
+
+	tegra_wdt_debugfs_init(tegra_wdt);
 
 	dev_info(&pdev->dev, "%s done\n", __func__);
 	return 0;
