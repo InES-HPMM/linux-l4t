@@ -570,7 +570,14 @@ static void es755_shutdown(struct snd_pcm_substream *substream,
 static int es755_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	struct snd_soc_codec *codec = dai->codec;
+	struct escore_priv *escore = snd_soc_codec_get_drvdata(codec);
+	struct escore_api_access *api_access;
+	int data_justification;
 	int id = DAI_INDEX(dai->id);
+	u8 pcm_port[] = { ES755_PCM_PORT_A,
+		ES755_PCM_PORT_B,
+		ES755_PCM_PORT_C };
+	int rc;
 
 	dev_dbg(codec->dev, "%s(): dai->name = %s, dai->id = %d, fmt = %x\n",
 		__func__, dai->name, dai->id, fmt);
@@ -609,6 +616,7 @@ static int es755_hw_params(struct snd_pcm_substream *substream,
 	int bps = 0;
 	int rate = 0;
 	int id = DAI_INDEX(dai->id);
+	int port_map = 0;
 	u16 clock_control = 0;
 	u8 pcm_port[] = { ES755_PCM_PORT_A,
 		ES755_PCM_PORT_B,
@@ -752,25 +760,22 @@ static int es755_hw_params(struct snd_pcm_substream *substream,
 	 */
 	escore->can_mpsleep = (rate == 48) && (bps == 0x1F) && (channels == 2);
 
-	if (escore->can_mpsleep) {
-		int port_map = 0;
-		switch (dai->id) {
-		case ES_I2S_PORTA:
-			port_map = PORT_A_TO_D;
-			break;
-		case ES_I2S_PORTB:
-			port_map = PORT_B_TO_D;
-			break;
-		case ES_I2S_PORTC:
-			port_map = PORT_C_TO_D;
-			break;
-		}
-		BUG_ON(!port_map);
-		escore->dhwpt_cmd = (ES_DHWPT_CMD << 16) | port_map;
-	} else {
-		/* Clear the DHWPT command */
-		escore->dhwpt_cmd = 0;
+	switch (dai->id) {
+	case ES_I2S_PORTA:
+		port_map = PORT_A_TO_D;
+		break;
+	case ES_I2S_PORTB:
+		port_map = PORT_B_TO_D;
+		break;
+	case ES_I2S_PORTC:
+		port_map = PORT_C_TO_D;
+		break;
 	}
+
+	if (escore->can_mpsleep || escore->algo_type == DHWPT)
+		escore->dhwpt_cmd = (ES_DHWPT_CMD << 16) | port_map;
+	else
+		escore->dhwpt_cmd = 0;
 
 	dev_dbg(codec->dev, "%s(): params_channels(params) = %d\n", __func__,
 		channels);

@@ -73,6 +73,7 @@ enum {
 };
 #endif
 /* MUX info structure for each base route */
+extern struct es_mux_info es_dhwpt_mux_info;
 extern struct es_mux_info es_pt_vp_mux_info;
 extern struct es_mux_info es_vp_mux_info;
 

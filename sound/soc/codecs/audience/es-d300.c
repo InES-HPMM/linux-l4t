@@ -212,6 +212,7 @@ static const u32 es_base_route_preset[ALGO_MAX] = {
 	[MM] = 0x90311772,
 	[PASSTHRU] = 0x9031177D,
 #endif
+	[DHWPT] = 0x9031178F,
 };
 
 static const struct es_ch_mgr_max es_chn_mgr_max[ALGO_MAX] = {
@@ -229,6 +230,10 @@ static const struct es_ch_mgr_max es_chn_mgr_max[ALGO_MAX] = {
 	},
 	[PASSTHRU_VP] = {
 		.tx = PT_VP_TXCHMGR_MAX,
+	},
+	[DHWPT] = {
+		.rx = DHWPT_RXCHMGR_MAX,
+		.tx = DHWPT_TXCHMGR_MAX,
 	},
 };
 
@@ -440,6 +445,19 @@ static int convert_input_mux_to_cmd(struct escore_priv *escore, int reg)
 		update_chmgr_mask = 0;
 		break;
 
+	case DHWPT:
+		/* Unused channel managers in base route 6031 */
+		chn_mgr_mask[escore->algo_type] |= BIT(RXCHMGR5);
+		prepare_mux_cmd(reg, msg, &msg_len,
+				&chn_mgr_mask[escore->algo_type],
+				&es_dhwpt_mux_info, CMD_INPUT);
+		if (reg != ES_PASSIN1_MUX && reg != ES_PASSIN2_MUX) {
+			msg[0] |= value;
+			update_chmgr_mask = 0;
+		} else {
+			goto done;
+		}
+		break;
 	case PASSTHRU_VP:
 		prepare_mux_cmd(reg, msg, &msg_len,
 				&chn_mgr_mask[escore->algo_type],
@@ -456,7 +474,7 @@ static int convert_input_mux_to_cmd(struct escore_priv *escore, int reg)
 
 	if (update_chmgr_mask)
 		chn_mgr_mask[escore->algo_type] |= 1 << ch_mgr;
-
+done:
 	return escore_queue_msg_to_list(escore, (char *)msg, msg_len);
 }
 
@@ -513,6 +531,21 @@ static int convert_output_mux_to_cmd(struct escore_priv *escore, int reg)
 		update_chmgr_mask = 0;
 		update_msgs = 0;
 		break;
+	case DHWPT:
+		prepare_mux_cmd(mux, msg, &msg_len,
+				&chn_mgr_mask[escore->algo_type],
+				&es_dhwpt_mux_info, CMD_OUTPUT);
+		for (i = 0; i < ARRAY_SIZE(es_out_mux_map); i++) {
+			if (es_out_mux_map[i].mux_id == reg) {
+				if (mux != PASS_AUDOUT1 && mux != PASS_AUDOUT2)
+					msg[0] |= es_out_mux_map[i].port_desc;
+				else
+					goto done;
+			}
+		}
+		update_chmgr_mask = 0;
+		update_msgs = 0;
+		break;
 	}
 
 	port = (msg[0] >> 9) & 0x1f;
@@ -527,7 +560,7 @@ static int convert_output_mux_to_cmd(struct escore_priv *escore, int reg)
 
 	if (update_chmgr_mask)
 		chn_mgr_mask[escore->algo_type] |= 1 << ch_mgr;
-
+done:
 	return escore_queue_msg_to_list(escore, (char *)msg, msg_len);
 }
 
@@ -572,6 +605,11 @@ static int add_algo_base_route(struct escore_priv *escore)
 	escore->current_preset =  msg & 0xFFFF;
 	rc = escore_queue_msg_to_list(escore, (char *)&msg, sizeof(msg));
 
+	if (!rc && escore->algo_type == DHWPT) {
+		msg = escore->dhwpt_cmd;
+		rc = escore_queue_msg_to_list(escore,
+				(char *)&msg, sizeof(msg));
+	}
 	/* Configure command completion mode */
 	if (escore->cmd_compl_mode == ES_CMD_COMP_INTR) {
 		cmd |= escore->pdata->gpio_a_irq_type;
@@ -716,7 +754,8 @@ static int es_set_final_route(struct escore_priv *escore)
 	escore->capture_mode = 0;
 	escore->output_mode = 0;
 	for (i = ES_DAC0_0_MUX; i <= ES_SBUSTX5_MUX; i++) {
-		if (escore->algo_type == PASSTHRU_VP) {
+		if (escore->algo_type == PASSTHRU_VP
+				|| escore->algo_type == DHWPT) {
 			int mux = cachedcmd_list[escore->algo_type][i].reg;
 			switch (mux) {
 			case PASS_AO1:
@@ -760,7 +799,7 @@ static int es_set_final_route(struct escore_priv *escore)
 			sizeof(prev_cmdlist));
 
 	/* Do necessary switch settings */
-	if (escore->algo_type == PASSTHRU_VP) {
+	if (escore->algo_type == PASSTHRU_VP || escore->algo_type == DHWPT) {
 		int pri, fein;
 
 		pri = cachedcmd_list[escore->algo_type][ES_PRIMARY_MUX].reg;
@@ -1356,6 +1395,9 @@ static int es300_put_algo_state(struct snd_kcontrol *kcontrol,
 	case ES_ALGORITHM_AZ:
 		algo_type = AUDIOZOOM;
 		break;
+	case ES_ALGORITHM_DHWPT:
+		algo_type = DHWPT;
+		break;
 	default:
 		pr_err("%s(): Algo type not implemented: %d\n", __func__, reg);
 		ret = -EINVAL;
@@ -1947,6 +1989,10 @@ static const struct soc_enum az_algorithm_enum =
 	SOC_ENUM_SINGLE(ES_ALGORITHM_AZ, 0,
 			ARRAY_SIZE(algorithm_texts),
 			algorithm_texts);
+static const struct soc_enum dhwpt_algorithm_enum =
+	SOC_ENUM_SINGLE(ES_ALGORITHM_DHWPT, 0,
+			ARRAY_SIZE(algorithm_texts),
+			algorithm_texts);
 
 static const char * const es755_algo_rates_text[] = {
 	"None", "SR_8k", "SR_16k", "SR_24k", "SR_48k", "SR_96k", "SR_192k",
@@ -2028,6 +2074,8 @@ static const struct snd_kcontrol_new es_d300_snd_controls[] = {
 	SOC_ENUM_EXT("PT Algorithm", pass_algorithm_enum,
 			 es300_get_algo_state, es300_put_algo_state),
 	SOC_ENUM_EXT("AZ Algorithm", az_algorithm_enum,
+			 es300_get_algo_state, es300_put_algo_state),
+	SOC_ENUM_EXT("DHWPT Algorithm", dhwpt_algorithm_enum,
 			 es300_get_algo_state, es300_put_algo_state),
 
 	SOC_ENUM_EXT("Algorithm Rate", algorithm_rate_enum,
