@@ -330,7 +330,8 @@ static void ardbeg_audio_init(void)
 
 		if (board_info.board_id == BOARD_E1762 ||
 			board_info.board_id == BOARD_P1761 ||
-			board_info.board_id == BOARD_E1922) {
+			board_info.board_id == BOARD_E1922 ||
+			of_machine_is_compatible("nvidia,green-arrow")) {
 			ardbeg_audio_pdata_rt5639.gpio_hp_det =
 				TEGRA_GPIO_CDC_IRQ;
 			ardbeg_audio_pdata_rt5639.use_codec_jd_irq = true;
@@ -532,7 +533,8 @@ static void ardbeg_usb_init(void)
 	tegra_get_pmu_board_info(&bi);
 
 	/* ST8 is supported through DT, return */
-	if (board_info.board_id == BOARD_P1761)
+	if (board_info.board_id == BOARD_P1761 ||
+			of_machine_is_compatible("nvidia,green-arrow"))
 		return;
 
 #if !defined(CONFIG_ARM64)
@@ -1062,7 +1064,8 @@ static int __init ardbeg_touch_init(void)
 					&rm31080ts_t132loki_data,
 					&rm31080a_ardbeg_spi_board[0],
 					ARRAY_SIZE(rm31080a_ardbeg_spi_board));
-		} else if (board_info.board_id == BOARD_P1761) {
+		} else if (board_info.board_id == BOARD_P1761 ||
+			of_machine_is_compatible("nvidia,green-arrow")) {
 			rm31080a_tn8_spi_board[0].irq =
 				gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 			touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,

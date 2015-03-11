@@ -1737,6 +1737,7 @@ int __init ardbeg_sensors_init(void)
 	if (board_info.board_id != BOARD_PM363 &&
 		board_info.board_id != BOARD_PM359 &&
 		!of_machine_is_compatible("nvidia,tn8") &&
+		!of_machine_is_compatible("nvidia,green-arrow") &&
 		!of_machine_is_compatible("nvidia,bowmore") &&
 		!of_machine_is_compatible("nvidia,e2141") &&
 		board_info.board_id != BOARD_PM375)
@@ -1747,7 +1748,8 @@ int __init ardbeg_sensors_init(void)
 		board_info.board_id == BOARD_E1784 ||
 		board_info.board_id == BOARD_E1971 ||
 		board_info.board_id == BOARD_E1991 ||
-		board_info.board_id == BOARD_E1922) {
+		board_info.board_id == BOARD_E1922 ||
+		of_machine_is_compatible("nvidia,green-arrow")) {
 		/* Sensor is on DT */
 		pr_err("Temp sensor are from DT\n");
 	} else
@@ -1756,8 +1758,9 @@ int __init ardbeg_sensors_init(void)
 #if defined(ARCH_TEGRA_12x_SOC)
 	/* TN8 and PM359 don't have ALS CM32181 */
 	if (!of_machine_is_compatible("nvidia,tn8") &&
-	    board_info.board_id != BOARD_PM359 &&
-	    board_info.board_id != BOARD_PM375)
+		!of_machine_is_compatible("nvidia,green-arrow") &&
+		board_info.board_id != BOARD_PM359 &&
+		board_info.board_id != BOARD_PM375)
 		i2c_register_board_info(0, ardbeg_i2c_board_info_cm32181,
 			ARRAY_SIZE(ardbeg_i2c_board_info_cm32181));
 #endif
