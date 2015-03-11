@@ -155,6 +155,11 @@ static struct i2c_board_info __initdata ad1937_board_info = {
 	I2C_BOARD_INFO("ad1937", 0x07),
 };
 
+static struct i2c_board_info __initdata tc358791xbg_board_info = {
+	I2C_BOARD_INFO("tc358791xbg", 0x68),
+};
+
+
 /* Display panel/HDMI */
 static int p1859_dev_dummy(struct device *dev)
 {
@@ -222,6 +227,7 @@ static void __init p1859_i2c_init(void)
 	i2c_register_board_info(0, &ak4618_board_info, 1);
 	i2c_register_board_info(0, &wm8731_board_info, 1);
 	i2c_register_board_info(0, &ad1937_board_info, 1);
+	i2c_register_board_info(0, &tc358791xbg_board_info, 1);
 }
 
 static struct platform_device *p1859_devices[] __initdata = {
