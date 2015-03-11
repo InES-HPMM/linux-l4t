@@ -198,7 +198,6 @@
 		vmmc-supply = <&vmmc_dummy>;
 		disable-clock-gate;
 		nvidia,disable-auto-cal;
-		nvidia,update-pinctrl-settings;
 		/* clock freq based on mode */
 		fixed-clock-freq = <25500000 24000000 24000000 47000000 24000000 47000000 94000000 204000000 0 0 0>;
 		status = "disabled";
@@ -257,7 +256,6 @@
 		calib-1v8-offsets = <0x710A>;
 		auto-cal-step = <0x7>;
 		status = "disabled";
-		nvidia,update-pinctrl-settings;
 		/* clock freq based on mode */
 		fixed-clock-freq = <25500000 24000000 24000000 47000000 24000000 47000000 94000000 204000000 0 0 0>;
 		nvidia,enable-ext-loopback;
