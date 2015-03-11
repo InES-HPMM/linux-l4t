@@ -4412,7 +4412,7 @@ static int tegra12_use_dfll_cb(const char *arg, const struct kernel_param *kp)
 {
 	int ret = 0;
 	unsigned int old_use_dfll;
-	if (CONFIG_TEGRA_USE_DFLL_RANGE != TEGRA_USE_DFLL_CDEV_CNTRL) {
+	if (tegra_override_dfll_range != TEGRA_USE_DFLL_CDEV_CNTRL) {
 		old_use_dfll = use_dfll;
 		param_set_int(arg, kp);
 		ret =  tegra_clk_dfll_range_control(use_dfll);
@@ -8999,7 +8999,7 @@ static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 	if (!ret) {
 		c->state = OFF;
 		if (tegra_platform_is_silicon()) {
-			if (CONFIG_TEGRA_USE_DFLL_RANGE !=
+			if (tegra_override_dfll_range !=
 					TEGRA_USE_DFLL_CDEV_CNTRL)
 				use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
 #ifdef CONFIG_ARCH_TEGRA_13x_SOC

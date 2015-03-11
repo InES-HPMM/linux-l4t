@@ -142,6 +142,17 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 		gpu_speedo_id = 3;
 		threshold_index = 1;
 		break;
+	case 0x80:
+		cpu_speedo_id = 8;
+		soc_speedo_id = 4;
+		gpu_speedo_id = 6;
+		if (chip_personality == always_on) {
+			cpu_speedo_id = 7;
+			soc_speedo_id = 3;
+			gpu_speedo_id = 5;
+		}
+		threshold_index = 0;
+		break;
 	default:
 		pr_warn("Tegra12: Unknown SKU %d\n", sku);
 		cpu_speedo_id = 0;
@@ -328,6 +339,10 @@ int tegra_core_speedo_mv(void)
 		return 1150;
 	case 2:
 		return 1040;
+	case 3:
+		return 1000;
+	case 4:
+		return 1100;
 	default:
 		BUG();
 	}

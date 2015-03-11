@@ -153,6 +153,8 @@ enum dfll_range {
 /* DFLL usage is under thermal cooling device control */
 #define TEGRA_USE_DFLL_CDEV_CNTRL 3
 
+extern int tegra_override_dfll_range;
+
 /* DVFS settings specific for DFLL clock source */
 struct dvfs_dfll_data {
 	u32		tune0;

@@ -93,6 +93,7 @@
 				    regulator-max-microvolt = <1350000>;
 				    regulator-min-microamp = <3500000>;
 				    regulator-max-microamp = <3500000>;
+				    regulator-init-microvolt = <1000000>;
 				    regulator-always-on;
 				    regulator-boot-on;
 				    ams,ext-control = <AS3722_EXT_CONTROL_ENABLE1>;
