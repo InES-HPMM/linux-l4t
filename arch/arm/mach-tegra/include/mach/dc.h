@@ -591,51 +591,51 @@ enum {
 #define dcc_bus ddc_bus
 
 struct tegra_vrr {
-	bool    capability;
-	bool    enable;
-	bool    lastenable;
-	bool    flip;
-	int     pclk;
-	int     vrr_min_fps;
-	int     vrr_max_fps;
-	int     v_front_porch_max;
-	int     v_front_porch_min;
-	int     vfp_extend;
-	int     vfp_shrink;
-	int     v_front_porch;
-	int     v_back_porch;
+	s32	capability;
+	s32	enable;
+	s32	lastenable;
+	s32	flip;
+	s32	pclk;
+	s32	vrr_min_fps;
+	s32	vrr_max_fps;
+	s32	v_front_porch_max;
+	s32	v_front_porch_min;
+	s32	vfp_extend;
+	s32	vfp_shrink;
+	s32	v_front_porch;
+	s32	v_back_porch;
 
-	s64     curr_flip_us;
-	s64     last_flip_us;
-	int     flip_count;
-	int     flip_interval_us;
-	int     frame_len_max;
-	int     frame_len_min;
-	int     frame_len_fluct;
-	int     line_width;
-	int     lines_per_frame_common;
+	s64	curr_flip_us;
+	s64	last_flip_us;
+	s32	flip_count;
+	s32	flip_interval_us;
+	s32	frame_len_max;
+	s32	frame_len_min;
+	s32	frame_len_fluct;
+	s32	line_width;
+	s32	lines_per_frame_common;
 
-	bool    frame_type;
-	int     frame_count;
-	int	v_count;
-	int	last_v_cnt;
-	int	curr_v_cnt;
+	s32	frame_type;
+	s32	frame_count;
+	s32	v_count;
+	s32	last_v_cnt;
+	s32	curr_v_cnt;
 	s64     last_frame_us;
 	s64     curr_frame_us;
 	s64     fe_time_us;
-	int     frame_delta_us;
-	int     frame_interval_us;
-	int     even_frame_us;
-	int     odd_frame_us;
+	s32	frame_delta_us;
+	s32	frame_interval_us;
+	s32	even_frame_us;
+	s32	odd_frame_us;
 
-	int	max_adj_pct;
-	int	max_flip_pct;
-	int	max_dc_balance;
-	int	max_inc_pct;
+	s32	max_adj_pct;
+	s32	max_flip_pct;
+	s32	max_dc_balance;
+	s32	max_inc_pct;
 
-	int	dc_balance;
-	int	frame_avg_pct;
-	int	fluct_avg_pct;
+	s32	dc_balance;
+	s32	frame_avg_pct;
+	s32	fluct_avg_pct;
 };
 
 struct tegra_dc_out {
