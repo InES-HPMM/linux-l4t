@@ -80,7 +80,7 @@
 					nvidia,phase-in-settings = <0>;
 					nvidia,phase-in-adjustments = <0>;
 					nvidia,k-limit-enable = <1>;
-					nvidia,k-limit = <255>;
+					nvidia,k-limit = <180>;
 					nvidia,sd-window-enable = <0>;
 					nvidia,soft-clipping-enable= <1>;
 					nvidia,soft-clipping-threshold = <128>;
