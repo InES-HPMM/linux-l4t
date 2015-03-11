@@ -170,6 +170,8 @@
 			gpio-controller;
 			#gpio-cells = <2>;
 			reg = <0x20>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(V, 0) 0x0>;
 			gpio-init-names = "default";
 			gpio-init-0 = <&tca6408_20_default>;
 			tca6408_20_default: default {
@@ -332,10 +334,26 @@
 	};
 
 	sdhci@700b0200 {
-		/* cd-gpios = <&tca6408_20 1 0>; */
-		/* wp-gpios = <&tca6408_20 2 0>; */
-		uhs-mask = <0x7c>;
-		pwr-off-during-lp0 = <1>;
+		/delete-property/ built-in;
+		/delete-property/ nvidia,disable-auto-cal;
+		cd-gpios = <&tca6408_20 1 0>;
+		wp-gpios = <&tca6408_20 2 0>;
+		uhs-mask = <0x7F>;
+		tap-delay = <0x5>;
+		trim-delay = <0x3>;
+		mmc-ocr-mask = <3>;
+		bus-width = <4>;
+		max-clk-limit = <50000000>;
+		pll_source = "pll_c", "pll_p";
+		vmmc-supply = <&vmmc_dummy>;
+		cd_wakeup_incapable = <1>;
+		calib-3v3-offsets = <0x710A>;
+		calib-1v8-offsets = <0x710A>;
+		auto-cal-step = <0x7>;
+		/* clock freq based on mode */
+		fixed-clock-freq = <25500000 24000000 24000000 47000000 24000000 47000000 0 0 0 0 0>;
+		nvidia,enable-ext-loopback;
+		nvidia,auto-cal-slew-override;
 		status = "okay";
 	};
 
