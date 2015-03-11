@@ -4753,7 +4753,7 @@ static void tegra_xusb_parse_subnode(struct tegra_xhci_hcd *tegra,
 		if (err < 0)
 			pr_err("Fail to parse node %s\n", name);
 
-		xhci_dbg(tegra->xhci, "set pad %d, type(%d), control pin(%d)\n",
+		pr_debug("set pad %d, type(%d), control pin(%d)\n",
 				pad, tegra->bdata->vbus_en_oc[pad].type,
 				tegra->bdata->vbus_en_oc[pad].pin);
 	}

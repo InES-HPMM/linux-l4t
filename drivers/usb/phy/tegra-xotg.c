@@ -652,7 +652,6 @@ static int xotg_set_host(struct usb_otg *otg, struct usb_bus *host)
 		extcon_id_notifications(&xotg->id_extcon_nb, 0, NULL);
 	} else {
 		otg->host = NULL;
-		otg->host->otg_port = 0;
 	}
 	return 0;
 }
@@ -676,7 +675,6 @@ static int xotg_set_xhci_host(struct usb_otg *otg, struct usb_bus *host)
 		otg->xhcihost->otg_port = xotg->ss_otg_port + 1;
 	} else {
 		otg->xhcihost = NULL;
-		otg->xhcihost->otg_port = 0;
 	}
 	return 0;
 }
