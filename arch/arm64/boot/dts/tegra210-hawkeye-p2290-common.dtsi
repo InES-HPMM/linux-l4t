@@ -45,6 +45,7 @@
 #include "tegra210-platforms/tegra210-hawkeye-keys-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-powermon.dtsi"
 #include "tegra210-platforms/tegra210-sysedp.dtsi"
+#include "tegra210-platforms/tegra210-hawkeye-e-prods.dtsi"
 
 /* TODO: comm's dtsi should be included after GPIO dtsi */
 #include "tegra210-platforms/tegra210-hawkeye-comms.dtsi"
