@@ -266,6 +266,8 @@
 
 	udc@7d000000 {
 		nvidia,port-otg;
+		/*xcvr-setup-offset is in 2s complement for negative values*/
+		nvidia,xcvr-setup-offset = /bits/8 <16>;
 		status = "okay";
 	};
 
