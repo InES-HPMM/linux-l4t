@@ -38,20 +38,20 @@
 #include "tegra124-p1859.dtsi"
 
 / {
-        model = "NVIDIA Tegra124 p1859";
-        compatible = "nvidia,p1859", "nvidia,tegra124";
-        nvidia,dtsfilename = __FILE__;
+	model = "NVIDIA Tegra124 p1859";
+	compatible = "nvidia,p1859", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
 
 	tegra_hv_wdt {
 		compatible = "nvidia,tegra-hv-wdt";
 		status = "okay";
-		ivc = <&tegra_hv 8>;
+		ivc = <&tegra_hv 9>;
 	};
 
 	iommu {
 		compatible = "nvidia,tegra124-smmu-hv";
 		#asids = <120>;
-		ivc_queue = <&tegra_hv 7>;
+		ivc_queue = <&tegra_hv 8>;
 		domains = <
 			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS)
 			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS1)
@@ -136,6 +136,11 @@
 
 		ivc-queue0 = <&tegra_hv 3>;
 		ivc-queue1 = <&tegra_hv 4>;
+		ivc-queue2 = <&tegra_hv 5>;
+
+		vic {
+			compatible = "nvidia,tegra124-vhost-vic";
+		};
 	};
 
 	gk20a {
@@ -148,7 +153,7 @@
 		reg = <0x0 0x58000000 0x0 0x01000000>;
 		iommus = <&smmu TEGRA_SWGROUP_GPU &smmu TEGRA_SWGROUP_GPUB>;
 
-		ivc-queue2 = <&tegra_hv 5>;
 		ivc-queue3 = <&tegra_hv 6>;
+		ivc-queue4 = <&tegra_hv 7>;
 	};
 };

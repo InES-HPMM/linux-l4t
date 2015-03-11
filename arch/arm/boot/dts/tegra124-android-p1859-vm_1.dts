@@ -17,7 +17,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  */
-
  /dts-v1/;
 
 / {
@@ -292,7 +291,7 @@
 				alignment = <0xFFFFF>;
 				num-pf-page = <0>;
 				gap-page = <0>;
-				};
+			};
 
 			host1x_as: host1x {
 				iova-start = <0x0 0x80100000>;
@@ -300,7 +299,7 @@
 				alignment = <0xFFFFF>;
 				num-pf-page = <0>;
 				gap-page = <0>;
-				};
+			};
 
 			nvavp_as: nvavp {
 				iova-start = <0x0 0x80000000>;
@@ -308,7 +307,7 @@
 				alignment = <0xFFFFF>;
 				num-pf-page = <0>;
 				gap-page = <0>;
-				};
+			};
 		};
 	};
 
@@ -318,6 +317,10 @@
 		ivc-queue0 = <&tegra_hv 3>;
 		ivc-queue1 = <&tegra_hv 4>;
 		ivc-queue2 = <&tegra_hv 5>;
+
+		iommus = <&smmu TEGRA_SWGROUP_EPP>,
+			<&smmu TEGRA_SWGROUP_HC>,
+			<&smmu TEGRA_SWGROUP_HDA>;
 
 		vic {
 			compatible = "nvidia,tegra124-vhost-vic";
@@ -331,9 +334,6 @@
 			status = "disabled";
 		};
 
-		vi {
-			status = "disabled";
-		};
 	};
 
 	gk20a {
@@ -359,6 +359,41 @@
 		status = "disabled";
 	};
 
+	serial@70006000 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
+	serial@70006040 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
+	serial@70006300 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
+	spi@7000d400 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
+	spi@7000d600 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
+	spi@7000d800 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
+	spi@7000dc00 {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
 	i2c@7000d000 {
 		status = "okay";
 
@@ -382,6 +417,22 @@
 				TEGRA_GPIO(R, 3)
 				TEGRA_GPIO(R, 5)
 				TEGRA_GPIO(R, 6)>;
+		};
+	};
+
+	snor {
+		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
+		status = "okay";
+	};
+
+	tegra_carveouts {
+		compatible = "nvidia,carveouts";
+		status = "okay";
+		ivm_carveouts {
+			carveout0 {
+				ivm = <&tegra_hv 0>;
+				alloc = <0>;
+			};
 		};
 	};
 };
