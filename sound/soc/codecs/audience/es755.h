@@ -130,10 +130,10 @@
 #define ES755_PCM_PORT_B		0xB
 #define ES755_PCM_PORT_C		0xC
 
-/* Digital Hardware Passthrough Mapping for PCM ports */
-#define PORT_A_TO_D	0x00CC
-#define PORT_B_TO_D	0x00DD
-#define PORT_C_TO_D	0x00EE
+/* Unidirectional Digital Hardware Passthrough Mapping for PCM ports */
+#define PORT_A_TO_D	0x01CC
+#define PORT_B_TO_D	0x01DD
+#define PORT_C_TO_D	0x01EE
 
 union es755_accdet_status_reg {
 	u16 value;
@@ -177,6 +177,7 @@ enum {
 	ES_ALGORITHM_PT,
 	ES_ALGORITHM_PT_VP,
 	ES_ALGORITHM_AZ,
+	ES_ALGORITHM_DHWPT,
 
 	/* PCM Port Parameters*/
 	ES_PCM_PORT,

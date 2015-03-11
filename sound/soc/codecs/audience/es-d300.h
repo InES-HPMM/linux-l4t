@@ -66,7 +66,8 @@ enum {
 #define VP_MM_TXCHMGR_MAX 5
 #define PT_VP_RXCHMGR_MAX 6
 #define PT_VP_TXCHMGR_MAX 6
-
+#define DHWPT_RXCHMGR_MAX 6
+#define DHWPT_TXCHMGR_MAX 6
 enum {
 	ES_VP_NONE,
 	ES_VP_RX_INIT, /* VP RX Initialized */
@@ -88,6 +89,7 @@ enum {
 	PASSTHRU_VP_MM,
 	PASSTHRU_AZ,
 	VOICEQ,
+	DHWPT,
 	NONE,
 	ALGO_MAX,
 };

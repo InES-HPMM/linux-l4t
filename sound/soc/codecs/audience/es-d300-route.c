@@ -266,6 +266,123 @@ struct es_mux_info es_pt_vp_mux_info = {
 	.out_tbl = &es_pt_vp_out_route_tbl,
 };
 
+/* DHWPT Mux ENUM */
+enum {
+	DHWPT_PASSIN1_MUX,
+	DHWPT_PASSIN2_MUX,
+	DHWPT_PRIMARY_MUX,
+	DHWPT_SECONDARY_MUX,
+	DHWPT_FEIN_MUX,
+	DHWPT_IN_MUX_LEN,
+};
+enum {
+	DHWPT_PASSOUT1_MUX,
+	DHWPT_PASSOUT2_MUX,
+	DHWPT_CSOUT1_MUX,
+	DHWPT_FEOUT1_MUX,
+	DHWPT_AO1_MUX,
+	DHWPT_MO2_MUX,
+	DHWPT_OUT_MUX_LEN,
+};
+
+static struct route_tbl es_dhwpt_in_route_tbl[DHWPT_IN_MUX_LEN] = {
+	[DHWPT_PASSIN1_MUX] = {
+		.cmd[0] = ES_API_WORD(0xB05A, 0x3FF3),
+		.mux_type = ES_PASSIN1_MUX,
+		.cmd_len = 1,
+		.chn_mgr_mask = BIT(RXCHMGR3),
+	},
+	[DHWPT_PASSIN2_MUX] = {
+		.cmd[0] = ES_API_WORD(0xB05A, 0x3FF4),
+		.mux_type = ES_PASSIN2_MUX,
+		.cmd_len = 1,
+		.chn_mgr_mask = BIT(RXCHMGR4),
+	},
+	[DHWPT_PRIMARY_MUX] = {
+		.cmd[0] = ES_API_WORD(ES_SET_MUX_CMD,
+				ES300_DATA_PATH(0, 0, RXCHMGR0)),
+		.mux_type = ES_PRIMARY_MUX,
+		.cmd_len = 1,
+		.chn_mgr_mask = BIT(RXCHMGR0),
+	},
+	[DHWPT_SECONDARY_MUX] = {
+		.cmd[0] = ES_API_WORD(ES_SET_MUX_CMD,
+				ES300_DATA_PATH(0, 0, RXCHMGR1)),
+		.cmd[1] = ES_API_WORD(0xB05B, 0x0101),
+		.cmd[2] = ES_API_WORD(0xB064, 0x0048),
+		.cmd[3] = ES_API_WORD(0xB064, 0x0132),
+		.cmd[4] = ES_API_WORD(0xB063, 0x0104),
+		.cmd[5] = ES_API_WORD(0xB068, 0x0400),
+		.mux_type = ES_SECONDARY_MUX,
+		.cmd_len = 6,
+		.chn_mgr_mask = BIT(RXCHMGR1),
+	},
+	[DHWPT_FEIN_MUX] = {
+		.cmd[0] = ES_API_WORD(ES_SET_MUX_CMD,
+				ES300_DATA_PATH(0, 0, RXCHMGR2)),
+		.cmd[1] = ES_API_WORD(0xB05B, 0x0203),
+		.cmd[2] = ES_API_WORD(0xB064, 0x0058),
+		.cmd[3] = ES_API_WORD(0xB064, 0x0130),
+		.cmd[4] = ES_API_WORD(0xB063, 0x0105),
+		.cmd[5] = ES_API_WORD(0xB068, 0x0500),
+		.mux_type = ES_FEIN_MUX,
+		.cmd_len = 6,
+		.chn_mgr_mask = BIT(RXCHMGR2),
+	},
+};
+
+static struct route_tbl es_dhwpt_out_route_tbl[DHWPT_OUT_MUX_LEN] = {
+	[DHWPT_PASSOUT1_MUX] = {
+		.cmd[0] = ES_API_WORD(0xB05A, 0x3FFA),
+		.mux_type = PASS_AUDOUT1,
+		.cmd_len = 1,
+		.chn_mgr_mask = BIT(TXCHMGR0),
+	},
+	[DHWPT_PASSOUT2_MUX] = {
+		.cmd[0] = ES_API_WORD(0xB05A, 0x3FFB),
+		.mux_type = PASS_AUDOUT2,
+		.cmd_len = 1,
+		.chn_mgr_mask = BIT(TXCHMGR1),
+	},
+	[DHWPT_CSOUT1_MUX] = {
+		.cmd[0] = ES_API_WORD(ES_SET_MUX_CMD,
+				ES300_DATA_PATH(0, 0, TXCHMGR2)),
+		.mux_type = VP_CSOUT1,
+		.cmd_len = 1,
+		.chn_mgr_mask = BIT(TXCHMGR2),
+	},
+	[DHWPT_FEOUT1_MUX] = {
+		.cmd[0] = ES_API_WORD(ES_SET_MUX_CMD,
+				ES300_DATA_PATH(0, 0, TXCHMGR3)),
+		.mux_type = VP_FEOUT1,
+		.cmd_len = 1,
+		.chn_mgr_mask = BIT(TXCHMGR3),
+	},
+	[DHWPT_AO1_MUX] = {
+		.cmd[0] = ES_API_WORD(ES_SET_MUX_CMD,
+				ES300_DATA_PATH(0, 0, TXCHMGR4)),
+		.mux_type = PASS_AO1,
+		.cmd_len = 1,
+		.chn_mgr_mask = BIT(TXCHMGR4),
+	},
+	[DHWPT_MO2_MUX] = {
+		.cmd[0] = ES_API_WORD(ES_SET_MUX_CMD,
+				ES300_DATA_PATH(0, 0, TXCHMGR5)),
+		.mux_type = PASS_MO2,
+		.cmd_len = 1,
+		.chn_mgr_mask = BIT(TXCHMGR5),
+	},
+};
+
+struct es_mux_info es_dhwpt_mux_info = {
+	.in_mux_start = DHWPT_PASSIN1_MUX,
+	.in_mux_len = DHWPT_IN_MUX_LEN,
+	.out_mux_start = DHWPT_PASSOUT1_MUX,
+	.out_mux_len = DHWPT_OUT_MUX_LEN,
+	.in_tbl = &es_dhwpt_in_route_tbl,
+	.out_tbl = &es_dhwpt_out_route_tbl,
+};
+
 void prepare_mux_cmd(int mux, u32 *msg, u32 *msg_len,
 		u16 *chn_mgr_mask, struct es_mux_info *mux_info, int type)
 {
