@@ -14,6 +14,7 @@
  */
 
 #include "tegra210-hawkeye-p2290-common.dtsi"
+#include "tegra210-platforms/tegra210-sysedp-670d.dtsi"
 
 / {
 	nvidia,dtsfilename = __FILE__;
