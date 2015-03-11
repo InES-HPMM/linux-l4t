@@ -44,7 +44,9 @@
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/pinctrl/pinconf-tegra.h>
+#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
 #include <linux/ote_protocol.h>
+#endif
 
 #include <mach/clk.h>
 #include <mach/dc.h>
@@ -2099,6 +2101,7 @@ struct tegra_dc_platform_data
 						&dma_addr, GFP_KERNEL);
 		vrr = pdata->default_out->vrr;
 		if (vrr) {
+#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
 			int retval;
 
 			retval = te_vrr_set_buf(virt_to_phys(vrr));
@@ -2106,6 +2109,7 @@ struct tegra_dc_platform_data
 				dev_err(&ndev->dev, "failed to set buffer\n");
 				goto fail_parse;
 			}
+#endif // CONFIG_TRUSTED_LITTLE_KERNEL
 		} else {
 			dev_err(&ndev->dev, "not enough memory\n");
 			goto fail_parse;
