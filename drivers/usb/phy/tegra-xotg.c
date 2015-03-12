@@ -221,9 +221,6 @@ static int xotg_alloc_timer(struct xotg *xotg,
 
 	init_timer(temp_timer_list);
 
-	if (!temp_timer_list)
-		return 1;
-
 	temp_timer_list->function = xotg_timer_comp;
 	temp_timer_list->expires = msecs_to_jiffies(expires);
 	temp_timer_list->data = data;
