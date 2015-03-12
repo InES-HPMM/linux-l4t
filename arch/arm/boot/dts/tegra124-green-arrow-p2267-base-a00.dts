@@ -85,4 +85,46 @@
 		status = "disabled";
 		dt-override-status-odm-data = <0x80000000 0x00000000>;
 	};
+
+	udc@7d000000 {
+		nvidia,port-otg;
+		nvidia,charging-supported;
+		nvidia,turn-off-vbus-in-lp0;
+		nvidia,dcp-current-limit-ma = <3000>;
+		nvidia,qc2-input-voltage = <2>;
+		nvidia,qc2-current-limit-ma = <1200>;
+		nvidia,id-detection-type = <1>;
+		nvidia,enable-pmu-vbus-detection;
+		extcon-cables = <&palmas_extcon 0>;
+		extcon-cable-names = "vbus";
+		#extcon-cells = <1>;
+		status = "okay";
+	};
+
+	otg@7d000000 {
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
+		extcon-cable-names = "vbus", "id";
+		#extcon-cells = <1>;
+		status = "okay";
+	};
+
+	ehci@7d000000 {
+		nvidia,port-otg;
+		nvidia,has-hostpc;
+		nvidia,turn_off_vbus_on_lp0;
+		nvidia,id-detection-type = <2>;
+		nvidia,hssync-start-delay = <0>;
+		nvidia,idle-wait-delay = <17>;
+		nvidia,elastic-limit = <16>;
+		nvidia,term-range-adj = <6>;
+		nvidia,xcvr-setup = <15>;
+		nvidia,xcvr-lsfslew = <2>;
+		nvidia,xcvr-lsrslew = <2>;
+		nvidia,xcvr-use-fuses;
+		nvidia,vbus-oc-map = <4>;
+		nvidia,xcvr-setup-offset = <0>;
+		status = "disabled";
+	};
 };
