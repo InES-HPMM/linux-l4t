@@ -196,6 +196,8 @@ EXPORT_SYMBOL(tegra_vpr_dev);
 struct device tegra_iram_dev;
 EXPORT_SYMBOL(tegra_iram_dev);
 
+bool G_RECOVERY_HACK;
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/nvsecurity.h>
 
@@ -1056,6 +1058,15 @@ static int __init tegra_nck_arg(char *options)
 }
 early_param("nck", tegra_nck_arg);
 #endif	/* CONFIG_TEGRA_USE_NCT */
+
+static int __init tegra_kernel_type(char *options)
+{
+	G_RECOVERY_HACK = false;
+	if (!strcmp(options, "recovery"))
+		G_RECOVERY_HACK = true;
+	return 0;
+}
+__setup("android.kerneltype=", tegra_kernel_type);
 
 enum panel_type get_panel_type(void)
 {
