@@ -127,4 +127,9 @@
 		nvidia,xcvr-setup-offset = <0>;
 		status = "disabled";
 	};
+
+	memory@0x80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x80000000>;
+	};
 };
