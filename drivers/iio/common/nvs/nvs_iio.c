@@ -77,7 +77,7 @@
 #include <linux/nvs.h>
 
 
-#define NVS_IIO_DRIVER_VERSION		(202)
+#define NVS_IIO_DRIVER_VERSION		(203)
 #define NVS_ATTRS_ARRAY_SIZE		(12)
 
 enum NVS_ATTR {
@@ -167,11 +167,11 @@ static enum iio_modifier nvs_iio_modifier_heart[] = {
 };
 
 static const struct nvs_iio_ch nvs_iio_ch_tbl[] = {
-	/* SENSOR_TYPE_ACCELEROMETER */
+	/* unknown sensor type */
 	{
 		.snsr_name		= "generic_sensor",
 		.typ			= IIO_GENERIC,
-		.mod			= NULL,
+		.mod			= nvs_iio_modifier_none,
 	},
 	/* SENSOR_TYPE_ACCELEROMETER */
 	{
@@ -681,6 +681,7 @@ static ssize_t nvs_attr_show(struct device *dev,
 			ret = st->fn_dev->self_test(st->client,
 						    st->cfg->snsr_id, buf);
 			mutex_unlock(&indio_dev->mlock);
+			return ret;
 		}
 		break;
 
@@ -1344,17 +1345,27 @@ static int nvs_chan(struct iio_dev *indio_dev)
 	}
 
 	/* create IIO channels */
-	ch_type_i = st->cfg->snsr_id;
-	ch_type_i--;
+	ch_type_i = st->cfg->snsr_id; /* st->cfg->snsr_id will be >= 0 */
+	/* Here we have two ways to identify the sensor:
+	 * 1. By name which we try to match to
+	 * 2. By sensor ID (st->cfg->snsr_id).  This method is typically used
+	 *    by the sensor hub so that name strings don't have to be passed
+	 *    and because there are multiple sensors the sensor hub driver has
+	 *    to track via the sensor ID.
+	 */
 	if (st->cfg->name) {
+		/* if st->cfg->name exists then we use that */
 		for (i = 0; i < ARRAY_SIZE(nvs_iio_ch_tbl); i++) {
 			if (!strcmp(st->cfg->name,
 				    nvs_iio_ch_tbl[i].snsr_name))
 				break;
 		}
 		if (i < ARRAY_SIZE(nvs_iio_ch_tbl))
-			ch_type_i = i;
+			ch_type_i = i; /* found matching name */
+		else if (ch_type_i >= ARRAY_SIZE(nvs_iio_ch_tbl))
+			ch_type_i = 0; /* use generic sensor parameters */
 	} else {
+		/* no st->cfg->name - use st->cfg->snsr_id to specify device */
 		if (ch_type_i >= ARRAY_SIZE(nvs_iio_ch_tbl))
 			return -ENODEV;
 
@@ -1518,6 +1529,16 @@ static int nvs_probe(void **handle, void *dev_client, struct device *dev,
 	int ret;
 
 	dev_info(dev, "%s\n", __func__);
+	if (snsr_cfg->snsr_id < 0) {
+		/* device has been disabled */
+		if (snsr_cfg->name)
+			dev_info(dev, "%s %s disabled\n",
+				 __func__, snsr_cfg->name);
+		else
+			dev_info(dev, "%s device disabled\n", __func__);
+		return -ENODEV;
+	}
+
 	indio_dev = iio_device_alloc(sizeof(*st));
 	if (indio_dev == NULL) {
 		dev_err(dev, "%s iio_device_alloc ERR\n", __func__);
