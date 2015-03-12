@@ -649,6 +649,10 @@ static int ina3221_hotplug_notify(struct notifier_block *nb,
 
 	if (event == CPU_ONLINE || event == CPU_DEAD) {
 		mutex_lock(&chip->mutex);
+		if (chip->is_suspended) {
+			mutex_unlock(&chip->mutex);
+			return 0;
+		}
 		if (chip->shutdown_complete) {
 			mutex_unlock(&chip->mutex);
 			return -EIO;
@@ -658,10 +662,10 @@ static int ina3221_hotplug_notify(struct notifier_block *nb,
 		dev_vdbg(chip->dev, "hotplug notified cpufreq:%d cpus:%d\n",
 				cpufreq, cpus);
 		ret = __locked_ina3221_switch_mode(chip, cpus, cpufreq);
-		mutex_unlock(&chip->mutex);
 
 		if (ret < 0)
 			dev_err(chip->dev, "INA switch mode failed: %d\n", ret);
+		mutex_unlock(&chip->mutex);
 	}
 	return ret;
 }
