@@ -233,6 +233,8 @@
 
 					ldo5_reg: ldo5 {
 						regulator-name = "avdd-dsi-csi";
+						regulator-min-microvolt = <1200000>;
+						regulator-max-microvolt = <1200000>;
 					};
 
 					vpp_fuse: ldo6 {

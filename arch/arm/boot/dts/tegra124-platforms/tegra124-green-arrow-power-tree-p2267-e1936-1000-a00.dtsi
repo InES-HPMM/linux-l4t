@@ -18,6 +18,25 @@
 #include "tegra124-green-arrow-p2267-fixed-1936-1000-a00.dtsi"
 
 / {
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			avdd_dsi_csi-supply = <&ldo5_reg>;
+			avdd_lcd-supply = <&ldo2_reg>;
+			dvdd_lcd-supply = <&vdd_lcd_1v8>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			avdd_hdmi-supply = <&avdd_hdmi>;
+			/* TODO: Fix the following 2 supplies */
+			avdd_hdmi_pll-supply = <&avdd_hdmi_pll>;
+			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+		};
+		vi {
+			avdd_dsi_csi-supply = <&ldo5_reg>;
+		};
+	};
+
 	power-detect {
 		pwrdet-nand-supply = <&palmas_smps8>;
 		pwrdet-sdmmc1-supply = <&palmas_smps8>;

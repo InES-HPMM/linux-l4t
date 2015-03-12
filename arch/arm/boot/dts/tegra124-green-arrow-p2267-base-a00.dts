@@ -27,6 +27,10 @@
 #include "tegra124-platforms/tegra124-green-arrow-camera-p2267-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-usb-devices.dtsi"
 #include "tegra124-platforms/tegra124-tn8-hdmi-p1761-1270-a03.dtsi"
+#include "panel-s-wuxga-7-0.dtsi"
+#include "panel-s-wuxga-8-0.dtsi"
+#include "panel-a-wuxga-8-0.dtsi"
+
 
 /* TODO: comm's dtsi should be included after GPIO dtsi */
 #include "tegra124-platforms/tegra124-green-arrow-comms.dtsi"
@@ -131,5 +135,56 @@
 	memory@0x80000000 {
 		device_type = "memory";
 		reg = <0x0 0x80000000 0x0 0x80000000>;
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			/* TODO: Enable once bootloader support is validated */
+			/* nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>; */
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			/* TODO: Enable once bootloader support is validated */
+			/* nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>; */
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		dsi {
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-a-wuxga-8-0 {
+				nvidia,dsi-boardinfo = <1761 0 0 1>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
+			};
+			panel-s-wuxga-7-0 {
+				nvidia,dsi-boardinfo = <1761 0 0 1>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
+			};
+			panel-s-wuxga-8-0 {
+				nvidia,dsi-boardinfo = <1761 0 0 1>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
+			};
+		};
 	};
 };
