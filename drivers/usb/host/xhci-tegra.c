@@ -2053,13 +2053,13 @@ static void restore_ctle_context(struct tegra_xhci_hcd *tegra,
 
 	/* restore ctle for the port */
 	reg = padctl_readl(tegra
-			, tegra->padregs->iophy_usb3_padX_ctlY_0[port][2]);
+			, tegra->padregs->iophy_usb3_padX_ctlY_0[port][1]);
 	reg &= ~(RX_EQ_Z_VAL(~0) |
 			RX_EQ_G_VAL(~0));
 	reg |= (RX_EQ_Z_VAL(tegra->sregs.ctle_z_val[port]) |
 		RX_EQ_G_VAL(tegra->sregs.ctle_g_val[port]));
 	padctl_writel(tegra, reg
-			, tegra->padregs->iophy_usb3_padX_ctlY_0[port][2]);
+			, tegra->padregs->iophy_usb3_padX_ctlY_0[port][1]);
 }
 #endif
 
