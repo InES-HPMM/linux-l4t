@@ -19,7 +19,7 @@
 #include "tegra124-soc-shield.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-pinmux-p2267-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-p2267-io-common.dtsi"
-#include "tegra124-platforms/tegra124-green-arrow-p2267-powertree-e1936-1000-a00.dtsi"
+#include "tegra124-platforms/tegra124-green-arrow-power-tree-p2267-e1936-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-touch.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-p2267-sensor-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-green-arrow-keys-p2267-1000-a00.dtsi"
