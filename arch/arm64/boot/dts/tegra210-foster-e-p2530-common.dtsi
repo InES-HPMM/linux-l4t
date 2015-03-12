@@ -23,6 +23,7 @@
 /memreserve/ 0x80000000 0x00020000;
 
 #include "tegra210-common.dtsi"
+#include "tegra210-platforms/tegra210-foster-e-prods.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
 #include "tegra210-platforms/tegra210-p2530-common.dtsi"
 #include "tegra210-platforms/tegra210-foster-e-power-tree-p2530-0932-e00.dtsi"
