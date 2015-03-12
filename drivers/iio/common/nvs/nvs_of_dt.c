@@ -58,6 +58,14 @@ int nvs_of_dt(const struct device_node *np, struct sensor_cfg *cfg,
 				cfg->no_suspend = false;
 		}
 	}
+	ret = sprintf(str, "%s_disable", dev_name);
+	if (ret > 0) {
+		ret = of_property_read_u32(np, str, (u32 *)&i);
+		if (!ret) {
+			if (i)
+				cfg->snsr_id = -1;
+		}
+	}
 	ret = sprintf(str, "%s_kbuffer_size", dev_name);
 	if (ret > 0)
 		of_property_read_s32(np, str, (s32 *)&cfg->kbuf_sz);
