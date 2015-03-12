@@ -222,9 +222,6 @@ static int nvadsp_clocks_enable(struct platform_device *pdev)
 		dev_err(dev, "unable to enable adsp clock\n");
 		goto end;
 	}
-	tegra_periph_reset_assert(drv_data->adsp_clk);
-	udelay(10);
-	dev_dbg(dev, "adsp clock enabled and asserted\n");
 
 	drv_data->adsp_cpu_clk = clk_get_sys(NULL, "adsp_cpu");
 	if (IS_ERR_OR_NULL(drv_data->adsp_cpu_clk)) {

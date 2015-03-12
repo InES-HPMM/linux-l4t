@@ -125,7 +125,7 @@ static struct nvadsp_mappings adsp_map[NM_LOAD_MAPPINGS];
 static int map_idx;
 static struct nvadsp_mbox adsp_com_mbox;
 
-static DECLARE_COMPLETION(entered_wfe);
+static DECLARE_COMPLETION(entered_wfi);
 
 static void __nvadsp_os_stop(bool);
 #ifdef CONFIG_DEBUG_FS
@@ -800,8 +800,11 @@ EXPORT_SYMBOL(nvadsp_os_start);
 static int __nvadsp_os_suspend(void)
 {
 	struct device *dev = &priv.pdev->dev;
+	struct nvadsp_drv_data *drv_data;
 	uint16_t com_mid = ADSP_COM_MBOX_ID;
 	int ret;
+
+	drv_data = platform_get_drvdata(priv.pdev);
 
 #ifdef CONFIG_TEGRA_ADSP_DFS
 	adsp_dfs_core_exit(priv.pdev);
@@ -825,14 +828,22 @@ static int __nvadsp_os_suspend(void)
 		goto out;
 	}
 
-	/* TODO: remove delay */
-	msleep(300);
+	ret = wait_for_completion_interruptible_timeout(&entered_wfi,
+		msecs_to_jiffies(ADSP_WFE_TIMEOUT));
+	if (WARN_ON(ret <= 0)) {
+		dev_err(dev, "ADSP is unable to enter wfe state\n");
+		ret = -EINVAL;
+		goto out;
+	}
 
 	ret = nvadsp_mbox_close(&adsp_com_mbox);
 	if (ret) {
 		dev_err(dev, "failed to close adsp com mbox\n");
 		goto out;
 	}
+
+	tegra_periph_reset_assert(drv_data->adsp_clk);
+	udelay(200);
 
 	ret = pm_runtime_put_sync(&priv.pdev->dev);
 	if (ret) {
@@ -867,7 +878,7 @@ static void __nvadsp_os_stop(bool reload)
 #endif
 
 	writel(ENABLE_MBOX2_FULL_INT, priv.misc_base + HWMBOX2_REG);
-	err = wait_for_completion_interruptible_timeout(&entered_wfe,
+	err = wait_for_completion_interruptible_timeout(&entered_wfi,
 		msecs_to_jiffies(ADSP_WFE_TIMEOUT));
 	writel(DISABLE_MBOX2_FULL_INT, priv.misc_base + HWMBOX2_REG);
 	if (WARN_ON(err <= 0)) {
@@ -876,6 +887,7 @@ static void __nvadsp_os_stop(bool reload)
 	}
 
 	tegra_periph_reset_assert(drv_data->adsp_clk);
+	udelay(200);
 
 	if (reload) {
 		/*
@@ -988,13 +1000,13 @@ static void nvadsp_os_restart(struct work_struct *work)
 		dev_crit(dev, "Unable to restart ADSP OS\n");
 }
 
-static  irqreturn_t wfe_handler(int irq, void *arg)
+static  irqreturn_t adsp_wfi_handler(int irq, void *arg)
 {
 	struct nvadsp_os_data *data = arg;
 	struct device *dev = &data->pdev->dev;
 
 	dev_dbg(dev, "%s\n", __func__);
-	complete(&entered_wfe);
+	complete(&entered_wfi);
 
 	return 0;
 }
@@ -1017,7 +1029,7 @@ int nvadsp_os_probe(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
 	int wdt_virq = tegra_agic_irq_get_virq(INT_ADSP_WDT);
-	int wfe_virq = tegra_agic_irq_get_virq(INT_WFE);
+	int wfi_virq = tegra_agic_irq_get_virq(INT_WFI);
 	struct device *dev = &pdev->dev;
 	int ret = 0;
 
@@ -1039,10 +1051,10 @@ int nvadsp_os_probe(struct platform_device *pdev)
 		goto end;
 	}
 
-	ret = devm_request_irq(dev, wfe_virq, wfe_handler,
-			IRQF_TRIGGER_RISING, "wfe handler", &priv);
+	ret = devm_request_irq(dev, wfi_virq, adsp_wfi_handler,
+			IRQF_TRIGGER_RISING, "adsp wfi", &priv);
 	if (ret) {
-		dev_err(dev, "cannot request for wfe interrupt\n");
+		dev_err(dev, "cannot request for wfi interrupt\n");
 		goto end;
 	}
 
