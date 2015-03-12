@@ -32,6 +32,7 @@
 #include "tegra210-platforms/tegra210-vcm31-sdmmc-e2580-0631-a00.dtsi"
 #include "tegra210-platforms/tegra210-vcm31-power-tree-e2580-0631-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-vcm31t210-emc.dtsi"
 
 #include <dt-bindings/iio/meter/ina3221x.h>
 #include <dt-bindings/sound/tegra-asoc-alt.h>
@@ -138,7 +139,7 @@
 	};
 
 	pcie-controller {
-		nvidia,wake-gpio = <&gpio TEGRA_GPIO(A, 2) 0>;
+		status = "ok";
 		nvidia,lane-map = <0x12>;
 		dvdd-pex-pll-supply = <&max77620_ldo1>;
 		l0-dvddio-pex-supply = <&max77620_ldo1>;
@@ -159,10 +160,12 @@
 		vddio-pex-ctl-supply = <&max77620_sd3>;
 		pci@1,0 {
 			status = "okay";
+			nvidia,num-lanes = <0x2>;
 		};
 
 		pci@2,0 {
 			status = "okay";
+			nvidia,num-lanes = <0x1>;
 		};
 	};
 
@@ -226,6 +229,7 @@
 
 	soctherm@0x700E2000 {
 		throttle@oc1 {
+			status = "disabled";
 			device_type = "throttlectl";
 			oc-alarm-id = <1>;
 			priority = <50>;
@@ -238,6 +242,7 @@
 			&{/soctherm@0x700E2000/throttle_dev@gpu_medium}>;
 		};
 		throttle@oc3 {
+			status = "disabled";
 			device_type = "throttlectl";
 			oc-alarm-id = <3>;
 			priority = <50>;
@@ -683,14 +688,12 @@
 		nvidia,portmap = <0x0108>;
 		#extcon-cells = <1>;
 		status = "okay";
-		dt-override-status-odm-data = <0x01000000 0x01000000>;
 	};
 
 	xotg {
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		#extcon-cells = <1>;
 		status = "okay";
-		dt-override-status-odm-data = <0x01000000 0x01000000>;
 	};
 
 	gpu-dvfs-rework {
@@ -743,5 +746,10 @@
 		compatible = "nvidia,tegra124-sysedp-dynamic-capping";
 		nvidia,throttle_depth = <75>;
 		nvidia,cap_method = <1>;
+	};
+
+	sata@70020000 {
+		status = "okay";
+		nvidia,enable-sata-port;
 	};
 };
