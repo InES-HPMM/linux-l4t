@@ -72,4 +72,17 @@
 			};
 		};
 	};
+
+	watchdog@60005100 {
+		status = "disabled";
+		nvidia,enable-on-init;
+		nvidia,heartbeat-init = <120>;
+		dt-override-status-odm-data = <0x80000000 0x80000000>;
+	};
+
+	soft_watchdog {
+		compatible = "softdog-platform";
+		status = "disabled";
+		dt-override-status-odm-data = <0x80000000 0x00000000>;
+	};
 };
