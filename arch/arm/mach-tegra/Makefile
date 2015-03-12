@@ -122,7 +122,6 @@ obj-${CONFIG_ARCH_TEGRA_VCM30T124}      += vcm30_t124.o
 obj-${CONFIG_ARCH_TEGRA_VCM30T124}      += therm-monitor.o
 
 obj-${CONFIG_MACH_P1859}                += board-p1859.o
-obj-${CONFIG_MACH_P1859}                += board-p1859-power.o
 obj-${CONFIG_MACH_P1859}                += board-p1859-audio.o
 
 obj-${CONFIG_MACH_P1889}                += board-p1889.o
@@ -130,10 +129,8 @@ obj-${CONFIG_MACH_P1889}                += board-p1889-power.o
 obj-${CONFIG_MACH_P1889}                += board-p1889-audio.o
 
 obj-${CONFIG_MACH_P2360}                += board-p2360.o
-obj-${CONFIG_MACH_P2360}                += board-p2360-power.o
 
 obj-${CONFIG_MACH_P1855}                += board-p1855.o
-obj-${CONFIG_MACH_P1855}                += board-p1855-power.o
 
 obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
 obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o

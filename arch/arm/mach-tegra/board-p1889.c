@@ -179,7 +179,6 @@ static void __init tegra_p1889_late_init(void)
 #ifdef CONFIG_TEGRA_WIFI_ENABLE
 	p1889_wifi_init();
 #endif
-	p1889_regulator_init();
 
 	tegra_vcm30_t124_suspend_init();
 

@@ -22,6 +22,7 @@
 #include <tegra124-platforms/tegra124-p1855-gpio-default.dtsi>
 #include <panel-a-edp-1080p-14-0.dtsi>
 #include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
+#include <tegra124-platforms/tegra124-pmic-vcm30t124-max20024.dtsi>
 
 / {
 	#address-cells = <2>;
@@ -154,6 +155,14 @@
 			};
 		};
 
+		max20024@3c {
+			regulators {
+				ldo5 {
+					status = "okay";
+				};
+			};
+		};
+
 	};
 
 	regulators {
@@ -170,6 +179,20 @@
 			gpio = <&pca9539_75 11 1>;
 			enable-active-high;
 		};
+
+		vdd_fuse: regulator@2 {
+			compatible = "regulator-fixed-sync";
+			regulator-name = "vdd_fuse";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&max20024 0 0>;
+			enable-active-high;
+		};
+	};
+
+	/* Populate fuse supply */
+	efuse@7000f800 {
+		vpp_fuse-supply = <&vdd_fuse>;
 	};
 
 	serial@70006000 {
@@ -314,6 +337,7 @@
 		vddio_sd_slot-supply = <&vdd_sd>;
 		nvidia,update-pinctrl-settings;
 		pinctrl-names = "default_mode", "uhs_sdr50_mode", "uhs_sdr104_mode";
+		vddio_sdmmc-supply = <&max20024_ldo5>;
 		status = "okay";
 	};
 

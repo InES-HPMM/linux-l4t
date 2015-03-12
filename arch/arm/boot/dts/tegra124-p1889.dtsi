@@ -32,6 +32,7 @@
 #include <panel-a-edp-1080p-14-0.dtsi>
 #include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
 #include <dt-bindings/gpio/tmpm32x-gpio.h>
+#include <tegra124-platforms/tegra124-pmic-vcm30t124-max20024.dtsi>
 
 / {
 	#address-cells = <2>;
@@ -133,7 +134,36 @@
 			};
 		};
 
+		max20024@3c {
+			regulators {
+				ldo5 {
+					status = "okay";
+				};
+			};
+		};
 	};
+
+	regulators {
+                compatible = "simple-bus";
+                device_type = "fixed-regulators";
+                #address-cells = <1>;
+                #size-cells = <0>;
+
+                vdd_fuse: regulator@1 {
+                        compatible = "regulator-fixed-sync";
+                        regulator-name = "vdd_fuse";
+                        regulator-min-microvolt = <3300000>;
+                        regulator-max-microvolt = <3300000>;
+                        gpio = <&max20024 0 0>;
+                        enable-active-high;
+                };
+        };
+
+
+        /* Populate fuse supply */
+        efuse@7000f800 {
+                vpp_fuse-supply = <&vdd_fuse>;
+        };
 
 	i2c@7000c400 {
 		nvidia,clock-always-on;
@@ -302,6 +332,7 @@
 
 	sdhci@700b0400 {
 		uhs-mask = <0x7c>;
+		vddio_sdmmc-supply = <&max20024_ldo5>;
 		status = "okay";
 	};
 

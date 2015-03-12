@@ -24,6 +24,7 @@
 #include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
 #include <panel-a-lvds-800-480-14-0.dtsi>
 #include <dt-bindings/display/tegra-panel.h>
+#include <tegra124-platforms/tegra124-pmic-vcm30t124-max20024.dtsi>
 
 / {
 	model = "NVIDIA Tegra124 p2360";
@@ -126,7 +127,6 @@
 				};
 			};
 		};
-
 	};
 
 
@@ -248,4 +248,26 @@
 		interrupts = <TEGRA_GPIO(R, 3) 2>; /* gpio PR3 : falling edge sensitive */
 		status = "okay";
 	};
+
+	regulators {
+		compatible = "simple-bus";
+		device_type = "fixed-regulators";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		vdd_fuse: regulator@1 {
+			compatible = "regulator-fixed-sync";
+			regulator-name = "vdd_fuse";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&max20024 0 0>;
+			enable-active-high;
+		};
+	};
+
+	/* Populate fuse supply */
+	efuse@7000f800 {
+		vpp_fuse-supply = <&vdd_fuse>;
+	};
+
 };

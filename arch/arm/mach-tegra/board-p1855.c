@@ -76,8 +76,6 @@ static void __init tegra_p1855_late_init(void)
 
 	platform_add_devices(p1855_devices, ARRAY_SIZE(p1855_devices));
 
-	p1855_regulator_init();
-
 	tegra_vcm30_t124_suspend_init();
 
 	isomgr_init();
