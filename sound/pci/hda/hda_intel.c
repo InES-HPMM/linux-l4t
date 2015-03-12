@@ -4542,8 +4542,7 @@ static struct pci_driver azx_driver = {
 
 #ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
 
-static int hda_driver_data = AZX_DRIVER_NVIDIA_TEGRA | AZX_DCAPS_RIRB_DELAY |
-				AZX_DCAPS_PM_RUNTIME;
+static int hda_driver_data = AZX_DRIVER_NVIDIA_TEGRA | AZX_DCAPS_PM_RUNTIME;
 
 static const struct of_device_id hda_device[] = {
 	{.compatible = "nvidia,tegra30-hda", .data = &hda_driver_data},
@@ -4583,8 +4582,7 @@ static int azx_remove_platform(struct platform_device *pdev)
 static const struct platform_device_id azx_platform_ids[] = {
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
 	{ "tegra30-hda",
-	  .driver_data = AZX_DRIVER_NVIDIA_TEGRA | AZX_DCAPS_RIRB_DELAY |
-											AZX_DCAPS_PM_RUNTIME },
+	  .driver_data = AZX_DRIVER_NVIDIA_TEGRA | AZX_DCAPS_PM_RUNTIME },
 #endif
 	{ },
 };
