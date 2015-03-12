@@ -524,6 +524,7 @@ struct nv_udc_request {
 	struct transfer_trb_s *last_trb;
 	bool all_trbs_queued;
 	bool short_pkt;
+	bool need_zlp;	/* only used by ctrl ep */
 };
 
 struct nv_setup_packet {

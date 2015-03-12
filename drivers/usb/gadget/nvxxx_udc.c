@@ -1587,9 +1587,7 @@ int nvudc_queue_ctrl(struct nv_udc_ep *udc_ep_ptr,
 					u_temp = TRB_MAX_BUFFER_SIZE * i;
 					transfer_length = (u32)usb_req->length
 						- u_temp;
-					/* If zlp is needed, IOC is set in
-					   zlp. */
-					IOC = need_zlp ? 0 : 1;
+					IOC = 1;
 				}
 
 				msg_dbg(nvudc->dev,
@@ -1630,16 +1628,7 @@ int nvudc_queue_ctrl(struct nv_udc_ep *udc_ep_ptr,
 					u_temp);
 
 			iowrite32(u_temp, nvudc->mmio_reg_base + DB);
-
-			if (need_zlp) {
-				u32 dw;
-				nvudc_queue_zlp_td(nvudc, udc_ep_ptr);
-
-				dw = DB_TARGET(0);
-				dw |= DB_STREAMID(nvudc->ctrl_seq_num);
-				msg_dbg(nvudc->dev, "DB register 0x%x\n", dw);
-				iowrite32(dw, nvudc->mmio_reg_base + DB);
-			}
+			udc_req_ptr->need_zlp = need_zlp;
 
 			if (udc_ep_ptr->enq_pt == udc_ep_ptr->tran_ring_ptr)
 				udc_req_ptr->last_trb = udc_ep_ptr->link_trb
@@ -1744,6 +1733,7 @@ void clear_req_container(struct nv_udc_request *udc_req_ptr)
 	udc_req_ptr->first_trb = NULL;
 	udc_req_ptr->last_trb = NULL;
 	udc_req_ptr->short_pkt = 0;
+	udc_req_ptr->need_zlp = false;
 }
 
 static int
@@ -2719,6 +2709,24 @@ void handle_cmpl_code_success(struct nv_udc_s *nvudc, struct event_trb_s *event,
 					trb_transfer_length;
 		msg_dbg(nvudc->dev, "Actual data xfer = 0x%x, tx_len = 0x%x\n",
 			udc_req_ptr->usb_req.actual, trb_transfer_length);
+
+		if (udc_ep_ptr->desc &&
+			usb_endpoint_xfer_control(udc_ep_ptr->desc) &&
+			udc_req_ptr->need_zlp) {
+			u32 dw;
+			/* Only ctrl ep check need_zlp to schedule zlp for data
+			 * stage TD here. Bulk/interrupt ep deal with zlp in
+			 * other way. */
+			nvudc_queue_zlp_td(nvudc, udc_ep_ptr);
+
+			dw = DB_TARGET(0);
+			dw |= DB_STREAMID(nvudc->ctrl_seq_num);
+			msg_dbg(nvudc->dev, "DB register 0x%x for zlp\n", dw);
+			iowrite32(dw, nvudc->mmio_reg_base + DB);
+			udc_req_ptr->need_zlp = false;
+			return;
+		}
+
 		req_done(udc_ep_ptr, udc_req_ptr, 0);
 
 		if (!udc_ep_ptr->desc) {
