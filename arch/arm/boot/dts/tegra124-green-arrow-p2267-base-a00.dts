@@ -162,6 +162,8 @@
 			nvidia,dsi-controller-vs = <DSI_VS_1>;
 			status = "okay";
 			panel-a-wuxga-8-0 {
+				/* Enabling this node explicitly for initial panel support */
+				status = "okay";
 				nvidia,dsi-boardinfo = <1761 0 0 1>;
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(N, 4) 0>; /* PN4 */
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
@@ -191,6 +193,11 @@
 	backlight {
 		status = "okay";
 		disable-on-kernel-charging;
+
+		panel-a-wuxga-8-0-bl {
+			/* Enabling this node explicitly for initial panel support */
+			status = "okay";
+		};
 	};
 
 	i2c@7000c400 {
