@@ -720,7 +720,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			vcc-supply = <&en_vdd_cam>;
-			skip_mux_detect = <1>;
+			skip_mux_detect;
 			force_bus_start = <T210_CAMERA_I2C_MUX_BUS(0)>;
 			i2c@0 {
 				reg = <0>;
