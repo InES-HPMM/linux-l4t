@@ -161,6 +161,10 @@
 		dt-override-status-odm-data = <0x01000000 0x01000000>;
 	};
 
+	chosen {
+		nvidia,tegra-shield-sku;
+        };
+
 	gpio-ir-receiver {
 		compatible = "gpio-ir-receiver";
 		status = "okay";
