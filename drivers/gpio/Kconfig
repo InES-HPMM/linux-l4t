@@ -756,4 +756,5 @@ config GPIO_TMPM32X
 	  Toshiba MCU. There is only UART channel as a communication
 	  interface between Tegra and MCU chip.
 
++trysource "../kernel-t18x/drivers/gpio/Kconfig"
 endif

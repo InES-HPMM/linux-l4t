@@ -494,6 +494,10 @@ static int tegra_pinctrl_gpio_set_direction (struct pinctrl_dev *pctldev,
 	else
 		ret = tegra_pinconfig_group_set(pctldev, group,
 					TEGRA_PINCONF_PARAM_TRISTATE, 0);
+
+	if (pmx->soc->is_gpio_reg_support)
+		ret = tegra_pinconfig_group_set(pctldev, group,
+					TEGRA_PINCONF_PARAM_GPIO_MODE, 0);
 	return ret;
 }
 
@@ -510,7 +514,7 @@ static int tegra_pinconf_reg(struct tegra_pmx *pmx,
 			     const struct tegra_pingroup *g,
 			     enum tegra_pinconf_param param,
 			     bool report_err,
-			     s8 *bank, s16 *reg, s8 *bit, s8 *width)
+			     s8 *bank, s32 *reg, s8 *bit, s8 *width)
 {
 	switch (param) {
 	case TEGRA_PINCONF_PARAM_PULL:
@@ -619,6 +623,12 @@ static int tegra_pinconf_reg(struct tegra_pmx *pmx,
 		*bit = g->drvtype_bit;
 		*width = g->drvtype_width;
 		break;
+	case TEGRA_PINCONF_PARAM_GPIO_MODE:
+		*bank = g->gpio_bank;
+		*reg = g->gpio_reg;
+		*bit = g->gpio_bit;
+		*width = 1;
+		break;
 	default:
 		dev_err(pmx->dev, "Invalid config param %04x\n", param);
 		return -ENOTSUPP;
@@ -658,7 +668,7 @@ static int tegra_pinconf_group_get(struct pinctrl_dev *pctldev,
 	const struct tegra_pingroup *g;
 	int ret;
 	s8 bank, bit, width;
-	s16 reg;
+	s32 reg;
 	u32 val, mask;
 	unsigned long flags;
 
@@ -692,7 +702,7 @@ static int tegra_pinconf_group_set(struct pinctrl_dev *pctldev,
 	const struct tegra_pingroup *g;
 	int ret;
 	s8 bank, bit, width;
-	s16 reg;
+	s32 reg;
 	u32 val, mask;
 	unsigned long flags;
 
@@ -771,7 +781,7 @@ static void tegra_pinconf_group_dbg_show(struct pinctrl_dev *pctldev,
 	const struct tegra_pingroup *g;
 	int i, ret;
 	s8 bank, bit, width;
-	s16 reg;
+	s32 reg;
 	u32 val;
 	int function;
 	const char *name;

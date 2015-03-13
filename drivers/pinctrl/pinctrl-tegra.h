@@ -94,20 +94,21 @@ struct tegra_pingroup {
 	const unsigned *pins;
 	unsigned npins;
 	unsigned funcs[4];
-	s16 mux_reg;
-	s16 pupd_reg;
-	s16 tri_reg;
-	s16 einput_reg;
-	s16 odrain_reg;
-	s16 lock_reg;
-	s16 parked_reg;
-	s16 ioreset_reg;
-	s16 rcv_sel_reg;
-	s16 e_io_hv_reg;
-	s16 hsm_reg;
-	s16 schmitt_reg;
-	s16 drv_reg;
-	s16 drvtype_reg;
+	s32 mux_reg;
+	s32 pupd_reg;
+	s32 tri_reg;
+	s32 einput_reg;
+	s32 odrain_reg;
+	s32 lock_reg;
+	s32 parked_reg;
+	s32 ioreset_reg;
+	s32 rcv_sel_reg;
+	s32 e_io_hv_reg;
+	s32 hsm_reg;
+	s32 schmitt_reg;
+	s32 drv_reg;
+	s32 drvtype_reg;
+	s32 gpio_reg;
 	int mux_bank;
 	int pupd_bank;
 	int tri_bank;
@@ -120,6 +121,7 @@ struct tegra_pingroup {
 	int parked_bank;
 	int drv_bank;
 	int drvtype_bank;
+	int gpio_bank;
 	int mux_bit;
 	int pupd_bit;
 	int tri_bit;
@@ -137,12 +139,14 @@ struct tegra_pingroup {
 	int drvup_bit;
 	int slwr_bit;
 	int slwf_bit;
+	int gpio_bit;
 	int drvtype_bit;
 	int drvdn_width;
 	int drvup_width;
 	int slwr_width;
 	int slwf_width;
 	int drvtype_width;
+	int gpio_width;
 };
 
 /**
@@ -157,6 +161,7 @@ struct tegra_pingroup {
  * @nfunctions:	The numbmer of entries in @functions.
  * @groups:	An array describing all pin groups the pin SoC supports.
  * @ngroups:	The numbmer of entries in @groups.
+ * @is_gpio_reg_support: GPIO/SFIO selection support in pinmux register.
  * @config_data: List of configuration data which is SoC specific.
  * @nconfig_data: Number of config data.
  */
@@ -168,6 +173,7 @@ struct tegra_pinctrl_soc_data {
 	unsigned nfunctions;
 	const struct tegra_pingroup *groups;
 	unsigned ngroups;
+	bool is_gpio_reg_support;
 	int (*suspend)(u32 *pg_data);
 	void (*resume)(u32 *pg_data);
 	int (*gpio_request_enable)(unsigned pin);

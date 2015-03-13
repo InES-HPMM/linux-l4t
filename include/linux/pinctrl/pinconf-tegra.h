@@ -49,6 +49,8 @@ enum tegra_pinconf_param {
 	TEGRA_PINCONF_PARAM_SLEW_RATE_RISING,
 	/* argument: Integer, range is HW-dependant */
 	TEGRA_PINCONF_PARAM_DRIVE_TYPE,
+	/* Set pin to GPIO mode */
+	TEGRA_PINCONF_PARAM_GPIO_MODE,
 };
 
 /*
