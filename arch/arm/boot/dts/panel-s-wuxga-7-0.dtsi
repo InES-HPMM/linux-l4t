@@ -102,6 +102,10 @@
 						nvidia,v-ref-to-sync = <1>;
 					};
 				};
+				vrr-settings {
+					nvidia,vrr_min_fps = <30>;
+					nvidia,vrr_max_fps = <75>;
+				};
 				smartdimmer {
 					status = "okay";
 					nvidia,use-auto-pwm = <0>;
