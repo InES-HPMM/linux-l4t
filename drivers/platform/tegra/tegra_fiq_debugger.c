@@ -62,27 +62,6 @@ static inline unsigned int tegra_read_lsr(struct tegra_fiq_debugger *t)
 	return lsr;
 }
 
-static int debug_port_init(struct platform_device *pdev)
-{
-	struct tegra_fiq_debugger *t;
-	t = container_of(dev_get_platdata(&pdev->dev), typeof(*t), pdata);
-
-	/* enable and clear FIFO */
-	tegra_write(t, UART_FCR_ENABLE_FIFO, UART_FCR);
-	tegra_write(t, UART_FCR_ENABLE_FIFO | UART_FCR_CLEAR_RCVR |
-				UART_FCR_CLEAR_XMIT, UART_FCR);
-	tegra_write(t, 0, UART_FCR);
-	tegra_write(t, UART_FCR_ENABLE_FIFO, UART_FCR);
-
-	/* clear LSR */
-	tegra_read(t, UART_LSR);
-
-	/* enable rx interrupt */
-	tegra_write(t, UART_IER_RDI, UART_IER);
-
-	return 0;
-}
-
 static int debug_getc(struct platform_device *pdev)
 {
 	unsigned int lsr;
@@ -122,6 +101,37 @@ static void debug_flush(struct platform_device *pdev)
 		cpu_relax();
 }
 
+#ifdef CONFIG_FIQ
+static void fiq_enable(struct platform_device *pdev, unsigned int irq, bool on)
+{
+	if (on)
+		tegra_fiq_enable(irq);
+	else
+		tegra_fiq_disable(irq);
+}
+#else /* !CONFIG_FIQ */
+
+static int debug_port_init(struct platform_device *pdev)
+{
+	struct tegra_fiq_debugger *t;
+	t = container_of(dev_get_platdata(&pdev->dev), typeof(*t), pdata);
+
+	/* enable and clear FIFO */
+	tegra_write(t, UART_FCR_ENABLE_FIFO, UART_FCR);
+	tegra_write(t, UART_FCR_ENABLE_FIFO | UART_FCR_CLEAR_RCVR |
+				UART_FCR_CLEAR_XMIT, UART_FCR);
+	tegra_write(t, 0, UART_FCR);
+	tegra_write(t, UART_FCR_ENABLE_FIFO, UART_FCR);
+
+	/* clear LSR */
+	tegra_read(t, UART_LSR);
+
+	/* enable rx interrupt */
+	tegra_write(t, UART_IER_RDI, UART_IER);
+
+	return 0;
+}
+
 static int debug_suspend(struct platform_device *pdev)
 {
 	struct tegra_fiq_debugger *t;
@@ -136,17 +146,8 @@ static int debug_resume(struct platform_device *pdev)
 {
 	return debug_port_init(pdev);
 }
+#endif /* CONFIG_FIQ */
 
-
-#ifdef CONFIG_FIQ
-static void fiq_enable(struct platform_device *pdev, unsigned int irq, bool on)
-{
-	if (on)
-		tegra_fiq_enable(irq);
-	else
-		tegra_fiq_disable(irq);
-}
-#endif
 
 static int tegra_fiq_debugger_id;
 
@@ -164,17 +165,17 @@ static void __tegra_serial_debug_init(unsigned int base, int fiq, int irq,
 		return;
 	}
 
-	t->pdata.uart_init = debug_port_init;
 	t->pdata.uart_getc = debug_getc;
 	t->pdata.uart_putc = debug_putc;
 	t->pdata.uart_flush = debug_flush;
-	t->pdata.uart_dev_suspend = debug_suspend;
-	t->pdata.uart_dev_resume = debug_resume;
 
 #ifdef CONFIG_FIQ
 	t->pdata.fiq_enable = fiq_enable;
 #else
 	BUG_ON(fiq >= 0);
+	t->pdata.uart_init = debug_port_init;
+	t->pdata.uart_dev_suspend = debug_suspend;
+	t->pdata.uart_dev_resume = debug_resume;
 #endif
 
 	t->debug_port_base = ioremap(base, PAGE_SIZE);
