@@ -50,4 +50,21 @@
 		pwrdet-pex-ctl-supply = <&ldousb_reg>;
 		pwrdet-cam-supply = <&en_vdd_cam_1v8>;
 	};
+
+	udc@7d000000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		usb_bat_chg-supply = <&battery_charger>;
+	};
+
+	otg@7d000000 {
+		usb_bat_chg-supply = <&battery_charger>;
+		usb_vbus-supply = <&usb0_vbus>;
+	};
+
+	ehci@0x7d000000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		usb_vbus-supply = <&usb0_vbus>;
+	};
 };
