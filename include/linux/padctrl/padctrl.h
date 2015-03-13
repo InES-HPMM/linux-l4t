@@ -77,6 +77,7 @@ static inline struct padctrl *padctrl_get(struct device *dev,
 
 static inline void *padctrl_put(struct padctrl *pctrl)
 {
+	return ERR_PTR(-ENODEV);
 }
 
 static inline struct padctrl *devm_padctrl_get(struct device *dev,
@@ -90,7 +91,7 @@ static inline int padctrl_set_voltage(struct padctrl *pctrl, u32 voltage)
 	return -EINVAL;
 }
 
-static int padctrl_get_voltage(struct padctrl *ctrl, u32 *voltage)
+static inline int padctrl_get_voltage(struct padctrl *ctrl, u32 *voltage)
 {
 	return -EINVAL;
 }
