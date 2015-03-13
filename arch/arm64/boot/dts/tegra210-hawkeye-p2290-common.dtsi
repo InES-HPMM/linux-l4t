@@ -128,7 +128,7 @@
 
 			bl-name = "pwm-backlight"; /* Match liblights naming expectations */
 			init-brt = /bits/ 8 <0xFF>; /* Max brightness */
-			dev-ctrl = /bits/ 8 <0x00>; /* PWM */
+			dev-ctrl = /bits/ 8 <0x80>; /* PWM, enable standby mode */
 			pwm-period = <29334>;
 
 			pwm-names = "lp8557";
@@ -148,7 +148,7 @@
 
 			bl-name = "pwm-backlight"; /* Match liblights naming expectations */
 			init-brt = /bits/ 8 <0xFF>; /* Max brightness */
-			dev-ctrl = /bits/ 8 <0x00>; /* PWM */
+			dev-ctrl = /bits/ 8 <0x80>; /* PWM, enable standby mode */
 			pwm-period = <29334>;
 
 			pwm-names = "lp8557";
@@ -168,7 +168,7 @@
 
 			bl-name = "pwm-backlight"; /* Match liblights naming expectations */
 			init-brt = /bits/ 8 <0xFF>; /* Max brightness */
-			dev-ctrl = /bits/ 8 <0x00>; /* PWM */
+			dev-ctrl = /bits/ 8 <0x80>; /* PWM, enable standby mode */
 			pwm-period = <29334>;
 
 			pwm-names = "lp8557";
