@@ -9910,6 +9910,8 @@ static struct tegra_pto_table ptodefs[] = {
 	{ .name = "pll_u", .divider = 2,  .pto_id = 269, .presel_reg = 0xcc,  .presel_value = BIT(27), .presel_mask = BIT(27) },
 	{ .name = "pll_re_vco", .divider = 2, .pto_id = 271, .presel_reg = 0x4c8, .presel_value = BIT(26), .presel_mask = BIT(26) },
 
+	{ .name = "cpu",    .divider = 1,  .pto_id = 18, },
+
 	{ .name = NULL, },
 };
 #endif
