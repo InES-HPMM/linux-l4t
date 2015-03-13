@@ -127,7 +127,7 @@ config TEGRA_MIPI_CAL
 
 config TEGRA_DC_SCAN_COLUMN
 	bool
-	depends on TEGRA_DC && (ARCH_TEGRA_11x_SOC || ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC)
+	depends on TEGRA_DC && (ARCH_TEGRA_11x_SOC || ARCH_TEGRA_12x_SOC || ARCH_TEGRA_21x_SOC || TEGRA_NVDISPLAY)
 	default y
 	help
 	  Enables access to scan column mode for providing 90 and 270 rotation.
