@@ -626,6 +626,7 @@
 			oc-alarm-id = <3>;
 			priority = <50>;
 			mode = "brief";
+			intr;
 			active_low;
 			count_threshold = <100>;
 			filter = <5100000>;
