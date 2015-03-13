@@ -425,13 +425,14 @@ config MTD_LATCH_ADDR
           If compiled as a module, it will be called latch-addr-flash.
 
 config MTD_NOR_TEGRA_GMI
-	bool "NOR Flash mapping driver for NVIDIA Tegra based boards"
+	tristate "NOR Flash mapping driver for NVIDIA Tegra based boards"
 	depends on MTD_COMPLEX_MAPPINGS && ARCH_TEGRA && MTD_CFI_ADV_OPTIONS
 	select TEGRA_GMI
 	help
 	  This enables access routines for the flash chips on the NVIDIA Tegra
 	  based embedded entertainment boards. Supports extended gpio &
 	  cs extension capability.
+
 config MTD_NOR_TEGRA_VMALLOC_SIZE
 	int "static mapping size for tegra NOR"
 	depends on MTD_NOR_TEGRA_GMI
