@@ -42,7 +42,6 @@
 				nvidia,dsi-lp00-pre-panel-wakeup = <TEGRA_DSI_ENABLE>;
 				nvidia,dsi-ulpm-not-support = <TEGRA_DSI_ENABLE>;
 				nvidia,dsi-suspend-aggr = <DSI_HOST_SUSPEND_LV2>;
-				nvidia,dsi-bl-name = "pwm-backlight";
 				nvidia,dsi-init-cmd =
 							/* Long  Packet: <PACKETTYPE[u8] COMMANDID[u8] PAYLOADCOUNT[u16] ECC[u8] PAYLOAD[..] CHECKSUM[u16]> */
 							/* Short Packet: <PACKETTYPE[u8] COMMANDID[u8] DATA0[u8] DATA1[u8] ECC[u8]> */
