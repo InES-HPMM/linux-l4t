@@ -236,13 +236,10 @@ static int pca954x_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, data);
 
 	if (client->dev.of_node) {
-		ret = of_get_property(client->dev.of_node,
-			"skip_mux_detect", NULL);
-		if (ret > 0) {
-			dev_info(&client->dev, "%s: device detect skipped.\n",
-				__func__);
-			fskip = true;
-		}
+		fskip = of_property_read_bool(client->dev.of_node,
+				"skip_mux_detect");
+		if (fskip)
+			dev_info(&client->dev, "device detect skipped.\n");
 
 		ret = of_property_read_u32(client->dev.of_node,
 			"force_bus_start", &force_bus);
