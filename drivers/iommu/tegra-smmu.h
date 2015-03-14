@@ -246,8 +246,6 @@ struct smmu_device {
 
 	struct rb_root  clients;
 
-	struct page *avp_vector_page;   /* dummy page shared by all AS's */
-
 	struct dentry *debugfs_root;
 	struct smmu_debugfs_info *debugfs_info;
 	struct dentry *masters_root;

@@ -1364,7 +1364,6 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	int idx;
 	unsigned long as_bitmap[1];
 	unsigned long as_alloc_bitmap = 0;
-	static bool map_avp_vector = true;
 
 	client = tegra_smmu_find_client(smmu_handle, dev);
 	if (!client)
@@ -1427,21 +1426,6 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	}
 	list_add(&client->list, &as->client);
 	spin_unlock(&as->client_lock);
-
-	/*
-	 * Reserve "page zero" for AVP vectors using a common dummy
-	 * page.
-	 */
-	if (map_avp_vector && (swgids & TEGRA_SWGROUP_BIT(AVPC))) {
-		struct page *page;
-
-		map_avp_vector = false;
-		page = as->smmu->avp_vector_page;
-		__smmu_iommu_map_pfn(as, 0, page_to_pfn(page), 0);
-
-		pr_debug("Reserve \"page zero\" \
-			for AVP vectors using a common dummy\n");
-	}
 
 	dev_dbg(smmu->dev, "%s is attached\n", dev_name(dev));
 	debugfs_create_master(client);
@@ -2252,10 +2236,6 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, smmu);
 
-	smmu->avp_vector_page = alloc_page(GFP_KERNEL);
-	if (!smmu->avp_vector_page)
-		goto fail_cleanup;
-
 	smmu_debugfs_create(smmu);
 	BUG_ON(cmpxchg(&smmu_handle, NULL, smmu));
 	bus_set_iommu(&platform_bus_type, smmu_iommu_ops);
@@ -2279,7 +2259,6 @@ static int tegra_smmu_remove(struct platform_device *pdev)
 	smmu_write(smmu, SMMU_CONFIG_DISABLE, SMMU_CONFIG);
 	for (i = 0; i < smmu->num_as; i++)
 		free_pdir(&smmu->as[i]);
-	__free_page(smmu->avp_vector_page);
 	smmu_handle = NULL;
 	return 0;
 }
