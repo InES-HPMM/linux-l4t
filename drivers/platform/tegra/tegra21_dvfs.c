@@ -92,7 +92,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_cpu = {
 	.stats = {
 		.bin_uV = 6250, /* 6.25mV */
 	},
-	.version = "p4v29",
+	.version = "p4v30",
 };
 
 static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
@@ -138,7 +138,7 @@ static struct dvfs_rail *tegra21_dvfs_rails[] = {
 /* CPU DVFS tables */
 static unsigned long cpu_max_freq[] = {
 /* speedo_id	0	 1        2      */
-		1912500, 1912500, 2014500,
+		1912500, 1912500, 2218500,
 };
 
 #define CPU_CVB_TABLE		\
@@ -166,6 +166,7 @@ static unsigned long cpu_max_freq[] = {
 		{ 1836000, {   832865,    60975,    -2323 }, {  5100873 , -279186 ,  4747  } }, \
 		{ 1912500, {   863559,    60085,    -2323 }, {  5100873 , -279186 ,  4747  } }, \
 		{ 2014500, {   939271,    58895,    -2323 }, {  5100873 , -279186 ,  4747  } }, \
+		{ 2218500, {   1227000,       0,        0 }, {  5100873 , -279186 ,  4747  } }, \
 		{ 0,	   { }, { }, }, \
 	}
 
@@ -879,6 +880,7 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 
 	/* dvfs tables are successfully populated - fill in the rest */
 	cpu_dvfs->speedo_id = d->speedo_id;
+	cpu_dvfs->boost_table = d->speedo_id == 2;
 	cpu_dvfs->process_id = d->process_id;
 	cpu_dvfs->freqs_mult = d->freqs_mult;
 	cpu_dvfs->dvfs_rail->nominal_millivolts = min(d->max_mv,
