@@ -66,7 +66,7 @@
 #define TEGRA_SWGROUP_TSEC1	42	/* 0xad8 */
 #define TEGRA_SWGROUP_TSECB1	43	/* 0xadc */
 #define TEGRA_SWGROUP_NVDEC1	44	/* 0xae0 */
-
+#define TEGRA_SWGROUP_NVCSI	45
 #define TEGRA_SWGROUP_AXIS	46	/* 0xae8 */
 #define TEGRA_SWGROUP_EQOS	47	/* 0xaec */
 #define TEGRA_SWGROUP_UFSHC	48	/* 0xaf0 */
