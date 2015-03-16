@@ -4687,7 +4687,7 @@ static int tegra_xhci_otg_notify(struct notifier_block *nb,
 
 	dev_info(&pdev->dev, "received otg event %lu\n", event);
 
-	if (event == USB_EVENT_ID || event == USB_EVENT_NONE) {
+	if (event == USB_EVENT_ID || event == USB_EVENT_ID_FLOAT) {
 		tegra->otg_port_owned = (event == USB_EVENT_ID) ? true : false;
 		if (tegra->hc_in_elpg) {
 			dev_info(&pdev->dev, "elpg exit by USB_ID=%s\n",

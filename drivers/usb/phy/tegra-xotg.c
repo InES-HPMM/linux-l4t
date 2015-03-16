@@ -221,7 +221,7 @@ static int extcon_id_notifications(struct notifier_block *nb,
 	if (xotg->id_grounded)
 		xotg_notify_event(xotg, USB_EVENT_ID);
 	else
-		xotg_notify_event(xotg, USB_EVENT_NONE);
+		xotg_notify_event(xotg, USB_EVENT_ID_FLOAT);
 
 	spin_unlock_irqrestore(&xotg->lock, flags);
 	return NOTIFY_DONE;
