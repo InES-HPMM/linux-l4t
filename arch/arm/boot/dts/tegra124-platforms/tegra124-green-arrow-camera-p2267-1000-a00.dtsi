@@ -18,6 +18,10 @@
 #define CAM_I2C_BUS	2
 
 / {
+	tegra-camera-platform {
+		compatible = "nvidia, tegra-camera-platform";
+	};
+
 	camera-pcl {
 		compatible = "nvidia,tegra124-camera", "simple-bus";
 		configuration = <0xAA55AA55>;

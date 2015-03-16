@@ -21,6 +21,10 @@
 #define VI_I2C_BUS	6
 
 / {
+	tegra-camera-platform {
+		compatible = "nvidia, tegra-camera-platform";
+	};
+
 	camera-pcl {
 		compatible = "nvidia,tegra210-camera", "simple-bus";
 		configuration = <0xAA55AA55>;
