@@ -97,7 +97,7 @@ static int __tegra_wdt_ping(struct tegra_wdt *tegra_wdt)
 	writel(WDT_CMD_DISABLE_COUNTER, tegra_wdt->wdt_source + WDT_CMD);
 
 	writel(TIMER_PCR_INTR, tegra_wdt->wdt_timer + TIMER_PCR);
-	val = (tegra_wdt->wdt.timeout * USEC_PER_SEC) / 4;
+	val = tegra_wdt->wdt.timeout * USEC_PER_SEC;
 	val |= (TIMER_EN | TIMER_PERIODIC);
 	writel(val, tegra_wdt->wdt_timer + TIMER_PTV);
 
@@ -111,7 +111,7 @@ static int __tegra_wdt_enable(struct tegra_wdt *tegra_wdt)
 	u32 val;
 
 	writel(TIMER_PCR_INTR, tegra_wdt->wdt_timer + TIMER_PCR);
-	val = (tegra_wdt->wdt.timeout * USEC_PER_SEC) / 4;
+	val = tegra_wdt->wdt.timeout * USEC_PER_SEC;
 	val |= (TIMER_EN | TIMER_PERIODIC);
 	writel(val, tegra_wdt->wdt_timer + TIMER_PTV);
 
