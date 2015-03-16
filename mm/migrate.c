@@ -1145,9 +1145,6 @@ int migrate_replace_page(struct page *page, struct page *newpage)
 	if (ret == 0) {
 		/* take ownership of newpage and add it to lru */
 		putback_lru_page(newpage);
-	} else {
-		/* restore additional reference to the oldpage */
-		get_page(page);
 	}
 
 	putback_lru_page(page);
