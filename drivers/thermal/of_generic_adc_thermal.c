@@ -2,7 +2,7 @@
  *
  * OF Generic ADC thermal driver
  *
- * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA Corporation. All rights reserved.
  *
  * Based on thermal/generic-adc-thermal.c by
  *	Jinyoung Park <jinyoungp@nvidia.com>
@@ -35,6 +35,7 @@ enum gpadc_temp_table_type {
 	ADC_TEMP_LINEAR_SINGLE,
 	ADC_TEMP_LINEAR_MIN_MAX_AVG,
 	ADC_TEMP_TDIODE_EQN,
+	ADC_TEMP_LINEAR_SINGLE_REF,
 };
 
 struct gpadc_thermal_info {
@@ -42,6 +43,7 @@ struct gpadc_thermal_info {
 	struct gpadc_thermal_platform_data *pdata;
 	struct thermal_zone_device *tz_dev;
 	struct iio_channel *channel;
+	struct iio_channel *ref_channel;
 	int temp_offset;
 	bool dual_mode;
 	enum gpadc_temp_table_type table_type;
@@ -107,6 +109,7 @@ static int gpadc_thermal_read_linear_lookup_table(struct device *dev,
 
 	switch (table_type) {
 	case ADC_TEMP_LINEAR_SINGLE:
+	case ADC_TEMP_LINEAR_SINGLE_REF:
 		entry_size = 1;
 		break;
 	case ADC_TEMP_LINEAR_MIN_MAX_AVG:
@@ -230,6 +233,8 @@ static int gpadc_thermal_parse_dt(struct platform_device *pdev,
 	if (!ret) {
 		if (!strcmp(pstr, "linear-table"))
 			gti->table_type = ADC_TEMP_LINEAR_SINGLE;
+		else if (!strcmp(pstr, "linear-table-ref-channel"))
+			gti->table_type = ADC_TEMP_LINEAR_SINGLE_REF;
 		else if (!strcmp(pstr, "linear-table-min-max-avg"))
 			gti->table_type = ADC_TEMP_LINEAR_MIN_MAX_AVG;
 		else if (!strcmp(pstr, "tdiode-equation"))
@@ -238,6 +243,7 @@ static int gpadc_thermal_parse_dt(struct platform_device *pdev,
 
 	switch (gti->table_type) {
 	case ADC_TEMP_LINEAR_SINGLE:
+	case ADC_TEMP_LINEAR_SINGLE_REF:
 	case ADC_TEMP_LINEAR_MIN_MAX_AVG:
 		ret = gpadc_thermal_read_linear_lookup_table(&pdev->dev,
 				gti->table_type, &gti->pdata);
@@ -279,6 +285,16 @@ static int gpadc_thermal_read_channel(struct gpadc_thermal_info *gti,
 		ret = iio_read_channel_processed(gti->channel, val);
 		if (ret < 0)
 			ret = iio_read_channel_raw(gti->channel, val);
+		if (ret < 0)
+			return ret;
+
+		if (gti->ref_channel) {
+			ret = iio_read_channel_processed(gti->ref_channel,
+							val2);
+			if (ret < 0)
+				ret = iio_read_channel_raw(gti->ref_channel,
+							val2);
+		}
 	}
 	return ret;
 }
@@ -364,6 +380,7 @@ static int gpadc_thermal_get_temp(void *data, long *temp)
 {
 	struct gpadc_thermal_info *gti = data;
 	int val = 0, val2 = 0;
+	int final_val;
 	int ret;
 
 	ret = gpadc_thermal_read_channel(gti, &val, &val2);
@@ -375,6 +392,14 @@ static int gpadc_thermal_get_temp(void *data, long *temp)
 	switch (gti->table_type) {
 	case ADC_TEMP_LINEAR_SINGLE:
 		 *temp = gpadc_thermal_adc_to_temp_linear_single(gti, val);
+		break;
+
+	case ADC_TEMP_LINEAR_SINGLE_REF:
+		if (!val2)
+			return -EINVAL;
+		final_val = DIV_ROUND_UP((val << 16), val2);
+		 *temp = gpadc_thermal_adc_to_temp_linear_single(gti,
+						final_val);
 		break;
 
 	case ADC_TEMP_LINEAR_MIN_MAX_AVG:
@@ -422,6 +447,16 @@ static int gpadc_thermal_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	gti->ref_channel = iio_channel_get(&pdev->dev, "ref-channel");
+	if (IS_ERR(gti->ref_channel)) {
+		ret = PTR_ERR(gti->ref_channel);
+		if (ret != -EINVAL) {
+			dev_err(&pdev->dev, "IIO channel not found: %d\n", ret);
+			goto scrub_ref;
+		}
+		gti->ref_channel = NULL;
+	}
+
 	gti->tz_dev = thermal_zone_of_sensor_register(&pdev->dev, 0,
 				gti, gpadc_thermal_get_temp, NULL);
 	if (IS_ERR(gti->tz_dev)) {
@@ -433,6 +468,9 @@ static int gpadc_thermal_probe(struct platform_device *pdev)
 	return 0;
 
 scrub:
+	if (gti->ref_channel)
+		iio_channel_release(gti->ref_channel);
+scrub_ref:
 	iio_channel_release(gti->channel);
 	return ret;
 }
