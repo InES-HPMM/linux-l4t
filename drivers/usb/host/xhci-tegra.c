@@ -4684,14 +4684,10 @@ static int tegra_xhci_otg_notify(struct notifier_block *nb,
 	struct tegra_xhci_hcd *tegra = container_of(nb,
 					struct tegra_xhci_hcd, otgnb);
 	struct platform_device *pdev = tegra->pdev;
-	unsigned long prev_event = tegra->prev_event;
 
 	dev_info(&pdev->dev, "received otg event %lu\n", event);
 
-	if (((prev_event == USB_EVENT_HANDLE_OTG_PP ||
-		prev_event == USB_EVENT_NONE) && event == USB_EVENT_ID) ||
-		((prev_event == USB_EVENT_HANDLE_OTG_PP ||
-		prev_event == USB_EVENT_ID) && event == USB_EVENT_NONE)) {
+	if (event == USB_EVENT_ID || event == USB_EVENT_NONE) {
 		tegra->otg_port_owned = (event == USB_EVENT_ID) ? true : false;
 		if (tegra->hc_in_elpg) {
 			dev_info(&pdev->dev, "elpg exit by USB_ID=%s\n",
@@ -4705,8 +4701,6 @@ static int tegra_xhci_otg_notify(struct notifier_block *nb,
 	} else if (event == USB_EVENT_HANDLE_OTG_PP) {
 		tegra_xhci_handle_otg_port_change(tegra);
 	}
-
-	tegra->prev_event = event;
 
 	return NOTIFY_OK;
 }
@@ -5181,7 +5175,6 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra->hs_wake_event = false;
 	tegra->host_resume_req = false;
 	tegra->lp0_exit = false;
-	tegra->prev_event = USB_EVENT_NONE;
 
 	/* request resource padctl base address */
 	ret = tegra_xhci_request_mem_region(pdev, 3, &tegra->padctl_base);

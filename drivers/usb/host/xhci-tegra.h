@@ -375,7 +375,6 @@ struct tegra_xhci_hcd {
 	bool otg_port_owned;
 	bool otg_port_ownership_changed;
 	u32  otg_portnum;
-	unsigned long prev_event;
 
 	struct regulator **xusb_utmi_vbus_regs;
 
