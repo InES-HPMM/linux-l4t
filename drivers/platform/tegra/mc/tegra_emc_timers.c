@@ -113,7 +113,6 @@ reset:
  */
 void tegra_emc_timer_mr4_start(void)
 {
-	pr_info("MR4 timer starting\n");
 	atomic_set(&mr4_do_poll, 1);
 	mod_timer(&emc_timer_mr4,
 		  jiffies + msecs_to_jiffies(timer_period_mr4));
@@ -126,7 +125,6 @@ void tegra_emc_timer_mr4_start(void)
  */
 void tegra_emc_timer_mr4_stop(void)
 {
-	pr_info("MR4 timer stopping\n");
 	atomic_set(&mr4_do_poll, 0);
 }
 
@@ -140,14 +138,12 @@ static void emc_train(unsigned long nothing)
 
 void tegra_emc_timer_training_start(void)
 {
-	pr_info("Training timer starting\n");
 	mod_timer(&emc_timer_training,
 		  jiffies + msecs_to_jiffies(timer_period_training));
 }
 
 void tegra_emc_timer_training_stop(void)
 {
-	pr_info("Training timer stopping\n");
 	del_timer(&emc_timer_training);
 }
 
