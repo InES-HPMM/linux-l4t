@@ -1,7 +1,7 @@
 /*
  * arch/arm/boot/dts/tegra124-android-p1889-hdmiprimary.dts
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,8 @@
 
 / {
 	model = "NVIDIA Tegra124 p1889";
-	compatible = "nvidia,p1889", "nvidia,tegra124";
+	/* revision 1 is for hdmi primary */
+	compatible = "nvidia,p1889,1", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 
 	host1x {

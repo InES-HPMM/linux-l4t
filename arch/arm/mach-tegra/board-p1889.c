@@ -129,10 +129,17 @@ static struct notifier_block platform_nb = {
 
 static void p1889_panel_init(void)
 {
-	tegra_set_fixed_panel_ops(true,
-		&edp_a_1080p_14_0_ops, "a-edp,1080p-14-0");
-	tegra_set_fixed_panel_ops(false, &p1889_hdmi_ops, "hdmi,display");
-	tegra_set_fixed_pwm_bl_ops(edp_a_1080p_14_0_ops.pwm_bl_ops);
+	if (of_machine_is_compatible("nvidia,p1889,1")) {
+		/* for HDMI primary */
+		tegra_set_fixed_panel_ops(true,
+				&p1889_hdmi_ops, "hdmi,display");
+	} else {
+		tegra_set_fixed_panel_ops(true,
+				&edp_a_1080p_14_0_ops, "a-edp,1080p-14-0");
+		tegra_set_fixed_panel_ops(false,
+				&p1889_hdmi_ops, "hdmi,display");
+		tegra_set_fixed_pwm_bl_ops(edp_a_1080p_14_0_ops.pwm_bl_ops);
+	}
 	bus_register_notifier(&platform_bus_type, &platform_nb);
 }
 
@@ -202,6 +209,7 @@ static void __init tegra_p1889_dt_init(void)
 
 static const char * const p1889_dt_board_compat[] = {
 	"nvidia,p1889",
+	"nvidia,p1889,1", /* for HDMI primary*/
 	NULL
 };
 
