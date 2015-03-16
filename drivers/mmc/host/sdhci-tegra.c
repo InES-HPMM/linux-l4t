@@ -5166,7 +5166,47 @@ static struct sdhci_tegra_soc_data soc_data_tegra21 = {
 		     NVQUIRK2_DYNAMIC_TRIM_SUPPLY_SWITCH,
 };
 
+static struct sdhci_pltfm_data sdhci_tegra18_pdata = {
+	.quirks = TEGRA_SDHCI_QUIRKS,
+	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN |
+		   SDHCI_QUIRK2_NON_STD_VOLTAGE_SWITCHING |
+		   SDHCI_QUIRK2_NON_STD_TUNING_LOOP_CNTR |
+		   SDHCI_QUIRK2_NO_CALC_MAX_DISCARD_TO |
+		   SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK |
+		   SDHCI_QUIRK2_HOST_OFF_CARD_ON |
+		   SDHCI_QUIRK2_USE_64BIT_ADDR |
+		   SDHCI_QUIRK2_NON_STD_TUN_CARD_CLOCK |
+		   SDHCI_QUIRK2_NON_STD_RTPM |
+		   SDHCI_QUIRK2_SUPPORT_64BIT_DMA,
+	.ops  = &tegra_sdhci_ops,
+};
+
+static struct sdhci_tegra_soc_data soc_data_tegra18 = {
+	.pdata = &sdhci_tegra18_pdata,
+	.nvquirks = TEGRA_SDHCI_NVQUIRKS |
+		    NVQUIRK_SET_TRIM_DELAY |
+		    NVQUIRK_ENABLE_DDR50 |
+		    NVQUIRK_ENABLE_HS200 |
+		    NVQUIRK_ENABLE_HS400 |
+		    NVQUIRK_ENABLE_AUTO_CMD23 |
+		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
+		    NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD |
+		    NVQUIRK_SET_SDMEMCOMP_VREF_SEL |
+		    NVQUIRK_HIGH_FREQ_TAP_PROCEDURE |
+		    NVQUIRK_SET_CALIBRATION_OFFSETS |
+		    NVQUIRK_DISABLE_EXTERNAL_LOOPBACK |
+		    NVQUIRK_UPDATE_PAD_CNTRL_REG |
+		    NVQUIRK_UPDATE_PIN_CNTRL_REG,
+	.nvquirks2 = NVQUIRK2_UPDATE_HW_TUNING_CONFG |
+		     NVQUIRK2_CONFIG_PWR_DET |
+		     NVQUIRK2_BROKEN_SD2_0_SUPPORT |
+		     NVQUIRK2_SELECT_SDR50_MODE |
+		     NVQUIRK2_ADD_DELAY_AUTO_CALIBRATION |
+		     NVQUIRK2_DYNAMIC_TRIM_SUPPLY_SWITCH,
+};
+
 static const struct of_device_id sdhci_tegra_dt_match[] = {
+	{ .compatible = "nvidia,tegra186-sdhci", .data = &soc_data_tegra18 },
 	{ .compatible = "nvidia,tegra210-sdhci", .data = &soc_data_tegra21 },
 	{ .compatible = "nvidia,tegra124-sdhci", .data = &soc_data_tegra12 },
 	{ .compatible = "nvidia,tegra114-sdhci", .data = &soc_data_tegra11 },
