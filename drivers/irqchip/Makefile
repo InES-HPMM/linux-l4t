@@ -1,3 +1,5 @@
+GCOV_PROFILE				:= y
+
 subdir-ccflags-y			+= -Werror
 obj-$(CONFIG_IRQCHIP)			+= irqchip.o
 
