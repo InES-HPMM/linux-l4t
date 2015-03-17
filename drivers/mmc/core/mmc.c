@@ -585,9 +585,12 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	 * Set card->ext_csd.cmdq_support to 0 to disable CQ.
 	 */
 		if (card->host->caps2 & MMC_CAP2_CQ)
+#ifdef CONFIG_MMC_CQ
 			card->ext_csd.cmdq_support =
 			ext_csd[EXT_CSD_CMDQ_SUPPORT];
-
+#else
+			card->ext_csd.cmdq_support = 0;
+#endif
 		if (card->ext_csd.cmdq_support) {
 			card->ext_csd.cmdq_depth = ext_csd[EXT_CSD_CMDQ_DEPTH];
 			card->ext_csd.qrdy_support = 1;
