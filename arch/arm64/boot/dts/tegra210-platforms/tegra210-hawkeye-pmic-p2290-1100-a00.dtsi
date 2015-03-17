@@ -262,6 +262,8 @@
 					regulator-max-microvolt = <1800000>;
 					regulator-boot-on;
 					maxim,fps-source = <FPS_SRC_NONE>;
+					maxim,fps-power-up-period = <7>;
+					maxim,fps-power-down-period = <0>;
 					consumers {
 						c1 {
 							regulator-consumer-supply = "dvdd";
