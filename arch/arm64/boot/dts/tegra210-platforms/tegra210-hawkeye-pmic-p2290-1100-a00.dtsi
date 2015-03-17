@@ -247,12 +247,6 @@
 					regulator-min-microvolt = <3200000>;
 					regulator-max-microvolt = <3200000>;
 					maxim,fps-source = <FPS_SRC_NONE>;
-					consumers {
-						c1 {
-							regulator-consumer-supply = "avdd";
-							regulator-consumer-device = "spi3.0";
-						};
-					};
 				};
 
 				max77620_ldo6: ldo6 {
@@ -263,12 +257,6 @@
 					maxim,fps-source = <FPS_SRC_NONE>;
 					maxim,fps-power-up-period = <7>;
 					maxim,fps-power-down-period = <0>;
-					consumers {
-						c1 {
-							regulator-consumer-supply = "dvdd";
-							regulator-consumer-device = "spi3.0";
-						};
-					};
 				};
 
 				max77620_ldo7: ldo7 {
