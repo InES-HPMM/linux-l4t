@@ -1965,13 +1965,21 @@ static int possible_rates_show(struct seq_file *s, void *data)
 {
 	struct clk *c = s->private;
 	long rate = 0;
+	bool at_min = !c->min_rate;
 
 	/* shared bus clock must round up, unless top of range reached */
 	while (rate <= c->max_rate) {
 		unsigned long rounded_rate = c->ops->round_rate(c, rate);
-		if (IS_ERR_VALUE(rounded_rate) || (rounded_rate <= rate))
+		if (IS_ERR_VALUE(rounded_rate) || (rounded_rate <= rate)) {
+			if ((rate == rounded_rate) && at_min) {
+				/* bus doesn't clip rates to discrete set */
+				seq_printf(s, "... %lu", c->max_rate / 1000);
+				seq_printf(s, "(kHz): discrete rates N/A\n");
+				return 0;
+			}
 			break;
-
+		}
+		at_min = rounded_rate == c->min_rate;
 		rate = rounded_rate + 2000;	/* 2kHz resolution */
 		seq_printf(s, "%ld ", rounded_rate / 1000);
 	}
