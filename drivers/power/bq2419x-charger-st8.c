@@ -56,6 +56,8 @@
 #define BQ2419X_PRE_CHG_TERM_OFFSET	128
 #define BQ2419X_CHARGE_VOLTAGE_OFFSET	3504
 #define BQ2419x_OTG_ENABLE_TIME		(30*HZ)
+#define BQ2419x_TEMP_H_CHG_DISABLE	50
+#define BQ2419x_TEMP_L_CHG_DISABLE	0
 
 /* input current limit */
 static const unsigned int iinlim[] = {
@@ -108,6 +110,7 @@ struct bq2419x_chip {
 	bool				cable_connected;
 	int				last_charging_current;
 	bool				disable_suspend_during_charging;
+	bool				thermal_chg_disable;
 	int				last_temp;
 	u32				auto_recharge_time_supend;
 	struct bq2419x_reg_info		input_src;
@@ -1361,6 +1364,34 @@ static int bq2419x_charger_thermal_configure(
 
 	dev_info(bq2419x->dev, "Battery temp %d\n", temp);
 
+	if ((temp > BQ2419x_TEMP_H_CHG_DISABLE ||
+				temp < BQ2419x_TEMP_L_CHG_DISABLE) &&
+				!bq2419x->thermal_chg_disable) {
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
+				 BQ2419X_ENABLE_CHARGE_MASK,
+				 BQ2419X_DISABLE_CHARGE);
+		if (ret < 0) {
+			dev_err(bq2419x->dev, "REG update failed, %d\n", ret);
+			return ret;
+		}
+		dev_info(bq2419x->dev, "Thermal: Charging disabled\n");
+		bq2419x->thermal_chg_disable = true;
+	}
+
+	if ((temp <= BQ2419x_TEMP_H_CHG_DISABLE &&
+				temp >= BQ2419x_TEMP_L_CHG_DISABLE) &&
+				bq2419x->thermal_chg_disable) {
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
+				BQ2419X_ENABLE_CHARGE_MASK,
+				BQ2419X_ENABLE_CHARGE);
+		if (ret < 0) {
+			dev_err(bq2419x->dev, "REG update failed, %d\n", ret);
+			return ret;
+		}
+		dev_info(bq2419x->dev, "Thermal: Charging enabled\n");
+		bq2419x->thermal_chg_disable = false;
+	}
+
 	for (i = 0; i < chg_pdata->n_temp_profile; ++i) {
 		if (temp <= chg_pdata->temp_range[i]) {
 			fast_charge_current = chg_pdata->chg_current_limit[i];
@@ -1819,6 +1850,7 @@ static int bq2419x_probe(struct i2c_client *client,
 			pdata->bcharger_pdata->disable_suspend_during_charging;
 	bq2419x->auto_recharge_time_supend =
 			pdata->bcharger_pdata->auto_recharge_time_supend;
+	bq2419x->thermal_chg_disable = false;
 
 	bq2419x_process_charger_plat_data(bq2419x, pdata->bcharger_pdata);
 
