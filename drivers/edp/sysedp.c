@@ -164,7 +164,7 @@ struct sysedp_consumer *sysedp_create_consumer(const char *specname,
 		return NULL;
 	match = sysedp_find_consumer_data(specname);
 	if (!match) {
-		pr_info("sysedp_create_consumer: unable to create %s, no consumer_data for %s found",
+		pr_info("sysedp_create_consumer: unable to create %s, no consumer_data for %s found\n",
 			consumername, specname);
 		return NULL;
 	}
