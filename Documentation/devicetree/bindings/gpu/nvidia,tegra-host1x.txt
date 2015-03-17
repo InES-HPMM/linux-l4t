@@ -12,6 +12,9 @@ Required properties:
 - nvidia,memory-clients: memory client ID of the controller.
 - nvidia,ch-base: channel base ID of the controller
 - nvidia,nb-channels: number of channels of the controller
+- nvidia,nb-hw-pts: number of syncpoints supported in h/w
+- nvidia,pts-base: syncpoint base ID supported in s/w
+- nvidia,nb-pts: number of syncpoints supported in s/w
 
 The host1x top-level node defines a number of children, each representing one
 of the following host1x client modules:
@@ -149,6 +152,10 @@ Example:
 
 		nvidia,ch-base = <0>;
 		nvidia,nb-channels = <12>;
+
+		nvidia,nb-hw-pts = <192>;
+		nvidia,pts-base = <0>;
+		nvidia,nb-pts = <192>;
 
 		mpe {
 			compatible = "nvidia,tegra20-mpe";
