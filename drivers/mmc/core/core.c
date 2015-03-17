@@ -501,8 +501,10 @@ static void mmc_run_queue(struct mmc_host *host, int from)
 		dbg_add_host_log(host, cmd->opcode, (cmd->arg >> 16 & 0xff), 1);
 #endif
 		mmc_post_req(host, mrq, 0);
-		mmc_blk_end_queued_req(host, mrq->areq, cmd->arg >> 16, err);
 
+#ifdef CONFIG_MMC_CQ
+		mmc_blk_end_queued_req(host, mrq->areq, cmd->arg >> 16, err);
+#endif
 		mmc_host_clk_release(host);
 	}
 }

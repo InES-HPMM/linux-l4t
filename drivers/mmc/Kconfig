@@ -19,6 +19,13 @@ config MMC_DEBUG
 	  This is an option for use by developers; most people should
 	  say N here.  This enables MMC core and driver debugging.
 
+config MMC_CQ
+	bool "eMMC5.0 SW Command Queue support"
+	default N
+	help
+	  If you say Y here, the MMC layer CQ feature will be enabled
+	  for  eMMC device.
+
 if MMC
 
 source "drivers/mmc/core/Kconfig"
