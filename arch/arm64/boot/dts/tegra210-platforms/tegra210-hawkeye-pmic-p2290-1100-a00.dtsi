@@ -177,7 +177,6 @@
 					regulator-boot-on;
 					regulator-init-mode = <REGULATOR_MODE_NORMAL>;
 					maxim,fps-source = <FPS_SRC_0>;
-					maxim,disable-remote-sense-on-suspend;
 				};
 
 				max77620_sd2: sd2 {
