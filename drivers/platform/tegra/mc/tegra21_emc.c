@@ -1357,7 +1357,8 @@ static int emc_read_mrr(int dev, int addr)
 	int ret;
 	u32 val, emc_cfg;
 
-	if (dram_type != DRAM_TYPE_LPDDR2)
+	if (dram_type != DRAM_TYPE_LPDDR2 &&
+	    dram_type != DRAM_TYPE_LPDDR4)
 		return -ENODEV;
 
 	ret = wait_for_update(EMC_EMC_STATUS,
