@@ -44,6 +44,7 @@
 #include <asm/uaccess.h>
 #include <linux/platform_data/modem_thermal.h>
 #include <linux/platform_data/sysedp_modem.h>
+#include <linux/system-wakeup.h>
 
 #define BOOST_CPU_FREQ_MIN	1200000
 #define BOOST_CPU_FREQ_TIMEOUT	5000
@@ -1232,6 +1233,11 @@ static int tegra_usb_modem_resume(struct platform_device *pdev)
 		ret = disable_irq_wake(modem->wake_irq);
 		if (ret)
 			pr_err("Failed to disable modem wake_irq\n");
+	} else if (get_wakeup_reason_irq() == INT_USB2) {
+		pr_info("%s: remote wakeup from USB. Hold a timed wakelock\n",
+				__func__);
+		wake_lock_timeout(&modem->wake_lock,
+				WAKELOCK_TIMEOUT_FOR_REMOTE_WAKE);
 	}
 
 	/* send L3->L0 hint to modem */
