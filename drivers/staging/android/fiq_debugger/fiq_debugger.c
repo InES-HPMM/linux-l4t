@@ -725,6 +725,7 @@ static bool fiq_debugger_handle_uart_interrupt(struct fiq_debugger_state *state,
 }
 
 #ifdef CONFIG_FIQ_GLUE
+static DEFINE_PER_CPU(bool, immediate_dump) = true;
 static void fiq_debugger_fiq(struct fiq_glue_handler *h,
 		const struct pt_regs *regs, void *svc_sp)
 {
@@ -733,12 +734,16 @@ static void fiq_debugger_fiq(struct fiq_glue_handler *h,
 	unsigned int this_cpu = THREAD_INFO(svc_sp)->cpu;
 	bool need_irq;
 
-	spin_lock(&state->debug_fiq_lock);
-	fiq_debugger_printf(&state->output, "Dump for CPU%d:\n", this_cpu);
-	/* execute "allregs" command */
-	fiq_debugger_fiq_exec(state, "bt", regs, svc_sp);
-	fiq_debugger_fiq_exec(state, "allregs", regs, svc_sp);
-	spin_unlock(&state->debug_fiq_lock);
+	/* Spew regs and callstack immediatly after entering FIQ handler */
+	if (per_cpu(immediate_dump, this_cpu)) {
+		spin_lock(&state->debug_fiq_lock);
+		fiq_debugger_printf(&state->output,
+					"Dump for CPU%d:\n", this_cpu);
+		fiq_debugger_fiq_exec(state, "bt", regs, svc_sp);
+		fiq_debugger_fiq_exec(state, "allregs", regs, svc_sp);
+		spin_unlock(&state->debug_fiq_lock);
+		per_cpu(immediate_dump, this_cpu) = false;
+	}
 
 	need_irq = fiq_debugger_handle_uart_interrupt(state, this_cpu, regs,
 			svc_sp);
