@@ -62,6 +62,7 @@ static void IRQHandlerF2(struct sdio_func *func);
 static int sdioh_sdmmc_get_cisaddr(sdioh_info_t *sd, uint32 regaddr);
 extern int sdio_reset_comm(struct mmc_card *card);
 
+extern int card_removed;
 #define DEFAULT_SDIO_F2_BLKSIZE		512
 #ifndef CUSTOM_SDIO_F2_BLKSIZE
 #define CUSTOM_SDIO_F2_BLKSIZE		DEFAULT_SDIO_F2_BLKSIZE
@@ -1419,8 +1420,11 @@ sdioh_stop(sdioh_info_t *sd)
 #endif
 		bcmsdh_oob_intr_set(sd->bcmsdh, FALSE);
 #endif /* !defined(OOB_INTR_ONLY) */
-		if (mmc_power_save_host((sd->func[0])->card->host))
-			sd_err(("%s card power save fail\n", __FUNCTION__));
+		if (!card_removed)
+		{
+			if (mmc_power_save_host((sd->func[0])->card->host))
+				sd_err(("%s card power save fail\n", __FUNCTION__));
+		}
 	}
 	else
 		sd_err(("%s Failed\n", __FUNCTION__));

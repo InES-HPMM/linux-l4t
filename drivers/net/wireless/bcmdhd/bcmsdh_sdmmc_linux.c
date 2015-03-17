@@ -92,6 +92,7 @@ extern int bcmsdh_remove(bcmsdh_info_t *bcmsdh);
 
 int sdio_function_init(void);
 void sdio_function_cleanup(void);
+int card_removed;
 
 #define DESCRIPTION "bcmsdh_sdmmc Driver"
 #define AUTHOR "Broadcom Corporation"
@@ -289,15 +290,22 @@ static void bcmsdh_sdmmc_remove(struct sdio_func *func)
 		sd_err(("%s is called with NULL SDIO function pointer\n", __FUNCTION__));
 		return;
 	}
-
+	card_removed = 1;
 	sd_trace(("bcmsdh_sdmmc: %s Enter\n", __FUNCTION__));
 	sd_info(("sdio_bcmsdh: func->class=%x\n", func->class));
 	sd_info(("sdio_vendor: 0x%04x\n", func->vendor));
 	sd_info(("sdio_device: 0x%04x\n", func->device));
 	sd_info(("Function#: 0x%04x\n", func->num));
 
+	if (func->card->sdio_func[1])
+		mmc_power_restore_host(func->card->host);
+
 	if ((func->num == 2) || (func->num == 1 && func->device == 0x4))
 		sdioh_remove(func);
+
+	if (mmc_power_save_host(func->card->host))
+		sd_err(("%s: card power save fail", __FUNCTION__));
+	card_removed = 0;
 }
 
 /* devices we support, null terminated */
