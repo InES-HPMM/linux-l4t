@@ -286,6 +286,9 @@ static int gpio_extcon_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, gpex);
 	device_set_wakeup_capable(gpex->dev, true);
 
+	/* Enable wake default */
+	device_wakeup_enable(gpex->dev);
+
 	/* Perform initial detection */
 	gpio_extcon_work(&gpex->work.work);
 	return 0;
