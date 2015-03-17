@@ -62,6 +62,7 @@ struct max77620_regulator_pdata {
 	bool en2_ctrl_sd0;
 	bool sd_fsrade_disable;
 	bool disable_remote_sense_on_suspend;
+	bool disable_on_shutdown;
 	struct regulator_init_data *reg_idata;
 	int fps_src;
 	int fps_pd_period;
@@ -750,6 +751,9 @@ static int max77620_get_regulator_dt_data(struct platform_device *pdev,
 				of_property_read_bool(reg_node,
 				"maxim,disable-remote-sense-on-suspend");
 
+		reg_pdata->disable_on_shutdown = of_property_read_bool(reg_node,
+						"maxim,disable-on-shutdown");
+
 		ret = of_property_read_u32(reg_node, "maxim,fps-source", &prop);
 		if (!ret)
 			reg_pdata->fps_src = prop;
@@ -824,6 +828,24 @@ static int max77620_regulator_probe(struct platform_device *pdev)
 	}
 
 	return 0;
+}
+
+static void max77620_regulator_shutdown(struct platform_device *pdev)
+{
+	struct max77620_regulator *pmic = platform_get_drvdata(pdev);
+	int id;
+	int ret;
+
+	for (id = 0; id < MAX77620_NUM_REGS; ++id) {
+		if (pmic->reg_pdata[id].disable_on_shutdown &&
+			max77620_regulator_is_enabled(pmic->rdev[id])) {
+			dev_info(&pdev->dev, "Disabling Regulator %d\n", id);
+			ret = max77620_regulator_disable(pmic->rdev[id]);
+			if (ret < 0)
+				dev_info(&pdev->dev,
+				"Disabling Regulator %d failed: %d\n", id, ret);
+		}
+	}
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -908,6 +930,7 @@ static const struct dev_pm_ops max77620_regulator_pm_ops = {
 
 static struct platform_driver max77620_regulator_driver = {
 	.probe = max77620_regulator_probe,
+	.shutdown = max77620_regulator_shutdown,
 	.driver = {
 		.name = "max77620-pmic",
 		.owner = THIS_MODULE,
