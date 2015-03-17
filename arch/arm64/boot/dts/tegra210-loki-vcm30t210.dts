@@ -638,4 +638,28 @@
 			status = "disabled";
 		};
 	};
+
+	isc-mgr.0 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <1>;
+		csi-port = <0>;
+		/* default-power-on; */
+		status = "okay";
+	};
+
+	isc-mgr.1 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <1>;
+		csi-port = <2>;
+		/* default-power-on; */
+		status = "okay";
+	};
+
+	isc-mgr.2 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <1>;
+		csi-port = <4>;
+		/* default-power-on; */
+		status = "okay";
+	};
 };

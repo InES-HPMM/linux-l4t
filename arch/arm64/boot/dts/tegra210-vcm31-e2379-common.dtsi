@@ -788,4 +788,25 @@
 		nvidia,throttle_depth = <75>;
 		nvidia,cap_method = <1>;
 	};
+
+        isc-mgr.0 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <2>;
+		csi-port = <0>;
+		status = "okay";
+	};
+
+	isc-mgr.1 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <0>;
+		csi-port = <2>;
+		status = "okay";
+	};
+
+	isc-mgr.2 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <1>;
+		csi-port = <4>;
+		status = "okay";
+	};
 };
