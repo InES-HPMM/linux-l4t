@@ -11,4 +11,14 @@
 */
 		status = "disabled";
 	};
+
+	bcmdhd_wlan {
+		country_code_map {
+			CC1 {
+				iso_abbrev = "XV";
+				custom_locale = "XV";
+				custom_locale_rev = <998>;
+			};
+		};
+	};
 };
