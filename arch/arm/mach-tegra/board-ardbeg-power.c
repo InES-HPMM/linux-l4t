@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-ardbeg-power.c
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -896,6 +896,7 @@ int __init ardbeg_soctherm_init(void)
 	}
 
 	if (board_info.board_id == BOARD_P1761 ||
+		board_info.board_id == BOARD_P2267 ||
 		board_info.board_id == BOARD_P1765 ||
 		board_info.board_id == BOARD_E1784 ||
 		board_info.board_id == BOARD_E1971 ||
@@ -940,6 +941,7 @@ int __init ardbeg_soctherm_init(void)
 		       sizeof(battery_oc_throttle_t13x));
 		break;
 	case BOARD_P1761:
+	case BOARD_P2267:
 	case BOARD_E1936:
 	case BOARD_P1765:
 		if (tegra_chip_id == TEGRA_CHIPID_TEGRA13) {
