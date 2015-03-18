@@ -17,6 +17,7 @@
 
 #include <dt-bindings/gpio/tegra-gpio.h>
 #include <dt-bindings/spi/rm31080a_platform.h>
+#include <dt-bindings/spi/lr388k7_platform.h>
 / {
 	spi@7000da00 {
 		status = "okay";
@@ -51,6 +52,7 @@
 			y-max = <15360>;
 			z-max = <65535>;
 			touch-num-max = <10>;
+			platform-id = <K7_PLATFORM_HAWKEYE>;
 			name-of-clock = "clk_out_2";
 			name-of-clock-con = "extern2";
 		};
