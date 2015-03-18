@@ -263,6 +263,12 @@
 				rom-addr = /bits/ 8 <0x14>;
 				rom-val = /bits/ 8 <0x87>;
 			};
+
+			/*Boost freq 1MHZ*/
+			rom_13h {
+				rom-addr = /bits/ 8 <0x13>;
+				rom-val = /bits/ 8 <0x01>;
+			};
 		};
 
 		lp8557-backlight-s-wuxga-7-0@2c {
@@ -283,6 +289,12 @@
 				rom-addr = /bits/ 8 <0x14>;
 				rom-val = /bits/ 8 <0x9f>;
 			};
+
+			/*Boost freq 1MHZ*/
+			rom_13h {
+				rom-addr = /bits/ 8 <0x13>;
+				rom-val = /bits/ 8 <0x01>;
+			};
 		};
 
 		lp8557-backlight-s-wuxga-8-0@2c {
@@ -302,6 +314,12 @@
 			rom_14h {
 				rom-addr = /bits/ 8 <0x14>;
 				rom-val = /bits/ 8 <0x9f>;
+			};
+
+			/*Boost freq 1MHZ*/
+			rom_13h {
+				rom-addr = /bits/ 8 <0x13>;
+				rom-val = /bits/ 8 <0x01>;
 			};
 		};
 	};
