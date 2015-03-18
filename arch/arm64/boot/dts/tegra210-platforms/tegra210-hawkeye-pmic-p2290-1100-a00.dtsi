@@ -197,7 +197,8 @@
 					regulator-always-on;
 					regulator-boot-on;
 					maxim,fps-source = <FPS_SRC_0>;
-					regulator-init-mode = <REGULATOR_MODE_NORMAL>;
+					regulator-init-mode = <REGULATOR_MODE_FAST>;
+					regulator-sleep-mode = <REGULATOR_MODE_NORMAL>;
 				};
 
 				max77620_ldo0: ldo0 {
