@@ -861,6 +861,17 @@ static int max8973_remove(struct i2c_client *i2c)
 	return 0;
 }
 
+static void max8973_shutdown(struct i2c_client *i2c)
+{
+	struct max8973_chip *mchip = i2c_get_clientdata(i2c);
+
+	if (mchip->id != MAX77621)
+		return;
+
+	disable_irq(mchip->irq);
+	free_irq(mchip->irq, mchip);
+}
+
 static const struct i2c_device_id max8973_id[] = {
 	{.name = "max8973", MAX8973},
 	{.name = "max77621", MAX77621},
@@ -876,6 +887,7 @@ static struct i2c_driver max8973_i2c_driver = {
 	},
 	.probe = max8973_probe,
 	.remove = max8973_remove,
+	.shutdown = max8973_shutdown,
 	.id_table = max8973_id,
 };
 
