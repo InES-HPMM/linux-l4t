@@ -449,6 +449,37 @@ static int max77620_init_backup_battery_charging(struct max77620_chip *chip,
 	return 0;
 }
 
+static int max77620_initialise_chip(struct max77620_chip *chip,
+			struct device *dev)
+{
+	struct device_node *node = dev->of_node;
+	u32 mrt_time = 0;
+	u8 reg_val;
+	int ret;
+
+	of_property_read_u32(node, "maxim,hard-power-off-time", &mrt_time);
+	if (!mrt_time)
+		return 0;
+
+	mrt_time = (mrt_time > 12) ? 12 : mrt_time;
+	if (mrt_time <= 6)
+		reg_val = mrt_time - 2;
+	else if (mrt_time <= 12)
+		reg_val = (mrt_time - 6) / 2 + 4;
+	else
+		reg_val = 7;
+
+	reg_val <<= MAX77620_ONOFFCNFG1_MRT_SHIFT;
+
+	ret = max77620_reg_update(dev, MAX77620_PWR_SLAVE,
+			MAX77620_REG_ONOFFCNFG1, MAX77620_ONOFFCNFG1_MRT_MASK,
+			reg_val);
+	if (ret < 0)
+		dev_err(dev, "Reg 0x%02x update failed, %d\n",
+			MAX77620_REG_ONOFFCNFG1, reg_val);
+	return ret;
+}
+
 static int max77620_read_es_version(struct max77620_chip *chip)
 {
 	int ret;
@@ -560,6 +591,12 @@ static int max77620_probe(struct i2c_client *client,
 	ret = max77620_read_es_version(chip);
 	if (ret < 0) {
 		dev_err(chip->dev, "Chip revision init failed: %d\n", ret);
+		goto fail_client_reg;
+	}
+
+	ret = max77620_initialise_chip(chip, &client->dev);
+	if (ret < 0) {
+		dev_err(&client->dev, "Chip initialisation failed, %d\n", ret);
 		goto fail_client_reg;
 	}
 
