@@ -66,6 +66,9 @@ struct max77620_regulator_pdata {
 	int fps_src;
 	int fps_pd_period;
 	int fps_pu_period;
+	int sleep_mode;
+	int current_mode;
+	int normal_mode;
 };
 
 struct max77620_regulator {
@@ -331,6 +334,7 @@ static int max77620_regulator_set_mode(struct regulator_dev *rdev,
 				rinfo->cfg_addr, ret);
 		return ret;
 	}
+	rpdata->current_mode = mode;
 
 skip_fpwm:
 	ret =  max77620_regulator_set_power_mode(reg, power_mode, id);
@@ -386,6 +390,17 @@ static unsigned int max77620_regulator_get_mode(struct regulator_dev *rdev)
 		return 0;
 	}
 	return reg_mode;
+}
+
+static int max77620_regulator_set_sleep_mode(struct regulator_dev *rdev,
+				       unsigned int mode)
+{
+	struct max77620_regulator *reg = rdev_get_drvdata(rdev);
+	int id = rdev_get_id(rdev);
+	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
+
+	rpdata->sleep_mode = mode;
+	return 0;
 }
 
 static int max77620_regulator_set_ramp_delay(struct regulator_dev *rdev,
@@ -450,6 +465,7 @@ static struct regulator_ops max77620_regulator_ops = {
 	.set_voltage_sel = regulator_set_voltage_sel_regmap,
 	.set_mode = max77620_regulator_set_mode,
 	.get_mode = max77620_regulator_get_mode,
+	.set_sleep_mode = max77620_regulator_set_sleep_mode,
 	.set_ramp_delay = max77620_regulator_set_ramp_delay,
 	.set_voltage_time_sel = regulator_set_voltage_time_sel,
 };
@@ -832,6 +848,17 @@ static int max77620_regulator_suspend(struct device *dev)
 				dev_err(dev, "Reg 0x%02x update failed: %d\n",
 					rinfo->remote_sense_addr, ret);
 		}
+
+		if (reg_pdata->sleep_mode &&
+				(rinfo->type == MAX77620_REGULATOR_TYPE_SD)) {
+			reg_pdata->normal_mode = reg_pdata->current_mode;
+			ret = max77620_regulator_set_mode(pmic->rdev[id],
+						reg_pdata->sleep_mode);
+			if (ret < 0)
+				dev_err(dev,
+					"Regulator %d sleep mode failed: %d\n",
+					id, ret);
+		}
 	}
 	return 0;
 }
@@ -858,6 +885,16 @@ static int max77620_regulator_resume(struct device *dev)
 			if (ret < 0)
 				dev_err(dev, "Reg 0x%02x update failed: %d\n",
 					rinfo->remote_sense_addr, ret);
+		}
+
+		if (reg_pdata->sleep_mode &&
+				(rinfo->type == MAX77620_REGULATOR_TYPE_SD)) {
+			ret = max77620_regulator_set_mode(pmic->rdev[id],
+						reg_pdata->normal_mode);
+			if (ret < 0)
+				dev_err(dev,
+					"Regulator %d normal mode failed: %d\n",
+					id, ret);
 		}
 	}
 	return 0;
