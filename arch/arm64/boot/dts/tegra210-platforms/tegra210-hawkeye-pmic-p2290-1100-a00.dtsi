@@ -73,6 +73,8 @@
 
 			maxim,system-pmic-power-off;
 
+			maxim,hard-power-off-time = <12>;
+
 			maxim,avoid-rtc-bulk-register-write;
 
 			maxim,hot-die-threshold-temp = <110000>;
