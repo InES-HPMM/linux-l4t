@@ -165,13 +165,7 @@ static u32 adsp_to_emc_freq(u32 adspfreq)
 	 * Vote on memory bus frequency based on adsp frequency
 	 * cpu rate is in kHz, emc rate is in Hz
 	 */
-	if (adspfreq >= adsp_cpu_freq_table[size - 1])
-		return 665600;	/* adsp >= Max freq, emc max */
-	else if (adspfreq >= 665600)
-		return 408000;	/* adsp >= 665.6 MHz, emc 408 MHz */
-	else if (adspfreq >= 409600)
-		return 204000;	/* adsp >= 409.6 MHz, emc 204 MHz */
-	else if (adspfreq >= 204800)
+	if (adspfreq >= 204800)
 		return 102000;	/* adsp >= 204.8 MHz, emc 102 MHz */
 	else
 		return 0;		/* emc min */
