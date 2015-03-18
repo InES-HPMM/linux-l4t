@@ -1779,12 +1779,10 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	val &= ~NVA2SATA_OOB_ON_POR_MASK;
 	misc_writel(val, SATA_AUX_MISC_CNTL_1_REG);
 
-	if (tegra_hpriv->sata_connector != MINI_SATA) {
-		/* Disable DEVSLP Feature */
-		val = misc_readl(SATA_AUX_MISC_CNTL_1_REG);
-		val &= ~SDS_SUPPORT;
-		misc_writel(val, SATA_AUX_MISC_CNTL_1_REG);
-	}
+	/* Revisit: Disable devslp until all devslp bugs are fixed */
+	val = misc_readl(SATA_AUX_MISC_CNTL_1_REG);
+	val &= ~SDS_SUPPORT;
+	misc_writel(val, SATA_AUX_MISC_CNTL_1_REG);
 
 	val = sata_readl(SATA_CONFIGURATION_0_OFFSET);
 	val |= EN_FPCI;
