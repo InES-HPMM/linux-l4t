@@ -726,6 +726,7 @@ static bool fiq_debugger_handle_uart_interrupt(struct fiq_debugger_state *state,
 
 #ifdef CONFIG_FIQ_GLUE
 static DEFINE_PER_CPU(bool, immediate_dump) = true;
+static bool poll_console_input = true;
 static void fiq_debugger_fiq(struct fiq_glue_handler *h,
 		const struct pt_regs *regs, void *svc_sp)
 {
@@ -745,8 +746,11 @@ static void fiq_debugger_fiq(struct fiq_glue_handler *h,
 		per_cpu(immediate_dump, this_cpu) = false;
 	}
 
-	need_irq = fiq_debugger_handle_uart_interrupt(state, this_cpu, regs,
-			svc_sp);
+	do {
+		need_irq = fiq_debugger_handle_uart_interrupt(state, this_cpu,
+							regs, svc_sp);
+	} while (poll_console_input);
+
 	if (need_irq)
 		fiq_debugger_force_irq(state);
 }
