@@ -149,6 +149,11 @@ static void of_get_regulation_constraints(struct device_node *np,
 	ret = of_property_read_u32(np, "regulator-init-mode", &pval);
 	if (!ret)
 		constraints->initial_mode = pval;
+
+	ret = of_property_read_u32(np, "regulator-sleep-mode", &pval);
+	if (!ret)
+		constraints->sleep_mode = pval;
+
 	if (of_find_property(np, "regulator-disable-parent-after-enable", NULL))
 		constraints->disable_parent_after_enable = true;
 }
