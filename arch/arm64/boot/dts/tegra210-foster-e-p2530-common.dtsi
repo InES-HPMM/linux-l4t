@@ -53,6 +53,12 @@
 		};
 	};
 
+	pmc@7000e400 {
+		platform-io-pad-voltage = <
+				TEGRA210_PAD_AUDIO_HV IO_PAD_VOLTAGE_1_8V
+				TEGRA210_PAD_SPI_HV IO_PAD_VOLTAGE_1_8V>;
+	};
+
 	spi@7000da00 {
 		status = "disabled";
 	};
