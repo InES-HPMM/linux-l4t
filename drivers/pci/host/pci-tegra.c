@@ -392,7 +392,6 @@ struct tegra_pcie {
 	struct resource *afi_res;
 	struct resource *pads_res;
 
-	struct resource all;
 	struct resource io;
 	struct resource mem;
 	struct resource prefetch;
@@ -714,11 +713,12 @@ static int tegra_pcie_setup(int nr, struct pci_sys_data *sys)
 	int err;
 
 	PR_FUNC_LINE;
-	err = devm_request_resource(pcie->dev, &pcie->all, &pcie->mem);
+	err = devm_request_resource(pcie->dev, &iomem_resource, &pcie->mem);
 	if (err < 0)
 		return err;
 
-	err = devm_request_resource(pcie->dev, &pcie->all, &pcie->prefetch);
+	err = devm_request_resource(pcie->dev, &iomem_resource,
+			 &pcie->prefetch);
 	if (err < 0) {
 		devm_release_resource(pcie->dev, &pcie->mem);
 		return err;
@@ -1265,9 +1265,9 @@ static int tegra_pcie_map_resources(struct tegra_pcie *pcie)
 	PR_FUNC_LINE;
 	pads = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pads");
 
-	pcie->pads_res = __devm_request_region(&pdev->dev, &pcie->all,
+	pcie->pads_res = __devm_request_region(&pdev->dev, &iomem_resource,
 			pads->start, resource_size(pads),
-			pads->name);
+			"pcie-pads");
 
 	if (!pcie->pads_res) {
 		dev_err(&pdev->dev,
@@ -1284,9 +1284,9 @@ static int tegra_pcie_map_resources(struct tegra_pcie *pcie)
 
 	afi = platform_get_resource_byname(pdev, IORESOURCE_MEM, "afi");
 
-	pcie->afi_res = __devm_request_region(&pdev->dev, &pcie->all,
+	pcie->afi_res = __devm_request_region(&pdev->dev, &iomem_resource,
 			afi->start, resource_size(afi),
-			afi->name);
+			"pcie-afi");
 
 	if (!pcie->afi_res) {
 		dev_err(&pdev->dev,
@@ -1304,8 +1304,8 @@ static int tegra_pcie_map_resources(struct tegra_pcie *pcie)
 	/* request configuration space, but remap later, on demand */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cs");
 
-	pcie->cs = __devm_request_region(&pdev->dev, &pcie->all,
-			res->start, resource_size(res), res->name);
+	pcie->cs = __devm_request_region(&pdev->dev, &iomem_resource,
+			res->start, resource_size(res), "pcie-config-space");
 	if (!pcie->cs) {
 		dev_err(&pdev->dev, "PCIE: Failed to request region for CS registers\n");
 		return -EBUSY;
@@ -1321,15 +1321,15 @@ static void tegra_pcie_unmap_resources(struct tegra_pcie *pcie)
 	PR_FUNC_LINE;
 
 	if (pcie->cs)
-		__devm_release_region(&pdev->dev, &pcie->all,
+		__devm_release_region(&pdev->dev, &iomem_resource,
 				pcie->cs->start,
 				resource_size(pcie->cs));
 	if (pcie->afi_res)
-		__devm_release_region(&pdev->dev, &pcie->all,
+		__devm_release_region(&pdev->dev, &iomem_resource,
 				pcie->afi_res->start,
 				resource_size(pcie->afi_res));
 	if (pcie->pads_res)
-		__devm_release_region(&pdev->dev, &pcie->all,
+		__devm_release_region(&pdev->dev, &iomem_resource,
 				pcie->pads_res->start,
 				resource_size(pcie->pads_res));
 
@@ -2900,12 +2900,6 @@ static int tegra_pcie_parse_dt(struct tegra_pcie *pcie)
 
 	PR_FUNC_LINE;
 
-	memset(&pcie->all, 0, sizeof(pcie->all));
-	pcie->all.flags = IORESOURCE_MEM;
-	pcie->all.name = np->full_name;
-	pcie->all.start = ~0;
-	pcie->all.end = 0;
-
 	if (of_pci_range_parser_init(&parser, np)) {
 		dev_err(pcie->dev, "missing \"ranges\" property\n");
 		return -EINVAL;
@@ -2922,24 +2916,14 @@ static int tegra_pcie_parse_dt(struct tegra_pcie *pcie)
 		case IORESOURCE_MEM:
 			if (res.flags & IORESOURCE_PREFETCH) {
 				memcpy(&pcie->prefetch, &res, sizeof(res));
-				pcie->prefetch.name = "prefetchable";
+				pcie->prefetch.name = "pcie-prefetchable";
 			} else {
 				memcpy(&pcie->mem, &res, sizeof(res));
-				pcie->mem.name = "non-prefetchable";
+				pcie->mem.name = "pcie-non-prefetchable";
 			}
 			break;
 		}
-
-		if (res.start <= pcie->all.start)
-			pcie->all.start = res.start;
-
-		if (res.end >= pcie->all.end)
-			pcie->all.end = res.end;
 	}
-
-	err = devm_request_resource(pcie->dev, &iomem_resource, &pcie->all);
-	if (err < 0)
-		return err;
 
 	err = of_pci_parse_bus_range(np, &pcie->busn);
 	if (err < 0) {
@@ -3962,7 +3946,6 @@ static int tegra_pcie_probe(struct platform_device *pdev)
 
 	ret = tegra_pcie_probe_complete(pcie);
 	if (ret) {
-		devm_release_resource(pcie->dev, &pcie->all);
 		pm_runtime_disable(pcie->dev);
 		tegra_pd_remove_device(pcie->dev);
 	}
