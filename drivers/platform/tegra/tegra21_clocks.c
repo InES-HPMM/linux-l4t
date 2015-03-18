@@ -9285,7 +9285,7 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("hda",	"tegra30-hda",		"hda",  125,	0x428,	102000000, mux_pllp_pllc_clkm,			MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_HDA),
 	PERIPH_CLK("hda2hdmi",	"tegra30-hda",	   "hda2hdmi",	128,	0,	 48000000,  mux_hda2codec_2x,				PERIPH_ON_APB, TEGRA210_CLK_ID_HDA2HDMI),
 
-	PERIPH_CLK_EX("qspi",	"qspi",			NULL,	211,	0x6c4, 133000000, mux_pllp_pllc_pllc_out1_pllc4_out2_pllc4_out1_clkm_pllc4_out0, MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_QSPI, &tegra_qspi_clk_ops),
+	PERIPH_CLK_EX("qspi",	"qspi",			NULL,	211,	0x6c4, 133000000, mux_pllp_pllc_pllc_out1_pllc4_out2_pllc4_out1_clkm_pllc4_out0, MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB, TEGRA210_CLK_ID_QSPI, &tegra_qspi_clk_ops),
 	PERIPH_CLK("sbc1",	"7000d400.spi",		NULL,	41,	0x134,  65000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_SBC1),
 	PERIPH_CLK("sbc2",	"7000d600.spi",		NULL,	44,	0x118,  65000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_SBC2),
 	PERIPH_CLK("sbc3",	"7000d800.spi",		NULL,	46,	0x11c,  65000000, mux_pllp_pllc_clkm,	MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_SBC3),
