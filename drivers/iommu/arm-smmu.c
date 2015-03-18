@@ -1088,6 +1088,21 @@ static void arm_smmu_destroy_domain_context(struct iommu_domain *domain)
 	__arm_smmu_free_bitmap(smmu->context_map, cfg->cbndx);
 }
 
+static int arm_smmu_get_hwid(struct iommu_domain *domain,
+			     struct device *dev, unsigned int id)
+{
+	struct arm_smmu_master_cfg *cfg;
+
+	cfg = find_smmu_master_cfg(dev);
+	if (!cfg)
+		return -EINVAL;
+
+	if (id >= cfg->num_streamids)
+		return -EINVAL;
+
+	return cfg->streamids[id];
+}
+
 static int arm_smmu_domain_init(struct iommu_domain *domain)
 {
 	struct arm_smmu_domain *smmu_domain;
@@ -2040,6 +2055,7 @@ static struct iommu_ops arm_smmu_ops = {
 	.domain_destroy	= arm_smmu_domain_destroy,
 	.attach_dev	= arm_smmu_attach_dev,
 	.detach_dev	= arm_smmu_detach_dev,
+	.get_hwid	= arm_smmu_get_hwid,
 	.map_sg		= arm_smmu_map_sg,
 	.map		= arm_smmu_map,
 	.unmap		= arm_smmu_unmap,
