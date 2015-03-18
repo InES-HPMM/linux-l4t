@@ -20,6 +20,7 @@
  * 02111-1307, USA
  */
 
+#include <linux/alarmtimer.h>
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/init.h>
@@ -30,8 +31,10 @@
 #include <linux/mfd/max77620.h>
 #include <linux/platform_device.h>
 #include <linux/pm.h>
+#include <linux/rtc.h>
 #include <linux/slab.h>
 #include <linux/watchdog.h>
+#include <linux/workqueue.h>
 
 static bool nowayout = WATCHDOG_NOWAYOUT;
 
@@ -39,12 +42,17 @@ struct max77620_wdt {
 	struct watchdog_device		wdt_dev;
 	struct device			*dev;
 	struct max77620_chip		*chip;
+	struct rtc_device		*rtc;
 
-	int				timeout;
+	int				boot_timeout;
 	int				clear_time;
 	bool				otp_wdtt;
 	bool				otp_wdten;
 	bool				enable_on_off;
+	int				suspend_timeout;
+	int				current_timeout;
+	int				resume_timeout;
+	struct delayed_work		clear_wdt_wq;
 };
 
 static int max77620_wdt_start(struct watchdog_device *wdt_dev)
@@ -52,13 +60,8 @@ static int max77620_wdt_start(struct watchdog_device *wdt_dev)
 	struct max77620_wdt *wdt = watchdog_get_drvdata(wdt_dev);
 	int ret;
 
-	if (!wdt->timeout) {
-		dev_err(wdt->dev, "WDT disabled from DT, can not start\n");
-		return -EINVAL;
-	}
 	ret = max77620_reg_update(wdt->chip->dev, MAX77620_PWR_SLAVE,
-			MAX77620_REG_CNFGGLBL2, MAX77620_WDTEN,
-						MAX77620_WDTEN);
+			MAX77620_REG_CNFGGLBL2, MAX77620_WDTEN, MAX77620_WDTEN);
 	if (ret < 0) {
 		dev_err(wdt->dev, "wdt enable failed %d\n", ret);
 		return ret;
@@ -80,7 +83,7 @@ static int max77620_wdt_stop(struct watchdog_device *wdt_dev)
 			return ret;
 		}
 	} else {
-		dev_err(wdt->dev, "Can't clear WDTEN as OTP_WDTEN=1\n");
+		dev_err(wdt->dev, "Can't stop WDTEN as OTP_WDTEN=1\n");
 		return -EPERM;
 	}
 	return 0;
@@ -101,7 +104,7 @@ static int max77620_wdt_ping(struct watchdog_device *wdt_dev)
 	return ret;
 }
 
-static int max77620_wdt_set_timeout(struct watchdog_device *wdt_dev,
+static int _max77620_wdt_set_timeout(struct watchdog_device *wdt_dev,
 		unsigned int timeout)
 {
 	struct max77620_wdt *wdt = watchdog_get_drvdata(wdt_dev);
@@ -195,7 +198,55 @@ static int max77620_wdt_set_timeout(struct watchdog_device *wdt_dev,
 		}
 	}
 
+	wdt->current_timeout = timeout;
+	dev_info(wdt->dev, "Setting WDT timeout %d\n", timeout);
 	return 0;
+}
+
+static int max77620_wdt_restart(struct watchdog_device *wdt_dev,
+		unsigned int timeout)
+{
+	int ret;
+
+	if (!timeout)
+		return 0;
+
+	max77620_wdt_ping(wdt_dev);
+
+	ret = _max77620_wdt_set_timeout(wdt_dev, timeout);
+	if (!ret)
+		ret = max77620_wdt_start(wdt_dev);
+	return ret;
+}
+
+static int max77620_wdt_set_timeout(struct watchdog_device *wdt_dev,
+		unsigned int timeout)
+{
+	struct max77620_wdt *wdt = watchdog_get_drvdata(wdt_dev);
+
+	if (wdt->boot_timeout) {
+		cancel_delayed_work(&wdt->clear_wdt_wq);
+		wdt->boot_timeout = 0;
+	}
+
+	return _max77620_wdt_set_timeout(wdt_dev, timeout);
+}
+
+static void max77620_wdt_clear_workqueue(struct work_struct *work)
+{
+	struct max77620_wdt *wdt;
+	int ret;
+
+	wdt = container_of(work, struct max77620_wdt, clear_wdt_wq.work);
+	if (!wdt)
+		return;
+
+	ret = max77620_wdt_ping(&wdt->wdt_dev);
+	if (ret < 0)
+		dev_err(wdt->dev, "WDT reset failed: %d\n", ret);
+
+	schedule_delayed_work(&wdt->clear_wdt_wq,
+			msecs_to_jiffies(wdt->clear_time * HZ));
 }
 
 static const struct watchdog_info max77620_wdt_info = {
@@ -218,7 +269,7 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 	int ret;
 	u32 prop;
 	struct device_node *pnode = pdev->dev.parent->of_node;
-	struct device_node *np= NULL;
+	struct device_node *np = NULL;
 
 	wdt = devm_kzalloc(&pdev->dev, sizeof(*wdt), GFP_KERNEL);
 	if (!wdt) {
@@ -247,20 +298,19 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 			return -ENODEV;
 		}
 
-		ret =	of_property_read_u32(np, "maxim,wdt-timeout", &prop);
+		ret = of_property_read_u32(np, "maxim,wdt-boot-timeout", &prop);
 		if (!ret)
-			wdt->timeout = prop;
-		ret =	of_property_read_u32(np, "maxim,wdt-clear-time", &prop);
-		if (!ret)
-			wdt->clear_time = prop;
+			wdt->boot_timeout = prop;
+		wdt->clear_time = wdt->boot_timeout / 2;
 
 		wdt->otp_wdtt = of_property_read_bool(np, "maxim,otp-wdtt");
 		wdt->otp_wdten = of_property_read_bool(np, "maxim,otp-wdten");
 		wdt->enable_on_off = of_property_read_bool(np,
 					"maxim,enable-wdt-on-off");
+		of_property_read_u32(np, "maxim,wdt-suspend-timeout",
+				&wdt->suspend_timeout);
 	} else {
-		wdt->timeout = 64;
-		wdt->clear_time = 60;
+		wdt->boot_timeout = 0;
 		wdt->otp_wdtt = 0;
 		wdt->otp_wdten = 0;
 	}
@@ -281,7 +331,8 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 		ret = max77620_reg_update(pdev->dev.parent, MAX77620_PWR_SLAVE,
 				MAX77620_REG_CNFGGLBL2, MAX77620_WDTOFFC, 0);
 		if (ret < 0) {
-			dev_err(&pdev->dev, "CNFGGLBL2 update failed: %d\n", ret);
+			dev_err(&pdev->dev, "CNFGGLBL2 update failed: %d\n",
+				ret);
 			return ret;
 		}
 	}
@@ -313,7 +364,7 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 	if (ret < 0)
 		dev_err(wdt->dev, "set wdtslpc failed %d\n", ret);
 
-	if (!wdt->timeout) {
+	if (!wdt->boot_timeout) {
 		ret = max77620_wdt_stop(wdt_dev);
 		if (ret < 0) {
 			dev_err(wdt->dev, "wdt stop failed: %d\n", ret);
@@ -322,12 +373,18 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 		return 0;
 	}
 
-	ret = max77620_wdt_set_timeout(wdt_dev, wdt->timeout);
+	ret = _max77620_wdt_set_timeout(wdt_dev, wdt->boot_timeout);
 	if (ret < 0) {
 		dev_err(wdt->dev, "wdt set timeout failed: %d\n", ret);
 		goto scrub;
 	}
+	ret = max77620_wdt_start(&wdt->wdt_dev);
+	if (ret < 0)
+		dev_err(wdt->dev, "wdt start failed: %d\n", ret);
 
+	INIT_DELAYED_WORK(&wdt->clear_wdt_wq, max77620_wdt_clear_workqueue);
+	schedule_delayed_work(&wdt->clear_wdt_wq,
+			msecs_to_jiffies(wdt->clear_time * HZ));
 	return 0;
 scrub:
 	watchdog_unregister_device(&wdt->wdt_dev);
@@ -339,6 +396,8 @@ static int max77620_wdt_remove(struct platform_device *pdev)
 	struct max77620_wdt *wdt = platform_get_drvdata(pdev);
 
 	max77620_wdt_stop(&wdt->wdt_dev);
+	if (wdt->boot_timeout)
+		cancel_delayed_work(&wdt->clear_wdt_wq);
 	watchdog_unregister_device(&wdt->wdt_dev);
 	return 0;
 }
@@ -348,16 +407,58 @@ static void max77620_wdt_shutdown(struct platform_device *pdev)
 	struct max77620_wdt *wdt = platform_get_drvdata(pdev);
 
 	max77620_wdt_stop(&wdt->wdt_dev);
+	if (wdt->boot_timeout)
+		cancel_delayed_work(&wdt->clear_wdt_wq);
 }
 
 static int max77620_wdt_suspend(struct device *dev)
 {
 	struct max77620_wdt *wdt = dev_get_drvdata(dev);
+	unsigned long now;
+	struct rtc_wkalrm alm;
+	int alarm_time = wdt->suspend_timeout;
 	int ret;
 
-	ret = max77620_wdt_stop(&wdt->wdt_dev);
+	if (!wdt->suspend_timeout) {
+		ret = max77620_wdt_stop(&wdt->wdt_dev);
+		if (ret < 0)
+			dev_err(wdt->dev, "wdt stop failed: %d\n", ret);
+		if (wdt->boot_timeout)
+			cancel_delayed_work(&wdt->clear_wdt_wq);
+		return ret;
+	}
+
+	wdt->resume_timeout = wdt->current_timeout;
+	if (!wdt->rtc) {
+		wdt->rtc = alarmtimer_get_rtcdev();
+		if (!wdt->rtc) {
+			dev_err(wdt->dev, "No RTC device found\n");
+			max77620_wdt_stop(&wdt->wdt_dev);
+			return -ENODEV;
+		}
+	}
+
+	/* Wakeup system 10 second before WDT expire */
+	alarm_time = (alarm_time > 10) ? alarm_time - 10 : alarm_time;
+	alm.enabled = true;
+	ret = rtc_read_time(wdt->rtc, &alm.time);
+	if (ret < 0) {
+		dev_err(wdt->dev, "RTC read time failed %d\n", ret);
+		return ret;
+	}
+
+	rtc_tm_to_time(&alm.time, &now);
+	rtc_time_to_tm(now + alarm_time, &alm.time);
+	ret = rtc_set_alarm(wdt->rtc, &alm);
+	if (ret < 0) {
+		dev_err(wdt->dev, "RTC set alarm failed %d\n", ret);
+		return ret;
+	}
+	ret = max77620_wdt_restart(&wdt->wdt_dev, wdt->suspend_timeout);
 	if (ret < 0)
-		dev_err(wdt->dev, "wdt stop failed: %d\n", ret);
+		dev_err(wdt->dev, "Watchdog not restarted %d\n", ret);
+	if (wdt->boot_timeout)
+		cancel_delayed_work(&wdt->clear_wdt_wq);
 	return 0;
 }
 
@@ -366,9 +467,36 @@ static int max77620_wdt_resume(struct device *dev)
 	struct max77620_wdt *wdt = dev_get_drvdata(dev);
 	int ret;
 
-	ret = max77620_wdt_start(&wdt->wdt_dev);
+	if (!wdt->suspend_timeout) {
+		if (wdt->resume_timeout) {
+			ret = max77620_wdt_start(&wdt->wdt_dev);
+			if (ret < 0) {
+				dev_err(wdt->dev, "wdt start failed:%d\n", ret);
+				return ret;
+			}
+		}
+		goto wq_start;
+	}
+
+	ret = max77620_wdt_ping(&wdt->wdt_dev);
 	if (ret < 0)
-		dev_err(wdt->dev, "wdt start failed: %d\n", ret);
+		dev_err(wdt->dev, "wdt ping failed: %d\n", ret);
+
+	if (!wdt->resume_timeout) {
+		ret = max77620_wdt_stop(&wdt->wdt_dev);
+		if (ret < 0)
+			dev_err(wdt->dev, "wdt stop failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = max77620_wdt_restart(&wdt->wdt_dev, wdt->resume_timeout);
+	if (ret < 0)
+		dev_err(wdt->dev, "Watchdog not restarted %d\n", ret);
+
+wq_start:
+	if (wdt->boot_timeout)
+		schedule_delayed_work(&wdt->clear_wdt_wq,
+				msecs_to_jiffies(wdt->clear_time * HZ));
 	return 0;
 }
 
