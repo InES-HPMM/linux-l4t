@@ -4731,7 +4731,8 @@ static void tegra_xusb_parse_subnode(struct tegra_xhci_hcd *tegra,
 	int pad = 0;
 	int err;
 
-	tegra->bdata->vbus_en_oc = kzalloc(tegra->soc_config->utmi_pad_count *
+	tegra->bdata->vbus_en_oc = devm_kzalloc(&tegra->pdev->dev,
+				tegra->soc_config->utmi_pad_count *
 				sizeof(struct usb_vbus_en_oc), GFP_KERNEL);
 	for_each_enabled_utmi_pad(pad, tegra) {
 
