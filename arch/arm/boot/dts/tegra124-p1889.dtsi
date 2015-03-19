@@ -323,12 +323,10 @@
 	};
 
 	sdhci@700b0000 {
-		uhs-mask = <0x7c>;
 		status = "okay";
 	};
 
 	sdhci@700b0600 {
-		uhs-mask = <0x7c>;
 		pwr-off-during-lp0 = <1>;
 		status = "okay";
 	};
@@ -342,7 +340,6 @@
 	};
 
 	sdhci@700b0400 {
-		uhs-mask = <0x7c>;
 		vddio_sdmmc-supply = <&max20024_ldo5>;
 		status = "okay";
 	};
