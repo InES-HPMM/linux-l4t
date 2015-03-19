@@ -52,6 +52,7 @@ enum {
 	TEGRA_VHOST_CMD_SYNCPT_GET_RANGE,
 	TEGRA_VHOST_CMD_CHANNEL_ALLOC_CLIENTID,
 	TEGRA_VHOST_CMD_HOST1X_CDMA_SUBMIT,
+	TEGRA_VHOST_CMD_HOST1X_REGRDWR,
 };
 
 struct tegra_vhost_connect_params {
@@ -96,6 +97,14 @@ struct tegra_vhost_channel_submit_params {
 	u32 timeout;
 };
 
+#define REGRDWR_ARRAY_SIZE (u32)4
+struct tegra_vhost_channel_regrdwr_params {
+	u32 moduleid;
+	u32 count;
+	u32 write;
+	u32 regs[REGRDWR_ARRAY_SIZE];
+};
+
 struct tegra_vhost_cmd_msg {
 	u32 cmd;
 	int ret;
@@ -109,6 +118,7 @@ struct tegra_vhost_cmd_msg {
 		struct tegra_vhost_syncpt_intr_params syncpt_intr;
 		struct tegra_vhost_channel_clientid_params clientid;
 		struct tegra_vhost_channel_submit_params cdma_submit;
+		struct tegra_vhost_channel_regrdwr_params regrdwr;
 	} params;
 };
 
