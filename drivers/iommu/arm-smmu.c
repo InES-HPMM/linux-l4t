@@ -340,6 +340,8 @@
 
 #define FSYNR0_WNR			(1 << 4)
 
+#define NUM_SID				64
+
 static int force_stage;
 module_param_named(force_stage, force_stage, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(force_stage,
@@ -1216,6 +1218,8 @@ static int arm_smmu_master_configure_smrs(struct arm_smmu_device *smmu,
 			.mask	= 0, /* We don't currently share SMRs */
 			.id	= cfg->streamids[i],
 		};
+
+		smrs[i].mask &= (NUM_SID - 1); /* only if share SMRs */
 	}
 
 	/* It worked! Now, poke the actual hardware */
