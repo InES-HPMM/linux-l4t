@@ -295,7 +295,7 @@ config TEGRA_DSI2EDP_SN65DSI86
 
 config TEGRA_DP
 	bool "Enable eDP panel."
-	default  n
+	default  y
 	help
 	  Say Y here to enable eDP panel.
 
