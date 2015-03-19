@@ -25,6 +25,8 @@
 
 #include "tegra186-sim-private.dts"
 #include "tegra186-sim-cl34000094-private.dtsi"
+#include "tegra186-pinmux-fpga.dtsi"
+#include "tegra186-fpga-fixed.dtsi"
 #include "tegra186-fpga-cl34078409-private.dtsi"
 
 / {
