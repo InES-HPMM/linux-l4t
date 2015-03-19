@@ -651,6 +651,12 @@ static struct max8973_regulator_platform_data *max8973_parse_dt(
 	if (!ret)
 		pdata->control_flags = pval;
 
+
+	ret = of_property_read_bool(np, "maxim,enable-active-discharge");
+	if (ret)
+		pdata->control_flags |=
+				MAX8973_CONTROL_OUTPUT_ACTIVE_DISCH_ENABLE;
+
 	ret = of_property_read_u32(np, "maxim,junction-temp-warning", &pval);
 	if (!ret)
 		 pdata->junction_temp_warning = pval;
