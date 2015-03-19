@@ -308,17 +308,21 @@
 			reg = <0x4a>;
 			compatible = "ads1015";
 			#io-channel-cells = <1>;
-			ti,enable-continuous-mode;
-			ti,continuous-channel-number = <4>;
-			ti,maximum-retries = <6>;
-			ti,adc-valid-threshold-ranges= <(-100)  76
-							200     309
-							1049    1263
-							380     420
-							673     848
-							430     524
-							2000    2047>;
-			#iio-channel-cells = <1>;
+			ti,programmable-gain-amplifier = <1>;
+			sampling-frequency = <0>;
+			ti,comparator-mode = <0>;
+			ti,comparator-queue = <3>;
+			continuous-mode {
+				ti,continuous-channel-number = <4>;
+				ti,maximum-retries = <6>;
+				ti,adc-valid-threshold-ranges= <(-100)  76
+								200     309
+								1049    1263
+								380     420
+								673     848
+								430     524
+								2000    2047>;
+			};
 		};
 	};
 
