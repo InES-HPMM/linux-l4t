@@ -373,9 +373,53 @@ static int tegra_t210ref_notifier_call(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
+static int tegra_t210ref_i2c_notifier_call(struct notifier_block *nb,
+			unsigned long event, void *data)
+{
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+	struct device *dev = data;
+#endif
+
+	switch (event) {
+	case BUS_NOTIFY_BIND_DRIVER:
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+		if (dev->of_node) {
+			if (of_device_is_compatible(dev->of_node,
+					"ti,lp8550") ||
+				of_device_is_compatible(dev->of_node,
+					"ti,lp8551") ||
+				of_device_is_compatible(dev->of_node,
+					"ti,lp8552") ||
+				of_device_is_compatible(dev->of_node,
+					"ti,lp8553") ||
+				of_device_is_compatible(dev->of_node,
+					"ti,lp8554") ||
+				of_device_is_compatible(dev->of_node,
+					"ti,lp8555") ||
+				of_device_is_compatible(dev->of_node,
+					"ti,lp8556") ||
+				of_device_is_compatible(dev->of_node,
+					"ti,lp8557")) {
+					ti_lp855x_bl_ops_register(dev);
+			}
+		}
+#endif
+		break;
+	default:
+		break;
+	}
+	return NOTIFY_DONE;
+}
+
+
 static struct notifier_block platform_nb = {
 	.notifier_call = tegra_t210ref_notifier_call,
 };
+
+static struct notifier_block i2c_nb = {
+	.notifier_call = tegra_t210ref_i2c_notifier_call,
+};
+
 static void __init tegra_t210ref_dt_init(void)
 {
 	unsigned long pinmux_clamp = readl(IO_ADDRESS(0x70000040));
@@ -398,6 +442,7 @@ static void __init tegra_t210ref_dt_init(void)
 	tegra_set_fixed_pwm_bl_ops(dsi_j_1440_810_5_8_ops.pwm_bl_ops);
 #endif
 	bus_register_notifier(&platform_bus_type, &platform_nb);
+	bus_register_notifier(&i2c_bus_type, &i2c_nb);
 	tegra_t210ref_early_init();
 	of_platform_populate(NULL,
 		of_default_bus_match_table, t210ref_auxdata_lookup,
