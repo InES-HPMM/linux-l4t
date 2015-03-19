@@ -196,6 +196,7 @@ struct dvfs {
 	bool auto_dvfs;
 	bool can_override;
 	bool defer_override;
+	bool boost_table;
 
 	/* Filled in by tegra_dvfs_init */
 	int max_millivolts;

@@ -3773,12 +3773,34 @@ static void tegra21_dfll_clk_disable(struct clk *c)
 	tegra_cl_dvfs_disable(c->u.dfll.cl_dvfs);
 }
 
+static unsigned long boost_dfll_rate(struct clk *c, unsigned long rate)
+{
+	struct clk *consumer = c->u.dfll.consumer;
+	if (!consumer || !consumer->dvfs || !consumer->dvfs->boost_table ||
+	    (consumer->dvfs->num_freqs <= 1))
+		return rate;
+
+	/* Only one top DVFS step boost is allowed */
+	if (rate < consumer->dvfs->freqs[consumer->dvfs->num_freqs-2])
+		return rate;
+
+	return consumer->dvfs->freqs[consumer->dvfs->num_freqs-1];
+}
+
 static int tegra21_dfll_clk_set_rate(struct clk *c, unsigned long rate)
 {
-	int ret = tegra_cl_dvfs_request_rate(c->u.dfll.cl_dvfs, rate);
+	unsigned long boost_rate = boost_dfll_rate(c, rate);
+	int ret = tegra_cl_dvfs_request_rate(c->u.dfll.cl_dvfs, boost_rate);
 
+	/*
+	 * Record requested rate. Thus, non boosted rate is reported. It also
+	 * ensures correct clock settings when switching back and forth to a
+	 * clock source with different than DFLL granularity, and prevents other
+	 * than DFLL clock source to run at boost rate that is supported on DFLL
+	 * only.
+	 */
 	if (!ret)
-		c->rate = tegra_cl_dvfs_request_get(c->u.dfll.cl_dvfs);
+		c->rate = rate;
 
 	return ret;
 }
@@ -9957,6 +9979,7 @@ static void __init tegra21_dfll_cpu_late_init(struct clk *c)
 	tegra_periph_reset_deassert(c);
 	ret = tegra_init_cl_dvfs();
 	if (!ret) {
+		c->u.dfll.consumer = cpu;
 		c->state = OFF;
 		if (tegra_platform_is_silicon())
 			use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
@@ -10199,7 +10222,7 @@ static struct tegra_cpufreq_table_data freq_table_data;
 
 struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 {
-	int i, j;
+	int i, j, n;
 	unsigned int virt_freq;
 	unsigned int freq, lp_backup_freq, g_vmin_freq, g_start_freq, max_freq;
 	struct clk *cpu_clk_g = tegra_get_clock_by_name("cpu_g");
@@ -10289,7 +10312,8 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 	/* Now, step along the rest of G CPU dvfs ladder */
 	g_start_freq = virt_freq;
 	max_freq = cpu_clk_g->max_rate / 1000;
-	for (j = 0; j < cpu_clk_g->dvfs->num_freqs; j++) {
+	n = cpu_clk_g->dvfs->num_freqs - (cpu_clk_g->dvfs->boost_table ? 1 : 0);
+	for (j = 0; j < n; j++) {
 		freq = cpu_clk_g->dvfs->freqs[j] / 1000;
 		if (freq > g_start_freq)
 			freq_table[i++].frequency = freq;
