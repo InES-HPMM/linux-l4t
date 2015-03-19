@@ -10667,9 +10667,7 @@ static s32 wl_event_handler(void *data)
 			}
 			if (e->etype < WLC_E_LAST && cfg->evt_handler[e->etype]
 				&& cfgdev) {
-				if (cfgdev->netdev &&
-					cfgdev->netdev->ieee80211_ptr)
-					cfg->evt_handler[e->etype] (cfg,
+				cfg->evt_handler[e->etype] (cfg,
 						cfgdev, &e->emsg, e->edata);
 			} else {
 				WL_DBG(("Unknown Event (%d): ignoring\n", e->etype));
