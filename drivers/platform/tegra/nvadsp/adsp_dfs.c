@@ -728,7 +728,7 @@ int adsp_dfs_core_exit(struct platform_device *pdev)
 		dev_info(&pdev->dev, "adsp dfs exit failed: mbox close error ....\n");
 
 	kfree(freq_stats.time_in_state);
-	tegra_unregister_clk_rate_notifier(policy->adsp_clk,
+	tegra_unregister_clk_rate_notifier(clk_get_parent(policy->adsp_clk),
 					   &policy->rate_change_nb);
 
 	if (policy->adsp_clk)
