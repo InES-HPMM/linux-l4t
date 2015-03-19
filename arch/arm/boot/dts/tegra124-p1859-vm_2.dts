@@ -311,7 +311,7 @@
 		};
 
 		msenc {
-			status = "disabled";
+			compatible = "nvidia,tegra124-vhost-msenc";
 		};
 
 		tsec {
