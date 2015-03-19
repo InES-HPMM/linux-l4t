@@ -604,7 +604,7 @@ EXPORT_SYMBOL_GPL(utmi_phy_pad_disable);
 
 #else
 
-void utmi_phy_pad(struct tegra_prod_list *prod_list, bool enable)
+static void utmi_phy_pad(struct tegra_prod_list *prod_list, bool enable)
 {
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 	int val;
