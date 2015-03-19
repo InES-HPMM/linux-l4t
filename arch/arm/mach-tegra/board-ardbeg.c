@@ -1176,6 +1176,8 @@ static void __init tegra_ardbeg_early_init(void)
 		tegra_soc_device_init("t132loki");
 	else if (of_machine_is_compatible("nvidia,e2141"))
 		tegra_soc_device_init("e2141");
+	else if (of_machine_is_compatible("nvidia,green-arrow"))
+		tegra_soc_device_init("green-arrow");
 	else
 		tegra_soc_device_init("ardbeg");
 }
