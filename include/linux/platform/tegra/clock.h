@@ -320,6 +320,7 @@ struct clk {
 		} pll;
 		struct {
 			void				*cl_dvfs;
+			struct clk			*consumer;
 		} dfll;
 		struct {
 			unsigned long			default_rate;
