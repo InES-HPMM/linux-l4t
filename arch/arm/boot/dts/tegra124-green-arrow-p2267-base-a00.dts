@@ -78,6 +78,47 @@
 		};
 	};
 
+	i2c@7000d000 {
+		palmas: tps65913 {
+			thermal {
+				status = "okay";
+			};
+
+			gpadc {
+				ti,auto-conversion-period-ms = <500>;
+				auto_conv0 {
+					ti,adc-channel-number = <3>;
+					ti,adc-low-threshold = <1980>;
+					ti,enable-shutdown;
+				};
+			};
+
+			pmic {
+				regulators {
+					ldo3 {
+						regulator-min-microvolt = <3300000>;
+						regulator-max-microvolt = <3300000>;
+						regulator-enable-ramp-delay = <3000>;
+						ti,disable-pull-down;
+					};
+				};
+			};
+		};
+	};
+
+	regulator {
+		regulator@8  {
+			vin-supply = <&ldo3_reg>;
+			regulator-disable-parent-after-enable;
+		};
+	};
+
+	thermal-zones {
+		PMIC-Die {
+			status = "okay";
+		};
+	};
+
 	watchdog@60005100 {
 		status = "disabled";
 		nvidia,enable-on-init;
