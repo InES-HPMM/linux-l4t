@@ -26,6 +26,7 @@ Optional properties:
 - maxim,junction-temp-warning: Junction temp thrshold for which warnign
 		generated. This is milli-celcius like for 120degC, it is
 		120000.
+- maxim,enable-active-discharge: Boolean, enable active discharge.
 
 Example:
 
