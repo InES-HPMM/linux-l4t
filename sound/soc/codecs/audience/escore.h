@@ -598,6 +598,7 @@ struct escore_priv {
 	bool i2c_pull_up;
 #endif
 	bool codec_clk_en;
+	u16 hs_delay;
 };
 
 #define escore_resp(obj) ((obj)->bus.last_response)

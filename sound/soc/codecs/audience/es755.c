@@ -1389,6 +1389,26 @@ static int es755_get_event_status(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
+static int es755_put_hs_delay_value(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	int rc = 0;
+
+	escore_priv.hs_delay = ucontrol->value.integer.value[0];
+
+	if (escore_priv.hs_delay < MIN_HS_REDETECTION_DELAY)
+		escore_priv.hs_delay = MIN_HS_REDETECTION_DELAY;
+
+	return rc;
+}
+
+static int es755_get_hs_delay_value(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = escore_priv.hs_delay;
+
+	return 0;
+}
 
 static const char * const es755_vs_power_state_texts[] = {
 	"None", "Sleep", "MP_Sleep", "MP_Cmd", "Normal", "Overlay", "Low_Power",
@@ -1435,6 +1455,9 @@ static struct snd_kcontrol_new es755_snd_controls[] = {
 	SOC_ENUM_EXT("Streaming Mode", es755_streaming_mode_enum,
 			   escore_get_streaming_mode,
 			   escore_put_streaming_mode),
+	SOC_SINGLE_EXT("HS Delay",
+		       ES_HS_DELAY, 0, 2000, 0, es755_get_hs_delay_value,
+		       es755_put_hs_delay_value),
 };
 
 static int es_voice_sense_add_snd_soc_controls(struct snd_soc_codec *codec)
@@ -2225,6 +2248,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 	union es755_accdet_reg accdet_reg;
 	int value;
 	int rc = 0;
+	static int redetect_hs=1;
 	u8 impd_level;
 	u8 mg_sel_force;
 	u8 mg_select;
@@ -2243,6 +2267,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 
 			pr_info("%s(): Plug event\n", __func__);
 			/* Enable MIC Detection */
+redetect_HS:
 			rc = es755_mic_config(escore);
 			if (rc < 0) {
 				pr_err("%s(): MIC config failed\n", __func__);
@@ -2299,6 +2324,15 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 			if (impd_level) {
 				pr_info("%s(): Headset detected\n", __func__);
 
+				if (redetect_hs) {
+					redetect_hs=0;
+					msleep(escore_priv.hs_delay);
+					pr_debug("%s(): Redetect HS MIC with Delay %d\n",
+						__func__,escore_priv.hs_delay);
+					goto redetect_HS;
+				} else
+					redetect_hs=1;
+
 				is_invalid_type = false;
 				/* MIC Impedence - 1 to 5 */
 				if (impd_level < MIC_IMPEDANCE_LEVEL) {
@@ -2342,6 +2376,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 			} else {
 				pr_info("%s(): Headphone detected\n",
 						__func__);
+				redetect_hs=1;
 
 				snd_soc_jack_report(escore->jack,
 					SND_JACK_HEADPHONE,
@@ -2778,6 +2813,7 @@ int es755_core_probe(struct device *dev)
 #if defined(CONFIG_SND_SOC_ES_SLIM)
 	escore_priv.slim_dai_ops.digital_mute =	es755_digital_mute;
 #endif
+	escore_priv.hs_delay = DEFAULT_HS_REDETECTION_DELAY;
 
 	/* API Interrupt registration */
 	if (pdata->gpioa_gpio != -1) {

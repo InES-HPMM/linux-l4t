@@ -135,6 +135,10 @@
 #define PORT_B_TO_D	0x01DD
 #define PORT_C_TO_D	0x01EE
 
+/* Minimum delay for redetecting the HS IN ms*/
+#define MIN_HS_REDETECTION_DELAY 50
+#define DEFAULT_HS_REDETECTION_DELAY 250
+
 union es755_accdet_status_reg {
 	u16 value;
 	struct {
@@ -277,6 +281,7 @@ enum {
 	ES_FE_STREAMING,
 	ES_FEIN2_MUX,
 	ES_API_ADDR_MAX,
+	ES_HS_DELAY,
 };
 
 #define ES_SLIM_1_PB_MAX_CHANS	2
