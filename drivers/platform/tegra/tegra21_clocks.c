@@ -8679,6 +8679,7 @@ static struct raw_notifier_head host1x_rate_change_nh;
 
 static struct clk tegra_clk_host1x = {
 	.name      = "host1x",
+	.clk_id = TEGRA210_CLK_ID_HOST1X,
 	.lookup    = {
 		.dev_id = "host1x",
 	},
@@ -9307,7 +9308,7 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("vcp",	"nvavp",		"vcp",	29,	0,	250000000, mux_clk_m, 			0, TEGRA210_CLK_ID_VCP),
 	PERIPH_CLK("bsea",	"nvavp",		"bsea",	62,	0,	250000000, mux_clk_m, 			0, TEGRA210_CLK_ID_BSEA),
 	PERIPH_CLK("bsev",	"tegra-aes",		"bsev",	63,	0,	250000000, mux_clk_m, 			0, TEGRA210_CLK_ID_BSEV),
-	PERIPH_CLK("cec",	"tegra_cec",		NULL,	136,	0,	250000000, mux_clk_m,			PERIPH_ON_APB, 0),
+	PERIPH_CLK("cec",	"tegra_cec",		NULL,	136,	0,	250000000, mux_clk_m,			PERIPH_ON_APB, TEGRA210_CLK_ID_CEC),
 	PERIPH_CLK("csite",	"csite",		NULL,	73,	0x1d4,	624000000, mux_pllp_pllre_clkm,		MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_CSITE),
 	PERIPH_CLK("la",	"la",			NULL,	76,	0x1f8,	408000000,  mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_LA),
 
@@ -9331,8 +9332,8 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("vi_sensor",	 NULL,		"vi_sensor",	164,	0x1a8,	408000000, mux_pllc_pllp_plla,		MUX | DIV_U71 | PERIPH_NO_RESET, TEGRA210_CLK_ID_VI_SENSOR),
 	PERIPH_CLK("vi_sensor2", NULL,		"vi_sensor2",	165,	0x658,	408000000, mux_pllc_pllp_plla,		MUX | DIV_U71 | PERIPH_NO_RESET, TEGRA210_CLK_ID_VI_SENSOR2),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	 38400000, mux_clk_m,			PERIPH_ON_APB,	TEGRA210_CLK_ID_DTV, &tegra_dtv_clk_ops),
-	PERIPH_CLK("disp1",	"tegradc.0",		NULL,	27,	0x138, 1500000000, mux_pllp_plld_plld2_clkm,	MUX, 0),
-	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c, 1500000000, mux_pllp_plld_plld2_clkm,	MUX, 0),
+	PERIPH_CLK("disp1",	"tegradc.0",		NULL,	27,	0x138, 1500000000, mux_pllp_plld_plld2_clkm,	MUX, TEGRA210_CLK_ID_DISP1),
+	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c, 1500000000, mux_pllp_plld_plld2_clkm,	MUX, TEGRA210_CLK_ID_DISP2),
 	PERIPH_CLK_EX("sor0",	NULL,			"sor0",	182,	0x414,	600000000, mux_pllp_sor_sor0_brick,		MUX,	TEGRA210_CLK_ID_SOR0, &tegra_sor0_clk_ops),
 	PERIPH_CLK_EX("sor1",	NULL,			"sor1",	183,	0x410,	600000000, mux_pllp_sor_sor1_brick_sor1_src,	MUX,	TEGRA210_CLK_ID_SOR1, &tegra_sor1_clk_ops),
 	PERIPH_CLK_EX("dpaux",	"dpaux",		NULL,	181,	0,	 24000000, mux_pllp,			0, TEGRA210_CLK_ID_DPAUX, &tegra_dpaux_clk_ops),
@@ -9343,8 +9344,8 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("hsic_trk",	NULL,		  "hsic_trk",	209,	0,	38400000, mux_clk_usb2_hsic_trk,	PERIPH_NO_RESET, TEGRA210_CLK_ID_HSIC_TRK),
 	PERIPH_CLK("usb2_trk",	NULL,		  "usb2_trk",	210,	0,	38400000, mux_clk_usb2_hsic_trk,	PERIPH_NO_RESET, TEGRA210_CLK_ID_USB2_TRK),
 
-	PERIPH_CLK_EX("dsia",	"tegradc.0",	      "dsia",	48,	0xd0,   750000000, mux_plld_out0,		PLLD,	0, &tegra_dsi_clk_ops),
-	PERIPH_CLK_EX("dsib",	"tegradc.1",	      "dsib",	82,	0x4b8,  750000000, mux_plld_out0,		PLLD,	0, &tegra_dsi_clk_ops),
+	PERIPH_CLK_EX("dsia",	"tegradc.0",	      "dsia",	48,	0xd0,   750000000, mux_plld_out0,		PLLD,	TEGRA210_CLK_ID_DSIA, &tegra_dsi_clk_ops),
+	PERIPH_CLK_EX("dsib",	"tegradc.1",	      "dsib",	82,	0x4b8,  750000000, mux_plld_out0,		PLLD,	TEGRA210_CLK_ID_DSIB, &tegra_dsi_clk_ops),
 	PERIPH_CLK("dsi1-fixed", "tegradc.0",    "dsi-fixed",	0,	0,	108000000, mux_pllp_out3,		PERIPH_NO_ENB | PERIPH_NO_RESET, 0),
 	PERIPH_CLK("dsi2-fixed", "tegradc.1",    "dsi-fixed",	0,	0,	108000000, mux_pllp_out3,		PERIPH_NO_ENB | PERIPH_NO_RESET, 0),
 	PERIPH_CLK("csi",	"vi",		       "csi",	52,	0,      750000000, mux_plld_out0,		PLLD, TEGRA210_CLK_ID_CSI),
