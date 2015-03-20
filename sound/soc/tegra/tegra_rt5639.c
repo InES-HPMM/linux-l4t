@@ -1,7 +1,7 @@
 /*
  * tegra_rt5639.c - Tegra machine ASoC driver for boards using ALC5639 codec.
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION. All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -1263,6 +1263,8 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 						"nvidia,hp-det-gpios", 0);
 		if (pdata->gpio_hp_det < 0)
 			dev_warn(&pdev->dev, "Failed to get HP Det GPIO\n");
+
+		pdata->use_codec_jd_irq = of_property_read_bool(np, "nvidia,use_codec_jd_irq");
 
 		pdata->gpio_codec1 = pdata->gpio_codec2 = pdata->gpio_codec3 =
 		pdata->gpio_spkr_en = pdata->gpio_hp_mute =
