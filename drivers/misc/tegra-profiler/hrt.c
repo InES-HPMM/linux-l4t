@@ -23,7 +23,6 @@
 #include <linux/ptrace.h>
 #include <linux/interrupt.h>
 #include <linux/err.h>
-#include <linux/nsproxy.h>
 #include <clocksource/arm_arch_timer.h>
 
 #include <asm/cputype.h>
@@ -68,7 +67,7 @@ static enum hrtimer_restart hrtimer_handler(struct hrtimer *hrtimer)
 	qm_debug_handler_sample(regs);
 
 	if (regs)
-		read_all_sources(regs, NULL);
+		read_all_sources(regs, current);
 
 	hrtimer_forward_now(hrtimer, ns_to_ktime(hrt.sample_period));
 	qm_debug_timer_forward(regs, hrt.sample_period);
@@ -357,24 +356,11 @@ read_all_sources(struct pt_regs *regs, struct task_struct *task)
 	struct quadd_cpu_context *cpu_ctx = this_cpu_ptr(hrt.cpu_ctx);
 	struct quadd_callchain *cc = &cpu_ctx->cc;
 
-	if (!regs)
-		return;
-
 	if (atomic_read(&cpu_ctx->nr_active) == 0)
 		return;
 
-	if (!task)
-		task = current;
-
-	if (task_is_dead(task))
+	if (task->flags & PF_EXITING)
 		return;
-
-	rcu_read_lock();
-	if (!task_nsproxy(task)) {
-		rcu_read_unlock();
-		return;
-	}
-	rcu_read_unlock();
 
 	if (ctx->pmu && ctx->pmu_info.active)
 		nr_events += read_source(ctx->pmu, regs,
