@@ -1184,15 +1184,19 @@ static int hdmi_pcm_open(struct hda_pcm_stream *hinfo,
 		(codec->preset->id == 0x10de0029) ||
 		(codec->preset->id == 0x10de002a))) &&
 		(!eld->monitor_present || !eld->info.lpcm_sad_ready)) {
+		hinfo->pcm_open_retry_count++;
 		if (!eld->monitor_present) {
 			if (tegra_hdmi_setup_hda_presence() < 0) {
-				snd_printk(KERN_WARNING
-					   "HDMI: No HDMI device connected\n");
+				/* Throttle log after 5 retries */
+				if (hinfo->pcm_open_retry_count < 5)
+					snd_printk(KERN_WARNING
+					   "HDA: No HDMI device connected\n");
 				return -ENODEV;
 			}
 		}
 		if (!eld->info.lpcm_sad_ready)
 			return -ENODEV;
+		hinfo->pcm_open_retry_count = 0;
 	}
 #endif
 
@@ -1663,6 +1667,7 @@ static int hdmi_pcm_close(struct hda_pcm_stream *hinfo,
 
 		per_pin->setup = false;
 		per_pin->channels = 0;
+		hinfo->pcm_open_retry_count = 0;
 	}
 
 	return 0;
