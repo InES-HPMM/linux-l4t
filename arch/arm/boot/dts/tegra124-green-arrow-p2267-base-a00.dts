@@ -256,7 +256,7 @@
 			pwm-period = <29334>;
 
 			pwm-names = "lp8557";
-			pwms = <&tegra_pwm 0 29334>;
+			pwms = <&tegra_pwm 1 29334>;
 
 			/* 3 LED string */
 			rom_14h {
@@ -282,7 +282,7 @@
 			pwm-period = <29334>;
 
 			pwm-names = "lp8557";
-			pwms = <&tegra_pwm 0 29334>;
+			pwms = <&tegra_pwm 1 29334>;
 
 			/* 5 LED string */
 			rom_14h {
@@ -308,7 +308,7 @@
 			pwm-period = <29334>;
 
 			pwm-names = "lp8557";
-			pwms = <&tegra_pwm 0 29334>;
+			pwms = <&tegra_pwm 1 29334>;
 
 			/* 5 LED string */
 			rom_14h {
