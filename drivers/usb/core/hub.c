@@ -2147,11 +2147,14 @@ static void xotg_hnp_polling_work(struct work_struct *work)
 	if (bus->otgv13_hnp) {
 		dev_dbg(&udev->dev, "otgv13_hnp for PET\n");
 		bus->otgv13_hnp = 0;
+		bus->otg_quick_hnp = 1;
 		status = set_port_feature(hub->hdev, udev->portnum,
 			USB_PORT_FEAT_SUSPEND);
 		if (status == -ENODEV)
 			dev_err(&udev->dev, "set_port_feature failed!!\n");
 		return;
+	} else {
+		bus->otg_quick_hnp = 0;
 	}
 
 	/* now send the otg_status request to the b-peripheral

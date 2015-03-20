@@ -336,6 +336,7 @@ struct usb_bus {
 	unsigned otgv13_hnp:1;		/* OTG: Indicates if hnp is required
 					 * irrespective of host_request flag
 					 */
+	unsigned otg_quick_hnp:1;	/* OTG: quick hnp is set by device */
 	unsigned no_stop_on_short:1;    /*
 					 * Quirk: some controllers don't stop
 					 * the ep queue on a short transfer

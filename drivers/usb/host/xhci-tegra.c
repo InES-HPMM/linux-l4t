@@ -4077,7 +4077,14 @@ static int tegra_xhci_hub_control(struct usb_hcd *hcd, u16 type_req,
 	if ((hcd->speed == HCD_USB2) && (ret == 0)) {
 		if ((type_req == SetPortFeature) &&
 			(value == USB_PORT_FEAT_SUSPEND))
-			xusb_utmi_pad_driver_power(port, false);
+			/* We dont suspend the PAD while HNP role swap happens
+			 * on the OTG port
+			 */
+			if (!((hcd->self.otg_port == (port + 1)) &&
+			    (hcd->self.b_hnp_enable ||
+			    hcd->self.otg_quick_hnp))) {
+				xusb_utmi_pad_driver_power(port, false);
+			}
 	}
 
 	return ret;
@@ -4103,8 +4110,16 @@ static int tegra_xhci_hub_status_data(struct usb_hcd *hcd, char *buf)
 			if (portsc & PORT_CSC) {
 				if (portsc & PORT_CONNECT)
 					xusb_utmi_pad_driver_power(port, true);
-				else
-					xusb_utmi_pad_driver_power(port, false);
+				else {
+					/* We dont suspend the PAD while HNP
+					 * role swap happens on the OTG port
+					 */
+					if (!((hcd->self.otg_port == (port + 1))
+						&& (hcd->self.b_hnp_enable ||
+						hcd->self.otg_quick_hnp)))
+						xusb_utmi_pad_driver_power(
+								port, false);
+				}
 			}
 		}
 	}
