@@ -60,6 +60,11 @@
 		};
 	};
 
+	bluedroid_pm {
+		avdd-supply = <&vdd_ac_bat_reg>;
+		dvdd-supply = <&palmas_smps8>;
+	};
+
 	power-detect {
 		pwrdet-nand-supply = <&palmas_smps8>;
 		pwrdet-sdmmc1-supply = <&palmas_smps8>;
