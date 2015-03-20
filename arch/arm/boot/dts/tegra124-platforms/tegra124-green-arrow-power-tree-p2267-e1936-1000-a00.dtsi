@@ -37,6 +37,29 @@
 		};
 	};
 
+	sound {
+		dbvdd-supply = <&palmas_smps8>;
+		avdd-supply = <&palmas_smps8>;
+		dmicvdd-supply = <&palmas_smps8>;
+		spkvdd-supply = <&palmas_smps10_out2>;
+	};
+
+	i2c@7000c000 {
+		icm20628@69 {
+			vdd-supply = <&palmas_smps8>;
+			vlogic-supply = <&palmas_smps8>;
+		};
+
+		ak8963c@0d {
+			vdd-supply = <&palmas_smps8>;
+			vid-supply = <&palmas_smps9>;
+		};
+
+		cm3218@48 {
+			vdd-supply = <&palmas_smps9>;
+		};
+	};
+
 	power-detect {
 		pwrdet-nand-supply = <&palmas_smps8>;
 		pwrdet-sdmmc1-supply = <&palmas_smps8>;
