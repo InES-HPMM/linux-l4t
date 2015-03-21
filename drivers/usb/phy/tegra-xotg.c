@@ -41,6 +41,7 @@ module_param(session_supported, bool, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(session_supported, "session supported");
 
 static const char driver_name[] = "tegra-xotg";
+static void xotg_work(struct work_struct *work);
 
 static void xotg_print_status(struct xotg *xotg)
 {
@@ -267,7 +268,7 @@ static void b_srp_response_wait_timer(unsigned long data)
 	 */
 	xotg->xotg_timer_list.b_srp_response_wait_tmout = 1;
 
-	schedule_delayed_work(&xotg->otg_work, 0);
+	queue_work(xotg->otg_wq, &xotg->otg_work);
 }
 
 static void xotg_timer_comp(unsigned long timeout)
@@ -277,7 +278,7 @@ static void xotg_timer_comp(unsigned long timeout)
 
 	xotg_dbg(xotg->dev, "timer expired\n");
 	*(int *)timeout = 1;
-	schedule_delayed_work(&xotg->otg_work, 0);
+	queue_work(xotg->otg_wq, &xotg->otg_work);
 }
 
 static void b_srp_done_timer(unsigned long data)
@@ -290,7 +291,7 @@ static void b_srp_done_timer(unsigned long data)
 		xotg->xotg_vars.b_srp_done = 1;
 		xotg->xotg_vars.b_srp_initiated = 0;
 	}
-	schedule_delayed_work(&xotg->otg_work, 0);
+	queue_work(xotg->otg_wq, &xotg->otg_work);
 }
 
 static int xotg_init_timers(struct xotg *xotg)
@@ -528,7 +529,7 @@ static void xotg_drive_vbus(struct xotg *xotg, bool start)
 	xotg->vbus_on = start;
 	spin_unlock_irqrestore(&xotg->vbus_lock, flags);
 
-	schedule_work(&xotg->vbus_work);
+	queue_work(xotg->otg_wq, &xotg->vbus_work);
 }
 
 static void xotg_enable_srp_detect(struct xotg *xotg, bool enable)
@@ -712,7 +713,7 @@ static int xotg_start_hnp(struct usb_otg *otg)
 
 	xotg->xotg_vars.b_conn = 0;
 	xotg->phy.otg->host->b_hnp_enable = 1;
-	schedule_delayed_work(&xotg->otg_work, 0);
+	queue_work(xotg->otg_wq, &xotg->otg_work);
 	return 0;
 }
 
@@ -735,7 +736,7 @@ static int xotg_start_srp(struct usb_otg *otg)
 	xotg_info(xotg->dev, "state %s -> a_suspend\n",
 		usb_otg_state_string(xotg->phy.state));
 	xotg->phy.state = OTG_STATE_A_SUSPEND;
-	schedule_delayed_work(&xotg->otg_work, 0);
+	queue_work(xotg->otg_wq, &xotg->otg_work);
 	return 0;
 }
 
@@ -747,7 +748,7 @@ static int xotg_start_srp(struct usb_otg *otg)
  */
 static void xotg_work(struct work_struct *work)
 {
-	struct xotg *xotg = container_of(work, struct xotg, otg_work.work);
+	struct xotg *xotg = container_of(work, struct xotg, otg_work);
 	enum usb_otg_state from_state;
 	struct usb_gadget *gadget = xotg->phy.otg->gadget;
 	unsigned long flags;
@@ -859,7 +860,7 @@ static void xotg_work(struct work_struct *work)
 				xotg->xotg_timer_list.b_ssend_srp_tmout = 0;
 			}
 			spin_unlock_irqrestore(&xotg->lock, flags);
-			xotg_work(&xotg->otg_work.work);
+			xotg_work(&xotg->otg_work);
 			return;
 		} else if (xotg->xotg_vars.b_sess_vld) {
 			xotg_info(xotg->dev, "state b_idle -> b_peripheral\n");
@@ -1598,7 +1599,7 @@ static int xotg_notify_connect(struct usb_phy *phy, enum usb_device_speed speed)
 	}
 	spin_unlock_irqrestore(&xotg->lock, flags);
 
-	schedule_delayed_work(&xotg->otg_work, 0);
+	queue_work(xotg->otg_wq, &xotg->otg_work);
 	return 0;
 }
 
@@ -1631,7 +1632,7 @@ static int xotg_set_suspend(struct usb_phy *phy, int suspend)
 				xotg->xotg_vars.a_bus_resume = 0;
 			}
 			spin_unlock_irqrestore(&xotg->lock, flags);
-			xotg_work(&xotg->otg_work.work);
+			xotg_work(&xotg->otg_work);
 			return 0;
 		default:
 			xotg_warn(xotg->dev, "suspend: default.\n");
@@ -1645,7 +1646,7 @@ static int xotg_set_suspend(struct usb_phy *phy, int suspend)
 		}
 	}
 	spin_unlock_irqrestore(&xotg->lock, flags);
-	schedule_delayed_work(&xotg->otg_work, 0);
+	queue_work(xotg->otg_wq, &xotg->otg_work);
 	return 0;
 }
 
@@ -1667,7 +1668,7 @@ static int xotg_set_vbus(struct usb_phy *phy, int on)
 		xotg_notify_event(xotg, USB_EVENT_HANDLE_OTG_PP);
 		xotg->phy.otg->default_a = 1;
 		xotg->id = 0;
-		schedule_delayed_work(&xotg->otg_work, 0);
+		queue_work(xotg->otg_wq, &xotg->otg_work);
 	} else {
 		if (!xotg->device_connected) {
 			tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
@@ -1677,7 +1678,7 @@ static int xotg_set_vbus(struct usb_phy *phy, int on)
 			xusb_enable_pad_protection(1);
 			xotg->phy.otg->default_a = 0;
 			xotg->id = 1;
-			schedule_delayed_work(&xotg->otg_work, 0);
+			queue_work(xotg->otg_wq, &xotg->otg_work);
 		}
 	}
 	spin_unlock_irqrestore(&xotg->lock, flags);
@@ -1716,7 +1717,7 @@ static int xotg_notify_disconnect(struct usb_phy *phy,
 		xotg_set_vbus(phy, 0);
 	} else {
 		spin_unlock_irqrestore(&xotg->lock, flags);
-		schedule_delayed_work(&xotg->otg_work, 0);
+		queue_work(xotg->otg_wq, &xotg->otg_work);
 	}
 
 	return 0;
@@ -1818,7 +1819,7 @@ static int xotg_start(struct xotg *xotg)
 	}
 	xotg->phy.state = OTG_STATE_UNDEFINED;
 
-	schedule_delayed_work(&xotg->otg_work, 0);
+	queue_work(xotg->otg_wq, &xotg->otg_work);
 	return 0;
 }
 
@@ -1904,7 +1905,7 @@ static irqreturn_t xotg_irq(int irq, void *data)
 	/* write to clear the status */
 	tegra_usb_pad_reg_write(XUSB_PADCTL_USB2_VBUS_ID_0, vbus_id_reg);
 
-	schedule_delayed_work(&xotg->otg_work, 0);
+	queue_work(xotg->otg_wq, &xotg->otg_work);
 	spin_unlock_irqrestore(&xotg->lock, flags);
 	return IRQ_HANDLED;
 }
@@ -1986,13 +1987,18 @@ static int xotg_probe(struct platform_device *pdev)
 	/* workqueue to handle the state transitions of A-device/B-device
 	 * as defined in the OTG spec.
 	 */
-	INIT_DELAYED_WORK(&xotg->otg_work, xotg_work);
+	xotg->otg_wq = alloc_workqueue("OTG WQ\n", WQ_HIGHPRI|WQ_UNBOUND, 0);
+	if (!xotg->otg_wq) {
+		xotg_err(xotg->dev, "Work Queue Allocation Failed\n");
+		goto error5;
+	}
+	INIT_WORK(&xotg->otg_work, xotg_work);
 
 	/* initialize timers */
 	status = xotg_init_timers(xotg);
 	if (status) {
 		xotg_err(xotg->dev, "timer init failed\n");
-		goto error5;
+		goto error6;
 	}
 
 	/* regulator for usb_vbus, to be moved to OTG driver */
@@ -2000,14 +2006,14 @@ static int xotg_probe(struct platform_device *pdev)
 	if (IS_ERR_OR_NULL(xotg->usb_vbus_reg)) {
 		xotg_err(xotg->dev, "usb_vbus regulator not found: %ld\n",
 			PTR_ERR(xotg->usb_vbus_reg));
-		goto error6;
+		goto error7;
 	}
 
 	/* start OTG */
 	status = xotg_start(xotg);
 	if (status) {
 		xotg_err(xotg->dev, "xotg_start failed\n");
-		goto error7;
+		goto error8;
 	}
 
 	/* extcon for id pin */
@@ -2023,18 +2029,20 @@ static int xotg_probe(struct platform_device *pdev)
 	status = device_create_file(xotg->dev, &dev_attr_debug);
 	if (status) {
 		xotg_err(xotg->dev, "failed to device_create_file\n");
-		goto error8;
+		goto error9;
 	}
 
 	return status;
 
-error8:
+error9:
 	extcon_unregister_notifier(xotg->id_extcon_dev,
 		&xotg->id_extcon_nb);
-error7:
+error8:
 	devm_regulator_put(xotg->usb_vbus_reg);
-error6:
+error7:
 	xotg_deinit_timers(xotg);
+error6:
+	destroy_workqueue(xotg->otg_wq);
 error5:
 	devm_free_irq(&pdev->dev, xotg->usb_irq, xotg);
 error4:
@@ -2059,6 +2067,7 @@ static int __exit xotg_remove(struct platform_device *pdev)
 	device_remove_file(&pdev->dev, &dev_attr_debug);
 	devm_regulator_put(xotg->usb_vbus_reg);
 	xotg_deinit_timers(xotg);
+	destroy_workqueue(xotg->otg_wq);
 	devm_free_irq(&pdev->dev, xotg->nv_irq, xotg);
 	devm_free_irq(&pdev->dev, xotg->usb_irq, xotg);
 	usb_remove_phy(&xotg->phy);

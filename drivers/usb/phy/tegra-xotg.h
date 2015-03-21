@@ -117,7 +117,8 @@ struct xotg {
 	struct xotg_vars xotg_vars;
 	struct xotg_timers xotg_timer_list;
 	u32 test_timer_timeout;
-	struct delayed_work otg_work;
+	struct work_struct otg_work;
+	struct workqueue_struct *otg_wq;
 	bool vbus_en_started;
 	bool vbus_dis_started;
 	bool vbus_on;
