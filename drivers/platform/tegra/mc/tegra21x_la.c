@@ -544,7 +544,7 @@ static int t21x_set_la(enum tegra_la_id id,
 		return -1;
 	} else if (id == ID(MSENCSRD)) {
 		/* This is a special case. */
-		struct clk *emc_clk = clk_get(NULL, "emc");
+		struct clk *emc_clk = clk_get_sys("tegra_emc", "emc");
 		unsigned int emc_freq_mhz = clk_get_rate(emc_clk) /
 						LA_HZ_TO_MHZ_FACTOR;
 		unsigned int val_1 = 53;
@@ -561,7 +561,7 @@ static int t21x_set_la(enum tegra_la_id id,
 				val_2);
 	} else if (ci->la_ref_clk_mhz != 0) {
 		/* In this case we need to scale LA with emc frequency. */
-		struct clk *emc_clk = clk_get(NULL, "emc");
+		struct clk *emc_clk = clk_get_sys("tegra_emc", "emc");
 		unsigned long emc_freq_mhz = clk_get_rate(emc_clk) /
 					(unsigned long)LA_HZ_TO_MHZ_FACTOR;
 
