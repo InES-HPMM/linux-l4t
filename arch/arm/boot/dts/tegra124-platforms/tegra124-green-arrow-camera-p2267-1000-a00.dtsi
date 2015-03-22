@@ -19,7 +19,7 @@
 
 / {
 	camera-pcl {
-		compatible = "nvidia,tegra210-camera", "simple-bus";
+		compatible = "nvidia,tegra124-camera", "simple-bus";
 		configuration = <0xAA55AA55>;
 
 		modules {
@@ -88,7 +88,7 @@
 					>;
 				/* sensor capabilities */
 				cap-version = <0x34340002>;
-				cap-identifier = "OV5693.0";
+				cap-identifier = "OV5693";
 				cap-sensor_nvc_interface = <3>;
 				cap-pixel_types = <0x2101>;
 				cap-orientation = <0>;
