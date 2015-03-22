@@ -49,6 +49,17 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 
+	gpio: gpio@6000d000 {
+		camera_control {
+			gpio-output-low = <
+				TEGRA_GPIO(BB, 3)
+				TEGRA_GPIO(BB, 5)
+				TEGRA_GPIO(BB, 6)
+				TEGRA_GPIO(BB, 7)
+				>;
+		};
+	};
+
 	camera-pcl {
 		profiles {
 			ov5693@x_0010 {
@@ -74,6 +85,28 @@
 				vdig-supply = <&en_vdd_cam_1v2>;
 				vif-supply = <&en_vdd_cam_1v8>;
 				cam2-gpios = <&gpio TEGRA_GPIO(BB, 6) 1>;
+			};
+		};
+		dpd {
+			compatible = "nvidia,csi-dpd";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			default-enable;
+			num = <5>;
+			csia {
+				reg = <0x0 0x0 0x0 0x0>;
+			};
+			csib {
+				reg = <0x0 0x1 0x0 0x0>;
+			};
+			csic {
+				reg = <0x1 0x0a 0x0 0x0>;
+			};
+			csid {
+				reg = <0x1 0x0b 0x0 0x0>;
+			};
+			csie {
+				reg = <0x1 0x0c 0x0 0x0>;
 			};
 		};
 	};
