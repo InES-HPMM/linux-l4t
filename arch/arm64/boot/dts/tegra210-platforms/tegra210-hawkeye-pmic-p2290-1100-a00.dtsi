@@ -51,7 +51,7 @@
 			compatible = "maxim,max77621";
 			reg = <0x1c>;
 			interrupt-parent = <&gpio>;
-			interrupts = <TEGRA_GPIO(A, 1) IRQF_TRIGGER_FALLING>;
+			interrupts = <TEGRA_GPIO(A, 6) IRQF_TRIGGER_FALLING>;
 			regulator-name = "vdd-gpu";
 			regulator-min-microvolt = <606250>;
 			regulator-max-microvolt = <1400000>;
