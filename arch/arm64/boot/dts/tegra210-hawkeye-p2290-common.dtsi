@@ -56,8 +56,6 @@
 	compatible = "nvidia,hawkeye", "nvidia,tegra210";
 	nvidia,fastboot-usb-pid = <0xcf0e>;
 
-	nvidia,boardids = "2290:0000:A0";
-	nvidia,proc-boardid = "2290:0000:A0";
 	nvidia,pmu-boardid = "2290:0000:A0";
 	#address-cells = <2>;
 	#size-cells = <2>;
