@@ -52,6 +52,7 @@ int alarm_cancel(struct alarm *alarm);
 u64 alarm_forward(struct alarm *alarm, ktime_t now, ktime_t interval);
 u64 alarm_forward_now(struct alarm *alarm, ktime_t interval);
 ktime_t alarm_expires_remaining(const struct alarm *alarm);
+int alarmtimer_set_maximum_wakeup_interval_time(int wakeup_time_s);
 
 /* Provide way to access the rtc device being used by alarmtimers */
 #ifdef CONFIG_RTC_CLASS
