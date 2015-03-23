@@ -5,7 +5,8 @@
 GCOV_PROFILE := y
 
 ccflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
-             -I$(srctree)/arch/arm/mach-tegra
+             -I$(srctree)/arch/arm/mach-tegra \
+             -I$(srctree)/drivers/platform/tegra/include
 
 obj-y                                   += mc.o
 
