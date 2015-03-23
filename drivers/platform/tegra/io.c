@@ -7,7 +7,7 @@
  *	Colin Cross <ccross@google.com>
  *	Erik Gilling <konkers@google.com>
  *
- * Copyright (C) 2010-2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2010-2015, NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -36,8 +36,6 @@
 #ifdef CONFIG_ARM64
 #define MT_DEVICE MT_DEVICE_nGnRE
 #endif
-
-bool iotable_init_done = false;
 
 static struct map_desc tegra_io_desc[] __initdata = {
 	{
@@ -120,29 +118,8 @@ static struct map_desc tegra_io_desc[] __initdata = {
 #endif
 };
 
-static struct map_desc tegra_io_desc_linsim[] __initdata = {
-	{
-		.virtual = (unsigned long)IO_SMC_VIRT,
-		.pfn = __phys_to_pfn(IO_SMC_PHYS),
-		.length = IO_SMC_SIZE,
-		.type = MT_DEVICE,
-	},
-	{
-		.virtual = (unsigned long)IO_SIM_ESCAPE_VIRT,
-		.pfn = __phys_to_pfn(IO_SIM_ESCAPE_PHYS),
-		.length = IO_SIM_ESCAPE_SIZE,
-		.type = MT_DEVICE,
-	},
-};
-
 void __init tegra_map_common_io(void)
 {
 	debug_ll_io_init();
 	iotable_init(tegra_io_desc, ARRAY_SIZE(tegra_io_desc));
-
-	if (tegra_platform_is_linsim())
-		iotable_init(tegra_io_desc_linsim,
-			ARRAY_SIZE(tegra_io_desc_linsim));
-
-	iotable_init_done = true;
 }
