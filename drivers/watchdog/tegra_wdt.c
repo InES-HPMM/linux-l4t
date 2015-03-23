@@ -75,6 +75,7 @@ static inline struct tegra_wdt *to_tegra_wdt(struct watchdog_device *wdt)
 #define WDT_CFG				(0)
 #define WDT_CFG_PERIOD			(1 << 4)
 #define WDT_CFG_INT_EN			(1 << 12)
+#define WDT_CFG_FIQ_EN			(1 << 13)
 #define WDT_CFG_SYS_RST_EN		(1 << 14)
 #define WDT_CFG_PMC2CAR_RST_EN		(1 << 15)
 #define WDT_STATUS			(4)
@@ -116,7 +117,8 @@ static int __tegra_wdt_enable(struct tegra_wdt *tegra_wdt)
 	writel(val, tegra_wdt->wdt_timer + TIMER_PTV);
 
 	val = tegra_wdt->tmrsrc;
-	val |= WDT_CFG_PERIOD | WDT_CFG_INT_EN | WDT_CFG_PMC2CAR_RST_EN;
+	val |= WDT_CFG_PERIOD | WDT_CFG_INT_EN |
+				WDT_CFG_FIQ_EN | WDT_CFG_PMC2CAR_RST_EN;
 	writel(val, tegra_wdt->wdt_source + WDT_CFG);
 	writel(WDT_CMD_START_COUNTER, tegra_wdt->wdt_source + WDT_CMD);
 
