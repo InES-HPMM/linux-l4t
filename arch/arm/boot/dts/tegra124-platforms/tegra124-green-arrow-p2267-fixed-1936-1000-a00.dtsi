@@ -103,6 +103,7 @@
 			regulator-max-microvolt = <5000000>;
 			gpio = <&gpio TEGRA_GPIO(K, 6) 0>;
 			enable-active-high;
+			vin-supply = <&vdd_sys_boost>;
 		};
 
 		vdd_sd_hv_con: regulator@8 {
@@ -125,6 +126,7 @@
 			regulator-max-microvolt = <3300000>;
 			gpio = <&gpio TEGRA_GPIO(N, 5) 0>;
 			enable-active-high;
+			vin-supply = <&ldoln_reg>;
 		};
 
 		avdd_hdmi_pll: regulator@10 {
@@ -133,8 +135,6 @@
 			regulator-name = "avdd-hdmi-pll";
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1200000>;
-			gpio = <&gpio TEGRA_GPIO(N, 5) 0>;
-			enable-active-high;
 		};
 	};
 };
