@@ -45,6 +45,8 @@ static struct alarm_base {
 static ktime_t freezer_delta;
 static DEFINE_SPINLOCK(freezer_delta_lock);
 
+static ktime_t max_wakeup_interval;
+
 static struct wakeup_source *ws;
 
 #ifdef CONFIG_RTC_CLASS
@@ -199,6 +201,18 @@ ktime_t alarm_expires_remaining(const struct alarm *alarm)
 	return ktime_sub(alarm->node.expires, base->gettime());
 }
 
+/**
+ * alarmtimer_set_after - Set alarmtimer after after_sec from now.
+ * @dev: device pointer
+ * @wakeup_time_s: Maximum gap between wakeup from alarm in second.
+ */
+int alarmtimer_set_maximum_wakeup_interval_time(int wakeup_time_s)
+{
+	max_wakeup_interval = ktime_set(wakeup_time_s, 0);
+	return 0;
+}
+EXPORT_SYMBOL(alarmtimer_set_maximum_wakeup_interval_time);
+
 #ifdef CONFIG_RTC_CLASS
 /**
  * alarmtimer_suspend - Suspend time callback
@@ -254,11 +268,19 @@ static int alarmtimer_suspend(struct device *dev)
 		return -EBUSY;
 	}
 
+	if (max_wakeup_interval.tv64) {
+		if (min.tv64 > max_wakeup_interval.tv64)
+			min.tv64 = max_wakeup_interval.tv64;
+	}
+
 	/* Setup an rtc timer to fire that far in the future */
 	rtc_timer_cancel(rtc, &rtctimer);
 	rtc_read_time(rtc, &tm);
 	now = rtc_tm_to_ktime(tm);
 	now = ktime_add(now, min);
+
+	dev_info(dev, "Next RTC waketime after %lld second\n",
+				ktime_to_sec(min));
 
 	/* Set alarm, if in the past reject suspend briefly to handle */
 	ret = rtc_timer_start(rtc, &rtctimer, now, ktime_set(0, 0));
