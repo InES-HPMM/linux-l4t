@@ -22,6 +22,7 @@
  * 02111-1307, USA
  */
 
+#include <linux/alarmtimer.h>
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/init.h>
@@ -47,6 +48,7 @@ struct palmas_wdt {
 	int irq;
 	int locked;
 	int watchdog_timer_initial_period;
+	int rtc_wakeup_period;
 	int interrupt_mode;
 };
 
@@ -160,6 +162,16 @@ static int palmas_wdt_probe(struct platform_device *pdev)
 			wdt->watchdog_timer_initial_period = pval;
 		wdt->interrupt_mode = of_property_read_bool(pdev->dev.of_node,
 					"ti,watchdog-interrupt-mode");
+		if (wdt->interrupt_mode) {
+			if (wdt->watchdog_timer_initial_period) {
+				wdt->rtc_wakeup_period = wdt->watchdog_timer_initial_period;
+				if (wdt->watchdog_timer_initial_period > 128)
+					wdt->watchdog_timer_initial_period = 128;
+			}
+		} else {
+			if (wdt->watchdog_timer_initial_period > 128)
+				wdt->watchdog_timer_initial_period = 128;
+		}
 	}
 
 	wdt->dev = &pdev->dev;
@@ -241,8 +253,13 @@ static int palmas_wdt_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (wdt->rtc_wakeup_period)
+		alarmtimer_set_maximum_wakeup_interval_time(
+				wdt->rtc_wakeup_period);
+
 	device_set_wakeup_capable(&pdev->dev, 1);
 	device_wakeup_enable(&pdev->dev);
+
 	return 0;
 scrub:
 	free_irq(wdt->irq, wdt);
