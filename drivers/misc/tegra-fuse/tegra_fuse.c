@@ -580,49 +580,8 @@ __weak void tegra_get_tegraid_from_hw(void)
 	char prime;
 #endif
 
-#ifndef CONFIG_ARM64
 	cid = tegra_read_chipid();
 	nlist = tegra_read_apb_misc_reg(0x860);
-#elif defined(CONFIG_ARCH_TEGRA_13x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
-	void __iomem *chip_id;
-	void __iomem *netlist;
-
-	/*
-	 * tegra_get_tegraid_from_hw can be called really early on when
-	 * final kernel page tables haven't been set up. Thus, APB_MISC
-	 * aperature must be mapped into kernel VA before tegra_id can
-	 * be accessed here. Coincidentally, Tegra UART and ChipId reside
-	 * in the same memory section (1MB), and UART has been mapped
-	 * prior to this.
-	 *
-	 * On ARM, this is okay b/c Tegra code tells ARM what VA to map.
-	 * However, ARM64 internally uses EARLYCON_IOBASE as base VA.
-	 * To workaround this, we have to derive the base VA manually
-	 * ad-hoc and modify the chip_id and netlist address accordingly
-	 * for ARM64. Such handling is only needed until Tegra static
-	 * mapping is done in mach-tegra/io.c.
-	 */
-	void __iomem *early_base;
-	extern bool iotable_init_done;
-	if (!iotable_init_done) {
-		/* Map in APB_BASE in case earlyprintk is not enabled */
-		early_base = early_io_map(TEGRA_APB_MISC_BASE, EARLYCON_IOBASE);
-		chip_id = early_base + 0x804;
-		netlist = early_base + 0x860;
-		cid = readl(chip_id);
-		nlist = readl(netlist);
-	} else {
-		cid = tegra_read_apb_misc_reg(0x804);
-		nlist = tegra_read_apb_misc_reg(0x860);
-	}
-#else
-	void __iomem *apb_misc = ioremap(
-		TEGRA_APB_MISC_BASE, TEGRA_APB_MISC_SIZE);
-	BUG_ON(!apb_misc);
-	cid = readl(apb_misc + 0x804);
-	nlist = readl(apb_misc + 0x860);
-	iounmap(apb_misc);
-#endif
 
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	tegra_fuse_cfg_reg_visible();
