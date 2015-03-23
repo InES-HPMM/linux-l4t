@@ -134,6 +134,11 @@
 		};
 	};
 
+	bluedroid_pm {
+		avdd-supply = <&battery_reg>;
+		dvdd-supply = <&max77620_sd3>;
+	};
+
 	power-detect {
 		pwrdet-sys-supply = <&max77620_sd3>;
 		pwrdet-uart-supply = <&max77620_sd3>;
