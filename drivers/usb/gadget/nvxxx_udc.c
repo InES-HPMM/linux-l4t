@@ -5506,6 +5506,8 @@ static int nvudc_plat_pad_init(struct nv_udc_s *nvudc)
 
 	/* utmi pad init for pad 0 */
 	xusb_utmi_pad_init(0, PORT_CAP(0, PORT_CAP_OTG), false);
+	if (nvudc->vbus_detected)
+		xusb_utmi_pad_driver_power(0, true);
 
 	if (!nvudc->prod_list)
 		nvudc->prod_list = tegra_prod_init(pdev->dev.of_node);
