@@ -8026,11 +8026,22 @@ static void tegra21_adsp_clk_reset(struct clk *c, bool assert)
 {
 	unsigned long reg = assert ? RST_DEVICES_SET_Y : RST_DEVICES_CLR_Y;
 	u32 val = ADSP_NEON | ADSP_SCU | ADSP_WDT | ADSP_DBG
-		| ADSP_PERIPH | ADSP_CORE | ADSP_INTF;
+		| ADSP_PERIPH | ADSP_CORE;
 
 	pr_debug("%s %s\n", __func__, assert ? "assert" : "deassert");
 
-	clk_writel_delay(val, reg);
+	if (assert)
+		clk_writel_delay(val | ADSP_INTF, reg);
+	else {
+		clk_writel_delay(ADSP_INTF, reg);
+		/*
+		 * Considering adsp cpu clock (min: 12.5MHZ, max: 1GHz)
+		 * a delay of 5us ensures that it's at least
+		 * 6 * adsp_cpu_cycle_period long.
+		 */
+		udelay(5);
+		clk_writel_delay(val, reg);
+	}
 }
 
 static int tegra21_adsp_clk_enable(struct clk *c)
