@@ -196,8 +196,8 @@
 
 					palmas_smps10_out1: smps10_out1 {
 						regulator-name = "vdd-out1-5v0";
-						regulator-min-microvolt = <5000000>;
-						regulator-max-microvolt = <5000000>;
+						regulator-min-microvolt = <3750000>;
+						regulator-max-microvolt = <3750000>;
 					};
 
 					palmas_smps10_out2: smps10_out2 {
