@@ -416,9 +416,6 @@ struct gk20a {
 	void __iomem *bar1_saved;
 
 	bool power_on;
-#ifdef CONFIG_INPUT_CFBOOST
-	bool boost_added;
-#endif
 
 	struct rw_semaphore busy_lock;
 
