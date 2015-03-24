@@ -874,6 +874,16 @@ static void xotg_work(struct work_struct *work)
 			 * if we are a B-device. essentially do nothing
 			 * but set the host port to rxdetect
 			 */
+
+			/* A host has responded to the SRP request by enabling
+			 * the VBUS before TB_SRP_FAIL. Delete the timer.
+			 */
+			if (!xotg->xotg_timer_list.b_srp_response_wait_tmout) {
+				xotg_dbg(xotg->dev,
+					"del_timer b_srp_response_wait_tmr\n");
+				del_timer_sync(&xotg->xotg_timer_list.
+						b_srp_response_wait_tmr);
+			}
 		} else if (xotg->xotg_reqs.b_bus_req &&
 			xotg->xotg_timer_list.b_ssend_srp_tmout) {
 			/* FIXME: b_bus_req (only?) or power_up also */
@@ -916,6 +926,13 @@ static void xotg_work(struct work_struct *work)
 				b_srp_response_wait_tmr, jiffies +
 					msecs_to_jiffies(TB_SRP_FAIL));
 			}
+		} else if (xotg->xotg_timer_list.b_srp_response_wait_tmout) {
+			xotg->xotg_timer_list.b_srp_response_wait_tmout = 0;
+			/* inform the user above that A-device
+			 * has not responded
+			 */
+			xotg_warn(xotg->dev,
+				"A-host not responding to SRP request\n");
 		}
 		if (state_changed && !xotg->xotg_timer_list.b_ssend_srp_tmout) {
 			/* do stuff to cleanup the B_IDLE state */
@@ -958,7 +975,11 @@ static void xotg_work(struct work_struct *work)
 			/* FIXME state has to be changed to B_IDLE */
 			xotg->phy.state = OTG_STATE_B_IDLE;
 		}
-		if (state_changed &&
+		/* We delete the timer only when the state is changed due
+		 * to Micro-A being attached. We should not delete the timer
+		 * when state is changed due to b_srp_done
+		 */
+		if (state_changed && !xotg->id &&
 			!xotg->xotg_timer_list.b_srp_response_wait_tmout) {
 			xotg_dbg(xotg->dev,
 				"del_timer b_srp_response_wait_tmr\n");
