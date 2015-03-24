@@ -19,6 +19,8 @@ NVIDIA TEGRA210 High Definition Multimedia Interface
  - nvidia,hotplug-report: With 1, it will have optional hotplug report callback
    which does only set DDC_SDA and DDC_SCL pull downs to be active when hotplug
    is detected, otherwise keep them disabled.
+ - nvidia,sor1-output-type: preferred secondary panel type. Can either be "hdmi"
+   or "dp".
 
  1.A) The hdmi-display node:
  hdmi-display must be contained in sor1 parent node. This node represents hdmi display node.
