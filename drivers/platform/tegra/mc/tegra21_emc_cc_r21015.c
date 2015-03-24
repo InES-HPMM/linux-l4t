@@ -93,7 +93,7 @@ static u32 update_clock_tree_delay(struct tegra21_emc_table *last_timing,
 	     "Timed out waiting for MRR 19 (ch=0)\n");
 	if (channel_mode == DUAL_CHANNEL)
 		WARN(wait_for_update(EMC_EMC_STATUS,
-				     EMC_EMC_STATUS_MRR_DIVLD, 1, 0),
+				     EMC_EMC_STATUS_MRR_DIVLD, 1, 1),
 		     "Timed out waiting for MRR 19 (ch=1)\n");
 
 	mrr_data = (emc_readl(EMC_MRR) & EMC_MRR_DATA_MASK) <<
@@ -120,7 +120,7 @@ static u32 update_clock_tree_delay(struct tegra21_emc_table *last_timing,
 	     "Timed out waiting for MRR 18 (ch=0)\n");
 	if (channel_mode == DUAL_CHANNEL)
 		WARN(wait_for_update(EMC_EMC_STATUS,
-				     EMC_EMC_STATUS_MRR_DIVLD, 1, 0),
+				     EMC_EMC_STATUS_MRR_DIVLD, 1, 1),
 		     "Timed out waiting for MRR 18 (ch=1)\n");
 
 	mrr_data = (emc_readl(EMC_MRR) & EMC_MRR_DATA_MASK) <<
@@ -200,7 +200,7 @@ static u32 update_clock_tree_delay(struct tegra21_emc_table *last_timing,
 	     "Timed out waiting for MRR 19 (ch=0)\n");
 	if (channel_mode == DUAL_CHANNEL)
 		WARN(wait_for_update(EMC_EMC_STATUS,
-				     EMC_EMC_STATUS_MRR_DIVLD, 1, 0),
+				     EMC_EMC_STATUS_MRR_DIVLD, 1, 1),
 		     "Timed out waiting for MRR 19 (ch=1)\n");
 
 	mrr_data = (emc_readl(EMC_MRR) & EMC_MRR_DATA_MASK) <<
@@ -227,7 +227,7 @@ static u32 update_clock_tree_delay(struct tegra21_emc_table *last_timing,
 	     "Timed out waiting for MRR 18 (ch=0)\n");
 	if (channel_mode == DUAL_CHANNEL)
 		WARN(wait_for_update(EMC_EMC_STATUS,
-				     EMC_EMC_STATUS_MRR_DIVLD, 1, 0),
+				     EMC_EMC_STATUS_MRR_DIVLD, 1, 1),
 		     "Timed out waiting for MRR 18 (ch=1)\n");
 
 	mrr_data = (emc_readl(EMC_MRR) & EMC_MRR_DATA_MASK) <<
