@@ -158,4 +158,8 @@
 		ivc-queue3 = <&tegra_hv 6>;
 		ivc-queue4 = <&tegra_hv 7>;
 	};
+
+	sdhci@700b0200 {
+		status = "disabled";
+	};
 };
