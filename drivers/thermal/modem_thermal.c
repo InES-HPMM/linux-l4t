@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -125,6 +125,7 @@ static int modem_thermal_probe(struct platform_device *pdev)
 {
 	struct modem_thermal_platform_data *pdata = pdev->dev.platform_data;
 	struct modem_thermal_data *mtd;
+	char tz_name[THERMAL_NAME_LENGTH];
 	int i;
 	int ret;
 
@@ -146,7 +147,8 @@ static int modem_thermal_probe(struct platform_device *pdev)
 	}
 
 	for (i = 0; i < mtd->num_zones; i++) {
-		mtd->zi[i].tzd = thermal_zone_device_register("modem", 0, 0,
+		snprintf(&tz_name, THERMAL_NAME_LENGTH, "modem%d", i);
+		mtd->zi[i].tzd = thermal_zone_device_register(&tz_name, 0, 0,
 				mtd, &modem_thermal_ops, NULL, 0, 0);
 		if (IS_ERR(mtd->zi[i].tzd)) {
 			dev_err(&pdev->dev, "error in therm reg\n");
