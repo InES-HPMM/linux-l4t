@@ -35,20 +35,6 @@
 #define ADSP_OS_LOAD_TIMEOUT		5000 /* 5000 ms */
 #define APP_FRAME_WAIT_TIMEOUT		5000 /* 5000 ms */
 
-/*ADSP message pool structure */
-union app_loader_msgq {
-	msgq_t msgq;
-	struct {
-		int32_t header[MSGQ_HEADER_WSIZE];
-		int32_t queue[MSGQ_MAX_QUEUE_WSIZE];
-	};
-};
-
-struct adsp_app_shared_msg_pool {
-	union app_loader_msgq		app_loader_send_message;
-	union app_loader_msgq		app_loader_recv_message;
-} __packed;
-
 /* ADSP app loader message queue */
 struct run_app_instance_data {
 	uint32_t adsp_mod_ptr;
@@ -429,7 +415,8 @@ end:
 nvadsp_app_info_t __must_check *nvadsp_app_init(nvadsp_app_handle_t handle,
 	nvadsp_app_args_t *args)
 {
-	struct adsp_app_shared_msg_pool *msg_pool;
+	struct nvadsp_app_shared_msg_pool *msg_pool;
+	struct nvadsp_shared_mem *shared_mem;
 	union app_loader_message *message;
 	struct nvadsp_drv_data *drv_data;
 	struct app_loader_data *data;
@@ -451,7 +438,8 @@ nvadsp_app_info_t __must_check *nvadsp_app_init(nvadsp_app_handle_t handle,
 	if (!message)
 		goto err;
 
-	msg_pool = drv_data->shared_adsp_os_data;
+	shared_mem = drv_data->shared_adsp_os_data;
+	msg_pool = &shared_mem->app_shared_msg_pool;
 	msgq_send = &msg_pool->app_loader_send_message.msgq;
 	data = &message->data;
 
@@ -484,13 +472,15 @@ EXPORT_SYMBOL(nvadsp_app_init);
 static void start_app_on_adsp(nvadsp_app_info_t *app,
 	union app_loader_message *message, bool block)
 {
-	struct adsp_app_shared_msg_pool *msg_pool;
+	struct nvadsp_app_shared_msg_pool *msg_pool;
+	struct nvadsp_shared_mem *shared_mem;
 	struct nvadsp_drv_data *drv_data;
 	msgq_t *msgq_send;
 	int *state;
 
 	drv_data = platform_get_drvdata(priv.pdev);
-	msg_pool = drv_data->shared_adsp_os_data;
+	shared_mem = drv_data->shared_adsp_os_data;
+	msg_pool = &shared_mem->app_shared_msg_pool;
 	msgq_send = &msg_pool->app_loader_send_message.msgq;
 
 	message->msgq_msg.size = MSGQ_MSG_PAYLOAD_WSIZE(*message);
@@ -678,8 +668,9 @@ EXPORT_SYMBOL(nvadsp_app_unload);
 static status_t nvadsp_app_receive_handler(uint32_t msg, void *hdata)
 {
 	union app_complete_status_message message = { };
-	struct adsp_app_shared_msg_pool *msg_pool;
+	struct nvadsp_app_shared_msg_pool *msg_pool;
 	struct app_complete_status_data *data;
+	struct nvadsp_shared_mem *shared_mem;
 	struct nvadsp_drv_data *drv_data;
 	struct platform_device *pdev;
 	nvadsp_app_info_t *app;
@@ -690,7 +681,8 @@ static status_t nvadsp_app_receive_handler(uint32_t msg, void *hdata)
 	pdev = hdata;
 	dev = &pdev->dev;
 	drv_data = platform_get_drvdata(pdev);
-	msg_pool = drv_data->shared_adsp_os_data;
+	shared_mem = drv_data->shared_adsp_os_data;
+	msg_pool = &shared_mem->app_shared_msg_pool;
 	msgq_recv = &msg_pool->app_loader_recv_message.msgq;
 	data = &message.data;
 
