@@ -58,6 +58,32 @@
 #define OS_LOAD_TIMEOUT		5000 /* ms */
 #define ADSP_COM_MBOX_ID	2
 
+/*ADSP message pool structure */
+union app_loader_msgq {
+	msgq_t msgq;
+	struct {
+		int32_t header[MSGQ_HEADER_WSIZE];
+		int32_t queue[MSGQ_MAX_QUEUE_WSIZE];
+	};
+};
+
+/* ADSP APP shared message pool */
+struct nvadsp_app_shared_msg_pool {
+	union app_loader_msgq		app_loader_send_message;
+	union app_loader_msgq		app_loader_recv_message;
+} __packed;
+
+/*ADSP shated OS args */
+struct nvadsp_os_args {
+	int32_t timer_prescalar;
+} __packed;
+
+/* ADSP OS shared memory */
+struct nvadsp_shared_mem {
+	struct nvadsp_app_shared_msg_pool app_shared_msg_pool;
+	struct nvadsp_os_args os_args;
+} __packed;
+
 struct app_mem_size {
 	uint64_t dram;
 	uint64_t dram_shared;

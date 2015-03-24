@@ -83,10 +83,6 @@
 
 #define MIN_ADSP_FREQ 51200000lu /* in Hz */
 
-struct adsp_os_args {
-	int32_t timer_prescalar;
-};
-
 struct nvadsp_debug_log {
 	struct device *dev;
 	char *debug_ram_rdr;
@@ -664,8 +660,9 @@ EXPORT_SYMBOL(nvadsp_os_load);
 
 static int __nvadsp_os_start(void)
 {
+	struct nvadsp_shared_mem *shared_mem;
 	struct nvadsp_drv_data *drv_data;
-	struct adsp_os_args *args;
+	struct nvadsp_os_args *os_args;
 	struct device *dev;
 	long max_adsp_freq;
 #if !CONFIG_SYSTEM_FPGA
@@ -680,19 +677,21 @@ static int __nvadsp_os_start(void)
 	copy_io_in_l(drv_data->state.evp_ptr,
 		     drv_data->state.evp,
 		     AMC_EVP_SIZE);
-	args = drv_data->shared_adsp_os_data;
+
+	shared_mem = drv_data->shared_adsp_os_data;
+	os_args = &shared_mem->os_args;
 	if (drv_data->adsp_cpu_clk) {
 		max_adsp_freq = clk_round_rate(drv_data->adsp_cpu_clk,
 				ULONG_MAX);
-		args->timer_prescalar = max_adsp_freq / MIN_ADSP_FREQ;
-		max_adsp_freq = MIN_ADSP_FREQ * args->timer_prescalar;
+		os_args->timer_prescalar = max_adsp_freq / MIN_ADSP_FREQ;
+		max_adsp_freq = MIN_ADSP_FREQ * os_args->timer_prescalar;
 		/*
 		 * timer interval = (prescalar + 1) * (count + 1) / periph_freq
 		 * therefore for 0 count,
 		 * 1 / TIMER_CLK_HZ =  (prescalar + 1) / periph_freq
 		 * Hence, prescalar = periph_freq / TIMER_CLK_HZ - 1
 		 */
-		args->timer_prescalar--;
+		os_args->timer_prescalar--;
 		drv_data->max_adsp_freq = max_adsp_freq;
 		ret = clk_set_rate(drv_data->adsp_cpu_clk, max_adsp_freq);
 		if (ret)
@@ -700,7 +699,7 @@ static int __nvadsp_os_start(void)
 
 		dev_dbg(dev, "adsp cpu frequncy %lu and timer prescalar %x\n",
 			clk_get_rate(drv_data->adsp_cpu_clk),
-			args->timer_prescalar);
+			os_args->timer_prescalar);
 	} else {
 		ret = -EINVAL;
 		goto end;
