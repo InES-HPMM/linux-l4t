@@ -22,9 +22,10 @@
 			reg = <0x40>;
 			ti,trigger-config = <0x7003>;
 			ti,continuous-config = <0x7607>;
+			ti,enable-forced-continuous;
 			#address-cells = <1>;
 			#size-cells = <0>;
-
+			#io-channel-cells = <1>;
 			channel@0 {
 				reg = <0x0>;
 				ti,rail-name = "VDD_BATT";
