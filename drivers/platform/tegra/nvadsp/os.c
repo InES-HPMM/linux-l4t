@@ -1011,7 +1011,7 @@ static  irqreturn_t adsp_wfi_handler(int irq, void *arg)
 	dev_dbg(dev, "%s\n", __func__);
 	complete(&entered_wfi);
 
-	return 0;
+	return IRQ_HANDLED;
 }
 
 static irqreturn_t adsp_wdt_handler(int irq, void *arg)
