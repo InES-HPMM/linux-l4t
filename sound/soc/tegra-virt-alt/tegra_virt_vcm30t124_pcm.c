@@ -1,7 +1,7 @@
 /*
- * tegra_virt_vcm30t124_slave.c - Tegra VCM30 T124 slave Machine driver
+ * tegra_virt_alt_vcm30t124_pcm.c - Tegra VCM30 T124 virt alt PCM driver
  *
- * Copyright (c) 2014 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -20,17 +20,25 @@
 #include <linux/platform_device.h>
 #include <sound/soc.h>
 #include <linux/of_platform.h>
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
+#include "tegra124_virt_alt_apbif.h"
+#include "tegra124_virt_alt_ivc.h"
 
-#define DRV_NAME "tegra124-virt-machine-slave"
+#define DRV_NAME "tegra124-virt-alt-pcm"
 
-#define SLAVE_NAME(i) "SLAVE AUDIO" #i
+#define DAI_NAME(i) "AUDIO" #i
 #define STREAM_NAME "playback"
 #define CODEC_NAME "spdif-dit"
-#define LINK_CPU_NAME   "tegra124-virt-ahub-slave"
-#define CPU_DAI_NAME(i) "SLAVE APBIF" #i
+#define LINK_CPU_NAME   "tegra124-virt-alt-pcm"
+#define CPU_DAI_NAME(i) "APBIF" #i
 #define CODEC_DAI_NAME "dit-hifi"
 #define PLATFORM_NAME LINK_CPU_NAME
 #define MAX_APBIF_IDS	10
+
+#define GPIO_PR0 136
+#define CODEC_TO_DAP 0
+#define DAP_TO_CODEC 1
 
 static struct snd_soc_pcm_stream default_params = {
 	.rate_min = 48000,
@@ -39,10 +47,10 @@ static struct snd_soc_pcm_stream default_params = {
 	.channels_max = 2,
 };
 
-static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
+static struct snd_soc_dai_link tegra_vcm30t124_pcm_links[] = {
 	{
 		/* 0 */
-		.name = SLAVE_NAME(0),
+		.name = DAI_NAME(0),
 		.stream_name = STREAM_NAME,
 		.codec_name = CODEC_NAME,
 		.cpu_name = LINK_CPU_NAME,
@@ -53,7 +61,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 	},
 	{
 		/* 1 */
-		.name = SLAVE_NAME(1),
+		.name = DAI_NAME(1),
 		.stream_name = STREAM_NAME,
 		.codec_name = CODEC_NAME,
 		.cpu_name = LINK_CPU_NAME,
@@ -64,7 +72,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 	},
 	{
 		/* 2 */
-		.name = SLAVE_NAME(2),
+		.name = DAI_NAME(2),
 		.stream_name = STREAM_NAME,
 		.codec_name = CODEC_NAME,
 		.cpu_name = LINK_CPU_NAME,
@@ -75,7 +83,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 	},
 	{
 		/* 3 */
-		.name = SLAVE_NAME(3),
+		.name = DAI_NAME(3),
 		.stream_name = STREAM_NAME,
 		.codec_name = CODEC_NAME,
 		.cpu_name = LINK_CPU_NAME,
@@ -86,7 +94,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 	},
 	{
 		/* 4 */
-		.name = SLAVE_NAME(4),
+		.name = DAI_NAME(4),
 		.stream_name = STREAM_NAME,
 		.codec_name = CODEC_NAME,
 		.cpu_name = LINK_CPU_NAME,
@@ -97,7 +105,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 	},
 	{
 		/* 5 */
-		.name = SLAVE_NAME(5),
+		.name = DAI_NAME(5),
 		.stream_name = STREAM_NAME,
 		.codec_name = CODEC_NAME,
 		.cpu_name = LINK_CPU_NAME,
@@ -108,7 +116,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 	},
 	{
 		/* 6 */
-		.name = SLAVE_NAME(6),
+		.name = DAI_NAME(6),
 		.stream_name = STREAM_NAME,
 		.codec_name = CODEC_NAME,
 		.cpu_name = LINK_CPU_NAME,
@@ -119,7 +127,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 	},
 	{
 		/* 7 */
-		.name = SLAVE_NAME(7),
+		.name = DAI_NAME(7),
 		.stream_name = STREAM_NAME,
 		.codec_name = CODEC_NAME,
 		.cpu_name = LINK_CPU_NAME,
@@ -130,7 +138,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 	},
 	{
 		/* 8 */
-		.name = SLAVE_NAME(8),
+		.name = DAI_NAME(8),
 		.stream_name = STREAM_NAME,
 		.codec_name = CODEC_NAME,
 		.cpu_name = LINK_CPU_NAME,
@@ -141,7 +149,7 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 	},
 	{
 		/* 9 */
-		.name = SLAVE_NAME(9),
+		.name = DAI_NAME(9),
 		.stream_name = STREAM_NAME,
 		.codec_name = CODEC_NAME,
 		.cpu_name = LINK_CPU_NAME,
@@ -152,16 +160,16 @@ static struct snd_soc_dai_link tegra_vcm30t124_slave_links[] = {
 	},
 };
 
-static const struct of_device_id tegra124_virt_snd_slave_of_match[] = {
-	{ .compatible = "nvidia,tegra124-virt-machine-slave", },
+static const struct of_device_id tegra124_virt_snd_pcm_of_match[] = {
+	{ .compatible = "nvidia,tegra124-virt-alt-pcm", },
 	{},
 };
 
-static struct snd_soc_card snd_soc_tegra_vcm30t124_slave = {
+static struct snd_soc_card snd_soc_tegra_vcm30t124_pcm = {
 	.name = "tegra-virt-pcm",
 	.owner = THIS_MODULE,
-	.dai_link = tegra_vcm30t124_slave_links,
-	.num_links = ARRAY_SIZE(tegra_vcm30t124_slave_links),
+	.dai_link = tegra_vcm30t124_pcm_links,
+	.num_links = ARRAY_SIZE(tegra_vcm30t124_pcm_links),
 	.fully_routed = true,
 };
 
@@ -173,15 +181,37 @@ static void tegra_vcm30t124_set_dai_params(
 	tegra_vcm_dai_link[dai_id].params = user_params;
 }
 
-static int tegra_vcm30t124_slave_driver_probe(struct platform_device *pdev)
+static struct platform_device spdif_dit = {
+	.name = "spdif-dit",
+	.id = -1,
+};
+
+static int tegra_vcm30t124_pcm_driver_probe(struct platform_device *pdev)
 {
-	struct snd_soc_card *card = &snd_soc_tegra_vcm30t124_slave;
+	struct snd_soc_card *card = &snd_soc_tegra_vcm30t124_pcm;
 	int ret = 0;
 	int i;
 	int apbif_ch_num = 0;
+	int set_codec_direction = 0;
 	unsigned int apbif_ch_list[MAX_APBIF_IDS];
 
 	card->dev = &pdev->dev;
+
+	if (!of_property_read_u32(pdev->dev.of_node,
+		"configure_ad_codec", &set_codec_direction) &&
+		(set_codec_direction == 1)) {
+		ret = devm_gpio_request(&pdev->dev, GPIO_PR0,
+						"dap_dir_control");
+		if (ret) {
+			dev_err(&pdev->dev, "cannot get dap_dir_control gpio\n");
+			return -EINVAL;
+		}
+		gpio_direction_output(GPIO_PR0, CODEC_TO_DAP);
+	}
+
+	platform_device_register(&spdif_dit);
+
+	tegra124_virt_apbif_register_component(pdev);
 
 	if (of_property_read_u32(pdev->dev.of_node,
 				"apbif_ch_num", &apbif_ch_num)) {
@@ -204,7 +234,7 @@ static int tegra_vcm30t124_slave_driver_probe(struct platform_device *pdev)
 		}
 		for (i = 0; i < apbif_ch_num; i++) {
 			tegra_vcm30t124_set_dai_params(
-						tegra_vcm30t124_slave_links,
+						tegra_vcm30t124_pcm_links,
 						NULL,
 						apbif_ch_list[i]);
 		}
@@ -218,7 +248,7 @@ static int tegra_vcm30t124_slave_driver_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int tegra_vcm30t124_slave_driver_remove(struct platform_device *pdev)
+static int tegra_vcm30t124_pcm_driver_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 
@@ -227,21 +257,21 @@ static int tegra_vcm30t124_slave_driver_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver tegra_vcm30t124_slave_driver = {
+static struct platform_driver tegra_vcm30t124_pcm_driver = {
 	.driver = {
 		.name = DRV_NAME,
 		.owner = THIS_MODULE,
 		.pm = &snd_soc_pm_ops,
 		.of_match_table =
-			of_match_ptr(tegra124_virt_snd_slave_of_match),
+			of_match_ptr(tegra124_virt_snd_pcm_of_match),
 	},
-	.probe = tegra_vcm30t124_slave_driver_probe,
-	.remove = tegra_vcm30t124_slave_driver_remove,
+	.probe = tegra_vcm30t124_pcm_driver_probe,
+	.remove = tegra_vcm30t124_pcm_driver_remove,
 };
-module_platform_driver(tegra_vcm30t124_slave_driver);
+module_platform_driver(tegra_vcm30t124_pcm_driver);
 
-MODULE_AUTHOR("Aniket Bahadarpurkar <aniketb@nvidia.com>");
-MODULE_DESCRIPTION("Tegra+VCM30T124 slave machine ASoC driver");
+MODULE_AUTHOR("Ranjith Kannikara <rkannikara@nvidia.com>");
+MODULE_DESCRIPTION("Tegra+VCM30T124 virt alt pcm driver");
 MODULE_LICENSE("GPL");
-MODULE_DEVICE_TABLE(of, tegra124_virt_snd_slave_of_match);
+MODULE_DEVICE_TABLE(of, tegra124_virt_snd_pacm_of_match);
 MODULE_ALIAS("platform:" DRV_NAME);

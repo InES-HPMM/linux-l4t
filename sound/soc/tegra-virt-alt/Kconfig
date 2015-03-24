@@ -1,0 +1,59 @@
+config SND_SOC_TEGRA_VIRT_ALT
+        tristate "IVC client for Tegra virt audio"
+	depends on ARCH_TEGRA
+	depends on ARCH_TEGRA_12x_SOC
+        depends on TEGRA_HV_MANAGER
+        help
+	  Say Y or M here if you want support tegra virtual audio client, using the
+	  tegra virtual pcm driver that exposes the APBIF interfaces to the user-space
+	  the module does the ivc communication with th audio server which is required
+	  by the tegra virtual control card as well.
+
+config SND_SOC_TEGRA124_VIRT_ALT_APBIF
+	tristate "Tegra124 APBIF for Tegra virt audio"
+	depends on SND_SOC_TEGRA_ALT
+	select SND_SOC_TEGRA_VIRT_ALT
+	help
+	  Say Y or M if you want to add support for Tegra124 APBIF virtual module.
+	  Tegra Virt APBIF module exposes only apbif dai links to apbdma. This module
+	  can be build independent of TEGRA_VIRT_CONTROL module. This module provides
+	  an interface to the virtual pcm card in audio virtualization use case.
+
+config SND_SOC_TEGRA_VIRT_PCM
+	tristate "SoC PCM interface for Tegra virt audio"
+	depends on TEGRA20_APB_DMA
+	select SND_SOC_TEGRA124_VIRT_ALT_APBIF
+	select SND_SOC_SPDIF
+	help
+	  Say Y or M here if you want to add virtual pcm card for SoC audio on the
+	  TEGRA, which exposes the APBIF interfaces to the user-space, for playback
+	  and capture. This option automatically selects all the required dependancies.
+	  pcm driver is selected from tegra-alt.
+
+config SND_SOC_TEGRA124_VIRT_ALT_DAM
+	tristate "Tegra124 DAM for Tegra virt audio"
+	select SND_SOC_TEGRA_VIRT_ALT
+	help
+	  Say Y or M if you want to add support for Tegra124 virt DAM module. This
+	  module exposes the amixer kcontrols specific to DAM, which will enable the
+	  user to do Sample Rate conversion and mixing of audio from same and
+	  different VMs.
+
+config SND_SOC_TEGRA124_VIRT_ALT_XBAR
+	tristate "Tegra124 XBAR control for Tegra virt audio"
+	select SND_SOC_TEGRA_VIRT_ALT
+	select SND_SOC_TEGRA124_VIRT_ALT_DAM
+	help
+	  Say Y or M if you want to add support for Tegra124 XBAR control module.
+	  Virtual XBAR module exposes the amixer kcontrols specific to XBAR, which
+	  enable the user to view and modify the XBAR routes. This option automatically
+	  selects all the required dependancies
+
+config SND_SOC_TEGRA_VIRT_CONTROL
+	tristate "SoC Control card for Tegra virt audio"
+	select SND_SOC_TEGRA124_VIRT_ALT_XBAR
+	help
+	  Say Y or M here if you want to add control card for SoC audio on the
+	  TEGRA. This module register the control card which exposes the XBAR
+	  and DAM kcontrols to the user-space. This option automatically selects
+	  all the required dependancies.
