@@ -35,7 +35,7 @@
 #include <linux/types.h>
 #include <linux/tegra_cpc.h>
 
-#define CPC_I2C_DEADLINE_MS 200
+#define CPC_I2C_DEADLINE_MS 1000
 #define TEGRA_CPC_DEBUG 0
 
 /*
