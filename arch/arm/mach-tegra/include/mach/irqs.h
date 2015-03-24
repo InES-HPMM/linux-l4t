@@ -24,7 +24,8 @@
 
 #define INT_GIC_BASE			0
 
-#define IRQ_LOCALTIMER                  29
+#define nLEGACYFIQ_PPI			28
+#define IRQ_LOCALTIMER			29
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 /* Primary Interrupt Controller */
