@@ -1842,7 +1842,15 @@ static void tegra_dp_set_tx_pu(struct tegra_dc_dp_data *dp, u32 pe[4],
 {
 	u32 n_lanes = dp->link_cfg.lane_count;
 	int cnt = 1;
-	u32 max_tx_pu = tegra_dp_tx_pu[pc[0]][vs[0]][pe[0]];
+	u32 max_tx_pu;
+	const u32  *p_grtxpu;
+
+	/* retrieve GR values */
+	if (dp->pdata->gr_settings.valid) {
+		p_grtxpu = &dp->pdata->gr_settings.tx_pu[0][0][0];
+	} else {
+		p_grtxpu = &tegra_dp_tx_pu[0][0][0];
+	}
 
 	if (dp->pdata && dp->pdata->tx_pu_disable) {
 		tegra_sor_write_field(dp->sor,
@@ -1852,10 +1860,11 @@ static void tegra_dp_set_tx_pu(struct tegra_dc_dp_data *dp, u32 pe[4],
 		return;
 	}
 
+	max_tx_pu = p_grtxpu[pc[0] * 4 * 4 + vs[0] * 4 + pe[0]];
 	for (; cnt < n_lanes; cnt++) {
 		max_tx_pu = (max_tx_pu <
-			tegra_dp_tx_pu[pc[cnt]][vs[cnt]][pe[cnt]]) ?
-			tegra_dp_tx_pu[pc[cnt]][vs[cnt]][pe[cnt]] :
+			p_grtxpu[pc[0] * 4 * 4 + vs[0] * 4 + pe[0]]) ?
+			p_grtxpu[pc[0] * 4 * 4 + vs[0] * 4 + pe[0]] :
 			max_tx_pu;
 	}
 
@@ -1874,9 +1883,21 @@ static void tegra_dp_lt_config(struct tegra_dc_dp_data *dp,
 	bool pc_supported = dp->link_cfg.tps3_supported;
 	u32 cnt;
 	u32 val;
+	const u32  *p_grpe, *p_grvs, *p_grpc;
 
 	/* support for 1 lane */
 	u32 loopcnt = (n_lanes == 1) ? 1 : n_lanes >> 1;
+
+	/* retrieve GR values */
+	if (dp->pdata->gr_settings.valid) {
+		p_grpe = &dp->pdata->gr_settings.pe[0][0][0];
+		p_grvs = &dp->pdata->gr_settings.vs[0][0][0];
+		p_grpc = &dp->pdata->gr_settings.pc[0][0][0];
+	} else {
+		p_grpe = &tegra_dp_pe_regs[0][0][0];
+		p_grvs = &tegra_dp_vs_regs[0][0][0];
+		p_grpc = &tegra_dp_pc_regs[0][0][0];
+	}
 
 	for (cnt = 0; cnt < n_lanes; cnt++) {
 		u32 mask = 0;
@@ -1913,9 +1934,9 @@ static void tegra_dp_lt_config(struct tegra_dc_dp_data *dp,
 			dev_err(&dp->dc->ndev->dev,
 				"dp: incorrect lane cnt\n");
 		}
-		pe_reg = tegra_dp_pe_regs[pc[cnt]][vs[cnt]][pe[cnt]];
-		vs_reg = tegra_dp_vs_regs[pc[cnt]][vs[cnt]][pe[cnt]];
-		pc_reg = tegra_dp_pc_regs[pc[cnt]][vs[cnt]][pe[cnt]];
+		pe_reg = p_grpe[pc[cnt] * 4 * 4 + vs[cnt] * 4 + pe[cnt]];
+		vs_reg = p_grvs[pc[cnt] * 4 * 4 + vs[cnt] * 4 + pe[cnt]];
+		pc_reg = p_grpc[pc[cnt] * 4 * 4 + vs[cnt] * 4 + pe[cnt]];
 		tegra_sor_write_field(sor, NV_SOR_PR(sor->portnum),
 						mask, (pe_reg << shift));
 		tegra_sor_write_field(sor, NV_SOR_DC(sor->portnum),

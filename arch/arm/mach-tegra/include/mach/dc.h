@@ -1144,11 +1144,24 @@ struct tegra_dc_dp_lt_settings {
 	u32 load_adj;
 };
 
+/* DP Golden Register Settings */
+struct tegra_dc_dp_gr_settings {
+	int  valid;            /* valid or not */
+	u32  vs[4][4][4];      /* nvidia,drive-current, [pc2][vs][pe] */
+	u32  pe[4][4][4];      /* nvidia,preemphasis, [pc2][vs][pe] */
+	u32  pc[4][4][4];      /* nvidia,post-cursor2, [pc2][vs][pe] */
+	u32  tx_pu[4][4][4];   /* nvidia,tx-pullup, [pc2][vs][pe] */
+	u32  pll0_ichpmp;      /* nvidia,pll0-ichpmp */
+	u32  pll0_vcocap;      /* nvidia,pll0-vcocap */
+	u32  pll1_loadadj[3];  /* nvidia,pll1-loadad, [RBR=0,HBR,HBR2] */
+};
+
 struct tegra_dp_out {
 	struct tegra_dc_dp_lt_settings *lt_settings;
 	int n_lt_settings;
 	bool tx_pu_disable;
 	u8 link_bw;
+	struct tegra_dc_dp_gr_settings  gr_settings;
 };
 
 #ifdef CONFIG_PM_SLEEP

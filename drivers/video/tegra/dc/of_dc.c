@@ -1595,6 +1595,116 @@ static int parse_lt_setting(struct device_node *np,
 	return 0;
 }
 
+
+static int parse_dp_gr_settings(struct device_node *np,
+	struct tegra_dc_dp_gr_settings *p_gr)
+{
+	int              i = 0;
+	struct property  *prop;
+	const __be32     *p;
+	u32              u,  *d;
+	int              n;
+
+	p_gr->valid = false;
+
+	n = sizeof(p_gr->vs) / sizeof(p_gr->vs[0][0][0]);
+	d = &p_gr->vs[0][0][0];
+	i = 0;
+	of_property_for_each_u32(np, "nvidia,gr-drive-current", prop, p, u) {
+		if (i < n)
+			d[i] = u;
+		i++;
+	}
+	if (n != i) {
+		pr_err("%s: Invalid number of values in "
+			"nvidia,gr-drive-current!\n", __func__);
+		goto fail_parsing;
+	}
+
+	n = sizeof(p_gr->pe) / sizeof(p_gr->pe[0][0][0]);
+	d = &p_gr->pe[0][0][0];
+	i = 0;
+	of_property_for_each_u32(np, "nvidia,gr-preemphasis", prop, p, u) {
+		if (i < n)
+			d[i] = u;
+		i++;
+	}
+	if (n != i) {
+		pr_err("%s: Invalid number of values in "
+			"nvidia,gr-preemphasis!\n", __func__);
+		goto fail_parsing;
+	}
+
+	n = sizeof(p_gr->pc) / sizeof(p_gr->pc[0][0][0]);
+	d = &p_gr->pc[0][0][0];
+	i = 0;
+	of_property_for_each_u32(np, "nvidia,gr-post-cursor2", prop, p, u) {
+		if (i < n)
+			d[i] = u;
+		i++;
+	}
+	if (n != i) {
+		pr_err("%s: Invalid number of values in "
+			"nvidia,gr-post-cursor2!\n", __func__);
+		goto fail_parsing;
+	}
+
+	n = sizeof(p_gr->tx_pu) / sizeof(p_gr->tx_pu[0][0][0]);
+	d = &p_gr->tx_pu[0][0][0];
+	i = 0;
+	of_property_for_each_u32(np, "nvidia,gr-tx-pullup", prop, p, u) {
+		if (i < n)
+			d[i] = u;
+		i++;
+	}
+	if (n != i) {
+		pr_err("%s: Invalid number of values in "
+			"nvidia,gr-tx-pullup!\n", __func__);
+		goto fail_parsing;
+	}
+
+	if (!of_property_read_u32(np, "nvidia,gr-pll0-ichpmp", &u)) {
+		p_gr->pll0_ichpmp = u;
+		OF_DC_LOG("pll0-ichpmp %d\n", p_gr->pll0_ichpmp);
+	} else {
+		pr_err("%s: No nvidia,gr-pll0-ichpmp property "
+			"found!\n", __func__);
+		goto fail_parsing;
+	}
+
+	if (!of_property_read_u32(np, "nvidia,gr-pll0-vcocap", &u)) {
+		p_gr->pll0_vcocap = u;
+		OF_DC_LOG("pll0-vcocap %d\n", p_gr->pll0_vcocap);
+	} else {
+		pr_err("%s: No nvidia,gr-pll0-vcocap property "
+			"found!\n", __func__);
+		goto fail_parsing;
+	}
+
+	n = sizeof(p_gr->pll1_loadadj) / sizeof(p_gr->pll1_loadadj[0]);
+	d = &p_gr->pll1_loadadj[0];
+	i = 0;
+	of_property_for_each_u32(np, "nvidia,gr-pll1-loadadj", prop, p, u) {
+		if (i < n)
+			d[i] = u;
+		i++;
+	}
+	if (n != i) {
+		pr_err("%s: Invalid number of values in "
+			"nvidia,gr-pll1-loadadj\n", __func__);
+		goto fail_parsing;
+	}
+
+	p_gr->valid = true;
+	pr_info("DP: GR retrieved from dp-gr-settings node\n");
+	return 0;
+
+fail_parsing:
+	pr_err("%s: Incomplete dp-gr-settings node!\n", __func__);
+	return -EINVAL;
+}
+
+
 static struct device_node *parse_dp_settings(struct platform_device *ndev,
 	struct tegra_dc_platform_data *pdata)
 {
@@ -1603,6 +1713,7 @@ static struct device_node *parse_dp_settings(struct platform_device *ndev,
 	struct tegra_dp_out *dpout = pdata->default_out->dp_out;
 	struct device_node *np_dp_panel = NULL;
 	struct device_node *np_dp_lt_set = NULL;
+	struct device_node *np_dp_gr_set = NULL;
 	struct device_node *entry = NULL;
 	int err;
 
@@ -1636,17 +1747,27 @@ static struct device_node *parse_dp_settings(struct platform_device *ndev,
 				GFP_KERNEL);
 			if (!dpout->lt_settings) {
 				pr_err("not enough memory\n");
-				goto parse_dp_settings_fail;
+				goto parse_dp_lt_settings_fail;
 			}
 			addr = (u8 *)dpout->lt_settings;
 			for_each_child_of_node(np_dp_lt_set, entry) {
 				err = parse_lt_setting(entry, addr);
 				if (err)
-					goto parse_dp_settings_fail;
+					goto parse_dp_lt_settings_fail;
 				addr += sizeof(
 					struct tegra_dc_dp_lt_settings);
 			}
 		}
+	}
+
+	np_dp_gr_set = of_get_child_by_name(np_dp_panel, "dp-gr-settings");
+	if (!np_dp_gr_set) {
+		pr_info("%s: No dp-gr-settings node\n",
+			__func__);
+	} else {
+		err = parse_dp_gr_settings(np_dp_gr_set, &dpout->gr_settings);
+		if (err)
+			goto parse_dp_gr_settings_fail;
 	}
 
 	if (!of_property_read_u32(np_dp_panel,
@@ -1660,9 +1781,13 @@ static struct device_node *parse_dp_settings(struct platform_device *ndev,
 		OF_DC_LOG("link_bw %d\n", dpout->link_bw);
 	}
 
+	of_node_put(np_dp_gr_set);
 	of_node_put(np_dp_lt_set);
 	return np_dp_panel;
-parse_dp_settings_fail:
+
+parse_dp_gr_settings_fail:
+	of_node_put(np_dp_gr_set);
+parse_dp_lt_settings_fail:
 	of_node_put(np_dp_lt_set);
 	of_node_put(np_dp_panel);
 	return NULL;
