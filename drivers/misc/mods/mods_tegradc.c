@@ -115,7 +115,7 @@ int esc_mods_tegra_dc_config_possible(struct file *fp,
 #ifndef CONFIG_TEGRA_ISOMGR
 	max_bandwidth = tegra_dc_get_bandwidth(dc_wins, args->win_num);
 
-	emc_clk = clk_get_sys(NULL, "emc");
+	emc_clk = clk_get_sys("tegra_emc", "emc");
 	if (IS_ERR(emc_clk)) {
 		mods_debug_printk(DEBUG_TEGRADC,
 		"esc_mods_tegra_dc_config_possible "
