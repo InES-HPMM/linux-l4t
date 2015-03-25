@@ -359,7 +359,6 @@
 				regulator-max-microvolt = <6000000>;
 				regulator-init-microvolt = <5500000>;
 				regulator-boot-on;
-				regulator-always-on;
 				ti,enable-gpio = <&gpio TEGRA_GPIO(E, 2) 0>;
 			};
 
@@ -369,7 +368,6 @@
 				regulator-max-microvolt = <6000000>;
 				regulator-init-microvolt = <5500000>;
 				regulator-boot-on;
-				regulator-always-on;
 				ti,enable-gpio = <&gpio TEGRA_GPIO(E, 3) 0>;
 			};
 		};

@@ -115,7 +115,7 @@
 		dc@54200000 {
 			avdd_dsi_csi-supply = <&mipi_1v2>;
 			avdd_lcd-supply = <&vdd_lcd_3v0>;
-			dvdd_lcd-supply = <&max77620_sd3>;
+			dvdd_lcd-supply = <&vdd_lcd_1v8>;
 		};
 
 		/* tegradc.1 */
