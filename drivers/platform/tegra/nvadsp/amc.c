@@ -3,7 +3,7 @@
  *
  * AMC and ARAM handling
  *
- * Copyright (C) 2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2015, NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -52,7 +52,7 @@ static void wmemcpy_to_aram(u32 to_aram, const u32 *from_mem, size_t wlen)
 			offset = 0;
 		}
 
-		amc_writel(*from_mem, offset);
+		amc_writel(*from_mem, AMC_ARAM_APERTURE_DATA_START + offset);
 		from_mem++;
 		offset += 4;
 	}
@@ -74,7 +74,7 @@ static void wmemcpy_from_aram(u32 *to_mem, const u32 from_aram, size_t wlen)
 			offset = 0;
 		}
 
-		*to_mem = amc_readl(offset);
+		*to_mem = amc_readl(AMC_ARAM_APERTURE_DATA_START + offset);
 		to_mem++;
 		offset += 4;
 	}
