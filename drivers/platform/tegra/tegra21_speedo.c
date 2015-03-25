@@ -123,6 +123,13 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 		gpu_speedo_id = speedo_rev >= 2 ? 1 : 0;
 		threshold_index = 0;
 		break;
+	case 0x83:
+	case 0x87:
+		cpu_speedo_id = 3;
+		soc_speedo_id = 0;
+		gpu_speedo_id = speedo_rev >= 2 ? 2 : 0;
+		threshold_index = 0;
+		break;
 	default:
 		pr_warn("Tegra21: Unknown SKU %d\n", sku);
 		cpu_speedo_id = 0;
