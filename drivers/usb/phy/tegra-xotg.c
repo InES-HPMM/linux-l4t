@@ -328,6 +328,16 @@ static int xotg_init_timers(struct xotg *xotg)
 		return status;
 	}
 
+	/* tst_maint timer */
+	status = xotg_alloc_timer(xotg, &xotg->xotg_timer_list.a_tst_maint_tmr,
+			&xotg_timer_comp, TA_TST_MAINT,
+			(unsigned long)&xotg->xotg_timer_list.
+			a_tst_maint_tmout);
+	if (status) {
+		xotg_err(xotg->dev, "error in init list a_tst_maint_tmr\n");
+		return status;
+	}
+
 	/* bdis_timer */
 	status = xotg_alloc_timer(xotg, &xotg->xotg_timer_list.a_aidl_bdis_tmr,
 			&xotg_timer_comp, TA_AIDL_BDIS,
@@ -1394,7 +1404,7 @@ static void xotg_work(struct work_struct *work)
 		if (xotg->id || xotg->xotg_reqs.a_bus_drop) {
 			xotg_info(xotg->dev, "state a_host -> a_wait_vfall\n");
 			xotg->phy.state = OTG_STATE_A_WAIT_VFALL;
-
+			state_changed = 1;
 			/* do actions */
 			xotg_drive_vbus(xotg, 0);
 			xotg_dbg(xotg->dev,
@@ -1406,6 +1416,7 @@ static void xotg_work(struct work_struct *work)
 			/*&& !xotg->xotg_vars.a_bus_suspend*/) {
 			xotg_info(xotg->dev, "state a_host -> a_wait_bcon\n");
 			xotg->phy.state = OTG_STATE_A_WAIT_BCON;
+			state_changed = 1;
 
 			/* do actions */
 			xotg_dbg(xotg->dev,
@@ -1419,6 +1430,7 @@ static void xotg_work(struct work_struct *work)
 			 * else-if get executed anytime at all ?
 			 */
 			xotg->phy.state = OTG_STATE_A_SUSPEND;
+			state_changed = 1;
 
 			/* start a timer to keep track of B-device
 			 * signalling a disconnect. Once b_hnp_enable is
@@ -1434,7 +1446,27 @@ static void xotg_work(struct work_struct *work)
 					a_aidl_bdis_tmr, jiffies +
 					msecs_to_jiffies(TA_AIDL_BDIS));
 			}
+		}  else if (xotg->xotg_timer_list.a_tst_maint_tmout) {
+			xotg_dbg(xotg->dev,
+				"TST_MAINT timeout. Driving Vbus Off\n");
+			xotg->xotg_timer_list.a_tst_maint_tmout = 0;
+			if (session_supported)
+				xotg_drive_vbus(xotg, 0);
+		} else if (xotg->xotg_vars.otg_test_device_enumerated) {
+			xotg_dbg(xotg->dev,
+				"Starting the TST_MAINT timer\n");
+			xotg->xotg_vars.otg_test_device_enumerated = 0;
+			xotg->xotg_timer_list.a_tst_maint_tmout = 0;
+			mod_timer(&xotg->xotg_timer_list.a_tst_maint_tmr,
+				jiffies + msecs_to_jiffies(TA_TST_MAINT));
 		}
+		if (state_changed &&
+		   (xotg->phy.state != OTG_STATE_A_SUSPEND) &&
+		   (!xotg->xotg_timer_list.a_tst_maint_tmout)) {
+			xotg_dbg(xotg->dev, "del_timer a_tst_maint_tmr");
+			del_timer_sync(&xotg->xotg_timer_list.a_tst_maint_tmr);
+		}
+
 	}
 	break;
 	/* triggered by following:
@@ -1506,6 +1538,7 @@ static void xotg_work(struct work_struct *work)
 				xotg_err(xotg->dev,
 				"xotg_enable_gadget(xotg, 1) failed\n");
 			}
+
 		} else if (!xotg->xotg_vars.b_conn &&
 				!xotg->phy.otg->host->b_hnp_enable) {
 			xotg_info(xotg->dev,
@@ -1525,7 +1558,23 @@ static void xotg_work(struct work_struct *work)
 			xotg->xotg_timer_list.a_wait_bcon_tmout = 0;
 			mod_timer(&xotg->xotg_timer_list.a_wait_bcon_tmr,
 				jiffies + msecs_to_jiffies(4000));
+		} else if (xotg->xotg_timer_list.a_tst_maint_tmout) {
+			xotg_dbg(xotg->dev,
+				"TST_MAINT timeout. Drive VBUS OFF\n");
+			xotg->xotg_timer_list.a_tst_maint_tmout = 0;
+			if (session_supported)
+				xotg_drive_vbus(xotg, 0);
 		}
+
+		if (state_changed &&
+		   !xotg->xotg_timer_list.a_tst_maint_tmout) {
+			xotg_dbg(xotg->dev,
+				"del_timer a_tst_maint_tmr %p\n",
+				&xotg->xotg_timer_list.a_tst_maint_tmr);
+			del_timer_sync(
+				&xotg->xotg_timer_list.a_tst_maint_tmr);
+		}
+
 		if (state_changed &&
 			xotg->phy.otg->host->b_hnp_enable &&
 			!xotg->xotg_timer_list.a_aidl_bdis_tmout) {
@@ -1744,6 +1793,14 @@ static int xotg_notify_disconnect(struct usb_phy *phy,
 	return 0;
 }
 
+static int xotg_notify_otg_test_device(struct usb_phy *phy)
+{
+	struct xotg *xotg = container_of(phy, struct xotg, phy);
+	xotg->xotg_vars.otg_test_device_enumerated = 1;
+	xotg_work(&xotg->otg_work);
+	return 0;
+}
+
 /* will be called from the PCD */
 static int xotg_set_peripheral(struct usb_otg *otg, struct usb_gadget *gadget)
 {
@@ -1778,6 +1835,7 @@ static void xotg_struct_init(struct xotg *xotg)
 	xotg->phy.set_vbus = xotg_set_vbus;
 	xotg->phy.notify_connect = xotg_notify_connect;
 	xotg->phy.notify_disconnect = xotg_notify_disconnect;
+	xotg->phy.notify_otg_test_device = xotg_notify_otg_test_device;
 
 	xotg->phy.otg->phy = &xotg->phy;
 	xotg->phy.otg->set_host = xotg_set_host;

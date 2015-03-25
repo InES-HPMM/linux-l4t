@@ -50,6 +50,7 @@ struct xotg_vars {
 
 	/* internal variables */
 	int a_set_b_hnp_en;	/* will be set by the HCD/usbcore */
+	int otg_test_device_enumerated;
 
 	/* non-spec otg driver variables */
 	int b_srp_initiated;
@@ -83,6 +84,8 @@ struct xotg_timers {
 	struct timer_list b_srp_done_tmr;
 	int b_srp_done_tmout;
 
+	struct timer_list a_tst_maint_tmr;
+	int a_tst_maint_tmout;
 	/* test timer */
 	struct timer_list test_tmr;
 };
@@ -137,7 +140,7 @@ struct xotg {
 #define TB_SRP_FAIL			(5500)	/* Table 5-1, OTG2.0 */
 #define TB_SRP_DONE			(100)
 #define TA_WAIT_VFALL			(1000)	/* Table 4-1, OTG2.0 */
-
+#define TA_TST_MAINT			(9900)
 /* for communication with xhci driver */
 #define XDEV_DISABLED	(0x4 << 5)
 #define XDEV_RXDETECT	(0x5 << 5)

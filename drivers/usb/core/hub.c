@@ -2214,6 +2214,7 @@ static void xotg_hnp_polling_work(struct work_struct *work)
 static int usb_enumerate_device_otg(struct usb_device *udev)
 {
 	int err = 0;
+	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
 
 #ifdef	CONFIG_USB_OTG
 	bool otgv13 = false;
@@ -2326,12 +2327,15 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 		"quirks=%x, is_b_host=%d\n", udev->quirks,
 			udev->bus->is_b_host);
 
-	if ((udev->quirks & USB_QUIRK_OTG_COMPLIANCE) &&
-		(udev->bus->is_b_host || otgv13)) {
-		dev_info(&udev->dev, "quick HNP set for PET\n");
-		udev->bus->otgv13_hnp = 1;
-		schedule_delayed_work(&udev->bus->hnp_polling_work,
-			msecs_to_jiffies(70));
+	if (udev->quirks & USB_QUIRK_OTG_COMPLIANCE) {
+		usb_phy_notify_otg_test_device(hcd->phy);
+
+		if (udev->bus->is_b_host || otgv13) {
+			dev_info(&udev->dev, "quick HNP set for PET\n");
+			udev->bus->otgv13_hnp = 1;
+			schedule_delayed_work(&udev->bus->hnp_polling_work,
+				msecs_to_jiffies(70));
+		}
 	}
 
 	if (!is_targeted(udev)) {

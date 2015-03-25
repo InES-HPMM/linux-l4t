@@ -112,6 +112,7 @@ struct usb_phy {
 			enum usb_device_speed speed);
 	int	(*notify_disconnect)(struct usb_phy *x,
 			enum usb_device_speed speed);
+	int	(*notify_otg_test_device)(struct usb_phy *x);
 };
 
 /**
@@ -274,6 +275,15 @@ usb_phy_notify_disconnect(struct usb_phy *x, enum usb_device_speed speed)
 {
 	if (x->notify_disconnect)
 		return x->notify_disconnect(x, speed);
+	else
+		return 0;
+}
+
+static inline int
+usb_phy_notify_otg_test_device(struct usb_phy *x)
+{
+	if (x->notify_otg_test_device)
+		return x->notify_otg_test_device(x);
 	else
 		return 0;
 }
