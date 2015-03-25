@@ -516,6 +516,7 @@ struct arm_smmu_option_prop {
 
 static struct arm_smmu_option_prop arm_smmu_options[] = {
 	{ ARM_SMMU_OPT_SECURE_CFG_ACCESS, "calxeda,smmu-secure-config-access" },
+	{ ARM_SMMU_OPT_SECURE_CFG_ACCESS, "-calxeda,smmu-secure-config-access" },
 	{ 0, NULL},
 };
 
@@ -526,7 +527,10 @@ static void parse_driver_options(struct arm_smmu_device *smmu)
 	do {
 		if (of_property_read_bool(smmu->dev->of_node,
 						arm_smmu_options[i].prop)) {
-			smmu->options |= arm_smmu_options[i].opt;
+			if (arm_smmu_options[i].prop[0] == '-')
+				smmu->options &= ~arm_smmu_options[i].opt;
+			else
+				smmu->options |= arm_smmu_options[i].opt;
 			dev_notice(smmu->dev, "option %s\n",
 				arm_smmu_options[i].prop);
 		}
