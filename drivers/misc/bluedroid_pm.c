@@ -64,7 +64,6 @@
 #define BT_WAKE	0x01
 
 struct bluedroid_pm_data {
-	struct platform_device *pdev;
 	int gpio_reset;
 	int gpio_shutdown;
 	int host_wake;
@@ -78,9 +77,6 @@ struct bluedroid_pm_data {
 	struct rfkill *rfkill;
 	struct wake_lock wake_lock;
 	struct pm_qos_request resume_cpu_freq_req;
-	bool resumed;
-	struct work_struct work;
-	spinlock_t lock;
 };
 
 struct proc_dir_entry *proc_bt_dir, *bluetooth_sleep_dir;
@@ -108,31 +104,6 @@ static void bluedroid_pm_timer_expire(unsigned long data);
 static DEFINE_TIMER(bluedroid_pm_timer, bluedroid_pm_timer_expire, 0, 0);
 static int bluedroid_pm_gpio_get_value(unsigned int gpio);
 static void bluedroid_pm_gpio_set_value(unsigned int gpio, int value);
-
-static void bluedroid_work(struct work_struct *data)
-{
-	struct bluedroid_pm_data *bluedroid_pm =
-			container_of(data, struct bluedroid_pm_data, work);
-	struct device *dev = &bluedroid_pm->pdev->dev;
-	char *resumed[2] = { "BT_STATE=RESUMED", NULL };
-	char **uevent_envp = NULL;
-	unsigned long flags;
-
-	spin_lock_irqsave(&bluedroid_pm->lock, flags);
-	if (!bluedroid_pm->is_blocked && bluedroid_pm->resumed)
-		uevent_envp = resumed;
-	spin_unlock_irqrestore(&bluedroid_pm->lock, flags);
-
-	if (uevent_envp) {
-		kobject_uevent_env(&dev->kobj, KOBJ_CHANGE, uevent_envp);
-		BDP_DBG("is_blocked=%d, resumed=%d, uevent %s\n",
-			bluedroid_pm->is_blocked, bluedroid_pm->resumed,
-			uevent_envp[0]);
-	} else {
-		BDP_DBG("is_blocked=%d, resumed=%d, no uevent\n",
-			bluedroid_pm->is_blocked, bluedroid_pm->resumed);
-	}
-}
 
 static irqreturn_t bluedroid_pm_hostwake_isr(int irq, void *dev_id)
 {
@@ -418,10 +389,6 @@ static int bluedroid_pm_probe(struct platform_device *pdev)
 		bluedroid_pm->resume_min_frequency =
 						pdata->resume_min_frequency;
 
-	INIT_WORK(&bluedroid_pm->work, bluedroid_work);
-	spin_lock_init(&bluedroid_pm->lock);
-
-	bluedroid_pm->pdev = pdev;
 	platform_set_drvdata(pdev, bluedroid_pm);
 	BDP_DBG("driver successfully registered");
 	return 0;
@@ -451,8 +418,6 @@ free_res:
 static int bluedroid_pm_remove(struct platform_device *pdev)
 {
 	struct bluedroid_pm_data *bluedroid_pm = platform_get_drvdata(pdev);
-
-	cancel_work_sync(&bluedroid_pm->work);
 
 	if (bluedroid_pm->host_wake)
 		gpio_free(bluedroid_pm->host_wake);
@@ -487,16 +452,9 @@ static int bluedroid_pm_suspend(struct platform_device *pdev,
 						pm_message_t state)
 {
 	struct bluedroid_pm_data *bluedroid_pm = platform_get_drvdata(pdev);
-	unsigned long flags;
-
 	if (bluedroid_pm->host_wake)
 		if (!bluedroid_pm->is_blocked || !bluedroid_pm_blocked)
 			enable_irq_wake(bluedroid_pm->host_wake_irq);
-
-	spin_lock_irqsave(&bluedroid_pm->lock, flags);
-	bluedroid_pm->resumed = false;
-	cancel_work_sync(&bluedroid_pm->work);
-	spin_unlock_irqrestore(&bluedroid_pm->lock, flags);
 
 	return 0;
 }
@@ -504,16 +462,9 @@ static int bluedroid_pm_suspend(struct platform_device *pdev,
 static int bluedroid_pm_resume(struct platform_device *pdev)
 {
 	struct bluedroid_pm_data *bluedroid_pm = platform_get_drvdata(pdev);
-	unsigned long flags;
-
 	if (bluedroid_pm->host_wake)
 		if (!bluedroid_pm->is_blocked || !bluedroid_pm_blocked)
 			disable_irq_wake(bluedroid_pm->host_wake_irq);
-
-	spin_lock_irqsave(&bluedroid_pm->lock, flags);
-	bluedroid_pm->resumed = true;
-	schedule_work(&bluedroid_pm->work);
-	spin_unlock_irqrestore(&bluedroid_pm->lock, flags);
 
 	return 0;
 }
@@ -521,8 +472,6 @@ static int bluedroid_pm_resume(struct platform_device *pdev)
 static void bluedroid_pm_shutdown(struct platform_device *pdev)
 {
 	struct bluedroid_pm_data *bluedroid_pm = platform_get_drvdata(pdev);
-
-	cancel_work_sync(&bluedroid_pm->work);
 
 	if (gpio_is_valid(bluedroid_pm->gpio_shutdown))
 		bluedroid_pm_gpio_set_value(
