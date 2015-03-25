@@ -107,6 +107,18 @@ static struct clk *ape_emc_clk;
 
 static DEFINE_MUTEX(policy_mutex);
 
+static bool is_os_running(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
+
+	if (!drv_data->adsp_os_running) {
+		dev_dbg(dev, "%s: adsp os is not loaded\n", __func__);
+		return false;
+	}
+	return true;
+}
+
 static unsigned long adsp_get_target_freq(unsigned long tfreq, int *index)
 {
 	int i;
@@ -339,6 +351,9 @@ DEFINE_SIMPLE_ATTRIBUTE(enable_fops, dfs_enable_get,
 /* Get adsp dfs policy min freq(KHz) */
 static int policy_min_get(void *data, u64 *val)
 {
+	if (!is_os_running(device))
+		return -EINVAL;
+
 	mutex_lock(&policy_mutex);
 	*val = policy->min;
 	mutex_unlock(&policy_mutex);
@@ -351,6 +366,9 @@ static int policy_min_set(void *data, u64 val)
 {
 	int ret = -EINVAL;
 	unsigned long min = (unsigned long)val;
+
+	if (!is_os_running(device))
+		return ret;
 
 	mutex_lock(&policy_mutex);
 	if (!policy->enable) {
@@ -379,6 +397,9 @@ DEFINE_SIMPLE_ATTRIBUTE(min_fops, policy_min_get,
 /* Get adsp dfs policy max freq(KHz) */
 static int policy_max_get(void *data, u64 *val)
 {
+	if (!is_os_running(device))
+		return -EINVAL;
+
 	mutex_lock(&policy_mutex);
 	*val = policy->max;
 	mutex_unlock(&policy_mutex);
@@ -390,6 +411,9 @@ static int policy_max_set(void *data, u64 val)
 {
 	int ret = -EINVAL;
 	unsigned long max = (unsigned long)val;
+
+	if (!is_os_running(device))
+		return ret;
 
 	mutex_lock(&policy_mutex);
 	if (!policy->enable) {
@@ -419,6 +443,9 @@ DEFINE_SIMPLE_ATTRIBUTE(max_fops, policy_max_get,
 /* Get adsp dfs policy's current freq */
 static int policy_cur_get(void *data, u64 *val)
 {
+	if (!is_os_running(device))
+		return -EINVAL;
+
 	mutex_lock(&policy_mutex);
 	*val = policy->cur;
 	mutex_unlock(&policy_mutex);
@@ -431,6 +458,9 @@ static int policy_cur_set(void *data, u64 val)
 {
 	int ret = -EINVAL;
 	unsigned long cur = (unsigned long)val;
+
+	if (!is_os_running(device))
+		return ret;
 
 	mutex_lock(&policy_mutex);
 	if (policy->enable) {
