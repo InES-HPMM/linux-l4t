@@ -319,6 +319,7 @@ int tegra_bpmp_send(int mrq, void *data, int sz)
 	local_irq_restore(flags);
 	return r;
 }
+EXPORT_SYMBOL(tegra_bpmp_send);
 
 /* should be called with local irqs disabled */
 int tegra_bpmp_send_receive_atomic(int mrq, void *ob_data, int ob_sz,
