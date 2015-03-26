@@ -864,7 +864,7 @@ parse_modes_fail:
 	return -EINVAL;
 }
 
-#ifdef CONFIG_TEGRA_DC_CMU
+#if defined(CONFIG_TEGRA_DC_CMU)
 static int parse_cmu_data(struct device_node *np,
 	struct tegra_dc_cmu *cmu)
 {
@@ -909,6 +909,31 @@ static int parse_cmu_data(struct device_node *np,
 			*(addr_cmu_lut2++) = (u8)u;
 		}
 	}
+	return 0;
+}
+#elif defined(CONFIG_TEGRA_DC_CMU_V2)
+static int parse_cmu_data(struct device_node *np,
+	struct tegra_dc_cmu *cmu)
+{
+#if 0
+	u8 *addr_cmu_lut;
+	addr_cmu_lut = &(cmu->lut[0]);
+	memcpy(cmu, &default_cmu, sizeof(struct tegra_dc_cmu));
+	of_property_for_each_u32(np, "nvidia,cmu-lut", prop, p, u)
+		lut_count++;
+
+	if (lut_count >
+		(sizeof(cmu->lut) / sizeof(cmu->lut[0]))) {
+		pr_err("cmu lut overflow\n");
+		return -EINVAL;
+	} else {
+		of_property_for_each_u32(np, "nvidia,cmu-lut",
+			prop, p, u) {
+			/* OF_DC_LOG("cmu lut2 0x%x\n", u); */
+			*(addr_cmu_lut++) = (u8)u;
+		}
+	}
+#endif
 	return 0;
 }
 #endif
@@ -1888,7 +1913,7 @@ struct tegra_dc_platform_data
 	struct device_node *sd_np = NULL;
 	struct device_node *default_out_np = NULL;
 	struct device_node *entry = NULL;
-#ifdef CONFIG_TEGRA_DC_CMU
+#if defined(CONFIG_TEGRA_DC_CMU) || defined(CONFIG_TEGRA_DC_CMU_V2)
 	struct device_node *cmu_np = NULL;
 #endif
 	struct property *prop;
@@ -2188,7 +2213,7 @@ struct tegra_dc_platform_data
 		}
 	}
 
-#ifdef CONFIG_TEGRA_DC_CMU
+#if defined(CONFIG_TEGRA_DC_CMU) || defined(CONFIG_TEGRA_DC_CMU_V2)
 	cmu_np = of_get_child_by_name(np_target_disp,
 		"cmu");
 
@@ -2225,7 +2250,7 @@ struct tegra_dc_platform_data
 		}
 	}
 
-#ifdef CONFIG_TEGRA_DC_CMU
+#if defined(CONFIG_TEGRA_DC_CMU) || defined(CONFIG_TEGRA_DC_CMU_V2)
 	if (pdata->cmu != NULL) {
 		err = parse_cmu_data(cmu_np, pdata->cmu);
 		if (err)
@@ -2261,7 +2286,7 @@ struct tegra_dc_platform_data
 		pdata->win_mask = (u32)temp;
 		OF_DC_LOG("win mask 0x%x\n", temp);
 	}
-#ifdef CONFIG_TEGRA_DC_CMU
+#if defined(CONFIG_TEGRA_DC_CMU) || defined(CONFIG_TEGRA_DC_CMU_V2)
 	if (!of_property_read_u32(np, "nvidia,cmu-enable", &temp)) {
 		pdata->cmu_enable = (bool)temp;
 		OF_DC_LOG("cmu enable %d\n", pdata->cmu_enable);
@@ -2274,7 +2299,7 @@ struct tegra_dc_platform_data
 	of_node_put(default_out_np);
 	of_node_put(timings_np);
 	of_node_put(sd_np);
-#ifdef CONFIG_TEGRA_DC_CMU
+#if defined(CONFIG_TEGRA_DC_CMU) || defined(CONFIG_TEGRA_DC_CMU_V2)
 	of_node_put(cmu_np);
 #endif
 	of_node_put(np_target_disp);
@@ -2285,7 +2310,7 @@ struct tegra_dc_platform_data
 
 fail_parse:
 	of_node_put(sd_np);
-#ifdef CONFIG_TEGRA_DC_CMU
+#if defined(CONFIG_TEGRA_DC_CMU) || defined(CONFIG_TEGRA_DC_CMU_V2)
 	of_node_put(cmu_np);
 #endif
 	of_node_put(np_dsi);
