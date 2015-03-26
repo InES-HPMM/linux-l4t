@@ -2520,6 +2520,10 @@ static int arm_smmu_device_dt_probe(struct platform_device *pdev)
 	while (!of_parse_phandle_with_args(dev->of_node, "mmu-masters",
 					   "#stream-id-cells", i,
 					   &masterspec)) {
+
+		dev_dbg(dev, "%s() masterspec.np->name=%s\n",
+			__func__, masterspec.np->name);
+
 		err = register_smmu_master(smmu, dev, &masterspec);
 		if (err) {
 			dev_err(dev, "failed to add master %s\n",
