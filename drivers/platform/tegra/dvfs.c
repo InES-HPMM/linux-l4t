@@ -1114,7 +1114,7 @@ static int predict_millivolts(struct clk *c, const int *millivolts,
 	 * alternative limits initialized.
 	 */
 	if (c->dvfs->alt_freqs)
-		return -ENOSYS;
+		return -EINVAL;
 
 	return predict_non_alt_millivolts(c, millivolts, rate);
 }
@@ -1140,7 +1140,7 @@ static unsigned long predict_hz_at_mv_max_tfloor(struct clk *c, int mv)
 	 * initialized.
 	 */
 	if (c->dvfs->alt_freqs)
-		return -ENOSYS;
+		return -EINVAL;
 
 	for (i = 0; i < c->dvfs->num_freqs; i++) {
 		rate = c->dvfs->freqs[i];
@@ -1191,7 +1191,7 @@ int tegra_dvfs_predict_mv_at_hz_no_tfloor(struct clk *c, unsigned long rate)
 	const int *millivolts;
 
 	if (!c->dvfs)
-		return 0;
+		return -ENODATA;
 
 	if ((c->dvfs->dvfs_rail == tegra_gpu_rail) ||
 	    (c->dvfs->dvfs_rail == tegra_cpu_rail)) {
@@ -1223,7 +1223,7 @@ int tegra_dvfs_predict_mv_at_hz_cur_tfloor(struct clk *c, unsigned long rate)
 	struct dvfs_rail *rail;
 
 	if (!c->dvfs)
-		return 0;
+		return -ENODATA;
 
 	rail = c->dvfs->dvfs_rail;
 
@@ -1257,7 +1257,7 @@ static int dvfs_predict_mv_at_hz_max_tfloor(struct clk *c, unsigned long rate)
 	const int *millivolts;
 
 	if (!c->dvfs)
-		return 0;
+		return -ENODATA;
 
 	millivolts = dvfs_get_peak_millivolts(c->dvfs, rate);
 	mv = predict_non_alt_millivolts(c, millivolts, rate);
@@ -1342,7 +1342,7 @@ int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)
 	bool suspended;
 
 	if (!c->dvfs)
-		return -EINVAL;
+		return -ENODATA;
 
 	suspended = timekeeping_suspended && c->dvfs->dvfs_rail->suspended;
 	if (suspended) {
@@ -1365,10 +1365,10 @@ EXPORT_SYMBOL(tegra_dvfs_set_rate);
 int tegra_dvfs_get_freqs(struct clk *c, unsigned long **freqs, int *num_freqs)
 {
 	if (!c->dvfs)
-		return -ENOSYS;
+		return -ENODATA;
 
 	if (c->dvfs->alt_freqs)
-		return -ENOSYS;
+		return -EINVAL;
 
 	*num_freqs = c->dvfs->num_freqs;
 	*freqs = c->dvfs->freqs;
