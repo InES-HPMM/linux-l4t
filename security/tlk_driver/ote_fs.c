@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2015 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,6 +31,13 @@ static DECLARE_COMPLETION(req_ready);
 static DECLARE_COMPLETION(req_complete);
 
 static struct te_ss_op *ss_op_shmem;
+
+static void tlk_ss_reset(void)
+{
+	/* reset completion vars to default state */
+	INIT_COMPLETION(req_ready);
+	INIT_COMPLETION(req_complete);
+}
 
 int te_handle_ss_ioctl(struct file *file, unsigned int ioctl_num,
 	unsigned long ioctl_param)
@@ -64,13 +71,20 @@ int te_handle_ss_ioctl(struct file *file, unsigned int ioctl_num,
 	return 0;
 }
 
-void tlk_ss_op(void)
+int tlk_ss_op(void)
 {
 	/* signal consumer */
 	complete(&req_ready);
 
 	/* wait for the consumer's signal */
-	wait_for_completion(&req_complete);
+	if (!wait_for_completion_timeout(&req_complete,
+						msecs_to_jiffies(5000))) {
+		/* daemon didn't respond */
+		tlk_ss_reset();
+		return OTE_ERROR_CANCEL;
+	}
+
+	return OTE_SUCCESS;
 }
 
 static int __init tlk_ss_init(void)
