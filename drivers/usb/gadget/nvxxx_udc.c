@@ -116,8 +116,12 @@ module_param(u1_enable, bool, S_IRUGO|S_IWUSR);
 static bool u2_enable = true;
 module_param(u2_enable, bool, S_IRUGO|S_IWUSR);
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 /* T210 workaround. Disable LPM for HS and FS by default */
+static bool disable_lpm = true;
+#else
 static bool disable_lpm = false;
+#endif
 module_param(disable_lpm, bool, S_IRUGO|S_IWUSR);
 
 static bool war_poll_trbst_max = true;
