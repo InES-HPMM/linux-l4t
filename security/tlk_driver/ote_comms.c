@@ -313,6 +313,7 @@ struct tlk_smc_work_args {
 static long tlk_generic_smc_on_cpu0(void *args)
 {
 	struct tlk_smc_work_args *work;
+	int callback_status = 0;
 	uint32_t retval;
 
 	work = (struct tlk_smc_work_args *)args;
@@ -321,8 +322,8 @@ static long tlk_generic_smc_on_cpu0(void *args)
 	while (retval == TE_ERROR_PREEMPT_BY_IRQ ||
 	       retval == TE_ERROR_PREEMPT_BY_FS) {
 		if (retval == TE_ERROR_PREEMPT_BY_FS)
-			tlk_ss_op();
-		retval = _tlk_generic_smc(TE_SMC_RESTART, 0, 0);
+			callback_status = tlk_ss_op();
+		retval = _tlk_generic_smc(TE_SMC_RESTART, callback_status, 0);
 	}
 
 	/* Print TLK logs if any */

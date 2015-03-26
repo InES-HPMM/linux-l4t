@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2015 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -242,7 +242,9 @@ static int tlk_device_release(struct inode *inode, struct file *file)
 	struct tlk_context *context = file->private_data;
 
 	/* close any open sessions */
+	mutex_lock(&smc_lock);
 	te_close_sessions(context);
+	mutex_unlock(&smc_lock);
 
 	kfree(file->private_data);
 	file->private_data = NULL;
