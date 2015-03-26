@@ -28,6 +28,9 @@
 		nvidia,mdm-power-report-gpio = <&gpio TEGRA_GPIO(L, 1) GPIO_ACTIVE_LOW>;
 		nvidia,mdm-sar0-gpio = <&gpio TEGRA_GPIO(V, 5) GPIO_ACTIVE_LOW>;
 		nvidia,num-temp-sensors = <3>;
+		pinctrl-names = "uart_boot_disable", "uart_boot_enable";
+		pinctrl-0 = <&modem_uart_boot_disable_state>;
+		pinctrl-1 = <&modem_uart_boot_enable_state>;
 		status = "disabled";
 	};
 };

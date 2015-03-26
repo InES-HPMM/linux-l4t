@@ -1413,5 +1413,29 @@
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 			};
 		};
+
+		modem_uart_boot_enable_state: modem_uart_boot_enable {
+			uart2_tx_pg0 {
+				nvidia,pins = "uart2_tx_pg0";
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+
+			pl1 {
+				nvidia,pins = "pl1";
+				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+			};
+		};
+
+		modem_uart_boot_disable_state: modem_uart_boot_disable {
+			uart2_tx_pg0 {
+				nvidia,pins = "uart2_tx_pg0";
+				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+			};
+
+			pl1 {
+				nvidia,pins = "pl1";
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+		};
 	};
 };
