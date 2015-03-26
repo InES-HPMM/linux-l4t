@@ -482,6 +482,7 @@ enum {
 	TEGRA_DC_ORDERED_DITHER,
 	TEGRA_DC_ERRDIFF_DITHER,
 	TEGRA_DC_TEMPORAL_DITHER,
+	TEGRA_DC_ERRACC_DITHER,
 };
 
 typedef u8 tegra_dc_bl_output[256];
@@ -782,11 +783,17 @@ struct tegra_dc_cmu_csc {
 	u16 kbb;
 };
 
+#if defined(CONFIG_TEGRA_DC_CMU_V2)
+struct tegra_dc_cmu {
+	u64 rgb[1025];
+};
+#else
 struct tegra_dc_cmu {
 	u16 lut1[256];
 	struct tegra_dc_cmu_csc csc;
 	u8 lut2[960];
 };
+#endif
 
 struct tegra_dc_win {
 	u8			idx;
@@ -950,7 +957,7 @@ struct tegra_dc_platform_data {
 	struct tegra_fb_data	*fb;
 	unsigned long		low_v_win;
 
-#ifdef CONFIG_TEGRA_DC_CMU
+#if defined(CONFIG_TEGRA_DC_CMU) || defined(CONFIG_TEGRA_DC_CMU_V2)
 	bool			cmu_enable;
 	struct tegra_dc_cmu	*cmu;
 #endif
