@@ -1874,8 +1874,8 @@ static void sbus_build_round_table(struct clk *c)
 	if (!c->dvfs || !c->dvfs->num_freqs) {
 		sbus_build_round_table_one(
 			c, sclk_pclk_unity_ratio_rate_max, j++);
-		sbus_build_round_table_one(
-			c, c->max_rate, j++);
+		sbus_build_round_table_one(c, threshold, j++);
+		sbus_build_round_table_one(c, c->max_rate, j++);
 		sbus_round_table_size = j;
 		return;
 	}
@@ -5679,7 +5679,7 @@ static long tegra21_clk_cbus_round_updown(struct clk *c, unsigned long rate,
 	/* update min now, since no dvfs table was available during init
 	   (skip placeholder entries set to 1 kHz) */
 	if (!c->min_rate) {
-		for (i = 0; i < (c->dvfs->num_freqs - 1); i++) {
+		for (i = 0; i < c->dvfs->num_freqs; i++) {
 			if (c->dvfs->freqs[i] > 1 * c->dvfs->freqs_mult) {
 				c->min_rate = c->dvfs->freqs[i];
 				break;
