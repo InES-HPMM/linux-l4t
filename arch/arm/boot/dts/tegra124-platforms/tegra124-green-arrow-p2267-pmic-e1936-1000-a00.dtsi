@@ -153,6 +153,12 @@
 						regulator-boot-on;
 						ti,roof-floor = <PALMAS_EXT_CONTROL_ENABLE1>;
 						ti,config-flags = <8>;
+
+						consumers {
+							c1 {
+								regulator-consumer-supply = "vdd_cpu";
+							};
+						};
 					};
 
 					smps45 {
@@ -163,6 +169,12 @@
 						regulator-boot-on;
 						ti,roof-floor = <PALMAS_EXT_CONTROL_ENABLE2>;
 						ti,ext-enable-gpio = <&gpio TEGRA_GPIO(R, 5) 0>;
+
+						consumers {
+							c1 {
+								regulator-consumer-supply = "vdd_gpu";
+							};
+						};
 					};
 
 					palmas_smps6: smps6 {
@@ -178,6 +190,12 @@
 						regulator-always-on;
 						regulator-boot-on;
 						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
+
+						consumers {
+							c1 {
+								regulator-consumer-supply = "vdd_core";
+							};
+						};
 					};
 
 					palmas_smps8: smps8 {
