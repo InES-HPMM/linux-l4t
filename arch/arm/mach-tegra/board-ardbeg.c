@@ -1213,7 +1213,9 @@ static void __init tegra_ardbeg_late_init(void)
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_AVP, NULL, -1, -1);
 #endif
 	ardbeg_usb_init();
-	ardbeg_modem_init();
+
+	if (!of_machine_is_compatible("nvidia,green-arrow"))
+		ardbeg_modem_init();
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
 	ardbeg_xusb_init();
 #endif
