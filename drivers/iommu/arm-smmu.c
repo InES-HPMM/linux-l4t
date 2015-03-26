@@ -74,6 +74,7 @@
 /* SMMU global address space */
 #define ARM_SMMU_GR0(smmu)		((smmu)->base)
 #define ARM_SMMU_GR1(smmu)		((smmu)->base + (1 << (smmu)->pgshift))
+#define ARM_SMMU_PME(smmu)		((smmu)->base + (3 << (smmu)->pgshift))
 
 /*
  * SMMU global address space with conditional offset to access secure
