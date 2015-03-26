@@ -2437,7 +2437,7 @@ static u32 pll_qlin_p_to_pdiv(u32 p, u32 *pdiv)
 }
 
 #define PLL_EXPO_PDIV_MAX	7
-static u8 pll_expo_pdiv_to_p[PLL_QLIN_PDIV_MAX + 1] = {
+static u8 pll_expo_pdiv_to_p[PLL_EXPO_PDIV_MAX + 1] = {
 /* PDIV: 0, 1, 2, 3,  4,  5,  6,   7 */
 /* p: */ 1, 2, 4, 8, 16, 32, 64, 128 };
 
