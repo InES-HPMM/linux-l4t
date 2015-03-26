@@ -203,12 +203,12 @@ static int tegra_t210ref_dai_init(struct snd_soc_pcm_runtime *rtd,
 		break;
 	}
 
-	pr_info("Setting pll_a = %d Hz clk_out = %d Hz\n",
-			mclk, clk_out_rate);
 	err = tegra_alt_asoc_utils_set_rate(&machine->audio_clock,
 				rate, mclk, clk_out_rate);
 	if (err < 0) {
-		dev_err(card->dev, "Can't configure clocks\n");
+		dev_err(card->dev,
+		"Can't configure clocks pll_a = %d Hz clk_out = %d Hz\n",
+		mclk, clk_out_rate);
 		return err;
 	}
 
