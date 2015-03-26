@@ -113,8 +113,16 @@
 		};
 	};
 
+	generic-adc-thermal@5 {
+		status = "okay";
+	};
+
 	thermal-zones {
 		PMIC-Die {
+			status = "okay";
+		};
+
+		Battery {
 			status = "okay";
 		};
 	};
