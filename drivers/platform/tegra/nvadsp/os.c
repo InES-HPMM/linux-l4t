@@ -805,12 +805,12 @@ static int __nvadsp_os_suspend(void)
 
 	drv_data = platform_get_drvdata(priv.pdev);
 
-#ifdef CONFIG_TEGRA_ADSP_DFS
-	adsp_dfs_core_exit(priv.pdev);
-#endif
-
 #ifdef CONFIG_TEGRA_ADSP_ACTMON
 	ape_actmon_exit(priv.pdev);
+#endif
+
+#ifdef CONFIG_TEGRA_ADSP_DFS
+	adsp_dfs_core_exit(priv.pdev);
 #endif
 
 	ret = nvadsp_mbox_open(&adsp_com_mbox, &com_mid, "adsp_com_mbox",
