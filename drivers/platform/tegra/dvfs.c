@@ -1081,6 +1081,7 @@ static int predict_non_alt_millivolts(struct clk *c, const int *millivolts,
 {
 	int i;
 	int vmin = c->dvfs->dvfs_rail->min_millivolts;
+	unsigned long dvfs_unit = 1 * c->dvfs->freqs_mult;
 
 	if (!millivolts)
 		return -ENODEV;
@@ -1089,7 +1090,8 @@ static int predict_non_alt_millivolts(struct clk *c, const int *millivolts,
 		vmin = c->dvfs->dfll_data.min_millivolts;
 
 	for (i = 0; i < c->dvfs->num_freqs; i++) {
-		if (rate <= c->dvfs->freqs[i])
+		unsigned long f = c->dvfs->freqs[i];
+		if ((dvfs_unit < f) && (rate <= f))
 			break;
 	}
 
@@ -1188,7 +1190,7 @@ int tegra_dvfs_predict_mv_at_hz_no_tfloor(struct clk *c, unsigned long rate)
 	int mv;
 	const int *millivolts;
 
-	if (!rate || !c->dvfs)
+	if (!c->dvfs)
 		return 0;
 
 	if ((c->dvfs->dvfs_rail == tegra_gpu_rail) ||
@@ -1220,7 +1222,7 @@ int tegra_dvfs_predict_mv_at_hz_cur_tfloor(struct clk *c, unsigned long rate)
 	const int *millivolts;
 	struct dvfs_rail *rail;
 
-	if (!rate || !c->dvfs)
+	if (!c->dvfs)
 		return 0;
 
 	rail = c->dvfs->dvfs_rail;
@@ -1254,7 +1256,7 @@ static int dvfs_predict_mv_at_hz_max_tfloor(struct clk *c, unsigned long rate)
 	int mv;
 	const int *millivolts;
 
-	if (!rate || !c->dvfs)
+	if (!c->dvfs)
 		return 0;
 
 	millivolts = dvfs_get_peak_millivolts(c->dvfs, rate);
