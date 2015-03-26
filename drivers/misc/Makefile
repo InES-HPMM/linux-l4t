@@ -89,3 +89,4 @@ obj-$(CONFIG_MODS) 		+= mods/
 obj-$(CONFIG_DENVER_CPU)	+= idle_test_t132.o
 obj-$(CONFIG_TEGRA_PROC_POWER_MODEL) += tegra_ppm.o
 obj-$(CONFIG_NV_GAMEPAD_RESET)	+= nv_gamepad_reset.o
+obj-$(CONFIG_SAF775x_HWDEP)	+= saf775x/
