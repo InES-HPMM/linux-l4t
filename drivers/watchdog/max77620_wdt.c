@@ -385,6 +385,13 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&wdt->clear_wdt_wq, max77620_wdt_clear_workqueue);
 	schedule_delayed_work(&wdt->clear_wdt_wq,
 			msecs_to_jiffies(wdt->clear_time * HZ));
+
+	if (wdt->suspend_timeout) {
+		int alarm_time = wdt->suspend_timeout;
+		alarm_time = (alarm_time > 10) ? alarm_time - 10 : alarm_time;
+		alarmtimer_set_maximum_wakeup_interval_time(alarm_time);
+	}
+
 	return 0;
 scrub:
 	watchdog_unregister_device(&wdt->wdt_dev);
@@ -414,9 +421,6 @@ static void max77620_wdt_shutdown(struct platform_device *pdev)
 static int max77620_wdt_suspend(struct device *dev)
 {
 	struct max77620_wdt *wdt = dev_get_drvdata(dev);
-	unsigned long now;
-	struct rtc_wkalrm alm;
-	int alarm_time = wdt->suspend_timeout;
 	int ret;
 
 	if (!wdt->suspend_timeout) {
@@ -429,31 +433,6 @@ static int max77620_wdt_suspend(struct device *dev)
 	}
 
 	wdt->resume_timeout = wdt->current_timeout;
-	if (!wdt->rtc) {
-		wdt->rtc = alarmtimer_get_rtcdev();
-		if (!wdt->rtc) {
-			dev_err(wdt->dev, "No RTC device found\n");
-			max77620_wdt_stop(&wdt->wdt_dev);
-			return -ENODEV;
-		}
-	}
-
-	/* Wakeup system 10 second before WDT expire */
-	alarm_time = (alarm_time > 10) ? alarm_time - 10 : alarm_time;
-	alm.enabled = true;
-	ret = rtc_read_time(wdt->rtc, &alm.time);
-	if (ret < 0) {
-		dev_err(wdt->dev, "RTC read time failed %d\n", ret);
-		return ret;
-	}
-
-	rtc_tm_to_time(&alm.time, &now);
-	rtc_time_to_tm(now + alarm_time, &alm.time);
-	ret = rtc_set_alarm(wdt->rtc, &alm);
-	if (ret < 0) {
-		dev_err(wdt->dev, "RTC set alarm failed %d\n", ret);
-		return ret;
-	}
 	ret = max77620_wdt_restart(&wdt->wdt_dev, wdt->suspend_timeout);
 	if (ret < 0)
 		dev_err(wdt->dev, "Watchdog not restarted %d\n", ret);
