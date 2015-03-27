@@ -29,10 +29,9 @@
 				nvidia,dsi-instance = <DSI_INSTANCE_0>;
 				nvidia,dsi-n-data-lanes = <8>;
 				nvidia,dsi-pixel-format = <TEGRA_DSI_PIXEL_FORMAT_24BIT_P>;
-				nvidia,dsi-refresh-rate = <60>;
+				nvidia,dsi-refresh-rate = <75>;
 				nvidia,dsi-video-data-type = <TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE>;
 				nvidia,dsi-video-clock-mode = <TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS>;
-				nvidia,dsi-rated-refresh-rate = <60>;
 				nvidia,dsi-video-burst-mode = <TEGRA_DSI_VIDEO_NONE_BURST_MODE>;
 				nvidia,dsi-phy-hsdexit = <124>;
 				nvidia,dsi-phy-hstrail = <97>;
@@ -87,7 +86,7 @@
 					nvidia,out-yres = <1920>;
 				};
 				display-timings {
-					1200x1920-32 {
+					1200x1920-32-60Hz {
 						clock-frequency = <192642000>;
 						hactive = <1200>;
 						vactive = <1920>;
@@ -98,12 +97,24 @@
 						vback-porch = <7>;
 						vsync-len = <1>;
 						nvidia,h-ref-to-sync = <1>;
-						nvidia,v-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <11>;
+					};
+					1200x1920-32-75Hz {
+						clock-frequency = <192642000>;
+						hactive = <1200>;
+						vactive = <1920>;
+						hfront-porch = <104>;
+						hback-porch = <18>;
+						hsync-len = <2>;
+						vfront-porch = <12>;
+						vback-porch = <7>;
+						vsync-len = <1>;
+						nvidia,h-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <11>;
 					};
 				};
 				vrr-settings {
 					nvidia,vrr_min_fps = <30>;
-					nvidia,vrr_max_fps = <75>;
 				};
 				smartdimmer {
 					status = "okay";
