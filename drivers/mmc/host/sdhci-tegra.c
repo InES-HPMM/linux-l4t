@@ -627,6 +627,37 @@ struct dbg_cfg_data {
 	bool			clk_ungated;
 };
 #endif
+
+/*These dummy function are defined, because dvfs function
+are not available. This function will be removed once dvfs
+function are available to use.
+*/
+
+#ifdef CONFIG_ARCH_TEGRA_18x_SOC
+static int tegra_dvfs_predict_mv_at_hz_no_tfloor(struct clk *c, unsigned long rate) {
+	return 0;
+}
+
+static int tegra_dvfs_set_fmax_at_vmin(struct clk *c, unsigned long f_max, int v_min) {
+	return 0;
+}
+
+static int tegra_dvfs_get_core_nominal_millivolts(void) {
+	return 0;
+}
+
+static int tegra_dvfs_get_core_override_floor(void) {
+	return 0;
+}
+
+static int tegra_dvfs_get_core_boot_level(void) {
+	return 0;
+}
+static int tegra_soc_speedo_0_value(void) {
+	return 0;
+}
+#endif
+
 struct sdhci_tegra {
 	const struct tegra_sdhci_platform_data *plat;
 	const struct sdhci_tegra_soc_data *soc_data;
