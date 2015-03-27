@@ -7729,7 +7729,7 @@ static struct clk tegra_pciex_clk = {
 			.con_id    = "ext_audio_sync",	\
 		},					\
 		.rate      = 24000000,			\
-		.max_rate  = 24000000,			\
+		.max_rate  = 24576000,			\
 		.ops       = &tegra_sync_source_ops	\
 	}
 static struct clk tegra_sync_source_list[] = {
@@ -7779,7 +7779,7 @@ static struct clk_mux_sel mux_audio_sync_clk[] =
 		},					\
 		.inputs    = mux_audio_sync_clk,	\
 		.reg       = 0x4A0 + (_index) * 4,	\
-		.max_rate  = 24000000,			\
+		.max_rate  = 24576000,			\
 		.ops       = &tegra_audio_sync_clk_ops	\
 	}
 static struct clk tegra_clk_audio_list[] = {
@@ -7799,7 +7799,7 @@ static struct clk tegra_clk_audio_list[] = {
 			.con_id    = "audio_sync_2x"		\
 		},						\
 		.flags     = PERIPH_NO_RESET,			\
-		.max_rate  = 48000000,				\
+		.max_rate  = 49152000,				\
 		.ops       = &tegra_clk_double_ops,		\
 		.reg       = 0x49C,				\
 		.reg_shift = 24 + (_index),			\
