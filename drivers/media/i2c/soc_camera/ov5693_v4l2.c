@@ -41,6 +41,8 @@
 #include <media/soc_camera.h>
 #include <media/ov5693.h>
 
+#include "cam_dev/camera_gpio.h"
+
 struct ov5693_reg {
 	u16 addr;
 	u8 val;
@@ -910,7 +912,10 @@ static int ov5693_power_on(struct ov5693 *priv)
 	if (unlikely(WARN_ON(!pw || !pw->dovdd || !pw->avdd || !pw->dvdd)))
 		return -EFAULT;
 
-	gpio_set_value(priv->gpio_pwdn, 1);
+	if (priv->pdata->use_cam_gpio)
+		cam_gpio_ctrl(priv->i2c_client, priv->gpio_pwdn, 1, 1);
+	else
+		gpio_set_value(priv->gpio_pwdn, 1);
 
 	err = regulator_enable(pw->avdd);
 	if (err)
@@ -942,7 +947,10 @@ static int ov5693_power_off(struct ov5693 *priv)
 	regulator_disable(pw->dovdd);
 	regulator_disable(pw->avdd);
 
-	gpio_set_value(priv->gpio_pwdn, 0);
+	if (priv->pdata->use_cam_gpio)
+		cam_gpio_ctrl(priv->i2c_client, priv->gpio_pwdn, 0, 1);
+	else
+		gpio_set_value(priv->gpio_pwdn, 0);
 
 	return 0;
 }
@@ -1222,7 +1230,14 @@ static int ov5693_probe(struct i2c_client *client,
 	}
 
 	priv->gpio_pwdn = priv->pdata->gpio_pwdn;
-	gpio_request(priv->gpio_pwdn, "cam_gpio_pwdn");
+	if (priv->pdata->use_cam_gpio) {
+		err = cam_gpio_register(priv->i2c_client, priv->gpio_pwdn);
+		if (err)
+			dev_err(&priv->i2c_client->dev,
+				"%s ERR can't register cam gpio %u!\n",
+				 __func__, priv->gpio_pwdn);
+	} else
+		gpio_request(priv->gpio_pwdn, "cam_gpio_pwdn");
 
 	err = ov5693_power_get(priv);
 	if (err)
@@ -1257,6 +1272,8 @@ ov5693_remove(struct i2c_client *client)
 
 	priv = i2c_get_clientdata(client);
 	ov5693_power_put(&priv->power);
+	if (priv->pdata->use_cam_gpio)
+		cam_gpio_deregister(priv->i2c_client, priv->gpio_pwdn);
 	gpio_free(priv->gpio_pwdn);
 	ov5693_remove_debugfs(priv);
 
