@@ -70,6 +70,22 @@ Optional properties:
   this SoC does not support dynamic change of DFLL output limits register
   fields, this property should be set.
 
+  Tegra210 SoC flow controller can override DFLL settings depending on SoC CPU
+  power state. The following properties provide configuration options for DFLL
+  calibration on such platform. They are applied only to "nvidia,tegra210-dfll"
+  compatible DFLL.
+- defer-force-calibrate :
+  "set" - target DFLL rates are calibrated accurately, minimum reached voltage
+  is one PMIC step above minimum allowed voltage;
+  "not set" - DFLL rates may deviate by 2-3 reference clock rates above the
+  target, minimum reached voltage is at minimum allowed level.
+- calibrate-force-vmin :
+  "set" - DFLL rates are calibrated accurately, minimum reached voltage is at
+  minimum allowed level, DFLL may be under-clocked by 2-3 reference clock rates
+  for 3 sampling periods during calibration
+  "not set" - DFLL is accurate or over-clocked depending on defer-force-calibrate
+  setting.
+
 - status : device availability -- managed by the DT integration code.
 
 - i2c-pmic-integration : phandle pointing to the integration data for

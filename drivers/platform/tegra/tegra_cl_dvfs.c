@@ -369,9 +369,8 @@ static inline u32 output_force_set_val(struct tegra_cl_dvfs *cld, u8 out_val)
 	return cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
 }
 
-static inline void output_force_enable(struct tegra_cl_dvfs *cld)
+static inline void output_force_enable(struct tegra_cl_dvfs *cld, u32 val)
 {
-	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
 	val |= CL_DVFS_OUTPUT_FORCE_ENABLE;
 	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_FORCE);
 	cl_dvfs_wmb(cld);
@@ -993,10 +992,16 @@ static enum hrtimer_restart tune_timer_cb(struct hrtimer *timer)
 
 static inline void calibration_timer_update(struct tegra_cl_dvfs *cld)
 {
-	if (!cld->calibration_delay)
-		return;
-	mod_timer(&cld->calibration_timer,
-		  jiffies + cld->calibration_delay + 1);
+	/*
+	 * Forced output must be disabled in closed loop mode outside of
+	 * calibration. It may be temporarily enabled during calibration;
+	 * use timer update to clean up.
+	 */
+	output_force_disable(cld);
+
+	if (cld->calibration_delay)
+		mod_timer(&cld->calibration_timer,
+			  jiffies + cld->calibration_delay + 1);
 }
 
 static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
@@ -1025,6 +1030,37 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 		return;
 	cld->last_calibration = now;
 
+	/* Defer calibration if forced output was left enabled */
+	val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
+	if (val & CL_DVFS_OUTPUT_FORCE_ENABLE) {
+		calibration_timer_update(cld);
+		return;
+	}
+
+	/*
+	 * Check if we need to force minimum output during calibration.
+	 *
+	 * Considerations for selecting TEGRA_CL_DVFS_CALIBRATE_FORCE_VMIN.
+	 * - if there is no voltage enforcement underneath this driver, no need
+	 * to select defer option.
+	 *
+	 *  - if SoC has internal pm controller that controls voltage while CPU
+	 * cluster is idle, and restores force_val on idle exit, the following
+	 * trade-offs applied:
+	 *
+	 * a) force: DVCO calibration is accurate, but calibration time is
+	 * increased by 2 sample periods and target module maybe under-clocked
+	 * during that time,
+	 * b) don't force: calibration results depend on whether flag
+	 * TEGRA_CL_DVFS_DEFER_FORCE_CALIBRATE is set -- see description below.
+	 */
+	if (cld->p_data->flags & TEGRA_CL_DVFS_CALIBRATE_FORCE_VMIN) {
+		int delay = 2 * GET_SAMPLE_PERIOD(cld);
+		val = output_force_set_val(cld, out_min);
+		output_force_enable(cld, val);
+		udelay(delay);
+	}
+
 	/* Synchronize with sample period, and get rate measurements */
 	switch_monitor(cld, CL_DVFS_MONITOR_CTRL_FREQ);
 
@@ -1043,6 +1079,7 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 		return;
 	}
 
+	/* Get output (voltage) measurements */
 	if (is_i2c(cld)) {
 		/* Defer calibration if I2C transaction is pending */
 		val = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
@@ -1052,13 +1089,6 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 		}
 		val = (val >> CL_DVFS_I2C_STS_I2C_LAST_SHIFT) & OUT_MASK;
 	} else {
-		/* Forced output must be disabled in closed loop mode */
-		val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
-		if (val & CL_DVFS_OUTPUT_FORCE_ENABLE) {
-			output_force_disable(cld);
-			calibration_timer_update(cld);
-			return;
-		}
 		/* Get last output (there is no such thing as pending PWM) */
 		val = get_last_output(cld);
 
@@ -1069,6 +1099,15 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 		}
 	}
 
+	if (cld->p_data->flags & TEGRA_CL_DVFS_CALIBRATE_FORCE_VMIN) {
+		/* Defer calibration if forced and read outputs do not match */
+		if (val != out_min) {
+			calibration_timer_update(cld);
+			return;
+		}
+		output_force_disable(cld);
+	}
+
 	/*
 	 * Check if we need to defer calibration when voltage is matching
 	 * request force_val.
@@ -1077,7 +1116,7 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 	 * - if there is no voltage enforcement underneath this driver, no need
 	 * to select defer option.
 	 *
-	 *  - if CPU has internal pm controller that controls voltage while CPU
+	 *  - if SoC has internal pm controller that controls voltage while CPU
 	 * cluster is idle, and restores force_val on idle exit, the following
 	 * trade-offs applied:
 	 *
@@ -2118,7 +2157,7 @@ static int tegra_cl_dvfs_force_output(void *data, unsigned int out_sel)
 	val = output_force_set_val(cld, out_sel);
 	if ((cld->mode < TEGRA_CL_DVFS_CLOSED_LOOP) &&
 	    !(val & CL_DVFS_OUTPUT_FORCE_ENABLE)) {
-		output_force_enable(cld);
+		output_force_enable(cld, val);
 		/* enable output only if bypass h/w is alive */
 		if (!cld->safe_dvfs->dfll_data.is_bypass_down ||
 		    !cld->safe_dvfs->dfll_data.is_bypass_down())
@@ -2637,8 +2676,13 @@ static int cl_dvfs_dt_parse_pdata(struct platform_device *pdev,
 		flags |= TEGRA_CL_DVFS_DATA_NEW_NO_USE;
 	if (!of_find_property(dn, "dynamic-output-lut-workaround", NULL))
 		flags |= TEGRA_CL_DVFS_DYN_OUTPUT_CFG;	/* inverse polarity */
-	if (of_find_property(dn, "defer-force-calibrate", NULL))
-		flags |= TEGRA_CL_DVFS_DEFER_FORCE_CALIBRATE;
+	if (flags & TEGRA_CL_DVFS_HAS_IDLE_OVERRIDE) {
+		/* Properties below are accepted only with idle override */
+		if (of_find_property(dn, "defer-force-calibrate", NULL))
+			flags |= TEGRA_CL_DVFS_DEFER_FORCE_CALIBRATE;
+		if (of_find_property(dn, "calibrate-force-vmin", NULL))
+			flags |= TEGRA_CL_DVFS_CALIBRATE_FORCE_VMIN;
+	}
 	p_data->flags = flags;
 	dev_dbg(&pdev->dev, "DT: flags: 0x%x\n", p_data->flags);
 
@@ -2946,7 +2990,6 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 		output_enable(cld);
 		set_mode(cld, TEGRA_CL_DVFS_CLOSED_LOOP);
 		set_request(cld, req);
-		output_force_disable(cld);
 		calibration_timer_update(cld);
 		return 0;
 
@@ -3338,7 +3381,7 @@ static int fout_mv_set(void *data, u64 val)
 			find_vdd_map_entry(cld, (int)val, false)->reg_value;
 		v = output_force_set_val(cld, out_v);
 		if (!(v & CL_DVFS_OUTPUT_FORCE_ENABLE))
-			output_force_enable(cld);
+			output_force_enable(cld, v);
 	} else {
 		output_force_disable(cld);
 	}
