@@ -389,6 +389,7 @@ struct arm_smmu_device {
 	u32				features;
 
 #define ARM_SMMU_OPT_SECURE_CFG_ACCESS (1 << 0)
+#define ARM_SMMU_OPT_BROKEN_SIM_IRQ    (1 << 1)
 	u32				options;
 	enum arm_smmu_arch_version	version;
 
@@ -519,6 +520,7 @@ struct arm_smmu_option_prop {
 static struct arm_smmu_option_prop arm_smmu_options[] = {
 	{ ARM_SMMU_OPT_SECURE_CFG_ACCESS, "calxeda,smmu-secure-config-access" },
 	{ ARM_SMMU_OPT_SECURE_CFG_ACCESS, "-calxeda,smmu-secure-config-access" },
+	{ ARM_SMMU_OPT_BROKEN_SIM_IRQ, "linsim,smmu-broken-sim-irq" },
 	{ 0, NULL},
 };
 
@@ -2016,7 +2018,8 @@ out_put_group:
 	if (ret)
 		goto err_attach_dev;
 
-	iommu_set_fault_handler(mapping->domain, arm_iommu_fault, 0);
+	if (smmu->options & ARM_SMMU_OPT_BROKEN_SIM_IRQ)
+		iommu_set_fault_handler(mapping->domain, arm_iommu_fault, 0);
 
 	return 0;
 
