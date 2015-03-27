@@ -1341,4 +1341,11 @@
 			depth = <80>;
 		};
 	};
+
+	tegra_carveouts {
+		compatible = "nvidia,carveouts";
+		iommus = <&smmu TEGRA_SWGROUP_HC>,
+			 <&smmu TEGRA_SWGROUP_AVPC>;
+		status = "okay";
+	};
 };

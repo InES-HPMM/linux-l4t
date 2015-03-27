@@ -190,4 +190,10 @@
 			 <&smmu TEGRA_SWGROUP_VDE>;
 		ivc_queue = <&tegra_hv 21>;
 	};
+
+	tegra_carveouts {
+		compatible = "nvidia,carveouts";
+		iommus = <&smmu TEGRA_SWGROUP_HC>;
+		status = "okay";
+	};
 };
