@@ -26,17 +26,22 @@
 #define TEGRA210_CLK_ID_TIMER		5
 #define TEGRA210_CLK_ID_UARTA		6
 #define TEGRA210_CLK_ID_UARTB		7
-/* FIXME: IDs 8 ... 10 to be assigned */
+/* FIXME: ID 8 to be assigned */
+#define TEGRA210_CLK_ID_SDMMC2		9
+/* FIXME: ID 10 to be assigned */
 #define TEGRA210_CLK_ID_I2S1		11
 #define TEGRA210_CLK_ID_I2C1		12
-/* FIXME: IDs 13 ... 16 to be assigned */
+/* FIXME: ID 13 to be assigned */
+#define TEGRA210_CLK_ID_SDMMC1		14
+#define TEGRA210_CLK_ID_SDMMC4		15
+/* FIXME: ID 16 to be assigned */
 #define TEGRA210_CLK_ID_PWM		17
 #define TEGRA210_CLK_ID_I2S2		18
 /* FIXME: IDs 19 ... 21 to be assigned */
 #define TEGRA210_CLK_ID_USBD		22
 /* FIXME: ID 23 to be assigned */
 #define TEGRA210_CLK_ID_SATA_AUX	24
-/* FIXME: IDs 25 to be assigned */
+/* FIXME: ID 25 to be assigned */
 #define TEGRA210_CLK_ID_DISP2		26
 #define TEGRA210_CLK_ID_DISP1		27
 #define TEGRA210_CLK_ID_HOST1X		28
@@ -69,7 +74,7 @@
 /* FIXME: ID 66 to be assigned */
 #define TEGRA210_CLK_ID_I2C3		67
 #define TEGRA210_CLK_ID_SBC4		68
-/* FIXME: IDs 69 to be assigned */
+#define TEGRA210_CLK_ID_SDMMC3		69
 #define TEGRA210_CLK_ID_PCIE		70
 #define TEGRA210_CLK_ID_OWR		71
 #define TEGRA210_CLK_ID_AFI		72
