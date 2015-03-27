@@ -450,7 +450,7 @@ static int gpadc_thermal_probe(struct platform_device *pdev)
 	gti->ref_channel = iio_channel_get(&pdev->dev, "ref-channel");
 	if (IS_ERR(gti->ref_channel)) {
 		ret = PTR_ERR(gti->ref_channel);
-		if (ret != -EINVAL) {
+		if (ret == -EPROBE_DEFER) {
 			dev_err(&pdev->dev, "IIO channel not found: %d\n", ret);
 			goto scrub_ref;
 		}
