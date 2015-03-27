@@ -446,6 +446,7 @@ static void __smmu_flush_ptc(struct smmu_device *smmu, u32 *pte,
 			     struct page *page)
 {
 	u32 val;
+	ulong flags;
 
 	if (WARN_ON(!virt_addr_valid(pte)))
 		return;
@@ -454,12 +455,14 @@ static void __smmu_flush_ptc(struct smmu_device *smmu, u32 *pte,
 		return;
 
 	val = VA_PAGE_TO_PA_HI(pte, page);
+	spin_lock_irqsave(&smmu->ptc_lock, flags);
 	smmu_write(smmu, val, SMMU_PTC_FLUSH_1);
 
 	val = VA_PAGE_TO_PA(pte, page);
 	val &= SMMU_PTC_FLUSH_ADR_MASK;
 	val |= SMMU_PTC_FLUSH_TYPE_ADR;
 	smmu_write(smmu, val, SMMU_PTC_FLUSH);
+	spin_unlock_irqrestore(&smmu->ptc_lock, flags);
 }
 
 static void smmu_flush_ptc(struct smmu_device *smmu, u32 *pte,
@@ -2225,6 +2228,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 		INIT_LIST_HEAD(&as->client);
 	}
 	spin_lock_init(&smmu->lock);
+	spin_lock_init(&smmu->ptc_lock);
 
 	if (is_tegra_hypervisor_mode() &&
 	    !strcmp(match->compatible, "nvidia,tegra124-smmu-hv"))

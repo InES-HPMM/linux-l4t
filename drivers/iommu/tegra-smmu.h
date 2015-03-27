@@ -239,6 +239,7 @@ struct smmu_device {
 	unsigned long   iovmm_base;     /* remappable base address */
 	unsigned long   page_count;     /* total remappable size */
 	spinlock_t      lock;
+	spinlock_t      ptc_lock;
 	char            *name;
 	struct device   *dev;
 	u64             swgids;         /* memory client ID bitmap */
