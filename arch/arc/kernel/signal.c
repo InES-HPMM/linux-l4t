@@ -166,18 +166,6 @@ static inline void __user *get_sigframe(struct k_sigaction *ka,
 	return frame;
 }
 
-/*
- * translate the signal
- */
-static inline int map_sig(int sig)
-{
-	struct thread_info *thread = current_thread_info();
-	if (thread->exec_domain && thread->exec_domain->signal_invmap
-	    && sig < 32)
-		sig = thread->exec_domain->signal_invmap[sig];
-	return sig;
-}
-
 static int
 setup_rt_frame(int signo, struct k_sigaction *ka, siginfo_t *info,
 	       sigset_t *set, struct pt_regs *regs)
@@ -227,7 +215,7 @@ setup_rt_frame(int signo, struct k_sigaction *ka, siginfo_t *info,
 		return err;
 
 	/* #1 arg to the user Signal handler */
-	regs->r0 = map_sig(signo);
+	regs->r0 = signo;
 
 	/* setup PC of user space signal handler */
 	regs->ret = (unsigned long)ka->sa.sa_handler;
