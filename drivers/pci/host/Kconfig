@@ -4,9 +4,15 @@
 comment "PCIE Host Controller Drivers"
 
 config PCI_TEGRA
-        tristate "NVIDIA Tegra PCIe controller"
-        select PCI
-        select TEGRA_USB_SHARED_PAD
-        depends on ARCH_TEGRA_HAS_PCIE
-        help
-          Adds PCIe Host controller driver for tegra based systems
+    tristate "NVIDIA Tegra PCIe controller"
+    default n
+    depends on PLATFORM_TEGRA
+    select PCI
+    select TEGRA_USB_SHARED_PAD
+    select ARCH_TEGRA_HAS_PCIE
+    help
+      Say Y here if you want support for the PCIe host controller found
+      on NVIDIA Tegra SoCs.
+
+config ARCH_TEGRA_HAS_PCIE
+	bool

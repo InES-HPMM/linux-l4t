@@ -69,7 +69,6 @@ config ARCH_TEGRA_3x_SOC
 config ARCH_TEGRA_12x_SOC
 	bool "Tegra 12x family SOC"
 	select ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS if !ARM64
-	select ARCH_TEGRA_HAS_PCIE
 	select CPU_V7
 	select ARM_L1_CACHE_SHIFT_6
 	select ARM_ARCH_TIMER
@@ -137,9 +136,6 @@ config ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
 	bool
 
 config ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
-	bool
-
-config ARCH_TEGRA_HAS_PCIE
 	bool
 
 config ARCH_TEGRA_HAS_SATA
