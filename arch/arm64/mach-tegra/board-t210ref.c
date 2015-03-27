@@ -221,10 +221,10 @@ static void __init tegra_t210ref_early_init(void)
 		tegra_soc_device_init("foster_e");
 	else if (of_machine_is_compatible("nvidia,jetson-e"))
 		tegra_soc_device_init("jetson_e");
-	else if (of_machine_is_compatible("nvidia,hawkeye"))
-		tegra_soc_device_init("hawkeye");
 	else if (of_machine_is_compatible("nvidia,odin"))
 		tegra_soc_device_init("odin");
+	else if (of_machine_is_compatible("nvidia,he2290"))
+		tegra_soc_device_init("he2290");
 }
 
 static struct tegra_suspend_platform_data t210ref_suspend_data = {
@@ -412,8 +412,8 @@ static const char * const t210ref_dt_board_compat[] = {
 	"nvidia,loki-e",
 	"nvidia,foster-e",
 	"nvidia,jetson-e",
-	"nvidia,hawkeye",
 	"nvidia,odin",
+	"nvidia,he2290",
 	NULL
 };
 
