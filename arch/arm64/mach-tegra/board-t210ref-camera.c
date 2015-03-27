@@ -139,17 +139,25 @@ static struct ov5693_regulators ov5693_regs = {
 	.dovdd = "vif",
 };
 
-static struct ov5693_v4l2_platform_data t210ref_ov5693_rear_data = {
+static struct i2c_board_info t210ref_ov5693_camera_i2c_device = {
+	I2C_BOARD_INFO("ov5693_v4l2", 0x36),
+};
+
+static struct ov5693_v4l2_platform_data t210ref_ov5693_ab_data = {
 	.regulators = &ov5693_regs,
+	.use_cam_gpio = 1,
 	.gpio_pwdn = 151, /* TEGRA_GPIO_PS7 */
 };
 
-static struct i2c_board_info t210ref_ov5693_rear_camera_i2c_device = {
-	I2C_BOARD_INFO("ov5693_v4l2", 0x10),
+static struct ov5693_v4l2_platform_data t210ref_ov5693_cd_data = {
+	.regulators = &ov5693_regs,
+	.use_cam_gpio = 1,
+	.gpio_pwdn = 152, /* TEGRA_GPIO_PT0 */
 };
 
+/* OV5693 on CSI A */
 static struct tegra_camera_platform_data
-t210ref_ov5693_rear_camera_platform_data = {
+t210ref_ov5693_a_camera_platform_data = {
 	.flip_v			= 0,
 	.flip_h			= 0,
 	.port			= TEGRA_CAMERA_PORT_CSI_A,
@@ -157,35 +165,55 @@ t210ref_ov5693_rear_camera_platform_data = {
 	.continuous_clk		= 0,
 };
 
-static struct soc_camera_link ov5693_rear_iclink = {
+static struct soc_camera_link ov5693_a_iclink = {
 	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
-	.board_info	= &t210ref_ov5693_rear_camera_i2c_device,
+	.board_info	= &t210ref_ov5693_camera_i2c_device,
 	.module_name	= "ov5693_v4l2",
-	.i2c_adapter_id	= 6, /* VI2 I2C controller */
+	.i2c_adapter_id	= 33, /* VI2 I2C controller */
 	.power		= t210ref_ov5693_power,
-	.priv		= &t210ref_ov5693_rear_camera_platform_data,
-	.dev_priv	= &t210ref_ov5693_rear_data,
+	.priv		= &t210ref_ov5693_a_camera_platform_data,
+	.dev_priv	= &t210ref_ov5693_ab_data,
 };
 
-static struct platform_device t210ref_ov5693_rear_soc_camera_device = {
+static struct platform_device t210ref_ov5693_a_soc_camera_device = {
 	.name	= "soc-camera-pdrv",
 	.id	= 0,
 	.dev	= {
-		.platform_data = &ov5693_rear_iclink,
+		.platform_data = &ov5693_a_iclink,
 	},
 };
 
-static struct ov5693_v4l2_platform_data t210ref_ov5693_front_data = {
-	.regulators = &ov5693_regs,
-	.gpio_pwdn = 152, /* TEGRA_GPIO_PT0 */
-};
-
-static struct i2c_board_info t210ref_ov5693_front_camera_i2c_device = {
-	I2C_BOARD_INFO("ov5693_v4l2", 0x36),
-};
-
+/* OV5693 on CSI B */
 static struct tegra_camera_platform_data
-t210ref_ov5693_front_camera_platform_data = {
+t210ref_ov5693_b_camera_platform_data = {
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.port			= TEGRA_CAMERA_PORT_CSI_B,
+	.lanes			= 2,
+	.continuous_clk		= 0,
+};
+
+static struct soc_camera_link ov5693_b_iclink = {
+	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
+	.board_info	= &t210ref_ov5693_camera_i2c_device,
+	.module_name	= "ov5693_v4l2",
+	.i2c_adapter_id	= 31, /* VI2 I2C controller */
+	.power		= t210ref_ov5693_power,
+	.priv		= &t210ref_ov5693_b_camera_platform_data,
+	.dev_priv	= &t210ref_ov5693_ab_data,
+};
+
+static struct platform_device t210ref_ov5693_b_soc_camera_device = {
+	.name	= "soc-camera-pdrv",
+	.id	= 1,
+	.dev	= {
+		.platform_data = &ov5693_b_iclink,
+	},
+};
+
+/* OV5693 on CSI C */
+static struct tegra_camera_platform_data
+t210ref_ov5693_c_camera_platform_data = {
 	.flip_v			= 0,
 	.flip_h			= 0,
 	.port			= TEGRA_CAMERA_PORT_CSI_C,
@@ -193,21 +221,49 @@ t210ref_ov5693_front_camera_platform_data = {
 	.continuous_clk		= 0,
 };
 
-static struct soc_camera_link ov5693_front_iclink = {
+static struct soc_camera_link ov5693_c_iclink = {
 	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
-	.board_info	= &t210ref_ov5693_front_camera_i2c_device,
+	.board_info	= &t210ref_ov5693_camera_i2c_device,
 	.module_name	= "ov5693_v4l2",
-	.i2c_adapter_id	= 6, /* VI2 I2C controller */
+	.i2c_adapter_id	= 32, /* VI2 I2C controller */
 	.power		= t210ref_ov5693_power,
-	.priv		= &t210ref_ov5693_front_camera_platform_data,
-	.dev_priv	= &t210ref_ov5693_front_data,
+	.priv		= &t210ref_ov5693_c_camera_platform_data,
+	.dev_priv	= &t210ref_ov5693_cd_data,
 };
 
-static struct platform_device t210ref_ov5693_front_soc_camera_device = {
+static struct platform_device t210ref_ov5693_c_soc_camera_device = {
 	.name	= "soc-camera-pdrv",
-	.id	= 1,
+	.id	= 2,
 	.dev	= {
-		.platform_data = &ov5693_front_iclink,
+		.platform_data = &ov5693_c_iclink,
+	},
+};
+
+/* OV5693 on CSI D */
+static struct tegra_camera_platform_data
+t210ref_ov5693_d_camera_platform_data = {
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.port			= TEGRA_CAMERA_PORT_CSI_D,
+	.lanes			= 2,
+	.continuous_clk		= 0,
+};
+
+static struct soc_camera_link ov5693_d_iclink = {
+	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
+	.board_info	= &t210ref_ov5693_camera_i2c_device,
+	.module_name	= "ov5693_v4l2",
+	.i2c_adapter_id	= 30, /* VI2 I2C controller */
+	.power		= t210ref_ov5693_power,
+	.priv		= &t210ref_ov5693_d_camera_platform_data,
+	.dev_priv	= &t210ref_ov5693_cd_data,
+};
+
+static struct platform_device t210ref_ov5693_d_soc_camera_device = {
+	.name	= "soc-camera-pdrv",
+	.id	= 3,
+	.dev	= {
+		.platform_data = &ov5693_d_iclink,
 	},
 };
 #endif
@@ -224,8 +280,10 @@ int t210ref_camera_init(void)
 #endif
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_OV5693)
-	platform_device_register(&t210ref_ov5693_rear_soc_camera_device);
-	platform_device_register(&t210ref_ov5693_front_soc_camera_device);
+	platform_device_register(&t210ref_ov5693_a_soc_camera_device);
+	platform_device_register(&t210ref_ov5693_b_soc_camera_device);
+	platform_device_register(&t210ref_ov5693_c_soc_camera_device);
+	platform_device_register(&t210ref_ov5693_d_soc_camera_device);
 #endif
 
 	return 0;
