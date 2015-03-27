@@ -1042,8 +1042,19 @@ static int vi2_capture_setup(struct vi2_channel *chan)
 			IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC))
 		vi2_capture_setup_cil_t124(vi2_cam, port);
 	else {
-		cil_regs_write(vi2_cam, chan, TEGRA_CSI_CIL_PAD_CONFIG0,
-				(port & 0x1) ? 0x0 : 0x10000);
+		if (port & 0x1) {
+			cil_regs_write(vi2_cam, chan,
+				       TEGRA_CSI_CIL_PAD_CONFIG0 - 0x34, 0x0);
+			cil_regs_write(vi2_cam, chan, TEGRA_CSI_CIL_PAD_CONFIG0,
+				       0x0);
+		} else {
+			cil_regs_write(vi2_cam, chan, TEGRA_CSI_CIL_PAD_CONFIG0,
+				       0x10000);
+			cil_regs_write(vi2_cam, chan,
+				       TEGRA_CSI_CIL_PAD_CONFIG0 + 0x34,
+				       0x0);
+		}
+
 		cil_regs_write(vi2_cam, chan, TEGRA_CSI_CIL_INTERRUPT_MASK,
 			       0x0);
 		cil_regs_write(vi2_cam, chan, TEGRA_CSI_CIL_PHY_CONTROL, 0xA);
@@ -1067,7 +1078,7 @@ static int vi2_capture_setup(struct vi2_channel *chan)
 	csi_pp_regs_write(vi2_cam, chan, TEGRA_CSI_PIXEL_PARSER_INTERRUPT_MASK,
 			  0x0);
 	csi_pp_regs_write(vi2_cam, chan, TEGRA_CSI_PIXEL_STREAM_CONTROL0,
-			0x280301f0 | (port & 0x1));
+			  0x280301f0 | (port & 0x1));
 	csi_pp_regs_write(vi2_cam, chan, TEGRA_CSI_PIXEL_STREAM_PP_COMMAND,
 			  0xf007);
 	csi_pp_regs_write(vi2_cam, chan, TEGRA_CSI_PIXEL_STREAM_CONTROL1, 0x11);
@@ -1075,7 +1086,7 @@ static int vi2_capture_setup(struct vi2_channel *chan)
 	csi_pp_regs_write(vi2_cam, chan, TEGRA_CSI_PIXEL_STREAM_EXPECTED_FRAME,
 			  0x0);
 	csi_pp_regs_write(vi2_cam, chan, TEGRA_CSI_INPUT_STREAM_CONTROL,
-			0x3f0000 | (lanes - 1));
+			  0x3f0000 | (lanes - 1));
 
 	/* CIL PHY register setup */
 	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) ||
@@ -1084,8 +1095,14 @@ static int vi2_capture_setup(struct vi2_channel *chan)
 	else {
 		if (lanes == 4)
 			cil_phy_reg_write(vi2_cam, chan, 0x0101);
-		else
-			cil_phy_reg_write(vi2_cam, chan, 0x0201);
+		else {
+			u32 val = cil_phy_reg_read(vi2_cam, chan);
+			if (port & 0x1)
+				val = (val & ~(0x100)) | (0x100);
+			else
+				val = (val & ~(0x1)) | (0x1);
+			cil_phy_reg_write(vi2_cam, chan, val);
+		}
 	}
 
 	if (vi2_cam->tpg_mode) {
