@@ -330,6 +330,8 @@
 			dt-override-status-odm-data = <0x00C00000 0x00400000>;
 			compatible = "ti,bq27441";
 			reg = <0x55>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(Q, 5) 0x0>;
 			ti,design-capacity = <5200>;
 			ti,design-energy = <19760>;
 			ti,taper-rate = <318>;
