@@ -27,6 +27,8 @@ Optional properties:
 		generated. This is milli-celcius like for 120degC, it is
 		120000.
 - maxim,enable-active-discharge: Boolean, enable active discharge.
+- maxim,enable-bias: Boolean, Enables step-down regulator bias to reduce the
+		time delay to begin the output voltage rampactive discharge.
 
 Example:
 
