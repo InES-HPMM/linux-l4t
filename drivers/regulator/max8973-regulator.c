@@ -651,6 +651,9 @@ static struct max8973_regulator_platform_data *max8973_parse_dt(
 	if (!ret)
 		pdata->control_flags = pval;
 
+	ret = of_property_read_bool(np, "maxim,enable-bias");
+	if (ret)
+		pdata->control_flags |= MAX8973_CONTROL_BIAS_ENABLE;
 
 	ret = of_property_read_bool(np, "maxim,enable-active-discharge");
 	if (ret)
