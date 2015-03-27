@@ -97,8 +97,9 @@ NVIDIA TEGRA114 Display Serial Interface
 
  Required properties:
  - name: Should be "display-timings"
-
- - Child nodes represent modes. Several modes can be prepared.
+ - Child nodes represent modes. Several modes can be prepared. For VRR panels, the panel's native mode
+   must be placed in index VRR_NATIVE_MODE_IDX (value 1, i.e. second mode in the list, as of the writing
+   of this comment).
 
 1.A.i.x) NVIDIA Display Controller Mode timing
  This must be contained in display-timings parent node. This contains mode settings, including
