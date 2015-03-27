@@ -1444,6 +1444,24 @@ unsigned long tegra_clk_measure_input_freq(void)
 	return osc_freq;
 }
 
+/* Tegra main rate (CLK_M) sysfs node */
+static ssize_t tegra_main_rate_show(struct kobject *kobj,
+				    struct kobj_attribute *attr, char *buf)
+{
+	struct clk *c = tegra_get_clock_by_name("clk_m");
+
+	if (c)
+		return sprintf(buf, "%lu\n", clk_get_rate(c));
+	return sprintf(buf, "N/A\n");
+}
+static struct kobj_attribute tegra_main_rate = __ATTR_RO(tegra_main_rate);
+
+static int __init tegra_main_rate_sysfs_init(void)
+{
+	return sysfs_create_file(kernel_kobj, &tegra_main_rate.attr);
+}
+late_initcall(tegra_main_rate_sysfs_init);
+
 
 #ifdef CONFIG_DEBUG_FS
 
