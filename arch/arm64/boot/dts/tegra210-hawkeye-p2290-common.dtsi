@@ -52,8 +52,8 @@
 #include "tegra210-platforms/tegra210-hawkeye-comms.dtsi"
 
 / {
-	model = "hawkeye";
-	compatible = "nvidia,hawkeye", "nvidia,tegra210";
+	model = "he2290";
+	compatible = "nvidia,he2290", "nvidia,tegra210";
 	nvidia,fastboot-usb-pid = <0xcf0e>;
 
 	nvidia,pmu-boardid = "2290:0000:A0";
