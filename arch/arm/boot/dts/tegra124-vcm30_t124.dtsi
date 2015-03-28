@@ -284,6 +284,27 @@
 		};
 	};
 
+	extcon {
+		compatible = "simple-bus";
+
+		id_gpio_extcon: extcon@0 {
+			compatible = "extcon-gpio";
+			extcon-gpio,name = "OTG-nID";
+			extcon-gpio,cable-name = "OTG nID";
+			#extcon-cells = <1>;
+			status="disabled";
+		};
+
+		vbus_gpio_extcon: extcon@1 {
+			compatible = "extcon-gpio";
+			extcon-gpio,name = "gadget-VBUS";
+			extcon-gpio,default-connected;
+			extcon-gpio,cable-name = "gadget VBUS";
+			#extcon-cells = <1>;
+			status="disabled";
+		};
+	};
+
 	udc@7d000000 {
 		nvidia,port-otg;
 		/*xcvr-setup-offset is in 2s complement for negative values*/
