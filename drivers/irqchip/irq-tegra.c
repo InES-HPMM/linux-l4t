@@ -4,7 +4,7 @@
  * Author:
  *	Colin Cross <ccross@android.com>
  *
- * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -34,6 +34,7 @@
 #include <linux/cpumask.h>	/* Required by asm/hardware/gic.h */
 #include <linux/cpu_pm.h>
 #include <linux/tegra-soc.h>
+#include <asm/fiq.h>
 
 /* HACK: will be removed once cpuidle is moved to drivers */
 #include "../../arch/arm/mach-tegra/pm.h"
@@ -94,6 +95,7 @@ static bool tegra_irq_range_valid(int irq)
 }
 
 #ifdef CONFIG_FIQ
+#if !defined(CONFIG_ARCH_TEGRA_12x_SOC) && !defined(CONFIG_ARCH_TEGRA_13x_SOC)
 static void tegra_legacy_select_fiq(unsigned int irq, bool fiq)
 {
 	void __iomem *base;
@@ -129,22 +131,40 @@ static void tegra_fiq_unmask(struct irq_data *d)
 	base = ictlr_reg_base[leg_irq >> 5];
 	writel(1 << (leg_irq & 31), base + ICTLR_CPU_IER_SET(0));
 }
+#endif
 
 void tegra_fiq_enable(int irq)
 {
-	/* enable FIQ */
-	u32 val = readl(gic_cpu_base + GIC_CPU_CTRL);
-	val &= ~8; /* pass FIQs through */
-	val |= 2; /* enableNS */
-	writel(val, gic_cpu_base + GIC_CPU_CTRL);
-	tegra_legacy_select_fiq(irq, true);
-	tegra_fiq_unmask(irq_get_irq_data(irq));
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_13x_SOC)
+	/* For T12x, use generic GIC API since legacy FIQ
+	 * is not connected to GIC in T12x SOC.
+	 */
+	enable_fiq(irq);
+#endif
+	/* For T13x which uses T12x SOC, FIQ configuration
+	 * should only be done in secure monitor.
+	 */
+#else
+	if (irq >= FIRST_LEGACY_IRQ) {
+		tegra_legacy_select_fiq(irq, true);
+		tegra_fiq_unmask(irq_get_irq_data(irq));
+	}
+#endif
 }
 
 void tegra_fiq_disable(int irq)
 {
-	tegra_fiq_mask(irq_get_irq_data(irq));
-	tegra_legacy_select_fiq(irq, false);
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_13x_SOC)
+	disable_fiq(irq);
+#endif
+#else
+	if (irq >= FIRST_LEGACY_IRQ) {
+		tegra_fiq_mask(irq_get_irq_data(irq));
+		tegra_legacy_select_fiq(irq, false);
+	}
+#endif
 }
 #endif /* CONFIG_FIQ */
 
