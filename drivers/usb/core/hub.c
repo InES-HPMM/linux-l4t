@@ -2174,7 +2174,9 @@ static void xotg_hnp_polling_work(struct work_struct *work)
 			/* OTG MESSAGE: report errors here,
 			 * customize to match your product.
 			 */
-			dev_err(&udev->dev, "can't set HNP mode %d\n", ret);
+			dev_err(&udev->dev,
+			"No response from Device. can not set HNP mode %d\n",
+									 ret);
 			bus->b_hnp_enable = 0;
 		} else {
 			bus->b_hnp_enable = 1;

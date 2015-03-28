@@ -1120,8 +1120,12 @@ static void xotg_work(struct work_struct *work)
 			xotg->xotg_timer_list.b_ase0_brst_tmout) {
 			xotg_info(xotg->dev,
 				"state b_wait_acon -> b_peripheral\n");
-			if (xotg->xotg_timer_list.b_ase0_brst_tmout)
+			if (xotg->xotg_timer_list.b_ase0_brst_tmout) {
+				xotg_warn(xotg->dev,
+					"No Repsonse from A-Device\n");
 				xotg->xotg_timer_list.b_ase0_brst_tmout = 0;
+
+			}
 			/* this case is when A is signalling a resume
 			 * before it saw B lower its D+ resistor
 			 */
@@ -1340,8 +1344,11 @@ static void xotg_work(struct work_struct *work)
 			xotg->xotg_timer_list.a_wait_bcon_tmout) {
 			xotg_info(xotg->dev,
 				"state a_wait_bcon -> a_wait_vfall\n");
-			if (xotg->xotg_timer_list.a_wait_bcon_tmout)
+			if (xotg->xotg_timer_list.a_wait_bcon_tmout) {
 				xotg->xotg_timer_list.a_wait_bcon_tmout = 0;
+				xotg_warn(xotg->dev,
+					"No Response from Device\n");
+			}
 			state_changed = 1;
 			xotg->phy.state = OTG_STATE_A_WAIT_VFALL;
 
