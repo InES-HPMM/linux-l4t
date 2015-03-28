@@ -58,7 +58,7 @@
 /* FIXME: IDs 56 ... 57 to be assigned */
 #define TEGRA210_CLK_ID_USB2		58
 /* FIXME: IDs 59 ... 61 to be assigned */
-#define TEGRA210_CLK_ID_BSEA		62
+/* ID 62 is reserved */
 #define TEGRA210_CLK_ID_BSEV		63
 /* FIXME: ID 64 to be assigned */
 #define TEGRA210_CLK_ID_UARTD		65
