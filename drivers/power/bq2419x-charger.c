@@ -130,6 +130,7 @@ struct bq2419x_chip {
 	int				thermal_init_retry;
 	struct extcon_dev		edev;
 	const char			*ext_name;
+	int				last_input_voltage;
 };
 
 static int current_to_reg(const unsigned int *tbl,
@@ -382,6 +383,7 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 			bq2419x->input_src.mask, bq2419x->input_src.val);
 	if (ret < 0)
 		dev_err(bq2419x->dev, "INPUT_SRC_REG write failed %d\n", ret);
+	bq2419x->last_input_voltage = (bq2419x->input_src.val >> 3) & 0xF;
 
 	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_THERM_REG,
 		    bq2419x->ir_comp_therm.mask, bq2419x->ir_comp_therm.val);
@@ -450,12 +452,60 @@ static int bq2419x_disable_otg_mode(struct bq2419x_chip *bq2419x)
 	return ret;
 }
 
+static int bq2419x_charger_input_voltage_configure(
+		struct battery_charger_dev *bc_dev, int battery_soc)
+{
+	struct bq2419x_chip *bq2419x = battery_charger_get_drvdata(bc_dev);
+	struct bq2419x_charger_platform_data *chg_pdata;
+	u32 input_voltage_limit = 0;
+	int ret;
+	int i;
+	int vreg;
+
+	chg_pdata = bq2419x->charger_pdata;
+	if (!bq2419x->cable_connected || !chg_pdata->n_soc_profile)
+		return 0;
+
+	for (i = 0; i < chg_pdata->n_soc_profile; ++i) {
+		if (battery_soc < chg_pdata->soc_range[i]) {
+			if (chg_pdata->input_voltage_soc_limit)
+				input_voltage_limit =
+					chg_pdata->input_voltage_soc_limit[i];
+			break;
+		}
+	}
+
+	if (!input_voltage_limit)
+		return 0;
+
+	/*Configure input voltage limit */
+	vreg = bq2419x_val_to_reg(input_voltage_limit,
+			BQ2419X_INPUT_VINDPM_OFFSET, 80, 4, 0);
+	if (bq2419x->last_input_voltage == vreg)
+		return 0;
+
+	dev_info(bq2419x->dev, "Changing VINDPM to soc:voltage:vreg %d:%d:%d\n",
+			battery_soc, input_voltage_limit, vreg);
+
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_INPUT_SRC_REG,
+				BQ2419X_INPUT_VINDPM_MASK,
+				(vreg << 3));
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "INPUT_VOLTAGE update failed %d\n", ret);
+		return ret;
+	}
+	bq2419x->last_input_voltage = vreg;
+
+	return 0;
+}
+
 static int bq2419x_configure_charging_current(struct bq2419x_chip *bq2419x,
 	int in_current_limit)
 {
 	int val = 0;
 	int ret = 0;
 	int floor = 0;
+	int battery_soc = 0;
 
 	/* Clear EN_HIZ */
 	if (!bq2419x->emulate_input_disconnected) {
@@ -467,6 +517,15 @@ static int bq2419x_configure_charging_current(struct bq2419x_chip *bq2419x,
 			return ret;
 		}
 	}
+
+	/* Configure input voltage limit*/
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_INPUT_SRC_REG,
+			bq2419x->input_src.mask, bq2419x->input_src.val);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "INPUT_SRC_REG update failed %d\n", ret);
+		return ret;
+	}
+	bq2419x->last_input_voltage =  (bq2419x->input_src.val >> 3) & 0xF;
 
 	/* Configure input current limit in steps */
 	val = current_to_reg(iinlim, ARRAY_SIZE(iinlim), in_current_limit);
@@ -483,6 +542,14 @@ static int bq2419x_configure_charging_current(struct bq2419x_chip *bq2419x,
 		udelay(BQ2419x_CHARGING_CURRENT_STEP_DELAY_US);
 	}
 	bq2419x->in_current_limit = in_current_limit;
+
+	if (bq2419x->charger_pdata->n_soc_profile) {
+		battery_soc = battery_gauge_get_battery_soc(bq2419x->bc_dev);
+		if (battery_soc > 0)
+			bq2419x_charger_input_voltage_configure(
+				bq2419x->bc_dev, battery_soc);
+	}
+
 	return ret;
 }
 
@@ -1384,6 +1451,7 @@ static struct battery_charging_ops bq2419x_charger_bci_ops = {
 	.get_charging_status = bq2419x_charger_get_status,
 	.charge_term_configure = bq2419x_charger_termination_configure,
 	.get_input_current_limit = bq2419x_get_input_current_limit,
+	.input_voltage_configure = bq2419x_charger_input_voltage_configure,
 };
 
 static struct battery_charger_info bq2419x_charger_bci = {
@@ -1407,6 +1475,8 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 	batt_reg_node = of_find_node_by_name(np, "charger");
 	if (batt_reg_node) {
 		int auto_rechg_power_on_time;
+		int count;
+		int soc_range_len, inut_volt_lim_len = 0;
 		struct regulator_init_data *batt_init_data;
 		struct bq2419x_charger_platform_data *chg_pdata;
 		struct bq2419x_charger_platform_data *bcharger_pdata;
@@ -1491,6 +1561,43 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 					batt_init_data->num_consumer_supplies;
 		pdata->bcharger_pdata->max_charge_current_mA =
 				batt_init_data->constraints.max_uA / 1000;
+
+		count = of_property_count_u32(batt_reg_node, "ti,soc-range");
+		soc_range_len = (count > 0) ? count : 0;
+
+		if (soc_range_len) {
+			chg_pdata->n_soc_profile = soc_range_len;
+			chg_pdata->soc_range = devm_kzalloc(&client->dev,
+				sizeof(u32) * soc_range_len, GFP_KERNEL);
+			if (!chg_pdata->soc_range)
+				return ERR_PTR(-ENOMEM);
+
+			ret = of_property_read_u32_array(batt_reg_node,
+					"ti,soc-range",
+					chg_pdata->soc_range, soc_range_len);
+			if (ret < 0)
+				return ERR_PTR(ret);
+
+			count =  of_property_count_u32(batt_reg_node,
+					"ti,input-voltage-soc-limit");
+			inut_volt_lim_len = (count > 0) ? count : 0;
+		}
+
+		if (inut_volt_lim_len) {
+			chg_pdata->input_voltage_soc_limit =
+					devm_kzalloc(&client->dev,
+					sizeof(u32) * inut_volt_lim_len,
+					GFP_KERNEL);
+			if (!chg_pdata->input_voltage_soc_limit)
+				return ERR_PTR(-ENOMEM);
+
+			ret = of_property_read_u32_array(batt_reg_node,
+					"ti,input-voltage-soc-limit",
+					chg_pdata->input_voltage_soc_limit,
+					inut_volt_lim_len);
+			if (ret < 0)
+				return ERR_PTR(ret);
+		}
 	}
 
 vbus_node:
