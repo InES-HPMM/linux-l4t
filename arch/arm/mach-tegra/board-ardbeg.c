@@ -1064,8 +1064,7 @@ static int __init ardbeg_touch_init(void)
 					&rm31080ts_t132loki_data,
 					&rm31080a_ardbeg_spi_board[0],
 					ARRAY_SIZE(rm31080a_ardbeg_spi_board));
-		} else if (board_info.board_id == BOARD_P1761 ||
-			of_machine_is_compatible("nvidia,green-arrow")) {
+		} else if (board_info.board_id == BOARD_P1761) {
 			rm31080a_tn8_spi_board[0].irq =
 				gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 			touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
@@ -1268,7 +1267,10 @@ static void __init tegra_ardbeg_late_init(void)
 		ardbeg_emc_init();
 
 	isomgr_init();
-	ardbeg_touch_init();
+
+	if (!of_machine_is_compatible("nvidia,green-arrow" ))
+		ardbeg_touch_init();
+
 	if (board_info.board_id == BOARD_E2548 ||
 			board_info.board_id == BOARD_P2530)
 		loki_panel_init();

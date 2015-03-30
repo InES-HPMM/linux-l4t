@@ -30,8 +30,6 @@
 			platform-id = <RM_PLATFORM_T008>;
 			name-of-clock = "clk_out_2";
 			name-of-clock-con = "extern2";
-			avdd-supply = <&avdd_ts_3v3>;
-			dvdd-supply = <&vdd_ts_1v8>;
 		};
 	};
 };
