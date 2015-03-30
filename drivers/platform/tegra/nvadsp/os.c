@@ -80,14 +80,18 @@
 
 #define LOGGER_TIMEOUT		20 /* in ms */
 #define ADSP_WFE_TIMEOUT	5000 /* in ms */
+#define LOGGER_COMPLETE_TIMEOUT	5000 /* in ms */
 
 #define MIN_ADSP_FREQ 51200000lu /* in Hz */
 
 struct nvadsp_debug_log {
-	struct device *dev;
-	char *debug_ram_rdr;
-	int debug_ram_sz;
-	int ram_iter;
+	struct device		*dev;
+	char			*debug_ram_rdr;
+	int			debug_ram_sz;
+	int			ram_iter;
+	atomic_t		is_opened;
+	wait_queue_head_t	wait_queue;
+	struct completion	complete;
 };
 
 struct nvadsp_os_data {
@@ -124,25 +128,67 @@ static struct nvadsp_mbox adsp_com_mbox;
 static DECLARE_COMPLETION(entered_wfi);
 
 static void __nvadsp_os_stop(bool);
-#ifdef CONFIG_DEBUG_FS
 
+#ifdef CONFIG_DEBUG_FS
 static int adsp_logger_open(struct inode *inode, struct file *file)
 {
-	char *start;
 	struct nvadsp_debug_log *logger = inode->i_private;
+	struct nvadsp_os_data *os_data;
+	int ret = -EBUSY;
+	char *start;
+
+	os_data = container_of(logger, struct nvadsp_os_data, logger);
+
+	/*
+	 * checks if os_opened decrements to zero and if returns true. If true
+	 * then there has been no open.
+	*/
+	if (!atomic_dec_and_test(&logger->is_opened)) {
+		atomic_inc(&logger->is_opened);
+		goto err_ret;
+	}
+
+	ret = wait_event_interruptible(logger->wait_queue,
+				os_data->adsp_os_fw_loaded);
+	if (ret == -ERESTARTSYS)  /* check if interrupted */
+		goto err;
 
 	/* loop till writer is initilized with SOH */
 	do {
-		msleep(20);
-		start = !IS_ERR_OR_NULL(logger->debug_ram_rdr) ?
-				strchr(logger->debug_ram_rdr, SOH) : NULL;
+
+		ret = wait_event_interruptible_timeout(logger->wait_queue,
+			memchr(logger->debug_ram_rdr, SOH,
+			logger->debug_ram_sz),
+			msecs_to_jiffies(LOGGER_TIMEOUT));
+		if (ret == -ERESTARTSYS)  /* check if interrupted */
+			goto err;
+
+		start = memchr(logger->debug_ram_rdr, SOH,
+			logger->debug_ram_sz);
 	} while (!start);
 
 	/* maxdiff can be 0, therefore valid */
 	logger->ram_iter = start - logger->debug_ram_rdr;
 
 	file->private_data = logger;
+	return 0;
+err:
+	/* reset to 1 so as to mention the node is free */
+	atomic_set(&logger->is_opened, 1);
+err_ret:
+	return ret;
+}
 
+
+static int adsp_logger_flush(struct file *file, fl_owner_t id)
+{
+	struct nvadsp_debug_log *logger = file->private_data;
+	struct device *dev = logger->dev;
+
+	dev_dbg(dev, "%s\n", __func__);
+
+	/* reset to 1 so as to mention the node is free */
+	atomic_set(&logger->is_opened, 1);
 	return 0;
 }
 
@@ -154,10 +200,11 @@ static int adsp_logger_release(struct inode *inode, struct file *file)
 static ssize_t adsp_logger_read(struct file *file, char __user *buf,
 			 size_t count, loff_t *ppos)
 {
-	char last_char;
-	ssize_t return_char = 1;
 	struct nvadsp_debug_log *logger = file->private_data;
 	struct device *dev = logger->dev;
+	ssize_t ret_num_char = 1;
+	char last_char;
+
 loop:
 	last_char = logger->debug_ram_rdr[logger->ram_iter];
 
@@ -167,24 +214,35 @@ loop:
 
 			if (copy_to_user(buf, ADSP_TAG, sizeof(ADSP_TAG) - 1)) {
 				dev_err(dev, "%s failed\n", __func__);
-				return -EFAULT;
+				ret_num_char = -EFAULT;
+				goto exit;
 			}
-			return_char = sizeof(ADSP_TAG) - 1;
+			ret_num_char = sizeof(ADSP_TAG) - 1;
 
 		} else
 #endif
 		if (copy_to_user(buf, &last_char, 1)) {
 			dev_err(dev, "%s failed\n", __func__);
-			return -EFAULT;
+			ret_num_char = -EFAULT;
+			goto exit;
 		}
 
 		logger->ram_iter =
 			(logger->ram_iter + 1) % logger->debug_ram_sz;
-		return return_char;
+		goto exit;
 	}
 
-	schedule_timeout_interruptible(msecs_to_jiffies(LOGGER_TIMEOUT));
+	complete(&logger->complete);
+	ret_num_char = wait_event_interruptible_timeout(logger->wait_queue,
+		logger->debug_ram_rdr[logger->ram_iter] != EOT,
+		msecs_to_jiffies(LOGGER_TIMEOUT));
+	if (ret_num_char == -ERESTARTSYS) {
+		goto exit;
+	}
 	goto loop;
+
+exit:
+	return ret_num_char;
 }
 
 static const struct file_operations adsp_logger_operations = {
@@ -192,20 +250,25 @@ static const struct file_operations adsp_logger_operations = {
 	.open		= adsp_logger_open,
 	.release	= adsp_logger_release,
 	.llseek		= generic_file_llseek,
+	.flush		= adsp_logger_flush,
 };
 
 static int adsp_create_debug_logger(struct dentry *adsp_debugfs_root)
 {
-	int ret = 0;
+	struct nvadsp_debug_log *logger = &priv.logger;
 	struct device *dev = &priv.pdev->dev;
+	int ret = 0;
 
 	if (IS_ERR_OR_NULL(adsp_debugfs_root)) {
 		ret = -ENOENT;
 		goto err_out;
 	}
 
+	atomic_set(&logger->is_opened, 1);
+	init_waitqueue_head(&logger->wait_queue);
+	init_completion(&logger->complete);
 	if (!debugfs_create_file("adsp_logger", S_IRUGO,
-					adsp_debugfs_root, &priv.logger,
+					adsp_debugfs_root, logger,
 					&adsp_logger_operations)) {
 		dev_err(dev, "unable to create adsp logger debug fs file\n");
 		ret = -ENOENT;
@@ -644,6 +707,7 @@ int nvadsp_os_load(void)
 	drv_data->shared_adsp_os_data = ptr;
 	priv.os_firmware = fw;
 	priv.adsp_os_fw_loaded = true;
+	wake_up(&priv.logger.wait_queue);
 
 	mutex_unlock(&priv.fw_load_lock);
 	return 0;
@@ -790,6 +854,7 @@ int nvadsp_os_start(void)
 	}
 	priv.os_running = drv_data->adsp_os_running = true;
 	drv_data->adsp_os_suspended = false;
+	wake_up(&priv.logger.wait_queue);
 unlock:
 	mutex_unlock(&priv.os_run_lock);
 end:
@@ -892,12 +957,19 @@ static void __nvadsp_os_stop(bool reload)
 	udelay(200);
 
 	if (reload) {
+		struct nvadsp_debug_log *logger = &priv.logger;
+
+		wake_up(&logger->wait_queue);
+		/* wait for LOGGER_TIMEOUT to complete filling the buffer */
+		wait_for_completion_interruptible_timeout(&logger->complete,
+			msecs_to_jiffies(LOGGER_COMPLETE_TIMEOUT));
 		/*
 		 * move ram iterator to 0, since after restart the iterator
 		 * will be pointing to initial position of start.
 		 */
-		priv.logger.debug_ram_rdr[0] = EOT;
-		priv.logger.ram_iter = 0;
+		logger->debug_ram_rdr[0] = EOT;
+		logger->ram_iter = 0;
+
 		/* load a fresh copy of adsp.elf */
 		if (nvadsp_os_elf_load(fw))
 			dev_err(dev, "failed to reload %s\n", NVADSP_FIRMWARE);
