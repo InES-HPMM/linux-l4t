@@ -146,35 +146,23 @@
 
 				regulators {
 					smps123 {
-						regulator-name = "vdd-cpu";
+						regulator-name = "vdd_cpu";
 						regulator-min-microvolt = <650000>;
 						regulator-max-microvolt = <1400000>;
 						regulator-always-on;
 						regulator-boot-on;
 						ti,roof-floor = <PALMAS_EXT_CONTROL_ENABLE1>;
 						ti,config-flags = <8>;
-
-						consumers {
-							c1 {
-								regulator-consumer-supply = "vdd_cpu";
-							};
-						};
 					};
 
 					smps45 {
-						regulator-name = "vdd-gpu";
+						regulator-name = "vdd_gpu";
 						regulator-min-microvolt = <700000>;
 						regulator-max-microvolt = <1400000>;
 						regulator-init-microvolt = <1000000>;
 						regulator-boot-on;
 						ti,roof-floor = <PALMAS_EXT_CONTROL_ENABLE2>;
 						ti,ext-enable-gpio = <&gpio TEGRA_GPIO(R, 5) 0>;
-
-						consumers {
-							c1 {
-								regulator-consumer-supply = "vdd_gpu";
-							};
-						};
 					};
 
 					palmas_smps6: smps6 {
@@ -184,18 +172,12 @@
 					};
 
 					smps7 {
-						regulator-name = "vdd-core";
+						regulator-name = "vdd_core";
 						regulator-min-microvolt = <700000>;
 						regulator-max-microvolt = <1400000>;
 						regulator-always-on;
 						regulator-boot-on;
 						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
-
-						consumers {
-							c1 {
-								regulator-consumer-supply = "vdd_core";
-							};
-						};
 					};
 
 					palmas_smps8: smps8 {
