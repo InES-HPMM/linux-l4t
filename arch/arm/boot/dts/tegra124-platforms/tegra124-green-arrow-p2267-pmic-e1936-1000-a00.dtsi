@@ -72,7 +72,7 @@
 					pin_gpio1 {
 						pins = "gpio1";
 						function = "gpio";
-						bias-disable;
+						bias-pull-up;
 					};
 
 					pin_gpio6 {
