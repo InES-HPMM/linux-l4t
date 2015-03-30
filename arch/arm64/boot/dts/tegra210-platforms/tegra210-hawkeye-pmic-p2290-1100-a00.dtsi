@@ -396,6 +396,8 @@
 				ti,ir-comp-resister-ohm = <1>;
 				ti,pre-charge-current-limit-milliamp = <256>;
 				ti,thermal-regulation-threshold-degc = <120>;
+				ti,soc-range = <50 60 70 80 85 90 95 101>;
+				ti,input-voltage-soc-limit = <4200 4280 4360 4440 4520 4600 4680 4760>;
 			};
 
 			usb0_vbus: vbus {
