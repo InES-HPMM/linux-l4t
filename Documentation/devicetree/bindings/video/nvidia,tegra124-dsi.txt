@@ -63,6 +63,8 @@ NVIDIA TEGRA124 Display Serial Interface
  - nvidia,dsi-n-suspend-cmd: command counts of suspend command sequence, including delay set.
  - nvidia,dsi-early-suspend-cmd: panel required early suspend command sequence.
  - nvidia,dsi-n-early-suspend-cmd: command counts of early suspend command sequence, including delay set.
+ - nvidia,dsi-suspend-stop-stream-late: keep DC stream enabled while issuing suspend sequence; DC stream
+   will be stopped at the end of the suspend sequence.
  - nvidia,dsi-late-resume-cmd: panel required late resume command sequence.
  - nvidia,dsi-n-late-resume-cmd: command counts of late resume command sequence, including delay set.
  - nvidia,dsi-pkt-seq: custom packet sequence since some panels need non standard packet sequence.
