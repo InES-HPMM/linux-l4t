@@ -243,11 +243,9 @@
 		status = "okay";
 	};
 
-	/* the virtual serial device node */
 	tegra_hv_comm {
 		compatible = "nvidia,tegra-hv-comm";
 		status = "okay";
-		/* ivc channel to use definition (second one in tegra_hv) */
 		ivc = <&tegra_hv 1>;
 	};
 

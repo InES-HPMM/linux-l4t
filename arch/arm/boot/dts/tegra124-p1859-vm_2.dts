@@ -339,11 +339,9 @@
 		ivc-queue4 = <&tegra_hv 12>;
 	};
 
-	/* the virtual serial device node */
 	tegra_hv_comm {
 		compatible = "nvidia,tegra-hv-comm";
 		status = "okay";
-		/* ivc channel to use definition (second one in tegra_hv) */
 		ivc = <&tegra_hv 1>;
 	};
 
