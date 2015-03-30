@@ -127,6 +127,10 @@ static void of_get_regulation_constraints(struct device_node *np,
 	else /* status change should be possible if not always on. */
 		constraints->valid_ops_mask |= REGULATOR_CHANGE_STATUS;
 
+	if (constraints->always_on)
+		constraints->disable_on_suspend = of_property_read_bool(np,
+					"regulator-disable-on-suspend");
+
 	if (of_find_property(np, "regulator-bypass-on", NULL))
 		constraints->bypass_on = true;
 
