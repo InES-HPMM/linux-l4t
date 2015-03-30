@@ -1342,8 +1342,52 @@ static int tegra_ardbeg_notifier_call(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
+
+static int tegra_ardbeg_i2c_notifier_call(struct notifier_block *nb,
+			unsigned long event, void *data)
+{
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+	struct device *dev = data;
+#endif
+
+	switch (event) {
+	case BUS_NOTIFY_BIND_DRIVER:
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
+		if (dev->of_node) {
+			if (of_device_is_compatible(dev->of_node,
+					"ti,lp8550") ||
+				of_device_is_compatible(dev->of_node,
+					"ti,lp8551") ||
+				of_device_is_compatible(dev->of_node,
+					"ti,lp8552") ||
+				of_device_is_compatible(dev->of_node,
+					"ti,lp8553") ||
+				of_device_is_compatible(dev->of_node,
+					"ti,lp8554") ||
+				of_device_is_compatible(dev->of_node,
+					"ti,lp8555") ||
+				of_device_is_compatible(dev->of_node,
+					"ti,lp8556") ||
+				of_device_is_compatible(dev->of_node,
+					"ti,lp8557")) {
+					ti_lp855x_bl_ops_register(dev);
+			}
+		}
+#endif
+		break;
+	default:
+		break;
+	}
+	return NOTIFY_DONE;
+}
+
 static struct notifier_block platform_nb = {
 	.notifier_call = tegra_ardbeg_notifier_call,
+};
+
+
+static struct notifier_block i2c_nb = {
+	.notifier_call = tegra_ardbeg_i2c_notifier_call,
 };
 
 static void __init tegra_ardbeg_dt_init(void)
@@ -1362,7 +1406,7 @@ static void __init tegra_ardbeg_dt_init(void)
 	tegra_set_fixed_pwm_bl_ops(dsi_p_wuxga_10_1_ops.pwm_bl_ops);
 #endif
 	bus_register_notifier(&platform_bus_type, &platform_nb);
-
+	bus_register_notifier(&i2c_bus_type, &i2c_nb);
 	tegra_ardbeg_early_init();
 #ifdef CONFIG_USE_OF
 	ardbeg_camera_auxdata(ardbeg_auxdata_lookup);
