@@ -372,6 +372,7 @@ struct tegra_dsi_out {
 					 * most panels. */
 	bool		te_polarity_low;
 	bool		power_saving_suspend;
+	bool		suspend_stop_stream_late;
 	bool		dsi2lvds_bridge_enable;
 	bool		dsi2edp_bridge_enable;
 
