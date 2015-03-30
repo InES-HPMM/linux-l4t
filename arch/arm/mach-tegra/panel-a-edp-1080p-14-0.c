@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/panel-a-1080p-11-6.c
  *
- * Copyright (c) 2012-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -212,7 +212,7 @@ static int edp_a_1080p_14_0_disable(struct device *dev)
 	if (avdd_3v3_dp)
 		regulator_disable(avdd_3v3_dp);
 
-	msleep(500);
+	msleep(100);
 
 	return 0;
 }
