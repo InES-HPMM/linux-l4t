@@ -81,6 +81,9 @@
 			regulator-name = "vdd-5v0";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
+			regulator-always-on;
+			regulator-boot-on;
+			regulator-disable-on-suspend;
 			gpio = <&palmas_gpio 1 0>;
 			enable-active-high;
 		};
