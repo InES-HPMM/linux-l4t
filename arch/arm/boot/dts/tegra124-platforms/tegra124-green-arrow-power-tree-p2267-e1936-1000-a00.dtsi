@@ -95,4 +95,11 @@
 		avdd_pll_utmip-supply = <&palmas_smps8>;
 		usb_vbus-supply = <&usb0_vbus>;
 	};
+
+	spi@7000d400 {
+		spi-touch@0 {
+			avdd-supply = <&ldo3_reg>;
+			dvdd-supply = <&palmas_smps8>;
+		};
+	};
 };
