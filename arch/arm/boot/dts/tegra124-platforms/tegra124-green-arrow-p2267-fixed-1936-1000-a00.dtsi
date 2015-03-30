@@ -119,6 +119,7 @@
 			regulator-always-on;
 			regulator-boot-on;
 			enable-active-high;
+			vin-supply = <&palmas_smps9>;
 		};
 
 		avdd_hdmi: regulator@9 {

@@ -210,6 +210,7 @@
 						regulator-max-microvolt = <2800000>;
 						regulator-always-on;
 						regulator-boot-on;
+						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
 						consumers {
 							c1 {
 								regulator-consumer-supply = "vddio_sd_slot";
