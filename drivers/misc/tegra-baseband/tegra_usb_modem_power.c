@@ -45,6 +45,7 @@
 #include <linux/platform_data/modem_thermal.h>
 #include <linux/platform_data/sysedp_modem.h>
 #include <linux/system-wakeup.h>
+#include <linux/pinctrl/consumer.h>
 
 #define BOOST_CPU_FREQ_MIN	1200000
 #define BOOST_CPU_FREQ_TIMEOUT	5000
@@ -166,6 +167,11 @@ struct tegra_usb_modem {
 	enum { AIRPLANE = 0, RAT_3G_LTE, RAT_2G} modem_power_state;
 	struct mutex modem_state_lock;
 	struct platform_device *modem_edp_pdev;
+	struct pinctrl *boot_uart_pin;
+	struct pinctrl_state *boot_uart_enabled, *boot_uart_disabled;
+	int boot_pinctrl_file_created;
+	enum { USB_BOOT = 0, UART_BOOT} boot_pinctrl_state;
+	struct mutex boot_pinctrl_lock;
 };
 
 
@@ -704,6 +710,56 @@ static ssize_t set_modem_state(struct device *dev,
 static DEVICE_ATTR(modem_state, S_IRUSR | S_IWUSR, show_modem_state,
 			set_modem_state);
 
+/* export a new sysfs to switch pin-muxing for modem boot thru UART */
+static ssize_t show_modem_boot_pinctrl(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct tegra_usb_modem *modem = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", modem->boot_pinctrl_state);
+}
+
+static ssize_t set_modem_boot_pinctrl(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct tegra_usb_modem *modem = dev_get_drvdata(dev);
+	int modem_boot_pinctrl_value;
+	struct pinctrl_state *selected_boot_pinctrl_state;
+	int ret;
+
+	if (sscanf(buf, "%d", &modem_boot_pinctrl_value) != 1)
+		return -EINVAL;
+
+	mutex_lock(&modem->boot_pinctrl_lock);
+	switch (modem_boot_pinctrl_value) {
+	case USB_BOOT:
+		selected_boot_pinctrl_state = modem->boot_uart_disabled;
+		break;
+	case UART_BOOT:
+		selected_boot_pinctrl_state = modem->boot_uart_enabled;
+		break;
+	default:
+		selected_boot_pinctrl_state = NULL;
+		dev_warn(dev, "%s: wrong modem pinctrl state: %d\n",
+					__func__, modem_boot_pinctrl_value);
+	}
+
+	if (!IS_ERR(selected_boot_pinctrl_state)) {
+		modem->boot_pinctrl_state = modem_boot_pinctrl_value;
+		ret = pinctrl_select_state(modem->boot_uart_pin,
+				selected_boot_pinctrl_state);
+		if (ret < 0) {
+			dev_err(dev, "Pinctrl state setting failed\n");
+		} else
+			/* Update value since setting has been successful */
+			modem->boot_pinctrl_state = modem_boot_pinctrl_value;
+	}
+	mutex_unlock(&modem->boot_pinctrl_lock);
+	return count;
+}
+
+static DEVICE_ATTR(modem_boot_pinctrl, S_IRUSR | S_IWUSR,
+		show_modem_boot_pinctrl, set_modem_boot_pinctrl);
+
 static struct modem_thermal_platform_data thermdata = {
 	.num_zones = 0,
 };
@@ -819,6 +875,21 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 		mutex_init(&modem->modem_state_lock);
 	}
 
+	/* create sysfs node for User Space to control modem boot mode */
+	modem->boot_pinctrl_file_created = 0;
+	if (!IS_ERR(modem->boot_uart_enabled) &&
+		       !IS_ERR(modem->boot_uart_disabled)) {
+		ret = device_create_file(&pdev->dev,
+				&dev_attr_modem_boot_pinctrl);
+		if (ret) {
+			dev_err(&pdev->dev,
+			"Can't create modem pinctrl sysfs file\n");
+			goto error;
+		}
+		modem->boot_pinctrl_file_created = 1;
+		mutex_init(&modem->boot_pinctrl_lock);
+	}
+
 	/* create work queue platform_driver_registe */
 	modem->wq = create_workqueue("tegra_usb_mdm_queue");
 	INIT_DELAYED_WORK(&modem->recovery_work, tegra_usb_modem_recovery);
@@ -869,6 +940,9 @@ error:
 	if (modem->modem_state_file_created)
 		device_remove_file(&pdev->dev, &dev_attr_modem_state);
 
+	if (modem->boot_pinctrl_file_created)
+		device_remove_file(&pdev->dev, &dev_attr_modem_boot_pinctrl);
+
 	return ret;
 }
 
@@ -898,6 +972,28 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 			return -ENOMEM;
 		}
 		pdev->dev.platform_data = pdata;
+	}
+
+	/* Check if specific pin-muxing is defined for modem boot thru UART */
+	/* by default, modem boots over USB */
+	modem->boot_pinctrl_state = USB_BOOT;
+	modem->boot_uart_pin = devm_pinctrl_get(&pdev->dev);
+	if (IS_ERR(modem->boot_uart_pin)) {
+		dev_warn(&pdev->dev, "Missing pinctrl device\n");
+	} else {
+		modem->boot_uart_enabled = pinctrl_lookup_state(
+					modem->boot_uart_pin,
+					"uart_boot_enable");
+
+		if (IS_ERR(modem->boot_uart_enabled))
+			dev_warn(&pdev->dev, "Missing uart_boot_enable\n");
+
+		modem->boot_uart_disabled = pinctrl_lookup_state(
+					modem->boot_uart_pin,
+					"uart_boot_disable");
+
+		if (IS_ERR(modem->boot_uart_disabled))
+			dev_warn(&pdev->dev, "Missing uart_boot_disable\n");
 	}
 
 	/* turn on modem regulator if required */
@@ -1094,6 +1190,9 @@ static int __exit tegra_usb_modem_remove(struct platform_device *pdev)
 
 	if (modem->modem_state_file_created)
 		device_remove_file(&pdev->dev, &dev_attr_modem_state);
+
+	if (modem->boot_pinctrl_file_created)
+		device_remove_file(&pdev->dev, &dev_attr_modem_boot_pinctrl);
 
 	if (!IS_ERR(modem->regulator))
 		regulator_put(modem->regulator);
