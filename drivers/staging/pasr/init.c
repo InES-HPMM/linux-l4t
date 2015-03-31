@@ -469,6 +469,9 @@ int __init late_pasr_setup(void)
 	int i, j;
 	struct pasr_section *s;
 
+	if (config_enabled(CONFIG_SKIP_LATE_PASR_SETUP))
+		return 0;
+
 	for_each_pasr_section(i, j, pasr_map, s) {
 		if (!s->lock) {
 			s->lock = kzalloc(sizeof(spinlock_t), GFP_KERNEL);
