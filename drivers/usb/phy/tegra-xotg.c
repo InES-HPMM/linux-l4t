@@ -613,13 +613,7 @@ static int xotg_enable_gadget(struct xotg *xotg, bool start)
 			"driver->%s not defined but %s vbus override\n",
 			start ? "resume" : "suspend",
 			start ? "setting" : "clearing");
-		if (start)
-			tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
-				USB2_VBUS_ID_0_VBUS_OVERRIDE,
-				USB2_VBUS_ID_0_VBUS_OVERRIDE);
-		else
-			tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
-				USB2_VBUS_ID_0_VBUS_OVERRIDE, 0);
+
 		return 1;
 	}
 
@@ -1102,7 +1096,7 @@ static void xotg_work(struct work_struct *work)
 			 */
 			usb_bus_start_enum(xotg->phy.otg->host,
 					xotg->hs_otg_port);
-		} else if (!xotg->id && !xotg->xotg_vars.b_sess_vld) {
+		} else if (!xotg->id || !xotg->xotg_vars.b_sess_vld) {
 			xotg_info(xotg->dev, "state b_wait_acon -> b_idle\n");
 			state_changed = 1;
 			xotg->phy.state = OTG_STATE_B_IDLE;
@@ -1111,6 +1105,15 @@ static void xotg_work(struct work_struct *work)
 			/* start the b_ssend_srp timer
 			 * note currently b_sess_vld = 0,
 			 */
+
+			xotg_set_reverse_id(xotg, false);
+
+			if (xotg_enable_gadget(xotg, 1) == 1) {
+				/* should not happen */
+				xotg_err(xotg->dev,
+				"xotg_enable_gadget(xotg, 1) failed\n");
+			}
+
 			xotg_dbg(xotg->dev,
 				"starting TB_SSEND_SRP(1.6s) timer\n");
 			xotg->xotg_timer_list.b_ssend_srp_tmout = 0;
@@ -1126,6 +1129,15 @@ static void xotg_work(struct work_struct *work)
 				xotg->xotg_timer_list.b_ase0_brst_tmout = 0;
 
 			}
+
+			xotg_set_reverse_id(xotg, false);
+			if (xotg_enable_gadget(xotg, 1) == 1) {
+				/* should not happen */
+				xotg_err(xotg->dev,
+				"xotg_enable_gadget(xotg, 0) failed\n");
+			}
+
+
 			/* this case is when A is signalling a resume
 			 * before it saw B lower its D+ resistor
 			 */
@@ -1541,6 +1553,10 @@ static void xotg_work(struct work_struct *work)
 					"xotg_suspend_host(R)failed\n");
 			}
 
+			tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+				USB2_VBUS_ID_0_VBUS_OVERRIDE,
+				USB2_VBUS_ID_0_VBUS_OVERRIDE);
+
 			if (!xotg_enable_gadget(xotg, 1) == 1) {
 				xotg_err(xotg->dev,
 				"xotg_enable_gadget(xotg, 1) failed\n");
@@ -1619,6 +1635,10 @@ static void xotg_work(struct work_struct *work)
 			xotg->phy.state = OTG_STATE_A_WAIT_BCON;
 
 			xotg_set_reverse_id(xotg, false);
+
+			tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+				USB2_VBUS_ID_0_VBUS_OVERRIDE, 0);
+
 
 			xotg_dbg(xotg->dev,
 				"starting TA_WAIT_BCON(9sec) timer\n");
