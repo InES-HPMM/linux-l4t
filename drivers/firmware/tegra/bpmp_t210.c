@@ -27,6 +27,8 @@
 #include <linux/uaccess.h>
 #include <mach/clk.h>
 #include <soc/tegra/tegra_bpmp.h>
+#include <soc/tegra/tegra_pasr.h>
+
 #include "../../../arch/arm/mach-tegra/iomap.h"
 #include "bpmp.h"
 
@@ -264,6 +266,9 @@ int bpmp_clk_init(struct platform_device *pdev)
 	clk_prepare_enable(cop_clk);
 	clk_prepare_enable(sclk);
 	clk_prepare_enable(emc_clk);
+
+	if (tegra21_pasr_init(&pdev->dev))
+		dev_err(&pdev->dev, "PASR init failed\n");
 
 	return 0;
 }
