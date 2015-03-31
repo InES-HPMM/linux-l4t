@@ -266,6 +266,74 @@ static struct platform_device t210ref_ov5693_d_soc_camera_device = {
 		.platform_data = &ov5693_d_iclink,
 	},
 };
+
+/* OV5693 on CSI E */
+static struct ov5693_v4l2_platform_data t210ref_ov5693_e_data = {
+	.mclk_name = "cam_mclk3",
+	.regulators = &ov5693_regs,
+	.gpio_pwdn = 203, /* TEGRA_GPIO_PZ3 */
+};
+
+static struct tegra_camera_platform_data
+t210ref_ov5693_e_camera_platform_data = {
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.port			= TEGRA_CAMERA_PORT_CSI_E,
+	.lanes			= 2,
+	.continuous_clk		= 0,
+};
+
+static struct soc_camera_link ov5693_e_iclink = {
+	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
+	.board_info	= &t210ref_ov5693_camera_i2c_device,
+	.module_name	= "ov5693_v4l2",
+	.i2c_adapter_id	= 35, /* VI2 I2C controller */
+	.power		= t210ref_ov5693_power,
+	.priv		= &t210ref_ov5693_e_camera_platform_data,
+	.dev_priv	= &t210ref_ov5693_e_data,
+};
+
+static struct platform_device t210ref_ov5693_e_soc_camera_device = {
+	.name	= "soc-camera-pdrv",
+	.id	= 4,
+	.dev	= {
+		.platform_data = &ov5693_e_iclink,
+	},
+};
+
+/* OV5693 on CSI F */
+static struct ov5693_v4l2_platform_data t210ref_ov5693_f_data = {
+	.mclk_name = "cam_mclk3",
+	.regulators = &ov5693_regs,
+	.gpio_pwdn = 153, /* TEGRA_GPIO_PT1 */
+};
+
+static struct tegra_camera_platform_data
+t210ref_ov5693_f_camera_platform_data = {
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.port			= TEGRA_CAMERA_PORT_CSI_F,
+	.lanes			= 2,
+	.continuous_clk		= 0,
+};
+
+static struct soc_camera_link ov5693_f_iclink = {
+	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
+	.board_info	= &t210ref_ov5693_camera_i2c_device,
+	.module_name	= "ov5693_v4l2",
+	.i2c_adapter_id	= 34, /* VI2 I2C controller */
+	.power		= t210ref_ov5693_power,
+	.priv		= &t210ref_ov5693_f_camera_platform_data,
+	.dev_priv	= &t210ref_ov5693_f_data,
+};
+
+static struct platform_device t210ref_ov5693_f_soc_camera_device = {
+	.name	= "soc-camera-pdrv",
+	.id	= 5,
+	.dev	= {
+		.platform_data = &ov5693_f_iclink,
+	},
+};
 #endif
 
 int t210ref_camera_init(void)
@@ -284,6 +352,8 @@ int t210ref_camera_init(void)
 	platform_device_register(&t210ref_ov5693_b_soc_camera_device);
 	platform_device_register(&t210ref_ov5693_c_soc_camera_device);
 	platform_device_register(&t210ref_ov5693_d_soc_camera_device);
+	platform_device_register(&t210ref_ov5693_e_soc_camera_device);
+	platform_device_register(&t210ref_ov5693_f_soc_camera_device);
 #endif
 
 	return 0;
