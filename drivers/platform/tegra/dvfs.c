@@ -471,7 +471,8 @@ static int dvfs_rail_set_voltage(struct dvfs_rail *rail, int millivolts)
 	jmp_to_zero = rail->jmp_to_zero &&
 			((millivolts == 0) || (rail->millivolts == 0));
 
-	if (jmp_to_zero || rail->dfll_mode)
+	if (jmp_to_zero || rail->dfll_mode ||
+	    (rail->in_band_pm && rail->stats.off))
 		steps = 1;
 	else
 		steps = DIV_ROUND_UP(abs(millivolts - rail->millivolts), step);
