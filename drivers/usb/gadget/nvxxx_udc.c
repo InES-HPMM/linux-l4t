@@ -478,6 +478,9 @@ static void tegra_xudc_ucd_work(struct work_struct *work)
 		extcon_get_cable_state(nvudc->vbus_extcon_dev, "USB");
 	if (vbus_connected == nvudc->vbus_detected) {
 		msg_exit(nvudc->dev);
+		spin_lock_irqsave(&nvudc->lock, flags);
+		nvudc->extcon_event_processing = false;
+		spin_unlock_irqrestore(&nvudc->lock, flags);
 		return;
 	}
 
@@ -494,6 +497,7 @@ static void tegra_xudc_ucd_work(struct work_struct *work)
 		pm_runtime_get_sync(nvudc->dev);
 		spin_lock_irqsave(&nvudc->lock, flags);
 		vbus_detected(nvudc);
+		nvudc->extcon_event_processing = false;
 		spin_unlock_irqrestore(&nvudc->lock, flags);
 	} else {
 		cancel_delayed_work(&nvudc->non_std_charger_work);
@@ -506,6 +510,7 @@ static void tegra_xudc_ucd_work(struct work_struct *work)
 
 		spin_lock_irqsave(&nvudc->lock, flags);
 		vbus_not_detected(nvudc);
+		nvudc->extcon_event_processing = false;
 		spin_unlock_irqrestore(&nvudc->lock, flags);
 	}
 
@@ -589,13 +594,25 @@ static void tegra_xudc_port_reset_war_work(struct work_struct *work)
 static int extcon_notifications(struct notifier_block *nb,
 				   unsigned long event, void *unused)
 {
+	u32 flag;
 	struct nv_udc_s *nvudc =
 			container_of(nb, struct nv_udc_s, vbus_extcon_nb);
 
 	msg_entry(nvudc->dev);
 
+	spin_lock_irqsave(&nvudc->lock, flag);
+	if (nvudc->is_suspended) {
+		spin_unlock_irqrestore(&nvudc->lock, flag);
+		msg_info(nvudc->dev,
+			"device is in Suspend status, ignore this event\n");
+		goto out;
+	}
+	nvudc->extcon_event_processing = true;
+	spin_unlock_irqrestore(&nvudc->lock, flag);
+
 	schedule_work(&nvudc->ucd_work);
 
+out:
 	msg_exit(nvudc->dev);
 
 	return NOTIFY_DONE;
@@ -5576,14 +5593,28 @@ static int nvudc_suspend_platform(struct device *dev)
 {
 	struct nv_udc_s *nvudc;
 	struct platform_device *pdev = to_platform_device(dev);
+	u32 flag;
 	int err = 0;
 
 	nvudc = platform_get_drvdata(pdev);
 
+	/* During suspending, cable events may be in processing*/
+	spin_lock_irqsave(&nvudc->lock, flag);
+	if (nvudc->extcon_event_processing) {
+		spin_unlock_irqrestore(&nvudc->lock, flag);
+		msg_info(dev, "Cable Event is processing\n");
+		return -EBUSY;
+	}
+	nvudc->is_suspended = true;
+	spin_unlock_irqrestore(&nvudc->lock, flag);
+
 	if (!pm_runtime_status_suspended(dev)) {
-		err = tegra_xudc_enter_elpg(nvudc);
+		err = pm_runtime_put_sync_suspend(nvudc->dev);
 		if (err) {
-			dev_err(dev, "Abort entering EPLG\n");
+			spin_lock_irqsave(&nvudc->lock, flag);
+			nvudc->is_suspended = false;
+			spin_unlock_irqrestore(&nvudc->lock, flag);
+			dev_err(dev, "Enter suspend failed\n");
 			return err;
 		}
 	}
@@ -5608,6 +5639,7 @@ static int nvudc_resume_platform(struct device *dev)
 	struct nv_udc_s *nvudc;
 	struct platform_device *pdev = to_platform_device(dev);
 	int err = 0;
+	u32 flag;
 
 	nvudc = platform_get_drvdata(pdev);
 
@@ -5622,12 +5654,10 @@ static int nvudc_resume_platform(struct device *dev)
 	clk_enable(nvudc->pll_u_480M);
 
 	nvudc_plat_pad_init(nvudc);
-
-	tegra_xudc_exit_elpg(nvudc);
-
-	pm_runtime_disable(dev);
-	pm_runtime_set_active(dev);
-	pm_runtime_enable(dev);
+	spin_lock_irqsave(&nvudc->lock, flag);
+	nvudc->is_suspended = false;
+	spin_unlock_irqrestore(&nvudc->lock, flag);
+	extcon_notifications(&nvudc->vbus_extcon_nb, 0, NULL);
 
 	return 0;
 }
@@ -5822,7 +5852,9 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	pm_runtime_set_autosuspend_delay(&pdev->dev, 2000);
 	pm_runtime_enable(&pdev->dev);
 
+	nvudc->is_suspended = false;
 	nvudc->vbus_detected = false;
+	nvudc->extcon_event_processing = false;
 	nvudc->current_ma = USB_ANDROID_SUSPEND_CURRENT_MA;
 	nvudc->ucd = tegra_usb_get_ucd();
 	if (IS_ERR(nvudc->ucd)) {

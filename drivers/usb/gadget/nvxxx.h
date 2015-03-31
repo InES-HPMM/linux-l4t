@@ -617,6 +617,8 @@ struct nv_udc_s {
 	bool binded;
 	bool pullup;
 	bool is_elpg;
+	bool is_suspended;
+	bool extcon_event_processing;
 	bool elpg_is_processing;
 	u32 act_bulk_ep;
 	u32 num_enabled_eps;
