@@ -581,8 +581,10 @@ static void sdhci_set_adma_desc(struct sdhci_host *host, u8 *desc,
 	ctrl = sdhci_readl(host, SDHCI_ACMD12_ERR);
 	if (ctrl & SDHCI_ADDRESSING_64BIT_EN)
 		dataddr64[0] = cpu_to_le64(addr);
-	else
+	else {
+		BUG_ON(addr >> 32);
 		dataddr[0] = cpu_to_le32(addr);
+	}
 }
 
 static int sdhci_adma_table_pre(struct sdhci_host *host,
