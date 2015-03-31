@@ -47,18 +47,11 @@
 	};
 
 	i2c@7000c400 {
-		status = "okay";
-
-		iqs253@44 {
-			compatible = "azoteq,iqs253";
+		iqs263@44 {
+			compatible = "azoteq,iqs263";
 			reg = <0x44>;
-			vendor = "Azoteq";
-			proximity,max-range = "2"; /* 2 cm */
-			proximity,integration-time = "16000000"; /* 16 msec */
-			proximity,power-consumed = "1.67"; /* approx mA */
-			/* rdy-gpio = <&gpio TEGRA_GPIO(A, 1) GPIO_ACTIVE_LOW>; */ /* Fix me! */
-			/* wake-gpio = <&gpio TEGRA_GPIO(Y, 0) GPIO_ACTIVE_LOW>; */ /* Fix me! */
-			sar-gpio = <&gpio TEGRA_GPIO(A, 1) GPIO_ACTIVE_LOW>;
+			gpio_rdy = <&gpio TEGRA_GPIO(A, 1) GPIO_ACTIVE_LOW>;
+			gpio_sar = <&gpio TEGRA_GPIO(V, 5) GPIO_ACTIVE_LOW>;
 		};
 	};
 };
