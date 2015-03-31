@@ -212,6 +212,9 @@
 						regulator-name = "vdd-out2-5v0";
 						regulator-min-microvolt = <3750000>;
 						regulator-max-microvolt = <3750000>;
+						regulator-always-on;
+						regulator-boot-on;
+						regulator-disable-on-suspend;
 					};
 
 					ldo1 {
@@ -275,6 +278,7 @@
 						regulator-name = "vddio-hv";
 						regulator-always-on;
 						regulator-boot-on;
+						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
 					};
 
 					ldousb_reg: ldousb {
