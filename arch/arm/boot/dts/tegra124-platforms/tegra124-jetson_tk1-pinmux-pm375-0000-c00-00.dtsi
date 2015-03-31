@@ -668,6 +668,11 @@
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 			};
 
+			mipi_pad_ctrl_dsi_b {
+				nvidia,pins = "mipi_pad_ctrl_dsi_b";
+				nvidia,function = "dsi_b";
+			};
+
 			/* GPIO Pin Configuration */
 			dap_mclk1_req_pee2 {
 				nvidia,pins = "dap_mclk1_req_pee2";
@@ -1557,11 +1562,6 @@
 				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
 				nvidia,tristate = <TEGRA_PIN_ENABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
-			};
-
-			mipi_pad_ctrl_dsi_b {
-				nvidia,pins = "mipi_pad_ctrl_dsi_b";
-				nvidia,function = "dsi_b";
 			};
 		};
 
