@@ -520,6 +520,9 @@
 	};
 
 	i2c@7000c400 {
+		status = "okay";
+		clock-frequency = <400000>;
+
 		ad1937z: ad193x.1-0007@07 {
 			compatible = "ad,ad1937";
 			reg = <0x07>;
