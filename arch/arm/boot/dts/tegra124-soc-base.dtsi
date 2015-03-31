@@ -33,6 +33,60 @@
 		ehci2 = &ehci3;
 	};
 
+	mc_clk_pd: mc-clk-pd {
+		compatible = "nvidia,tegra124-mc-clk-pd";
+		#power-domain-cells = <0>;
+	};
+
+	nvavp_pd: nvavp-pd {
+		compatible = "nvidia,tegra124-nvavp-pd";
+		#power-domain-cells = <0>;
+		power-domains = <&mc_clk_pd>;
+	};
+
+	host1x_pd: host1x-pd {
+		compatible = "nvidia,tegra124-host1x-pd";
+		is_off;
+		host1x;
+		#power-domain-cells = <0>;
+		power-domains = <&mc_clk_pd>;
+	};
+
+	tsec_pd: tsec-pd {
+		compatible = "nvidia,tegra124-tsec-pd";
+		is_off;
+		#power-domain-cells = <0>;
+		power-domains = <&host1x_pd>;
+	};
+
+	vic03_pd: vic03-pd {
+		compatible = "nvidia,tegra124-vic03-pd";
+		is_off;
+		#power-domain-cells = <0>;
+		power-domains = <&host1x_pd>;
+	};
+
+	msenc_pd: msenc-pd {
+		compatible = "nvidia,tegra124-msenc-pd";
+		is_off;
+		#power-domain-cells = <0>;
+		power-domains = <&host1x_pd>;
+	};
+
+	gpu_pd: gpu-pd {
+		compatible = "nvidia,tegra124-gpu-pd";
+		is_off;
+		#power-domain-cells = <0>;
+		power-domains = <&host1x_pd>;
+	};
+
+	ve_pd: ve-pd {
+		compatible = "nvidia,tegra124-ve-pd";
+		is_off;
+		#power-domain-cells = <0>;
+		power-domains = <&host1x_pd>;
+	};
+
 	mc {
 		compatible = "nvidia,tegra-mc";
 
@@ -85,6 +139,7 @@
 
 	se: se@70012000 {
 		compatible = "nvidia,tegra124-se";
+		power-domains = <&mc_clk_pd>;
 		reg = <0x0 0x70012000 0x0 0x2000 /* SE base */
 			0x0 0x7000e400 0x0 0x400>; /* PMC base */
 		interrupts = <0 58 0x04>;
@@ -161,6 +216,7 @@
 
 	apbdma: dma@60020000 {
 		compatible = "nvidia,tegra124-apbdma";
+		power-domains = <&mc_clk_pd>;
 		reg = <0x0 0x60020000 0x0 0x1400>;
 		interrupts = <0 104 0x04
 			      0 105 0x04
@@ -645,6 +701,7 @@
 
 	hda@70030000 {
 		compatible = "nvidia,tegra30-hda";
+		power-domains = <&mc_clk_pd>;
 		reg = <0x0 0x70030000 0x0 0x10000>;
 		interrupts = <0 81 0x04>;
 		status = "disabled";
@@ -652,6 +709,8 @@
 
 	host1x: host1x {
 		compatible = "nvidia,tegra124-host1x", "simple-bus";
+		power-domains = <&host1x_pd>;
+		wakeup-capable;
 		reg = <0x0 0x50000000 0x0 0x00034000>;
 		interrupts = <0 65 0x04   /* mpcore syncpt */
 			      0 67 0x04>; /* mpcore general */
@@ -669,6 +728,7 @@
 
 		vi {
 			compatible = "nvidia,tegra124-vi";
+			power-domains = <&ve_pd>;
 			reg = <0x54080000 0x00040000>;
 			interrupts = <0 69 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_VI>;
@@ -677,6 +737,7 @@
 
 		isp@54600000 {
 			compatible = "nvidia,tegra124-isp";
+			power-domains = <&ve_pd>;
 			reg = <0x54600000 0x00040000>;
 			interrupts = <0 71 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_ISP>,
@@ -686,6 +747,7 @@
 
 		isp@54680000 {
 			compatible = "nvidia,tegra124-isp";
+			power-domains = <&ve_pd>;
 			reg = <0x54680000 0x00040000>;
 			interrupts = <0 70 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_ISP>,
@@ -695,6 +757,7 @@
 
 		dc@54200000 {
 			compatible = "nvidia,tegra124-dc";
+			power-domains = <&mc_clk_pd>;
 			reg = <0x54200000 0x00040000>;
 			interrupts = <0 73 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_DC>,
@@ -708,6 +771,7 @@
 
 		dc@54240000 {
 			compatible = "nvidia,tegra124-dc";
+			power-domains = <&mc_clk_pd>;
 			reg = <0x54240000 0x00040000>;
 			interrupts = <0 74 0x04>;
 			iommus = <&smmu TEGRA_SWGROUP_DCB>;
@@ -734,6 +798,7 @@
 
 		vic {
 			compatible = "nvidia,tegra124-vic";
+			power-domains = <&vic03_pd>;
 			reg = <0x54340000 0x00040000>;
 			iommus = <&smmu TEGRA_SWGROUP_VIC>;
 			status = "disabled";
@@ -741,6 +806,7 @@
 
 		msenc {
 			compatible = "nvidia,tegra124-msenc";
+			power-domains = <&msenc_pd>;
 			reg = <0x544c0000 0x00040000>;
 			iommus = <&smmu TEGRA_SWGROUP_MSENC>;
 			status = "disabled";
@@ -748,6 +814,7 @@
 
 		tsec {
 			compatible = "nvidia,tegra124-tsec";
+			power-domains = <&tsec_pd>;
 			reg = <0x54500000 0x00040000>;
 			iommus = <&smmu TEGRA_SWGROUP_TSEC>;
 			status = "disabled";
@@ -768,6 +835,7 @@
 
 		nvavp {
 			compatible = "nvidia,tegra124-nvavp";
+			power-domains = <&nvavp_pd>;
 			interrupts = <0 4 0x04>; /* mailbox AVP IRQ */
 			reg = <0x60001000 0x0000e200>;
 			status = "disabled";
@@ -777,6 +845,7 @@
 	gk20a {
 		compatible = "nvidia,tegra124-gk20a", "nvidia,gk20a";
 		nvidia,host1x = <&host1x>;
+		power-domains = <&gpu_pd>;
 		reg = <0x0 0x57000000 0x0 0x01000000>,
 		      <0x0 0x58000000 0x0 0x01000000>,
 		      <0x0 0x538F0000 0x0 0x00001000>;
@@ -792,6 +861,7 @@
 
 	xusb@70090000 {
 		compatible = "nvidia,tegra124-xhci";
+		power-domains = <&mc_clk_pd>;
 		reg = <0x0 0x70090000 0x0 0x8000
 		       0x0 0x70098000 0x0 0x1000
 		       0x0 0x70099000 0x0 0x1000
@@ -812,6 +882,7 @@
 
 	pcie-controller {
 		compatible = "nvidia,tegra124-pcie";
+		power-domains = <&mc_clk_pd>;
 		device_type = "pci";
 		reg = <0x0 0x01003000 0x0 0x00000800   /* PADS registers */
 		       0x0 0x01003800 0x0 0x00000800   /* AFI registers */
@@ -882,6 +953,7 @@
 
 	sdhci@700b0600 {
 		compatible = "nvidia,tegra124-sdhci";
+		power-domains = <&mc_clk_pd>;
 		reg = <0x0 0x700b0600 0x0 0x200>;
 		interrupts = < 0 31 0x04 >;
 		iommus = <&smmu TEGRA_SWGROUP_SDMMC4A>;
@@ -889,6 +961,7 @@
 	};
 	sdhci@700b0400 {
 		compatible = "nvidia,tegra124-sdhci";
+		power-domains = <&mc_clk_pd>;
 		reg = <0x0 0x700b0400 0x0 0x200>;
 		interrupts = < 0 19 0x04 >;
 		iommus = <&smmu TEGRA_SWGROUP_SDMMC3A>;
@@ -896,6 +969,7 @@
 	};
 	sdhci@700b0200 {
 		compatible = "nvidia,tegra124-sdhci";
+		power-domains = <&mc_clk_pd>;
 		reg = <0x0 0x700b0200 0x0 0x200>;
 		interrupts = < 0 15 0x04 >;
 		iommus = <&smmu TEGRA_SWGROUP_SDMMC2A>;
@@ -903,6 +977,7 @@
 	};
 	sdhci@700b0000 {
 		compatible = "nvidia,tegra124-sdhci";
+		power-domains = <&mc_clk_pd>;
 		reg = <0x0 0x700b0000 0x0 0x200>;
 		interrupts = < 0 14 0x04 >;
 		iommus = <&smmu TEGRA_SWGROUP_SDMMC1A>;
@@ -955,6 +1030,7 @@
 
 	otg: otg@7d000000 {
 		compatible = "nvidia,tegra124-otg";
+		power-domains = <&mc_clk_pd>;
 		reg = <0x0 0x7d000000 0x0 0x4000>;
 		interrupts = <0 20 0x04>;
 		nvidia,hc-device = <&ehci1>;
@@ -964,6 +1040,7 @@
 
 	ehci1: ehci@7d000000 {
 		compatible = "nvidia,tegra124-ehci";
+		power-domains = <&mc_clk_pd>;
 		reg = <0x0 0x7d000000 0x0 0x4000>;
 		interrupts = <0 20 0x04>;
 		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
@@ -972,6 +1049,7 @@
 
 	ehci2: ehci@7d004000 {
 		compatible = "nvidia,tegra124-ehci";
+		power-domains = <&mc_clk_pd>;
 		reg = <0x0 0x7d004000 0x0 0x4000>;
 		interrupts = <0 21 0x04>;
 		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
@@ -980,6 +1058,7 @@
 
 	ehci3: ehci@7d008000 {
 		compatible = "nvidia,tegra124-ehci";
+		power-domains = <&mc_clk_pd>;
 		reg = <0x0 0x7d008000 0x0 0x4000>;
 		interrupts = <0 97 0x04>;
 		iommus = <&smmu TEGRA_SWGROUP_PPCS>;
