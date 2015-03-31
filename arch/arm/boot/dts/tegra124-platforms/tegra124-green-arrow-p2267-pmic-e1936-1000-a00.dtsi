@@ -95,6 +95,14 @@
 				ti,enable-vbus-detection;
 			};
 
+			watchdog {
+				compatible = "ti,palmas-watchdog";
+				ti,watchdog-init-timeout = <600>;
+				ti,watchdog-interrupt-mode;
+				dt-override-status-odm-data = <0x80000000 0x80000000>;
+				status = "disabled";
+			};
+
 			power_pm {
 				compatible = "ti,palmas-pm";
 				system-pmic-power-off;
