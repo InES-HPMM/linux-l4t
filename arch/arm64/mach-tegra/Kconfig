@@ -63,6 +63,7 @@ config ARCH_TEGRA_21x_SOC
 	select TEGRA_ISOMGR
 	select TEGRA_ISOMGR_SYSFS
 	select ARCH_HAS_PASR if STAGING
+	select SKIP_LATE_PASR_SETUP
 	help
 	  Support for NVIDIA Tegra 21x family of SoCs, based upon the
 	  NVIDIA Denver CPU
