@@ -3,7 +3,7 @@
  *
  * Author: Dara Ramesh <dramesh@nvidia.com>
  *
- * Copyright (C) 2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2014-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -118,6 +118,11 @@
 	(15 << ADMA_CH_AHUB_FIFO_CTRL_RX_FIFO_SIZE_SHIFT)
 
 #define ADMA_CH_INT_TD_STATUS					BIT(0)
+
+/* Fields in ADMA_CH_TRANSFER_STATUS */
+#define ADMA_CH_TRANSFER_DONE_COUNT_SHIFT				0
+#define ADMA_CH_TRANSFER_DONE_COUNT_MASK	\
+	(0xFFFF << ADMA_CH_TRANSFER_DONE_COUNT_SHIFT)
 
 /* Fields in ADMA_GLOBAL_CTRL  */
 #define ADMA_GLOBAL_CTRL_TRANSFER_PAUSE				BIT(0)
