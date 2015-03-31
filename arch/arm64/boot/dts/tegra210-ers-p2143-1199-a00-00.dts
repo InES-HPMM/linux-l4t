@@ -21,6 +21,10 @@
 / {
 	nvidia,dtsfilename = __FILE__;
 
+	chosen {
+		nvidia,tegra-shield-sku;
+        };
+
         xusb@70090000 {
 		status = "disabled";
 	};

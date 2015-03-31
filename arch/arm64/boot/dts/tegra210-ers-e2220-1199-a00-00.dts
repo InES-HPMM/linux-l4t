@@ -22,6 +22,10 @@
 #include "tegra210-platforms/tegra210-ers-1199-emc.dtsi"
 
 / {
+	chosen {
+		nvidia,tegra-shield-sku;
+        };
+
 	sdhci@700b0200 {
 		nvidia,is-ddr-tap-delay;
 		nvidia,ddr-tap-delay = <0>;
