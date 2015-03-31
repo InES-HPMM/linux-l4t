@@ -1,7 +1,7 @@
 /*
  * ADMA driver for Nvidia's Tegra210 ADMA controller.
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -64,6 +64,7 @@ struct tegra_adma_chan_regs {
 	unsigned long	tgt_ptr;
 	unsigned long	ahub_fifo_ctrl;
 	unsigned long	tc;
+	unsigned long	tx_done;
 };
 
 /*
@@ -90,8 +91,8 @@ struct tegra_adma_sg_req {
  */
 struct tegra_adma_desc {
 	struct dma_async_tx_descriptor	txd;
-	int				bytes_requested;
-	int				bytes_transferred;
+	uint64_t				bytes_requested;
+	uint64_t				bytes_transferred;
 	enum dma_status			dma_status;
 	struct list_head		node;
 	struct list_head		tx_list;
@@ -132,6 +133,7 @@ struct tegra_adma_chan {
 	/* Channel-slave specific configuration */
 	struct dma_slave_config dma_sconfig;
 	struct tegra_adma_chan_regs	channel_reg;
+	uint64_t total_tx_done;
 };
 
 /* tegra_adma: Tegra ADMA specific information */
@@ -354,6 +356,10 @@ static void tegra_adma_start(struct tegra_adma_chan *tdc,
 {
 	struct tegra_adma_chan_regs *ch_regs = &sg_req->ch_regs;
 
+	/* Update transfer done count for position calculation */
+	tdc->total_tx_done = 0;
+	tdc->channel_reg.tx_done = 0;
+	tdc->channel_reg.tc = ch_regs->tc;
 	channel_write(tdc, ADMA_CH_TC, ch_regs->tc);
 	channel_write(tdc, ADMA_CH_CTRL, ch_regs->ctrl);
 	channel_write(tdc, ADMA_CH_LOWER_SOURCE_ADDR, ch_regs->src_ptr);
@@ -475,6 +481,25 @@ static void tegra_adma_abort_all(struct tegra_adma_chan *tdc)
 	tdc->isr_handler = NULL;
 }
 
+/* Returns bytes transferred with period size granularity */
+static inline uint64_t tegra_adma_get_position(struct tegra_adma_chan *tdc)
+{
+	uint64_t tx_done_max = (ADMA_CH_TRANSFER_DONE_COUNT_MASK >>
+		ADMA_CH_TRANSFER_DONE_COUNT_SHIFT) + 1;
+	uint64_t tx_done = channel_read(tdc, ADMA_CH_TRANSFER_STATUS) &
+		ADMA_CH_TRANSFER_DONE_COUNT_MASK;
+	tx_done = tx_done >> ADMA_CH_TRANSFER_DONE_COUNT_SHIFT;
+
+	/* Handle wrap around case */
+	if (tx_done < tdc->channel_reg.tx_done)
+		tdc->total_tx_done += tx_done +
+			(tx_done_max - tdc->channel_reg.tx_done);
+	else
+		tdc->total_tx_done += (tx_done - tdc->channel_reg.tx_done);
+	tdc->channel_reg.tx_done = tx_done;
+	return tdc->total_tx_done * tdc->channel_reg.tc;
+}
+
 static bool handle_continuous_head_request(struct tegra_adma_chan *tdc,
 		struct tegra_adma_sg_req *last_sg_req, bool to_terminate)
 {
@@ -514,7 +539,7 @@ static void handle_once_dma_done(struct tegra_adma_chan *tdc,
 	tdc->busy = false;
 	sgreq = list_first_entry(&tdc->pending_sg_req, typeof(*sgreq), node);
 	dma_desc = sgreq->dma_desc;
-	dma_desc->bytes_transferred += sgreq->req_len;
+	dma_desc->bytes_transferred = tegra_adma_get_position(tdc);
 
 	list_del(&sgreq->node);
 	if (sgreq->last_sg) {
@@ -543,7 +568,7 @@ static void handle_cont_sngl_cycle_dma_done(struct tegra_adma_chan *tdc,
 
 	sgreq = list_first_entry(&tdc->pending_sg_req, typeof(*sgreq), node);
 	dma_desc = sgreq->dma_desc;
-	dma_desc->bytes_transferred += sgreq->req_len;
+	dma_desc->bytes_transferred = tegra_adma_get_position(tdc);
 
 	/* Callback need to be call */
 	if (!dma_desc->cb_count)
