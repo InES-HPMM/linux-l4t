@@ -1378,6 +1378,7 @@ static void palmas_dt_to_pdata(struct device *dev,
 		struct palmas_pmic_platform_data *pdata)
 {
 	struct device_node *regulators;
+	struct regulation_constraints *constraints = NULL;
 	u32 prop;
 	int idx, ret;
 
@@ -1471,6 +1472,11 @@ static void palmas_dt_to_pdata(struct device *dev,
 				"ti,config-flags", &prop);
 		if (!ret)
 			pdata->reg_init[idx]->config_flags = prop;
+
+		constraints = &palmas_matches[idx].init_data->constraints;
+		if (constraints->disable_on_suspend)
+			pdata->reg_init[idx]->config_flags |=
+				PALMAS_REGULATOR_CONFIG_SUSPEND_FORCE_OFF;
 
 		pdata->reg_init[idx]->disable_active_discharge_idle =
 				of_property_read_bool(
