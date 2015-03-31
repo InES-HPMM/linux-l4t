@@ -1309,7 +1309,7 @@ static struct kernel_param_ops tegra21_pasr_enable_ops = {
 };
 module_param_cb(pasr_enable, &tegra21_pasr_enable_ops, &pasr_enable, 0644);
 
-static int tegra21_pasr_init(struct device *dev)
+int tegra21_pasr_init(struct device *dev)
 {
 	dma_addr_t phys;
 	void *shared_virt;
@@ -1331,8 +1331,6 @@ static int tegra21_pasr_init(struct device *dev)
 
 	return 0;
 }
-#else
-static inline int tegra21_pasr_init(struct device *dev) { return 0; };
 #endif
 
 /* FIXME: add to clock resume */
@@ -2037,9 +2035,6 @@ out:
 		if (!IS_ERR_VALUE(rate))
 			tegra_clk_preset_emc_monitor(rate);
 	}
-
-	if (tegra21_pasr_init(&pdev->dev))
-		dev_err(&pdev->dev, "PASR init failed\n");
 
 	return err;
 }
