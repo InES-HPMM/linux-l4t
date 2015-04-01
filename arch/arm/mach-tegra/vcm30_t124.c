@@ -43,6 +43,10 @@
 #include "therm-monitor.h"
 #include "tegra-of-dev-auxdata.h"
 #include "vcm30_t124.h"
+#include <asm/mach/arch.h>
+#include <linux/clocksource.h>
+#include <linux/irqchip.h>
+#include <linux/platform/tegra/common.h>
 
 /*
  * Set clock values as per automotive POR for VCM30T124
@@ -486,3 +490,50 @@ int __init tegra_vcm30_t124_fiq_debugger(void)
 	return 0;
 }
 device_initcall(tegra_vcm30_t124_fiq_debugger);
+
+static void __init tegra_vcm30t124_late_init(void)
+{
+	/* Create procfs entries for board_serial, skuinfo etc */
+	tegra_init_board_info();
+
+	/* Initialize the vcm30t124 specific devices */
+	tegra_vcm30_t124_therm_mon_init();
+	tegra_vcm30_t124_soctherm_init();
+	tegra_vcm30_t124_usb_init();
+	tegra_vcm30_t124_suspend_init();
+}
+
+static void __init tegra_vcm30t124_dt_init(void)
+{
+	tegra_vcm30_t124_early_init();
+#ifdef CONFIG_USE_OF
+	tegra_vcm30_t124_populate_auxdata();
+#endif
+
+	tegra_vcm30t124_late_init();
+}
+
+static const char * const vcm30t124_dt_compat[] = {
+	"nvidia,vcm30t124",
+	NULL
+};
+
+/*
+ * vcm30t124 is VCM and not a board in itself.
+ * A machine struct has been defined for vcm30t124
+ * only to provide mechanism to initialize whatever
+ * minimal is required for boards with this vcm to
+ * boot.
+ */
+DT_MACHINE_START(VCM30T124, "vcm30t124")
+	.atag_offset	= 0x100,
+	.smp		= smp_ops(tegra_smp_ops),
+	.map_io		= tegra_map_common_io,
+	.reserve	= NULL,
+	.init_early	= tegra12x_init_early,
+	.init_irq	= irqchip_init,
+	.init_time	= clocksource_of_init,
+	.init_machine	= tegra_vcm30t124_dt_init,
+	.dt_compat	= vcm30t124_dt_compat,
+	.init_late	= tegra_init_late
+MACHINE_END
