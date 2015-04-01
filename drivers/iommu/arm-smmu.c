@@ -2455,6 +2455,9 @@ static int arm_smmu_device_dt_probe(struct platform_device *pdev)
 	struct of_phandle_args masterspec;
 	int num_irqs, i, err, count;
 
+	if (tegra_platform_is_unit_fpga())
+		return -ENODEV;
+
 	smmu = devm_kzalloc(dev, sizeof(*smmu), GFP_KERNEL);
 	if (!smmu) {
 		dev_err(dev, "failed to allocate arm_smmu_device\n");
