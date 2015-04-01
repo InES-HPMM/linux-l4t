@@ -1,0 +1,315 @@
+/*
+ * arch/arm/boot/dts/tegra124-vcm30t124-flashing.dts
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+ /dts-v1/;
+
+#include "tegra124-p1859.dtsi"
+/ {
+	model = "NVIDIA Tegra124 p1859";
+	compatible = "nvidia,vcm30t124", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+
+
+	se@70012000 {
+		status = "disabled";
+	};
+
+	iommu {
+		status = "okay";
+	};
+
+	tegra_car: clock {
+		status = "disabled";
+	};
+
+	dma@60020000 {
+		status = "okay";
+	};
+
+	serial@70006000 {
+		status = "disabled";
+	};
+
+	serial@70006040 {
+		status = "disabled";
+	};
+
+	serial@70006200 {
+		status = "disabled";
+	};
+
+	serial@70006300 {
+		status = "disabled";
+	};
+
+	pwm@7000a000 {
+		status = "disabled";
+	};
+
+	i2c@7000c000 {
+		status = "disabled";
+	};
+
+	i2c@7000c400 {
+		status = "disabled";
+	};
+
+	i2c@7000c500 {
+		status = "disabled";
+	};
+
+	i2c@7000c700 {
+		status = "disabled";
+	};
+
+	i2c@7000d000 {
+
+		max16989@38 {
+			status = "disabled";
+		};
+
+		max20024@3c {
+			regulators {
+				ldo5 {
+					status = "disabled";
+				};
+			};
+		};
+	};
+
+	i2c@7000d100 {
+		status = "disabled";
+	};
+
+	spi@7000d400 {
+		status = "disabled";
+	};
+
+	spi@7000d600 {
+		status = "disabled";
+	};
+
+	spi@7000d800 {
+		status = "disabled";
+	};
+
+	spi@7000da00 {
+		status = "disabled";
+	};
+
+	spi@7000dc00 {
+		status = "disabled";
+	};
+
+	spi@7000de00 {
+		status = "disabled";
+	};
+
+	udc@7d000000 {
+		status = "okay";
+	};
+
+	otg@7d000000 {
+		status = "disabled";
+	};
+
+	ehci@7d004000 {
+		status = "disabled";
+	};
+
+	ehci@7d008000 {
+		status = "disabled";
+	};
+
+	pmc@7000e400 {
+		status = "okay";
+	};
+
+	efuse@7000f800 {
+		status = "disabled";
+	};
+
+	clocks {
+		status = "okay";
+	};
+
+	timer@60005000 {
+		status = "okay";
+	};
+
+	rtc {
+		status = "disabled";
+	};
+
+	ahub {
+		status = "disabled";
+	};
+
+	hda@70030000 {
+		status = "disabled";
+	};
+
+	host1x {
+		status = "disabled";
+	};
+
+
+	gk20a {
+		status = "disabled";
+	};
+
+	xusb@70090000 {
+		status = "disable";
+	};
+
+	mipical {
+		status = "disabled";
+	};
+
+	pcie-controller {
+		status = "disabled";
+	};
+
+	sata@70020000 {
+		status = "disabled";
+	};
+
+	psci {
+		status = "disabled";
+	};
+
+	sdhci@700b0600 {
+		status = "okay";
+	};
+
+	sdhci@700b0400 {
+		status = "disabled";
+	};
+
+	sdhci@700b0200 {
+		status = "disabled";
+	};
+
+	sdhci@700b0000 {
+		status = "disabled";
+	};
+
+	tegra_cec {
+		status = "disabled";
+	};
+
+	ptm@7081C000 {
+		status = "disabled";
+	};
+
+	dtv@7000c300 {
+		status = "disabled";
+	};
+
+	snor {
+		status = "okay";
+	};
+
+	gpu_edp {
+		status = "disabled";
+	};
+
+	interrupt-controller@50041000 {
+		status = "okay";
+	};
+
+	interrupt-controller@60004000 {
+		status = "okay";
+	};
+
+	timer {
+		status = "okay";
+	};
+
+	tlk {
+		status = "disabled";
+	};
+
+	arm-pmu {
+		status = "okay";
+	};
+
+	dfll@70110000 {
+		status = "okay";
+	};
+
+	power-detect {
+		status = "disabled";
+	};
+
+	soctherm@0x700E2000 {
+		status = "okay";
+	};
+
+	watchdog@60005100 {
+		status = "okay";
+	};
+
+	cpu_edp {
+		status = "disabled";
+	};
+
+	therm_est_sensor {
+		status = "disabled";
+	};
+
+	tegra-vcm30t124-alt {
+		status = "disabled";
+	};
+
+	bluedroid_pm {
+		status = "disabled";
+	};
+
+	bcmdhd_wlan {
+		status = "disabled";
+	};
+
+	modem {
+		status = "disabled";
+	};
+
+	dap_d_mux {
+		status = "disabled";
+	};
+
+	gpio-keys {
+		status = "disabled";
+	};
+
+	isc-mgr.0 {
+		status = "disabled";
+	};
+
+	isc-mgr.1 {
+		status = "disabled";
+	};
+
+	bluedroid_pm {
+		status = "disabled";
+	};
+
+	/* Nothing else to be added. p1859.dtsi is complete */
+};
