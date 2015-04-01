@@ -156,6 +156,8 @@ struct bq27441_chip {
 	int print_once;
 	bool enable_temp_prop;
 	bool full_charge_state;
+	bool fcc_fg_initialize;
+	u32 full_charge_capacity;
 	struct mutex mutex;
 };
 
@@ -597,7 +599,7 @@ static int bq27441_initialize(struct bq27441_chip *chip)
 	  && (chip->design_energy == be16_to_cpu(old_des_energy))
 	  && (chip->taper_rate == be16_to_cpu(old_taper_rate))
 	  && (chip->terminate_voltage == be16_to_cpu(old_terminate_voltage))
-	  && (!(flags_lsb & BQ27441_FLAGS_ITPOR))) {
+	  && (!(flags_lsb & BQ27441_FLAGS_ITPOR)) && !chip->fcc_fg_initialize) {
 		dev_info(&chip->client->dev, "FG is already programmed\n");
 		goto seal;
 	}
@@ -987,8 +989,30 @@ static struct battery_gauge_info bq27441_bgi = {
 static void bq27441_fc_work(struct work_struct *work)
 {
 	struct bq27441_chip *chip;
+	int val = 0;
 	chip = container_of(to_delayed_work(work),
 				struct bq27441_chip, fc_work);
+
+	if (chip->full_charge_capacity) {
+		val = bq27441_read_word(chip->client, BQ27441_FULL_CHG_CAPACITY);
+		if (val < 0) {
+			dev_err(&chip->client->dev, "FCC read failed %d\n",
+					val);
+		} else if (val < chip->full_charge_capacity) {
+			dev_info(&chip->client->dev,
+					"Full charge capacity %d\n", val);
+			chip->fcc_fg_initialize = true;
+			val = bq27441_initialize(chip);
+			if (val < 0)
+				dev_err(&chip->client->dev,
+					"chip init failed:%d\n", val);
+			schedule_delayed_work(&chip->fc_work, BQ27441_DELAY);
+			return;
+		} else
+			dev_info(&chip->client->dev,
+					"Full Charge Capacity %d\n", val);
+		chip->fcc_fg_initialize = false;
+	}
 
 	dev_info(&chip->client->dev, "Full charge status: %d\n",
 					chip->full_charge_state);
@@ -1097,6 +1121,9 @@ static void of_bq27441_parse_platform_data(struct i2c_client *client,
 	else
 		pdata->maximum_soc = 100;
 
+	if (!of_property_read_u32(np, "ti,full-charge-capacity", &tmp))
+		pdata->full_charge_capacity = tmp;
+
 	pdata->enable_temp_prop = of_property_read_bool(np,
 					"ti,enable-temp-prop");
 
@@ -1131,6 +1158,7 @@ static int bq27441_probe(struct i2c_client *client,
 	chip->full_capacity = 1200;
 	chip->print_once = 0;
 	chip->full_charge_state = 0;
+	chip->fcc_fg_initialize = 0;
 
 	chip->full_capacity = chip->pdata->full_capacity ?:
 				BQ27441_DESIGN_CAPACITY_DEFAULT;
@@ -1148,6 +1176,7 @@ static int bq27441_probe(struct i2c_client *client,
 	chip->reserve_cap = chip->pdata->reserve_cap ?:
 				BQ27441_RESERVE_CAP_DEFAULT;
 	chip->enable_temp_prop = chip->pdata->enable_temp_prop;
+	chip->full_charge_capacity = chip->pdata->full_charge_capacity;
 
 	dev_info(&client->dev, "Battery capacity is %d\n", chip->full_capacity);
 
