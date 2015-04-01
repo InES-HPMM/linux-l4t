@@ -95,7 +95,8 @@ struct adsp_freq_stats {
 	struct device *dev;
 	unsigned long long last_time;
 	int last_index;
-	u64 *time_in_state;
+	u64 time_in_state[sizeof(adsp_cpu_freq_table) \
+		/ sizeof(adsp_cpu_freq_table[0])];
 	int state_num;
 };
 
@@ -497,11 +498,11 @@ static void dump_stats_table(struct seq_file *s, struct adsp_freq_stats *fstats)
 	int i;
 
 	mutex_lock(&policy_mutex);
-	adspfreq_stats_update();
+	if (is_os_running(device))
+		adspfreq_stats_update();
 
-	seq_printf(s, "%-10s %-10s\n", "rate(kHz)", "time(ms)");
 	for (i = 0; i < fstats->state_num; i++) {
-		seq_printf(s, "%-10lu %-10llu\n",
+		seq_printf(s, "%lu %llu\n",
 			(long unsigned int)(adsp_cpu_freq_table[i] / 1000),
 			cputime64_to_clock_t(fstats->time_in_state[i]));
 	}
@@ -700,17 +701,11 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 	freq_stats.last_time = get_jiffies_64();
 	freq_stats.state_num = size;
 	freq_stats.dev = &pdev->dev;
-	freq_stats.time_in_state = kzalloc(size * sizeof(unsigned long long),
-		GFP_KERNEL);
-	if (!freq_stats.time_in_state) {
-		ret = -ENOMEM;
-		goto end;
-	}
+	memset(&freq_stats.time_in_state, 0, sizeof(freq_stats.time_in_state));
 
 	ret = nvadsp_mbox_open(&policy->mbox, &mid, "dfs_comm", NULL, NULL);
 	if (ret) {
 		dev_info(&pdev->dev, "unable to open mailbox\n");
-		kfree(freq_stats.time_in_state);
 		goto end;
 	}
 
@@ -732,7 +727,6 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 			dev_err(&pdev->dev, "rate change notifier err: %s\n",
 			policy->clk_name);
 			nvadsp_mbox_close(&policy->mbox);
-			kfree(freq_stats.time_in_state);
 			goto end;
 		}
 	}
@@ -765,7 +759,6 @@ int adsp_dfs_core_exit(struct platform_device *pdev)
 	if (ret)
 		dev_info(&pdev->dev, "adsp dfs exit failed: mbox close error ....\n");
 
-	kfree(freq_stats.time_in_state);
 	tegra_unregister_clk_rate_notifier(clk_get_parent(policy->adsp_clk),
 					   &policy->rate_change_nb);
 
