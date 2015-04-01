@@ -555,12 +555,20 @@ static int tegra_vi_i2c_clock_enable(struct tegra_vi_i2c_dev *i2c_dev)
 			"Enabling slow clk failed, err %d\n", ret);
 		goto slow_clk_err;
 	}
+
+	ret = clk_set_rate(i2c_dev->host1x_clk, 0);
+	if (ret < 0) {
+		dev_err(i2c_dev->dev,
+			"Set host1x clk failed, err %d\n", ret);
+		goto host1x_clk_err;
+	}
 	ret = clk_prepare_enable(i2c_dev->host1x_clk);
 	if (ret < 0) {
 		dev_err(i2c_dev->dev,
 			"Enabling host1x clk failed, err %d\n", ret);
 		goto host1x_clk_err;
 	}
+
 	return 0;
 
 host1x_clk_err:
