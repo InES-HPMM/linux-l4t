@@ -61,6 +61,8 @@ static int soc_speedo_id;
 static int gpu_speedo_id;
 static int package_id;
 
+static int core_min_mv;
+
 static int cpu_iddq_value;
 static int gpu_iddq_value;
 static int soc_iddq_value;
@@ -116,12 +118,14 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 		soc_speedo_id = 0;
 		gpu_speedo_id = speedo_rev >= 2 ? 1 : 0;
 		threshold_index = 0;
+		core_min_mv = 825;
 		break;
 	case 0x13:
 		cpu_speedo_id = shield_sku ? 2 : 1;
 		soc_speedo_id = 0;
 		gpu_speedo_id = speedo_rev >= 2 ? 1 : 0;
 		threshold_index = 0;
+		core_min_mv = 825;
 		break;
 	case 0x83:
 	case 0x87:
@@ -129,6 +133,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 		soc_speedo_id = 0;
 		gpu_speedo_id = speedo_rev >= 2 ? 2 : 0;
 		threshold_index = 0;
+		core_min_mv = 800;
 		break;
 	default:
 		pr_warn("Tegra21: Unknown SKU %d\n", sku);
@@ -136,6 +141,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 		soc_speedo_id = 0;
 		gpu_speedo_id = 0;
 		threshold_index = 0;
+		core_min_mv = 950;
 		break;
 	}
 }
@@ -339,10 +345,10 @@ int tegra_soc_speedo_2_value(void)
 {
 	return soc_speedo_2_value;
 }
+
 /*
- * CPU and core nominal voltage levels as determined by chip SKU and speedo
- * (not final - can be lowered by dvfs tables and rail dependencies; the
- * latter is resolved by the dvfs code)
+ * Core nominal and minimum voltage levels as determined by chip SKU and speedo
+ * (not final - will be clipped to dvfs tables).
  */
 int tegra_cpu_speedo_mv(void)
 {
@@ -364,6 +370,11 @@ int tegra_core_speedo_mv(void)
 	default:
 		BUG();
 	}
+}
+
+int tegra_core_speedo_min_mv(void)
+{
+	return core_min_mv;
 }
 
 int tegra_get_cpu_iddq_value(void)

@@ -1609,6 +1609,26 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 	return i - 1;
 }
 
+/*
+ * Clip sku-based core minimum voltage to core DVFS voltage ladder
+ */
+static int __init get_core_minimum_mv_index(void)
+{
+	int i;
+	int mv = tegra_core_speedo_min_mv();
+
+	/*
+	 * Start with minimum level for the chip sku/speedo. Then, make sure it
+	 * is above initial rail minimum, and finally round up to DVFS voltages.
+	 */
+	mv = max(mv, tegra21_dvfs_rail_vdd_core.min_millivolts);
+	for (i = 0; i < MAX_DVFS_FREQS - 1; i++) {
+		if ((core_millivolts[i+1] == 0) || (mv <= core_millivolts[i]))
+			break;
+	}
+	return i;
+}
+
 static int __init init_core_rail_thermal_profile(void)
 {
 	struct dvfs_rail *rail = &tegra21_dvfs_rail_vdd_core;
@@ -1681,7 +1701,7 @@ void __init tegra21x_init_dvfs(void)
 	of_tegra_dvfs_init(tegra21_dvfs_rail_of_match);
 
 	/*
-	 * Find nominal voltages for core (1st) and cpu rails before rail
+	 * Find nominal and minimum voltages for core rail before rail
 	 * init. Nominal voltage index in core scaling ladder can also be
 	 * used to determine max dvfs frequencies for all core clocks. In
 	 * case of error disable core scaling and set index to 0, so that
@@ -1695,9 +1715,10 @@ void __init tegra21x_init_dvfs(void)
 	}
 	tegra21_dvfs_rail_vdd_core.nominal_millivolts =
 		core_millivolts[core_nominal_mv_index];
-	tegra21_dvfs_rail_vdd_core.min_millivolts =
-		max(tegra21_dvfs_rail_vdd_core.min_millivolts,
-		core_millivolts[0]);
+
+	i = get_core_minimum_mv_index();
+	BUG_ON(i > core_nominal_mv_index);
+	tegra21_dvfs_rail_vdd_core.min_millivolts = core_millivolts[i];
 
 	/*
 	 * Construct fast and slow CPU DVFS tables from CVB data; find maximum
