@@ -1682,9 +1682,40 @@ static bool __init can_update_max_rate(struct clk *c, struct dvfs *d)
 	return true;
 }
 
+/* Check if no need to apply DVFS limits and DVFS installation can be skipped */
+static bool __init can_skip_dvfs_on_clk(struct clk *c, struct dvfs *d,
+	bool max_rate_updated, int max_freq_index)
+{
+	/* Skip for clock can reach max rate at min voltage */
+	if (d->freqs[0] * d->freqs_mult >= c->max_rate)
+		return true;
+
+	/*
+	 * Skip for UART that must have flat DVFS table. UART is a special case,
+	 * since UART driver may use its own baud rate divider directly, and
+	 * apply baud rate limits based on platform DT transparently to DVFS.
+	 */
+	if (c->flags & DIV_U151_UART) {
+		BUG_ON(d->freqs[0] != d->freqs[max_freq_index]);
+		return true;
+	}
+
+	/*
+	 * Skip for single-voltage range provided DVFS limit was already applied
+	 * to maximum rate, and it is not a shared bus (the latter condition is
+	 * added, because shared buses may define possible rates based on DVFS)
+	 */
+	if (!c->ops->shared_bus_update && max_rate_updated &&
+	    (d->dvfs_rail->min_millivolts == d->dvfs_rail->nominal_millivolts))
+		return true;
+
+	return false;
+}
+
 void __init tegra_init_dvfs_one(struct dvfs *d, int max_freq_index)
 {
 	int ret;
+	bool max_rate_updated = false;
 	struct clk *c = tegra_get_clock_by_name(d->clk_name);
 
 	if (!c) {
@@ -1697,18 +1728,15 @@ void __init tegra_init_dvfs_one(struct dvfs *d, int max_freq_index)
 		BUG_ON(!d->freqs[max_freq_index]);
 		tegra_init_max_rate(
 			c, d->freqs[max_freq_index] * d->freqs_mult);
+		max_rate_updated = true;
 	}
 	d->max_millivolts = d->dvfs_rail->nominal_millivolts;
 
-	/*
-	 * No need to enable DVFS on clock reaching max rate at min voltage,
-	 * or when same frequency limit is specified for the entire voltage
-	 * range.
-	 */
-	if ((d->freqs[0] * d->freqs_mult >= c->max_rate) ||
-	    (d->freqs[0] == d->freqs[max_freq_index]))
+	/* Skip DVFS enable if no voltage dependency, or single-voltage range */
+	if (can_skip_dvfs_on_clk(c, d, max_rate_updated, max_freq_index))
 		return;
 
+	/* Enable DVFS */
 	ret = enable_dvfs_on_clk(c, d);
 	if (ret)
 		pr_err("tegra_dvfs: failed to enable dvfs on %s\n", c->name);
