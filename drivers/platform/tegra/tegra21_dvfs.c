@@ -338,30 +338,6 @@ static unsigned long gpu_max_freq[] = {
 		921600,  998400, 921600,
 };
 
-#define NA_FREQ_CVB_TABLE_2	\
-	.freqs_mult = KHZ,	\
-	.speedo_scale = 100,	\
-	.thermal_scale = 10,	\
-	.voltage_scale = 1000,	\
-	.cvb_table = {		\
-		/* f	   dfll pll:    c0,       c1,       c2,       c3,       c4,       c5 */    \
-		{   76800, { }, {   814294,     8144,     -940,      808,   -21583,      226 }, }, \
-		{  153600, { }, {   856185,     8144,     -940,      808,   -21583,      226 }, }, \
-		{  230400, { }, {   898077,     8144,     -940,      808,   -21583,      226 }, }, \
-		{  307200, { }, {   939968,     8144,     -940,      808,   -21583,      226 }, }, \
-		{  384000, { }, {   981860,     8144,     -940,      808,   -21583,      226 }, }, \
-		{  460800, { }, {  1023751,     8144,     -940,      808,   -21583,      226 }, }, \
-		{  537600, { }, {  1065642,     8144,     -940,      808,   -21583,      226 }, }, \
-		{  614400, { }, {  1107534,     8144,     -940,      808,   -21583,      226 }, }, \
-		{  691200, { }, {  1149425,     8144,     -940,      808,   -21583,      226 }, }, \
-		{  768000, { }, {  1191317,     8144,     -940,      808,   -21583,      226 }, }, \
-		{  844800, { }, {  1233208,     8144,     -940,      808,   -21583,      226 }, }, \
-		{  921600, { }, {  1275100,     8144,     -940,      808,   -21583,      226 }, }, \
-		{  998400, { }, {  1316991,     8144,     -940,      808,   -21583,      226 }, }, \
-		{ 0,	   { }, { }, }, \
-	}, \
-	.cvb_vmin = {   0, { }, {   800000,        0,        0 }, }
-
 #define NA_FREQ_CVB_TABLE	\
 	.freqs_mult = KHZ,	\
 	.speedo_scale = 100,	\
@@ -383,8 +359,7 @@ static unsigned long gpu_max_freq[] = {
 		{  921600, { }, {  1275100,     8144,     -940,      808,   -21583,      226 }, }, \
 		{  998400, { }, {  1316991,     8144,     -940,      808,   -21583,      226 }, }, \
 		{ 0,	   { }, { }, }, \
-	}, \
-	.cvb_vmin = {   0, { }, {   840000,        0,        0 }, }
+	}
 
 #define FIXED_FREQ_CVB_TABLE	\
 	.freqs_mult = KHZ,	\
@@ -406,16 +381,18 @@ static unsigned long gpu_max_freq[] = {
 		{  844800, { }, {  2550821,  -104555,     1632 }, }, \
 		{  921600, { }, {  2647676,  -106455,     1632 }, }, \
 		{ 0,	   { }, { }, }, \
-	}, \
-	.cvb_vmin = {   0, { }, {   950000,        0,        0 }, }
+	}
 
 static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 2,
 		.process_id = -1,
+		.pll_tune_data = {
+			.min_millivolts = 800,
+		},
 		.max_mv = 1150,
 #ifdef CONFIG_TEGRA_USE_NA_GPCPLL
-		NA_FREQ_CVB_TABLE_2,
+		NA_FREQ_CVB_TABLE,
 #else
 		FIXED_FREQ_CVB_TABLE,
 #endif
@@ -423,6 +400,9 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 1,
 		.process_id = -1,
+		.pll_tune_data = {
+			.min_millivolts = 840,
+		},
 		.max_mv = 1150,
 #ifdef CONFIG_TEGRA_USE_NA_GPCPLL
 		NA_FREQ_CVB_TABLE,
@@ -433,6 +413,9 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 0,
 		.process_id = -1,
+		.pll_tune_data = {
+			.min_millivolts = 950,
+		},
 #ifdef CONFIG_TEGRA_GPU_DVFS
 		.max_mv = 1150,
 #else
@@ -1281,13 +1264,19 @@ static int __init init_gpu_rail_thermal_caps(struct dvfs *gpu_dvfs,
 static int __init set_gpu_dvfs_data(unsigned long max_freq,
 	struct gpu_cvb_dvfs *d, struct dvfs *gpu_dvfs, int *max_freq_index)
 {
-	int i, j, thermal_ranges, mv;
+	int i, j, thermal_ranges, mv, min_mv;
 	struct cvb_dvfs_table *table = NULL;
 	int speedo = tegra_gpu_speedo_value();
 	struct dvfs_rail *rail = &tegra21_dvfs_rail_vdd_gpu;
 	struct rail_alignment *align = &rail->alignment;
 
 	d->max_mv = round_voltage(d->max_mv, align, false);
+	min_mv = d->pll_tune_data.min_millivolts;
+	if (min_mv < rail->min_millivolts) {
+		pr_debug("tegra21_dvfs: gpu min %dmV below rail min %dmV\n",
+			 min_mv, rail->min_millivolts);
+		min_mv = rail->min_millivolts;
+	}
 
 	/*
 	 * Get scaling thermal ranges; 1 range implies no thermal dependency.
@@ -1298,26 +1287,11 @@ static int __init set_gpu_dvfs_data(unsigned long max_freq,
 		rail->vts_cdev = NULL;
 
 	/*
-	 * Use CVB table to calculate Vmin for each temperature range
+	 * Apply fixed thermal floor for each temperature range
 	 */
-	mv = get_cvb_voltage(
-		speedo, d->speedo_scale, &d->cvb_vmin.cvb_pll_param);
 	for (j = 0; j < thermal_ranges; j++) {
-		int mvj = mv;
-		int t = thermal_ranges == 1 ? 0 :
-			rail->vts_cdev->trip_temperatures[j];
-
-		/* add Vmin thermal offset for this trip-point */
-		mvj += get_cvb_t_voltage(speedo, d->speedo_scale,
-			t, d->thermal_scale, &d->cvb_vmin.cvb_pll_param);
-		mvj = round_cvb_voltage(mvj, d->voltage_scale, align);
-		if (mvj < rail->min_millivolts) {
-			pr_debug("tegra21_dvfs: gpu min %dmV below rail min %dmV\n",
-			     mvj, rail->min_millivolts);
-			mvj = rail->min_millivolts;
-		}
-
-		gpu_vmin[j] = mvj;
+		mv = max(min_mv, d->therm_floors_table[j]);
+		gpu_vmin[j] = round_voltage(mv, align, true);
 	}
 
 	/*
@@ -1348,12 +1322,11 @@ static int __init set_gpu_dvfs_data(unsigned long max_freq,
 				break;
 
 			/*
-			 * Apply fixed thermal floor, and  update voltage for
-			 * adjacent ranges bounded by this trip-point (cvb &
-			 * dvfs are transpose matrices)
+			 * Update voltage for adjacent ranges bounded by this
+			 * trip-point (cvb & dvfs are transpose matrices, and
+			 * cvb freq row index is column index for dvfs matrix)
 			 */
-			gpu_millivolts[j][i] = max(mvj,
-						   d->therm_floors_table[j]);
+			gpu_millivolts[j][i] = mvj;
 			if (j && (gpu_millivolts[j-1][i] < mvj))
 				gpu_millivolts[j-1][i] = mvj;
 		}
