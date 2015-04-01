@@ -67,6 +67,7 @@
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(V, 3) 0x0>;
 			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+			ti,full-charge-capacity = <6500>;
 		};
 	};
 
