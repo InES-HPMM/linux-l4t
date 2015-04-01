@@ -192,6 +192,16 @@
 						regulator-name = "vdd-1v8";
 						regulator-always-on;
 						regulator-boot-on;
+						consumers {
+							c1 {
+								regulator-consumer-supply = "vddio_sdmmc";
+								regulator-consumer-device = "sdhci-tegra.0";
+							};
+							c2 {
+								regulator-consumer-supply = "vddio_sdmmc";
+								regulator-consumer-device = "sdhci-tegra.3";
+							};
+						};
 					};
 
 					palmas_smps9: smps9 {
@@ -201,6 +211,16 @@
 						regulator-always-on;
 						regulator-boot-on;
 						ti,roof-floor = <PALMAS_EXT_CONTROL_NSLEEP>;
+						consumers {
+							c1 {
+								regulator-consumer-supply = "vddio_sd_slot";
+								regulator-consumer-device = "sdhci-tegra.3";
+							};
+							c2 {
+								regulator-consumer-supply = "vddio_sd_slot";
+								regulator-consumer-device = "sdhci-tegra.2";
+							};
+						};
 					};
 
 					palmas_smps10_out1: smps10_out1 {
@@ -273,6 +293,12 @@
 						regulator-name = "vddio-sdmmc-2";
 						regulator-min-microvolt = <1800000>;
 						regulator-max-microvolt = <3300000>;
+						consumers {
+							c1 {
+								regulator-consumer-supply = "vddio_sdmmc";
+								regulator-consumer-device = "sdhci-tegra.2";
+							};
+						};
 					};
 
 					ldoln_reg: ldoln {
