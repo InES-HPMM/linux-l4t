@@ -31,6 +31,7 @@ struct bq27441_platform_data {
 	u32 reserve_cap;
 	const char *tz_name;
 	bool enable_temp_prop;
+	u32 full_charge_capacity;
 };
 
 #endif
