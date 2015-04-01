@@ -8246,6 +8246,7 @@ static struct clk_ops tegra_xusb_padctl_ops = {
 
 static struct clk tegra_clk_xusb_padctl = {
 	.name      = "xusb_padctl",
+	.clk_id = TEGRA210_CLK_ID_XUSB_PADCTRL,
 	.ops       = &tegra_xusb_padctl_ops,
 	.u.periph  = {
 		.clk_num = 142,
@@ -8254,6 +8255,7 @@ static struct clk tegra_clk_xusb_padctl = {
 
 static struct clk tegra_clk_sata_uphy = {
 	.name      = "sata_uphy",
+	.clk_id = TEGRA210_CLK_ID_SATA_UPHY,
 	.ops       = &tegra_xusb_padctl_ops,
 	.u.periph  = {
 		.clk_num = 204,
@@ -8262,6 +8264,7 @@ static struct clk tegra_clk_sata_uphy = {
 
 static struct clk tegra_pex_uphy_clk = {
 	.name      = "pex_uphy",
+	.clk_id = TEGRA210_CLK_ID_PEX_UPHY,
 	.ops       = &tegra_xusb_padctl_ops,
 	.u.periph  = {
 		.clk_num   = 205,
@@ -9657,9 +9660,9 @@ static struct clk_mux_sel mux_xusb_dev[] = {
 };
 
 static struct clk tegra_xusb_coupled_clks[] = {
-	PERIPH_CLK_EX("xusb_host", XUSB_ID, "host", 89,	0, 336000000, mux_xusb_host, 0,	0, &tegra_clk_coupled_gate_ops),
-	PERIPH_CLK_EX("xusb_ss",   NULL,    "ss",  156,	0, 336000000, mux_xusb_ss,   0,	0, &tegra_clk_coupled_gate_ops),
-	PERIPH_CLK_EX("xusb_dev",  XUDC_ID, "dev",  95, 0, 120000000, mux_xusb_dev,  0,	0, &tegra_clk_coupled_gate_ops),
+	PERIPH_CLK_EX("xusb_host", XUSB_ID, "host", 89,	0, 336000000, mux_xusb_host, 0,	TEGRA210_CLK_ID_XUSB_HOST, &tegra_clk_coupled_gate_ops),
+	PERIPH_CLK_EX("xusb_ss",   NULL,    "ss",  156,	0, 336000000, mux_xusb_ss,   0,	TEGRA210_CLK_ID_XUSB_SS, &tegra_clk_coupled_gate_ops),
+	PERIPH_CLK_EX("xusb_dev",  XUDC_ID, "dev",  95, 0, 120000000, mux_xusb_dev,  0,	TEGRA210_CLK_ID_XUSB_DEV, &tegra_clk_coupled_gate_ops),
 };
 
 #define SLCG_CLK(_root_name, _name_ext, _dev, _con, _reg, _bit)		\
