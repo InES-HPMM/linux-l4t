@@ -648,4 +648,8 @@
 		edp-consumer-name = "shieldled";
 		disable-on-kernel-charging;
 	};
+
+	serial@70006300 {
+		dma-names = "tx";
+	};
 };
