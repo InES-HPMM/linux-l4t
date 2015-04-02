@@ -201,9 +201,9 @@
 #define ARM_SMMU_GR0_SMR(n)		(0x800 + ((n) << 2))
 #define SMR_VALID			(1 << 31)
 #define SMR_MASK_SHIFT			16
-#define SMR_MASK_MASK			0x7fff
+#define SMR_MASK_MASK			0x7f80
 #define SMR_ID_SHIFT			0
-#define SMR_ID_MASK			0x7fff
+#define SMR_ID_MASK			0x7f80
 
 #define ARM_SMMU_GR0_S2CR(n)		(0xc00 + ((n) << 2))
 #define S2CR_CBNDX_SHIFT		0
@@ -1229,11 +1229,9 @@ static int arm_smmu_master_configure_smrs(struct arm_smmu_device *smmu,
 
 		smrs[i] = (struct arm_smmu_smr) {
 			.idx	= idx,
-			.mask	= 0, /* We don't currently share SMRs */
+			.mask	= SMR_ID_MASK,
 			.id	= cfg->streamids[i],
 		};
-
-		smrs[i].mask &= (NUM_SID - 1); /* only if share SMRs */
 	}
 
 	/* It worked! Now, poke the actual hardware */
