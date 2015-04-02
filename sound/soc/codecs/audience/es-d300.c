@@ -295,6 +295,17 @@ static int es300_codec_stop_algo(struct escore_priv *escore)
 		return ret;
 	}
 
+	/* Disable DHWPT if enabled */
+	if (escore->algo_type == DHWPT) {
+		u32 cmd = escore->dhwpt_cmd & 0xFFFF0000;
+		ret = escore_cmd(escore, cmd, &resp);
+		if (ret) {
+			pr_err("%s: Disabling DHWPT failed = %d\n",
+					__func__, ret);
+			return ret;
+		}
+	}
+
 	escore->current_preset = 0;
 
 	return ret;
