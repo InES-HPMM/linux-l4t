@@ -318,7 +318,9 @@ static int pwm_regulator_resume(struct device *dev)
 }
 #endif
 static const struct dev_pm_ops pwm_regulator_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(NULL, pwm_regulator_resume)
+#ifdef CONFIG_PM_SLEEP
+	.resume_early = pwm_regulator_resume,
+#endif
 };
 
 static const struct of_device_id pwm_regulator_of_match[] = {
