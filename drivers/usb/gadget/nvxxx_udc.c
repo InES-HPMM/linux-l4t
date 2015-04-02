@@ -5548,8 +5548,12 @@ static int nvudc_plat_pad_init(struct nv_udc_s *nvudc)
 	if (is_ss_port_enabled)
 		t210_program_ss_pad(nvudc, ss_port);
 
-	tegra_xhci_ss_wake_signal((1 << ss_port), false);
-	tegra_xhci_ss_vcore((1 << ss_port), false);
+	if ((tegra_usb_pad_reg_read(XUSB_PADCTL_USB2_VBUS_ID_0) &
+			USB2_VBUS_ID_0_ID_OVERRIDE) ==
+			USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT) {
+		tegra_xhci_ss_wake_signal((1 << ss_port), false);
+		tegra_xhci_ss_vcore((1 << ss_port), false);
+	}
 
 	/* ss pad phy enable */
 	if (is_ss_port_enabled)
