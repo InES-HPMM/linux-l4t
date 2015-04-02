@@ -20,4 +20,17 @@
 
 / {
 	nvidia,dtsfilename = __FILE__;
+
+	i2c@7000c000 {
+		pca9546@71 {
+			i2c@3 {
+				gpio@76 {
+					pcie-mux {
+						gpio-output-low = <12 14 15>;
+						gpio-output-high = <5 6 11 13>;
+					};
+				};
+			};
+		};
+	};
 };
