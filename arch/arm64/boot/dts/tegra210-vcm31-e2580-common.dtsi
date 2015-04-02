@@ -47,12 +47,6 @@
 	nvidia,pmu-boardid = "2580:0631:A0";
 
 	spi@7000d400 {
-	earSmart: earSmart-codec@0 {
-		adnc,gpiob-gpio = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
-	  };
-	};
-
-	spi@7000d600 {
 		status = "okay";
 		spi@0 {
 			compatible = "spidev";
@@ -66,7 +60,7 @@
 		};
 	};
 
-	spi@7000d800 {
+	spi@7000d600 {
 		compatible = "nvidia,tegra210-spi-slave";
 		status = "okay";
 		spi@0 {
@@ -76,8 +70,18 @@
 		};
 	};
 
+	spi@7000d800 {
+		compatible = "nvidia,tegra210-spi-slave";
+		status = "disabled";
+		spi@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <13000000>;
+		};
+	};
+
 	spi@7000da00 {
-		status = "okay";
+		status = "disabled";
 		spi@0 {
 			compatible = "spidev";
 			reg = <0>;
