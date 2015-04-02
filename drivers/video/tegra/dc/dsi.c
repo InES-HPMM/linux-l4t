@@ -49,6 +49,7 @@
 #include "dsi_regs.h"
 #include "dsi.h"
 #include "mipi_cal.h"
+#include "of_dc.h"
 
 /* HACK! This needs to come from DT */
 #include "../../../../arch/arm/mach-tegra/iomap.h"
@@ -2278,6 +2279,7 @@ static void tegra_dsi_mipi_calibration_21x(struct tegra_dc_dsi_data *dsi)
 {
 	u32 val = 0;
 	struct clk *clk72mhz = NULL;
+	char *of_panel_name;
 	clk72mhz = clk_get_sys("clk72mhz", NULL);
 	if (IS_ERR_OR_NULL(clk72mhz)) {
 		dev_err(&dsi->dc->ndev->dev, "dsi: can't get clk72mhz clock\n");
@@ -2300,7 +2302,13 @@ static void tegra_dsi_mipi_calibration_21x(struct tegra_dc_dsi_data *dsi)
 	tegra_mipi_cal_write(dsi->mipi_cal, val,
 			MIPI_CAL_MIPI_BIAS_PAD_CFG1_0);
 
-	tegra_dsi_writel(dsi, 0, DSI_PAD_CONTROL_1_VS1);
+	val = 0;
+	of_panel_name = of_get_panel_name();
+        if (of_panel_name)
+		if (!strcmp(of_panel_name, AUO_12X19_DSI_PANEL))
+			val = (DSI_PAD_OUTADJ3(0x4) | DSI_PAD_OUTADJ2(0x4) |
+				DSI_PAD_OUTADJ1(0x4) | DSI_PAD_OUTADJ0(0x4));
+	tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL_1_VS1);
 	tegra_dsi_writel(dsi, 0, DSI_PAD_CONTROL_2_VS1);
 
 	val = tegra_dsi_readl(dsi, DSI_PAD_CONTROL_3_VS1);

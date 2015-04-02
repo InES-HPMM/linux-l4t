@@ -18,6 +18,7 @@
 #define __DRIVERS_VIDEO_TEGRA_DC_DSI_H__
 
 #define BOARD_P1761   0x06E1
+#define AUO_12X19_DSI_PANEL	"a,wuxga-8-0"
 #include "dc_priv_defs.h"
 
 /* Defines the DSI phy timing parameters */

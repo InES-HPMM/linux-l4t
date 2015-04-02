@@ -63,6 +63,7 @@
 #include "dsi.h"
 #include "edid.h"
 #include "hdmi2.0.h"
+#include "of_dc.h"
 
 #ifdef CONFIG_OF
 /* #define OF_DC_DEBUG	1 */
@@ -77,6 +78,13 @@
 static struct regulator *of_hdmi_vddio;
 static struct regulator *of_hdmi_dp_reg;
 static struct regulator *of_hdmi_pll;
+#define MAX_PANEL_NAME_LENGTH	32
+static char panel_name[MAX_PANEL_NAME_LENGTH];
+
+char *of_get_panel_name(void)
+{
+	return panel_name;
+}
 
 #ifdef CONFIG_TEGRA_DC_CMU
 static struct tegra_dc_cmu default_cmu = {
@@ -1054,6 +1062,7 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 	struct property *prop;
 	const __be32 *p;
 	u32 u;
+	const char *panel_compat;
 
 	if (ndev->id == 0)
 		np_dsi_panel = tegra_primary_panel_get_dt_node(pdata);
@@ -1064,6 +1073,10 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 		pr_err("There is no valid panel node\n");
 		return NULL;
 	}
+
+	panel_compat = of_get_property(np_dsi_panel, "compatible", NULL);
+	if (panel_compat)
+		strncpy(panel_name, panel_compat, sizeof(panel_name) - 1);
 
 	if (!of_property_read_u32(np_dsi, "nvidia,dsi-controller-vs", &temp)) {
 		dsi->controller_vs = (u8)temp;
