@@ -372,11 +372,13 @@ void __init smp_init_cpus(void)
 {
 	struct device_node *dn = NULL;
 	unsigned int i, cpu = 1;
+	u32 cpu_hwcap = 0;
 	bool bootcpu_valid = false;
 
 	while ((dn = of_find_node_by_type(dn, "cpu"))) {
 		const u32 *cell;
 		u64 hwid;
+		u32 errata_hwcap;
 
 		/*
 		 * A cpu node with missing "reg" property is
@@ -446,6 +448,9 @@ void __init smp_init_cpus(void)
 		if (cpu_read_ops(dn, cpu) != 0)
 			goto next;
 
+		if (!of_property_read_u32(dn, "errata_hwcaps", &errata_hwcap))
+			cpu_hwcap |= errata_hwcap;
+
 		if (cpu_ops[cpu]->cpu_init(dn, cpu))
 			goto next;
 
@@ -454,6 +459,11 @@ void __init smp_init_cpus(void)
 next:
 		cpu++;
 	}
+
+	for (i = 0; cpu_hwcap && (i < ARM64_NCAPS); i++, cpu_hwcap >>= 1)
+		cpus_set_cap(i);
+
+	WARN(cpu_hwcap, "errata_hwcap defined in DT is not supported by kernel");
 
 	/* sanity check */
 	if (cpu > NR_CPUS)
