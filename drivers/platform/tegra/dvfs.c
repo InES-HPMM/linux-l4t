@@ -2197,8 +2197,13 @@ static int __init of_rail_get_cdev(struct dvfs_rail *rail, char *phandle_name,
 	struct device_node *cdev_dn =
 		 of_parse_phandle(rail->dt_node, phandle_name, 0);
 
+	if (cdev_dn && !of_device_is_available(cdev_dn)) {
+		pr_info("tegra_dvfs: %s: %s is disabled in DT\n",
+		       rail->reg_id, phandle_name);
+		return -ENOSYS;
+	}
+
 	if (!cdev_dn || !tegra_cdev->compatible ||
-	    !of_device_is_available(cdev_dn) ||
 	    !of_device_is_compatible(cdev_dn, tegra_cdev->compatible)) {
 		pr_err("tegra_dvfs: %s: no compatible %s is available in DT\n",
 		       rail->reg_id, phandle_name);
@@ -2215,18 +2220,32 @@ static int __init of_rail_get_cdev(struct dvfs_rail *rail, char *phandle_name,
 
 static int __init of_rail_init_cdev_nodes(struct dvfs_rail *rail)
 {
-	if (rail->vts_cdev)
-		of_rail_get_cdev(rail, "scaling-cdev", rail->vts_cdev);
+	int ret;
 
-	if (rail->vmin_cdev)
-		of_rail_get_cdev(rail, "vmin-cdev", rail->vmin_cdev);
+	if (rail->vts_cdev) {
+		ret = of_rail_get_cdev(rail, "scaling-cdev", rail->vts_cdev);
+		if (ret == -ENOSYS)
+			rail->vts_cdev = NULL;
+	}
 
-	if (rail->vmax_cdev)
-		of_rail_get_cdev(rail, "vmax-cdev", rail->vmax_cdev);
+	if (rail->vmin_cdev) {
+		ret = of_rail_get_cdev(rail, "vmin-cdev", rail->vmin_cdev);
+		if (ret == -ENOSYS)
+			rail->vmin_cdev = NULL;
+	}
 
-	if (rail->clk_switch_cdev)
-		of_rail_get_cdev(rail, "clk-switch-cdev",
-				 rail->clk_switch_cdev);
+	if (rail->vmax_cdev) {
+		ret = of_rail_get_cdev(rail, "vmax-cdev", rail->vmax_cdev);
+		if (ret == -ENOSYS)
+			rail->vmax_cdev = NULL;
+	}
+
+	if (rail->clk_switch_cdev) {
+		ret = of_rail_get_cdev(rail, "clk-switch-cdev",
+				       rail->clk_switch_cdev);
+		if (ret == -ENOSYS)
+			rail->clk_switch_cdev = NULL;
+	}
 
 	return 0;
 }
