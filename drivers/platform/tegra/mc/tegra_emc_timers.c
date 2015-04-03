@@ -20,6 +20,12 @@
 
 #define pr_fmt(fmt)	"[dram-timers] " fmt
 
+#define emc_timer_dbg(lvl, fmt, args...)	\
+	do {					\
+		if (emc_timers_dbg >= lvl)	\
+			pr_info(fmt, ##args);	\
+	} while (0)
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/debugfs.h>
@@ -32,6 +38,8 @@
 #include <linux/platform/tegra/tegra_emc.h>
 
 #define TEGRA_DRAM_THERM_MAX_STATE     1
+
+static u32 emc_timers_dbg;
 
 /* In ms - timer periods. */
 static u32 timer_period_mr4 = 1000;
@@ -58,6 +66,8 @@ static struct timer_list emc_timer_training =
 static void emc_mr4_poll(unsigned long nothing)
 {
 	int dram_temp;
+
+	emc_timer_dbg(2, "Doing MR4 poll\n");
 
 	if (!test_mode)
 		dram_temp = tegra_emc_get_dram_temperature();
@@ -118,6 +128,8 @@ reset:
  */
 static void tegra_emc_mr4_temp_trigger(int do_poll)
 {
+	emc_timer_dbg(1, "MR4 temp trigger: %d\n", do_poll);
+
 	if (do_poll) {
 		atomic_set(&mr4_temp_poll, 1);
 		mod_timer(&emc_timer_mr4,
@@ -133,6 +145,9 @@ static void tegra_emc_mr4_temp_trigger(int do_poll)
  */
 void tegra_emc_mr4_freq_check(unsigned long freq)
 {
+	emc_timer_dbg(1, "MR4 freq trigger: %lu (vs %lu)\n",
+		       freq, mr4_freq_threshold);
+
 	if (mr4_freq_threshold && freq >= mr4_freq_threshold)
 		tegra_emc_mr4_temp_trigger(1);
 	else
@@ -146,6 +161,8 @@ void tegra_emc_mr4_set_freq_thresh(unsigned long thresh)
 
 static void emc_train(unsigned long nothing)
 {
+	emc_timer_dbg(3, "EMC training start\n");
+
 	emc_do_periodic_compensation();
 
 	mod_timer(&emc_timer_training,
@@ -154,12 +171,16 @@ static void emc_train(unsigned long nothing)
 
 void tegra_emc_timer_training_start(void)
 {
+	emc_timer_dbg(1, "EMC training timer start\n");
+
 	mod_timer(&emc_timer_training,
 		  jiffies + msecs_to_jiffies(timer_period_training));
 }
 
 void tegra_emc_timer_training_stop(void)
 {
+	emc_timer_dbg(1, "EMC training timer stop\n");
+
 	del_timer(&emc_timer_training);
 }
 
@@ -250,10 +271,12 @@ int tegra_emc_timers_init(struct dentry *parent)
 	if (!dram_therm_debugfs)
 		return 0;
 
+	debugfs_create_u32("debug", S_IRUGO | S_IWUSR,
+			   emc_timers_debugfs, &emc_timers_dbg);
+
 	/* DRAM thermals. */
 	debugfs_create_u32("timer_period", S_IRUGO | S_IWUSR,
 			   dram_therm_debugfs, &timer_period_mr4);
-
 	debugfs_create_u32("test_mode", S_IRUGO | S_IWUSR,
 			   dram_therm_debugfs, &test_mode);
 	debugfs_create_u32("dram_temp_override", S_IRUGO | S_IWUSR,
