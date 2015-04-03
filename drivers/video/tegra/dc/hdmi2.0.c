@@ -726,7 +726,9 @@ static int tegra_hdmi_controller_disable(struct tegra_hdmi *hdmi)
 
 	tegra_dc_get(dc);
 
-	tegra_nvhdcp_set_plug(hdmi->nvhdcp, 0);
+	if (!G_RECOVERY_HACK)
+		tegra_nvhdcp_set_plug(hdmi->nvhdcp, 0);
+
 	tegra_dc_sor_detach(sor);
 	tegra_sor_power_lanes(sor, 4, false);
 	tegra_sor_hdmi_pad_power_down(sor);
@@ -1904,7 +1906,9 @@ static int tegra_hdmi_controller_enable(struct tegra_hdmi *hdmi)
 
 	tegra_hdmi_config_clk(hdmi, TEGRA_HDMI_BRICK_CLK);
 	tegra_dc_sor_attach(sor);
-	tegra_nvhdcp_set_plug(hdmi->nvhdcp, tegra_dc_hpd(dc));
+
+	if (!G_RECOVERY_HACK)
+		tegra_nvhdcp_set_plug(hdmi->nvhdcp, tegra_dc_hpd(dc));
 
 	tegra_dc_setup_clk(dc, dc->clk);
 	tegra_dc_hdmi_setup_clk(dc, hdmi->sor->sor_clk);
