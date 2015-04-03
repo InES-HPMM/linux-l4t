@@ -58,6 +58,37 @@ static void __update_emc_alt_timing(struct tegra21_emc_table *current_timing)
 				EMC_COPY_TABLE_PARAM_PERIODIC_FIELDS);
 }
 
+/*
+ * It is possible for periodic training to be skipped during the DVFS change. As
+ * an exmaple: suppose the DRAM is trained at 20C - the trained_dram_clktree_*
+ * values will reflect this. Now, supposing the EMC goes to 1600MHz and runs for
+ * a while. If the EMC swaps to some other freq, say 204MHz, while the DRAM is
+ * very hot the current_dram_clktree_* values will reflect this. Why is this a
+ * problem? If we go back to 1600MHz and the temp is still very hot then there
+ * will not be a large difference in the osc reading from the DRAM and we won't
+ * do any periodic training during DVFS. Thus we write the 20C trimmers when in
+ * reality we needed to compute new trimmers based on the current temp.
+ *
+ * Thus function avoids the above mess by simply making the
+ * current_dram_clktree_* fields the same as trained_dram_clktree_* so that we
+ * always do the periodic calibration if needed.
+ */
+static void __reset_dram_clktree_values(struct tegra21_emc_table *table)
+{
+#define __RESET_CLKTREE(TBL, C, D, U)					\
+	TBL->current_dram_clktree_c ## C ## d ## D ## u ## U =		\
+		TBL->trained_dram_clktree_c ## C ## d ## D ## u ## U
+
+	__RESET_CLKTREE(table, 0, 0, 0);
+	__RESET_CLKTREE(table, 0, 0, 1);
+	__RESET_CLKTREE(table, 0, 1, 0);
+	__RESET_CLKTREE(table, 0, 1, 1);
+	__RESET_CLKTREE(table, 1, 0, 0);
+	__RESET_CLKTREE(table, 1, 0, 1);
+	__RESET_CLKTREE(table, 1, 1, 0);
+	__RESET_CLKTREE(table, 1, 1, 1);
+}
+
 static inline u32 actual_osc_clocks(u32 in)
 {
 	if (in < 0x40)
@@ -1389,6 +1420,8 @@ void emc_set_clock_r21015(struct tegra21_emc_table *next_timing,
 	emc_set_shadow_bypass(ASSEMBLY);
 
 	if (next_timing->periodic_training) {
+		__reset_dram_clktree_values(next_timing);
+
 		wait_for_update(EMC_EMC_STATUS,
 				EMC_EMC_STATUS_DRAM_IN_POWERDOWN_MASK, 0, 0);
 		if (channel_mode)
