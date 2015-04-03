@@ -186,7 +186,7 @@ static int adsp_dfs_rc_callback(
 	adspfreq_stats_update();
 
 	old_index = freq_stats.last_index;
-	adsp_get_target_freq(policy->cur * 1000, &new_index);
+	adsp_get_target_freq(rate, &new_index);
 	if (old_index != new_index)
 		freq_stats.last_index = new_index;
 	actmon_rate_change(freq);
