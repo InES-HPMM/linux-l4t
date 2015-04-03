@@ -219,17 +219,17 @@ static int __init pasr_info_sanity_check(struct pasr_info *info)
 		d1 = &info->die[i];
 
 		if (d1->size == 0) {
-			pr_err("%s: DDR die at %#x has 0 size\n",
-					__func__, d1->addr);
+			pr_err("%s: DDR die at %pa has 0 size\n",
+					__func__, &d1->addr);
 			return -EINVAL;
 		}
 
 		/*  Check die is aligned on section boundaries */
 		if (((d1->addr & ~(section_size - 1)) != d1->addr)
 			|| (((d1->size & ~(section_size - 1))) != d1->size)) {
-			pr_err("%s: DDR die at %#x (size %#llx) \
+			pr_err("%s: DDR die at %pa (size %#llx) \
 				is not aligned on section boundaries %#llx\n",
-				__func__, d1->addr, d1->size, section_size);
+				__func__, &d1->addr, d1->size, section_size);
 			return -EINVAL;
 		}
 
@@ -240,8 +240,8 @@ static int __init pasr_info_sanity_check(struct pasr_info *info)
 		d2 = d1;
 		d1 = &info->die[i-1];
 		if ((d1->addr + d1->size - 1) >= d2->addr) {
-			pr_err("%s: DDR dies at %#x and %#x are overlapping\n",
-					__func__, d1->addr, d2->addr);
+			pr_err("%s: DDR dies at %pa and %pa are overlapping\n",
+					__func__, &d1->addr, &d2->addr);
 			return -EINVAL;
 		}
 	}
@@ -259,8 +259,8 @@ static int __init pasr_info_sanity_check(struct pasr_info *info)
 
 		i1 = &info->int_area[i];
 		if (i1->size == 0) {
-			pr_err("%s: Interleaved area %#x/%#x  has 0 size\n",
-					__func__, i1->addr1, i1->addr2);
+			pr_err("%s: Interleaved area %pa/%pa  has 0 size\n",
+					__func__, &i1->addr1, &i1->addr2);
 			return -EINVAL;
 		}
 
@@ -268,26 +268,26 @@ static int __init pasr_info_sanity_check(struct pasr_info *info)
 		if (((i1->addr1 & ~(section_size - 1)) != i1->addr1)
 			|| ((i1->addr2 & ~(section_size - 1)) != i1->addr2)
 			|| ((i1->size & ~(section_size - 1)) != i1->size)) {
-			pr_err("%s: Interleaved area at %#x/%#x (size %#lx) \
-				is not aligned on section boundaries %#lx\n",
-				__func__, i1->addr1, i1->addr2, i1->size,
+			pr_err("%s: Interleaved area at %pa/%pa (size %llx) \
+				is not aligned on section boundaries %llx\n",
+				__func__, &i1->addr1, &i1->addr2, i1->size,
 				section_size);
 			return -EINVAL;
 		}
 
 		/* Check interleaved areas are not overlapping */
 		if ((i1->addr1 + i1->size - 1) >= i1->addr2) {
-			pr_err("%s: Interleaved areas %#x and \
-					%#x are overlapping\n",
-					__func__, i1->addr1, i1->addr2);
+			pr_err("%s: Interleaved areas %pa and \
+					%pa are overlapping\n",
+					__func__, &i1->addr1, &i1->addr2);
 			return -EINVAL;
 		}
 
 		/* Check the interleaved areas are in the physical areas */
 		if (pasr_check_interleave_in_physmem(info, i1)) {
-			pr_err("%s: Interleaved area %#x/%#x \
+			pr_err("%s: Interleaved area %pa/%pa \
 					not in physical memory\n",
-					__func__, i1->addr1, i1->addr2);
+					__func__, &i1->addr1, &i1->addr2);
 			return -EINVAL;
 		}
 	}
