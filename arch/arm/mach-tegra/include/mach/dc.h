@@ -523,6 +523,21 @@ struct tegra_dc_sd_window {
 };
 
 struct tegra_dc_sd_settings {
+#ifdef CONFIG_TEGRA_NVDISPLAY
+	bool update_sd;
+	unsigned upper_bound;
+	unsigned lower_bound;
+	unsigned num_over_saturated_pixels;
+	unsigned over_saturated_bin;
+	unsigned *gain_table;
+	unsigned *current_gain_table;
+	unsigned *phase_backlight_table;
+	unsigned new_backlight;
+	unsigned old_backlight;
+	unsigned last_phase_step;
+	unsigned phase_in_steps;
+	int backlight_adjust_steps;
+#endif
 	unsigned enable;
 	u8 turn_off_brightness;
 	u8 turn_on_brightness;
