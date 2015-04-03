@@ -26,6 +26,7 @@
 #include <linux/platform_data/tegra_emc_pdata.h>
 
 #include <linux/platform/tegra/common.h>
+#include <linux/platform/tegra/tegra_emc.h>
 
 #include "tegra_emc_dt_parse.h"
 
@@ -293,6 +294,7 @@ void *tegra_emc_dt_parse_pdata(struct platform_device *pdev)
 	int num_tables, table_count;
 	u32 tegra_bct_strapping;
 	const char *emc_mode = "nvidia,emc-mode-0";
+	const void *prop;
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	struct tegra12_emc_pdata *pdata = NULL;
@@ -306,11 +308,21 @@ void *tegra_emc_dt_parse_pdata(struct platform_device *pdev)
 
 	if (!np) {
 		dev_err(&pdev->dev,
-			"Unable to find memory-controller node\n");
+			"Unable to find external-memory-controller node\n");
 		return NULL;
 	}
 
 	tegra_bct_strapping = tegra_get_bct_strapping();
+
+	prop = of_get_property(pdev->dev.of_node,
+			       "nvidia,poll_thresh_freq", NULL);
+	if (prop) {
+		unsigned long freq_thresh = (unsigned long)be32_to_cpup(prop);
+
+		tegra_emc_mr4_set_freq_thresh(freq_thresh);
+		pr_info("tegra: emc: Using MR4 freq threshold: %lu\n",
+			freq_thresh);
+	}
 
 	if (of_find_property(np, "nvidia,use-ram-code", NULL)) {
 		tnp = tegra_emc_ramcode_devnode(np);

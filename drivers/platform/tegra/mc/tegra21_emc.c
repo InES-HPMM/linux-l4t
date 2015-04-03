@@ -532,6 +532,7 @@ static void emc_set_clock(struct tegra21_emc_table *next_timing,
 		tegra_emc_timer_training_stop();
 
 	/* EMC freq dependent MR4 polling. */
+	tegra_emc_mr4_freq_check(next_timing->rate);
 }
 
 static inline void emc_get_timing(struct tegra21_emc_table *timing)
