@@ -512,6 +512,26 @@ void tegra_pd_remove_sd(struct generic_pm_domain *sd)
 }
 EXPORT_SYMBOL(tegra_pd_remove_sd);
 
+int tegra_pd_get_powergate_id(struct of_device_id *dev_id)
+{
+	struct device_node *dn = NULL;
+	u32 partition_id;
+	int ret = -EINVAL;
+
+	for_each_matching_node(dn, dev_id) {
+		ret = of_property_read_u32(dn, "partition-id", &partition_id);
+		break;
+	}
+
+	if (ret) {
+		pr_err("Reading powergate-id failed\n");
+		return ret;
+	}
+
+	return partition_id;
+}
+EXPORT_SYMBOL(tegra_pd_get_powergate_id);
+
 #else
 
 struct domain_client {

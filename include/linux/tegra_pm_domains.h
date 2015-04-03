@@ -68,4 +68,13 @@ static inline void tegra_ape_pd_add_device(struct device *dev) { }
 static inline void tegra_ape_pd_remove_device(struct device *dev) { }
 #endif /* CONFIG_TEGRA_MC_DOMAINS */
 
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+int tegra_pd_get_powergate_id(struct of_device_id *dev_id);
+#else
+static inline int tegra_pd_get_powergate_id(struct of_device_id *dev_id)
+{
+	return -EINVAL;
+}
+#endif
+
 #endif /* _INCLUDE_TEGRA_PM_DOMAINS_H_ */
