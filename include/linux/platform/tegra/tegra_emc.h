@@ -82,6 +82,8 @@ void tegra_emc_dram_type_init(struct clk *c);
 int tegra_emc_get_dram_type(void);
 int tegra_emc_get_dram_temperature(void);
 int tegra_emc_set_over_temp_state(unsigned long state);
+void tegra_emc_mr4_set_freq_thresh(unsigned long thresh);
+void tegra_emc_mr4_freq_check(unsigned long freq);
 
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 int tegra_emc_set_rate_on_parent(unsigned long rate, struct clk *p);

@@ -38,10 +38,13 @@ static u32 timer_period_mr4 = 1000;
 static u32 timer_period_training = 100;
 
 /* MR4 specific. */
-static atomic_t mr4_do_poll;
 static u32 prev_temp = 0xffffffff; /* i.e -1. */
 static u32 test_mode;
 static int dram_temp_override;
+static unsigned long mr4_freq_threshold;
+static atomic_t mr4_temp_poll;
+static atomic_t mr4_freq_poll;
+static atomic_t mr4_force_poll;
 
 static void emc_mr4_poll(unsigned long nothing);
 static void emc_train(unsigned long nothing);
@@ -98,7 +101,9 @@ static void emc_mr4_poll(unsigned long nothing)
 	prev_temp = dram_temp;
 
 reset:
-	if (atomic_read(&mr4_do_poll) == 0)
+	if (atomic_read(&mr4_temp_poll) == 0 &&
+	    atomic_read(&mr4_freq_poll) == 0 &&
+	    atomic_read(&mr4_force_poll) == 0)
 		return;
 
 	if (mod_timer(&emc_timer_mr4,
@@ -107,25 +112,36 @@ reset:
 }
 
 /*
- * Tell the dram thermal driver to start polling for the DRAM temperature. This
- * should be invoked when there is reason to believe the DRAM temperature is
- * high.
+ * Tell the dram thermal driver to start/stop polling for the DRAM temperature.
+ * This should be called when the DRAM temp might be hot, for example, if some
+ * other temp sensor is readng very high.
  */
-void tegra_emc_timer_mr4_start(void)
+static void tegra_emc_mr4_temp_trigger(int do_poll)
 {
-	atomic_set(&mr4_do_poll, 1);
-	mod_timer(&emc_timer_mr4,
-		  jiffies + msecs_to_jiffies(timer_period_mr4));
+	if (do_poll) {
+		atomic_set(&mr4_temp_poll, 1);
+		mod_timer(&emc_timer_mr4,
+			  jiffies + msecs_to_jiffies(timer_period_mr4));
+	} else {
+		atomic_set(&mr4_temp_poll, 0);
+	}
 }
 
 /*
- * Stop the DRAM thermal driver from polling for the DRAM temperature. If there
- * is no reason to expect the DRAM to be very hot then there is no reason to
- * poll for the DRAM's temperature.
+ * If the freq is higher than some threshold then poll. Only happens if a
+ * threshold is actually defined.
  */
-void tegra_emc_timer_mr4_stop(void)
+void tegra_emc_mr4_freq_check(unsigned long freq)
 {
-	atomic_set(&mr4_do_poll, 0);
+	if (mr4_freq_threshold && freq >= mr4_freq_threshold)
+		tegra_emc_mr4_temp_trigger(1);
+	else
+		tegra_emc_mr4_temp_trigger(0);
+}
+
+void tegra_emc_mr4_set_freq_thresh(unsigned long thresh)
+{
+	mr4_freq_threshold = thresh;
 }
 
 static void emc_train(unsigned long nothing)
@@ -158,20 +174,20 @@ static int tegra_dram_cd_max_state(struct thermal_cooling_device *tcd,
 static int tegra_dram_cd_cur_state(struct thermal_cooling_device *tcd,
 				   unsigned long *state)
 {
-	*state = (unsigned long)atomic_read(&mr4_do_poll);
+	*state = (unsigned long)atomic_read(&mr4_temp_poll);
 	return 0;
 }
 
 static int tegra_dram_cd_set_state(struct thermal_cooling_device *tcd,
 				   unsigned long state)
 {
-	if (state == (unsigned long)atomic_read(&mr4_do_poll))
+	if (state == (unsigned long)atomic_read(&mr4_temp_poll))
 		return 0;
 
 	if (state)
-		tegra_emc_timer_mr4_start();
+		tegra_emc_mr4_temp_trigger(1);
 	else
-		tegra_emc_timer_mr4_stop();
+		tegra_emc_mr4_temp_trigger(0);
 	return 0;
 }
 
@@ -188,24 +204,26 @@ static struct thermal_cooling_device_ops emc_dram_cd_ops = {
 #ifdef CONFIG_DEBUG_FS
 static struct dentry *emc_timers_debugfs;
 
-static int __get_mr4_do_poll(void *data, u64 *val)
+static int __get_mr4_force_poll(void *data, u64 *val)
 {
-	*val = atomic_read(&mr4_do_poll);
+	*val = atomic_read(&mr4_force_poll);
 
 	return 0;
 }
-static int __set_mr4_do_poll(void *data, u64 val)
+static int __set_mr4_force_poll(void *data, u64 val)
 {
-	atomic_set(&mr4_do_poll, (unsigned int)val);
+	atomic_set(&mr4_force_poll, (unsigned int)val);
 
 	/* Explicitly wake up the DRAM monitoring thread. */
-	if (atomic_read(&mr4_do_poll))
-		tegra_emc_timer_mr4_start();
+	if (atomic_read(&mr4_force_poll))
+		mod_timer(&emc_timer_mr4,
+			  jiffies + msecs_to_jiffies(timer_period_mr4));
 
 	return 0;
 }
-DEFINE_SIMPLE_ATTRIBUTE(mr4_do_poll_fops, __get_mr4_do_poll, __set_mr4_do_poll,
-								     "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(mr4_force_poll_fops,
+			__get_mr4_force_poll,
+			__set_mr4_force_poll, "%llu\n");
 #endif
 
 int tegra_emc_timers_init(struct dentry *parent)
@@ -240,12 +258,13 @@ int tegra_emc_timers_init(struct dentry *parent)
 			   dram_therm_debugfs, &test_mode);
 	debugfs_create_u32("dram_temp_override", S_IRUGO | S_IWUSR,
 			   dram_therm_debugfs, &dram_temp_override);
-	debugfs_create_file("do_poll", S_IRUGO | S_IWUSR,
-			    dram_therm_debugfs, NULL, &mr4_do_poll_fops);
+	debugfs_create_file("force_poll", S_IRUGO | S_IWUSR,
+			    dram_therm_debugfs, NULL, &mr4_force_poll_fops);
 
 	if (tegra_emc_get_dram_type() == DRAM_TYPE_LPDDR4) {
 		/* Training. */
-		training_debugfs = debugfs_create_dir("training", emc_timers_debugfs);
+		training_debugfs = debugfs_create_dir("training",
+						      emc_timers_debugfs);
 		if (!training_debugfs)
 			return 0;
 
