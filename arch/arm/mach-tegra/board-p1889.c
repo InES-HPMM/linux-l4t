@@ -63,6 +63,7 @@ static __initdata struct tegra_clk_init_table p1889_clk_init_table[] = {
 	{ "i2s3",	"pll_a_out0",	3072000,	false},
 	{ "i2s4",	"pll_a_out0",	1024000,	false},
 	{ "extern1",	"pll_a_out0",	12288000,	false},
+	{ "gk20a.gbus",	NULL,		780000000,      false},
 	{ NULL,		NULL,		0,		0},
 };
 
