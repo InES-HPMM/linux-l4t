@@ -8752,6 +8752,7 @@ static struct raw_notifier_head ape_rate_change_nh;
 
 static struct clk tegra_clk_ape = {
 	.name      = "ape",
+	.clk_id = TEGRA210_CLK_ID_APE,
 	.ops       = &tegra_1xbus_clk_ops,
 	.reg       = 0x6c0,
 	.inputs    = mux_plla_pllc4_out0_pllc_pllc4_out1_pllp_clkm_pllc4_out2,
