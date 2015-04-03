@@ -49,8 +49,9 @@
 
 			watchdog {
 				compatible = "ti,palmas-watchdog";
-				ti,watchdog-init-timeout = <64>;
-				status = "disabled";
+				ti,watchdog-init-timeout = <600>;
+				status = "okay";
+				ti,watchdog-interrupt-mode;
 			};
 
 			pinmux {
