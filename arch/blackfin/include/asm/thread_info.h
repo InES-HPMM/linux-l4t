@@ -79,15 +79,6 @@ static inline struct thread_info *current_thread_info(void)
 
 #endif				/* __ASSEMBLY__ */
 
-/*
- * Offsets in thread_info structure, used in assembly code
- */
-#define TI_TASK		0
-#define TI_EXECDOMAIN	4
-#define TI_FLAGS	8
-#define TI_CPU		12
-#define TI_PREEMPT	16
-
 #define	PREEMPT_ACTIVE	0x4000000
 
 /*
