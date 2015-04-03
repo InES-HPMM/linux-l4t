@@ -382,15 +382,22 @@ static int pasr_print_meminfo(struct seq_file *s, void *data)
 
 	for (i = 0; i < map->nr_dies; i++) {
 		struct pasr_die *die = &map->die[i];
+		struct zone *zone;
 		seq_printf(s, "die %d\n", i);
 		for (j = 0; j < die->nr_sections; j++) {
 			struct pasr_section *section = &die->section[j];
 			u64 percentage;
 
-			percentage = (u64)section->free_size * 100;
+			percentage = pasr_section_freesize(section) * 100;
 			do_div(percentage, section_size);
-			seq_printf(s, "section %d %llu %llu\n", j, section->free_size,
-					percentage);
+			seq_printf(s, "section %d %llu %llu\n", j,
+				      pasr_section_freesize(section),
+				      percentage);
+			seq_printf(s, "per zone info: ");
+			for_each_zone(zone)
+				seq_printf(s, "[%s %llu] ",
+				      zone->name, section->free_size[zone_idx(zone)]);
+			seq_printf(s, "\n");
 		}
 	}
 	return 0;

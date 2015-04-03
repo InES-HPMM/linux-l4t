@@ -47,6 +47,7 @@ void pasr_put(phys_addr_t paddr, u64 size)
 	struct pasr_section *s;
 	u64 cur_sz;
 	unsigned long flags = 0;
+	int zidx = zone_idx(page_zone(phys_to_page(paddr)));
 
 	if (!pasr.map) {
 		WARN_ONCE(1, KERN_INFO"%s(): Map not initialized.\n"
@@ -70,16 +71,16 @@ void pasr_put(phys_addr_t paddr, u64 size)
 		if (s->lock)
 			spin_lock_irqsave(s->lock, flags);
 
-		s->free_size += cur_sz;
+		s->free_size[zidx] += cur_sz;
 
-		if (s->free_size < section_size)
+		if (pasr_section_freesize(s) < section_size)
 			goto unlock;
 
-		BUG_ON(s->free_size > section_size);
+		BUG_ON(pasr_section_freesize(s) > section_size);
 
 		if (!s->pair)
 			pasr_update_mask(s, PASR_NO_REFRESH);
-		else if (s->pair->free_size == section_size) {
+		else if (pasr_section_freesize(s->pair) == section_size) {
 			pasr_update_mask(s, PASR_NO_REFRESH);
 			pasr_update_mask(s->pair, PASR_NO_REFRESH);
 		}
@@ -101,6 +102,7 @@ void pasr_get(phys_addr_t paddr, u64 size)
 	unsigned long flags = 0;
 	u64 cur_sz;
 	struct pasr_section *s;
+	int zidx = zone_idx(page_zone(phys_to_page(paddr)));
 
 	if (!pasr.map) {
 		WARN_ONCE(1, KERN_INFO"%s(): Map not initialized.\n"
@@ -124,19 +126,19 @@ void pasr_get(phys_addr_t paddr, u64 size)
 		if (s->lock)
 			spin_lock_irqsave(s->lock, flags);
 
-		if (s->free_size < section_size)
+		if (pasr_section_freesize(s) < section_size)
 			goto unlock;
 
 		if (!s->pair) {
 			pasr_update_mask(s, PASR_REFRESH);
 		} else {
-				pasr_update_mask(s, PASR_REFRESH);
-				pasr_update_mask(s->pair, PASR_REFRESH);
+			pasr_update_mask(s, PASR_REFRESH);
+			pasr_update_mask(s->pair, PASR_REFRESH);
 		}
 unlock:
 
-		BUG_ON(cur_sz > s->free_size);
-		s->free_size -= cur_sz;
+		BUG_ON(cur_sz > pasr_section_freesize(s));
+		s->free_size[zidx] -= cur_sz;
 
 		if (s->lock)
 			spin_unlock_irqrestore(s->lock, flags);

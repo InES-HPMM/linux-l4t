@@ -9,6 +9,7 @@
 #define _LINUX_PASR_H
 
 #include <linux/mm.h>
+#include <linux/mmzone.h>
 #include <linux/spinlock.h>
 
 #ifdef CONFIG_PASR
@@ -33,7 +34,7 @@ extern unsigned int section_bit;
 struct pasr_section {
 	phys_addr_t start;
 	struct pasr_section *pair;
-	u64 free_size;
+	u64 free_size[MAX_NR_ZONES];
 	spinlock_t *lock;
 	struct pasr_die *die;
 };

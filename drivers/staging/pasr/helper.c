@@ -89,3 +89,12 @@ phys_addr_t pasr_section2addr(struct pasr_section *s)
 {
 	return s->start;
 }
+
+u64 pasr_section_freesize(struct pasr_section *s)
+{
+	int i;
+	u64 freesize = 0;
+	for (i = 0; i < MAX_NR_ZONES; i++)
+		freesize += s->free_size[i];
+	return freesize;
+}

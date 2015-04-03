@@ -12,5 +12,6 @@
 struct pasr_die *pasr_addr2die(struct pasr_map *map, phys_addr_t addr);
 struct pasr_section *pasr_addr2section(struct pasr_map *map, phys_addr_t addr);
 phys_addr_t pasr_section2addr(struct pasr_section *s);
+u64 pasr_section_freesize(struct pasr_section *s);
 
 #endif /* _PASR_HELPER_H */
