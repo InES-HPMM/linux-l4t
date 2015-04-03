@@ -317,13 +317,13 @@ static inline int extcon_set_cable_state(struct extcon_dev *edev,
 
 static inline struct extcon_dev *extcon_get_extcon_dev(const char *extcon_name)
 {
-	return NULL;
+	return ERR_PTR(-ENODEV);
 }
 
 static inline struct extcon_cable *extcon_get_extcon_cable(struct device *dev,
 		const char *cable_name)
 {
-	return NULL;
+	return ERR_PTR(-ENODEV);
 }
 
 static inline void extcon_put_extcon_cable(struct extcon_cable *ecable)
@@ -333,14 +333,14 @@ static inline void extcon_put_extcon_cable(struct extcon_cable *ecable)
 static inline struct extcon_cable *extcon_get_extcon_cable_by_extcon_name(
 		const char *extcon_name, const char *cable_name)
 {
-	return NULL;
+	return ERR_PTR(-ENODEV);
 }
 
 static inline struct extcon_dev *extcon_get_extcon_dev_by_cable(
 		struct device *dev, const char *cable_name)
 
 {
-	return NULL;
+	return ERR_PTR(-ENODEV);
 }
 
 static inline int extcon_register_notifier(struct extcon_dev *edev,
