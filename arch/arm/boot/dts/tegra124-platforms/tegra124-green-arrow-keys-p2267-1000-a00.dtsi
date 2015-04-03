@@ -42,8 +42,11 @@
 			linux,code = <KEY_VOLUMEUP>;
 		};
 
-		sw_table_mode {
-			label = "SW Table Mode";
+		/* SW_TABLET_MODE switch is used for stylus pen detection
+		 * when SW_TABLET_MODE = 1, pen is inserted
+		 */
+		sw_tablet_mode {
+			label = "SW Tablet Mode";
 			gpios = <&gpio TEGRA_GPIO(W, 3) GPIO_ACTIVE_LOW>;
 			linux,code = <SW_TABLET_MODE>;
 			linux,input-type = <EV_SW>;
