@@ -51,6 +51,7 @@ struct xotg_vars {
 	/* internal variables */
 	int a_set_b_hnp_en;	/* will be set by the HCD/usbcore */
 	int otg_test_device_enumerated;
+	int start_tst_maint_timer;
 
 	/* non-spec otg driver variables */
 	int b_srp_initiated;

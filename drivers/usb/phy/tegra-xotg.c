@@ -555,8 +555,7 @@ static void xotg_enable_srp_detect(struct xotg *xotg, bool enable)
 				USB2_BATTERY_CHRG_OTGPAD_SRP_INTR_EN;
 	} else {
 		reg &= ~(USB2_BATTERY_CHRG_OTGPAD_SRP_DETECT_EN |
-				USB2_BATTERY_CHRG_OTGPAD_SRP_INTR_EN |
-				USB2_BATTERY_CHRG_OTGPAD_SRP_DETECTED);
+				USB2_BATTERY_CHRG_OTGPAD_SRP_INTR_EN);
 	}
 	tegra_usb_pad_reg_write(
 		XUSB_PADCTL_USB2_BATTERY_CHRG_OTGPAD_CTL0_0(port), reg);
@@ -1299,6 +1298,9 @@ static void xotg_work(struct work_struct *work)
 		xotg_dbg(xotg->dev, "id=%d, a_wait_vfall_tmout=%d\n",
 			xotg->id, xotg->xotg_timer_list.a_wait_vfall_tmout);
 
+		if (xotg->xotg_vars.otg_test_device_enumerated)
+			xotg->xotg_vars.otg_test_device_enumerated = 0;
+
 		if (xotg->id) {
 			xotg_info(xotg->dev, "state a_wait_vfall -> b_idle\n");
 			state_changed = 1;
@@ -1437,6 +1439,9 @@ static void xotg_work(struct work_struct *work)
 			xotg->phy.state = OTG_STATE_A_WAIT_BCON;
 			state_changed = 1;
 
+			if (xotg->xotg_vars.otg_test_device_enumerated)
+				xotg->xotg_vars.otg_test_device_enumerated = 0;
+
 			/* do actions */
 			xotg_dbg(xotg->dev,
 			"starting TA_WAIT_BCON(9sec) timer\n");
@@ -1471,10 +1476,10 @@ static void xotg_work(struct work_struct *work)
 			xotg->xotg_timer_list.a_tst_maint_tmout = 0;
 			if (session_supported)
 				xotg_drive_vbus(xotg, 0);
-		} else if (xotg->xotg_vars.otg_test_device_enumerated) {
+		} else if (xotg->xotg_vars.start_tst_maint_timer) {
 			xotg_dbg(xotg->dev,
 				"Starting the TST_MAINT timer\n");
-			xotg->xotg_vars.otg_test_device_enumerated = 0;
+			xotg->xotg_vars.start_tst_maint_timer = 0;
 			xotg->xotg_timer_list.a_tst_maint_tmout = 0;
 			mod_timer(&xotg->xotg_timer_list.a_tst_maint_tmr,
 				jiffies + msecs_to_jiffies(TA_TST_MAINT));
@@ -1618,6 +1623,9 @@ static void xotg_work(struct work_struct *work)
 				"state a_peripheral -> a_wait_vfall\n");
 			state_changed = 1;
 			xotg->phy.state = OTG_STATE_A_WAIT_VFALL;
+			xotg_set_reverse_id(xotg, false);
+			tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
+				USB2_VBUS_ID_0_VBUS_OVERRIDE, 0);
 			/* stop drive vbus */
 			xotg_drive_vbus(xotg, 0);
 			/* enable the srp detect */
@@ -1633,6 +1641,9 @@ static void xotg_work(struct work_struct *work)
 			xotg->xotg_timer_list.a_bidl_adis_tmout = 0;
 			state_changed = 1;
 			xotg->phy.state = OTG_STATE_A_WAIT_BCON;
+
+			if (xotg->xotg_vars.otg_test_device_enumerated)
+				xotg->xotg_vars.otg_test_device_enumerated = 0;
 
 			xotg_set_reverse_id(xotg, false);
 
@@ -1767,7 +1778,13 @@ static int xotg_set_vbus(struct usb_phy *phy, int on)
 		xotg->id = 0;
 		queue_work(xotg->otg_wq, &xotg->otg_work);
 	} else {
-		if (!xotg->device_connected) {
+		/* If the device is an OTG test device like PET, then
+		 * always move the state machine without waiting for the
+		 * disconnect as the PET can just remove the ID with out
+		 * disconnecting D+
+		 */
+		if (xotg->xotg_vars.otg_test_device_enumerated ||
+		   !xotg->device_connected) {
 			tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 				USB2_VBUS_ID_0_ID_OVERRIDE,
 				USB2_VBUS_ID_0_ID_OVERRIDE_RID_FLOAT);
@@ -1824,6 +1841,7 @@ static int xotg_notify_otg_test_device(struct usb_phy *phy)
 {
 	struct xotg *xotg = container_of(phy, struct xotg, phy);
 	xotg->xotg_vars.otg_test_device_enumerated = 1;
+	xotg->xotg_vars.start_tst_maint_timer = 1;
 	xotg_work(&xotg->otg_work);
 	return 0;
 }
