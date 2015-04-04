@@ -92,6 +92,7 @@ struct nvadsp_drv_data {
 
 	struct nvadsp_pm_state state;
 	bool adsp_os_running;
+	bool adsp_os_suspended;
 	void *shared_adsp_os_data;
 
 #ifdef CONFIG_TEGRA_ADSP_DFS

@@ -266,8 +266,8 @@ static int nvadsp_runtime_suspend(struct device *dev)
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
 	int ret = 0;
 
-	if (!drv_data->adsp_os_running) {
-		dev_dbg(dev, "%s: adsp os is not loaded\n", __func__);
+	if (!drv_data->adsp_os_suspended) {
+		dev_dbg(dev, "%s: adsp os is not suspended\n", __func__);
 		goto clocks;
 	}
 
@@ -305,8 +305,8 @@ static int nvadsp_runtime_resume(struct device *dev)
 		goto skip;
 	}
 
-	if (!drv_data->adsp_os_running) {
-		dev_dbg(dev, "%s: adsp os is not loaded\n", __func__);
+	if (!drv_data->adsp_os_suspended) {
+		dev_dbg(dev, "%s: adsp os is not suspended\n", __func__);
 		goto skip;
 	}
 
