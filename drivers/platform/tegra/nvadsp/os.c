@@ -790,6 +790,7 @@ int nvadsp_os_start(void)
 		goto unlock;
 	}
 	priv.os_running = drv_data->adsp_os_running = true;
+	drv_data->adsp_os_suspended = false;
 unlock:
 	mutex_unlock(&priv.os_run_lock);
 end:
@@ -841,6 +842,8 @@ static int __nvadsp_os_suspend(void)
 		dev_err(dev, "failed to close adsp com mbox\n");
 		goto out;
 	}
+
+	drv_data->adsp_os_suspended = true;
 
 	tegra_periph_reset_assert(drv_data->adsp_clk);
 	udelay(200);
