@@ -1,7 +1,7 @@
 /*
  * Define the OF_DEV_AUXDATA for different Tegra controllers.
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -26,14 +26,6 @@
         OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000dc00, "spi-tegra114.4", NULL),  \
         OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5", NULL)
 
-#define T114_I2C_OF_DEV_AUXDATA \
-        OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c000, "tegra11-i2c.0", NULL),  \
-        OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c400, "tegra11-i2c.1", NULL),  \
-        OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c500, "tegra11-i2c.2", NULL),  \
-        OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c700, "tegra11-i2c.3", NULL),  \
-        OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000d000, "tegra11-i2c.4", NULL)
-
-
 #define T124_SPI_OF_DEV_AUXDATA	\
 		OF_DEV_AUXDATA("nvidia,tegra124-spi", 0x7000d400, "spi-tegra114.0", NULL),  \
 		OF_DEV_AUXDATA("nvidia,tegra124-spi", 0x7000d600, "spi-tegra114.1", NULL),  \
@@ -55,15 +47,6 @@
 				"spi-tegra114-slave.4", NULL),  \
 		OF_DEV_AUXDATA("nvidia,tegra124-spi-slave", 0x7000de00, \
 				"spi-tegra114-slave.5", NULL)
-
-
-#define T124_I2C_OF_DEV_AUXDATA \
-        OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000c000, "tegra12-i2c.0", NULL),  \
-        OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000c400, "tegra12-i2c.1", NULL),  \
-        OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000c500, "tegra12-i2c.2", NULL),  \
-        OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000c700, "tegra12-i2c.3", NULL),  \
-        OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000d000, "tegra12-i2c.4", NULL),  \
-        OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000d100, "tegra12-i2c.5", NULL)
 
 #define T124_SDMMC_OF_DEV_AUXDATA \
         OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0600, "sdhci-tegra.3", NULL),  \

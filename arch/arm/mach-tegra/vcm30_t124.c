@@ -300,8 +300,6 @@ void __init tegra_vcm30_t124_usb_init(void)
  * clk_get and clk_enable to work properly
  */
 static struct of_dev_auxdata tegra_vcm30_t124_auxdata_lookup[] __initdata = {
-	T124_I2C_OF_DEV_AUXDATA,
-
 	OF_DEV_AUXDATA("nvidia,tegra124-vi", TEGRA_VI_BASE, "vi.0", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-isp", TEGRA_ISP_BASE, "isp.0", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-isp", TEGRA_ISPB_BASE, "isp.1", NULL),
