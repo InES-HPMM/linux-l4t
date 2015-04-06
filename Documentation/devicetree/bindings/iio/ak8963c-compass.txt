@@ -4,7 +4,10 @@ Required properties:
 - compatible: must be "ak,ak89xx"
 - reg: i2c address of the device. It should be 0x0C or 0x0D.
 
-Optional propertied:
+Optional properties:
+- magnetic_field_disable: Setting this property to <1> will disable this
+                          driver: The driver will unload after this property is
+			  detected.
 - magnetic_field_matrix:  Orientation matrix for this device.
 
 Example:

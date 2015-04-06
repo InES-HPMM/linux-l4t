@@ -4,7 +4,9 @@ Required properties:
 - compatible: must be "solteamopto,jsa1127"
 - reg: i2c address of the device. It should be 0x39.
 
-Optional propertied:
+Optional properties:
+- light_disable: Setting this property to <1> will disable this driver:
+                 The driver will unload after this property is detected.
 Format:	light_mode_settingname
 Where:	'light' refers to the light sensor classification
 	'mode' refers to data collection mode:
