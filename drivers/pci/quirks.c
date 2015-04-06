@@ -2343,7 +2343,7 @@ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_NVIDIA,
 			PCI_DEVICE_ID_NVIDIA_MCP55_BRIDGE_V4,
 			nvbridge_check_legacy_irq_routing);
 
-#ifndef CONFIG_ARCH_TEGRA
+#ifndef CONFIG_PLATFORM_TEGRA
 static int ht_check_msi_mapping(struct pci_dev *dev)
 {
 	int pos, ttl = 48;
