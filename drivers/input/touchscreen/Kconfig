@@ -11,6 +11,18 @@ menuconfig INPUT_TOUCHSCREEN
 
 if INPUT_TOUCHSCREEN
 
+config TOUCHSCREEN_LR388K7
+	tristate "Sharp LR388K7 touchscreen"
+	depends on SPI_MASTER
+	help
+	Say Y here if you have a LR388K7 and want to enable
+	support for the built-in touchscreen.
+
+	If unsure, say N.
+
+	To compile this driver as a module, choose M here: the
+	module will be called lr388k7.
+
 config TOUCHSCREEN_88PM860X
 	tristate "Marvell 88PM860x touchscreen"
 	depends on MFD_88PM860X
