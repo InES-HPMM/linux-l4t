@@ -14,6 +14,7 @@
  */
 
 #include "tegra210-hawkeye-p2290-a00-00.dts"
+#include "tegra210-platforms/tegra210-hawkeye-ffpb-e2295-powermon.dtsi"
 
 / {
 	nvidia,dtsfilename = __FILE__;
