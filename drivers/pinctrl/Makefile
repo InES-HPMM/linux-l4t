@@ -55,6 +55,7 @@ obj-$(CONFIG_PINCTRL_MAX77660)  += pinctrl-max77660.o
 obj-$(CONFIG_PINCTRL_MAX77620)  += pinctrl-max77620.o
 obj-$(CONFIG_PINCTRL_PALMAS)	+= pinctrl-palmas.o
 obj-$(CONFIG_PINCTRL_AS3722)	+= pinctrl-as3722.o
+obj-y                           += pinctrl-tegra186-padctl-uphy.o
 
 obj-$(CONFIG_PLAT_ORION)        += mvebu/
 obj-$(CONFIG_ARCH_SHMOBILE)	+= sh-pfc/

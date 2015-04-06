@@ -13,7 +13,6 @@
 
 #include <linux/delay.h>
 #include <linux/io.h>
-#include <linux/mailbox_client.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/phy/phy.h>
@@ -25,7 +24,6 @@
 #include <linux/tegra-fuse.h>
 #include <linux/tegra-soc.h>
 #include <linux/clk/tegra.h>
-#include <soc/tegra/xusb.h>
 
 #define TEGRA_XUSB_PCIE_PHYS 1
 #define TEGRA_XUSB_SATA_PHYS 1
@@ -383,11 +381,6 @@ struct tegra_padctl_uphy {
 	unsigned long ufs_lanes;
 
 	unsigned int padctl_clients;
-
-	struct work_struct mbox_req_work;
-	struct tegra_xusb_mbox_msg mbox_req;
-	struct mbox_client mbox_client;
-	struct mbox_chan *mbox_chan;
 
 	struct tegra_xusb_usb3_port usb3_ports[TEGRA_XUSB_USB3_PHYS];
 	unsigned int utmi_enable;
@@ -1044,11 +1037,6 @@ static int uphy_lane_deinit(struct tegra_padctl_uphy *ctx, int lane)
 	return 0;
 }
 
-static inline struct tegra_padctl_uphy *
-mbox_work_to_padctl(struct work_struct *work)
-{
-	return container_of(work, struct tegra_padctl_uphy, mbox_req_work);
-}
 
 #define PIN_OTG_0	0
 #define PIN_OTG_1	1
@@ -2274,26 +2262,6 @@ static int tegra186_hsic_phy_power_off(struct phy *phy)
 	return 0;
 }
 
-static void hsic_phy_set_idle(struct tegra_padctl_uphy *padctl,
-			      unsigned int port, bool idle)
-{
-#if 0
-	u32 value;
-
-	value = padctl_readl(padctl, XUSB_PADCTL_HSIC_PADX_CTL1(port));
-	if (idle)
-		value |= XUSB_PADCTL_HSIC_PAD_CTL1_RPD_DATA |
-			 XUSB_PADCTL_HSIC_PAD_CTL1_RPU_STROBE;
-	else
-		value &= ~(XUSB_PADCTL_HSIC_PAD_CTL1_RPD_DATA |
-			   XUSB_PADCTL_HSIC_PAD_CTL1_RPU_STROBE);
-	padctl_writel(padctl, value, XUSB_PADCTL_HSIC_PADX_CTL1(port));
-#else
-	TRACE_DEV(padctl->dev, "port %d", port);
-	TRACE_DEV(padctl->dev, "FIXME: implement!"); /* TODO */
-#endif
-}
-
 static int tegra186_hsic_phy_init(struct phy *phy)
 {
 	TRACE_DEV(&phy->dev, "");
@@ -2313,62 +2281,6 @@ static const struct phy_ops hsic_phy_ops = {
 	.power_off = tegra186_hsic_phy_power_off,
 	.owner = THIS_MODULE,
 };
-
-static void tegra_xusb_phy_mbox_work(struct work_struct *work)
-{
-	struct tegra_padctl_uphy *padctl = mbox_work_to_padctl(work);
-	struct tegra_xusb_mbox_msg *msg = &padctl->mbox_req;
-	struct tegra_xusb_mbox_msg resp;
-	unsigned int i;
-	u32 ports;
-
-	TRACE_DEV(padctl->dev, "mailbox command %d", msg->cmd);
-	resp.cmd = 0;
-	switch (msg->cmd) {
-	case MBOX_CMD_START_HSIC_IDLE:
-	case MBOX_CMD_STOP_HSIC_IDLE:
-		ports = msg->data >> (padctl->soc->hsic_port_offset + 1);
-		resp.data = msg->data;
-		resp.cmd = MBOX_CMD_ACK;
-		for (i = 0; i < TEGRA_XUSB_HSIC_PHYS; i++) {
-			if (!(ports & BIT(i)))
-				continue;
-			if (msg->cmd == MBOX_CMD_START_HSIC_IDLE)
-				hsic_phy_set_idle(padctl, i, true);
-			else
-				hsic_phy_set_idle(padctl, i, false);
-		}
-		break;
-	default:
-		break;
-	}
-
-	if (resp.cmd)
-		mbox_send_message(padctl->mbox_chan, &resp);
-}
-
-static bool is_phy_mbox_message(u32 cmd)
-{
-	switch (cmd) {
-	case MBOX_CMD_SAVE_DFE_CTLE_CTX:
-	case MBOX_CMD_START_HSIC_IDLE:
-	case MBOX_CMD_STOP_HSIC_IDLE:
-		return true;
-	default:
-		return false;
-	}
-}
-
-static void tegra_xusb_phy_mbox_rx(struct mbox_client *cl, void *data)
-{
-	struct tegra_padctl_uphy *padctl = dev_get_drvdata(cl->dev);
-	struct tegra_xusb_mbox_msg *msg = data;
-
-	if (is_phy_mbox_message(msg->cmd)) {
-		padctl->mbox_req = *msg;
-		schedule_work(&padctl->mbox_req_work);
-	}
-}
 
 static struct phy *tegra186_padctl_uphy_xlate(struct device *dev,
 					   struct of_phandle_args *args)
@@ -2815,29 +2727,11 @@ static int tegra186_padctl_uphy_probe(struct platform_device *pdev)
 	ctx->ufs_phys[0] = phy;
 	phy_set_drvdata(phy, ctx);
 
-	TRACE();
-	INIT_WORK(&ctx->mbox_req_work, tegra_xusb_phy_mbox_work);
-	ctx->mbox_client.dev = &pdev->dev;
-	ctx->mbox_client.tx_block = true;
-	ctx->mbox_client.tx_tout = 0;
-	ctx->mbox_client.rx_callback = tegra_xusb_phy_mbox_rx;
-	ctx->mbox_chan = mbox_request_channel(&ctx->mbox_client, 0);
-	if (IS_ERR(ctx->mbox_chan)) {
-		pr_info("%s %d\n", __func__, __LINE__);
-		err = PTR_ERR(ctx->mbox_chan);
-		if (err == -EPROBE_DEFER) {
-			goto unregister;
-		} else {
-			dev_warn(&pdev->dev,
-				 "failed to get mailbox, USB support disabled");
-		}
-	} else {
 		TRACE();
 		err = tegra_xusb_setup_usb(ctx);
 		TRACE("err %d\n", err);
 		if (err)
 			goto unregister;
-	}
 
 	TRACE();
 	ctx->provider = devm_of_phy_provider_register(&pdev->dev,
@@ -2862,11 +2756,6 @@ assert_clk_reset:
 static int tegra186_padctl_uphy_remove(struct platform_device *pdev)
 {
 	struct tegra_padctl_uphy *ctx = platform_get_drvdata(pdev);
-
-	if (!IS_ERR(ctx->mbox_chan)) {
-		cancel_work_sync(&ctx->mbox_req_work);
-		mbox_free_channel(ctx->mbox_chan);
-	}
 
 	pinctrl_unregister(ctx->pinctrl);
 	tegra_periph_reset_assert(ctx->clk);
