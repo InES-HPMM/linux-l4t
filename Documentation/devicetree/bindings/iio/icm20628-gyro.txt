@@ -3,10 +3,21 @@
 Required properties:
 - compatible: must be "invensense,mpu6xxx"
 - reg: i2c address of the device. It should be 0x68 or 0x69.
-
-Optional propertied:
 - interrupt-parent:  GPIO number
 - interrupts:  GPIO macro
+
+Optional properties:
+- accelerometer_disable: Setting this property to <1> will disable the
+                         accelerometer.
+- gyroscope_disable: Setting this property to <1> will disable the gyroscope.
+- gyro_temp_disable: Setting this property to <1> will disable the gyroscope
+                     temperature sensor.
+  Note: To disable the entire device so that the driver unloads, all sensors
+        must be disabled:
+	accelerometer_disable = <1>;
+	gyroscope_disable = <1>;
+	gyro_temp_disable = <1>;
+
 - accelerometer_matrix:  Orientation matrix for this device.
 - gyroscope_matrix:  Orientation matrix for this device.
 

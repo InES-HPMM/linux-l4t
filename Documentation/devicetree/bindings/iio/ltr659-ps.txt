@@ -1,18 +1,25 @@
 * LTR659 proximity sensor
 
 Required properties:
-- compatible: must be "lite-on,ltr659"
+- compatible: must be "liteon,ltrX5X"
 - reg: i2c address of the device. It is 0x23.
-- threshold: threshold of proximity value to detect head near/far from sensor.
 - vdd-supply: regulator supply for chip
 - vled-supply: regulator supply for led anode.
+
+Optional properties:
+- light_disable: Setting this property to <1> will disable the light sensor.
+- proximity_disable: Setting this property to <1> will disable the proximity
+                     sensor.
+  Note: If the device supports both light and proximity, then to disable the
+        entire device so that the driver unloads, all sensors must be disabled:
+	light_disable = <1>;
+	proximity_disable = <1>;
 
 Example:
 
 	ltr659@23 {
-		compatible = "lite-on,ltr659";
+		compatible = "liteon,ltrX5X";
 		reg = <0x23>;
-		threshold = <125>;
 		vdd-supply = <&palmas_smps9>;
 		vled-supply = <&palmas_smps8>;
 	};
