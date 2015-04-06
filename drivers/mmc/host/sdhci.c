@@ -2228,8 +2228,11 @@ static int sdhci_check_ro(struct sdhci_host *host)
 
 	if (host->flags & SDHCI_DEVICE_DEAD)
 		is_readonly = 0;
-	else if (host->ops->get_ro)
+	else if (host->ops->get_ro) {
+		spin_unlock_irqrestore(&host->lock, flags);
 		is_readonly = host->ops->get_ro(host);
+		spin_lock_irqsave(&host->lock, flags);
+	}
 	else
 		is_readonly = !(sdhci_readl(host, SDHCI_PRESENT_STATE)
 				& SDHCI_WRITE_PROTECT);
