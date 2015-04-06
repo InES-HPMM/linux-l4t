@@ -52,6 +52,7 @@
 #endif
 #include <linux/gk20a.h>
 #include <linux/tegra_smmu.h>
+#include <linux/tegra_pm_domains.h>
 
 #ifdef CONFIG_ARM64
 #include <linux/irqchip/arm-gic.h>
@@ -124,6 +125,39 @@
 #define CONSOLE_MEM_SIZE SZ_512K
 #define FTRACE_MEM_SIZE SZ_512K
 #define RTRACE_MEM_SIZE SZ_512K
+#endif
+
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+#ifdef CONFIG_ARCH_TEGRA_HAS_SATA
+static struct of_device_id tegra_sata_pd[] = {
+	{ .compatible = "nvidia, tegra210-sata-pd", },
+	{},
+};
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_HAS_PCIE
+static struct of_device_id tegra_pcie_pd[] = {
+	{ .compatible = "nvidia, tegra210-pcie-pd", },
+	{},
+};
+#endif
+
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
+static struct of_device_id tegra_xusba_pd[] = {
+	{ .compatible = "nvidia, tegra210-xusba-pd", },
+	{},
+};
+
+static struct of_device_id tegra_xusbb_pd[] = {
+	{ .compatible = "nvidia, tegra210-xusbb-pd", },
+	{},
+};
+
+static struct of_device_id tegra_xusbc_pd[] = {
+	{ .compatible = "nvidia, tegra210-xusbc-pd", },
+	{},
+};
+#endif
 #endif
 
 phys_addr_t tegra_bootloader_fb_start;
@@ -684,18 +718,55 @@ static void __init tegra_ramrepair_init(void)
 
 static void __init tegra_init_power(void)
 {
-#ifdef CONFIG_ARCH_TEGRA_HAS_SATA
-	tegra_powergate_partition(TEGRA_POWERGATE_SATA);
+	int partition_id;
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
+	int partition_id_xusba, partition_id_xusbb, partition_id_xusbc;
 #endif
+
+#ifdef CONFIG_ARCH_TEGRA_HAS_SATA
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_sata_pd);
+	if (partition_id < 0)
+		return;
+#else
+	partition_id = TEGRA_POWERGATE_SATA;
+#endif
+	tegra_powergate_partition(partition_id);
+#endif
+
 #ifdef CONFIG_ARCH_TEGRA_HAS_PCIE
-	tegra_powergate_partition(TEGRA_POWERGATE_PCIE);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_pcie_pd);
+	if (partition_id < 0)
+		return;
+#else
+	partition_id = TEGRA_POWERGATE_PCIE;
+#endif
+	tegra_powergate_partition(partition_id);
 #endif
 
 #if defined(CONFIG_TEGRA_XUSB_PLATFORM)
 	/* powergate xusb partitions by default */
-	tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
-	tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
-	tegra_powergate_partition(TEGRA_POWERGATE_XUSBC);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id_xusbb = tegra_pd_get_powergate_id(tegra_xusbb_pd);
+	if (partition_id < 0)
+		return;
+
+	partition_id_xusba = tegra_pd_get_powergate_id(tegra_xusba_pd);
+	if (partition_id < 0)
+		return;
+
+	partition_id_xusbc = tegra_pd_get_powergate_id(tegra_xusbc_pd);
+	if (partition_id < 0)
+		return;
+#else
+	partition_id_xusbb = TEGRA_POWERGATE_XUSBB;
+	partition_id_xusba = TEGRA_POWERGATE_XUSBA;
+	partition_id_xusbc = TEGRA_POWERGATE_XUSBC;
+#endif
+	tegra_powergate_partition(partition_id_xusbb);
+	tegra_powergate_partition(partition_id_xusba);
+	tegra_powergate_partition(partition_id_xusbc);
 #endif
 
 }
