@@ -94,6 +94,18 @@ static void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 #define ZIP	BIT(18)
 #define ZIN	BIT(22)
 
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+static struct of_device_id tegra_xusba_pd[] = {
+	{ .compatible = "nvidia, tegra210-xusba-pd", },
+	{},
+};
+
+static struct of_device_id tegra_xusbb_pd[] = {
+	{ .compatible = "nvidia, tegra210-xusbb-pd", },
+	{},
+};
+#endif
+
 static struct usb_endpoint_descriptor nvudc_ep0_desc = {
 	.bLength = USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType = USB_DT_ENDPOINT,
@@ -5295,6 +5307,7 @@ static int tegra_xudc_enter_elpg(struct nv_udc_s *nvudc)
 	int ret;
 	struct device *dev = nvudc->dev;
 	unsigned long flags;
+	int partition_id;
 
 	mutex_lock(&nvudc->elpg_lock);
 
@@ -5333,14 +5346,28 @@ static int tegra_xudc_enter_elpg(struct nv_udc_s *nvudc)
 	clk_disable(nvudc->ss_clk);
 
 	/* disable partition power */
-	ret = tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_xusba_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_XUSBA;
+#endif
+	ret = tegra_powergate_partition(partition_id);
 	if (ret) {
 		dev_err(dev, "%s Fail to powergate XUSBA\n", __func__);
 		mutex_unlock(&nvudc->elpg_lock);
 		return ret;
 	}
 
-	ret = tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_xusbb_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_XUSBB;
+#endif
+	ret = tegra_powergate_partition(partition_id);
 	if (ret) {
 		dev_err(dev, "%s Fail to powergate XUSBB\n", __func__);
 		mutex_unlock(&nvudc->elpg_lock);
@@ -5672,6 +5699,7 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	int i;
 	int err;
 	u32 val;
+	int partition_id;
 
 	if (!dev->dma_mask)
 		dev->dma_mask = &dev->coherent_dma_mask;
@@ -5853,9 +5881,23 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 err_clocks_disable:
 	nvudc_plat_clocks_disable(nvudc);
 err_powergate_xusbb:
-	tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_xusbb_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_XUSBB;
+#endif
+	tegra_powergate_partition(partition_id);
 err_powergate_xusba:
-	tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_xusba_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_XUSBA;
+#endif
+	tegra_powergate_partition(partition_id);
 err_clocks_deinit:
 	nvudc_plat_clocks_deinit(nvudc);
 err_regulators_deinit:
@@ -5869,6 +5911,7 @@ static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 {
 	struct nv_udc_s *nvudc = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
+	int partition_id_xusba, partition_id_xusbb;
 
 	dev_info(dev, "%s nvudc %p\n", __func__, nvudc);
 
@@ -5884,8 +5927,20 @@ static int __exit tegra_xudc_plat_remove(struct platform_device *pdev)
 		usb_del_gadget_udc(&nvudc->gadget);
 		free_data_struct(nvudc);
 		nvudc_plat_clocks_disable(nvudc);
-		tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
-		tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+		partition_id_xusbb = tegra_pd_get_powergate_id(tegra_xusbb_pd);
+		if (partition_id_xusbb < 0)
+			return -EINVAL;
+
+		partition_id_xusba = tegra_pd_get_powergate_id(tegra_xusba_pd);
+		if (partition_id_xusba < 0)
+			return -EINVAL;
+#else
+		partition_id_xusbb = TEGRA_POWERGATE_XUSBB;
+		partition_id_xusba = TEGRA_POWERGATE_XUSBA;
+#endif
+		tegra_powergate_partition(partition_id_xusbb);
+		tegra_powergate_partition(partition_id_xusba);
 		nvudc_plat_clocks_deinit(nvudc);
 		if (pex_usb_pad_pll_reset_assert())
 			pr_err("Fail to assert pex pll\n");
