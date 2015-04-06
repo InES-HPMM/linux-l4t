@@ -552,9 +552,12 @@
 				0 0 0 0 0>;
 	};
 
-	regulators {
-		vdd_fan: regulator@13 {
-			enable-active-high;
+	thermal-zones {
+		AO-therm {
+			status = "okay";
+		};
+		CPU-therm {
+			status="okay";
 		};
 	};
 
