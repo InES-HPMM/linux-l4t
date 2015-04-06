@@ -403,6 +403,15 @@
 				0 0 0 0 0>;
 	};
 
+	thermal-zones {
+		AO-therm {
+			status = "okay";
+		};
+		CPU-therm {
+			status="okay";
+		};
+	};
+
 	pwm-fan {
 		compatible = "pwm-fan";
 		shared_data = <&pwm_fan_shared_data>;
