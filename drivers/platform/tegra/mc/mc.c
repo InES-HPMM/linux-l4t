@@ -95,6 +95,7 @@ int mc_get_carveout_info(struct mc_carveout_info *inf, int *nr,
 		      ((u64)mc_readl(MC_SECURITY_CARVEOUT2_BOM_HI) & 0x3) << 32;
 		inf->size = mc_readl(MC_SECURITY_CARVEOUT2_SIZE_128KB);
 		inf->size <<= 17; /* Convert to bytes. */
+		break;
 	default:
 		/* Should never happen. */
 		BUG();
