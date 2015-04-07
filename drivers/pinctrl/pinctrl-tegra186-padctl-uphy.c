@@ -68,6 +68,7 @@
 #define   CAL_EN				(1 << 0)
 #define   CAL_DONE				(1 << 1)
 #define   CAL_OVRD				(1 << 2)
+#define   CAL_RESET				(1 << 3)
 #define   RCAL_EN				(1 << 12)
 #define   RCAL_CLK_EN				(1 << 13)
 #define   RCAL_OVRD				(1 << 15)
@@ -76,9 +77,19 @@
 #define UPHY_PLL_CTL_4				(0xc)
 
 /* UPHY Lane registers */
+#define UPHY_LANE_AUX_CTL_1			(0x0)
+#define   AUX_RX_IDLE_TH(x)			(((x) & 0x3) << 24)
+
+#define UPHY_LANE_DIRECT_CTL_1			(0x10)
+#define   MISC_CTRL(x)				(((x) & 0xff) << 0)
+#define   MISC_OUT(x)				(((x) & 0xff) << 16)
+
 #define UPHY_LANE_DIRECT_CTL_2			(0x14)
 #define   CFG_WDATA(x)				(((x) & 0xffff) << 0)
 #define   CFG_ADDR(x)				(((x) & 0xff) << 16)
+#define   CFG_WDS(x)                            (((x) & 0x1) << 24)
+#define   CFG_RDS(x)                            (((x) & 0x1) << 25)
+#define   CFG_RESET(x)                          (((x) & 0x1) << 27)
 
 #define UPHY_LANE_MUX				(0x284)
 #define   SEL(x)				(((x) & 0x7) << 0)
@@ -89,6 +100,35 @@
 #define   CLAMP_EN_EARLY			(1 << 8)
 #define   FORCE_IDDQ_DISABLE			(1 << 9)
 
+/* UPHY APB Dynamic DYN_CTL registers */
+#define UPHY_LANE_DYN_CTL_1			(0x80)
+#define   TX_DRV_AMP_SEL0(x)			(((x) & 0x3f) << 0)
+#define   TX_DRV_AMP_SEL1(x)			(((x) & 0x3f) << 8)
+#define   TX_DRV_AMP_SEL2(x)			(((x) & 0x3f) << 16)
+#define   TX_DRV_AMP_SEL3(x)			(((x) & 0x3f) << 24)
+
+#define UPHY_LANE_DYN_CTL_2			(0x84)
+#define   TX_DRV_AMP_SEL4(x)			(((x) & 0x3f) << 0)
+#define   TX_DRV_AMP_SEL5(x)			(((x) & 0x3f) << 8)
+#define   TX_DRV_AMP_SEL6(x)			(((x) & 0x3f) << 16)
+#define   TX_DRV_AMP_SEL7(x)			(((x) & 0x3f) << 24)
+
+#define UPHY_LANE_DYN_CTL_3			(0x88)
+#define   TX_DRV_AMP_SEL8(x)			(((x) & 0x3f) << 0)
+#define   TX_DRV_AMP_SEL9(x)			(((x) & 0x3f) << 8)
+
+#define UPHY_LANE_DYN_CTL_4			(0x8c)
+#define   TX_DRV_POST_SEL0(x)			(((x) & 0x3f) << 0)
+#define   TX_DRV_PRE_SEL0(x)			(((x) & 0x3f) << 8)
+#define   TX_DRV_POST_SEL1(x)			(((x) & 0x3f) << 16)
+#define   TX_DRV_PRE_SEL1(x)			(((x) & 0x3f) << 24)
+
+#define UPHY_LANE_DYN_CTL_5			(0x90)
+#define   TX_DRV_POST_SEL2(x)			(((x) & 0x3f) << 0)
+#define   TX_DRV_PRE_SEL2(x)			(((x) & 0x3f) << 8)
+#define   TX_DRV_POST_SEL3(x)			(((x) & 0x3f) << 16)
+#define   TX_DRV_PRE_SEL3(x)			(((x) & 0x3f) << 24)
+
 /* FUSE USB_CALIB registers */ /* TODO: check spec */
 #define USB_CALIB_HS_CURR_LEVEL_PADX_SHIFT(x)	((x) ? (11 + (x - 1) * 6) : 0)
 #define USB_CALIB_HS_CURR_LEVEL_PAD_MASK	(0x3f)
@@ -98,6 +138,18 @@
 #define USB_CALIB_EXT_RPD_CTRL_SHIFT		(7)
 #define USB_CALIB_EXT_RPD_CTRL_MASK		(0xf)
 
+/* FUSE SATA MPHY registers */
+#define FUSE_SATA_MPHY_ODM_CALIB_0	(0x224)
+#define    SATA_MPHY_ODM_CALIB_0_1(x)		(((x) & 0x3) << 0)
+
+#define FUSE_SATA_NV_CALIB_0		(0x49c)
+#define    SATA_NV_CALIB_0_1(x)			(((x) & (0x3 << 0)) >> 0)
+#define    SATA_NV_CALIB_2_3(x)			(((x) & (0x3 << 2)) >> 2)
+
+#define FUSE_MPHY_NV_CALIB_0		(0x4a0)
+#define    MPHY_NV_CALIB_0_1(x)			(((x) & (0x3 << 0)) >> 0)
+#define    MPHY_NV_CALIB_2_3(x)			(((x) & (0x3 << 2)) >> 2)
+#define    MPHY_NV_CALIB_4_5(x)			(((x) & (0x3 << 4)) >> 4)
 
 /* XUSB PADCTL registers */
 #define XUSB_PADCTL_USB2_PAD_MUX		(0x4)
@@ -175,6 +227,8 @@ static int utmip_setup_sleepwalk(struct tegra_padctl_uphy *ctx, int pad)
 #define   CFG_FREQ_PSDIV(x)			(((x) & 0x3) << 10)
 #define   CFG_MODE(x)				(((x) & 0x3) << 12)
 
+#define MGMT_REFCLK_CTRL			(2)
+
 #define MGMT_CORECLK_CTRL_ID0			(3)
 #define MGMT_CORECLK_CTRL_ID1			(4)
 #define   CFG_TXCLKREF_EN(x)			(((x) & 0x1) << 0)
@@ -186,6 +240,8 @@ static int utmip_setup_sleepwalk(struct tegra_padctl_uphy *ctx, int pad)
 #define   CFG_XDIGCLK_EN(x)			(((x) & 0x1) << 8)
 #define   CFG_XDIGCLK_SEL(x)			(((x) & 0x3) << 12)
 
+#define PLLC_CRSWRD_OVRD_ID0			(5)
+
 #define PLLC_CRSWRD_OVRD_ID1			(6)
 
 #define MGMT_CYA_CTRL				(29)
@@ -194,6 +250,8 @@ static int utmip_setup_sleepwalk(struct tegra_padctl_uphy *ctx, int pad)
 /* UPHY Lane config space registers */
 #define MGMT_TX_RATE_CTRL_ID0			(0)
 #define MGMT_TX_RATE_CTRL_ID1			(1)
+#define MGMT_TX_RATE_CTRL_ID2			(2)
+#define MGMT_TX_RATE_CTRL_ID3			(3)
 #define   TX_RATE_SDIV(x)			(((x) & 0x3) << 0)
 #define     SDIV4				(0)
 #define     SDIV2				(1)
@@ -202,6 +260,8 @@ static int utmip_setup_sleepwalk(struct tegra_padctl_uphy *ctx, int pad)
 
 #define MGMT_RX_RATE_CTRL_ID0			(4)
 #define MGMT_RX_RATE_CTRL_ID1			(5)
+#define MGMT_RX_RATE_CTRL_ID2			(6)
+#define MGMT_RX_RATE_CTRL_ID3			(7)
 #define   RX_RATE_SDIV(x)			(((x) & 0x3) << 0)
 #define   RX_RATE_CDIV(x)			(((x) & 0x3) << 4)
 #define     CDIV1				(0)
@@ -216,6 +276,7 @@ static int utmip_setup_sleepwalk(struct tegra_padctl_uphy *ctx, int pad)
 #define AE_CTLE_CTRL_ID0			(10)
 #define AE_CTLE_CTRL_ID1			(11)
 #define AE_CTLE_CTRL_ID2			(12)
+#define AE_CTLE_CTRL_ID3			(13)
 #define   LF_UGRAY(x)				(((x) & 0xf) << 0)
 #define   HF_UBIN(x)				(((x) & 0xf) << 4)
 
@@ -234,6 +295,7 @@ static int utmip_setup_sleepwalk(struct tegra_padctl_uphy *ctx, int pad)
 #define AE_CDR_CTRL_ID0				(22)
 #define AE_CDR_CTRL_ID1				(23)
 #define AE_CDR_CTRL_ID2				(24)
+#define AE_CDR_CTRL_ID3				(25)
 #define   PHGAIN(x)				(((x) & 0xf) << 0)
 #define   FRGAIN(x)				(((x) & 0xf) << 4)
 #define   FRLOOP_EN(x)				(((x) & 0x1) << 8)
@@ -257,7 +319,9 @@ static int utmip_setup_sleepwalk(struct tegra_padctl_uphy *ctx, int pad)
 #define   CTLE_VOS_GRAD_INV(x)			(((x) & 0x1) << 15)
 
 #define AE_EQ1_CTRL_ID0				(30)
+#define AE_EQ1_CTRL_ID1				(31)
 #define AE_EQ1_CTRL_ID2				(32)
+#define AE_EQ1_CTRL_ID3				(33)
 #define   CTLE_HF_MODE(x)			(((x) & 0x3) << 0)
 #define     VAR_MODE_AUTO			(0)
 #define     VAR_MODE_OFF			(1)
@@ -274,7 +338,9 @@ static int utmip_setup_sleepwalk(struct tegra_padctl_uphy *ctx, int pad)
 #define   H4_MODE(x)				(((x) & 0x3) << 14)
 
 #define AE_EQ2_CTRL_ID0				(34)
+#define AE_EQ2_CTRL_ID1				(35)
 #define AE_EQ2_CTRL_ID2				(36)
+#define AE_EQ2_CTRL_ID3				(37)
 #define   H0_MODE(x)				(((x) & 0x3) << 0)
 #define   H0_DAC_TIME(x)			(((x) & 0x3) << 2)
 #define   H0_TIME(x)				(((x) & 0xf) << 4)
@@ -291,6 +357,15 @@ static int utmip_setup_sleepwalk(struct tegra_padctl_uphy *ctx, int pad)
 #define MGMT_RX_PI_CTRL_ID2			(48)
 #define   TX_SLEW(x)				(((x) & 0x3) << 0)
 #define   RX_SLEW(x)				(((x) & 0x3) << 2)
+
+#define CLK_RST_CONTROLLER_RST_DEV_UPHY_0		(0x4000c)
+#define   SWR_UPHY_RST					(1 << 0)
+
+#define CLK_RST_CONTROLLER_RST_DEV_PEX_USB_UPHY_0	(0x40000)
+#define   SWR_PEX_USB_UPHY_RST				(1 << 0)
+#define   SWR_PEX_USB_UPHY_PLL0_RST			(1 << 7)
+#define   SWR_PEX_USB_UPHY_PLL1_RST			(1 << 15)
+#define   SWR_PEX_USB_UPHY_LANE_RST(lane)		(1 << (16+lane))
 
 enum tegra186_function {
 	TEGRA186_FUNC_HSIC,
@@ -347,6 +422,12 @@ struct tegra_xusb_fuse_calibration {
 	u32 rpd_ctrl;
 };
 
+struct tegra_fuse_calibration {
+	u32 sata_mphy_odm;
+	u32 sata_nv;
+	u32 mphy_nv;
+};
+
 struct tegra_xusb_usb3_port {
 	unsigned int lane;
 };
@@ -364,6 +445,7 @@ struct tegra_padctl_uphy {
 
 	const struct tegra_padctl_uphy_soc *soc;
 	struct tegra_xusb_fuse_calibration calib;
+	struct tegra_fuse_calibration fuse_calib;
 	struct pinctrl_dev *pinctrl;
 	struct pinctrl_desc desc;
 
@@ -494,9 +576,147 @@ static inline u32 uphy_pll_readl(struct tegra_padctl_uphy *ctx, int lane,
 })
 #endif
 
+struct tegra_mphy_sata_calib {
+	u8 aux_rx_idle_th;
+	u8 tx_drv_amp_sel0;
+	u8 tx_drv_amp_sel1;
+	u8 tx_drv_amp_sel2;
+	u8 tx_drv_amp_sel3;
+	u8 tx_drv_amp_sel4;
+	u8 tx_drv_amp_sel5;
+	u8 tx_drv_amp_sel6;
+	u8 tx_drv_amp_sel7;
+	u8 tx_drv_amp_sel8;
+	u8 tx_drv_amp_sel9;
+	u8 tx_drv_post_sel0;
+	u8 tx_drv_post_sel1;
+	u8 tx_drv_post_sel2;
+	u8 tx_drv_post_sel3;
+	u8 tx_drv_pre_sel3;
+	u8 ae_ctle_ctrl_id0;
+	u8 ae_ctle_ctrl_id1;
+};
+
+static struct tegra_mphy_sata_calib mphy_data[] = {
+	{
+		.aux_rx_idle_th = 0x0,
+		.tx_drv_amp_sel0 = 0x8,
+		.tx_drv_amp_sel1 = 0x11,
+		.tx_drv_amp_sel2 = 0x8,
+		.tx_drv_amp_sel3 = 0x11,
+		.tx_drv_amp_sel4 = 0x8,
+		.tx_drv_amp_sel5 = 0x11,
+		.tx_drv_amp_sel6 = 0x8,
+		.tx_drv_amp_sel7 = 0x11,
+		.tx_drv_amp_sel8 = 0x8,
+		.tx_drv_amp_sel9 = 0x11,
+		.tx_drv_post_sel0 = 0x0,
+		.tx_drv_post_sel1 = 0xa,
+		.tx_drv_post_sel2 = 0xf,
+		.tx_drv_post_sel3 = 0x8,
+		.tx_drv_pre_sel3 = 0x8,
+	},
+	{
+		.aux_rx_idle_th = 0x1,
+		.tx_drv_amp_sel0 = 0x8,
+		.tx_drv_amp_sel1 = 0x11,
+		.tx_drv_amp_sel2 = 0x8,
+		.tx_drv_amp_sel3 = 0x11,
+		.tx_drv_amp_sel4 = 0x8,
+		.tx_drv_amp_sel5 = 0x11,
+		.tx_drv_amp_sel6 = 0x8,
+		.tx_drv_amp_sel7 = 0x11,
+		.tx_drv_amp_sel8 = 0x8,
+		.tx_drv_amp_sel9 = 0x11,
+		.tx_drv_post_sel0 = 0x0,
+		.tx_drv_post_sel1 = 0xa,
+		.tx_drv_post_sel2 = 0xf,
+		.tx_drv_post_sel3 = 0x8,
+		.tx_drv_pre_sel3 = 0x8,
+	},
+	{
+		.aux_rx_idle_th = 0x2,
+		.tx_drv_amp_sel0 = 0x8,
+		.tx_drv_amp_sel1 = 0x11,
+		.tx_drv_amp_sel2 = 0x8,
+		.tx_drv_amp_sel3 = 0x11,
+		.tx_drv_amp_sel4 = 0x8,
+		.tx_drv_amp_sel5 = 0x11,
+		.tx_drv_amp_sel6 = 0x8,
+		.tx_drv_amp_sel7 = 0x11,
+		.tx_drv_amp_sel8 = 0x8,
+		.tx_drv_amp_sel9 = 0x11,
+		.tx_drv_post_sel0 = 0x0,
+		.tx_drv_post_sel1 = 0xa,
+		.tx_drv_post_sel2 = 0xf,
+		.tx_drv_post_sel3 = 0x8,
+		.tx_drv_pre_sel3 = 0x8,
+	},
+	{
+		.aux_rx_idle_th = 0x3,
+		.tx_drv_amp_sel0 = 0x8,
+		.tx_drv_amp_sel1 = 0x11,
+		.tx_drv_amp_sel2 = 0x8,
+		.tx_drv_amp_sel3 = 0x11,
+		.tx_drv_amp_sel4 = 0x8,
+		.tx_drv_amp_sel5 = 0x11,
+		.tx_drv_amp_sel6 = 0x8,
+		.tx_drv_amp_sel7 = 0x11,
+		.tx_drv_amp_sel8 = 0x8,
+		.tx_drv_amp_sel9 = 0x11,
+		.tx_drv_post_sel0 = 0x0,
+		.tx_drv_post_sel1 = 0xa,
+		.tx_drv_post_sel2 = 0xf,
+		.tx_drv_post_sel3 = 0x8,
+		.tx_drv_pre_sel3 = 0x8,
+	},
+};
+
+static struct tegra_mphy_sata_calib sata_data[] = {
+	{
+		.aux_rx_idle_th = 0x0,
+		.tx_drv_amp_sel0 = 0x1b,
+		.tx_drv_amp_sel1 = 0x1f,
+		.tx_drv_post_sel0 = 0x7,
+		.tx_drv_post_sel1 = 0xa,
+		.ae_ctle_ctrl_id0 = 0xf,
+		.ae_ctle_ctrl_id1 = 0x8f,
+	},
+	{
+		.aux_rx_idle_th = 0x1,
+		.tx_drv_amp_sel0 = 0x17,
+		.tx_drv_amp_sel1 = 0x1b,
+		.tx_drv_post_sel0 = 0x5,
+		.tx_drv_post_sel1 = 0xa,
+		.ae_ctle_ctrl_id0 = 0xf,
+		.ae_ctle_ctrl_id1 = 0x4f,
+	},
+	{
+		.aux_rx_idle_th = 0x2,
+		.tx_drv_amp_sel0 = 0x13,
+		.tx_drv_amp_sel1 = 0x17,
+		.tx_drv_post_sel0 = 0x4,
+		.tx_drv_post_sel1 = 0xa,
+		.ae_ctle_ctrl_id0 = 0xf,
+		.ae_ctle_ctrl_id1 = 0xf,
+	},
+	{
+		.aux_rx_idle_th = 0x3,
+		.tx_drv_amp_sel0 = 0x1f,
+		.tx_drv_amp_sel1 = 0x23,
+		.tx_drv_post_sel0 = 0xa,
+		.tx_drv_post_sel1 = 0xe,
+		.ae_ctle_ctrl_id0 = 0xf,
+		.ae_ctle_ctrl_id1 = 0xcd,
+	},
+};
+
 struct init_data {
 	u8 cfg_addr;
 	u16 cfg_wdata;
+	bool cfg_wds;
+	bool cfg_rds;
+	bool cfg_rst;
 };
 
 static struct init_data usb3_pll_g1_init_data[] = {
@@ -582,6 +802,230 @@ static void ufs_pll_init(struct tegra_padctl_uphy *ctx)
 		reg = CFG_ADDR(ufs_pll_g1_g2_g3_A_B_init_data[i].cfg_addr);
 		reg |= CFG_WDATA(ufs_pll_g1_g2_g3_A_B_init_data[i].cfg_wdata);
 		uphy_pll_writel(ctx, 1, reg, UPHY_PLL_CTL_4);
+	}
+}
+
+static struct init_data ufs_pll_rateid_init_data[] = {
+	{
+		.cfg_addr = MGMT_FREQ_CTRL_ID0,
+		.cfg_wdata = CFG_FREQ_NDIV(0x18) | CFG_FREQ_MDIV(0x1),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = MGMT_FREQ_CTRL_ID1,
+		.cfg_wdata = CFG_FREQ_NDIV(0x1c) | CFG_FREQ_MDIV(0x1),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = MGMT_REFCLK_CTRL,
+		.cfg_wdata = 0x0,
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = MGMT_CORECLK_CTRL_ID0,
+		.cfg_wdata = CFG_XDIGCLK_SEL(0x7) | CFG_XDIGCLK_EN(0x1)
+			| CFG_TXCLKREF_SEL(0x2) | CFG_TXCLKREF_EN(1),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = MGMT_TX_RATE_CTRL_ID1,
+		.cfg_wdata = CFG_XDIGCLK_SEL(0x7) | CFG_XDIGCLK_EN(0x1)
+			| CFG_TXCLKREF_SEL(0x2) | CFG_TXCLKREF_EN(1),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = PLLC_CRSWRD_OVRD_ID0,
+		.cfg_wdata = 0x3e,
+		.cfg_wds = true,
+		.cfg_rst = true,
+	}
+};
+
+static void ufs_pll_rateid_init(struct tegra_padctl_uphy *ctx)
+{
+	u32 reg;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(ufs_pll_rateid_init_data); i++) {
+		reg = CFG_ADDR(ufs_pll_rateid_init_data[i].cfg_addr);
+		reg |= CFG_WDATA(ufs_pll_rateid_init_data[i].cfg_wdata);
+		reg |= CFG_WDS(ufs_pll_rateid_init_data[i].cfg_wds);
+		reg |= CFG_RDS(ufs_pll_rateid_init_data[i].cfg_rds);
+		reg |= CFG_RESET(ufs_pll_rateid_init_data[i].cfg_rst);
+		uphy_pll_writel(ctx, 1, reg, UPHY_PLL_CTL_4);
+	}
+}
+
+static struct init_data ufs_lane_rateid_init_data[] = {
+	{
+		.cfg_addr = MGMT_TX_RATE_CTRL_ID0,
+		.cfg_wdata = TX_RATE_SDIV(SDIV4),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = MGMT_TX_RATE_CTRL_ID1,
+		.cfg_wdata = TX_RATE_SDIV(SDIV2),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = MGMT_TX_RATE_CTRL_ID2,
+		.cfg_wdata = TX_RATE_SDIV(SDIV1),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = MGMT_TX_RATE_CTRL_ID3,
+		.cfg_wdata = TX_RATE_SDIV(SDIV1),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = MGMT_RX_RATE_CTRL_ID0,
+		.cfg_wdata = RX_RATE_SDIV(CDIV1),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = MGMT_RX_RATE_CTRL_ID1,
+		.cfg_wdata = RX_RATE_SDIV(CDIV2),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = MGMT_RX_RATE_CTRL_ID2,
+		.cfg_wdata = RX_RATE_SDIV(CDIV4),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = MGMT_RX_RATE_CTRL_ID0,
+		.cfg_wdata = RX_RATE_SDIV(CDIV4),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = MGMT_TX_CTRL,
+		.cfg_wdata = TX_TERM_MODE(0x1),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_CDR_CTRL_ID0,
+		.cfg_wdata = FRLOOP_EN(0x1) | FRGAIN(0x3) | PHGAIN(0x7),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_CDR_CTRL_ID1,
+		.cfg_wdata = FRLOOP_EN(0x1) | FRGAIN(0x6) | PHGAIN(0x7),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_CDR_CTRL_ID2,
+		.cfg_wdata = FRLOOP_EN(0x1) | FRGAIN(0xc) | PHGAIN(0x7),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_CDR_CTRL_ID3,
+		.cfg_wdata = FRLOOP_EN(0x1) | FRGAIN(0xc) | PHGAIN(0x7),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_CTLE_CTRL_ID0,
+		.cfg_wdata = HF_UBIN(0x0) | LF_UGRAY(0xf),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_CTLE_CTRL_ID1,
+		.cfg_wdata = HF_UBIN(0x0) | LF_UGRAY(0xf),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_CTLE_CTRL_ID2,
+		.cfg_wdata = HF_UBIN(0x8) | LF_UGRAY(0xf),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_CTLE_CTRL_ID3,
+		.cfg_wdata = HF_UBIN(0xf) | LF_UGRAY(0xd),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_EQ1_CTRL_ID0,
+		.cfg_wdata = CTLE_HF_MODE(0x1),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_EQ1_CTRL_ID1,
+		.cfg_wdata = CTLE_HF_MODE(0x1),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_EQ1_CTRL_ID2,
+		.cfg_wdata = CTLE_HF_MODE(0x1),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_EQ1_CTRL_ID3,
+		.cfg_wdata = CTLE_HF_MODE(0x0),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_EQ2_CTRL_ID0,
+		.cfg_wdata = H0_MODE(0x1),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_EQ2_CTRL_ID0,
+		.cfg_wdata = H0_MODE(0x1),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_EQ2_CTRL_ID0,
+		.cfg_wdata = H0_MODE(0x1),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+	{
+		.cfg_addr = AE_EQ2_CTRL_ID0,
+		.cfg_wdata = H0_MODE(0x0),
+		.cfg_wds = true,
+		.cfg_rst = true,
+	},
+};
+
+static void ufs_lane_rateid_init(struct tegra_padctl_uphy *ctx, int lane)
+{
+	u32 reg;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(ufs_lane_rateid_init_data); i++) {
+		reg = CFG_ADDR(ufs_lane_rateid_init_data[i].cfg_addr);
+		reg |= CFG_WDATA(ufs_lane_rateid_init_data[i].cfg_wdata);
+		reg |= CFG_WDS(ufs_lane_rateid_init_data[i].cfg_wds);
+		reg |= CFG_RDS(ufs_lane_rateid_init_data[i].cfg_rds);
+		reg |= CFG_RESET(ufs_lane_rateid_init_data[i].cfg_rst);
+		uphy_lane_writel(ctx, lane, reg, UPHY_LANE_DIRECT_CTL_2);
 	}
 }
 
@@ -817,6 +1261,15 @@ static int __uphy_pll_init(struct tegra_padctl_uphy *ctx, int pll)
 	u32 reg;
 	int i;
 
+	/* FIXME: Need to see needed ??? */
+	reg = uphy_pll_readl(ctx, pll, UPHY_PLL_CTL_1);
+	reg |= PWR_OVRD;
+	uphy_pll_writel(ctx, pll, reg, UPHY_PLL_CTL_1);
+
+	reg = uphy_pll_readl(ctx, pll, UPHY_PLL_CTL_2);
+	reg |= (CAL_OVRD | RCAL_OVRD | CAL_RESET);
+	uphy_pll_writel(ctx, pll, reg, UPHY_PLL_CTL_2);
+
 	/* power up PLL */
 	reg = uphy_pll_readl(ctx, pll, UPHY_PLL_CTL_1);
 	reg &= ~PLL_IDDQ;
@@ -859,7 +1312,7 @@ static int __uphy_pll_init(struct tegra_padctl_uphy *ctx, int pll)
 	}
 
 	if (pll == 1) {
-		/* perform PLL rate change for UPHY_PLL_1, used by IFS */
+		/* perform PLL rate change for UPHY_PLL_1, used by UFS */
 		reg = uphy_pll_readl(ctx, pll, UPHY_PLL_CTL_1);
 		reg &= ~RATE_ID(~0);
 		reg |= (RATE_ID(1) | RATE_ID_OVRD);
@@ -1769,17 +2222,59 @@ static int tegra186_sata_phy_power_off(struct phy *phy)
 	return 0;
 }
 
+static int tegra186_sata_fuse_calibration(struct tegra_padctl_uphy *ctx,
+						int lane)
+{
+	u32 reg;
+	int idx;
+
+	/* Update based on fuse_sata_nv_calib[1:0] value */
+	idx = SATA_NV_CALIB_0_1(ctx->fuse_calib.sata_nv);
+
+	reg = uphy_lane_readl(ctx, lane, UPHY_LANE_AUX_CTL_1);
+	reg |= AUX_RX_IDLE_TH(sata_data[idx].aux_rx_idle_th);
+	uphy_lane_writel(ctx, lane, reg, UPHY_LANE_AUX_CTL_1);
+
+	/* Update based on fuse_sata_nv_calib[3:2] value TBD */
+	idx = SATA_NV_CALIB_2_3(ctx->fuse_calib.sata_nv);
+
+	/* Update based on fuse_sata_mphy_odm_calib[1:0] value */
+	idx = SATA_MPHY_ODM_CALIB_0_1(ctx->fuse_calib.sata_mphy_odm);
+
+	reg = uphy_lane_readl(ctx, lane, UPHY_LANE_DYN_CTL_1);
+	reg |= TX_DRV_AMP_SEL0(sata_data[idx].tx_drv_amp_sel0);
+	reg |= TX_DRV_AMP_SEL1(sata_data[idx].tx_drv_amp_sel1);
+	uphy_lane_writel(ctx, lane, reg, UPHY_LANE_DYN_CTL_1);
+
+	reg = uphy_lane_readl(ctx, lane, UPHY_LANE_DYN_CTL_4);
+	reg |= TX_DRV_POST_SEL0(sata_data[idx].tx_drv_post_sel0);
+	reg |= TX_DRV_POST_SEL1(sata_data[idx].tx_drv_post_sel1);
+	uphy_lane_writel(ctx, lane, reg, UPHY_LANE_DYN_CTL_4);
+
+	reg = CFG_ADDR(AE_CTLE_CTRL_ID0);
+	reg |= CFG_WDATA(sata_data[idx].ae_ctle_ctrl_id0);
+	uphy_lane_writel(ctx, lane, reg, UPHY_LANE_DIRECT_CTL_2);
+
+	reg = CFG_ADDR(AE_CTLE_CTRL_ID1);
+	reg |= CFG_WDATA(sata_data[idx].ae_ctle_ctrl_id1);
+	uphy_lane_writel(ctx, lane, reg, UPHY_LANE_DIRECT_CTL_2);
+
+	return 0;
+}
+
 static int tegra186_sata_phy_init(struct phy *phy)
 {
 	struct tegra_padctl_uphy *ctx = phy_get_drvdata(phy);
 	unsigned uphy_lane;
+
+	sata_pll_init(ctx);
 
 	for_each_set_bit(uphy_lane, &ctx->sata_lanes, T186_UPHY_LANES) {
 		TRACE_DEV(&phy->dev, "uphy_lane %u\n", uphy_lane);
 		sata_lane_init(ctx, uphy_lane);
 	}
 
-	sata_pll_init(ctx);
+	tegra186_sata_fuse_calibration(ctx, ctx->sata_lanes);
 
 	return tegra_xusb_phy_init(phy);
 }
@@ -1801,22 +2296,7 @@ static const struct phy_ops sata_phy_ops = {
 
 static int tegra186_ufs_phy_power_on(struct phy *phy)
 {
-	struct tegra_padctl_uphy *ctx = phy_get_drvdata(phy);
-	unsigned int uphy_lane;
-	u32 reg;
 
-	for_each_set_bit(uphy_lane, &ctx->ufs_lanes, T186_UPHY_LANES) {
-		TRACE_DEV(&phy->dev, "lane %d", uphy_lane);
-
-		reg = uphy_lane_readl(ctx, uphy_lane, UPHY_LANE_MUX);
-		reg &= SEL(~0);
-		reg |= SEL_MPHY;
-		reg |= FORCE_IDDQ_DISABLE;
-		reg &= ~CLAMP_EN_EARLY;
-		uphy_lane_writel(ctx, uphy_lane, reg, UPHY_LANE_MUX);
-	}
-
-	TRACE_DEV(&phy->dev, "FIXME: implement!"); /* TODO: more? */
 	return 0;
 }
 
@@ -1826,16 +2306,110 @@ static int tegra186_ufs_phy_power_off(struct phy *phy)
 	unsigned int uphy_lane;
 	u32 reg;
 
+	TRACE();
 	for_each_set_bit(uphy_lane, &ctx->ufs_lanes, T186_UPHY_LANES) {
 		TRACE_DEV(&phy->dev, "lane %d", uphy_lane);
-
 		reg = uphy_lane_readl(ctx, uphy_lane, UPHY_LANE_MUX);
 		reg &= ~FORCE_IDDQ_DISABLE;
 		reg |= CLAMP_EN_EARLY;
 		uphy_lane_writel(ctx, uphy_lane, reg, UPHY_LANE_MUX);
 	}
 
-	TRACE_DEV(&phy->dev, "FIXME: implement!"); /* TODO */
+	return 0;
+}
+
+static void tegra186_uphy_lane_pad_macro(bool on)
+{
+	void __iomem *car_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+	u32 reg;
+
+	reg = ioread32(car_base + CLK_RST_CONTROLLER_RST_DEV_UPHY_0);
+	if (on)
+		reg |= SWR_UPHY_RST;
+	else
+		reg &= ~SWR_UPHY_RST;
+	iowrite32(reg, car_base + CLK_RST_CONTROLLER_RST_DEV_UPHY_0);
+}
+
+static void tegra186_uphy_lane_and_pll_reset(int function, unsigned long lanes)
+{
+	void __iomem *car_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+	unsigned uphy_lane;
+	u32 reg;
+
+	reg = ioread32(car_base + CLK_RST_CONTROLLER_RST_DEV_PEX_USB_UPHY_0);
+
+	/* De-assert global reset */
+	reg |= SWR_PEX_USB_UPHY_RST;
+
+	/* De-assert corresponding pll reset */
+	if (function == TEGRA186_FUNC_MPHY)
+		reg &= ~SWR_PEX_USB_UPHY_PLL1_RST;
+	else
+		reg &= ~SWR_PEX_USB_UPHY_PLL0_RST;
+
+	/* De-assert corresponding lane reset */
+	for_each_set_bit(uphy_lane, &lanes, T186_UPHY_LANES) {
+		reg &= ~SWR_PEX_USB_UPHY_LANE_RST(uphy_lane);
+	}
+
+	iowrite32(reg, car_base + CLK_RST_CONTROLLER_RST_DEV_PEX_USB_UPHY_0);
+}
+
+static int tegra186_ufs_fuse_calibration(struct tegra_padctl_uphy *ctx,
+						int lane)
+{
+	u32 reg;
+	int idx;
+
+	/* Update based on fuse_mphy_nv_calib[1:0] value */
+	idx = MPHY_NV_CALIB_0_1(ctx->fuse_calib.mphy_nv);
+
+	reg = uphy_lane_readl(ctx, lane, UPHY_LANE_AUX_CTL_1);
+	reg |= AUX_RX_IDLE_TH(mphy_data[idx].aux_rx_idle_th);
+	uphy_lane_writel(ctx, lane, reg, UPHY_LANE_AUX_CTL_1);
+
+	/* Update based on fuse_mphy_nv_calib[3:2] value TBD */
+	idx = MPHY_NV_CALIB_2_3(ctx->fuse_calib.mphy_nv);
+
+
+	/* Update based on fuse_mphy_nv_calib[5:4] value TBD */
+	idx = MPHY_NV_CALIB_4_5(ctx->fuse_calib.mphy_nv);
+
+
+	/* Update based on fuse_sata_mphy_odm_calib[1:0] value */
+	idx = SATA_MPHY_ODM_CALIB_0_1(ctx->fuse_calib.sata_mphy_odm);
+
+	reg = uphy_lane_readl(ctx, lane, UPHY_LANE_DYN_CTL_1);
+	reg |= TX_DRV_AMP_SEL0(mphy_data[idx].tx_drv_amp_sel0);
+	reg |= TX_DRV_AMP_SEL1(mphy_data[idx].tx_drv_amp_sel1);
+	reg |= TX_DRV_AMP_SEL2(mphy_data[idx].tx_drv_amp_sel2);
+	reg |= TX_DRV_AMP_SEL3(mphy_data[idx].tx_drv_amp_sel3);
+	uphy_lane_writel(ctx, lane, reg, UPHY_LANE_DYN_CTL_1);
+
+	reg = uphy_lane_readl(ctx, lane, UPHY_LANE_DYN_CTL_2);
+	reg |= TX_DRV_AMP_SEL4(mphy_data[idx].tx_drv_amp_sel4);
+	reg |= TX_DRV_AMP_SEL5(mphy_data[idx].tx_drv_amp_sel5);
+	reg |= TX_DRV_AMP_SEL6(mphy_data[idx].tx_drv_amp_sel6);
+	reg |= TX_DRV_AMP_SEL7(mphy_data[idx].tx_drv_amp_sel7);
+	uphy_lane_writel(ctx, lane, reg, UPHY_LANE_DYN_CTL_2);
+
+	reg = uphy_lane_readl(ctx, lane, UPHY_LANE_DYN_CTL_3);
+	reg |= TX_DRV_AMP_SEL8(mphy_data[idx].tx_drv_amp_sel8);
+	reg |= TX_DRV_AMP_SEL9(mphy_data[idx].tx_drv_amp_sel9);
+	uphy_lane_writel(ctx, lane, reg, UPHY_LANE_DYN_CTL_3);
+
+	reg = uphy_lane_readl(ctx, lane, UPHY_LANE_DYN_CTL_4);
+	reg |= TX_DRV_POST_SEL0(mphy_data[idx].tx_drv_post_sel0);
+	reg |= TX_DRV_POST_SEL1(mphy_data[idx].tx_drv_post_sel1);
+	uphy_lane_writel(ctx, lane, reg, UPHY_LANE_DYN_CTL_4);
+
+	reg = uphy_lane_readl(ctx, lane, UPHY_LANE_DYN_CTL_5);
+	reg |= TX_DRV_POST_SEL2(mphy_data[idx].tx_drv_post_sel2);
+	reg |= TX_DRV_POST_SEL3(mphy_data[idx].tx_drv_post_sel3);
+	reg |= TX_DRV_PRE_SEL3(mphy_data[idx].tx_drv_pre_sel3);
+	uphy_lane_writel(ctx, lane, reg, UPHY_LANE_DYN_CTL_5);
+
 	return 0;
 }
 
@@ -1843,13 +2417,52 @@ static int tegra186_ufs_phy_init(struct phy *phy)
 {
 	struct tegra_padctl_uphy *ctx = phy_get_drvdata(phy);
 	unsigned uphy_lane;
+	u32 reg;
 
+	TRACE();
+	/* FIXME: step 1: Enable refplle to 208M and pllp 102M */
+
+	/* step 2: De-assert UPHY LANE PAD Macro */
+	/* FIXME: Should be part of probe ? */
+	tegra186_uphy_lane_pad_macro(false);
+
+	/* Bring the lanes out of IDDQ, remove clamps, select MPHY for mux */
+	for_each_set_bit(uphy_lane, &ctx->ufs_lanes, T186_UPHY_LANES) {
+		reg = uphy_lane_readl(ctx, uphy_lane, UPHY_LANE_MUX);
+		reg &= SEL(~0);
+		reg |= SEL_MPHY;
+		reg |= FORCE_IDDQ_DISABLE;
+		reg &= ~CLAMP_EN_EARLY;
+		uphy_lane_writel(ctx, uphy_lane, reg, UPHY_LANE_MUX);
+	}
+
+	/* FIXME: bring refPLLE to under HW control. Needed ? */
+
+
+	/* step 3: Enable PLL1 and lane by releasing resets */
+	tegra186_uphy_lane_and_pll_reset(TEGRA186_FUNC_MPHY, ctx->ufs_lanes);
+
+	/* pll parameters init */
+	ufs_pll_init(ctx);
+
+	/* lane parameters init */
 	for_each_set_bit(uphy_lane, &ctx->ufs_lanes, T186_UPHY_LANES) {
 		TRACE_DEV(&phy->dev, "uphy_lane %u\n", uphy_lane);
 		ufs_lane_init(ctx, uphy_lane);
 	}
 
-	ufs_pll_init(ctx);
+	/* step 4: electrical parameters programming based on fuses */
+	for_each_set_bit(uphy_lane, &ctx->ufs_lanes, T186_UPHY_LANES)
+		tegra186_ufs_fuse_calibration(ctx, uphy_lane);
+
+	/* step 5: rate id programming */
+	ufs_pll_rateid_init(ctx);
+	ufs_lane_rateid_init(ctx, ctx->ufs_lanes);
+
+	/* step 6: uphy pll1 calibration */
+	uphy_pll_init(ctx, 0);
+
+	/* FIXME: Need to add MPHY programming in above step ? */
 
 	return tegra_xusb_phy_init(phy);
 }
@@ -2522,6 +3135,22 @@ static int tegra_xusb_read_fuse_calibration(struct tegra_padctl_uphy *padctl)
 	return 0;
 }
 
+static int tegra_mphy_stata_fuse_calibration(struct tegra_padctl_uphy *padctl)
+{
+	u32 value;
+
+	value = tegra_fuse_readl(FUSE_SATA_MPHY_ODM_CALIB_0);
+	padctl->fuse_calib.sata_mphy_odm = value;
+
+	value = tegra_fuse_readl(FUSE_SATA_NV_CALIB_0);
+	padctl->fuse_calib.sata_nv = value;
+
+	value = tegra_fuse_readl(FUSE_MPHY_NV_CALIB_0);
+	padctl->fuse_calib.mphy_nv = value;
+
+	return 0;
+}
+
 static int tegra_xusb_setup_usb(struct tegra_padctl_uphy *ctx)
 {
 	struct phy *phy;
@@ -2580,8 +3209,6 @@ static int tegra_xusb_setup_usb(struct tegra_padctl_uphy *ctx)
 #define reg_dump(_dev, _base, _reg)	do {} while (0)
 #endif
 
-#define CLK_RST_CONTROLLER_RST_DEV_UPHY_0		(0x4000c)
-#define   SWR_UPHY_RST					(1 << 0)
 static void __iomem *car_base;
 static void tegra186_fpga_hacks_init(struct platform_device *pdev)
 {
@@ -2660,6 +3287,10 @@ static int tegra186_padctl_uphy_probe(struct platform_device *pdev)
 	TRACE();
 	if (tegra_platform_is_silicon()) {
 		err = tegra_xusb_read_fuse_calibration(ctx);
+		if (err < 0)
+			return err;
+
+		err = tegra_mphy_stata_fuse_calibration(ctx);
 		if (err < 0)
 			return err;
 	}
