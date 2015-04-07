@@ -137,6 +137,8 @@ Following are properties of regulator subnode.
 	Additional optional custom properties  are listed below.
 		maxim,fps-source: FPS source. The macros are defined at
 				dt-bindings/mfd/max77620.h
+		maxim,shutdown-fps-source: Same as maxim,fps-source, but it
+				will apply during shutdown of system.
 		maxim,fps-power-up-period: Power up slot for rail on given FPS.
 		maxim,fps-power-down-period: Power down slot for rail on given
 				FPS.
