@@ -41,6 +41,7 @@
 			regulator-disable-on-suspend;
 			gpio = <&max77620 1 0>;
 			enable-active-high;
+			regulator-disable-on-shutdown;
 		};
 
 		vdd_3v3: regulator@2 {
@@ -69,6 +70,7 @@
 			regulator-boot-on;
 			gpio = <&max77620 7 0>;
 			enable-active-high;
+			regulator-disable-on-shutdown;
 			vin-supply = <&max77620_ldo0>;
 		};
 
