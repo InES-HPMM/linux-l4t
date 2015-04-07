@@ -367,8 +367,6 @@
 				regulator-name = "outp";
 				regulator-min-microvolt = <4000000>;
 				regulator-max-microvolt = <6000000>;
-				regulator-init-microvolt = <5500000>;
-				regulator-boot-on;
 				ti,enable-gpio = <&gpio TEGRA_GPIO(E, 2) 0>;
 			};
 
@@ -376,8 +374,6 @@
 				regulator-name = "outn";
 				regulator-min-microvolt = <4000000>;
 				regulator-max-microvolt = <6000000>;
-				regulator-init-microvolt = <5500000>;
-				regulator-boot-on;
 				ti,enable-gpio = <&gpio TEGRA_GPIO(E, 3) 0>;
 			};
 		};
