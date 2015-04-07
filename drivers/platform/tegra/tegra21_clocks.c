@@ -8855,6 +8855,7 @@ static struct clk_ops tegra_clk_gpu_ops = {
  */
 static struct clk tegra_clk_gpu_gate = {
 	.name      = "gpu_gate",
+	.clk_id    = TEGRA210_CLK_ID_GPU_GATE,
 	.parent    = &tegra_clk_osc,
 	.ops       = &tegra_clk_gpu_ops,
 	.u.periph  = {
@@ -8873,6 +8874,7 @@ static struct clk tegra_clk_gpu_gate = {
  */
 static struct clk tegra_clk_gpu_ref = {
 	.name      = "gpu_ref",
+	.clk_id    = TEGRA210_CLK_ID_GPU_REF,
 	.ops       = &tegra_clk_gpu_ops,
 	.parent    = &tegra_pll_ref,
 	.u.periph  = {
@@ -9333,7 +9335,7 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK_EX("sdmmc4",	"sdhci-tegra.3",	NULL,	15,	0x164,	266000000, mux_pllp_clk_m_pllc4_out2_out1_out0_lj,	MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_SDMMC4, &tegra_sdmmc24_clk_ops),
 	PERIPH_CLK_EX("sdmmc2_ddr", "sdhci-tegra.1",	"ddr",	9,	0x154,	102000000, mux_pllp_clk_m_pllc4_out2_out1_out0_lj,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB, 0, &tegra_sdmmc24_clk_ops),
 	PERIPH_CLK_EX("sdmmc4_ddr", "sdhci-tegra.3",	"ddr",	15,	0x164,	102000000, mux_pllp_clk_m_pllc4_out2_out1_out0_lj,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB, 0, &tegra_sdmmc24_clk_ops),
-	PERIPH_CLK("sdmmc_legacy", "sdmmc_legacy",	NULL,	193,	0x694,	208000000, mux_pllp_out3_clkm_pllp_pllc4, MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, 0),
+	PERIPH_CLK("sdmmc_legacy", "sdmmc_legacy",	NULL,	193,	0x694,	208000000, mux_pllp_out3_clkm_pllp_pllc4, MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, TEGRA210_CLK_ID_SDMMC_LEGACY),
 
 	PERIPH_CLK("vcp",	"nvavp",		"vcp",	29,	0,	250000000, mux_clk_m, 			0, TEGRA210_CLK_ID_VCP),
 	PERIPH_CLK("bsev",	"tegra-aes",		"bsev",	63,	0,	250000000, mux_clk_m, 			0, TEGRA210_CLK_ID_BSEV),
@@ -9560,6 +9562,7 @@ static struct clk_ops tegra_xusb_gate_clk_ops = {
 
 static struct clk tegra_clk_xusb_gate = {
 	.name      = "xusb_gate",
+	.clk_id    = TEGRA210_CLK_ID_XUSB_GATE,
 	.flags     = ENABLE_ON_INIT | PERIPH_NO_RESET,
 	.ops       = &tegra_xusb_gate_clk_ops,
 	.parent    = &tegra_clk_osc,

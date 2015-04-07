@@ -124,7 +124,7 @@
 /* ID 139 is reserved */
 /* FIXME: IDs 140 ... 141 to be assigned */
 #define TEGRA210_CLK_ID_XUSB_PADCTRL	142
-/* FIXME: ID 143 to be assigned */
+#define TEGRA210_CLK_ID_XUSB_GATE	143
 #define TEGRA210_CLK_ID_CILAB		144
 #define TEGRA210_CLK_ID_CILCD		145
 #define TEGRA210_CLK_ID_CILE		146
@@ -133,11 +133,10 @@
 #define TEGRA210_CLK_ID_ENTROPY		149
 /* IDs 150 ... 151 are reserved */
 #define TEGRA210_CLK_ID_DP2		152
-/* FIXME: IDs 153 ... 154 to be assigned */
+/* IDs 153 ... 154 are reserved */
 #define TEGRA210_CLK_ID_DFLL_SOC	155
 #define TEGRA210_CLK_ID_XUSB_SS		156
-/* FIXME: IDs 157 ... 158 to be assigned */
-/* IDs 159 ... 160 are reserved */
+/* IDs 157 ... 160 are reserved */
 #define TEGRA210_CLK_ID_DMIC1		161
 #define TEGRA210_CLK_ID_DMIC2		162
 /* ID 163 is reserved */
@@ -151,22 +150,23 @@
 /* FIXME: ID 171 to be assigned */
 /* ID 172 is reserved */
 #define TEGRA210_CLK_ID_MIPIIF		173
-/* FIXME: ID 174 to be assigned */
-/* IDs 175 ... 176 are reserved */
+/* IDs 174 ... 176 are reserved */
 #define TEGRA210_CLK_ID_UART_MIPI_CAL	177
 /* FIXME: ID 178 to be assigned */
 /* IDs 179 ... 180 are reserved */
 #define TEGRA210_CLK_ID_DPAUX		181
 #define TEGRA210_CLK_ID_SOR0		182
 #define TEGRA210_CLK_ID_SOR1		183
-/* FIXME: ID 184 to be assigned */
+#define TEGRA210_CLK_ID_GPU_GATE	184
 #define TEGRA210_CLK_ID_DBGAPB		185
-/* FIXME: ID 186 to be assigned */
+/* ID 186 is reserved */
 #define TEGRA210_CLK_ID_PLL_P_OUT_ADSP	187
-/* FIXME: IDs 188 ... 189 to be assigned */
+/* ID 188 is reserved */
+#define TEGRA210_CLK_ID_GPU_REF		189
 /* IDs 190 ... 191 are reserved */
 #define TEGRA210_CLK_ID_SPARE1		192
-/* FIXME: IDs 193 ... 195 to be assigned */
+#define TEGRA210_CLK_ID_SDMMC_LEGACY	193
+/* FIXME: IDs 194 ... 195 to be assigned */
 #define TEGRA210_CLK_ID_AXIAP		196
 #define TEGRA210_CLK_ID_DMIC3		197
 #define TEGRA210_CLK_ID_APE		198
