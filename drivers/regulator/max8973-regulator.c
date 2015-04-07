@@ -651,6 +651,16 @@ static struct max8973_regulator_platform_data *max8973_parse_dt(
 	if (!ret)
 		pdata->control_flags = pval;
 
+	if (of_property_read_bool(np, "maxim,enable-remote-sense"))
+		pdata->control_flags  |= MAX8973_CONTROL_REMOTE_SENSE_ENABLE;
+
+	if (of_property_read_bool(np, "maxim,enable-falling-slew-rate"))
+		pdata->control_flags  |=
+				MAX8973_CONTROL_FALLING_SLEW_RATE_ENABLE;
+
+	if (of_property_read_bool(np, "maxim,enable-frequency-shift"))
+		pdata->control_flags  |= MAX8973_CONTROL_FREQ_SHIFT_9PER_ENABLE;
+
 	ret = of_property_read_bool(np, "maxim,enable-bias");
 	if (ret)
 		pdata->control_flags |= MAX8973_CONTROL_BIAS_ENABLE;
