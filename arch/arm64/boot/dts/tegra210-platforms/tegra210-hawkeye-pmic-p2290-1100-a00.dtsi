@@ -237,6 +237,7 @@
 					maxim,fps-source = <FPS_SRC_NONE>;
 					maxim,fps-power-up-period = <0>;
 					maxim,fps-power-down-period = <7>;
+					regulator-disable-on-shutdown;
 					consumers {
 						c1 {
 							regulator-consumer-supply = "vddio_hsic";
@@ -252,6 +253,7 @@
 					maxim,fps-source = <FPS_SRC_NONE>;
 					maxim,fps-power-up-period = <0>;
 					maxim,fps-power-down-period = <7>;
+					regulator-disable-on-shutdown;
 				};
 
 				max77620_ldo2: ldo2 {
@@ -261,6 +263,7 @@
 					maxim,fps-source = <FPS_SRC_NONE>;
 					maxim,fps-power-up-period = <0>;
 					maxim,fps-power-down-period = <7>;
+					regulator-disable-on-shutdown;
 				};
 
 				max77620_ldo3: ldo3 {
@@ -270,6 +273,7 @@
 					maxim,fps-source = <FPS_SRC_NONE>;
 					maxim,fps-power-up-period = <0>;
 					maxim,fps-power-down-period = <7>;
+					regulator-disable-on-shutdown;
 				};
 
 				max77620_ldo4: ldo4 {
@@ -281,6 +285,7 @@
 					maxim,fps-source = <FPS_SRC_0>;
 					maxim,fps-power-up-period = <1>;
 					maxim,fps-power-down-period = <6>;
+					regulator-disable-on-shutdown;
 				};
 
 				max77620_ldo5: ldo5 {
@@ -290,6 +295,7 @@
 					maxim,fps-source = <FPS_SRC_NONE>;
 					maxim,fps-power-up-period = <0>;
 					maxim,fps-power-down-period = <7>;
+					regulator-disable-on-shutdown;
 				};
 
 				max77620_ldo6: ldo6 {
@@ -300,6 +306,7 @@
 					maxim,fps-source = <FPS_SRC_NONE>;
 					maxim,fps-power-up-period = <0>;
 					maxim,fps-power-down-period = <7>;
+					regulator-disable-on-shutdown;
 				};
 
 				max77620_ldo7: ldo7 {
