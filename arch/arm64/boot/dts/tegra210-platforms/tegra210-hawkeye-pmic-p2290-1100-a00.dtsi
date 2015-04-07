@@ -213,6 +213,7 @@
 					maxim,fps-source = <FPS_SRC_NONE>;
 					maxim,fps-power-up-period = <2>;
 					maxim,fps-power-down-period = <5>;
+					maxim,shutdown-fps-source = <FPS_SRC_1>;
 				};
 
 				max77620_sd3: sd3 {
