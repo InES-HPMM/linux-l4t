@@ -5716,6 +5716,11 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (rc != 0)
 		goto err_clk_put;
 
+	/* Reset the sdhci controller to clear all previous status.*/
+	tegra_periph_reset_assert(pltfm_host->clk);
+	udelay(2);
+	tegra_periph_reset_deassert(pltfm_host->clk);
+
 	tegra_host->emc_clk = devm_clk_get(mmc_dev(host->mmc), "emc");
 	if (IS_ERR_OR_NULL(tegra_host->emc_clk)) {
 		dev_err(mmc_dev(host->mmc), "Can't get emc clk\n");
