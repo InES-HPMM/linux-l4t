@@ -18,6 +18,9 @@ Optional properties:
   design requires. This property describes the total system ramp time
   required due to the combination of internal ramping of the regulator itself,
   and board design issues such as trace capacitance and load on the supply.
+-regulator-disable-on-shutdown: Disable regulator on system shutdown.
+-regulator-disable-on-suspend: Disable regulator on system suspend. This is
+ applicable for always ON rail.
 
 Deprecated properties:
 - regulator-compatible: If a regulator chip contains multiple

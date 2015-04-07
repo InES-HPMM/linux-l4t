@@ -131,6 +131,9 @@ static void of_get_regulation_constraints(struct device_node *np,
 		constraints->disable_on_suspend = of_property_read_bool(np,
 					"regulator-disable-on-suspend");
 
+	constraints->disable_on_shutdown = of_property_read_bool(np,
+					"regulator-disable-on-shutdown");
+
 	if (of_find_property(np, "regulator-bypass-on", NULL))
 		constraints->bypass_on = true;
 
