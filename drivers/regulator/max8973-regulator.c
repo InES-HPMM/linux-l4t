@@ -121,7 +121,6 @@ struct max8973_chip {
 	int enable_gpio;
 	int lru_index[MAX8973_MAX_VOUT_REG];
 	int curr_vout_val[MAX8973_MAX_VOUT_REG];
-	int cache_reg_val[MAX8973_MAX_REG];
 	int curr_vout_reg;
 	int sleep_vout_reg;
 	int curr_gpio_val;
@@ -323,80 +322,6 @@ static int max8973_set_ramp_delay(struct regulator_dev *rdev,
 	return ret_val;
 }
 
-static int max8973_regulator_enable(struct regulator_dev *rdev)
-{
-	struct max8973_chip *max = rdev_get_drvdata(rdev);
-	int ret;
-	int i;
-
-	if (max->enable_external_control && gpio_is_valid(max->enable_gpio)) {
-		for (i = 0; i < MAX8973_MAX_REG; ++i) {
-			ret = regmap_write(max->regmap, i,
-						 max->cache_reg_val[i]);
-			if (ret < 0) {
-				dev_err(max->dev,
-					"reg %d write failed, err = %d\n",
-					i, ret);
-				return ret;
-			}
-		}
-	}
-
-	ret = regmap_update_bits(max->regmap, MAX8973_VOUT,
-				MAX8973_VOUT_ENABLE, MAX8973_VOUT_ENABLE);
-	if (ret < 0) {
-		dev_err(max->dev, "reg %d update failed, err = %d\n",
-			MAX8973_VOUT, ret);
-		return ret;
-	}
-
-	if (max->enable_external_control && gpio_is_valid(max->enable_gpio))
-		gpio_set_value_cansleep(max->enable_gpio, 1);
-
-	max->enable_state = true;
-	return 0;
-}
-
-static int max8973_regulator_disable(struct regulator_dev *rdev)
-{
-	struct max8973_chip *max = rdev_get_drvdata(rdev);
-	int ret;
-	int i;
-
-	if (max->enable_external_control && gpio_is_valid(max->enable_gpio)) {
-		for (i = 0; i < MAX8973_MAX_REG; ++i) {
-			ret = regmap_read(max->regmap, i,
-						&max->cache_reg_val[i]);
-			if (ret < 0) {
-				dev_err(max->dev,
-					"reg %d read failed, err = %d\n",
-					i, ret);
-				return ret;
-			}
-		}
-		gpio_set_value_cansleep(max->enable_gpio, 0);
-	} else {
-		ret = regmap_update_bits(max->regmap, MAX8973_VOUT,
-						MAX8973_VOUT_ENABLE, 0);
-		if (ret < 0) {
-			dev_err(max->dev,
-				"reg %d update failed, err = %d\n",
-				MAX8973_VOUT, ret);
-			return ret;
-		}
-	}
-
-	max->enable_state = false;
-	return 0;
-}
-
-static int max8973_regulator_is_enabled(struct regulator_dev *rdev)
-{
-	struct max8973_chip *max = rdev_get_drvdata(rdev);
-
-	return max->enable_state;
-}
-
 static const struct regulator_ops max8973_dcdc_ops = {
 	.get_voltage_sel	= max8973_dcdc_get_voltage_sel,
 	.set_voltage_sel	= max8973_dcdc_set_voltage_sel,
@@ -406,9 +331,6 @@ static const struct regulator_ops max8973_dcdc_ops = {
 	.set_voltage_time_sel	= regulator_set_voltage_time_sel,
 	.set_ramp_delay		= max8973_set_ramp_delay,
 	.set_sleep_voltage_sel	= max8973_dcdc_set_sleep_voltage_sel,
-	.enable			= max8973_regulator_enable,
-	.disable		= max8973_regulator_disable,
-	.is_enabled		= max8973_regulator_is_enabled,
 };
 
 static int max8973_init_dcdc(struct max8973_chip *max,
@@ -704,7 +626,6 @@ static int max8973_probe(struct i2c_client *client,
 	struct max8973_chip *max;
 	unsigned int chip_id;
 	int ret;
-	int reg;
 	int gpio_flags;
 
 	pdata = client->dev.platform_data;
@@ -766,30 +687,6 @@ static int max8973_probe(struct i2c_client *client,
 	max->desc.uV_step = MAX8973_VOLATGE_STEP;
 	max->desc.n_voltages = MAX8973_BUCK_N_VOLTAGE;
 
-	if (!pdata->enable_ext_control) {
-		max->desc.enable_reg = MAX8973_VOUT;
-		max->desc.enable_mask = MAX8973_VOUT_ENABLE;
-	}
-
-	if (gpio_is_valid(pdata->enable_gpio)) {
-		gpio_flags = GPIOF_OUT_INIT_HIGH;
-		if (pdata->enable_ext_control) {
-			gpio_flags = GPIOF_OUT_INIT_LOW;
-			ridata = pdata->reg_init_data;
-			if (ridata && (ridata->constraints.always_on ||
-				ridata->constraints.boot_on))
-				gpio_flags = GPIOF_OUT_INIT_HIGH;
-		}
-		ret = devm_gpio_request_one(&client->dev, pdata->enable_gpio,
-				gpio_flags, "max8973-enable-gpio");
-		if (ret) {
-			dev_err(&client->dev,
-				"gpio_request for gpio %d failed, err = %d\n",
-				pdata->enable_gpio, ret);
-			return ret;
-		}
-	}
-
 	max->irq_flags = pdata->irq_flags;
 	max->junction_temp_warning = pdata->junction_temp_warning;
 	max->enable_gpio = pdata->enable_gpio;
@@ -828,25 +725,52 @@ static int max8973_probe(struct i2c_client *client,
 		max->lru_index[max->curr_vout_reg] = 0;
 	}
 
-	if (pdata) {
-		ret = max8973_init_dcdc(max, pdata);
-		if (ret < 0) {
-			dev_err(max->dev, "Max8973 Init failed, err = %d\n", ret);
-			return ret;
+	ridata = pdata->reg_init_data;
+	switch (max->id) {
+	case MAX8973:
+		if (gpio_is_valid(max->enable_gpio) ||
+				pdata->enable_ext_control) {
+			config.ena_gpio_flags = GPIOF_OUT_INIT_LOW;
+			if (ridata && (ridata->constraints.always_on ||
+					ridata->constraints.boot_on))
+				config.ena_gpio_flags = GPIOF_OUT_INIT_HIGH;
+			config.ena_gpio = max->enable_gpio;
+		} else {
+			max->desc.enable_reg = MAX8973_VOUT;
+			max->desc.enable_mask = MAX8973_VOUT_ENABLE;
+			max->ops.enable = regulator_enable_regmap;
+			max->ops.disable = regulator_disable_regmap;
+			max->ops.is_enabled = regulator_is_enabled_regmap;
 		}
-	}
+		break;
 
-	if (max->enable_external_control && gpio_is_valid(max->enable_gpio)) {
-		for (reg = 0; reg < MAX8973_MAX_REG; ++reg) {
-			ret = regmap_read(max->regmap, reg,
-					&max->cache_reg_val[reg]);
-			if (ret < 0) {
-				dev_err(max->dev,
-					"reg %d read failed, err = %d\n",
-					reg, ret);
+	case MAX77621:
+		if (gpio_is_valid(max->enable_gpio)) {
+			ret = devm_gpio_request_one(&client->dev,
+					max->enable_gpio, GPIOF_OUT_INIT_HIGH,
+					"max8973-en-gpio");
+			if (ret) {
+				dev_err(&client->dev,
+					"gpio_request for gpio %d failed: %d\n",
+					max->enable_gpio, ret);
 				return ret;
 			}
 		}
+
+		max->desc.enable_reg = MAX8973_VOUT;
+		max->desc.enable_mask = MAX8973_VOUT_ENABLE;
+		max->ops.enable = regulator_enable_regmap;
+		max->ops.disable = regulator_disable_regmap;
+		max->ops.is_enabled = regulator_is_enabled_regmap;
+		break;
+	default:
+		break;
+	}
+
+	ret = max8973_init_dcdc(max, pdata);
+	if (ret < 0) {
+		dev_err(max->dev, "Max8973 Init failed, err = %d\n", ret);
+		return ret;
 	}
 
 	config.dev = &client->dev;
