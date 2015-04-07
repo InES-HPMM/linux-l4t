@@ -96,6 +96,13 @@ static bool beep_mode[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS-1)] =
 					CONFIG_SND_HDA_INPUT_BEEP_MODE};
 #endif
 
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+static struct of_device_id tegra_disb_pd[] = {
+	{ .compatible = "nvidia, tegra210-disb-pd", },
+	{},
+};
+#endif
+
 module_param_array(index, int, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for Intel HD audio interface.");
 module_param_array(id, charp, NULL, 0444);
@@ -1542,9 +1549,17 @@ static void azx_init_platform(struct azx *chip)
 static void __azx_platform_enable_clocks(struct azx *chip)
 {
 	int i;
+	int partition_id;
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
-	tegra_unpowergate_partition(TEGRA_POWERGATE_DISB);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_disb_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_DISB;
+#endif
+	tegra_unpowergate_partition(partition_id);
 #endif
 
 	for (i = 0; i < chip->platform_clk_count; i++)
@@ -1565,6 +1580,7 @@ static void azx_platform_enable_clocks(struct azx *chip)
 static void __azx_platform_disable_clocks(struct azx *chip)
 {
 	int i;
+	int partition_id;
 
 	if (!chip->platform_clk_enable)
 		return;
@@ -1573,7 +1589,14 @@ static void __azx_platform_disable_clocks(struct azx *chip)
 		clk_disable(chip->platform_clks[i]);
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
-	tegra_powergate_partition(TEGRA_POWERGATE_DISB);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_disb_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_DISB;
+#endif
+	tegra_powergate_partition(partition_id);
 #endif
 
 	chip->platform_clk_enable--;
