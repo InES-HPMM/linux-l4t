@@ -104,6 +104,7 @@ struct regulator_state {
  *                 100% is 1x, 150% is 1.5x and so on.
  * @disable_on_suspend: Disable rail on suspend. This is only applicable if
  *                    rail is always ON.
+ * @disable_on_shutdown: Disable rail on shutdown explictily.
  */
 struct regulation_constraints {
 
@@ -157,6 +158,7 @@ struct regulation_constraints {
 	unsigned int ignore_current_constraint_init:1;
 	unsigned disable_parent_after_enable:1; /* SW based overcurrent protection */
 	unsigned disable_on_suspend:1; /* Disable rail on suspend */
+	unsigned disable_on_shutdown:1; /* Disable rail on shutdown */
 };
 
 /**
