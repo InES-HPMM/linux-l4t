@@ -120,6 +120,8 @@
 /*value 4 in 13 to 15 bits indicates 256 iterations*/
 #define SDHCI_VNDR_TUN_CTRL0_TUN_ITERATIONS_MASK	0x7
 #define SDHCI_VNDR_TUN_CTRL0_TUN_ITERATIONS_SHIFT	13
+/* Value 1 in NUM_TUNING_ITERATIONS indicates 64 iterations */
+#define HW_TUNING_64_TRIES				1
 /* Value 2 in NUM_TUNING_ITERATIONS indicates 128 iterations */
 #define HW_TUNING_128_TRIES				2
 /* Value 4 in NUM_TUNING_ITERATIONS indicates 256 iterations */
@@ -763,6 +765,8 @@ static int sdhci_tegra_get_max_tuning_loop_counter(struct sdhci_host *sdhci)
 
 	if (sdhci->mmc->ios.timing == MMC_TIMING_UHS_SDR50)
 		hw_tuning_iterations = HW_TUNING_256_TRIES;
+	else if (sdhci->mmc->caps2 & MMC_CAP2_HS533)
+		hw_tuning_iterations = HW_TUNING_64_TRIES;
 	else
 		hw_tuning_iterations = HW_TUNING_128_TRIES;
 
