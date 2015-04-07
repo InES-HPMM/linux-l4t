@@ -89,12 +89,12 @@
 				};
 				display-timings {
 					1200x1920-32-60Hz {
-						clock-frequency = <192642000>;
+						clock-frequency = <193224000>;
 						hactive = <1200>;
 						vactive = <1920>;
-						hfront-porch = <104>;
-						hback-porch = <18>;
-						hsync-len = <2>;
+						hfront-porch = <107>;
+						hback-porch = <20>;
+						hsync-len = <1>;
 						vfront-porch = <497>;
 						vback-porch = <7>;
 						vsync-len = <1>;
@@ -102,12 +102,12 @@
 						nvidia,v-ref-to-sync = <11>;
 					};
 					1200x1920-32-75Hz {
-						clock-frequency = <192642000>;
+						clock-frequency = <193224000>;
 						hactive = <1200>;
 						vactive = <1920>;
-						hfront-porch = <104>;
-						hback-porch = <18>;
-						hsync-len = <2>;
+						hfront-porch = <107>;
+						hback-porch = <20>;
+						hsync-len = <1>;
 						vfront-porch = <12>;
 						vback-porch = <7>;
 						vsync-len = <1>;
