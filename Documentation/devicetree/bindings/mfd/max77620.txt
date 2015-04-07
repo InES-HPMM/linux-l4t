@@ -149,7 +149,6 @@ Following are properties of regulator subnode.
 			remote sense on suspend and re-enable on resume.
 			If this property is not there then no change on
 			configuration.
-		maxim,disable-on-shutdown: boolean, Disable rail on shutdown.
 
 Backup Battery:
 ==============
