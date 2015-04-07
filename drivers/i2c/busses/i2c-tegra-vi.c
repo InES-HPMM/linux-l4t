@@ -1603,6 +1603,9 @@ static int tegra_vi_i2c_suspend_noirq(struct device *dev)
 
 	i2c_lock_adapter(&i2c_dev->adapter);
 
+	if (i2c_dev->pull_up_supply)
+		regulator_disable(i2c_dev->pull_up_supply);
+
 	__tegra_vi_i2c_suspend_noirq(i2c_dev);
 
 	i2c_unlock_adapter(&i2c_dev->adapter);
@@ -1625,8 +1628,18 @@ static int tegra_vi_i2c_resume_noirq(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_vi_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
+	int ret;
 
 	i2c_lock_adapter(&i2c_dev->adapter);
+
+	if (i2c_dev->pull_up_supply) {
+		ret = regulator_enable(i2c_dev->pull_up_supply);
+		if (ret < 0) {
+			dev_err(i2c_dev->dev, "Pull up regulator supply failed: %d\n",
+				ret);
+			return ret;
+		}
+	}
 
 	__tegra_vi_i2c_resume_noirq(i2c_dev);
 
