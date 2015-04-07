@@ -9488,11 +9488,15 @@ static struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("nvdec.emc",	"tegra_nvdec",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0, 0),
 	SHARED_EMC_CLK("tsec.emc",	"tegra_tsec",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0, 0),
 	SHARED_EMC_CLK("tsecb.emc",	"tegra_tsecb",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0, 0),
-	SHARED_EMC_CLK("camera.emc", "vi",		"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_VI), 0),
+#ifdef CONFIG_VI_ONE_DEVICE
+	SHARED_EMC_CLK("vi.emc",	"tegra_vi",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_VI), 0),
+#else
 	SHARED_EMC_CLK("via.emc",	"tegra_vi.0",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_VI), 0),
 	SHARED_EMC_CLK("vib.emc",	"tegra_vi.1",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_VI2), 0),
+#endif
 	SHARED_EMC_CLK("ispa.emc",	"tegra_isp.0",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_ISP1), 0),
 	SHARED_EMC_CLK("ispb.emc",	"tegra_isp.1",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_ISP2), 0),
+	SHARED_EMC_CLK("camera.emc", "tegra_camera_ctrl",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW, 0, 0),
 	SHARED_EMC_CLK("iso.emc",	"iso",		"emc",	&tegra_clk_emc, NULL, 0, 0, 0, 0),
 	SHARED_EMC_CLK("floor.emc",	"floor.emc",	NULL,	&tegra_clk_emc, NULL, 0, 0, 0, 0),
 	SHARED_EMC_CLK("override.emc", "override.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_OVERRIDE, 0, 0),
@@ -9822,7 +9826,6 @@ static struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cilab", "tegra_vi", "cilab"),
 	CLK_DUPLICATE("cilcd", "tegra_vi", "cilcd"),
 	CLK_DUPLICATE("cile", "tegra_vi", "cile"),
-	CLK_DUPLICATE("camera.emc", "tegra_vi", "emc"),
 #else
 	CLK_DUPLICATE("via.vi.cbus", "tegra_vi", "vi"),
 	CLK_DUPLICATE("vib.vi.cbus", "tegra_vi.1", "vi"),
@@ -9833,6 +9836,7 @@ static struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cilab", "tegra_vi", "cilab"),
 	CLK_DUPLICATE("cilcd", "tegra_vi.1", "cilcd"),
 	CLK_DUPLICATE("cile", "tegra_vi.1", "cile"),
+	CLK_DUPLICATE("via.emc", "tegra_vi", "emc"),
 #endif
 	CLK_DUPLICATE("spdif_in", NULL, "spdif_in"),
 	CLK_DUPLICATE("dmic1", "tegra-dmic.0", NULL),
