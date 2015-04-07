@@ -37,6 +37,10 @@
 #include <linux/platform/tegra/mc-regs-t21x.h>
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI_0
 #define MC_ERR_34BIT_PHYS_ADDR
+#elif defined(CONFIG_ARCH_TEGRA_18x_SOC)
+#include <linux/platform/tegra/mc-regs-t18x.h>
+#define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI_0
+#define MC_ERR_34BIT_PHYS_ADDR
 #endif
 
 #define MAX_PRINTS			6
