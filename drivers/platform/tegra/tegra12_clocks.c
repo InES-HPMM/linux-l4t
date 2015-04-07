@@ -8456,6 +8456,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("pcie.emc",      "tegra_pcie",           "emc",  &tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_LIMIT("floor.emc",	"floor.emc",	NULL,	&tegra_clk_emc, NULL,  0, 0),
 	SHARED_LIMIT("floor.profile.emc", "profile.emc", "floor", &tegra_clk_emc, NULL,  0, 0),
+	SHARED_EMC_CLK("camera.emc",	"tegra_camera_ctrl",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW, 0),
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc", &tegra_clk_c2bus, "msenc", 0, 0),
