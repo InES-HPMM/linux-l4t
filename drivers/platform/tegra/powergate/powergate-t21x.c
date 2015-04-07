@@ -18,6 +18,7 @@
 #include <linux/tegra-powergate.h>
 #include <linux/tegra-soc.h>
 #include <linux/platform/tegra/dvfs.h>
+#include <linux/tegra_soctherm.h>
 
 #include "powergate-priv.h"
 #include "powergate-ops-t1xx.h"
@@ -615,6 +616,8 @@ static int tegra210_pg_gpu_powergate(int id)
 
 	udelay(10);
 
+	tegra_soctherm_gpu_tsens_invalidate(1);
+
 	if (gpu_rail) {
 		ret = tegra_dvfs_rail_power_down(gpu_rail);
 		if (ret) {
@@ -655,6 +658,8 @@ static int tegra210_pg_gpu_unpowergate(int id)
 	ret = tegra_dvfs_rail_power_up(gpu_rail);
 	if (ret)
 		goto err_power;
+
+	tegra_soctherm_gpu_tsens_invalidate(0);
 
 	if (!partition->clk_info[0].clk_ptr)
 		get_clk_info(partition);
