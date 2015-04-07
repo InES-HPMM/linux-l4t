@@ -46,6 +46,7 @@ static unsigned int num_codec_links;
 struct tegra_p1889ref {
 	struct tegra_asoc_audio_clock_info audio_clock;
 	struct tegra_vcm30t124_platform_data *pdata;
+	int i2s_mode_kcontrol;
 };
 
 static unsigned int tegra_p1889ref_get_dai_link_idx(const char *codec_name)
@@ -70,12 +71,26 @@ static int tegra_p1889ref_audio_dsp_tdm1_hw_params(
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_codec *codec = codec_dai->codec;
 	struct snd_soc_card *card = codec->card;
+	struct tegra_p1889ref *machine = snd_soc_card_get_drvdata(card);
+
 	unsigned int idx =
 		tegra_p1889ref_get_dai_link_idx("p1889-audio-dsp-tdm1");
 	struct snd_soc_pcm_stream *dai_params =
 		(struct snd_soc_pcm_stream *)card->rtd[idx].dai_link->params;
 	/* update dai params rate for audio dsp TDM link */
 	dai_params->rate_min = params_rate(params);
+
+	/* update fmt for i2s dai based on kcontrol */
+	if (machine->i2s_mode_kcontrol == 0)
+		snd_soc_dai_set_fmt(card->rtd[idx].cpu_dai,
+			SND_SOC_DAIFMT_DSP_A |
+			SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBM_CFM);
+	else
+		snd_soc_dai_set_fmt(card->rtd[idx].cpu_dai,
+			SND_SOC_DAIFMT_DSP_A |
+			SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS);
 
 	return 0;
 }
@@ -87,12 +102,26 @@ static int tegra_p1889ref_audio_dsp_tdm2_hw_params(
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_codec *codec = codec_dai->codec;
 	struct snd_soc_card *card = codec->card;
+	struct tegra_p1889ref *machine = snd_soc_card_get_drvdata(card);
+
 	unsigned int idx =
 		tegra_p1889ref_get_dai_link_idx("p1889-audio-dsp-tdm2");
 	struct snd_soc_pcm_stream *dai_params =
 		(struct snd_soc_pcm_stream *)card->rtd[idx].dai_link->params;
 	/* update dai params rate for audio dsp TDM link */
 	dai_params->rate_min = params_rate(params);
+
+	/* update fmt for i2s dai based on kcontrol */
+	if (machine->i2s_mode_kcontrol == 0)
+		snd_soc_dai_set_fmt(card->rtd[idx].cpu_dai,
+			SND_SOC_DAIFMT_DSP_A |
+			SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBM_CFM);
+	else
+		snd_soc_dai_set_fmt(card->rtd[idx].cpu_dai,
+			SND_SOC_DAIFMT_DSP_A |
+			SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS);
 
 	return 0;
 }
@@ -474,12 +503,54 @@ static int tegra_p1889ref_suspend_pre(struct snd_soc_card *card)
 	return 0;
 }
 
+static const int tegra_p1889ref_mode_values[] = {
+	0,
+	1,
+};
+
+static const char * const tegra_p1889ref_mode_text[] = {
+	"Master",
+	"Slave",
+};
+
+static int tegra_p1889ref_put_mode(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol){
+	struct snd_soc_card *card = snd_kcontrol_chip(kcontrol);
+	struct tegra_p1889ref *machine = snd_soc_card_get_drvdata(card);
+
+	/* set the i2s mode control flag */
+	machine->i2s_mode_kcontrol = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+static int tegra_p1889ref_get_mode(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol){
+	struct snd_soc_card *card = snd_kcontrol_chip(kcontrol);
+	struct tegra_p1889ref *machine = snd_soc_card_get_drvdata(card);
+
+	ucontrol->value.integer.value[0] = machine->i2s_mode_kcontrol;
+
+	return 0;
+}
+
+static const struct soc_enum tegra_p1889ref_i2s_mode =
+	SOC_ENUM_SINGLE_EXT(2, tegra_p1889ref_mode_text);
+
+static const struct snd_kcontrol_new tegra_p1889ref_controls[] = {
+	SOC_ENUM_EXT("tegra124-i2s mode", tegra_p1889ref_i2s_mode,
+		tegra_p1889ref_get_mode,
+		tegra_p1889ref_put_mode),
+};
+
 static struct snd_soc_card snd_soc_tegra_p1889ref = {
 	.name = "dirana3",
 	.owner = THIS_MODULE,
 	.suspend_pre = tegra_p1889ref_suspend_pre,
 	.dapm_widgets = tegra_p1889ref_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(tegra_p1889ref_dapm_widgets),
+	.controls = tegra_p1889ref_controls,
+	.num_controls = ARRAY_SIZE(tegra_p1889ref_controls),
 	.fully_routed = true,
 };
 
