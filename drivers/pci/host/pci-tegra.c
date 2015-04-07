@@ -1726,7 +1726,7 @@ static bool tegra_pcie_port_check_link(struct tegra_pcie_port *port)
 		} while (--timeout);
 
 		if (!timeout) {
-			dev_err(port->pcie->dev, "link %u down, retrying\n",
+			dev_info(port->pcie->dev, "link %u down, retrying\n",
 				port->index);
 			goto retry;
 		}
@@ -2538,7 +2538,7 @@ static int tegra_pcie_init(struct tegra_pcie *pcie)
 		tegra_pcie_hw.sys = &pcie->sys;
 		pci_common_init_dev(pcie->dev, &tegra_pcie_hw);
 	} else {
-		dev_err(pcie->dev, "PCIE: no ports detected\n");
+		dev_info(pcie->dev, "PCIE: no ports detected\n");
 		goto fail_enum;
 	}
 	tegra_pcie_enable_features(pcie);
