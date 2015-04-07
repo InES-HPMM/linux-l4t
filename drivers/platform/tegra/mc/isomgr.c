@@ -40,8 +40,7 @@
 
 #include <linux/platform/tegra/isomgr.h>
 #include <linux/platform/tegra/clock.h>
-
-#include <tegra/mc.h>
+#include <linux/platform/tegra/mc.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/isomgr.h>

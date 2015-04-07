@@ -34,8 +34,8 @@
 #include <asm/cputime.h>
 #include <asm/uaccess.h>
 
-#include <tegra/tegra21_emc.h>
-#include <tegra/mc-regs-t21x.h>
+#include <linux/platform/tegra/tegra21_emc.h>
+#include <linux/platform/tegra/mc-regs-t21x.h>
 
 #include <mach/nct.h>
 

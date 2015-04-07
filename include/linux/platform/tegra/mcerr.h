@@ -26,15 +26,15 @@
 #include <linux/debugfs.h>
 #include <linux/spinlock.h>
 
-#include <tegra/mc.h>
+#include <linux/platform/tegra/mc.h>
 
 /* Pull in chip specific EMC header. */
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
-#include <tegra/mc-regs-t12x.h>
+#include <linux/platform/tegra/mc-regs-t12x.h>
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
 #define MC_ERR_34BIT_PHYS_ADDR
 #elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
-#include <tegra/mc-regs-t21x.h>
+#include <linux/platform/tegra/mc-regs-t21x.h>
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI_0
 #define MC_ERR_34BIT_PHYS_ADDR
 #endif

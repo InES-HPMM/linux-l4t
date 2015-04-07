@@ -35,7 +35,7 @@
 #include <asm/cputime.h>
 #include <asm/cacheflush.h>
 
-#include <mach/latency_allowance.h>
+#include <linux/platform/tegra/latency_allowance.h>
 
 #include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>

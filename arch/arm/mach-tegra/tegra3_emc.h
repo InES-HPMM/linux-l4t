@@ -21,7 +21,7 @@
 #ifndef _MACH_TEGRA_TEGRA3_EMC_H
 #define _MACH_TEGRA_TEGRA3_EMC_H
 
-#include <mach/tegra_emc.h>
+#include <linux/platform/tegra/tegra_emc.h>
 
 #define TEGRA_EMC_BRIDGE_RATE_MIN	300000000
 #define TEGRA_EMC_BRIDGE_MVOLTS_MIN	1200

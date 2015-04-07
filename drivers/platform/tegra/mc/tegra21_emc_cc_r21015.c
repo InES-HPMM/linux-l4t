@@ -19,8 +19,8 @@
 #include <linux/delay.h>
 #include <linux/platform_data/tegra_emc_pdata.h>
 
-#include <tegra/tegra21_emc.h>
-#include <tegra/mc-regs-t21x.h>
+#include <linux/platform/tegra/tegra21_emc.h>
+#include <linux/platform/tegra/mc-regs-t21x.h>
 
 #include "iomap.h"
 

@@ -41,7 +41,8 @@
 #include <linux/sched.h>
 
 #include <mach/edp.h>
-#include <mach/tegra_emc.h>
+
+#include <linux/platform/tegra/tegra_emc.h>
 
 #include "board.h"
 #include <linux/platform/tegra/clock.h>

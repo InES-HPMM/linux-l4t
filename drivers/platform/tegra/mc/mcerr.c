@@ -35,10 +35,8 @@
 #include <linux/of_irq.h>
 #include <linux/atomic.h>
 
-#include <mach/irqs.h>
-
-#include <tegra/mc.h>
-#include <tegra/mcerr.h>
+#include <linux/platform/tegra/mc.h>
+#include <linux/platform/tegra/mcerr.h>
 
 #define mcerr_pr(fmt, ...)					\
 	do {							\

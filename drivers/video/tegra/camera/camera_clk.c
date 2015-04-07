@@ -14,7 +14,7 @@
  *
  */
 
-#include <mach/latency_allowance.h>
+#include <linux/platform/tegra/latency_allowance.h>
 #include "camera_clk.h"
 #include "camera_emc.h"
 

@@ -49,7 +49,7 @@
 #include <mach/tegra_usb_pmc.h>
 #include <mach/xusb.h>
 
-#include <tegra/mc.h>
+#include <linux/platform/tegra/mc.h>
 
 #include "xhci-tegra.h"
 #include "xhci.h"

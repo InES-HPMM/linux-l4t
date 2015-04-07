@@ -37,9 +37,10 @@
 
 #include <mach/tegra_bb.h>
 #include <mach/tegra_bbc_proxy.h>
-#include <mach/tegra_emc.h>
 
+#include <linux/platform/tegra/tegra_emc.h>
 #include <linux/platform/tegra/clock.h>
+
 #include "iomap.h"
 #include "sleep.h"
 #include "pm.h"

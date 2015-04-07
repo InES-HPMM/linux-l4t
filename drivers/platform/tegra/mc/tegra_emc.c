@@ -25,7 +25,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 
-#include <mach/tegra_emc.h>
+#include <linux/platform/tegra/tegra_emc.h>
 
 u8 tegra_emc_iso_share = 100;
 static unsigned long emc_iso_allocation;

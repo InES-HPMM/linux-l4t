@@ -25,7 +25,7 @@
 #endif
 #include <../arch/arm/mach-tegra/include/mach/dc.h>
 #include "mods_internal.h"
-#include <../drivers/platform/tegra/include/tegra/mc.h>
+#include <linux/platform/tegra/mc.h>
 
 static void mods_tegra_dc_set_windowattr_basic(struct tegra_dc_win *win,
 		       const struct MODS_TEGRA_DC_WINDOW *mods_win)

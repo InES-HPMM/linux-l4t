@@ -57,11 +57,11 @@
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #define EMEM_PTSA_RATE_WIDTH		8
 #define MAX_DDA_RATE			0xff
-#include <tegra/mc-regs-t12x.h>
+#include <linux/platform/tegra/mc-regs-t12x.h>
 #else
 #define EMEM_PTSA_RATE_WIDTH		12
 #define MAX_DDA_RATE			0xfff
-#include <tegra/mc-regs-t21x.h>
+#include <linux/platform/tegra/mc-regs-t21x.h>
 #endif
 
 #define LA_FP_FACTOR			1000

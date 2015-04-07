@@ -37,7 +37,7 @@
 
 #include <mach/edp.h>
 
-#include <tegra/mc.h>
+#include <linux/platform/tegra/mc.h>
 
 #include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/dvfs.h>

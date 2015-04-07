@@ -29,10 +29,9 @@
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
 
-#include <tegra/mc.h>
-#include <tegra/mcerr.h>
-
-#include <mach/tegra_emc.h>
+#include <linux/platform/tegra/mc.h>
+#include <linux/platform/tegra/mcerr.h>
+#include <linux/platform/tegra/tegra_emc.h>
 
 #define MC_CLIENT_HOTRESET_CTRL		0x200
 #define MC_CLIENT_HOTRESET_STAT		0x204

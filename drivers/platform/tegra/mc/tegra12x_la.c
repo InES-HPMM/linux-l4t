@@ -19,10 +19,9 @@
 
 #include <asm/io.h>
 
-#include <mach/latency_allowance.h>
-#include <mach/tegra_emc.h>
-
-#include <tegra/mc.h>
+#include <linux/platform/tegra/latency_allowance.h>
+#include <linux/platform/tegra/tegra_emc.h>
+#include <linux/platform/tegra/mc.h>
 
 #include "la_priv.h"
 #include <linux/platform/tegra/clock.h>

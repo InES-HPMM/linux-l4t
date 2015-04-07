@@ -6,8 +6,7 @@
 GCOV_PROFILE := y
 
 subdir-ccflags-y += -Werror
-subdir-ccflags-y += -I$(srctree)/drivers/platform/tegra/include \
-		    -I$(srctree)/arch/arm/mach-tegra
+subdir-ccflags-y += -I$(srctree)/arch/arm/mach-tegra
 
 obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pmc.o
 obj-$(CONFIG_TEGRA_USB_SHARED_PAD)      += tegra_usb_pad_ctrl.o
