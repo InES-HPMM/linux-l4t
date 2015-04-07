@@ -147,6 +147,7 @@ void tegra_emc_timer_training_stop(void)
 	del_timer(&emc_timer_training);
 }
 
+#ifdef CONFIG_THERMAL
 static int tegra_dram_cd_max_state(struct thermal_cooling_device *tcd,
 				   unsigned long *state)
 {
@@ -182,6 +183,7 @@ static struct thermal_cooling_device_ops emc_dram_cd_ops = {
 	.get_cur_state = tegra_dram_cd_cur_state,
 	.set_cur_state = tegra_dram_cd_set_state,
 };
+#endif
 
 #ifdef CONFIG_DEBUG_FS
 static struct dentry *emc_timers_debugfs;
@@ -261,6 +263,7 @@ int tegra_emc_timers_init(struct dentry *parent)
  */
 static __init int tegra_emc_therm_init(void)
 {
+#ifdef CONFIG_THERMAL
 	void *ret;
 
 	ret = thermal_cooling_device_register("tegra-dram", NULL,
@@ -271,6 +274,7 @@ static __init int tegra_emc_therm_init(void)
 		return -ENODEV;
 
 	pr_info("DRAM derating cdev registered.\n");
+#endif
 
 	return 0;
 }
