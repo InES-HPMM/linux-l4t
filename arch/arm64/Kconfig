@@ -176,6 +176,7 @@ config FIQ
 
 config FIQ_GLUE
 	bool
+	select FIQ
 
 source "init/Kconfig"
 

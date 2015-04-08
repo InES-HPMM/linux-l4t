@@ -18,19 +18,21 @@
 #define __MACH_TEGRA_FIQ_DEBUGGER_H
 
 #ifdef CONFIG_TEGRA_FIQ_DEBUGGER
-#ifdef CONFIG_FIQ
-void tegra_serial_debug_init(unsigned int base, int fiq,
-	struct clk *clk, int signal_irq, int wakeup_irq);
-#endif
 void tegra_serial_debug_init_irq_mode(unsigned int base, int irq,
 			   struct clk *clk, int signal_irq, int wakeup_irq);
 #else
-static inline void tegra_serial_debug_init(unsigned int base, int fiq,
-	struct clk *clk, int signal_irq, int wakeup_irq)
-{
-}
 static inline void tegra_serial_debug_init_irq_mode(unsigned int base, int irq,
 			   struct clk *clk, int signal_irq, int wakeup_irq)
+{
+}
+#endif
+
+#if defined(CONFIG_TEGRA_FIQ_DEBUGGER) && defined(CONFIG_FIQ_GLUE)
+void tegra_serial_debug_init(unsigned int base, int fiq,
+	struct clk *clk, int signal_irq, int wakeup_irq);
+#else
+static inline void tegra_serial_debug_init(unsigned int base, int fiq,
+	struct clk *clk, int signal_irq, int wakeup_irq)
 {
 }
 #endif

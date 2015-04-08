@@ -332,9 +332,7 @@ static void __init tegra_t210ref_late_init(void)
 	isomgr_init();
 	tegra_fb_copy_or_clear();
 
-#if defined(CONFIG_TEGRA_FIQ_DEBUGGER) && defined(CONFIG_FIQ)
 	tegra_serial_debug_init(TEGRA_UARTA_BASE, nLEGACYFIQ_PPI, NULL, -1, -1);
-#endif
 
 	/* put PEX pads into DPD mode to save additional power */
 	tegra_io_dpd_enable(&pexbias_io);
