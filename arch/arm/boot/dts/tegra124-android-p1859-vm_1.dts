@@ -325,6 +325,22 @@
 			compatible = "nvidia,tegra124-vhost-vic";
 		};
 
+		vi {
+			compatible = "nvidia,tegra124-vhost-vi";
+		};
+
+		isp@54600000 {
+			compatible = "nvidia,tegra124-vhost-isp";
+		};
+
+		isp@54680000 {
+			compatible = "nvidia,tegra124-vhost-isp";
+		};
+
+		msenc {
+			compatible = "nvidia,tegra124-vhost-msenc";
+		};
+
 		/delete-node/ dpaux;
 		/delete-node/ sor;
 
