@@ -203,6 +203,7 @@ static int _max77620_wdt_set_timeout(struct watchdog_device *wdt_dev,
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
 static int max77620_wdt_restart(struct watchdog_device *wdt_dev,
 		unsigned int timeout)
 {
@@ -218,6 +219,7 @@ static int max77620_wdt_restart(struct watchdog_device *wdt_dev,
 		ret = max77620_wdt_start(wdt_dev);
 	return ret;
 }
+#endif
 
 static int max77620_wdt_set_timeout(struct watchdog_device *wdt_dev,
 		unsigned int timeout)
@@ -418,6 +420,7 @@ static void max77620_wdt_shutdown(struct platform_device *pdev)
 		cancel_delayed_work(&wdt->clear_wdt_wq);
 }
 
+#ifdef CONFIG_PM_SLEEP
 static int max77620_wdt_suspend(struct device *dev)
 {
 	struct max77620_wdt *wdt = dev_get_drvdata(dev);
@@ -478,6 +481,7 @@ wq_start:
 				msecs_to_jiffies(wdt->clear_time * HZ));
 	return 0;
 }
+#endif
 
 static const struct dev_pm_ops max77620_wdt_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(max77620_wdt_suspend, max77620_wdt_resume)
