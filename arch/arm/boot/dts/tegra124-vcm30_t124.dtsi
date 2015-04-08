@@ -183,13 +183,14 @@
 		status = "disabled";
 	};
 
+	/* SDMMC1 */
 	sdhci@700b0000 {
 		tap-delay = <0x10>;
 		trim-delay = <0x2>;
 		nvidia,is-ddr-trim-delay;
 		ddr-trim-delay = <0x2>;
 		mmc-ocr-mask = <0>;
-		uhs-mask = <0x40>;
+		uhs-mask = <0x68>;  /* HS400, HS200, DDR50 modes are disabled */
 		bus-width = <4>;
 		built-in;
 		ddr-clk-limit = <51000000>;
@@ -198,17 +199,18 @@
 		vmmc-supply = <&vmmc_dummy>;
 		disable-clock-gate;
 		nvidia,disable-auto-cal;
-		/* clock freq based on mode */
-		fixed-clock-freq = <25500000 24000000 24000000 47000000 24000000 47000000 94000000 204000000 0 0 0>;
+		/* clock freq based on mode: ID LEGACY MMC_HS SD_HS SDR12 SDR25 SDR50 SDR104 DDR50 HS200 HS400 */
+		fixed-clock-freq = <25500000 24000000 0 47000000 24000000 47000000 94000000 204000000 0 0 0>;
 		status = "disabled";
 	};
 
+	/* SDMMC4 */
 	sdhci@700b0600 {
 		tap-delay = <0x39>;
 		trim-delay = <0x3>;
 		ddr-trim-delay = <0x4>;
 		mmc-ocr-mask = <0>;
-		uhs-mask = <0x40>;
+		uhs-mask = <0x40>; /* HS400 mode is disabled */
 		bus-width = <8>;
 		built-in;
 		ddr-clk-limit = <51000000>;
@@ -218,35 +220,37 @@
 		calib-3v3-offsets = <0x615F>;
 		calib-1v8-offsets = <0x615F>;
 		auto-cal-step = <0x7>;
-		/* clock freq based on mode */
-		fixed-clock-freq = <25500000 25500000 51000000 0 0 0 0 0 51000000 188000000 0>;
+		/* clock freq based on mode: ID LEGACY MMC_HS SD_HS SDR12 SDR25 SDR50 SDR104 DDR50 HS200 HS400 */
+		fixed-clock-freq = <25500000 25500000 51000000 0 0 0 0 0 102000000 188000000 0>;
 		status = "disabled";
 	};
 
+	/* SDMMC2 */
 	sdhci@700b0200 {
 		tap-delay = <0x31>;
 		trim-delay = <0x3>;
 		ddr-trim-delay = <0x3>;
 		mmc-ocr-mask = <0>;
-		uhs-mask = <0x28>;
+		uhs-mask = <0x60>; /* HS400, HS200 modes are disabled */
 		built-in;
-		ddr-clk-limit = <30000000>;
-		max-clk-limit = <51000000>;
+		ddr-clk-limit = <40800000>;
+		max-clk-limit = <81600000>;
 		pll_source = "pll_c", "pll_p";
 		vmmc-supply = <&vmmc_dummy>;
 		nvidia,disable-auto-cal;
-		/* clock freq based on mode */
-		fixed-clock-freq = <25500000 25500000 51000000 0 0 0 0 0 40800000 80500000 0>;
+		/* clock freq based on mode: ID LEGACY MMC_HS SD_HS SDR12 SDR25 SDR50 SDR104 DDR50 HS200 HS400 */
+		fixed-clock-freq = <25500000 25500000 51000000 0 0 0 0 0 81600000 80500000 0>;
 		status = "disabled";
 	};
 
+	/* SDMMC3 */
 	sdhci@700b0400 {
 		cd-gpios = <&gpio 133 0>;
 		wp-gpios = <&gpio 132 0>;
 		tap-delay = <0x5>;
 		trim-delay = <0x3>;
 		mmc-ocr-mask = <3>;
-		uhs-mask = <0x28>;
+		uhs-mask = <0x68>; /* HS400, HS200, DDR50 modes are disabled */
 		bus-width = <4>;
 		max-clk-limit = <204000000>;
 		pll_source = "pll_c", "pll_p";
@@ -256,8 +260,8 @@
 		calib-1v8-offsets = <0x710A>;
 		auto-cal-step = <0x7>;
 		status = "disabled";
-		/* clock freq based on mode */
-		fixed-clock-freq = <25500000 24000000 24000000 47000000 24000000 47000000 94000000 204000000 0 0 0>;
+		/* clock freq based on mode: ID LEGACY MMC_HS SD_HS SDR12 SDR25 SDR50 SDR104 DDR50 HS200 HS400 */
+		fixed-clock-freq = <25500000 24000000 0 47000000 24000000 47000000 94000000 204000000 0 0 0>;
 		nvidia,enable-ext-loopback;
 		nvidia,auto-cal-slew-override;
 	};
