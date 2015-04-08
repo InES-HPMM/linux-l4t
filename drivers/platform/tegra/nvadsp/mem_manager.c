@@ -3,7 +3,7 @@
  *
  * memory manager
  *
- * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -24,7 +24,7 @@
 #include <linux/err.h>
 #include <linux/seq_file.h>
 
-#include <mem_manager.h>
+#include "mem_manager.h"
 
 static void clear_alloc_list(struct mem_manager_info *mm_info);
 

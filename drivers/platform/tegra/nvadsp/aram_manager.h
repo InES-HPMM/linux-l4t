@@ -1,7 +1,7 @@
 /*
  * Header file for aram manager
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -16,7 +16,7 @@
 #ifndef __TEGRA_NVADSP_ARAM_MANAGER_H
 #define __TEGRA_NVADSP_ARAM_MANAGER_H
 
-#include <mem_manager.h>
+#include "mem_manager.h"
 
 /*
  * use ALIAS 0 addresses as default as the loader only needs to allocate memory
