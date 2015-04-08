@@ -716,58 +716,68 @@ static void trc_read_regs(struct tracectx *p_info)
 	cpu_data[i++] = 0x00000000;
 }
 
-/* This function transfers the traces from kernel space to user space */
+/* This function transfers the traces from kernel space to user space
+ * data: The destination of trace data in user space
+ * offset: Position in the trace to begin reading from
+ * len_tot: total amount of data to read
+ */
 static ssize_t trc_read(struct file *file, char __user *data,
-	size_t len, loff_t *ppos)
+	size_t len_tot, loff_t *offset)
 {
 	struct tracectx *t = file->private_data;
-	u8 *start = t->etr_buf;
-	loff_t pos = *ppos;
-	loff_t dump_len = 0;
+	loff_t trace_offset = *offset - CPU_DUMP_BUFF_SZ;
+	loff_t len_h = 0; /* length of header data */
+	loff_t len_t = 0; /* length of trace data */
+	loff_t len_w = 0; /* length of wrap around data (etr only) */
+	u8 *start;
 
-	if ((pos + len) >= t->buf_size + CPU_DUMP_BUFF_SZ)
-		len = t->buf_size + CPU_DUMP_BUFF_SZ - pos;
+	if (*offset + len_tot >= t->buf_size + CPU_DUMP_BUFF_SZ)
+		len_tot = t->buf_size + CPU_DUMP_BUFF_SZ - *offset;
 
-	/* add register config to beginning of returned data if we are reading
-	 * from beginning */
-	if (*ppos < CPU_DUMP_BUFF_SZ) {
-		if (len <= CPU_DUMP_BUFF_SZ - pos) {
-			if (copy_to_user(data, t->cpu_dump_buffer + pos, len))
+	if (t->etr)
+		start = t->etr_buf;
+	else
+		start = (u8*)t->trc_buf;
+
+	/* read config data */
+	if (*offset < CPU_DUMP_BUFF_SZ) {
+		/* only reading config data */
+		if (*offset + len_tot <= CPU_DUMP_BUFF_SZ) {
+			if (copy_to_user(data, t->cpu_dump_buffer + *offset,
+				len_tot))
 				return -EFAULT;
-			return len;
+			*offset += len_tot;
+			return len_tot;
 		} else {
-			if (copy_to_user(data, t->cpu_dump_buffer + pos,
-				CPU_DUMP_BUFF_SZ - pos))
+			len_h = CPU_DUMP_BUFF_SZ - *offset;
+			if (copy_to_user(data, t->cpu_dump_buffer + *offset,
+				len_h))
 				return -EFAULT;
-			dump_len = CPU_DUMP_BUFF_SZ - pos;
-			len -= dump_len;
-			pos += dump_len;
-		}
-	}
-	if (len > 0) {
-		if (t->etr) {
-			if (start + pos + len > t->etr_address + ETR_SIZE)
-				len = t->etr_address + ETR_SIZE - start -
-					pos;
-			if (copy_to_user(data + dump_len, t->etr_buf+pos, len))
-				return -EFAULT;
-			if (start + pos + len == t->etr_address + ETR_SIZE)
-				t->etr_buf = t->etr_address;
-		} else {
-			if (copy_to_user(data + dump_len,
-				(u8 *)t->trc_buf+pos, len))
-				return -EFAULT;
+			trace_offset = 0;
 		}
 	}
 
+	len_t = len_tot - len_h;
+	if (t->etr)
+		if (start + trace_offset + len_t > t->etr_address + ETR_SIZE) {
+			len_w = (start + trace_offset + len_t)
+				- (t->etr_address + ETR_SIZE);
+			len_t = (t->etr_address + ETR_SIZE)
+				- (start + trace_offset);
+		}
 
-	if (*ppos < CPU_DUMP_BUFF_SZ) {
-		*ppos += (len + dump_len);
-		return len + dump_len;
-	} else {
-		*ppos += len;
-		return len;
-	}
+	/* read trace data */
+	if (len_t > 0)
+		if (copy_to_user(data + len_h, start + trace_offset, len_t))
+			return -EFAULT;
+
+	/* read wrap around data (etr only) */
+	if (len_w > 0)
+		if (copy_to_user(data + len_h + len_t, t->etr_address, len_w))
+			return -EFAULT;
+
+	*offset += (len_t + len_h + len_w);
+	return len_t + len_h + len_w;
 }
 
 /* this function copies traces from the ETF to an array */
