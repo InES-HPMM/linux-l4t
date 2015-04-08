@@ -721,7 +721,9 @@ MODULE_DEVICE_TABLE(i2c, max77620_id);
 
 static const struct dev_pm_ops max77620_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(max77620_i2c_suspend, max77620_i2c_resume)
+#ifdef CONFIG_PM_SLEEP
 	.suspend_noirq = max77620_i2c_suspend_no_irq,
+#endif
 };
 
 static struct i2c_driver max77620_driver = {
