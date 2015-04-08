@@ -1048,15 +1048,18 @@ static int arm_smmu_init_domain_context(struct iommu_domain *domain,
 	arm_smmu_init_context_bank(smmu_domain);
 	spin_unlock_irqrestore(&smmu_domain->lock, flags);
 
-	irq = smmu->irqs[smmu->num_global_irqs + cfg->irptndx];
-	ret = request_irq(irq, arm_smmu_context_fault, IRQF_SHARED,
-			  "arm-smmu-context-fault", domain);
-	if (IS_ERR_VALUE(ret)) {
-		dev_err(smmu->dev, "failed to request context IRQ %d (%u)\n",
-			cfg->irptndx, irq);
-		cfg->irptndx = INVALID_IRPTNDX;
-	}
+	if (smmu->num_context_irqs) {
 
+		irq = smmu->irqs[smmu->num_global_irqs + cfg->irptndx];
+		ret = request_irq(irq, arm_smmu_context_fault, IRQF_SHARED,
+			  "arm-smmu-context-fault", domain);
+		if (IS_ERR_VALUE(ret)) {
+			dev_err(smmu->dev,
+				"failed to request context IRQ %d (%u)\n",
+				cfg->irptndx, irq);
+			cfg->irptndx = INVALID_IRPTNDX;
+		}
+	}
 	return 0;
 
 out_unlock:
@@ -1080,7 +1083,8 @@ static void arm_smmu_destroy_domain_context(struct iommu_domain *domain)
 	writel_relaxed(0, cb_base + ARM_SMMU_CB_SCTLR);
 	arm_smmu_tlb_inv_context(smmu_domain);
 
-	if (cfg->irptndx != INVALID_IRPTNDX) {
+	if ((smmu->num_context_irqs) &&
+		(cfg->irptndx != INVALID_IRPTNDX)) {
 		irq = smmu->irqs[smmu->num_global_irqs + cfg->irptndx];
 		free_irq(irq, domain);
 	}
@@ -2512,7 +2516,6 @@ static int arm_smmu_device_dt_probe(struct platform_device *pdev)
 	if (!smmu->num_context_irqs) {
 		dev_err(dev, "found %d interrupts but expected at least %d\n",
 			num_irqs, smmu->num_global_irqs + 1);
-		return -ENODEV;
 	}
 
 	smmu->irqs = devm_kzalloc(dev, sizeof(*smmu->irqs) * num_irqs,
