@@ -895,16 +895,16 @@
 			pk0 {
 				nvidia,pins = "pk0";
 				nvidia,function = "rsvd2";
-				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
-				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_ENABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
 
 			pk1 {
 				nvidia,pins = "pk1";
 				nvidia,function = "rsvd2";
-				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
-				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_ENABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
 
@@ -1399,6 +1399,19 @@
 				 nvidia,schmitt = <TEGRA_PIN_DISABLE>;
 			};
 		};
+
+		enable_vdd_lcd_1v8_switch: enable_vdd_lcd_1v8_switch {
+			en_vdd_lcd_pins {
+				nvidia,pins = "pk1";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+			};
+		};
+
+		enable_vdd_lcd_3v0_switch: enable_vdd_lcd_3v0_switch {
+			en_vdd_lcd_pins {
+				nvidia,pins = "pk0";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+			};
+		};
 	};
 };
-
