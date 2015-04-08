@@ -417,6 +417,7 @@ static struct vi2_camera_clk vi2_common_clks[] = {
 	{
 		.name = "emc",
 		.freq = 300000000,
+		.use_devname = 1,
 	},
 };
 
@@ -493,7 +494,7 @@ static int vi2_clock_start(struct vi2_camera *vi2_cam,
 		} else
 			vi2_clk->clk = clk_get(&pdev->dev, vi2_clk->name);
 
-		if (vi2_clk->clk) {
+		if (!IS_ERR(vi2_clk->clk)) {
 			clk_prepare_enable(vi2_clk->clk);
 			if (vi2_clk->freq > 0)
 				clk_set_rate(vi2_clk->clk, vi2_clk->freq);
@@ -540,11 +541,11 @@ static void vi2_clock_stop(struct vi2_camera_clk *clks, int num_clks)
 
 	for (i = 0; i < num_clks; i++) {
 		vi2_clk = &clks[i];
-		if (vi2_clk->clk) {
+		if (!IS_ERR(vi2_clk->clk)) {
 			clk_disable_unprepare(vi2_clk->clk);
 			clk_put(vi2_clk->clk);
-			vi2_clk->clk = NULL;
 		}
+		vi2_clk->clk = NULL;
 	}
 }
 
@@ -553,7 +554,7 @@ static void vi2_common_clock_stop(struct vi2_camera *vi2_cam)
 	vi2_clock_stop(vi2_cam->clks, vi2_cam->num_clks);
 
 	if (vi2_cam->tpg_mode) {
-		if (vi2_cam->tpg_clk->clk) {
+		if (!IS_ERR(vi2_cam->tpg_clk->clk)) {
 			tegra_clk_cfg_ex(vi2_cam->tpg_clk->clk,
 					 TEGRA_CLK_MIPI_CSI_OUT_ENB, 1);
 			tegra_clk_cfg_ex(vi2_cam->tpg_clk->clk,
