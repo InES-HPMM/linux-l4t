@@ -923,11 +923,11 @@ static int __init tegra210_disable_boot_partitions(void)
 {
 	int i;
 
-	pr_err("Disable partitions left on by BL\n");
+	pr_info("Disable partitions left on by BL\n");
 	for (i = 0; i < TEGRA_NUM_POWERGATE; i++)
 		if (tegra210_pg_partition_info[i].disable_after_boot &&
 			(i != TEGRA_POWERGATE_GPU)) {
-			pr_err("    %s\n", tegra210_pg_partition_info[i].name);
+			pr_info("    %s\n", tegra210_pg_partition_info[i].name);
 			tegra_powergate_partition(i);
 		}
 
