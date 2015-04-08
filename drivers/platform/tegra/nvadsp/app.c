@@ -946,7 +946,7 @@ int wait_for_adsp_os_load_complete(void)
 	return ret;
 }
 
-int nvadsp_app_module_probe(struct platform_device *pdev)
+int __init nvadsp_app_module_probe(struct platform_device *pdev)
 {
 #ifdef CONFIG_DEBUG_FS
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
