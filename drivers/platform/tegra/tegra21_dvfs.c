@@ -2098,6 +2098,7 @@ int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 /* Core voltage and bus cap object and tables */
 static struct kobject *cap_kobj;
 static struct kobject *gpu_kobj;
+static struct kobject *emc_kobj;
 
 static struct core_dvfs_cap_table tegra21_core_cap_table[] = {
 	{ .cap_name = "cap.vcore.c2bus" },
@@ -2132,6 +2133,20 @@ static struct core_bus_rates_table tegra21_gpu_rates_sysfs = {
 		.attr = {.name = "gpu_available_rates", .mode = 0444} },
 	.time_at_user_rate_attr = {
 		.attr = {.name = "gpu_time_at_user_rate", .mode = 0444} },
+};
+
+static struct core_bus_limit_table tegra21_emc_floor_sysfs = {
+	.limit_clk_name = "floor.profile.emc",
+	.refcnt_attr = {.attr = {.name = "emc_floor_state", .mode = 0644} },
+	.level_attr  = {.attr = {.name = "emc_floor_rate", .mode = 0644} },
+	.pm_qos_class = PM_QOS_EMC_FREQ_MIN,
+};
+
+static struct core_bus_rates_table tegra21_emc_rates_sysfs = {
+	.bus_clk_name = "emc",
+	.rate_attr = {.attr = {.name = "emc_rate", .mode = 0444} },
+	.available_rates_attr = {
+		.attr = {.name = "emc_available_rates", .mode = 0444} },
 };
 
 /*
@@ -2223,7 +2238,31 @@ static int __init tegra21_dvfs_init_core_cap(void)
 		return 0;
 	}
 
-	pr_info("tegra dvfs: tegra sysfs gpu interface is initialized\n");
+	emc_kobj = kobject_create_and_add("tegra_emc", kernel_kobj);
+	if (!emc_kobj) {
+		pr_err("tegra21_dvfs: failed to create sysfs emc object\n");
+		return 0;
+	}
+
+	ret = tegra_init_sysfs_shared_bus_rate(&tegra21_emc_rates_sysfs,
+					       1, emc_kobj);
+	if (ret) {
+		pr_err("tegra21_dvfs: failed to init emc rates interface (%d)\n",
+		       ret);
+		kobject_del(emc_kobj);
+		return 0;
+	}
+
+	ret = tegra_init_shared_bus_floor(&tegra21_emc_floor_sysfs,
+					  1, emc_kobj);
+	if (ret) {
+		pr_err("tegra21_dvfs: failed to init emc floor interface (%d)\n",
+		       ret);
+		kobject_del(emc_kobj);
+		return 0;
+	}
+
+	pr_info("tegra dvfs: tegra sysfs gpu & emc interface is initialized\n");
 
 	return 0;
 }
