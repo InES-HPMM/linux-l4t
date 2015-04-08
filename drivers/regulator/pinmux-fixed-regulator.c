@@ -106,7 +106,7 @@ static struct pinmux_fixed_regulator_config
 	if (IS_ERR(config->disable_state))
 		config->disable_state = NULL;
 
-	if (!config->enable_state || !config->disable_state) {
+	if (!config->enable_state && !config->disable_state) {
 		dev_err(dev, "Pinconfig not found for enable/disable\n");
 		return ERR_PTR(-EINVAL);
 	}
@@ -148,12 +148,16 @@ static int pinmux_fixed_regulator_enable(struct regulator_dev *rdev)
 	struct pinmux_fixed_regulator_config *config = prdata->config;
 	int ret;
 
-	ret = pinctrl_select_state(config->pinctrl, config->enable_state);
-	if (ret < 0) {
-		dev_err(prdata->dev, "Setting pin enable state failed: %d\n",
-			ret);
-		return ret;
+	if (config->enable_state) {
+		ret = pinctrl_select_state(config->pinctrl,
+					config->enable_state);
+		if (ret < 0) {
+			dev_err(prdata->dev,
+				"Setting pin enable state failed: %d\n", ret);
+			return ret;
+		}
 	}
+
 	if (gpio_is_valid(config->ena_gpio))
 		gpio_direction_output(config->ena_gpio, config->enable_high);
 
@@ -170,11 +174,14 @@ static int pinmux_fixed_regulator_disable(struct regulator_dev *rdev)
 	if (gpio_is_valid(config->ena_gpio))
 		gpio_direction_output(config->ena_gpio, !config->enable_high);
 
-	ret = pinctrl_select_state(config->pinctrl, config->disable_state);
-	if (ret < 0) {
-		dev_err(prdata->dev, "Setting pin disable state failed: %d\n",
-			ret);
-		return ret;
+	if (config->disable_state) {
+		ret = pinctrl_select_state(config->pinctrl,
+					config->disable_state);
+		if (ret < 0) {
+			dev_err(prdata->dev,
+				"Setting pin disable state failed: %d\n", ret);
+			return ret;
+		}
 	}
 	prdata->current_state = 0;
 	return 0;
