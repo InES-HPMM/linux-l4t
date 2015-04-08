@@ -101,7 +101,7 @@ static void debug_flush(struct platform_device *pdev)
 		cpu_relax();
 }
 
-#ifdef CONFIG_FIQ
+#ifdef CONFIG_FIQ_GLUE
 static void fiq_enable(struct platform_device *pdev, unsigned int irq, bool on)
 {
 	if (on)
@@ -109,7 +109,7 @@ static void fiq_enable(struct platform_device *pdev, unsigned int irq, bool on)
 	else
 		tegra_fiq_disable(irq);
 }
-#else /* !CONFIG_FIQ */
+#else /* !CONFIG_FIQ_GLUE */
 
 static int debug_port_init(struct platform_device *pdev)
 {
@@ -146,7 +146,7 @@ static int debug_resume(struct platform_device *pdev)
 {
 	return debug_port_init(pdev);
 }
-#endif /* CONFIG_FIQ */
+#endif /* CONFIG_FIQ_GLUE */
 
 
 static int tegra_fiq_debugger_id;
@@ -169,7 +169,7 @@ static void __tegra_serial_debug_init(unsigned int base, int fiq, int irq,
 	t->pdata.uart_putc = debug_putc;
 	t->pdata.uart_flush = debug_flush;
 
-#ifdef CONFIG_FIQ
+#ifdef CONFIG_FIQ_GLUE
 	t->pdata.fiq_enable = fiq_enable;
 #else
 	BUG_ON(fiq >= 0);
@@ -245,7 +245,7 @@ out1:
 	kfree(t);
 }
 
-#ifdef CONFIG_FIQ
+#ifdef CONFIG_FIQ_GLUE
 void tegra_serial_debug_init(unsigned int base, int fiq,
 			   struct clk *clk, int signal_irq, int wakeup_irq)
 {

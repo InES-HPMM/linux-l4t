@@ -1208,9 +1208,7 @@ static void __init tegra_ardbeg_late_init(void)
 #ifndef CONFIG_MACH_EXUMA
 	tegra_disp_defer_vcore_override();
 #endif
-#if defined(CONFIG_TEGRA_FIQ_DEBUGGER) && defined(CONFIG_FIQ)
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_AVP, NULL, -1, -1);
-#endif
 	ardbeg_usb_init();
 
 	if (!of_machine_is_compatible("nvidia,green-arrow"))
