@@ -1099,7 +1099,7 @@ static irqreturn_t adsp_wdt_handler(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
-int nvadsp_os_probe(struct platform_device *pdev)
+int __init nvadsp_os_probe(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
 	int wdt_virq = tegra_agic_irq_get_virq(INT_ADSP_WDT);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -207,7 +207,7 @@ static irqreturn_t hwmbox_recv_full_int_handler(int irq, void *devid)
 	return IRQ_HANDLED;
 }
 
-int nvadsp_hwmbox_init(struct platform_device *pdev)
+int __init nvadsp_hwmbox_init(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
 	int recv_virq, send_virq;

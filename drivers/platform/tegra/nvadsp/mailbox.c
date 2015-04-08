@@ -1,7 +1,7 @@
 /*
  * ADSP mailbox manager
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -302,7 +302,7 @@ status_t nvadsp_mbox_close(struct nvadsp_mbox *mbox)
 }
 EXPORT_SYMBOL(nvadsp_mbox_close);
 
-status_t nvadsp_mbox_init(struct platform_device *pdev)
+status_t __init nvadsp_mbox_init(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
 

@@ -162,7 +162,7 @@ static irqreturn_t nvadsp_amc_error_int_handler(int irq, void *devid)
 	return IRQ_HANDLED;
 }
 
-status_t nvadsp_amc_init(struct platform_device *pdev)
+status_t __init nvadsp_amc_init(struct platform_device *pdev)
 {
 	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
 	int ret = 0;
