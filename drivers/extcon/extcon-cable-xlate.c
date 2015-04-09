@@ -25,8 +25,10 @@
 #include <linux/slab.h>
 #include <linux/extcon.h>
 #include <linux/spinlock.h>
+#include <linux/wakelock.h>
 
 #define DEFAULT_CABLE_WAITTIME_MS		500
+#define EXTCON_XLATE_WAKEUP_TIME		1000
 
 struct ecx_io_cable_states {
 	int in_state;
@@ -53,6 +55,7 @@ struct ecx_platform_data {
 	const char **out_cable_names;
 	int n_out_cable;
 	int cable_insert_delay;
+	int cable_detect_suspend_delay;
 };
 
 struct extcon_cable_xlate;
@@ -75,9 +78,11 @@ struct extcon_cable_xlate {
 	int timer_to_work_jiffies;
 	spinlock_t lock;
 	struct mutex cable_lock;
+	struct wake_lock wake_lock;
 	bool extcon_init_done;
 	int last_cable_in_state;
 	int last_cable_out_state;
+	int detect_suspend_jiffies;
 };
 
 static int ecx_extcon_notifier(struct notifier_block *self,
@@ -229,6 +234,11 @@ static int ecx_extcon_notifier(struct notifier_block *self,
 	struct extcon_cable_xlate *ecx = cable->ecx;
 	unsigned long flags;
 
+	/*Hold wakelock to complete cable detection */
+	if (!wake_lock_active(&ecx->wake_lock))
+		wake_lock_timeout(&ecx->wake_lock,
+					ecx->detect_suspend_jiffies);
+
 	spin_lock_irqsave(&ecx->lock, flags);
 	mod_timer(&ecx->timer, jiffies + ecx->debounce_jiffies);
 	spin_unlock_irqrestore(&ecx->lock, flags);
@@ -259,6 +269,12 @@ static struct ecx_platform_data *ecx_get_pdata_from_dt(
 		pdata->cable_insert_delay = pval;
 	else
 		pdata->cable_insert_delay = DEFAULT_CABLE_WAITTIME_MS;
+
+	ret = of_property_read_u32(np, "cable-detect-suspend-delay", &pval);
+	if (!ret)
+		pdata->cable_detect_suspend_delay = pval;
+	else
+		pdata->cable_detect_suspend_delay = EXTCON_XLATE_WAKEUP_TIME;
 
 
 	pdata->n_out_cable = of_property_count_strings(np,
@@ -401,8 +417,13 @@ static int ecx_probe(struct platform_device *pdev)
 	ecx->edev.dev.parent = &pdev->dev;
 	ecx->debounce_jiffies = msecs_to_jiffies(pdata->cable_insert_delay);
 	ecx->timer_to_work_jiffies = msecs_to_jiffies(100);
+	ecx->detect_suspend_jiffies =
+			msecs_to_jiffies(pdata->cable_detect_suspend_delay);
 	ecx->edev.supported_cable = pdata->out_cable_names;
 	ecx->pdata = pdata;
+
+	wake_lock_init(&ecx->wake_lock, WAKE_LOCK_SUSPEND,
+						"extcon-suspend-lock");
 
 	ret = extcon_dev_register(&ecx->edev);
 	if (ret < 0) {
