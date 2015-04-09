@@ -665,15 +665,6 @@
                 dt-override-status-odm-data = <0x00010000 0x00010000>;
         };
 	
-	thermal-zones {
-		Tboard_tegra {
-			status = "okay";
-		};
-		Tdiode_tegra {
-			status = "okay";
-		};
-	};
-
 	sysedp {
 		compatible = "nvidia,tegra124-sysedp";
 		nvidia,margin = <0>;
