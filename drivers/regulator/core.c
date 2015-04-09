@@ -2329,6 +2329,39 @@ int regulator_disable_regmap(struct regulator_dev *rdev)
 }
 EXPORT_SYMBOL_GPL(regulator_disable_regmap);
 
+/**
+ * regulator_get_enable_time - Get enable time of regulator
+ *
+ * @rdev: regulator to operate on
+ */
+int regulator_get_enable_time(struct regulator_dev *rdev)
+{
+	return _regulator_get_enable_time(rdev);
+}
+EXPORT_SYMBOL_GPL(regulator_get_enable_time);
+
+/**
+ * regulator_wait_for_enable_time - Wait for enable time of regulator.
+ *
+ * @rdev: regulator to operate on
+ */
+void regulator_wait_for_enable_time(struct regulator_dev *rdev)
+{
+	int delay;
+
+	delay = regulator_get_enable_time(rdev);
+	if (delay <= 0)
+		return;
+
+	if (delay >= 1000) {
+		mdelay(delay / 1000);
+		delay %= 1000;
+	}
+	if (delay)
+		udelay(delay);
+}
+EXPORT_SYMBOL_GPL(regulator_wait_for_enable_time);
+
 static int _regulator_is_enabled(struct regulator_dev *rdev)
 {
 	/* A GPIO control always takes precedence */
