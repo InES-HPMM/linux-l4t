@@ -2948,7 +2948,7 @@ static struct tegra_udc_soc_data tegra_soc_config = {
 
 static struct tegra_udc_soc_data tegra21x_soc_config = {
 	.utmi = {
-		.hssync_start_delay = 0,
+		.hssync_start_delay = 9,
 		.elastic_limit = 16,
 		.idle_wait_delay = 17,
 		.term_range_adj = 6,
@@ -2956,7 +2956,7 @@ static struct tegra_udc_soc_data tegra21x_soc_config = {
 		.xcvr_lsfslew = 2,
 		.xcvr_lsrslew = 2,
 		.xcvr_setup_offset = 0,
-		.xcvr_use_fuses = 0,
+		.xcvr_use_fuses = 1,
 	},
 	.has_hostpc = true,
 	.unaligned_dma_buf_supported = false,
