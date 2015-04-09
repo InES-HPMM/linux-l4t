@@ -6884,6 +6884,39 @@ static struct clk tegra_pll_a_out0 = {
 	.max_rate  = 600000000,
 };
 
+static struct clk_mux_sel mux_plla[] = {
+	{ .input = &tegra_pll_a, .value = 0},
+	{ 0, 0},
+};
+
+static struct clk tegra_pll_a_out_adsp = {
+	.name       = "pll_a_out_adsp",
+	.clk_id     = TEGRA210_CLK_ID_PLL_A_OUT_ADSP,
+	.ops        = &tegra_periph_clk_ops,
+	.inputs     = mux_plla,
+	.flags      = PERIPH_NO_RESET,
+	.max_rate   = 1000000000,
+	.u.periph = {
+		.clk_num = 188,
+	},
+};
+
+static struct clk_mux_sel mux_plla_out0[] = {
+	{ .input = &tegra_pll_a_out0, .value = 0},
+	{ 0, 0},
+};
+
+static struct clk tegra_pll_a_out0_out_adsp = {
+	.name       = "pll_a_out0_out_adsp",
+	.ops        = &tegra_periph_clk_ops,
+	.inputs     = mux_plla_out0,
+	.flags      = PERIPH_NO_RESET,
+	.max_rate   = 600000000,
+	.u.periph = {
+		.clk_num = 188,
+	},
+};
+
 static struct clk_pll_freq_table tegra_pll_d_freq_table[] = {
 	{ 12000000, 594000000,  99, 1, 2},
 	{ 13000000, 594000000,  91, 1, 2, 0, 0xfc4f},	/* actual: 594000183 */
@@ -7983,9 +8016,9 @@ static struct clk_mux_sel mux_sclk[] = {
 /* ADSP cluster clocks */
 static struct clk_mux_sel mux_aclk_adsp[] = {
 	{ .input = &tegra_pll_p_out_adsp, .value = 2},
-	{ .input = &tegra_pll_a_out0,	.value = 3},
+	{ .input = &tegra_pll_a_out0_out_adsp, .value = 3},
 	{ .input = &tegra_clk_m,	.value = 6},
-	{ .input = &tegra_pll_a,	.value = 7},
+	{ .input = &tegra_pll_a_out_adsp, .value = 7},
 	{ .input = &tegra_pll_a1,	.value = 8},
 	{ NULL, 0},
 };
@@ -9849,7 +9882,9 @@ static struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_p_out5,
 	&tegra_pll_p_out_sor,
 	&tegra_pll_a,
+	&tegra_pll_a_out_adsp,
 	&tegra_pll_a_out0,
+	&tegra_pll_a_out0_out_adsp,
 	&tegra_pll_d,
 	&tegra_pll_d_out0,
 	&tegra_clk_xusb_gate,
