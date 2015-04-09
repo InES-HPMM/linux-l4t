@@ -287,8 +287,10 @@ static int reg_fixed_voltage_resume(struct device *dev)
 		return 0;
 
 	constraints = &config->init_data->constraints;
-	if (gpio_is_valid(config->gpio) && constraints->disable_on_suspend)
+	if (gpio_is_valid(config->gpio) && constraints->disable_on_suspend) {
 		gpio_set_value_cansleep(config->gpio, config->enable_high);
+		regulator_wait_for_enable_time(drvdata->dev);
+	}
 
 	return 0;
 }
