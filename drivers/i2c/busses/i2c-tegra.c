@@ -53,6 +53,7 @@
 #define I2C_CNFG_DEBOUNCE_CNT_SHIFT		12
 #define I2C_CNFG_PACKET_MODE_EN			(1<<10)
 #define I2C_CNFG_NEW_MASTER_FSM			(1<<11)
+#define I2C_CNFG_MULTI_MASTER_MODE		(1<<17)
 #define I2C_STATUS				0x01C
 #define I2C_STATUS_BUSY				(1<<8)
 #define I2C_SL_CNFG				0x020
@@ -164,6 +165,7 @@ struct tegra_i2c_chipdata {
 	u16 clk_divisor_hs_mode;
 	int clk_multiplier_hs_mode;
 	bool has_config_load_reg;
+	bool has_multi_master_en_bit;
 };
 
 /**
@@ -994,6 +996,9 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 		spin_lock_irqsave(&i2c_dev->fifo_lock, flags);
 
 	cnfg = I2C_CNFG_NEW_MASTER_FSM | I2C_CNFG_PACKET_MODE_EN;
+	if (i2c_dev->chipdata->has_multi_master_en_bit)
+		cnfg |= I2C_CNFG_MULTI_MASTER_MODE;
+
 	if (!i2c_dev->is_high_speed_enable)
 		cnfg |= (0x2 << I2C_CNFG_DEBOUNCE_CNT_SHIFT);
 
@@ -1411,6 +1416,7 @@ static struct tegra_i2c_chipdata tegra20_i2c_chipdata = {
 	.clk_divisor_hs_mode = 3,
 	.clk_multiplier_hs_mode = 12,
 	.has_config_load_reg = false,
+	.has_multi_master_en_bit = false,
 };
 
 static struct tegra_i2c_chipdata tegra30_i2c_chipdata = {
@@ -1424,6 +1430,7 @@ static struct tegra_i2c_chipdata tegra30_i2c_chipdata = {
 	.clk_divisor_hs_mode = 3,
 	.clk_multiplier_hs_mode = 12,
 	.has_config_load_reg = false,
+	.has_multi_master_en_bit = false,
 };
 
 static struct tegra_i2c_chipdata tegra114_i2c_chipdata = {
@@ -1438,6 +1445,7 @@ static struct tegra_i2c_chipdata tegra114_i2c_chipdata = {
 	.clk_divisor_hs_mode = 1,
 	.clk_multiplier_hs_mode = 3,
 	.has_config_load_reg = false,
+	.has_multi_master_en_bit = false,
 };
 
 static struct tegra_i2c_chipdata tegra148_i2c_chipdata = {
@@ -1452,6 +1460,7 @@ static struct tegra_i2c_chipdata tegra148_i2c_chipdata = {
 	.clk_divisor_hs_mode = 2,
 	.clk_multiplier_hs_mode = 13,
 	.has_config_load_reg = true,
+	.has_multi_master_en_bit = false,
 };
 
 static struct tegra_i2c_chipdata tegra124_i2c_chipdata = {
@@ -1466,6 +1475,7 @@ static struct tegra_i2c_chipdata tegra124_i2c_chipdata = {
 	.clk_divisor_hs_mode = 2,
 	.clk_multiplier_hs_mode = 13,
 	.has_config_load_reg = true,
+	.has_multi_master_en_bit = false,
 };
 
 static struct tegra_i2c_chipdata tegra210_i2c_chipdata = {
@@ -1480,6 +1490,7 @@ static struct tegra_i2c_chipdata tegra210_i2c_chipdata = {
 	.clk_divisor_hs_mode = 2,
 	.clk_multiplier_hs_mode = 13,
 	.has_config_load_reg = true,
+	.has_multi_master_en_bit = true,
 };
 
 /* Match table for of_platform binding */
