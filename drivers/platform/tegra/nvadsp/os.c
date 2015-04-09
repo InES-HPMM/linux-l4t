@@ -890,14 +890,18 @@ int nvadsp_os_start(void)
 	if (priv.os_running)
 		goto unlock;
 
+#ifdef CONFIG_PM_RUNTIME
 	ret = pm_runtime_get_sync(&priv.pdev->dev);
 	if (ret)
 		goto unlock;
+#endif
 	ret = __nvadsp_os_start();
 	if (ret) {
 		priv.os_running = drv_data->adsp_os_running = false;
 		/* if start fails call pm suspend of adsp driver */
+#ifdef CONFIG_PM_RUNTIME
 		pm_runtime_put_sync(&priv.pdev->dev);
+#endif
 		goto unlock;
 	}
 	priv.os_running = drv_data->adsp_os_running = true;
@@ -959,11 +963,13 @@ static int __nvadsp_os_suspend(void)
 
 	assert_adsp(drv_data);
 
+#ifdef CONFIG_PM_RUNTIME
 	ret = pm_runtime_put_sync(&priv.pdev->dev);
 	if (ret) {
 		dev_err(dev, "failed in pm_runtime_put_sync\n");
 		goto out;
 	}
+#endif
  out:
 	return ret;
 }
@@ -1022,9 +1028,12 @@ static void __nvadsp_os_stop(bool reload)
 	}
 
 end:
+#ifdef CONFIG_PM_RUNTIME
 	err = pm_runtime_put_sync(dev);
 	if (err)
 		dev_err(dev, "failed in pm_runtime_put_sync\n");
+#endif
+	return;
 }
 
 

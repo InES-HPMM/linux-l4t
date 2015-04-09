@@ -481,6 +481,7 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 
 	nvadsp_drv_data = drv_data;
 
+#ifdef CONFIG_PM_RUNTIME
 	tegra_ape_pd_add_device(dev);
 	pm_genpd_dev_need_save(dev, true);
 	pm_genpd_dev_need_restore(dev, true);
@@ -490,6 +491,7 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 	ret = pm_runtime_get_sync(dev);
 	if (ret)
 		goto out;
+#endif
 
 	ret = nvadsp_os_probe(pdev);
 	if (ret)
@@ -528,9 +530,11 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 	if (ret)
 		dev_err(dev, "Failed to init aram\n");
 err:
+#ifdef CONFIG_PM_RUNTIME
 	ret = pm_runtime_put_sync(dev);
 	if (ret)
 		dev_err(dev, "pm_runtime_put_sync failed\n");
+#endif
 out:
 	return ret;
 }
