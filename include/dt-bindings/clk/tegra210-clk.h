@@ -161,7 +161,7 @@
 #define TEGRA210_CLK_ID_DBGAPB		185
 /* ID 186 is reserved */
 #define TEGRA210_CLK_ID_PLL_P_OUT_ADSP	187
-/* ID 188 is reserved */
+#define TEGRA210_CLK_ID_PLL_A_OUT_ADSP	188
 #define TEGRA210_CLK_ID_GPU_REF		189
 /* IDs 190 ... 191 are reserved */
 #define TEGRA210_CLK_ID_SPARE1		192
