@@ -84,6 +84,7 @@
 			regulator-always-on;
 			regulator-boot-on;
 			regulator-disable-on-suspend;
+			startup-delay-us = <1000>;
 			gpio = <&palmas_gpio 1 0>;
 			enable-active-high;
 		};
