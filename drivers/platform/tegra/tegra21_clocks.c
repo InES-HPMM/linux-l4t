@@ -3629,6 +3629,18 @@ static void tegra21_plle_clk_init(struct clk *c)
 			     __func__, c->parent->name);
 		}
 	}
+
+#if USE_PLLE_SWCTL
+	if (val & PLLE_AUX_SEQ_ENABLE) {
+		WARN(1, "%s: Turning OFF not supported hw control\n", __func__);
+		val &= ~PLLE_AUX_SEQ_ENABLE;
+		clk_writel(val, PLLE_AUX);
+
+		val = clk_readl(PLLE_AUX);
+		val |= PLLE_AUX_ENABLE_SWCTL | PLLE_AUX_SS_SWCTL;
+		clk_writel(val, PLLE_AUX);
+	}
+#endif
 }
 
 static void tegra21_plle_clk_disable(struct clk *c)
@@ -3725,20 +3737,6 @@ static int tegra21_plle_clk_enable(struct clk *c)
 	val &= ~PLLE_SS_CNTL_INTERP_RESET;
 	pll_writel_delay(val, PLLE_SS_CTRL);
 #endif
-
-#if !USE_PLLE_SWCTL
-	/* switch pll under h/w control */
-	val = clk_readl(c->reg + c->u.pll.misc0);
-	val &= ~PLLE_MISC_IDDQ_SW_CTRL;
-	clk_writel(val, c->reg + c->u.pll.misc0);
-
-	val = clk_readl(PLLE_AUX);
-	val |= PLLE_AUX_USE_LOCKDET | PLLE_AUX_SS_SEQ_INCLUDE;
-	val &= ~(PLLE_AUX_ENABLE_SWCTL | PLLE_AUX_SS_SWCTL);
-	pll_writel_delay(val, PLLE_AUX);
-	val |= PLLE_AUX_SEQ_ENABLE;
-	pll_writel_delay(val, PLLE_AUX);
-#endif
 	return 0;
 }
 
@@ -3746,6 +3744,48 @@ static struct clk_ops tegra_plle_ops = {
 	.init			= tegra21_plle_clk_init,
 	.enable			= tegra21_plle_clk_enable,
 	.disable		= tegra21_plle_clk_disable,
+};
+
+static void tegra21_plle_hw_clk_init(struct clk *c)
+{
+	u32 val = clk_readl(PLLE_AUX);
+	c->state = val & PLLE_AUX_SEQ_ENABLE ? ON : OFF;
+}
+
+static int tegra21_plle_hw_clk_enable(struct clk *c)
+{
+#if USE_PLLE_SWCTL
+	return -EPERM;
+#else
+	u32 val;
+	unsigned long flags;
+	struct clk *p = c->parent;
+
+	clk_lock_save(p, &flags);
+
+	val = clk_readl(PLLE_AUX);
+	if (!(val & PLLE_AUX_SEQ_ENABLE)) {
+		/* switch pll under h/w control */
+		val = clk_readl(p->reg + p->u.pll.misc0);
+		val &= ~PLLE_MISC_IDDQ_SW_CTRL;
+		clk_writel(val, p->reg + p->u.pll.misc0);
+
+		val = clk_readl(PLLE_AUX);
+		val |= PLLE_AUX_USE_LOCKDET | PLLE_AUX_SS_SEQ_INCLUDE;
+		val &= ~(PLLE_AUX_ENABLE_SWCTL | PLLE_AUX_SS_SWCTL);
+		pll_writel_delay(val, PLLE_AUX);
+		val |= PLLE_AUX_SEQ_ENABLE;
+		pll_writel_delay(val, PLLE_AUX);
+	}
+	clk_unlock_restore(p, &flags);
+
+	return 0;
+#endif
+}
+
+static struct clk_ops tegra_plle_hw_ops = {
+	.init			= tegra21_plle_hw_clk_init,
+	.enable			= tegra21_plle_hw_clk_enable,
 };
 
 /*
@@ -7763,6 +7803,14 @@ static struct clk tegra_pll_e = {
 	},
 };
 
+static struct clk tegra_pll_e_hw = {
+	.name      = "pll_e_hw",
+	.parent    = &tegra_pll_e,
+	.ops       = &tegra_plle_hw_ops,
+	.reg       = PLLE_AUX,
+	.max_rate  = 100000000,
+};
+
 static struct clk tegra_pll_e_gate = {
 	.name      = "plle_gate",
 	.clk_id    = TEGRA210_CLK_ID_PLL_E_GATE,
@@ -9975,6 +10023,7 @@ static struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_re_out,
 	&tegra_pll_re_out1,
 	&tegra_pll_e,
+	&tegra_pll_e_hw,
 	&tegra_pll_e_gate,
 	&tegra_cml0_clk,
 	&tegra_cml1_clk,
