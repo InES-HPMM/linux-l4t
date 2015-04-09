@@ -70,17 +70,6 @@
 		power-supply,extcon-dev = "tegra-udc";
 	};
 
-	bluedroid_pm {
-		compatible = "nvidia,tegra-bluedroid_pm";
-		id = <0>;
-		bluedroid_pm,reset-gpio = <&gpio TEGRA_GPIO(X, 1) 0>;
-		bluedroid_pm,shutdown-gpio = <&gpio TEGRA_GPIO(R, 1) 0>;
-		bluedroid_pm,host-wake-gpio = <&gpio TEGRA_GPIO(U, 6) 0>;
-		bluedroid_pm,ext-wake-gpio = <&gpio TEGRA_GPIO(EE, 1) 0>;
-		interrupt-parent = <&gpio>;
-		interrupts = <166 0x01>;
-	};
-
 	modem {
 		compatible = "nvidia,icera-i500";
 		nvidia,boot-gpio = <&gpio TEGRA_GPIO(O, 5) GPIO_ACTIVE_LOW>;
