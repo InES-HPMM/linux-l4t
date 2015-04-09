@@ -29,7 +29,7 @@
 				nvidia,dsi-instance = <DSI_INSTANCE_0>;
 				nvidia,dsi-n-data-lanes = <8>;
 				nvidia,dsi-pixel-format = <TEGRA_DSI_PIXEL_FORMAT_24BIT_P>;
-				nvidia,dsi-refresh-rate = <75>;
+				nvidia,dsi-refresh-rate = <60>;
 				nvidia,dsi-video-data-type = <TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE>;
 				nvidia,dsi-video-clock-mode = <TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS>;
 				nvidia,dsi-video-burst-mode = <TEGRA_DSI_VIDEO_NONE_BURST_MODE>;
@@ -102,22 +102,6 @@
 						nvidia,h-ref-to-sync = <1>;
 						nvidia,v-ref-to-sync = <11>;
 					};
-					1200x1920-32-75Hz {
-						clock-frequency = <193224000>;
-						hactive = <1200>;
-						vactive = <1920>;
-						hfront-porch = <107>;
-						hback-porch = <20>;
-						hsync-len = <1>;
-						vfront-porch = <12>;
-						vback-porch = <7>;
-						vsync-len = <1>;
-						nvidia,h-ref-to-sync = <1>;
-						nvidia,v-ref-to-sync = <11>;
-					};
-				};
-				vrr-settings {
-					nvidia,vrr_min_fps = <30>;
 				};
 				smartdimmer {
 					status = "okay";
