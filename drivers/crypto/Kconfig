@@ -316,6 +316,8 @@ config CRYPTO_DEV_TEGRA_SE
 	  This option allows you to have support of Security Engine for crypto
 	  acceleration.
 
+trysource "../kernel-t18x/drivers/crypto/Kconfig"
+
 config CRYPTO_DEV_NX
 	bool "Support for IBM Power7+ in-Nest cryptographic acceleration"
 	depends on PPC64 && IBMVIO
