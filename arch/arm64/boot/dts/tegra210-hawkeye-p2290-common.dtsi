@@ -1095,8 +1095,27 @@
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
 				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
+				nvidia,dsi-refresh-rate = <75>;
 				disp-default-out {
 					nvidia,out-rotation = <180>;
+				};
+				vrr-settings {
+					nvidia,vrr_min_fps = <30>;
+				};
+				display-timings {
+					1200x1920-32-75Hz {
+						clock-frequency = <193224000>;
+						hactive = <1200>;
+						vactive = <1920>;
+						hfront-porch = <107>;
+						hback-porch = <20>;
+						hsync-len = <1>;
+						vfront-porch = <12>;
+						vback-porch = <7>;
+						vsync-len = <1>;
+						nvidia,h-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <11>;
+					};
 				};
 			};
 			panel-s-wuxga-8-0 {
@@ -1104,8 +1123,27 @@
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
 				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
+				nvidia,dsi-refresh-rate = <75>;
 				disp-default-out {
 					nvidia,out-rotation = <180>;
+				};
+				vrr-settings {
+					nvidia,vrr_min_fps = <30>;
+				};
+				display-timings {
+					1200x1920-32-75Hz {
+						clock-frequency = <193224000>;
+						hactive = <1200>;
+						vactive = <1920>;
+						hfront-porch = <107>;
+						hback-porch = <20>;
+						hsync-len = <1>;
+						vfront-porch = <12>;
+						vback-porch = <7>;
+						vsync-len = <1>;
+						nvidia,h-ref-to-sync = <1>;
+						nvidia,v-ref-to-sync = <11>;
+					};
 				};
 			};
 		};
