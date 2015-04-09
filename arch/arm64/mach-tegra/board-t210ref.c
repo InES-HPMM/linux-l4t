@@ -104,11 +104,6 @@
 static struct tegra_usb_platform_data tegra_udc_pdata;
 static struct tegra_usb_otg_data tegra_otg_pdata;
 
-#if defined(CONFIG_TEGRA_NVADSP) && \
-		!defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
-static struct nvadsp_platform_data nvadsp_plat_data;
-#endif
-
 static void t210ref_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
@@ -176,11 +171,6 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-ahci-sata", 0x70021000, "tegra-sata.0",
 		NULL),
-#if defined(CONFIG_TEGRA_NVADSP) && \
-		!defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
-	OF_DEV_AUXDATA("nvidia,tegra210-adsp", TEGRA_APE_AMC_BASE,
-			"tegra210-adsp", &nvadsp_plat_data),
-#endif
 	OF_DEV_AUXDATA("nvidia,tegra210-adsp-audio", 0, "adsp_audio.3", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-efuse", TEGRA_FUSE_BASE, "tegra-fuse",
 			NULL),
@@ -419,12 +409,6 @@ static void __init tegra_t210ref_reserve(void)
 #endif
 	ulong fb1_size = SZ_64M + SZ_8M;
 	ulong vpr_size = 186 * SZ_1M;
-
-#if defined(CONFIG_TEGRA_NVADSP) && \
-		!defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
-	nvadsp_plat_data.co_pa = tegra_reserve_adsp(SZ_32M);
-	nvadsp_plat_data.co_size = SZ_32M;
-#endif
 
 #ifdef CONFIG_FRAMEBUFFER_CONSOLE
 	/* support FBcon on 4K monitors */

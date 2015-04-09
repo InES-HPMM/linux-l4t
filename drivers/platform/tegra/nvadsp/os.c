@@ -602,9 +602,9 @@ static int allocate_memory_for_adsp_os(void)
 	size_t size;
 	int ret = 0;
 
-#if defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
 	addr = priv.adsp_os_addr;
 	size = priv.adsp_os_size;
+#if defined(CONFIG_TEGRA_NVADSP_ON_SMMU)
 	dram_va = dma_alloc_at_coherent(dev, size, &addr, GFP_KERNEL);
 	if (!dram_va) {
 		dev_err(dev, "unable to allocate SMMU pages\n");
@@ -612,19 +612,9 @@ static int allocate_memory_for_adsp_os(void)
 		goto end;
 	}
 #else
-	struct nvadsp_platform_data *plat_data = pdev->dev.platform_data;
-
-	if (IS_ERR_OR_NULL(plat_data)) {
-		dev_err(dev, "carvout is NULL\n");
-		ret = -ENOMEM;
-		goto end;
-	}
-
-	addr = plat_data->co_pa;
-	size = plat_data->co_size;
-	dram_va = ioremap_nocache(addr, plat_data->co_size);
+	dram_va = ioremap_nocache(addr, size);
 	if (!dram_va) {
-		dev_err(dev, "remap failed for addr %llx\n", plat_data->co_pa);
+		dev_err(dev, "remap failed for addr 0x%llx\n", addr);
 		ret = -ENOMEM;
 		goto end;
 	}
