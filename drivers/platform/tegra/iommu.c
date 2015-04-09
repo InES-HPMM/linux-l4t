@@ -175,8 +175,6 @@ static struct swgid_fixup tegra_swgid_fixup_t124[] = {
 };
 
 static struct swgid_fixup tegra_swgid_fixup_t210[] = {
-	{ .name = "tegra-aes",	.swgids = TEGRA_SWGROUP_BIT(NVDEC), },
-	{ .name = "nvavp",	.swgids = TEGRA_SWGROUP_BIT(AVPC), },
 	{
 		.name = "bpmp",
 		.swgids = TEGRA_SWGROUP_BIT(AVPC),
@@ -184,9 +182,6 @@ static struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	},
 	{ .name = "serial8250",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "serial-tegra",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-						  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
 	{ .name = "snd-soc-dummy",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 						  TEGRA_SWGROUP_BIT(PPCS1) |
@@ -197,19 +192,7 @@ static struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	{ .name = "tegra21-se",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(SE) |
 	  TEGRA_SWGROUP_BIT(SE1), },
-	{ .name = "spi-tegra114",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-						  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra30-ahub",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-						  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra30-dam",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-						  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
 	{ .name = "tegra30-hda",	.swgids = TEGRA_SWGROUP_BIT(HDA), },
-	{ .name = "tegra30-i2s",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-						  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
 	{ .name = "tegra30-spdif",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 						  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
@@ -219,15 +202,6 @@ static struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	{ .name = "tegradc.1", .swgids = TEGRA_SWGROUP_BIT(DC) |
 					 TEGRA_SWGROUP_BIT(DCB) |
 	 TEGRA_SWGROUP_BIT(DC12), .linear_map = tegra_fb_linear_map, },
-	{ .name = "tegra_bb",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-					  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra_dma",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-					  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra-ehci",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-					  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
 	{ .name = "tegra-fuse",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
@@ -236,41 +210,15 @@ static struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	{ .name = "tegra-otg",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra-pcm-audio",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-					  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra-rtc",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-					  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra-sata",	.swgids = TEGRA_SWGROUP_BIT(SATA2), },
 	{ .name = "tegra-se",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-					  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra-snd",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-					  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra-tzram",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-						  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra_uart",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
 	{ .name = "tegra-udc",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra_usb_modem_power",
-				.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-	  TEGRA_SWGROUP_BIT(PPCS1) | TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "therm_est",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-					  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra124-apbdma",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
-					  TEGRA_SWGROUP_BIT(PPCS1) |
-	  TEGRA_SWGROUP_BIT(PPCS2), },
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 	{ .name = dummy_name,	.swgids = TEGRA_SWGROUP_BIT(PPCS) },
 #endif
-	{ .name = "tegra-xhci",	.swgids = TEGRA_SWGROUP_BIT(XUSB_HOST), },
 	{},
 };
 
