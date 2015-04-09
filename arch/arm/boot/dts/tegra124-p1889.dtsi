@@ -183,10 +183,12 @@
 		a3g4250d_68: a3g4250d@68 {
 			compatible = "stm,a3g4250d";
 			reg = <0x68>;
+			gyroscope_matrix = [00 ff 00 ff 00 00 00 00 ff];
 		};
-		ais328dq_18: a3g4250d@18 {
+		ais328dq_18: ais328dq@18 {
 			compatible = "stm,ais328dq";
 			reg = <0x18>;
+			accelerometer_matrix = [00 ff 00 ff 00 00 00 00 ff];
 		};
 		bmp280_76: bmp280@76 {
 			compatible = "bmp,bmp280";
