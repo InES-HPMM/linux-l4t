@@ -637,6 +637,8 @@ struct tegra_vrr {
 	s32	dc_balance;
 	s32	frame_avg_pct;
 	s32	fluct_avg_pct;
+
+	s32	fe_intr_req;
 };
 
 struct tegra_dc_out {
