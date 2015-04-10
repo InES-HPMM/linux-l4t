@@ -1705,7 +1705,8 @@ static bool __init can_skip_dvfs_on_clk(struct clk *c, struct dvfs *d,
 	 * to maximum rate, and it is not a shared bus (the latter condition is
 	 * added, because shared buses may define possible rates based on DVFS)
 	 */
-	if (!c->ops->shared_bus_update && max_rate_updated &&
+	if (max_rate_updated &&
+	    !c->ops->shared_bus_update && !(c->flags & PERIPH_ON_CBUS) &&
 	    (d->dvfs_rail->min_millivolts == d->dvfs_rail->nominal_millivolts))
 		return true;
 
