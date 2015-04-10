@@ -1750,7 +1750,7 @@ static int tegra_spi_probe(struct platform_device *pdev)
 					BIT(2)|BIT(3)|BIT(4)|BIT(5)|BIT(6));
 	master->setup = tegra_spi_setup;
 	master->transfer_one_message = tegra_spi_transfer_one_message;
-	master->num_chipselect = 1;
+	master->num_chipselect = MAX_CHIP_SELECT;
 	master->bus_num = bus_num;
 
 	dev_set_drvdata(&pdev->dev, master);
