@@ -276,13 +276,6 @@ config TEGRA_HV_WATCHDOG
 	  To compile this driver as a module, choose M here: the
 	  module will be called tegra_hv_wdt.
 
-config TEGRA_WATCHDOG_ENABLE_ON_PROBE
-	tristate "Turn on Tegra watchdog at system start up"
-	depends on ARCH_TEGRA && TEGRA_WATCHDOG
-	help
-	  Say Y here to enable the tegra watchdog at driver
-	  probe time, rather than when the device is opened.
-
 config EP93XX_WATCHDOG
 	tristate "EP93xx Watchdog"
 	depends on ARCH_EP93XX
