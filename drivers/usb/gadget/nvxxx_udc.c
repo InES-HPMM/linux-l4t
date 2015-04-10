@@ -437,6 +437,12 @@ static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 	}
 
 	if (nvudc->pullup) {
+		/*
+		  * For SS, state machine of device controller can take up to
+		  * 400us(for handshake with 32KHZ) to reach the final state.
+		  */
+		mdelay(1);
+
 		temp = ioread32(nvudc->mmio_reg_base + CTRL);
 		temp &= ~CTRL_ENABLE;
 		iowrite32(temp, nvudc->mmio_reg_base + CTRL);
