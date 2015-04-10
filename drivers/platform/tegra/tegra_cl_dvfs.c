@@ -1026,9 +1026,17 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 		return;
 
 	now = ktime_get();
-	if (ktime_us_delta(now, cld->last_calibration) < CL_DVFS_CALIBR_TIME)
+	if (ktime_us_delta(now, cld->last_calibration) <
+	    jiffies_to_usecs(cld->calibration_delay))
 		return;
 	cld->last_calibration = now;
+
+	/* Defer calibration if in the middle of tuning transition */
+	if ((cld->tune_state > TEGRA_CL_DVFS_TUNE_LOW) &&
+	    (cld->tune_state < TEGRA_CL_DVFS_TUNE_HIGH)) {
+		calibration_timer_update(cld);
+		return;
+	}
 
 	/* Defer calibration if forced output was left enabled */
 	val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
@@ -1290,6 +1298,7 @@ static unsigned long get_dvco_rate_above(struct tegra_cl_dvfs *cld, u8 out_min)
 static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld,
 				      struct dfll_rate_req *req)
 {
+	unsigned long tune_high_range_min = 0;
 	unsigned long rate = cld->dvco_rate_floors[cld->therm_floor_idx];
 	if (!rate) {
 		rate = cld->safe_dvfs->dfll_data.out_rate_min;
@@ -1298,8 +1307,10 @@ static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld,
 				cld->thermal_out_floors[cld->therm_floor_idx]);
 	}
 
-	if (cl_tune_target(cld, req->rate) > TEGRA_CL_DVFS_TUNE_LOW)
+	if (cl_tune_target(cld, req->rate) > TEGRA_CL_DVFS_TUNE_LOW) {
 		rate = max(rate, cld->tune_high_dvco_rate_min);
+		tune_high_range_min = cld->tune_high_target_rate_min;
+	}
 
 	/* round minimum rate to request unit (ref_rate/2) boundary */
 	cld->dvco_rate_min = ROUND_MIN_RATE(rate, cld->ref_rate);
@@ -1308,6 +1319,8 @@ static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld,
 
 	/* dvco min rate is under-estimated - skewed range up */
 	cld->calibration_range_min = cld->dvco_rate_min - 8 * RATE_STEP(cld);
+	if (cld->calibration_range_min < tune_high_range_min)
+		cld->calibration_range_min = tune_high_range_min;
 	if (cld->calibration_range_min < cld->safe_dvfs->freqs[0])
 		cld->calibration_range_min = cld->safe_dvfs->freqs[0];
 	cld->calibration_range_max = cld->dvco_rate_min + 24 * RATE_STEP(cld);
