@@ -845,6 +845,10 @@ static void max77620_regulator_shutdown(struct platform_device *pdev)
 	for (id = 0; id < MAX77620_NUM_REGS; ++id) {
 		rpdata = &pmic->reg_pdata[id];
 		ridata = rpdata->reg_idata;
+
+		if (!ridata)
+			continue;
+
 		if (ridata->constraints.disable_on_shutdown &&
 			max77620_regulator_is_enabled(pmic->rdev[id])) {
 			dev_info(&pdev->dev, "Disabling Regulator %d\n", id);
