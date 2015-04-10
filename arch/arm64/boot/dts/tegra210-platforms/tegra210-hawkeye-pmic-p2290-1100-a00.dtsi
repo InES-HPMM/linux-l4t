@@ -405,6 +405,9 @@
 				ti,thermal-regulation-threshold-degc = <120>;
 				ti,soc-range = <50 60 70 80 85 90 95 101>;
 				ti,input-voltage-soc-limit = <4200 4280 4360 4440 4520 4600 4680 4760>;
+				ti,temp-range = <10 15 25 45 50 60>;
+				ti,charge-thermal-voltage-limit = <4352 4352 4352 4352 4200 4200>;
+				ti,charge-current-limit = <520 1040 2600 2600 2600 520>;
 			};
 
 			usb0_vbus: vbus {
