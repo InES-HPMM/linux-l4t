@@ -162,10 +162,9 @@
 
 	spi@7000d800 {
 		status = "okay";
-		nvidia,maximum-dma-buffer-size = <65536>;
-		spi@1 {
-			status = "disabled";
-		};
+		compatible = "nvidia,tegra124-spi-slave";
+		nvidia,clk-pin = "ulpi_data2_po3";
+		nvidia,rx-trigger-words = <0>;
 	};
 
 	spi@7000dc00 {
