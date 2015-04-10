@@ -342,8 +342,8 @@ MODULE_DEVICE_TABLE(of, fixed_sync_of_match);
 #endif
 
 static const struct dev_pm_ops reg_fixed_sync_voltage_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(reg_fixed_voltage_suspend,
-			reg_fixed_voltage_resume)
+	.suspend_late = reg_fixed_voltage_suspend,
+	.resume_early = reg_fixed_voltage_resume,
 };
 
 static struct platform_driver regulator_fixed_sync_voltage_driver = {
