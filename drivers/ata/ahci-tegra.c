@@ -53,6 +53,7 @@
 #include <linux/of_device.h>
 #include "../../arch/arm/mach-tegra/iomap.h"
 #include <linux/tegra_prod.h>
+#include <linux/tegra_pm_domains.h>
 
 #define DRV_NAME	"tegra-sata"
 #define DRV_VERSION	"1.0"
@@ -395,6 +396,13 @@
 
 /* SATA Port Registers*/
 #define PXSSTS						0X28
+
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+static struct of_device_id tegra_sata_pd[] = {
+	{ .compatible = "nvidia, tegra210-sata-pd", },
+	{},
+};
+#endif
 
 enum {
 	AHCI_PCI_BAR = 5,
@@ -1236,6 +1244,7 @@ static int tegra_ahci_controller_init(void *hpriv, int lp0)
 	int err, calib_val;
 	u32 val;
 	u32 timeout;
+	int partition_id;
 
 	if (!lp0) {
 		err = tegra_ahci_get_rails(tegra_hpriv);
@@ -1357,7 +1366,14 @@ static int tegra_ahci_controller_init(void *hpriv, int lp0)
 	udelay(3);
 
 #if defined(CONFIG_TEGRA_SILICON_PLATFORM)
-	err = tegra_unpowergate_partition(TEGRA_POWERGATE_SATA);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_sata_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_SATA;
+#endif
+	err = tegra_unpowergate_partition(partition_id);
 	if (err) {
 		pr_err("%s: ** failed to turn-on SATA (0x%x) **\n",
 				__func__, err);
@@ -1595,6 +1611,7 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	struct clk *clk_cml1 = NULL;
 	int err;
 	u32 val;
+	int partition_id;
 
 	if (!lp0) {
 		err = tegra_ahci_get_rails(tegra_hpriv);
@@ -1755,7 +1772,14 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	misc_writel(val, SATA_AUX_PAD_PLL_CNTL_1_REG);
 
 #if defined(CONFIG_TEGRA_SILICON_PLATFORM)
-	err = tegra_unpowergate_partition(TEGRA_POWERGATE_SATA);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_sata_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_SATA;
+#endif
+	err = tegra_unpowergate_partition(partition_id);
 	if (err) {
 		pr_err("%s: ** failed to turn-on SATA (0x%x) **\n",
 				__func__, err);
@@ -1933,7 +1957,15 @@ static void tegra_ahci_controller_remove(struct platform_device *pdev)
 				   status);
 #else
 	/* power off the sata */
-	status = tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_SATA);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	int partition_id;
+	partition_id = tegra_pd_get_powergate_id(tegra_sata_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_SATA;
+#endif
+	status = tegra_powergate_partition_with_clk_off(partition_id);
 	if (status)
 		dev_err(host->dev, "remove: error turn-off SATA (0x%x)\n",
 				   status);
@@ -2810,6 +2842,7 @@ static bool tegra_ahci_power_gate(struct ata_host *host)
 	u32 dat;
 	struct tegra_ahci_host_priv *tegra_hpriv;
 	int status;
+	int partition_id;
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
 
@@ -2857,7 +2890,14 @@ static bool tegra_ahci_power_gate(struct ata_host *host)
 	tegra_ahci_put_sata_in_iddq();
 
 	/* power off the sata */
-	status = tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_SATA);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_sata_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_SATA;
+#endif
+	status = tegra_powergate_partition_with_clk_off(partition_id);
 	if (status) {
 		dev_err(host->dev, "** failed to turn-off SATA (0x%x) **\n",
 				   status);
@@ -2877,6 +2917,7 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host)
 	u32 timeout;
 	struct tegra_ahci_host_priv *tegra_hpriv;
 	int status;
+	int powergate_id;
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
 
@@ -2885,7 +2926,14 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host)
 	else
 		tegra_ahci_iddqlane_config();
 
-	status = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_SATA);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	powergate_id = tegra_pd_get_powergate_id(tegra_sata_pd);
+	if (powergate_id < 0)
+		return -EINVAL;
+#else
+	powergate_id = TEGRA_POWERGATE_SATA;
+#endif
+	status = tegra_unpowergate_partition_with_clk_on(powergate_id);
 	if (status) {
 		dev_err(host->dev, "** failed to turn-on SATA (0x%x) **\n",
 				   status);
@@ -3499,6 +3547,7 @@ static int dbg_ahci_dump_show(struct seq_file *s, void *unused)
 	int rc;
 #endif
 #endif
+	int powergate_id;
 
 	if (g_tegra_hpriv == NULL)
 		return 0;
@@ -3534,7 +3583,14 @@ static int dbg_ahci_dump_show(struct seq_file *s, void *unused)
 		dbg_ahci_dump_regs(s, ptr, base, 20);
 	}
 
-	if (tegra_powergate_is_powered(TEGRA_POWERGATE_SATA))
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	powergate_id = tegra_pd_get_powergate_id(tegra_sata_pd);
+	if (powergate_id < 0)
+		return -EINVAL;
+#else
+	powergate_id = TEGRA_POWERGATE_SATA;
+#endif
+	if (tegra_powergate_is_powered(powergate_id))
 		seq_puts(s, "\n=== SATA controller is powered on ===\n\n");
 	else
 		seq_puts(s, "\n=== SATA controller is powered off ===\n\n");
