@@ -25,6 +25,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/tegra-powergate.h>
 #include <linux/syscore_ops.h>
+#include <linux/tegra_pm_domains.h>
 
 #include <mach/tegra_usb_pad_ctrl.h>
 
@@ -37,6 +38,16 @@ static DEFINE_SPINLOCK(pcie_pad_lock);
 static DEFINE_SPINLOCK(sata_pad_lock);
 static DEFINE_SPINLOCK(hsic_pad_lock);
 static int hsic_pad_count;
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+static struct of_device_id tegra_xusbb_pd[] = {
+	{ .compatible = "nvidia, tegra210-xusbb-pd", },
+	{},
+};
+static struct of_device_id tegra_xusbc_pd[] = {
+	{ .compatible = "nvidia, tegra210-xusbc-pd", },
+	{},
+};
+#endif
 #endif
 static int utmip_pad_count;
 static struct clk *utmi_pad_clk;
@@ -451,8 +462,22 @@ EXPORT_SYMBOL_GPL(sata_usb_pad_pll_reset_deassert);
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 static bool tegra_xusb_partitions_powergated(void)
 {
-	if (!tegra_powergate_is_powered(TEGRA_POWERGATE_XUSBB)
-			&& !tegra_powergate_is_powered(TEGRA_POWERGATE_XUSBC))
+	int partition_id_xusbb, partition_id_xusbc;
+
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id_xusbb = tegra_pd_get_powergate_id(tegra_xusbb_pd);
+	if (partition_id_xusbb < 0)
+		return -EINVAL;
+
+	partition_id_xusbc = tegra_pd_get_powergate_id(tegra_xusbc_pd);
+	if (partition_id_xusbc < 0)
+		return -EINVAL;
+#else
+	partition_id_xusbb = TEGRA_POWERGATE_XUSBB;
+	partition_id_xusbc = TEGRA_POWERGATE_XUSBC;
+#endif
+	if (!tegra_powergate_is_powered(partition_id_xusbb)
+			&& !tegra_powergate_is_powered(partition_id_xusbc))
 		return true;
 	return false;
 }
