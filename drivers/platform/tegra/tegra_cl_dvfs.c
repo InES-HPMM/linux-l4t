@@ -1088,6 +1088,9 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 			return;
 		}
 		val = (val >> CL_DVFS_I2C_STS_I2C_LAST_SHIFT) & OUT_MASK;
+	} else if (cld->p_data->flags & TEGRA_CL_DVFS_CALIBRATE_FORCE_VMIN) {
+		/* Use forced value (cannot read it back from PWM interface) */
+		val = out_min;
 	} else {
 		/* Get last output (there is no such thing as pending PWM) */
 		val = get_last_output(cld);
