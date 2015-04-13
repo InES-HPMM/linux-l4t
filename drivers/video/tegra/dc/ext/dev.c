@@ -1247,15 +1247,11 @@ static int tegra_dc_ext_get_cmu_v2(struct tegra_dc_ext_user *user,
 {
 	int i;
 	struct tegra_dc *dc = user->ext->dc;
-	struct tegra_dc_cmu *cmu;
-	struct tegra_dc_lut *cmu_lut;
+	struct tegra_dc_cmu *cmu = dc->pdata->cmu;
+	struct tegra_dc_lut *cmu_lut = &dc->cmu;
 
-	if (custom_value && dc->pdata->cmu)
-		cmu = dc->pdata->cmu;
-	else if (custom_value && !dc->pdata->cmu)
+	if (custom_value && !dc->pdata->cmu)
 		return -EACCES;
-	else
-		cmu_lut = &dc->cmu;
 
 	args->cmu_enable = dc->pdata->cmu_enable;
 	for (i = 0; i < TEGRA_DC_EXT_LUT_SIZE_1025; i++) {
