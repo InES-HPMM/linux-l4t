@@ -340,6 +340,7 @@
 #define TEGRA_PCIE_EMC_CLK_102					102000000
 #define TEGRA_PCIE_EMC_CLK_508					508000000
 
+#define INT_PCI_MSI_NR			(32 * 8)
 
 #define DEBUG 0
 #if DEBUG || defined(CONFIG_PCI_DEBUG)
@@ -2560,7 +2561,6 @@ fail_release_resource:
 
 /* 1:1 matching of these to the MSI vectors, 1 per bit */
 /* and each mapping matches one of the available interrupts */
-/*   irq should equal INT_PCI_MSI_BASE + index */
 struct msi_map_entry {
 	bool used;
 	u8 index;
