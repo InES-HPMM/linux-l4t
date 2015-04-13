@@ -135,6 +135,27 @@ ENTRY(v7_flush_dcache_louis)
 	v7_op_dcache_all c14
 ENDPROC(v7_flush_dcache_louis)
 
+ENTRY(v7_clean_dcache_louis)
+	dmb					@ ensure ordering with previous memory accesses
+	mrc	p15, 1, r0, c0, c0, 1		@ read clidr, r0 = clidr
+	ALT_SMP(ands	r3, r0, #(7 << 21))	@ extract LoUIS from clidr
+	ALT_UP(ands	r3, r0, #(7 << 27))	@ extract LoUU from clidr
+#ifdef CONFIG_ARM_ERRATA_643719
+	ALT_SMP(mrceq	p15, 0, r2, c0, c0, 0)	@ read main ID register
+	ALT_UP(moveq	pc, lr)			@ LoUU is zero, so nothing to do
+	ldreq	r1, =0x410fc090                 @ ID of ARM Cortex A9 r0p?
+	biceq	r2, r2, #0x0000000f             @ clear minor revision number
+	teqeq	r2, r1                          @ test for errata affected core and if so...
+	orreqs	r3, #(1 << 21)			@   fix LoUIS value (and set flags state to 'ne')
+#endif
+	ALT_SMP(mov	r3, r3, lsr #20)	@ r3 = LoUIS * 2
+	ALT_UP(mov	r3, r3, lsr #26)	@ r3 = LoUU * 2
+	moveq	pc, lr				@ return if level == 0
+	mov	r10, #0				@ r10 (starting level) = 0
+	b	1001f				@ start cleaning cache levels
+	v7_op_dcache_all c10
+ENDPROC(v7_clean_dcache_louis)
+
 /*
  *	v7_flush_cache_all()
  *
@@ -175,6 +196,24 @@ ENTRY(v7_flush_kern_cache_louis)
  THUMB(	ldmfd	sp!, {r4-r7, r9-r11, lr}	)
 	mov	pc, lr
 ENDPROC(v7_flush_kern_cache_louis)
+
+/*
+ *     v7_clean_kern_cache_louis(void)
+ *
+ *     Clean the data cache up to Level of Unification Inner Shareable.
+ *     Invalidate the I-cache to the point of unification.
+ */
+ENTRY(v7_clean_kern_cache_louis)
+ ARM(	stmfd	sp!, {r4-r5, r7, r9-r11, lr}	)
+ THUMB(	stmfd	sp!, {r4-r7, r9-r11, lr}	)
+	bl	v7_clean_dcache_louis
+	mov	r0, #0
+	ALT_SMP(mcr	p15, 0, r0, c7, c1, 0)	@ invalidate I-cache inner shareable
+	ALT_UP(mcr	p15, 0, r0, c7, c5, 0)	@ I+BTB cache invalidate
+ ARM(	ldmfd	sp!, {r4-r5, r7, r9-r11, lr}	)
+ THUMB(	ldmfd	sp!, {r4-r7, r9-r11, lr}	)
+	mov	pc, lr
+ENDPROC(v7_clean_kern_cache_louis)
 
 /*
  *       v7_clean_kern_cache_all()
