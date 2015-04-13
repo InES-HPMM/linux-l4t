@@ -60,6 +60,13 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "e2220";
+		};
+	};
+
 	pmc@7000e400 {
 		nvidia,invert-interrupt;
 	};

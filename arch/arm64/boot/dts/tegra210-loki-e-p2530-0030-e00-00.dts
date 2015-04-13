@@ -26,6 +26,13 @@
 	model = "loki_e_wifi";
 	nvidia,dtsfilename = __FILE__;
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "loki_e_wifi";
+		};
+	};
+
 	backlight {
 		compatible = "pwm-backlight";
 		status = "okay";

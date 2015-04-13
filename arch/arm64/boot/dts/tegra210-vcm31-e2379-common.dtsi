@@ -46,6 +46,13 @@
 	nvidia,proc-boardid = "2580:0631:A0";
 	nvidia,pmu-boardid = "2580:0631:A0";
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "foster_e";
+		};
+	};
+
 	spi@7000d400 {
 	earSmart: earSmart-codec@0 {
 		adnc,gpiob-gpio = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;

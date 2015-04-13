@@ -65,6 +65,13 @@
 	chosen {
         };
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "e2220";
+		};
+	};
+
 	sdhci@700b0600 {
 		uhs-mask = <0x60>;
 		built-in;

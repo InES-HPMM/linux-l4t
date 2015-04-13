@@ -63,6 +63,13 @@
 	chosen {
 	};
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "hawkeye";
+		};
+	};
+
 	gpio@6000d000 {
 		camera_control {
 			gpio-output-low = <

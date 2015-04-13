@@ -29,6 +29,14 @@
 	compatible = "nvidia,foster-e", "nvidia,tegra210";
 	nvidia,dtsfilename = __FILE__;
 	nvidia,fastboot-usb-pid = <0xb421>;
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "foster_e";
+		};
+	};
+
 	pwm-leds {
 		compatible = "pwm-leds";
 		status = "disabled";

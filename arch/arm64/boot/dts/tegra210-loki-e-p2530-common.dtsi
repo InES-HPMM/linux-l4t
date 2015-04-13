@@ -49,6 +49,13 @@
 	compatible = "nvidia,loki-e", "nvidia,tegra210";
 	nvidia,fastboot-usb-pid = <0xb420>;
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "loki_e";
+		};
+	};
+
 	i2c@7000c500 {
 		battery-charger@6b {
 			charger {

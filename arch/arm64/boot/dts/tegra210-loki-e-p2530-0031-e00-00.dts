@@ -24,6 +24,13 @@
 	model = "loki_e_lte";
 	nvidia,dtsfilename = __FILE__;
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "loki_e_lte";
+		};
+	};
+
 	modem {
 		/* pre boost regulator gpio */
 		nvidia,pre-boost-gpio = <&gpio TEGRA_GPIO(E, 5) GPIO_ACTIVE_HIGH>;

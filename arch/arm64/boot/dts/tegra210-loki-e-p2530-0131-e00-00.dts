@@ -27,6 +27,13 @@
 	model = "loki_e_base";
 	nvidia,dtsfilename = __FILE__;
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "loki_e_base";
+		};
+	};
+
 	backlight {
 		compatible = "pwm-backlight";
 		status = "okay";

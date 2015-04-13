@@ -31,6 +31,13 @@
 	nvidia,dtsfilename = __FILE__;
 	nvidia,fastboot-usb-pid = <0xb422>;
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "foster_e_hdd";
+		};
+	};
+
 	sata@70020000 {
 		status = "okay";
 		nvidia,enable-sata-port;

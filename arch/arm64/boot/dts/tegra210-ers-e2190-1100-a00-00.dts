@@ -54,6 +54,13 @@
 	chosen {
         };
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "e2190";
+		};
+	};
+
 	pmc@7000e400 {
 		nvidia,invert-interrupt;
 	};
