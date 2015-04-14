@@ -11,6 +11,7 @@
 			gpios = <&gpio TEGRA_GPIO(X, 5) GPIO_ACTIVE_LOW>;
 			linux,code = <KEY_POWER>;
 			gpio-key,wakeup;
+			debounce-interval = <30>;
 		};
 
 		sw_lid {
