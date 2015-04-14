@@ -40,6 +40,8 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/regulator/consumer.h>
 #include <linux/tegra-powergate.h>
+#include <linux/pm_domain.h>
+#include <linux/tegra_pm_domains.h>
 
 #include <asm/unaligned.h>
 
@@ -139,6 +141,14 @@
  * @MSG_END_CONTINUE: The following on message is coming and so do not send
  *		stop or repeat start.
  */
+
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+static struct of_device_id tegra_ve_pd[] = {
+	{ .compatible = "nvidia,tegra210-ve-pd", },
+	{},
+};
+#endif
+
 enum msg_end_type {
 	MSG_END_STOP,
 	MSG_END_REPEAT_START,
@@ -508,6 +518,7 @@ static int tegra_vi_i2c_fill_tx_fifo(struct tegra_vi_i2c_dev *i2c_dev)
 static inline int tegra_vi_i2c_power_enable(struct tegra_vi_i2c_dev *i2c_dev)
 {
 	int ret;
+	int partition_id;
 
 	/* get regulator */
 	if (!i2c_dev->reg)
@@ -523,14 +534,30 @@ static inline int tegra_vi_i2c_power_enable(struct tegra_vi_i2c_dev *i2c_dev)
 	if (ret)
 		return ret;
 
-	tegra_unpowergate_partition(TEGRA_POWERGATE_VE);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_ve_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_VE;
+#endif
+	tegra_unpowergate_partition(partition_id);
 
 	return 0;
 }
 
 static inline int tegra_vi_i2c_power_disable(struct tegra_vi_i2c_dev *i2c_dev)
 {
-	tegra_powergate_partition(TEGRA_POWERGATE_VE);
+	int partition_id;
+
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_ve_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_VE;
+#endif
+	tegra_powergate_partition(partition_id);
 	return regulator_disable(i2c_dev->reg);
 }
 
