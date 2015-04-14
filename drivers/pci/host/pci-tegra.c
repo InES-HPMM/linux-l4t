@@ -336,6 +336,13 @@
 #define pin_pex_l1_clkreq	"pex_l1_clkreq_n_pdd6"
 #endif
 
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+static struct of_device_id tegra_pcie_pd[] = {
+	{ .compatible = "nvidia, tegra210-pcie-pd", },
+	{},
+};
+#endif
+
 struct tegra_pcie_soc_data {
 	unsigned int	num_ports;
 	char			**pcie_regulator_names;
@@ -1206,9 +1213,17 @@ static int tegra_pcie_disable_regulators(struct tegra_pcie *pcie)
 static int tegra_pcie_power_ungate(struct tegra_pcie *pcie)
 {
 	int err;
+	int partition_id;
 
 	PR_FUNC_LINE;
-	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_PCIE);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_pcie_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_PCIE;
+#endif
+	err = tegra_unpowergate_partition_with_clk_on(partition_id);
 	if (err) {
 		dev_err(pcie->dev, "PCIE: powerup sequence failed: %d\n", err);
 		return err;
@@ -1448,6 +1463,7 @@ static int tegra_pcie_power_off(struct tegra_pcie *pcie, bool all)
 {
 	int err = 0;
 	struct tegra_pcie_port *port;
+	int partition_id;
 
 	PR_FUNC_LINE;
 	if (pcie->pcie_power_enabled == 0) {
@@ -1468,7 +1484,14 @@ static int tegra_pcie_power_off(struct tegra_pcie *pcie, bool all)
 		clk_disable(pcie->pcie_xclk);
 	if (pcie->pcie_emc)
 		clk_disable(pcie->pcie_emc);
-	err = tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_pcie_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_PCIE;
+#endif
+	err = tegra_powergate_partition_with_clk_off(partition_id);
 	if (err)
 		goto err_exit;
 
