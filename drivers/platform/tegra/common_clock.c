@@ -5,7 +5,7 @@
  * Author:
  *      Colin Cross <ccross@google.com>
  *
- * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -113,6 +113,17 @@ void tegra_clk_init_from_table(struct tegra_clk_init_table *table)
 		tegra_clk_init_one_from_table(table);
 }
 
+#ifdef CONFIG_ARCH_TEGRA_18x_SOC
+void tegra_periph_reset_deassert(struct clk *c)
+{
+}
+EXPORT_SYMBOL(tegra_periph_reset_deassert);
+
+void tegra_periph_reset_assert(struct clk *c)
+{
+}
+EXPORT_SYMBOL(tegra_periph_reset_assert);
+#else
 void tegra_periph_reset_deassert(struct clk *c)
 {
 	struct clk_tegra *clk = to_clk_tegra(__clk_get_hw(c));
@@ -130,6 +141,7 @@ void tegra_periph_reset_assert(struct clk *c)
 	clk->reset(__clk_get_hw(c), true);
 }
 EXPORT_SYMBOL(tegra_periph_reset_assert);
+#endif
 
 /* Several extended clock configuration bits (e.g., clock routing, clock
  * phase control) are included in PLL and peripheral clock source
