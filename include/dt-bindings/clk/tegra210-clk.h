@@ -28,7 +28,7 @@
 #define TEGRA210_CLK_ID_UARTB		7
 /* FIXME: ID 8 to be assigned */
 #define TEGRA210_CLK_ID_SDMMC2		9
-/* FIXME: ID 10 to be assigned */
+#define TEGRA210_CLK_ID_SPDIF_OUT	10
 #define TEGRA210_CLK_ID_I2S1		11
 #define TEGRA210_CLK_ID_I2C1		12
 /* ID 13 is reserved */
@@ -52,8 +52,9 @@
 /* FIXME: IDs 31 ... 32 to be assigned */
 #define TEGRA210_CLK_ID_AHBDMA		33
 #define TEGRA210_CLK_ID_APBDMA		34
-/* IDs 35 ... 36 are reserved */
-/* FIXME: IDs 37 ... 39 to be assigned */
+/* IDs 35 ... 37 are reserved */
+/* FIXME: ID 38 to be assigned */
+#define TEGRA210_CLK_ID_FUSE		39
 #define TEGRA210_CLK_ID_KFUSE		40
 #define TEGRA210_CLK_ID_SBC1		41
 /* IDs 42 ... 43 are reserved */
@@ -90,14 +91,15 @@
 /* ID 80 is reserved */
 #define TEGRA210_CLK_ID_I2CSLOW		81
 #define TEGRA210_CLK_ID_DSIB		82
-/* FIXME: IDs 83 ... 88 to be assigned */
+/* FIXME: ID 83 to be assigned */
+/* IDs 84 ... 88 are reserved */
 #define TEGRA210_CLK_ID_XUSB_HOST	89
 /* IDs 90 ... 91 are reserved */
-/* FIXME: IDs 92 ... 94 to be assigned */
+/* FIXME: ID 92 to be assigned */
+/* IDs 93 ... 94 are reserved */
 #define TEGRA210_CLK_ID_XUSB_DEV	95
-/* FIXME: IDs 96 ... 97 to be assigned */
-/* ID 98 is reserved */
-/* FIXME: ID 99 to be assigned */
+/* IDs 96 ... 98 are reserved */
+#define TEGRA210_CLK_ID_MSELECT		99
 #define TEGRA210_CLK_ID_TSENSOR		100
 #define TEGRA210_CLK_ID_I2S3		101
 #define TEGRA210_CLK_ID_I2S4		102
