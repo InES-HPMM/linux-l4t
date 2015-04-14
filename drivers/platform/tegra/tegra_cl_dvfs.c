@@ -232,7 +232,7 @@ struct tegra_cl_dvfs {
 	u8				tune_high_out_start;
 	u8				tune_high_out_min;
 	unsigned long			tune_high_dvco_rate_min;
-	unsigned long			tune_high_out_rate_min;
+	unsigned long			tune_high_target_rate_min;
 
 	u8				minimax_output;
 	u8				thermal_out_caps[MAX_THERMAL_LIMITS];
@@ -774,7 +774,7 @@ static inline int cl_tune_target(struct tegra_cl_dvfs *cld, unsigned long rate)
 {
 	bool tune_low_at_cold = cld->safe_dvfs->dfll_data.tune0_low_at_cold;
 
-	if ((rate >= cld->tune_high_out_rate_min) &&
+	if ((rate >= cld->tune_high_target_rate_min) &&
 	    (!tune_low_at_cold || cld->therm_floor_idx))
 		return TEGRA_CL_DVFS_TUNE_HIGH;
 	return TEGRA_CL_DVFS_TUNE_LOW;
@@ -1424,7 +1424,7 @@ static void cl_dvfs_init_tuning_thresholds(struct tegra_cl_dvfs *cld)
 	cld->tune_high_out_min = get_output_top(cld);
 	cld->tune_high_out_start = cld->tune_high_out_min;
 	cld->tune_high_dvco_rate_min = ULONG_MAX;
-	cld->tune_high_out_rate_min = ULONG_MAX;
+	cld->tune_high_target_rate_min = ULONG_MAX;
 
 	mv = cld->safe_dvfs->dfll_data.tune_high_min_millivolts;
 	if (mv >= cld->safe_dvfs->dfll_data.min_millivolts) {
@@ -1440,7 +1440,7 @@ static void cl_dvfs_init_tuning_thresholds(struct tegra_cl_dvfs *cld)
 				cld->minimax_output = out_start + 1;
 			cld->tune_high_dvco_rate_min =
 				get_dvco_rate_above(cld, out_start + 1);
-			cld->tune_high_out_rate_min =
+			cld->tune_high_target_rate_min =
 				get_dvco_rate_above(cld, out_min);
 		}
 	}
@@ -3473,7 +3473,7 @@ static int cl_profiles_show(struct seq_file *s, void *data)
 		seq_printf(s, "%3dC.. %5dmV\n", trips[i], get_mv(cld, v));
 	}
 
-	if (cld->tune_high_out_rate_min == ULONG_MAX) {
+	if (cld->tune_high_target_rate_min == ULONG_MAX) {
 		seq_puts(s, "TUNE HIGH: NONE\n");
 	} else {
 		seq_puts(s, "TUNE HIGH:\n");
@@ -3481,7 +3481,7 @@ static int cl_profiles_show(struct seq_file *s, void *data)
 			   get_mv(cld, cld->tune_high_out_min),
 			   cld->tune_high_dvco_rate_min / 1000);
 		seq_printf(s, "%-14s%9lukHz\n", "rate threshold",
-			   cld->tune_high_out_rate_min / 1000);
+			   cld->tune_high_target_rate_min / 1000);
 	}
 
 	seq_printf(s, "THERM FLOORS:%s\n", cld->therm_floors_num ? "" : " NONE");
