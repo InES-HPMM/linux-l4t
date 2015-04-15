@@ -1,0 +1,52 @@
+/*
+ * arch/arm64/boot/dts/tegra210-odin-a00-00.dts
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra210-odin-common.dtsi"
+#include "tegra210-platforms/tegra210-p2530-common.dtsi"
+
+/ {
+	model = "odin";
+	compatible = "nvidia,odin", "nvidia,tegra210";
+	nvidia,dtsfilename = __FILE__;
+
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	udc@7d000000 {
+		#extcon-cells = <1>;
+		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x00000000>;
+	};
+
+        otg@7d000000 {
+		#extcon-cells = <1>;
+		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x00000000>;
+	};
+
+	xudc@700d0000 {
+		#extcon-cells = <1>;
+		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x01000000>;
+	};
+
+	xotg {
+		#extcon-cells = <1>;
+		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x01000000>;
+	};
+
+};
