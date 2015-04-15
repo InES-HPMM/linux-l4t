@@ -238,14 +238,14 @@ static const struct es_ch_mgr_max es_chn_mgr_max[ALGO_MAX] = {
 };
 
 static u32 switch_arr[] = {
-	[SWIN1_I0] = 0xB0660009,
-	[SWIN1_I1] = 0xB0660109,
-	[SWIN2_I0] = 0xB066000A,
-	[SWIN2_I1] = 0xB066010A,
-	[SWOUT0_O1] = 0xB0660100,
-	[SWOUT1_O1] = 0xB0660101,
-	[SWOUT2_O1] = 0xB0660102,
-	[SWOUT3_O1] = 0xB0660103,
+	[SWIN1_I0] = 0x90660009,
+	[SWIN1_I1] = 0x90660109,
+	[SWIN2_I0] = 0x9066000A,
+	[SWIN2_I1] = 0x9066010A,
+	[SWOUT0_O1] = 0x90660100,
+	[SWOUT1_O1] = 0x90660101,
+	[SWOUT2_O1] = 0x90660102,
+	[SWOUT3_O1] = 0x90660103,
 };
 
 static int escore_set_switch(int id)
@@ -270,6 +270,7 @@ static int escore_set_switch(int id)
 		goto err;
 	}
 
+	/*
 	cmd = ES_SYNC_CMD << 16;
 	rc = escore->bus.ops.cmd(escore, cmd, &resp);
 	if (rc) {
@@ -277,6 +278,7 @@ static int escore_set_switch(int id)
 				__func__, rc);
 		goto err;
 	}
+	*/
 err:
 	mutex_unlock(&escore->api_mutex);
 	return rc;
