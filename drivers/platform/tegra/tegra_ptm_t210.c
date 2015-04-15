@@ -689,95 +689,47 @@ static int trace_t210_stop(struct tracectx *t)
 	return 0;
 }
 
-static void trc_read_regs(struct tracectx *p_info)
-{
-	struct tracectx *t = (struct tracectx *)p_info;
-	int reg_num = 16;
-	u32 id = raw_smp_processor_id();
-	u32 *cpu_data = (u32 *) &t->cpu_dump_buffer[id * reg_num * sizeof(u32)];
-	int i = 0;
-
-	cpu_data[i++] = ptm_readl(t, id, TRCTRACEIDR);
-	cpu_data[i++] = ptm_readl(t, id, TRCCONFIGR);
-	cpu_data[i++] = ptm_readl(t, id, TRCACVR0);
-	cpu_data[i++] = ptm_readl(t, id, TRCACVR0 + 0x4);
-	cpu_data[i++] = ptm_readl(t, id, TRCACVR1);
-	cpu_data[i++] = ptm_readl(t, id, TRCACVR1 + 0x4);
-	cpu_data[i++] = ptm_readl(t, id, TRCACVR2);
-	cpu_data[i++] = ptm_readl(t, id, TRCACVR2 + 0x4);
-	/* reserved for future use */
-	cpu_data[i++] = 0x00000000;
-	cpu_data[i++] = 0x00000000;
-	cpu_data[i++] = 0x00000000;
-	cpu_data[i++] = 0x00000000;
-	cpu_data[i++] = 0x00000000;
-	cpu_data[i++] = 0x00000000;
-	cpu_data[i++] = 0x00000000;
-	cpu_data[i++] = 0x00000000;
-}
 
 /* This function transfers the traces from kernel space to user space
  * data: The destination of trace data in user space
  * offset: Position in the trace to begin reading from
- * len_tot: total amount of data to read
+ * len: total amount of data to read
  */
 static ssize_t trc_read(struct file *file, char __user *data,
-	size_t len_tot, loff_t *offset)
+	size_t len, loff_t *offset)
 {
 	struct tracectx *t = file->private_data;
-	loff_t trace_offset = *offset - CPU_DUMP_BUFF_SZ;
-	loff_t len_h = 0; /* length of header data */
-	loff_t len_t = 0; /* length of trace data */
+	loff_t len_t = len; /* length of trace data */
 	loff_t len_w = 0; /* length of wrap around data (etr only) */
 	u8 *start;
 
-	if (*offset + len_tot >= t->buf_size + CPU_DUMP_BUFF_SZ)
-		len_tot = t->buf_size + CPU_DUMP_BUFF_SZ - *offset;
+	if (*offset + len_t >= t->buf_size)
+		len_t = t->buf_size - *offset;
 
 	if (t->etr)
 		start = t->etr_buf;
 	else
-		start = (u8*)t->trc_buf;
+		start = (u8 *)t->trc_buf;
 
-	/* read config data */
-	if (*offset < CPU_DUMP_BUFF_SZ) {
-		/* only reading config data */
-		if (*offset + len_tot <= CPU_DUMP_BUFF_SZ) {
-			if (copy_to_user(data, t->cpu_dump_buffer + *offset,
-				len_tot))
-				return -EFAULT;
-			*offset += len_tot;
-			return len_tot;
-		} else {
-			len_h = CPU_DUMP_BUFF_SZ - *offset;
-			if (copy_to_user(data, t->cpu_dump_buffer + *offset,
-				len_h))
-				return -EFAULT;
-			trace_offset = 0;
-		}
-	}
-
-	len_t = len_tot - len_h;
 	if (t->etr)
-		if (start + trace_offset + len_t > t->etr_address + ETR_SIZE) {
-			len_w = (start + trace_offset + len_t)
-				- (t->etr_address + ETR_SIZE);
-			len_t = (t->etr_address + ETR_SIZE)
-				- (start + trace_offset);
+		if (start + *offset + len_t > t->etr_address + ETR_SIZE) {
+			len_w = (start + *offset + len_t) -
+			(t->etr_address + ETR_SIZE);
+			len_t = (t->etr_address + ETR_SIZE) - (start + *offset);
 		}
 
 	/* read trace data */
 	if (len_t > 0)
-		if (copy_to_user(data + len_h, start + trace_offset, len_t))
+		if (copy_to_user(data, start + *offset, len_t))
 			return -EFAULT;
 
 	/* read wrap around data (etr only) */
 	if (len_w > 0)
-		if (copy_to_user(data + len_h + len_t, t->etr_address, len_w))
+		if (copy_to_user(data + len_t, t->etr_address, len_w))
 			return -EFAULT;
 
-	*offset += (len_t + len_h + len_w);
-	return len_t + len_h + len_w;
+	*offset += (len_t + len_w);
+	return len_t + len_w;
 }
 
 /* this function copies traces from the ETF to an array */
@@ -961,9 +913,6 @@ static int trc_open(struct inode *inode, struct file *file)
 
 	trc_fill_buf(t);
 
-	/* all cores have the same configuration */
-	trc_read_regs(t);
-
 	return nonseekable_open(inode, file);
 }
 
@@ -1091,6 +1040,41 @@ static ssize_t trace_cycle_count_show(struct kobject *kobj,
 	return sprintf(buf, "%u\n", tracer.cycle_count);
 }
 
+static ssize_t trace_config_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	u32 *data = (u32 *)buf;
+	struct tracectx *t = &tracer;
+	u32 id = raw_smp_processor_id();
+	int i = 0;
+
+	data[i++] = ptm_readl(t, id, TRCTRACEIDR);
+	data[i++] = ptm_readl(t, id, TRCCONFIGR);
+	data[i++] = ptm_readl(t, id, TRCACVR0);
+	data[i++] = ptm_readl(t, id, TRCACVR0 + 0x4);
+	data[i++] = ptm_readl(t, id, TRCACVR1);
+	data[i++] = ptm_readl(t, id, TRCACVR1 + 0x4);
+	data[i++] = ptm_readl(t, id, TRCACVR2);
+	data[i++] = ptm_readl(t, id, TRCACVR2 + 0x4);
+	/* reserved for future use */
+	data[i++] = 0x00000000;
+	data[i++] = 0x00000000;
+	data[i++] = 0x00000000;
+	data[i++] = 0x00000000;
+	data[i++] = 0x00000000;
+	data[i++] = 0x00000000;
+	data[i++] = 0x00000000;
+	data[i++] = 0x00000000;
+
+	return 64;
+}
+
+static ssize_t trace_config_store(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf, size_t n)
+{
+	return 0;
+}
 static ssize_t trace_enable_store(struct kobject *kobj,
 	struct kobj_attribute *attr,
 	const char *buf, size_t n)
@@ -1339,6 +1323,7 @@ define_store_state_func(ape)
 	trace_##c##_show, trace_##d##_store)
 static const struct kobj_attribute trace_attr[] = {
 	A(enable,		0644,	enable,		enable),
+	A(config,		0444,	config,		config),
 	A(userspace,		0644,	userspace,	userspace),
 	A(branch_broadcast,	0644,	branch_broadcast, branch_broadcast),
 	A(return_stack,		0644,	return_stack, return_stack),
