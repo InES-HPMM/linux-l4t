@@ -649,13 +649,13 @@ int nvadsp_os_load(void)
 	int ret = 0;
 	void *ptr;
 
-	mutex_lock(&priv.fw_load_lock);
 	if (!priv.pdev) {
 		pr_err("ADSP Driver is not initialized\n");
 		ret = -EINVAL;
 		goto end;
 	}
 
+	mutex_lock(&priv.fw_load_lock);
 	if (priv.adsp_os_fw_loaded)
 		goto end;
 
