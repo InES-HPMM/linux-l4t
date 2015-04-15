@@ -620,6 +620,7 @@ exit_out:
 /* Should be called after ADSP os is loaded */
 int adsp_dfs_core_init(struct platform_device *pdev)
 {
+	u32 efreq;
 	int ret = 0;
 	int size = sizeof(adsp_cpu_freq_table) / sizeof(adsp_cpu_freq_table[0]);
 	uint16_t mid = HOST_ADSP_DFS_MBOX_ID;
@@ -657,6 +658,13 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 	policy->min = policy->cpu_min =
 		(clk_round_rate(policy->adsp_clk, 0)) / 1000;
 	policy->cur = clk_get_rate(policy->adsp_clk) / 1000;
+
+	efreq = adsp_to_emc_freq(policy->cur);
+	ret = clk_set_rate(ape_emc_clk, efreq * 1000);
+	if (ret) {
+		dev_err(device, "failed to set ape.emc clk:%d\n", ret);
+		goto end;
+	}
 
 	adsp_get_target_freq(policy->cur * 1000, &freq_stats.last_index);
 	freq_stats.last_time = get_jiffies_64();
