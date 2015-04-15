@@ -28,7 +28,7 @@ Required properties:
 	- CPU Priority GPU Supplemental Frequency (kHz) (Optional): Maximum GPU
 	  frequency allowed when the CPU has the priority. (See
 	  nvidia,gpu_supp_freq).
-	- CPU Priority GPU Supplemental Frequency (kHz) (Optional): Maximum GPU
+	- GPU Priority GPU Supplemental Frequency (kHz) (Optional): Maximum GPU
 	  frequency allowed when the GPU has the priority. (See
 	  nvidia,gpu_supp_freq).
   Note that the order of AP Power must start with the smallest power and
