@@ -639,6 +639,11 @@ struct tegra_vrr {
 	s32	fluct_avg_pct;
 
 	s32	fe_intr_req;
+	s32	db_tolerance;
+	s32	frame2flip_us;
+	s32	adjust_vfp;
+	s32     adjust_db;
+	s32     vfp;
 };
 
 struct tegra_dc_out {
