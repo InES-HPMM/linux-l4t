@@ -4957,16 +4957,6 @@ static struct clk_ops tegra_dtv_clk_ops = {
 	.reset			= &tegra21_periph_clk_reset,
 };
 
-/* FIXME: this now just periph ops, can be removed */
-static struct clk_ops tegra_dsi_clk_ops = {
-	.init			= &tegra21_periph_clk_init,
-	.enable			= &tegra21_periph_clk_enable,
-	.disable		= &tegra21_periph_clk_disable,
-	.set_rate		= &tegra21_periph_clk_set_rate,
-	.round_rate		= &tegra21_periph_clk_round_rate,
-	.reset			= &tegra21_periph_clk_reset,
-};
-
 static void tegra21_dpaux_clk_init(struct clk *c)
 {
 	c->mul = 1;
@@ -9409,8 +9399,8 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("hsic_trk",	NULL,		  "hsic_trk",	209,	0,	38400000, mux_clk_usb2_hsic_trk,	PERIPH_NO_RESET, TEGRA210_CLK_ID_HSIC_TRK),
 	PERIPH_CLK("usb2_trk",	NULL,		  "usb2_trk",	210,	0,	38400000, mux_clk_usb2_hsic_trk,	PERIPH_NO_RESET, TEGRA210_CLK_ID_USB2_TRK),
 
-	PERIPH_CLK_EX("dsia",	"tegradc.0",	      "dsia",	48,	0xd0,   750000000, mux_plld_out0,		PLLD,	TEGRA210_CLK_ID_DSIA, &tegra_dsi_clk_ops),
-	PERIPH_CLK_EX("dsib",	"tegradc.1",	      "dsib",	82,	0x4b8,  750000000, mux_plld_out0,		PLLD,	TEGRA210_CLK_ID_DSIB, &tegra_dsi_clk_ops),
+	PERIPH_CLK("dsia",	"tegradc.0",	      "dsia",	48,	0xd0,   750000000, mux_plld_out0,		PLLD,	TEGRA210_CLK_ID_DSIA),
+	PERIPH_CLK("dsib",	"tegradc.1",	      "dsib",	82,	0x4b8,  750000000, mux_plld_out0,		PLLD,	TEGRA210_CLK_ID_DSIB),
 	PERIPH_CLK("dsi1-fixed", "tegradc.0",    "dsi-fixed",	0,	0,	108000000, mux_pllp_out3,		PERIPH_NO_ENB | PERIPH_NO_RESET, 0),
 	PERIPH_CLK("dsi2-fixed", "tegradc.1",    "dsi-fixed",	0,	0,	108000000, mux_pllp_out3,		PERIPH_NO_ENB | PERIPH_NO_RESET, 0),
 	PERIPH_CLK("csi",	"vi",		       "csi",	52,	0,      750000000, mux_plld_out0,		PLLD, TEGRA210_CLK_ID_CSI),
