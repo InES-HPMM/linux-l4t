@@ -75,6 +75,14 @@ err:
 }
 static DEVICE_ATTR(temp, S_IWUSR, NULL, temp_store);
 
+static ssize_t sensors_active_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct modem_thermal_data *mtd = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%lu\n", mtd->sensors_active);
+}
+
 static ssize_t sensors_active_store(struct device *dev,
 			struct device_attribute *attr, const char *buf,
 			size_t count)
@@ -89,7 +97,8 @@ static ssize_t sensors_active_store(struct device *dev,
 
 	return count;
 }
-static DEVICE_ATTR(sensors_active, S_IWUSR, NULL, sensors_active_store);
+static DEVICE_ATTR(sensors_active, S_IRUGO | S_IWUSR, sensors_active_show,
+		sensors_active_store);
 
 static int modem_thermal_get_temp(struct thermal_zone_device *tzd, long *t)
 {
