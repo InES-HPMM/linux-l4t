@@ -2167,6 +2167,9 @@ dhd_sendpkt(dhd_pub_t *dhdp, int ifidx, void *pktbuf)
 	int ret = BCME_OK;
 	dhd_info_t *dhd = (dhd_info_t *)(dhdp->info);
 	struct ether_header *eh = NULL;
+	int temp_prio;
+
+	DHD_INFO(("skb->prio = %d\n", PKTPRIO(pktbuf)));
 
 	/* Reject if down */
 	if (!dhdp->up || (dhdp->busstate == DHD_BUS_DOWN)) {
@@ -2211,6 +2214,9 @@ dhd_sendpkt(dhd_pub_t *dhdp, int ifidx, void *pktbuf)
 #endif /* DHDTCPACK_SUPPRESS */
 
 	/* Look into the packet and update the packet priority */
+	temp_prio = PKTPRIO(pktbuf);
+	if (temp_prio & 0x100)
+		PKTSETPRIO(pktbuf, temp_prio & 0xFF);
 #ifndef PKTPRIO_OVERRIDE
 	if (PKTPRIO(pktbuf) == 0)
 #endif 
