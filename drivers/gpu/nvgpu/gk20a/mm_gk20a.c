@@ -1921,8 +1921,8 @@ static int update_gmmu_level_locked(struct vm_gk20a *vm,
 					 (l->hi_bit[pgsz_idx]
 					  - l->lo_bit[pgsz_idx]);
 				pte->entries =
-					kzalloc(sizeof(struct gk20a_mm_entry) *
-						num_entries, GFP_KERNEL);
+					vzalloc(sizeof(struct gk20a_mm_entry) *
+						num_entries);
 				pte->pgsz = pgsz_idx;
 				if (!pte->entries)
 					return -ENOMEM;
@@ -2128,7 +2128,7 @@ static void gk20a_vm_remove_support_nofree(struct vm_gk20a *vm)
 	unmap_gmmu_pages(&vm->pdb);
 	free_gmmu_pages(vm, &vm->pdb);
 
-	kfree(vm->pdb.entries);
+	vfree(vm->pdb.entries);
 	gk20a_allocator_destroy(&vm->vma[gmmu_page_size_small]);
 	if (vm->big_pages)
 		gk20a_allocator_destroy(&vm->vma[gmmu_page_size_big]);
@@ -2224,8 +2224,8 @@ int gk20a_init_vm(struct mm_gk20a *mm,
 	pde_range_from_vaddr_range(vm,
 				   0, vm->va_limit-1,
 				   &pde_lo, &pde_hi);
-	vm->pdb.entries = kzalloc(sizeof(struct gk20a_mm_entry) *
-			(pde_hi + 1), GFP_KERNEL);
+	vm->pdb.entries = vzalloc(sizeof(struct gk20a_mm_entry) *
+			(pde_hi + 1));
 
 	if (!vm->pdb.entries) {
 		err = -ENOMEM;
@@ -2295,7 +2295,7 @@ clean_up_map_pde:
 clean_up_ptes:
 	free_gmmu_pages(vm, &vm->pdb);
 clean_up_pdes:
-	kfree(vm->pdb.entries);
+	vfree(vm->pdb.entries);
 	return err;
 }
 
@@ -2682,7 +2682,7 @@ void gk20a_deinit_vm(struct vm_gk20a *vm)
 
 	unmap_gmmu_pages(&vm->pdb);
 	free_gmmu_pages(vm, &vm->pdb);
-	kfree(vm->pdb.entries);
+	vfree(vm->pdb.entries);
 }
 
 int gk20a_alloc_inst_block(struct gk20a *g, struct mem_desc *inst_block)
