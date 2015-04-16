@@ -81,6 +81,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
 	.max_millivolts = 1300,
 	.step = VDD_SAFE_STEP,
+	.step_up = 1300,
 	.jmp_to_zero = true,
 	.vmin_cdev = &cpu_vmin_cdev,
 #ifndef CONFIG_TEGRA_CPU_VOLT_CAP
