@@ -1,7 +1,7 @@
 /*
  * arch/arm/boot/dts/tegra124-p1859.dts
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,11 +21,52 @@
  /dts-v1/;
 
 #include "tegra124-p1859.dtsi"
+#include "panel-grayson-dsi-rx.dtsi"
 
+/*
+ * E1860 Jetson Pro Base Board
+ * - has a VCM2.0 socket for P1859 with VCM3.0-T124 MCM
+ * - has a breakout board socket that P1892 with Grayson can seat.
+ * - use "nvidia,p1859" for comaptibility with GVS tests
+ */
 / {
-	model = "NVIDIA Tegra124 p1859";
+	model = "NVIDIA Tegra124 P1859";
 	compatible = "nvidia,p1859", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
+	#address-cells = <2>;
+	#size-cells = <2>;
 
-	/* Nothing else to be added. p1859.dtsi is complete */
+	host1x {
+		/* DC0->DP & DC1->HDMI
+		   or DC0->HDMI & DC1->DSI->Grayson */
+		dsi {
+			status = "okay";
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			panel-grayson-dsi-rx {
+				status = "okay";
+			};
+		};
+	};
+
+	/*
+	 * P1892 EBB breakout board
+	 */
+	bd-p1892 {
+		compatible = "nvidia,p1892";
+		status = "okay";
+
+		i2cA: i2c@7000c000 {
+			grayson@68 {
+				compatible = "toshiba,brickyard", "nvidia,grayson";
+			};
+		};
+		i2cB: i2c@7000c400 {
+			max9281@22 {
+				compatible = "maxim,max9281";
+			};
+			max9281@24 {
+				compatible = "maxim,max9281";
+			};
+		};
+	};
 };

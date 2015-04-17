@@ -1,0 +1,172 @@
+/*
+ * arch/arm/boot/dts/panel-grayson-dsi-rx.dtsi
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+#include <dt-bindings/display/tegra-dc.h>
+#include <dt-bindings/display/tegra-panel.h>
+
+/ {
+	host1x {
+		dsi {
+			panel-grayson-dsi-rx {
+				status = "disable";
+				compatible = "nvidia,grayson-dsi-rx";
+
+				nvidia,dsi-instance = <DSI_INSTANCE_0>;
+				nvidia,dsi-n-data-lanes = <4>;
+				nvidia,dsi-pixel-format = <TEGRA_DSI_PIXEL_FORMAT_24BIT_P>;
+				nvidia,dsi-refresh-rate = <60>;
+				nvidia,dsi-video-data-type = <TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE>;
+				nvidia,dsi-video-clock-mode = <TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS>;
+				nvidia,dsi-video-burst-mode = <TEGRA_DSI_VIDEO_NONE_BURST_MODE_WITH_SYNC_END>;
+				nvidia,dsi-virtual-channel = <TEGRA_DSI_VIRTUAL_CHANNEL_0>;
+				nvidia,dsi-power-saving-suspend = <1>;
+				nvidia,dsi-init-cmd = <0x0 0x15 0x01 0x0 0x0>,
+						      <1 20>,
+						      <0x0 0x15 0xae 0x0b 0x0>,
+						      <0x0 0x15 0xee 0xea 0x0>,
+						      <0x0 0x15 0xef 0x5f 0x0>,
+						      <0x0 0x15 0xf2 0x68 0x0>,
+						      <0x0 0x15 0xee 0x0 0x0>,
+						      <0x0 0x15 0xef 0x0 0x0>;
+				nvidia,dsi-n-init-cmd = <8>;
+				nvidia,dsi-suspend-cmd = <0x0 0x15 0x11 0x0 0x0>,
+							 <1 160>;
+				nvidia,dsi-n-suspend-cmd = <2>;
+				nvidia,dsi-late-resume-cmd = <0x0 0x15 0x10 0x0 0x0>,
+							     <1 120>;
+				nvidia,dsi-n-late-resume-cmd = <2>;
+				nvidia,dsi-early-suspend-cmd = <0x0 0x15 0x11 0x0 0x0>,
+							       <1 160>;
+				nvidia,dsi-n-early-suspend-cmd = <2>;
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_DSI>;
+					nvidia,out-width = <150>;
+					nvidia,out-height = <94>;
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
+					nvidia,out-parent-clk = "pll_d_out0";
+					nvidia,out-xres = <1280>;
+					nvidia,out-yres = <800>;
+					nvidia,out-depth = <24>;  //@@
+				};
+				display-timings {
+					2560x800-32 {  //2 times of Maxim GMSL 1280x800 panel
+						clock-frequency = <134313600>;
+						hactive = <2560>;
+						vactive = <800>;
+						hfront-porch = <100>;
+						hsync-len = <22>;
+						hback-porch = <38>;
+						vfront-porch = <14>;
+						vsync-len = <4>;
+						vback-porch = <5>;
+						nvidia,h-ref-to-sync = <10>;
+						nvidia,v-ref-to-sync = <1>;
+					};
+					1280x800-32 {  //Maxim GMSL 1280x800 panel
+						clock-frequency = <71107200>;
+						hactive = <1280>;
+						vactive = <800>;
+						hfront-porch = <100>;
+						hsync-len = <22>;
+						hback-porch = <38>;
+						vfront-porch = <14>;
+						vsync-len = <4>;
+						vback-porch = <5>;
+						nvidia,h-ref-to-sync = <10>;
+						nvidia,v-ref-to-sync = <1>;
+					};
+					1920x720-32 {  //Daimler GMSL 1920x720 panel
+						clock-frequency = <89579520>;
+						hactive = <1920>;
+						vactive = <720>;
+						hfront-porch = <38>;
+						hsync-len = <40>;
+						hback-porch = <50>;
+						vfront-porch = <5>;
+						vsync-len = <2>;
+						vback-porch = <2>;
+						nvidia,h-ref-to-sync = <10>;
+						nvidia,v-ref-to-sync = <1>;
+					};
+					3840x720-32 {  //2 times of Daimler GMSL 1920x720 panel - needs dual link
+						clock-frequency = <173560320>;
+						hactive = <3840>;
+						vactive = <720>;
+						hfront-porch = <38>;
+						hsync-len = <40>;
+						hback-porch = <50>;
+						vfront-porch = <5>;
+						vsync-len = <2>;
+						vback-porch = <2>;
+						nvidia,h-ref-to-sync = <10>;
+						nvidia,v-ref-to-sync = <1>;
+					};
+				};
+				smartdimmer {
+					status = "disable";
+/*
+					nvidia,use-auto-pwm = <0>;
+					nvidia,hw-update-delay = <0>;
+					nvidia,bin-width = <0xffffffff>;
+					nvidia,aggressiveness = <5>;
+					nvidia,use-vid-luma = <0>;
+					nvidia,phase-in-settings = <0>;
+					nvidia,phase-in-adjustments = <0>;
+					nvidia,k-limit-enable = <1>;
+					nvidia,k-limit = <200>;
+					nvidia,sd-window-enable = <0>;
+					nvidia,soft-clipping-enable= <1>;
+					nvidia,soft-clipping-threshold = <128>;
+					nvidia,smooth-k-enable = <0>;
+					nvidia,smooth-k-incr = <64>;
+					nvidia,coeff = <5 9 2>;
+					nvidia,fc = <0 0>;
+					nvidia,blp = <1024 255>;
+					nvidia,bltf = <57 65 73 82
+						       92 103 114 125
+						       138 150 164 178
+						       193 208 224 241>;
+					nvidia,lut = <255 255 255
+						      199 199 199
+						      153 153 153
+						      116 116 116
+						      85 85 85
+						      59 59 59
+						      36 36 36
+						      17 17 17
+						      0 0 0>;
+					nvidia,use-vpulse2 = <1>;
+					nvidia,bl-device-name = "pwm-backlight";
+*/
+				};
+			};
+		};
+	};
+/*
+	backlight {
+		pwms = <&tegra_pwm 1 1000000>;
+		panel-dsi-grayson {
+			status = "disable";
+			compatible = "nvidia,dsi-grayson-bl";
+			max-brightness = <255>;
+			default-brightness = <224>;
+		};
+	};
+*/
+};
