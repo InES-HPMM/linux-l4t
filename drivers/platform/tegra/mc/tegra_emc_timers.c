@@ -50,7 +50,7 @@ static void emc_train(unsigned long nothing);
 static struct timer_list emc_timer_mr4 =
 	TIMER_DEFERRED_INITIALIZER(emc_mr4_poll, 0, 0);
 static struct timer_list emc_timer_training =
-	TIMER_DEFERRED_INITIALIZER(emc_train, 0, 0);
+	TIMER_INITIALIZER(emc_train, 0, 0);
 
 static void emc_mr4_poll(unsigned long nothing)
 {
