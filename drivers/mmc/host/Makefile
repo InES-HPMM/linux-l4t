@@ -3,6 +3,7 @@
 #
 GCOV_PROFILE_sdhci-tegra.o := y
 
+subdir-ccflags-y		+=-Werror
 obj-$(CONFIG_MMC_ARMMMCI)	+= mmci.o
 obj-$(CONFIG_MMC_PXA)		+= pxamci.o
 obj-$(CONFIG_MMC_MXC)		+= mxcmmc.o
