@@ -137,11 +137,6 @@ static struct dvfs_rail *tegra21_dvfs_rails[] = {
 #define BRINGUP_CVB_V_MARGIN_EX	5
 
 /* CPU DVFS tables */
-static unsigned long cpu_max_freq[] = {
-/* speedo_id	0	 1        2        3 */
-		1912500, 1912500, 2218500, 2218500,
-};
-
 #define CPU_CVB_TABLE		\
 	.freqs_mult = KHZ,	\
 	.speedo_scale = 100,	\
@@ -185,6 +180,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.min_millivolts = 950,
 		},
 		.max_mv = 1227,
+		.max_freq = 2218500,
 		CPU_CVB_TABLE,
 	},
 	{
@@ -200,6 +196,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.min_millivolts = 950,
 		},
 		.max_mv = 1227,
+		.max_freq = 2218500,
 		CPU_CVB_TABLE,
 	},
 
@@ -216,6 +213,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.min_millivolts = 950,
 		},
 		.max_mv = 1227,
+		.max_freq = 2218500,
 		CPU_CVB_TABLE,
 	},
 	{
@@ -231,6 +229,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.min_millivolts = 950,
 		},
 		.max_mv = 1227,
+		.max_freq = 2218500,
 		CPU_CVB_TABLE,
 	},
 
@@ -247,6 +246,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.min_millivolts = 950,
 		},
 		.max_mv = 1170,
+		.max_freq = 1912500,
 		CPU_CVB_TABLE,
 	},
 	{
@@ -262,6 +262,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.min_millivolts = 950,
 		},
 		.max_mv = 1170,
+		.max_freq = 1912500,
 		CPU_CVB_TABLE,
 	},
 
@@ -278,6 +279,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.min_millivolts = 950,
 		},
 		.max_mv = 1170,
+		.max_freq = 1912500,
 		CPU_CVB_TABLE,
 	},
 	{
@@ -293,6 +295,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.min_millivolts = 950,
 		},
 		.max_mv = 1170,
+		.max_freq = 1912500,
 		CPU_CVB_TABLE,
 	},
 };
@@ -309,11 +312,6 @@ static struct dvfs cpu_dvfs = {
 };
 
 /* CPU LP DVFS tables */
-static unsigned long cpu_lp_max_freq[] = {
-/* speedo_id	0	 1        2        3 */
-		1132800, 1132800, 1132800, 1132800,
-};
-
 #define CPU_LP_CVB_TABLE	\
 	.freqs_mult = KHZ,	\
 	.speedo_scale = 100,	\
@@ -342,6 +340,7 @@ static struct cpu_cvb_dvfs cpu_lp_cvb_dvfs_table[] = {
 			.min_millivolts = 800,
 		},
 		.max_mv = 1170,
+		.max_freq = 1132800,
 		CPU_LP_CVB_TABLE,
 	},
 	{
@@ -351,6 +350,7 @@ static struct cpu_cvb_dvfs cpu_lp_cvb_dvfs_table[] = {
 			.min_millivolts = 850,
 		},
 		.max_mv = 1170,
+		.max_freq = 1132800,
 		CPU_LP_CVB_TABLE,
 	},
 };
@@ -365,11 +365,6 @@ static struct dvfs cpu_lp_dvfs = {
 };
 
 /* GPU DVFS tables */
-static unsigned long gpu_max_freq[] = {
-/* speedo_id	0	 1       2       3       4     */
-		921600,  998400, 998400, 921600, 921600,
-};
-
 #define NA_FREQ_CVB_TABLE	\
 	.freqs_mult = KHZ,	\
 	.speedo_scale = 100,	\
@@ -423,6 +418,7 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 			.min_millivolts = 800,
 		},
 		.max_mv = 1150,
+		.max_freq = 921600,
 #ifdef CONFIG_TEGRA_USE_NA_GPCPLL
 		NA_FREQ_CVB_TABLE,
 #else
@@ -436,6 +432,7 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 			.min_millivolts = 840,
 		},
 		.max_mv = 1150,
+		.max_freq = 921600,
 #ifdef CONFIG_TEGRA_USE_NA_GPCPLL
 		NA_FREQ_CVB_TABLE,
 #else
@@ -449,6 +446,7 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 			.min_millivolts = 800,
 		},
 		.max_mv = 1150,
+		.max_freq = 998400,
 #ifdef CONFIG_TEGRA_USE_NA_GPCPLL
 		NA_FREQ_CVB_TABLE,
 #else
@@ -462,6 +460,7 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 			.min_millivolts = 840,
 		},
 		.max_mv = 1150,
+		.max_freq = 998400,
 #ifdef CONFIG_TEGRA_USE_NA_GPCPLL
 		NA_FREQ_CVB_TABLE,
 #else
@@ -479,6 +478,7 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 #else
 		.max_mv = 1000,
 #endif
+		.max_freq = 921600,
 		FIXED_FREQ_CVB_TABLE,
 	},
 };
@@ -1019,10 +1019,9 @@ static void __init init_cpu_dvfs_table(int *cpu_max_freq_index)
 	int cpu_speedo_id = tegra_cpu_speedo_id();
 	int cpu_process_id = tegra_cpu_process_id();
 
-	BUG_ON(cpu_speedo_id >= ARRAY_SIZE(cpu_max_freq));
 	for (ret = 0, i = 0; i <  ARRAY_SIZE(cpu_cvb_dvfs_table); i++) {
 		struct cpu_cvb_dvfs *d = &cpu_cvb_dvfs_table[i];
-		unsigned long max_freq = cpu_max_freq[cpu_speedo_id];
+		unsigned long max_freq = d->max_freq;
 		if (match_dvfs_one("cpu cvb", d->speedo_id, d->process_id,
 				   cpu_speedo_id, cpu_process_id)) {
 			ret = set_cpu_dvfs_data(max_freq,
@@ -1114,10 +1113,9 @@ static void __init init_cpu_lp_dvfs_table(int *cpu_lp_max_freq_index)
 	int cpu_lp_speedo_id = tegra_cpu_speedo_id(); /* FIXME cpu_lp_ */
 	int cpu_lp_process_id = tegra_cpu_process_id(); /* FIXME cpu_lp_ */
 
-	BUG_ON(cpu_lp_speedo_id >= ARRAY_SIZE(cpu_lp_max_freq));
 	for (ret = 0, i = 0; i <  ARRAY_SIZE(cpu_lp_cvb_dvfs_table); i++) {
 		struct cpu_cvb_dvfs *d = &cpu_lp_cvb_dvfs_table[i];
-		unsigned long max_freq = cpu_lp_max_freq[cpu_lp_speedo_id];
+		unsigned long max_freq = d->max_freq;
 		if (match_dvfs_one("cpu lp cvb", d->speedo_id, d->process_id,
 				   cpu_lp_speedo_id, cpu_lp_process_id)) {
 			ret = set_cpu_lp_dvfs_data(max_freq,
@@ -1470,10 +1468,9 @@ static void __init init_gpu_dvfs_table(int *gpu_max_freq_index)
 	int gpu_speedo_id = tegra_gpu_speedo_id();
 	int gpu_process_id = tegra_gpu_process_id();
 
-	BUG_ON(gpu_speedo_id >= ARRAY_SIZE(gpu_max_freq));
 	for (ret = 0, i = 0; i < ARRAY_SIZE(gpu_cvb_dvfs_table); i++) {
 		struct gpu_cvb_dvfs *d = &gpu_cvb_dvfs_table[i];
-		unsigned long max_freq = gpu_max_freq[gpu_speedo_id];
+		unsigned long max_freq = d->max_freq;
 		if (match_dvfs_one("gpu cvb", d->speedo_id, d->process_id,
 				   gpu_speedo_id, gpu_process_id)) {
 			ret = set_gpu_dvfs_data(max_freq,

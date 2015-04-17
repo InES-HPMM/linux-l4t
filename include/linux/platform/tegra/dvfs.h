@@ -261,6 +261,9 @@ struct cvb_dvfs {
 
 	/* dvfs Max voltage */
 	int max_mv;
+
+	/* dvfs Max frequency */
+	unsigned long max_freq;
 	int freqs_mult;
 
 	/* scaling values for voltage calculation */
