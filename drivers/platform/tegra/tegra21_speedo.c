@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra21_speedo.c
  *
- * Copyright (C) 2013-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2015 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -97,7 +97,7 @@ static const u32 gpu_process_speedos[][GPU_PROCESS_CORNERS_NUM] = {
 static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
 /* proc_id  0,	   1,         2 */
 	{1950,  2100,  UINT_MAX}, /* [0]: threshold_index 0 */
-	{1950,  2100,  UINT_MAX}, /* [1]: threshold_index 1 */
+	{UINT_MAX,  UINT_MAX,  UINT_MAX}, /* [1]: threshold_index 1 */
 };
 
 static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
@@ -147,6 +147,13 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 		gpu_speedo_id = 3;
 		threshold_index = 0;
 		core_min_mv = 825;
+		break;
+	case 0x57:
+		cpu_speedo_id = 4;
+		soc_speedo_id = 1;
+		gpu_speedo_id = 5;
+		threshold_index = 1;
+		core_min_mv = 1100;
 		break;
 	default:
 		pr_warn("Tegra21: Unknown SKU %d\n", sku);
@@ -377,6 +384,8 @@ int tegra_core_speedo_mv(void)
 {
 	switch (core_process_id) {
 	case 0:
+		if (soc_speedo_id == 1)
+			return 1100;
 		if (speedo_rev <= 1)
 			return 1000;
 		return 1125;
