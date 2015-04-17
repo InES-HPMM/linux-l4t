@@ -1,5 +1,12 @@
 /*
- * tegra210-hawkeye-p2290-a01-00.dts: Hawkeye P2290-A01 wifi sku.
+ * Hawkeye P2290 A01 wifi+LTE FFD board.
+ *	NVPN: 699-82290-3306-001
+ *	variant: WWAN_3GB_F0_MP
+ *	SKU: 3306
+ *	assembly version: TM671D & Wi-Fi + LTE
+ *	LPDDR4 capacity: 3 GB
+ *	optional features: no NFC + no sensor hub + no barometer
+ *	manufacturing phase : MP
  *
  * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -13,17 +20,10 @@
  * more details.
  */
 
-#include "tegra210-hawkeye-p2290-2306-a01-00.dts"
+#include "tegra210-hawkeye-p2290-a00-00.dts"
 
 / {
 	nvidia,dtsfilename = __FILE__;
-
-	i2c@7000d000 {
-		max77620@3c {
-			regulators {
-				maxim,fps-source = <FPS_SRC_1>;
-				/delete-property/ maxim,shutdown-fps-source;
-			};
-		};
-	};
+	nvidia,boardids = "2290:2306:A01";
+	nvidia,proc-boardid = "2290:2306:A01";
 };
