@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2015 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -160,20 +160,13 @@ static void runnables_avg_sampler(unsigned long data)
 	}
 }
 
-static unsigned int get_lightest_loaded_cpu_n(void)
+static unsigned int get_last_online_cpu_n(void)
 {
-	unsigned long min_avg_runnables = ULONG_MAX;
 	unsigned int cpu = nr_cpu_ids;
 	int i;
 
-	for_each_online_cpu(i) {
-		struct runnables_avg_sample *s = &per_cpu(avg_nr_sample, i);
-		unsigned int nr_runnables = s->avg;
-		if (i > 0 && min_avg_runnables > nr_runnables) {
-			cpu = i;
-			min_avg_runnables = nr_runnables;
-		}
-	}
+	for_each_online_cpu(i)
+		cpu = i;
 
 	return cpu;
 }
@@ -192,7 +185,7 @@ static void runnables_work_func(struct work_struct *work)
 		if (cpu < nr_cpu_ids)
 			cpuquiet_wake_cpu(cpu, false);
 	} else if (action < 0) {
-		cpu = get_lightest_loaded_cpu_n();
+		cpu = get_last_online_cpu_n();
 		if (cpu < nr_cpu_ids)
 			cpuquiet_quiesence_cpu(cpu, false);
 	}
