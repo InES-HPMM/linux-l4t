@@ -48,7 +48,7 @@
 
 static struct la_client_info t21x_la_info_array[] = {
 	LA(0, 0, AFI_0,		23 : 16, AFIW,		false, 128, 800),
-	LA(0, 0, AFI_0,		7  : 0,  AFIR,		false, 59,  800),
+	LA(0, 0, AFI_0,		7  : 0,  AFIR,		false, 59,  400),
 	LA(0, 0, AVPC_0,	7  : 0,  AVPC_ARM7R,	false, 4,   0),
 	LA(0, 0, AVPC_0,	23 : 16, AVPC_ARM7W,	false, 128, 800),
 	LA(0, 0, DC_0,		7  : 0,  DISPLAY_0A,	true,  80,  0),
