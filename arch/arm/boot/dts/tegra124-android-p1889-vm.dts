@@ -51,6 +51,7 @@
 		compatible = "nvidia,tegra124-smmu-hv";
 		#asids = <120>;
 		ivc_queue = <&tegra_hv 8>;
+		mempool_id = <&tegra_hv 0>;
 		domains = <
 			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS)
 			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS1)
@@ -156,6 +157,10 @@
 		msenc {
 			compatible = "nvidia,tegra124-vhost-msenc";
 		};
+
+		nvavp {
+			status = "disabled";
+		};
 	};
 
 	gk20a {
@@ -170,5 +175,14 @@
 
 		ivc-queue3 = <&tegra_hv 6>;
 		ivc-queue4 = <&tegra_hv 7>;
+	};
+
+	avp-virt {
+		status = "okay";
+		compatible = "nvidia,tegra124-avp-virt";
+		iommus = <&smmu TEGRA_SWGROUP_AVPC>,
+			 <&smmu TEGRA_SWGROUP_A9AVP>,
+			 <&smmu TEGRA_SWGROUP_VDE>;
+		ivc_queue = <&tegra_hv 21>;
 	};
 };
