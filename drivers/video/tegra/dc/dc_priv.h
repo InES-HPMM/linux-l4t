@@ -43,7 +43,8 @@
 #endif
 
 #define tegra_dc_hotplug_supported(dc) (dc && dc->out ? \
-		(dc->out->hotplug_gpio >= 0) : 0)
+		(dc->out->hotplug_gpio >= 0 || \
+		dc->out->type == TEGRA_DC_OUT_DP) : 0)
 
 #define VRR_NATIVE_MODE_IDX 1
 
