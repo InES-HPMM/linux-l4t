@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/dpaux_regs.h
  *
- * Copyright (c) 2011-2014, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -25,6 +25,7 @@
 #define DPAUX_INTR_EN_AUX_TX_DONE		(0x1 << 3)
 #define DPAUX_INTR_AUX					(0x5)
 #define DPAUX_INTR_AUX_PLUG_EVENT_PENDING		(0x1 << 0)
+#define DPAUX_INTR_AUX_UNPLUG_EVENT_PENDING		(0x1 << 1)
 #define DPAUX_INTR_AUX_IRQ_EVENT_PENDING		(0x1 << 2)
 #define DPAUX_INTR_AUX_TX_DONE_PENDING		(0x1 << 3)
 #define DPAUX_DP_AUXDATA_WRITE_W(i)		     (0x9 + 4*(i))
