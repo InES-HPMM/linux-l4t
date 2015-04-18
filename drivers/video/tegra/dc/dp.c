@@ -43,7 +43,7 @@
 #include "fake_panel.h"
 #endif /*CONFIG_TEGRA_DC_FAKE_PANEL_SUPPORT*/
 
-static bool tegra_dp_debug;
+static bool tegra_dp_debug = true;
 module_param(tegra_dp_debug, bool, 0644);
 MODULE_PARM_DESC(tegra_dp_debug, "Enable to print all link configs");
 
@@ -63,7 +63,10 @@ static int tegra_dp_full_lt(struct tegra_dc_dp_data *dp);
 static bool tegra_dc_dp_calc_config(struct tegra_dc_dp_data *dp,
 	const struct tegra_dc_mode *mode,
 	struct tegra_dc_dp_link_config *cfg);
-
+static bool tegra_dc_dp_hpd(struct tegra_dc_dp_data *dp);
+static void tegra_dp_hpd_worker(struct work_struct *work);
+static void tegra_dp_hotplug_notify(struct tegra_dc_dp_data *dp,
+					bool is_asserted);
 
 static inline u32 tegra_dpaux_readl(struct tegra_dc_dp_data *dp, u32 reg)
 {
@@ -890,6 +893,80 @@ static const struct file_operations link_speed_fops = {
 	.release	= single_release,
 };
 
+/* show current hpd state */
+static int tegra_dp_hotplug_dbg_show(struct seq_file *m, void *unused)
+{
+	struct tegra_dc_dp_data *dp = m->private;
+	struct tegra_dc *dc = dp->dc;
+
+	if (WARN_ON(!dp || !dc || !dc->out))
+		return -EINVAL;
+
+	seq_printf(m, "dp hpd state: %d\n", dc->out->hotplug_state);
+
+	return 0;
+}
+
+/*
+ * sw control for hpd.
+ * 0 is normal state, hw drives hpd.
+ * -1 is force deassert, sw drives hpd.
+ * 1 is force assert, sw drives hpd.
+ * before releasing to hw, sw must ensure hpd state is normal, i.e. 0
+ */
+static ssize_t tegra_dp_hotplug_dbg_write(struct file *file,
+				const char __user *addr,
+				size_t len, loff_t *pos)
+{
+	struct seq_file *m = file->private_data;
+	struct tegra_dc_dp_data *dp = m->private;
+	struct tegra_dc *dc = dp->dc;
+	long new_hpd_state;
+	int ret;
+
+	if (WARN_ON(!dp || !dc || !dc->out))
+		return -EINVAL;
+
+	ret = kstrtol_from_user(addr, len, 10, &new_hpd_state);
+	if (ret < 0)
+		return ret;
+
+	if (dc->out->hotplug_state == TEGRA_HPD_STATE_FORCE_DEASSERT &&
+		new_hpd_state != TEGRA_HPD_STATE_FORCE_DEASSERT &&
+		tegra_dc_hotplug_supported(dc)) {
+		enable_irq(dp->irq);
+	} else if (dc->out->hotplug_state != TEGRA_HPD_STATE_FORCE_DEASSERT &&
+		new_hpd_state == TEGRA_HPD_STATE_FORCE_DEASSERT &&
+		tegra_dc_hotplug_supported(dc)) {
+		disable_irq(dp->irq);
+	}
+
+	dc->out->hotplug_state = new_hpd_state;
+
+	/*
+	 * sw controlled plug/unplug.
+	 * wait for any already executing hpd worker thread.
+	 * No debounce delay, schedule immediately
+	 */
+	cancel_work_sync(&dp->hpd_work);
+	schedule_work(&dp->hpd_work);
+
+	return len;
+}
+
+static int tegra_dp_hotplug_dbg_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, tegra_dp_hotplug_dbg_show, inode->i_private);
+}
+
+static const struct file_operations tegra_dp_hotplug_dbg_fops = {
+	.open = tegra_dp_hotplug_dbg_open,
+	.read = seq_read,
+	.write = tegra_dp_hotplug_dbg_write,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
 static struct dentry *dpdir;
 
 static void tegra_dc_dp_debug_create(struct tegra_dc_dp_data *dp)
@@ -910,6 +987,12 @@ static void tegra_dc_dp_debug_create(struct tegra_dc_dp_data *dp)
 		&link_speed_fops);
 	if (!retval)
 		goto free_out;
+	if (tegra_dc_is_ext_dp_panel(dp->dc)) {
+		retval = debugfs_create_file("hotplug", S_IRUGO, dpdir, dp,
+						&tegra_dp_hotplug_dbg_fops);
+		if (!retval)
+			goto free_out;
+	}
 
 	return;
 free_out:
@@ -1564,6 +1647,7 @@ static void tegra_dp_lt_worker(struct work_struct *work)
 		return;
 
 	tegra_dc_io_start(dp->dc);
+	mutex_lock(&dp->hpd_lock);
 	tegra_sor_clk_enable(dp->sor);
 	tegra_dpaux_clk_enable(dp);
 
@@ -1573,7 +1657,17 @@ static void tegra_dp_lt_worker(struct work_struct *work)
 
 	tegra_dpaux_clk_disable(dp);
 	tegra_sor_clk_disable(dp->sor);
+	mutex_unlock(&dp->hpd_lock);
 	tegra_dc_io_end(dp->dc);
+}
+
+static void tegra_dp_hpd_irq_handler(struct tegra_dc_dp_data *dp)
+{
+	trace_printk("dp: tegra_dp_hpd_irq_handler was called\n");
+	if (tegra_dc_is_ext_dp_panel(dp->dc))
+		schedule_work(&dp->hpd_work);
+	else
+		complete_all(&dp->hpd_plug);
 }
 
 static irqreturn_t tegra_dp_irq(int irq, void *ptr)
@@ -1591,16 +1685,17 @@ static irqreturn_t tegra_dp_irq(int irq, void *ptr)
 	status = tegra_dpaux_readl(dp, DPAUX_INTR_AUX);
 	tegra_dpaux_writel(dp, DPAUX_INTR_AUX, status);
 
-	if (status & DPAUX_INTR_AUX_PLUG_EVENT_PENDING)
-		complete_all(&dp->hpd_plug);
+	tegra_dc_io_end(dc);
+
+	if (status & (DPAUX_INTR_AUX_PLUG_EVENT_PENDING |
+			DPAUX_INTR_AUX_UNPLUG_EVENT_PENDING))
+		tegra_dp_hpd_irq_handler(dp);
+	else if (status & DPAUX_INTR_AUX_IRQ_EVENT_PENDING)
+		schedule_work(&dp->lt_work);
 
 	if (status & DPAUX_INTR_AUX_TX_DONE_PENDING)
 		complete_all(&dp->aux_tx);
 
-	if (status & DPAUX_INTR_AUX_IRQ_EVENT_PENDING)
-		schedule_work(&dp->lt_work);
-
-	tegra_dc_io_end(dc);
 	return IRQ_HANDLED;
 }
 
@@ -1753,11 +1848,13 @@ static int tegra_dc_dp_init(struct tegra_dc *dc)
 	}
 
 	INIT_WORK(&dp->lt_work, tegra_dp_lt_worker);
+	INIT_WORK(&dp->hpd_work, tegra_dp_hpd_worker);
 	init_completion(&dp->hpd_plug);
 	init_completion(&dp->aux_tx);
 
 	mutex_init(&dp->dpaux_lock);
 	mutex_init(&dp->lt_lock);
+	mutex_init(&dp->hpd_lock);
 
 	tegra_dc_set_outdata(dc, dp);
 	tegra_dc_dp_debug_create(dp);
@@ -1803,38 +1900,6 @@ static void tegra_dp_hpd_config(struct tegra_dc_dp_data *dp)
 #undef TEGRA_DP_HPD_IRQ_MIN_US
 #undef TEGRA_DP_HPD_PLUG_MIN_US
 #undef TEGRA_DP_HPD_UNPLUG_MIN_US
-}
-
-static int tegra_dp_hpd_plug(struct tegra_dc_dp_data *dp)
-{
-#define TEGRA_DP_HPD_PLUG_TIMEOUT_MS	500
-	int tmo_ms = dp->dc->out->hpd_wait_ms;
-	u32 val;
-	int err = 0;
-
-	tmo_ms = tmo_ms ?: TEGRA_DP_HPD_PLUG_TIMEOUT_MS; /*default time out */
-	might_sleep();
-
-	if (!tegra_platform_is_silicon()) {
-		msleep(tmo_ms);
-		return 0;
-	}
-
-	INIT_COMPLETION(dp->hpd_plug);
-	tegra_dp_int_en(dp, DPAUX_INTR_EN_AUX_PLUG_EVENT);
-
-	val = tegra_dpaux_readl(dp, DPAUX_DP_AUXSTAT);
-	if (likely(val & DPAUX_DP_AUXSTAT_HPD_STATUS_PLUGGED))
-		err = 0;
-	else if (!wait_for_completion_timeout(&dp->hpd_plug,
-		msecs_to_jiffies(tmo_ms)))
-		err = -ENODEV;
-
-	tegra_dp_int_dis(dp, DPAUX_INTR_EN_AUX_PLUG_EVENT);
-
-	return err;
-
-#undef TEGRA_DP_HPD_PLUG_TIMEOUT_MS
 }
 
 static void tegra_dp_set_tx_pu(struct tegra_dc_dp_data *dp, u32 pe[4],
@@ -2356,29 +2421,49 @@ static void tegra_dp_link_config(struct tegra_dc_dp_data *dp)
 
 static int tegra_dp_edid(struct tegra_dc_dp_data *dp)
 {
+#define MAX_RETRY 100
+#define MIN_RETRY_DELAY_US 200
+#define MAX_RETRY_DELAY_US (MIN_RETRY_DELAY_US + 200)
+
 	struct tegra_dc *dc = dp->dc;
-	struct fb_monspecs specs;
-	int err;
+	size_t attempt_cnt = 0;
+	int err = 0;
 
-	memset(&specs, 0 , sizeof(specs));
+	if (dp->dc->out->type == TEGRA_DC_OUT_FAKE_DP ||
+		tegra_platform_is_linsim())
+		return err;
 
-	err = tegra_edid_get_monspecs(dp->dp_edid, &specs, NULL);
+	if (IS_ERR_OR_NULL(dp->dp_edid)) {
+		dev_err(&dp->dc->ndev->dev, "dp: edid not initialized\n");
+		return PTR_ERR(dp->dp_edid);
+	}
+
+	memset(&dp->mon_spec, 0, sizeof(dp->mon_spec));
+
+	do {
+		err = tegra_edid_get_monspecs(dp->dp_edid,
+						&dp->mon_spec, NULL);
+		if (err < 0)
+			usleep_range(MIN_RETRY_DELAY_US, MAX_RETRY_DELAY_US);
+		else
+			break;
+	} while (++attempt_cnt < MAX_RETRY);
+
 	if (err < 0) {
-		dev_err(&dc->ndev->dev,
-			"dp: Failed to get EDID data\n");
-		goto fail;
+		dev_err(&dc->ndev->dev, "dp: Failed to get EDID data\n");
+		return err;
 	}
 
 	/* set bpp if EDID provides primary color depth */
 	dc->out->depth =
-		dc->out->depth ? : specs.bpc ? specs.bpc * 3 : 18;
+		dc->out->depth ? : dp->mon_spec.bpc ? dp->mon_spec.bpc * 3 : 18;
 	dev_info(&dc->ndev->dev,
 		"dp: EDID: %d bpc panel, set to %d bpp\n",
-		 specs.bpc, dc->out->depth);
+		 dp->mon_spec.bpc, dc->out->depth);
 
 	/* in mm */
-	dc->out->h_size = dc->out->h_size ? : specs.max_x * 10;
-	dc->out->v_size = dc->out->v_size ? : specs.max_y * 10;
+	dc->out->h_size = dc->out->h_size ? : dp->mon_spec.max_x * 10;
+	dc->out->v_size = dc->out->v_size ? : dp->mon_spec.max_y * 10;
 
 	/*
 	 * EDID specifies either the acutal screen sizes or
@@ -2389,14 +2474,18 @@ static int tegra_dp_edid(struct tegra_dc_dp_data *dp)
 	dc->out->width = dc->out->width ? : dc->out->h_size;
 	dc->out->height = dc->out->height ? : dc->out->v_size;
 
-	if (!dc->out->modes)
-		tegra_dc_set_fb_mode(dc, specs.modedb, false);
+	if (!tegra_dc_is_ext_dp_panel(dc)) {
+		if (!dc->out->modes)
+			tegra_dc_set_fb_mode(dc, dp->mon_spec.modedb, false);
+		tegra_dc_setup_clk(dc, dc->clk);
+		kfree(dp->mon_spec.modedb);
+	}
 
-	tegra_dc_setup_clk(dc, dc->clk);
-	kfree(specs.modedb);
 	return 0;
-fail:
-	return err;
+
+#undef MAX_RETRY_DELAY_US
+#undef MIN_RETRY_DELAY_US
+#undef MAX_RETRY
 }
 
 static inline void tegra_dp_reset(struct tegra_dc_dp_data *dp)
@@ -2416,7 +2505,10 @@ static inline void tegra_dp_default_int(struct tegra_dc_dp_data *dp,
 		return;
 
 	if (enable)
-		tegra_dp_int_en(dp, DPAUX_INTR_EN_AUX_IRQ_EVENT);
+		tegra_dp_int_en(dp, DPAUX_INTR_EN_AUX_IRQ_EVENT |
+		DPAUX_INTR_EN_AUX_PLUG_EVENT |
+		(!tegra_dc_is_ext_dp_panel(dp->dc) ? 0 :
+		DPAUX_INTR_EN_AUX_UNPLUG_EVENT));
 	else
 		tegra_dp_int_dis(dp, DPAUX_INTR_EN_AUX_IRQ_EVENT);
 }
@@ -2425,6 +2517,10 @@ static void tegra_dc_dp_enable(struct tegra_dc *dc)
 {
 	struct tegra_dc_dp_data *dp = tegra_dc_get_outdata(dc);
 	int ret;
+
+	trace_printk("dp: tegra_dc_dp_enable\n");
+	if (dp->enabled)
+		return;
 
 	tegra_dp_reset(dp);
 	if (dp->sor->safe_clk)
@@ -2435,17 +2531,25 @@ static void tegra_dc_dp_enable(struct tegra_dc *dc)
 	tegra_dpaux_enable(dp);
 
 	if (dp->dc->out->type != TEGRA_DC_OUT_FAKE_DP) {
-		tegra_dp_enable_irq(dp->irq);
 		tegra_dp_default_int(dp, true);
-
 		tegra_dp_hpd_config(dp);
-		if (tegra_dp_hpd_plug(dp) < 0) {
-			dev_info(&dc->ndev->dev,
-				"dp: no panel/monitor plugged\n");
-			dc->connected = false; /* unplugged during suspend */
-			goto error_enable;
+
+		if (!tegra_dc_is_ext_dp_panel(dc)) {
+			tegra_dp_enable_irq(dp->irq);
+			if (!tegra_dc_dp_hpd(dp))
+				goto error_enable;
 		}
 	}
+
+	/* DP panel was disconnected after disabling device. */
+	if (dc->connected && !tegra_dc_dp_hpd(dp) &&
+		tegra_dc_is_ext_dp_panel(dc)) {
+		schedule_work(&dp->hpd_work);
+		goto error_enable;
+	}
+
+	if (!dp->probed && tegra_dc_is_ext_dp_panel(dc))
+		goto error_enable;
 
 	ret = tegra_dp_panel_power_state(dp, NV_DPCD_SET_POWER_VAL_D0_NORMAL);
 	if (ret < 0) {
@@ -2454,11 +2558,8 @@ static void tegra_dc_dp_enable(struct tegra_dc *dc)
 		goto error_enable;
 	}
 
-	if (dp->dp_edid && !dp->dp_edid->data &&
-		(dp->dc->out->type != TEGRA_DC_OUT_FAKE_DP) &&
-		!tegra_platform_is_linsim())
+	if (!tegra_dc_is_ext_dp_panel(dc))
 		tegra_dp_edid(dp);
-
 	tegra_dp_dpcd_init(dp);
 
 	tegra_dc_sor_enable_dp(dp->sor);
@@ -2468,9 +2569,11 @@ static void tegra_dc_dp_enable(struct tegra_dc *dc)
 	tegra_dp_lt(dp);
 
 	tegra_dc_sor_attach(dp->sor);
-	dp->enabled = true;
-	tegra_dp_default_int(dp, false);
+	tegra_dc_setup_clk(dc, dc->clk);
+	if (!tegra_dc_is_ext_dp_panel(dc))
+		tegra_dp_default_int(dp, false);
 	tegra_dc_io_end(dc);
+	dp->enabled = true;
 	return;
 
 error_enable:
@@ -2478,9 +2581,8 @@ error_enable:
 	tegra_dpaux_pad_power(dp->dc,
 		dp->dc->ndev->id == 0 ? TEGRA_DPAUX_INSTANCE_0
 		: TEGRA_DPAUX_INSTANCE_1, false);
-
-	tegra_dpaux_clk_disable(dp);
 	tegra_dc_io_end(dc);
+	dc->connected = false;
 	return;
 }
 
@@ -2519,12 +2621,14 @@ static void tegra_dc_dp_disable(struct tegra_dc *dc)
 {
 	struct tegra_dc_dp_data *dp = tegra_dc_get_outdata(dc);
 
+	trace_printk("dp: tegra_dc_dp_disable\n");
 	tegra_dc_io_start(dc);
 
 	tegra_dp_default_int(dp, false);
 	cancel_work_sync(&dp->lt_work);
 
-	if (dp->dc->out->type != TEGRA_DC_OUT_FAKE_DP)
+	if (dp->dc->out->type != TEGRA_DC_OUT_FAKE_DP &&
+		!tegra_dc_is_ext_dp_panel(dc))
 		tegra_dp_disable_irq(dp->irq);
 
 	if (!dp->enabled) {
@@ -2538,13 +2642,6 @@ static void tegra_dc_dp_disable(struct tegra_dc *dc)
 	/* Power down SOR */
 	tegra_dc_sor_detach(dp->sor);
 	tegra_dc_sor_disable(dp->sor, false);
-
-	if (!tegra_platform_is_linsim()) {
-		tegra_dpaux_clk_disable(dp);
-		tegra_dp_clk_disable(dp);
-		if (dp->sor->safe_clk)
-			clk_disable_unprepare(dp->sor->safe_clk);
-	}
 	tegra_dc_io_end(dc);
 	dp->enabled = false;
 }
@@ -2584,27 +2681,77 @@ static long tegra_dc_dp_setup_clk(struct tegra_dc *dc, struct clk *clk)
 	return tegra_dc_pclk_round_rate(dc, dc->mode.pclk);
 }
 
-/* used by tegra_dc_probe() to detect connection(HPD) status at boot */
-static bool tegra_dc_dp_detect(struct tegra_dc *dc)
+static bool tegra_dc_dp_hpd(struct tegra_dc_dp_data *dp)
 {
-	struct tegra_dc_dp_data *dp = tegra_dc_get_outdata(dc);
+#define TEGRA_DP_HPD_PLUG_TIMEOUT_MS	500
+	struct tegra_dc *dc = dp->dc;
+	int tmo_ms = dp->dc->out->hpd_wait_ms;
+	bool hpd_status_plugged = false;
 	u32 rd;
 
-	if (dp->dc->out->type == TEGRA_DC_OUT_FAKE_DP ||
+	if (WARN_ON(!dc || !dc->out))
+		return false;
+
+	if (dc->out->hotplug_state != TEGRA_HPD_STATE_NORMAL) {
+		if (dc->out->hotplug_state == TEGRA_HPD_STATE_FORCE_ASSERT)
+			return true;
+		if (dc->out->hotplug_state == TEGRA_HPD_STATE_FORCE_DEASSERT)
+			return false;
+	}
+
+	if (!tegra_dc_hotplug_supported(dc))
+		return true;
+
+	if (dc->out->type == TEGRA_DC_OUT_FAKE_DP ||
 		tegra_platform_is_linsim())
-		return  true;
+		return true;
+
+	tmo_ms = tmo_ms ?: TEGRA_DP_HPD_PLUG_TIMEOUT_MS; /*default time out */
+	might_sleep();
+
+	if (!tegra_platform_is_silicon()) {
+		msleep(tmo_ms);
+		return 0;
+	}
 
 	tegra_dc_io_start(dc);
 	tegra_dpaux_clk_enable(dp);
 	rd = tegra_dpaux_readl(dp, DPAUX_DP_AUXSTAT);
-	tegra_dpaux_clk_disable(dp);
-	tegra_dc_io_end(dc);
+
+	hpd_status_plugged = rd & DPAUX_DP_AUXSTAT_HPD_STATUS_PLUGGED;
+	if (unlikely(!hpd_status_plugged && !tegra_dc_is_ext_dp_panel(dc)))
+		if (wait_for_completion_timeout(&dp->hpd_plug,
+			msecs_to_jiffies(tmo_ms))) {
+			hpd_status_plugged = true;
+			rd = tegra_dpaux_readl(dp, DPAUX_DP_AUXSTAT);
+		}
+
 	dev_info(&dc->ndev->dev,
 		"dp: DPAUX_DP_AUXSTAT:0x%08x HPD:%splugged\n",
-		rd, (DPAUX_DP_AUXSTAT_HPD_STATUS_PLUGGED & rd) ? "" : "un");
-	return (DPAUX_DP_AUXSTAT_HPD_STATUS_PLUGGED & rd) ? true : false;
+		rd, hpd_status_plugged ? "" : "un");
+
+	if (dc->out->hotplug_report && tegra_dc_is_ext_dp_panel(dc))
+		dc->out->hotplug_report(hpd_status_plugged);
+	tegra_dc_io_end(dc);
+
+	return hpd_status_plugged;
 }
 
+/* used by tegra_dc_probe() to detect connection(HPD) status at boot */
+static bool tegra_dc_dp_detect(struct tegra_dc *dc)
+{
+	struct tegra_dc_dp_data *dp = tegra_dc_get_outdata(dc);
+	bool hpd_detected = tegra_dc_dp_hpd(dp);
+
+	dp->probed = true;
+	if (hpd_detected && tegra_dc_is_ext_dp_panel(dc))
+		schedule_work(&dp->hpd_work);
+
+	if (tegra_dc_is_ext_dp_panel(dc))
+		tegra_dp_enable_irq(dp->irq);
+
+	return hpd_detected;
+}
 
 static void tegra_dc_dp_modeset_notifier(struct tegra_dc *dc)
 {
@@ -2622,6 +2769,89 @@ static void tegra_dc_dp_modeset_notifier(struct tegra_dc *dc)
 
 	tegra_dpaux_clk_disable(dp);
 	tegra_dc_io_end(dc);
+}
+
+static bool tegra_dp_check_dc_constraint(const struct fb_videomode *mode)
+{
+	return (mode->hsync_len >= 1) && (mode->vsync_len >= 1) &&
+		(mode->lower_margin + mode->vsync_len +
+		mode->upper_margin > 1) &&
+		(mode->xres >= 16) && (mode->yres >= 16);
+}
+
+static bool tegra_dp_fb_mode_filter(const struct tegra_dc *dc,
+				struct fb_videomode *mode)
+{
+	if (!mode->pixclock)
+		return false;
+
+	if (mode->xres > 4096)
+		return false;
+
+	if (mode->pixclock && tegra_dc_get_out_max_pixclock(dc) &&
+		mode->pixclock > tegra_dc_get_out_max_pixclock(dc))
+		return false;
+
+	/*
+	 * Work around for modes that fail the constraint:
+	 * V_FRONT_PORCH >= V_REF_TO_SYNC + 1
+	 */
+	if (mode->lower_margin == 1) {
+		mode->lower_margin++;
+		mode->upper_margin--;
+	}
+
+	if (!tegra_dp_check_dc_constraint(mode))
+		return false;
+
+	return true;
+}
+
+static void tegra_dp_hotplug_notify(struct tegra_dc_dp_data *dp,
+				bool is_asserted)
+{
+	struct tegra_dc *dc = dp->dc;
+	struct fb_monspecs *mon_spec;
+
+	if (is_asserted)
+		mon_spec = &dp->mon_spec;
+	else
+		mon_spec = NULL;
+
+	if (dc->fb) {
+		tegra_fb_update_monspecs(dp->dc->fb, mon_spec,
+					tegra_dp_fb_mode_filter);
+		tegra_fb_update_fix(dp->dc->fb, mon_spec);
+	}
+
+	dc->connected = is_asserted;
+	tegra_dc_ext_process_hotplug(dc->ndev->id);
+}
+
+static void tegra_dp_hpd_worker(struct work_struct *work)
+{
+	struct tegra_dc_dp_data *dp = container_of(work,
+				struct tegra_dc_dp_data, hpd_work);
+	struct tegra_dc *dc = dp->dc;
+
+	mutex_lock(&dp->hpd_lock);
+	if (tegra_dc_dp_hpd(dp)) {
+		trace_printk("tegra_dp_hpd_worker: hpd plugged\n");
+		tegra_dc_unpowergate_locked(dc);
+
+		tegra_dpaux_pad_power(dc,
+			dc->ndev->id == 0 ? TEGRA_DPAUX_INSTANCE_0
+			: TEGRA_DPAUX_INSTANCE_1, true);
+		tegra_dp_edid(dp);
+
+		tegra_dc_powergate_locked(dc);
+		tegra_dp_hotplug_notify(dp, true);
+	} else {
+		trace_printk("tegra_dp_hpd_worker: hpd unplugged\n");
+		tegra_dc_disable(dc);
+		tegra_dp_hotplug_notify(dp, false);
+	}
+	mutex_unlock(&dp->hpd_lock);
 }
 
 struct tegra_dc_out_ops tegra_dc_dp_ops = {
