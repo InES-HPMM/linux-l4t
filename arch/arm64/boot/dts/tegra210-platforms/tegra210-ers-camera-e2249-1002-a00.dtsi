@@ -21,8 +21,348 @@
 #define VI_I2C_BUS	6
 
 / {
+	imx214@1a {
+		compatible = "nvidia,imx214";
+
+		/* Physical dimensions of sensor */
+		physical_w = "4.713";
+		physical_h = "3.494";
+
+		/* Define any required hw resources needed by driver */
+		/* ie. clocks, io pins, power sources */
+		mclk = "cam_mclk1";
+		reset-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
+		af-gpios = <&gpio TEGRA_GPIO(S, 5) 0>;
+		pwdn-gpios = <&gpio TEGRA_GPIO(S, 7) 0>;
+		vana-supply = <&max77620_ldo3>;
+		vdig-supply = <&vdd_sys_boost>;
+		vif-supply = <&en_vdd_cam>;
+		avdd-reg = "vana";
+		dvdd-reg = "vdig";
+		iovdd-reg = "vif";
+
+		/**
+		* A modeX node is required to support v4l2 driver
+		* implementation with NVIDIA camera software stack
+		*
+		* mclk_khz = "";
+		* Standard MIPI driving clock, typically 24MHz
+		*
+		* num_lanes = "";
+		* Number of lane channels sensor is programmed to output
+		*
+		* tegra_sinterface = "";
+		* The base tegra serial interface lanes are connected to
+		*
+		* discontinuous_clk = "";
+		* The sensor is programmed to use a discontinuous clock on MIPI lanes
+		*
+		* cil_settletime = "";
+		* MIPI lane settle time value.
+		* A "0" value attempts to autocalibrate based on mclk_multiplier
+		*
+		*
+		*
+		*
+		* active_w = "";
+		* Pixel active region width
+		*
+		* active_h = "";
+		* Pixel active region height
+		*
+		* pixel_t = "";
+		* The sensor readout pixel pattern
+		*
+		* readout_orientation = "0";
+		* Based on camera module orientation.
+		* Only change readout_orientation if you specifically
+		* Program a different readout order for this mode
+		*
+		* line_length = "";
+		* Pixel line length (width) for sensor mode.
+		* This is used to calibrate features in our camera stack.
+		*
+		* mclk_multiplier = "";
+		* Multiplier to MCLK to help time hardware capture sequence
+		* TODO: Assign to PLL_Multiplier as well until fixed in core
+		*
+		* pix_clk_hz = "";
+		* Sensor pixel clock used for calculations like exposure and framerate
+		*
+		*
+		*
+		*
+		* inherent_gain = "";
+		* Gain obtained inherently from mode (ie. pixel binning)
+		*
+		* min_gain_val = "";
+		* max_gain_val = "";
+		* Gain limits for mode
+		*
+		* min_exp_time = "";
+		* max_exp_time = "";
+		* Exposure Time limits for mode (us)
+		*
+		*
+		* min_hdr_ratio = "";
+		* max_hdr_ratio = "";
+		* HDR Ratio limits for mode
+		*
+		* min_framerate = "";
+		* max_framerate = "";
+		* Framerate limits for mode (fps)
+		*
+		*/
+
+		mode0 { // IMX214_MODE_4096X3072
+			mclk_khz = "24000";
+			num_lanes = "4";
+			tegra_sinterface = "serial_a";
+			discontinuous_clk = "yes";
+			cil_settletime = "0";
+
+			active_w = "4096";
+			active_h = "3072";
+			pixel_t = "bayer_rggb";
+			readout_orientation = "0";
+			line_length = "5008";
+			inherent_gain = "1";
+			mclk_multiplier = "25";
+			pix_clk_hz = "480000000";
+
+			min_gain_val = "1.0";
+			max_gain_val = "16.0";
+			min_hdr_ratio = "1";
+			max_hdr_ratio = "64";
+			min_framerate = "1.462526";
+			max_framerate = "30";
+			min_exp_time = "13";
+			max_exp_time = "683709";
+		};
+
+		mode1 { // IMX214_MODE_4096X2304
+			mclk_khz = "24000";
+			num_lanes = "4";
+			tegra_sinterface = "serial_a";
+			discontinuous_clk = "yes";
+			cil_settletime = "0";
+
+			active_w = "4096";
+			active_h = "2304";
+			pixel_t = "bayer_rggb";
+			readout_orientation = "0";
+			line_length = "5008";
+			inherent_gain = "1";
+			mclk_multiplier = "25";
+			pix_clk_hz = "480000000";
+
+			min_gain_val = "1.0";
+			max_gain_val = "16.0";
+			min_hdr_ratio = "1";
+			max_hdr_ratio = "64";
+			min_framerate = "1.462526";
+			max_framerate = "30";
+			min_exp_time = "13";
+			max_exp_time = "683709";
+		};
+
+		mode2 {	//IMX214_MODE_3840X2160
+			mclk_khz = "24000";
+			num_lanes = "4";
+			tegra_sinterface = "serial_a";
+			discontinuous_clk = "yes";
+			cil_settletime = "0";
+
+			active_w = "3840";
+			active_h = "2160";
+			pixel_t = "bayer_rggb";
+			readout_orientation = "0";
+			line_length = "5008";
+			inherent_gain = "1";
+			mclk_multiplier = "25";
+			pix_clk_hz = "480000000";
+
+			min_gain_val = "1.0";
+			max_gain_val = "16.0";
+			min_hdr_ratio = "1";
+			max_hdr_ratio = "64";
+			min_framerate = "1.462526";
+			max_framerate = "30";
+			min_exp_time = "13";
+			max_exp_time = "683709";
+		};
+
+		mode3 {	// IMX214_MODE_2048X1536
+			mclk_khz = "24000";
+			num_lanes = "4";
+			tegra_sinterface = "serial_a";
+			discontinuous_clk = "yes";
+			cil_settletime = "0";
+
+			active_w = "2048";
+			active_h = "1536";
+			pixel_t = "bayer_rggb";
+			readout_orientation = "0";
+			line_length = "5008";
+			inherent_gain = "1";
+			mclk_multiplier = "25";
+			pix_clk_hz = "480000000";
+
+			min_gain_val = "1.0";
+			max_gain_val = "16.0";
+			min_hdr_ratio = "1";
+			max_hdr_ratio = "64";
+			min_framerate = "1.462526";
+			max_framerate = "30";
+			min_exp_time = "13";
+			max_exp_time = "683709";
+		};
+
+		mode4 { // IMX214_MODE_2048X1152
+			mclk_khz = "24000";
+			num_lanes = "4";
+			tegra_sinterface = "serial_a";
+			discontinuous_clk = "yes";
+			cil_settletime = "0";
+
+			active_w = "2048";
+			active_h = "1152";
+			pixel_t = "bayer_rggb";
+			readout_orientation = "0";
+			line_length = "5008";
+			inherent_gain = "1";
+			mclk_multiplier = "25";
+			pix_clk_hz = "480000000";
+
+			min_gain_val = "1.0";
+			max_gain_val = "16.0";
+			min_hdr_ratio = "1";
+			max_hdr_ratio = "64";
+			min_framerate = "1.462526";
+			max_framerate = "30";
+			min_exp_time = "13";
+			max_exp_time = "683709";
+		};
+
+		mode5 { // IMX214_MODE_1920X1080
+			mclk_khz = "24000";
+			num_lanes = "4";
+			tegra_sinterface = "serial_a";
+			discontinuous_clk = "yes";
+			cil_settletime = "0";
+
+			active_w = "1920";
+			active_h = "1080";
+			pixel_t = "bayer_rggb";
+			readout_orientation = "0";
+			line_length = "5008";
+			inherent_gain = "1";
+			mclk_multiplier = "25";
+			pix_clk_hz = "480000000";
+
+			min_gain_val = "1.0";
+			max_gain_val = "16.0";
+			min_hdr_ratio = "1";
+			max_hdr_ratio = "64";
+			min_framerate = "1.462526";
+			max_framerate = "30";
+			min_exp_time = "13";
+			max_exp_time = "683709";
+		};
+
+		mode6 { // IMX214_MODE_1280X720_120FPS
+			mclk_khz = "24000";
+			num_lanes = "4";
+			tegra_sinterface = "serial_a";
+			discontinuous_clk = "yes";
+			cil_settletime = "0";
+
+			active_w = "1280";
+			active_h = "720";
+			pixel_t = "bayer_rggb";
+			readout_orientation = "0";
+			line_length = "5008";
+			inherent_gain = "1";
+			mclk_multiplier = "25";
+			pix_clk_hz = "480000000";
+
+			min_gain_val = "1.0";
+			max_gain_val = "16.0";
+			min_hdr_ratio = "1";
+			max_hdr_ratio = "64";
+			min_framerate = "1.462526";
+			max_framerate = "120";
+			min_exp_time = "13";
+			max_exp_time = "683709";
+		};
+	};
+
+	dw9714@0c {
+		compatible = "nvidia,dw9714";
+		vdd-supply = <&max77620_ldo3>;
+		vdd_i2c-supply = <&en_vdd_cam>;
+		/* platform data */
+		dev_name = "focuser";
+		num = <0>;
+		sync = <0>;
+		/* Copy pasted everything from camera-pcl node for now */
+		chipname = "pcl_DW9714";
+		type = "focuser";
+		position = <0>;
+		bustype = "i2c";
+		busnum = <VI_I2C_BUS>;
+		addr = <0xc>;
+		datalen = <1>;
+		pinmuxgrp = <0xFFFF>;
+		gpios = <1>;
+		regulators = "vdd", "vdd_i2c";
+		drivername = "dw9714";
+		devid = <0x9714>;
+		/* focuser capabilities */
+		settle-time = <30000>; /* uS */
+		slew-rate = <0x3a200c>; /* tunned slew mode */
+		macro-position = <450>;
+		infinity-position = <200>;
+		hyper-value = <200>;
+	};
+
 	tegra-camera-platform {
 		compatible = "nvidia, tegra-camera-platform";
+
+		/**
+		* The general guideline for naming badge_info contains 3 parts, and is as follows,
+		* The first part is the camera_board_id for the module; if the module is in a FFD
+		* platform, then use the platform name for this part.
+		* The second part contains the position of the module, ex. “rear” or “front”.
+		* The third part contains the last 6 characters of a part number which is found
+		* in the module's specsheet from the vender.
+		*/
+		modules {
+			module0 {
+				badge = "e2249_rear_P13N05B";
+				position = "rear";
+				orientation = "0";
+				drivernode0 {
+					/* Declare PCL support driver (classically known as guid)  */
+					pcl_id = "v4l2_soc_sensor";
+					/* Declare the device-tree hierarchy to driver instance */
+					proc-device-tree = "/proc/device-tree/imx214@1a";
+				};
+				drivernode1 {
+					/* Declare PCL support driver (classically known as guid)  */
+					pcl_id = "f_NVCAM0";
+				};
+			};
+			module1 {
+				badge = "e2249_front_P5V27C";
+				position = "front";
+				orientation = "0";
+				drivernode0 {
+					/* Declare PCL support driver (classically known as guid)  */
+					pcl_id = "sOV5693f";
+				};
+			};
+		};
 	};
 
 	camera-pcl {
@@ -35,7 +375,7 @@
 				badge_info = "e2249_rear_P13N05B";
 
 				sensor {
-					profile = <&imx214_1>;
+					profile = <&imx214_2>;
 					platformdata = "t210ref_imx214_pdata";
 				};
 				focuser {
@@ -113,7 +453,7 @@
 		};
 
 		profiles {
-			imx214_1: imx214@x_001a {
+			imx214_1: imx214-pcl@x_001a {
 				index = <1>;
 				chipname = "pcl_IMX214";
 				type = "sensor";
@@ -153,7 +493,7 @@
 					CAMERA_END
 					>;
 			};
-			dw9714_1: dw9714@x_000c {
+			dw9714_1: dw9714-pcl@x_000c {
 				index = <2>;
 				chipname = "pcl_DW9714";
 				type = "focuser";
@@ -192,7 +532,7 @@
 				hyper-value = <200>;
 				support_mfi;
 			};
-			as3648_1: as3648@x_0030 {
+			as3648_1: as3648-pcl@x_0030 {
 				index = <3>;
 				chipname = "pcl_AS3648";
 				type = "flash";
@@ -227,7 +567,7 @@
 				max-torch-current = <600>; /* mA */
 				vin-low-v-run = <3070>; /* mV */
 			};
-			ov5693_1: ov5693@x_0036 {
+			ov5693_1: ov5693-pcl@x_0036 {
 				index = <4>;
 				chipname = "pcl_OV5693f";
 				type = "sensor";
@@ -288,7 +628,25 @@
 				cap-clock_multiplier_1 = <0>;
 				cap-hdr-enabled;
 			};
-			ov5693_A: ov5693@a_0036 {
+			imx214_2: imx214-pcl@v_001a {
+				index = <5>;
+				chipname = "v4l2_IMX214";
+				type = "sensor";
+				guid = "vlSensor";
+				position = <0>;
+				bustype = "i2c";
+				busnum = <VI_I2C_BUS>;
+				addr = <0x1a>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				regulators = "vana", "vdig", "vif";
+				clocks = "cam_mclk1";
+				drivername = "imx214";
+				devid = <0x0214>;
+				skip_camera_install = <1>;
+			};
+			ov5693_A: ov5693-pcl@a_0036 {
 				index = <5>;
 				chipname = "pcl_OV5693A";
 				type = "sensor";
@@ -349,7 +707,7 @@
 				cap-clock_multiplier_1 = <0>;
 				cap-hdr-enabled;
 			};
-			ov5693_B: ov5693@b_0036 {
+			ov5693_B: ov5693-pcl@b_0036 {
 				index = <7>;
 				chipname = "pcl_OV5693B";
 				type = "sensor";
@@ -410,7 +768,7 @@
 				cap-clock_multiplier_1 = <0>;
 				cap-hdr-enabled;
 			};
-			ov5693_C: ov5693@c_0036 {
+			ov5693_C: ov5693-pcl@c_0036 {
 				index = <8>;
 				chipname = "pcl_OV5693C";
 				type = "sensor";
@@ -471,7 +829,7 @@
 				cap-clock_multiplier_1 = <0>;
 				cap-hdr-enabled;
 			};
-			ov5693_D: ov5693@d_0036 {
+			ov5693_D: ov5693-pcl@d_0036 {
 				index = <6>;
 				chipname = "pcl_OV5693D";
 				type = "sensor";
@@ -532,7 +890,7 @@
 				cap-clock_multiplier_1 = <0>;
 				cap-hdr-enabled;
 			};
-			ov5693_E: ov5693@e_0036 {
+			ov5693_E: ov5693-pcl@e_0036 {
 				index = <9>;
 				chipname = "pcl_OV5693E";
 				type = "sensor";
@@ -593,7 +951,7 @@
 				cap-clock_multiplier_1 = <0>;
 				cap-hdr-enabled;
 			};
-			ov5693_F: ov5693@f_0036 {
+			ov5693_F: ov5693-pcl@f_0036 {
 				index = <10>;
 				chipname = "pcl_OV5693F";
 				type = "sensor";
