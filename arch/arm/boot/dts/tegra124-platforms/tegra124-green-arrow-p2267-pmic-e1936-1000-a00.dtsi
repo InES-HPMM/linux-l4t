@@ -220,10 +220,6 @@
 								regulator-consumer-supply = "vddio_sd_slot";
 								regulator-consumer-device = "sdhci-tegra.3";
 							};
-							c2 {
-								regulator-consumer-supply = "vddio_sd_slot";
-								regulator-consumer-device = "sdhci-tegra.2";
-							};
 						};
 					};
 
