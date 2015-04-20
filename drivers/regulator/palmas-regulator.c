@@ -765,18 +765,47 @@ static int palmas_list_voltage_ldo(struct regulator_dev *dev,
 	return volt;
 }
 
+static int palmas_ldo_set_voltage_sel(struct regulator_dev *rdev, unsigned sel)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(rdev);
+	struct palmas_pmic_platform_data *pdata = pmic->pdata;
+	int id = rdev_get_id(rdev);
+	int volt;
+	int bit_val = 0;
+	int ret;
+
+	if (!pdata->reg_init[id]->bypass_voltage)
+		goto skip_bypass;
+
+	volt = palmas_list_voltage_ldo(rdev, sel);
+	if (volt >= pdata->reg_init[id]->bypass_voltage)
+		bit_val = PALMAS_LDO10_CTRL_LDO_BYPASS_EN;
+
+	ret = palmas_update_bits(pmic->palmas, PALMAS_LDO_BASE,
+			palmas_regs_info[id].ctrl_addr,
+			PALMAS_LDO10_CTRL_LDO_BYPASS_EN, bit_val);
+	if (ret < 0) {
+		dev_err(pmic->dev, "LDO Reg 0x%02x update failed: %d\n",
+				palmas_regs_info[id].ctrl_addr, ret);
+		return ret;
+	}
+
+skip_bypass:
+	return regulator_set_voltage_sel_regmap(rdev, sel);
+}
+
 static struct regulator_ops palmas_ops_ldo = {
 	.is_enabled		= regulator_is_enabled_regmap,
 	.enable			= regulator_enable_regmap,
 	.disable		= regulator_disable_regmap,
 	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
-	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
+	.set_voltage_sel	= palmas_ldo_set_voltage_sel,
 	.list_voltage		= palmas_list_voltage_ldo,
 };
 
 static struct regulator_ops palmas_ops_ldo_extctrl = {
 	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
-	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
+	.set_voltage_sel	= palmas_ldo_set_voltage_sel,
 	.list_voltage		= palmas_list_voltage_ldo,
 };
 
@@ -1069,6 +1098,7 @@ static int palmas_ldo_init(struct regulator_dev *rdev,
 {
 	unsigned int reg;
 	unsigned int addr;
+	unsigned sel;
 	int ret;
 
 	addr = palmas_regs_info[id].ctrl_addr;
@@ -1114,6 +1144,17 @@ static int palmas_ldo_init(struct regulator_dev *rdev,
 	palams_rail_pd_control(palmas, id,
 		reg_init->disable_active_discharge_idle ||
 			reg_init->disable_pull_down);
+
+	if (reg_init->bypass_voltage) {
+		sel = regulator_get_voltage_sel_regmap(rdev);
+		ret = palmas_ldo_set_voltage_sel(rdev, sel);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"setting bypass voltage failed: %d\n", ret);
+			return ret;
+		}
+	}
+
 	return 0;
 }
 
@@ -1478,6 +1519,11 @@ static void palmas_dt_to_pdata(struct device *dev,
 			pdata->reg_init[idx]->config_flags |=
 				PALMAS_REGULATOR_CONFIG_SUSPEND_FORCE_OFF;
 
+		ret = of_property_read_u32(palmas_matches[idx].of_node,
+				"ti,bypass-voltage", &prop);
+		if (!ret)
+			pdata->reg_init[idx]->bypass_voltage = prop;
+
 		pdata->reg_init[idx]->disable_active_discharge_idle =
 				of_property_read_bool(
 					palmas_matches[idx].of_node,
@@ -1518,6 +1564,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 	mutex_init(&pmic->mutex);
 	pmic->dev = &pdev->dev;
 	pmic->palmas = palmas;
+	pmic->pdata = pdata;
 	palmas->pmic = pmic;
 	pmic->shutdown = false;
 	platform_set_drvdata(pdev, pmic);
