@@ -1,7 +1,7 @@
 /*
  * USB PDA Driver for NVIDIA Shield
  *
- * Copyright (c) 2014, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2014-2015, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -69,7 +69,7 @@ static struct nvshield_product nvshield_list[] = {
 		.name = "ST8",
 		.dt_name = "nvidia,tn8",
 		.id = 2,
-		.max_voltage_mv = 11000,
+		.max_voltage_mv = 12000,
 	},
 	{
 		.name = "Loki-E",
