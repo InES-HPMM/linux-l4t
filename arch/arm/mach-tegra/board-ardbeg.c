@@ -58,7 +58,6 @@
 #include <linux/irqchip.h>
 #include <linux/irqchip/tegra.h>
 #include <linux/tegra-soc.h>
-#include <linux/tegra_fiq_debugger.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
 #include <linux/platform_data/tegra_ahci.h>
 #include <linux/irqchip/tegra.h>
@@ -1208,7 +1207,6 @@ static void __init tegra_ardbeg_late_init(void)
 #ifndef CONFIG_MACH_EXUMA
 	tegra_disp_defer_vcore_override();
 #endif
-	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_AVP, NULL, -1, -1);
 	ardbeg_usb_init();
 
 	if (!of_machine_is_compatible("nvidia,green-arrow"))

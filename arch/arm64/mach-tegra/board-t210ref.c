@@ -59,7 +59,6 @@
 #include <linux/irqchip.h>
 #include <linux/irqchip/tegra.h>
 #include <linux/tegra-soc.h>
-#include <linux/tegra_fiq_debugger.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
 #include <linux/platform_data/tegra_ahci.h>
 #include <linux/irqchip/tegra.h>
@@ -331,8 +330,6 @@ static void __init tegra_t210ref_late_init(void)
 	tegra21_emc_init();
 	isomgr_init();
 	tegra_fb_copy_or_clear();
-
-	tegra_serial_debug_init(TEGRA_UARTA_BASE, nLEGACYFIQ_PPI, NULL, -1, -1);
 
 	/* put PEX pads into DPD mode to save additional power */
 	tegra_io_dpd_enable(&pexbias_io);

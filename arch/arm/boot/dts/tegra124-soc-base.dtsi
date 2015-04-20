@@ -1231,6 +1231,12 @@
 		status = "disabled";
 	};
 
+	fiq_debugger {
+		compatible = "nvidia,fiq-debugger";
+		use-console-port;
+		interrupts = <0 123 0x4>; /* or, alternatively, use-wdt-irq; */
+	};
+
 	cpu_edp {
 		compatible = "nvidia,tegra124-cpu-edp-capping";
 		status = "disabled";

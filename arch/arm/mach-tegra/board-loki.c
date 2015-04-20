@@ -59,7 +59,6 @@
 #include <linux/clocksource.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
 #include <linux/irqchip.h>
-#include <linux/tegra_fiq_debugger.h>
 #include <linux/irqchip/tegra.h>
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/consumer.h>
@@ -791,7 +790,6 @@ static void __init tegra_loki_late_init(void)
 	loki_touch_init();
 	loki_panel_init();
 	loki_kbc_init();
-	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	loki_sensors_init();
 
 	loki_soctherm_init();
