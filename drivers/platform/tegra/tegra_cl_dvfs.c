@@ -1818,7 +1818,13 @@ static int cl_dvfs_sync(struct tegra_cl_dvfs *cld)
 	u32 val;
 	int status;
 	unsigned long int rate;
-	unsigned long int dfll_boot_req_khz = tegra_dfll_boot_req_khz();
+	unsigned long int dfll_boot_req_khz =
+		cld->safe_dvfs->dfll_data.dfll_boot_khz;
+
+	if (!dfll_boot_req_khz) {
+		pr_err("%s: Failed to sync DFLL boot rate\n", __func__);
+		return -EINVAL;
+	}
 
 	output_enable(cld);
 

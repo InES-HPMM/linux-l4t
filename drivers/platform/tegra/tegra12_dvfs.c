@@ -1230,8 +1230,10 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	 * If boot loader has set dfll clock, then dfll freq is
 	 * passed in kernel command line from bootloader
 	 */
-	if (tegra_dfll_boot_req_khz())
+	if (tegra_dfll_boot_req_khz()) {
+		cpu_dvfs->dfll_data.dfll_boot_khz = tegra_dfll_boot_req_khz();
 		rail->dfll_mode = true;
+	}
 
 	return 0;
 }
