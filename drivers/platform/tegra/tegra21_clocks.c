@@ -3765,12 +3765,15 @@ static void __init tegra21_dfll_clk_init(struct clk *c)
 
 static int tegra21_dfll_clk_enable(struct clk *c)
 {
-	return tegra_cl_dvfs_enable(c->u.dfll.cl_dvfs);
+	if (c->u.dfll.cl_dvfs)
+		return tegra_cl_dvfs_enable(c->u.dfll.cl_dvfs);
+	return 0;
 }
 
 static void tegra21_dfll_clk_disable(struct clk *c)
 {
-	tegra_cl_dvfs_disable(c->u.dfll.cl_dvfs);
+	if (c->u.dfll.cl_dvfs)
+		tegra_cl_dvfs_disable(c->u.dfll.cl_dvfs);
 }
 
 static unsigned long boost_dfll_rate(struct clk *c, unsigned long rate)
@@ -3789,20 +3792,23 @@ static unsigned long boost_dfll_rate(struct clk *c, unsigned long rate)
 
 static int tegra21_dfll_clk_set_rate(struct clk *c, unsigned long rate)
 {
-	unsigned long boost_rate = boost_dfll_rate(c, rate);
-	int ret = tegra_cl_dvfs_request_rate(c->u.dfll.cl_dvfs, boost_rate);
+	if (c->u.dfll.cl_dvfs) {
+		unsigned long boost_rate = boost_dfll_rate(c, rate);
+		int ret = tegra_cl_dvfs_request_rate(c->u.dfll.cl_dvfs,
+						     boost_rate);
+		/*
+		 * Record requested rate. Thus, non boosted rate is reported.
+		 * It also ensures correct clock settings when switching back
+		 * and forth to a clock source with different than DFLL
+		 * granularity, and prevents other than DFLL clock source to run
+		 * at boost rate that is supported on DFLL only.
+		 */
+		if (!ret)
+			c->rate = rate;
 
-	/*
-	 * Record requested rate. Thus, non boosted rate is reported. It also
-	 * ensures correct clock settings when switching back and forth to a
-	 * clock source with different than DFLL granularity, and prevents other
-	 * than DFLL clock source to run at boost rate that is supported on DFLL
-	 * only.
-	 */
-	if (!ret)
-		c->rate = rate;
-
-	return ret;
+		return ret;
+	}
+	return 0;
 }
 
 static void tegra21_dfll_clk_reset(struct clk *c, bool assert)
@@ -3814,9 +3820,12 @@ static void tegra21_dfll_clk_reset(struct clk *c, bool assert)
 static int
 tegra21_dfll_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 {
-	if (p == TEGRA_CLK_DFLL_LOCK)
-		return setting ? tegra_cl_dvfs_lock(c->u.dfll.cl_dvfs) :
-				 tegra_cl_dvfs_unlock(c->u.dfll.cl_dvfs);
+	if (p == TEGRA_CLK_DFLL_LOCK) {
+		if (c->u.dfll.cl_dvfs)
+			return setting ? tegra_cl_dvfs_lock(c->u.dfll.cl_dvfs) :
+					tegra_cl_dvfs_unlock(c->u.dfll.cl_dvfs);
+		return 0;
+	}
 	return -EINVAL;
 }
 
@@ -3826,7 +3835,7 @@ static void tegra21_dfll_clk_resume(struct clk *c)
 	if (!(clk_readl(c->reg) & DFLL_BASE_RESET))
 		return;		/* already resumed */
 
-	if (c->state != UNINITIALIZED) {
+	if (c->u.dfll.cl_dvfs) {
 		tegra_periph_reset_deassert(c);
 		tegra_cl_dvfs_resume(c->u.dfll.cl_dvfs);
 	}
