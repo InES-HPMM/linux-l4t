@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2005 Ben Gardner <bgardner@wabtec.com>
  *  Copyright (C) 2007 Marvell International Ltd.
- *  Copyright (C) 2014 NVIDIA CORPORATION.  All rights reserved.
+ *  Copyright (C) 2014-2015 NVIDIA CORPORATION.  All rights reserved.
  *
  *  Derived from drivers/i2c/chips/pca9539.c
  *
@@ -584,11 +584,11 @@ static int pca953x_irq_setup(struct pca953x_chip *chip,
 			return -ENODEV;
 
 		ret = devm_request_threaded_irq(&client->dev,
-					client->irq,
-					   NULL,
-					   pca953x_irq_handler,
-					   IRQF_TRIGGER_LOW | IRQF_ONESHOT,
-					   dev_name(&client->dev), chip);
+				client->irq,
+				NULL,
+				pca953x_irq_handler,
+				IRQF_TRIGGER_LOW | IRQF_ONESHOT | IRQF_SHARED,
+				dev_name(&client->dev), chip);
 		if (ret) {
 			dev_err(&client->dev, "failed to request irq %d\n",
 				client->irq);
