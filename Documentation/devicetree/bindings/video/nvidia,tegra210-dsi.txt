@@ -71,6 +71,7 @@ NVIDIA TEGRA210 Display Serial Interface
  - nvidia,dsi-te-gpio: specifies a GPIO used for dsi panel TE signal.
  - nvidia,nvidia,dsi-ganged-type: specifies dsi ganged type. 1 for TEGRA_DSI_GANGED_SYMMETRIC_LEFT_RIGHT,
    2 for TEGRA_DSI_GANGED_SYMMETRIC_EVEN_ODD, 3 for TEGRA_DSI_GANGED_SYMMETRIC_LEFT_RIGHT_OVERLAP
+ - nvidia,dsi-even-odd-pixel-width: pixel width for symmetric even/odd split, max value is 0x1FFF.
  - nvidia,dsi-phy-hsdexit: dsi phy timing, t_hsdexit_ns.
  - nvidia,dsi-phy-hstrail: dsi phy timing, t_hstrail_ns.
  - nvidia,dsi-phy-datzero: dsi phy timing, t_datzero_ns.
