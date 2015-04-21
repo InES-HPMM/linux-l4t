@@ -120,6 +120,6 @@
 
 	watchdog@60005100 {
 		nvidia,enable-on-init;
-		nvidia,heartbeat-init = <120>;
+		nvidia,heartbeat-init = <200>;
 	};
 };
