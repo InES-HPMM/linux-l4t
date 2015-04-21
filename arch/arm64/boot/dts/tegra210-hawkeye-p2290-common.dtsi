@@ -120,6 +120,7 @@
 
 	i2c@7000c400 {
 		status = "okay";
+		clock-frequency = <400000>;
 		lp8557-backlight-a-wuxga-8-0@2c {
 			status = "disabled";
 			compatible = "ti,lp8557";
