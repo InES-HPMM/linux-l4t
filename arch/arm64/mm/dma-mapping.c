@@ -735,8 +735,10 @@ static void *__dma_alloc(struct device *dev, size_t size, dma_addr_t *handle,
 	else
 		addr = __alloc_from_contiguous(dev, size, prot, &page);
 
-	if (addr)
-		*handle = pfn_to_dma(dev, page_to_pfn(page));
+	if (!addr)
+		return NULL;
+
+	*handle = pfn_to_dma(dev, page_to_pfn(page));
 
 	if (dma_get_attr(DMA_ATTR_NO_KERNEL_MAPPING, attrs)) {
 		int i;
