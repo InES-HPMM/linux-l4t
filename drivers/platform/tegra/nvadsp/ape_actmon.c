@@ -942,13 +942,14 @@ err_out:
 
 int ape_actmon_exit(struct platform_device *pdev)
 {
-	int i;
-	status_t ret = 0;
-	struct actmon_dev *dev;
 	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
+	struct actmon_dev *dev;
+	status_t ret = 0;
+	int i;
 
 	for (i = 0; i < ARRAY_SIZE(actmon_devices); i++) {
 		dev = actmon_devices[i];
+		actmon_dev_disable(dev);
 		disable_irq(dev->irq);
 		clk_disable_unprepare(dev->clk);
 		clk_put(dev->clk);
