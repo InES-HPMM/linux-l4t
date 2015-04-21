@@ -1663,7 +1663,7 @@ static ssize_t emc_table_entry_array_write(struct file *filp,
 	if (ret != 2)
 		return -EINVAL;
 
-	if (offs < 0 || offs >= arr->length)
+	if (offs >= arr->length)
 		return -EINVAL;
 
 	pr_info("Setting reg_list: offs=%d, value = 0x%08x\n", offs, value);
@@ -1822,11 +1822,8 @@ static int emc_init_table_debug(struct dentry *emc_root,
 	regular = debugfs_create_dir("regular", tables_dir);
 	if (!regular)
 		return -ENODEV;
-	if (derated_tbl) {
+	if (derated_tbl)
 		derated = debugfs_create_dir("derated", tables_dir);
-		if (!regular)
-			return -ENODEV;
-	}
 
 	for (i = 0; i < tegra_emc_table_size; i++) {
 		emc_table_entry_create(regular, &regular_tbl[i]);
