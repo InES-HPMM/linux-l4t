@@ -237,11 +237,18 @@ static void fiq_debugger_printf(struct fiq_debugger_output *output,
 {
 	struct fiq_debugger_state *state;
 	char buf[256];
+	unsigned long rem_nsec;
+	u64 ts = local_clock();
 	va_list ap;
+	int len = 0;
+
+	rem_nsec = do_div(ts, 1000000000);
+	len = snprintf(buf, sizeof(buf), "[%5lu.%06lu] ",
+			(unsigned long)ts, rem_nsec / 1000);
 
 	state = container_of(output, struct fiq_debugger_state, output);
 	va_start(ap, fmt);
-	vsnprintf(buf, sizeof(buf), fmt, ap);
+	vsnprintf(buf + len, sizeof(buf) - len, fmt, ap);
 	va_end(ap);
 
 	fiq_debugger_puts(state, buf);
