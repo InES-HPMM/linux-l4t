@@ -645,11 +645,11 @@ exit_out:
 /* Should be called after ADSP os is loaded */
 int adsp_dfs_core_init(struct platform_device *pdev)
 {
-	u32 efreq;
-	int ret = 0;
 	int size = sizeof(adsp_cpu_freq_table) / sizeof(adsp_cpu_freq_table[0]);
-	uint16_t mid = HOST_ADSP_DFS_MBOX_ID;
 	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
+	uint16_t mid = HOST_ADSP_DFS_MBOX_ID;
+	int ret = 0;
+	u32 efreq;
 
 	if (drv->dfs_initialized)
 		return 0;
@@ -677,11 +677,10 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 		goto end;
 	}
 
-	/* Clk_round_rate returns in Hz */
-	policy->max = policy->cpu_max =
-		(clk_round_rate(policy->adsp_clk, ULONG_MAX)) / 1000;
-	policy->min = policy->cpu_min =
-		(clk_round_rate(policy->adsp_clk, 0)) / 1000;
+	policy->max = policy->cpu_max = drv->max_adsp_freq / 1000;
+
+	policy->min = policy->cpu_min = adsp_cpu_freq_table[0] / 1000;
+
 	policy->cur = clk_get_rate(policy->adsp_clk) / 1000;
 
 	efreq = adsp_to_emc_freq(policy->cur);
