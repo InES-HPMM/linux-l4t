@@ -3173,36 +3173,6 @@ unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld)
 }
 
 /*
- * CL_DVFS voltage limit track interfaces used to read and track asynchromous
- * updates to minimum and maximum voltage settings.
- */
-
-int tegra_cl_dvfs_vmin_read_begin(struct tegra_cl_dvfs *cld, uint *start)
-{
-	if (start)
-		*start = read_seqcount_begin(&cld->v_limits.vmin_seqcnt);
-	return cld->v_limits.vmin;
-}
-
-int tegra_cl_dvfs_vmin_read_retry(struct tegra_cl_dvfs *cld, uint start)
-{
-	return read_seqcount_retry(&cld->v_limits.vmin_seqcnt, start);
-}
-
-int tegra_cl_dvfs_vmax_read_begin(struct tegra_cl_dvfs *cld, uint *start)
-{
-	if (start)
-		*start = read_seqcount_begin(&cld->v_limits.vmax_seqcnt);
-	return cld->v_limits.vmax;
-}
-
-int tegra_cl_dvfs_vmax_read_retry(struct tegra_cl_dvfs *cld, uint start)
-{
-	return read_seqcount_retry(&cld->v_limits.vmax_seqcnt, start);
-}
-
-
-/*
  * Compare actually set (last delivered) and required Vmin. These levels may
  * be different if temperature or SiMon grade changes while cl-dvfs output
  * interface is disabled, and new required setting is not delivered to PMIC.

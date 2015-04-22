@@ -123,10 +123,6 @@ int tegra_init_cl_dvfs(void);
 int tegra_cl_dvfs_debug_init(struct clk *dfll_clk);
 void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld);
 
-int tegra_cl_dvfs_vmin_read_begin(struct tegra_cl_dvfs *cld, uint *start);
-int tegra_cl_dvfs_vmin_read_retry(struct tegra_cl_dvfs *cld, uint start);
-int tegra_cl_dvfs_vmax_read_begin(struct tegra_cl_dvfs *cld, uint *start);
-int tegra_cl_dvfs_vmax_read_retry(struct tegra_cl_dvfs *cld, uint start);
 int tegra_cl_dvfs_vmin_cmp_needed(struct tegra_cl_dvfs *cld, int *needed_mv);
 
 /* functions below are called only within DFLL clock interface DFLL lock held */
@@ -145,18 +141,6 @@ static inline int tegra_cl_dvfs_debug_init(struct clk *dfll_clk)
 static inline void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld)
 {}
 
-static inline int tegra_cl_dvfs_vmin_read_begin(struct tegra_cl_dvfs *cld,
-						uint *start)
-{ return -ENOSYS; }
-static inline int tegra_cl_dvfs_vmin_read_retry(struct tegra_cl_dvfs *cld,
-						uint start)
-{ return -ENOSYS; }
-static inline int tegra_cl_dvfs_vmax_read_begin(struct tegra_cl_dvfs *cld,
-						uint *start)
-{ return -ENOSYS; }
-static inline int tegra_cl_dvfs_vmax_read_retry(struct tegra_cl_dvfs *cld,
-						uint start)
-{ return -ENOSYS; }
 static inline int tegra_cl_dvfs_vmin_cmp_needed(struct tegra_cl_dvfs *cld,
 						int *needed_mv)
 { return 0; }
