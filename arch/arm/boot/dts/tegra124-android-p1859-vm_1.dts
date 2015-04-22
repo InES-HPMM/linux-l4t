@@ -351,6 +351,10 @@
 		nvavp {
 			status = "disabled";
 		};
+
+		tsec {
+			status = "disabled";
+		};
 	};
 
 	gk20a {
