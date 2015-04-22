@@ -150,6 +150,12 @@ EXPORT_SYMBOL(tegra_bl_debug_data_start);
 phys_addr_t tegra_bl_debug_data_size = 0;
 EXPORT_SYMBOL(tegra_bl_debug_data_size);
 
+phys_addr_t tegra_bl_prof_start;
+EXPORT_SYMBOL(tegra_bl_prof_start);
+
+phys_addr_t tegra_bl_prof_size;
+EXPORT_SYMBOL(tegra_bl_prof_size);
+
 #ifdef CONFIG_TEGRA_NVDUMPER
 unsigned long nvdumper_reserved;
 #endif
@@ -919,6 +925,23 @@ static int __init tegra_lp0_vec_arg(char *options)
 	return 0;
 }
 early_param("lp0_vec", tegra_lp0_vec_arg);
+
+static int __init tegra_bl_prof_arg(char *option)
+{
+	char *p = option;
+
+	tegra_bl_prof_size = memparse(p, &p);
+	if (*p == '@')
+		tegra_bl_prof_start = memparse(p+1, &p);
+
+	if (!tegra_bl_prof_size || !tegra_bl_prof_start) {
+		tegra_bl_prof_size = 0;
+		tegra_bl_prof_start = 0;
+	}
+
+	return 0;
+}
+early_param("bl_prof_dataptr", tegra_bl_prof_arg);
 
 static int __init tegra_bl_debug_data_arg(char *options)
 {
@@ -1950,6 +1973,17 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	}
 
 out:
+	if (tegra_bl_prof_size &&
+		tegra_bl_prof_start) {
+		if (memblock_reserve(tegra_bl_prof_start, tegra_bl_prof_size)) {
+			pr_err("Failed to reserve bl_prof %08llx@%08llx\n",
+				(u64)tegra_bl_prof_size,
+				(u64)tegra_bl_prof_start);
+				tegra_bl_prof_start = 0;
+				tegra_bl_prof_size = 0;
+		}
+	}
+
 #ifdef CONFIG_TEGRA_NVDUMPER
 	if (nvdumper_reserved) {
 		if (memblock_reserve(nvdumper_reserved, NVDUMPER_RESERVED_SIZE)) {

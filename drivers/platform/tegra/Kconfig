@@ -1,5 +1,5 @@
 
-# Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms and conditions of the GNU General Public License,
@@ -97,10 +97,12 @@ config TEGRA_BOARD_COMMON
 	  Enable Tegra common board support.
 
 config TEGRA_BOOTLOADER_DEBUG
-	tristate "Creates sys-fs interface dumping registers read by bootloader"
-	default n
+	tristate "Creates sys-fs debug interface for tegra bootloader"
+	default y
 	help
-	  When enabled, tegra_bootloader_verify_regs sys-fs is created.
+	  Enable tegra bootloader debug interface that creates
+	  tegra_bootloader_verify_regs and tegra_bootloader_prof
+	  files in tegra_bootloader debugfs entry.
 
 config TEGRA_BPMP_SCLK_SKIP
 	bool "Let bpmp firmware own the sclk skipper h/w"
