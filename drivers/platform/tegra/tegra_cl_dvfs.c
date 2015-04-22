@@ -3199,14 +3199,21 @@ unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld)
  * +1 if last Vmin is above required,
  * -1 if last Vmin is below required.
  */
-int tegra_cl_dvfs_vmin_cmp_needed(struct tegra_cl_dvfs *cld, int *needed_mv)
+int tegra_dvfs_cmp_dfll_vmin_tfloor(struct clk *dfll_clk, int *tfloor)
 {
 	int ret = 0;
 	unsigned long flags;
 	u8 needed_out_min, last_out_min;
+	struct tegra_cl_dvfs *cld;
 
+	if (!dfll_clk)
+		return -EINVAL;
 
-	clk_lock_save(cld->dfll_clk, &flags);
+	cld = tegra_dfll_get_cl_dvfs_data(dfll_clk);
+	if (IS_ERR(cld))
+		return PTR_ERR(cld);
+
+	clk_lock_save(dfll_clk, &flags);
 	needed_out_min = get_output_min(cld);
 	last_out_min = cld->lut_min;
 
@@ -3215,10 +3222,10 @@ int tegra_cl_dvfs_vmin_cmp_needed(struct tegra_cl_dvfs *cld, int *needed_mv)
 	else if (last_out_min < needed_out_min)
 		ret = -1;
 
-	if (needed_mv)
-		*needed_mv = get_mv(cld, needed_out_min);
+	if (tfloor)
+		*tfloor = get_mv(cld, needed_out_min);
 
-	clk_unlock_restore(cld->dfll_clk, &flags);
+	clk_unlock_restore(dfll_clk, &flags);
 	return ret;
 }
 
@@ -3237,12 +3244,20 @@ int tegra_cl_dvfs_vmin_cmp_needed(struct tegra_cl_dvfs *cld, int *needed_mv)
  * 0 if un-clamping request was successful, or -EPERM if request is rejected.
  *
  */
-int tegra_cl_dvfs_clamp_at_vmin(struct tegra_cl_dvfs *cld, bool clamp)
+int tegra_dvfs_clamp_dfll_at_vmin(struct clk *dfll_clk, bool clamp)
 {
+	struct tegra_cl_dvfs *cld;
 	unsigned long flags;
 	int ret = -EPERM;
 
-	clk_lock_save(cld->dfll_clk, &flags);
+	if (!dfll_clk)
+		return -EINVAL;
+
+	cld = tegra_dfll_get_cl_dvfs_data(dfll_clk);
+	if (IS_ERR(cld))
+		return PTR_ERR(cld);
+
+	clk_lock_save(dfll_clk, &flags);
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 		if (clamp && !cld->v_limits.clamped) {
 			u8 out_min = max(cld->lut_min, cld->force_out_min);
@@ -3258,10 +3273,10 @@ int tegra_cl_dvfs_clamp_at_vmin(struct tegra_cl_dvfs *cld, bool clamp)
 			ret = 0;
 		}
 	}
-	clk_unlock_restore(cld->dfll_clk, &flags);
+	clk_unlock_restore(dfll_clk, &flags);
 	return ret;
 }
-EXPORT_SYMBOL(tegra_cl_dvfs_clamp_at_vmin);
+EXPORT_SYMBOL(tegra_dvfs_clamp_dfll_at_vmin);
 
 #ifdef CONFIG_DEBUG_FS
 
@@ -3466,8 +3481,8 @@ static int clamp_get(void *data, u64 *val)
 }
 static int clamp_set(void *data, u64 val)
 {
-	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
-	int ret = tegra_cl_dvfs_clamp_at_vmin(cld, val);
+	struct clk *dfll_clk = data;
+	int ret = tegra_dvfs_clamp_dfll_at_vmin(dfll_clk, val);
 	return ret < 0 ? ret : 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(clamp_fops, clamp_get, clamp_set, "%llu\n");

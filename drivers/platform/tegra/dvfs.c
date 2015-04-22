@@ -3069,8 +3069,7 @@ int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail,
 	mutex_lock(&dvfs_lock);
 	if (rail->dfll_mode) {
 		int mv, cmp;
-		cmp = tegra_cl_dvfs_vmin_cmp_needed(
-			tegra_dfll_get_cl_dvfs_data(dfll_clk), &mv);
+		cmp = tegra_dvfs_cmp_dfll_vmin_tfloor(dfll_clk, &mv);
 		if (cmp < 0)
 			ret = dvfs_rail_set_voltage_reg(rail, mv);
 	}

@@ -196,6 +196,18 @@ void tegra_unregister_clk_rate_notifier(
 int tegra_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting);
 int tegra_dvfs_use_alt_freqs_on_clk(struct clk *c, bool use_alt_freq);
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+int tegra_dvfs_clamp_dfll_at_vmin(struct clk *dfll_clk, bool clamp);
+int tegra_dvfs_cmp_dfll_vmin_tfloor(struct clk *dfll_clk, int *tfloor);
+#else
+static inline int tegra_dvfs_clamp_dfll_at_vmin(struct clk *dfll_clk,
+						bool clamp)
+{ return -ENOSYS; }
+static inline int tegra_dvfs_cmp_dfll_vmin_tfloor(struct clk *dfll_clk,
+						int *tfloor)
+{ return 0; }
+#endif
+
 /**
  * tegra_is_clk_enabled - get info if the clk is enabled or not
  * @clk: clock source
