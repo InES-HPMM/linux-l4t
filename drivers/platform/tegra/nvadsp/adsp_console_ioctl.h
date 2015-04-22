@@ -3,7 +3,7 @@
 *
 * A header file for adsp console driver
 *
-* Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
+* Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
 *
 * This software is licensed under the terms of the GNU General Public
 * License version 2, as published by the Free Software Foundation, and
@@ -32,7 +32,7 @@
 struct adsp_consol_run_app_arg_t {
 	char app_name[NVADSP_NAME_SZ];
 	char app_path[NVADSP_NAME_SZ];
-	uint32_t args[ARGV_SIZE_IN_WORDS];
+	uint32_t args[ARGV_SIZE_IN_WORDS + 1];
 	uint64_t ctx1;
 	uint64_t ctx2;
 };
