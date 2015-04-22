@@ -943,7 +943,7 @@ static int bq2419x_init_vbus_regulator(struct bq2419x_chip *bq2419x,
 	bq2419x->vbus_reg_desc.ops = &bq2419x_vbus_ops;
 	bq2419x->vbus_reg_desc.type = REGULATOR_VOLTAGE;
 	bq2419x->vbus_reg_desc.owner = THIS_MODULE;
-	bq2419x->vbus_reg_desc.enable_time = 8000;
+	bq2419x->vbus_reg_desc.enable_time = 220000;
 
 	bq2419x->vbus_ridata = pdata->vbus_pdata->ridata;
 	bq2419x->vbus_ridata->constraints.valid_modes_mask =
