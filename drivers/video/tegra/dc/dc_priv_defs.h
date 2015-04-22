@@ -300,5 +300,6 @@ struct tegra_dc {
 	struct notifier_block slgc_notifier;
 	struct sysedp_consumer *sysedpc;
 	bool	vedid;
+	u8	*vedid_data;
 };
 #endif

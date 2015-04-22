@@ -2442,7 +2442,7 @@ static int tegra_dp_edid(struct tegra_dc_dp_data *dp)
 
 	do {
 		err = tegra_edid_get_monspecs(dp->dp_edid,
-						&dp->mon_spec, NULL);
+						&dp->mon_spec);
 		if (err < 0)
 			usleep_range(MIN_RETRY_DELAY_US, MAX_RETRY_DELAY_US);
 		else

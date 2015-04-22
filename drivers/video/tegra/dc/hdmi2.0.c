@@ -26,6 +26,7 @@
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <linux/debugfs.h>
+#include <linux/unistd.h>
 #ifdef CONFIG_SWITCH
 #include <linux/switch.h>
 #endif
@@ -577,8 +578,7 @@ static int tegra_hdmi_get_mon_spec(struct tegra_hdmi *hdmi)
 	memset(&hdmi->mon_spec, 0, sizeof(hdmi->mon_spec));
 
 	do {
-		err = tegra_edid_get_monspecs(hdmi->edid,
-						&hdmi->mon_spec, NULL);
+		err = tegra_edid_get_monspecs(hdmi->edid, &hdmi->mon_spec);
 		if (err < 0)
 			usleep_range(MIN_RETRY_DELAY_US, MAX_RETRY_DELAY_US);
 		else
@@ -644,7 +644,6 @@ static void tegra_hdmi_edid_config(struct tegra_hdmi *hdmi)
 	dc->out->v_size = CM_TO_MM(hdmi->mon_spec.max_y);
 
 	hdmi->dvi = !tegra_hdmi_is_connected(hdmi);
-
 #undef CM_TO_MM
 }
 
@@ -1038,7 +1037,7 @@ static int tegra_dc_hdmi_init(struct tegra_dc *dc)
 			dc->out && (dc->out->type == TEGRA_DC_OUT_HDMI)) {
 		struct fb_monspecs specs;
 		if (tegra_dc_hpd(dc) && (!dc->initialized)) {
-			if (!tegra_edid_get_monspecs(hdmi->edid, &specs, NULL))
+			if (!tegra_edid_get_monspecs(hdmi->edid, &specs))
 				tegra_dc_set_fb_mode(dc, specs.modedb, false);
 		} else
 			tegra_dc_set_fb_mode(dc, &tegra_dc_vga_mode, false);
