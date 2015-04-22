@@ -146,6 +146,10 @@
 		vic {
 			compatible = "nvidia,tegra124-vhost-vic";
 		};
+
+		tsec {
+			status = "disabled";
+		};
 	};
 
 	gk20a {

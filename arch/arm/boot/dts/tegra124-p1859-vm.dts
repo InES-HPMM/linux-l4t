@@ -164,6 +164,10 @@
 		msenc {
 			compatible = "nvidia,tegra124-vhost-msenc";
 		};
+
+		tsec {
+			status = "disabled";
+		};
 	};
 
 	gk20a {
