@@ -216,7 +216,10 @@ adsp_consol_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			ret = -EACCES;
 			break;
 		}
+		app_args.ctx1 = (uint64_t)
+			((nvadsp_app_info_t *)app_args.ctx2)->handle;
 		nvadsp_exit_app((nvadsp_app_info_t *)app_args.ctx2, false);
+		nvadsp_app_unload((const void *)app_args.ctx1);
 #else
 		if ((!app_args.ctx2) || (!app_args.ctx1)) {
 			ret = -EACCES;
