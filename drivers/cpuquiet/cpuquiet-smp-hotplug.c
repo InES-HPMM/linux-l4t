@@ -1,7 +1,7 @@
 /*
  * drivers/cpuquiet/cpuquiet-smp-hotplug.c
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -148,7 +148,6 @@ static void apply_constraints(struct work_struct *work)
 {
 	int action, cpu;
 	bool up = true;
-	struct cpumask cpu_online;
 
 	mutex_lock(&cpuquiet_lock);
 
@@ -164,22 +163,21 @@ static void apply_constraints(struct work_struct *work)
 		action *= -1;
 	}
 
-	cpu_online = *cpu_online_mask;
-
 	cpu = 0;
-	for (; action > 0; action--) {
-		if (up) {
-			cpu = cpumask_next_zero(cpu, &cpu_online);
+	if (up) {
+		for (; action > 0; action--) {
+			cpu = cpumask_next_zero(cpu, cpu_online_mask);
 			if (cpu >= nr_cpu_ids)
 				break;
 			cpu_up(cpu);
-			cpumask_set_cpu(cpu, &cpu_online);
-		} else {
-			cpu = cpumask_next(cpu, &cpu_online);
-			if (cpu >= nr_cpu_ids)
-				break;
-			cpu_down(cpu);
-			cpumask_clear_cpu(cpu, &cpu_online);
+		}
+	} else {
+		int last_cpu = nr_cpu_ids - 1;
+		for (cpu = last_cpu; action > 0 && cpu > 0; cpu--) {
+			if (cpu_online(cpu)) {
+				cpu_down(cpu);
+				action--;
+			}
 		}
 	}
 
@@ -188,7 +186,7 @@ static void apply_constraints(struct work_struct *work)
 
 static int update_core_config(unsigned int cpu, bool up)
 {
-	int err;
+	int err, extra_cpu;
 
 	mutex_lock(&cpuquiet_lock);
 
@@ -203,19 +201,19 @@ static int update_core_config(unsigned int cpu, bool up)
 		goto ret;
 	}
 
-	if (up) {
-		err = violates_constraints(1);
-		if (err)
-			goto ret;
+	extra_cpu = 1;
+	if (!up)
+		extra_cpu  = -1;
 
-		err = cpu_up(cpu);
-	} else {
-		err = violates_constraints(-1);
-		if (err)
-			goto ret;
-
-		err = cpu_down(cpu);
+	if (violates_constraints(extra_cpu)) {
+		err = -EINVAL;
+		goto ret;
 	}
+
+	if (up)
+		err = cpu_up(cpu);
+	else
+		err = cpu_down(cpu);
 ret:
 	mutex_unlock(&cpuquiet_lock);
 
