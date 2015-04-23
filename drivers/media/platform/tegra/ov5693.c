@@ -2284,14 +2284,11 @@ static int ov5693_exposure_wr(struct ov5693_info *info,
 	struct reg_8 reg_list[16];
 	int err = 0;
 	int offset = 0;
-	bool group_hold = true; /* To use GROUP_HOLD macros */
 
-	OV5693_ENTER_GROUP_HOLD(group_hold);
 	offset += ov5693_coarse_time_reg(reg_list + offset,
 						mode->coarse_time,
 						mode->coarse_time_short);
 	offset += ov5693_gain_reg(reg_list + offset, mode->gain);
-	OV5693_LEAVE_GROUP_HOLD(group_hold);
 
 	reg_list[offset].addr = OV5693_TABLE_END;
 	err = regmap_util_write_table_8(info->regmap,
@@ -2313,122 +2310,6 @@ static int ov5693_set_gain(struct ov5693_info *info, u32 gain, bool group_hold)
 	offset += ov5693_gain_reg(reg_list + offset, gain);
 	OV5693_LEAVE_GROUP_HOLD(group_hold);
 
-	reg_list[offset].addr = OV5693_TABLE_END;
-	offset++;
-
-	err = regmap_util_write_table_8(info->regmap,
-					reg_list, NULL, 0,
-					OV5693_TABLE_WAIT_MS,
-					OV5693_TABLE_END);
-
-	return err;
-}
-
-static int ov5693_awb_wr(struct ov5693_info *info)
-{
-	struct reg_8 reg_list[10];
-	int rg, bg, rg_typical, bg_typical;
-	int R_gain, G_gain, B_gain, G_gain_R, G_gain_B;
-	int offset;
-	int err;
-
-	if (info->cal.loaded == 0)
-		return 0;
-
-	/* update AWB calibration data to register lists */
-	rg = info->cal.rg_ratio;
-	bg = info->cal.bg_ratio;
-	rg_typical = info->cal.rg_ratio_typical;
-	bg_typical = info->cal.bg_ratio_typical;
-
-	if ((rg == 0) || (bg == 0) || (rg_typical == 0) || (bg_typical == 0))
-		return 0;
-
-	if (bg < bg_typical) {
-		if (rg < rg_typical) {
-			G_gain = 0x400;
-			B_gain = 0x400 * bg_typical / bg;
-			R_gain = 0x400 * rg_typical / rg;
-		} else {
-			R_gain = 0x400;
-			G_gain = 0x400 * rg / rg_typical;
-			B_gain = G_gain * bg_typical / bg;
-		}
-	} else {
-		if (rg < rg_typical) {
-			B_gain = 0x400;
-			G_gain = 0x400 * bg / bg_typical;
-			R_gain = G_gain * rg_typical / rg;
-		} else {
-			G_gain_B = 0x400 * bg / bg_typical;
-			G_gain_R = 0x400 * rg / rg_typical;
-			if (G_gain_B > G_gain_R) {
-				B_gain = 0x400;
-				G_gain = G_gain_B;
-				R_gain = G_gain * rg_typical / rg;
-			} else {
-				R_gain = 0x400;
-				G_gain = G_gain_R;
-				B_gain = G_gain * bg_typical / bg;
-			}
-		}
-	}
-
-	offset = 0;
-	if (R_gain > 0x400) {
-		reg_list[offset].addr = 0x3400;
-		reg_list[offset].val  = R_gain >> 8;
-		offset++;
-		reg_list[offset].addr = 0x3401;
-		reg_list[offset].val  = R_gain & 0x00ff;
-		offset++;
-	}
-	if (G_gain > 0x400) {
-		reg_list[offset].addr = 0x3402;
-		reg_list[offset].val  = G_gain >> 8;
-		offset++;
-		reg_list[offset].addr = 0x3403;
-		reg_list[offset].val  = G_gain & 0x00ff;
-		offset++;
-	}
-	if (B_gain > 0x400) {
-		reg_list[offset].addr = 0x3404;
-		reg_list[offset].val  = B_gain >> 8;
-		offset++;
-		reg_list[offset].addr = 0x3405;
-		reg_list[offset].val  = B_gain & 0x00ff;
-		offset++;
-	}
-	reg_list[offset].addr = OV5693_TABLE_END;
-	offset++;
-
-	err = regmap_util_write_table_8(info->regmap,
-					reg_list, NULL, 0,
-					OV5693_TABLE_WAIT_MS,
-					OV5693_TABLE_END);
-
-	return err;
-}
-
-static int ov5693_lsc_wr(struct ov5693_info *info)
-{
-	struct reg_8 reg_list[64];
-	int offset;
-	int err;
-	int i;
-
-	if (info->cal.loaded == 0)
-		return 0;
-
-	offset = 0;
-	reg_list[offset].addr = 0x5000;
-	reg_list[offset].val  = 0x86;
-	offset++;
-	for (i = 0; i < 62; i++) {
-		reg_list[offset].addr = 0x5800 + i;
-		reg_list[offset].val  = info->cal.lenc[i];
-		offset++;
-	}
 	reg_list[offset].addr = OV5693_TABLE_END;
 	offset++;
 
@@ -2944,20 +2825,6 @@ static int ov5693_set_mode(struct ov5693_info *info,
 		info->mode_valid = false;
 		dev_err(&info->i2c_client->dev,
 			"%s set_mode error\n", __func__);
-		goto ov5693_mode_wr_err;
-	}
-	err = ov5693_awb_wr(info);
-	if (err < 0) {
-		info->mode_valid = false;
-		dev_err(&info->i2c_client->dev,
-			"%s:%d awb cal write error\n", __func__, __LINE__);
-		goto ov5693_mode_wr_err;
-	}
-	err = ov5693_lsc_wr(info);
-	if (err < 0) {
-		info->mode_valid = false;
-		dev_err(&info->i2c_client->dev,
-			"%s:%d lsc cal write error\n", __func__, __LINE__);
 		goto ov5693_mode_wr_err;
 	}
 	err = regmap_write(info->regmap, 0x0100, 0x01);
