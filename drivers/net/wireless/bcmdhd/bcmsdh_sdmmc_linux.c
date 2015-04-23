@@ -208,6 +208,7 @@ int bcmdhd_wifi_turnoff_delay;
 bool bcmdhd_use_custom_ampdu_mpdu;
 bool bcmdhd_use_custom_pspretend_thr;
 
+bool bcmdhd_custom_rxcb;
 bool bcmdhd_prop_txstatus_vsdb;
 bool bcmdhd_vsdb_bw_allocate_enable;
 bool bcmdhd_bcmsdioh_txglom;
@@ -239,6 +240,7 @@ static void bcmdhd_dynamic_configure(int chipid)
 	} else if(chipid == 0x4354) {
 		bcmdhd_custom_glom_setting = 8;
 		bcmdhd_custom_rxchain = 1;
+		bcmdhd_custom_rxcb=true;
 		bcmdhd_custom_ampdu_ba_wsize = 64;
 		firstread = 128;
 		bcmdhd_use_custom_ampdu_mpdu = true;
