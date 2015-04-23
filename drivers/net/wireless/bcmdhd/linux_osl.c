@@ -1241,7 +1241,12 @@ osl_dma_alloc_consistent(osl_t *osh, uint size, uint16 align_bits, uint *alloced
 	{
 		dma_addr_t pap_lin;
 		va = pci_alloc_consistent(osh->pdev, size, &pap_lin);
+#ifdef BCMDMA64OSL
+		PHYSADDRPTRLOSET(pap, (uint32)(pap_lin));
+		PHYSADDRPTRHISET(pap, (uint32)(pap_lin >> 32));
+#else
 		*pap = (dmaaddr_t)pap_lin;
+#endif
 	}
 	return va;
 }
@@ -1249,15 +1254,27 @@ osl_dma_alloc_consistent(osl_t *osh, uint size, uint16 align_bits, uint *alloced
 void
 osl_dma_free_consistent(osl_t *osh, void *va, uint size, dmaaddr_t pa)
 {
+#ifdef BCMDMA64OSL
+	dma_addr_t physaddr = ((dma_addr_t)PHYSADDRHI(pa) << 32) |
+				((dma_addr_t)PHYSADDRLO(pa));
+#endif /* BCMDMA64OSL */
 	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
 
+#ifdef BCMDMA64OSL
+	pci_free_consistent(osh->pdev, size, va, physaddr);
+#else
 	pci_free_consistent(osh->pdev, size, va, (dma_addr_t)pa);
+#endif /* BCMDMA64OSL */
 }
 
 dmaaddr_t BCMFASTPATH
 osl_dma_map(osl_t *osh, void *va, uint size, int direction, void *p, hnddma_seg_map_t *dmah)
 {
 	int dir;
+	dma_addr_t physaddr;
+#ifdef BCMDMA64OSL
+	dmaaddr_t dmaaddr;
+#endif
 
 	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
 	dir = (direction == DMA_TX)? PCI_DMA_TODEVICE: PCI_DMA_FROMDEVICE;
@@ -1293,17 +1310,31 @@ osl_dma_map(osl_t *osh, void *va, uint size, int direction, void *p, hnddma_seg_
 	}
 #endif /* __ARM_ARCH_7A__ && BCMDMASGLISTOSL */
 
-	return (pci_map_single(osh->pdev, va, size, dir));
+	physaddr = pci_map_single(osh->pdev, va, size, dir);
+#ifdef BCMDMA64OSL
+	PHYSADDRLOSET(dmaaddr, (uint32) physaddr);
+	PHYSADDRHISET(dmaaddr, (uint32) (physaddr >> 32));
+	return dmaaddr;
+#else
+	return physaddr;
+#endif
 }
 
 void BCMFASTPATH
-osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction)
+osl_dma_unmap(osl_t *osh, dmaaddr_t physaddr, uint size, int direction)
 {
 	int dir;
+	dma_addr_t pa;
+#ifdef BCMDMA64OSL
+	pa = ((dma_addr_t) PHYSADDRHI(physaddr)) << 32 |
+				(dma_addr_t)PHYSADDRLO(physaddr);
+#else
+	pa = (dma_addr_t) physaddr;
+#endif /* BCMDMA64OSL */
 
 	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
 	dir = (direction == DMA_TX)? PCI_DMA_TODEVICE: PCI_DMA_FROMDEVICE;
-	pci_unmap_single(osh->pdev, (uint32)pa, size, dir);
+	pci_unmap_single(osh->pdev, pa, size, dir);
 }
 
 

@@ -174,7 +174,7 @@ extern void osl_dma_free_consistent(osl_t *osh, void *va, uint size, dmaaddr_t p
 	osl_dma_unmap((osh), (pa), (size), (direction))
 extern dmaaddr_t osl_dma_map(osl_t *osh, void *va, uint size, int direction, void *p,
 	hnddma_seg_map_t *txp_dmah);
-extern void osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction);
+extern void osl_dma_unmap(osl_t *osh, dmaaddr_t pa, uint size, int direction);
 
 /* API for DMA addressing capability */
 #define OSL_DMADDRWIDTH(osh, addrwidth) ({BCM_REFERENCE(osh); BCM_REFERENCE(addrwidth);})

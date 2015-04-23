@@ -457,7 +457,7 @@ dhd_pktid_map_clear(dhd_pktid_map_handle_t *handle)
 		if (locker->inuse == TRUE) { /* numbered key still in use */
 			locker->inuse = FALSE; /* force open the locker */
 			DHD_TRACE(("%s free id%d\n", __FUNCTION__, nkey));
-			DMA_UNMAP(osh, (uint32)locker->physaddr, locker->len,
+			DMA_UNMAP(osh, locker->physaddr, locker->len,
 				locker->dma, 0, 0);
 			PKTFREE(osh, (ulong*)locker->pkt, FALSE);
 		}
