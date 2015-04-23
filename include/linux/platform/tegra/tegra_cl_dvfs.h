@@ -114,6 +114,8 @@ struct tegra_cl_dvfs_platform_data {
 	struct voltage_reg_map	*vdd_map;
 	int			vdd_map_size;
 	int			pmu_undershoot_gb;
+	int			resume_ramp_delay;
+	int			tune_ramp_delay;
 
 	struct tegra_cl_dvfs_cfg_param		*cfg_param;
 };
