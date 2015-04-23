@@ -96,12 +96,12 @@ struct bq2419x_chip {
 
 	struct regulator_dev		*chg_rdev;
 	struct regulator_desc		chg_reg_desc;
-	struct regulator_init_data	chg_reg_init_data;
+	struct regulator_init_data	*chg_ridata;
 	struct device_node		*chg_np;
 
 	struct regulator_dev		*vbus_rdev;
 	struct regulator_desc		vbus_reg_desc;
-	struct regulator_init_data	vbus_reg_init_data;
+	struct regulator_init_data	*vbus_ridata;
 	struct device_node		*vbus_np;
 
 	struct battery_charger_dev	*bc_dev;
@@ -903,32 +903,19 @@ static int bq2419x_init_charger_regulator(struct bq2419x_chip *bq2419x,
 	bq2419x->chg_reg_desc.type  = REGULATOR_CURRENT;
 	bq2419x->chg_reg_desc.owner = THIS_MODULE;
 
-	bq2419x->chg_reg_init_data.supply_regulator	= NULL;
-	bq2419x->chg_reg_init_data.regulator_init	= NULL;
-	bq2419x->chg_reg_init_data.num_consumer_supplies =
-				pdata->bcharger_pdata->num_consumer_supplies;
-	bq2419x->chg_reg_init_data.consumer_supplies	=
-				pdata->bcharger_pdata->consumer_supplies;
-	bq2419x->chg_reg_init_data.driver_data		= bq2419x;
-	bq2419x->chg_reg_init_data.constraints.name	= "bq2419x-charger";
-	bq2419x->chg_reg_init_data.constraints.min_uA	= 0;
-	bq2419x->chg_reg_init_data.constraints.max_uA	=
-			pdata->bcharger_pdata->max_charge_current_mA * 1000;
-
-	bq2419x->chg_reg_init_data.constraints.ignore_current_constraint_init =
-							true;
-	bq2419x->chg_reg_init_data.constraints.valid_modes_mask =
+	bq2419x->chg_ridata = pdata->bcharger_pdata->ridata;
+	bq2419x->chg_ridata->driver_data = bq2419x;
+	bq2419x->chg_ridata->constraints.ignore_current_constraint_init = true;
+	bq2419x->chg_ridata->constraints.valid_modes_mask =
 						REGULATOR_MODE_NORMAL |
 						REGULATOR_MODE_STANDBY;
-
-	bq2419x->chg_reg_init_data.constraints.valid_ops_mask =
+	bq2419x->chg_ridata->constraints.valid_ops_mask =
 						REGULATOR_CHANGE_MODE |
 						REGULATOR_CHANGE_STATUS |
 						REGULATOR_CHANGE_CURRENT;
-
 	rconfig.dev = bq2419x->dev;
 	rconfig.of_node =  bq2419x->chg_np;
-	rconfig.init_data = &bq2419x->chg_reg_init_data;
+	rconfig.init_data = bq2419x->chg_ridata;
 	rconfig.driver_data = bq2419x;
 	bq2419x->chg_rdev = devm_regulator_register(bq2419x->dev,
 				&bq2419x->chg_reg_desc, &rconfig);
@@ -958,21 +945,11 @@ static int bq2419x_init_vbus_regulator(struct bq2419x_chip *bq2419x,
 	bq2419x->vbus_reg_desc.owner = THIS_MODULE;
 	bq2419x->vbus_reg_desc.enable_time = 8000;
 
-	bq2419x->vbus_reg_init_data.supply_regulator	= NULL;
-	bq2419x->vbus_reg_init_data.regulator_init	= NULL;
-	bq2419x->vbus_reg_init_data.num_consumer_supplies	=
-				pdata->vbus_pdata->num_consumer_supplies;
-	bq2419x->vbus_reg_init_data.consumer_supplies	=
-				pdata->vbus_pdata->consumer_supplies;
-	bq2419x->vbus_reg_init_data.driver_data		= bq2419x;
-
-	bq2419x->vbus_reg_init_data.constraints.name	= "bq2419x-vbus";
-	bq2419x->vbus_reg_init_data.constraints.min_uV	= 0;
-	bq2419x->vbus_reg_init_data.constraints.max_uV	= 5000000,
-	bq2419x->vbus_reg_init_data.constraints.valid_modes_mask =
+	bq2419x->vbus_ridata = pdata->vbus_pdata->ridata;
+	bq2419x->vbus_ridata->constraints.valid_modes_mask =
 					REGULATOR_MODE_NORMAL |
 					REGULATOR_MODE_STANDBY;
-	bq2419x->vbus_reg_init_data.constraints.valid_ops_mask =
+	bq2419x->vbus_ridata->constraints.valid_ops_mask =
 					REGULATOR_CHANGE_MODE |
 					REGULATOR_CHANGE_STATUS |
 					REGULATOR_CHANGE_VOLTAGE;
@@ -989,7 +966,7 @@ static int bq2419x_init_vbus_regulator(struct bq2419x_chip *bq2419x,
 	/* Register the regulators */
 	rconfig.dev = bq2419x->dev;
 	rconfig.of_node =  bq2419x->vbus_np;
-	rconfig.init_data = &bq2419x->vbus_reg_init_data;
+	rconfig.init_data = bq2419x->vbus_ridata;
 	rconfig.driver_data = bq2419x;
 	bq2419x->vbus_rdev = devm_regulator_register(bq2419x->dev,
 				&bq2419x->vbus_reg_desc, &rconfig);
@@ -1477,7 +1454,6 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 		int auto_rechg_power_on_time;
 		int count;
 		int soc_range_len, inut_volt_lim_len = 0;
-		struct regulator_init_data *batt_init_data;
 		struct bq2419x_charger_platform_data *chg_pdata;
 		struct bq2419x_charger_platform_data *bcharger_pdata;
 		u32 pval;
@@ -1495,9 +1471,9 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 		bcharger_pdata = pdata->bcharger_pdata;
 
 		chg_pdata = pdata->bcharger_pdata;
-		batt_init_data = of_get_regulator_init_data(&client->dev,
+		chg_pdata->ridata = of_get_regulator_init_data(&client->dev,
 								batt_reg_node);
-		if (!batt_init_data)
+		if (!chg_pdata->ridata)
 			return ERR_PTR(-EINVAL);
 
 		ret = of_property_read_u32(batt_reg_node,
@@ -1555,13 +1531,6 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 		else
 			pdata->bcharger_pdata->auto_rechg_power_on_time = 25;
 
-		pdata->bcharger_pdata->consumer_supplies =
-					batt_init_data->consumer_supplies;
-		pdata->bcharger_pdata->num_consumer_supplies =
-					batt_init_data->num_consumer_supplies;
-		pdata->bcharger_pdata->max_charge_current_mA =
-				batt_init_data->constraints.max_uA / 1000;
-
 		count = of_property_count_u32(batt_reg_node, "ti,soc-range");
 		soc_range_len = (count > 0) ? count : 0;
 
@@ -1603,22 +1572,15 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 vbus_node:
 	vbus_reg_node = of_find_node_by_name(np, "vbus");
 	if (vbus_reg_node) {
-		struct regulator_init_data *vbus_init_data;
-
 		pdata->vbus_pdata = devm_kzalloc(&client->dev,
 			sizeof(*(pdata->vbus_pdata)), GFP_KERNEL);
 		if (!pdata->vbus_pdata)
 			return ERR_PTR(-ENOMEM);
 
-		vbus_init_data = of_get_regulator_init_data(
+		pdata->vbus_pdata->ridata = of_get_regulator_init_data(
 					&client->dev, vbus_reg_node);
-		if (!vbus_init_data)
+		if (!pdata->vbus_pdata->ridata)
 			return ERR_PTR(-EINVAL);
-
-		pdata->vbus_pdata->consumer_supplies =
-				vbus_init_data->consumer_supplies;
-		pdata->vbus_pdata->num_consumer_supplies =
-				vbus_init_data->num_consumer_supplies;
 		pdata->vbus_pdata->gpio_otg_iusb =
 				of_get_named_gpio(vbus_reg_node,
 					"ti,otg-iusb-gpio", 0);

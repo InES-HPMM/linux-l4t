@@ -127,6 +127,7 @@ struct bq2419x_vbus_platform_data {
 	int gpio_otg_iusb;
 	int num_consumer_supplies;
 	struct regulator_consumer_supply *consumer_supplies;
+	struct regulator_init_data *ridata;
 };
 
 /*
@@ -146,6 +147,7 @@ struct bq2419x_charger_platform_data {
 	int rtc_alarm_time;
 	int num_consumer_supplies;
 	struct regulator_consumer_supply *consumer_supplies;
+	struct regulator_init_data *ridata;
 	int chg_restart_time;
 	int auto_recharge_time_power_off;
 	const char *tz_name; /* Thermal zone name */
