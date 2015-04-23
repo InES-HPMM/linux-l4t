@@ -78,8 +78,8 @@ static int tegra_bootrom_get_commands_from_dt(struct device *dev,
 
 	br_np = of_find_node_by_name(np, "bootrom-commands");
 	if (!br_np) {
-		dev_err(dev, "There is no bootrom commmands\n");
-		return -EINVAL;
+		dev_info(dev, "Bootrom commmands not found\n");
+		return -ENOENT;
 	}
 
 	nblocks = of_get_child_count(br_np);
@@ -235,7 +235,10 @@ int tegra210_boorom_pmc_init(struct device *dev)
 
 	ret = tegra_bootrom_get_commands_from_dt(dev, &br_commands);
 	if (ret < 0) {
-		pr_info("T210 pmc config for bootrom command parsing failed\n");
+		if (ret == -ENOENT)
+			ret = 0;
+		else
+			pr_info("T210 pmc config for bootrom command failed\n");
 		return ret;
 	}
 	ret = tegra210_configure_pmc_scratch(dev, br_commands);
