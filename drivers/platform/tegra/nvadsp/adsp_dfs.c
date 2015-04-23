@@ -36,7 +36,7 @@ void actmon_rate_change(unsigned long freq)
 
 #define MBOX_TIMEOUT 1000 /* in ms */
 #define HOST_ADSP_DFS_MBOX_ID 3
-#define BOOST_COUNT 1
+#define BOOST_COUNT 10
 enum adsp_dfs_reply {
 	ACK,
 	NACK,

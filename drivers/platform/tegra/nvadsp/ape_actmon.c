@@ -74,7 +74,7 @@
 /* milli second divider as SAMPLE_TICK*/
 #define SAMPLE_MS_DIVIDER			65536
 /* Sample period in ms */
-#define ACTMON_DEFAULT_SAMPLING_PERIOD	10
+#define ACTMON_DEFAULT_SAMPLING_PERIOD	20
 #define AVG_COUNT_THRESHOLD		100000
 
 static struct actmon ape_actmon;
@@ -89,10 +89,10 @@ static struct actmon_dev actmon_dev_adsp = {
 	.suspend_freq = 51200,
 
 	/* min step by which we want to boost in case of sudden boost request */
-	.boost_freq_step = 102400,
+	.boost_freq_step = 51200,
 
 	/* % of boost freq for boosting up  */
-	.boost_up_coef = 1600,
+	.boost_up_coef = 200,
 
 	/*
 	 * % of boost freq for boosting down. Should be boosted down by
@@ -113,19 +113,19 @@ static struct actmon_dev actmon_dev_adsp = {
 	 * threshold. boost interrupt is generated when actmon_count(raw_count)
 	 * crosses this threshold consecutively by down_wmark_window.
 	 */
-	.boost_down_threshold = 75,
+	.boost_down_threshold = 85,
 
 	/*
 	 * No of times raw counts hits the up_threshold to generate an
 	 * interrupt
 	 */
-	.up_wmark_window = 1,
+	.up_wmark_window = 4,
 
 	/*
 	 * No of times raw counts hits the down_threshold to generate an
 	 * interrupt.
 	 */
-	.down_wmark_window = 8,
+	.down_wmark_window = 4,
 
 	/*
 	 * No of samples = 2^ avg_window_log2 for calculating exponential moving
@@ -301,7 +301,7 @@ static irqreturn_t ape_actmon_dev_isr(int irq, void *dev_id)
 
 		dev->boost_freq =
 			do_percent(dev->boost_freq, dev->boost_down_coef);
-		if (dev->boost_freq < (dev->boost_freq_step >> 1)) {
+		if (dev->boost_freq < (dev->boost_freq_step)) {
 			dev->boost_freq = 0;
 			devval &= ~ACTMON_DEV_CTRL_DOWN_WMARK_ENB;
 		}
