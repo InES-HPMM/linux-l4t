@@ -36,10 +36,28 @@ struct saf775x_cmd {
 	unsigned int val_len;
 };
 
+struct saf775x_control_param {
+	char name[20];
+	unsigned int *reg;
+	unsigned int num_reg;
+	int val;
+};
+
+struct saf775x_control_info {
+	char name[20];
+	int min;
+	int max;
+	int step;
+	int val;
+};
 enum {
 	SAF775X_CONTROL_SET_IOCTL = _IOW(0xF4, 0x01, struct saf775x_cmd),
 	SAF775x_CODEC_RESET_IOCTL = _IO(0xF4, 0x02),
 	SAF775X_CONTROL_GET_IOCTL = _IOR(0xF4, 0x03, struct saf775x_cmd),
+	SAF775X_CONTROL_GET_MIXER = _IOR(0xF4, 0x04,
+					struct saf775x_control_info),
+	SAF775X_CONTROL_SET_MIXER = _IOW(0xF4, 0x05,
+					struct saf775x_control_param),
 };
 
 struct saf775x_ioctl_ops {
@@ -49,6 +67,11 @@ struct saf775x_ioctl_ops {
 	int (*codec_reset)(void);
 	int (*codec_read)(struct i2c_client *codec,
 		unsigned char *val, unsigned int val_len);
+	int (*codec_set_ctrl)(struct i2c_client *codec, char *name,
+		unsigned int reg, int val,
+		unsigned int num_reg);
+	int (*codec_get_ctrl)(struct i2c_client *codec,
+		struct saf775x_control_info *info);
 };
 
 int saf775x_hwdep_create(struct i2c_client *codec);

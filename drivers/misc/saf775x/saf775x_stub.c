@@ -23,6 +23,7 @@
 #include <linux/delay.h>
 
 #include "saf775x_ioctl.h"
+#include "audio_limits.h"
 #define CONFIG_TMPM32X_MODULE
 
 #ifdef CONFIG_TMPM32X_MODULE
@@ -32,11 +33,32 @@
 
 #define DRV_NAME	"saf775x"
 
+#define  ENUM_EXT(xname, xhandler_get, xhandler_put,\
+		xstruct, xmin, xmax, xstep, xval) \
+{       .name = xname, .arr = xstruct, \
+	.get = xhandler_get, .set = xhandler_put, \
+	.min = xmin, .max = xmax, .val = xval, .step = xstep}
+
+struct saf775x_controls {
+	const unsigned char *name;
+	int min;
+	int max;
+	int val;
+	int step;
+	int *arr;
+	int (*get)(struct i2c_client *,
+		struct saf775x_control_info *);
+	int (*set)(struct i2c_client *, int *, unsigned int ,
+		int, unsigned int);
+};
+
 struct saf775x_priv {
 	struct mutex mutex;
 	unsigned char msg_seq[8];
 	void *control_data;
 	struct i2c_client *tdf8530;
+	struct saf775x_controls *controls;
+	unsigned int num_controls;
 };
 
 static struct i2c_board_info tdf8530_info = {
@@ -78,6 +100,107 @@ static int saf775x_soc_write(struct i2c_client *codec, unsigned int reg,
 	mutex_unlock(&saf775x->mutex);
 
 	return ret;
+}
+
+int saf775x_set_default_ctrl(struct i2c_client *codec, int *arr,
+	unsigned int reg, int val, unsigned int num_reg) {
+
+	unsigned int *_reg = (unsigned int *)reg;
+	unsigned int i = 0;
+
+	for (i = 0; i < num_reg; i++)
+		saf775x_soc_write(codec, _reg[i],
+			(unsigned int)arr[(val*num_reg) + i], 3, 2);
+	return 0;
+}
+
+struct saf775x_controls ctrls[] = {
+ENUM_EXT("pri-vol", NULL, saf775x_set_default_ctrl, saf775x_vol_level[0], 0, 23, 1, 0),
+ENUM_EXT("sec-vol", NULL, saf775x_set_default_ctrl, saf775x_vol_level[0], 0, 23, 1, 0),
+ENUM_EXT("sec2-vol", NULL, saf775x_set_default_ctrl, saf775x_vol_level[0], 0, 23, 1, 0),
+ENUM_EXT("pri-bal-l", NULL, saf775x_set_default_ctrl, saf775x_bal_level[0], 0, 120, 10, 0),
+ENUM_EXT("pri-bal-r", NULL, saf775x_set_default_ctrl, saf775x_bal_level[0], 0, 120, 10, 0),
+ENUM_EXT("sec-bal-l", NULL, saf775x_set_default_ctrl, saf775x_bal_level[0], 0, 120, 10, 0),
+ENUM_EXT("sec-bal-l", NULL, saf775x_set_default_ctrl, saf775x_bal_level[0], 0, 120, 10, 0),
+ENUM_EXT("sec2-bal-r", NULL, saf775x_set_default_ctrl, saf775x_bal_level[0], 0, 120, 10, 0),
+ENUM_EXT("sec2-bal-r", NULL, saf775x_set_default_ctrl, saf775x_bal_level[0], 0, 120, 10, 0),
+ENUM_EXT("front-fad", NULL, saf775x_set_default_ctrl, saf775x_bal_level[0], 0, 120, 10, 0),
+ENUM_EXT("rear-fad", NULL, saf775x_set_default_ctrl, saf775x_bal_level[0], 0, 120, 10, 0),
+ENUM_EXT("swl-fad", NULL, saf775x_set_default_ctrl, saf775x_bal_level[0], 0, 120, 10, 0),
+ENUM_EXT("swr-fad", NULL, saf775x_set_default_ctrl, saf775x_bal_level[0], 0, 120, 10, 0),
+ENUM_EXT("pri-bas", NULL, saf775x_set_default_ctrl, saf775x_bas_level[0], -14, 24, 2, 0),
+ENUM_EXT("sec-bas", NULL, saf775x_set_default_ctrl, saf775x_bas_level[0], -14, 24, 2, 0),
+ENUM_EXT("sec2-bas", NULL, saf775x_set_default_ctrl, saf775x_bas_level[0], -14, 24, 2, 0),
+ENUM_EXT("pri-mid", NULL, saf775x_set_default_ctrl, saf775x_mid_level[0], -14, 14, 2, 0),
+ENUM_EXT("sec-mid", NULL, saf775x_set_default_ctrl, saf775x_mid_level[0], -14, 14, 2, 0),
+ENUM_EXT("sec2-mid", NULL, saf775x_set_default_ctrl, saf775x_mid_level[0], -14, 14, 2, 0),
+ENUM_EXT("pri-tre", NULL, saf775x_set_default_ctrl, saf775x_mid_level[0], -14, 14, 2, 0),
+ENUM_EXT("sec-tre", NULL, saf775x_set_default_ctrl, saf775x_mid_level[0], -14, 14, 2, 0),
+ENUM_EXT("sec2-tre", NULL, saf775x_set_default_ctrl, saf775x_mid_level[0], -14, 14, 2, 0),
+ENUM_EXT("front-sign-l", NULL, saf775x_set_default_ctrl, saf775x_sign_level[0], 0, 1, 1, 0),
+ENUM_EXT("front-sign-r", NULL, saf775x_set_default_ctrl, saf775x_sign_level[0], 0, 1, 1, 0),
+ENUM_EXT("rear-sign-l", NULL, saf775x_set_default_ctrl, saf775x_sign_level[0], 0, 1, 1, 0),
+ENUM_EXT("rear-sign-r", NULL, saf775x_set_default_ctrl, saf775x_sign_level[0], 0, 1, 1, 0),
+ENUM_EXT("swl-sign-l", NULL, saf775x_set_default_ctrl, saf775x_sign_level[0], 0, 1, 1, 0),
+ENUM_EXT("swr-sign-r", NULL, saf775x_set_default_ctrl, saf775x_sign_level[0], 0, 1, 1, 0),
+ENUM_EXT("pri-mute", NULL, saf775x_set_default_ctrl, saf775x_mute_level[0], 0, 1, 1, 0),
+ENUM_EXT("sec-mute", NULL, saf775x_set_default_ctrl, saf775x_mute_level[0], 0, 1, 1, 0),
+ENUM_EXT("sec2-mute", NULL, saf775x_set_default_ctrl, saf775x_mute_level[0], 0, 1, 1, 0),
+ENUM_EXT("pri-mute-rise", NULL, saf775x_set_default_ctrl, saf775x_mute_att_level[0], 10, 100, 10, 10),
+ENUM_EXT("sec-mute-rise", NULL, saf775x_set_default_ctrl, saf775x_mute_att_level[0], 10, 100, 10, 10),
+ENUM_EXT("sec2-mute-rise", NULL, saf775x_set_default_ctrl, saf775x_mute_att_level[0], 10, 100, 10, 10),
+ENUM_EXT("pri-mute-fall", NULL, saf775x_set_default_ctrl, saf775x_mute_att_level[0], 10, 100, 10, 100),
+ENUM_EXT("sec-mute-fall", NULL, saf775x_set_default_ctrl, saf775x_mute_att_level[0], 10, 100, 10, 100),
+ENUM_EXT("sec2-mute-fall", NULL, saf775x_set_default_ctrl, saf775x_mute_att_level[0], 10, 100, 10, 100),
+};
+
+static int saf775x_soc_set_ctrl(struct i2c_client *codec, char *ctrl_name,
+		unsigned int reg, int val,
+		unsigned int num_reg) {
+	struct saf775x_priv *saf775x =
+		(struct saf775x_priv *)i2c_get_clientdata(codec);
+	unsigned int i = 0;
+	struct saf775x_controls *c;
+
+	for (i = 0; i < saf775x->num_controls; i++) {
+		c = &saf775x->controls[i];
+		if (!strcmp(ctrl_name, c->name)) {
+			if (val > c->max)
+				val = c->max;
+			else if (val < c->min)
+				val = c->min;
+			else
+			;
+
+			c->val = val;
+			val = (val - c->min)/c->step;
+			c->set(codec, c->arr, reg, val, num_reg);
+			return 0;
+		}
+	}
+	return -EFAULT;
+}
+
+
+static int saf775x_soc_get_ctrl(struct i2c_client *codec,
+		struct saf775x_control_info *info) {
+	struct saf775x_priv *saf775x =
+			(struct saf775x_priv *)i2c_get_clientdata(codec);
+	unsigned int i = 0;
+	struct saf775x_controls *c;
+
+	for (i = 0; i < saf775x->num_controls; i++) {
+		c = &saf775x->controls[i];
+		if (!strcmp(info->name, c->name)) {
+			info->min = c->min;
+			info->max = c->max;
+			info->val = c->val;
+			info->step = c->step;
+
+			return 0;
+		}
+	}
+	return -EFAULT;
 }
 
 static int saf775x_soc_read(struct i2c_client *codec,
@@ -129,7 +252,11 @@ static int saf775x_i2c_probe(struct i2c_client *client,
 		dev_err(&client->dev, "Can't allocate saf775x private struct\n");
 		return -ENOMEM;
 	}
+
 	saf775x->control_data = client;
+	saf775x->controls = ctrls;
+	saf775x->num_controls = ARRAY_SIZE(ctrls);
+
 	mutex_init(&saf775x->mutex);
 
 	i2c_set_clientdata(client, saf775x);
@@ -139,6 +266,8 @@ static int saf775x_i2c_probe(struct i2c_client *client,
 	saf775x_ops->codec_write = saf775x_soc_write;
 	saf775x_ops->codec_reset = saf775x_chip_reset;
 	saf775x_ops->codec_read  = saf775x_soc_read;
+	saf775x_ops->codec_set_ctrl  = saf775x_soc_set_ctrl;
+	saf775x_ops->codec_get_ctrl  = saf775x_soc_get_ctrl;
 
 	saf775x->tdf8530 = i2c_new_device(i2c_get_adapter(0),
 				&tdf8530_info);

@@ -26,11 +26,17 @@ struct i2c_client *codec_priv;
 static int saf775x_hwdep_ioctl(struct file *file,
 			unsigned int cmd, unsigned long arg)
 {
+
 	struct saf775x_cmd __user *_saf775x = (struct saf775x_cmd *)arg;
+	struct saf775x_control_param __user *_param =
+				(struct saf775x_control_param *)arg;
+	struct saf775x_control_info __user *_info =
+				(struct saf775x_control_info *)arg;
+	struct saf775x_control_param  param;
 	struct saf775x_cmd saf775x;
+	struct saf775x_control_info info;
 	int ret = 0;
 	unsigned char *buf;
-
 
 	switch (cmd) {
 	case SAF775X_CONTROL_SET_IOCTL:
@@ -56,17 +62,46 @@ static int saf775x_hwdep_ioctl(struct file *file,
 			return -EFAULT;
 
 		buf = devm_kzalloc(&codec_priv->dev,
-		 sizeof(*buf) * saf775x.val_len, GFP_KERNEL);
+			sizeof(*buf) * saf775x.val_len, GFP_KERNEL);
 
 		if (saf775x_ops.codec_read) {
 			ret = saf775x_ops.codec_read(codec_priv,
 				buf, saf775x.val_len);
-
-		copy_to_user((unsigned char *)saf775x.val, buf,
-				sizeof(*buf) * saf775x.val_len);
+		if (copy_to_user((unsigned char *)saf775x.val, buf,
+				sizeof(*buf) * saf775x.val_len)) {
+			devm_kfree(&codec_priv->dev, buf);
+			return -EFAULT;
+		}
 		devm_kfree(&codec_priv->dev, buf);
 		} else
 			ret = -EFAULT;
+		break;
+
+	case SAF775X_CONTROL_GET_MIXER:
+
+		if (arg && copy_from_user(&info, _info, sizeof(info)))
+			return -EFAULT;
+
+		if (saf775x_ops.codec_get_ctrl) {
+			ret = saf775x_ops.codec_get_ctrl(codec_priv,
+				&info);
+			if (ret)
+				break;
+
+		if (copy_to_user((struct saf775x_control_info *)_info, &info,
+				sizeof(info)))
+			return -EFAULT;
+		} else
+			ret =  -EFAULT;
+		break;
+
+	case SAF775X_CONTROL_SET_MIXER:
+		if (arg && copy_from_user(&param, _param, sizeof(param)))
+			return -EFAULT;
+
+		ret = saf775x_ops.codec_set_ctrl(codec_priv, param.name,
+				(unsigned int)param.reg, param.val,
+				param.num_reg);
 		break;
 
 	default:
