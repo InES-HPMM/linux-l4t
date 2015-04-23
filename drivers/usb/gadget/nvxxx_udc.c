@@ -449,7 +449,6 @@ static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 	}
 
 	nvudc->vbus_detected = false;
-	pm_runtime_put_autosuspend(nvudc->dev);
 }
 
 static void tegra_xudc_current_work(struct work_struct *work)
@@ -511,6 +510,7 @@ static void tegra_xudc_ucd_work(struct work_struct *work)
 		spin_lock_irqsave(&nvudc->lock, flags);
 		vbus_not_detected(nvudc);
 		nvudc->extcon_event_processing = false;
+		pm_runtime_put_autosuspend(nvudc->dev);
 		spin_unlock_irqrestore(&nvudc->lock, flags);
 	}
 
@@ -5608,15 +5608,13 @@ static int nvudc_suspend_platform(struct device *dev)
 	nvudc->is_suspended = true;
 	spin_unlock_irqrestore(&nvudc->lock, flag);
 
-	if (!pm_runtime_status_suspended(dev)) {
-		err = pm_runtime_put_sync_suspend(nvudc->dev);
-		if (err) {
-			spin_lock_irqsave(&nvudc->lock, flag);
-			nvudc->is_suspended = false;
-			spin_unlock_irqrestore(&nvudc->lock, flag);
-			dev_err(dev, "Enter suspend failed\n");
-			return err;
-		}
+	/*
+	  * Force to enter ELPG if not being RPM_SUSPENDED status
+	  * Later after resuming, status of cable would be restores.
+	  */
+	if (!pm_runtime_status_suspended(nvudc->dev)) {
+		vbus_not_detected(nvudc);
+		tegra_xudc_enter_elpg(nvudc);
 	}
 
 	clk_disable(nvudc->pll_e);
@@ -5657,6 +5655,13 @@ static int nvudc_resume_platform(struct device *dev)
 	spin_lock_irqsave(&nvudc->lock, flag);
 	nvudc->is_suspended = false;
 	spin_unlock_irqrestore(&nvudc->lock, flag);
+
+	if (!pm_runtime_status_suspended(nvudc->dev))  {
+		tegra_xudc_exit_elpg(nvudc);
+		vbus_detected(nvudc);
+	}
+
+	/* Update current status of cable */
 	extcon_notifications(&nvudc->vbus_extcon_nb, 0, NULL);
 
 	return 0;
