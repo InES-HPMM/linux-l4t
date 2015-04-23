@@ -266,6 +266,7 @@ struct tegra_cl_dvfs {
 
 	struct hrtimer			tune_timer;
 	ktime_t				tune_delay;
+	ktime_t				tune_ramp;
 	u8				tune_out_last;
 
 	struct timer_list		calibration_timer;
@@ -988,10 +989,8 @@ static enum hrtimer_restart tune_timer_cb(struct hrtimer *timer)
 		if ((cld->tune_out_last == cld->num_voltages) &&
 		    (out_last >= cld->tune_high_out_min)  &&
 		    (out_min >= cld->tune_high_out_min)) {
-			ktime_t ramp_delay =
-				ktime_set(0, CL_DVFS_OUTPUT_RAMP_DELAY * 1000);
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_HIGH_REQUEST_2);
-			hrtimer_start(&cld->tune_timer, ramp_delay,
+			hrtimer_start(&cld->tune_timer, cld->tune_ramp,
 				      HRTIMER_MODE_REL);
 		} else {
 			hrtimer_start(&cld->tune_timer, cld->tune_delay,
@@ -1912,6 +1911,13 @@ static int cl_dvfs_init(struct tegra_cl_dvfs *cld)
 	hrtimer_init(&cld->tune_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	cld->tune_timer.function = tune_timer_cb;
 	cld->tune_delay = ktime_set(0, CL_DVFS_TUNE_HIGH_DELAY * 1000);
+	if (!cld->p_data->tune_ramp_delay)
+		cld->p_data->tune_ramp_delay = CL_DVFS_OUTPUT_RAMP_DELAY;
+	cld->tune_ramp = ktime_set(0, cld->p_data->tune_ramp_delay * 1000);
+
+	/* init forced output resume delay */
+	if (!cld->p_data->resume_ramp_delay)
+		cld->p_data->resume_ramp_delay = CL_DVFS_OUTPUT_RAMP_DELAY;
 
 	/* init calibration timer */
 	init_timer_deferrable(&cld->calibration_timer);
@@ -1987,7 +1993,7 @@ void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld)
 		    !cld->safe_dvfs->dfll_data.is_bypass_down()) {
 			cl_dvfs_wmb(cld);
 			output_enable(cld);
-			udelay(CL_DVFS_OUTPUT_RAMP_DELAY);
+			udelay(cld->p_data->resume_ramp_delay);
 		}
 	}
 }
@@ -2723,6 +2729,9 @@ static int cl_dvfs_dt_parse_pdata(struct platform_device *pdev,
 	}
 	p_data->flags = flags;
 	dev_dbg(&pdev->dev, "DT: flags: 0x%x\n", p_data->flags);
+
+	OF_READ_U32_OPT(dn, tune-ramp-delay, p_data->tune_ramp_delay);
+	OF_READ_U32_OPT(dn, resume-ramp-delay, p_data->resume_ramp_delay);
 
 	/* pmic integration */
 	i2c_dn = of_parse_phandle(dn, "i2c-pmic-integration", 0);
