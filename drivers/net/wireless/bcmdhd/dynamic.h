@@ -14,6 +14,7 @@ extern int bcmdhd_wifi_turnoff_delay;
 extern bool bcmdhd_use_custom_ampdu_mpdu;
 extern bool bcmdhd_use_custom_pspretend_thr;
 
+extern bool bcmdhd_custom_rxcb;
 extern bool bcmdhd_prop_txstatus_vsdb;
 extern bool bcmdhd_vsdb_bw_allocate_enable;
 extern bool bcmdhd_bcmsdioh_txglom;
@@ -30,6 +31,7 @@ extern bool bcmdhd_dhd_enable_lpc;
 #define bcmdhd_use_custom_ampdu_mpdu true
 #define bcmdhd_use_custom_pspretend_thr true
 
+#define bcmdhd_custom_rxcb true
 #define bcmdhd_prop_txstatus_vsdb true
 #define bcmdhd_vsdb_bw_allocate_enable true
 #define bcmdhd_bcmsdioh_txglom true
