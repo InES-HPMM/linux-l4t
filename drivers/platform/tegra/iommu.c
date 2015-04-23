@@ -103,12 +103,8 @@ static char dummy_name[DUMMY_DEV_MAX_NAME_SIZE] = DUMMY_DEV_NAME;
  * FIXME: They should have a DT entry with swgroup IDs.
  */
 static struct swgid_fixup tegra_swgid_fixup_t124[] = {
-	{ .name = "isp",	.swgids = TEGRA_SWGROUP_BIT(ISP2) |
-					  TEGRA_SWGROUP_BIT(ISP2B), },
-	{ .name = "msenc",	.swgids = TEGRA_SWGROUP_BIT(MSENC), },
 	{ .name = "nvavp",	.swgids = TEGRA_SWGROUP_BIT(AVPC) |
 					  TEGRA_SWGROUP_BIT(A9AVP), },
-	{ .name = "sdhci-tegra.1",	.swgids = TEGRA_SWGROUP_BIT(SDMMC2A) },
 	{ .name = "sdhci-tegra.2",	.swgids = TEGRA_SWGROUP_BIT(SDMMC3A) },
 	{ .name = "serial8250",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "dtv",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
@@ -127,8 +123,6 @@ static struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	  .linear_map = tegra_fb_linear_map, },
 	{ .name = "tegradc.1", .swgids = TEGRA_SWGROUP_BIT(DCB),
 	  .linear_map = tegra_fb_linear_map, },
-	{ .name = "tegra_bb",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra_dma",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra-ehci",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra-fuse",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	/*
@@ -137,21 +131,11 @@ static struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	 * secure write.
 	 */
 	{ .name = "tegra-otg",	.swgids = TEGRA_SWGROUP_BIT(PPCS1), },
-	{ .name = "tegra-pcm-audio",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-rtc",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-sata",	.swgids = TEGRA_SWGROUP_BIT(SATA2), },
-	{ .name = "tegra-se",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra-snd",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-tzram",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra-udc",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra_usb_modem_power",
-				.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tsec",	.swgids = TEGRA_SWGROUP_BIT(TSEC), },
-	/* vic must be before vi to prevent incorrect matching */
-	{ .name = "vic",	.swgids = TEGRA_SWGROUP_BIT(VIC), },
+	{ .name = "vic",	.swgids = SWGIDS_ERROR_CODE, },
 	{ .name = "vi",	.swgids = TEGRA_SWGROUP_BIT(VI), },
 	{ .name = "therm_est",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra124-apbdma",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 	{ .name = dummy_name,	.swgids = TEGRA_SWGROUP_BIT(PPCS) },
 #endif
