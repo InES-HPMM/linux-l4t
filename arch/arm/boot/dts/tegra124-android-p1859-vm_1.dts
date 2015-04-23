@@ -424,8 +424,7 @@
 		status = "okay";
 	};
 
-	tegra_carveouts {
-		compatible = "nvidia,carveouts";
+	tegra-carveouts {
 		status = "okay";
 		ivm_carveouts {
 			carveout0 {
