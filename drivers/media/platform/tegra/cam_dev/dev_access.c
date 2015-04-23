@@ -204,9 +204,6 @@ int camera_dev_sync_clear(struct camera_sync_dev *csyncdev)
 	mutex_lock(&csyncdev_mutex);
 	list_for_each_entry(itr, &csyncdev_list, list) {
 		if (!strcmp(itr->name, csyncdev->name)) {
-			if (itr->num_used > 0)
-				pr_err("%s [%s] force clear queue with pending writes\n",
-						__func__, itr->name);
 			itr->num_used = 0;
 			err = 0;
 		}

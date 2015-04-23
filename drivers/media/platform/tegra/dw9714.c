@@ -1,7 +1,7 @@
 /*
  * dw9714.c - dw9714 focuser driver
  *
- * Copyright (c) 2014-2015, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2014, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -135,8 +135,6 @@ struct dw9714_info {
 	u32 cur_pos;
 	u8 s_mode;
 	char devname[16];
-	u32 active_features;
-	u32 supported_features;
 };
 
 /**
@@ -196,14 +194,18 @@ static int dw9714_i2c_wr16(struct dw9714_info *info, u16 val, bool mfi)
 	msg.len = 2;
 	msg.buf = &buf[0];
 
-	if (mfi && info->active_features|CAMDEV_USE_MFI) {
 #ifdef TEGRA_12X_OR_HIGHER_CONFIG
+	if (mfi) {
 		return camera_dev_sync_wr_add_i2c(info->csync_dev, &msg, 1);
-#endif
+
 	} else {
 		if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
 			return -EIO;
 	}
+#else
+	if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
+		return -EIO;
+#endif
 
 	return 0;
 }
@@ -216,8 +218,7 @@ static int dw9714_position_wr(struct dw9714_info *info, s32 position)
 	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, position);
 
 #ifdef TEGRA_12X_OR_HIGHER_CONFIG
-	if (info->active_features|CAMDEV_USE_MFI)
-		err = camera_dev_sync_clear(info->csync_dev);
+	   err = camera_dev_sync_clear(info->csync_dev);
 #endif
 
 	err = dw9714_i2c_wr16(info, 0xECA3, true);
@@ -534,12 +535,6 @@ static int dw9714_param_rd(
 		dev_dbg(&info->i2c_client->dev, "%s STEREO: %d\n", __func__,
 			info->s_mode);
 		break;
-	case NVC_PARAM_FEATURES:
-		data_ptr = &info->supported_features;
-		data_size = sizeof(info->supported_features);
-		dev_dbg(&info->i2c_client->dev, "%s SUPPORTED FEATURES: %d\n",
-			__func__, info->supported_features);
-		break;
 	default:
 		dev_err(&info->i2c_client->dev,
 			"%s unsupported parameter: %d\n",
@@ -681,10 +676,6 @@ static int dw9714_param_wr(
 				__func__, params.sizeofvalue);
 			return -EFAULT;
 		}
-		return 0;
-
-	case NVC_PARAM_FEATURES:
-		info->active_features = (u32)s32val;
 		return 0;
 
 	default:
@@ -971,8 +962,6 @@ static struct dw9714_platform_data *dw9714_parse_dt(struct i2c_client *client)
 	/* get cap info */
 	nvc_focuser_parse_caps(np, pdata->cap, pdata->nvc);
 
-	pdata->support_mfi = of_property_read_bool(np, "support_mfi");
-
 	return pdata;
 }
 
@@ -1062,10 +1051,6 @@ static int dw9714_probe(
 		return -ENODEV;
 	}
 #endif
-	info->active_features = 0;
-	info->supported_features = 0;
-	info->supported_features |=
-		(info->pdata->support_mfi) ? CAMDEV_USE_MFI : 0;
 
 	nvc_debugfs_init(
 		info->miscdev.this_device->kobj.name, NULL, NULL, info);

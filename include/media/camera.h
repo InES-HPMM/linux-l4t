@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -87,8 +87,6 @@
 
 #define CAMERA_MAX_NAME_LENGTH	32
 #define CAMDEV_INVALID		0xffffffff
-
-#define CAMDEV_USE_MFI		(1)
 
 #define	CAMERA_SEQ_STATUS_MASK	0xf0000000
 #define	CAMERA_SEQ_INDEX_MASK	0x0000ffff
