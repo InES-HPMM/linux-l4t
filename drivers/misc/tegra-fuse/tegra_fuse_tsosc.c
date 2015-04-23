@@ -106,12 +106,13 @@ static int tsensor_calib_offset[] = {
  *        Mid pattern:	1:	Mid ATE CP1/CP2 fuse (rev 0.9 - 0.11)
  *        New pattern:	0:	New ATE CP1/CP2 fuse (rev 0.12 onwards)
  *
- *  T21x: CP1/CP2:	1:	Old ATE CP1/CP2 fuse (rev upto 00.2)
+ *  T21x: CP1/CP2:	2:	Same as 0 but with TSOSCs altered in A02
+ *        CP1/CP2:	1:	Old ATE CP1/CP2 fuse (rev upto 00.2)
  *        CP1/CP2:	0:	New ATE CP1/CP2 fuse (rev 00.3 onwards)
  */
 static int fuse_cp_rev_check(void)
 {
-	u32 rev, rev_major, rev_minor;
+	u32 rev, rev_major, rev_minor, chip_rev;
 
 	rev = tegra_fuse_readl(FUSE_CP_REV);
 	rev_minor = rev & 0x1f;
@@ -146,11 +147,17 @@ static int fuse_cp_rev_check(void)
 	}
 
 	if (chip_id == TEGRA_CHIPID_TEGRA21) {
+		chip_rev = tegra_chip_get_revision();
+
 		/* CP rev <= 00.2 is old ATE pattern */
 		if ((rev_major == 0) && (rev_minor <= 2))
-			return 1; /* should be -EINVAL to skip using TSOSC */
+			rev = 1; /* should be -EINVAL to skip using TSOSC */
+		else if (chip_rev < TEGRA_REVISION_A02)
+			rev = 0;	/* consider A01, A01Q */
 		else
-			return 0;
+			rev = 2;	/* chips A02+ */
+
+		return rev;
 	}
 
 	return -EINVAL;
