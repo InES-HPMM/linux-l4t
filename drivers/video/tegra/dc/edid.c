@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2015, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2016, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -40,6 +40,8 @@ struct tegra_edid_pvt {
 	bool				hfvsdb_present;
 	bool				support_yuv422;
 	bool				support_yuv444;
+	bool				rgb_quant_selectable;
+	bool				yuv_quant_selectable;
 	int			        hdmi_vic_len;
 	u8			        hdmi_vic[7];
 	u16			color_depth_flag;
@@ -469,6 +471,10 @@ static int tegra_edid_parse_ext_block(const u8 *raw, int idx,
 			u8 ext_db = ptr[1];
 
 			switch (ext_db) {
+			case CEA_DATA_BLOCK_EXT_VCDB:
+				edid->rgb_quant_selectable = ptr[2] & 0x40;
+				edid->yuv_quant_selectable = ptr[2] & 0x80;
+				break;
 			case CEA_DATA_BLOCK_EXT_Y420VDB: /* fall through */
 			case CEA_DATA_BLOCK_EXT_Y420CMDB:
 				edid->db420_present = true;
@@ -552,6 +558,24 @@ u16 tegra_edid_get_ex_hdr_cap(struct tegra_edid *edid)
 
 	if (edid->data->hdr_present)
 		ret |= FB_CAP_HDR;
+
+	return ret;
+}
+
+u16 tegra_edid_get_quant_cap(struct tegra_edid *edid)
+{
+	u16 ret = 0;
+
+	if (!edid || !edid->data) {
+		pr_warn("edid invalid\n");
+		return 0;
+	}
+
+	if (edid->data->rgb_quant_selectable)
+		ret |= FB_CAP_RGB_QUANT_SELECTABLE;
+
+	if (edid->data->yuv_quant_selectable)
+		ret |= FB_CAP_YUV_QUANT_SELECTABLE;
 
 	return ret;
 }
@@ -842,6 +866,17 @@ int tegra_edid_get_monspecs(struct tegra_edid *edid, struct fb_monspecs *specs)
 		}
 	}
 #endif
+
+	for (j = 0; j < specs->modedb_len; j++) {
+		if (!new_data->rgb_quant_selectable &&
+		    !(specs->modedb[j].vmode & FB_VMODE_SET_YUV_MASK))
+			specs->modedb[j].vmode |= FB_VMODE_LIMITED_RANGE;
+
+		if (!new_data->yuv_quant_selectable &&
+		    (specs->modedb[j].vmode & FB_VMODE_SET_YUV_MASK))
+			specs->modedb[j].vmode |= FB_VMODE_LIMITED_RANGE;
+	}
+
 	if (use_fallback)
 		edid->errors |= EDID_ERRORS_USING_FALLBACK;
 

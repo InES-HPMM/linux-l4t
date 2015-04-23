@@ -576,6 +576,7 @@ void tegra_dc_trigger_windows(struct tegra_dc *dc);
 void tegra_dc_set_color_control(struct tegra_dc *dc);
 #if defined(CONFIG_TEGRA_DC_CMU) || defined(CONFIG_TEGRA_DC_CMU_V2)
 void tegra_dc_cmu_enable(struct tegra_dc *dc, bool cmu_enable);
+void _tegra_dc_cmu_enable(struct tegra_dc *dc, bool cmu_enable);
 #endif
 
 #ifdef CONFIG_TEGRA_DC_CMU

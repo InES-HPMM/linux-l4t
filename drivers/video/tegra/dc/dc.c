@@ -2202,6 +2202,14 @@ static void _tegra_dc_update_cmu(struct tegra_dc *dc, struct tegra_dc_cmu *cmu)
 	}
 }
 
+void _tegra_dc_cmu_enable(struct tegra_dc *dc, bool cmu_enable)
+{
+	dc->cmu_enabled = cmu_enable;
+	_tegra_dc_update_cmu(dc, tegra_dc_get_cmu(dc));
+	tegra_dc_set_color_control(dc);
+	tegra_dc_writel(dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
+}
+
 int tegra_dc_update_cmu(struct tegra_dc *dc, struct tegra_dc_cmu *cmu)
 {
 	mutex_lock(&dc->lock);
@@ -2255,6 +2263,7 @@ EXPORT_SYMBOL(tegra_dc_update_cmu_aligned);
 #define tegra_dc_cache_cmu(dc, src_cmu)
 #define tegra_dc_set_cmu(dc, cmu)
 #define tegra_dc_update_cmu(dc, cmu)
+#define _tegra_dc_enable_cmu(dc, cmu)
 #define tegra_dc_update_cmu_aligned(dc, cmu)
 #endif
 
@@ -2518,6 +2527,16 @@ static struct tegra_dc_mode *tegra_dc_get_override_mode(struct tegra_dc *dc)
 		val = tegra_dc_readl(dc, DC_DISP_DISP_ACTIVE);
 		mode->h_active = val & 0xffff;
 		mode->v_active = (val >> 16) & 0xffff;
+
+		/*
+		 * Implicit contract between BL and us. If CMU is enabled,
+		 * assume limited range. This sort of works because we know
+		 * BL doesn't support YUV
+		 */
+		val = tegra_dc_readl(dc, DC_DISP_DISP_COLOR_CONTROL);
+		if (val & CMU_ENABLE)
+			mode->vmode |= FB_VMODE_LIMITED_RANGE;
+
 		tegra_dc_put(dc);
 	}
 
