@@ -791,6 +791,21 @@ static void tegra_sdhci_dumpregs(struct sdhci_host *sdhci)
 				SDMMC_VENDOR_ERR_INTR_STATUS_0));
 }
 
+static bool tegra_sdhci_is_tuning_done(struct sdhci_host *sdhci)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+
+	if (tegra_host->tuning_status == TUNING_STATUS_DONE) {
+		dev_info(mmc_dev(sdhci->mmc),
+			"Tuning already done, restoring the best tap value : %u\n",
+				tegra_host->tuned_tap_delay);
+		sdhci_tegra_set_tap_delay(sdhci, tegra_host->tuned_tap_delay);
+		return true;
+	}
+	return false;
+}
+
 static int sdhci_tegra_get_max_tuning_loop_counter(struct sdhci_host *sdhci)
 {
 	u16 hw_tuning_iterations;
@@ -5077,6 +5092,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.dump_host_cust_regs	= tegra_sdhci_dumpregs,
 	.get_max_tuning_loop_counter = sdhci_tegra_get_max_tuning_loop_counter,
 	.config_tap_delay	= tegra_sdhci_config_tap,
+	.is_tuning_done		= tegra_sdhci_is_tuning_done,
 	.get_max_pio_transfer_limits = tegra_sdhci_set_max_pio_transfer_limits,
 };
 
@@ -5136,6 +5152,7 @@ static struct sdhci_pltfm_data sdhci_tegra21_pdata = {
 	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN |
 		   SDHCI_QUIRK2_NON_STD_VOLTAGE_SWITCHING |
 		   SDHCI_QUIRK2_NON_STD_TUNING_LOOP_CNTR |
+		   SDHCI_QUIRK2_SKIP_TUNING |
 		   SDHCI_QUIRK2_NO_CALC_MAX_DISCARD_TO |
 		   SDHCI_QUIRK2_REG_ACCESS_REQ_HOST_CLK |
 		   SDHCI_QUIRK2_HOST_OFF_CARD_ON |

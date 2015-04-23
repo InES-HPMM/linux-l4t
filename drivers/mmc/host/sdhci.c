@@ -2500,6 +2500,15 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		return err;
 	}
 
+	if ((host->quirks2 & SDHCI_QUIRK2_SKIP_TUNING) &&
+		host->ops->is_tuning_done) {
+		if(host->ops->is_tuning_done(host)) {
+			enable_irq(host->irq);
+			sdhci_runtime_pm_put(host);
+			return 0;
+		}
+	}
+
 	if ((host->quirks2 & SDHCI_QUIRK2_NON_STD_TUNING_LOOP_CNTR) &&
 		(host->ops->get_max_tuning_loop_counter))
 		tuning_loop_counter =
