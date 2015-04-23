@@ -246,20 +246,25 @@ static inline struct reserved_mem *__find_rmem(struct device_node *node)
 void of_reserved_mem_device_init(struct device *dev)
 {
 	struct reserved_mem *rmem;
-	struct device_node *np;
+	struct of_phandle_iter iter;
 
-	np = of_parse_phandle(dev->of_node, "memory-region", 0);
-	if (!np)
-		return;
+	of_property_for_each_phandle_with_args(iter, dev->of_node, "memory-region",
+					       NULL, 1) {
+		struct of_phandle_args *ret = &iter.out_args;
 
-	rmem = __find_rmem(np);
-	of_node_put(np);
+		if (!ret->np)
+			return;
 
-	if (!rmem || !rmem->ops || !rmem->ops->device_init)
-		return;
+		of_node_get(ret->np);
+		rmem = __find_rmem(ret->np);
+		of_node_put(ret->np);
 
-	rmem->ops->device_init(rmem, dev);
-	dev_info(dev, "assigned reserved memory node %s\n", rmem->name);
+		if (!rmem || !rmem->ops || !rmem->ops->device_init)
+			return;
+
+		rmem->ops->device_init(rmem, dev);
+		dev_info(dev, "assigned reserved memory node %s\n", rmem->name);
+	}
 }
 
 /**
@@ -271,17 +276,22 @@ void of_reserved_mem_device_init(struct device *dev)
 void of_reserved_mem_device_release(struct device *dev)
 {
 	struct reserved_mem *rmem;
-	struct device_node *np;
+	struct of_phandle_iter iter;
 
-	np = of_parse_phandle(dev->of_node, "memory-region", 0);
-	if (!np)
-		return;
+	of_property_for_each_phandle_with_args(iter, dev->of_node, "memory-region",
+					       NULL, 1) {
+		struct of_phandle_args *ret = &iter.out_args;
 
-	rmem = __find_rmem(np);
-	of_node_put(np);
+		if (!ret->np)
+			return;
 
-	if (!rmem || !rmem->ops || !rmem->ops->device_release)
-		return;
+		of_node_get(ret->np);
+		rmem = __find_rmem(ret->np);
+		of_node_put(ret->np);
 
-	rmem->ops->device_release(rmem, dev);
+		if (!rmem || !rmem->ops || !rmem->ops->device_release)
+			return;
+
+		rmem->ops->device_release(rmem, dev);
+	}
 }
