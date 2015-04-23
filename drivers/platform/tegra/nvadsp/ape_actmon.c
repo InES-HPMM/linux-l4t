@@ -351,6 +351,7 @@ static void actmon_dev_configure(struct actmon_dev *dev,
 {
 	u32 val;
 
+	dev->boost_freq = 0;
 	dev->cur_freq = freq;
 	dev->target_freq = freq;
 	dev->avg_actv_freq = freq;
@@ -883,8 +884,7 @@ int ape_actmon_init(struct platform_device *pdev)
 			p->name, apemon->clk->name);
 		goto clk_err_out;
 	}
-
-	apemon->freq = drv->max_adsp_freq / 1000; /* in KHz */
+	apemon->freq = clk_get_rate(apemon->clk) / 1000; /* in KHz */
 
 	apemon->sampling_period = ACTMON_DEFAULT_SAMPLING_PERIOD;
 
