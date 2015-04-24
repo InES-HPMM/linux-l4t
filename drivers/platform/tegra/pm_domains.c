@@ -407,6 +407,7 @@ static const struct of_device_id tegra21x_pd_match[] __initconst = {
 	{.compatible = "nvidia,tegra210-mc-clk-pd", .data = tegra_init_mc_clk},
 	{.compatible = "nvidia,tegra210-ape-pd", .data = tegra_init_ape },
 	{.compatible = "nvidia.tegra210-nvavp-pd", .data = NULL},
+	{.compatible = "nvidia,tegra210-adsp-pd", .data = NULL},
 	{.compatible = "nvidia,tegra210-sdhci3-pd", .data = tegra_init_sdhci},
 	{.compatible = "nvidia,tegra210-sdhci2-pd", .data = tegra_init_sdhci},
 	{},
@@ -481,6 +482,17 @@ void tegra_ape_pd_remove_device(struct device *dev)
 {
 }
 EXPORT_SYMBOL(tegra_ape_pd_remove_device);
+
+void tegra_adsp_pd_add_device(struct device *dev)
+{
+	pm_genpd_dev_need_save(dev, true);
+}
+EXPORT_SYMBOL(tegra_adsp_pd_add_device);
+
+void tegra_adsp_pd_remove_device(struct device *dev)
+{
+}
+EXPORT_SYMBOL(tegra_adsp_pd_remove_device);
 #endif
 
 void tegra_pd_remove_device(struct device *dev)
@@ -547,6 +559,9 @@ static struct tegra_pm_domain tegra_ape = {
 	.gpd.power_off = tegra_ape_power_off,
 	.gpd.power_on = tegra_ape_power_on,
 };
+static struct tegra_pm_domain tegra_adsp = {
+	.gpd.name = "tegra_adsp",
+};
 #endif
 
 static struct domain_client client_list[] = {
@@ -573,6 +588,7 @@ static struct domain_client client_list[] = {
 	{ .name = "gpu", .domain = &tegra_mc_clk.gpd },
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 	{ .name = "tegra_ape", .domain = &tegra_mc_clk.gpd },
+	{ .name = "tegra_adsp", .domain = &tegra_ape.gpd },
 #endif
 	{},
 };
@@ -604,7 +620,10 @@ static int __init tegra_init_pm_domain(void)
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 	pm_genpd_init(&tegra_ape.gpd, &simple_qos_governor, false);
 	tegra_pd_add_sd(&tegra_ape.gpd);
-	pm_genpd_set_poweroff_delay(&tegra_ape.gpd, 3000);
+	pm_genpd_set_poweroff_delay(&tegra_ape.gpd, 5000);
+
+	pm_genpd_init(&tegra_adsp.gpd, &simple_qos_governor, false);
+	tegra_pd_add_sd(&tegra_adsp.gpd);
 #endif
 	return 0;
 }
@@ -682,6 +701,19 @@ void tegra_ape_pd_remove_device(struct device *dev)
 	pm_genpd_remove_device(&tegra_ape.gpd, dev);
 }
 EXPORT_SYMBOL(tegra_ape_pd_remove_device);
+
+void tegra_adsp_pd_add_device(struct device *dev)
+{
+	pm_genpd_add_device(&tegra_adsp.gpd, dev);
+	pm_genpd_dev_need_save(dev, true);
+}
+EXPORT_SYMBOL(tegra_adsp_pd_add_device);
+
+void tegra_adsp_pd_remove_device(struct device *dev)
+{
+	pm_genpd_remove_device(&tegra_adsp.gpd, dev);
+}
+EXPORT_SYMBOL(tegra_adsp_pd_remove_device);
 #endif
 #endif
 
