@@ -49,7 +49,7 @@
 #define TEGRA210_CLK_ID_HOST1X		28
 #define TEGRA210_CLK_ID_VCP		29
 #define TEGRA210_CLK_ID_I2S0		30
-/* FIXME: IDs 31 ... 32 to be assigned */
+/* IDs 31 ... 32 are reserved */
 #define TEGRA210_CLK_ID_AHBDMA		33
 #define TEGRA210_CLK_ID_APBDMA		34
 /* IDs 35 ... 37 are reserved */
@@ -68,7 +68,8 @@
 /* ID 53 is reserved */
 #define TEGRA210_CLK_ID_I2C2		54
 #define TEGRA210_CLK_ID_UARTC		55
-/* FIXME: IDs 56 ... 57 to be assigned */
+#define TEGRA210_CLK_ID_MIPI_CAL	56
+/* ID 57 is reserved */
 #define TEGRA210_CLK_ID_USB2		58
 /* IDs 59 ... 62 are reserved */
 #define TEGRA210_CLK_ID_BSEV		63
@@ -95,7 +96,7 @@
 /* IDs 84 ... 88 are reserved */
 #define TEGRA210_CLK_ID_XUSB_HOST	89
 /* IDs 90 ... 91 are reserved */
-/* FIXME: ID 92 to be assigned */
+#define TEGRA210_CLK_ID_CSUS		92
 /* IDs 93 ... 94 are reserved */
 #define TEGRA210_CLK_ID_XUSB_DEV	95
 /* IDs 96 ... 98 are reserved */
@@ -122,9 +123,7 @@
 #define TEGRA210_CLK_ID_SATA_COLD	129
 /* FIXME: IDs 130 ... 135 to be assigned */
 #define TEGRA210_CLK_ID_CEC		136
-/* FIXME: IDs 137 ... 138 to be assigned */
-/* ID 139 is reserved */
-/* FIXME: IDs 140 ... 141 to be assigned */
+/* IDs 137 ... 141 are reserved */
 #define TEGRA210_CLK_ID_XUSB_PADCTRL	142
 #define TEGRA210_CLK_ID_XUSB_GATE	143
 #define TEGRA210_CLK_ID_CILAB		144
@@ -149,7 +148,7 @@
 #define TEGRA210_CLK_ID_MC_CBPA		168
 #define TEGRA210_CLK_ID_MC_CPU		169
 #define TEGRA210_CLK_ID_MC_BBC		170
-/* FIXME: ID 171 to be assigned */
+#define TEGRA210_CLK_ID_VIM2_CLK	171
 /* ID 172 is reserved */
 #define TEGRA210_CLK_ID_MIPIIF		173
 /* IDs 174 ... 176 are reserved */
