@@ -474,7 +474,8 @@ EXPORT_SYMBOL(tegra_pd_add_device);
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 void tegra_ape_pd_add_device(struct device *dev)
 {
-	pm_genpd_dev_need_save(dev, true);
+	pm_genpd_dev_need_save(dev, false);
+	pm_genpd_add_callbacks(dev, &tegra_pd_ops, NULL);
 }
 EXPORT_SYMBOL(tegra_ape_pd_add_device);
 
@@ -485,7 +486,8 @@ EXPORT_SYMBOL(tegra_ape_pd_remove_device);
 
 void tegra_adsp_pd_add_device(struct device *dev)
 {
-	pm_genpd_dev_need_save(dev, true);
+	pm_genpd_dev_need_save(dev, false);
+	pm_genpd_add_callbacks(dev, &tegra_pd_ops, NULL);
 }
 EXPORT_SYMBOL(tegra_adsp_pd_add_device);
 
@@ -620,7 +622,6 @@ static int __init tegra_init_pm_domain(void)
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 	pm_genpd_init(&tegra_ape.gpd, &simple_qos_governor, false);
 	tegra_pd_add_sd(&tegra_ape.gpd);
-	pm_genpd_set_poweroff_delay(&tegra_ape.gpd, 5000);
 
 	pm_genpd_init(&tegra_adsp.gpd, &simple_qos_governor, false);
 	tegra_pd_add_sd(&tegra_adsp.gpd);
@@ -692,7 +693,8 @@ EXPORT_SYMBOL(tegra_pd_remove_sd);
 void tegra_ape_pd_add_device(struct device *dev)
 {
 	pm_genpd_add_device(&tegra_ape.gpd, dev);
-	pm_genpd_dev_need_save(dev, true);
+	pm_genpd_dev_need_save(dev, false);
+	pm_genpd_add_callbacks(dev, &tegra_pd_ops, NULL);
 }
 EXPORT_SYMBOL(tegra_ape_pd_add_device);
 
@@ -705,7 +707,8 @@ EXPORT_SYMBOL(tegra_ape_pd_remove_device);
 void tegra_adsp_pd_add_device(struct device *dev)
 {
 	pm_genpd_add_device(&tegra_adsp.gpd, dev);
-	pm_genpd_dev_need_save(dev, true);
+	pm_genpd_dev_need_save(dev, false);
+	pm_genpd_add_callbacks(dev, &tegra_pd_ops, NULL);
 }
 EXPORT_SYMBOL(tegra_adsp_pd_add_device);
 

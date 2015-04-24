@@ -1255,8 +1255,6 @@ static int tegra_adma_probe(struct platform_device *pdev)
 	dma_device = &pdev->dev;
 
 	tegra_ape_pd_add_device(&pdev->dev);
-	pm_genpd_dev_need_save(&pdev->dev, true);
-	pm_genpd_dev_need_restore(&pdev->dev, true);
 
 	pm_runtime_enable(&pdev->dev);
 	if (!pm_runtime_enabled(&pdev->dev)) {
