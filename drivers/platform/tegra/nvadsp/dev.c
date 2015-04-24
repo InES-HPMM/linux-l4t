@@ -528,7 +528,7 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 	nvadsp_drv_data = drv_data;
 
 #ifdef CONFIG_PM_RUNTIME
-	tegra_ape_pd_add_device(dev);
+	tegra_adsp_pd_add_device(dev);
 	pm_genpd_dev_need_save(dev, true);
 	pm_genpd_dev_need_restore(dev, true);
 
