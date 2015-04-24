@@ -82,7 +82,8 @@ is required:
 				gpio6, gpio7
 
 		Optional properties:
-			function, drive-push-pull, drive-open-drain.
+			function, drive-push-pull, drive-open-drain,
+			bias-pull-up, bias-pull-down.
 				Definitions are in the pinmux dt binding
 			devicetree/bindings/pinctrl/pinctrl-bindings.txt
 			Absense of properties will leave the configuration
