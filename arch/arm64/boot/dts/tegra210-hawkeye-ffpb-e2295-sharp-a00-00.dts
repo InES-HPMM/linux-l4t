@@ -1,0 +1,25 @@
+/*
+ * tegra210-hawkeye-ffpb-e2295-sharp-a00-00.dts: Hawkeye FFPB P2295 A00 board w/ WAR.
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra210-hawkeye-ffpb-e2295-a00-00.dts"
+
+/ {
+	nvidia,dtsfilename = __FILE__;
+	host1x {
+		dc@54200000 {
+			nvidia,dc-flags = <0>;
+		};
+	};
+};
