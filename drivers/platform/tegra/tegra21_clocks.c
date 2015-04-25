@@ -3760,7 +3760,15 @@ static struct clk_ops tegra_plle_ops = {
 /* DFLL operations */
 static void __init tegra21_dfll_clk_init(struct clk *c)
 {
+	unsigned long int dfll_boot_req_khz = tegra_dfll_boot_req_khz();
 	c->ops->init = tegra21_dfll_cpu_late_init;
+
+	/*
+	 * If boot loader has set dfll clock, then dfll freq is
+	 * passed in kernel command line from bootloader
+	 */
+	if (dfll_boot_req_khz)
+		c->rate = dfll_boot_req_khz * 1000;
 }
 
 static int tegra21_dfll_clk_enable(struct clk *c)
@@ -10025,16 +10033,51 @@ static void __init tegra21_dfll_cpu_late_init(struct clk *c)
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	int ret;
 	struct clk *cpu = &tegra_clk_virtual_cpu_g;
+	unsigned long int dfll_boot_req_khz = tegra_dfll_boot_req_khz();
 
 	if (!cpu || !cpu->dvfs) {
 		pr_err("%s: CPU dvfs is not present\n", __func__);
 		return;
 	}
 
-	/* release dfll clock source reset, init cl_dvfs control logic, and
-	   move dfll to initialized state, so it can be used as CPU source */
+	/* release dfll clock source reset */
 	tegra_periph_reset_deassert(c);
+
+	/*
+	 * Init DFLL control logic (cl_dvfs):
+	 * - if CPU is already set on DFLL by boot-loader, this call would sync
+	 *   cl_dvfs driver with cl_dvfs h/w state.
+	 * - if CPU booted on PLLX this call initializes cl_dvfs h/w, so DFLL
+	 *   can be used as CPU source.
+	 */
 	ret = tegra_init_cl_dvfs();
+
+	/*
+	 * Boot on DFLL.
+	 * cl_dvfs device may not be present in DT for virtualized platform.
+	 */
+	if (dfll_boot_req_khz) {
+		if (!ret || (ret == -ENODEV)) {
+			c->u.dfll.consumer = cpu;
+			c->state = ON;
+			use_dfll = DFLL_RANGE_ALL_RATES;
+			tegra_dvfs_set_dfll_range(cpu->dvfs, use_dfll);
+
+			/* To read regulator (not cache), set volatile mode */
+			tegra_dvfs_rail_set_reg_volatile(tegra_cpu_rail, true);
+
+			if (!ret)
+				tegra_cl_dvfs_debug_init(c);
+
+			pr_info("Tegra CPU DFLL booted with use_dfll = %d\n",
+				use_dfll);
+			return;
+		}
+		pr_err("Tegra CPU DFLL failed to sync boot state\n");
+		return;
+	}
+
+	/* Boot on PLLX */
 	if (!ret) {
 		c->u.dfll.consumer = cpu;
 		c->state = OFF;
