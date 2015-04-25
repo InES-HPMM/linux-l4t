@@ -26,6 +26,7 @@
 #include <linux/clk.h>
 #include <linux/syscore_ops.h>
 #include <linux/platform_device.h>
+#include <linux/tegra_soctherm.h>
 #include <soc/tegra/tegra_bpmp.h>
 #include <dt-bindings/clk/tegra210-clk.h>
 
@@ -3757,6 +3758,17 @@ static struct clk_ops tegra_plle_ops = {
  */
 
 /* DFLL operations */
+#ifdef	CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+static void tune_cpu_trimmers(bool trim_high)
+{
+	tegra_soctherm_adjust_cpu_zone(trim_high);
+	pr_info_once("%s: init soctherm cpu zone %s\n", __func__,
+		 trim_high ? "HIGH" : "LOW");
+	pr_debug("%s: adjust soctherm cpu zone %s\n", __func__,
+		 trim_high ? "HIGH" : "LOW");
+}
+#endif
+
 static void __init tegra21_dfll_clk_init(struct clk *c)
 {
 	unsigned long int dfll_boot_req_khz = tegra_dfll_boot_req_khz();
@@ -10078,6 +10090,7 @@ static void __init tegra21_dfll_cpu_late_init(struct clk *c)
 		pr_err("%s: CPU dvfs is not present\n", __func__);
 		return;
 	}
+	tegra_dvfs_set_dfll_tune_trimmers(cpu->dvfs, tune_cpu_trimmers);
 
 	/* release dfll clock source reset */
 	tegra_periph_reset_deassert(c);
