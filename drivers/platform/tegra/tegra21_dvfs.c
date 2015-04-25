@@ -1010,6 +1010,12 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 	cpu_dvfs->dfll_data.use_dfll_rate_min = fmin_use_dfll * d->freqs_mult;
 	cpu_dvfs->dfll_data.min_millivolts = min_dfll_mv;
 
+	if (tegra_dfll_boot_req_khz()) {
+		/* If boot on DFLL, rail is already under DFLL control */
+		cpu_dvfs->dfll_data.dfll_boot_khz = tegra_dfll_boot_req_khz();
+		rail->dfll_mode = true;
+	}
+
 	return 0;
 }
 
