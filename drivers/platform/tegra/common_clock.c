@@ -26,15 +26,6 @@
 static DEFINE_MUTEX(clock_list_lock);
 static LIST_HEAD(clocks);
 
-void tegra_clk_add(struct clk *clk)
-{
-	struct clk_tegra *c = to_clk_tegra(__clk_get_hw(clk));
-
-	mutex_lock(&clock_list_lock);
-	list_add(&c->node, &clocks);
-	mutex_unlock(&clock_list_lock);
-}
-
 struct clk *tegra_get_clock_by_name(const char *name)
 {
 	struct clk_tegra *c;
