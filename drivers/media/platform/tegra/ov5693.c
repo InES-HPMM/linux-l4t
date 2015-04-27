@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -32,7 +32,7 @@
 #include <linux/sysedp.h>
 #include <media/ov5693.h>
 #include <media/nvc.h>
-#include "regmap_util.h"
+#include <media/camera_common.h>
 #include "cam_dev/camera_gpio.h"
 #include "nvc_utilities.h"
 

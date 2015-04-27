@@ -32,7 +32,7 @@
 #include <linux/module.h>
 #include <linux/of_gpio.h>
 #include <linux/sysedp.h>
-#include "regmap_util.h"
+#include <media/camera_common.h>
 
 #include <media/ov7695.h>
 
