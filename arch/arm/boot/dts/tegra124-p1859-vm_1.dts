@@ -441,6 +441,7 @@
 	};
 
 	tegra-carveouts {
+		iommus = <&smmu TEGRA_SWGROUP_HC>;
 		status = "okay";
 		ivm_carveouts {
 			carveout0 {

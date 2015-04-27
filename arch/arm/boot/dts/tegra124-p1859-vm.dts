@@ -178,4 +178,8 @@
 	sdhci@700b0200 {
 		status = "disabled";
 	};
+
+	tegra-carveouts {
+		iommus = <&smmu TEGRA_SWGROUP_HC>;
+	};
 };
