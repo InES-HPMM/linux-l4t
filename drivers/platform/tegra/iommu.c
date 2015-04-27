@@ -144,8 +144,6 @@ static struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{ .name = "tegra_dma",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra-ehci",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
 	{ .name = "tegra-fuse",	.swgids = TEGRA_SWGROUP_BIT(PPCS), },
-	{ .name = "tegra-carveouts",	.swgids = TEGRA_SWGROUP_BIT(HC) |
-						  TEGRA_SWGROUP_BIT(AVPC), },
 	/*
 	 * PPCS1 selection for USB2 needs AHB_ARBC register program
 	 * in warm boot and cold boot paths in BL as it needs
@@ -205,8 +203,6 @@ static struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	{ .name = "tegra-fuse",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
-	{ .name = "tegra-carveouts",	.swgids = TEGRA_SWGROUP_BIT(HC) |
-						  TEGRA_SWGROUP_BIT(AVPC), },
 	{ .name = "tegra-otg",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(PPCS1) |
 	  TEGRA_SWGROUP_BIT(PPCS2), },
