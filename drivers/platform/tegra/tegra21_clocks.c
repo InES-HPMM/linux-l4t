@@ -6885,7 +6885,7 @@ static struct clk tegra_pll_a_out0 = {
 
 static struct clk_mux_sel mux_plla[] = {
 	{ .input = &tegra_pll_a, .value = 0},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk tegra_pll_a_out_adsp = {
@@ -6902,7 +6902,7 @@ static struct clk tegra_pll_a_out_adsp = {
 
 static struct clk_mux_sel mux_plla_out0[] = {
 	{ .input = &tegra_pll_a_out0, .value = 0},
-	{ 0, 0},
+	{ NULL, 0},
 };
 
 static struct clk tegra_pll_a_out0_out_adsp = {
