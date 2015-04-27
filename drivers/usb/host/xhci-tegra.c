@@ -5132,15 +5132,9 @@ static void xusb_tegra_program_registers(void)
 static int tegra_xhci_probe(struct platform_device *pdev)
 {
 	struct tegra_xhci_hcd *tegra;
-	struct resource	*res;
-	unsigned pad;
-	u32 val;
 	int ret;
 	const struct tegra_xusb_soc_config *soc_config;
 	const struct of_device_id *match;
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-	u32 port;
-#endif
 
 	if (tegra_platform_is_fpga())
 		xusb_tegra_program_registers();
@@ -5240,12 +5234,52 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra->base_list[2] = tegra->ipfs_base;
 	tegra->base_list[3] = tegra->padctl_base;
 
+	ret = init_firmware(tegra);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "failed to init firmware\n");
+		ret = -ENODEV;
+		goto err_deinit_firmware_log;
+	}
+
+	return 0;
+
+err_deinit_firmware_log:
+	fw_log_deinit(tegra);
+
+	return ret;
+}
+
+static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
+{
+	struct platform_device *pdev = tegra->pdev;
+	const struct hc_driver *driver;
+	int ret;
+	u32 val;
+	unsigned pad;
+	struct resource	*res;
+	int irq;
+	struct xhci_hcd	*xhci;
+	struct usb_hcd	*hcd;
+	u32 portsc;
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	u32 port;
+#endif
+
 	for (pad = 0; pad < tegra->soc_config->utmi_pad_count; pad++) {
 		if (BIT(XUSB_UTMI_INDEX + pad) & tegra->bdata->otg_portmap) {
 			tegra->otg_portnum = pad;
 			break;
 		}
 	}
+
+	for (pad = 0; pad < XUSB_UTMI_COUNT; pad++)
+		set_port_cdp(tegra, true, pad);
+
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	/* By default disable the BATTERY_CHRG_OTGPAD for all ports */
+	for (port = 0; port <= XUSB_UTMI_COUNT; port++)
+		t210_enable_battery_circuit(tegra, port);
+#endif
 
 	/* Enable power rails to the PAD,VBUS
 	 * and pull-up voltage.Initialize the regulators
@@ -5331,8 +5365,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 			tegra->transceiver = NULL;
 		}
 	}
-
-	tegra->padregs = soc_config->padctl_offsets;
+	tegra->padregs = tegra->soc_config->padctl_offsets;
 
 	tegra->base_list[0] = tegra->host_phy_virt_base;
 	tegra->prod_list = tegra_prod_init(tegra->pdev->dev.of_node);
@@ -5379,50 +5412,6 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	utmi_phy_iddq_override(false);
 
 	platform_set_drvdata(pdev, tegra);
-	ret = init_firmware(tegra);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "failed to init firmware\n");
-		ret = -ENODEV;
-		goto err_deinit_firmware_log;
-	}
-
-	for (pad = 0; pad < XUSB_UTMI_COUNT; pad++)
-		set_port_cdp(tegra, true, pad);
-
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-	/* By default disable the BATTERY_CHRG_OTGPAD for all ports */
-	for (port = 0; port <= XUSB_UTMI_COUNT; port++)
-		t210_enable_battery_circuit(tegra, port);
-#endif
-	return 0;
-
-err_deinit_firmware_log:
-	fw_log_deinit(tegra);
-	if (tegra->prod_list)
-		tegra_prod_release(&tegra->prod_list);
-err_deinit_xusb_partition_clk:
-	tegra_xusb_partitions_clk_deinit(tegra);
-err_deinit_usb2_clocks:
-	tegra_usb2_clocks_deinit(tegra);
-err_deinit_tegra_xusb_regulator:
-	tegra_xusb_regulator_deinit(tegra);
-err_put_otg_transceiver:
-	if (tegra->transceiver)
-		usb_put_phy(tegra->transceiver);
-
-	return ret;
-}
-
-static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
-{
-	struct platform_device *pdev = tegra->pdev;
-	const struct hc_driver *driver;
-	int ret;
-	struct resource	*res;
-	int irq;
-	struct xhci_hcd	*xhci;
-	struct usb_hcd	*hcd;
-	u32 portsc;
 
 	ret = load_firmware(tegra, false /* do reset ARU */);
 	if (ret < 0) {
@@ -5606,6 +5595,18 @@ err_remove_usb2_hcd:
 	usb_remove_hcd(hcd);
 err_put_usb2_hcd:
 	usb_put_hcd(hcd);
+err_deinit_xusb_partition_clk:
+	tegra_xusb_partitions_clk_deinit(tegra);
+err_deinit_usb2_clocks:
+	tegra_usb2_clocks_deinit(tegra);
+err_deinit_tegra_xusb_regulator:
+	tegra_xusb_regulator_deinit(tegra);
+err_put_otg_transceiver:
+	if (tegra->transceiver)
+		usb_put_phy(tegra->transceiver);
+
+	if (tegra->prod_list)
+		tegra_prod_release(&tegra->prod_list);
 
 	return ret;
 }
