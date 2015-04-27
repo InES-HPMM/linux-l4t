@@ -762,8 +762,11 @@ static void xotg_work(struct work_struct *work)
 
 	from_state = xotg->phy.state;
 
-	if (!gadget)
-		xotg_warn(xotg->dev, "gadget driver not loaded yet ?\n");
+	if (!gadget && (xotg->phy.state == OTG_STATE_B_PERIPHERAL)) {
+		xotg_err(xotg->dev, "gadget driver not loaded yet ?\n");
+		spin_unlock_irqrestore(&xotg->lock, flags);
+		return;
+	}
 
 	xotg_dbg(xotg->dev, "switching from %s\n",
 		usb_otg_state_string(from_state));
