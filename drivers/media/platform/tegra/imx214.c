@@ -34,6 +34,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
+#include <media/camera_common.h>
 #include <media/imx214.h>
 
 #include "nvc_utilities.h"
@@ -50,7 +51,7 @@ struct imx214_info {
 	struct mutex			imx214_camera_lock;
 	struct dentry			*debugdir;
 	atomic_t			in_use;
-	struct imx214_eeprom_data eeprom[IMX214_EEPROM_NUM_BLOCKS];
+	struct camera_common_eeprom_data eeprom[IMX214_EEPROM_NUM_BLOCKS];
 	u8 eeprom_buf[IMX214_EEPROM_SIZE];
 };
 
@@ -59,23 +60,6 @@ static const struct regmap_config sensor_regmap_config = {
 	.val_bits = 8,
 	.cache_type = REGCACHE_RBTREE,
 };
-
-#define MAX_BUFFER_SIZE 32
-#define IMX214_FRAME_LENGTH_ADDR_MSB 0x0340
-#define IMX214_FRAME_LENGTH_ADDR_LSB 0x0341
-#define IMX214_COARSE_TIME_ADDR_MSB 0x0202
-#define IMX214_COARSE_TIME_ADDR_LSB 0x0203
-#define IMX214_COARSE_TIME_SHORT_ADDR_MSB 0x0224
-#define IMX214_COARSE_TIME_SHORT_ADDR_LSB 0x0225
-#define IMX214_GAIN_ADDR_MSB 0x0204
-#define IMX214_GAIN_ADDR_LSB 0x0205
-#define IMX214_GAIN_SHORT_ADDR_MSB 0x0216
-#define IMX214_GAIN_SHORT_ADDR_LSB 0x0217
-
-static inline void msleep_range(unsigned int delay_base)
-{
-	usleep_range(delay_base*1000, delay_base*1000+500);
-}
 
 static inline void imx214_get_frame_length_regs(struct imx214_reg *regs,
 				u32 frame_length)
@@ -172,7 +156,7 @@ static int imx214_write_table(struct imx214_info *info,
 
 		err = imx214_write_reg(info, next->addr, val);
 		if (err) {
-			pr_err("%s:imx214_write_table:%d", __func__, err);
+			pr_err("%s:%d", __func__, err);
 			return err;
 		}
 	}
@@ -447,34 +431,6 @@ static int imx214_set_group_hold(struct imx214_info *info,
 	return 0;
 }
 
-static int imx214_get_sensor_id(struct imx214_info *info)
-{
-	int ret = 0;
-	int i;
-	u8 bak = 0;
-
-	pr_info("%s\n", __func__);
-	if (info->sensor_data.fuse_id_size)
-		return 0;
-
-	/* Note 1: If the sensor does not have power at this point
-	Need to supply the power, e.g. by calling power on function */
-
-	ret |= imx214_write_reg(info, 0x3B02, 0x00);
-	ret |= imx214_write_reg(info, 0x3B00, 0x01);
-	for (i = 0; i < 9; i++) {
-		ret |= imx214_read_reg(info, 0x3B24 + i, &bak);
-		info->sensor_data.fuse_id[i] = bak;
-	}
-
-	if (!ret)
-		info->sensor_data.fuse_id_size = i;
-
-	/* Note 2: Need to clean up any action carried out in Note 1 */
-
-	return ret;
-}
-
 static void imx214_mclk_disable(
 	struct device *dev, struct imx214_power_rail *pw)
 {
@@ -564,16 +520,23 @@ imx214_ext_reg2_fail:
 imx214_ext_reg1_fail:
 	imx214_mclk_disable(&info->i2c_client->dev, pw);
 	pr_err("%s failed.\n", __func__);
+
 	return -ENODEV;
 }
 
 static int imx214_power_off(struct imx214_info *info)
 {
+	int err = 0;
 	struct imx214_power_rail *pw = &info->power;
 
 	if (info->pdata->power_off) {
-		info->pdata->power_off(&info->power);
-		goto power_off_done;
+		err = info->pdata->power_off(&info->power);
+		if (err < 0) {
+			pr_err("%s failed.\n", __func__);
+			return err;
+		} else {
+			goto power_off_done;
+		}
 	}
 
 	usleep_range(1, 2);
@@ -599,6 +562,52 @@ power_off_done:
 	imx214_mclk_disable(&info->i2c_client->dev, pw);
 
 	return 0;
+}
+
+static int imx214_get_sensor_id(struct imx214_info *info)
+{
+	int err = 0;
+	u8 status;
+
+	if (info->sensor_data.fuse_id_size)
+		return 0;
+
+	imx214_power_on(info);
+	if (err)
+		return -ENODEV;
+
+	err = imx214_write_reg(info, IMX214_OTP_PAGE_NUM_ADDR,
+			 IMX214_FUSE_ID_OTP_PAGE);
+	if (err)
+		return err;
+	err = imx214_write_reg(info, IMX214_OTP_CTRL_ADDR, 0x01);
+	if (err)
+		return err;
+	err = imx214_read_reg(info, IMX214_OTP_STATUS_ADDR, &status);
+	if (err)
+		return err;
+	if (status == IMX214_OTP_STATUS_IN_PROGRESS) {
+		dev_err(&info->i2c_client->dev, "another OTP read in progress\n");
+		return err;
+	}
+
+	err = regmap_bulk_read(info->regmap, IMX214_FUSE_ID_OTP_ROW_ADDR,
+			&info->sensor_data.fuse_id[0], IMX214_FUSE_ID_SIZE);
+	if (err)
+		return err;
+
+	err = imx214_read_reg(info, IMX214_OTP_STATUS_ADDR, &status);
+	if (err)
+		return err;
+	if (status == IMX214_OTP_STATUS_READ_FAIL) {
+		dev_err(&info->i2c_client->dev, "fuse id read error\n");
+		return err;
+	}
+
+	info->sensor_data.fuse_id_size = IMX214_FUSE_ID_SIZE;
+
+	imx214_power_off(info);
+	return err;
 }
 
 static int imx214_eeprom_device_release(struct imx214_info *info)
