@@ -1,7 +1,7 @@
 /*
  * ar0261.c - ar0261 sensor driver
  *
- * Copyright (c) 2013-2014, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2013-2015, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -30,7 +30,7 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 
-#include "regmap_util.h"
+#include <media/camera_common.h>
 
 #define CONFIG_T210_FPGA 0
 
