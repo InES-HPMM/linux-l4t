@@ -42,7 +42,7 @@
 			};
 			module2: module2@modules {
 				compatible = "sensor,front";
-				badge_info = "hawkeye_a00_front_IMX132";
+				badge_info = "hawkeye_a00_front_D2N05A";
 
 				sensor {
 					profile = <&imx132_1>;
