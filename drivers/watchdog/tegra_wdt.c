@@ -41,18 +41,19 @@
 #define MIN_WDT_PERIOD	5
 #define MAX_WDT_PERIOD	1000
 
-enum tegra_wdt_status {
-	WDT_DISABLED = 1 << 0,
-	WDT_ENABLED = 1 << 1,
-};
-
 struct tegra_wdt {
+	struct platform_device	*pdev;
 	struct watchdog_device	wdt;
 	unsigned long		users;
 	void __iomem		*wdt_source;
 	void __iomem		*wdt_timer;
+	int			irq;
 	int			tmrsrc;
-	int			status;
+	unsigned long		status;
+/* Bit numbers for status flags */
+#define WDT_ENABLED		0
+#define WDT_ENABLED_ON_INIT	1
+#define WDT_ENABLED_USERSPACE	2
 };
 
 /*
@@ -63,9 +64,10 @@ struct tegra_wdt {
 static int expiry_count = 1;
 
 /*
- * For spinlock lockup detection to work, the heartbeat should be 2*lockup
- * for cases where the spinlock disabled irqs.
- * must be greater than MIN_WDT_PERIOD and lower than MAX_WDT_PERIOD
+ * To detect lockup condition, the heartbeat should be expiry_count*lockup.
+ * It may be taken over later by timeout value requested by application.
+ * Must be greater than expiry_count*MIN_WDT_PERIOD and lower than
+ * expiry_count*MAX_WDT_PERIOD.
  */
 static int heartbeat = 120;
 
@@ -111,7 +113,33 @@ static int __tegra_wdt_ping(struct tegra_wdt *tegra_wdt)
 
 	writel(WDT_CMD_START_COUNTER, tegra_wdt->wdt_source + WDT_CMD);
 
+	dev_dbg(tegra_wdt->wdt.dev, "wdt cleared\n");
 	return 0;
+}
+
+static irqreturn_t tegra_wdt_irq(int irq, void *data)
+{
+	struct tegra_wdt *tegra_wdt = data;
+
+	__tegra_wdt_ping(tegra_wdt);
+
+	return IRQ_HANDLED;
+}
+
+static void tegra_wdt_ref(struct watchdog_device *wdt)
+{
+	struct tegra_wdt *tegra_wdt = to_tegra_wdt(wdt);
+
+	if (tegra_wdt->irq <= 0)
+		return;
+
+	/*
+	 * Remove the interrupt handler if userspace is taking over WDT.
+	 */
+	if (!test_and_set_bit(WDT_ENABLED_USERSPACE, &tegra_wdt->status) &&
+			test_bit(WDT_ENABLED_ON_INIT, &tegra_wdt->status))
+		devm_free_irq(&tegra_wdt->pdev->dev, tegra_wdt->irq,
+			tegra_wdt);
 }
 
 static int __tegra_wdt_enable(struct tegra_wdt *tegra_wdt)
@@ -136,6 +164,8 @@ static int __tegra_wdt_enable(struct tegra_wdt *tegra_wdt)
 	writel(val, tegra_wdt->wdt_source + WDT_CFG);
 	writel(WDT_CMD_START_COUNTER, tegra_wdt->wdt_source + WDT_CMD);
 
+	set_bit(WDT_ENABLED, &tegra_wdt->status);
+
 	return 0;
 }
 
@@ -146,7 +176,7 @@ static int __tegra_wdt_disable(struct tegra_wdt *tegra_wdt)
 
 	writel(0, tegra_wdt->wdt_timer + TIMER_PTV);
 
-	tegra_wdt->status = WDT_DISABLED;
+	clear_bit(WDT_ENABLED, &tegra_wdt->status);
 
 	return 0;
 }
@@ -176,6 +206,8 @@ static int tegra_wdt_set_timeout(struct watchdog_device *wdt,
 	tegra_wdt_disable(wdt);
 	wdt->timeout = timeout;
 	tegra_wdt_enable(wdt);
+
+	dev_info(wdt->dev, "wdt timeout set to %u seconds\n", timeout);
 	return 0;
 }
 
@@ -191,6 +223,7 @@ static const struct watchdog_ops tegra_wdt_ops = {
 	.stop  = tegra_wdt_disable,
 	.ping  = tegra_wdt_ping,
 	.set_timeout = tegra_wdt_set_timeout,
+	.ref   = tegra_wdt_ref,
 };
 
 #ifdef CONFIG_DEBUG_FS
@@ -284,11 +317,12 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	tegra_wdt->pdev = pdev;
 	tegra_wdt->wdt.info = &tegra_wdt_info;
 	tegra_wdt->wdt.ops = &tegra_wdt_ops;
 	tegra_wdt->wdt.min_timeout = MIN_WDT_PERIOD * expiry_count;
 	tegra_wdt->wdt.max_timeout = MAX_WDT_PERIOD * expiry_count;
-	tegra_wdt->wdt.timeout = heartbeat;
+	watchdog_init_timeout(&tegra_wdt->wdt, heartbeat, &pdev->dev);
 
 	res_src = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	res_wdt = platform_get_resource(pdev, IORESOURCE_MEM, 1);
@@ -320,14 +354,33 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	tegra_wdt_disable(&tegra_wdt->wdt);
 	writel(TIMER_PCR_INTR, tegra_wdt->wdt_timer + TIMER_PCR);
 
-	/* Init and enable watchdog on WDT0 with timer 8 during probe */
+	/* Init and enable watchdog on WDT0 during probe */
 	if (enable_on_init) {
-		set_bit(WDOG_ACTIVE, &tegra_wdt->wdt.status);
-		tegra_wdt_enable(&tegra_wdt->wdt);
-		pr_info("WDT heartbeat enabled on probe\n");
-	}
+		if (of_machine_is_compatible("nvidia,tegra210")) {
+			tegra_wdt->irq = platform_get_irq(pdev, 0);
+			if (tegra_wdt->irq <= 0) {
+				dev_err(&pdev->dev, "failed to get WDT IRQ\n");
+				return -ENXIO;
+			}
 
-	watchdog_init_timeout(&tegra_wdt->wdt, heartbeat,  &pdev->dev);
+			ret = devm_request_threaded_irq(&pdev->dev,
+					tegra_wdt->irq,	NULL, tegra_wdt_irq,
+					IRQF_ONESHOT | IRQF_TRIGGER_HIGH,
+					dev_name(&pdev->dev), tegra_wdt);
+			if (ret < 0) {
+				dev_err(&pdev->dev,
+					"failed to register irq %d err %d\n",
+					tegra_wdt->irq, ret);
+				return ret;
+			}
+		}
+
+		tegra_wdt_enable(&tegra_wdt->wdt);
+		set_bit(WDOG_ACTIVE, &tegra_wdt->wdt.status);
+		set_bit(WDT_ENABLED_ON_INIT, &tegra_wdt->status);
+		pr_info("Tegra WDT enabled on probe. Timeout = %u seconds.\n",
+						tegra_wdt->wdt.timeout);
+	}
 
 	ret = watchdog_register_device(&tegra_wdt->wdt);
 	if (ret) {
