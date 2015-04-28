@@ -640,6 +640,9 @@ nvadsp_app_info_t __must_check *nvadsp_app_init(nvadsp_app_handle_t handle,
 	if (!drv_data->adsp_os_running)
 		goto err;
 
+	if (IS_ERR_OR_NULL(handle))
+		goto err;
+
 	message = kzalloc(sizeof(*message), GFP_KERNEL);
 	if (!message)
 		goto err;
