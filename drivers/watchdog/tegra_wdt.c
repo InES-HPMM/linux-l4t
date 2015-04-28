@@ -56,6 +56,13 @@ struct tegra_wdt {
 };
 
 /*
+ * The total expiry count of Tegra WDTs is limited to HW design and depends
+ * on skip configuration if supported. To be safe, we set the default expiry
+ * count to 1. It should be updated later with value specified in device tree.
+ */
+static int expiry_count = 1;
+
+/*
  * For spinlock lockup detection to work, the heartbeat should be 2*lockup
  * for cases where the spinlock disabled irqs.
  * must be greater than MIN_WDT_PERIOD and lower than MAX_WDT_PERIOD
@@ -98,7 +105,7 @@ static int __tegra_wdt_ping(struct tegra_wdt *tegra_wdt)
 	writel(WDT_CMD_DISABLE_COUNTER, tegra_wdt->wdt_source + WDT_CMD);
 
 	writel(TIMER_PCR_INTR, tegra_wdt->wdt_timer + TIMER_PCR);
-	val = (tegra_wdt->wdt.timeout * USEC_PER_SEC) / 4;
+	val = (tegra_wdt->wdt.timeout * USEC_PER_SEC) / expiry_count;
 	val |= (TIMER_EN | TIMER_PERIODIC);
 	writel(val, tegra_wdt->wdt_timer + TIMER_PTV);
 
@@ -113,12 +120,12 @@ static int __tegra_wdt_enable(struct tegra_wdt *tegra_wdt)
 
 	writel(TIMER_PCR_INTR, tegra_wdt->wdt_timer + TIMER_PCR);
 	/*
-	 * The timeout needs to be divided by 4 here so as to keep the
-	 * ultimate watchdog reset timeout the same as the program timeout
-	 * requested by application. We can increase the program timeout
-	 * if FIQ assertion can happen even in a valid use case.
+	 * The timeout needs to be divided by expiry_count here so as to
+	 * keep the ultimate watchdog reset timeout the same as the program
+	 * timeout requested by application. The program timeout should make
+	 * sure WDT FIQ will never be asserted in a valid use case.
 	 */
-	val = (tegra_wdt->wdt.timeout * USEC_PER_SEC) / 4;
+	val = (tegra_wdt->wdt.timeout * USEC_PER_SEC) / expiry_count;
 	val |= (TIMER_EN | TIMER_PERIODIC);
 	writel(val, tegra_wdt->wdt_timer + TIMER_PTV);
 
@@ -266,6 +273,10 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	if (!ret)
 		heartbeat = pval;
 
+	ret = of_property_read_u32(np, "nvidia,expiry-count", &pval);
+	if (!ret)
+		expiry_count = pval;
+
 	tegra_wdt = devm_kzalloc(&pdev->dev, sizeof(*tegra_wdt), GFP_KERNEL);
 	if (!tegra_wdt) {
 		dev_err(&pdev->dev, "out of memory\n");
@@ -274,8 +285,8 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 
 	tegra_wdt->wdt.info = &tegra_wdt_info;
 	tegra_wdt->wdt.ops = &tegra_wdt_ops;
-	tegra_wdt->wdt.min_timeout = MIN_WDT_PERIOD;
-	tegra_wdt->wdt.max_timeout = MAX_WDT_PERIOD;
+	tegra_wdt->wdt.min_timeout = MIN_WDT_PERIOD * expiry_count;
+	tegra_wdt->wdt.max_timeout = MAX_WDT_PERIOD * expiry_count;
 	tegra_wdt->wdt.timeout = heartbeat;
 
 	res_src = platform_get_resource(pdev, IORESOURCE_MEM, 0);
