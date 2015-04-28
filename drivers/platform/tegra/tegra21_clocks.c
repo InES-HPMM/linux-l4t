@@ -2621,7 +2621,8 @@ static void plld_set_defaults(struct clk *c, unsigned long input_rate)
 	}
 
 	/* set IDDQ, enable lock detect, disable SDM */
-	clk_writel(PLLD_MISC0_DEFAULT_VALUE, c->reg + c->u.pll.misc0);
+	val = clk_readl(c->reg + c->u.pll.misc0) & PLLD_MISC0_DSI_CLKENABLE;
+	clk_writel(val | PLLD_MISC0_DEFAULT_VALUE, c->reg + c->u.pll.misc0);
 	pll_writel_delay(PLLD_MISC1_DEFAULT_VALUE, c->reg + c->u.pll.misc1);
 }
 
