@@ -24,6 +24,7 @@
  * $Id: dhd_linux_platdev.c 401742 2013-05-13 15:03:21Z $
  */
 #include <typedefs.h>
+#include "dynamic.h"
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -179,7 +180,6 @@ int wifi_platform_set_power(wifi_adapter_info_t *adapter, bool on, unsigned long
 			gpio_set_value_cansleep(adapter->wlan_pwr, on);
 		if (gpio_is_valid(adapter->wlan_rst))
 			gpio_set_value_cansleep(adapter->wlan_rst, on);
-		msleep(msec);
 	}
 
 	if (!on)

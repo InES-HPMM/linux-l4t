@@ -8,6 +8,8 @@ extern int bcmdhd_custom_glom_setting;
 extern int bcmdhd_custom_rxchain;
 extern int bcmdhd_custom_ampdu_mpdu;
 extern int bcmdhd_custom_pspretend_thr;
+extern int bcmdhd_wifi_turnon_delay;
+extern int bcmdhd_wifi_turnoff_delay;
 
 extern bool bcmdhd_use_custom_ampdu_mpdu;
 extern bool bcmdhd_use_custom_pspretend_thr;
