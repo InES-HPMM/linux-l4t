@@ -782,7 +782,7 @@ static struct usb_device_id usb_nonswitch_ids[] = {
 static int usb_nonswitch_match(struct usb_device *udev)
 {
 	int i;
-	for (i = 0; i < sizeof(usb_nonswitch_ids); i++) {
+	for (i = 0; i < ARRAY_SIZE(usb_nonswitch_ids); i++) {
 		if (
 		(usb_nonswitch_ids[i].idVendor == udev->descriptor.idVendor) &&
 		(usb_nonswitch_ids[i].idProduct == udev->descriptor.idProduct))
