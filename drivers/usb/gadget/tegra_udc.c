@@ -1953,6 +1953,7 @@ static void udc_test_mode(struct tegra_udc *udc, u32 test_mode)
 	struct tegra_ep *ep;
 	u32 portsc, bitmask;
 	unsigned long timeout;
+	struct usb_request *usb_req = NULL;
 
 	/* Ack the ep0 IN */
 	if (ep0_prime_status(udc, EP_DIR_IN))
@@ -1998,16 +1999,28 @@ static void udc_test_mode(struct tegra_udc *udc, u32 test_mode)
 		udc->ep0_dir = USB_DIR_IN;
 
 		/* Initialize ep0 status request structure */
-		req = container_of(tegra_alloc_request(NULL, GFP_ATOMIC),
-				struct tegra_req, req);
-		/* allocate a small amount of memory to get valid address */
-		req->req.buf = kmalloc(sizeof(tegra_udc_test_packet),
-					GFP_ATOMIC);
-		req->req.dma = virt_to_phys(req->req.buf);
+		usb_req = tegra_alloc_request(NULL, GFP_ATOMIC);
+		if (usb_req)
+			req = container_of(usb_req, struct tegra_req, req);
+		else {
+			dev_err(ep->udc->gadget.dev.parent,
+				"allocate tegra_req failed\n");
+			goto stall;
+		}
+
+		req->req.buf = (void *) tegra_udc_test_packet;
+		req->req.dma = dma_map_single(ep->udc->gadget.dev.parent,
+						req->req.buf,
+						sizeof(tegra_udc_test_packet),
+						DMA_TO_DEVICE);
+
+		if (dma_mapping_error(ep->udc->gadget.dev.parent,
+					req->req.dma)) {
+			dev_err(ep->udc->gadget.dev.parent, "dma map failed\n");
+			goto stall;
+		}
 
 		/* Fill in the reqest structure */
-		memcpy(req->req.buf, tegra_udc_test_packet,
-					sizeof(tegra_udc_test_packet));
 		req->ep = ep;
 		req->req.length = sizeof(tegra_udc_test_packet);
 		req->req.status = -EINPROGRESS;
@@ -2767,6 +2780,7 @@ static int tegra_udc_setup_qh(struct tegra_udc *udc)
 	u32 dccparams;
 	size_t size;
 	struct resource *res;
+	struct usb_request *usb_req = NULL;
 
 	/* Read Device Controller Capability Parameters register */
 	dccparams = udc_readl(udc, DCCPARAMS_REG_OFFSET);
@@ -2799,8 +2813,14 @@ static int tegra_udc_setup_qh(struct tegra_udc *udc)
 
 	/* Initialize ep0 status request structure */
 	/* FIXME: tegra_alloc_request() ignores ep argument */
-	udc->status_req = container_of(tegra_alloc_request(NULL, GFP_KERNEL),
-			struct tegra_req, req);
+	usb_req = tegra_alloc_request(NULL, GFP_KERNEL);
+	if (usb_req)
+		udc->status_req = container_of(usb_req, struct tegra_req, req);
+	else {
+		ERR("allocate tegra_req failed\n");
+		kfree(udc->eps);
+		return -ENOMEM;
+	}
 	/* Allocate a small amount of memory to get valid address */
 	udc->status_req->req.buf = dma_alloc_coherent(&udc->pdev->dev,
 				STATUS_BUFFER_SIZE, &udc->status_req->req.dma,
