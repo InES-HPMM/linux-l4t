@@ -31,7 +31,6 @@
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-sensor-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
-#include "tegra210-platforms/tegra210-p2530-common.dtsi"
 #include "tegra210-platforms/tegra210-thermal-fan-est-p2530-0930.dtsi"
 #include "tegra210-platforms/tegra210-keys-p2530-0930.dtsi"
 #include "tegra210-platforms/tegra210-odin-powermon.dtsi"
@@ -43,7 +42,7 @@
 #include "tegra210-platforms/tegra210-audio.dtsi"
 #include "tegra210-platforms/tegra210-thermal-nct72-p2530.dtsi"
 #include "tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi"
-
+#include "tegra210-platforms/tegra210-p2530-common.dtsi"
 
 / {
 	model = "odin";
@@ -74,14 +73,28 @@
 	sdhci@700b0600 { /* SDMMC4 for EMMC */
 		uhs-mask = <0x0>;
 		built-in;
-		pll_source = "pll_p", "pll_c4_out2";
+		pll_source = "pll_p", "pll_c4_out0";
 		power-off-rail;
 		status = "okay";
 	};
 
-	sdhci@700b0200 { /* SDMMC2 for Wifi */
-		uhs-mask = <0x8>;
+	sdhci@700b0200 { /* SDMMC2 for 2nd EMMC */
+		uhs-mask = <0x0>;
+		built-in;
 		power-off-rail;
+		tap-delay = <4>;
+		trim-delay = <8>;
+		nvidia,is-ddr-tap-delay;
+		nvidia,ddr-tap-delay = <0>;
+		mmc-ocr-mask = <0>;
+		dqs-trim-delay = <17>;
+		max-clk-limit = <266000000>;
+		bus-width = <8>;
+		built-in;
+		nvidia,en-io-trim-volt;
+		nvidia,is-emmc;
+		nvidia,enable-cq;
+		pll_source = "pll_p", "pll_c4_out0";
 		status = "okay";
 	};
 
@@ -351,8 +364,9 @@
 	};
 
 	xusb_pad_ctl: padctl@0 { /* Put common control config here */
-		nvidia,ss_portmap = <0x21>;
+		nvidia,ss_portmap = <0x00>;
 		nvidia,lane_owner = <0xff56>; /* Use 0xF to disable lane assign */
+		nvidia,otg_portmap = <0x0101>;
 		status = "okay";
 	};
 
@@ -361,7 +375,7 @@
 		/* nvidia,gpio_controls_muxed_ss_lanes; */
 		nvidia,gpio_ss1_sata = <0>;
 		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
-		nvidia,portmap = <0x0e02>;
+		nvidia,portmap = <0x0200>;
 		nvidia,common_padctl = <&xusb_pad_ctl>;
 		status = "okay";
 	};
