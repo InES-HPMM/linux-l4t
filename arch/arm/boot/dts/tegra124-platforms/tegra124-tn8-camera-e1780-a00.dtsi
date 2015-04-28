@@ -103,7 +103,7 @@
 			};
 			module8: module8@modules {
 				compatible = "sensor,front";
-				badge_info = "e1633_imx208";
+				badge_info = "e1633_front_F215T1";
 
 				sensor {
 					profile = <&imx208_1>;
@@ -112,7 +112,7 @@
 			};
 			module9: module9@modules {
 				compatible = "sensor,rear";
-				badge_info = "e1633_imx219";
+				badge_info = "e1633_rear_A815P2";
 
 				sensor {
 					profile = <&imx219_1>;
