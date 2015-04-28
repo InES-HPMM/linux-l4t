@@ -284,4 +284,6 @@ int serial8250_find_port_for_earlycon(void)
 	return ret;
 }
 
+#ifdef CONFIG_SERIAL_8250_EARLYCON
 early_param("earlycon", setup_early_serial8250_console);
+#endif

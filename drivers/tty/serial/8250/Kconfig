@@ -91,6 +91,15 @@ config SERIAL_8250_CONSOLE
 
 	  If unsure, say N.
 
+config SERIAL_8250_EARLYCON
+	bool "Earlycon on 8250/16550 and compatible serial port"
+	depends on SERIAL_8250_CONSOLE
+	default y
+	help
+	  Allow earlycon to work on 8250/16550 serial ports. Beware, with this
+	  enabled, a kernel command line with earlycon and earlyprintk will not
+	  work.
+
 config FIX_EARLYCON_MEM
 	bool
 	depends on X86
