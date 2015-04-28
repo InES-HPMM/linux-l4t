@@ -232,6 +232,14 @@ config CMA
 	  For more information see <include/linux/dma-contiguous.h>.
 	  If unsure, say "n".
 
+config DMA_CMA
+	bool "CMA config for forward compatibility
+	default n
+	depends on CMA
+	help
+	  This does not do anything. It is only here to allow kernels to share
+	  defconfig with future kernels that use this option.
+
 if CMA
 
 config CMA_DEBUG
