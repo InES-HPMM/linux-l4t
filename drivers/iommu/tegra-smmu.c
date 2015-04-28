@@ -275,6 +275,10 @@ static u64 tegra_smmu_get_swgids(struct device *dev)
 	struct iommu_linear_map *area = NULL;
 	struct smmu_map_prop *prop;
 
+	swgids = tegra_smmu_of_get_swgids(dev, tegra_smmu_of_match, &area);
+	if (swgids_is_error(swgids))
+		return SWGIDS_ERROR_CODE;
+
 	if (!smmu_handle) {
 		dev_info(dev, "SMMU isn't ready yet\n");
 		return SWGIDS_ERROR_CODE;
@@ -283,10 +287,6 @@ static u64 tegra_smmu_get_swgids(struct device *dev)
 	client = tegra_smmu_find_client(smmu_handle, dev);
 	if (client)
 		return client->swgids;
-
-	swgids = tegra_smmu_of_get_swgids(dev, tegra_smmu_of_match, &area);
-	if (swgids_is_error(swgids))
-		return SWGIDS_ERROR_CODE;
 
 	list_for_each_entry(prop, &smmu_handle->asprops, list)
 		if (swgids & prop->swgid_mask)
