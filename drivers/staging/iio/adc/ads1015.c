@@ -79,7 +79,8 @@
 	.type = IIO_VOLTAGE,					\
 	.indexed = 1,						\
 	.channel = chan,					\
-	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |		\
+			BIT(IIO_CHAN_INFO_PROCESSED),		\
 }
 
 static const struct iio_chan_spec ads1015_iio_channel[] = {
@@ -299,7 +300,7 @@ static int ads1015_read_raw(struct iio_dev *iodev,
 	u16 reg_val = 0;
 	int rval;
 
-	if (mask != IIO_CHAN_INFO_RAW) {
+	if ((mask != IIO_CHAN_INFO_RAW) && (mask != IIO_CHAN_INFO_PROCESSED)) {
 		dev_err(adc->dev, "Invalid mask 0x%08lx\n", mask);
 		return -EINVAL;
 	}
