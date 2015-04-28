@@ -131,9 +131,11 @@ struct ads1015 {
 	struct regmap *rmap;
 	struct ads1015_property adc_prop;
 	struct ads1015_property adc_os_prop;
+	struct mutex lock;
 	u16 config;
 	u16 os_config;
 	bool continuous_dt_node;
+	bool is_shutdown;
 };
 
 static int ads1015_write(struct regmap *regmap, unsigned int reg, u16 val)
@@ -304,6 +306,13 @@ static int ads1015_read_raw(struct iio_dev *iodev,
 		dev_err(adc->dev, "Invalid mask 0x%08lx\n", mask);
 		return -EINVAL;
 	}
+
+	mutex_lock(&adc->lock);
+	if (adc->is_shutdown) {
+		mutex_unlock(&adc->lock);
+		return -EINVAL;
+	}
+	mutex_unlock(&adc->lock);
 
 	mutex_lock(&iodev->mlock);
 
@@ -602,7 +611,8 @@ static int ads1015_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	i2c_set_clientdata(i2c, adc);
 	adc_prop = &adc->adc_prop;
 	adc->continuous_dt_node = false;
-
+	adc->is_shutdown = false;
+	mutex_init(&adc->lock);
 	ret = ads1015_get_dt_data(adc, node);
 	if (ret < 0)
 		return ret;
@@ -635,6 +645,15 @@ static int ads1015_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	return 0;
 }
 
+static void ads1015_shutdown(struct i2c_client *client)
+{
+	struct ads1015 *adc = i2c_get_clientdata(client);
+
+	mutex_lock(&adc->lock);
+	adc->is_shutdown = true;
+	mutex_unlock(&adc->lock);
+}
+
 static const struct of_device_id ads1015_of_match[] = {
 	{ .compatible = "ads1015", },
 	{},
@@ -648,6 +667,7 @@ struct i2c_driver ads1015_driver = {
 		.of_match_table = ads1015_of_match,
 	},
 	.id_table = ads1015_i2c_id,
+	.shutdown = ads1015_shutdown,
 };
 
 module_i2c_driver(ads1015_driver);
