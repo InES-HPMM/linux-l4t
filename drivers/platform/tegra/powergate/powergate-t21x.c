@@ -450,6 +450,21 @@ static struct dvfs_rail *gpu_rail;
 
 #define HOTRESET_READ_COUNTS		5
 
+static bool tegra210_pg_is_hotreset_asserted(enum mc_client mc_client_bit)
+{
+	int reg_idx, reg_bit;
+	u32 rst_control_reg;
+
+	if (mc_client_bit == MC_CLIENT_LAST)
+		return false;
+
+	reg_idx = mc_client_bit / 32;
+	reg_bit = mc_client_bit % 32;
+	rst_control_reg = tegra210_mc_reg[reg_idx].control_reg;
+
+	return mc_read(rst_control_reg) & (1 << reg_bit);
+}
+
 static bool tegra210_pg_hotreset_check(u32 status_reg, u32 *status)
 {
 	int i;
@@ -688,6 +703,10 @@ static int tegra210_pg_gpu_unpowergate(int id)
 	tegra_clk_disable_unprepare(partition->clk_info[0].clk_ptr);
 	powergate_partition_deassert_reset(partition);
 	tegra_clk_prepare_enable(partition->clk_info[0].clk_ptr);
+
+	/* Flush MC 1st time after boot or SC7 */
+	if (first || !tegra210_pg_is_hotreset_asserted(MC_CLIENT_GPU))
+		tegra_powergate_mc_flush(id);
 
 	udelay(10);
 
