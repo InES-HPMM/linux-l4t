@@ -107,6 +107,7 @@ struct tegra_sdhci_platform_data {
 	bool en_strobe; /* Enable enhance strobe mode for eMMC */
 	bool enb_feedback_clock;
 	bool en_periodic_calib;
+	const char *clk_name;
 };
 
 #endif

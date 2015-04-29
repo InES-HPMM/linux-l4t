@@ -5328,6 +5328,9 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 
 	plat->en_periodic_calib = of_property_read_bool(np,
 			"nvidia,en-periodic-calib");
+
+	of_property_read_string_index(np, "nvidia,clk-name", 0, &plat->clk_name);
+
 	return plat;
 }
 
@@ -5780,7 +5783,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	}
 
 	/* Get high speed clock */
-	tegra_host->sdr_clk = clk_get(mmc_dev(host->mmc), NULL);
+	tegra_host->sdr_clk = clk_get(mmc_dev(host->mmc), plat->clk_name);
 	if (IS_ERR(tegra_host->sdr_clk)) {
 		dev_err(mmc_dev(host->mmc), "sdr clk err\n");
 		tegra_host->sdr_clk = NULL;
