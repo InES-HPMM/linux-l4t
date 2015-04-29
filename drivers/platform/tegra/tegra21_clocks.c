@@ -7766,6 +7766,7 @@ static struct clk tegra_cml1_clk = {
 
 static struct clk tegra_pciex_clk = {
 	.name      = "pciex",
+	.clk_id    = TEGRA210_CLK_ID_PCIEX,
 	.parent    = &tegra_pll_e,
 	.ops       = &tegra_pciex_clk_ops,
 	.max_rate  = 500000000,
