@@ -2267,6 +2267,13 @@ static int __init dfll_freq_cmd_line(char *line)
 }
 early_param("dfll_boot_req_khz", dfll_freq_cmd_line);
 
+static int __init tegra_bl_buildtime(char *options)
+{
+	pr_info("Bootloader Build time: %s\n", options);
+	return 0;
+}
+__setup("bl_buildtime=", tegra_bl_buildtime);
+
 void __init display_tegra_dt_info(void)
 {
 	int ret_d;

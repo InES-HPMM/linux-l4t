@@ -49,6 +49,7 @@ u32 tegra_get_bct_strapping(void);
 u32 tegra_get_fuse_opt_subrevision(void);
 enum tegra_revision tegra_chip_get_revision(void);
 void __init display_tegra_dt_info(void);
+void __init display_tegra_bl_info(void);
 
 static inline int tegra_cpu_is_secure(void)
 {
