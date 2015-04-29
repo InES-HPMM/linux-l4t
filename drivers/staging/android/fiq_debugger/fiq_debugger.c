@@ -35,6 +35,7 @@
 #include <linux/tty.h>
 #include <linux/tty_flip.h>
 #include <linux/wakelock.h>
+#include <linux/pstore_ram.h>
 
 #ifdef CONFIG_FIQ_GLUE
 #include <linux/fiq_glue.h>
@@ -248,10 +249,11 @@ static void fiq_debugger_printf(struct fiq_debugger_output *output,
 
 	state = container_of(output, struct fiq_debugger_state, output);
 	va_start(ap, fmt);
-	vsnprintf(buf + len, sizeof(buf) - len, fmt, ap);
+	len += vsnprintf(buf + len, sizeof(buf) - len, fmt, ap);
 	va_end(ap);
 
 	fiq_debugger_puts(state, buf);
+	ramoops_console_write_buf(buf, len);
 }
 
 /* Safe outside fiq context */
