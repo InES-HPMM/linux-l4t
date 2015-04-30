@@ -196,15 +196,6 @@
 #define RP_LINK_CONTROL_STATUS_L0s_ENABLED		0x00000001
 #define RP_LINK_CONTROL_STATUS_L1_ENABLED		0x00000003
 
-#define  PADS_REFCLK_CFG0					0x000000C8
-#define  PADS_REFCLK_CFG1					0x000000CC
-#define  PADS_REFCLK_BIAS					0x000000D0
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-#define REFCLK_POR_SETTINGS					0x90b890b8
-#else
-#define REFCLK_POR_SETTINGS					0x44ac44ac
-#endif
-
 #define NV_PCIE2_RP_RSR					0x000000A0
 #define NV_PCIE2_RP_RSR_PMESTAT				(1 << 16)
 
@@ -287,23 +278,8 @@
 
 #define NV_PCIE2_RP_PRIV_XP_CONFIG				0x00000FAC
 #define NV_PCIE2_RP_PRIV_XP_CONFIG_LOW_PWR_DURATION_MASK	0x3
-
 #define NV_PCIE2_RP_PRIV_XP_DURATION_IN_LOW_PWR_100NS	0x00000FB0
 
-#define NV_PCIE2_RP_ECTL_5_R1					0x00000E90
-#define PCIE2_RP_ECTL_5_R1_RX_EQ_CTRL_L_1C			(0x55010000)
-#define NV_PCIE2_RP_ECTL_6_R1					0x00000E94
-#define PCIE2_RP_ECTL_6_R1_RX_EQ_CTRL_H_1C			(0x00000001)
-#define NV_PCIE2_RP_ECTL_5_R2					0x00000EB0
-#define PCIE2_RP_ECTL_5_R2_RX_EQ_CTRL_L_1C			(0x55010000)
-#define NV_PCIE2_RP_ECTL_6_R2					0x00000EB4
-#define PCIE2_RP_ECTL_6_R2_RX_EQ_CTRL_H_1C			(0x00000001)
-
-#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
-#define NV_PCIE2_RP_ECTL_1_R2					0x00000FD8
-#define PCIE2_RP_ECTL_1_R2_TX_CMADJ_1C				(0xD << 8)
-#define PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C			(0x3 << 28)
-#endif
 #define NV_PCIE2_RP_XP_CTL_1					0x00000FEC
 #define PCIE2_RP_XP_CTL_1_SPARE_BIT29				(1 << 29)
 
@@ -417,6 +393,7 @@ struct tegra_pcie {
 	struct tegra_pcie_soc_data *soc_data;
 	struct dentry *debugfs;
 	struct delayed_work detect_delay;
+	struct tegra_prod_list	*prod_list;
 };
 
 struct tegra_pcie_port {
@@ -1899,25 +1876,24 @@ static void tegra_pcie_enable_rp_features(struct tegra_pcie_port *port)
 	unsigned int data;
 
 	PR_FUNC_LINE;
+	if (port->pcie->prod_list) {
+		if (tegra_prod_set_by_name(
+				&(port->pcie->pads),
+				"prod_c_pad",
+				port->pcie->prod_list)) {
+			dev_info(port->pcie->dev,
+					"pad prod settings are not found in DT\n");
+		}
 
-	/* UPHY prod settings provided by char team */
-	pads_writel(port->pcie, REFCLK_POR_SETTINGS, PADS_REFCLK_CFG0);
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-	rp_writel(port,
-		PCIE2_RP_ECTL_5_R1_RX_EQ_CTRL_L_1C, NV_PCIE2_RP_ECTL_5_R1);
-	rp_writel(port,
-		PCIE2_RP_ECTL_6_R1_RX_EQ_CTRL_H_1C, NV_PCIE2_RP_ECTL_6_R1);
-	rp_writel(port,
-		PCIE2_RP_ECTL_5_R2_RX_EQ_CTRL_L_1C, NV_PCIE2_RP_ECTL_5_R2);
-	rp_writel(port,
-		PCIE2_RP_ECTL_6_R2_RX_EQ_CTRL_H_1C, NV_PCIE2_RP_ECTL_6_R2);
-#else
-	pads_writel(port->pcie, 0x00000028, PADS_REFCLK_BIAS);
-	data = rp_readl(port, NV_PCIE2_RP_ECTL_1_R2);
-	data |= PCIE2_RP_ECTL_1_R2_TX_CMADJ_1C;
-	data |= PCIE2_RP_ECTL_1_R2_TX_DRV_CNTL_1C;
-	rp_writel(port, data, NV_PCIE2_RP_ECTL_1_R2);
-#endif
+		if (tegra_prod_set_by_name(
+				&(port->base),
+				"prod_c_rp",
+				port->pcie->prod_list)) {
+			dev_info(port->pcie->dev,
+					"RP prod settings are not found in DT\n");
+		}
+	}
+
 	/* Optimal settings to enhance bandwidth */
 	data = rp_readl(port, RP_VEND_XP);
 	data |= RP_VEND_XP_OPPORTUNISTIC_ACK;
@@ -2957,6 +2933,9 @@ static int tegra_pcie_parse_dt(struct tegra_pcie *pcie)
 		unsigned int index;
 		u32 value;
 
+		if (strncmp(port->type, "pci", sizeof("pci")))
+			continue;
+
 		err = of_pci_get_devfn(port);
 		if (err < 0) {
 			dev_err(pcie->dev, "failed to parse address: %d\n",
@@ -3950,6 +3929,12 @@ static int tegra_pcie_probe(struct platform_device *pdev)
 	if (ret < 0)
 		return ret;
 
+	pcie->prod_list = tegra_prod_get(&pdev->dev, NULL);
+	if (IS_ERR(pcie->prod_list)) {
+		dev_err(pcie->dev, "Prod Init failed\n");
+		pcie->prod_list = NULL;
+	}
+
 	/* Enable Runtime PM for PCIe, TODO: Need to add PCIe host device */
 	pm_runtime_enable(pcie->dev);
 
@@ -3987,6 +3972,8 @@ static int tegra_pcie_remove(struct platform_device *pdev)
 	}
 	if (IS_ENABLED(CONFIG_PCI_MSI))
 		tegra_pcie_disable_msi(pcie);
+	if (pcie->prod_list)
+		tegra_prod_release(&pcie->prod_list);
 	tegra_pcie_detach(pcie);
 	tegra_pd_remove_device(pcie->dev);
 	tegra_pcie_power_off(pcie, true);
