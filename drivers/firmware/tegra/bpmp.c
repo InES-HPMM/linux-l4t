@@ -722,11 +722,21 @@ static int bpmp_mem_init(void)
 
 static int bpmp_probe(struct platform_device *pdev)
 {
-	int r;
+	int r = 0;
+	phys_addr_t pa = 0;
+	size_t size = 0;
 
 	device = &pdev->dev;
 
-	r = bpmp_mem_init();
+	tegra_bpmp_get_smmu_data(&pa, &size);
+	if (pa && size) {
+		DEFINE_DMA_ATTRS(attrs);
+		dma_set_attr(DMA_ATTR_SKIP_IOVA_GAP, &attrs);
+		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
+		r = dma_map_linear_attrs(device, pa, size, 0, &attrs);
+		r = (r == DMA_ERROR_CODE) ?: 0;
+	}
+	r = r ?: bpmp_mem_init();
 	r = r ?: bpmp_clk_init(pdev);
 	r = r ?: bpmp_init_debug(pdev);
 	r = r ?: bpmp_init_modules(pdev);
