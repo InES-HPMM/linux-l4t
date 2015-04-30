@@ -45,10 +45,6 @@
 		status = "disabled";
 	};
 
-	i2c@7000c400 {
-		status = "disabled";
-	};
-
 	serial@70006000 {
 		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
 		status = "disabled";
@@ -181,30 +177,6 @@
 		status = "disabled";
 	};
 
-	i2c@7000c000 {
-		status = "disabled";
-	};
-
-	i2c@7000c400 {
-		status = "disabled";
-	};
-
-	i2c@7000c500 {
-		status = "disabled";
-	};
-
-	i2c@7000c700 {
-		status = "disabled";
-	};
-
-	i2c@7000d000 {
-		status = "disabled";
-	};
-
-	i2c@7000d100 {
-		status = "disabled";
-	};
-
 	efuse@7000f800 {
 		status = "disabled";
         };
@@ -239,6 +211,8 @@
 	iommu {
 		compatible = "nvidia,tegra124-smmu-hv";
 		ivc_queue = <&tegra_hv 14>;
+		mempool_id = <&tegra_hv 2>;
+
 		domains = <
 			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS)
 			&ppcs_as TEGRA_SWGROUP_CELLS(PPCS1)
@@ -280,6 +254,42 @@
 		};
 	};
 
+	i2c@7000c000 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 19>;
+		status = "okay";
+	};
+
+	i2c@7000c400 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 19>;
+		status = "okay";
+	};
+
+	i2c@7000c500 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 19>;
+		status = "okay";
+	};
+
+	i2c@7000c700 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 19>;
+		status = "okay";
+	};
+
+	i2c@7000d000 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 19>;
+		status = "okay";
+	};
+
+	i2c@7000d100 {
+		compatible = "nvidia,tegra124-i2c-hv";
+		ivc_queue = <&tegra_hv 19>;
+		status = "okay";
+	};
+
 	host1x {
 		reg = <0x0 0x50000000 0x0 0x00030000>;
 
@@ -315,7 +325,7 @@
 		};
 
 		msenc {
-			status = "disabled";
+			compatible = "nvidia,tegra124-vhost-msenc";
 		};
 
 		tsec {
@@ -341,18 +351,15 @@
 		ivc-queue4 = <&tegra_hv 12>;
 	};
 
-	/* the virtual serial device node */
 	tegra_hv_comm {
 		compatible = "nvidia,tegra-hv-comm";
 		status = "okay";
-		/* ivc channel to use definition (second one in tegra_hv) */
 		ivc = <&tegra_hv 1>;
 	};
 
 	tegra_hv_net {
 		compatible = "nvidia,tegra-hv-net";
 		status = "okay";
-		/* ivc channel to use definition (third one in tegra_hv) */
 		ivc = <&tegra_hv 2>;
 	};
 
@@ -385,5 +392,13 @@
 				alloc = <1>;
 			};
 		};
+	};
+
+	avp-virt {
+		compatible = "nvidia,tegra124-avp-virt";
+		iommus = <&smmu TEGRA_SWGROUP_AVPC>,
+			 <&smmu TEGRA_SWGROUP_A9AVP>,
+			 <&smmu TEGRA_SWGROUP_VDE>;
+		ivc_queue = <&tegra_hv 22>;
 	};
 };
