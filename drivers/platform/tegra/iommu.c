@@ -16,7 +16,6 @@
 #include <linux/tegra_smmu.h>
 #include <linux/dma-contiguous.h>
 #include <linux/tegra-soc.h>
-#include <soc/tegra/tegra_bpmp.h>
 
 #include <asm/dma-iommu.h>
 
@@ -33,18 +32,6 @@ phys_addr_t __weak tegra_fb_start, tegra_fb_size,
 	tegra_bootloader_fb2_start, tegra_bootloader_fb2_size;
 
 static struct iommu_linear_map tegra_fb_linear_map[16]; /* Terminated with 0 */
-
-#if defined(CONFIG_TEGRA_BPMP) && defined(CONFIG_ARCH_TEGRA_21x_SOC)
-static struct iommu_linear_map tegra_bpmp_linear_map[2];
-static void tegra_bpmp_linear_set(void)
-{
-	tegra_bpmp_get_smmu_data(&tegra_bpmp_linear_map[0].start,
-			&tegra_bpmp_linear_map[0].size);
-}
-#else
-#define tegra_bpmp_linear_map NULL
-static inline void tegra_bpmp_linear_set(void) {}
-#endif
 
 #define LINEAR_MAP_ADD(n) \
 do { \
@@ -176,7 +163,6 @@ static struct swgid_fixup tegra_swgid_fixup_t210[] = {
 	{
 		.name = "bpmp",
 		.swgids = TEGRA_SWGROUP_BIT(AVPC),
-		.linear_map = tegra_bpmp_linear_map
 	},
 	{ .name = "serial8250",	.swgids = TEGRA_SWGROUP_BIT(PPCS) |
 					  TEGRA_SWGROUP_BIT(PPCS1) |
@@ -261,7 +247,6 @@ EXPORT_SYMBOL(tegra_smmu_fixup_swgids);
 
 static int __init tegra_smmu_init(void)
 {
-	tegra_bpmp_linear_set();
 	cma_carveout_linear_set();
 	return 0;
 }
