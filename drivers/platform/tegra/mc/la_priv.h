@@ -443,6 +443,10 @@ struct la_chip_specific {
 				unsigned long emc_freq_hz,
 				unsigned int bw_mbps,
 				struct dc_to_la_params disp_params);
+	int (*check_disp_la)(enum tegra_la_id id,
+				unsigned long emc_freq_hz,
+				unsigned int bw_mbps,
+				struct dc_to_la_params disp_params);
 	int (*set_la)(enum tegra_la_id id, unsigned int bw_mbps);
 	int (*enable_la_scaling)(enum tegra_la_id id,
 				unsigned int threshold_low,

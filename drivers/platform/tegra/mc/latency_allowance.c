@@ -286,6 +286,22 @@ int tegra_set_disp_latency_allowance(enum tegra_la_id id,
 	return 0;
 }
 
+/*
+ * Check if the passed bandwidth is possible.
+ *
+ * Returns zero if there is a possible LA value that can satifsy @bw_mbps at
+ * @emc_freq_hz. If no function has been defined for the active chip then this
+ * this function returns true (i.e 0).
+ */
+int tegra_check_disp_latency_allowance(enum tegra_la_id id,
+				       unsigned long emc_freq_hz,
+				       unsigned int bw_mbps,
+				       struct dc_to_la_params disp_params) {
+	if (cs.check_disp_la)
+		return cs.check_disp_la(id, emc_freq_hz, bw_mbps, disp_params);
+	return 0;
+}
+
 /* Sets latency allowance based on clients memory bandwitdh requirement.
  * Bandwidth passed is in mega bytes per second.
  */

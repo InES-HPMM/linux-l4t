@@ -593,10 +593,11 @@ static unsigned int t21x_min_la(struct dc_to_la_params *disp_params)
 	return LA_FP_TO_REAL(min_la_fp);
 }
 
-static int t21x_set_disp_la(enum tegra_la_id id,
-				unsigned long emc_freq_hz,
-				unsigned int bw_mbps,
-				struct dc_to_la_params disp_params)
+static int t21x_handle_disp_la(enum tegra_la_id id,
+			       unsigned long emc_freq_hz,
+			       unsigned int bw_mbps,
+			       struct dc_to_la_params disp_params,
+			       int write_la)
 {
 	int idx = 0;
 	struct la_client_info *ci = NULL;
@@ -670,8 +671,25 @@ static int t21x_set_disp_la(enum tegra_la_id id,
 	if ((la_to_set < t21x_min_la(&disp_params)) || (la_to_set > 255))
 		return -1;
 
-	program_la(ci, la_to_set);
+	if (write_la)
+		program_la(ci, la_to_set);
 	return 0;
+}
+
+static int t21x_set_disp_la(enum tegra_la_id id,
+			    unsigned long emc_freq_hz,
+			    unsigned int bw_mbps,
+			    struct dc_to_la_params disp_params)
+{
+	return t21x_handle_disp_la(id, emc_freq_hz, bw_mbps, disp_params, 1);
+}
+
+static int t21x_check_disp_la(enum tegra_la_id id,
+			      unsigned long emc_freq_hz,
+			      unsigned int bw_mbps,
+			      struct dc_to_la_params disp_params)
+{
+	return t21x_handle_disp_la(id, emc_freq_hz, bw_mbps, disp_params, 0);
 }
 
 void tegra_la_get_t21x_specific(struct la_chip_specific *cs_la)
@@ -697,6 +715,7 @@ void tegra_la_get_t21x_specific(struct la_chip_specific *cs_la)
 	cs_la->update_camera_ptsa_rate = t21x_update_camera_ptsa_rate;
 	cs_la->set_la = t21x_set_la;
 	cs_la->set_disp_la = t21x_set_disp_la;
+	cs_la->set_disp_la = t21x_check_disp_la;
 	cs_la->save_ptsa = save_ptsa;
 	cs_la->program_ptsa = program_ptsa;
 	cs_la->suspend = la_suspend;
