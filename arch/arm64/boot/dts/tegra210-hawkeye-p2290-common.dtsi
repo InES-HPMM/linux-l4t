@@ -312,9 +312,8 @@
 				ti,adc-valid-threshold-ranges= <(-100)  76
 								200     309
 								1049    1263
-								380     420
 								673     848
-								430     524
+								402     524
 								2000    2047>;
 			};
 		};
@@ -587,9 +586,8 @@
 			extcon-adc-jack,states = <0x1    (-100)   76
 						  0x2    200      309
 						  0x4    1049     1263
-						  0x4    380      420
 						  0x8    673      848
-						  0x10   430      524>;
+						  0x10   402      524>;
 			io-channels = <&ads1015 4>;
 			io-channel-names = "id-resistance";
 			#extcon-cells = <1>;
