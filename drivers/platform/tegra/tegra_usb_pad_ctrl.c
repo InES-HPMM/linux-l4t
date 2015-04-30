@@ -624,7 +624,10 @@ static void utmi_phy_pad(struct tegra_prod_list *prod_list, bool enable)
 			TRK_DONE_RESET_TIMER_MASK, TRK_DONE_RESET_TIMER);
 
 		if (prod_list) {
-			val = tegra_prod_set_by_name(&pad_base, "prod_c_bias",
+			const char *prod_name = "prod_c_bias";
+			if (tegra_chip_get_revision() >= TEGRA_REVISION_A02)
+				prod_name = "prod_c_bias_a02";
+			val = tegra_prod_set_by_name(&pad_base, prod_name,
 							prod_list);
 			if (val < 0) {
 				pr_err("%s(), failed with err:%d\n",
