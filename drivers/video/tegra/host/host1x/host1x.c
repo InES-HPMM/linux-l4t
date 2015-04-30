@@ -912,6 +912,7 @@ static int nvhost_probe(struct platform_device *dev)
 			err = -ENXIO;
 			goto fail;
 		}
+		pdata->aperture[0] = host->aperture;
 	}
 
 	err = nvhost_alloc_resources(host);
