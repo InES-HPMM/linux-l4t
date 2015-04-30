@@ -171,6 +171,13 @@ static void nvadsp_clocks_disable(struct platform_device *pdev)
 		drv_data->ape_clk = NULL;
 	}
 
+	if (drv_data->ape_emc_clk) {
+		clk_disable_unprepare(drv_data->ape_emc_clk);
+		dev_dbg(dev, "ape.emc clock disabled\n");
+		drv_data->ape_emc_clk = NULL;
+	}
+
+
 	if (drv_data->ahub_clk) {
 		clk_disable_unprepare(drv_data->ahub_clk);
 		dev_dbg(dev, "ahub clock disabled\n");
@@ -235,6 +242,20 @@ static int nvadsp_clocks_enable(struct platform_device *pdev)
 		goto end;
 	}
 	dev_dbg(dev, "adsp cpu clock enabled\n");
+
+	drv_data->ape_emc_clk = clk_get_sys("ape", "emc");
+	if (IS_ERR_OR_NULL(drv_data->ape_emc_clk)) {
+		dev_err(dev, "unable to find ape.emc clock\n");
+		ret = PTR_ERR(drv_data->ape_emc_clk);
+		goto end;
+	}
+
+	ret = clk_prepare_enable(drv_data->ape_emc_clk);
+	if (ret) {
+		dev_err(dev, "unable to enable ape.emc clock\n");
+		goto end;
+	}
+	dev_dbg(dev, "ape.emc is enabled\n");
 
 	drv_data->uartape_clk = clk_get_sys("uartape", NULL);
 	if (IS_ERR_OR_NULL(drv_data->uartape_clk)) {
@@ -366,6 +387,7 @@ static int __init nvadsp_parse_dt(struct platform_device *pdev)
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
 	struct device_node *of_node;
+	u32 val32 = 0;
 	u32 *adsp_mem;
 	int iter;
 
@@ -379,8 +401,26 @@ static int __init nvadsp_parse_dt(struct platform_device *pdev)
 			return -EINVAL;
 		}
 	}
-	return 0;
 
+	drv_data->adsp_freq = drv_data->ape_freq = drv_data->ape_emc_freq = 0;
+
+	/* Optional properties, should come from platform dt files */
+	if (of_property_read_u32(dev->of_node, "nvidia,adsp_freq", &val32))
+		dev_dbg(dev, "adsp_freq dt not found\n");
+	else
+		drv_data->adsp_freq = val32;
+
+	if (of_property_read_u32(dev->of_node, "nvidia,ape_freq", &val32))
+		dev_dbg(dev, "ape_freq dt not found\n");
+	else
+		drv_data->ape_freq = val32;
+
+	if (of_property_read_u32(dev->of_node, "nvidia,ape_emc_freq", &val32))
+		dev_dbg(dev, "ape_emc_freq dt not found\n");
+	else
+		drv_data->ape_emc_freq = val32;
+
+	return 0;
 }
 
 static int __init nvadsp_probe(struct platform_device *pdev)

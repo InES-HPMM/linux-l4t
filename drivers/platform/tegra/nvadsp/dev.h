@@ -95,9 +95,12 @@ struct nvadsp_drv_data {
 	struct clk *ape_clk;
 	struct clk *adsp_clk;
 	struct clk *adsp_cpu_clk;
+	struct clk *ape_emc_clk;
 	struct clk *uartape_clk;
 	struct clk *ahub_clk;
-	long max_adsp_freq;
+	u32 adsp_freq; /* in KHz*/
+	u32 ape_freq; /* in KHz*/
+	u32 ape_emc_freq; /* in KHz*/
 
 	struct nvadsp_pm_state state;
 	bool adsp_os_running;
@@ -125,6 +128,7 @@ status_t nvadsp_amc_init(struct platform_device *pdev);
 void adsp_cpu_set_rate(unsigned long freq);
 int adsp_dfs_core_init(struct platform_device *pdev);
 int adsp_dfs_core_exit(struct platform_device *pdev);
+u32 adsp_to_emc_freq(u32 adspfreq);
 #endif
 
 #ifdef CONFIG_TEGRA_ADSP_ACTMON
