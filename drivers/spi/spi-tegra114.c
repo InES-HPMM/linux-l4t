@@ -248,6 +248,7 @@ struct tegra_spi_data {
 	struct dma_async_tx_descriptor		*tx_dma_desc;
 	const struct tegra_spi_chip_data  *chip_data;
 	struct tegra_spi_device_controller_data cdata[MAX_CHIP_SELECT];
+	bool					cs_gpio_reqstd[MAX_CHIP_SELECT];
 	struct tegra_prod_list *prod_list;
 };
 
@@ -1185,15 +1186,22 @@ static int tegra_spi_setup(struct spi_device *spi)
 	}
 
 	if (cdata && gpio_is_valid(cdata->cs_gpio)) {
-		int gpio_flag = GPIOF_OUT_INIT_HIGH;
-		if (spi->mode & SPI_CS_HIGH)
-			gpio_flag = GPIOF_OUT_INIT_LOW;
+		if (!tspi->cs_gpio_reqstd[spi->chip_select]) {
+			int gpio_flag = GPIOF_OUT_INIT_HIGH;
+			if (spi->mode & SPI_CS_HIGH)
+				gpio_flag = GPIOF_OUT_INIT_LOW;
 
-		ret = devm_gpio_request_one(tspi->dev, cdata->cs_gpio,
-				gpio_flag, "cs_gpio");
-		if (ret < 0) {
-			dev_err(&spi->dev, "GPIO request failed: %d\n", ret);
-			return ret;
+			ret = devm_gpio_request_one(tspi->dev, cdata->cs_gpio,
+					gpio_flag, "cs_gpio");
+			if (ret < 0) {
+				dev_err(&spi->dev,
+					"GPIO request failed: %d\n", ret);
+				return ret;
+			}
+			tspi->cs_gpio_reqstd[spi->chip_select] = true;
+		} else {
+			int val = (spi->mode & SPI_CS_HIGH) ? 0 : 1;
+			gpio_set_value(cdata->cs_gpio, val);
 		}
 	}
 
