@@ -714,6 +714,121 @@ end:
 }
 EXPORT_SYMBOL(nvadsp_os_load);
 
+/*
+ * Static adsp freq to emc freq lookup table
+ *
+ * arg:
+ *	adspfreq - adsp freq in KHz
+ * return:
+ *	0 - min emc freq
+ *	> 0 - expected emc freq at this adsp freq
+ */
+u32 adsp_to_emc_freq(u32 adspfreq)
+{
+	/*
+	 * Vote on memory bus frequency based on adsp frequency
+	 * cpu rate is in kHz, emc rate is in Hz
+	 */
+	if (adspfreq >= 204800)
+		return 102000;	/* adsp >= 204.8 MHz, emc 102 MHz */
+	else
+		return 0;		/* emc min */
+}
+
+static int nvadsp_set_ape_emc_freq(struct nvadsp_drv_data *drv_data)
+{
+	unsigned long ape_emc_freq = drv_data->ape_emc_freq * 1000; /* in Hz */
+	struct device *dev = &priv.pdev->dev;
+	int ret;
+
+#ifdef CONFIG_TEGRA_ADSP_DFS
+	 /* pass adsp freq in KHz. adsp_emc_freq in Hz */
+	ape_emc_freq = adsp_to_emc_freq(drv_data->adsp_freq / 1000) * 1000;
+#endif
+	dev_dbg(dev, "requested adsp cpu freq %luKHz",
+		drv_data->adsp_freq / 1000);
+	dev_dbg(dev, "ape.emc freq %luHz\n", ape_emc_freq / 1000);
+
+	ret = clk_set_rate(drv_data->ape_emc_clk, ape_emc_freq);
+
+	dev_info(dev, "ape.emc freq %luKHz\n",
+		clk_get_rate(drv_data->ape_emc_clk) / 1000);
+	return ret;
+}
+
+static int nvadsp_set_ape_freq(struct nvadsp_drv_data *drv_data)
+{
+	unsigned long ape_freq = drv_data->ape_freq * 1000; /* in Hz*/
+	struct device *dev = &priv.pdev->dev;
+	int ret;
+
+#ifdef CONFIG_TEGRA_ADSP_ACTMON
+	ape_freq = drv_data->adsp_freq / ADSP_TO_APE_CLK_RATIO;
+#endif
+	dev_dbg(dev, "ape freq %luKHz", ape_freq / 1000);
+
+	ret = clk_set_rate(drv_data->ape_clk, ape_freq);
+
+	dev_info(dev, "ape freq %luKHz\n",
+		clk_get_rate(drv_data->ape_clk) / 1000);
+	return ret;
+}
+
+static int set_adsp_clks_and_timer_prescalar(struct nvadsp_drv_data *drv_data)
+{
+	struct nvadsp_shared_mem *shared_mem = drv_data->shared_adsp_os_data;
+	struct nvadsp_os_args *os_args = &shared_mem->os_args;
+	struct device *dev = &priv.pdev->dev;
+	unsigned long max_adsp_freq;
+	unsigned long adsp_freq;
+	u32 max_index;
+	u32 cur_index;
+	int ret = 0;
+
+	adsp_freq = drv_data->adsp_freq * 1000; /* in Hz*/
+
+	max_adsp_freq = clk_round_rate(drv_data->adsp_cpu_clk,
+				ULONG_MAX);
+	max_index = max_adsp_freq / MIN_ADSP_FREQ;
+	cur_index = adsp_freq / MIN_ADSP_FREQ;
+
+
+	if (!adsp_freq)
+		/* Set max adsp boot freq */
+		cur_index = max_index;
+
+	if (adsp_freq % MIN_ADSP_FREQ) {
+		if (cur_index >= max_index)
+			cur_index = max_index;
+		else
+			cur_index++;
+	} else if (cur_index >= max_index)
+		cur_index = max_index;
+
+	/*
+	 * timer interval = (prescalar + 1) * (count + 1) / periph_freq
+	 * therefore for 0 count,
+	 * 1 / TIMER_CLK_HZ =  (prescalar + 1) / periph_freq
+	 * Hence, prescalar = periph_freq / TIMER_CLK_HZ - 1
+	 */
+	os_args->timer_prescalar = cur_index - 1;
+
+	adsp_freq = cur_index * MIN_ADSP_FREQ;
+
+	ret = clk_set_rate(drv_data->adsp_cpu_clk, adsp_freq);
+	if (ret)
+		goto end;
+
+	drv_data->adsp_freq = adsp_freq / 1000; /* adsp_freq in KHz*/
+
+end:
+	dev_info(dev, "adsp cpu freq %luKHz\n",
+		clk_get_rate(drv_data->adsp_cpu_clk) / 1000);
+	dev_dbg(dev, "timer prescalar %x\n", os_args->timer_prescalar);
+
+	return ret;
+}
+
 static int deassert_adsp(struct nvadsp_drv_data *drv_data)
 {
 	struct device *dev = &priv.pdev->dev;
@@ -757,39 +872,36 @@ static int assert_adsp(struct nvadsp_drv_data *drv_data)
 	return -EINVAL;
 }
 
-static int set_adsp_clks_and_timer_prescalar(struct nvadsp_drv_data *drv_data)
+static int nvadsp_set_boot_freqs(struct nvadsp_drv_data *drv_data)
 {
-	struct nvadsp_shared_mem *shared_mem = drv_data->shared_adsp_os_data;
-	struct nvadsp_os_args *os_args = &shared_mem->os_args;
-	struct device *dev = &priv.pdev->dev;
-	long max_adsp_freq;
-	int ret = -EINVAL;
+	int ret;
 
 	/* on Unit-FPGA do not set clocks, return Sucess */
 	if (drv_data->adsp_unit_fpga)
 		return 0;
 
 	if (drv_data->adsp_cpu_clk) {
-		max_adsp_freq = clk_round_rate(drv_data->adsp_cpu_clk,
-				ULONG_MAX);
-		os_args->timer_prescalar = max_adsp_freq / MIN_ADSP_FREQ;
-		max_adsp_freq = MIN_ADSP_FREQ * os_args->timer_prescalar;
-		/*
-		 * timer interval = (prescalar + 1) * (count + 1) / periph_freq
-		 * therefore for 0 count,
-		 * 1 / TIMER_CLK_HZ =  (prescalar + 1) / periph_freq
-		 * Hence, prescalar = periph_freq / TIMER_CLK_HZ - 1
-		 */
-		os_args->timer_prescalar--;
-		drv_data->max_adsp_freq = max_adsp_freq;
-		ret = clk_set_rate(drv_data->adsp_cpu_clk, max_adsp_freq);
-
-		dev_dbg(dev, "adsp cpu frequncy %lu and timer prescalar %x\n",
-			clk_get_rate(drv_data->adsp_cpu_clk),
-			os_args->timer_prescalar);
-
+		ret = set_adsp_clks_and_timer_prescalar(drv_data);
+		if (ret)
+			goto end;
+	} else {
+		ret = -EINVAL;
+		goto end;
 	}
 
+	if (drv_data->ape_clk) {
+		ret = nvadsp_set_ape_freq(drv_data);
+		if (ret)
+			goto end;
+	}
+
+	if (drv_data->ape_emc_clk) {
+		ret = nvadsp_set_ape_emc_freq(drv_data);
+		if (ret)
+			goto end;
+	}
+
+end:
 	return ret;
 }
 
@@ -813,7 +925,7 @@ static int __nvadsp_os_start(void)
 		     drv_data->state.evp,
 		     AMC_EVP_SIZE);
 
-	ret = set_adsp_clks_and_timer_prescalar(drv_data);
+	ret = nvadsp_set_boot_freqs(drv_data);
 	if (ret)
 		goto end;
 	ret = deassert_adsp(drv_data);

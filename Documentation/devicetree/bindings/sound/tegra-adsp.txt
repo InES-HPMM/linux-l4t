@@ -13,6 +13,12 @@ Required properties:
 				contain the DEASSERT value. The ASSERT is ignored if the
 				value is equal to 0.
 
+Optional properties:
+ - nvidia,adsp_freq: should contain adsp boot up freq, multiple of 51.2 MHz
+ - nvidia,ape_freq: should contain ape boot up freq, half of adsp_freq
+ - nvidia,ape_emc_freq:	should contain appropriate emc freq w.r.t above
+			adsp and ape freq
+
 Example:
 	adsp {
 	     compatible = "nvidia,tegra210-adsp";
@@ -25,4 +31,8 @@ Example:
 	     nvidia,adsp_mem = <0x80300000 0x01000000>, /* ADSP OS */
 			       <0x80B00000 0x00800000>; /* ADSP APP */
 	     nvidia,adsp_unit_fpga_reset = <0x0 0x00000040>;
+	     nvidia,adsp_mem = <0x80300000 0x1000>;
+	     nvidia,adsp_freq = <819000>; /* in KHz */
+	     nvidia,ape_freq = <409500>; /* in KHz */
+	     nvidia,ape_emc_freq = <102000>; /* in KHz */
 	};

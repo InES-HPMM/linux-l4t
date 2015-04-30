@@ -146,28 +146,6 @@ static unsigned long adsp_get_target_freq(unsigned long tfreq, int *index)
 	return 0;
 }
 
-/*
- * Static adsp freq to emc freq lookup table
- *
- * arg:
- *	adspfreq - adsp freq in KHz
- * return:
- *	0 - min emc freq
- *	> 0 - expected emc freq at this adsp freq
- */
-static u32 adsp_to_emc_freq(u32 adspfreq)
-{
-	/*
-	 * Vote on memory bus frequency based on adsp frequency
-	 * cpu rate is in kHz, emc rate is in Hz
-	 */
-	if (adspfreq >= 204800)
-		return 102000;	/* adsp >= 204.8 MHz, emc 102 MHz */
-	else
-		return 0;		/* emc min */
-
-}
-
 static void adspfreq_stats_update(void)
 {
 	unsigned long long cur_time;
@@ -673,7 +651,7 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 		goto end;
 	}
 
-	policy->max = policy->cpu_max = drv->max_adsp_freq / 1000;
+	policy->max = policy->cpu_max = drv->adsp_freq / 1000;
 
 	policy->min = policy->cpu_min = adsp_cpu_freq_table[0] / 1000;
 
