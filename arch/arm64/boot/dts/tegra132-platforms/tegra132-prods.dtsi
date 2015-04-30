@@ -80,4 +80,18 @@
 			};
 		};
 	};
+	pcie-controller {
+		prod-settings {
+			prod_c_pad {
+				prod = <
+					0x000000C8 0x00000000 0x44ac44ac	// PADS_REFCLK_CFG0		31:0	 0x44ac44ac
+				>;
+			};
+			prod_c_rp {
+				prod = <
+					0x00000FD8 0x0FFFF0FF 0x30000D00	// RP_ECTL_1_R2_0	31:28,11:8=TX_DRV_CNTL_1C,TX_CMADJ_1C	0x3,0xD
+				>;
+			};
+		};
+	};
 };
