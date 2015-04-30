@@ -780,6 +780,8 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 			disable_irq_nosync(i2c_dev->irq);
 			i2c_dev->irq_disabled = 1;
 		}
+		/* Clear all interrupts */
+		status = 0xFFFFFFFFU;
 		goto err;
 	}
 
@@ -910,11 +912,10 @@ err:
 	tegra_i2c_mask_irq(i2c_dev, mask);
 
 	/* An error occured, mask dvc interrupt */
-	if (i2c_dev->is_dvc)
+	if (i2c_dev->is_dvc) {
 		dvc_i2c_mask_irq(i2c_dev, DVC_CTRL_REG3_I2C_DONE_INTR_EN);
-
-	if (i2c_dev->is_dvc)
 		dvc_writel(i2c_dev, DVC_STATUS_I2C_DONE_INTR, DVC_STATUS);
+	}
 
 	complete(&i2c_dev->msg_complete);
 
