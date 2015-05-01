@@ -448,6 +448,8 @@ struct tegra_clk_init_table {
 	unsigned long rate;
 	bool enabled;
 	unsigned long platform;
+	struct clk *c;		/* clock to be initialized */
+	struct clk *p;		/* clock parent specified in the table */
 };
 
 #define TEGRA_CLK_INIT_PLATFORM_ALL	0
@@ -468,6 +470,7 @@ void tegra_clk_set_disabled_div_all(void);
 void clk_init(struct clk *clk);
 unsigned long tegra_clk_measure_input_freq(void);
 unsigned long clk_get_rate_locked(struct clk *c);
+void tegra_clk_init_from_dt(const char *dt_table_name);
 void tegra_clk_init_cbus_plls_from_table(struct tegra_clk_init_table *table);
 void clk_set_cansleep(struct clk *c);
 unsigned long clk_get_min_rate(struct clk *c);
