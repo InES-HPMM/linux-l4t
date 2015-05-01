@@ -104,6 +104,133 @@ static LIST_HEAD(clocks);
 static unsigned long osc_freq;
 
 #ifdef CONFIG_OF
+#define TEGRA_CLK_DT_INIT_ENABLE	0x1
+#define TEGRA_CLK_DT_INIT_PLL		0x2
+
+static int tegra_clk_init_one_from_table(struct tegra_clk_init_table *table);
+static int tegra_clk_init_cbus_pll_one(struct tegra_clk_init_table *table);
+
+static struct clk *get_clock_by_id(u32 clk_id)
+{
+	struct clk *c;
+
+	if (!clk_id)
+		return NULL;
+
+	mutex_lock(&clock_list_lock);
+	list_for_each_entry(c, &clocks, node) {
+		if (c->clk_id == clk_id) {
+			mutex_unlock(&clock_list_lock);
+			return c;
+		}
+	}
+	mutex_unlock(&clock_list_lock);
+	return NULL;
+}
+
+static struct clk *clk_init_parse_clk_id(struct device_node *table_np,
+					 const char *propname, int idx)
+{
+	u32 val;
+	struct clk *c;
+	int ret = of_property_read_u32_index(table_np, propname, idx, &val);
+
+	if (ret)
+		return ERR_PTR(ret);
+	if (!val)
+		return 0;
+
+	c = get_clock_by_id(val);
+	if (!c)
+		return ERR_PTR(-ENOENT);
+	return c;
+}
+
+static int clk_init_from_dt_table(struct device_node *table_np,
+				  const char *propname)
+{
+	int ret, i = 0;
+	u32 val;
+
+	for (;;) {
+		struct tegra_clk_init_table table = { NULL, };
+
+		/* Parse target clock ID. End of table if ID zero */
+		table.c = clk_init_parse_clk_id(table_np, propname, i++);
+		if (IS_ERR(table.c)) {
+			ret = PTR_ERR(table.c);
+			goto abort;
+		}
+		if (table.c)
+			table.name = table.c->name;
+		else
+			break;
+
+		/* Parse target clock parent ID */
+		table.p = clk_init_parse_clk_id(table_np, propname, i++);
+		if (IS_ERR(table.p)) {
+			ret = PTR_ERR(table.p);
+			goto abort;
+		}
+		if (table.p)
+			table.parent = table.p->name;
+
+		/* Parse target clock rate */
+		ret = of_property_read_u32_index(table_np, propname, i++,
+						 ((u32 *)&table.rate));
+		if (ret)
+			goto abort;
+
+		/* Parse control flags */
+		ret = of_property_read_u32_index(table_np, propname, i++,
+						 &val);
+		if (ret)
+			goto abort;
+
+		if (val & TEGRA_CLK_DT_INIT_ENABLE)
+			table.enabled = true;
+
+		if (val & TEGRA_CLK_DT_INIT_PLL)
+			tegra_clk_init_cbus_pll_one(&table);
+		else
+			tegra_clk_init_one_from_table(&table);
+	}
+	pr_info("%s: clocks are set from %s:%s\n",
+		__func__, table_np->name, propname);
+	return 0;
+
+abort:
+	pr_err("%s: Aborted parsing %s:%s at index %d (%d)\n",
+	       __func__, table_np->name, propname, i - 1, ret);
+	return ret;
+}
+
+void tegra_clk_init_from_dt(const char *dt_table_name)
+{
+	struct	property *pp;
+	struct device_node *table_np;
+	struct of_device_id matches[2] = { };
+
+	strncpy(matches[0].name, dt_table_name, sizeof(matches[0].name));
+	strncpy(matches[0].compatible, "nvidia,tegra-clk-init-table",
+		sizeof(matches[0].compatible));
+
+	table_np = of_find_matching_node_and_match(NULL, matches, NULL);
+
+	if (!table_np || !of_device_is_available(table_np)) {
+		pr_err("%s: %s is not available\n", __func__, dt_table_name);
+		of_node_put(table_np);
+		return;
+	}
+
+	for_each_property_of_node(table_np, pp) {
+		int i;
+		if (sscanf(pp->name, "clkinit-%d%c", &i, (char *)&i) == 1)
+			clk_init_from_dt_table(table_np, pp->name);
+	}
+	of_node_put(table_np);
+}
+
 struct clk *of_clk_get_from_provider(struct of_phandle_args *clkspec)
 {
 	u32 clk_id;
@@ -120,14 +247,10 @@ struct clk *of_clk_get_from_provider(struct of_phandle_args *clkspec)
 		return ERR_PTR(-ENOENT);
 	}
 
-	mutex_lock(&clock_list_lock);
-	list_for_each_entry(c, &clocks, node) {
-		if (c->clk_id == clk_id) {
-			mutex_unlock(&clock_list_lock);
-			return c;
-		}
-	}
-	mutex_unlock(&clock_list_lock);
+	c = get_clock_by_id(clk_id);
+	if (c)
+		return c;
+
 	pr_err("%s: tegra clock %u not found\n", __func__, clk_id);
 	return ERR_PTR(-ENOENT);
 }
@@ -846,12 +969,13 @@ static int tegra_clk_clip_rate_for_parent(struct clk *c, struct clk *p)
 
 static int tegra_clk_init_one_from_table(struct tegra_clk_init_table *table)
 {
-	struct clk *c;
-	struct clk *p;
+	struct clk *c = table->c;
+	struct clk *p = table->p;
 
 	int ret = 0;
 
-	c = tegra_get_clock_by_name(table->name);
+	if (!c)
+		c = tegra_get_clock_by_name(table->name);
 
 	if (!c) {
 		pr_warning("Unable to initialize clock %s\n",
@@ -876,7 +1000,8 @@ static int tegra_clk_init_one_from_table(struct tegra_clk_init_table *table)
 	}
 
 	if (table->parent) {
-		p = tegra_get_clock_by_name(table->parent);
+		if (!p)
+			p = tegra_get_clock_by_name(table->parent);
 		if (!p) {
 			pr_warning("Unable to find parent %s of clock %s\n",
 				table->parent, table->name);
