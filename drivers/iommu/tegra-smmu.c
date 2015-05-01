@@ -977,7 +977,7 @@ static int __smmu_iommu_map_largepage_default(struct smmu_as *as, dma_addr_t iov
 	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
 		attrs &= ~_READABLE;
 
-	pdir[pdn] = SMMU_ADDR_TO_PDN(pa) << 10 | attrs;
+	pdir[pdn] = pa >> SMMU_PDE_SHIFT | attrs;
 	trace_smmu_set_pte(as->asid, iova, pa, SZ_4M, attrs);
 
 	FLUSH_CPU_DCACHE(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
@@ -1204,7 +1204,7 @@ static size_t __smmu_iommu_iova_to_phys(struct smmu_as *as, dma_addr_t iova,
 		bytes = PAGE_SIZE;
 		*npte = *count;
 	} else if (pdir[pdn]) {
-		*pa =  pdir[pdn] << SMMU_PDE_SHIFT;
+		*pa =  (phys_addr_t)pdir[pdn] << SMMU_PDE_SHIFT;
 		*pa += iova & (SZ_4M - 1);
 		bytes = SZ_4M;
 	}
