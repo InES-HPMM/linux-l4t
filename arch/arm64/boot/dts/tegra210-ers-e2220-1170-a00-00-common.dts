@@ -46,6 +46,7 @@
 #include "tegra210-platforms/tegra210-edp.dtsi"
 #include "tegra210-platforms/tegra210-ers-thermal-nct72-e2220-1170-a00.dtsi"
 #include "tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi"
+#include "tegra210-platforms/tegra210-ers-clk-init.dtsi"
 #include <dt-bindings/sound/tegra-asoc-alt.h>
 #include <dt-bindings/platform/t210/t210.h>
 

@@ -41,6 +41,7 @@
 #include "tegra210-platforms/tegra210-ers-thermal-nct72-e2220-1170-a00.dtsi"
 #include "tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi"
 #include "tegra210-platforms/tegra210-therm-est.dtsi"
+#include "tegra210-platforms/tegra210-ers-clk-init.dtsi"
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-keys-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-powermon.dtsi"
