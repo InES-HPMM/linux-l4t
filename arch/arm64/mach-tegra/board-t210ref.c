@@ -109,51 +109,6 @@ static struct tegra_usb_otg_data tegra_otg_pdata;
 static struct nvadsp_platform_data nvadsp_plat_data;
 #endif
 
-static __initdata struct tegra_clk_init_table t210ref_clk_init_table[] = {
-	/* name		parent		rate		enabled */
-	{ "hda",	"pll_p",	108000000,	false},
-	{ "hda2codec_2x", "pll_p",	48000000,	false},
-	{ "pwm",	"pll_p",	48000000,	false},
-	{ "i2s0",	"pll_a_out0",	12288000,		false},
-	{ "i2s1",	"pll_a_out0",	0,		false},
-	{ "i2s3",	"pll_a_out0",	0,		false},
-	{ "i2s4",	"pll_a_out0",	0,		false},
-	{ "spdif_out",		"pll_a_out0",	6144000,	false},
-	{ "spdif_in",		"pll_p",	48000000,	false},
-	{ "d_audio",	"pll_a_out0",	12288000,	false},
-	{ "audio1",	"i2s1_sync",	0,		false},
-	{ "audio3",	"i2s3_sync",	0,		false},
-	{ "vi_sensor",	"pll_p",	150000000,	false},
-	{ "vi_sensor2",	"pll_p",	150000000,	false},
-	{ "cilab",	"pll_p",	150000000,	false},
-	{ "cilcd",	"pll_p",	150000000,	false},
-	{ "cile",	"pll_p",	150000000,	false},
-	{ "extern3",	"pll_p",	41000000,	false},
-	{ "clk_out_3",	"extern3",	0,		false},
-	{ "i2c1",	"pll_p",	3200000,	false},
-	{ "i2c2",	"pll_p",	3200000,	false},
-	{ "i2c3",	"pll_p",	3200000,	false},
-	{ "i2c4",	"pll_p",	3200000,	false},
-	{ "i2c5",	"pll_p",	3200000,	false},
-	{ "vii2c",	"pll_p",	204000000,	false},
-	{ "i2cslow",	"clk_m",	1000000,	false},
-	{ "sbc1",	"pll_p",	25000000,	false},
-	{ "sbc2",	"pll_p",	25000000,	false},
-	{ "sbc3",	"pll_p",	25000000,	false},
-	{ "sbc4",	"pll_p",	25000000,	false},
-	{ "qspi",	"pll_p",	133000000,	false},
-	{ "uarta",	"pll_p",	408000000,	true},
-	{ "uartb",	"pll_p",	408000000,	false},
-	{ "uartc",	"pll_p",	408000000,	false},
-	{ "uartd",	"pll_p",	408000000,	false},
-	{ "extern2",	"pll_p",	41000000,	false},
-	{ "clk_out_2",	"extern2",	40800000,	false},
-	{ "extern1",	"clk_m",	19200000,	true},
-	{ "clk_out_1",	"extern1",	19200000,	true},
-	{ "uart_mipi_cal",	"pll_p",	68000000,	false},
-	{ NULL,		NULL,		0,		0},
-};
-
 static void t210ref_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
@@ -259,7 +214,7 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 static void __init tegra_t210ref_early_init(void)
 {
 	if (!tegra_platform_is_fpga()) {
-		tegra_clk_init_from_table(t210ref_clk_init_table);
+		tegra_clk_init_from_dt("t210-clk-init-table");
 		tegra_clk_verify_parents();
 	}
 	if (of_machine_is_compatible("nvidia,e2141"))
