@@ -733,7 +733,7 @@ int tegra_update_cpu_speed(unsigned long rate)
 	if (is_lp_cluster())
 		freqs.new = lp_to_virtual_gfreq(rate);
 
-	rate = clk_round_rate(cpu_clk, actual_freqs.new * 1000);
+	rate = clk_round_rate(cpu_clk, actual_freqs.new * 1000UL);
 	if (!IS_ERR_VALUE(rate))
 		actual_freqs.new = rate / 1000;
 
