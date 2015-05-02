@@ -245,7 +245,29 @@
 /* IDs 270 ... 279 are not assigned */
 #define TEGRA210_CLK_ID_DFLL_CPU	280
 #define TEGRA210_CLK_ID_DFLL_REF	281 /* Share enb bit w DFLL_SOC */
-/* FIXME: IDs 282 ... 351 to be assigned */
+#define TEGRA210_CLK_ID_SPDIF_IN	282 /* Share enb bit with SPDIF_OUT */
+/* IDs 282 ... 289 are reserved */
+#define	TEGRA210_CLK_ID_SPDIF_IN_SYNC	290 /* No enb bit for sync clocks */
+#define	TEGRA210_CLK_ID_I2S0_SYNC	291
+#define	TEGRA210_CLK_ID_I2S1_SYNC	292
+#define	TEGRA210_CLK_ID_I2S2_SYNC	293
+#define	TEGRA210_CLK_ID_I2S3_SYNC	294
+#define	TEGRA210_CLK_ID_I2S4_SYNC	295
+#define	TEGRA210_CLK_ID_VIMCLK_SYNC	296
+#define	TEGRA210_CLK_ID_AUDIO		297 /* Audio enb combined w src sel */
+#define	TEGRA210_CLK_ID_AUDIO_2x	298
+#define	TEGRA210_CLK_ID_AUDIO0		299
+#define	TEGRA210_CLK_ID_AUDIO1		300
+#define	TEGRA210_CLK_ID_AUDIO2		301
+#define	TEGRA210_CLK_ID_AUDIO3		302
+#define	TEGRA210_CLK_ID_AUDIO4		303
+#define TEGRA210_CLK_ID_AUDIO0_DMIC	304
+#define TEGRA210_CLK_ID_AUDIO1_DMIC	305
+#define TEGRA210_CLK_ID_AUDIO2_DMIC	306
+#define TEGRA210_CLK_ID_CLK_OUT_1	307 /* CLK_OUT enb combined w src sel */
+#define TEGRA210_CLK_ID_CLK_OUT_2	308
+#define TEGRA210_CLK_ID_CLK_OUT_3	309
+/* IDs 310 ... 351 are reserved */
 
 /*
  * Clock IDs in the 352 ... 479 range are used identify tegra virtual clock

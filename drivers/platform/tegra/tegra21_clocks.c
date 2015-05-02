@@ -7785,9 +7785,10 @@ static struct clk tegra_pciex_clk = {
 };
 
 /* Audio sync clocks */
-#define SYNC_SOURCE(_id, _dev)				\
+#define SYNC_SOURCE(_id, _dev, _clk_id)			\
 	{						\
 		.name      = #_id "_sync",		\
+		.clk_id    = TEGRA210_CLK_ID_##_clk_id##_SYNC, \
 		.lookup    = {				\
 			.dev_id    = #_dev ,		\
 			.con_id    = "ext_audio_sync",	\
@@ -7797,13 +7798,13 @@ static struct clk tegra_pciex_clk = {
 		.ops       = &tegra_sync_source_ops	\
 	}
 static struct clk tegra_sync_source_list[] = {
-	SYNC_SOURCE(spdif_in, tegra210-spdif),
-	SYNC_SOURCE(i2s0, tegra210-i2s.0),
-	SYNC_SOURCE(i2s1, tegra210-i2s.1),
-	SYNC_SOURCE(i2s2, tegra210-i2s.2),
-	SYNC_SOURCE(i2s3, tegra210-i2s.3),
-	SYNC_SOURCE(i2s4, tegra210-i2s.4),
-	SYNC_SOURCE(vimclk, vimclk),
+	SYNC_SOURCE(spdif_in, tegra210-spdif, SPDIF_IN),
+	SYNC_SOURCE(i2s0, tegra210-i2s.0, I2S0),
+	SYNC_SOURCE(i2s1, tegra210-i2s.1, I2S1),
+	SYNC_SOURCE(i2s2, tegra210-i2s.2, I2S2),
+	SYNC_SOURCE(i2s3, tegra210-i2s.3, I2S3),
+	SYNC_SOURCE(i2s4, tegra210-i2s.4, I2S4),
+	SYNC_SOURCE(vimclk, vimclk, VIMCLK),
 };
 
 static struct clk_mux_sel mux_d_audio_clk[] = {
@@ -7834,9 +7835,10 @@ static struct clk_mux_sel mux_audio_sync_clk[] =
 	{ NULL, 0 }
 };
 
-#define AUDIO_SYNC_CLK(_id, _dev, _index)			\
+#define AUDIO_SYNC_CLK(_id, _dev, _index, _clk_id)	\
 	{						\
 		.name      = #_id,			\
+		.clk_id    = TEGRA210_CLK_ID_##_clk_id, \
 		.lookup    = {				\
 			.dev_id    = #_dev,		\
 			.con_id    = "audio_sync",	\
@@ -7847,17 +7849,18 @@ static struct clk_mux_sel mux_audio_sync_clk[] =
 		.ops       = &tegra_audio_sync_clk_ops	\
 	}
 static struct clk tegra_clk_audio_list[] = {
-	AUDIO_SYNC_CLK(audio0, tegra210-i2s.0, 0),
-	AUDIO_SYNC_CLK(audio1, tegra210-i2s.1, 1),
-	AUDIO_SYNC_CLK(audio2, tegra210-i2s.2, 2),
-	AUDIO_SYNC_CLK(audio3, tegra210-i2s.3, 3),
-	AUDIO_SYNC_CLK(audio4, tegra210-i2s.4, 4),
-	AUDIO_SYNC_CLK(audio, tegra210-spdif, 5),	/* SPDIF */
+	AUDIO_SYNC_CLK(audio0, tegra210-i2s.0, 0, AUDIO0),
+	AUDIO_SYNC_CLK(audio1, tegra210-i2s.1, 1, AUDIO1),
+	AUDIO_SYNC_CLK(audio2, tegra210-i2s.2, 2, AUDIO2),
+	AUDIO_SYNC_CLK(audio3, tegra210-i2s.3, 3, AUDIO3),
+	AUDIO_SYNC_CLK(audio4, tegra210-i2s.4, 4, AUDIO4),
+	AUDIO_SYNC_CLK(audio, tegra210-spdif,  5, AUDIO),	/* SPDIF */
 };
 
-#define AUDIO_SYNC_2X_CLK(_id, _dev, _index)				\
+#define AUDIO_SYNC_2X_CLK(_id, _dev, _index, _clk_id)		\
 	{							\
 		.name      = #_id "_2x",			\
+		.clk_id    = TEGRA210_CLK_ID_##_clk_id##_2x,	\
 		.lookup    = {					\
 			.dev_id    = #_dev,			\
 			.con_id    = "audio_sync_2x"		\
@@ -7873,7 +7876,7 @@ static struct clk tegra_clk_audio_list[] = {
 		},						\
 	}
 static struct clk tegra_clk_audio_2x_list[] = {
-	AUDIO_SYNC_2X_CLK(audio, tegra210-spdif, 5),	/* SPDIF */
+	AUDIO_SYNC_2X_CLK(audio, tegra210-spdif, 5, AUDIO),	/* SPDIF */
 };
 
 #define MUX_I2S_SPDIF(_id, _index)					\
@@ -7900,9 +7903,10 @@ static struct clk_mux_sel mux_pllaout0_audio_2x_pllp_clkm[] = {
 };
 
 /* Audio sync dmic clocks */
-#define AUDIO_SYNC_DMIC_CLK(_id, _dev, _reg)		\
+#define AUDIO_SYNC_DMIC_CLK(_id, _dev, _reg, _clk_id)	\
 	{						\
 		.name      = #_id "_dmic",		\
+		.clk_id    = TEGRA210_CLK_ID_##_clk_id##_DMIC, \
 		.lookup    = {				\
 			.dev_id    = #_dev,		\
 			.con_id    = "audio_sync_dmic",	\
@@ -7914,9 +7918,9 @@ static struct clk_mux_sel mux_pllaout0_audio_2x_pllp_clkm[] = {
 	}
 
 static struct clk tegra_clk_audio_dmic_list[] = {
-	AUDIO_SYNC_DMIC_CLK(audio0, tegra210-i2s.0, 0x560),
-	AUDIO_SYNC_DMIC_CLK(audio1, tegra210-i2s.1, 0x564),
-	AUDIO_SYNC_DMIC_CLK(audio2, tegra210-i2s.2, 0x6b8),
+	AUDIO_SYNC_DMIC_CLK(audio0, tegra210-i2s.0, 0x560, AUDIO0),
+	AUDIO_SYNC_DMIC_CLK(audio1, tegra210-i2s.1, 0x564, AUDIO1),
+	AUDIO_SYNC_DMIC_CLK(audio2, tegra210-i2s.2, 0x6b8, AUDIO2),
 };
 
 #define MUX_AUDIO_DMIC(_id, _index)					\
@@ -7950,9 +7954,10 @@ static struct clk_mux_sel *mux_extern_out_list[] = {
 	mux_clkm_clkm2_clkm4_extern3,
 };
 
-#define CLK_OUT_CLK(_id, _max_rate)					\
+#define CLK_OUT_CLK(_id, _max_rate)				\
 	{							\
 		.name      = "clk_out_" #_id,			\
+		.clk_id    = TEGRA210_CLK_ID_CLK_OUT_##_id,	\
 		.lookup    = {					\
 			.dev_id    = "clk_out_" #_id,		\
 			.con_id	   = "extern" #_id,		\
@@ -9361,7 +9366,7 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2s3",	"tegra210-i2s.3",	NULL,	101,	0x3bc,	 24576000, mux_pllaout0_audio3_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, TEGRA210_CLK_ID_I2S3),
 	PERIPH_CLK("i2s4",	"tegra210-i2s.4",	NULL,	102,	0x3c0,	 24576000, mux_pllaout0_audio4_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, TEGRA210_CLK_ID_I2S4),
 	PERIPH_CLK("spdif_out",	"tegra210-spdif", "spdif_out",	10,	0x108,	 24727300, mux_pllaout0_audio_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, TEGRA210_CLK_ID_SPDIF_OUT),
-	PERIPH_CLK("spdif_in",	"tegra210-spdif",  "spdif_in",	10,	0x10c,	408000000, mux_pllp_pllc_clkm_1,		MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, 0),
+	PERIPH_CLK("spdif_in",	"tegra210-spdif",  "spdif_in",	10,	0x10c,	408000000, mux_pllp_pllc_clkm_1,		MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, TEGRA210_CLK_ID_SPDIF_IN),
 	PERIPH_CLK("dmic1",	"tegra210-dmic.0",	NULL,	161,	0x64c,	 12288000, mux_pllaout0_audio0_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, TEGRA210_CLK_ID_DMIC1),
 	PERIPH_CLK("dmic2",	"tegra210-dmic.1",	NULL,	162,	0x650,	 12288000, mux_pllaout0_audio1_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, TEGRA210_CLK_ID_DMIC2),
 	PERIPH_CLK("dmic3",	"tegra210-dmic.2",	NULL,	197,	0x6bc,	 12288000, mux_pllaout0_audio2_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, TEGRA210_CLK_ID_DMIC3),
