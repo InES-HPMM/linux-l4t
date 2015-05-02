@@ -135,6 +135,7 @@ static struct dvfs_rail *tegra21_dvfs_rails[] = {
 /* FIXME: Remove after bringup */
 #define BRINGUP_CVB_V_MARGIN	25
 #define BRINGUP_CVB_V_MARGIN_EX	5
+#define CPU_BOOST_THRESHOLD	2014500
 
 /* CPU DVFS tables */
 #define CPU_CVB_TABLE		\
@@ -996,7 +997,7 @@ static int __init set_cpu_dvfs_data(unsigned long max_freq,
 
 	/* dvfs tables are successfully populated - fill in the rest */
 	cpu_dvfs->speedo_id = d->speedo_id;
-	cpu_dvfs->boost_table = d->speedo_id == 2;
+	cpu_dvfs->boost_table = max_freq > CPU_BOOST_THRESHOLD;
 	cpu_dvfs->process_id = d->process_id;
 	cpu_dvfs->freqs_mult = d->freqs_mult;
 	cpu_dvfs->dvfs_rail->nominal_millivolts = min(d->max_mv,
