@@ -1414,6 +1414,7 @@
 			hotspot-offset = <5000>;
 		};
 		therm_mem {
+			status = "disabled";
 			device_type = "thermctl";
 			thermal-sensor-id = <2>;
 		};
