@@ -2481,6 +2481,18 @@ static void soctherm_tsense_program(enum soctherm_sense sensor,
 				    struct soctherm_sensor_common_params *scp)
 {
 	u32 r;
+	int tz_id;
+	struct soctherm_therm *therm;
+
+	tz_id = tsensor2therm_map[sensor];
+	if (tz_id >= THERM_SIZE)
+		return;
+
+	therm = &pp->therm[tz_id];
+	if (!therm->tz) {
+		pr_info("soctherm: skipping sensor %d programming\n", sensor);
+		return;
+	}
 
 	r = REG_SET(0, TS_CPU0_CONFIG0_TALL, scp->tall);
 	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG0, sensor));
