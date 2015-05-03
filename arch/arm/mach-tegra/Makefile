@@ -89,6 +89,7 @@ obj-y                                   += panel-j-1440-810-5-8.o
 obj-y                                   += panel-j-720p-5.o
 obj-y                                   += panel-l-720p-5-loki.o
 obj-y                                   += panel-s-edp-uhdtv-15-6.o
+obj-y                                   += panel-o-720p-6-0.o
 
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sdhci.o
