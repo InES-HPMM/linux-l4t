@@ -58,7 +58,7 @@
 		consumers {
 			consumer8 {
 				/* non-shipping ST8 AUO 8" display */
-				nvidia,consumer_name = "display_0";
+				nvidia,consumer_name = "dsi_0";
 				nvidia,states = <0 616>;
 			};
 		};
