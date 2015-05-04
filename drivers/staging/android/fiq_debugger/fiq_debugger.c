@@ -754,6 +754,16 @@ static void fiq_debugger_fiq(struct fiq_glue_handler *h,
 		spin_unlock(&state->debug_fiq_lock);
 		per_cpu(immediate_dump, this_cpu) = false;
 	}
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && !defined(CONFIG_ARCH_TEGRA_13x_SOC)
+/*
+ * FIQ kick in 1st expiration cycle on T124 platform (HW bug).
+ * So we enlarge to 120 secs and FIQ kick in @ 30 secs but
+ * doing reset directly in FIQ handler after dumping the CPU
+ * info. This is for product branch only.
+ */
+	mdelay(500);
+	fiq_debugger_fiq_exec(state, "reset", regs, svc_sp);
+#endif
 
 	do {
 		need_irq = fiq_debugger_handle_uart_interrupt(state, this_cpu,
