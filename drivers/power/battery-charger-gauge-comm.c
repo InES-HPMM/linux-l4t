@@ -2,7 +2,7 @@
  * battery-charger-gauge-comm.c -- Communication between battery charger and
  *	battery gauge driver.
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -129,7 +129,7 @@ static void battery_charger_thermal_monitor_wq(struct work_struct *work)
 			    "Battery thermal zone %s is not registered yet\n",
 				bc_dev->tz_name);
 			schedule_delayed_work(&bc_dev->poll_temp_monitor_wq,
-			    msecs_to_jiffies(bc_dev->polling_time_sec * HZ));
+			    msecs_to_jiffies(bc_dev->polling_time_sec * 1000));
 			bc_dev->battery_tz = NULL;
 			return;
 		}
@@ -162,7 +162,7 @@ static void battery_charger_thermal_monitor_wq(struct work_struct *work)
 exit:
 	if (bc_dev->start_monitoring)
 		schedule_delayed_work(&bc_dev->poll_temp_monitor_wq,
-			msecs_to_jiffies(bc_dev->polling_time_sec * HZ));
+			msecs_to_jiffies(bc_dev->polling_time_sec * 1000));
 	return;
 }
 #endif
@@ -198,7 +198,7 @@ int battery_charger_thermal_start_monitoring(
 
 	bc_dev->start_monitoring = true;
 	schedule_delayed_work(&bc_dev->poll_temp_monitor_wq,
-			msecs_to_jiffies(bc_dev->polling_time_sec * HZ));
+			msecs_to_jiffies(bc_dev->polling_time_sec * 1000));
 	return 0;
 }
 EXPORT_SYMBOL_GPL(battery_charger_thermal_start_monitoring);
