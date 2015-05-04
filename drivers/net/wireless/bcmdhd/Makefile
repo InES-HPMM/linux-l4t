@@ -99,23 +99,27 @@ DRIVER_TYPE ?= $(CONFIG_BCMDHD)
 # Chip dependent feature
 #########################
 ifneq ($(CONFIG_BCMDYNAMIC),)
-  # Common options
+# Common options
   DHDCFLAGS += -DCUSTOM_SDIO_F2_BLKSIZE=256
   DHDCFLAGS += -DRXFRAME_THREAD
   DHDCFLAGS += -DDHDTCPACK_SUPPRESS
   DHDCFLAGS += -DCUSTOM_DPC_CPUCORE=0
 
-  # It's safe to make this bigger on any chip
+# It's safe to make this bigger on any chip
   DHDCFLAGS += -DMAX_HDR_READ=128
 
-  # Dynamic
+# Dynamic
   DHDCFLAGS += -DCUSTOM_AMPDU_BA_WSIZE=bcmdhd_custom_ampdu_ba_wsize
   DHDCFLAGS += -DCUSTOM_GLOM_SETTING=bcmdhd_custom_glom_setting
   DHDCFLAGS += -DCUSTOM_RXCHAIN=bcmdhd_custom_rxchain
   DHDCFLAGS += -DCUSTOM_AMPDU_MPDU=bcmdhd_custom_ampdu_mpdu
   DHDCFLAGS += -DCUSTOM_PSPRETEND_THR=bcmdhd_custom_pspretend_thr
 
-  # These are protected by runtime checks now
+# Define on/off delay
+  DHDCFLAGS += -DWIFI_TURNON_DELAY=bcmdhd_wifi_turnon_delay
+  DHDCFLAGS += -DWIFI_TURNOFF_DELAY=bcmdhd_wifi_turnoff_delay
+
+# These are protected by runtime checks now
   DHDCFLAGS += -DPROP_TXSTATUS_VSDB
   DHDCFLAGS += -DVSDB_BW_ALLOCATE_ENABLE
   DHDCFLAGS += -DBCMSDIOH_TXGLOM
@@ -125,6 +129,7 @@ ifneq ($(CONFIG_BCMDYNAMIC),)
   DHDCFLAGS += -DWL11U
   DHDCFLAGS += -DDHD_ENABLE_LPC
 endif
+
 ifneq ($(CONFIG_BCM43241),)
   DHDCFLAGS += -DBCM43241_CHIP
   DHDCFLAGS += -DCUSTOM_SDIO_F2_BLKSIZE=256
@@ -138,7 +143,12 @@ ifneq ($(CONFIG_BCM43241),)
   DHDCFLAGS += -DVSDB_BW_ALLOCATE_ENABLE
   DHDCFLAGS += -DSDIO_CRC_ERROR_FIX
   DHDCFLAGS += -DP2P_DISCOVERY_WAR
+
+# Define on/off delay
+  DHDCFLAGS += -DWIFI_TURNON_DELAY=400
+  DHDCFLAGS += -DWIFI_TURNOFF_DELAY=400
 endif
+
 ifeq ($(DRIVER_TYPE),m)
   DHDCFLAGS += -fno-pic
 endif
@@ -172,12 +182,15 @@ ifneq ($(CONFIG_BCM4354),)
 # Make same as proven good value from other platform
   DHDCFLAGS += -DCUSTOM_DPC_PRIO_SETTING=99
 
+# Define on/off delay
+  DHDCFLAGS += -DWIFI_TURNON_DELAY=200
+  DHDCFLAGS += -DWIFI_TURNOFF_DELAY=200
 endif
 
 ifneq ($(CONFIG_BCM4339),)
   DHDCFLAGS += -DBCM4339_CHIP
 
-  # tput enhancement
+# tput enhancement
   DHDCFLAGS += -DCUSTOM_GLOM_SETTING=8 -DCUSTOM_RXCHAIN=1
   DHDCFLAGS += -DBCMSDIOH_TXGLOM -DBCMSDIOH_TXGLOM_HIGHSPEED
   DHDCFLAGS += -DDHDTCPACK_SUPPRESS
@@ -189,7 +202,7 @@ ifneq ($(CONFIG_BCM4339),)
 # DHDCFLAGS += -DPROP_TXSTATUS_VSDB
   DHDCFLAGS += -DCUSTOM_MAX_TXGLOM_SIZE=32
 
-  # New Features
+# New Features
   DHDCFLAGS += -DWL11U
   DHDCFLAGS += -DDHD_ENABLE_LPC
   DHDCFLAGS += -DCUSTOM_PSPRETEND_THR=30

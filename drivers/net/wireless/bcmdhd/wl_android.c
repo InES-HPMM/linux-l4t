@@ -40,6 +40,7 @@
 #include <dngl_stats.h>
 #include <dhd.h>
 #include <proto/bcmip.h>
+#include "dynamic.h"
 #ifdef PNO_SUPPORT
 #include <dhd_pno.h>
 #endif

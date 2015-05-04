@@ -202,6 +202,8 @@ int bcmdhd_custom_rxchain;
 extern int firstread;
 int bcmdhd_custom_ampdu_mpdu;
 int bcmdhd_custom_pspretend_thr;
+int bcmdhd_wifi_turnon_delay;
+int bcmdhd_wifi_turnoff_delay;
 
 bool bcmdhd_use_custom_ampdu_mpdu;
 bool bcmdhd_use_custom_pspretend_thr;
@@ -224,6 +226,9 @@ static void bcmdhd_dynamic_configure(int chipid)
 		/* from the old cflags */
 		bcmdhd_custom_ampdu_ba_wsize = 32;
 		dhd_dpc_prio = dhd_rxf_prio = MAX_USER_RT_PRIO/2;
+		/* set on/off delay */
+		bcmdhd_wifi_turnon_delay = 400;
+		bcmdhd_wifi_turnoff_delay = 400;
 
 		bcmdhd_prop_txstatus_vsdb = true;
 		bcmdhd_vsdb_bw_allocate_enable = true;
@@ -241,6 +246,9 @@ static void bcmdhd_dynamic_configure(int chipid)
 		bcmdhd_use_custom_pspretend_thr = true;
 		bcmdhd_custom_pspretend_thr = 30;
 		dhd_dpc_prio = dhd_rxf_prio = 99;
+		/* set on/off delay */
+		bcmdhd_wifi_turnon_delay = 200;
+		bcmdhd_wifi_turnoff_delay = 200;
 
 		bcmdhd_bcmsdioh_txglom = true;
 		bcmdhd_use_wl_txbf = true;
