@@ -79,6 +79,8 @@ in HS400 mode.
 - cd_wakeup_incapable: Set this flag to disable card detect event as wake source.
 - nvidia,enable-strobe-mode: Enable enhance strobe mode when eMMC device runs at HS400 mode.
 - nvidia,en-periodic-calib: Enable periodic calibration support for sdmmc1/sdmmc3. Auto calibration sequence will be run at interval of 100ms during sdmmc1/sdmmc3 interfaces are active.
+- nvidia,clk-name: Pass clock name details which will be used with clock control APIs where clk_get() requires clk-name is the 2nd argument to it.
+Using clk-name here to set High speed clock details for SDHCI devices. This value will be NULL if it is not set.
 
 Example:
 
