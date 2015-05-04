@@ -351,7 +351,7 @@ static const struct regmap_config max15569_regmap_config = {
 
 static const struct of_device_id max15569_of_match[] = {
 	 { .compatible = "maxim,max15569", .data = (void *)MAX15569},
-	 { .compatible = "maxim,max16989", .data = (void *)MAX16989},
+	 { .compatible = "maxim,max16989x", .data = (void *)MAX16989},
 	{},
 };
 MODULE_DEVICE_TABLE(of, max15569_of_match);
@@ -471,7 +471,7 @@ static int max15569_remove(struct i2c_client *client)
 
 static const struct i2c_device_id max15569_id[] = {
 	{.name = "max15569",},
-	{.name = "max16989",},
+	{.name = "max16989x",},
 	{},
 };
 
