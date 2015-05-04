@@ -57,20 +57,16 @@ struct nvavp_info {
 	/*IVC */
 	struct ivc_dev			*ivcdev;
 	struct ivc_ctxt			*ivc_ctx;
-	struct ivc_msg			*msg;
 	struct mutex			open_lock;
 	struct platform_device		*nvavp_virt;
 };
 
 struct nvavp_clientctx {
-	struct nvavp_pushbuffer_submit_hdr submit_hdr;
 	struct nvavp_reloc relocs[NVAVP_MAX_RELOCATION_COUNT];
 	int num_relocs;
 	struct nvavp_info *nvavp;
 	int channel_id;
-	u32 clk_reqs;
-	spinlock_t iova_lock;
-	struct rb_root iova_handles;
+	struct mutex pushbuffer_lock;
 };
 
 static struct nvavp_info *nvavp_info_ctx;
@@ -80,9 +76,9 @@ static int tegra_nvavp_open(struct nvavp_info *nvavp,
 {
 	struct nvavp_clientctx *clientctx;
 	int ret = 0;
-	struct ivc_msg *msg = nvavp->msg;
+	struct ivc_msg msg;
 
-	memset(msg, 0, sizeof(struct ivc_msg));
+	memset(&msg, 0, sizeof(struct ivc_msg));
 
 	dev_dbg(&nvavp->nvavp_virt->dev, "%s: ++\n", __func__);
 
@@ -93,19 +89,20 @@ static int tegra_nvavp_open(struct nvavp_info *nvavp,
 	pr_debug("tegra_nvavp_open channel_id (%d)\n", channel_id);
 
 	clientctx->channel_id = channel_id;
-	msg->msg = NVAVP_CONNECT;
-	msg->channel_id = channel_id;
+	mutex_init(&clientctx->pushbuffer_lock);
 
-	ret = nvavp_ivc(nvavp->ivc_ctx, msg);
+	msg.msg = NVAVP_CONNECT;
+	msg.channel_id = channel_id;
+
+	ret = nvavp_ivc(nvavp->ivc_ctx, &msg);
 	if (ret != NVAVP_ERR_OK) {
 		dev_err(&nvavp->nvavp_virt->dev, "cannot complete avp IVC\n");
 		ret = -EINVAL;
 	}
 
-	nvavp->syncpt_id = msg->syncpt.id;
+	nvavp->syncpt_id = msg.syncpt.id;
 
 	clientctx->nvavp = nvavp;
-	clientctx->iova_handles = RB_ROOT;
 	*client = clientctx;
 
 	return ret;
@@ -117,31 +114,31 @@ static int nvavp_set_clock_ioctl(struct file *filp, unsigned int cmd,
 	struct nvavp_clientctx *clientctx = filp->private_data;
 	struct nvavp_info *nvavp = clientctx->nvavp;
 	int err = 0;
-	struct ivc_msg *msg = nvavp->msg;
+	struct ivc_msg msg;
 
-	memset(msg, 0, sizeof(struct ivc_msg));
+	memset(&msg, 0, sizeof(struct ivc_msg));
 
-	msg->msg = NVAVP_SET_CLOCK;
-	msg->channel_id = NVAVP_VIDEO_CHANNEL;
+	msg.msg = NVAVP_SET_CLOCK;
+	msg.channel_id = NVAVP_VIDEO_CHANNEL;
 
-	if (copy_from_user(&(msg->params.clock_params), (void __user *)arg,
+	if (copy_from_user(&(msg.params.clock_params), (void __user *)arg,
 				sizeof(struct nvavp_clock_args)))
 		return -EFAULT;
 
 	dev_dbg(&nvavp->nvavp_virt->dev, "%s: clk_id=%d, clk_rate=%u\n",
-			__func__, msg->params.clock_params.id,
-			msg->params.clock_params.rate);
-	err = nvavp_ivc(nvavp->ivc_ctx, msg);
+			__func__, msg.params.clock_params.id,
+			msg.params.clock_params.rate);
+	err = nvavp_ivc(nvavp->ivc_ctx, &msg);
 	if (err != NVAVP_ERR_OK) {
 		dev_err(&nvavp->nvavp_virt->dev, "cannot complete avp IVC\n");
 		return -EINVAL;
 	}
 
 	trace_nvavp_set_clock_ioctl(clientctx->channel_id,
-			msg->params.clock_params.id,
-			msg->params.clock_params.rate);
+			msg.params.clock_params.id,
+			msg.params.clock_params.rate);
 
-	if (copy_to_user((void __user *)arg, &(msg->params.clock_params),
+	if (copy_to_user((void __user *)arg, &(msg.params.clock_params),
 				sizeof(struct nvavp_clock_args)))
 		return -EFAULT;
 
@@ -154,28 +151,28 @@ static int nvavp_get_clock_ioctl(struct file *filp, unsigned int cmd,
 	struct nvavp_clientctx *clientctx = filp->private_data;
 	struct nvavp_info *nvavp = clientctx->nvavp;
 	int err = 0;
-	struct ivc_msg *msg = nvavp->msg;
+	struct ivc_msg msg;
 
-	memset(msg, 0, sizeof(struct ivc_msg));
+	memset(&msg, 0, sizeof(struct ivc_msg));
 
-	msg->msg = NVAVP_GET_CLOCK;
-	msg->channel_id = NVAVP_VIDEO_CHANNEL;
+	msg.msg = NVAVP_GET_CLOCK;
+	msg.channel_id = NVAVP_VIDEO_CHANNEL;
 
-	if (copy_from_user(&(msg->params.clock_params), (void __user *)arg,
+	if (copy_from_user(&(msg.params.clock_params), (void __user *)arg,
 				sizeof(struct nvavp_clock_args)))
 		return -EFAULT;
 
-	err = nvavp_ivc(nvavp->ivc_ctx, msg);
+	err = nvavp_ivc(nvavp->ivc_ctx, &msg);
 	if (err != NVAVP_ERR_OK) {
 		dev_err(&nvavp->nvavp_virt->dev, "cannot complete avp IVC\n");
 		return -EINVAL;
 	}
 
 	trace_nvavp_get_clock_ioctl(clientctx->channel_id,
-			msg->params.clock_params.id,
-			msg->params.clock_params.rate);
+			msg.params.clock_params.id,
+			msg.params.clock_params.rate);
 
-	if (copy_to_user((void __user *)arg, &(msg->params.clock_params),
+	if (copy_to_user((void __user *)arg, &(msg.params.clock_params),
 				sizeof(struct nvavp_clock_args)))
 		return -EFAULT;
 
@@ -189,14 +186,14 @@ nvavp_channel_open(struct file *filp, struct nvavp_channel_open_args *arg)
 
 	struct nvavp_clientctx *clientctx = filp->private_data;
 	struct nvavp_info *nvavp = clientctx->nvavp;
-	struct ivc_msg *msg = nvavp->msg;
+	struct ivc_msg msg;
 
-	memset(msg, 0, sizeof(struct ivc_msg));
+	memset(&msg, 0, sizeof(struct ivc_msg));
 
-	msg->msg = NVAVP_CONNECT;
-	msg->channel_id = NVAVP_VIDEO_CHANNEL;
+	msg.msg = NVAVP_CONNECT;
+	msg.channel_id = NVAVP_VIDEO_CHANNEL;
 
-	err = nvavp_ivc(nvavp->ivc_ctx, msg);
+	err = nvavp_ivc(nvavp->ivc_ctx, &msg);
 	if (err != NVAVP_ERR_OK) {
 		dev_err(&nvavp->nvavp_virt->dev,
 				"cannot complete channel open\n");
@@ -204,7 +201,7 @@ nvavp_channel_open(struct file *filp, struct nvavp_channel_open_args *arg)
 		nvavp->init_task = NULL;
 	} else {
 		nvavp->init_task = current;
-		nvavp->syncpt_id = msg->syncpt.id;
+		nvavp->syncpt_id = msg.syncpt.id;
 	}
 
 	return err;
@@ -244,22 +241,29 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 	struct nvavp_pushbuffer_submit_hdr *user_hdr =
 			(struct nvavp_pushbuffer_submit_hdr *) arg;
 	struct nvavp_syncpt syncpt;
-	struct ivc_msg *msg = nvavp->msg;
+	struct ivc_msg msg;
+
+	mutex_lock(&clientctx->pushbuffer_lock);
 
 	syncpt.id = NVSYNCPT_INVALID;
 	syncpt.value = 0;
 
 	if (_IOC_DIR(cmd) & _IOC_WRITE) {
 		if (copy_from_user(&hdr, (void __user *)arg,
-			sizeof(struct nvavp_pushbuffer_submit_hdr)))
+			sizeof(struct nvavp_pushbuffer_submit_hdr))) {
+			mutex_unlock(&clientctx->pushbuffer_lock);
 			return -EFAULT;
+		}
 	}
 
-	if (!hdr.cmdbuf.mem)
+	if (!hdr.cmdbuf.mem) {
+		mutex_unlock(&clientctx->pushbuffer_lock);
 		return 0;
+	}
 
 	if (copy_from_user(clientctx->relocs, (void __user *)hdr.relocs,
 			sizeof(struct nvavp_reloc) * hdr.num_relocs)) {
+		mutex_unlock(&clientctx->pushbuffer_lock);
 		return -EFAULT;
 	}
 
@@ -267,6 +271,7 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 	if (IS_ERR(cmdbuf_dmabuf)) {
 		dev_err(&nvavp->nvavp_virt->dev,
 			"invalid cmd buffer handle %08x\n", hdr.cmdbuf.mem);
+		mutex_unlock(&clientctx->pushbuffer_lock);
 		return PTR_ERR(cmdbuf_dmabuf);
 	}
 
@@ -359,24 +364,25 @@ target_dmabuf_fail:
 				hdr.cmdbuf.mem, hdr.cmdbuf.offset,
 				hdr.cmdbuf.words, hdr.num_relocs, hdr.flags);
 
-	memset(msg, 0, sizeof(struct ivc_msg));
+	memset(&msg, 0, sizeof(struct ivc_msg));
 
-	msg->msg = NVAVP_PUSHBUFFER_WRITE;
-	msg->channel_id = clientctx->channel_id;
-	msg->params.pushbuffer_params.addr = phys_addr + hdr.cmdbuf.offset;
-	msg->params.pushbuffer_params.count = hdr.cmdbuf.words;
-	msg->params.pushbuffer_params.flags = hdr.flags & NVAVP_UCODE_EXT;
+	msg.msg = NVAVP_PUSHBUFFER_WRITE;
+	msg.channel_id = clientctx->channel_id;
+	msg.params.pushbuffer_params.addr = phys_addr + hdr.cmdbuf.offset;
+	msg.params.pushbuffer_params.count = hdr.cmdbuf.words;
+	msg.params.pushbuffer_params.flags = hdr.flags & NVAVP_UCODE_EXT;
 
-	ret = nvavp_ivc(nvavp->ivc_ctx, msg);
+	ret = nvavp_ivc(nvavp->ivc_ctx, &msg);
 
 	if (ret != NVAVP_ERR_OK) {
 		dev_err(&nvavp->nvavp_virt->dev,
 				"cannot pass Pushbuffer arguments\n");
 		ret = -EINVAL;
+		goto err_reloc_info;
 	}
 
 	if (hdr.syncpt) {
-		if (copy_to_user((void __user *)user_hdr->syncpt, &msg->syncpt,
+		if (copy_to_user((void __user *)user_hdr->syncpt, &msg.syncpt,
 				sizeof(struct nvavp_syncpt))) {
 			ret = -EFAULT;
 			goto err_reloc_info;
@@ -391,6 +397,9 @@ err_dmabuf_map:
 	dma_buf_detach(cmdbuf_dmabuf, cmdbuf_attach);
 err_dmabuf_attach:
 	dma_buf_put(cmdbuf_dmabuf);
+
+	mutex_unlock(&clientctx->pushbuffer_lock);
+
 	return ret;
 }
 
@@ -400,37 +409,37 @@ static int nvavp_map_iova(struct file *filp, unsigned int cmd,
 	struct nvavp_clientctx *clientctx = filp->private_data;
 	struct nvavp_info *nvavp = clientctx->nvavp;
 	int err = 0;
-	struct ivc_msg *msg = nvavp->msg;
+	struct ivc_msg msg;
 
-	memset(msg, 0, sizeof(struct ivc_msg));
+	memset(&msg, 0, sizeof(struct ivc_msg));
 
-	msg->msg = NVAVP_MAP_IOVA;
-	msg->channel_id = NVAVP_VIDEO_CHANNEL;
+	msg.msg = NVAVP_MAP_IOVA;
+	msg.channel_id = NVAVP_VIDEO_CHANNEL;
 
-	if (copy_from_user(&(msg->params.map_params), (void __user *)arg,
+	if (copy_from_user(&(msg.params.map_params), (void __user *)arg,
 		sizeof(struct nvavp_map_args))) {
 		dev_err(&nvavp->nvavp_virt->dev,
 			"failed to copy memory handle\n");
 		return -EFAULT;
 	}
-	if (!msg->params.map_params.fd) {
+	if (!msg.params.map_params.fd) {
 		dev_err(&nvavp->nvavp_virt->dev,
 			"invalid memory handle %08x\n",
-			msg->params.map_params.fd);
+			msg.params.map_params.fd);
 		return -EINVAL;
 	}
 
-	err = nvavp_ivc(nvavp->ivc_ctx, msg);
+	err = nvavp_ivc(nvavp->ivc_ctx, &msg);
 	if (err != NVAVP_ERR_OK) {
 		dev_err(&nvavp->nvavp_virt->dev, "cannot complete avp IVC\n");
 		return -EINVAL;
 	}
 
 	trace_nvavp_map_iova(clientctx->channel_id,
-			msg->params.map_params.fd,
-			msg->params.map_params.addr);
+			msg.params.map_params.fd,
+			msg.params.map_params.addr);
 
-	if (copy_to_user((void __user *)arg, &(msg->params.map_params),
+	if (copy_to_user((void __user *)arg, &(msg.params.map_params),
 		sizeof(struct nvavp_map_args))) {
 		dev_err(&nvavp->nvavp_virt->dev,
 			"failed to copy phys addr\n");
@@ -445,14 +454,14 @@ static int nvavp_unmap_iova(struct file *filp, unsigned long arg)
 	struct nvavp_clientctx *clientctx = filp->private_data;
 	struct nvavp_info *nvavp = clientctx->nvavp;
 	int err = 0;
-	struct ivc_msg *msg = nvavp->msg;
+	struct ivc_msg msg;
 
-	memset(msg, 0, sizeof(struct ivc_msg));
+	memset(&msg, 0, sizeof(struct ivc_msg));
 
-	msg->msg = NVAVP_UNMAP_IOVA;
-	msg->channel_id = NVAVP_VIDEO_CHANNEL;
+	msg.msg = NVAVP_UNMAP_IOVA;
+	msg.channel_id = NVAVP_VIDEO_CHANNEL;
 
-	if (copy_from_user(&(msg->params.map_params), (void __user *)arg,
+	if (copy_from_user(&(msg.params.map_params), (void __user *)arg,
 		sizeof(struct nvavp_map_args))) {
 		dev_err(&nvavp->nvavp_virt->dev,
 			"failed to copy memory handle\n");
@@ -460,10 +469,10 @@ static int nvavp_unmap_iova(struct file *filp, unsigned long arg)
 	}
 
 	trace_nvavp_unmap_iova(clientctx->channel_id,
-			msg->params.map_params.fd,
-			msg->params.map_params.addr);
+			msg.params.map_params.fd,
+			msg.params.map_params.addr);
 
-	err = nvavp_ivc(nvavp->ivc_ctx, msg);
+	err = nvavp_ivc(nvavp->ivc_ctx, &msg);
 	if (err != NVAVP_ERR_OK) {
 		dev_err(&nvavp->nvavp_virt->dev, "cannot complete avp IVC\n");
 		return -EINVAL;
@@ -478,24 +487,24 @@ static int nvavp_set_min_online_cpus_ioctl(struct file *filp, unsigned int cmd,
 	struct nvavp_clientctx *clientctx = filp->private_data;
 	struct nvavp_info *nvavp = clientctx->nvavp;
 	int err = 0;
-	struct ivc_msg *msg = nvavp->msg;
+	struct ivc_msg msg;
 
-	memset(msg, 0, sizeof(struct ivc_msg));
+	memset(&msg, 0, sizeof(struct ivc_msg));
 
-	msg->msg = NVAVP_SET_MIN_CPU_ONLINE;
-	msg->channel_id = NVAVP_VIDEO_CHANNEL;
+	msg.msg = NVAVP_SET_MIN_CPU_ONLINE;
+	msg.channel_id = NVAVP_VIDEO_CHANNEL;
 
-	if (copy_from_user(&(msg->params.numcpu_params), (void __user *)arg,
+	if (copy_from_user(&(msg.params.numcpu_params), (void __user *)arg,
 					sizeof(struct nvavp_num_cpus_args)))
 		return -EFAULT;
 
 	dev_dbg(&nvavp->nvavp_virt->dev, "%s: min_online_cpus=%d\n",
-			__func__, msg->params.numcpu_params.min_online_cpus);
+			__func__, msg.params.numcpu_params.min_online_cpus);
 
 	trace_nvavp_set_min_online_cpus_ioctl(clientctx->channel_id,
-				msg->params.numcpu_params.min_online_cpus);
+				msg.params.numcpu_params.min_online_cpus);
 
-	err = nvavp_ivc(nvavp->ivc_ctx, msg);
+	err = nvavp_ivc(nvavp->ivc_ctx, &msg);
 	if (err != NVAVP_ERR_OK) {
 		dev_err(&nvavp->nvavp_virt->dev, "cannot complete avp IVC\n");
 		return -EINVAL;
@@ -510,21 +519,21 @@ static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
 	struct nvavp_clientctx *clientctx = filp->private_data;
 	struct nvavp_info *nvavp = clientctx->nvavp;
 	int err = 0;
-	struct ivc_msg *msg = nvavp->msg;
+	struct ivc_msg msg;
 
-	memset(msg, 0, sizeof(struct ivc_msg));
+	memset(&msg, 0, sizeof(struct ivc_msg));
 
-	msg->msg = NVAVP_FORCE_CLOCK_STAY_ON;
-	msg->channel_id = NVAVP_VIDEO_CHANNEL;
+	msg.msg = NVAVP_FORCE_CLOCK_STAY_ON;
+	msg.channel_id = NVAVP_VIDEO_CHANNEL;
 
-	if (copy_from_user(&(msg->params.state_params), (void __user *)arg,
+	if (copy_from_user(&(msg.params.state_params), (void __user *)arg,
 			   sizeof(struct nvavp_clock_stay_on_state_args)))
 		return -EFAULT;
 
 	dev_dbg(&nvavp->nvavp_virt->dev, "%s: state=%d\n",
-		__func__, msg->params.state_params.state);
+		__func__, msg.params.state_params.state);
 
-	err = nvavp_ivc(nvavp->ivc_ctx, msg);
+	err = nvavp_ivc(nvavp->ivc_ctx, &msg);
 	if (err != NVAVP_ERR_OK) {
 		dev_err(&nvavp->nvavp_virt->dev, "cannot complete avp IVC\n");
 		return -EINVAL;
@@ -538,14 +547,14 @@ static int nvavp_wake_avp_ioctl(struct file *filp, unsigned int cmd,
 	struct nvavp_clientctx *clientctx = filp->private_data;
 	struct nvavp_info *nvavp = clientctx->nvavp;
 	int err = 0;
-	struct ivc_msg *msg = nvavp->msg;
+	struct ivc_msg msg;
 
-	memset(msg, 0, sizeof(struct ivc_msg));
+	memset(&msg, 0, sizeof(struct ivc_msg));
 
-	msg->msg = NVAVP_WAKE;
-	msg->channel_id = NVAVP_VIDEO_CHANNEL;
+	msg.msg = NVAVP_WAKE;
+	msg.channel_id = NVAVP_VIDEO_CHANNEL;
 
-	err = nvavp_ivc(nvavp->ivc_ctx, msg);
+	err = nvavp_ivc(nvavp->ivc_ctx, &msg);
 	if (err != NVAVP_ERR_OK) {
 		dev_err(&nvavp->nvavp_virt->dev, "cannot complete avp IVC\n");
 		return -EINVAL;
@@ -620,14 +629,14 @@ static int tegra_nvavp_release(struct nvavp_clientctx *clientctx,
 {
 	int ret = 0;
 	struct nvavp_info *nvavp = clientctx->nvavp;
-	struct ivc_msg *msg = nvavp->msg;
+	struct ivc_msg msg;
 
-	memset(msg, 0, sizeof(struct ivc_msg));
+	memset(&msg, 0, sizeof(struct ivc_msg));
 
-	msg->msg = NVAVP_DISCONNECT;
-	msg->channel_id = channel_id;
+	msg.msg = NVAVP_DISCONNECT;
+	msg.channel_id = channel_id;
 
-	ret = nvavp_ivc(nvavp->ivc_ctx, msg);
+	ret = nvavp_ivc(nvavp->ivc_ctx, &msg);
 	if (ret != NVAVP_ERR_OK) {
 		dev_err(&nvavp->nvavp_virt->dev,
 				"cannot disconnect succesfully avp IVC\n");
@@ -636,6 +645,7 @@ static int tegra_nvavp_release(struct nvavp_clientctx *clientctx,
 
 	nvavp->init_task = NULL;
 
+	mutex_destroy(&clientctx->pushbuffer_lock);
 	kfree(clientctx);
 	return ret;
 }
@@ -840,12 +850,6 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 	nvavp->ivcdev = ivcdev;
 	nvavp->ivc_ctx = ctxt;
 
-	nvavp->msg = kzalloc(sizeof(struct ivc_msg), GFP_KERNEL);
-	if (!nvavp->msg) {
-		dev_err(&nvavp->nvavp_virt->dev, "cannot allocate ivc_msg\n");
-		return -ENOMEM;
-	}
-
 	mutex_init(&nvavp->open_lock);
 
 	nvavp->video_misc_dev.minor = MISC_DYNAMIC_MINOR;
@@ -922,7 +926,6 @@ static int tegra_nvavp_remove(struct platform_device *ndev)
 #endif
 	nvavp_ivc_free_ctxt(nvavp->ivc_ctx);
 	nvavp_ivc_deinit(nvavp->ivcdev);
-	kfree(nvavp->msg);
 	kfree(nvavp);
 	return 0;
 }
