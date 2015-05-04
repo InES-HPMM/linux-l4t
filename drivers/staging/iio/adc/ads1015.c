@@ -337,15 +337,16 @@ static int ads1015_read_raw(struct iio_dev *iodev,
 	rval = (s16)reg_val;
 	*val = (rval >> 4);
 
+done:
 	/* if device is enabled in cotinuous mode set it here again */
 	if (adc->adc_prop.is_continuous_mode) {
 		ret = ads1015_write(adc->rmap, ADS1015_CONFIG_REG, adc->config);
 		if (ret < 0) {
 			dev_err(adc->dev, "CONFIG reg write failed %d\n", ret);
+			mutex_unlock(&iodev->mlock);
 			return ret;
 		}
 	}
-done:
 	mutex_unlock(&iodev->mlock);
 	if (!ret)
 		return IIO_VAL_INT;
