@@ -1,7 +1,7 @@
 /*
  * bq2419x-charger.c -- BQ24190/BQ24192/BQ24192i/BQ24193 Charger driver
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  * Author: Syed Rafiuddin <srafiuddin@nvidia.com>
@@ -1097,11 +1097,11 @@ static int bq2419x_show_chip_version(struct bq2419x_chip *bq2419x)
 		return ret;
 	}
 
-	if ((val & BQ24190_IC_VER) == BQ24190_IC_VER)
+	if ((val & BQ2419X_IC_VER_MASK) == BQ24190_IC_VER)
 		dev_info(bq2419x->dev, "chip type BQ24190 detected\n");
-	else if ((val & BQ24192_IC_VER) == BQ24192_IC_VER)
+	else if ((val & BQ2419X_IC_VER_MASK) == BQ24192_IC_VER)
 		dev_info(bq2419x->dev, "chip type BQ2419X/3 detected\n");
-	else if ((val & BQ24192i_IC_VER) == BQ24192i_IC_VER)
+	else if ((val & BQ2419X_IC_VER_MASK) == BQ24192i_IC_VER)
 		dev_info(bq2419x->dev, "chip type BQ2419Xi detected\n");
 	return 0;
 }
