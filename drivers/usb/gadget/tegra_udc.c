@@ -3487,7 +3487,8 @@ static int tegra_udc_resume(struct device *dev)
 			}
 		}
 
-		if (udc->support_aca_nv_cable && udc->aca_nv_extcon_cable) {
+		if (udc->support_aca_nv_cable && udc->aca_nv_extcon_cable &&
+			udc->connect_type_lp0 == CONNECT_TYPE_ACA_NV_CHARGER) {
 			index = udc->aca_nv_extcon_cable->cable_index;
 			if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE) &&
 				!extcon_get_cable_state_(udc->aca_nv_extcon_dev,
@@ -3497,9 +3498,8 @@ static int tegra_udc_resume(struct device *dev)
 				regulator_set_current_limit(udc->vbus_reg,
 								0, 0);
 			}
-		}
-
-		if (udc->support_aca_rid && udc->aca_rid_b_ecable) {
+		} else if (udc->support_aca_rid && udc->aca_rid_b_ecable &&
+			udc->connect_type_lp0 == CONNECT_TYPE_ACA_RID_B) {
 			index = udc->aca_rid_b_ecable->cable_index;
 			if ((udc->connect_type_lp0 == CONNECT_TYPE_ACA_RID_B) &&
 				!extcon_get_cable_state_(
@@ -3509,9 +3509,8 @@ static int tegra_udc_resume(struct device *dev)
 				regulator_set_current_limit(udc->vbus_reg,
 								0, 0);
 			}
-		}
-
-		if (udc->support_aca_rid && udc->aca_rid_c_ecable) {
+		} else if (udc->support_aca_rid && udc->aca_rid_c_ecable &&
+			udc->connect_type_lp0 == CONNECT_TYPE_ACA_RID_C) {
 			index = udc->aca_rid_c_ecable->cable_index;
 			if ((udc->connect_type_lp0 != CONNECT_TYPE_ACA_RID_C) &&
 				!extcon_get_cable_state_(
