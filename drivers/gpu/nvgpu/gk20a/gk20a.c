@@ -1694,6 +1694,7 @@ int gk20a_busy(struct platform_device *pdev)
 		pm_runtime_put_noidle(&pdev->dev);
 		if (platform->idle)
 			platform->idle(pdev);
+		goto fail;
 	}
 #else
 	if (!g->power_on) {
