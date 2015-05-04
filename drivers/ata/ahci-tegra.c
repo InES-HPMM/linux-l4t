@@ -822,7 +822,7 @@ static void tegra_ahci_set_pad_cntrl_regs(
 			dev_err(tegra_hpriv->dev,
 					"Prod setting from DT failed\n");
 		} else {
-			scfg_writel(0x5501000, SATA_CHX_PHY_CTRL17_0);
+			scfg_writel(0x55010000, SATA_CHX_PHY_CTRL17_0);
 			scfg_writel(0x55010000, SATA_CHX_PHY_CTRL18_0);
 			scfg_writel(0x1, SATA_CHX_PHY_CTRL20_0);
 			scfg_writel(0x1, SATA_CHX_PHY_CTRL21_0);
