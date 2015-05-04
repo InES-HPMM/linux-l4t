@@ -912,4 +912,8 @@
 	serial@70006300 {
 		dma-names = "tx";
 	};
+
+        watchdog@60005100 {
+                status = "okay";
+        };
 };
