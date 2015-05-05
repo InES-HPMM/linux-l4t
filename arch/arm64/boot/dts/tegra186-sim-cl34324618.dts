@@ -25,3 +25,7 @@
 
 #include "tegra186-sim-private.dts"
 #include "tegra186-sim-cl34324618-private.dtsi"
+
+/ {
+        /* chosen */
+};
