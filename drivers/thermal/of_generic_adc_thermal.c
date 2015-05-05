@@ -216,7 +216,7 @@ static int gpadc_thermal_read_tdidoe_eqn_coeff(struct device *dev,
 static int gpadc_thermal_parse_dt(struct platform_device *pdev,
 	struct gpadc_thermal_info *gti)
 {
-	s32 temp_offset;
+	s32 temp_offset = 0;
 	char const *pstr;
 	int ret;
 
