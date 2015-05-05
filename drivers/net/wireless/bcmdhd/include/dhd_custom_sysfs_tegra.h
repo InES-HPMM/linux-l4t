@@ -182,4 +182,15 @@ ssize_t
 tegra_debugfs_histogram_tcpdump_write(struct file *filp,
 	const char __user *buff, size_t count, loff_t *offp);
 
+void
+tegra_sysfs_resume_capture(void);
+
+void
+tegra_sysfs_suspend_capture(void);
+
+void
+tegra_sysfs_control_pkt(int number);
+
+void
+tegra_sysfs_dpc_pkt(void);
 #endif  /* _dhd_custom_sysfs_tegra_h_ */
