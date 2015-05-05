@@ -17,7 +17,7 @@ regulator.txt) can be used to configure the voltage output of this device.
 Optional properties:
 - regulator-voltage-steps: Voltage steps. Must be 10000uV or 12500uV.
 	Absence of this property will set voltage steps to 12500mV.
-- maxim,enabke-clk-spread-spectrum: Boolean, Enable clock 3% spread spectrum.
+- maxim,enable-clk-spread-spectrum: Boolean, Enable clock 3% spread spectrum.
 - maxim,enable-gpio: GPIO number connected to EN pin to enable/disable the
 	voltage output.
 - maxim,enable-external-fpwm: Boolean, enable extern control FPWM. The
