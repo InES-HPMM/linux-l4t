@@ -1694,13 +1694,15 @@ static void *__iommu_alloc_atomic(struct device *dev, size_t size,
 				  dma_addr_t *handle, struct dma_attrs *attrs)
 {
 	struct page *page;
+	struct page **pages;
 	void *addr;
 
 	addr = __alloc_from_pool(size, &page);
 	if (!addr)
 		return NULL;
 
-	*handle = __iommu_create_mapping(dev, &page, size, attrs);
+	pages = __iommu_get_pages(addr, attrs);
+	*handle = __iommu_create_mapping(dev, pages, size, attrs);
 	if (*handle == DMA_ERROR_CODE)
 		goto err_mapping;
 
