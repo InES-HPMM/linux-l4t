@@ -428,6 +428,7 @@
 			ti,taper-rate = <318>;
 			ti,terminate-voltage = <2700>;
 			ti,v-at-chg-term = <4340>;
+			ti,tz-name = "Battery";
 		};
 	};
 
