@@ -113,8 +113,6 @@
 		nvidia,charging-supported;
 		nvidia,turn-off-vbus-in-lp0;
 		nvidia,dcp-current-limit-ma = <3000>;
-		nvidia,qc2-input-voltage = <2>;
-		nvidia,qc2-current-limit-ma = <1200>;
 	};
 
 	watchdog@60005100 {
