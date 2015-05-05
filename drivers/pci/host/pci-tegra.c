@@ -4041,8 +4041,6 @@ static int tegra_pcie_resume_noirq(struct device *dev)
 			return ret;
 		}
 	} else {
-		/* give 100ms for 1.05v to come up */
-		msleep(100);
 		ret = tegra_pcie_enable_regulators(pcie);
 		if (ret) {
 			dev_err(pcie->dev, "PCIE: Failed to enable regulators\n");
