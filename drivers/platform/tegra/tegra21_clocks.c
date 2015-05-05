@@ -7761,6 +7761,17 @@ static struct clk tegra_pll_e = {
 	},
 };
 
+static struct clk tegra_pll_e_gate = {
+	.name      = "plle_gate",
+	.parent    = &tegra_pll_e,
+	.ops       = &tegra_cml_clk_ops,
+	.reg       = 0xec,
+	.max_rate  = 100000000,
+	.u.periph  = {
+		.clk_num = 15,
+	},
+};
+
 static struct clk tegra_cml0_clk = {
 	.name      = "cml0",
 	.parent    = &tegra_pll_e,
@@ -8596,7 +8607,7 @@ static struct clk_mux_sel mux_pllp_clkm_clk32_plle[] = {
 	{ .input = &tegra_pll_p, .value = 0},
 	{ .input = &tegra_clk_m, .value = 2},
 	{ .input = &tegra_clk_32k, .value = 4},
-	{ .input = &tegra_pll_e, .value = 6},
+	{ .input = &tegra_pll_e_gate, .value = 6},
 	{ NULL, 0},
 };
 
@@ -8646,7 +8657,7 @@ static struct clk_mux_sel mux_plla_clk32_pllp_clkm_plle[] = {
 	{ .input = &tegra_clk_32k,    .value = 1},
 	{ .input = &tegra_pll_p,      .value = 2},
 	{ .input = &tegra_clk_m,      .value = 3},
-	{ .input = &tegra_pll_e,      .value = 4},
+	{ .input = &tegra_pll_e_gate, .value = 4},
 	{ NULL, 0},
 };
 
@@ -9940,6 +9951,7 @@ static struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_re_out,
 	&tegra_pll_re_out1,
 	&tegra_pll_e,
+	&tegra_pll_e_gate,
 	&tegra_cml0_clk,
 	&tegra_cml1_clk,
 	&tegra_pciex_clk,
