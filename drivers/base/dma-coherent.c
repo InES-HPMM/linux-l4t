@@ -13,6 +13,7 @@
 #include <linux/debugfs.h>
 #include <linux/highmem.h>
 #include <linux/kthread.h>
+#include <linux/delay.h>
 
 #define RESIZE_MAGIC 0xC11A900d
 struct heap_info {
@@ -746,7 +747,7 @@ static void shrink_resizable_heap(struct heap_info *h)
 check_next_chunk:
 	if (unlock) {
 		mutex_unlock(&h->resize_lock);
-		cond_resched();
+		mdelay(350);
 	}
 	mutex_lock(&h->resize_lock);
 	unlock = true;
