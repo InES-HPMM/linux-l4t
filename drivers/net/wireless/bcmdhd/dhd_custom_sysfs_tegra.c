@@ -16,7 +16,17 @@
  *
  */
 
+#include <linux/system-wakeup.h>
 #include "dhd_custom_sysfs_tegra.h"
+
+
+int lp0_logs_enable = 1;
+const char string_suspend[] = "suspend called";
+const char string_ctrl_pkt[] = "control pkt";
+const char string_resume[] = "resume called";
+const char string_dpc_pkt[] = "dpc called";
+const char dummy_inf[] = "dummy:";
+extern int bcmdhd_irq_number;
 
 static DEVICE_ATTR(ping, S_IRUGO | S_IWUGO,
 	tegra_sysfs_histogram_ping_show,
@@ -185,4 +195,41 @@ tegra_sysfs_resume(void)
 	tegra_sysfs_histogram_stat_work_start();
 	tegra_sysfs_histogram_tcpdump_work_start();
 
+}
+
+void
+tegra_sysfs_resume_capture(void)
+{
+	if (lp0_logs_enable) {
+		if (get_wakeup_reason_irq() != bcmdhd_irq_number)
+			return;
+		tcpdump_pkt_save('w', dummy_inf,
+			__func__, __LINE__, string_resume,
+			sizeof(string_resume), 0);
+	}
+}
+
+void
+tegra_sysfs_suspend_capture(void)
+{
+	if (lp0_logs_enable)
+		tcpdump_pkt_save('w', dummy_inf,
+		__func__, __LINE__, string_suspend,
+		sizeof(string_suspend), 0);
+}
+void
+tegra_sysfs_control_pkt(int number)
+{
+	if (lp0_logs_enable)
+		tcpdump_pkt_save('w', dummy_inf,
+		__func__, number, string_ctrl_pkt,
+		sizeof(string_ctrl_pkt), 0);
+}
+void
+tegra_sysfs_dpc_pkt(void)
+{
+	if (lp0_logs_enable)
+		tcpdump_pkt_save('w', dummy_inf,
+		__func__, __LINE__, string_dpc_pkt,
+		sizeof(string_dpc_pkt), 0);
 }

@@ -119,9 +119,16 @@
 		tegra_sysfs_histogram_tcpdump_rx(skb, __func__, __LINE__);\
 	}\
 
+#define DPC_CAPTURE(void)\
+	{\
+		tegra_sysfs_dpc_pkt();\
+	} \
+
 #else
 
 #define RX_CAPTURE(skb)
+
+#define DPC_CAPTURE(void)
 
 #endif
 
@@ -3110,6 +3117,7 @@ dhd_dpc_thread(void *data)
 				timeout = jiffies + msecs_to_jiffies(100);
 				loopcnt = 0;
 				count = 0;
+				/* DPC_CAPTURE(); */
 				while (dhd_bus_dpc(dhd->pub.bus)) {
 					++loopcnt;
 					if (time_after(jiffies, timeout) &&

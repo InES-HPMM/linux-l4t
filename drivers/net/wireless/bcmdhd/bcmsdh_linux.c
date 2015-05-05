@@ -53,6 +53,8 @@ extern void dhdsdio_isr(void * args);
 #include "dhd_custom_sysfs_tegra.h"
 #endif
 
+int bcmdhd_irq_number;
+
 /* driver info, initialized when bcmsdh_register is called */
 static bcmsdh_driver_t drvinfo = {NULL, NULL, NULL, NULL};
 
@@ -367,10 +369,11 @@ int bcmsdh_oob_intr_register(bcmsdh_info_t *bcmsdh, bcmsdh_cb_fn_t oob_irq_handl
 		SDLX_MSG(("%s: request_irq failed with %d\n", __FUNCTION__, err));
 		return err;
 	}
+	bcmdhd_irq_number = (int)bcmsdh_osinfo->oob_irq_num;
 
-		err = enable_irq_wake(bcmsdh_osinfo->oob_irq_num);
-		if (!err)
-			bcmsdh_osinfo->oob_irq_wake_enabled = TRUE;
+	err = enable_irq_wake(bcmsdh_osinfo->oob_irq_num);
+	if (!err)
+		bcmsdh_osinfo->oob_irq_wake_enabled = TRUE;
 	bcmsdh_osinfo->oob_irq_enabled = TRUE;
 	bcmsdh_osinfo->oob_irq_registered = TRUE;
 	return err;
