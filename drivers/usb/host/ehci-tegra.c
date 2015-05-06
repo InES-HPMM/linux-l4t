@@ -686,6 +686,11 @@ static struct tegra_usb_platform_data *tegra_ehci_dt_parse_pdata(
 	return pdata;
 }
 
+static const struct of_device_id tegra_ehci_dev_match[] = {
+        { .compatible = "nvidia,tegra124-ehci", },
+        { },
+};
+
 static int tegra_ehci_probe(struct platform_device *pdev)
 {
 	struct resource *res;
@@ -695,6 +700,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	int err = 0;
 	int irq;
 	int instance = pdev->id;
+	int ret;
 
 	/* Right now device-tree probed devices don't get dma_mask set.
 	 * Since shared usb code relies on it, set it here for now.
@@ -834,6 +840,11 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 		if (!IS_ERR_OR_NULL(tegra->transceiver))
 			otg_set_host(tegra->transceiver->otg, &hcd->self);
 	}
+
+	ret = genpd_dev_pm_add(tegra_ehci_dev_match, &pdev->dev);
+	if (ret)
+		pr_err("Could not add %s to power domain using device tree\n",
+					  dev_name(&pdev->dev));
 
 	tegra_pd_add_device(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
