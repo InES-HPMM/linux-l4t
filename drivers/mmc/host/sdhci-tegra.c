@@ -5534,6 +5534,11 @@ static int sdhci_tegra_init_pinctrl_info(struct device *dev,
 	return 0;
 }
 
+static const struct of_device_id sdhci_tegra_device_match[] = {
+	{ .compatible = "nvidia,tegra124-sdhci", },
+	{},
+};
+
 static int sdhci_tegra_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *match;
@@ -5547,6 +5552,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	int rc;
 	u8 i;
 	u32 opt_subrevision;
+	int ret;
 
 	for (i = 0; i < ARRAY_SIZE(parent_clk_list); i++)
 		parent_clk_list[i] = NULL;
@@ -5789,6 +5795,12 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 				"Enable regulators failed in probe %d\n", rc);
 			goto err_clk_get;
 		}
+	}
+
+	ret = genpd_dev_pm_add(sdhci_tegra_device_match, &pdev->dev);
+	if (ret) {
+		pr_err("Could not add %s to power domain using device tree\n",
+						dev_name(&pdev->dev));
 	}
 
 	tegra_pd_add_device(&pdev->dev);
