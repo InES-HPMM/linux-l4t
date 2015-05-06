@@ -100,7 +100,7 @@ static LIST_HEAD(device_list);
 static DEFINE_MUTEX(device_list_lock);
 
 static unsigned bufsiz = 4096;
-module_param(bufsiz, uint, S_IRUGO);
+module_param(bufsiz, uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(bufsiz, "data bytes in biggest supported SPI message");
 
 /*-------------------------------------------------------------------------*/
