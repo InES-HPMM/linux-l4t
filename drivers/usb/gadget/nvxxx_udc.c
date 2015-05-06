@@ -221,8 +221,9 @@ static void tegra_xudc_boost_cpu_freq_fn(struct work_struct *work)
 
 static void tegra_xudc_restore_cpu_freq_fn(struct work_struct *work)
 {
+	struct delayed_work *dwork = to_delayed_work(work);
 	struct nv_udc_s *nvudc =
-		container_of(work, struct nv_udc_s, restore_cpufreq_work.work);
+		container_of(dwork, struct nv_udc_s, restore_cpufreq_work);
 	unsigned long delay = BOOST_PERIOD;
 
 	mutex_lock(&nvudc->boost_cpufreq_lock);
@@ -305,7 +306,7 @@ static void tegra_xudc_notify_event(struct nv_udc_s *nvudc)
 	spin_unlock(&nvudc->phy->sync_lock);
 }
 
-int nvudc_set_port_state(struct usb_gadget *gadget, u8 pls)
+static int nvudc_set_port_state(struct usb_gadget *gadget, u8 pls)
 {
 	struct nv_udc_s *nvudc = container_of(gadget, struct nv_udc_s, gadget);
 	u32 u_temp;
@@ -466,10 +467,8 @@ static void tegra_xudc_ucd_work(struct work_struct *work)
 {
 	struct nv_udc_s *nvudc =
 		container_of(work, struct nv_udc_s, ucd_work);
-	struct device *dev = nvudc->dev;
 	bool vbus_connected = 0;
 	unsigned long flags;
-	u32 temp;
 
 	msg_entry(nvudc->dev);
 
@@ -520,8 +519,9 @@ static void tegra_xudc_ucd_work(struct work_struct *work)
 
 static void tegra_xudc_non_std_charger_work(struct work_struct *work)
 {
+	struct delayed_work *dwork = to_delayed_work(work);
 	struct nv_udc_s *nvudc =
-		container_of(work, struct nv_udc_s, non_std_charger_work.work);
+		container_of(dwork, struct nv_udc_s, non_std_charger_work);
 
 	if (nvudc->ucd == NULL)
 		return;
@@ -532,8 +532,9 @@ static void tegra_xudc_non_std_charger_work(struct work_struct *work)
 
 static void tegra_xudc_plc_reset_war_work(struct work_struct *work)
 {
+	struct delayed_work *dwork = to_delayed_work(work);
 	struct nv_udc_s *nvudc =
-		container_of(work, struct nv_udc_s, plc_reset_war_work);
+		container_of(dwork, struct nv_udc_s, plc_reset_war_work);
 	unsigned long flags;
 
 	dev_info(nvudc->dev, "plc_reset_war_work\n");
@@ -559,8 +560,9 @@ static void tegra_xudc_plc_reset_war_work(struct work_struct *work)
 static void tegra_xudc_port_reset_war_work(struct work_struct *work)
 {
 
+	struct delayed_work *dwork = to_delayed_work(work);
 	struct nv_udc_s *nvudc =
-		container_of(work, struct nv_udc_s, port_reset_war_work);
+		container_of(dwork, struct nv_udc_s, port_reset_war_work);
 	unsigned long flags;
 
 	dev_info(nvudc->dev, "port_reset_war_work\n");
@@ -594,7 +596,7 @@ static void tegra_xudc_port_reset_war_work(struct work_struct *work)
 static int extcon_notifications(struct notifier_block *nb,
 				   unsigned long event, void *unused)
 {
-	u32 flag;
+	unsigned long flag;
 	struct nv_udc_s *nvudc =
 			container_of(nb, struct nv_udc_s, vbus_extcon_nb);
 
@@ -738,7 +740,7 @@ static void nvudc_epcx_setup(struct nv_udc_ep *udc_ep)
 	u32 dw;
 
 	msg_dbg(dev, "nvudc->p_epcx %p, epcx %p\n", nvudc->p_epcx, epcx);
-	msg_dbg(dev, "DCI %d, sizeof ep_cx %d\n", DCI, sizeof(struct ep_cx_s));
+	msg_dbg(dev, "DCI %d, sizeof ep_cx %ld\n", DCI, sizeof(struct ep_cx_s));
 
 	if (usb_endpoint_dir_out(desc))
 		ep_type = usb_endpoint_type(desc);
@@ -1909,7 +1911,6 @@ u32 actual_data_xfered(struct nv_udc_ep *udc_ep, struct nv_udc_request *udc_req)
 void squeeze_xfer_ring(struct nv_udc_ep *udc_ep_ptr,
 		struct nv_udc_request *udc_req_ptr)
 {
-	struct nv_udc_s *nvudc = udc_ep_ptr->nvudc;
 	struct transfer_trb_s *temp = udc_req_ptr->first_trb;
 	struct nv_udc_request *next_req;
 
@@ -2175,7 +2176,7 @@ static int nvudc_ep_set_halt(struct usb_ep *_ep, int value)
 	return status;
 }
 
-static set_ep_halt(struct nv_udc_s *nvudc, int ep_index, char *msg)
+static void set_ep_halt(struct nv_udc_s *nvudc, int ep_index, char *msg)
 {
 	u32 val, ep_bit = NV_BIT(ep_index);
 
@@ -2187,8 +2188,6 @@ static set_ep_halt(struct nv_udc_s *nvudc, int ep_index, char *msg)
 
 	poll_stchg(nvudc->dev, msg, ep_bit);
 	iowrite32(ep_bit, nvudc->mmio_reg_base + EP_STCHG);
-	msg_dbg(nvudc->dev, "cleaned EP STCHG for ep %d: 0x%x\n",
-		ep_index, ioread32(nvudc->mmio_reg_base + EP_STCHG));
 }
 
 static int ep_halt(struct nv_udc_ep *udc_ep_ptr, int halt)
@@ -2689,8 +2688,10 @@ void ep0_req_complete(struct nv_udc_ep *udc_ep_ptr)
 static void retry_stream_rejected_work(struct work_struct *work)
 {
 	u32 u_temp;
-	struct nv_udc_ep *udc_ep_ptr = container_of(work, struct nv_udc_ep,
-								      work);
+
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct nv_udc_ep *udc_ep_ptr = container_of(dwork, struct nv_udc_ep,
+							work);
 	struct nv_udc_s *nvudc = udc_ep_ptr->nvudc;
 	msleep(stream_rejected_sleep_msecs);
 
@@ -3647,7 +3648,6 @@ void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 
 	spin_unlock(&nvudc->lock);
 	if (nvudc->driver->setup(&nvudc->gadget, setup_pkt) < 0) {
-		u32 u_temp;
 		spin_lock(&nvudc->lock);
 
 		set_ep_halt(nvudc, 0, "setup request failed");
@@ -3799,8 +3799,8 @@ void dbg_print_ep_ctx(struct nv_udc_s *nvudc)
 			int ring_size =
 				ring->len / sizeof(struct transfer_trb_s);
 
-			msg_dbg(nvudc->dev, "endpoint DCI = %d, %p %p\n",
-				nvudc->udc_ep[i].DCI, ring->vaddr, ring->dma);
+			msg_dbg(nvudc->dev, "endpoint DCI = %d, %p\n",
+				nvudc->udc_ep[i].DCI, ring->vaddr);
 			temp_trb1 =
 			(struct transfer_trb_s *) udc_ep->tran_ring_ptr;
 			for (j = 0; j < ring_size; j++) {
@@ -4205,7 +4205,7 @@ static irqreturn_t nvudc_irq(int irq, void *_udc)
 
 static irqreturn_t nvudc_padctl_irq(int irq, void *data)
 {
-	struct nv_udc_s *nvudc = (struct tegra_xhci_hcd *) data;
+	struct nv_udc_s *nvudc = (struct nv_udc_s *) data;
 	u32 reg, irq_for_dev;
 
 	reg = tegra_usb_pad_reg_read(XUSB_PADCTL_ELPG_PROGRAM_0);
@@ -4457,8 +4457,6 @@ u32 init_hw_event_ring(struct nv_udc_s *nvudc)
 static void
 fpga_hack_setup_vbus_sense_and_termination(struct nv_udc_s *nvudc)
 {
-	struct platform_device *pdev = nvudc->pdev.plat;
-	struct device *dev = &pdev->dev;
 	u32 reg;
 
 	reg = 0x00211040;
@@ -4908,34 +4906,6 @@ void restore_mmio_reg(struct nv_udc_s *nvudc)
 	iowrite32(reg, nvudc->base + SSPX_CORE_PADCTL4);
 }
 
-static int nvudc_suspend_pci(struct pci_dev *pdev)
-{
-	u32 u_temp;
-	struct nv_udc_s *nvudc;
-
-	nvudc = pci_get_drvdata(pdev);
-
-	/* do not support suspend if link is connected */
-	u_temp = ioread32(nvudc->mmio_reg_base + PORTSC);
-	if (PORTSC_CCS & u_temp)
-		return -EAGAIN;
-
-	nvudc->resume_state = nvudc->device_state;
-	nvudc->device_state = USB_STATE_SUSPENDED;
-
-	save_mmio_reg(nvudc);
-	return 0;
-}
-
-static int nvudc_resume_pci(struct pci_dev *pdev)
-{
-	struct nv_udc_s *nvudc;
-
-	nvudc = pci_get_drvdata(pdev);
-	restore_mmio_reg(nvudc);
-	nvudc_resume_state(nvudc, 0);
-	return 0;
-}
 
 static void nvudc_plat_clocks_deinit(struct nv_udc_s *nvudc)
 {
@@ -5455,7 +5425,7 @@ static int nvudc_get_bdata(struct nv_udc_s *nvudc)
 	struct device_node *node = pdev->dev.of_node;
 	struct device_node *padctl;
 	int ret;
-	int portcap, ss_portmap, lane_owner, otg_portmap;
+	int ss_portmap, lane_owner, otg_portmap;
 
 	/* Get common setting for padctl */
 	padctl = of_parse_phandle(node, "nvidia,common_padctl", 0);
@@ -5482,8 +5452,6 @@ static int nvudc_get_bdata(struct nv_udc_s *nvudc)
 
 static void t210_program_ss_pad(struct nv_udc_s *nvudc, int port)
 {
-	struct platform_device *pdev = nvudc->pdev.plat;
-	struct device_node *node = pdev->dev.of_node;
 	char prod_name[] = "prod_c_ssX";
 	int err = 0;
 
@@ -5529,8 +5497,7 @@ static int nvudc_plat_pad_deinit(struct nv_udc_s *nvudc)
 static int nvudc_plat_pad_init(struct nv_udc_s *nvudc)
 {
 	struct platform_device *pdev = nvudc->pdev.plat;
-	struct device *dev = &pdev->dev;
-	int ss_port;
+	int ss_port = 0;
 	bool is_ss_port_enabled = true;
 	u32 lane_owner_mask;
 
@@ -5546,7 +5513,7 @@ static int nvudc_plat_pad_init(struct nv_udc_s *nvudc)
 		nvudc->prod_list = tegra_prod_init(pdev->dev.of_node);
 
 	if (IS_ERR(nvudc->prod_list)) {
-		msg_warn(nvudc->dev, "prod list init failed with error %d\n",
+		msg_warn(nvudc->dev, "prod list init failed with error %ld\n",
 			PTR_ERR(nvudc->prod_list));
 		nvudc->prod_list = NULL;
 	}
@@ -5593,7 +5560,7 @@ static int nvudc_suspend_platform(struct device *dev)
 {
 	struct nv_udc_s *nvudc;
 	struct platform_device *pdev = to_platform_device(dev);
-	u32 flag;
+	unsigned long flag;
 	int err = 0;
 
 	nvudc = platform_get_drvdata(pdev);
@@ -5637,7 +5604,7 @@ static int nvudc_resume_platform(struct device *dev)
 	struct nv_udc_s *nvudc;
 	struct platform_device *pdev = to_platform_device(dev);
 	int err = 0;
-	u32 flag;
+	unsigned long flag;
 
 	nvudc = platform_get_drvdata(pdev);
 
@@ -5997,9 +5964,6 @@ static struct pci_driver nvudc_driver_pci = {
 	.id_table = nvpci_ids,
 	.probe = nvudc_probe_pci,
 	.remove = nvudc_remove_pci,
-	/*	.suspend = nvudc_suspend_pci,  */
-	/*	.resume = nvudc_resume_pci,    */
-	/*      .shutdown = nvudc_shutdown, */
 };
 
 static int __init udc_init(void)
