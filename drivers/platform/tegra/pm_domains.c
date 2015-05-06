@@ -403,10 +403,13 @@ static inline int __init tegra_init_sdhci(struct generic_pm_domain *pd)
 }
 #endif
 
-static const struct of_device_id tegra21x_pd_match[] __initconst = {
+static const struct of_device_id tegra_pd_match[] __initconst = {
+	{.compatible = "nvidia,tegra124-mc-clk-pd", .data = tegra_init_mc_clk},
+	{.compatible = "nvidia,tegra124-nvavp-pd", .data = NULL},
+	{.compatible = "nvidia,tegra124-sdhci-pd", .data = tegra_init_sdhci},
 	{.compatible = "nvidia,tegra210-mc-clk-pd", .data = tegra_init_mc_clk},
 	{.compatible = "nvidia,tegra210-ape-pd", .data = tegra_init_ape },
-	{.compatible = "nvidia.tegra210-nvavp-pd", .data = NULL},
+	{.compatible = "nvidia,tegra210-nvavp-pd", .data = NULL},
 	{.compatible = "nvidia,tegra210-sdhci3-pd", .data = tegra_init_sdhci},
 	{.compatible = "nvidia,tegra210-sdhci2-pd", .data = tegra_init_sdhci},
 	{},
@@ -417,7 +420,7 @@ static int __init tegra_init_pd(struct device_node *np)
 	struct tegra_pm_domain *tpd;
 	struct generic_pm_domain *gpd;
 	of_tegra_pd_init_cb_t tpd_init_cb;
-	const struct of_device_id *match = of_match_node(tegra21x_pd_match, np);
+	const struct of_device_id *match = of_match_node(tegra_pd_match, np);
 	bool is_off = false;
 
 	tpd = (struct tegra_pm_domain *)kzalloc
@@ -452,7 +455,7 @@ static int __init tegra_init_pm_domain(void)
 	struct device_node *np;
 	int ret = 0;
 
-	for_each_matching_node(np, tegra21x_pd_match) {
+	for_each_matching_node(np, tegra_pd_match) {
 		ret = tegra_init_pd(np);
 		if (ret)
 			return ret;
