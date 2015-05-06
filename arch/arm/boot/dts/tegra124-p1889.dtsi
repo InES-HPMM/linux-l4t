@@ -31,6 +31,7 @@
 #include <tegra124-platforms/tegra124-vcm30-t124-hdmi.dtsi>
 #include <dt-bindings/gpio/tmpm32x-gpio.h>
 #include <tegra124-platforms/tegra124-pmic-vcm30t124-max20024.dtsi>
+#include <dt-bindings/pinctrl/pinctrl-tegra.h>
 
 / {
 	#address-cells = <2>;
@@ -375,6 +376,11 @@
 	};
 
 	sdhci@700b0400 {
+		nvidia,update-pinctrl-settings;
+		pinctrl-names = "default_mode", "uhs_sdr50_mode", "uhs_sdr104_mode";
+		pinctrl-0 = <&sdmmc3_hs_mode>;
+		pinctrl-1 = <&sdmmc3_uhs_sdr50_mode>;
+		pinctrl-2 = <&sdmmc3_uhs_sdr104_mode>;
 		vddio_sdmmc-supply = <&max20024_ldo5>;
 		status = "okay";
 	};
@@ -490,6 +496,44 @@
 			addr = <0x30>;  /* 7 bit slave address */
 			reg_len = <16>;  /* 8 bit register length */
 			dat_len = <8>;  /* 8 bit data length */
+		};
+	};
+
+	pinmux@70000868 {
+		sdmmc3_hs_mode: sdmmc3_hs_mode_drive {
+			drive_sdio3 {
+				nvidia,pins = "drive_sdio3";
+				nvidia,high-speed-mode = <TEGRA_PIN_ENABLE>;
+				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+				nvidia,pull-down-strength = <32>;
+				nvidia,pull-up-strength = <40>;
+				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_SLOWEST>;
+				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_SLOWEST>;
+			};
+		};
+
+		sdmmc3_uhs_sdr50_mode: sdmmc3_uhs_sdr50_mode_drive {
+			drive_sdio3 {
+				nvidia,pins = "drive_sdio3";
+				nvidia,high-speed-mode = <TEGRA_PIN_ENABLE>;
+				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+				nvidia,pull-down-strength = <40>;
+				nvidia,pull-up-strength = <45>;
+				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_SLOWEST>;
+				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_SLOWEST>;
+			};
+		};
+
+		sdmmc3_uhs_sdr104_mode: sdmmc3_uhs_sdr104_mode_drive {
+			drive_sdio3 {
+				nvidia,pins = "drive_sdio3";
+				nvidia,high-speed-mode = <TEGRA_PIN_ENABLE>;
+				nvidia,schmitt = <TEGRA_PIN_ENABLE>;
+				nvidia,pull-down-strength = <48>;
+				nvidia,pull-up-strength = <61>;
+				nvidia,slew-rate-rising = <TEGRA_PIN_SLEW_RATE_SLOWEST>;
+				nvidia,slew-rate-falling = <TEGRA_PIN_SLEW_RATE_SLOWEST>;
+			};
 		};
 	};
 };
