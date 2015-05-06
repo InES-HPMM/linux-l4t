@@ -641,10 +641,8 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 	fb_info->info->state = FBINFO_STATE_SUSPENDED;
 
 	if (specs == NULL) {
-		struct tegra_dc_mode mode;
 		memset(&fb_info->info->monspecs, 0x0,
 		       sizeof(fb_info->info->monspecs));
-		memset(&mode, 0x0, sizeof(mode));
 
 		/*
 		 * reset video mode properties to prevent garbage being
@@ -660,7 +658,6 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 		memset(&fb_info->info->var, 0x0, sizeof(fb_info->info->var));
 #endif /* CONFIG_FRAMEBUFFER_CONSOLE */
 
-		tegra_dc_set_mode(fb_info->win.dc, &mode);
 		mutex_unlock(&fb_info->info->lock);
 		return;
 	}
