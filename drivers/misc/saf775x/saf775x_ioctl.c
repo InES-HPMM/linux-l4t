@@ -18,10 +18,12 @@
 #include <asm/mach-types.h>
 #include <linux/module.h>
 #include <linux/slab.h>
+#include <linux/types.h>
 #include "saf775x_ioctl.h"
 
 static struct saf775x_ioctl_ops saf775x_ops;
-struct i2c_client *codec_priv;
+static struct saf775x_device_interfaces saf775x_devifs;
+unsigned int saf775x_curr_if = SPI;
 
 static int saf775x_hwdep_ioctl(struct file *file,
 			unsigned int cmd, unsigned long arg)
@@ -37,6 +39,20 @@ static int saf775x_hwdep_ioctl(struct file *file,
 	struct saf775x_control_info info;
 	int ret = 0;
 	unsigned char *buf;
+	void *codec_priv;
+	struct device *dev;
+
+	if (saf775x_curr_if == SPI) {
+		codec_priv = saf775x_devifs.spi;
+		dev = &(saf775x_devifs.spi)->dev;
+	} else {
+		codec_priv = saf775x_devifs.client;
+		dev = &(saf775x_devifs.client)->dev;
+	}
+	if (!dev) {
+		pr_err("Device not initialised\n");
+		return -EFAULT;
+	}
 
 	switch (cmd) {
 	case SAF775X_CONTROL_SET_IOCTL:
@@ -61,18 +77,34 @@ static int saf775x_hwdep_ioctl(struct file *file,
 		if (arg && copy_from_user(&saf775x, _saf775x, sizeof(saf775x)))
 			return -EFAULT;
 
-		buf = devm_kzalloc(&codec_priv->dev,
-			sizeof(*buf) * saf775x.val_len, GFP_KERNEL);
+		if (saf775x_curr_if == SPI)
+			saf775x.val_len++;
+
+		buf = devm_kzalloc(dev,
+		sizeof(*buf) * saf775x.val_len, GFP_KERNEL);
+
+		if (!buf) {
+				dev_err(dev, "Failed to allocate memory for codec read buffer");
+				return -ENOMEM;
+		}
 
 		if (saf775x_ops.codec_read) {
 			ret = saf775x_ops.codec_read(codec_priv,
 				buf, saf775x.val_len);
-		if (copy_to_user((unsigned char *)saf775x.val, buf,
-				sizeof(*buf) * saf775x.val_len)) {
-			devm_kfree(&codec_priv->dev, buf);
-			return -EFAULT;
-		}
-		devm_kfree(&codec_priv->dev, buf);
+			if (saf775x_curr_if == I2C) {
+				if (copy_to_user((unsigned char *)saf775x.val,
+					buf, sizeof(*buf) * saf775x.val_len)) {
+					devm_kfree(dev, buf);
+						return -EFAULT;
+				}
+			} else {
+				if (copy_to_user((unsigned char *)saf775x.val,
+					buf+1, sizeof(*buf) * (saf775x.val_len-1))) {
+					devm_kfree(dev, buf);
+						return -EFAULT;
+				}
+			}
+			devm_kfree(dev, buf);
 		} else
 			ret = -EFAULT;
 		break;
@@ -104,12 +136,79 @@ static int saf775x_hwdep_ioctl(struct file *file,
 				param.num_reg);
 		break;
 
+	case SAF775X_CONTROL_SETIF:
+		if (saf775x_set_active_if(arg) < 0)
+			return -EFAULT;
+		break;
+
+	case SAF775X_CONTROL_GETIF:
+		return saf775x_curr_if;
+
 	default:
 		return -EFAULT;
 	}
 
 	return ret;
 }
+
+
+#if defined(CONFIG_SPI_MASTER)
+static ssize_t saf775x_hwdep_write(struct file *filp,
+		const char __user *_buf, size_t size, loff_t *off)
+{
+	char *data;
+	int ret;
+
+	struct spi_device *codec_priv = saf775x_devifs.spi;
+	data = devm_kzalloc(&codec_priv->dev, sizeof(*data) * size, GFP_KERNEL);
+	if (!data) {
+		dev_err(&codec_priv->dev, "Failed to allocate memory for flash image buffer");
+		return -ENOMEM;
+	}
+	if (saf775x_ops.codec_flash) {
+		if (copy_from_user(data, _buf, sizeof(*data) * size)) {
+			devm_kfree(&codec_priv->dev, data);
+			return -EFAULT;
+		}
+		ret = saf775x_ops.codec_flash(codec_priv, data, size);
+		devm_kfree(&codec_priv->dev, data);
+		if (ret < 0)
+			return ret;
+		return size;
+	} else {
+		return -EFAULT;
+	}
+}
+
+static ssize_t saf775x_hwdep_read(struct file *filp,
+		char __user *_buf, size_t size, loff_t *off)
+{
+	char *data;
+	int ret;
+
+	struct spi_device *codec_priv = saf775x_devifs.spi;
+	data = devm_kzalloc(&codec_priv->dev, sizeof(*data) * size, GFP_KERNEL);
+	if (!data) {
+		dev_err(&codec_priv->dev, "Failed to allocate memory for status read buffer");
+		return -ENOMEM;
+	}
+	if (saf775x_ops.codec_read_status) {
+		ret = saf775x_ops.codec_read_status(codec_priv, data, size);
+		if (ret < 0) {
+			devm_kfree(&codec_priv->dev, data);
+			return ret;
+		}
+		if (copy_to_user(_buf, data, sizeof(*data) * size)) {
+			devm_kfree(&codec_priv->dev, data);
+			return -EFAULT;
+		}
+		devm_kfree(&codec_priv->dev, data);
+		return size;
+	} else {
+		return -EFAULT;
+	}
+}
+#endif
 
 static int saf775x_ioctl_open(struct inode *inp, struct file *filep)
 {
@@ -132,6 +231,10 @@ static const struct file_operations saf775x_ioctl_fops = {
 	.open = saf775x_ioctl_open,
 	.release = saf775x_ioctl_release,
 	.unlocked_ioctl = saf775x_hwdep_ioctl,
+#if defined(CONFIG_SPI_MASTER)
+	.write = saf775x_hwdep_write,
+	.read = saf775x_hwdep_read,
+#endif
 };
 
 static void saf775x_ioctl_cleanup(void)
@@ -146,12 +249,11 @@ static void saf775x_ioctl_cleanup(void)
 							1);
 }
 
-int saf775x_hwdep_create(struct i2c_client *client)
+int saf775x_hwdep_create(void)
 {
 	int result;
 	int ret = -ENODEV;
 	dev_t saf775x_ioctl_dev;
-	codec_priv = client;
 	result = alloc_chrdev_region(&saf775x_ioctl_dev, 0,
 			1, "saf775x_hwdep");
 	if (result < 0)
@@ -200,6 +302,34 @@ struct saf775x_ioctl_ops *saf775x_get_ioctl_ops(void)
 	return &saf775x_ops;
 }
 EXPORT_SYMBOL_GPL(saf775x_get_ioctl_ops);
+
+struct saf775x_device_interfaces *saf775x_get_devifs(void)
+{
+	return &saf775x_devifs;
+}
+EXPORT_SYMBOL_GPL(saf775x_get_devifs);
+
+unsigned int saf775x_get_active_if(void)
+{
+	return saf775x_curr_if;
+}
+EXPORT_SYMBOL_GPL(saf775x_get_active_if);
+
+int saf775x_set_active_if(unsigned int id)
+{
+	if ((id != SPI) && (id != I2C))
+		return -1;
+#if !defined(CONFIG_SPI_MASTER)
+	if (id == SPI)
+		return -1;
+#endif
+#if !defined(CONFIG_I2C) && !defined(CONFIG_I2C_MODULE)
+	if (id == I2C)
+		return -1;
+#endif
+	saf775x_curr_if = id;
+	return 0;
+}
 
 MODULE_AUTHOR("Arun S L <aruns@nvidia.com>");
 MODULE_DESCRIPTION("SAF775X Soc Audio driver IO control");

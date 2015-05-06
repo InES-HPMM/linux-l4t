@@ -21,6 +21,9 @@
 #include <asm/mach-types.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
+#include <linux/spi/spi.h>
+#include <linux/spi/spi-tegra.h>
+#include <linux/delay.h>
 
 #include "saf775x_ioctl.h"
 #include "audio_limits.h"
@@ -46,21 +49,20 @@ struct saf775x_controls {
 	int val;
 	int step;
 	int *arr;
-	int (*get)(struct i2c_client *,
-		struct saf775x_control_info *);
-	int (*set)(struct i2c_client *, int *, unsigned int ,
+	int (*get)(void *, struct saf775x_control_info *);
+	int (*set)(void *, int *, unsigned int ,
 		int, unsigned int);
 };
 
 struct saf775x_priv {
 	struct mutex mutex;
-	unsigned char msg_seq[8];
+	unsigned char msg_seq[16];
 	void *control_data;
-	struct i2c_client *tdf8530;
 	struct saf775x_controls *controls;
 	unsigned int num_controls;
 };
 
+static struct i2c_client *tdf8530;
 static struct i2c_board_info tdf8530_info = {
 	I2C_BOARD_INFO("tdf8530", 0x31),
 };
@@ -73,8 +75,7 @@ static int enable_tdf8530(struct i2c_client *i2c)
 	return i2c_master_send(i2c, data, 4);
 }
 
-
-static int saf775x_soc_write(struct i2c_client *codec, unsigned int reg,
+static int saf775x_soc_write_i2c(struct i2c_client *codec, unsigned int reg,
 		unsigned int val, unsigned int reg_len, unsigned int val_len)
 {
 	struct saf775x_priv *saf775x =
@@ -102,8 +103,89 @@ static int saf775x_soc_write(struct i2c_client *codec, unsigned int reg,
 	return ret;
 }
 
-int saf775x_set_default_ctrl(struct i2c_client *codec, int *arr,
-	unsigned int reg, int val, unsigned int num_reg) {
+static int saf775x_soc_write_spi(struct spi_device *codec, unsigned int reg,
+		unsigned int val, unsigned int reg_len, unsigned int val_len)
+{
+	struct saf775x_priv *saf775x =
+		(struct saf775x_priv *)spi_get_drvdata(codec);
+	unsigned char *data = (unsigned char *)&saf775x->msg_seq;
+	int i, ret = 0;
+
+	mutex_lock(&saf775x->mutex);
+
+	*data++ = reg_len + val_len + 1;
+
+	if (reg_len) {
+		for (i = reg_len - 1; i >= 0; i--)
+			*data++ = ((reg & CHAR_BIT_MASK(i)) >>
+					BYTEPOS_IN_WORD(i));
+
+	}
+	if (val_len) {
+		for (i = val_len - 1; i >= 0; i--)
+			*data++ = ((val & CHAR_BIT_MASK(i)) >>
+					BYTEPOS_IN_WORD(i));
+	}
+	ret = spi_write(saf775x->control_data,
+				saf775x->msg_seq, reg_len + val_len + 1);
+	mdelay(10);
+	mutex_unlock(&saf775x->mutex);
+
+	return ret;
+}
+
+
+static int saf775x_soc_write(void *codec, unsigned int reg,
+		unsigned int val, unsigned int reg_len, unsigned int val_len)
+{
+	if (saf775x_get_active_if() == I2C) {
+		struct i2c_client *i2c = (struct i2c_client *)codec;
+		return saf775x_soc_write_i2c(i2c, reg, val, reg_len, val_len);
+	} else {
+		struct spi_device *spi = (struct spi_device *)codec;
+		return saf775x_soc_write_spi(spi, reg, val, reg_len, val_len);
+	}
+}
+
+#if defined(CONFIG_SPI_MASTER)
+static int saf775x_soc_flash_image(struct spi_device *codec,
+		char *image_data, unsigned int image_size)
+{
+	struct saf775x_priv *saf775x =
+		(struct saf775x_priv *)spi_get_drvdata(codec);
+
+	int ret = 0;
+
+	mutex_lock(&saf775x->mutex);
+	ret = spi_write(saf775x->control_data, image_data, image_size);
+	mdelay(10);
+	mutex_unlock(&saf775x->mutex);
+
+	return ret;
+}
+
+static int saf775x_soc_read_status(struct spi_device *codec,
+		char *status, unsigned int size)
+{
+	struct saf775x_priv *saf775x =
+		(struct saf775x_priv *)spi_get_drvdata(codec);
+
+	int ret = 0;
+	mutex_lock(&saf775x->mutex);
+	ret = spi_read(saf775x->control_data, status, size);
+	mdelay(10);
+	mutex_unlock(&saf775x->mutex);
+
+	return ret;
+}
+#endif
+
+int saf775x_set_default_ctrl(
+		void *codec,
+		int *arr,
+		unsigned int reg,
+		int val,
+		unsigned int num_reg) {
 
 	unsigned int *_reg = (unsigned int *)reg;
 	unsigned int i = 0;
@@ -154,7 +236,7 @@ ENUM_EXT("sec-mute-fall", NULL, saf775x_set_default_ctrl, saf775x_mute_att_level
 ENUM_EXT("sec2-mute-fall", NULL, saf775x_set_default_ctrl, saf775x_mute_att_level[0], 10, 100, 10, 100),
 };
 
-static int saf775x_soc_set_ctrl(struct i2c_client *codec, char *ctrl_name,
+static int saf775x_soc_set_ctrl_i2c(struct i2c_client *codec, char *ctrl_name,
 		unsigned int reg, int val,
 		unsigned int num_reg) {
 	struct saf775x_priv *saf775x =
@@ -181,8 +263,49 @@ static int saf775x_soc_set_ctrl(struct i2c_client *codec, char *ctrl_name,
 	return -EFAULT;
 }
 
+static int saf775x_soc_set_ctrl_spi(struct spi_device *codec, char *ctrl_name,
+		unsigned int reg, int val,
+		unsigned int num_reg) {
+	struct saf775x_priv *saf775x =
+		(struct saf775x_priv *)spi_get_drvdata(codec);
+	unsigned int i = 0;
+	struct saf775x_controls *c;
 
-static int saf775x_soc_get_ctrl(struct i2c_client *codec,
+	for (i = 0; i < saf775x->num_controls; i++) {
+		c = &saf775x->controls[i];
+		if (!strcmp(ctrl_name, c->name)) {
+			if (val > c->max)
+				val = c->max;
+			else if (val < c->min)
+				val = c->min;
+			else
+			;
+
+			c->val = val;
+			val = (val - c->min)/c->step;
+			c->set(codec, c->arr, reg, val, num_reg);
+			return 0;
+		}
+	}
+	return -EFAULT;
+}
+
+static int saf775x_soc_set_ctrl(void *codec, char *ctrl_name,
+		unsigned int reg, int val,
+		unsigned int num_reg) {
+	if (saf775x_get_active_if() == I2C) {
+		struct i2c_client *i2c = (struct i2c_client *)codec;
+		return saf775x_soc_set_ctrl_i2c(i2c, ctrl_name,
+					reg, val, num_reg);
+	} else {
+		struct spi_device *spi = (struct spi_device *)codec;
+		return saf775x_soc_set_ctrl_spi(spi, ctrl_name,
+					reg, val, num_reg);
+	}
+}
+
+
+static int saf775x_soc_get_ctrl_i2c(struct i2c_client *codec,
 		struct saf775x_control_info *info) {
 	struct saf775x_priv *saf775x =
 			(struct saf775x_priv *)i2c_get_clientdata(codec);
@@ -203,7 +326,39 @@ static int saf775x_soc_get_ctrl(struct i2c_client *codec,
 	return -EFAULT;
 }
 
-static int saf775x_soc_read(struct i2c_client *codec,
+static int saf775x_soc_get_ctrl_spi(struct spi_device *codec,
+		struct saf775x_control_info *info) {
+	struct saf775x_priv *saf775x =
+			(struct saf775x_priv *)spi_get_drvdata(codec);
+	unsigned int i = 0;
+	struct saf775x_controls *c;
+
+	for (i = 0; i < saf775x->num_controls; i++) {
+		c = &saf775x->controls[i];
+		if (!strcmp(info->name, c->name)) {
+			info->min = c->min;
+			info->max = c->max;
+			info->val = c->val;
+			info->step = c->step;
+
+			return 0;
+		}
+	}
+	return -EFAULT;
+}
+
+static int saf775x_soc_get_ctrl(void *codec,
+		struct saf775x_control_info *info) {
+	if (saf775x_get_active_if() == I2C) {
+		struct i2c_client *i2c = (struct i2c_client *)codec;
+		return saf775x_soc_get_ctrl_i2c(i2c, info);
+	} else {
+		struct spi_device *spi = (struct spi_device *)codec;
+		return saf775x_soc_get_ctrl_spi(spi, info);
+	}
+}
+
+static int saf775x_soc_read_i2c(struct i2c_client *codec,
 		unsigned char *val, unsigned int val_len)
 {
 	struct saf775x_priv *saf775x =
@@ -217,6 +372,35 @@ static int saf775x_soc_read(struct i2c_client *codec,
 	mutex_unlock(&saf775x->mutex);
 
 	return ret;
+}
+
+static int saf775x_soc_read_spi(struct spi_device *codec,
+		unsigned char *val, unsigned int val_len)
+{
+	struct saf775x_priv *saf775x =
+		(struct saf775x_priv *)spi_get_drvdata(codec);
+	int ret = 0;
+
+	mutex_lock(&saf775x->mutex);
+
+	ret = spi_read(saf775x->control_data,
+				val, val_len);
+	mdelay(10);
+	mutex_unlock(&saf775x->mutex);
+
+	return ret;
+}
+
+static int saf775x_soc_read(void *codec,
+		unsigned char *val, unsigned int val_len)
+{
+	if (saf775x_get_active_if() == I2C) {
+		struct i2c_client *i2c = (struct i2c_client *)codec;
+		return saf775x_soc_read_i2c(i2c, val, val_len);
+	} else {
+		struct spi_device *spi = (struct spi_device *)codec;
+		return saf775x_soc_read_spi(spi, val, val_len);
+	}
 }
 
 #ifdef CONFIG_TMPM32X_MODULE
@@ -243,8 +427,10 @@ static int saf775x_i2c_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
 	struct saf775x_priv *saf775x;
-	struct saf775x_ioctl_ops *saf775x_ops;
+	struct saf775x_device_interfaces *devifs = saf775x_get_devifs();
 	int ret = 0;
+
+	devifs->client = client;
 
 	saf775x = devm_kzalloc(&client->dev, sizeof(struct saf775x_priv),
 			     GFP_KERNEL);
@@ -261,37 +447,11 @@ static int saf775x_i2c_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, saf775x);
 
-	saf775x_hwdep_create(client);
-	saf775x_ops = saf775x_get_ioctl_ops();
-	saf775x_ops->codec_write = saf775x_soc_write;
-	saf775x_ops->codec_reset = saf775x_chip_reset;
-	saf775x_ops->codec_read  = saf775x_soc_read;
-	saf775x_ops->codec_set_ctrl  = saf775x_soc_set_ctrl;
-	saf775x_ops->codec_get_ctrl  = saf775x_soc_get_ctrl;
-
-	saf775x->tdf8530 = i2c_new_device(i2c_get_adapter(0),
-				&tdf8530_info);
-	if (!saf775x->tdf8530) {
-		dev_err(&client->dev, "cannot get i2c device for TDF8530\n");
-		return -1;
-	}
-
-	ret = enable_tdf8530(saf775x->tdf8530);
-	if (ret < 0) {
-		dev_err(&client->dev, "tdf8530: i2c send failure %d\n", ret);
-		i2c_unregister_device(saf775x->tdf8530);
-		return -1;
-	}
 	return 0;
 }
 
 static int saf775x_i2c_remove(struct i2c_client *client)
 {
-	struct saf775x_priv *saf775x;
-	saf775x = (struct saf775x_priv *)i2c_get_clientdata(client);
-	i2c_unregister_device(saf775x->tdf8530);
-
-	saf775x_hwdep_cleanup();
 	return 0;
 }
 
@@ -314,8 +474,107 @@ static struct i2c_driver saf775x_i2c_driver = {
 	.id_table	= saf775x_i2c_id,
 };
 
-module_i2c_driver(saf775x_i2c_driver);
 #endif
+
+#if defined(CONFIG_SPI_MASTER)
+static int saf775x_spi_probe(struct spi_device *spi)
+{
+	struct saf775x_priv *saf775x;
+	struct saf775x_device_interfaces *devifs = saf775x_get_devifs();
+	int ret = 0;
+
+	devifs->spi = spi;
+
+	saf775x = devm_kzalloc(&spi->dev, sizeof(struct saf775x_priv),
+				GFP_KERNEL);
+	if (!saf775x) {
+		dev_err(&spi->dev, "Can't allocate saf775x private struct\n");
+		return -ENOMEM;
+	}
+	saf775x->control_data = spi;
+	saf775x->controls = ctrls;
+	saf775x->num_controls = ARRAY_SIZE(ctrls);
+
+	mutex_init(&saf775x->mutex);
+
+	spi_set_drvdata(spi, saf775x);
+
+	return 0;
+}
+
+static int saf775x_spi_remove(struct spi_device *spi)
+{
+	return 0;
+}
+
+static struct spi_driver saf775x_spi_driver = {
+	.driver = {
+		.name = DRV_NAME,
+		.owner = THIS_MODULE,
+	},
+	.probe = saf775x_spi_probe,
+	.remove = saf775x_spi_remove,
+};
+#endif
+
+static int __init saf775x_modinit(void)
+{
+	struct saf775x_ioctl_ops *saf775x_ops;
+	int ret = 0;
+#if defined(CONFIG_I2C) || defined(CONFIG_I2C_MODULE)
+	ret = i2c_add_driver(&saf775x_i2c_driver);
+	if (ret != 0)
+		return ret;
+#endif
+#if defined(CONFIG_SPI_MASTER)
+	ret = spi_register_driver(&saf775x_spi_driver);
+	if (ret != 0)
+		return ret;
+#endif
+
+	saf775x_hwdep_create();
+
+	tdf8530 = i2c_new_device(i2c_get_adapter(0),
+							&tdf8530_info);
+	if (!tdf8530) {
+		pr_err(KERN_ERR "cannot get i2c device for TDF8530\n");
+		return -1;
+	}
+
+	ret = enable_tdf8530(tdf8530);
+	if (ret < 0) {
+		pr_err(KERN_ERR "tdf8530: i2c send failure %d\n", ret);
+		i2c_unregister_device(tdf8530);
+		return -1;
+	}
+
+	saf775x_ops = saf775x_get_ioctl_ops();
+	saf775x_ops->codec_write = saf775x_soc_write;
+	saf775x_ops->codec_reset = saf775x_chip_reset;
+	saf775x_ops->codec_read  = saf775x_soc_read;
+	saf775x_ops->codec_set_ctrl  = saf775x_soc_set_ctrl;
+	saf775x_ops->codec_get_ctrl  = saf775x_soc_get_ctrl;
+#if defined(CONFIG_SPI_MASTER)
+	saf775x_ops->codec_flash = saf775x_soc_flash_image;
+	saf775x_ops->codec_read_status = saf775x_soc_read_status;
+#endif
+
+	return ret;
+}
+module_init(saf775x_modinit);
+
+static void __exit saf775x_modexit(void)
+{
+	i2c_unregister_device(tdf8530);
+	saf775x_hwdep_cleanup();
+#if defined(CONFIG_I2C) || defined(CONFIG_I2C_MODULE)
+	i2c_del_driver(&saf775x_i2c_driver);
+#endif
+#if defined(CONFIG_SPI_MASTER)
+	spi_unregister_driver(&saf775x_spi_driver);
+#endif
+}
+module_exit(saf775x_modexit);
 
 MODULE_AUTHOR("Arun S L <aruns@nvidia.com>");
 MODULE_DESCRIPTION("SAF775X Soc Audio driver");

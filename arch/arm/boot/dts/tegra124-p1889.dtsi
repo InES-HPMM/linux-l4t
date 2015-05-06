@@ -250,6 +250,16 @@
 
 	spi@7000d800 {
 		status = "okay";
+		spi@0 {
+			compatible = "saf775x";
+			reg = <0>;
+			spi-max-frequency = <4000000>;
+			spi-cpha;
+			controller-data {
+				nvidia,clk-delay-between-packets = <10>;
+				nvidia,chipselect-gpio = <&gpio TEGRA_GPIO(S,6) 0>;
+			};
+		};
 	};
 
 	spi@7000dc00 {
