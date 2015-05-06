@@ -839,7 +839,7 @@ static enum power_supply_property bq27441_battery_props[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
 	POWER_SUPPLY_PROP_CHARGER_STANDARD,
-	POWER_SUPPLY_PROP_TEMP,
+	POWER_SUPPLY_PROP_TEMP_INFO,
 };
 
 static int bq27441_get_property(struct power_supply *psy,
@@ -913,10 +913,20 @@ static int bq27441_get_property(struct power_supply *psy,
 			val->strval = "standard";
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
+	case POWER_SUPPLY_PROP_TEMP_INFO:
 		if (chip->enable_temp_prop) {
 			temperature = bq27441_get_temperature();
 			val->intval = temperature;
-		} else {
+		} else if (chip->pdata->tz_name) {
+			ret = battery_gauge_get_battery_temperature(chip->bg_dev,
+					&temperature);
+			if (ret < 0) {
+				dev_err(&chip->client->dev, "temp invalid %d\n", ret);
+				break;
+			}
+			val->intval = temperature * 10;
+		}
+		else {
 			ret = -EINVAL;
 		}
 		break;
@@ -1195,7 +1205,7 @@ static int bq27441_probe(struct i2c_client *client,
 	chip->charge_complete		= 0;
 
 	/* remove temperature property if it is not supported */
-	if (!chip->enable_temp_prop)
+	if (!chip->enable_temp_prop && !chip->pdata->tz_name)
 		chip->battery.num_properties--;
 
 	chip->regmap = devm_regmap_init_i2c(client, &bq27441_regmap_config);
@@ -1212,12 +1222,6 @@ static int bq27441_probe(struct i2c_client *client,
 		goto error;
 	}
 
-	ret = power_supply_register(&client->dev, &chip->battery);
-	if (ret) {
-		dev_err(&client->dev, "failed: power supply register\n");
-		goto error;
-	}
-
 	bq27441_bgi.tz_name = chip->pdata->tz_name;
 
 	chip->bg_dev = battery_gauge_register(&client->dev, &bq27441_bgi,
@@ -1227,6 +1231,12 @@ static int bq27441_probe(struct i2c_client *client,
 		dev_err(&client->dev, "battery gauge register failed: %d\n",
 			ret);
 		goto bg_err;
+	}
+
+	ret = power_supply_register(&client->dev, &chip->battery);
+	if (ret) {
+		dev_err(&client->dev, "failed: power supply register\n");
+		goto error;
 	}
 
 	ret = bq27441_initialize(chip);
