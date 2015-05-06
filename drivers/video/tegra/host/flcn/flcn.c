@@ -559,13 +559,17 @@ static struct platform_driver flcn_driver = {
 	.id_table = flcn_id_table,
 };
 
-static struct of_device_id tegra21x_flcn_domain_match[] = {
+static struct of_device_id tegra_flcn_domain_match[] = {
 	{.compatible = "nvidia,tegra210-vic03-pd",
 	 .data = (struct nvhost_device_data *)&t21_vic_info},
 	{.compatible = "nvidia,tegra210-msenc-pd",
 	 .data = (struct nvhost_device_data *)&t21_msenc_info},
 	{.compatible = "nvidia,tegra210-nvjpg-pd",
 	 .data = (struct nvhost_device_data *)&t21_nvjpg_info},
+	{.compatible = "nvidia,tegra124-vic03-pd",
+	.data = (struct nvhost_device_data *)&t124_vic_info},
+	{.compatible = "nvidia,tegra124-msenc-pd",
+	.data = (struct nvhost_device_data *)&t124_msenc_info},
 	{},
 };
 
@@ -573,7 +577,7 @@ static int __init flcn_init(void)
 {
 	int ret;
 
-	ret = nvhost_domain_init(tegra21x_flcn_domain_match);
+	ret = nvhost_domain_init(tegra_flcn_domain_match);
 	if (ret)
 		return ret;
 

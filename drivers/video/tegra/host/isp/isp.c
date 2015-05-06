@@ -646,11 +646,13 @@ const struct file_operations tegra_isp_ctrl_ops = {
 	.release = isp_release,
 };
 
-static struct of_device_id tegra21x_isp_domain_match[] = {
+static struct of_device_id tegra_isp_domain_match[] = {
 	{.compatible = "nvidia,tegra210-ve-pd",
 	 .data = (struct nvhost_device_data *)&t21_isp_info},
 	{.compatible = "nvidia,tegra210-ve2-pd",
 	 .data = (struct nvhost_device_data *)&t21_ispb_info},
+	{.compatible = "nvidia,tegra124-ve-pd",
+	 .data = (struct nvhost_device_data *)&t124_isp_info},
 	{},
 };
 
@@ -658,7 +660,7 @@ static int __init isp_init(void)
 {
 	int ret;
 
-	ret = nvhost_domain_init(tegra21x_isp_domain_match);
+	ret = nvhost_domain_init(tegra_isp_domain_match);
 	if (ret)
 		return ret;
 
