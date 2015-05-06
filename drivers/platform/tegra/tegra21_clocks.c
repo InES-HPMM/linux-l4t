@@ -7731,6 +7731,7 @@ static struct clk_mux_sel mux_pll_e_inputs[] = {
 
 static struct clk tegra_pll_e = {
 	.name      = "pll_e",
+	.clk_id    = TEGRA210_CLK_ID_PLL_E,
 	.flags     = PLL_FIXED,
 	.ops       = &tegra_plle_ops,
 	.reg       = 0xe8,
@@ -7753,6 +7754,7 @@ static struct clk tegra_pll_e = {
 
 static struct clk tegra_pll_e_gate = {
 	.name      = "plle_gate",
+	.clk_id    = TEGRA210_CLK_ID_PLL_E_GATE,
 	.parent    = &tegra_pll_e,
 	.ops       = &tegra_cml_clk_ops,
 	.reg       = 0xec,
@@ -7764,6 +7766,7 @@ static struct clk tegra_pll_e_gate = {
 
 static struct clk tegra_cml0_clk = {
 	.name      = "cml0",
+	.clk_id    = TEGRA210_CLK_ID_PLL_E_CML0,
 	.parent    = &tegra_pll_e,
 	.ops       = &tegra_cml_clk_ops,
 	.reg       = PLLE_AUX,
@@ -7775,6 +7778,7 @@ static struct clk tegra_cml0_clk = {
 
 static struct clk tegra_cml1_clk = {
 	.name      = "cml1",
+	.clk_id    = TEGRA210_CLK_ID_PLL_E_CML1,
 	.parent    = &tegra_pll_e,
 	.ops       = &tegra_cml_clk_ops,
 	.reg       = PLLE_AUX,
