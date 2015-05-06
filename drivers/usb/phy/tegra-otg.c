@@ -1320,10 +1320,16 @@ err_clk:
 	return err;
 }
 
+static const struct of_device_id otg_tegra_device_match[] = {
+	{.compatible = "nvidia,tegra124-otg" },
+	{},
+};
+
 static int tegra_otg_probe(struct platform_device *pdev)
 {
 	struct tegra_otg *tegra;
 	int err = 0;
+	int ret;
 
 	err = tegra_otg_conf(pdev);
 	if (err) {
@@ -1353,6 +1359,11 @@ static int tegra_otg_probe(struct platform_device *pdev)
 			goto err;
 		}
 	}
+
+	ret = genpd_dev_pm_add(otg_tegra_device_match, &pdev->dev);
+	if (ret)
+		pr_err("Could not add %s to power domain using device tree\n",
+					  dev_name(&pdev->dev));
 
 	tegra_pd_add_device(tegra->phy.dev);
 	pm_runtime_use_autosuspend(tegra->phy.dev);
