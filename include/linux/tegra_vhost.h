@@ -127,15 +127,21 @@ enum {
 	TEGRA_VHOST_EVENT_ABORT
 };
 
-struct tegra_vhost_syncpt_intr_msg {
-	unsigned int event;
+struct tegra_vhost_syncpt_intr_info {
 	u32 id;
 	u32 thresh;
+};
+
+struct tegra_vhost_intr_msg {
+	unsigned int event;
+	union {
+		struct tegra_vhost_syncpt_intr_info syncpt_intr;
+	} info;
 };
 
 #define TEGRA_VHOST_QUEUE_SIZES			\
 	sizeof(struct tegra_vhost_cmd_msg),	\
 	4096,					\
-	sizeof(struct tegra_vhost_syncpt_intr_msg)
+	sizeof(struct tegra_vhost_intr_msg)
 
 #endif
