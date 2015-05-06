@@ -3595,9 +3595,9 @@ static int regs_show(struct seq_file *s, void *data)
 		seq_printf(s, "Therm_A/B(%d/", state);
 		state = REG_GET(r, TS_CPU0_CONFIG2_THERM_B);
 		seq_printf(s, "%d) ", (s16)state);
-
 		seq_printf(s, "HW offsetting %d\n",
-				pp->therm[i].en_hw_pllx_offsetting);
+				pp->therm[tsensor2therm_map[i]].
+				en_hw_pllx_offsetting);
 	}
 
 	r = soctherm_readl(TS_PDIV);
