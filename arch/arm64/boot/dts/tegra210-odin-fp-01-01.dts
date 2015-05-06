@@ -15,6 +15,7 @@
  */
 
 #include "tegra210-odin-common.dtsi"
+#include "tegra210-platforms/tegra210-odin-fp-01-01-emc.dtsi"
 
 / {
 	model = "odin";
