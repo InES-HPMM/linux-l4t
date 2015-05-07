@@ -584,6 +584,7 @@ static ssize_t load_unload_usb_host(struct device *dev,
 	mutex_lock(&modem->hc_lock);
 	switch (modem->phy_type) {
 	case XHCI_HSIC:
+		dev_info(&modem->pdev->dev, "using XHCI_HSIC\n");
 		if (host) {
 			if (modem->xusb_roothub &&
 					!modem->nvhsic_work_queued) {
@@ -606,6 +607,7 @@ static ssize_t load_unload_usb_host(struct device *dev,
 		}
 		break;
 	case EHCI_HSIC:
+		dev_info(&modem->pdev->dev, "using EHCI_HSIC\n");
 		pr_info("%s EHCI\n", host ? "Load" : "Unload");
 		if (host && !modem->hc) {
 			modem->hc = tegra_usb_host_register(modem);
@@ -615,6 +617,7 @@ static ssize_t load_unload_usb_host(struct device *dev,
 		}
 		break;
 	case XHCI_UTMI:
+		dev_info(&modem->pdev->dev, "using XHCI_UTMI\n");
 		modem->hc = host ? (struct platform_device *)1 : NULL;
 		break;
 	default:
@@ -881,7 +884,6 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 	const unsigned int *prop;
 	int gpio;
 	int ret;
-	u32 use_xhci_hsic = 0;
 
 	if (!node)
 		return 0;
@@ -943,16 +945,10 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 
 	/* determine phy type */
 	ret = of_property_read_u32(node, "nvidia,phy-type", &modem->phy_type);
-	if (modem->phy_type != XHCI_UTMI) {
-		ret = of_property_read_u32(node, "nvidia,use-xhci-hsic",
-			&use_xhci_hsic);
-		modem->phy_type = (ret == 0 && use_xhci_hsic) ? XHCI_HSIC :
-			EHCI_HSIC;
+	if (ret != 0) {
+		dev_err(&pdev->dev, "DT property 'nvidia,phy-type' read fail!\n");
+		return ret;
 	}
-
-	dev_info(&pdev->dev, "using %s\n",
-		modem->phy_type == EHCI_HSIC ? "EHCI HSIC" :
-		modem->phy_type == XHCI_HSIC ? "XHCI HSIC" : "XHCI UTMI");
 
 	prop = of_get_property(node, "nvidia,num-temp-sensors", NULL);
 	if (prop)

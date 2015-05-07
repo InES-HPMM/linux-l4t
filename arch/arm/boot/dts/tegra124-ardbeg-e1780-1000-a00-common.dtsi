@@ -31,6 +31,7 @@
 #include "panel-s-wqxga-10-1.dtsi"
 #include "tegra124-platforms/tegra124-ardbeg-hdmi-e1780-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-tn8-camera-e1780-a00.dtsi"
+#include "tegra124-platforms/tegra124-modem-common.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 Ardbeg";
@@ -186,15 +187,6 @@
 		interrupt-parent = <&gpio>;
 		interrupts = <166 0x01>;
     };
-
-	modem {
-		compatible = "nvidia,icera-i500";
-		nvidia,boot-gpio = <&gpio TEGRA_GPIO(O, 5) GPIO_ACTIVE_LOW>;
-		nvidia,mdm-power-report-gpio = <&gpio TEGRA_GPIO(K, 0) GPIO_ACTIVE_LOW>;
-		nvidia,reset-gpio = <&gpio TEGRA_GPIO(S, 3) GPIO_ACTIVE_LOW>;
-		nvidia,mdm-en-gpio = <&gpio TEGRA_GPIO(S, 4) GPIO_ACTIVE_HIGH>;
-		status = "disabled";
-	};
 
 	cpu_edp {
 		nvidia,edp_limit = <14000>;
