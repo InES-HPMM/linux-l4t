@@ -992,6 +992,8 @@ struct tegra_dc_platform_data {
 #if defined(CONFIG_TEGRA_DC_CMU) || defined(CONFIG_TEGRA_DC_CMU_V2)
 	bool			cmu_enable;
 	struct tegra_dc_cmu	*cmu;
+	struct tegra_dc_cmu	*cmu_adbRGB;
+	int			default_clr_space;
 #endif
 	unsigned long		ctrl_num;
 	unsigned long		win_mask;
