@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@
 #include "panel-p-wuxga-10-1.dtsi"
 #include "tegra124-platforms/tegra124-ardbeg-hdmi-e1780-1000-a00.dtsi"
 #include <dt-bindings/thermal/thermal.h>
+#include "tegra132-platforms/tegra132-modem-common.dtsi"
 
 / {
 	model = "bowmore";
@@ -286,16 +287,6 @@
 		interrupt-parent = <&gpio>;
 		interrupts = <166 0x01>;
     };
-
-	modem {
-		compatible = "nvidia,icera-i500";
-		nvidia,boot-gpio = <&gpio TEGRA_GPIO(O, 5) GPIO_ACTIVE_LOW>;
-		nvidia,mdm-power-report-gpio = <&gpio TEGRA_GPIO(K, 0) GPIO_ACTIVE_LOW>;
-		nvidia,reset-gpio = <&gpio TEGRA_GPIO(S, 3) GPIO_ACTIVE_LOW>;
-		nvidia,mdm-en-gpio = <&gpio TEGRA_GPIO(S, 4) GPIO_ACTIVE_HIGH>;
-		nvidia,mdm-sar0-gpio = <&gpio TEGRA_GPIO(G, 2) GPIO_ACTIVE_LOW>;
-		status = "disabled";
-	};
 
 	ehci@7d004000 {
 		avdd_usb-supply = <&ldousb_reg>;

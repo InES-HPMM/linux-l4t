@@ -25,14 +25,8 @@ Optional properties:
                          IN USE FOR T210 LOKI ONLY (P2530 E03 mother board only)
 - nvidia,num-temp-sensors: integer which specifies temperature sensor count for
                     modem thermal reporting.
-- nvidia,use-xhci-hsic: this property is only set by bootloader SHIM layer
-                    according to odmdata passed. If odmdata bit[26] is set,
-                    this property will be <1> to indicate XHCI HSIC is to
-                    be used as modem interface.
 - nvidia,phy-type: integer 0, 1, or 2, which stand for EHCI HSIC, XHCI HSIC,
-                    or XHCI UTMI. This will be set automatically in driver
-                    according to nvidia,use-xhci-hsic property. This is used
-                    currently only for T210 loki E03 to indicate "XHCI UTMI".
+                    or XHCI UTMI.
 
 Example:
 
@@ -56,7 +50,6 @@ With all properties defined:
         nvidia,num-temp-sensors = <3>;
 
         /* USB PHY interfaces */
-        nvidia,use-xhci-hsic = <1>;
         nvidia,phy-type = <1>;
 
         /* should be disabled by default. Bootloader will determine if this
