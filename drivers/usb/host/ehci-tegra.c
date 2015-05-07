@@ -77,6 +77,7 @@ struct tegra_ehci_hcd {
 	bool boost_enable;
 	bool boost_requested;
 	bool cpu_boost_in_work;
+	int boost_cpu_freq;
 	struct delayed_work boost_cpu_freq_work;
 	struct pm_qos_request boost_cpu_freq_req;
 #endif
@@ -219,7 +220,7 @@ static void tegra_ehci_boost_cpu_frequency_work(struct work_struct *work)
 			(tegra_ehci_port_speed(tegra->ehci) == USB_SPEED_HIGH))
 			pm_qos_update_request(
 				&tegra->boost_cpu_freq_req,
-				(s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ * 1000);
+				tegra->boost_cpu_freq * 1000);
 	}
 }
 #endif
@@ -466,7 +467,7 @@ static int tegra_ehci_bus_resume(struct usb_hcd *hcd)
 	    && tegra->boost_enable
 	    && (tegra_ehci_port_speed(tegra->ehci) == USB_SPEED_HIGH))
 		pm_qos_update_request(&tegra->boost_cpu_freq_req,
-			(s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ * 1000);
+			tegra->boost_cpu_freq * 1000);
 	tegra->cpu_boost_in_work = false;
 #endif
 	EHCI_DBG("%s() END\n", __func__);
@@ -534,7 +535,7 @@ static ssize_t store_boost_enable(struct device *dev,
 		    && pm_qos_request_active(&tegra->boost_cpu_freq_req))
 			pm_qos_update_request(
 				&tegra->boost_cpu_freq_req,
-				(s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ * 1000);
+				tegra->boost_cpu_freq * 1000);
 		else if (old_boost && !new_boost
 			 && pm_qos_request_active(&tegra->boost_cpu_freq_req))
 			pm_qos_update_request(&tegra->boost_cpu_freq_req,
@@ -624,6 +625,11 @@ static struct tegra_usb_platform_data *tegra_ehci_dt_parse_pdata(
 			"nvidia,turn-off-vbus-on-lp0");
 
 	val = 0;
+	err = of_property_read_u32(np,
+					"nvidia,boost_cpu_frequency", &val);
+	if (!err)
+		pdata->u_data.host.boost_cpu_freq = val;
+
 	if (pdata->phy_intf == TEGRA_USB_PHY_INTF_UTMI) {
 		err = of_property_read_u32(np,
 					"nvidia,hssync-start-delay", &val);
@@ -792,6 +798,9 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 
 	tegra->unaligned_dma_buf_supported = pdata->unaligned_dma_buf_supported;
 	tegra->has_hostpc = pdata->has_hostpc;
+	tegra->boost_cpu_freq = pdata->u_data.host.boost_cpu_freq;
+	if (!tegra->boost_cpu_freq)
+		tegra->boost_cpu_freq = (s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ;
 
 	tegra->phy = tegra_usb_phy_open(pdev);
 	hcd->phy = get_usb_phy(tegra->phy);

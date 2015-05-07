@@ -233,8 +233,6 @@ MODULE_PARM_DESC(firmware_file, FIRMWARE_FILE_HELP);
 
 /* functions */
 #ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
-static unsigned int boost_cpu_freq = CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ;
-module_param(boost_cpu_freq, uint, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(boost_cpu_freq, "CPU frequency (in KHz) to boost");
 
 #define BOOST_PERIOD		(msecs_to_jiffies(2*1000)) /* 2 seconds */
@@ -244,7 +242,7 @@ static void tegra_xusb_boost_cpu_freq_fn(struct work_struct *work)
 					struct tegra_xhci_hcd,
 					boost_cpufreq_work);
 	unsigned long delay = BOOST_PERIOD;
-	s32 cpufreq_hz = boost_cpu_freq * 1000;
+	s32 cpufreq_hz = tegra->boost_cpu_freq * 1000;
 
 	mutex_lock(&tegra->boost_cpufreq_lock);
 
@@ -4790,6 +4788,8 @@ static void tegra_xusb_read_board_data(struct tegra_xhci_hcd *tegra)
 					sizeof(bdata->hsic[0]));
 	ret = of_property_read_string(node, "nvidia,firmware_file",
 					&bdata->firmware_file_dt);
+	ret = of_property_read_u32(node, "nvidia,boost_cpu_frequency",
+					&tegra->boost_cpu_freq);
 
 	/* For T210, retrive common padctl config from xusb_pad_ctl node */
 	padctl = of_parse_phandle(node, "nvidia,common_padctl", 0);
@@ -5182,6 +5182,8 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra->host_resume_req = false;
 	tegra->lp0_exit = false;
 	tegra->prev_event = USB_EVENT_NONE;
+	if (!tegra->boost_cpu_freq)
+		tegra->boost_cpu_freq = CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ;
 
 	/* request resource padctl base address */
 	ret = tegra_xhci_request_mem_region(pdev, 3, &tegra->padctl_base);
