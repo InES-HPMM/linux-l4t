@@ -53,12 +53,6 @@
 
 typedef void (*bpmp_mrq_handler)(int mrq, void *data, int ch);
 
-#if defined(CONFIG_TEGRA_BPMP) && defined(CONFIG_ARCH_TEGRA_21x_SOC)
-void tegra_bpmp_get_smmu_data(phys_addr_t *start, size_t *size);
-#else
-static inline void tegra_bpmp_get_smmu_data(phys_addr_t *start, size_t *size) {}
-#endif
-
 #ifdef CONFIG_TEGRA_BPMP
 void tegra_bpmp_init_early(void);
 int tegra_bpmp_running(void);

@@ -67,6 +67,12 @@ int bpmp_fwdebug_init(struct dentry *root);
 static inline int bpmp_fwdebug_init(struct dentry *root) { return -ENODEV; }
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+int bpmp_linear_map_init(void);
+#else
+static inline int bpmp_linear_map_init(void) { return 0; }
+#endif
+
 extern struct device *device;
 extern struct mutex bpmp_lock;
 extern int connected;

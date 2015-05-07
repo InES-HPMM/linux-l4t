@@ -212,9 +212,10 @@ int bpmp_platdbg_init(struct dentry *root, struct platform_device *pdev)
 #endif
 
 /* This gets called before _probe(), so read the DT entries directly */
-void tegra_bpmp_get_smmu_data(phys_addr_t *start, size_t *size)
+int bpmp_linear_map_init(void)
 {
 	struct device_node *node;
+	DEFINE_DMA_ATTRS(attrs);
 	uint32_t of_start;
 	uint32_t of_size;
 	int ret;
@@ -222,23 +223,23 @@ void tegra_bpmp_get_smmu_data(phys_addr_t *start, size_t *size)
 	node = of_find_node_by_path("/bpmp");
 	WARN_ON(!node);
 	if (!node)
-		goto err_out;
+		return -ENODEV;
 
 	ret = of_property_read_u32(node, "carveout-start", &of_start);
 	if (ret)
-		goto err_out;
+		return ret;
 
 	ret = of_property_read_u32(node, "carveout-size", &of_size);
 	if (ret)
-		goto err_out;
+		return ret;
 
-	*start = of_start;
-	*size = of_size;
-	return;
+	dma_set_attr(DMA_ATTR_SKIP_IOVA_GAP, &attrs);
+	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
+	ret = dma_map_linear_attrs(device, of_start, of_size, 0, &attrs);
+	if (ret == DMA_ERROR_CODE)
+		return -ENOMEM;
 
-err_out:
-	*start = 0;
-	*size = 0;
+	return 0;
 }
 
 int bpmp_clk_init(struct platform_device *pdev)
