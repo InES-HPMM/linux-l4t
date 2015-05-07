@@ -66,7 +66,7 @@ static int cpc_read_data(struct i2c_client *client, u8 cmd,
 	msg[0].addr = client->addr;
 	msg[0].flags = 0;
 	msg[0].len = 1;
-	msg[0].buf = cmd;
+	msg[0].buf = &cmd;
 
 	msg[1].addr = client->addr;
 	msg[1].flags = I2C_M_RD;
