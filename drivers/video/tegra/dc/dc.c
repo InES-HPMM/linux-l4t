@@ -2071,8 +2071,10 @@ EXPORT_SYMBOL(tegra_dc_update_cmu_aligned);
 
 static struct tegra_dc_cmu *tegra_dc_get_cmu(struct tegra_dc *dc)
 {
-	if (dc->pdata->cmu)
+	if (dc->pdata->cmu && !dc->pdata->default_clr_space)
 		return dc->pdata->cmu;
+	else if (dc->pdata->cmu_adbRGB && dc->pdata->default_clr_space)
+		return dc->pdata->cmu_adbRGB;
 	else if (dc->out->type == TEGRA_DC_OUT_HDMI)
 		return &default_limited_cmu;
 	else

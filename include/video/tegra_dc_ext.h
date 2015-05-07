@@ -460,6 +460,9 @@ struct tegra_dc_ext_feature {
 #define TEGRA_DC_EXT_SET_CMU_ALIGNED \
 	_IOW('D', 0x16, struct tegra_dc_ext_cmu)
 
+#define TEGRA_DC_EXT_GET_CMU_ADBRGB\
+	_IOR('D', 0x18, struct tegra_dc_ext_cmu)
+
 enum tegra_dc_ext_control_output_type {
 	TEGRA_DC_EXT_DSI,
 	TEGRA_DC_EXT_LVDS,
