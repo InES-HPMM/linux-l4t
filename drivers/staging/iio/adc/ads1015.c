@@ -184,7 +184,7 @@ static int ads1015_start_conversion(struct ads1015 *adc, int chan)
 
 	/* Wait for conversion */
 	do {
-		udelay(200);
+		udelay(800);
 		ret = ads1015_read(adc->rmap, ADS1015_CONFIG_REG, &reg_val);
 		if (ret < 0) {
 			dev_err(adc->dev, "Config reg read failed %d\n", ret);
