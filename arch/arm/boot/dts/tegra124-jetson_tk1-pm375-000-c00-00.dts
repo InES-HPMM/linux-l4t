@@ -40,6 +40,13 @@
 		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
 	};
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "jetson-tk1";
+		};
+	};
+
 	host1x {
 		/* tegradc.0 */
 		dc@54200000 {

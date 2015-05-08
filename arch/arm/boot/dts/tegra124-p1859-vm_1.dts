@@ -44,6 +44,13 @@
 		nvidia,tegra124-virt-audio-master;
 	};
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "p1859";
+		};
+	};
+
 	ahub {
 		status = "disabled";
 	};

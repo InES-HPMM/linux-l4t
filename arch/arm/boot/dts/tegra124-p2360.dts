@@ -33,6 +33,13 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "p2360";
+		};
+	};
+
 	host1x {
 		sor {
 			status = "okay";

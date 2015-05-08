@@ -29,6 +29,13 @@
 	compatible = "nvidia,p1889,1", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "p1889,1";
+		};
+	};
+
 	host1x {
 		sor {
 			panel-a-edp-1080p-14-0 {

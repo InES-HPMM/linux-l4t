@@ -49,6 +49,13 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "green-arrow";
+		};
+	};
+
 	gpio: gpio@6000d000 {
 		camera_control {
 			gpio-output-low = <

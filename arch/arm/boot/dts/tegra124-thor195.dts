@@ -19,6 +19,13 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "loki";
+		};
+	};
+
 	serial@70006000 {
 		compatible = "nvidia,tegra114-hsuart";
 		status = "okay";

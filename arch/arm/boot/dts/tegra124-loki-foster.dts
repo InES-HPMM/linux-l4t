@@ -36,6 +36,13 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "foster";
+		};
+	};
+
 	pwm-leds {
 		compatible = "pwm-leds";
 		lightbar {

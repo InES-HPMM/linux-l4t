@@ -41,6 +41,14 @@
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
 	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "ardbeg";
+		};
+	};
+
 	host1x {
 		/* tegradc.0 */
 		dc@54200000 {

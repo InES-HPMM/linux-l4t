@@ -5,6 +5,13 @@
 	compatible = "nvidia,ardbeg_sata", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "ardbeg_sata";
+		};
+	};
+
 	pinmux@70000868 {
 		pinctrl-names = "default", "drive", "unused", "suspend";
 		pinctrl-3 = <&pinmux_suspend>;

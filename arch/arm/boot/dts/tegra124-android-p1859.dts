@@ -27,4 +27,11 @@
         model = "NVIDIA Tegra124 p1859";
         compatible = "nvidia,p1859", "nvidia,tegra124";
         nvidia,dtsfilename = __FILE__;
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "p1859";
+		};
+	};
 };

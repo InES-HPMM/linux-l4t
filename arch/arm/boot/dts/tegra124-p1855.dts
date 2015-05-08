@@ -27,5 +27,12 @@
 	compatible = "nvidia,p1855", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "p1855";
+		};
+	};
+
 	/* Nothing else to be added. p1855.dtsi is complete */
 };

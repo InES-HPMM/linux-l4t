@@ -5,6 +5,13 @@
 	compatible = "nvidia,foster_hdd", "nvidia,tegra124";
 	nvidia,dtsfilename = __FILE__;
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "foster_hdd";
+		};
+	};
+
 	sata@70020000 {
 		status = "okay";
 		nvidia,enable-sata-port;

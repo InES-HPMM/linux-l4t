@@ -46,6 +46,13 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "laguna";
+		};
+	};
+
 	pinmux@70000868 {
 		pinctrl-names = "default", "drive", "unused", "suspend";
 		pinctrl-3 = <&pinmux_suspend>;
