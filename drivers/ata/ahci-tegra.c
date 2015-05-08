@@ -1878,6 +1878,15 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	val |= IP_INT_MASK;
 	sata_writel(val, SATA_INTR_MASK_0_OFFSET);
 
+	/* set fifo l2p depth */
+	if (tegra_hpriv->fifo_depth != 0) {
+		val = scfg_readl(T_SATA0_FIFO);
+		val &= ~T_SATA0_FIFO_L2P_FIFO_DEPTH_MASK;
+		val |= tegra_hpriv->fifo_depth <<
+			T_SATA0_FIFO_L2P_FIFO_DEPTH_SHIFT;
+		scfg_writel(val, T_SATA0_FIFO);
+	}
+
 exit:
 
 	if (!IS_ERR_OR_NULL(tegra_hpriv->clk_pllp))
@@ -3222,8 +3231,8 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 			&tegra_hpriv->pad_val.gen2_tx_peak) != 0)
 			tegra_hpriv->dtContainsPadval = 0;
 		if (of_property_read_u8(np, "nvidia,l2p_fifo_depth",
-			&tegra_hpriv->fifo_depth) != 0){
-			tegra_hpriv->fifo_depth = 0x0;
+					&tegra_hpriv->fifo_depth) != 0){
+			tegra_hpriv->fifo_depth = 0x7;
 		}
 		tegra_hpriv->soc_data =
 				(struct tegra_sata_soc_data *)match->data;
