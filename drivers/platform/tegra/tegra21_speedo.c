@@ -103,11 +103,14 @@ static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
 static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 {
 	bool shield_sku = false;
+	bool vcm31_sku = false;
 	bool a02 = rev == TEGRA_REVISION_A02;
 
 #ifdef CONFIG_OF
 	shield_sku = of_property_read_bool(of_chosen,
 					   "nvidia,tegra-shield-sku");
+	vcm31_sku = of_property_read_bool(of_chosen,
+					       "nvidia,t210-vcm31-sku");
 #endif
 	switch (sku) {
 	case 0x01: /* Engg sku */
@@ -125,11 +128,21 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 	case 0x07:
 	case 0x17:
 	case 0x27:
-		cpu_speedo_id = shield_sku ? 2 : 0;
-		soc_speedo_id = 0;
-		gpu_speedo_id = 1;
-		threshold_index = 0;
-		core_min_mv = 825;
+		if (!vcm31_sku || (sku != 0x17)) {
+			cpu_speedo_id = shield_sku ? 2 : 0;
+			soc_speedo_id = 0;
+			gpu_speedo_id = 1;
+			threshold_index = 0;
+			core_min_mv = 825;
+			break;
+		}
+		/* fall thru for vcm31_sku 0x17 */
+	case 0x57:
+		cpu_speedo_id = 4;
+		soc_speedo_id = 1;
+		gpu_speedo_id = 5;
+		threshold_index = 1;
+		core_min_mv = 1100;
 		break;
 	case 0x83:
 		if (a02) {
@@ -147,13 +160,6 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 		gpu_speedo_id = 3;
 		threshold_index = 0;
 		core_min_mv = 825;
-		break;
-	case 0x57:
-		cpu_speedo_id = 4;
-		soc_speedo_id = 1;
-		gpu_speedo_id = 5;
-		threshold_index = 1;
-		core_min_mv = 1100;
 		break;
 	default:
 		pr_warn("Tegra21: Unknown SKU %d\n", sku);
