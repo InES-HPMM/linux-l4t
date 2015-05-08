@@ -200,12 +200,13 @@ static int __nvmap_init_dt(struct platform_device *pdev)
 	return 0;
 }
 
-static void nvmap_co_device_init(struct reserved_mem *rmem, struct device *dev)
+static int nvmap_co_device_init(struct reserved_mem *rmem, struct device *dev)
 {
 	tegra_carveout_start = rmem->base;
 	tegra_carveout_size = rmem->size;
 	dev_dbg(dev, "carveout=%s %pa@%pa\n",
 		 rmem->name, &tegra_carveout_size, &tegra_carveout_start);
+	return 0;
 }
 static void nvmap_co_device_release(struct reserved_mem *rmem,struct device *dev)
 { }
