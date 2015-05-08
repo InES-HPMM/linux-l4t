@@ -35,6 +35,7 @@
 #include "oztrace.h"
 #include "ozurbparanoia.h"
 #include "ozhcd.h"
+#include "ozkobject.h"
 #include "ozpd.h"
 #include "ozproto.h"
 #include "ozusbsvc.h"
@@ -760,6 +761,7 @@ void *oz_hcd_pd_arrived(void *hpd)
 		usb_hcd_poll_rh_status(ozhcd->hcd);
 	} else {
 		spin_unlock_bh(&ozhcd->hcd_lock);
+		oz_send_connection_denied();
 	}
 out:
 	if (ep) /* ep is non-null if not used. */

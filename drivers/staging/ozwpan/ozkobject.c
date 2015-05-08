@@ -7,6 +7,7 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/netdevice.h>
+#include <linux/semaphore.h>
 #include <linux/sysfs.h>
 #include <linux/version.h>
 #include "ozpd.h"
@@ -241,7 +242,7 @@ static ssize_t debug_store(struct kobject *kobj, struct kobj_attribute *attr,
 		if (1 == count && *t == '\0')
 			g_debug = 0;
 	}
-	
+
 	return count;
 }
 
@@ -265,6 +266,22 @@ static ssize_t max_devices_show(struct kobject *kobj,
 				struct kobj_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%d\n", OZ_MAX_PDS);
+}
+
+static struct semaphore connection_denied_semaphore = /* initially locked */
+	__SEMAPHORE_INITIALIZER(connection_denied_semaphore, 0);
+
+static size_t connection_denied_show(struct kobject *kobj,
+				struct kobj_attribute *attr, char *buf)
+{
+	if (down_interruptible(&connection_denied_semaphore))
+		return -EINTR; /* Signal received */
+	return sprintf(buf, "denied\n");
+}
+
+void oz_send_connection_denied()
+{
+	up(&connection_denied_semaphore);
 }
 
 static struct kobj_attribute devices_attribute =
@@ -294,6 +311,9 @@ static struct kobj_attribute latency_attribute =
 static struct kobj_attribute max_devices_attribute =
 	__ATTR(max_devices, 0444, max_devices_show, NULL);
 
+static struct kobj_attribute connection_denied_attribute =
+	__ATTR(connection_denied, 0444, connection_denied_show, NULL);
+
 static struct attribute *attrs[] = {
 	&devices_attribute.attr,
 	&stop_attribute.attr,
@@ -304,6 +324,7 @@ static struct attribute *attrs[] = {
 	&fptr_attribute.attr,
 	&latency_attribute.attr,
 	&max_devices_attribute.attr,
+	&connection_denied_attribute.attr,
 	NULL,
 };
 

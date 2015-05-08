@@ -1,6 +1,7 @@
 /* -----------------------------------------------------------------------------
  * Copyright (c) 2011 Ozmo Inc
  * Released under the GNU General Public License Version 2 (GPLv2).
+ * Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
  * -----------------------------------------------------------------------------
  */
 
@@ -10,6 +11,7 @@
 #define OZ_MAX_NW_IF	6
 
 void oz_create_sys_entry(void);
+void oz_send_connection_denied(void);
 void oz_destroy_sys_entry(void);
 void oz_set_serial_mode(u8 mode);
 u8 oz_get_serial_mode(void);
