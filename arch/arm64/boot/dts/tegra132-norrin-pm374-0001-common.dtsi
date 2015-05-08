@@ -43,7 +43,7 @@
 	firmware {
 		android {
 			compatible = "android,firmware";
-			hardware = "norrrin";
+			hardware = "norrin";
 		};
 	};
 
