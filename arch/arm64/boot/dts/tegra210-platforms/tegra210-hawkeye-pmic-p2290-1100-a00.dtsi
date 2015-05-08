@@ -408,6 +408,8 @@
 				ti,temp-range = <10 15 25 45 50 60>;
 				ti,charge-thermal-voltage-limit = <4352 4352 4352 4352 4200 4200>;
 				ti,charge-current-limit = <520 1040 2600 2600 2600 520>;
+				ti,thermal-zone = "Battery";
+				ti,temp-polling-time-sec = <20>;
 			};
 
 			usb0_vbus: vbus {
