@@ -513,6 +513,11 @@ static int tegra12x_gpu_unpowergate(int id,
 
 	udelay(10);
 
+	/* Flush MC 1st time after boot or rail-gate */
+	tegra_powergate_mc_flush(id);
+
+	udelay(10);
+
 	tegra_powergate_mc_flush_done(id);
 
 	udelay(10);
