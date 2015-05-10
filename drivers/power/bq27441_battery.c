@@ -922,7 +922,13 @@ static int bq27441_get_property(struct power_supply *psy,
 					&temperature);
 			if (ret < 0) {
 				dev_err(&chip->client->dev, "temp invalid %d\n", ret);
-				break;
+				chip->read_failed++;
+				if (chip->read_failed > 50)
+					break;
+				temperature = chip->temperature;
+			} else {
+				chip->read_failed = 0;
+				chip->temperature = temperature;
 			}
 			val->intval = temperature * 10;
 		}
@@ -1207,6 +1213,9 @@ static int bq27441_probe(struct i2c_client *client,
 	/* remove temperature property if it is not supported */
 	if (!chip->enable_temp_prop && !chip->pdata->tz_name)
 		chip->battery.num_properties--;
+
+	if (!chip->enable_temp_prop && chip->pdata->tz_name)
+		chip->temperature = 23;
 
 	chip->regmap = devm_regmap_init_i2c(client, &bq27441_regmap_config);
 	if (IS_ERR(chip->regmap)) {
