@@ -651,7 +651,7 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 		goto end;
 	}
 
-	policy->max = policy->cpu_max = drv->adsp_freq / 1000;
+	policy->max = policy->cpu_max = drv->adsp_freq; /* adsp_freq in KHz */
 
 	policy->min = policy->cpu_min = adsp_cpu_freq_table[0] / 1000;
 

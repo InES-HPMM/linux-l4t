@@ -809,6 +809,7 @@ static int nvadsp_set_boot_freqs(struct nvadsp_drv_data *drv_data)
 	os_args->timer_prescalar = cur_index - 1;
 
 	adsp_freq = cur_index * MIN_ADSP_FREQ;
+	drv_data->adsp_freq = adsp_freq / 1000; /* adsp_freq in KHz*/
 
 #ifdef CONFIG_TEGRA_ADSP_ACTMON
 	ape_freq = adsp_freq / ADSP_TO_APE_CLK_RATIO;
