@@ -19,10 +19,6 @@
 #ifndef __MACH_TEGRA_MC_H
 #define __MACH_TEGRA_MC_H
 
-/* !!!FIXME!!! IMPLEMENT ME */
-#define tegra_mc_set_priority(client, prio) \
-	do { /* nothing for now */ } while (0)
-
 /*
  * Maximum number of unique interrupts . DT specifies the actual number.
  */
