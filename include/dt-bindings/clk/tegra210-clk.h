@@ -39,7 +39,7 @@
 #define TEGRA210_CLK_ID_PWM		17
 #define TEGRA210_CLK_ID_I2S2		18
 /* ID 19 is reserved */
-/* FIXME: ID 20 to be assigned */
+#define TEGRA210_CLK_ID_VI		20
 /* ID 21 is reserved */
 #define TEGRA210_CLK_ID_USBD		22
 #define TEGRA210_CLK_ID_ISPA		23
@@ -118,7 +118,7 @@
 #define TEGRA210_CLK_ID_SATA_OOB	123
 #define TEGRA210_CLK_ID_SATA		124
 #define TEGRA210_CLK_ID_HDA		125
-/* FIXME: ID 126 to be assigned */
+/* ID 126 is reserved */
 #define TEGRA210_CLK_ID_SE		127
 #define TEGRA210_CLK_ID_HDA2HDMI	128
 #define TEGRA210_CLK_ID_SATA_COLD	129
@@ -252,7 +252,12 @@
 #define TEGRA210_CLK_ID_DFLL_CPU	280
 #define TEGRA210_CLK_ID_DFLL_REF	281 /* Share enb bit w DFLL_SOC */
 #define TEGRA210_CLK_ID_SPDIF_IN	282 /* Share enb bit with SPDIF_OUT */
-/* IDs 282 ... 289 are reserved */
+#define TEGRA210_CLK_ID_FUSE_BURN	283 /* Share enb bit with FUSE */
+#define TEGRA210_CLK_ID_SDMMC1_DDR	284 /* Share enb bit with SDMMC1 */
+#define TEGRA210_CLK_ID_SDMMC3_DDR	285 /* Share enb bit with SDMMC3 */
+#define TEGRA210_CLK_ID_SDMMC2_DDR	286 /* Share enb bit with SDMMC2 */
+#define TEGRA210_CLK_ID_SDMMC4_DDR	287 /* Share enb bit with SDMMC4 */
+/* IDs 288 ... 289 are reserved */
 #define TEGRA210_CLK_ID_SPDIF_IN_SYNC	290 /* No enb bit for sync clocks */
 #define TEGRA210_CLK_ID_I2S0_SYNC	291
 #define TEGRA210_CLK_ID_I2S1_SYNC	292
