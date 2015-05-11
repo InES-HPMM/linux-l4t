@@ -31,6 +31,7 @@
 #include <mach/dc.h>
 #include <mach/tegra_dc_ext.h>
 #include <trace/events/display.h>
+#include <linux/tegra-timer.h>
 
 /* XXX ew */
 #include "../dc_priv.h"
@@ -120,6 +121,18 @@ struct tegra_dc_ext_flip_data {
 
 static int tegra_dc_ext_set_vblank(struct tegra_dc_ext *ext, bool enable);
 static void tegra_dc_ext_unpin_window(struct tegra_dc_ext_win *win);
+
+/* tegra_firstfrm_timestamp : shows timestamp since coldboot/hw reset */
+static inline void tegra_firstfrm_timestamp(struct tegra_dc_ext *ext)
+{
+	static bool once;
+
+	if (unlikely(!once)) {
+		dev_info(&ext->dc->ndev->dev, "first frame flipped [%u]us\n",
+			tegra_read_usec_raw());
+		once = true;
+	}
+}
 
 static inline s64 tegra_timespec_to_ns(const struct tegra_timespec *ts)
 {
@@ -761,6 +774,7 @@ static void tegra_dc_ext_flip_worker(struct kthread_work *work)
 		tegra_dc_program_bandwidth(dc, true);
 		if (!tegra_dc_has_multiple_dc())
 			tegra_dc_call_flip_callback();
+		tegra_firstfrm_timestamp(ext);
 	}
 
 	if (!skip_flip) {
