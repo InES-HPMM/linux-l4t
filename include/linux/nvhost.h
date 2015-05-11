@@ -307,6 +307,10 @@ struct nvhost_device_data {
 
 	/* Override flag for a device */
 	bool forced_map_on_open;
+
+	/* channel user context list */
+	struct mutex userctx_list_lock;
+	struct list_head userctx_list;
 };
 
 

@@ -34,4 +34,7 @@ int nvhost_write_module_regs(struct platform_device *ndev,
 
 int nvhost_client_user_init(struct platform_device *dev);
 
+struct nvhost_channel *nvhost_find_chan_by_clientid(
+				struct platform_device *pdev,
+				int clientid);
 #endif
