@@ -318,6 +318,10 @@ struct nvhost_device_data {
 
 	/* Should we enable context isolation for this device? */
 	bool isolate_contexts;
+
+	/* channel user context list */
+	struct mutex userctx_list_lock;
+	struct list_head userctx_list;
 };
 
 

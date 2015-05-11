@@ -93,6 +93,7 @@ struct tegra_vhost_channel_clientid_params {
 
 struct tegra_vhost_channel_submit_params {
 	u32 clientid;
+	u32 job_id;
 	u32 num_entries;
 	u32 timeout;
 };
@@ -124,6 +125,7 @@ struct tegra_vhost_cmd_msg {
 
 enum {
 	TEGRA_VHOST_EVENT_SYNCPT_INTR = 0,
+	TEGRA_VHOST_EVENT_CHAN_TIMEOUT_INTR,
 	TEGRA_VHOST_EVENT_ABORT
 };
 
@@ -132,10 +134,18 @@ struct tegra_vhost_syncpt_intr_info {
 	u32 thresh;
 };
 
+struct tegra_vhost_chan_timeout_intr_info {
+	u32 module_id;
+	u32 client_id;
+	u32 job_id_start;
+	u32 job_id_end;
+};
+
 struct tegra_vhost_intr_msg {
 	unsigned int event;
 	union {
 		struct tegra_vhost_syncpt_intr_info syncpt_intr;
+		struct tegra_vhost_chan_timeout_intr_info chan_timeout;
 	} info;
 };
 
