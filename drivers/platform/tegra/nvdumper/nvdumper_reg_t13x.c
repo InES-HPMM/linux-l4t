@@ -1,7 +1,7 @@
 /*
  * arch/arm64/mach-tegra/nvdumper_regdump.c
  *
- * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -20,7 +20,7 @@
 #include <linux/sched.h>
 #include <linux/dma-mapping.h>
 #include <asm/cacheflush.h>
-#include <nvdumper.h>
+#include "nvdumper.h"
 
 #define THREAD_INFO(sp) ((struct thread_info *) \
 		((unsigned long)(sp) & ~(THREAD_SIZE - 1)))
