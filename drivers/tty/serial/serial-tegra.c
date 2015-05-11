@@ -214,11 +214,28 @@ static void set_dtr(struct tegra_uart_port *tup, bool active)
 	return;
 }
 
+static void set_loopbk(struct tegra_uart_port *tup, bool active)
+{
+	unsigned long mcr;
+
+	mcr = tup->mcr_shadow;
+	if (active)
+		mcr |= UART_MCR_LOOP;
+	else
+		mcr &= ~UART_MCR_LOOP;
+	if (mcr != tup->mcr_shadow) {
+		tegra_uart_write(tup, mcr, UART_MCR);
+		tup->mcr_shadow = mcr;
+	}
+	return;
+}
+
 static void tegra_uart_set_mctrl(struct uart_port *u, unsigned int mctrl)
 {
 	struct tegra_uart_port *tup = to_tegra_uport(u);
 	unsigned long mcr;
 	int dtr_enable;
+	int loopbk_enable;
 
 	mcr = tup->mcr_shadow;
 	tup->rts_active = !!(mctrl & TIOCM_RTS);
@@ -226,6 +243,10 @@ static void tegra_uart_set_mctrl(struct uart_port *u, unsigned int mctrl)
 
 	dtr_enable = !!(mctrl & TIOCM_DTR);
 	set_dtr(tup, dtr_enable);
+
+	loopbk_enable = !!(mctrl & TIOCM_LOOP);
+	set_loopbk(tup, loopbk_enable);
+
 	return;
 }
 
