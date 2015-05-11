@@ -20,15 +20,12 @@
 #include <linux/tegra-ivc.h>
 #include <linux/spinlock.h>
 #include <linux/hardirq.h>
+#include <linux/interrupt.h>
 
 #include "nvavp_dev_ivc.h"
 
 static struct ivc_dev *saved_ivc_dev;
 static int ivc_poll = 1;
-
-void ivc_rx_signal(struct tegra_hv_ivc_cookie *);
-/* Not used with polling based implementation */
-static const struct tegra_hv_ivc_ops ivc_ops = { ivc_rx_signal, NULL };
 
 static int ivc_send(struct ivc_ctxt *ictxt,
 		struct ivc_msg *msg, int size)
@@ -166,6 +163,12 @@ static int ivc_send_recv(struct ivc_ctxt *ictxt, struct ivc_msg *tx_msg,
 	if (!saved_ivc_dev)
 		return err;
 
+	if (tegra_hv_ivc_channel_notified(ictxt->ivck)) {
+		pr_warn("%s: Skipping work since queue is not ready\n",
+				__func__);
+		return 0;
+	}
+
 	/* Serialize requests per ASID */
 	spin_lock_irqsave(&ictxt->lock, flags);
 
@@ -189,16 +192,6 @@ static int ivc_send_recv(struct ivc_ctxt *ictxt, struct ivc_msg *tx_msg,
 fail:
 	spin_unlock_irqrestore(&ictxt->lock, flags);
 	return err;
-}
-
-
-void ivc_rx_signal(struct tegra_hv_ivc_cookie *ivck)
-{
-	struct ivc_ctxt *ictxt = NULL;
-
-	ictxt = saved_ivc_dev->ictxt;
-	ictxt->rx_state = RX_AVAIL;
-	wake_up(&ictxt->wait);
 }
 
 /* Every communication with the server is identified
@@ -235,7 +228,8 @@ struct ivc_ctxt *nvavp_ivc_alloc_ctxt(struct ivc_dev *ivcdev)
 	}
 
 	ictxt->ivck = ivcdev->ivck;
-	init_waitqueue_head(&ictxt->wait);
+	if (!ivc_poll)
+		init_waitqueue_head(&ictxt->wait);
 	ictxt->timeout = 250; /* Not used in polling */
 	ictxt->rx_state = RX_INIT;
 	ictxt->ivcdev = ivcdev;
@@ -285,6 +279,20 @@ void nvavp_ivc_deinit(struct ivc_dev *idev)
 	devm_kfree(idev->dev, idev);
 }
 
+static irqreturn_t hv_nvavp_isr(int irq, void *dev_id)
+{
+	struct ivc_ctxt *ictxt = NULL;
+	ictxt = saved_ivc_dev->ictxt;
+
+	if (!ictxt)
+		return IRQ_HANDLED;
+
+	if (!ivc_poll)
+		wake_up(&ictxt->wait);
+
+	return IRQ_HANDLED;
+}
+
 struct ivc_dev *nvavp_ivc_init(struct device *dev)
 {
 	int err, ivc_queue;
@@ -311,10 +319,7 @@ struct ivc_dev *nvavp_ivc_init(struct device *dev)
 		return ERR_PTR(-EINVAL);
 	}
 
-	if (ivc_poll)
-		ivck = tegra_hv_ivc_reserve(hv_dn, ivc_queue, NULL);
-	else
-		ivck = tegra_hv_ivc_reserve(hv_dn, ivc_queue, &ivc_ops);
+	ivck = tegra_hv_ivc_reserve(hv_dn, ivc_queue, NULL);
 	if (IS_ERR_OR_NULL(ivck)) {
 		dev_err(dev, "Failed to reserve ivc queue %d\n", ivc_queue);
 		if (ivck == ERR_PTR(-EPROBE_DEFER))
@@ -336,6 +341,22 @@ struct ivc_dev *nvavp_ivc_init(struct device *dev)
 	spin_lock_init(&ivcdev->ivck_rx_lock);
 	spin_lock_init(&ivcdev->ivck_tx_lock);
 	spin_lock_init(&ivcdev->lock);
+
+	/* Our comm_dev is ready, so enable irq here. But channels are
+	 * not yet allocated, we need to take care of that in the
+	 * handler
+	 */
+	err = request_threaded_irq(ivck->irq, hv_nvavp_isr, NULL, 0,
+			dev_name(dev), ivcdev);
+	if (err) {
+		devm_kfree(dev, ivcdev);
+		tegra_hv_ivc_unreserve(ivck);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	/* set ivc channel to invalid state */
+	tegra_hv_ivc_channel_reset(ivck);
+
 	return ivcdev;
 }
 
