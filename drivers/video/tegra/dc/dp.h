@@ -36,6 +36,8 @@
 #define DP_AUX_TIMEOUT_MS		40
 #define DP_DPCP_RETRY_SLEEP_NS		400
 
+ #define TEGRA_NVHDCP_MAX_DEVS	127
+
 static const u32 tegra_dp_vs_regs[][4][4] = {
 	/* postcursor2 L0 */
 	{
@@ -277,7 +279,10 @@ struct tegra_dc_dp_data {
 
 	struct tegra_dp_out		*pdata;
 
-	struct mutex			dpaux_lock;
+	struct mutex		dpaux_lock;
+	struct mutex            lock;
+	struct tegra_dphdcp   *dphdcp;
+
 };
 
 static inline u32 tegra_dp_wait_aux_training(struct tegra_dc_dp_data *dp,
@@ -299,7 +304,10 @@ int tegra_dc_dpaux_write(struct tegra_dc_dp_data *dp, u32 cmd, u32 addr,
 void tegra_dc_dp_pre_disable_link(struct tegra_dc_dp_data *dp);
 void tegra_dc_dp_disable_link(struct tegra_dc_dp_data *dp, bool powerdown);
 void tegra_dc_dp_enable_link(struct tegra_dc_dp_data *dp);
-
+int tegra_dc_dpaux_read_chunk_locked(struct tegra_dc_dp_data *dp,
+	u32 cmd, u32 addr, u8 *data, u32 *size, u32 *aux_stat);
+int tegra_dc_dpaux_write_chunk_locked(struct tegra_dc_dp_data *dp,
+	u32 cmd, u32 addr, u8 *data, u32 *size, u32 *aux_stat);
 
 /* DPCD definitions */
 #define NV_DPCD_REV					(0x00000000)
@@ -433,4 +441,37 @@ void tegra_dc_dp_enable_link(struct tegra_dc_dp_data *dp);
 #define NV_DPCD_HDCP_BINFO_OFFSET			(0x0006802A)
 #define NV_DPCD_HDCP_KSV_FIFO_OFFSET			(0x0006802C)
 #define NV_DPCD_HDCP_AINFO_OFFSET			(0x0006803B)
+#define NV_DPCP_HDCP_SHA_H0_OFFSET			(0x00068014)
+#define NV_DPCP_HDCP_SHA_H1_OFFSET			(0x00068018)
+#define NV_DPCP_HDCP_SHA_H2_OFFSET			(0x0006801C)
+#define NV_DPCP_HDCP_SHA_H3_OFFSET			(0x00068020)
+#define NV_DPCP_HDCP_SHA_H4_OFFSET			(0x00068024)
+/* DP 2.2 specific registers */
+#define NV_DPCD_HDCP_RTX_OFFSET				(0x00069000)
+#define NV_DPCD_HDCP_TXCAPS_OFFSET			(0x00069008)
+#define NV_DPCD_HDCP_CERT_RX_OFFSET			(0x0006900B)
+#define NV_DPCD_HDCP_CERT_RRX_OFFSET			(0x00069215)
+#define NV_DPCD_HDCP_CERT_RXCAPS_OFFSET			(0x0006921D)
+#define NV_DPCD_HDCP_EKM_NOSTORED			(0x69220)
+#define NV_DPCD_HDCP_EKM_STORED				(0x692A0)
+#define NV_DPCD_HDCP_M					(0x692B0)
+#define NV_DPCD_HDCP_HPRIME				(0x000692C0)
+#define NV_DPCD_HDCP_EKM_PAIRING			(0x0000692E0)
+#define NV_DPCD_HDCP_RN					(0x000692F0)
+#define NV_DPCD_HDCP_LPRIME				(0x000692F8)
+#define NV_DPCD_HDCP_EKS				(0x00069318)
+#define NV_DPCD_HDCP_R4					(0x00069328)
+#define NV_DPCD_HDCP_RXINFO				(0x00069330)
+#define NV_DPCD_HDCP_SEQNUM_V				(0x00069332)
+#define NV_DPCD_HDCP_VPRIME				(0x00069335)
+#define NV_DPCD_HDCP_RX_ID_LIST				(0x00069345)
+#define NV_DPCD_HDCP_V					(0x000693E0)
+#define NV_DPCD_HDCP_SEQ_NUM_M				(0x000693F0)
+#define NV_DPCD_HDCP_K					(0x000693F3)
+#define NV_DPCD_HDCP_STRMID_TYPE			(0x000693F5)
+#define NV_DPCD_HDCP_MPRIME				(0x00069473)
+#define NV_DPCD_HDCP_RXSTATUS				(0x00069493)
+#define NV_DPCD_HDCP_RSVD				(0x00069494)
+#define NV_DPCD_HDCP_DBG				(0x00069518)
 #endif
+

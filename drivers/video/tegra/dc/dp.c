@@ -38,6 +38,7 @@
 #include "dpaux.h"
 #include "dc_priv.h"
 #include "edid.h"
+#include "dphdcp.h"
 
 #ifdef CONFIG_TEGRA_DC_FAKE_PANEL_SUPPORT
 #include "fake_panel.h"
@@ -255,7 +256,7 @@ fail:
 	return -EINVAL;
 }
 
-static int tegra_dc_dpaux_write_chunk_locked(struct tegra_dc_dp_data *dp,
+int tegra_dc_dpaux_write_chunk_locked(struct tegra_dc_dp_data *dp,
 	u32 cmd, u32 addr, u8 *data, u32 *size, u32 *aux_stat)
 {
 	int err = 0;
@@ -402,7 +403,7 @@ int tegra_dc_dpaux_write(struct tegra_dc_dp_data *dp, u32 cmd, u32 addr,
 	return ret;
 }
 
-static int tegra_dc_dpaux_read_chunk_locked(struct tegra_dc_dp_data *dp,
+int tegra_dc_dpaux_read_chunk_locked(struct tegra_dc_dp_data *dp,
 	u32 cmd, u32 addr, u8 *data, u32 *size, u32 *aux_stat)
 {
 	int err = 0;
@@ -1846,6 +1847,17 @@ static int tegra_dc_dp_init(struct tegra_dc *dc)
 		tegra_dc_set_edid(dc, dp->dp_edid);
 	}
 
+	#ifdef CONFIG_TEGRA_DPHDCP
+	dp->dphdcp = tegra_dphdcp_create(dp, dc->ndev->id,
+			dc->out->ddc_bus);
+	if (IS_ERR_OR_NULL(dp->dphdcp)) {
+		err = PTR_ERR(dp->dphdcp);
+		goto err_free_dp;
+	}
+	/* create a /d entry to change the max retries */
+	tegra_dphdcp_debugfs_init(dp->dphdcp);
+	#endif
+
 	INIT_WORK(&dp->lt_work, tegra_dp_lt_worker);
 	INIT_WORK(&dp->hpd_work, tegra_dp_hpd_worker);
 	init_completion(&dp->hpd_plug);
@@ -2550,6 +2562,7 @@ static void tegra_dc_dp_enable(struct tegra_dc *dc)
 
 	tegra_dc_sor_attach(dp->sor);
 	tegra_dc_setup_clk(dc, dc->clk);
+	tegra_dphdcp_set_plug(dp->dphdcp, true);
 	if (!tegra_dc_is_ext_dp_panel(dc))
 		tegra_dp_default_int(dp, false);
 	tegra_dc_io_end(dc);
@@ -2618,6 +2631,7 @@ static void tegra_dc_dp_disable(struct tegra_dc *dc)
 		return;
 	}
 
+	tegra_dphdcp_set_plug(dp->dphdcp, false);
 	tegra_dpaux_pad_power(dp->dc,
 	dp->dc->ndev->id == 0 ? TEGRA_DPAUX_INSTANCE_0 : TEGRA_DPAUX_INSTANCE_1
 		, false);

@@ -1,7 +1,7 @@
 /*
  * include/video/nvhdcp.h
  *
- * Copyright (c) 2010-2014, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2015, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -57,7 +57,7 @@ struct tegra_nvhdcp_packet {
 	__u64	c_n;			// (IN) upstream exchange number
 	__u64	c_ksv;			// (IN)
 
-	__u32	b_status;	// (OUT) link/repeater status
+	__u32	b_status;	/* (OUT) link/repeater status for HDMI */
 	__u64	hdcp_status;	// (OUT) READ_S
 	__u64	cs;		// (OUT) Connection State
 
@@ -76,6 +76,9 @@ struct tegra_nvhdcp_packet {
 	__u64	bksv_list[TEGRA_NVHDCP_MAX_DEVS];
 
 	__u32	hdcp22;
+
+	__u32	port; /* DP or HDMI */
+	__u32	binfo; /* (OUT) link/repeater status for DP */
 };
 
 /* parameters to TEGRAIO_NVHDCP_SET_POLICY */
@@ -91,5 +94,9 @@ struct tegra_nvhdcp_packet {
 #define TEGRAIO_NVHDCP_RENEGOTIATE	_IO('F', 0x75)
 #define TEGRAIO_NVHDCP_HDCP_STATE	_IOR('F', 0x76, struct tegra_nvhdcp_packet)
 #define TEGRAIO_NVHDCP_RECV_CAPABLE	_IOR('F', 0x77, __u32)
+
+/* distinguish between HDMI and DP ports */
+#define TEGRA_NVHDCP_PORT_DP	2
+#define TEGRA_NVHDCP_PORT_HDMI	3
 
 #endif

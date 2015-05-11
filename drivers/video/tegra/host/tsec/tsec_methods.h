@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/host/tsec/tsec_methods.h
  *
- * Copyright (c) 2014, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -67,7 +67,7 @@
 #define    ID_SEND_RPTR_STREAM_MANAGE  16
 #define    ID_SEND_RPTR_STREAM_READY   17
 
-/* Message size */
+/* Message size for hdmi */
 #define    SIZE_AKE_INIT                12
 #define    SIZE_AKE_SEND_CERT           534
 #define    SIZE_AKE_NO_STORED_KM        129
@@ -81,6 +81,24 @@
 #define    SIZE_SEND_RPTR_ACK           17
 #define    SIZE_SEND_RPTR_STREAM_MANAGE (6+2*MAX_STREAMS)
 #define    SIZE_SEND_RPTR_STREAM_READY  33
+
+/* Message size for display port */
+#define    SIZE_AKE_DP_INIT_RTX			8
+#define	   SIZE_AKE_DP_INIT_TXCAPS		3
+#define    SIZE_AKE_DP_SEND_CERT_TRX		522
+#define    SIZE_AKE_DP_SEND_CERT_RRX		8
+#define    SIZE_AKE_DP_SEND_CERT_RXCAPS		3
+#define    SIZE_AKE_DP_NO_STORED_KM		128
+#define    SIZE_AKE_DP_STORED_KM		32
+#define    SIZE_AKE_DP_SEND_HPRIME		32
+#define    SIZE_AKE_DP_SEND_PAIRING_INFO	16
+#define    SIZE_DP_LC_INIT			8
+#define    SIZE_DP_LC_SEND_LPRIME		32
+#define    SIZE_DP_SKE_SEND_EKS			24
+#define    SIZE_DP_SEND_RCVR_ID_LIST		(21+5*MAX_DEVS)
+#define    SIZE_DP_SEND_RPTR_ACK		16
+#define    SIZE_DP_SEND_RPTR_STREAM_MANAGE	(5+2*MAX_STREAMS)
+#define    SIZE_DP_SEND_RPTR_STREAM_READY	32
 
 #define SET_APPLICATION_ID                     (0x00000200)
 #define SET_APPLICATION_ID_ID_HDCP             (0x00000001)
