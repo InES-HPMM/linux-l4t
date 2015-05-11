@@ -55,6 +55,7 @@
 				nvidia,dsi-panel-reset = <TEGRA_DSI_ENABLE>;
 				nvidia,dsi-ulpm-not-support = <TEGRA_DSI_ENABLE>;
 				nvidia,dsi-suspend-stop-stream-late = <TEGRA_DSI_ENABLE>;
+				nvidia,dsi-power-saving-suspend = <1>;
 				nvidia,dsi-init-cmd =
 							/* Long  Packet: <PACKETTYPE[u8] COMMANDID[u8] PAYLOADCOUNT[u16] ECC[u8] PAYLOAD[..] CHECKSUM[u16]> */
 							/* Short Packet: <PACKETTYPE[u8] COMMANDID[u8] DATA0[u8] DATA1[u8] ECC[u8]> */
@@ -65,12 +66,12 @@
 							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_SET_DISPLAY_ON 0x0 0x0>,
 							<TEGRA_DSI_DELAY_MS 50>;
 				nvidia,dsi-n-init-cmd = <4>;
-				nvidia,dsi-early-suspend-cmd =
+				nvidia,dsi-suspend-cmd =
 							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_SET_DISPLAY_OFF 0x0 0x0>,
 							<TEGRA_DSI_DELAY_MS 40>,
 							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_ENTER_SLEEP_MODE 0x0 0x0>,
 							<TEGRA_DSI_DELAY_MS 200>;
-				nvidia,dsi-n-early-suspend-cmd = <4>;
+				nvidia,dsi-n-suspend-cmd = <4>;
 				nvidia,dsi-pkt-seq =
 					<CMD_VS LEN_SHORT PKT_LP LINE_STOP>,
 					<CMD_HS LEN_SHORT PKT_LP LINE_STOP>,
