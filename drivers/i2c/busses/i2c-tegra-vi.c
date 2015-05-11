@@ -520,9 +520,12 @@ static inline int tegra_vi_i2c_power_enable(struct tegra_vi_i2c_dev *i2c_dev)
 	}
 
 	ret = regulator_enable(i2c_dev->reg);
+	if (ret)
+		return ret;
+
 	tegra_unpowergate_partition(TEGRA_POWERGATE_VE);
 
-	return ret;
+	return 0;
 }
 
 static inline int tegra_vi_i2c_power_disable(struct tegra_vi_i2c_dev *i2c_dev)
@@ -1189,16 +1192,10 @@ static int tegra_vi_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	i2c_dev->msgs = msgs;
 	i2c_dev->msgs_num = num;
 
-	pm_runtime_get_sync(&adap->dev);
-	ret = tegra_vi_i2c_power_enable(i2c_dev);
+	ret = pm_runtime_get_sync(&adap->dev);
 	if (ret < 0)
 		goto i2c_xfer_pwr_fail;
 
-	ret = tegra_vi_i2c_clock_enable(i2c_dev);
-	if (ret < 0) {
-		dev_err(i2c_dev->dev, "Clock enable failed %d\n", ret);
-		goto i2c_xfer_clk_fail;
-	}
 	tegra_vi_i2c_init(i2c_dev);
 
 	for (i = 0; i < num; i++) {
@@ -1242,12 +1239,10 @@ static int tegra_vi_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 		}
 	}
 
-	tegra_vi_i2c_clock_disable(i2c_dev);
-i2c_xfer_clk_fail:
-	tegra_vi_i2c_power_disable(i2c_dev);
-i2c_xfer_pwr_fail:
-	pm_runtime_put(&adap->dev);
+	pm_runtime_mark_last_busy(&adap->dev);
+	pm_runtime_put_autosuspend(&adap->dev);
 
+i2c_xfer_pwr_fail:
 	i2c_dev->msgs = NULL;
 	i2c_dev->msgs_num = 0;
 
@@ -1559,6 +1554,10 @@ skip_pinctrl:
 	pm_runtime_enable(&i2c_dev->adapter.dev);
 	tegra_vi_i2c_gpio_init(i2c_dev);
 
+	/* set 100ms autosuspend delay for the adapter device */
+	pm_runtime_set_autosuspend_delay(&i2c_dev->adapter.dev, 100);
+	pm_runtime_use_autosuspend(&i2c_dev->adapter.dev);
+
 	return 0;
 }
 
@@ -1601,6 +1600,15 @@ static int tegra_vi_i2c_suspend_noirq(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_vi_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
 
+	/*
+	 * device_prepare takes one ref, so expect usage count to
+	 * be 1 at this point.
+	 */
+#ifdef CONFIG_PM_RUNTIME
+	if (atomic_read(&dev->power.usage_count) > 1)
+		return -EBUSY;
+#endif
+
 	i2c_lock_adapter(&i2c_dev->adapter);
 
 	if (i2c_dev->pull_up_supply)
@@ -1612,7 +1620,6 @@ static int tegra_vi_i2c_suspend_noirq(struct device *dev)
 
 	return 0;
 }
-
 
 static int __tegra_vi_i2c_resume_noirq(struct tegra_vi_i2c_dev *i2c_dev)
 {
@@ -1647,15 +1654,55 @@ static int tegra_vi_i2c_resume_noirq(struct device *dev)
 
 	return 0;
 }
+#endif
+
+#ifdef CONFIG_PM_RUNTIME
+
+int tegra_vi_i2c_runtime_resume(struct device *dev)
+{
+	struct tegra_vi_i2c_dev *i2c_dev = dev_get_drvdata(dev);
+	int ret;
+
+	ret = tegra_vi_i2c_power_enable(i2c_dev);
+	if (ret)
+		goto err_power_enable;
+
+	ret = tegra_vi_i2c_clock_enable(i2c_dev);
+	if (ret)
+		goto err_clock_enable;
+
+	return 0;
+
+err_clock_enable:
+	tegra_vi_i2c_power_disable(i2c_dev);
+err_power_enable:
+	return ret;
+}
+
+int tegra_vi_i2c_runtime_suspend(struct device *dev)
+{
+	struct tegra_vi_i2c_dev *i2c_dev = dev_get_drvdata(dev);
+	int ret;
+
+	tegra_vi_i2c_clock_disable(i2c_dev);
+
+	ret = tegra_vi_i2c_power_disable(i2c_dev);
+	WARN_ON(ret);
+
+	return 0;
+}
+#endif
 
 static const struct dev_pm_ops tegra_vii2c_pm = {
+#ifdef CONFIG_PM_SLEEP
 	.suspend_noirq = tegra_vi_i2c_suspend_noirq,
 	.resume_noirq = tegra_vi_i2c_resume_noirq,
-};
-#define TEGRA_VII2C_PM	(&tegra_vii2c_pm)
-#else
-#define TEGRA_VII2C_PM	NULL
 #endif
+#ifdef CONFIG_PM_RUNTIME
+	.runtime_suspend = tegra_vi_i2c_runtime_suspend,
+	.runtime_resume = tegra_vi_i2c_runtime_resume,
+#endif
+};
 
 static struct platform_driver tegra_vii2c_driver = {
 	.probe   = tegra_vi_i2c_probe,
@@ -1666,7 +1713,7 @@ static struct platform_driver tegra_vii2c_driver = {
 		.name  = "tegra-vii2c",
 		.owner = THIS_MODULE,
 		.of_match_table = of_match_ptr(tegra_vii2c_of_match),
-		.pm    = TEGRA_VII2C_PM,
+		.pm    = &tegra_vii2c_pm,
 	},
 };
 
