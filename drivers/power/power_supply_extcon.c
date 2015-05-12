@@ -155,34 +155,8 @@ static struct power_supply_cables psy_cables[] = {
 
 static enum power_supply_property power_supply_extcon_props[] = {
 	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_CHARGER_TYPE,
 };
-
-static int power_supply_extcon_get_property(struct power_supply *psy,
-		enum power_supply_property psp, union power_supply_propval *val)
-{
-	int online;
-	int ret = 0;
-	struct power_supply_extcon *psy_extcon;
-
-	if (psy->type == POWER_SUPPLY_TYPE_MAINS) {
-		psy_extcon = container_of(psy, struct power_supply_extcon, ac);
-		online = psy_extcon->ac_online;
-	} else if (psy->type == POWER_SUPPLY_TYPE_USB) {
-		psy_extcon = container_of(psy, struct power_supply_extcon, usb);
-		online = psy_extcon->usb_online;
-	} else {
-		return -EINVAL;
-	}
-
-	switch (psp) {
-	case POWER_SUPPLY_PROP_ONLINE:
-		val->intval = online;
-		break;
-	default:
-		return -EINVAL;
-	}
-	return ret;
-}
 
 static bool psy_get_cable_state(struct power_supply_extcon *psy_extcon,
 		const char *cable_name)
@@ -210,6 +184,50 @@ static bool psy_get_cable_state(struct power_supply_extcon *psy_extcon,
 	if (ret >= 1)
 		return true;
 	return false;
+}
+
+static int power_supply_extcon_get_property(struct power_supply *psy,
+		enum power_supply_property psp, union power_supply_propval *val)
+{
+	int online;
+	int ret = 0;
+	int i = 0;
+	bool state = false;
+	struct power_supply_extcon *psy_extcon;
+	struct power_supply_cables *psy_cable;
+
+	if (psy->type == POWER_SUPPLY_TYPE_MAINS) {
+		psy_extcon = container_of(psy, struct power_supply_extcon, ac);
+		online = psy_extcon->ac_online;
+	} else if (psy->type == POWER_SUPPLY_TYPE_USB) {
+		psy_extcon = container_of(psy, struct power_supply_extcon, usb);
+		online = psy_extcon->usb_online;
+	} else {
+		return -EINVAL;
+	}
+
+	switch (psp) {
+	case POWER_SUPPLY_PROP_ONLINE:
+		val->intval = online;
+		break;
+	case POWER_SUPPLY_PROP_CHARGER_TYPE:
+		val->strval = "no cable";
+		for (i = 0; i < psy_extcon->max_psy_cables; ++i) {
+			psy_cable = &psy_extcon->psy_cables[i];
+			if (!psy_cable->ec_cable)
+				continue;
+
+			state = psy_get_cable_state(psy_extcon, psy_cable->name);
+			if (state) {
+				val->strval = psy_cable->name;
+				break;
+			}
+		}
+		break;
+	default:
+		return -EINVAL;
+	}
+	return ret;
 }
 
 static int power_supply_extcon_attach_cable(
