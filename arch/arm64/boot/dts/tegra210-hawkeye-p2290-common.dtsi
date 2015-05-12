@@ -1247,6 +1247,11 @@
 				};
 			};
 		};
+		sor1 {
+			hdmi-display {
+				nvidia,hdmi-vrr-caps = <1>;
+			};
+		};
 	};
 
 	soctherm@0x700E2000 {
