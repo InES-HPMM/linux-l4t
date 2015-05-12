@@ -22,7 +22,7 @@
 #include <linux/notifier.h>
 #include <linux/platform_device.h>
 
-#include <governor.h>
+#include "governor.h"
 
 struct wmark_gov_info {
 	/* probed from the devfreq */
