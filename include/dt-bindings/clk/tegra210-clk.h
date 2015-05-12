@@ -281,7 +281,7 @@
 /* IDs 310 ... 351 are reserved */
 
 /*
- * Clock IDs in the 352 ... 479 range are used identify tegra virtual clock
+ * Clock IDs in the 352 ... 511 range are used identify tegra virtual clock
  * objects, shared buses, and shared bus user objects.
  */
 #define TEGRA210_CLK_ID_VIRT_BASE	352 /* Not assigned to any clock */
@@ -347,7 +347,21 @@
 #define TEGRA210_CLK_ID_EMC_VIC_SHARED_USER		446
 #define TEGRA210_CLK_ID_EMC_APE_USER			447
 #define TEGRA210_CLK_ID_EMC_PCIE_USER			448
-
-/* FIXME: IDs 449 ... 479 to be assigned */
+/* IDs 449 ... 469 are reserved */
+#define TEGRA210_CLK_ID_SBUS				470
+#define TEGRA210_CLK_ID_SBUS_AVP_USER			471
+#define TEGRA210_CLK_ID_SBUS_USBD_USER			472
+#define TEGRA210_CLK_ID_SBUS_USBD1_USER			473
+#define TEGRA210_CLK_ID_SBUS_USBD2_USER			474
+#define TEGRA210_CLK_ID_SBUS_WAKE_USER			475
+#define TEGRA210_CLK_ID_SBUS_CAMERA_USER		476
+#define TEGRA210_CLK_ID_SBUS_MON_AVP_USER		477
+#define TEGRA210_CLK_ID_SBUS_SBC1_USER			478
+#define TEGRA210_CLK_ID_SBUS_SBC2_USER			479
+#define TEGRA210_CLK_ID_SBUS_SBC3_USER			480
+#define TEGRA210_CLK_ID_SBUS_SBC4_USER			481
+#define TEGRA210_CLK_ID_SBUS_QSPI_USER			482
+#define TEGRA210_CLK_ID_SBUS_BOOT_APB_USER		483
+/* IDs 484 ... 511 are reserved */
 
 #endif /* _DT_BINDINGS_CLK_TEGRA210_CLK_ID_H */
