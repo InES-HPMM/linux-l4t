@@ -19,12 +19,13 @@
 #ifndef __MACH_TEGRA_MC_H
 #define __MACH_TEGRA_MC_H
 
-/*
- * Maximum number of unique interrupts . DT specifies the actual number.
- */
 #define MC_MAX_INTR_COUNT	32
+#define MC_MAX_CHANNELS		8
+
+#define MC_BROADCAST_CHANNEL	-1
 
 extern int mc_intr_count;
+extern int mc_channels;
 
 struct mc_client {
 	const char *name;
@@ -34,79 +35,93 @@ struct mc_client {
 };
 
 extern void __iomem *mc;
-extern void __iomem *mc1;
+extern void __iomem *mc_regs[MC_MAX_CHANNELS];
 
 #include <linux/io.h>
 #include <linux/debugfs.h>
 
-/*
- * This must be either 1 or 2.
+/**
+ * Check if the MC has more than 1 channel.
  */
-extern int mc_channels;
-
-/*
- * Check if dual channel or not.
- */
-static inline int mc_dual_channel(void)
+static inline int mc_multi_channel(void)
 {
-	return mc_channels == 2;
+	return mc_channels > 1;
 }
 
-/*
- * Read and write functions for hitting the MC. mc_ind corresponds to the MC
- * you wish to write to: 0 -> MC0, 1 -> MC1. If a chip does not have a
- * secondary MC then reads/writes to said MC are silently dropped.
+/**
+ * Read from the MC.
+ *
+ * @idx The MC channel to read from.
+ * @reg The offset of the register to read.
+ *
+ * Read from the specified MC channel: 0 -> MC0, 1 -> MC1, etc. If @idx
+ * corresponds to a non-existent channel then 0 is returned.
  */
-static inline u32 __mc_readl(int mc_ind, u32 reg)
+static inline u32 __mc_readl(int idx, u32 reg)
 {
 	if (WARN(!mc, "Read before MC init'ed"))
 		return 0;
 
-	if (!mc_ind)
-		return readl(mc + reg);
-	else if (mc_dual_channel())
-		return readl(mc1 + reg);
-	else
+	if (idx < 0 || idx > mc_channels)
 		return 0;
+
+	return readl(mc_regs[idx] + reg);
 }
 
-static inline void __mc_writel(int mc_ind, u32 val, u32 reg)
+/**
+ * Write to the MC.
+ *
+ * @idx The MC channel to write to.
+ * @val Value to write.
+ * @reg The offset of the register to write.
+ *
+ * Write to the specified MC channel: 0 -> MC0, 1 -> MC1, etc. For writes there
+ * is a special channel, %MC_BROADCAST_CHANNEL, which writes to all channels. If
+ * @idx corresponds to a non-existent channel then the write is dropped.
+ */
+static inline void __mc_writel(int idx, u32 val, u32 reg)
 {
 	if (WARN(!mc, "Write before MC init'ed"))
 		return;
 
-	if (!mc_ind)
+	if ((idx != MC_BROADCAST_CHANNEL && idx < 0) ||
+	    idx > mc_channels)
+		return;
+
+	if (idx == MC_BROADCAST_CHANNEL)
 		writel(val, mc + reg);
-	else if (mc_dual_channel())
-		writel(val, mc1 + reg);
+	else
+		writel(val, mc_regs[idx] + reg);
 }
 
-static inline u32 __mc_raw_readl(int mc_ind, u32 reg)
+static inline u32 __mc_raw_readl(int idx, u32 reg)
 {
 	if (WARN(!mc, "Read before MC init'ed"))
 		return 0;
 
-	if (!mc_ind)
-		return __raw_readl(mc + reg);
-	else if (mc_dual_channel())
-		return __raw_readl(mc1 + reg);
+	if (idx < 0 || idx > mc_channels)
+		return 0;
 
-	return 0;
+	return __raw_readl(mc_regs[idx] + reg);
 }
 
-static inline void __mc_raw_writel(int mc_ind, u32 val, u32 reg)
+static inline void __mc_raw_writel(int idx, u32 val, u32 reg)
 {
 	if (WARN(!mc, "Write before MC init'ed"))
 		return;
 
-	if (!mc_ind)
+	if ((idx != MC_BROADCAST_CHANNEL && idx < 0) ||
+	    idx > mc_channels)
+		return;
+
+	if (idx == MC_BROADCAST_CHANNEL)
 		__raw_writel(val, mc + reg);
-	else if (mc_dual_channel())
-		__raw_writel(val, mc1 + reg);
+	else
+		__raw_writel(val, mc_regs[idx] + reg);
 }
 
 #define mc_readl(reg)       __mc_readl(0, reg)
-#define mc_writel(val, reg) __mc_writel(0, val, reg)
+#define mc_writel(val, reg) __mc_writel(MC_BROADCAST_CHANNEL, val, reg)
 
 int tegra_mc_get_tiled_memory_bandwidth_multiplier(void);
 

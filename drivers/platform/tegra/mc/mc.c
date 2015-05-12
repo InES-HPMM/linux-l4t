@@ -59,10 +59,7 @@
 static DEFINE_SPINLOCK(tegra_mc_lock);
 int mc_channels;
 void __iomem *mc;
-
-/* Only populated if there are 2 channels. */
-static void __iomem *mc0;
-void __iomem *mc1;
+void __iomem *mc_regs[MC_MAX_CHANNELS];
 
 int mc_intr_count;
 
@@ -143,14 +140,17 @@ void tegra_mc_timing_restore(void)
 	u32 *ctx = mc_boot_timing;
 
 	for (off = MC_EMEM_ARB_CFG; off <= MC_EMEM_ARB_TIMING_W2R; off += 4)
-		__mc_raw_writel(0, *ctx++, off);
+		__mc_raw_writel(MC_BROADCAST_CHANNEL, *ctx++, off);
 
 	for (off = MC_EMEM_ARB_DA_TURNS; off <= MC_EMEM_ARB_MISC1; off += 4)
-		__mc_raw_writel(0, *ctx++, off);
+		__mc_raw_writel(MC_BROADCAST_CHANNEL, *ctx++, off);
 
-	__mc_raw_writel(0, *ctx++, MC_EMEM_ARB_RING3_THROTTLE);
-	__mc_raw_writel(0, *ctx++, MC_EMEM_ARB_OVERRIDE);
-	__mc_raw_writel(0, *ctx++, MC_RESERVED_RSV);
+	__mc_raw_writel(MC_BROADCAST_CHANNEL, *ctx++,
+			MC_EMEM_ARB_RING3_THROTTLE);
+	__mc_raw_writel(MC_BROADCAST_CHANNEL, *ctx++,
+			MC_EMEM_ARB_OVERRIDE);
+	__mc_raw_writel(MC_BROADCAST_CHANNEL, *ctx++,
+			MC_RESERVED_RSV);
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	tegra12_mc_latency_allowance_restore(&ctx);
@@ -159,7 +159,7 @@ void tegra_mc_timing_restore(void)
 #else
 	for (off = MC_LATENCY_ALLOWANCE_BASE; off <= MC_LATENCY_ALLOWANCE_VI_2;
 		off += 4)
-		__mc_raw_writel(0, *ctx++, off);
+		__mc_raw_writel(MC_BROADCAST_CHANNEL, *ctx++, off);
 #endif
 
 	mc_writel(*ctx++, MC_INT_MASK);
@@ -390,6 +390,7 @@ static int tegra_mc_probe(struct platform_device *pdev)
 #if defined(CONFIG_TEGRA_MC_EARLY_ACK)
 	u32 reg;
 #endif
+	int i;
 	const void *prop;
 	struct dentry *mc_debugfs_dir = NULL;
 	const struct of_device_id *match;
@@ -412,7 +413,7 @@ static int tegra_mc_probe(struct platform_device *pdev)
 	else
 		mc_channels = be32_to_cpup(prop);
 
-	if (mc_channels != 1 && mc_channels != 2) {
+	if (mc_channels > MC_MAX_CHANNELS || mc_channels < 1) {
 		pr_err("Invalid number of memory channels: %d\n", mc_channels);
 		return -EINVAL;
 	}
@@ -425,19 +426,17 @@ static int tegra_mc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	pr_info("MC mapped MMIO address: 0x%p\n", mc);
 
-	if (mc_dual_channel()) {
-		mc0 = tegra_mc_map_regs(pdev, 1);
-		if (!mc0) {
-			pr_err("Failed to make channel 0\n");
-			return -ENOMEM;
+	/* Populate the rest of the channels... */
+	if (mc_channels > 1) {
+		for (i = 1; i <= mc_channels; i++) {
+			mc_regs[i - 1] = tegra_mc_map_regs(pdev, i);
+			if (!mc_regs[i - 1])
+				return -ENOMEM;
 		}
-		pr_info("MC0 mapped MMIO address: 0x%p\n", mc0);
-		mc1 = tegra_mc_map_regs(pdev, 2);
-		if (!mc1) {
-			pr_err("Failed to make channel 0\n");
-			return -ENOMEM;
-		}
-		pr_info("MC1 mapped MMIO address: 0x%p\n", mc1);
+		pr_info("MC mapped MMIO address: 0x%p\n", mc_regs[i - 1]);
+	} else {
+		/* Make channel 0 the same as the MC broadcast range. */
+		mc_regs[0] = mc;
 	}
 
 	tegra_mc_timing_save();
