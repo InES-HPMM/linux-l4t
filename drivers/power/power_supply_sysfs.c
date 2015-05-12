@@ -204,6 +204,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(manufacturer),
 	POWER_SUPPLY_ATTR(serial_number),
 	POWER_SUPPLY_ATTR(charger_standard),
+	POWER_SUPPLY_ATTR(charger_type),
 };
 
 static struct attribute *
