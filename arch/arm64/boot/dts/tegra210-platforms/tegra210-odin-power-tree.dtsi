@@ -156,29 +156,26 @@
 			regulator-disable-ramp-delay = <13000>;
 		};
 
-		vdd_disp_3v0: regulator@12 {
+		v_pavdd_5v0: regulator@12 {
 			compatible = "regulator-fixed-sync";
 			reg = <12>;
-			regulator-name = "vdd-disp-3v0";
-			regulator-min-microvolt = <3000000>;
-			regulator-max-microvolt = <3000000>;
-			gpio = <&gpio TEGRA_GPIO(I, 3) 0>;
-			regulator-always-on;
+			regulator-name = "v_pavdd_5v0";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(I, 0) 0>;
 			enable-active-high;
 			regulator-enable-ramp-delay = <232>;
 		};
 
-		vdd_fan: regulator@13 {
+		v_navdd_5v0: regulator@13 {
 			compatible = "regulator-fixed-sync";
 			reg = <13>;
-			regulator-name = "vdd-fan";
+			regulator-name = "v_navdd_5v0";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
-			gpio = <&gpio TEGRA_GPIO(E, 4) 0>;
-			regulator-always-on;
+			gpio = <&gpio TEGRA_GPIO(I, 1) 0>;
 			enable-active-high;
-			regulator-enable-ramp-delay = <284>;
-			regulator-disable-ramp-delay = <6200>;
+			regulator-enable-ramp-delay = <232>;
 		};
 
 		usb_vbus1: regulator@14 {
@@ -203,6 +200,15 @@
 			enable-active-high;
 			gpio-open-drain;
 			vin-supply = <&vdd_3v3>;
+		};
+
+		v_vdd50: regulator@16 {
+			compatible = "regulator-fixed-sync";
+			reg = <16>;
+			regulator-name = "v_vdd50";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			regulator-always-on;
 		};
 	};
 	i2c@7000c000 {
@@ -233,10 +239,10 @@
 		/* tegradc.0 */
 		dc@54200000 {
 			avdd_dsi_csi-supply = <&max77620_gpio7>;
-			avdd_lcd-supply = <&vdd_disp_3v0>;
+			pavdd_lcd-supply = <&v_pavdd_5v0>;
+			navdd_lcd-supply = <&v_navdd_5v0>;
 			dvdd_lcd-supply = <&max77620_sd3>;
 			vdd_lcd_bl_en-supply = <&lcd_bl_en>;
-			vdd_lcd_bl-supply = <&vdd_3v3>;
 		};
 
 		/* tegradc.1 */
@@ -292,8 +298,8 @@
 	};
 
 	xusb@70090000 {
-		usb_vbus0-supply = <&battery_reg>;
-		usb_vbus1-supply = <&usb_vbus3>;
+		usb_vbus0-supply = <&v_vdd50>;
+		usb_vbus1-supply = <&v_vdd50>;
 		usb_vbus2-supply = <&usb_vbus1>;
 		usb_vbus3-supply = <&vdd_3v3>;
 		hvdd_usb-supply = <&vdd_3v3>;
@@ -312,11 +318,11 @@
         };
 
 	xotg {
-		usb_vbus-supply = <&battery_reg>;
+		usb_vbus-supply = <&v_vdd50>;
 	};
 
 	otg@7d000000 {
-		usb_vbus-supply = <&battery_reg>;
+		usb_vbus-supply = <&v_vdd50>;
 	};
 
 	sdhci@700b0600 {
@@ -353,6 +359,6 @@
 	};
 
 	pwm-fan {
-		vdd-fan-supply = <&vdd_fan>;
+		vdd-fan-supply = <&v_vdd50>;
 	};
 };

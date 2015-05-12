@@ -29,8 +29,8 @@
 			compatible = "regulator-fixed";
 			reg = <0>;
 			regulator-name = "vdd-ac-bat";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
+			regulator-min-microvolt = <4800000>;
+			regulator-max-microvolt = <4800000>;
 			regulator-always-on;
 		};
 
@@ -91,7 +91,7 @@
 			regulator-name = "en-vdd-sd";
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3300000>;
-			gpio = <&gpio TEGRA_GPIO(Z, 4) 0>;
+			gpio = <&gpio TEGRA_GPIO(Z, 3) 0>;
 			enable-active-high;
 			vin-supply = <&vdd_3v3>;
 		};
