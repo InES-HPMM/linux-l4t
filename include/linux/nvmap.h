@@ -123,7 +123,8 @@ enum {
 
 enum {
 	NVMAP_PAGES_UNRESERVE = 0,
-	NVMAP_PAGES_RESERVE
+	NVMAP_PAGES_RESERVE,
+	NVMAP_INSERT_PAGES_ON_UNRESERVE
 };
 
 struct nvmap_create_handle {
