@@ -30,6 +30,7 @@
 #include <linux/tegra-soc.h>
 #include <linux/platform_data/tegra_emc_pdata.h>
 #include <soc/tegra/tegra_bpmp.h>
+#include <soc/tegra/tegra_pasr.h>
 
 #include <asm/cputime.h>
 #include <asm/uaccess.h>
@@ -1185,7 +1186,7 @@ static bool is_pasr_supported(void)
 		dram_type == DRAM_TYPE_LPDDR4);
 }
 
-void tegra_bpmp_pasr_mask(uint32_t phys)
+static void tegra_bpmp_pasr_mask(uint32_t phys)
 {
 	int mb[] = { phys };
 	int r = tegra_bpmp_send(MRQ_PASR_MASK, &mb, sizeof(mb));
