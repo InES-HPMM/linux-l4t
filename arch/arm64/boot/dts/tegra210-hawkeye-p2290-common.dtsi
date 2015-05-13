@@ -797,7 +797,7 @@
         watchdog@60005100 {
                 dt-override-status-odm-data = <0x00010000 0x00010000>;
         };
-	
+
 	sysedp {
 		compatible = "nvidia,tegra124-sysedp";
 		nvidia,margin = <0>;
@@ -819,7 +819,7 @@
 			};
 			consumer4 {
 				nvidia,consumer_name = "pwm-backlight";
-				nvidia,states = <20 241 461 681 902 1122 1342 1563 1783 2003 2223>;
+				nvidia,states = <0 170 345 560 760 960 1160 1370 1580 1740 1800 >;
 			};
 			consumer5 {
 				/* SD card */
