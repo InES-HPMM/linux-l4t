@@ -631,10 +631,10 @@ struct tegra_vrr {
 
 	s32	max_adj_pct;
 	s32	max_flip_pct;
-	s32	max_dc_balance;
+	s32	max_dcb;
 	s32	max_inc_pct;
 
-	s32	dc_balance;
+	s32	dcb;
 	s32	frame_avg_pct;
 	s32	fluct_avg_pct;
 
