@@ -565,50 +565,64 @@ static int tegra210_pg_powergate(int id)
 {
 	struct powergate_partition_info *partition =
 				&tegra210_pg_partition_info[id];
+	int ret = 0;
+
+	mutex_lock(&partition->pg_mutex);
 
 	if (--partition->refcount > 0)
-		return 0;
+		goto exit_unlock;
 
-	if ((partition->refcount < 0) ||
-			!tegra_powergate_is_powered(id)) {
-		WARN(1, "Partition %s already powergated, refcount \
-				and status mismatch\n", partition->name);
-		return 0;
+	if ((partition->refcount < 0) || !tegra_powergate_is_powered(id)) {
+		WARN(1, "Partition %s already powergated, refcount and status mismatch\n",
+		     partition->name);
+		goto exit_unlock;
 	}
 
-	return tegra1xx_powergate(id, partition);
+	ret = tegra1xx_powergate(id, partition);
+
+exit_unlock:
+	mutex_unlock(&partition->pg_mutex);
+	return ret;
 }
 
 static int tegra210_pg_unpowergate(int id)
 {
 	struct powergate_partition_info *partition =
 				&tegra210_pg_partition_info[id];
+	int ret = 0;
+
+	mutex_lock(&partition->pg_mutex);
 
 	if (partition->refcount++ > 0)
-		return 0;
+		goto exit_unlock;
 
 	if (tegra_powergate_is_powered(id)) {
-		WARN(1, "Partition %s is already unpowergated, refcount \
-				and status mismatch\n", partition->name);
-		return 0;
+		WARN(1, "Partition %s is already unpowergated, refcount and status mismatch\n",
+		     partition->name);
+		goto exit_unlock;
 	}
 
-	return tegra1xx_unpowergate(id, partition);
+	ret = tegra1xx_unpowergate(id, partition);
+
+exit_unlock:
+	mutex_unlock(&partition->pg_mutex);
+	return ret;
 }
 
 static int tegra210_pg_gpu_powergate(int id)
 {
-	int ret;
+	int ret = 0;
 	struct powergate_partition_info *partition =
 				&tegra210_pg_partition_info[id];
 
+	mutex_lock(&partition->pg_mutex);
+
 	if (--partition->refcount > 0)
-		return 0;
+		goto exit_unlock;
 
 	if (!tegra_powergate_is_powered(id)) {
-		WARN(1, "GPU rail is already off, \
-					refcount and status mismatch\n");
-		return 0;
+		WARN(1, "GPU rail is already off, refcount and status mismatch\n");
+		goto exit_unlock;
 	}
 
 	if (!partition->clk_info[0].clk_ptr)
@@ -637,13 +651,15 @@ static int tegra210_pg_gpu_powergate(int id)
 		ret = tegra_dvfs_rail_power_down(gpu_rail);
 		if (ret) {
 			WARN(1, "Could not power down GPU rail\n");
-			return ret;
+			goto exit_unlock;
 		}
 	} else {
 		pr_info("No GPU regulator?\n");
 	}
 
-	return 0;
+exit_unlock:
+	mutex_unlock(&partition->pg_mutex);
+	return ret;
 }
 
 static int tegra210_pg_gpu_unpowergate(int id)
@@ -653,8 +669,10 @@ static int tegra210_pg_gpu_unpowergate(int id)
 	struct powergate_partition_info *partition =
 				&tegra210_pg_partition_info[id];
 
+	mutex_lock(&partition->pg_mutex);
+
 	if (partition->refcount++ > 0)
-		return 0;
+		goto exit_unlock;
 
 	if (!gpu_rail) {
 		gpu_rail = tegra_dvfs_get_rail_by_name("vdd_gpu");
@@ -667,12 +685,14 @@ static int tegra210_pg_gpu_unpowergate(int id)
 
 	if (tegra_powergate_is_powered(id)) {
 		WARN(1, "GPU rail is already on, refcount and status mismatch\n");
-		return 0;
+		goto exit_unlock;
 	}
 
 	ret = tegra_dvfs_rail_power_up(gpu_rail);
-	if (ret)
+	if (ret) {
+		WARN(1, "Could not turn on GPU rail\n");
 		goto err_power;
+	}
 
 	tegra_soctherm_gpu_tsens_invalidate(0);
 
@@ -681,8 +701,10 @@ static int tegra210_pg_gpu_unpowergate(int id)
 
 	if (!first) {
 		ret = partition_clk_enable(partition);
-		if (ret)
+		if (ret) {
+			WARN(1, "Could not turn on partition clocks\n");
 			goto err_clk_on;
+		}
 	}
 
 	udelay(10);
@@ -714,12 +736,15 @@ static int tegra210_pg_gpu_unpowergate(int id)
 
 	udelay(10);
 
-	return 0;
+exit_unlock:
+	mutex_unlock(&partition->pg_mutex);
+	return ret;
 
 err_clk_on:
 	powergate_module(id);
 err_power:
-	WARN(1, "Could not turn on GPU rail\n");
+	mutex_unlock(&partition->pg_mutex);
+
 	return ret;
 }
 
@@ -869,11 +894,14 @@ static int tegra210_pg_init_refcount(void)
 {
 	int i;
 
-	for (i = 0; i < TEGRA_NUM_POWERGATE; i++)
+	for (i = 0; i < TEGRA_NUM_POWERGATE; i++) {
 		if (tegra_powergate_is_powered(i))
 			tegra210_pg_partition_info[i].refcount = 1;
 		else
 			tegra210_pg_partition_info[i].disable_after_boot = 0;
+
+		mutex_init(&tegra210_pg_partition_info[i].pg_mutex);
+	}
 
 	/* SOR refcount depends on other units */
 	tegra210_pg_partition_info[TEGRA_POWERGATE_SOR].refcount =
