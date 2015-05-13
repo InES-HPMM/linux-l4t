@@ -114,6 +114,18 @@
 #define XUSB_PROD_PREFIX_SS	"prod_c_ss"
 #define XUSB_PROD_PREFIX_SATA	"prod_c_sata"
 
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+static struct of_device_id tegra_xusba_pd[] = {
+	{ .compatible = "nvidia, tegra210-xusba-pd", },
+	{},
+};
+
+static struct of_device_id tegra_xusbc_pd[] = {
+	{ .compatible = "nvidia, tegra210-xusbc-pd", },
+	{},
+};
+#endif
+
 /* private data types */
 /* command requests from the firmware */
 enum MBOX_CMD_TYPE {
@@ -2747,6 +2759,7 @@ static int tegra_xhci_ss_elpg_entry(struct tegra_xhci_hcd *tegra)
 	struct xhci_hcd *xhci = tegra->xhci;
 	u32 ret = 0;
 	u32 host_ports;
+	int partition_id;
 
 	must_have_sync_lock(tegra);
 
@@ -2791,7 +2804,14 @@ static int tegra_xhci_ss_elpg_entry(struct tegra_xhci_hcd *tegra)
 	debug_print_portsc(xhci);
 
 	/* tegra_powergate_partition also does partition reset assert */
-	ret = tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_xusba_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_XUSBA;
+#endif
+	ret = tegra_powergate_partition(partition_id);
 	if (ret) {
 		xhci_err(xhci, "%s: could not powergate xusba partition\n",
 				__func__);
@@ -2814,6 +2834,7 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 	struct xhci_hcd *xhci = tegra->xhci;
 	int host_ports = get_host_controlled_ports(tegra);
 	u32 ret = 0;
+	int partition_id;
 
 	must_have_sync_lock(tegra);
 
@@ -2845,7 +2866,14 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 		tegra_usb_pmc_reg_read(PMC_UTMIP_UHSIC_SLEEP_CFG_0));
 
 	/* tegra_powergate_partition also does partition reset assert */
-	ret = tegra_powergate_partition(TEGRA_POWERGATE_XUSBC);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_xusbc_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_XUSBC;
+#endif
+	ret = tegra_powergate_partition(partition_id);
 	if (ret) {
 		xhci_err(xhci, "%s: could not unpowergate xusbc partition %d\n",
 			__func__, ret);
@@ -2889,6 +2917,7 @@ static int tegra_xhci_ss_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	struct xhci_hcd *xhci = tegra->xhci;
 	int ret = 0;
 	int host_ports = get_host_controlled_ports(tegra);
+	int partition_id;
 
 	must_have_sync_lock(tegra);
 
@@ -2906,7 +2935,14 @@ static int tegra_xhci_ss_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 		 * tegra_unpowergate_partition also does partition reset
 		 * deassert
 		 */
-		ret = tegra_unpowergate_partition(TEGRA_POWERGATE_XUSBA);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+		partition_id = tegra_pd_get_powergate_id(tegra_xusba_pd);
+		if (partition_id < 0)
+			return -EINVAL;
+#else
+		partition_id = TEGRA_POWERGATE_XUSBA;
+#endif
+		ret = tegra_unpowergate_partition(partition_id);
 		if (ret) {
 			xhci_err(xhci,
 			"%s: could not unpowergate xusba partition %d\n",
@@ -3169,6 +3205,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	struct xhci_hcd *xhci = tegra->xhci;
 	int ret = 0;
 	int pad;
+	int partition_id;
 
 	must_have_sync_lock(tegra);
 
@@ -3217,8 +3254,15 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 		}
 	}
 
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_xusbc_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_XUSBC;
+#endif
 	/* Clear FLUSH_ENABLE of MC client */
-	tegra_powergate_mc_flush_done(TEGRA_POWERGATE_XUSBC);
+	tegra_powergate_mc_flush_done(partition_id);
 
 	/* set port ownership back to xusb */
 	tegra_xhci_release_port_ownership(tegra, false);
@@ -3227,7 +3271,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	 * PWR_UNGATE Host partition. XUSBC
 	 * tegra_unpowergate_partition also does partition reset deassert
 	 */
-	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_XUSBC);
+	ret = tegra_unpowergate_partition(partition_id);
 	if (ret) {
 		xhci_err(xhci, "%s: could not unpowergate xusbc partition %d\n",
 			__func__, ret);
@@ -5264,6 +5308,7 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	u32 port;
 #endif
+	int partition_id_xusba, partition_id_xusbc;
 
 	for (pad = 0; pad < tegra->soc_config->utmi_pad_count; pad++) {
 		if (BIT(XUSB_UTMI_INDEX + pad) & tegra->bdata->otg_portmap) {
@@ -5301,13 +5346,25 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 		goto err_deinit_tegra_xusb_regulator;
 	}
 
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id_xusba = tegra_pd_get_powergate_id(tegra_xusba_pd);
+	if (partition_id_xusba < 0)
+		return -EINVAL;
+
+	partition_id_xusbc = tegra_pd_get_powergate_id(tegra_xusbc_pd);
+	if (partition_id_xusbc < 0)
+		return -EINVAL;
+#else
+	partition_id_xusba = TEGRA_POWERGATE_XUSBA;
+	partition_id_xusbc = TEGRA_POWERGATE_XUSBC;
+#endif
 	/* tegra_unpowergate_partition also does partition reset deassert */
-	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_XUSBA);
+	ret = tegra_unpowergate_partition(partition_id_xusba);
 	if (ret)
 		dev_err(&pdev->dev, "could not unpowergate xusba partition\n");
 
 	/* tegra_unpowergate_partition also does partition reset deassert */
-	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_XUSBC);
+	ret = tegra_unpowergate_partition(partition_id_xusbc);
 	if (ret)
 		dev_err(&pdev->dev, "could not unpowergate xusbc partition\n");
 
@@ -5620,6 +5677,7 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	u32 port;
 #endif
+	int partition_id_xusba, partition_id_xusbc;
 
 	if (tegra == NULL)
 		return -EINVAL;
@@ -5688,8 +5746,20 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	}
 
 	if (!tegra->hc_in_elpg) {
-		tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
-		tegra_powergate_partition(TEGRA_POWERGATE_XUSBC);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+		partition_id_xusba = tegra_pd_get_powergate_id(tegra_xusba_pd);
+		if (partition_id_xusba < 0)
+			return -EINVAL;
+
+		partition_id_xusbc = tegra_pd_get_powergate_id(tegra_xusbc_pd);
+		if (partition_id_xusbc < 0)
+			return -EINVAL;
+#else
+		partition_id_xusba = TEGRA_POWERGATE_XUSBA;
+		partition_id_xusbc = TEGRA_POWERGATE_XUSBC;
+#endif
+		tegra_powergate_partition(partition_id_xusba);
+		tegra_powergate_partition(partition_id_xusbc);
 	}
 
 	tegra_xusb_regulator_deinit(tegra);
