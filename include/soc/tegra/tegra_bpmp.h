@@ -39,6 +39,7 @@
 #define MRQ_ENABLE_SUSPEND	17
 #define MRQ_PASR_MASK		18
 #define MRQ_DEBUGFS		19
+#define MRQ_THERMAL		27
 
 /* Tegra PM states as known to BPMP */
 #define TEGRA_PM_CC1	9
