@@ -138,7 +138,7 @@ static struct clk *clk_init_parse_clk_id(struct device_node *table_np,
 	if (ret)
 		return ERR_PTR(ret);
 	if (!val)
-		return 0;
+		return NULL;
 
 	c = get_clock_by_id(val);
 	if (!c)
