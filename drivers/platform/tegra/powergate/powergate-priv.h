@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -79,6 +79,7 @@ struct powergate_partition_info {
 	struct raw_notifier_head slcg_notifier;
 	int refcount;
 	bool disable_after_boot;
+	struct mutex pg_mutex;
 };
 
 struct powergate_ops {
