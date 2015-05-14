@@ -591,6 +591,10 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 
 		if (card->ext_csd.cmdq_support) {
 			card->ext_csd.cmdq_depth = ext_csd[EXT_CSD_CMDQ_DEPTH];
+			/*
+			 * Bug fail if cq depth is more than max supported.
+			 */
+			BUG_ON(card->ext_csd.cmdq_depth > EMMC_MAX_QUEUE_DEPTH);
 			card->ext_csd.qrdy_support = 1;
 			card->ext_csd.qrdy_function =
 				ext_csd[EXT_CSD_CMDQ_QRDY_FUNCTION];

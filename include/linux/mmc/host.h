@@ -223,7 +223,7 @@ struct mmc_context_info {
 	spinlock_t		lock;
 };
 
-#define EMMC_MAX_QUEUE_DEPTH		(16)
+#define EMMC_MAX_QUEUE_DEPTH		(32)
 #define EMMC_MIN_RT_CLASS_TAG_COUNT	(14)
 
 #ifdef CONFIG_CMD_DUMP
