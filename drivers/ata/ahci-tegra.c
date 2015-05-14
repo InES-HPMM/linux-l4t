@@ -3141,6 +3141,37 @@ static void tegra_ahci_sata_clk_gate(void)
 		val = clk_readl(CLK_RST_CONTROLLER_RST_DEV_W_SET);
 }
 
+static int sata_power_war_cb(struct notifier_block *nb, unsigned long action, void *data)
+{
+	u32 val;
+
+	switch (action) {
+	case PM_POST_SUSPEND:
+		/* WAR for SATA_PLL */
+		val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
+		val |= (SATA_SEQ_PADPLL_PD_INPUT_VALUE |
+			SATA_SEQ_LANE_PD_INPUT_VALUE |
+			SATA_SEQ_RESET_INPUT_VALUE |
+			PLLE_IDDQ_SWCTL_ON);
+		clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
+		udelay(1);
+		val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
+		val |= PLLE_SATA_SEQ_ENABLE;
+		clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
+
+		/* WAR for SATA IO */
+		tegra_ahci_t210_power_down_aux_idle_detector();
+		break;
+	default:
+		break;
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block sata_power_war = {
+	.notifier_call = sata_power_war_cb,
+};
+
 static int tegra_ahci_init_one(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -3156,7 +3187,6 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	struct resource *res, *irq_res;
 	void __iomem *mmio;
 	enum tegra_chipid cid;
-
 
 #if defined(CONFIG_TEGRA_AHCI_CONTEXT_RESTORE)
 	u32 save_size;
@@ -3376,6 +3406,9 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 			tegra_prod_release(&tegra_hpriv->prod_list);
 			tegra_hpriv->prod_list = NULL;
 		}
+		if (np)
+			if (of_property_read_bool(np, "nvidia,sata-power-war"))
+				register_pm_notifier(&sata_power_war);
 		return -ENODEV;
 	}
 
