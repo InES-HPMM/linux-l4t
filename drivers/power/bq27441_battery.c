@@ -926,6 +926,7 @@ static int bq27441_get_property(struct power_supply *psy,
 				if (chip->read_failed > 50)
 					break;
 				temperature = chip->temperature;
+				ret = 0;
 			} else {
 				chip->read_failed = 0;
 				chip->temperature = temperature;
