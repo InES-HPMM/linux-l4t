@@ -128,12 +128,8 @@ module_param(u1_enable, bool, S_IRUGO|S_IWUSR);
 static bool u2_enable = true;
 module_param(u2_enable, bool, S_IRUGO|S_IWUSR);
 
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-/* T210 workaround. Disable LPM for HS and FS by default */
-static bool disable_lpm = true;
-#else
-static bool disable_lpm = false;
-#endif
+/* Used as a WAR to disable LPM for HS and FS */
+static bool disable_lpm;
 module_param(disable_lpm, bool, S_IRUGO|S_IWUSR);
 
 static bool war_poll_trbst_max = true;
@@ -372,10 +368,12 @@ static void init_chip(struct nv_udc_s *nvudc)
 		/*
 		 * init T210 specific features here
 		 */
+		disable_lpm = true;
 	} else if (nvudc->device_id == XUDC_DEVICE_ID_T186) {
 		/*
 		 * init T186 specific features here
 		 */
+		disable_lpm = true;
 	}
 }
 
