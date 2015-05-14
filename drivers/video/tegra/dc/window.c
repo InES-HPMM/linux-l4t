@@ -533,7 +533,7 @@ static void tegra_dc_vrr_cancel_vfp(struct tegra_dc *dc)
 		tegra_dc_set_act_vfp(dc, vrr->vfp_shrink);
 	}
 	else {
- 		if(vrr->lastenable) {
+		if (vrr->lastenable && vrr->dcb <= vrr->db_tolerance) {
 			tegra_dc_set_act_vfp(dc, dc->mode.v_front_porch);
 			vrr->lastenable = 0;
 			vrr->frame_type = 0;
