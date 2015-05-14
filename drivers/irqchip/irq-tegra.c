@@ -368,7 +368,7 @@ static void tegra_mask(struct irq_data *d)
 	if (!tegra_irq_range_valid(d->irq))
 		return;
 
-	for_each_online_cpu(cpu)
+	for_each_present_cpu(cpu)
 		tegra_irq_write_mask(d->irq, ICTLR_CPU_IER_CLR(cpu));
 }
 
@@ -387,7 +387,7 @@ static void tegra_unmask(struct irq_data *d)
 	target_cpu = ictlr_target_cpu[index] >> shift;
 	target_cpu &= 0xf;
 
-	for_each_online_cpu(cpu) {
+	for_each_present_cpu(cpu) {
 		if (target_cpu & (0x1 << cpu))
 			tegra_irq_write_mask(d->irq, ICTLR_CPU_IER_SET(cpu));
 		else
