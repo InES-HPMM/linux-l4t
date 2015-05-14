@@ -119,7 +119,6 @@ int tegra_smmu_of_register_asprops(struct device *dev,
 
 		err = of_property_read_u64(np, "iova-start", &prop->iova_start);
 		err |= of_property_read_u64(np, "iova-size", &prop->iova_size);
-		err |= of_property_read_u32(np, "alignment", &prop->alignment);
 		err |= of_property_read_u32(np, "num-pf-page",
 					    &prop->num_pf_page);
 		err |= of_property_read_u32(np, "gap-page", &prop->gap_page);
@@ -129,6 +128,9 @@ int tegra_smmu_of_register_asprops(struct device *dev,
 				np->name);
 			goto free_mem;
 		}
+		err = of_property_read_u32(np, "alignment", &prop->alignment);
+		if (err)
+			prop->alignment = 0;
 
 		count++;
 		list_add_tail(&prop->list, asprops);
