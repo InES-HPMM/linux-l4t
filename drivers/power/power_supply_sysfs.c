@@ -127,9 +127,15 @@ static ssize_t power_supply_store_property(struct device *dev,
 
 	value.intval = long_val;
 
-	ret = psy->set_property(psy, off, &value);
-	if (ret < 0)
-		return ret;
+	if (psy && psy->set_property) {
+		ret = psy->set_property(psy, off, &value);
+		if (ret < 0)
+			return ret;
+	} else {
+		if (!psy || !psy->dev)
+			dev_dbg(dev, "No power supply yet\n");
+		return -EINVAL;
+	}
 
 	return count;
 }
