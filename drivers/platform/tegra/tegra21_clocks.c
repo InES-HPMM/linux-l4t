@@ -8122,6 +8122,7 @@ static struct clk_ops tegra_adsp_ops = {
 
 static struct clk tegra_clk_aclk_adsp = {
 	.name   = "adsp",
+	.clk_id = TEGRA210_CLK_ID_ADSP,
 	.flags  = DIV_U71 | DIV_U71_INT,
 	.inputs	= mux_aclk_adsp,
 	.reg	= 0x6e0,
@@ -8141,6 +8142,7 @@ static struct clk_ops tegra_adsp_bus_ops = {
 static struct raw_notifier_head adsp_bus_rate_change_nh;
 static struct clk tegra_clk_virtual_adsp_bus = {
 	.name      = "adsp_bus",
+	.clk_id    = TEGRA210_CLK_ID_ADSP_BUS,
 	.parent    = &tegra_clk_aclk_adsp,
 	.ops       = &tegra_adsp_bus_ops,
 	.shared_bus_flags = SHARED_BUS_RETENTION,
@@ -8155,6 +8157,7 @@ static struct clk tegra_clk_virtual_adsp_bus = {
 /* CPU clusters clocks */
 static struct clk tegra_clk_cclk_g = {
 	.name	= "cclk_g",
+	.clk_id = TEGRA210_CLK_ID_CCLK_G,
 	.flags  = DIV_U71 | DIV_U71_INT,
 	.inputs	= mux_cclk_g,
 	.reg	= 0x368,
@@ -8164,6 +8167,7 @@ static struct clk tegra_clk_cclk_g = {
 
 static struct clk tegra_clk_cclk_lp = {
 	.name	= "cclk_lp",
+	.clk_id = TEGRA210_CLK_ID_CCLK_LP,
 	.flags  = DIV_U71 | DIV_U71_INT,
 	.inputs	= mux_cclk_lp,
 	.reg	= 0x370,
@@ -8207,6 +8211,7 @@ static struct clk_mux_sel mux_cpu_cmplx[] = {
 
 static struct clk tegra_clk_cpu_cmplx = {
 	.name      = "cpu",
+	.clk_id    = TEGRA210_CLK_ID_CCPLEX,
 	.inputs    = mux_cpu_cmplx,
 	.ops       = &tegra_cpu_cmplx_ops,
 	.max_rate  = 3000000000UL,
@@ -8215,6 +8220,7 @@ static struct clk tegra_clk_cpu_cmplx = {
 /* System bus clocks */
 static struct clk tegra_clk_sclk_mux = {
 	.name	= "sclk_mux",
+	.clk_id = TEGRA210_CLK_ID_SCLK_MUX,
 	.inputs	= mux_sclk,
 	.reg	= 0x28,
 	.ops	= &tegra_super_ops,
@@ -8229,6 +8235,7 @@ static struct clk_mux_sel sclk_mux_out[] = {
 
 static struct clk tegra_clk_sclk_div = {
 	.name = "sclk_div",
+	.clk_id = TEGRA210_CLK_ID_SCLK_DIV,
 	.ops = &tegra_periph_clk_ops,
 	.reg = 0x400,
 	.max_rate = 600000000,
@@ -8239,6 +8246,7 @@ static struct clk tegra_clk_sclk_div = {
 
 static struct clk tegra_clk_sclk = {
 	.name = "sclk",
+	.clk_id = TEGRA210_CLK_ID_SCLK_SKIP,
 	.flags	= DIV_BUS,
 	.ops = &tegra_clk_super_skip_ops,
 	.reg = 0x2c,
@@ -8254,6 +8262,7 @@ static struct clk tegra_clk_cop = {
 
 static struct clk tegra_clk_hclk = {
 	.name		= "hclk",
+	.clk_id		= TEGRA210_CLK_ID_HCLK,
 	.flags		= DIV_BUS,
 	.parent		= &tegra_clk_sclk,
 	.reg		= 0x30,
@@ -8265,6 +8274,7 @@ static struct clk tegra_clk_hclk = {
 
 static struct clk tegra_clk_pclk = {
 	.name		= "pclk",
+	.clk_id		= TEGRA210_CLK_ID_PCLK,
 	.flags		= DIV_BUS,
 	.parent		= &tegra_clk_hclk,
 	.reg		= 0x30,
