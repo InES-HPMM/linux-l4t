@@ -290,6 +290,12 @@ static const int MIN_LOW_TEMP = -127000;
 #define TH_TS_VALID			0x1e0
 #define TH_TS_VALID_GPU_SHIFT		9
 #define TH_TS_VALID_GPU_MASK		0x1
+#define TH_TS_VALID_CPU_SHIFT		0
+#define TH_TS_VALID_CPU_MASK		0xf
+#define TH_TS_VALID_CPU0_SHIFT		0
+#define TH_TS_VALID_CPU1_SHIFT		1
+#define TH_TS_VALID_CPU2_SHIFT		2
+#define TH_TS_VALID_CPU3_SHIFT		3
 
 #define EDP_CLK_EN			0x2f0
 
@@ -491,6 +497,7 @@ static DEFINE_MUTEX(soctherm_tsensor_lock);
 
 static int soctherm_suspend(struct device *dev);
 static int soctherm_resume(struct device *dev);
+static int tegra_soctherm_cpu_tsens_invalidate(bool control);
 
 static struct soctherm_platform_data plat_data, *pp;
 
@@ -2704,6 +2711,20 @@ static void soctherm_therm_trip_init(struct tegra_thermtrip_pmic_data *data)
 	tegra_pmc_enable_thermal_trip();
 	tegra_pmc_config_thermal_trip(data);
 }
+static int zone_invalidate(int zn, bool control)
+{
+	switch (zn) {
+	case THERM_CPU:
+		tegra_soctherm_cpu_tsens_invalidate(control);
+		break;
+	case THERM_GPU:
+		tegra_soctherm_gpu_tsens_invalidate(control);
+		break;
+	default:
+		return -ENODEV;
+	}
+	return 0;
+}
 
 /**
  * soctherm_adjust_cpu_zone() - Adjusts the soctherm CPU zone
@@ -2718,7 +2739,7 @@ static void soctherm_therm_trip_init(struct tegra_thermtrip_pmic_data *data)
 static void soctherm_adjust_zone(int tz)
 {
 	u32 r, s;
-	int i;
+	int i, ret;
 	long ztemp, pll_temp, diff;
 	bool low_voltage;
 
@@ -2740,6 +2761,16 @@ static void soctherm_adjust_zone(int tz)
 	if (low_voltage) {
 		r = soctherm_readl(TS_TEMP1);
 		s = soctherm_readl(TS_TEMP2);
+
+		/*
+		 * if the HW PLLX offsetting feature is enabled, invalidate
+		 * sensors and return
+		 */
+		if (pp->therm[tz].en_hw_pllx_offsetting) {
+			ret = zone_invalidate(tz, true);
+			if (!ret)
+				return;
+		}
 
 		/* get pllx temp */
 		pll_temp = temp_translate(REG_GET(s, TS_TEMP2_PLLX_TEMP));
@@ -2783,6 +2814,11 @@ static void soctherm_adjust_zone(int tz)
 						(TS_CPU0_CONFIG0, i));
 		}
 	} else {
+		if (pp->therm[tz].en_hw_pllx_offsetting) {
+			ret = zone_invalidate(tz, false);
+			if (!ret)
+				return;
+		}
 		/* UN-Stop all TSENSE's mapped to <tz> */
 		for (i = 0; i < TSENSE_SIZE; i++) {
 			if (tsensor2therm_map[i] != tz)
@@ -2925,7 +2961,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 				TH_TS_EN_HW_PLLX_OFFSET_CPU, 1);
 		hw_off_max_reg = REG_SET(
 				hw_off_max_reg, TH_TS_PLLX_MAX_CPU_OFFSET,
-				plat->therm[THERM_CPU].hotspot_offset / 1000);
+				plat->therm[THERM_CPU].pllx_offset_max / 1000);
 	}
 
 	if (plat->therm[THERM_GPU].en_hw_pllx_offsetting) {
@@ -2933,7 +2969,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 				TH_TS_EN_HW_PLLX_OFFSET_GPU, 1);
 		hw_off_max_reg = REG_SET(
 				hw_off_max_reg, TH_TS_PLLX_MAX_GPU_OFFSET,
-				plat->therm[THERM_GPU].hotspot_offset / 1000);
+				plat->therm[THERM_GPU].pllx_offset_max / 1000);
 	}
 
 	if (plat->therm[THERM_MEM].en_hw_pllx_offsetting) {
@@ -2941,7 +2977,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 				TH_TS_EN_HW_PLLX_OFFSET_MEM, 1);
 		hw_off_max_reg = REG_SET(
 				hw_off_max_reg, TH_TS_PLLX_MAX_MEM_OFFSET,
-				plat->therm[THERM_MEM].hotspot_offset / 1000);
+				plat->therm[THERM_MEM].pllx_offset_max / 1000);
 	}
 
 	soctherm_writel(hw_off_max_reg, TH_TS_PLLX_OFFSET_MAX);
@@ -3462,6 +3498,28 @@ int tegra_soctherm_gpu_tsens_invalidate(bool control)
 	mutex_lock(&soctherm_tsensor_lock);
 	r = soctherm_readl(TH_TS_VALID);
 	r = REG_SET(r, TH_TS_VALID_GPU, control);
+	soctherm_writel(r, TH_TS_VALID);
+	mutex_unlock(&soctherm_tsensor_lock);
+	return 0;
+}
+
+/**
+ * tegra_soctherm_cpu_tsens_invalidate() - Allow external clients (DFLL etc.)
+ * to validate/invalidate the CPU tsosc.
+ * @control:	true/false to invalidate/validate.
+ */
+static int tegra_soctherm_cpu_tsens_invalidate(bool control)
+{
+	u32 r = 0, val;
+
+	val = ((control << TH_TS_VALID_CPU0_SHIFT) |
+		(control << TH_TS_VALID_CPU1_SHIFT) |
+		(control << TH_TS_VALID_CPU2_SHIFT) |
+		(control << TH_TS_VALID_CPU3_SHIFT));
+
+	mutex_lock(&soctherm_tsensor_lock);
+	r = soctherm_readl(TH_TS_VALID);
+	r = REG_SET(r, TH_TS_VALID_CPU, val);
 	soctherm_writel(r, TH_TS_VALID);
 	mutex_unlock(&soctherm_tsensor_lock);
 	return 0;
