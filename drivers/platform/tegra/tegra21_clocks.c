@@ -9653,12 +9653,12 @@ static struct clk tegra_clk_xusb_gate = {
 };
 
 static struct clk tegra_xusb_source_clks[] = {
-	PERIPH_CLK("xusb_host_src",	XUSB_ID, "host_src",	143,	0x600,	112000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, 0),
-	PERIPH_CLK("xusb_falcon_src",	XUSB_ID, "falcon_src",	143,	0x604,	336000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_NO_RESET, 0),
-	PERIPH_CLK("xusb_fs_src",	NULL, "fs_src",		143,	0x608,	 48000000, mux_clkm_48M_pllp_480M,	MUX | DIV_U71 | PERIPH_NO_RESET, 0),
-	PERIPH_CLK_EX("xusb_ss_src",	NULL, "ss_src",		143,	0x610,	120000000, mux_clkm_pllre_clk32_480M,	MUX | DIV_U71 | PERIPH_NO_RESET, 0, &tegra_xusb_ss_ops),
-	PERIPH_CLK("xusb_dev_src",	XUDC_ID, "dev_src",	95,	0x60c,	112000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_ON_APB, 0),
-	SHARED_EMC_CLK("xusb.emc",	XUSB_ID, "emc",	&tegra_clk_emc,	NULL,	0,	SHARED_BW, 0, 0),
+	PERIPH_CLK("xusb_host_src",	XUSB_ID, "host_src",	143,	0x600,	112000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB, TEGRA210_CLK_ID_XUSB_HOST_SRC),
+	PERIPH_CLK("xusb_falcon_src",	XUSB_ID, "falcon_src",	143,	0x604,	336000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_NO_RESET, TEGRA210_CLK_ID_XUSB_FALCON_SRC),
+	PERIPH_CLK("xusb_fs_src",	NULL, "fs_src",		143,	0x608,	 48000000, mux_clkm_48M_pllp_480M,	MUX | DIV_U71 | PERIPH_NO_RESET, TEGRA210_CLK_ID_XUSB_FS_SRC),
+	PERIPH_CLK_EX("xusb_ss_src",	NULL, "ss_src",		143,	0x610,	120000000, mux_clkm_pllre_clk32_480M,	MUX | DIV_U71 | PERIPH_NO_RESET, TEGRA210_CLK_ID_XUSB_SS_SRC, &tegra_xusb_ss_ops),
+	PERIPH_CLK("xusb_dev_src",	XUDC_ID, "dev_src",	95,	0x60c,	112000000, mux_clkm_pllp_pllre,		MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_XUSB_DEV_SRC),
+	SHARED_EMC_CLK("xusb.emc",	XUSB_ID, "emc",	&tegra_clk_emc,	NULL,	0,	SHARED_BW, 0, TEGRA210_CLK_ID_EMC_XUSB_USER),
 };
 
 static struct clk_mux_sel mux_ss_clk_m[] = {
@@ -9669,6 +9669,7 @@ static struct clk_mux_sel mux_ss_clk_m[] = {
 
 static struct clk tegra_xusb_ssp_src = {
 	.name      = "xusb_ssp_src",
+	.clk_id    = TEGRA210_CLK_ID_XUSB_SSP_SRC,
 	.lookup    = {
 		.dev_id    = NULL,
 		.con_id	   = "ssp_src",
@@ -9686,6 +9687,7 @@ static struct clk tegra_xusb_ssp_src = {
 
 static struct clk tegra_xusb_ss_div2 = {
 	.name      = "xusb_ss_div2",
+	.clk_id    = TEGRA210_CLK_ID_XUSB_SS_DIV2,
 	.ops       = &tegra_clk_m_div_ops,
 	.parent    = &tegra_xusb_source_clks[3],
 	.mul       = 1,
@@ -9704,6 +9706,7 @@ static struct clk_mux_sel mux_ss_div2_pllu_60M[] = {
 
 static struct clk tegra_xusb_hs_src = {
 	.name      = "xusb_hs_src",
+	.clk_id    = TEGRA210_CLK_ID_XUSB_HS_SRC,
 	.lookup    = {
 		.dev_id    = NULL,
 		.con_id	   = "hs_src",
