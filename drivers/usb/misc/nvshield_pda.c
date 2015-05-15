@@ -86,7 +86,7 @@ static struct nvshield_product nvshield_list[] = {
 	{
 		.name = "Hawkeye",
 		.dt_name = "nvidia,he2290",
-		.id = 5,
+		.id = 2,
 		.max_voltage_mv = 12000,
 	},
 };
