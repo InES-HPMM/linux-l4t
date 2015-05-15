@@ -171,7 +171,7 @@ static int ads1015_start_conversion(struct ads1015 *adc, int chan)
 	reg_val |= (channel_mux_val << ADS1015_INPUT_MULTIPLEXER_SHIFT);
 	ret = ads1015_write(adc->rmap, ADS1015_CONFIG_REG, reg_val);
 	if (ret < 0) {
-		dev_err(adc->dev, "Config reg write failed %d\n", ret);
+		dev_err(adc->dev, "Config Reg Write failed %d\n", ret);
 		return ret;
 	}
 
@@ -298,7 +298,7 @@ static int ads1015_read_raw(struct iio_dev *iodev,
 	struct iio_chan_spec const *chan, int *val, int *val2, long mask)
 {
 	struct ads1015 *adc = iio_priv(iodev);
-	int ret = 0;
+	int ret = 0, cs_ret = 0;
 	u16 reg_val = 0;
 	int rval;
 
@@ -340,12 +340,11 @@ static int ads1015_read_raw(struct iio_dev *iodev,
 done:
 	/* if device is enabled in cotinuous mode set it here again */
 	if (adc->adc_prop.is_continuous_mode) {
-		ret = ads1015_write(adc->rmap, ADS1015_CONFIG_REG, adc->config);
-		if (ret < 0) {
-			dev_err(adc->dev, "CONFIG reg write failed %d\n", ret);
-			mutex_unlock(&iodev->mlock);
-			return ret;
-		}
+		cs_ret = ads1015_write(adc->rmap,
+					ADS1015_CONFIG_REG, adc->config);
+		if (cs_ret < 0)
+			dev_err(adc->dev,
+				"CONFIG CS mode write failed %d\n", cs_ret);
 	}
 	mutex_unlock(&iodev->mlock);
 	if (!ret)
