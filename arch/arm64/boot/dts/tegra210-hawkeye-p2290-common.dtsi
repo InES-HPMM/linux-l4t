@@ -122,6 +122,7 @@
 		status = "okay";
 		lp8557-backlight-a-wuxga-8-0@2c {
 			status = "disabled";
+			disable-on-kernel-charging;
 			compatible = "ti,lp8557";
 			reg = <0x2c>;
 
@@ -181,6 +182,7 @@
 
 		lp8557-backlight-s-wuxga-7-0@2c {
 			status = "disabled";
+			disable-on-kernel-charging;
 			compatible = "ti,lp8557";
 			reg = <0x2c>;
 
@@ -240,6 +242,7 @@
 
 		lp8557-backlight-s-wuxga-8-0@2c {
 			status = "disabled";
+			disable-on-kernel-charging;
 			compatible = "ti,lp8557";
 			reg = <0x2c>;
 
