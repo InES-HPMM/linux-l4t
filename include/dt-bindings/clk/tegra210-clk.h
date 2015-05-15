@@ -278,7 +278,16 @@
 #define TEGRA210_CLK_ID_CLK_OUT_1	307 /* CLK_OUT enb combined w src sel */
 #define TEGRA210_CLK_ID_CLK_OUT_2	308
 #define TEGRA210_CLK_ID_CLK_OUT_3	309
-/* IDs 310 ... 351 are reserved */
+/* IDs 310 ... 316 are reserved */
+#define TEGRA210_CLK_ID_XUSB_HOST_SRC	317
+#define TEGRA210_CLK_ID_XUSB_FALCON_SRC	318
+#define TEGRA210_CLK_ID_XUSB_FS_SRC	319
+#define TEGRA210_CLK_ID_XUSB_SS_SRC	320
+#define TEGRA210_CLK_ID_XUSB_DEV_SRC	321
+#define TEGRA210_CLK_ID_XUSB_SS_DIV2	322
+#define TEGRA210_CLK_ID_XUSB_HS_SRC	323
+#define TEGRA210_CLK_ID_XUSB_SSP_SRC	324
+/* IDs 325 ... 351 are reserved */
 
 /*
  * Clock IDs in the 352 ... 511 range are used identify tegra virtual clock
@@ -347,7 +356,8 @@
 #define TEGRA210_CLK_ID_EMC_VIC_SHARED_USER		446
 #define TEGRA210_CLK_ID_EMC_APE_USER			447
 #define TEGRA210_CLK_ID_EMC_PCIE_USER			448
-/* IDs 449 ... 469 are reserved */
+#define TEGRA210_CLK_ID_EMC_XUSB_USER			449
+/* IDs 450 ... 469 are reserved */
 #define TEGRA210_CLK_ID_SBUS				470
 #define TEGRA210_CLK_ID_SBUS_AVP_USER			471
 #define TEGRA210_CLK_ID_SBUS_USBD_USER			472
