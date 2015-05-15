@@ -123,6 +123,10 @@ F:	arch/arm64/mach-tegra/panel-*.c
 F:	drivers/misc/tegra-cec/tegra_cec.c
 F:	drivers/video/tegra/fb.c
 F:	drivers/video/tegra/dc/
+X:	drivers/video/tegra/dc/hdmihdcp.c
+X:	drivers/video/tegra/dc/nvhdcp.c
+X:	drivers/video/tegra/dc/nvhdcp_hdcp22_methods.c
+
 
 HDCP
 M:	Sharath Sarangpur <ssarangpur@nvidia.com>
