@@ -21,7 +21,6 @@
  */
 
 #include "tegra210-hawkeye-p2290-a00-00.dts"
-#include "tegra210-hawkeye-sharp-war.dtsi"
 #include "tegra210-platforms/tegra210-sysedp.dtsi"
 
 / {
