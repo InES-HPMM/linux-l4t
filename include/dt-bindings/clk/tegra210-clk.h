@@ -278,7 +278,13 @@
 #define TEGRA210_CLK_ID_CLK_OUT_1	307 /* CLK_OUT enb combined w src sel */
 #define TEGRA210_CLK_ID_CLK_OUT_2	308
 #define TEGRA210_CLK_ID_CLK_OUT_3	309
-/* IDs 310 ... 316 are reserved */
+#define TEGRA210_CLK_ID_CCLK_G		310 /* No enb bit for super-clocks */
+#define TEGRA210_CLK_ID_CCLK_LP		311
+#define TEGRA210_CLK_ID_SCLK_MUX	312
+#define TEGRA210_CLK_ID_SCLK_DIV	313
+#define TEGRA210_CLK_ID_SCLK_SKIP	314
+#define TEGRA210_CLK_ID_HCLK		315 /* Enb combined with divider */
+#define TEGRA210_CLK_ID_PCLK		316 /* Enb combined with divider */
 #define TEGRA210_CLK_ID_XUSB_HOST_SRC	317
 #define TEGRA210_CLK_ID_XUSB_FALCON_SRC	318
 #define TEGRA210_CLK_ID_XUSB_FS_SRC	319
@@ -297,7 +303,10 @@
 #define TEGRA210_CLK_ID_CPU_G		353
 #define TEGRA210_CLK_ID_CPU_LP		354
 #define TEGRA210_CLK_ID_ADSP_CPU	355
-/* IDs 356 ... 359 are reserved */
+#define TEGRA210_CLK_ID_ADSP_BUS	356
+#define TEGRA210_CLK_ID_ADSP		357
+#define TEGRA210_CLK_ID_CCPLEX		358
+/* ID 359 is reserved */
 #define TEGRA210_CLK_ID_C2BUS				360
 #define TEGRA210_CLK_ID_C3BUS				361
 #define TEGRA210_CLK_ID_CBUS				362
