@@ -1048,9 +1048,20 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 		if (val < 0) {
 			dev_err(&phy->pdev->dev,
 			"Failed to set prod settings with err %ld", val);
-			return val;
+			goto safe_settings;
+		}
+		if (tegra_chip_get_revision() >= TEGRA_REVISION_A02) {
+			val = tegra_prod_set_by_name(&base, "prod_a02",
+							phy->prod_list);
+			if (val < 0) {
+				dev_err(&phy->pdev->dev,
+				"Failed to set prod settings with err %ld",
+									val);
+				goto safe_settings;
+			}
 		}
 	} else {
+safe_settings:
 		val = readl(base + UTMIP_BIAS_CFG0);
 		val |= UTMIP_HSSQUELCH_LEVEL(0x2) | UTMIP_HSDISCON_LEVEL(0x3) |
 			UTMIP_HSDISCON_LEVEL_MSB;
@@ -1058,7 +1069,10 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 
 		val = readl(base + UTMIP_BIAS_CFG2);
 		val &= ~UTMIP_HSSQUELCH_LEVEL_NEW(~0);
-		val |= UTMIP_HSSQUELCH_LEVEL_NEW(2);
+		if (tegra_chip_get_revision() >= TEGRA_REVISION_A02)
+			val |= UTMIP_HSSQUELCH_LEVEL_NEW(0);
+		else
+			val |= UTMIP_HSSQUELCH_LEVEL_NEW(2);
 		writel(val, base + UTMIP_BIAS_CFG2);
 	}
 #else
