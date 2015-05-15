@@ -1643,6 +1643,9 @@ static int es755_codec_write(struct snd_soc_codec *codec, unsigned int reg,
 		msleep(20);
 	}
 
+	if (atomic_read(&escore->active_streams) > 0)
+		usleep_range(1000, 1005);
+
 	ret = escore_write(codec, ES_CODEC_VALUE, reg<<8 | value);
 	if (ret < 0) {
 		dev_err(codec->dev, "codec reg %x write err %d\n",

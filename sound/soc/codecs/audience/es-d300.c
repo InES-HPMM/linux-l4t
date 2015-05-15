@@ -259,7 +259,7 @@ static int escore_set_switch(int id)
 	 * Without delay, the switch settings are not coming into
 	 * effect.
 	 */
-	usleep_range(5000, 5005);
+	usleep_range(1000, 1005);
 	cmd = switch_arr[id];
 
 	mutex_lock(&escore->api_mutex);

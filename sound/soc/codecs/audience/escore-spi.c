@@ -153,10 +153,9 @@ static int escore_spi_cmd(struct escore_priv *escore,
 	do {
 		--retry;
 		if (escore->cmd_compl_mode != ES_CMD_COMP_INTR) {
-			if (retry % ES_SPI_CONT_RETRY == 0) {
-				usleep_range(ES_SPI_RETRY_DELAY,
-					ES_SPI_RETRY_DELAY + 200);
-			}
+
+				usleep_range(ES_SPI_1MS_DELAY,
+					ES_SPI_1MS_DELAY + 50);
 		}
 
 		err = escore_spi_read(escore, &resp16, sizeof(resp16));
