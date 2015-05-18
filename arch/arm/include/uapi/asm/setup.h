@@ -2,6 +2,7 @@
  *  linux/include/asm/setup.h
  *
  *  Copyright (C) 1997-1999 Russell King
+ *  Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -16,7 +17,7 @@
 
 #include <linux/types.h>
 
-#define COMMAND_LINE_SIZE 1024
+#define COMMAND_LINE_SIZE 1152
 
 /* The list ends with an ATAG_NONE node. */
 #define ATAG_NONE	0x00000000
