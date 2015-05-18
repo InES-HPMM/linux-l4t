@@ -5518,6 +5518,9 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	/* FW mailbox ACK wait queue initialization */
 	init_waitqueue_head(&tegra->fw_ack_wq);
 
+	/* Init pm qos for cpu boost */
+	tegra_xusb_boost_cpu_init(tegra);
+
 	/* Register interrupt handler for SMI line to handle mailbox
 	 * interrupt from firmware
 	 */
@@ -5563,7 +5566,6 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	pm_runtime_enable(&pdev->dev);
 
 	hsic_power_create_file(tegra);
-	tegra_xusb_boost_cpu_init(tegra);
 	tegra->init_done = true;
 
 	if (xhci->quirks & XHCI_LPM_SUPPORT)
