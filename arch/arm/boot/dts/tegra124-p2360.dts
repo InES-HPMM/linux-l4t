@@ -247,6 +247,14 @@
 		status = "okay";
 	};
 
+	isc-mgr.2 {
+		compatible = "nvidia,isc-mgr";
+		i2c-bus = <0>;
+		csi-port = <4>;
+		/* default-power-on; */
+		status = "okay";
+	};
+
 	regulators {
 		compatible = "simple-bus";
 		device_type = "fixed-regulators";
