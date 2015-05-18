@@ -123,6 +123,7 @@ struct ads1015_property {
 	int num_conditions;
 	int num_retries;
 	int retry_delay_ms;
+	int conv_delay;
 };
 
 struct ads1015 {
@@ -154,12 +155,70 @@ static int ads1015_read(struct regmap *regmap, unsigned int reg, u16 *val)
 	return ret;
 }
 
+static int ads1015_get_sampling_code(struct ads1015 *adc, int sampling_freq,
+		int *conv_delay_us)
+{
+	int scode;
+
+	/* Sampling frequency can be enum also */
+	if (sampling_freq <= ADS1015_3300_SPS) {
+		scode = sampling_freq;
+		goto conv_delay;
+	}
+
+	if (sampling_freq <= 128)
+		scode = 0;
+	else if (sampling_freq <= 250)
+		scode = 1;
+	else if (sampling_freq <= 490)
+		scode = 2;
+	else if (sampling_freq <= 920)
+		scode = 3;
+	else if (sampling_freq <= 1600)
+		scode = 4;
+	else if (sampling_freq <= 2400)
+		scode = 5;
+	else
+		scode = 6;
+
+conv_delay:
+	switch (scode) {
+	case ADS1015_128_SPS:
+		*conv_delay_us = 7812;
+		break;
+	case ADS1015_250_SPS:
+		*conv_delay_us = 4000;
+		break;
+	case ADS1015_490_SPS:
+		*conv_delay_us = 2040;
+		break;
+	case ADS1015_920_SPS:
+		*conv_delay_us = 1087;
+		break;
+	case ADS1015_1600_SPS:
+		*conv_delay_us = 625;
+		break;
+	case ADS1015_2400_SPS:
+		*conv_delay_us = 416;
+		break;
+	case ADS1015_3300_SPS:
+		*conv_delay_us = 303;
+		break;
+	default:
+		scode = 0;
+		*conv_delay_us = 7812;
+		break;
+	}
+	return scode;
+}
+
 static int ads1015_start_conversion(struct ads1015 *adc, int chan)
 {
 	u16 channel_mux_val = chan;
 	u16 reg_val;
 	int ret;
-	int timeout = 10;
+	int retry = 10;
+	int delay = adc->adc_os_prop.conv_delay;
 
 	if (adc->continuous_dt_node && (chan != adc->adc_prop.channel_number))
 		reg_val = adc->os_config;
@@ -182,9 +241,15 @@ static int ads1015_start_conversion(struct ads1015 *adc, int chan)
 		return ret;
 	}
 
+	delay = (delay) ? delay : 800;
 	/* Wait for conversion */
 	do {
-		udelay(800);
+		if (delay >= 1000) {
+			mdelay(delay / 1000);
+			udelay(delay % 1000);
+		} else {
+			udelay(delay);
+		}
 		ret = ads1015_read(adc->rmap, ADS1015_CONFIG_REG, &reg_val);
 		if (ret < 0) {
 			dev_err(adc->dev, "Config reg read failed %d\n", ret);
@@ -192,7 +257,7 @@ static int ads1015_start_conversion(struct ads1015 *adc, int chan)
 		}
 		if (reg_val & ADS1015_MASK_CONV_START)
 			return 0;
-	} while (--timeout > 0);
+	} while (--retry > 0);
 	return -ETIMEDOUT;
 }
 
@@ -462,6 +527,8 @@ static int ads1015_get_dt_data(struct ads1015 *adc, struct device_node *np)
 
 	ret = of_property_read_u32(np, "sampling-frequency", &val);
 	adc_os_prop->sampling_freq = (ret) ? ADS1015_920_SPS : val;
+	adc_os_prop->sampling_freq = ads1015_get_sampling_code(adc,
+			adc_os_prop->sampling_freq, &adc_os_prop->conv_delay);
 
 	ret = of_property_read_u32(np, "ti,comparator-mode", &val);
 	adc_os_prop->comparator_mode = (ret) ? ADS1015_WINDOW_COMPARATOR : val;
@@ -500,6 +567,7 @@ static int ads1015_get_dt_data(struct ads1015 *adc, struct device_node *np)
 	if (adc_os_prop->is_continuous_mode) {
 		adc_prop->pga = adc_os_prop->pga;
 		adc_prop->sampling_freq = adc_os_prop->sampling_freq;
+		adc_prop->conv_delay = adc_os_prop->conv_delay;
 		adc_prop->comparator_mode = adc_os_prop->comparator_mode;
 		adc_prop->comparator_queue = adc_os_prop->comparator_queue;
 		adc_prop->is_continuous_mode = adc_os_prop->is_continuous_mode;
@@ -528,6 +596,9 @@ static int ads1015_get_dt_data(struct ads1015 *adc, struct device_node *np)
 
 	ret = of_property_read_u32(cnode, "sampling-frequency", &val);
 	adc_prop->sampling_freq = (ret) ? ADS1015_920_SPS : val;
+	adc_prop->sampling_freq = ads1015_get_sampling_code(adc,
+					adc_prop->sampling_freq,
+					&adc_prop->conv_delay);
 
 	ret = of_property_read_u32(cnode, "ti,comparator-mode", &val);
 	adc_prop->comparator_mode = (ret) ? ADS1015_WINDOW_COMPARATOR : val;
