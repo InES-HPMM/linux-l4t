@@ -52,9 +52,8 @@
 
 #include <governor.h>
 
-#include "nvhost_acm.h"
-#include "scale_emc.h"
-#include "dev.h"
+#include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 
 #define GET_TARGET_FREQ_DONTSCALE	1
 
