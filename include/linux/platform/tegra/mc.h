@@ -24,7 +24,6 @@
 
 #define MC_BROADCAST_CHANNEL	-1
 
-extern int mc_intr_count;
 extern int mc_channels;
 
 struct mc_client {
@@ -62,8 +61,11 @@ static inline u32 __mc_readl(int idx, u32 reg)
 	if (WARN(!mc, "Read before MC init'ed"))
 		return 0;
 
-	if (idx < 0 || idx > mc_channels)
+	if ((idx != MC_BROADCAST_CHANNEL && idx < 0) || idx > mc_channels)
 		return 0;
+
+	if (idx == MC_BROADCAST_CHANNEL)
+		idx = 0;
 
 	return readl(mc_regs[idx] + reg);
 }
@@ -99,8 +101,11 @@ static inline u32 __mc_raw_readl(int idx, u32 reg)
 	if (WARN(!mc, "Read before MC init'ed"))
 		return 0;
 
-	if (idx < 0 || idx > mc_channels)
+	if ((idx != MC_BROADCAST_CHANNEL && idx < 0) || idx > mc_channels)
 		return 0;
+
+	if (idx == MC_BROADCAST_CHANNEL)
+		idx = 0;
 
 	return __raw_readl(mc_regs[idx] + reg);
 }
@@ -120,7 +125,7 @@ static inline void __mc_raw_writel(int idx, u32 val, u32 reg)
 		__raw_writel(val, mc_regs[idx] + reg);
 }
 
-#define mc_readl(reg)       __mc_readl(0, reg)
+#define mc_readl(reg)       __mc_readl(MC_BROADCAST_CHANNEL, reg)
 #define mc_writel(val, reg) __mc_writel(MC_BROADCAST_CHANNEL, val, reg)
 
 int tegra_mc_get_tiled_memory_bandwidth_multiplier(void);

@@ -144,64 +144,40 @@ struct mc_client mc_clients[] = {
 int mc_client_last = ARRAY_SIZE(mc_clients) - 1;
 /*** Done. ***/
 
-static void mcerr_t12x_info_update(struct mc_client *c, u32 stat)
-{
-	if (stat & MC_INT_DECERR_EMEM)
-		c->intr_counts[0]++;
-	if (stat & MC_INT_SECURITY_VIOLATION)
-		c->intr_counts[1]++;
-	if (stat & MC_INT_INVALID_SMMU_PAGE)
-		c->intr_counts[2]++;
-	if (stat & MC_INT_INVALID_APB_ASID_UPDATE)
-		c->intr_counts[3]++;
-	if (stat & MC_INT_DECERR_VPR)
-		c->intr_counts[4]++;
-	if (stat & MC_INT_SECERR_SEC)
-		c->intr_counts[5]++;
-	if (stat & MC_INT_DECERR_MTS)
-		c->intr_counts[6]++;
-
-	if (stat & ~mc_int_mask)
-		c->intr_counts[7]++;
-}
-
-#define fmt_hdr "%-18s %-18s %-9s %-9s %-9s %-10s %-10s %-10s %-10s %-9s\n"
-#define fmt_cli "%-18s %-18s %-9u %-9u %-9u %-10u %-10u %-10u %-10u %-9u\n"
-static int mcerr_t12x_debugfs_show(struct seq_file *s, void *v)
-{
-	int i, j;
-	int do_print;
-
-	seq_printf(s, fmt_hdr,
-		   "swgroup", "client", "decerr", "secerr", "smmuerr",
-		   "apberr", "decerr-VPR", "secerr-SEC",
-		   "decerr-MTS", "unknown");
-	for (i = 0; i < ARRAY_SIZE(mc_clients); i++) {
-		do_print = 0;
-		if (strcmp(mc_clients[i].name, "dummy") == 0)
-			continue;
-		/* Only print clients who actually have errors. */
-		for (j = 0; j < mc_intr_count; j++) {
-			if (mc_clients[i].intr_counts[j]) {
-				do_print = 1;
-				break;
-			}
-		}
-		if (do_print)
-			seq_printf(s, fmt_cli,
-				   mc_clients[i].swgroup,
-				   mc_clients[i].name,
-				   mc_clients[i].intr_counts[0],
-				   mc_clients[i].intr_counts[1],
-				   mc_clients[i].intr_counts[2],
-				   mc_clients[i].intr_counts[3],
-				   mc_clients[i].intr_counts[4],
-				   mc_clients[i].intr_counts[5],
-				   mc_clients[i].intr_counts[6],
-				   mc_clients[i].intr_counts[7]);
-	}
-	return 0;
-}
+static const char *t124_intr_info[] = {
+	NULL,		/* Bit 0 */
+	NULL,
+	NULL,
+	NULL,
+	NULL,		/* Bit 4 */
+	NULL,
+	"decerr-emem",
+	NULL,
+	"secerr",	/* Bit 8 */
+	"arb-emem",
+	"smmu-err",
+	"apb_err",
+	"decerr-vpr",	/* Bit 12 */
+	"decerr-sec",
+	NULL,
+	NULL,
+	"decerr-mts",	/* Bit 16 */
+	NULL,
+	NULL,
+	NULL,
+	NULL,		/* Bit 20 */
+	NULL,
+	NULL,
+	NULL,
+	NULL,		/* Bit 24 */
+	NULL,
+	NULL,
+	NULL,
+	NULL,		/* Bit 28 */
+	NULL,
+	NULL,
+	NULL,
+};
 
 /*
  * Set up chip specific functions and data for handling this particular chip's
@@ -209,9 +185,8 @@ static int mcerr_t12x_debugfs_show(struct seq_file *s, void *v)
  */
 void mcerr_chip_specific_setup(struct mcerr_chip_specific *spec)
 {
-	spec->mcerr_info_update = mcerr_t12x_info_update;
-	spec->mcerr_debugfs_show = mcerr_t12x_debugfs_show;
 	spec->nr_clients = ARRAY_SIZE(mc_clients);
+	spec->intr_descriptions = t124_intr_info;
 	return;
 }
 

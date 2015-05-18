@@ -32,15 +32,12 @@
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #include <linux/platform/tegra/mc-regs-t12x.h>
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
-#define MC_ERR_34BIT_PHYS_ADDR
 #elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
 #include <linux/platform/tegra/mc-regs-t21x.h>
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI_0
-#define MC_ERR_34BIT_PHYS_ADDR
 #elif defined(CONFIG_ARCH_TEGRA_18x_SOC)
 #include <linux/platform/tegra/mc-regs-t18x.h>
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI_0
-#define MC_ERR_34BIT_PHYS_ADDR
 #endif
 
 #define MAX_PRINTS			6
@@ -59,7 +56,6 @@
 #define MC_ERR_STATUS_SECURE		(1 << 17)
 #define MC_ERR_STATUS_ADR_HI		(3 << 20)
 
-#define MC_INT_EXT_INTR_IN			(1<<1)
 #define MC_INT_DECERR_EMEM			(1<<6)
 #define MC_INT_SECURITY_VIOLATION		(1<<8)
 #define MC_INT_ARBITRATION_EMEM			(1<<9)
@@ -76,50 +72,6 @@
 #define MC_ERR_SECURITY_TRUSTZONE	(3)
 #define MC_ERR_SECURITY_CARVEOUT	(4)
 #define MC_ERR_INVALID_SMMU_PAGE	(6)
-
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
-#define _MC_INT_EN_MASK	(MC_INT_DECERR_EMEM |		\
-			 MC_INT_SECURITY_VIOLATION |	\
-			 MC_INT_INVALID_SMMU_PAGE)
-#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
-#define _MC_INT_EN_MASK	(MC_INT_EXT_INTR_IN |		\
-			 MC_INT_DECERR_EMEM |		\
-			 MC_INT_SECURITY_VIOLATION |	\
-			 MC_INT_INVALID_SMMU_PAGE |	\
-			 MC_INT_DECERR_VPR |		\
-			 MC_INT_SECERR_SEC)
-#elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
-#define _MC_INT_EN_MASK	(MC_INT_DECERR_EMEM |			\
-			 MC_INT_SECURITY_VIOLATION |		\
-			 MC_INT_INVALID_SMMU_PAGE |		\
-			 MC_INT_DECERR_VPR |			\
-			 MC_INT_SECERR_SEC |			\
-			 MC_INT_BBC_PRIVATE_MEM_VIOLATION |	\
-			 MC_INT_DECERR_BBC)
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
-#define _MC_INT_EN_MASK	(MC_INT_DECERR_EMEM |		\
-			 MC_INT_SECURITY_VIOLATION |	\
-			 MC_INT_INVALID_SMMU_PAGE |	\
-			 MC_INT_INVALID_APB_ASID_UPDATE | \
-			 MC_INT_DECERR_VPR |		\
-			 MC_INT_SECERR_SEC |		\
-			 MC_INT_DECERR_MTS)
-#elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
-#define _MC_INT_EN_MASK	(MC_INT_DECERR_EMEM |		\
-			 MC_INT_SECURITY_VIOLATION |	\
-			 MC_INT_INVALID_SMMU_PAGE |	\
-			 MC_INT_INVALID_APB_ASID_UPDATE | \
-			 MC_INT_DECERR_VPR |		\
-			 MC_INT_SECERR_SEC |		\
-			 MC_INT_DECERR_MTS |		\
-			 MC_INT_DECERR_GENERALIZED_CARVEOUT)
-#endif
-
-#ifdef CONFIG_TEGRA_ARBITRATION_EMEM_INTR
-#define MC_INT_EN_MASK	(_MC_INT_EN_MASK | MC_INT_ARBITRATION_EMEM)
-#else
-#define MC_INT_EN_MASK	(_MC_INT_EN_MASK)
-#endif
 
 extern void __iomem *mc;
 
@@ -161,14 +113,6 @@ struct mcerr_chip_specific {
 	const struct mc_error *(*mcerr_info)(u32 intr);
 
 	/*
-	 * Update the interrupt info for the passed client. This is called once
-	 * the client who generated the error is determined.
-	 *
-	 * Called in interrupt context - no sleeping, etc.
-	 */
-	void (*mcerr_info_update)(struct mc_client *c, u32 status);
-
-	/*
 	 * Provide actual user feed back to the kernel log. The passed data is
 	 * everything that could be determined about the fault.
 	 *
@@ -188,8 +132,16 @@ struct mcerr_chip_specific {
 	 */
 	int (*mcerr_debugfs_show)(struct seq_file *s, void *v);
 
-	/* Numeric fields that must be set by the different architectures. */
-	unsigned int	 nr_clients;
+	/* Numeric fields that must be set by the different chips. */
+	unsigned int nr_clients;
+
+	/*
+	 * This array lists a string description of each valid interrupt bit.
+	 * It must be at least 32 entries long. Entries that are not valid
+	 * interrupts should be left as NULL. Each entry should be at most 12
+	 * characters long.
+	 */
+	const char **intr_descriptions;
 };
 
 #define client(_swgroup, _name, _swgid)					\

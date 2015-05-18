@@ -61,8 +61,6 @@ int mc_channels;
 void __iomem *mc;
 void __iomem *mc_regs[MC_MAX_CHANNELS];
 
-int mc_intr_count;
-
 /*
  * Return carveout info for @co in @inf. If @nr is non-NULL then the number of
  * carveouts are also place in @*nr. If both @inf and @nr are NULL then the
@@ -345,6 +343,7 @@ EXPORT_SYMBOL(tegra_mc_flush_done);
  */
 static void __iomem *tegra_mc_map_regs(struct platform_device *pdev, int device)
 {
+	struct resource res;
 	const void *prop;
 	void __iomem *regs;
 	void __iomem *regs_start = NULL;
@@ -372,6 +371,12 @@ static void __iomem *tegra_mc_map_regs(struct platform_device *pdev, int device)
 		if (i == 0)
 			regs_start = regs;
 	}
+
+	if (of_address_to_resource(pdev->dev.of_node, start, &res))
+		return NULL;
+
+	pr_info("mapped MMIO address: 0x%p -> 0x%lx\n",
+		regs_start, (unsigned long)res.start);
 
 	return regs_start;
 }
@@ -424,7 +429,6 @@ static int tegra_mc_probe(struct platform_device *pdev)
 	mc = tegra_mc_map_regs(pdev, 0);
 	if (!mc)
 		return -ENOMEM;
-	pr_info("MC mapped MMIO address: 0x%p\n", mc);
 
 	/* Populate the rest of the channels... */
 	if (mc_channels > 1) {
@@ -433,7 +437,6 @@ static int tegra_mc_probe(struct platform_device *pdev)
 			if (!mc_regs[i - 1])
 				return -ENOMEM;
 		}
-		pr_info("MC mapped MMIO address: 0x%p\n", mc_regs[i - 1]);
 	} else {
 		/* Make channel 0 the same as the MC broadcast range. */
 		mc_regs[0] = mc;
