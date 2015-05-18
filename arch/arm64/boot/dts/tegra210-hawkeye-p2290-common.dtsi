@@ -313,12 +313,13 @@
 			compatible = "ads1015";
 			#io-channel-cells = <1>;
 			ti,programmable-gain-amplifier = <1>;
-			sampling-frequency = <0>;
+			sampling-frequency = <3300>;
 			ti,comparator-mode = <0>;
 			ti,comparator-queue = <3>;
 			continuous-mode {
 				ti,continuous-channel-number = <4>;
 				ti,maximum-retries = <6>;
+				sampling-frequency = <128>;
 				ti,adc-valid-threshold-ranges= <(-100)  76
 								200     309
 								1049    1263
