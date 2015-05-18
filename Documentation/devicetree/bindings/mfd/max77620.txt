@@ -13,6 +13,24 @@ Required properties:
   The second cell is the flags, encoded as the trigger masks from binding document
 	interrupts.txt, using dt-bindings/irq.
 
+This device also support the power OFF and power reset of system.
+Following properties are used for this purpose:
+- maxim,system-pmic-power-off: Boolean, This device will be used for system
+	power OFF. Host will issue i2c command to PMIC to power OFF system.
+- maxim,system-pmic-power-reset: Boolean, This device will used for system
+	power reset. Host will issue i2c command to PMIC to reset system.
+- maxim,system-power-controller: Boolean, This device will be use as
+	system power controller and used for power OFF and power reset
+	of system. Host issue necessary command to PMIC.
+- maxim,power-reset-gpio-states: Two dimensional array type, This property
+	provides the option to set the PMIC GPIOs on desired state just
+	before power OFF or power reset of system. Values are provided as
+	follows:
+		maxim,power-reset-gpio-states = <6 0
+						7 1>;
+		Means GPIO6 will set as LOW and GPIO7 will set as HIGH
+		just before power OFF and reset of system.
+
 Optional properties:
 -------------------
 
