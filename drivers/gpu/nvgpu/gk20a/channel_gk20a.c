@@ -2138,7 +2138,7 @@ static int gk20a_ioctl_channel_submit_gpfifo(
 	 * synchronization; we might still wait and do an increment */
 	size = args->num_entries * sizeof(struct nvgpu_gpfifo);
 	if (size) {
-		gpfifo = vmalloc(size);
+		gpfifo = nvgpu_alloc(size, false);
 		if (!gpfifo)
 			return -ENOMEM;
 
@@ -2173,7 +2173,7 @@ static int gk20a_ioctl_channel_submit_gpfifo(
 	gk20a_fence_put(fence_out);
 
 clean_up:
-	vfree(gpfifo);
+	nvgpu_free(gpfifo);
 	return ret;
 }
 
