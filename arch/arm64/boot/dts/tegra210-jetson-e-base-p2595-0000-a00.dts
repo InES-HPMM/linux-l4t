@@ -280,7 +280,7 @@
 		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(BB, 3) GPIO_ACTIVE_HIGH>;
 		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(E, 6) GPIO_ACTIVE_HIGH>;
 
-		nvidia,num-codec-link = <2>;
+		nvidia,num-codec-link = <3>;
 
 		nvidia,audio-routing =
 			"x Headphone Jack", 	"x HPOL",
@@ -297,7 +297,9 @@
 			"x DMIC R1",	"x Int Mic",
 			"x DMIC R2",	"x Int Mic",
 			"y Headphone", 	"y OUT",
-			"y IN",		"y Mic";
+			"y IN",		"y Mic",
+			"z Headphone", 	"z OUT",
+			"z IN",		"z Mic";
 
 		nvidia,xbar = <&tegra_axbar>;
 
@@ -334,6 +336,18 @@
 			srate = <8000>;
 			num-channel = <1>;
 			name-prefix = "y";
+		};
+		nvidia,dai-link-3 {
+			link-name = "spdif-dit-2";
+			cpu-dai = <&tegra_dmic2>;
+			codec-dai = <&spdif_dit2>;
+			cpu-dai-name = "DMIC2";
+			codec-dai-name = "dit-hifi";
+			format = "i2s";
+			bit-format = "s16_le";
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "z";
 		};
 	};
 
