@@ -607,12 +607,10 @@ static int nvhost_ioctl_channel_submit(struct nvhost_channel_userctx *ctx,
 		nvhost_syncpt_get_ref(&host->syncpt, job->sp[i].id);
 	}
 
-	job->hwctx_syncpt_idx = 0;
-
 	trace_nvhost_channel_submit(ctx->pdev->name,
 		job->num_gathers, job->num_relocs, job->num_waitchk,
-		job->sp[job->hwctx_syncpt_idx].id,
-		job->sp[job->hwctx_syncpt_idx].incrs);
+		job->sp[0].id,
+		job->sp[0].incrs);
 
 	err = nvhost_module_busy(ctx->pdev);
 	if (err)
@@ -662,7 +660,7 @@ static int nvhost_ioctl_channel_submit(struct nvhost_channel_userctx *ctx,
 		if (err)
 			goto fail;
 	} else if (num_syncpt_incrs == 1)
-		args->fence =  get_job_fence(job, job->hwctx_syncpt_idx);
+		args->fence =  get_job_fence(job, 0);
 	else
 		args->fence = 0;
 
