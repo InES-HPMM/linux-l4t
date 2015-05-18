@@ -59,6 +59,7 @@ config USB_ARCH_HAS_XHCI
 menuconfig USB_SUPPORT
 	bool "USB support"
 	depends on HAS_IOMEM
+	select TEGRA_USB_SHARED_PAD
 	default y
 	---help---
 	  This option adds core support for Universal Serial Bus (USB).
@@ -72,8 +73,7 @@ config USB_COMMON
 	depends on USB || USB_GADGET
 
 config TEGRA_USB_SHARED_PAD
-	bool "Enable shared pad control for Tegra11x/Tegra12x/Tegra13x/Tegra21x"
-	default y if (ARCH_TEGRA_11x_SOC || ARCH_TEGRA_12x_SOC || ARCH_TEGRA_13x_SOC || ARCH_TEGRA_21x_SOC)
+	bool "Enable shared pad control"
 	---help---
 	  Add shared pad controls for pcie and usb
 
