@@ -31,6 +31,7 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/regmap.h>
+#include <linux/sysedp.h>
 #include <media/nvc.h>
 #include <media/imx132.h>
 #include <media/camera_common.h>
@@ -46,7 +47,8 @@ struct imx132_info {
 	struct imx132_platform_data	*pdata;
 	atomic_t			in_use;
 	struct clk			*mclk;
-	struct regmap 		*regmap;
+	struct regmap			*regmap;
+	struct sysedp_consumer		*sysedpc;
 };
 
 #define IMX132_TABLE_WAIT_MS 0
@@ -669,6 +671,9 @@ static int imx132_power_on(struct imx132_info *info)
 	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd)))
 		return -EFAULT;
 
+	/* Indicate higher sysedp power state prior to turning on the sensor */
+	sysedp_set_state(info->sysedpc, 1);
+
 	if (info->pdata->ext_reg) {
 		if (imx132_get_extra_regulators())
 			goto imx132_poweron_fail;
@@ -720,6 +725,9 @@ imx132_vcm_fail:
 
 imx132_i2c_fail:
 imx132_poweron_fail:
+	/* Power up failure. Reduce sysedp powerstate */
+	sysedp_set_state(info->sysedpc, 0);
+
 	pr_err("%s failed.\n", __func__);
 	return -ENODEV;
 }
@@ -754,6 +762,9 @@ static int imx132_power_off(struct imx132_info *info)
 	}
 
 imx132_pwroff_end:
+	/* Powered off, lower power state w/ sysedp framework */
+	sysedp_set_state(info->sysedpc, 0);
+
 	return 0;
 }
 
@@ -1012,7 +1023,9 @@ imx132_probe(struct i2c_client *client,
 		imx132_power_put(&info->power);
 		pr_err("[imx132]:%s:Unable to register misc device!\n",
 		__func__);
-	}
+	} else
+		/* register sensor consumer w/ syspedp subsystem */
+		info->sysedpc = sysedp_create_consumer("imx132", "imx132");
 
 	return err;
 }
@@ -1023,6 +1036,7 @@ imx132_remove(struct i2c_client *client)
 	struct imx132_info *info = i2c_get_clientdata(client);
 	imx132_power_put(&info->power);
 	misc_deregister(&imx132_device);
+	sysedp_free_consumer(info->sysedpc);
 	return 0;
 }
 
