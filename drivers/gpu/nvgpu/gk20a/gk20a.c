@@ -1138,6 +1138,8 @@ static void gk20a_pm_shutdown(struct platform_device *pdev)
 		msecs_to_jiffies(GK20A_WAIT_FOR_IDLE_MS);
 	int ref_cnt;
 #endif
+	struct gk20a_platform *platform = platform_get_drvdata(pdev);
+	int ret = 0;
 
 	dev_info(&pdev->dev, "shutting down");
 
@@ -1157,6 +1159,9 @@ static void gk20a_pm_shutdown(struct platform_device *pdev)
 
 	/* Be ready for rail-gate after this point */
 	gk20a_pm_prepare_poweroff(&pdev->dev);
+
+	if (platform->railgate)
+		ret = platform->railgate(pdev);
 }
 
 #ifdef CONFIG_PM
