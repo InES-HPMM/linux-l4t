@@ -706,12 +706,6 @@ config TEGRA_NVDUMPER
 	  You can dump RAM with nvflash tool in dirty boot status.
 	  usage: nvflash --dumpram [phy. RAM offset] [length] <filename>
 
-config TEGRA_ARBITRATION_EMEM_INTR
-	bool "Enable the ARBITRATION_EMEM interrupt in the MC"
-	help
-	  Enable this to allow the kernel to track arbitration conflicts
-	  in the memory controller.
-
 config TEGRA_CORE_EDP_LIMITS
 	bool "Enforce electrical design limits on core rail"
 	depends on TEGRA_SILICON_PLATFORM
