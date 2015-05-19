@@ -1666,7 +1666,7 @@ static int tegra_vi_i2c_resume_noirq(struct device *dev)
 
 #ifdef CONFIG_PM_RUNTIME
 
-int tegra_vi_i2c_runtime_resume(struct device *dev)
+static int tegra_vi_i2c_runtime_resume(struct device *dev)
 {
 	struct tegra_vi_i2c_dev *i2c_dev = dev_get_drvdata(dev);
 	int ret;
@@ -1687,7 +1687,7 @@ err_power_enable:
 	return ret;
 }
 
-int tegra_vi_i2c_runtime_suspend(struct device *dev)
+static int tegra_vi_i2c_runtime_suspend(struct device *dev)
 {
 	struct tegra_vi_i2c_dev *i2c_dev = dev_get_drvdata(dev);
 	int ret;
