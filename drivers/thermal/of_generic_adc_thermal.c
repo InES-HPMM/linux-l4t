@@ -465,6 +465,8 @@ static int gpadc_thermal_probe(struct platform_device *pdev)
 			"Thermal zone of sensor register failed: %d\n", ret);
 		goto scrub;
 	}
+	dev_info(&pdev->dev, "Thermal sensor registerd for thermal zone %s\n",
+			gti->tz_dev->type);
 	return 0;
 
 scrub:
