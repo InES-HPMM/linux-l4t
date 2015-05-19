@@ -250,11 +250,6 @@ static struct tegra_io_dpd pexclk2_io = {
 	.io_dpd_reg_index	= 0,
 	.io_dpd_bit		= 6,
 };
-static struct tegra_io_dpd sdmmc3_io = {
-	.name			= "SDMMC3",
-	.io_dpd_reg_index	= 1,
-	.io_dpd_bit		= 2,
-};
 
 static struct tegra_suspend_platform_data t210ref_suspend_data = {
 	.cpu_timer      = 1700,
@@ -295,9 +290,6 @@ static void __init tegra_t210ref_late_init(void)
 	tegra_io_dpd_enable(&pexbias_io);
 	tegra_io_dpd_enable(&pexclk1_io);
 	tegra_io_dpd_enable(&pexclk2_io);
-
-	/* put sdmmc3 into DPD mode to save power*/
-	tegra_io_dpd_enable(&sdmmc3_io);
 
 	t210ref_camera_init();
 }
