@@ -271,9 +271,6 @@
 			panel-o-720p-6-0 {
 				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
-				nvidia,panel-bl-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
-				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(I, 0) 0>; /* PI0 */
-				nvidia,panel-en-1-gpio = <&gpio TEGRA_GPIO(I, 1) 0>; /* PI1 */
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
 			};
 		};
