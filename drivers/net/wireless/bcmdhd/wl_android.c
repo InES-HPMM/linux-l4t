@@ -703,9 +703,6 @@ int wl_android_wifi_on(struct net_device *dev)
 		DHD_ERROR(("%s: dev is null\n", __FUNCTION__));
 		return -EINVAL;
 	}
-#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
-	tegra_sysfs_on();
-#endif
 
 	dhd_net_if_lock(dev);
 	if (!g_wifi_on) {
@@ -743,6 +740,11 @@ int wl_android_wifi_on(struct net_device *dev)
 #endif /* !BCMPCIE */
 		g_wifi_on = TRUE;
 	}
+
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	if (!ret)
+		tegra_sysfs_on();
+#endif
 
 exit:
 	dhd_net_if_unlock(dev);

@@ -51,6 +51,9 @@
 #ifdef CONFIG_ARCH_MSM
 #include <mach/msm_pcie.h>
 #endif
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+#include "dhd_custom_sysfs_tegra.h"
+#endif
 
 #define PCI_CFG_RETRY 		10
 #define OS_HANDLE_MAGIC		0x1234abcd	/* Magic # to recognize osh */
@@ -199,6 +202,9 @@ static int dhdpcie_pci_resume(struct pci_dev *pdev)
 static int dhdpcie_suspend_dev(struct pci_dev *dev)
 {
 	int ret;
+#ifdef	CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	tegra_sysfs_suspend();
+#endif
 	dhdpcie_pme_active(dev, TRUE);
 	pci_save_state(dev);
 	pci_enable_wake(dev, PCI_D0, TRUE);
@@ -223,6 +229,10 @@ static int dhdpcie_resume_dev(struct pci_dev *dev)
 		return err;
 	}
 	dhdpcie_pme_active(dev, FALSE);
+
+#ifdef	CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	tegra_sysfs_resume();
+#endif
 	return err;
 }
 
