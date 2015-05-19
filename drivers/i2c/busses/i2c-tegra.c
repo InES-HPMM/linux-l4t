@@ -833,8 +833,33 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 	if (i2c_dev->msg_read && (status & I2C_INT_RX_FIFO_DATA_REQ)) {
 		if (i2c_dev->msg_buf_remaining)
 			tegra_i2c_empty_rx_fifo(i2c_dev);
-		else
+		else {
+			dev_err(i2c_dev->dev, "--- register dump for buffer remain == 0----\n");
+			dev_err(i2c_dev->dev, "I2C_CNFG - 0x%x\n",
+					i2c_readl(i2c_dev, I2C_CNFG));
+			dev_err(i2c_dev->dev, "I2C_PACKET_TRANSFER_STATUS - 0x%x\n",
+					i2c_readl(i2c_dev, I2C_PACKET_TRANSFER_STATUS));
+			dev_err(i2c_dev->dev, "I2C_FIFO_CONTROL - 0x%x\n",
+					i2c_readl(i2c_dev, I2C_FIFO_CONTROL));
+			dev_err(i2c_dev->dev, "I2C_FIFO_STATUS - 0x%x\n",
+					i2c_readl(i2c_dev, I2C_FIFO_STATUS));
+			dev_err(i2c_dev->dev, "I2C_INT_MASK - 0x%x\n",
+					i2c_readl(i2c_dev, I2C_INT_MASK));
+			dev_err(i2c_dev->dev, "I2C_INT_STATUS - 0x%x\n",
+					i2c_readl(i2c_dev, I2C_INT_STATUS));
+			dev_err(i2c_dev->dev, "msg_err - 0x%x, msg_read - 0x%x, msg_add - 0x%x\n",
+					i2c_dev->msg_err, i2c_dev->msg_read, i2c_dev->msg_add);
+			if (i2c_dev->msgs) {
+				struct i2c_msg *msgs = i2c_dev->msgs;
+				int i;
+				for (i = 0; i < i2c_dev->msgs_num; i++)
+					dev_err(i2c_dev->dev,
+							"msgs[%d] %c, addr=0x%04x, len=%d\n",
+							i, (msgs[i].flags & I2C_M_RD) ? 'R' : 'W',
+							msgs[i].addr, msgs[i].len);
+			}
 			BUG();
+		}
 	}
 
 	if (!i2c_dev->msg_read && (status & I2C_INT_TX_FIFO_DATA_REQ)) {
