@@ -8769,6 +8769,7 @@ static struct clk tegra_sata_aux_clk = {
 
 static struct clk tegra_clk_emc = {
 	.name = "emc",
+	.clk_id	= TEGRA210_CLK_ID_EMC,
 	.ops = &tegra_emc_clk_ops,
 	.reg = 0x19c,
 	.max_rate = 1800000000,
@@ -8783,6 +8784,7 @@ static struct clk tegra_clk_emc = {
 
 static struct clk tegra_clk_mc = {
 	.name = "mc",
+	.clk_id	= TEGRA210_CLK_ID_MC,
 	.ops = &tegra_mc_clk_ops,
 	.max_rate = 1066000000,
 	.parent = &tegra_clk_emc,
@@ -9125,6 +9127,7 @@ static struct clk_ops tegra_camera_mclk_ops = {
 
 static struct clk tegra_camera_mclk = {
 	.name = "mclk",
+	.clk_id = TEGRA210_CLK_ID_MCLK,
 	.ops = &tegra_camera_mclk_ops,
 	.u.periph = {
 		.clk_num = 92, /* csus */
@@ -9134,6 +9137,7 @@ static struct clk tegra_camera_mclk = {
 
 static struct clk tegra_camera_mclk2 = {
 	.name = "mclk2",
+	.clk_id = TEGRA210_CLK_ID_MCLK2,
 	.ops = &tegra_camera_mclk_ops,
 	.u.periph = {
 		.clk_num = 171, /* vim2_clk */
@@ -9143,6 +9147,7 @@ static struct clk tegra_camera_mclk2 = {
 
 static struct clk tegra_camera_mipical = {
 	.name = "cam-mipi-cal",
+	.clk_id = TEGRA210_CLK_ID_CAM_MIPI_CAL,
 	.ops = &tegra_camera_mclk_ops,
 	.u.periph = {
 		.clk_num = 56, /* mipi_cal */
@@ -9159,6 +9164,7 @@ static struct clk_ops tegra_camera_mclk3_ops = {
 
 static struct clk tegra_camera_mclk3 = {
 	.name = "mclk3",
+	.clk_id = TEGRA210_CLK_ID_MCLK3,
 	.ops = &tegra_camera_mclk3_ops,
 	.reg = 0x1a8,
 	.flags = MUX_CLK_OUT,
@@ -9169,6 +9175,7 @@ static struct clk tegra_camera_mclk3 = {
 
 static struct clk tegra_clk_isp = {
 	.name = "isp",
+	.clk_id = TEGRA210_CLK_ID_ISP,
 	.ops = &tegra_periph_clk_ops,
 	.reg = 0x144,
 	.max_rate = 1000000000,

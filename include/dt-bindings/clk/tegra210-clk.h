@@ -50,7 +50,8 @@
 #define TEGRA210_CLK_ID_HOST1X		28
 #define TEGRA210_CLK_ID_VCP		29
 #define TEGRA210_CLK_ID_I2S0		30
-/* IDs 31 ... 32 are reserved */
+/* ID 31 is reserved */
+#define TEGRA210_CLK_ID_MC		32
 #define TEGRA210_CLK_ID_AHBDMA		33
 #define TEGRA210_CLK_ID_APBDMA		34
 /* IDs 35 ... 38 are reserved */
@@ -69,7 +70,7 @@
 #define TEGRA210_CLK_ID_I2C2		54
 #define TEGRA210_CLK_ID_UARTC		55
 #define TEGRA210_CLK_ID_MIPI_CAL	56
-/* ID 57 is reserved */
+#define TEGRA210_CLK_ID_EMC		57
 #define TEGRA210_CLK_ID_USB2		58
 /* IDs 59 ... 62 are reserved */
 #define TEGRA210_CLK_ID_BSEV		63
@@ -293,7 +294,12 @@
 #define TEGRA210_CLK_ID_XUSB_SS_DIV2	322
 #define TEGRA210_CLK_ID_XUSB_HS_SRC	323
 #define TEGRA210_CLK_ID_XUSB_SSP_SRC	324
-/* IDs 325 ... 351 are reserved */
+#define TEGRA210_CLK_ID_ISP		325 /* No enb bit for isp clock */
+#define TEGRA210_CLK_ID_MCLK		326 /* Share enb bit with CSUS */
+#define TEGRA210_CLK_ID_MCLK2		327 /* Share enb bit with VIM2_CLK */
+#define TEGRA210_CLK_ID_MCLK3		328 /* Share enb bit with CLK_OUT_3 */
+#define TEGRA210_CLK_ID_CAM_MIPI_CAL	329 /* Share enb bit with MIPI_CAL */
+/* IDs 330 ... 351 are reserved */
 
 /*
  * Clock IDs in the 352 ... 511 range are used identify tegra virtual clock
