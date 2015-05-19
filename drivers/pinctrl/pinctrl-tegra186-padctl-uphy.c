@@ -1810,7 +1810,7 @@ static int tegra_xusb_padctl_pinconf_group_get(struct pinctrl_dev *pinctrl,
 	struct tegra_padctl_uphy *padctl = pinctrl_dev_get_drvdata(pinctrl);
 	const struct tegra_padctl_uphy_lane *lane;
 	enum tegra_xusb_padctl_param param;
-	u32 value = 0;
+	int value = 0;
 	int port;
 
 	param = TEGRA_XUSB_PADCTL_UNPACK_PARAM(*config);
@@ -3367,7 +3367,7 @@ static int tegra186_padctl_uphy_probe(struct platform_device *pdev)
 	TRACE();
 	ctx->provider = devm_of_phy_provider_register(&pdev->dev,
 					tegra186_padctl_uphy_xlate);
-	if (err < 0) {
+	if (IS_ERR(ctx->provider)) {
 		dev_err(&pdev->dev, "failed to register PHYs: %d\n", err);
 		goto unregister;
 	}
