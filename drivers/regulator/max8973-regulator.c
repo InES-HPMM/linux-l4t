@@ -604,6 +604,9 @@ static struct max8973_regulator_platform_data *max8973_parse_dt(
 
 	if (irq_data) {
 		pdata->irq_flags = irqd_get_trigger_type(irq_data);
+		pval = 0;
+		ret = of_property_read_u32(np, "interrupt-flags", &pval);
+		pdata->irq_flags |= (ret) ? 0 : pval;
 		dev_info(dev, "Irq flag is 0x%08x\n", pdata->irq_flags);
 	}
 	return pdata;
