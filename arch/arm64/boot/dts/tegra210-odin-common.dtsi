@@ -273,7 +273,11 @@
 		};
 
 		sor1 {
+			status = "okay";
 			nvidia,sor1-output-type ="dp";
+		};
+		dpaux1 {
+			status = "okay";
 		};
 	};
 
