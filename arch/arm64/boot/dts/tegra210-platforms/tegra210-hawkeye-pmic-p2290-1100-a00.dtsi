@@ -103,7 +103,7 @@
 
 				pin_gpio1 {
 					pins = "gpio1";
-					function = "fps-out";
+					function = "gpio";
 					drive-push-pull = <1>;
 					maxim,fps-source = <FPS_SRC_NONE>;
 					maxim,fps-power-up-period = <0>;
