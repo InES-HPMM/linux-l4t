@@ -11,6 +11,10 @@ Any standard regulator properties can be used to configure the single max8973
 DCDC.
 
 Optional properties:
+- interrupts: Interrupt number can be provided as detailed on
+	Documentation/devicetree/bindings/interrupt-controller/interrupts.txt
+- interrupt-flags: Provide interrupt flags as per
+	include/dt-bindings/interrupt-controller/irq.h.
 - maxim,externally-enable: Boolean property which tells whether EN pin control
 	the output enable or not.
 - maxim,dvs-gpio: DVS gpio. GPIO on which DVS pin is connected.
