@@ -1487,11 +1487,11 @@ static int vi2_probe(struct platform_device *pdev)
 
 	/* Match the nvhost_module_init VENC powergating */
 	if (ndata->slcg_notifier_enable &&
-			(ndata->powergate_ids[0] != -1)) {
+			(ndata->powergate_id != -1)) {
 		ndata->toggle_slcg_notifier.notifier_call =
 		&tegra_camera_slcg_handler;
 
-		slcg_register_notifier(ndata->powergate_ids[0],
+		slcg_register_notifier(ndata->powergate_id,
 			&ndata->toggle_slcg_notifier);
 	}
 
@@ -1531,8 +1531,8 @@ static int vi2_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, vi2_cam->ndata);
 
 	if (ndata->slcg_notifier_enable &&
-	    (ndata->powergate_ids[0] != -1))
-		slcg_unregister_notifier(ndata->powergate_ids[0],
+	    (ndata->powergate_id != -1))
+		slcg_unregister_notifier(ndata->powergate_id,
 					 &ndata->toggle_slcg_notifier);
 
 	nvhost_client_device_release(pdev);

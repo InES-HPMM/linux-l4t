@@ -1,7 +1,7 @@
 /*
  * Nvhost event logging to ftrace.
  *
- * Copyright (c) 2010-2014, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2010-2015, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -914,49 +914,41 @@ TRACE_EVENT(nvhost_module_disable_clk,
 );
 
 TRACE_EVENT(nvhost_module_power_on,
-	TP_PROTO(const char *devname, int powergate_id0,
-				int powergate_id1),
+	TP_PROTO(const char *devname, int powergate_id),
 
-	TP_ARGS(devname, powergate_id0, powergate_id1),
+	TP_ARGS(devname, powergate_id),
 
 	TP_STRUCT__entry(
 		__field(const char *, devname)
-		__field(int, powergate_id0)
-		__field(int, powergate_id1)
+		__field(int, powergate_id)
 	),
 
 	TP_fast_assign(
 		__entry->devname = devname;
-		__entry->powergate_id0 = powergate_id0;
-		__entry->powergate_id1 = powergate_id1;
+		__entry->powergate_id = powergate_id;
 	),
 
-	TP_printk("dev=%s, powergate_id0=%d, powergate_id1=%d",
-		__entry->devname, __entry->powergate_id0,
-		__entry->powergate_id1)
+	TP_printk("dev=%s, powergate_id=%d",
+		__entry->devname, __entry->powergate_id)
 );
 
 TRACE_EVENT(nvhost_module_power_off,
-	TP_PROTO(const char *devname, int powergate_id0,
-				int powergate_id1),
+	TP_PROTO(const char *devname, int powergate_id),
 
-	TP_ARGS(devname, powergate_id0, powergate_id1),
+	TP_ARGS(devname, powergate_id),
 
 	TP_STRUCT__entry(
 		__field(const char *, devname)
-		__field(int, powergate_id0)
-		__field(int, powergate_id1)
+		__field(int, powergate_id)
 	),
 
 	TP_fast_assign(
 		__entry->devname = devname;
-		__entry->powergate_id0 = powergate_id0;
-		__entry->powergate_id1 = powergate_id1;
+		__entry->powergate_id = powergate_id;
 	),
 
-	TP_printk("dev=%s, powergate_id0=%d, powergate_id1=%d",
-		__entry->devname, __entry->powergate_id0,
-		__entry->powergate_id1)
+	TP_printk("dev=%s, powergate_id=%d",
+		__entry->devname, __entry->powergate_id)
 );
 
 TRACE_EVENT(nvhost_scale_notify,
