@@ -26,7 +26,7 @@ const char string_ctrl_pkt[] = "control pkt";
 const char string_resume[] = "resume called";
 const char string_dpc_pkt[] = "dpc called";
 const char dummy_inf[] = "dummy:";
-extern int bcmdhd_irq_number;
+int bcmdhd_irq_number;
 
 static DEVICE_ATTR(ping, S_IRUGO | S_IWUGO,
 	tegra_sysfs_histogram_ping_show,

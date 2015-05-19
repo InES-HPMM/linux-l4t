@@ -53,7 +53,7 @@ extern void dhdsdio_isr(void * args);
 #include "dhd_custom_sysfs_tegra.h"
 #endif
 
-int bcmdhd_irq_number;
+extern int bcmdhd_irq_number;
 
 /* driver info, initialized when bcmsdh_register is called */
 static bcmsdh_driver_t drvinfo = {NULL, NULL, NULL, NULL};
