@@ -20,6 +20,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/memory/tegra-swgroup.h>
 #include <dt-bindings/ata/ahci-tegra.h>
+#include <dt-bindings/soc/nvidia,tegra124-powergate.h>
 
 / {
 	compatible = "nvidia,tegra124";
@@ -64,6 +65,7 @@
 		is_off;
 		#power-domain-cells = <0>;
 		power-domains = <&host1x_pd>;
+		partition-id = <TEGRA_POWERGATE_VIC>;
 	};
 
 	msenc_pd: msenc-pd {
@@ -71,6 +73,7 @@
 		is_off;
 		#power-domain-cells = <0>;
 		power-domains = <&host1x_pd>;
+		partition-id = <TEGRA_POWERGATE_MPE>;
 	};
 
 	gpu_pd: gpu-pd {
@@ -78,6 +81,7 @@
 		is_off;
 		#power-domain-cells = <0>;
 		power-domains = <&host1x_pd>;
+		partition-id = <TEGRA_POWERGATE_GPU>;
 	};
 
 	ve_pd: ve-pd {
@@ -85,6 +89,55 @@
 		is_off;
 		#power-domain-cells = <0>;
 		power-domains = <&host1x_pd>;
+		partition-id = <TEGRA_POWERGATE_VE>;
+	};
+
+	pcie_pd: pcie-pd {
+		compatible = "nvidia, tegra124-pcie-pd";
+		#power-domain-cells = <0>;
+		partition-id = <TEGRA_POWERGATE_PCIE>;
+	};
+
+	sata_pd: sata-pd {
+		compatible = "nvidia, tegra124-sata-pd";
+		#power-domain-cells = <0>;
+		partition-id = <TEGRA_POWERGATE_SATA>;
+	};
+
+	sor_pd: sor-pd {
+		compatible = "nvidia, tegra124-sor-pd";
+		#power-domain-cells = <0>;
+		partition-id = <TEGRA_POWERGATE_SOR>;
+	};
+
+	disa_pd: disa-pd {
+		compatible = "nvidia, tegra124-disa-pd";
+		#power-domain-cells = <0>;
+		partition-id = <TEGRA_POWERGATE_DISA>;
+	};
+
+	disb_pd: disb-pd {
+		compatible = "nvidia, tegra124-disb-pd";
+		#power-domain-cells = <0>;
+		partition-id = <TEGRA_POWERGATE_DISB>;
+	};
+
+	xusba_pd: xusba-pd {
+		compatible = "nvidia, tegra124-xusba-pd";
+		#power-domain-cells = <0>;
+		partition-id = <TEGRA_POWERGATE_XUSBA>;
+	};
+
+	xusbb_pd: xusbb-pd {
+		compatible = "nvidia, tegra124-xusbb-pd";
+		#power-domain-cells = <0>;
+		partition-id = <TEGRA_POWERGATE_XUSBB>;
+	};
+
+	xusbc_pd: xusbc-pd {
+		compatible = "nvidia, tegra124-xusbc-pd";
+		#power-domain-cells = <0>;
+		partition-id = <TEGRA_POWERGATE_XUSBC>;
 	};
 
 	mc {
