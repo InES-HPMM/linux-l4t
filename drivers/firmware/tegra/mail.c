@@ -111,6 +111,15 @@ uint32_t tegra_bpmp_mail_readl(int ch, int offset)
 }
 EXPORT_SYMBOL(tegra_bpmp_mail_readl);
 
+int tegra_bpmp_read_data(unsigned int ch, void *data, size_t sz)
+{
+	if (!data || sz > MSG_DATA_SZ || ch >= NR_CHANNELS)
+		return -EINVAL;
+	memcpy(data, channel_area[ch].ib->data, sz);
+	return 0;
+}
+EXPORT_SYMBOL(tegra_bpmp_read_data);
+
 void tegra_bpmp_mail_return_data(int ch, int code, void *data, int sz)
 {
 	struct mb_data *p;
