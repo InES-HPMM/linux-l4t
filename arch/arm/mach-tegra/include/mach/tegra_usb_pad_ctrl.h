@@ -458,6 +458,13 @@ static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
 #define SS_PORT_MAP(_p, val) \
 	((val & 0x7) << (_p * 5))
 
+#define XUSB_PADCTL_UPHY_USB3_ECTL_2_0(p) (0xa64 + p * 0x40)
+#define XUSB_PADCTL_UPHY_USB3_ECTL_2_0_RX_CTLE_MASK 0xffff
+#define XUSB_PADCTL_UPHY_USB3_ECTL_3_0(p) (0xa68 + p * 0x40)
+#define XUSB_PADCTL_UPHY_USB3_ECTL_4_0(p) (0xa6c + p * 0x40)
+#define XUSB_PADCTL_UPHY_USB3_ECTL_4_0_RX_CDR_CTRL_MASK (0xffff << 16)
+#define XUSB_PADCTL_UPHY_USB3_ECTL_6_0(p) (0xa74 + p * 0x40)
+
 #define XUSB_PADCTL_USB2_VBUS_ID_0	0xc60
 #define VBUS_SOURCE_SELECT(val)	((val & 0x3) << 12)
 #define ID_SOURCE_SELECT(val)	((val & 0x3) << 16)

@@ -973,6 +973,23 @@ void xusb_ss_pad_init(int pad, int port_map, u32 cap)
 	pr_debug("[%s] ss pad %d\n", __func__ , pad);
 	pr_debug("XUSB_PADCTL_SS_PORT_MAP = 0x%x\n"
 			, readl(pad_base + XUSB_PADCTL_SS_PORT_MAP));
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	/* read and print xusb prod settings for the SS pad */
+	val = readl(pad_base + XUSB_PADCTL_UPHY_USB3_ECTL_2_0(pad));
+	val &= XUSB_PADCTL_UPHY_USB3_ECTL_2_0_RX_CTLE_MASK;
+	pr_info("xusb_prod port%d RX_CTLE = 0x%lx\n", pad, val);
+
+	val = readl(pad_base + XUSB_PADCTL_UPHY_USB3_ECTL_3_0(pad));
+	pr_info("xusb_prod port%d RX_DFE = 0x%lx\n", pad, val);
+
+	val = readl(pad_base + XUSB_PADCTL_UPHY_USB3_ECTL_4_0(pad));
+	val &= XUSB_PADCTL_UPHY_USB3_ECTL_4_0_RX_CDR_CTRL_MASK;
+	pr_info("xusb_prod port%d RX_CDR_CTRL = 0x%lx\n", pad, val >> 16);
+
+	val = readl(pad_base + XUSB_PADCTL_UPHY_USB3_ECTL_6_0(pad));
+	pr_info("xusb_prod port%d RX_EQ_CTRL_H = 0x%lx\n", pad, val);
+#endif
 }
 EXPORT_SYMBOL_GPL(xusb_ss_pad_init);
 
