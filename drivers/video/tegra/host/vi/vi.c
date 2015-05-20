@@ -398,6 +398,8 @@ static struct platform_driver vi_driver = {
 static struct of_device_id tegra_vi_domain_match[] = {
 	{.compatible = "nvidia,tegra210-ve-pd",
 	.data = (struct nvhost_device_data *)&t21_vi_info},
+	{.compatible = "nvidia,tegra132-ve-pd",
+	.data = (struct nvhost_device_data *)&t124_vi_info},
 	{.compatible = "nvidia,tegra124-ve-pd",
 	 .data = (struct nvhost_device_data *)&t124_vi_info},
 	{},
