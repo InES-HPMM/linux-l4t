@@ -3168,6 +3168,7 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 	u8 boun_end = 0, next_boun_end = 0;
 	u8 j = 0;
 	bool valid_ui_found = false;
+	unsigned long flags;
 
 	/*
 	 * Assume there are a max of 10 windows and allocate tap window
@@ -3181,7 +3182,7 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 		return -ENOMEM;
 	}
 
-	spin_lock(&sdhci->lock);
+	spin_lock_irqsave(&sdhci->lock, flags);
 	tap_value = 0;
 	do {
 		tap_data = &tuning_data->tap_data[num_of_wins];
@@ -3189,7 +3190,7 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 		tap_value = sdhci_tegra_scan_tap_values(sdhci, tap_value, true,
 				&err);
 		if ((tap_value < 0) && (err == -ENOMEDIUM)) {
-			spin_unlock(&sdhci->lock);
+			spin_unlock_irqrestore(&sdhci->lock, flags);
 			return err;
 		}
 		tap_data->win_start = min_t(u8, tap_value, MAX_TAP_VALUES);
@@ -3199,7 +3200,7 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 			if (!num_of_wins) {
 				dev_err(mmc_dev(sdhci->mmc),
 					"All tap values(0-255) failed\n");
-				spin_unlock(&sdhci->lock);
+				spin_unlock_irqrestore(&sdhci->lock, flags);
 				return -EINVAL;
 			} else {
 				/* All windows obtained */
@@ -3211,7 +3212,7 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 		tap_value = sdhci_tegra_scan_tap_values(sdhci,
 				tap_value, false, &err);
 		if ((tap_value < 0) && (err == -ENOMEDIUM)) {
-			spin_unlock(&sdhci->lock);
+			spin_unlock_irqrestore(&sdhci->lock, flags);
 			return err;
 		}
 		tap_data->win_end = min_t(u8, (tap_value - 1), MAX_TAP_VALUES);
@@ -3245,7 +3246,7 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 		}
 		num_of_wins++;
 	} while (tap_value < MAX_TAP_VALUES);
-	spin_unlock(&sdhci->lock);
+	spin_unlock_irqrestore(&sdhci->lock, flags);
 
 	tuning_data->num_of_valid_tap_wins = num_of_wins;
 	valid_num_uis = num_of_uis;
