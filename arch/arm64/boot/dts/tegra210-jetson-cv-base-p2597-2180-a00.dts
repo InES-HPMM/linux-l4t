@@ -82,7 +82,7 @@
 		status = "okay";
 	};
 
-	sdhci@700b0000 { /* SDMMC1 for uSD card */
+	sdhci@700b0000 { /* SDMMC1 for SD card */
 		uhs-mask = <0xc>;
 		power-off-rail;
 		nvidia,update-pinctrl-settings;
@@ -94,6 +94,7 @@
 		pinctrl-4 = <&sdmmc1_drv_code_1_8V>;
 		pinctrl-5 = <&sdmmc1_default_drv_code_3_3V>;
 		nvidia,sd-device;
+		wp-gpios = <&gpio TEGRA_GPIO_PZ4 0>;
 		status = "okay";
 	};
 
