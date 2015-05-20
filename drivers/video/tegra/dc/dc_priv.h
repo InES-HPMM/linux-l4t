@@ -46,8 +46,6 @@
 		(dc->out->hotplug_gpio >= 0 || \
 		dc->out->type == TEGRA_DC_OUT_DP) : 0)
 
-#define VRR_NATIVE_MODE_IDX 1
-
 static inline int tegra_dc_io_start(struct tegra_dc *dc)
 {
 	int ret = 0;
