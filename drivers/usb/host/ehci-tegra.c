@@ -687,8 +687,9 @@ static struct tegra_usb_platform_data *tegra_ehci_dt_parse_pdata(
 }
 
 static const struct of_device_id tegra_ehci_dev_match[] = {
-        { .compatible = "nvidia,tegra124-ehci", },
-        { },
+	{ .compatible = "nvidia,tegra124-ehci", },
+	{ .compatible = "nvidia,tegra132-ehci", },
+	{ },
 };
 
 static int tegra_ehci_probe(struct platform_device *pdev)
