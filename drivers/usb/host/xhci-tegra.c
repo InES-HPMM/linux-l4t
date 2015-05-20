@@ -4778,7 +4778,7 @@ static void tegra_xusb_parse_subnode(struct tegra_xhci_hcd *tegra,
 		np = of_get_child_by_name(parent, name);
 
 		if (!np) {
-			pr_err("Do not find child node %s\n", name);
+			pr_debug("Do not find child node %s\n", name);
 			continue;
 		}
 
