@@ -130,9 +130,9 @@ struct ads1015 {
 	struct device *dev;
 	struct i2c_client *clients;
 	struct regmap *rmap;
+	struct iio_dev *iiodev;
 	struct ads1015_property adc_prop;
 	struct ads1015_property adc_os_prop;
-	struct mutex lock;
 	u16 config;
 	u16 os_config;
 	bool continuous_dt_node;
@@ -372,14 +372,12 @@ static int ads1015_read_raw(struct iio_dev *iodev,
 		return -EINVAL;
 	}
 
-	mutex_lock(&adc->lock);
+	mutex_lock(&iodev->mlock);
+
 	if (adc->is_shutdown) {
-		mutex_unlock(&adc->lock);
+		mutex_unlock(&iodev->mlock);
 		return -EINVAL;
 	}
-	mutex_unlock(&adc->lock);
-
-	mutex_lock(&iodev->mlock);
 
 	if ((adc->adc_prop.is_continuous_mode) &&
 		(chan->channel == adc->adc_prop.channel_number)) {
@@ -685,11 +683,11 @@ static int ads1015_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	}
 	adc = iio_priv(iodev);
 	adc->dev = &i2c->dev;
+	adc->iiodev = iodev;
 	i2c_set_clientdata(i2c, adc);
 	adc_prop = &adc->adc_prop;
 	adc->continuous_dt_node = false;
 	adc->is_shutdown = false;
-	mutex_init(&adc->lock);
 	ret = ads1015_get_dt_data(adc, node);
 	if (ret < 0)
 		return ret;
@@ -725,10 +723,11 @@ static int ads1015_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 static void ads1015_shutdown(struct i2c_client *client)
 {
 	struct ads1015 *adc = i2c_get_clientdata(client);
+	struct iio_dev *iiodev = adc->iiodev;
 
-	mutex_lock(&adc->lock);
+	mutex_lock(&iiodev->mlock);
 	adc->is_shutdown = true;
-	mutex_unlock(&adc->lock);
+	mutex_unlock(&iiodev->mlock);
 }
 
 static const struct of_device_id ads1015_of_match[] = {
