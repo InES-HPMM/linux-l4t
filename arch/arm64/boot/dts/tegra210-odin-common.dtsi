@@ -28,7 +28,6 @@
 #include "panel-a-wuxga-8-0.dtsi"
 #include "panel-o-720p-6-0.dsti"
 #include "tegra210-platforms/tegra210-ers-dp-e2220-1170-a00.dtsi"
-#include "tegra210-platforms/tegra210-loki-e-sensor-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
 #include "tegra210-platforms/tegra210-thermal-fan-est-p2530-0930.dtsi"
 #include "tegra210-platforms/tegra210-keys-p2530-0930.dtsi"
@@ -40,7 +39,7 @@
 #include "tegra210-platforms/tegra210-audio.dtsi"
 #include "tegra210-platforms/tegra210-thermal-nct72-p2530.dtsi"
 #include "tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi"
-#include "tegra210-platforms/tegra210-p2530-common.dtsi"
+#include "tegra210-platforms/tegra210-ers-clk-init.dtsi"
 
 / {
 	model = "odin";
@@ -82,15 +81,32 @@
 	};
 
 	sdhci@700b0600 { /* SDMMC4 for EMMC */
-		uhs-mask = <0x0>;
+		max-clk-limit = <200000000>;
+		uhs-mask = <0x0>;	/* hs400 */
 		built-in;
 		pll_source = "pll_p", "pll_c4_out0";
 		power-off-rail;
 		status = "okay";
 	};
 
+	sdhci@700b0400 {
+		mmc-ocr-mask = <0>;
+		default-drv-type = <1>;
+		uhs-mask = <0x1c>;
+		power-off-rail;
+		nvidia,update-pinctrl-settings;
+		pinctrl-names = "sdmmc_schmitt_enable", "sdmmc_schmitt_disable", "sdmmc_clk_schmitt_enable", "sdmmc_clk_schmitt_disable", "sdmmc_drv_code", "sdmmc_default_drv_code";
+		pinctrl-0 = <&sdmmc3_schmitt_enable_state>;
+		pinctrl-1 = <&sdmmc3_schmitt_disable_state>;
+		pinctrl-2 = <&sdmmc3_clk_schmitt_enable_state>;
+		pinctrl-3 = <&sdmmc3_clk_schmitt_disable_state>;
+		pinctrl-4 = <&sdmmc3_drv_code_1_8V>;
+		pinctrl-5 = <&sdmmc3_default_drv_code_3_3V>;
+		status = "disabled";
+	};
+
 	sdhci@700b0200 { /* SDMMC2 for 2nd EMMC */
-		uhs-mask = <0x0>;
+		uhs-mask = <0x0>;	/* hs400 */
 		built-in;
 		power-off-rail;
 		tap-delay = <4>;
@@ -99,8 +115,7 @@
 		nvidia,ddr-tap-delay = <0>;
 		mmc-ocr-mask = <0>;
 		dqs-trim-delay = <17>;
-		max-clk-limit = <266000000>;
-		ddr-clk-limit = <52000000>;
+		max-clk-limit = <200000000>;
 		bus-width = <8>;
 		built-in;
 		nvidia,en-io-trim-volt;
@@ -122,7 +137,6 @@
 		pinctrl-4 = <&sdmmc1_drv_code_1_8V>;
 		pinctrl-5 = <&sdmmc1_default_drv_code_3_3V>;
 		nvidia,sd-device;
-		max-clk-limit = <180000000>;
 		status = "okay";
 	};
 
@@ -300,69 +314,6 @@
 
 	spi@7000d400 {
 		status = "okay";
-	};
-
-	sound {
-		compatible = "nvidia,tegra-audio-t210ref-mobile-rt5639";
-		nvidia,model = "tegra-snd-t210ref-mobile-rt5639";
-		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(BB, 3) GPIO_ACTIVE_HIGH>;
-		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(E, 6) GPIO_ACTIVE_HIGH>;
-
-		nvidia,num-codec-link = <2>;
-
-		nvidia,audio-routing =
-			"x Headphone Jack", 	"x HPOL",
-			"x Headphone Jack", 	"x HPOR",
-			"x Int Spk", 	"x SPORP",
-			"x Int Spk", 	"x SPORN",
-			"x Int Spk", 	"x SPOLP",
-			"x Int Spk", 	"x SPOLN",
-			"x micbias1",	"x Mic Jack",
-			"x IN2P",		"x Mic Jack",
-			"x IN2P",		"x Mic Jack",
-			"x DMIC L1",	"x Int Mic",
-			"x DMIC L2",	"x Int Mic",
-			"x DMIC R1",	"x Int Mic",
-			"x DMIC R2",	"x Int Mic",
-			"y Headphone", 	"y OUT",
-			"y IN",		"y Mic";
-
-		nvidia,xbar = <&tegra_axbar>;
-
-		nvidia,dai-link-1 {
-			link-name = "rt5639-playback";
-			cpu-dai = <&tegra_i2s1>;
-			codec-dai = <&rt5639>;
-			cpu-dai-name = "I2S1";
-			codec-dai-name = "rt5639-aif1";
-			format = "i2s";
-			bitclock-slave;
-			frame-slave;
-			bitclock-noninversion;
-			frame-noninversion;
-			bit-format = "s16_le";
-			bclk_ratio = <0>;
-			srate = <48000>;
-			num-channel = <2>;
-			name-prefix = "x";
-		};
-		nvidia,dai-link-2 {
-			link-name = "spdif-dit-1";
-			cpu-dai = <&tegra_i2s2>;
-			codec-dai = <&spdif_dit1>;
-			cpu-dai-name = "I2S2";
-			codec-dai-name = "dit-hifi";
-			format = "dsp_a";
-			bitclock-slave;
-			frame-slave;
-			bitclock-inversion;
-			frame-inversion;
-			bit-format = "s16_le";
-			bclk_ratio = <4>;
-			srate = <8000>;
-			num-channel = <1>;
-			name-prefix = "y";
-		};
 	};
 
 	extcon {
@@ -553,6 +504,10 @@
 	modem {
 		/* using XHCI UTMI */
 		nvidia,phy-type = <2>;
+	};
+
+	wifi-antenna-tuning {
+		status = "disabled";
 	};
 
 	soctherm@0x700E2000 {
@@ -755,6 +710,10 @@
 				up_compensation = <20>;
 				down_compensation = <20>;
 			};
+		};
+
+		Charger-Die {
+			status = "okay";
 		};
 
 		Tboard_tegra {
