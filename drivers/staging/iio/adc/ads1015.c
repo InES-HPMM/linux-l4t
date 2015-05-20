@@ -578,6 +578,9 @@ static int ads1015_get_dt_data(struct ads1015 *adc, struct device_node *np)
 		adc_prop->is_continuous_mode = true;
 	}
 
+	if (adc_os_prop->channel_number == -EINVAL)
+		adc_os_prop->channel_number = 0;
+
 	tnode = np;
 	cnode = of_find_node_by_name(np, "continuous-mode");
 	if (!cnode) {
@@ -631,6 +634,9 @@ static int ads1015_get_dt_data(struct ads1015 *adc, struct device_node *np)
 
 
 parse_range:
+	if (adc_prop->channel_number == -EINVAL)
+		return -EINVAL;
+
 	nranges = of_property_count_u32(tnode, "ti,adc-valid-threshold-ranges");
 	if (nranges <= 0)
 		return -EINVAL;
