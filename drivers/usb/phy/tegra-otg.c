@@ -1322,6 +1322,7 @@ err_clk:
 
 static const struct of_device_id otg_tegra_device_match[] = {
 	{.compatible = "nvidia,tegra124-otg" },
+	{.compatible = "nvidia,tegra132-otg" },
 	{},
 };
 
