@@ -1,0 +1,65 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * Authors:
+ *      VenkataJagadish.p	<vjagadish@nvidia.com>
+ *      Naveen Kumar Arepalli	<naveenk@nvidia.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+
+#ifndef _UFS_TEGRA_H
+#define _UFS_TEGRA_H
+
+#include <linux/io.h>
+
+#define NV_ADDRESS_MAP_MPHY_L0_BASE	0x02470000
+#define NV_ADDRESS_MAP_MPHY_L1_BASE	0x02480000
+
+#define MPHY_TX_APB_TX_CG_OVR0_0	0x170
+#define MPHY_TX_CLK_EN_SYMB	(1 << 1)
+#define MPHY_TX_CLK_EN_SLOW	(1 << 3)
+#define MPHY_TX_CLK_EN_FIXED	(1 << 4)
+#define MPHY_TX_CLK_EN_3X	(1 << 5)
+
+#define MPHY_TX_APB_TX_ATTRIBUTE_34_37_0	0x34
+#define TX_ADVANCED_GRANULARITY		(0x8 << 16)
+#define TX_ADVANCED_GRANULARITY_SETTINGS	(0x1 << 8)
+#define MPHY_GO_BIT	1
+
+#define MPHY_TX_APB_TX_VENDOR0_0	0x100
+#define MPHY_ADDR_RANGE		400
+
+struct ufs_tegra_host {
+	struct ufs_hba *hba;
+	bool is_lane_clks_enabled;
+	bool x2config;
+	void __iomem *mphy_l0_base;
+	void __iomem *mphy_l1_base;
+};
+
+extern struct ufs_hba_variant_ops ufs_hba_tegra_vops;
+
+static inline u32 mphy_readl(void __iomem *mphy_base, u32 offset)
+{
+	u32 val;
+
+	val = readl(mphy_base + offset);
+	return val;
+}
+
+static inline void mphy_writel(void __iomem *mphy_base, u32 val, u32 offset)
+{
+	writel(val, mphy_base + offset);
+}
+
+#endif

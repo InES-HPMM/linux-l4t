@@ -65,6 +65,7 @@
 
 #include "ufs.h"
 #include "ufshci.h"
+#include "ufs-tegra.h"
 
 #define UFSHCD "ufshcd"
 #define UFSHCD_DRIVER_VERSION "0.2"
