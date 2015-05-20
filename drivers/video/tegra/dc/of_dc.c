@@ -916,7 +916,7 @@ static int parse_cmu_data(struct device_node *np,
 		of_property_for_each_u32(np, "nvidia,cmu-lut1",
 			prop, p, u) {
 			/* OF_DC_LOG("cmu lut1 0x%x\n", u); */
-			*(addr_cmu_lut1++) = (u8)u;
+			*(addr_cmu_lut1++) = (u16)u;
 		}
 	}
 
