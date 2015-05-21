@@ -19,7 +19,7 @@
 /memreserve/ 0x80000000 0x00020000;
 
 #include "tegra210-common.dtsi"
-#include "tegra210-platforms/tegra210-jetson-e-power-tree-p2530-0930-e03.dtsi"
+#include "tegra210-platforms/tegra210-jetson-cv-power-tree-p2597-2180-a00.dtsi"
 #include "tegra210-platforms/tegra210-jetson-cv-pinmux-p2597-2180-a00.dtsi"
 #include "tegra210-platforms/tegra210-jetson-cv-sdmmc-drv-p2597-2180-a00.dtsi"
 #include "tegra210-platforms/tegra210-pwm-fan-p2530-0930.dtsi"
@@ -238,6 +238,85 @@
 		rt5639: rt5639.0-001c@1c {
 			compatible = "realtek,rt5639";
 			reg = <0x1c>;
+		};
+	};
+
+	i2c@7000c400 {
+		nvidia,clock-always-on;
+
+		tca9539_74: tca9539@74 {
+			compatible = "ti,tca9539";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0x74>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(L, 1) 0x0>;
+			gpio-init-names = "default";
+			gpio-init-0 = <&tca9539_74_default>;
+			tca9539_74_default: default {
+				/*
+				 * GPIO-10 : M2_E_ALERT_R_L
+				 * GPIO-13 : TOUCH_ID
+				 */
+				gpio-input = <10 13>;
+
+				/*
+				 * GPIO-1 : EN_VDD_TS_1V8_PMIC
+				 * GPIO-2 : EN_VDD_TS_HV_PMIC
+				 * GPIO-3 : EN_VDD_DISP,
+				 * GPIO-4 : PS_VDD_FAN_ENABLE
+				 * GPIO-5 : MDM_EN
+				 * GPIO-7 : MDM_EN, MDM_PWR_EN
+				 * GPIO-11 : VDD_DISP_MUX_EN
+				 * GPIO-12 : FLASH_INHIBIT
+				 * GPIO-14 : 5V0_HDMI_EN
+				 * GPIO-15 : EN_VDD_CAM_HV
+				 * GPIO-16,17 : TP83, TP84
+				 */
+				gpio-output-low = <1 2 3 4 5 7 11 12 14 15 16 17>;
+
+				/*
+				 * GPIO-0 : W_DISABLE_L
+				 * GPIO-6 : MDM_RST_L
+				 */
+				gpio-output-high = <0 6>;
+			};
+		};
+
+		tca9539_77: tca9539@77 {
+			compatible = "ti,tca9539";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0x77>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(Z, 2) 0x0>;
+			gpio-init-names = "default";
+			gpio-init-0 = <&tca9539_74_default>;
+			tca9539_77_default: default {
+				/*
+				 * GPIO-0 : DISP_CHARGER_STAT
+				 * GPIO-1 : DISP_TYPEC_ORIENT
+				 */
+				gpio-input = <0 1>;
+
+				/*
+				 * GPIO-2 : TYPEC_INT		 Charger control HDR
+				 * GPIO-3 : VDD_SYS_EN		 CAM HEADER
+				 * GPIO-4 : LCD_BIAS_EN		 CAM HEADER
+				 * GPIO-5 : TORCH_EN		 CAM HEADER
+				 * GPIO-6 : FLASH_INHIBIT 	 CAM HEADER
+				 * GPIO-7 : CAM2_PWDN		 CAM HEADER
+				 * GPIO-10 : CAM2_RST		 CAM HEADER
+				 * GPIO-11 : CAM_VDD_1V8_EN 	 CAM HEADER
+				 * GPIO-12 : CAM_VDD_1V2_EN 	 CAM HEADER
+				 * GPIO-13 : CAM_AF_PWDN    	 CAM HEADER
+				 * GPIO-14 : CHG_BD_PRSNT_L 	 CAM HEADER
+				 * GPIO-15 : BRIDGE_EN		 CAM HEADER
+				 * GPIO-16 : NVSR_INT		 CAM HEADER
+				 * GPIO-17 : BRIDGE_IRQ		 CAM HEADER
+				 */
+				gpio-output-low = <2 3 4 5 6 7 10 11 12 13 14 15 16 17>;
+			};
 		};
 	};
 
