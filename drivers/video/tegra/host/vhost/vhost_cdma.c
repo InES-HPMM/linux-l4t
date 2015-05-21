@@ -19,10 +19,10 @@
 #include <linux/slab.h>
 #include "vhost.h"
 #include "../host1x/host1x.h"
-#include "../host1x/host1x_cdma.h"
 #include "../nvhost_job.h"
 #include "../dev.h"
 #include "../bus_client.h"
+#include "../nvhost_cdma.h"
 
 static int vhost_pb_sendrecv(struct tegra_vhost_cmd_msg *msg, size_t size_in,
 		size_t size_out)
