@@ -501,6 +501,12 @@
 				0 0 0 0 0>;
 	};
 
+	regulators {
+		vdd_fan: regulator@13 {
+			enable-active-high;
+		};
+	};
+
 	pwm-fan {
 		compatible = "pwm-fan";
 		shared_data = <&pwm_fan_shared_data>;
