@@ -3206,7 +3206,7 @@ static int power_down(struct seq_file *s, void *data)
 {
 	struct tegra_pcie_port *port = NULL;
 	struct tegra_pcie *pcie = (struct tegra_pcie *)(s->private);
-	u16 val;
+	u32 val;
 	bool pass = false;
 
 	val = afi_readl(pcie, AFI_PCIE_PME);
@@ -3216,7 +3216,7 @@ static int power_down(struct seq_file *s, void *data)
 		val = afi_readl(pcie, AFI_PCIE_PME);
 	} while(!(val & AFI_PCIE_PME_ACK));
 
-	mdelay(1);
+	mdelay(1000);
 	list_for_each_entry(port, &pcie->ports, list) {
 		val = rp_readl(port, NV_PCIE2_RP_LTSSM_DBGREG);
 		if (val & PCIE2_RP_LTSSM_DBGREG_LINKFSM16) {
