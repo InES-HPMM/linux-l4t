@@ -85,6 +85,8 @@ static int tegra_gpio_wakes[] = {
 	TEGRA_GPIO_PV4,				/* wake58 */
 	TEGRA_GPIO_PI7,				/* wake59 */
 	-EINVAL,				/* wake60 */
+	-EINVAL,				/* wake61 */
+	TEGRA_GPIO_PX1,				/* wake62 */
 };
 
 static int tegra_wake_event_irq[] = {
@@ -149,6 +151,8 @@ static int tegra_wake_event_irq[] = {
 	-EAGAIN, /* LCD_GPIO2 */		/* wake58 */
 	-EAGAIN, /* UART4_CTS */		/* wake59 */
 	-EINVAL,				/* wake60 */
+	-EINVAL,				/* wake61 */
+	-EAGAIN, /* TOUCH_INT */		/* wake62 */
 };
 
 static int __init tegra21x_wakeup_table_init(void)
