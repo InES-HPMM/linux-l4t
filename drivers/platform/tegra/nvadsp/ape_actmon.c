@@ -804,7 +804,7 @@ int ape_actmon_probe(struct platform_device *pdev)
 	for (i = 0; i < ARRAY_SIZE(actmon_devices); i++) {
 		actmon_devices[i]->device = &pdev->dev;
 		ret = actmon_dev_probe(actmon_devices[i]);
-		dev_info(&pdev->dev, "%s actmon: %s probe (%d)\n",
+		dev_dbg(&pdev->dev, "%s actmon: %s probe (%d)\n",
 		actmon_devices[i]->clk_name, ret ? "Failed" : "Completed", ret);
 	}
 	return ret;
@@ -919,7 +919,7 @@ int ape_actmon_init(struct platform_device *pdev)
 
 	for (i = 0; i < ARRAY_SIZE(actmon_devices); i++) {
 		ret = actmon_dev_init(actmon_devices[i]);
-		dev_err(&pdev->dev, "%s actmon device: %s initialization (%d)\n",
+		dev_dbg(&pdev->dev, "%s actmon device: %s initialization (%d)\n",
 		actmon_devices[i]->clk_name, ret ? "Failed" : "Completed", ret);
 	}
 

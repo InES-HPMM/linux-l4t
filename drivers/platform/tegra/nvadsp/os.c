@@ -834,7 +834,7 @@ static int nvadsp_set_boot_freqs(struct nvadsp_drv_data *drv_data)
 	ret = clk_set_rate(drv_data->ape_emc_clk, ape_emc_freq);
 
 end:
-	dev_info(dev, "adsp cpu freq %luKHz ape freq %luKHz ape.emc freq %luKHz\n",
+	dev_info(dev, "adsp-cpu-freq: %luKHz ape-freq: %luKHz ape.emc-freq: %luKHz\n",
 		clk_get_rate(drv_data->adsp_cpu_clk) / 1000,
 		clk_get_rate(drv_data->ape_clk) / 1000,
 		clk_get_rate(drv_data->ape_emc_clk) / 1000);
@@ -877,7 +877,7 @@ static int __nvadsp_os_start(void)
 	writel(APE_RESET, priv.reset_reg);
 #endif
 
-	dev_info(dev, "waiting for ADSP OS to boot up...\n");
+	dev_info(dev, "Waiting for ADSP OS to boot up...\n");
 	ret = wait_for_adsp_os_load_complete();
 	if (ret) {
 		dev_err(dev, "Unable to start ADSP OS\n");
@@ -988,13 +988,15 @@ static int __nvadsp_os_suspend(void)
 		goto out;
 	}
 
+	dev_info(dev, "Waiting for ADSP OS suspend...\n");
 	ret = wait_for_completion_interruptible_timeout(&entered_wfi,
 		msecs_to_jiffies(ADSP_WFE_TIMEOUT));
 	if (WARN_ON(ret <= 0)) {
-		dev_err(dev, "ADSP is unable to enter wfe state\n");
+		dev_err(dev, "Unable to suspend ADSP OS\n");
 		ret = -EINVAL;
 		goto out;
 	}
+	dev_info(dev, "ADSP OS suspended!\n");
 
 	ret = nvadsp_mbox_close(&adsp_com_mbox);
 	if (ret) {
