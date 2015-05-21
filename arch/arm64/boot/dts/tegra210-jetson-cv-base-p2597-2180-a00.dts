@@ -238,6 +238,10 @@
 		active_pwm = <0 70 115 135 135 240 245 250 252 255>;
 	};
 
+	pwm_fan_shared_data: pfsd {
+		tach_gpio =  <TEGRA_GPIO(K, 7)>; /* TEGRA_GPIO_PK7 */
+	};
+
 	i2c@7000c000 {
 		rt5639: rt5639.0-001c@1c {
 			compatible = "realtek,rt5639";
