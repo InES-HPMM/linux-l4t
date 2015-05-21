@@ -314,7 +314,7 @@ static unsigned tegra_spi_calculate_curr_xfer_param(
 						spi->bits_per_word;
 	tspi->bytes_per_word = (bits_per_word - 1) / 8 + 1;
 
-	if (bits_per_word == 8 || bits_per_word == 16) {
+	if ((bits_per_word == 8 || bits_per_word == 16) && (t->len > 3)) {
 		tspi->is_packed = 1;
 		tspi->words_per_32bit = 32/bits_per_word;
 	} else {
