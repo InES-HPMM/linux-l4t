@@ -22,9 +22,169 @@
 	bcmdhd_wlan {
 		country_code_map {
 			CC1 {
-				iso_abbrev = "Q2";
+				iso_abbrev = "XV";
+				custom_locale = "XV";
+				custom_locale_rev = <994>;
+			};
+			CC2 {
+				iso_abbrev = "US";
 				custom_locale = "Q2";
 				custom_locale_rev = <87>;
+			};
+			CC3 {
+				iso_abbrev = "CA";
+				custom_locale = "CA";
+				custom_locale_rev = <996>;
+			};
+			CC4 {
+				iso_abbrev = "IN";
+				custom_locale = "Q2";
+				custom_locale_rev = <87>;
+			};
+			CC5 {
+				iso_abbrev = "SG";
+				custom_locale = "SG";
+				custom_locale_rev = <998>;
+			};
+			CC6 {
+				iso_abbrev = "JP";
+				custom_locale = "JP";
+				custom_locale_rev = <993>;
+			};
+			CC7 {
+				iso_abbrev = "KR";
+				custom_locale = "KR";
+				custom_locale_rev = <993>;
+			};
+			CC8 {
+				iso_abbrev = "RU";
+				custom_locale = "RU";
+				custom_locale_rev = <995>;
+			};
+			CC9 {
+				iso_abbrev = "TW";
+				custom_locale = "TW";
+				custom_locale_rev = <999>;
+			};
+			CC10 {
+				iso_abbrev = "AU";
+				custom_locale = "AU";
+				custom_locale_rev = <995>;
+			};
+			CC11 {
+				iso_abbrev = "NZ";
+				custom_locale = "NZ";
+				custom_locale_rev = <999>;
+			};
+			CC12 {
+				iso_abbrev = "EU";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC13 {
+				iso_abbrev = "AT";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC14 {
+				iso_abbrev = "BE";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC15 {
+				iso_abbrev = "BG";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC16 {
+				iso_abbrev = "HR";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC17 {
+				iso_abbrev = "CZ";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC18 {
+				iso_abbrev = "DK";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC19 {
+				iso_abbrev = "FR";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC20 {
+				iso_abbrev = "DE";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC21 {
+				iso_abbrev = "GR";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC22 {
+				iso_abbrev = "HU";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC23 {
+				iso_abbrev = "IT";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC24 {
+				iso_abbrev = "NL";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC25 {
+				iso_abbrev = "NO";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC26 {
+				iso_abbrev = "PL";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC27 {
+				iso_abbrev = "PT";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC28 {
+				iso_abbrev = "RO";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC29 {
+				iso_abbrev = "SK";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC30 {
+				iso_abbrev = "ES";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC31 {
+				iso_abbrev = "SE";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC32 {
+				iso_abbrev = "CH";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
+			};
+			CC33 {
+				iso_abbrev = "GB";
+				custom_locale = "E0";
+				custom_locale_rev = <998>;
 			};
 		};
 	};
