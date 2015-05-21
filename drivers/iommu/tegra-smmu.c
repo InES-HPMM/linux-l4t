@@ -1255,6 +1255,7 @@ char *debug_dma_platformdata(struct device *dev)
 
 static const struct file_operations smmu_ptdump_fops;
 static const struct file_operations smmu_iova2pa_fops;
+static const struct file_operations smmu_iovadump_fops;
 
 static void debugfs_create_as(struct smmu_as *as)
 {
@@ -1270,6 +1271,8 @@ static void debugfs_create_as(struct smmu_as *as)
 			    as, &smmu_ptdump_fops);
 	debugfs_create_file("iova_to_phys", S_IRUSR, as->debugfs_root,
 			    as, &smmu_iova2pa_fops);
+	debugfs_create_file("iova_dump", S_IRUSR, as->debugfs_root,
+			    as, &smmu_iovadump_fops);
 }
 
 static struct smmu_as *smmu_as_alloc_default(void)
@@ -1921,6 +1924,9 @@ static void smmu_dump_phys_page(struct seq_file *m, phys_addr_t phys)
 	phys_addr_t paddr;
 	ulong offset;
 
+	if (!phys || (phys == ~0))
+		return;
+
 	offset = round_down(phys & ~PAGE_MASK, 16);
 
 	base = (ulong) kmap(phys_to_page(phys));
@@ -1953,8 +1959,6 @@ static int smmu_iova2pa_show(struct seq_file *m, void *v)
 		   tegra_smmu_inquired_bytes,
 		   tegra_smmu_inquired_npte);
 
-	/* pass m if you want to print in seq file */
-	smmu_dump_phys_page(NULL, tegra_smmu_inquired_phys);
 	return 0;
 }
 
@@ -1997,6 +2001,32 @@ static ssize_t smmu_debugfs_iova2pa_write(struct file *file,
 
 static const struct file_operations smmu_iova2pa_fops = {
 	.open		= smmu_iova2pa_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+	.write		= smmu_debugfs_iova2pa_write,
+};
+
+static int smmu_iovadump_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "iova=%pa pa=%pa bytes=%zx npte=%d\n",
+		   &tegra_smmu_inquired_iova,
+		   &tegra_smmu_inquired_phys,
+		   tegra_smmu_inquired_bytes,
+		   tegra_smmu_inquired_npte);
+
+	/* pass NULL if you want to print to console */
+	smmu_dump_phys_page(m, tegra_smmu_inquired_phys);
+	return 0;
+}
+
+static int smmu_iovadump_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, smmu_iovadump_show, inode->i_private);
+}
+
+static const struct file_operations smmu_iovadump_fops = {
+	.open		= smmu_iovadump_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
 	.release	= single_release,
