@@ -11,8 +11,17 @@ Optional properties:
 					TEGRA210_PAD_AUDIO_HV IO_RAIL_VOLTAGE_3_3V>;
 		The driver intialise the io pad voltage during registration.
 
+- platform-io-pad-power: Array of U32 data with IO rail ID and related
+		power enable/disable for that pad. Example
+		platform-io-pad-power = <
+			TEGRA210_TEGRA_IO_PAD_GROUP_SDMMC3 TEGRA_IO_PAD_GROUP_POWER_DISABLE
+			TEGRA_IO_PAD_GROUP_PEX_CTRL TEGRA_IO_PAD_GROUP_POWER_DISABLE
+			TEGRA_IO_PAD_GROUP_DSI	TEGRA_IO_PAD_GROUP_POWER_ENABLE>;
 The pad id is passed as the argument and this is defined as macro at
 	include/dt-bindings/padctrl/tegra210-pads.h
+For platform-io-pad-power, use the TEGRA_IO_PAD_GROUP_*.
+For platform-io-pad-voltage, use TEGRA210_PAD_*.
+
 Example: SDMMC1 pad is 6 and SDMMC3 is 7.
 
 	tegra_pmc: pmc@7000e400 {
