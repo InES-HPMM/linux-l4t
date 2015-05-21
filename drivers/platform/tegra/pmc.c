@@ -26,6 +26,7 @@
 #include <linux/export.h>
 #include <linux/tegra-pmc.h>
 #include <linux/tegra_prod.h>
+#include <linux/platform/tegra/io-dpd.h>
 
 #define PMC_CTRL			0x0
 #define PMC_CTRL_INTR_LOW		(1 << 17)
@@ -46,6 +47,7 @@
 #define PMC_DPD_SAMPLE		0x20
 #define PMC_IO_DPD_REQ		0x1B8
 #define PMC_IO_DPD2_REQ		0x1C0
+#define PMC_IO_DPD_STATUS_0     0x1BC
 
 #define PMC_TSC_MULT		0x2b4
 
@@ -327,6 +329,40 @@ unsigned long tegra_pmc_pwr_detect_get(unsigned long mask)
 	return tegra_pmc_readl(PMC_PWR_DET_VAL);
 }
 EXPORT_SYMBOL(tegra_pmc_pwr_detect_get);
+
+int tegra_pmc_io_dpd_enable(int reg, int bit_pos)
+{
+        struct tegra_io_dpd io_dpd;
+
+        io_dpd.io_dpd_bit = bit_pos;
+        io_dpd.io_dpd_reg_index = reg;
+        tegra_io_dpd_enable(&io_dpd);
+        return 0;
+}
+EXPORT_SYMBOL(tegra_pmc_io_dpd_enable);
+
+int tegra_pmc_io_dpd_disable(int reg, int bit_pos)
+{
+        struct tegra_io_dpd io_dpd;
+
+        io_dpd.io_dpd_bit = bit_pos;
+        io_dpd.io_dpd_reg_index = reg;
+        tegra_io_dpd_disable(&io_dpd);
+        return 0;
+}
+EXPORT_SYMBOL(tegra_pmc_io_dpd_disable);
+
+int tegra_pmc_io_dpd_get_status(int reg, int bit_pos)
+{
+	unsigned int dpd_status;
+
+	dpd_status = tegra_pmc_readl(PMC_IO_DPD_STATUS_0 + reg * 8);
+	if (dpd_status & BIT(bit_pos))
+		return 1;
+	else
+		return 0;
+}
+EXPORT_SYMBOL(tegra_pmc_io_dpd_get_status);
 
 static int tegra_pmc_get_cpu_powerdomain_id(int cpuid)
 {
