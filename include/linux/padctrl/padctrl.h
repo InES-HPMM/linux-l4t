@@ -28,6 +28,8 @@ struct padctrl_ops {
 			int pad_id, u32 voltage);
 	int (*get_voltage)(struct padctrl_dev *pad_dev,
 			int pad_id, u32 *voltage);
+	int (*power_enable)(struct padctrl_dev *pad_dev, int pad_id);
+	int (*power_disable)(struct padctrl_dev *pad_dev, int pad_id);
 };
 
 /*
@@ -54,6 +56,9 @@ extern struct padctrl *devm_padctrl_get(struct device *dev, const char *name);
 
 extern int padctrl_set_voltage(struct padctrl *pctrl, u32 voltage);
 extern int padctrl_get_voltage(struct padctrl *pctrl, u32 *voltage);
+
+extern int padctrl_power_enable(struct padctrl *pctrl);
+extern int padctrl_power_disable(struct padctrl *pctrl);
 
 extern struct padctrl_dev *padctrl_register(struct device *dev,
 	struct padctrl_desc *desc, struct padctrl_config *config);
@@ -92,6 +97,16 @@ static inline int padctrl_set_voltage(struct padctrl *pctrl, u32 voltage)
 }
 
 static inline int padctrl_get_voltage(struct padctrl *ctrl, u32 *voltage)
+{
+	return -EINVAL;
+}
+
+static inline int padctrl_power_enable(struct padctrl *pctrl)
+{
+	return -EINVAL;
+}
+
+static inline int padctrl_power_disable(struct padctrl *pctrl)
 {
 	return -EINVAL;
 }
