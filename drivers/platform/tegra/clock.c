@@ -2005,6 +2005,11 @@ static int _max_set(struct clk *c, unsigned long val)
 {
 	int i;
 	bool found = false;
+
+	/* Do not allow lowering max rate below current rate. */
+	if (clk_get_rate(c) > val)
+		return -EINVAL;
+
 	c->max_rate = val;
 
 	if (c->dvfs && c->dvfs->max_millivolts) {
