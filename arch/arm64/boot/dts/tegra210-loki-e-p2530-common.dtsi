@@ -157,7 +157,7 @@
 		compatible = "nvidia,tegra-audio-t210ref-mobile-es755";
 		nvidia,model = "tegra-snd-t210ref-mobile-es755";
 		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(E, 6) GPIO_ACTIVE_HIGH>;
-		nvidia,num-codec-link = <3>;
+		nvidia,num-codec-link = <4>;
 		edp-consumer-name = "codec+speaker";
 
 		nvidia,audio-routing =
