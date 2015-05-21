@@ -16,23 +16,7 @@
 
 #ifndef __MACH_TEGRA_IO_DPD_H
 #define __MACH_TEGRA_IO_DPD_H
-#include <linux/delay.h>
 
-/* Tegra io dpd entry - for each supported driver */
-struct tegra_io_dpd {
-	const char *name;	/* driver name */
-	u8 io_dpd_reg_index;	/* io dpd register index */
-	u8 io_dpd_bit;		/* bit position for driver in dpd register */
-	u8 need_delay_dpd;	/* work around to delay dpd after lp0*/
-	struct delayed_work	delay_dpd;
-	struct mutex		delay_lock;
-};
-
-
-/* Tegra io dpd APIs */
-struct tegra_io_dpd *tegra_io_dpd_get(struct device *dev); /* get handle */
-void tegra_io_dpd_enable(struct tegra_io_dpd *hnd); /* enable dpd */
-void tegra_io_dpd_disable(struct tegra_io_dpd *hnd); /* disable dpd */
-int tegra_io_dpd_init(void);
+#include <linux/platform/tegra/io-dpd.h>
 
 #endif /* end __MACH_TEGRA_IO_DPD_H */
