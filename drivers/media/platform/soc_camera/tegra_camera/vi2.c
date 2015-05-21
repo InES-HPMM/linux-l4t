@@ -472,7 +472,7 @@ static void vi2_init_syncpts(struct vi2_channel *chan)
 
 static void vi2_free_syncpts(struct vi2_channel *chan)
 {
-	nvhost_free_syncpt(chan->syncpt_id);
+	nvhost_syncpt_put_ref_ext(chan->syncpt_id);
 }
 
 static int vi2_clock_start(struct vi2_camera *vi2_cam,
