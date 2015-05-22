@@ -14,7 +14,6 @@
 #ifndef _NVS_LIGHT_H_
 #define _NVS_LIGHT_H_
 
-#include <linux/iio/iio.h>
 #include <linux/of.h>
 #include <linux/nvs.h>
 
@@ -23,7 +22,6 @@
 #define RET_HW_UPDATE			(1)
 
 #define NVS_LIGHT_STRING		"light"
-#define SENSOR_FLAG_ON_CHANGE_MODE	0x2 /* from AOS sensors.h */
 
 /**
  * struct nvs_light_dynamic - the structure that allows the NVS
@@ -108,38 +106,8 @@ struct nvs_light {
 	unsigned int nld_i_hi;		/* high index limit to dynamic table */
 	struct nvs_light_dynamic *nld_tbl; /* ptr to nvs_light_dynamic table */
 	struct sensor_cfg *cfg;		/* pointer to sensor configuration */
-	void *nvs_data;			/* NVS data for NVS handler */
+	void *nvs_st;			/* NVS state data for NVS handler */
 	int (*handler)(void *handle, void *buffer, s64 ts);
-};
-
-static const struct iio_chan_spec iio_chan_spec_nvs_light[] = {
-	{
-		.type			= IIO_LIGHT,
-		.scan_type		= IIO_ST('u', 32, 32, 0),
-		.info_mask		= BIT(IIO_CHAN_INFO_RAW) |
-					  BIT(IIO_CHAN_INFO_BATCH_FLUSH) |
-					  BIT(IIO_CHAN_INFO_BATCH_PERIOD) |
-					  BIT(IIO_CHAN_INFO_BATCH_TIMEOUT) |
-					  BIT(IIO_CHAN_INFO_BATCH_FLAGS) |
-					  BIT(IIO_CHAN_INFO_PEAK) |
-					  BIT(IIO_CHAN_INFO_PEAK_SCALE) |
-					  BIT(IIO_CHAN_INFO_SCALE) |
-					  BIT(IIO_CHAN_INFO_OFFSET) |
-					  BIT(IIO_CHAN_INFO_THRESHOLD_LOW) |
-					  BIT(IIO_CHAN_INFO_THRESHOLD_HIGH),
-		.info_mask_separate	= BIT(IIO_CHAN_INFO_RAW) |
-					  BIT(IIO_CHAN_INFO_BATCH_FLUSH) |
-					  BIT(IIO_CHAN_INFO_BATCH_PERIOD) |
-					  BIT(IIO_CHAN_INFO_BATCH_TIMEOUT) |
-					  BIT(IIO_CHAN_INFO_BATCH_FLAGS) |
-					  BIT(IIO_CHAN_INFO_PEAK) |
-					  BIT(IIO_CHAN_INFO_PEAK_SCALE) |
-					  BIT(IIO_CHAN_INFO_SCALE) |
-					  BIT(IIO_CHAN_INFO_OFFSET) |
-					  BIT(IIO_CHAN_INFO_THRESHOLD_LOW) |
-					  BIT(IIO_CHAN_INFO_THRESHOLD_HIGH),
-	},
-	IIO_CHAN_SOFT_TIMESTAMP(1)
 };
 
 int nvs_light_read(struct nvs_light *nl);
