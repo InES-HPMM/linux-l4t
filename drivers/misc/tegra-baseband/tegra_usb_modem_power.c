@@ -952,29 +952,18 @@ error:
 static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 		struct platform_device *pdev)
 {
-	struct tegra_usb_modem_power_platform_data *pdata =
-		pdev->dev.platform_data;
+	struct tegra_usb_modem_power_platform_data pdata;
 	struct device_node *node = pdev->dev.of_node;
 	const unsigned int *prop;
 	int gpio;
 	int ret;
 
-	if (!node)
-		return 0;
-
-	dev_dbg(&pdev->dev, "read platform data from DT\n");
-
-	/* allocate platform data if necessary */
-	if (!pdata) {
-		pdata = devm_kzalloc(&pdev->dev,
-			sizeof(struct tegra_usb_modem_power_platform_data),
-			GFP_KERNEL);
-		if (!pdata) {
-			dev_warn(&pdev->dev, "failed to allocate memory\n");
-			return -ENOMEM;
-		}
-		pdev->dev.platform_data = pdata;
+	if (!node) {
+		dev_err(&pdev->dev, "Missing device tree node\n");
+		return -EINVAL;
 	}
+
+	memset(&pdata, 0, sizeof(pdata));
 
 	/* Check if specific pin-muxing is defined for modem boot thru UART */
 	/* by default, modem boots over USB */
@@ -999,25 +988,24 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 	}
 
 	/* turn on modem regulator if required */
-	pdata->regulator_name = of_get_property(node, "nvidia,regulator", NULL);
-	if (pdata->regulator_name) {
-		modem->regulator = regulator_get(&pdev->dev,
-				pdata->regulator_name);
+	pdata.regulator_name = of_get_property(node, "nvidia,regulator", NULL);
+	if (pdata.regulator_name) {
+		modem->regulator = devm_regulator_get(&pdev->dev,
+				pdata.regulator_name);
 		if (IS_ERR(modem->regulator)) {
 			dev_err(&pdev->dev, "failed to get regulator %s\n",
-				pdata->regulator_name);
+				pdata.regulator_name);
 			return PTR_ERR(modem->regulator);
 		}
 		ret = regulator_enable(modem->regulator);
 		if (ret) {
 			dev_err(&pdev->dev, "failed to enable regulator %s\n",
-				pdata->regulator_name);
-			regulator_put(modem->regulator);
+				pdata.regulator_name);
 			return ret;
 		}
 
 		dev_info(&pdev->dev, "set modem regulator:%s\n",
-		pdata->regulator_name);
+		pdata.regulator_name);
 
 		/* Enable regulator bypass */
 		if (regulator_allow_bypass(modem->regulator, true))
@@ -1043,81 +1031,103 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 	ret = of_property_read_u32(node, "nvidia,phy-type", &modem->phy_type);
 	if (ret != 0) {
 		dev_err(&pdev->dev, "DT property 'nvidia,phy-type' read fail!\n");
-		return ret;
+		goto error;
 	}
 
 	prop = of_get_property(node, "nvidia,num-temp-sensors", NULL);
 	if (prop)
-		pdata->num_temp_sensors = be32_to_cpup(prop);
+		pdata.num_temp_sensors = be32_to_cpup(prop);
 
 	/* Configure input GPIOs */
 	gpio = of_get_named_gpio(node, "nvidia,wake-gpio", 0);
-	pdata->wake_gpio = gpio_is_valid(gpio) ? gpio : -1;
-	dev_info(&pdev->dev, "set MDM_WAKE_AP gpio:%d\n", pdata->wake_gpio);
+	if (gpio == -EPROBE_DEFER) {
+		ret = -EPROBE_DEFER;
+		goto error;
+	}
+	pdata.wake_gpio = gpio_is_valid(gpio) ? gpio : -1;
+	dev_info(&pdev->dev, "set MDM_WAKE_AP gpio:%d\n", pdata.wake_gpio);
 	if (gpio_is_valid(gpio)) {
-		ret = gpio_request(gpio, "MDM_WAKE_AP");
+		ret = devm_gpio_request(&pdev->dev, gpio, "MDM_WAKE_AP");
 		if (ret) {
 			dev_err(&pdev->dev, "request gpio %d failed\n", gpio);
-			return ret;
+			goto error;
 		}
 		gpio_direction_input(gpio);
 	}
 
 	gpio = of_get_named_gpio(node, "nvidia,boot-gpio", 0);
-	pdata->boot_gpio = gpio_is_valid(gpio) ? gpio : -1;
-	dev_info(&pdev->dev, "set MDM_COLDBOOT gpio:%d\n", pdata->boot_gpio);
+	if (gpio == -EPROBE_DEFER) {
+		ret = -EPROBE_DEFER;
+		goto error;
+	}
+	pdata.boot_gpio = gpio_is_valid(gpio) ? gpio : -1;
+	dev_info(&pdev->dev, "set MDM_COLDBOOT gpio:%d\n", pdata.boot_gpio);
 	if (gpio_is_valid(gpio)) {
-		ret = gpio_request(gpio, "MDM_COLDBOOT");
+		ret = devm_gpio_request(&pdev->dev, gpio, "MDM_COLDBOOT");
 		if (ret) {
 			dev_err(&pdev->dev, "request gpio %d failed\n", gpio);
-			return ret;
+			goto error;
 		}
 		gpio_direction_input(gpio);
 	}
 
 	gpio = of_get_named_gpio(node, "nvidia,mdm-power-report-gpio", 0);
-	pdata->mdm_power_report_gpio = gpio_is_valid(gpio) ? gpio : -1;
+	if (gpio == -EPROBE_DEFER) {
+		ret = -EPROBE_DEFER;
+		goto error;
+	}
+	pdata.mdm_power_report_gpio = gpio_is_valid(gpio) ? gpio : -1;
 	dev_info(&pdev->dev, "set MDM_PWR_REPORT gpio:%d\n",
-		pdata->mdm_power_report_gpio);
+		pdata.mdm_power_report_gpio);
 
 	gpio = of_get_named_gpio(node, "nvidia,pre-boost-gpio", 0);
+	if (gpio == -EPROBE_DEFER) {
+		ret = -EPROBE_DEFER;
+		goto error;
+	}
 	if (gpio_is_valid(gpio)) {
 		dev_info(&pdev->dev, "set pre boost gpio (%d) to 1\n", gpio);
-		ret = gpio_request(gpio, "MODEM PREBOOST");
+		ret = devm_gpio_request(&pdev->dev, gpio, "MODEM PREBOOST");
 		if (ret) {
 			dev_err(&pdev->dev, "request gpio %d failed\n", gpio);
-			return ret;
+			goto error;
 		}
 		gpio_direction_output(gpio, 1);
 		modem->pre_boost_gpio = gpio;
 	} else
 		modem->pre_boost_gpio = -1;
 
-
-
 	/* set GPIO IRQ flags */
-	pdata->wake_irq_flags = pdata->boot_irq_flags =
-		pdata->mdm_power_irq_flags =
+	pdata.wake_irq_flags = pdata.boot_irq_flags =
+		pdata.mdm_power_irq_flags =
 		IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
 
 	/* initialize necessary output GPIO and start modem here */
 	gpio = of_get_named_gpio(node, "nvidia,mdm-en-gpio", 0);
+	if (gpio == -EPROBE_DEFER) {
+		ret = -EPROBE_DEFER;
+		goto error;
+	}
 	if (gpio_is_valid(gpio)) {
 		dev_info(&pdev->dev, "set MODEM EN (%d) to 1\n", gpio);
-		ret = gpio_request(gpio, "MODEM EN");
+		ret = devm_gpio_request(&pdev->dev, gpio, "MODEM EN");
 		if (ret) {
 			dev_err(&pdev->dev, "request gpio %d failed\n", gpio);
-			return ret;
+			goto error;
 		}
 		gpio_direction_output(gpio, 1);
 	}
 
 	gpio = of_get_named_gpio(node, "nvidia,reset-gpio", 0);
+	if (gpio == -EPROBE_DEFER) {
+		ret = -EPROBE_DEFER;
+		goto error;
+	}
 	if (gpio_is_valid(gpio)) {
-		ret = gpio_request(gpio, "MODEM RESET");
+		ret = devm_gpio_request(&pdev->dev, gpio, "MODEM RESET");
 		if (ret) {
 			dev_err(&pdev->dev, "request gpio %d failed\n", gpio);
-			return ret;
+			goto error;
 		}
 		/* boot modem now */
 		/* Modem requires at least 10ms between MDM_EN assertion
@@ -1132,7 +1142,14 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 		gpio_export_link(&pdev->dev, "modem_reset", gpio);
 	}
 
+	/* add platform data to pdev */
+	platform_device_add_data(pdev, &pdata, sizeof(pdata));
 	return 0;
+
+error:
+	if (modem->regulator)
+		regulator_disable(modem->regulator);
+	return ret;
 }
 
 static int tegra_usb_modem_probe(struct platform_device *pdev)
