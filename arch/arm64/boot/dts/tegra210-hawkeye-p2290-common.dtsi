@@ -829,10 +829,13 @@
 			consumer6 {
 				/* rear camera */
 				nvidia,consumer_name = "ov5693";
-				nvidia,states = <0 300>;
+				nvidia,states = <0 350>;
 			};
-			/* front camera place holder */
-			/* consumer7 { }; */
+			consumer7 {
+				/* front camera sensor */
+				nvidia,consumer_name = "imx132";
+				nvidia,states = <0 350>;
+			};
 		};
 	};
 
