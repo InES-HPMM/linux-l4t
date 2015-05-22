@@ -247,7 +247,7 @@ int of_reserved_mem_device_init(struct device *dev)
 {
 	struct reserved_mem *rmem;
 	struct of_phandle_iter iter;
-	int err;
+	int err = -ENODEV;
 
 	of_property_for_each_phandle_with_args(iter, dev->of_node, "memory-region",
 					       NULL, 1) {
