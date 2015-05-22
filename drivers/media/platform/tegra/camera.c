@@ -33,7 +33,7 @@
 #include <linux/clk.h>
 
 #include "t124/t124.h"
-#include <isp.h>
+#include <vi.h>
 #include <media/camera.h>
 
 #include "camera_platform.h"
@@ -1213,7 +1213,7 @@ static int camera_remove(struct platform_device *dev)
 	}
 
 #ifdef TEGRA_12X_OR_HIGHER_CONFIG
-	tegra_isp_unregister_mfi_cb();
+	tegra_vi_unregister_mfi_cb();
 #endif
 	camera_debugfs_remove();
 
@@ -1255,7 +1255,7 @@ static int camera_probe(struct platform_device *dev)
 
 #ifdef TEGRA_12X_OR_HIGHER_CONFIG
 	camera_dev_sync_init();
-	tegra_isp_register_mfi_cb(camera_dev_sync_cb, NULL);
+	tegra_vi_register_mfi_cb(camera_dev_sync_cb, NULL);
 #endif
 	of_camera_init(&cam_desc);
 
