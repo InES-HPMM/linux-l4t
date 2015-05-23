@@ -48,6 +48,7 @@ static int vblk_major;
 #define VBLK_MINORS 16
 
 #define transfer_timeout 5 /* 5 sec */
+#define IVC_RESET_RETRIES	30
 
 #define VS_LOG_HEADS 4
 #define VS_LOG_SECTS 16
@@ -120,7 +121,19 @@ struct vblk_dev {
 static int vblk_send_config_cmd(struct vblk_dev *vblkdev)
 {
 	struct ivc_blk_request *ivc_blk_req;
+	int i = 0;
 
+	/* This while loop exits as long as the remote endpoint cooperates. */
+	if (tegra_hv_ivc_channel_notified(vblkdev->ivck) != 0) {
+		pr_notice("vblk: send_config wait for ivc channel reset\n");
+		while (tegra_hv_ivc_channel_notified(vblkdev->ivck) != 0) {
+			if (i++ > IVC_RESET_RETRIES) {
+				dev_err(vblkdev->device, "ivc reset timeout\n");
+				return 1;
+			}
+			schedule_timeout(1);
+		}
+	}
 	ivc_blk_req = (struct ivc_blk_request *)
 		tegra_hv_ivc_write_get_next_frame(vblkdev->ivck);
 	if (IS_ERR(ivc_blk_req)) {
@@ -353,6 +366,9 @@ static void vblk_request_work(struct work_struct *ws)
 	struct vblk_dev *vblkdev =
 		container_of(ws, struct vblk_dev, work);
 
+	if (tegra_hv_ivc_channel_notified(vblkdev->ivck) != 0)
+		return;
+
 	if (vblkdev->req != NULL) {
 		if (tegra_hv_ivc_can_read(vblkdev->ivck)) {
 			del_timer_sync(&vblkdev->ivc_timer);
@@ -520,8 +536,11 @@ static void setup_device(struct vblk_dev *vblkdev)
 
 static void vblk_init_device(struct work_struct *ws)
 {
-	struct vblk_dev *vblkdev =
-		container_of(ws, struct vblk_dev, init);
+	struct vblk_dev *vblkdev = container_of(ws, struct vblk_dev, init);
+
+	/* wait for ivc channel reset to finish */
+	if (tegra_hv_ivc_channel_notified(vblkdev->ivck) != 0)
+		return;	/* this will be rescheduled by irq handler */
 
 	if (tegra_hv_ivc_can_read(vblkdev->ivck) && !vblkdev->initialized) {
 		if (vblk_get_configinfo(vblkdev))
@@ -537,13 +556,10 @@ static irqreturn_t ivc_irq_handler(int irq, void *data)
 {
 	struct vblk_dev *vblkdev = (struct vblk_dev *)data;
 
-	if (tegra_hv_ivc_can_read(vblkdev->ivck)) {
-		if (vblkdev->initialized)
-			queue_work_on(WORK_CPU_UNBOUND, vblkdev->wq,
-				&vblkdev->work);
-		else
-			schedule_work(&vblkdev->init);
-	}
+	if (vblkdev->initialized)
+		queue_work_on(WORK_CPU_UNBOUND, vblkdev->wq, &vblkdev->work);
+	else
+		schedule_work(&vblkdev->init);
 
 	return IRQ_HANDLED;
 }
@@ -622,6 +638,7 @@ static int tegra_hv_vblk_probe(struct platform_device *pdev)
 		goto free_wq;
 	}
 
+	tegra_hv_ivc_channel_reset(vblkdev->ivck);
 	if (vblk_send_config_cmd(vblkdev)) {
 		dev_err(dev, "Failed to send config cmd\n");
 		ret = -EACCES;
