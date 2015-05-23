@@ -24,6 +24,7 @@
 #include <soc/tegra/tegra_bpmp.h>
 #include <linux/irqchip/tegra-agic.h>
 #include <linux/slab.h>
+#include <linux/wakelock.h>
 
 #ifdef CONFIG_TEGRA_MC_DOMAINS
 #define TEGRA_PD_DEV_CALLBACK(callback, dev)			\
@@ -304,6 +305,9 @@ static int tegra_ape_pd_disable_clks(struct tegra_pm_domain *ape_pd)
 	return ret;
 }
 
+/* APE wakelock is needed to preserve AGIC state */
+static struct wake_lock tegra_ape_wakelock;
+
 static int tegra_ape_power_on(struct generic_pm_domain *genpd)
 {
 	struct tegra_pm_domain *ape_pd;
@@ -321,15 +325,20 @@ static int tegra_ape_power_on(struct generic_pm_domain *genpd)
 	partition_id = TEGRA_POWERGATE_APE;
 #endif
 
+	wake_lock(&tegra_ape_wakelock);
+
 	ape_pd = to_tegra_pd(genpd);
 
 	ret = tegra_ape_pd_enable_clks(ape_pd);
-	if (ret)
+	if (ret) {
+		wake_unlock(&tegra_ape_wakelock);
 		return ret;
+	}
 
 	ret = tegra_unpowergate_partition(partition_id);
 	if (ret) {
 		tegra_ape_pd_disable_clks(ape_pd);
+		wake_unlock(&tegra_ape_wakelock);
 		return ret;
 	}
 
@@ -373,10 +382,14 @@ static int tegra_ape_power_off(struct generic_pm_domain *genpd)
 	ape_pd = to_tegra_pd(genpd);
 
 	ret = tegra_ape_pd_disable_clks(ape_pd);
-	if (ret)
+	if (ret) {
+		wake_unlock(&tegra_ape_wakelock);
 		return ret;
+	}
 
 	ret = tegra_powergate_partition(partition_id);
+
+	wake_unlock(&tegra_ape_wakelock);
 	return ret;
 }
 
@@ -401,6 +414,8 @@ static int __init tegra_init_ape(struct generic_pm_domain *pd)
 	pd->power_off = tegra_ape_power_off;
 	pd->power_on = tegra_ape_power_on;
 
+	wake_lock_init(&tegra_ape_wakelock, WAKE_LOCK_SUSPEND,
+		       "tegra-ape-pd");
 	return 0;
 }
 #else
@@ -671,6 +686,9 @@ static int __init tegra_init_pm_domain(void)
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	wake_lock_init(&tegra_ape_wakelock, WAKE_LOCK_SUSPEND,
+		       "tegra-ape-pd");
+
 	pm_genpd_init(&tegra_ape.gpd, &simple_qos_governor, false);
 	tegra_pd_add_sd(&tegra_ape.gpd);
 
