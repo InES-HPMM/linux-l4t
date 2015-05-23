@@ -2521,7 +2521,7 @@ static void ov5693_gpio_pwrdn(struct ov5693_info *info, int val)
 	ov5693_gpio_wr(info, OV5693_GPIO_TYPE_PWRDN, val);
 	if (!val && prev_val)
 		/* if transition from assert to deassert then delay for I2C */
-		msleep(50);
+		usleep_range(1, 2);
 }
 
 static void ov5693_gpio_reset(struct ov5693_info *info, int val)
