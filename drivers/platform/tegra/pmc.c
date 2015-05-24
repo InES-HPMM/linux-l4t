@@ -330,6 +330,12 @@ unsigned long tegra_pmc_pwr_detect_get(unsigned long mask)
 }
 EXPORT_SYMBOL(tegra_pmc_pwr_detect_get);
 
+void tegra_pmc_io_dpd_clear(void)
+{
+	tegra_bl_io_dpd_cleanup();
+}
+EXPORT_SYMBOL(tegra_pmc_io_dpd_clear);
+
 int tegra_pmc_io_dpd_enable(int reg, int bit_pos)
 {
         struct tegra_io_dpd io_dpd;

@@ -1260,9 +1260,6 @@ out:
 								__func__);
 	}
 
-	/* clear io dpd settings before kernel */
-	tegra_bl_io_dpd_cleanup();
-
 #endif
 	if (plat->suspend_mode == TEGRA_SUSPEND_NONE)
 		tegra_pd_in_idle(false);
