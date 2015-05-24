@@ -1241,6 +1241,9 @@ static int too_many_isolated(struct zone *zone, int file,
 	if (!global_reclaim(sc))
 		return 0;
 
+	if ((sc->gfp_mask & __GFP_MIGRATE) == __GFP_MIGRATE)
+		return 0;
+
 	if (file) {
 		inactive = zone_page_state(zone, NR_INACTIVE_FILE);
 		isolated = zone_page_state(zone, NR_ISOLATED_FILE);
