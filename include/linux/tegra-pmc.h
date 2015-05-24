@@ -40,6 +40,7 @@ extern void tegra_pmc_write_bootrom_command(u32 command_offset,
 extern void tegra_pmc_pwr_detect_update(unsigned long mask, unsigned long val);
 extern unsigned long tegra_pmc_pwr_detect_get(unsigned long mask);
 
+extern void tegra_pmc_io_dpd_clear(void);
 extern int tegra_pmc_io_dpd_enable(int reg, int bit_pos);
 extern int tegra_pmc_io_dpd_disable(int reg, int bit_pos);
 extern int tegra_pmc_io_dpd_get_status(int reg, int bit_pos);

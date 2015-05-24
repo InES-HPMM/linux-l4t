@@ -34,5 +34,6 @@ struct tegra_io_dpd *tegra_io_dpd_get(struct device *dev); /* get handle */
 void tegra_io_dpd_enable(struct tegra_io_dpd *hnd); /* enable dpd */
 void tegra_io_dpd_disable(struct tegra_io_dpd *hnd); /* disable dpd */
 int tegra_io_dpd_init(void);
+void tegra_bl_io_dpd_cleanup(void);
 
 #endif /* end __PLATFORM_TEGRA_IO_DPD_H */

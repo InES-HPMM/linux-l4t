@@ -40,9 +40,6 @@
 #define PMC_SCRATCH1		0x54
 #define PMC_SCRATCH4		0x60
 
-/* clears io dpd settings before kernel code */
-void tegra_bl_io_dpd_cleanup(void);
-
 unsigned long tegra_cpu_power_good_time(void);
 unsigned long tegra_cpu_power_off_time(void);
 unsigned int tegra_cpu_suspend_freq(void);

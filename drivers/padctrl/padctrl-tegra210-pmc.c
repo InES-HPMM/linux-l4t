@@ -399,6 +399,10 @@ int tegra210_pmc_padctrl_init(struct device *dev, struct device_node *np)
 	padctrl_set_drvdata(pmc_padctrl->pad_dev, pmc_padctrl);
 	tegra210_pmc_parse_io_pad_voltage(config.of_node,
 				pmc_padctrl->pad_dev);
+
+	/* Clear all DPD */
+	tegra_pmc_io_dpd_clear();
+
 	tegra210_pmc_parse_io_pad_power(config.of_node,
 				pmc_padctrl->pad_dev);
 

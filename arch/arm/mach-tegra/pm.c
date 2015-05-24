@@ -74,6 +74,7 @@
 #include <asm/psci.h>
 
 #include <mach/irqs.h>
+#include <mach/io_dpd.h>
 
 #include "board.h"
 #include <linux/platform/tegra/clock.h>
