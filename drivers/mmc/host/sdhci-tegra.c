@@ -1796,10 +1796,6 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 	clk_set_rate(pltfm_host->clk, clk_rate);
 	sdhci->max_clk = clk_get_rate(pltfm_host->clk);
 
-	/* FPGA supports 26MHz of clock for SDMMC. */
-	if (tegra_platform_is_fpga())
-		sdhci->max_clk = 13000000;
-
 #ifdef CONFIG_MMC_FREQ_SCALING
 	/* Set the tap delay if tuning is done and dfs is enabled */
 	if (sdhci->mmc->df &&
@@ -5346,8 +5342,6 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	plat->en_periodic_calib = of_property_read_bool(np,
 			"nvidia,en-periodic-calib");
 
-	of_property_read_string_index(np, "nvidia,clk-name", 0, &plat->clk_name);
-
 	return plat;
 }
 
@@ -5812,7 +5806,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	}
 
 	/* Get high speed clock */
-	tegra_host->sdr_clk = clk_get(mmc_dev(host->mmc), plat->clk_name);
+	tegra_host->sdr_clk = clk_get(mmc_dev(host->mmc), NULL);
 	if (IS_ERR(tegra_host->sdr_clk)) {
 		dev_err(mmc_dev(host->mmc), "sdr clk err\n");
 		tegra_host->sdr_clk = NULL;
