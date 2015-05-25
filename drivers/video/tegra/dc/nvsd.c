@@ -362,12 +362,13 @@ void nvsd_init(struct tegra_dc *dc, struct tegra_dc_sd_settings *settings)
 	tegra_dc_io_start(dc);
 	/* If SD's not present or disabled, clear the register and return. */
 	if (!settings || nvsd_is_enabled(settings) == 0) {
-		/* clear the brightness val, too. */
-		if (_sd_brightness)
-			atomic_set(_sd_brightness, 255);
+		if (dc->ndev->id == 0) {
+			/* clear the brightness val, too. */
+			if (_sd_brightness)
+				atomic_set(_sd_brightness, 255);
 
-		_sd_brightness = NULL;
-
+			_sd_brightness = NULL;
+		}
 		if (settings)
 			settings->phase_settings_step = 0;
 		tegra_dc_writel(dc, 0, DC_DISP_SD_CONTROL);
