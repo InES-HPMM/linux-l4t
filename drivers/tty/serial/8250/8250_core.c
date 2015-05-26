@@ -2353,6 +2353,9 @@ static void serial8250_shutdown(struct uart_port *port)
 	 */
 	serial_port_in(port, UART_RX);
 
+	if (port->enable_rx_poll_timer)
+		del_timer_sync(&up->rx_poll_timer);
+
 	del_timer_sync(&up->timer);
 	up->timer.function = serial8250_timeout;
 	if (port->irq)
