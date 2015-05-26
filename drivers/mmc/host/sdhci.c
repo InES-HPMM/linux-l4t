@@ -1891,9 +1891,9 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		update_stat(host, mrq->data->blksz, mrq->data->blocks,
 			true, false, mrq->data->flags);
 #endif
-
-	sdhci_runtime_pm_get(host);
-
+#ifndef CONFIG_MMC_CQ
+		sdhci_runtime_pm_get(host);
+#endif
 	present = mmc_gpio_get_cd(host->mmc);
 
 	spin_lock_irqsave(&host->lock, flags);
@@ -3031,7 +3031,9 @@ static void sdhci_tasklet_finish(unsigned long param)
 	spin_unlock_irqrestore(&host->lock, flags);
 
 	mmc_request_done(host->mmc, mrq);
+#ifndef CONFIG_MMC_CQ
 	sdhci_runtime_pm_put(host);
+#endif
 }
 
 /*
@@ -3094,7 +3096,9 @@ static void sdhci_tasklet_cmd_finish(unsigned long param)
 	spin_unlock_irqrestore(&host->lock, flags);
 
 	mmc_request_done(host->mmc, mrq);
+#ifndef CONFIG_MMC_CQ
 	sdhci_runtime_pm_put(host);
+#endif
 }
 
 /*
@@ -3155,7 +3159,9 @@ static void sdhci_tasklet_dat_finish(unsigned long param)
 	spin_unlock_irqrestore(&host->lock, flags);
 
 	mmc_request_done(host->mmc, mrq);
+#ifndef CONFIG_MMC_CQ
 	sdhci_runtime_pm_put(host);
+#endif
 }
 
 static void sdhci_timeout_timer(unsigned long data)
