@@ -443,6 +443,13 @@
 		compatible = "android,bcmdhd_wlan";
 		wlan-pwr-gpio = <&mcu_gpio TMPM32X_GPIO(D, 1) GPIO_ACTIVE_HIGH>;
 		status = "okay";
+		country_code_map {
+			CC1 {
+				iso_abbrev = "US";
+				custom_locale = "US";
+				custom_locale_rev = <0>;
+			};
+		};
 	};
 
 	cpu_dfll_pmic_integration {
