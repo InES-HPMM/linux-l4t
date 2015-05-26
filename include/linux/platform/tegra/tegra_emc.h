@@ -70,6 +70,11 @@ struct tegra_emc_dvfs_table_ops {
 struct clk;
 struct dentry;
 
+void tegra_emc_timer_mr4_start(void);
+void tegra_emc_timer_mr4_stop(void);
+void tegra_emc_timer_training_start(void);
+void tegra_emc_timer_training_stop(void);
+
 void tegra_emc_iso_usage_table_init(struct emc_iso_usage *table, int size);
 int  tegra_emc_iso_usage_debugfs_init(struct dentry *emc_debugfs_root);
 int tegra_emc_timers_init(struct dentry *parent);
