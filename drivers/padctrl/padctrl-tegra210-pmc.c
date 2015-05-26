@@ -16,23 +16,6 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 
-#define TEGRA210_PAD_SYS	0
-#define TEGRA210_PAD_UART	1
-#define TEGRA210_PAD_BB		2
-#define TEGRA210_PAD_AUDIO	3
-#define TEGRA210_PAD_CAM	4
-#define TEGRA210_PAD_PEX_CTRL	5
-#define TEGRA210_PAD_SDMMC1	6
-#define TEGRA210_PAD_SDMMC3	7
-#define TEGRA210_PAD_HV		8
-#define TEGRA210_PAD_AUDIO_HV	9
-#define TEGRA210_PAD_DBG	10
-#define TEGRA210_PAD_DMIC	11
-#define TEGRA210_PAD_GPIO	12
-#define TEGRA210_PAD_SPI	13
-#define TEGRA210_PAD_SPI_HV	14
-
-
 /* IO PAD group */
 #define TEGRA_IO_PAD_GROUP_AUDIO	0
 #define TEGRA_IO_PAD_GROUP_AUDIO_HV	1
@@ -74,89 +57,11 @@
 #define TEGRA_IO_PAD_GROUP_USB3		37
 #define TEGRA_IO_PAD_GROUP_SYS		38
 #define TEGRA_IO_PAD_GROUP_BB		39
+#define TEGRA_IO_PAD_GROUP_HV		40
 
-struct tegra210_pmc_pads {
-	const char *pad_name;
-	int pad_id;
-	int bit_position;
-	int reg_offset;
-};
 
 struct tegra210_pmc_padcontrl {
 	struct padctrl_dev *pad_dev;
-};
-
-#define TEGRA_210_PADS(_name, _id, _bit)		\
-{							\
-	.pad_name = _name,				\
-	.pad_id = _id,					\
-	.bit_position = _bit,				\
-}
-
-static struct tegra210_pmc_pads tegra210_pads[] = {
-	TEGRA_210_PADS("sys", TEGRA210_PAD_SYS, 0),
-	TEGRA_210_PADS("uart", TEGRA210_PAD_UART, 2),
-	TEGRA_210_PADS("bb", TEGRA210_PAD_BB, 3),
-	TEGRA_210_PADS("audio", TEGRA210_PAD_AUDIO, 5),
-	TEGRA_210_PADS("cam", TEGRA210_PAD_CAM, 10),
-	TEGRA_210_PADS("pex_ctrl", TEGRA210_PAD_PEX_CTRL, 11),
-	TEGRA_210_PADS("sdmmc1", TEGRA210_PAD_SDMMC1, 12),
-	TEGRA_210_PADS("sdmmc3", TEGRA210_PAD_SDMMC3, 13),
-	TEGRA_210_PADS("audio-hv", TEGRA210_PAD_AUDIO_HV, 18),
-	TEGRA_210_PADS("dbg", TEGRA210_PAD_DBG, 19),
-	TEGRA_210_PADS("dmic", TEGRA210_PAD_DMIC, 20),
-	TEGRA_210_PADS("gpio", TEGRA210_PAD_GPIO, 21),
-	TEGRA_210_PADS("spi", TEGRA210_PAD_SPI, 22),
-	TEGRA_210_PADS("spi-hv", TEGRA210_PAD_SPI_HV, 23),
-};
-
-#define TEGRA_210_PAD_GROUPS(_name, _id, _off, _bit)	\
-{							\
-	.pad_name = _name,				\
-	.pad_id = TEGRA_IO_PAD_GROUP_##_id,		\
-	.reg_offset = _off,				\
-	.bit_position = _bit,				\
-}
-
-static struct tegra210_pmc_pads tegra210_pad_groups[] = {
-	TEGRA_210_PAD_GROUPS("audio", AUDIO, 0, 17),
-	TEGRA_210_PAD_GROUPS("audio-hv", AUDIO_HV, 1, 29),
-	TEGRA_210_PAD_GROUPS("cam", CAM, 1, 4),
-	TEGRA_210_PAD_GROUPS("csia", CSIA, 0, 0),
-	TEGRA_210_PAD_GROUPS("csib", CSIB, 0, 1),
-	TEGRA_210_PAD_GROUPS("csic", CSIC, 1, 10),
-	TEGRA_210_PAD_GROUPS("csid", CSID, 1, 11),
-	TEGRA_210_PAD_GROUPS("csie", CSIE, 1, 12),
-	TEGRA_210_PAD_GROUPS("csif", CSIF, 1, 13),
-	TEGRA_210_PAD_GROUPS("dbg", DBG, 0, 25),
-	TEGRA_210_PAD_GROUPS("debug-nonao", DEBUG_NONAO, 0, 26),
-	TEGRA_210_PAD_GROUPS("dmic", DMIC, 1, 18),
-	TEGRA_210_PAD_GROUPS("dp", DP, 1, 19),
-	TEGRA_210_PAD_GROUPS("dsi", DSI, 0, 2),
-	TEGRA_210_PAD_GROUPS("dsib", DSIB, 1, 7),
-	TEGRA_210_PAD_GROUPS("dsic", DSIC, 1, 8),
-	TEGRA_210_PAD_GROUPS("dsid", DSID, 1, 9),
-	TEGRA_210_PAD_GROUPS("emmc", EMMC, 1, 3),
-	TEGRA_210_PAD_GROUPS("emmc2", EMMC2, 1, 5),
-	TEGRA_210_PAD_GROUPS("gpio", GPIO, 0, 27),
-	TEGRA_210_PAD_GROUPS("hdmi", HDMI, 0, 28),
-	TEGRA_210_PAD_GROUPS("hsic", HSIC, 0, 19),
-	TEGRA_210_PAD_GROUPS("lvds", LVDS, 1, 25),
-	TEGRA_210_PAD_GROUPS("mipi-bias", MIPI_BIAS, 0, 3),
-	TEGRA_210_PAD_GROUPS("pex-bias", PEX_BIAS, 0, 4),
-	TEGRA_210_PAD_GROUPS("pex-clk1", PEX_CLK1, 0, 5),
-	TEGRA_210_PAD_GROUPS("pex-clk2", PEX_CLK2, 0, 6),
-	TEGRA_210_PAD_GROUPS("pex-ctrl", PEX_CTRL, 1, 0),
-	TEGRA_210_PAD_GROUPS("sdmmc1", SDMMC1, 1, 1),
-	TEGRA_210_PAD_GROUPS("sdmmc3", SDMMC3, 1, 2),
-	TEGRA_210_PAD_GROUPS("spi", SPI, 1, 14),
-	TEGRA_210_PAD_GROUPS("spi-hv", SPI_HV, 1, 15),
-	TEGRA_210_PAD_GROUPS("uart", UART, 0, 14),
-	TEGRA_210_PAD_GROUPS("usb-bias", USB_BIAS, 0, 12),
-	TEGRA_210_PAD_GROUPS("usb0", USB0, 0, 9),
-	TEGRA_210_PAD_GROUPS("usb1", USB1, 0, 10),
-	TEGRA_210_PAD_GROUPS("usb2", USB2, 0, 11),
-	TEGRA_210_PAD_GROUPS("usb3", USB3, 0, 18),
 };
 
 struct tegra210_pmc_pads_info {
@@ -219,6 +124,7 @@ static struct tegra210_pmc_pads_info tegra210_pads_info[] = {
 	TEGRA_210_PAD_INFO("usb3", USB3, 0, 18, -1),
 	TEGRA_210_PAD_INFO("sys", SYS, 0, -1, 0),
 	TEGRA_210_PAD_INFO("bb", BB, 0, -1, 3),
+	TEGRA_210_PAD_INFO("hv", HV, 0, -1, -1),
 };
 
 static int tegra210_pmc_padctrl_set_voltage(struct padctrl_dev *pad_dev,
@@ -231,15 +137,18 @@ static int tegra210_pmc_padctrl_set_voltage(struct padctrl_dev *pad_dev,
 	if ((voltage != 1800000) && (voltage != 3300000))
 		return -EINVAL;
 
-	for (i = 0; i < ARRAY_SIZE(tegra210_pads); ++i) {
-		if (tegra210_pads[i].pad_id == pad_id)
+	for (i = 0; i < ARRAY_SIZE(tegra210_pads_info); ++i) {
+		if (tegra210_pads_info[i].pad_id == pad_id)
 			break;
 	}
 
-	if (i == ARRAY_SIZE(tegra210_pads))
+	if (i == ARRAY_SIZE(tegra210_pads_info))
 		return -EINVAL;
 
-	offset = BIT(tegra210_pads[i].bit_position);
+	if (tegra210_pads_info[i].io_volt_bit_pos < 0)
+			return -EINVAL;;
+
+	offset = BIT(tegra210_pads_info[i].io_volt_bit_pos);
 	val = (voltage == 3300000) ? offset : 0;
 	tegra_pmc_pwr_detect_update(offset, val);
 	udelay(100);
@@ -253,15 +162,18 @@ static int tegra210_pmc_padctl_get_voltage(struct padctrl_dev *pad_dev,
 	u32 offset;
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(tegra210_pads); ++i) {
-		if (tegra210_pads[i].pad_id == pad_id)
+	for (i = 0; i < ARRAY_SIZE(tegra210_pads_info); ++i) {
+		if (tegra210_pads_info[i].pad_id == pad_id)
 			break;
 	}
 
-	if (i == ARRAY_SIZE(tegra210_pads))
+	if (i == ARRAY_SIZE(tegra210_pads_info))
 		return -EINVAL;
 
-	offset = BIT(tegra210_pads[i].bit_position);
+	if (tegra210_pads_info[i].io_volt_bit_pos < 0)
+			return -EINVAL;;
+
+	offset = BIT(tegra210_pads_info[i].io_volt_bit_pos);
 	pwrdet_mask = tegra_pmc_pwr_detect_get(offset);
 	if (pwrdet_mask & offset)
 		*voltage = 3300000UL;
@@ -278,16 +190,19 @@ static int tegra210_pmc_padctrl_set_power(struct padctrl_dev *pad_dev,
 	int i;
 	int ret;
 
-	for (i = 0; i < ARRAY_SIZE(tegra210_pad_groups); ++i) {
-		if (tegra210_pad_groups[i].pad_id == pad_id)
+	for (i = 0; i < ARRAY_SIZE(tegra210_pads_info); ++i) {
+		if (tegra210_pads_info[i].pad_id == pad_id)
 			break;
 	}
 
-	if (i == ARRAY_SIZE(tegra210_pad_groups))
+	if (i == ARRAY_SIZE(tegra210_pads_info))
 		return -EINVAL;
 
-	bit = tegra210_pad_groups[i].bit_position;
-	reg = tegra210_pad_groups[i].reg_offset;
+	if (tegra210_pads_info[i].io_dpd_bit_pos < 0)
+		return -EINVAL;
+
+	bit = tegra210_pads_info[i].io_dpd_bit_pos;
+	reg = tegra210_pads_info[i].io_dpd_reg_off;
 	if (enable)
 		ret = tegra_pmc_io_dpd_disable(reg, bit);
 	else
@@ -474,11 +389,11 @@ static int tegra210_pmc_parse_io_pad_voltage(struct device_node *np,
 					index, &io_pad_id);
 		of_property_read_u32_index(np, "platform-io-pad-voltage",
 					index + 1, &volt_uv);
-		for (j = 0; j < ARRAY_SIZE(tegra210_pads); ++j) {
-			if (tegra210_pads[j].pad_id == io_pad_id)
+		for (j = 0; j < ARRAY_SIZE(tegra210_pads_info); ++j) {
+			if (tegra210_pads_info[j].pad_id == io_pad_id)
 				break;
 		}
-		if (j == ARRAY_SIZE(tegra210_pads)) {
+		if (j == ARRAY_SIZE(tegra210_pads_info)) {
 			pr_err("PMC: IO pad ID %u is invalid\n", io_pad_id);
 			continue;
 		}
@@ -492,15 +407,15 @@ static int tegra210_pmc_parse_io_pad_voltage(struct device_node *np,
 		if (!configs[index + 1])
 			continue;
 		ret = tegra210_pmc_padctrl_set_voltage(pad_dev,
-				tegra210_pads[configs[index]].pad_id,
+				tegra210_pads_info[configs[index]].pad_id,
 				configs[index + 1]);
 		if (ret < 0) {
 			pr_warn("PMC: IO pad %s voltage config failed: %d\n",
-				tegra210_pads[configs[index]].pad_name, ret);
+				tegra210_pads_info[configs[index]].pad_name, ret);
 			WARN_ON(1);
 		} else {
 			pr_info("PMC: IO pad %s voltage is %d\n",
-				tegra210_pads[configs[index]].pad_name,
+				tegra210_pads_info[configs[index]].pad_name,
 					configs[index + 1]);
 		}
 	}
@@ -535,11 +450,11 @@ static int tegra210_pmc_parse_io_pad_power(struct device_node *np,
 					index, &io_pad_id);
 		of_property_read_u32_index(np, "platform-io-pad-power",
 					index + 1, &enable);
-		for (j = 0; j < ARRAY_SIZE(tegra210_pad_groups); ++j) {
-			if (tegra210_pad_groups[j].pad_id == io_pad_id)
+		for (j = 0; j < ARRAY_SIZE(tegra210_pads_info); ++j) {
+			if (tegra210_pads_info[j].pad_id == io_pad_id)
 				break;
 		}
-		if (j == ARRAY_SIZE(tegra210_pad_groups)) {
+		if (j == ARRAY_SIZE(tegra210_pads_info)) {
 			pr_err("PMC: IO pad ID %u is invalid\n", io_pad_id);
 			continue;
 		}
@@ -551,15 +466,15 @@ static int tegra210_pmc_parse_io_pad_power(struct device_node *np,
 	for (i = 0; i < n_config; ++i) {
 		index = i * 2;
 		ret = tegra210_pmc_padctrl_set_power(pad_dev,
-				tegra210_pad_groups[configs[index]].pad_id,
+				tegra210_pads_info[configs[index]].pad_id,
 				configs[index + 1]);
 		if (ret < 0) {
 			pr_warn("PMC: IO pad %s power config failed: %d\n",
-			     tegra210_pad_groups[configs[index]].pad_name, ret);
+			     tegra210_pads_info[configs[index]].pad_name, ret);
 			WARN_ON(1);
 		} else {
 			pr_info("PMC: IO pad %s power is %s\n",
-				tegra210_pad_groups[configs[index]].pad_name,
+				tegra210_pads_info[configs[index]].pad_name,
 				   (configs[index + 1]) ? "enable" : "disable");
 		}
 	}
@@ -616,15 +531,18 @@ static int dbg_io_pad_show(struct seq_file *s, void *unused)
 	int i;
 	unsigned long voltage;
 
-	for (i = 0; i < ARRAY_SIZE(tegra210_pads); ++i) {
-		offset = BIT(tegra210_pads[i].bit_position);
+	for (i = 0; i < ARRAY_SIZE(tegra210_pads_info); ++i) {
+		if (tegra210_pads_info[i].io_volt_bit_pos < 0)
+			continue;
+
+		offset = BIT(tegra210_pads_info[i].io_volt_bit_pos);
 		pwrdet_mask = tegra_pmc_pwr_detect_get(offset);
 		if (pwrdet_mask & offset)
 			voltage = 3300000UL;
 		else
 			voltage = 1800000UL;
 		seq_printf(s, "PMC: IO pad %s voltage %lu\n",
-			tegra210_pads[i].pad_name, voltage);
+			tegra210_pads_info[i].pad_name, voltage);
 	}
 
 	return 0;
@@ -637,13 +555,16 @@ static int dbg_io_pad_dpd(struct seq_file *s, void *unused)
 	char *estr;
 	int bit, reg;
 
-	for (i = 0; i < ARRAY_SIZE(tegra210_pad_groups); ++i) {
-		bit = tegra210_pad_groups[i].bit_position;
-		reg = tegra210_pad_groups[i].reg_offset;
+	for (i = 0; i < ARRAY_SIZE(tegra210_pads_info); ++i) {
+		if (tegra210_pads_info[i].io_dpd_bit_pos < 0)
+			continue;
+
+		bit = tegra210_pads_info[i].io_dpd_bit_pos;
+		reg = tegra210_pads_info[i].io_dpd_reg_off;
 		enable = tegra_pmc_io_dpd_get_status(reg, bit);
 		estr = (enable) ? "enable" : "disable";
 		seq_printf(s, "PMC: IO pad DPD %s - %s\n",
-			tegra210_pad_groups[i].pad_name, estr);
+			tegra210_pads_info[i].pad_name, estr);
 	}
 
 	return 0;
