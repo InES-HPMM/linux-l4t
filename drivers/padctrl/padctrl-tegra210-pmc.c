@@ -362,126 +362,6 @@ static int tegra210_pmc_parse_io_pad_init(struct device_node *np,
 	return 0;
 }
 
-static int tegra210_pmc_parse_io_pad_voltage(struct device_node *np,
-		struct padctrl_dev *pad_dev)
-{
-	u32 io_pad_id, volt_uv;
-	int n_config;
-	u32 *configs;
-	int i, j, index;
-	int ret;
-
-	n_config = of_property_count_u32(np, "platform-io-pad-voltage");
-	if (n_config < 0)
-		return 0;
-	if (!n_config || (n_config % 2))
-		return -EINVAL;
-
-	n_config = n_config/2;
-
-	configs = kzalloc(n_config * sizeof(*configs), GFP_KERNEL);
-	if (!configs)
-		return -ENOMEM;
-
-	for (i = 0; i < n_config; ++i) {
-		index = i * 2;
-		of_property_read_u32_index(np, "platform-io-pad-voltage",
-					index, &io_pad_id);
-		of_property_read_u32_index(np, "platform-io-pad-voltage",
-					index + 1, &volt_uv);
-		for (j = 0; j < ARRAY_SIZE(tegra210_pads_info); ++j) {
-			if (tegra210_pads_info[j].pad_id == io_pad_id)
-				break;
-		}
-		if (j == ARRAY_SIZE(tegra210_pads_info)) {
-			pr_err("PMC: IO pad ID %u is invalid\n", io_pad_id);
-			continue;
-		}
-
-		configs[index] = j;
-		configs[index + 1] = volt_uv;
-	};
-
-	for (i = 0; i < n_config; ++i) {
-		index = i * 2;
-		if (!configs[index + 1])
-			continue;
-		ret = tegra210_pmc_padctrl_set_voltage(pad_dev,
-				tegra210_pads_info[configs[index]].pad_id,
-				configs[index + 1]);
-		if (ret < 0) {
-			pr_warn("PMC: IO pad %s voltage config failed: %d\n",
-				tegra210_pads_info[configs[index]].pad_name, ret);
-			WARN_ON(1);
-		} else {
-			pr_info("PMC: IO pad %s voltage is %d\n",
-				tegra210_pads_info[configs[index]].pad_name,
-					configs[index + 1]);
-		}
-	}
-	kfree(configs);
-	return 0;
-}
-
-static int tegra210_pmc_parse_io_pad_power(struct device_node *np,
-		struct padctrl_dev *pad_dev)
-{
-	u32 io_pad_id, enable;
-	int n_config;
-	u32 *configs;
-	int i, j, index;
-	int ret;
-
-	n_config = of_property_count_u32(np, "platform-io-pad-power");
-	if (n_config < 0)
-		return 0;
-	if (!n_config || (n_config % 2))
-		return -EINVAL;
-
-	n_config = n_config/2;
-
-	configs = kzalloc(n_config * sizeof(*configs), GFP_KERNEL);
-	if (!configs)
-		return -ENOMEM;
-
-	for (i = 0; i < n_config; ++i) {
-		index = i * 2;
-		of_property_read_u32_index(np, "platform-io-pad-power",
-					index, &io_pad_id);
-		of_property_read_u32_index(np, "platform-io-pad-power",
-					index + 1, &enable);
-		for (j = 0; j < ARRAY_SIZE(tegra210_pads_info); ++j) {
-			if (tegra210_pads_info[j].pad_id == io_pad_id)
-				break;
-		}
-		if (j == ARRAY_SIZE(tegra210_pads_info)) {
-			pr_err("PMC: IO pad ID %u is invalid\n", io_pad_id);
-			continue;
-		}
-
-		configs[index] = j;
-		configs[index + 1] = enable;
-	};
-
-	for (i = 0; i < n_config; ++i) {
-		index = i * 2;
-		ret = tegra210_pmc_padctrl_set_power(pad_dev,
-				tegra210_pads_info[configs[index]].pad_id,
-				configs[index + 1]);
-		if (ret < 0) {
-			pr_warn("PMC: IO pad %s power config failed: %d\n",
-			     tegra210_pads_info[configs[index]].pad_name, ret);
-			WARN_ON(1);
-		} else {
-			pr_info("PMC: IO pad %s power is %s\n",
-				tegra210_pads_info[configs[index]].pad_name,
-				   (configs[index + 1]) ? "enable" : "disable");
-		}
-	}
-	kfree(configs);
-	return 0;
-}
-
 int tegra210_pmc_padctrl_init(struct device *dev, struct device_node *np)
 {
 	struct tegra210_pmc_padcontrl *pmc_padctrl;
@@ -504,16 +384,12 @@ int tegra210_pmc_padctrl_init(struct device *dev, struct device_node *np)
 		return ret;
 	}
 	padctrl_set_drvdata(pmc_padctrl->pad_dev, pmc_padctrl);
-	tegra210_pmc_parse_io_pad_init(config.of_node,
-		pmc_padctrl->pad_dev);
-	tegra210_pmc_parse_io_pad_voltage(config.of_node,
-				pmc_padctrl->pad_dev);
 
 	/* Clear all DPD */
 	tegra_pmc_io_dpd_clear();
 
-	tegra210_pmc_parse_io_pad_power(config.of_node,
-				pmc_padctrl->pad_dev);
+	tegra210_pmc_parse_io_pad_init(config.of_node,
+		pmc_padctrl->pad_dev);
 
 	pr_info("T210 pmc padctrl driver initialized\n");
 	return 0;
