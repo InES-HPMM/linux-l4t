@@ -35,7 +35,6 @@
 #include <linux/timer.h>
 #include <linux/atomic.h>
 
-#include <linux/platform/tegra/tegra21_emc.h>
 #include <linux/platform/tegra/tegra_emc.h>
 
 #define TEGRA_DRAM_THERM_MAX_STATE     1
