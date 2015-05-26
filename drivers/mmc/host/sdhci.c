@@ -380,7 +380,7 @@ static void sdhci_reinit(struct sdhci_host *host)
 		else
 			host->mmc->max_blk_count =
 				(host->version > SDHCI_SPEC_400) ?
-				((1UL << BLOCK_COUNT_32BIT) - 1) :
+				((1ULL << BLOCK_COUNT_32BIT) - 1) :
 				((1 << BLOCK_COUNT_16BIT) - 1);
 	}
 	sdhci_enable_card_detection(host);
@@ -572,6 +572,12 @@ static void sdhci_kunmap_atomic(void *buffer, unsigned long *flags)
 	kunmap_atomic(buffer);
 	local_irq_restore(*flags);
 }
+/* container to handle DMA bus widths of 32/64 bit */
+
+union sdhci_dma_addr_t {
+	u64 a;
+	dma_addr_t b;
+};
 
 static void sdhci_set_adma_desc(struct sdhci_host *host, u8 *desc,
 				dma_addr_t addr, int len, unsigned cmd)
@@ -580,6 +586,8 @@ static void sdhci_set_adma_desc(struct sdhci_host *host, u8 *desc,
 	__le64 *dataddr64 = (__le64 __force *)(desc + 4);
 	__le16 *cmdlen = (__le16 __force *)desc;
 	u32 ctrl;
+	union sdhci_dma_addr_t dma_addr;
+	dma_addr.b = addr;
 
 	/* SDHCI specification says ADMA descriptors should be 4 byte
 	 * aligned, so using 16 or 32bit operations should be safe. */
@@ -591,7 +599,7 @@ static void sdhci_set_adma_desc(struct sdhci_host *host, u8 *desc,
 	if (ctrl & SDHCI_ADDRESSING_64BIT_EN)
 		dataddr64[0] = cpu_to_le64(addr);
 	else {
-		BUG_ON(addr >> 32);
+		BUG_ON(dma_addr.a >> 32);
 		dataddr[0] = cpu_to_le32(addr);
 	}
 }
@@ -891,6 +899,7 @@ static void sdhci_prepare_data(struct sdhci_host *host, struct mmc_command *cmd)
 	u8 ctrl;
 	struct mmc_data *data = cmd->data;
 	int ret;
+	union sdhci_dma_addr_t dma_addr;
 
 	if (!MMC_CHECK_CMDQ_MODE(host))
 		WARN_ON(host->data);
@@ -1000,9 +1009,9 @@ static void sdhci_prepare_data(struct sdhci_host *host, struct mmc_command *cmd)
 				     SDHCI_QUIRK2_SUPPORT_64BIT_DMA)) {
 					if (host->quirks2 &
 					    SDHCI_QUIRK2_USE_64BIT_ADDR) {
-
+						dma_addr.b = host->adma_addr;
 						sdhci_writel(host,
-						(host->adma_addr >> 32)
+						(dma_addr.a >> 32)
 							& 0xFFFFFFFF,
 						SDHCI_UPPER_ADMA_ADDRESS);
 					} else {
@@ -4629,7 +4638,7 @@ out_dma_alloc:
 		mmc->max_blk_count = 1;
 	else
 		mmc->max_blk_count = (host->version > SDHCI_SPEC_400) ?
-				((1UL << BLOCK_COUNT_32BIT) - 1) :
+				((1ULL << BLOCK_COUNT_32BIT) - 1) :
 				((1 << BLOCK_COUNT_16BIT) - 1);
 
 #ifdef CONFIG_CMD_DUMP
