@@ -2653,6 +2653,11 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
+	/* Lock interface local mutex while processing
+	   the P2P link interface data */
+	if (ifidx > 0)
+		dhd_net_if_lock_local(dhd);
+
 	for (i = 0; pktbuf && i < numpkt; i++, pktbuf = pnext) {
 		struct ether_header *eh;
 
@@ -2907,6 +2912,9 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 			}
 		}
 	}
+	/* unlock interface local mutex */
+	if (ifidx > 0)
+		dhd_net_if_unlock_local(dhd);
 
 	if (dhd->rxthread_enabled && skbhead)
 		dhd_sched_rxf(dhdp, skbhead);
@@ -4287,6 +4295,34 @@ fail:
 	}
 	dhdinfo->iflist[ifidx] = NULL;
 	return NULL;
+}
+
+/* This wrapper call for remove if from cfg layer */
+int
+dhd_cfg_remove_if(dhd_pub_t *dhdpub, int ifidx, bool need_rtnl_lock)
+{
+	int ret = 0;
+	dhd_info_t *dhd = NULL;
+
+	if (dhdpub == NULL) {
+		DHD_ERROR(("%s: dhdpub is NULL", __FUNCTION__));
+		return BCME_BADARG;
+	}
+	dhd = (dhd_info_t *)dhdpub->info;
+
+	dhd_net_if_lock_local(dhd);
+	DHD_OS_WAKE_LOCK(&dhd->pub);
+	DHD_PERIM_LOCK(&dhd->pub);
+
+	ret = dhd_remove_if(dhdpub, ifidx, need_rtnl_lock);
+	if (ret != BCME_OK)
+		DHD_ERROR(("%s: dhd_remove_if failed\n", __FUNCTION__));
+
+	DHD_PERIM_UNLOCK(&dhd->pub);
+	DHD_OS_WAKE_UNLOCK(&dhd->pub);
+	dhd_net_if_unlock_local(dhd);
+
+	return ret;
 }
 
 /* unregister and free the the net_device interface associated with the indexed

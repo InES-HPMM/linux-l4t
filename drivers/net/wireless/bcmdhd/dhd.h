@@ -702,6 +702,7 @@ extern int dhd_event_ifdel(struct dhd_info *dhd, struct wl_event_data_if *ifeven
 extern struct net_device* dhd_allocate_if(dhd_pub_t *dhdpub, int ifidx, char *name,
 	uint8 *mac, uint8 bssidx, bool need_rtnl_lock);
 extern int dhd_remove_if(dhd_pub_t *dhdpub, int ifidx, bool need_rtnl_lock);
+extern int dhd_cfg_remove_if(dhd_pub_t *dhdpub, int ifidx, bool need_rtnl_lock);
 extern void dhd_vif_add(struct dhd_info *dhd, int ifidx, char * name);
 extern void dhd_vif_del(struct dhd_info *dhd, int ifidx);
 extern void dhd_event(struct dhd_info *dhd, char *evpkt, int evlen, int ifidx);
