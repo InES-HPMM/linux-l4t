@@ -774,14 +774,6 @@
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
 
-			dmic3_clk_pe4 {
-				nvidia,pins = "dmic3_clk_pe4";
-				nvidia,function = "rsvd2";
-				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
-				nvidia,tristate = <TEGRA_PIN_DISABLE>;
-				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
-			};
-
 			pe6 {
 				nvidia,pins = "pe6";
 				nvidia,function = "rsvd0";
@@ -966,8 +958,8 @@
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 			};
 
-			pz4 {
-				nvidia,pins = "pz4";
+			pz3 {
+				nvidia,pins = "pz3";
 				nvidia,function = "rsvd1";
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -1091,19 +1083,11 @@
 				nvidia,function = "rsvd0";
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
-				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
 
 			gps_en_pi2 {
 				nvidia,pins = "gps_en_pi2";
-				nvidia,function = "rsvd0";
-				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
-				nvidia,tristate = <TEGRA_PIN_DISABLE>;
-				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
-			};
-
-			gps_rst_pi3 {
-				nvidia,pins = "gps_rst_pi3";
 				nvidia,function = "rsvd0";
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
@@ -1186,6 +1170,14 @@
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
 
+			dmic3_clk_pe4 {
+				nvidia,pins = "dmic3_clk_pe4";
+				nvidia,function = "rsvd2";
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+
 			dmic3_dat_pe5 {
 				nvidia,pins = "dmic3_dat_pe5";
 				nvidia,function = "rsvd2";
@@ -1226,8 +1218,8 @@
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
 
-			pz3 {
-				nvidia,pins = "pz3";
+			pz4 {
+				nvidia,pins = "pz4";
 				nvidia,function = "rsvd1";
 				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
 				nvidia,tristate = <TEGRA_PIN_ENABLE>;
@@ -1260,6 +1252,14 @@
 
 			wifi_rst_ph1 {
 				nvidia,pins = "wifi_rst_ph1";
+				nvidia,function = "rsvd0";
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+
+			gps_rst_pi3 {
+				nvidia,pins = "gps_rst_pi3";
 				nvidia,function = "rsvd0";
 				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
 				nvidia,tristate = <TEGRA_PIN_ENABLE>;
