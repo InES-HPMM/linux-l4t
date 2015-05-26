@@ -72,6 +72,8 @@
 #define TEGRA_IO_PAD_GROUP_USB1		35
 #define TEGRA_IO_PAD_GROUP_USB2		36
 #define TEGRA_IO_PAD_GROUP_USB3		37
+#define TEGRA_IO_PAD_GROUP_SYS		38
+#define TEGRA_IO_PAD_GROUP_BB		39
 
 struct tegra210_pmc_pads {
 	const char *pad_name;
@@ -155,6 +157,68 @@ static struct tegra210_pmc_pads tegra210_pad_groups[] = {
 	TEGRA_210_PAD_GROUPS("usb1", USB1, 0, 10),
 	TEGRA_210_PAD_GROUPS("usb2", USB2, 0, 11),
 	TEGRA_210_PAD_GROUPS("usb3", USB3, 0, 18),
+};
+
+struct tegra210_pmc_pads_info {
+	const char *pad_name;
+	int pad_id;
+	int io_dpd_bit_pos;
+	int io_dpd_reg_off;
+	int io_volt_bit_pos;
+	int io_volt_reg_off;
+};
+
+#define TEGRA_210_PAD_INFO(_name, _id, _dpd_off, _dpd_bit, _vbit) \
+{								\
+	.pad_name = _name,					\
+	.pad_id = TEGRA_IO_PAD_GROUP_##_id,			\
+	.io_dpd_reg_off = _dpd_off,				\
+	.io_dpd_bit_pos = _dpd_bit,				\
+	.io_volt_bit_pos = _vbit,				\
+	.io_volt_reg_off = 0,					\
+}
+
+static struct tegra210_pmc_pads_info tegra210_pads_info[] = {
+	TEGRA_210_PAD_INFO("audio", AUDIO, 0, 17, 5),
+	TEGRA_210_PAD_INFO("audio-hv", AUDIO_HV, 1, 29, 18),
+	TEGRA_210_PAD_INFO("cam", CAM, 1, 4, 10),
+	TEGRA_210_PAD_INFO("csia", CSIA, 0, 0, -1),
+	TEGRA_210_PAD_INFO("csib", CSIB, 0, 1, -1),
+	TEGRA_210_PAD_INFO("csic", CSIC, 1, 10, -1),
+	TEGRA_210_PAD_INFO("csid", CSID, 1, 11, -1),
+	TEGRA_210_PAD_INFO("csie", CSIE, 1, 12, -1),
+	TEGRA_210_PAD_INFO("csif", CSIF, 1, 13, -1),
+	TEGRA_210_PAD_INFO("dbg", DBG, 0, 25, 19),
+	TEGRA_210_PAD_INFO("debug-nonao", DEBUG_NONAO, 0, 26, -1),
+	TEGRA_210_PAD_INFO("dmic", DMIC, 1, 18, 20),
+	TEGRA_210_PAD_INFO("dp", DP, 1, 19, -1),
+	TEGRA_210_PAD_INFO("dsi", DSI, 0, 2, -1),
+	TEGRA_210_PAD_INFO("dsib", DSIB, 1, 7, -1),
+	TEGRA_210_PAD_INFO("dsic", DSIC, 1, 8, -1),
+	TEGRA_210_PAD_INFO("dsid", DSID, 1, 9, -1),
+	TEGRA_210_PAD_INFO("emmc", EMMC, 1, 3, -1),
+	TEGRA_210_PAD_INFO("emmc2", EMMC2, 1, 5, -1),
+	TEGRA_210_PAD_INFO("gpio", GPIO, 0, 27, 21),
+	TEGRA_210_PAD_INFO("hdmi", HDMI, 0, 28, -1),
+	TEGRA_210_PAD_INFO("hsic", HSIC, 0, 19, -1),
+	TEGRA_210_PAD_INFO("lvds", LVDS, 1, 25, -1),
+	TEGRA_210_PAD_INFO("mipi-bias", MIPI_BIAS, 0, 3, -1),
+	TEGRA_210_PAD_INFO("pex-bias", PEX_BIAS, 0, 4, -1),
+	TEGRA_210_PAD_INFO("pex-clk1", PEX_CLK1, 0, 5, -1),
+	TEGRA_210_PAD_INFO("pex-clk2", PEX_CLK2, 0, 6, -1),
+	TEGRA_210_PAD_INFO("pex-ctrl", PEX_CTRL, 1, 0, 11),
+	TEGRA_210_PAD_INFO("sdmmc1", SDMMC1, 1, 1, 12),
+	TEGRA_210_PAD_INFO("sdmmc3", SDMMC3, 1, 2, 13),
+	TEGRA_210_PAD_INFO("spi", SPI, 1, 14, 22),
+	TEGRA_210_PAD_INFO("spi-hv", SPI_HV, 1, 15, 23),
+	TEGRA_210_PAD_INFO("uart", UART, 0, 14, 2),
+	TEGRA_210_PAD_INFO("usb-bias", USB_BIAS, 0, 12, -1),
+	TEGRA_210_PAD_INFO("usb0", USB0, 0, 9, -1),
+	TEGRA_210_PAD_INFO("usb1", USB1, 0, 10, -1),
+	TEGRA_210_PAD_INFO("usb2", USB2, 0, 11, -1),
+	TEGRA_210_PAD_INFO("usb3", USB3, 0, 18, -1),
+	TEGRA_210_PAD_INFO("sys", SYS, 0, -1, 0),
+	TEGRA_210_PAD_INFO("bb", BB, 0, -1, 3),
 };
 
 static int tegra210_pmc_padctrl_set_voltage(struct padctrl_dev *pad_dev,
@@ -254,6 +318,134 @@ static struct padctrl_desc tegra210_pmc_padctrl_desc = {
 	.name = "tegra-pmc-padctrl",
 	.ops = &tegra210_pmc_padctrl_ops,
 };
+
+static int tegra210_pmc_parse_io_pad_init(struct device_node *np,
+		struct padctrl_dev *pad_dev)
+{
+	struct device_node *pad_np, *child;
+	u32 pval;
+	int pad_id;
+	const char *pad_name, *name;
+	bool dpd_en, dpd_dis, pad_en, pad_dis, io_dpd_en, io_dpd_dis;
+	int n_config;
+	u32 *volt_configs, *iodpd_configs;
+	int i, index, vcount, dpd_count;
+	int ret;
+
+	pad_np = of_get_child_by_name(np, "io-pad-defaults");
+	if (!pad_np)
+		return 0;
+
+	/* Ignore the nodes if disabled */
+	ret = of_device_is_available(pad_np);
+	if (!ret)
+		return 0;
+
+	pr_info("PMC: configuring io pad defaults\n");
+	n_config = of_get_child_count(pad_np);
+	if (!n_config)
+		return 0;
+	n_config *= 2;
+
+	volt_configs = kzalloc(n_config * sizeof(*volt_configs), GFP_KERNEL);
+	if (!volt_configs)
+		return -ENOMEM;
+
+	iodpd_configs = kzalloc(n_config * sizeof(*iodpd_configs), GFP_KERNEL);
+	if (!iodpd_configs) {
+		kfree(volt_configs);
+		return -ENOMEM;
+	}
+
+	vcount = 0;
+	dpd_count = 0;
+	for_each_child_of_node(pad_np, child) {
+		/* Ignore the nodes if disabled */
+		ret = of_device_is_available(child);
+		if (!ret)
+			continue;
+		name = of_get_property(child, "nvidia,pad-name", NULL);
+		if (!name)
+			name = child->name;
+
+		for (i = 0; i < ARRAY_SIZE(tegra210_pads_info); ++i) {
+			if (strcmp(name, tegra210_pads_info[i].pad_name))
+				continue;
+			ret = of_property_read_u32(child,
+					"nvidia,io-pad-init-voltage", &pval);
+			if (!ret) {
+				volt_configs[vcount] = i;
+				volt_configs[vcount + 1] = pval;
+				vcount += 2;
+			}
+
+			dpd_en = of_property_read_bool(child,
+						"nvidia,deep-power-down-enable");
+			dpd_dis = of_property_read_bool(child,
+						"nvidia,deep-power-down-disable");
+			pad_en = of_property_read_bool(child,
+						"nvidia,io-pad-power-enable");
+			pad_dis = of_property_read_bool(child,
+						"nvidia,io-pad-power-disable");
+
+			io_dpd_en = dpd_en | pad_dis;
+			io_dpd_dis = dpd_dis | pad_en;
+
+			if ((dpd_en && pad_en)	|| (dpd_dis && pad_dis) ||
+					(io_dpd_en & io_dpd_dis)) {
+				pr_err("PMC: Conflict on io-pad %s config\n",
+					name);
+				continue;
+			}
+			if (io_dpd_en || io_dpd_dis) {
+				iodpd_configs[dpd_count] = i;
+				iodpd_configs[dpd_count + 1] = !!io_dpd_dis;
+				dpd_count += 2;
+			}
+		}
+	}
+
+	for (i = 0; i < vcount/2; ++i) {
+		index = i * 2;
+		if (!volt_configs[index + 1])
+			continue;
+		pad_id = tegra210_pads_info[volt_configs[index]].pad_id;
+		pad_name = tegra210_pads_info[volt_configs[index]].pad_name;
+
+		ret = tegra210_pmc_padctrl_set_voltage(pad_dev,
+				pad_id, volt_configs[index + 1]);
+		if (ret < 0) {
+			pr_warn("PMC: IO pad %s voltage config failed: %d\n",
+				pad_name, ret);
+			WARN_ON(1);
+		} else {
+			pr_info("PMC: IO pad %s voltage is %d\n",
+				pad_name, volt_configs[index + 1]);
+		}
+	}
+
+	for (i = 0; i < dpd_count / 2; ++i) {
+		index = i * 2;
+		pad_id = tegra210_pads_info[iodpd_configs[index]].pad_id;
+		pad_name = tegra210_pads_info[volt_configs[index]].pad_name;
+
+		ret = tegra210_pmc_padctrl_set_power(pad_dev,
+				pad_id, iodpd_configs[dpd_count + 1]);
+		if (ret < 0) {
+			pr_warn("PMC: IO pad %s power config failed: %d\n",
+			     pad_name, ret);
+			WARN_ON(1);
+		} else {
+			pr_info("PMC: IO pad %s power is %s\n",
+				pad_name, (iodpd_configs[index + 1]) ?
+				"enable" : "disable");
+		}
+	}
+
+	kfree(volt_configs);
+	kfree(iodpd_configs);
+	return 0;
+}
 
 static int tegra210_pmc_parse_io_pad_voltage(struct device_node *np,
 		struct padctrl_dev *pad_dev)
@@ -397,6 +589,8 @@ int tegra210_pmc_padctrl_init(struct device *dev, struct device_node *np)
 		return ret;
 	}
 	padctrl_set_drvdata(pmc_padctrl->pad_dev, pmc_padctrl);
+	tegra210_pmc_parse_io_pad_init(config.of_node,
+		pmc_padctrl->pad_dev);
 	tegra210_pmc_parse_io_pad_voltage(config.of_node,
 				pmc_padctrl->pad_dev);
 
@@ -410,7 +604,7 @@ int tegra210_pmc_padctrl_init(struct device *dev, struct device_node *np)
 	return 0;
 }
 
-#ifdef  CONFIG_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
@@ -455,7 +649,7 @@ static int dbg_io_pad_dpd(struct seq_file *s, void *unused)
 	return 0;
 }
 
-#define DEBUG_IO_PAD(_f) 						\
+#define DEBUG_IO_PAD(_f)						\
 static int dbg_io_pad_open_##_f(struct inode *inode, struct file *file)	\
 {									\
 	return single_open(file, _f, &inode->i_private);		\
