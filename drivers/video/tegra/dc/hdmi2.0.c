@@ -832,7 +832,10 @@ static irqreturn_t tegra_hdmi_hpd_irq_handler(int irq, void *ptr)
 	struct tegra_dc *dc = ptr;
 	struct tegra_hdmi *hdmi = tegra_dc_get_outdata(dc);
 
-	if (G_RECOVERY_HACK == true)
+	if (G_RECOVERY_HACK)
+		return IRQ_HANDLED;
+
+	if (atomic_read(&hdmi->suspended))
 		return IRQ_HANDLED;
 
 	cancel_delayed_work(&hdmi->hpd_worker);
@@ -997,6 +1000,7 @@ static int tegra_dc_hdmi_init(struct tegra_dc *dc)
 		hdmi->enabled = false;
 		hdmi->clock_refcount = 0;
 	}
+	atomic_set(&hdmi->suspended, 0);
 
 #ifdef CONFIG_TEGRA_HDMIHDCP
 	hdmi->nvhdcp = tegra_nvhdcp_create(hdmi, dc->ndev->id,
@@ -2179,6 +2183,39 @@ static bool tegra_dc_hdmi_detect(struct tegra_dc *dc)
 	return tegra_dc_hpd(dc);
 }
 
+static void tegra_dc_hdmi_suspend(struct tegra_dc *dc)
+{
+	struct tegra_hdmi *hdmi = tegra_dc_get_outdata(dc);
+
+	if (dc->out->flags & TEGRA_DC_OUT_HOTPLUG_WAKE_LP0) {
+		int wake_irq = gpio_to_irq(dc->out->hotplug_gpio);
+		int ret;
+
+		ret = enable_irq_wake(wake_irq);
+		if (ret < 0) {
+			dev_err(&dc->ndev->dev,
+			"%s: Couldn't enable HDMI wakeup, irq=%d, error=%d\n",
+			__func__, wake_irq, ret);
+		}
+	}
+
+	atomic_set(&hdmi->suspended, 1);
+}
+
+static void tegra_dc_hdmi_resume(struct tegra_dc *dc)
+{
+	struct tegra_hdmi *hdmi = tegra_dc_get_outdata(dc);
+
+	atomic_set(&hdmi->suspended, 0);
+
+	if (dc->out->flags & TEGRA_DC_OUT_HOTPLUG_WAKE_LP0)
+		disable_irq_wake(gpio_to_irq(dc->out->hotplug_gpio));
+
+	cancel_delayed_work(&hdmi->hpd_worker);
+	schedule_delayed_work(&hdmi->hpd_worker,
+				msecs_to_jiffies(HDMI_HPD_DEBOUNCE_DELAY_MS));
+}
+
 static int tegra_dc_hdmi_ddc_enable(struct tegra_dc *dc)
 {
 	struct tegra_hdmi *hdmi = tegra_dc_get_outdata(dc);
@@ -2338,6 +2375,8 @@ struct tegra_dc_out_ops tegra_dc_hdmi2_0_ops = {
 	.setup_clk = tegra_dc_hdmi_setup_clk,
 	.detect = tegra_dc_hdmi_detect,
 	.shutdown = tegra_dc_hdmi_shutdown,
+	.suspend = tegra_dc_hdmi_suspend,
+	.resume = tegra_dc_hdmi_resume,
 	.ddc_enable = tegra_dc_hdmi_ddc_enable,
 	.ddc_disable = tegra_dc_hdmi_ddc_disable,
 	.modeset_notifier = tegra_dc_hdmi_modeset_notifier,

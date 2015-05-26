@@ -322,6 +322,8 @@ struct tegra_hdmi {
 	struct tegra_prod_list *prod_list;
 	int ddc_refcount;
 	bool device_shutdown;
+
+	atomic_t suspended;
 };
 
 #define HDMI_ELD_BUF 96
