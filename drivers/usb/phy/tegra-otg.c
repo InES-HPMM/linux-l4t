@@ -558,11 +558,13 @@ static int tegra_otg_start_gadget(struct tegra_otg *tegra, int on)
 {
 	struct usb_otg *otg = tegra->phy.otg;
 
-	if (on)
+	if (on) {
+		pm_runtime_get_sync(tegra->phy.dev);
 		usb_gadget_vbus_connect(otg->gadget);
-	else
+	} else {
 		usb_gadget_vbus_disconnect(otg->gadget);
-
+		pm_runtime_put_sync(tegra->phy.dev);
+	}
 	return 0;
 }
 
