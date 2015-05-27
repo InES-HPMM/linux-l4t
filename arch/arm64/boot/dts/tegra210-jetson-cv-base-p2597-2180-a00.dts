@@ -215,7 +215,7 @@
 	};
 
 	gpu-dvfs-rework {
-		status = "disabled";
+		status = "ok";
 	};
 
 	thermal-fan-est {
