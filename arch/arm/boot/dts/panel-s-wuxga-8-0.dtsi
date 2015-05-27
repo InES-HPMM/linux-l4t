@@ -56,6 +56,7 @@
 				nvidia,dsi-ulpm-not-support = <TEGRA_DSI_ENABLE>;
 				nvidia,dsi-suspend-stop-stream-late = <TEGRA_DSI_ENABLE>;
 				nvidia,dsi-power-saving-suspend = <1>;
+				nvidia,default_color_space = <1>;	/*default color profile:adobeRGB*/
 				nvidia,dsi-init-cmd =
 							/* Long  Packet: <PACKETTYPE[u8] COMMANDID[u8] PAYLOADCOUNT[u16] ECC[u8] PAYLOAD[..] CHECKSUM[u16]> */
 							/* Short Packet: <PACKETTYPE[u8] COMMANDID[u8] DATA0[u8] DATA1[u8] ECC[u8]> */
