@@ -53,6 +53,7 @@
 		iqs263@44 {
 			compatible = "azoteq,iqs263";
 			reg = <0x44>;
+			status = "disabled";
 			gpio_rdy = <&gpio TEGRA_GPIO(A, 1) GPIO_ACTIVE_LOW>;
 			gpio_sar = <&gpio TEGRA_GPIO(V, 5) GPIO_ACTIVE_LOW>;
 			SAR_proximity_no_suspend = <1>;
