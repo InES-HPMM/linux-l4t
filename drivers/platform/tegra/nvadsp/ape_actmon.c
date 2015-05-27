@@ -113,7 +113,7 @@ static struct actmon_dev actmon_dev_adsp = {
 	 * threshold. boost interrupt is generated when actmon_count(raw_count)
 	 * crosses this threshold consecutively by down_wmark_window.
 	 */
-	.boost_down_threshold = 85,
+	.boost_down_threshold = 80,
 
 	/*
 	 * No of times raw counts hits the up_threshold to generate an
@@ -125,7 +125,7 @@ static struct actmon_dev actmon_dev_adsp = {
 	 * No of times raw counts hits the down_threshold to generate an
 	 * interrupt.
 	 */
-	.down_wmark_window = 4,
+	.down_wmark_window = 8,
 
 	/*
 	 * No of samples = 2^ avg_window_log2 for calculating exponential moving
@@ -301,8 +301,7 @@ static irqreturn_t ape_actmon_dev_isr(int irq, void *dev_id)
 
 		dev->boost_freq =
 			do_percent(dev->boost_freq, dev->boost_down_coef);
-		if (dev->boost_freq < (dev->boost_freq_step)) {
-			dev->boost_freq = 0;
+		if (dev->boost_freq == 0) {
 			devval &= ~ACTMON_DEV_CTRL_DOWN_WMARK_ENB;
 		}
 	}
