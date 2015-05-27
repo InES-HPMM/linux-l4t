@@ -155,6 +155,10 @@
 		};
 	};
 
+	serial@70006040 {
+		status = "okay";
+	};
+
 	spi@7000da00 {
 		status = "ok";
 	};
