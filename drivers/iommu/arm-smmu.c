@@ -1587,10 +1587,11 @@ static void arm_smmu_detach_dev(struct iommu_domain *domain, struct device *dev)
 }
 
 static bool arm_smmu_pte_is_contiguous_range(unsigned long addr,
-					     unsigned long end)
+					unsigned long end, unsigned long phys)
 {
 	return !(addr & ~ARM_SMMU_PTE_CONT_MASK) &&
-		(addr + ARM_SMMU_PTE_CONT_SIZE <= end);
+		(addr + ARM_SMMU_PTE_CONT_SIZE <= end) &&
+		!(phys & ~ARM_SMMU_PTE_CONT_MASK);
 }
 
 static int arm_smmu_alloc_init_pte(struct arm_smmu_device *smmu, pmd_t *pmd,
@@ -1668,7 +1669,7 @@ static int arm_smmu_alloc_init_pte(struct arm_smmu_device *smmu, pmd_t *pmd,
 
 		pteval &= ~ARM_SMMU_PTE_CONT;
 
-		if (arm_smmu_pte_is_contiguous_range(addr, end)) {
+		if (arm_smmu_pte_is_contiguous_range(addr, end, __pfn_to_phys(pfn))) {
 			i = ARM_SMMU_PTE_CONT_ENTRIES;
 			pteval |= ARM_SMMU_PTE_CONT;
 		} else if (pte_val(*pte) &
