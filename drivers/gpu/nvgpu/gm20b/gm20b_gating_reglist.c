@@ -122,7 +122,7 @@ static const struct gating_desc gm20b_slcg_gr[] = {
 /* slcg ltc */
 static const struct gating_desc gm20b_slcg_ltc[] = {
 	{.addr = 0x0017e050, .prod = 0x00000000, .disable = 0xfffffffe},
-	{.addr = 0x0017e35c, .prod = 0x00000000, .disable = 0xfffffffe},
+	{.addr = 0x0017e35c, .prod = 0x00000004, .disable = 0xfffffffe},
 };
 
 /* slcg perf */
