@@ -80,6 +80,7 @@
 			regulator-name = "vdd_lcd_3v0";
 			regulator-min-microvolt = <3000000>;
 			regulator-max-microvolt = <3000000>;
+			regulator-boot-on;
 			gpio = <&gpio TEGRA_GPIO(K, 0) 0>;
 			enable-active-high;
 			pinctrl-names = "enable";
@@ -92,6 +93,7 @@
 			regulator-name = "vdd_lcd_1v8";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
+			regulator-boot-on;
 			gpio = <&gpio TEGRA_GPIO(K, 1) 0>;
 			enable-active-high;
 			pinctrl-names = "enable";
@@ -105,6 +107,7 @@
 			regulator-name = "vdd-hdmi";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
+			regulator-boot-on;
 			gpio = <&gpio TEGRA_GPIO(CC, 7) 0>;
 			enable-active-high;
 		};
