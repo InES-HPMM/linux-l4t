@@ -5836,7 +5836,9 @@ if (bcmdhd_wl11u) {
 	dhd_interworking_enable(dhd);
 }
 #endif /* WL11U */
-#ifdef RXCB
+
+/*RXCB not applicable to PCIE*/
+#if !defined(BCMPCIE) && defined(RXCB)
 	if (bcmdhd_custom_rxcb)	{
 		/* Enable bus rx callback */
 		bcm_mkiovar("bus:rxcb", (char *)&rxcb, 4, iovbuf, sizeof(iovbuf));
