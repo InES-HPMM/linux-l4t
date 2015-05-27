@@ -1064,6 +1064,18 @@
 		};
 	};
 
+	therm_est_sensor {
+		subdev {
+			coeff_set@0 {
+				toffset = <3224>;
+				coeffs = <
+					4 (-2) (-2) (-2) (-1) (-2) (-1) (-1) (-2) (-2) (-1) (-1) (-1) 0 0 (-1) (-1) (-2) (-5) (-13)
+					17 7 6 6 4 4 4 3 4 4 4 4 3 4 5 5 8 9 10 11
+				>;
+			};
+		};
+	};
+
 	sysedp-dynamic-capping {
 		compatible = "nvidia,tegra124-sysedp-dynamic-capping";
 		nvidia,throttle_depth = <75>;
