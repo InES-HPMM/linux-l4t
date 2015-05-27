@@ -94,6 +94,7 @@
 		mmc-ocr-mask = <0>;
 		dqs-trim-delay = <17>;
 		max-clk-limit = <266000000>;
+		ddr-clk-limit = <52000000>;
 		bus-width = <8>;
 		built-in;
 		nvidia,en-io-trim-volt;
