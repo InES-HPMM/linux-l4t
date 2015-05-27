@@ -1056,8 +1056,8 @@ static ssize_t trace_config_show(struct kobject *kobj,
 	data[i++] = ptm_readl(t, id, TRCACVR1 + 0x4);
 	data[i++] = ptm_readl(t, id, TRCACVR2);
 	data[i++] = ptm_readl(t, id, TRCACVR2 + 0x4);
+	data[i++] = ptm_readl(t, id, CXTMC_REGS_FFCR_0);
 	/* reserved for future use */
-	data[i++] = 0x00000000;
 	data[i++] = 0x00000000;
 	data[i++] = 0x00000000;
 	data[i++] = 0x00000000;
