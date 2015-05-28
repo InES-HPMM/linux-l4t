@@ -100,10 +100,6 @@
 		status = "disabled";
 	};
 
-	chosen {
-		nvidia,tegra124-virt-audio-slave;
-	};
-
 	ahub {
 		status = "disabled";
 	};
@@ -112,10 +108,10 @@
 		status = "disabled";
 	};
 
-	virt-ahub-apbif {
-		compatible = "nvidia,tegra124-virt-ahub-slave";
-		reg = <0x0 0x70300000 0x0 0x200>,
-			<0x0 0x70300200 0x0 0x200>;
+	virt-alt-pcm {
+		compatible = "nvidia,tegra124-virt-alt-pcm";
+		cardname = "tegra-virt-pcm-vm2";
+		iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
 		dmas =	<&apbdma 1>, <&apbdma 1>, <&apbdma 2>, <&apbdma 2>,
 			<&apbdma 3>, <&apbdma 3>, <&apbdma 4>, <&apbdma 4>,
 			<&apbdma 6>, <&apbdma 6>, <&apbdma 7>, <&apbdma 7>,
@@ -126,11 +122,8 @@
 				"rx6", "tx6", "rx7", "tx7", "rx8", "tx8",
 				"rx9", "tx9";
 		status = "okay";
+		ivc_queue = <&tegra_hv 25>;
 
-		virt-snd-slave {
-			compatible = "nvidia,tegra124-virt-machine-slave";
-			cardname = "tegra-virt-pcm-vm2";
-			iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
 		/*
 		** The default asound.conf file for the VMs expect the apbif channels
 		** to be (0, 1, 2, 3) if the apbif_group_id is set to 1 and
@@ -138,9 +131,45 @@
 		** channels has to be assigned, corresponding change has to be made in
 		** the asound.conf file also.
 		*/
-			apbif_group_id = <2>;
-			apbif_ch_num = <6>;
-			apbif_ch_list = <4>, <5>, <6>, <7>, <8>, <9>;
+		apbif_group_id = <2>;
+		apbif_ch_num = <6>;
+		apbif_ch_list = <4>, <5>, <6>, <7>, <8>, <9>;
+	};
+
+	virt-xbar-control {
+		compatible = "nvidia,tegra124-virt-xbar-control";
+		status = "disabled";
+		ivc_queue = <&tegra_hv 25>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		ranges = <0x70300000 0x0 0x70300000 0x00010000>;
+
+
+		virt-control {
+			compatible = "nvidia,tegra124-virt-control";
+			cardname = "tegra-ak-ad";
+			status = "okay";
+		};
+
+		tegra_virt_alt_dam0: dam@70302000 {
+			reg = <0x70302000 0x200>;
+			compatible = "nvidia,tegra124-virt-alt-dam";
+			nvidia,ahub-dam-id = <0>;
+			status = "okay";
+		};
+
+		tegra_virt_alt_dam1: dam@70302200 {
+			reg = <0x70302200 0x200>;
+			compatible = "nvidia,tegra124-virt-alt-dam";
+			nvidia,ahub-dam-id = <1>;
+			status = "okay";
+		};
+
+		tegra_virt_alt_dam2: dam@70302400 {
+			reg = <0x70302400 0x200>;
+			compatible = "nvidia,tegra124-virt-alt-dam";
+			nvidia,ahub-dam-id = <2>;
 			status = "okay";
 		};
 	};
