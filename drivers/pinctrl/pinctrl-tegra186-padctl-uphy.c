@@ -24,6 +24,7 @@
 #include <linux/tegra-fuse.h>
 #include <linux/tegra-soc.h>
 #include <linux/clk/tegra.h>
+#include <linux/tegra_prod.h>
 
 #define TEGRA_XUSB_PCIE_PHYS 1
 #define TEGRA_XUSB_SATA_PHYS 1
@@ -446,6 +447,7 @@ struct tegra_padctl_uphy {
 	const struct tegra_padctl_uphy_soc *soc;
 	struct tegra_xusb_fuse_calibration calib;
 	struct tegra_fuse_calibration fuse_calib;
+	struct tegra_prod_list *prod_list;
 	struct pinctrl_dev *pinctrl;
 	struct pinctrl_desc desc;
 
@@ -463,6 +465,7 @@ struct tegra_padctl_uphy {
 	unsigned long ufs_lanes;
 
 	unsigned int padctl_clients;
+	bool sata_bypass_fuse;
 
 	struct tegra_xusb_usb3_port usb3_ports[TEGRA_XUSB_USB3_PHYS];
 	unsigned int utmi_enable;
@@ -2225,8 +2228,21 @@ static int tegra186_sata_phy_power_off(struct phy *phy)
 static int tegra186_sata_fuse_calibration(struct tegra_padctl_uphy *ctx,
 						int lane)
 {
+	void __iomem *base;
 	u32 reg;
-	int idx;
+	int idx, err;
+
+	if (ctx->sata_bypass_fuse && ctx->prod_list) {
+		base = ctx->uphy_lane_regs[lane];
+		err = tegra_prod_set_by_name(&base,
+					"prod_c_sata", ctx->prod_list);
+		if (!err)
+			return 0;
+
+		/* In case of err update setting based on fuse */
+		dev_warn(ctx->dev,
+			"Failed to set sata prod settings, err %d", err);
+	}
 
 	/* Update based on fuse_sata_nv_calib[1:0] value */
 	idx = SATA_NV_CALIB_0_1(ctx->fuse_calib.sata_nv);
@@ -3242,6 +3258,7 @@ static int tegra186_padctl_uphy_probe(struct platform_device *pdev)
 {
 	struct tegra_padctl_uphy *ctx;
 	const struct of_device_id *match;
+	struct device_node *np = pdev->dev.of_node;
 	struct resource *res;
 	struct phy *phy;
 	int err;
@@ -3373,6 +3390,17 @@ static int tegra186_padctl_uphy_probe(struct platform_device *pdev)
 	}
 
 	TRACE();
+
+	ctx->prod_list = tegra_prod_get(&pdev->dev, NULL);
+	if (IS_ERR_OR_NULL(ctx->prod_list)) {
+		dev_warn(&pdev->dev, "uphy: prod list not found %ld\n",
+			PTR_ERR(ctx->prod_list));
+		ctx->prod_list = NULL;
+	}
+
+	ctx->sata_bypass_fuse =
+		of_property_read_bool(np, "nvidia,sata-use-prods");
+
 	return 0;
 
 unregister:
@@ -3387,6 +3415,8 @@ assert_clk_reset:
 static int tegra186_padctl_uphy_remove(struct platform_device *pdev)
 {
 	struct tegra_padctl_uphy *ctx = platform_get_drvdata(pdev);
+	if (ctx->prod_list)
+		tegra_prod_release(&ctx->prod_list);
 
 	pinctrl_unregister(ctx->pinctrl);
 	tegra_periph_reset_assert(ctx->clk);
