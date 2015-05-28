@@ -27,7 +27,11 @@
 #include <linux/fb.h>
 #include <drm/drm_fixed.h>
 
+#if defined(CONFIG_TEGRA_NVDISPLAY)
+#define TEGRA_MAX_DC		3
+#else
 #define TEGRA_MAX_DC		2
+#endif
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #define DC_N_WINDOWS		6
@@ -1088,6 +1092,16 @@ struct device_node *tegra_primary_panel_get_dt_node(
 				struct tegra_dc_platform_data *pdata);
 struct device_node *tegra_secondary_panel_get_dt_node(
 				struct tegra_dc_platform_data *pdata);
+#if defined(CONFIG_TEGRA_NVDISPLAY)
+struct device_node *tegra_tertiary_panel_get_dt_node(
+				struct tegra_dc_platform_data *pdata);
+#else
+static inline struct device_node *tegra_tertiary_panel_get_dt_node(
+				struct tegra_dc_platform_data *pdata)
+{
+	return NULL;
+}
+#endif
 bool tegra_is_bl_display_initialized(int instance);
 
 void find_dc_node(struct device_node **dc1_node,
