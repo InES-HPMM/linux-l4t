@@ -30,6 +30,7 @@
 /* XUSB_PADCTL_USB2_PORT_CAP_0 0x8 */
 #define USB2_PORT_CAP_MASK(x)		(0x3 << (4 * x))
 #define USB2_PORT_CAP_HOST(x)		(0x1 << (4 * x))
+#define USB2_PORT_CAP_OTG(x)		(0x3 << (4 * x))
 #define USB2_ULPI_PORT_CAP	0x0
 
 /* XUSB_PADCTL_IOPHY_USB3_PAD0_CTL_2_0 NOT_SUPPORT */
@@ -125,7 +126,7 @@
 void t210_program_utmi_pad(struct tegra_xhci_hcd *tegra, u8 port);
 
 /* SS pad operations */
-void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port);
+void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port, bool is_otg);
 void
 t210_disable_lfps_detector(struct tegra_xhci_hcd *tegra, unsigned port);
 void t210_enable_lfps_detector(struct tegra_xhci_hcd *tegra, unsigned port);

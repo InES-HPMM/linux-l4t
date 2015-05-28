@@ -224,12 +224,12 @@ struct cfgtbl {
 	u8 build_type:4;
 	u8 padding[137]; /* padding bytes to makeup 256-bytes cfgtbl */
 };
-
 static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra);
 static int tegra_xhci_remove(struct platform_device *pdev);
 static void set_port_cdp(struct tegra_xhci_hcd *tegra, bool enable, int pad);
 static void init_filesystem_firmware_done(const struct firmware *fw,
 					void *context);
+static int get_host_controlled_ports(struct tegra_xhci_hcd *tegra);
 
 static struct work_struct tegra_xhci_reinit_work;
 static void xhci_reinit_work(struct work_struct *work);
@@ -2302,6 +2302,7 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	unsigned pad;
 	u32 ss_pads;
 	char prod_name[15];
+	u32 host_ports = get_host_controlled_ports(tegra);
 
 	if (tegra->prod_list)
 		tegra_prod_set_by_name(&tegra->base_list[0], "prod",
@@ -2319,9 +2320,12 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 		tegra_xhci_program_utmip_pad(tegra, pad);
 	}
 
-	if (tegra->otg_port_owned && tegra->lp0_exit)
+	if (tegra->otg_port_owned && tegra->lp0_exit) {
+		usb2_vbus_id_init();
+		xusb_utmi_pad_init(0, USB2_PORT_CAP_OTG(0), false);
 		tegra_xhci_program_utmip_power_lp0_exit(tegra,
 				tegra->otg_portnum);
+	}
 
 	for_each_enabled_hsic_pad(pad, tegra) {
 		sprintf(prod_name, XUSB_PROD_PREFIX_HSIC "%d", pad);
@@ -2340,7 +2344,7 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	}
 	ss_pads = tegra->soc_config->ss_pad_count;
 	for_each_ss_pad(pad, ss_pads) {
-		if (tegra->bdata->portmap & (1 << pad)) {
+		if (host_ports & (1 << pad)) {
 			tegra->soc_config->check_lane_owner_by_pad(pad
 					, tegra->bdata->lane_owner);
 
@@ -2349,7 +2353,8 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 						prod_name,
 						tegra->prod_list);
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-			t210_program_ss_pad(tegra, pad);
+			t210_program_ss_pad(tegra, pad,
+					pad == tegra->otg_portnum);
 #else
 			tegra_xhci_program_ss_pad(tegra, pad);
 #endif
@@ -4947,10 +4952,13 @@ static void t124_chk_lane_owner_by_pad(int pad, u32 lane_owner)
 
 static void t210_chk_lane_owner_by_pad(int pad, u32 lane_owner)
 {
-	u32 lane = NOT_SUPPORTED;
-	lane = (lane_owner >> (pad * 4)) & 0xf;
+	u32 lane = (lane_owner >> (pad * 4)) & 0xf;
 
 	pr_debug("%s, pad %d, lane %d\n", __func__ , pad, lane);
+
+	if (lane == 0xf)
+		return;
+
 	switch (pad) {
 	case 0:
 		if (lane != 6)

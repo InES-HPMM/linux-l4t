@@ -82,10 +82,10 @@ void t210_program_utmi_pad(struct tegra_xhci_hcd *tegra, u8 port)
 		, tegra->bdata->uses_external_pmic);
 }
 
-void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port)
+void t210_program_ss_pad(struct tegra_xhci_hcd *tegra, u8 port, bool is_otg)
 {
 	xusb_ss_pad_init(port, GET_SS_PORTMAP(tegra->bdata->ss_portmap, port)
-			, XUSB_HOST_MODE);
+			, is_otg ? XUSB_OTG_MODE : XUSB_HOST_MODE);
 }
 
 int t210_hsic_pad_enable(struct tegra_xhci_hcd *tegra, u8 pad)

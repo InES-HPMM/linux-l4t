@@ -28,6 +28,7 @@
 /* XUSB_PADCTL_USB2_PORT_CAP_0 0x8 */
 #define USB2_PORT_CAP_MASK(x)	(0x3 << (4 * x))
 #define USB2_PORT_CAP_HOST(x)	(0x1 << (4 * x))
+#define USB2_PORT_CAP_OTG(x)	(0x3 << (4 * x))
 #define USB2_ULPI_PORT_CAP		(0x1 << 24)
 
 /* XUSB_PADCTL_IOPHY_USB3_PAD0_CTL_2_0 0x58 */
