@@ -1,0 +1,13 @@
+NVIDIA Tegra124 Virt Control (Machine driver for control card)
+
+Required properties:
+- compatible : "nvidia,tegra124-virt-control"
+- cardname : Name of the sound card
+
+Example:
+
+virt-control {
+	compatible = "nvidia,tegra124-virt-control";
+	cardname = "tegra-ak-ad";
+	status = "okay";
+};

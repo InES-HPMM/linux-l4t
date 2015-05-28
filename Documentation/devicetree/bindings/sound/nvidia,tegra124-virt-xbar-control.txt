@@ -1,0 +1,19 @@
+NVIDIA Tegra124 Virt Control (Virtual XBAR control card)
+
+Required properties:
+- compatible : "nvidia,tegra124-virt-xbar-control"
+- ivc_queue : ivc queue number which will be used to communicate to the audio server.
+- ranges : The bus address mapping for the tegra124-virt-xbar-control and tegra124-virt-alt-dam
+- #address-cells : For the sub nodes. Should be <1>;
+- #size-cells : For the sud nodes. Should be <1>.
+
+Example:
+virt-xbar-control {
+	compatible = "nvidia,tegra124-virt-xbar-control";
+	status = "okay";
+	ivc_queue = <&tegra_hv 25>;
+	#address-cells = <1>;
+	#size-cells = <1>;
+	ranges = <0x70300000 0x0 0x70300000 0x00010000>;
+
+};

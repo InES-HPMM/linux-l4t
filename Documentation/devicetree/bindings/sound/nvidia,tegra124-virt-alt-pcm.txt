@@ -1,0 +1,37 @@
+NVIDIA Tegra124 Virt Alt PCM (Virtual PCM Card)
+
+Required properties:
+- compatible : "nvidia,tegra124-virt-alt-pcm"
+- cardname : Name of the sound card
+- iommus : PPCS sw group for the smmu.
+- dmas : APBMA dma handles
+- dma-names : DMA channel names
+- ivc_queue : ivc_queue number, which will be used for communicating
+  with the audio server.
+- apbif_group_id : apbif group id, which will be used by the nv_board_init
+  to copy the curresponding asound state file.
+- apbif_ch_num : number of APBIF channels assigned for the VM.
+- apbif_ch_list : list of the APBIF channels
+
+Example:
+
+virt-alt-pcm {
+	compatible = "nvidia,tegra124-virt-alt-pcm";
+	cardname = "tegra-virt-pcm-vm2";
+	iommus = <&smmu TEGRA_SWGROUP_PPCS2>;
+	dmas =	<&apbdma 1>, <&apbdma 1>, <&apbdma 2>, <&apbdma 2>,
+		<&apbdma 3>, <&apbdma 3>, <&apbdma 4>, <&apbdma 4>,
+		<&apbdma 6>, <&apbdma 6>, <&apbdma 7>, <&apbdma 7>,
+		<&apbdma 12>, <&apbdma 12>, <&apbdma 13>, <&apbdma 13>,
+		<&apbdma 14>, <&apbdma 14>, <&apbdma 29>, <&apbdma 29>;
+	dma-names =	"rx0", "tx0", "rx1", "tx1", "rx2", "tx2",
+			"rx3", "tx3", "rx4", "tx4", "rx5", "tx5",
+			"rx6", "tx6", "rx7", "tx7", "rx8", "tx8",
+			"rx9", "tx9";
+	status = "okay";
+	ivc_queue = <&tegra_hv 25>;
+
+	apbif_group_id = <2>;
+	apbif_ch_num = <6>;
+	apbif_ch_list = <4>, <5>, <6>, <7>, <8>, <9>;
+};

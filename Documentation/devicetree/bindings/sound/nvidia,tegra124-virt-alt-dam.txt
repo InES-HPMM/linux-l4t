@@ -1,0 +1,13 @@
+NVIDIA Tegra124 Virt Alt DAM (Virtual DAM)
+
+Required properties:
+- compatible : "nvidia,tegra124-virt-alt-dam"
+- nvidia,ahub-dam-id : DAM id. can be 0, 1 or 2
+
+Example:
+tegra_virt_alt_dam0: dam@70302000 {
+	reg = <0x70302000 0x200>;
+	compatible = "nvidia,tegra124-virt-alt-dam";
+	nvidia,ahub-dam-id = <0>;
+	status = "okay";
+};
