@@ -439,6 +439,8 @@ struct arm_smmu_domain {
 	spinlock_t			lock;
 };
 
+static struct iommu_domain *iommu_domains[NUM_SID]; /* To keep all allocated domains */
+
 static DEFINE_SPINLOCK(arm_smmu_devices_lock);
 static LIST_HEAD(arm_smmu_devices);
 
@@ -736,7 +738,7 @@ static void arm_smmu_tlb_inv_context(struct arm_smmu_domain *smmu_domain)
 	arm_smmu_tlb_sync(smmu);
 }
 
-static irqreturn_t arm_smmu_context_fault(int irq, void *dev)
+static irqreturn_t __arm_smmu_context_fault(int irq, void *dev)
 {
 	int flags, ret;
 	u32 fsr, far, fsynr, resume;
@@ -789,6 +791,32 @@ static irqreturn_t arm_smmu_context_fault(int irq, void *dev)
 	return ret;
 }
 
+static irqreturn_t arm_smmu_context_fault(int irq, void *dev)
+{
+	int i;
+	struct arm_smmu_device *smmu = dev;
+
+	for (i = 0; i < smmu->num_context_banks; i++) {
+		void __iomem *cb_base;
+		struct iommu_domain *domain;
+		u32 fsr;
+
+		cb_base = ARM_SMMU_CB_BASE(smmu) + ARM_SMMU_CB(smmu, i);
+		fsr = readl_relaxed(cb_base + ARM_SMMU_CB_FSR);
+		if (fsr & FSR_FAULT) {
+			domain = iommu_domains[i];
+			if (!domain) {
+				pr_err("domain(%d) doesn't exist\n", i);
+				continue;
+			}
+			return __arm_smmu_context_fault(irq, domain);
+		}
+	}
+
+	pr_err("unexpected smmu error: neither global fault not context fault\n");
+	return IRQ_NONE;
+}
+
 static irqreturn_t arm_smmu_global_fault(int irq, void *dev)
 {
 	u32 gfsr, gfsynr0, gfsynr1, gfsynr2;
@@ -801,7 +829,7 @@ static irqreturn_t arm_smmu_global_fault(int irq, void *dev)
 	gfsynr2 = readl_relaxed(gr0_base + ARM_SMMU_GR0_sGFSYNR2);
 
 	if (!gfsr)
-		return IRQ_NONE;
+		return arm_smmu_context_fault(irq, dev);
 
 	dev_err_ratelimited(smmu->dev,
 		"Unexpected global fault, this could be serious\n");
@@ -1060,6 +1088,9 @@ static int arm_smmu_init_domain_context(struct iommu_domain *domain,
 			cfg->irptndx = INVALID_IRPTNDX;
 		}
 	}
+
+	BUG_ON(iommu_domains[cfg->cbndx]);
+	iommu_domains[cfg->cbndx] = domain;
 	return 0;
 
 out_unlock:
@@ -1090,6 +1121,7 @@ static void arm_smmu_destroy_domain_context(struct iommu_domain *domain)
 	}
 
 	__arm_smmu_free_bitmap(smmu->context_map, cfg->cbndx);
+	iommu_domains[cfg->cbndx] = NULL;
 }
 
 static int arm_smmu_get_hwid(struct iommu_domain *domain,
