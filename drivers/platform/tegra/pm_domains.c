@@ -467,7 +467,10 @@ static int __init tegra_init_pd(struct device_node *np)
 		is_off = true;
 
 	pm_genpd_init(gpd, &simple_qos_governor, is_off);
-	pm_genpd_set_poweroff_delay(gpd, 3000);
+
+	if (tegra_init_mc_clk != match->data)
+		pm_genpd_set_poweroff_delay(gpd, 3000);
+
 	of_genpd_add_provider_simple(np, gpd);
 	gpd->of_node = of_node_get(np);
 
