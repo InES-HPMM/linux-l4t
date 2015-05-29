@@ -72,6 +72,12 @@ endif
 obj-$(CONFIG_TEGRA_COMMON) += common.o
 obj-$(CONFIG_TEGRA_EDP_LIMITS)          += cpu-edp.o # must precede cpu-tegra.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
+ifeq ($(CONFIG_CPU_FREQ),y)
+ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += cpu-tegra12.o
+obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += cpu-tegra21.o
+endif
+endif
 obj-y += flowctrl.o
 obj-$(CONFIG_TEGRA3_PM) += pm-t3.o
 obj-$(CONFIG_TEGRA_CLUSTER_CONTROL) += sysfs-cluster.o

@@ -612,43 +612,6 @@ static inline void clk_lock_init(struct clk *c)
 }
 #endif
 
-#ifdef CONFIG_CPU_FREQ
-struct cpufreq_frequency_table;
-
-/**
-  * freq_table: List of frequencies allowed for cpu.
-  * throttle_lowest_index: Lowest throttling frequency index.
-  * throttle_highest_index: Highest throttling frequency index.
-  * suspend_index: Suspend frequency index.
-  * preserve_across_suspend: Preserve cpu frequency even after suspend
-  *			     for restoring during resume.
-  */
-struct tegra_cpufreq_table_data {
-	struct cpufreq_frequency_table *freq_table;
-	int throttle_lowest_index;
-	int throttle_highest_index;
-	int suspend_index;
-	bool preserve_across_suspend;
-};
-struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void);
-unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate);
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-static inline int tegra_update_mselect_rate(unsigned long cpu_rate)
-{ return 0; }
-#else
-int tegra_update_mselect_rate(unsigned long cpu_rate);
-#endif
-#if defined(CONFIG_ARCH_TEGRA_13x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
-unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate);
-#else
-static inline unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate)
-{ return 0; }
-#endif
-#else
-static inline unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate)
-{ return 0; }
-#endif
-
 #ifdef CONFIG_DEBUG_FS
 
 /* Extended version of the standard macro with poll function setting */
