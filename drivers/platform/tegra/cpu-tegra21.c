@@ -27,7 +27,10 @@
 #include <linux/platform/tegra/dvfs.h>
 #include <linux/platform/tegra/cpu-tegra.h>
 
+static DEFINE_MUTEX(scaling_data_lock);
+
 /*
+ * Construct cpufreq scaling table, and set throttling/suspend levels.
  * Frequency table index must be sequential starting at 0 and frequencies
  * must be ascending.
  */
@@ -37,7 +40,7 @@
 static struct cpufreq_frequency_table freq_table[CPU_FREQ_TABLE_MAX_SIZE];
 static struct tegra_cpufreq_table_data freq_table_data;
 
-struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
+static struct tegra_cpufreq_table_data *cpufreq_table_make_from_dvfs(void)
 {
 	int i, j, n;
 	unsigned int virt_freq;
@@ -143,6 +146,138 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 	freq_table_data.throttle_highest_index = i - 2;
 	freq_table_data.freq_table = freq_table;
 	return &freq_table_data;
+}
+
+static struct cpufreq_frequency_table dt_freq_table[CPU_FREQ_TABLE_MAX_SIZE];
+static struct tegra_cpufreq_table_data dt_freq_table_data;
+
+static struct device_node *of_get_scaling_node(const char *name)
+{
+	struct device_node *scaling_np = NULL;
+	struct device_node *np =
+		of_find_compatible_node(NULL, NULL, "nvidia,tegra210-cpufreq");
+
+	if (!np || !of_device_is_available(np)) {
+		pr_debug("%s: Tegra210 cpufreq node is not found\n", __func__);
+		of_node_put(np);
+		return NULL;
+	}
+
+	scaling_np = of_get_child_by_name(np, name);
+	of_node_put(np);
+	if (!scaling_np || !of_device_is_available(scaling_np)) {
+		pr_debug("%s: %s for cpufreq is not found\n", __func__, name);
+		of_node_put(scaling_np);
+		return NULL;
+	}
+	return scaling_np;
+}
+
+static struct tegra_cpufreq_table_data *cpufreq_table_make_from_dt(void)
+{
+	bool up;
+	int i, freqs_num;
+	u32 *freqs = NULL;
+	struct device_node *np = NULL;
+	struct tegra_cpufreq_table_data *ret_data = NULL;
+
+	struct clk *cpu_clk_g = tegra_get_clock_by_name("cpu_g");
+	const char *propname = "freq-table";
+
+	/* Initialize once */
+	if (dt_freq_table_data.freq_table)
+		return &dt_freq_table_data;
+
+	/* Find cpufreq node */
+	np = of_get_scaling_node("cpu-scaling-data");
+	if (!np)
+		return NULL;
+
+	/* Read frequency table */
+	if (!of_find_property(np, propname, &freqs_num)) {
+		pr_err("%s: %s is not found\n", __func__, propname);
+		goto _out;
+	}
+
+	if (!freqs_num) {
+		pr_err("%s: invalid %s size 0\n", __func__, propname);
+		goto _out;
+	}
+
+	freqs = kzalloc(freqs_num, GFP_KERNEL);
+	if (!freqs) {
+		pr_err("%s: failed to allocate frequency table\n", __func__);
+		goto _out;
+	}
+
+	freqs_num /= sizeof(*freqs);
+	if (of_property_read_u32_array(np, propname, freqs, freqs_num)) {
+		pr_err("%s: failed to read %s\n", __func__, propname);
+		goto _out;
+	}
+
+	/* Clip frequency table to DVFS for G CPU */
+	up = !of_property_read_bool(np, "clip-to-dvfs-down");
+
+	if (tegra_dvfs_clip_freqs(cpu_clk_g, freqs, &freqs_num, up)) {
+		pr_err("%s: failed to clip frequency table to %s dvfs\n",
+		       __func__, cpu_clk_g->name);
+		goto _out;
+	}
+	BUG_ON(freqs_num >= CPU_FREQ_TABLE_MAX_SIZE);
+
+	/* Set G CPU min rate to lowest freq in the table */
+	cpu_clk_g->min_rate = freqs[0];
+
+	/* Fill in scaling table data */
+	for (i = 0; i < freqs_num; i++) {
+		dt_freq_table[i].index = i;
+		dt_freq_table[i].frequency = freqs[i];
+	}
+	dt_freq_table[i].index = i;
+	dt_freq_table[i].frequency = CPUFREQ_TABLE_END;
+	dt_freq_table_data.freq_table = dt_freq_table;
+
+	/* Set cpufreq suspend configuration */
+	dt_freq_table_data.preserve_across_suspend =
+		of_property_read_bool(np, "preserve-across-suspend");
+
+	/*
+	 * Set fixed defaults for suspend and throttling indexes (not used,
+	 * anyway, on Tegra21)
+	 */
+	dt_freq_table_data.suspend_index = 0;
+	dt_freq_table_data.throttle_lowest_index = 0;
+	dt_freq_table_data.throttle_highest_index = freqs_num - 1;
+
+	ret_data = &dt_freq_table_data;
+
+_out:
+	kfree(freqs);
+	of_node_put(np);
+	return ret_data;
+}
+
+static struct tegra_cpufreq_table_data *cpufreq_table_data;
+
+struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
+{
+	struct tegra_cpufreq_table_data *ret_data;
+
+	mutex_lock(&scaling_data_lock);
+	if (cpufreq_table_data)
+		goto _out;
+
+	cpufreq_table_data = cpufreq_table_make_from_dt();
+	if (cpufreq_table_data)
+		goto _out;
+
+	cpufreq_table_data = cpufreq_table_make_from_dvfs();
+
+_out:
+	ret_data = cpufreq_table_data;
+	mutex_unlock(&scaling_data_lock);
+	return ret_data;
 }
 
 unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate)

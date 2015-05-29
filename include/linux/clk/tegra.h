@@ -173,6 +173,7 @@ struct dvfs;
 struct notifier_block;
 
 int tegra_dvfs_get_freqs(struct clk *c, unsigned long **freqs, int *num_freqs);
+int tegra_dvfs_clip_freqs(struct clk *c, u32 *freqs, int *num_freqs, bool up);
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate);
 int tegra_dvfs_override_core_voltage(struct clk *c, int override_mv);
 
