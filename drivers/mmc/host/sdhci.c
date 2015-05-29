@@ -2465,7 +2465,7 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	u16 ctrl;
 	u32 ier;
 	int tuning_loop_counter = MAX_TUNING_LOOP;
-	unsigned long timeout;
+	unsigned long timeout, flags;
 	int err = 0;
 	bool requires_tuning_nonuhs = false;
 	u16 clk = 0;
@@ -2473,12 +2473,12 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	host = mmc_priv(mmc);
 
 	sdhci_runtime_pm_get(host);
-	disable_irq(host->irq);
+	local_irq_save(flags);
 
 	if ((host->quirks2 & SDHCI_QUIRK2_NON_STANDARD_TUNING) &&
 		host->ops->execute_freq_tuning) {
 		err = host->ops->execute_freq_tuning(host, opcode);
-		enable_irq(host->irq);
+		local_irq_restore(flags);
 		sdhci_runtime_pm_put(host);
 		return err;
 	}
@@ -2486,7 +2486,7 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	if ((host->quirks2 & SDHCI_QUIRK2_SKIP_TUNING) &&
 		host->ops->is_tuning_done) {
 		if(host->ops->is_tuning_done(host)) {
-			enable_irq(host->irq);
+			local_irq_restore(flags);
 			sdhci_runtime_pm_put(host);
 			return 0;
 		}
@@ -2516,8 +2516,7 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	    requires_tuning_nonuhs)
 		ctrl |= SDHCI_CTRL_EXEC_TUNING;
 	else {
-		spin_unlock(&host->lock);
-		enable_irq(host->irq);
+		spin_unlock_irqrestore(&host->lock, flags);
 		sdhci_runtime_pm_put(host);
 		return 0;
 	}
@@ -2598,8 +2597,7 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		host->cmd = NULL;
 		host->mrq_cmd = NULL;
 
-		spin_unlock(&host->lock);
-		enable_irq(host->irq);
+		spin_unlock_irqrestore(&host->lock, flags);
 
 		if (host->quirks2 & SDHCI_QUIRK2_NON_STD_TUN_CARD_CLOCK) {
 			udelay(1);
@@ -2613,8 +2611,7 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		wait_event_interruptible_timeout(host->buf_ready_int,
 					(host->tuning_done == 1),
 					msecs_to_jiffies(50));
-		disable_irq(host->irq);
-		spin_lock(&host->lock);
+		spin_lock_irqsave(&host->lock, flags);
 
 		if (!host->tuning_done) {
 			pr_info(DRIVER_NAME ": Timeout waiting for "
@@ -2695,8 +2692,7 @@ out:
 		err = 0;
 
 	sdhci_clear_set_irqs(host, SDHCI_INT_DATA_AVAIL, ier);
-	spin_unlock(&host->lock);
-	enable_irq(host->irq);
+	spin_unlock_irqrestore(&host->lock, flags);
 	sdhci_runtime_pm_put(host);
 
 	return err;
