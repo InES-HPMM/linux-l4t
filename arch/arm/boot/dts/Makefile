@@ -215,7 +215,9 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-android-p1889-vm.dtb \
 	tegra124-android-p1889-vm_for_autosar.dtb \
 	tegra124-android-p1889-hdmiprimary.dtb \
+	tegra124-android-p1889-vm-hdmiprimary.dtb \
 	tegra124-android-p1889-edp-only.dtb \
+	tegra124-android-p1889-vm-edp-only.dtb \
 	tegra124-laguna.dtb \
 	tegra124-laguna-pm358.dtb \
 	tegra124-jetson_tk1-pm375-000-c00-00.dtb \
