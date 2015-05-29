@@ -327,8 +327,7 @@
 					regulator-min-microvolt = <1050000>;
 					regulator-max-microvolt = <1050000>;
 					regulator-boot-on;
-					regulator-always-on;
-					maxim,fps-source = <FPS_SRC_1>;
+					maxim,fps-source = <FPS_SRC_NONE>;
 					maxim,fps-power-up-period = <6>;
 					maxim,fps-power-down-period = <1>;
 				};
