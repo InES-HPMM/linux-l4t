@@ -1721,6 +1721,13 @@ static int arm_smmu_alloc_init_pte(struct arm_smmu_device *smmu, pmd_t *pmd,
 					       ARM_SMMU_PTE_CONT_ENTRIES);
 		}
 
+		if (!pfn) {
+			memset(pte, 0, i * sizeof(*pte));
+			addr += i * PAGE_SIZE;
+			pte += i;
+			break;
+		}
+
 		do {
 			*pte = pfn_pte(pfn, __pgprot(pteval));
 		} while (pte++, pfn++, addr += PAGE_SIZE, --i);
@@ -1757,7 +1764,8 @@ static int arm_smmu_alloc_init_pmd(struct arm_smmu_device *smmu, pud_t *pud,
 		next = pmd_addr_end(addr, end);
 		ret = arm_smmu_alloc_init_pte(smmu, pmd, addr, next, pfn,
 					      prot, stage);
-		phys += next - addr;
+		if (phys)
+			phys += next - addr;
 		pfn = __phys_to_pfn(phys);
 	} while (pmd++, addr = next, addr < end);
 
@@ -1791,7 +1799,8 @@ static int arm_smmu_alloc_init_pud(struct arm_smmu_device *smmu, pgd_t *pgd,
 		next = pud_addr_end(addr, end);
 		ret = arm_smmu_alloc_init_pmd(smmu, pud, addr, next, phys,
 					      prot, stage);
-		phys += next - addr;
+		if (phys)
+			phys += next - addr;
 	} while (pud++, addr = next, addr < end);
 
 	return ret;
@@ -1860,7 +1869,8 @@ static int arm_smmu_handle_mapping(struct arm_smmu_domain *smmu_domain,
 		if (ret)
 			goto out_unlock;
 
-		paddr += next - iova;
+		if (paddr)
+			paddr += next - iova;
 		iova = next;
 	} while (pgd++, iova != end);
 
