@@ -43,6 +43,8 @@
 #ifdef CONFIG_TEGRA_NVMAP
 #include <linux/nvmap.h>
 #endif
+#define CREATE_TRACE_POINTS
+#include <trace/events/lowmemorykiller.h>
 
 static uint32_t lowmem_debug_level = 1;
 static short lowmem_adj[6] = {
@@ -122,6 +124,9 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	selected_oom_score_adj = min_score_adj;
 
 	rcu_read_lock();
+
+	trace_lowmem_utilization("Start process selected");
+
 	for_each_process(tsk) {
 		struct task_struct *p;
 		short oom_score_adj;
@@ -137,9 +142,15 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		    time_before_eq(jiffies, lowmem_deathpending_timeout)) {
 			task_unlock(p);
 			rcu_read_unlock();
+			trace_lowmem_utilization("Stop process selected, " \
+					"wait timeout");
 			return 0;
 		}
 		oom_score_adj = p->signal->oom_score_adj;
+
+		trace_lowmem_task_list(p->comm, p->pid, oom_score_adj,
+				get_mm_rss(p->mm));
+
 		if (oom_score_adj < min_score_adj) {
 			task_unlock(p);
 			continue;
@@ -161,6 +172,7 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		lowmem_print(2, "select '%s' (%d), adj %hd, size %d, to kill\n",
 			     p->comm, p->pid, oom_score_adj, tasksize);
 	}
+
 	if (selected) {
 		lowmem_print(1, "Killing '%s' (%d), adj %hd,\n" \
 				"   to free %ldkB on behalf of '%s' (%d) because\n" \
@@ -178,7 +190,14 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		send_sig(SIGKILL, selected, 0);
 		set_tsk_thread_flag(selected, TIF_MEMDIE);
 		rem -= selected_tasksize;
-	}
+		trace_lowmem_task_selected(selected->comm,
+				selected->pid, selected_oom_score_adj,
+				selected_tasksize);
+	} else
+		trace_lowmem_utilization("No process is killed");
+
+	trace_lowmem_utilization("Process is selected to kill");
+
 	lowmem_print(4, "lowmem_shrink %lu, %x, return %d\n",
 		     sc->nr_to_scan, sc->gfp_mask, rem);
 	rcu_read_unlock();
