@@ -377,6 +377,9 @@ int tegra_dvfs_swap_dfll_range(struct dvfs *d, int range, int *old_range);
 int tegra_dvfs_set_dfll_range(struct dvfs *d, int range);
 int tegra_dvfs_rail_set_reg_volatile(struct dvfs_rail *rail, bool set);
 
+void tegra_clip_freqs(u32 *freqs, int *num_freqs, int freqs_mult,
+		     const unsigned long *rates_ladder, int num_rates, bool up);
+
 struct tegra_cooling_device *tegra_dvfs_get_cpu_vmax_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_cpu_vmin_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_core_vmax_cdev(void);

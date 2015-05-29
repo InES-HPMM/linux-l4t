@@ -1378,6 +1378,86 @@ int tegra_dvfs_get_freqs(struct clk *c, unsigned long **freqs, int *num_freqs)
 }
 EXPORT_SYMBOL(tegra_dvfs_get_freqs);
 
+/*
+ * Clip array of frequencies to the set of rates in the specified ladder.
+ * Both frequency array and rates ladder must be in the strict ascending order.
+ * Frequency unit is specified by input multiplier. Ladder steps are in Hz.
+ *
+ * - If clip down is requested:
+ *   any frequency below bottom ladder step is kept unchanged
+ *   any frequency exactly at one of the ladder steps is kept unchanged
+ *   any frequency between two ladder steps is replaced with lower step
+ *   any frequency above top ladder step is replaced with top step
+ *
+ * - If clip up is requested:
+ *   any frequency below bottom ladder step is replaced with bottom step
+ *   any frequency exactly at one of the ladder steps is kept unchanged
+ *   any frequency between two ladder steps is replaced with upper step
+ *   any frequency above top ladder step is replaced with top step
+ *
+ * Input frequencies entries that rounded to the same ladder step are collapsed
+ * into one output entry. Output frequencies are returned in the same input
+ * array with updated number of entries (that is always less or equal number
+ * of input frequencies).
+ */
+void tegra_clip_freqs(u32 *freqs, int *num_freqs, int freqs_mult,
+		      const unsigned long *rates_ladder, int num_rates, bool up)
+{
+	int i, j, k;
+	u32 freq, freq_step;
+
+	for (i = 0, j = 0, k = 0; i < *num_freqs;) {
+		freq = freqs[i];
+		freq_step = rates_ladder[k] / freqs_mult;
+
+		if (k == num_rates - 1) {
+			freqs[j++] = freq_step;
+			break;
+		}
+
+		if (up) {
+			if (freq <= freq_step) {
+				if (!j || (freqs[j - 1] < freq_step))
+					freqs[j++] = freq_step;
+				i++;
+			} else {
+				k++;
+			}
+		} else {
+			if (freq < freq_step) {
+				if (!k) {
+					freqs[j++] = freq;
+				} else {
+					freq_step =
+						rates_ladder[k-1] / freqs_mult;
+
+					if (!j || (freqs[j - 1] < freq_step))
+						freqs[j++] = freq_step;
+				}
+				i++;
+			} else {
+				k++;
+			}
+		}
+	}
+	*num_freqs = j;
+}
+
+/* Clip array of frequencies in kHz to the DVFS rates for the specified clock */
+int tegra_dvfs_clip_freqs(struct clk *c, u32 *freqs, int *num_freqs, bool up)
+{
+	if (!c->dvfs)
+		return -ENODATA;
+
+	if (c->dvfs->alt_freqs)
+		return -EINVAL;
+
+	tegra_clip_freqs(freqs, num_freqs, 1000,
+			 c->dvfs->freqs, c->dvfs->num_freqs, up);
+	return 0;
+}
+EXPORT_SYMBOL(tegra_dvfs_clip_freqs);
+
 static int dvfs_rail_get_override_floor(struct dvfs_rail *rail)
 {
 	return rail->override_unresolved ? rail->nominal_millivolts :
