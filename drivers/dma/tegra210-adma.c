@@ -1026,12 +1026,12 @@ static struct dma_async_tx_descriptor *tegra_adma_prep_dma_cyclic(
 	config_mem_buffs = buf_len/period_len;
 
 	if (config_mem_buffs <= ADMA_CH_CONFIG_MAX_MEM_BUFFERS) {
+		config &= ~(ADMA_CH_CONFIG_SOURCE_MEMORY_BUFFER_MASK |
+			ADMA_CH_CONFIG_TARGET_MEMORY_BUFFER_MASK);
 		if (direction == DMA_MEM_TO_DEV) {
-			config &= ~(ADMA_CH_CONFIG_SOURCE_MEMORY_BUFFER_MASK);
 			config |= ((config_mem_buffs - 1)
 				<< ADMA_CH_CONFIG_SOURCE_MEMORY_BUFFER_SHIFT);
 		} else {
-			config &= ~(ADMA_CH_CONFIG_TARGET_MEMORY_BUFFER_MASK);
 			config |= ((config_mem_buffs - 1)
 				<< ADMA_CH_CONFIG_TARGET_MEMORY_BUFFER_SHIFT);
 		}
