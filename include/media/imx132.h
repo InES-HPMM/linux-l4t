@@ -71,6 +71,7 @@ struct imx132_regulators {
 
 struct imx132_platform_data {
 	unsigned int cam2_gpio;
+	unsigned int reset_gpio;
 	bool ext_reg;
 	struct imx132_regulators regulators;
 	const char *mclk_name; /* NULL for default */

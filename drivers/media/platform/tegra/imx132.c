@@ -666,6 +666,7 @@ static int imx132_power_on(struct imx132_info *info)
 	int err;
 	struct imx132_power_rail *pw = &info->power;
 	unsigned int cam2_gpio = info->pdata->cam2_gpio;
+	unsigned int reset_gpio = info->pdata->reset_gpio;
 
 	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd)))
 		return -EFAULT;
@@ -687,6 +688,7 @@ static int imx132_power_on(struct imx132_info *info)
 	}
 
 	gpio_set_value(cam2_gpio, 0);
+	gpio_set_value(reset_gpio, 0);
 
 	err = regulator_enable(pw->avdd);
 	if (unlikely(err))
@@ -703,6 +705,7 @@ static int imx132_power_on(struct imx132_info *info)
 	usleep_range(1, 2);
 
 	gpio_set_value(cam2_gpio, 1);
+	gpio_set_value(reset_gpio, 1);
 
 	return 0;
 
@@ -733,6 +736,7 @@ static int imx132_power_off(struct imx132_info *info)
 {
 	struct imx132_power_rail *pw = &info->power;
 	unsigned int cam2_gpio = info->pdata->cam2_gpio;
+	unsigned int reset_gpio = info->pdata->reset_gpio;
 
 	if (!info->i2c_client->dev.of_node) {
 		if (info->pdata && info->pdata->power_off)
@@ -744,6 +748,7 @@ static int imx132_power_off(struct imx132_info *info)
 		return -EFAULT;
 
 	gpio_set_value(cam2_gpio, 0);
+	gpio_set_value(reset_gpio, 0);
 
 	usleep_range(1, 2);
 
@@ -920,6 +925,7 @@ static struct imx132_platform_data *imx132_parse_dt(struct i2c_client *client)
 	board_info_pdata->static_info = (void *)(board_info_pdata->cap + 1);
 
 	board_info_pdata->cam2_gpio = of_get_named_gpio(np, "cam2-gpios", 0);
+	board_info_pdata->reset_gpio = of_get_named_gpio(np, "reset-gpios", 0);
 	board_info_pdata->ext_reg = of_property_read_bool(np, "nvidia,ext_reg");
 	of_property_read_string(np, "clocks", &board_info_pdata->mclk_name);
 
