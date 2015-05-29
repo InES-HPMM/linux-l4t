@@ -61,6 +61,7 @@ static inline void tegra_bpmp_get_smmu_data(phys_addr_t *start, size_t *size) {}
 
 #ifdef CONFIG_TEGRA_BPMP
 void tegra_bpmp_init_early(void);
+int tegra_bpmp_running(void);
 void tegra_bpmp_trace_printk(void);
 int tegra_bpmp_send(int mrq, void *data, int sz);
 int tegra_bpmp_send_receive_atomic(int mrq, void *ob_data, int ob_sz,
@@ -77,6 +78,7 @@ void tegra_bpmp_mail_return(int ch, int code, int v);
 void tegra_bpmp_mail_return_data(int ch, int code, void *data, int sz);
 #else
 static inline void tegra_bpmp_init_early(void) {}
+static inline int tegra_bpmp_running(void) { return 0; }
 static inline void tegra_bpmp_trace_printk(void) {}
 static inline int tegra_bpmp_send(int mrq, void *data, int sz)
 { return -ENODEV; }

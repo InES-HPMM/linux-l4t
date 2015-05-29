@@ -370,6 +370,11 @@ int tegra_bpmp_send_receive(int mrq, void *ob_data, int ob_sz,
 }
 EXPORT_SYMBOL(tegra_bpmp_send_receive);
 
+int tegra_bpmp_running(void)
+{
+	return connected;
+}
+
 static void bpmp_init_completion(void)
 {
 	int i;
