@@ -42,8 +42,6 @@
 		};
 
 		vdd_fan: regulator@13 {
-			compatible = "regulator-fixed-sync";
-			regulator-name = "vdd-fan";
 			gpio = <&tca9539_74 4 0>;
 		};
 
@@ -110,18 +108,44 @@
 			gpio = <&gpio TEGRA_GPIO(H, 1) 0>;
 			enable-active-high;
 		};
+
+		en_usb_vbus2: regulator@24 {
+			compatible = "regulator-fixed-sync";
+			regulator-name = "en-usb-vbus2";
+			regulator-min-microvol = <5000000>;
+			regulator-max-microvol = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
+			enable-active-high;
+		};
 	};
 
 	host1x {
 		dc@54200000 {
 			vdd_lcd-supply = <&max77620_ldo0>; /* DSI is POR */
 		};
-		dc@54240000 {
-			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
+
+		vi {
+			avdd_dsi_csi-supply = <&max77620_ldo0>;
 		};
 	};
 
 	pwm-fan {
 		vdd-fan-supply = <&vdd_fan>;
+	};
+
+	otg@7d000000 {
+		usb_vbus-supply = <&usb_vbus1>;
+	};
+
+	xusb@70090000 {
+		usb_vbus1-supply = <&en_vdd_eth_5v0>;
+		usb_vbus2-supply = <&en_usb_vbus2>;
+	};
+
+	spi@7000da00 {
+		spi-touch19x12@0 {
+			avdd-supply = <&en_vdd_ts_hv_3v3>;
+			dvdd-supply = <&en_vdd_ts_1v8>;
+		};
 	};
 };

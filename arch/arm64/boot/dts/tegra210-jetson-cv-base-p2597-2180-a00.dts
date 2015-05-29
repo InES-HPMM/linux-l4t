@@ -329,7 +329,8 @@
 	};
 
 	i2c@546c0000 {
-		avdd_dsi_csi-supply = <&max77620_gpio7>;
+		bus-pullup-supply = <&max77620_sd3>;
+		avdd_dsi_csi-supply = <&max77620_sd3>;
 	};
 
 	sysedp {
