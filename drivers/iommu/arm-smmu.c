@@ -1797,6 +1797,8 @@ static int arm_smmu_alloc_init_pud(struct arm_smmu_device *smmu, pgd_t *pgd,
 	return ret;
 }
 
+#define FLUSH_TLB_AFTER_MAP 1
+
 static int arm_smmu_handle_mapping(struct arm_smmu_domain *smmu_domain,
 				   unsigned long iova, phys_addr_t paddr,
 				   size_t size, unsigned long attrs)
@@ -1864,6 +1866,8 @@ static int arm_smmu_handle_mapping(struct arm_smmu_domain *smmu_domain,
 
 out_unlock:
 	spin_unlock_irqrestore(&smmu_domain->lock, flags);
+	if (FLUSH_TLB_AFTER_MAP)
+		arm_smmu_tlb_inv_context(smmu_domain);
 
 	return ret;
 }
@@ -1911,7 +1915,8 @@ static size_t arm_smmu_unmap(struct iommu_domain *domain, unsigned long iova,
 	struct arm_smmu_domain *smmu_domain = domain->priv;
 
 	ret = arm_smmu_handle_mapping(smmu_domain, iova, 0, size, 0);
-	arm_smmu_tlb_inv_context(smmu_domain);
+	if (!FLUSH_TLB_AFTER_MAP)
+		arm_smmu_tlb_inv_context(smmu_domain);
 	return ret ? 0 : size;
 }
 
@@ -1989,7 +1994,8 @@ static int arm_iommu_fault(struct iommu_domain *domain, struct device *dev,
 	arm_smmu_handle_mapping(smmu_domain, iova,
 		page_to_phys(smmu_domain->arm_dummy_page),
 				PAGE_SIZE, 0);
-	arm_smmu_tlb_inv_context(smmu_domain);
+	if (!FLUSH_TLB_AFTER_MAP)
+		arm_smmu_tlb_inv_context(smmu_domain);
 
 	return 0;
 }
