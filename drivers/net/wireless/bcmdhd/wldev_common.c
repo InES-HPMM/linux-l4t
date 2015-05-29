@@ -408,7 +408,6 @@ int wldev_miracast_tuning(
 
 set_mode:
 
-	WLDEV_ERROR(("mode: %d\n", mode));
 
 	if (mode == 0) {
 		/* Normal mode: restore everything to default */

@@ -1270,7 +1270,7 @@ wl_android_ampdu_send_delba(struct net_device *dev, char *command)
 	struct ampdu_ea_tid aet;
 	char smbuf[WLC_IOCTL_SMLEN];
 
-	DHD_ERROR(("%s, %s\n", __FUNCTION__, command));
+	DHD_INFO(("%s, %s\n", __FUNCTION__, command));
 
 	/* get tid */
 	aet.tid = bcm_strtoul(command, &command, 10);
