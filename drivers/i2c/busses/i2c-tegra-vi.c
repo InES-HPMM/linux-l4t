@@ -520,16 +520,6 @@ static inline int tegra_vi_i2c_power_enable(struct tegra_vi_i2c_dev *i2c_dev)
 	int ret;
 	int partition_id;
 
-	/* get regulator */
-	if (!i2c_dev->reg)
-		i2c_dev->reg = devm_regulator_get(i2c_dev->dev, "avdd_dsi_csi");
-
-	if (IS_ERR(i2c_dev->reg)) {
-		dev_err(i2c_dev->dev, "could not get regulator: %ld",
-			PTR_ERR(i2c_dev->reg));
-		return PTR_ERR(i2c_dev->reg);
-	}
-
 	ret = regulator_enable(i2c_dev->reg);
 	if (ret)
 		return ret;
@@ -1444,6 +1434,7 @@ static int tegra_vi_i2c_probe(struct platform_device *pdev)
 	}
 
 	i2c_dev->chipdata = chip_data;
+	i2c_dev->dev = &pdev->dev;
 
 	div_clk = devm_clk_get(&pdev->dev, "vii2c");
 	if (IS_ERR(div_clk)) {
@@ -1508,6 +1499,14 @@ skip_pinctrl:
 				ret);
 			return ret;
 		}
+	}
+
+	/* get regulator */
+	i2c_dev->reg = devm_regulator_get(&pdev->dev, "avdd_dsi_csi");
+	if (IS_ERR(i2c_dev->reg)) {
+		dev_err(&pdev->dev, "could not get regulator: %ld",
+			PTR_ERR(i2c_dev->reg));
+		return PTR_ERR(i2c_dev->reg);
 	}
 
 	i2c_dev->base = base;
