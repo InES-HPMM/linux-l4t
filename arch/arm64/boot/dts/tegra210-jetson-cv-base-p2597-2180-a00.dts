@@ -164,6 +164,41 @@
 		};
 	};
 
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+
+		dsi {
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-a-wuxga-8-0 {
+				status = "okay";
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
+				disp-default-out {
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE TEGRA_DC_OUT_INITIALIZED_MODE>;
+				};
+			};
+		};
+	};
+
 	serial@70006040 {
 		status = "okay";
 	};
@@ -207,6 +242,7 @@
 		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
 		nvidia,portmap = <0x0e03>;
 		nvidia,common_padctl = <&xusb_pad_ctl>;
+		nvidia,boost_cpu_frequency = <1600>;
 		status = "okay";
 	};
 
@@ -307,8 +343,10 @@
 				/*
 				 * GPIO-0 : DISP_CHARGER_STAT
 				 * GPIO-1 : DISP_TYPEC_ORIENT
+				 * GPIO-16 : NVSR_INT
+				 * GPIO-17 : BRIDGE_IRQ
 				 */
-				gpio-input = <0 1>;
+				gpio-input = <0 1 16 17>;
 
 				/*
 				 * GPIO-2 : TYPEC_INT		 Charger control HDR
@@ -323,10 +361,8 @@
 				 * GPIO-13 : CAM_AF_PWDN    	 CAM HEADER
 				 * GPIO-14 : CHG_BD_PRSNT_L 	 CAM HEADER
 				 * GPIO-15 : BRIDGE_EN		 CAM HEADER
-				 * GPIO-16 : NVSR_INT		 CAM HEADER
-				 * GPIO-17 : BRIDGE_IRQ		 CAM HEADER
 				 */
-				gpio-output-low = <2 3 4 5 6 7 10 11 12 13 14 15 16 17>;
+				gpio-output-low = <2 3 4 5 6 7 10 11 12 13 14 15>;
 			};
 		};
 	};
@@ -341,67 +377,30 @@
 		nvidia,margin = <0>;
 		nvidia,min_budget = <0>;
 		nvidia,initial_budget = <40000>;
+	};
 
-		consumers {
-			consumer1 {
-				nvidia,consumer_name = "ov7695";
-				nvidia,states = <0 124>;
-			};
-			consumer2 {
-				nvidia,consumer_name = "primary-wifi";
-				nvidia,states = <0 2345>;
-			};
-			consumer3 {
-				nvidia,consumer_name = "secondary-wifi";
-				nvidia,states = <0 1170>;
-			};
-			/*eMMC*/
-			consumer4 {
-				nvidia,consumer_name = "sdhci-tegra.3";
-				nvidia,states = <0 1785>;
-			};
-			consumer5 {
-				nvidia,consumer_name = "display_0";
-				nvidia,states = <0 616>;
-			};
-			consumer6 {
-				nvidia,consumer_name = "display_1";
-				nvidia,states = <0 616>;
-			};
-			consumer7 {
-				nvidia,consumer_name = "codec+speaker";
-				nvidia,states = <0 1270>;
-			};
-			consumer8 {
-				nvidia,consumer_name = "pwm-backlight";
-				nvidia,states = <0 127 255 382 510 638 765 893 1020 1148 1276>;
-			};
-			/*SD Card */
-			consumer9 {
-				nvidia,consumer_name = "sdhci-tegra.0";
-				nvidia,states = <0 1785>;
-			};
+	sysedp_reactive_capping@3 {
+		compatible = "nvidia,tegra124-sysedp_reactive_capping";
+		nvidia,max_capping_mw = <15000>;
+		nvidia,step_alarm_mw = <1000>;
+		nvidia,step_relax_mw = <500>;
+		nvidia,relax_ms = <250>;
+		interrupt-parent = <&soctherm>;
+		interrupts = <3 0x2002>;
+		sysedpc {
+			nvidia,name = "batmon_oc3";
 		};
 	};
 
-    sysedp_reactive_capping@3 {
-        compatible = "nvidia,tegra124-sysedp_reactive_capping";
-        nvidia,max_capping_mw = <15000>;
-        nvidia,step_alarm_mw = <1000>;
-        nvidia,step_relax_mw = <500>;
-        nvidia,relax_ms = <250>;
-        interrupt-parent = <&soctherm>;
-        interrupts = <3 0x2002>;
-        sysedpc {
-            nvidia,name = "batmon_oc3";
-        };
-    };
+	sysedp-dynamic-capping {
+		compatible = "nvidia,tegra124-sysedp-dynamic-capping";
+		nvidia,throttle_depth = <75>;
+		nvidia,cap_method = <1>;
+	};
 
-    sysedp-dynamic-capping {
-        compatible = "nvidia,tegra124-sysedp-dynamic-capping";
-        nvidia,throttle_depth = <75>;
-        nvidia,cap_method = <1>;
-    };
+	bcmdhd_wlan {
+		edp-consumer-name = "primary-wifi";
+	};
 
 	cpu_edp {
 		status = "okay";
@@ -671,4 +670,147 @@
 		nvidia,cap_method = <1>;
 	};
 
+	bcmdhd_wlan {
+		country_code_map {
+			CC1 {
+				iso_abbrev = "XV";
+				custom_locale = "XV";
+				custom_locale_rev = <997>;
+			};
+			CC2 {
+				iso_abbrev = "US";
+				custom_locale = "Q2";
+				custom_locale_rev = <998>;
+			};
+			CC3 {
+				iso_abbrev = "CA";
+				custom_locale = "Q2";
+				custom_locale_rev = <998>;
+			};
+			CC4 {
+				iso_abbrev = "AT";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC5 {
+				iso_abbrev = "BE";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC6 {
+				iso_abbrev = "BG";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC7 {
+				iso_abbrev = "HR";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC8 {
+				iso_abbrev = "CZ";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC9 {
+				iso_abbrev = "DK";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC10 {
+				iso_abbrev = "FR";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC11 {
+				iso_abbrev = "DE";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC12 {
+				iso_abbrev = "GR";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC13 {
+				iso_abbrev = "HU";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC14 {
+				iso_abbrev = "IT";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC15 {
+				iso_abbrev = "NL";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC16 {
+				iso_abbrev = "NO";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC17 {
+				iso_abbrev = "PL";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC18 {
+				iso_abbrev = "PT";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC19 {
+				iso_abbrev = "RO";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC20 {
+				iso_abbrev = "SK";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC21 {
+				iso_abbrev = "ES";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC22 {
+				iso_abbrev = "SE";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC23 {
+				iso_abbrev = "CH";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC24 {
+				iso_abbrev = "GB";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC25 {
+				iso_abbrev = "EU";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC26 {
+				iso_abbrev = "E0";
+				custom_locale = "E0";
+				custom_locale_rev = <994>;
+			};
+			CC27 {
+				iso_abbrev = "IN";
+				custom_locale = "Q2";
+				custom_locale_rev = <998>;
+			};
+		};
+	};
+
+	serial@70006300 {
+		dma-names = "tx";
+	};
 };
