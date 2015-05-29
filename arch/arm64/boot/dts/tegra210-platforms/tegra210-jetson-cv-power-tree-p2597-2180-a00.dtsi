@@ -63,7 +63,7 @@
 			enable-active-high;
 		};
 
-		en_vdd_disp_3v3: regulator@18 {
+		en_avdd_disp_3v3: regulator@18 {
 			compatible = "regulator-fixed-sync";
 			regulator-name = "en-vdd-disp-3v3";
 			regulator-min-microvolt = <3300000>;
@@ -82,11 +82,11 @@
 			enable-active-high;
 		};
 
-		en_vdd_disp_mux_3v3: regulator@21 {
+		en_dvdd_disp_1v8: regulator@21 {
 			compatible = "regulator-fixed-sync";
 			regulator-name = "en-vdd-disp-3v3";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
 			gpio = <&tca9539_74 11 1>;
 			enable-active-high;
 		};
@@ -121,7 +121,11 @@
 
 	host1x {
 		dc@54200000 {
-			vdd_lcd-supply = <&max77620_ldo0>; /* DSI is POR */
+			avdd_dsi_csi-supply = <&max77620_ldo0>;
+			avdd_lcd-supply = <&en_avdd_disp_3v3>;
+			dvdd_lcd-supply = <&en_dvdd_disp_1v8>;
+			vdd_lcd_bl_en-supply = <&lcd_bl_en>;
+			vdd_lcd_bl-supply = <&vdd_3v3>;
 		};
 
 		vi {

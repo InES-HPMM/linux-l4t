@@ -23,6 +23,7 @@
 #include "tegra210-platforms/tegra210-jetson-cv-pinmux-p2597-2180-a00.dtsi"
 #include "tegra210-platforms/tegra210-jetson-cv-sdmmc-drv-p2597-2180-a00.dtsi"
 #include "tegra210-platforms/tegra210-pwm-fan-p2530-0930.dtsi"
+#include "panel-a-wuxga-8-0.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
 #include "tegra210-platforms/tegra210-p2530-common.dtsi"
 #include "tegra210-platforms/tegra210-thermal-fan-est-p2530-0930.dtsi"
