@@ -438,16 +438,20 @@ static int zram_decompress_page(struct zram *zram, char *mem, u32 index)
 	}
 
 	cmem = zs_map_object(meta->mem_pool, handle, ZS_MM_RO);
-	if (size == PAGE_SIZE)
+	if (size == PAGE_SIZE) {
 		copy_page(mem, cmem);
-	else
+	} else {
+	        atomic64_inc(&zram->stats.num_decompression);
 		ret = zcomp_decompress(zram->comp, cmem, size, mem);
+	}
+
 	zs_unmap_object(meta->mem_pool, handle);
 	bit_spin_unlock(ZRAM_ACCESS, &meta->table[index].value);
 
 	/* Should NEVER happen. Return bio error if it does. */
 	if (unlikely(ret)) {
 		pr_err("Decompression failed! err=%d, page=%u\n", ret, index);
+		atomic64_inc(&zram->stats.failed_decompression);
 		return ret;
 	}
 
@@ -577,6 +581,7 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec, u32 index,
 		goto out;
 	}
 
+	atomic64_inc(&zram->stats.num_compression);
 	ret = zcomp_compress(zram->comp, zstrm, uncmem, &clen);
 	if (!is_partial_io(bvec)) {
 		kunmap_atomic(user_mem);
@@ -585,6 +590,7 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec, u32 index,
 	}
 
 	if (unlikely(ret)) {
+		atomic64_inc(&zram->stats.failed_compression);
 		pr_err("Compression failed! err=%d\n", ret);
 		goto out;
 	}
@@ -976,6 +982,11 @@ ZRAM_ATTR_RO(invalid_io);
 ZRAM_ATTR_RO(notify_free);
 ZRAM_ATTR_RO(zero_pages);
 ZRAM_ATTR_RO(compr_data_size);
+ZRAM_ATTR_RO(num_decompression);
+ZRAM_ATTR_RO(failed_decompression);
+ZRAM_ATTR_RO(num_compression);
+ZRAM_ATTR_RO(failed_compression);
+
 
 static struct attribute *zram_disk_attrs[] = {
 	&dev_attr_disksize.attr,
@@ -995,6 +1006,10 @@ static struct attribute *zram_disk_attrs[] = {
 	&dev_attr_mem_used_max.attr,
 	&dev_attr_max_comp_streams.attr,
 	&dev_attr_comp_algorithm.attr,
+	&dev_attr_num_decompression.attr,
+	&dev_attr_num_compression.attr,
+	&dev_attr_failed_decompression.attr,
+	&dev_attr_failed_compression.attr,
 	NULL,
 };
 
