@@ -437,6 +437,9 @@ struct arm_smmu_domain {
 	struct arm_smmu_cfg		cfg;
 	struct page *arm_dummy_page;   /* dummy page for faulted address*/
 	spinlock_t			lock;
+
+	dma_addr_t			inquired_iova;
+	phys_addr_t			inquired_phys;
 };
 
 static struct iommu_domain *iommu_domains[NUM_SID]; /* To keep all allocated domains */
@@ -513,6 +516,9 @@ static inline u32 readl_relaxed(const volatile void __iomem *virt_addr)
 void __weak platform_override_streamid(int streamid)
 {
 }
+
+static phys_addr_t arm_smmu_iova_to_phys(struct iommu_domain *domain,
+					dma_addr_t iova);
 
 struct arm_smmu_option_prop {
 	u32 opt;
@@ -1479,12 +1485,71 @@ static const struct debugfs_reg32 arm_smmu_cb_regs[] = {
 	defreg_cb(FSYNR0),
 };
 
-static void debugfs_create_smmu_cb(struct arm_smmu_domain *smmu_domain,
+static ssize_t smmu_debugfs_iova2phys_write(struct file *file,
+					    const char __user *buffer,
+					    size_t count, loff_t *pos)
+{
+	int ret;
+	struct iommu_domain *domain = file_inode(file)->i_private;
+	struct arm_smmu_domain *smmu_domain = domain->priv;
+	char str[] = "0x0123456789abcdef";
+	unsigned long flags;
+	dma_addr_t tmp;
+
+	count = min_t(size_t, strlen(str), count);
+	if (copy_from_user(str, buffer, count))
+		return -EINVAL;
+
+	ret = sscanf(str, "0x%llx", &tmp);
+	if (ret != 1)
+		return -EINVAL;
+
+	spin_lock_irqsave(&smmu_domain->lock, flags);
+	smmu_domain->inquired_iova = tmp;
+	smmu_domain->inquired_phys =
+		arm_smmu_iova_to_phys(domain, smmu_domain->inquired_iova);
+	pr_info("iova=%pa pa=%pa\n",
+		&smmu_domain->inquired_iova, &smmu_domain->inquired_phys);
+	spin_unlock_irqrestore(&smmu_domain->lock, flags);
+	return count;
+}
+
+static int smmu_iova2phys_show(struct seq_file *m, void *v)
+{
+	struct iommu_domain *domain = m->private;
+	struct arm_smmu_domain *smmu_domain = domain->priv;
+	unsigned long flags;
+
+	spin_lock_irqsave(&smmu_domain->lock, flags);
+
+	seq_printf(m, "iova=%pa pa=%pa\n",
+		   &smmu_domain->inquired_iova,
+		   &smmu_domain->inquired_phys);
+
+	spin_unlock_irqrestore(&smmu_domain->lock, flags);
+	return 0;
+}
+
+static int smmu_iova2phys_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, smmu_iova2phys_show, inode->i_private);
+}
+
+static const struct file_operations smmu_iova2phys_fops = {
+	.open		= smmu_iova2phys_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+	.write		= smmu_debugfs_iova2phys_write,
+};
+
+static void debugfs_create_smmu_cb(struct iommu_domain *domain,
 				   struct device *dev)
 {
 	struct dentry *dent;
 	char name[] = "cb000";
 	struct debugfs_regset32	*cb;
+	struct arm_smmu_domain *smmu_domain = domain->priv;
 	u8 cbndx = smmu_domain->cfg.cbndx;
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
 
@@ -1500,6 +1565,8 @@ static void debugfs_create_smmu_cb(struct arm_smmu_domain *smmu_domain,
 	debugfs_create_regset32("regdump", S_IRUGO, dent, cb);
 	debugfs_create_file("ptdump", S_IRUGO, dent, smmu_domain,
 			    &smmu_ptdump_fops);
+	debugfs_create_file("iova_to_phys", S_IRUSR, dent, domain,
+			    &smmu_iova2phys_fops);
 }
 
 static int smmu_master_show(struct seq_file *s, void *unused)
@@ -1528,11 +1595,12 @@ static const struct file_operations smmu_master_fops = {
 	.release        = single_release,
 };
 
-static void add_smmu_master_debugfs(struct arm_smmu_domain *smmu_domain,
+static void add_smmu_master_debugfs(struct iommu_domain *domain,
 				    struct device *dev,
 				    struct arm_smmu_master *master)
 {
 	struct dentry *dent;
+	struct arm_smmu_domain *smmu_domain = domain->priv;
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
 	char name[] = "cb000";
 	char target[] = "../../cb000";
@@ -1544,7 +1612,7 @@ static void add_smmu_master_debugfs(struct arm_smmu_domain *smmu_domain,
 
 	debugfs_create_file("streamids", 0444, dent, master, &smmu_master_fops);
 	debugfs_create_u8("cbndx", 0444, dent, &smmu_domain->cfg.cbndx);
-	debugfs_create_smmu_cb(smmu_domain, dev);
+	debugfs_create_smmu_cb(domain, dev);
 	sprintf(name, "cb%03d", cbndx);
 	sprintf(target, "../../cb%03d", cbndx);
 	debugfs_create_symlink(name, dent, target);
@@ -1598,7 +1666,7 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
 	ret = arm_smmu_domain_add_master(smmu_domain, cfg);
 	if (!ret) {
 		dev->archdata.iommu = domain;
-		add_smmu_master_debugfs(smmu_domain, dev,
+		add_smmu_master_debugfs(domain, dev,
 					find_smmu_master(smmu, dev->of_node));
 	}
 	return ret;
