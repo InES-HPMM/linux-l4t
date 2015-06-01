@@ -671,6 +671,7 @@
 
 	pmc@7000e400 {
 		nvidia,invert-interrupt;
+		platform-io-pad-voltage = <TEGRA210_PAD_GPIO IO_PAD_VOLTAGE_1_8V>;
 		io-pad-defaults {
 			pex-bias {
 				nvidia,deep-power-down-enable;
