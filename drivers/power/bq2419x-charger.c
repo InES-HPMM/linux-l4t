@@ -2059,6 +2059,14 @@ static int bq2419x_probe(struct i2c_client *client,
 			goto scrub_mutex;
 		}
 
+		/* disable chrg and bat fault interrupt */
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_MISC_OPER_REG,
+				BQ2419x_CHRG_BAT_FAULT_MASK,
+				BQ2419x_CHRG_BAT_FAULT_DISABLE);
+		if (ret < 0)
+			dev_err(bq2419x->dev,
+				"Chrg and Bat fault interrupt disable failed %d\n", ret);
+
 		ret = bq2419x_fault_clear_sts(bq2419x, NULL);
 		if (ret < 0) {
 			dev_err(bq2419x->dev, "fault clear status failed %d\n", ret);
