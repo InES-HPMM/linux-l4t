@@ -63,6 +63,7 @@
 				};
 				smartdimmer {
 					status = "okay";
+					nvidia,enable-threshold = <50>;
 					nvidia,use-auto-pwm = <0>;
 					nvidia,hw-update-delay = <0>;
 					nvidia,bin-width = <0xffffffff>;
