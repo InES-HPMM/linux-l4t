@@ -234,7 +234,9 @@ void te_launch_operation(struct te_launchop *cmd,
 	struct te_request *request,
 	struct tlk_context *context);
 
-#define SS_OP_MAX_DATA_SIZE	0x1000
+/* defines max space available for secure storage requests */
+#define SS_OP_MAX_DATA_SIZE	0x4000
+
 struct te_ss_op {
 	uint32_t	req_size;
 	uint8_t		data[SS_OP_MAX_DATA_SIZE];
