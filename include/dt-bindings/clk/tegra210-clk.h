@@ -299,7 +299,9 @@
 #define TEGRA210_CLK_ID_MCLK2		327 /* Share enb bit with VIM2_CLK */
 #define TEGRA210_CLK_ID_MCLK3		328 /* Share enb bit with CLK_OUT_3 */
 #define TEGRA210_CLK_ID_CAM_MIPI_CAL	329 /* Share enb bit with MIPI_CAL */
-/* IDs 330 ... 351 are reserved */
+#define TEGRA210_CLK_ID_DSI1_FIXED	330 /* No enb bit for dsi1-fixed clock */
+#define TEGRA210_CLK_ID_DSI2_FIXED	331 /* No enb bit for dsi2-fixed clock */
+/* IDs 332 ... 351 are reserved */
 
 /*
  * Clock IDs in the 352 ... 511 range are used identify tegra virtual clock
