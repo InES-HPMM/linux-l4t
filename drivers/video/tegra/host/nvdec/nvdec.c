@@ -93,7 +93,7 @@ static char *nvdec_get_fw_name(struct platform_device *dev, int fw)
 							maj, min);
 				else
 					sprintf(fw_name,
-							"nvhost_nvdec_bl0%d%d.fw",
+							"nvhost_nvdec_temp_bl0%d%d.fw",
 							maj, min);
 			} else
 				sprintf(fw_name, "nvhost_nvdec0%d%d.fw",
@@ -108,7 +108,7 @@ static char *nvdec_get_fw_name(struct platform_device *dev, int fw)
 					return NULL;
 				} else
 					sprintf(fw_name,
-							"nvhost_nvdec_bl0%d%d_prod.fw",
+							"nvhost_nvdec_temp_bl0%d%d_prod.fw",
 							maj, min);
 			else
 				sprintf(fw_name, "nvhost_nvdec0%d%d_prod.fw",
