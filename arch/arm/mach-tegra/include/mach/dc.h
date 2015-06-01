@@ -1174,6 +1174,7 @@ struct tegra_dp_out {
 	struct tegra_dc_dp_lt_settings *lt_settings;
 	int n_lt_settings;
 	bool tx_pu_disable;
+	int lanes;
 	u8 link_bw;
 };
 

@@ -5,7 +5,7 @@ NVIDIA TEGRA210 DisplayPort
  dp-display node must be contained in sor1 parent node. This node represents NVIDIA TEGRA210 DisplayPort.
 
  Required properties:
- - name: hdmi-display
+ - name: dp-display
  - compatible: Should contain "dp, display".
 
  Optional properties:
@@ -13,6 +13,7 @@ NVIDIA TEGRA210 DisplayPort
    This GPIO is used internally by the DPAUX and should not be explicitly
    touched by the DP driver itself.
  - nvidia,tx-pu-disable: Specifies whether TX_PU is disabled.
+ - nvidia,lanes: Specifies the number of connected data lanes
 
  1.A) NVIDIA Display Default Output Settings
  This must be contained in dp-display parent node. This is default output settings.
