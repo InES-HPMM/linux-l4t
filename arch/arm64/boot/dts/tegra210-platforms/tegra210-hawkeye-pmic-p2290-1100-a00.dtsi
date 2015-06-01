@@ -412,6 +412,7 @@
 				ti,charge-current-limit = <5200 2600>;
 				ti,thermal-zone = "Battery";
 				ti,temp-polling-time-sec = <20>;
+				ti,watchdog-timeout = <160>;
 			};
 
 			usb0_vbus: vbus {
