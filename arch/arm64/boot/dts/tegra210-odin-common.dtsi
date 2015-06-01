@@ -302,6 +302,9 @@
 		sor1 {
 			status = "okay";
 			nvidia,sor1-output-type ="dp";
+			dp-display {
+				nvidia,lanes = <2>;
+			};
 		};
 		dpaux1 {
 			status = "okay";
