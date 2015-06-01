@@ -524,6 +524,7 @@ struct tegra_dc_sd_window {
 
 struct tegra_dc_sd_settings {
 	unsigned enable;
+	u8 enable_threshold;
 	unsigned enable_int;
 	bool use_auto_pwm;
 	u8 hw_update_delay;
@@ -1041,6 +1042,7 @@ unsigned tegra_dc_get_out_width(const struct tegra_dc *dc);
 unsigned tegra_dc_get_out_max_pixclock(const struct tegra_dc *dc);
 
 void nvsd_enbl_dsbl_prism(struct device *dev, bool status);
+void nvsd_check_prism_thresh(struct device *dev, int brightness, int hyst);
 
 /* PM0 and PM1 signal control */
 #define TEGRA_PWM_PM0 0
