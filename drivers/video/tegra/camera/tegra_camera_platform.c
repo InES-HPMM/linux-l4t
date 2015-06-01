@@ -89,10 +89,12 @@ static int tegra_camera_release(struct inode *inode, struct file *file)
 static long tegra_camera_ioctl(struct file *file,
 	unsigned int cmd, unsigned long arg)
 {
-	int ret;
+	int ret = 0;
 	struct bw_info kcopy;
 	struct tegra_camera_info *info;
 	info = file->private_data;
+
+	memset(&kcopy, 0, sizeof(kcopy));
 
 	switch (_IOC_NR(cmd)) {
 	case _IOC_NR(TEGRA_CAMERA_IOCTL_SET_BW):
@@ -108,10 +110,14 @@ static long tegra_camera_ioctl(struct file *file,
 				__func__);
 		} else {
 
-			dev_dbg(info->dev, "%s:set bw %llu\n",
+			unsigned long mc_khz = 0;
+			dev_dbg(info->dev, "%s:set bw kBps:%llu\n",
 				__func__, kcopy.bw);
-			ret = clk_set_rate(info->clks[EMC],
-				tegra_emc_bw_to_freq_req(kcopy.bw));
+
+			/* Use Khz to prevent overflow */
+			mc_khz = tegra_emc_bw_to_freq_req(kcopy.bw);
+			mc_khz = min(ULONG_MAX / 1000, mc_khz);
+			ret = clk_set_rate(info->clks[EMC], mc_khz * 1000);
 			if (ret)
 				dev_err(info->dev, "%s:Failed to set bw\n",
 					__func__);
