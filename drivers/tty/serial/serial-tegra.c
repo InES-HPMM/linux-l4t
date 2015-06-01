@@ -1374,6 +1374,12 @@ static struct tegra_uart_chip_data tegra114_uart_chip_data = {
 	.support_clk_src_div		= true,
 };
 
+static struct tegra_uart_chip_data tegra186_uart_chip_data = {
+	.tx_fifo_full_status		= true,
+	.allow_txfifo_reset_fifo_mode	= false,
+	.support_clk_src_div		= true,
+};
+
 static struct of_device_id tegra_uart_of_match[] = {
 	{
 		.compatible	= "nvidia,tegra30-hsuart",
@@ -1393,6 +1399,9 @@ static struct of_device_id tegra_uart_of_match[] = {
 	}, {
 		.compatible     = "nvidia,tegra114-hs-serial",
 		.data		= &tegra114_uart_chip_data,
+	}, {
+		.compatible     = "nvidia,tegra186-hsuart",
+		.data		= &tegra186_uart_chip_data,
 	}, {
 	},
 };
