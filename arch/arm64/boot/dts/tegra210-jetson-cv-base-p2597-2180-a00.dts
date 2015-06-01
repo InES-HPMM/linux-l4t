@@ -32,7 +32,7 @@
 #include "tegra210-platforms/tegra210-jetson-cv-keys-p2597-2180-a00.dtsi"
 #include <dt-bindings/iio/meter/ina3221x.h>
 #include "tegra210-platforms/tegra210-foster-e-extcon-p2530-0930-e01.dtsi"
-#include "tegra210-platforms/tegra210-loki-e-emc-a01.dtsi"
+#include "tegra210-platforms/tegra210-jetson-cv-emc-p2180-1000-a00.dtsi"
 #include "tegra210-platforms/tegra210-edp.dtsi"
 #include "tegra210-platforms/tegra210-sysedp.dtsi"
 #include "tegra210-platforms/tegra210-thermal-nct72-p2530.dtsi"
