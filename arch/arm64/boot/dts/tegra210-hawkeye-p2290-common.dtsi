@@ -672,6 +672,17 @@
 	pmc@7000e400 {
 		nvidia,invert-interrupt;
 		io-pad-defaults {
+			pex-bias {
+				nvidia,deep-power-down-enable;
+			};
+
+			pex-clk1 {
+				nvidia,deep-power-down-enable;
+			};
+
+			pex-clk2 {
+				nvidia,deep-power-down-enable;
+			};
 			audio-hv {
 				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_1_8V>;
 			};

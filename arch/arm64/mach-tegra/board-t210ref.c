@@ -237,22 +237,6 @@ static void __init tegra_t210ref_early_init(void)
 		tegra_soc_device_init("he2290");
 }
 
-static struct tegra_io_dpd pexbias_io = {
-	.name			= "PEX_BIAS",
-	.io_dpd_reg_index	= 0,
-	.io_dpd_bit		= 4,
-};
-static struct tegra_io_dpd pexclk1_io = {
-	.name			= "PEX_CLK1",
-	.io_dpd_reg_index	= 0,
-	.io_dpd_bit		= 5,
-};
-static struct tegra_io_dpd pexclk2_io = {
-	.name			= "PEX_CLK2",
-	.io_dpd_reg_index	= 0,
-	.io_dpd_bit		= 6,
-};
-
 static struct tegra_suspend_platform_data t210ref_suspend_data = {
 	.cpu_timer      = 1700,
 	.cpu_off_timer  = 300,
@@ -289,10 +273,6 @@ static void __init tegra_t210ref_late_init(void)
 	tegra_fb_copy_or_clear();
 
 	/* put PEX pads into DPD mode to save additional power */
-	tegra_io_dpd_enable(&pexbias_io);
-	tegra_io_dpd_enable(&pexclk1_io);
-	tegra_io_dpd_enable(&pexclk2_io);
-
 	t210ref_camera_init();
 }
 
