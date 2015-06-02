@@ -1676,7 +1676,10 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 			goto exit;
 		}
 
-
+		/* For XUSB_PADCTL prod settings */
+		tegra_hpriv->base_list[2] = devm_ioremap(tegra_hpriv->dev,
+				TEGRA_XUSB_PADCTL_BASE,
+				TEGRA_XUSB_PADCTL_SIZE);
 	}
 
 	tegra_periph_reset_assert(tegra_hpriv->clk_sata_uphy);
