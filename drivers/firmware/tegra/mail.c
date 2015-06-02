@@ -309,11 +309,24 @@ static int bpmp_wait_ack(int ch)
 	return -ETIMEDOUT;
 }
 
+static int bpmp_valid_txfer(void *ob_data, int ob_sz, void *ib_data, int ib_sz)
+{
+	return ob_sz >= 0 &&
+			ob_sz <= MSG_DATA_SZ &&
+			ib_sz >= 0 &&
+			ib_sz <= MSG_DATA_SZ &&
+			(!ob_sz || ob_data) &&
+			(!ib_sz || ib_data);
+}
+
 int tegra_bpmp_send(int mrq, void *data, int sz)
 {
 	unsigned long flags;
 	int ch;
 	int r;
+
+	if (!bpmp_valid_txfer(data, sz, NULL, 0))
+		return -EINVAL;
 
 	if (!connected)
 		return -ENODEV;
@@ -336,6 +349,9 @@ int tegra_bpmp_send_receive_atomic(int mrq, void *ob_data, int ob_sz,
 {
 	int ch;
 	int r;
+
+	if (!bpmp_valid_txfer(ob_data, ob_sz, ib_data, ib_sz))
+		return -EINVAL;
 
 	if (!connected)
 		return -ENODEV;
@@ -361,6 +377,9 @@ int tegra_bpmp_send_receive(int mrq, void *ob_data, int ob_sz,
 	unsigned long timeout;
 	int ch;
 	int r;
+
+	if (!bpmp_valid_txfer(ob_data, ob_sz, ib_data, ib_sz))
+		return -EINVAL;
 
 	if (!connected)
 		return -ENODEV;
