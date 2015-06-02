@@ -259,6 +259,11 @@ static int vgpu_vm_alloc_share(struct gk20a_as_share *as_share,
 
 	big_page_size = gmmu_page_sizes[gmmu_page_size_big];
 
+	if (!is_power_of_2(big_page_size))
+		return -EINVAL;
+	if (!(big_page_size & g->gpu_characteristics.available_big_page_sizes))
+		return -EINVAL;
+
 	vm = kzalloc(sizeof(*vm), GFP_KERNEL);
 	if (!vm)
 		return -ENOMEM;
