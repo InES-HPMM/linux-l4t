@@ -155,7 +155,7 @@ static struct completion *bpmp_completion_obj(int ch)
 
 static void bpmp_signal_thread(int ch)
 {
-	struct mb_data *p = channel_area[ch].ib;
+	struct mb_data *p = channel_area[ch].ob;
 	struct completion *w;
 
 	if (!(p->flags & RING_DOORBELL))
@@ -215,7 +215,7 @@ static int bpmp_wait_master_free(int ch)
 
 static void __bpmp_write_ch(int ch, int mrq, int flags, void *data, int sz)
 {
-	struct mb_data *p = channel_area[ch].ib;
+	struct mb_data *p = channel_area[ch].ob;
 
 	p->code = mrq;
 	p->flags = flags;
@@ -268,7 +268,7 @@ static int bpmp_write_threaded_ch(int *ch, int mrq, void *data, int sz)
 
 static int __bpmp_read_ch(int ch, void *data, int sz)
 {
-	struct mb_data *p = channel_area[ch].ob;
+	struct mb_data *p = channel_area[ch].ib;
 	if (data)
 		memcpy(data, p->data, sz);
 	bpmp_free_master(ch);
