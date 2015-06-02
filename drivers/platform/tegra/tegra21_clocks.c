@@ -9577,6 +9577,7 @@ static struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("vic.emc",	"tegra_vic03",	"emc",  &tegra_clk_emc, NULL, 0, 0, 0, TEGRA210_CLK_ID_EMC_VIC_USER),
 	SHARED_EMC_CLK("vic_shared.emc",	"tegra_vic03",	"emc_shared",  &tegra_clk_emc, NULL, 0, SHARED_BW, 0, TEGRA210_CLK_ID_EMC_VIC_SHARED_USER),
 	SHARED_EMC_CLK("ape.emc", "ape", "emc",  &tegra_clk_emc, NULL, 0, 0, 0, TEGRA210_CLK_ID_EMC_APE_USER),
+	SHARED_EMC_CLK("pcie.emc", "tegra_pcie", "emc",  &tegra_clk_emc, NULL, 0, 0, 0, TEGRA210_CLK_ID_EMC_PCIE_USER),
 
 	DUAL_CBUS_CLK("vic03.cbus",	"tegra_vic03",		"vic03", &tegra_clk_c2bus, "vic03", 0, 0, TEGRA210_CLK_ID_CXBUS_VIC_USER),
 	DUAL_CBUS_CLK("nvjpg.cbus",	"tegra_nvjpg",		"nvjpg", &tegra_clk_c2bus, "nvjpg", 0, 0, TEGRA210_CLK_ID_CXBUS_NVJPG_USER),
