@@ -36,6 +36,9 @@
 #define __MRQ_ATTRS		0xff000000
 #define __MRQ_INDEX(id)		((id) & ~__MRQ_ATTRS)
 
+#define DO_ACK			(1 << 0)
+#define RING_DOORBELL		(1 << 1)
+
 struct fops_entry {
 	char *name;
 	const struct file_operations *fops;
@@ -101,5 +104,11 @@ int bpmp_thread_ch(int idx);
 int bpmp_init_irq(void);
 int bpmp_connect(void);
 void bpmp_handle_irq(int ch);
+
+bool bpmp_master_free(int ch);
+bool bpmp_slave_signalled(int ch);
+bool bpmp_master_acked(int ch);
+void bpmp_signal_slave(int ch);
+void bpmp_free_master(int ch);
 
 #endif
