@@ -158,6 +158,9 @@
 		nvidia,model = "tegra-snd-t210ref-mobile-es755";
 		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(E, 6) GPIO_ACTIVE_HIGH>;
 		nvidia,num-codec-link = <4>;
+		nvidia,fast-path-latency-ms = <25>;
+		nvidia,fast-path-min-cpu-rate = <1000000>;
+		nvidia,fast-path-min-cpu-core = <1>;
 		edp-consumer-name = "codec+speaker";
 
 		nvidia,audio-routing =
