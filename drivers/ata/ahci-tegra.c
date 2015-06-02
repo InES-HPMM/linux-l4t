@@ -2930,6 +2930,8 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host)
 								__func__);
 	}
 
+	tegra_ahci_set_pad_cntrl_regs(tegra_hpriv);
+
 	/*
 	 * During the restoration of the registers, the driver would now need to
 	 * restore the register T_SATA0_CFG_POWER_GATE_SSTS_RESTORED after the
