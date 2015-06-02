@@ -384,8 +384,6 @@ static void init_chip(struct nv_udc_s *nvudc)
 /* must hold nvudc->lock */
 static inline void vbus_detected(struct nv_udc_s *nvudc)
 {
-	u32 temp;
-
 	if (nvudc->vbus_detected)
 		return; /* nothing to do */
 
@@ -399,12 +397,6 @@ static inline void vbus_detected(struct nv_udc_s *nvudc)
 	tegra_usb_pad_reg_update(XUSB_PADCTL_USB2_VBUS_ID_0,
 		USB2_VBUS_ID_0_VBUS_OVERRIDE, USB2_VBUS_ID_0_VBUS_OVERRIDE);
 
-	if (nvudc->pullup) {
-		temp = ioread32(nvudc->mmio_reg_base + CTRL);
-		temp |= CTRL_ENABLE;
-		iowrite32(temp, nvudc->mmio_reg_base + CTRL);
-	}
-
 	nvudc->vbus_detected = true;
 }
 
@@ -412,7 +404,6 @@ static inline void vbus_detected(struct nv_udc_s *nvudc)
 static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 {
 	u32 portsc;
-	u32 temp;
 
 	if (!nvudc->vbus_detected)
 		return; /* nothing to do */
@@ -428,7 +419,15 @@ static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 		USB2_OTG_PD_DR, USB2_OTG_PD_DR);
 	portsc = ioread32(nvudc->mmio_reg_base + PORTSC);
 
-	/* war for disconnect in U2 or RESUME state */
+	/*
+	 * WAR for disconnect in U2 or RESUME state.
+	 *
+	 * In RESUME state, when LTSSM starts to send U3
+	 * wakeup LFPS, LTSSM(HW) is not looking at VBUS till
+	 * the U3 handshake completes successfully or times out.
+	 * This timeout is 10ms, and when this happens, device
+	 * could not enter ELPG untill 10ms later.
+	 */
 	if (XUDC_IS_T210(nvudc) &&
 		nvudc->gadget.speed == USB_SPEED_SUPER &&
 		((portsc & PORTSC_PLS_MASK) == XDEV_RESUME ||
@@ -450,19 +449,6 @@ static inline void vbus_not_detected(struct nv_udc_s *nvudc)
 		msg_dbg(nvudc->dev,
 		"Directing link to U0, PORTSC: %08x => %08x\n", portsc, reg);
 	}
-
-	if (nvudc->pullup) {
-		/*
-		  * For SS, state machine of device controller can take up to
-		  * 400us(for handshake with 32KHZ) to reach the final state.
-		  */
-		mdelay(1);
-
-		temp = ioread32(nvudc->mmio_reg_base + CTRL);
-		temp &= ~CTRL_ENABLE;
-		iowrite32(temp, nvudc->mmio_reg_base + CTRL);
-	}
-
 	nvudc->vbus_detected = false;
 }
 
@@ -2461,7 +2447,7 @@ static int nvudc_gadget_pullup(struct usb_gadget *gadget, int is_on)
 	spin_lock_irqsave(&nvudc->lock, flags);
 	temp = ioread32(nvudc->mmio_reg_base + CTRL);
 	if (is_on != nvudc->pullup) {
-		if (is_on && nvudc->vbus_detected)
+		if (is_on)
 			temp |= CTRL_ENABLE;
 		else
 			temp &= ~CTRL_ENABLE;
