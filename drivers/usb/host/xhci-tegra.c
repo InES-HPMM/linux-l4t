@@ -4197,7 +4197,7 @@ static void tegra_xhci_reset_otg_sspi_work(struct work_struct *work)
 
 	/* reset OTG port SSPI */
 	ack_fw_message_send_sync(tegra, MBOX_CMD_RESET_SSPI,
-			BIT(tegra->otg_portnum + 1));
+			tegra->otg_portnum + 1);
 
 	/* set PP=1 */
 	xhci_hub_control(xhci->shared_hcd, SetPortFeature,
