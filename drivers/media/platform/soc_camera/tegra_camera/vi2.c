@@ -467,12 +467,15 @@ static const struct soc_mbus_pixelfmt vi2_tpg_format = {
 
 static void vi2_init_syncpts(struct vi2_channel *chan)
 {
-	chan->syncpt_id = nvhost_get_syncpt_client_managed("vi");
+	struct vi2_camera *vi2_cam = chan->vi2_cam;
+	chan->syncpt_id =
+		nvhost_get_syncpt_client_managed(vi2_cam->cam.pdev, "vi");
 }
 
 static void vi2_free_syncpts(struct vi2_channel *chan)
 {
-	nvhost_syncpt_put_ref_ext(chan->syncpt_id);
+	struct vi2_camera *vi2_cam = chan->vi2_cam;
+	nvhost_syncpt_put_ref_ext(vi2_cam->cam.pdev, chan->syncpt_id);
 }
 
 static int vi2_clock_start(struct vi2_camera *vi2_cam,
