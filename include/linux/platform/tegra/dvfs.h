@@ -452,7 +452,8 @@ static inline void tegra_dvfs_rail_mode_updating(struct dvfs_rail *rail,
 static inline void tegra_dvfs_set_dfll_tune_trimmers(
 	struct dvfs *d, void (*tune_trimmers)(bool trim_high))
 {
-	d->dfll_data.tune_trimmers = tune_trimmers;
+	if (d->dfll_data.tune_high_min_millivolts)
+		d->dfll_data.tune_trimmers = tune_trimmers;
 }
 
 #endif
