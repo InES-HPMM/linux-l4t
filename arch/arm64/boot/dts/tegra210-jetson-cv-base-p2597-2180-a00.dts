@@ -307,7 +307,7 @@
 				 * GPIO-10 : M2_E_ALERT_R_L
 				 * GPIO-13 : TOUCH_ID
 				 */
-				gpio-input = <10 13>;
+				gpio-input = <8 11>;
 
 				/*
 				 * GPIO-1 : EN_VDD_TS_1V8_PMIC
@@ -322,7 +322,7 @@
 				 * GPIO-15 : EN_VDD_CAM_HV
 				 * GPIO-16,17 : TP83, TP84
 				 */
-				gpio-output-low = <1 2 3 4 5 7 11 12 14 15 16 17>;
+				gpio-output-low = <1 2 3 4 5 7 9 10 12 13 14 15>;
 
 				/*
 				 * GPIO-0 : W_DISABLE_L
@@ -350,7 +350,7 @@
 				 * GPIO-16 : NVSR_INT
 				 * GPIO-17 : BRIDGE_IRQ
 				 */
-				gpio-input = <0 1 16 17>;
+				gpio-input = <0 1 14 15>;
 
 				/*
 				 * GPIO-2 : TYPEC_INT		 Charger control HDR
@@ -366,7 +366,7 @@
 				 * GPIO-14 : CHG_BD_PRSNT_L 	 CAM HEADER
 				 * GPIO-15 : BRIDGE_EN		 CAM HEADER
 				 */
-				gpio-output-low = <2 3 4 5 6 7 10 11 12 13 14 15>;
+				gpio-output-low = <2 3 4 5 6 7 8 9 10 11 12 13>;
 			};
 		};
 	};
