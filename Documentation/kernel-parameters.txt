@@ -896,6 +896,10 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
 			Format: <interval>,<probability>,<space>,<times>
 			See also Documentation/fault-injection/.
 
+	fiq_debugger.script=
+			[ARM] Commands, delimited by semicolon, that will be
+			executed on FIQ debugger popup
+
 	floppy=		[HW]
 			See Documentation/blockdev/floppy.txt.
 

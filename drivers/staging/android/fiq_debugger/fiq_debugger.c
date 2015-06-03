@@ -123,10 +123,13 @@ static bool initial_console_enable;
 
 static bool fiq_kgdb_enable;
 
+static char *fiq_script;
+
 module_param_named(no_sleep, initial_no_sleep, bool, 0644);
 module_param_named(debug_enable, initial_debug_enable, bool, 0644);
 module_param_named(console_enable, initial_console_enable, bool, 0644);
 module_param_named(kgdb_enable, fiq_kgdb_enable, bool, 0644);
+module_param_named(script, fiq_script, charp, 0644);
 
 #ifdef CONFIG_FIQ_DEBUGGER_WAKEUP_IRQ_ALWAYS_ON
 static inline
@@ -741,6 +744,8 @@ static void fiq_debugger_fiq(struct fiq_glue_handler *h,
 		container_of(h, struct fiq_debugger_state, handler);
 	unsigned int this_cpu = THREAD_INFO(svc_sp)->cpu;
 	bool need_irq;
+	char *fiq_script_ptr;
+	char *command;
 
 	/* Spew regs and callstack immediatly after entering FIQ handler */
 	if (per_cpu(immediate_dump, this_cpu)) {
@@ -751,6 +756,16 @@ static void fiq_debugger_fiq(struct fiq_glue_handler *h,
 		fiq_debugger_fiq_exec(state, "allregs", regs, svc_sp);
 		spin_unlock(&state->debug_fiq_lock);
 		per_cpu(immediate_dump, this_cpu) = false;
+	}
+
+	fiq_script_ptr = fiq_script;
+	command = strsep(&fiq_script_ptr, ";");
+	while (command) {
+		fiq_debugger_printf(&state->output,
+				"# Executing '%s'\n",
+				command);
+		fiq_debugger_fiq_exec(state, command, regs, svc_sp);
+		command = strsep(&fiq_script_ptr, ";");
 	}
 
 	do {
