@@ -314,7 +314,7 @@
 #define TEGRA_PCIE_XCLK_500					500000000
 #define TEGRA_PCIE_XCLK_250					250000000
 #define TEGRA_PCIE_EMC_CLK_102					102000000
-#define TEGRA_PCIE_EMC_CLK_508					508000000
+#define TEGRA_PCIE_EMC_CLK_528					528000000
 
 
 #define DEBUG 0
@@ -2093,12 +2093,12 @@ static int tegra_pcie_scale_voltage(struct tegra_pcie *pcie, bool isGen2)
 	if (isGen2) {
 		if (tegra_pcie_xclk_rate == TEGRA_PCIE_XCLK_500 &&
 			tegra_pcie_mselect_rate == TEGRA_PCIE_MSELECT_CLK_408 &&
-			tegra_pcie_emc_rate == TEGRA_PCIE_EMC_CLK_508)
+			tegra_pcie_emc_rate == TEGRA_PCIE_EMC_CLK_528)
 			goto skip;
 		/* Scale up voltage for Gen2 speed */
 		tegra_pcie_xclk_rate = TEGRA_PCIE_XCLK_500;
 		tegra_pcie_mselect_rate = TEGRA_PCIE_MSELECT_CLK_408;
-		tegra_pcie_emc_rate = TEGRA_PCIE_EMC_CLK_508;
+		tegra_pcie_emc_rate = TEGRA_PCIE_EMC_CLK_528;
 	} else {
 		if (tegra_pcie_xclk_rate == TEGRA_PCIE_XCLK_250 &&
 			tegra_pcie_mselect_rate == TEGRA_PCIE_MSELECT_CLK_204 &&
