@@ -70,7 +70,5 @@ obj-y                                 += sleep.o
 obj-$(CONFIG_ARCH_TEGRA_13x_SOC)      += pm-tegra132.o
 endif
 
-obj-$(CONFIG_TEGRA_DYNAMIC_PWRDET)      += powerdetect.o
-
 # To override the "-march=armv7-xxx" in arm/mach-tegra/Makefile
 AFLAGS_sleep.o :=

@@ -58,7 +58,6 @@ obj-$(CONFIG_CPU_IDLE)                  += cpuidle.o
 obj-$(CONFIG_CPU_IDLE)                  += sleep.o
 obj-$(CONFIG_SMP)                       += platsmp.o
 obj-y                                   += headsmp.o
-obj-$(CONFIG_TEGRA_DYNAMIC_PWRDET)      += powerdetect.o
 
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += board-dt-tegra20.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += board-dt-tegra30.o

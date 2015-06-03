@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/powerdetect.c
+ * tegra-pmc-powerdetect.c
  *
  * Copyright (c) 2011 - 2014, NVIDIA CORPORATION.  All rights reserved.
  *

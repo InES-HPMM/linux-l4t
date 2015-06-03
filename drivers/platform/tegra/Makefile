@@ -28,6 +28,7 @@ obj-y += nvdumper/
 obj-$(CONFIG_PM_SLEEP) += pm-irq.o
 obj-$(CONFIG_TEGRA_PMC) += pmc.o
 obj-$(CONFIG_TEGRA210_BOOTROM_PMC) += tegra-bootrom-pmc-config.o
+obj-$(CONFIG_TEGRA_DYNAMIC_PWRDET)	+= tegra-pmc-powerdetect.o
 obj-y += pm.o
 
 obj-$(CONFIG_TEGRA_MC_DOMAINS) += pm_domains.o
