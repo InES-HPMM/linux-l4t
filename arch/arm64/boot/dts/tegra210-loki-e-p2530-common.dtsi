@@ -358,6 +358,10 @@
 		status = "okay";
 	};
 
+	chosen {
+		nvidia,fastboot_without_usb;
+        };
+
 	camera-pcl {
 		profiles {
 			ov7695@6_0021 {
