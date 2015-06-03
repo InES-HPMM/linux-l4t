@@ -23,6 +23,7 @@
 #include <linux/notifier.h>
 #include <linux/stop_machine.h>
 #include <linux/tegra_cluster_control.h>
+#include <linux/tegra-fuse.h>
 #include <soc/tegra/tegra_bpmp.h>
 #include <asm/psci.h>
 #include <asm/smp_plat.h>
@@ -37,6 +38,9 @@
 #define PSCI_RET_EOPNOTSUPP             -1
 #define PSCI_RET_EINVAL                 -2
 #define PSCI_RET_EPERM                  -3
+
+#define SKU_DIRECT_CONFIG		0x1f4
+#define DISABLE_SLOW_CLUSTER_BIT	5
 
 static DEFINE_MUTEX(cluster_switch_lock);
 static unsigned long pg_core_arg, pg_cluster_arg;
@@ -54,6 +58,8 @@ static struct psci_power_state cluster_pg __initdata = {
 };
 
 static DEFINE_PER_CPU(struct cpu_stop_work, shutdown_core_work);
+
+static u32 slow_cluster_disabled = 1;
 
 static int shutdown_core(void *info)
 {
@@ -169,9 +175,12 @@ static void switch_cluster(enum cluster val)
 int tegra_cluster_control(unsigned int us, unsigned int flags)
 {
 	int cluster_flag = flags & TEGRA_POWER_CLUSTER_MASK;
+	enum cluster current_cluster = is_lp_cluster();
+
+	/* HW has disabled the slow cluster. Can't be using it...*/
+	BUG_ON(slow_cluster_disabled && current_cluster);
 
 	if (cluster_flag == TEGRA_POWER_CLUSTER_G) {
-		enum cluster current_cluster = is_lp_cluster();
 		trace_nvcpu_clusterswitch(NVPOWER_CPU_CLUSTER_START,
 					  current_cluster,
 					  FAST_CLUSTER);
@@ -180,7 +189,9 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 					  current_cluster,
 					  FAST_CLUSTER);
 	} else if (cluster_flag == TEGRA_POWER_CLUSTER_LP) {
-		enum cluster current_cluster = is_lp_cluster();
+		if (slow_cluster_disabled)
+			return -EINVAL;
+
 		trace_nvcpu_clusterswitch(NVPOWER_CPU_CLUSTER_START,
 					  current_cluster,
 					  SLOW_CLUSTER);
@@ -193,13 +204,42 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 	return 0;
 }
 
+#ifdef CONFIG_DEBUG_FS
+static int slow_cluster_enabled_get(void *data, u64 *val)
+{
+	*val = !slow_cluster_disabled;
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(slow_cluster_enabled_ops, slow_cluster_enabled_get,
+			NULL, "%llu\n");
+
+static void setup_debugfs(void)
+{
+	struct dentry *rootdir;
+
+	rootdir = debugfs_create_dir("tegra_cluster", NULL);
+	if (rootdir)
+		debugfs_create_file("slow_cluster_enabled", S_IRUGO,
+				rootdir, NULL, &slow_cluster_enabled_ops);
+}
+#else
+static void setup_debugfs(void) {}
+#endif
+
 static int __init tegra210_cluster_control_init(void)
 {
 	pg_core_arg = psci_power_state_pack(core_pg);
 	pg_cluster_arg = psci_power_state_pack(cluster_pg);
 
-	pr_info("Tegra210 cluster control initialized\n");
+	slow_cluster_disabled = tegra_fuse_readl(SKU_DIRECT_CONFIG);
+	slow_cluster_disabled >>= DISABLE_SLOW_CLUSTER_BIT;
+	slow_cluster_disabled &= 0x1;
 
+	setup_debugfs();
+
+	pr_info("Tegra210 cluster control initialized. LP disabled=%d\n",
+			slow_cluster_disabled);
 	return 0;
 }
 
