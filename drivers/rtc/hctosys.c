@@ -61,23 +61,25 @@ int rtc_hctosys(void)
 		tm.tm_min = 0;
 		tm.tm_sec = 0;
 		tm.tm_wday = 0;
-	}
 
-	err = rtc_set_time(rtc, &tm);
-	if (err) {
-		dev_err(rtc->dev.parent,
-			"hctosys: unable to set the hardware clock: %d\n", err);
-		goto err_read;
-	}
+		/* change hw time only when time earlier than 2013 */
+		err = rtc_set_time(rtc, &tm);
+		if (err) {
+			dev_err(rtc->dev.parent,
+				"hctosys: unable to set the hardware clock: %d\n",
+				err);
+			goto err_read;
+		}
 
-	/* Read back from HW */
-	err = rtc_read_time(rtc, &tm);
-	if (!err)
-		err = rtc_valid_tm(&tm);
-	if (err) {
-		dev_err(rtc->dev.parent,
-			"hctosys: unable to set new time: %d\n", err);
-		goto err_read;
+		/* Read back from HW */
+		err = rtc_read_time(rtc, &tm);
+		if (!err)
+			err = rtc_valid_tm(&tm);
+		if (err) {
+			dev_err(rtc->dev.parent,
+				"hctosys: unable to set new time: %d\n", err);
+			goto err_read;
+		}
 	}
 #endif
 
