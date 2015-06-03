@@ -123,10 +123,13 @@ static bool initial_console_enable;
 
 static bool fiq_kgdb_enable;
 
+static char *fiq_script;
+
 module_param_named(no_sleep, initial_no_sleep, bool, 0644);
 module_param_named(debug_enable, initial_debug_enable, bool, 0644);
 module_param_named(console_enable, initial_console_enable, bool, 0644);
 module_param_named(kgdb_enable, fiq_kgdb_enable, bool, 0644);
+module_param_named(script, fiq_script, charp, 0644);
 
 #ifdef CONFIG_FIQ_DEBUGGER_WAKEUP_IRQ_ALWAYS_ON
 static inline
@@ -743,6 +746,8 @@ static void fiq_debugger_fiq(struct fiq_glue_handler *h,
 		container_of(h, struct fiq_debugger_state, handler);
 	unsigned int this_cpu = THREAD_INFO(svc_sp)->cpu;
 	bool need_irq;
+	char *fiq_script_ptr;
+	char *command;
 
 	/* Spew regs and callstack immediatly after entering FIQ handler */
 	if (per_cpu(immediate_dump, this_cpu)) {
@@ -754,16 +759,16 @@ static void fiq_debugger_fiq(struct fiq_glue_handler *h,
 		spin_unlock(&state->debug_fiq_lock);
 		per_cpu(immediate_dump, this_cpu) = false;
 	}
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC) && !defined(CONFIG_ARCH_TEGRA_13x_SOC)
-/*
- * FIQ kick in 1st expiration cycle on T124 platform (HW bug).
- * So we enlarge to 120 secs and FIQ kick in @ 30 secs but
- * doing reset directly in FIQ handler after dumping the CPU
- * info. This is for product branch only.
- */
-	mdelay(500);
-	fiq_debugger_fiq_exec(state, "reset", regs, svc_sp);
-#endif
+
+	fiq_script_ptr = fiq_script;
+	command = strsep(&fiq_script_ptr, ";");
+	while (command) {
+		fiq_debugger_printf(&state->output,
+				"# Executing '%s'\n",
+				command);
+		fiq_debugger_fiq_exec(state, command, regs, svc_sp);
+		command = strsep(&fiq_script_ptr, ";");
+	}
 
 	do {
 		need_irq = fiq_debugger_handle_uart_interrupt(state, this_cpu,
