@@ -2653,22 +2653,21 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
-	/* Lock interface local mutex while processing
-	   the P2P link interface data */
-	if (ifidx > 0)
-		dhd_net_if_lock_local(dhd);
-
 	for (i = 0; pktbuf && i < numpkt; i++, pktbuf = pnext) {
 		struct ether_header *eh;
 
 		pnext = PKTNEXT(dhdp->osh, pktbuf);
 		PKTSETNEXT(dhdp->osh, pktbuf, NULL);
 
+		/* Lock interface local mutex on RX packet
+		 * to avoid kernel panic on iflist free */
+		dhd_net_if_lock_local(dhd);
 		ifp = dhd->iflist[ifidx];
 		if (ifp == NULL) {
 			DHD_ERROR(("%s: ifp is NULL. drop packet\n",
 				__FUNCTION__));
 			PKTCFREE(dhdp->osh, pktbuf, FALSE);
+			dhd_net_if_unlock_local(dhd);
 			continue;
 		}
 
@@ -2685,6 +2684,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 			DHD_ERROR(("%s: net device is NOT registered yet. drop packet\n",
 			__FUNCTION__));
 			PKTCFREE(dhdp->osh, pktbuf, FALSE);
+			dhd_net_if_unlock_local(dhd);
 			continue;
 		}
 
@@ -2696,6 +2696,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 			piggy-back on
 			*/
 			PKTCFREE(dhdp->osh, pktbuf, FALSE);
+			dhd_net_if_unlock_local(dhd);
 			continue;
 		}
 #endif
@@ -2704,6 +2705,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 		if (dhdp->block_ping) {
 			if (dhd_l2_filter_block_ping(dhdp, pktbuf, ifidx) == BCME_OK) {
 				PKTFREE(dhdp->osh, pktbuf, FALSE);
+				dhd_net_if_unlock_local(dhd);
 				continue;
 			}
 		}
@@ -2719,12 +2721,14 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 			switch (ret) {
 				case WMF_TAKEN:
 					/* The packet is taken by WMF. Continue to next iteration */
+					dhd_net_if_unlock_local(dhd);
 					continue;
 				case WMF_DROP:
 					/* Packet DROP decision by WMF. Toss it */
 					DHD_ERROR(("%s: WMF decides to drop packet\n",
 						__FUNCTION__));
 					PKTCFREE(dhdp->osh, pktbuf, FALSE);
+					dhd_net_if_unlock_local(dhd);
 					continue;
 				default:
 					/* Continue the transmit path */
@@ -2750,7 +2754,8 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 			eh = (struct ether_header *)PKTDATA(dhdp->osh, pktbuf);
 			if (ETHER_ISUCAST(eh->ether_dhost)) {
 				if (dhd_find_sta(dhdp, ifidx, (void *)eh->ether_dhost)) {
-						dhd_sendpkt(dhdp, ifidx, pktbuf);
+					dhd_sendpkt(dhdp, ifidx, pktbuf);
+					dhd_net_if_unlock_local(dhd);
 					continue;
 				}
 			} else {
@@ -2854,6 +2859,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 
 #ifdef DHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT
 			PKTFREE(dhdp->osh, pktbuf, FALSE);
+			dhd_net_if_unlock_local(dhd);
 			continue;
 #endif /* DHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT */
 		} else {
@@ -2911,10 +2917,8 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0) */
 			}
 		}
-	}
-	/* unlock interface local mutex */
-	if (ifidx > 0)
 		dhd_net_if_unlock_local(dhd);
+	}
 
 	if (dhd->rxthread_enabled && skbhead)
 		dhd_sched_rxf(dhdp, skbhead);
