@@ -522,6 +522,15 @@ static inline int tegra_vi_i2c_power_enable(struct tegra_vi_i2c_dev *i2c_dev)
 	int ret;
 	int partition_id;
 
+	if (i2c_dev->pull_up_supply) {
+		ret = regulator_enable(i2c_dev->pull_up_supply);
+		if (ret < 0) {
+			dev_err(i2c_dev->dev, "Pull up regulator supply failed: %d\n",
+				ret);
+			return ret;
+		}
+	}
+
 	ret = regulator_enable(i2c_dev->reg);
 	if (ret)
 		return ret;
@@ -541,6 +550,7 @@ static inline int tegra_vi_i2c_power_enable(struct tegra_vi_i2c_dev *i2c_dev)
 static inline int tegra_vi_i2c_power_disable(struct tegra_vi_i2c_dev *i2c_dev)
 {
 	int partition_id;
+	int ret = 0;
 
 #ifdef CONFIG_PM_GENERIC_DOMAINS_OF
 	partition_id = tegra_pd_get_powergate_id(tegra_ve_pd);
@@ -550,7 +560,19 @@ static inline int tegra_vi_i2c_power_disable(struct tegra_vi_i2c_dev *i2c_dev)
 	partition_id = TEGRA_POWERGATE_VE;
 #endif
 	tegra_powergate_partition(partition_id);
-	return regulator_disable(i2c_dev->reg);
+
+	ret = regulator_disable(i2c_dev->reg);
+	if (ret)
+		dev_err(i2c_dev->dev, "%s: regulator err\n", __func__);
+
+	if (i2c_dev->pull_up_supply) {
+		ret = regulator_disable(i2c_dev->pull_up_supply);
+		if (ret)
+			dev_err(i2c_dev->dev, "%s: pull_up_supply err\n",
+					__func__);
+	}
+
+	return ret;
 }
 
 static int tegra_vi_i2c_clock_enable(struct tegra_vi_i2c_dev *i2c_dev)
@@ -1492,15 +1514,6 @@ skip_pinctrl:
 		dev_err(&pdev->dev, "bus-pullup regulator not found: %d\n",
 			ret);
 		i2c_dev->pull_up_supply = NULL;
-	}
-
-	if (i2c_dev->pull_up_supply) {
-		ret = regulator_enable(i2c_dev->pull_up_supply);
-		if (ret < 0) {
-			dev_err(i2c_dev->dev, "Pull up regulator supply failed: %d\n",
-				ret);
-			return ret;
-		}
 	}
 
 	/* get regulator */
