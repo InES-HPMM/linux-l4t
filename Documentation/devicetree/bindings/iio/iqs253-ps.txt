@@ -3,14 +3,6 @@
 nvs_ drivers use the NVidia Sensor (NVS) framework.
 See the nvs.txt documentation for NVS DT capabilities.
 The nvs_iqs2x3 proximity sensor driver supports the IQS253 and IQS263 devices.
-These two parts are not register compatible and therefore should be specified
-in the device tree.  Example: iqs263@44.  By specifying a device this way, the
-driver will assume this specific device is populated during system boot and
-will not verify its existence.
-If, however, the device is unknown or may not be populated, then the label,
-iqs2x3, (e.g. iqs2x3@44), must be used.  This tells the driver to find which
-device is used.  If the device is not found, the driver will unload itself.
-This also requires that regulators be setup correctly for the probe function.
 
 Required properties:
 - compatible: Device or generic name.
@@ -119,10 +111,62 @@ The error can be due to truly out of buffer memory to non-existent register or
 incorrect register length.  Once the driver has loaded, a debug feature that
 will dump the parsed byte stream can be done by doing the following at the
 device's sysfs directory in an adb terminal prompt:
-$echo 10 > nvs
-$cat nvs
+#echo 0xXXYYZZ1E > nvs
+where XX = part device ID (0x29=IQS253, 0x3C=IQS263)
+           If XX is 0, then the part in use will be used.
+      YY = command
+           Possible commands are:
+	   1: initialization
+	   2: enable
+	   3: disable
+	   4: event
+	   If YY is 0, then all the commands will be displayed.
+      ZZ = device
+	   Possible devices are:
+	   1: SAR_proximiy
+	   2: touch_proximity
+	   If ZZ is 0, then all the devices will be displayed.
+Ideally, the 0x1E command would always be used.  However, if not all the data
+or corruption is displayed due to an undersized buffer (out of the driver's
+control) then the above formatting allows a smaller amount of data to be shown.
+#cat nvs
+The results for 0x1001E will be something like:
+	iqs263 initialization:
+	len=5 reg=9 data/mask=40/ff 3/ff 0/ff 1/ff 3/ff
+	len=1 reg=d data/mask=9/ff
+	len=1 reg=1 data/mask=0/ff
+	len=5 reg=7 data/mask=1b/ff 8/ff 8/ff 0/ff 11/ff
+	len=8 reg=a data/mask=8/ff 10/ff 10/ff 2/ff 4/ff 8/ff 14/ff 3f/ff
+	len=3 reg=b data/mask=0/ff 64/ff 80/ff
+The results for 0x2001E will be something like:
+	iqs263 SAR_proximity enable:
+	len=1 reg=9 data/mask=10/18
+	flush write and mdelay=0
+	len=1 reg=9 data/mask=8/18
+	iqs263 touch_proximity enable:
+	<empty>
+
+Also, a register dump can be done:
+#echo 4 > nvs
+#cat nvs
+During the tuning process, a debug feature can write a byte to a register:
+#echo 0xXXYYZZ1D > nvs
+where XX = the register
+      YY = the register offset
+      ZZ = the byte value
+Other driver debug commands:
+#echo 0x??1C > nvs
+writes ?? to the gpio_sar GPIO.
+#echo 0x??1B > nvs
+writes ?? to the gpio_rdy GPIO.
+#echo 0x1A > nvs
+switches the gpio_rdy GPIO to input.
+
+For overall information:
+#echo 10 > nvs
+#cat nvs
 The results will be something like:
-	IQS driver v. 6
+	IQS driver v. 8
 	os_options=0
 	stream_mode=0
 	watchdog_timeout_ms=30000
@@ -134,37 +178,6 @@ The results will be something like:
 	irq_disable=0
 	SAR_proximity_binary_hw=1
 	touch_proximity_binary_hw=1
-	IQS263 initialization:
-	len=5 reg=9 data/mask=40/ff 3/ff 0/ff 1/ff 3/ff
-	len=1 reg=d data/mask=9/ff
-	len=1 reg=1 data/mask=0/ff
-	len=5 reg=7 data/mask=1b/ff 8/ff 8/ff 0/ff 11/ff
-	len=8 reg=a data/mask=8/ff 10/ff 10/ff 2/ff 4/ff 8/ff 14/ff 3f/ff
-	len=3 reg=b data/mask=0/ff 64/ff 80/ff
-	IQS263 proximity enable:
-	len=1 reg=9 data/mask=10/18
-	flush write and mdelay=0
-	len=1 reg=9 data/mask=8/18
-	IQS263 touch enable:
-	len=1 reg=9 data/mask=10/18
-	flush write and mdelay=0
-	len=1 reg=9 data/mask=8/18
-	IQS253 initialization:
-Also, a register dump can be done:
-$echo 4 > nvs
-$cat nvs
-During the tuning process, a debug feature can write a byte to a register:
-$echo 0xXXYYZZ1D > nvs
-where XX = the register
-      YY = the register offset
-      ZZ = the byte value
-Other driver debug commands:
-$echo 0x??1C > nvs
-writes ?? to the gpio_sar GPIO.
-$echo 0x??1B > nvs
-writes ?? to the gpio_rdy GPIO.
-$echo 0x1A > nvs
-switches the gpio_rdy GPIO to input.
 
 In the case the part populated could be either IQS253 or IQS263, both the 253
 and 263 commands can be defined in the DT.  The driver will use the one
