@@ -25,6 +25,7 @@
 
 #include "tegra210-platforms/tegra210-prods.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-pinmux-p2290-1100-a00.dtsi"
+#include "tegra210-platforms/tegra210-hawkeye-pinmux-manual-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-hawkeye-power-tree-p2290-1100-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-keys-e2220-1170-a00.dtsi"
 #include "panel-s-wuxga-7-0.dtsi"
