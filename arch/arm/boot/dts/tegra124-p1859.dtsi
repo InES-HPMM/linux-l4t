@@ -153,7 +153,7 @@
 		nvidia,clock-always-on;
 
 		max16989@3a {
-			compatible = "maxim,max16989x";
+			compatible = "maxim,max16989";
 			reg = <0x3a>;
 			regulator-name = "max16989-vdd-cpu";
 			regulator-min-microvolt = <500000>;
@@ -166,12 +166,12 @@
 		};
 
 		max16989@38 {
-			compatible = "maxim,max16989x";
+			compatible = "maxim,max16989";
 			reg = <0x38>;
 			regulator-name = "max16989-vdd-gpu";
 			regulator-min-microvolt = <500000>;
 			regulator-max-microvolt = <1500000>;
-			enable-gpio = <&gpio TEGRA_GPIO(R, 2) 0>;
+			maxim,enable-gpio = <&gpio TEGRA_GPIO(R, 2) 0>;
 			regulator-enable-ramp-delay = <210>;
 			consumers {
 				c1 {
