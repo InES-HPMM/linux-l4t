@@ -37,7 +37,7 @@
 		};
 
 		vdd_hdmi: regulator@7 {
-			gpio = <&tca9539_74 14 1>;
+			gpio = <&tca9539_74 12 1>;
 			vin-supply = <&vdd_3v3>;
 		};
 
