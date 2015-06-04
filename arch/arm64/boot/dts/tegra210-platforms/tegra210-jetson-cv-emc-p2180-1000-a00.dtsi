@@ -7,7 +7,7 @@
 		emc-table@40800 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "001_40800_001_V9.8.0_V1.4";
+			nvidia,dvfs-version = "002_40800_001_V9.8.0_V1.4";
 			clock-frequency = <40800>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -1235,7 +1235,7 @@
 		emc-table@68000 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "001_68000_001_V9.8.0_V1.4";
+			nvidia,dvfs-version = "002_68000_001_V9.8.0_V1.4";
 			clock-frequency = <68000>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -2463,7 +2463,7 @@
 		emc-table@102000 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "001_102000_001_V9.8.0_V1.4";
+			nvidia,dvfs-version = "002_102000_001_V9.8.0_V1.4";
 			clock-frequency = <102000>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -3691,7 +3691,7 @@
 		emc-table@204000 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "001_204000_001_V9.8.0_V1.4";
+			nvidia,dvfs-version = "002_204000_001_V9.8.0_V1.4";
 			clock-frequency = <204000>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -4919,7 +4919,7 @@
 		emc-table@408000 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "001_408000_001_V9.8.0_V1.4";
+			nvidia,dvfs-version = "002_408000_001_V9.8.0_V1.4";
 			clock-frequency = <408000>;
 			nvidia,emc-min-mv = <812>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -6147,7 +6147,7 @@
 		emc-table@665600 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "001_665600_001_V9.8.0_V1.4";
+			nvidia,dvfs-version = "002_665600_001_V9.8.0_V1.4";
 			clock-frequency = <665600>;
 			nvidia,emc-min-mv = <825>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -7375,7 +7375,7 @@
 		emc-table@800000 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "001_800000_001_V9.8.0_V1.4";
+			nvidia,dvfs-version = "002_800000_001_V9.8.0_V1.4";
 			clock-frequency = <800000>;
 			nvidia,emc-min-mv = <825>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -8603,7 +8603,7 @@
 		emc-table@1065600 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "001_1065600_001_V9.8.0_V1.4";
+			nvidia,dvfs-version = "002_1065600_001_V9.8.0_V1.4";
 			clock-frequency = <1065600>;
 			nvidia,emc-min-mv = <837>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -8612,7 +8612,7 @@
 			nvidia,needs-training = <0x0000f0>;
 			nvidia,training_pattern = <00000000>;
 			nvidia,trained = <00000000>;
-			nvidia,periodic_training = <0x000001>;
+			nvidia,periodic_training = <00000000>;
 			nvidia,trained_dram_clktree_c0d0u0 = <00000000>;
 			nvidia,trained_dram_clktree_c0d0u1 = <00000000>;
 			nvidia,trained_dram_clktree_c0d1u0 = <00000000>;
@@ -9831,7 +9831,7 @@
 		emc-table@1331200 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "001_1331200_001_V9.8.0_V1.4";
+			nvidia,dvfs-version = "002_1331200_001_V9.8.0_V1.4";
 			clock-frequency = <1331200>;
 			nvidia,emc-min-mv = <850>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -9840,7 +9840,7 @@
 			nvidia,needs-training = <0x0002f0>;
 			nvidia,training_pattern = <00000000>;
 			nvidia,trained = <00000000>;
-			nvidia,periodic_training = <0x000001>;
+			nvidia,periodic_training = <00000000>;
 			nvidia,trained_dram_clktree_c0d0u0 = <00000000>;
 			nvidia,trained_dram_clktree_c0d0u1 = <00000000>;
 			nvidia,trained_dram_clktree_c0d1u0 = <00000000>;
@@ -11059,7 +11059,7 @@
 		emc-table@1600000 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "001_1600000_001_V9.8.0_V1.4";
+			nvidia,dvfs-version = "002_1600000_001_V9.8.0_V1.4";
 			clock-frequency = <1600000>;
 			nvidia,emc-min-mv = <875>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -11068,7 +11068,7 @@
 			nvidia,needs-training = <0x0002f0>;
 			nvidia,training_pattern = <00000000>;
 			nvidia,trained = <00000000>;
-			nvidia,periodic_training = <0x000001>;
+			nvidia,periodic_training = <00000000>;
 			nvidia,trained_dram_clktree_c0d0u0 = <00000000>;
 			nvidia,trained_dram_clktree_c0d0u1 = <00000000>;
 			nvidia,trained_dram_clktree_c0d1u0 = <00000000>;
