@@ -197,6 +197,10 @@
 #define TEGRA_PIN_CLK_REQ			_PIN(6)
 #define TEGRA_PIN_SHUTDOWN			_PIN(7)
 
+#define TEGRA_DRV_PAD_QSPI_COMP			_PIN(8)
+#define TEGRA_DRV_PAD_QSPI_COMP_CONTROL		_PIN(9)
+#define TEGRA_DRV_PAD_QSPI_LPBK_CONTROL		_PIN(10)
+
 #define SDMMC1_CLK_LPBK_CTRL_OFFSET	0
 #define SDMMC3_CLK_LPBK_CTRL_OFFSET	4
 
@@ -1625,6 +1629,18 @@ static const unsigned drive_wifi_rst_pins[] = {
 
 static const unsigned drive_wifi_wake_ap_pins[] = {
 	TEGRA_PIN_WIFI_WAKE_AP_PH2,
+};
+
+static const unsigned drive_qspi_comp_pins[] = {
+	TEGRA_DRV_PAD_QSPI_COMP,
+};
+
+static const unsigned drive_qspi_comp_control_pins[] = {
+	TEGRA_DRV_PAD_QSPI_COMP_CONTROL,
+};
+
+static const unsigned drive_qspi_lpbk_control_pins[] = {
+	TEGRA_DRV_PAD_QSPI_LPBK_CONTROL,
 };
 
 enum tegra_mux_dt {
@@ -3204,6 +3220,7 @@ static const struct tegra_pingroup tegra210_groups[] = {
 	DRV_PINGROUP(pwr_i2c_scl,	0xa6c,	12,	5,	20,	5,	-1,	-1,	-1,	-1),
 	DRV_PINGROUP(pwr_i2c_sda,	0xa70,	12,	5,	20,	5,	-1,	-1,	-1,	-1),
 	DRV_PINGROUP(pwr_int_n,		0xa74,	12,	5,	20,	5,	-1,	-1,	-1,	-1),
+	DRV_PINGROUP(qspi_comp,		0xa78,	12,	5,	20,	5,	-1,	-1,	-1,	-1),
 	DRV_PINGROUP(qspi_sck,		0xa90,	-1,	-1,	-1,	-1,	28,	2,	30,	2),
 	DRV_PINGROUP(sata_led_active,	0xa94,	12,	5,	20,	5,	-1,	-1,	-1,	-1),
 	DRV_PINGROUP(sdmmc1,		0xa98,	12,	7,	20,	7,	28,	2,	30,	2),
@@ -3252,6 +3269,8 @@ static const struct tegra_pingroup tegra210_groups[] = {
 	DRV_PINGROUP(wifi_en,		0xb64,	12,	5,	20,	5,	-1,	-1,	-1,	-1),
 	DRV_PINGROUP(wifi_rst,		0xb68,	12,	5,	20,	5,	-1,	-1,	-1,	-1),
 	DRV_PINGROUP(wifi_wake_ap,	0xb6c,	12,	5,	20,	5,	-1,	-1,	-1,	-1),
+	DRV_PINGROUP(qspi_comp_control,	0xb70,	-1,	-1,	-1,	-1,	-1,	-1,	-1,	-1),
+	DRV_PINGROUP(qspi_lpbk_control,	0xb78,	-1,	-1,	-1,	-1,	-1,	-1,	-1,	-1),
 };
 
 static int tegra210_pinctrl_suspend(u32 *pg_data)
