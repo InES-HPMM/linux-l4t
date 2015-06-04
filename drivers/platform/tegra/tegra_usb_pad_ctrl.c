@@ -26,6 +26,9 @@
 #include <linux/tegra-powergate.h>
 #include <linux/syscore_ops.h>
 #include <linux/tegra_pm_domains.h>
+#include <linux/regulator/consumer.h>
+#include <linux/slab.h>
+#include <linux/of_device.h>
 
 #include <mach/tegra_usb_pad_ctrl.h>
 
@@ -33,6 +36,7 @@
 
 static DEFINE_SPINLOCK(utmip_pad_lock);
 static DEFINE_SPINLOCK(xusb_padctl_lock);
+static DEFINE_SPINLOCK(xusb_padctl_reg_lock);
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
 static DEFINE_SPINLOCK(pcie_pad_lock);
 static DEFINE_SPINLOCK(sata_pad_lock);
@@ -58,6 +62,28 @@ static struct clk *utmi_pad_clk;
 
 #if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 static u32 usb_lanes;
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+struct tegra_padctl_soc_data {
+	char	* const *regulator_name;
+	int	num_regulator;
+};
+
+struct tegra_padctl {
+	struct platform_device *pdev;
+
+	const struct tegra_padctl_soc_data *soc_data;
+
+	struct regulator_bulk_data *regulator;
+
+	struct clk *plle_clk;
+	struct clk *plle_hw_clk;
+
+	u32 lane_owner; /* used for XUSB lanes */
+	u32 lane_map; /* used for PCIE lanes */
+	bool enable_sata_port; /* used for SATA lane */
+};
 #endif
 
 void tegra_xhci_release_otg_port(bool release)
@@ -379,6 +405,8 @@ static int pex_usb_pad_pll(bool assert)
 	static struct clk *pex_uphy;
 	static int ref_count;
 	unsigned long flags;
+	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+	u32 val;
 
 	if (!pex_uphy)
 		pex_uphy = clk_get_sys(NULL, "pex_uphy");
@@ -398,8 +426,15 @@ static int pex_usb_pad_pll(bool assert)
 		ref_count++;
 	} else {
 		ref_count--;
-		if (ref_count == 0)
-			tegra_periph_reset_assert(pex_uphy);
+		if (ref_count == 0) {
+			val = readl(clk_base +
+				CLK_RST_CONTROLLER_XUSBIO_PLL_CFG0_0);
+			if (XUSBIO_SEQ_ENABLE & val)
+				pr_info("%s: pex uphy already enabled",
+					__func__);
+			else
+				tegra_periph_reset_assert(pex_uphy);
+		}
 	}
 	spin_unlock_irqrestore(&pcie_pad_lock, flags);
 
@@ -413,6 +448,8 @@ static int sata_usb_pad_pll(bool assert)
 	static struct clk *sata_uphy;
 	static int ref_count;
 	unsigned long flags;
+	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+	u32 val;
 
 	if (!sata_uphy)
 		sata_uphy = clk_get_sys(NULL, "sata_uphy");
@@ -422,6 +459,8 @@ static int sata_usb_pad_pll(bool assert)
 		return PTR_ERR(sata_uphy);
 	}
 
+	pr_debug("%s ref_count %d assert %d\n", __func__, ref_count, assert);
+
 	spin_lock_irqsave(&sata_pad_lock, flags);
 
 	if (!assert) {
@@ -430,8 +469,15 @@ static int sata_usb_pad_pll(bool assert)
 		ref_count++;
 	} else {
 		ref_count--;
-		if (ref_count == 0)
-			tegra_periph_reset_assert(sata_uphy);
+		if (ref_count == 0) {
+			val = readl(clk_base +
+				CLK_RST_CONTROLLER_SATA_PLL_CFG0_0);
+			if (SATA_SEQ_ENABLE & val)
+				pr_info("%s: sata uphy already enabled",
+					__func__);
+			else
+				tegra_periph_reset_assert(sata_uphy);
+		}
 	}
 	spin_unlock_irqrestore(&sata_pad_lock, flags);
 
@@ -1230,9 +1276,6 @@ int usb3_phy_pad_enable(u32 lane_owner)
 	pr_debug("XUSB_PADCTL_USB3_PAD_MUX_0 = 0x%x\n"
 			, readl(pad_base + XUSB_PADCTL_USB3_PAD_MUX_0));
 
-	/* Release state latching */
-	usb3_release_padmux_state_latch();
-
 	pr_debug("ss release state latching\n");
 	pr_debug("XUSB_PADCTL_ELPG_PROGRAM_1 = 0x%x\n"
 			, readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_1));
@@ -1368,14 +1411,14 @@ void tegra_usb_pad_reg_update(u32 reg_offset, u32 mask, u32 val)
 	unsigned long flags;
 	u32 reg;
 
-	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	spin_lock_irqsave(&xusb_padctl_reg_lock, flags);
 
 	reg = readl(pad_base + reg_offset);
 	reg &= ~mask;
 	reg |= val;
 	writel(reg, pad_base + reg_offset);
 
-	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+	spin_unlock_irqrestore(&xusb_padctl_reg_lock, flags);
 }
 EXPORT_SYMBOL_GPL(tegra_usb_pad_reg_update);
 
@@ -1385,9 +1428,9 @@ u32 tegra_usb_pad_reg_read(u32 reg_offset)
 	unsigned long flags;
 	u32 reg;
 
-	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	spin_lock_irqsave(&xusb_padctl_reg_lock, flags);
 	reg = readl(pad_base + reg_offset);
-	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+	spin_unlock_irqrestore(&xusb_padctl_reg_lock, flags);
 
 	return reg;
 }
@@ -1397,14 +1440,13 @@ void tegra_usb_pad_reg_write(u32 reg_offset, u32 val)
 {
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 	unsigned long flags;
-	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	spin_lock_irqsave(&xusb_padctl_reg_lock, flags);
 	writel(val, pad_base + reg_offset);
-	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+	spin_unlock_irqrestore(&xusb_padctl_reg_lock, flags);
 }
 EXPORT_SYMBOL_GPL(tegra_usb_pad_reg_write);
 
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
-
 int t210_sata_uphy_pll_init(bool sata_used_by_xusb)
 {
 	u32 val;
@@ -1412,6 +1454,14 @@ int t210_sata_uphy_pll_init(bool sata_used_by_xusb)
 	u8 freq_ndiv;
 	u8 txclkref_sel;
 	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+
+	val = readl(clk_base + CLK_RST_CONTROLLER_SATA_PLL_CFG0_0);
+	if (SATA_SEQ_ENABLE & val) {
+		pr_info("%s: sata uphy already enabled\n", __func__);
+		return 0;
+	}
+
+	pr_info("%s: init sata uphy pll\n", __func__);
 
 	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL2_0,
 		S0_CTL2_PLL0_CAL_CTRL(~0),
@@ -1477,6 +1527,19 @@ int t210_sata_uphy_pll_init(bool sata_used_by_xusb)
 			return -EBUSY;
 		}
 	} while (val & S0_CTL2_PLL0_CAL_DONE);
+
+	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL1_0,
+		S0_CTL1_PLL0_ENABLE, S0_CTL1_PLL0_ENABLE);
+
+	calib_timeout = 20; /* 200 us in total */
+	do {
+		val = tegra_usb_pad_reg_read(XUSB_PADCTL_UPHY_PLL_S0_CTL1_0);
+		udelay(10);
+		if (--calib_timeout == 0) {
+			pr_err("%s: timeout for LOCKDET set\n", __func__);
+			return -EBUSY;
+		}
+	} while (!(val & S0_CTL1_PLL0_LOCKDET_STATUS));
 
 	tegra_usb_pad_reg_update(XUSB_PADCTL_UPHY_PLL_S0_CTL8_0,
 		S0_CTL8_PLL0_RCAL_EN, S0_CTL8_PLL0_RCAL_EN);
@@ -1551,6 +1614,14 @@ static int tegra_xusb_padctl_phy_enable(void)
 
 	if (pex_pll_refcnt > 0)
 		goto done; /* already done */
+
+	val = readl(clk_base + CLK_RST_CONTROLLER_XUSBIO_PLL_CFG0_0);
+	if (XUSBIO_SEQ_ENABLE & val) {
+		pr_info("%s: pex uphy already enabled\n", __func__);
+		goto done;
+	}
+
+	pr_info("%s: init pex uphy pll\n", __func__);
 
 	/* Enable overrides to enable SW control over PLL */
 	/* init UPHY, Set PWR/CAL/RCAL OVRD */
@@ -1761,6 +1832,114 @@ static int tegra_xusb_padctl_phy_enable(void)
 	return 0;
 }
 #endif
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+static void t210_padctl_force_sata_seq(bool force_off)
+{
+	u32 val;
+	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+
+	val = readl(clk_base +
+			CLK_RST_CONTROLLER_SATA_PLL_CFG0_0);
+
+	if (force_off)
+		val |= (SATA_SEQ_IN_SWCTL |
+				SATA_SEQ_RESET_INPUT_VALUE |
+				SATA_SEQ_LANE_PD_INPUT_VALUE |
+				SATA_SEQ_PADPLL_PD_INPUT_VALUE);
+	else
+		val &= ~(SATA_SEQ_IN_SWCTL |
+				SATA_SEQ_RESET_INPUT_VALUE |
+				SATA_SEQ_LANE_PD_INPUT_VALUE |
+				SATA_SEQ_PADPLL_PD_INPUT_VALUE);
+
+	writel(val, clk_base +
+			CLK_RST_CONTROLLER_SATA_PLL_CFG0_0);
+}
+
+static void t210_padctl_enable_sata_idle_detector(bool enable)
+{
+	if (enable)
+		tegra_usb_pad_reg_update(
+			XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0,
+			AUX_RX_TERM_EN | AUX_RX_MODE_OVRD |
+				AUX_TX_IDDQ | AUX_TX_IDDQ_OVRD |
+				AUX_RX_IDLE_EN,
+			AUX_RX_IDLE_EN);
+	else
+		tegra_usb_pad_reg_update(
+			XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0,
+			AUX_RX_TERM_EN | AUX_RX_MODE_OVRD |
+				AUX_TX_IDDQ | AUX_TX_IDDQ_OVRD |
+				AUX_RX_IDLE_EN,
+			AUX_RX_TERM_EN | AUX_RX_MODE_OVRD |
+				AUX_TX_IDDQ | AUX_TX_IDDQ_OVRD);
+}
+#endif
+
+int tegra_padctl_init_sata_pad(void)
+{
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	unsigned long flags;
+
+	if (sata_usb_pad_pll_reset_deassert())
+		pr_err("%s: fail to deassert sata uphy\n",
+			__func__);
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	if (t210_sata_uphy_pll_init(false))
+		pr_err("%s: fail to init sata uphy\n",
+			__func__);
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+
+	/* this is only to decrease refcnt */
+	sata_usb_pad_pll_reset_assert();
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	tegra_usb_pad_reg_update(
+		XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0,
+		AUX_RX_MODE_OVRD | AUX_RX_IDLE_EN |
+			AUX_RX_IDLE_TH(0x3),
+		AUX_RX_MODE_OVRD | AUX_RX_IDLE_EN |
+			AUX_RX_IDLE_TH(0x1));
+	usb3_lane_out_of_iddq(SATA_S0);
+	usb3_release_padmux_state_latch();
+	udelay(200);
+	tegra_usb_pad_reg_update(
+		XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_4_0,
+		RX_TERM_EN | RX_TERM_OVRD,
+		RX_TERM_EN | RX_TERM_OVRD);
+	t210_padctl_force_sata_seq(false);
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+#endif
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra_padctl_init_sata_pad);
+
+int tegra_padctl_enable_sata_pad(bool enable)
+{
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	unsigned long flags;
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+
+	if (enable) {
+		t210_padctl_enable_sata_idle_detector(true);
+		t210_padctl_force_sata_seq(false);
+		tegra_xusb_uphy_misc(false, SATA_S0);
+	} else {
+		t210_padctl_force_sata_seq(true);
+		tegra_xusb_uphy_misc(true, SATA_S0);
+		t210_padctl_enable_sata_idle_detector(false);
+	}
+
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+#endif
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra_padctl_enable_sata_pad);
 
 static int tegra_pcie_lane_iddq(bool enable, int lane_owner)
 {
@@ -1978,18 +2157,7 @@ int pcie_phy_pad_enable(bool enable, int lane_owner)
 	}
 
 	/* clear AUX_MUX_LP0 related bits in ELPG_PROGRAM */
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
-	val = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_1);
-	val &= ~XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_CLAMP_EN;
-	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_1);
-	udelay(1);
-	val &= ~XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_CLAMP_EN_EARLY;
-	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_1);
-	udelay(100);
-	val &= ~XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_VCORE_DOWN;
-	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_1);
-	udelay(100);
-#else
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	val = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
 	val &= ~XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_CLAMP_EN;
 	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
@@ -2067,6 +2235,363 @@ void xusb_enable_pad_protection(bool devmode)
 }
 EXPORT_SYMBOL_GPL(xusb_enable_pad_protection);
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+
+static int
+tegra_padctl_enable_regulator(struct platform_device *pdev)
+{
+	int err = 0;
+	struct tegra_padctl *padctl;
+
+	padctl = platform_get_drvdata(pdev);
+
+	err = regulator_bulk_enable(padctl->soc_data->num_regulator,
+		padctl->regulator);
+	if (err)
+		dev_err(&pdev->dev, "fail to enable regulator %d\n", err);
+
+	return err;
+}
+
+static void
+tegra_padctl_disable_regulator(struct platform_device *pdev)
+{
+	int err = 0;
+	struct tegra_padctl *padctl;
+
+	padctl = platform_get_drvdata(pdev);
+
+	err = regulator_bulk_disable(padctl->soc_data->num_regulator,
+		padctl->regulator);
+	if (err)
+		dev_err(&pdev->dev, "fail to disable regulator %d\n", err);
+}
+
+static int
+tegra_padctl_enable_plle(struct platform_device *pdev)
+{
+	int err = 0;
+	struct tegra_padctl *padctl;
+
+	padctl = platform_get_drvdata(pdev);
+
+	err = clk_enable(padctl->plle_clk);
+	if (err)
+		dev_err(&pdev->dev, "fail to enable plle clock\n");
+
+	return err;
+}
+
+static void
+tegra_padctl_disable_plle(struct platform_device *pdev)
+{
+	struct tegra_padctl *padctl;
+
+	padctl = platform_get_drvdata(pdev);
+
+	clk_disable(padctl->plle_clk);
+}
+
+static int
+tegra_padctl_enable_uphy_pll(struct platform_device *pdev)
+{
+	int err = 0;
+	struct tegra_padctl *padctl;
+
+	padctl = platform_get_drvdata(pdev);
+
+	err = pex_usb_pad_pll_reset_deassert();
+	if (err) {
+		dev_err(&pdev->dev, "fail to deassert pex pll\n");
+		goto done;
+	}
+
+	err = sata_usb_pad_pll_reset_deassert();
+	if (err) {
+		dev_err(&pdev->dev, "fail to deassert sata pll\n");
+		goto done;
+	}
+
+	if ((padctl->lane_owner & 0xf000) != SATA_LANE) {
+		/* sata driver owns sata lane */
+		t210_sata_uphy_pll_init(false);
+		usb3_lane_out_of_iddq(SATA_S0);
+		t210_padctl_force_sata_seq(true);
+	}
+
+	usb3_phy_pad_enable(padctl->lane_owner);
+
+	if (padctl->lane_map)
+		pcie_phy_pad_enable(true, padctl->lane_map);
+
+	usb3_release_padmux_state_latch();
+
+done:
+	return err;
+}
+
+static void
+tegra_padctl_disable_uphy_pll(struct platform_device *pdev)
+{
+	struct tegra_padctl *padctl;
+
+	padctl = platform_get_drvdata(pdev);
+
+	usb3_phy_pad_disable();
+
+	if (padctl->lane_map)
+		pcie_phy_pad_enable(false, padctl->lane_map);
+
+	/* this doesn't assert uphy pll if sequencers are enabled */
+	pex_usb_pad_pll_reset_assert();
+	sata_usb_pad_pll_reset_assert();
+}
+
+static int
+tegra_padctl_enable_plle_hw(struct platform_device *pdev)
+{
+	int err = 0;
+	struct tegra_padctl *padctl;
+
+	padctl = platform_get_drvdata(pdev);
+
+	err = clk_enable(padctl->plle_hw_clk);
+	if (err)
+		dev_err(&pdev->dev, "fail to enable plle_hw\n");
+
+	return err;
+}
+
+static void
+tegra_padctl_disable_plle_hw(struct platform_device *pdev)
+{
+	struct tegra_padctl *padctl;
+
+	padctl = platform_get_drvdata(pdev);
+
+	clk_disable(padctl->plle_hw_clk);
+}
+
+static int
+tegra_padctl_uphy_init(struct platform_device *pdev)
+{
+	int err = 0;
+
+	err = tegra_padctl_enable_plle(pdev);
+	if (err)
+		goto done;
+
+	err = tegra_padctl_enable_uphy_pll(pdev);
+	if (err)
+		goto fail1;
+
+	err = tegra_padctl_enable_plle_hw(pdev);
+	if (err)
+		goto fail2;
+
+	goto done;
+
+fail2:
+	tegra_padctl_disable_uphy_pll(pdev);
+fail1:
+	tegra_padctl_disable_plle(pdev);
+done:
+	return err;
+}
+
+static void
+tegra_padctl_uphy_deinit(struct platform_device *pdev)
+{
+	tegra_padctl_disable_plle_hw(pdev);
+	tegra_padctl_disable_uphy_pll(pdev);
+	tegra_padctl_disable_plle(pdev);
+}
+
+static int
+tegra_padctl_get_regulator(struct platform_device *pdev)
+{
+	int err = 0;
+	struct tegra_padctl *padctl;
+	const struct tegra_padctl_soc_data *soc_data;
+	size_t size;
+	int i;
+
+	padctl = platform_get_drvdata(pdev);
+	soc_data = padctl->soc_data;
+
+	size = soc_data->num_regulator *
+		sizeof(struct regulator_bulk_data);
+	padctl->regulator = devm_kzalloc(&pdev->dev, size, GFP_ATOMIC);
+	if (IS_ERR(padctl->regulator)) {
+		dev_err(&pdev->dev, "fail to alloc regulator\n");
+		err = -ENOMEM;
+		goto done;
+	}
+
+	for (i = 0; i < soc_data->num_regulator; i++)
+		padctl->regulator[i].supply =
+			soc_data->regulator_name[i];
+
+	err = devm_regulator_bulk_get(&pdev->dev, soc_data->num_regulator,
+		padctl->regulator);
+	if (err) {
+		dev_err(&pdev->dev, "fail to get regulator %d\n", err);
+		goto done;
+	}
+
+done:
+	return err;
+}
+
+static char * const tegra210_padctl_regulator_name[] = {
+	"avdd_pll_uerefe", "hvdd_pex_pll_e",
+	"dvdd_pex_pll", "hvddio_pex", "dvddio_pex",
+	"hvdd_sata", "dvdd_sata_pll", "hvddio_sata", "dvddio_sata"
+};
+
+static const struct tegra_padctl_soc_data tegra210_padctl_data = {
+	.regulator_name = tegra210_padctl_regulator_name,
+	.num_regulator =
+		ARRAY_SIZE(tegra210_padctl_regulator_name),
+};
+
+static struct of_device_id tegra_padctl_of_match[] = {
+	{
+		.compatible = "nvidia,tegra210-padctl",
+		.data = &tegra210_padctl_data,
+	},
+	{ },
+};
+
+static int
+tegra_padctl_probe(struct platform_device *pdev)
+{
+	u32 lane_owner;
+	u32 lane_map;
+	bool enable_sata_port;
+	int err = 0;
+	const struct of_device_id *match;
+	struct tegra_padctl *padctl;
+	struct clk *plle_clk;
+	struct clk *plle_hw_clk;
+
+	if (of_property_read_u32(pdev->dev.of_node, "nvidia,lane_owner",
+		(u32 *) &lane_owner))
+		lane_owner = 0xffff;
+	if (of_property_read_u32(pdev->dev.of_node, "nvidia,lane-map",
+		(u32 *) &lane_map))
+		lane_map = 0;
+	enable_sata_port = of_property_read_bool(pdev->dev.of_node,
+				"nvidia,enable-sata-port");
+
+	if ((lane_owner == 0xffff) && (lane_map == 0) && !enable_sata_port)
+		return -ENODEV;
+
+	padctl = devm_kzalloc(&pdev->dev, sizeof(*padctl),
+			GFP_KERNEL);
+	if (IS_ERR(padctl)) {
+		dev_err(&pdev->dev, "fail to alloc padctl struct\n");
+		err = -ENOMEM;
+		goto done;
+	}
+	padctl->pdev = pdev;
+	platform_set_drvdata(pdev, padctl);
+
+	padctl->lane_owner = lane_owner;
+	padctl->lane_map = lane_map;
+	padctl->enable_sata_port = enable_sata_port;
+
+	match = of_match_device(tegra_padctl_of_match, &pdev->dev);
+	if (!match) {
+		dev_err(&pdev->dev, "no device match\n");
+		return -ENODEV;
+	}
+	padctl->soc_data = match->data;
+
+	/* get regulators */
+	err = tegra_padctl_get_regulator(pdev);
+	if (err)
+		goto done;
+
+	/* get pll_e */
+	plle_clk = devm_clk_get(&pdev->dev, "pll_e");
+	if (IS_ERR(plle_clk)) {
+		dev_err(&pdev->dev, "pll_e not found\n");
+		err = -ENODEV;
+		goto done;
+	}
+	padctl->plle_clk = plle_clk;
+
+	/* get pll_e_hw */
+	plle_hw_clk = clk_get_sys(NULL, "pll_e_hw");
+	if (IS_ERR(plle_hw_clk)) {
+		dev_err(&pdev->dev, "pll_e_hw not found\n");
+		err = -ENODEV;
+		goto done;
+	}
+	padctl->plle_hw_clk = plle_hw_clk;
+
+	err = tegra_padctl_enable_regulator(pdev);
+	if (err)
+		goto done;
+
+	err = tegra_padctl_uphy_init(pdev);
+
+done:
+	return err;
+}
+
+static int
+tegra_padctl_remove(struct platform_device *pdev)
+{
+	tegra_padctl_uphy_deinit(pdev);
+	tegra_padctl_disable_regulator(pdev);
+	return 0;
+}
+
+static int
+tegra_padctl_suspend_noirq(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+
+	tegra_padctl_uphy_deinit(pdev);
+
+	return 0;
+}
+
+static int
+tegra_padctl_resume_noirq(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+
+	return tegra_padctl_uphy_init(pdev);
+}
+
+static const struct dev_pm_ops tegra_padctl_pm_ops = {
+	.suspend_noirq = tegra_padctl_suspend_noirq,
+	.resume_noirq = tegra_padctl_resume_noirq,
+};
+
+static struct platform_driver tegra_padctl_driver = {
+	.probe	= tegra_padctl_probe,
+	.remove = tegra_padctl_remove,
+	.driver	= {
+		.name = "tegra-padctl",
+		.of_match_table = tegra_padctl_of_match,
+		.pm = &tegra_padctl_pm_ops,
+	},
+};
+
+static int __init tegra_xusb_padctl_init(void)
+{
+	platform_driver_register(&tegra_padctl_driver);
+
+	return 0;
+}
+fs_initcall(tegra_xusb_padctl_init);
+
+#else
+
 /* save restore below pad control register when cross LP0 */
 struct xusb_padctl_restore_context {
 	u32 padctl_usb3_pad_mux;
@@ -2092,9 +2617,12 @@ static struct syscore_ops tegra_padctl_syscore_ops = {
 	.save = tegra_xusb_padctl_suspend,
 	.restore = tegra_xusb_padctl_resume,
 };
+
 static int __init tegra_xusb_padctl_init(void)
 {
 	register_syscore_ops(&tegra_padctl_syscore_ops);
 	return 0;
 }
 late_initcall(tegra_xusb_padctl_init);
+
+#endif

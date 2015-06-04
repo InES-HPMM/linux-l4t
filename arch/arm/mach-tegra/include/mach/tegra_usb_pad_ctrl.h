@@ -185,6 +185,18 @@ static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
 #define XUSB_PADCTL_UPHY_PLL_S0_CTL5_DCO_CTRL_MASK	(0xFF << 16)
 #define XUSB_PADCTL_UPHY_PLL_S0_CTL5_PLL0_DCO_CTRL	(0x2a << 16)
 
+#define XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_1_0	0x960
+#define AUX_TX_IDDQ				(1 << 0)
+#define AUX_TX_IDDQ_OVRD			(1 << 1)
+#define AUX_RX_MODE_OVRD			(1 << 13)
+#define AUX_RX_TERM_EN				(1 << 18)
+#define AUX_RX_IDLE_EN				(1 << 22)
+#define AUX_RX_IDLE_TH(x)			(((x) & 0x3) << 24)
+
+#define XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL_4_0	0x96c
+#define RX_TERM_EN				(1 << 21)
+#define RX_TERM_OVRD				(1 << 23)
+
 #else
 #define SATA_LANE	(0x1)
 
@@ -602,11 +614,15 @@ static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
 #endif
 /* SATA PADPLL */
 #define CLK_RST_CONTROLLER_SATA_PLL_CFG0_0	0x490
-#define SATA_PADPLL_USE_LOCKDET			(1 << 2)
 #define SATA_PADPLL_RESET_SWCTL			(1 << 0)
+#define SATA_PADPLL_USE_LOCKDET			(1 << 2)
+#define SATA_SEQ_IN_SWCTL			(1 << 4)
+#define SATA_SEQ_RESET_INPUT_VALUE		(1 << 5)
+#define SATA_SEQ_LANE_PD_INPUT_VALUE		(1 << 6)
+#define SATA_SEQ_PADPLL_PD_INPUT_VALUE		(1 << 7)
+#define SATA_PADPLL_SLEEP_IDDQ			(1 << 13)
 #define SATA_SEQ_ENABLE				(1 << 24)
 #define SATA_SEQ_START_STATE			(1 << 25)
-#define SATA_PADPLL_SLEEP_IDDQ			(1 << 13)
 
 #define CLK_RST_CONTROLLER_XUSBIO_PLL_CFG0_0		0x51C
 #define XUSBIO_PADPLL_RESET_SWCTL			(1 << 0)
@@ -657,5 +673,8 @@ void usb3_phy_pad_disable(void);
 void xusb_enable_pad_protection(bool);
 
 void xusb_utmi_pad_driver_power(int port, bool on);
+
+int tegra_padctl_init_sata_pad(void);
+int tegra_padctl_enable_sata_pad(bool enable);
 
 #endif
