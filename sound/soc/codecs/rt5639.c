@@ -1,7 +1,7 @@
 /*
  * rt5639.c  --  RT5639 ALSA SoC audio codec driver
  *
- * Copyright (c) 2011-2013 REALTEK SEMICONDUCTOR CORP. All rights reserved.
+ * Copyright (c) 2011-2015 REALTEK SEMICONDUCTOR CORP. All rights reserved.
  * Author: Johnny Hsu <johnnyhsu@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -38,6 +38,10 @@
 #define RT5639_REG_RW 0 /* for debug */
 #define RT5639_DET_EXT_MIC 0
 #define USE_ONEBIT_DEPOP 0 /* for one bit depop */
+#define RT5639_SPK_SAFETY_VAL 0x801
+#define RT5639_SPK_SAFETY_MASK 0x801
+#define RETRY_DELAY 100
+#define RETRY_COUNT 25
 /* #define USE_EQ */
 #define VERSION "0.8.5 alsa 1.0.24"
 #define FUTURE_USE 0
@@ -225,7 +229,19 @@ static const u16 rt5639_reg[RT5639_VENDOR_ID2 + 1] = {
 
 static int rt5639_reset(struct snd_soc_codec *codec)
 {
-	return snd_soc_write(codec, RT5639_RESET, 0);
+	int ret;
+	int ret_mclk;
+	ret = snd_soc_write(codec, RT5639_RESET, 0);
+	ret_mclk = snd_soc_update_bits(codec,
+				RT5639_GEN_CTRL1,
+				RT5639_SPK_SAFETY_MASK,
+				RT5639_SPK_SAFETY_VAL);
+	if (ret_mclk < 0) {
+		dev_err(codec->dev,
+			"FATAL ERROR: RT5639_GEN_CTRL1 setting failed\n");
+		return ret_mclk;
+	}
+	return ret;
 }
 
 /**
@@ -342,6 +358,7 @@ static int rt5639_volatile_register(
 	case RT5639_VENDOR_ID:
 	case RT5639_VENDOR_ID1:
 	case RT5639_VENDOR_ID2:
+	case RT5639_GEN_CTRL1:
 		return 1;
 	default:
 		return 0;
@@ -3185,6 +3202,38 @@ static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 	return 0;
 }
 
+/* Each retry  takes 100ms, Max retry delay is RETRY_COUNT * RETRY_DELAY */
+static int  check_rt5639_readiness(struct snd_soc_codec *codec)
+{
+	int  ret;
+	int retry = RETRY_COUNT;
+	while (retry) {
+		ret = snd_soc_write(codec,
+				RT5639_GEN_CTRL1,
+				RT5639_SPK_SAFETY_VAL);
+		if (ret < 0) {
+			dev_err(codec->dev,
+				"Codec not ready yet: write failed: Retry %d\n",
+				retry);
+			msleep(RETRY_DELAY);
+			retry--;
+			continue;
+		}
+		ret = snd_soc_read(codec, RT5639_GEN_CTRL1);
+		if (ret != RT5639_SPK_SAFETY_VAL) {
+			dev_err(codec->dev,
+				"Codec not ready yet: read failed: Retry %d\n",
+				retry);
+			msleep(RETRY_DELAY);
+			retry--;
+			continue;
+		}
+		dev_info(codec->dev, "Codec Settling took %d ms\n", (RETRY_COUNT - retry) * RETRY_DELAY);
+		return 0;
+	}
+	return  -1;
+}
+
 static int rt5639_probe(struct snd_soc_codec *codec)
 {
 	struct rt5639_priv *rt5639 = snd_soc_codec_get_drvdata(codec);
@@ -3203,6 +3252,11 @@ static int rt5639_probe(struct snd_soc_codec *codec)
 		return ret;
 	}
 
+	ret =  check_rt5639_readiness(codec);
+	if (ret < 0) {
+		dev_err(codec->dev, "FATAL: Codec not ready: %d\n", ret);
+		return ret;
+	}
 	rt5639_reset(codec);
 	snd_soc_update_bits(codec, RT5639_PWR_ANLG1,
 		RT5639_PWR_VREF1 | RT5639_PWR_MB |
