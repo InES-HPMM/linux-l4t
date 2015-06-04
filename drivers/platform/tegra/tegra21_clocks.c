@@ -6926,6 +6926,7 @@ static struct clk_mux_sel mux_plla_out0[] = {
 
 static struct clk tegra_pll_a_out0_out_adsp = {
 	.name       = "pll_a_out0_out_adsp",
+	.clk_id     = TEGRA210_CLK_ID_PLL_A_OUT0_OUT_ADSP,
 	.ops        = &tegra_periph_clk_ops,
 	.inputs     = mux_plla_out0,
 	.flags      = PERIPH_NO_RESET,
@@ -8326,6 +8327,7 @@ static struct clk tegra_clk_apb = {
 
 static struct clk tegra_clk_blink = {
 	.name		= "blink",
+	.clk_id		= TEGRA210_CLK_ID_BLINK,
 	.parent		= &tegra_clk_32k,
 	.reg		= 0x40,
 	.ops		= &tegra_blink_clk_ops,
@@ -8489,6 +8491,7 @@ static struct clk_mux_sel mux_plldp[] = {
 
 static struct clk tegra_clk_sor0_brick = {
 	.name = "sor0_brick",
+	.clk_id = TEGRA210_CLK_ID_SOR0_BRICK,
 	.ops = &tegra_sor_brick_ops,
 	.max_rate = 600000000,
 	.inputs = mux_plldp,
@@ -8503,6 +8506,7 @@ static struct clk_mux_sel mux_pllp_sor_sor0_brick[] = {
 
 static struct clk tegra_clk_sor1_src = {
 	.name = "sor1_src",
+	.clk_id = TEGRA210_CLK_ID_SOR1_SRC,
 	.ops = &tegra_periph_clk_ops,
 	.reg = 0x410,
 	.max_rate = 600000000,
@@ -8518,6 +8522,7 @@ static struct clk_mux_sel mux_plldp_sor1_src[] = {
 
 static struct clk tegra_clk_sor1_brick = {
 	.name = "sor1_brick",
+	.clk_id = TEGRA210_CLK_ID_SOR1_BRICK,
 	.ops = &tegra_sor_brick_ops,
 	.max_rate = 600000000,
 	.inputs = mux_plldp_sor1_src,
