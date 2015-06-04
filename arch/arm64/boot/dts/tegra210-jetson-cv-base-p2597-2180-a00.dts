@@ -304,29 +304,34 @@
 			gpio-init-0 = <&tca9539_74_default>;
 			tca9539_74_default: default {
 				/*
-				 * GPIO-10 : M2_E_ALERT_R_L
-				 * GPIO-13 : TOUCH_ID
+				 * Below are exact gpio pin number as in
+				 * TCA9539 datasheet i.e. P0-P7 and P10-P17,
+				 * albeit Linux gpio numbering remains
+				 * sequencial i.e. 0-15
+				 *
+				 * P10 : M2_E_ALERT_R_L
+				 * P13 : TOUCH_ID
 				 */
 				gpio-input = <8 11>;
 
 				/*
-				 * GPIO-1 : EN_VDD_TS_1V8_PMIC
-				 * GPIO-2 : EN_VDD_TS_HV_PMIC
-				 * GPIO-3 : EN_VDD_DISP,
-				 * GPIO-4 : PS_VDD_FAN_ENABLE
-				 * GPIO-5 : MDM_EN
-				 * GPIO-7 : MDM_EN, MDM_PWR_EN
-				 * GPIO-11 : VDD_DISP_MUX_EN
-				 * GPIO-12 : FLASH_INHIBIT
-				 * GPIO-14 : 5V0_HDMI_EN
-				 * GPIO-15 : EN_VDD_CAM_HV
-				 * GPIO-16,17 : TP83, TP84
+				 * P1 : EN_VDD_TS_1V8_PMIC
+				 * P2 : EN_VDD_TS_HV_PMIC
+				 * P3 : EN_VDD_DISP,
+				 * P4 : PS_VDD_FAN_ENABLE
+				 * P5 : MDM_EN
+				 * P7 : MDM_EN, MDM_PWR_EN
+				 * P11 : VDD_DISP_MUX_EN
+				 * P12 : FLASH_INHIBIT
+				 * P14 : 5V0_HDMI_EN
+				 * P15 : EN_VDD_CAM_HV
+				 * P16,P17 : TP83, TP84
 				 */
 				gpio-output-low = <1 2 3 4 5 7 9 10 12 13 14 15>;
 
 				/*
-				 * GPIO-0 : W_DISABLE_L
-				 * GPIO-6 : MDM_RST_L
+				 * P0 : W_DISABLE_L
+				 * P6 : MDM_RST_L
 				 */
 				gpio-output-high = <0 6>;
 			};
@@ -345,26 +350,31 @@
 			gpio-init-0 = <&tca9539_74_default>;
 			tca9539_77_default: default {
 				/*
-				 * GPIO-0 : DISP_CHARGER_STAT
-				 * GPIO-1 : DISP_TYPEC_ORIENT
-				 * GPIO-16 : NVSR_INT
-				 * GPIO-17 : BRIDGE_IRQ
+				 * Below are exact gpio pin number as in
+				 * TCA9539 datasheet i.e. P0-P7 and P10-P17,
+				 * albeit Linux gpio numbering remains
+				 * sequencial i.e. 0-15
+				 *
+				 * P0 : DISP_CHARGER_STAT
+				 * P1 : DISP_TYPEC_ORIENT
+				 * P16 : NVSR_INT
+				 * P17 : BRIDGE_IRQ
 				 */
 				gpio-input = <0 1 14 15>;
 
 				/*
-				 * GPIO-2 : TYPEC_INT		 Charger control HDR
-				 * GPIO-3 : VDD_SYS_EN		 CAM HEADER
-				 * GPIO-4 : LCD_BIAS_EN		 CAM HEADER
-				 * GPIO-5 : TORCH_EN		 CAM HEADER
-				 * GPIO-6 : FLASH_INHIBIT 	 CAM HEADER
-				 * GPIO-7 : CAM2_PWDN		 CAM HEADER
-				 * GPIO-10 : CAM2_RST		 CAM HEADER
-				 * GPIO-11 : CAM_VDD_1V8_EN 	 CAM HEADER
-				 * GPIO-12 : CAM_VDD_1V2_EN 	 CAM HEADER
-				 * GPIO-13 : CAM_AF_PWDN    	 CAM HEADER
-				 * GPIO-14 : CHG_BD_PRSNT_L 	 CAM HEADER
-				 * GPIO-15 : BRIDGE_EN		 CAM HEADER
+				 * P2 : TYPEC_INT		 Charger control HDR
+				 * P3 : VDD_SYS_EN		 CAM HEADER
+				 * P4 : LCD_BIAS_EN		 CAM HEADER
+				 * P5 : TORCH_EN		 CAM HEADER
+				 * P6 : FLASH_INHIBIT 	 CAM HEADER
+				 * P7 : CAM2_PWDN		 CAM HEADER
+				 * P10 : CAM2_RST		 CAM HEADER
+				 * P11 : CAM_VDD_1V8_EN 	 CAM HEADER
+				 * P12 : CAM_VDD_1V2_EN 	 CAM HEADER
+				 * P13 : CAM_AF_PWDN    	 CAM HEADER
+				 * P14 : CHG_BD_PRSNT_L 	 CAM HEADER
+				 * P15 : BRIDGE_EN		 CAM HEADER
 				 */
 				gpio-output-low = <2 3 4 5 6 7 8 9 10 11 12 13>;
 			};
