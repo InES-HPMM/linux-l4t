@@ -298,6 +298,8 @@
 			reg = <0x74>;
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(L, 1) 0x0>;
+			#interrupt-cells = <2>;
+			interrupt-controller;
 			gpio-init-names = "default";
 			gpio-init-0 = <&tca9539_74_default>;
 			tca9539_74_default: default {
@@ -337,6 +339,8 @@
 			reg = <0x77>;
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(Z, 2) 0x0>;
+			#interrupt-cells = <2>;
+			interrupt-controller;
 			gpio-init-names = "default";
 			gpio-init-0 = <&tca9539_74_default>;
 			tca9539_77_default: default {
