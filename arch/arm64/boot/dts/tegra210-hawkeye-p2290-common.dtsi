@@ -92,6 +92,15 @@
 		};
 	};
 
+	pinmux@700008d4 {
+		prod-settings {
+			prod-qspi {
+				nvidia,prod-boot-init;
+				prod = <0 0x29C 0xFFFFFFFD 0x00000000>; // QSPI-COMP-CONTROL E_INPU 0
+			};
+		};
+	};
+
 	serial@70006000 {
 		compatible = "nvidia,tegra210-uart", "nvidia,tegra114-hsuart";
 		console-port;
