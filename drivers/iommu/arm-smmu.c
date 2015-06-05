@@ -443,6 +443,7 @@ struct arm_smmu_domain {
 };
 
 static struct iommu_domain *iommu_domains[NUM_SID]; /* To keep all allocated domains */
+static struct arm_smmu_master_cfg *arm_smmu_master_cfgs[NUM_SID];
 
 static DEFINE_SPINLOCK(arm_smmu_devices_lock);
 static LIST_HEAD(arm_smmu_devices);
@@ -663,6 +664,11 @@ static int register_smmu_master(struct arm_smmu_device *smmu,
 		}
 		master->cfg.streamids[i] = streamid;
 		platform_override_streamid(streamid);
+		if (!arm_smmu_master_cfgs[streamid]) {
+			arm_smmu_master_cfgs[streamid] = &master->cfg;
+			dev_dbg(dev, "%s() streamid=%x sets cfg=%p\n",
+				__func__, streamid, &master->cfg);
+		}
 	}
 	return insert_smmu_master(smmu, master);
 }
@@ -1265,8 +1271,10 @@ static int arm_smmu_master_configure_smrs(struct arm_smmu_device *smmu,
 	if (!(smmu->features & ARM_SMMU_FEAT_STREAM_MATCH))
 		return 0;
 
-	if (cfg->smrs)
+	if (cfg->smrs) {
+		pr_debug("%s() cfg->smrs=%p exists\n", __func__, cfg->smrs);
 		return -EEXIST;
+	}
 
 	smrs = kmalloc_array(cfg->num_streamids, sizeof(*smrs), GFP_KERNEL);
 	if (!smrs) {
@@ -1299,6 +1307,7 @@ static int arm_smmu_master_configure_smrs(struct arm_smmu_device *smmu,
 	}
 
 	cfg->smrs = smrs;
+	pr_debug("%s() set cfg->smrs=%p\n", __func__, cfg->smrs);
 	return 0;
 
 err_free_smrs:
@@ -2117,7 +2126,7 @@ static int arm_smmu_add_device(struct device *dev)
 				       &cfg->streamids[0]);
 		releasefn = __arm_smmu_release_pci_iommudata;
 	} else {
-		int i;
+		int i, sid;
 		struct arm_smmu_master *master;
 
 		master = find_smmu_master(smmu, dev->of_node);
@@ -2126,7 +2135,12 @@ static int arm_smmu_add_device(struct device *dev)
 			goto out_put_group;
 		}
 
-		cfg = &master->cfg;
+		sid = master->cfg.streamids[0];
+		BUG_ON(sid < 0);
+		BUG_ON(sid >= NUM_SID);
+		cfg = arm_smmu_master_cfgs[sid];
+		BUG_ON(!cfg);
+		master->cfg.smrs = cfg->smrs;
 
 		for (i = 0; i < cfg->num_streamids; i++)
 			swgids |= BIT(cfg->streamids[i]);
