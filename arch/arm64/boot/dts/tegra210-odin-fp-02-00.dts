@@ -1,0 +1,126 @@
+/*
+ * arch/arm64/boot/dts/tegra210-odin-fp-02-00.dts
+ *
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra210-odin-common.dtsi"
+#include "tegra210-platforms/tegra210-odin-fp-01-01-emc.dtsi"
+
+/ {
+	model = "odin";
+	compatible = "nvidia,odin", "nvidia,tegra210";
+	nvidia,dtsfilename = __FILE__;
+
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	udc@7d000000 {
+		#extcon-cells = <1>;
+		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x00000000>;
+	};
+
+        otg@7d000000 {
+		#extcon-cells = <1>;
+		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x00000000>;
+	};
+
+	xudc@700d0000 {
+		#extcon-cells = <1>;
+		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x01000000>;
+	};
+
+	xotg {
+		#extcon-cells = <1>;
+		status = "disabled";
+		dt-override-status-odm-data = <0x01000000 0x01000000>;
+	};
+
+	spi@7000da00 {
+		status = "disabled";
+	};
+
+	i2c@7000c000 {
+		fts@49 {
+			compatible = "stmicron,fts_i2c";
+			reg = <0x49>;
+		};
+	};
+
+	sound {
+		compatible = "nvidia,tegra-audio-t210ref-mobile-rt5639";
+		nvidia,model = "tegra-snd-t210ref-mobile-rt5639";
+		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(Z, 4) GPIO_ACTIVE_HIGH>;
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(V, 6) GPIO_ACTIVE_HIGH>;
+
+		nvidia,num-codec-link = <2>;
+
+		nvidia,audio-routing =
+			"x Headphone Jack", 	"x HPOL",
+			"x Headphone Jack", 	"x HPOR",
+			"x Int Spk", 	"x SPORP",
+			"x Int Spk", 	"x SPORN",
+			"x Int Spk", 	"x SPOLP",
+			"x Int Spk", 	"x SPOLN",
+			"x micbias1",	"x Mic Jack",
+			"x IN2P",		"x Mic Jack",
+			"x IN2P",		"x Mic Jack",
+			"x DMIC L1",	"x Int Mic",
+			"x DMIC L2",	"x Int Mic",
+			"x DMIC R1",	"x Int Mic",
+			"x DMIC R2",	"x Int Mic",
+			"y Headphone", 	"y OUT",
+			"y IN",		"y Mic";
+
+		nvidia,xbar = <&tegra_axbar>;
+
+		nvidia,dai-link-1 {
+			link-name = "rt5639-playback";
+			cpu-dai = <&tegra_i2s1>;
+			codec-dai = <&rt5639>;
+			cpu-dai-name = "I2S1";
+			codec-dai-name = "rt5639-aif1";
+			format = "i2s";
+			bitclock-slave;
+			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
+			bit-format = "s16_le";
+			bclk_ratio = <0>;
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "x";
+		};
+		nvidia,dai-link-2 {
+			link-name = "spdif-dit-1";
+			cpu-dai = <&tegra_i2s2>;
+			codec-dai = <&spdif_dit1>;
+			cpu-dai-name = "I2S2";
+			codec-dai-name = "dit-hifi";
+			format = "dsp_a";
+			bitclock-slave;
+			frame-slave;
+			bitclock-inversion;
+			frame-inversion;
+			bit-format = "s16_le";
+			bclk_ratio = <4>;
+			srate = <8000>;
+			num-channel = <1>;
+			name-prefix = "y";
+		};
+	};
+
+};
