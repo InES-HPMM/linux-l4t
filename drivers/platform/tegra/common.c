@@ -749,15 +749,15 @@ static void __init tegra_init_power(void)
 	/* powergate xusb partitions by default */
 #ifdef CONFIG_PM_GENERIC_DOMAINS_OF
 	partition_id_xusbb = tegra_pd_get_powergate_id(tegra_xusbb_pd);
-	if (partition_id < 0)
+	if (partition_id_xusbb < 0)
 		return;
 
 	partition_id_xusba = tegra_pd_get_powergate_id(tegra_xusba_pd);
-	if (partition_id < 0)
+	if (partition_id_xusba < 0)
 		return;
 
 	partition_id_xusbc = tegra_pd_get_powergate_id(tegra_xusbc_pd);
-	if (partition_id < 0)
+	if (partition_id_xusbc < 0)
 		return;
 #else
 	partition_id_xusbb = TEGRA_POWERGATE_XUSBB;
