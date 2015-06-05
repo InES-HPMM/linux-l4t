@@ -1,7 +1,7 @@
 /*
  * SPI driver for NVIDIA's Tegra114 SPI Controller.
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -1480,6 +1480,19 @@ static void handle_cpu_based_err_xfer(struct tegra_spi_data *tspi)
 	if (tspi->tx_status ||  tspi->rx_status) {
 		dev_err(tspi->dev, "CpuXfer ERROR bit set 0x%x\n",
 			tspi->status_reg);
+
+		if (tspi->status_reg & SPI_TX_FIFO_UNF)
+			dev_err(tspi->dev, "CpuXfer: TX FIFO UNDERRUN ERROR\n");
+
+		if (tspi->status_reg & SPI_TX_FIFO_OVF)
+			dev_err(tspi->dev, "CpuXfer: TX FIFO OVERFLOW ERROR\n");
+
+		if (tspi->status_reg & SPI_RX_FIFO_UNF)
+			dev_err(tspi->dev, "CpuXfer: RX FIFO UNDERRUN ERROR\n");
+
+		if (tspi->status_reg & SPI_RX_FIFO_OVF)
+			dev_err(tspi->dev, "CpuXfer: RX FIFO OVERFLOW ERROR\n");
+
 		dev_err(tspi->dev, "CpuXfer 0x%08x:0x%08x\n",
 			tspi->command1_reg, tspi->dma_control_reg);
 		tegra_spi_dump_regs(tspi);
@@ -1514,6 +1527,19 @@ static void handle_dma_based_err_xfer(struct tegra_spi_data *tspi)
 	if (err) {
 		dev_err(tspi->dev, "DmaXfer: ERROR bit set 0x%x\n",
 			tspi->status_reg);
+
+		if (tspi->status_reg & SPI_TX_FIFO_UNF)
+			dev_err(tspi->dev, "DmaXfer: TX FIFO UNDERRUN ERROR\n");
+
+		if (tspi->status_reg & SPI_TX_FIFO_OVF)
+			dev_err(tspi->dev, "DmaXfer: TX FIFO OVERFLOW ERROR\n");
+
+		if (tspi->status_reg & SPI_RX_FIFO_UNF)
+			dev_err(tspi->dev, "DmaXfer: RX FIFO UNDERRUN ERROR\n");
+
+		if (tspi->status_reg & SPI_RX_FIFO_OVF)
+			dev_err(tspi->dev, "DmaXfer: RX FIFO OVERFLOW ERROR\n");
+
 		dev_err(tspi->dev, "DmaXfer 0x%08x:0x%08x\n",
 			tspi->command1_reg, tspi->dma_control_reg);
 		tegra_spi_dump_regs(tspi);
