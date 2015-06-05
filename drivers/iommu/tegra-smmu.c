@@ -1992,9 +1992,9 @@ static ssize_t smmu_debugfs_iova2pa_write(struct file *file,
 					  &tegra_smmu_inquired_phys,
 					  &tegra_smmu_inquired_npte);
 
-	pr_info("iova=%pa pa=%pa bytes=%zx npte=%d\n",
-		&tegra_smmu_inquired_iova, &tegra_smmu_inquired_phys,
-		tegra_smmu_inquired_bytes, tegra_smmu_inquired_npte);
+	pr_debug("iova=%pa pa=%pa bytes=%zx npte=%d\n",
+		 &tegra_smmu_inquired_iova, &tegra_smmu_inquired_phys,
+		 tegra_smmu_inquired_bytes, tegra_smmu_inquired_npte);
 
 	return count;
 }
