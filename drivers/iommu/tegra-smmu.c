@@ -1891,6 +1891,7 @@ void smmu_dump_pagetable(int swgid, dma_addr_t fault)
 		size_t bytes;
 		phys_addr_t pa;
 		u32 npte;
+		unsigned long flags;
 		struct smmu_client *c =
 			container_of(n, struct smmu_client, node);
 		struct smmu_as *as;
@@ -1902,7 +1903,10 @@ void smmu_dump_pagetable(int swgid, dma_addr_t fault)
 		if (!as)
 			continue;
 
+
+		spin_lock_irqsave(&as->lock, flags);
 		bytes =	__smmu_iommu_iova_to_phys(as, fault, &pa, &npte);
+		spin_unlock_irqrestore(&as->lock, flags);
 		snprintf(str, sizeof(str),
 			 "fault_address=%pa pa=%pa bytes=%zx #pte=%d in L2\n",
 			 &fault, &pa, bytes, npte);
@@ -1972,6 +1976,7 @@ static ssize_t smmu_debugfs_iova2pa_write(struct file *file,
 					  size_t count, loff_t *pos)
 {
 	int ret;
+	unsigned long flags;
 	struct smmu_as *as = file_inode(file)->i_private;
 	char str[] = "0123456789abcdef";
 
@@ -1987,10 +1992,12 @@ static ssize_t smmu_debugfs_iova2pa_write(struct file *file,
 	if (ret != 1)
 		return -EINVAL;
 
+	spin_lock_irqsave(&as->lock, flags);
 	tegra_smmu_inquired_bytes =
 		__smmu_iommu_iova_to_phys(as, tegra_smmu_inquired_iova,
 					  &tegra_smmu_inquired_phys,
 					  &tegra_smmu_inquired_npte);
+	spin_unlock_irqrestore(&as->lock, flags);
 
 	pr_debug("iova=%pa pa=%pa bytes=%zx npte=%d\n",
 		 &tegra_smmu_inquired_iova, &tegra_smmu_inquired_phys,
