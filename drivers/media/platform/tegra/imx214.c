@@ -501,7 +501,7 @@ static int imx214_power_on(struct imx214_info *info)
 
 	usleep_range(300, 310);
 
-	return 1;
+	return err;
 
 
 imx214_iovdd_fail:
@@ -572,7 +572,7 @@ static int imx214_get_sensor_id(struct imx214_info *info)
 	if (info->sensor_data.fuse_id_size)
 		return 0;
 
-	imx214_power_on(info);
+	err = imx214_power_on(info);
 	if (err)
 		return -ENODEV;
 
@@ -680,6 +680,8 @@ static long imx214_ioctl(struct file *file,
 			err = imx214_power_on(info);
 		else
 			err = imx214_power_off(info);
+		if (err)
+			return -ENODEV;
 		break;
 	case _IOC_NR(IMX214_IOCTL_SET_MODE):
 	{
