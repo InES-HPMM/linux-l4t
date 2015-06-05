@@ -5171,6 +5171,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	}
 
 	if (!tegra->bdata->portmap) {
+		kfree(tegra->bdata->vbus_en_oc);
 		pr_info("%s doesn't have any port enabled\n", __func__);
 		return -ENODEV;
 	}
