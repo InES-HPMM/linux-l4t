@@ -2040,6 +2040,8 @@ static int _regulator_do_disable(struct regulator_dev *rdev)
 		delay = 0;
 	}
 
+	_notifier_call_chain(rdev, REGULATOR_EVENT_PRE_DISABLE, NULL);
+
 	trace_regulator_disable(rdev_get_name(rdev));
 
 	if (rdev->ena_pin) {
