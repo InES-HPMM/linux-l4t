@@ -52,7 +52,26 @@ Optional properties:
 
 * emc-scaling-data node properties.
 
-TBD
+Required properties :
+- emc-cpu-limit-table : array of frequencies to specify EMC and CPU rates
+  relation as described below:
+
+	if F[0] > CPU frequency, then EMC frequency is unrestricted by CPU
+	if F[i+2] > CPU frequency >= F[i], then EMC frequency >= F[i+1],
+	i = 0, ... N-4
+	if CPU frequency >= F[N-2], then EMC frequency >= F[N-1]
+
+	N is array size, must be even
+	i = 0 ... N-1 is 0-based position index within array
+	F[i] value of array cell at index i
+
+   All frequencies are in kHz. CPU frequencies at even positions must be in
+   increasing order. EMC frequencies at odd positions are clipped down to EMC
+   maximum rate.
+
+Optional properties:
+- status : standard DT availability property.
+
 
 Example:
 
@@ -69,4 +88,16 @@ cpufreq {
                         2100000
                 >;
         };
+
+	emc-scaling-data {
+		emc-cpu-limit-table = <
+			/* CPU    EMC */
+			100000  95000
+			200000  185000
+			300000  375000
+			800000  550000
+			1000000 750000
+			1500000	1600000
+		>;
+	};
 };
