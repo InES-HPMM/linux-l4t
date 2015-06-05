@@ -370,6 +370,30 @@ int tegra_pmc_io_dpd_get_status(int reg, int bit_pos)
 }
 EXPORT_SYMBOL(tegra_pmc_io_dpd_get_status);
 
+void tegra_pmc_iopower_enable(int reg, u32 bit_mask)
+{
+	tegra_pmc_register_update(reg, bit_mask, 0);
+}
+EXPORT_SYMBOL(tegra_pmc_iopower_enable);
+
+void  tegra_pmc_iopower_disable(int reg, u32 bit_mask)
+{
+	tegra_pmc_register_update(reg, bit_mask, bit_mask);
+}
+EXPORT_SYMBOL(tegra_pmc_iopower_disable);
+
+int tegra_pmc_iopower_get_status(int reg, u32 bit_mask)
+{
+	unsigned int no_iopower;
+
+	no_iopower = tegra_pmc_readl(reg);
+	if (no_iopower & bit_mask)
+		return 0;
+	else
+		return 1;
+}
+EXPORT_SYMBOL(tegra_pmc_iopower_get_status);
+
 static int tegra_pmc_get_cpu_powerdomain_id(int cpuid)
 {
 	if (cpuid <= 0 || cpuid >= num_possible_cpus())
