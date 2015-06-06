@@ -815,6 +815,13 @@ static int pca953x_remove(struct i2c_client *client)
 	return 0;
 }
 
+static int pca953x_shutdown(struct i2c_client *client) {
+	if (client->irq)
+		disable_irq(client->irq);
+
+	return 0;
+}
+
 static const struct of_device_id pca953x_dt_ids[] = {
 	{ .compatible = "nxp,pca9505", },
 	{ .compatible = "nxp,pca9534", },
@@ -889,6 +896,7 @@ static struct i2c_driver pca953x_driver = {
 	},
 	.probe		= pca953x_probe,
 	.remove		= pca953x_remove,
+	.shutdown	= pca953x_shutdown,
 	.id_table	= pca953x_id,
 };
 
