@@ -2220,10 +2220,13 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
-
+#ifndef CONFIG_MMC_CQ
 	sdhci_runtime_pm_get(host);
+#endif
 	sdhci_do_set_ios(host, ios);
+#ifndef CONFIG_MMC_CQ
 	sdhci_runtime_pm_put(host);
+#endif
 }
 
 static int sdhci_do_get_cd(struct sdhci_host *host)
