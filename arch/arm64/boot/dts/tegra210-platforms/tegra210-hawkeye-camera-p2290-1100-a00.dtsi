@@ -114,6 +114,7 @@
 				cap-external_clock_khz_1 = <0>;
 				cap-clock_multiplier_1 = <0>;
 				cap-hdr-enabled;
+				has-eeprom;
 			};
 			imx132_1: imx132@x_0036 {
 				index = <2>;
