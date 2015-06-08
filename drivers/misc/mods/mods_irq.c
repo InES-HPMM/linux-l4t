@@ -59,7 +59,7 @@ static struct nv_device *get_dev(void)
 
 #ifdef CONFIG_PCI
 static int mods_enable_device(struct mods_file_private_data *priv,
-			      struct pci_dev *pdev)
+				  struct pci_dev *pdev)
 {
 	int ret = -1;
 	struct en_dev_entry *entry = priv->enabled_devices;
@@ -100,7 +100,15 @@ static inline int mods_check_interrupt(struct dev_irq_map *t)
 {
 	if (t->dev_irq_state && t->dev_irq_mask_reg) {
 		/* GPU device */
-		return *t->dev_irq_state && *t->dev_irq_mask_reg;
+		if (t->mask_type == MODS_MASK_TYPE_IRQ_DISABLE64) {
+			mods_debug_printk(DEBUG_ISR,
+				"CHECK_IRQ_64:irq_state:0x%llx irq_mask:0x%llx",
+				*(u64 *)t->dev_irq_state,
+				*(u64 *)t->dev_irq_mask_reg);
+			return *(u64 *)t->dev_irq_state &&
+			    *(u64 *)t->dev_irq_mask_reg;
+		} else
+			return *t->dev_irq_state && *t->dev_irq_mask_reg;
 	} else {
 		/* Non-GPU device - we can't tell */
 		return true;
@@ -110,14 +118,28 @@ static inline int mods_check_interrupt(struct dev_irq_map *t)
 static void mods_disable_interrupts(struct dev_irq_map *t)
 {
 	if (t->dev_irq_mask_reg) {
-		if (t->irq_and_mask == 0) {
-			*t->dev_irq_mask_reg = t->irq_or_mask;
+		mods_debug_printk(DEBUG_ISR, "t->irq_mask=%d ", t->mask_type);
+		if (t->mask_type == MODS_MASK_TYPE_IRQ_DISABLE64) {
+			mods_debug_printk(DEBUG_ISR, "IRQ_DISABLE_64 ");
+			if (t->irq_and_mask == 0) {
+				*(u64 *)t->dev_irq_mask_reg = t->irq_or_mask;
+			} else {
+				*(u64 *)t->dev_irq_mask_reg =
+				(*(u64 *)t->dev_irq_mask_reg & t->irq_and_mask)
+				| t->irq_or_mask;
+			}
 		} else {
-			*t->dev_irq_mask_reg =
+			mods_debug_printk(DEBUG_ISR, "IRQ_DISABLE_32 ");
+			if (t->irq_and_mask == 0) {
+				*t->dev_irq_mask_reg = t->irq_or_mask;
+			} else {
+				*t->dev_irq_mask_reg =
 				(*t->dev_irq_mask_reg & t->irq_and_mask)
 				| t->irq_or_mask;
+			}
 		}
 	} else if (t->type == MODS_IRQ_TYPE_CPU) {
+		mods_debug_printk(DEBUG_ISR, "IRQ_DISABLE_NOSYNC ");
 		disable_irq_nosync(t->apic_irq);
 	}
 }
@@ -274,9 +296,9 @@ static int mods_lookup_irq(unsigned char channel, struct pci_dev *pdev,
 }
 
 static int add_irq_map(unsigned char channel,
-		       struct pci_dev *pdev,
-		       u32 irq,
-		       unsigned int type)
+			   struct pci_dev *pdev,
+			   u32 irq,
+			   unsigned int type)
 {
 	struct dev_irq_map *newmap = NULL;
 	struct mods_priv *pmp = get_all_data();
@@ -327,7 +349,6 @@ static int add_irq_map(unsigned char channel,
 		pci_read_config_word(pdev, PCI_DEVICE_ID, &device_id);
 		if ((class_code == PCI_CLASS_DISPLAY_VGA) ||
 			(class_code == PCI_CLASS_DISPLAY_3D)) {
-
 			if (vendor_id == 0x10DE) {
 				char *bar = ioremap_nocache(
 						pci_resource_start(pdev, 0),
@@ -336,7 +357,7 @@ static int add_irq_map(unsigned char channel,
 				newmap->dev_irq_mask_reg = (u32 *)(bar+0x140);
 				newmap->dev_irq_state    = (u32 *)(bar+0x100);
 				newmap->irq_and_mask	 = 0;
-				newmap->irq_or_mask      = 0;
+				newmap->irq_or_mask	 = 0;
 			}
 		}
 	}
@@ -364,12 +385,12 @@ static int add_irq_map(unsigned char channel,
 		pci_read_config_word(pdev, MSI_CONTROL_REG(cap_pos), &control);
 		if (IS_64BIT_ADDRESS(control))
 			pci_read_config_word(pdev,
-					     MSI_DATA_REG(cap_pos, 1),
-					     &data);
+						 MSI_DATA_REG(cap_pos, 1),
+						 &data);
 		else
 			pci_read_config_word(pdev,
-					     MSI_DATA_REG(cap_pos, 0),
-					     &data);
+						 MSI_DATA_REG(cap_pos, 0),
+						 &data);
 		mods_debug_printk(DEBUG_ISR,
 				"registered MSI IRQ 0x%x with data 0x%02x "
 				"for device %04x:%x:%02x.%x\n",
@@ -476,7 +497,7 @@ unsigned char mods_alloc_channel(void)
 	int i = 0;
 	unsigned char channel = MODS_CHANNEL_MAX + 1;
 	unsigned char max_channels = mods_get_multi_instance()
-				     ? MODS_CHANNEL_MAX : 1;
+					 ? MODS_CHANNEL_MAX : 1;
 
 	LOG_ENT();
 
@@ -566,10 +587,10 @@ static int mods_register_pci_irq(struct file *pfile,
 	if (mods_lookup_irq(0, dev, 0) == IRQ_FOUND) {
 		mods_error_printk(
 		 "IRQ for device %04x:%x:%02x.%x has already been registered\n",
-		    (unsigned)p->dev.domain,
-		    (unsigned)p->dev.bus,
-		    (unsigned)p->dev.device,
-		    (unsigned)p->dev.function);
+			(unsigned)p->dev.domain,
+			(unsigned)p->dev.bus,
+			(unsigned)p->dev.device,
+			(unsigned)p->dev.function);
 		LOG_EXT();
 		return ERROR;
 	}
@@ -609,11 +630,12 @@ static int mods_register_pci_irq(struct file *pfile,
 	if (p->type == MODS_IRQ_TYPE_MSI) {
 		if (0 != pci_enable_msi(dev)) {
 			mods_error_printk(
-			    "unable to enable MSI on device %04x:%x:%02x.%x\n",
-			    (unsigned)p->dev.domain,
-			    (unsigned)p->dev.bus,
-			    (unsigned)p->dev.device,
-			    (unsigned)p->dev.function);
+				"unable to enable MSI on device"
+				" %04x:%x:%02x.%x\n",
+				(unsigned)p->dev.domain,
+				(unsigned)p->dev.bus,
+				(unsigned)p->dev.device,
+				(unsigned)p->dev.function);
 			return ERROR;
 		}
 	}
@@ -692,7 +714,8 @@ static int mods_unregister_pci_irq(struct file *pfile,
 	/* Determine if the interrupt is already hooked by this client */
 	if (mods_lookup_irq(channel, dev, 0) == IRQ_NOT_FOUND) {
 		mods_error_printk(
-			"IRQ for device %04x:%x:%02x.%x not hooked, can't unhook\n",
+			"IRQ for device %04x:%x:%02x.%x not hooked,"
+			" can't unhook\n",
 			(unsigned)p->dev.domain,
 			(unsigned)p->dev.bus,
 			(unsigned)p->dev.device,
@@ -782,7 +805,7 @@ static int mods_unregister_cpu_irq(struct file *pfile,
  *************************/
 
 int esc_mods_register_irq_2(struct file *pfile,
-			    struct MODS_REGISTER_IRQ_2 *p)
+				struct MODS_REGISTER_IRQ_2 *p)
 {
 	if (p->type == MODS_IRQ_TYPE_CPU) {
 		return mods_register_cpu_irq(pfile, p);
@@ -810,7 +833,7 @@ int esc_mods_register_irq(struct file *pfile,
 }
 
 int esc_mods_unregister_irq_2(struct file *pfile,
-			      struct MODS_REGISTER_IRQ_2 *p)
+				  struct MODS_REGISTER_IRQ_2 *p)
 {
 	if (p->type == MODS_IRQ_TYPE_CPU) {
 		return mods_unregister_cpu_irq(pfile, p);
@@ -824,7 +847,7 @@ int esc_mods_unregister_irq_2(struct file *pfile,
 }
 
 int esc_mods_unregister_irq(struct file *pfile,
-			    struct MODS_REGISTER_IRQ *p)
+				struct MODS_REGISTER_IRQ *p)
 {
 	struct MODS_REGISTER_IRQ_2 register_irq = { {0} };
 	register_irq.dev.domain		= 0;
@@ -859,8 +882,8 @@ int esc_mods_query_irq_2(struct file *pfile, struct MODS_QUERY_IRQ_2 *p)
 	/* Fill in return array with IRQ information */
 	q = &pmp->rec_info[channel - 1];
 	for (i = 0;
-	     (q->head != q->tail) && (i < MODS_MAX_IRQS);
-	     q->head++, i++) {
+		 (q->head != q->tail) && (i < MODS_MAX_IRQS);
+		 q->head++, i++) {
 		unsigned int index = q->head & (MODS_MAX_IRQS - 1);
 		struct pci_dev *dev = q->data[index].dev;
 		if (dev) {
@@ -908,7 +931,7 @@ int esc_mods_query_irq_2(struct file *pfile, struct MODS_QUERY_IRQ_2 *p)
 }
 
 int esc_mods_query_irq(struct file *pfile,
-		       struct MODS_QUERY_IRQ *p)
+			   struct MODS_QUERY_IRQ *p)
 {
 	int retval, i;
 	struct MODS_QUERY_IRQ_2 query_irq = { { {0} } };
@@ -918,7 +941,7 @@ int esc_mods_query_irq(struct file *pfile,
 		return retval;
 
 	for (i = 0; i < MODS_MAX_IRQS; i++) {
-		p->irq_list[i].dev.bus	  = query_irq.irq_list[i].dev.bus;
+		p->irq_list[i].dev.bus    = query_irq.irq_list[i].dev.bus;
 		p->irq_list[i].dev.device = query_irq.irq_list[i].dev.device;
 		p->irq_list[i].dev.function
 					  = query_irq.irq_list[i].dev.function;
@@ -929,7 +952,7 @@ int esc_mods_query_irq(struct file *pfile,
 }
 
 int esc_mods_set_irq_mask_2(struct file *pfile,
-			    struct MODS_SET_IRQ_MASK_2 *p)
+				struct MODS_SET_IRQ_MASK_2 *p)
 {
 	struct mods_priv *pmp = get_all_data();
 	unsigned long flags = 0;
@@ -959,19 +982,23 @@ int esc_mods_set_irq_mask_2(struct file *pfile,
 	} else {
 		mods_debug_printk(
 			DEBUG_ISR,
-			"set dev %04x:%x:%02x.%x IRQ mask"
-			"&0x%llx |0x%llx addr=0x%llx\n",
+			"set dev %04x:%x:%02x.%x IRQ mask, irq_type:%d "
+			"mask_type:%d and_mask:0x%llx or_mask:0x%llx "
+			"addr=0x%llx\n",
 			(unsigned)p->dev.domain,
 			(unsigned)p->dev.bus,
 			(unsigned)p->dev.device,
 			(unsigned)p->dev.function,
-			  p->and_mask,
-			  p->or_mask,
-			  p->aperture_addr + p->reg_offset);
+			p->irq_type,
+			p->mask_type,
+			p->and_mask,
+			p->or_mask,
+			p->aperture_addr + p->reg_offset);
 	}
 
 	/* Verify mask type */
-	if (p->mask_type != MODS_MASK_TYPE_IRQ_DISABLE) {
+	if (p->mask_type != MODS_MASK_TYPE_IRQ_DISABLE &&
+		p->mask_type != MODS_MASK_TYPE_IRQ_DISABLE64) {
 		mods_error_printk("invalid mask type\n");
 		LOG_EXT();
 		spin_unlock_irqrestore(&pmp->lock, flags);
@@ -1015,18 +1042,19 @@ int esc_mods_set_irq_mask_2(struct file *pfile,
 					t->dev_irq_mask_reg = 0;
 					t->dev_irq_state = 0;
 					mods_warning_printk(
-						    "resetting IRQ mask\n");
+							"resetting IRQ mask\n");
 				}
 
 				bar = ioremap_nocache(p->aperture_addr,
-						      p->aperture_size);
+							  p->aperture_size);
 				if (bar) {
 					t->dev_irq_aperture = bar;
 					t->dev_irq_mask_reg
-					    = (u32 *)(bar + p->reg_offset);
+						= (u32 *)(bar + p->reg_offset);
 					t->dev_irq_state = 0;
 					t->irq_and_mask = p->and_mask;
 					t->irq_or_mask = p->or_mask;
+					t->mask_type = p->mask_type;
 					ret = OK;
 				} else {
 					mods_error_printk(
@@ -1093,7 +1121,7 @@ int esc_mods_irq_handled_2(struct file *pfile,
 		if (t->apic_irq == irq) {
 			if (t->type != p->type) {
 				mods_error_printk(
-				    "IRQ type does not match registered IRQ\n");
+				"IRQ type doesn't match registered IRQ\n");
 			} else {
 				enable_irq(irq);
 				ret = OK;
@@ -1121,3 +1149,4 @@ int esc_mods_irq_handled(struct file *pfile,
 
 	return esc_mods_irq_handled_2(pfile, &register_irq);
 }
+

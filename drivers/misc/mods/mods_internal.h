@@ -63,6 +63,10 @@ struct mem_type {
 struct mods_file_private_data {
 	struct list_head    *mods_alloc_list;
 	struct list_head    *mods_mapping_list;
+	struct list_head    *mods_pci_res_map_list;
+#if defined(MODS_HAS_SET_PPC_TCE_BYPASS)
+	struct list_head    *mods_ppc_tce_bypass_list;
+#endif
 	wait_queue_head_t    interrupt_event;
 	struct en_dev_entry *enabled_devices;
 	int                  mods_id;
@@ -76,15 +80,30 @@ struct mods_vm_private_data {
 	atomic_t     usage_count;
 };
 
+/* PCI Resource mapping private data*/
+struct MODS_PCI_RES_MAP_INFO {
+	struct pci_dev  *dev;          /* pci_dev the mapping was on */
+	u64              page_count;   /* number of pages for the mapping */
+	u64              va;           /* va address of the mapping */
+	struct list_head list;
+};
+
 struct MODS_PHYS_CHUNK {
 	u64          dma_addr:58; /* phys addr (or machine addr on XEN) */
 	u32          order:5;     /* 1<<order = number of contig pages */
 	int          allocated:1;
-#if defined(CONFIG_PPC64)
-	u64          map_addr;
-		/* pci_map_page() addr on PPC64LE (else same as dma_addr) */
-#endif
 	struct page *p_page;
+};
+
+struct MODS_MAP_CHUNK {
+	struct MODS_PHYS_CHUNK *pt;
+	u64 map_addr;
+};
+
+struct MODS_DMA_MAP {
+	struct pci_dev  *dev;          /* pci_dev to map the page to */
+	struct list_head list;
+	struct MODS_MAP_CHUNK mapping[1];
 };
 
 /* system memory allocation tracking */
@@ -97,10 +116,11 @@ struct MODS_MEM_INFO {
 	u32		 max_chunks;   /* max number of contig chunks */
 	u32		 addr_bits;    /* phys addr size requested */
 	int		 numa_node;    /* numa node for the allocation */
+	struct pci_dev  *dev;  /* backwards compatibility : pci_dev that the
+				* memory was allocated on
+				*/
 
-#if defined(CONFIG_PPC64)
-	struct pci_dev  *dev;          /* pci_dev to map the page to */
-#endif
+	struct list_head *dma_map_list;
 
 	struct list_head list;
 
@@ -135,6 +155,18 @@ void mods_set_highmem4g(int);
 int mods_get_multi_instance(void);
 void mods_set_multi_instance(int);
 int mods_get_mem4goffset(void);
+
+#if defined(MODS_HAS_SET_PPC_TCE_BYPASS)
+void mods_set_ppc_tce_bypass(int bypass);
+int mods_get_ppc_tce_bypass(void);
+
+/* PPC TCE bypass tracking */
+struct PPC_TCE_BYPASS {
+	struct pci_dev *dev;
+	u64 dma_mask;
+	struct list_head   list;
+};
+#endif
 
 #define IRQ_MAX			(256+PCI_IRQ_MAX)
 #define PCI_IRQ_MAX		15
@@ -192,11 +224,12 @@ struct dev_irq_map {
 	void		*dev_irq_aperture;
 	u32		*dev_irq_mask_reg;
 	u32		*dev_irq_state;
-	u32		 irq_and_mask;
-	u32		 irq_or_mask;
+	u64		 irq_and_mask;
+	u64		 irq_or_mask;
 	u32		 apic_irq;
 	u8		 type;
 	u8		 channel;
+	u8		 mask_type;
 	struct pci_dev	*dev;
 	struct list_head list;
 };
@@ -322,6 +355,17 @@ const char *mods_get_prot_str(u32 mem_type);
 int mods_unregister_all_alloc(struct file *fp);
 struct MODS_MEM_INFO *mods_find_alloc(struct file *, u64);
 
+#if defined(MODS_HAS_SET_PPC_TCE_BYPASS)
+int mods_unregister_all_ppc_tce_bypass(struct file *fp);
+#endif
+
+#ifdef CONFIG_PCI
+int mods_unregister_all_pci_res_mappings(struct file *fp);
+#define MODS_UNREGISTER_PCI_MAP(fp) mods_unregister_all_pci_res_mappings(fp)
+#else
+#define MODS_UNREGISTER_PCI_MAP(fp) 0
+#endif
+
 /* clock */
 #ifdef MODS_TEGRA
 void mods_init_clock_api(void);
@@ -342,11 +386,23 @@ int esc_mods_get_phys_addr(struct file *,
 			   struct MODS_GET_PHYSICAL_ADDRESS *);
 int esc_mods_get_mapped_phys_addr(struct file *,
 			  struct MODS_GET_PHYSICAL_ADDRESS *);
+int esc_mods_get_mapped_phys_addr_2(struct file *fp,
+				    struct MODS_GET_PHYSICAL_ADDRESS_2 *p);
 int esc_mods_virtual_to_phys(struct file *,
 			     struct MODS_VIRTUAL_TO_PHYSICAL *);
 int esc_mods_phys_to_virtual(struct file *,
 			     struct MODS_PHYSICAL_TO_VIRTUAL *);
 int esc_mods_memory_barrier(struct file *);
+#if defined(MODS_HAS_SET_PPC_TCE_BYPASS)
+int esc_mods_set_ppc_tce_bypass(struct file *,
+				struct MODS_SET_PPC_TCE_BYPASS *);
+#endif
+
+int esc_mods_dma_map_memory(struct file *,
+			    struct MODS_DMA_MAP_MEMORY *);
+int esc_mods_dma_unmap_memory(struct file *,
+			      struct MODS_DMA_MAP_MEMORY *);
+
 /* acpi */
 #ifdef CONFIG_ACPI
 int esc_mods_eval_acpi_method(struct file *,
@@ -379,12 +435,18 @@ int esc_mods_pci_write(struct file *, struct MODS_PCI_WRITE *);
 int esc_mods_pci_write_2(struct file *, struct MODS_PCI_WRITE_2 *);
 int esc_mods_pci_bus_add_dev(struct file *,
 			     struct MODS_PCI_BUS_ADD_DEVICES *);
+int esc_mods_pci_hot_reset(struct file *,
+			   struct MODS_PCI_HOT_RESET *);
 int esc_mods_pio_read(struct file *, struct MODS_PIO_READ *);
 int esc_mods_pio_write(struct file *, struct MODS_PIO_WRITE  *);
 int esc_mods_device_numa_info(struct file *,
 			      struct MODS_DEVICE_NUMA_INFO  *);
 int esc_mods_device_numa_info_2(struct file *,
 				struct MODS_DEVICE_NUMA_INFO_2  *);
+int esc_mods_pci_map_resource(struct file *,
+			      struct MODS_PCI_MAP_RESOURCE  *);
+int esc_mods_pci_unmap_resource(struct file *,
+				struct MODS_PCI_UNMAP_RESOURCE  *);
 #endif
 /* irq */
 int esc_mods_register_irq(struct file *, struct MODS_REGISTER_IRQ *);

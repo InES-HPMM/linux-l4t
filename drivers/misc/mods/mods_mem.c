@@ -25,11 +25,224 @@
 #include <linux/bigphysarea.h>
 #endif
 
+#if defined(MODS_HAS_SET_DMA_MASK)
+#include <linux/dma-mapping.h>
+#include <linux/of.h>
+#endif
+
 static int mods_post_alloc(struct MODS_PHYS_CHUNK *pt,
 			   u64			   phys_addr,
 			   struct MODS_MEM_INFO   *p_mem_info);
 static void mods_pre_free(struct MODS_PHYS_CHUNK *pt,
 			  struct MODS_MEM_INFO	 *p_mem_info);
+
+/****************************
+ * DMA MAP HELPER FUNCTIONS *
+ ****************************/
+
+/* Unmap a page if it was mapped */
+static void mods_dma_unmap_page(struct MODS_DMA_MAP *p_dma_map,
+				struct MODS_MAP_CHUNK *pm)
+{
+	if (!pm->pt)
+		return;
+
+	pci_unmap_page(p_dma_map->dev,
+		       pm->map_addr,
+		       (1U<<pm->pt->order)*PAGE_SIZE,
+		       DMA_BIDIRECTIONAL);
+
+	mods_debug_printk(DEBUG_MEM_DETAILED,
+		"%s : Unmapped map_addr=0x%llx, dma_addr=0x%llx on device "
+		"%x:%x:%x.%x\n",
+		__func__,
+		(unsigned long long)pm->map_addr,
+		(unsigned long long)pm->pt->dma_addr,
+		pci_domain_nr(p_dma_map->dev->bus),
+		p_dma_map->dev->bus->number,
+		PCI_SLOT(p_dma_map->dev->devfn),
+		PCI_FUNC(p_dma_map->dev->devfn));
+}
+
+/* Unmap and delete the specified DMA mapping */
+static int mods_dma_unmap_and_free(struct MODS_MEM_INFO *p_mem_info,
+				   struct MODS_DMA_MAP *p_del_map)
+
+{
+	struct MODS_DMA_MAP *p_dma_map;
+
+	struct list_head  *head;
+	struct list_head  *iter;
+
+	head = p_mem_info->dma_map_list;
+
+	list_for_each(iter, head) {
+		p_dma_map = list_entry(iter, struct MODS_DMA_MAP, list);
+
+		/* find the mapping to delete and remove it from the list */
+		if (p_del_map == p_dma_map) {
+			list_del(iter);
+
+			/* Safeguard check, all mappings should have a *
+			 * non-null device                             */
+			if (p_dma_map->dev != NULL) {
+				int i;
+
+				for (i = p_mem_info->max_chunks; i > 0; ) {
+					struct MODS_MAP_CHUNK *pm;
+					--i;
+					pm = &p_dma_map->mapping[i];
+					mods_dma_unmap_page(p_dma_map, pm);
+				}
+			}
+
+			kfree(p_dma_map);
+
+			return OK;
+		}
+	}
+
+	mods_error_printk("failed to unmap and free %p\n",
+			  p_del_map);
+	return -EINVAL;
+}
+
+/* Unmap and delete all DMA mappings on the specified allocation */
+int mods_dma_unmap_all(struct MODS_MEM_INFO *p_mem_info,
+		       struct pci_dev *p_pci_dev)
+{
+	struct list_head *head = p_mem_info->dma_map_list;
+	struct list_head *iter;
+	struct list_head *tmp;
+
+	if (!p_mem_info->dma_map_list)
+		return OK;
+
+	list_for_each_safe(iter, tmp, head) {
+		struct MODS_DMA_MAP *p_dma_map;
+		int ret;
+
+		p_dma_map = list_entry(iter, struct MODS_DMA_MAP, list);
+
+		if (!p_pci_dev || (p_dma_map->dev == p_pci_dev)) {
+			ret = mods_dma_unmap_and_free(p_mem_info, p_dma_map);
+			if (ret || p_pci_dev)
+				return ret;
+		}
+	}
+
+	return OK;
+}
+
+/* DMA map all pages in an allocation */
+static void mods_dma_map_pages(struct MODS_MEM_INFO *p_mem_info,
+			       struct MODS_DMA_MAP *p_dma_map)
+{
+	int i;
+
+	for (i = p_mem_info->max_chunks; i > 0; ) {
+		struct MODS_MAP_CHUNK *pm;
+		struct MODS_PHYS_CHUNK *pt;
+		--i;
+		pm = &p_dma_map->mapping[i];
+		pt = &p_mem_info->pages[i];
+		if (!pt->allocated)
+			continue;
+
+		pm->pt = pt;
+		pm->map_addr = pci_map_page(p_dma_map->dev,
+			pt->p_page,
+			0,
+			(1U << pt->order) * PAGE_SIZE,
+			DMA_BIDIRECTIONAL);
+
+		mods_debug_printk(DEBUG_MEM_DETAILED,
+			"%s : Mapped map_addr=0x%llx, dma_addr=0x%llx on device %x:%x:%x.%x\n",
+			__func__,
+			(unsigned long long)pm->map_addr,
+			(unsigned long long)pt->dma_addr,
+			pci_domain_nr(p_dma_map->dev->bus),
+			p_dma_map->dev->bus->number,
+			PCI_SLOT(p_dma_map->dev->devfn),
+			PCI_FUNC(p_dma_map->dev->devfn));
+	}
+}
+
+/* Create a DMA map on the specified allocation for the pci device.  Lazy *
+ * initialize the map list structure if one does not yet exist            */
+static int mods_create_dma_map(struct MODS_MEM_INFO *p_mem_info,
+			       struct pci_dev *p_pci_dev)
+{
+	struct MODS_DMA_MAP *p_dma_map;
+	int list_allocated = 0;
+	u32    alloc_size;
+
+	if (!p_mem_info->dma_map_list) {
+		p_mem_info->dma_map_list = kmalloc(sizeof(struct list_head),
+						   GFP_KERNEL);
+		if (unlikely(!p_mem_info->dma_map_list))
+			return -ENOMEM;
+		INIT_LIST_HEAD(p_mem_info->dma_map_list);
+		list_allocated = 1;
+	}
+
+	alloc_size = sizeof(*p_dma_map) +
+		     (p_mem_info->max_chunks - 1) *
+		     sizeof(struct MODS_MAP_CHUNK);
+
+	p_dma_map = kmalloc(alloc_size, GFP_KERNEL);
+	if (unlikely(!p_dma_map)) {
+		mods_error_printk("failed to allocate device map data\n");
+		if (list_allocated) {
+			kfree(p_mem_info->dma_map_list);
+			p_mem_info->dma_map_list = NULL;
+			return -ENOMEM;
+		}
+	}
+
+	memset(p_dma_map, 0, alloc_size);
+
+	p_dma_map->dev = p_pci_dev;
+	mods_dma_map_pages(p_mem_info, p_dma_map);
+	list_add(&p_dma_map->list, p_mem_info->dma_map_list);
+
+	return OK;
+}
+
+/* Find the dma mapping chunk for the specified memory.  If p_phys_chunk is *
+ * NULL then the first mapped chunk is returned                             */
+static struct MODS_MAP_CHUNK *mods_find_dma_map_chunk(
+					struct MODS_MEM_INFO *p_mem_info,
+					struct pci_dev  *p_pci_dev,
+					struct MODS_PHYS_CHUNK *p_phys_chunk)
+{
+	struct MODS_DMA_MAP *p_dma_map;
+	struct list_head  *head;
+	struct list_head  *iter;
+	int i;
+
+	head = p_mem_info->dma_map_list;
+	if (!head)
+		return NULL;
+
+	list_for_each(iter, head) {
+		p_dma_map = list_entry(iter, struct MODS_DMA_MAP, list);
+		if (p_dma_map->dev == p_pci_dev) {
+
+			if (!p_phys_chunk)
+				return &p_dma_map->mapping[0];
+
+			for (i = p_mem_info->max_chunks; i > 0;) {
+				struct MODS_MAP_CHUNK *pm;
+				--i;
+				pm = &p_dma_map->mapping[i];
+				if (pm->pt == p_phys_chunk)
+					return pm;
+			}
+		}
+	}
+	return NULL;
+}
 
 #if !defined(MODS_TEGRA) || defined(CONFIG_CPA) ||\
 	defined(CONFIG_ARCH_TEGRA_3x_SOC)
@@ -76,13 +289,6 @@ static void mods_free_pages(struct MODS_MEM_INFO *p_mem_info)
 		pt = &p_mem_info->pages[i];
 		if (!pt->allocated)
 			continue;
-
-#if defined(CONFIG_PPC64)
-	if (p_mem_info->dev != NULL) {
-		pci_unmap_page(p_mem_info->dev, pt->map_addr,
-			       (1U<<pt->order)*PAGE_SIZE, DMA_BIDIRECTIONAL);
-	}
-#endif
 
 #ifdef CONFIG_BIGPHYS_AREA
 		if (p_mem_info->alloc_type == MODS_ALLOC_TYPE_BIGPHYS_AREA) {
@@ -154,17 +360,6 @@ static int mods_alloc_contig_sys_pages(struct MODS_MEM_INFO *p_mem_info)
 		return -ENOMEM;
 	}
 	p_mem_info->pages[0].dma_addr = MODS_PHYS_TO_DMA(phys_addr);
-#if defined(CONFIG_PPC64)
-	if (p_mem_info->dev != NULL) {
-		p_mem_info->pages[0].map_addr = pci_map_page(p_mem_info->dev,
-						p_mem_info->pages[0].p_page,
-						0,
-						(1U << order) * PAGE_SIZE,
-						DMA_BIDIRECTIONAL);
-	} else {
-		p_mem_info->pages[0].map_addr = p_mem_info->pages[0].dma_addr;
-	}
-#endif
 
 	mods_debug_printk(DEBUG_MEM,
 	    "alloc contig 0x%lx bytes%s, 2^%u pages, %s, phys 0x%llx\n",
@@ -244,17 +439,6 @@ static int mods_alloc_noncontig_sys_pages(struct MODS_MEM_INFO *p_mem_info)
 			goto failed;
 		}
 		pt->dma_addr = MODS_PHYS_TO_DMA(phys_addr);
-#if defined(CONFIG_PPC64)
-		if (p_mem_info->dev != NULL) {
-			pt->map_addr = pci_map_page(p_mem_info->dev,
-						pt->p_page,
-						0,
-						(1U << pt->order) * PAGE_SIZE,
-						DMA_BIDIRECTIONAL);
-		} else {
-			pt->map_addr = pt->dma_addr;
-		}
-#endif
 		mods_debug_printk(DEBUG_MEM,
 		    "alloc 0x%lx bytes [%u], 2^%u pages, %s, phys 0x%llx\n",
 		    (unsigned long)p_mem_info->length,
@@ -312,6 +496,7 @@ static int mods_unregister_and_free(struct file          *fp,
 
 			mutex_unlock(&private_data->mtx);
 
+			mods_dma_unmap_all(p_mem_info, NULL);
 			mods_restore_cache(p_mem_info);
 			mods_free_pages(p_mem_info);
 
@@ -463,11 +648,12 @@ static struct MODS_PHYS_CHUNK *mods_find_phys_chunk(
 int esc_mods_device_alloc_pages_2(struct file	*fp,
 				  struct MODS_DEVICE_ALLOC_PAGES_2 *p)
 {
-	struct MODS_MEM_INFO *p_mem_info;
+	struct MODS_MEM_INFO *p_mem_info = NULL;
 	u32    num_pages;
 	u32    alloc_size;
 	u32    max_chunks;
 	int    ret = OK;
+	struct pci_dev *dev = NULL;
 
 	LOG_ENT();
 
@@ -488,8 +674,8 @@ int esc_mods_device_alloc_pages_2(struct file	*fp,
 
 	default:
 		mods_error_printk("invalid memory type: %u\n", p->attrib);
-		LOG_EXT();
-		return -EINVAL;
+		ret = -ENOMEM;
+		goto failed;
 	}
 
 	num_pages = (p->num_bytes >> PAGE_SHIFT) +
@@ -505,8 +691,8 @@ int esc_mods_device_alloc_pages_2(struct file	*fp,
 	if (unlikely(!p_mem_info)) {
 		mods_error_printk("failed to allocate auxiliary 0x%x bytes\n",
 				  alloc_size);
-		LOG_EXT();
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto failed;
 	}
 
 	p_mem_info->max_chunks   = max_chunks;
@@ -518,23 +704,21 @@ int esc_mods_device_alloc_pages_2(struct file	*fp,
 	p_mem_info->addr_bits	 = p->address_bits;
 	p_mem_info->num_pages	 = num_pages;
 	p_mem_info->numa_node    = numa_node_id();
-#if defined(CONFIG_PPC64)
-	p_mem_info->dev		 = NULL;
-#endif
+	p_mem_info->dma_map_list = NULL;
+	p_mem_info->dev          = NULL;
 
 	if (p->pci_device.bus || p->pci_device.device) {
 		unsigned int devfn = PCI_DEVFN(p->pci_device.device,
 					       p->pci_device.function);
-		struct pci_dev *dev = MODS_PCI_GET_SLOT(p->pci_device.domain,
-							p->pci_device.bus,
-							devfn);
+		dev = MODS_PCI_GET_SLOT(p->pci_device.domain,
+					p->pci_device.bus,
+					devfn);
 		if (!dev) {
-			LOG_EXT();
-			return -EINVAL;
+			ret = -EINVAL;
+			goto failed;
 		}
-#if defined(CONFIG_PPC64)
+
 		p_mem_info->dev = dev;
-#endif
 #if defined(MODS_HAS_DEV_TO_NUMA_NODE)
 		p_mem_info->numa_node = dev_to_node(&dev->dev);
 #endif
@@ -553,26 +737,42 @@ int esc_mods_device_alloc_pages_2(struct file	*fp,
 			mods_error_printk(
 				"failed to alloc 0x%x contiguous bytes\n",
 				p_mem_info->length);
-			kfree(p_mem_info);
-			LOG_EXT();
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto failed;
 		}
 	} else {
 		if (mods_alloc_noncontig_sys_pages(p_mem_info)) {
 			mods_error_printk(
 			    "failed to alloc 0x%x noncontiguous bytes\n",
 			    p_mem_info->length);
-			kfree(p_mem_info);
-			LOG_EXT();
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto failed;
 		}
 	}
+
+#if defined(CONFIG_PPC64)
+	/* Backwards compatibility : this is normally done through
+	 * MODS_ESC_DMA_MAP_MEMORY
+	 */
+	if (dev && mods_create_dma_map(p_mem_info, dev)) {
+		mods_error_printk("failed to create dma map\n");
+		ret = -ENOMEM;
+		goto failed;
+	}
+#endif
 
 	p->memory_handle = (u64)(size_t)p_mem_info;
 
 	mods_debug_printk(DEBUG_MEM_DETAILED, "alloc %p\n", p_mem_info);
 
 	ret = mods_register_alloc(fp, p_mem_info);
+	LOG_EXT();
+	return ret;
+failed:
+	if (p_mem_info) {
+		kfree(p_mem_info->dma_map_list);
+		kfree(p_mem_info);
+	}
 	LOG_EXT();
 	return ret;
 }
@@ -709,14 +909,44 @@ int esc_mods_get_phys_addr(struct file *fp, struct MODS_GET_PHYSICAL_ADDRESS *p)
 int esc_mods_get_mapped_phys_addr(struct file *fp,
 				  struct MODS_GET_PHYSICAL_ADDRESS *p)
 {
-#if !defined(CONFIG_PPC64)
-	return esc_mods_get_phys_addr(fp, p);
-#else
-	struct MODS_MEM_INFO	*p_mem_info;
-	struct MODS_PHYS_CHUNK	*pt = NULL;
-	u32			chunk_offset;
+	int retval;
+	struct MODS_GET_PHYSICAL_ADDRESS_2 get_mapped_phys_addr_2;
+	struct MODS_MEM_INFO *p_mem_info;
 
 	LOG_ENT();
+
+	memset(&get_mapped_phys_addr_2, 0,
+	       sizeof(struct MODS_GET_PHYSICAL_ADDRESS_2));
+	get_mapped_phys_addr_2.memory_handle	     = p->memory_handle;
+	get_mapped_phys_addr_2.offset	             = p->offset;
+	p_mem_info = (struct MODS_MEM_INFO *)(size_t)p->memory_handle;
+	if (p_mem_info->dev) {
+		get_mapped_phys_addr_2.pci_device.domain   =
+			pci_domain_nr(p_mem_info->dev->bus);
+		get_mapped_phys_addr_2.pci_device.bus	   =
+			p_mem_info->dev->bus->number;
+		get_mapped_phys_addr_2.pci_device.device   =
+			PCI_SLOT(p_mem_info->dev->devfn);
+		get_mapped_phys_addr_2.pci_device.function =
+			PCI_FUNC(p_mem_info->dev->devfn);
+	}
+
+	retval = esc_mods_get_mapped_phys_addr_2(fp, &get_mapped_phys_addr_2);
+	if (!retval)
+		p->physical_address = get_mapped_phys_addr_2.physical_address;
+
+	LOG_EXT();
+	return retval;
+}
+
+int esc_mods_get_mapped_phys_addr_2(struct file *fp,
+				  struct MODS_GET_PHYSICAL_ADDRESS_2 *p)
+{
+	struct pci_dev         *dev = NULL;
+	struct MODS_MEM_INFO   *p_mem_info;
+	struct MODS_PHYS_CHUNK *pt;
+	struct MODS_MAP_CHUNK  *pm;
+	u32			chunk_offset;
 
 	p_mem_info = (struct MODS_MEM_INFO *)(size_t)p->memory_handle;
 	pt = mods_find_phys_chunk(p_mem_info, p->offset, &chunk_offset);
@@ -727,13 +957,36 @@ int esc_mods_get_mapped_phys_addr(struct file *fp,
 		return -EINVAL;
 	}
 
-	p->physical_address = pt->map_addr + chunk_offset;
+	if (p->pci_device.bus || p->pci_device.device) {
+		unsigned int devfn = PCI_DEVFN(p->pci_device.device,
+					       p->pci_device.function);
+		dev = MODS_PCI_GET_SLOT(p->pci_device.domain,
+					p->pci_device.bus,
+					devfn);
+	}
+
+	if (!dev) {
+		mods_debug_printk(DEBUG_MEM_DETAILED,
+				  "get mapped phys: %p+0x%x -> 0x%llx\n",
+				  p_mem_info, p->offset, p->physical_address);
+		p->physical_address = pt->dma_addr + chunk_offset;
+		LOG_EXT();
+		return OK;
+	}
+
+	pm = mods_find_dma_map_chunk(p_mem_info, dev, pt);
+	if (!pm) {
+		mods_error_printk("invalid device mapping requested\n");
+		LOG_EXT();
+		return -EINVAL;
+	}
+
+	p->physical_address = pm->map_addr + chunk_offset;
 	mods_debug_printk(DEBUG_MEM_DETAILED,
 		"get mapped phys: %p+0x%x -> 0x%llx\n",
 		p_mem_info, p->offset, p->physical_address);
 	LOG_EXT();
 	return 0;
-#endif
 }
 
 int esc_mods_virtual_to_phys(struct file *fp,
@@ -895,6 +1148,360 @@ int esc_mods_memory_barrier(struct file *fp)
 {
 	wmb();
 	return OK;
+}
+
+#if defined(MODS_HAS_SET_PPC_TCE_BYPASS)
+static struct PPC_TCE_BYPASS *mods_find_ppc_tce_bypass(struct file *fp,
+						       struct pci_dev *dev)
+{
+	MODS_PRIVATE_DATA(private_data, fp);
+	struct list_head     *plist_head;
+	struct list_head     *plist_iter;
+	struct PPC_TCE_BYPASS    *p_ppc_tce_bypass;
+
+	plist_head = private_data->mods_ppc_tce_bypass_list;
+
+	list_for_each(plist_iter, plist_head) {
+		p_ppc_tce_bypass = list_entry(plist_iter,
+					  struct PPC_TCE_BYPASS,
+					  list);
+		if (dev == p_ppc_tce_bypass->dev)
+			return p_ppc_tce_bypass;
+	}
+
+	/* The device has never had its dma mask changed */
+	return NULL;
+}
+
+static int mods_register_ppc_tce_bypass(struct file    *fp,
+				    struct pci_dev *dev,
+				    u64 original_mask)
+{
+	MODS_PRIVATE_DATA(private_data, fp);
+	struct PPC_TCE_BYPASS *p_ppc_tce_bypass;
+
+	/* only register the first time in order to restore the true actual dma
+	   mask */
+	if (mods_find_ppc_tce_bypass(fp, dev) != NULL) {
+		mods_debug_printk(DEBUG_MEM,
+		    "PPC tce bypass already registered on device %x:%x:%x.%x\n",
+		    pci_domain_nr(dev->bus),
+		    dev->bus->number,
+		    PCI_SLOT(dev->devfn),
+		    PCI_FUNC(dev->devfn));
+		return OK;
+	}
+
+	if (unlikely(mutex_lock_interruptible(&private_data->mtx)))
+		return -EINTR;
+
+	p_ppc_tce_bypass = kmalloc(sizeof(struct PPC_TCE_BYPASS), GFP_KERNEL);
+	if (unlikely(!p_ppc_tce_bypass)) {
+		mods_error_printk("failed to allocate ppc tce bypass struct\n");
+		LOG_EXT();
+		return -ENOMEM;
+	}
+
+	p_ppc_tce_bypass->dev = dev;
+	p_ppc_tce_bypass->dma_mask = original_mask;
+
+	list_add(&p_ppc_tce_bypass->list,
+		 private_data->mods_ppc_tce_bypass_list);
+
+	mods_debug_printk(DEBUG_MEM,
+			"Registered ppc tce bypass on device %x:%x:%x.%x\n",
+			pci_domain_nr(dev->bus),
+			dev->bus->number,
+			PCI_SLOT(dev->devfn),
+			PCI_FUNC(dev->devfn));
+	mutex_unlock(&private_data->mtx);
+	return OK;
+}
+
+static int mods_unregister_ppc_tce_bypass(struct file *fp, struct pci_dev *dev)
+{
+	struct PPC_TCE_BYPASS *p_ppc_tce_bypass;
+	MODS_PRIVATE_DATA(private_data, fp);
+
+	struct list_head  *head = private_data->mods_ppc_tce_bypass_list;
+	struct list_head  *iter;
+
+	LOG_ENT();
+
+	if (unlikely(mutex_lock_interruptible(&private_data->mtx)))
+		return -EINTR;
+
+	list_for_each(iter, head) {
+		p_ppc_tce_bypass =
+			list_entry(iter, struct PPC_TCE_BYPASS, list);
+
+		if (p_ppc_tce_bypass->dev == dev) {
+			int ret = 0;
+
+			list_del(iter);
+
+			mutex_unlock(&private_data->mtx);
+
+			ret = pci_set_dma_mask(p_ppc_tce_bypass->dev,
+					       p_ppc_tce_bypass->dma_mask);
+
+			mods_debug_printk(DEBUG_MEM,
+			    "Restored dma_mask on device %x:%x:%x.%x to %llx\n",
+			    pci_domain_nr(p_ppc_tce_bypass->dev->bus),
+			    p_ppc_tce_bypass->dev->bus->number,
+			    PCI_SLOT(p_ppc_tce_bypass->dev->devfn),
+			    PCI_FUNC(p_ppc_tce_bypass->dev->devfn),
+			    p_ppc_tce_bypass->dma_mask);
+
+			kfree(p_ppc_tce_bypass);
+
+			LOG_EXT();
+			return ret;
+		}
+	}
+
+	mutex_unlock(&private_data->mtx);
+
+	mods_error_printk(
+		"Failed to unregister ppc tce bypass on device %x:%x:%x.%x\n",
+		pci_domain_nr(dev->bus),
+		dev->bus->number,
+		PCI_SLOT(dev->devfn),
+		PCI_FUNC(dev->devfn));
+	LOG_EXT();
+
+	return -EINVAL;
+
+}
+
+int mods_unregister_all_ppc_tce_bypass(struct file *fp)
+{
+	MODS_PRIVATE_DATA(private_data, fp);
+	struct list_head *head = private_data->mods_ppc_tce_bypass_list;
+	struct list_head *iter;
+	struct list_head *tmp;
+
+	list_for_each_safe(iter, tmp, head) {
+		struct PPC_TCE_BYPASS *p_ppc_tce_bypass;
+		int ret;
+
+		p_ppc_tce_bypass =
+			list_entry(iter, struct PPC_TCE_BYPASS, list);
+		ret = mods_unregister_ppc_tce_bypass(fp, p_ppc_tce_bypass->dev);
+		if (ret)
+			return ret;
+	}
+
+	return OK;
+}
+
+int esc_mods_set_ppc_tce_bypass(struct file *fp,
+			    struct MODS_SET_PPC_TCE_BYPASS *p)
+{
+	int ret = OK;
+	dma_addr_t dma_addr;
+	unsigned int devfn = PCI_DEVFN(p->pci_device.device,
+				       p->pci_device.function);
+	struct pci_dev *dev = MODS_PCI_GET_SLOT(p->pci_device.domain,
+						p->pci_device.bus,
+						devfn);
+	u64 original_dma_mask;
+	u32 bypass_mode = p->mode;
+	u32 cur_bypass_mode = MODS_PPC_TCE_BYPASS_OFF;
+
+	LOG_ENT();
+
+	if (!dev) {
+		mods_error_printk(
+		 "PCI device not found %x:%x:%x.%x\n",
+		 p->pci_device.domain,
+		 p->pci_device.bus,
+		 p->pci_device.device,
+		 p->pci_device.function);
+	    LOG_EXT();
+	    return -EINVAL;
+	}
+
+	original_dma_mask = dev->dma_mask;
+
+	if (bypass_mode == MODS_PPC_TCE_BYPASS_DEFAULT)
+		bypass_mode = mods_get_ppc_tce_bypass();
+
+	if (original_dma_mask == DMA_BIT_MASK(64))
+		cur_bypass_mode = MODS_PPC_TCE_BYPASS_ON;
+
+	if ((bypass_mode != MODS_PPC_TCE_BYPASS_DEFAULT) &&
+	    (cur_bypass_mode != bypass_mode)) {
+		struct pci_controller *host;
+		u64 dma_mask = DMA_BIT_MASK(64);
+
+		/* Set DMA mask appropriately here */
+		if (bypass_mode == MODS_PPC_TCE_BYPASS_OFF)
+			dma_mask = p->device_dma_mask;
+
+		/*
+		 * IBM's Power platform, by default, only allows adapters to
+		 * reserve a maximum of 2GB of DMA address space. To request
+		 * more, they provide an "IODA2" mechanism to signal that the
+		 * adapter will need more than this.
+		 *
+		 * We first need to check if the platform supports this
+		 * mechanism, and, if it does, perform a trial DMA mapping to
+		 * derive the DMA base address.
+		 */
+		host = pci_bus_to_host(dev->bus);
+		if ((host == NULL) || (host->dn == NULL) ||
+		    !of_device_is_compatible(host->dn, "ibm,ioda2-phb")) {
+			mods_error_printk(
+				"Host device not found or PPC TCE bypass not "
+				"supported\n");
+			LOG_EXT();
+			return -EINVAL;
+		}
+
+		if (pci_set_dma_mask(dev, dma_mask) != 0) {
+			mods_error_printk(
+			  "pci_set_dma_mask failed on device %x:%x:%x.%x\n",
+			  p->pci_device.domain,
+			  p->pci_device.bus,
+			  p->pci_device.device,
+			  p->pci_device.function);
+			LOG_EXT();
+			return -EINVAL;
+		}
+
+		mods_debug_printk(DEBUG_MEM,
+			"%s ppc tce bypass on device %x:%x:%x.%x with dma mask "
+			"0x%llx\n",
+			(dma_mask == DMA_BIT_MASK(64)) ? "Enabled" : "Disabled",
+			p->pci_device.domain,
+			p->pci_device.bus,
+			p->pci_device.device,
+			p->pci_device.function,
+			dma_mask);
+	}
+
+	dma_addr = pci_map_single(dev, NULL, 1, DMA_BIDIRECTIONAL);
+	if (pci_dma_mapping_error(dev, dma_addr)) {
+		pci_set_dma_mask(dev, original_dma_mask);
+		mods_error_printk(
+			"pci_map_single failed on device %x:%x:%x.%x\n",
+			p->pci_device.domain,
+			p->pci_device.bus,
+			p->pci_device.device,
+			p->pci_device.function);
+		LOG_EXT();
+		return -EINVAL;
+	}
+	pci_unmap_single(dev, dma_addr, 1, DMA_BIDIRECTIONAL);
+
+	/*
+	 * From IBM: "For IODA2, native DMA bypass or KVM TCE-based
+	 * implementation of full 64-bit DMA support will establish a window in
+	 * address-space with the high 14 bits being constant and the bottom
+	 * up-to-50 bits varying with the mapping."
+	 *
+	 * Unfortunately, we don't have any good interfaces or definitions from
+	 * the kernel to get information about the DMA offset assigned by OS.
+	 * However, we have been told that the offset will be defined by the top
+	 * 14 bits of the address, and bits 40-49 will not vary for any DMA
+	 * mappings until 1TB of system memory is surpassed; this limitation is
+	 * essential for us to function properly since our current GPUs only
+	 * support 40 physical address bits. We are in a fragile place where we
+	 * need to tell the OS that we're capable of 64-bit addressing, while
+	 * relying on the assumption that the top 24 bits will not vary in this
+	 * case.
+	 *
+	 * The way we try to compute the window, then, is mask the trial mapping
+	 * against the DMA capabilities of the device. That way, devices with
+	 * greater addressing capabilities will only take the bits it needs to
+	 * define the window.
+	 */
+	p->dma_base_address = dma_addr & ~(p->device_dma_mask);
+
+	mods_debug_printk(DEBUG_MEM,
+		"dma base addres 0x%0llx on device %x:%x:%x.%x\n",
+		p->dma_base_address,
+		p->pci_device.domain,
+			p->pci_device.bus,
+			p->pci_device.device,
+			p->pci_device.function);
+
+	if (original_dma_mask != dev->dma_mask)
+		ret = mods_register_ppc_tce_bypass(fp, dev, original_dma_mask);
+
+	LOG_EXT();
+	return ret;
+}
+#endif
+
+int esc_mods_dma_map_memory(struct file *fp,
+			    struct MODS_DMA_MAP_MEMORY *p)
+{
+	struct MODS_MEM_INFO	*p_mem_info;
+	struct MODS_MAP_CHUNK   *p_map_chunk;
+	struct pci_dev          *p_pci_dev;
+	unsigned int devfn = PCI_DEVFN(p->pci_device.device,
+				       p->pci_device.function);
+
+	LOG_ENT();
+
+	p_mem_info = (struct MODS_MEM_INFO *)(size_t)p->memory_handle;
+	p_pci_dev = MODS_PCI_GET_SLOT(p->pci_device.domain,
+				p->pci_device.bus,
+				devfn);
+
+	if (!p_pci_dev) {
+		mods_error_printk("pci device not found\n");
+		return -EINVAL;
+	}
+
+	p_map_chunk = mods_find_dma_map_chunk(p_mem_info, p_pci_dev, NULL);
+	if (p_map_chunk) {
+		mods_debug_printk(DEBUG_MEM_DETAILED,
+			"memory %p already mapped to device %x:%x:%x.%x\n",
+			p_mem_info,
+			p->pci_device.domain,
+				p->pci_device.bus,
+				p->pci_device.device,
+				p->pci_device.function);
+		LOG_EXT();
+		return 0;
+	}
+
+	if (mods_create_dma_map(p_mem_info, p_pci_dev)) {
+		mods_error_printk("failed to create dma map\n");
+		return -ENOMEM;
+	}
+
+	LOG_EXT();
+	return 0;
+}
+
+int esc_mods_dma_unmap_memory(struct file *fp,
+			      struct MODS_DMA_MAP_MEMORY *p)
+{
+	struct MODS_MEM_INFO	*p_mem_info;
+	struct pci_dev          *p_pci_dev;
+	unsigned int devfn = PCI_DEVFN(p->pci_device.device,
+				       p->pci_device.function);
+	int ret;
+
+	LOG_ENT();
+
+	p_mem_info = (struct MODS_MEM_INFO *)(size_t)p->memory_handle;
+	p_pci_dev = MODS_PCI_GET_SLOT(p->pci_device.domain,
+				p->pci_device.bus,
+				devfn);
+
+	if (!p_pci_dev) {
+		mods_error_printk("pci device not found\n");
+		return -EINVAL;
+	}
+
+	ret = mods_dma_unmap_all(p_mem_info, p_pci_dev);
+	LOG_EXT();
+	return ret;
 }
 
 #ifdef MODS_TEGRA

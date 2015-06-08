@@ -24,7 +24,7 @@
 
 /* Driver version */
 #define MODS_DRIVER_VERSION_MAJOR 3
-#define MODS_DRIVER_VERSION_MINOR 57
+#define MODS_DRIVER_VERSION_MINOR 62
 #define MODS_DRIVER_VERSION ((MODS_DRIVER_VERSION_MAJOR << 8) | \
 			     ((MODS_DRIVER_VERSION_MINOR/10) << 4) | \
 			     (MODS_DRIVER_VERSION_MINOR%10))
@@ -46,6 +46,21 @@ struct mods_pci_dev {
 	__u16 bus;
 	__u8  device;
 	__u8  function;
+};
+
+/* MODS_ESC_SET_PPC_TCE_BYPASS */
+#define MODS_PPC_TCE_BYPASS_DEFAULT  0
+#define MODS_PPC_TCE_BYPASS_ON       1
+#define MODS_PPC_TCE_BYPASS_OFF      2
+struct MODS_SET_PPC_TCE_BYPASS {
+	/* IN */
+	__u8                  mode;
+	__u8                  _dummy_align[7];
+	struct mods_pci_dev_2 pci_device;
+	__u64	              device_dma_mask;
+
+	/* OUT */
+	__u64	              dma_base_address;
 };
 
 /* MODS_ESC_ALLOC_PAGES */
@@ -102,6 +117,17 @@ struct MODS_GET_PHYSICAL_ADDRESS {
 	__u64	physical_address;
 };
 
+/* MODS_ESC_GET_PHYSICAL_ADDRESS */
+struct MODS_GET_PHYSICAL_ADDRESS_2 {
+	/* IN */
+	__u64                 memory_handle;
+	__u32	              offset;
+	struct mods_pci_dev_2 pci_device;
+
+	/* OUT */
+	__u64                 physical_address;
+};
+
 /* MODS_ESC_VIRTUAL_TO_PHYSICAL */
 struct MODS_VIRTUAL_TO_PHYSICAL {
 	/* IN */
@@ -130,6 +156,13 @@ struct MODS_FLUSH_CPU_CACHE_RANGE {
 	__u64 virt_addr_start;
 	__u64 virt_addr_end;
 	__u32 flags;
+};
+
+/* MODS_ESC_DMA_MAP_MEMORY */
+struct MODS_DMA_MAP_MEMORY {
+	/* IN */
+	__u64                 memory_handle;
+	struct mods_pci_dev_2 pci_device;
 };
 
 /* MODS_ESC_FIND_PCI_DEVICE_2 */
@@ -262,10 +295,35 @@ struct MODS_PCI_WRITE {
 	__u32	data_size;
 };
 
+/* MODS_ESC_PCI_HOT_RESET */
+struct MODS_PCI_HOT_RESET {
+	/* IN */
+	struct mods_pci_dev_2 pci_device;
+};
+
 /* MODS_ESC_PCI_BUS_ADD_DEVICES*/
 struct MODS_PCI_BUS_ADD_DEVICES {
 	/* IN */
 	__u32	 bus;
+};
+
+/* MODS_ESC_PCI_MAP_RESOURCE */
+struct MODS_PCI_MAP_RESOURCE {
+	/* IN */
+	struct mods_pci_dev_2 local_pci_device;
+	struct mods_pci_dev_2 remote_pci_device;
+	__u32                 resource_index;
+	__u64                 page_count;
+
+	/* IN/OUT */
+	__u64                 va;
+};
+
+/* MODS_ESC_PCI_UNMAP_RESOURCE */
+struct MODS_PCI_UNMAP_RESOURCE {
+	/* IN */
+	struct mods_pci_dev_2 pci_device;
+	__u64                 va;
 };
 
 /* MODS_ESC_PIO_READ */
@@ -403,7 +461,8 @@ struct MODS_SET_IRQ_MASK {
 	__u8		    mask_type;	   /* mask type */
 };
 
-#define MODS_MASK_TYPE_IRQ_DISABLE 0
+#define MODS_MASK_TYPE_IRQ_DISABLE      0
+#define MODS_MASK_TYPE_IRQ_DISABLE64    1
 
 #define ACPI_MODS_TYPE_INTEGER		1
 #define ACPI_MODS_TYPE_BUFFER		2
@@ -668,6 +727,19 @@ struct MODS_ADSP_RUN_APP_INFO {
 	__u32 timeout;
 };
 
+/* MODS_ESC_GET_SCREEN_INFO */
+struct MODS_SCREEN_INFO {
+	/* OUT */
+	__u8 orig_video_mode;
+	__u8  orig_video_isVGA;
+	__u16 lfb_width;
+	__u16 lfb_height;
+	__u16 lfb_depth;
+	__u32 lfb_base;
+	__u32 lfb_size;
+	__u16 lfb_linelength;
+};
+
 #pragma pack(pop)
 
 /* ************************************************************************* */
@@ -823,5 +895,22 @@ struct MODS_ADSP_RUN_APP_INFO {
 		   _IOWR(MODS_IOC_MAGIC, 70, struct MODS_DEVICE_NUMA_INFO_2)
 #define MODS_ESC_ACPI_GET_DDC_2			\
 		   _IOWR(MODS_IOC_MAGIC, 71, struct MODS_ACPI_GET_DDC_2)
+#define MODS_ESC_GET_SCREEN_INFO			\
+		    _IOR(MODS_IOC_MAGIC, 72, struct MODS_SCREEN_INFO)
+#define MODS_ESC_PCI_HOT_RESET			\
+		    _IOW(MODS_IOC_MAGIC, 73, struct MODS_PCI_HOT_RESET)
+#define MODS_ESC_SET_PPC_TCE_BYPASS			\
+		    _IOWR(MODS_IOC_MAGIC, 74, struct MODS_SET_PPC_TCE_BYPASS)
+#define MODS_ESC_DMA_MAP_MEMORY			\
+		    _IOW(MODS_IOC_MAGIC, 75, struct MODS_DMA_MAP_MEMORY)
+#define MODS_ESC_DMA_UNMAP_MEMORY			\
+		    _IOW(MODS_IOC_MAGIC, 76, struct MODS_DMA_MAP_MEMORY)
+#define MODS_ESC_GET_MAPPED_PHYSICAL_ADDRESS_2			\
+		    _IOWR(MODS_IOC_MAGIC, 77,                   \
+			  struct MODS_GET_PHYSICAL_ADDRESS_2)
+#define MODS_ESC_PCI_MAP_RESOURCE			\
+		    _IOWR(MODS_IOC_MAGIC, 78, struct MODS_PCI_MAP_RESOURCE)
+#define MODS_ESC_PCI_UNMAP_RESOURCE			\
+		    _IOW(MODS_IOC_MAGIC, 79, struct MODS_PCI_UNMAP_RESOURCE)
 
 #endif /* _MODS_H_  */
