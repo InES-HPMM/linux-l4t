@@ -304,6 +304,7 @@
 			nvidia,sor1-output-type ="dp";
 			dp-display {
 				nvidia,lanes = <2>;
+				nvidia,is_ext_dp_panel = <1>;
 			};
 		};
 		dpaux1 {
