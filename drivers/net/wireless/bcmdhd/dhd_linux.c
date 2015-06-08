@@ -7077,7 +7077,11 @@ dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata,
 
 #ifdef WL_CFG80211
 	ASSERT(dhd->iflist[*ifidx] != NULL);
+	if (dhd->iflist[*ifidx] == NULL)
+		return BCME_BADARG;
 	ASSERT(dhd->iflist[*ifidx]->net != NULL);
+	if (dhd->iflist[*ifidx]->net == NULL)
+		return BCME_BADARG;
 	if (dhd->iflist[*ifidx]->net)
 		wl_cfg80211_event(dhd->iflist[*ifidx]->net, event, *data);
 #endif /* defined(WL_CFG80211) */
