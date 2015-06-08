@@ -1237,4 +1237,14 @@
 		device-method = <0x1 0x00000002>;  /* type (0x1 = ioctl), argument */
 		status = "okay";
         };
+
+	i2c@7000d000 {
+		clock-frequency = <1000000>;
+	};
+
+	dfll-max77621@70110000 {
+		dfll-max77621-integration {
+			i2c-fs-rate = <1000000>;
+		};
+	};
 };
