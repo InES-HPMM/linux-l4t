@@ -136,7 +136,7 @@ int wl_cfg80211_register_if(struct bcm_cfg80211 *cfg, int ifidx, struct net_devi
 
 int wl_cfg80211_remove_if(struct bcm_cfg80211 *cfg, int ifidx, struct net_device* ndev)
 {
-	return dhd_cfg_remove_if(cfg->pub, ifidx, FALSE);
+	return dhd_remove_if(cfg->pub, ifidx, FALSE);
 }
 
 struct net_device * dhd_cfg80211_netdev_free(struct net_device *ndev)
