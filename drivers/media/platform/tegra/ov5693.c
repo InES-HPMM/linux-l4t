@@ -2664,7 +2664,7 @@ static int ov5693_platform_power_on(struct ov5693_power_rail *pw)
 	ov5693_gpio_pwrdn(info, 1);
 	ov5693_gpio_reset(info, 1);
 
-	usleep_range(300, 310);
+	usleep_range(1000, 1110);
 
 	return 0;
 
