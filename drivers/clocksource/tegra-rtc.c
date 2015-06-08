@@ -1,7 +1,7 @@
 /*
  * drivers/clocksource/tegra210_timer.c
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -29,6 +29,7 @@
 #include <linux/tegra-timer.h>
 #include <linux/tick.h>
 #include <linux/rtc.h>
+#include <trace/events/nvpower.h>
 #include <asm/mach/time.h>
 
 static void __iomem *rtc_base;
@@ -143,8 +144,8 @@ static void tegra_rtc_set_alarm(unsigned int period)
 	target = sec + period;
 	writel(target, rtc_base + TEGRA_RTC_REG_SECONDS_ALARM0);
 
-	trace_printk("%s: now %lu, target %lu\n", __func__,
-			sec * MSEC_PER_SEC + msec, target * MSEC_PER_SEC);
+	trace_tegra_rtc_set_alarm(sec * MSEC_PER_SEC + msec,
+			target * MSEC_PER_SEC);
 	pr_info("%s: alarm set to fire after %u sec\n", __func__, period);
 
 	tegra_rtc_sec_alarm0_irq_enable(1);
@@ -195,9 +196,12 @@ static int tegra_rtc_alarm_irq_enable(unsigned int enable)
 
 	return 0;
 }
+
 void tegra_rtc_set_trigger(unsigned long cycles)
 {
 	unsigned long msec;
+	unsigned long now;
+	unsigned long tgt;
 
 	/* Convert to msec */
 	msec = cycles / 1000;
@@ -206,8 +210,12 @@ void tegra_rtc_set_trigger(unsigned long cycles)
 		msec = 0x80000000 | (0x0fffffff & msec);
 
 	tegra_rtc_wait_while_busy();
+	now = readl(rtc_base + TEGRA_RTC_REG_MILLI_SECONDS);
+	now += readl(rtc_base + TEGRA_RTC_REG_SHADOW_SECONDS) * MSEC_PER_SEC;
+	tgt = now + cycles / 1000;
 
 	writel(msec, rtc_base + TEGRA_RTC_REG_MSEC_CDN_ALARM0);
+	trace_tegra_rtc_set_alarm(now, tgt);
 
 	tegra_rtc_wait_while_busy();
 
