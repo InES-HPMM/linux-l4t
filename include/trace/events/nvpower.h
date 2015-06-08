@@ -126,6 +126,25 @@ TRACE_EVENT(nvmc_clk_stop,
 		  (unsigned long)__entry->state)
 );
 
+TRACE_EVENT(tegra_rtc_set_alarm,
+
+	TP_PROTO(unsigned long now, unsigned long target),
+
+	TP_ARGS(now, target),
+
+	TP_STRUCT__entry(
+		__field(unsigned long, now)
+		__field(unsigned long, target)
+	),
+
+	TP_fast_assign(
+		__entry->now = now;
+		__entry->target = target;
+	),
+
+	TP_printk("now %lu, target %lu\n", __entry->now, __entry->target)
+);
+
 #define trace_nvcpu_clusterswitch(state, cluster_now, cluster_tgt)	\
 	do {								\
 		if (is_idle_task(current))				\
