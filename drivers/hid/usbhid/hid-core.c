@@ -1210,6 +1210,8 @@ static int usbhid_start(struct hid_device *hid)
 				USB_INTERFACE_PROTOCOL_MOUSE)
 		usb_disable_autosuspend(dev);
 #endif
+		/* Disabling the auto-suspend for all Hid devices  */
+		usb_disable_autosuspend(dev);
 	return 0;
 
 fail:
