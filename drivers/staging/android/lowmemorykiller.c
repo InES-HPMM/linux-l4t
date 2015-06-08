@@ -126,6 +126,7 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	rcu_read_lock();
 
 	trace_lowmem_utilization("Start process selected");
+	trace_lowmem_oom_threshold(min_score_adj);
 
 	for_each_process(tsk) {
 		struct task_struct *p;
@@ -142,6 +143,9 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		    time_before_eq(jiffies, lowmem_deathpending_timeout)) {
 			task_unlock(p);
 			rcu_read_unlock();
+			trace_lowmem_task_wait_timeout(p->comm, p->pid,
+					p->signal->oom_score_adj,
+					get_mm_rss(p->mm));
 			trace_lowmem_utilization("Stop process selected, " \
 					"wait timeout");
 			return 0;
@@ -193,10 +197,9 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		trace_lowmem_task_selected(selected->comm,
 				selected->pid, selected_oom_score_adj,
 				selected_tasksize);
+		trace_lowmem_utilization("Process is selected to kill");
 	} else
 		trace_lowmem_utilization("No process is killed");
-
-	trace_lowmem_utilization("Process is selected to kill");
 
 	lowmem_print(4, "lowmem_shrink %lu, %x, return %d\n",
 		     sc->nr_to_scan, sc->gfp_mask, rem);
