@@ -64,8 +64,6 @@ struct camera_common_power_rail {
 	struct regulator *dvdd;
 	struct regulator *avdd;
 	struct regulator *iovdd;
-	struct regulator *ext_reg1;
-	struct regulator *ext_reg2;
 	struct clk *mclk;
 	unsigned int pwdn_gpio;
 	unsigned int reset_gpio;

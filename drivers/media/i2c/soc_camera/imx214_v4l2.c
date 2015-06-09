@@ -70,7 +70,6 @@ static struct tegra_io_dpd csib_io = {
 };
 
 struct imx214 {
-	struct mutex			imx214_camera_lock;
 	struct camera_common_power_rail	power;
 	int				num_ctrls;
 	struct v4l2_ctrl_handler	ctrl_handler;
@@ -300,16 +299,6 @@ static int imx214_power_on(struct camera_common_data *s_data)
 		return err;
 	}
 
-	if (pw->ext_reg1)
-		err = regulator_enable(pw->ext_reg1);
-	if (unlikely(err))
-		goto imx214_ext_reg1_fail;
-
-	if (pw->ext_reg2)
-		err = regulator_enable(pw->ext_reg2);
-	if (unlikely(err))
-		goto imx214_ext_reg2_fail;
-
 	if (pw->reset_gpio)
 		gpio_set_value(pw->reset_gpio, 0);
 	if (pw->af_gpio)
@@ -343,16 +332,9 @@ imx214_iovdd_fail:
 	regulator_disable(pw->avdd);
 
 imx214_avdd_fail:
-	if (pw->ext_reg2)
-		regulator_disable(pw->ext_reg2);
-
-imx214_ext_reg2_fail:
-	if (pw->ext_reg1)
-		regulator_disable(pw->ext_reg1);
 	if (pw->af_gpio)
 		gpio_set_value(pw->af_gpio, 0);
 
-imx214_ext_reg1_fail:
 	tegra_io_dpd_enable(&csia_io);
 	tegra_io_dpd_enable(&csib_io);
 
@@ -392,11 +374,6 @@ static int imx214_power_off(struct camera_common_data *s_data)
 	if (pw->avdd)
 		regulator_disable(pw->avdd);
 
-	if (pw->ext_reg1)
-		regulator_disable(pw->ext_reg1);
-	if (pw->ext_reg2)
-		regulator_disable(pw->ext_reg2);
-
 power_off_done:
 	/* put CSIA/B IOs into DPD mode to save additional power for ardbeg */
 	tegra_io_dpd_enable(&csia_io);
@@ -421,45 +398,9 @@ static int imx214_power_put(struct imx214 *priv)
 	if (likely(pw->dvdd))
 		regulator_put(pw->dvdd);
 
-	if (likely(pw->ext_reg1))
-		regulator_put(pw->ext_reg1);
-
-	if (likely(pw->ext_reg2))
-		regulator_put(pw->ext_reg2);
-
 	pw->avdd = NULL;
 	pw->iovdd = NULL;
 	pw->dvdd = NULL;
-	pw->ext_reg1 = NULL;
-	pw->ext_reg2 = NULL;
-
-	return 0;
-}
-
-static int imx214_get_extra_regulators(struct imx214 *priv,
-				struct camera_common_power_rail *pw)
-{
-	if (!pw->ext_reg1) {
-		pw->ext_reg1 = devm_regulator_get(&priv->i2c_client->dev,
-						"imx214_reg1");
-		if (WARN_ON(IS_ERR(pw->ext_reg1))) {
-			pr_err("%s: can't get regulator imx214_reg1: %ld\n",
-				__func__, PTR_ERR(pw->ext_reg1));
-			pw->ext_reg1 = NULL;
-			return -ENODEV;
-		}
-	}
-
-	if (!pw->ext_reg2) {
-		pw->ext_reg2 = devm_regulator_get(&priv->i2c_client->dev,
-						"imx214_reg2");
-		if (WARN_ON(IS_ERR(pw->ext_reg2))) {
-			pr_err("%s: can't get regulator imx214_reg2: %ld\n",
-				__func__, PTR_ERR(pw->ext_reg2));
-			pw->ext_reg2 = NULL;
-			return -ENODEV;
-		}
-	}
 
 	return 0;
 }
@@ -489,9 +430,6 @@ static int imx214_power_get(struct imx214 *priv)
 	/* IO 1.8v */
 	err |= camera_common_regulator_get(priv->i2c_client,
 			&pw->iovdd, pdata->regulators.iovdd);
-
-	if (pdata->ext_reg)
-		err |= imx214_get_extra_regulators(priv, pw);
 
 	if (!err) {
 		pw->reset_gpio = pdata->reset_gpio;
@@ -1138,8 +1076,6 @@ static struct camera_common_pdata *imx214_parse_dt(struct i2c_client *client)
 	board_priv_pdata->pwdn_gpio = of_get_named_gpio(np, "pwdn-gpios", 0);
 	board_priv_pdata->reset_gpio = of_get_named_gpio(np, "reset-gpios", 0);
 	board_priv_pdata->af_gpio = of_get_named_gpio(np, "af-gpios", 0);
-
-	board_priv_pdata->ext_reg = of_property_read_bool(np, "nvidia,ext_reg");
 
 	of_property_read_string(np, "avdd-reg",
 			&board_priv_pdata->regulators.avdd);
