@@ -39,6 +39,22 @@
 #define MPHY_TX_APB_TX_VENDOR0_0	0x100
 #define MPHY_ADDR_RANGE		400
 
+
+/* vendor specific pre-defined parameters */
+
+/*
+ * HCLKFrequency in MHz.
+ * HCLKDIV is used to generate 1usec tick signal used by Unipro.
+ */
+#define UFS_VNDR_HCLKDIV_1US_TICK	0x33
+
+
+/*UFS host controller vendor specific registers */
+enum {
+	REG_UFS_VNDR_HCLKDIV	= 0xFC,
+};
+
+
 struct ufs_tegra_host {
 	struct ufs_hba *hba;
 	bool is_lane_clks_enabled;

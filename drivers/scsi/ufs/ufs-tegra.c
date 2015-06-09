@@ -263,6 +263,17 @@ out:
 	return ret;
 }
 
+
+/**
+ * ufs_tegra_cfg_vendor_registers
+ * @hba: host controller instance
+ */
+static void ufs_tegra_cfg_vendor_registers(struct ufs_hba *hba)
+{
+	ufshcd_writel(hba, UFS_VNDR_HCLKDIV_1US_TICK, REG_UFS_VNDR_HCLKDIV);
+}
+
+
 /**
  * ufs_tegra_init - bind phy with controller
  * @hba: host controller instance
@@ -280,6 +291,8 @@ static int ufs_tegra_init(struct ufs_hba *hba)
 	struct device *dev = hba->dev;
 #endif
 	int err = 0;
+
+	ufs_tegra_cfg_vendor_registers(hba);
 #if UFS_TEGRA_ENABLE_MPHY
 	ufs_tegra->mphy_l0_base = devm_ioremap(dev,
 				NV_ADDRESS_MAP_MPHY_L0_BASE, MPHY_ADDR_RANGE);
@@ -292,7 +305,6 @@ static int ufs_tegra_init(struct ufs_hba *hba)
 
 static void ufs_tegra_exit(struct ufs_hba *hba)
 {
-
 }
 
 /**
