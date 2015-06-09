@@ -48,6 +48,8 @@
 #include <linux/platform/tegra/flowctrl.h>
 #include "cpuidle-tegra210.h"
 
+#define MRQ_CPU_FROZEN	13
+
 static const char *driver_name = "tegra210_idle";
 static struct module *owner = THIS_MODULE;
 
@@ -612,15 +614,18 @@ static int tegra210_cpuidle_register(int cpu)
 static int tegra210_cpu_notify(struct notifier_block *nb, unsigned long action,
 		void *data)
 {
+	int e;
 	int cpu = (long)data;
 
 	switch (action) {
 	case CPU_POST_DEAD:
-	case CPU_DEAD_FROZEN:
 		tegra_bpmp_tolerate_idle(cpu, TEGRA_PM_CC7, TEGRA_PM_SC7);
 		break;
+	case CPU_DEAD_FROZEN:
+		e = tegra_bpmp_send(MRQ_CPU_FROZEN, &cpu, sizeof(cpu));
+		WARN_ON(e);
+		break;
 	case CPU_UP_PREPARE:
-	case CPU_UP_PREPARE_FROZEN:
 		tegra_bpmp_tolerate_idle(cpu, TEGRA_PM_CC1, TEGRA_PM_SC1);
 		break;
 	}
