@@ -2071,16 +2071,19 @@ static int arm_iommu_fault(struct iommu_domain *domain, struct device *dev,
 		unsigned long iova, int flags, void *token)
 {
 	struct arm_smmu_domain *smmu_domain = domain->priv;
+	phys_addr_t dummy = page_to_phys(smmu_domain->arm_dummy_page);
+	phys_addr_t pa = arm_smmu_iova_to_phys(domain, iova);
 
-	dev_err(dev, "iommu fault: iova 0x%lx flags 0x%x\n",
-		iova, flags);
+	dev_err(dev, "%s: iova=0x%lx pa=%pa flags=0x%x cb=%d\n",
+		__func__, iova, &pa, flags, smmu_domain->cfg.cbndx);
 
 	if (arm_smmu_skip_mapping)
 		arm_smmu_skip_mapping = 0;
 
-	arm_smmu_handle_mapping(smmu_domain, iova,
-		page_to_phys(smmu_domain->arm_dummy_page),
-				PAGE_SIZE, 0);
+	dev_err(dev, "%s: iova=0x%lx dummy=%pa flags=0x%x cb=%d\n",
+		__func__, iova, &dummy, flags, smmu_domain->cfg.cbndx);
+
+	arm_smmu_handle_mapping(smmu_domain, iova, dummy, PAGE_SIZE, 0);
 	if (!FLUSH_TLB_AFTER_MAP)
 		arm_smmu_tlb_inv_context(smmu_domain);
 
