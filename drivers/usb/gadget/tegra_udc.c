@@ -2068,10 +2068,8 @@ static void udc_test_mode(struct tegra_udc *udc, u32 test_mode)
 	return;
 stall:
 	ep0stall(udc);
-	if (req) {
-		kfree(req->req.buf);
+	if (req)
 		tegra_free_request(NULL, &req->req);
-	}
 }
 
 static void setup_received_irq(struct tegra_udc *udc,
