@@ -1630,6 +1630,9 @@ static int nvmap_debug_compress_show(struct seq_file *s, void *unused)
 		if (!n)
 			nvmap_handle_put(h_put);
 	}
+
+	min_clen = max_clen ? min_clen : 0;
+
 	seq_puts(s, "compression algo: \tlzo\n");
 	seq_printf(s, "uncompressed bytes: \t%lld\n", total_uncompressed_mem);
 	seq_printf(s, "compressed bytes: \t%lld\n", total_compressed_mem);
