@@ -2292,7 +2292,7 @@ static void tegra_pcie_config_l1ss_l12_thtime(void)
 	for_each_pci_dev(pdev) {
 		pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_L1SS);
 		pci_read_config_dword(pdev, pos + PCI_L1SS_CTRL1, &data);
-		data |= 0x6A << PCI_L1SS_CTRL1_L12TH_VAL_SHIFT;
+		data |= 0x37 << PCI_L1SS_CTRL1_L12TH_VAL_SHIFT;
 		pci_write_config_dword(pdev, pos + PCI_L1SS_CTRL1, data);
 		pci_read_config_dword(pdev, pos + PCI_L1SS_CTRL1, &data);
 		data |= 0x02 << PCI_L1SS_CTRL1_L12TH_SCALE_SHIFT;
