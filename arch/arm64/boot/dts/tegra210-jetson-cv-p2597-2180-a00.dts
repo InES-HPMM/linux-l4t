@@ -27,6 +27,10 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
+	chosen {
+		fastboot-instructions = "Tap on power button to navigate menu options.\nHold down power button for 2 sec and release for selecting an option\n";
+        };
+
         modem {
                /* using XHCI UTMI */
                nvidia,phy-type = <2>;
