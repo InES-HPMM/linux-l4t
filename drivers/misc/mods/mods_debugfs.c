@@ -681,12 +681,14 @@ int mods_create_debugfs(struct miscdevice *modsdev)
 #ifdef CONFIG_TEGRA_NVSD
 		struct dentry *sd_debugfs_dir;
 #endif
+		char devname[16];
 		struct tegra_dc *dc = tegra_dc_get_dc(dc_idx);
 		if (!dc)
 			continue;
 
-		dc_debugfs_dir = debugfs_create_dir(dev_name(&dc->ndev->dev),
-			mods_debugfs_dir);
+		snprintf(devname, sizeof(devname), "tegradc.%d", dc->ctrl_num);
+		dc_debugfs_dir = debugfs_create_dir(devname, mods_debugfs_dir);
+
 		if (IS_ERR(dc_debugfs_dir)) {
 			err = -EIO;
 			goto remove_out;
