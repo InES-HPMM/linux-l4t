@@ -34,6 +34,12 @@
 		ehci2 = &ehci3;
 	};
 
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+	};
+
 	mc_clk_pd: mc-clk-pd {
 		compatible = "nvidia,tegra124-mc-clk-pd";
 		#power-domain-cells = <0>;

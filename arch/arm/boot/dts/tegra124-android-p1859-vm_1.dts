@@ -430,14 +430,19 @@
 		status = "okay";
 	};
 
+	reserved-memory {
+		ivm0: carveout0 {
+			compatible = "nvidia,ivm_carveout";
+			reg = <0x0 0x70c00000 0x0 0x04c00000>;
+			ivm = <&tegra_hv 0>;
+			alloc = <0>;
+			no-map;
+		};
+	};
+
 	tegra-carveouts {
 		iommus = <&smmu TEGRA_SWGROUP_HC>;
 		status = "okay";
-		ivm_carveouts {
-			carveout0 {
-				ivm = <&tegra_hv 0>;
-				alloc = <0>;
-			};
-		};
+		memory-region = <&ivm0>;
 	};
 };
