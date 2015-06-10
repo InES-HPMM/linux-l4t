@@ -62,6 +62,7 @@
 	#size-cells = <2>;
 
 	chosen {
+		fastboot-instructions = "Press <Power> to select, <Volume Up/Down> for selection move\n";
 	};
 
 	gpio@6000d000 {
