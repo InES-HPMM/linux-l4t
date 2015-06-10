@@ -1843,6 +1843,7 @@ static void smmu_walk_pgd(struct seq_file *m, struct smmu_as *as)
 {
 	int i;
 	u32 *pgd;
+	unsigned long flags;
 	struct smmu_pg_state st = {
 		.seq	= m,
 		.marker	= address_markers,
@@ -1851,6 +1852,7 @@ static void smmu_walk_pgd(struct seq_file *m, struct smmu_as *as)
 	if (!pfn_valid(page_to_pfn(as->pdir_page)))
 		return;
 
+	spin_lock_irqsave(&as->lock, flags);
 	pgd = page_address(as->pdir_page);
 	for (i = 0; i < SMMU_PDIR_COUNT; i++, pgd++) {
 		u32 addr = i * SMMU_PAGE_SIZE * SMMU_PTBL_COUNT;
@@ -1862,6 +1864,7 @@ static void smmu_walk_pgd(struct seq_file *m, struct smmu_as *as)
 	}
 
 	smmu_note_page(&st, 0, 0, 0);
+	spin_unlock_irqrestore(&as->lock, flags);
 }
 
 static int smmu_ptdump_show(struct seq_file *m, void *v)
