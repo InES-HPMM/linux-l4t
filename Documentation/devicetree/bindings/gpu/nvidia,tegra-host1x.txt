@@ -128,10 +128,25 @@ of the following host1x client modules:
 - gk20a: Kepler GPU
 
   Required properties:
-  - compatible: "nvidia,tegra<chip>-gk20a"
+  - compatible:
+	 "nvidia,tegra<chip>-gk20a"
+	 "nvidia,tegra<chip>-gm20b"
   - reg: Physical base address and length of the controller's registers.
   - interrupts: The interrupt outputs from the controller.
   - nvidia,memory-clients: memory client ID of the controller.
+
+  Optional properties:
+  - freq-table : array of frequencies converted to scaling targets using
+    GPU DVFS table as described below. Must be in kHz, in increasing order.
+    By default, if this property is not present, GPU DVFS set of frequencies
+    is used as scaling targets.
+
+    Conversion from freq-table entries to GPU scaling targets:
+
+    any freq-table entry below bottom DVFS step is replaced with bottom step
+    any freq-table entry exactly at one of the DVFS steps is kept unchanged
+    any freq-table entry between two DVFS steps is replaced with upper step
+    any freq-table entry above top DVFS step is replaced with top step
 
 Example:
 
@@ -262,6 +277,12 @@ Example:
                         interrupts = <0 157 0x04
                                       0 158 0x04>;
                         nvidia,memory-clients = <56 57>;
+			freq-table = <
+				200000
+				400000
+				800000
+				1000000
+			>;
                 };
 
 	};
