@@ -6,16 +6,35 @@
 		#size-cells = <0>;
 		emc-table@204000 {
 			compatible = "nvidia,tegra21-emc-table";
-			nvidia,revision = <0x5>;
-			nvidia,dvfs-version = "00_204000_05_V9.6.3_V0.9";
+			nvidia,revision = <0x6>;
+			nvidia,dvfs-version = "03_204000_06_V9.8.0_V1.4";
 			clock-frequency = <204000>;
-			nvidia,emc-min-mv = <850>;
+			nvidia,emc-min-mv = <837>;
 			nvidia,gk20a-min-mv = <1100>;
 			nvidia,source = "pllp_out0";
 			nvidia,src-sel-reg = <0x40180002>;
 			nvidia,needs-training = <00000000>;
-			nvidia,training_pattern = <0x000002>;
+			nvidia,training_pattern = <00000000>;
 			nvidia,trained = <00000000>;
+			nvidia,periodic_training = <00000000>;
+			nvidia,trained_dram_clktree_c0d0u0 = <00000000>;
+			nvidia,trained_dram_clktree_c0d0u1 = <00000000>;
+			nvidia,trained_dram_clktree_c0d1u0 = <00000000>;
+			nvidia,trained_dram_clktree_c0d1u1 = <00000000>;
+			nvidia,trained_dram_clktree_c1d0u0 = <00000000>;
+			nvidia,trained_dram_clktree_c1d0u1 = <00000000>;
+			nvidia,trained_dram_clktree_c1d1u0 = <00000000>;
+			nvidia,trained_dram_clktree_c1d1u1 = <00000000>;
+			nvidia,current_dram_clktree_c0d0u0 = <00000000>;
+			nvidia,current_dram_clktree_c0d0u1 = <00000000>;
+			nvidia,current_dram_clktree_c0d1u0 = <00000000>;
+			nvidia,current_dram_clktree_c0d1u1 = <00000000>;
+			nvidia,current_dram_clktree_c1d0u0 = <00000000>;
+			nvidia,current_dram_clktree_c1d0u1 = <00000000>;
+			nvidia,current_dram_clktree_c1d1u0 = <00000000>;
+			nvidia,current_dram_clktree_c1d1u1 = <00000000>;
+			nvidia,run_clocks = <0x00000d>;
+			nvidia,tree_margin = <0x000001>;
 			nvidia,burst-regs-num = <221>;
 			nvidia,burst-regs-per-ch-num = <8>;
 			nvidia,trim-regs-num = <138>;
@@ -197,7 +216,7 @@
 				0x00000000
 				0x00000000
 				0x00000000
-				0x00000030
+				0x00000033
 				0x00000040
 				0x08000800
 				0x08000800
@@ -249,10 +268,10 @@
 				0x40000000
 			>;
 			nvidia,emc-burst-regs-per-ch = <
-				0xc80c1010
-				0xc80c1010
-				0xc80c1010
-				0xc80c1010
+				0xc3000000
+				0xc3000000
+				0xc3000000
+				0xc3000000
 				0x80000000
 				0x80000000
 				0x40000000
@@ -430,7 +449,7 @@
 				0x00000000
 				0x00000000
 				0x00000000
-				0x00000030
+				0x00000033
 				0x00000040
 				0x08000800
 				0x08000800
@@ -653,7 +672,7 @@
 				0x00000000
 				0x00000000
 				0x00000000
-				0x00000030
+				0x00000033
 				0x00000040
 				0x08000800
 				0x08000800
@@ -876,7 +895,7 @@
 				0x00000000
 				0x00000000
 				0x00000000
-				0x00000030
+				0x00000033
 				0x00000040
 				0x08000800
 				0x08000800
@@ -928,14 +947,14 @@
 				0x40000000
 			>;
 			nvidia,emc-trim-regs = <
-				0x00a000a0
-				0x00a000a0
-				0x00a000a0
-				0x00a000a0
-				0x00a000a0
-				0x00a000a0
-				0x00a000a0
-				0x00a000a0
+				0x01000100
+				0x01000100
+				0x01000100
+				0x01000100
+				0x01000100
+				0x01000100
+				0x01000100
+				0x01000100
 				0x00000000
 				0x00000000
 				0x00000000
@@ -1223,16 +1242,35 @@
 		};
 		emc-table@800000 {
 			compatible = "nvidia,tegra21-emc-table";
-			nvidia,revision = <0x5>;
-			nvidia,dvfs-version = "00_800000_01_V9.6.3_V0.9";
+			nvidia,revision = <0x6>;
+			nvidia,dvfs-version = "03_800000_03_V9.8.0_V1.4";
 			clock-frequency = <800000>;
-			nvidia,emc-min-mv = <950>;
+			nvidia,emc-min-mv = <900>;
 			nvidia,gk20a-min-mv = <1100>;
 			nvidia,source = "pllm_ud";
 			nvidia,src-sel-reg = <0x80180000>;
 			nvidia,needs-training = <00000000>;
-			nvidia,training_pattern = <0x000002>;
+			nvidia,training_pattern = <00000000>;
 			nvidia,trained = <00000000>;
+			nvidia,periodic_training = <00000000>;
+			nvidia,trained_dram_clktree_c0d0u0 = <00000000>;
+			nvidia,trained_dram_clktree_c0d0u1 = <00000000>;
+			nvidia,trained_dram_clktree_c0d1u0 = <00000000>;
+			nvidia,trained_dram_clktree_c0d1u1 = <00000000>;
+			nvidia,trained_dram_clktree_c1d0u0 = <00000000>;
+			nvidia,trained_dram_clktree_c1d0u1 = <00000000>;
+			nvidia,trained_dram_clktree_c1d1u0 = <00000000>;
+			nvidia,trained_dram_clktree_c1d1u1 = <00000000>;
+			nvidia,current_dram_clktree_c0d0u0 = <00000000>;
+			nvidia,current_dram_clktree_c0d0u1 = <00000000>;
+			nvidia,current_dram_clktree_c0d1u0 = <00000000>;
+			nvidia,current_dram_clktree_c0d1u1 = <00000000>;
+			nvidia,current_dram_clktree_c1d0u0 = <00000000>;
+			nvidia,current_dram_clktree_c1d0u1 = <00000000>;
+			nvidia,current_dram_clktree_c1d1u0 = <00000000>;
+			nvidia,current_dram_clktree_c1d1u1 = <00000000>;
+			nvidia,run_clocks = <0x000033>;
+			nvidia,tree_margin = <0x000001>;
 			nvidia,burst-regs-num = <221>;
 			nvidia,burst-regs-per-ch-num = <8>;
 			nvidia,trim-regs-num = <138>;
@@ -1466,10 +1504,10 @@
 				0x40000000
 			>;
 			nvidia,emc-burst-regs-per-ch = <
-				0xc80c1010
-				0xc80c1010
-				0xc80c1010
-				0xc80c1010
+				0xc3000000
+				0xc3000000
+				0xc3000000
+				0xc3000000
 				0x80000000
 				0x80000000
 				0x40000000
