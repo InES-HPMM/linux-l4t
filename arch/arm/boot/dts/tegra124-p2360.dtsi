@@ -68,6 +68,15 @@
 				nvidia,hdmi-fpd-bridge = <TEGRA_HDMI_ENABLE>;
 			};
 		};
+		csi {
+			prod-settings {
+				prod_ab {
+						/* address   mask       value */
+					prod = <0x5408092C 0xF7FCF778 0x00011110 /* pad-a */
+						0x54080960 0xFFFFFFFF 0x00000004 /* pad-b */>;
+				};
+			};
+		};
 	};
 
 	i2c@7000c700 {
