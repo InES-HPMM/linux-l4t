@@ -1320,30 +1320,12 @@ static void tegra_pcie_unmap_resources(struct tegra_pcie *pcie)
 	}
 }
 
-static bool tegra_pcie_is_fpga_pcie(void)
-{
-#define CLK_RST_BOND_OUT_REG		0x60006078
-#define CLK_RST_BOND_OUT_REG_PCIE	(1 << 6)
-	static int val;
-
-	PR_FUNC_LINE;
-	if (!val)
-		val = readl(ioremap(CLK_RST_BOND_OUT_REG, 4));
-	/* return if current netlist does not contain PCIE */
-	if (val & CLK_RST_BOND_OUT_REG_PCIE)
-		return false;
-	return true;
-}
-
 static int tegra_pcie_fpga_phy_init(struct tegra_pcie *pcie)
 {
 #define FPGA_GEN2_SPEED_SUPPORT		0x90000001
 	struct tegra_pcie_port *port;
 
 	PR_FUNC_LINE;
-	if (!tegra_pcie_is_fpga_pcie())
-		return -ENODEV;
-
 	/* Do reset for FPGA pcie phy */
 	afi_writel(pcie, AFI_WR_SCRATCH_0_RESET_VAL, AFI_WR_SCRATCH_0);
 	udelay(10);
@@ -1364,7 +1346,7 @@ static void tegra_pcie_pme_turnoff(struct tegra_pcie *pcie)
 	unsigned int data;
 
 	PR_FUNC_LINE;
-	if (tegra_platform_is_fpga() && !tegra_pcie_is_fpga_pcie())
+	if (tegra_platform_is_fpga())
 		return;
 	data = afi_readl(pcie, AFI_PCIE_PME);
 	data |= AFI_PCIE_PME_TURN_OFF;
