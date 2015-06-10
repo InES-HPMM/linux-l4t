@@ -1982,6 +1982,7 @@ static ssize_t smmu_debugfs_iova2pa_write(struct file *file,
 	unsigned long flags;
 	struct smmu_as *as = file_inode(file)->i_private;
 	char str[] = "0123456789abcdef";
+	struct seq_file *p = file->private_data;
 
 	count = min_t(size_t, strlen(str), count);
 	if (copy_from_user(str, buffer, count))
@@ -1995,12 +1996,14 @@ static ssize_t smmu_debugfs_iova2pa_write(struct file *file,
 	if (ret != 1)
 		return -EINVAL;
 
+	mutex_lock(&p->lock);
 	spin_lock_irqsave(&as->lock, flags);
 	tegra_smmu_inquired_bytes =
 		__smmu_iommu_iova_to_phys(as, tegra_smmu_inquired_iova,
 					  &tegra_smmu_inquired_phys,
 					  &tegra_smmu_inquired_npte);
 	spin_unlock_irqrestore(&as->lock, flags);
+	mutex_unlock(&p->lock);
 
 	pr_debug("iova=%pa pa=%pa bytes=%zx npte=%d\n",
 		 &tegra_smmu_inquired_iova, &tegra_smmu_inquired_phys,
