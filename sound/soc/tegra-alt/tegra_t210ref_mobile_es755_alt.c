@@ -213,8 +213,8 @@ static int tegra_t210ref_dai_init(struct snd_soc_pcm_runtime *rtd,
 				clk_rate, mclk, clk_out_rate);
 	if (err < 0) {
 		dev_err(card->dev,
-		"Can't configure clocks pll_a = %d Hz clk_out = %d Hz\n",
-		mclk, clk_out_rate);
+		"Can't configure clocks clk_rate %dHz mclk %dHz clk_out %dHz\n",
+		clk_rate, mclk, clk_out_rate);
 		return err;
 	}
 
@@ -376,7 +376,6 @@ static int tegra_t210ref_compr_set_params(struct snd_compr_stream *cstream)
 	struct snd_soc_card *card = codec->card;
 	struct snd_soc_platform *platform = rtd->platform;
 	struct snd_codec codec_params;
-	int srate;
 	int err;
 
 	if (platform->driver->compr_ops &&
@@ -392,10 +391,8 @@ static int tegra_t210ref_compr_set_params(struct snd_compr_stream *cstream)
 		return -EINVAL;
 	}
 
-	srate = snd_pcm_rate_bit_to_rate(codec_params.sample_rate);
-
-	err = tegra_t210ref_dai_init(rtd, srate, codec_params.ch_out,
-			SNDRV_PCM_FMTBIT_S16_LE);
+	err = tegra_t210ref_dai_init(rtd, codec_params.sample_rate,
+			codec_params.ch_out, SNDRV_PCM_FMTBIT_S16_LE);
 	if (err < 0) {
 		dev_err(card->dev, "Failed dai init\n");
 		return err;
