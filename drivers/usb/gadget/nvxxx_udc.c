@@ -5248,6 +5248,7 @@ static int tegra_xudc_exit_elpg(struct nv_udc_s *nvudc)
 	int ret = 0;
 	struct device *dev = nvudc->dev;
 	unsigned long flags;
+	int partition_id;
 
 	mutex_lock(&nvudc->elpg_lock);
 
@@ -5264,14 +5265,29 @@ static int tegra_xudc_exit_elpg(struct nv_udc_s *nvudc)
 	spin_unlock_irqrestore(&nvudc->lock, flags);
 
 	/* enable power rail */
-	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_XUSBA);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_xusba_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_XUSBA;
+#endif
+	ret = tegra_unpowergate_partition(partition_id);
 	if (ret) {
 		dev_err(dev, "%s Fail to unpowergate XUSBA\n", __func__);
 		mutex_unlock(&nvudc->elpg_lock);
 		return ret;
 	}
 
-	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_XUSBB);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_xusbb_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_XUSBB;
+#endif
+
+	ret = tegra_unpowergate_partition(partition_id);
 	if (ret) {
 		dev_err(dev, "%s Fail to unpowergate XUSBB\n", __func__);
 		mutex_unlock(&nvudc->elpg_lock);
@@ -5701,7 +5717,7 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	int i;
 	int err;
 	u32 val;
-	int partition_id;
+	int partition_id_xusba, partition_id_xusbb;
 
 	if (!dev->dma_mask)
 		dev->dma_mask = &dev->coherent_dma_mask;
@@ -5761,12 +5777,26 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 		goto err_clocks_deinit;
 	}
 
-	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_XUSBA);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id_xusba = tegra_pd_get_powergate_id(tegra_xusba_pd);
+	if (partition_id_xusba < 0)
+		return -EINVAL;
+#else
+	partition_id_xusba = TEGRA_POWERGATE_XUSBA;
+#endif
+	err = tegra_unpowergate_partition_with_clk_on(partition_id_xusba);
 	if (err) {
 		dev_err(dev, "failed to unpowergate XUSBA partition\n");
 		goto err_clocks_deinit;
 	}
 
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id_xusbb = tegra_pd_get_powergate_id(tegra_xusbb_pd);
+	if (partition_id_xusbb < 0)
+		return -EINVAL;
+#else
+	partition_id_xusbb = TEGRA_POWERGATE_XUSBB;
+#endif
 	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_XUSBB);
 	if (err) {
 		dev_err(dev, "failed to unpowergate XUSBB partition\n");
@@ -5883,23 +5913,9 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 err_clocks_disable:
 	nvudc_plat_clocks_disable(nvudc);
 err_powergate_xusbb:
-#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
-	partition_id = tegra_pd_get_powergate_id(tegra_xusbb_pd);
-	if (partition_id < 0)
-		return -EINVAL;
-#else
-	partition_id = TEGRA_POWERGATE_XUSBB;
-#endif
-	tegra_powergate_partition(partition_id);
+	tegra_powergate_partition(partition_id_xusbb);
 err_powergate_xusba:
-#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
-	partition_id = tegra_pd_get_powergate_id(tegra_xusba_pd);
-	if (partition_id < 0)
-		return -EINVAL;
-#else
-	partition_id = TEGRA_POWERGATE_XUSBA;
-#endif
-	tegra_powergate_partition(partition_id);
+	tegra_powergate_partition(partition_id_xusba);
 err_clocks_deinit:
 	nvudc_plat_clocks_deinit(nvudc);
 err_regulators_deinit:
