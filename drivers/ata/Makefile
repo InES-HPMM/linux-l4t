@@ -4,7 +4,7 @@ obj-$(CONFIG_ATA)		+= libata.o
 # non-SFF interface
 obj-$(CONFIG_SATA_AHCI)		+= ahci.o libahci.o
 CFLAGS_ahci-tegra.o		= -Werror
-obj-$(CONFIG_SATA_AHCI_TEGRA)	+= ahci-tegra.o libahci.o
+obj-$(CONFIG_SATA_AHCI_TEGRA)	+= sata_aux_tegra.o ahci-tegra.o libahci.o
 obj-$(CONFIG_SATA_ACARD_AHCI)	+= acard-ahci.o libahci.o
 obj-$(CONFIG_SATA_AHCI_PLATFORM) += ahci_platform.o libahci.o
 obj-$(CONFIG_SATA_FSL)		+= sata_fsl.o
