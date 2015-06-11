@@ -471,6 +471,100 @@ static struct regulator_ops max77620_regulator_ops = {
 	.set_voltage_time_sel = regulator_set_voltage_time_sel,
 };
 
+#define MAX77620_SD_CNF2_ROVS_EN_NONE 	0
+#define REGULATOR_SD(_id, _name, _sname, _volt_mask, _min_uV, _max_uV,	\
+		_step_uV, _rs_add, _rs_mask)				\
+	[MAX77620_REGULATOR_ID_##_id] = {			\
+		.type = MAX77620_REGULATOR_TYPE_SD,			\
+		.volt_mask =  MAX77620_##_volt_mask##_VOLT_MASK,	\
+		.volt_addr = MAX77620_REG_##_id,		\
+		.cfg_addr = MAX77620_REG_##_id##_CFG,		\
+		.fps_addr = MAX77620_REG_FPS_##_id,		\
+		.remote_sense_addr = _rs_add,			\
+		.remote_sense_mask = MAX77620_SD_CNF2_ROVS_EN_##_rs_mask, \
+		.min_uV = _min_uV,				\
+		.max_uV = _max_uV,				\
+		.step_uV = _step_uV,				\
+		.power_mode_mask = MAX77620_SD_POWER_MODE_MASK,		\
+		.power_mode_shift = MAX77620_SD_POWER_MODE_SHIFT,	\
+		.desc = {					\
+			.name = max77620_rails(_name),		\
+			.supply_name = _sname,			\
+			.id = MAX77620_REGULATOR_ID_##_id,	\
+			.ops = &max77620_regulator_ops,		\
+			.n_voltages = ((_max_uV - _min_uV) / _step_uV) + 1, \
+			.min_uV = _min_uV,	\
+			.uV_step = _step_uV,	\
+			.enable_time = 500,	\
+			.vsel_mask = MAX77620_##_volt_mask##_VOLT_MASK,	\
+			.vsel_reg = MAX77620_REG_##_id,	\
+			.type = REGULATOR_VOLTAGE,	\
+			.owner = THIS_MODULE,	\
+		},						\
+	}
+
+#define REGULATOR_LDO(_id, _name, _sname, _type, _min_uV, _max_uV, _step_uV) \
+	[MAX77620_REGULATOR_ID_##_id] = {			\
+		.type = MAX77620_REGULATOR_TYPE_LDO_##_type,		\
+		.volt_mask = MAX77620_LDO_VOLT_MASK,			\
+		.volt_addr = MAX77620_REG_##_id##_CFG,		\
+		.cfg_addr = MAX77620_REG_##_id##_CFG2,		\
+		.fps_addr = MAX77620_REG_FPS_##_id,		\
+		.remote_sense_addr = 0xFF,			\
+		.min_uV = _min_uV,				\
+		.max_uV = _max_uV,				\
+		.step_uV = _step_uV,				\
+		.power_mode_mask = MAX77620_LDO_POWER_MODE_MASK,	\
+		.power_mode_shift = MAX77620_LDO_POWER_MODE_SHIFT,	\
+		.desc = {					\
+			.name = max77620_rails(_name),		\
+			.supply_name = _sname,			\
+			.id = MAX77620_REGULATOR_ID_##_id,	\
+			.ops = &max77620_regulator_ops,		\
+			.n_voltages = ((_max_uV - _min_uV) / _step_uV) + 1, \
+			.min_uV = _min_uV,	\
+			.uV_step = _step_uV,	\
+			.enable_time = 500,	\
+			.vsel_mask = MAX77620_LDO_VOLT_MASK,	\
+			.vsel_reg = MAX77620_REG_##_id##_CFG, \
+			.type = REGULATOR_VOLTAGE,		\
+			.owner = THIS_MODULE,			\
+		},						\
+	}
+
+static struct max77620_regulator_info max77620_regs_info[MAX77620_NUM_REGS] = {
+	REGULATOR_SD(SD0, sd0, "in-sd0", SD0, 600000, 1400000, 12500, 0x22, SD0),
+	REGULATOR_SD(SD1, sd1, "in-sd1", SD1, 600000, 1550000, 12500, 0x22, SD1),
+	REGULATOR_SD(SD2, sd2, "in-sd2", SDX, 600000, 3787500, 12500, 0xFF, NONE),
+	REGULATOR_SD(SD3, sd3, "in-sd3", SDX, 600000, 3787500, 12500, 0xFF, NONE),
+
+	REGULATOR_LDO(LDO0, ldo0, "in-ldo0-1", N, 800000, 2375000, 25000),
+	REGULATOR_LDO(LDO1, ldo1, "in-ldo0-1", N, 800000, 2375000, 25000),
+	REGULATOR_LDO(LDO2, ldo2, "in-ldo2",   P, 800000, 3950000, 50000),
+	REGULATOR_LDO(LDO3, ldo3, "in-ldo3-5", P, 800000, 3950000, 50000),
+	REGULATOR_LDO(LDO4, ldo4, "in-ldo4-6", P, 800000, 1587500, 12500),
+	REGULATOR_LDO(LDO5, ldo5, "in-ldo3-5", P, 800000, 3950000, 50000),
+	REGULATOR_LDO(LDO6, ldo6, "in-ldo4-6", P, 800000, 3950000, 50000),
+	REGULATOR_LDO(LDO7, ldo7, "in-ldo7-8", N, 800000, 3950000, 50000),
+	REGULATOR_LDO(LDO8, ldo8, "in-ldo7-8", N, 800000, 3950000, 50000),
+};
+
+static struct of_regulator_match max77620_regulator_matches[] = {
+	{ .name = "sd0", },
+	{ .name = "sd1", },
+	{ .name = "sd2", },
+	{ .name = "sd3", },
+	{ .name = "ldo0", },
+	{ .name = "ldo1", },
+	{ .name = "ldo2", },
+	{ .name = "ldo3", },
+	{ .name = "ldo4", },
+	{ .name = "ldo5", },
+	{ .name = "ldo6", },
+	{ .name = "ldo7", },
+	{ .name = "ldo8", },
+};
+
 static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 {
 	struct max77620_regulator_pdata *rpdata = &reg->reg_pdata[id];
@@ -611,100 +705,6 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 	}
 	return 0;
 }
-
-#define MAX77620_SD_CNF2_ROVS_EN_NONE 	0
-#define REGULATOR_SD(_id, _name, _sname, _volt_mask, _min_uV, _max_uV,	\
-		_step_uV, _rs_add, _rs_mask)				\
-	[MAX77620_REGULATOR_ID_##_id] = {			\
-		.type = MAX77620_REGULATOR_TYPE_SD,			\
-		.volt_mask =  MAX77620_##_volt_mask##_VOLT_MASK,	\
-		.volt_addr = MAX77620_REG_##_id,		\
-		.cfg_addr = MAX77620_REG_##_id##_CFG,		\
-		.fps_addr = MAX77620_REG_FPS_##_id,		\
-		.remote_sense_addr = _rs_add,			\
-		.remote_sense_mask = MAX77620_SD_CNF2_ROVS_EN_##_rs_mask, \
-		.min_uV = _min_uV,				\
-		.max_uV = _max_uV,				\
-		.step_uV = _step_uV,				\
-		.power_mode_mask = MAX77620_SD_POWER_MODE_MASK,		\
-		.power_mode_shift = MAX77620_SD_POWER_MODE_SHIFT,	\
-		.desc = {					\
-			.name = max77620_rails(_name),		\
-			.supply_name = _sname,			\
-			.id = MAX77620_REGULATOR_ID_##_id,	\
-			.ops = &max77620_regulator_ops,		\
-			.n_voltages = ((_max_uV - _min_uV) / _step_uV) + 1, \
-			.min_uV = _min_uV,	\
-			.uV_step = _step_uV,	\
-			.enable_time = 500,	\
-			.vsel_mask = MAX77620_##_volt_mask##_VOLT_MASK,	\
-			.vsel_reg = MAX77620_REG_##_id,	\
-			.type = REGULATOR_VOLTAGE,	\
-			.owner = THIS_MODULE,	\
-		},						\
-	}
-
-#define REGULATOR_LDO(_id, _name, _sname, _type, _min_uV, _max_uV, _step_uV) \
-	[MAX77620_REGULATOR_ID_##_id] = {			\
-		.type = MAX77620_REGULATOR_TYPE_LDO_##_type,		\
-		.volt_mask = MAX77620_LDO_VOLT_MASK,			\
-		.volt_addr = MAX77620_REG_##_id##_CFG,		\
-		.cfg_addr = MAX77620_REG_##_id##_CFG2,		\
-		.fps_addr = MAX77620_REG_FPS_##_id,		\
-		.remote_sense_addr = 0xFF,			\
-		.min_uV = _min_uV,				\
-		.max_uV = _max_uV,				\
-		.step_uV = _step_uV,				\
-		.power_mode_mask = MAX77620_LDO_POWER_MODE_MASK,	\
-		.power_mode_shift = MAX77620_LDO_POWER_MODE_SHIFT,	\
-		.desc = {					\
-			.name = max77620_rails(_name),		\
-			.supply_name = _sname,			\
-			.id = MAX77620_REGULATOR_ID_##_id,	\
-			.ops = &max77620_regulator_ops,		\
-			.n_voltages = ((_max_uV - _min_uV) / _step_uV) + 1, \
-			.min_uV = _min_uV,	\
-			.uV_step = _step_uV,	\
-			.enable_time = 500,	\
-			.vsel_mask = MAX77620_LDO_VOLT_MASK,	\
-			.vsel_reg = MAX77620_REG_##_id##_CFG, \
-			.type = REGULATOR_VOLTAGE,		\
-			.owner = THIS_MODULE,			\
-		},						\
-	}
-
-static struct max77620_regulator_info max77620_regs_info[MAX77620_NUM_REGS] = {
-	REGULATOR_SD(SD0, sd0, "in-sd0", SD0, 600000, 1400000, 12500, 0x22, SD0),
-	REGULATOR_SD(SD1, sd1, "in-sd1", SD1, 600000, 1550000, 12500, 0x22, SD1),
-	REGULATOR_SD(SD2, sd2, "in-sd2", SDX, 600000, 3787500, 12500, 0xFF, NONE),
-	REGULATOR_SD(SD3, sd3, "in-sd3", SDX, 600000, 3787500, 12500, 0xFF, NONE),
-
-	REGULATOR_LDO(LDO0, ldo0, "in-ldo0-1", N, 800000, 2375000, 25000),
-	REGULATOR_LDO(LDO1, ldo1, "in-ldo0-1", N, 800000, 2375000, 25000),
-	REGULATOR_LDO(LDO2, ldo2, "in-ldo2",   P, 800000, 3950000, 50000),
-	REGULATOR_LDO(LDO3, ldo3, "in-ldo3-5", P, 800000, 3950000, 50000),
-	REGULATOR_LDO(LDO4, ldo4, "in-ldo4-6", P, 800000, 1587500, 12500),
-	REGULATOR_LDO(LDO5, ldo5, "in-ldo3-5", P, 800000, 3950000, 50000),
-	REGULATOR_LDO(LDO6, ldo6, "in-ldo4-6", P, 800000, 3950000, 50000),
-	REGULATOR_LDO(LDO7, ldo7, "in-ldo7-8", N, 800000, 3950000, 50000),
-	REGULATOR_LDO(LDO8, ldo8, "in-ldo7-8", N, 800000, 3950000, 50000),
-};
-
-static struct of_regulator_match max77620_regulator_matches[] = {
-	{ .name = "sd0", },
-	{ .name = "sd1", },
-	{ .name = "sd2", },
-	{ .name = "sd3", },
-	{ .name = "ldo0", },
-	{ .name = "ldo1", },
-	{ .name = "ldo2", },
-	{ .name = "ldo3", },
-	{ .name = "ldo4", },
-	{ .name = "ldo5", },
-	{ .name = "ldo6", },
-	{ .name = "ldo7", },
-	{ .name = "ldo8", },
-};
 
 static int max77620_get_regulator_dt_data(struct platform_device *pdev,
 		struct max77620_regulator *max77620_regs)
