@@ -261,6 +261,12 @@
 		#clock-cells = <1>;
 	};
 
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+	};
+
 	tegra-carveouts {
 		compatible = "nvidia,carveouts";
 		iommus = <&smmu TEGRA_SWGROUP_HC>,
