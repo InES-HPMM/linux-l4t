@@ -37,6 +37,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
+#include <linux/spinlock.h>
 #include <linux/tegra_soctherm.h>
 #include <linux/platform/tegra/common.h>
 #include <linux/platform/tegra/dvfs.h>
@@ -493,7 +494,7 @@ static void __iomem *clk_reset_base;
 static void __iomem *clk13_rst_base;
 
 static DEFINE_MUTEX(soctherm_suspend_resume_lock);
-static spinlock_t soctherm_tsensor_lock;
+static DEFINE_SPINLOCK(soctherm_tsensor_lock);
 
 static int soctherm_suspend(struct device *dev);
 static int soctherm_resume(struct device *dev);
@@ -3495,11 +3496,13 @@ void tegra_soctherm_adjust_core_zone(bool high_voltage_range)
 int tegra_soctherm_gpu_tsens_invalidate(bool control)
 {
 	u32 r = 0;
-	spin_lock(&soctherm_tsensor_lock);
+	unsigned long flags;
+
+	spin_lock_irqsave(&soctherm_tsensor_lock, flags);
 	r = soctherm_readl(TH_TS_VALID);
 	r = REG_SET(r, TH_TS_VALID_GPU, control);
 	soctherm_writel(r, TH_TS_VALID);
-	spin_unlock(&soctherm_tsensor_lock);
+	spin_unlock_irqrestore(&soctherm_tsensor_lock, flags);
 	return 0;
 }
 
@@ -3511,17 +3514,18 @@ int tegra_soctherm_gpu_tsens_invalidate(bool control)
 static int tegra_soctherm_cpu_tsens_invalidate(bool control)
 {
 	u32 r = 0, val;
+	unsigned long flags;
 
 	val = ((control << TH_TS_VALID_CPU0_SHIFT) |
 		(control << TH_TS_VALID_CPU1_SHIFT) |
 		(control << TH_TS_VALID_CPU2_SHIFT) |
 		(control << TH_TS_VALID_CPU3_SHIFT));
 
-	spin_lock(&soctherm_tsensor_lock);
+	spin_lock_irqsave(&soctherm_tsensor_lock, flags);
 	r = soctherm_readl(TH_TS_VALID);
 	r = REG_SET(r, TH_TS_VALID_CPU, val);
 	soctherm_writel(r, TH_TS_VALID);
-	spin_unlock(&soctherm_tsensor_lock);
+	spin_unlock_irqrestore(&soctherm_tsensor_lock, flags);
 	return 0;
 }
 
@@ -4831,7 +4835,6 @@ static int tegra_soctherm_probe(struct platform_device *pdev)
 	if (soctherm_mem_resources_probe(pdev))
 		return -EINVAL;
 
-	spin_lock_init(&soctherm_tsensor_lock);
 	soctherm_sensor_params_parse(pdev);
 	soctherm_clock_frequencies_parse(pdev);
 
