@@ -253,7 +253,8 @@
 					regulator-name = "vdd-pex";
 					regulator-min-microvolt = <1050000>;
 					regulator-max-microvolt = <1050000>;
-					maxim,fps-source = <FPS_SRC_NONE>;
+					regulator-always-on;
+					maxim,fps-source = <FPS_SRC_1>;
 					maxim,fps-power-up-period = <0>;
 					maxim,fps-power-down-period = <7>;
 					regulator-disable-on-shutdown;
@@ -328,7 +329,8 @@
 					regulator-min-microvolt = <1050000>;
 					regulator-max-microvolt = <1050000>;
 					regulator-boot-on;
-					maxim,fps-source = <FPS_SRC_NONE>;
+					regulator-always-on;
+					maxim,fps-source = <FPS_SRC_1>;
 					maxim,fps-power-up-period = <6>;
 					maxim,fps-power-down-period = <1>;
 				};

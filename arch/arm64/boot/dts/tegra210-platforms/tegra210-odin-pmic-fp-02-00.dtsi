@@ -274,7 +274,8 @@
 					regulator-name = "vdd-pex";
 					regulator-min-microvolt = <1050000>;
 					regulator-max-microvolt = <1050000>;
-					maxim,fps-source = <FPS_SRC_NONE>;
+					regulator-always-on;
+					maxim,fps-source = <FPS_SRC_1>;
 					regulator-enable-ramp-delay = <22>;
 					regulator-disable-ramp-delay = <630>;
 					regulator-ramp-delay = <100000>;
@@ -356,7 +357,8 @@
 					regulator-name = "vdd-hdmi-dp";
 					regulator-min-microvolt = <1050000>;
 					regulator-max-microvolt = <1050000>;
-					maxim,fps-source = <FPS_SRC_NONE>;
+					regulator-always-on;
+					maxim,fps-source = <FPS_SRC_1>;
 					regulator-enable-ramp-delay = <22>;
 					regulator-disable-ramp-delay = <1160>;
 					regulator-ramp-delay = <100000>;
