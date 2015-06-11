@@ -97,11 +97,15 @@ static void nvudc_handle_setup_pkt(struct nv_udc_s *nvudc,
 #ifdef CONFIG_PM_GENERIC_DOMAINS_OF
 static struct of_device_id tegra_xusba_pd[] = {
 	{ .compatible = "nvidia, tegra210-xusba-pd", },
+	{ .compatible = "nvidia, tegra132-xusba-pd", },
+	{ .compatible = "nvidia, tegra124-xusba-pd", },
 	{},
 };
 
 static struct of_device_id tegra_xusbb_pd[] = {
 	{ .compatible = "nvidia, tegra210-xusbb-pd", },
+	{ .compatible = "nvidia, tegra132-xusbb-pd", },
+	{ .compatible = "nvidia, tegra124-xusbb-pd", },
 	{},
 };
 #endif
