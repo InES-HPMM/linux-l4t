@@ -90,6 +90,12 @@
 		partition-id = <TEGRA_POWERGATE_VE>;
 	};
 
+	vde_pd: vde-pd {
+		compatible = "nvidia,tegra132-vde-pd";
+		#power-domain-cells = <0>;
+		partition-id = <TEGRA_POWERGATE_VDEC>;
+	};
+
 	pcie_pd: pcie-pd {
 		compatible = "nvidia, tegra132-pcie-pd";
 		#power-domain-cells = <0>;
