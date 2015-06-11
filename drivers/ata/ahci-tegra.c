@@ -3225,7 +3225,7 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	ata_print_version_once(&pdev->dev, DRV_VERSION);
 
 	/* Simple resource validation */
-	if (pdev->num_resources != 3) {
+	if ((pdev->num_resources != 3) && (pdev->num_resources != 4)) {
 		dev_err(dev, "invalid number of resources\n");
 		dev_err(dev, "not enough SATA resources\n");
 		return -EINVAL;
