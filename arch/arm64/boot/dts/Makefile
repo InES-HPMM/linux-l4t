@@ -69,6 +69,7 @@ dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-odin-fp-01-01.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-odin-fp-02-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl34324618.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-fpga-cl34324618.dtb
+dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-fpga-cl34563539.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl34563539.dtb
 targets += $(dtb-y)
 
