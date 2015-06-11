@@ -571,6 +571,8 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 	struct max77620_regulator_info *rinfo = reg->rinfo[id];
 	struct device *parent = reg->max77620_chip->dev;
 	struct regulator_init_data *ridata = reg->reg_pdata[id].reg_idata;
+	struct regulator_desc *rdesc = &max77620_regs_info[id].desc;
+	int init_uv;
 	u8 val, mask;
 	int ret;
 
@@ -602,6 +604,19 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 	/* Enable rail before changing FPS to NONE to avoid glitch */
 	if (ridata && ridata->constraints.boot_on &&
 		(rpdata->fps_src == FPS_SRC_NONE)) {
+		init_uv = ridata->constraints.min_uV;
+		if (init_uv && (init_uv == ridata->constraints.max_uV)) {
+			val = (init_uv - rdesc->min_uV) / rdesc->uV_step;
+			ret = max77620_reg_update(parent, MAX77620_PWR_SLAVE,
+					rdesc->vsel_reg, rdesc->vsel_mask, val);
+			if (ret < 0) {
+				dev_err(reg->dev,
+					"Reg 0x%02x update failed: %d\n",
+					rdesc->vsel_reg, ret);
+				return ret;
+			}
+		}
+
 		ret = max77620_regulator_set_power_mode(reg,
 				reg->enable_power_mode[id], id);
 		if (ret < 0) {
