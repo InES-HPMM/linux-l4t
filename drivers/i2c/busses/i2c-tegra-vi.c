@@ -145,6 +145,8 @@
 #ifdef CONFIG_PM_GENERIC_DOMAINS_OF
 static struct of_device_id tegra_ve_pd[] = {
 	{ .compatible = "nvidia,tegra210-ve-pd", },
+	{ .compatible = "nvidia,tegra132-ve-pd", },
+	{ .compatible = "nvidia,tegra124-ve-pd", },
 	{},
 };
 #endif
