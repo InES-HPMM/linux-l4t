@@ -42,6 +42,11 @@ dma_release_declared_memory(struct device *dev);
 extern void *
 dma_mark_declared_memory_occupied(struct device *dev,
 				  dma_addr_t device_addr, size_t size);
+
+extern
+void dma_mark_declared_memory_unoccupied(struct device *dev,
+					 dma_addr_t device_addr, size_t size);
+
 extern int
 dma_get_coherent_stats(struct device *dev,
 			struct dma_coherent_stats *stats);
