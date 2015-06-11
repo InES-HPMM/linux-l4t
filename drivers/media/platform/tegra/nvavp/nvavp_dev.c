@@ -109,6 +109,13 @@ static void __iomem *nvavp_reg_base;
 
 #define SCLK_BOOST_RATE		40000000
 
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+static struct of_device_id tegra_vde_pd[] = {
+	{ .compatible = "nvidia,tegra132-vde-pd", },
+	{ .compatible = "nvidia,tegra124-vde-pd", },
+};
+#endif
+
 static bool boost_sclk;
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 static bool audio_enabled;
@@ -524,11 +531,19 @@ static struct clk *nvavp_clk_get(struct nvavp_info *nvavp, int id)
 static int nvavp_powergate_vde(struct nvavp_info *nvavp)
 {
 	int ret = 0;
+	int partition_id;
 
 	dev_dbg(&nvavp->nvhost_dev->dev, "%s++\n", __func__);
 
 	/* Powergate VDE */
-	ret = tegra_powergate_partition(TEGRA_POWERGATE_VDEC);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_vde_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_VDEC;
+#endif
+	ret = tegra_powergate_partition(partition_id);
 	if (ret)
 		dev_err(&nvavp->nvhost_dev->dev,
 				"%s: powergate failed\n",
@@ -540,11 +555,19 @@ static int nvavp_powergate_vde(struct nvavp_info *nvavp)
 static int nvavp_unpowergate_vde(struct nvavp_info *nvavp)
 {
 	int ret = 0;
+	int partition_id;
 
 	dev_dbg(&nvavp->nvhost_dev->dev, "%s++\n", __func__);
 
 	/* UnPowergate VDE */
-	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_VDEC);
+#ifdef CONFIG_PM_GENERIC_DOMAINS_OF
+	partition_id = tegra_pd_get_powergate_id(tegra_vde_pd);
+	if (partition_id < 0)
+		return -EINVAL;
+#else
+	partition_id = TEGRA_POWERGATE_VDEC;
+#endif
+	ret = tegra_unpowergate_partition(partition_id);
 	if (ret)
 		dev_err(&nvavp->nvhost_dev->dev,
 				"%s: unpowergate failed\n",
