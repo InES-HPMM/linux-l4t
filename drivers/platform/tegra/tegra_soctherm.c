@@ -493,7 +493,7 @@ static void __iomem *clk_reset_base;
 static void __iomem *clk13_rst_base;
 
 static DEFINE_MUTEX(soctherm_suspend_resume_lock);
-static DEFINE_MUTEX(soctherm_tsensor_lock);
+static spinlock_t soctherm_tsensor_lock;
 
 static int soctherm_suspend(struct device *dev);
 static int soctherm_resume(struct device *dev);
@@ -3495,11 +3495,11 @@ void tegra_soctherm_adjust_core_zone(bool high_voltage_range)
 int tegra_soctherm_gpu_tsens_invalidate(bool control)
 {
 	u32 r = 0;
-	mutex_lock(&soctherm_tsensor_lock);
+	spin_lock(&soctherm_tsensor_lock);
 	r = soctherm_readl(TH_TS_VALID);
 	r = REG_SET(r, TH_TS_VALID_GPU, control);
 	soctherm_writel(r, TH_TS_VALID);
-	mutex_unlock(&soctherm_tsensor_lock);
+	spin_unlock(&soctherm_tsensor_lock);
 	return 0;
 }
 
@@ -3517,11 +3517,11 @@ static int tegra_soctherm_cpu_tsens_invalidate(bool control)
 		(control << TH_TS_VALID_CPU2_SHIFT) |
 		(control << TH_TS_VALID_CPU3_SHIFT));
 
-	mutex_lock(&soctherm_tsensor_lock);
+	spin_lock(&soctherm_tsensor_lock);
 	r = soctherm_readl(TH_TS_VALID);
 	r = REG_SET(r, TH_TS_VALID_CPU, val);
 	soctherm_writel(r, TH_TS_VALID);
-	mutex_unlock(&soctherm_tsensor_lock);
+	spin_unlock(&soctherm_tsensor_lock);
 	return 0;
 }
 
@@ -4831,6 +4831,7 @@ static int tegra_soctherm_probe(struct platform_device *pdev)
 	if (soctherm_mem_resources_probe(pdev))
 		return -EINVAL;
 
+	spin_lock_init(&soctherm_tsensor_lock);
 	soctherm_sensor_params_parse(pdev);
 	soctherm_clock_frequencies_parse(pdev);
 
