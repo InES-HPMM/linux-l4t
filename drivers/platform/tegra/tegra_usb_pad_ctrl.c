@@ -41,10 +41,14 @@ static int hsic_pad_count;
 #ifdef CONFIG_PM_GENERIC_DOMAINS_OF
 static struct of_device_id tegra_xusbb_pd[] = {
 	{ .compatible = "nvidia, tegra210-xusbb-pd", },
+	{ .compatible = "nvidia, tegra132-xusbb-pd", },
+	{ .compatible = "nvidia, tegra124-xusbb-pd", },
 	{},
 };
 static struct of_device_id tegra_xusbc_pd[] = {
 	{ .compatible = "nvidia, tegra210-xusbc-pd", },
+	{ .compatible = "nvidia, tegra132-xusbc-pd", },
+	{ .compatible = "nvidia, tegra124-xusbc-pd", },
 	{},
 };
 #endif
