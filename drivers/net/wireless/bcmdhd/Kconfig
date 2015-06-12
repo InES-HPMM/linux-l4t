@@ -89,12 +89,3 @@ config BCMDHD_CUSTOM_SYSFS_TEGRA
 	default y
 	---help---
 	  Enable custom sysfs for Tegra platform.
-
-config BCMDHD_CUSTOM_PM_QOS_TEGRA
-	bool "Custom PM QOS for Tegra platform"
-	depends on BCMDHD
-	default y
-	---help---
-	  Enable custom PM QOS for Tegra platform.
-	  Dynamically boosts clock frequencies based on network traffic
-	  requirements.
