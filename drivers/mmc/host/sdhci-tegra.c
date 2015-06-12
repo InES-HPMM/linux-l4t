@@ -2261,6 +2261,13 @@ static int tegra_sdhci_configure_regulators(struct sdhci_tegra *tegra_host,
 	break;
 	case CONFIG_REG_DIS:
 		if (tegra_host->is_rail_enabled) {
+			if (tegra_host->vdd_io_reg) {
+				vddio_prev = regulator_get_voltage(
+						tegra_host->vdd_io_reg);
+				if (vddio_prev > SDHOST_LOW_VOLT_MAX)
+					tegra_sdhci_signal_voltage_switch(
+						sdhci, MMC_SIGNAL_VOLTAGE_180);
+			}
 			if (tegra_host->vdd_io_reg)
 				rc = regulator_disable(tegra_host->vdd_io_reg);
 			if (tegra_host->vdd_slot_reg)
@@ -4007,7 +4014,7 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	int err = 0;
 	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
-	const struct tegra_sdhci_platform_data *plat;
+	const struct tegra_sdhci_platform_data *plat = pdev->dev.platform_data;
 	unsigned int cd_irq;
 
 	if (sdhci->is_clk_on) {
@@ -4018,13 +4025,18 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 
 	/* Disable the power rails if any */
 	if (tegra_host->card_present) {
+
+		/* Configure sdmmc pins to GPIO mode if needed */
+		if (plat->pin_count > 0)
+			gpio_request_array(plat->gpios,
+				ARRAY_SIZE(plat->gpios));
+
 		err = tegra_sdhci_configure_regulators(tegra_host,
 			CONFIG_REG_DIS, 0, 0);
 		if (err)
 			dev_err(mmc_dev(sdhci->mmc),
 			"Regulators disable in suspend failed %d\n", err);
 	}
-	plat = pdev->dev.platform_data;
 	if (plat && gpio_is_valid(plat->cd_gpio)) {
 		if (!plat->cd_wakeup_incapable) {
 			/* Enable wake irq at end of suspend */
@@ -4036,6 +4048,18 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 				cd_irq, err);
 		}
 	}
+
+	if (plat->pwrdet_support && tegra_host->sdmmc_padctrl) {
+		err = padctrl_set_voltage(tegra_host->sdmmc_padctrl,
+				SDHOST_HIGH_VOLT_3V3);
+		if (err)
+			dev_err(mmc_dev(sdhci->mmc),
+				"padcontrol set volt failed: %d\n", err);
+	}
+
+	if (plat->pin_count > 0)
+		gpio_free_array(plat->gpios, ARRAY_SIZE(plat->gpios));
+
 	return err;
 }
 
@@ -5199,6 +5223,8 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	struct tegra_sdhci_platform_data *plat;
 	struct device_node *np = pdev->dev.of_node;
 	u32 bus_width;
+	int i;
+	char label[12];
 
 	if (!np)
 		return NULL;
@@ -5301,6 +5327,16 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 
 	plat->en_periodic_calib = of_property_read_bool(np,
 			"nvidia,en-periodic-calib");
+	plat->pin_count = of_gpio_named_count(np, "nvidia,sdmmc-pin-gpios");
+	for (i = 0; i < plat->pin_count; ++i) {
+		val = of_get_named_gpio(np, "nvidia,sdmmc-pin-gpios", i);
+		if (gpio_is_valid(val)) {
+			plat->gpios[i].gpio = val;
+			plat->gpios[i].flags = GPIOF_DIR_OUT;
+			sprintf(label, "sdmmc_pin%d", i);
+			plat->gpios[i].label = label;
+		}
+	}
 	return plat;
 }
 
