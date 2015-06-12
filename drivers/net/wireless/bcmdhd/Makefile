@@ -269,10 +269,6 @@ ifneq ($(CONFIG_BCMDHD_TEGRA_REGION_BASED_NVRAM),)
   DHDOFILES += nvram_params.o
 endif
 
-ifneq ($(CONFIG_BCMDHD_CUSTOM_PM_QOS_TEGRA),)
-  DHDOFILES += dhd_custom_pm_qos_tegra.o
-endif
-
 bcmdhd-objs := $(DHDOFILES)
 obj-$(DRIVER_TYPE)   += bcmdhd.o
 
