@@ -1248,5 +1248,9 @@
 		dfll-max77621-integration {
 			i2c-fs-rate = <1000000>;
 		};
+
+		dfll-max77621-board-params {
+			sample-rate = <20000>;
+		};
 	};
 };
