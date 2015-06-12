@@ -861,7 +861,7 @@ int esc_mods_get_screen_info(struct file *pfile, struct MODS_SCREEN_INFO *p)
 	return -ENOSYS;
 #else
 	p->orig_video_mode = screen_info.orig_video_mode;
-	p->orig_video_isVGA = screen_info.orig_video_isVGA;
+	p->orig_video_is_vga = screen_info.orig_video_isVGA;
 	p->lfb_width = screen_info.lfb_width;
 	p->lfb_height = screen_info.lfb_height;
 	p->lfb_depth = screen_info.lfb_depth;

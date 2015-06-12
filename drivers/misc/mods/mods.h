@@ -731,7 +731,7 @@ struct MODS_ADSP_RUN_APP_INFO {
 struct MODS_SCREEN_INFO {
 	/* OUT */
 	__u8 orig_video_mode;
-	__u8  orig_video_isVGA;
+	__u8  orig_video_is_vga;
 	__u16 lfb_width;
 	__u16 lfb_height;
 	__u16 lfb_depth;
