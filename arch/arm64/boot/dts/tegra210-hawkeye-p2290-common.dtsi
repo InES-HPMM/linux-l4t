@@ -777,6 +777,14 @@
 		pinctrl-2 = <&sdmmc3_clk_schmitt_enable_state>;
 		pinctrl-3 = <&sdmmc3_clk_schmitt_disable_state>;
 		nvidia,sd-device;
+		nvidia,sdmmc-pin-gpios = <
+				&gpio TEGRA_GPIO(P, 0) 0
+				&gpio TEGRA_GPIO(P, 1) 0
+				&gpio TEGRA_GPIO(P, 2) 0
+				&gpio TEGRA_GPIO(P, 3) 0
+				&gpio TEGRA_GPIO(P, 4) 0
+				&gpio TEGRA_GPIO(P, 5) 0
+				>;
 		status = "okay";
 	};
 
