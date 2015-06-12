@@ -107,6 +107,8 @@ struct tegra_sdhci_platform_data {
 	bool en_strobe; /* Enable enhance strobe mode for eMMC */
 	bool enb_feedback_clock;
 	bool en_periodic_calib;
+	int pin_count;
+	struct gpio gpios[6];
 };
 
 #endif
