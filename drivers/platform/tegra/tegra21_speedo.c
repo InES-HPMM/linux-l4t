@@ -37,7 +37,7 @@
 #define TEGRA21_GPU_SPEEDO_OFFS 75
 
 
-#define CPU_PROCESS_CORNERS_NUM		2
+#define CPU_PROCESS_CORNERS_NUM		3
 #define GPU_PROCESS_CORNERS_NUM		2
 #define CORE_PROCESS_CORNERS_NUM	3
 
@@ -83,21 +83,24 @@ static int speedo_rev;
 static int enable_app_profiles;
 
 static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
-/* proc_id  0,	      1 */
-	{2119,  UINT_MAX}, /* [0]: threshold_index 0 */
-	{2119,  UINT_MAX}, /* [1]: threshold_index 1 */
+/* proc_id  0,	       1          2 */
+	{2119,  UINT_MAX,  UINT_MAX}, /* [0]: threshold_index 0 */
+	{2031,  2119,      UINT_MAX}, /* [1]: threshold_index 1 */
+	{2119,  UINT_MAX,  UINT_MAX}, /* [2]: threshold_index 2 */
 };
 
 static const u32 gpu_process_speedos[][GPU_PROCESS_CORNERS_NUM] = {
 /* proc_id      0,        1 */
 	{UINT_MAX, UINT_MAX}, /* [0]: threshold_index 0 */
-	{UINT_MAX, UINT_MAX}, /* [1]: threshold_index 1 */
+	{2009,     UINT_MAX}, /* [1]: threshold_index 1 */
+	{UINT_MAX, UINT_MAX}, /* [2]: threshold_index 2 */
 };
 
 static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
-/* proc_id  0,	   1,         2 */
-	{1950,  2100,  UINT_MAX}, /* [0]: threshold_index 0 */
-	{UINT_MAX,  UINT_MAX,  UINT_MAX}, /* [1]: threshold_index 1 */
+/* proc_id  0,	       1,             2 */
+	{1950,      2100,      UINT_MAX}, /* [0]: threshold_index 0 */
+	{1950,      2100,      UINT_MAX}, /* [1]: threshold_index 1 */
+	{UINT_MAX,  UINT_MAX,  UINT_MAX}, /* [2]: threshold_index 2 */
 };
 
 static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
@@ -113,27 +116,25 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 					       "nvidia,t210-vcm31-sku");
 #endif
 	switch (sku) {
-	case 0x01: /* Engg sku */
-	case 0x13:
-		if (a02) {
-			cpu_speedo_id = shield_sku ? 3 : 1;
-			soc_speedo_id = 0;
-			gpu_speedo_id = 2;
-			threshold_index = 0;
-			core_min_mv = 800;
-			break;
-		}
-		/* fall thru for a01 */
 	case 0x00: /* Engg sku */
+	case 0x01: /* Engg sku */
 	case 0x07:
 	case 0x17:
-	case 0x27:
+	case 0x13:
 		if (!vcm31_sku || (sku != 0x17)) {
-			cpu_speedo_id = shield_sku ? 2 : 0;
-			soc_speedo_id = 0;
-			gpu_speedo_id = 1;
-			threshold_index = 0;
-			core_min_mv = 825;
+			if (a02) {
+				cpu_speedo_id = shield_sku ? 3 : 1;
+				soc_speedo_id = 0;
+				gpu_speedo_id = 2;
+				threshold_index = 1;
+				core_min_mv = 800;
+			} else {
+				cpu_speedo_id = shield_sku ? 2 : 0;
+				soc_speedo_id = 0;
+				gpu_speedo_id = 1;
+				threshold_index = 0;
+				core_min_mv = 825;
+			}
 			break;
 		}
 		/* fall thru for vcm31_sku 0x17 */
@@ -141,25 +142,24 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 		cpu_speedo_id = 4;
 		soc_speedo_id = 1;
 		gpu_speedo_id = 5;
-		threshold_index = 1;
+		threshold_index = 2;
 		core_min_mv = 1100;
 		break;
 	case 0x83:
+	case 0x87:
 		if (a02) {
-			cpu_speedo_id = 1;
+			cpu_speedo_id = (shield_sku && (sku == 0x87)) ? 3 : 1;
 			soc_speedo_id = 0;
 			gpu_speedo_id = 4;
-			threshold_index = 0;
+			threshold_index = 1;
 			core_min_mv = 800;
-			break;
+		} else {
+			cpu_speedo_id = 0;
+			soc_speedo_id = 0;
+			gpu_speedo_id = 3;
+			threshold_index = 0;
+			core_min_mv = 825;
 		}
-		/* fall thru for a01 */
-	case 0x87:
-		cpu_speedo_id = (shield_sku && a02) ? 2 : 0;
-		soc_speedo_id = 0;
-		gpu_speedo_id = 3;
-		threshold_index = 0;
-		core_min_mv = 825;
 		break;
 	default:
 		pr_warn("Tegra21: Unknown SKU %d\n", sku);
@@ -406,6 +406,10 @@ int tegra_core_speedo_mv(void)
 
 int tegra_core_speedo_min_mv(void)
 {
+	/* Overwrite Vmin for lower bin with fixed value */
+	if ((soc_speedo_id == 0) && (core_process_id == 0))
+		return 825;
+
 	return core_min_mv;
 }
 
