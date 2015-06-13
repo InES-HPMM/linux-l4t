@@ -106,7 +106,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
 	.alignment = {
 		.step_uv = 12500, /* 12.5mV */
 	},
-	.version = "p4v40_p4Av05",
+	.version = "p4v47_p4Av05",
 };
 
 static struct dvfs_rail tegra21_dvfs_rail_vdd_gpu = {
@@ -123,7 +123,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_gpu = {
 	.stats = {
 		.bin_uV = 6250, /* 6.25mV */
 	},
-	.version = "p4v40_p4Av05",
+	.version = "p4v45_p4Av05",
 };
 
 static struct dvfs_rail *tegra21_dvfs_rails[] = {
@@ -235,7 +235,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune_high_min_millivolts = 903,
 			.tune1		= 0x020091D9,
 			.droop_rate_min = 1000000,
-			.min_millivolts = 830,
+			.min_millivolts = 870,
 		},
 		.pll_tune_data = {
 			.min_millivolts = 950,
@@ -247,6 +247,24 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 3,
 		.process_id = 1,
+		.dfll_tune_data  = {
+			.tune0		= 0xFFEAD0FF,
+			.tune0_high_mv	= 0xFFEAD0FF,
+			.tune_high_min_millivolts = 903,
+			.tune1		= 0x020091D9,
+			.droop_rate_min = 1000000,
+			.min_millivolts = 830,
+		},
+		.pll_tune_data = {
+			.min_millivolts = 950,
+		},
+		.max_mv = 1227,
+		.max_freq = 2218500,
+		CPU_CVB_TABLE,
+	},
+	{
+		.speedo_id = 3,
+		.process_id = 2,
 		.dfll_tune_data  = {
 			.tune0		= 0xFFEAD0FF,
 			.tune0_high_mv	= 0xFFEAD0FF,
@@ -303,6 +321,24 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 1,
 		.process_id = 0,
+		.dfll_tune_data  = {
+			.tune0		= 0xFFEAD0FF,
+			.tune0_high_mv	= 0xFFEAD0FF,
+			.tune_high_min_millivolts = 903,
+			.tune1		= 0x020091D9,
+			.droop_rate_min = 1000000,
+			.min_millivolts = 850,
+		},
+		.pll_tune_data = {
+			.min_millivolts = 950,
+		},
+		.max_mv = 1170,
+		.max_freq = 1912500,
+		CPU_CVB_TABLE,
+	},
+	{
+		.speedo_id = 1,
+		.process_id = 1,
 		.dfll_tune_data  = {
 			.tune0		= 0xFFEAD0FF,
 			.tune0_high_mv	= 0xFFEAD0FF,
@@ -320,7 +356,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	},
 	{
 		.speedo_id = 1,
-		.process_id = 1,
+		.process_id = 2,
 		.dfll_tune_data  = {
 			.tune0		= 0xFFEAD0FF,
 			.tune0_high_mv	= 0xFFEAD0FF,
@@ -438,7 +474,17 @@ static struct cpu_cvb_dvfs cpu_lp_cvb_dvfs_table[] = {
 	},
 	{
 		.speedo_id = 1,
-		.process_id = -1,
+		.process_id = 1,
+		.pll_tune_data = {
+			.min_millivolts = 800,
+		},
+		.max_mv = 1170,
+		.max_freq = 1132800,
+		CPU_LP_CVB_TABLE,
+	},
+	{
+		.speedo_id = 1,
+		.process_id = 2,
 		.pll_tune_data = {
 			.min_millivolts = 800,
 		},
@@ -549,11 +595,12 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 		FIXED_FREQ_CVB_TABLE,
 #endif
 	},
+
 	{
 		.speedo_id = 4,
-		.process_id = -1,
+		.process_id = 0,
 		.pll_tune_data = {
-			.min_millivolts = 800,
+			.min_millivolts = 840,
 		},
 		.max_mv = 1150,
 		.max_freq = 921600,
@@ -563,6 +610,21 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 		FIXED_FREQ_CVB_TABLE,
 #endif
 	},
+	{
+		.speedo_id = 4,
+		.process_id = 1,
+		.pll_tune_data = {
+			.min_millivolts = 810,
+		},
+		.max_mv = 1150,
+		.max_freq = 921600,
+#ifdef CONFIG_TEGRA_USE_NA_GPCPLL
+		NA_FREQ_CVB_TABLE,
+#else
+		FIXED_FREQ_CVB_TABLE,
+#endif
+	},
+
 	{
 		.speedo_id = 3,
 		.process_id = -1,
@@ -577,11 +639,12 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 		FIXED_FREQ_CVB_TABLE,
 #endif
 	},
+
 	{
 		.speedo_id = 2,
-		.process_id = -1,
+		.process_id = 0,
 		.pll_tune_data = {
-			.min_millivolts = 800,
+			.min_millivolts = 840,
 		},
 		.max_mv = 1150,
 		.max_freq = 998400,
@@ -591,6 +654,21 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 		FIXED_FREQ_CVB_TABLE,
 #endif
 	},
+	{
+		.speedo_id = 2,
+		.process_id = 1,
+		.pll_tune_data = {
+			.min_millivolts = 810,
+		},
+		.max_mv = 1150,
+		.max_freq = 998400,
+#ifdef CONFIG_TEGRA_USE_NA_GPCPLL
+		NA_FREQ_CVB_TABLE,
+#else
+		FIXED_FREQ_CVB_TABLE,
+#endif
+	},
+
 	{
 		.speedo_id = 1,
 		.process_id = -1,
@@ -605,6 +683,7 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 		FIXED_FREQ_CVB_TABLE,
 #endif
 	},
+
 	{
 		.speedo_id = 0,
 		.process_id = -1,
