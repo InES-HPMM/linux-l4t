@@ -1,7 +1,7 @@
 /*
  * ina3221.c - driver for TI INA3221
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Based on hwmon driver:
  * 		drivers/hwmon/ina3221.c
@@ -87,6 +87,7 @@
 enum {
 	CHANNEL_NAME = 0,
 	CRIT_CURRENT_LIMIT,
+	WARN_CURRENT_LIMIT,
 	RUNNING_MODE,
 	VBUS_VOLTAGE_CURRENT,
 };
@@ -553,6 +554,56 @@ exit:
 	return ret;
 }
 
+static int ina3221_set_channel_warning(struct ina3221_chip *chip,
+	int channel, int curr_limit)
+{
+	struct ina3221_chan_pdata *cpdata = &chip->pdata->cpdata[channel];
+	int ret;
+
+	mutex_lock(&chip->mutex);
+
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -EIO;
+	}
+
+	cpdata->warn_conf_limits = curr_limit;
+	ret = __locked_set_warn_alert_register(chip, channel);
+	mutex_unlock(&chip->mutex);
+	return ret;
+}
+
+static int ina3221_get_channel_warning(struct ina3221_chip *chip,
+	int channel, int *curr_limit)
+{
+	struct ina3221_chan_pdata *cpdata = &chip->pdata->cpdata[channel];
+	u32 warn_reg_addr = INA3221_WARN(channel);
+	int ret;
+
+	mutex_lock(&chip->mutex);
+
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -EIO;
+	}
+
+	/* get warning shunt voltage threshold in micro volts. */
+	ret = i2c_smbus_read_word_data(chip->client, warn_reg_addr);
+	if (ret < 0) {
+		dev_err(chip->dev, "Channel %d warn register read failed: %d\n",
+			channel, ret);
+		goto exit;
+	}
+
+	/* convert shunt voltage to current in mA */
+	*curr_limit = shuntv_register_to_ma(be16_to_cpu(ret),
+			cpdata->shunt_resistor);
+	ret = 0;
+exit:
+	mutex_unlock(&chip->mutex);
+	return ret;
+}
+
 static int __locked_ina3221_switch_mode(struct ina3221_chip *chip,
 		   int cpus, int cpufreq)
 {
@@ -739,6 +790,13 @@ static ssize_t ina3221_show_channel(struct device *dev,
 			return sprintf(buf, "%d ma\n", current_ma);
 		return ret;
 
+	case WARN_CURRENT_LIMIT:
+		ret = ina3221_get_channel_warning(chip, channel, &current_ma);
+		if (!ret)
+			return sprintf(buf, "%d ma\n", current_ma);
+
+		return ret;
+
 	case RUNNING_MODE:
 		return ina3221_get_mode(chip, buf);
 
@@ -781,6 +839,14 @@ static ssize_t ina3221_set_channel(struct device *dev,
 		ret = ina3221_set_channel_critical(chip, channel, current_ma);
 		return ret < 0 ? ret : len;
 
+	case WARN_CURRENT_LIMIT:
+		if (kstrtol(buf, 10, &val) < 0)
+			return -EINVAL;
+
+		current_ma = (int) val;
+		ret = ina3221_set_channel_warning(chip, channel, current_ma);
+		return ret < 0 ? ret : len;
+
 	case RUNNING_MODE:
 		return ina3221_set_mode(chip, buf, len);
 	}
@@ -807,6 +873,16 @@ static IIO_DEVICE_ATTR(crit_current_limit_2, S_IRUGO | S_IWUSR,
 		ina3221_show_channel, ina3221_set_channel,
 		PACK_MODE_CHAN(CRIT_CURRENT_LIMIT, 2));
 
+static IIO_DEVICE_ATTR(warn_current_limit_0, S_IRUGO | S_IWUSR,
+		ina3221_show_channel, ina3221_set_channel,
+		PACK_MODE_CHAN(WARN_CURRENT_LIMIT, 0));
+static IIO_DEVICE_ATTR(warn_current_limit_1, S_IRUGO | S_IWUSR,
+		ina3221_show_channel, ina3221_set_channel,
+		PACK_MODE_CHAN(WARN_CURRENT_LIMIT, 1));
+static IIO_DEVICE_ATTR(warn_current_limit_2, S_IRUGO | S_IWUSR,
+		ina3221_show_channel, ina3221_set_channel,
+		PACK_MODE_CHAN(WARN_CURRENT_LIMIT, 2));
+
 static IIO_DEVICE_ATTR(ui_input_0, S_IRUGO | S_IWUSR,
 		ina3221_show_channel, ina3221_set_channel,
 		PACK_MODE_CHAN(VBUS_VOLTAGE_CURRENT, 0));
@@ -828,6 +904,9 @@ static struct attribute *ina3221_attributes[] = {
 	&iio_dev_attr_crit_current_limit_0.dev_attr.attr,
 	&iio_dev_attr_crit_current_limit_1.dev_attr.attr,
 	&iio_dev_attr_crit_current_limit_2.dev_attr.attr,
+	&iio_dev_attr_warn_current_limit_0.dev_attr.attr,
+	&iio_dev_attr_warn_current_limit_1.dev_attr.attr,
+	&iio_dev_attr_warn_current_limit_2.dev_attr.attr,
 	&iio_dev_attr_ui_input_0.dev_attr.attr,
 	&iio_dev_attr_ui_input_1.dev_attr.attr,
 	&iio_dev_attr_ui_input_2.dev_attr.attr,
