@@ -504,7 +504,6 @@ static int nvhost_ioctl_channel_submit(struct nvhost_channel_userctx *ctx,
 	u32 __user *fences = (u32 __user *)(uintptr_t)args->fences;
 	u32 __user *class_ids = (u32 __user *)(uintptr_t)args->class_ids;
 	struct nvhost_device_data *pdata = platform_get_drvdata(ctx->pdev);
-	struct nvhost_master *host = nvhost_get_host(pdata->pdev);
 
 	const u32 *syncpt_array =
 		(pdata->resource_policy == RESOURCE_PER_CHANNEL_INSTANCE) ?
@@ -642,8 +641,6 @@ static int nvhost_ioctl_channel_submit(struct nvhost_channel_userctx *ctx,
 		/* Store and get a reference */
 		job->sp[i].id = sp.syncpt_id;
 		job->sp[i].incrs = sp.syncpt_incrs;
-
-		nvhost_syncpt_get_ref(&host->syncpt, job->sp[i].id);
 	}
 
 	trace_nvhost_channel_submit(ctx->pdev->name,
@@ -707,10 +704,6 @@ static int nvhost_ioctl_channel_submit(struct nvhost_channel_userctx *ctx,
 fail_submit:
 	nvhost_job_unpin(job);
 fail:
-	for (i = 0; i < num_syncpt_incrs; ++i)
-		if (job->sp[i].id)
-			nvhost_syncpt_put_ref(&host->syncpt, job->sp[i].id);
-
 	nvhost_job_put(job);
 	kfree(local_class_ids);
 
