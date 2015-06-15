@@ -347,7 +347,10 @@ static void tegra_xusb_boost_cpu_deinit(struct tegra_xhci_hcd *tegra)
 
 static bool tegra_xusb_boost_cpu_freq(struct tegra_xhci_hcd *tegra)
 {
-	return schedule_work(&tegra->boost_cpufreq_work);
+	if (tegra_dvfs_is_cpu_rail_connected_to_regulators())
+		return schedule_work(&tegra->boost_cpufreq_work);
+	else
+		return -EPERM;
 }
 #else
 static void tegra_xusb_boost_cpu_init(struct tegra_xhci_hcd *unused) {}

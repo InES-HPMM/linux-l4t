@@ -106,6 +106,15 @@ int tegra_dvfs_get_core_boot_level(void)
 }
 EXPORT_SYMBOL(tegra_dvfs_get_core_boot_level);
 
+bool tegra_dvfs_is_cpu_rail_connected_to_regulators(void)
+{
+	if (tegra_cpu_rail && tegra_cpu_rail->reg)
+		return true;
+	else
+		return false;
+}
+EXPORT_SYMBOL(tegra_dvfs_is_cpu_rail_connected_to_regulators);
+
 unsigned long tegra_dvfs_get_fmax_at_vmin_safe_t(struct clk *c)
 {
 	if (!c->dvfs)
