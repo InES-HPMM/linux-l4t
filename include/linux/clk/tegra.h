@@ -175,6 +175,7 @@ int tegra_dvfs_set_fmax_at_vmin(struct clk *c, unsigned long f_max, int v_min);
 int tegra_dvfs_get_core_override_floor(void);
 int tegra_dvfs_get_core_nominal_millivolts(void);
 int tegra_dvfs_get_core_boot_level(void);
+bool tegra_dvfs_is_cpu_rail_connected_to_regulators(void);
 /* Get max rate safe at min voltage in all t-ranges; return zero if unknown */
 unsigned long tegra_dvfs_get_fmax_at_vmin_safe_t(struct clk *c);
 
