@@ -1045,6 +1045,9 @@ static ssize_t store_enable(struct kobject *kobj, struct kobj_attribute *attr,
 	if (val > 1)
 		return -EINVAL;
 
+	if (!cluster_switch_supported())
+		return -EINVAL;
+
 	mutex_lock(&tegra_cpu_lock);
 	if (val == auto_cluster_enable) {
 		mutex_unlock(&tegra_cpu_lock);
