@@ -1848,9 +1848,7 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 		core_edp_voltage = 1125;	/* default 1.125V EDP limit */
 
 	mv = min(mv, core_edp_voltage);
-#ifndef CONFIG_TEGRA_CORE_DVFS
-	mv = min(mv, 1000);		/* Vmax if scaling is disabled */
-#endif
+
 	/* Round nominal level down to the nearest core scaling step */
 	for (i = 0; i < MAX_DVFS_FREQS; i++) {
 		if ((core_millivolts[i] == 0) || (mv < core_millivolts[i]))
