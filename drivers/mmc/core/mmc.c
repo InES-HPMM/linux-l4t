@@ -458,13 +458,10 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 			}
 		}
 
-		if (card->ext_csd.rev < 6) {
-			card->ext_csd.sec_trim_mult =
-				ext_csd[EXT_CSD_SEC_TRIM_MULT];
-			card->ext_csd.sec_erase_mult =
-				ext_csd[EXT_CSD_SEC_ERASE_MULT];
-		}
-
+		card->ext_csd.sec_trim_mult =
+			ext_csd[EXT_CSD_SEC_TRIM_MULT];
+		card->ext_csd.sec_erase_mult =
+			ext_csd[EXT_CSD_SEC_ERASE_MULT];
 		card->ext_csd.sec_feature_support =
 				ext_csd[EXT_CSD_SEC_FEATURE_SUPPORT];
 
