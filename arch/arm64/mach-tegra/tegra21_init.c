@@ -275,6 +275,7 @@ void __init tegra21x_init_early(void)
 	tegra_clk_init_from_table(tegra21x_clk_init_table);
 	tegra_clk_init_cbus_plls_from_table(tegra21x_cbus_init_table);
 	tegra_clk_init_from_table(tegra21x_sbus_init_table);
+	tegra_non_dt_clock_reset_init();
 	if (!tegra_platform_is_silicon())
 		tegra_clk_init_from_table(uart_non_si_clk_init_data);
 	tegra_powergate_init();

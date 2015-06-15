@@ -974,6 +974,7 @@ void __init tegra12x_init_early(void)
 	tegra_clk_init_from_table(tegra12x_clk_init_table);
 	tegra_clk_init_cbus_plls_from_table(tegra12x_cbus_init_table);
 	tegra_clk_init_from_table(tegra12x_sbus_init_table);
+	tegra_non_dt_clock_reset_init();
 	tegra_powergate_init();
 #ifndef CONFIG_ARM64
 	tegra30_hotplug_init();
