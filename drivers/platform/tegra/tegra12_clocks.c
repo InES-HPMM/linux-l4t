@@ -8749,6 +8749,14 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("afc4", "tegra30-ahub-apbif", "afc4"),
 	CLK_DUPLICATE("afc5", "tegra30-ahub-apbif", "afc5"),
 	CLK_DUPLICATE("cpu_g", "tegra_simon", "cpu"),
+
+	/* Connection name change for reset controller */
+	CLK_DUPLICATE("i2c1",   "7000c000.i2c",   "i2c"),
+	CLK_DUPLICATE("i2c2",   "7000c400.i2c",   "i2c"),
+	CLK_DUPLICATE("i2c3",   "7000c500.i2c",   "i2c"),
+	CLK_DUPLICATE("i2c4",   "7000c700.i2c",   "i2c"),
+	CLK_DUPLICATE("i2c5",   "7000d000.i2c",   "i2c"),
+	CLK_DUPLICATE("i2c6",   "7000d100.i2c",   "i2c"),
 };
 
 struct clk *tegra_ptr_clks[] = {
