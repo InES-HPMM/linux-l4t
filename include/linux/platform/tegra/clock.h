@@ -513,6 +513,9 @@ struct clk *tegra_get_clock_by_name(const char *name);
 
 void tegra_clk_init_from_table(struct tegra_clk_init_table *table);
 
+/* Reset driver through Reset framework */
+extern int tegra_non_dt_clock_reset_init(void);
+
 /**
   * Returns dfll requested booting frequency, which
   * is configured by bootloader as cpu clock source.

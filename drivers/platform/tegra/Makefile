@@ -52,7 +52,7 @@ endif
 
 ifeq ($(CONFIG_TEGRA_CLK_FRAMEWORK),y)
 obj-y += dvfs.o
-obj-$(CONFIG_TEGRA_CLK_FRAMEWORK) += clock.o
+obj-$(CONFIG_TEGRA_CLK_FRAMEWORK) += clock.o tegra-non-dt-clock-reset.o
 obj-$(CONFIG_ARCH_TEGRA_12x_SOC) += tegra12_clocks.o
 obj-$(CONFIG_DEBUG_FS) += clocks_stats.o
 ifeq ($(CONFIG_ARCH_TEGRA_13x_SOC),y)
