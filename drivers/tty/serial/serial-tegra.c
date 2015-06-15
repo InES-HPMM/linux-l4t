@@ -393,6 +393,8 @@ static char tegra_uart_decode_rx_error(struct tegra_uart_port *tup,
 			/* If FIFO read error without any data, reset Rx FIFO */
 			if (!(lsr & UART_LSR_DR) && (lsr & UART_LSR_FIFOE))
 				tegra_uart_fifo_reset(tup, UART_FCR_CLEAR_RCVR);
+			else if (lsr & UART_LSR_FIFOE)
+				dev_err(tup->uport.dev, "Got Receive Fifo errors\n");
 		}
 	}
 	return flag;
