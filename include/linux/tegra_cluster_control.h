@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -57,12 +57,15 @@ static inline unsigned int is_lp_cluster(void)
 #endif
 	return reg & 1; /* 0 == G, 1 == LP*/
 }
+
+bool cluster_switch_supported(void);
 int tegra_cluster_control(unsigned int us, unsigned int flags);
 int tegra_cluster_switch(struct clk *cpu_clk, struct clk *new_cluster_clk);
 void tegra_cluster_switch_prolog(unsigned int flags);
 void tegra_cluster_switch_epilog(unsigned int flags);
 #else
 static inline unsigned int is_lp_cluster(void)  { return 0; }
+static inline bool cluster_switch_supported(void) { return false; }
 static inline int tegra_cluster_control(unsigned int us, unsigned int flags)
 {
 	return -EPERM;

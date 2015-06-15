@@ -3,7 +3,7 @@
  *
  * Tegra3 SOC-specific power and cluster management
  *
- * Copyright (c) 2009-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2009-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -450,6 +450,11 @@ static int tegra_crail_startup_early(void)
 	}
 #endif
 	return 0;
+}
+
+bool cluster_switch_supported(void)
+{
+	return true;
 }
 
 int tegra_cluster_control(unsigned int us, unsigned int flags)
