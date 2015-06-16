@@ -88,6 +88,7 @@
 					CAMERA_REGULATOR_OFF(1)
 					CAMERA_REGULATOR_OFF(2)
 					CAMERA_REGULATOR_OFF(0)
+					CAMERA_WAITMS(10)
 					CAMERA_END
 					>;
 				/* sensor capabilities */
@@ -155,6 +156,7 @@
 					CAMERA_REGULATOR_OFF(2)
 					CAMERA_REGULATOR_OFF(1)
 					CAMERA_REGULATOR_OFF(0)
+					CAMERA_WAITMS(10)
 					CAMERA_END
 					>;
 				/* sensor capabilities */
@@ -210,7 +212,7 @@
 					CAMERA_REGULATOR_OFF(0)
 					CAMERA_REGULATOR_OFF(1)
 					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 5))
-					CAMERA_WAITUS(10)
+					CAMERA_WAITMS(10)
 					CAMERA_END
 					>;
 				support_mfi;
