@@ -1232,7 +1232,7 @@ static int tegra21_pasr_enable(const char *arg, const struct kernel_param *kp)
 	void *cookie;
 	int num_devices;
 	u32 regval;
-	u32 device_size;
+	u64 device_size;
 	u64 subp_addr_mode;
 	u64 dram_width;
 	u64 num_channels;
@@ -1248,18 +1248,26 @@ static int tegra21_pasr_enable(const char *arg, const struct kernel_param *kp)
 	regval = emc_readl(EMC_FBIO_CFG5);
 	dram_width = (regval & (0x1 << 4)) == 0 ? 32 : 64;
 
+	/* measure of width of row address */
 	device_size = ((mc_readl(MC_EMEM_ADR_CFG_DEV0) >>
 				MC_EMEM_DEV_SIZE_SHIFT) &
 				MC_EMEM_DEV_SIZE_MASK);
 
-	if (device_size == DEVSIZE768M)
+	/* density of DRAM device or device size per subpartition */
+	switch (device_size) {
+	case DEVSIZE768M:
 		device_size = SZ_768M;
-	else if (device_size == DEVSIZE384M)
+		break;
+	case DEVSIZE384M:
 		device_size = SZ_384M;
-	else
-		device_size = device_size << 23;
+		break;
+	default:
+		device_size = 1 << (device_size + 22);
+	}
 
+	/* device size per channel */
 	device_size = device_size * (dram_width/subp_addr_mode);
+	/* device size per DRAM device */
 	device_size = device_size * num_channels;
 
 	old_pasr_enable = pasr_enable;
