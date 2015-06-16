@@ -84,12 +84,15 @@ static int tegra_bootrom_get_commands_from_dt(struct device *dev,
 
 	nblocks = of_get_child_count(br_np);
 	if (!nblocks) {
-		dev_err(dev, "There is no command block for bootrom\n");
-		return -EINVAL;
+		dev_err(dev, "Bootrom I2C Command block not found\n");
+		return -ENOENT;
 	}
 
 	count = 0;
 	for_each_child_of_node(br_np, child) {
+		if (!of_device_is_available(child))
+			continue;
+
 		ret = of_property_count_u32(child, "nvidia,write-commands");
 		if (ret < 0) {
 			dev_err(dev, "Node %s does not have write-commnds\n",
@@ -119,6 +122,9 @@ static int tegra_bootrom_get_commands_from_dt(struct device *dev,
 
 	nblock = 0;
 	for_each_child_of_node(br_np, child) {
+		if (!of_device_is_available(child))
+			continue;
+
 		block = &bcommands->blocks[nblock];
 
 		ret = of_property_read_u32(child, "reg", &pval);
