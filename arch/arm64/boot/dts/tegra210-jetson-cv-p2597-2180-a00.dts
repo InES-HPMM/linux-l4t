@@ -17,6 +17,7 @@
 #include "tegra210-jetson-cv-base-p2597-2180-a00.dts"
 #include "tegra210-platforms/tegra210-therm-est.dtsi"
 #include "tegra210-platforms/tegra210-modem-common.dtsi"
+#include "tegra210-platforms/tegra210-jetson-cv-shim-p2597-2180-a00.dtsi"
 
 / {
 	model = "jetson_cv";
@@ -25,53 +26,6 @@
 
 	#address-cells = <2>;
 	#size-cells = <2>;
-
-	udc@7d000000 {
-		#extcon-cells = <1>;
-		status = "disabled";
-		dt-override-status-odm-data = <0x01000000 0x00000000>;
-	};
-
-        otg@7d000000 {
-		#extcon-cells = <1>;
-		status = "disabled";
-		dt-override-status-odm-data = <0x01000000 0x00000000>;
-	};
-
-	xudc@700d0000 {
-		#extcon-cells = <1>;
-		status = "disabled";
-		dt-override-status-odm-data = <0x01000000 0x01000000>;
-	};
-
-	xotg {
-		#extcon-cells = <1>;
-		status = "disabled";
-		dt-override-status-odm-data = <0x01000000 0x01000000>;
-	};
-
-	host1x {
-		dsi {
-			panel-s-wqxga-10-1 {
-				status = "disabled";
-			};
-			panel-a-wuxga-8-0 {
-				status = "disabled";
-			};
-		};
-	};
-
-	i2c@7000d000 {
-		max77620@3c {
-			watchdog {
-				status = "disabled";
-			};
-		};
-	};
-
-	watchdog@60005100 {
-		status = "disabled";
-	};
 
         modem {
                /* using XHCI UTMI */
