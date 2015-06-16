@@ -209,6 +209,24 @@ static void psci_sys_poweroff(void)
 	invoke_psci_fn(PSCI_0_2_FN_SYSTEM_OFF, 0, 0, 0);
 }
 
+static int psci_restart_notify(struct notifier_block *nb,
+			    unsigned long action, void *data)
+{
+	enum reboot_mode mode = (enum reboot_mode)action;
+	const char *cmd = (const char *)data;
+
+	/* restart the system */
+	psci_sys_reset(mode, cmd);
+
+	/* we should not reach here */
+	return NOTIFY_OK;
+}
+
+static struct notifier_block psci_restart_nb = {
+	.notifier_call = psci_restart_notify,
+	.priority = 128, /* default restart handler */
+};
+
 /*
  * PSCI Function IDs for v0.2+ are well defined so use
  * standard values.
@@ -262,9 +280,10 @@ static int psci_0_2_init(struct device_node *np)
 		PSCI_0_2_FN_MIGRATE_INFO_TYPE;
 	psci_ops.migrate_info_type = psci_migrate_info_type;
 
-	arm_pm_restart = psci_sys_reset;
-
 	pm_power_off = psci_sys_poweroff;
+
+	/* register restart handler */
+	err = register_restart_handler(&psci_restart_nb);
 
 out_put_node:
 	of_node_put(np);
