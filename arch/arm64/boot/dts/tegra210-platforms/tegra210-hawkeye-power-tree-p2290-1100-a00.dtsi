@@ -186,4 +186,18 @@
 		dmicvdd-supply = <&max77620_sd3>;
 	};
 
+	pmc@7000e400 {
+		bootrom-commands {
+			commands@4-003c {
+				nvidia,command-names = "pmic-rails";
+				reg = <0x3c>;
+				nvidia,enable-8bit-register;
+				nvidia,enable-8bit-data;
+				nvidia,controller-type-i2c;
+				nvidia,controller-id = <4>;
+				nvidia,enable-controller-reset;
+				nvidia,write-commands = <0x00000016 0x00000020>;
+			};
+		};
+	};
 };
