@@ -9550,6 +9550,7 @@ static struct clk tegra_list_clks[] = {
 	SHARED_SCLK("sbc4.sclk", "7000da00.spi",	"sclk", &tegra_clk_apb,        NULL, 0, 0, TEGRA210_CLK_ID_SBUS_SBC4_USER),
 	SHARED_SCLK("qspi.sclk", "qspi",	        "sclk", &tegra_clk_apb,        NULL, 0, 0, TEGRA210_CLK_ID_SBUS_QSPI_USER),
 	SHARED_SCLK("boot.apb.sclk", "boot.apb.sclk",	NULL,	&tegra_clk_apb,        NULL, 0, 0, TEGRA210_CLK_ID_SBUS_BOOT_APB_USER),
+	SHARED_SCLK("wifi.sclk", "tegra-wifi",		"sclk",	&tegra_clk_apb,        NULL, 0, 0, TEGRA210_CLK_ID_SBUS_WIFI_USER),
 
 	SHARED_EMC_CLK("avp.emc",	"nvavp",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0, TEGRA210_CLK_ID_EMC_AVP_USER),
 	SHARED_EMC_CLK("cpu.emc",	"tegra-cpu", "cpu_emc",	&tegra_clk_emc, NULL, 0, 0, 0, TEGRA210_CLK_ID_EMC_CPU_USER),
