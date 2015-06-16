@@ -64,6 +64,8 @@
 
 	chosen {
 		fastboot-instructions = "Press <Power> to select, <Volume Up/Down> for selection move\n";
+		long-press-power-key-on-enable;
+		long-press-power-key-on-time = <2>;
 	};
 
 	gpio@6000d000 {
