@@ -21,7 +21,12 @@
 			compatible = "ti,ina3221x";
 			reg = <0x40>;
 			ti,trigger-config = <0x7003>;
-			ti,continuous-config = <0x7607>;
+			/*
+			 * continuous scan configuration
+			 *    channels 0/1/2 enabled, 16 samples/ave, 140 usec shunt/bus conversion
+			 *    time, continuous shunt/bus mode
+			 */
+			ti,continuous-config = <0x7407>;
 			ti,enable-forced-continuous;
 			#address-cells = <1>;
 			#size-cells = <0>;
