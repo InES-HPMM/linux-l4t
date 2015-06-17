@@ -320,35 +320,10 @@ static void bcmsdh_sdmmc_remove(struct sdio_func *func)
 
 /* devices we support, null terminated */
 static const struct sdio_device_id bcmsdh_sdmmc_ids[] = {
-#if 0
 	{ 	.class	= SDIO_CLASS_NONE,
 		.vendor	= SDIO_VENDOR_ID_BROADCOM,
 		.device	= SDIO_ANY_ID
 	},
-#elif 1
-	/* BCM4354 */
-	{ 	.class	= SDIO_CLASS_NONE,
-		.vendor	= SDIO_VENDOR_ID_BROADCOM,
-		.device	= 0x4354
-	},
-	/* BCM43241 */
-	{ 	.class	= SDIO_CLASS_NONE,
-		.vendor	= SDIO_VENDOR_ID_BROADCOM,
-		.device	= 0x4324
-	},
-	/* BCM4339 */
-	{ 	.class	= SDIO_CLASS_NONE,
-		.vendor	= SDIO_VENDOR_ID_BROADCOM,
-		.device	= 0x4339
-	},
-
-#else
-	/* BCM43341 */
-	{ 	.class	= SDIO_CLASS_NONE,
-		.vendor	= SDIO_VENDOR_ID_BROADCOM,
-		.device	= 0xa94d
-	},
-#endif
 	{ /* end: all zeroes */                         },
 };
 
