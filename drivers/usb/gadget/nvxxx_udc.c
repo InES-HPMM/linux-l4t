@@ -2743,6 +2743,10 @@ void handle_cmpl_code_success(struct nv_udc_s *nvudc, struct event_trb_s *event,
 		msg_dbg(nvudc->dev, "end of TD\n");
 		udc_req_ptr = list_entry(udc_ep_ptr->queue.next,
 					struct nv_udc_request, queue);
+		if (udc_req_ptr == NULL) {
+			msg_info(nvudc->dev, "skip aborted requests\n");
+			return;
+		}
 
 		msg_dbg(nvudc->dev, "udc_req_ptr = 0x%p\n", udc_req_ptr);
 
@@ -3041,7 +3045,8 @@ int nvudc_handle_exfer_event(struct nv_udc_s *nvudc, struct event_trb_s *event)
 		if (udc_ep_ptr->deq_pt == udc_ep_ptr->enq_pt) {
 			udc_req_ptr = list_entry(udc_ep_ptr->queue.next,
 						struct nv_udc_request, queue);
-			req_done(udc_ep_ptr, udc_req_ptr, -EINVAL);
+			if (udc_req_ptr)
+				req_done(udc_ep_ptr, udc_req_ptr, -EINVAL);
 
 			/*drop all the queued setup packet, only
 			* process the latest one.*/
@@ -4002,6 +4007,8 @@ bool nvudc_handle_port_status(struct nv_udc_s *nvudc)
 			msg_dbg(nvudc->dev, "gadget speed = 0x%x\n",
 					nvudc->gadget.speed);
 			nvudc->device_state = USB_STATE_DEFAULT;
+			/* complete any requests on ep0 queue */
+			nuke(&nvudc->udc_ep[0], -ESHUTDOWN);
 			nvudc->setup_status = WAIT_FOR_SETUP;
 			update_ep0_maxpacketsize(nvudc);
 
