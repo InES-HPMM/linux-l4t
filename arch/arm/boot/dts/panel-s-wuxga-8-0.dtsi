@@ -41,7 +41,7 @@
 				nvidia,dsi-panel-reset = <TEGRA_DSI_ENABLE>;
 				nvidia,dsi-ulpm-not-support = <TEGRA_DSI_ENABLE>;
 				nvidia,dsi-suspend-stop-stream-late = <TEGRA_DSI_ENABLE>;
-				nvidia,dsi-power-saving-suspend = <1>;
+				nvidia,dsi-power-saving-suspend = <TEGRA_DSI_ENABLE>;
 				nvidia,default_color_space = <1>;	/*default color profile:adobeRGB*/
 				nvidia,dsi-init-cmd =
 							/* Long  Packet: <PACKETTYPE[u8] COMMANDID[u8] PAYLOADCOUNT[u16] ECC[u8] PAYLOAD[..] CHECKSUM[u16]> */
@@ -49,15 +49,16 @@
 							/* For DSI packets each DT cell is interpreted as u8 not u32 */
 
 							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_EXIT_SLEEP_MODE 0x0 0x0>,
-							<TEGRA_DSI_DELAY_MS 250>,
-							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_SET_DISPLAY_ON 0x0 0x0>,
-							<TEGRA_DSI_DELAY_MS 50>;
-				nvidia,dsi-n-init-cmd = <4>;
+							/* This panel has a very sensitive power on/off sequence.
+							 * Send a few more frames for safety. No max limit from vendor. */
+							<TEGRA_DSI_SEND_FRAME 10>,
+							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_SET_DISPLAY_ON 0x0 0x0>;
+				nvidia,dsi-n-init-cmd = <3>;
 				nvidia,dsi-suspend-cmd =
 							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_SET_DISPLAY_OFF 0x0 0x0>,
-							<TEGRA_DSI_DELAY_MS 40>,
+							<TEGRA_DSI_SEND_FRAME 3>,
 							<TEGRA_DSI_PACKET_CMD DSI_DCS_WRITE_0_PARAM DSI_DCS_ENTER_SLEEP_MODE 0x0 0x0>,
-							<TEGRA_DSI_DELAY_MS 200>;
+							<TEGRA_DSI_SEND_FRAME 10>;
 				nvidia,dsi-n-suspend-cmd = <4>;
 				nvidia,dsi-pkt-seq =
 					<CMD_VS LEN_SHORT PKT_LP LINE_STOP>,
