@@ -349,16 +349,16 @@ static int max8973_init_dcdc(struct max8973_chip *max,
 	}
 	control1 = data & MAX8973_RAMP_MASK;
 	switch (control1) {
-	case 0:
+	case MAX8973_RAMP_12mV_PER_US:
 		max->desc.ramp_delay = 12000;
 		break;
-	case 1:
-		max->desc.ramp_delay = 252000;
+	case MAX8973_RAMP_25mV_PER_US:
+		max->desc.ramp_delay = 25000;
 		break;
-	case 2:
+	case MAX8973_RAMP_50mV_PER_US:
 		max->desc.ramp_delay = 50000;
 		break;
-	case 3:
+	case MAX8973_RAMP_200mV_PER_US:
 		max->desc.ramp_delay = 200000;
 		break;
 	}
@@ -372,8 +372,12 @@ static int max8973_init_dcdc(struct max8973_chip *max,
 	if (pdata->control_flags & MAX8973_CONTROL_OUTPUT_ACTIVE_DISCH_ENABLE)
 		control1 |= MAX8973_AD_ENABLE;
 
-	if (pdata->control_flags & MAX8973_CONTROL_BIAS_ENABLE)
+	if (pdata->control_flags & MAX8973_CONTROL_BIAS_ENABLE) {
 		control1 |= MAX8973_BIAS_ENABLE;
+		max->desc.enable_time = 20;
+	} else {
+		max->desc.enable_time = 240;
+	}
 
 	if (pdata->control_flags & MAX8973_CONTROL_FREQ_SHIFT_9PER_ENABLE)
 		control1 |= MAX8973_FREQSHIFT_9PER;
@@ -437,16 +441,10 @@ static int max8973_init_dcdc(struct max8973_chip *max,
 		return ret;
 	}
 
-	/* MAX8973: EN pin is ORed with EN bit.
-	 * MAX77621: EN pin is ANDed with shutdown.
-	 */
-	if (max->enable_external_control && gpio_is_valid(max->enable_gpio)) {
-		int en_bit = 0;
-		if (max->id == MAX77621)
-			en_bit = MAX8973_VOUT_ENABLE;
-
+	/* If external control is enabled then disable EN bit */
+	if (max->enable_external_control && (max->id == MAX8973)) {
 		ret = regmap_update_bits(max->regmap, MAX8973_VOUT,
-					MAX8973_VOUT_ENABLE, en_bit);
+						MAX8973_VOUT_ENABLE, 0);
 		if (ret < 0)
 			dev_err(max->dev, "register %d update failed, err = %d",
 				MAX8973_VOUT, ret);
@@ -560,18 +558,18 @@ static struct max8973_regulator_platform_data *max8973_parse_dt(
 
 	pdata->enable_ext_control = of_property_read_bool(np,
 						"maxim,externally-enable");
-	pdata->dvs_gpio = of_get_named_gpio(np, "maxim,dvs-gpio", 0);
 	pdata->enable_gpio = of_get_named_gpio(np,
 				"maxim,external-enable-gpio", 0);
+
+	if (pdata->enable_gpio == -EINVAL)
+		pdata->enable_gpio = of_get_named_gpio(np, "maxim,enable-gpio", 0);
+	pdata->dvs_gpio = of_get_named_gpio(np, "maxim,dvs-gpio", 0);
 
 	pdata->enable_dvs_sleep_control = of_property_read_bool(np,
 						"maxim,sleep-on-dvs");
 	ret = of_property_read_u32(np, "maxim,dvs-default-state", &pval);
 	if (!ret)
 		pdata->dvs_def_state = pval;
-	ret = of_property_read_u32(np, "maxim,control-flags", &pval);
-	if (!ret)
-		pdata->control_flags = pval;
 
 	if (of_property_read_bool(np, "maxim,enable-remote-sense"))
 		pdata->control_flags  |= MAX8973_CONTROL_REMOTE_SENSE_ENABLE;
@@ -580,6 +578,10 @@ static struct max8973_regulator_platform_data *max8973_parse_dt(
 		pdata->control_flags  |=
 				MAX8973_CONTROL_FALLING_SLEW_RATE_ENABLE;
 
+	if (of_property_read_bool(np, "maxim,enable-active-discharge"))
+		pdata->control_flags  |=
+				MAX8973_CONTROL_OUTPUT_ACTIVE_DISCH_ENABLE;
+
 	if (of_property_read_bool(np, "maxim,enable-frequency-shift"))
 		pdata->control_flags  |= MAX8973_CONTROL_FREQ_SHIFT_9PER_ENABLE;
 
@@ -587,10 +589,8 @@ static struct max8973_regulator_platform_data *max8973_parse_dt(
 	if (ret)
 		pdata->control_flags |= MAX8973_CONTROL_BIAS_ENABLE;
 
-	ret = of_property_read_bool(np, "maxim,enable-active-discharge");
-	if (ret)
-		pdata->control_flags |=
-				MAX8973_CONTROL_OUTPUT_ACTIVE_DISCH_ENABLE;
+	if (of_property_read_bool(np, "maxim,enable-bias-control"))
+		pdata->control_flags  |= MAX8973_BIAS_ENABLE;
 
 	ret = of_property_read_u32(np, "maxim,junction-temp-warning", &pval);
 	if (!ret)
@@ -623,15 +623,15 @@ static int max8973_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
 	struct max8973_regulator_platform_data *pdata;
+	struct regulator_init_data *ridata;
 	struct regulator_config config = { };
 	struct regulator_dev *rdev;
-	struct regulator_init_data *ridata;
 	struct max8973_chip *max;
 	unsigned int chip_id;
 	int ret;
-	int gpio_flags;
 
-	pdata = client->dev.platform_data;
+	pdata = dev_get_platdata(&client->dev);
+
 	if (!pdata && client->dev.of_node)
 		pdata = max8973_parse_dt(client);
 
@@ -640,9 +640,8 @@ static int max8973_probe(struct i2c_client *client,
 		return -EIO;
 	}
 
-	/* If GPIOs number returned as EPROBE_DEFER then defer probe. */
-	if ((pdata->enable_gpio == -EPROBE_DEFER) ||
-		(pdata->dvs_gpio == -EPROBE_DEFER))
+	if ((pdata->dvs_gpio == -EPROBE_DEFER) ||
+		(pdata->enable_gpio == -EPROBE_DEFER))
 		return -EPROBE_DEFER;
 
 	max = devm_kzalloc(&client->dev, sizeof(*max), GFP_KERNEL);
@@ -658,6 +657,7 @@ static int max8973_probe(struct i2c_client *client,
 
 	if (client->dev.of_node) {
 		const struct of_device_id *match;
+
 		match = of_match_device(of_match_ptr(of_max8973_match_tbl),
 				&client->dev);
 		if (!match)
@@ -676,7 +676,6 @@ static int max8973_probe(struct i2c_client *client,
 	dev_info(&client->dev, "CHIP-ID OTP: 0x%02x ID_M: 0x%02x\n",
 			(chip_id >> 4) & 0xF, (chip_id >> 1) & 0x7);
 
-	/* If external control is enabled then disable EN bit */
 	i2c_set_clientdata(client, max);
 	max->irq = client->irq;
 	max->ops = max8973_dcdc_ops;
@@ -690,21 +689,25 @@ static int max8973_probe(struct i2c_client *client,
 	max->desc.uV_step = MAX8973_VOLATGE_STEP;
 	max->desc.n_voltages = MAX8973_BUCK_N_VOLTAGE;
 
-	max->irq_flags = pdata->irq_flags;
-	max->junction_temp_warning = pdata->junction_temp_warning;
-	max->enable_gpio = pdata->enable_gpio;
-	max->dvs_gpio = pdata->dvs_gpio;
+	max->dvs_gpio = (pdata->dvs_gpio) ? pdata->dvs_gpio : -EINVAL;
+	max->enable_gpio = (pdata->enable_gpio) ? pdata->enable_gpio : -EINVAL;
 	max->enable_external_control = pdata->enable_ext_control;
 	max->curr_gpio_val = pdata->dvs_def_state;
 	max->curr_vout_reg = MAX8973_VOUT + pdata->dvs_def_state;
+	max->irq_flags = pdata->irq_flags;
+	max->junction_temp_warning = pdata->junction_temp_warning;
 	max->sleep_vout_reg = MAX8973_VOUT;
 	max->enable_dvs_sleep_control = pdata->enable_dvs_sleep_control;
 	if (!pdata->dvs_def_state)
 		max->sleep_vout_reg = MAX8973_VOUT + 1;
 
+	if (gpio_is_valid(max->enable_gpio))
+		max->enable_external_control = true;
+
 	max->lru_index[0] = max->curr_vout_reg;
 
 	if (gpio_is_valid(max->dvs_gpio)) {
+		int gpio_flags;
 		int i;
 
 		gpio_flags = (pdata->dvs_def_state) ?
@@ -731,19 +734,21 @@ static int max8973_probe(struct i2c_client *client,
 	ridata = pdata->reg_init_data;
 	switch (max->id) {
 	case MAX8973:
-		if (gpio_is_valid(max->enable_gpio) ||
-				pdata->enable_ext_control) {
-			config.ena_gpio_flags = GPIOF_OUT_INIT_LOW;
-			if (ridata && (ridata->constraints.always_on ||
-					ridata->constraints.boot_on))
-				config.ena_gpio_flags = GPIOF_OUT_INIT_HIGH;
-			config.ena_gpio = max->enable_gpio;
-		} else {
+		if (!pdata->enable_ext_control) {
 			max->desc.enable_reg = MAX8973_VOUT;
 			max->desc.enable_mask = MAX8973_VOUT_ENABLE;
 			max->ops.enable = regulator_enable_regmap;
 			max->ops.disable = regulator_disable_regmap;
 			max->ops.is_enabled = regulator_is_enabled_regmap;
+			break;
+		}
+
+		if (gpio_is_valid(max->enable_gpio)) {
+			config.ena_gpio_flags = GPIOF_OUT_INIT_LOW;
+			if (ridata && (ridata->constraints.always_on ||
+					ridata->constraints.boot_on))
+				config.ena_gpio_flags = GPIOF_OUT_INIT_HIGH;
+			config.ena_gpio = max->enable_gpio;
 		}
 		break;
 
@@ -819,8 +824,8 @@ static void max8973_shutdown(struct i2c_client *i2c)
 }
 
 static const struct i2c_device_id max8973_id[] = {
-	{.name = "max8973", MAX8973},
-	{.name = "max77621", MAX77621},
+	{.name = "max8973", .driver_data = MAX8973},
+	{.name = "max77621", .driver_data = MAX77621},
 	{},
 };
 MODULE_DEVICE_TABLE(i2c, max8973_id);
