@@ -1285,7 +1285,6 @@ static int tegra_dc_ext_set_cmu_v2(struct tegra_dc_ext_user *user,
 
 	tegra_nvdisp_update_cmu(dc, cmu);
 
-	kfree(cmu);
 	return 0;
 }
 
