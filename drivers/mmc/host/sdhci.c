@@ -2196,9 +2196,13 @@ static int sdhci_do_get_cd(struct sdhci_host *host)
 		return 0;
 
 	/* If polling/nonremovable, assume that the card is always present. */
-	if ((host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) ||
+	if (((host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) &&
+	    (!host->ops->get_cd)) ||
 	    (host->mmc->caps & MMC_CAP_NONREMOVABLE))
 		return 1;
+
+	if (host->ops->get_cd)
+		return host->ops->get_cd(host);
 
 	/* Try slot gpio detect */
 	if (!IS_ERR_VALUE(gpio_cd))
