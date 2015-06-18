@@ -241,7 +241,6 @@
 					maxim,fps-source = <FPS_SRC_NONE>;
 					maxim,fps-power-up-period = <0>;
 					maxim,fps-power-down-period = <7>;
-					regulator-disable-on-shutdown;
 					consumers {
 						c1 {
 							regulator-consumer-supply = "vddio_hsic";
