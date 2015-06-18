@@ -186,6 +186,21 @@
 		pci@2,0 {
 			status = "okay";
 		};
+		prod-settings {
+			prod_c_pad {
+				prod = <
+					0x000000C8 0x00000000 0x34ac44ac	// PADS_REFCLK_CFG0
+				>;
+			};
+			prod_c_rp {
+				prod = <
+					/*Keeping 0x00000FD8 from tegra124-prods.dtsi to avoid overwriting*/
+					0x00000FD8 0x0FFFF0FF 0x30000D00	// RP_ECTL_1_R2_0	31:28,11:8=TX_DRV_CNTL_1C,TX_CMADJ_1C	0x3,0xD
+					0x00000FD4 0x0FFFFF0F 0x10000020	// PCIE2_RP_ECTL_1_R1_1
+				>;
+			};
+		};
+
 	};
 
 	sdhci@700b0600 {
@@ -274,6 +289,18 @@
 	/* Populate fuse supply */
 	efuse@7000f800 {
 		vpp_fuse-supply = <&vdd_fuse>;
+	};
+
+	udc@7d000000 {
+		prod-settings {
+			#prod-cells = <3>;
+			phy_prod {
+				prod = <
+					0x00000808 0x01C0003F 0x06002A0B	// USB1_UTMIP_XCVR_CFG0_0
+				>;
+			};
+		};
+
 	};
 
 };
