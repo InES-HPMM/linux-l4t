@@ -2871,7 +2871,9 @@ static void tegra_dc_vrr_sec(struct tegra_dc *dc)
 static void tegra_dc_vblank(struct work_struct *work)
 {
 	struct tegra_dc *dc = container_of(work, struct tegra_dc, vblank_work);
+#ifdef CONFIG_TEGRA_NVSD
 	bool nvsd_updated = false;
+#endif /* CONFIG_TEGRA_NVSD */
 
 	mutex_lock(&dc->lock);
 
@@ -2908,9 +2910,11 @@ static void tegra_dc_vblank(struct work_struct *work)
 	tegra_dc_put(dc);
 	mutex_unlock(&dc->lock);
 
+#ifdef CONFIG_TEGRA_NVSD
 	/* Do the actual brightness update outside of the mutex dc->lock */
 	if (nvsd_updated)
 		tegra_dc_prism_update_backlight(dc);
+#endif /* CONFIG_TEGRA_NVSD */
 }
 
 #define CSC_UPDATE_IF_CHANGED(entry, ENTRY) do { \
@@ -3109,7 +3113,9 @@ static void tegra_dc_underflow_handler(struct tegra_dc *dc)
 static void tegra_dc_vpulse2(struct work_struct *work)
 {
 	struct tegra_dc *dc = container_of(work, struct tegra_dc, vpulse2_work);
+#ifdef CONFIG_TEGRA_NVSD
 	bool nvsd_updated = false;
+#endif /* CONFIG_TEGRA_NVSD */
 
 	mutex_lock(&dc->lock);
 
@@ -3145,9 +3151,11 @@ static void tegra_dc_vpulse2(struct work_struct *work)
 	tegra_dc_put(dc);
 	mutex_unlock(&dc->lock);
 
+#ifdef CONFIG_TEGRA_NVSD
 	/* Do the actual brightness update outside of the mutex dc->lock */
 	if (nvsd_updated)
 		tegra_dc_prism_update_backlight(dc);
+#endif /* CONFIG_TEGRA_NVSD */
 }
 #endif
 
