@@ -1273,7 +1273,7 @@
 			pcc7 {
 				nvidia,pins = "pcc7";
 				nvidia,function = "rsvd0";
-				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 				nvidia,io-high-voltage = <TEGRA_PIN_DISABLE>;
