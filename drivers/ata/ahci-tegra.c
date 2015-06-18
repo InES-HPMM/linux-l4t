@@ -1689,6 +1689,11 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	val &= ~PLL0_ENABLE;
 	xusb_writel(val, XUSB_PADCTL_UPHY_PLL_S0_CTL_1_0);
 
+	tegra_periph_reset_assert(tegra_hpriv->clk_sata);
+	tegra_periph_reset_assert(tegra_hpriv->clk_sata_oob);
+	tegra_periph_reset_assert(tegra_hpriv->clk_sata_cold);
+	udelay(10);
+
 	if (clk_prepare_enable(tegra_hpriv->clk_cml1)) {
 		pr_err("%s: unable to enable cml1 clock\n", __func__);
 		err = -ENODEV;
@@ -1697,12 +1702,7 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	tegra_periph_reset_deassert(tegra_hpriv->clk_sata_uphy);
 
 	tegra_ahci_uphy_init();
-
-	tegra_periph_reset_assert(tegra_hpriv->clk_sata);
-	tegra_periph_reset_assert(tegra_hpriv->clk_sata_oob);
-	tegra_periph_reset_assert(tegra_hpriv->clk_sata_cold);
 	udelay(10);
-
 
 	/* need to establish both clocks divisors before setting clk sources */
 	clk_set_rate(tegra_hpriv->clk_sata,
