@@ -201,6 +201,12 @@
 			vdd_hdmi_5v0-supply = <&vdd_hdmi>;
 			vdd_lcd_bl-supply = <&battery_reg>;
 			vdd_ds_1v8-supply = <&battery_reg>;
+
+			/* dp */
+			vdd-dp-pwr-supply = <&vdd_3v3>;
+			avdd-dp-pll-supply = <&max77620_sd3>;
+			vdd-edp-sec-mode-supply = <&vdd_sys_boost>;
+			vdd-dp-pad-supply = <&max77620_ldo8>;
 		};
 		vi {
 			avdd_dsi_csi-supply = <&max77620_gpio7>;
