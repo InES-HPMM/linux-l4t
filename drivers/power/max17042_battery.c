@@ -703,18 +703,152 @@ static void max17042_init_worker(struct work_struct *work)
 
 #ifdef CONFIG_OF
 static struct max17042_platform_data *
-max17042_get_pdata(struct device *dev)
+max17042_parse_dt(struct device *dev)
 {
 	struct device_node *np = dev->of_node;
-	u32 prop;
 	struct max17042_platform_data *pdata;
+	struct max17042_config_data *config_data;
+	u32 prop;
+	u16 pval;
+	int ret = 0;
 
 	if (!np)
 		return dev->platform_data;
 
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
-		return NULL;
+		return ERR_PTR(-ENOMEM);
+
+	config_data = devm_kzalloc(dev, sizeof(*config_data), GFP_KERNEL);
+	if (!config_data)
+		return ERR_PTR(-ENOMEM);
+
+	pdata->config_data = config_data;
+
+	ret = of_property_read_u16(np, "maxim,volt-alrt-threshold", &pval);
+	if (!ret)
+		config_data->valrt_thresh = pval;
+
+	ret = of_property_read_u16(np, "maxim,temp-alrt-threshold", &pval);
+	if (!ret)
+		config_data->talrt_thresh = pval;
+
+	ret = of_property_read_u16(np, "maxim,soc-alrt-threshold", &pval);
+	if (!ret)
+		config_data->soc_alrt_thresh = pval;
+
+	ret = of_property_read_u16(np, "maxim,shutdown-timer", &pval);
+	if (!ret)
+		config_data->shdntimer = pval;
+
+	ret = of_property_read_u16(np, "maxim,design-capacity", &pval);
+	if (!ret)
+		config_data->design_cap = pval;
+
+	ret = of_property_read_u16(np, "maxim,rem-cap-soc-tte", &pval);
+	if (!ret)
+		config_data->at_rate = pval;
+
+	ret = of_property_read_u16(np, "maxim,temp-gain", &pval);
+	if (!ret)
+		config_data->tgain = pval;
+
+	ret = of_property_read_u16(np, "maxim,temp-offset", &pval);
+	if (!ret)
+		config_data->toff = pval;
+
+	ret = of_property_read_u16(np, "maxim,voltage-empty", &pval);
+	if (!ret)
+		config_data->vempty = pval;
+
+	ret = of_property_read_u16(np, "maxim,qresidual00", &pval);
+	if (!ret)
+		config_data->qrtbl00 = pval;
+
+	ret = of_property_read_u16(np, "maxim,qresidual10", &pval);
+	if (!ret)
+		config_data->qrtbl10 = pval;
+
+	ret = of_property_read_u16(np, "maxim,qresidual20", &pval);
+	if (!ret)
+		config_data->qrtbl20 = pval;
+
+	ret = of_property_read_u16(np, "maxim,qresidual30", &pval);
+	if (!ret)
+		config_data->qrtbl30 = pval;
+
+	ret = of_property_read_u16(np, "maxim,full-soc-thresh", &pval);
+	if (!ret)
+		config_data->full_soc_thresh = pval;
+
+	ret = of_property_read_u16(np, "maxim,rcomp0", &pval);
+	if (!ret)
+		config_data->rcomp0 = pval;
+
+	ret = of_property_read_u16(np, "maxim,tempco", &pval);
+	if (!ret)
+		config_data->tcompc0 = pval;
+
+	ret = of_property_read_u16(np, "maxim,ichg-termi-current", &pval);
+	if (!ret)
+		config_data->ichgt_term = pval;
+
+	ret = of_property_read_u16(np, "maxim,temp-nom", &pval);
+	if (!ret)
+		config_data->temp_nom = pval;
+
+	ret = of_property_read_u16(np, "maxim,temp-lim", &pval);
+	if (!ret)
+		config_data->temp_lim = pval;
+
+	ret = of_property_read_u16(np, "maxim,filter-config", &pval);
+	if (!ret)
+		config_data->filter_cfg = pval;
+
+	ret = of_property_read_u16(np, "maxim,config", &pval);
+	if (!ret)
+		config_data->config = pval;
+
+	ret = of_property_read_u16(np, "maxim,learn-config", &pval);
+	if (!ret)
+		config_data->learn_cfg = pval;
+
+	ret = of_property_read_u16(np, "maxim,misc-config", &pval);
+	if (!ret)
+		config_data->misc_cfg = pval;
+
+	ret = of_property_read_u16(np, "maxim,full-capacity", &pval);
+	if (!ret)
+		config_data->fullcap = pval;
+
+	ret = of_property_read_u16(np, "maxim,full-capacity-nom", &pval);
+	if (!ret)
+		config_data->fullcapnom = pval;
+
+		ret = of_property_read_u16(np, "maxim,lavg-empty", &pval);
+	if (!ret)
+		config_data->lavg_empty = pval;
+
+	ret = of_property_read_u16(np, "maxim,dqacc", &pval);
+	if (!ret)
+		config_data->dqacc = pval;
+
+	ret = of_property_read_u16(np, "maxim,dpacc", &pval);
+	if (!ret)
+		config_data->dpacc = pval;
+
+	ret = of_property_read_u16(np, "maxim,fctc", &pval);
+	if (!ret)
+		config_data->fctc = pval;
+
+	ret = of_property_read_u16(np, "maxim,kempty", &pval);
+	if (!ret)
+		config_data->kempty0 = pval;
+
+	ret = of_property_read_u16_array(np, "maxim,cell-char-tbl",
+		config_data->cell_char_tbl, ARRAY_SIZE(config_data->cell_char_tbl));
+	if (ret < 0)
+		return ERR_PTR(ret);
 
 	/*
 	 * Require current sense resistor value to be specified for
@@ -725,13 +859,19 @@ max17042_get_pdata(struct device *dev)
 		pdata->enable_current_sense = true;
 	}
 
+	pdata->enable_por_init = of_property_read_bool(np,
+						"maxim,enable-por-init");
+
+	pdata->is_battery_present = of_property_read_bool(np,
+						"maxim,is-battery-present");
+
 	return pdata;
 }
 #else
 static struct max17042_platform_data *
-max17042_get_pdata(struct device *dev)
+max17048_parse_dt(struct device *dev)
 {
-	return dev->platform_data;
+	return NULL;
 }
 #endif
 
@@ -775,11 +915,19 @@ static int max17042_probe(struct i2c_client *client,
 
 	chip->client = client;
 	temp_client = client;
-	chip->pdata = max17042_get_pdata(&client->dev);
-	if (!chip->pdata) {
-		dev_err(&client->dev, "no platform data provided\n");
-		return -EINVAL;
+
+	if (client->dev.of_node) {
+		chip->pdata = max17042_parse_dt(&client->dev);
+		if (IS_ERR(chip->pdata))
+			return PTR_ERR(chip->pdata);
+	} else {
+		chip->pdata = client->dev.platform_data;
+		if (!chip->pdata) {
+			dev_err(&client->dev, "no platform data provided\n");
+			return -EINVAL;
+		}
 	}
+
 	i2c_set_clientdata(client, chip);
 
 	ret = max17042_read_reg(chip->client, MAX17042_DevName);
