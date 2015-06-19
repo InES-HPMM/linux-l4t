@@ -266,8 +266,13 @@ static int tegra210_admaif_hw_params(struct snd_pcm_substream *substream,
 	unsigned int reg, fifo_ctrl, fifo_size;
 	int valid_bit;
 
-	cif_conf.audio_channels = params_channels(params);
-	cif_conf.client_channels = params_channels(params);
+	if (admaif->override_channels[dai->id] > 0) {
+		cif_conf.audio_channels = admaif->override_channels[dai->id];
+		cif_conf.client_channels = admaif->override_channels[dai->id];
+	} else {
+		cif_conf.audio_channels = params_channels(params);
+		cif_conf.client_channels = params_channels(params);
+	}
 
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
@@ -424,6 +429,34 @@ static struct snd_soc_dai_ops tegra210_admaif_dai_ops = {
 	.hw_params	= tegra210_admaif_hw_params,
 	.trigger	= tegra210_admaif_trigger,
 };
+
+static int tegra210_admaif_get_channels(struct snd_kcontrol *kcontrol,
+					 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct soc_mixer_control *mc =
+		(struct soc_mixer_control *)kcontrol->private_value;
+	struct tegra210_admaif *admaif = snd_soc_codec_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = admaif->override_channels[mc->reg];
+	return 0;
+}
+
+static int tegra210_admaif_put_channels(struct snd_kcontrol *kcontrol,
+					 struct snd_ctl_elem_value *ucontrol)
+{
+	struct soc_mixer_control *mc =
+		(struct soc_mixer_control *)kcontrol->private_value;
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct tegra210_admaif *admaif = snd_soc_codec_get_drvdata(codec);
+	int value = ucontrol->value.integer.value[0];
+
+	if (value > 0 && value <= 16) {
+		admaif->override_channels[mc->reg] = value;
+		return 0;
+	} else
+		return -EINVAL;
+}
 
 static int tegra210_admaif_dai_probe(struct snd_soc_dai *dai)
 {
@@ -593,6 +626,23 @@ static const struct snd_soc_dapm_route tegra210_admaif_routes[] = {
 	ADMAIF_ROUTES(10)
 };
 
+#define TEGRA210_ADMAIF_CHANNEL_CTRL(reg) \
+	SOC_SINGLE_EXT("ADMAIF" #reg " Channels", reg - 1, 0, 16, 0, \
+		tegra210_admaif_get_channels, tegra210_admaif_put_channels)
+
+static struct snd_kcontrol_new tegra210_admaif_controls[] = {
+	TEGRA210_ADMAIF_CHANNEL_CTRL(1),
+	TEGRA210_ADMAIF_CHANNEL_CTRL(2),
+	TEGRA210_ADMAIF_CHANNEL_CTRL(3),
+	TEGRA210_ADMAIF_CHANNEL_CTRL(4),
+	TEGRA210_ADMAIF_CHANNEL_CTRL(5),
+	TEGRA210_ADMAIF_CHANNEL_CTRL(6),
+	TEGRA210_ADMAIF_CHANNEL_CTRL(7),
+	TEGRA210_ADMAIF_CHANNEL_CTRL(8),
+	TEGRA210_ADMAIF_CHANNEL_CTRL(9),
+	TEGRA210_ADMAIF_CHANNEL_CTRL(10)
+};
+
 static int tegra210_admaif_codec_probe(struct snd_soc_codec *codec)
 {
 	struct tegra210_admaif *admaif = snd_soc_codec_get_drvdata(codec);
@@ -614,6 +664,8 @@ static struct snd_soc_codec_driver tegra210_admaif_codec = {
 	.num_dapm_widgets = ARRAY_SIZE(tegra210_admaif_widgets),
 	.dapm_routes = tegra210_admaif_routes,
 	.num_dapm_routes = ARRAY_SIZE(tegra210_admaif_routes),
+	.controls = tegra210_admaif_controls,
+	.num_controls = ARRAY_SIZE(tegra210_admaif_controls),
 	.idle_bias_off = 1,
 };
 
@@ -667,7 +719,7 @@ static int tegra210_admaif_probe(struct platform_device *pdev)
 				admaif->soc_data->num_ch,
 			GFP_KERNEL);
 	if (!admaif->capture_dma_data) {
-		dev_err(&pdev->dev, "Can't allocate tegra_alt_pcm_dma_params\n");
+		dev_err(&pdev->dev, "Can't allocate capture_dma_data\n");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -677,7 +729,7 @@ static int tegra210_admaif_probe(struct platform_device *pdev)
 				admaif->soc_data->num_ch,
 			GFP_KERNEL);
 	if (!admaif->playback_dma_data) {
-		dev_err(&pdev->dev, "Can't allocate tegra_alt_pcm_dma_params\n");
+		dev_err(&pdev->dev, "Can't allocate playback_dma_data\n");
 		ret = -ENOMEM;
 		goto err;
 	}
