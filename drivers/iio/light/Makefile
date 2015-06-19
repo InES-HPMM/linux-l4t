@@ -10,6 +10,7 @@ obj-$(CONFIG_SENSORS_LM3533)	+= lm3533-als.o
 obj-$(CONFIG_SENSORS_TSL2563)	+= tsl2563.o
 obj-$(CONFIG_VCNL4000)		+= vcnl4000.o
 obj-$(CONFIG_HID_SENSOR_ALS)	+= hid-sensor-als.o
+obj-$(CONFIG_NVS_BH1730FVC)	+= nvs_bh1730fvc.o
 obj-$(CONFIG_NVS_CM3217)	+= nvs_cm3217.o
 obj-$(CONFIG_NVS_CM3218)	+= nvs_cm3218.o
 obj-$(CONFIG_NVS_MAX4400X)	+= nvs_max4400x.o
