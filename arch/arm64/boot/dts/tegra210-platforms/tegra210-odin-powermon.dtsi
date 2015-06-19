@@ -17,48 +17,71 @@
  */
 / {
 	i2c@7000c400 {
-		ina3221x: ina3221x@40 {
-			compatible = "ti,ina3221x";
-			reg = <0x40>;
-			ti,trigger-config = <0x7003>;
-			ti,continuous-config = <0x7607>;
-			ti,enable-forced-continuous;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			#io-channel-cells = <1>;
-			channel@0 {
-				reg = <0x0>;
-				ti,rail-name = "VDD_BATT";
-				ti,shunt-resistor-mohm = <5>;
-				ti,current-critical-limit-ma = <8000>;
-			};
-
-			channel@1 {
-				reg = <0x1>;
-				ti,rail-name = "VDD_5V0";
-				ti,shunt-resistor-mohm = <5>;
-				ti,current-critical-limit-ma = <1800>;
-			};
-
-			channel@2 {
-				reg = <0x2>;
-				ti,rail-name = "VDD_SYS_CPU";
-				ti,shunt-resistor-mohm = <5>;
-			};
-		};
-
-		ina226@46 {
-			status = "disabled";
+		ina226_1@44 {
+			status = "okay";
 			compatible = "ti,ina226x";
-			reg = <0x46>;
+			reg = <0x44>;
+			ti,rail-name = "VDD_GPU";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x00CC>;
+			ti,power-lsb = <25>;
+			ti,divisor = <25>;
+		};
+		ina226_2@41{
+			status = "okay";
+			compatible = "ti,ina226x";
+			reg = <0x41>;
+			ti,rail-name = "VDD_CPU";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x00CC>;
+			ti,power-lsb = <25>;
+			ti,divisor = <25>;
+		};
+		ina226_3@45{
+			status = "okay";
+			compatible = "ti,ina226x";
+			reg = <0x45>;
 			ti,rail-name = "VDD_DDR";
 			ti,continuous-config = <0x0407>;
 			ti,trigger-config = <0x0403>;
-			ti,resistor = <10>;
-			ti,calibration-data = <0x0DF1>;
-			ti,power-lsb = <143>;
+			ti,calibration-data = <0x0064>;
+			ti,power-lsb = <25>;
 			ti,divisor = <25>;
-			ti,precision-multiplier = <1000>;
+		};
+		ina226_4@40{
+			status = "okay";
+			compatible = "ti,ina226x";
+			reg = <0x40>;
+			ti,rail-name = "VDD_15V";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x0064>;
+			ti,power-lsb = <25>;
+			ti,divisor = <25>;
+		};
+		ina226_5@46{
+			status = "okay";
+			compatible = "ti,ina226x";
+			reg = <0x46>;
+			ti,rail-name = "VDD_SYS";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x0A00>;
+			ti,power-lsb = <25>;
+			ti,divisor = <25>;
+		};
+		ina226_6@47{
+			status = "okay";
+			compatible = "ti,ina226x";
+			reg = <0x47>;
+			ti,rail-name = "VDD_BL";
+			ti,continuous-config = <0x0407>;
+			ti,trigger-config = <0x0403>;
+			ti,calibration-data = <0x0033>;
+			ti,power-lsb = <25>;
+			ti,divisor = <25>;
 		};
 	};
 };
