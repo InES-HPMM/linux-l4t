@@ -3221,7 +3221,7 @@ static int snd_soc_dai_link_event(struct snd_soc_dapm_widget *w,
 	struct snd_pcm_substream substream;
 	struct snd_pcm_hw_params *params = NULL;
 	u64 fmt;
-	int ret;
+	int ret = 0;
 
 	BUG_ON(!config);
 	BUG_ON(list_empty(&w->sources) || list_empty(&w->sinks));
