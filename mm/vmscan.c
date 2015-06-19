@@ -1018,7 +1018,7 @@ unsigned long reclaim_clean_pages_from_list(struct zone *zone,
 		.priority = DEF_PRIORITY,
 		.may_unmap = 1,
 	};
-	unsigned long ret, dummy1, dummy2;
+	unsigned long ret, dummy1 = 0, dummy2 = 0;
 	struct page *page, *next;
 	LIST_HEAD(clean_pages);
 
