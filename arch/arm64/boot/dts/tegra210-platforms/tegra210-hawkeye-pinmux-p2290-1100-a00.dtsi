@@ -855,8 +855,8 @@
 			ap_ready_pv5 {
 				nvidia,pins = "ap_ready_pv5";
 				nvidia,function = "rsvd0";
-				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
-				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_ENABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
 
