@@ -1419,6 +1419,7 @@ static int nvmap_debug_compress_show(struct seq_file *s, void *unused)
 			goto end_loop;
 
 		nvmap_handle_get(h);
+		n = rb_next(n);
 		spin_unlock(&dev->handle_lock);
 		if (h_put)
 			nvmap_handle_put(h_put);
@@ -1444,13 +1445,12 @@ static int nvmap_debug_compress_show(struct seq_file *s, void *unused)
 			zero_filled_pages += is_zero_page ? 1 : 0;
 			num_pages++;
 		}
-		spin_lock(&dev->handle_lock);
-
 end_loop:
-		n = rb_next(n);
 		h_put = h;
 		if (!n)
 			nvmap_handle_put(h_put);
+
+		spin_lock(&dev->handle_lock);
 	}
 
 	min_clen = max_clen ? min_clen : 0;
