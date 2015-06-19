@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/ext/tegra_dc_ext_priv.h
  *
- * Copyright (c) 2011-2014, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION, All rights reserved.
  *
  * Author: Robert Morell <rmorell@nvidia.com>
  *
@@ -21,6 +21,7 @@
 
 #include <linux/cdev.h>
 #include <linux/dma-buf.h>
+#include <linux/kthread.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
 #include <linux/poll.h>
@@ -61,7 +62,8 @@ struct tegra_dc_ext_win {
 	/* Current dmabuf (if any) for Y, U, V planes */
 	struct tegra_dc_dmabuf	*cur_handle[TEGRA_DC_NUM_PLANES];
 
-	struct workqueue_struct	*flip_wq;
+	struct task_struct	*flip_kthread;
+	struct kthread_worker	flip_worker;
 
 	atomic_t		nr_pending_flips;
 
