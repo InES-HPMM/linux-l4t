@@ -17,6 +17,8 @@
  */
 
 #include <linux/module.h>
+#include <linux/kobject.h>
+#include <linux/sysfs.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/gpio.h>
@@ -73,6 +75,7 @@ struct tegra_t210ref {
 	int clock_enabled;
 	enum snd_soc_bias_level bias_level;
 	const char *edp_name;
+	const char *dmic_input;
 	int rate_via_kcontrol;
 	int fmt_via_kcontrol;
 	/* Fast path QOS related variables */
@@ -108,6 +111,18 @@ static struct snd_soc_jack_gpio tegra_t210ref_hp_jack_gpio = {
 	.debounce_time = 150,
 	.invert = 1,
 };
+
+static ssize_t tegra_t210ref_dmic_input_show_attr(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct snd_soc_card *card = (struct snd_soc_card *)dev_get_drvdata(dev);
+	struct tegra_t210ref *machine = snd_soc_card_get_drvdata(card);
+
+	return snprintf(buf, PAGE_SIZE, "%s\n", machine->dmic_input);
+}
+
+static struct device_attribute dmicinput_attrs = __ATTR(dmicinput, 0664,
+	tegra_t210ref_dmic_input_show_attr, NULL);
 
 #ifdef CONFIG_SWITCH
 static struct switch_dev tegra_t210ref_headset_switch = {
@@ -752,6 +767,7 @@ static int tegra_t210ref_driver_probe(struct platform_device *pdev)
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, machine);
+	dev_set_drvdata(&pdev->dev, card);
 
 	ret = snd_soc_of_parse_card_name(card, "nvidia,model");
 	if (ret)
@@ -912,6 +928,14 @@ static int tegra_t210ref_driver_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (!of_property_read_string(np, "nvidia,digital-mic-data-input",
+		&machine->dmic_input)) {
+		/* Create sysnode and write the PDM info to it */
+		ret = device_create_file(&pdev->dev, &dmicinput_attrs);
+		if (ret != 0)
+			dev_err(&pdev->dev, "Failed to create dmicinput sysfs node: %d\n", ret);
+	}
+
 	return 0;
 
 err_fini_utils:
@@ -976,6 +1000,8 @@ static int tegra_t210ref_driver_remove(struct platform_device *pdev)
 		regulator_disable(machine->codec_reg);
 		regulator_put(machine->codec_reg);
 	}
+
+	device_remove_file(&pdev->dev, &dmicinput_attrs);
 
 	snd_soc_unregister_card(card);
 
