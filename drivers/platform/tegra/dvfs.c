@@ -1424,9 +1424,10 @@ void tegra_clip_freqs(u32 *freqs, int *num_freqs, int freqs_mult,
 				k++;
 			}
 		} else {
-			if (freq < freq_step) {
-				if (!k) {
-					freqs[j++] = freq;
+			if (freq <= freq_step) {
+				if (!k || (freq == freq_step)) {
+					if (!j || (freqs[j - 1] < freq))
+						freqs[j++] = freq;
 				} else {
 					freq_step =
 						rates_ladder[k-1] / freqs_mult;
