@@ -1424,31 +1424,26 @@ void tegra_clip_freqs(u32 *freqs, int *num_freqs, int freqs_mult,
 			break;
 		}
 
+		if (freq > freq_step) {
+			k++;
+			continue;
+		}
+
 		if (up) {
-			if (freq <= freq_step) {
+			if (!j || (freqs[j - 1] < freq_step))
+				freqs[j++] = freq_step;
+		} else {
+			if (!k || (freq == freq_step)) {
+				if (!j || (freqs[j - 1] < freq))
+					freqs[j++] = freq;
+			} else {
+				freq_step = rates_ladder[k-1] / freqs_mult;
+
 				if (!j || (freqs[j - 1] < freq_step))
 					freqs[j++] = freq_step;
-				i++;
-			} else {
-				k++;
-			}
-		} else {
-			if (freq <= freq_step) {
-				if (!k || (freq == freq_step)) {
-					if (!j || (freqs[j - 1] < freq))
-						freqs[j++] = freq;
-				} else {
-					freq_step =
-						rates_ladder[k-1] / freqs_mult;
-
-					if (!j || (freqs[j - 1] < freq_step))
-						freqs[j++] = freq_step;
-				}
-				i++;
-			} else {
-				k++;
 			}
 		}
+		i++;
 	}
 	*num_freqs = j;
 }
