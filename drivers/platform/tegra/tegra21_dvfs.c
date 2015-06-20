@@ -106,7 +106,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
 	.alignment = {
 		.step_uv = 12500, /* 12.5mV */
 	},
-	.version = "p4v47_p4Av05",
+	.version = "p4v48_p4Av05",
 };
 
 static struct dvfs_rail tegra21_dvfs_rail_vdd_gpu = {
