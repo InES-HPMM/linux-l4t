@@ -425,6 +425,9 @@ int tegra_pll_clk_enable(struct clk *c)
 
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
+	if (clk_readl(c->reg) & ctrl->enable_mask)
+		return 0;	/* already enabled */
+
 	if (ctrl->iddq_mask) {
 		reg = pll_reg_idx_to_addr(c, ctrl->iddq_reg_idx);
 		val = clk_readl(reg);
