@@ -124,9 +124,9 @@
 #define I2C_TIMEOUT_CONFIG_LOAD			(1 << 2)
 
 #define I2C_INTERFACE_TIMING_0			(0x394 << 2)
-#define I2C_TLOW				2
+#define I2C_TLOW				4
 #define I2C_TLOW_SHIFT				0
-#define I2C_THIGH				4
+#define I2C_THIGH				2
 #define I2C_THIGH_SHIFT				8
 #define I2C_INTERFACE_TIMING_1			(0x398 << 2)
 #define I2C_HS_INTERFACE_TIMING_0		(0x39C << 2)
