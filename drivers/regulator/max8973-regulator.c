@@ -81,6 +81,7 @@
 #define MAX8973_FT_ENABLE				BIT(4)
 #define MAX77621_T_JUNCTION_120				BIT(7)
 
+#define MAX8973_CKKADV_TRIP_MASK			0xC
 #define MAX8973_CKKADV_TRIP_DISABLE			0xC
 #define MAX8973_CKKADV_TRIP_75mV_PER_US			0x0
 #define MAX8973_CKKADV_TRIP_150mV_PER_US		0x4
@@ -322,6 +323,55 @@ static int max8973_set_ramp_delay(struct regulator_dev *rdev,
 	return ret_val;
 }
 
+static int max8973_set_current_limit(struct regulator_dev *rdev,
+		int min_ua, int max_ua)
+{
+	struct max8973_chip *max = rdev_get_drvdata(rdev);
+	unsigned int val;
+	int ret;
+
+	if (max_ua <= 9000000)
+		val = MAX8973_CKKADV_TRIP_75mV_PER_US;
+	else if (max_ua <= 12000000)
+		val = MAX8973_CKKADV_TRIP_150mV_PER_US;
+	else
+		val = MAX8973_CKKADV_TRIP_DISABLE;
+
+	ret = regmap_update_bits(max->regmap, MAX8973_CONTROL2,
+			MAX8973_CKKADV_TRIP_MASK, val);
+	if (ret < 0) {
+		dev_err(max->dev, "register %d update failed: %d\n",
+				MAX8973_CONTROL2, ret);
+		return ret;
+	}
+	return 0;
+}
+
+static int max8973_get_current_limit(struct regulator_dev *rdev)
+{
+	struct max8973_chip *max = rdev_get_drvdata(rdev);
+	unsigned int control2;
+	int ret;
+
+	ret = regmap_read(max->regmap, MAX8973_CONTROL2, &control2);
+	if (ret < 0) {
+		dev_err(max->dev, "register %d read failed: %d\n",
+				MAX8973_CONTROL2, ret);
+		return ret;
+	}
+	switch (control2 & MAX8973_CKKADV_TRIP_MASK) {
+	case MAX8973_CKKADV_TRIP_DISABLE:
+		return 15000000;
+	case MAX8973_CKKADV_TRIP_150mV_PER_US:
+		return 12000000;
+	case MAX8973_CKKADV_TRIP_75mV_PER_US:
+		return 9000000;
+	default:
+		break;
+	}
+	return 9000000;
+}
+
 static const struct regulator_ops max8973_dcdc_ops = {
 	.get_voltage_sel	= max8973_dcdc_get_voltage_sel,
 	.set_voltage_sel	= max8973_dcdc_set_voltage_sel,
@@ -331,6 +381,8 @@ static const struct regulator_ops max8973_dcdc_ops = {
 	.set_voltage_time_sel	= regulator_set_voltage_time_sel,
 	.set_ramp_delay		= max8973_set_ramp_delay,
 	.set_sleep_voltage_sel	= max8973_dcdc_set_sleep_voltage_sel,
+	.set_current_limit	= max8973_set_current_limit,
+	.get_current_limit	= max8973_get_current_limit,
 };
 
 static int max8973_init_dcdc(struct max8973_chip *max,
