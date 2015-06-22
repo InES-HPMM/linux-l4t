@@ -1481,7 +1481,7 @@ static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 		== EXT_CSD_SANITIZE_START))
 		timeout = 100;
 	else
-		timeout = 10;
+		timeout = 30;
 
 	mod_timer(&host->timer, jiffies + timeout * HZ);
 
