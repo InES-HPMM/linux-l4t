@@ -722,6 +722,10 @@ enum {
 
 #define EMC_CONFIG_SAMPLE_DELAY                                 0x5f0
 #define EMC_CFG_UPDATE                                          0x5f4
+#define EMC_CFG_UPDATE_UPDATE_DLL_IN_UPDATE_SHIFT		9
+#define EMC_CFG_UPDATE_UPDATE_DLL_IN_UPDATE_MASK		\
+	(0x3 << EMC_CFG_UPDATE_UPDATE_DLL_IN_UPDATE_SHIFT)
+
 #define EMC_CFG                                                 0xc
 #define EMC_CFG_DRAM_CLKSTOP_PD					(1 << 31)
 #define EMC_CFG_DRAM_CLKSTOP_SR					(1 << 30)
