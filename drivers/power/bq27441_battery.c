@@ -853,6 +853,10 @@ static int bq27441_get_property(struct power_supply *psy,
 	int ret = 0;
 
 	mutex_lock(&chip->mutex);
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -EINVAL;
+	}
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
@@ -1144,7 +1148,9 @@ static void of_bq27441_parse_platform_data(struct i2c_client *client,
 	pdata->enable_temp_prop = of_property_read_bool(np,
 					"ti,enable-temp-prop");
 
-	WARN_ON(dt_param_not_found);
+	if (dt_param_not_found)
+		dev_warn(&client->dev,
+				"All the FG properties not provided in DT\n");
 }
 
 static int bq27441_probe(struct i2c_client *client,
