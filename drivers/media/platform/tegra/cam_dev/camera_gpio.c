@@ -1,7 +1,7 @@
 /*
  * virtual.c - Camera GPIO driver
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -76,6 +76,7 @@ int cam_gpio_register(struct i2c_client *client,
 	mutex_unlock(&g_mutex);
 	return 0;
 }
+EXPORT_SYMBOL(cam_gpio_register);
 
 void cam_gpio_deregister(struct i2c_client *client,
 			unsigned pin_num) {
@@ -104,6 +105,7 @@ void cam_gpio_deregister(struct i2c_client *client,
 	mutex_unlock(&g_mutex);
 	return;
 }
+EXPORT_SYMBOL(cam_gpio_deregister);
 
 int cam_gpio_ctrl(struct i2c_client *client,
 			unsigned pin_num, int val,
@@ -155,3 +157,4 @@ int cam_gpio_ctrl(struct i2c_client *client,
 
 	return err; /* return value written or error */
 }
+EXPORT_SYMBOL(cam_gpio_ctrl);
