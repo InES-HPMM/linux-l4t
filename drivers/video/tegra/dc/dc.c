@@ -3600,9 +3600,6 @@ static int tegra_dc_init(struct tegra_dc *dc)
 
 	tegra_dc_io_end(dc);
 
-	dc->vedid = false;
-	dc->vedid_data = NULL;
-
 	return 0;
 }
 
@@ -4865,6 +4862,13 @@ static int tegra_dc_probe(struct platform_device *ndev)
 	 * boot. It should not apply for e.g. HDMI hotplug.
 	 */
 	dc->initialized = false;
+
+	/*
+	 * Initialize vedid state. This is placed here
+	 * to allow persistence across sw HDMI hotplugs.
+	 */
+	dc->vedid = false;
+	dc->vedid_data = NULL;
 
 	return 0;
 
