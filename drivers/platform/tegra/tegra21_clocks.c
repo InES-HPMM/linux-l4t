@@ -7952,7 +7952,7 @@ static struct clk tegra_clk_audio_dmic_list[] = {
 #define MUX_AUDIO_DMIC(_id, _index)					\
 static struct clk_mux_sel mux_pllaout0_##_id##_dmic_pllp_clkm[] = {	\
 	{.input = &tegra_pll_a_out0, .value = 0},			\
-	{.input = &tegra_clk_audio_list[(_index)], .value = 1},		\
+	{.input = &tegra_clk_audio_dmic_list[(_index)], .value = 1},		\
 	{.input = &tegra_pll_p, .value = 2},				\
 	{.input = &tegra_clk_m, .value = 3},				\
 	{ NULL, 0},							\
