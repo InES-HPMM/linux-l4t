@@ -1605,6 +1605,9 @@ static int bq2419x_charger_thermal_configure(
 	int i;
 	int curr_ichg, vreg;
 
+	if (bq2419x->shutdown_complete)
+		return 0;
+
 	chg_pdata = bq2419x->charger_pdata;
 	if (!bq2419x->cable_connected || !chg_pdata->n_temp_profile)
 		return 0;
@@ -2208,6 +2211,8 @@ static void bq2419x_shutdown(struct i2c_client *client)
 
 	if (!bq2419x->cable_connected)
 		goto end;
+
+	battery_charger_thermal_stop_monitoring(bq2419x->bc_dev);
 
 	if (bq2419x->chg_status == BATTERY_CHARGING_DONE) {
 		dev_info(bq2419x->dev, "Battery charging done\n");
