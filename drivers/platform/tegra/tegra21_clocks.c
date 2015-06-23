@@ -9580,6 +9580,7 @@ static struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("ispa.emc",	"tegra_isp.0",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_ISP1), TEGRA210_CLK_ID_EMC_ISPA_USER),
 	SHARED_EMC_CLK("ispb.emc",	"tegra_isp.1",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_ISP2), TEGRA210_CLK_ID_EMC_ISPB_USER),
 	SHARED_EMC_CLK("camera.emc", "tegra_camera_ctrl",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW, 0, TEGRA210_CLK_ID_EMC_CAMERA_USER),
+	SHARED_EMC_CLK("camera_iso.emc", "tegra_camera_ctrl",	"iso.emc",	&tegra_clk_emc,	NULL, 0, SHARED_ISO_BW, 0, TEGRA210_CLK_ID_EMC_CAMERA_ISO_USER),
 	SHARED_EMC_CLK("iso.emc",	"iso",		"emc",	&tegra_clk_emc, NULL, 0, 0, 0, TEGRA210_CLK_ID_EMC_ISO_USER),
 	SHARED_EMC_CLK("floor.emc",	"floor.emc",	NULL,	&tegra_clk_emc, NULL, 0, 0, 0, 0),
 	SHARED_EMC_CLK("override.emc", "override.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_OVERRIDE, 0, 0),
