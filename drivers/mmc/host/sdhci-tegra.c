@@ -5469,6 +5469,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	struct tegra_sdhci_platform_data *plat;
 	struct sdhci_tegra *tegra_host;
 	unsigned int low_freq;
+	unsigned int signal_voltage = 0;
 	const char *parent_clk_list[TEGRA_SDHCI_MAX_PLL_SOURCE];
 	int rc;
 	u8 i;
@@ -5643,80 +5644,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (!gpio_is_valid(plat->cd_gpio))
 		tegra_host->card_present = 1;
 
-	if (plat->mmc_data.ocr_mask & SDHOST_1V8_OCR_MASK) {
-		tegra_host->vddio_min_uv = SDHOST_LOW_VOLT_MIN;
-		tegra_host->vddio_max_uv = SDHOST_LOW_VOLT_MAX;
-	} else if (plat->mmc_data.ocr_mask & MMC_OCR_2V8_MASK) {
-			tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_2V8;
-			tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
-	} else if (plat->mmc_data.ocr_mask & MMC_OCR_3V2_MASK) {
-			tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_3V2;
-			tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
-	} else if (plat->mmc_data.ocr_mask & MMC_OCR_3V3_MASK) {
-			tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_3V3;
-			tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
-	} else {
-		/*
-		 * Set the minV and maxV to default
-		 * voltage range of 2.7V - 3.6V
-		 */
-		tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_MIN;
-		tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
-	}
-
-	if (plat->is_sd_device &&
-		(tegra_get_chipid() == TEGRA_CHIPID_TEGRA21) &&
-		(tegra_chip_get_revision() == TEGRA_REVISION_A01)) {
-		opt_subrevision = tegra_get_fuse_opt_subrevision();
-		if ((opt_subrevision == 0) || (opt_subrevision == 1))
-			plat->limit_vddio_max_volt = true;
-	}
-
-	if (plat->limit_vddio_max_volt) {
-		tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_2V8;
-		tegra_host->vddio_max_uv = SDHOST_MAX_VOLT_SUPPORT;
-	}
-	tegra_host->vdd_io_reg = regulator_get(mmc_dev(host->mmc),
-							"vddio_sdmmc");
-	if (IS_ERR_OR_NULL(tegra_host->vdd_io_reg)) {
-		dev_info(mmc_dev(host->mmc), "%s regulator not found: %ld."
-			"Assuming vddio_sdmmc is not required.\n",
-			"vddio_sdmmc", PTR_ERR(tegra_host->vdd_io_reg));
-		tegra_host->vdd_io_reg = NULL;
-	} else {
-		rc = tegra_sdhci_configure_regulators(tegra_host,
-			CONFIG_REG_SET_VOLT,
-			tegra_host->vddio_min_uv,
-			tegra_host->vddio_max_uv);
-		if (rc) {
-			dev_err(mmc_dev(host->mmc),
-				"Init volt(%duV-%duV) setting failed %d\n",
-				tegra_host->vddio_min_uv,
-				tegra_host->vddio_max_uv, rc);
-			regulator_put(tegra_host->vdd_io_reg);
-			tegra_host->vdd_io_reg = NULL;
-		}
-	}
-
-	tegra_host->vdd_slot_reg = regulator_get(mmc_dev(host->mmc),
-							"vddio_sd_slot");
-	if (IS_ERR_OR_NULL(tegra_host->vdd_slot_reg)) {
-		dev_info(mmc_dev(host->mmc), "%s regulator not found: %ld."
-			" Assuming vddio_sd_slot is not required.\n",
-			"vddio_sd_slot", PTR_ERR(tegra_host->vdd_slot_reg));
-		tegra_host->vdd_slot_reg = NULL;
-	}
-
-	if (tegra_host->card_present) {
-		rc = tegra_sdhci_configure_regulators(tegra_host,
-			CONFIG_REG_EN, 0, 0);
-		if (rc) {
-			dev_err(mmc_dev(host->mmc),
-				"Enable regulators failed in probe %d\n", rc);
-			goto err_clk_get;
-		}
-	}
-
 	tegra_pd_add_device(&pdev->dev);
 	/* Get the ddr clock */
 	tegra_host->ddr_clk = clk_get(mmc_dev(host->mmc), "ddr");
@@ -5784,6 +5711,93 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_host->ddr_clk_limit = plat->ddr_clk_limit;
 
 	sdhci_tegra_init_pinctrl_info(&pdev->dev, tegra_host, plat);
+
+	if (plat->mmc_data.ocr_mask & SDHOST_1V8_OCR_MASK) {
+		tegra_host->vddio_min_uv = SDHOST_LOW_VOLT_MIN;
+		tegra_host->vddio_max_uv = SDHOST_LOW_VOLT_MAX;
+	} else if (plat->mmc_data.ocr_mask & MMC_OCR_2V8_MASK) {
+			tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_2V8;
+			tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
+	} else if (plat->mmc_data.ocr_mask & MMC_OCR_3V2_MASK) {
+			tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_3V2;
+			tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
+	} else if (plat->mmc_data.ocr_mask & MMC_OCR_3V3_MASK) {
+			tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_3V3;
+			tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
+	} else {
+		/*
+		 * Set the minV and maxV to default
+		 * voltage range of 2.7V - 3.6V
+		 */
+		tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_MIN;
+		tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
+	}
+
+	if (plat->is_sd_device &&
+		(tegra_get_chipid() == TEGRA_CHIPID_TEGRA21) &&
+		(tegra_chip_get_revision() == TEGRA_REVISION_A01)) {
+		opt_subrevision = tegra_get_fuse_opt_subrevision();
+		if ((opt_subrevision == 0) || (opt_subrevision == 1))
+			plat->limit_vddio_max_volt = true;
+	}
+
+	if (plat->limit_vddio_max_volt) {
+		tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_2V8;
+		tegra_host->vddio_max_uv = SDHOST_MAX_VOLT_SUPPORT;
+	}
+
+	tegra_host->vdd_io_reg = regulator_get(mmc_dev(host->mmc),
+							"vddio_sdmmc");
+	tegra_host->vdd_slot_reg = regulator_get(mmc_dev(host->mmc),
+							"vddio_sd_slot");
+
+	if (IS_ERR_OR_NULL(tegra_host->vdd_io_reg)) {
+		dev_info(mmc_dev(host->mmc), "%s regulator not found: %ld."
+			"Assuming vddio_sdmmc is not required.\n",
+			"vddio_sdmmc", PTR_ERR(tegra_host->vdd_io_reg));
+		tegra_host->vdd_io_reg = NULL;
+	}
+
+	if (IS_ERR_OR_NULL(tegra_host->vdd_slot_reg)) {
+		dev_info(mmc_dev(host->mmc), "%s regulator not found: %ld."
+			" Assuming vddio_sd_slot is not required.\n",
+			"vddio_sd_slot", PTR_ERR(tegra_host->vdd_slot_reg));
+		tegra_host->vdd_slot_reg = NULL;
+	}
+
+	if (tegra_host->vdd_slot_reg || tegra_host->vdd_io_reg) {
+		rc = tegra_sdhci_configure_regulators(tegra_host,
+			CONFIG_REG_EN, 0, 0);
+		if (rc) {
+			dev_err(mmc_dev(host->mmc),
+				"Enable regulators failed in probe %d\n", rc);
+			goto err_clk_put;
+		}
+
+		if (plat && (plat->mmc_data.ocr_mask & SDHOST_1V8_OCR_MASK))
+			signal_voltage = MMC_SIGNAL_VOLTAGE_180;
+		else
+			signal_voltage = MMC_SIGNAL_VOLTAGE_330;
+		rc = tegra_sdhci_signal_voltage_switch(host, signal_voltage);
+		if (rc) {
+			dev_err(mmc_dev(host->mmc),
+				"Init volt(%duV-%duV) setting failed %d\n",
+				tegra_host->vddio_min_uv,
+				tegra_host->vddio_max_uv, rc);
+			regulator_put(tegra_host->vdd_io_reg);
+			tegra_host->vdd_io_reg = NULL;
+		}
+	}
+
+	if (!tegra_host->card_present) {
+		rc = tegra_sdhci_configure_regulators(tegra_host,
+			CONFIG_REG_DIS, 0, 0);
+		if (rc) {
+			dev_err(mmc_dev(host->mmc),
+				"Disable regulators failed in probe %d\n", rc);
+			goto err_clk_put;
+		}
+	}
 
 	tegra_host->tap_cmd = TAP_CMD_TRIM_DEFAULT_VOLTAGE;
 	tegra_host->speedo = tegra_soc_speedo_0_value();
