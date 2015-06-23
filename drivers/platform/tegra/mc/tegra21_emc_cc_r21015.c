@@ -30,6 +30,36 @@
 #define DVFS_CLOCK_CHANGE_VERSION	21018
 #define EMC_PRELOCK_VERSION		2101
 
+static void dll_disable(int channel_mode)
+{
+	u32 emc_cfg_dig_dll;
+
+	emc_cfg_dig_dll = emc_readl(EMC_CFG_DIG_DLL);
+	emc_cfg_dig_dll &= ~EMC_CFG_DIG_DLL_CFG_DLL_EN;
+	emc_writel(emc_cfg_dig_dll, EMC_CFG_DIG_DLL);
+	emc_timing_update(channel_mode);
+
+	wait_for_update(EMC_CFG_DIG_DLL, EMC_CFG_DIG_DLL_CFG_DLL_EN, 0, 0);
+	if (channel_mode == DUAL_CHANNEL)
+		wait_for_update(EMC_CFG_DIG_DLL,
+				EMC_CFG_DIG_DLL_CFG_DLL_EN, 0, 1);
+}
+
+static void dll_enable(int channel_mode)
+{
+	u32 emc_cfg_dig_dll;
+
+	emc_cfg_dig_dll = emc_readl(EMC_CFG_DIG_DLL);
+	emc_cfg_dig_dll |= EMC_CFG_DIG_DLL_CFG_DLL_EN;
+	emc_writel(emc_cfg_dig_dll, EMC_CFG_DIG_DLL);
+	emc_timing_update(channel_mode);
+
+	wait_for_update(EMC_CFG_DIG_DLL, EMC_CFG_DIG_DLL_CFG_DLL_EN, 1, 0);
+	if (channel_mode == DUAL_CHANNEL)
+		wait_for_update(EMC_CFG_DIG_DLL,
+				EMC_CFG_DIG_DLL_CFG_DLL_EN, 1, 1);
+}
+
 /*
  * When derating is enabled periodic training needs to update both sets of
  * tables. This function copys the necessary periodic training settings from
@@ -605,8 +635,12 @@ u32 __do_periodic_emc_compensation_r21015(
 		EMC_DATA_BRLSHFT_1
 	};
 	u32 items = ARRAY_SIZE(list);
+	u32 emc_cfg_update;
 
 	if (current_timing->periodic_training) {
+		channel_mode = !!(current_timing->burst_regs[EMC_FBIO_CFG7_INDEX] &
+				  (1 << 2));
+		dram_dev_num = 1 + (mc_readl(MC_EMEM_ADR_CFG) & 0x1);
 
 		emc_dbg_o = emc_readl(EMC_DBG);
 		emc_cfg_o = emc_readl(EMC_CFG);
@@ -614,15 +648,13 @@ u32 __do_periodic_emc_compensation_r21015(
 					EMC_CFG_DRAM_CLKSTOP_PD |
 					EMC_CFG_DRAM_CLKSTOP_PD);
 
-		channel_mode = !!(current_timing->burst_regs[EMC_FBIO_CFG7_INDEX] &
-				  (1 << 2));
-		dram_dev_num = 1 + (mc_readl(MC_EMEM_ADR_CFG) & 0x1);
-
 		/*
 		 * 1. Power optimizations should be off.
 		 */
 		emc_writel(emc_cfg, EMC_CFG);
-		emc_timing_update(channel_mode);
+
+		/* Does emc_timing_update() for above changes. */
+		dll_disable(channel_mode);
 
 		wait_for_update(EMC_EMC_STATUS,
 				EMC_EMC_STATUS_DRAM_IN_POWERDOWN_MASK, 0, 0);
@@ -635,6 +667,12 @@ u32 __do_periodic_emc_compensation_r21015(
 		if (channel_mode)
 			wait_for_update(EMC_EMC_STATUS,
 				EMC_EMC_STATUS_DRAM_IN_SELF_REFRESH_MASK, 0, 1);
+
+		emc_cfg_update = emc_readl(EMC_CFG_UPDATE);
+		emc_writel((emc_cfg_update &
+			    ~EMC_CFG_UPDATE_UPDATE_DLL_IN_UPDATE_MASK) |
+			   (2 << EMC_CFG_UPDATE_UPDATE_DLL_IN_UPDATE_SHIFT),
+			   EMC_CFG_UPDATE);
 
 		/*
 		 * 2. osc kick off - this assumes training and dvfs have set
@@ -674,6 +712,12 @@ u32 __do_periodic_emc_compensation_r21015(
 		 * 6. Timing update actally applies the new trimmers.
 		 */
 		emc_timing_update(channel_mode);
+
+		/* 6.1. Restore the UPDATE_DLL_IN_UPDATE field. */
+		emc_writel(emc_cfg_update, EMC_CFG_UPDATE);
+
+		/* 6.2. Restore the DLL. */
+		dll_enable(channel_mode);
 
 		/*
 		 * 7. Copy over the periodic training registers that we updated
@@ -1174,21 +1218,6 @@ static u32 dll_prelock(struct tegra21_emc_table *next_timing,
 	emc_cc_dbg(PRELOCK_STEPS, "Step 12\n");
 	emc_dig_dll_status = emc_readl(EMC_DIG_DLL_STATUS);
 	return emc_dig_dll_status & EMC_DIG_DLL_STATUS_DLL_OUT_MASK;
-}
-
-static void dll_disable(int channel_mode)
-{
-	u32 emc_cfg_dig_dll;
-
-	emc_cfg_dig_dll = emc_readl(EMC_CFG_DIG_DLL);
-	emc_cfg_dig_dll &= ~EMC_CFG_DIG_DLL_CFG_DLL_EN;
-	emc_writel(emc_cfg_dig_dll, EMC_CFG_DIG_DLL);
-	emc_timing_update(channel_mode);
-
-	wait_for_update(EMC_CFG_DIG_DLL, EMC_CFG_DIG_DLL_CFG_DLL_EN, 0, 0);
-	if (channel_mode == DUAL_CHANNEL)
-		wait_for_update(EMC_CFG_DIG_DLL,
-				EMC_CFG_DIG_DLL_CFG_DLL_EN, 0, 1);
 }
 
 /*
