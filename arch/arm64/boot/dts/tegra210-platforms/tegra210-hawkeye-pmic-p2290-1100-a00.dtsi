@@ -31,10 +31,10 @@
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(Y, 1) IRQF_TRIGGER_FALLING>;
 			regulator-name = "vdd-cpu";
-			regulator-min-microvolt = <606250>;
+			regulator-min-microvolt = <618750>;
 			regulator-max-microvolt = <1400000>;
 			regulator-max-microamp = <15000000>;
-			regulator-n-voltages = <128>;
+			regulator-n-voltages = <126>;
 			regulator-ramp-delay = <12000>;
 			regulator-enable-ramp-delay = <150>;
 			regulator-disable-ramp-delay = <60000>;
@@ -54,7 +54,7 @@
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(A, 6) IRQF_TRIGGER_FALLING>;
 			regulator-name = "vdd-gpu";
-			regulator-min-microvolt = <606250>;
+			regulator-min-microvolt = <618750>;
 			regulator-max-microvolt = <1400000>;
 			regulator-max-microamp = <9000000>;
 			regulator-init-microvolt = <1000000>;
