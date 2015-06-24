@@ -56,7 +56,7 @@
 
 	cpuidle {
 		vdd-cpu-supply = <&cpu_max77621_reg>;
-		cc4-microvolt = <606250>;
+		cc4-microvolt = <618750>;
 	};
 
 	i2c@546c0000 {
