@@ -49,6 +49,8 @@
 #define OS_LOAD_TIMEOUT		5000 /* ms */
 #define ADSP_COM_MBOX_ID	2
 
+#define DRAM_DEBUG_LOG_SIZE	0x100000
+
 /*ADSP message pool structure */
 union app_loader_msgq {
 	msgq_t msgq;
@@ -67,6 +69,7 @@ struct nvadsp_app_shared_msg_pool {
 /*ADSP shated OS args */
 struct nvadsp_os_args {
 	int32_t timer_prescalar;
+	char	logger[DRAM_DEBUG_LOG_SIZE];
 } __packed;
 
 /* ADSP OS shared memory */

@@ -473,25 +473,6 @@ struct global_sym_info *find_global_symbol(const char *sym_name)
 	return NULL;
 }
 
-static void *get_debug_ram(const struct firmware *fw, int *size)
-{
-	struct device *dev = &priv.pdev->dev;
-	struct elf32_shdr *shdr;
-	int addr;
-
-	shdr = nvadsp_get_section(fw, DEBUG_RAM_REGION);
-	if (!shdr) {
-		dev_info(dev, "section %s not found\n", DEBUG_RAM_REGION);
-		return ERR_PTR(-EINVAL);
-	}
-
-	dev_dbg(dev, "the %s is present at 0x%x\n",
-		DEBUG_RAM_REGION, shdr->sh_addr);
-	addr = shdr->sh_addr;
-	*size = shdr->sh_size;
-	return nvadsp_da_to_va_mappings(addr, *size);
-}
-
 static void *get_mailbox_shared_region(const struct firmware *fw)
 {
 	struct device *dev;
@@ -635,11 +616,11 @@ static void deallocate_memory_for_adsp_os(struct device *dev)
 
 int nvadsp_os_load(void)
 {
+	struct nvadsp_shared_mem *shared_mem;
 	struct nvadsp_drv_data *drv_data;
 	const struct firmware *fw;
 	struct device *dev;
 	int ret = 0;
-	void *ptr;
 
 	if (!priv.pdev) {
 		pr_err("ADSP Driver is not initialized\n");
@@ -674,12 +655,11 @@ int nvadsp_os_load(void)
 		goto release_firmware;
 	}
 
-	priv.logger.debug_ram_rdr =
-		get_debug_ram(fw, &priv.logger.debug_ram_sz);
-	if (IS_ERR_OR_NULL(priv.logger.debug_ram_rdr))
-		dev_err(dev, "Ram debug logging facility not available\n");
-
-	/* hold the pointer to the device */
+	shared_mem = get_mailbox_shared_region(fw);
+	drv_data->shared_adsp_os_data = shared_mem;
+	/* set logger strcuture with required properties */
+	priv.logger.debug_ram_rdr = shared_mem->os_args.logger;
+	priv.logger.debug_ram_sz = sizeof(shared_mem->os_args.logger);
 	priv.logger.dev = dev;
 
 	dev_info(dev, "Loading ADSP OS firmware %s\n", NVADSP_FIRMWARE);
@@ -695,8 +675,6 @@ int nvadsp_os_load(void)
 		dev_err(dev, "Memory allocation dynamic apps failed\n");
 		goto deallocate_os_memory;
 	}
-	ptr = get_mailbox_shared_region(fw);
-	drv_data->shared_adsp_os_data = ptr;
 	priv.os_firmware = fw;
 	priv.adsp_os_fw_loaded = true;
 	wake_up(&priv.logger.wait_queue);
