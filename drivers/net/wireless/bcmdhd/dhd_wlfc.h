@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 1999-2014, Broadcom Corporation
+* Copyright (C) 1999-2015, Broadcom Corporation
 * 
 *      Unless you and Broadcom execute a separate written software license
 * agreement governing use of this software, this software is licensed to you
@@ -18,7 +18,7 @@
 *      Notwithstanding the above, under no circumstances may you combine this
 * software in any way with any other Broadcom software provided under a license
 * other than the GPL, without Broadcom's express prior written consent.
-* $Id: dhd_wlfc.h 490028 2014-07-09 05:58:25Z $
+* $Id: dhd_wlfc.h 530091 2015-01-29 04:30:33Z $
 *
 */
 #ifndef __wlfc_host_driver_definitions_h__
@@ -29,6 +29,11 @@
 #endif
 
 /* #define OOO_DEBUG */
+
+#define KERNEL_THREAD_RETURN_TYPE int
+
+typedef int (*f_commitpkt_t)(void* ctx, void* p);
+typedef bool (*f_processpkt_t)(void* p, void* arg);
 
 #define WLFC_UNSUPPORTED -9999
 
@@ -105,6 +110,13 @@ typedef struct wlfc_hanger {
 #define WLFC_FLOWCONTROL_HIWATER	(2048 - 256)
 #define WLFC_FLOWCONTROL_LOWATER	256
 
+#if (WLFC_FLOWCONTROL_HIWATER >= (WLFC_PSQ_LEN - 256))
+#undef WLFC_FLOWCONTROL_HIWATER
+#define WLFC_FLOWCONTROL_HIWATER	(WLFC_PSQ_LEN - 256)
+#undef WLFC_FLOWCONTROL_LOWATER
+#define WLFC_FLOWCONTROL_LOWATER	(WLFC_FLOWCONTROL_HIWATER / 4)
+#endif
+
 #define WLFC_LOG_BUF_SIZE		(1024*1024)
 
 typedef struct wlfc_mac_descriptor {
@@ -133,9 +145,9 @@ typedef struct wlfc_mac_descriptor {
 	uint8 send_tim_signal;
 	uint8 mac_handle;
 	/* Number of packets at dongle for this entry. */
-	uint transit_count;
+	int transit_count;
 	/* Numbe of suppression to wait before evict from delayQ */
-	uint suppr_transit_count;
+	int suppr_transit_count;
 	/* flag. TRUE when in suppress state */
 	uint8 suppressed;
 
@@ -261,6 +273,9 @@ typedef struct athost_wl_status_info {
 	/* dhd pub */
 	void*	dhdp;
 
+	f_commitpkt_t fcommit;
+	void* commit_ctx;
+
 	/* stats */
 	athost_wl_stat_counters_t stats;
 
@@ -294,6 +309,7 @@ typedef struct athost_wl_status_info {
 	int	pkt_cnt_in_q[WLFC_MAX_IFNUM][AC_COUNT+1];
 	int	pkt_cnt_per_ac[AC_COUNT+1];
 	int	pkt_cnt_in_drv[WLFC_MAX_IFNUM][AC_COUNT+1];
+	int	pkt_cnt_in_psq;
 	uint8	allow_fc;
 	uint32  fc_defer_timestamp;
 	uint32	rx_timestamp[AC_COUNT+1];
@@ -471,9 +487,6 @@ typedef struct dhd_pkttag {
 #define PSQ_SUP_IDX(x) (x * 2 + 1)
 #define PSQ_DLY_IDX(x) (x * 2)
 
-typedef int (*f_commitpkt_t)(void* ctx, void* p);
-typedef bool (*f_processpkt_t)(void* p, void* arg);
-
 #ifdef PROP_TXSTATUS_DEBUG
 #define DHD_WLFC_CTRINC_MAC_CLOSE(entry)	do { (entry)->closed_ct++; } while (0)
 #define DHD_WLFC_CTRINC_MAC_OPEN(entry)		do { (entry)->opened_ct++; } while (0)
@@ -485,6 +498,7 @@ typedef bool (*f_processpkt_t)(void* p, void* arg);
 /* public functions */
 int dhd_wlfc_parse_header_info(dhd_pub_t *dhd, void* pktbuf, int tlv_hdr_len,
 	uchar *reorder_info_buf, uint *reorder_info_len);
+KERNEL_THREAD_RETURN_TYPE dhd_wlfc_transfer_packets(void *data);
 int dhd_wlfc_commit_packets(dhd_pub_t *dhdp, f_commitpkt_t fcommit,
 	void* commit_ctx, void *pktbuf, bool need_toggle_host_if);
 int dhd_wlfc_txcomplete(dhd_pub_t *dhd, void *txp, bool success);

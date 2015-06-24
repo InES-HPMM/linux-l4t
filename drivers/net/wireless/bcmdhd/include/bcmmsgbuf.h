@@ -4,7 +4,7 @@
  *
  * Definitions subject to change without notice.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,7 +24,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmmsgbuf.h 490808 2014-07-12 00:33:13Z $
+ * $Id: bcmmsgbuf.h 530336 2015-01-29 22:52:35Z $
  */
 #ifndef _bcmmsgbuf_h_
 #define	_bcmmsgbuf_h_
@@ -46,10 +46,10 @@
 
 #define H2DRING_TXPOST_MAX_ITEM			512
 #define H2DRING_RXPOST_MAX_ITEM			256
-#define H2DRING_CTRL_SUB_MAX_ITEM		20
+#define H2DRING_CTRL_SUB_MAX_ITEM		64
 #define D2HRING_TXCMPLT_MAX_ITEM		1024
 #define D2HRING_RXCMPLT_MAX_ITEM		256
-#define D2HRING_CTRL_CMPLT_MAX_ITEM		20
+#define D2HRING_CTRL_CMPLT_MAX_ITEM		64
 enum {
 	DNGL_TO_HOST_MSGBUF,
 	HOST_TO_DNGL_MSGBUF
@@ -497,7 +497,7 @@ typedef struct host_txbuf_post {
 	uint16		metadata_buf_len;
 	/* provided data buffer len to receive data */
 	uint16		data_len;
-	uint32		rsvd;
+	uint32		flag2;
 } host_txbuf_post_t;
 
 #define BCMPCIE_PKT_FLAGS_FRAME_802_3	0x01
@@ -515,6 +515,9 @@ typedef struct host_txbuf_post {
 #define BCMPCIE_TXPOST_FLAGS_FRAME_802_11	BCMPCIE_PKT_FLAGS_FRAME_802_11
 #define BCMPCIE_TXPOST_FLAGS_PRIO_SHIFT		BCMPCIE_PKT_FLAGS_PRIO_SHIFT
 #define BCMPCIE_TXPOST_FLAGS_PRIO_MASK		BCMPCIE_PKT_FLAGS_PRIO_MASK
+
+#define BCMPCIE_PKT_FLAGS2_FORCELOWRATE_MASK	0x01
+#define BCMPCIE_PKT_FLAGS2_FORCELOWRATE_SHIFT	0
 
 /* H2D Txpost ring work items */
 typedef union txbuf_submit_item {

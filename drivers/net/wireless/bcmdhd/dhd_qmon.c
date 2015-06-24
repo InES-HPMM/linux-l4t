@@ -10,7 +10,7 @@
  * concurrent access to the fieds because the existing concurrent accesses are protected
  * by the PROP_TXSTATUS's lock.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -156,11 +156,9 @@ dhd_qmon_getpercent(dhd_pub_t *dhdp)
 	if (queued_time_last)
 		time_cumul_adjust = now - queued_time_last;
 
-	if ((now - qmon->queued_time_last_io) > 0) {
-		percent = (uint32)((time_cumul_adjust + queued_time_cumul
+	percent = (uint32)((time_cumul_adjust + queued_time_cumul
 	                    - qmon->queued_time_cumul_last) * 100) /
 	                    (uint32)(now - qmon->queued_time_last_io);
-	}
 
 	qmon->queued_time_cumul_last = queued_time_cumul + time_cumul_adjust;
 	qmon->queued_time_last_io = now;

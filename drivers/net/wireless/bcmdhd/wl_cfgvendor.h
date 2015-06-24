@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 Vendor Extension Code
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,10 +24,6 @@
  * $Id: wl_cfgvendor.h 455257 2014-02-20 08:10:24Z $
  */
 
-/*
- * New vendor interface additon to nl80211/cfg80211 to allow vendors
- * to implement proprietary features over the cfg80211 stack.
- */
 
 #ifndef _wl_cfgvendor_h_
 #define _wl_cfgvendor_h_

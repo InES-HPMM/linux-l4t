@@ -1,7 +1,7 @@
 /*
  * BCM43XX PCIE core hardware definitions.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: pcie_core.h 483003 2014-06-05 19:57:46Z $
+ * $Id: pcie_core.h 530336 2015-01-29 22:52:35Z $
  */
 #ifndef	_PCIE_CORE_H
 #define	_PCIE_CORE_H

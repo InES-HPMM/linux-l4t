@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 1999-2014, Broadcom Corporation
+# Copyright (C) 1999-2015, Broadcom Corporation
 # 
 #      Unless you and Broadcom execute a separate written software license
 # agreement governing use of this software, this software is licensed to you
@@ -28,9 +28,7 @@
 # 2. For select components, as listed in compvers.sh
 #    it generates component version files
 #
-# Copyright 2005, Broadcom, Inc.
-#
-# $Id: Makefile 347587 2012-07-27 09:13:31Z $
+# $Id: Makefile 518520 2014-12-02 13:42:31Z $
 #
 
 export SRCBASE:=..

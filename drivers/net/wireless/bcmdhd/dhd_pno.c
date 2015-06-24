@@ -2,7 +2,7 @@
  * Broadcom Dongle Host Driver (DHD)
  * Prefered Network Offload and Wi-Fi Location Service(WLS) code.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -752,7 +752,7 @@ dhd_pno_stop_for_ssid(dhd_pub_t *dhd)
 	uint32 mode = 0;
 	dhd_pno_status_info_t *_pno_state;
 	dhd_pno_params_t *_params;
-	wl_pfn_bssid_t *p_pfn_bssid = NULL;
+	wl_pfn_bssid_t *p_pfn_bssid;
 	NULL_CHECK(dhd, "dev is NULL", err);
 	NULL_CHECK(dhd->pno_state, "pno_state is NULL", err);
 	_pno_state = PNO_GET_PNOSTATE(dhd);
@@ -820,7 +820,6 @@ dhd_pno_stop_for_ssid(dhd_pub_t *dhd)
 		}
 	}
 exit:
-	kfree(p_pfn_bssid);
 	return err;
 }
 
@@ -1330,10 +1329,6 @@ _dhd_pno_get_for_batch(dhd_pub_t *dhd, char *buf, int bufsize, int reason)
 			plnetinfo++;
 		}
 	}
-
-	/* increase total scan count using current scan count */
-	_params->params_batch.get_batch.tot_scan_cnt += pscan_results->cnt_header;
-
 	if (pscan_results->cnt_header == 0) {
 		/* In case that we didn't get any data from the firmware
 		 * Remove the current scan_result list from get_bach.scan_results_list.
@@ -1343,6 +1338,8 @@ _dhd_pno_get_for_batch(dhd_pub_t *dhd, char *buf, int bufsize, int reason)
 		MFREE(dhd->osh, pscan_results, SCAN_RESULTS_SIZE);
 		_params->params_batch.get_batch.top_node_cnt--;
 	}
+	/* increase total scan count using current scan count */
+	_params->params_batch.get_batch.tot_scan_cnt += pscan_results->cnt_header;
 
 	if (buf && bufsize) {
 		/* This is a first try to get batching results */
@@ -1447,7 +1444,7 @@ dhd_pno_stop_for_batch(dhd_pub_t *dhd)
 	int i = 0;
 	dhd_pno_status_info_t *_pno_state;
 	dhd_pno_params_t *_params;
-	wl_pfn_bssid_t *p_pfn_bssid = NULL;
+	wl_pfn_bssid_t *p_pfn_bssid;
 	wlc_ssid_t *p_ssid_list = NULL;
 	NULL_CHECK(dhd, "dhd is NULL", err);
 	NULL_CHECK(dhd->pno_state, "pno_state is NULL", err);
@@ -1544,8 +1541,8 @@ dhd_pno_stop_for_batch(dhd_pub_t *dhd)
 exit:
 	_params = &_pno_state->pno_params_arr[INDEX_OF_BATCH_PARAMS];
 	_dhd_pno_reinitialize_prof(dhd, _params, DHD_PNO_BATCH_MODE);
-	kfree(p_ssid_list);
-	kfree(p_pfn_bssid);
+	if (p_ssid_list)
+		kfree(p_ssid_list);
 	return err;
 }
 
@@ -1705,7 +1702,7 @@ dhd_pno_stop_for_hotlist(dhd_pub_t *dhd)
 	uint32 mode = 0;
 	dhd_pno_status_info_t *_pno_state;
 	dhd_pno_params_t *_params;
-	wlc_ssid_t *p_ssid_list = NULL;
+	wlc_ssid_t *p_ssid_list;
 	NULL_CHECK(dhd, "dhd is NULL", err);
 	NULL_CHECK(dhd->pno_state, "pno_state is NULL", err);
 	_pno_state = PNO_GET_PNOSTATE(dhd);
@@ -1789,7 +1786,6 @@ dhd_pno_stop_for_hotlist(dhd_pub_t *dhd)
 		}
 	}
 exit:
-	kfree(p_ssid_list);
 	return err;
 }
 

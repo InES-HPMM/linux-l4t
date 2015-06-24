@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  *
  * Fundamental constants relating to DHCP Protocol
  *
- * $Id: bcmdhcp.h 382883 2013-02-04 23:26:09Z $
+ * $Id: bcmdhcp.h 518520 2014-12-02 13:42:31Z $
  */
 
 #ifndef _bcmdhcp_h_

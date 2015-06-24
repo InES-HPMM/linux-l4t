@@ -1,7 +1,7 @@
 /*
  * Common function shared by Linux WEXT, cfg80211 and p2p drivers
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,15 +21,13 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wldev_common.c 467328 2014-04-03 01:23:40Z $
+ * $Id: wldev_common.c 527441 2015-01-19 04:13:03Z $
  */
 
 #include <osl.h>
 #include <linux/kernel.h>
 #include <linux/kthread.h>
 #include <linux/netdevice.h>
-
-#include "dynamic.h"
 
 #include <wldev_common.h>
 #include <bcmutils.h>
@@ -284,20 +282,17 @@ int wldev_get_link_speed(
 }
 
 int wldev_get_rssi(
-	struct net_device *dev, int *prssi)
+	struct net_device *dev, scb_val_t *scb_val)
 {
-	scb_val_t scb_val;
 	int error;
 
-	if (!prssi)
+	if (!scb_val)
 		return -ENOMEM;
-	bzero(&scb_val, sizeof(scb_val_t));
 
-	error = wldev_ioctl(dev, WLC_GET_RSSI, &scb_val, sizeof(scb_val_t), 0);
+	error = wldev_ioctl(dev, WLC_GET_RSSI, scb_val, sizeof(scb_val_t), 0);
 	if (unlikely(error))
 		return error;
 
-	*prssi = dtoh32(scb_val.val);
 	return error;
 }
 
@@ -337,6 +332,72 @@ int wldev_set_band(
 	return error;
 }
 
+int wldev_get_datarate(struct net_device *dev, int *datarate)
+{
+	int error = 0;
+
+	error = wldev_ioctl(dev, WLC_GET_RATE, datarate, sizeof(int), false);
+	if (error) {
+		return -1;
+	} else {
+		*datarate = dtoh32(*datarate);
+	}
+
+	return error;
+}
+
+extern chanspec_t
+wl_chspec_driver_to_host(chanspec_t chanspec);
+#define WL_EXTRA_BUF_MAX 2048
+int wldev_get_mode(
+	struct net_device *dev, uint8 *cap)
+{
+	int error = 0;
+	int chanspec = 0;
+	uint16 band = 0;
+	uint16 bandwidth = 0;
+	wl_bss_info_t *bss = NULL;
+	char* buf = kmalloc(WL_EXTRA_BUF_MAX, GFP_KERNEL);
+	if (!buf)
+		return -1;
+
+	*(u32*) buf = htod32(WL_EXTRA_BUF_MAX);
+	error = wldev_ioctl(dev, WLC_GET_BSS_INFO, (void*)buf, WL_EXTRA_BUF_MAX, false);
+	if (error) {
+		WLDEV_ERROR(("%s:failed:%d\n", __FUNCTION__, error));
+		return -1;
+	}
+	bss = (struct  wl_bss_info *)(buf + 4);
+	chanspec = wl_chspec_driver_to_host(bss->chanspec);
+
+	band = chanspec & WL_CHANSPEC_BAND_MASK;
+	bandwidth = chanspec & WL_CHANSPEC_BW_MASK;
+
+	if (band == WL_CHANSPEC_BAND_2G) {
+		if (bss->n_cap)
+			strcpy(cap, "n");
+		else
+			strcpy(cap, "bg");
+	} else if (band == WL_CHANSPEC_BAND_5G) {
+		if (bandwidth == WL_CHANSPEC_BW_80)
+			strcpy(cap, "ac");
+		else if ((bandwidth == WL_CHANSPEC_BW_40) || (bandwidth == WL_CHANSPEC_BW_20)) {
+			if ((bss->nbss_cap & 0xf00) && (bss->n_cap))
+				strcpy(cap, "n|ac");
+			else if (bss->n_cap)
+				strcpy(cap, "n");
+			else if (bss->vht_cap)
+				strcpy(cap, "ac");
+			else
+				strcpy(cap, "a");
+		} else {
+			WLDEV_ERROR(("%s:Mode get failed\n", __FUNCTION__));
+			return -1;
+		}
+
+	}
+	return error;
+}
 int wldev_set_country(
 	struct net_device *dev, char *country_code, bool notify, bool user_enforced)
 {
@@ -393,9 +454,7 @@ int wldev_miracast_tuning(
 	int error = 0;
 	int mode = 0;
 	int ampdu_mpdu;
-	int ampdu_rx_tid = -1;
-	int disable_interference_mitigation = 0;
-	int auto_interference_mitigation = -1;
+	int roam_off;
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 	int mchan_algo;
 	int mchan_bw;
@@ -406,15 +465,15 @@ int wldev_miracast_tuning(
 		return -1;
 	}
 
-set_mode:
-
+	WLDEV_ERROR(("mode: %d\n", mode));
 
 	if (mode == 0) {
 		/* Normal mode: restore everything to default */
-#ifdef CUSTOM_AMPDU_MPDU
-		ampdu_mpdu = CUSTOM_AMPDU_MPDU;
-#else
 		ampdu_mpdu = -1;	/* FW default */
+#if defined(ROAM_ENABLE)
+		roam_off = 0;	/* roam enable */
+#elif defined(DISABLE_BUILTIN_ROAM)
+		roam_off = 1;	/* roam disable */
 #endif
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 		mchan_algo = 0;	/* Default */
@@ -424,6 +483,9 @@ set_mode:
 	else if (mode == 1) {
 		/* Miracast source mode */
 		ampdu_mpdu = 8;	/* for tx latency */
+#if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
+		roam_off = 1; /* roam disable */
+#endif
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 		mchan_algo = 1;	/* BW based */
 		mchan_bw = 25;	/* 25:75 */
@@ -431,42 +493,16 @@ set_mode:
 	}
 	else if (mode == 2) {
 		/* Miracast sink/PC Gaming mode */
-		ampdu_mpdu = 8;	/* FW default */
+		ampdu_mpdu = -1;	/* FW default */
+#if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
+		roam_off = 1; /* roam disable */
+#endif
 #ifdef VSDB_BW_ALLOCATE_ENABLE
 		mchan_algo = 0;	/* Default */
 		mchan_bw = 50;	/* 50:50 */
 #endif /* VSDB_BW_ALLOCATE_ENABLE */
-	} else if (mode == 3) {
-		ampdu_rx_tid = 0;
-		mode = 2;
-		goto set_mode;
-	} else if (mode == 4) {
-		ampdu_rx_tid = 0x7f;
-		mode = 0;
-		goto set_mode;
-	} else if (mode == 5) {
-		/* Blake connected mode, disable interference mitigation */
-		error = wldev_ioctl(dev, WLC_SET_INTERFERENCE_OVERRIDE_MODE,
-			&disable_interference_mitigation, sizeof(int), true);
-		if (error) {
-			WLDEV_ERROR((
-				"Failed to set interference_override: mode:%d, error:%d\n",
-				mode, error));
-			return -1;
-		}
-		return error;
-	} else if (mode == 6) {
-		/* No Blake connected, enable auto interference mitigation */
-		error = wldev_ioctl(dev, WLC_SET_INTERFERENCE_OVERRIDE_MODE,
-			&auto_interference_mitigation, sizeof(int), true);
-		if (error) {
-			WLDEV_ERROR((
-				"Failed to set interference_override: mode:%d, error:%d\n",
-				mode, error));
-			return -1;
-		}
-		return error;
-	} else {
+	}
+	else {
 		WLDEV_ERROR(("Unknown mode: %d\n", mode));
 		return -1;
 	}
@@ -479,11 +515,16 @@ set_mode:
 		return -1;
 	}
 
-	if (ampdu_rx_tid != -1)
-		dhd_set_ampdu_rx_tid(dev, ampdu_rx_tid);
+#if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
+	error = wldev_iovar_setint(dev, "roam_off", roam_off);
+	if (error) {
+		WLDEV_ERROR(("Failed to set roam_off: mode:%d, error:%d\n",
+			mode, error));
+		return -1;
+	}
+#endif /* ROAM_ENABLE || DISABLE_BUILTIN_ROAM */
 
 #ifdef VSDB_BW_ALLOCATE_ENABLE
-if (bcmdhd_vsdb_bw_allocate_enable) {
 	error = wldev_iovar_setint(dev, "mchan_algo", mchan_algo);
 	if (error) {
 		WLDEV_ERROR(("Failed to set mchan_algo: mode:%d, error:%d\n",
@@ -497,191 +538,9 @@ if (bcmdhd_vsdb_bw_allocate_enable) {
 			mode, error));
 		return -1;
 	}
-}
 #endif /* VSDB_BW_ALLOCATE_ENABLE */
 
 	return error;
-}
-
-int wldev_get_assoc_resp_ie(
-	struct net_device *dev, char *command, int total_len)
-{
-	wl_assoc_info_t *assoc_info;
-	char smbuf[WLC_IOCTL_SMLEN];
-	char bssid[6], null_bssid[6];
-	int resp_ies_len = 0;
-	int bytes_written = 0;
-	int error, i;
-
-	bzero(bssid, 6);
-	bzero(null_bssid, 6);
-
-	/* Check Association */
-	error = wldev_ioctl(dev, WLC_GET_BSSID, &bssid, sizeof(bssid), 0);
-	if (error == BCME_NOTASSOCIATED) {
-		/* Not associated */
-		bytes_written += snprintf(&command[bytes_written], total_len, "NA");
-		goto done;
-	}
-	else if (error < 0) {
-		WLDEV_ERROR(("WLC_GET_BSSID failed = %d\n", error));
-		return -1;
-	}
-	else if (memcmp(bssid, null_bssid, ETHER_ADDR_LEN) == 0) {
-		/*  Zero BSSID: Not associated */
-		bytes_written += snprintf(&command[bytes_written], total_len, "NA");
-		goto done;
-	}
-
-	/* Get assoc_info */
-	bzero(smbuf, sizeof(smbuf));
-	error = wldev_iovar_getbuf(dev, "assoc_info", NULL, 0, smbuf, sizeof(smbuf), NULL);
-	if (error < 0) {
-		WLDEV_ERROR(("get assoc_info failed = %d\n", error));
-		return -1;
-	}
-
-	assoc_info = (wl_assoc_info_t *)smbuf;
-	resp_ies_len = dtoh32(assoc_info->resp_len) - sizeof(struct dot11_assoc_resp);
-
-	/* Retrieve assoc resp IEs */
-	if (resp_ies_len) {
-		error = wldev_iovar_getbuf(dev, "assoc_resp_ies",
-			NULL, 0, smbuf, sizeof(smbuf), NULL);
-		if (error < 0) {
-			WLDEV_ERROR(("get assoc_resp_ies failed = %d\n", error));
-			return -1;
-		}
-
-		/* Length */
-		bytes_written += snprintf(&command[bytes_written], total_len, "%d,", resp_ies_len);
-
-		/* IEs */
-		if ((total_len - bytes_written) > resp_ies_len) {
-			for (i = 0; i < resp_ies_len; i++) {
-				bytes_written += sprintf(&command[bytes_written], "%02x", smbuf[i]);
-			}
-		} else {
-			WLDEV_ERROR(("Not enough buffer\n"));
-			return -1;
-		}
-	} else {
-		WLDEV_ERROR(("Zero Length assoc resp ies = %d\n", resp_ies_len));
-		return -1;
-	}
-
-done:
-
-	return bytes_written;
-}
-
-int wldev_get_max_linkspeed(
-	struct net_device *dev, char *command, int total_len)
-{
-	wl_assoc_info_t *assoc_info;
-	char smbuf[WLC_IOCTL_SMLEN];
-	char bssid[6], null_bssid[6];
-	int resp_ies_len = 0;
-	int bytes_written = 0;
-	int error, i;
-
-	bzero(bssid, 6);
-	bzero(null_bssid, 6);
-
-	/* Check Association */
-	error = wldev_ioctl(dev, WLC_GET_BSSID, &bssid, sizeof(bssid), 0);
-	if (error == BCME_NOTASSOCIATED) {
-		/* Not associated */
-		bytes_written += snprintf(&command[bytes_written],
-					total_len, "-1");
-		goto done;
-	} else if (error < 0) {
-		WLDEV_ERROR(("WLC_GET_BSSID failed = %d\n", error));
-		return -1;
-	} else if (memcmp(bssid, null_bssid, ETHER_ADDR_LEN) == 0) {
-		/*  Zero BSSID: Not associated */
-		bytes_written += snprintf(&command[bytes_written],
-					total_len, "-1");
-		goto done;
-	}
-	/* Get assoc_info */
-	bzero(smbuf, sizeof(smbuf));
-	error = wldev_iovar_getbuf(dev, "assoc_info", NULL, 0, smbuf,
-				sizeof(smbuf), NULL);
-	if (error < 0) {
-		WLDEV_ERROR(("get assoc_info failed = %d\n", error));
-		return -1;
-	}
-
-	assoc_info = (wl_assoc_info_t *)smbuf;
-	resp_ies_len = dtoh32(assoc_info->resp_len) -
-				sizeof(struct dot11_assoc_resp);
-
-	/* Retrieve assoc resp IEs */
-	if (resp_ies_len) {
-		error = wldev_iovar_getbuf(dev, "assoc_resp_ies", NULL, 0,
-					smbuf, sizeof(smbuf), NULL);
-		if (error < 0) {
-			WLDEV_ERROR(("get assoc_resp_ies failed = %d\n",
-				error));
-			return -1;
-		}
-
-		{
-			int maxRate = 0;
-			struct dot11IE {
-				unsigned char ie;
-				unsigned char len;
-				unsigned char data[0];
-			} *dot11IE = (struct dot11IE *)smbuf;
-			int remaining = resp_ies_len;
-
-			while (1) {
-				if (remaining < 2)
-					break;
-				if (remaining < dot11IE->len + 2)
-					break;
-				switch (dot11IE->ie) {
-				case 0x01: /* supported rates */
-				case 0x32: /* extended supported rates */
-					for (i = 0; i < dot11IE->len; i++) {
-						int rate = ((dot11IE->data[i] &
-								0x7f) / 2);
-						if (rate > maxRate)
-							maxRate = rate;
-					}
-					break;
-				case 0x2d: /* HT capabilities */
-				case 0x3d: /* HT operation */
-					/* 11n supported */
-					maxRate = 150; /* Just return an 11n
-					rate for now. Could implement detailed
-					parser later. */
-					break;
-				default:
-					break;
-				}
-
-				/* next IE */
-				dot11IE = (struct dot11IE *)
-				((unsigned char *)dot11IE + dot11IE->len + 2);
-				remaining -= (dot11IE->len + 2);
-			}
-			bytes_written += snprintf(&command[bytes_written],
-						total_len, "MaxLinkSpeed %d",
-						maxRate);
-			goto done;
-			}
-	} else {
-		WLDEV_ERROR(("Zero Length assoc resp ies = %d\n",
-			resp_ies_len));
-		return -1;
-	}
-
-done:
-
-	return bytes_written;
-
 }
 
 int wldev_get_rx_rate_stats(
@@ -733,6 +592,78 @@ int wldev_get_rx_rate_stats(
 		dtoh32(rstats->rx48mbps[0]), dtoh32(rstats->rx48mbps[1]));
 	bytes_written += sprintf(command+bytes_written, "54/%d/%d",
 		dtoh32(rstats->rx54mbps[0]), dtoh32(rstats->rx54mbps[1]));
+
+	return bytes_written;
+}
+
+int wldev_get_assoc_resp_ie(
+	struct net_device *dev, char *command, int total_len)
+{
+	wl_assoc_info_t *assoc_info;
+	char smbuf[WLC_IOCTL_SMLEN];
+	char bssid[6], null_bssid[6];
+	int resp_ies_len = 0;
+	int bytes_written = 0;
+	int error, i;
+
+	bzero(bssid, 6);
+	bzero(null_bssid, 6);
+
+	/* Check Association */
+	error = wldev_ioctl(dev, WLC_GET_BSSID, &bssid, sizeof(bssid), 0);
+	if (error == BCME_NOTASSOCIATED) {
+		/* Not associated */
+		bytes_written += snprintf(&command[bytes_written], total_len, "NA");
+		goto done;
+	}
+	else if (error < 0) {
+		WLDEV_ERROR(("WLC_GET_BSSID failed = %d\n", error));
+		return -1;
+	}
+	else if (memcmp(bssid, null_bssid, ETHER_ADDR_LEN) == 0) {
+		/*  Zero BSSID: Not associated */
+		bytes_written += snprintf(&command[bytes_written], total_len, "NA");
+		goto done;
+	}
+
+	/* Get assoc_info */
+	bzero(smbuf, sizeof(smbuf));
+	error = wldev_iovar_getbuf(dev, "assoc_info", NULL, 0, smbuf, sizeof(smbuf), NULL);
+	if (error < 0) {
+		WLDEV_ERROR(("get assoc_info failed = %d\n", error));
+		return -1;
+	}
+
+	assoc_info = (wl_assoc_info_t *)smbuf;
+	resp_ies_len = dtoh32(assoc_info->resp_len) - sizeof(struct dot11_assoc_resp);
+
+	/* Retrieve assoc resp IEs */
+	if (resp_ies_len) {
+		error = wldev_iovar_getbuf(dev, "assoc_resp_ies", NULL, 0, smbuf, sizeof(smbuf),
+			NULL);
+		if (error < 0) {
+			WLDEV_ERROR(("get assoc_resp_ies failed = %d\n", error));
+			return -1;
+		}
+
+		/* Length */
+		bytes_written += snprintf(&command[bytes_written], total_len, "%d,", resp_ies_len);
+
+		/* IEs */
+		if ((total_len - bytes_written) > resp_ies_len) {
+			for (i = 0; i < resp_ies_len; i++) {
+				bytes_written += sprintf(&command[bytes_written], "%02x", smbuf[i]);
+			}
+		} else {
+			WLDEV_ERROR(("Not enough buffer\n"));
+			return -1;
+		}
+	} else {
+		WLDEV_ERROR(("Zero Length assoc resp ies = %d\n", resp_ies_len));
+		return -1;
+	}
+
+done:
 
 	return bytes_written;
 }

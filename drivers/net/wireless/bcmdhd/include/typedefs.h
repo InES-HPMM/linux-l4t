@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -18,7 +18,7 @@
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
- * $Id: typedefs.h 484281 2014-06-12 22:42:26Z $
+ * $Id: typedefs.h 530513 2015-01-30 07:01:41Z $
  */
 
 #ifndef _TYPEDEFS_H_

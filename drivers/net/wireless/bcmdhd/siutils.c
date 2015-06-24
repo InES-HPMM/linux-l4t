@@ -2,7 +2,7 @@
  * Misc utility routines for accessing chip-specific features
  * of the SiliconBackplane-based Broadcom chips.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: siutils.c 481602 2014-05-29 22:43:34Z $
+ * $Id: siutils.c 506728 2014-10-07 07:22:45Z $
  */
 
 #include <bcm_cfg.h>
@@ -85,6 +85,7 @@ static bool si_pmu_is_ilp_sensitive(uint32 idx, uint regoff);
 static void si_config_gcigpio(si_t *sih, uint32 gci_pos, uint8 gcigpio,
 	uint8 gpioctl_mask, uint8 gpioctl_val);
 #endif /* BCMLTECOEX */
+
 
 
 /* global variable to indicate reservation/release of gpio's */
@@ -353,9 +354,20 @@ si_buscore_setup(si_info_t *sii, chipcregs_t *cc, uint bustype, uint32 savewin,
 			*origidx = i;
 	}
 
+
 #if defined(PCIE_FULL_DONGLE)
-	pci = FALSE;
-#endif
+	if (pcie) {
+		if (pcie_gen2)
+			sii->pub.buscoretype = PCIE2_CORE_ID;
+		else
+			sii->pub.buscoretype = PCIE_CORE_ID;
+		sii->pub.buscorerev = pcierev;
+		sii->pub.buscoreidx = pcieidx;
+	}
+	BCM_REFERENCE(pci);
+	BCM_REFERENCE(pcirev);
+	BCM_REFERENCE(pciidx);
+#else
 	if (pci) {
 		sii->pub.buscoretype = PCI_CORE_ID;
 		sii->pub.buscorerev = pcirev;
@@ -368,6 +380,7 @@ si_buscore_setup(si_info_t *sii, chipcregs_t *cc, uint bustype, uint32 savewin,
 		sii->pub.buscorerev = pcierev;
 		sii->pub.buscoreidx = pcieidx;
 	}
+#endif /* defined(PCIE_FULL_DONGLE) */
 
 	SI_VMSG(("Buscore id/type/rev %d/0x%x/%d\n", sii->pub.buscoreidx, sii->pub.buscoretype,
 	         sii->pub.buscorerev));
@@ -503,6 +516,18 @@ si_doattach(si_info_t *sii, uint devid, osl_t *osh, void *regs,
 		SI_ERROR(("%s: chipcommon register space is null \n", __FUNCTION__));
 		return NULL;
 	}
+#ifdef COSTOMER_HW4
+#ifdef CONFIG_MACH_UNIVERSAL5433
+	/* old revision check */
+	if (!check_rev()) {
+		/* abnormal link status */
+		if (!check_pcie_link_status()) {
+			printk("%s : PCIE LINK is abnormal status\n", __FUNCTION__);
+			return NULL;
+		}
+	}
+#endif /* CONFIG_MACH_UNIVERSAL5433 */
+#endif 
 	w = R_REG(osh, &cc->chipid);
 	if ((w & 0xfffff) == 148277) w -= 65532;
 	sih->socitype = (w & CID_TYPE_MASK) >> CID_TYPE_SHIFT;

@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 driver - Android related functions
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_android.h 487838 2014-06-27 05:51:44Z $
+ * $Id: wl_android.h 513437 2014-11-06 12:09:29Z $
  */
 
 #include <linux/module.h>
@@ -63,6 +63,10 @@ s32 wl_netlink_send_msg(int pid, int type, int seq, void *data, size_t size);
 
 /* max number of assoc list */
 #define MAX_NUM_OF_ASSOCLIST    64
+/* Bandwidth */
+#define WL_CH_BANDWIDTH_20MHZ 20
+#define WL_CH_BANDWIDTH_40MHZ 40
+#define WL_CH_BANDWIDTH_80MHZ 80
 
 /* max number of mac filter list
  * restrict max number to 10 as maximum cmd string size is 255
