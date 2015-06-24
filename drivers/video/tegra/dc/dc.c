@@ -2784,6 +2784,7 @@ int _tegra_dc_wait_for_frame_end(struct tegra_dc *dc,
 	return ret;
 }
 
+#ifdef CONFIG_TEGRA_NVSD
 static void tegra_dc_prism_update_backlight(struct tegra_dc *dc)
 {
 	/* Do the actual brightness update outside of the mutex dc->lock */
@@ -2800,6 +2801,7 @@ static void tegra_dc_prism_update_backlight(struct tegra_dc *dc)
 		backlight_update_status(bl);
 	}
 }
+#endif
 
 void tegra_dc_set_act_vfp(struct tegra_dc *dc, int vfp)
 {
