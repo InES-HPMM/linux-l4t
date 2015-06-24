@@ -227,6 +227,13 @@
 		};
 	};
 
+	i2c@7000c400 {
+		bh1730fvc@29 {
+			vid-supply = <&max77620_sd3>;
+			vdd-supply = <&vdd_3v3>;
+		};
+	};
+
 	i2c@546c0000 {
 		bus-pullup-supply = <&battery_reg>;
 	};

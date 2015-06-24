@@ -40,6 +40,7 @@
 #include "tegra210-platforms/tegra210-thermal-nct72-p2530.dtsi"
 #include "tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi"
 #include "tegra210-platforms/tegra210-ers-clk-init.dtsi"
+#include "tegra210-platforms/tegra210-odin-sensor.dtsi"
 
 / {
 	model = "odin";
