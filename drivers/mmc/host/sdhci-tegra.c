@@ -760,6 +760,7 @@ static void sdhci_tegra_select_drive_strength(struct sdhci_host *host,
 		unsigned int uhs);
 static void tegra_sdhci_get_clock_freq_for_mode(struct sdhci_host *sdhci,
 			unsigned int *clock);
+static void tegra_sdhci_reset(struct sdhci_host *sdhci, u8 mask);
 
 static void tegra_sdhci_dumpregs(struct sdhci_host *sdhci)
 {
@@ -1394,18 +1395,18 @@ static irqreturn_t carddetect_irq(int irq, void *data)
 static void vendor_trim_clear_sel_vreg(struct sdhci_host *host, bool enable)
 {
 	unsigned int misc_ctrl;
-	unsigned int wait_usecs;
 
 	misc_ctrl = sdhci_readl(host, SDMMC_VNDR_IO_TRIM_CNTRL_0);
 	if (enable) {
 		misc_ctrl &= ~(SDMMC_VNDR_IO_TRIM_CNTRL_0_SEL_VREG);
-		wait_usecs = 3;
+		sdhci_writel(host, misc_ctrl, SDMMC_VNDR_IO_TRIM_CNTRL_0);
+		udelay(3);
+		tegra_sdhci_reset(host, SDHCI_RESET_CMD | SDHCI_RESET_DATA);
 	} else {
 		misc_ctrl |= (SDMMC_VNDR_IO_TRIM_CNTRL_0_SEL_VREG);
-		wait_usecs = 1;
+		sdhci_writel(host, misc_ctrl, SDMMC_VNDR_IO_TRIM_CNTRL_0);
+		udelay(1);
 	}
-	sdhci_writel(host, misc_ctrl, SDMMC_VNDR_IO_TRIM_CNTRL_0);
-	udelay(wait_usecs);
 }
 
 static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
