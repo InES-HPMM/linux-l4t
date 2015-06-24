@@ -78,8 +78,10 @@ struct tegra_sata_aux *tegra_sata_aux_get(struct platform_device *pdev)
 	}
 
 	base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(base))
-		return base;
+	if (IS_ERR(base)) {
+		int ret = PTR_ERR(base);
+		return ERR_PTR(ret);
+	}
 
 	dev_info(&pdev->dev, "Tegra SATA AUX init success\n");
 
