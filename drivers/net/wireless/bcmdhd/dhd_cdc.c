@@ -1,7 +1,7 @@
 /*
  * DHD Protocol Module for CDC and BDC.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_cdc.c 472193 2014-04-23 06:27:38Z $
+ * $Id: dhd_cdc.c 530091 2015-01-29 04:30:33Z $
  *
  * BDC is like CDC, except it includes a header for data packets to convey
  * packet priority over the bus, and flags (e.g. to indicate checksum status
@@ -58,12 +58,12 @@
 				 */
 
 typedef struct dhd_prot {
+	cdc_ioctl_t msg;
+	unsigned char buf[WLC_IOCTL_MAXLEN + ROUND_UP_MARGIN];
 	uint16 reqid;
 	uint8 pending;
 	uint32 lastcmd;
 	uint8 bus_header[BUS_HEADER_LEN];
-	cdc_ioctl_t msg;
-	unsigned char buf[WLC_IOCTL_MAXLEN + ROUND_UP_MARGIN];
 } dhd_prot_t;
 
 

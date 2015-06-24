@@ -4,7 +4,7 @@
  *
  * Definitions subject to change without notice.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -30,8 +30,6 @@
 
 #ifndef wlioctl_defs_h
 #define wlioctl_defs_h
-
-
 
 
 
@@ -85,11 +83,10 @@
 
 #define HIGHEST_SINGLE_STREAM_MCS	7 /* MCS values greater than this enable multiple streams */
 
-/* given a proprietary MCS, get number of spatial streams */
-#define GET_PROPRIETARY_11N_MCS_NSS(mcs) (1 + ((mcs) - 85) / 8)
+#define GET_PRO_PRIETARY_11N_MCS_NSS(mcs) (1 + ((mcs) - 85) / 8)
 
 #define GET_11N_MCS_NSS(mcs) ((mcs) < 32 ? (1 + ((mcs) / 8)) \
-				: ((mcs) == 32 ? 1 : GET_PROPRIETARY_11N_MCS_NSS(mcs)))
+				: ((mcs) == 32 ? 1 : GET_PRO_PRIETARY_11N_MCS_NSS(mcs)))
 
 #define MAX_CCA_CHANNELS 38	/* Max number of 20 Mhz wide channels */
 #define MAX_CCA_SECS	60	/* CCA keeps this many seconds history */
@@ -333,6 +330,7 @@
 /* check this magic number */
 #define WLC_IOCTL_MAGIC		0x14e46c77
 
+
 /* bss_info_cap_t flags */
 #define WL_BSS_FLAGS_FROM_BEACON	0x01	/* bss_info derived from beacon */
 #define WL_BSS_FLAGS_FROM_CACHE		0x02	/* bss_info collected from cache */
@@ -436,7 +434,7 @@
 #define WPA2_AUTH_PSK		0x0080	/* Pre-shared key */
 #define BRCM_AUTH_PSK           0x0100  /* BRCM specific PSK */
 #define BRCM_AUTH_DPT		0x0200	/* DPT PSK without group keys */
-#define WPA2_AUTH_MFP           0x1000  /* MFP (11w) in contrast to CCX */
+#define WPA2_AUTH_MFP           0x1000
 #define WPA2_AUTH_TPK		0x2000 	/* TDLS Peer Key */
 #define WPA2_AUTH_FT		0x4000 	/* Fast Transition. */
 #define WPA_AUTH_PFN_ANY	0xffffffff	/* for PFN, match only ssid */
@@ -1241,11 +1239,7 @@
 /* number of bytes needed to define a proper bit mask for MAC event reporting */
 #define BCMIO_ROUNDUP(x, y)	((((x) + ((y) - 1)) / (y)) * (y))
 #define BCMIO_NBBY		8
-#ifdef CONFIG_BCM4339
-#define WL_EVENTING_MASK_LEN	32
-#else
 #define WL_EVENTING_MASK_LEN	16
-#endif
 
 
 /* join preference types */
@@ -1990,6 +1984,7 @@
 #define NET_DETECT_MAX_CHANNELS		50
 #endif /* NET_DETECT */
 
+
 /* Bit masks for radio disabled status - returned by WL_GET_RADIO */
 #define WL_RADIO_SW_DISABLE		(1<<0)
 #define WL_RADIO_HW_DISABLE		(1<<1)
@@ -2053,7 +2048,7 @@
 #define WL_P2P_SOCIAL_CHANNELS_MAX  WL_NUMCHANNELS
 #define MAX_WFDS_SEEK_SVC 4	/* Max # of wfds services to seek */
 #define MAX_WFDS_ADVERT_SVC 4	/* Max # of wfds services to advertise */
-#define MAX_WFDS_SVC_NAME_LEN 200	/* maximum service_name length */
+#define MAX_WFDS_SVC_NAME_LEN 255	/* maximum service_name length */
 #define MAX_WFDS_ADV_SVC_INFO_LEN 65000	/* maximum adv service_info length */
 #define P2P_WFDS_HASH_LEN 6		/* Length of a WFDS service hash */
 #define MAX_WFDS_SEEK_SVC_INFO_LEN 255	/* maximum seek service_info req length */

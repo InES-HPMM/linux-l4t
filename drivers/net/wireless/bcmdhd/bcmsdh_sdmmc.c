@@ -1,7 +1,7 @@
 /*
  * BCMSDH Function Driver for the native SDIO/MMC driver in the Linux Kernel
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,7 +24,6 @@
  * $Id: bcmsdh_sdmmc.c 459285 2014-03-03 02:54:39Z $
  */
 #include <typedefs.h>
-#include "dynamic.h"
 
 #include <bcmdevs.h>
 #include <bcmendian.h>
@@ -62,7 +61,6 @@ static void IRQHandlerF2(struct sdio_func *func);
 static int sdioh_sdmmc_get_cisaddr(sdioh_info_t *sd, uint32 regaddr);
 extern int sdio_reset_comm(struct mmc_card *card);
 
-extern int card_removed;
 #define DEFAULT_SDIO_F2_BLKSIZE		512
 #ifndef CUSTOM_SDIO_F2_BLKSIZE
 #define CUSTOM_SDIO_F2_BLKSIZE		DEFAULT_SDIO_F2_BLKSIZE
@@ -1333,7 +1331,7 @@ sdioh_start(sdioh_info_t *sd, int stage)
 		   2.6.27. The implementation prior to that is buggy, and needs broadcom's
 		   patch for it
 		*/
-		if ((ret = mmc_power_restore_host(sd->func[0]->card->host))) {
+		if ((ret = sdio_reset_comm(sd->func[0]->card))) {
 			sd_err(("%s Failed, error = %d\n", __FUNCTION__, ret));
 			return ret;
 		}
@@ -1420,11 +1418,6 @@ sdioh_stop(sdioh_info_t *sd)
 #endif
 		bcmsdh_oob_intr_set(sd->bcmsdh, FALSE);
 #endif /* !defined(OOB_INTR_ONLY) */
-		if (!card_removed)
-		{
-			if (mmc_power_save_host((sd->func[0])->card->host))
-				sd_err(("%s card power save fail\n", __FUNCTION__));
-		}
 	}
 	else
 		sd_err(("%s Failed\n", __FUNCTION__));

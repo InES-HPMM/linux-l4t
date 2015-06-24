@@ -4,7 +4,7 @@
  *
  * Definitions subject to change without notice.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,7 +24,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wlioctl.h 490639 2014-07-11 08:31:53Z $
+ * $Id: wlioctl.h 531112 2015-02-02 08:57:07Z $
  */
 
 #ifndef _wlioctl_h_
@@ -124,6 +124,7 @@ typedef struct wl_sa_query {
 	uint16 			id;
 	struct ether_addr 	da;
 } wl_sa_query_t;
+
 
 /* require default structure packing */
 #define BWL_DEFAULT_PACKING
@@ -244,6 +245,7 @@ typedef struct wl_bss_info_108 {
 	/* Add new fields here */
 	/* variable length Information Elements */
 } wl_bss_info_108_t;
+
 
 #define	WL_BSS_INFO_VERSION	109		/* current version of wl_bss_info struct */
 
@@ -368,6 +370,7 @@ struct wl_clm_dload_info {
 	uint8  data_chunk[1];
 };
 typedef struct wl_clm_dload_info wl_clm_dload_info_t;
+
 
 typedef struct wlc_ssid {
 	uint32		SSID_len;
@@ -699,7 +702,6 @@ typedef struct {
 
 #define WLC_CNTRY_BUF_SZ	4		/* Country string is 3 bytes + NUL */
 
-
 typedef struct wl_country {
 	char country_abbrev[WLC_CNTRY_BUF_SZ];	/* nul-terminated country code used in
 						 * the Country IE
@@ -876,7 +878,7 @@ typedef struct wl_led_info {
 typedef struct {
 	uint	byteoff;	/* byte offset */
 	uint	nbytes;		/* number of bytes */
-	uint16	buf[1];
+	uint16	*buf;
 } srom_rw_t;
 
 #define CISH_FLAG_PCIECIS	(1 << 15)	/* write CIS format bit for PCIe CIS */
@@ -1133,7 +1135,6 @@ typedef struct compat_wl_ioctl {
 #define WL_NUM_RATES_EXTRA_VHT		2 /* Additional VHT 11AC rates */
 #define WL_NUM_RATES_VHT			10
 #define WL_NUM_RATES_MCS32			1
-
 
 /*
  * Structure for passing hardware and software
@@ -1941,11 +1942,6 @@ typedef struct {
 	uint32	pciereset;	/* Secondary Bus Reset issued by driver */
 	uint32	cfgrestore;	/* configspace restore by driver */
 	uint32	reinitreason[NREINITREASONCOUNT]; /* reinitreason counters; 0: Unknown reason */
-	uint32  rxrtry;		/* num of received packets with retry bit on */
-	uint32	txmpdu;		/* number of MPDUs txed.  */
-	uint32	rxnodelim;	/* number of occasions that no valid delimiter is detected
-				 * by ampdu parser.
-				 */
 } wl_cnt_t;
 
 typedef struct {
@@ -2666,6 +2662,7 @@ typedef BWL_PRE_PACKED_STRUCT struct pfn_olmsg_params_t {
 #define MSCAN_MAX			90
 #endif
 
+
 /* Service discovery */
 typedef struct {
 	uint8	transaction_id;	/* Transaction id */
@@ -2893,6 +2890,18 @@ typedef struct wl_keep_alive_pkt {
  * Dongle pattern matching filter.
  */
 
+/* Packet filter operation mode */
+/* True: 1; False: 0 */
+#define PKT_FILTER_MODE_FORWARD_ON_MATCH		1
+/* Enable and disable pkt_filter as a whole */
+#define PKT_FILTER_MODE_DISABLE					2
+/* Cache first matched rx pkt(be queried by host later) */
+#define PKT_FILTER_MODE_PKT_CACHE_ON_MATCH		4
+/* If pkt_filter is enabled and no filter is set, don't forward anything */
+#define PKT_FILTER_MODE_PKT_FORWARD_OFF_DEFAULT 8
+/* Ports only filter mode */
+#define PKT_FILTER_MODE_PORTS_ONLY				16
+
 #define MAX_WAKE_PACKET_CACHE_BYTES 128 /* Maximum cached wake packet */
 
 #define MAX_WAKE_PACKET_BYTES	    (DOT11_A3_HDR_LEN +			    \
@@ -2935,14 +2944,14 @@ typedef struct wl_pkt_decrypter {
  * that indicates which bits within the pattern should be matched.
  */
 typedef struct wl_pkt_filter_pattern {
-	union {
-		uint32	offset;		/* Offset within received packet to start pattern matching.
-				 * Offset '0' is the first byte of the ethernet header.
-				 */
-	};
+	uint32	offset;		/* Offset within received packet to start pattern matching.
+			 * Offset '0' is the first byte of the ethernet header.
+			 */
 	uint32	size_bytes;	/* Size of the pattern.  Bitmask must be the same size. */
 	uint8   mask_and_pattern[1]; /* Variable length mask and pattern data.  mask starts
-				      * at offset 0.  Pattern immediately follows mask.
+				      * at offset 0.  Pattern immediately follows mask. for
+				      * secured pattern, put the descrypter pointer to the
+				      * beginning, mask and pattern postponed correspondingly
 				      */
 } wl_pkt_filter_pattern_t;
 
@@ -3430,6 +3439,13 @@ typedef BWL_PRE_PACKED_STRUCT struct pcie_bus_tput_stats {
 	/* no of desciptors fo which dma is sucessfully completed within the test time */
 	uint32		count;
 } BWL_POST_PACKED_STRUCT pcie_bus_tput_stats_t;
+
+#define MAX_ROAMOFFL_BSSID_NUM	100
+
+typedef BWL_PRE_PACKED_STRUCT struct roamoffl_bssid_list {
+	int cnt;
+	struct ether_addr bssid[1];
+} BWL_POST_PACKED_STRUCT roamoffl_bssid_list_t;
 
 /* no default structure packing */
 #include <packed_section_end.h>
@@ -4909,7 +4925,8 @@ typedef BWL_PRE_PACKED_STRUCT struct wl_proxd_collect_header {
 /*  ********************** NAN wl interface struct types and defs ******************** */
 
 #define WL_NAN_IOCTL_VERSION	0x1
-
+#define WL_P2P_NAN_IOCTL_VERSION    0x1
+#define P2P_NAN_IOC_BUFSZ 512	/* nan p2p ioctl buffer size */
 /*   wl_nan_sub_cmd may also be used in dhd  */
 typedef struct wl_nan_sub_cmd wl_nan_sub_cmd_t;
 typedef int (cmd_handler_t)(void *wl, const wl_nan_sub_cmd_t *cmd, char **argv);
@@ -4921,12 +4938,26 @@ struct wl_nan_sub_cmd {
 	uint16 type;		/* base type of argument */
 	cmd_handler_t *handler; /* cmd handler  */
 };
+/* p2p nan cfg ioctls */
+enum wl_p2p_nan_cmds {
+	WL_P2P_NAN_CMD_ENABLE = 1,
+	WL_P2P_NAN_CMD_CONFIG = 2,
+	WL_P2P_NAN_CMD_DEL_CONFIG = 3
+};
+/* container for p2p nan iovtls & events */
+typedef BWL_PRE_PACKED_STRUCT struct wl_p2p_nan_ioc {
+	uint16  version;	/* interface command or event version */
+	uint16  id;		/* p2p nan ioctl cmd  ID  */
+	uint16  len;		/* total length of data[]  */
+	uint8   data [1];	/* var len payload of bcm_xtlv_t type */
+} BWL_POST_PACKED_STRUCT wl_p2p_nan_ioc_t;
 
 /* container for nan iovtls & events */
 typedef BWL_PRE_PACKED_STRUCT struct wl_nan_ioc {
 	uint16	version;	/* interface command or event version */
 	uint16	id;			/* nan ioctl cmd  ID  */
 	uint16	len;		/* total length of all tlv records in data[]  */
+	uint16	PAD;		/* pad to be 32 bit aligment */
 	uint8	data [1];	/* var len payload of bcm_xtlv_t type */
 } BWL_POST_PACKED_STRUCT wl_nan_ioc_t;
 
@@ -4960,7 +4991,10 @@ typedef struct nan_debug_params {
 typedef BWL_PRE_PACKED_STRUCT struct nan_scan_params {
 	uint16 scan_time;
 	uint16 home_time;
+	uint16 ms_intvl; /* interval between merge scan */
+	uint16 ms_dur;  /* duration of merge scan */
 	uint16 chspec_num;
+	uint8 PAD[2];	/* pad to make 4 byte alignment */
 	chanspec_t chspec_list[NAN_SCAN_MAX_CHCNT]; /* act. used 3, 5 rfu */
 } BWL_POST_PACKED_STRUCT nan_scan_params_t;
 
@@ -5032,6 +5066,7 @@ enum wl_nan_cmd_xtlv_id {
 	WL_NAN_XTLV_PRIORITY = 0x126,       /* used in transmit cmd context */
 	WL_NAN_XTLV_REQUESTOR_ID = 0x127,	/* Requestor instance ID */
 	WL_NAN_XTLV_VNDR = 0x128,		/* Vendor specific attribute */
+	WL_NAN_XTLV_PEER_INSTANCE_ID = 0x131, /* Used to parse remote instance Id */
 	/* explicit types, primarily for NAN MAC iovars   */
 	WL_NAN_XTLV_DW_LEN = 0x140,            /* discovery win length */
 	WL_NAN_XTLV_BCN_INTERVAL = 0x141,      /* beacon interval, both sync and descovery bcns?  */
@@ -5106,6 +5141,8 @@ typedef struct wl_nan_disc_params_s {
 	uint32 flags;
 	/* Publish or subscribe service id, i.e. hash of the service name */
 	uint8 svc_hash[WL_NAN_SVC_HASH_LEN];
+	/* pad to make 4 byte alignment, can be used for something else in the future */
+	uint8 PAD;
 	/* Publish or subscribe id */
 	wl_nan_instance_id_t instance_id;
 } wl_nan_disc_params_t;
@@ -5185,6 +5222,19 @@ typedef struct nan_ranging_event_data {
 	uint8 count;			/* number of peers in the list */
 	wl_nan_ranging_result_t rr[1];	/* variable array of ranging peers */
 } wl_nan_ranging_event_data_t;
+
+#define WL_P2P_NAN_CONFIG_VERSION	1
+
+typedef struct p2p_nan_config {
+	uint16 version;			/* wl_p2p_nan_config_t structure version */
+	uint16 len;			/* total length */
+	uint8  map_ctrl;                /* Map control information */
+	uint8  dev_role;                /* Device role: Table 5-18: dev_role is 1 octet */
+	uint16 ie_len;		        /* variable ie len */
+	struct ether_addr mac;          /* Mac address based on device role */
+	uint32 avail_bmap;              /* availability interval bitmap */
+	uint8  ie[1];			/* hex ie data */
+} wl_p2p_nan_config_t;
 
 /* ********************* end of NAN section ******************************** */
 
@@ -5795,6 +5845,48 @@ typedef struct wl_roam_prof_band {
 	uint16	len;			/* length in bytes of this structure */
 	wl_roam_prof_t roam_prof[WL_MAX_ROAM_PROF_BRACKETS];
 } wl_roam_prof_band_t;
+
+/* Data structures for Interface Create/Remove  */
+
+#define WL_INTERFACE_CREATE_VER	(0)
+
+/*
+ * The flags filed of the wl_interface_create is designed to be
+ * a Bit Mask. As of now only Bit 0 and Bit 1 are used as mentioned below.
+ * The rest of the bits can be used, incase we have to provide
+ * more information to the dongle
+ */
+
+/*
+ * Bit 0 of flags field is used to inform whether the interface requested to
+ * be created is STA or AP.
+ * 0 - Create a STA interface
+ * 1 - Create an AP interface
+ */
+#define WL_INTERFACE_CREATE_STA	(0 << 0)
+#define WL_INTERFACE_CREATE_AP	(1 << 0)
+
+/*
+ * Bit 1 of flags field is used to inform whether MAC is present in the
+ * data structure or not.
+ * 0 - Ignore mac_addr field
+ * 1 - Use the mac_addr field
+ */
+#define WL_INTERFACE_MAC_DONT_USE	(0 << 1)
+#define WL_INTERFACE_MAC_USE		(1 << 1)
+
+typedef struct wl_interface_create {
+	uint16	ver;			/* version of this struct */
+	uint32  flags;			/* flags that defines the operation */
+	struct	ether_addr   mac_addr;	/* Optional Mac address */
+} wl_interface_create_t;
+
+typedef struct wl_interface_info {
+	uint16	ver;			/* version of this struct */
+	struct ether_addr    mac_addr;	/* MAC address of the interface */
+	char	ifname[BCM_MSG_IFNAME_MAX]; /* name of interface */
+	uint8	bsscfgidx;		/* source bsscfg index */
+} wl_interface_info_t;
 
 /* no default structure packing */
 #include <packed_section_end.h>

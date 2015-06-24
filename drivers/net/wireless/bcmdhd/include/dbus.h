@@ -2,7 +2,7 @@
  * Dongle BUS interface Abstraction layer
  *   target serial buses like USB, SDIO, SPI, etc.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dbus.h 423346 2013-09-11 22:38:40Z $
+ * $Id: dbus.h 526376 2015-01-14 03:34:07Z $
  */
 
 #ifndef __DBUS_H__
@@ -145,18 +145,18 @@ typedef struct {
  */
 enum {
 	DBUS_CONFIG_ID_RXCTL_DEFERRES = 1,
-	DBUS_CONFIG_ID_TXRXQUEUE
+	DBUS_CONFIG_ID_AGGR_LIMIT
 };
 typedef struct {
 	uint32 config_id;
 	union {
 		bool rxctl_deferrespok;
 		struct {
-			int maxrxq;
-			int rxbufsize;
-			int maxtxq;
-			int txbufsize;
-		} txrxqueue;
+			int maxrxsf;
+			int maxrxsize;
+			int maxtxsf;
+			int maxtxsize;
+		} aggr_param;
 	};
 } dbus_config_t;
 
@@ -409,7 +409,7 @@ extern int dbus_bus_osl_hw_deregister(void);
 
 extern uint usbdev_bulkin_eps(void);
 #if defined(BCM_REQUEST_FW)
-extern void *dbus_get_fw_nvfile(int devid, uint8 **fw, int *fwlen, int type,
+extern void *dbus_get_fw_nvfile(int devid, int chiprev, uint8 **fw, int *fwlen, int type,
   uint16 boardtype, uint16 boardrev);
 extern void dbus_release_fw_nvfile(void *firmware);
 #endif  /* #if defined(BCM_REQUEST_FW) */
