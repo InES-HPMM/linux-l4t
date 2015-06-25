@@ -35,20 +35,8 @@
 		};
 	};
 
-	i2c@7000d000 {
-		max77620@3c {
-			watchdog {
-				status = "disabled";
-			};
-		};
+	modem {
+		/* using XHCI UTMI */
+		nvidia,phy-type = <2>;
 	};
-
-	watchdog@60005100 {
-		status = "disabled";
-	};
-
-        modem {
-               /* using XHCI UTMI */
-               nvidia,phy-type = <2>;
-        };
 };

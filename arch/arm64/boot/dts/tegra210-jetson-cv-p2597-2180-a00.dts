@@ -27,11 +27,11 @@
 	#size-cells = <2>;
 
 	chosen {
-		fastboot-instructions = "Tap on power button to navigate menu options.\nHold down power button for 2 sec and release for selecting an option\n";
-        };
+		fastboot-instructions = "Press <PWR> to select, <VOL D/REC> for selection move\n";
+	};
 
-        modem {
-               /* using XHCI UTMI */
-               nvidia,phy-type = <2>;
-        };
+	modem {
+		/* using XHCI UTMI */
+		nvidia,phy-type = <2>;
+	};
 };
