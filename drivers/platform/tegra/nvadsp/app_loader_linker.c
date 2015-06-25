@@ -3,7 +3,7 @@
  *
  * ADSP OS App management
  *
- * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -27,6 +27,7 @@
 
 #include "os.h"
 #include "dram_app_mem_manager.h"
+#include "adsp_shared_struct.h"
 
 #ifdef CONFIG_DEBUG_SET_MODULE_RONX
 # define debug_align(X) ALIGN(X, PAGE_SIZE)
@@ -128,7 +129,6 @@ struct load_info {
 	} index;
 };
 
-#if !CONFIG_USE_STATIC_APP_LOAD
 static int
 apply_relocate(const struct load_info *info, Elf32_Shdr *sechdrs,
 		const char *strtab, unsigned int symindex,
@@ -778,7 +778,6 @@ static struct adsp_module *layout_and_allocate(struct load_info *info)
 
 	return mod;
 }
-#endif
 
 static int elf_check_arch_arm32(const struct elf32_hdr *x)
 {
@@ -831,8 +830,28 @@ static int elf_header_check(struct load_info *info)
 	return 0;
 }
 
-struct adsp_module *load_adsp_module(const char *appname, const char *appfile,
-	struct device *dev, struct app_load_stats *stats)
+struct adsp_module *load_adsp_static_module(const char *appname,
+	struct adsp_shared_app *shared_app, struct device *dev)
+{
+	struct adsp_module *mod = NULL;
+
+	mod = kzalloc(sizeof(struct adsp_module), GFP_KERNEL);
+	if (!mod) {
+		dev_err(dev, "Unable to create module\n");
+		return NULL;
+	}
+
+	memcpy((struct app_mem_size *)&mod->mem_size,
+		&shared_app->mem_size, sizeof(shared_app->mem_size));
+
+	mod->adsp_module_ptr = shared_app->mod_ptr;
+	mod->dynamic = false;
+
+	return mod;
+}
+
+struct adsp_module *load_adsp_dynamic_module(const char *appname,
+	const char *appfile, struct device *dev)
 {
 	struct load_info info = { };
 	struct adsp_module *mod = NULL;
@@ -845,7 +864,6 @@ struct adsp_module *load_adsp_module(const char *appname, const char *appfile,
 	struct app_mem_size *mem_size;
 	int ret;
 
-	RECORD_STAT(stats->ns_time_req_firmware);
 	ret = request_firmware(&fw, appfile, dev);
 	if (ret < 0) {
 		dev_err(dev,
@@ -853,7 +871,6 @@ struct adsp_module *load_adsp_module(const char *appname, const char *appfile,
 							appname, appfile, ret);
 		return ERR_PTR(ret);
 	}
-	RECORD_STAT(stats->ns_time_req_firmware);
 
 	info.hdr = (struct elf32_hdr *)fw->data;
 	info.len = fw->size;
@@ -867,18 +884,10 @@ struct adsp_module *load_adsp_module(const char *appname, const char *appfile,
 		goto error_release_fw;
 	}
 
-#if !CONFIG_USE_STATIC_APP_LOAD
 	/* Figure out module layout, and allocate all the memory. */
 	mod = layout_and_allocate(&info);
 	if (IS_ERR(mod))
 		goto error_release_fw;
-#else
-	mod = kzalloc(sizeof(struct adsp_module), GFP_KERNEL);
-	if (!mod) {
-		dev_err(dev, "Unable to create module\n");
-		goto error_release_fw;
-	}
-#endif
 
 	/* update adsp specific sections */
 	data_shdr = nvadsp_get_section(fw, ".dram_data");
@@ -920,7 +929,6 @@ struct adsp_module *load_adsp_module(const char *appname, const char *appfile,
 		mem_size->aram_x = aram_x_shdr->sh_size;
 	}
 
-#if !CONFIG_USE_STATIC_APP_LOAD
 	/* Fix up syms, so that st_value is a pointer to location. */
 	ret = simplify_symbols(mod, &info);
 	if (ret) {
@@ -935,7 +943,8 @@ struct adsp_module *load_adsp_module(const char *appname, const char *appfile,
 		goto unload_module;
 	}
 
-#endif
+	mod->dynamic = true;
+
 error_release_fw:
 	release_firmware(fw);
 	return IS_ERR_VALUE(ret) ? ERR_PTR(ret) : mod;
@@ -948,8 +957,6 @@ unload_module:
 
 void unload_adsp_module(struct adsp_module *mod)
 {
-#if !CONFIG_USE_STATIC_APP_LOAD
 	dram_app_mem_release(mod->handle);
-#endif
 	kfree(mod);
 }

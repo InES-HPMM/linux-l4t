@@ -18,9 +18,9 @@
 #ifndef __TEGRA_NVADSP_OS_H
 #define __TEGRA_NVADSP_OS_H
 #include <linux/firmware.h>
+#include "adsp_shared_struct.h"
 
 #define CONFIG_ADSP_DRAM_LOG_WITH_TAG	1
-#define CONFIG_USE_STATIC_APP_LOAD	0
 /* enable profiling of load init start */
 #define RECORD_STATS			0
 
@@ -48,43 +48,6 @@
 
 #define OS_LOAD_TIMEOUT		5000 /* ms */
 #define ADSP_COM_MBOX_ID	2
-
-#define DRAM_DEBUG_LOG_SIZE	0x100000
-
-/*ADSP message pool structure */
-union app_loader_msgq {
-	msgq_t msgq;
-	struct {
-		int32_t header[MSGQ_HEADER_WSIZE];
-		int32_t queue[MSGQ_MAX_QUEUE_WSIZE];
-	};
-};
-
-/* ADSP APP shared message pool */
-struct nvadsp_app_shared_msg_pool {
-	union app_loader_msgq		app_loader_send_message;
-	union app_loader_msgq		app_loader_recv_message;
-} __packed;
-
-/*ADSP shated OS args */
-struct nvadsp_os_args {
-	int32_t timer_prescalar;
-	char	logger[DRAM_DEBUG_LOG_SIZE];
-} __packed;
-
-/* ADSP OS shared memory */
-struct nvadsp_shared_mem {
-	struct nvadsp_app_shared_msg_pool app_shared_msg_pool;
-	struct nvadsp_os_args os_args;
-} __packed;
-
-struct app_mem_size {
-	uint64_t dram;
-	uint64_t dram_shared;
-	uint64_t dram_shared_wc;
-	uint64_t aram;
-	uint64_t aram_x;
-};
 
 enum adsp_os_cmd {
 	ADSP_OS_SUSPEND,
@@ -122,6 +85,7 @@ struct adsp_module {
 	uint32_t			adsp_module_ptr;
 	size_t				size;
 	const struct app_mem_size	mem_size;
+	bool				dynamic;
 };
 
 struct app_load_stats {
@@ -172,8 +136,10 @@ struct elf32_shdr *nvadsp_get_section(const struct firmware *, char *);
 struct global_sym_info *find_global_symbol(const char *);
 void update_nvadsp_app_shared_ptr(void *);
 
-struct adsp_module *load_adsp_module(const char *, const char *,
-	struct device *, struct app_load_stats *);
+struct adsp_module *load_adsp_dynamic_module(const char *, const char *,
+	struct device *);
+struct adsp_module *load_adsp_static_module(const char *,
+	struct adsp_shared_app *, struct device *);
 void unload_adsp_module(struct adsp_module *);
 
 int allocate_memory_from_adsp(void **, unsigned int);

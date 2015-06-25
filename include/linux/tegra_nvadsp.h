@@ -201,8 +201,6 @@ uint64_t nvadsp_get_timestamp_counter(void);
 /*
  * ADSP OS App
  */
-#define NVADSP_NAME_SZ	64
-
 #define ARGV_SIZE_IN_WORDS         128
 
 enum {
