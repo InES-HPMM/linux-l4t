@@ -1,7 +1,7 @@
 /*
  * arch/arm/boot/dts/tegra124-platforms/tegra124-tn8-power-tree-e1936-1000-a03.dtsi
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -68,6 +68,12 @@
 
 	otg@7d000000 {
 		usb_bat_chg-supply = <&battery_charger>;
+		usb_vbus-supply = <&usb0_vbus>;
+	};
+
+	ehci@7d000000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
 		usb_vbus-supply = <&usb0_vbus>;
 	};
 };
