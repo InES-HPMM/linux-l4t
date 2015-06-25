@@ -2268,7 +2268,7 @@ static int tegra_sdhci_configure_regulators(struct sdhci_tegra *tegra_host,
 	int vddio_prev = -1;
 	int vddio_new;
 	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
-	const struct tegra_sdhci_platform_data *plat;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
 	struct sdhci_host *sdhci = dev_get_drvdata(tegra_host->dev);
 
 	switch (option) {
@@ -2296,7 +2296,6 @@ static int tegra_sdhci_configure_regulators(struct sdhci_tegra *tegra_host,
 			if (soc_data->nvquirks2 & NVQUIRK2_CONFIG_PWR_DET) {
 				vddio_prev = regulator_get_voltage(
 					tegra_host->vdd_io_reg);
-				plat = tegra_host->plat;
 				/* set pwrdet sdmmc1 before set 3.3 V */
 				if ((vddio_prev < min_uV) &&
 					(min_uV >= SDHOST_HIGH_VOLT_2V8) &&
@@ -2313,10 +2312,13 @@ static int tegra_sdhci_configure_regulators(struct sdhci_tegra *tegra_host,
 			}
 			rc = regulator_set_voltage(tegra_host->vdd_io_reg,
 				min_uV, max_uV);
+			/* Wait for 5ms */
+			if ((plat->pwrdet_support) &&
+				(min_uV == SDHOST_LOW_VOLT_MIN))
+				usleep_range(5000, 5500);
 			if (soc_data->nvquirks2 & NVQUIRK2_CONFIG_PWR_DET) {
 				vddio_new = regulator_get_voltage(
 					tegra_host->vdd_io_reg);
-				plat = tegra_host->plat;
 				/* clear pwrdet sdmmc1 after set 1.8 V */
 				if ((vddio_new <= vddio_prev) &&
 					(vddio_new == SDHOST_LOW_VOLT_MAX) &&
