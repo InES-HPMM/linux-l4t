@@ -139,6 +139,7 @@
 #define SL_ADDR2(addr) ((addr >> 8) & 0xff)
 
 #define MAX_BUSCLEAR_CLOCK			(9 * 8 + 1)
+#define I2C_MAX_TRANSFER_LEN			4096
 /*
  * msg_end_type: The bus control which need to be send at end of transfer.
  * @MSG_END_STOP: Send stop pulse at end of transfer.
@@ -1284,6 +1285,38 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 	return -EIO;
 }
 
+static int tegra_i2c_split_i2c_msg_xfer(struct tegra_i2c_dev *i2c_dev,
+		struct i2c_msg *msg, enum msg_end_type end_type,
+		enum msg_end_type next_msg_end_type)
+{
+	int size, len, ret;
+	struct i2c_msg temp_msg;
+	u8 *buf = msg->buf;
+	enum msg_end_type temp_end_type;
+
+	size = msg->len;
+	temp_msg.flags = msg->flags;
+	temp_msg.addr = msg->addr;
+	temp_end_type = end_type;
+	do {
+		temp_msg.buf = buf;
+		len = min(size, I2C_MAX_TRANSFER_LEN);
+		temp_msg.len = len;
+		size -= len;
+		if ((len == I2C_MAX_TRANSFER_LEN) && size)
+			end_type = MSG_END_CONTINUE;
+		else
+			end_type = temp_end_type;
+		ret = tegra_i2c_xfer_msg(i2c_dev, &temp_msg, end_type,
+				NULL, next_msg_end_type);
+		if (ret)
+			return ret;
+		buf += len;
+	} while (size != 0);
+
+	return ret;
+}
+
 static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	int num)
 {
@@ -1300,14 +1333,6 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 
 	if (adap->atomic_xfer_only)
 		return -EBUSY;
-
-	for (i = 0; i < num; i++) {
-		if (msgs[i].len > 4096) {
-			dev_err(i2c_dev->dev, "msg len %d not supported, supports upto 4096\n",
-					msgs[i].len);
-			return -EINVAL;
-		}
-	}
 
 	if (adap->bus_clk_rate != i2c_dev->bus_clk_rate) {
 		i2c_dev->bus_clk_rate = adap->bus_clk_rate;
@@ -1342,21 +1367,40 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 				else
 					next_msg_end_type = MSG_END_REPEAT_START;
 			}
-			if ((!(msgs[i].flags & I2C_M_RD)) && (msgs[i].len <= 8) && (msgs[i+1].flags & I2C_M_RD)
-					&& (next_msg_end_type != MSG_END_CONTINUE) && (end_type == MSG_END_REPEAT_START)) {
+			if ((!(msgs[i].flags & I2C_M_RD)) && (msgs[i].len <= 8)
+				&& (msgs[i+1].flags & I2C_M_RD)
+				&& (msgs[i+1].len <= I2C_MAX_TRANSFER_LEN)
+				&& (next_msg_end_type != MSG_END_CONTINUE)
+				&& (end_type == MSG_END_REPEAT_START)) {
 				ret = tegra_i2c_xfer_msg(i2c_dev, &msgs[i], end_type, &msgs[i+1], next_msg_end_type);
 				if (ret)
 					break;
 				i++;
 			} else {
+				if (msgs[i].len > I2C_MAX_TRANSFER_LEN) {
+					ret = tegra_i2c_split_i2c_msg_xfer(i2c_dev, &msgs[i],
+							end_type, next_msg_end_type);
+					if (ret)
+						break;
+				} else {
+					ret = tegra_i2c_xfer_msg(i2c_dev, &msgs[i], end_type,
+							NULL, next_msg_end_type);
+					if (ret)
+						break;
+				}
+			}
+		} else {
+			if (msgs[i].len > I2C_MAX_TRANSFER_LEN) {
+				ret = tegra_i2c_split_i2c_msg_xfer(i2c_dev,
+						&msgs[i], end_type,
+						next_msg_end_type);
+				if (ret)
+					break;
+			} else {
 				ret = tegra_i2c_xfer_msg(i2c_dev, &msgs[i], end_type, NULL, next_msg_end_type);
 				if (ret)
 					break;
 			}
-		} else {
-			ret = tegra_i2c_xfer_msg(i2c_dev, &msgs[i], end_type, NULL, next_msg_end_type);
-			if (ret)
-				break;
 		}
 	}
 
