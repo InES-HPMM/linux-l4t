@@ -17,6 +17,7 @@ dtb-$(CONFIG_MACH_T132REF) += tegra132-interposer-e2141-1100-a00-00-cboot.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-grenada.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-ers-e2190-1100-a00-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-ers-e2220-1170-a00-00.dtb
+dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-ers-e2220-1170-a00-dp-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-ers-e2220-1170-a00-01.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-l4t-ers-e2220-1170-a00-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-ers-e2220-1180-a00-00.dtb
