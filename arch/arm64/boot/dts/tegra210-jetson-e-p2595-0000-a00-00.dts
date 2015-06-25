@@ -28,8 +28,8 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
-        modem {
-               /* using XHCI UTMI */
-               nvidia,phy-type = <2>;
-        };
+	modem {
+		/* using XHCI UTMI */
+		nvidia,phy-type = <2>;
+	};
 };
