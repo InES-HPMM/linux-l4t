@@ -1423,14 +1423,6 @@ static int vi2_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	/* vi.1 has to wait vi.0 initialized, so defer probing */
-	if (pdev->id && ndata->master) {
-		struct nvhost_device_data *master_ndata =
-			ndata->master->dev.platform_data;
-		if (master_ndata == platform_get_drvdata(ndata->master))
-			return -EPROBE_DEFER;
-	}
-
 	vi2_cam = devm_kzalloc(&pdev->dev, sizeof(struct vi2_camera),
 			       GFP_KERNEL);
 	if (!vi2_cam) {
@@ -1463,15 +1455,9 @@ static int vi2_probe(struct platform_device *pdev)
 	}
 
 	if (!ndata->aperture[0]) {
-		if (ndata->master) {
-			struct nvhost_device_data *master_ndata =
-				ndata->master->dev.platform_data;
-			ndata->aperture[0] = master_ndata->aperture[0];
-		} else {
-			dev_err(&pdev->dev, "%s: failed to map register base\n",
+		dev_err(&pdev->dev, "%s: failed to map register base\n",
 				__func__);
-			return -ENXIO;
-		}
+		return -ENXIO;
 	}
 
 	/* Match the nvhost_module_init VENC powergating */
