@@ -443,6 +443,6 @@
 	tegra-carveouts {
 		iommus = <&smmu TEGRA_SWGROUP_HC>;
 		status = "okay";
-		memory-region = <&ivm0>;
+		memory-region = <&iram &ivm0>;
 	};
 };
