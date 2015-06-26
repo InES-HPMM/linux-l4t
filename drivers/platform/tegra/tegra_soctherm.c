@@ -1157,7 +1157,7 @@ static void soctherm_set_limits(enum soctherm_therm_id therm,
  */
 static void soctherm_update_zone(int zn)
 {
-	long low_temp = 0, high_temp = MAX_HIGH_TEMP;
+	long low_temp = MIN_LOW_TEMP, high_temp = MAX_HIGH_TEMP;
 	long trip_temp, passive_low_temp = MAX_HIGH_TEMP, zone_temp;
 	enum thermal_trip_type trip_type;
 	struct thermal_trip_info *trip_state;
