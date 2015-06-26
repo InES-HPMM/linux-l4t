@@ -2378,8 +2378,10 @@ static int fbcon_blank(struct vc_data *vc, int blank, int mode_switch)
 					fbcon_generic_blank(vc, info, blank);
 		}
 
-		if (!blank)
+		if (!blank) {
+			fb_blank(info, blank);
 			update_screen(vc);
+		}
 	}
 
 	if (mode_switch || fbcon_is_inactive(vc, info) ||
