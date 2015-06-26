@@ -132,6 +132,8 @@ int dma_get_contiguous_stats(struct device *dev,
 
 bool dma_contiguous_should_replace_page(struct page *page);
 int dma_contiguous_enable_replace_pages(struct device *dev);
+int __init cma_init_reserved_mem(phys_addr_t base, phys_addr_t size,
+				 int order_per_bit, struct cma **res_cma);
 #else
 
 struct dma_contiguous_stats;
@@ -200,6 +202,11 @@ static inline
 int dma_contiguous_enable_replace_pages(struct device *dev)
 {
 	return 0;
+}
+int __init cma_init_reserved_mem(phys_addr_t base, phys_addr_t size,
+				 int order_per_bit, struct cma **res_cma)
+{
+	return -EINVAL;
 }
 #endif
 
