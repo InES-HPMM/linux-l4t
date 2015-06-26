@@ -62,6 +62,7 @@
 #include <asm/hardware/cache-l2x0.h>
 #endif
 #include <asm/dma-mapping.h>
+#include <asm/dma-contiguous.h>
 
 #include <mach/nct.h>
 #include <mach/dc.h>
@@ -2175,14 +2176,16 @@ out:
 #endif
 
 	/* Keep these at the end */
-	if (tegra_vpr_resize && carveout_size) {
+	if (tegra_vpr_resize && carveout_size &&
+	    !dev_get_cma_area(&tegra_generic_cma_dev)) {
 		if (dma_declare_contiguous(&tegra_generic_cma_dev,
 			carveout_size, 0, memblock_end_of_4G()))
 			pr_err("dma_declare_contiguous failed for generic\n");
 		tegra_carveout_size = carveout_size;
 	}
 
-	if (tegra_vpr_resize && tegra_vpr_size)
+	if (tegra_vpr_resize && tegra_vpr_size &&
+	    !dev_get_cma_area(&tegra_vpr_cma_dev))
 		if (dma_declare_contiguous(&tegra_vpr_cma_dev,
 			tegra_vpr_size, 0, memblock_end_of_4G()))
 			pr_err("dma_declare_contiguous failed VPR carveout\n");
