@@ -10401,11 +10401,18 @@ static s32 wl_notify_escan_complete(struct bcm_cfg80211 *cfg,
 	struct net_device *ndev,
 	bool aborted, bool fw_abort)
 {
+	struct wiphy *wiphy;
 	s32 err = BCME_OK;
 	unsigned long flags;
 	struct net_device *dev;
+	struct ieee80211_channel *band_chan_arr = NULL;
+	u32  j, band, channel, array_size;
+	wl_uint32_list_t *list;
+	s32 i;
+	chanspec_t c = 0;
+	u8 *pbuf = NULL;
 
-	WL_DBG(("Enter \n"));
+	WL_DBG(("Enter\n"));
 	if (!ndev) {
 		WL_ERR(("ndev is null\n"));
 		err = BCME_ERROR;
@@ -10465,6 +10472,92 @@ skip_cfg80211_scan_done:
 		wl_clr_p2p_status(cfg, SCANNING);
 	wl_clr_drv_status(cfg, SCANNING, dev);
 	spin_unlock_irqrestore(&cfg->cfgdrv_lock, flags);
+
+#define LOCAL_BUF_LEN 1024
+	pbuf = kzalloc(LOCAL_BUF_LEN, GFP_KERNEL);
+
+	if (pbuf == NULL) {
+		WL_ERR(("failed to allocate local buf\n"));
+		return -ENOMEM;
+	}
+	list = (wl_uint32_list_t *)pbuf;
+	list->count = htod32(WL_NUMCHANSPECS);
+
+	err = wldev_iovar_getbuf_bsscfg(dev, "chanspecs", NULL,
+			0, pbuf, LOCAL_BUF_LEN, 0, &cfg->ioctl_buf_sync);
+	if (err != 0) {
+		WL_ERR(("get chanspecs failed with %d\n", err));
+		kfree(pbuf);
+		return err;
+	}
+#undef LOCAL_BUF_LEN
+	wiphy = bcmcfg_to_wiphy(cfg);
+	list = (wl_uint32_list_t *)pbuf;
+	band = array_size = 0;
+	for (i = 0; i < dtoh32(list->count); i++) {
+		c = (chanspec_t)dtohchanspec(list->element[i]);
+		c = wl_chspec_driver_to_host(c);
+		channel = CHSPEC_CHANNEL(c);
+
+		if (CHSPEC_IS40(c)) {
+			if (CHSPEC_SB_UPPER(c))
+				channel += CH_10MHZ_APART;
+			else
+				channel -= CH_10MHZ_APART;
+		} else if (CHSPEC_IS80(c)) {
+			WL_DBG(("HT80 center channel : %d\n", channel));
+			continue;
+		}
+
+		if (CHSPEC_IS2G(c) && (channel >= CH_MIN_2G_CHANNEL) &&
+				(channel <= CH_MAX_2G_CHANNEL)) {
+			band_chan_arr = __wl_2ghz_channels;
+			array_size = ARRAYSIZE(__wl_2ghz_channels);
+			band = IEEE80211_BAND_2GHZ;
+		} else if (CHSPEC_IS5G(c) && channel >= CH_MIN_5G_CHANNEL) {
+			band_chan_arr = __wl_5ghz_a_channels;
+			array_size = ARRAYSIZE(__wl_5ghz_a_channels);
+			band = IEEE80211_BAND_5GHZ;
+		} else {
+			WL_ERR(("Invalid channel Sepc. 0x%x.\n", c));
+			continue;
+		}
+
+		for (j = 0; j < array_size; j++) {
+			if (band_chan_arr[j].hw_value == channel)
+				break;
+		}
+		if (band == IEEE80211_BAND_2GHZ)
+			channel |= WL_CHANSPEC_BAND_2G;
+		else
+			channel |= WL_CHANSPEC_BAND_5G;
+		channel |= WL_CHANSPEC_BW_20;
+		channel = wl_chspec_host_to_driver(channel);
+
+		err = wldev_iovar_getint(dev, "per_chan_info", &channel);
+		if (!err && wiphy->bands[band] != NULL) {
+			if (((channel & WL_CHAN_RADAR)
+				!= (wiphy->bands[band]->channels[j].flags
+						& IEEE80211_CHAN_RADAR)) ||
+				((channel & WL_CHAN_PASSIVE)
+				&& !(wiphy->bands[band]->channels[j].flags
+					& IEEE80211_CHAN_PASSIVE_SCAN)) ||
+				(!(channel & WL_CHAN_PASSIVE)
+				&& (wiphy->bands[band]->channels[j].flags
+					& IEEE80211_CHAN_PASSIVE_SCAN))) {
+				wl_update_wiphybands(cfg, true);
+				break;
+			}
+		} else if (err == BCME_UNSUPPORTED) {
+			WL_ERR(("does not support per_chan_info\n"));
+		} else if (wiphy->bands[band] == NULL) {
+			WL_ERR(("Scan receicved on Invalid band. band = %s "
+				"not supported\n", (band == IEEE80211_BAND_2GHZ)
+				? "2.4 GHz" : "5 GHz"));
+		}
+
+	}
+	kfree(pbuf);
 
 	return err;
 }
