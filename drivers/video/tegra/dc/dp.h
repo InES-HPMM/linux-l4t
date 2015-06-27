@@ -90,6 +90,8 @@ struct tegra_dc_dp_data {
 	struct tegra_dp_out *pdata;
 
 	struct mutex dpaux_lock;
+
+	struct tegra_prod_list *prod_list;
 };
 
 int tegra_dc_dpaux_read(struct tegra_dc_dp_data *dp, u32 cmd, u32 addr,
