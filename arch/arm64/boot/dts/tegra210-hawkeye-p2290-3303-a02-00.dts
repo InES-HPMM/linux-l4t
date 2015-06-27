@@ -28,4 +28,13 @@
 	nvidia,dtsfilename = __FILE__;
 	nvidia,boardids = "2290:3303:A02";
 	nvidia,proc-boardid = "2290:3303:A02";
+
+	i2c@7000c400 {
+		tps65132@3e {
+			tps65132_outn: outn {
+			   ti,active-discharge-gpio = <&gpio TEGRA_GPIO(A, 0) 0>;
+			   ti,active-discharge-time = <2000>; /* in us */
+		   };
+		};
+	};
 };
