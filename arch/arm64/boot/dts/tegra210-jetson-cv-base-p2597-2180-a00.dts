@@ -730,4 +730,12 @@
 	serial@70006300 {
 		dma-names = "tx";
 	};
+
+	pmc@7000e400 {
+		io-pad-defaults {
+			gpio {
+				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_1_8V>;
+			};
+		};
+	};
 };

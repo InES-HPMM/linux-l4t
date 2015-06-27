@@ -152,4 +152,8 @@
 			dvdd-supply = <&en_vdd_ts_1v8>;
 		};
 	};
+
+	power-detect {
+		pwrdet-gpio-supply = <&max77620_sd3>;
+	};
 };
