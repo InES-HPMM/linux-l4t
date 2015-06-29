@@ -295,41 +295,6 @@
 			interrupts = <TEGRA_GPIO(L, 1) 0x0>;
 			#interrupt-cells = <2>;
 			interrupt-controller;
-			gpio-init-names = "default";
-			gpio-init-0 = <&tca9539_74_default>;
-			tca9539_74_default: default {
-				/*
-				 * Below are exact gpio pin number as in
-				 * TCA9539 datasheet i.e. P0-P7 and P10-P17,
-				 * albeit Linux gpio numbering remains
-				 * sequencial i.e. 0-15
-				 *
-				 * P10 : M2_E_ALERT_R_L
-				 * P13 : TOUCH_ID
-				 */
-				gpio-input = <8 11>;
-
-				/*
-				 * P1 : EN_VDD_TS_1V8_PMIC
-				 * P2 : EN_VDD_TS_HV_PMIC
-				 * P3 : EN_VDD_DISP,
-				 * P4 : PS_VDD_FAN_ENABLE
-				 * P5 : MDM_EN
-				 * P7 : MDM_EN, MDM_PWR_EN
-				 * P11 : VDD_DISP_MUX_EN
-				 * P12 : FLASH_INHIBIT
-				 * P14 : 5V0_HDMI_EN
-				 * P15 : EN_VDD_CAM_HV
-				 * P16,P17 : TP83, TP84
-				 */
-				gpio-output-low = <1 2 3 4 5 7 9 10 12 13 14 15>;
-
-				/*
-				 * P0 : W_DISABLE_L
-				 * P6 : MDM_RST_L
-				 */
-				gpio-output-high = <0 6>;
-			};
 		};
 
 		tca9539_77: tca9539@77 {
@@ -341,38 +306,6 @@
 			interrupts = <TEGRA_GPIO(Z, 2) 0x0>;
 			#interrupt-cells = <2>;
 			interrupt-controller;
-			gpio-init-names = "default";
-			gpio-init-0 = <&tca9539_74_default>;
-			tca9539_77_default: default {
-				/*
-				 * Below are exact gpio pin number as in
-				 * TCA9539 datasheet i.e. P0-P7 and P10-P17,
-				 * albeit Linux gpio numbering remains
-				 * sequencial i.e. 0-15
-				 *
-				 * P0 : DISP_CHARGER_STAT
-				 * P1 : DISP_TYPEC_ORIENT
-				 * P16 : NVSR_INT
-				 * P17 : BRIDGE_IRQ
-				 */
-				gpio-input = <0 1 14 15>;
-
-				/*
-				 * P2 : TYPEC_INT		 Charger control HDR
-				 * P3 : VDD_SYS_EN		 CAM HEADER
-				 * P4 : LCD_BIAS_EN		 CAM HEADER
-				 * P5 : TORCH_EN		 CAM HEADER
-				 * P6 : FLASH_INHIBIT 	 CAM HEADER
-				 * P7 : CAM2_PWDN		 CAM HEADER
-				 * P10 : CAM2_RST		 CAM HEADER
-				 * P11 : CAM_VDD_1V8_EN 	 CAM HEADER
-				 * P12 : CAM_VDD_1V2_EN 	 CAM HEADER
-				 * P13 : CAM_AF_PWDN    	 CAM HEADER
-				 * P14 : CHG_BD_PRSNT_L 	 CAM HEADER
-				 * P15 : BRIDGE_EN		 CAM HEADER
-				 */
-				gpio-output-low = <2 3 4 5 6 7 8 9 10 11 12 13>;
-			};
 		};
 	};
 
