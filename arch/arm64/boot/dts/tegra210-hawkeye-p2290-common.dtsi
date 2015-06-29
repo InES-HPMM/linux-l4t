@@ -365,6 +365,7 @@
 			#io-channel-cells = <1>;
 			ti,programmable-gain-amplifier = <1>;
 			sampling-frequency = <3300>;
+			ti,adc-conversion-delay = <1500>;
 			ti,traditional-comparator-mode;
 			ti,comparator-queue = <3>;
 			continuous-mode {
