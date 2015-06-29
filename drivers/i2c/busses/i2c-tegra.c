@@ -135,6 +135,11 @@
 #define I2C_SLV_CONFIG_LOAD			(1 << 1)
 #define I2C_TIMEOUT_CONFIG_LOAD			(1 << 2)
 
+#define I2C_INTERFACE_TIMING_0			0x94
+#define I2C_TLOW_MASK				0x3F
+#define I2C_THIGH_SHIFT				8
+#define I2C_THIGH_MASK				(0x3F << I2C_THIGH_SHIFT)
+
 #define SL_ADDR1(addr) (addr & 0xff)
 #define SL_ADDR2(addr) ((addr >> 8) & 0xff)
 
@@ -236,6 +241,8 @@ struct tegra_i2c_dev {
 	bool bit_banging_xfer_after_shutdown;
 	bool is_shutdown;
 	struct notifier_block pm_nb;
+	u32 tlow;
+	u32 thigh;
 };
 
 static void dvc_writel(struct tegra_i2c_dev *i2c_dev, u32 val, unsigned long reg)
@@ -700,6 +707,19 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 	err = tegra_i2c_set_clk_rate(i2c_dev);
 	if (err < 0)
 		return err;
+
+	if (i2c_dev->tlow) {
+		val = i2c_readl(i2c_dev, I2C_INTERFACE_TIMING_0);
+		val &= ~I2C_TLOW_MASK;
+		val |= i2c_dev->tlow;
+		i2c_writel(i2c_dev, val, I2C_INTERFACE_TIMING_0);
+	}
+	if (i2c_dev->thigh) {
+		val = i2c_readl(i2c_dev, I2C_INTERFACE_TIMING_0);
+		val &= ~I2C_THIGH_MASK;
+		val |= i2c_dev->thigh << I2C_THIGH_SHIFT;
+		i2c_writel(i2c_dev, val, I2C_INTERFACE_TIMING_0);
+	}
 
 	clk_divisor |= i2c_dev->chipdata->clk_divisor_hs_mode;
 	if (i2c_dev->chipdata->has_clk_divisor_std_fast_mode)
@@ -1468,6 +1488,13 @@ static struct tegra_i2c_platform_data *parse_i2c_tegra_dt(
 
 	/* Default configuration for device tree initiated driver */
 	pdata->slave_addr = 0xFC;
+
+	if (!of_property_read_u32(np, "nvidia,tlow", &prop))
+		pdata->tlow = prop;
+
+	if (!of_property_read_u32(np, "nvidia,thigh", &prop))
+		pdata->thigh = prop;
+
 	return pdata;
 }
 
@@ -1743,6 +1770,9 @@ skip_pinctrl:
 
 	if (i2c_dev->is_clkon_always)
 		tegra_i2c_clock_enable(i2c_dev);
+
+	i2c_dev->tlow = pdata->tlow;
+	i2c_dev->thigh = pdata->thigh;
 
 	ret = tegra_i2c_init(i2c_dev);
 	if (ret) {
