@@ -491,6 +491,10 @@ static int ads1015_get_dt_data(struct ads1015 *adc, struct device_node *np)
 	adc_os_prop->sampling_freq = ads1015_get_sampling_code(adc,
 			adc_os_prop->sampling_freq, &adc_os_prop->conv_delay);
 
+	ret = of_property_read_u32(np, "ti,adc-conversion-delay", &val);
+	if (!ret)
+		adc_os_prop->conv_delay = val;
+
 	ret = of_property_read_bool(np, "ti,traditional-comparator-mode");
 	adc_os_prop->comparator_mode = (ret) ? ADS1015_TRADITIONAL_COMPARATOR :
 				ADS1015_WINDOW_COMPARATOR;
@@ -561,6 +565,10 @@ static int ads1015_get_dt_data(struct ads1015 *adc, struct device_node *np)
 	adc_cont_prop->sampling_freq = ads1015_get_sampling_code(adc,
 					adc_cont_prop->sampling_freq,
 					&adc_cont_prop->conv_delay);
+
+	ret = of_property_read_u32(cnode, "ti,adc-conversion-delay", &val);
+	if (!ret)
+		adc_cont_prop->conv_delay = val;
 
 	ret = of_property_read_bool(cnode, "ti,traditional-comparator-mode");
 	adc_cont_prop->comparator_mode = (ret) ?
