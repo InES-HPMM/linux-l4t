@@ -1,6 +1,7 @@
 /* include/linux/logger.h
  *
  * Copyright (C) 2007-2008 Google, Inc.
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  * Author: Robert Love <rlove@android.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -69,6 +70,36 @@ struct logger_entry {
 	kuid_t		euid;
 	char		msg[0];
 };
+
+/**
+ * struct logger_log - represents a specific log, such as 'main' or 'radio'
+ * @buffer:	The actual ring buffer
+ * @misc:	The "misc" device representing the log
+ * @wq:		The wait queue for @readers
+ * @readers:	This log's readers
+ * @mutex:	The mutex that protects the @buffer
+ * @w_off:	The current write head offset
+ * @head:	The head, or location that readers start reading at.
+ * @size:	The size of the log
+ * @logs:	The list of log channels
+ *
+ * This structure lives from module insertion until module removal, so it does
+ * not need additional reference counting. The structure is protected by the
+ * mutex 'mutex'.
+ */
+struct logger_log {
+	unsigned char		*buffer;
+	struct miscdevice	misc;
+	wait_queue_head_t	wq;
+	struct list_head	readers;
+	struct mutex		mutex;
+	size_t			w_off;
+	size_t			head;
+	size_t			size;
+	struct list_head	logs;
+	struct pstore_logger	*pstore_log;
+};
+
 
 #define LOGGER_LOG_RADIO	"log_radio"	/* radio-related messages */
 #define LOGGER_LOG_EVENTS	"log_events"	/* system/hardware events */

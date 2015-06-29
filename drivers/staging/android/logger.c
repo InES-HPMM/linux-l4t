@@ -4,6 +4,7 @@
  * A Logging Subsystem
  *
  * Copyright (C) 2007-2008 Google, Inc.
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Robert Love <rlove@google.com>
  *
@@ -30,36 +31,12 @@
 #include <linux/vmalloc.h>
 #include <linux/aio.h>
 #include "logger.h"
+#if defined CONFIG_ANDROID_PSTORE_LOGGER
+#include <linux/pstore_ram.h>
+#include "pstore_logger.h"
+#endif
 
 #include <asm/ioctls.h>
-
-/**
- * struct logger_log - represents a specific log, such as 'main' or 'radio'
- * @buffer:	The actual ring buffer
- * @misc:	The "misc" device representing the log
- * @wq:		The wait queue for @readers
- * @readers:	This log's readers
- * @mutex:	The mutex that protects the @buffer
- * @w_off:	The current write head offset
- * @head:	The head, or location that readers start reading at.
- * @size:	The size of the log
- * @logs:	The list of log channels
- *
- * This structure lives from module insertion until module removal, so it does
- * not need additional reference counting. The structure is protected by the
- * mutex 'mutex'.
- */
-struct logger_log {
-	unsigned char		*buffer;
-	struct miscdevice	misc;
-	wait_queue_head_t	wq;
-	struct list_head	readers;
-	struct mutex		mutex;
-	size_t			w_off;
-	size_t			head;
-	size_t			size;
-	struct list_head	logs;
-};
 
 static LIST_HEAD(log_list);
 
@@ -442,10 +419,17 @@ static ssize_t do_write_log_from_user(struct logger_log *log,
 				      const void __user *buf, size_t count)
 {
 	size_t len;
+	int ret;
 
 	len = min(count, log->size - log->w_off);
 	if (len && copy_from_user(log->buffer + log->w_off, buf, len))
 		return -EFAULT;
+
+#if defined CONFIG_ANDROID_PSTORE_LOGGER
+	ret = do_write_pstore_log(log, buf, count);
+	if (ret < 0)
+		return ret;
+#endif
 
 	if (count != len)
 		if (copy_from_user(log->buffer, buf + len, count - len))
@@ -523,6 +507,9 @@ static ssize_t logger_aio_write(struct kiocb *iocb, const struct iovec *iov,
 		ret += nr;
 	}
 
+#if defined CONFIG_ANDROID_PSTORE_LOGGER
+	do_write_pstore_log_ram(log, &header);
+#endif
 	mutex_unlock(&log->mutex);
 
 	/* wake up any blocked readers */
@@ -773,6 +760,12 @@ static int __init create_log(char *log_name, int size)
 		goto out_free_log;
 	}
 
+#if defined CONFIG_ANDROID_PSTORE_LOGGER
+	ret = create_pstore_log(log);
+	if (ret < 0)
+		goto out_free_log;
+#endif
+
 	log->misc.fops = &logger_fops;
 	log->misc.parent = NULL;
 
@@ -840,6 +833,10 @@ static void __exit logger_exit(void)
 		misc_deregister(&current_log->misc);
 		vfree(current_log->buffer);
 		kfree(current_log->misc.name);
+#if defined CONFIG_ANDROID_PSTORE_LOGGER
+		vfree(current_log->pstore_log->buffer);
+		kfree(current_log->pstore_log);
+#endif
 		list_del(&current_log->logs);
 		kfree(current_log);
 	}

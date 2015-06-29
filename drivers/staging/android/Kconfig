@@ -37,6 +37,15 @@ config ANDROID_LOGGER
 	  optimized writes. This optimization avoids logging having too
 	  much overhead in the system.
 
+config ANDROID_PSTORE_LOGGER
+	tristate "Android pstore log driver"
+	default n
+	depends on ANDROID_LOGGER && PSTORE_PMSG
+	---help---
+	  This adds support for system-wide logging using ramoops buffers.
+	  When the option is enabled, data can be retrieved from
+	  /sys/fs/pstore/pmsg-ramoops-[ID].
+
 config ANDROID_TIMED_OUTPUT
 	bool "Timed output class driver"
 	default y
