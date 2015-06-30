@@ -451,6 +451,7 @@ static int ov10823_init_seq(struct ov10823_info *info,
 
 	err = ov10823_write_table(info, mode_table[sensor_mode],
 				reg_list, OV10823_NUM_BYTES_OVERRIDES);
+
 	return err;
 }
 
@@ -460,13 +461,21 @@ static int ov10823_set_mode(struct ov10823_info *info,
 	int sensor_mode;
 	int err;
 
-	pr_info("%s: xres %u yres %u framelength %u coarsetime %u gain %u\n",
+	pr_info("%s: xres %u yres %u framelength %u coarsetime %u gain %u fps %u\n",
 			 __func__, mode->xres, mode->yres, mode->frame_length,
-			 mode->coarse_time, mode->gain);
+			 mode->coarse_time, mode->gain, mode->fps);
 
 	if (info->pdata->cam_use_26mhz_mclk) {
 		/* 26Mhz MCLK setting */
-		if ((mode->xres == 4336 && mode->yres == 2440) ||
+		if (mode->fps == 60 &&
+				mode->xres == 4336 && mode->yres == 1220) {
+			sensor_mode = OV10823_MODE_4336x1220_60FPS_26MhzMCLK;
+			pr_info("ov10823_set_mode 4336x1220 @ 60fps\n");
+		} else if (mode->fps == 60 &&
+				mode->xres == 2168 && mode->yres == 1220) {
+			sensor_mode = OV10823_MODE_2168x1220_60FPS_26MhzMCLK;
+			pr_info("ov10823_set_mode 2168x1220 @ 60fps\n");
+		} else if ((mode->xres == 4336 && mode->yres == 2440) ||
 			(mode->xres == 4336 && mode->yres == 2432)) {
 			sensor_mode = OV10823_MODE_4336x2440_26MhzMCLK;
 			pr_info("ov10823_set_mode 4336x2440\n");
