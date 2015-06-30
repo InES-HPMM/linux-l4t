@@ -39,6 +39,10 @@
 		};
 	};
 
+	xusb_padctl {
+		nvidia,enable-sata-port;
+	};
+
 	sata@70020000 {
 		status = "okay";
 		nvidia,enable-sata-port;

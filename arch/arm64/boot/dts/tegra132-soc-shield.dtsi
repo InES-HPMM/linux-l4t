@@ -308,7 +308,7 @@
 	};
 
 	xusb@70090000 {
-		status = "disable";
+		status = "disabled";
 	};
 
 	mipical {

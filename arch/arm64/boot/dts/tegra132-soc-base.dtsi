@@ -937,7 +937,7 @@
 			      0 49 0x04
 			      0 97 0x04
 			      0 21 0x04>;
-		status = "disable";
+		status = "disabled";
 	};
 
 	mipical {

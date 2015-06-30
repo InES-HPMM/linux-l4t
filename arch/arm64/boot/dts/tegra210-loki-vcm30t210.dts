@@ -625,8 +625,9 @@
 	};
 
 	/* Disable XUSB3 to make PCIe both ports work */
-	xusb_pad_ctl: padctl@0 {
+	xusb_pad_ctl: xusb_padctl {
 		nvidia,lane_owner = <0xFF56>; /* Use 0xF to disable lane assign */
+		nvidia,lane-map = <0x14>;
 	};
 
 	tegra-aotag {

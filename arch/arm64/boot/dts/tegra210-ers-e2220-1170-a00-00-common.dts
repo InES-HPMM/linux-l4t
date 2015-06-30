@@ -794,10 +794,12 @@
         };
 
 	/* Put common control config here */
-	xusb_pad_ctl: padctl@0 {
+	xusb_pad_ctl: xusb_padctl {
 		nvidia,ss_portmap = <0x2130>;
 		nvidia,lane_owner = <0xFF56>; /* Use 0xF to disable lane assign */
 		nvidia,otg_portmap = <0x0101>;
+		nvidia,lane-map = <0x14>;
+		nvidia,enable-sata-port;
 		status = "okay";
 	};
 

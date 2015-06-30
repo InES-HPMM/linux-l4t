@@ -313,6 +313,11 @@
 		};
 	};
 
+	xusb_padctl {
+		status = "okay";
+		nvidia,enable-sata-port;
+	};
+
         sata@70020000 {
                 status = "okay";
                 nvidia,pexp-gpio = <&pca9539_76 11 0>, <&pca9539_76 12 0>;

@@ -35,6 +35,10 @@
 		};
 	};
 
+	xusb_padctl {
+		nvidia,enable-sata-port;
+	};
+
 	sata@70020000 {
 		status = "okay";
 		nvidia,sata-connector-type=<E_SATA_P>;
