@@ -99,7 +99,7 @@ struct tegra_usb_phy {
 	struct tegra_usb_phy_ops *ops;
 	struct tegra_xtal_freq *freq;
 	struct usb_phy *ulpi_vp;
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	struct tegra_prod_list *prod_list;
 #endif
 	enum usb_phy_port_speed port_speed;

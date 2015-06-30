@@ -655,7 +655,7 @@ static int utmi_phy_open(struct tegra_usb_phy *phy)
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	if (phy->pdev->dev.of_node) {
 		phy->prod_list = tegra_prod_get(&phy->pdev->dev, NULL);
 		if (IS_ERR_OR_NULL(phy->prod_list)) {
@@ -726,7 +726,8 @@ static void utmi_phy_close(struct tegra_usb_phy *phy)
 		phy->pmc_hotplug_wakeup = false;
 		PHY_DBG("%s DISABLE_PMC inst = %d\n", __func__, phy->inst);
 	}
-#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+
 	if (phy->prod_list)
 		tegra_prod_release(&phy->prod_list);
 #endif
@@ -1078,26 +1079,31 @@ safe_settings:
 #else
 	utmi_phy_pad_enable();
 #endif
-
-	val = readl(base + UTMIP_XCVR_CFG0);
-	val &= ~(UTMIP_XCVR_LSBIAS_SEL | UTMIP_FORCE_PD_POWERDOWN |
-		 UTMIP_FORCE_PD2_POWERDOWN | UTMIP_FORCE_PDZI_POWERDOWN |
-		 UTMIP_XCVR_SETUP(~0) | UTMIP_XCVR_LSFSLEW(~0) |
-		 UTMIP_XCVR_LSRSLEW(~0) | UTMIP_XCVR_HSSLEW_MSB(~0) |
-		 UTMIP_XCVR_SETUP_MSB(~0));
-	val |= UTMIP_XCVR_SETUP(phy->utmi_xcvr_setup);
-	val |= UTMIP_XCVR_SETUP_MSB(XCVR_SETUP_MSB_CALIB(phy->utmi_xcvr_setup));
-	val |= UTMIP_XCVR_LSFSLEW(config->xcvr_lsfslew);
-	val |= UTMIP_XCVR_LSRSLEW(config->xcvr_lsrslew);
-	if (!config->xcvr_use_lsb) {
-		if (!config->xcvr_hsslew_msb)
-			val |= UTMIP_XCVR_HSSLEW_MSB(3);
-		else
-			val |= UTMIP_XCVR_HSSLEW_MSB(config->xcvr_hsslew_msb);
+	/*If prod_list is NULL or it does not have phy_prod label*/
+	if ((phy->prod_list == NULL) ||
+		(tegra_prod_set_by_name(&base,
+					"phy_prod",
+					phy->prod_list) != 0)) {
+		val = readl(base + UTMIP_XCVR_CFG0);
+		val &= ~(UTMIP_XCVR_LSBIAS_SEL | UTMIP_FORCE_PD_POWERDOWN |
+			 UTMIP_FORCE_PD2_POWERDOWN | UTMIP_FORCE_PDZI_POWERDOWN |
+			 UTMIP_XCVR_SETUP(~0) | UTMIP_XCVR_LSFSLEW(~0) |
+			 UTMIP_XCVR_LSRSLEW(~0) | UTMIP_XCVR_HSSLEW_MSB(~0) |
+			 UTMIP_XCVR_SETUP_MSB(~0));
+		val |= UTMIP_XCVR_SETUP(phy->utmi_xcvr_setup);
+		val |= UTMIP_XCVR_SETUP_MSB(XCVR_SETUP_MSB_CALIB(phy->utmi_xcvr_setup));
+		val |= UTMIP_XCVR_LSFSLEW(config->xcvr_lsfslew);
+		val |= UTMIP_XCVR_LSRSLEW(config->xcvr_lsrslew);
+		if (!config->xcvr_use_lsb) {
+			if (!config->xcvr_hsslew_msb)
+				val |= UTMIP_XCVR_HSSLEW_MSB(3);
+			else
+				val |= UTMIP_XCVR_HSSLEW_MSB(config->xcvr_hsslew_msb);
+		}
+		if (config->xcvr_hsslew_lsb)
+			val |= UTMIP_XCVR_HSSLEW_LSB(config->xcvr_hsslew_lsb);
+		writel(val, base + UTMIP_XCVR_CFG0);
 	}
-	if (config->xcvr_hsslew_lsb)
-		val |= UTMIP_XCVR_HSSLEW_LSB(config->xcvr_hsslew_lsb);
-	writel(val, base + UTMIP_XCVR_CFG0);
 
 	val = readl(base + UTMIP_XCVR_CFG1);
 	val &= ~(UTMIP_FORCE_PDDISC_POWERDOWN | UTMIP_FORCE_PDCHRP_POWERDOWN |
