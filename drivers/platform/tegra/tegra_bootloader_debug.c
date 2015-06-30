@@ -24,10 +24,10 @@
 #include <linux/fs.h>
 #include <linux/debugfs.h>
 
-const char *module_name = "tegra_bootloader_debug";
-const char *dir_name = "tegra_bootloader";
-const char *gr_file = "tegra_bootloader_verify_regs";
-const char *prof_file = "tegra_bootloader_prof";
+static const char *module_name = "tegra_bootloader_debug";
+static const char *dir_name = "tegra_bootloader";
+static const char *gr_file = "tegra_bootloader_verify_regs";
+static const char *prof_file = "tegra_bootloader_prof";
 
 struct gr_address_value {
 	unsigned int gr_address;
@@ -84,11 +84,12 @@ static int dbg_golden_register_show(struct seq_file *s, void *unused)
 static int dbg_prof_show(struct seq_file *s, void *unused)
 {
 	char *addr;
+
 	addr = (char *)
 		phys_to_virt(tegra_bl_prof_start);
 
-	if (!addr) {
-		printk(KERN_INFO "No Bootloader profiling data in kernel commandline");
+	if (!tegra_bl_prof_start || !addr) {
+		printk(KERN_INFO "No Bootloader profiling data in kernel commandline\n");
 		return -EFAULT;
 	}
 
