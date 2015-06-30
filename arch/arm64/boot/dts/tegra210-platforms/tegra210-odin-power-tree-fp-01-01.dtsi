@@ -15,8 +15,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "tegra210-odin-pmic.dtsi"
-#include "tegra210-odin-power-fixed.dtsi"
+#include "tegra210-odin-pmic-fp-01-01.dtsi"
+#include "tegra210-odin-power-fixed-fp-01-01.dtsi"
 #include "tegra210-ers-power-dvfs-e2174-1101-a00.dtsi"
 
 / {
@@ -227,13 +227,6 @@
 		};
 	};
 
-	i2c@7000c400 {
-		bh1730fvc@29 {
-			vid-supply = <&max77620_sd3>;
-			vdd-supply = <&vdd_3v3>;
-		};
-	};
-
 	i2c@546c0000 {
 		bus-pullup-supply = <&battery_reg>;
 	};
@@ -257,6 +250,11 @@
 			avdd_hdmi-supply = <&max77620_ldo8>;    /* 1V05 */
 			avdd_hdmi_pll-supply = <&max77620_sd3>; /* 1V8 */
 			vdd_hdmi_5v0-supply = <&vdd_hdmi>;	/* 5V0 GPIO_PCC7 fixed reg */
+			/* dp */
+			vdd-dp-pwr-supply = <&vdd_3v3>;
+			avdd-dp-pll-supply = <&max77620_sd3>;
+			vdd-edp-sec-mode-supply = <&vdd_sys_boost>;
+			vdd-dp-pad-supply = <&max77620_ldo8>;
 		};
 
 		vi {

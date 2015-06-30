@@ -15,6 +15,7 @@
  */
 
 #include "tegra210-odin-common.dtsi"
+#include "tegra210-platforms/tegra210-odin-power-tree-fp-02-00.dtsi"
 #include "tegra210-platforms/tegra210-odin-fp-02-00-emc.dtsi"
 
 / {
@@ -25,25 +26,43 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
+	extcon {
+		extcon@0 {
+			status = "okay";
+		};
+	};
+
 	udc@7d000000 {
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&bq2419x 0>;
+		extcon-cable-names = "vbus";
 		#extcon-cells = <1>;
 		status = "disabled";
 		dt-override-status-odm-data = <0x01000000 0x00000000>;
 	};
 
         otg@7d000000 {
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <1>;
+		extcon-cables = <&bq2419x 0 &id_gpio_extcon 0>;
+		extcon-cable-names = "vbus", "id";
 		#extcon-cells = <1>;
 		status = "disabled";
 		dt-override-status-odm-data = <0x01000000 0x00000000>;
 	};
 
 	xudc@700d0000 {
+		extcon-cables = <&bq2419x 0>;
+		extcon-cable-names = "vbus";
 		#extcon-cells = <1>;
 		status = "disabled";
 		dt-override-status-odm-data = <0x01000000 0x01000000>;
 	};
 
 	xotg {
+		extcon-cables = <&id_gpio_extcon 0>;
+		extcon-cable-names = "id";
 		#extcon-cells = <1>;
 		status = "disabled";
 		dt-override-status-odm-data = <0x01000000 0x01000000>;

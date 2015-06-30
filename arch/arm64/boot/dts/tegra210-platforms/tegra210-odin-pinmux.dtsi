@@ -108,6 +108,22 @@
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 			};
 
+			dmic3_clk_pe4 {
+				nvidia,pins = "dmic3_clk_pe4";
+				nvidia,function = "rsvd2";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+
+			dmic3_dat_pe5 {
+				nvidia,pins = "dmic3_dat_pe5";
+				nvidia,function = "rsvd2";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+
 			pe7 {
 				nvidia,pins = "pe7";
 				nvidia,function = "pwm3";
@@ -381,6 +397,14 @@
 				nvidia,pull = <TEGRA_PIN_PULL_UP>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+
+			pz4 {
+				nvidia,pins = "pz4";
+				nvidia,function = "rsvd1";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
 
 			pz5 {
@@ -833,9 +857,9 @@
 			sata_led_active_pa5 {
 				nvidia,pins = "sata_led_active_pa5";
 				nvidia,function = "rsvd1";
-				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
-				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
 
 			als_prox_int_px3 {
@@ -1165,22 +1189,6 @@
 			spi2_cs1_pdd0 {
 				nvidia,pins = "spi2_cs1_pdd0";
 				nvidia,function = "rsvd1";
-				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
-				nvidia,tristate = <TEGRA_PIN_ENABLE>;
-				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
-			};
-
-			dmic3_clk_pe4 {
-				nvidia,pins = "dmic3_clk_pe4";
-				nvidia,function = "rsvd2";
-				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
-				nvidia,tristate = <TEGRA_PIN_ENABLE>;
-				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
-			};
-
-			dmic3_dat_pe5 {
-				nvidia,pins = "dmic3_dat_pe5";
-				nvidia,function = "rsvd2";
 				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
 				nvidia,tristate = <TEGRA_PIN_ENABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;

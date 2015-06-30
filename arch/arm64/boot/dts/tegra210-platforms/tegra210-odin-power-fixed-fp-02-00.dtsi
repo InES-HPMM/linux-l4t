@@ -1,0 +1,208 @@
+/*
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include <dt-bindings/gpio/tegra-gpio.h>
+
+/ {
+	regulators {
+		compatible = "simple-bus";
+		device_type = "fixed-regulators";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		battery_reg: regulator@0 {
+			compatible = "regulator-fixed";
+			reg = <0>;
+			regulator-name = "vdd-ac-bat";
+			regulator-min-microvolt = <4800000>;
+			regulator-max-microvolt = <4800000>;
+			regulator-always-on;
+		};
+
+		vdd_3v3: regulator@1 {
+			compatible = "regulator-fixed-sync";
+			reg = <1>;
+			regulator-name = "vdd-3v3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
+			gpio = <&max77620 3 0>;
+			enable-active-high;
+			regulator-enable-ramp-delay = <160>;
+			regulator-disable-ramp-delay = <10000>;
+			consumers {
+				c1 {
+					regulator-consumer-supply = "avdd_usb";
+					regulator-consumer-device = "tegra-ehci.0";
+				};
+				c2 {
+					regulator-consumer-supply = "avdd_usb";
+					regulator-consumer-device = "tegra-ehci.1";
+				};
+				c3 {
+					regulator-consumer-supply = "avdd_usb";
+					regulator-consumer-device = "tegra-ehci.2";
+				};
+				c5 {
+					regulator-consumer-supply = "vdd";
+					regulator-consumer-device = "1-004d";
+				};
+			};
+		};
+
+		max77620_gpio7: regulator@2 {
+			compatible = "regulator-fixed-sync";
+			reg = <2>;
+			regulator-name = "max77620-gpio7";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-boot-on;
+			gpio = <&max77620 7 0>;
+			enable-active-high;
+			regulator-always-on;
+			regulator-enable-ramp-delay = <240>;
+			regulator-disable-ramp-delay = <11340>;
+			vin-supply = <&max77620_ldo0>;
+		};
+
+		lcd_bl_en: regulator@3 {
+			compatible = "regulator-fixed-sync";
+			reg = <3>;
+			regulator-name = "lcd-bl-en";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&gpio TEGRA_GPIO(V, 1) 0>;
+			enable-active-high;
+		};
+
+		en_vdd_sd: regulator@4 {
+			compatible = "regulator-fixed-sync";
+			reg = <4>;
+			regulator-name = "en-vdd-sd";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&gpio TEGRA_GPIO(E, 4) 0>;
+			enable-active-high;
+			regulator-enable-ramp-delay = <472>;
+			regulator-disable-ramp-delay = <4880>;
+			vin-supply = <&vdd_3v3>;
+		};
+
+		en_vdd_cam: regulator@5 {
+			compatible = "regulator-fixed";
+			reg = <5>;
+			regulator-name = "en-vdd-cam";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+		};
+
+		vdd_hdmi: regulator@6 {
+			compatible = "regulator-fixed";
+			reg = <6>;
+			regulator-name = "vdd-hdmi";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+		};
+
+		en_vdd_cpu_fixed: regulator@7 {
+			compatible = "regulator-fixed";
+			reg = <7>;
+			regulator-name = "vdd-cpu-fixed";
+			regulator-min-microvolt = <1000000>;
+			regulator-max-microvolt = <1000000>;
+		};
+
+		en_codec_ldo: regulator@8 {
+			compatible = "regulator-fixed-sync";
+			reg = <8>;
+			regulator-name = "en_ldo_codec";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(Z, 4) 0>;
+			enable-active-high;
+		};
+
+		v_pavdd_5v0: regulator@9 {
+			compatible = "regulator-fixed-sync";
+			reg = <9>;
+			regulator-name = "v_pavdd_5v0";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(I, 0) 0>;
+			enable-active-high;
+			regulator-enable-ramp-delay = <232>;
+		};
+
+		v_navdd_5v0: regulator@10 {
+			compatible = "regulator-fixed-sync";
+			reg = <10>;
+			regulator-name = "v_navdd_5v0";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(I, 1) 0>;
+			enable-active-high;
+			regulator-enable-ramp-delay = <232>;
+		};
+
+		v_vdd50_a: regulator@11 {
+			compatible = "regulator-fixed-sync";
+			reg = <11>;
+			regulator-name = "v_vdd50_a";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(A, 5) 0>;
+			enable-active-high;
+			gpio-open-drain;
+		};
+
+		v_vdd50_b: regulator@12 {
+			compatible = "regulator-fixed-sync";
+			reg = <12>;
+			regulator-name = "v_vdd50_b";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(CC, 4) 0>;
+			enable-active-high;
+			gpio-open-drain;
+		};
+
+		vdd3v3_gc: regulator@13 {
+			compatible = "regulator-fixed-sync";
+			reg = <13>;
+			regulator-name = "vdd3v3_gc";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&gpio TEGRA_GPIO(E, 5) 0>;
+			enable-active-high;
+			regulator-enable-ramp-delay = <472>;
+			regulator-disable-ramp-delay = <4880>;
+			vin-supply = <&vdd_3v3>;
+		};
+
+		vdd_cdc_1v2_aud: regulator@101 {
+			compatible = "regulator-fixed-sync";
+			reg = <101>;
+			status = "disabled";
+			regulator-name = "vdd_cdc_1v2_aud";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			enable-active-high;
+			startup-delay-us = <250000>;
+		};
+	};
+};

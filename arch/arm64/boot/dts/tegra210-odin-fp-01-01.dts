@@ -15,6 +15,8 @@
  */
 
 #include "tegra210-odin-common.dtsi"
+#include "tegra210-platforms/tegra210-odin-power-tree-fp-01-01.dtsi"
+#include "tegra210-platforms/tegra210-foster-e-extcon-p2530-0930-e01.dtsi"
 #include "tegra210-platforms/tegra210-odin-fp-01-01-emc.dtsi"
 
 / {
@@ -24,6 +26,12 @@
 
 	#address-cells = <2>;
 	#size-cells = <2>;
+
+	extcon {
+		extcon@0 {
+			status = "disabled";
+		};
+	};
 
 	udc@7d000000 {
 		#extcon-cells = <1>;
