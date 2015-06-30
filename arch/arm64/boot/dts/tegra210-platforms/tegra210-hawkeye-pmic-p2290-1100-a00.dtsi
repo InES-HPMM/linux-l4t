@@ -150,7 +150,6 @@
 				maxim,wdt-boot-timeout = <32>;
 				maxim,wdt-suspend-timeout = <120>;
 				status = "disabled";
-				dt-override-status-odm-data = <0x00020000 0x00020000>;
 			};
 
 			fps {
@@ -398,7 +397,6 @@
 
 			battery_charger: charger {
 				status = "disabled";
-				dt-override-status-odm-data = <0x00C00000 0x00400000>;
 				regulator-name = "batt_regulator";
 				regulator-max-microamp = <3000000>;
 				ti,disbale-suspend-during-charging;
@@ -426,7 +424,6 @@
 
 		battery-gauge@55 {
 			status = "disabled";
-			dt-override-status-odm-data = <0x00C00000 0x00400000>;
 			compatible = "ti,bq27441";
 			reg = <0x55>;
 			interrupt-parent = <&gpio>;
@@ -585,6 +582,5 @@
 	soft_watchdog {
 		compatible = "softdog-platform";
 		status = "disabled";
-		dt-override-status-odm-data = <0x00030000 0x00000000>;
 	};
 };
