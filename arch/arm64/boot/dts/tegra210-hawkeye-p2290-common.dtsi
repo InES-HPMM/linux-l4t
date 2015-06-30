@@ -1300,6 +1300,18 @@
 					1 0xDC 0xFFFFEEFF 0x00000100
 					1 0xE0 0xFFFFEEFF 0x00000100>;
 			};
+
+			uart3_prod {
+				nvidia,prod-boot-init;
+				prod = <0 0x268 0xFE0E0FFF 0x00000000
+					0 0x26c 0xFE0E0FFF 0x00000000
+					0 0x270 0xFE0E0FFF 0x00000000
+					0 0x274 0xFE0E0FFF 0x00000000>;
+			};
+
+			spi4_prod {
+				status = "disabled";
+			};
 		};
 	};
 };
