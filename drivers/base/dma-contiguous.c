@@ -391,7 +391,7 @@ struct page *dma_alloc_at_from_contiguous(struct device *dev, int count,
 
 		pageno = bitmap_find_next_zero_area(cma->bitmap, cma->count,
 						    start, count, mask);
-		if (pageno >= cma->count || (start && start != pageno))
+		if (pageno >= cma->count || (start_pfn && start != pageno))
 			break;
 
 		pfn = cma->base_pfn + pageno;
@@ -401,7 +401,7 @@ retry:
 			bitmap_set(cma->bitmap, pageno, count);
 			page = pfn_to_page(pfn);
 			break;
-		} else if (start && time_before(jiffies, timeout)) {
+		} else if (start_pfn && time_before(jiffies, timeout)) {
 			/* Possible migration contention from
 			 * __get_user_pages(). Retry after a bit of sleep.
 			 */
@@ -413,7 +413,7 @@ retry:
 			}
 			retries++;
 			goto retry;
-		} else if (ret != -EBUSY || start) {
+		} else if (ret != -EBUSY || start_pfn) {
 			break;
 		}
 		pr_debug("%s(): memory range at %p is busy, retrying\n",
