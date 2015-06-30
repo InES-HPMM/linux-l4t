@@ -610,11 +610,7 @@ static struct max8973_regulator_platform_data *max8973_parse_dt(
 
 	pdata->enable_ext_control = of_property_read_bool(np,
 						"maxim,externally-enable");
-	pdata->enable_gpio = of_get_named_gpio(np,
-				"maxim,external-enable-gpio", 0);
-
-	if (pdata->enable_gpio == -EINVAL)
-		pdata->enable_gpio = of_get_named_gpio(np, "maxim,enable-gpio", 0);
+	pdata->enable_gpio = of_get_named_gpio(np, "maxim,enable-gpio", 0);
 	pdata->dvs_gpio = of_get_named_gpio(np, "maxim,dvs-gpio", 0);
 
 	pdata->enable_dvs_sleep_control = of_property_read_bool(np,
@@ -637,12 +633,8 @@ static struct max8973_regulator_platform_data *max8973_parse_dt(
 	if (of_property_read_bool(np, "maxim,enable-frequency-shift"))
 		pdata->control_flags  |= MAX8973_CONTROL_FREQ_SHIFT_9PER_ENABLE;
 
-	ret = of_property_read_bool(np, "maxim,enable-bias");
-	if (ret)
-		pdata->control_flags |= MAX8973_CONTROL_BIAS_ENABLE;
-
 	if (of_property_read_bool(np, "maxim,enable-bias-control"))
-		pdata->control_flags  |= MAX8973_BIAS_ENABLE;
+		pdata->control_flags  |= MAX8973_CONTROL_BIAS_ENABLE;
 
 	ret = of_property_read_u32(np, "maxim,junction-temp-warning", &pval);
 	if (!ret)
