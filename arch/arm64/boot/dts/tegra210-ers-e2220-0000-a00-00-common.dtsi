@@ -30,7 +30,6 @@
 #include "tegra210-platforms/tegra210-ers-e2220-powermon-e2174-1100-a00-00.dtsi"
 #include "tegra210-platforms/tegra210-ers-sensor-e2160-1000-a00.dtsi"
 #include "tegra210-platforms/tegra210-ers-gpio-e2220-1170-a00.dtsi"
-#include "tegra210-platforms/tegra210-ers-pinmux-e2220-1170-a00.dtsi"
 #include "tegra210-platforms/tegra210-comms.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
 #include "tegra210-platforms/tegra210-audio.dtsi"
