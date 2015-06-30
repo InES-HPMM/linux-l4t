@@ -615,8 +615,6 @@ int battery_gauge_get_input_current_limit(struct battery_gauge_dev *bg_dev)
 	if (!bg_dev)
 		return -EINVAL;
 
-	mutex_lock(&charger_gauge_list_mutex);
-
 	list_for_each_entry(node, &charger_list, list) {
 		if (node->cell_id != bg_dev->cell_id)
 			continue;
@@ -624,7 +622,6 @@ int battery_gauge_get_input_current_limit(struct battery_gauge_dev *bg_dev)
 			ret = node->ops->get_input_current_limit(node);
 	}
 
-	mutex_unlock(&charger_gauge_list_mutex);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(battery_gauge_get_input_current_limit);
