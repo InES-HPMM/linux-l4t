@@ -162,8 +162,15 @@ int nvmap_do_cache_maint_list(struct nvmap_handle **handles, u32 *offsets,
 	thresh = cache_maint_inner_threshold;
 #endif
 
-	for (i = 0; i < nr; i++)
-		total += sizes[i] ? sizes[i] : handles[i]->size;
+	for (i = 0; i < nr; i++) {
+		if ((op == NVMAP_CACHE_OP_WB) && nvmap_handle_track_dirty(handles[i]))
+			total += atomic_read(&handles[i]->pgalloc.ndirty);
+		else
+			total += sizes[i] ? sizes[i] : handles[i]->size;
+	}
+
+	if (!total)
+		return 0;
 
 	/* Full flush in the case the passed list is bigger than our
 	 * threshold. */
@@ -214,6 +221,10 @@ void nvmap_zap_handle(struct nvmap_handle *handle, u32 offset, u32 size)
 	struct vm_area_struct *vma;
 
 	if (!handle->heap_pgalloc)
+		return;
+
+	/* if no dirty page is present, no need to zap */
+	if (nvmap_handle_track_dirty(handle) && !atomic_read(&handle->pgalloc.ndirty))
 		return;
 
 	if (!size) {
