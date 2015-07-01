@@ -5009,6 +5009,19 @@ static struct rq *find_busiest_queue(struct lb_env *env,
 /* Working cpumask for load_balance and load_balance_newidle. */
 DEFINE_PER_CPU(cpumask_var_t, load_balance_mask);
 
+/*
+ * Check whether the capacity of the rq has been noticeably reduced by side
+ * activity. The imabalance_pct is used for the threshold.
+ * Return true if the capacity is reduced.
+ */
+static inline int check_cpu_power(struct rq *rq, struct sched_domain *sd)
+{
+	struct sched_group *sdg = sd->groups;
+	unsigned long power_orig = sdg->sgp->power_orig;
+
+	return rq->cpu_power * sd->imbalance_pct < power_orig * 100;
+}
+
 static int need_active_balance(struct lb_env *env)
 {
 	struct sched_domain *sd = env->sd;
@@ -5021,6 +5034,13 @@ static int need_active_balance(struct lb_env *env)
 		 * lowest numbered CPUs.
 		 */
 		if ((sd->flags & SD_ASYM_PACKING) && env->src_cpu > env->dst_cpu)
+			return 1;
+	}
+
+	if ((env->idle != CPU_NOT_IDLE) &&
+	    (env->src_rq->cfs.h_nr_running == 1)) {
+		if (check_cpu_power(env->src_rq, sd) &&
+		    (power_of(env->src_cpu) * sd->imbalance_pct < power_of(env->dst_cpu) * 100))
 			return 1;
 	}
 
@@ -5085,6 +5105,9 @@ redo:
 
 	schedstat_add(sd, lb_imbalance[idle], env.imbalance);
 
+	env.src_cpu   = busiest->cpu;
+	env.src_rq    = busiest;
+
 	ld_moved = 0;
 	if (busiest->nr_running > 1) {
 		/*
@@ -5094,8 +5117,6 @@ redo:
 		 * correctly treated as an imbalance.
 		 */
 		env.flags |= LBF_ALL_PINNED;
-		env.src_cpu   = busiest->cpu;
-		env.src_rq    = busiest;
 		env.loop_max  = min(sysctl_sched_nr_migrate, busiest->nr_running);
 
 		update_h_load(env.src_cpu);
@@ -5652,13 +5673,14 @@ end:
  *   - For SD_ASYM_PACKING, if the lower numbered cpu's in the scheduler
  *     domain span are idle.
  */
-static inline int nohz_kick_needed(struct rq *rq, int cpu)
+static inline bool nohz_kick_needed(struct rq *rq, int cpu)
 {
 	unsigned long now = jiffies;
 	struct sched_domain *sd;
+	bool kick = false;
 
 	if (unlikely(idle_cpu(cpu)))
-		return 0;
+		return false;
 
        /*
 	* We may be recently in ticked or tickless idle mode. At the first
@@ -5672,13 +5694,13 @@ static inline int nohz_kick_needed(struct rq *rq, int cpu)
 	 * balancing.
 	 */
 	if (likely(!atomic_read(&nohz.nr_cpus)))
-		return 0;
+		return false;
 
 	if (time_before(now, nohz.next_balance))
-		return 0;
+		return false;
 
 	if (rq->nr_running >= 2)
-		goto need_kick;
+		return true;
 
 	rcu_read_lock();
 	for_each_domain(cpu, sd) {
@@ -5686,24 +5708,33 @@ static inline int nohz_kick_needed(struct rq *rq, int cpu)
 		struct sched_group_power *sgp = sg->sgp;
 		int nr_busy = atomic_read(&sgp->nr_busy_cpus);
 
-		if (sd->flags & SD_SHARE_PKG_RESOURCES && nr_busy > 1)
-			goto need_kick_unlock;
+		if (sd->flags & SD_SHARE_PKG_RESOURCES && nr_busy > 1) {
+			kick = true;
+			goto unlock;
+		}
 
 		if (sd->flags & SD_ASYM_PACKING && nr_busy != sg->group_weight
 		    && (cpumask_first_and(nohz.idle_cpus_mask,
-					  sched_domain_span(sd)) < cpu))
-			goto need_kick_unlock;
+					  sched_domain_span(sd)) < cpu)) {
+			kick = true;
+			goto unlock;
+		}
 
 		if (!(sd->flags & (SD_SHARE_PKG_RESOURCES | SD_ASYM_PACKING)))
 			break;
 	}
-	rcu_read_unlock();
-	return 0;
 
-need_kick_unlock:
+	sd = rcu_dereference(rq->sd);
+	if (sd) {
+		if ((rq->cfs.h_nr_running >= 1) && check_cpu_power(rq, sd)) {
+			kick = true;
+			goto unlock;
+		}
+	}
+
+unlock:
 	rcu_read_unlock();
-need_kick:
-	return 1;
+	return kick;
 }
 #else
 static void nohz_idle_balance(int this_cpu, enum cpu_idle_type idle) { }
