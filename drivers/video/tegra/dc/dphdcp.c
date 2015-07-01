@@ -20,7 +20,7 @@
 #include <linux/sched.h>
 #include <linux/miscdevice.h>
 #include <linux/workqueue.h>
-#include <asm/atomic.h>
+#include <linux/atomic.h>
 #include <linux/wait.h>
 #include <linux/uaccess.h>
 
@@ -33,6 +33,10 @@
 #include "sor.h"
 #include "sor_regs.h"
 #include "dpaux_regs.h"
+#include "tsec_drv.h"
+#include "tsec/tsec_methods.h"
+#include "nvhdcp_hdcp22_methods.h"
+#include "tsec/tsec.h"
 
 static DECLARE_WAIT_QUEUE_HEAD(wq_worker);
 
@@ -41,6 +45,8 @@ static DECLARE_WAIT_QUEUE_HEAD(wq_worker);
 #define BCAPS_HDCP_CAPABLE (1 << 0)
 
 /* Bstatus register bits */
+#define BSTATUS_REAUTH_REQ	(1 << 3)
+#define BSTATUS_LINK_INTEG_FAIL	(1 << 2)
 #define BSTATUS_R0_PRIME_SET	(1 << 1)
 #define BSTATUS_READY		(1 << 0)
 
@@ -56,6 +62,7 @@ static DECLARE_WAIT_QUEUE_HEAD(wq_worker);
 #define HDCP_REAUTH		2
 #define HDCP_REAUTH_MASK	(1 << 3)
 
+#define MAX_AUX_SIZE		15
 /* logging */
 #ifdef VERBOSE_DEBUG
 #define dphdcp_vdbg(...)	\
@@ -75,27 +82,30 @@ static DECLARE_WAIT_QUEUE_HEAD(wq_worker);
 #define dphdcp_info(...)	\
 		pr_info("dphdcp: " __VA_ARGS__)
 
-static int tegra_dc_dp_dpcd_hdcp_read(struct tegra_dc_dp_data *dp, u32 cmd,
-	u8 *data_ptr, u32 size)
+static int tegra_dpcd_hdcp_read(struct tegra_dc_dp_data *dp, u32 cmd,
+	u8 *data_ptr, u32 size, u32 *aux_status)
 {
 	u32 status = 0;
+	u32 cursize = 0;
 	int ret = 0;
 
 	if (dp->dc->out->type == TEGRA_DC_OUT_FAKE_DP)
 		return -EIO;
 
+	cursize = size;
 	mutex_lock(&dp->dpaux_lock);
 	ret = tegra_dc_dpaux_read_chunk_locked(dp, DPAUX_DP_AUXCTL_CMD_AUXRD,
-		cmd, data_ptr, &size, &status);
+		cmd, data_ptr, &cursize, &status);
 	mutex_unlock(&dp->dpaux_lock);
 	if (ret)
 		dev_err(&dp->dc->ndev->dev,
 			"dp: Failed to read DPCD data. CMD 0x%x, Status 0x%x\n",
 			cmd, status);
+	*aux_status = status;
 	return ret;
 }
 
-static int tegra_dc_dp_dpcd_hdcp_write(struct tegra_dc_dp_data *dp, u32 cmd,
+static int tegra_dpcd_hdcp_write(struct tegra_dc_dp_data *dp, u32 cmd,
 	u8 *data, u32 size)
 {
 	u32 status = 0;
@@ -116,50 +126,37 @@ static int tegra_dc_dp_dpcd_hdcp_write(struct tegra_dc_dp_data *dp, u32 cmd,
 }
 
 /* read 5 bytes of data */
-static int tegra_dc_dp_dpcd_read40(struct tegra_dc_dp_data *dp, u32 cmd,
+static int tegra_dpcd_hdcp_read40(struct tegra_dc_dp_data *dp, u32 cmd,
 			u64 *data)
 {
 	u8 buf[5];
 	int i;
 	u64 n;
 	int e;
-	e = tegra_dc_dp_dpcd_hdcp_read(dp, cmd, buf, sizeof(buf));
+	u32 status;
+	e = tegra_dpcd_hdcp_read(dp, cmd, buf, sizeof(buf), &status);
 	if (e)
 		return e;
+
+	/* assign the value read from aux to data */
 	for (i = 0, n = 0; i < 5; i++) {
 		n <<= 8;
 		n |= buf[4 - i];
 	}
-
 	if (data)
 		*data = n;
 	return 0;
 }
 
 /* read 2 bytes of data */
-static int tegra_dc_dp_dpcd_read16(struct tegra_dc_dp_data *dp, u32 cmd,
+static int tegra_dpcd_hdcp_read16(struct tegra_dc_dp_data *dp, u32 cmd,
 				u64 *data)
 {
 	u8 buf[2];
 	int e;
+	u32 status;
 
-	e = tegra_dc_dp_dpcd_hdcp_read(dp, cmd, buf, sizeof(buf));
-	if (e)
-		return e;
-
-	if (data)
-		*data = buf[0] | (u16)buf[1] << 8;
-	return 0;
-}
-
-/* read 4 bytes of data */
-static int tegra_dc_dp_dpcd_read32(struct tegra_dc_dp_data *dp, u32 cmd,
-				u64 *data)
-{
-	u8 buf[4];
-	int e;
-
-	e = tegra_dc_dp_dpcd_hdcp_read(dp, cmd, buf, sizeof(buf));
+	e = tegra_dpcd_hdcp_read(dp, cmd, buf, sizeof(buf), &status);
 	if (e)
 		return e;
 
@@ -169,30 +166,30 @@ static int tegra_dc_dp_dpcd_read32(struct tegra_dc_dp_data *dp, u32 cmd,
 }
 
 /* write 1 byte of data */
-static int tegra_dc_dp_dpcd_write8(struct tegra_dc_dp_data *dp, u32 reg,
+static int tegra_dpcd_hdcp_write8(struct tegra_dc_dp_data *dp, u32 reg,
 	u64 data)
 {
 	char buf[1];
 	memcpy(buf, (char *)&data, sizeof(buf));
-	return tegra_dc_dp_dpcd_hdcp_write(dp, reg, buf, sizeof(buf));
+	return tegra_dpcd_hdcp_write(dp, reg, buf, sizeof(buf));
 }
 
 /* write 8 bytes of data */
-static int tegra_dc_dp_dpcd_write64(struct tegra_dc_dp_data *dp, u32 reg,
+static int tegra_dpcd_hdcp_write64(struct tegra_dc_dp_data *dp, u32 reg,
 	u64 data)
 {
 	char buf[8];
 	memcpy(buf, (char *)&data, sizeof(buf));
-	return tegra_dc_dp_dpcd_hdcp_write(dp, reg, buf, sizeof(buf));
+	return tegra_dpcd_hdcp_write(dp, reg, buf, sizeof(buf));
 }
 
 /* write 5 bytes of data */
-static int tegra_dc_dp_dpcd_write40(struct tegra_dc_dp_data *dp, u32 reg,
+static int tegra_dpcd_hdcp_write40(struct tegra_dc_dp_data *dp, u32 reg,
 	u64 data)
 {
 	char buf[5];
 	memcpy(buf, (char *)&data, sizeof(buf));
-	return tegra_dc_dp_dpcd_hdcp_write(dp, reg, buf, sizeof(buf));
+	return tegra_dpcd_hdcp_write(dp, reg, buf, sizeof(buf));
 }
 
 /* wait for bits in mask to be set to value in NV_SOR_KEY_CTRL
@@ -231,7 +228,7 @@ static void hdcp_ctrl_run(struct tegra_dc_sor_data *sor, bool v)
 }
 
 /* wait for any bits in mask to be set in NV_SOR_DP_HDCP_CTRL
- * sleeps up to 120mS */
+ * sleeps up to 120 ms */
 static int wait_hdcp_ctrl(struct tegra_dc_sor_data *sor, u32 mask, u32 *v)
 {
 	int retries = 13;
@@ -296,14 +293,16 @@ static int verify_ksv(u64 k)
 
 static int get_bcaps(struct tegra_dc_dp_data *dp, u8 *b_caps)
 {
-	return tegra_dc_dp_dpcd_hdcp_read(dp, NV_DPCD_HDCP_BCAPS_OFFSET,
-						b_caps, 1);
+	u32 status;
+	return tegra_dpcd_hdcp_read(dp, NV_DPCD_HDCP_BCAPS_OFFSET,
+						b_caps, 1, &status);
 }
 
 static int get_bstatus(struct tegra_dc_dp_data *dp, u8 *bstatus)
 {
-	return tegra_dc_dp_dpcd_hdcp_read(dp, NV_DPCD_HDCP_BSTATUS_OFFSET,
-						bstatus, 1);
+	u32 status;
+	return tegra_dpcd_hdcp_read(dp, NV_DPCD_HDCP_BSTATUS_OFFSET,
+						bstatus, 1, &status);
 }
 
 static inline bool dphdcp_is_plugged(struct tegra_dphdcp *dphdcp)
@@ -404,32 +403,22 @@ static inline u64 get_transmitter_ro_prime(struct tegra_dc_dp_data *dp)
 /* R0' prime value generated from the receiver */
 static inline int get_receiver_ro_prime(struct tegra_dc_dp_data *dp, u64 *r)
 {
-	return tegra_dc_dp_dpcd_read16(dp, NV_DPCD_HDCP_RPRIME_OFFSET, r);
+	return tegra_dpcd_hdcp_read16(dp, NV_DPCD_HDCP_RPRIME_OFFSET, r);
 }
 
-static int verify_link(struct tegra_dphdcp *dphdcp)
+static int validate_rx(struct tegra_dphdcp *dphdcp)
 {
 	int retries = 3;
-	struct tegra_dc_dp_data *dp = dphdcp->dp;
-	u64 rx, tx;
+	u64 rx = 0, tx = 0;
 	int e;
-	rx = 0;
-	tx = 0;
+	struct tegra_dc_dp_data *dp = dphdcp->dp;
 
 	/* try 3 times for possible link errors */
 	do {
-		e = get_receiver_ro_prime(dp, &rx);
 		tx = get_transmitter_ro_prime(dp);
+		e = get_receiver_ro_prime(dp, &rx);
 	} while (--retries && rx != tx);
-
 	dphdcp_vdbg("rx=0x%016llx tx=0x%016llx\n", rx, tx);
-
-	mutex_lock(&dphdcp->lock);
-	if (!dphdcp_is_plugged(dphdcp)) {
-		dphdcp_err("aborting verify links - lost dp connection\n");
-		return -EIO;
-	}
-	mutex_unlock(&dphdcp->lock);
 
 	if (rx != tx)
 		return -EINVAL;
@@ -437,29 +426,32 @@ static int verify_link(struct tegra_dphdcp *dphdcp)
 }
 
 /* get V' 160-bit SHA-1 hash from repeater */
-static int get_vprime(struct tegra_dc_dp_data *dp, u64 *v_prime)
+static int get_vprime(struct tegra_dc_dp_data *dp, u8 *v_prime)
 {
 	int e, i;
-	/* TODO: verify vprime read through compliance test */
+	u32 status;
 
 	for (i = 0; i < 20; i += 4) {
-		e = tegra_dc_dp_dpcd_read32(dp,
-			 NV_DPCP_HDCP_SHA_H0_OFFSET+i, v_prime+i);
-		if (e)
+		e = tegra_dpcd_hdcp_read(dp,
+			NV_DPCP_HDCP_SHA_H0_OFFSET+i, v_prime+i, 4, &status);
+		if (e) {
+			dphdcp_err("Error reading V'\n");
 			return e;
+		}
 	}
 	return 0;
 }
 
-/* double check ksv fifo reading,
-repeat for V != V' */
 static int get_ksvfifo(struct tegra_dc_dp_data *dp,
 					unsigned num_bksv_list, u64 *ksv_list)
 {
-	u8 *buf, *p;
+	u8 *buf;
+	u8 *orig_buf;
 	int e;
-	unsigned i;
+	unsigned int dp_retries = 10;
+	u32 status;
 	size_t buf_len = num_bksv_list * 5;
+
 
 	if (!ksv_list || num_bksv_list > TEGRA_NVHDCP_MAX_DEVS)
 		return -EINVAL;
@@ -471,34 +463,95 @@ static int get_ksvfifo(struct tegra_dc_dp_data *dp,
 	if (IS_ERR_OR_NULL(buf))
 		return -ENOMEM;
 
-	e = tegra_dc_dp_dpcd_hdcp_read(dp, NV_DPCD_HDCP_KSV_FIFO_OFFSET,
-					 buf, buf_len);
+	orig_buf = buf;
+	while (buf_len > 15) {
+aux_read:
+			e = tegra_dpcd_hdcp_read(dp,
+			NV_DPCD_HDCP_KSV_FIFO_OFFSET, buf, 15, &status);
+			if (e) {
+				dphdcp_err("Error reading KSV\n");
+				kfree(orig_buf);
+				return e;
+			}
+			if ((status & DPAUX_DP_AUXSTAT_REPLYTYPE_I2CDEFER) ||
+			(status & DPAUX_DP_AUXSTAT_REPLYTYPE_DEFER)) {
+				if (--dp_retries)
+					goto aux_read;
+			}
+			buf_len -= 15;
+			buf += 15;
+	}
+
+	if (buf_len)
+		e = tegra_dpcd_hdcp_read(dp,
+		NV_DPCD_HDCP_KSV_FIFO_OFFSET, buf, buf_len, &status);
 	if (e) {
-		kfree(buf);
+		dphdcp_err("Error reading KSV\n");
+		kfree(orig_buf);
 		return e;
 	}
-
-	/* load 40-bit keys from repeater into array of u64 */
-	p = buf;
-	for (i = 0; i < num_bksv_list; i++) {
-		ksv_list[i] = p[0] | ((u64)p[1] << 8) | ((u64)p[2] << 16)
-				| ((u64)p[3] << 24) | ((u64)p[4] << 32);
-		p += 5;
-	}
-
-	kfree(buf);
+	memcpy(ksv_list, orig_buf, num_bksv_list*5);
+	kfree(orig_buf);
 	return 0;
+}
+
+int tsec_hdcp_dp_verify_vprime(struct tegra_dphdcp *dphdcp)
+{
+	struct hdcp_context_t hdcp_context;
+	struct hdcp_verify_vprime_param verify_vprime_param;
+	int e = 0;
+	e = tsec_hdcp_create_context(&hdcp_context);
+	if (e)
+		dphdcp_err("Error creating hdcp context\n");
+	e = tsec_hdcp_init(&hdcp_context);
+	if (e)
+		dphdcp_err("error in tsec init\n");
+	memset(&verify_vprime_param, 0x0,
+		sizeof(struct hdcp_verify_vprime_param));
+	memset(hdcp_context.cpuvaddr_mthd_buf_aligned, 0,
+		HDCP_MTHD_RPLY_BUF_SIZE);
+	/* revocation check */
+	verify_vprime_param.srm_size =
+		tsec_dp_hdcp_revocation_check(&hdcp_context);
+	/* get receiver id list into the buffer */
+	memcpy(hdcp_context.cpuvaddr_rcvr_id_list, dphdcp->bksv_list,
+			(dphdcp->num_bksv_list)*5);
+	memcpy(verify_vprime_param.vprime, dphdcp->v_prime,
+			HDCP_SIZE_VPRIME_1X_8);
+	verify_vprime_param.trans_id.session_id = 0;
+	verify_vprime_param.is_ver_hdcp2x = 0; /* hdcp 1.x */
+	verify_vprime_param.bstatus = dphdcp->binfo;
+	verify_vprime_param.depth = 0; /* depth not used */
+	verify_vprime_param.device_count = dphdcp->num_bksv_list;
+	verify_vprime_param.has_hdcp2_repeater = 0;
+	verify_vprime_param.has_hdcp1_device = 0;
+	memcpy(hdcp_context.cpuvaddr_mthd_buf_aligned,
+		&verify_vprime_param,
+		sizeof(struct hdcp_verify_vprime_param));
+	tsec_send_method(&hdcp_context,
+	HDCP_VERIFY_VPRIME,
+	HDCP_MTHD_FLAGS_SB|HDCP_MTHD_FLAGS_RECV_ID_LIST|HDCP_MTHD_FLAGS_SRM);
+	memcpy(&verify_vprime_param,
+		hdcp_context.cpuvaddr_mthd_buf_aligned,
+		sizeof(struct hdcp_verify_vprime_param));
+	if (verify_vprime_param.ret_code) {
+		dphdcp_err("tsec_hdcp_verify_vprime: failed with error:%d\n",
+		verify_vprime_param.ret_code);
+	}
+	e = verify_vprime_param.ret_code;
+	return e;
 }
 
 static int get_repeater_info(struct tegra_dphdcp *dphdcp)
 {
 	int e, retries;
+	int err = 0;
+	int vcheck_tries = 3;
 	u8 bstatus;
 	u64 binfo;
 	struct tegra_dc_dp_data *dp = dphdcp->dp;
 
 	dphdcp_vdbg("repeater found:fetching repeater info\n");
-
 	/* wait up to 5 seconds for READY on repeater */
 	retries = 51;
 	do {
@@ -522,45 +575,53 @@ static int get_repeater_info(struct tegra_dphdcp *dphdcp)
 		dphdcp_err("repeater Bstatus read timeout\n");
 		return -ETIMEDOUT;
 	}
+	/* verify V' thrice to check for link failures */
+	do {
+		memset(dphdcp->bksv_list, 0, sizeof(dphdcp->bksv_list));
+		memset(dphdcp->v_prime, 0, sizeof(dphdcp->v_prime));
+		/* read Binfo register */
+		e = tegra_dpcd_hdcp_read16(dp, NV_DPCD_HDCP_BINFO_OFFSET,
+				&binfo);
+		if (e) {
+			dphdcp_err("Binfo read failure!\n");
+			return e;
+		}
+		msleep(100);
 
-	memset(dphdcp->v_prime, 0, sizeof(dphdcp->v_prime));
-	e = get_vprime(dp, dphdcp->v_prime);
-	if (e) {
-		dphdcp_err("repeater Vprime read failure!\n");
-		return e;
-	}
-	/* TODO: compare V and V' for 3 times */
-	/* read Binfo register */
-	e = tegra_dc_dp_dpcd_read16(dp, NV_DPCD_HDCP_BINFO_OFFSET,
-					&binfo);
-	if (e) {
-		dphdcp_err("Binfo read failure!\n");
-		return e;
-	}
-	msleep(100);
+		if (binfo & BINFO_MAX_DEVS_EXCEEDED) {
+			dphdcp_err("repeater:max devices (0x%016llx)\n", binfo);
+			return -EINVAL;
+		}
 
-	if (binfo & BINFO_MAX_DEVS_EXCEEDED) {
-		dphdcp_err("repeater:max devices (0x%016llx)\n", binfo);
-		return -EINVAL;
-	}
-
-	if (binfo & BINFO_MAX_CASCADE_EXCEEDED) {
-		dphdcp_err("repeater:max cascade (0x%16llx)\n", binfo);
-		return -EINVAL;
-	}
-
-	dphdcp->binfo = binfo;
-	dphdcp->num_bksv_list = binfo & 0x7f;
-	dphdcp_vdbg("Binfo 0x%16llx (devices: %d)\n",
+		if (binfo & BINFO_MAX_CASCADE_EXCEEDED) {
+			dphdcp_err("repeater:max cascade (0x%16llx)\n", binfo);
+			return -EINVAL;
+		}
+		dphdcp->binfo = binfo;
+		dphdcp->num_bksv_list = binfo & 0x7f;
+		dphdcp_vdbg("Binfo 0x%16llx (devices: %d)\n",
 				binfo, dphdcp->num_bksv_list);
 
-	memset(dphdcp->bksv_list, 0, sizeof(dphdcp->bksv_list));
-	e = get_ksvfifo(dp, dphdcp->num_bksv_list, dphdcp->bksv_list);
-	if (e) {
-		dphdcp_err("repeater:could not read KSVFIFO (err %d)\n", e);
-		return e;
-	}
+		/* do not read KSV FIFO when device count is zero */
+		if (dphdcp->num_bksv_list != 0)	 {
+			e = get_ksvfifo(dp, dphdcp->num_bksv_list,
+						dphdcp->bksv_list);
+			if (e) {
+				dphdcp_err("KSVFIFO read (err %d)\n", e);
+				return e;
+			}
+		}
+		/* verify V' three times to check for link failures */
+		e = get_vprime(dp, dphdcp->v_prime);
+		if (e)
+			dphdcp_err("repeater Vprime read failure!\n");
 
+		err = tsec_hdcp_dp_verify_vprime(dphdcp);
+		if (err)
+			dphdcp_err("vprime verification failed\n");
+	} while (--vcheck_tries && err);
+	if (err)
+		return -EINVAL;
 	return 0;
 }
 
@@ -570,12 +631,12 @@ static void dphdcp_downstream_worker(struct work_struct *work)
 	u8 b_caps;
 	u32 res;
 	u32 tmp;
+	u8 bstatus;
 	struct tegra_dphdcp *dphdcp =
 		container_of(to_delayed_work(work), struct tegra_dphdcp, work);
 	struct tegra_dc_dp_data *dp = dphdcp->dp;
 	struct tegra_dc_sor_data *sor = dp->sor;
 	struct tegra_dc *dc = dp->dc;
-
 	dphdcp_vdbg("%s():started thread %s\n", __func__, dphdcp->name);
 	tegra_dc_io_start(dc);
 	mutex_lock(&dphdcp->lock);
@@ -597,7 +658,7 @@ static void dphdcp_downstream_worker(struct work_struct *work)
 	dphdcp->a_n = 0;
 	mutex_unlock(&dphdcp->lock);
 
-	/* read bcaps ftrom receiver */
+	/* read bcaps from receiver */
 	e = get_bcaps(dp, &b_caps);
 	mutex_lock(&dphdcp->lock);
 	if (e) {
@@ -654,7 +715,7 @@ static void dphdcp_downstream_worker(struct work_struct *work)
 	mutex_unlock(&dphdcp->lock);
 
 	/* write An to receiver */
-	e = tegra_dc_dp_dpcd_write64(dp, NV_DPCD_HDCP_AN_OFFSET, dphdcp->a_n);
+	e = tegra_dpcd_hdcp_write64(dp, NV_DPCD_HDCP_AN_OFFSET, dphdcp->a_n);
 	if (e) {
 		dphdcp_err("An write failure\n");
 		mutex_lock(&dphdcp->lock);
@@ -663,7 +724,7 @@ static void dphdcp_downstream_worker(struct work_struct *work)
 	dphdcp_vdbg("wrote An = 0x%016llx\n", dphdcp->a_n);
 
 	/* write Aksv to receiver */
-	e = tegra_dc_dp_dpcd_write40(dp, NV_DPCD_HDCP_AKSV_OFFSET,
+	e = tegra_dpcd_hdcp_write40(dp, NV_DPCD_HDCP_AKSV_OFFSET,
 						dphdcp->a_ksv);
 	if (e) {
 		dphdcp_err("Aksv write failure\n");
@@ -680,7 +741,7 @@ static void dphdcp_downstream_worker(struct work_struct *work)
 	mutex_unlock(&dphdcp->lock);
 
 	/* get bksv from receiver */
-	e = tegra_dc_dp_dpcd_read40(dp, NV_DPCD_HDCP_BKSV_OFFSET,
+	e = tegra_dpcd_hdcp_read40(dp, NV_DPCD_HDCP_BKSV_OFFSET,
 					&dphdcp->b_ksv);
 	mutex_lock(&dphdcp->lock);
 	if (e) {
@@ -698,7 +759,7 @@ static void dphdcp_downstream_worker(struct work_struct *work)
 
 	/*if repeater, set the reauth enable irq bit in Ainfo reg */
 	if (b_caps & BCAPS_REPEATER) {
-		e = tegra_dc_dp_dpcd_write8(dp, NV_DPCD_HDCP_AINFO_OFFSET,
+		e = tegra_dpcd_hdcp_write8(dp, NV_DPCD_HDCP_AINFO_OFFSET,
 						0x01);
 		if (e) {
 			dphdcp_err("Ainfo write failure\n");
@@ -718,20 +779,23 @@ static void dphdcp_downstream_worker(struct work_struct *work)
 	}
 
 	dphdcp_vdbg("R0 valid\n");
+	mutex_unlock(&dphdcp->lock);
 
 	msleep(100); /* cannot read R0' within 100 ms of writing AKSV */
 
-	dphdcp_vdbg("verifying links\n");
-	mutex_unlock(&dphdcp->lock);
 	/* after part 1 of authentication protocol, check for
 	link integrity
 	TODO: add support for both single and multi stream mode */
-	e = verify_link(dphdcp);
+	e = validate_rx(dphdcp);
 	if (e) {
-		dphdcp_err("could not verify link, error: %d\n", e);
+		dphdcp_err("could not validate receiver\n");
 		mutex_lock(&dphdcp->lock);
 		goto failure;
 	}
+	tmp = tegra_sor_readl(sor, NV_SOR_DP_HDCP_CTRL);
+	tmp |= CRYPT_ENABLED;
+	tegra_sor_writel(sor, NV_SOR_DP_HDCP_CTRL, tmp);
+	dphdcp_vdbg("CRYPT enabled\n");
 
 	/* part 2 of authentication protocol, if receiver is
 	a repeater */
@@ -745,12 +809,6 @@ static void dphdcp_downstream_worker(struct work_struct *work)
 	}
 
 	mutex_lock(&dphdcp->lock);
-	tmp = tegra_sor_readl(sor, NV_SOR_DP_HDCP_CTRL);
-	tmp |= CRYPT_ENABLED;
-	tegra_sor_writel(sor, NV_SOR_DP_HDCP_CTRL, tmp);
-
-	dphdcp_vdbg("CRYPT enabled\n");
-
 	dphdcp->state = STATE_LINK_VERIFY;
 	dphdcp_info("link verified!\n");
 
@@ -762,15 +820,15 @@ static void dphdcp_downstream_worker(struct work_struct *work)
 			goto failure;
 
 		mutex_unlock(&dphdcp->lock);
-		e = verify_link(dphdcp);
-		if (e) {
-			dphdcp_err("link verification failed err %d\n", e);
-			mutex_lock(&dphdcp->lock);
+		/* check for link integrity failure */
+		e = get_bstatus(dp, &bstatus);
+		if (!e && (bstatus & BSTATUS_LINK_INTEG_FAIL)) {
+			dphdcp_err("link integrity failure\n");
 			goto failure;
 		}
 		tegra_dc_io_end(dc);
 		wait_event_interruptible_timeout(wq_worker,
-			!dphdcp_is_plugged(dphdcp), msecs_to_jiffies(1500));
+			!dphdcp_is_plugged(dphdcp), msecs_to_jiffies(200));
 		tegra_dc_io_start(dc);
 		mutex_lock(&dphdcp->lock);
 
@@ -789,7 +847,7 @@ failure:
 	}
 
 lost_dp:
-	dphdcp_err("lost dp connection\n");
+	dphdcp_info("lost dp connection\n");
 	dphdcp->state = STATE_UNAUTHENTICATED;
 	hdcp_ctrl_run(sor, 0);
 
@@ -808,14 +866,15 @@ disable:
 
 static int tegra_dphdcp_on(struct tegra_dphdcp *dphdcp)
 {
-	u8 hdcp2version;
+	u8 hdcp2version = 0;
 	int e;
+	u32 status;
 	struct tegra_dc_dp_data *dp = dphdcp->dp;
 	dphdcp->state = STATE_UNAUTHENTICATED;
 	if (dphdcp_is_plugged(dphdcp)) {
 		dphdcp->fail_count = 0;
-		e = tegra_dc_dp_dpcd_hdcp_read(dp, HDCP_HDCP2_VERSION,
-						&hdcp2version, 1);
+		e = tegra_dpcd_hdcp_read(dp, HDCP_HDCP2_VERSION,
+				&hdcp2version, 1, &status);
 		if (e)
 			return -EIO;
 

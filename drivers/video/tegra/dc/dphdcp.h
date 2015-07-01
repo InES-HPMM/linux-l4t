@@ -61,7 +61,7 @@ struct tegra_dphdcp {
 	u64				b_ksv;
 	u64				c_ksv;
 	u64				d_ksv;
-	u64				v_prime[20];
+	u8				v_prime[20];
 	u64				m_prime;
 	u32				num_bksv_list;
 	u64				bksv_list[TEGRA_DPHDCP_MAX_DEVS];
