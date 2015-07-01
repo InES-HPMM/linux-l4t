@@ -8838,8 +8838,10 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 			}
 #endif /* P2PLISTEN_AP_SAMECHN */
 
+#ifdef ESCAN_RESULT_ABORT
 			if (cfg->scan_request)
 				wl_notify_escan_complete(cfg, ndev, true, true);
+#endif
 			if (wl_get_drv_status(cfg, CONNECTED, ndev)) {
 				scb_val_t scbval;
 				u8 *curbssid = wl_read_prof(cfg, ndev, WL_PROF_BSSID);
