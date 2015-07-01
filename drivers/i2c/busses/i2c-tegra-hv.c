@@ -258,11 +258,6 @@ static int tegra_hv_i2c_probe(struct platform_device *pdev)
 	else
 		i2c_dev->completion_timeout = TEGRA_I2C_TIMEOUT;
 
-	ret = i2c_add_numbered_adapter(&i2c_dev->adapter);
-	if (ret) {
-		dev_err(&pdev->dev, "Failed to add I2C adapter\n");
-		return ret;
-	}
 	i2c_dev->base = res->start;
 	init_completion(&i2c_dev->msg_complete);
 	INIT_COMPLETION(i2c_dev->msg_complete);
@@ -299,6 +294,11 @@ static int tegra_hv_i2c_probe(struct platform_device *pdev)
 		}
 	}
 
+	ret = i2c_add_numbered_adapter(&i2c_dev->adapter);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to add I2C adapter\n");
+		return ret;
+	}
 	of_i2c_register_devices(&i2c_dev->adapter);
 
 	return 0;
