@@ -309,6 +309,16 @@ config TEGRA_HDMI2_0
 	  Suported on T21x and later chips only.
 	  Disabled by default since most chips are using older controller at present.
 
+config TEGRA_HDA_DC
+	bool "Enable HDA DC driver"
+	depends on TEGRA_HDMI2_0 || (TEGRA_DP && (ARCH_TEGRA_21x_SOC || ARCH_TEGRA_18x_SOC))
+	default y
+	help
+	  Say Y here to enable separate HDA driver in DC space.
+	  Separate HDA driver is written to support both DP/HDMI from same code.
+	  Removes redundancy of HDA code, so it doesn't get duplicated for each client.
+	  Supported for T21x and later chips only which have HDMI2_0 or DP enabled.
+
 config TEGRA_LVDS
 	bool "Enable LVDS panel."
 	depends on ARCH_TEGRA_12x_SOC
