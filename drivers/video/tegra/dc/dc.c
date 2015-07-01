@@ -4913,6 +4913,7 @@ err_release_resource_reg:
 	release_resource(base_res);
 err_free:
 	kfree(dc);
+	tegra_dc_set(NULL, ndev->id);
 
 	return ret;
 }
