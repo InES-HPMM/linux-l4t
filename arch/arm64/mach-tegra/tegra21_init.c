@@ -142,6 +142,7 @@ static __initdata struct tegra_clk_init_table tegra21x_clk_init_table[] = {
 	{ "xbar.ape",	NULL,		25500000,	false },
 	{ "adsp_cpu.abus", NULL,	600000000,	false },
 	{ "apb2ape",	NULL,		0,		true },
+	{ "maud",	"pll_p",	102000000,	false },
 	{ NULL,         NULL,           0,              0},
 
 };
