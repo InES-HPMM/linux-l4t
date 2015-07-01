@@ -42,6 +42,7 @@
 #include <linux/tegra_pm_domains.h>
 #include <linux/dma-mapping.h>
 #include <linux/module.h>
+#include <linux/debugfs.h>
 
 #include <mach/tegra_usb_pad_ctrl.h>
 #include "../../../arch/arm/mach-tegra/iomap.h"
@@ -838,6 +839,60 @@ static ssize_t store_device_en(struct device *dev,
 
 static DEVICE_ATTR(enable_device, 0644, show_device_en, store_device_en);
 
+#ifdef CONFIG_DEBUG_FS
+static struct dentry *tegra_otg_debugfs_root;
+static int tegra_otg_pm_set(void *data, u64 val)
+{
+	struct tegra_otg *tegra = (struct tegra_otg *)data;
+
+	if (!tegra)
+		return -EINVAL;
+
+	if (val)
+		pm_runtime_get_sync(tegra->phy.dev);
+	else
+		pm_runtime_put_sync(tegra->phy.dev);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(tegra_otg_pm_fops,
+		NULL,
+		tegra_otg_pm_set, "%llu\n");
+
+static int tegra_otg_debug_init(struct tegra_otg *tegra)
+{
+	tegra_otg_debugfs_root = debugfs_create_dir("tegra-otg", 0);
+
+	if (!tegra_otg_debugfs_root)
+		return -ENOMEM;
+
+	if (!debugfs_create_file("get_rtpm", 0644, tegra_otg_debugfs_root,
+				(void *)tegra, &tegra_otg_pm_fops))
+		goto err_out;
+
+	return 0;
+
+err_out:
+	debugfs_remove_recursive(tegra_otg_debugfs_root);
+	return -ENOMEM;
+}
+
+static void tegra_otg_debug_exit(void)
+{
+	debugfs_remove_recursive(tegra_otg_debugfs_root);
+}
+#else
+static inline int tegra_otg_debug_init(struct tegra_otg *tegra)
+{
+	return 0;
+}
+
+static void tegra_otg_debug_exit(void)
+{
+}
+#endif
+
 static int tegra_otg_set_power(struct usb_phy *phy, unsigned mA)
 {
 	return 0;
@@ -1361,6 +1416,8 @@ static int tegra_otg_probe(struct platform_device *pdev)
 	pm_runtime_set_autosuspend_delay(tegra->phy.dev, 100);
 	pm_runtime_enable(tegra->phy.dev);
 
+	tegra_otg_debug_init(tegra);
+
 	dev_info(&pdev->dev, "otg transceiver registered\n");
 err:
 	return err;
@@ -1388,6 +1445,7 @@ static int __exit tegra_otg_remove(struct platform_device *pdev)
 		kfree(tegra->edev);
 	}
 
+	tegra_otg_debug_exit();
 	pm_runtime_disable(tegra->phy.dev);
 	usb_remove_phy(&tegra->phy);
 	iounmap(tegra->regs);
