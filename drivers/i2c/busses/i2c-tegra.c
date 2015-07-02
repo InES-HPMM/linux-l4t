@@ -682,7 +682,7 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 	u32 val;
 	int err = 0;
 	u32 clk_divisor = 0;
-	unsigned long timeout = jiffies + HZ;
+	unsigned long timeout;
 
 	err = tegra_i2c_clock_enable(i2c_dev);
 	if (err < 0) {
@@ -748,6 +748,7 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 
 	if (i2c_dev->chipdata->has_config_load_reg) {
 		i2c_writel(i2c_dev, I2C_MSTR_CONFIG_LOAD, I2C_CONFIG_LOAD);
+		timeout = jiffies + msecs_to_jiffies(1000);
 		while (i2c_readl(i2c_dev, I2C_CONFIG_LOAD) != 0) {
 			if (time_after(jiffies, timeout)) {
 				dev_warn(i2c_dev->dev, "timeout waiting for config load\n");
@@ -1019,7 +1020,7 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 	u32 int_mask;
 	int ret;
 	unsigned long flags = 0;
-	unsigned long timeout = jiffies + HZ;
+	unsigned long timeout;
 	u32 cnfg;
 	u32 val;
 
@@ -1047,6 +1048,7 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 	if (i2c_dev->chipdata->has_config_load_reg) {
 		i2c_writel(i2c_dev, I2C_MSTR_CONFIG_LOAD,
 					I2C_CONFIG_LOAD);
+		timeout = jiffies + msecs_to_jiffies(1000);
 		while (i2c_readl(i2c_dev, I2C_CONFIG_LOAD) != 0) {
 			if (time_after(jiffies, timeout)) {
 				dev_warn(i2c_dev->dev,
@@ -1184,6 +1186,7 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 	if (i2c_dev->chipdata->has_config_load_reg) {
 		i2c_writel(i2c_dev, I2C_MSTR_CONFIG_LOAD,
 					I2C_CONFIG_LOAD);
+		timeout = jiffies + msecs_to_jiffies(1000);
 		while (i2c_readl(i2c_dev, I2C_CONFIG_LOAD) != 0) {
 			if (time_after(jiffies, timeout)) {
 				dev_warn(i2c_dev->dev,
@@ -1267,6 +1270,7 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 			if (i2c_dev->chipdata->has_config_load_reg) {
 				i2c_writel(i2c_dev, I2C_MSTR_CONFIG_LOAD,
 							I2C_CONFIG_LOAD);
+				timeout = jiffies + msecs_to_jiffies(1000);
 				while (i2c_readl(i2c_dev, I2C_CONFIG_LOAD) != 0) {
 					if (time_after(jiffies, timeout)) {
 						dev_warn(i2c_dev->dev,
