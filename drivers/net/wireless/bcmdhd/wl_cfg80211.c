@@ -3977,8 +3977,8 @@ wl_set_set_sharedkey(struct net_device *dev,
 	return err;
 }
 
-#if defined(ESCAN_RESULT_PATCH)
 static u8 connect_req_bssid[6];
+#if defined(ESCAN_RESULT_PATCH)
 static u8 broad_bssid[6];
 #endif /* ESCAN_RESULT_PATCH */
 
@@ -4057,11 +4057,11 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 		wl_cfg80211_sched_scan_stop(wiphy, bcmcfg_to_prmry_ndev(cfg));
 	}
 #endif
-#if defined(ESCAN_RESULT_PATCH)
 	if (sme->bssid)
 		memcpy(connect_req_bssid, sme->bssid, ETHER_ADDR_LEN);
 	else
 		bzero(connect_req_bssid, ETHER_ADDR_LEN);
+#if defined(ESCAN_RESULT_PATCH)
 	bzero(broad_bssid, ETHER_ADDR_LEN);
 #endif
 #if defined(USE_DYNAMIC_MAXPKT_RXGLOM)
@@ -8892,8 +8892,16 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 					/* In case this event comes while associating another AP */
 #endif /* ESCAN_RESULT_PATCH */
 					wl_bss_connect_done(cfg, ndev, e, data, false);
-				/* Clear driver status as CONNECTING since the link is already down */
-				wl_clr_drv_status(cfg, CONNECTING, ndev);
+				/* Clear driver status as CONNECTING since the link is already down
+				   if bssid is same, else new connection is in progress so don't
+				   clear CONNECTING flag */
+				if ((memcmp(&e->addr, connect_req_bssid, ETHER_ADDR_LEN) == 0) ||
+					(memcmp("\0\0\0\0\0\0", connect_req_bssid, ETHER_ADDR_LEN) == 0)) {
+					pr_info("clearing CONNECTING drv status, connect_req_bssid: " MACDBG
+						" e->addr: " MACDBG "\n", MAC2STRDBG(connect_req_bssid),
+						MAC2STRDBG((u8*)(&e->addr)));
+					wl_clr_drv_status(cfg, CONNECTING, ndev);
+				}
 			}
 			wl_clr_drv_status(cfg, DISCONNECTING, ndev);
 
