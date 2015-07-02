@@ -954,9 +954,11 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 {
 	struct tegra_usb_modem_power_platform_data pdata;
 	struct device_node *node = pdev->dev.of_node;
+	struct device_node *phy_node;
 	const unsigned int *prop;
 	int gpio;
 	int ret;
+	const char *node_status;
 
 	if (!node) {
 		dev_err(&pdev->dev, "Missing device tree node\n");
@@ -1028,9 +1030,47 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 	}
 
 	/* determine phy type */
+	modem->phy_type = -1;
 	ret = of_property_read_u32(node, "nvidia,phy-type", &modem->phy_type);
-	if (ret != 0) {
-		dev_err(&pdev->dev, "DT property 'nvidia,phy-type' read fail!\n");
+	if (0 == ret) {
+		dev_info(&pdev->dev,
+			"set phy type with property 'nvidia,phy-type'\n");
+	} else {
+		dev_info(&pdev->dev,
+			"set phy type with child node 'nvidia,phy-*hci-*'\n");
+		for_each_child_of_node(node, phy_node) {
+			ret = of_property_read_string(phy_node,
+							"status", &node_status);
+			if (ret != 0) {
+				dev_err(&pdev->dev,
+					"DT property '%s/status' read fail!\n",
+					phy_node->full_name);
+				goto error;
+			}
+
+			if (strcmp(node_status, "okay") == 0) {
+				if (strcmp(phy_node->name,
+						"nvidia,phy-ehci-hsic") == 0)
+					modem->phy_type = EHCI_HSIC;
+				else if (strcmp(phy_node->name,
+						"nvidia,phy-xhci-hsic") == 0)
+					modem->phy_type = XHCI_HSIC;
+				else if (strcmp(phy_node->name,
+						"nvidia,phy-xhci-utmi") == 0)
+					modem->phy_type = XHCI_UTMI;
+				else {
+					dev_err(&pdev->dev,
+						"Unrecognized phy type node!!\n");
+					ret = -EINVAL;
+					goto error;
+				}
+			}
+		}
+	}
+	if (-1 == modem->phy_type) {
+		dev_err(&pdev->dev,
+			"Unable to set phy type!!\n");
+		ret = -EINVAL;
 		goto error;
 	}
 

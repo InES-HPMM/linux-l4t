@@ -29,9 +29,4 @@
 	chosen {
 		fastboot-instructions = "Press <PWR> to select, <VOL D/REC> for selection move\n";
 	};
-
-	modem {
-		/* using XHCI UTMI */
-		nvidia,phy-type = <2>;
-	};
 };

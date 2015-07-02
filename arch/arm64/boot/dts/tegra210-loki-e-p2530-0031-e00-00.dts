@@ -28,8 +28,6 @@
 	modem {
 		/* pre boost regulator gpio */
 		nvidia,pre-boost-gpio = <&gpio TEGRA_GPIO(E, 5) GPIO_ACTIVE_HIGH>;
-		/* using XHCI UTMI */
-		nvidia,phy-type = <2>;
 	};
 
 	xusb@70090000 {
