@@ -82,11 +82,6 @@ struct tegra_dc_i2c_ops {
 	i2c_transfer_func_t i2c_transfer;
 };
 
-enum {
-	EDID_SRC_PANEL,
-	EDID_SRC_DT,
-};
-
 struct tegra_edid {
 	struct tegra_edid_pvt	*data;
 
