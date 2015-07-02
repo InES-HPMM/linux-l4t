@@ -342,10 +342,10 @@ static int tegra210_pmc_parse_io_pad_init(struct device_node *np,
 	for (i = 0; i < dpd_count / 2; ++i) {
 		index = i * 2;
 		pad_id = tegra210_pads_info[iodpd_configs[index]].pad_id;
-		pad_name = tegra210_pads_info[volt_configs[index]].pad_name;
+		pad_name = tegra210_pads_info[iodpd_configs[index]].pad_name;
 
 		ret = tegra210_pmc_padctrl_set_power(pad_dev,
-				pad_id, iodpd_configs[dpd_count + 1]);
+				pad_id, iodpd_configs[index + 1]);
 		if (ret < 0) {
 			pr_warn("PMC: IO pad %s power config failed: %d\n",
 			     pad_name, ret);
