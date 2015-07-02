@@ -1698,7 +1698,9 @@ static int tegra_vbus_draw(struct usb_gadget *gadget, unsigned mA)
 
 	udc = container_of(gadget, struct tegra_udc, gadget);
 
-	if (udc->connect_type == CONNECT_TYPE_DCP_MAXIM)
+	if (udc->connect_type == CONNECT_TYPE_DCP_MAXIM ||
+		udc->connect_type == CONNECT_TYPE_ACA_RID_B ||
+		udc->connect_type == CONNECT_TYPE_ACA_RID_C)
 		return 0;
 
 	/* Some hosts during booting first supply vbus and then
@@ -1707,9 +1709,7 @@ static int tegra_vbus_draw(struct usb_gadget *gadget, unsigned mA)
 	if (udc->connect_type != CONNECT_TYPE_NONE
 		&& udc->connect_type != CONNECT_TYPE_SDP
 		&& udc->connect_type != CONNECT_TYPE_CDP
-		&& udc->connect_type != CONNECT_TYPE_ACA_NV_CHARGER
-		&& udc->connect_type != CONNECT_TYPE_ACA_RID_B
-		&& udc->connect_type != CONNECT_TYPE_ACA_RID_C)
+		&& udc->connect_type != CONNECT_TYPE_ACA_NV_CHARGER)
 		tegra_udc_set_charger_type(udc, CONNECT_TYPE_SDP);
 
 	/* Avoid unnecessary work if there is no change in current limit */
@@ -3465,30 +3465,6 @@ static int tegra_udc_resume(struct device *dev)
 
 	/* Set Current limit to 0 if charger is disconnected in LP0 */
 	if (udc->vbus_reg != NULL) {
-		if (udc->support_pmu_vbus) {
-			dev_info(dev, "%s: state (%d, %d)\n", __func__,
-			       udc->connect_type_lp0,
-			       udc->vbus_extcon_dev != NULL ?
-			       extcon_get_cable_state(udc->vbus_extcon_dev, "USB"):-1);
-			if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE) &&
-				udc->vbus_extcon_dev != NULL &&
-				!extcon_get_cable_state(udc->vbus_extcon_dev, "USB")) {
-				tegra_udc_set_extcon_state(udc);
-				udc->connect_type_lp0 = CONNECT_TYPE_NONE;
-				regulator_set_current_limit(udc->vbus_reg,
-									 0, 0);
-			}
-		} else {
-			temp = udc_readl(udc, VBUS_WAKEUP_REG_OFFSET);
-			if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE) &&
-					!(temp & USB_SYS_VBUS_STATUS)) {
-				tegra_udc_set_extcon_state(udc);
-				udc->connect_type_lp0 = CONNECT_TYPE_NONE;
-				regulator_set_current_limit(udc->vbus_reg,
-									 0, 0);
-			}
-		}
-
 		if (udc->support_aca_nv_cable && udc->aca_nv_extcon_cable &&
 			udc->connect_type_lp0 == CONNECT_TYPE_ACA_NV_CHARGER) {
 			index = udc->aca_nv_extcon_cable->cable_index;
@@ -3521,6 +3497,30 @@ static int tegra_udc_resume(struct device *dev)
 				udc->connect_type_lp0 = CONNECT_TYPE_NONE;
 				regulator_set_current_limit(udc->vbus_reg,
 								0, 0);
+			}
+		} else if (udc->support_pmu_vbus) {
+			dev_info(dev, "%s: state (%d, %d)\n", __func__,
+			       udc->connect_type_lp0,
+			       udc->vbus_extcon_dev != NULL ?
+				extcon_get_cable_state(udc->vbus_extcon_dev,
+								"USB") : -1);
+			if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE) &&
+				udc->vbus_extcon_dev != NULL &&
+				!extcon_get_cable_state(udc->vbus_extcon_dev,
+								"USB")) {
+				tegra_udc_set_extcon_state(udc);
+				udc->connect_type_lp0 = CONNECT_TYPE_NONE;
+				regulator_set_current_limit(udc->vbus_reg,
+									 0, 0);
+			}
+		} else {
+			temp = udc_readl(udc, VBUS_WAKEUP_REG_OFFSET);
+			if ((udc->connect_type_lp0 != CONNECT_TYPE_NONE) &&
+					!(temp & USB_SYS_VBUS_STATUS)) {
+				tegra_udc_set_extcon_state(udc);
+				udc->connect_type_lp0 = CONNECT_TYPE_NONE;
+				regulator_set_current_limit(udc->vbus_reg,
+									 0, 0);
 			}
 		}
 	}
