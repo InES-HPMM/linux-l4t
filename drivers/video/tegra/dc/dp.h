@@ -255,8 +255,13 @@ struct tegra_dc_dp_data {
 	struct clk			*dpaux_clk;
 	struct clk			*parent_clk; /* pll_dp clock */
 
+	struct fb_monspecs		mon_spec;
+
 	struct work_struct		lt_work;
-	struct mutex		lt_lock;
+	struct mutex			lt_lock;
+
+	struct work_struct		hpd_work;
+	struct mutex			hpd_lock;
 
 	u8				 revision;
 
@@ -266,6 +271,7 @@ struct tegra_dc_dp_data {
 
 	bool				 enabled;
 	bool				 suspended;
+	bool				probed;
 
 	struct tegra_edid		*dp_edid;
 	struct completion		hpd_plug;
