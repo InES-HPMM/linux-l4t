@@ -31,7 +31,6 @@ obj-y += dpaux.o
 obj-$(CONFIG_TEGRA_DP) += dp.o
 obj-$(CONFIG_TEGRA_DPHDCP) += dphdcp.o
 obj-$(CONFIG_TEGRA_DP) += hpd.o
-obj-$(CONFIG_TEGRA_DP) += dp_lt.o
 obj-$(CONFIG_TEGRA_LVDS) += lvds.o
 obj-$(CONFIG_TEGRA_NVSR) += nvsr.o
 obj-$(CONFIG_TEGRA_DC_EXTENSIONS) += ext/
