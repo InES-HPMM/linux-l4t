@@ -58,6 +58,7 @@
 	nvidia,fastboot-usb-pid = <0xcf0e>;
 
 	nvidia,pmu-boardid = "2290:0000:A0";
+	nvidia,dtbbuildtime = __DATE__, __TIME__;
 	#address-cells = <2>;
 	#size-cells = <2>;
 
