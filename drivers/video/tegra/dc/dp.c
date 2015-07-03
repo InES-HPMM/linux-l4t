@@ -2825,7 +2825,7 @@ static void tegra_dp_hotplug_notify(struct tegra_dc_dp_data *dp,
 	}
 
 	dc->connected = is_asserted;
-	tegra_dc_ext_process_hotplug(dc->ndev->id);
+	tegra_dc_ext_process_hotplug(dc->ndev->id, is_asserted);
 }
 
 static void tegra_dp_hpd_worker(struct work_struct *work)
