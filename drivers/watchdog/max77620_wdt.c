@@ -50,6 +50,7 @@ struct max77620_wdt {
 	bool				otp_wdten;
 	bool				enable_on_off;
 	int				suspend_timeout;
+	int				org_suspend_timeout;
 	int				current_timeout;
 	int				resume_timeout;
 	struct delayed_work		clear_wdt_wq;
@@ -262,6 +263,41 @@ static const struct watchdog_ops max77620_wdt_ops = {
 	.set_timeout = max77620_wdt_set_timeout,
 };
 
+static ssize_t show_wdt_suspend_state(struct device *dev,
+                struct device_attribute *attr, char *buf)
+{
+	struct max77620_wdt *wdt = dev_get_drvdata(dev);
+
+        return sprintf(buf, "%s",
+			(wdt->suspend_timeout) ? "enable\n" : "disable\n");
+}
+
+static ssize_t set_wdt_suspend_state(struct device *dev,
+                struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct max77620_wdt *wdt = dev_get_drvdata(dev);
+	int enable;
+        char *p = (char *)buf;
+	char ch = *p;
+
+	if ((ch == 'e') || (ch == 'E'))
+		enable = 1;
+	else if ((ch == 'd') || (ch == 'D'))
+		enable = 0;
+	else
+		return -EINVAL;
+
+	if (enable)
+		wdt->suspend_timeout = wdt->org_suspend_timeout;
+	else
+		wdt->suspend_timeout = 0;
+
+	alarmtimer_set_maximum_wakeup_interval_time(wdt->suspend_timeout);
+        return count;
+}
+static DEVICE_ATTR(watchdog_suspend_state, 0644, show_wdt_suspend_state,
+			set_wdt_suspend_state);
+
 static int max77620_wdt_probe(struct platform_device *pdev)
 {
 	struct max77620_wdt *wdt;
@@ -323,6 +359,8 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 	wdt_dev->min_timeout = 2;
 	wdt_dev->max_timeout = 128;
 
+	wdt->org_suspend_timeout = wdt->suspend_timeout;
+
 	watchdog_set_nowayout(wdt_dev, nowayout);
 	watchdog_set_drvdata(wdt_dev, wdt);
 	platform_set_drvdata(pdev, wdt);
@@ -342,6 +380,10 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "watchdog registration failed: %d\n", ret);
 		return ret;
 	}
+
+	ret = device_create_file(&pdev->dev, &dev_attr_watchdog_suspend_state);
+	if (ret < 0)
+		dev_warn(&pdev->dev, "sysfs creation failed: %d\n", ret);
 
 	/*Enable WD_RST_WK - WDT expire results in a restart*/
 	ret = max77620_reg_update(wdt->chip->dev, MAX77620_PWR_SLAVE,
@@ -370,7 +412,8 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 			dev_err(wdt->dev, "wdt stop failed: %d\n", ret);
 			goto scrub;
 		}
-		return 0;
+		wdt->current_timeout = 0;
+		goto suspend_timeout;
 	}
 
 	ret = _max77620_wdt_set_timeout(wdt_dev, wdt->boot_timeout);
@@ -386,6 +429,7 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 	schedule_delayed_work(&wdt->clear_wdt_wq,
 			msecs_to_jiffies(wdt->clear_time * HZ));
 
+suspend_timeout:
 	if (wdt->suspend_timeout) {
 		int alarm_time = wdt->suspend_timeout;
 		alarm_time = (alarm_time > 10) ? alarm_time - 10 : alarm_time;
