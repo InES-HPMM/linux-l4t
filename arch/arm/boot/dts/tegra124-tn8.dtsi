@@ -131,4 +131,8 @@
 		nvidia,enable-on-init;
 		nvidia,heartbeat-init = <120>;
 	};
+
+	otg@7d000000 {
+		nvidia,turn-off-vbus-in-lp0;
+	};
 };
