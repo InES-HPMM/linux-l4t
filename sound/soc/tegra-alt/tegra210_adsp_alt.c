@@ -1562,6 +1562,7 @@ static int tegra210_adsp_admaif_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+#ifdef CONFIG_PM_RUNTIME
 static int tegra210_adsp_runtime_suspend(struct device *dev)
 {
 	struct tegra210_adsp *adsp = dev_get_drvdata(dev);
@@ -1595,6 +1596,7 @@ static int tegra210_adsp_runtime_resume(struct device *dev)
 
 	return ret;
 }
+#endif
 
 /* ADSP platform driver read/write call-back */
 static unsigned int tegra210_adsp_read(struct snd_soc_platform *platform,
