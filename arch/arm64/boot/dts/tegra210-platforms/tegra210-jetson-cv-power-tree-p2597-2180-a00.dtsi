@@ -55,7 +55,9 @@
 		};
 
 		en_vdd_cam: regulator@5 {
-			gpio = <&tca9539_77 9 1>;
+			gpio = <&tca9539_77 9 0>;
+			vin-supply = <&max77620_sd3>;
+			enable-active-high;
 		};
 
 		vdd_hdmi: regulator@7 {
@@ -229,6 +231,12 @@
 			sdmmc3 {
 				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_1_8V>;
 			};
+		};
+	};
+
+	i2c@546c0000 {
+		tca6408_21: tca6408@21 {
+			vcc-supply = <&en_vdd_cam>;
 		};
 	};
 };
