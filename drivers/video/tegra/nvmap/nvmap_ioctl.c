@@ -642,6 +642,9 @@ static int __nvmap_cache_maint(struct nvmap_client *client,
 	if (!handle)
 		return -EINVAL;
 
+	if (handle->userflags & NVMAP_HANDLE_CACHE_SYNC_AT_RESERVE)
+		goto put_handle;
+
 	down_read(&current->mm->mmap_sem);
 
 	vma = find_vma(current->active_mm, (unsigned long)op->addr);
@@ -668,6 +671,7 @@ static int __nvmap_cache_maint(struct nvmap_client *client,
 				     false);
 out:
 	up_read(&current->mm->mmap_sem);
+put_handle:
 	nvmap_handle_put(handle);
 	return err;
 }
@@ -707,7 +711,7 @@ int nvmap_ioctl_free(struct file *filp, unsigned long arg)
 	return sys_close(arg);
 }
 
-static void inner_cache_maint(unsigned int op, void *vaddr, size_t size)
+void inner_cache_maint(unsigned int op, void *vaddr, size_t size)
 {
 	if (op == NVMAP_CACHE_OP_WB_INV)
 		dmac_flush_range(vaddr, vaddr + size);
@@ -717,7 +721,7 @@ static void inner_cache_maint(unsigned int op, void *vaddr, size_t size)
 		dmac_map_area(vaddr, size, DMA_TO_DEVICE);
 }
 
-static void outer_cache_maint(unsigned int op, phys_addr_t paddr, size_t size)
+void outer_cache_maint(unsigned int op, phys_addr_t paddr, size_t size)
 {
 	if (op == NVMAP_CACHE_OP_WB_INV)
 		outer_flush_range(paddr, paddr + size);
@@ -1108,7 +1112,8 @@ static ssize_t rw_handle(struct nvmap_client *client, struct nvmap_handle *h,
 			ret = -EFAULT;
 			break;
 		}
-		if (is_read)
+		if (is_read &&
+		    !(h->userflags & NVMAP_HANDLE_CACHE_SYNC_AT_RESERVE))
 			__nvmap_do_cache_maint(client, h, h_offs,
 				h_offs + elem_size, NVMAP_CACHE_OP_INV, false);
 
@@ -1118,7 +1123,8 @@ static ssize_t rw_handle(struct nvmap_client *client, struct nvmap_handle *h,
 		if (ret)
 			break;
 
-		if (!is_read)
+		if (!is_read &&
+		    !(h->userflags & NVMAP_HANDLE_CACHE_SYNC_AT_RESERVE))
 			__nvmap_do_cache_maint(client, h, h_offs,
 				h_offs + elem_size, NVMAP_CACHE_OP_WB_INV,
 				false);
@@ -1254,7 +1260,7 @@ int nvmap_ioctl_cache_maint_list(struct file *filp, void __user *arg,
 	u32 *size_ptr;
 	struct nvmap_handle **refs;
 	int err = 0;
-	u32 i, n_unmarshal_handles = 0;
+	u32 i, n_unmarshal_handles = 0, count = 0;
 
 	if (copy_from_user(&op, arg, sizeof(op)))
 		return -EFAULT;
@@ -1297,6 +1303,41 @@ int nvmap_ioctl_cache_maint_list(struct file *filp, void __user *arg,
 			goto free_mem;
 		}
 		n_unmarshal_handles++;
+	}
+
+	/*
+	 * Either all handles should have NVMAP_HANDLE_CACHE_SYNC_AT_RESERVE
+	 * or none should have it
+	 */
+	for (i = 0; i < op.nr; i++)
+		if (refs[i]->userflags & NVMAP_HANDLE_CACHE_SYNC_AT_RESERVE)
+			count++;
+
+	if (count % op.nr) {
+		err = -EINVAL;
+		goto free_mem;
+	}
+
+	/* skip cache op when NVMAP_HANDLE_CACHE_SYNC_AT_RESERVE is specified */
+	if (count && !is_reserve_ioctl) {
+		err = 0;
+		goto free_mem;
+	}
+
+	/*
+	 * When NVMAP_HANDLE_CACHE_SYNC_AT_RESERVE is specified, mix can cause
+	 * cache WB_INV at unreserve op on iovmm handles increasing overhead.
+	 * So, either all handles should have pages from carveout or from iovmm.
+	 */
+	if (count) {
+		for (i = 0; i < op.nr; i++)
+			if (refs[i]->heap_pgalloc)
+				count++;
+
+		if (count % op.nr) {
+			err = -EINVAL;
+			goto free_mem;
+		}
 	}
 
 	if (is_reserve_ioctl)
