@@ -1602,8 +1602,8 @@ skip_pinctrl:
 
 	tegra_register_pm_notifier(&i2c_dev->pm_nb);
 
-	of_i2c_register_devices(&i2c_dev->adapter);
 	pm_runtime_enable(&i2c_dev->adapter.dev);
+	of_i2c_register_devices(&i2c_dev->adapter);
 	tegra_vi_i2c_gpio_init(i2c_dev);
 
 	/* set 100ms autosuspend delay for the adapter device */
