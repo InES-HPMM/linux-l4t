@@ -268,6 +268,48 @@ static void check_duplicate_property_names(struct check *c, struct node *dt,
 }
 NODE_ERROR(duplicate_property_names, NULL);
 
+static void check_reserved_mem_usage(struct check *c, struct node *root,
+				     struct node *node)
+{
+	struct node *child;
+	bool found = false;
+
+	if (!node->parent)
+		return;
+
+	if (!streq(node->parent->name, "reserved-memory"))
+		return;
+
+	/* TODO: search entire tree and not just the immediate children of root */
+	for_each_child(root, child) {
+		struct property *prop;
+		cell_t phandle;
+		struct node *temp;
+		int i;
+
+		prop = get_property(child, "memory-region");
+		if (!prop)
+			continue;
+
+		for (i = 0; i < prop->val.len; i++) {
+			phandle = fdt32_to_cpu(*((cell_t *)prop->val.val + i));
+			temp = get_node_by_phandle(root, phandle);
+			if (temp == node) {
+				found = true;
+				break;
+			}
+		}
+
+		if (found)
+			break;
+	}
+
+	if (!found)
+		FAIL(c, "Reserved memory node %s not used!!!\n",
+		     node->name);
+}
+NODE_ERROR(reserved_mem_usage, NULL);
+
 #define LOWERCASE	"abcdefghijklmnopqrstuvwxyz"
 #define UPPERCASE	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 #define DIGITS		"0123456789"
@@ -668,6 +710,8 @@ static struct check *check_table[] = {
 
 	&avoid_default_addr_size,
 	&obsolete_chosen_interrupt_controller,
+
+	&reserved_mem_usage,
 
 	&always_fail,
 };
