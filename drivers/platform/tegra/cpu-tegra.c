@@ -1500,29 +1500,28 @@ static int __init tegra_cpufreq_init(void)
 }
 
 #ifdef CONFIG_TEGRA_CPU_FREQ_GOVERNOR_KERNEL_START
-static int __init tegra_cpufreq_governor_init(void)
+static int __init tegra_cpufreq_governor_start(void)
 {
 	/*
-	 * At this point, the full range of clocks should be available
-	 * Set the CPU governor to performance for a faster boot up
+	 * At this point, the full range of clocks should be available,
+	 * scaling up can start: set the CPU frequency, maximum possible
 	 */
-	unsigned int i;
 	struct cpufreq_policy *policy;
-	static char *start_scaling_gov = "performance";
-	for_each_online_cpu(i) {
-		policy = cpufreq_cpu_get(i);
-		if (!(policy && policy->governor &&
-			!(strcmp(policy->governor->name, start_scaling_gov) &&
-				cpufreq_set_gov(start_scaling_gov, i))))
-			pr_info("Failed to set the governor to %s for cpu %u\n",
-				start_scaling_gov, i);
-		if (policy)
-			cpufreq_cpu_put(policy);
-	}
+
+	policy = cpufreq_cpu_get(0);
+	if (!policy || tegra_target(policy, UINT_MAX, CPUFREQ_RELATION_H))
+		pr_warn("Failed to set maximum possible CPU frequency\n");
+	else
+		pr_info("Set maximum possible CPU frequency %u\n",
+			tegra_getspeed_actual());
+
+	if (policy)
+		cpufreq_cpu_put(policy);
+
 	return 0;
 }
 
-late_initcall_sync(tegra_cpufreq_governor_init);
+late_initcall_sync(tegra_cpufreq_governor_start);
 #endif
 
 static void __exit tegra_cpufreq_exit(void)

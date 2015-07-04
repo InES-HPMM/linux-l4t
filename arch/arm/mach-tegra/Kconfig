@@ -437,15 +437,15 @@ config TEGRA_XHCI_ENABLE_CDP_PORT
 	 of xhci controller.
 
 config TEGRA_CPU_FREQ_GOVERNOR_KERNEL_START
-	bool "Initialize CPU governor to a performance after DVFS initialization"
+	bool "Start scaling CPU rate to maximum after DVFS initialization"
 	default 0
 	help
 	  During a boot up, once DVFS is initialized, there is a period of
-	  time in which the frequency could adjusted higher before the userspace
-	  configures the governor by using a more performance governor for
-	  a faster boot up. Selecting this option will make the system to choose
-	  a performance governor once the DVFS initialization is complete. Userspace
-	  or init script can override the governor chosen here.
+	  time in which the frequency could be adjusted higher for faster boot.
+	  Selecting this option will make the system to set maximum possible
+	  rate once the DVFS initialization is complete. This top rate persists
+	  if default USERSPACE governor is retained, or it will be scaled down
+	  if/when governor is reloaded from user space.
 
 config TEGRA_DYNAMIC_PWRDET
 	bool "Enable dynamic activation of IO level auto-detection"
