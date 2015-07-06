@@ -51,11 +51,6 @@
 	((MC_LATENCY_ALLOWANCE_VI_2 - MC_LATENCY_ALLOWANCE_BASE) / 4 + 1)
 #endif
 
-/* Will be removed once proper header setup is done. */
-#define MC_SECURITY_CARVEOUT2_BOM		0xc5c
-#define MC_SECURITY_CARVEOUT2_BOM_HI		0xc60
-#define MC_SECURITY_CARVEOUT2_SIZE_128KB	0xc64
-
 static DEFINE_SPINLOCK(tegra_mc_lock);
 int mc_channels;
 void __iomem *mc;
