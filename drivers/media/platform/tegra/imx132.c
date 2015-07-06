@@ -61,7 +61,7 @@ struct imx132_info {
 static struct regulator *imx132_ext_reg1;
 static struct regulator *imx132_ext_reg2;
 
-static const struct reg_8 mode_1976x1144_one_lane[] = {
+static const struct reg_8 mode_1920x1080_one_lane[] = {
 	/* Stand by */
 	{0x0100, 0x00},
 	{0x0101, 0x00},
@@ -82,28 +82,28 @@ static const struct reg_8 mode_1976x1144_one_lane[] = {
 	{0x312D, 0x13},
 
 	/* PLL Setting */
-	{0x0305, 0x02},
-	{0x0307, 0x42},
+	{0x0305, 0x01},
+	{0x0307, 0x21},
 	{0x30A4, 0x02},
 	{0x303C, 0x4B},
 
 	/* Mode Setting */
 	{0x0340, 0x04},
-	{0x0341, 0x92},
+	{0x0341, 0x96},
 	{0x0342, 0x08},
 	{0x0343, 0xC8},
 	{0x0344, 0x00},
-	{0x0345, 0x00},
+	{0x0345, 0x1C},
 	{0x0346, 0x00},
-	{0x0347, 0x1C},
+	{0x0347, 0x3C},
 	{0x0348, 0x07},
-	{0x0349, 0xB7},
+	{0x0349, 0x9B},
 	{0x034A, 0x04},
-	{0x034B, 0x93},
+	{0x034B, 0x73},
 	{0x034C, 0x07},
-	{0x034D, 0xB8},
+	{0x034D, 0x80},
 	{0x034E, 0x04},
-	{0x034F, 0x78},
+	{0x034F, 0x38},
 	{0x0381, 0x01},
 	{0x0383, 0x01},
 	{0x0385, 0x01},
@@ -168,7 +168,7 @@ static const struct reg_8 mode_1976x1144_one_lane[] = {
 	{IMX132_TABLE_END, 0x00}
 };
 
-static const struct reg_8 mode_1976x1144_two_lane[] = {
+static const struct reg_8 mode_1920x1080_two_lane[] = {
 	/* Stand by */
 	{0x0100, 0x00},
 	{0x0101, 0x00},
@@ -189,28 +189,28 @@ static const struct reg_8 mode_1976x1144_two_lane[] = {
 	{0x312D, 0x13},
 
 	/* PLL Setting */
-	{0x0305, 0x02},
+	{0x0305, 0x01},
 	{0x0307, 0x21},
 	{0x30A4, 0x02},
 	{0x303C, 0x4B},
 
 	/* Mode Setting */
-	{0x0340, 0x04},
-	{0x0341, 0x92},
+	{0x0340, 0x09},
+	{0x0341, 0x2C},
 	{0x0342, 0x08},
 	{0x0343, 0xC8},
 	{0x0344, 0x00},
-	{0x0345, 0x00},
+	{0x0345, 0x1C},
 	{0x0346, 0x00},
-	{0x0347, 0x1C},
+	{0x0347, 0x3C},
 	{0x0348, 0x07},
-	{0x0349, 0xB7},
+	{0x0349, 0x9B},
 	{0x034A, 0x04},
-	{0x034B, 0x93},
+	{0x034B, 0x73},
 	{0x034C, 0x07},
-	{0x034D, 0xB8},
+	{0x034D, 0x80},
 	{0x034E, 0x04},
-	{0x034F, 0x78},
+	{0x034F, 0x38},
 	{0x0381, 0x01},
 	{0x0383, 0x01},
 	{0x0385, 0x01},
@@ -264,7 +264,7 @@ static const struct reg_8 mode_1976x1144_two_lane[] = {
 	{0x330C, 0x0B},
 	{0x330D, 0x07},
 	{0x330E, 0x03},
-	{0x3318, 0x67},
+	{0x3318, 0x61},
 	{0x3322, 0x09},
 	{0x3342, 0x00},
 	{0x3348, 0xE0},
@@ -276,13 +276,13 @@ static const struct reg_8 mode_1976x1144_two_lane[] = {
 };
 
 enum {
-	IMX132_MODE_1976X1144_ONE_LANE,
-	IMX132_MODE_1976X1144_TWO_LANE,
+	IMX132_MODE_1920X1080_ONE_LANE,
+	IMX132_MODE_1920X1080_TWO_LANE,
 };
 
 static const struct reg_8 *mode_table[] = {
-	[IMX132_MODE_1976X1144_ONE_LANE] = mode_1976x1144_one_lane,
-	[IMX132_MODE_1976X1144_TWO_LANE] = mode_1976x1144_two_lane,
+	[IMX132_MODE_1920X1080_ONE_LANE] = mode_1920x1080_one_lane,
+	[IMX132_MODE_1920X1080_TWO_LANE] = mode_1920x1080_two_lane,
 };
 
 static inline void
@@ -322,10 +322,10 @@ imx132_set_mode(struct imx132_info *info, struct imx132_mode *mode)
 		__func__, mode->xres, mode->yres, info->pdata->cap->data_lanes,
 		mode->frame_length, mode->coarse_time, mode->gain);
 
-	if ((mode->xres == 1976) && (mode->yres == 1144) && (info->pdata->cap->data_lanes == 1)) {
-		sensor_mode = IMX132_MODE_1976X1144_ONE_LANE;
-	} else if ((mode->xres == 1976) && (mode->yres == 1144) && (info->pdata->cap->data_lanes == 2)) {
-		sensor_mode = IMX132_MODE_1976X1144_TWO_LANE;
+	if ((mode->xres == 1920) && (mode->yres == 12080) && (info->pdata->cap->data_lanes == 1)) {
+		sensor_mode = IMX132_MODE_1920X1080_ONE_LANE;
+	} else if ((mode->xres == 1920) && (mode->yres == 1080) && (info->pdata->cap->data_lanes == 2)) {
+		sensor_mode = IMX132_MODE_1920X1080_TWO_LANE;
 	} else {
 		dev_err(dev, "%s: invalid resolution to set mode %d %d\n",
 			__func__, mode->xres, mode->yres);
