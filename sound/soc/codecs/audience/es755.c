@@ -1870,7 +1870,7 @@ static struct esxxx_platform_data *es755_populate_dt_pdata(struct device *dev)
 	pdata->uart_gpio = of_get_named_gpio(dev->of_node,
 			"adnc,int-gpio", 0);
 	if (pdata->uart_gpio < 0) {
-		dev_err(dev, "Looking up %s property in node %s failed %d\n",
+		dev_dbg(dev, "Looking up %s property in node %s failed %d\n",
 				"adnc,uart-gpio", dev->of_node->full_name,
 				pdata->uart_gpio);
 		pdata->uart_gpio = -1;
@@ -2036,7 +2036,7 @@ pdata->gpiob_gpio = of_get_named_gpio(dev->of_node,
 	codec_clk = clk_get(dev, "es755-mclk");
 #endif
 	if (IS_ERR(codec_clk)) {
-		dev_err(dev, "%s: Failed to request es755 mclk from pmic %ld\n",
+		dev_dbg(dev, "%s: Failed to request es755 mclk from pmic %ld\n",
 				__func__, PTR_ERR(codec_clk));
 		pdata->esxxx_clk_cb = NULL;
 	} else {
@@ -2673,7 +2673,7 @@ int es755_core_probe(struct device *dev)
 		/* Fix value for IRQ Type */
 		pdata->gpio_a_irq_type = ES_FALLING_EDGE;
 	} else {
-		dev_warn(escore_priv.dev, "%s(): es755_gpioa undefined\n",
+		dev_dbg(escore_priv.dev, "%s(): es755_gpioa undefined\n",
 			 __func__);
 	}
 
