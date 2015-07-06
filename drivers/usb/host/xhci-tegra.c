@@ -236,6 +236,7 @@ MODULE_PARM_DESC(firmware_file, FIRMWARE_FILE_HELP);
 MODULE_PARM_DESC(boost_cpu_freq, "CPU frequency (in KHz) to boost");
 
 #define BOOST_PERIOD		(msecs_to_jiffies(2*1000)) /* 2 seconds */
+#define BOOST_TRIGGER		16384 /* 16KB */
 static void tegra_xusb_boost_cpu_freq_fn(struct work_struct *work)
 {
 	struct tegra_xhci_hcd *tegra = container_of(work,
@@ -4041,7 +4042,8 @@ static int tegra_xhci_urb_enqueue(struct usb_hcd *hcd, struct urb *urb,
 	switch (xfertype) {
 	case USB_ENDPOINT_XFER_ISOC:
 	case USB_ENDPOINT_XFER_BULK:
-		tegra_xusb_boost_cpu_freq(tegra);
+		if (urb->transfer_buffer_length >tegra->boost_cpu_trigger)
+			tegra_xusb_boost_cpu_freq(tegra);
 		break;
 	case USB_ENDPOINT_XFER_INT:
 	case USB_ENDPOINT_XFER_CONTROL:
@@ -4793,6 +4795,8 @@ static void tegra_xusb_read_board_data(struct tegra_xhci_hcd *tegra)
 					&bdata->firmware_file_dt);
 	ret = of_property_read_u32(node, "nvidia,boost_cpu_frequency",
 					&tegra->boost_cpu_freq);
+	ret = of_property_read_u32(node, "nvidia,boost_cpu_trigger",
+					&tegra->boost_cpu_trigger);
 
 	/* For T210, retrive common padctl config from xusb_pad_ctl node */
 	padctl = of_parse_phandle(node, "nvidia,common_padctl", 0);
@@ -5188,7 +5192,8 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra->prev_event = USB_EVENT_NONE;
 	if (!tegra->boost_cpu_freq)
 		tegra->boost_cpu_freq = CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ;
-
+	if (!tegra->boost_cpu_trigger)
+		tegra->boost_cpu_trigger = BOOST_TRIGGER;
 	/* request resource padctl base address */
 	ret = tegra_xhci_request_mem_region(pdev, 3, &tegra->padctl_base);
 	if (ret) {
