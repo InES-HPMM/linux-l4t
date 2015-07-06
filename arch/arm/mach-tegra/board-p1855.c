@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-p1855.c
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -34,7 +34,6 @@
 #include "devices.h"
 #include "board-common.h"
 #include <linux/platform/tegra/common.h>
-#include "therm-monitor.h"
 #include "board-panel.h"
 #include "tegra-of-dev-auxdata.h"
 #include "linux/irqchip/tegra.h"
