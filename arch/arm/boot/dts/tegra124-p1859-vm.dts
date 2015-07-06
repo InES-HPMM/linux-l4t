@@ -220,6 +220,10 @@
 		status = "disabled";
 	};
 
+	sdhci@700b0600 {
+		status = "disabled";
+	};
+
 	tegra-carveouts {
 		iommus = <&smmu TEGRA_SWGROUP_HC>;
 	};
@@ -231,5 +235,12 @@
 			 <&smmu TEGRA_SWGROUP_A9AVP>,
 			 <&smmu TEGRA_SWGROUP_VDE>;
 		ivc_queue = <&tegra_hv 21>;
+	};
+
+	tegra_hv_storage {
+		compatible = "nvidia,tegra-hv-storage";
+		status = "okay";
+		instance = <0>;
+		ivc = <&tegra_hv 22>;
 	};
 };
