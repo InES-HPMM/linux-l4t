@@ -72,6 +72,7 @@ nvgpu-$(CONFIG_TEGRA_GR_VIRTUALIZATION) += \
 	vgpu/fifo_vgpu.o \
 	vgpu/ce2_vgpu.o \
 	vgpu/mm_vgpu.o \
+	vgpu/tsg_vgpu.o \
 	vgpu/debug_vgpu.o \
 	vgpu/vgpu.o
 

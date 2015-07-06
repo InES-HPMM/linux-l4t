@@ -256,6 +256,7 @@ static int vgpu_init_hal(struct gk20a *g)
 		vgpu_init_gr_ops(&g->ops);
 		vgpu_init_ltc_ops(&g->ops);
 		vgpu_init_mm_ops(&g->ops);
+		vgpu_init_tsg_ops(&g->ops);
 		vgpu_init_debug_ops(&g->ops);
 		break;
 	default:

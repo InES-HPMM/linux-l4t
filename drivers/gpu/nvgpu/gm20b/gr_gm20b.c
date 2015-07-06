@@ -1096,4 +1096,5 @@ void gm20b_init_gr(struct gpu_ops *gops)
 	gops->gr.get_rop_l2_en_mask = gr_gm20b_rop_l2_en_mask;
 	gops->gr.get_max_fbps_count = gr_gm20b_get_max_fbps_count;
 	gops->gr.init_sm_dsm_reg_info = gr_gm20b_init_sm_dsm_reg_info;
+	gops->gr.update_smpc_ctxsw_mode = gr_gk20a_update_smpc_ctxsw_mode;
 }

@@ -515,6 +515,17 @@ static int vgpu_fifo_wait_engine_idle(struct gk20a *g)
 	return 0;
 }
 
+static int vgpu_fifo_force_reset_ch(struct channel_gk20a *ch, bool verbose)
+{
+	gk20a_dbg_fn("");
+
+	if (verbose)
+		gk20a_warn(dev_from_gk20a(ch->g),
+			"channel force reset is not supported");
+
+	return -ENOSYS;
+}
+
 static void vgpu_fifo_set_ctx_mmu_error(struct gk20a *g,
 		struct channel_gk20a *ch)
 {
@@ -594,5 +605,6 @@ void vgpu_init_fifo_ops(struct gpu_ops *gops)
 	gops->fifo.preempt_channel = vgpu_fifo_preempt_channel;
 	gops->fifo.update_runlist = vgpu_fifo_update_runlist;
 	gops->fifo.wait_engine_idle = vgpu_fifo_wait_engine_idle;
+	gops->fifo.force_reset_ch = vgpu_fifo_force_reset_ch;
 }
 

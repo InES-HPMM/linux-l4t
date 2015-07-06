@@ -2568,7 +2568,7 @@ long gk20a_channel_ioctl(struct file *filp,
 				__func__, cmd);
 			break;
 		}
-		err = gk20a_fifo_force_reset_ch(ch, true);
+		err = ch->g->ops.fifo.force_reset_ch(ch, true);
 		gk20a_idle(dev);
 		break;
 	case NVGPU_IOCTL_CHANNEL_EVENTS_CTRL:

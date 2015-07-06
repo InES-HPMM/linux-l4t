@@ -7457,4 +7457,5 @@ void gk20a_init_gr_ops(struct gpu_ops *gops)
 	gops->gr.get_max_lts_per_ltc = gr_gk20a_get_max_lts_per_ltc;
 	gops->gr.get_rop_l2_en_mask = gr_gk20a_rop_l2_en_mask;
 	gops->gr.init_sm_dsm_reg_info = gr_gk20a_init_sm_dsm_reg_info;
+	gops->gr.update_smpc_ctxsw_mode = gr_gk20a_update_smpc_ctxsw_mode;
 }

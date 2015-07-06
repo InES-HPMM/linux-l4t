@@ -131,6 +131,7 @@ int gm20b_init_hal(struct gk20a *g)
 	gm20b_init_pmu_ops(gops);
 	gm20b_init_clk_ops(gops);
 	gm20b_init_regops(gops);
+	gk20a_init_tsg_ops(gops); /* TSG handlers for gm20b is same as gk20a */
 	gm20b_init_debug_ops(gops);
 	gops->name = "gm20b";
 

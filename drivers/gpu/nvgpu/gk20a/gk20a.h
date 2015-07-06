@@ -177,6 +177,8 @@ struct gpu_ops {
 		u32 (*get_max_lts_per_ltc)(struct gk20a *g);
 		u32* (*get_rop_l2_en_mask)(struct gk20a *g);
 		void (*init_sm_dsm_reg_info)(void);
+		int (*update_smpc_ctxsw_mode)(struct gk20a *g,
+			  struct channel_gk20a *c, bool enable_smpc_ctxsw);
 	} gr;
 	const char *name;
 	struct {
@@ -230,6 +232,7 @@ struct gpu_ops {
 		int (*wait_engine_idle)(struct gk20a *g);
 		u32 (*get_num_fifos)(struct gk20a *g);
 		u32 (*get_pbdma_signature)(struct gk20a *g);
+		int (*force_reset_ch)(struct channel_gk20a *ch, bool verbose);
 	} fifo;
 	struct pmu_v {
 		/*used for change of enum zbc update cmd id from ver 0 to ver1*/
@@ -397,6 +400,10 @@ struct gpu_ops {
 		irqreturn_t (*isr_thread_nonstall)(struct gk20a *g);
 		u32 intr_mask_restore[4];
 	} mc;
+	struct {
+		int (*open)(struct gk20a *g, struct file *filp);
+		void (*release)(struct kref *ref);
+	} tsg;
 	struct {
 		void (*show_dump)(struct gk20a *g,
 				struct gk20a_debug_output *o);

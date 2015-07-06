@@ -732,7 +732,7 @@ static int nvgpu_dbg_gpu_ioctl_smpc_ctxsw_mode(struct dbg_session_gk20a *dbg_s,
 		goto clean_up;
 	}
 
-	err = gr_gk20a_update_smpc_ctxsw_mode(g, ch_gk20a,
+	err = g->ops.gr.update_smpc_ctxsw_mode(g, ch_gk20a,
 		      args->mode == NVGPU_DBG_GPU_SMPC_CTXSW_MODE_CTXSW);
 	if (err) {
 		gk20a_err(dev_from_gk20a(dbg_s->g),

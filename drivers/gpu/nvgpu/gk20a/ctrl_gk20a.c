@@ -206,7 +206,7 @@ static int gk20a_ctrl_open_tsg(struct gk20a *g,
 		goto clean_up;
 	}
 
-	err = gk20a_tsg_open(g, file);
+	err = g->ops.tsg.open(g, file);
 	if (err)
 		goto clean_up_file;
 

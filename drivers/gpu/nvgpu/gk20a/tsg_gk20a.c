@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -24,8 +24,6 @@
 
 #include "gk20a.h"
 #include "hw_ccsr_gk20a.h"
-
-static void gk20a_tsg_release(struct kref *ref);
 
 bool gk20a_is_channel_marked_as_tsg(struct channel_gk20a *ch)
 {
@@ -101,7 +99,7 @@ int gk20a_tsg_unbind_channel(struct channel_gk20a *ch)
 	list_del_init(&ch->ch_entry);
 	mutex_unlock(&tsg->ch_list_lock);
 
-	kref_put(&tsg->refcount, gk20a_tsg_release);
+	kref_put(&tsg->refcount, tsg->g->ops.tsg.release);
 
 	ch->tsgid = NVGPU_INVALID_TSG_ID;
 
@@ -151,7 +149,7 @@ static struct tsg_gk20a *acquire_unused_tsg(struct fifo_gk20a *f)
 	return tsg;
 }
 
-int gk20a_tsg_open(struct gk20a *g, struct file *filp)
+static int gk20a_tsg_open(struct gk20a *g, struct file *filp)
 {
 	struct tsg_gk20a *tsg;
 	struct device *dev;
@@ -186,7 +184,7 @@ int gk20a_tsg_dev_open(struct inode *inode, struct file *filp)
 	g = container_of(inode->i_cdev,
 			 struct gk20a, tsg.cdev);
 	gk20a_dbg_fn("");
-	ret = gk20a_tsg_open(g, filp);
+	ret = g->ops.tsg.open(g, filp);
 	gk20a_dbg_fn("done");
 	return ret;
 }
@@ -213,7 +211,9 @@ static void gk20a_tsg_release(struct kref *ref)
 int gk20a_tsg_dev_release(struct inode *inode, struct file *filp)
 {
 	struct tsg_gk20a *tsg = filp->private_data;
-	kref_put(&tsg->refcount, gk20a_tsg_release);
+
+	if (tsg)
+		kref_put(&tsg->refcount, tsg->g->ops.tsg.release);
 	return 0;
 }
 
@@ -333,4 +333,10 @@ long gk20a_tsg_dev_ioctl(struct file *filp, unsigned int cmd,
 				   buf, _IOC_SIZE(cmd));
 
 	return err;
+}
+
+void gk20a_init_tsg_ops(struct gpu_ops *gops)
+{
+	gops->tsg.open = gk20a_tsg_open;
+	gops->tsg.release = gk20a_tsg_release;
 }

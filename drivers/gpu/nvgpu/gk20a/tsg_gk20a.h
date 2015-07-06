@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -22,13 +22,14 @@ bool gk20a_is_channel_marked_as_tsg(struct channel_gk20a *ch);
 
 int gk20a_tsg_dev_release(struct inode *inode, struct file *filp);
 int gk20a_tsg_dev_open(struct inode *inode, struct file *filp);
-int gk20a_tsg_open(struct gk20a *g, struct file *filp);
 long gk20a_tsg_dev_ioctl(struct file *filp,
 			 unsigned int cmd, unsigned long arg);
 
 int gk20a_init_tsg_support(struct gk20a *g, u32 tsgid);
 
 int gk20a_tsg_unbind_channel(struct channel_gk20a *ch);
+
+void gk20a_init_tsg_ops(struct gpu_ops *gops);
 
 struct tsg_gk20a {
 	struct gk20a *g;

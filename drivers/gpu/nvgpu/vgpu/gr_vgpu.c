@@ -732,6 +732,15 @@ static int vgpu_gr_query_zbc(struct gk20a *g, struct gr_gk20a *gr,
 	return 0;
 }
 
+static int vgpu_gr_update_smpc_ctxsw_mode(struct gk20a *g,
+					  struct channel_gk20a *c,
+					  bool enable_smpc_ctxsw)
+{
+	gk20a_warn(dev_from_gk20a(g), "SMPC CTXSW MODE is not supported");
+
+	return -ENOSYS;
+}
+
 static void vgpu_remove_gr_support(struct gr_gk20a *gr)
 {
 	gk20a_dbg_fn("");
@@ -877,4 +886,5 @@ void vgpu_init_gr_ops(struct gpu_ops *gops)
 	gops->gr.get_fbp_en_mask = vgpu_gr_get_fbp_en_mask;
 	gops->gr.zbc_set_table = vgpu_gr_add_zbc;
 	gops->gr.zbc_query_table = vgpu_gr_query_zbc;
+	gops->gr.update_smpc_ctxsw_mode = vgpu_gr_update_smpc_ctxsw_mode;
 }
