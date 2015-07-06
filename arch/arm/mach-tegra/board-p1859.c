@@ -34,7 +34,6 @@
 #include "devices.h"
 #include "board-common.h"
 #include <linux/platform/tegra/common.h>
-#include "therm-monitor.h"
 #include "board-panel.h"
 #include "tegra-of-dev-auxdata.h"
 #include "linux/irqchip/tegra.h"

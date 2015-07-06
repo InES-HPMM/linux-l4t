@@ -39,14 +39,50 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "iomap.h"
-#include "therm-monitor.h"
 #include "tegra-of-dev-auxdata.h"
 #include "vcm30_t124.h"
 #include <asm/mach/arch.h>
 #include <linux/clocksource.h>
 #include <linux/irqchip.h>
 #include <linux/platform/tegra/common.h>
+#include <linux/thermal.h>
+#include <linux/platform/tegra/tegra12_emc.h>
+#include <linux/platform_data/thermal_sensors.h>
+#include <linux/platform_data/tmon_tmp411.h>
+#include <linux/i2c.h>
 
+#define MAX_NUM_TEMPERAT 10
+#define INVALID_ADDR 0xffffffff
+#define NUM_OF_TRIPS (sizeof(trip) / sizeof(struct thermal_trip_info))
+
+struct therm_monitor_ldep_data {
+	unsigned int reg_addr;
+	unsigned int value[MAX_NUM_TEMPERAT - 1];
+};
+
+struct therm_monitor_data {
+	unsigned int remote_offset;
+	signed int alert_gpio;
+	unsigned char i2c_bus_num;
+	unsigned int i2c_dev_addrs;
+	unsigned char *i2c_dev_name;
+	unsigned char i2c_board_size;
+	struct thermal_trip_info *trips;
+	unsigned int num_trips;
+	struct thermal_zone_params *tzp;
+	int polling_delay;
+	int passive_delay;
+};
+
+struct dram_data {
+	unsigned long cur_state;
+	unsigned long max_state;
+};
+
+struct dram_data data;
+
+static struct tmon_plat_data tmon_pdata;
+struct i2c_board_info __initdata tgr_i2c_board_info[1];
 /*
  * Set clock values as per automotive POR for VCM30T124
  *
@@ -235,42 +271,190 @@ static  __initdata struct tegra_clk_init_table
 /* Therm Monitor */
 
 /*
- *  Padcontrol registers which need to modified
+ *  registers which need to modified
  *  based on local temperature changes.
  *  Format ex:
  *  {
- *    .reg_addr = 0x000008ec, --  only Offset
- *    .temperat = {10000, 85000, INT_MAX}, -- in Milli Deg C, Maximum 9 values
+ *    .reg_addr = 0x000008ec,
  *    .value    = {0xf101a000, 0xf161d000}, -- Maximum 9 values
  *  },
  *
- *  If local temperature is  < 10000  Milli Deg C then value "0xf101a000"
- *  will be written and if between 10000 to 85000 then value "0xf161d000"
- *  will be wriiten and so on.
  */
-struct therm_monitor_ldep_data ltemp_reg_data[] = {
+struct therm_monitor_ldep_data dram_cdev_reg_data[] = {
+	{
+		.reg_addr = 0x7001b070,
+		.value = {0xbd1, 0x000005d9},
+	},
+	{
+		.reg_addr = 0x7001b3e0,
+		.value = {0x8000188b, 0x80000cc7},
+	},
+	{
+		.reg_addr = 0x7001b0a8,
+		.value = {0x00000c11, 0x00000609},
+	},
+	{
+		.reg_addr = 0x7001b3dc,
+		.value = {0x000002f4, 0x00000176},
+	},
+	{
+		.reg_addr = 0x7001b028,
+		.value = {0x1, 0x1},
+	},
 	{
 		.reg_addr = INVALID_ADDR,
 	},
 };
 
+/*
+ * trip type active is used because there is a need to change
+ * DRAM registers setting based on trip temperature and hyst.
+ *
+ * IF THERMAL_NO_LIMIT is chosen then thermal framework sets
+ * lower state to 0 and upper to max state of cdev, DRAM have
+ * lower state 0 and upper 1 so it is ok to use THERMAL_NO_LIMIT
+ * If lower and upper limits are different for any trip point
+ * then use those limits instead of THERMAL_NO_LIMIT
+ *
+ * trip_temp, trip_type, upper state, lower state, hyst,
+ * tripped, mask, bound, cooling device name
+ *
+ * mask makes trip point writable through debugfs entries if set to 1
+ */
+struct thermal_trip_info trip[] = {
+	{90000, THERMAL_TRIP_ACTIVE, THERMAL_NO_LIMIT, THERMAL_NO_LIMIT, 10000,
+		false, 0x0, false, "dram_cdev"},
+};
+
+static int get_dram_cdev_max_state(struct thermal_cooling_device *cdev,
+				unsigned long *max_state)
+{
+	struct dram_data *data = cdev->devdata;
+	*max_state = data->max_state;
+
+	return 0;
+}
+
+static int get_dram_cdev_cur_state(struct thermal_cooling_device *cdev,
+				unsigned long *cur_state)
+{
+	struct dram_data *data = cdev->devdata;
+	*cur_state = data->cur_state;
+
+	return 0;
+}
+
+static int set_dram_cdev_state(struct thermal_cooling_device *cdev,
+				unsigned long cur_state)
+{
+	struct dram_data *data = cdev->devdata;
+	static int call_at_boot;
+
+	if (data->cur_state != cur_state || call_at_boot == 0) {
+		int i;
+		call_at_boot = 1;
+		for (i = 0; dram_cdev_reg_data[i].reg_addr
+						!= INVALID_ADDR; i++) {
+			void *reg_addr = ioremap(dram_cdev_reg_data[i].reg_addr,
+									4);
+			writel(dram_cdev_reg_data[i].value[cur_state],
+				reg_addr);
+			iounmap(reg_addr);
+		}
+
+		data->cur_state = cur_state;
+	}
+
+	return 0;
+}
+
+struct thermal_cooling_device_ops dram_cdev_ops = {
+	.get_max_state = get_dram_cdev_max_state,
+	.get_cur_state = get_dram_cdev_cur_state,
+	.set_cur_state = set_dram_cdev_state,
+};
+
+/*
+ * DRAM have only one trip point so two states (two settings of
+ * registers values ,default and another when temperature crosses
+ * trip point)
+ * since in kernel thermal framework min state can be 0 so in
+ * case of DRAM max state is 1 ,since it has only two states.
+ */
+int __init dram_cdev_init(void)
+{
+	static struct thermal_cooling_device *cdev;
+	char name[] = "dram_cdev";
+	data.max_state = 1;
+	cdev = thermal_cooling_device_register(name,
+				&data, &dram_cdev_ops);
+	if (IS_ERR_OR_NULL(cdev)) {
+		pr_err("Cooling device: %s not registered\n",
+			name);
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
+late_initcall(dram_cdev_init);
+
+/*
+ * step_wise governor is used for DRAM cooling device.
+ *
+ * governor_params is applicable in case of pid_thermal_gov
+ *
+ * not enabling thermal to hwmon sysfs interface if want to
+ * enable set no_hwmon = false
+ *
+ * tbp is applicable in case of fairshair governor therefore
+ * it is null
+ */
+struct thermal_zone_params tzp = {
+	.governor_name = "step_wise",
+	.governor_params = NULL,
+	.no_hwmon = true,
+	.tbp = NULL,
+};
+
 #ifdef CONFIG_SENSORS_TMON_TMP411
 static struct therm_monitor_data vcm30t124_therm_monitor_data = {
-	.brd_ltemp_reg_data = NULL,
-	.delta_temp = 4000,
-	.delta_time = 2000,
 	.remote_offset = 8000,
 	.alert_gpio = TEGRA_GPIO_PI6,
-	.local_temp_update = false,
-
-	/* USB regsiter update not requred */
-	.utmip_reg_update = false,
 
 	.i2c_bus_num = I2C_BUS_TMP411,
 	.i2c_dev_addrs = I2C_ADDR_TMP411,
 	.i2c_dev_name = "tmon-tmp411-sensor",
+	.trips = trip,
+	.num_trips = NUM_OF_TRIPS,
+	.tzp = &tzp,
+	.passive_delay = 2000,
+	.polling_delay = 2000,
 };
 #endif
+
+void register_therm_monitor(struct therm_monitor_data *brd_therm_monitor_data)
+{
+
+	/* Thermal monitor operational parameters */
+	tmon_pdata.remote_offset = brd_therm_monitor_data->remote_offset;
+	tmon_pdata.alert_gpio = brd_therm_monitor_data->alert_gpio;
+
+	tmon_pdata.trips = brd_therm_monitor_data->trips;
+	tmon_pdata.num_trips = brd_therm_monitor_data->num_trips;
+	tmon_pdata.tzp = brd_therm_monitor_data->tzp;
+	tmon_pdata.polling_delay = brd_therm_monitor_data->polling_delay;
+	tmon_pdata.passive_delay = brd_therm_monitor_data->passive_delay;
+
+	/* Fill the i2c board info */
+	strcpy(tgr_i2c_board_info[0].type,
+		brd_therm_monitor_data->i2c_dev_name);
+	tgr_i2c_board_info[0].addr = brd_therm_monitor_data->i2c_dev_addrs;
+	tgr_i2c_board_info[0].platform_data = &tmon_pdata;
+
+	i2c_register_board_info(brd_therm_monitor_data->i2c_bus_num,
+			tgr_i2c_board_info, 1);
+}
 
 void __init tegra_vcm30_t124_therm_mon_init(void)
 {

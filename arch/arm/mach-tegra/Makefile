@@ -138,7 +138,6 @@ obj-${CONFIG_MACH_LAGUNA}               += board-laguna-power.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-11-6.o
 
 obj-${CONFIG_ARCH_TEGRA_VCM30T124}      += vcm30_t124.o
-obj-${CONFIG_ARCH_TEGRA_VCM30T124}      += therm-monitor.o
 
 obj-${CONFIG_MACH_P1859}                += board-p1859.o
 obj-${CONFIG_MACH_P1859}                += board-p1859-audio.o
