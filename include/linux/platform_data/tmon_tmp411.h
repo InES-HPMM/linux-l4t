@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -22,14 +22,28 @@
 #ifndef __TMON_TMP411_INCL
 #define __TMON_TMP411_INCL
 
+#include <linux/thermal.h>
+#include <linux/platform_data/thermal_sensors.h>
 struct tmon_plat_data {
-	signed int delta_temp;
-	signed int delta_time;
 	unsigned int remote_offset;
 	signed int alert_gpio;
-	int utmip_temp_bound;
-	void (*ltemp_dependent_reg_update)(int ltemp);
-	void (*utmip_temp_dep_update)(int rtemp, int utmip_temp_bound);
+
+	/* contains information for all trips */
+	struct thermal_trip_info *trips;
+
+	/* how many trips this thermal zone have */
+	unsigned int num_trips;
+
+	/* parameter that contains information like governor name
+	 * governor params etc
+	 */
+	struct thermal_zone_params *tzp;
+
+	/* delay for polling in case of active trip */
+	int polling_delay;
+
+	/* delay for polling if trip type is passive */
+	int passive_delay;
 };
 
 

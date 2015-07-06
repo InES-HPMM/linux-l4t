@@ -1,7 +1,7 @@
 /*
  * Temperature Monitor Driver
  *
- * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -36,12 +36,8 @@
 #include <linux/irq.h>
 #include <linux/gpio.h>
 #include <linux/spinlock.h>
-
-#define DEFAULT_TMON_POLLING_TIME	2000	/* Time in ms */
-#define DEFAULT_TMON_DELTA_TEMP		4000	/* Temp. change to execute
-						platform callback */
-#define TMON_ERR			INT_MAX
-#define TMON_NOCHANGE			(INT_MAX - 1)
+#include <linux/thermal.h>
+#include <linux/platform_data/thermal_sensors.h>
 
 /*
  * The TMP411/NVT210 registers, note some registers have different addresses for
@@ -133,7 +129,6 @@ struct tmon_info {
 	int mode;
 	struct i2c_client *client;
 	struct i2c_client *ara; /*Alert Response Address for clearing alert */
-	struct delayed_work tmon_work;
 	struct tmon_plat_data *pdata;
 	struct mutex update_lock; /*  For TMP411 registers read/writes */
 	struct mutex sysfs_alert_lock; /* For block alert sysfs protection */
@@ -146,6 +141,7 @@ struct tmon_info {
 	int irq_num;
 	long sysfs_therm_alert_timeout;
 	unsigned long last_updated; /*  in jiffies */
+	struct thermal_zone_device *thz;
 
 };
 
@@ -594,77 +590,6 @@ static struct sensor_device_attribute tmp411_attr[] = {
 				NULL, 1),
 };
 
-static int tmon_check_local_temp(struct i2c_client *client,
-					     u32 delta_temp)
-{
-	static int last_temp;
-	int err;
-	int curr_temp = 0;
-
-	err = tmon_read_local_temp(client, &curr_temp);
-	if (err)
-		return TMON_ERR;
-
-	if (abs(curr_temp - last_temp) >= delta_temp) {
-		last_temp = curr_temp;
-		return curr_temp;
-	}
-
-	return TMON_NOCHANGE;
-}
-
-static int tmon_check_remote_temp(struct i2c_client *client,
-						 u32 delta_temp)
-{
-	static int last_temp;
-	int err;
-	int curr_temp = 0;
-	err = tmon_read_remote_temp(client, &curr_temp);
-	if (err)
-		return TMON_ERR;
-
-	if (abs(curr_temp - last_temp) >= delta_temp) {
-		last_temp = curr_temp;
-		return curr_temp;
-	}
-
-	return TMON_NOCHANGE;
-}
-
-static void tmon_update(struct work_struct *work)
-{
-	int ret;
-	struct tmon_info *tmon_data =
-	    container_of(to_delayed_work(work),
-			 struct tmon_info,
-			 tmon_work);
-	struct tmon_plat_data *pdata = tmon_data->pdata;
-
-	if (pdata->delta_time <= 0)
-		pdata->delta_time = DEFAULT_TMON_POLLING_TIME;
-
-	if (pdata->delta_temp <= 0)
-		pdata->delta_temp = DEFAULT_TMON_DELTA_TEMP;
-
-	ret =
-	    tmon_check_local_temp(tmon_data->client,
-					      pdata->delta_temp);
-
-	if (ret != TMON_ERR && ret != TMON_NOCHANGE &&
-		pdata->ltemp_dependent_reg_update)
-		pdata->ltemp_dependent_reg_update(ret);
-
-	ret = tmon_check_remote_temp(tmon_data->client,
-						pdata->delta_temp);
-
-	if (ret != TMON_ERR && ret != TMON_NOCHANGE &&
-		pdata->utmip_temp_dep_update)
-		pdata->utmip_temp_dep_update(ret, pdata->utmip_temp_bound);
-
-	schedule_delayed_work(&tmon_data->tmon_work,
-			      msecs_to_jiffies(pdata->delta_time));
-}
-
 static irqreturn_t  tmon_alert_isr(int irq, void *d)
 {
 	struct tmon_info *data = d;
@@ -687,6 +612,183 @@ static irqreturn_t  tmon_alert_isr(int irq, void *d)
 
 }
 
+/* returns trip temperature, it considers hysteresis if current
+ * temperature is greater or equal to trip temp, next trip
+ * temp would be trip_temp - hyst.
+ */
+static int tmon_get_trip_temp(struct thermal_zone_device *thz,
+						int trip, long *temp) {
+	struct tmon_info *tmon_data = thz->devdata;
+	struct tmon_plat_data *pdata = tmon_data->pdata;
+	unsigned int num_trips = pdata->num_trips;
+
+	long trip_temp = pdata->trips[trip].trip_temp;
+	long hysteresis = pdata->trips[trip].hysteresis;
+
+	BUG_ON(trip < 0 || trip >= num_trips);
+
+	if (thz->temperature >= trip_temp) {
+		trip_temp -= hysteresis;
+		pdata->trips[trip].tripped = true;
+	} else if (pdata->trips[trip].tripped) {
+		trip_temp -= hysteresis;
+		if (thz->temperature <= trip_temp)
+			pdata->trips[trip].tripped = false;
+	}
+
+	*temp = trip_temp;
+
+	return 0;
+}
+
+static int tmon_loc_get_trip_temp(struct thermal_zone_device *thz,
+						int trip, long *temp) {
+	return tmon_get_trip_temp(thz, trip, temp);
+}
+
+/* returns hysteresis,this is a common function can be used by remote
+ * thermal zone
+ */
+static int tmon_get_trip_hyst(struct thermal_zone_device *thz,
+						int trip, long *temp) {
+	struct tmon_info *tmon_data = thz->devdata;
+	struct tmon_plat_data *pdata = tmon_data->pdata;
+	unsigned int num_trips = pdata->num_trips;
+
+	BUG_ON(trip < 0 || trip >= num_trips);
+
+	*temp = pdata->trips[trip].hysteresis;
+
+	return 0;
+}
+
+/* returns hysterisis of local temperature based thermal zone */
+static int tmon_loc_get_trip_hyst(struct thermal_zone_device *thz,
+						int trip, long *temp) {
+	return tmon_get_trip_hyst(thz, trip, temp);
+}
+
+/* returns the local temperature, temperature of sensor not tegra
+ * chip temperature
+ */
+static int tmon_loc_get_temp(struct thermal_zone_device *thz,
+							long *temp)
+{
+	int ret;
+	int temp1;
+	struct tmon_info *tmon_data = thz->devdata;
+	ret = tmon_read_local_temp(tmon_data->client,
+						&temp1);
+	*temp = (long)temp1;
+	if (ret < 0)
+		return -1;
+
+	return 0;
+}
+
+/* returns trend ,which is used in kernel thermal framework to
+ * decide the next state of cooling device
+ * if trend is THERMAL_TREND_RAISING thermal framework tries to
+ * set the next state to next cooling state, possible at that
+ * trip point
+ */
+static int tmon_loc_get_trend(struct thermal_zone_device *thz,
+				int trip, enum thermal_trend *trend)
+{
+	long trip_temp;
+
+	thz->ops->get_trip_temp(thz, trip, &trip_temp);
+
+	if (thz->temperature > trip_temp)
+		*trend = THERMAL_TREND_RAISING;
+	else if (thz->temperature <= trip_temp)
+		*trend = THERMAL_TREND_DROPPING;
+	return 0;
+}
+
+/* binds cooling device to the corresponding trip point */
+static int tmon_loc_bind(struct thermal_zone_device *thz,
+			struct thermal_cooling_device *cdev)
+{
+	int i;
+	struct tmon_info *tmon_data = thz->devdata;
+	struct tmon_plat_data *pdata = tmon_data->pdata;
+	for (i = 0; i < pdata->num_trips; i++) {
+		if (!strcmp(pdata->trips[i].cdev_type, cdev->type)) {
+			thermal_zone_bind_cooling_device(thz, i, cdev,
+				pdata->trips[i].upper,
+				pdata->trips[i].lower);
+			pdata->trips[i].bound = true;
+		}
+
+	}
+	return 0;
+}
+
+static int tmon_loc_unbind(struct thermal_zone_device *thz,
+			struct thermal_cooling_device *cdev)
+{
+	int i;
+	struct tmon_info *tmon_data = thz->devdata;
+	struct tmon_plat_data *pdata = tmon_data->pdata;
+
+	for (i = 0; i < pdata->num_trips; i++) {
+		if (!strcmp(pdata->trips[i].cdev_type, cdev->type) &&
+						pdata->trips[i].bound)
+			thermal_zone_unbind_cooling_device(thz, i, cdev);
+			pdata->trips[i].bound = false;
+	}
+	return 0;
+}
+
+/* returns the trip type
+ * trip type can be
+ * THERMAL_TRIP_ACTIVE,
+ * THERMAL_TRIP_PASSIVE,
+ * THERMAL_TRIP_HOT,
+ * THERMAL_TRIP_CRITICAL
+ */
+static int tmon_loc_get_trip_type(struct thermal_zone_device *thz,
+					int trip,
+					enum thermal_trip_type *type)
+{
+	struct tmon_info *tmon_data = thz->devdata;
+	struct tmon_plat_data *pdata = tmon_data->pdata;
+	unsigned int num_trips = pdata->num_trips;
+
+	BUG_ON(trip < 0 || trip >= num_trips);
+
+	*type = pdata->trips[trip].trip_type;
+	return 0;
+}
+
+/* used to change trip point in the case if trip_temp debugfs
+ * entry is exposed as writable through board file via trip.mode = 0x1
+ */
+static int tmon_loc_set_trip_temp(struct thermal_zone_device *thz,
+					int trip,
+					long temp)
+{
+	struct tmon_info *tmon_data = thz->devdata;
+	struct tmon_plat_data *pdata = tmon_data->pdata;
+	unsigned int num_trips = pdata->num_trips;
+
+	BUG_ON(trip < 0 || trip >= num_trips);
+	pdata->trips[trip].trip_temp = temp;
+	return 0;
+}
+
+static struct thermal_zone_device_ops tmon_loc_ops = {
+	.get_temp = tmon_loc_get_temp,
+	.bind = tmon_loc_bind,
+	.unbind = tmon_loc_unbind,
+	.get_trip_type = tmon_loc_get_trip_type,
+	.get_trip_temp = tmon_loc_get_trip_temp,
+	.get_trip_hyst = tmon_loc_get_trip_hyst,
+	.get_trend = tmon_loc_get_trend,
+	.set_trip_temp = tmon_loc_set_trip_temp,
+};
+
 static int tmon_tmp411_probe(struct i2c_client *client,
 					    const struct i2c_device_id *id)
 {
@@ -697,6 +799,8 @@ static int tmon_tmp411_probe(struct i2c_client *client,
 	int i;
 	u8 man_id;
 	u8 config;
+	u64 mask;
+	char extern_tsensor_loc_name[] = "extern_tsensor_loc";
 
 	if (tmon_pdata == NULL) {
 		dev_err(&client->dev, "no platform data\n");
@@ -804,11 +908,26 @@ static int tmon_tmp411_probe(struct i2c_client *client,
 			goto err_exit;
 	}
 
+	mask = 0;
+	/* if mask of ith trip is 1 then make the debugfs entry for
+	 * this trip point writable
+	 */
+	for (i = 0; i < tmon_pdata->num_trips; i++)
+		if (tmon_pdata->trips[i].mask)
+			mask |= 1ULL << i;
 
-	INIT_DELAYED_WORK(&data->tmon_work, tmon_update);
+	data->thz = thermal_zone_device_register(extern_tsensor_loc_name,
+				tmon_pdata->num_trips,
+				mask,
+				data,
+				&tmon_loc_ops,
+				tmon_pdata->tzp,
+				tmon_pdata->passive_delay,
+				tmon_pdata->polling_delay);
 
-	schedule_delayed_work(&data->tmon_work,
-			      msecs_to_jiffies(data->pdata->delta_time));
+	if (IS_ERR_OR_NULL(data->thz))
+		dev_err(&client->dev,
+		"extern_tsensor_loc thermal zone device not registered\n");
 
 	dev_info(&client->dev, "Temperature Monitor enabled\n");
 	return 0;
@@ -827,7 +946,6 @@ static int tmon_tmp411_remove(struct i2c_client *client)
 	struct tmon_info *data = i2c_get_clientdata(client);
 	int i;
 
-	cancel_delayed_work(&data->tmon_work);
 	for (i = 0; i < ARRAY_SIZE(tmp411_attr); i++)
 		device_remove_file(&client->dev, &tmp411_attr[i].dev_attr);
 
@@ -846,7 +964,6 @@ static int tmon_tmp411_suspend(struct device *dev)
 {
 	int i;
 	struct i2c_client *client = to_i2c_client(dev);
-	struct tmon_info *data = i2c_get_clientdata(client);
 	u8 tmp;
 	int err;
 
@@ -875,7 +992,6 @@ static int tmon_tmp411_suspend(struct device *dev)
 	TMON_RD(client, REG_CON_RATE_READ, &conv_rate);
 	TMON_RD(client, REG_CFG_READ, &config);
 
-	cancel_delayed_work_sync(&data->tmon_work);
 	return 0;
 }
 
@@ -886,7 +1002,6 @@ static int tmon_tmp411_resume(struct device *dev)
 	u8 curr_cnfg;
 	u8 limit_correction = 0;
 	struct i2c_client *client = to_i2c_client(dev);
-	struct tmon_info *data = i2c_get_clientdata(client);
 
 	TMON_RD(client, REG_CFG_READ, &curr_cnfg);
 
@@ -927,8 +1042,6 @@ static int tmon_tmp411_resume(struct device *dev)
 
 	/* FIXME: Is it required to wait for one temperature conversion? */
 
-	schedule_delayed_work(&data->tmon_work,
-				msecs_to_jiffies(data->pdata->delta_time));
 	return 0;
 }
 
