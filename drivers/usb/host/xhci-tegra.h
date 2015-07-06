@@ -448,6 +448,7 @@ struct tegra_xhci_hcd {
 	unsigned long cpufreq_last_boosted;
 	bool cpufreq_boosted;
 	bool restore_cpufreq_scheduled;
+	unsigned int boost_cpu_trigger;
 #endif
 	bool init_done;
 	bool clock_enable_done;
