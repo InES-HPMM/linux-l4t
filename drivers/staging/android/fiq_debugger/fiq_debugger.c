@@ -435,32 +435,29 @@ static void fiq_debugger_irq_exec(struct fiq_debugger_state *state, char *cmd)
 
 static void fiq_debugger_help(struct fiq_debugger_state *state)
 {
-	fiq_debugger_printf(&state->output,
-				"FIQ Debugger commands:\n"
-				" pc            PC status\n"
-				" regs          Register dump\n"
-				" allregs       Extended Register dump\n"
-				" bt            Stack trace\n");
-	fiq_debugger_printf(&state->output,
-				" reboot [<c>]  Reboot with command <c>\n"
-				" reset [<c>]   Hard reset with command <c>\n"
-				" irqs          Interupt status\n"
-				" kmsg          Kernel log\n"
-				" version       Kernel version\n");
-	fiq_debugger_printf(&state->output,
-				" sleep         Allow sleep while in FIQ\n"
-				" nosleep       Disable sleep while in FIQ\n"
-				" console       Switch terminal to console\n"
-				" cpu           Current CPU\n"
-				" cpu <number>  Switch to CPU<number>\n");
-	fiq_debugger_printf(&state->output,
-				" ps            Process list\n"
-				" sysrq         sysrq options\n"
-				" sysrq <param> Execute sysrq with <param>\n");
+#define	P(s)	fiq_debugger_printf(&state->output, s)
+	P("FIQ Debugger commands:\n");
+	P(" pc            PC status\n");
+	P(" regs          Register dump\n");
+	P(" allregs       Extended Register dump\n");
+	P(" bt            Stack trace\n");
+	P(" reboot [<c>]  Reboot with command <c>\n");
+	P(" reset [<c>]   Hard reset with command <c>\n");
+	P(" irqs          Interupt status\n");
+	P(" kmsg          Kernel log\n");
+	P(" version       Kernel version\n");
+	P(" sleep         Allow sleep while in FIQ\n");
+	P(" nosleep       Disable sleep while in FIQ\n");
+	P(" console       Switch terminal to console\n");
+	P(" cpu           Current CPU\n");
+	P(" cpu <number>  Switch to CPU<number>\n");
+	P(" ps            Process list\n");
+	P(" sysrq         sysrq options\n");
+	P(" sysrq <param> Execute sysrq with <param>\n");
 #ifdef CONFIG_KGDB
-	fiq_debugger_printf(&state->output,
-				" kgdb          Enter kernel debugger\n");
+	P(" kgdb          Enter kernel debugger\n");
 #endif
+#undef P(s)
 }
 
 static void fiq_debugger_take_affinity(void *info)
