@@ -287,6 +287,7 @@ void *create_mem_manager(const char *name, unsigned long start_address,
 	mc->size = mm_info->size;
 	strlcpy(mc->name, "FREE", NAME_SIZE);
 	list_add(&mc->node, mm_info->free_list);
+	spin_lock_init(&mm_info->lock);
 
 	return (void *)mm_info;
 
