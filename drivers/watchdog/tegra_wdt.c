@@ -47,8 +47,8 @@ struct tegra_wdt {
 	unsigned long		users;
 	void __iomem		*wdt_source;
 	void __iomem		*wdt_timer;
+	u32			config;
 	int			irq;
-	int			tmrsrc;
 	unsigned long		status;
 /* Bit numbers for status flags */
 #define WDT_ENABLED		0
@@ -158,10 +158,7 @@ static int __tegra_wdt_enable(struct tegra_wdt *tegra_wdt)
 	val |= (TIMER_EN | TIMER_PERIODIC);
 	writel(val, tegra_wdt->wdt_timer + TIMER_PTV);
 
-	val = tegra_wdt->tmrsrc;
-	val |= WDT_CFG_PERIOD | WDT_CFG_INT_EN |
-				WDT_CFG_FIQ_EN | WDT_CFG_PMC2CAR_RST_EN;
-	writel(val, tegra_wdt->wdt_source + WDT_CFG);
+	writel(tegra_wdt->config, tegra_wdt->wdt_source + WDT_CFG);
 	writel(WDT_CMD_START_COUNTER, tegra_wdt->wdt_source + WDT_CMD);
 
 	set_bit(WDT_ENABLED, &tegra_wdt->status);
@@ -232,7 +229,7 @@ static int disable_wdt_reset_show(void *data, u64 *val)
 {
 	struct tegra_wdt *tegra_wdt = data;
 
-	*val = readl(tegra_wdt->wdt_source + WDT_CFG) &
+	*val = tegra_wdt->config &
 			(WDT_CFG_SYS_RST_EN | WDT_CFG_PMC2CAR_RST_EN)
 			? 0 : 1;
 	return 0;
@@ -241,21 +238,18 @@ static int disable_wdt_reset_show(void *data, u64 *val)
 static int disable_wdt_reset_store(void *data, u64 val)
 {
 	struct tegra_wdt *tegra_wdt = data;
-	u32 cfg;
 
-	cfg = readl(tegra_wdt->wdt_source + WDT_CFG);
+	tegra_wdt->config = readl(tegra_wdt->wdt_source + WDT_CFG);
 	if (val)
-		cfg &= ~(WDT_CFG_SYS_RST_EN | WDT_CFG_PMC2CAR_RST_EN);
+		tegra_wdt->config &= ~(WDT_CFG_SYS_RST_EN | WDT_CFG_PMC2CAR_RST_EN);
 	else
-		cfg |= WDT_CFG_PMC2CAR_RST_EN;
+		tegra_wdt->config |= WDT_CFG_PMC2CAR_RST_EN;
 
-	writel(WDT_UNLOCK_PATTERN, tegra_wdt->wdt_source + WDT_UNLOCK);
-	writel(WDT_CMD_DISABLE_COUNTER, tegra_wdt->wdt_source + WDT_CMD);
-
-	writel(TIMER_PCR_INTR, tegra_wdt->wdt_timer + TIMER_PCR);
-
-	writel(cfg, tegra_wdt->wdt_source + WDT_CFG);
-	writel(WDT_CMD_START_COUNTER, tegra_wdt->wdt_source + WDT_CMD);
+	/* Apply config only if WDT is enabled */
+	if (test_bit(WDT_ENABLED, &tegra_wdt->status)) {
+		__tegra_wdt_disable(tegra_wdt);
+		__tegra_wdt_enable(tegra_wdt);
+	}
 
 	return 0;
 }
@@ -344,12 +338,15 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 		return PTR_ERR(tegra_wdt->wdt_timer);
 	}
 
-	/* tmrsrc will be used to set WDT_CFG */
+	/* Configure timer source */
 	if ((res_wdt->start & 0xff) < 0x50)
-		tegra_wdt->tmrsrc = 1 + (res_wdt->start & 0xf) / 8;
+		tegra_wdt->config = 1 + (res_wdt->start & 0xf) / 8;
 	else
-		tegra_wdt->tmrsrc = ((int) (3 + ((res_wdt->start & 0xff) -
+		tegra_wdt->config = ((int) (3 + ((res_wdt->start & 0xff) -
 							0x50) / 8)) % 10;
+	/* Enable interrupts and reset events by default */
+	tegra_wdt->config |= WDT_CFG_PERIOD | WDT_CFG_INT_EN |
+				WDT_CFG_FIQ_EN | WDT_CFG_PMC2CAR_RST_EN;
 
 	tegra_wdt_disable(&tegra_wdt->wdt);
 	writel(TIMER_PCR_INTR, tegra_wdt->wdt_timer + TIMER_PCR);
