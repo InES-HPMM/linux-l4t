@@ -64,6 +64,15 @@ void __iomem *mc_regs[MC_MAX_CHANNELS];
 int mc_get_carveout_info(struct mc_carveout_info *inf, int *nr,
 			 enum carveout_desc co)
 {
+#define MC_SECURITY_CARVEOUT(carveout, infop)				\
+	do {								\
+		(infop)->desc = co;					\
+		(infop)->base = mc_readl(carveout ## _BOM) |		\
+			((u64)mc_readl(carveout ## _BOM_HI) & 0x3) << 32; \
+		(infop)->size = mc_readl(carveout ## _SIZE_128KB);	\
+		(infop)->size <<= 17; /* Convert to bytes. */		\
+	} while (0)
+
 	if (!mc) {
 		WARN(1, "Reading carveout info before MC init'ed!\n");
 		return 0;
@@ -80,15 +89,14 @@ int mc_get_carveout_info(struct mc_carveout_info *inf, int *nr,
 
 	switch (co) {
 	case MC_SECURITY_CARVEOUT2:
-		inf->desc = co;
-		inf->base = mc_readl(MC_SECURITY_CARVEOUT2_BOM) |
-		      ((u64)mc_readl(MC_SECURITY_CARVEOUT2_BOM_HI) & 0x3) << 32;
-		inf->size = mc_readl(MC_SECURITY_CARVEOUT2_SIZE_128KB);
-		inf->size <<= 17; /* Convert to bytes. */
+#ifdef MC_SECURITY_CARVEOUT2_BOM
+		MC_SECURITY_CARVEOUT(MC_SECURITY_CARVEOUT2, inf);
 		break;
+#else
+		return -ENODEV;
+#endif
 	default:
-		/* Should never happen. */
-		BUG();
+		return -EINVAL;
 	}
 
 	return 0;
