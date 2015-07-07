@@ -176,7 +176,8 @@ void         tegra21_mc_latency_allowance_restore(u32 **pctx);
  * API for reading carveout info.
  */
 enum carveout_desc {
-	MC_SECURITY_CARVEOUT2 = 0,
+	MC_SECURITY_CARVEOUT1 = 0,
+	MC_SECURITY_CARVEOUT2,
 	MC_NR_CARVEOUTS
 };
 

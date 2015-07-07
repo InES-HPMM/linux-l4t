@@ -88,6 +88,13 @@ int mc_get_carveout_info(struct mc_carveout_info *inf, int *nr,
 		return 0;
 
 	switch (co) {
+	case MC_SECURITY_CARVEOUT1:
+#ifdef MC_SECURITY_CARVEOUT1_BOM
+		MC_SECURITY_CARVEOUT(MC_SECURITY_CARVEOUT1, inf);
+		break;
+#else
+		return -ENODEV;
+#endif
 	case MC_SECURITY_CARVEOUT2:
 #ifdef MC_SECURITY_CARVEOUT2_BOM
 		MC_SECURITY_CARVEOUT(MC_SECURITY_CARVEOUT2, inf);
