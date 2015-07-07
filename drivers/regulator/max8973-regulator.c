@@ -522,6 +522,7 @@ static int max8973_thermal_read_temp(void *data, long *temp)
 		*temp = mchip->junction_temp_warning + 1000;
 	else
 		*temp = MAX77621_NORMAL_OPERATING_TEMP;
+
 	return 0;
 }
 
@@ -529,6 +530,7 @@ static irqreturn_t max8973_thermal_irq(int irq, void *data)
 {
 	struct max8973_chip *mchip = data;
 
+	dev_info(mchip->dev, "Junction Temp warning occurred\n");
 	thermal_zone_device_update(mchip->tz_device);
 	return IRQ_HANDLED;
 }
