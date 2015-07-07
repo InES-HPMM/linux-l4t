@@ -2,7 +2,7 @@
  * xHCI host controller driver
  *
  * Copyright (C) 2008 Intel Corp.
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Sarah Sharp
  * Some code borrowed from the Linux EHCI driver.
@@ -3794,6 +3794,10 @@ int xhci_address_device(struct usb_hcd *hcd, struct usb_device *udev)
 		ret = -EINVAL;
 		break;
 	case COMP_TX_ERR:
+#ifdef CONFIG_NV_GAMEPAD_RESET
+		if (hcd->driver && hcd->driver->device_reset)
+			hcd->driver->device_reset();
+#endif
 		dev_warn(&udev->dev, "Device not responding to set address.\n");
 		ret = -EPROTO;
 		break;

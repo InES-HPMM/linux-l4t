@@ -4300,6 +4300,10 @@ static const struct hc_driver tegra_plat_xhci_driver = {
 	.enable_usb3_lpm_timeout =	xhci_enable_usb3_lpm_timeout,
 	.disable_usb3_lpm_timeout =	xhci_disable_usb3_lpm_timeout,
 	.hcd_reinit =	tegra_xhci_hcd_reinit,
+
+#ifdef CONFIG_NV_GAMEPAD_RESET
+	.device_reset =	tegra_loki_gamepad_reset,
+#endif
 };
 
 #ifdef CONFIG_PM
