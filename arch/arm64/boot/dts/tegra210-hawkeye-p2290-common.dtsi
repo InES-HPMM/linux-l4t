@@ -68,7 +68,7 @@
 	firmware {
 		android {
 			compatible = "android,firmware";
-			hardware = "hawkeye";
+			hardware = "he2290";
 		};
 	};
 
