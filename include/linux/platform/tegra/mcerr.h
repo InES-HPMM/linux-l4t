@@ -28,18 +28,6 @@
 
 #include <linux/platform/tegra/mc.h>
 
-/* Pull in chip specific EMC header. */
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
-#include <linux/platform/tegra/mc-regs-t12x.h>
-#define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
-#elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
-#include <linux/platform/tegra/mc-regs-t21x.h>
-#define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI_0
-#elif defined(CONFIG_ARCH_TEGRA_18x_SOC)
-#include <linux/platform/tegra/mc-regs-t18x.h>
-#define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI_0
-#endif
-
 #define MAX_PRINTS			6
 
 /*
