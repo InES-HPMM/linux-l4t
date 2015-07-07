@@ -122,7 +122,6 @@ enum {
 	/* Trusted OS (64-bit) calls */
 	TE_SMC_REGISTER_REQ_BUF		= 0x72000001,
 	TE_SMC_INIT_LOGGER		= 0x72000002,
-	TE_SMC_SS_REGISTER_HANDLER	= 0x72000003,
 	TE_SMC_RESTART			= 0x72000100,
 
 	/* SIP (SOC specific) calls.  */
@@ -233,14 +232,6 @@ void te_close_session(struct te_closesession *cmd,
 void te_launch_operation(struct te_launchop *cmd,
 	struct te_request *request,
 	struct tlk_context *context);
-
-/* defines max space available for secure storage requests */
-#define SS_OP_MAX_DATA_SIZE	0x4000
-
-struct te_ss_op {
-	uint32_t	req_size;
-	uint8_t		data[SS_OP_MAX_DATA_SIZE];
-};
 
 enum ta_event_id {
 	TA_EVENT_RESTORE_KEYS = 0,

@@ -30,8 +30,6 @@
 static DECLARE_COMPLETION(req_ready);
 static DECLARE_COMPLETION(req_complete);
 
-static struct te_ss_op *ss_op_shmem;
-
 static void tlk_ss_reset(void)
 {
 	/* reset completion vars to default state */
@@ -89,7 +87,6 @@ int tlk_ss_op(void)
 
 static int __init tlk_ss_init(void)
 {
-	dma_addr_t ss_op_shmem_dma;
 	int ret;
 
 	/* storage disabled? */
@@ -97,23 +94,6 @@ static int __init tlk_ss_init(void)
 	if (ret) {
 		pr_err("%s: fail (%d)\n", __func__, ret);
 		return ret;
-	}
-
-	/* allocate shared memory buffer */
-	ss_op_shmem = dma_alloc_coherent(NULL, sizeof(struct te_ss_op),
-			&ss_op_shmem_dma, GFP_KERNEL);
-	if (!ss_op_shmem) {
-		pr_err("%s: no memory available for fs operations\n", __func__);
-		return -ENOMEM;
-	}
-
-	ret = send_smc(TE_SMC_SS_REGISTER_HANDLER,
-			(uintptr_t)ss_op_shmem, 0);
-	if (ret != 0) {
-		dma_free_coherent(NULL, sizeof(struct te_ss_op),
-			(void *)ss_op_shmem, ss_op_shmem_dma);
-		ss_op_shmem = NULL;
-		return -ENOTSUPP;
 	}
 
 	return 0;
