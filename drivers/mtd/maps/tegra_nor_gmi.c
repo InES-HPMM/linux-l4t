@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, NVIDIA Corporation.  All rights reserved.
+ * Copyright (C) 2014-2015, NVIDIA Corporation.  All rights reserved.
  *
  * Author:
  * Bharath H S <bhs@nvidia.com>
@@ -774,6 +774,7 @@ static struct tegra_nor_platform_data *tegra_nor_parse_dt(
 	enum of_gpio_flags gpio_flags;
 	u64 phy_addr;
 
+	memset(nor_cs_info, 0, sizeof(nor_cs_info));
 	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
 		dev_err(&pdev->dev, "Memory alloc for pdata failed");
