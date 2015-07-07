@@ -68,6 +68,7 @@ static unsigned int cur_cpupwr_freqcap;
 
 static unsigned int force_cpupwr;
 static unsigned int force_cpupwr_freqcap;
+static u32 disable_driver;
 
 static bool force_policy_max;
 
@@ -652,6 +653,10 @@ static int __init tegra_cpu_debug_init(void)
 				 NULL, &status_fops))
 		goto err_out;
 
+	if (!debugfs_create_bool("disable_driver", S_IRUGO,
+				 cpu_tegra_debugfs_root, &disable_driver))
+		goto err_out;
+
 	return 0;
 
 err_out:
@@ -724,6 +729,9 @@ int tegra_update_cpu_speed(unsigned long rate)
 	unsigned int mode, mode_limit;
 
 	if (!cpu_clk)
+		return -EINVAL;
+
+	if (disable_driver)
 		return -EINVAL;
 
 	freqs.old = tegra_getspeed(0);
