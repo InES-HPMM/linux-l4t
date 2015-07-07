@@ -31,6 +31,10 @@
 
 #include <mach/xusb.h>
 
+#ifdef CONFIG_NV_GAMEPAD_RESET
+extern void gamepad_reset_war(void);
+#endif
+
 #ifdef CONFIG_USB_OTG_WAKELOCK
 extern void otgwl_acquire_temp_lock(void);
 #endif

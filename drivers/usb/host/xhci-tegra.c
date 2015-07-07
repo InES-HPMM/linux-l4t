@@ -4234,6 +4234,18 @@ static int tegra_xhci_hcd_reinit(struct usb_hcd *hcd)
 	return 0;
 }
 
+#ifdef CONFIG_NV_GAMEPAD_RESET
+static void tegra_loki_gamepad_reset(void)
+{
+	struct device_node *np = of_find_node_by_name(NULL, "gamepad-reset");
+
+	if (np) {
+		if (of_device_is_available(np))
+			gamepad_reset_war();
+	}
+}
+#endif
+
 static const struct hc_driver tegra_plat_xhci_driver = {
 	.description =		"tegra-xhci",
 	.product_desc =		"Nvidia xHCI Host Controller",
@@ -5858,5 +5870,9 @@ static void xhci_reinit_work(struct work_struct *work)
 		tegra_xhci_unregister_plat();
 		usleep_range(10, 20);
 		tegra_xhci_register_plat();
+#ifdef CONFIG_NV_GAMEPAD_RESET
+		udelay(10);
+		tegra_loki_gamepad_reset();
+#endif
 	}
 }
