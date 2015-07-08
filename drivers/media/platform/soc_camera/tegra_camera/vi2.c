@@ -448,6 +448,9 @@ static struct vi2_camera_clk vi2_clks_cd[] = {
 		.freq = 102000000,
 		.use_devname = 1,
 	},
+};
+
+static struct vi2_camera_clk vi2_clks_ef[] = {
 	{
 		.name = "cile",
 		.freq = 102000000,
@@ -640,15 +643,27 @@ static int vi2_channel_init(struct vi2_camera *vi2_cam,
 		}
 	else {
 		/* Init and start channel related clocks */
-		if (port == TEGRA_CAMERA_PORT_CSI_A ||
-		    port == TEGRA_CAMERA_PORT_CSI_B) {
+		switch (port) {
+		case TEGRA_CAMERA_PORT_CSI_A:
+		case TEGRA_CAMERA_PORT_CSI_B:
 			chan->clks = vi2_clks_ab;
 			chan->num_clks = ARRAY_SIZE(vi2_clks_ab);
-		} else {
+			break;
+		case TEGRA_CAMERA_PORT_CSI_C:
+		case TEGRA_CAMERA_PORT_CSI_D:
 			chan->clks = vi2_clks_cd;
 			chan->num_clks = ARRAY_SIZE(vi2_clks_cd);
+			break;
+		case TEGRA_CAMERA_PORT_CSI_E:
+		case TEGRA_CAMERA_PORT_CSI_F:
+			chan->clks = vi2_clks_ef;
+			chan->num_clks = ARRAY_SIZE(vi2_clks_ef);
+			break;
+		default:
+			return -EINVAL;
 		}
 	}
+
 	vi2_clock_start(vi2_cam, chan->clks, chan->num_clks);
 
 	tegra_io_dpd_disable(chan->dpd);
