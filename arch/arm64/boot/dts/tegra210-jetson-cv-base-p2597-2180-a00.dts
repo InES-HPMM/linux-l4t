@@ -634,6 +634,9 @@
 		Tdiode_tegra {
 			status = "okay";
 		};
+		AO-therm {
+			status = "okay";
+		};
 	};
 
 	bcmdhd_wlan {
