@@ -9585,6 +9585,7 @@ static struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("override.emc", "override.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_OVERRIDE, 0, 0),
 	SHARED_EMC_CLK("vic.emc",	"tegra_vic03",	"emc",  &tegra_clk_emc, NULL, 0, 0, 0, TEGRA210_CLK_ID_EMC_VIC_USER),
 	SHARED_EMC_CLK("vic_shared.emc",	"tegra_vic03",	"emc_shared",  &tegra_clk_emc, NULL, 0, SHARED_BW, 0, TEGRA210_CLK_ID_EMC_VIC_SHARED_USER),
+	SHARED_EMC_CLK("battery.emc",	"battery_edp",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_CEILING, 0, 0),
 	SHARED_EMC_CLK("ape.emc", "ape", "emc",  &tegra_clk_emc, NULL, 0, 0, 0, TEGRA210_CLK_ID_EMC_APE_USER),
 	SHARED_EMC_CLK("pcie.emc", "tegra_pcie", "emc",  &tegra_clk_emc, NULL, 0, 0, 0, TEGRA210_CLK_ID_EMC_PCIE_USER),
 
@@ -9611,6 +9612,7 @@ static struct clk tegra_list_clks[] = {
 	SHARED_CLK("gm20b.gbus",	"tegra_gpu.0",		"gpu",	&tegra_clk_gbus, NULL,  0, 0, TEGRA210_CLK_ID_GBUS_GM20B_USER),
 	SHARED_LIMIT("cap.gbus",	"cap.gbus",		NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING, 0),
 	SHARED_LIMIT("edp.gbus",	"edp.gbus",		NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING, 0),
+	SHARED_LIMIT("battery.gbus",	"battery_edp",		"gpu",	&tegra_clk_gbus, NULL,  0, SHARED_CEILING, 0),
 	SHARED_LIMIT("cap.vgpu.gbus",	"cap.vgpu.gbus",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING, 0),
 	SHARED_LIMIT("cap.throttle.gbus", "cap_throttle",	NULL,	&tegra_clk_gbus, NULL,  0, SHARED_CEILING, 0),
 	SHARED_LIMIT("cap.profile.gbus", "profile.gbus",	"cap",	&tegra_clk_gbus, NULL,  0, SHARED_CEILING, 0),
