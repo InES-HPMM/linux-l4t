@@ -1197,6 +1197,7 @@
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
 				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
 				nvidia,dsi-refresh-rate = <75>;
+				nvidia,bl-name = "pwm-backlight";	/*backlight used with this panel*/
 				disp-default-out {
 					nvidia,out-rotation = <180>;
 				};
