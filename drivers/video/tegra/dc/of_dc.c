@@ -2508,6 +2508,11 @@ struct tegra_dc_platform_data
 		}
 	}
 
+	/*Parse the backlight name used for this panel*/
+	if (!of_property_read_string(np_target_disp, "nvidia,bl-name",
+		(const char **)&pdata->bl_name))
+		OF_DC_LOG("nvidia,bl-device-name %s\n", pdata->bl_name);
+
 #ifdef CONFIG_TEGRA_DC_CMU
 	cmu_np = of_get_child_by_name(np_target_disp,
 		"cmu");

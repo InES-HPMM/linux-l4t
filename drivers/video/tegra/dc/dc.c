@@ -551,6 +551,17 @@ void tegra_dc_release_dc_out(struct tegra_dc *dc)
 	}
 }
 
+static void tegra_dc_disable_bl(struct tegra_dc *dc)
+{
+	struct backlight_device *bd =
+		get_backlight_device_by_name(dc->pdata->bl_name);
+	if (!bd)
+		return;
+	bd->props.brightness = 0;
+	backlight_update_status(bd);
+	return;
+}
+
 #define DUMP_REG(a) do {			\
 	snprintf(buff, sizeof(buff), "%-32s\t%03x\t%08lx\n",  \
 		 #a, a, tegra_dc_readl(dc, a));		      \
@@ -3884,6 +3895,8 @@ static void _tegra_dc_controller_disable(struct tegra_dc *dc)
 
 	if (dc->out && dc->out->prepoweroff)
 		dc->out->prepoweroff();
+
+	tegra_dc_disable_bl(dc);
 
 	if (dc->out_ops && dc->out_ops->vrr_enable) {
 		dc->out_ops->vrr_enable(dc, 0);

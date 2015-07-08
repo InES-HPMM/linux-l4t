@@ -962,7 +962,7 @@ struct tegra_dc_platform_data {
 	struct tegra_dc_out	*default_out;
 	struct tegra_fb_data	*fb;
 	unsigned long		low_v_win;
-
+	char			*bl_name;
 #ifdef CONFIG_TEGRA_DC_CMU
 	bool			cmu_enable;
 	struct tegra_dc_cmu	*cmu;
