@@ -3590,7 +3590,7 @@ static void select_pll_e_input(struct clk *c)
 	p = c->inputs[0].input;
 #endif
 	if (p != c->parent)
-		clk_prepare_enable(p);
+		tegra_clk_prepare_enable(p);
 
 	pll_writel_delay(aux_reg, PLLE_AUX);
 
