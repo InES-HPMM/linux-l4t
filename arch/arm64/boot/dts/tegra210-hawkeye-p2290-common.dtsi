@@ -459,6 +459,7 @@
 		nvidia,fast-path-latency-ms = <25>;
 		nvidia,fast-path-min-cpu-rate = <1000000>;
 		nvidia,fast-path-min-cpu-core = <1>;
+		nvidia,digital-mic-data-input = "pdm0_di";
 		edp-consumer-name = "codec+speaker";
 
 		nvidia,audio-routing =
