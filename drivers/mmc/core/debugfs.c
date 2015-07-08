@@ -200,7 +200,6 @@ static int mmc_clock_opt_set(void *data, u64 val)
 	/* We need this check due to input value is u64 */
 	if (val > host->f_max)
 		return -EINVAL;
-
 	mmc_claim_host(host);
 	mmc_set_clock(host, (unsigned int) val);
 	mmc_release_host(host);
@@ -376,6 +375,7 @@ static int mmc_speed_opt_get(void *data, u64 *val)
 		[UHS_SDR50_BUS_SPEED] = "SDR50 ",
 		[UHS_SDR104_BUS_SPEED] = "SDR104 ",
 		[UHS_DDR50_BUS_SPEED] = "DDR50 ",
+		[UHS_HS400_BUS_SPEED] = "HS400",
 	};
 	const char *str = "";
 	*val = 0;
@@ -387,19 +387,24 @@ static int mmc_speed_opt_get(void *data, u64 *val)
 		(host->card->sd_bus_speed < ARRAY_SIZE(uhs_speeds))) {
 		str = uhs_speeds[host->card->sd_bus_speed];
 		*val = host->card->sd_bus_speed;
-	} else if (mmc_card_highspeed(host->card)) {
+	} else if (host->ios.timing == MMC_TIMING_MMC_HS) {
 		str = "high speed";
-	} else if (mmc_card_hs200(host->card)) {
+	} else if (host->ios.timing == MMC_TIMING_MMC_HS200) {
 		str = "HS200";
 		*val = UHS_SDR104_BUS_SPEED;
-	} else if (mmc_card_ddr_mode(host->card)) {
+	} else if (host->ios.timing == MMC_TIMING_UHS_DDR50) {
 		str = "DDR50";
 		*val = UHS_DDR50_BUS_SPEED;
+	} else if (host->ios.timing == MMC_TIMING_MMC_HS400) {
+		if (mmc_card_hs533(host->card))
+			str = "HS533";
+		else
+			str = "HS400";
+		*val = UHS_HS400_BUS_SPEED;
 	}
 
 	pr_info("%s: current speed %s\n",
-			mmc_hostname(host->card->host),
-			str);
+			mmc_hostname(host->card->host), str);
 	return 0;
 }
 
