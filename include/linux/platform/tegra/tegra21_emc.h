@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra21_emc.h
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,7 +48,10 @@
 #define ACTIVE_EN	(1 << 5)
 #define PRAMP_UP	(1 << 6)
 #define PRAMP_DN	(1 << 7)
-#define EMC_REGISTERS	(1 << 28)
+#define EMA_WRITES	(1 << 10)
+#define EMA_UPDATES	(1 << 11)
+#define PER_TRAIN	(1 << 16)
+#define CC_PRINT	(1 << 17)
 #define CCFIFO		(1 << 29)
 #define REGS		(1 << 30)
 #define REG_LISTS	(1 << 31)
@@ -610,6 +613,30 @@ void __emc_copy_table_params(struct tegra21_emc_table *src,
 void set_over_temp_timing(struct tegra21_emc_table *next_timing,
 			  unsigned long state);
 
+/*
+ * Only share these functions between the V21015 and V21021 sequences. Those
+ * specific C files declare these defines before including tegra_emc.h.
+ */
+#if defined(__TEGRA_EMC_V21015) || defined(__TEGRA_EMC_V21021)
+u32 actual_osc_clocks(u32 in);
+void __reset_dram_clktree_values(struct tegra21_emc_table *table);
+u32 apply_periodic_compensation_trimmer(
+		struct tegra21_emc_table *next_timing, u32 offset);
+void __update_emc_alt_timing(struct tegra21_emc_table *current_timing);
+void start_periodic_compensation(void);
+u32 do_dvfs_power_ramp_down(u32 clk, int flip_backward,
+			    struct tegra21_emc_table *last_timing,
+			    struct tegra21_emc_table *next_timing);
+u32 do_dvfs_power_ramp_up(u32 clk, int flip_backward,
+			  struct tegra21_emc_table *last_timing,
+			  struct tegra21_emc_table *next_timing);
+void change_dll_src(struct tegra21_emc_table *next_timing, u32 clksrc);
+u32 dll_prelock(struct tegra21_emc_table *next_timing,
+		int dvfs_with_training, u32 clksrc);
+void dll_disable(int channel_mode);
+void dll_enable(int channel_mode);
+#endif
+
 extern int ccfifo_index;
 extern void __iomem *emc_base;
 extern void __iomem *emc1_base;
@@ -641,11 +668,17 @@ void emc_set_clock_r21012(struct tegra21_emc_table *next_timing,
 void emc_set_clock_r21015(struct tegra21_emc_table *next_timing,
 			  struct tegra21_emc_table *last_timing,
 			  int training, u32 clksrc);
+void emc_set_clock_r21021(struct tegra21_emc_table *next_timing,
+			  struct tegra21_emc_table *last_timing,
+			  int training, u32 clksrc);
 u32  __do_periodic_emc_compensation_r21015(
+			  struct tegra21_emc_table *current_timing);
+u32  __do_periodic_emc_compensation_r21021(
 			  struct tegra21_emc_table *current_timing);
 
 #define EMC_COPY_TABLE_PARAM_PERIODIC_FIELDS	0x1
 #define EMC_COPY_TABLE_PARAM_TRIM_REGS		0x2
+#define EMC_COPY_TABLE_PARAM_PTFV_FIELDS	0x3
 
 enum {
 	DLL_CHANGE_NONE = 0,
@@ -708,6 +741,35 @@ enum {
 	EMC_CFG5_QUSE_MODE_DIRECT_QUSE,
 };
 
+enum {
+	DVFS_SEQUENCE = 1,
+	WRITE_TRAINING_SEQUENCE = 2,
+	PERIODIC_TRAINING_SEQUENCE = 3,
+	DVFS_PT1 = 10,
+	DVFS_UPDATE = 11,
+	TRAINING_PT1 = 12,
+	TRAINING_UPDATE = 13,
+	PERIODIC_TRAINING_UPDATE = 14
+};
+
+/*
+ * PTFV defines - basically just indexes into the per table PTFV array.
+ */
+#define PTFV_DQSOSC_MOVAVG_C0D0U0_INDEX		0
+#define PTFV_DQSOSC_MOVAVG_C0D0U1_INDEX		1
+#define PTFV_DQSOSC_MOVAVG_C0D1U0_INDEX		2
+#define PTFV_DQSOSC_MOVAVG_C0D1U1_INDEX		3
+#define PTFV_DQSOSC_MOVAVG_C1D0U0_INDEX		4
+#define PTFV_DQSOSC_MOVAVG_C1D0U1_INDEX		5
+#define PTFV_DQSOSC_MOVAVG_C1D1U0_INDEX		6
+#define PTFV_DQSOSC_MOVAVG_C1D1U1_INDEX		7
+#define PTFV_DVFS_SAMPLES_INDEX			9
+#define PTFV_MOVAVG_WEIGHT_INDEX		10
+#define PTFV_CONFIG_CTRL_INDEX			11
+
+#define PTFV_CONFIG_CTRL_USE_PREVIOUS_EMA	(1 << 0)
+
+/* Registers and fields. */
 #define EMC_INTSTATUS                                           0x0
 #define EMC_INTSTATUS_MRR_DIVLD					(0x1 << 5)
 #define EMC_INTSTATUS_CLKCHANGE_COMPLETE			(0x1 << 4)

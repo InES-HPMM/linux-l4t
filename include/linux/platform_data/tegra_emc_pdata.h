@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 Google, Inc.
- * Copyright (C) 2012-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2012-2015 NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -155,6 +155,7 @@ struct tegra12_emc_pdata {
 	struct tegra12_emc_table *tables_derated;
 };
 
+#define PTFV_SIZE			12
 #define TEGRA21_MAX_TABLE_ID_LEN	50
 #define TEGRA21_EMC_BURST_REGS		221
 #define TEGRA21_EMC_BURST_PER_CH_REGS	8
@@ -216,6 +217,12 @@ struct tegra21_emc_table {
 	int  vref_regs_num;
 	int  training_mod_regs_num;
 	int  dram_timing_regs_num;
+
+	/*
+	 * Periodic Training Filter Variables - smooths out noise in the
+	 * training results.
+	 */
+	u32  ptfv_list[PTFV_SIZE];
 
 	u32  burst_regs[TEGRA21_EMC_BURST_REGS];
 	u32  burst_regs_per_ch[TEGRA21_EMC_BURST_PER_CH_REGS];

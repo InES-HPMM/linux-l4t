@@ -19,6 +19,7 @@ obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += mcerr-t21.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += tegra21_emc.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += tegra21_emc_cc_r21012.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += tegra21_emc_cc_r21015.o
+obj-$(CONFIG_ARCH_TEGRA_21x_SOC)        += tegra21_emc_cc_r21021.o
 
 # Latency allowance
 obj-y                                   += latency_allowance.o

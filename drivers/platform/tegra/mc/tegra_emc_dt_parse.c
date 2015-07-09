@@ -249,6 +249,11 @@ skip_periodic_training_params:
 			PNE_U32(iter, "nvidia,clk-out-enb-x-0-clk-enb-emc-dll",
 				clk_out_enb_x_0_clk_enb_emc_dll);
 
+			if (tables[i].rev >= 0x7)
+				PNE_U32_ARRAY(iter, "nvidia,ptfv",
+					      tables[i].ptfv_list,
+					      PTFV_SIZE);
+
 			PNE_U32_ARRAY(iter, "nvidia,emc-burst-regs-per-ch",
 				      tables[i].burst_regs_per_ch,
 				      tables[i].burst_regs_per_ch_num);
