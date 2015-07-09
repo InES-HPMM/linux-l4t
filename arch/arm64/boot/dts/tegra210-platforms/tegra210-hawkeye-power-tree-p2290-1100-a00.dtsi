@@ -144,8 +144,7 @@
 		dvdd-supply = <&max77620_sd3>;
 	};
 
-	power-detect {
-		compatible = "nvidia,tegra210-pmc-iopower";
+	pmc-iopower {
 		iopower-sys-supply = <&max77620_sd3>;
 		iopower-uart-supply = <&max77620_sd3>;
 		iopower-audio-supply = <&max77620_sd3>;
