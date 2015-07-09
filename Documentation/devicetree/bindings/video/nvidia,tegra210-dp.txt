@@ -47,7 +47,10 @@ NVIDIA TEGRA210 DisplayPort
  - nvidia,out-yres: Visible resolution for height.
  Optional properties:
  - is_ext_dp_panel: Specifies whether this is an external panel or an eDP panel.
- - nvidia,link-bw: Specifies the preferred link bandwidth to use for main DP link.
+ - nvidia,enable-fast-lt-pdata: Determines whether DP driver will attempt fast LT with
+   the precalibrated settings listed under the dp-lt-settings node.
+ - nvidia,lanes: Specifies the max lane count to use for main DP link.
+ - nvidia,link-bw: Specifies the max link bandwidth to use for main DP link.
 
  1.B) the dp-lt-settings node:
  The dp-lt-settings node holds link training settings for dp.
@@ -66,8 +69,7 @@ NVIDIA TEGRA210 DisplayPort
    POST_CURSOR2_L1, POST_CURSOR2_L2, or POST_CURSOR2_L3.
  Optional properties:
  - nvidia,tx-pu: Specifies TX_PU value.
- - nvidia,load-adj: Specifies LOADADJ value. Can be 0x3, 0x4, or 0x6.
-
+ - nvidia,load-adj: Specifies LOADADJ value.
 
 Example
 

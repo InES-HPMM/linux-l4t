@@ -1191,9 +1191,10 @@ struct tegra_dc_dp_lt_settings {
 struct tegra_dp_out {
 	struct tegra_dc_dp_lt_settings *lt_settings;
 	int n_lt_settings;
+	bool enable_fast_lt_pdata;
 	bool tx_pu_disable;
-	int lanes;
-	u8 link_bw;
+	int max_n_lanes;
+	u8 max_link_bw;
 };
 
 #ifdef CONFIG_PM_SLEEP

@@ -230,6 +230,103 @@ static void get_lt_new_config(struct tegra_dp_lt_data *lt_data)
 			cnt, vs[cnt], pe[cnt], pc_supported ? pc[cnt] : 0);
 }
 
+static int tegra_dp_set_link_bandwidth(struct tegra_dc_dp_data *dp, u8 link_bw)
+{
+	tegra_dc_sor_set_link_bandwidth(dp->sor, link_bw);
+
+	/* Sink side */
+	return tegra_dc_dp_dpcd_write(dp, NV_DPCD_LINK_BANDWIDTH_SET, link_bw);
+}
+
+static int tegra_dp_set_lane_count(struct tegra_dc_dp_data *dp, u8 lane_cnt)
+{
+	int ret;
+
+	tegra_sor_power_lanes(dp->sor, lane_cnt, true);
+
+	CHECK_RET(tegra_dp_dpcd_write_field(dp, NV_DPCD_LANE_COUNT_SET,
+				NV_DPCD_LANE_COUNT_SET_MASK,
+				lane_cnt));
+
+	return 0;
+}
+
+static void tegra_dp_link_cal(struct tegra_dc_dp_data *dp)
+{
+	struct tegra_dc_sor_data *sor = dp->sor;
+	struct tegra_dc_dp_link_config *cfg = &dp->link_cfg;
+	u32 load_adj = dp->lt_data.load_adj;
+
+	if (load_adj == UINT_MAX)
+		switch (cfg->link_bw) {
+		case SOR_LINK_SPEED_G1_62:
+			load_adj = 0x3;
+			break;
+		case SOR_LINK_SPEED_G2_7:
+			load_adj = 0x4;
+			break;
+		case SOR_LINK_SPEED_G5_4:
+			load_adj = 0x6;
+			break;
+		default:
+			BUG();
+		}
+
+	tegra_sor_write_field(sor, NV_SOR_PLL1,
+			NV_SOR_PLL1_LOADADJ_DEFAULT_MASK,
+			load_adj << NV_SOR_PLL1_LOADADJ_SHIFT);
+}
+
+static void tegra_dp_tu_config(struct tegra_dc_dp_data *dp,
+				const struct tegra_dc_dp_link_config *cfg)
+{
+	struct tegra_dc_sor_data *sor = dp->sor;
+	u32 reg_val;
+
+	tegra_sor_write_field(sor, NV_SOR_DP_LINKCTL(sor->portnum),
+			NV_SOR_DP_LINKCTL_TUSIZE_MASK,
+			(cfg->tu_size << NV_SOR_DP_LINKCTL_TUSIZE_SHIFT));
+
+	tegra_sor_write_field(sor, NV_SOR_DP_CONFIG(sor->portnum),
+				NV_SOR_DP_CONFIG_WATERMARK_MASK,
+				cfg->watermark);
+
+	tegra_sor_write_field(sor, NV_SOR_DP_CONFIG(sor->portnum),
+				NV_SOR_DP_CONFIG_ACTIVESYM_COUNT_MASK,
+				(cfg->active_count <<
+				NV_SOR_DP_CONFIG_ACTIVESYM_COUNT_SHIFT));
+
+	tegra_sor_write_field(sor, NV_SOR_DP_CONFIG(sor->portnum),
+				NV_SOR_DP_CONFIG_ACTIVESYM_FRAC_MASK,
+				(cfg->active_frac <<
+				NV_SOR_DP_CONFIG_ACTIVESYM_FRAC_SHIFT));
+
+	reg_val = cfg->activepolarity ?
+		NV_SOR_DP_CONFIG_ACTIVESYM_POLARITY_POSITIVE :
+		NV_SOR_DP_CONFIG_ACTIVESYM_POLARITY_NEGATIVE;
+	tegra_sor_write_field(sor, NV_SOR_DP_CONFIG(sor->portnum),
+				NV_SOR_DP_CONFIG_ACTIVESYM_POLARITY_POSITIVE,
+				reg_val);
+
+	tegra_sor_write_field(sor, NV_SOR_DP_CONFIG(sor->portnum),
+				NV_SOR_DP_CONFIG_ACTIVESYM_CNTL_ENABLE,
+				NV_SOR_DP_CONFIG_ACTIVESYM_CNTL_ENABLE);
+
+	tegra_sor_write_field(sor, NV_SOR_DP_CONFIG(sor->portnum),
+				NV_SOR_DP_CONFIG_RD_RESET_VAL_NEGATIVE,
+				NV_SOR_DP_CONFIG_RD_RESET_VAL_NEGATIVE);
+}
+
+void tegra_dp_update_link_config(struct tegra_dc_dp_data *dp)
+{
+	struct tegra_dc_dp_link_config *cfg = &dp->link_cfg;
+
+	tegra_dp_set_link_bandwidth(dp, cfg->link_bw);
+	tegra_dp_set_lane_count(dp, cfg->lane_count);
+	tegra_dp_link_cal(dp);
+	tegra_dp_tu_config(dp, cfg);
+}
+
 static void set_tx_pu(struct tegra_dp_lt_data *lt_data)
 {
 	struct tegra_dc_dp_data *dp = lt_data->dp;
@@ -250,21 +347,24 @@ static void set_tx_pu(struct tegra_dp_lt_data *lt_data)
 		return;
 	}
 
-	for (; cnt < n_lanes; cnt++) {
-		max_tx_pu = (max_tx_pu <
-			tegra_dp_tx_pu[pc[cnt]][vs[cnt]][pe[cnt]]) ?
-			tegra_dp_tx_pu[pc[cnt]][vs[cnt]][pe[cnt]] :
-			max_tx_pu;
+	if (lt_data->tx_pu == UINT_MAX) {
+		for (; cnt < n_lanes; cnt++) {
+			max_tx_pu = (max_tx_pu <
+				tegra_dp_tx_pu[pc[cnt]][vs[cnt]][pe[cnt]]) ?
+				tegra_dp_tx_pu[pc[cnt]][vs[cnt]][pe[cnt]] :
+				max_tx_pu;
+		}
+
+		lt_data->tx_pu = max_tx_pu;
 	}
 
-	lt_data->tx_pu = max_tx_pu;
 	tegra_sor_write_field(sor, NV_SOR_DP_PADCTL(sor->portnum),
 				NV_SOR_DP_PADCTL_TX_PU_VALUE_DEFAULT_MASK,
-				(max_tx_pu <<
+				(lt_data->tx_pu <<
 				NV_SOR_DP_PADCTL_TX_PU_VALUE_SHIFT |
 				NV_SOR_DP_PADCTL_TX_PU_ENABLE));
 
-	pr_info("dp lt: tx_pu: 0x%x\n", max_tx_pu);
+	pr_info("dp lt: tx_pu: 0x%x\n", lt_data->tx_pu);
 }
 
 /*
@@ -409,13 +509,12 @@ static int do_fast_lt_no_handshake(struct tegra_dp_lt_data *lt_data)
 	return 0;
 }
 
-__maybe_unused
 static int do_fast_lt_handshake(struct tegra_dp_lt_data *lt_data)
 {
 	bool cr_done;
 	bool lt_done;
 
-	BUG_ON(!lt_data->lt_config_valid);
+	set_lt_config(lt_data);
 
 	set_lt_tpg(lt_data, TRAINING_PATTERN_1);
 
@@ -446,7 +545,8 @@ static void lt_data_sw_reset(struct tegra_dp_lt_data *lt_data)
 	lt_data->lt_config_valid = false;
 	lt_data->cr_retry = 0;
 	lt_data->ce_retry = 0;
-	lt_data->tx_pu = 0;
+	lt_data->tx_pu = UINT_MAX;
+	lt_data->load_adj = UINT_MAX;
 	lt_data->n_lanes = dp->link_cfg.lane_count;
 	lt_data->link_bw = dp->link_cfg.link_bw;
 	lt_data->no_aux_handshake = dp->link_cfg.support_fast_lt;
@@ -479,6 +579,52 @@ static void lt_data_reset(struct tegra_dp_lt_data *lt_data)
 		tegra_dp_update_link_config(dp);
 	}
 }
+
+static void get_lt_config_from_dt(struct tegra_dp_lt_data *lt_data,
+	struct tegra_dc_dp_lt_settings *lt)
+{
+	struct tegra_dc_dp_data *dp = lt_data->dp;
+	size_t copy_bytes = sizeof(lt->post_cursor[0]) * 4;
+
+	mutex_lock(&lt_data->lock);
+
+	lt_data_reset(lt_data);
+	lt_data->tx_pu = lt->tx_pu;
+	lt_data->load_adj = lt->load_adj;
+	tegra_dp_link_cal(dp);
+
+	memcpy(lt_data->pre_emphasis, lt->lane_preemphasis,
+		copy_bytes);
+	memcpy(lt_data->drive_current, lt->drive_current,
+		copy_bytes);
+	memcpy(lt_data->post_cursor2, lt->post_cursor,
+		copy_bytes);
+
+	mutex_unlock(&lt_data->lock);
+}
+
+static int do_fast_lt_with_pdata(struct tegra_dp_lt_data *lt_data)
+{
+	struct tegra_dc_dp_data *dp = lt_data->dp;
+	struct tegra_dp_out *dp_pdata = dp->pdata;
+	struct tegra_dc_dp_link_config *cfg = &dp->link_cfg;
+	size_t cnt = 0;
+	bool fast_lt_passed = false;
+
+	for (; cnt < dp_pdata->n_lt_settings && !fast_lt_passed; cnt++) {
+		get_lt_config_from_dt(lt_data, &dp_pdata->lt_settings[cnt]);
+		if (do_fast_lt_handshake(lt_data) != -EINVAL)
+			fast_lt_passed = true;
+	}
+
+	if (!fast_lt_passed) {
+		*cfg = dp->max_link_cfg;
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 
 static void set_lt_tpg(struct tegra_dp_lt_data *lt_data, u32 tp)
 {
@@ -568,7 +714,8 @@ static void lt_reset_state(struct tegra_dp_lt_data *lt_data)
 	tegra_dc_sor_detach(sor);
 	mutex_unlock(&lt_data->lock);
 
-	if (lt_data->lt_config_valid && lt_data->no_aux_handshake) {
+	if ((lt_data->lt_config_valid && lt_data->no_aux_handshake) ||
+		(dp->pdata && dp->pdata->enable_fast_lt_pdata)) {
 		tgt_state = STATE_FAST_LT;
 		timeout = 0;
 	} else {
@@ -604,7 +751,8 @@ static void fast_lt_state(struct tegra_dp_lt_data *lt_data)
 	dp = lt_data->dp;
 	sor = dp->sor;
 
-	BUG_ON(!lt_data->no_aux_handshake);
+	BUG_ON(!lt_data->no_aux_handshake &&
+		(dp->pdata && !dp->pdata->enable_fast_lt_pdata));
 
 	cur_hpd = tegra_dc_hpd(dp->dc);
 	if (!cur_hpd) {
@@ -616,11 +764,19 @@ static void fast_lt_state(struct tegra_dp_lt_data *lt_data)
 		goto done;
 	}
 
-	do_fast_lt_no_handshake(lt_data);
+	if (lt_data->no_aux_handshake)
+		do_fast_lt_no_handshake(lt_data);
+	else
+		do_fast_lt_with_pdata(lt_data);
+
 	lt_status = get_lt_status(lt_data);
 	if (lt_status) {
 		lt_passed(lt_data);
 		tgt_state = STATE_DONE_PASS;
+		timeout = -1;
+	} else if (!lt_data->no_aux_handshake) {
+		lt_failed(lt_data);
+		tgt_state = STATE_DONE_FAIL;
 		timeout = -1;
 	} else {
 		lt_data_reset(lt_data);

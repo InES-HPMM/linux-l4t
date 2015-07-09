@@ -716,7 +716,7 @@ int tegra_dc_dp_dpcd_write(struct tegra_dc_dp_data *dp, u32 cmd,
 	return ret;
 }
 
-static inline int tegra_dp_dpcd_write_field(struct tegra_dc_dp_data *dp,
+int tegra_dp_dpcd_write_field(struct tegra_dc_dp_data *dp,
 					u32 cmd, u8 mask, u8 data)
 {
 	u8 dpcd_data;
@@ -1297,9 +1297,9 @@ static int tegra_dp_init_max_link_cfg(struct tegra_dc_dp_data *dp,
 			&dpcd_data));
 
 		cfg->max_lane_count = dpcd_data & NV_DPCD_MAX_LANE_COUNT_MASK;
-		if (dp->pdata && dp->pdata->lanes &&
-			dp->pdata->lanes < cfg->max_lane_count)
-			cfg->max_lane_count = dp->pdata->lanes;
+		if (dp->pdata && dp->pdata->max_n_lanes &&
+			dp->pdata->max_n_lanes < cfg->max_lane_count)
+			cfg->max_lane_count = dp->pdata->max_n_lanes;
 
 		cfg->tps3_supported =
 		(dpcd_data & NV_DPCD_MAX_LANE_COUNT_TPS3_SUPPORTED_YES) ?
@@ -1324,9 +1324,9 @@ static int tegra_dp_init_max_link_cfg(struct tegra_dc_dp_data *dp,
 
 		CHECK_RET(tegra_dc_dp_dpcd_read(dp, NV_DPCD_MAX_LINK_BANDWIDTH,
 			&cfg->max_link_bw));
-		if (dp->pdata && dp->pdata->link_bw &&
-			dp->pdata->link_bw < cfg->max_link_bw)
-			cfg->max_link_bw = dp->pdata->link_bw;
+		if (dp->pdata && dp->pdata->max_link_bw &&
+			dp->pdata->max_link_bw < cfg->max_link_bw)
+			cfg->max_link_bw = dp->pdata->max_link_bw;
 
 		CHECK_RET(tegra_dc_dp_dpcd_read(dp, NV_DPCD_EDP_CONFIG_CAP,
 			&dpcd_data));
@@ -1372,15 +1372,6 @@ static int tegra_dc_dp_set_assr(struct tegra_dc_dp_data *dp, bool ena)
 	return 0;
 }
 
-
-static int tegra_dp_set_link_bandwidth(struct tegra_dc_dp_data *dp, u8 link_bw)
-{
-	tegra_dc_sor_set_link_bandwidth(dp->sor, link_bw);
-
-	/* Sink side */
-	return tegra_dc_dp_dpcd_write(dp, NV_DPCD_LINK_BANDWIDTH_SET, link_bw);
-}
-
 static int tegra_dp_set_enhanced_framing(struct tegra_dc_dp_data *dp,
 						bool enable)
 {
@@ -1398,44 +1389,6 @@ static int tegra_dp_set_enhanced_framing(struct tegra_dc_dp_data *dp,
 	}
 
 	return 0;
-}
-
-static int tegra_dp_set_lane_count(struct tegra_dc_dp_data *dp, u8 lane_cnt)
-{
-	int ret;
-
-	tegra_sor_power_lanes(dp->sor, lane_cnt, true);
-
-	CHECK_RET(tegra_dp_dpcd_write_field(dp, NV_DPCD_LANE_COUNT_SET,
-				NV_DPCD_LANE_COUNT_SET_MASK,
-				lane_cnt));
-
-	return 0;
-}
-
-static void tegra_dp_link_cal(struct tegra_dc_dp_data *dp)
-{
-	struct tegra_dc_sor_data *sor = dp->sor;
-	struct tegra_dc_dp_link_config *cfg = &dp->link_cfg;
-	u32 load_adj;
-
-	switch (cfg->link_bw) {
-	case SOR_LINK_SPEED_G1_62:
-		load_adj = 0x3;
-		break;
-	case SOR_LINK_SPEED_G2_7:
-		load_adj = 0x4;
-		break;
-	case SOR_LINK_SPEED_G5_4:
-		load_adj = 0x6;
-		break;
-	default:
-		BUG();
-	}
-
-	tegra_sor_write_field(sor, NV_SOR_PLL1,
-			NV_SOR_PLL1_LOADADJ_DEFAULT_MASK,
-			load_adj << NV_SOR_PLL1_LOADADJ_SHIFT);
 }
 
 static void tegra_dp_irq_evt_worker(struct work_struct *work)
@@ -1884,56 +1837,6 @@ void tegra_dp_tpg(struct tegra_dc_dp_data *dp, u32 tp, u32 n_lanes)
 	tegra_sor_tpg(dp->sor, tp, n_lanes);
 }
 
-static void tegra_dp_tu_config(struct tegra_dc_dp_data *dp,
-				const struct tegra_dc_dp_link_config *cfg)
-{
-	struct tegra_dc_sor_data *sor = dp->sor;
-	u32 reg_val;
-
-	tegra_sor_write_field(sor, NV_SOR_DP_LINKCTL(sor->portnum),
-			NV_SOR_DP_LINKCTL_TUSIZE_MASK,
-			(cfg->tu_size << NV_SOR_DP_LINKCTL_TUSIZE_SHIFT));
-
-	tegra_sor_write_field(sor, NV_SOR_DP_CONFIG(sor->portnum),
-				NV_SOR_DP_CONFIG_WATERMARK_MASK,
-				cfg->watermark);
-
-	tegra_sor_write_field(sor, NV_SOR_DP_CONFIG(sor->portnum),
-				NV_SOR_DP_CONFIG_ACTIVESYM_COUNT_MASK,
-				(cfg->active_count <<
-				NV_SOR_DP_CONFIG_ACTIVESYM_COUNT_SHIFT));
-
-	tegra_sor_write_field(sor, NV_SOR_DP_CONFIG(sor->portnum),
-				NV_SOR_DP_CONFIG_ACTIVESYM_FRAC_MASK,
-				(cfg->active_frac <<
-				NV_SOR_DP_CONFIG_ACTIVESYM_FRAC_SHIFT));
-
-	reg_val = cfg->activepolarity ?
-		NV_SOR_DP_CONFIG_ACTIVESYM_POLARITY_POSITIVE :
-		NV_SOR_DP_CONFIG_ACTIVESYM_POLARITY_NEGATIVE;
-	tegra_sor_write_field(sor, NV_SOR_DP_CONFIG(sor->portnum),
-				NV_SOR_DP_CONFIG_ACTIVESYM_POLARITY_POSITIVE,
-				reg_val);
-
-	tegra_sor_write_field(sor, NV_SOR_DP_CONFIG(sor->portnum),
-				NV_SOR_DP_CONFIG_ACTIVESYM_CNTL_ENABLE,
-				NV_SOR_DP_CONFIG_ACTIVESYM_CNTL_ENABLE);
-
-	tegra_sor_write_field(sor, NV_SOR_DP_CONFIG(sor->portnum),
-				NV_SOR_DP_CONFIG_RD_RESET_VAL_NEGATIVE,
-				NV_SOR_DP_CONFIG_RD_RESET_VAL_NEGATIVE);
-}
-
-void tegra_dp_update_link_config(struct tegra_dc_dp_data *dp)
-{
-	struct tegra_dc_dp_link_config *cfg = &dp->link_cfg;
-
-	tegra_dp_set_link_bandwidth(dp, cfg->link_bw);
-	tegra_dp_set_lane_count(dp, cfg->lane_count);
-	tegra_dp_link_cal(dp);
-	tegra_dp_tu_config(dp, cfg);
-}
-
 static void tegra_dp_hpd_op_edid_ready(void *drv_data)
 {
 	struct tegra_dc_dp_data *dp = drv_data;
@@ -2104,19 +2007,14 @@ static void tegra_dc_dp_enable(struct tegra_dc *dc)
 				NV_SOR_DP_CONFIG_IDLE_BEFORE_ATTACH_ENABLE,
 				NV_SOR_DP_CONFIG_IDLE_BEFORE_ATTACH_ENABLE);
 
-	tegra_dp_set_link_bandwidth(dp, cfg->link_bw);
-
 	/*
 	 * enhanced framing enable field shares DPCD offset
 	 * with lane count set field. Make sure lane count is set
 	 * before enhanced framing enable. CTS waits on first
 	 * write to this offset to check for lane count set.
 	 */
-	tegra_dp_set_lane_count(dp, cfg->lane_count);
+	tegra_dp_update_link_config(dp);
 	tegra_dp_set_enhanced_framing(dp, cfg->enhanced_framing);
-
-	tegra_dp_link_cal(dp);
-	tegra_dp_tu_config(dp, cfg);
 
 	tegra_dp_tpg(dp, TRAINING_PATTERN_DISABLE, cfg->lane_count);
 

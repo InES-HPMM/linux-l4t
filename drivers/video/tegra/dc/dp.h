@@ -94,6 +94,8 @@ struct tegra_dc_dp_data {
 	struct tegra_prod_list *prod_list;
 };
 
+int tegra_dp_dpcd_write_field(struct tegra_dc_dp_data *dp, u32 cmd,
+	u8 mask, u8 data);
 int tegra_dc_dpaux_read(struct tegra_dc_dp_data *dp, u32 cmd, u32 addr,
 	u8 *data, u32 *size, u32 *aux_stat);
 int tegra_dc_dpaux_write(struct tegra_dc_dp_data *dp, u32 cmd, u32 addr,
@@ -105,7 +107,6 @@ int tegra_dc_dpaux_read_chunk_locked(struct tegra_dc_dp_data *dp,
 	u32 cmd, u32 addr, u8 *data, u32 *size, u32 *aux_stat);
 int tegra_dc_dpaux_write_chunk_locked(struct tegra_dc_dp_data *dp,
 	u32 cmd, u32 addr, u8 *data, u32 *size, u32 *aux_stat);
-void tegra_dp_update_link_config(struct tegra_dc_dp_data *dp);
 int tegra_dc_dp_dpcd_read(struct tegra_dc_dp_data *dp, u32 cmd, u8 *data_ptr);
 int tegra_dc_dp_dpcd_write(struct tegra_dc_dp_data *dp, u32 cmd, u8 data);
 void tegra_dp_tpg(struct tegra_dc_dp_data *dp, u32 tp, u32 n_lanes);

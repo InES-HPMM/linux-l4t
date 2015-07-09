@@ -1632,10 +1632,14 @@ static int parse_lt_setting(struct device_node *np,
 	if (!of_property_read_u32(np, "nvidia,tx-pu", &temp)) {
 		lt_setting_addr->tx_pu = (u32)temp;
 		OF_DC_LOG("tx_pu %d\n", temp);
+	} else {
+		lt_setting_addr->tx_pu = UINT_MAX;
 	}
 	if (!of_property_read_u32(np, "nvidia,load-adj", &temp)) {
 		lt_setting_addr->load_adj = (u32)temp;
 		OF_DC_LOG("load_adj %d\n", temp);
+	} else {
+		lt_setting_addr->load_adj = UINT_MAX;
 	}
 	return 0;
 }
@@ -1664,12 +1668,19 @@ static struct device_node *parse_dp_settings(struct platform_device *ndev,
 		return NULL;
 	}
 
-	np_dp_lt_set =
-		of_get_child_by_name(np_dp_panel,
+	if (!of_property_read_u32(np_dp_panel,
+			"nvidia,enable-fast-lt-pdata", &temp)) {
+		dpout->enable_fast_lt_pdata = (bool)temp;
+		OF_DC_LOG("enable_fast_lt_pdata %d\n",
+		dpout->enable_fast_lt_pdata);
+	}
+
+	if (dpout->enable_fast_lt_pdata)
+		np_dp_lt_set = of_get_child_by_name(np_dp_panel,
 		"dp-lt-settings");
 
 	if (!np_dp_lt_set) {
-		pr_info("%s: No dp-lt-settings node\n",
+		pr_info("%s: dp-lt-settings node not parsed\n",
 			__func__);
 	} else {
 		int n_lt_settings =
@@ -1704,16 +1715,16 @@ static struct device_node *parse_dp_settings(struct platform_device *ndev,
 	}
 	if (!of_property_read_u32(np_dp_panel,
 			"nvidia,lanes", &temp)) {
-		dpout->lanes = (int)temp;
-		OF_DC_LOG("lanes %d\n", dpout->lanes);
+		dpout->max_n_lanes = (int)temp;
+		OF_DC_LOG("lanes %d\n", dpout->max_n_lanes);
 	} else {
-		dpout->lanes = 4;
-		OF_DC_LOG("default lanes %d\n", dpout->lanes);
+		dpout->max_n_lanes = 4;
+		OF_DC_LOG("default lanes %d\n", dpout->max_n_lanes);
 	}
 	if (!of_property_read_u32(np_dp_panel,
 			"nvidia,link-bw", &temp)) {
-		dpout->link_bw = (u8)temp;
-		OF_DC_LOG("link_bw %d\n", dpout->link_bw);
+		dpout->max_link_bw = (u8)temp;
+		OF_DC_LOG("link_bw %d\n", dpout->max_link_bw);
 	}
 
 	of_node_put(np_dp_lt_set);

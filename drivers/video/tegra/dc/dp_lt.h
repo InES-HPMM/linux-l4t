@@ -63,6 +63,7 @@ struct tegra_dp_lt_data {
 	u32 pre_emphasis[4]; /* post cursor1 */
 	u32 post_cursor2[4];
 	u32 tx_pu;
+	u32 load_adj;
 	u32 n_lanes;
 	u32 link_bw;
 
@@ -280,6 +281,7 @@ static inline int tegra_dp_is_max_pc(u32 pc)
 	return pc >= POST_CURSOR2_L3;
 }
 
+void tegra_dp_update_link_config(struct tegra_dc_dp_data *dp);
 void tegra_dp_lt_init(struct tegra_dp_lt_data *lt_data,
 			struct tegra_dc_dp_data *dp);
 void tegra_dp_lt_set_pending_evt(struct tegra_dp_lt_data *lt_data);
