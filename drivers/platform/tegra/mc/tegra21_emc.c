@@ -94,6 +94,17 @@ static struct supported_sequence supported_seqs[] = {
 		"21019"
 	},
 
+	/*
+	 * Adds the ability to keep a EMA of the periodic osc samples. This
+	 * helps smooth out noise in the osc readings.
+	 */
+	{
+		0x7,
+		emc_set_clock_r21021,
+		__do_periodic_emc_compensation_r21021,
+		"21021"
+	},
+
 	/* NULL terminate. */
 	{
 		0,
@@ -529,6 +540,9 @@ static void emc_set_clock(struct tegra21_emc_table *next_timing,
 			  struct tegra21_emc_table *last_timing,
 			  int training, u32 clksrc)
 {
+	emc_cc_dbg(CC_PRINT, "EMC: CC %ld -> %ld\n",
+		   last_timing->rate, next_timing->rate);
+
 	current_clksrc = clksrc;
 	seq->set_clock(next_timing, last_timing, training, clksrc);
 
@@ -850,6 +864,11 @@ void __emc_copy_table_params(struct tegra21_emc_table *src,
 		COPY_PARAM(current_dram_clktree_c1d0u1);
 		COPY_PARAM(current_dram_clktree_c1d1u0);
 		COPY_PARAM(current_dram_clktree_c1d1u1);
+	}
+
+	if (flags & EMC_COPY_TABLE_PARAM_PTFV_FIELDS) {
+		for (j = 0; j < PTFV_SIZE; j++)
+			dst->ptfv_list[j] = src->ptfv_list[j];
 	}
 
 	if (flags & EMC_COPY_TABLE_PARAM_TRIM_REGS) {
