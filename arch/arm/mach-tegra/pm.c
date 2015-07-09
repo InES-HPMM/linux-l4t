@@ -1535,49 +1535,49 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 		pdata = kzalloc(sizeof(struct tegra_suspend_platform_data),
 			GFP_KERNEL);
 		if (pm_dat->combined_req != plat->combined_req) {
-			pr_err("PMC DT attribute combined_req=%d, board value=%d\n",
+			pr_debug("PMC DT attribute combined_req=%d, board value=%d\n",
 				pm_dat->combined_req, plat->combined_req);
 			pdata->combined_req = plat->combined_req;
 		} else {
 			pdata->combined_req = pm_dat->combined_req;
 		}
 		if (pm_dat->sysclkreq_high != plat->sysclkreq_high) {
-			pr_err("PMC DT attribute sysclkreq_high=%d, board value=%d\n",
+			pr_debug("PMC DT attribute sysclkreq_high=%d, board value=%d\n",
 				pm_dat->sysclkreq_high, plat->sysclkreq_high);
 			pdata->sysclkreq_high = plat->sysclkreq_high;
 		} else {
 			pdata->sysclkreq_high = pm_dat->sysclkreq_high;
 		}
 		if (pm_dat->corereq_high != plat->corereq_high) {
-			pr_err("PMC DT attribute corereq_high=%d, board value=%d\n",
+			pr_debug("PMC DT attribute corereq_high=%d, board value=%d\n",
 				pm_dat->corereq_high, plat->corereq_high);
 			pdata->corereq_high = plat->corereq_high;
 		} else {
 			pdata->corereq_high = pm_dat->corereq_high;
 		}
 		if (pm_dat->cpu_off_time != plat->cpu_off_timer) {
-			pr_err("PMC DT attribute cpu_off_timer=%d, board value=%ld\n",
+			pr_debug("PMC DT attribute cpu_off_timer=%d, board value=%ld\n",
 				pm_dat->cpu_off_time, plat->cpu_off_timer);
 			pdata->cpu_off_timer = plat->cpu_off_timer;
 		} else {
 			pdata->cpu_off_timer = pm_dat->cpu_off_time;
 		}
 		if (pm_dat->cpu_good_time != plat->cpu_timer) {
-			pr_err("PMC DT attribute cpu_timer=%d, board value=%ld\n",
+			pr_debug("PMC DT attribute cpu_timer=%d, board value=%ld\n",
 				pm_dat->cpu_good_time, plat->cpu_timer);
 			pdata->cpu_timer = plat->cpu_timer;
 		} else {
 			pdata->cpu_timer = pm_dat->cpu_good_time;
 		}
 		if (pm_dat->suspend_mode != plat->suspend_mode) {
-			pr_err("PMC DT attribute suspend_mode=%d, board value=%d\n",
+			pr_debug("PMC DT attribute suspend_mode=%d, board value=%d\n",
 				pm_dat->suspend_mode, plat->suspend_mode);
 			pdata->suspend_mode = plat->suspend_mode;
 		} else {
 			pdata->suspend_mode = pm_dat->suspend_mode;
 		}
 		if (pm_dat->cpu_suspend_freq != plat->cpu_suspend_freq) {
-			pr_err("PMC DT attribute cpu_suspend_freq=%d, board value=%d\n",
+			pr_debug("PMC DT attribute cpu_suspend_freq=%d, board value=%d\n",
 				pm_dat->cpu_suspend_freq,
 				plat->cpu_suspend_freq);
 			pdata->cpu_suspend_freq = plat->cpu_suspend_freq;
