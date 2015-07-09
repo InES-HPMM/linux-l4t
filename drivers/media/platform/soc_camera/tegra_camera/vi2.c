@@ -53,6 +53,19 @@ module_param(tpg_mode, int, 0644);
 
 /* VI registers */
 #define TEGRA_VI_CFG_VI_INCR_SYNCPT			0x000
+#if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) || \
+	IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC))
+#define 	VI_MW_REQ_DONE				4
+#define 	VI_MW_ACK_DONE				6
+#define 	VI_FRAME_START				9
+#define 	VI_LINE_START				11
+#else
+#define 	VI_LINE_START				4
+#define 	VI_FRAME_START				5
+#define 	VI_MW_REQ_DONE				6
+#define 	VI_MW_ACK_DONE				7
+#endif
+
 #define TEGRA_VI_CFG_VI_INCR_SYNCPT_CNTRL		0x004
 #define TEGRA_VI_CFG_VI_INCR_SYNCPT_ERROR		0x008
 #define TEGRA_VI_CFG_CTXSW				0x020
@@ -479,6 +492,15 @@ static void vi2_free_syncpts(struct vi2_channel *chan)
 {
 	struct vi2_camera *vi2_cam = chan->vi2_cam;
 	nvhost_syncpt_put_ref_ext(vi2_cam->cam.pdev, chan->syncpt_id);
+}
+
+static u32 vi2_syncpt_cond(u32 cond, int port)
+{
+	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) ||
+	    IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC))
+		return (cond + port * 1) << 8;
+	else
+		return (cond + port * 4) << 8;
 }
 
 static int vi2_clock_start(struct vi2_camera *vi2_cam,
@@ -948,21 +970,38 @@ static int vi2_stop_streaming(struct tegra_camera *cam,
 	struct vi2_camera *vi2_cam = (struct vi2_camera *)cam;
 	int port = icd_to_port(icd);
 	struct vi2_channel *chan = &vi2_cam->channels[port];
-	struct list_head *buf_head, *tmp;
+
+	u32 val;
+	int err = 0;
 
 	mutex_lock(&chan->work_mutex);
+	if (!nvhost_syncpt_read_ext_check(cam->pdev, chan->syncpt_id, &val))
+		chan->syncpt_thresh = nvhost_syncpt_incr_max_ext(cam->pdev,
+					chan->syncpt_id, 1);
 
-	spin_lock_irq(&chan->videobuf_queue_lock);
-	list_for_each_safe(buf_head, tmp, &chan->capture)
-		list_del_init(buf_head);
-	spin_unlock_irq(&chan->videobuf_queue_lock);
+	/*
+	 * Make sure recieve VI_MW_ACK_DONE of the last frame before
+	 * stop and dequeue buffer, otherwise MC error will shows up
+	 * for the last frame.
+	 */
+	TC_VI_REG_WT(vi2_cam, TEGRA_VI_CFG_VI_INCR_SYNCPT,
+		     vi2_syncpt_cond(VI_MW_ACK_DONE,  chan->port) |
+		     chan->syncpt_id);
 
-	if (chan->active)
-		chan->active = NULL;
-
+	/*
+	 * Ignore error here and just stop pixel parser after waiting,
+	 * even if it's timeout
+	 */
+	err = nvhost_syncpt_wait_timeout_ext(cam->pdev,
+			chan->syncpt_id, chan->syncpt_thresh,
+			TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
+			NULL,
+			NULL);
+	csi_pp_regs_write(vi2_cam, chan, TEGRA_CSI_PIXEL_STREAM_PP_COMMAND,
+			  0xf002);
 	mutex_unlock(&chan->work_mutex);
 
-	return 0;
+	return err;
 }
 
 #define TEGRA_CSI_CILA_PAD_CONFIG0	0x92c
@@ -1190,6 +1229,10 @@ static int vi2_capture_setup(struct vi2_channel *chan)
 	csi_regs_write(vi2_cam, chan, TEGRA_VI_CSI_IMAGE_SIZE,
 			(height << 16) | width);
 
+	/* Start pixel parser in single shot mode at beginning */
+	csi_pp_regs_write(vi2_cam, chan, TEGRA_CSI_PIXEL_STREAM_PP_COMMAND,
+			  0xf005);
+
 	return 0;
 }
 
@@ -1275,15 +1318,9 @@ static int vi2_capture_start(struct vi2_channel *chan)
 	if (err < 0)
 		return err;
 
-	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) ||
-	    IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC))
-		TC_VI_REG_WT(vi2_cam, TEGRA_VI_CFG_VI_INCR_SYNCPT,
-			((6 + chan->port * 1) << 8) | chan->syncpt_id);
-	else
-		TC_VI_REG_WT(vi2_cam, TEGRA_VI_CFG_VI_INCR_SYNCPT,
-			((7 + chan->port * 4) << 8) | chan->syncpt_id);
-	csi_pp_regs_write(vi2_cam, chan, TEGRA_CSI_PIXEL_STREAM_PP_COMMAND,
-			  0xf005);
+	TC_VI_REG_WT(vi2_cam, TEGRA_VI_CFG_VI_INCR_SYNCPT,
+		     vi2_syncpt_cond(VI_FRAME_START,  chan->port) |
+		     chan->syncpt_id);
 	csi_regs_write(vi2_cam, chan, TEGRA_VI_CSI_SINGLE_SHOT, 0x1);
 
 	if (!nvhost_syncpt_read_ext_check(cam->pdev, chan->syncpt_id, &val))
@@ -1319,10 +1356,6 @@ static int vi2_capture_frame(struct vi2_channel *chan)
 
 	while (retry) {
 		err = vi2_capture_start(chan);
-		/* Capturing succeed, stop capturing */
-		csi_pp_regs_write(vi2_cam, chan,
-				  TEGRA_CSI_PIXEL_STREAM_PP_COMMAND,
-				  0xf002);
 		if (err) {
 			retry--;
 			continue;
