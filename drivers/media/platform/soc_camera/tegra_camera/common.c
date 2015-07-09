@@ -380,6 +380,20 @@ static void tegra_camera_videobuf_release(struct vb2_buffer *vb)
 		cam->ops->videobuf_release(cam, icd, buf);
 }
 
+static int tegra_camera_start_streaming(struct vb2_queue *q, unsigned int count)
+{
+	struct soc_camera_device *icd = container_of(q,
+						     struct soc_camera_device,
+						     vb2_vidq);
+	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
+	struct tegra_camera *cam = ici->priv;
+
+	if (cam->ops->start_streaming)
+		return cam->ops->start_streaming(cam, icd, count);
+
+	return 0;
+}
+
 static int tegra_camera_stop_streaming(struct vb2_queue *q)
 {
 	struct soc_camera_device *icd = container_of(q,
@@ -414,6 +428,7 @@ static struct vb2_ops tegra_camera_videobuf_ops = {
 	.buf_init	= tegra_camera_videobuf_init,
 	.buf_prepare	= tegra_camera_videobuf_prepare,
 	.buf_cleanup	= tegra_camera_videobuf_release,
+	.start_streaming = tegra_camera_start_streaming,
 	.stop_streaming	= tegra_camera_stop_streaming,
 	.buf_queue	= tegra_camera_videobuf_queue,
 };

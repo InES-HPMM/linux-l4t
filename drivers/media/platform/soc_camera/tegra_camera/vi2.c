@@ -893,8 +893,10 @@ static void vi2_videobuf_queue(struct tegra_camera *cam,
 
 	spin_lock_irq(&chan->videobuf_queue_lock);
 	list_add_tail(&buf->queue, &chan->capture);
-	schedule_work(&chan->work);
 	spin_unlock_irq(&chan->videobuf_queue_lock);
+
+	if (vb2_is_streaming(buf->vb.vb2_queue))
+		schedule_work(&chan->work);
 }
 
 static void vi2_videobuf_release(struct tegra_camera *cam,
@@ -922,6 +924,19 @@ static void vi2_videobuf_release(struct tegra_camera *cam,
 	spin_unlock_irq(&chan->videobuf_queue_lock);
 
 	mutex_unlock(&chan->work_mutex);
+}
+
+static int vi2_start_streaming(struct tegra_camera *cam,
+			       struct soc_camera_device *icd,
+			       unsigned int count)
+{
+	struct vi2_camera *vi2_cam = (struct vi2_camera *)cam;
+	int port = icd_to_port(icd);
+	struct vi2_channel *chan = &vi2_cam->channels[port];
+
+	schedule_work(&chan->work);
+
+	return 0;
 }
 
 static int vi2_stop_streaming(struct tegra_camera *cam,
@@ -1343,6 +1358,7 @@ struct tegra_camera_ops vi2_ops = {
 	.s_mbus_fmt		= vi2_s_mbus_fmt,
 	.videobuf_queue		= vi2_videobuf_queue,
 	.videobuf_release	= vi2_videobuf_release,
+	.start_streaming	= vi2_start_streaming,
 	.stop_streaming		= vi2_stop_streaming,
 };
 
