@@ -86,6 +86,9 @@ struct tegra_camera_ops {
 	void (*videobuf_release)(struct tegra_camera *cam,
 			       struct soc_camera_device *icd,
 			       struct tegra_camera_buffer *buf);
+	int (*start_streaming)(struct tegra_camera *cam,
+			       struct soc_camera_device *icd,
+			       unsigned int count);
 	int (*stop_streaming)(struct tegra_camera *cam,
 			       struct soc_camera_device *icd);
 };
