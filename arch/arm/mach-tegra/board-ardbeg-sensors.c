@@ -190,7 +190,7 @@ static struct tegra_camera_platform_data ardbeg_camera_platform_data = {
 };
 
 static struct soc_camera_link ardbeg_soc_camera_link = {
-	.bus_id         = 1, /* This must match the .id of tegra_vi01_device */
+	.bus_id         = 0,
 	.add_device     = ardbeg_soc_camera_add,
 	.del_device     = ardbeg_soc_camera_del,
 	.module_name    = "soc_camera_platform",
@@ -219,7 +219,7 @@ static void ardbeg_soc_camera_del(struct soc_camera_device *icd)
 
 static struct platform_device ardbeg_soc_camera_device = {
 	.name   = "soc-camera-pdrv",
-	.id     = 1,
+	.id     = 0,
 	.dev    = {
 		.platform_data = &ardbeg_soc_camera_link,
 	},
