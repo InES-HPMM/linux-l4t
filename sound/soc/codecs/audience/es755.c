@@ -618,6 +618,7 @@ static int es755_hw_params(struct snd_pcm_substream *substream,
 	int id = DAI_INDEX(dai->id);
 	int port_map = 0;
 	u16 clock_control = 0;
+	u16 codec_output_rate = 0;
 	u8 pcm_port[] = { ES755_PCM_PORT_A,
 		ES755_PCM_PORT_B,
 		ES755_PCM_PORT_C };
@@ -752,6 +753,19 @@ static int es755_hw_params(struct snd_pcm_substream *substream,
 
 	/* Clear the Port info in write command */
 	api_access->write_msg[0] &= ES_API_WORD(ES_SET_DEV_PARAM_ID, 0x00ff);
+
+	/* Set codec output rate 96Khz(0x2) for 192K and 48Khz(0x0) for rest */
+	/* required for droop filter settings */
+	if (params_rate(params) == 192000)
+		codec_output_rate = 0x2;
+
+	rc = escore_write(codec, ES_CODEC_OUTPUT_RATE,
+			codec_output_rate);
+	if (rc) {
+		pr_err("%s(): Preparing write message failed %d\n",
+				__func__, rc);
+		return rc;
+	}
 
 	/*
 	 * To enter into MP_SLEEP mode during playback, a minimum 3Mhz clock
@@ -1629,6 +1643,8 @@ out:
 static int es755_codec_write(struct snd_soc_codec *codec, unsigned int reg,
 	unsigned int value)
 {
+	u32 resp;
+	u32 cmd;
 	struct escore_priv *escore = &escore_priv;
 	int ret = 0;
 	u8 state_changed = 0;
@@ -1693,6 +1709,18 @@ static int es755_codec_write(struct snd_soc_codec *codec, unsigned int reg,
 		}
 	}
 	escore->reg_cache[reg].value = value;
+
+	if (escore->algo_type == DHWPT && reg == ES_HP_L_CTRL) {
+		if (value & 1) {
+			cmd = escore->dhwpt_cmd;
+			ret = escore->bus.ops.cmd(escore, cmd, &resp);
+			if (ret < 0) {
+				pr_err("%s(): Error %d in setting event response\n",
+						__func__, ret);
+				goto out;
+			}
+		}
+	}
 
 	if (state_changed) {
 		msleep(20);
@@ -2441,6 +2469,7 @@ redetect_HS:
 				goto intr_exit;
 			}
 			accdet_status_reg.value = value;
+			redetect_hs = 1; /* initialize the counter */
 
 			/* Ignore interurpt if
 			 * plugdet_fsm2 = 1 and plugdet_fsm1 = 1
@@ -2486,7 +2515,8 @@ irqreturn_t es755_irq_work(int irq, void *data)
 {
 	struct escore_priv *escore = (struct escore_priv *)data;
 	int retry = ES_EVENT_STATUS_RETRY_COUNT;
-	int rc, ret;
+	int rc = 0;
+	int ret = 0;
 	u32 cmd = 0;
 	u32 event_type = 0;
 
@@ -2518,37 +2548,47 @@ irqreturn_t es755_irq_work(int irq, void *data)
 
 	mutex_lock(&escore->api_mutex);
 	while (retry) {
-		rc = escore->bus.ops.cmd(escore, cmd, &event_type);
-		if (!rc || !--retry)
-			break;
-		pr_info("%s(): wakeup and retry\n", __func__);
-		ret = escore_wakeup(escore);
-		if (ret) {
-			dev_err(escore->dev, "%s() wakeup failed ret = %d\n",
-								__func__, ret);
-			break;
+		/* Check power state before sending command */
+		if ((escore->escore_power_state == ES_SET_POWER_STATE_NORMAL)
+			|| escore->escore_power_state ==
+				ES_SET_POWER_STATE_VS_OVERLAY) {
+			rc = escore->bus.ops.cmd(escore, cmd, &event_type);
+			if (!rc || !--retry)
+				break;
+		} else {
+			pr_info("%s(): wakeup and retry\n", __func__);
+			ret = escore_wakeup(escore);
+			if (ret) {
+				dev_err(escore->dev,
+					"%s() wakeup failed ret = %d\n",
+					__func__, ret);
+				break;
+			}
+
+			if (escore->escore_power_state ==
+					escore->non_vs_sleep_state) {
+				escore->escore_power_state = ES_SET_POWER_STATE_NORMAL;
+			} else if (escore->escore_power_state ==
+					ES_SET_POWER_STATE_VS_LOWPWR) {
+				escore->escore_power_state =
+					ES_SET_POWER_STATE_VS_OVERLAY;
+
+			/* If the chip is not awake,the reading of event will wakeup
+			 * the chip which will result in interrupt reconfiguration
+			 * from device resume. Reconfiguration is deferred till the
+			 * time interrupt is processed from the notifier callback.
+			 *
+			 * The interrupt reconfiguration in this case will be taken
+			 * care of by a low priority notifier callback
+			 */
+				escore->defer_intr_config = 1;
+			}
 		}
 	}
 	if (rc < 0) {
 		pr_err("%s(): Error reading IRQ event: %d\n", __func__, rc);
 		mutex_unlock(&escore->api_mutex);
 		goto irq_exit;
-	}
-
-	if (escore->escore_power_state == escore->non_vs_sleep_state) {
-		escore->escore_power_state = ES_SET_POWER_STATE_NORMAL;
-	} else if (escore->escore_power_state == ES_SET_POWER_STATE_VS_LOWPWR) {
-		escore->escore_power_state = ES_SET_POWER_STATE_VS_OVERLAY;
-
-		/* If the chip is not awake, the reading of event will wakeup
-		 * the chip which will result in interrupt reconfiguration
-		 * from device resume. Reconfiguration is deferred till the
-		 * time interrupt is processed from the notifier callback.
-		 *
-		 * The interrupt reconfiguration in this case will be taken
-		 * care of by a low priority notifier callback
-		 */
-		escore->defer_intr_config = 1;
 	}
 
 	mutex_unlock(&escore->api_mutex);

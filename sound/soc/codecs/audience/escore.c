@@ -979,18 +979,8 @@ int escore_wakeup(struct escore_priv *escore)
 	/* Set the Smooth Mute rate to Zero */
 	cmd = ES_SET_SMOOTH_MUTE << 16 | ES_SMOOTH_MUTE_ZERO;
 	rc = escore->bus.ops.cmd(escore, cmd, &rsp);
-	if (rc) {
+	if (rc)
 		dev_err(escore->dev, "%s(): escore_cmd fail %d\n",
-				__func__, rc);
-		goto escore_wakeup_exit;
-	}
-
-	/* Setup the Event response */
-	cmd = (ES_SET_EVENT_RESP << 16) |
-		escore->pdata->gpio_b_irq_type;
-	rc = escore->bus.ops.cmd(escore, cmd, &rsp);
-	if (rc < 0)
-		pr_err("%s(): Error %d in setting event response\n",
 				__func__, rc);
 
 escore_wakeup_exit:
