@@ -370,6 +370,7 @@
 				regulator-max-microvolt = <6000000>;
 				ti,enable-gpio = <&gpio TEGRA_GPIO(E, 2) 0>;
                 		regulator-boot-on;
+				ti,disable-active-discharge;
 			};
 
 			outn {
