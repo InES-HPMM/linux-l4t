@@ -290,13 +290,6 @@ static int es300_codec_stop_algo(struct escore_priv *escore)
 	u32 resp;
 	int ret = 0;
 
-	/* Stop the route first */
-	ret = escore_cmd(escore, stop_route_cmd, &resp);
-	if (ret) {
-		pr_err("%s: Route stop failed\n", __func__);
-		return ret;
-	}
-
 	/* Disable DHWPT if enabled */
 	if (escore->algo_type == DHWPT) {
 		u32 cmd = escore->dhwpt_cmd & 0xFFFF0000;
@@ -308,8 +301,14 @@ static int es300_codec_stop_algo(struct escore_priv *escore)
 		}
 	}
 
-	escore->current_preset = 0;
+	/* Stop the route */
+	ret = escore_cmd(escore, stop_route_cmd, &resp);
+	if (ret) {
+		pr_err("%s: Route stop failed\n", __func__);
+		return ret;
+	}
 
+	escore->current_preset = 0;
 	return ret;
 }
 
@@ -618,11 +617,6 @@ static int add_algo_base_route(struct escore_priv *escore)
 	escore->current_preset =  msg & 0xFFFF;
 	rc = escore_queue_msg_to_list(escore, (char *)&msg, sizeof(msg));
 
-	if (!rc && escore->algo_type == DHWPT) {
-		msg = escore->dhwpt_cmd;
-		rc = escore_queue_msg_to_list(escore,
-				(char *)&msg, sizeof(msg));
-	}
 	/* Configure command completion mode */
 	if (escore->cmd_compl_mode == ES_CMD_COMP_INTR) {
 		cmd |= escore->pdata->gpio_a_irq_type;
@@ -1388,8 +1382,9 @@ static int es300_put_algo_state(struct snd_kcontrol *kcontrol,
 	unsigned int reg = e->reg;
 	unsigned int value = ucontrol->value.enumerated.item[0];
 
-	pr_debug("%s(): %s algo :%d\n", __func__, (value) ? "Enabling" :
-			"Disabling", reg);
+	pr_debug("%s(): %s algo :%s\n", __func__, (value) ? "Enabling" :
+			"Disabling", kcontrol->id.name);
+
 	/* Use 0th array to store the algo status */
 	cachedcmd_list[0][reg].reg = value;
 	switch (reg) {
@@ -1412,7 +1407,7 @@ static int es300_put_algo_state(struct snd_kcontrol *kcontrol,
 		algo_type = DHWPT;
 		break;
 	default:
-		pr_err("%s(): Algo type not implemented: %d\n", __func__, reg);
+		pr_err("%s(): Algo type not implemented: %s\n", __func__, kcontrol->id.name);
 		ret = -EINVAL;
 		break;
 	}
@@ -1510,7 +1505,7 @@ static int put_input_route_value(struct snd_kcontrol *kcontrol,
 #endif
 
 exit:
-	pr_debug("put input reg %d val %d\n", reg, mux);
+	pr_debug("put input control %s (%d) val %s (%d)\n", kcontrol->id.name, reg, proc_block_input_texts[mux], mux);
 
 	return rc;
 }
@@ -1530,7 +1525,7 @@ static int get_input_route_value(struct snd_kcontrol *kcontrol,
 	/* TBD: translation */
 	/* value = escore_read(NULL, reg); */
 	ucontrol->value.enumerated.item[0] = value;
-	pr_debug("get input reg %d val %d\n", reg, value);
+	pr_debug("get input control %s (%d) val %s (%d)\n", kcontrol->id.name, reg, proc_block_input_texts[value], value);
 
 	return 0;
 }
@@ -1598,7 +1593,7 @@ static int put_output_route_value(struct snd_kcontrol *kcontrol,
 #endif
 
 exit:
-	pr_debug("put output reg %d val %d\n", reg, mux);
+	pr_debug("put output control %s (%d) val %s (%d)\n", kcontrol->id.name, reg, proc_block_output_texts[mux], mux);
 	return rc;
 }
 
@@ -1617,7 +1612,7 @@ static int get_output_route_value(struct snd_kcontrol *kcontrol,
 	/* TBD: translation */
 	/* value = escore_read(NULL, reg); */
 	ucontrol->value.enumerated.item[0] = value;
-	pr_debug("get output reg %d val %d\n", reg, value);
+	pr_debug("get output control %s (%d)  val %s (%d)\n", kcontrol->id.name, reg, proc_block_output_texts[value], value);
 
 	return 0;
 }
@@ -1900,6 +1895,16 @@ static int put_preset_value_one(struct snd_kcontrol *kcontrol,
 
 	escore->algo_preset_one = value;
 
+	/* Ignore Preset ID 0 and don't send command to device,5
+	 * but reset algo_preset value so that next preset value
+	 * can be set properly. */
+	if (!escore->algo_preset_one) {
+		dev_dbg(escore_priv.dev,
+			"%s(): Algo Preset %d is not supported, Skipped\n",
+			__func__, value);
+		return rc;
+	}
+
 	if (atomic_read(&escore->active_streams)) {
 		/* Set the preset immediately */
 		usleep_range(5000, 5005);
@@ -1935,6 +1940,16 @@ static int put_preset_value_two(struct snd_kcontrol *kcontrol,
 	value = ucontrol->value.integer.value[0];
 
 	escore->algo_preset_two = value;
+
+	/* Ignore Preset ID 0 and don't send command to device,5
+	 * but reset algo_preset value so that next preset value
+	 * can be set properly. */
+	if (!escore->algo_preset_two) {
+		dev_dbg(escore_priv.dev,
+			"%s(): Algo Preset %d is not supported, Skipped\n",
+			__func__, value);
+		return rc;
+	}
 
 	if (atomic_read(&escore->active_streams)) {
 		/* Set the preset immediately */

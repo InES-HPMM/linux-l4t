@@ -1046,6 +1046,16 @@ static struct escore_api_access es755_api_access[ES_API_ADDR_MAX] = {
 		.val_shift = 0,
 		.val_max = 65535,
 	},
+	[ES_CODEC_OUTPUT_RATE] = {
+		.read_msg = { ES_API_WORD(ES_GET_DEV_PARAM, 0x1604) },
+		.read_msg_len = 4,
+		.write_msg = { ES_API_WORD(ES_SET_DEV_PARAM_ID, 0x1604),
+			ES_API_WORD(ES_SET_DEV_PARAM, 0x0000) },
+		.write_msg_len = 8,
+		.val_shift = 0,
+		.val_max = 65535,
+	},
+
 
 };
 

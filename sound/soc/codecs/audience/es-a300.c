@@ -319,39 +319,6 @@ static int es_lo_enable(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-static int es_dac_enable(struct snd_soc_dapm_widget *w,
-	struct snd_kcontrol *kcontrol, int event)
-{
-	struct snd_soc_codec *codec = w->codec;
-	unsigned int val;
-	pr_debug("%s DAC%d event %d\n", __func__, w->shift, event);
-
-	switch (event) {
-	case SND_SOC_DAPM_PRE_PMU:
-		snd_soc_update_bits(codec, w->reg, 1<<w->shift, 1<<w->shift);
-		snd_soc_update_bits(codec, ES_DAC_DIG_EN, ES_DIG_CLK_EN_MASK,
-			ES_DIG_CLK_EN);
-		snd_soc_update_bits(codec, ES_DAC_DIG_EN, ES_DAC_CLK_EN_MASK,
-			ES_DAC_CLK_EN);
-		break;
-	case SND_SOC_DAPM_POST_PMD:
-		snd_soc_update_bits(codec, w->reg, 1<<w->shift , 0);
-		snd_soc_update_bits(codec, ES_DAC_DIG_EN, ES_DIG_CLK_EN_MASK,
-			0);
-		snd_soc_update_bits(codec, ES_DAC_DIG_EN, ES_DAC_CLK_EN_MASK,
-				0);
-		break;
-	}
-
-	/* find which DAC is enabled */
-	val = snd_soc_read(codec, ES_DAC_CTRL);
-	snd_soc_update_bits(codec, ES_DAC_DIG_EN, ES_DAC0_LEFT_EN_MASK |
-		ES_DAC0_RIGHT_EN_MASK | ES_DAC1_LEFT_EN_MASK |
-		ES_DAC1_RIGHT_EN_MASK, val);
-
-	return 0;
-}
-
 static int mic_event(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *k, int event)
 {
@@ -436,14 +403,10 @@ const struct snd_soc_dapm_widget es_codec_dapm_widgets[] = {
 	SND_SOC_DAPM_ADC("ADC3", NULL, ES_ADC_CTRL, ES_ADC3_ON_SHIFT, 0),
 
 	/* DAC */
-	SND_SOC_DAPM_DAC_E("DAC0L", NULL, ES_DAC_CTRL, ES_DAC0L_ON_SHIFT,
-		0, es_dac_enable, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_DAC_E("DAC0R", NULL, ES_DAC_CTRL, ES_DAC0R_ON_SHIFT,
-		0, es_dac_enable, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_DAC_E("DAC1L", NULL, ES_DAC_CTRL, ES_DAC1L_ON_SHIFT,
-		0, es_dac_enable, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_DAC_E("DAC1R", NULL, ES_DAC_CTRL, ES_DAC1R_ON_SHIFT,
-		0, es_dac_enable, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_DAC("DAC0L", NULL, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_DAC("DAC0R", NULL, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_DAC("DAC1L", NULL, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_DAC("DAC1R", NULL, SND_SOC_NOPM, 0, 0),
 
 	/* Earphone Mixer */
 	SND_SOC_DAPM_MIXER("EP MIXER", SND_SOC_NOPM, 0, 0,
