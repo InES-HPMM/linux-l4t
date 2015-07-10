@@ -25,7 +25,7 @@
 		emc-table@40800 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_40800_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_40800_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <40800>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -1253,7 +1253,7 @@
 		emc-table@68000 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_68000_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_68000_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <68000>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -2481,7 +2481,7 @@
 		emc-table@102000 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_102000_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_102000_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <102000>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -3709,7 +3709,7 @@
 		emc-table@204000 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_204000_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_204000_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <204000>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -4937,7 +4937,7 @@
 		emc-table@408000 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_408000_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_408000_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <408000>;
 			nvidia,emc-min-mv = <812>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -6165,7 +6165,7 @@
 		emc-table@665600 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_665600_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_665600_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <665600>;
 			nvidia,emc-min-mv = <825>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -7393,7 +7393,7 @@
 		emc-table@800000 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_800000_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_800000_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <800000>;
 			nvidia,emc-min-mv = <825>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -8621,7 +8621,7 @@
 		emc-table@1065600 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_1065600_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_1065600_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <1065600>;
 			nvidia,emc-min-mv = <837>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -9849,7 +9849,7 @@
 		emc-table@1331200 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_1331200_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_1331200_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <1331200>;
 			nvidia,emc-min-mv = <850>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -11077,9 +11077,9 @@
 		emc-table@1600000 {
 			compatible = "nvidia,tegra21-emc-table";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_1600000_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_1600000_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <1600000>;
-			nvidia,emc-min-mv = <875>;
+			nvidia,emc-min-mv = <887>;
 			nvidia,gk20a-min-mv = <1100>;
 			nvidia,source = "pllm_ud";
 			nvidia,src-sel-reg = <0x80188000>;
@@ -12305,7 +12305,7 @@
 		emc-table-derated@40800 {
 			compatible = "nvidia,tegra21-emc-table-derated";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_derating_40800_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_derating_40800_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <40800>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -13533,7 +13533,7 @@
 		emc-table-derated@68000 {
 			compatible = "nvidia,tegra21-emc-table-derated";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_derating_68000_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_derating_68000_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <68000>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -14761,7 +14761,7 @@
 		emc-table-derated@102000 {
 			compatible = "nvidia,tegra21-emc-table-derated";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_derating_102000_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_derating_102000_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <102000>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -15989,7 +15989,7 @@
 		emc-table-derated@204000 {
 			compatible = "nvidia,tegra21-emc-table-derated";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_derating_204000_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_derating_204000_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <204000>;
 			nvidia,emc-min-mv = <800>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -17217,7 +17217,7 @@
 		emc-table-derated@408000 {
 			compatible = "nvidia,tegra21-emc-table-derated";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_derating_408000_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_derating_408000_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <408000>;
 			nvidia,emc-min-mv = <812>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -18445,7 +18445,7 @@
 		emc-table-derated@665600 {
 			compatible = "nvidia,tegra21-emc-table-derated";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_derating_665600_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_derating_665600_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <665600>;
 			nvidia,emc-min-mv = <825>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -19673,7 +19673,7 @@
 		emc-table-derated@800000 {
 			compatible = "nvidia,tegra21-emc-table-derated";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_derating_800000_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_derating_800000_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <800000>;
 			nvidia,emc-min-mv = <825>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -20901,7 +20901,7 @@
 		emc-table-derated@1065600 {
 			compatible = "nvidia,tegra21-emc-table-derated";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_derating_1065600_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_derating_1065600_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <1065600>;
 			nvidia,emc-min-mv = <837>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -22129,7 +22129,7 @@
 		emc-table-derated@1331200 {
 			compatible = "nvidia,tegra21-emc-table-derated";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_derating_1331200_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_derating_1331200_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <1331200>;
 			nvidia,emc-min-mv = <850>;
 			nvidia,gk20a-min-mv = <1100>;
@@ -23357,9 +23357,9 @@
 		emc-table-derated@1600000 {
 			compatible = "nvidia,tegra21-emc-table-derated";
 			nvidia,revision = <0x6>;
-			nvidia,dvfs-version = "10_derating_1600000_NoCfgVersion_V9.8.3_V1.4";
+			nvidia,dvfs-version = "10_derating_1600000_NoCfgVersion_V9.8.3_V1.5";
 			clock-frequency = <1600000>;
-			nvidia,emc-min-mv = <875>;
+			nvidia,emc-min-mv = <887>;
 			nvidia,gk20a-min-mv = <1100>;
 			nvidia,source = "pllm_ud";
 			nvidia,src-sel-reg = <0x80188000>;
