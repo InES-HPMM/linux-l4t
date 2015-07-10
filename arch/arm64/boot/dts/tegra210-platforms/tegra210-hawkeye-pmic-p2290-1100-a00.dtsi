@@ -434,8 +434,12 @@
 			ti,design-capacity = <5200>;
 			ti,design-energy = <19760>;
 			ti,taper-rate = <318>;
-			ti,terminate-voltage = <2700>;
+			ti,terminate-voltage = <2800>;
 			ti,v-at-chg-term = <4340>;
+			ti,cc-gain = <0x7F7806C9>;
+			ti,cc-delta = <0x940D197A>;
+			ti,qmax-cell = <16384>;
+			ti,reserve-cap-mah = <200>;
 			ti,tz-name = "Battery";
 		};
 	};
