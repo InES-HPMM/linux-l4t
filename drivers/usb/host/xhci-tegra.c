@@ -2352,6 +2352,10 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	ss_pads = tegra->soc_config->ss_pad_count;
 	for_each_ss_pad(pad, ss_pads) {
 		if (host_ports & (1 << pad)) {
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+			bool is_otg_port =
+				(tegra->bdata->otg_portmap & (1 << pad)) != 0;
+#endif
 			tegra->soc_config->check_lane_owner_by_pad(pad
 					, tegra->bdata->lane_owner);
 
@@ -2360,8 +2364,7 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 						prod_name,
 						tegra->prod_list);
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-			t210_program_ss_pad(tegra, pad,
-					pad == tegra->otg_portnum);
+			t210_program_ss_pad(tegra, pad, is_otg_port);
 #else
 			tegra_xhci_program_ss_pad(tegra, pad);
 #endif
