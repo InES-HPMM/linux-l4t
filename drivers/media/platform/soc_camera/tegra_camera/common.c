@@ -313,22 +313,30 @@ static int tegra_camera_videobuf_prepare(struct vb2_buffer *vb)
 	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
 	struct tegra_camera *cam = ici->priv;
 	struct tegra_camera_buffer *buf = to_tegra_vb(vb);
-	int bytes_per_line =
-		cam->ops->bytes_per_line(icd->user_width,
-					icd->current_fmt->host_fmt);
-	unsigned long size;
+	int bytes_per_line = 0;
+	unsigned long size = 0;
 	struct tegra_camera_platform_data *pdata = icd_to_pdata(icd);
-	int port = pdata->port;
-
-	if (bytes_per_line < 0)
-		return bytes_per_line;
+	int port = 0;
 
 	buf->icd = icd;
+
+	if (!icd->current_fmt) {
+		dev_err(icd->parent, "%s NULL format point\n", __func__);
+		return -EINVAL;
+	}
+
+	bytes_per_line =
+		cam->ops->bytes_per_line(icd->user_width,
+					icd->current_fmt->host_fmt);
+	if (bytes_per_line < 0)
+		return bytes_per_line;
 
 	if (!pdata) {
 		dev_err(icd->parent, "No platform data for this device!\n");
 		return -EINVAL;
 	}
+
+	port = pdata->port;
 
 	if (!cam->ops->port_is_valid(port)) {
 		dev_err(icd->parent,
@@ -348,11 +356,6 @@ static int tegra_camera_videobuf_prepare(struct vb2_buffer *vb)
 	if (vb2_plane_vaddr(vb, 0))
 		memset(vb2_plane_vaddr(vb, 0), 0xbd, vb2_plane_size(vb, 0));
 #endif
-
-	if (!icd->current_fmt) {
-		dev_err(icd->parent, "%s NULL format point\n", __func__);
-		return -EINVAL;
-	}
 
 	size = icd->user_height * bytes_per_line;
 
@@ -502,8 +505,15 @@ static int tegra_camera_get_formats(struct soc_camera_device *icd,
 			if (tegra_camera_bayer_formats[k].code == code)
 				break;
 
-		formats = &tegra_camera_bayer_formats[k].host_fmt;
-		num_formats = 1;
+		if (k < ARRAY_SIZE(tegra_camera_bayer_formats)) {
+			formats = &tegra_camera_bayer_formats[k].host_fmt;
+			num_formats = 1;
+		} else {
+			dev_err(dev,
+			"Running Out of supporting bayer format code 0x%04x\n", code);
+			formats = NULL;
+			num_formats = 0;
+		}
 		break;
 
 	case V4L2_MBUS_FMT_RGBA8888_4X8_LE:
@@ -603,6 +613,7 @@ static int tegra_camera_try_fmt(struct soc_camera_device *icd,
 	struct v4l2_mbus_framefmt mf;
 	__u32 pixfmt = pix->pixelformat;
 	int ret = 0;
+	int bytesperline = 0;
 
 	xlate = soc_camera_xlate_by_fourcc(icd, pixfmt);
 	if (!xlate) {
@@ -610,10 +621,13 @@ static int tegra_camera_try_fmt(struct soc_camera_device *icd,
 		return -EINVAL;
 	}
 
-	pix->bytesperline = cam->ops->bytes_per_line(pix->width,
-						    xlate->host_fmt);
-	if (pix->bytesperline < 0)
-		return pix->bytesperline;
+	bytesperline = cam->ops->bytes_per_line(pix->width,
+					xlate->host_fmt);
+	if (bytesperline < 0)
+		return bytesperline;
+	else
+		pix->bytesperline = bytesperline;
+
 	pix->sizeimage = pix->height * pix->bytesperline;
 
 	/* limit to sensor capabilities */
