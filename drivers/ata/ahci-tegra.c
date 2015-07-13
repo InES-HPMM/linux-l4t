@@ -40,6 +40,7 @@
 #include <linux/of_gpio.h>
 #include <scsi/scsi_host.h>
 #include <scsi/scsi_cmnd.h>
+#include <scsi/scsi_device.h>
 #include <linux/libata.h>
 #include <linux/regulator/machine.h>
 #include <linux/pm_runtime.h>
@@ -2187,6 +2188,8 @@ static int tegra_ahci_port_resume(struct ata_port *ap)
 	struct ata_host *host = ap->host;
 	struct tegra_ahci_host_priv *tegra_hpriv = host->private_data;
 	struct ata_link *link = NULL;
+	struct scsi_device *sdev = NULL;
+
 	int ret = 0;
 
 	ret = pm_runtime_get_sync(&tegra_hpriv->pdev->dev);
@@ -2197,13 +2200,25 @@ static int tegra_ahci_port_resume(struct ata_port *ap)
 		return AC_ERR_SYSTEM;
 	}
 
-	ata_for_each_link(link, ap, HOST_FIRST) {
-		link->eh_info.action &= ~ATA_EH_RESET;
+	if (ap->pm_mesg.event & PM_EVENT_RESUME) {
+		if (ap->pm_mesg.event & PM_EVENT_AUTO)
+			ata_for_each_link(link, ap, HOST_FIRST) {
+				link->eh_info.action &= ~ATA_EH_RESET;
+			}
+		else
+			shost_for_each_device(sdev, ap->scsi_host) {
+				if (sdev->request_queue->rpm_status ==
+								RPM_SUSPENDED)
+					sdev->request_queue->rpm_status =
+								RPM_ACTIVE;
+			}
 	}
 
 	ret = ahci_ops.port_resume(ap);
 
-	ata_eh_thaw_port(ap);
+	if ((ap->pm_mesg.event & PM_EVENT_AUTO) &&
+			(ap->pm_mesg.event & PM_EVENT_RESUME))
+		ata_eh_thaw_port(ap);
 
 	return ret;
 
