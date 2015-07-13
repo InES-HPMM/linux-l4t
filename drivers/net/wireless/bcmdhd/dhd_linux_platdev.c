@@ -668,9 +668,9 @@ void wifi_ctrlfunc_unregister_drv(void)
 	struct device_node *dt_node;
 	dev1 = bus_find_device(&platform_bus_type, NULL, WIFI_PLAT_NAME, wifi_platdev_match);
 	dev2 = bus_find_device(&platform_bus_type, NULL, WIFI_PLAT_NAME2, wifi_platdev_match);
-	if (!dts_enabled)
-		if (dev1 == NULL && dev2 == NULL)
-			return;
+	dt_node = of_find_compatible_node(NULL, NULL, "android,bcmdhd_wlan");
+	if (dev1 == NULL && dev2 == NULL && dt_node == NULL)
+		return;
 
 	DHD_ERROR(("unregister wifi platform drivers\n"));
 	if (dev1 || dt_node)
