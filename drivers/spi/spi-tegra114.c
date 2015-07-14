@@ -1115,15 +1115,18 @@ static struct tegra_spi_device_controller_data
 		cdata->cs_inactive_cycles = cdata->clk_delay_between_packets;
 
 	cdata->cs_gpio = -EINVAL;
-	if (cdata->clk_delay_between_packets) {
-		cdata->cs_gpio = of_get_named_gpio(data_np,
+	cdata->cs_gpio = of_get_named_gpio(data_np,
 					"nvidia,chipselect-gpio", 0);
-		if ((cdata->cs_gpio < 0) && (cdata->cs_gpio != -EINVAL)) {
-			dev_err(&spi->dev,
-				"CS GPIO is not found on node %s: %d\n",
-				data_np->name, cdata->cs_gpio);
-			return NULL;
-		}
+	if ((cdata->cs_gpio < 0) && (cdata->cs_gpio != -EINVAL)) {
+		dev_err(&spi->dev,
+			"CS GPIO is not found on node %s: %d\n",
+			data_np->name, cdata->cs_gpio);
+		return NULL;
+	}
+	if ((cdata->cs_gpio < 0) && (cdata->clk_delay_between_packets)) {
+		dev_err(&spi->dev,
+			"CS packet delay requires gpio chip select\n");
+		return NULL;
 	}
 
 	of_node_put(data_np);
@@ -1154,13 +1157,10 @@ static int tegra_spi_setup(struct spi_device *spi)
 		cdata = tegra_spi_get_cdata_dt(spi, tspi);
 		spi->controller_data = cdata;
 	}
-	if (cdata) {
+	if (cdata)
 		if (cdata->clk_delay_between_packets)
 			cdata->cs_inactive_cycles =
 				cdata->clk_delay_between_packets;
-		else
-			cdata->cs_gpio = -EINVAL;
-	}
 
 	/* Set speed to the spi max fequency if spi device has not set */
 	spi->max_speed_hz = spi->max_speed_hz ? : tspi->spi_max_frequency;
