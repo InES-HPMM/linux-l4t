@@ -22,12 +22,12 @@
 			CC2 {
 				iso_abbrev = "US";
 				custom_locale = "Q2";
-				custom_locale_rev = <113>;
+				custom_locale_rev = <998>;
 			};
 			CC3 {
 				iso_abbrev = "CA";
 				custom_locale = "Q2";
-				custom_locale_rev = <113>;
+				custom_locale_rev = <998>;
 			};
 			CC4 {
 				iso_abbrev = "AT";
@@ -147,7 +147,7 @@
 			CC27 {
 				iso_abbrev = "IN";
 				custom_locale = "Q2";
-				custom_locale_rev = <113>;
+				custom_locale_rev = <998>;
 			};
 		};
 	};
