@@ -603,10 +603,10 @@ static int extcon_notifications(struct notifier_block *nb,
 	msg_entry(nvudc->dev);
 
 	spin_lock_irqsave(&nvudc->lock, flag);
-	if (nvudc->is_suspended) {
+	if (nvudc->is_suspended || !nvudc->pullup) {
 		spin_unlock_irqrestore(&nvudc->lock, flag);
 		msg_info(nvudc->dev,
-			"device is in Suspend status, ignore this event\n");
+			"device is not ready, ignore this event\n");
 		goto out;
 	}
 	nvudc->extcon_event_processing = true;
@@ -2456,8 +2456,11 @@ static int nvudc_gadget_pullup(struct usb_gadget *gadget, int is_on)
 		nvudc->device_state = USB_STATE_DEFAULT;
 	}
 	spin_unlock_irqrestore(&nvudc->lock, flags);
-
 	pm_runtime_put_sync(nvudc->dev);
+
+	/* update vbus status */
+	extcon_notifications(&nvudc->vbus_extcon_nb, 0, NULL);
+
 	return 0;
 }
 
@@ -5897,9 +5900,6 @@ static int tegra_xudc_plat_probe(struct platform_device *pdev)
 	extcon_register_notifier(nvudc->vbus_extcon_dev,
 						&nvudc->vbus_extcon_nb);
 	tegra_xudc_boost_cpu_init(nvudc);
-
-	/* update vbus status */
-	extcon_notifications(&nvudc->vbus_extcon_nb, 0, NULL);
 
 	return 0;
 
