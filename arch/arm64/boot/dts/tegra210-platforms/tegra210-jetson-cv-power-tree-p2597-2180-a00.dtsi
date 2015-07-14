@@ -157,6 +157,12 @@
 			dvdd_lcd-supply = <&en_dvdd_disp_1v8>;
 			vdd_lcd_bl_en-supply = <&lcd_bl_en>;
 			vdd_lcd_bl-supply = <&vdd_3v3>;
+
+			/*
+			 * Same as dvdd_lcd supply above. Solely used for matching
+			 * expected regulator name in edp panel files.
+			 */
+			vdd_ds_1v8-supply = <&en_dvdd_disp_1v8>;
 		};
 
 		vi {
