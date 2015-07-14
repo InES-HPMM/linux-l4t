@@ -27,7 +27,7 @@
 /*
  * This clock change is actually equivalent to 21018 now.
  */
-#define DVFS_CLOCK_CHANGE_VERSION	21018
+#define DVFS_CLOCK_CHANGE_VERSION	21019
 #define EMC_PRELOCK_VERSION		2101
 
 static void dll_disable(int channel_mode)
