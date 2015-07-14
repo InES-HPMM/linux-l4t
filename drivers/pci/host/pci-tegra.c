@@ -200,7 +200,8 @@
 #define NV_PCIE2_RP_RSR_PMESTAT				(1 << 16)
 
 #define NV_PCIE2_RP_INTR_BCR					0x0000003C
-#define NV_PCIE2_RP_INTR_BCR_INTR_LINE				(0xFF << 0)
+#define NV_PCIE2_RP_INTR_BCR_INTR_LINE			(0xFF << 0)
+#define NV_PCIE2_RP_INTR_BCR_SB_RESET			(0x1 << 22)
 
 #define NV_PCIE2_RP_PRIV_XP_DL					0x00000494
 #define PCIE2_RP_PRIV_XP_DL_GEN2_UPD_FC_TSHOLD			(0x1FF << 1)
@@ -3361,6 +3362,23 @@ static int get_aspm_duration(struct seq_file *s, void *data)
 	return 0;
 }
 
+static int secondary_bus_reset(struct seq_file *s, void *data)
+{
+	u32 val;
+	struct tegra_pcie_port *port = (struct tegra_pcie_port *)(s->private);
+
+	val = rp_readl(port, NV_PCIE2_RP_INTR_BCR);
+	val |= NV_PCIE2_RP_INTR_BCR_SB_RESET;
+	rp_writel(port, val, NV_PCIE2_RP_INTR_BCR);
+	udelay(10);
+	val = rp_readl(port, NV_PCIE2_RP_INTR_BCR);
+	val &= ~NV_PCIE2_RP_INTR_BCR_SB_RESET;
+	rp_writel(port, val, NV_PCIE2_RP_INTR_BCR);
+
+	seq_printf(s, "Secondary Bus Reset applied successfully...\n");
+	return 0;
+}
+
 static void reset_l1ss_counter(struct tegra_pcie_port *port, u32 val,
 			unsigned long offset)
 {
@@ -3554,6 +3572,7 @@ DEFINE_ENTRY(aspm_state_cnt)
 DEFINE_ENTRY(list_aspm_states)
 DEFINE_ENTRY(apply_aspm_state)
 DEFINE_ENTRY(get_aspm_duration)
+DEFINE_ENTRY(secondary_bus_reset)
 
 static int tegra_pcie_port_debugfs_init(struct tegra_pcie_port *port)
 {
@@ -3605,6 +3624,12 @@ static int tegra_pcie_port_debugfs_init(struct tegra_pcie_port *port)
 	d = debugfs_create_file("get_aspm_duration", S_IRUGO,
 					port->port_debugfs, (void *)port,
 					&get_aspm_duration_fops);
+	if (!d)
+		goto remove;
+
+	d = debugfs_create_file("secondary_bus_reset", S_IRUGO,
+					port->port_debugfs, (void *)port,
+					&secondary_bus_reset_fops);
 	if (!d)
 		goto remove;
 
