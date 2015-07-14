@@ -267,7 +267,6 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra124-p1859-vm_1.dtb \
 	tegra124-p1859-vm_2.dtb \
 	tegra124-p1889.dtb \
-	tegra124-p2360.dtb \
 	tegra124-p2360-b00.dtb \
 	tegra124-p2360-b01.dtb \
 	tegra124-p1855.dtb \
