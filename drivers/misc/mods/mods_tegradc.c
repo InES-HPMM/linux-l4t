@@ -129,8 +129,8 @@ int esc_mods_tegra_dc_config_possible(struct file *fp,
 	}
 
 	mods_debug_printk(DEBUG_TEGRADC,
-		"esc_mods_tegra_dc_config_possible bandwidth needed = %u,"
-		" bandwidth available = %u\n",
+		"esc_mods_tegra_dc_config_possible bandwidth needed = %lu,"
+		" bandwidth available = %lu\n",
 		max_bandwidth, max_available_bandwidth);
 
 	args->possible = (max_bandwidth <= max_available_bandwidth);
@@ -150,6 +150,7 @@ int esc_mods_tegra_dc_config_possible(struct file *fp,
 	return 0;
 }
 
+#ifdef CONFIG_TEGRA_NVSD
 static struct tegra_dc_sd_settings mods_sd_settings[TEGRA_MAX_DC] = {
 	{
 		.enable = 0,
@@ -165,6 +166,7 @@ static struct tegra_dc_sd_settings mods_sd_settings[TEGRA_MAX_DC] = {
 	}
 };
 static struct tegra_dc_sd_settings *tegra_dc_saved_sd_settings[TEGRA_MAX_DC];
+#endif
 
 #define SD_KINIT_BIAS(x)  (((x) & 0x3) << 29)
 
@@ -174,7 +176,9 @@ int esc_mods_tegra_dc_setup_sd(struct file *fp,
 	int i;
 	struct tegra_dc *dc = tegra_dc_get_dc(args->head);
 	struct tegra_dc_sd_settings *sd_settings = dc->out->sd_settings;
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	u32 val;
+#endif
 	u32 bw_idx;
 	LOG_ENT();
 
