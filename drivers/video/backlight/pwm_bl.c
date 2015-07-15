@@ -331,11 +331,11 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 
 	pb->pwm = devm_pwm_get(&pdev->dev, NULL);
 	if (IS_ERR(pb->pwm)) {
-		dev_err(&pdev->dev,
+		dev_info(&pdev->dev,
 			"PWM request fail by devm_pwm_get, trying of_pwm_get\n");
 		pb->pwm = of_pwm_get(target_bl_node, NULL);
 		if (IS_ERR(pb->pwm)) {
-			dev_err(&pdev->dev, "Trying PWM req with legacy API\n");
+			dev_info(&pdev->dev, "Trying PWM req with legacy API\n");
 			pb->pwm = pwm_request(data->pwm_id, "pwm-backlight");
 			if (IS_ERR(pb->pwm)) {
 				dev_err(&pdev->dev,
