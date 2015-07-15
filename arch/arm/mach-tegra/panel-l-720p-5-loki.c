@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/panel-l-720p-5-loki.c
  *
- * Copyright (c) 2011-2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -486,7 +486,6 @@ fail:
 static int dsi_l_720p_5_loki_enable(struct device *dev)
 {
 	int err = 0;
-	unsigned out_flags = tegra_dc_out_flags_from_dev(dev);
 
 	err = dsi_l_720p_5_loki_regulator_get(dev);
 	if (err < 0) {
@@ -512,7 +511,7 @@ static int dsi_l_720p_5_loki_enable(struct device *dev)
 			dsi_l_720p_5_loki_pdata.dsi_panel_rst_gpio;
 
 	/* Skip panel programming if in initialized mode */
-	if (!(out_flags & TEGRA_DC_OUT_INITIALIZED_MODE)) {
+	if (!tegra_dc_initialized(dev)) {
 		dsi_l_720p_5_loki_pdata.dsi_init_cmd = dsi_init_cmd;
 		gpio_set_value(en_panel_rst, 0);
 	} else {
