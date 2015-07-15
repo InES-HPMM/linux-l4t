@@ -1,7 +1,7 @@
 /*
  * linux/drivers/video/backlight/pwm_bl.c
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -331,11 +331,11 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 
 	pb->pwm = devm_pwm_get(&pdev->dev, NULL);
 	if (IS_ERR(pb->pwm)) {
-		dev_err(&pdev->dev,
+		dev_info(&pdev->dev,
 			"PWM request fail by devm_pwm_get, trying of_pwm_get\n");
 		pb->pwm = of_pwm_get(target_bl_node, NULL);
 		if (IS_ERR(pb->pwm)) {
-			dev_err(&pdev->dev, "Trying PWM req with legacy API\n");
+			dev_info(&pdev->dev, "Trying PWM req with legacy API\n");
 			pb->pwm = pwm_request(data->pwm_id, "pwm-backlight");
 			if (IS_ERR(pb->pwm)) {
 				dev_err(&pdev->dev,
