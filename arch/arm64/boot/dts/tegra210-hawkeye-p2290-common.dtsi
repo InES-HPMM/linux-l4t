@@ -1221,6 +1221,7 @@
 				};
 				vrr-settings {
 					nvidia,vrr_min_fps = <30>;
+					nvidia,frame_len_fluct = <6667>;
 				};
 				display-timings {
 					1200x1920-32-75Hz {
