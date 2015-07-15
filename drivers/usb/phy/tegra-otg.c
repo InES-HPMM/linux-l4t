@@ -862,7 +862,7 @@ DEFINE_SIMPLE_ATTRIBUTE(tegra_otg_pm_fops,
 
 static int tegra_otg_debug_init(struct tegra_otg *tegra)
 {
-	tegra_otg_debugfs_root = debugfs_create_dir("tegra-otg", 0);
+	tegra_otg_debugfs_root = debugfs_create_dir("tegra-otg", NULL);
 
 	if (!tegra_otg_debugfs_root)
 		return -ENOMEM;
