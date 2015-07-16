@@ -370,8 +370,6 @@ void nvsd_init(struct tegra_dc *dc, struct tegra_dc_sd_settings *settings)
 			/* clear the brightness val, too. */
 			if (_sd_brightness)
 				atomic_set(_sd_brightness, 255);
-
-			_sd_brightness = NULL;
 		}
 		if (settings)
 			settings->phase_settings_step = 0;
