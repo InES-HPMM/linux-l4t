@@ -1244,7 +1244,7 @@ static int tegra_ahci_controller_init(void *hpriv, int lp0)
 	struct clk *clk_sata_cold = NULL;
 	struct clk *clk_pllp = NULL;
 	struct clk *clk_cml1 = NULL;
-	int err, calib_val;
+	int err = 0, calib_val;
 	u32 val;
 	u32 timeout;
 	int partition_id;
@@ -1368,21 +1368,23 @@ static int tegra_ahci_controller_init(void *hpriv, int lp0)
 	clk_writel(val, CLK_RST_SATA_PLL_CFG1_REG);
 	udelay(3);
 
+	if (!lp0) {
 #if defined(CONFIG_TEGRA_SILICON_PLATFORM)
 #ifdef CONFIG_PM_GENERIC_DOMAINS_OF
-	partition_id = tegra_pd_get_powergate_id(tegra_sata_pd);
-	if (partition_id < 0)
-		return -EINVAL;
+		partition_id = tegra_pd_get_powergate_id(tegra_sata_pd);
+		if (partition_id < 0)
+			return -EINVAL;
 #else
-	partition_id = TEGRA_POWERGATE_SATA;
+		partition_id = TEGRA_POWERGATE_SATA;
 #endif
-	err = tegra_unpowergate_partition(partition_id);
-	if (err) {
-		pr_err("%s: ** failed to turn-on SATA (0x%x) **\n",
-				__func__, err);
-		goto exit;
+		err = tegra_unpowergate_partition(partition_id);
+		if (err) {
+			pr_err("%s: ** failed to turn-on SATA (0x%x) **\n",
+					__func__, err);
+			goto exit;
+		}
+#endif
 	}
-#endif
 
 	/*
 	 * place SATA Pad PLL out of reset by writing
@@ -1610,7 +1612,7 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	struct clk *clk_sata_uphy = NULL;
 	struct clk *clk_pllp = NULL;
 	struct clk *clk_cml1 = NULL;
-	int err;
+	int err = 0;
 	u32 val;
 	int partition_id;
 
@@ -1775,21 +1777,23 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	val |= REFCLK_SEL_INT_CML;
 	misc_writel(val, SATA_AUX_PAD_PLL_CNTL_1_REG);
 
+	if (!lp0) {
 #if defined(CONFIG_TEGRA_SILICON_PLATFORM)
 #ifdef CONFIG_PM_GENERIC_DOMAINS_OF
-	partition_id = tegra_pd_get_powergate_id(tegra_sata_pd);
-	if (partition_id < 0)
-		return -EINVAL;
+		partition_id = tegra_pd_get_powergate_id(tegra_sata_pd);
+		if (partition_id < 0)
+			return -EINVAL;
 #else
-	partition_id = TEGRA_POWERGATE_SATA;
+		partition_id = TEGRA_POWERGATE_SATA;
 #endif
-	err = tegra_unpowergate_partition(partition_id);
-	if (err) {
-		pr_err("%s: ** failed to turn-on SATA (0x%x) **\n",
-				__func__, err);
-		goto exit;
+		err = tegra_unpowergate_partition(partition_id);
+		if (err) {
+			pr_err("%s: ** failed to turn-on SATA (0x%x) **\n",
+					__func__, err);
+			goto exit;
+		}
+#endif
 	}
-#endif
 
 	/*
 	 * place SATA Pad PLL out of reset by writing
