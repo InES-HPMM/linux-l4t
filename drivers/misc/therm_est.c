@@ -1,7 +1,7 @@
 /*
  * drivers/misc/therm_est.c
  *
- * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -66,7 +66,7 @@ static int therm_est_subdev_get_temp(struct thermal_zone_device *thz,
 					long *temp)
 {
 	if (!thz || !thz->ops->get_temp || thz->ops->get_temp(thz, temp))
-		*temp = 25000;
+		*temp = DEFAULT_TSKIN;
 
 	return 0;
 }
@@ -214,18 +214,27 @@ static int therm_est_init_history(struct therm_estimator *est)
 	return 0;
 }
 
+static int therm_est_do_polling(struct therm_estimator *est)
+{
+	est->low_limit = 0;
+	est->high_limit = 0;
+	therm_est_init_history(est);
+	queue_delayed_work(est->workqueue,
+			&est->therm_est_work,
+			msecs_to_jiffies(est->polling_period));
+	return 0;
+}
+
 static int therm_est_polling(struct therm_estimator *est,
 				int polling)
 {
 	est->polling_enabled = polling > 0;
 
+	if (!est->use_activator)
+		return 0;
+
 	if (est->polling_enabled > 0) {
-		est->low_limit = 0;
-		est->high_limit = 0;
-		therm_est_init_history(est);
-		queue_delayed_work(est->workqueue,
-			&est->therm_est_work,
-			msecs_to_jiffies(est->polling_period));
+		therm_est_do_polling(est);
 	} else {
 		cancel_delayed_work_sync(&est->therm_est_work);
 		est->cur_temp = DEFAULT_TSKIN;
@@ -494,6 +503,42 @@ static ssize_t set_tc2(struct device *dev,
 	return count;
 }
 
+static ssize_t show_use_activator(struct device *dev,
+			struct device_attribute *da,
+			char *buf)
+{
+	struct therm_estimator *est = dev_get_drvdata(dev);
+	snprintf(buf, PAGE_SIZE, "%d\n", est->use_activator);
+	return strlen(buf);
+}
+
+static ssize_t set_use_activator(struct device *dev,
+			struct device_attribute *da,
+			const char *buf, size_t count)
+{
+	struct therm_estimator *est = dev_get_drvdata(dev);
+	int use_activator;
+
+	if (kstrtoint(buf, 0, &use_activator))
+		return -EINVAL;
+
+	if (est->use_activator == use_activator)
+		return count;
+
+	est->use_activator = use_activator;
+
+	if (est->polling_enabled > 0 || !use_activator) {
+		queue_delayed_work(est->workqueue,
+				&est->therm_est_work,
+				msecs_to_jiffies(est->polling_period));
+	} else {
+		cancel_delayed_work_sync(&est->therm_est_work);
+		est->cur_temp = DEFAULT_TSKIN;
+	}
+
+	return count;
+}
+
 static struct sensor_device_attribute therm_est_nodes[] = {
 	SENSOR_ATTR(coeff, S_IRUGO | S_IWUSR, show_coeff, set_coeff, 0),
 	SENSOR_ATTR(offset, S_IRUGO | S_IWUSR, show_offset, set_offset, 0),
@@ -502,6 +547,8 @@ static struct sensor_device_attribute therm_est_nodes[] = {
 	SENSOR_ATTR(tc1, S_IRUGO | S_IWUSR, show_tc1, set_tc1, 0),
 	SENSOR_ATTR(tc2, S_IRUGO | S_IWUSR, show_tc2, set_tc2, 0),
 	SENSOR_ATTR(temps, S_IRUGO, show_temps, 0, 0),
+	SENSOR_ATTR(use_activator, S_IRUGO | S_IWUSR, show_use_activator,
+							set_use_activator, 0),
 };
 
 #ifdef CONFIG_PM
@@ -518,12 +565,7 @@ static int therm_est_pm_notify(struct notifier_block *nb,
 		cancel_delayed_work_sync(&est->therm_est_work);
 		break;
 	case PM_POST_SUSPEND:
-		est->low_limit = 0;
-		est->high_limit = 0;
-		therm_est_init_history(est);
-		queue_delayed_work(est->workqueue,
-				&est->therm_est_work,
-				msecs_to_jiffies(est->polling_period));
+		therm_est_do_polling(est);
 		break;
 	}
 
@@ -553,8 +595,7 @@ thermal_est_activation_set_cur_state(struct thermal_cooling_device *cdev,
 					unsigned long cur_state)
 {
 	struct therm_estimator *est = cdev->devdata;
-	if (est->use_activator)
-		therm_est_polling(est, cur_state > 0);
+	therm_est_polling(est, cur_state > 0);
 
 	return 0;
 }
