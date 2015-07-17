@@ -16,3 +16,4 @@
 
 #include <tegra210-ers-e2220-0000-a00-00-common.dtsi>
 #include "tegra210-platforms/tegra210-ers-pinmux-e2220-1180-a00.dtsi"
+#include "tegra210-platforms/tegra210-pinmux-drive-sdmmc-common.dtsi"
