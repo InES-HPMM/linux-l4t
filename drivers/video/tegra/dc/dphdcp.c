@@ -60,7 +60,11 @@ static DECLARE_WAIT_QUEUE_HEAD(wq_worker);
 #define HDCP_DEBUG		1
 #define HDCP_READY		1
 #define HDCP_REAUTH		2
+#define HDCP_READY_SET		(1 << 0)
+#define HDCP_HPRIME_AVAIL	(1 << 1)
+#define HDCP_PAIRING_AVAIL	(1 << 2)
 #define HDCP_REAUTH_MASK	(1 << 3)
+#define HDCP_LINK_INTEG_FAIL	(1 << 4)
 
 #define MAX_AUX_SIZE		15
 /* logging */
@@ -495,7 +499,7 @@ aux_read:
 	return 0;
 }
 
-int tsec_hdcp_dp_verify_vprime(struct tegra_dphdcp *dphdcp)
+static int tsec_hdcp_dp_verify_vprime(struct tegra_dphdcp *dphdcp)
 {
 	struct hdcp_context_t hdcp_context;
 	struct hdcp_verify_vprime_param verify_vprime_param;
@@ -864,6 +868,587 @@ disable:
 	return;
 }
 
+/* HDCP 2.2 over display port */
+
+/* write N bytes of data over AUX channel */
+static int tegra_dpcd_hdcp_write_n(struct tegra_dc_dp_data *dp, u32 reg,
+						u64 *data, u8 size)
+{
+	u8 *buf = NULL;
+	u8 *orig_buf = NULL;
+	int e;
+
+	buf = kmalloc(size, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	orig_buf = buf;
+	memcpy(buf, data, size);
+	if (size <= MAX_AUX_SIZE) {
+		e = tegra_dpcd_hdcp_write(dp, reg, buf, size);
+		if (e) {
+			dphdcp_err("Error writing over AUX\n");
+			goto error;
+		}
+	} else {
+		while (size > MAX_AUX_SIZE) {
+			e = tegra_dpcd_hdcp_write(dp, reg, buf, MAX_AUX_SIZE);
+			if (e) {
+				dphdcp_err("Error writing over AUX\n");
+				goto error;
+			}
+			size -= MAX_AUX_SIZE;
+			buf += MAX_AUX_SIZE;
+		}
+		if (size) {
+			e = tegra_dpcd_hdcp_write(dp, reg, buf, size);
+			if (e) {
+				dphdcp_err("Error writing over AUX\n");
+				goto error;
+			}
+		}
+	}
+
+error:
+	kfree(orig_buf);
+	return e;
+}
+
+/* read N bytes of data over AUX channel */
+static int tegra_dpcd_hdcp_read_n(struct tegra_dc_dp_data *dp, u32 cmd,
+						u64 *data, int size)
+{
+	u8 *buf;
+	int e;
+	u8 *orig_buf;
+	u32 status;
+
+	buf = kmalloc(size, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	orig_buf = buf;
+	if (size <= MAX_AUX_SIZE) {
+		e = tegra_dpcd_hdcp_read(dp, cmd, buf, size, &status);
+		if (e) {
+			dphdcp_err("Error reading over AUX\n");
+			goto error;
+		}
+	} else {
+		while (size > MAX_AUX_SIZE) {
+			e = tegra_dpcd_hdcp_read(dp, cmd, buf,
+					MAX_AUX_SIZE, &status);
+			if (e) {
+				dphdcp_err("Error reading over AUX\n");
+				goto error;
+			}
+			size -= MAX_AUX_SIZE;
+			buf += MAX_AUX_SIZE;
+		}
+		if (size) {
+			e = tegra_dpcd_hdcp_write(dp, cmd, buf, MAX_AUX_SIZE);
+			if (e) {
+				dphdcp_err("Error reading over AUX\n");
+				goto error;
+			}
+		}
+	}
+	/* copy the content to data */
+	memcpy(data, orig_buf, size);
+
+error:
+	kfree(orig_buf);
+	return e;
+}
+
+static int get_rxstatus(struct tegra_dc_dp_data *dp, u8 *rxstatus)
+{
+	u32 status;
+	return tegra_dpcd_hdcp_read(dp, NV_DPCD_HDCP_RXSTATUS,
+					rxstatus, 1, &status);
+}
+
+static int dphdcp_ake_init_rtx_send(struct tegra_dc_dp_data *dp, u64 *buf)
+{
+	/* write 8 bytes of rtx */
+	return tegra_dpcd_hdcp_write_n(dp, NV_DPCD_HDCP_RTX_OFFSET, buf, 8);
+}
+
+static int dphdcp_ake_init_txcaps_send(struct tegra_dc_dp_data *dp, u64 *buf)
+{
+	/* write 3 bytes of txcaps */
+	return tegra_dpcd_hdcp_write_n(dp, NV_DPCD_HDCP_TXCAPS_OFFSET, buf, 3);
+}
+
+static int dphdcp_ake_cert_recv_rx(struct tegra_dc_dp_data *dp, u8 *buf)
+{
+	/* read 522 bytes of receiver certificate */
+	return tegra_dpcd_hdcp_read_n(dp, NV_DPCD_HDCP_CERT_RX_OFFSET,
+						(u64 *)buf, 522);
+}
+
+static int dphdcp_ake_cert_recv_rrx(struct tegra_dc_dp_data *dp, u64 *buf)
+{
+	/* write 8 bytes of pseudo random number */
+	return tegra_dpcd_hdcp_read_n(dp, NV_DPCD_HDCP_CERT_RRX_OFFSET,
+							buf, 8);
+}
+
+static int dphdcp_ake_cert_recv_rxcaps(struct tegra_dc_dp_data *dp, u16 *buf)
+{
+	/* write 3 bytes of receiver capability */
+	return tegra_dpcd_hdcp_read_n(dp, NV_DPCD_HDCP_CERT_RXCAPS_OFFSET,
+							(u64 *)buf, 3);
+}
+
+static int dphdcp_ake_no_stored_km_send(struct tegra_dc_dp_data *dp, u64 *buf)
+{
+	return tegra_dpcd_hdcp_write_n(dp, NV_DPCD_HDCP_EKM_NOSTORED, buf, 128);
+}
+
+static int dphdcp_ake_hprime_receive(struct tegra_dc_dp_data *dp, u32 *buf)
+{
+	return tegra_dpcd_hdcp_read_n(dp, NV_DPCD_HDCP_HPRIME,
+					(u64 *)buf, 32);
+}
+
+static int dphdcp_lc_init_send(struct tegra_dc_dp_data *dp, u64 *buf)
+{
+	return tegra_dpcd_hdcp_write_n(dp, NV_DPCD_HDCP_RN, buf, 8);
+}
+
+static int dphdcp_ake_pairing_info_receive(struct tegra_dc_dp_data *dp,
+							u64 *buf)
+{
+	return tegra_dpcd_hdcp_read_n(dp, NV_DPCD_HDCP_LPRIME,
+						buf, 16);
+}
+
+static int dphdcp_lc_lprime_receive(struct tegra_dc_dp_data *dp, u64 *buf)
+{
+	return tegra_dpcd_hdcp_read_n(dp, NV_DPCD_HDCP_LPRIME,
+						buf, 32);
+}
+
+static int dphdcp_ske_eks_send(struct tegra_dc_dp_data *dp, u64 *buf)
+{
+	return tegra_dpcd_hdcp_write_n(dp, NV_DPCD_HDCP_EKS, buf, 16);
+}
+
+static int dphdcp_ske_riv_send(struct tegra_dc_dp_data *dp, u64 *buf)
+{
+	return tegra_dpcd_hdcp_write_n(dp, NV_DPCD_HDCP_RIV, buf, 8);
+}
+
+static int dphdcp_rxinfo_recv(struct tegra_dc_dp_data *dp, u16 *buf)
+{
+	return tegra_dpcd_hdcp_read_n(dp, NV_DPCD_HDCP_RXINFO, (u64 *)buf, 2);
+}
+
+static int dphdcp_seqnum_recv(struct tegra_dc_dp_data *dp, u64 *buf)
+{
+	return tegra_dpcd_hdcp_read_n(dp, NV_DPCD_HDCP_SEQNUM_V, buf, 3);
+}
+
+static int dphdcp_vprime_recv(struct tegra_dc_dp_data *dp, u16 *buf)
+{
+	return tegra_dpcd_hdcp_read_n(dp, NV_DPCD_HDCP_VPRIME, (u64 *)buf, 16);
+}
+
+static int dphdcp_recvrid_list_recv(struct tegra_dc_dp_data *dp, u64 *buf)
+{
+	return tegra_dpcd_hdcp_read_n(dp, NV_DPCD_HDCP_RX_ID_LIST, buf, 635);
+}
+
+static int dphdcp_rptr_ack_send(struct tegra_dc_dp_data *dp, u64 *buf)
+{
+	return tegra_dpcd_hdcp_read_n(dp, NV_DPCD_HDCP_V, buf, 16);
+}
+
+static int dphdcp_rptr_seqnum_send(struct tegra_dc_dp_data *dp, u8 *buf)
+{
+	return tegra_dpcd_hdcp_write_n(dp, NV_DPCD_HDCP_SEQ_NUM_M,
+						(u64 *)buf, 3);
+}
+
+static int dphdcp_rptr_k_send(struct tegra_dc_dp_data *dp, u16 *buf)
+{
+	return tegra_dpcd_hdcp_write_n(dp, NV_DPCD_HDCP_K,
+					(u64 *)&buf, 2);
+}
+
+static int dphdcp_rptr_strmid_type_send(struct tegra_dc_dp_data *dp, u16 *buf)
+{
+	/* max streams: 1 */
+	return tegra_dpcd_hdcp_write_n(dp, NV_DPCD_HDCP_STRMID_TYPE,
+					(u64 *)buf, 2);
+}
+
+static int dphdcp_rptr_stream_ready_recv(struct tegra_dc_dp_data *dp, u8 *buf)
+{
+	return tegra_dpcd_hdcp_read_n(dp, NV_DPCD_HDCP_MPRIME, (u64 *)buf, 32);
+}
+
+/* poll for status until timeout */
+static int dphdcp_poll(struct tegra_dc_dp_data *dp, int timeout, int status)
+{
+	int e;
+	s64 start_time;
+	s64 end_time;
+	struct timespec tm;
+	u8 val;
+	u32 aux_stat;
+	ktime_get_ts(&tm);
+	start_time = timespec_to_ns(&tm);
+
+	while (1) {
+		ktime_get_ts(&tm);
+		end_time = timespec_to_ns(&tm);
+		if ((end_time - start_time)/1000 >= timeout*1000)
+			return -ETIMEDOUT;
+		else {
+			e = tegra_dpcd_hdcp_read(dp,
+			NV_DPCD_HDCP_RXSTATUS, &val , 1, &aux_stat);
+			if (e) {
+				dphdcp_err("dphdcp_poll_ready failed\n");
+				goto exit;
+			}
+		}
+		if (status == HDCP_READY) {
+			if (val)
+				break;
+		} else if (status == HDCP_REAUTH) {
+			if (cpu_to_be16(val) & HDCP_REAUTH_MASK)
+				break;
+		}
+	}
+	e = 0;
+exit:
+	return e;
+}
+
+static int dphdcp_poll_ready(struct tegra_dc_dp_data *dp,
+					int timeout)
+{
+	int e;
+	e = dphdcp_poll(dp, timeout, HDCP_READY);
+	return e;
+}
+
+static int tsec_hdcp_authentication(struct tegra_dc_dp_data *dp,
+				struct hdcp_context_t *hdcp_context)
+{
+	int err = 0;
+	u8 version = 0x02;
+	u16 caps = 0;
+	u16 txcaps = 0x0;
+	u64 txval;
+	u32 *buf;
+
+	err = tsec_hdcp_readcaps(hdcp_context);
+	if (err)
+		goto exit;
+	err = tsec_hdcp_init(hdcp_context);
+	if (err)
+		goto exit;
+	/* rtx populated in hdcp create session */
+	err = tsec_hdcp_create_session(hdcp_context);
+	if (err)
+		goto exit;
+	err = tsec_hdcp_exchange_info(hdcp_context,
+		HDCP_EXCHANGE_INFO_GET_TMTR_INFO, &version, &caps);
+	if (err)
+		goto exit;
+	hdcp_context->msg.txcaps_version = version;
+	hdcp_context->msg.txcaps_capmask = txcaps;
+	/* initiate authentication with 64 bit pseudo random # */
+	err = dphdcp_ake_init_rtx_send(dp, &hdcp_context->msg.rtx);
+	if (err)
+		goto exit;
+	txval = (version << 16) | txcaps;
+	/* write the txcaps register */
+	err = dphdcp_ake_init_txcaps_send(dp, &txval);
+	if (err)
+		goto exit;
+
+	/* wait for 100 ms before reading the RX */
+	err = dphdcp_poll_ready(dp, 100);
+	if (err)
+		goto exit;
+
+	/* process upon CP_IRQ interrupt */
+	/* read the certificate from the rx */
+	err = dphdcp_ake_cert_recv_rx(dp, hdcp_context->msg.cert_rx);
+	if (err)
+		goto exit;
+
+	err = dphdcp_ake_cert_recv_rrx(dp, &hdcp_context->msg.rrx);
+	if (err)
+		goto exit;
+
+	err = dphdcp_ake_cert_recv_rxcaps(dp,
+		&hdcp_context->msg.rxcaps_capmask);
+	if (err)
+		goto exit;
+
+	/* verify received certificate */
+	err = tsec_hdcp_verify_cert(hdcp_context);
+	if (err)
+		goto exit;
+
+	err = tsec_hdcp_update_rrx(hdcp_context);
+	if (err)
+		goto exit;
+
+	err = tsec_hdcp_generate_ekm(hdcp_context);
+	if (err)
+		goto exit;
+
+	err = dphdcp_ake_no_stored_km_send(dp, (u64 *)hdcp_context->msg.ekm);
+	if (err)
+		goto exit;
+
+	err = tsec_hdcp_exchange_info(hdcp_context,
+		HDCP_EXCHANGE_INFO_SET_RCVR_INFO,
+		&hdcp_context->msg.rxcaps_version,
+		&hdcp_context->msg.rxcaps_capmask);
+
+	if (err)
+		goto exit;
+
+	/* device in revocation list ? */
+	err = tsec_hdcp_revocation_check(hdcp_context);
+	if (err)
+		goto exit;
+	/* H' should be ready within 1 sec */
+	err = dphdcp_poll_ready(dp, 1000);
+	if (err)
+		goto exit;
+	buf = (u32 *)hdcp_context->msg.hprime;
+	err = dphdcp_ake_hprime_receive(dp, buf);
+	if (err)
+		goto exit;
+
+	err = tsec_hdcp_verify_hprime(hdcp_context);
+	if (err)
+		goto exit;
+	/* wait for AKE pairing message to be ready */
+	err = dphdcp_poll_ready(dp, 200);
+	if (err)
+		goto exit;
+
+	err = dphdcp_ake_pairing_info_receive(dp,
+		(u64 *)hdcp_context->msg.ekhkm);
+	if (err)
+		goto exit;
+
+	err = tsec_hdcp_encrypt_pairing_info(hdcp_context);
+	if (err)
+		goto exit;
+
+	err = tsec_hdcp_encrypt_pairing_info(hdcp_context);
+	if (err)
+		goto exit;
+
+	err = tsec_hdcp_generate_lc_init(hdcp_context);
+	if (err)
+		goto exit;
+
+	err = dphdcp_lc_init_send(dp, &hdcp_context->msg.rn);
+	if (err)
+		goto exit;
+
+	err = dphdcp_poll_ready(dp, 7);
+	if (err)
+		goto exit;
+
+	err = dphdcp_lc_lprime_receive(dp, (u64 *)hdcp_context->msg.lprime);
+	if (err)
+		goto exit;
+
+	err = tsec_hdcp_verify_lprime(hdcp_context);
+	if (err)
+		goto exit;
+
+	err = tsec_hdcp_ske_init(hdcp_context);
+	if (err)
+		goto exit;
+
+	err = dphdcp_ske_eks_send(dp, (u64 *)hdcp_context->msg.eks);
+	if (err)
+		goto exit;
+
+	err = dphdcp_ske_riv_send(dp, (u64 *)hdcp_context->msg.riv);
+	if (err)
+		goto exit;
+
+	/* check if the receiver is a repeater */
+	if (hdcp_context->msg.rxcaps_capmask & HDCP_22_REPEATER) {
+		dp->dphdcp->repeater = 1;
+		err = dphdcp_poll_ready(dp, 3000);
+		if (err)
+			goto exit;
+
+		/* read receiver id list */
+		err = dphdcp_rxinfo_recv(dp, &hdcp_context->msg.rxinfo);
+		if (err)
+			goto exit;
+
+		err = dphdcp_seqnum_recv(dp, (u64 *)hdcp_context->msg.seq_num);
+		if (err)
+			goto exit;
+
+		err = dphdcp_vprime_recv(dp, &hdcp_context->msg.rxinfo);
+		if (err)
+			goto exit;
+
+		err = dphdcp_recvrid_list_recv(dp,
+			(u64 *)&hdcp_context->msg.rxinfo);
+		if (err)
+			goto exit;
+
+		err = tsec_hdcp_verify_vprime(hdcp_context);
+		if (err)
+			goto exit;
+
+		/* send ack for repeater auth */
+		err = dphdcp_rptr_ack_send(dp, (u64 *)hdcp_context->msg.v);
+		if (err)
+			goto exit;
+
+		err = tsec_hdcp_rptr_stream_manage(hdcp_context);
+		if (err)
+			goto exit;
+		/* One stream */
+		hdcp_context->msg.k = 0x0100;
+		/* STREAM_ID and Type are 0 */
+		hdcp_context->msg.streamid_type[0] = 0x0000;
+		/* stream management information */
+		err = dphdcp_rptr_seqnum_send(dp,
+			hdcp_context->msg.seq_num_m);
+		if (err)
+			goto exit;
+
+		err = dphdcp_rptr_k_send(dp,
+			&hdcp_context->msg.k);
+		if (err)
+			goto exit;
+
+		err = dphdcp_rptr_strmid_type_send(dp,
+			hdcp_context->msg.streamid_type);
+		if (err)
+			goto exit;
+
+		/* repeater auth stream ready information */
+		err = dphdcp_rptr_stream_ready_recv(dp,
+				hdcp_context->msg.mprime);
+		if (err)
+			goto exit;
+
+	}
+	dphdcp_info("HDCP authentication successful\n");
+exit:
+	if (err)
+		dphdcp_err("HDCP authentication failed with err %d\n", err);
+	return err;
+}
+
+void dphdcp2_downstream_worker(struct work_struct *work)
+{
+	struct tegra_dphdcp *dphdcp =
+		container_of(to_delayed_work(work),
+		 struct tegra_dphdcp, work);
+	struct tegra_dc_dp_data *dp = dphdcp->dp;
+	struct hdcp_context_t hdcp_context;
+	struct tegra_dc *dc = dp->dc;
+	int e;
+	u8 rxstatus;
+
+	e = tsec_hdcp_create_context(&hdcp_context);
+	if (e)
+		goto err;
+
+	dphdcp_vdbg("%s():started thread %s\n", __func__, dphdcp->name);
+	tegra_dc_io_start(dc);
+
+	mutex_lock(&dphdcp->lock);
+	if (dphdcp->state == STATE_OFF) {
+		dphdcp_err("dphdcp failure: giving up\n");
+		goto err;
+	}
+	dphdcp->state = STATE_UNAUTHENTICATED;
+
+	/* check plug state to terminate early in case of flush_workqueue */
+	if (!dphdcp_is_plugged(dphdcp)) {
+		dphdcp_err("worker started in unplugged state\n");
+		goto lost_dp;
+	}
+	dphdcp_vdbg("%s():hpd=%d\n", __func__, dphdcp->plugged);
+	mutex_unlock(&dphdcp->lock);
+
+	if (tsec_hdcp_authentication(dp, &hdcp_context)) {
+		mutex_lock(&dphdcp->lock);
+		goto failure;
+	}
+
+	mutex_lock(&dphdcp->lock);
+	dphdcp->state = STATE_LINK_VERIFY;
+	mutex_unlock(&dphdcp->lock);
+
+	e = tsec_hdcp_session_ctrl(&hdcp_context,
+			HDCP_SESSION_CTRL_FLAG_ACTIVATE);
+	if (e) {
+		dphdcp_err("tsec hdcp session ctrl failed\n");
+		mutex_lock(&dphdcp->lock);
+		goto failure;
+	}
+	dphdcp_info("HDCP 2.2 CRYPT enabled\n");
+	mutex_lock(&dphdcp->lock);
+	while (1) {
+		if (!dphdcp_is_plugged(dphdcp))
+			goto lost_dp;
+
+		if (dphdcp->state != STATE_LINK_VERIFY)
+			goto failure;
+
+		mutex_unlock(&dphdcp->lock);
+
+		/* link integrity check */
+		e = get_rxstatus(dp, &rxstatus);
+		if (!e && (rxstatus & HDCP_LINK_INTEG_FAIL)) {
+			dphdcp_err("link integrity failure\n");
+			mutex_lock(&dphdcp->lock);
+			goto failure;
+		}
+		tegra_dc_io_end(dc);
+		wait_event_interruptible_timeout(wq_worker,
+		!dphdcp_is_plugged(dphdcp), msecs_to_jiffies(200));
+		tegra_dc_io_start(dc);
+		mutex_lock(&dphdcp->lock);
+	}
+
+failure:
+	dphdcp->fail_count++;
+	if (dphdcp->fail_count > dphdcp->max_retries) {
+		dphdcp_err("dphdcp failure - too many failures, giving up\n");
+	} else {
+		dphdcp_err("dphdcp failure - renegotiating in 1 sec\n");
+		if (!dphdcp_is_plugged(dphdcp))
+			goto lost_dp;
+
+		queue_delayed_work(dphdcp->downstream_wq, &dphdcp->work,
+						msecs_to_jiffies(1000));
+	}
+
+lost_dp:
+	dphdcp->state = STATE_UNAUTHENTICATED;
+
+err:
+	mutex_unlock(&dphdcp->lock);
+	tegra_dc_io_end(dc);
+	e = tsec_hdcp_free_context(&hdcp_context);
+}
+
 static int tegra_dphdcp_on(struct tegra_dphdcp *dphdcp)
 {
 	u8 hdcp2version = 0;
@@ -879,9 +1464,11 @@ static int tegra_dphdcp_on(struct tegra_dphdcp *dphdcp)
 			return -EIO;
 
 		dphdcp_vdbg("read back version:%x\n", hdcp2version);
-		if (hdcp2version & HDCP_HDCP2_VERSION_HDCP22_YES)
+		if (hdcp2version & HDCP_HDCP2_VERSION_HDCP22_YES) {
+			INIT_DELAYED_WORK(&dphdcp->work,
+					dphdcp2_downstream_worker);
 			dphdcp->hdcp22 = HDCP22_PROTOCOL;
-		else {
+		} else {
 			INIT_DELAYED_WORK(&dphdcp->work,
 					dphdcp_downstream_worker);
 			dphdcp->hdcp22 = HDCP1X_PROTOCOL;

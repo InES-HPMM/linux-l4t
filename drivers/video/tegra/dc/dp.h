@@ -262,7 +262,7 @@ bool tegra_dc_dp_calc_config(struct tegra_dc_dp_data *dp,
 #define NV_DPCD_HDCP_RN					(0x000692F0)
 #define NV_DPCD_HDCP_LPRIME				(0x000692F8)
 #define NV_DPCD_HDCP_EKS				(0x00069318)
-#define NV_DPCD_HDCP_R4					(0x00069328)
+#define NV_DPCD_HDCP_RIV				(0x00069328)
 #define NV_DPCD_HDCP_RXINFO				(0x00069330)
 #define NV_DPCD_HDCP_SEQNUM_V				(0x00069332)
 #define NV_DPCD_HDCP_VPRIME				(0x00069335)
