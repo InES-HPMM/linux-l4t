@@ -1,7 +1,7 @@
 /*
  * ina230.c - driver for TI INA230
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014- 2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Based on hwmon driver:
  * 		drivers/hwmon/ina230.c
@@ -247,62 +247,6 @@ static void __locked_ina230_evaluate_state(struct ina230_chip *chip)
 	}
 }
 
-static void ina230_evaluate_state(struct ina230_chip *chip)
-{
-	mutex_lock(&chip->mutex);
-	__locked_ina230_evaluate_state(chip);
-	mutex_unlock(&chip->mutex);
-}
-
-static int ina230_get_bus_voltage(struct ina230_chip *chip, int *volt_mv)
-{
-	int ret;
-	int voltage_mv;
-
-	mutex_lock(&chip->mutex);
-	ret = ina230_ensure_enabled_start(chip);
-	if (ret < 0) {
-		mutex_unlock(&chip->mutex);
-		return ret;
-	}
-
-	/* getting voltage readings in milli volts*/
-	voltage_mv = (s16)be16_to_cpu(i2c_smbus_read_word_data(chip->client,
-						  INA230_VOLTAGE));
-
-	ina230_ensure_enabled_end(chip);
-	mutex_unlock(&chip->mutex);
-
-	if (voltage_mv < 0) {
-		dev_err(chip->dev, "%s: failed: %d\n", __func__, voltage_mv);
-		return -EINVAL;
-	}
-	*volt_mv = busv_register_to_mv(voltage_mv);
-	return 0;
-}
-
-static int ina230_get_shunt_voltage(struct ina230_chip *chip, int *volt_uv)
-{
-	int voltage_uv;
-	int ret;
-
-	mutex_lock(&chip->mutex);
-	ret = ina230_ensure_enabled_start(chip);
-	if (ret < 0) {
-		mutex_unlock(&chip->mutex);
-		return ret;
-	}
-
-	voltage_uv = (s16)be16_to_cpu(i2c_smbus_read_word_data(chip->client,
-						  INA230_SHUNT));
-
-	ina230_ensure_enabled_end(chip);
-	mutex_unlock(&chip->mutex);
-
-	*volt_uv = shuntv_register_to_uv(voltage_uv);
-	return 0;
-}
-
 static int  __locked_wait_for_conversion(struct ina230_chip *chip)
 {
 	int ret, conversion, trials = 0;
@@ -323,6 +267,70 @@ static int  __locked_wait_for_conversion(struct ina230_chip *chip)
 		return -EAGAIN;
 	}
 
+	return 0;
+}
+
+static void ina230_evaluate_state(struct ina230_chip *chip)
+{
+	mutex_lock(&chip->mutex);
+	__locked_ina230_evaluate_state(chip);
+	mutex_unlock(&chip->mutex);
+}
+
+static int ina230_get_bus_voltage(struct ina230_chip *chip, int *volt_mv)
+{
+	int ret;
+	int voltage_mv;
+	mutex_lock(&chip->mutex);
+	ret = ina230_ensure_enabled_start(chip);
+	if (ret < 0) {
+		mutex_unlock(&chip->mutex);
+		return ret;
+	}
+
+	ret = __locked_wait_for_conversion(chip);
+	if (ret < 0) {
+		mutex_unlock(&chip->mutex);
+		return ret;
+	}
+	/* getting voltage readings in milli volts*/
+	voltage_mv = (s16)be16_to_cpu(i2c_smbus_read_word_data(chip->client,
+						  INA230_VOLTAGE));
+
+	ina230_ensure_enabled_end(chip);
+	mutex_unlock(&chip->mutex);
+
+	if (voltage_mv < 0) {
+		dev_err(chip->dev, "%s: failed: %d\n", __func__, voltage_mv);
+		return -EINVAL;
+	}
+	*volt_mv = busv_register_to_mv(voltage_mv);
+	return 0;
+}
+
+static int ina230_get_shunt_voltage(struct ina230_chip *chip, int *volt_uv)
+{
+	int voltage_uv;
+	int ret;
+	mutex_lock(&chip->mutex);
+	ret = ina230_ensure_enabled_start(chip);
+	if (ret < 0) {
+		mutex_unlock(&chip->mutex);
+		return ret;
+	}
+
+	ret = __locked_wait_for_conversion(chip);
+	if (ret < 0) {
+		mutex_unlock(&chip->mutex);
+		return ret;
+	}
+	voltage_uv = (s16)be16_to_cpu(i2c_smbus_read_word_data(chip->client,
+						  INA230_SHUNT));
+
+	ina230_ensure_enabled_end(chip);
+	mutex_unlock(&chip->mutex);
+
+	*volt_uv = shuntv_register_to_uv(voltage_uv);
 	return 0;
 }
 
