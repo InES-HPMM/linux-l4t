@@ -737,7 +737,7 @@ static int es_set_final_route(struct escore_priv *escore)
 	 * firmware after stopping the current route. The stream count will
 	 * anyway will be decremented when the HAL layer stops the PCM stream
 	 * of previous use-case. */
-	if (unlikely(atomic_read(&escore->active_streams)))
+	else if (unlikely(atomic_read(&escore->active_streams)))
 		es300_codec_stop_algo(escore);
 
 	escore_flush_msg_list(escore);
