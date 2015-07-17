@@ -275,6 +275,9 @@
 			dp-display {
 				nvidia,lanes = <2>;
 				nvidia,is_ext_dp_panel = <1>;
+				disp-default-out {
+					nvidia,out-max-pixclk = <3333>; /* KHZ2PICOS(300000) */
+				};
 			};
 		};
 		dpaux1 {
