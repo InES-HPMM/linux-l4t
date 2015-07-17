@@ -163,8 +163,8 @@
 				cap-version = <0x34340002>;
 				cap-identifier = "IMX132";
 				cap-sensor_nvc_interface = <3>;
-				cap-pixel_types = <0x101>;
-				cap-orientation = <1>;
+				cap-pixel_types = <0x100>;
+				cap-orientation = <3>;
 				cap-direction = <1>;
 				cap-initial_clock_rate_khz = <6000>;
 				cap-h_sync_edge = <0>;
