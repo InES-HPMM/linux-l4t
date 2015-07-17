@@ -667,6 +667,8 @@ struct tegra_vrr {
 	s32	adjust_vfp;
 	s32     adjust_db;
 	s32     vfp;
+
+	s32     authenticated;
 };
 
 struct tegra_dc_out {
