@@ -121,7 +121,7 @@ static ssize_t tegra_t210ref_dmic_input_show_attr(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%s\n", machine->dmic_input);
 }
 
-static struct device_attribute dmicinput_attrs = __ATTR(dmicinput, 0664,
+static struct device_attribute dmicinput_attrs = __ATTR(dmicinput, S_IRUGO,
 	tegra_t210ref_dmic_input_show_attr, NULL);
 
 #ifdef CONFIG_SWITCH
@@ -930,7 +930,7 @@ static int tegra_t210ref_driver_probe(struct platform_device *pdev)
 
 	if (!of_property_read_string(np, "nvidia,digital-mic-data-input",
 		&machine->dmic_input)) {
-		/* Create sysnode and write the PDM info to it */
+		/* Create sysnode for reading PDM info */
 		ret = device_create_file(&pdev->dev, &dmicinput_attrs);
 		if (ret != 0)
 			dev_err(&pdev->dev, "Failed to create dmicinput sysfs node: %d\n", ret);
