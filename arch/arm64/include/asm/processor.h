@@ -90,6 +90,7 @@ struct cpu_suspend_ctx {
 	unsigned long ttbr1_el1;
 	unsigned long tcr_el1;
 	unsigned long vbar_el1;
+	unsigned long cpuactlr_el1;
 	unsigned long sctlr_el1;
 	unsigned long sp;
 } __aligned(16);

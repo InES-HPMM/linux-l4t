@@ -102,8 +102,10 @@ ENTRY(cpu_do_suspend)
 	str	x7, [x0, #CPU_CTX_TCR_EL1]
 	mrs	x8, vbar_el1
 	str	x8, [x0, #CPU_CTX_VBAR_EL1]
-	mrs	x9, sctlr_el1
-	str	x9, [x0, #CPU_CTX_SCTLR_EL1]
+	mrs	x9, s3_1_c15_c2_0
+	str	x9, [x0, #CPU_CTX_CPUACTLR_EL1]
+	mrs	x10, sctlr_el1
+	str	x10, [x0, #CPU_CTX_SCTLR_EL1]
 	ret
 ENDPROC(cpu_do_suspend)
 
@@ -137,6 +139,20 @@ ENTRY(cpu_do_resume)
 	msr	tcr_el1, x8
 	ldr	x9, [x0, #CPU_CTX_VBAR_EL1]
 	msr	vbar_el1, x9
+	mrs	x2, midr_el1
+	/*
+	 * cpuactlr_el1 is an implementation defined register
+	 * and Denver uses it to indicate the power state to enter.
+	 * If restored same value on restore then it is possible
+	 * that CPU would enter unexpected power state on next WFI.
+	 * Hence skip restoring this register for Denver.
+	 */
+	lsr	x2, x2, #24
+	cmp	x2, #0x4e
+	beq	skip_actlr_restore
+	ldr	x9, [x0, #CPU_CTX_CPUACTLR_EL1]
+	msr	s3_1_c15_c2_0, x9
+skip_actlr_restore:
 	ldr	x0, [x0, #CPU_CTX_SCTLR_EL1]
 	isb
 	dsb	sy

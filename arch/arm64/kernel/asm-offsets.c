@@ -117,6 +117,7 @@ int main(void)
   DEFINE(CPU_CTX_TTBR1_EL1,	offsetof(struct cpu_suspend_ctx, ttbr1_el1));
   DEFINE(CPU_CTX_TCR_EL1,	offsetof(struct cpu_suspend_ctx, tcr_el1));
   DEFINE(CPU_CTX_VBAR_EL1,	offsetof(struct cpu_suspend_ctx, vbar_el1));
+  DEFINE(CPU_CTX_CPUACTLR_EL1,	offsetof(struct cpu_suspend_ctx, cpuactlr_el1));
   DEFINE(CPU_CTX_SCTLR_EL1,	offsetof(struct cpu_suspend_ctx, sctlr_el1));
   DEFINE(CPU_CTX_SP,		offsetof(struct cpu_suspend_ctx, sp));
   DEFINE(SLEEP_SAVE_SP_SZ,     sizeof(struct sleep_save_sp));
