@@ -39,9 +39,10 @@
 		};
 
 		cm32180@48 {
-			compatible = "capella,cm3218x";
+			compatible = "capella,cm32180";
 			reg = <0x48>;
 			vdd-supply = <&vdd_3v3>;		/* P2297 Flex Cable	*/
+			gpio_irq = <&gpio TEGRA_GPIO(X, 3) GPIO_ACTIVE_LOW>;
 			light_uncalibrated_lo = <1>;
 			light_calibrated_lo = <150>;
 			light_uncalibrated_hi = <34500>;
