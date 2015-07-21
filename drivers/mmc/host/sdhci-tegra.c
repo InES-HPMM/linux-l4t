@@ -5344,7 +5344,7 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 		val = of_get_named_gpio(np, "nvidia,sdmmc-pin-gpios", i);
 		if (gpio_is_valid(val)) {
 			plat->gpios[i].gpio = val;
-			plat->gpios[i].flags = GPIOF_DIR_OUT;
+			plat->gpios[i].flags = GPIOF_OUT_INIT_HIGH;
 			sprintf(label, "sdmmc_pin%d", i);
 			plat->gpios[i].label = label;
 		}
