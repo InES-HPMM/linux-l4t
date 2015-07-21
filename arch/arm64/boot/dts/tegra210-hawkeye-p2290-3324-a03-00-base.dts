@@ -21,6 +21,7 @@
  */
 
 #include "tegra210-hawkeye-p2290-3306-a02-00-base.dts"
+#include "tegra210-platforms/tegra210-hawkeye-sensor-p2290-1100-a03.dtsi"
 
 / {
 	nvidia,dtsfilename = __FILE__;
