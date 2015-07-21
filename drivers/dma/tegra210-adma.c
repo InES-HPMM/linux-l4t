@@ -631,7 +631,7 @@ static irqreturn_t tegra_adma_isr(int irq, void *dev_id)
 	}
 
 	spin_unlock_irqrestore(&tdc->lock, flags);
-	dev_info(tdc2dev(tdc),
+	dev_dbg(tdc2dev(tdc),
 		"Interrupt already served status 0x%08lx\n", status);
 	return IRQ_NONE;
 }
