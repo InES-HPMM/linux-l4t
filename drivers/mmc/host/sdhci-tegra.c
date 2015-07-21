@@ -2253,6 +2253,17 @@ static int tegra_sdhci_configure_regulators(struct sdhci_tegra *tegra_host,
 		if (!tegra_host->is_rail_enabled) {
 			if (soc_data->nvquirks2 & NVQUIRK2_SET_PAD_E_INPUT_VOL)
 				tegra_sdhci_configure_e_input(sdhci, true);
+			if (tegra_host->vdd_io_reg) {
+				vddio_prev = regulator_get_voltage(
+						tegra_host->vdd_io_reg);
+				if (vddio_prev == SDHOST_LOW_VOLT_MAX) {
+					if (plat->pwrdet_support &&
+						tegra_host->sdmmc_padctrl)
+					rc = padctrl_set_voltage(
+						tegra_host->sdmmc_padctrl,
+						vddio_prev);
+				}
+			}
 			if (tegra_host->vdd_slot_reg)
 				rc = regulator_enable(tegra_host->vdd_slot_reg);
 			if (tegra_host->vdd_io_reg)
