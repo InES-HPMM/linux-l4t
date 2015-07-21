@@ -20,6 +20,7 @@
 
 #include "tegra210-common.dtsi"
 #include "tegra210-platforms/tegra210-odin-gpio.dtsi"
+#include "tegra210-platforms/tegra210-pinmux-drive-sdmmc-common.dtsi"
 #include "tegra210-platforms/tegra210-odin-pinmux.dtsi"
 #include "tegra210-platforms/tegra210-odin-prods.dtsi"
 #include "panel-a-wuxga-8-0.dtsi"

@@ -28,6 +28,7 @@
 #include "tegra210-platforms/tegra210-loki-e-prods.dtsi"
 #include "tegra210-platforms/tegra210-loki-power-tree-p2530-0999-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-gpio-p2530-0032-e00.dtsi"
+#include "tegra210-platforms/tegra210-pinmux-drive-sdmmc-common.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-pinmux-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-comms.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-pwm-fan.dtsi"
