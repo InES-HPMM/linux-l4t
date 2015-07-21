@@ -702,7 +702,7 @@ static int imx132_power_on(struct imx132_info *info)
 	if (unlikely(err))
 		goto imx132_iovdd_fail;
 
-	usleep_range(1, 2);
+	usleep_range(10, 20);
 
 	gpio_set_value(cam2_gpio, 1);
 	gpio_set_value(reset_gpio, 1);
