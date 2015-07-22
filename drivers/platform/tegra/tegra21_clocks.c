@@ -9571,12 +9571,7 @@ static struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("nvdec.emc",	"tegra_nvdec",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0, TEGRA210_CLK_ID_EMC_NVDEC_USER),
 	SHARED_EMC_CLK("tsec.emc",	"tegra_tsec",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0, TEGRA210_CLK_ID_EMC_TSEC_USER),
 	SHARED_EMC_CLK("tsecb.emc",	"tegra_tsecb",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0, TEGRA210_CLK_ID_EMC_TSECB_USER),
-#ifdef CONFIG_VI_ONE_DEVICE
 	SHARED_EMC_CLK("vi.emc",	"tegra_vi",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_VI), TEGRA210_CLK_ID_EMC_VI_USER),
-#else
-	SHARED_EMC_CLK("via.emc",	"tegra_vi.0",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_VI), TEGRA210_CLK_ID_EMC_VIA_USER),
-	SHARED_EMC_CLK("vib.emc",	"tegra_vi.1",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_VI2), TEGRA210_CLK_ID_EMC_VIB_USER),
-#endif
 	SHARED_EMC_CLK("ispa.emc",	"tegra_isp.0",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_ISP1), TEGRA210_CLK_ID_EMC_ISPA_USER),
 	SHARED_EMC_CLK("ispb.emc",	"tegra_isp.1",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_ISP2), TEGRA210_CLK_ID_EMC_ISPB_USER),
 	SHARED_EMC_CLK("camera.emc", "tegra_camera_ctrl",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW, 0, TEGRA210_CLK_ID_EMC_CAMERA_USER),
@@ -9649,11 +9644,6 @@ static struct clk tegra_visp_clks[] = {
 	SHARED_CONNECT("isp.cbus",	"isp.cbus",	NULL,	&tegra_clk_cbus,   "isp",   0, 0, TEGRA210_CLK_ID_CXBUS_ISP_USER),
 	SHARED_CLK("override.cbus",	"override.cbus", NULL,	&tegra_clk_cbus,    NULL,   0, SHARED_OVERRIDE, 0),
 	SHARED_LIMIT("cap.vcore.cbus",	"cap.vcore.cbus", NULL,	&tegra_clk_cbus,    NULL,   0, SHARED_CEILING, 0),
-
-#ifndef CONFIG_VI_ONE_DEVICE
-	SHARED_CLK("via.vi.cbus",	"via.vi",	NULL,	&tegra_visp_clks[0], NULL,   0, 0, TEGRA210_CLK_ID_CXBUS_VI_VIA_USER),
-	SHARED_CLK("vib.vi.cbus",	"vib.vi",	NULL,	&tegra_visp_clks[0], NULL,   0, 0, TEGRA210_CLK_ID_CXBUS_VI_VIB_USER),
-#endif
 
 	SHARED_CLK("ispa.isp.cbus",	"ispa.isp",	NULL,	&tegra_visp_clks[1], "ispa", 0, 0, TEGRA210_CLK_ID_CXBUS_ISP_ISPA_USER),
 	SHARED_CLK("ispb.isp.cbus",	"ispb.isp",	NULL,	&tegra_visp_clks[1], "ispb", 0, 0, TEGRA210_CLK_ID_CXBUS_ISP_ISPB_USER),
@@ -9905,7 +9895,6 @@ static struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("mclk3", NULL, "cam_mclk1"),
 	CLK_DUPLICATE("mclk", NULL, "cam_mclk2"),
 	CLK_DUPLICATE("mclk2", NULL, "cam_mclk3"),
-#ifdef CONFIG_VI_ONE_DEVICE
 	CLK_DUPLICATE("vi.cbus", "tegra_vi", "vi"),
 	CLK_DUPLICATE("csi", "tegra_vi", "csi"),
 	CLK_DUPLICATE("csus", "tegra_vi", "csus"),
@@ -9913,18 +9902,6 @@ static struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cilab", "tegra_vi", "cilab"),
 	CLK_DUPLICATE("cilcd", "tegra_vi", "cilcd"),
 	CLK_DUPLICATE("cile", "tegra_vi", "cile"),
-#else
-	CLK_DUPLICATE("via.vi.cbus", "tegra_vi", "vi"),
-	CLK_DUPLICATE("vib.vi.cbus", "tegra_vi.1", "vi"),
-	CLK_DUPLICATE("csi", "tegra_vi", "csi"),
-	CLK_DUPLICATE("csi", "tegra_vi.1", "csi"),
-	CLK_DUPLICATE("csus", "tegra_vi", "csus"),
-	CLK_DUPLICATE("vim2_clk", "tegra_vi.1", "vim2_clk"),
-	CLK_DUPLICATE("cilab", "tegra_vi", "cilab"),
-	CLK_DUPLICATE("cilcd", "tegra_vi.1", "cilcd"),
-	CLK_DUPLICATE("cile", "tegra_vi.1", "cile"),
-	CLK_DUPLICATE("via.emc", "tegra_vi", "emc"),
-#endif
 	CLK_DUPLICATE("spdif_in", NULL, "spdif_in"),
 	CLK_DUPLICATE("dmic1", "tegra-dmic.0", NULL),
 	CLK_DUPLICATE("dmic2", "tegra-dmic.1", NULL),
