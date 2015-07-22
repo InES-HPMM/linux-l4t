@@ -279,8 +279,9 @@ int tegra_hdmi_setup_hda_presence(void)
 
 static inline void _tegra_hdmi_ddc_enable(struct tegra_hdmi *hdmi)
 {
+	mutex_lock(&hdmi->ddc_refcount_lock);
 	if (hdmi->ddc_refcount++)
-		return;
+		goto fail;
 	tegra_hdmi_get(hdmi->dc);
 	/*
 	 * hdmi uses i2c lane muxed on dpaux1 pad.
@@ -288,20 +289,29 @@ static inline void _tegra_hdmi_ddc_enable(struct tegra_hdmi *hdmi)
 	 */
 	tegra_dpaux_config_pad_mode(hdmi->dc, TEGRA_DPAUX_INSTANCE_1,
 					TEGRA_DPAUX_PAD_MODE_I2C);
+
+fail:
+	mutex_unlock(&hdmi->ddc_refcount_lock);
 }
 
 static inline void _tegra_hdmi_ddc_disable(struct tegra_hdmi *hdmi)
 {
+	mutex_lock(&hdmi->ddc_refcount_lock);
+
 	if (WARN_ONCE(hdmi->ddc_refcount <= 0, "ddc refcount imbalance"))
-		return;
+		goto fail;
 	if (--hdmi->ddc_refcount != 0)
-		return;
+		goto fail;
+
 	/*
 	 * hdmi uses i2c lane muxed on dpaux1 pad.
 	 * Disable dpaux1 pads.
 	 */
 	tegra_dpaux_pad_power(hdmi->dc, TEGRA_DPAUX_INSTANCE_1, false);
 	tegra_hdmi_put(hdmi->dc);
+
+fail:
+	mutex_unlock(&hdmi->ddc_refcount_lock);
 }
 
 static int tegra_hdmi_ddc_i2c_xfer(struct tegra_dc *dc,
@@ -352,8 +362,6 @@ static int tegra_hdmi_ddc_init(struct tegra_hdmi *hdmi, int edid_src)
 		err = -EBUSY;
 		goto fail_edid_free;
 	}
-
-	mutex_init(&hdmi->ddc_lock);
 
 	return 0;
 fail_edid_free:
@@ -598,9 +606,7 @@ static inline int tegra_hdmi_edid_read(struct tegra_hdmi *hdmi)
 {
 	int err;
 
-	mutex_lock(&hdmi->ddc_lock);
 	err = tegra_hdmi_get_mon_spec(hdmi);
-	mutex_unlock(&hdmi->ddc_lock);
 
 	return err;
 }
@@ -1031,6 +1037,7 @@ static int tegra_dc_hdmi_init(struct tegra_dc *dc)
 	hdmi->dc = dc;
 	dc_hdmi = hdmi;
 	hdmi->ddc_refcount = 0; /* assumes this is disabled when starting */
+	mutex_init(&hdmi->ddc_refcount_lock);
 	hdmi->nvhdcp = NULL;
 	hdmi->mon_spec_valid = false;
 	hdmi->eld_valid = false;
@@ -1040,6 +1047,7 @@ static int tegra_dc_hdmi_init(struct tegra_dc *dc)
 	} else {
 		hdmi->enabled = false;
 		hdmi->clock_refcount = 0;
+		mutex_init(&hdmi->clock_refcount_lock);
 	}
 	atomic_set(&hdmi->suspended, 0);
 
@@ -1824,9 +1832,7 @@ static int _tegra_hdmi_v2_x_config(struct tegra_hdmi *hdmi)
 
 static int tegra_hdmi_v2_x_config(struct tegra_hdmi *hdmi)
 {
-	mutex_lock(&hdmi->ddc_lock);
 	_tegra_hdmi_v2_x_config(hdmi);
-	mutex_unlock(&hdmi->ddc_lock);
 
 	return 0;
 }
@@ -1845,16 +1851,12 @@ static void tegra_hdmi_scdc_worker(struct work_struct *work)
 	if (hdmi->dc->vedid)
 		goto skip_scdc_i2c;
 
-	mutex_lock(&hdmi->ddc_lock);
-
 	tegra_hdmi_scdc_read(hdmi, rd_tmds_config, ARRAY_SIZE(rd_tmds_config));
 	if (!rd_tmds_config[0][1]  && (hdmi->dc->mode.pclk > 340000000)) {
 		dev_info(&hdmi->dc->ndev->dev, "hdmi: scdc tmds_config lost, "
 						"trying to reconfigure.\n");
 		_tegra_hdmi_v2_x_config(hdmi);
 	}
-
-	mutex_unlock(&hdmi->ddc_lock);
 
 skip_scdc_i2c:
 	/* reschedule the worker */
@@ -1881,23 +1883,30 @@ static void tegra_hdmi_get(struct tegra_dc *dc)
 {
 	struct tegra_hdmi *hdmi = tegra_dc_get_outdata(dc);
 
+	mutex_lock(&hdmi->clock_refcount_lock);
+
 	if (hdmi->clock_refcount++)
-		return;
+		goto fail;
 	_tegra_hdmi_clock_enable(hdmi);
+
+fail:
+	mutex_unlock(&hdmi->clock_refcount_lock);
 }
 
 static void tegra_hdmi_put(struct tegra_dc *dc)
 {
-
 	struct tegra_hdmi *hdmi = tegra_dc_get_outdata(dc);
 
 	if (WARN_ONCE(hdmi->clock_refcount <= 0,
 		"hdmi: clock refcount imbalance"))
-		return;
+		goto fail;
 	if (--hdmi->clock_refcount != 0)
-		return;
+		goto fail;
 
 	_tegra_hdmi_clock_disable(hdmi);
+
+fail:
+	mutex_unlock(&hdmi->clock_refcount_lock);
 }
 
 /* TODO: add support for other deep colors */
