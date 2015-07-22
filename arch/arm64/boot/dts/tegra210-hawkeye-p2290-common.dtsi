@@ -776,6 +776,8 @@
 		pinctrl-1 = <&sdmmc3_schmitt_disable_state>;
 		pinctrl-2 = <&sdmmc3_clk_schmitt_enable_state>;
 		pinctrl-3 = <&sdmmc3_clk_schmitt_disable_state>;
+		calib-3v3-offsets = <0x0505>;
+		calib-1v8-offsets = <0x0505>;
 		nvidia,sd-device;
 		nvidia,sdmmc-pin-gpios = <
 				&gpio TEGRA_GPIO(P, 0) 0
