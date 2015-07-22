@@ -363,9 +363,18 @@
 
 	gpio-keys {
 		power {
-			gpios = <&gpio TEGRA_GPIO(X, 7) GPIO_ACTIVE_LOW>;
+			gpios = <&gpio TEGRA_GPIO(X, 5) GPIO_ACTIVE_LOW>;
 		};
-
+		volume_down {
+			label = "Volume Down";
+			gpios = <&gpio TEGRA_GPIO(X, 7) GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_VOLUMEDOWN>;
+		};
+		volume_up {
+			label = "Volume Up";
+			gpios = <&gpio TEGRA_GPIO(X, 6) GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_VOLUMEUP>;
+		};
 		sw_lid {
 			status="disabled";
 		};
