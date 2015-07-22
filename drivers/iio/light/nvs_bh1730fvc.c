@@ -235,7 +235,7 @@ static int bh1730_init(struct bh1730_state *st)
 	int ret;
 
 	/* itime 100ms */
-	ret = bh1730_i2c_wr(st, BH1730_REG_TIMING, 38);
+	ret = bh1730_i2c_wr(st, BH1730_REG_TIMING, 0xDA);
 	/* gain X1 */
 	ret |= bh1730_i2c_wr(st, BH1730_REG_GAIN, BH1730_GAIN_X1);
 	if (!ret)
@@ -249,17 +249,17 @@ static int bh1730_init(struct bh1730_state *st)
 static u32 bh1730_get_lux(struct bh1730_state *st, u16 *data)
 {
 	u32 lux;
-	if (data[1] * 100 / data[0] < 26)
+	if (data[1] * 1000 / data[0] < 260)
 		lux = 1290 * data[0] - 2733 * data[1];
-	if (data[1] * 100 / data[0] < 55)
+	else if (data[1] * 1000 / data[0] < 550)
 		lux = 795 * data[0] - 859 * data[1];
-	if (data[1] * 100 / data[0] < 109)
+	else if (data[1] * 1000 / data[0] < 1090)
 		lux = 510 * data[0] - 345 * data[1];
-	if (data[1] * 100 / data[0] < 213)
+	else if (data[1] * 1000 / data[0] < 2130)
 		lux = 276 * data[0] - 130 * data[1];
 	else
 		return 0;
-	lux = lux * 100000 / (st->gain * st->itime_us);
+	lux = lux * 100 / (st->gain * st->itime_us);
 
 	return lux;
 }
@@ -337,8 +337,8 @@ static int bh1730_enable(void *client, int snsr_id, int enable)
 		ret = bh1730_pm(st, true);
 		if (!ret) {
 			ret = bh1730_init(st);
-			st->light.cfg->delay_us_min = st->itime_us / 1000;
-			st->light.cfg->delay_us_max = st->itime_us / 1000;
+			st->light.cfg->delay_us_min = st->itime_us;
+			st->light.cfg->delay_us_max = st->itime_us;
 			nvs_light_enable(&st->light);
 			if (ret) {
 				bh1730_disable(st);
@@ -541,14 +541,14 @@ static int bh1730_of_dt(struct bh1730_state *st, struct device_node *dn)
 	return 0;
 }
 
-static ssize_t bh1730_debugfs_read_lux(struct file *file, char __user *userbuf,
-			      size_t count, loff_t *ppos)
+static ssize_t bh1730_debugfs_read_lux(struct file *file,
+			char __user *userbuf, size_t count, loff_t *ppos)
 {
 	struct bh1730_state *st = file->private_data;
 	char buf[20];
 	ssize_t len;
 
-	len = snprintf(buf, sizeof(buf), "%u\n", st->light.lux);
+	len = snprintf(buf, sizeof(buf), "lux: %u\n", st->light.hw);
 
 	return simple_read_from_buffer(userbuf, count, ppos, buf, len);
 }
@@ -558,20 +558,42 @@ static const struct file_operations bh1730_debugfs_lux_fops = {
 	.read = bh1730_debugfs_read_lux,
 };
 
-static ssize_t bh1730_debugfs_read_reg(struct file *file, char __user *userbuf,
-			      size_t count, loff_t *ppos)
+static ssize_t bh1730_debugfs_read_reg(struct file *file,
+			char __user *userbuf, size_t count, loff_t *ppos)
 {
 	struct bh1730_state *st = file->private_data;
-	char buf[20];
+	char buf[256];
 	u8 val = 0;
 	ssize_t len;
-	int ret;
+	int ret, i;
 
-	ret = bh1730_i2c_rd(st, st->cached_reg_addr, &val);
-	if (ret)
-		dev_err(&st->i2c->dev, "%s: read failed\n", __func__);
+	u8 regs[] = {
+		BH1730_REG_CONTROL,
+		BH1730_REG_TIMING,
+		BH1730_REG_INTERRUPT,
+		BH1730_REG_THLLOW,
+		BH1730_REG_THLHIGH,
+		BH1730_REG_THHLOW,
+		BH1730_REG_THHHIGH,
+		BH1730_REG_GAIN,
+		BH1730_REG_ID,
+		BH1730_REG_DATA0LOW,
+		BH1730_REG_DATA0HIGH,
+		BH1730_REG_DATA1LOW,
+		BH1730_REG_DATA1HIGH
+	};
 
-	len = snprintf(buf, sizeof(buf), "0x%X\n", val);
+	len = sprintf(buf, "lux: %u\n", st->light.hw);
+	len += sprintf(buf + len, "registers:\n");
+	for (i = 0; i < ARRAY_SIZE(regs); i++) {
+		ret = bh1730_i2c_rd(st, regs[i], &val);
+		if (ret)
+			len += sprintf(buf + len, "0x%02hhx=ERR\n", regs[i]);
+		else
+			len += sprintf(buf + len, "0x%02hhx=0x%02hhx\n",
+					regs[i], val);
+	}
+	buf[len++] = 0;
 
 	return simple_read_from_buffer(userbuf, count, ppos, buf, len);
 }
@@ -700,6 +722,7 @@ static int bh1730_probe(struct i2c_client *client,
 		goto bh1730_probe_exit;
 	}
 
+	st->light.handler = st->nvs->handler;
 	ret = st->nvs->probe(&st->nvs_st, st, &client->dev,
 			     &bh1730_fn_dev, &st->cfg);
 	if (ret) {
