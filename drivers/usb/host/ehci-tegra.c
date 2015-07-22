@@ -442,6 +442,7 @@ static int tegra_ehci_bus_suspend(struct usb_hcd *hcd)
 			wake_unlock(&tegra->ehci_wake_lock);
 		}
 	}
+	pm_runtime_put_sync(hcd->self.controller);
 	mutex_unlock(&tegra->sync_lock);
 	EHCI_DBG("%s() END\n", __func__);
 
@@ -457,6 +458,8 @@ static int tegra_ehci_bus_resume(struct usb_hcd *hcd)
 	mutex_lock(&tegra->sync_lock);
 	if (tegra->is_skip_resume_enabled)
 		wake_lock(&tegra->ehci_wake_lock);
+
+	pm_runtime_get_sync(hcd->self.controller);
 	usb_phy_set_suspend(get_usb_phy(tegra->phy), 0);
 	err = ehci_bus_resume(hcd);
 	mutex_unlock(&tegra->sync_lock);
@@ -846,6 +849,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 
 	tegra_pd_add_device(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
+	pm_runtime_get_sync(&pdev->dev);
 
 #ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
 	INIT_DELAYED_WORK(&tegra->boost_cpu_freq_work,
@@ -987,6 +991,7 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 	mutex_destroy(&tegra->sync_lock);
 	tegra_pd_remove_device(&pdev->dev);
 
+	pm_runtime_disable(&pdev->dev);
 	return 0;
 }
 
