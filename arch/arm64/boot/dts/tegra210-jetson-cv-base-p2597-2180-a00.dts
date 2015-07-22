@@ -90,6 +90,14 @@
 		pinctrl-5 = <&sdmmc1_default_drv_code_3_3V>;
 		nvidia,sd-device;
 		wp-gpios = <&gpio TEGRA_GPIO_PZ4 0>;
+		nvidia,sdmmc-pin-gpios = <
+				&gpio TEGRA_GPIO(M, 0) 0
+				&gpio TEGRA_GPIO(M, 1) 0
+				&gpio TEGRA_GPIO(M, 2) 0
+				&gpio TEGRA_GPIO(M, 3) 0
+				&gpio TEGRA_GPIO(M, 4) 0
+				&gpio TEGRA_GPIO(M, 5) 0
+				>;
 		status = "okay";
 	};
 
