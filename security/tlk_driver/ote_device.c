@@ -26,7 +26,6 @@
 #include <linux/miscdevice.h>
 #include <linux/mm.h>
 #include <asm/cacheflush.h>
-#include <asm/outercache.h>
 #include <linux/list.h>
 #include <linux/dma-mapping.h>
 #include <linux/of.h>
