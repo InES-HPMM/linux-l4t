@@ -147,6 +147,8 @@ static void nvadsp_clocks_disable(struct platform_device *pdev)
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
 
+	udelay(500);
+
 	if (drv_data->uartape_clk) {
 		clk_disable_unprepare(drv_data->uartape_clk);
 		dev_dbg(dev, "uartape clock disabled\n");
