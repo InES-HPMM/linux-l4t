@@ -27,6 +27,11 @@
 #include "../../../../arch/arm/mach-tegra/iomap.h"
 #include "dp_lt.h"
 
+#ifdef CONFIG_DEBUG_FS
+#include "dp_debug.h"
+extern struct tegra_dp_test_settings default_dp_test_settings;
+#endif
+
 #define DP_AUX_MAX_BYTES 16
 #define DP_AUX_TIMEOUT_MS 1000
 #define DP_DPCP_RETRY_SLEEP_NS 400
@@ -103,7 +108,15 @@ struct tegra_dc_dp_data {
 	u8 sink_cap[DP_DPCD_SINK_CAP_SIZE];
 	bool sink_cap_valid;
 	u8 sink_cnt_cp_ready;
+
+#ifdef CONFIG_DEBUG_FS
+	struct tegra_dp_test_settings test_settings;
 };
+
+extern const struct file_operations test_settings_fops;
+#else
+};
+#endif
 
 int tegra_dp_dpcd_write_field(struct tegra_dc_dp_data *dp, u32 cmd,
 	u8 mask, u8 data);

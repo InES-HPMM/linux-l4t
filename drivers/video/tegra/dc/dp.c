@@ -1135,6 +1135,10 @@ static void tegra_dc_dp_debug_create(struct tegra_dc_dp_data *dp)
 		&bits_per_pixel_fops);
 	if (!retval)
 		goto free_out;
+	retval = debugfs_create_file("test_settings", S_IRUGO, dpdir, dp,
+		&test_settings_fops);
+	if (!retval)
+		goto free_out;
 
 	/* hotplug not allowed for eDP */
 	if (is_hotplug_supported(dp)) {
@@ -1414,13 +1418,9 @@ bool tegra_dc_dp_calc_config(struct tegra_dc_dp_data *dp,
 static int tegra_dp_init_max_link_cfg(struct tegra_dc_dp_data *dp,
 					struct tegra_dc_dp_link_config *cfg)
 {
-
-#ifdef CONFIG_TEGRA_DC_FAKE_PANEL_SUPPORT
 	if (dp->dc->out->type == TEGRA_DC_OUT_FAKE_DP)
 		tegra_dc_init_fake_panel_link_cfg(cfg);
-	else
-#endif
-	{
+	else {
 		u8 dpcd_data;
 		int ret;
 
@@ -1914,6 +1914,10 @@ static int tegra_dc_dp_init(struct tegra_dc *dc)
 	tegra_dp_lt_init(&dp->lt_data, dp);
 
 	INIT_DELAYED_WORK(&dp->irq_evt_dwork, tegra_dp_irq_evt_worker);
+
+#ifdef CONFIG_DEBUG_FS
+	dp->test_settings = default_dp_test_settings;
+#endif
 
 	tegra_dc_dp_debug_create(dp);
 	of_node_put(np_dp);
