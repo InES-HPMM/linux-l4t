@@ -227,6 +227,8 @@ static void __init tegra_t210ref_early_init(void)
 		tegra_soc_device_init("jetson_cv");
 	else if (of_machine_is_compatible("nvidia,he2290"))
 		tegra_soc_device_init("he2290");
+	else if (of_machine_is_compatible("nvidia,t18x-interposer"))
+		tegra_soc_device_init("t18x-interposer");
 }
 
 static struct tegra_suspend_platform_data t210ref_suspend_data = {
@@ -417,6 +419,7 @@ static const char * const t210ref_dt_board_compat[] = {
 	"nvidia,odin",
 	"nvidia,jetson-cv",
 	"nvidia,he2290",
+	"nvidia,t18x-interposer",
 	NULL
 };
 
