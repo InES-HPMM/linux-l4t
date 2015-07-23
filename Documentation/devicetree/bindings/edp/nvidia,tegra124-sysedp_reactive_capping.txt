@@ -16,6 +16,10 @@ Required properties:
   the interrupt into the virtual irq value and flags used by
   request_threaded_irq(). Only 1 interrupt (2 values) should be defined.
 
+Optional properties:
+- nvidia,threshold_warning: If used, this node provides a message to be printed
+  when this consumer's interrupt gets trigerred.
+
 Required sub-nodes:
 - sysedpc: This node contains one subnode which needs one property defined:
 
@@ -29,6 +33,7 @@ Example:
 		nvidia,step_alarm_mw = <1000>;
 		nvidia,step_relax_mw = <500>;
 		nvidia,relax_ms = <250>;
+		nvidia,threshold_warning = "WARNING - SYSTEM Voltage Droop detected, please refer to the Power management application note";
 		interrupt-parent = <&soctherm>;
 		interrupts = <1 0x2002>;
 
