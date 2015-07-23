@@ -298,6 +298,24 @@ TRACE_EVENT(scanout_vrr_stats,
 		__entry->syncpt_val_value,__entry->db_val_value)
 );
 
+/*
+	Do not use this with a traceName that will be deleted!
+	(only use with the macros below)
+*/
+TRACE_EVENT(function_frame,
+	TP_PROTO(const char *trace_name, char trace_prefix),
+	TP_ARGS(trace_name, trace_prefix),
+	TP_STRUCT__entry(
+		__field(const char*,	name)
+		__field(char,			prefix)
+	),
+	TP_fast_assign(
+		__entry->name = trace_name;
+		__entry->prefix = trace_prefix;
+	),
+	TP_printk("%c|%s\n", __entry->prefix, __entry->name)
+);
+
 
 #endif /* _TRACE_DISPLAY_H */
 

@@ -53,6 +53,11 @@
 #define TEGRA_DC_SMOOTHING_LATENCY_US 4000
 #define TEGRA_DC_SMOOTHING_SLACK_US 50
 
+#define BEGIN_TRACE() trace_function_frame(__func__, 'B')
+#define TRACE_NAME_BEGIN(NAME) trace_function_frame(#NAME, 'B')
+#define END_TRACE() trace_function_frame(__func__, 'E')
+#define TRACE_NAME_END(NAME) trace_function_frame(#NAME, 'E')
+
 #ifdef CONFIG_COMPAT
 /* compat versions that happen to be the same size as the uapi version. */
 
@@ -480,15 +485,19 @@ static int tegra_dc_ext_set_windowattr(struct tegra_dc_ext *ext,
 
 #ifdef CONFIG_TEGRA_GRHOST_SYNC
 	if (flip_win->pre_syncpt_fence) {
+		TRACE_NAME_BEGIN(pre_snycpt);
 		sync_fence_wait(flip_win->pre_syncpt_fence, 5000);
 		sync_fence_put(flip_win->pre_syncpt_fence);
+		TRACE_NAME_END(pre_snycpt);
 	} else
 #endif
 	if ((s32)flip_win->attr.pre_syncpt_id >= 0) {
+		TRACE_NAME_BEGIN(snycpt_wait);
 		nvhost_syncpt_wait_timeout_ext(ext->dc->ndev,
 				flip_win->attr.pre_syncpt_id,
 				flip_win->attr.pre_syncpt_val,
 				msecs_to_jiffies(5000), NULL, NULL);
+		TRACE_NAME_END(snycpt_wait);
 	}
 
 	if (err < 0)
@@ -512,9 +521,11 @@ static int tegra_dc_ext_set_windowattr(struct tegra_dc_ext *ext,
 				if (sleep_us > TEGRA_DC_TS_MAX_DELAY_US)
 					sleep_us = TEGRA_DC_TS_MAX_DELAY_US;
 
+				TRACE_NAME_BEGIN(ts_wait);
 				if (sleep_us > 0)
 					usleep_range(sleep_us, sleep_us +
 						TEGRA_DC_TS_SLACK_US);
+				TRACE_NAME_END(ts_wait);
 			} else {
 				tegra_dc_config_frame_end_intr(win->dc, true);
 				err = wait_event_interruptible(
@@ -661,9 +672,9 @@ static void tegra_dc_ext_smooth_apc(struct tegra_vrr *vrr)
 				sleep_us = TEGRA_DC_SMOOTHING_LATENCY_US * 2;
 		}
 
-		// TRACE_NAME_BEGIN(smooth_wait);
+		TRACE_NAME_BEGIN(smooth_wait);
 		usleep_range(sleep_us, sleep_us + TEGRA_DC_SMOOTHING_SLACK_US);
-		// TRACE_NAME_END(smooth_wait);
+		TRACE_NAME_END(smooth_wait);
 	}
 }
 
@@ -685,7 +696,7 @@ static void tegra_dc_ext_flip_worker(struct kthread_work *work)
 	bool wait_for_vblank = false;
 	bool show_background =
 		tegra_dc_ext_should_show_background(data, win_num);
-
+	BEGIN_TRACE();
 	blank_win = kzalloc(sizeof(*blank_win), GFP_KERNEL);
 	if (!blank_win)
 		dev_err(&ext->dc->ndev->dev, "Failed to allocate blank_win.\n");
@@ -826,11 +837,15 @@ static void tegra_dc_ext_flip_worker(struct kthread_work *work)
 					data->flags &
 					TEGRA_DC_EXT_FLIP_HEAD_FLAG_VRR_MODE);
 
+		TRACE_NAME_BEGIN(tegra_dc_update_windows);
 		tegra_dc_update_windows(wins, nr_win,
 			data->dirty_rect_valid ? data->dirty_rect : NULL,
 			wait_for_vblank);
+		TRACE_NAME_END(tegra_dc_update_windows);
 		/* TODO: implement swapinterval here */
+		TRACE_NAME_BEGIN(tegra_dc_sync_windows);
 		tegra_dc_sync_windows(wins, nr_win);
+		TRACE_NAME_END(tegra_dc_sync_windows);
 		trace_scanout_syncpt_upd((data->win[win_num-1]).syncpt_max);
 		if (dc->out->vrr)
 			trace_scanout_vrr_stats((data->win[win_num-1]).syncpt_max
@@ -859,6 +874,7 @@ static void tegra_dc_ext_flip_worker(struct kthread_work *work)
 
 	kfree(data);
 	kfree(blank_win);
+	END_TRACE();
 }
 
 static int lock_windows_for_flip(struct tegra_dc_ext_user *user,
