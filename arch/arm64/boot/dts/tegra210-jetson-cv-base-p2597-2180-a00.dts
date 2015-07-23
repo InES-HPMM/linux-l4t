@@ -54,7 +54,7 @@
 	#size-cells = <2>;
 
 	chosen {
-        };
+	};
 
 	pmc@7000e400 {
 		nvidia,invert-interrupt;
@@ -241,16 +241,45 @@
 	sound {
 		compatible = "nvidia,tegra-audio-t210ref-mobile-rt565x";
 		nvidia,model = "tegra-snd-t210ref-mobile-rt565x";
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(E, 6) GPIO_ACTIVE_HIGH>;
 
-		nvidia,num-codec-link = <1>;
+		/* backup link when audio codec not connected */
+		nvidia,dummy-codec-dai = <&spdif_dit3>;
+		nvidia,dummy-codec-dai-name = "dit-hifi";
+
+		nvidia,num-codec-link = <3>;
 
 		nvidia,audio-routing =
-			"y Headphone", 	"y OUT",
-			"y IN",		"y Mic";
+			"x Headphone Jack",	"x HPO L Playback",
+			"x Headphone Jack",	"x HPO R Playback",
+			"x MICBIAS1",		"x Mic Jack",
+			"x IN1P",		"x Mic Jack",
+			"x Mic Det Power",	"x Mic Jack",
+			"x Int Spk",		"x SPO Playback",
+			"y Headphone",		"y OUT",
+			"y IN",			"y Mic";
 
 		nvidia,xbar = <&tegra_axbar>;
 
 		nvidia,dai-link-1 {
+			link-name = "rt565x-playback";
+			cpu-dai = <&tegra_i2s1>;
+			codec-dai = <&rt5659>;
+			cpu-dai-name = "I2S1";
+			codec-dai-name = "rt5659-aif1";
+			format = "i2s";
+			bitclock-slave;
+			frame-slave;
+			bitclock-noninversion;
+			frame-noninversion;
+			bit-format = "s16_le";
+			bclk_ratio = <0>;
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "x";
+		};
+
+		nvidia,dai-link-2 {
 			link-name = "spdif-dit-1";
 			cpu-dai = <&tegra_i2s2>;
 			codec-dai = <&spdif_dit1>;
@@ -267,6 +296,19 @@
 			num-channel = <1>;
 			name-prefix = "y";
 		};
+
+		nvidia,dai-link-3 {
+			link-name = "spdif-dit-2";
+			cpu-dai = <&tegra_dmic3>;
+			codec-dai = <&spdif_dit2>;
+			cpu-dai-name = "DMIC3";
+			codec-dai-name = "dit-hifi";
+			format = "i2s";
+			bit-format = "s16_le";
+			srate = <48000>;
+			num-channel = <2>;
+			name-prefix = "z";
+		};
 	};
 
 	extcon {
@@ -282,7 +324,7 @@
 		status = "okay";
 	};
 
-        otg@7d000000 {
+	otg@7d000000 {
 		#extcon-cells = <1>;
 		status = "okay";
 	};
@@ -337,6 +379,13 @@
 
 	pwm_fan_shared_data: pfsd {
 		tach_gpio =  <TEGRA_GPIO(K, 7)>; /* TEGRA_GPIO_PK7 */
+	};
+
+	i2c@7000c000 {
+		rt5659: rt5659.0-001b@1b {
+                        compatible = "realtek,rt5659";
+                        reg = <0x1b>;
+                };
 	};
 
 	i2c@7000c400 {

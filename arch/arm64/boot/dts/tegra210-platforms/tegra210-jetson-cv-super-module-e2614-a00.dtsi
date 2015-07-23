@@ -29,16 +29,6 @@
 		};
 	};
 
-	ahub {
-		i2s@702d1000 {
-			status = "disabled";
-		};
-
-		i2s@702d1100 {
-			status = "disabled";
-		};
-	};
-
 	spi@7000d600 {
 		status = "disabled";
 	};
