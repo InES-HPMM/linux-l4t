@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -833,7 +833,12 @@ spinlock_t *tegra12x_get_powergate_lock(void)
 
 bool tegra12x_powergate_skip(int id)
 {
-	return false;
+	switch (id) {
+	case TEGRA_POWERGATE_GPU:
+		return true;
+	default:
+		return false;
+	}
 }
 
 bool tegra12x_powergate_is_powered(int id)

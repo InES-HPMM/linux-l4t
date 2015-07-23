@@ -855,8 +855,10 @@ static spinlock_t *tegra210_pg_get_lock(void)
 static bool tegra210_pg_skip(int id)
 {
 	switch (id) {
-		default:
-			return false;
+	case TEGRA_POWERGATE_GPU:
+		return true;
+	default:
+		return false;
 	}
 }
 
