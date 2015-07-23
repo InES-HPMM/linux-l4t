@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -23,6 +23,7 @@
 #include <linux/kobject.h>
 
 #define SYSEDP_NAME_LEN 32
+#define THRESHOLD_WARNING_LEN 150
 
 /*
  * @name: name of consumer
@@ -139,6 +140,7 @@ struct sysedp_reactive_capping_platform_data {
 	int cur_capping_mw;
 	struct mutex mutex;
 	struct delayed_work work;
+	char threshold_warning[THRESHOLD_WARNING_LEN];
 };
 
 #ifdef CONFIG_SYSEDP_FRAMEWORK
