@@ -28,6 +28,9 @@
 		physical_w = "4.713";
 		physical_h = "3.494";
 
+		/* Sensor Model */
+		sensor_model ="imx214";
+
 		/* Define any required hw resources needed by driver */
 		/* ie. clocks, io pins, power sources */
 		mclk = "cam_mclk1";
@@ -138,6 +141,7 @@
 			max_framerate = "30";
 			min_exp_time = "13";
 			max_exp_time = "683709";
+			embedded_metadata_height = "4";
 		};
 
 		mode1 { // IMX214_MODE_4096X2304
@@ -164,6 +168,7 @@
 			max_framerate = "30";
 			min_exp_time = "13";
 			max_exp_time = "683709";
+			embedded_metadata_height = "4";
 		};
 
 		mode2 {	//IMX214_MODE_3840X2160
@@ -190,6 +195,7 @@
 			max_framerate = "30";
 			min_exp_time = "13";
 			max_exp_time = "683709";
+			embedded_metadata_height = "4";
 		};
 
 		mode3 {	// IMX214_MODE_2048X1536
@@ -216,6 +222,7 @@
 			max_framerate = "30";
 			min_exp_time = "13";
 			max_exp_time = "683709";
+			embedded_metadata_height = "4";
 		};
 
 		mode4 { // IMX214_MODE_2048X1152
@@ -242,6 +249,7 @@
 			max_framerate = "30";
 			min_exp_time = "13";
 			max_exp_time = "683709";
+			embedded_metadata_height = "4";
 		};
 
 		mode5 { // IMX214_MODE_1920X1080
@@ -268,6 +276,7 @@
 			max_framerate = "30";
 			min_exp_time = "13";
 			max_exp_time = "683709";
+			embedded_metadata_height = "4";
 		};
 
 		mode6 { // IMX214_MODE_1280X720_120FPS
@@ -294,6 +303,7 @@
 			max_framerate = "120";
 			min_exp_time = "13";
 			max_exp_time = "683709";
+			embedded_metadata_height = "4";
 		};
 	};
 
