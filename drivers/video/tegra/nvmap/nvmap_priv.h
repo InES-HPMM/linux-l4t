@@ -230,6 +230,7 @@ struct nvmap_client {
 	u32				handle_count;
 	u32				next_fd;
 	int warned;
+	int tag_warned;
 };
 
 struct nvmap_vma_priv {
