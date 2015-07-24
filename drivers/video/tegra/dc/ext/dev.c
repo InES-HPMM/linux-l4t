@@ -421,6 +421,7 @@ static int tegra_dc_ext_set_windowattr(struct tegra_dc_ext *ext,
 	int err = 0;
 	struct tegra_dc_ext_win *ext_win = &ext->win[win->idx];
 	s64 timestamp_ns;
+	struct tegra_vrr *vrr = ext->dc->out->vrr;
 
 	if (flip_win->handle[TEGRA_DC_Y] == NULL) {
 		win->flags = 0;
@@ -505,7 +506,7 @@ static int tegra_dc_ext_set_windowattr(struct tegra_dc_ext *ext,
 		if (timestamp_ns) {
 			/* XXX: Should timestamping be overridden by "no_vsync"
 			 * flag */
-			if (ext->dc->out->vrr->enable) {
+			if (vrr && vrr->enable) {
 				struct timespec tm;
 				s64 now_ns = 0;
 				s32 sleep_us = 0;
