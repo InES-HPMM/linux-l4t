@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014, NVIDIA CORPORATION. All Rights Reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -191,9 +191,9 @@ EXPORT_SYMBOL_GPL(fv_relation_destroy);
 
 static inline s64 _pow(s64 val, int pwr)
 {
-	s64 retval = val ? 1 : 0;
+	s64 retval = 1;
 
-	while (val && pwr) {
+	while (pwr) {
 		if (pwr & 1)
 			retval *= val;
 		pwr >>= 1;
