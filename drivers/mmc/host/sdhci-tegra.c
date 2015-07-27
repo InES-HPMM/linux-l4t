@@ -1195,6 +1195,7 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 {
 	u16 clk, ctrl_2;
 	u32 vndr_ctrl, trim_delay, best_tap_value;
+	unsigned int dqs_trim_delay;
 	struct tegra_tuning_data *tuning_data;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
@@ -1240,10 +1241,15 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 	sdhci_tegra_select_drive_strength(host, uhs);
 
 	if (uhs == MMC_TIMING_MMC_HS400) {
+		if (host->mmc->caps2 & MMC_CAP2_HS533)
+			dqs_trim_delay = plat->dqs_trim_delay_hs533;
+		else
+			dqs_trim_delay = plat->dqs_trim_delay;
+
 		ctrl_2 = sdhci_readl(host, SDHCI_VNDR_CAP_OVERRIDES_0);
 		ctrl_2 &= ~(SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_MASK <<
 			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT);
-		ctrl_2 |= ((plat->dqs_trim_delay &
+		ctrl_2 |= ((dqs_trim_delay &
 			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_MASK) <<
 			SDHCI_VNDR_CAP_OVERRIDES_0_DQS_TRIM_SHIFT);
 		sdhci_writel(host, ctrl_2, SDHCI_VNDR_CAP_OVERRIDES_0);
@@ -5267,6 +5273,7 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	of_property_read_u32(np, "max-clk-limit", &plat->max_clk_limit);
 	of_property_read_u32(np, "id", &plat->id);
 	of_property_read_u32(np, "dqs-trim-delay", &plat->dqs_trim_delay);
+	of_property_read_u32(np, "dqs-trim-delay-hs533", &plat->dqs_trim_delay_hs533);
 
 	of_property_read_u32(np, "compad-vref-3v3", &plat->compad_vref_3v3);
 	of_property_read_u32(np, "compad-vref-1v8", &plat->compad_vref_1v8);
