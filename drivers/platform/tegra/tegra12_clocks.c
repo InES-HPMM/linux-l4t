@@ -569,7 +569,6 @@
 #define PLLE_AUX_PLLP_SEL		(1<<2)
 
 #define PLLE_AUX_CML_SATA_ENABLE	(1<<1)
-#define PLLE_AUX_CML_PCIE_ENABLE	(1<<0)
 
 /* USB PLLs PD HW controls */
 #define XUSBIO_PLL_CFG0				0x51c
@@ -5598,7 +5597,7 @@ static struct clk_ops tegra_audio_sync_clk_ops = {
 	.set_parent = tegra12_audio_sync_clk_set_parent,
 };
 
-/* cml0 (pcie), and cml1 (sata) clock ops */
+/* cml1 (sata) clock ops */
 static void tegra12_cml_clk_init(struct clk *c)
 {
 	u32 val = clk_readl(c->reg);
@@ -7096,18 +7095,6 @@ static struct clk tegra_pll_e = {
 };
 
 
-
-static struct clk tegra_cml0_clk = {
-	.name      = "cml0",
-	.parent    = &tegra_pll_e,
-	.ops       = &tegra_cml_clk_ops,
-	.reg       = PLLE_AUX,
-	.max_rate  = 100000000,
-	.u.periph  = {
-		.clk_num = 0,
-	},
-};
-
 static struct clk tegra_cml1_clk = {
 	.name      = "cml1",
 	.parent    = &tegra_pll_e,
@@ -7758,6 +7745,10 @@ static struct clk_mux_sel mux_plld[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_plle[] = {
+	{ .input = &tegra_pll_e, .value = 0},
+	{ 0, 0},
+};
 
 static struct raw_notifier_head emc_rate_change_nh;
 
@@ -7831,6 +7822,11 @@ static struct clk tegra_clk_mselect = {
 		.threshold = 408000000,
 	},
 	.rate_change_nh = &mselect_rate_change_nh,
+};
+
+static struct clk_mux_sel mux_clk_mselect[] = {
+	{ .input = &tegra_clk_mselect, .value = 0},
+	{ NULL, 0},
 };
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
@@ -8373,8 +8369,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("extern2",	"extern2",		NULL,	121,	0x3f0,	216000000, mux_plla_clk32_pllp_clkm_plle,	MUX | DIV_U71),
 	PERIPH_CLK("extern3",	"extern3",		NULL,	122,	0x3f4,	216000000, mux_plla_clk32_pllp_clkm_plle,	MUX | DIV_U71),
 	PERIPH_CLK("i2cslow",	"i2cslow",		NULL,	81,	0x3fc,	26000000,  mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("pcie",	"tegra-pcie",		"pcie",	70,	0,	250000000, mux_clk_m, 			0),
-	PERIPH_CLK("afi",	"tegra-pcie",		"afi",	72,	0,	250000000, mux_clk_m, 			0),
+	PERIPH_CLK("pcie",	"tegra_pcie",		"pcie",	70,	0,	250000000, mux_plle, PERIPH_MANUAL_RESET),
+	PERIPH_CLK("afi",	"tegra_pcie",		"afi",	72,	0,	408000000, mux_clk_mselect, PERIPH_MANUAL_RESET),
 	PERIPH_CLK("se",	"se",			NULL,	127,	0x42c,	600000000, mux_pllp_pllc2_c_c3_pllm_clkm,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
 	PERIPH_CLK("cl_dvfs_ref", "tegra_cl_dvfs",	"ref",	155,	0x62c,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
 	PERIPH_CLK("cl_dvfs_soc", "tegra_cl_dvfs",	"soc",	155,	0x630,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
@@ -8649,7 +8645,6 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("vde", "tegra-aes", "vde"),
 	CLK_DUPLICATE("bsea", "tegra-aes", "bsea"),
 	CLK_DUPLICATE("cml1", "tegra_sata_cml", NULL),
-	CLK_DUPLICATE("cml0", "tegra_pcie", "cml"),
 	CLK_DUPLICATE("pciex", "tegra_pcie", "pciex"),
 	CLK_DUPLICATE("clk_m", NULL, "apb_pclk"),
 	CLK_DUPLICATE("i2c1", "tegra-i2c-slave.0", NULL),
@@ -8776,7 +8771,6 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_re_vco,
 	&tegra_pll_re_out,
 	&tegra_pll_e,
-	&tegra_cml0_clk,
 	&tegra_cml1_clk,
 	&tegra_pciex_clk,
 	&tegra_clk_cclk_g,

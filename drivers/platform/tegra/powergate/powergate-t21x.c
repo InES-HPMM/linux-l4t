@@ -197,8 +197,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 		.clk_info = {
 			[0] = { .clk_name = "afi", .clk_type = CLK_AND_RST },
 			[1] = { .clk_name = "pcie", .clk_type = CLK_AND_RST },
-			[2] = { .clk_name = "cml0", .clk_type = CLK_ONLY },
-			[3] = { .clk_name = "pciex", .clk_type = RST_ONLY },
+			[2] = { .clk_name = "pciex", .clk_type = RST_ONLY },
 		},
 		.skip_reset = true,
 	},

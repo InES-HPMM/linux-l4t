@@ -388,6 +388,9 @@ struct tegra_pcie {
 	struct tegra_msi msi;
 
 	struct clk		*pcie_xclk;
+	struct clk		*pcie_afi;
+	struct clk		*pcie_pcie;
+	struct clk		*pcie_pll_e;
 	struct clk		*pcie_mselect;
 	struct clk		*pcie_emc;
 
@@ -1236,17 +1239,23 @@ static int tegra_pcie_power_ungate(struct tegra_pcie *pcie)
 #else
 	partition_id = TEGRA_POWERGATE_PCIE;
 #endif
+
+	err = clk_prepare_enable(pcie->pcie_pll_e);
+	if (err) {
+		dev_err(pcie->dev, "PCIE: PLLE clk enable failed: %d\n", err);
+		return err;
+	}
+
 	err = tegra_unpowergate_partition_with_clk_on(partition_id);
 	if (err) {
 		dev_err(pcie->dev, "PCIE: powerup sequence failed: %d\n", err);
 		return err;
 	}
 
-	tegra_periph_reset_assert(pcie->pcie_xclk);
 	err = clk_prepare_enable(pcie->pcie_mselect);
 	if (err) {
-		dev_err(pcie->dev,
-			"PCIE: mselect clk enable failed: %d\n", err);
+		dev_err(pcie->dev, "PCIE: mselect clk enable failed: %d\n",
+			err);
 		return err;
 	}
 	err = clk_enable(pcie->pcie_xclk);
@@ -1490,6 +1499,9 @@ static int tegra_pcie_power_off(struct tegra_pcie *pcie, bool all)
 	if (err)
 		goto err_exit;
 
+	if (pcie->pcie_pll_e)
+		clk_disable(pcie->pcie_pll_e);
+
 	if (!tegra_platform_is_fpga()) {
 		/* put PEX pads into DPD mode to save additional power */
 		tegra_io_dpd_enable(&pexbias_io);
@@ -1509,20 +1521,46 @@ static int tegra_pcie_clocks_get(struct tegra_pcie *pcie)
 	/* get the PCIEXCLK */
 	pcie->pcie_xclk = clk_get_sys("tegra_pcie", "pciex");
 	if (IS_ERR_OR_NULL(pcie->pcie_xclk)) {
-		dev_err(pcie->dev, "%s: unable to get PCIE Xclock\n", __func__);
+		dev_err(pcie->dev, "unable to get PCIE Xclock\n");
 		return -EINVAL;
 	}
+	pcie->pcie_afi = clk_get_sys("tegra_pcie", "afi");
+	if (IS_ERR_OR_NULL(pcie->pcie_afi)) {
+		clk_put(pcie->pcie_xclk);
+		dev_err(pcie->dev, "unable to get PCIE afi clock\n");
+		return -EINVAL;
+	}
+	pcie->pcie_pcie = clk_get_sys("tegra_pcie", "pcie");
+	if (IS_ERR_OR_NULL(pcie->pcie_pcie)) {
+		clk_put(pcie->pcie_afi);
+		clk_put(pcie->pcie_xclk);
+		dev_err(pcie->dev, "unable to get PCIE pcie clock\n");
+		return -EINVAL;
+	}
+
+	pcie->pcie_pll_e = clk_get_sys("tegra_pcie", "pll_e");
+	if (IS_ERR_OR_NULL(pcie->pcie_pll_e)) {
+		clk_put(pcie->pcie_afi);
+		clk_put(pcie->pcie_xclk);
+		clk_put(pcie->pcie_pcie);
+		dev_err(pcie->dev, "unable to get PCIE PLLE clock\n");
+		return -EINVAL;
+	}
+
 	pcie->pcie_mselect = clk_get_sys("tegra_pcie", "mselect");
 	if (IS_ERR_OR_NULL(pcie->pcie_mselect)) {
+		clk_put(pcie->pcie_pll_e);
+		clk_put(pcie->pcie_pcie);
+		clk_put(pcie->pcie_afi);
 		clk_put(pcie->pcie_xclk);
 		dev_err(pcie->dev,
-			"%s: unable to get PCIE mselect clock\n", __func__);
+			"unable to get PCIE mselect clock\n");
 		return -EINVAL;
 	}
 	pcie->pcie_emc = clk_get_sys("tegra_pcie", "emc");
 	if (IS_ERR_OR_NULL(pcie->pcie_emc)) {
 		dev_err(pcie->dev,
-			"%s: unable to get PCIE emc clock\n", __func__);
+			"unable to get PCIE emc clock\n");
 		return -EINVAL;
 	}
 	return 0;
@@ -1533,6 +1571,14 @@ static void tegra_pcie_clocks_put(struct tegra_pcie *pcie)
 	PR_FUNC_LINE;
 	if (pcie->pcie_xclk)
 		clk_put(pcie->pcie_xclk);
+	if (pcie->pcie_pcie)
+		clk_put(pcie->pcie_pcie);
+	if (pcie->pcie_afi)
+		clk_put(pcie->pcie_afi);
+	if (pcie->pcie_mselect)
+		clk_put(pcie->pcie_mselect);
+	if (pcie->pcie_pll_e)
+		clk_put(pcie->pcie_pll_e);
 	if (pcie->pcie_mselect)
 		clk_put(pcie->pcie_mselect);
 	if (pcie->pcie_emc)
@@ -2498,6 +2544,10 @@ static int tegra_pcie_init(struct tegra_pcie *pcie)
 		dev_err(pcie->dev, "PCIE: enable pads failed\n");
 		goto fail_release_resource;
 	}
+
+	tegra_periph_reset_deassert(pcie->pcie_afi);
+	udelay(2);
+
 	tegra_pcie_enable_controller(pcie);
 	err = tegra_pcie_conf_gpios(pcie);
 	if (err) {
@@ -2516,6 +2566,9 @@ static int tegra_pcie_init(struct tegra_pcie *pcie)
 			goto fail_release_resource;
 		}
 	}
+
+	tegra_periph_reset_deassert(pcie->pcie_pcie);
+	udelay(2);
 
 	tegra_pcie_check_ports(pcie);
 
@@ -4057,10 +4110,14 @@ static int tegra_pcie_resume_noirq(struct device *dev)
 		return ret;
 	}
 	tegra_pcie_enable_pads(pcie, true);
+	tegra_periph_reset_deassert(pcie->pcie_afi);
+	udelay(2);
 	tegra_pcie_enable_controller(pcie);
 	tegra_pcie_setup_translations(pcie);
 	/* Set up MSI registers, if MSI have been enabled */
 	tegra_pcie_enable_msi(pcie, true);
+	tegra_periph_reset_deassert(pcie->pcie_pcie);
+	udelay(2);
 	tegra_pcie_check_ports(pcie);
 	if (!pcie->num_ports) {
 		tegra_pcie_power_off(pcie, true);

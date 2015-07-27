@@ -524,7 +524,6 @@
 #define PLLE_AUX_PLLP_SEL		(1<<2)
 
 #define PLLE_AUX_CML_SATA_ENABLE	(1<<1)
-#define PLLE_AUX_CML_PCIE_ENABLE	(1<<0)
 
 #define SOURCE_SATA			0x424
 
@@ -5697,7 +5696,7 @@ static struct clk_ops tegra_audio_sync_clk_ops = {
 	.set_parent = tegra21_audio_sync_clk_set_parent,
 };
 
-/* cml0 (pcie), and cml1 (sata) clock ops */
+/* cml1 (sata) clock ops */
 static void tegra21_cml_clk_init(struct clk *c)
 {
 	u32 val = clk_readl(c->reg);
@@ -7837,18 +7836,6 @@ static struct clk tegra_pll_e_gate = {
 	},
 };
 
-static struct clk tegra_cml0_clk = {
-	.name      = "cml0",
-	.clk_id    = TEGRA210_CLK_ID_PLL_E_CML0,
-	.parent    = &tegra_pll_e,
-	.ops       = &tegra_cml_clk_ops,
-	.reg       = PLLE_AUX,
-	.max_rate  = 100000000,
-	.u.periph  = {
-		.clk_num = 0,
-	},
-};
-
 static struct clk tegra_cml1_clk = {
 	.name      = "cml1",
 	.clk_id    = TEGRA210_CLK_ID_PLL_E_CML1,
@@ -8422,6 +8409,8 @@ static struct clk tegra_pex_uphy_clk = {
 	.name      = "pex_uphy",
 	.clk_id = TEGRA210_CLK_ID_PEX_UPHY,
 	.ops       = &tegra_xusb_padctl_ops,
+	.parent		= &tegra_pll_e,
+	.max_rate	= 100000000,
 	.u.periph  = {
 		.clk_num   = 205,
 	},
@@ -8780,6 +8769,11 @@ static struct clk_mux_sel mux_clk_m[] = {
 	{ NULL, 0},
 };
 
+static struct clk_mux_sel mux_pex_uphy_clk[] = {
+	{ .input = &tegra_pex_uphy_clk, .value = 0},
+	{ NULL, 0},
+};
+
 static struct clk_mux_sel mux_pllp_out3[] = {
 	{ .input = &tegra_pll_p_out3, .value = 0},
 	{ NULL, 0},
@@ -8908,6 +8902,11 @@ static struct clk tegra_clk_mselect = {
 		.threshold = 408000000,
 	},
 	.rate_change_nh = &mselect_rate_change_nh,
+};
+
+static struct clk_mux_sel mux_clk_mselect[] = {
+	{ .input = &tegra_clk_mselect, .value = 0},
+	{ NULL, 0},
 };
 
 static struct raw_notifier_head ape_rate_change_nh;
@@ -9567,8 +9566,8 @@ static struct clk tegra_list_clks[] = {
 	PERIPH_CLK("extern1",	"extern1",		NULL,	120,	0x3ec,	408000000, mux_plla_clk32_pllp_clkm_plle,	MUX | DIV_U71, TEGRA210_CLK_ID_EXTERN1),
 	PERIPH_CLK("extern2",	"extern2",		NULL,	121,	0x3f0,	408000000, mux_plla_clk32_pllp_clkm_plle,	MUX | DIV_U71, TEGRA210_CLK_ID_EXTERN2),
 	PERIPH_CLK("extern3",	"extern3",		NULL,	122,	0x3f4,	408000000, mux_plla_clk32_pllp_clkm_plle,	MUX | DIV_U71, TEGRA210_CLK_ID_EXTERN3),
-	PERIPH_CLK("pcie",	"tegra-pcie",		"pcie",	70,	0,	250000000, mux_clk_m, 			0, TEGRA210_CLK_ID_PCIE),
-	PERIPH_CLK("afi",	"tegra-pcie",		"afi",	72,	0,	250000000, mux_clk_m, 			0, TEGRA210_CLK_ID_AFI),
+	PERIPH_CLK("pcie",	"tegra_pcie",		"pcie",	70,	0,	250000000, mux_pex_uphy_clk, PERIPH_MANUAL_RESET, TEGRA210_CLK_ID_PCIE),
+	PERIPH_CLK("afi",	"tegra_pcie",		"afi",	72,	0,	408000000, mux_clk_mselect, PERIPH_MANUAL_RESET, TEGRA210_CLK_ID_AFI),
 	PERIPH_CLK("cl_dvfs_ref", "tegra_cl_dvfs",	"ref",	155,	0x62c,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB, TEGRA210_CLK_ID_DFLL_REF),
 	PERIPH_CLK("cl_dvfs_soc", "tegra_cl_dvfs",	"soc",	155,	0x630,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB, TEGRA210_CLK_ID_DFLL_SOC),
 	PERIPH_CLK("soc_therm",	"soc_therm",		NULL,   78,	0x644,	136000000, mux_clkm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_ON_APB, TEGRA210_CLK_ID_SOC_THERM),
@@ -9919,7 +9918,6 @@ static struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cop", "nvavp", "cop"),
 	CLK_DUPLICATE("bsev", "nvavp", "bsev"),
 	CLK_DUPLICATE("cml1", "tegra_sata_cml", NULL),
-	CLK_DUPLICATE("cml0", "tegra_pcie", "cml"),
 	CLK_DUPLICATE("pciex", "tegra_pcie", "pciex"),
 	CLK_DUPLICATE("pex_uphy", "tegra_pcie", "pex_uphy"),
 	CLK_DUPLICATE("clk_m", NULL, "apb_pclk"),
@@ -10040,7 +10038,6 @@ static struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_e,
 	&tegra_pll_e_hw,
 	&tegra_pll_e_gate,
-	&tegra_cml0_clk,
 	&tegra_cml1_clk,
 	&tegra_pciex_clk,
 	&tegra_pex_uphy_clk,
