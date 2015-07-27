@@ -93,7 +93,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_cpu = {
 	.stats = {
 		.bin_uV = 6250, /* 6.25mV */
 	},
-	.version = "p4v47_p4Av05",
+	.version = "p4v50_p4Av05",
 };
 
 static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
@@ -106,7 +106,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
 	.alignment = {
 		.step_uv = 12500, /* 12.5mV */
 	},
-	.version = "p4v48_p4Av05",
+	.version = "p4v50_p4Av05",
 };
 
 static struct dvfs_rail tegra21_dvfs_rail_vdd_gpu = {
@@ -123,7 +123,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_gpu = {
 	.stats = {
 		.bin_uV = 6250, /* 6.25mV */
 	},
-	.version = "p4v45_p4Av05",
+	.version = "p4v50_p4Av05",
 };
 
 static struct dvfs_rail *tegra21_dvfs_rails[] = {
@@ -231,15 +231,17 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.process_id = 0,
 		.dfll_tune_data  = {
 			.tune0		= 0xFFEAD0FF,
+			.tune0_high_mv	= 0xFFEAD0FF,
+			.tune_high_min_millivolts = 864,
 			.tune1		= 0x020091D9,
 			.droop_rate_min = 1000000,
-			.min_millivolts = 870,
+			.min_millivolts = 804,
 		},
 		.pll_tune_data = {
 			.min_millivolts = 950,
 		},
-		.max_mv = 1227,
-		.max_freq = 2218500,
+		.max_mv = 1170,
+		.max_freq = 1912500,
 		CPU_CVB_TABLE,
 	},
 	{
@@ -249,33 +251,15 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune0		= 0xFFEAD0FF,
 			.tune0_high_mv	= 0xFFEAD0FF,
 			.tune_high_min_millivolts = 864,
-			.tune1		= 0x020091D9,
-			.droop_rate_min = 1000000,
-			.min_millivolts = 830,
-		},
-		.pll_tune_data = {
-			.min_millivolts = 950,
-		},
-		.max_mv = 1227,
-		.max_freq = 2218500,
-		CPU_CVB_TABLE,
-	},
-	{
-		.speedo_id = 3,
-		.process_id = 2,
-		.dfll_tune_data  = {
-			.tune0		= 0xFFEAD0FF,
-			.tune0_high_mv	= 0xFFEAD0FF,
-			.tune_high_min_millivolts = 864,
 			.tune1		= 0x025501D0,
 			.droop_rate_min = 1000000,
-			.min_millivolts = 830,
+			.min_millivolts = 804,
 		},
 		.pll_tune_data = {
 			.min_millivolts = 950,
 		},
-		.max_mv = 1227,
-		.max_freq = 2218500,
+		.max_mv = 1170,
+		.max_freq = 1912500,
 		CPU_CVB_TABLE,
 	},
 
@@ -321,7 +305,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune_high_min_millivolts = 864,
 			.tune1		= 0x020091D9,
 			.droop_rate_min = 1000000,
-			.min_millivolts = 850,
+			.min_millivolts = 818,
 		},
 		.pll_tune_data = {
 			.min_millivolts = 950,
@@ -337,27 +321,9 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune0		= 0xFFEAD0FF,
 			.tune0_high_mv	= 0xFFEAD0FF,
 			.tune_high_min_millivolts = 864,
-			.tune1		= 0x020091D9,
-			.droop_rate_min = 1000000,
-			.min_millivolts = 800,
-		},
-		.pll_tune_data = {
-			.min_millivolts = 950,
-		},
-		.max_mv = 1170,
-		.max_freq = 1912500,
-		CPU_CVB_TABLE,
-	},
-	{
-		.speedo_id = 1,
-		.process_id = 2,
-		.dfll_tune_data  = {
-			.tune0		= 0xFFEAD0FF,
-			.tune0_high_mv	= 0xFFEAD0FF,
-			.tune_high_min_millivolts = 864,
 			.tune1		= 0x025501D0,
 			.droop_rate_min = 1000000,
-			.min_millivolts = 800,
+			.min_millivolts = 818,
 		},
 		.pll_tune_data = {
 			.min_millivolts = 950,
@@ -467,10 +433,10 @@ static struct cpu_cvb_dvfs cpu_lp_cvb_dvfs_table[] = {
 		CPU_LP_CVB_TABLE_XA,
 	},
 	{
-		.speedo_id = 1,
-		.process_id = 1,
+		.speedo_id = 3,
+		.process_id = -1,
 		.pll_tune_data = {
-			.min_millivolts = 800,
+			.min_millivolts = 804,
 		},
 		.max_mv = 1170,
 		.max_freq = 1132800,
@@ -478,9 +444,9 @@ static struct cpu_cvb_dvfs cpu_lp_cvb_dvfs_table[] = {
 	},
 	{
 		.speedo_id = 1,
-		.process_id = 2,
+		.process_id = -1,
 		.pll_tune_data = {
-			.min_millivolts = 800,
+			.min_millivolts = 818,
 		},
 		.max_mv = 1170,
 		.max_freq = 1132800,
@@ -576,7 +542,7 @@ static struct dvfs cpu_lp_dvfs = {
 
 static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	{
-		.speedo_id = 5,
+		.speedo_id = 4,
 		.process_id = -1,
 		.pll_tune_data = {
 			.min_millivolts = 918,
@@ -591,39 +557,10 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 	},
 
 	{
-		.speedo_id = 4,
-		.process_id = 0,
-		.pll_tune_data = {
-			.min_millivolts = 840,
-		},
-		.max_mv = 1150,
-		.max_freq = 921600,
-#ifdef CONFIG_TEGRA_USE_NA_GPCPLL
-		NA_FREQ_CVB_TABLE,
-#else
-		FIXED_FREQ_CVB_TABLE,
-#endif
-	},
-	{
-		.speedo_id = 4,
-		.process_id = 1,
-		.pll_tune_data = {
-			.min_millivolts = 810,
-		},
-		.max_mv = 1150,
-		.max_freq = 921600,
-#ifdef CONFIG_TEGRA_USE_NA_GPCPLL
-		NA_FREQ_CVB_TABLE,
-#else
-		FIXED_FREQ_CVB_TABLE,
-#endif
-	},
-
-	{
 		.speedo_id = 3,
 		.process_id = -1,
 		.pll_tune_data = {
-			.min_millivolts = 840,
+			.min_millivolts = 810,
 		},
 		.max_mv = 1150,
 		.max_freq = 921600,
@@ -636,23 +573,9 @@ static struct gpu_cvb_dvfs gpu_cvb_dvfs_table[] = {
 
 	{
 		.speedo_id = 2,
-		.process_id = 0,
+		.process_id = -1,
 		.pll_tune_data = {
-			.min_millivolts = 840,
-		},
-		.max_mv = 1150,
-		.max_freq = 998400,
-#ifdef CONFIG_TEGRA_USE_NA_GPCPLL
-		NA_FREQ_CVB_TABLE,
-#else
-		FIXED_FREQ_CVB_TABLE,
-#endif
-	},
-	{
-		.speedo_id = 2,
-		.process_id = 1,
-		.pll_tune_data = {
-			.min_millivolts = 810,
+			.min_millivolts = 818,
 		},
 		.max_mv = 1150,
 		.max_freq = 998400,
@@ -796,9 +719,9 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("nvdec",		0, 0, 1, KHZ,	 192000,  192000,  345600,  396800,  435200,  473600,  512000,  563200,  601600,  627200,  652800,  652800,  678400,  691200,  716800),
 	CORE_DVFS("c3bus",		0, 0, 1, KHZ,	 192000,  192000,  345600,  396800,  435200,  473600,  512000,  563200,  601600,  627200,  652800,  652800,  678400,  691200,  716800),
 
-	CORE_DVFS("vi",			0, 0, 1, KHZ,	      1,       1,       1,  307200,  371200,  435200,  499200,  550400,  614400,  678400,  742400,  742400,  793600,  793600,  793600),
-	CORE_DVFS("isp",		0, 0, 1, KHZ,	      1,       1,       1,  307200,  371200,  435200,  499200,  550400,  614400,  678400,  742400,  742400,  793600,  793600,  793600),
-	CORE_DVFS("cbus",		0, 0, 1, KHZ,	      1,       1,       1,  307200,  371200,  435200,  499200,  550400,  614400,  678400,  742400,  742400,  793600,  793600,  793600),
+	CORE_DVFS("vi",			0, 0, 1, KHZ,	 217600,  217600,  307200,  307200,  371200,  435200,  499200,  550400,  614400,  678400,  742400,  742400,  793600,  793600,  793600),
+	CORE_DVFS("isp",		0, 0, 1, KHZ,	 217600,  217600,  307200,  307200,  371200,  435200,  499200,  550400,  614400,  678400,  742400,  742400,  793600,  793600,  793600),
+	CORE_DVFS("cbus",		0, 0, 1, KHZ,	 217600,  217600,  307200,  307200,  371200,  435200,  499200,  550400,  614400,  678400,  742400,  742400,  793600,  793600,  793600),
 
 	CORE_DVFS("adsp_bus",		0, 0, 1, KHZ,	 153600,  153600,  332800,  371200,  422400,  486400,  563200,  614400,  691200,  742400,  780800,  780800,  819200,  844800,  844800),
 	CORE_DVFS("ape",		0, 0, 1, KHZ,	 140800,  140800,  230400,  268800,  307200,  345600,  384000,  448000,  486400,  499200,  499200,  499200,  499200,  499200,  499200),
@@ -824,9 +747,9 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("nvdec",		0, 1, 1, KHZ,	 268800,  268800,  384000,  448000,  486400,  550400,  576000,  614400,  652800,  678400,  691200,  691200,  716800,  716800,  716800),
 	CORE_DVFS("c3bus",		0, 1, 1, KHZ,	 268800,  268800,  384000,  448000,  486400,  550400,  576000,  614400,  652800,  678400,  691200,  691200,  716800,  716800,  716800),
 
-	CORE_DVFS("vi",			0, 1, 1, KHZ,	      1,       1,       1,  473600,  576000,  588800,  678400,  691200,  691200,  691200,  793600,  793600,  793600,  793600,  793600),
-	CORE_DVFS("isp",		0, 1, 1, KHZ,	      1,       1,       1,  473600,  576000,  588800,  678400,  691200,  691200,  691200,  793600,  793600,  793600,  793600,  793600),
-	CORE_DVFS("cbus",		0, 1, 1, KHZ,	      1,       1,       1,  473600,  576000,  588800,  678400,  691200,  691200,  691200,  793600,  793600,  793600,  793600,  793600),
+	CORE_DVFS("vi",			0, 1, 1, KHZ,	 268800,  268800,  473600,  473600,  576000,  588800,  678400,  691200,  691200,  691200,  793600,  793600,  793600,  793600,  793600),
+	CORE_DVFS("isp",		0, 1, 1, KHZ,	 268800,  268800,  473600,  473600,  576000,  588800,  678400,  691200,  691200,  691200,  793600,  793600,  793600,  793600,  793600),
+	CORE_DVFS("cbus",		0, 1, 1, KHZ,	 268800,  268800,  473600,  473600,  576000,  588800,  678400,  691200,  691200,  691200,  793600,  793600,  793600,  793600,  793600),
 
 	CORE_DVFS("adsp_bus",		0, 1, 1, KHZ,	 230400,  230400,  422400,  460800,  524800,  601600,  652800,  704000,  755200,  819200,  844800,  844800,  844800,  844800,  844800),
 	CORE_DVFS("ape",		0, 1, 1, KHZ,	 179200,  179200,  307200,  345600,  371200,  409600,  422400,  460800,  499200,  499200,  499200,  499200,  499200,  499200,  499200),
@@ -852,9 +775,9 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("nvdec",		0, 2, 1, KHZ,	 307200,  307200,  486400,  563200,  614400,  640000,  652800,  678400,  716800,  716800,  716800,  716800,  716800,  716800,  716800),
 	CORE_DVFS("c3bus",		0, 2, 1, KHZ,	 307200,  307200,  486400,  563200,  614400,  640000,  652800,  678400,  716800,  716800,  716800,  716800,  716800,  716800,  716800),
 
-	CORE_DVFS("vi",			0, 2, 1, KHZ,	      1,       1,  588800,  678400,  691200,  691200,  768000,  793600,  793600,  793600,  793600,  793600,  793600,  793600,  793600),
-	CORE_DVFS("isp",		0, 2, 1, KHZ,	      1,       1,  588800,  678400,  691200,  691200,  768000,  793600,  793600,  793600,  793600,  793600,  793600,  793600,  793600),
-	CORE_DVFS("cbus",		0, 2, 1, KHZ,	      1,       1,  588800,  678400,  691200,  691200,  768000,  793600,  793600,  793600,  793600,  793600,  793600,  793600,  793600),
+	CORE_DVFS("vi",			0, 2, 1, KHZ,	 384000,  384000,  588800,  678400,  691200,  691200,  768000,  793600,  793600,  793600,  793600,  793600,  793600,  793600,  793600),
+	CORE_DVFS("isp",		0, 2, 1, KHZ,	 384000,  384000,  588800,  678400,  691200,  691200,  768000,  793600,  793600,  793600,  793600,  793600,  793600,  793600,  793600),
+	CORE_DVFS("cbus",		0, 2, 1, KHZ,	 384000,  384000,  588800,  678400,  691200,  691200,  768000,  793600,  793600,  793600,  793600,  793600,  793600,  793600,  793600),
 
 	CORE_DVFS("adsp_bus",		0, 2, 1, KHZ,	 281600,  281600,  499200,  576000,  652800,  691200,  755200,  793600,  844800,  844800,  844800,  844800,  844800,  844800,  844800),
 	CORE_DVFS("ape",		0, 2, 1, KHZ,	 230400,  230400,  358400,  396800,  422400,  486400,  499200,  499200,  499200,  499200,  499200,  499200,  499200,  499200,  499200),
