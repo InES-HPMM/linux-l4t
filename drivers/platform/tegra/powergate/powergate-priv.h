@@ -80,6 +80,7 @@ struct powergate_partition_info {
 	int refcount;
 	bool disable_after_boot;
 	struct mutex pg_mutex;
+	bool skip_reset;
 };
 
 struct powergate_ops {

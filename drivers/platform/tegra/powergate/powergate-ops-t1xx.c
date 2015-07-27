@@ -112,9 +112,11 @@ static int __tegra1xx_unpowergate(int id, struct powergate_partition_info *pg_in
 
 	udelay(10);
 
-	powergate_partition_deassert_reset(pg_info);
+	if (!pg_info->skip_reset) {
+		powergate_partition_deassert_reset(pg_info);
 
-	udelay(10);
+		udelay(10);
+	}
 
 	tegra_powergate_mc_flush_done(id);
 

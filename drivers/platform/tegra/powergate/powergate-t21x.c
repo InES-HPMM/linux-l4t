@@ -200,6 +200,7 @@ static struct powergate_partition_info tegra210_pg_partition_info[] = {
 			[2] = { .clk_name = "cml0", .clk_type = CLK_ONLY },
 			[3] = { .clk_name = "pciex", .clk_type = RST_ONLY },
 		},
+		.skip_reset = true,
 	},
 #endif
 #ifdef CONFIG_ARCH_TEGRA_HAS_SATA
