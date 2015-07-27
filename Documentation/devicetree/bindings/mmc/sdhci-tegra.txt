@@ -30,7 +30,8 @@ Optional properties:
 - calib-3v3-offsets and calib-1v8-offsets: Specify caliberation settings at 3.3V and at 1.8V
 - auto_cal_step: Specify auto caliberation step value
 - pll_source: Specify list of clock parents
-- dqs-trim-delay: Specify number of cycles to delay for reading data from device when the device is enumerated in HS400, HS533 or HS667 modes and this value is applicable only for eMMC device.
+- dqs-trim-delay: HS400 Tap value for incoming DQS path trimmer.
+- dqs-trim-delay-hs533: HS533 Tap value for incoming DQS path trimmer.
 - compad-vref-3v3 and compad-vref-1v8: used to control Vref_sel input of calibration pad. Should be set based on pads used for controller before starting pad drive strength calibration.
 - cd-gpios: details of GPIO port used for SD card detect
 - wp-gpios: details of GPIO port used for SD card write protect mode
