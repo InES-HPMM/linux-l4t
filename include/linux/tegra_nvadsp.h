@@ -356,8 +356,14 @@ static inline long wait_for_nvadsp_app_complete_timeout(nvadsp_app_info_t *info,
  * dfs : 0 for disable, 1 for enable
  */
 void adsp_update_dfs(unsigned long freq, bool dfs);
+void adsp_update_dfs_min_rate(unsigned long freq);
 #else
 static inline void adsp_update_dfs(unsigned long freq, bool dfs)
+{
+	return;
+}
+
+static inline void adsp_update_dfs_min_rate(unsigned long freq)
 {
 	return;
 }
