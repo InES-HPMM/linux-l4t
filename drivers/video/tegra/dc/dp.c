@@ -1911,7 +1911,7 @@ static void tegra_dp_set_tx_pu(struct tegra_dc_dp_data *dp, u32 pe[4],
 	const u32  *p_grtxpu;
 
 	/* retrieve GR values */
-	if (dp->pdata->gr_settings.valid) {
+	if (dp->pdata && dp->pdata->gr_settings.valid) {
 		p_grtxpu = &dp->pdata->gr_settings.tx_pu[0][0][0];
 	} else {
 		p_grtxpu = &tegra_dp_tx_pu[0][0][0];
