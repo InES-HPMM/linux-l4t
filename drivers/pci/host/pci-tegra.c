@@ -1635,13 +1635,11 @@ static void tegra_pcie_port_enable(struct tegra_pcie_port *port)
 	/* t124 doesn't support pll power down due to RTL bug and some */
 	/* platforms don't support clkreq, both needs to disable clkreq and */
 	/* enable refclk override to have refclk always ON independent of EP */
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
-	value &= ~AFI_PEX_CTRL_CLKREQ_EN;
-#endif
 	if (port->disable_clock_request)
-		value &= ~AFI_PEX_CTRL_CLKREQ_EN;
-	else
 		value |= AFI_PEX_CTRL_CLKREQ_EN;
+	else
+		value &= ~AFI_PEX_CTRL_CLKREQ_EN;
+
 	afi_writel(port->pcie, value, ctrl);
 
 	tegra_pcie_port_reset(port);
