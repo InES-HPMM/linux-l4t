@@ -169,6 +169,7 @@
 
 #define AFI_PLLE_CONTROL					0x160
 #define AFI_PLLE_CONTROL_BYPASS_PADS2PLLE_CONTROL		(1 << 9)
+#define AFI_PLLE_CONTROL_BYPASS_PCIE2PLLE_CONTROL		(1 << 8)
 #define AFI_PLLE_CONTROL_PADS2PLLE_CONTROL_EN			(1 << 1)
 #define AFI_PLLE_CONTROL_PCIE2PLLE_CONTROL_EN			(1 << 0)
 
@@ -1101,14 +1102,23 @@ static void tegra_pcie_enable_wrap(void)
 static int tegra_pcie_enable_controller(struct tegra_pcie *pcie)
 {
 	u32 val;
+	struct tegra_pcie_port *port, *tmp;
 
 	PR_FUNC_LINE;
 	tegra_pcie_enable_wrap();
 	/* Enable PLL power down */
 	val = afi_readl(pcie, AFI_PLLE_CONTROL);
+	val &= ~AFI_PLLE_CONTROL_BYPASS_PCIE2PLLE_CONTROL;
 	val &= ~AFI_PLLE_CONTROL_BYPASS_PADS2PLLE_CONTROL;
 	val |= AFI_PLLE_CONTROL_PADS2PLLE_CONTROL_EN;
 	val |= AFI_PLLE_CONTROL_PCIE2PLLE_CONTROL_EN;
+	list_for_each_entry_safe(port, tmp, &pcie->ports, list) {
+		if (port->disable_clock_request) {
+			val |= AFI_PLLE_CONTROL_BYPASS_PADS2PLLE_CONTROL;
+			val &= ~AFI_PLLE_CONTROL_PADS2PLLE_CONTROL_EN;
+			break;
+		}
+	}
 	afi_writel(pcie, val, AFI_PLLE_CONTROL);
 
 	afi_writel(pcie, 0, AFI_PEXBIAS_CTRL_0);
@@ -1626,10 +1636,12 @@ static void tegra_pcie_port_enable(struct tegra_pcie_port *port)
 	/* platforms don't support clkreq, both needs to disable clkreq and */
 	/* enable refclk override to have refclk always ON independent of EP */
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC)
-	value |= (AFI_PEX_CTRL_CLKREQ_EN | AFI_PEX_CTRL_OVERRIDE_EN);
+	value &= ~AFI_PEX_CTRL_CLKREQ_EN;
 #endif
 	if (port->disable_clock_request)
-		value |= (AFI_PEX_CTRL_CLKREQ_EN | AFI_PEX_CTRL_OVERRIDE_EN);
+		value &= ~AFI_PEX_CTRL_CLKREQ_EN;
+	else
+		value |= AFI_PEX_CTRL_CLKREQ_EN;
 	afi_writel(port->pcie, value, ctrl);
 
 	tegra_pcie_port_reset(port);
@@ -1715,7 +1727,6 @@ static bool t210_war;
 static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 				bool enum_done)
 {
-	unsigned long ctrl;
 	unsigned int data;
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	struct tegra_pcie *pcie = port->pcie;
@@ -1732,13 +1743,6 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 		t210_war = 1;
 #endif
 	if (enum_done) {
-		if (!port->disable_clock_request) {
-			/* Remove SW override for REFCLK */
-			ctrl = tegra_pcie_port_get_pex_ctrl(port);
-			data = afi_readl(port->pcie, ctrl);
-			data &= ~(AFI_PEX_CTRL_OVERRIDE_EN);
-			afi_writel(port->pcie, data, ctrl);
-		}
 		/* disable msi for port driver to avoid panic */
 		for_each_pci_dev(pdev)
 			if (pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT)
