@@ -114,7 +114,6 @@
 	};
 
 	sound {
-		ldoen-supply = <&en_codec_ldo>;
 		spkvdd-supply = <&battery_reg>;
 		dbvdd-supply = <&max77620_sd3>;
 		avdd-supply = <&max77620_sd3>;
