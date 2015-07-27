@@ -345,16 +345,22 @@ static int policy_min_set(void *data, u64 val)
 		goto exit_out;
 	}
 
-	if (!min || ((min < policy->cpu_min) || (min == policy->min)))
+	if (min == policy->min)
 		goto exit_out;
+	else if (min < policy->cpu_min)
+		min = policy->cpu_min;
 	else if (min >= policy->cpu_max)
 		min = policy->cpu_max;
 
-	if (min > policy->cur)
+	if (min > policy->cur) {
 		min = update_freq(min);
+		if (min)
+			policy->cur = min;
+	}
 
 	if (min)
-		policy->cur = policy->min = min;
+		policy->min = min;
+
 	ret = 0;
 exit_out:
 	mutex_unlock(&policy_mutex);
@@ -614,6 +620,18 @@ void adsp_update_dfs(unsigned long freq, bool dfs)
 		policy->cur = freq;
 exit_out:
 	mutex_unlock(&policy_mutex);
+}
+
+
+/*
+ * Set min ADSP freq.
+ *
+ * @params:
+ * freq: adsp freq in KHz
+ */
+void adsp_update_dfs_min_rate(unsigned long freq)
+{
+	policy_min_set(NULL, freq);
 }
 
 /* Should be called after ADSP os is loaded */
