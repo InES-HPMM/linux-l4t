@@ -18,7 +18,8 @@
 #include "powergate-priv.h"
 #include "powergate-ops-t1xx.h"
 
-int tegra1xx_powergate(int id, struct powergate_partition_info *pg_info)
+static int __tegra1xx_powergate(int id, struct powergate_partition_info *pg_info,
+				bool clk_enable)
 {
 	int ret;
 
@@ -26,13 +27,19 @@ int tegra1xx_powergate(int id, struct powergate_partition_info *pg_info)
 	if (!pg_info->clk_info[0].clk_ptr)
 		get_clk_info(pg_info);
 
-	ret = partition_clk_enable(pg_info);
-	if (ret) {
-		WARN(1, "Couldn't enable clock");
-		return ret;
-	}
+	if (clk_enable) {
+		/*
+		 * Enable clocks only if clocks are not expected to
+		 * be off when power gating is done
+		 */
+		ret = partition_clk_enable(pg_info);
+		if (ret) {
+			WARN(1, "Couldn't enable clock");
+			return ret;
+		}
 
-	udelay(10);
+		udelay(10);
+	}
 
 	tegra_powergate_mc_flush(id);
 
@@ -58,7 +65,13 @@ err_power_off:
 	return ret;
 }
 
-int tegra1xx_unpowergate(int id, struct powergate_partition_info *pg_info)
+int tegra1xx_powergate(int id, struct powergate_partition_info *pg_info)
+{
+	return __tegra1xx_powergate(id, pg_info, true);
+}
+
+static int __tegra1xx_unpowergate(int id, struct powergate_partition_info *pg_info,
+				bool clk_disable)
 {
 	int ret;
 
@@ -69,8 +82,14 @@ int tegra1xx_unpowergate(int id, struct powergate_partition_info *pg_info)
 	if (!pg_info->slcg_info[0].clk_ptr)
 		get_slcg_info(pg_info);
 
-	if (tegra_powergate_is_powered(id))
+	if (tegra_powergate_is_powered(id)) {
+		if (is_partition_clk_disabled(pg_info) && !clk_disable) {
+			ret = partition_clk_enable(pg_info);
+			if (ret)
+				return ret;
+		}
 		return tegra_powergate_reset_module(pg_info);
+	}
 
 	ret = tegra_powergate_set(id, true);
 	if (ret)
@@ -108,7 +127,8 @@ int tegra1xx_unpowergate(int id, struct powergate_partition_info *pg_info)
 	slcg_clk_disable(pg_info);
 
 	/* Disable all clks enabled earlier. Drivers should enable clks */
-	partition_clk_disable(pg_info);
+	if (clk_disable)
+		partition_clk_disable(pg_info);
 
 	return 0;
 
@@ -121,35 +141,20 @@ err_power:
 	return ret;
 }
 
+int tegra1xx_unpowergate(int id, struct powergate_partition_info *pg_info)
+{
+	return __tegra1xx_unpowergate(id, pg_info, true);
+}
+
 int tegra1xx_powergate_partition_with_clk_off(int id,
 	struct powergate_partition_info *pg_info)
 {
 	int ret = 0;
 
-	/* If first clk_ptr is null, fill clk info for the partition */
-	if (!pg_info->clk_info[0].clk_ptr)
-		get_clk_info(pg_info);
-
-	/* Disable clks for the partition */
-	partition_clk_disable(pg_info);
-
-	ret = is_partition_clk_disabled(pg_info);
+	ret = __tegra1xx_powergate(id, pg_info, false);
 	if (ret)
-		goto err_powergate_clk;
+		WARN(1, "Could not Powergate Partition %d", id);
 
-	ret = tegra_powergate_partition(id);
-	if (ret)
-		goto err_powergating;
-
-	return ret;
-
-err_powergate_clk:
-	WARN(1, "Could not Powergate Partition %d, all clks not disabled", id);
-err_powergating:
-	ret = partition_clk_enable(pg_info);
-	if (ret)
-		return ret;
-	WARN(1, "Could not Powergate Partition %d", id);
 	return ret;
 }
 
@@ -158,21 +163,9 @@ int tegra1xx_unpowergate_partition_with_clk_on(int id,
 {
 	int ret = 0;
 
-	ret = tegra_unpowergate_partition(id);
+	ret = __tegra1xx_unpowergate(id, pg_info, false);
 	if (ret)
-		goto err_unpowergating;
+		WARN(1, "Could not Un-Powergate %d", id);
 
-	/* Enable clks for the partition */
-	ret = partition_clk_enable(pg_info);
-	if (ret)
-		goto err_unpowergate_clk;
-
-	return ret;
-
-err_unpowergate_clk:
-	tegra_powergate_partition(id);
-	WARN(1, "Could not Un-Powergate %d, err in enabling clk", id);
-err_unpowergating:
-	WARN(1, "Could not Un-Powergate %d", id);
 	return ret;
 }
