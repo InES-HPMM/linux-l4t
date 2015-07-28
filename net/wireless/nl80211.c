@@ -10420,10 +10420,6 @@ void cfg80211_ch_switch_notify(struct net_device *dev,
 
 	wdev_lock(wdev);
 
-	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_AP &&
-		    wdev->iftype != NL80211_IFTYPE_P2P_GO))
-		goto out;
-
 	wdev->channel = chandef->chan;
 	nl80211_ch_switch_notify(rdev, dev, chandef, GFP_KERNEL);
 out:
