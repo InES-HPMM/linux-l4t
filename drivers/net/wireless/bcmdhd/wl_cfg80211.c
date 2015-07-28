@@ -6264,6 +6264,12 @@ wl_cfg80211_set_channel(struct wiphy *wiphy, struct net_device *dev,
 	struct net_info *iter, *next;
 
 	s32 err = BCME_OK;
+	s32 bw_cap = 0;
+	struct {
+		u32 band;
+		u32 bw_cap;
+	} param = {0, 0};
+
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 #ifdef CUSTOM_SET_CPUCORE
 	dhd_pub_t *dhd;
@@ -6287,27 +6293,34 @@ wl_cfg80211_set_channel(struct wiphy *wiphy, struct net_device *dev,
 	WL_ERR(("netdev_ifidx(%d), chan_type(%d) target channel(%d) \n",
 		dev->ifindex, channel_type, _chan));
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
-	WL_ERR(("chan_width = %d\n", chandef.width));
-	switch (chandef.width) {
-		case NL80211_CHAN_WIDTH_40:
-			bw = WL_CHANSPEC_BW_40;
-			break;
-		case NL80211_CHAN_WIDTH_80:
-			bw = WL_CHANSPEC_BW_80;
-			break;
-		case NL80211_CHAN_WIDTH_80P80:
-			bw = WL_CHANSPEC_BW_8080;
-			break;
-		case NL80211_CHAN_WIDTH_160:
-			bw = WL_CHANSPEC_BW_160;
-			break;
-		default:
-			bw = WL_CHANSPEC_BW_20;
-			break;
-	}
-	goto set_channel;
-#endif 
+	if (chan->band == IEEE80211_BAND_5GHZ) {
+		param.band = WLC_BAND_5G;
+		err = wldev_iovar_getbuf(dev, "bw_cap", &param, sizeof(param),
+			cfg->ioctl_buf, WLC_IOCTL_SMLEN, &cfg->ioctl_buf_sync);
+		if (err) {
+			if (err != BCME_UNSUPPORTED) {
+				WL_ERR(("bw_cap failed, %d\n", err));
+				return err;
+			} else {
+				err = wldev_iovar_getint(dev, "mimo_bw_cap", &bw_cap);
+				if (err) {
+					WL_ERR(("error get mimo_bw_cap (%d)\n", err));
+				}
+				if (bw_cap != WLC_N_BW_20ALL)
+					bw = WL_CHANSPEC_BW_40;
+			}
+		} else {
+			if (WL_BW_CAP_80MHZ(cfg->ioctl_buf[0]))
+				bw = WL_CHANSPEC_BW_80;
+			else if (WL_BW_CAP_40MHZ(cfg->ioctl_buf[0]))
+				bw = WL_CHANSPEC_BW_40;
+			else
+				bw = WL_CHANSPEC_BW_20;
+
+		}
+
+	} else if (chan->band == IEEE80211_BAND_2GHZ)
+		bw = WL_CHANSPEC_BW_20;
 
 	/* In 5GHz band If AP is connected in 20 MHz then follow AP's bw
 	   else 40MHz by default. */
