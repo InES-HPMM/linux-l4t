@@ -742,9 +742,16 @@ bool pm_wakeup_pending(void)
 	if (events_check_enabled) {
 		ret = (cnt != saved_count || inpr > 0);
 		events_check_enabled = !ret;
-	} else if (inpr > 0) {
+	}
+#ifdef CONFIG_ANDROID
+	/**
+	 * This is the android wake_lock hack mentioned above.
+	 * Use CONFIG_ANDROID to make this truely android-specific.
+	 */
+	else if (inpr > 0) {
 		ret = true;
 	}
+#endif
 	spin_unlock_irqrestore(&events_lock, flags);
 
 	if (ret)
