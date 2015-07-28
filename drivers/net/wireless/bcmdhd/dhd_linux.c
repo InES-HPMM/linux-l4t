@@ -3259,8 +3259,9 @@ dhd_txcomplete(dhd_pub_t *dhdp, void *txp, bool success)
 		atomic_dec(&dhd->pend_8021x_cnt);
 
 #ifdef PROP_TXSTATUS
-	if (dhdp->wlfc_state && (dhdp->proptxstatus_mode != WLFC_FCMODE_NONE)) {
-		dhd_if_t *ifp = dhd->iflist[DHD_PKTTAG_IF(PKTTAG(txp))];
+	dhd_if_t *ifp = dhd->iflist[DHD_PKTTAG_IF(PKTTAG(txp))];
+	ASSERT(ifp);
+	if ( (ifp != NULL) && dhdp->wlfc_state && (dhdp->proptxstatus_mode != WLFC_FCMODE_NONE)) {
 		uint datalen  = PKTLEN(dhd->pub.osh, txp);
 
 		if (success) {
