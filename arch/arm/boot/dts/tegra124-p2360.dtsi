@@ -183,7 +183,7 @@
 
 	pcie-controller {
 		status = "okay";
-		nvidia,boot-detect-delay = <10000>;
+		nvidia,boot-detect-delay = <3500>;
 
 		pci@1,0 {
 			status = "okay";
