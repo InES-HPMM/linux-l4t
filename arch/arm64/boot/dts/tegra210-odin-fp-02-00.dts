@@ -87,7 +87,7 @@
 		compatible = "nvidia,tegra-audio-t210ref-mobile-rt5639";
 		nvidia,model = "tegra-snd-t210ref-mobile-rt5639";
 		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(Z, 4) GPIO_ACTIVE_HIGH>;
-		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(V, 6) GPIO_ACTIVE_HIGH>;
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(BB, 4) GPIO_ACTIVE_HIGH>;
 
 		nvidia,num-codec-link = <2>;
 
@@ -99,8 +99,8 @@
 			"x Int Spk", 	"x SPOLP",
 			"x Int Spk", 	"x SPOLN",
 			"x micbias1",	"x Mic Jack",
-			"x IN2P",		"x Mic Jack",
-			"x IN2P",		"x Mic Jack",
+			"x IN1P",		"x Mic Jack",
+			"x IN1P",		"x Mic Jack",
 			"x DMIC L1",	"x Int Mic",
 			"x DMIC L2",	"x Int Mic",
 			"x DMIC R1",	"x Int Mic",
