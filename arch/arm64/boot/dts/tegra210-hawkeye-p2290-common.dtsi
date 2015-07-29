@@ -1325,4 +1325,9 @@
 	i2c@7000c700 {
 		nvidia,thigh = <4>;
 	};
+
+	spi@7000da00 {
+		pinctrl-names = "interface-enable";
+		pinctrl-0 = <&spi4_en_interface>;
+	};
 };
