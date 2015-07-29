@@ -946,6 +946,10 @@ int ape_actmon_exit(struct platform_device *pdev)
 	status_t ret = 0;
 	int i;
 
+	/* return if actmon is not initialized */
+	if (!drv->actmon_initialized)
+		return -ENODEV;
+
 	for (i = 0; i < ARRAY_SIZE(actmon_devices); i++) {
 		dev = actmon_devices[i];
 		actmon_dev_disable(dev);

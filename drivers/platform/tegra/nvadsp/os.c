@@ -73,7 +73,7 @@
 #define ADSP_CLK_FIX_RATE (APE_CLK_FIX_RATE * ADSP_TO_APE_CLK_RATIO)
 
 /* total number of crashes allowed on adsp */
-#define ALLOWED_CRASHES	2
+#define ALLOWED_CRASHES	1
 
 #define DISABLE_MBOX2_FULL_INT	0x0
 #define ENABLE_MBOX2_FULL_INT	0xFFFFFFFF
@@ -1063,11 +1063,6 @@ static void __nvadsp_os_stop(bool reload)
 	struct device *dev;
 	int err = 0;
 
-	if (!priv.pdev) {
-		pr_err("ADSP Driver is not initialized\n");
-		return;
-	}
-
 	dev = &priv.pdev->dev;
 	drv_data = platform_get_drvdata(priv.pdev);
 
@@ -1083,12 +1078,20 @@ static void __nvadsp_os_stop(bool reload)
 	err = wait_for_completion_interruptible_timeout(&entered_wfi,
 		msecs_to_jiffies(ADSP_WFE_TIMEOUT));
 	writel(DISABLE_MBOX2_FULL_INT, priv.misc_base + HWMBOX2_REG);
+
+	/*
+	 * ADSP needs to be in WFI/WFE state to properly reset it.
+	 * However, when ADSPOS is getting stopped on error path,
+	 * it cannot gaurantee that ADSP is in WFI/WFE state.
+	 * Reset it in either case. On failure, whole APE reset is
+	 * required (happens on next APE power domain cycle).
+	 */
+	assert_adsp(drv_data);
+	/* Don't reload ADSPOS if ADSP state is not WFI/WFE */
 	if (WARN_ON(err <= 0)) {
-		dev_err(dev, "ADSP is unable to enter wfe state\n");
+		dev_err(dev, "ADSP is unable to enter wfi state\n");
 		goto end;
 	}
-
-	assert_adsp(drv_data);
 
 	if (reload) {
 		struct nvadsp_debug_log *logger = &priv.logger;
@@ -1109,12 +1112,7 @@ static void __nvadsp_os_stop(bool reload)
 			dev_err(dev, "failed to reload %s\n", NVADSP_FIRMWARE);
 	}
 
-end:
-#ifdef CONFIG_PM_RUNTIME
-	err = pm_runtime_put_sync(dev);
-	if (err)
-		dev_err(dev, "failed in pm_runtime_put_sync\n");
-#endif
+ end:
 	return;
 }
 
@@ -1122,20 +1120,31 @@ end:
 void nvadsp_os_stop(void)
 {
 	struct nvadsp_drv_data *drv_data;
+	struct device *dev;
+	int err;
 
 	if (!priv.pdev) {
 		pr_err("ADSP Driver is not initialized\n");
 		return;
 	}
 
+	dev = &priv.pdev->dev;
 	drv_data = platform_get_drvdata(priv.pdev);
 
 	mutex_lock(&priv.os_run_lock);
 	/* check if os is running else exit */
 	if (!priv.os_running)
 		goto end;
+
 	__nvadsp_os_stop(true);
+
 	priv.os_running = drv_data->adsp_os_running = false;
+
+#ifdef CONFIG_PM_RUNTIME
+	err = pm_runtime_put_sync(dev);
+	if (err)
+		dev_err(dev, "failed in pm_runtime_put_sync\n");
+#endif
 end:
 	mutex_unlock(&priv.os_run_lock);
 }
@@ -1203,7 +1212,8 @@ static void nvadsp_os_restart(struct work_struct *work)
 	if (data->adsp_num_crashes >= ALLOWED_CRASHES) {
 		/* making pdev NULL so that externally start is not called */
 		priv.pdev = NULL;
-		dev_crit(dev, "ADSP has crashed too many times\n");
+		dev_crit(dev, "ADSP has crashed too many times(%d)\n",
+			 data->adsp_num_crashes);
 		return;
 	}
 
