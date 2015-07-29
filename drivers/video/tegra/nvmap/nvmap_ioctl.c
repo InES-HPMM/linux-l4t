@@ -642,9 +642,6 @@ static int __nvmap_cache_maint(struct nvmap_client *client,
 	if (!handle)
 		return -EINVAL;
 
-	if (handle->userflags & NVMAP_HANDLE_CACHE_SYNC_AT_RESERVE)
-		goto put_handle;
-
 	down_read(&current->mm->mmap_sem);
 
 	vma = find_vma(current->active_mm, (unsigned long)op->addr);
@@ -671,7 +668,6 @@ static int __nvmap_cache_maint(struct nvmap_client *client,
 				     false);
 out:
 	up_read(&current->mm->mmap_sem);
-put_handle:
 	nvmap_handle_put(handle);
 	return err;
 }
@@ -1316,12 +1312,6 @@ int nvmap_ioctl_cache_maint_list(struct file *filp, void __user *arg,
 
 	if (count % op.nr) {
 		err = -EINVAL;
-		goto free_mem;
-	}
-
-	/* skip cache op when NVMAP_HANDLE_CACHE_SYNC_AT_RESERVE is specified */
-	if (count && !is_reserve_ioctl) {
-		err = 0;
 		goto free_mem;
 	}
 
