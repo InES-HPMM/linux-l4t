@@ -7727,7 +7727,14 @@ dhd_os_tcpacklock(dhd_pub_t *pub)
 	dhd_info_t *dhd;
 
 	dhd = (dhd_info_t *)(pub->info);
+#ifdef BCMPCIE
+	if (irqs_disabled())
+		spin_lock(&dhd->tcpack_lock);
+	else
+		spin_lock_bh(&dhd->tcpack_lock);
+#else
 	spin_lock_bh(&dhd->tcpack_lock);
+#endif
 
 }
 
@@ -7737,7 +7744,14 @@ dhd_os_tcpackunlock(dhd_pub_t *pub)
 	dhd_info_t *dhd;
 
 	dhd = (dhd_info_t *)(pub->info);
+#ifdef BCMPCIE
+	if (irqs_disabled())
+		spin_unlock(&dhd->tcpack_lock);
+	else
+		spin_unlock_bh(&dhd->tcpack_lock);
+#else
 	spin_unlock_bh(&dhd->tcpack_lock);
+#endif
 }
 #endif /* DHDTCPACK_SUPPRESS */
 
