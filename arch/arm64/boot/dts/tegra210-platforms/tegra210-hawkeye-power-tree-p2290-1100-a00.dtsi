@@ -36,6 +36,104 @@
 		};
 	};
 
+	i2c@7000d000 {
+		max77620@3c {
+			regulators {
+				ldo0 {
+					regulator-enable-ramp-delay = <78>;
+					regulator-disable-ramp-delay = <2280>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <650>;
+				};
+
+				ldo2 {
+					regulator-enable-ramp-delay = <200>;
+					regulator-disable-ramp-delay = <3300>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <600>;
+				};
+
+				ldo3 {
+					regulator-enable-ramp-delay = <156>;
+					regulator-disable-ramp-delay = <5430>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <550>;
+				};
+
+				ldo4 {
+					regulator-enable-ramp-delay = <20>;
+					regulator-disable-ramp-delay = <390>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <200>;
+				};
+
+				ldo5 {
+					regulator-enable-ramp-delay = <440>;
+					regulator-disable-ramp-delay = <7650>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <1400>;
+				};
+
+				ldo6 {
+					regulator-enable-ramp-delay = <162>;
+					regulator-disable-ramp-delay = <4500>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <900>;
+				};
+
+				ldo7 {
+					regulator-enable-ramp-delay = <74>;
+					regulator-disable-ramp-delay = <7125>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <700>;
+				};
+
+				ldo8 {
+					regulator-enable-ramp-delay = <26>;
+					regulator-disable-ramp-delay = <1575>;
+					regulator-ramp-delay = <100000>;
+					regulator-ramp-delay-scale = <250>;
+				};
+			};
+		};
+	};
+
+	regulators {
+		regulator@4 {
+			regulator-enable-ramp-delay = <1300>;
+			regulator-disable-ramp-delay = <2800>;
+		};
+
+		regulator@3 {
+			regulator-enable-ramp-delay = <160>;
+			regulator-disable-ramp-delay = <2000>;
+		};
+
+		regulator@5 {
+			regulator-enable-ramp-delay = <200>;
+			regulator-disable-ramp-delay = <2800>;
+		};
+
+		regulator@6 {
+			regulator-enable-ramp-delay = <1400>;
+		};
+
+		regulator@9 {
+			regulator-enable-ramp-delay = <500>;
+			regulator-disable-ramp-delay = <4500>;
+		};
+
+		regulator@12 {
+			regulator-enable-ramp-delay = <200>;
+			regulator-disable-ramp-delay = <8000>;
+		};
+
+		regulator@13 {
+			regulator-enable-ramp-delay = <600>;
+			regulator-disable-ramp-delay = <3000>;
+		};
+	};
+
 	dvfs_rails {
 		vdd-cpu-rail-ovr@0 {
 			status = "disabled";
