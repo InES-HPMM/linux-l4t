@@ -34,7 +34,7 @@ void actmon_rate_change(unsigned long freq)
 }
 #endif
 
-#define MBOX_TIMEOUT 1000 /* in ms */
+#define MBOX_TIMEOUT 5000 /* in ms */
 #define HOST_ADSP_DFS_MBOX_ID 3
 #define BOOST_COUNT 10
 enum adsp_dfs_reply {
@@ -239,15 +239,16 @@ static unsigned long update_freq(unsigned long tfreq)
 	ret = nvadsp_mbox_send(mbx, index,
 				NVADSP_MBOX_SMSG, true, 100);
 	if (ret) {
-		dev_err(device, "%s:host to adsp, mbox_send failure ....\n", __func__);
+		dev_err(device, "%s:host to adsp, mbox_send failure. ret:%d\n",
+			__func__, ret);
 		policy->update_freq_flag = false;
 		goto err_out;
 	}
 
 	ret = nvadsp_mbox_recv(&policy->mbox, &reply, true, MBOX_TIMEOUT);
 	if (ret) {
-		dev_err(device, "%s:host to adsp,  mbox_receive failure ....\n",
-		__func__);
+		dev_err(device, "%s:host to adsp, mbox_receive failure. ret:%d\n",
+			__func__, ret);
 		policy->update_freq_flag = false;
 		goto err_out;
 	}
@@ -690,7 +691,7 @@ int adsp_dfs_core_init(struct platform_device *pdev)
 
 	ret = nvadsp_mbox_open(&policy->mbox, &mid, "dfs_comm", NULL, NULL);
 	if (ret) {
-		dev_info(&pdev->dev, "unable to open mailbox\n");
+		dev_info(&pdev->dev, "unable to open mailbox. ret:%d\n", ret);
 		goto end;
 	}
 
@@ -740,9 +741,14 @@ int adsp_dfs_core_exit(struct platform_device *pdev)
 	status_t ret = 0;
 	struct nvadsp_drv_data *drv = platform_get_drvdata(pdev);
 
+	/* return if dfs is not initialized */
+	if (!drv->dfs_initialized)
+		return -ENODEV;
+
 	ret = nvadsp_mbox_close(&policy->mbox);
 	if (ret)
-		dev_info(&pdev->dev, "adsp dfs exit failed: mbox close error ....\n");
+		dev_info(&pdev->dev,
+		"adsp dfs exit failed: mbox close error. ret:%d\n", ret);
 
 	tegra_unregister_clk_rate_notifier(clk_get_parent(policy->adsp_clk),
 					   &policy->rate_change_nb);
