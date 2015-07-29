@@ -20,6 +20,14 @@
 
 / {
 	pinmux@700008d4 {
+		/* Keep SPI4_CS0 to tristate default until master setup */
+		common {
+			spi4_cs0_pc6 {
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+			};
+		};
+
 		unused_lowpower {
 			modem-controls {
 				status = "disabled";
@@ -121,6 +129,14 @@
 
 			pl1 {
 				nvidia,pins = "pl1";
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+		};
+
+		spi4_en_interface: spi4_interface {
+			spi4_cs0_pc6 {
+				nvidia,pins = "spi4_cs0_pc6";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 			};
 		};
