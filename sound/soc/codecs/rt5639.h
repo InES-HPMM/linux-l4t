@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2011-2013 REALTEK SEMICONDUCTOR CORP. All rights reserved.
  * Author: Johnny Hsu <johnnyhsu@realtek.com>
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -2143,6 +2144,7 @@ struct rt5639_priv {
 	unsigned int adb_reg_addr[0x100];
 	unsigned int adb_reg_value[0x100];
 	unsigned char adb_reg_num;
+	int sel_jd_source;
 };
 
 int rt5639_conn_mux_path(struct snd_soc_codec *codec,
