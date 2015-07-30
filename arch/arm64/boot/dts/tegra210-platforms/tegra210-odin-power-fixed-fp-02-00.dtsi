@@ -131,8 +131,8 @@
 			compatible = "regulator-fixed-sync";
 			reg = <9>;
 			regulator-name = "v_pavdd_5v0";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
+			regulator-min-microvolt = <5400000>;
+			regulator-max-microvolt = <5400000>;
 			gpio = <&gpio TEGRA_GPIO(I, 0) 0>;
 			enable-active-high;
 			regulator-enable-ramp-delay = <232>;
@@ -142,8 +142,8 @@
 			compatible = "regulator-fixed-sync";
 			reg = <10>;
 			regulator-name = "v_navdd_5v0";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
+			regulator-min-microvolt = <5400000>;
+			regulator-max-microvolt = <5400000>;
 			gpio = <&gpio TEGRA_GPIO(I, 1) 0>;
 			enable-active-high;
 			regulator-enable-ramp-delay = <232>;

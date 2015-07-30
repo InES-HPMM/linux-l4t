@@ -24,6 +24,7 @@
 #include "tegra210-platforms/tegra210-odin-prods.dtsi"
 #include "panel-a-wuxga-8-0.dtsi"
 #include "panel-o-720p-6-0.dsti"
+#include "panel-o-720p-6-0-01.dsti"
 #include "tegra210-platforms/tegra210-ers-dp-e2220-1170-a00.dtsi"
 #include "tegra210-platforms/tegra210-comms.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
@@ -199,6 +200,11 @@
 			max-brightness = <168>;
 			default-brightness = <168>;
 		};
+		panel-o-720p-6-0-01-bl {
+			pwms = <&tegra_pwm 0 40000>;
+			max-brightness = <168>;
+			default-brightness = <168>;
+		};
 	};
 
 	pcie-controller {
@@ -265,6 +271,14 @@
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
 				disp-default-out {
 					nvidia,out-rotation = <270>;
+				};
+			};
+			panel-o-720p-6-0-01 {
+				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
+				disp-default-out {
+					nvidia,out-rotation = <90>;
 				};
 			};
 		};
