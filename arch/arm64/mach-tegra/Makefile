@@ -11,6 +11,7 @@ GCOV_PROFILE_panel-j-720p-5.o := n
 GCOV_PROFILE_panel-l-720p-5-loki.o := n
 GCOV_PROFILE_panel-lgd-wxga-7-0.o := n
 GCOV_PROFILE_panel-o-720p-6-0.o := n
+GCOV_PROFILE_panel-o-720p-6-0-01.o := n
 GCOV_PROFILE_panel-p-wuxga-10-1.o := n
 GCOV_PROFILE_panel-s-edp-uhdtv-15-6.o := n
 GCOV_PROFILE_panel-s-edp-wqxgap-15-6.o := n
@@ -50,6 +51,7 @@ obj-y                   += panel-l-720p-5-loki.o
 obj-y                   += panel-j-720p-5.o
 obj-y                   += panel-s-edp-uhdtv-15-6.o
 obj-y                   += panel-o-720p-6-0.o
+obj-y                   += panel-o-720p-6-0-01.o
 
 obj-${CONFIG_MACH_LOKI}               += board-loki-power.o
 obj-${CONFIG_MACH_LOKI}               += board-loki-memory.o
