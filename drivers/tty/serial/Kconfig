@@ -1493,6 +1493,14 @@ config TEGRA_HV_COMM
 	  To compile this driver as a module, choose M here: the
 	  module will be called tegra_hv_comm.
 
+config CONTROL_CONSOLE_WRITE
+	bool "Control Console Write"
+	depends on SERIAL_8250_CONSOLE
+	default n
+	help
+	  This will provide a sysfs interface to control console write
+	  dynamically.
+
 endmenu
 
 endif # TTY

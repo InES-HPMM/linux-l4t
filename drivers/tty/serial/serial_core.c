@@ -2526,6 +2526,38 @@ static ssize_t uart_get_attr_iomem_reg_shift(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%d\n", tmp.iomem_reg_shift);
 }
 
+#ifdef CONFIG_CONTROL_CONSOLE_WRITE
+static ssize_t uart_get_attr_con_write_enable(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct tty_port *port = dev_get_drvdata(dev);
+	struct uart_state *state = container_of(port, struct uart_state, port);
+	int status = state->uart_port->cons->flags & CON_ENABLED ? 1:0;
+	return snprintf(buf, PAGE_SIZE, "%d\n", status);
+}
+
+static ssize_t uart_set_attr_con_write_enable(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	int enable;
+	struct tty_port *port = dev_get_drvdata(dev);
+	struct uart_state *state = container_of(port, struct uart_state, port);
+
+	if(sscanf(buf, "%u", &enable) != 1)
+		return -EINVAL;
+
+	if(enable)
+		state->uart_port->cons->flags |= CON_ENABLED;
+	else
+		state->uart_port->cons->flags &= ~CON_ENABLED;
+
+	return count;
+}
+
+static DEVICE_ATTR(console_write_enable, S_IWUSR | S_IRUSR | S_IRGRP,
+		uart_get_attr_con_write_enable, uart_set_attr_con_write_enable);
+#endif
 static DEVICE_ATTR(type, S_IRUSR | S_IRGRP, uart_get_attr_type, NULL);
 static DEVICE_ATTR(line, S_IRUSR | S_IRGRP, uart_get_attr_line, NULL);
 static DEVICE_ATTR(port, S_IRUSR | S_IRGRP, uart_get_attr_port, NULL);
@@ -2554,6 +2586,9 @@ static struct attribute *tty_dev_attrs[] = {
 	&dev_attr_io_type.attr,
 	&dev_attr_iomem_base.attr,
 	&dev_attr_iomem_reg_shift.attr,
+#ifdef CONFIG_CONTROL_CONSOLE_WRITE
+	&dev_attr_console_write_enable.attr,
+#endif
 	NULL,
 	};
 
