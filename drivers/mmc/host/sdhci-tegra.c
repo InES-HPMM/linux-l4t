@@ -4071,7 +4071,7 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 	if (tegra_host->card_present) {
 
 		/* Configure sdmmc pins to GPIO mode if needed */
-		if (plat->pin_count > 0)
+		if (plat && plat->pin_count > 0)
 			gpio_request_array(plat->gpios,
 				ARRAY_SIZE(plat->gpios));
 
@@ -4093,7 +4093,7 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 		}
 	}
 
-	if (plat->pwrdet_support && tegra_host->sdmmc_padctrl) {
+	if (plat && plat->pwrdet_support && tegra_host->sdmmc_padctrl) {
 		err = padctrl_set_voltage(tegra_host->sdmmc_padctrl,
 				SDHOST_HIGH_VOLT_3V3);
 		if (err)
@@ -4101,8 +4101,11 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 				"padcontrol set volt failed: %d\n", err);
 	}
 
-	if (plat->pin_count > 0)
+	if (plat && plat->pin_count > 0)
 		gpio_free_array(plat->gpios, ARRAY_SIZE(plat->gpios));
+	if (!plat)
+		pr_err("%s %s line=%d - null plat\n",
+			mmc_hostname(sdhci->mmc), __func__, __LINE__);
 
 	return err;
 }
