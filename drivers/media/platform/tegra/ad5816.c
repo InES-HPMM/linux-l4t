@@ -1,7 +1,7 @@
 /*
  * ad5816.c - ad5816 focuser driver
  *
- * Copyright (c) 2012-2014, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2012-2015, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -277,6 +277,10 @@ void ad5816_set_arc_mode(struct ad5816_info *info)
 static int ad5816_pm_wr(struct ad5816_info *info, int pwr)
 {
 	int err = 0;
+
+	if (!info || !info->pdata)
+		return -EINVAL;
+
 	if ((info->pdata->cfg & (NVC_CFG_OFF2STDBY | NVC_CFG_BOOT_INIT)) &&
 		(pwr == NVC_PWR_OFF ||
 		pwr == NVC_PWR_STDBY_OFF))
@@ -288,17 +292,17 @@ static int ad5816_pm_wr(struct ad5816_info *info, int pwr)
 	switch (pwr) {
 	case NVC_PWR_OFF_FORCE:
 	case NVC_PWR_OFF:
-		if (info->pdata && info->pdata->power_off)
+		if (info->pdata->power_off)
 			info->pdata->power_off(&info->power);
 		break;
 	case NVC_PWR_STDBY_OFF:
 	case NVC_PWR_STDBY:
-		if (info->pdata && info->pdata->power_off)
+		if (info->pdata->power_off)
 			info->pdata->power_off(&info->power);
 		break;
 	case NVC_PWR_COMM:
 	case NVC_PWR_ON:
-		if (info->pdata && info->pdata->power_on)
+		if (info->pdata->power_on)
 			info->pdata->power_on(&info->power);
 		usleep_range(1000, 1020);
 		ad5816_set_arc_mode(info);
