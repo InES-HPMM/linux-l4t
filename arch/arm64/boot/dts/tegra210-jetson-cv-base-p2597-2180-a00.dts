@@ -484,7 +484,7 @@
 		nvidia,clock-always-on;
 
 		lp8557-backlight-a-wuxga-8-0@2c {
-			status = "disabled";
+			status = "ok";
 			disable-on-kernel-charging;
 			compatible = "ti,lp8557";
 			reg = <0x2c>;
