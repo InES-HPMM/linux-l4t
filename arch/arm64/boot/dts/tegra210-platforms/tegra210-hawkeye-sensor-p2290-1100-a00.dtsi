@@ -45,8 +45,8 @@
 			gpio_irq = <&gpio TEGRA_GPIO(X, 3) GPIO_ACTIVE_LOW>;
 			light_uncalibrated_lo = <1>;
 			light_calibrated_lo = <150>;
-			light_uncalibrated_hi = <34500>;
-			light_calibrated_hi = <1800000>;
+			light_uncalibrated_hi = <95000>;
+			light_calibrated_hi = <1750000>;
 		};
 
 		ltr659ps@23 {
