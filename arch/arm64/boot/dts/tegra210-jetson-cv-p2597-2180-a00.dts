@@ -28,6 +28,7 @@
 
 	chosen {
 		fastboot-instructions = "Press <PWR> to select, <VOL D/REC> for selection move\n";
+		board-has-eeprom;
 	};
 
 	firmware {
