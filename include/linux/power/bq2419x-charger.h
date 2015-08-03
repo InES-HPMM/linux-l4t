@@ -42,6 +42,8 @@
 #define BQ2419X_INPUT_VINDPM_MASK	0x78
 #define BQ2419X_INPUT_IINLIM_MASK	0x07
 
+#define BQ2419X_POWER_ON_SYS_MIN_MASK 0x0E
+
 #define BQ2419X_CHRG_CTRL_ICHG_MASK	0xFC
 
 #define BQ2419X_CHRG_TERM_PRECHG_MASK	0xF0
@@ -55,6 +57,7 @@
 #define BQ2419x_EN_CHARGE_TERM		BIT(7)
 
 #define BQ2419X_CHG_VOLT_LIMIT_MASK	0xFC
+#define BQ2419X_VOLT_CTRL_BATLOWV_MASK	0x02
 
 #define BQ2419X_IC_VER_MASK		0x38
 #define BQ24190_IC_VER			0x20
@@ -145,6 +148,7 @@ struct bq2419x_charger_platform_data {
 	int ir_compensation_voltage_mV;
 	int thermal_regulation_threshold_degC;
 	int charge_voltage_limit_mV;
+	int pre_to_fast_charge_voltage_mV;
 	int max_charge_current_mA;
 	int wdt_timeout;
 	int rtc_alarm_time;
@@ -165,6 +169,7 @@ struct bq2419x_charger_platform_data {
 	u32 *input_voltage_soc_limit;
 	u32 auto_recharge_time_supend;
 	u32 auto_rechg_power_on_time;
+	int min_system_voltage_limit_mV;
 	int n_soc_profile;
 };
 
