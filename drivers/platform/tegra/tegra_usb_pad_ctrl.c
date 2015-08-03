@@ -2343,8 +2343,10 @@ tegra_padctl_disable_uphy_pll(struct platform_device *pdev)
 		pcie_phy_pad_enable(false, padctl->lane_map);
 
 	/* this doesn't assert uphy pll if sequencers are enabled */
-	pex_usb_pad_pll_reset_assert();
-	sata_usb_pad_pll_reset_assert();
+	if (pex_usb_pad_pll_reset_assert())
+		dev_err(&pdev->dev, "fail to assert pex pll\n");
+	if (sata_usb_pad_pll_reset_assert())
+		dev_err(&pdev->dev, "fail to assert sata pll\n");
 }
 
 static int
