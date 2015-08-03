@@ -2909,16 +2909,6 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 	r = REG_SET(r, TS_PDIV_MEM, scp->pdiv);
 	r = REG_SET(r, TS_PDIV_PLLX, scp->pdiv);
 	soctherm_writel(r, TS_PDIV);
-
-	/* Thermal Sensing programming */
-	if (soctherm_fuse_read_calib_base() < 0)
-		return -EINVAL;
-
-	for (i = 0; i < TSENSE_SIZE; i++) {
-		soctherm_tsense_program(i, scp);
-		if (soctherm_fuse_read_tsensor(i) < 0)
-			return -EINVAL;
-	}
 #endif
 
 	/* Sanitize therm trips */
@@ -3054,8 +3044,6 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 	/* Thermtrip */
 	for (i = 0; i < THERM_SIZE; i++) {
 		therm = &plat->therm[i];
-		if (!therm->zone_enable)
-			continue;
 
 		for (j = 0; j < therm->num_trips; j++) {
 			if (therm->trips[j].trip_type != THERMAL_TRIP_CRITICAL)
@@ -3070,6 +3058,22 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 			}
 			prog_hw_shutdown(therm->trips[j].trip_temp, i);
 		}
+
+		if (therm->tz) {
+			prog_therm_thresholds(therm);
+			pr_info("soctherm: prog thresholds\n");
+		} else
+			pr_info("soctherm: tz:%d not found, skip thresh prog\n",
+					i); /* continue */
+	}
+
+	/* Thermal Sensing programming */
+	if (soctherm_fuse_read_calib_base() < 0)
+		return -EINVAL;
+
+	for (i = 0; i < TSENSE_SIZE; i++) {
+		soctherm_fuse_read_tsensor(i);
+		soctherm_tsense_program(i, scp);
 	}
 
 	soctherm_adjust_zone(THERM_CPU);
@@ -3130,15 +3134,18 @@ static int soctherm_suspend(struct device *dev)
  */
 static void soctherm_resume_locked(void)
 {
+	int ret = -ENODEV;
+
 	if (soctherm_suspended) {
 		/* soctherm_clk_enable(true);*/
 		soctherm_suspended = false;
-		soctherm_init_platform_data(pp);
+		ret = soctherm_init_platform_data(pp);
 		soctherm_init_platform_done = true;
 		soctherm_update();
 		enable_irq(INT_THERMAL);
 		enable_irq(INT_EDP);
 	}
+	pr_info("soctherm: resume status:%d\n", ret);
 }
 
 /**
