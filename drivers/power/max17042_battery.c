@@ -5,7 +5,7 @@
  * Copyright (C) 2011 Samsung Electronics
  * MyungJoo Ham <myungjoo.ham@samsung.com>
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -127,6 +127,24 @@ static void max17042_set_reg(struct i2c_client *client,
 		max17042_write_reg(client, data[i].addr, data[i].data);
 }
 
+static int max17042_get_battery_soc(struct battery_gauge_dev *bg_dev)
+{
+	struct max17042_chip *chip = battery_gauge_get_drvdata(bg_dev);
+	int val;
+
+	val = max17042_read_reg(chip->client, MAX17042_RepSOC);
+	if (val < 0)
+		dev_err(&chip->client->dev, "%s: err %d\n", __func__, val);
+	else {
+		val = val >> 8;
+		val =  battery_gauge_get_adjusted_soc(chip->bg_dev,
+				chip->pdata->threshold_soc,
+				chip->pdata->maximum_soc, val * 100);
+	}
+
+	return val;
+}
+
 static enum power_supply_property max17042_battery_props[] = {
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_PRESENT,
@@ -243,7 +261,10 @@ static int max17042_get_property(struct power_supply *psy,
 		if (ret < 0)
 			return ret;
 
-		val->intval = ret >> 8;
+		ret >>= 8;
+		val->intval = battery_gauge_get_adjusted_soc(chip->bg_dev,
+				chip->pdata->threshold_soc,
+				chip->pdata->maximum_soc, ret * 100);
 		chip->cap = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
@@ -859,6 +880,14 @@ max17042_parse_dt(struct device *dev)
 		pdata->enable_current_sense = true;
 	}
 
+	if (!of_property_read_u32(np, "maxim,kernel-threshold-soc", &prop))
+		pdata->threshold_soc = prop;
+
+	if (!of_property_read_u32(np, "maxim,kernel-maximum-soc", &prop))
+		pdata->maximum_soc = prop;
+	else
+		pdata->maximum_soc = 100;
+
 	pdata->enable_por_init = of_property_read_bool(np,
 						"maxim,enable-por-init");
 
@@ -891,6 +920,7 @@ static int max17042_update_battery_status(struct battery_gauge_dev *bg_dev,
 
 static struct battery_gauge_ops max17042_bg_ops = {
 	.update_battery_status = max17042_update_battery_status,
+	.get_battery_soc = max17042_get_battery_soc,
 };
 
 static struct battery_gauge_info max17042_bgi = {
@@ -968,9 +998,9 @@ static int max17042_probe(struct i2c_client *client,
 
 	if (client->irq) {
 		ret = request_threaded_irq(client->irq, NULL,
-						max17042_thread_handler,
-						IRQF_TRIGGER_FALLING,
-						chip->battery.name, chip);
+				max17042_thread_handler,
+				IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
+				chip->battery.name, chip);
 		if (!ret) {
 			reg =  max17042_read_reg(client, MAX17042_CONFIG);
 			reg |= CONFIG_ALRT_BIT_ENBL;
@@ -1122,7 +1152,7 @@ static int __init max17042_init(void)
 {
 	return i2c_add_driver(&max17042_i2c_driver);
 }
-subsys_initcall(max17042_init);
+fs_initcall_sync(max17042_init);
 
 static void __exit max17042_exit(void)
 {

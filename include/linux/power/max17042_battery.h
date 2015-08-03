@@ -3,8 +3,9 @@
  *  Note that Maxim 8966 and 8997 are mfd and this is its subdevice.
  *
  * Copyright (C) 2011 Samsung Electronics
- * Copyright (C) 2013, NVIDIA CORPORATION.  All rights reserved.
  * MyungJoo Ham <myungjoo.ham@samsung.com>
+ *
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -207,13 +208,14 @@ struct max17042_platform_data {
 	int num_init_data; /* Number of enties in init_data array */
 	bool enable_current_sense;
 	bool enable_por_init; /* Use POR init from Maxim appnote */
-
 	/*
 	 * R_sns in micro-ohms.
 	 * default 10000 (if r_sns = 0) as it is the recommended value by
 	 * the datasheet although it can be changed by board designers.
 	 */
 	unsigned int r_sns;
+	u32 threshold_soc;
+	u32 maximum_soc;
 	bool is_battery_present;
 };
 
