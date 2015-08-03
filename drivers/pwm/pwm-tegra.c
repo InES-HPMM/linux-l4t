@@ -37,10 +37,6 @@
 #define PWM_SCALE_WIDTH	13
 #define PWM_SCALE_SHIFT	0
 
-/* ns period */
-#define HZ_10 100000000
-#define HZ_30K 33333
-
 #define NUM_PWM 4
 
 struct tegra_pwm_chip {
@@ -137,7 +133,7 @@ static int tegra_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 
 	val = (u32)c << PWM_DUTY_SHIFT;
 
-	if (pc->pretty_good_algo && (period_ns < HZ_10) && (period_ns > HZ_30K)) {
+	if (pc->pretty_good_algo) {
 		rate = tegra_get_optimal_rate(pc, duty_ns, period_ns);
 		if (rate >= 0)
 			goto timing_done;
@@ -177,11 +173,6 @@ static int tegra_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 	 */
 	if (rate >> PWM_SCALE_WIDTH)
 		return -EINVAL;
-	/* Due to the PWM divider is zero-based, we need to minus 1 to get
-	 * desired frequency
-	 */
-	if (rate > 0)
-		rate--;
 
 timing_done:
 	val |= rate << PWM_SCALE_SHIFT;
