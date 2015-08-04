@@ -195,7 +195,9 @@
 			pwms = <&tegra_pwm 0 40161>;
 		};
 		panel-o-720p-6-0-bl {
-			pwms = <&tegra_pwm 0 1000000>;
+			pwms = <&tegra_pwm 0 40000>;
+			max-brightness = <168>;
+			default-brightness = <168>;
 		};
 	};
 
