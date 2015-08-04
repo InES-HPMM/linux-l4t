@@ -152,10 +152,15 @@ static int ecx_attach_cable(struct extcon_cable_xlate *ecx)
 			mask_state = all_states & ecx->pdata->io_new_states[i].in_mask;
 			if (mask_state ==
 					ecx->pdata->io_new_states[i].current_in_cable_state) {
+					if ((ecx->last_cable_in_state == mask_state) && mask_state) {
+						mutex_unlock(&ecx->cable_lock);
+						return 0;
+					}
+
 					if ((ecx->last_cable_in_state ==
 							ecx->pdata->io_new_states[i].last_cable_in_state)
-							|| (ecx->last_cable_in_state == mask_state)
 							|| (mask_state == 0)) {
+
 						ecx->last_cable_in_state = mask_state;
 						new_state = ecx->pdata->io_new_states[i].new_cable_out_state;
 						reschedule_wq = ecx->pdata->io_new_states[i].reschedule_wq;
