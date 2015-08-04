@@ -22,7 +22,6 @@
 #include "tegra210-platforms/tegra210-odin-gpio.dtsi"
 #include "tegra210-platforms/tegra210-odin-pinmux.dtsi"
 #include "tegra210-platforms/tegra210-odin-prods.dtsi"
-#include "tegra210-platforms/tegra210-odin-camera.dtsi"
 #include "panel-a-wuxga-8-0.dtsi"
 #include "panel-o-720p-6-0.dsti"
 #include "tegra210-platforms/tegra210-ers-dp-e2220-1170-a00.dtsi"
@@ -200,36 +199,6 @@
 		};
 	};
 
-	camera-pcl {
-		profiles {
-			ov5693@2_0010 {
-				use_of_node = "yes";
-				dev_name = "ov5693";
-				num = <0>;
-				vana-supply = <&max77620_ldo3>;
-				vif-supply = <&en_vdd_cam>;
-				cam2-gpios = <&gpio CAM_PWDN_RQ 0>;
-			};
-			ad5823@2_000c {
-				use_of_node = "yes";
-				vdd-supply = <&max77620_ldo3>;
-				vif-supply = <&en_vdd_cam>;
-				af-pwdn-gpios = <&gpio CAM_PWDN_AF 0>;
-			};
-			ov5693@2_0036 {
-				use_of_node = "yes";
-				dev_name = "ov5693";
-				num = <1>;
-				vana-supply = <&max77620_ldo3>;
-				vif-supply = <&en_vdd_cam>;
-				cam2-gpios = <&gpio CAM_PWDN_FQ 0>;
-			};
-		};
-		dpd {
-			default-enable;
-		};
-	};
-
 	pcie-controller {
 		nvidia,wake-gpio = <&gpio TEGRA_GPIO(A, 2) 0>;
 		nvidia,lane-map = <0x14>;
@@ -401,14 +370,14 @@
 		active_rpm = <0 1000 2000 3000 4000 5000 6000 7000 10000 11000>;
 		active_rru = <40 2 1 1 1 1 1 1 1 1>;
 		active_rrd = <40 2 1 1 1 1 1 1 1 1>;
-		state_cap_lookup = <2 2 2 2 3 3 3 4 4 4>;
-		pwm_period = <45334>;
-		pwm_id = <3>;
+		state_cap_lookup = <2 2 2 7 7 7 7 7 9 9>;
+		pwm_period = <40000>;
+		pwm_id = <1>;
 		step_time = <100>; /* mesecs */
 		state_cap = <7>;
 		active_pwm_max = <256>;
 		tach_gpio =  <TEGRA_GPIO(S, 7)>; /* TEGRA_GPIO_PS7 */
-		pwm_gpio = <TEGRA_GPIO(E, 7)>; /* TEGRA_GPIO_PE7 */
+		pwm_gpio = <TEGRA_GPIO(V, 4)>; /* TEGRA_GPIO_PV4 */
 	};
 
 	pwm-fan {
