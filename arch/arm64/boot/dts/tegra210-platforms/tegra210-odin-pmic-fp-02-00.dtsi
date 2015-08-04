@@ -29,7 +29,7 @@
 			compatible = "maxim,max77621";
 			reg = <0x1b>;
 			interrupt-parent = <&gpio>;
-			interrupts = <TEGRA_GPIO(Y, 1) IRQF_TRIGGER_FALLING>;
+			interrupts = <TEGRA_GPIO(K, 6) IRQF_TRIGGER_FALLING>;
 			regulator-name = "vdd-cpu";
 			regulator-min-microvolt = <606250>;
 			regulator-max-microvolt = <1400000>;
@@ -51,7 +51,7 @@
 			compatible = "maxim,max77621";
 			reg = <0x1c>;
 			interrupt-parent = <&gpio>;
-			interrupts = <TEGRA_GPIO(A, 6) IRQF_TRIGGER_FALLING>;
+			interrupts = <TEGRA_GPIO(K, 7) IRQF_TRIGGER_FALLING>;
 			regulator-name = "vdd-gpu";
 			regulator-min-microvolt = <606250>;
 			regulator-max-microvolt = <1400000>;
@@ -166,9 +166,6 @@
 
 			regulators {
 				in-ldo0-1-supply = <&max77620_sd2>;
-				in-ldo2-supply = <&en_vdd_sd>;
-				in-ldo3-supply = <&vdd3v3_gc>;
-				in-ldo5-supply = <&vdd3v3_gc>;
 				in-ldo7-8-supply = <&max77620_sd2>;
 
 				max77620_sd0: sd0 {
@@ -274,8 +271,7 @@
 					regulator-name = "vdd-pex";
 					regulator-min-microvolt = <1050000>;
 					regulator-max-microvolt = <1050000>;
-					regulator-always-on;
-					maxim,fps-source = <FPS_SRC_1>;
+					maxim,fps-source = <FPS_SRC_NONE>;
 					regulator-enable-ramp-delay = <22>;
 					regulator-disable-ramp-delay = <630>;
 					regulator-ramp-delay = <100000>;
@@ -330,9 +326,8 @@
 
 				max77620_ldo6: ldo6 {
 					regulator-name = "vdd-tp-3v1";
-					regulator-min-microvolt = <3100000>;
-					regulator-max-microvolt = <3100000>;
-					regulator-boot-on;
+					regulator-min-microvolt = <2900000>;
+					regulator-max-microvolt = <2900000>;
 					maxim,fps-source = <FPS_SRC_NONE>;
 					regulator-enable-ramp-delay = <36>;
 					regulator-disable-ramp-delay = <674>;
@@ -357,8 +352,7 @@
 					regulator-name = "vdd-hdmi-dp";
 					regulator-min-microvolt = <1050000>;
 					regulator-max-microvolt = <1050000>;
-					regulator-always-on;
-					maxim,fps-source = <FPS_SRC_1>;
+					maxim,fps-source = <FPS_SRC_NONE>;
 					regulator-enable-ramp-delay = <22>;
 					regulator-disable-ramp-delay = <1160>;
 					regulator-ramp-delay = <100000>;
@@ -385,19 +379,21 @@
 				regulator-name = "batt_regulator";
 				regulator-max-microamp = <3000000>;
 				ti,disbale-suspend-during-charging;
-				ti,charge-voltage-limit-millivolt = <4352>;
-				ti,charge-term-current-limit-milliamp = <128>;
+				ti,charge-voltage-limit-millivolt = <4208>;
+				ti,charge-term-current-limit-milliamp = <256>;
 				ti,ir-comp-voltage-millivolt = <1>;
 				ti,ir-comp-resister-ohm = <1>;
-				ti,pre-charge-current-limit-milliamp = <256>;
+				ti,pre-charge-current-limit-milliamp = <128>;
 				ti,thermal-regulation-threshold-degc = <120>;
-				ti,soc-range = <50 60 70 80 85 90 95 101>;
-				ti,input-voltage-soc-limit = <4200 4280 4360 4440 4520 4600 4680 4760>;
+				ti,fast-charge-current-limit-milliamp = <512>;
+				ti,min-system-voltage-limit-millivolt = <3000>;
+				ti,input-voltage-limit-millivolt = <4360>;
 				ti,temp-range = <45 50>;
-				ti,charge-thermal-voltage-limit = <4352 4200>;
-				ti,charge-current-limit = <5200 2600>;
-				ti,thermal-zone = "Battery";
+				ti,charge-thermal-voltage-limit = <4208 4208>;
+				ti,charge-current-limit = <512 512>;
+				ti,thermal-zone = "max170xx_battery";
 				ti,temp-polling-time-sec = <20>;
+				ti,pre-to-fast-charge-voltage-millivolt = <3000>;
 			};
 
 			usb0_vbus: vbus {
@@ -409,7 +405,7 @@
 		battery-gauge@36 {
 			compatible = "maxim,max17050";
 			reg = <0x36>;
-			#extcon-cells = <1>;
+			#thermal-sensor-cells = <0>;
 			status = "disabled";
 			dt-override-status-odm-data = <0x00C00000 0x00400000>;
 			interrupt-parent = <&gpio>;
@@ -451,7 +447,7 @@
 					0x08E0 0x0880 0x06F0 0x05D0 0x05D0 0x0100 0x0100
 					0x0100 0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
 					0x0100 0x0100 0x0100 0x0100 0x0100 0x0100 0x0100>;
-			maxim,rsns-microohm = <0>;
+			maxim,rsns-microohm = <5000>;
 			maxim,enable-por-init;
 			maxim,is-battery-present;
 		};
