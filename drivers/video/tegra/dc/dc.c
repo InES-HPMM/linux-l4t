@@ -3921,8 +3921,6 @@ static void _tegra_dc_controller_disable(struct tegra_dc *dc)
 	if (dc->out && dc->out->prepoweroff)
 		dc->out->prepoweroff();
 
-	tegra_dc_disable_bl(dc);
-
 	if (dc->out_ops && dc->out_ops->vrr_enable) {
 		dc->out_ops->vrr_enable(dc, 0);
 		/* TODO: Fix properly. Bug 1644102. */
@@ -5052,6 +5050,8 @@ static void tegra_dc_shutdown(struct platform_device *ndev)
 	/* Let dc clients know about shutdown event before calling disable */
 	if (dc->out_ops && dc->out_ops->shutdown)
 		dc->out_ops->shutdown(dc);
+
+	tegra_dc_disable_bl(dc);
 
 	tegra_dc_disable(dc);
 }
