@@ -45,8 +45,10 @@ static int calc_h_ref_to_sync(const struct tegra_dc_mode *mode, int *href)
 	/* Constraint 6: H_FRONT_PORT >= (H_REF_TO_SYNC + 1) */
 	b = mode->h_front_porch - 1;
 
-	/* Constraint 1: H_REF_TO_SYNC + H_SYNC_WIDTH + H_BACK_PORCH > 11 */
-	if (a + mode->h_sync_width + mode->h_back_porch <= 11)
+	/* Constraint 1: H_REF_TO_SYNC + H_SYNC_WIDTH + H_BACK_PORCH > 20
+	 * > 11 for T30, > 20 for later SoCs.
+	 */
+	if (a + mode->h_sync_width + mode->h_back_porch <= 20)
 		a = 1 + 11 - mode->h_sync_width - mode->h_back_porch;
 	/* check Constraint 1 and 6 */
 	if (a > b)
@@ -61,10 +63,14 @@ static int calc_h_ref_to_sync(const struct tegra_dc_mode *mode, int *href)
 		return 7;
 
 	if (href) {
-		if (b > a && a % 2)
+		if (b > a && a % 2) {
 			*href = a + 1; /* use smallest even value */
-		else
-			*href = a; /* even or only possible value */
+		} else {
+			if ((a + 2) <= b)
+				*href = a + 2; /* try to avoid zero */
+			else
+				*href = a; /* even or only possible value */
+		}
 	}
 
 	return 0;
