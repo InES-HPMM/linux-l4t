@@ -1910,6 +1910,7 @@ int tegra_padctl_init_sata_pad(void)
 		RX_TERM_EN | RX_TERM_OVRD,
 		RX_TERM_EN | RX_TERM_OVRD);
 	t210_padctl_force_sata_seq(false);
+	t210_padctl_enable_sata_idle_detector(true);
 	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
 #endif
 
@@ -2316,6 +2317,7 @@ tegra_padctl_enable_uphy_pll(struct platform_device *pdev)
 		/* sata driver owns sata lane */
 		t210_sata_uphy_pll_init(false);
 		usb3_lane_out_of_iddq(SATA_S0);
+		t210_padctl_enable_sata_idle_detector(false);
 		t210_padctl_force_sata_seq(true);
 	}
 
