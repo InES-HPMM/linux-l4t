@@ -209,6 +209,7 @@
 	};
 
 	sdhci@700b0600 {
+		disable-clock-gate;
 		status = "okay";
 	};
 
