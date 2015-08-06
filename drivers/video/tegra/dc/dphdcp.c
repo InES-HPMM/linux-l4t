@@ -763,11 +763,12 @@ static void dphdcp_downstream_worker(struct work_struct *work)
 
 	/*if repeater, set the reauth enable irq bit in Ainfo reg */
 	if (b_caps & BCAPS_REPEATER) {
+		mutex_unlock(&dphdcp->lock);
 		e = tegra_dpcd_hdcp_write8(dp, NV_DPCD_HDCP_AINFO_OFFSET,
 						0x01);
+		mutex_lock(&dphdcp->lock);
 		if (e) {
 			dphdcp_err("Ainfo write failure\n");
-			mutex_lock(&dphdcp->lock);
 			goto failure;
 		}
 	}
