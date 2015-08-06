@@ -133,7 +133,6 @@
 		};
 
 		regulator@2 {
-			regulator-always-on;
 			regulator-enable-ramp-delay = <240>;
 			regulator-disable-ramp-delay = <11340>;
 		};
@@ -216,7 +215,6 @@
 			dvdd_lcd-supply = <&max77620_sd3>;
 			vdd_lcd_bl_en-supply = <&lcd_bl_en>;
 			vdd_lcd_bl-supply = <&vdd_3v3>;
-			avdd_3v3_dp-supply = <&avdd_3v3_dp>;
 		};
 
 		/* tegradc.1 */

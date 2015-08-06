@@ -181,21 +181,6 @@
 			};
 		};
 
-		avdd_3v3_dp: regulator@100 {
-			compatible = "regulator-fixed-sync";
-			reg = <100>;
-			regulator-name = "avdd_3v3_dp";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
-			gpio = <&gpio TEGRA_GPIO(V, 2) 0>;
-			enable-active-high;
-			consumers {
-				c0 {
-					regulator-consumer-supply = "avdd_3v3_dp";
-				};
-			};
-		};
-
 		vdd_cdc_1v2_aud: regulator@101 {
 			compatible = "regulator-fixed-sync";
 			reg = <101>;
