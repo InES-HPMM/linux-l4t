@@ -427,8 +427,13 @@ wifi_scan_request_done(struct cfg80211_scan_request *request);
 extern int wifi_scan_pno_time;
 extern int wifi_scan_pno_repeat;
 extern int wifi_scan_pno_freq_expo_max;
+extern int wifi_scan_pno_home_away_time;
+extern int wifi_scan_pno_nprobes;
+extern int wifi_scan_pno_active_time;
+extern int wifi_scan_pno_passive_time;
+extern int wifi_scan_pno_home_time;
 
-#define TEGRA_PNO_SCAN_PREPARE(request,\
+#define TEGRA_PNO_SCAN_PREPARE(netdev, dhd, request,\
 		pno_time, pno_repeat, pno_freq_expo_max)\
 	{\
 		if ((wifi_scan_pno_time != 0) &&\
@@ -457,6 +462,64 @@ extern int wifi_scan_pno_freq_expo_max;
 				pno_freq_expo_max,\
 				wifi_scan_pno_freq_expo_max);\
 			pno_freq_expo_max = wifi_scan_pno_freq_expo_max;\
+		}\
+		if (wifi_scan_pno_home_away_time != 0) {\
+			WIFI_SCAN_DEBUG("%s: TEGRA_PNO_SCAN_PREPARE:"\
+				" home_away_time %d ms\n",\
+				__func__,\
+				wifi_scan_pno_home_away_time);\
+			wldev_iovar_setint(netdev,\
+				"scan_home_away_time",\
+				wifi_scan_pno_home_away_time);\
+		}\
+		if (wifi_scan_pno_nprobes != 0) {\
+			WIFI_SCAN_DEBUG("%s: TEGRA_PNO_SCAN_PREPARE:"\
+				" nprobes %d\n",\
+				__func__,\
+				wifi_scan_pno_nprobes);\
+			dhd_wl_ioctl_cmd(dhd,\
+				WLC_SET_SCAN_NPROBES,\
+				(char *) &wifi_scan_pno_nprobes,\
+				sizeof(wifi_scan_pno_nprobes),\
+				TRUE, 0);\
+		}\
+		if (wifi_scan_pno_active_time != 0) {\
+			WIFI_SCAN_DEBUG("%s: TEGRA_PNO_SCAN_PREPARE:"\
+				" active_time %d ms\n",\
+				__func__,\
+				wifi_scan_pno_active_time);\
+			dhd_wl_ioctl_cmd(dhd,\
+				WLC_SET_SCAN_CHANNEL_TIME,\
+				(char *) &wifi_scan_pno_active_time,\
+				sizeof(wifi_scan_pno_active_time),\
+				TRUE, 0);\
+			dhd_wl_ioctl_cmd(dhd,\
+				WLC_SET_SCAN_UNASSOC_TIME,\
+				(char *) &wifi_scan_pno_active_time,\
+				sizeof(wifi_scan_pno_active_time),\
+				TRUE, 0);\
+		}\
+		if (wifi_scan_pno_passive_time != 0) {\
+			WIFI_SCAN_DEBUG("%s: TEGRA_PNO_SCAN_PREPARE:"\
+				" passive_time %d ms\n",\
+				__func__,\
+				wifi_scan_pno_passive_time);\
+			dhd_wl_ioctl_cmd(dhd,\
+				WLC_SET_SCAN_PASSIVE_TIME,\
+				(char *) &wifi_scan_pno_passive_time,\
+				sizeof(wifi_scan_pno_passive_time),\
+				TRUE, 0);\
+		}\
+		if (wifi_scan_pno_home_time != 0) {\
+			WIFI_SCAN_DEBUG("%s: TEGRA_PNO_SCAN_PREPARE:"\
+				" home_time %d ms\n",\
+				__func__,\
+				wifi_scan_pno_home_time);\
+			dhd_wl_ioctl_cmd(dhd,\
+				WLC_SET_SCAN_HOME_TIME,\
+				(char *) &wifi_scan_pno_home_time,\
+				sizeof(wifi_scan_pno_home_time),\
+				TRUE, 0);\
 		}\
 	}\
 
