@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -110,5 +110,6 @@ struct hwmbox_queue {
 };
 
 int nvadsp_hwmbox_init(struct platform_device *);
+status_t nvadsp_hwmbox_send_data(uint16_t, uint32_t, uint32_t);
 
 #endif /* __HWMAILBOX_H */

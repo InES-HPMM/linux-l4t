@@ -37,6 +37,9 @@
 
 static struct platform_device *nvadsp_pdev;
 static struct nvadsp_drv_data *nvadsp_drv_data;
+/* Initialized to false by default */
+static bool is_hwmbox_busy;
+
 
 static inline u32 hwmbox_readl(u32 reg)
 {
@@ -98,6 +101,7 @@ static status_t hwmboxq_enqueue(struct hwmbox_queue *queue,
 
 status_t nvadsp_hwmbox_send_data(uint16_t mid, uint32_t data, uint32_t flags)
 {
+	spinlock_t *lock = &nvadsp_drv_data->hwmbox_send_queue.lock;
 	unsigned long lockflags;
 	int ret = 0;
 
@@ -108,11 +112,10 @@ status_t nvadsp_hwmbox_send_data(uint16_t mid, uint32_t data, uint32_t flags)
 
 	/* TODO handle LMSG */
 
-	spin_lock_irqsave(&nvadsp_drv_data->hwmbox_send_queue.lock,
-			  lockflags);
+	spin_lock_irqsave(lock, lockflags);
 
-	if (is_hwmboxq_empty(&nvadsp_drv_data->hwmbox_send_queue) &&
-	    hwmbox_readl(SEND_HWMBOX) == PREPARE_HWMBOX_EMPTY_MSG()) {
+	if (!is_hwmbox_busy) {
+		is_hwmbox_busy = true;
 		pr_debug("nvadsp_mbox_send: empty mailbox. write to mailbox.\n");
 		hwmbox_writel(data, SEND_HWMBOX);
 	} else {
@@ -120,8 +123,7 @@ status_t nvadsp_hwmbox_send_data(uint16_t mid, uint32_t data, uint32_t flags)
 		ret = hwmboxq_enqueue(&nvadsp_drv_data->hwmbox_send_queue,
 				      data);
 	}
-	spin_unlock_irqrestore(&nvadsp_drv_data->hwmbox_send_queue.lock,
-			       lockflags);
+	spin_unlock_irqrestore(lock, lockflags);
 	return ret;
 }
 
@@ -149,21 +151,27 @@ static status_t hwmboxq_dequeue(struct hwmbox_queue *queue,
 
 static irqreturn_t hwmbox_send_empty_int_handler(int irq, void *devid)
 {
+	spinlock_t *lock = &nvadsp_drv_data->hwmbox_send_queue.lock;
+	struct device *dev = &nvadsp_pdev->dev;
+	unsigned long lockflags;
 	uint32_t data;
 	int ret;
 
+	spin_lock_irqsave(lock, lockflags);
+
 	data = hwmbox_readl(SEND_HWMBOX);
-	if (data != PREPARE_HWMBOX_EMPTY_MSG()) {
-		pr_debug("Spurious SEND_HWMBOX interrupt\n");
-		return IRQ_HANDLED;
-	}
+	if (data != PREPARE_HWMBOX_EMPTY_MSG())
+		dev_err(dev, "last mailbox sent failed with 0x%x\n", data);
 
 	ret = hwmboxq_dequeue(&nvadsp_drv_data->hwmbox_send_queue,
 			      &data);
 	if (ret == 0) {
 		hwmbox_writel(data, SEND_HWMBOX);
-		pr_debug("Writing 0x%x to SEND_HWMBOX\n", data);
+		dev_dbg(dev, "Writing 0x%x to SEND_HWMBOX\n", data);
+	} else {
+		is_hwmbox_busy = false;
 	}
+	spin_unlock_irqrestore(lock, lockflags);
 
 	return IRQ_HANDLED;
 }

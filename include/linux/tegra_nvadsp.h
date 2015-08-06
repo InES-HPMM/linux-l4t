@@ -107,8 +107,6 @@ status_t nvadsp_mbox_recv(struct nvadsp_mbox *mbox, uint32_t *data, bool block,
 			  unsigned int timeout);
 status_t nvadsp_mbox_close(struct nvadsp_mbox *mbox);
 
-status_t nvadsp_hwmbox_send_data(uint16_t, uint32_t, uint32_t);
-
 /*
  * Circular Message Queue
  */
