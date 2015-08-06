@@ -7888,8 +7888,13 @@ wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 		request->n_ssids, pno_time, pno_repeat, pno_freq_expo_max));
 
 #ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
-	TEGRA_PNO_SCAN_PREPARE(request,
-		pno_time, pno_repeat, pno_freq_expo_max)
+	{
+		struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+		dhd_pub_t *dhd = (dhd_pub_t *)(cfg->pub);
+		if (cfg && dhd)
+			TEGRA_PNO_SCAN_PREPARE(dev, dhd, request,
+				pno_time, pno_repeat, pno_freq_expo_max)
+	}
 #endif
 
 	if (!request || !request->n_ssids || !request->n_match_sets) {

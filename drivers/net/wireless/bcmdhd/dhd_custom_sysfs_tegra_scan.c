@@ -1249,6 +1249,11 @@ wifi_scan_request_done(struct cfg80211_scan_request *request)
 int wifi_scan_pno_time;
 int wifi_scan_pno_repeat;
 int wifi_scan_pno_freq_expo_max;
+int wifi_scan_pno_home_away_time;
+int wifi_scan_pno_nprobes;
+int wifi_scan_pno_active_time;
+int wifi_scan_pno_passive_time;
+int wifi_scan_pno_home_time;
 
 int wifi_scan_wait;
 DECLARE_WAIT_QUEUE_HEAD(wifi_scan_wait_queue);
@@ -1445,10 +1450,20 @@ tegra_sysfs_histogram_scan_show(struct device *dev,
 			"PNO scan settings:\n"
 			"  pno_time %d\n"
 			"  pno_repeat %d\n"
-			"  pno_freq_expo_max %d\n",
+			"  pno_freq_expo_max %d\n"
+			"  wifi_scan_pno_home_away_time %d\n"
+			"  wifi_scan_pno_nprobes %d\n"
+			"  wifi_scan_pno_active_time %d\n"
+			"  wifi_scan_pno_passive_time %d\n"
+			"  wifi_scan_pno_home_time %d\n",
 			wifi_scan_pno_time,
 			wifi_scan_pno_repeat,
-			wifi_scan_pno_freq_expo_max);
+			wifi_scan_pno_freq_expo_max,
+			wifi_scan_pno_home_away_time,
+			wifi_scan_pno_nprobes,
+			wifi_scan_pno_active_time,
+			wifi_scan_pno_passive_time,
+			wifi_scan_pno_home_time);
 		if (PAGE_SIZE - (s - buf) == strlen(s) + 1) {
 			*s = '\0';
 			goto abort_show_item;
@@ -1473,7 +1488,7 @@ tegra_sysfs_histogram_scan_store(struct device *dev,
 	struct device_attribute *attr,
 	const char *buf, size_t count)
 {
-	int a, b, c;
+	int a, b, c, skip;
 
 //	pr_info("%s\n", __func__);
 
@@ -1488,16 +1503,48 @@ tegra_sysfs_histogram_scan_store(struct device *dev,
 	} else if (strncmp(buf, "-policy ", 8) == 0) {
 		wifi_scan_policy__remove(buf + 8, count - 8);
 	} else if (strncmp(buf, "pno ", 4) == 0) {
-		if (sscanf(buf + 4, "%d %d %d", &a, &b, &c) != 3) {
+		if (sscanf(buf + 4, "%d %d %d%n", &a, &b, &c, &skip) < 3) {
 			pr_err("%s: invalid pno setting:"
 				" pno <pno_time>"
 				" <pno_repeat> <pno_freq_expo_max>\n",
 				__func__);
 			return count;
 		}
+		buf += 4 + skip;
 		wifi_scan_pno_time = a;
 		wifi_scan_pno_repeat = b;
 		wifi_scan_pno_freq_expo_max = c;
+check_pno_arguments_again:
+		if (sscanf(buf, " -H %d%n", &a, &skip) >= 1) {
+			pr_info("-H %d\n", a);
+			wifi_scan_pno_home_away_time = a;
+			buf += skip;
+			goto check_pno_arguments_again;
+		}
+		if (sscanf(buf, " -n %d%n", &a, &skip) >= 1) {
+			pr_info("-n %d\n", a);
+			wifi_scan_pno_nprobes = a;
+			buf += skip;
+			goto check_pno_arguments_again;
+		}
+		if (sscanf(buf, " -a %d%n", &a, &skip) >= 1) {
+			pr_info("-a %d\n", a);
+			wifi_scan_pno_active_time = a;
+			buf += skip;
+			goto check_pno_arguments_again;
+		}
+		if (sscanf(buf, " -p %d%n", &a, &skip) >= 1) {
+			pr_info("-p %d\n", a);
+			wifi_scan_pno_passive_time = a;
+			buf += skip;
+			goto check_pno_arguments_again;
+		}
+		if (sscanf(buf, " -h %d%n", &a, &skip) >= 1) {
+			pr_info("-h %d\n", a);
+			wifi_scan_pno_home_time = a;
+			buf += skip;
+			goto check_pno_arguments_again;
+		}
 	} else {
 		pr_err("%s: unknown command\n", __func__);
 	}
