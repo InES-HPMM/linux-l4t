@@ -110,5 +110,6 @@ struct hwmbox_queue {
 };
 
 int nvadsp_hwmbox_init(struct platform_device *);
+status_t nvadsp_hwmbox_send_data(uint16_t, uint32_t, uint32_t);
 
 #endif /* __HWMAILBOX_H */
