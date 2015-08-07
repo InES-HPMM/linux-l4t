@@ -3,7 +3,7 @@
  *
  * USB network driver for RAW-IP modems.
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -219,11 +219,11 @@ static int baseband_usb_driver_suspend(struct usb_interface *intf,
 	int i, susp_count, j;
 
 	pr_debug("%s intf %p\n", __func__, intf);
-
+#ifdef CONFIG_PM_RUNTIME
 	pr_debug("%s: cnt %d intf=%p &intf->dev=%p kobj=%s\n",
 			__func__, atomic_read(&intf->dev.power.usage_count),
 			intf, &intf->dev, kobject_name(&intf->dev.kobj));
-
+#endif
 	for (i = 0; i < max_intfs; i++) {
 		pr_debug("[%d]\n", i);
 		if (!baseband_usb_net[i])
@@ -281,11 +281,11 @@ static int baseband_usb_driver_resume(struct usb_interface *intf)
 	int i, err, susp_count;
 
 	pr_debug("%s intf %p\n", __func__, intf);
-
+#ifdef CONFIG_PM_RUNTIME
 	pr_debug("%s: cnt %d intf=%p &intf->dev=%p kobj=%s\n",
 			__func__, atomic_read(&intf->dev.power.usage_count),
 			intf, &intf->dev, kobject_name(&intf->dev.kobj));
-
+#endif
 	for (i = 0; i < max_intfs; i++) {
 		pr_debug("[%d]\n", i);
 		if (!baseband_usb_net[i])
