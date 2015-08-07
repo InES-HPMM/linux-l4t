@@ -64,6 +64,7 @@
 
 			gpio {
 				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_1_8V>;
+				nvidia,deep-power-down-enable;
 			};
 		};
 	};
