@@ -67,20 +67,21 @@ struct tegra_t210ref {
 	struct regulator *spk_reg;
 	struct regulator *dmic_reg;
 	struct snd_soc_card *pcard;
+	int is_codec_dummy;
 };
 
 static struct snd_soc_jack tegra_t210ref_hp_jack;
 
 static struct snd_soc_jack_gpio tegra_t210ref_hp_jack_gpio = {
-        .name = "headphone detect",
-        .report = SND_JACK_HEADPHONE,
-        .debounce_time = 150,
-        .invert = 1,
+	.name = "headphone detect",
+	.report = SND_JACK_HEADPHONE,
+	.debounce_time = 150,
+	.invert = 1,
 };
 
 #ifdef CONFIG_SWITCH
 static struct switch_dev tegra_t210ref_headset_switch = {
-        .name = "h2w",
+	.name = "h2w",
 };
 
 static int tegra_t210ref_startup(struct snd_pcm_substream *substream)
@@ -103,6 +104,10 @@ static int tegra_t210ref_jack_notifier(struct notifier_block *self,
 	enum headset_state state = BIT_NO_HEADSET;
 	unsigned char status_jack = 0;
 	int idx = 0;
+	struct tegra_asoc_platform_data *pdata = machine->pdata;
+
+	if (!gpio_is_valid(pdata->gpio_hp_det))
+		return NOTIFY_OK;
 
 	idx = tegra_machine_get_codec_dai_link_idx("rt565x-playback");
 	/* check if idx has valid number */
@@ -179,6 +184,9 @@ static int tegra_t210ref_dai_init(struct snd_soc_pcm_runtime *rtd,
 	struct snd_soc_pcm_stream *dai_params;
 	unsigned int idx, mclk, clk_out_rate;
 	int err;
+
+	if (machine->is_codec_dummy)
+		return 0;
 
 	switch (rate) {
 	case 11025:
@@ -537,44 +545,53 @@ static struct snd_soc_card snd_soc_tegra_t210ref = {
 	.fully_routed = true,
 };
 
-static int tegra_t210ref_driver_probe(struct platform_device *pdev)
+static void replace_codec_link(struct platform_device *pdev,
+	struct snd_soc_dai_link *links)
 {
+	int i;
+	struct snd_soc_card *card = platform_get_drvdata(pdev);
+	struct tegra_t210ref *machine = snd_soc_card_get_drvdata(card);
 	struct device_node *np = pdev->dev.of_node;
-	struct snd_soc_card *card = &snd_soc_tegra_t210ref;
-	struct tegra_t210ref *machine;
-	struct snd_soc_dai_link *tegra_machine_dai_links = NULL;
-	struct snd_soc_dai_link *tegra_t210ref_codec_links = NULL;
+
+	for (i = 0; i < machine->num_codec_links; i++) {
+		if (links[i].name &&
+			(strstr(links[i].name, "rt565x-playback"))) {
+			links[i].init = NULL;
+
+			links[i].codec_of_node =
+				of_parse_phandle(np, "nvidia,dummy-codec-dai",
+					0);
+
+			machine->is_codec_dummy = 1;
+
+			if (of_property_read_string(np,
+				"nvidia,dummy-codec-dai-name",
+				&links[i].codec_dai_name)) {
+				dev_err(&pdev->dev, "Property 'dummy-codec-dai\
+					-name' missing or invalid\n");
+			}
+		}
+	}
+
+	return;
+}
+
+static void dai_link_setup(struct platform_device *pdev, int dummy)
+{
+	struct snd_soc_card *card = platform_get_drvdata(pdev);
+	struct tegra_t210ref *machine = snd_soc_card_get_drvdata(card);
 	struct snd_soc_codec_conf *tegra_machine_codec_conf = NULL;
 	struct snd_soc_codec_conf *tegra_t210ref_codec_conf = NULL;
-	struct tegra_asoc_platform_data *pdata = NULL;
-	struct snd_soc_codec *codec = NULL;
-	int ret = 0, i, idx;
+	struct snd_soc_dai_link *tegra_machine_dai_links = NULL;
+	struct snd_soc_dai_link *tegra_t210ref_codec_links = NULL;
+	struct tegra_asoc_platform_data *pdata = machine->pdata;
+	int i;
 
-	if (!np) {
-		dev_err(&pdev->dev, "No device tree node for t210ref driver");
-		return -ENODEV;
+	if (dummy) {
+		tegra_machine_remove_dai_link();
+		tegra_machine_remove_codec_conf();
+		pdata->gpio_hp_det = -1;
 	}
-
-	machine = devm_kzalloc(&pdev->dev, sizeof(struct tegra_t210ref),
-			       GFP_KERNEL);
-	if (!machine) {
-		dev_err(&pdev->dev, "Can't allocate tegra_t210ref struct\n");
-		ret = -ENOMEM;
-		goto err;
-	}
-
-	card->dev = &pdev->dev;
-	platform_set_drvdata(pdev, card);
-	snd_soc_card_set_drvdata(card, machine);
-
-	ret = snd_soc_of_parse_card_name(card, "nvidia,model");
-	if (ret)
-		goto err;
-
-	ret = snd_soc_of_parse_audio_routing(card,
-				"nvidia,audio-routing");
-	if (ret)
-		goto err;
 
 	/* set new codec links and conf */
 	tegra_t210ref_codec_links = tegra_machine_new_codec_links(pdev,
@@ -582,6 +599,20 @@ static int tegra_t210ref_driver_probe(struct platform_device *pdev)
 		&machine->num_codec_links);
 	if (!tegra_t210ref_codec_links)
 		goto err_alloc_dai_link;
+
+	/* set codec init */
+	for (i = 0; i < machine->num_codec_links; i++) {
+		if (tegra_t210ref_codec_links[i].name) {
+			if (strstr(tegra_t210ref_codec_links[i].name,
+				"rt565x-playback"))
+				tegra_t210ref_codec_links[i].init =
+					tegra_t210ref_init;
+		}
+	}
+
+	/* overwrite codec link */
+	if (dummy)
+		replace_codec_link(pdev, tegra_t210ref_codec_links);
 
 	tegra_t210ref_codec_conf = tegra_machine_new_codec_conf(pdev,
 		tegra_t210ref_codec_conf,
@@ -596,15 +627,6 @@ static int tegra_t210ref_driver_probe(struct platform_device *pdev)
 	tegra_machine_codec_conf = tegra_machine_get_codec_conf();
 	if (!tegra_machine_codec_conf)
 		goto err_alloc_dai_link;
-
-	/* set codec init */
-	for (i = 0; i < machine->num_codec_links; i++) {
-		if (tegra_t210ref_codec_links[i].name) {
-			if (strstr(tegra_t210ref_codec_links[i].name,
-				"rt565x-playback"))
-				tegra_t210ref_codec_links[i].init = tegra_t210ref_init;
-		}
-	}
 
 	/* set ADMAIF dai_ops */
 	for (i = TEGRA210_DAI_LINK_ADMAIF1;
@@ -635,6 +657,51 @@ static int tegra_t210ref_driver_probe(struct platform_device *pdev)
 			machine->num_codec_links);
 	tegra_machine_codec_conf = tegra_machine_get_codec_conf();
 	card->codec_conf = tegra_machine_codec_conf;
+	return;
+
+err_alloc_dai_link:
+	tegra_machine_remove_dai_link();
+	tegra_machine_remove_codec_conf();
+}
+
+static int tegra_t210ref_driver_probe(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct snd_soc_card *card = &snd_soc_tegra_t210ref;
+	struct tegra_t210ref *machine;
+	struct tegra_asoc_platform_data *pdata = NULL;
+	struct snd_soc_codec *codec = NULL;
+	int ret = 0, idx;
+
+	if (!np) {
+		dev_err(&pdev->dev, "No device tree node for t210ref driver");
+		return -ENODEV;
+	}
+
+	machine = devm_kzalloc(&pdev->dev, sizeof(struct tegra_t210ref),
+			       GFP_KERNEL);
+	if (!machine) {
+		dev_err(&pdev->dev, "Can't allocate tegra_t210ref struct\n");
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	card->dev = &pdev->dev;
+	platform_set_drvdata(pdev, card);
+	snd_soc_card_set_drvdata(card, machine);
+	machine->is_codec_dummy = 0;
+
+	ret = snd_soc_of_parse_card_name(card, "nvidia,model");
+	if (ret)
+		goto err;
+
+	ret = snd_soc_of_parse_audio_routing(card,
+				"nvidia,audio-routing");
+	if (ret)
+		goto err;
+
+
+	dai_link_setup(pdev, 0);
 
 #ifdef CONFIG_SWITCH
 	/* Addd h2w swith class support */
@@ -672,19 +739,22 @@ static int tegra_t210ref_driver_probe(struct platform_device *pdev)
 
 	ret = snd_soc_register_card(card);
 	if (ret) {
-		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
-			ret);
-		goto err_alloc_dai_link;
+		dai_link_setup(pdev, 1);
+		ret = snd_soc_register_card(card);
+
+		if (ret) {
+			dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
+				ret);
+			goto err_alloc_dai_link;
+		}
 	}
 
 	idx = tegra_machine_get_codec_dai_link_idx("rt565x-playback");
 	/* check if idx has valid number */
-	if (idx == -EINVAL) {
+	if (idx == -EINVAL)
 		dev_warn(&pdev->dev, "codec link not defined - codec not part of sound card");
-	}
-	else {
+	else
 		codec = card->rtd[idx].codec;
-	}
 
 	return 0;
 
