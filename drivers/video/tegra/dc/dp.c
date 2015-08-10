@@ -2115,6 +2115,8 @@ static void tegra_dc_dp_destroy(struct tegra_dc *dc)
 #ifndef CONFIG_TEGRA_NVDISPLAY
 	clk_put(dp->dpaux_clk);
 	clk_put(dp->parent_clk);
+#endif
+
 	devm_iounmap(&dc->ndev->dev, dp->aux_base);
 	devm_release_mem_region(&dc->ndev->dev,
 		dp->res->start,
@@ -2335,8 +2337,10 @@ static void tegra_dp_hpd_op_init(void *drv_data)
 	struct tegra_dc_dp_data *dp = drv_data;
 
 #ifdef CONFIG_SWITCH
-	dp->hpd_data.hpd_switch_name = "dp";
-	dp->hpd_data.audio_switch_name = "dp_audio";
+	if (tegra_dc_is_ext_dp_panel(dp->dc)) {
+		dp->hpd_data.hpd_switch_name = "dp";
+		dp->hpd_data.audio_switch_name = "dp_audio";
+	}
 #endif
 }
 
