@@ -25,6 +25,7 @@
 #include "tegra210-platforms/tegra210-foster-e-led-p1961-b00.dtsi"
 #include "tegra210-platforms/tegra210-darcy-p2892-emc-a00.dtsi"
 #include "tegra210-platforms/tegra210-darcy-pcie.dtsi"
+#include "tegra210-platforms/tegra210-darcy-prods.dtsi"
 
 / {
         pwm-leds {
