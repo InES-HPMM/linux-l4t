@@ -2011,6 +2011,8 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 	unsigned int pulldown_code;
 	unsigned int pullup_code;
 	unsigned long pin_config;
+	u16 clk;
+	bool card_clk_enabled;
 	int err;
 
 	/* No Calibration for sdmmc4 */
@@ -2019,6 +2021,13 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 
 	if (unlikely(soc_data->nvquirks & NVQUIRK_DISABLE_AUTO_CALIBRATION))
 		return;
+
+	clk = sdhci_readw(sdhci, SDHCI_CLOCK_CONTROL);
+	card_clk_enabled = clk & SDHCI_CLOCK_CARD_EN;
+	if (card_clk_enabled) {
+		clk &= ~SDHCI_CLOCK_CARD_EN;
+		sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
+	}
 
 	val = sdhci_readl(sdhci, SDMMC_SDMEMCOMPPADCTRL);
 	val &= ~SDMMC_SDMEMCOMPPADCTRL_VREF_SEL_MASK;
@@ -2089,6 +2098,11 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 	if (soc_data->nvquirks & NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD)
 		tegra_sdhci_configure_e_input(sdhci, false);
 
+	if (card_clk_enabled) {
+		clk |= SDHCI_CLOCK_CARD_EN;
+		sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
+	}
+
 	if (unlikely(soc_data->nvquirks & NVQUIRK_SET_DRIVE_STRENGTH)) {
 		/* Disable Auto calibration */
 		val = sdhci_readl(sdhci, SDMMC_AUTO_CAL_CONFIG);
@@ -2124,6 +2138,7 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 				pullup_code, err);
 		}
 	}
+
 	if (tegra_host->plat->en_periodic_calib) {
 		tegra_host->timestamp = ktime_get();
 		sdhci->timestamp = ktime_get();
