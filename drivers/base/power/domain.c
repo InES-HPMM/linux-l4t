@@ -939,6 +939,10 @@ static inline int genpd_dev_pm_qos_notifier(struct notifier_block *nb,
 
 static inline void genpd_power_off_work_fn(struct work_struct *work) {}
 static inline void genpd_delayed_power_off_work_fn(struct work_struct *work) {}
+static inline int __pm_genpd_poweroff(struct generic_pm_domain *genpd)
+{
+	return 0;
+}
 
 #define pm_genpd_runtime_suspend	NULL
 #define pm_genpd_runtime_resume		NULL
