@@ -1098,6 +1098,7 @@ powerdown_pll_x:
 tegra3_enter_sleep:
 	ldr	r1, [r7]
 	str	r1, [r4, #PMC_SCRATCH38]
+	ldr	r9, [r4, #PMC_SCRATCH38]
 	dsb
 	cpu_id	r1
 
