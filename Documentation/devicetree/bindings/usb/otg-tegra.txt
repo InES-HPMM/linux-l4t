@@ -17,7 +17,9 @@ Optional properties:
     0 - if detection is through USB controller
     1 - if detection is through PMU extcon
     2 - if enable through sysfs interface.
-- nvidia,id-detection_gpio: If id detection is supported through GPIO, specify the GPIO phandle.
+- nvidia,enable-event-serialization: Enables to process every vbus/id events
+  serially. Note that this should be enabled only when events are notified from
+  process context.
 - nvidia,enable-xhci-host: Specify whether this port is taken by XUSB.
 - extcon-cables: Specify the phandles and index of different extcon needed.
 - extcon-cable-names: Specify the cable names needed from extcon.
