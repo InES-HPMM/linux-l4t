@@ -1050,7 +1050,8 @@ static int tegra_max98090_init(struct snd_soc_pcm_runtime *rtd)
 	if (gpio_is_valid(pdata->gpio_hp_mute)) {
 		ret = gpio_request(pdata->gpio_hp_mute, "hp_mute");
 		if (ret) {
-			dev_err(card->dev, "cannot get hp_mute gpio\n");
+			dev_err(card->dev, "cannot get hp_mute gpio %d\n",
+					pdata->gpio_hp_mute);
 			return ret;
 		}
 		machine->gpio_requested |= GPIO_HP_MUTE;
@@ -1349,6 +1350,7 @@ static struct tegra_asoc_platform_data *
 {
 	struct tegra_asoc_platform_data *pdata;
 	struct device_node *np = NULL;
+	int ret;
 
 	np = dev->of_node;
 	if (!np)
@@ -1366,8 +1368,14 @@ static struct tegra_asoc_platform_data *
 				&pdata->codec_name);
 	of_property_read_string(np, "nvidia,codec-dai-name",
 				&pdata->codec_dai_name);
-	of_property_read_u32(np, "nvidia,gpio-hp-det",
+	ret = of_property_read_u32(np, "nvidia,gpio-hp-det",
 				&pdata->gpio_hp_det);
+	if (ret)
+		pdata->gpio_hp_det = ret;
+	ret = of_property_read_u32(np, "nvidia,gpio-hp-mute",
+				&pdata->gpio_hp_mute);
+	if (ret)
+		pdata->gpio_hp_mute = ret;
 	of_property_read_u32(np, "nvidia,num-links",
 				&pdata->num_links);
 	pdata->edp_support =
