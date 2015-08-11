@@ -756,7 +756,7 @@ static int es755_hw_params(struct snd_pcm_substream *substream,
 
 	/* Set codec output rate 96Khz(0x2) for 192K and 48Khz(0x0) for rest */
 	/* required for droop filter settings */
-	if (params_rate(params) == 192000)
+	if (params_rate(params) == 192000 || params_rate(params) == 96000)
 		codec_output_rate = 0x2;
 
 	rc = escore_write(codec, ES_CODEC_OUTPUT_RATE,
