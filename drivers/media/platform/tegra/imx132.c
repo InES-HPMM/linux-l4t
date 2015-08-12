@@ -64,6 +64,7 @@ static struct regulator *imx132_ext_reg2;
 static const struct reg_8 mode_1976x1144_one_lane[] = {
 	/* Stand by */
 	{0x0100, 0x00},
+	{IMX132_TABLE_WAIT_MS, IMX132_WAIT_MS},
 	{0x0101, 0x00},
 	{IMX132_TABLE_WAIT_MS, IMX132_WAIT_MS},
 
@@ -171,6 +172,7 @@ static const struct reg_8 mode_1976x1144_one_lane[] = {
 static const struct reg_8 mode_1976x1144_two_lane[] = {
 	/* Stand by */
 	{0x0100, 0x00},
+	{IMX132_TABLE_WAIT_MS, IMX132_WAIT_MS},
 	{0x0101, 0x00},
 	{IMX132_TABLE_WAIT_MS, IMX132_WAIT_MS},
 
