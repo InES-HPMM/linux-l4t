@@ -387,8 +387,10 @@ static int mmc_speed_opt_get(void *data, u64 *val)
 		(host->card->sd_bus_speed < ARRAY_SIZE(uhs_speeds))) {
 		str = uhs_speeds[host->card->sd_bus_speed];
 		*val = host->card->sd_bus_speed;
-	} else if (host->ios.timing == MMC_TIMING_MMC_HS) {
+	} else if ((host->ios.timing == MMC_TIMING_MMC_HS)
+			|| (host->ios.timing == MMC_TIMING_SD_HS)) {
 		str = "high speed";
+		*val = HIGH_SPEED_BUS_SPEED;
 	} else if (host->ios.timing == MMC_TIMING_MMC_HS200) {
 		str = "HS200";
 		*val = UHS_SDR104_BUS_SPEED;
