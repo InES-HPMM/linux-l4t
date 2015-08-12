@@ -42,6 +42,7 @@
 #include <linux/tegra-pm.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/pinctrl/pinconf-tegra.h>
+#include <linux/tegra_prod.h>
 
 #include <asm/unaligned.h>
 
@@ -238,6 +239,7 @@ struct tegra_i2c_dev {
 	bool bit_banging_xfer_after_shutdown;
 	bool is_shutdown;
 	struct notifier_block pm_nb;
+	struct tegra_prod_list *prod_list;
 };
 
 static void dvc_writel(struct tegra_i2c_dev *i2c_dev, u32 val, unsigned long reg)
@@ -739,6 +741,8 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 			msleep(1);
 		}
 	}
+
+	tegra_prod_set_list(&i2c_dev->base, i2c_dev->prod_list);
 
 	tegra_i2c_clock_disable(i2c_dev);
 
@@ -1752,6 +1756,11 @@ skip_pinctrl:
 
 	spin_lock_init(&i2c_dev->mem_lock);
 
+	if (pdev->dev.of_node)
+		i2c_dev->prod_list = tegra_prod_init(pdev->dev.of_node);
+	if (IS_ERR(i2c_dev->prod_list))
+		i2c_dev->prod_list = NULL;
+
 	platform_set_drvdata(pdev, i2c_dev);
 
 	if (i2c_dev->is_clkon_always)
@@ -1760,7 +1769,7 @@ skip_pinctrl:
 	ret = tegra_i2c_init(i2c_dev);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to initialize i2c controller");
-		return ret;
+		goto err;
 	}
 
 	ret = devm_request_irq(&pdev->dev, i2c_dev->irq,
@@ -1768,7 +1777,7 @@ skip_pinctrl:
 			dev_name(&pdev->dev), i2c_dev);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to request irq %i\n", i2c_dev->irq);
-		return ret;
+		goto err;
 	}
 
 	pm_runtime_enable(&pdev->dev);
@@ -1797,7 +1806,7 @@ skip_pinctrl:
 	ret = i2c_add_numbered_adapter(&i2c_dev->adapter);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to add I2C adapter\n");
-		return ret;
+		goto err;
 	}
 	i2c_dev->cont_id = i2c_dev->adapter.nr & PACKET_HEADER0_CONT_ID_MASK;
 	if (pdata->is_high_speed_enable) {
@@ -1817,6 +1826,9 @@ skip_pinctrl:
 	tegra_i2c_gpio_init(i2c_dev);
 
 	return 0;
+err:
+	tegra_prod_release(&i2c_dev->prod_list);
+	return ret;
 }
 
 static int tegra_i2c_remove(struct platform_device *pdev)
@@ -1831,6 +1843,7 @@ static int tegra_i2c_remove(struct platform_device *pdev)
 		tegra_i2c_clock_disable(i2c_dev);
 
 	pm_runtime_disable(&pdev->dev);
+	tegra_prod_release(&i2c_dev->prod_list);
 	return 0;
 }
 
