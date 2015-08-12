@@ -245,4 +245,29 @@
 			vcc-supply = <&en_vdd_cam>;
 		};
 	};
+
+	i2c@7000c000 {
+		icm20628@68 {
+			vdd-supply = <&vdd_3v3>;
+			vlogic-supply = <&vdd_3v3>;
+		};
+
+		ak8963@0d {
+			vdd-supply = <&vdd_3v3>;
+			vid-supply = <&vdd_3v3>;
+		};
+
+		bmp280@77 {
+			vddio-supply = <&vdd_3v3>;
+			vdd-supply = <&vdd_3v3>;
+		};
+
+		cm32180@48 {
+			vdd-supply = <&vdd_3v3>;
+		};
+
+		iqs263@44 {
+			vddhi-supply = <&vdd_3v3>;
+		};
+	};
 };
