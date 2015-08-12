@@ -54,6 +54,13 @@
    poweron time) */
 #define EDP_PWR_OFF_TO_ON_TIME_MS	    (500+10)
 
+/*
+ * Receiver capability fields extend from 0 - 0x11fh.
+ * By default we read only more useful fields(offsets 0 - 0xb) as
+ * required by CTS.
+ */
+#define DP_DPCD_SINK_CAP_SIZE (0xc)
+
 struct tegra_dc_dp_data {
 	struct tegra_dc *dc;
 	struct tegra_dc_sor_data *sor;
@@ -92,6 +99,9 @@ struct tegra_dc_dp_data {
 	struct mutex dpaux_lock;
 
 	struct tegra_prod_list *prod_list;
+
+	u8 sink_cap[DP_DPCD_SINK_CAP_SIZE];
+	bool sink_cap_valid;
 };
 
 int tegra_dp_dpcd_write_field(struct tegra_dc_dp_data *dp, u32 cmd,
