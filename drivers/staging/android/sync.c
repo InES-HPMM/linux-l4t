@@ -861,6 +861,8 @@ static long sync_fence_ioctl(struct file *file, unsigned int cmd,
 static void sync_fence_dump(struct sync_fence *fence)
 {
 	struct sync_pt *pt;
+	struct sync_pt *__pt = NULL;
+	struct sync_timeline *__obj = NULL;
 	char val[32];
 	char current_val[32];
 	char name[32];
@@ -882,7 +884,14 @@ static void sync_fence_dump(struct sync_fence *fence)
 
 		pr_info("name=[%s:%s], current value=%s waiting value=%s\n",
 			pt->parent->name, name, current_val, val);
+
+		__obj = pt->parent;
+		if (__obj->ops->platform_debug_dump)
+			__pt = pt;
 	}
+
+	if (__pt)
+		__obj->ops->platform_debug_dump(__pt);
 
 }
 

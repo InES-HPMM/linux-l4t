@@ -87,6 +87,9 @@ struct sync_timeline_ops {
 
 	/* optional */
 	void (*get_pt_name)(struct sync_pt *pt, char *str, int size);
+
+	/* optional */
+	void (*platform_debug_dump)(struct sync_pt *pt);
 };
 
 /**
