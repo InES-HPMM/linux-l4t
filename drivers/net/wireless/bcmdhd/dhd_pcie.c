@@ -1622,14 +1622,14 @@ dhdpcie_bus_membytes(dhd_bus_t *bus, bool write, ulong address, uint8 *data, uin
 	uint dsize;
 	int detect_endian_flag = 0x01;
 	bool little_endian;
-#ifdef CONFIG_ARCH_MSM8994
+#if defined (CONFIG_ARCH_MSM8994) || defined (CONFIG_ARCH_TEGRA)
 	bool is_64bit_unaligned;
 #endif
 
 	/* Detect endianness. */
 	little_endian = *(char *)&detect_endian_flag;
 
-#ifdef CONFIG_ARCH_MSM8994
+#if defined (CONFIG_ARCH_MSM8994) || defined (CONFIG_ARCH_TEGRA)
 	/* Check 64bit aligned or not. */
 	is_64bit_unaligned = (address & 0x7);
 #endif
@@ -1645,7 +1645,7 @@ dhdpcie_bus_membytes(dhd_bus_t *bus, bool write, ulong address, uint8 *data, uin
 	if (write) {
 		while (size) {
 			if (size >= sizeof(uint64) && little_endian) {
-#ifdef CONFIG_ARCH_MSM8994
+#if defined (CONFIG_ARCH_MSM8994) || defined (CONFIG_ARCH_TEGRA)
 				if (is_64bit_unaligned) {
 					DHD_INFO(("%s: write unaligned %lx\n",
 					    __FUNCTION__, address));
@@ -1673,7 +1673,7 @@ dhdpcie_bus_membytes(dhd_bus_t *bus, bool write, ulong address, uint8 *data, uin
 	} else {
 		while (size) {
 			if (size >= sizeof(uint64) && little_endian) {
-#ifdef CONFIG_ARCH_MSM8994
+#if defined (CONFIG_ARCH_MSM8994) || defined (CONFIG_ARCH_TEGRA)
 				if (is_64bit_unaligned) {
 					DHD_INFO(("%s: read unaligned %lx\n",
 					    __FUNCTION__, address));
