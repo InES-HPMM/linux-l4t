@@ -117,8 +117,8 @@ static void __init tegra_p2360_early_init(void)
 	tegra_init_max_rate(c, 600000000);
 
 	c = tegra_get_clock_by_name("cpu_g");
-	tegra_init_min_rate(c, 1524000000);
-	tegra_init_max_rate(c, 1524000000);
+	tegra_init_min_rate(c, 1530000000);
+	tegra_init_max_rate(c, 1530000000);
 
 	tegra_vcm30_t124_set_fixed_rate(p2360_fixed_rate_clk_table);
 
