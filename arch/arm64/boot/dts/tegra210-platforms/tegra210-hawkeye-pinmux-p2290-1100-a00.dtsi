@@ -725,6 +725,14 @@
 				nvidia,io-high-voltage = <TEGRA_PIN_DISABLE>;
 			};
 
+			pex_l0_rst_n_pa0 {
+				nvidia,pins = "pex_l0_rst_n_pa0";
+				nvidia,function = "rsvd1";
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+				nvidia,io-high-voltage = <TEGRA_PIN_DISABLE>;
+			};
+
 			sata_led_active_pa5 {
 				nvidia,pins = "sata_led_active_pa5";
 				nvidia,function = "rsvd1";
@@ -1119,15 +1127,6 @@
 				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
 				nvidia,tristate = <TEGRA_PIN_ENABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
-			};
-
-			pex_l0_rst_n_pa0 {
-				nvidia,pins = "pex_l0_rst_n_pa0";
-				nvidia,function = "rsvd1";
-				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
-				nvidia,tristate = <TEGRA_PIN_ENABLE>;
-				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
-				nvidia,io-high-voltage = <TEGRA_PIN_DISABLE>;
 			};
 
 			pex_l1_rst_n_pa3 {
