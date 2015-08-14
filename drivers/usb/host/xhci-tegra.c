@@ -559,7 +559,7 @@ static void pmc_init(struct tegra_xhci_hcd *tegra)
 
 	for (pad = 0; pad < utmi_pad_count; pad++) {
 		if ((BIT(XUSB_UTMI_INDEX + pad) & tegra->bdata->portmap) ||
-			(pad == tegra->otg_portnum)) {
+			(pad == tegra->hs_otg_portnum)) {
 			dev_dbg(dev, "%s utmi pad %d\n", __func__, pad);
 			pmc = &pmc_data[pad];
 			if (tegra->soc_config->pmc_portmap) {
@@ -624,7 +624,7 @@ static void pmc_setup_wake_detect(struct tegra_xhci_hcd *tegra)
 		}
 	}
 	if (tegra->otg_port_owned) {
-		pad = tegra->otg_portnum;
+		pad = tegra->hs_otg_portnum;
 		pmc = &pmc_data[pad];
 		pmc->port_speed = get_usb2_port_speed(tegra, pad);
 		pmc->pmc_ops->setup_pmc_wake_detect(pmc);
@@ -654,7 +654,7 @@ static void pmc_disable_bus_ctrl(struct tegra_xhci_hcd *tegra)
 		}
 	}
 	if (tegra->otg_port_owned || tegra->otg_port_ownership_changed) {
-		pad = tegra->otg_portnum;
+		pad = tegra->hs_otg_portnum;
 		pmc = &pmc_data[pad];
 		pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 0);
 	}
@@ -2332,7 +2332,7 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 		usb2_vbus_id_init();
 		xusb_utmi_pad_init(0, USB2_PORT_CAP_OTG(0), false);
 		tegra_xhci_program_utmip_power_lp0_exit(tegra,
-				tegra->otg_portnum);
+				tegra->hs_otg_portnum);
 	}
 
 	for_each_enabled_hsic_pad(pad, tegra) {
@@ -2475,7 +2475,7 @@ static void tegra_xhci_handle_otg_port_change(struct tegra_xhci_hcd *tegra)
 	else
 		xhci_hub_control(xhci->shared_hcd, ClearPortFeature,
 			USB_PORT_FEAT_POWER,
-			tegra->otg_portnum + 1, NULL, 0);
+			tegra->hs_otg_portnum + 1, NULL, 0);
 }
 
 /* This function restores XUSB registers from device context */
@@ -4214,16 +4214,16 @@ static void tegra_xhci_reset_otg_sspi_work(struct work_struct *work)
 	/* set PP=0 */
 	xhci_hub_control(xhci->shared_hcd, ClearPortFeature,
 		USB_PORT_FEAT_POWER,
-		tegra->otg_portnum + 1, NULL, 0);
+		tegra->ss_otg_portnum + 1, NULL, 0);
 
 	/* reset OTG port SSPI */
 	ack_fw_message_send_sync(tegra, MBOX_CMD_RESET_SSPI,
-			tegra->otg_portnum + 1);
+			tegra->ss_otg_portnum + 1);
 
 	/* set PP=1 */
 	xhci_hub_control(xhci->shared_hcd, SetPortFeature,
 		USB_PORT_FEAT_POWER,
-		tegra->otg_portnum + 1, NULL, 0);
+		tegra->ss_otg_portnum + 1, NULL, 0);
 }
 
 static int tegra_xhci_hcd_reinit(struct usb_hcd *hcd)
@@ -5332,7 +5332,14 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 
 	for (pad = 0; pad < tegra->soc_config->utmi_pad_count; pad++) {
 		if (BIT(XUSB_UTMI_INDEX + pad) & tegra->bdata->otg_portmap) {
-			tegra->otg_portnum = pad;
+			tegra->hs_otg_portnum = pad;
+			break;
+		}
+	}
+
+	for (pad = 0; pad < tegra->soc_config->ss_pad_count; pad++) {
+		if (BIT(pad) & tegra->bdata->otg_portmap) {
+			tegra->ss_otg_portnum = pad;
 			break;
 		}
 	}
@@ -5692,9 +5699,11 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 
 	/* For otg port, init PortSc.PP to off. */
 	if (tegra->bdata->otg_portmap & 0xff) {
-		portsc = xhci_readl(xhci, xhci->usb3_ports[tegra->otg_portnum]);
+		portsc = xhci_readl(xhci,
+				xhci->usb3_ports[tegra->ss_otg_portnum]);
 		portsc &= ~PORT_POWER;
-		xhci_writel(xhci, portsc, xhci->usb3_ports[tegra->otg_portnum]);
+		xhci_writel(xhci, portsc,
+				xhci->usb3_ports[tegra->ss_otg_portnum]);
 	}
 
 	if (!IS_ERR_OR_NULL(tegra->transceiver)) {
