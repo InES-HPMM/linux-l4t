@@ -1323,7 +1323,8 @@
 	};
 
 	i2c@7000c700 {
-		nvidia,thigh = <4>;
+		nvidia,high_clock_count = <4>;
+		nvidia,clk_div_std_fast_mode = <0x14>;
 	};
 
 	spi@7000da00 {
