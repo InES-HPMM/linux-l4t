@@ -3167,7 +3167,7 @@ void wakeup_kswapd(struct zone *zone, int order, enum zone_type classzone_idx)
 	/* Check whether ZRAM is disabled. */
 	if(!total_swap_pages) {
 		/* Avoid kswapd for HIGH MEMORY ZONE. */
-#ifdef CONFIG_HIGHMEM
+#if defined(CONFIG_HIGHMEM) && defined(CONFIG_ANDROID_LOW_MEMORY_KILLER)
                 if (classzone_idx == ZONE_HIGHMEM)
                         return;
 #endif
