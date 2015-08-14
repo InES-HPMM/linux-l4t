@@ -1081,6 +1081,7 @@ static int tegra_dc_hdmi_init(struct tegra_dc *dc)
 				tegra_dc_set_fb_mode(dc,
 						&tegra_dc_vga_mode, false);
 			}
+			kfree(specs.modedb);
 		} else
 			tegra_dc_set_fb_mode(dc, &tegra_dc_vga_mode, false);
 	}

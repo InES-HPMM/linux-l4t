@@ -254,14 +254,17 @@ static void handle_check_edid_l(struct tegra_dc_hdmi_data *hdmi)
 		if (work_state.edid_reads >= MAX_EDID_READ_ATTEMPTS) {
 			pr_info("Failed to read EDID after %d times. Giving up.\n",
 				work_state.edid_reads);
+			kfree(specs.modedb);
 			goto end_disabled;
 		} else {
 			hdmi_state_machine_set_state_l(HDMI_STATE_CHECK_EDID,
 						       CHECK_EDID_DELAY_MS);
 		}
 
+		kfree(specs.modedb);
 		return;
 	}
+	kfree(specs.modedb);
 
 	if (tegra_edid_get_eld(hdmi->edid, &hdmi->eld) < 0) {
 		pr_err("error populating eld\n");

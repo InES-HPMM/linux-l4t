@@ -518,6 +518,7 @@ int tegra_edid_get_monspecs(struct tegra_edid *edid, struct fb_monspecs *specs)
 	u8 checksum = 0;
 	u8 *data;
 
+	memset(specs, 0x0, sizeof(struct fb_monspecs));
 	new_data = vzalloc(SZ_32K + sizeof(struct tegra_edid_pvt));
 	if (!new_data)
 		return -ENOMEM;
@@ -542,7 +543,6 @@ int tegra_edid_get_monspecs(struct tegra_edid *edid, struct fb_monspecs *specs)
 			goto fail;
 	}
 
-	memset(specs, 0x0, sizeof(struct fb_monspecs));
 	memset(&new_data->eld, 0x0, sizeof(new_data->eld));
 	fb_edid_to_monspecs(data, specs);
 	if (specs->modedb == NULL) {
