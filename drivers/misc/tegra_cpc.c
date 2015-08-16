@@ -514,7 +514,7 @@ static long cpc_ioctl(struct file *file,
 			unsigned int cmd, unsigned long arg)
 {
 	struct cpc_i2c_host *cpc = file->private_data;
-	struct tegra_cpc_frame *cpc_fr = 0;
+	struct tegra_cpc_frame *cpc_fr = NULL;
 	long err = 0;
 
 	if (_IOC_TYPE(cmd) != NVCPC_IOC_MAGIC) {
