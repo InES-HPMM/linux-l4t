@@ -490,7 +490,7 @@ static int __maybe_unused tegra_dsi_syncpt
 		tegra_dsi_controller_writel(dsi, val, DSI_INCR_SYNCPT, link_id);
 
 	ret = nvhost_syncpt_wait_timeout_ext(dsi->dc->ndev, dsi->syncpt_id,
-		dsi->syncpt_val + 1, (u32)MAX_SCHEDULE_TIMEOUT, NULL, NULL);
+		dsi->syncpt_val + 1, msecs_to_jiffies(500), NULL, NULL);
 	if (ret < 0) {
 		dev_err(&dsi->dc->ndev->dev, "DSI sync point failure\n");
 		goto fail;
