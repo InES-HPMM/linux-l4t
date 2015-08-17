@@ -165,9 +165,10 @@ static int cpc_serialize_write_frame(struct tegra_cpc_frame *fr, u8 buffer[],
 			&rem_buf_size))
 		return -ENOMEM;
 
-	rem_buf_size -= oneshot_copy_size;
-	if (rem_buf_size < 0)
+	if (rem_buf_size < oneshot_copy_size)
 		return -ENOMEM;
+
+	rem_buf_size -= oneshot_copy_size;
 
 	memcpy(buffer, &fr_cmd->nonce, oneshot_copy_size);
 	return buf_size - rem_buf_size;
