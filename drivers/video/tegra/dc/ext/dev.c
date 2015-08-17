@@ -1603,7 +1603,9 @@ static long tegra_dc_ioctl(struct file *filp, unsigned int cmd,
 	case TEGRA_DC_EXT_PUT_WINDOW:
 		ret = tegra_dc_ext_put_window(user, arg);
 		if (!ret) {
-			tegra_dc_blank(user->ext->dc, BIT(arg));
+			ret = tegra_dc_blank(user->ext->dc, BIT(arg));
+			if (ret < 0)
+				return ret;
 			tegra_dc_ext_unpin_window(&user->ext->win[arg]);
 		}
 		return ret;
