@@ -4023,13 +4023,14 @@ bool tegra_dc_stats_get(struct tegra_dc *dc)
 }
 
 /* blank selected windows by disabling them */
-void tegra_dc_blank(struct tegra_dc *dc, unsigned windows)
+int tegra_dc_blank(struct tegra_dc *dc, unsigned windows)
 {
 	struct tegra_dc_win *dcwins[DC_N_WINDOWS];
 	struct tegra_dc_win blank_win;
 	unsigned i;
 	unsigned long int blank_windows;
 	int nr_win = 0;
+	int ret = 0;
 
 	/* YUV420 10bpc variables */
 	int yuv_flag = dc->mode.vmode & FB_VMODE_YUV_MASK;
@@ -4064,7 +4065,7 @@ void tegra_dc_blank(struct tegra_dc *dc, unsigned windows)
 	blank_windows = windows & dc->valid_windows;
 
 	if (!blank_windows)
-		return;
+		return ret;
 
 	for_each_set_bit(i, &blank_windows, DC_N_WINDOWS) {
 		dcwins[nr_win] = tegra_dc_get_window(dc, i);
@@ -4085,7 +4086,7 @@ void tegra_dc_blank(struct tegra_dc *dc, unsigned windows)
 	/* Skip update for linsim */
 	if (!tegra_platform_is_linsim()) {
 		tegra_dc_update_windows(dcwins, nr_win, NULL, true);
-		tegra_dc_sync_windows(dcwins, nr_win);
+		ret = tegra_dc_sync_windows(dcwins, nr_win);
 	}
 	tegra_dc_program_bandwidth(dc, true);
 
@@ -4101,6 +4102,7 @@ void tegra_dc_blank(struct tegra_dc *dc, unsigned windows)
 		}
 		tegra_dc_disable_window(dc, i);
 	}
+	return ret;
 }
 
 int tegra_dc_restore(struct tegra_dc *dc)
