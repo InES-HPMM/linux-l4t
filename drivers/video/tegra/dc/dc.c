@@ -3627,8 +3627,9 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 {
 	int failed_init = 0;
 	int i;
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	struct device_node *np_dpaux;
-
+#endif
 	if (WARN_ON(!dc || !dc->out || !dc->out_ops))
 		return false;
 
@@ -3672,6 +3673,7 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 	}
 
 	if (dc->out->type != TEGRA_DC_OUT_DP) {
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 		np_dpaux = of_find_node_by_path(
 				dc->ndev->id ? DPAUX1_NODE : DPAUX_NODE);
 		if (np_dpaux || !dc->ndev->dev.of_node)
@@ -3679,6 +3681,7 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 			dc->ndev->id ? TEGRA_DPAUX_INSTANCE_1 :
 			TEGRA_DPAUX_INSTANCE_0, false);
 		of_node_put(np_dpaux);
+#endif
 	}
 
 	if (dc->out_ops && dc->out_ops->enable)
