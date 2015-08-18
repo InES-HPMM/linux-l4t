@@ -1140,6 +1140,33 @@ static int tegra_rt5639_suspend_post(struct snd_soc_card *card)
 
 static int tegra_rt5639_resume_pre(struct snd_soc_card *card)
 {
+	struct tegra_rt5639 *machine = snd_soc_card_get_drvdata(card);
+	int i, suspend_allowed = 1;
+
+	/*In Voice Call we ignore suspend..so check for that*/
+	for (i = 0; i < machine->pcard->num_links; i++) {
+		if (machine->pcard->dai_link[i].ignore_suspend) {
+			suspend_allowed = 0;
+			break;
+		}
+	}
+
+	if (suspend_allowed) {
+		/*This may be required if dapm setbias level is not called in
+		some cases, may be due to a wrong dapm map*/
+		if (!machine->clock_enabled &&
+				machine->bias_level != SND_SOC_BIAS_OFF) {
+			machine->clock_enabled = 1;
+			tegra_asoc_utils_clk_enable(&machine->util_data);
+		}
+		/*TODO: Enable Audio Regulators*/
+	}
+
+	return 0;
+}
+
+static int tegra_rt5639_resume_post(struct snd_soc_card *card)
+{
 	int val;
 	struct snd_soc_jack_gpio *gpio = &tegra_rt5639_hp_jack_gpio;
 	struct tegra_rt5639 *machine = snd_soc_card_get_drvdata(card);
@@ -1162,14 +1189,6 @@ static int tegra_rt5639_resume_pre(struct snd_soc_card *card)
 			snd_soc_jack_report(gpio->jack, val, gpio->report);
 			enable_irq(gpio_to_irq(gpio->gpio));
 		}
-		/*This may be required if dapm setbias level is not called in
-		some cases, may be due to a wrong dapm map*/
-		if (!machine->clock_enabled &&
-				machine->bias_level != SND_SOC_BIAS_OFF) {
-			machine->clock_enabled = 1;
-			tegra_asoc_utils_clk_enable(&machine->util_data);
-		}
-		/*TODO: Enable Audio Regulators*/
 	}
 
 	return 0;
@@ -1214,6 +1233,7 @@ static struct snd_soc_card snd_soc_tegra_rt5639 = {
 	.suspend_post = tegra_rt5639_suspend_post,
 	.suspend_pre = tegra_rt5639_suspend_pre,
 	.resume_pre = tegra_rt5639_resume_pre,
+	.resume_post = tegra_rt5639_resume_post,
 	.set_bias_level = tegra_rt5639_set_bias_level,
 	.set_bias_level_post = tegra_rt5639_set_bias_level_post,
 	.controls = ardbeg_controls,
