@@ -621,6 +621,11 @@ config BLUEDROID_PM
           Say Y here to compile support for bluedroid_pm support into the kernel
           or say M to compile it as module (bluedroid_pm).
 
+config GPS_HWGEOFENCING
+	tristate "hw geofencing support"
+	---help---
+	This driver provides gps enable, hw geofencing and host wake capability.
+
 config CPULOAD_MONITOR
 	bool "Publish cpu load measures in sysfs"
 	depends on CPU_FREQ

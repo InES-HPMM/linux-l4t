@@ -75,6 +75,7 @@ obj-$(CONFIG_SND_SOC_TEGRA_CS42L73)	+= a2220.o
 obj-$(CONFIG_SND_SOC_TEGRA_RT5640)	+= tfa9887.o
 obj-$(CONFIG_FAN_THERM_EST)	+= therm_fan_est.o
 obj-$(CONFIG_BLUEDROID_PM)      += bluedroid_pm.o
+obj-$(CONFIG_GPS_HWGEOFENCING)  += gps_wake.o
 obj-$(CONFIG_CPULOAD_MONITOR)	+= cpuload.o
 obj-$(CONFIG_SIM_MAX77660)	+= max77660-sim.o
 obj-$(CONFIG_SIM_PALMAS)	+= palmas-sim.o
