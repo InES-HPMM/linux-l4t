@@ -157,12 +157,15 @@ static void tegra_gpio_disable(int gpio)
 
 static int tegra_gpio_request(struct gpio_chip *chip, unsigned offset)
 {
-	return pinctrl_request_gpio(chip->base + offset);
+	if (!bypass_pinconfig)
+		return pinctrl_request_gpio(chip->base + offset);
+	return 0;
 }
 
 static void tegra_gpio_free(struct gpio_chip *chip, unsigned offset)
 {
-	pinctrl_free_gpio(chip->base + offset);
+	if (!bypass_pinconfig)
+		pinctrl_free_gpio(chip->base + offset);
 	tegra_gpio_disable(offset);
 }
 
