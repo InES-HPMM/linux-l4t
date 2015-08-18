@@ -9535,6 +9535,7 @@ static struct clk tegra_list_clks[] = {
 	SHARED_SCLK("usbd.sclk", "tegra-udc.0",		"sclk",	&tegra_clk_ahb, NULL, 0, 0, TEGRA210_CLK_ID_SBUS_USBD_USER),
 	SHARED_SCLK("usb1.sclk", "tegra-ehci.0",	"sclk",	&tegra_clk_ahb, NULL, 0, 0, TEGRA210_CLK_ID_SBUS_USBD1_USER),
 	SHARED_SCLK("usb2.sclk", "tegra-ehci.1",	"sclk",	&tegra_clk_ahb, NULL, 0, 0, TEGRA210_CLK_ID_SBUS_USBD2_USER),
+	SHARED_SCLK("sdmmc4.sclk",    "sdhci-tegra.3",  "sclk", &tegra_clk_ahb, NULL, 0, 0, TEGRA210_CLK_ID_SBUS_SDMMC4_USER),
 	SHARED_SCLK("wake.sclk",   "wake_sclk",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0, TEGRA210_CLK_ID_SBUS_WAKE_USER),
 	SHARED_SCLK("camera.sclk", "vi",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0, TEGRA210_CLK_ID_SBUS_CAMERA_USER),
 	SHARED_SCLK("mon.avp",	 "tegra_actmon",	"avp",	&tegra_clk_sbus_cmplx, NULL, 0, 0, TEGRA210_CLK_ID_SBUS_MON_AVP_USER),
