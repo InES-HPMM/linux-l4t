@@ -376,6 +376,20 @@ void of_gpiochip_suspend(struct gpio_chip *chip)
 			if (!ret)
 				chip->direction_output(chip, pval, 1);
 		}
+
+		count = of_property_count_u32(child, "gpio-suspend-to-sfio");
+		for (i = 0; i < count; ++i) {
+			found = true;
+			ret = of_property_read_u32_index(child,
+					"gpio-suspend-to-sfio", i, &pval);
+			if (!ret) {
+				if (chip->request)
+					chip->request(chip, pval);
+				if (chip->free)
+					chip->free(chip, pval);
+			}
+		}
+
 		if (found) {
 			statename = NULL;
 			/* Determine whether gpio-init-names property names the state */
