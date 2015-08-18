@@ -1620,6 +1620,8 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 	 * become the default.
 	 */
 	for_each_available_child_of_node(np, nc) {
+		if (!strcmp(nc->name, "prod-settings"))
+			continue;
 		found_nc = nc;
 		ret = of_property_read_bool(nc, "nvidia,default-chipselect");
 		if (ret)
