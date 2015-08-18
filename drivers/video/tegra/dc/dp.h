@@ -102,6 +102,7 @@ struct tegra_dc_dp_data {
 
 	u8 sink_cap[DP_DPCD_SINK_CAP_SIZE];
 	bool sink_cap_valid;
+	u8 sink_cnt_cp_ready;
 };
 
 int tegra_dp_dpcd_write_field(struct tegra_dc_dp_data *dp, u32 cmd,
