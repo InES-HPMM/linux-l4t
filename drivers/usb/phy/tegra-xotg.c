@@ -28,9 +28,13 @@
 #include <linux/extcon.h>
 #include <asm/unaligned.h>
 #include <mach/tegra_usb_pad_ctrl.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 #include "linux/usb/hcd.h"
 #include "linux/usb/otg.h"
 #include "tegra-xotg.h"
+
+#define MAX_USB_PORTS 8
 
 int xotg_debug_level = LEVEL_INFO;
 module_param(xotg_debug_level, int, S_IRUGO|S_IWUSR);
@@ -1871,6 +1875,46 @@ static int xotg_set_power(struct usb_phy *phy, unsigned ma)
 	return 0;
 }
 
+static void xotg_get_otg_port_num(struct xotg *xotg)
+{
+	struct device_node *node = NULL;
+	struct device_node *padctl = NULL;
+	int otg_portmap, ret, port;
+
+	node = xotg->dev->of_node;
+	if (node != NULL) {
+		padctl = of_parse_phandle(node, "nvidia,common_padctl", 0);
+		ret = of_property_read_u32(padctl, "nvidia,otg_portmap",
+							&otg_portmap);
+		if (ret < 0) {
+			xotg_err(xotg->dev,
+				"Fail to get otg_portmap, ret (%d)\n", ret);
+		} else {
+			/* otg_portmap - bit-field indicating which OTG ports
+			 * are controlled by XUDC/XHCI
+			 * bit[0-7]  : SS ports
+			 * bit[8-15] : HS ports
+			 * T210 has only 4 ports [0-3] for SS and [8-11] for HS.
+			 * We will search for all possible 8 positions incase
+			 * future chips have more than 4 ports.
+			 */
+			for (port = 0; port < MAX_USB_PORTS; port++) {
+				if (BIT(port) & otg_portmap) {
+					xotg->ss_otg_port = port;
+					break;
+				}
+			}
+
+			for (port = 0; port < MAX_USB_PORTS; port++) {
+				if (BIT(XUSB_UTMI_INDEX + port) & otg_portmap) {
+					xotg->hs_otg_port = port;
+					break;
+				}
+			}
+		}
+	}
+}
+
 static void xotg_struct_init(struct xotg *xotg)
 {
 	/* initialize the spinlock */
@@ -1896,9 +1940,6 @@ static void xotg_struct_init(struct xotg *xotg)
 	xotg_dbg(xotg->dev, "UNDEFINED\n");
 	xotg->phy.state = OTG_STATE_UNDEFINED;
 
-	/* hs_otg_port = 0 , ss_otg_port = 0 */
-	xotg->hs_otg_port = 0;
-	xotg->ss_otg_port = 0;
 	xotg->device_connected = false;
 
 	/* app reqs to -1 */
@@ -2066,7 +2107,7 @@ static int xotg_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, xotg);
 	xotg->phy.type = USB_PHY_TYPE_UNDEFINED;
 	dev_set_drvdata(&pdev->dev, xotg);
-
+	xotg_get_otg_port_num(xotg);
 	/* store the otg phy */
 	status = usb_add_phy(&xotg->phy, USB_PHY_TYPE_USB3);
 	if (status) {
