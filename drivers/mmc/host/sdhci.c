@@ -2984,7 +2984,7 @@ static void sdhci_tasklet_card(unsigned long param)
 
 	sdhci_card_event(host->mmc);
 
-	mmc_detect_change(host->mmc, msecs_to_jiffies(200));
+	mmc_detect_change(host->mmc, msecs_to_jiffies(350));
 }
 
 static void sdhci_tasklet_finish(unsigned long param)
