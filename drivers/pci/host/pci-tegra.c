@@ -606,7 +606,7 @@ static void __iomem *tegra_pcie_conf_address(struct pci_bus *bus,
 		struct tegra_pcie_port *port;
 
 		list_for_each_entry(port, &pcie->ports, list) {
-			if (port->index + 1 == slot) {
+			if ((port->index + 1 == slot) && port->status) {
 				addr = port->base + (where & ~3);
 				break;
 			}
@@ -1741,19 +1741,6 @@ static void tegra_pcie_port_disable(struct tegra_pcie_port *port)
 	afi_writel(port->pcie, data, AFI_PCIE_CONFIG);
 }
 
-static void tegra_pcie_port_free(struct tegra_pcie_port *port)
-{
-	struct tegra_pcie *pcie = port->pcie;
-
-	PR_FUNC_LINE;
-
-	devm_iounmap(pcie->dev, port->base);
-	devm_release_mem_region(pcie->dev, port->regs.start,
-				resource_size(&port->regs));
-	list_del(&port->list);
-	devm_kfree(pcie->dev, port);
-}
-
 /*
  * FIXME: If there are no PCIe cards attached, then calling this function
  * can result in the increase of the bootup time as there are big timeout
@@ -1828,24 +1815,12 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 		for_each_pci_dev(pdev)
 			if (pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT)
 				pdev->msi_enabled = 0;
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-		/* handle MBIST issue for PCIE */
-		/* Disable PCA after enumeration to save power */
-		data = rp_readl(port, NV_PCIE2_RP_VEND_CTL2);
-		data &= ~PCIE2_RP_VEND_CTL2_PCA_ENABLE;
-		rp_writel(port, data, NV_PCIE2_RP_VEND_CTL2);
-#endif
 	} else {
 		/* Avoid warning during enumeration for invalid IRQ of RP */
 		data = rp_readl(port, NV_PCIE2_RP_INTR_BCR);
 		data |= NV_PCIE2_RP_INTR_BCR_INTR_LINE;
 		rp_writel(port, data, NV_PCIE2_RP_INTR_BCR);
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-		/* handle MBIST issue for PCIE */
-		data = rp_readl(port, NV_PCIE2_RP_VEND_CTL2);
-		data |= PCIE2_RP_VEND_CTL2_PCA_ENABLE;
-		rp_writel(port, data, NV_PCIE2_RP_VEND_CTL2);
-
 		/* resize buffers for better perf, bug#1447522 */
 		if (t210_war) {
 			struct tegra_pcie_port *temp_port;
@@ -2036,6 +2011,28 @@ static void tegra_pcie_update_lane_width(struct tegra_pcie_port *port)
 		RP_LINK_CONTROL_STATUS_NEG_LINK_WIDTH) >> 20;
 }
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+static void mbist_war(struct tegra_pcie *pcie, bool apply)
+{
+	struct tegra_pcie_port *port, *tmp;
+	u32 data;
+
+	list_for_each_entry_safe(port, tmp, &pcie->ports, list) {
+		/* nature of MBIST bug is such that it needs to be applied
+		 * only for RootPort-0 even if there are no devices
+		 * connected to it */
+		if (port->index == 0) {
+			data = rp_readl(port, NV_PCIE2_RP_VEND_CTL2);
+			if (apply)
+				data |= PCIE2_RP_VEND_CTL2_PCA_ENABLE;
+			else
+				data &= ~PCIE2_RP_VEND_CTL2_PCA_ENABLE;
+			rp_writel(port, data, NV_PCIE2_RP_VEND_CTL2);
+		}
+	}
+}
+#endif
+
 static void tegra_pcie_check_ports(struct tegra_pcie *pcie)
 {
 	struct tegra_pcie_port *port, *tmp;
@@ -2043,6 +2040,9 @@ static void tegra_pcie_check_ports(struct tegra_pcie *pcie)
 	PR_FUNC_LINE;
 	pcie->num_ports = 0;
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	mbist_war(pcie, true);
+#endif
 	list_for_each_entry_safe(port, tmp, &pcie->ports, list) {
 		dev_info(pcie->dev, "probing port %u, using %u lanes and lane map as 0x%x\n",
 			 port->index, port->lanes, pcie->plat_data->lane_map);
@@ -2063,15 +2063,17 @@ static void tegra_pcie_check_ports(struct tegra_pcie *pcie)
 
 	list_for_each_entry_safe(port, tmp, &pcie->ports, list) {
 		if (tegra_pcie_port_check_link(port)) {
+			port->status = 1;
 			pcie->num_ports++;
 			tegra_pcie_update_lane_width(port);
 			continue;
 		}
 		dev_info(pcie->dev, "link %u down, ignoring\n", port->index);
-
 		tegra_pcie_port_disable(port);
-		tegra_pcie_port_free(port);
 	}
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+		mbist_war(pcie, false);
+#endif
 }
 
 static int tegra_pcie_conf_gpios(struct tegra_pcie *pcie)
@@ -2550,7 +2552,8 @@ static void tegra_pcie_enable_features(struct tegra_pcie *pcie)
 
 	tegra_pcie_enable_aspm(pcie);
 	list_for_each_entry(port, &pcie->ports, list) {
-		tegra_pcie_apply_sw_war(port, true);
+		if (port->status)
+			tegra_pcie_apply_sw_war(port, true);
 	}
 }
 static int tegra_pcie_enable_msi(struct tegra_pcie *, bool);
@@ -3072,7 +3075,6 @@ static int tegra_pcie_parse_dt(struct tegra_pcie *pcie)
 			return -EADDRNOTAVAIL;
 		rp->disable_clock_request = of_property_read_bool(port,
 			"nvidia,disable-clock-request");
-		rp->status = of_device_is_available(port);
 
 		list_add_tail(&rp->list, &pcie->ports);
 	}
