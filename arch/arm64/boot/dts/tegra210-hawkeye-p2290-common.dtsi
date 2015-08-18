@@ -88,6 +88,10 @@
 			status = "disabled";
 			gpio-output-low = <TEGRA_GPIO(DD, 0)>;
 		};
+
+		touch_rail_suspend {
+			gpio-suspend-to-sfio = <TEGRA_GPIO(V, 6)>;
+		};
 	};
 
 	pinmux@700008d4 {
