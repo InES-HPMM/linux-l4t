@@ -1301,6 +1301,14 @@ static int tegra_dp_init_max_link_cfg(struct tegra_dc_dp_data *dp,
 				NV_DPCD_MAX_LANE_COUNT, &dpcd_data));
 
 		cfg->max_lane_count = dpcd_data & NV_DPCD_MAX_LANE_COUNT_MASK;
+
+		if (cfg->max_lane_count >= 4)
+			cfg->max_lane_count = 4;
+		else if (cfg->max_lane_count >= 2)
+			cfg->max_lane_count = 2;
+		else
+			cfg->max_lane_count = 1;
+
 		if (dp->pdata && dp->pdata->max_n_lanes &&
 			dp->pdata->max_n_lanes < cfg->max_lane_count)
 			cfg->max_lane_count = dp->pdata->max_n_lanes;
@@ -1336,6 +1344,14 @@ static int tegra_dp_init_max_link_cfg(struct tegra_dc_dp_data *dp,
 			CHECK_RET(tegra_dc_dp_dpcd_read(dp,
 				NV_DPCD_MAX_LINK_BANDWIDTH,
 				&cfg->max_link_bw));
+
+		if (cfg->max_link_bw >= SOR_LINK_SPEED_G5_4)
+			cfg->max_link_bw = SOR_LINK_SPEED_G5_4;
+		else if (cfg->max_link_bw >= SOR_LINK_SPEED_G2_7)
+			cfg->max_link_bw = SOR_LINK_SPEED_G2_7;
+		else
+			cfg->max_link_bw = SOR_LINK_SPEED_G1_62;
+
 		if (dp->pdata && dp->pdata->max_link_bw &&
 			dp->pdata->max_link_bw < cfg->max_link_bw)
 			cfg->max_link_bw = dp->pdata->max_link_bw;
