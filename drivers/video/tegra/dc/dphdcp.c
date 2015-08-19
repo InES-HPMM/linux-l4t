@@ -1354,7 +1354,7 @@ exit:
 	return err;
 }
 
-void dphdcp2_downstream_worker(struct work_struct *work)
+static void dphdcp2_downstream_worker(struct work_struct *work)
 {
 	struct tegra_dphdcp *dphdcp =
 		container_of(to_delayed_work(work),
