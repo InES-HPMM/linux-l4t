@@ -73,7 +73,7 @@
 				};
 				display-timings {
 					720x1280-24 {
-						clock-frequency = <77844000>; /* (720+134+144) x (1280+11+9) x 60 */
+						clock-frequency = <77903880>; /* (720+134+144) x (1280+11+10) x 60 */
 						hactive = <720>;
 						vactive = <1280>;
 						hfront-porch = <134>; /* 100.5 Byte clk / 0.75 = 134 */
@@ -84,7 +84,7 @@
 						vfront-porch = <11>;
 						/* TODO, doc mentioned VBP only to 9.
 						 * Once vsync_width is clear, need to set VBP and vsync_width again */
-						vback-porch = <8>;
+						vback-porch = <9>;
 						vsync-len = <1>;
 						nvidia,h-ref-to-sync = <1>;
 						nvidia,v-ref-to-sync = <1>;
