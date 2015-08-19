@@ -302,7 +302,7 @@ int nvadsp_app_deinit(nvadsp_app_info_t *);
 void *nvadsp_alloc_coherent(size_t, dma_addr_t *, gfp_t);
 void nvadsp_free_coherent(size_t, void *, dma_addr_t);
 void *nvadsp_da_to_va_mappings(u64, int);
-nvadsp_app_info_t *nvadsp_run_app(nvadsp_os_handle_t, const char *,
+nvadsp_app_info_t __must_check *nvadsp_run_app(nvadsp_os_handle_t, const char *,
 	nvadsp_app_args_t *, app_complete_status_notifier, uint32_t, bool);
 void nvadsp_exit_app(nvadsp_app_info_t *app, bool terminate);
 

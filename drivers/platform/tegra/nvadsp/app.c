@@ -111,6 +111,8 @@ struct nvadsp_app_priv_struct {
 
 static struct nvadsp_app_priv_struct priv;
 
+static void delete_app_instance(nvadsp_app_info_t *);
+
 #ifdef CONFIG_DEBUG_FS
 static int dump_binary_in_2bytes_app_file_node(struct seq_file *s, void *data)
 {
@@ -678,10 +680,11 @@ err:
 }
 EXPORT_SYMBOL(nvadsp_app_init);
 
-static void start_app_on_adsp(nvadsp_app_info_t *app,
+static int start_app_on_adsp(nvadsp_app_info_t *app,
 	union app_loader_message *message, bool block)
 {
 	struct nvadsp_app_shared_msg_pool *msg_pool;
+	struct device *dev = &priv.pdev->dev;
 	struct nvadsp_shared_mem *shared_mem;
 	struct nvadsp_drv_data *drv_data;
 	msgq_t *msgq_send;
@@ -703,11 +706,14 @@ static void start_app_on_adsp(nvadsp_app_info_t *app,
 	if (block) {
 		wait_for_completion(&app->wait_for_app_start);
 		if (app->return_status) {
-			pr_info("app instance failed to start\n");
+			dev_err(dev, "%s app instance %d failed to start\n",
+				app->name, app->instance_id);
 			state = (int *)&app->state;
 			*state = NVADSP_APP_STATE_INITIALIZED;
 		}
 	}
+
+	return app->return_status;
 }
 
 int nvadsp_app_start(nvadsp_app_info_t *app)
@@ -715,6 +721,7 @@ int nvadsp_app_start(nvadsp_app_info_t *app)
 	union app_loader_message *message = app->priv;
 	struct app_loader_data *data = &message->data;
 	struct nvadsp_drv_data *drv_data;
+	int ret = -EINVAL;
 
 	if (IS_ERR_OR_NULL(app))
 		return -EINVAL;
@@ -732,9 +739,9 @@ int nvadsp_app_start(nvadsp_app_info_t *app)
 	data->app_init.message = ADSP_APP_START;
 	data->app_init.adsp_ref = app->token;
 	data->app_init.stack_size = app->stack_size;
-	start_app_on_adsp(app, app->priv, true);
+	ret = start_app_on_adsp(app, app->priv, true);
 err:
-	return (app->state == NVADSP_APP_STATE_STARTED) ? 0 : -EINVAL;
+	return ret;
 }
 EXPORT_SYMBOL(nvadsp_app_start);
 
@@ -748,6 +755,7 @@ nvadsp_app_info_t *nvadsp_run_app(nvadsp_os_handle_t os_handle,
 	nvadsp_app_info_t *info =  NULL;
 	struct app_loader_data *data;
 	struct device *dev;
+	int ret;
 
 	if (IS_ERR_OR_NULL(priv.pdev)) {
 		pr_err("ADSP Driver is not initialized\n");
@@ -779,7 +787,11 @@ nvadsp_app_info_t *nvadsp_run_app(nvadsp_os_handle_t os_handle,
 	}
 	data->app_init.message = RUN_ADSP_APP;
 
-	start_app_on_adsp(info, &message, block);
+	ret = start_app_on_adsp(info, &message, block);
+	if (ret) {
+		delete_app_instance(info);
+		info = NULL;
+	}
 end:
 	return info;
 }
@@ -819,9 +831,11 @@ void nvadsp_exit_app(nvadsp_app_info_t *app, bool terminate)
 		return;
 
 	/* TODO: add termination if possible to kill thread on adsp */
-	wait_for_completion(&app->wait_for_app_complete);
-	state = (int *)&app->state;
-	*state = NVADSP_APP_STATE_INITIALIZED;
+	if (app->state == NVADSP_APP_STATE_STARTED) {
+		wait_for_completion(&app->wait_for_app_complete);
+		state = (int *)&app->state;
+		*state = NVADSP_APP_STATE_INITIALIZED;
+	}
 	delete_app_instance(app);
 }
 EXPORT_SYMBOL(nvadsp_exit_app);
