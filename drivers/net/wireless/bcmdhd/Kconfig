@@ -91,3 +91,12 @@ config BCMDHD_CUSTOM_SYSFS_TEGRA
 	default y
 	---help---
 	  Enable custom sysfs for Tegra platform.
+
+config BCMDHD_CUSTOM_NET_PERF_TEGRA
+	bool "Custom network performance boost for Tegra platform"
+	depends on BCMDHD
+	default y
+	---help---
+	  Enable custom network performance boost for Tegra platform.
+	  Dynamically boosts clock frequencies based on network traffic
+	  requirements.

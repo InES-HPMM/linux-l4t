@@ -258,6 +258,10 @@ ifneq ($(CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA),)
   DHDOFILES += dhd_custom_sysfs_tegra_tcpdump.o
 endif
 
+ifneq ($(CONFIG_BCMDHD_CUSTOM_NET_PERF_TEGRA),)
+  DHDOFILES += dhd_custom_net_perf_tegra.o
+endif
+
 bcmdhd-objs := $(DHDOFILES)
 obj-$(DRIVER_TYPE)   += bcmdhd.o
 
