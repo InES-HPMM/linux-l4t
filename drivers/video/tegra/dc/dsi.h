@@ -168,6 +168,8 @@ struct tegra_dc_dsi_data {
 
 #define DSI_DELAY_FOR_READ_FIFO 5
 
+#define DSI_WRITE_DATA_RETRY_ATTEMPTS 5
+
 /* Dsi virtual channel bit position, refer to the DSI specs */
 #define DSI_VIR_CHANNEL_BIT_POSITION	6
 
