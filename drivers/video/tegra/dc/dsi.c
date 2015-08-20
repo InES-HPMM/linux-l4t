@@ -3384,6 +3384,7 @@ static int tegra_dsi_write_data_nosync(struct tegra_dc *dc,
 			struct tegra_dsi_cmd *cmd, u8 delay_ms)
 {
 	int err = 0;
+	int restore_err = 0;
 	struct dsi_status *init_status;
 
 	init_status = tegra_dsi_prepare_host_transmission(
@@ -3395,8 +3396,13 @@ static int tegra_dsi_write_data_nosync(struct tegra_dc *dc,
 	}
 
 	err = _tegra_dsi_write_data(dsi, cmd);
-	if (err < 0)
+	if (err < 0) {
 		dev_err(&dc->ndev->dev, "Failed DSI write\n");
+		restore_err = tegra_dsi_restore_state(dc, dsi, init_status);
+		if (restore_err < 0)
+			dev_err(&dc->ndev->dev, "Failed to restore prev state\n");
+		goto fail;
+	}
 
 	mdelay(delay_ms);
 
@@ -3496,6 +3502,7 @@ int tegra_dsi_send_panel_cmd(struct tegra_dc *dc,
 	u32 i;
 	int err;
 	u8 delay_ms;
+	int retry_count;
 
 	err = 0;
 	for (i = 0; i < n_cmd; i++) {
@@ -3536,10 +3543,18 @@ int tegra_dsi_send_panel_cmd(struct tegra_dc *dc,
 				delay_ms = cmd[i + 1].sp_len_dly.delay_ms;
 				i++;
 			}
-			err = tegra_dsi_write_data_nosync(dc, dsi,
+			retry_count = DSI_WRITE_DATA_RETRY_ATTEMPTS;
+			do {
+				err = tegra_dsi_write_data_nosync(dc, dsi,
 							cur_cmd, delay_ms);
-			if (err < 0)
-				break;
+				if (err < 0) {
+					retry_count--;
+					dev_err(&dsi->dc->ndev->dev,
+						"dsi: %s failed, retrying...\n",__func__);
+				} else {
+					retry_count = 0;
+				}
+			} while (retry_count);
 		}
 	}
 	return err;
