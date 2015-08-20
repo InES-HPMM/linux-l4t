@@ -36,7 +36,7 @@
 							   TEGRA_DC_OUT_PIN_V_SYNC TEGRA_DC_OUT_PIN_POL_LOW
 							   TEGRA_DC_OUT_PIN_PIXEL_CLOCK TEGRA_DC_OUT_PIN_POL_LOW
 							   TEGRA_DC_OUT_PIN_DATA_ENABLE TEGRA_DC_OUT_PIN_POL_HIGH>;
-					nvidia,out-depth = <16>;
+					nvidia,out-depth = <24>;
 					nvidia,out-parent-clk = "pll_d_out0";
 					nvidia,out-width = <346>;
 					nvidia,out-height = <194>;
