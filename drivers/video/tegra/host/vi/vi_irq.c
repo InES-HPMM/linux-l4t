@@ -178,6 +178,9 @@ static irqreturn_t vi_isr(int irq, void *dev_id)
 				val);
 	}
 
+	/* Disable IRQ */
+	vi_disable_irq(tegra_vi);
+
 	schedule_work(&tegra_vi->stats_work);
 
 handled:
@@ -193,6 +196,9 @@ void vi_stats_worker(struct work_struct *work)
 		"%s: vi[%d]_out dropped data %u times", __func__,
 		tegra_vi->ndev->id,
 		atomic_read(&(tegra_vi->vi_out.overflow)));
+
+	/* Enable IRQ */
+	vi_enable_irq(tegra_vi);
 }
 EXPORT_SYMBOL(vi_stats_worker);
 
