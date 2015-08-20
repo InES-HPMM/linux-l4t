@@ -1,7 +1,7 @@
 /*
  * tegra_asoc_machine_alt.h
  *
- * Copyright (c) 2014 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -168,7 +168,8 @@ enum tegra210_xbar_dai_link {
 	TEGRA210_DAI_LINK_ADSP_ADMAIF8,
 	TEGRA210_DAI_LINK_ADSP_ADMAIF9,
 	TEGRA210_DAI_LINK_ADSP_ADMAIF10,
-	TEGRA210_DAI_LINK_ADSP_PCM,
+	TEGRA210_DAI_LINK_ADSP_PCM1,
+	TEGRA210_DAI_LINK_ADSP_PCM2,
 	TEGRA210_DAI_LINK_ADSP_COMPR1,
 	TEGRA210_DAI_LINK_ADSP_COMPR2,
 	TEGRA210_XBAR_DAI_LINKS, /* Total number of xbar dai links */
