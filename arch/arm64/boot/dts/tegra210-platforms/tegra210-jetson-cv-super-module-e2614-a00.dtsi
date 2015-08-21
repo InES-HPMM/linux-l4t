@@ -27,9 +27,21 @@
 		jsa1127@39 {
 			status = "disabled";
 		};
+
+		rt5658: rt5659.0-001a@1a {
+                        compatible = "realtek,rt5658";
+                        reg = <0x1a>;
+                };
 	};
 
 	spi@7000d600 {
 		status = "disabled";
+	};
+
+	/* extended sound node for superIO */
+	sound {
+		nvidia,dai-link-1 {
+                        codec-dai = <&rt5658>;
+                };
 	};
 };
