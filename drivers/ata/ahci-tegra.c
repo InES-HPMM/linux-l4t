@@ -1458,12 +1458,12 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 		goto exit;
 	}
 
-	tegra_padctl_init_sata_pad();
-
 	tegra_periph_reset_assert(tegra_hpriv->clk_sata);
 	tegra_periph_reset_assert(tegra_hpriv->clk_sata_oob);
 	tegra_periph_reset_assert(tegra_hpriv->clk_sata_cold);
 	udelay(10);
+
+	tegra_padctl_init_sata_pad();
 
 	/* need to establish both clocks divisors before setting clk sources */
 	clk_set_rate(tegra_hpriv->clk_sata,
