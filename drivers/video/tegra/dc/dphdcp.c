@@ -767,10 +767,6 @@ static void dphdcp_downstream_worker(struct work_struct *work)
 		e = tegra_dpcd_hdcp_write8(dp, NV_DPCD_HDCP_AINFO_OFFSET,
 						0x01);
 		mutex_lock(&dphdcp->lock);
-		if (e) {
-			dphdcp_err("Ainfo write failure\n");
-			goto failure;
-		}
 	}
 
 	set_bksv(sor, dphdcp->b_ksv, (b_caps & BCAPS_REPEATER));
