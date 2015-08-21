@@ -836,11 +836,38 @@ static int tegra_hdmi_vrr_init(struct tegra_hdmi *hdmi)
 {
 	struct tegra_dc *dc = hdmi->dc;
 	struct tegra_vrr *vrr  = dc->out->vrr;
+	struct i2c_adapter *i2c_adap;
+	int err = 0;
+	struct i2c_board_info i2c_dev_info = {
+		.type = "tegra_hdmi_ddcci",
+		.addr = 0x37,
+	};
 
-	if (!vrr || !vrr->capability)
-		return -EINVAL;
+	if (!vrr || !vrr->capability) {
+		err = -EINVAL;
+		goto fail;
+	}
 
-	return 0;
+	i2c_adap = i2c_get_adapter(dc->out->ddc_bus);
+	if (!i2c_adap) {
+		dev_err(&dc->ndev->dev,
+			"hdmi: can't get adpater for ddcci bus %d\n",
+			dc->out->ddc_bus);
+		err = -EBUSY;
+		goto fail;
+	}
+
+	hdmi->ddcci_i2c_client = i2c_new_device(i2c_adap, &i2c_dev_info);
+	i2c_put_adapter(i2c_adap);
+	if (!hdmi->ddcci_i2c_client) {
+		dev_err(&dc->ndev->dev,
+			"hdmi: can't create ddcci i2c device\n");
+		err = -EBUSY;
+		goto fail;
+	}
+
+fail:
+	return err;
 }
 
 static int tegra_hdmi_tmds_init(struct tegra_hdmi *hdmi)
