@@ -28,6 +28,7 @@
 #include <linux/pagemap.h>
 #include <linux/syscalls.h>
 #include <asm/smp_plat.h>
+#include <linux/of.h>
 
 #include "ote_protocol.h"
 
@@ -323,7 +324,10 @@ static long tlk_generic_smc_on_cpu0(void *args)
 	       retval == TE_ERROR_PREEMPT_BY_FS) {
 		if (retval == TE_ERROR_PREEMPT_BY_FS)
 			callback_status = tlk_ss_op();
-		retval = _tlk_generic_smc(TE_SMC_RESTART, callback_status, 0);
+		if (of_machine_is_compatible("nvidia,foster-e"))
+			retval = _tlk_generic_smc(TE_SMC_RESTART_LEGACY, callback_status, 0);
+		else
+			retval = _tlk_generic_smc(TE_SMC_RESTART, callback_status, 0);
 	}
 
 	/* Print TLK logs if any */
@@ -423,7 +427,10 @@ void te_restore_keyslots(void)
 	/* Share the same lock used when request is send from user side */
 	mutex_lock(&smc_lock);
 
-	retval = send_smc(TE_SMC_TA_EVENT, TA_EVENT_RESTORE_KEYS, 0);
+	if (of_machine_is_compatible("nvidia,foster-e"))
+		retval = send_smc(TE_SMC_TA_EVENT_LEGACY, TA_EVENT_RESTORE_KEYS, 0);
+	else
+		retval = send_smc(TE_SMC_TA_EVENT, TA_EVENT_RESTORE_KEYS, 0);
 
 	mutex_unlock(&smc_lock);
 
@@ -480,7 +487,10 @@ void te_open_session(struct te_opensession *cmd,
 	INIT_LIST_HEAD(&session->inactive_persist_shmem_list);
 	INIT_LIST_HEAD(&session->persist_shmem_list);
 
-	request->type = TE_SMC_OPEN_SESSION;
+	if (of_machine_is_compatible("nvidia,foster-e"))
+		request->type = TE_SMC_OPEN_SESSION_LEGACY;
+	else
+		request->type = TE_SMC_OPEN_SESSION;
 
 	ret = te_prep_mem_buffers(request, session);
 	if (ret != OTE_SUCCESS) {
@@ -534,7 +544,11 @@ void te_close_session(struct te_closesession *cmd,
 	struct te_session *session;
 
 	request->session_id = cmd->session_id;
-	request->type = TE_SMC_CLOSE_SESSION;
+
+	if (of_machine_is_compatible("nvidia,foster-e"))
+		request->type = TE_SMC_CLOSE_SESSION_LEGACY;
+	else
+		request->type = TE_SMC_CLOSE_SESSION;
 
 	do_smc(request, context->dev);
 	if (request->result)
@@ -573,7 +587,11 @@ void te_launch_operation(struct te_launchop *cmd,
 
 	request->session_id = cmd->session_id;
 	request->command_id = cmd->operation.command;
-	request->type = TE_SMC_LAUNCH_OPERATION;
+
+	if (of_machine_is_compatible("nvidia,foster-e"))
+		request->type = TE_SMC_LAUNCH_OPERATION_LEGACY;
+	else
+		request->type = TE_SMC_LAUNCH_OPERATION;
 
 	ret = te_prep_mem_buffers(request, session);
 	if (ret != OTE_SUCCESS) {

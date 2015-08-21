@@ -24,6 +24,7 @@
 #include <linux/bitops.h>
 #include <linux/uaccess.h>
 #include <linux/dma-mapping.h>
+#include <linux/of.h>
 
 #include "ote_protocol.h"
 
@@ -107,8 +108,13 @@ static int __init tlk_ss_init(void)
 		return -ENOMEM;
 	}
 
-	ret = send_smc(TE_SMC_SS_REGISTER_HANDLER,
+	if (of_machine_is_compatible("nvidia,foster-e"))
+		ret = send_smc(TE_SMC_SS_REGISTER_HANDLER_LEGACY,
 			(uintptr_t)ss_op_shmem, 0);
+	else
+		ret = send_smc(TE_SMC_SS_REGISTER_HANDLER,
+			(uintptr_t)ss_op_shmem, 0);
+
 	if (ret != 0) {
 		dma_free_coherent(NULL, sizeof(struct te_ss_op),
 			(void *)ss_op_shmem, ss_op_shmem_dma);
