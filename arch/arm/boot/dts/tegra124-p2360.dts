@@ -243,6 +243,7 @@
 		/* default-power-on; */
 		interrupt-parent = <&gpio>;
 		interrupts = <TEGRA_GPIO(S, 3) 2>; /* gpio PS3 : falling edge sensitive */
+		/* runtime-pwrctrl-off; */
 		status = "okay";
 	};
 
