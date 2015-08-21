@@ -280,7 +280,7 @@ static long vi_ioctl(struct file *file,
 
 		return ret;
 	}
-	case _IOC_NR(NVHOST_ISP_IOCTL_GET_VI_CLK): {
+	case _IOC_NR(NVHOST_VI_IOCTL_GET_VI_CLK): {
 		int ret;
 		u64 vi_clk_rate = 0;
 
@@ -303,7 +303,7 @@ static long vi_ioctl(struct file *file,
 
 		return 0;
 	}
-	case _IOC_NR(NVHOST_ISP_IOCTL_SET_VI_LA_BW): {
+	case _IOC_NR(NVHOST_VI_IOCTL_SET_VI_LA_BW): {
 		u32 ret = 0;
 		u32 vi_la_bw;
 
