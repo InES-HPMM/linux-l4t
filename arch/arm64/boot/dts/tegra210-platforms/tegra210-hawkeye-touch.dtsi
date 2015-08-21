@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -55,6 +55,11 @@
 			platform-id = <K7_PLATFORM_HAWKEYE>;
 			name-of-clock = "clk_out_2";
 			name-of-clock-con = "extern2";
+
+			pinctrl-names = "spi_intf_lowpower", "spi_intf_normal";
+			pinctrl-0 = <&spi4_en_lowpower>;
+			pinctrl-1 = <&spi4_en_normal>;
+
 		};
 	};
 };

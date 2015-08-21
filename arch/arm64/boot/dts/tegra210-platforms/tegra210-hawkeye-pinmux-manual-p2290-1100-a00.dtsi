@@ -84,5 +84,29 @@
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 			};
 		};
+
+		spi4_en_lowpower: spi4_lowpower {
+			spi4_pins {
+				nvidia,pins = "spi4_mosi_pc7", "spi4_miso_pd0", "spi4_sck_pc5", "spi4_cs0_pc6";
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+		};
+		spi4_en_normal: spi4_normal {
+			spi4_pins {
+				nvidia,pins = "spi4_mosi_pc7", "spi4_sck_pc5", "spi4_cs0_pc6";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+
+			spi4_miso_pd0 {
+				nvidia,pins = "spi4_miso_pd0";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+		};
 	};
 };
