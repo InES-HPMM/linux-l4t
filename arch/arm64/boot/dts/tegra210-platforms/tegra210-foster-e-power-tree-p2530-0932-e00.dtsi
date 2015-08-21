@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -333,4 +333,13 @@
 		iopower-sdmmc2-supply = <&max77620_sd3>;
 		iopower-dp-supply = <&max77620_sd3>;
 	};
+
+    psci {
+         compatible = "arm,psci";
+         method = "smc";
+         cpu_off = <0x84000002>;
+         cpu_on = <0xc4000003>;
+         cpu_suspend = <0xc4000001>;
+   };
+
 };
