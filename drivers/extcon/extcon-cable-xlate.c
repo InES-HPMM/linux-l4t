@@ -416,7 +416,7 @@ static int ecx_probe(struct platform_device *pdev)
 	ecx->edev.name = pdata->name;
 	ecx->edev.dev.parent = &pdev->dev;
 	ecx->debounce_jiffies = msecs_to_jiffies(pdata->cable_insert_delay);
-	ecx->timer_to_work_jiffies = msecs_to_jiffies(100);
+	ecx->timer_to_work_jiffies = msecs_to_jiffies(500);
 	ecx->detect_suspend_jiffies =
 			msecs_to_jiffies(pdata->cable_detect_suspend_delay);
 	ecx->edev.supported_cable = pdata->out_cable_names;
