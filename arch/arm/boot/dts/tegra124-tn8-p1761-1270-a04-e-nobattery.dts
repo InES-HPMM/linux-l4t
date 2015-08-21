@@ -217,7 +217,7 @@
 		nvidia,id-detection-type = <1>;
 		nvidia,enable-pmu-vbus-detection;
 		nvidia,enable-aca-rid-detection;
-		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 2 &extcon_cable_xlate 5>;
+		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 4 &extcon_cable_xlate 5>;
 		extcon-cable-names = "vbus", "aca-rb", "aca-rc";
 		#extcon-cells = <1>;
 		status = "okay";
