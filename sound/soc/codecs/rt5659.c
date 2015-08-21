@@ -39,6 +39,7 @@ static struct reg_default init_list[] = {
 	/*DMIC1_SDA from GPIO5*/
 	{RT5659_DMIC_CTRL_1,		0x24a8},
 	{RT5659_GPIO_CTRL_1,		0x4800},
+	{RT5659_GPIO_CTRL_3,		0x8000},
 	/* Headset mic (IN1) */
 	{RT5659_IN1_IN2,		0x4000}, /*Set BST1 to 36dB*/
 	/* Jack detect (JD3 to IRQ)*/
@@ -4364,6 +4365,8 @@ static int rt5659_i2c_probe(struct i2c_client *i2c,
 			"Device with ID register %x is not rt5659\n", val);
 		return -ENODEV;
 	}
+
+	rt5659->pdata.dmic1_data_pin = RT5659_DMIC1_DATA_GPIO5;
 
 	regmap_write(rt5659->regmap, RT5659_RESET, 0);
 
