@@ -28,8 +28,8 @@ enum {
 	VP_CSOUT2,
 	VP_FEOUT1,
 	VP_FEOUT2,
-	AUDIOZOOM_CSOUT,
-	AUDIOZOOM_AOUT1,
+	AUDIOFOCUS_CSOUT1,
+	AUDIOFOCUS_CSOUT2,
 	MM_AUDOUT1,
 	MM_AUDOUT2,
 	MM_PASSOUT1,
@@ -41,7 +41,7 @@ enum {
 	PASS_AUDOUT3,
 	PASS_AUDOUT4,
 	PASS_AO1,
-	PASS_MO2,
+	PASS_AO2,
 	MONOUT1,
 	MONOUT2,
 	MONOUT3,
@@ -60,12 +60,12 @@ enum {
 	VP,
 	PT,
 	MM,
-	AUDIOZOOM,
+	AUDIOFOCUS,
 	VP_MM,
 	PT_VP,
 	PT_VP_DSM,
 	VP_DSM,
-	AZ_DSM,
+	AF_DSM,
 	PT_COPY,
 	PT_4CH,
 	VP_2CSOUT,
@@ -73,9 +73,11 @@ enum {
 };
 #endif
 /* MUX info structure for each base route */
-extern struct es_mux_info es_dhwpt_mux_info;
+extern struct es_mux_info es_kalaok_mux_info;
+extern struct es_mux_info es_bargein_mux_info;
 extern struct es_mux_info es_pt_vp_mux_info;
 extern struct es_mux_info es_vp_mux_info;
+extern struct es_mux_info es_audiofocus_mux_info;
 
 /* Helper routines to build commands for any base route */
 void prepare_mux_cmd(int mux, u32 *msg, u32 *msg_len,

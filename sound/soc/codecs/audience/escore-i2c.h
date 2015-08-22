@@ -15,7 +15,6 @@
 #define _ESCORE_I2C_H
 
 #include "escore.h"
-#include "mq100-sensorhub.h"
 #define ES_I2C_BOOT_CMD			0x0001
 #define ES_I2C_BOOT_ACK			0x0101
 

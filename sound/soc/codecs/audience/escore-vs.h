@@ -32,6 +32,11 @@ struct escore_voice_sense {
 	u16 vs_get_event;
 	struct mutex vs_event_mutex;
 	u16 cvs_preset;
+	u16 vs_route_preset;
+	u16 es_vs_keyword_length;
+#ifdef CONFIG_SND_SOC_ES_AVOID_REPEAT_FW_DOWNLOAD
+	bool vs_download_req;
+#endif
 };
 
 extern int escore_vs_init(struct escore_priv *escore);
@@ -51,6 +56,12 @@ int escore_put_cvs_preset_value(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol);
 int escore_get_cvs_preset_value(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol);
+int escore_put_vs_keyword_length(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol);
+int escore_get_vs_keyword_length(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol);
+int escore_get_keyword_overrun(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol);
 int escore_vs_sleep_enable(struct escore_priv *escore);
 int escore_put_vs_activate_keyword(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol);
@@ -61,7 +72,7 @@ int escore_vs_request_firmware(struct escore_priv *escore,
 void escore_vs_release_firmware(struct escore_priv *escore);
 int escore_vs_request_bkg(struct escore_priv *escore, const char *vs_filename);
 void escore_vs_release_bkg(struct escore_priv *escore);
-int escore_vs_request_keywords(struct escore_priv *escore);
+int escore_vs_request_keywords(struct escore_priv *escore, unsigned int value);
 void escore_vs_release_keywords(struct escore_priv *escore);
 int escore_vs_write_bkg_and_keywords(struct escore_priv *escore);
 int escore_vs_put_control_enum(struct snd_kcontrol *kcontrol,
@@ -73,5 +84,21 @@ int escore_vs_put_control_value(struct snd_kcontrol *kcontrol,
 int escore_vs_get_control_value(struct snd_kcontrol *kcontrol,
 			   struct snd_ctl_elem_value *ucontrol);
 
+#ifdef CONFIG_SND_SOC_ES_AVOID_REPEAT_FW_DOWNLOAD
+static inline void escore_set_vs_download_req(struct escore_priv *escore,
+								bool val)
+{
+	struct escore_voice_sense *voice_sense =
+		(struct escore_voice_sense *)escore->voice_sense;
+	voice_sense->vs_download_req = val;
+}
 
+static inline bool escore_get_vs_download_req(struct escore_priv *escore)
+{
+	struct escore_voice_sense *voice_sense =
+		(struct escore_voice_sense *)escore->voice_sense;
+	return voice_sense->vs_download_req;
+}
+
+#endif
 #endif /* _ESCORE_VS_H */

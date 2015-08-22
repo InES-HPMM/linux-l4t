@@ -574,6 +574,7 @@ int escore_slim_read(struct escore_priv *escore, void *buf, int len)
 		.comp = NULL,
 	};
 
+
 	rc = slim_get_logical_addr(sbdev, escore->gen0_client->e_addr,
 			6, &(escore->gen0_client->laddr));
 	if (rc)
@@ -591,10 +592,13 @@ int escore_slim_read(struct escore_priv *escore, void *buf, int len)
 		usleep_range(SMB_DELAY, SMB_DELAY + 5);
 	} while (--retry);
 
-	if (rc != 0)
+	if (rc != 0) {
 		dev_err(&sbdev->dev,
 			"%s: Error read failed rc=%d after %d retries\n",
 			__func__, rc, MAX_SMB_TRIALS);
+
+		ESCORE_FW_RECOVERY_FORCED_OFF(escore);
+	}
 
 	return rc;
 }
@@ -653,6 +657,9 @@ int escore_slim_write(struct escore_priv *escore, const void *buf, int len)
 		wr += sz;
 	}
 
+	if (rc)
+		ESCORE_FW_RECOVERY_FORCED_OFF(escore);
+
 	return rc;
 }
 
@@ -666,26 +673,26 @@ int escore_slim_cmd(struct escore_priv *escore, u32 cmd, u32 *resp)
 
 	dev_dbg(&sbdev->dev,
 			"%s: cmd=0x%08x  sr=0x%08x\n", __func__, cmd, sr);
+	INC_DISABLE_FW_RECOVERY_USE_CNT(escore);
 
+	if ((escore->cmd_compl_mode == ES_CMD_COMP_INTR) && !sr)
+		escore_set_api_intr_wait(escore);
+
+	*resp = 0;
 	cmd = cpu_to_le32(cmd);
 	err = escore_slim_write(escore, &cmd, sizeof(cmd));
 	dev_dbg(&sbdev->dev, "%s: err=%d, cmd_cmpl_mode=%d\n",
 		 __func__, err, escore->cmd_compl_mode);
 	if (err || sr)
-		return err;
+		goto cmd_exit;
 
 	do {
 		if (escore->cmd_compl_mode == ES_CMD_COMP_INTR) {
 			pr_debug("%s(): Waiting for API interrupt. Jiffies:%lu",
 					__func__, jiffies);
-			err = wait_for_completion_timeout(&escore->cmd_compl,
-					msecs_to_jiffies(ES_RESP_TOUT_MSEC));
-			if (!err) {
-				pr_debug("%s(): API Interrupt wait timeout\n",
-						__func__);
-				err = -ETIMEDOUT;
+			err = escore_api_intr_wait_completion(escore);
+			if (err)
 				break;
-			}
 		} else {
 			pr_debug("%s(): Polling method\n", __func__);
 			usleep_range(ES_RESP_POLL_TOUT,
@@ -697,16 +704,16 @@ int escore_slim_cmd(struct escore_priv *escore, u32 cmd, u32 *resp)
 		dev_dbg(&sbdev->dev, "%s: *resp=0x%08x\n", __func__, *resp);
 		if (err) {
 			dev_dbg(&sbdev->dev,
-				"%s: escore_slim_read() failure\n", __func__);
+				"%s: slim_read() fail %d\n", __func__, err);
 		} else if ((*resp & ES_ILLEGAL_CMD) == ES_ILLEGAL_CMD) {
 			dev_err(&sbdev->dev, "%s: illegal command 0x%08x\n",
-				__func__, cmd);
+				__func__, le32_to_cpu(cmd));
 			err = -EINVAL;
 			goto cmd_exit;
 		} else if (*resp == ES_NOT_READY) {
 			dev_dbg(&sbdev->dev,
 				"%s: escore_slim_read() not ready\n", __func__);
-			err = -ETIMEDOUT;
+			err = -EBUSY;
 		} else {
 			goto cmd_exit;
 		}
@@ -715,6 +722,11 @@ int escore_slim_cmd(struct escore_priv *escore, u32 cmd, u32 *resp)
 	} while (retry != 0 && escore->cmd_compl_mode != ES_CMD_COMP_INTR);
 
 cmd_exit:
+	update_cmd_history(le32_to_cpu(cmd), *resp);
+	DEC_DISABLE_FW_RECOVERY_USE_CNT(escore);
+	if (err && ((*resp & ES_ILLEGAL_CMD) != ES_ILLEGAL_CMD))
+		ESCORE_FW_RECOVERY_FORCED_OFF(escore);
+
 	return err;
 }
 
@@ -1006,12 +1018,14 @@ int escore_slim_boot_setup(struct escore_priv *escore)
 
 	rc = escore_slim_cmd(escore, boot_cmd, &boot_ack);
 	if (rc < 0) {
-		pr_err("%s(): firmware load failed boot slim cmd\n", __func__);
+		pr_err("%s(): firmware load failed boot slim cmd %d\n",
+		       __func__, rc);
 		goto escore_bootup_failed;
 	}
 	pr_debug("%s(): boot_ack = 0x%08x\n", __func__, boot_ack);
 	if (boot_ack != ES_SLIM_BOOT_ACK) {
-		pr_err("%s(): firmware load failed boot ack pattern", __func__);
+		pr_err("%s(): firmware load failed boot ack pattern (0x%x)",
+		       __func__, boot_ack);
 		rc = -EIO;
 		goto escore_bootup_failed;
 	}
@@ -1044,8 +1058,8 @@ int escore_slim_boot_finish(struct escore_priv *escore)
 				__func__, sync_cmd);
 		rc = escore_slim_cmd(escore, sync_cmd, &sync_ack);
 		if (rc < 0) {
-			pr_err("%s(): firmware load failed sync write\n",
-					__func__);
+			pr_err("%s(): firmware load failed sync write %d\n",
+			       __func__, rc);
 			continue;
 		}
 		pr_debug("%s(): sync_ack = 0x%08x\n", __func__, sync_ack);
@@ -1121,8 +1135,8 @@ static int escore_dt_parse_slim_dev_info(struct slim_device *slim_gen,
 				 escore_priv.interface_device_name,
 				 &slim_ifd->name);
 	if (rc < 0) {
-		dev_err(dev, "%s(): %s fail for %s", __func__,
-			dev->of_node->full_name, slim_ifd->name);
+		dev_err(dev, "%s(): %s fail (%d) for %s", __func__,
+			dev->of_node->full_name, rc, slim_ifd->name);
 		return rc;
 	}
 
@@ -1150,6 +1164,8 @@ static void escore_slim_setup_pri_intf(struct escore_priv *escore)
 	escore->bus.ops.read = escore_slim_read;
 	escore->bus.ops.write = escore_slim_write;
 	escore->bus.ops.cmd = escore_slim_cmd;
+	escore->bus.ops.cpu_to_bus = escore_cpu_to_slim;
+	escore->bus.ops.bus_to_cpu = escore_slim_to_cpu;
 
 #ifndef CONFIG_SLIMBUS_MSM_NGD
 	/* Fix-Me: Board may not be ready by now. so this may fail */
@@ -1168,17 +1184,17 @@ static int escore_slim_setup_high_bw_intf(struct escore_priv *escore)
 	escore->bus.ops.high_bw_cmd = escore_slim_cmd;
 	escore->boot_ops.setup = escore_slim_boot_setup;
 	escore->boot_ops.finish = escore_slim_boot_finish;
-	escore->bus.ops.cpu_to_bus = escore_cpu_to_slim;
-	escore->bus.ops.bus_to_cpu = escore_slim_to_cpu;
+	escore->bus.ops.cpu_to_high_bw_bus = escore_cpu_to_slim;
+	escore->bus.ops.high_bw_bus_to_cpu = escore_slim_to_cpu;
 
 
 	rc = escore->probe(&escore->gen0_client->dev);
 	if (rc)
 		goto out;
 
+	mutex_lock(&escore->access_lock);
 	rc = escore->boot_ops.bootup(escore);
-	if (rc)
-		goto out;
+	mutex_unlock(&escore->access_lock);
 
 out:
 
@@ -1231,7 +1247,8 @@ static int populate_and_trigger_reset(struct device *dev)
 		rc = gpio_direction_output(reset_gpio, 0);
 		if (rc < 0) {
 			dev_err(escore_priv.dev,
-				"%s(): es705_reset direction failed", __func__);
+				"%s(): es705_reset direction fail %d\n",
+				__func__, rc);
 			return rc;
 		}
 		gpio_set_value(reset_gpio, 0);
@@ -1337,13 +1354,7 @@ out:
 
 static int escore_slim_remove(struct slim_device *sbdev)
 {
-	struct esxxx_platform_data *pdata = sbdev->dev.platform_data;
-
 	dev_dbg(&sbdev->dev, "%s(): sbdev->name = %s\n", __func__, sbdev->name);
-
-	gpio_free(pdata->reset_gpio);
-	gpio_free(pdata->wakeup_gpio);
-	gpio_free(pdata->gpioa_gpio);
 
 	snd_soc_unregister_codec(&sbdev->dev);
 

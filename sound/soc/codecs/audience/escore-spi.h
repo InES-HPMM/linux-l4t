@@ -17,21 +17,16 @@
 
 extern struct spi_driver escore_spi_driver;
 
-#define ES_SPI_BOOT_CMD			0x00000001
-#define ES_SPI_BOOT_ACK			0x00010001
-#define ES_SPI_SBL_SYNC_CMD		0x80000000
-#define ES_SPI_SBL_SYNC_ACK		0x8000FFFF
+#define ES_SPI_BOOT_CMD			0x0001
 
-#if defined(CONFIG_ARCH_OMAP)
-#define ES_SPI_FW_SPEED	12000000
-#define ES_SPI_OPERATION_SPEED	3000000
-#elif defined(CONFIG_ARCH_MSM)
-#define ES_SPI_FW_SPEED	9600000
-#define ES_SPI_OPERATION_SPEED	4800000
-#elif defined(CONFIG_ARCH_TEGRA)
-#define ES_SPI_FW_SPEED	9600000
-#define ES_SPI_OPERATION_SPEED	2000000
-#endif
+#define ES_SPI_BOOT_ACK			0x0001
+
+#define ES_SPI_SYNC_CMD		0x0000
+#define ES_SPI_SYNC_ACK		0x0000
+
+#define ES_SPI_8BITS_PER_WORD	8
+#define ES_SPI_16BITS_PER_WORD	16
+#define ES_SPI_32BITS_PER_WORD	32
 
 /* This is obtained after discussion with FW team.*/
 #define ESCORE_SPI_PACKET_LEN 256
@@ -41,8 +36,9 @@ extern struct spi_driver escore_spi_driver;
  */
 #define ES_SPI_STREAM_READ_DELAY 30
 
-#define ES_SPI_SYNCBYTE_CMD		0x00000000
-#define ES_SPI_SYNCBYTE_ACK		0x00000000
+#ifdef CONFIG_SND_SOC_ES_SPI_WRITE_DMA_MODE
+#define ES_SPI_DMA_MIN_BYTES	512
+#endif
 
 extern struct es_stream_device es_spi_streamdev;
 extern int escore_spi_init(void);

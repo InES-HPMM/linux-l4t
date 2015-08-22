@@ -17,7 +17,6 @@
 #include <linux/slab.h>
 #include <linux/err.h>
 #include <linux/kthread.h>
-#include <linux/esxxx.h>
 #include <linux/serial_core.h>
 #include <linux/tty.h>
 #include <linux/fs.h>
@@ -72,14 +71,20 @@ int escore_uart_read(struct escore_priv *escore, void *buf, int len)
 {
 	int rc;
 
+	if (unlikely(!escore->uart_ready)) {
+		pr_err("%s(): Error UART is not open\n", __func__);
+		return -EIO;
+	}
+
 	rc = escore_uart_read_internal(escore, buf, len);
 
-	if (rc < len)
-		rc = -EIO;
-	else
-		rc = 0;
+	if (rc < len) {
+		pr_err("%s() Uart Read Failed\n", __func__);
+		ESCORE_FW_RECOVERY_FORCED_OFF(escore);
+		return -EIO;
+	}
 
-	return rc;
+	return 0;
 }
 
 int escore_uart_write(struct escore_priv *escore, const void *buf, int len)
@@ -90,7 +95,13 @@ int escore_uart_write(struct escore_priv *escore, const void *buf, int len)
 	mm_segment_t oldfs;
 	loff_t pos = 0;
 
-	 dev_dbg(escore->dev, "%s() size %d\n", __func__, len);
+	if (unlikely(!escore->uart_ready)) {
+		pr_err("%s(): Error UART is not open\n", __func__);
+		return -EIO;
+	}
+
+	dev_dbg(escore->dev, "%s() size %d\n", __func__, len);
+
 
 	/*
 	 * we may call from user context via char dev, so allow
@@ -118,11 +129,14 @@ int escore_uart_write(struct escore_priv *escore, const void *buf, int len)
 err_out:
 	/* restore old fs context */
 	set_fs(oldfs);
-	if (count_remain)
+	if (count_remain) {
+		pr_err("%s() Uart write Failed\n", __func__);
+		ESCORE_FW_RECOVERY_FORCED_OFF(escore);
 		rc = -EIO;
-	else
+	} else {
 		rc = 0;
-	 pr_debug("%s() returning %d\n", __func__, rc);
+	}
+	pr_debug("%s() returning %d\n", __func__, rc);
 
 	return rc;
 }
@@ -136,11 +150,13 @@ int escore_uart_cmd(struct escore_priv *escore, u32 cmd, u32 *resp)
 
 	dev_dbg(escore->dev,
 			"%s: cmd=0x%08x sr=0x%08x\n", __func__, cmd, sr);
+	INC_DISABLE_FW_RECOVERY_USE_CNT(escore);
 
+	*resp = 0;
 	cmd = cpu_to_be32(cmd);
 	err = escore_uart_write(escore, &cmd, sizeof(cmd));
 	if (err || sr)
-		return err;
+		goto cmd_exit;
 
 	do {
 		usleep_range(ES_RESP_POLL_TOUT,
@@ -152,16 +168,16 @@ int escore_uart_cmd(struct escore_priv *escore, u32 cmd, u32 *resp)
 		dev_dbg(escore->dev, "%s: *resp=0x%08x\n", __func__, *resp);
 		if (err) {
 			dev_dbg(escore->dev,
-				"%s: escore_uart_read() failure\n", __func__);
+				"%s: uart_read() fail %d\n", __func__, err);
 		} else if ((*resp & ES_ILLEGAL_CMD) == ES_ILLEGAL_CMD) {
 			dev_err(escore->dev, "%s: illegal command 0x%08x\n",
-				__func__, cmd);
+				__func__, be32_to_cpu(cmd));
 			err = -EINVAL;
 			goto cmd_exit;
 		} else if (*resp == ES_NOT_READY) {
 			dev_dbg(escore->dev,
 				"%s: escore_uart_read() not ready\n", __func__);
-			err = -ETIMEDOUT;
+			err = -EBUSY;
 		} else {
 			goto cmd_exit;
 		}
@@ -170,6 +186,11 @@ int escore_uart_cmd(struct escore_priv *escore, u32 cmd, u32 *resp)
 	} while (retry != 0);
 
 cmd_exit:
+	update_cmd_history(be32_to_cpu(cmd), *resp);
+	DEC_DISABLE_FW_RECOVERY_USE_CNT(escore);
+	if (err && ((*resp & ES_ILLEGAL_CMD) != ES_ILLEGAL_CMD))
+		ESCORE_FW_RECOVERY_FORCED_OFF(escore);
+
 	return err;
 }
 
@@ -178,8 +199,11 @@ int escore_configure_tty(struct tty_struct *tty, u32 bps, int stop)
 	int rc = 0;
 
 	struct ktermios termios;
+#if defined(KERNEL_VERSION_3_8_0)
+	termios = tty->termios;
+#else
 	termios = *tty->termios;
-
+#endif
 	pr_debug("%s(): Requesting baud %u\n", __func__, bps);
 
 	termios.c_cflag &= ~(CBAUD | CSIZE | PARENB);   /* clear csize, baud */
@@ -205,8 +229,11 @@ int escore_configure_tty(struct tty_struct *tty, u32 bps, int stop)
 
 	rc = tty_set_termios(tty, &termios);
 
+#if defined(KERNEL_VERSION_3_8_0)
+	 pr_debug("%s(): New baud %u\n", __func__, tty->termios.c_ospeed);
+#else
 	 pr_debug("%s(): New baud %u\n", __func__, tty->termios->c_ospeed);
-
+#endif
 	return rc;
 }
 EXPORT_SYMBOL_GPL(escore_configure_tty);
@@ -220,8 +247,11 @@ int escore_uart_open(struct escore_priv *escore)
 	unsigned long timeout = jiffies + msecs_to_jiffies(60000);
 	int attempt = 0;
 
+	atomic_inc(&escore->uart_users);
+
 	if (escore->uart_ready) {
-		pr_debug("%s() UART is already open\n", __func__);
+		pr_debug("%s() UART is already open, users count: %d\n",
+			 __func__, atomic_read(&escore->uart_users));
 		return 0;
 	}
 
@@ -259,8 +289,9 @@ int escore_uart_open(struct escore_priv *escore)
 int escore_uart_close(struct escore_priv *escore)
 {
 
-	if (!escore->uart_ready) {
-		pr_debug("%s() UART is already closed\n", __func__);
+	if (atomic_dec_return(&escore->uart_users)) {
+		pr_debug("%s() UART is busy to close, user count: %d\n",
+			 __func__, atomic_read(&escore->uart_users));
 		return 0;
 	}
 
@@ -273,11 +304,25 @@ int escore_uart_close(struct escore_priv *escore)
 
 int escore_uart_wait(struct escore_priv *escore)
 {
+#if defined(KERNEL_VERSION_3_8_0)
+	int timeout;
+	DECLARE_WAITQUEUE(wait, current);
+
+	add_wait_queue(&escore_uart.tty->read_wait, &wait);
+	set_task_state(current, TASK_INTERRUPTIBLE);
+	timeout = schedule_timeout(msecs_to_jiffies(50));
+
+	set_task_state(current, TASK_RUNNING);
+	remove_wait_queue(&escore_uart.tty->read_wait, &wait);
+	return timeout;
+#else
+
 	/* wait on tty read queue until awoken or for 50ms */
 	return wait_event_interruptible_timeout(
 		escore_uart.tty->read_wait,
 		escore_uart.tty->read_cnt,
 		msecs_to_jiffies(50));
+#endif
 }
 
 int escore_uart_config(struct escore_priv *escore)

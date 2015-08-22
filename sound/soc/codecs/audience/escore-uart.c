@@ -29,7 +29,6 @@
 #include <sound/initval.h>
 #include <sound/tlv.h>
 #include <linux/kthread.h>
-#include <linux/esxxx.h>
 #include <linux/serial_core.h>
 #include <linux/tty.h>
 
@@ -70,8 +69,8 @@ static int set_sbl_baud_rate(struct escore_priv *escore, u32 sbl_rate_req_cmd)
 	rc = escore_uart_write(escore, &sbl_rate_req_cmd,
 			sizeof(sbl_rate_req_cmd));
 	if (rc) {
-		pr_err("%s(): Baud rate setting for UART failed\n",
-				__func__);
+		pr_err("%s(): Baud rate setting for UART fail %d\n",
+		       __func__, rc);
 		rc = -EIO;
 		return rc;
 	}
@@ -136,11 +135,13 @@ static int escore_uart_wakeup(struct escore_priv *escore)
 		goto escore_uart_wakeup_exit;
 	}
 
-	/* Read an extra byte to flush UART read buffer. If this byte
-	 * is not read, an extra byte is received in next UART read
-	 * because of above write. No need to check response here.
-	 */
-	escore_uart_read(&escore_priv, &wakeup_byte, 1);
+	/* Flush tty buffer to avoid extra byte
+	 * received in next read cycle */
+	ret = tty_perform_flush(escore_uart.tty, TCIOFLUSH);
+	if (ret)
+		dev_err(escore->dev,
+				"%s(): TTY buffer Flush is failed %d",
+				__func__, ret);
 
 escore_uart_wakeup_exit:
 	escore_uart_close(&escore_priv);
@@ -187,6 +188,11 @@ int escore_uart_boot_setup(struct escore_priv *escore)
 		escore_uart.baudrate_sbl, UART_TTY_STOP_BITS);
 
 	pr_debug("%s()\n", __func__);
+
+	/* Drop any prior data as we just reset the chip before this */
+	rc = tty_perform_flush(escore_uart.tty, TCIOFLUSH);
+	if (rc)
+		pr_err("%s(): TTY buffer Flush failed %d", __func__, rc);
 
 	/* SBL SYNC BYTE 0x00 */
 	pr_debug("%s(): write ESCORE_SBL_SYNC_CMD = 0x%02x\n", __func__,
@@ -245,8 +251,11 @@ int escore_uart_boot_setup(struct escore_priv *escore)
 		sbl_rate_req_cmd |= (escore->pdata->ext_clk_rate & 0xff);
 
 		rc = set_sbl_baud_rate(escore, sbl_rate_req_cmd);
-		if (rc < 0)
+		if (rc < 0) {
+			pr_err("%s(): set_sbl_baud_rate fail %d\n",
+			       __func__, rc);
 			goto escore_bootup_failed;
+		}
 
 		escore_configure_tty(escore_uart.tty,
 				escore_uarths_baud[uart_tty_baud_rate],
@@ -262,7 +271,8 @@ int escore_uart_boot_setup(struct escore_priv *escore)
 	memcpy(msg, (char *)&sbl_boot_cmd, 1);
 	rc = escore_uart_write(escore, msg, 1);
 	if (rc) {
-		pr_err("%s(): firmware load failed sbl boot write\n", __func__);
+		pr_err("%s(): firmware load failed sbl boot write %d\n",
+		       __func__, rc);
 		rc = -EIO;
 		goto escore_bootup_failed;
 	}
@@ -276,7 +286,8 @@ int escore_uart_boot_setup(struct escore_priv *escore)
 	} while (rc && retry--);
 
 	if (rc) {
-		pr_err("%s(): firmware load failed boot ack\n", __func__);
+		pr_err("%s(): firmware load failed boot ack %d\n",
+		       __func__, rc);
 		goto escore_bootup_failed;
 	}
 	pr_debug("%s(): sbl boot ack = 0x%02x\n", __func__, msg[0]);
@@ -294,7 +305,6 @@ escore_bootup_failed:
 
 int escore_uart_boot_finish(struct escore_priv *escore)
 {
-	char msg[4];
 	int rc;
 	u32 sync_cmd = (ES_SYNC_CMD << 16) | ES_SYNC_POLLING;
 	u32 sync_ack;
@@ -307,16 +317,6 @@ int escore_uart_boot_finish(struct escore_priv *escore)
 	 */
 	msleep(35);
 
-	/* Discard extra bytes from escore during firmware load. Host gets
-	 * one more extra bytes after VS firmware download as per Bug 19441.
-	 * As per bug #22191, in case of eS755 four extra bytes are received
-	 * instead of 3 extra bytes. To make it generic, host reads 4 bytes.
-	 * There is no need to check for response because host may get less
-	 * bytes.
-	 */
-	memset(msg, 0, 4);
-	rc = escore_uart_read(escore, msg, 4);
-
 	/* now switch to firmware baud to talk to chip */
 	if (escore->mode == SBL) {
 		escore_configure_tty(escore_uart.tty,
@@ -325,6 +325,22 @@ int escore_uart_boot_finish(struct escore_priv *escore)
 		escore_configure_tty(escore_uart.tty,
 			escore_uart.baudrate_vs, UART_TTY_STOP_BITS);
 	}
+
+	/* Discard extra bytes from escore after firmware load. Host gets
+	 * extra bytes after VS firmware download as per Bug 19441
+	 * and as per bug #22191, in case of eS755 four extra bytes are received
+	 * instead of 3 extra bytes.
+	 * Also, as per the bug RDBNK-1455, extra bytes received after
+	 * configuring the tty to new speed post VS fw download.
+	 * To make it generic, host flushes extra bytes on UART.
+	 * There is no need to check for response because host may get less
+	 * bytes.
+	 */
+	rc = tty_perform_flush(escore_uart.tty, TCIOFLUSH);
+	if (rc)
+		dev_err(escore->dev,
+				"%s(): TTY buffer Flush is failed %d",
+				__func__, rc);
 
 	/* sometimes earSmart chip sends success in second sync command */
 	do {
@@ -350,6 +366,108 @@ int escore_uart_boot_finish(struct escore_priv *escore)
 	return rc;
 }
 
+/* This function must be called with access_lock acquired */
+static int escore_uart_int_osc_calibration(struct escore_priv *escore)
+{
+	u16 configure_uart = cpu_to_be16(0x00);
+	int sync_retry = ES_SYNC_MAX_RETRY;
+	u32 resp;
+	int rc = 0;
+
+	if (escore->bus.ops.high_bw_open) {
+		rc = escore->bus.ops.high_bw_open(escore);
+		if (rc < 0) {
+			dev_err(escore->dev, "%s(): high_bw_open failed %d\n",
+			__func__, rc);
+			goto exit_osc_calib;
+		}
+	}
+
+	do {
+		rc = escore_cmd(escore,
+				(ES_INT_OSC_MEASURE_START_VS << 16),
+				&resp);
+		if (rc) {
+			dev_err(escore->dev, "%s(): sending start UART calibration command failed %d",
+					__func__, rc);
+			continue;
+		}
+
+		rc = escore->bus.ops.high_bw_write(escore,
+			&configure_uart, sizeof(configure_uart));
+		if (rc < 0) {
+			dev_err(escore->dev, "%s(): sending configure command on uart failed %d",
+					__func__, rc);
+			continue;
+		}
+
+		usleep_range(5000, 5005);
+
+		rc = escore_cmd(escore,
+				(ES_INT_OSC_MEASURE_QUERY_VS << 16),
+				&resp);
+		if (rc) {
+			dev_err(escore->dev, "%s(): sending check UART calibration command failed %d",
+					__func__, rc);
+			continue;
+		} else if (resp ==
+				(ES_INT_OSC_MEASURE_QUERY_VS << 16)) {
+			dev_dbg(escore->dev, "%s(): caliberation was successful",
+					__func__);
+		} else {
+			dev_err(escore->dev, "%s(): caliberation response 0x%08x",
+					__func__, resp);
+			continue;
+		}
+		rc = escore->bus.ops.high_bw_cmd(escore, ES_SYNC_CMD << 16,
+								&resp);
+		if (rc) {
+			dev_err(escore->dev, "%s(): Sync cmd failed %d",
+							__func__, rc);
+		} else if (resp == (ES_SYNC_CMD << 16)) {
+			dev_dbg(escore->dev, "%s(): Sync successful", __func__);
+			break;
+		} else {
+			dev_dbg(escore->dev, "%s(): sync response 0x%08x",
+							__func__, resp);
+
+			/* Flush tty buffer to avoid extra byte
+			 * received in next read cycle */
+			rc = tty_perform_flush(escore_uart.tty, TCIOFLUSH);
+			if (rc)
+				dev_err(escore->dev,
+					"%s(): TTY buffer Flush is failed %d",
+					__func__, rc);
+		}
+	} while (--sync_retry);
+
+	dev_dbg(escore->dev, "%s(), number of tries made : %d",
+		__func__, ES_SYNC_MAX_RETRY - sync_retry + 1);
+
+	if (!sync_retry) {
+		dev_err(escore->dev,
+		"%s(): UART caliberation failed. Continuing with Ext OSC",
+							__func__);
+		/* In case of any issue switch the clock to ext oscillator */
+		rc = escore_switch_ext_osc(escore);
+		if (rc) {
+			dev_err(escore->dev,
+				"%s(): Error switching to external OSC %d\n",
+				__func__, rc);
+		}
+	}
+	usleep_range(2000, 2005);
+
+	if (escore->bus.ops.high_bw_close) {
+		dev_dbg(escore->dev, "%s(), closing the UART",
+							__func__);
+		escore->bus.ops.high_bw_close(escore);
+	}
+
+exit_osc_calib:
+	return rc;
+}
+
 static struct platform_device *escore_uart_pdev;
 
 static void escore_uart_setup_pri_intf(struct escore_priv *escore)
@@ -359,6 +477,8 @@ static void escore_uart_setup_pri_intf(struct escore_priv *escore)
 	escore->bus.ops.cmd = escore_uart_cmd;
 	escore->streamdev = es_uart_streamdev;
 	escore->escore_uart_wakeup = escore_uart_wakeup;
+	escore->bus.ops.cpu_to_bus = escore_cpu_to_uart;
+	escore->bus.ops.bus_to_cpu = escore_uart_to_cpu;
 }
 
 static int escore_uart_setup_high_bw_intf(struct escore_priv *escore)
@@ -373,8 +493,9 @@ static int escore_uart_setup_high_bw_intf(struct escore_priv *escore)
 	escore->boot_ops.escore_abort_config = escore_uart_abort_config;
 	escore->boot_ops.setup = escore_uart_boot_setup;
 	escore->boot_ops.finish = escore_uart_boot_finish;
-	escore->bus.ops.cpu_to_bus = escore_cpu_to_uart;
-	escore->bus.ops.bus_to_cpu = escore_uart_to_cpu;
+	escore->bus.ops.cpu_to_high_bw_bus = escore_cpu_to_uart;
+	escore->bus.ops.high_bw_bus_to_cpu = escore_uart_to_cpu;
+	escore->bus.ops.high_bw_calibrate = escore_uart_int_osc_calibration;
 	escore->escore_uart_wakeup = escore_uart_wakeup;
 
 #if defined(CONFIG_SND_SOC_ES_UART_SBL_BAUD)
@@ -399,9 +520,9 @@ static int escore_uart_setup_high_bw_intf(struct escore_priv *escore)
 	if (rc)
 		goto out;
 
+	mutex_lock(&escore->access_lock);
 	rc = escore->boot_ops.bootup(escore);
-	if (rc)
-		goto out;
+	mutex_unlock(&escore->access_lock);
 
 out:
 	return rc;
@@ -435,11 +556,14 @@ int escore_uart_probe_thread(void *ptr)
 	}
 
 	rc = escore_probe(escore, dev, probe_intf, ES_CONTEXT_THREAD);
-
 	if (rc) {
-		dev_err(dev, "%s(): UART common probe failed\n", __func__);
+		dev_err(dev, "%s(): UART common probe fail %d\n",
+			__func__, rc);
 		goto bootup_error;
 	}
+
+	escore_uart_close(escore);
+
 	return rc;
 
 bootup_error:
@@ -472,15 +596,6 @@ static int escore_uart_probe(struct platform_device *dev)
 static int escore_uart_remove(struct platform_device *dev)
 {
 	int rc = 0;
-	/*
-	 * ML: GPIO pins are not connected
-	 *
-	 * struct esxxx_platform_data *pdata = escore_priv.pdata;
-	 *
-	 * gpio_free(pdata->reset_gpio);
-	 * gpio_free(pdata->wakeup_gpio);
-	 * gpio_free(pdata->gpioa_gpio);
-	 */
 
 	if (escore_uart.file)
 		escore_uart_close(&escore_priv);
@@ -503,10 +618,12 @@ int escore_uart_bus_init(struct escore_priv *escore)
 {
 	int rc = 0;
 
+	atomic_set(&escore->uart_users, 0);
+
 	escore_uart_pdev = platform_device_alloc("escore-codec.uart", -1);
 	if (!escore_uart_pdev) {
-		pr_err("%s(): UART platform device allocation failed\n",
-				__func__);
+		pr_err("%s: UART platform device allocation failed\n",
+		       __func__);
 		rc = -ENOMEM;
 		goto out;
 	}
@@ -514,17 +631,16 @@ int escore_uart_bus_init(struct escore_priv *escore)
 	rc = platform_device_add_data(escore_uart_pdev, &escore_uart_pdata,
 				sizeof(escore_uart_pdata));
 	if (rc) {
-		pr_err("%s(): Error while adding UART device data\n", __func__);
+		pr_err("%s: Error adding UART device data %d\n", __func__, rc);
 		platform_device_put(escore_uart_pdev);
 		goto out;
 	}
 
 	rc = platform_device_add(escore_uart_pdev);
 	if (rc) {
-		pr_err("%s(): Error while adding UART device\n", __func__);
+		pr_err("%s: Error adding UART device %d\n", __func__, rc);
 		platform_device_put(escore_uart_pdev);
 	}
-
 out:
 	return rc;
 }

@@ -14,8 +14,15 @@
 #include <sound/soc.h>
 #include <linux/time.h>
 #include "escore.h"
+#if defined(CONFIG_SND_SOC_ES854)
+#include "es-a350-reg.h"
+#elif defined(CONFIG_SND_SOC_ES857)
+#include "es-a375-reg.h"
+#else
 #include "es-a300-reg.h"
+#endif
 
+#define ES_INVALID_REG_VALUE		-1
 #define ES_SYNC_CMD			0x8000
 #define ES_SYNC_POLLING		0x0000
 #define ES_SYNC_ACK			0x80000000
@@ -45,7 +52,8 @@
 #define ES_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 |\
 			SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_22050 |\
 			SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |\
-			SNDRV_PCM_RATE_96000 | SNDRV_PCM_RATE_192000)
+			SNDRV_PCM_RATE_96000 | SNDRV_PCM_RATE_192000 |\
+			SNDRV_PCM_RATE_44100)
 #define ES_SLIMBUS_RATES (SNDRV_PCM_RATE_48000)
 
 #define ES_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S16_BE |\
@@ -75,12 +83,12 @@
 #define ES_VP				0x0001
 #define ES_MM				0x0002
 #define ES_VP_MM			0x0003
-#define ES_AZ				0x0004
+#define ES_AF				0x0004
 #define ES_PASSTHRU			0x0008
 #define ES_PASSTHRU_VP		0x0009
 #define ES_PASSTHRU_MM		0x000A
 #define ES_PASSTHRU_VP_MM	0x000B
-#define ES_PASSTHRU_AZ		0x000C
+#define ES_PASSTHRU_AF		0x000C
 #define ES_VOICESENSE		0x0010
 
 /*
@@ -94,8 +102,35 @@
 #define ES_SET_EVENT_RESP		0x901A
 #define ES_ACCDET_CONFIG_CMD		0x9056
 #define ES_SMOOTH_RATE			0x804E
+#define ES_SET_INT_MASK			0x807F
+#define ES_DISABLE_CODEC_INT		0x0000
+/* bits 15:14 are reserved, bit 3 is to enable event for
+ * button released and should be enabled only after button
+ * press event is found */
+#define ES_ENABLE_CODEC_INT		0x3FF7
 #define ES755_FW_DOWNLOAD_MAX_RETRY	5
 #define ES_EVENT_STATUS_RETRY_COUNT	2
+
+/*
+ * Audio path commands codes
+ */
+#define ES_SELECT_ENDPOINT		0x8069
+#define ES_SET_DIGITAL_GAIN		0x8015
+#define ES_GET_DIGITAL_GAIN		0x801D
+#define ES_DIGITAL_GAIN_MASK		0xFF
+#define ES_SELECT_HPF_MODE              0x806E
+
+/*
+ * Codec Control Register Access
+ * */
+#define ES_GET_CODEC_VAL               0x807B
+#define ES_CODEC_VAL_MASK              0xFF
+
+#if defined(CONFIG_SND_SOC_ES854) || defined(CONFIG_SND_SOC_ES857)
+#define ES_MAX_CODEC_CONTROL_REG       0x77
+#else
+#define ES_MAX_CODEC_CONTROL_REG       0x55
+#endif
 
 /*
  * Stereo widening presets for headphone playback and MM audio algo rate 48K
@@ -107,23 +142,40 @@
 #define ES_FULL_WIDENING		0x000A
 #define ES_DEF_ST_WIDE_SETTING		0x8000
 
-#define ES_MAX_AZ_MODE			2
+#define ES_MAX_AF_MODE			2
 #define ES_MAX_AEC_MODE			7
 /* Impedance level for MIC detection */
 #define MIC_IMPEDANCE_LEVEL		0x6
 
+/* Ambient Noise Query API */
+#define ES_QUERY_AMBIENT_NOISE		0x80420002
+#define ES_MIN_NOISE_DB			(-96)
+
 /* Jack detection mask */
+#if defined(CONFIG_SND_SOC_ES854) || defined(CONFIG_SND_SOC_ES857)
+/* BTN_3 is mapped with IMPD_LEVEL 1 to support
+ * Google Voice Search trigger functionality */
+#define JACK_DET_MASK	(SND_JACK_HEADSET | SND_JACK_BTN_0 | SND_JACK_BTN_1 |\
+		SND_JACK_BTN_2 | SND_JACK_BTN_3)
+#else
 #define JACK_DET_MASK	(SND_JACK_HEADSET | SND_JACK_BTN_0 | SND_JACK_BTN_1 |\
 		SND_JACK_BTN_2)
+#endif
 
 #define MAX_RETRY_TO_SWITCH_TO_LOW_POWER_MODE	5
 
-#define ES755_DMIC0_VS_ROUTE_PREST		0x056A
-#define ES755_MIC0_VS_ROUTE_PREST		0x0568
-#define ES755_MICHS_VS_ROUTE_PREST		0x056B
-#define ES755_DMIC0_CVS_PREST			0x1B59
-#define ES755_MIC0_CVS_PREST			0x1B8A
-#define ES755_MICHS_CVS_PREST			0x1B8B
+#define ES755_DMIC0_VS_ROUTE_PRESET		0x056A
+#define ES755_MIC0_VS_ROUTE_PRESET		0x0568
+#define ES755_MICHS_VS_ROUTE_PRESET		0x056B
+#define ES755_DMIC0_CVS_PRESET			0x1B59
+#define ES755_MIC0_CVS_PRESET			0x1B8A
+#define ES755_MICHS_CVS_PRESET			0x1B8B
+
+#if defined(CONFIG_SND_SOC_ES854) || defined(CONFIG_SND_SOC_ES857)
+#define ES755_WDB_MAX_SIZE	4096
+#else
+#define ES755_WDB_MAX_SIZE	512
+#endif
 
 /* PCM Port IDs */
 #define ES755_PCM_PORT_A		0xA
@@ -139,6 +191,25 @@
 #define MIN_HS_REDETECTION_DELAY 50
 #define DEFAULT_HS_REDETECTION_DELAY 250
 
+/* Delay values required for different stages */
+#define ES755_DELAY_WAKEUP_TO_NORMAL	20 /* ms */
+#define ES755_DELAY_WAKEUP_TO_VS	20 /* ms */
+#define ES755_DELAY_VS_TO_NORMAL	90 /* ms */
+#define ES755_DELAY_MPSLEEP_TO_NORMAL	30 /* ms */
+#define ES755_DELAY_VS_STREAMING_TO_VS	10 /* ms */
+
+/* Value to disable Master clock */
+#define ES755_DISABLE_MASTER_CLK	8
+
+/* Delay value to put chip into MP Sleep mode */
+#define ES755_MP_SLEEP_DELAY	2000 /* 2 sec */
+
+enum {
+	ES755_MIC0,
+	ES755_DMIC0,
+	ES755_MICHS,
+};
+
 union es755_accdet_status_reg {
 	u16 value;
 	struct {
@@ -151,7 +222,8 @@ union es755_accdet_status_reg {
 		u16 hp_out:1;
 		u16 thermal_shutdown:1;
 		u16 impd_level:3;
-		u16 res:3;
+		u16 res:2;
+		u16 mg_select:1;
 		u16 i2c_ctl_ready:1;
 		u16 glb_enable_status:1;
 	} fields;
@@ -180,7 +252,9 @@ enum {
 	ES_ALGORITHM_MM,
 	ES_ALGORITHM_PT,
 	ES_ALGORITHM_PT_VP,
-	ES_ALGORITHM_AZ,
+	ES_ALGORITHM_AF,
+	ES_ALGORITHM_BRG,
+	ES_ALGORITHM_KALAOK,
 	ES_ALGORITHM_DHWPT,
 
 	/* PCM Port Parameters*/
@@ -199,9 +273,6 @@ enum {
 	ES_PORT_FS_DURATION,
 
 	ES_BUTTON_CTRL1,
-	ES_BUTTON_CTRL2,
-	ES_BUTTON_CTRL3,
-	ES_BUTTON_CTRL4,
 
 	ES_PRIMARY_MUX,
 	ES_SECONDARY_MUX,
@@ -218,10 +289,10 @@ enum {
 	ES_MMUITONE1_MUX,
 	ES_MMUITONE2_MUX,
 
-	ES_AZ_PRI_MUX,
-	ES_AZ_SEC_MUX,
-	ES_AZ_TER_MUX,
-	ES_AZ_AI1_MUX,
+	ES_AF_PRI_MUX,
+	ES_AF_SEC_MUX,
+	ES_AF_TER_MUX,
+	ES_AF_AI1_MUX,
 
 	ES_MM_PASSIN1_MUX,
 	ES_MM_PASSIN2_MUX,
@@ -256,6 +327,7 @@ enum {
 	ES_SBUSTX5_MUX,
 
 	ES_CODEC_VALUE,
+	ES_CODEC_ADDR,
 	ES_POWER_STATE,
 	ES_RUNTIME_PM,
 	ES_VS_INT_OSC_MEASURE_START,
@@ -276,13 +348,13 @@ enum {
 	ES_STEREO_WIDTH,
 	ES_MIC_CONFIG,
 	ES_AEC_MODE,
-	ES_AZ_MODE,
+	ES_AF_MODE,
+	ES_VP_METERS,
 	ES_CMD_COMPL_MODE,
 	ES_FE_STREAMING,
-	ES_FEIN2_MUX,
 	ES_CODEC_OUTPUT_RATE,
+	ES_FEIN2_MUX,
 	ES_API_ADDR_MAX,
-	ES_HS_DELAY,
 };
 
 #define ES_SLIM_1_PB_MAX_CHANS	2
@@ -327,13 +399,23 @@ enum {
 /*
  * Codec Events
  */
+#define ES_EP_SHORT_CIRCUIT_EVENT(value)		((1<<13) & value)
+#define ES_HP_SHORT_CIRCUIT_EVENT(value)		((1<<12) & value)
+#define ES_SPKR_RIGHT_SHORT_CIRCUIT_EVENT(value)	((1<<11) & value)
+#define ES_SPKR_LEFT_SHORT_CIRCUIT_EVENT(value)		((1<<10) & value)
+#define ES_LINEOUT_SHORT_CIRCUIT_EVENT(value)		((1<<9) & value)
+#define ES_THERMAL_SHUTDOWN_EVENT(value)		((1<<8) & value)
 
 #define ES_PLUG_EVENT(value)		((1<<6) & value)
 #define ES_UNPLUG_EVENT(value)		((1<<5) & value)
 #define ES_MICDET_EVENT(value)		((1<<4) & value)
 #define ES_BUTTON_RELEASE_EVENT(value)	((1<<3) & value)
-#define ES_BUTTON_PRESS_EVENT(value)	((1<<2) & value)
+#define ES_BUTTON_RELEASE_EVENT_MASK		(1<<3)
 
+#define ES_BUTTON_PRESS_EVENT(value)	((1<<2) & value)
+#define ES_BUTTON_PRESS_EVENT_MASK		(1<<2)
+
+#define ES_OPEN_MICDET_EVENT(value)	((1<<0) & value)
 enum {
 	ES_SLIM_1_PB = ES_DAI_ID_BASE,
 	ES_SLIM_1_CAP,
@@ -341,13 +423,6 @@ enum {
 	ES_SLIM_2_CAP,
 	ES_SLIM_3_PB,
 	ES_SLIM_3_CAP,
-};
-
-enum {
-	ES_PM_SLEEP = 0x1,
-	ES_PM_MP_SLEEP,
-	ES_PM_MP_CMD,
-	ES_PM_ACTIVE,
 };
 
 /* Base name used by character devices. */
@@ -374,5 +449,7 @@ void es755_slim_setup(struct escore_priv *escore_priv);
 int es755_detect(struct snd_soc_codec *codec, struct snd_soc_jack *jack);
 int es755_power_transition(int next_power_state,
 				unsigned int set_power_state_cmd);
+int es755_enter_mp_sleep(void);
+int es755_exit_mp_sleep(void);
 
 #endif /* _ES_H */

@@ -31,7 +31,7 @@
 #elif defined(CONFIG_ARCH_OMAP)
 #define UART_TTY_DEVICE_NODE		"/dev/ttyO3"
 #elif defined(CONFIG_ARCH_EXYNOS)
-#define UART_TTY_DEVICE_NODE		"/dev/ttySAC0"
+#define UART_TTY_DEVICE_NODE		"/dev/ttySAC1"
 #endif
 #define UART_TTY_BAUD_RATE_28_8_K	28800
 #define UART_TTY_BAUD_RATE_460_8_K	460800

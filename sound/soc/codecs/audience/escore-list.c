@@ -30,6 +30,7 @@ int escore_queue_msg_to_list(struct escore_priv *escore,
 }
 EXPORT_SYMBOL_GPL(escore_queue_msg_to_list);
 
+/* This function must be called with access_lock acquired */
 int escore_write_msg_list(struct escore_priv *escore)
 {
 	struct msg_list_entry *entry;
@@ -38,7 +39,6 @@ int escore_write_msg_list(struct escore_priv *escore)
 	u32 resp;
 
 	pr_debug("%s()\n", __func__);
-
 	if (!escore)
 		escore = &escore_priv;
 
@@ -49,24 +49,22 @@ int escore_write_msg_list(struct escore_priv *escore)
 	}
 
 	mutex_lock(&escore->msg_list_mutex);
-	mutex_lock(&escore->api_mutex);
 	list_for_each_entry(entry, &escore->msg_list, list) {
 		memcpy((char *)api_word, entry->msg, entry->msg_len);
 		for (i = 0; i < entry->msg_len / 4; i++) {
 			resp = 0;
-			rc = escore->bus.ops.cmd(escore, api_word[i],
-					&resp);
+			rc = escore_cmd_nopm(escore, api_word[i], &resp);
 			if (rc < 0) {
-				pr_err("%s(): failed", __func__);
+				pr_err("%s(): Write Msg fail %d\n",
+				       __func__, rc);
 				goto exit;
 			}
 		}
 	}
-
 exit:
-	mutex_unlock(&escore->api_mutex);
 	mutex_unlock(&escore->msg_list_mutex);
 	escore_pm_put_autosuspend();
+
 	return rc;
 }
 EXPORT_SYMBOL_GPL(escore_write_msg_list);

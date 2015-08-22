@@ -60,37 +60,49 @@ enum {
 
 #define VP_RXCHMGR_MAX 9
 #define VP_TXCHMGR_MAX 6
+#define AUDIOFOCUS_TXCHMGR_MAX 6
 #define MM_RXCHMGR_MAX 6
 #define MM_TXCHMGR_MAX 6
 #define VP_MM_RXCHMGR_MAX 10
 #define VP_MM_TXCHMGR_MAX 5
 #define PT_VP_RXCHMGR_MAX 6
 #define PT_VP_TXCHMGR_MAX 6
-#define DHWPT_RXCHMGR_MAX 6
-#define DHWPT_TXCHMGR_MAX 6
+#define BARGE_IN_TXCHMGR_MAX 6
+#define KALA_OK_RXCHMGR_MAX 3
+#define KALA_OK_TXCHMGR_MAX 5
+
 enum {
 	ES_VP_NONE,
 	ES_VP_RX_INIT, /* VP RX Initialized */
 	ES_VP_TX_INIT, /* VP TX Initialized */
-	ES_AZ_NONE,
-	ES_AZ_RX_INIT, /* AZ RX Initialized */
-	ES_AZ_TX_INIT, /* AZ TX Initialized */
+	ES_AF_NONE,
+	ES_AF_RX_INIT, /* AF RX Initialized */
+	ES_AF_TX_INIT, /* AF TX Initialized */
 };
+
+enum {
+	ES_TYPE_NONE,
+	ES_TYPE_PB,
+	ES_TYPE_CAP,
+};
+
 
 /* Algorithm */
 enum {
 	VP,
 	MM,
-	AUDIOZOOM,
+	AUDIOFOCUS,
 	PASSTHRU,
 	VP_MM,
 	PASSTHRU_VP,
 	PASSTHRU_MM,
 	PASSTHRU_VP_MM,
-	PASSTHRU_AZ,
+	PASSTHRU_AF,
 	VOICEQ,
+	BARGE_IN,
+	KALA_OK,
 	DHWPT,
-	NONE,
+	ALGO_NONE,
 	ALGO_MAX,
 };
 
@@ -117,7 +129,7 @@ enum {
 	FILTER_TXCHANMGR5,
 
 	FILTER_VP = 0x13,
-	FILTER_AZ,
+	FILTER_AF,
 	FILTER_MM,
 	FILTER_PASSTHRU,
 	FILTER_BEEP,
@@ -210,10 +222,10 @@ enum {
 	mm_o0 = 0x0,
 	mm_o1,
 
-	az_i0 = 0x0,
-	az_i1,
-	az_i2,
-	az_o0 = 0x0,
+	af_i0 = 0x0,
+	af_i1,
+	af_i2,
+	af_o0 = 0x0,
 
 	pass_i0 = 0x0,
 	pass_i1,
@@ -260,16 +272,42 @@ struct es_ch_mgr_max {
 };
 
 /* Switch Settings used in PT+VP Algorithm */
-#define SWIN0_I0	0
-#define SWIN0_I1	1
-#define SWIN1_I0	2
-#define SWIN1_I1	3
-#define SWIN2_I0	4
-#define SWIN2_I1	5
-#define SWOUT0_O1	6
-#define SWOUT1_O1	7
-#define SWOUT2_O1	8
-#define SWOUT3_O1	9
+#define SW_VALUE_MAX 2
+struct switch_setting {
+	u32 value_cmd[SW_VALUE_MAX];
+	bool value;
+};
+
+enum {
+	SWIN1 = 0,
+	SWIN2,
+	SWOUT0,
+	SWOUT1,
+	SWOUT2,
+	SWOUT3,
+	SW_MAX,
+};
+
+/* Active IP */
+enum {
+	ACTIVE_IP_OFF = 0,
+	ACTIVE_IP_PRI,
+	ACTIVE_IP_WPIN,
+};
+
+/* Primary PB */
+enum {
+	PRI_PB_OFF = 0,
+	PRI_PB_STEREO,
+};
+
+/* Secondary PB */
+enum {
+	SEC_PB_OFF = 0,
+	SEC_PB_MIXED_MONO,
+	SEC_PB_STEREO,
+};
+
 
 /* TODO: Create a 2D array to map endpoint values
  * with path IDs. */
@@ -297,7 +335,9 @@ struct es_ch_mgr_max {
 extern int es_d300_add_snd_soc_dapm_controls(struct snd_soc_codec *codec);
 extern int es_d300_add_snd_soc_controls(struct snd_soc_codec *codec);
 extern int es_d300_add_snd_soc_route_map(struct snd_soc_codec *codec);
+extern int es_change_power_state_normal(struct escore_priv *escore);
 int es_d300_fill_cmdcache(struct snd_soc_codec *codec);
 void es_d300_reset_cmdcache(void);
+int _es_stop_route(struct escore_priv *escore, u8 stream_type);
 
 #endif /* _ES_D300_H */

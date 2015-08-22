@@ -11,6 +11,17 @@ config SND_SOC_ES705_ESCORE
 	  * SLIMbus + SLIMbus and UART
 	  * I2C+I2S and SPI
 
+config SND_SOC_ES804_ESCORE
+        bool "eS804_escore"
+	select SND_SOC_ES_VS
+	---help---
+	  Enable support for Audience eS705 audio chip escore
+	  Possible control+data and high bandwidth bus combinations:
+	  * I2C+I2S and UART
+	  * SPI+I2S and UART
+	  * SLIMbus + SLIMbus and UART
+	  * I2C+I2S and SPI
+
 config SND_SOC_ES704_ESCORE
 	bool "eS704_escore"
 	select SND_SOC_ES_VS
@@ -33,31 +44,41 @@ config SND_SOC_ES755
 	  * SLIMbus + SLIMbus and UART
 	  * I2C+I2S and SPI
 
-config MQ100_SENSOR_HUB
-        bool "mq100"
-	---help---
-	  Enable support for Audience Sensorhub interface
-	  Possible control and high bandwidth bus combinations:
-	  * I2C + UART
-	  * I2C + SPI
-	  * SPI
-	  * UART
-
 config SND_SOC_ES705_EXTCLK_OVER_GPIO
 	bool "Enable External Clock Control Over GPIO"
 	---help---
 	  This will enable external clock ON/OFF over GPIO
 
-config SND_SOC_ES705_CLOCK_INDEX
-	depends on (SND_SOC_ES705 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE || MQ100_SENSOR_HUB)
-	prompt "Audience es705 clock's index"
-	int
-	default 8
+config SND_SOC_ES854
+	bool "eS854"
+	select SND_SOC_ES_VS
 	---help---
-	  Defines Audience es705 clock's index.
-	  Supported clocks indexes
-	  * 0 for 9600 MHz
-	  * 8 for 19200 MHz
+	  Enable support for Audience eS854 audio chip
+	  Possible control+data and high bandwidth bus combinations:
+	  * I2C+I2S and UART
+	  * SPI+I2S and UART
+
+config SND_SOC_N100
+	bool "VS support for Multisensory SoC"
+	select SND_SOC_ES_VS
+	---help---
+	  Enable VQ support for multisensory
+
+config SND_SOC_ES857
+	bool "eS857"
+	select SND_SOC_ES_VS
+	---help---
+	  Enable support for Audience eS857 audio chip
+	  Possible control+data and high bandwidth bus combinations:
+	  * I2C+I2S and UART
+	  * SPI+I2S and UART
+
+config OSP_SENSORHUB
+        bool "Escore support for Sensorhub"
+	---help---
+	  This will enable sensor hub configuration
+	  OSP is Open Sensor Platform framework.
+	  Audience sensorhub is compliant to OSP framework.
 
 # Legacy config options for eS705
 
@@ -154,31 +175,16 @@ config SND_SOC_ES705_UART_WAKEUP
 	Ebabling this feature uses UART TX of host to wakeup eS705
 	instead of wakeup gpio.
 
-config MQ100_SENSOR_HUB
-        bool "MQ100 Sensor driver support"
-		depends on SND_SOC_ES705_ESCORE
-	---help---
-	  This will enable MQ100 sensor hub configuration
 
 config SND_SOC_ES705_EXTCLK_OVER_GPIO
 	bool "Enable External Clock Control Over GPIO"
 	---help---
-	  This will enable external clock ON/OFF over GPIO
-
-config SND_SOC_ES705_CLOCK_INDEX
-	depends on (SND_SOC_ES705 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE)
-	prompt "Audience es705 clock's index"
-	int
-	default 8
-	---help---
-	  Defines Audience es705 clock's index.
-	  Supported clocks indexes
-	  * 0 for 9600 MHz
-	  * 8 for 19200 MHz
+	  This will enable external clock ON/OFF over 
+	  GPIO
 
 # Options for escore infrastructure
 
-if SND_SOC_ES325 || SND_SOC_ES515 || SND_SOC_ES755 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE || MQ100_SENSOR_HUB
+if SND_SOC_ES325 || SND_SOC_ES515 || SND_SOC_ES755 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE || SND_SOC_ES804_ESCORE  || OSP_SENSORHUB || SND_SOC_ES854 || SND_SOC_ES857
 
 config SND_SOC_ES_I2S
 	tristate
@@ -188,7 +194,9 @@ choice
 	default SND_SOC_ES_SLIM
 
 config SND_SOC_ES_SLIM
-	bool "SLIMbus based codec" if SLIMBUS
+	bool "SLIMbus based codec"
+	select SLIMBUS
+	select MFD_CORE
 	---help---
 	  This enables SLIMbus as control interface
 	  as well as data interface to communicate
@@ -232,7 +240,7 @@ endchoice
 endif
 
 # High bandwidth bus support
-if SND_SOC_325 || SND_SOC_ES515 || SND_SOC_ES755 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE || MQ100_SENSOR_HUB
+if SND_SOC_325 || SND_SOC_ES515 || SND_SOC_ES755 || SND_SOC_ES705_ESCORE || SND_SOC_ES804_ESCORE ||SND_SOC_ES704_ESCORE || OSP_SENSORHUB || SND_SOC_ES854 || SND_SOC_ES857
 choice
 	prompt "High Bandwidth Transport"
 	default SND_SOC_ES_HIGH_BW_BUS_DEFAULT
@@ -280,37 +288,7 @@ config SND_SOC_ES_HIGH_BW_BUS_UART
 endchoice
 endif
 
-if SND_SOC_ES755 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE
-
-choice
-        prompt "Runtime Power Management mode"
-	default SND_SOC_ES_RUNTIME_SUSPEND_MODE_SLEEP
-	---help---
-	There are two configuration modes for
-	runtime suspend case.
-	1. Sleep mode
-	2. CVQ suspend mode
-
-config SND_SOC_ES_RUNTIME_SUSPEND_MODE_SLEEP
-        bool "Normal Suspend"
-	---help---
-	In this mode, chip will be put in normal
-	sleep mode i.e. sleep (for Audience DSPs
-	or MP sleep mode (for Audience Codecs)
-	when runtime suspend is called.
-
-config SND_SOC_ES_RUNTIME_SUSPEND_MODE_CVQ
-        bool "CVQ Suspend"
-	---help---
-	In this mode, chip will be put in CVQ
-	suspend mode when runtime suspend is
-	called. Chip can be bought in normal mode
-	by speaking keyword or from resume.
-
-endchoice
-endif
-
-if SND_SOC_ES_HIGH_BW_BUS_UART && (SND_SOC_ES755 || SND_SOC_ES705 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE || MQ100_SENSOR_HUB)
+if SND_SOC_ES_HIGH_BW_BUS_UART && (SND_SOC_ES755 || SND_SOC_ES705 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE || SND_SOC_ES804_ESCORE || SND_SOC_ES854 || SND_SOC_ES857)
 
 config SND_SOC_ES_UART_SBL_BAUD
 	prompt "UART baud rate for SBL mode"
@@ -358,7 +336,7 @@ config SND_SOC_ES_UART_VS_BAUD
 	  * 3072000
 
 config SND_SOC_ES_UARTHS_BAUD
-	depends on SND_SOC_ES_HIGH_BW_BUS_UART && (SND_SOC_ES755 || SND_SOC_ES705 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE || MQ100_SENSOR_HUB)
+	depends on SND_SOC_ES_HIGH_BW_BUS_UART && (SND_SOC_ES755 || SND_SOC_ES705 || SND_SOC_ES705_ESCORE ||SND_SOC_ES804_ESCORE|| SND_SOC_ES704_ESCORE || OSP_SENSORHUB || SND_SOC_ES854 || SND_SOC_ES857)
 	prompt "UART baud rate for firmware download"
 	int
 	default 3000000
@@ -436,7 +414,7 @@ endchoice
 
 config SND_SOC_ES_VS
         bool "Voice Sense feature"
-	depends on SND_SOC_ES705 || SND_SOC_ES705_ESCORE || SND_SOC_ES704_ESCORE || SND_SOC_ES755 || SND_SOC_ES325
+	depends on SND_SOC_ES705 || SND_SOC_ES705_ESCORE || SND_SOC_ES804_ESCORE || SND_SOC_ES704_ESCORE || SND_SOC_ES755 || SND_SOC_ES325 || SND_SOC_ES854 || SND_SOC_ES857 || SND_SOC_N100
 	---help---
 	This allows to select VS feature
 
@@ -471,4 +449,35 @@ config SND_SOC_ES_GPIO_A
 	API Interrupt interface allows utilization of interrupt mode
 	functionality:
 
+config SND_SOC_ES_VS_STREAMING
+        bool "VS Wakeup Streaming Mode"
+	depends on (SND_SOC_ES804_ESCORE || SND_SOC_ES705_ESCORE || SND_SOC_ES755 || SND_SOC_ES854 || SND_SOC_ES857)
+	---help---
+	This adds support for VS streaming power state.
+	On VS wakeup the firmware wakes up in the VS
+	streaming mode. Post streaming the state has to
+	be switched to Normal mode.
+
+config SND_SOC_ES_AVOID_REPEAT_FW_DOWNLOAD
+        bool "Reduce Repeated Fw download across Power Transition"
+	depends on (SND_SOC_ES804_ESCORE || SND_SOC_ES705_ESCORE || SND_SOC_ES755 || SND_SOC_ES854 || SND_SOC_ES857)
+	---help---
+	This adds support for reducing the number of FW
+	Download. In the New PCR platform, if a power
+	transition is done from NS --> VS with no Sleep
+	state in between, the FW Download needs to be
+	done only for the First Transition. Later on, we
+	only need to send Power transition Command. This
+	however is nullified if the chip enters Sleep state
+	any time in the middle
+
+config SND_SOC_ES_SPI_WRITE_DMA_MODE
+        bool "SPI Write When DMA mode enabled"
+	depends on (SND_SOC_ES_SPI || SND_SOC_ES_HIGH_BW_BUS_SPI)
+	---help---
+	This adds support for spi write using DMA mode settings as DMA mode
+	expects kernel virtual address which has a mapping in physical memory.
+	This flag is mainly to be used when writing the buffer given by
+	user space.
+	E.g. Firmware download,Write Data Block from /etc/firmware.
 endmenu

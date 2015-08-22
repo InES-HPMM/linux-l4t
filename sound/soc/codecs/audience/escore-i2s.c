@@ -29,7 +29,6 @@
 #include <sound/initval.h>
 #include <sound/tlv.h>
 #include <linux/kthread.h>
-#include <linux/esxxx.h>
 #include "escore.h"
 #include "escore-list.h"
 

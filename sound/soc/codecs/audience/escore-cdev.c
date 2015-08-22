@@ -55,7 +55,6 @@
  * data in the circular buffer first.
  */
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-
 #include <linux/delay.h>
 #include <linux/string.h>
 #include <linux/kthread.h>
@@ -67,7 +66,6 @@
 
 #include "escore.h"
 #include "escore-uart-common.h"
-#include "mq100-sensorhub.h"
 /* Index offset for the 3 character devices types. */
 enum {
 	CDEV_COMMAND,
@@ -136,8 +134,6 @@ static int parse_have;		/* Bytes currently in buffer. */
 static int last_token;		/* Used to control parser state. */
 static int (*parse_cb_preset)(void *, int);
 static int (*parse_cb_cmd)(void *, u32);
-static bool is_nomore_databit_found(int clear, unsigned char *buf, int len,
-					int *nbytes_to_read);
 
 int macro_preset_id(void *ctx, int id)
 {
@@ -150,7 +146,7 @@ int macro_cmd(void *ctx, u32 cmd)
 	struct escore_priv *escore = (struct escore_priv *)ctx;
 	u32 resp;
 	int rc;
-	rc = escore_cmd(escore, cmd, &resp);
+	rc = escore_cmd_locked(escore, cmd, &resp);
 	if (!(cmd & BIT(28))) {
 		pr_debug("escore: cmd=0x%08x Response:0x%08x\n", cmd,
 				escore->bus.last_response);
@@ -323,7 +319,7 @@ static ssize_t command_read(struct file *filp, char __user *buf,
 
 	slen -= *f_pos;
 	cnt = min(count, slen);
-	err = copy_to_user(buf, readbuf + *f_pos, slen);
+	err = copy_to_user(buf, readbuf + *f_pos, cnt);
 	if (err) {
 		dev_dbg(escore->dev, "%s copy_to_user = %d\n", __func__, err);
 		goto OUT;
@@ -458,15 +454,6 @@ static int firmware_open(struct inode *inode, struct file *filp)
 				ret);
 		return ret;
 	}
-/* This is not the right place for indicating state change
- * However since firmware download functionality is closely tied to
- * escore-(interface) files this is one of the common places to have
- * less or no impact on escore's working. This will be removed later
- * while refactoring
- */
-#ifdef CONFIG_MQ100_SENSOR_HUB
-	mq100_indicate_state_change(MQ100_STATE_RESET);
-#endif
 	pr_debug("firmware download setup ok\n");
 
 escore_high_bw_open_failed:
@@ -494,15 +481,6 @@ static int firmware_release(struct inode *inode, struct file *filp)
 				ret);
 			goto firmware_release_exit;
 		}
-/* This is not the right place for indicating state change
- * However since firmware download functionality is closely tied to
- * escore-(interface) files this is one of the common places to have
- * less or no impact on escore's working. This will be removed later
- * while refactoring
- */
-#ifdef CONFIG_MQ100_SENSOR_HUB
-		mq100_indicate_state_change(MQ100_STATE_NORMAL);
-#endif
 	}
 
 	/* Previous interrupt configuration would have been lost after
@@ -543,13 +521,13 @@ static ssize_t firmware_write(struct file *filp, const char __user *buf,
 	escore = filp->private_data;
 	BUG_ON(!escore);
 
-	pr_debug("firmware write count=%zu bytes\n", count);
+	pr_debug("firmware write count=%zd bytes\n", count);
 
 	wr = bs = 0;
 	while (wr < count) {
 		bs = min(count - wr, FW_BUF_SIZE);
 		BUG_ON(bs == 0);
-		pr_debug("wr=%zu bs=%zu buf+wr=%p\n", wr, bs, buf + wr);
+		pr_debug("wr=%zd bs=%zd buf+wr=%p\n", wr, bs, buf + wr);
 		ret = copy_from_user(fw_buf, buf + wr, bs);
 		if (ret) {
 			dev_err(escore->dev,
@@ -648,10 +626,8 @@ static int stream_datalog_open(struct escore_priv *escore, struct inode *inode,
 			goto streamdev_open_err;
 		}
 		/* Set NS baud rate after VS to NS switching */
-		/*
 		if (escore->streamdev.config)
 			escore->streamdev.config(escore);
-		*/
 	}
 
 	/* initialize stream buffer */
@@ -746,7 +722,10 @@ static int stream_datalog_release(struct escore_priv *escore,
 
 	/* ignore threadfn return value */
 	pr_debug("%s(): stopping stream kthread\n", __func__);
-	kthread_stop(escore->stream_thread);
+
+	/* stop streaming thread if running */
+	if (atomic_read(&escore->stream_thread->usage) > 0)
+		kthread_stop(escore->stream_thread);
 
 	/* free any pages on the circular buffer */
 	while ((page = streaming_consume_page(&length)))
@@ -778,13 +757,17 @@ static int streaming_open(struct inode *inode, struct file *filp)
 
 	pr_debug("called: %s\n", __func__);
 
+	escore = container_of((inode)->i_cdev, struct escore_priv,
+			cdev_streaming);
+
+	mutex_lock(&escore->access_lock);
 	err = escore_pm_get_sync();
+	mutex_unlock(&escore->access_lock);
+
 	if (err < 0) {
 		pr_err("%s(): pm_get_sync failed :%d\n", __func__, err);
 		return err;
 	}
-	escore = container_of((inode)->i_cdev, struct escore_priv,
-			cdev_streaming);
 
 	err = stream_datalog_open(escore, inode, filp);
 	if (err)
@@ -805,7 +788,9 @@ static int streaming_release(struct inode *inode, struct file *filp)
 		dev_err(escore->dev, "%s(): stream_datalog_release error = %d\n",
 			__func__, err);
 
+	mutex_lock(&escore->access_lock);
 	escore_pm_put_autosuspend();
+	mutex_unlock(&escore->access_lock);
 	return err;
 }
 
@@ -958,90 +943,6 @@ ERR_OUT:
 	return err;
 }
 
-static bool is_nomore_databit_found(int clear, unsigned char *buf, int len,
-					int *nbytes_to_read)
-{
-	bool rc = false;
-	int i = 0, j = 0;
-	static int sync1, sync2, byteoff, skip_bytes;
-	u32 plen = 0;
-
-	if (clear) {
-		sync1 = sync2 = byteoff = skip_bytes = 0;
-		return 0;
-	}
-
-	/* skip data part. Only decode header */
-	if (skip_bytes) {
-		i += skip_bytes;
-		skip_bytes -= skip_bytes >= len ? len : skip_bytes;
-	}
-
-	while (i < len) {
-		if (buf[i] == 0x12 && sync1 == 0)
-			sync1 = 1;
-		else if (sync1 && !sync2 && buf[i] == 0x34) {
-			sync2 = 1;
-			byteoff = 1;
-		} else if (sync2 && byteoff <= 6) {
-			switch (byteoff) {
-			case 3:
-				plen = buf[i];
-				break;
-			case 4:
-				plen |= buf[i] << 8;
-				break;
-			case 5:
-				plen |= buf[i] << 16;
-				break;
-			case 6:
-				plen |= buf[i] << 24;
-				if (plen & 0x80000000) {
-					pr_info("%s()Nomore bit found\n",
-					__func__);
-					rc = true;
-				}
-				plen &= 0x3FFFFFFF;
-				skip_bytes = plen;
-				sync1 = 0;
-				sync2 = 0;
-				byteoff = 0;
-				break;
-			default:
-				break;
-			}
-			byteoff++;
-			if (rc)
-				break;
-		} else {
-			sync1 = 0;
-			sync2 = 0;
-			byteoff = 0;
-		}
-		i++;
-		j = i;
-		i += skip_bytes;
-		skip_bytes -= skip_bytes >= (len - j) ? (len - j) : skip_bytes;
-	}
-
-	/*If no more bit was found then get the number of bytes yet to be read*/
-	if (true == rc) {
-		*nbytes_to_read = i + plen - len + 1;
-
-		/* Ideally nbytes_to_read should be positive. But in case of
-		 * synchronous interfaces like SPI, when data are read after
-		 * buffer data are over (after last packet is read, data are
-		 * filled with zero. Thus in these cases, there are data
-		 * (zeros) after buffer data is over which can cause negative
-		 * value.
-		 */
-		if (*nbytes_to_read < 0)
-			*nbytes_to_read = 0;
-	}
-
-	return rc;
-}
-
 static int streaming_producer(void *ptr)
 {
 	struct escore_priv *escore;
@@ -1051,17 +952,14 @@ static int streaming_producer(void *ptr)
 	int rlen_last = 0;	/* bytes read on last read call */
 	int length;
 	int chead, ctail;
-	int data_ready = 0;
+	int data_ready = 1;
 	unsigned long bytes_read = 0;
-	int nbytes_to_read = 0;
-	bool no_more_bit = 0;
 
 	buf = streaming_page_alloc();
 	if (!buf)
 		return -ENOMEM;
 
 	pr_debug("called: %s\n", __func__);
-	is_nomore_databit_found(1, 0, 0, 0);
 	escore = (struct escore_priv *) ptr;
 
 	/*
@@ -1070,8 +968,7 @@ static int streaming_producer(void *ptr)
 	 * that may be in the UART receive buffer
 	 */
 	do {
-		if (rlen == PAGE_SIZE ||
-				(no_more_bit && !nbytes_to_read)) {
+		if (rlen == PAGE_SIZE) {
 			chead = stream_circ.head;
 			ctail = ACCESS_ONCE(stream_circ.tail);
 
@@ -1102,35 +999,18 @@ static int streaming_producer(void *ptr)
 				return -ENOMEM;
 			rlen = 0;
 		}
+		if (escore->streamdev.wait)
+			data_ready = escore->streamdev.wait(escore);
 
-		data_ready = escore->streamdev.wait(escore);
 		if (data_ready > 0) {
-
-			if (!no_more_bit)
-				nbytes_to_read = PAGE_SIZE - rlen;
-
 			rlen_last = escore->streamdev.read(escore, buf + rlen,
-					nbytes_to_read);
+					PAGE_SIZE - rlen);
 			if (rlen_last < 0) {
 				dev_err(escore->dev, "%s(): read error on streamdev: %d\n",
 						__func__, rlen_last);
 			} else {
 				rlen += rlen_last;
 			}
-		}
-		if (!no_more_bit) {
-			no_more_bit = is_nomore_databit_found(
-					0,
-					buf + rlen - rlen_last,
-					rlen_last,
-					&nbytes_to_read);
-			if (no_more_bit)
-				dev_info(escore->dev,
-						"%s() Data to be read = %d",
-						__func__, nbytes_to_read);
-		} else {
-			pr_debug("%s() read %d\n", __func__, rlen_last);
-			nbytes_to_read -= rlen_last;
 		}
 	} while (!kthread_should_stop());
 
@@ -1187,22 +1067,37 @@ static ssize_t datablock_read(struct file *filp, char __user *buf,
 				= (struct escore_priv *)filp->private_data;
 	ssize_t rcnt = count < escore->datablock_dev.rdb_read_count ?
 				count : escore->datablock_dev.rdb_read_count;
-	int rc = 0;
+	int rc;
 
 	BUG_ON(!escore);
+
+	if (escore->datablock_dev.rdb_read_buffer == NULL)
+		return 0;
+
 	/* Mutex required against simultaneous read/writes on the RDB buffer */
 	rc = mutex_lock_killable(&escore->datablock_dev.datablock_read_mutex);
 	if (rc) {
-		rcnt = -EIO;
-		goto read_err;
+		pr_err("%s() failed to get datablock read lock: %d\n",
+				__func__, rc);
+		return rc;
 	}
-	rc = copy_to_user(buf, escore->datablock_dev.rdb_read_buffer, rcnt);
+
+	rc = copy_to_user(buf, escore->datablock_dev.rdb_read_buffer + *f_pos,
+			rcnt);
 	mutex_unlock(&escore->datablock_dev.datablock_read_mutex);
-	if (rc)
-		rcnt -= rc;
-read_err:
-	/* Reset the read count */
-	escore->datablock_dev.rdb_read_count = 0;
+	if (rc) {
+		pr_err("%s() copy to user failed: %d\n", __func__, rc);
+		return rc;
+	}
+
+	/* update position & count to support multiple reads in chunks smaller
+	 * than the buffer */
+	*f_pos += rcnt;
+	escore->datablock_dev.rdb_read_count -= rcnt;
+	if (!escore->datablock_dev.rdb_read_count) {
+		kfree(escore->datablock_dev.rdb_read_buffer);
+		escore->datablock_dev.rdb_read_buffer = NULL;
+	}
 
 	return rcnt;
 }
@@ -1210,11 +1105,12 @@ read_err:
 static int datablock_write_dispatch(struct escore_priv * const escore,
 				u32 cmd, size_t count)
 {
-	char *data = data_buf += sizeof(cmd);
+	char *data = data_buf + sizeof(cmd);
 	int remains = (int)count - sizeof(cmd);
 	int err = 0;
 	u32 cmd_id = cmd >> 16;
 	u32 rspn;
+	struct es_datablock_device *datablock_dev = &escore->datablock_dev;
 
 	if (cmd_id == ES_WDB_CMD) {
 		err = escore_datablock_write(escore, data, remains);
@@ -1227,17 +1123,47 @@ static int datablock_write_dispatch(struct escore_priv * const escore,
 		if (err > 0)
 			err += 4;
 	} else if (cmd_id == ES_RDB_CMD) {
-		err = mutex_lock_killable(
-			&escore->datablock_dev.datablock_read_mutex);
+		int size;
+		err = mutex_lock_killable(&datablock_dev->datablock_read_mutex);
+		if (unlikely(err)) {
+			dev_err(escore->dev,
+				"%s(): lock failed for datablock read: %d\n",
+				__func__, err);
+			return err;
+		}
+
+		/* Reset read data block size */
+		datablock_dev->rdb_read_count = 0;
+
+		size = escore_get_rdb_size(escore, (cmd & 0xFFFF));
+		if (size < 0) {
+			mutex_unlock(&datablock_dev->datablock_read_mutex);
+			return size;
+		}
+
+		/* free previously malloced data (if any) & malloc with new
+		 * size */
+		kfree(datablock_dev->rdb_read_buffer);
+		datablock_dev->rdb_read_buffer = kmalloc(size, GFP_KERNEL);
+		if (datablock_dev->rdb_read_buffer == NULL) {
+			dev_err(escore->dev,
+				"%s(): Not enough memory to read RDB data\n",
+				__func__);
+			mutex_unlock(&datablock_dev->datablock_read_mutex);
+			return -ENOMEM;
+		}
+
 		/* include the ID of the ES block to be read */
 		err = escore_datablock_read(escore,
-					escore->datablock_dev.rdb_read_buffer,
-					PARSE_BUFFER_SIZE, (cmd & 0xFFFF));
+					datablock_dev->rdb_read_buffer, size);
 		/* If there is no error, this function should return 0 */
-		if (err > 0)
+		if (err > 0) {
 			err = 0;
+			/* Store read data block size */
+			datablock_dev->rdb_read_count = size;
+		}
 
-		mutex_unlock(&escore->datablock_dev.datablock_read_mutex);
+		mutex_unlock(&datablock_dev->datablock_read_mutex);
 	} else {
 		err = escore_cmd(escore, cmd, &rspn);
 		if (err) {
@@ -1261,7 +1187,13 @@ static ssize_t datablock_write(struct file *filp, const char __user *buf,
 	int err = 0;
 
 	BUG_ON(!escore);
-	dev_dbg(escore->dev, "%s() entry: count: %zu\n", __func__, count);
+	dev_dbg(escore->dev, "%s() entry: count: %zd\n", __func__, count);
+
+	if (count > sizeof(parse_buffer)) {
+		dev_err(escore->dev, "%s() invalid counter size\n", __func__);
+		err = -EINVAL;
+		goto OUT;
+	}
 
 	err = copy_from_user(data_buf, buf, count);
 	if (err) {
@@ -1273,7 +1205,9 @@ static ssize_t datablock_write(struct file *filp, const char __user *buf,
 
 	dev_dbg(escore->dev, "%s(): cmd: 0x%08x\n", __func__, cmd);
 
+	mutex_lock(&escore->access_lock);
 	err = datablock_write_dispatch(escore, cmd, count);
+	mutex_unlock(&escore->access_lock);
 OUT:
 	return (err) ? err : count;
 }
@@ -1309,7 +1243,9 @@ static int datablock_open(struct inode *inode, struct file *filp)
 		goto OPEN_ERR;
 	}
 
+	mutex_lock(&escore->access_lock);
 	err = escore_pm_get_sync();
+	mutex_unlock(&escore->access_lock);
 	if (err < 0) {
 		pr_err("%s(): pm_get_sync failed :%d\n", __func__, err);
 		return err;
@@ -1343,7 +1279,11 @@ static int datablock_release(struct inode *inode, struct file *filp)
 			= (struct escore_priv *)filp->private_data;
 	BUG_ON(!escore);
 	mutex_unlock(&escore->datablock_dev.datablock_mutex);
+
+	mutex_lock(&escore->access_lock);
 	escore_pm_put_autosuspend();
+	mutex_unlock(&escore->access_lock);
+
 	escore_datablock_close(escore);
 	dev_dbg(escore->dev, "%s(): release complete\n", __func__);
 	return 0;
@@ -1487,7 +1427,6 @@ static int cmd_history_release(struct inode *inode, struct file *filp)
 	escore->cmd_history_size = 0;
 	return 0;
 }
-
 static const struct file_operations datablock_fops = {
 	.owner = THIS_MODULE,
 	.read = datablock_read,
@@ -1495,6 +1434,7 @@ static const struct file_operations datablock_fops = {
 	.open = datablock_open,
 	.release = datablock_release,
 };
+
 
 static const struct file_operations cmd_history_fops = {
 	.owner = THIS_MODULE,
@@ -1523,7 +1463,7 @@ static int create_cdev(struct escore_priv *escore, struct cdev *cdev,
 
 	dev = device_create(cdev_class, NULL, devno, NULL,
 			    ESCORE_CDEV_NAME "%d", cdev_minor + index);
-	if (IS_ERR(cdev)) {
+	if (IS_ERR(dev)) {
 		err = PTR_ERR(dev);
 		dev_err(escore->dev, "device_create cdev=%d failed: %d\n",
 			index, err);
@@ -1599,15 +1539,6 @@ int escore_cdev_init(struct escore_priv *escore)
 	if (err)
 		goto err_datablock;
 	dev_dbg(escore->dev, "datablock cdev initialized.\n");
-
-	escore->datablock_dev.rdb_read_buffer = kmalloc(PARSE_BUFFER_SIZE,
-							GFP_KERNEL);
-	if (!escore->datablock_dev.rdb_read_buffer) {
-		dev_err(escore->dev, "%s(): rdb_read_buffer alloc failed\n",
-			__func__);
-		err = -ENOMEM;
-		goto err_datablock;
-	}
 
 	err = create_cdev(escore, &escore->cdev_datalogging, &datalogging_fops,
 			  CDEV_DATALOGGING);
