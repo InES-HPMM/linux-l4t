@@ -181,7 +181,7 @@ static inline void channel_set_field(struct tegra_adma_chan *tdc,
 {
 	u32 t;
 
-	t = readl(tdc->tdma->base_addr + reg);
+	t = readl(tdc->tdma->base_addr + tdc->chan_base_offset + reg);
 	writel((t & ~((mask) << (shift))) + (((val) &
 		(mask)) << (shift)), tdc->tdma->base_addr +
 		tdc->chan_base_offset + reg);
@@ -347,6 +347,10 @@ static void tegra_adma_stop(struct tegra_adma_chan *tdc)
 	while (tegra_adma_is_enabled(tdc) &&
 	       dcnt--)
 		udelay(TEGRA_ADMA_BURST_COMPLETE_TIME);
+
+	if (tegra_adma_is_enabled(tdc))
+		dev_warn(tdc2dev(tdc), "%s(): stop failed for channel %d\n",
+			__func__, tdc->id);
 
 	tdc->busy = false;
 }
