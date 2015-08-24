@@ -2546,7 +2546,7 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 #endif
 	} else if (strnicmp(command, CMD_NV_COUNTRY, strlen(CMD_NV_COUNTRY)) == 0) {
 		char *country_code = command + strlen(CMD_NV_COUNTRY) + 1;
-		bytes_written = wldev_set_country(net, country_code, true, true);
+		bytes_written = wldev_set_country(net, country_code, true, false);
 	}
 #endif /* WL_CFG80211 */
 	else if (strnicmp(command, CMD_SET_CSA, strlen(CMD_SET_CSA)) == 0) {
