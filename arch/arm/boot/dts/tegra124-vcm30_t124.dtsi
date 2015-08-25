@@ -169,10 +169,12 @@
 		status = "disabled";
 
 		pci@1,0 {
+			nvidia,disable-clock-request;
 			status = "disabled";
 		};
 
 		pci@2,0 {
+			nvidia,disable-clock-request;
 			status = "disabled";
 		};
 	};
