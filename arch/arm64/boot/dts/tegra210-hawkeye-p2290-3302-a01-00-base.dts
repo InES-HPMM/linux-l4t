@@ -50,4 +50,8 @@
 						0x10    391     533>;
 		};
 	};
+
+	sound {
+		nvidia,digital-mic-data-input = "pdm1_di";
+	};
 };

@@ -20,15 +20,12 @@
  * more details.
  */
 
-#include "tegra210-hawkeye-p2290-3306-a02-00.dts"
-#include "tegra210-platforms/tegra210-hawkeye-sensor-p2290-1100-a03.dtsi"
+#include "tegra210-hawkeye-p2290-3324-a03-00-base.dts"
+#include "tegra210-hawkeye-p2290-shim.dtsi"
 
 / {
 	nvidia,dtsfilename = __FILE__;
 	nvidia,boardids = "2290:3324:A03";
 	nvidia,proc-boardid = "2290:3324:A03";
 
-	sound {
-		nvidia,digital-mic-data-input = "pdm0_di";
-	};
 };

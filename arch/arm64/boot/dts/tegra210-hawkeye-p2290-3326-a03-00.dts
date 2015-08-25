@@ -20,7 +20,8 @@
  * more details.
  */
 
-#include "tegra210-hawkeye-p2290-3324-a03-00.dts"
+#include "tegra210-hawkeye-p2290-3326-a03-00-base.dts"
+#include "tegra210-hawkeye-p2290-shim.dtsi"
 
 / {
 	nvidia,dtsfilename = __FILE__;

@@ -20,21 +20,11 @@
  * more details.
  */
 
-#include "tegra210-hawkeye-p2290-3303-a01-00.dts"
-#include "tegra210-platforms/tegra210-hawkeye-pinmux-p2290-1100-a02.dtsi"
-#include "tegra210-platforms/tegra210-hawkeye-sensor-p2290-1100-a02.dtsi"
+#include "tegra210-hawkeye-p2290-3303-a02-00-base.dts"
+#include "tegra210-hawkeye-p2290-shim.dtsi"
 
 / {
 	nvidia,dtsfilename = __FILE__;
 	nvidia,boardids = "2290:3303:A02";
 	nvidia,proc-boardid = "2290:3303:A02";
-
-	i2c@7000c400 {
-		tps65132@3e {
-			tps65132_outn: outn {
-			   ti,active-discharge-gpio = <&gpio TEGRA_GPIO(A, 0) 0>;
-			   ti,active-discharge-time = <2000>; /* in us */
-		   };
-		};
-	};
 };
