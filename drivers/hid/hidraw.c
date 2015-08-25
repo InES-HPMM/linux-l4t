@@ -7,7 +7,7 @@
  * use a transport-specific userspace libhid/libusb libraries.
  *
  *  Copyright (c) 2007 Jiri Kosina
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  */
 
 /*
@@ -482,6 +482,7 @@ int hidraw_report_event(struct hid_device *hid, u8 *data, int len)
 		if (new_head == list->tail)
 			continue;
 
+		kfree(list->buffer[list->head].value);
 		if (!(list->buffer[list->head].value = kmemdup(data, len, GFP_ATOMIC))) {
 			ret = -ENOMEM;
 			break;
