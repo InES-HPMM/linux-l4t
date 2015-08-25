@@ -27,4 +27,16 @@
 	nvidia,dtsfilename = __FILE__;
 	nvidia,boardids = "2290:3324:A03";
 	nvidia,proc-boardid = "2290:3324:A03";
+
+	sound {
+		nvidia,digital-mic-data-input = "pdm0_di";
+	};
+
+	udc@7d000000 {
+		status = "okay";
+	};
+
+	otg@7d000000 {
+		status = "okay";
+	};
 };
