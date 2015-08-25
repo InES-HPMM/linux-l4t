@@ -338,8 +338,13 @@ static int hidraw_release(struct inode * inode, struct file * file)
 {
 	unsigned int minor = iminor(inode);
 	struct hidraw_list *list = file->private_data;
+	int i;
 
 	mutex_lock(&minors_lock);
+
+	for (i = 0; i < HIDRAW_BUFFER_SIZE; i++) {
+		kfree(list->buffer[i].value);
+	}
 
 	list_del(&list->node);
 	kfree(list);
