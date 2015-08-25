@@ -695,6 +695,7 @@
                                         0x8     0x3F    0x10
                                         0x9     0x3F    0x10
                                         0x10    0x3F    0x20
+                                        0x11    0x3F    0x20
                                         0x21    0x3F    0x40
                                         0x20    0x3F    0x40>;
                         #extcon-cells = <1>;
