@@ -68,10 +68,6 @@
 		dt-override-status-odm-data = <0x01000000 0x01000000>;
 	};
 
-	spi@7000da00 {
-		status = "disabled";
-	};
-
 	i2c@7000c500 {
 		fts@49 {
 			compatible = "stmicron,fts_i2c";
