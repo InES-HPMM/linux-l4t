@@ -620,7 +620,7 @@ static ssize_t bh1730_debugfs_write_reg(struct file *file,
 		break;
 	case 2:
 		st->cached_reg_addr = reg;
-		return bh1730_i2c_wr(st, (u8)reg, (u8)val);
+		ret = bh1730_i2c_wr(st, (u8)reg, (u8)val);
 		if (ret) {
 			dev_err(&st->i2c->dev, "%s: write failed\n", __func__);
 			return ret;
