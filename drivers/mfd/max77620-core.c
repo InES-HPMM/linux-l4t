@@ -364,7 +364,8 @@ static int max77620_initialise_fps(struct max77620_chip *chip,
 	}
 
 	ret = max77620_reg_update(chip->dev, MAX77620_PWR_SLAVE,
-			MAX77620_REG_ONOFFCNFG2, MAX77620_ONOFFCNFG2_WK_EN0, 0);
+			MAX77620_REG_ONOFFCNFG2, MAX77620_ONOFFCNFG2_WK_EN0,
+			MAX77620_ONOFFCNFG2_WK_EN0);
 	if (ret < 0) {
 		dev_err(dev, "Reg ONOFFCNFG2 WK_EN0 update failed: %d\n", ret);
 		return ret;
@@ -695,6 +696,15 @@ static int max77620_i2c_suspend(struct device *dev)
 			config);
 	if (ret < 0)
 		dev_err(dev, "Reg ONOFFCNFG1 update failed: %d\n", ret);
+
+	/* Disable WK_EN0 */
+	ret = max77620_reg_update(chip->dev, MAX77620_PWR_SLAVE,
+			MAX77620_REG_ONOFFCNFG2, MAX77620_ONOFFCNFG2_WK_EN0, 0);
+	if (ret < 0) {
+		dev_err(dev, "Reg ONOFFCNFG2 WK_EN0 update failed: %d\n", ret);
+		return ret;
+	}
+
 	return 0;
 }
 
@@ -708,6 +718,16 @@ static int max77620_i2c_suspend_no_irq(struct device *dev)
 static int max77620_i2c_resume(struct device *dev)
 {
 	struct max77620_chip *chip = dev_get_drvdata(dev);
+	int ret;
+
+	/* Enable WK_EN0 */
+	ret = max77620_reg_update(chip->dev, MAX77620_PWR_SLAVE,
+		MAX77620_REG_ONOFFCNFG2, MAX77620_ONOFFCNFG2_WK_EN0,
+		MAX77620_ONOFFCNFG2_WK_EN0);
+	if (ret < 0) {
+		dev_err(dev, "Reg ONOFFCNFG2 WK_EN0 update failed: %d\n", ret);
+		return ret;
+	}
 
 	return regmap_irq_resume(chip->top_irq_data);
 }
