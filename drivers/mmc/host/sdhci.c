@@ -2983,8 +2983,10 @@ static void sdhci_tasklet_card(unsigned long param)
 	struct sdhci_host *host = (struct sdhci_host *)param;
 
 	sdhci_card_event(host->mmc);
-
-	mmc_detect_change(host->mmc, msecs_to_jiffies(350));
+	if (host->ops->get_cd(host))
+		mmc_detect_change(host->mmc, msecs_to_jiffies(700));
+	else
+		mmc_detect_change(host->mmc, msecs_to_jiffies(200));
 }
 
 static void sdhci_tasklet_finish(unsigned long param)
@@ -3648,7 +3650,6 @@ int sdhci_suspend_host(struct sdhci_host *host)
 		host->suspend_task = NULL;
 		return ret;
 	}
-
 	/* cancel delayed clk gate work */
 	if (host->quirks2 & SDHCI_QUIRK2_DELAYED_CLK_GATE)
 		cancel_delayed_work_sync(&host->delayed_clk_gate_wrk);
