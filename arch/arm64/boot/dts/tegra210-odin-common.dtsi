@@ -40,6 +40,7 @@
 #include "tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi"
 #include "tegra210-platforms/tegra210-ers-clk-init.dtsi"
 #include "tegra210-platforms/tegra210-odin-sensor.dtsi"
+#include "tegra210-platforms/tegra210-pwm-fan-p2530-0930.dtsi"
 
 / {
 	model = "odin";
@@ -392,18 +393,9 @@
 	};
 
 	pwm_fan_shared_data: pfsd {
-		num_resources = <0>;
-		secret = <47>;
-		active_steps = <10>;
-		active_rpm = <0 1000 2000 3000 4000 5000 6000 7000 10000 11000>;
-		active_rru = <40 2 1 1 1 1 1 1 1 1>;
-		active_rrd = <40 2 1 1 1 1 1 1 1 1>;
 		state_cap_lookup = <2 2 2 7 7 7 7 7 9 9>;
 		pwm_period = <40000>;
 		pwm_id = <1>;
-		step_time = <100>; /* mesecs */
-		state_cap = <7>;
-		active_pwm_max = <256>;
 		tach_gpio =  <TEGRA_GPIO(S, 7)>; /* TEGRA_GPIO_PS7 */
 		pwm_gpio = <TEGRA_GPIO(V, 4)>; /* TEGRA_GPIO_PV4 */
 	};
