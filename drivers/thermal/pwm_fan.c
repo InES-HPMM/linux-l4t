@@ -23,6 +23,7 @@
 #include <linux/platform_data/pwm_fan.h>
 #include <linux/thermal.h>
 #include <linux/mutex.h>
+#include <linux/spinlock.h>
 #include <linux/debugfs.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
@@ -40,6 +41,7 @@
 #include <linux/of_device.h>
 #include <linux/of.h>
 #include <linux/regulator/consumer.h>
+#include <linux/time.h>
 
 struct fan_dev_data {
 	int next_state;
@@ -72,7 +74,17 @@ struct fan_dev_data {
 	const char *name;
 	struct regulator *fan_reg;
 	bool is_fan_reg_enabled;
+	/* for tach feedback */
+	int rpm_measured;
+	struct delayed_work fan_tach_work;
+	struct workqueue_struct *tach_workqueue;
+	int tach_period;
 };
+
+static spinlock_t irq_lock;
+static int irq_count;
+static struct timeval first_irq;
+static struct timeval last_irq;
 
 #ifdef CONFIG_DEBUG_FS
 static struct dentry *fan_debugfs_root;
@@ -261,6 +273,18 @@ static int fan_debugfs_show(struct seq_file *s, void *data)
 	return 0;
 }
 
+static int fan_rpm_measured_show(void *data, u64 *val)
+{
+	struct fan_dev_data *fan_data = (struct fan_dev_data *)data;
+
+	if (!fan_data)
+		return -EINVAL;
+	mutex_lock(&fan_data->fan_state_lock);
+	*val = (u64) fan_data->rpm_measured;
+	mutex_unlock(&fan_data->fan_state_lock);
+	return 0;
+}
+
 static int fan_debugfs_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, fan_debugfs_show, inode->i_private);
@@ -291,6 +315,9 @@ DEFINE_SIMPLE_ATTRIBUTE(fan_tach_enabled_fops,
 DEFINE_SIMPLE_ATTRIBUTE(fan_step_time_fops,
 			fan_step_time_show,
 			fan_step_time_set, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(fan_rpm_measured_fops,
+			fan_rpm_measured_show,
+			NULL, "%llu\n");
 
 static int pwm_fan_debug_init(struct fan_dev_data *fan_data)
 {
@@ -333,6 +360,12 @@ static int pwm_fan_debug_init(struct fan_dev_data *fan_data)
 		(void *)fan_data,
 		&fan_tach_enabled_fops))
 		goto err_out;
+
+	if (!debugfs_create_file("rpm_measured", 0444, fan_debugfs_root,
+		(void *)fan_data,
+		&fan_rpm_measured_fops))
+		goto err_out;
+
 	return 0;
 
 err_out:
@@ -536,6 +569,56 @@ static void fan_ramping_work_func(struct work_struct *work)
 }
 
 
+static void fan_tach_work_func(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct fan_dev_data *fan_data = container_of(dwork, struct fan_dev_data,
+			fan_tach_work);
+	int tach_pulse_count, diff_sec, avg, one_min;
+	long int diff_usec, diff;
+	unsigned long flags;
+
+	spin_lock_irqsave(&irq_lock, flags);
+	tach_pulse_count = irq_count;
+	irq_count = 0;
+	diff_sec = last_irq.tv_sec - first_irq.tv_sec;
+	diff_usec = last_irq.tv_usec - first_irq.tv_usec;
+	spin_unlock_irqrestore(&irq_lock, flags);
+
+	if (!fan_data)
+		return;
+
+	/* get time diff */
+	if (tach_pulse_count <= 1) {
+		mutex_lock(&fan_data->fan_state_lock);
+		fan_data->rpm_measured = 0;
+		mutex_unlock(&fan_data->fan_state_lock);
+		goto next_cycle;
+	} else if (diff_sec < 0 || (diff_sec == 0 && diff_usec <= 0)) {
+		dev_err(fan_data->dev,
+				"invalid irq time diff: caught %d, diff_sec %d; diff_usec %ld\n",
+				tach_pulse_count, diff_sec, diff_usec);
+		goto next_cycle;
+	} else {
+		diff = diff_sec * 1000 * 1000 + diff_usec;
+		avg = diff / (tach_pulse_count - 1);
+		one_min = 60 * 1000 * 1000; /* in microseconds */
+
+		/* 2 tach pulses per revolution */
+		mutex_lock(&fan_data->fan_state_lock);
+		fan_data->rpm_measured = one_min / avg / 2;
+		mutex_unlock(&fan_data->fan_state_lock);
+	}
+
+next_cycle:
+	queue_delayed_work(fan_data->tach_workqueue,
+			&(fan_data->fan_tach_work),
+			msecs_to_jiffies(fan_data->tach_period));
+
+	return;
+}
+
+
 static ssize_t show_fan_pwm_cap_sysfs(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -701,6 +784,16 @@ static void remove_sysfs_entry(struct device *dev)
 
 irqreturn_t fan_tach_isr(int irq, void *data)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&irq_lock, flags);
+	if (irq_count == 0)
+		do_gettimeofday(&first_irq);
+	else
+		do_gettimeofday(&last_irq);
+	irq_count++;
+	spin_unlock_irqrestore(&irq_lock, flags);
+
 	return IRQ_HANDLED;
 }
 
@@ -918,18 +1011,47 @@ static int pwm_fan_probe(struct platform_device *pdev)
 		}
 
 		err = request_irq(fan_data->tach_irq, fan_tach_isr,
-			IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+			IRQF_TRIGGER_RISING,
 			"pwm-fan-tach", NULL);
-		if (err < 0)
+		if (err < 0) {
+			dev_err(&pdev->dev, "fan request irq failed\n");
 			goto tach_request_irq_fail;
+		}
+		dev_info(&pdev->dev, "fan tach request irq: %d. success\n",
+				fan_data->tach_irq);
 		disable_irq_nosync(fan_data->tach_irq);
 	}
 
-	platform_set_drvdata(pdev, fan_data);
+	of_err |= of_property_read_u32(data_node, "tach_period", &value);
+	if (of_err < 0)
+		dev_err(&pdev->dev, "parsing tach_period error: %d\n", of_err);
+	else {
+		fan_data->tach_period = (int) value;
+		dev_info(&pdev->dev, "tach period: %d\n", fan_data->tach_period);
+
+		/* init tach work related */
+		fan_data->tach_workqueue = alloc_workqueue(fan_data->name,
+				WQ_HIGHPRI | WQ_UNBOUND, 1);
+		if (!fan_data->tach_workqueue) {
+			err = -ENOMEM;
+			goto tach_workqueue_alloc_fail;
+		}
+		INIT_DELAYED_WORK(&(fan_data->fan_tach_work),
+				fan_tach_work_func);
+		queue_delayed_work(fan_data->tach_workqueue,
+				&(fan_data->fan_tach_work),
+				msecs_to_jiffies(fan_data->tach_period));
+	}
+	/* init rpm related values */
+	spin_lock_init(&irq_lock);
+	irq_count = 0;
+	fan_data->rpm_measured = 0;
 
 	/*turn temp control on*/
 	fan_data->fan_temp_control_flag = 1;
 	set_pwm_duty_cycle(fan_data->fan_pwm[0], fan_data);
+
+	platform_set_drvdata(pdev, fan_data);
 
 	if (add_sysfs_entry(&pdev->dev) < 0) {
 		dev_err(&pdev->dev, "FAN:Can't create syfs node");
@@ -957,6 +1079,8 @@ static int pwm_fan_probe(struct platform_device *pdev)
 	return err;
 
 sysfs_fail:
+	destroy_workqueue(fan_data->tach_workqueue);
+tach_workqueue_alloc_fail:
 	free_irq(fan_data->tach_irq, NULL);
 tach_request_irq_fail:
 tach_gpio_request_fail:
@@ -1000,6 +1124,16 @@ static int pwm_fan_remove(struct platform_device *pdev)
 	pwm_disable(fan_data->pwm_dev);
 	pwm_free(fan_data->pwm_dev);
 	thermal_cooling_device_unregister(fan_data->cdev);
+	cancel_delayed_work(&fan_data->fan_tach_work);
+	destroy_workqueue(fan_data->tach_workqueue);
+	cancel_delayed_work(&fan_data->fan_ramp_work);
+	destroy_workqueue(fan_data->workqueue);
+	devm_kfree(&pdev->dev, (void *)(fan_data->fan_pwm));
+	devm_kfree(&pdev->dev, (void *)(fan_data->fan_state_cap_lookup));
+	devm_kfree(&pdev->dev, (void *)(fan_data->fan_rrd));
+	devm_kfree(&pdev->dev, (void *)(fan_data->fan_rru));
+	devm_kfree(&pdev->dev, (void *)(fan_data->fan_rpm));
+	devm_kfree(&pdev->dev, (void *)fan_data);
 	remove_sysfs_entry(&pdev->dev);
 
 	if (fan_data->fan_reg)
