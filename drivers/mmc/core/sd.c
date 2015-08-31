@@ -943,6 +943,9 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 	u32 cid[4];
 	u32 rocr = 0;
 	u8 enable_uhs = 1;
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	unsigned long flags;
+#endif
 	BUG_ON(!host);
 	WARN_ON(!host->claimed);
 
@@ -1049,6 +1052,12 @@ retry:
 	}
 
 	host->card = card;
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	spin_lock_irqsave(&host->lock, flags);
+	host->bus_resume_flags &= ~MMC_BUSRESUME_NEEDS_RESUME;
+	host->rescan_disable = 0;
+	spin_unlock_irqrestore(&host->lock, flags);
+#endif
 
 #ifdef CONFIG_MMC_FREQ_SCALING
 	/*
