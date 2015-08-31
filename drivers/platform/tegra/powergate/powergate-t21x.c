@@ -19,6 +19,7 @@
 #include <linux/tegra-soc.h>
 #include <linux/platform/tegra/dvfs.h>
 #include <linux/tegra_soctherm.h>
+#include <trace/events/power.h>
 
 #include "powergate-priv.h"
 #include "powergate-ops-t1xx.h"
@@ -546,12 +547,18 @@ static int tegra210_pg_mc_flush_done(int id)
 	return 0;
 }
 
+static const char *tegra210_pg_get_name(int id)
+{
+	return tegra210_pg_partition_info[id].name;
+}
+
 static int tegra210_pg_powergate(int id)
 {
 	struct powergate_partition_info *partition =
 				&tegra210_pg_partition_info[id];
 	int ret = 0;
 
+	trace_powergate(__func__, tegra210_pg_get_name(id), id, 1, 0);
 	mutex_lock(&partition->pg_mutex);
 
 	if (--partition->refcount > 0)
@@ -567,6 +574,7 @@ static int tegra210_pg_powergate(int id)
 
 exit_unlock:
 	mutex_unlock(&partition->pg_mutex);
+	trace_powergate(__func__, tegra210_pg_get_name(id), id, 0, ret);
 	return ret;
 }
 
@@ -576,6 +584,7 @@ static int tegra210_pg_unpowergate(int id)
 				&tegra210_pg_partition_info[id];
 	int ret = 0;
 
+	trace_powergate(__func__, tegra210_pg_get_name(id), id, 1, 0);
 	mutex_lock(&partition->pg_mutex);
 
 	if (partition->refcount++ > 0)
@@ -591,6 +600,7 @@ static int tegra210_pg_unpowergate(int id)
 
 exit_unlock:
 	mutex_unlock(&partition->pg_mutex);
+	trace_powergate(__func__, tegra210_pg_get_name(id), id, 0, ret);
 	return ret;
 }
 
@@ -600,6 +610,7 @@ static int tegra210_pg_gpu_powergate(int id)
 	struct powergate_partition_info *partition =
 				&tegra210_pg_partition_info[id];
 
+	trace_powergate(__func__, tegra210_pg_get_name(id), id, 1, 0);
 	mutex_lock(&partition->pg_mutex);
 
 	if (--partition->refcount > 0)
@@ -644,6 +655,7 @@ static int tegra210_pg_gpu_powergate(int id)
 
 exit_unlock:
 	mutex_unlock(&partition->pg_mutex);
+	trace_powergate(__func__, tegra210_pg_get_name(id), id, 0, ret);
 	return ret;
 }
 
@@ -654,6 +666,7 @@ static int tegra210_pg_gpu_unpowergate(int id)
 	struct powergate_partition_info *partition =
 				&tegra210_pg_partition_info[id];
 
+	trace_powergate(__func__, tegra210_pg_get_name(id), id, 1, 0);
 	mutex_lock(&partition->pg_mutex);
 
 	if (partition->refcount++ > 0)
@@ -722,6 +735,7 @@ static int tegra210_pg_gpu_unpowergate(int id)
 
 exit_unlock:
 	mutex_unlock(&partition->pg_mutex);
+	trace_powergate(__func__, tegra210_pg_get_name(id), id, 0, ret);
 	return ret;
 
 err_clk_on:
@@ -729,6 +743,7 @@ err_clk_on:
 err_power:
 	mutex_unlock(&partition->pg_mutex);
 
+	trace_powergate(__func__, tegra210_pg_get_name(id), id, 0, ret);
 	return ret;
 }
 
@@ -840,11 +855,6 @@ static int tegra210_pg_unpowergate_clk_on(int id)
 
 	return tegra1xx_unpowergate_partition_with_clk_on(id,
 			&tegra210_pg_partition_info[id]);
-}
-
-static const char *tegra210_pg_get_name(int id)
-{
-	return tegra210_pg_partition_info[id].name;
 }
 
 static spinlock_t *tegra210_pg_get_lock(void)
