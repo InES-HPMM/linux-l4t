@@ -2901,6 +2901,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 	struct soctherm_sensor_common_params *scp = &pp->sensor_params.scp;
 	int k;
 	long gsh = MAX_HIGH_TEMP;
+	int num_thermal_trip_critical = 0;
 
 	/* program pdiv register */
 	r = soctherm_readl(TS_PDIV);
@@ -3048,6 +3049,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 		for (j = 0; j < therm->num_trips; j++) {
 			if (therm->trips[j].trip_type != THERMAL_TRIP_CRITICAL)
 				continue;
+			num_thermal_trip_critical++;
 			if (i == THERM_GPU) {
 				gsh = therm->trips[j].trip_temp;
 			} else if ((i == THERM_MEM) &&
@@ -3075,6 +3077,10 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 		soctherm_fuse_read_tsensor(i);
 		soctherm_tsense_program(i, scp);
 	}
+
+	/* Disable H/W shutdown if there is no critical thermal trip. */
+	if (num_thermal_trip_critical == 0)
+		prog_hw_shutdown(MAX_HIGH_TEMP, THERM_NONE);
 
 	soctherm_adjust_zone(THERM_CPU);
 	soctherm_adjust_zone(THERM_GPU);

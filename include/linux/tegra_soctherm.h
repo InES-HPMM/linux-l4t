@@ -42,6 +42,7 @@ enum soctherm_therm_id {
 	THERM_MEM,
 	THERM_PLL,
 	THERM_SIZE,
+	THERM_NONE,
 };
 
 enum soctherm_throttle_id {
