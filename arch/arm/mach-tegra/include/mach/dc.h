@@ -56,6 +56,8 @@
 
 extern atomic_t sd_brightness;
 
+extern struct fb_videomode tegra_dc_vga_mode;
+
 enum {
 	TEGRA_HPD_STATE_FORCE_DEASSERT = -1,
 	TEGRA_HPD_STATE_NORMAL = 0,
