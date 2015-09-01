@@ -1,7 +1,7 @@
 /*
  * bq2419x-charger.h -- BQ24190/BQ24192/BQ24192i/BQ24193 Charger driver
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
 
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  * Author: Syed Rafiuddin <srafiuddin@nvidia.com>
@@ -103,6 +103,8 @@
 #define BQ2419x_CHARGING_FAULT_MASK		0xFF
 #define BQ2419x_CHRG_BAT_FAULT_MASK		0x03
 #define BQ2419x_CHRG_BAT_FAULT_DISABLE	0x0
+#define BQ2419X_JEITA_VSET_MASK		0x10
+#define BQ2419X_JEITA_VSET_42V		BIT(4)
 
 #define BQ2419x_FAULT_NTC_FAULT			0x07
 #define BQ2419x_TREG				0x03

@@ -504,6 +504,11 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 	if (ret < 0)
 		dev_err(bq2419x->dev, "TIME_CTRL update failed: %d\n", ret);
 
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_MISC_OPER_REG,
+			BQ2419X_JEITA_VSET_MASK, BQ2419X_JEITA_VSET_42V);
+	if (ret < 0)
+		dev_err(bq2419x->dev, "JEITA_VSET update failed: %d\n", ret);
+
 	/* disable safety timer */
 	bq2419x_safetytimer_disable(bq2419x);
 
