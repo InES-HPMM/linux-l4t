@@ -34,7 +34,7 @@
 #include <linux/of.h>
 #include <linux/sysfs.h>
 #include <linux/slab.h>
-
+#include <linux/delay.h>
 
 /* ina230 (/ ina226)register offsets */
 #define INA230_CONFIG	0
@@ -54,7 +54,7 @@ SOL|SUL|BOL|BUL|POL|CVR|-   -   -   -   -  |AFF|CVF|OVF|APO|LEN
 #define INA230_MASK_SOL		(1 << 15)
 #define INA230_MASK_SUL		(1 << 14)
 #define INA230_MASK_CVF		(1 << 3)
-#define INA230_MAX_CONVERSION_TRIALS	50
+#define INA230_MAX_CONVERSION_TRIALS	1000
 
 /*
 Config register for ina230 (/ ina226):
@@ -260,6 +260,8 @@ static int  __locked_wait_for_conversion(struct ina230_chip *chip)
 			return ret;
 		}
 		conversion = ret & INA230_MASK_CVF;
+		if (!conversion)
+			msleep(1);
 	} while ((!conversion) && (++trials < INA230_MAX_CONVERSION_TRIALS));
 
 	if (trials == INA230_MAX_CONVERSION_TRIALS) {
