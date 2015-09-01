@@ -624,12 +624,11 @@ static inline void max17042_override_por_values(struct max17042_chip *chip)
 	max17042_override_por(client, MAX17042_FCTC, config->fctc);
 	max17042_override_por(client, MAX17042_RCOMP0, config->rcomp0);
 	max17042_override_por(client, MAX17042_TempCo, config->tcompc0);
-	if (chip->chip_type) {
+	if (chip->chip_type)
 		max17042_override_por(client, MAX17042_EmptyTempCo,
 					config->empty_tempco);
-		max17042_override_por(client, MAX17042_K_empty0,
-					config->kempty0);
-	}
+	if (chip->chip_type == MAX17042)
+		max17042_override_por(client, MAX17042_K_empty0, config->kempty0);
 }
 
 static int max17042_init_chip(struct max17042_chip *chip)
