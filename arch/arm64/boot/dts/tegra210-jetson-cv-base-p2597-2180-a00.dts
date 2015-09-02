@@ -54,6 +54,7 @@
 	#size-cells = <2>;
 
 	chosen {
+		board-has-eeprom;
 	};
 
 	pmc@7000e400 {
