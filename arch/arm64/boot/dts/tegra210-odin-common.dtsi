@@ -27,7 +27,7 @@
 #include "panel-o-720p-6-0.dsti"
 #include "panel-o-720p-6-0-01.dsti"
 #include "tegra210-platforms/tegra210-ers-dp-e2220-1170-a00.dtsi"
-#include "tegra210-platforms/tegra210-comms.dtsi"
+#include "tegra210-platforms/tegra210-odin-comms.dtsi"
 #include "tegra210-platforms/tegra210-sdhci.dtsi"
 #include "tegra210-platforms/tegra210-thermal-fan-est-p2530-0930.dtsi"
 #include "tegra210-platforms/tegra210-keys-p2530-0930.dtsi"

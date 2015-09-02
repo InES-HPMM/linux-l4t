@@ -52,7 +52,6 @@
 				TEGRA_GPIO(G, 3)
 				TEGRA_GPIO(K, 5)
 				TEGRA_GPIO(L, 0)
-				TEGRA_GPIO(H, 0)
 				TEGRA_GPIO(H, 3)
 				TEGRA_GPIO(H, 4)
 				TEGRA_GPIO(H, 6)
