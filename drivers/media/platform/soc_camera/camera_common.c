@@ -174,7 +174,7 @@ void camera_common_create_debugfs(
 	struct dentry *err;
 	struct i2c_client *client = s_data->i2c_client;
 
-	dev_dbg(&client->dev, "%s\n", __func__);
+	dev_dbg(&client->dev, "%s %s\n", __func__, name);
 
 	s_data->debugdir =
 		debugfs_create_dir(name, NULL);
