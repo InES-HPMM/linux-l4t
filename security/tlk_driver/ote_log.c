@@ -54,6 +54,15 @@ static int circ_buf_init(struct circular_buffer **cbptr)
 {
 
 	dma_addr_t tp;
+	int ret;
+
+	ret = dma_set_coherent_mask(tlk_misc_device.this_device,
+			DMA_BIT_MASK(32));
+	if (ret) {
+		dev_err(tlk_misc_device.this_device,
+			"dma_set_coherent_mask fails with: %d\n", ret);
+		return ret;
+	}
 
 	*cbptr = (struct circular_buffer *) dma_alloc_coherent(
 			tlk_misc_device.this_device,
