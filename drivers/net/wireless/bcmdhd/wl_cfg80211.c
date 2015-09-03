@@ -1965,17 +1965,21 @@ wl_cfg80211_notify_ifdel(int ifidx, char *name, uint8 *mac, uint8 bssidx)
 	bool ifdel_expected = FALSE;
 	struct bcm_cfg80211 *cfg = g_bcm_cfg;
 	wl_if_event_info *if_event_info = &cfg->if_event_info;
+	dhd_pub_t *dhd =  (dhd_pub_t *)(cfg->pub);
+
 
 	if (wl_get_p2p_status(cfg, IF_DELETING)) {
+		if_event_info->valid = TRUE;
 		ifdel_expected = TRUE;
+		dhd_p2p_ifdel(dhd,ifidx);
 		wl_clr_p2p_status(cfg, IF_DELETING);
 	} else if (cfg->bss_pending_op) {
 		ifdel_expected = TRUE;
 		cfg->bss_pending_op = FALSE;
+		if_event_info->valid = TRUE;
 	}
 
 	if (ifdel_expected) {
-		if_event_info->valid = TRUE;
 		if_event_info->ifidx = ifidx;
 		if_event_info->bssidx = bssidx;
 		wake_up_interruptible(&cfg->netif_change_event);
@@ -2050,7 +2054,7 @@ if (bcmdhd_prop_txstatus_vsdb) {
 #endif /* PROP_TXSTATUS_VSDB */
 	}
 
-	wl_cfg80211_remove_if(cfg, if_event_info->ifidx, ndev);
+	wl_cfg80211_remove_p2p_if(cfg, if_event_info->ifidx, ndev);
 	return BCME_OK;
 }
 

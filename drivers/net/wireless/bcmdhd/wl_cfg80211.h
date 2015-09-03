@@ -942,6 +942,7 @@ extern struct net_device* wl_cfg80211_allocate_if(struct bcm_cfg80211 *cfg, int 
 	uint8 *mac, uint8 bssidx);
 extern int wl_cfg80211_register_if(struct bcm_cfg80211 *cfg, int ifidx, struct net_device* ndev);
 extern int wl_cfg80211_remove_if(struct bcm_cfg80211 *cfg, int ifidx, struct net_device* ndev);
+extern int wl_cfg80211_remove_p2p_if(struct bcm_cfg80211 *cfg, int ifidx, struct net_device* ndev);
 extern int wl_cfg80211_scan_stop(bcm_struct_cfgdev *cfgdev);
 extern bool wl_cfg80211_is_vsdb_mode(void);
 extern void* wl_cfg80211_get_dhdp(void);
