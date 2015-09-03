@@ -116,6 +116,8 @@
 #define BQ27441_INPUT_POWER_THRESHOLD		7000
 #define BQ27441_BATTERY_SOC_THRESHOLD		90
 
+#define MAX_STRING_PRINT 50
+
 struct bq27441_chip {
 	struct i2c_client		*client;
 	struct delayed_work		work;
@@ -157,6 +159,7 @@ struct bq27441_chip {
 	bool enable_temp_prop;
 	bool full_charge_state;
 	bool fcc_fg_initialize;
+	bool low_battery_shutdown;
 	u32 full_charge_capacity;
 	struct mutex mutex;
 };
@@ -264,6 +267,9 @@ static int bq27441_update_soc_voltage(struct bq27441_chip *chip)
 		chip->soc = battery_gauge_get_adjusted_soc(chip->bg_dev,
 				chip->pdata->threshold_soc,
 				chip->pdata->maximum_soc, val * 100);
+
+	if (chip->low_battery_shutdown && chip->soc == 0)
+		chip->soc = 1;
 
 	if (chip->soc == BQ27441_BATTERY_FULL && chip->charge_complete) {
 		chip->status = POWER_SUPPLY_STATUS_FULL;
@@ -970,6 +976,9 @@ static int bq27441_update_battery_status(struct battery_gauge_dev *bg_dev,
 				chip->pdata->threshold_soc,
 				chip->pdata->maximum_soc, val * 100);
 
+	if (chip->low_battery_shutdown && chip->soc == 0)
+		chip->soc = 1;
+
 	if (status == BATTERY_CHARGING) {
 		chip->charge_complete = 0;
 		chip->status = POWER_SUPPLY_STATUS_CHARGING;
@@ -1039,6 +1048,65 @@ static void bq27441_fc_work(struct work_struct *work)
 					chip->full_charge_state);
 	battery_gauge_fc_state(chip->bg_dev, chip->full_charge_state);
 }
+
+static ssize_t bq27441_show_lowbat_shutdown_state(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq27441_chip *bq27441 = i2c_get_clientdata(client);
+
+	mutex_lock(&bq27441->mutex);
+	if (bq27441->shutdown_complete) {
+		mutex_unlock(&bq27441->mutex);
+		return -EIO;
+	}
+	mutex_unlock(&bq27441->mutex);
+
+	if (bq27441->low_battery_shutdown)
+		return snprintf(buf, MAX_STRING_PRINT, "disabled\n");
+	else
+		return snprintf(buf, MAX_STRING_PRINT, "enabled\n");
+}
+
+static ssize_t bq27441_set_lowbat_shutdown_state(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq27441_chip *bq27441 = i2c_get_clientdata(client);
+	bool enabled;
+
+	if ((*buf == 'E') || (*buf == 'e'))
+		enabled = true;
+	else if ((*buf == 'D') || (*buf == 'd'))
+		enabled = false;
+	else
+		return -EINVAL;
+
+	mutex_lock(&bq27441->mutex);
+	if (bq27441->shutdown_complete) {
+		mutex_unlock(&bq27441->mutex);
+		return -EIO;
+	}
+	if (enabled)
+		bq27441->low_battery_shutdown = false;
+	else
+		bq27441->low_battery_shutdown = true;
+	mutex_unlock(&bq27441->mutex);
+
+	return count;
+}
+
+static DEVICE_ATTR(low_battery_shutdown, (S_IRUGO | (S_IWUSR | S_IWGRP)),
+		bq27441_show_lowbat_shutdown_state, bq27441_set_lowbat_shutdown_state);
+
+static struct attribute *bq27441_attributes[] = {
+	&dev_attr_low_battery_shutdown.attr,
+	NULL
+};
+
+static const struct attribute_group bq27441_attr_group = {
+	.attrs = bq27441_attributes,
+};
 
 static irqreturn_t bq27441_irq(int id, void *dev)
 {
@@ -1182,6 +1250,7 @@ static int bq27441_probe(struct i2c_client *client,
 	chip->print_once = 0;
 	chip->full_charge_state = 0;
 	chip->fcc_fg_initialize = 0;
+	chip->low_battery_shutdown = 0;
 
 	chip->full_capacity = chip->pdata->full_capacity ?:
 				BQ27441_DESIGN_CAPACITY_DEFAULT;
@@ -1291,6 +1360,12 @@ static int bq27441_probe(struct i2c_client *client,
 	if (chip->soc == BQ27441_BATTERY_FULL && !chip->full_charge_state) {
 		chip->full_charge_state = 1;
 		schedule_delayed_work(&chip->fc_work, 0);
+	}
+
+	ret = sysfs_create_group(&client->dev.kobj, &bq27441_attr_group);
+	if (ret < 0) {
+		dev_err(&client->dev, "sysfs create failed %d\n", ret);
+		return ret;
 	}
 
 	return 0;
