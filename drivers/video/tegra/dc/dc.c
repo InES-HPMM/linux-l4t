@@ -3262,6 +3262,7 @@ static void tegra_dc_continuous_irq(struct tegra_dc *dc, unsigned long status,
 		}
 
 		/* Mark the frame_end as complete. */
+		dc->crc_pending = false;
 		if (!completion_done(&dc->frame_end_complete))
 			complete(&dc->frame_end_complete);
 		if (!completion_done(&dc->crc_complete))
