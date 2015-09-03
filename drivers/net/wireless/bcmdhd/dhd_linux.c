@@ -409,6 +409,7 @@ typedef struct dhd_info {
 #endif /* defined(WL_WIRELESS_EXT) */
 	dhd_pub_t pub;
 	dhd_if_t *iflist[DHD_MAX_IFS]; /* for supporting multiple interfaces */
+	void  *p2p_del_ifp;
 
 	void *adapter;			/* adapter information, interrupt, fw path etc. */
 	char fw_path[PATH_MAX];		/* path to firmware image */
@@ -4570,6 +4571,14 @@ dhd_event_ifadd(dhd_info_t *dhdinfo, wl_event_data_if_t *ifevent, char *name, ui
 	return BCME_OK;
 }
 
+void
+dhd_p2p_ifdel(dhd_pub_t *dhdpub, int ifidx)
+{
+	dhd_info_t *dhdinfo = dhdpub->info;
+	dhdinfo->p2p_del_ifp = dhdinfo->iflist[ifidx];
+	dhdinfo->iflist[ifidx] = NULL;
+}
+
 int
 dhd_event_ifdel(dhd_info_t *dhdinfo, wl_event_data_if_t *ifevent, char *name, uint8 *mac)
 {
@@ -4739,6 +4748,51 @@ dhd_remove_if(dhd_pub_t *dhdpub, int ifidx, bool need_rtnl_lock)
 
 	return BCME_OK;
 }
+
+int
+dhd_remove_p2p_if(dhd_pub_t *dhdpub, int ifidx, bool need_rtnl_lock)
+{
+	dhd_info_t *dhdinfo = (dhd_info_t *)dhdpub->info;
+	dhd_if_t *ifp =  dhdinfo->p2p_del_ifp;
+
+	ifp = dhdinfo->p2p_del_ifp;
+	dhdinfo->p2p_del_ifp=NULL;
+
+	if (ifp != NULL) {
+		if (ifp->net != NULL) {
+			DHD_ERROR(("deleting interface '%s' idx %d\n", ifp->net->name, ifp->idx));
+
+			/* in unregister_netdev case, the interface gets freed by net->destructor
+			 * (which is set to free_netdev)
+			 */
+			if (ifp->net->reg_state == NETREG_UNINITIALIZED) {
+				free_netdev(ifp->net);
+			} else {
+				netif_stop_queue(ifp->net);
+
+
+
+				if (need_rtnl_lock)
+					unregister_netdev(ifp->net);
+				else
+				unregister_netdevice(ifp->net);
+			}
+			ifp->net = NULL;
+		}
+#ifdef DHD_WMF
+	//Take care of this once WMF is enabled
+	//dhd_wmf_cleanup(dhdpub, ifidx);
+#endif /* DHD_WMF */
+
+		dhd_if_del_sta_list(ifp);
+
+		MFREE(dhdinfo->pub.osh, ifp, sizeof(*ifp));
+
+	}
+
+	return BCME_OK;
+}
+
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31))
 static struct net_device_ops dhd_ops_pri = {

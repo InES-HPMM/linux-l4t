@@ -139,6 +139,11 @@ int wl_cfg80211_remove_if(struct bcm_cfg80211 *cfg, int ifidx, struct net_device
 	return dhd_remove_if(cfg->pub, ifidx, FALSE);
 }
 
+int wl_cfg80211_remove_p2p_if(struct bcm_cfg80211 *cfg, int ifidx, struct net_device* ndev)
+{
+	return dhd_remove_p2p_if(cfg->pub, ifidx, FALSE);
+}
+
 struct net_device * dhd_cfg80211_netdev_free(struct net_device *ndev)
 {
 	if (ndev) {
