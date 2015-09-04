@@ -247,10 +247,20 @@ static int lp855x_bl_get_brightness(struct backlight_device *bl)
 	return bl->props.brightness;
 }
 
+static int lp855x_bl_check_fb(struct backlight_device *bl,
+			struct fb_info *info)
+{
+	struct platform_device *pdev = NULL;
+	pdev = to_platform_device(bus_find_device_by_name(
+		&platform_bus_type, NULL, "tegradc.0"));
+	return info->device == &pdev->dev;
+}
+
 static const struct backlight_ops lp855x_bl_ops = {
 	.options = BL_CORE_SUSPENDRESUME,
 	.update_status = lp855x_bl_update_status,
 	.get_brightness = lp855x_bl_get_brightness,
+	.check_fb = lp855x_bl_check_fb,
 };
 
 static int lp855x_backlight_register(struct lp855x *lp)
