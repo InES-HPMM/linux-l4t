@@ -85,6 +85,8 @@
 #include <dhd_bus.h>
 #include <dhd_proto.h>
 #include <dhd_dbg.h>
+/* Used for the bottom half, so same priority as the other irqthread */
+#define DHD_DEFAULT_RT_PRIORITY (MAX_USER_RT_PRIO / 2)
 #ifdef CONFIG_HAS_WAKELOCK
 #include <linux/wakelock.h>
 #endif
@@ -3417,7 +3419,7 @@ dhd_sched_policy(int prio)
 		setScheduler(current, SCHED_NORMAL, &param);
 	} else {
 		if (get_scheduler_policy(current) != SCHED_FIFO) {
-			param.sched_priority = (prio < MAX_RT_PRIO)? prio : (MAX_RT_PRIO-1);
+			param.sched_priority = DHD_DEFAULT_RT_PRIORITY;
 			setScheduler(current, SCHED_FIFO, &param);
 		}
 	}
@@ -3455,7 +3457,7 @@ dhd_dpc_thread(void *data)
 	if (dhd_dpc_prio > 0)
 	{
 		struct sched_param param;
-		param.sched_priority = (dhd_dpc_prio < MAX_RT_PRIO)?dhd_dpc_prio:(MAX_RT_PRIO-1);
+		param.sched_priority = DHD_DEFAULT_RT_PRIORITY;
 		setScheduler(current, SCHED_FIFO, &param);
 	}
 
@@ -3529,7 +3531,7 @@ dhd_rxf_thread(void *data)
 	if (dhd_rxf_prio > 0)
 	{
 		struct sched_param param;
-		param.sched_priority = (dhd_rxf_prio < MAX_RT_PRIO)?dhd_rxf_prio:(MAX_RT_PRIO-1);
+		param.sched_priority = DHD_DEFAULT_RT_PRIORITY;
 		setScheduler(current, SCHED_FIFO, &param);
 	}
 
