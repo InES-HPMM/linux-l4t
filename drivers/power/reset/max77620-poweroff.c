@@ -1,7 +1,7 @@
 /*
  * Power off driver for Maxim MAX77620 device.
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Chaitanya Bandi <bandik@nvidia.com>
  *
@@ -333,6 +333,9 @@ static int max77620_poweroff_probe(struct platform_device *pdev)
 		goto gpio_done;
 
 	count = of_property_count_u32(np, "maxim,power-reset-gpio-states");
+	if (count == -EINVAL)
+		goto gpio_done;
+
 	if (count % 2) {
 		dev_warn(&pdev->dev, "Not able to parse reset-gpio-states\n");
 		goto gpio_done;
