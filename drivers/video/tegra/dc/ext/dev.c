@@ -46,7 +46,7 @@
 #endif
 
 #define TEGRA_DC_TS_MAX_DELAY_US 1000000
-#define TEGRA_DC_TS_SLACK_US 2000
+#define TEGRA_DC_TS_SLACK_US 100
 
 #ifdef CONFIG_COMPAT
 /* compat versions that happen to be the same size as the uapi version. */
