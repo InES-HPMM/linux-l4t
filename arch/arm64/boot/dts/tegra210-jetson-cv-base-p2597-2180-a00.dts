@@ -75,6 +75,29 @@
 		status = "okay";
 	};
 
+	sdhci@700b0400 { /* SDMMC3 for EMMC */
+		tap-delay = <1>;
+		trim-delay = <3>;
+		nvidia,is-ddr-tap-delay;
+		nvidia,ddr-tap-delay = <0>;
+		mmc-ocr-mask = <0>;
+		power-off-rail;
+		max-clk-limit = <200000000>;
+		ddr-clk-limit = <48000000>;
+		uhs-mask = <0x60>;
+		bus-width = <4>;
+		built-in;
+		nvidia,is-emmc;
+		calib-3v3-offsets = <0x007D>;
+		calib-1v8-offsets = <0x7B7B>;
+		compad-vref-3v3 = <0x7>;
+		compad-vref-1v8 = <0x7>;
+		pll_source = "pll_p";
+		nvidia,en-io-trim-volt;
+		nvidia,en-periodic-calib;
+		status = "okay";
+	};
+
 	sdhci@700b0200 { /* SDMMC2 for Wifi */
 		uhs-mask = <0x8>;
 		power-off-rail;
