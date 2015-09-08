@@ -1282,14 +1282,6 @@
 					1 0xC0 0xFFFFEEFF 0x00000000>;
 			};
 
-			i2c1_prod {
-				nvidia,prod-boot-init;
-				prod = <0 0xDC 0xFE0E0FFF 0x00000000
-					0 0xE0 0xFE0E0FFF 0x00000000
-					1 0xC4 0xFFFFEEFF 0x00000100
-					1 0xC8 0xFFFFEEFF 0x00000100>;
-			};
-
                         i2c2_prod {
 				nvidia,prod-boot-init;
 				prod = <0 0xE4 0xFE0E0FFF 0x00000000
@@ -1325,6 +1317,11 @@
 	};
 
 	i2c@7000c700 {
+		nvidia,high_clock_count = <4>;
+		nvidia,clk_div_std_fast_mode = <0x14>;
+	};
+
+	i2c@7000c400 {
 		nvidia,high_clock_count = <4>;
 		nvidia,clk_div_std_fast_mode = <0x14>;
 	};
