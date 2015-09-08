@@ -2546,7 +2546,6 @@ static int tegra_pcie_init(struct tegra_pcie *pcie)
 	}
 
 	tegra_periph_reset_deassert(pcie->pcie_afi);
-	udelay(2);
 
 	tegra_pcie_enable_controller(pcie);
 	err = tegra_pcie_conf_gpios(pcie);
@@ -2568,7 +2567,6 @@ static int tegra_pcie_init(struct tegra_pcie *pcie)
 	}
 
 	tegra_periph_reset_deassert(pcie->pcie_pcie);
-	udelay(2);
 
 	tegra_pcie_check_ports(pcie);
 
@@ -4111,13 +4109,11 @@ static int tegra_pcie_resume_noirq(struct device *dev)
 	}
 	tegra_pcie_enable_pads(pcie, true);
 	tegra_periph_reset_deassert(pcie->pcie_afi);
-	udelay(2);
 	tegra_pcie_enable_controller(pcie);
 	tegra_pcie_setup_translations(pcie);
 	/* Set up MSI registers, if MSI have been enabled */
 	tegra_pcie_enable_msi(pcie, true);
 	tegra_periph_reset_deassert(pcie->pcie_pcie);
-	udelay(2);
 	tegra_pcie_check_ports(pcie);
 	if (!pcie->num_ports) {
 		tegra_pcie_power_off(pcie, true);
