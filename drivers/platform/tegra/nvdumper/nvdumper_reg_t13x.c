@@ -93,6 +93,7 @@ struct nvdumper_cpu_data_t {
 	struct task_struct *current_task;
 };
 
+static struct device nvdumper_dev;
 static struct nvdumper_cpu_data_t *nvdumper_cpu_data;
 static int max_cpus;
 static dma_addr_t nvdumper_p;
@@ -289,14 +290,28 @@ int nvdumper_regdump_init(void)
 	int ret;
 
 	max_cpus = num_possible_cpus();
+	nvdumper_dev.parent = NULL;
+	dev_set_name(&nvdumper_dev, "nvdumper_dev");
+	ret = device_register(&nvdumper_dev);
+	if (ret) {
+		pr_err("ERROR: nvdumper_dev device creation failed: %d\n", ret);
+		return ret;
+	}
 
-	nvdumper_cpu_data = dma_alloc_coherent(NULL,
+	ret = dma_set_coherent_mask(&nvdumper_dev, DMA_BIT_MASK(32));
+	if (ret) {
+		dev_err(&nvdumper_dev,
+			"dma_set_coherent_mask fails with: %d\n", ret);
+		goto clean;
+	}
+
+	nvdumper_cpu_data = dma_alloc_coherent(&nvdumper_dev,
 		sizeof(struct nvdumper_cpu_data_t) * max_cpus,
 		&nvdumper_p, 0);
 	if (!nvdumper_cpu_data) {
 		pr_err("%s: can not allocate bounce buffer\n", __func__);
-
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto clean;
 	}
 
 	ret = register_die_notifier(&nvdumper_die_notifier);
@@ -321,18 +336,21 @@ err_out2:
 
 err_out1:
 	if (nvdumper_cpu_data)
-		dma_free_coherent(NULL,
+		dma_free_coherent(&nvdumper_dev,
 				sizeof(struct nvdumper_cpu_data_t) * max_cpus,
 				nvdumper_cpu_data, nvdumper_p);
-
+clean:
+	device_unregister(&nvdumper_dev);
 	return ret;
 }
 
 void nvdumper_regdump_exit(void)
 {
-	dma_free_coherent(NULL, sizeof(struct nvdumper_cpu_data_t) * max_cpus,
+	dma_free_coherent(&nvdumper_dev,
+			sizeof(struct nvdumper_cpu_data_t) * max_cpus,
 			nvdumper_cpu_data, nvdumper_p);
 	unregister_die_notifier(&nvdumper_die_notifier);
 	atomic_notifier_chain_unregister(&panic_notifier_list,
 			&nvdumper_panic_notifier);
+	device_unregister(&nvdumper_dev);
 }
