@@ -55,8 +55,7 @@ static int circ_buf_init(struct circular_buffer **cbptr)
 
 	dma_addr_t tp;
 
-	*cbptr = (struct circular_buffer *) dma_alloc_coherent(
-			tlk_misc_device.this_device,
+	*cbptr = (struct circular_buffer *) dma_alloc_coherent(NULL,
 			sizeof(struct circular_buffer), &tp, GFP_KERNEL);
 	if (!*cbptr) {
 		pr_err("%s: no memory avaiable for circular buffer struct\n",
@@ -69,13 +68,13 @@ static int circ_buf_init(struct circular_buffer **cbptr)
 	(*cbptr)->end = 0;
 	(*cbptr)->size = LOGBUF_SIZE;
 
-	(*cbptr)->buf = (char *) dma_alloc_coherent(tlk_misc_device.this_device,
-			LOGBUF_SIZE, &tp, GFP_KERNEL);
+	(*cbptr)->buf = (char *) dma_alloc_coherent(NULL, LOGBUF_SIZE,
+			&tp, GFP_KERNEL);
 	if (!(*cbptr)->buf) {
 			pr_err("%s: no memory avaiable for shared buffer\n",
 				__func__);
 		/* Frees the memory allocated using dma_alloc_coherent */
-			dma_free_coherent(tlk_misc_device.this_device,
+			dma_free_coherent(NULL,
 				sizeof(struct circular_buffer), cbptr, tp);
 			return -ENOMEM;
 	}
@@ -207,4 +206,4 @@ static int __init ote_logger_init(void)
 	return 0;
 }
 
-module_init(ote_logger_init);
+arch_initcall(ote_logger_init);

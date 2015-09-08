@@ -20,7 +20,6 @@
 #define __OTE_PROTOCOL_H__
 
 #include "ote_types.h"
-#include <linux/miscdevice.h>
 
 #define TE_IOCTL_MAGIC_NUMBER ('t')
 #define TE_IOCTL_OPEN_CLIENT_SESSION \
@@ -49,7 +48,6 @@
 extern struct mutex smc_lock;
 extern struct tlk_device tlk_dev;
 extern void tlk_fiq_glue_aarch64(void);
-extern struct miscdevice tlk_misc_device;
 
 uint32_t send_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2);
 uint32_t _tlk_generic_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2);
