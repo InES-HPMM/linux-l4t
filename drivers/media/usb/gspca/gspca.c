@@ -1107,8 +1107,8 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
 
 	mode = gspca_dev->curr_mode;
 	fmt->fmt.pix = gspca_dev->cam.cam_mode[mode];
-	/* some drivers use priv internally, zero it before giving it to
-	   userspace */
+	/* some drivers use priv internally, zero it before giving it back to
+	   the core */
 	fmt->fmt.pix.priv = 0;
 	return 0;
 }
@@ -1138,8 +1138,8 @@ static int try_fmt_vid_cap(struct gspca_dev *gspca_dev,
 			mode = mode2;
 	}
 	fmt->fmt.pix = gspca_dev->cam.cam_mode[mode];
-	/* some drivers use priv internally, zero it before giving it to
-	   userspace */
+	/* some drivers use priv internally, zero it before giving it back to
+	   the core */
 	fmt->fmt.pix.priv = 0;
 	return mode;			/* used when s_fmt */
 }

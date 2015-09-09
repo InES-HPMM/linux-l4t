@@ -252,7 +252,9 @@ static void v4l_print_format(const void *arg, bool write_only)
 		pix = &p->fmt.pix;
 		pr_cont(", width=%u, height=%u, "
 			"pixelformat=%c%c%c%c, field=%s, "
-			"bytesperline=%u, sizeimage=%u, colorspace=%d\n",
+			"bytesperline=%u, sizeimage=%u, colorspace=%d "
+			"flags=0x%x, ycbcr_enc=%u, quantization=%u, "
+			"xfer_func=%u\n",
 			pix->width, pix->height,
 			(pix->pixelformat & 0xff),
 			(pix->pixelformat >>  8) & 0xff,
@@ -260,21 +262,24 @@ static void v4l_print_format(const void *arg, bool write_only)
 			(pix->pixelformat >> 24) & 0xff,
 			prt_names(pix->field, v4l2_field_names),
 			pix->bytesperline, pix->sizeimage,
-			pix->colorspace);
+			pix->colorspace, pix->flags, pix->ycbcr_enc,
+			pix->quantization, pix->xfer_func);
 		break;
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
 	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
 		mp = &p->fmt.pix_mp;
 		pr_cont(", width=%u, height=%u, "
 			"format=%c%c%c%c, field=%s, "
-			"colorspace=%d, num_planes=%u\n",
+			"colorspace=%d, num_planes=%u, flags=0x%x, "
+			"ycbcr_enc=%u, quantization=%u, xfer_func=%u\n",
 			mp->width, mp->height,
 			(mp->pixelformat & 0xff),
 			(mp->pixelformat >>  8) & 0xff,
 			(mp->pixelformat >> 16) & 0xff,
 			(mp->pixelformat >> 24) & 0xff,
 			prt_names(mp->field, v4l2_field_names),
-			mp->colorspace, mp->num_planes);
+			mp->colorspace, mp->num_planes, mp->flags,
+			mp->ycbcr_enc, mp->quantization, mp->xfer_func);
 		for (i = 0; i < mp->num_planes; i++)
 			printk(KERN_DEBUG "plane %u: bytesperline=%u sizeimage=%u\n", i,
 					mp->plane_fmt[i].bytesperline,
@@ -846,6 +851,14 @@ static void v4l_print_freq_band(const void *arg, bool write_only)
 			p->rangehigh, p->modulation);
 }
 
+static void v4l_print_edid(const void *arg, bool write_only)
+{
+	const struct v4l2_edid *p = arg;
+
+	pr_cont("pad=%u, start_block=%u, blocks=%u\n",
+		p->pad, p->start_block, p->blocks);
+}
+
 static void v4l_print_u32(const void *arg, bool write_only)
 {
 	pr_cont("value=%u\n", *(const u32 *)arg);
@@ -948,13 +961,48 @@ static int check_fmt(struct file *file, enum v4l2_buf_type type)
 	return -EINVAL;
 }
 
+static void v4l_sanitize_format(struct v4l2_format *fmt)
+{
+	unsigned int offset;
+
+	/*
+	 * The v4l2_pix_format structure has been extended with fields that were
+	 * not previously required to be set to zero by applications. The priv
+	 * field, when set to a magic value, indicates the the extended fields
+	 * are valid. Otherwise they will contain undefined values. To simplify
+	 * the API towards drivers zero the extended fields and set the priv
+	 * field to the magic value when the extended pixel format structure
+	 * isn't used by applications.
+	 */
+
+	if (fmt->type != V4L2_BUF_TYPE_VIDEO_CAPTURE &&
+	    fmt->type != V4L2_BUF_TYPE_VIDEO_OUTPUT)
+		return;
+
+	if (fmt->fmt.pix.priv == V4L2_PIX_FMT_PRIV_MAGIC)
+		return;
+
+	fmt->fmt.pix.priv = V4L2_PIX_FMT_PRIV_MAGIC;
+
+	offset = offsetof(struct v4l2_pix_format, priv)
+	       + sizeof(fmt->fmt.pix.priv);
+	memset(((void *)&fmt->fmt.pix) + offset, 0,
+	       sizeof(fmt->fmt.pix) - offset);
+}
+
 static int v4l_querycap(const struct v4l2_ioctl_ops *ops,
 				struct file *file, void *fh, void *arg)
 {
 	struct v4l2_capability *cap = (struct v4l2_capability *)arg;
+	int ret;
 
 	cap->version = LINUX_VERSION_CODE;
-	return ops->vidioc_querycap(file, fh, cap);
+
+	ret = ops->vidioc_querycap(file, fh, cap);
+
+	cap->capabilities |= V4L2_CAP_EXT_PIX_FORMAT;
+
+	return ret;
 }
 
 static int v4l_s_input(const struct v4l2_ioctl_ops *ops,
@@ -1073,12 +1121,17 @@ static int v4l_g_fmt(const struct v4l2_ioctl_ops *ops,
 	bool is_vid = vfd->vfl_type == VFL_TYPE_GRABBER;
 	bool is_rx = vfd->vfl_dir != VFL_DIR_TX;
 	bool is_tx = vfd->vfl_dir != VFL_DIR_RX;
+	int ret;
+
+	p->fmt.pix.priv = V4L2_PIX_FMT_PRIV_MAGIC;
 
 	switch (p->type) {
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
 		if (unlikely(!is_rx || !is_vid || !ops->vidioc_g_fmt_vid_cap))
 			break;
-		return ops->vidioc_g_fmt_vid_cap(file, fh, arg);
+		ret = ops->vidioc_g_fmt_vid_cap(file, fh, arg);
+		p->fmt.pix.priv = V4L2_PIX_FMT_PRIV_MAGIC;
+		return ret;
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
 		if (unlikely(!is_rx || !is_vid || !ops->vidioc_g_fmt_vid_cap_mplane))
 			break;
@@ -1098,7 +1151,9 @@ static int v4l_g_fmt(const struct v4l2_ioctl_ops *ops,
 	case V4L2_BUF_TYPE_VIDEO_OUTPUT:
 		if (unlikely(!is_tx || !is_vid || !ops->vidioc_g_fmt_vid_out))
 			break;
-		return ops->vidioc_g_fmt_vid_out(file, fh, arg);
+		ret = ops->vidioc_g_fmt_vid_out(file, fh, arg);
+		p->fmt.pix.priv = V4L2_PIX_FMT_PRIV_MAGIC;
+		return ret;
 	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
 		if (unlikely(!is_tx || !is_vid || !ops->vidioc_g_fmt_vid_out_mplane))
 			break;
@@ -1127,6 +1182,8 @@ static int v4l_s_fmt(const struct v4l2_ioctl_ops *ops,
 	bool is_vid = vfd->vfl_type == VFL_TYPE_GRABBER;
 	bool is_rx = vfd->vfl_dir != VFL_DIR_TX;
 	bool is_tx = vfd->vfl_dir != VFL_DIR_RX;
+
+	v4l_sanitize_format(p);
 
 	switch (p->type) {
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
@@ -1191,6 +1248,8 @@ static int v4l_try_fmt(const struct v4l2_ioctl_ops *ops,
 	bool is_vid = vfd->vfl_type == VFL_TYPE_GRABBER;
 	bool is_rx = vfd->vfl_dir != VFL_DIR_TX;
 	bool is_tx = vfd->vfl_dir != VFL_DIR_RX;
+
+	v4l_sanitize_format(p);
 
 	switch (p->type) {
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
@@ -1480,7 +1539,18 @@ static int v4l_create_bufs(const struct v4l2_ioctl_ops *ops,
 	struct v4l2_create_buffers *create = arg;
 	int ret = check_fmt(file, create->format.type);
 
-	return ret ? ret : ops->vidioc_create_bufs(file, fh, create);
+	if (ret)
+		return ret;
+
+	v4l_sanitize_format(&create->format);
+
+	ret = ops->vidioc_create_bufs(file, fh, create);
+
+	if (create->format.type == V4L2_BUF_TYPE_VIDEO_CAPTURE ||
+	    create->format.type == V4L2_BUF_TYPE_VIDEO_OUTPUT)
+		create->format.fmt.pix.priv = V4L2_PIX_FMT_PRIV_MAGIC;
+
+	return ret;
 }
 
 static int v4l_prepare_buf(const struct v4l2_ioctl_ops *ops,
@@ -2062,6 +2132,8 @@ static struct v4l2_ioctl_info v4l2_ioctls[] = {
 	IOCTL_INFO_FNC(VIDIOC_QUERYMENU, v4l_querymenu, v4l_print_querymenu, INFO_FL_CTRL | INFO_FL_CLEAR(v4l2_querymenu, index)),
 	IOCTL_INFO_STD(VIDIOC_G_INPUT, vidioc_g_input, v4l_print_u32, 0),
 	IOCTL_INFO_FNC(VIDIOC_S_INPUT, v4l_s_input, v4l_print_u32, INFO_FL_PRIO),
+	IOCTL_INFO_STD(VIDIOC_G_EDID, vidioc_g_edid, v4l_print_edid, INFO_FL_CLEAR(v4l2_edid, edid)),
+	IOCTL_INFO_STD(VIDIOC_S_EDID, vidioc_s_edid, v4l_print_edid, INFO_FL_PRIO | INFO_FL_CLEAR(v4l2_edid, edid)),
 	IOCTL_INFO_STD(VIDIOC_G_OUTPUT, vidioc_g_output, v4l_print_u32, 0),
 	IOCTL_INFO_FNC(VIDIOC_S_OUTPUT, v4l_s_output, v4l_print_u32, INFO_FL_PRIO),
 	IOCTL_INFO_FNC(VIDIOC_ENUMOUTPUT, v4l_enumoutput, v4l_print_enumoutput, INFO_FL_CLEAR(v4l2_output, index)),
@@ -2275,9 +2347,9 @@ static int check_array_args(unsigned int cmd, void *parg, size_t *array_size,
 		break;
 	}
 
-	case _IOC_NR(VIDIOC_SUBDEV_G_EDID):
-	case _IOC_NR(VIDIOC_SUBDEV_S_EDID): {
-		struct v4l2_subdev_edid *edid = parg;
+	case _IOC_NR(VIDIOC_G_EDID):
+	case _IOC_NR(VIDIOC_S_EDID): {
+		struct v4l2_edid *edid = parg;
 
 		if (edid->blocks) {
 			if (edid->blocks > 256) {

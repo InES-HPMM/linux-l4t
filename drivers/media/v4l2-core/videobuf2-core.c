@@ -1169,6 +1169,11 @@ static int __buf_prepare(struct vb2_buffer *vb, const struct v4l2_buffer *b)
 	struct vb2_queue *q = vb->vb2_queue;
 	int ret;
 
+	if (q->error) {
+		dprintk(1, "fatal error occurred on queue\n");
+		return -EIO;
+	}
+
 	switch (q->memory) {
 	case V4L2_MEMORY_MMAP:
 		ret = __qbuf_mmap(vb, b);
@@ -1403,6 +1408,11 @@ static int __vb2_wait_for_done_vb(struct vb2_queue *q, int nonblocking)
 			return -EINVAL;
 		}
 
+		if (q->error) {
+			dprintk(1, "Queue in error state, will not wait for buffers\n");
+			return -EIO;
+		}
+
 		if (!list_empty(&q->done_list)) {
 			/*
 			 * Found a buffer that we were waiting for.
@@ -1428,7 +1438,8 @@ static int __vb2_wait_for_done_vb(struct vb2_queue *q, int nonblocking)
 		 */
 		dprintk(3, "Will sleep waiting for buffers\n");
 		ret = wait_event_interruptible(q->done_wq,
-				!list_empty(&q->done_list) || !q->streaming);
+				!list_empty(&q->done_list) || !q->streaming ||
+				q->error);
 
 		/*
 		 * We need to reevaluate both conditions again after reacquiring
@@ -1612,6 +1623,7 @@ static void __vb2_queue_cancel(struct vb2_queue *q)
 	if (q->streaming)
 		call_qop(q, stop_streaming, q);
 	q->streaming = 0;
+	q->error = 0;
 
 	/*
 	 * Remove all buffers from videobuf's list...
@@ -1631,6 +1643,27 @@ static void __vb2_queue_cancel(struct vb2_queue *q)
 	for (i = 0; i < q->num_buffers; ++i)
 		__vb2_dqbuf(q->bufs[i]);
 }
+
+/**
+ * vb2_queue_error() - signal a fatal error on the queue
+ * @q:		videobuf2 queue
+ *
+ * Flag that a fatal unrecoverable error has occurred and wake up all processes
+ * waiting on the queue. Polling will now set POLLERR and queuing and dequeuing
+ * buffers will return -EIO.
+ *
+ * The error flag will be cleared when cancelling the queue, either from
+ * vb2_streamoff or vb2_queue_release. Drivers should thus not call this
+ * function before starting the stream, otherwise the error flag will remain set
+ * until the queue is released when closing the device node.
+ */
+void vb2_queue_error(struct vb2_queue *q)
+{
+	q->error = 1;
+
+	wake_up_all(&q->done_wq);
+}
+EXPORT_SYMBOL_GPL(vb2_queue_error);
 
 /**
  * vb2_streamon - start streaming
@@ -2013,9 +2046,10 @@ unsigned int vb2_poll(struct vb2_queue *q, struct file *file, poll_table *wait)
 	}
 
 	/*
-	 * There is nothing to wait for if the queue isn't streaming.
+ 	 * There is nothing to wait for if no buffer has been queued and the
+	 * queue isn't streaming, or if the error flag is set.
 	 */
-	if (!vb2_is_streaming(q))
+	if ((list_empty(&q->queued_list) && !vb2_is_streaming(q)) || q->error)
 		return res | POLLERR;
 	/*
 	 * For compatibility with vb1: if QBUF hasn't been called yet, then
@@ -2447,10 +2481,11 @@ size_t vb2_read(struct vb2_queue *q, char __user *data, size_t count,
 }
 EXPORT_SYMBOL_GPL(vb2_read);
 
-size_t vb2_write(struct vb2_queue *q, char __user *data, size_t count,
+size_t vb2_write(struct vb2_queue *q, const char __user *data, size_t count,
 		loff_t *ppos, int nonblocking)
 {
-	return __vb2_perform_fileio(q, data, count, ppos, nonblocking, 0);
+	return __vb2_perform_fileio(q, (char __user *) data, count,
+							ppos, nonblocking, 0);
 }
 EXPORT_SYMBOL_GPL(vb2_write);
 
@@ -2620,7 +2655,7 @@ int vb2_fop_release(struct file *file)
 }
 EXPORT_SYMBOL_GPL(vb2_fop_release);
 
-ssize_t vb2_fop_write(struct file *file, char __user *buf,
+ssize_t vb2_fop_write(struct file *file, const char __user *buf,
 		size_t count, loff_t *ppos)
 {
 	struct video_device *vdev = video_devdata(file);

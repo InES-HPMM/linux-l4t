@@ -321,6 +321,7 @@ struct v4l2_fh;
  * @waiting_for_buffers: used in poll() to check if vb2 is still waiting for
  *		buffers. Only set for capture queues if qbuf has not yet been
  *		called since poll() needs to return POLLERR in that situation.
+ * @error:	a fatal error occurred on the queue
  * @fileio:	file io emulator internal data, used only if emulator is active
  */
 struct vb2_queue {
@@ -376,6 +377,7 @@ int vb2_prepare_buf(struct vb2_queue *q, struct v4l2_buffer *b);
 int __must_check vb2_queue_init(struct vb2_queue *q);
 
 void vb2_queue_release(struct vb2_queue *q);
+void vb2_queue_error(struct vb2_queue *q);
 
 int vb2_qbuf(struct vb2_queue *q, struct v4l2_buffer *b);
 int vb2_expbuf(struct vb2_queue *q, struct v4l2_exportbuffer *eb);
@@ -395,7 +397,7 @@ unsigned long vb2_get_unmapped_area(struct vb2_queue *q,
 unsigned int vb2_poll(struct vb2_queue *q, struct file *file, poll_table *wait);
 size_t vb2_read(struct vb2_queue *q, char __user *data, size_t count,
 		loff_t *ppos, int nonblock);
-size_t vb2_write(struct vb2_queue *q, char __user *data, size_t count,
+size_t vb2_write(struct vb2_queue *q, const char __user *data, size_t count,
 		loff_t *ppos, int nonblock);
 
 /**
@@ -513,7 +515,7 @@ int vb2_ioctl_expbuf(struct file *file, void *priv,
 
 int vb2_fop_mmap(struct file *file, struct vm_area_struct *vma);
 int vb2_fop_release(struct file *file);
-ssize_t vb2_fop_write(struct file *file, char __user *buf,
+ssize_t vb2_fop_write(struct file *file, const char __user *buf,
 		size_t count, loff_t *ppos);
 ssize_t vb2_fop_read(struct file *file, char __user *buf,
 		size_t count, loff_t *ppos);
