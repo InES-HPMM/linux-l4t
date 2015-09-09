@@ -60,7 +60,7 @@ static struct dma_declare_info generic_dma_info = {
 	.notifier.ops = NULL,
 };
 
-struct dma_declare_info vpr_dma_info = {
+static struct dma_declare_info vpr_dma_info = {
 	.name = "vpr",
 	.size = SZ_32M,
 	.notifier.ops = &vpr_dev_ops,
