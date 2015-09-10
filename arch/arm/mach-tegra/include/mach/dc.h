@@ -670,7 +670,12 @@ struct tegra_vrr {
 	u32 db_hist_cap;
 	s32     vfp;
 
-	s32     authenticated;
+	/* Must be kept in order */
+	u8	keynum;
+	u8	serial[9];
+	u8	challenge[32];
+	u8	digest[32];
+	u8	challenge_src;
 };
 
 struct tegra_dc_out {

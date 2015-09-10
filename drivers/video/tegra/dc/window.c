@@ -536,17 +536,21 @@ static void tegra_dc_vrr_cancel_vfp(struct tegra_dc *dc)
 			tegra_dc_set_act_vfp(dc, dc->mode.v_front_porch);
 	}
 	else {
-		if (vrr->lastenable && vrr->dcb <= vrr->db_tolerance) {
+		if (dc->out->type == TEGRA_DC_OUT_DSI) {
+			if (vrr->lastenable && vrr->dcb <= vrr->db_tolerance) {
+				tegra_dc_set_act_vfp(dc,
+						dc->mode.v_front_porch);
+				vrr->lastenable = 0;
+				vrr->frame_type = 0;
+				vrr->last_frame_us = 0;
+				vrr->flip_interval_us = 0;
+				vrr->frame_count = 0;
+				vrr->flip_count = 0;
+				vrr->vfp_shrink = vrr->v_front_porch_min;
+				vrr->vfp_extend = vrr->v_front_porch_max;
+			}
+		} else
 			tegra_dc_set_act_vfp(dc, dc->mode.v_front_porch);
-			vrr->lastenable = 0;
-			vrr->frame_type = 0;
-			vrr->last_frame_us = 0;
-			vrr->flip_interval_us = 0;
-			vrr->frame_count = 0;
-			vrr->flip_count = 0;
-			vrr->vfp_shrink = vrr->v_front_porch_min;
-			vrr->vfp_extend = vrr->v_front_porch_max;
-		}
 	}
 }
 

@@ -2462,7 +2462,6 @@ struct tegra_dc_platform_data
 			dev_err(&ndev->dev,
 				"nvidia,hdmi-vrr-caps specified for a non-HDMI head, disregarded\n");
 		} else {
-			struct tegra_vrr *vrr;
 
 			pdata->default_out->vrr = devm_kzalloc(&ndev->dev,
 					sizeof(struct tegra_vrr), GFP_KERNEL);
@@ -2470,10 +2469,7 @@ struct tegra_dc_platform_data
 				dev_err(&ndev->dev, "not enough memory\n");
 				goto fail_parse;
 			}
-			vrr = pdata->default_out->vrr;
-			vrr->capability = 0;
-			OF_DC_LOG("Vrr available, init vrr->capability to %d\n",
-				vrr->capability);
+			OF_DC_LOG("nvidia,hdmi-vrr-caps: %d\n", temp);
 		}
 	} else
 		pr_info("%s: nvidia,hdmi-vrr-caps not present\n", __func__);
