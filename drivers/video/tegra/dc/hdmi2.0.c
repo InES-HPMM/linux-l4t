@@ -1311,14 +1311,43 @@ static void tegra_hdmi_avi_infoframe(struct tegra_hdmi *hdmi)
 static int tegra_hdmi_get_extended_vic(const struct tegra_dc_mode *mode)
 {
 	struct fb_videomode m;
+	struct tegra_dc_mode mode_fixed;
 	unsigned i;
 
-	tegra_dc_to_fb_videomode(&m, mode);
+	mode_fixed = *mode;
+
+	if (mode_fixed.vmode & FB_VMODE_1000DIV1001) {
+		mode_fixed.pclk = (u64)mode_fixed.pclk * 1001 / 1000;
+		mode_fixed.vmode &= ~FB_VMODE_1000DIV1001;
+	}
+
+	tegra_dc_to_fb_videomode(&m, &mode_fixed);
 
 	for (i = 1; i < HDMI_EXT_MODEDB_SIZE; i++) {
 		const struct fb_videomode *curr = &hdmi_ext_modes[i];
 
-		if (fb_mode_is_equal(&m, curr))
+		/*
+		 * We have to make sure we explicitly don't check m.refresh ==
+		 * curr->refresh (or use the fb_mode_is_equal() which does this
+		 * check). This is because of the lack of accuracy when going
+		 * between fb_videomode -> tegra_dc_mode -> fb_videomode. For
+		 * 1000/1001 modes, the calculated m->refresh is actually not
+		 * accurate. This is honestly a hack and does need to be fixed,
+		 * but is a WAR for now for HDMI certification
+		 */
+		if ((m.refresh == curr->refresh ||
+		     m.refresh + 1 == curr->refresh) &&
+		    m.xres         == curr->xres &&
+		    m.yres         == curr->yres &&
+		    m.pixclock     == curr->pixclock &&
+		    m.hsync_len    == curr->hsync_len &&
+		    m.vsync_len    == curr->vsync_len &&
+		    m.left_margin  == curr->left_margin &&
+		    m.right_margin == curr->right_margin &&
+		    m.upper_margin == curr->upper_margin &&
+		    m.lower_margin == curr->lower_margin &&
+		    m.sync         == curr->sync &&
+		    m.vmode        == curr->vmode)
 			return i;
 	}
 	return 0;
