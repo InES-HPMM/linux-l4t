@@ -63,6 +63,8 @@
 			vddhi-supply = <&vdd_3v3>;		/* P2293 Flex Cable	*/
 			gpio_rdy = <&gpio TEGRA_GPIO(A, 1) GPIO_ACTIVE_LOW>;
 			gpio_sar = <&gpio TEGRA_GPIO(V, 5) GPIO_ACTIVE_HIGH>;
+			SAR_proximity_flags = <0>;
+			SAR_touch_flags = <0>;
 			gpio_sar_dev = "SAR_touch";
 			os_options = <0>;
 			stream_mode = <2>;
