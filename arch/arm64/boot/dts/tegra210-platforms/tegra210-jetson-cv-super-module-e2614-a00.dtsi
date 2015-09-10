@@ -92,6 +92,7 @@
 			263en_prox_4 = [FF FF];
 			263en_prox_5 = [02 09 00 54 FF FF];
 			263en_prox_6 = [FF FF];
+			status = "disabled";
 		};
 
 		rt5658: rt5659.0-001a@1a {
