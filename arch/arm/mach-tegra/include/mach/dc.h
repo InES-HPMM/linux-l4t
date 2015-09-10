@@ -666,6 +666,8 @@ struct tegra_vrr {
 	s32	frame2flip_us;
 	s32	adjust_vfp;
 	s32     adjust_db;
+	u32 db_correct_cap;
+	u32 db_hist_cap;
 	s32     vfp;
 
 	s32     authenticated;
