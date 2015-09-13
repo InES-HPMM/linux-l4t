@@ -7488,6 +7488,9 @@ dhd_module_init(void)
 #ifdef CONFIG_BCMDHD_CUSTOM_NET_PERF_TEGRA
 	tegra_net_perf_init();
 #endif
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	rf_test_params_init();
+#endif
 
 	DHD_PERIM_RADIO_INIT();
 

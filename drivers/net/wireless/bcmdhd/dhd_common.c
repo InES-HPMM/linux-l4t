@@ -353,6 +353,12 @@ dhd_wl_ioctl_cmd(dhd_pub_t *dhd_pub, int cmd, void *arg, int len, uint8 set, int
 	return dhd_wl_ioctl(dhd_pub, ifidx, &ioc, arg, len);
 }
 
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+extern atomic_t rf_test;
+extern atomic_t cur_power_mode;
+extern rf_test_params_t rf_test_params[NUM_RF_TEST_PARAMS];
+#endif /* CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA */
+
 int
 dhd_wl_ioctl_get_intiovar(dhd_pub_t *dhd_pub, char *name, uint *pval,
 	int cmd, uint8 set, int ifidx)
@@ -404,7 +410,32 @@ int
 dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifidx, wl_ioctl_t *ioc, void *buf, int len)
 {
 	int ret = BCME_ERROR;
-
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+	int i;
+	/* Changing PM is not allowed while RF test is enabled */
+	if (atomic_read(&rf_test)) {
+		if (ioc->cmd == WLC_SET_PM) {
+			uint pm_mode = *(uint*)ioc->buf;
+			if (ioc->set) {
+				atomic_set(&cur_power_mode, pm_mode);
+				DHD_ERROR(("%s: WLC_SET_PM: %d not allowed\n", __FUNCTION__, pm_mode));
+				return BCME_OK;
+			}
+		}
+		if (ioc->cmd == WLC_SET_VAR) {
+			uint value;
+			for (i = 0; i < NUM_RF_TEST_PARAMS; i++) {
+				const char * param = rf_test_params[i].var;
+				value = *(uint*)&ioc->buf[strlen(param)+1];
+				if (strncmp(ioc->buf, param, strlen(param)) == 0) {
+					atomic_set(&rf_test_params[i].cur_val, value);
+					DHD_ERROR(("%s: WLC_SET_VAR %s:%d not allowed\n", __FUNCTION__, param, value));
+					return BCME_OK;
+				}
+			}
+		}
+	}
+#endif /* CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA */
 	if (dhd_os_proto_block(dhd_pub))
 	{
 #if defined(WL_WLC_SHIM)
