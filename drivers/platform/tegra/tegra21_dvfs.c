@@ -901,7 +901,7 @@ static struct dvfs qspi_sdr_dvfs_table[] = {
 };
 
 static struct dvfs qspi_ddr_dvfs_table[] = {
-	CORE_DVFS("qspi",		-1, -1, 1, KHZ,	  81600,   81600,   81600,   81600,   81600,   81600,   81600,   81600,   81600,   81600,   81600,   81600,   81600,   81600,   81600),
+	CORE_DVFS("qspi",		-1, -1, 1, KHZ,	 163200,  163200,  163200,  163200,  163200,  163200,  163200,  163200,  163200,  163200,  163200,  163200,  163200,  163200,  163200),
 };
 
 static int tegra_dvfs_disable_core_set(const char *arg,
