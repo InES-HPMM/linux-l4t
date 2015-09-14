@@ -17,6 +17,7 @@
 #include <linux/platform_device.h>
 #include <media/imx214.h>
 #include <media/ov5693.h>
+#include <media/camera_common.h>
 #include <media/soc_camera.h>
 #include <media/soc_camera_platform.h>
 #include <media/tegra_v4l2_camera.h>
@@ -123,6 +124,71 @@ static struct platform_device t210ref_imx214_soc_camera_device = {
 	.id	= 0,
 	.dev	= {
 		.platform_data = &imx214_iclink,
+	},
+};
+#endif
+
+#if IS_ENABLED(CONFIG_SOC_CAMERA_OV23850)
+static int t210ref_ov23850_power(struct device *dev, int enable)
+{
+	return 0;
+}
+
+static struct i2c_board_info t210ref_ov23850_a_camera_i2c_device = {
+	I2C_BOARD_INFO("ov23850_v4l2", 0x10),
+};
+
+static struct tegra_camera_platform_data t210ref_ov23850_a_pdata = {
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.port			= TEGRA_CAMERA_PORT_CSI_A,
+	.lanes			= 4,
+	.continuous_clk		= 0,
+};
+
+static struct soc_camera_link ov23850_a_iclink = {
+	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
+	.board_info	= &t210ref_ov23850_a_camera_i2c_device,
+	.module_name	= "ov23850_v4l2",
+	.i2c_adapter_id	= 6, /* VI2 I2C controller */
+	.power		= t210ref_ov23850_power,
+	.priv		= &t210ref_ov23850_a_pdata,
+};
+
+static struct platform_device t210ref_ov23850_a_soc_camera_device = {
+	.name	= "soc-camera-pdrv",
+	.id	= 0,
+	.dev	= {
+		.platform_data = &ov23850_a_iclink,
+	},
+};
+
+static struct i2c_board_info t210ref_ov23850_c_camera_i2c_device = {
+	I2C_BOARD_INFO("ov23850_v4l2", 0x36),
+};
+
+static struct tegra_camera_platform_data t210ref_ov23850_c_pdata = {
+	.flip_v			= 0,
+	.flip_h			= 0,
+	.port			= TEGRA_CAMERA_PORT_CSI_C,
+	.lanes			= 4,
+	.continuous_clk		= 0,
+};
+
+static struct soc_camera_link ov23850_c_iclink = {
+	.bus_id		= 0, /* This must match the .id of tegra_vi01_device */
+	.board_info	= &t210ref_ov23850_c_camera_i2c_device,
+	.module_name	= "ov23850_v4l2",
+	.i2c_adapter_id	= 6, /* VI2 I2C controller */
+	.power		= t210ref_ov23850_power,
+	.priv		= &t210ref_ov23850_c_pdata,
+};
+
+static struct platform_device t210ref_ov23850_c_soc_camera_device = {
+	.name	= "soc-camera-pdrv",
+	.id	= 1,
+	.dev	= {
+		.platform_data = &ov23850_c_iclink,
 	},
 };
 #endif
@@ -418,7 +484,15 @@ int t210ref_camera_init(void)
 #endif
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_IMX214)
-	platform_device_register(&t210ref_imx214_soc_camera_device);
+	if (of_machine_is_compatible("nvidia,e2220"))
+		platform_device_register(&t210ref_imx214_soc_camera_device);
+#endif
+
+#if IS_ENABLED(CONFIG_SOC_CAMERA_OV23850)
+	if (of_machine_is_compatible("nvidia,jetson-cv")) {
+		platform_device_register(&t210ref_ov23850_a_soc_camera_device);
+		platform_device_register(&t210ref_ov23850_c_soc_camera_device);
+	}
 #endif
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_OV5693)
