@@ -49,6 +49,35 @@
 					1 0x0E0 0xFFFFFEFF 0x00000100
 				>;
 			};
+			spi4_override_prod {
+				nvidia,prod-boot-init;
+				prod = <
+					1 0x078 0xFFFF9FFF 0x00006000
+					1 0x07C 0xFFFF9FFF 0x00006000
+					1 0x080 0xFFFF9FFF 0x00006000
+					1 0x084 0xFFFF9FFF 0x00006000
+				>;
+			};
+		};
+	};
+	spi@7000d600 {
+		prod-settings {
+			#prod-cells = <3>;
+			prod {
+				prod = <
+					0x04 0x0 0x16 /*spi2a trimmer setting*/
+				>;
+			};
+		};
+	};
+	spi@7000da00 {
+		prod-settings {
+			#prod-cells = <3>;
+			prod {
+				prod = <
+					0x04 0x0 0x08 /*spi4a trimmer setting*/
+				>;
+			};
 		};
 	};
 
