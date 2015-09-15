@@ -36,15 +36,20 @@
 #include <linux/regulator/consumer.h>
 #include <linux/sysedp.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
-#include <linux/dma-mapping.h>
 #include <linux/delay.h>
-#include "../../../arch/arm/mach-tegra/iomap.h"
 #include <linux/fs.h>
 #include <asm/segment.h>
 #include <asm/uaccess.h>
 #include <linux/platform_data/modem_thermal.h>
 #include <linux/platform_data/sysedp_modem.h>
 #include <linux/system-wakeup.h>
+
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+#include <linux/of_platform.h>
+#else
+#include <linux/dma-mapping.h>
+#include "../../../arch/arm/mach-tegra/iomap.h"
+#endif
 
 #define BOOST_CPU_FREQ_MIN	1200000
 #define BOOST_CPU_FREQ_TIMEOUT	5000
@@ -85,6 +90,7 @@ static int hsic_power(bool on)
 	return 0;
 }
 
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 static u64 tegra_ehci_dmamask = DMA_BIT_MASK(64);
 
 static struct resource tegra_usb2_resources[] = {
@@ -124,6 +130,7 @@ static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
 		.skip_resume = true,
 	},
 };
+#endif
 
 struct tegra_usb_modem {
 	struct tegra_usb_modem_power_platform_data *pdata;
@@ -527,6 +534,36 @@ static struct platform_device *tegra_usb_host_register(
 	struct platform_device *pdev;
 	int val;
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	struct property *status_prop;
+
+	/* we're registering EHCI through DT here */
+
+	/* If ehci node is unavailable, we're unable to register it later.
+	 * So make it available by setting status to "okay" */
+	if (!of_device_is_available(modem->pdata->ehci_node)) {
+		pr_info("%s(): enable ehci node\n", __func__);
+		status_prop = of_find_property(modem->pdata->ehci_node,
+						"status", NULL);
+		if (!status_prop) {
+			pr_err("%s(): error getting status in ehci node\n",
+				__func__);
+			return NULL;
+		}
+		strcpy((char *)status_prop->value, "okay");
+	}
+
+	/* we have to hard-code EHCI device name here for now */
+	pdev = of_platform_device_create(modem->pdata->ehci_node,
+					"tegra-ehci.1", NULL);
+	if (!pdev) {
+		pr_info("%s: error registering EHCI\n", __func__);
+		return NULL;
+	}
+
+	return pdev;
+#endif
+
 	pdev = platform_device_alloc(hc_device->name, hc_device->id);
 	if (!pdev)
 		return NULL;
@@ -557,9 +594,13 @@ error:
 }
 
 /* unload USB host controller */
-static void tegra_usb_host_unregister(struct platform_device *pdev)
+static void tegra_usb_host_unregister(const struct tegra_usb_modem *modem)
 {
-	platform_device_unregister(pdev);
+	struct platform_device *pdev = modem->hc;
+	if (unlikely(modem->pdata->tegra_ehci_device))
+		platform_device_unregister(pdev);
+	else
+		of_device_unregister(pdev);
 }
 
 static ssize_t show_usb_host(struct device *dev,
@@ -612,7 +653,7 @@ static ssize_t load_unload_usb_host(struct device *dev,
 		if (host && !modem->hc) {
 			modem->hc = tegra_usb_host_register(modem);
 		} else if (!host && modem->hc) {
-			tegra_usb_host_unregister(modem->hc);
+			tegra_usb_host_unregister(modem);
 			modem->hc = NULL;
 		}
 		break;
@@ -743,9 +784,11 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	modem->pdata = pdata;
 	modem->pdev = pdev;
 
+#ifndef CONFIG_ARCH_TEGRA_21x_SOC
 	/* WAR to load statically defined ehci device/pdata */
 	pdata->tegra_ehci_device = &tegra_ehci2_device;
 	pdata->tegra_ehci_pdata = &tegra_ehci2_hsic_baseband_pdata;
+#endif
 
 	pdata->autosuspend_delay = DEFAULT_AUTOSUSPEND;
 
@@ -885,6 +928,9 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 	int gpio;
 	int ret;
 	const char *node_status;
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	struct device_node *ehci_node = NULL;
+#endif
 
 	if (!node) {
 		dev_err(&pdev->dev, "Missing device tree node\n");
@@ -977,6 +1023,19 @@ static int tegra_usb_modem_parse_dt(struct tegra_usb_modem *modem,
 		ret = -EINVAL;
 		goto error;
 	}
+
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	/* get EHCI device/pdata handle */
+	if (modem->phy_type == EHCI_HSIC) {
+		ehci_node = of_parse_phandle(node, "nvidia,ehci-device", 0);
+		if (!ehci_node) {
+			dev_err(&pdev->dev, "can't find nvidia,ehci-device\n");
+			return -EINVAL;
+		}
+		/* set ehci device/pdata */
+		pdata.ehci_node = ehci_node;
+	}
+#endif
 
 	prop = of_get_property(node, "nvidia,num-temp-sensors", NULL);
 	if (prop)
