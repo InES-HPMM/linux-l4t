@@ -1772,6 +1772,8 @@ static void handle_port_status(struct xhci_hcd *xhci,
 		/* now check if the port status change is because of
 		 * connect or disconnect
 		 */
+		slot_id = xhci_find_slot_id_by_port(hcd, xhci,
+				faked_port_index + 1);
 		udev = xhci->devs[slot_id]->udev;
 		if (((temp & PORT_PLS_MASK) == XDEV_U0) ||
 			((temp & PORT_PLS_MASK) == XDEV_POLLING)) {
