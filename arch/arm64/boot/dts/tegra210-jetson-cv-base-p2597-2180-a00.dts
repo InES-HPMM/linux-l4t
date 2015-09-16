@@ -26,6 +26,7 @@
 #include "tegra210-platforms/tegra210-jetson-cv-camera-modules.dtsi"
 #include "tegra210-platforms/tegra210-pwm-fan-p2530-0930.dtsi"
 #include "panel-a-wuxga-8-0.dtsi"
+#include "panel-a-edp-1080p-14-0.dtsi"
 #include "panel-s-edp-uhdtv-15-6.dtsi"
 #include "panel-s-wqxga-10-1.dtsi"
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
@@ -192,6 +193,9 @@
                 panel-s-wqxga-10-1-bl {
                         pwms = <&tegra_pwm 0 1000000>;
                 };
+		panel-a-edp-1080p-14-0-bl {
+			pwms = <&tegra_pwm 0 1000000>;
+		};
 		panel-s-edp-uhdtv-15-6-bl {
 			pwms = <&tegra_pwm 0 1000000>;
 		};
@@ -272,6 +276,10 @@
 		sor {
 			nvidia,hpd-gpio = <&gpio TEGRA_GPIO(CC, 6) 0>; /* PCC6 */
 			panel-s-edp-uhdtv-15-6 {
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
+			};
+			panel-a-edp-1080p-14-0 {
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
 				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
 			};

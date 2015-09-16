@@ -62,6 +62,7 @@ dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-loki-e-e2581-0031-a00-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-loki-e-e2581-0031-a01-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-loki-e-e2581-0131-a00-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-loki-e-e2581-0131-a01-00.dtb
+dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-jetson-cv-p2597-2180-a00-auo-1080p-edp.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-jetson-cv-base-p2597-2180-a00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-jetson-cv-p2597-2180-a00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-jetson-cv-p2597-2180-a00-24x7.dtb
