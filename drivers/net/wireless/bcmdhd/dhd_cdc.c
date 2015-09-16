@@ -60,12 +60,12 @@
 extern int dhd_skip_hang_event(void *dhd);
 
 typedef struct dhd_prot {
-	cdc_ioctl_t msg;
-	unsigned char buf[WLC_IOCTL_MAXLEN + ROUND_UP_MARGIN];
 	uint16 reqid;
 	uint8 pending;
 	uint32 lastcmd;
 	uint8 bus_header[BUS_HEADER_LEN];
+	cdc_ioctl_t msg;
+	unsigned char buf[WLC_IOCTL_MAXLEN + ROUND_UP_MARGIN];
 } dhd_prot_t;
 
 
