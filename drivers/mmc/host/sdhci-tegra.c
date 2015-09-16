@@ -4124,6 +4124,8 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 		pr_err("%s %s line=%d - null plat\n",
 			mmc_hostname(sdhci->mmc), __func__, __LINE__);
 
+	if (!err)
+		sdhci->detect_resume = 1;
 	return err;
 }
 
@@ -4185,6 +4187,7 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 		tegra_sdhci_do_calibration(sdhci, signal_voltage);
 	}
 
+	sdhci->detect_resume = 0;
 	return 0;
 }
 

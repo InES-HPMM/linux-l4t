@@ -209,6 +209,7 @@ struct sdhci_host {
 	u8 pwr;			/* Current voltage */
 
 	bool runtime_suspended;	/* Host is runtime suspended */
+	bool detect_resume;     /* Detect card during resume */
 
 	struct mmc_request *mrq_cmd;	/* Current request */
 	struct mmc_request *mrq_dat;	/* Current request with data*/
