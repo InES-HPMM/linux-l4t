@@ -210,6 +210,7 @@ static struct board_info main_board_info;
 static struct board_info pmu_board_info;
 static struct board_info display_board_info;
 static int panel_id;
+static int battery_id;
 static struct board_info camera_board_info;
 static int touch_vendor_id;
 static int touch_panel_id;
@@ -1205,6 +1206,19 @@ bool tegra_is_bl_display_initialized(int instance)
 		return false;
 	}
 }
+
+int tegra_get_board_battery_id(void)
+{
+	return battery_id;
+}
+
+static int __init tegra_board_battery_id(char *options)
+{
+	char *p = options;
+	battery_id = memparse(p, &p);
+	return battery_id;
+}
+__setup("androidboot.batterytype=", tegra_board_battery_id);
 
 int tegra_get_touch_vendor_id(void)
 {
