@@ -253,6 +253,7 @@ int tegra_dc_init_fakedsi_panel(struct tegra_dc *dc, long dc_outtype)
 	tegra_dc_add_fakedisp_resources(dc->ndev, dc_outtype);
 
 	dc_out->dsi = &dsi_fake_panel_pdata;
+	dc_out->depth = 18;
 	dc_out->parent_clk = "pll_d_out0";
 	dc_out->modes = dsi_fake_panel_modes;
 	dc_out->n_modes = ARRAY_SIZE(dsi_fake_panel_modes);
