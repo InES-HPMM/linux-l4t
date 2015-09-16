@@ -28,6 +28,7 @@
 #include <linux/pm.h>
 #include <linux/jiffies.h>
 #include <linux/interrupt.h>
+#include "../../../arch/arm/mach-tegra/board.h"
 
 #define LC709203F_THERMISTOR_B		0x06
 #define LC709203F_INITIAL_RSOC		0x07
@@ -393,52 +394,79 @@ static void of_lc709203f_parse_platform_data(struct i2c_client *client,
 {
 	char const *pstr;
 	struct device_node *np = client->dev.of_node;
+	struct device_node *child = NULL;
 	u32 pval;
 	int ret;
+	int battery_id = tegra_get_board_battery_id();
 
-	ret = of_property_read_u32(np, "onsemi,initial-rsoc", &pval);
-	if (!ret)
-		pdata->initial_rsoc = pval;
+	dev_info(&client->dev, "Battery_id %d\n", battery_id);
 
-	ret = of_property_read_u32(np, "onsemi,appli-adjustment", &pval);
-	if (!ret)
-		pdata->appli_adjustment = pval;
+	if (battery_id == 0)
+		child = of_get_child_by_name(np, "battery0");
+	else if (battery_id == 1)
+		child = of_get_child_by_name(np, "battery1");
+
+	pval = 0;
+	ret = of_property_read_u32(child, "onsemi,initial-rsoc", &pval);
+	if (ret < 0)
+		ret = of_property_read_u32(np, "onsemi,initial-rsoc", &pval);
+	pdata->initial_rsoc = pval;
+
+	pval = 0;
+	ret = of_property_read_u32(child, "onsemi,appli-adjustment", &pval);
+	if (ret < 0)
+		ret = of_property_read_u32(np, "onsemi,appli-adjustment", &pval);
+	pdata->appli_adjustment = pval;
 
 	pdata->tz_name = NULL;
-	ret = of_property_read_string(np, "onsemi,tz-name", &pstr);
-	if (!ret)
-		pdata->tz_name = pstr;
+	pstr = NULL;
+	ret = of_property_read_string(child, "onsemi,tz-name", &pstr);
+	if (ret < 0)
+		ret = of_property_read_string(np, "onsemi,tz-name", &pstr);
+	pdata->tz_name = pstr;
 
-	ret = of_property_read_u32(np, "onsemi,thermistor-beta", &pval);
-	if (!ret) {
+	pval = 0;
+	ret = of_property_read_u32(child, "onsemi,thermistor-beta", &pval);
+	if (ret < 0)
+		ret = of_property_read_u32(np, "onsemi,thermistor-beta", &pval);
+	if (!ret)
 		pdata->thermistor_beta = pval;
-	} else {
+	else {
 		if (!pdata->tz_name)
 			dev_warn(&client->dev,
-				"Thermistor beta not provided\n");
+			"Thermistor beta not provided\n");
 	}
 
-	ret = of_property_read_u32(np, "onsemi,thermistor-adjustment", &pval);
-	if (!ret)
-		pdata->therm_adjustment = pval;
+	pval = 0;
+	ret = of_property_read_u32(child, "onsemi,thermistor-adjustment", &pval);
+	if (ret < 0)
+		ret = of_property_read_u32(np, "onsemi,thermistor-adjustment", &pval);
+	pdata->therm_adjustment = pval;
 
 	ret = of_property_read_u32(np, "onsemi,kernel-threshold-soc", &pval);
 	if (!ret)
 		pdata->threshold_soc = pval;
 
-	ret = of_property_read_u32(np, "onsemi,kernel-maximum-soc", &pval);
+	pval = 0;
+	ret = of_property_read_u32(child, "onsemi,kernel-maximum-soc", &pval);
+	if (ret < 0)
+		ret = of_property_read_u32(np, "onsemi,kernel-maximum-soc", &pval);
 	if (!ret)
 		pdata->maximum_soc = pval;
 	else
 		pdata->maximum_soc = 100;
 
-	ret = of_property_read_u32(np, "onsemi,alert-low-rsoc", &pval);
-	if (!ret)
-		pdata->alert_low_rsoc = pval;
+	pval = 0;
+	ret = of_property_read_u32(child, "onsemi,alert-low-rsoc", &pval);
+	if (ret < 0)
+		ret = of_property_read_u32(np, "onsemi,alert-low-rsoc", &pval);
+	pdata->alert_low_rsoc = pval;
 
-	ret = of_property_read_u32(np, "onsemi,alert-low-voltage", &pval);
-	if (!ret)
-		pdata->alert_low_voltage = pval;
+	pval = 0;
+	ret = of_property_read_u32(child, "onsemi,alert-low-voltage", &pval);
+	if (ret < 0)
+		ret = of_property_read_u32(np, "onsemi,alert-low-voltage", &pval);
+	pdata->alert_low_voltage = pval;
 
 	pdata->support_battery_current = of_property_read_bool(np,
 						"io-channel-names");
