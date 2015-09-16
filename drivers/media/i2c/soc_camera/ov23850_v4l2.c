@@ -93,6 +93,8 @@ struct ov23850 {
 	struct i2c_client		*i2c_client;
 	struct v4l2_subdev		*subdev;
 
+	s32 group_hold_prev;
+	bool group_hold_en;
 	struct regmap			*regmap;
 	struct camera_common_data	*s_data;
 	struct camera_common_pdata	*pdata;
@@ -105,21 +107,32 @@ static const struct regmap_config sensor_regmap_config = {
 	.cache_type = REGCACHE_RBTREE,
 };
 
-int ov23850_to_gain(u32 rep, int shift)
+u16 ov23850_to_gain(u32 rep, int shift)
 {
-	int gain;
+	u16 gain;
 	int gain_int;
 	int gain_dec;
 	int min_int = (1 << shift);
-	int denom;
+	int step = 1;
+	int num_step;
+	int i;
+
+	if (rep < 0x0100)
+		rep = 0x0100;
+	else if (rep > 0x0F80)
+		rep = 0x0F80;
 
 	/* last 4 bit of rep is
 	 * decimal representation of gain */
 	gain_int = (int)(rep >> shift);
 	gain_dec = (int)(rep & ~(0xffff << shift));
 
-	denom = gain_int * min_int + gain_dec;
-	gain = 512 - ((512 * min_int + (denom - 1)) / denom);
+	for (i = 1; gain_int >> i != 0; i++)
+		;
+	step = step << (5 - i);
+
+	num_step = gain_dec * step / min_int;
+	gain = 16 * gain_int + 16 * num_step / step;
 
 	return gain;
 }
@@ -517,7 +530,7 @@ static int ov23850_s_stream(struct v4l2_subdev *sd, int enable)
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct camera_common_data *s_data = to_camera_common_data(client);
 	struct ov23850 *priv = (struct ov23850 *)s_data->priv;
-	/*struct v4l2_control control;*/
+	struct v4l2_control control;
 	int err;
 
 	dev_dbg(&client->dev, "%s++\n", __func__);
@@ -533,7 +546,6 @@ static int ov23850_s_stream(struct v4l2_subdev *sd, int enable)
 	if (err)
 		goto exit;
 
-#if 0
 	/* write list of override regs for the asking frame length, */
 	/* coarse integration time, and gain.                       */
 	control.id = V4L2_CID_GAIN;
@@ -562,7 +574,6 @@ static int ov23850_s_stream(struct v4l2_subdev *sd, int enable)
 	if (err)
 		dev_dbg(&client->dev,
 			"%s: error coarse time short override\n", __func__);
-#endif
 
 	err = ov23850_write_table(priv, mode_table[OV23850_MODE_START_STREAM]);
 	if (err)
@@ -609,21 +620,25 @@ static struct camera_common_sensor_ops ov23850_common_ops = {
 	.read_reg = ov23850_read_reg,
 };
 
-static int ov23850_set_group_hold(struct ov23850 *priv, s32 val)
+static int ov23850_set_group_hold(struct ov23850 *priv)
 {
 	int err;
-	int gh_en = switch_ctrl_qmenu[val];
+	int gh_prev = switch_ctrl_qmenu[priv->group_hold_prev];
 
-	if (gh_en == SWITCH_ON) {
+	if (priv->group_hold_en == true && gh_prev == SWITCH_OFF) {
 		err = ov23850_write_reg(priv->s_data,
 				       OV23850_GROUP_HOLD_ADDR, 0x00);
 		if (err)
 			goto fail;
-	} else if (gh_en == SWITCH_OFF) {
+		priv->group_hold_prev = 1;
+	} else if (priv->group_hold_en == false && gh_prev == SWITCH_ON) {
 		err = ov23850_write_reg(priv->s_data,
 				       OV23850_GROUP_HOLD_ADDR, 0x10);
+		err |= ov23850_write_reg(priv->s_data,
+				       OV23850_GROUP_HOLD_ADDR, 0xE0);
 		if (err)
 			goto fail;
+		priv->group_hold_prev = 0;
 	}
 
 	return 0;
@@ -639,18 +654,18 @@ static int ov23850_set_gain(struct ov23850 *priv, s32 val)
 	ov23850_reg reg_list[2];
 	ov23850_reg reg_list_short[2];
 	int err;
-	u32 gain;
+	u16 gain;
 	int i = 0;
 
 	/* translate value */
-	gain = (u16)ov23850_to_gain(val, OV23850_GAIN_SHIFT);
+	gain = ov23850_to_gain((u32)val, OV23850_GAIN_SHIFT);
 
 	dev_dbg(&priv->i2c_client->dev,
 		 "%s: val: %d\n", __func__, gain);
 
 	ov23850_get_gain_reg(reg_list, gain);
+	ov23850_set_group_hold(priv);
 
-#if 0
 	/* writing long gain */
 	for (i = 0; i < 2; i++) {
 		err = ov23850_write_reg(priv->s_data, reg_list[i].addr,
@@ -665,7 +680,6 @@ static int ov23850_set_gain(struct ov23850 *priv, s32 val)
 		if (err)
 			goto fail;
 	}
-#endif
 
 	return 0;
 
@@ -688,6 +702,7 @@ static int ov23850_set_frame_length(struct ov23850 *priv, s32 val)
 		 "%s: val: %d\n", __func__, frame_length);
 
 	ov23850_get_frame_length_regs(reg_list, frame_length);
+	ov23850_set_group_hold(priv);
 
 	for (i = 0; i < 2; i++) {
 		err = ov23850_write_reg(priv->s_data, reg_list[i].addr,
@@ -717,6 +732,7 @@ static int ov23850_set_coarse_time(struct ov23850 *priv, s32 val)
 		 "%s: val: %d\n", __func__, coarse_time);
 
 	ov23850_get_coarse_time_regs(reg_list, coarse_time);
+	ov23850_set_group_hold(priv);
 
 	for (i = 0; i < 2; i++) {
 		err = ov23850_write_reg(priv->s_data, reg_list[i].addr,
@@ -762,6 +778,7 @@ static int ov23850_set_coarse_time_short(struct ov23850 *priv, s32 val)
 		 "%s: val: %d\n", __func__, coarse_time_short);
 
 	ov23850_get_coarse_time_short_regs(reg_list, coarse_time_short);
+	ov23850_set_group_hold(priv);
 
 	for (i = 0; i < 2; i++) {
 		err  = ov23850_write_reg(priv->s_data, reg_list[i].addr,
@@ -1033,7 +1050,12 @@ static int ov23850_s_ctrl(struct v4l2_ctrl *ctrl)
 		err = ov23850_set_coarse_time_short(priv, ctrl->val);
 		break;
 	case V4L2_CID_GROUP_HOLD:
-		err = ov23850_set_group_hold(priv, ctrl->val);
+		if (switch_ctrl_qmenu[ctrl->val] == SWITCH_ON) {
+			priv->group_hold_en = true;
+		} else {
+			priv->group_hold_en = false;
+			err = ov23850_set_group_hold(priv);
+		}
 		break;
 	case V4L2_CID_EEPROM_DATA:
 #if 0
@@ -1262,6 +1284,7 @@ static int ov23850_probe(struct i2c_client *client,
 	priv->i2c_client		= client;
 	priv->s_data			= common_data;
 	priv->subdev			= &common_data->subdev;
+	priv->group_hold_prev		= 0;
 
 	err = ov23850_power_get(priv);
 	if (err)
