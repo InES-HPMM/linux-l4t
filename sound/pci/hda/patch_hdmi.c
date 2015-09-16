@@ -1127,7 +1127,10 @@ static int hdmi_setup_stream(struct hda_codec *codec, hda_nid_t cvt_nid,
 	if (codec->vendor_id == 0x80862807)
 		haswell_verify_pin_D0(codec, pin_nid);
 
-	if (snd_hda_query_pin_caps(codec, pin_nid) & AC_PINCAP_HBR) {
+	/* Assuming the HW supports HBR for Tegra12x, Tegra21x tegra HDMI */
+	if ((snd_hda_query_pin_caps(codec, pin_nid) & AC_PINCAP_HBR) ||
+		(codec->preset->id == 0x10de0028) ||
+		(codec->preset->id == 0x10de0029)) {
 		pinctl = snd_hda_codec_read(codec, pin_nid, 0,
 					    AC_VERB_GET_PIN_WIDGET_CONTROL, 0);
 
