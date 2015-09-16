@@ -2983,7 +2983,7 @@ static void sdhci_tasklet_card(unsigned long param)
 	struct sdhci_host *host = (struct sdhci_host *)param;
 
 	sdhci_card_event(host->mmc);
-	if (host->ops->get_cd(host))
+	if (host->detect_resume && host->ops->get_cd(host))
 		mmc_detect_change(host->mmc, msecs_to_jiffies(700));
 	else
 		mmc_detect_change(host->mmc, msecs_to_jiffies(200));

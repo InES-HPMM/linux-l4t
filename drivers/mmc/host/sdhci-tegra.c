@@ -4078,6 +4078,8 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 	if (plat->pin_count > 0)
 		gpio_free_array(plat->gpios, ARRAY_SIZE(plat->gpios));
 
+	if (!err)
+		sdhci->detect_resume = 1;
 	return err;
 }
 
@@ -4139,6 +4141,7 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 		tegra_sdhci_do_calibration(sdhci, signal_voltage);
 	}
 
+	sdhci->detect_resume = 0;
 	return 0;
 }
 
