@@ -58,6 +58,8 @@ extern atomic_t sd_brightness;
 
 extern struct fb_videomode tegra_dc_vga_mode;
 
+extern char dc_or_node_names[][13];
+
 enum {
 	TEGRA_HPD_STATE_FORCE_DEASSERT = -1,
 	TEGRA_HPD_STATE_NORMAL = 0,
@@ -1083,6 +1085,8 @@ int tegra_dc_get_panel_sync_rate(void);
 
 int tegra_dc_get_head(const struct tegra_dc *dc);
 int tegra_dc_get_out(const struct tegra_dc *dc);
+
+struct device_node *tegra_dc_get_hdmi_node(int id);
 
 struct device_node *tegra_primary_panel_get_dt_node(
 				struct tegra_dc_platform_data *pdata);
