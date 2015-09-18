@@ -95,7 +95,7 @@
 		pll_source = "pll_p";
 		nvidia,en-io-trim-volt;
 		nvidia,en-periodic-calib;
-		status = "okay";
+		status = "disabled";
 	};
 
 	sdhci@700b0200 { /* SDMMC2 for Wifi */
