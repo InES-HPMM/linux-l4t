@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2015, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2016, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -178,6 +178,7 @@ struct tegra_dc {
 	struct tegra_dc_shift_clk_div	shift_clk_div;
 
 	u32				powergate_id;
+	int				sor_instance;
 
 	bool				connected;
 	bool				enabled;

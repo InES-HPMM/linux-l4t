@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2015, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2016, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -154,6 +154,11 @@ static inline int tegra_dc_fmt_byteorder(int fmt)
 {
 	return (fmt & TEGRA_DC_EXT_FMT_BYTEORDER_MASK) >>
 		TEGRA_DC_EXT_FMT_BYTEORDER_SHIFT;
+}
+
+static inline int tegra_dc_which_sor(struct tegra_dc *dc)
+{
+	return dc->sor_instance;
 }
 
 static inline int tegra_dc_fmt_bpp(int fmt)

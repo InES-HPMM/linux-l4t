@@ -1328,8 +1328,8 @@ static void tegra_dpaux_enable(struct tegra_dc_dp_data *dp)
 		DPAUX_HYBRID_PADCTL_AUX_INPUT_RCV_ENABLE);
 
 	tegra_dpaux_pad_power(dp->dc,
-		dp->dc->ndev->id == 0 ? TEGRA_DPAUX_INSTANCE_0 :
-		TEGRA_DPAUX_INSTANCE_1, true);
+		tegra_dc_which_sor(dp->dc) ? TEGRA_DPAUX_INSTANCE_1 :
+		TEGRA_DPAUX_INSTANCE_0, true);
 }
 
 static int tegra_dp_panel_power_state(struct tegra_dc_dp_data *dp, u8 state)
@@ -1856,7 +1856,7 @@ static void tegra_dpaux_init(struct tegra_dc_dp_data *dp)
 {
 	BUG_ON(!dp->dc || !dp);
 
-	tegra_set_dpaux_addr(dp->aux_base, dp->dc->ndev->id);
+	tegra_set_dpaux_addr(dp->aux_base, tegra_dc_which_sor(dp->dc));
 
 	_tegra_dpaux_init(dp);
 
@@ -1916,9 +1916,9 @@ static int tegra_dc_dp_init(struct tegra_dc *dc)
 	int err;
 	u32 irq;
 	struct device_node *np = dc->ndev->dev.of_node;
-
+	int dp_num = tegra_dc_which_sor(dc);
 	struct device_node *np_dp =
-		(dc->ndev->id) ? of_find_node_by_path(DPAUX1_NODE)
+		dp_num ? of_find_node_by_path(DPAUX1_NODE)
 		: of_find_node_by_path(DPAUX_NODE);
 	struct device_node *np_panel = NULL;
 
@@ -1987,7 +1987,7 @@ static int tegra_dc_dp_init(struct tegra_dc *dc)
 	clk = tegra_disp_of_clk_get_by_name(np_dp,
 			dc->ndev->id ? "dpaux1" : "dpaux");
 #else
-	clk = clk_get_sys(dc->ndev->id ? "dpaux1" : "dpaux", NULL);
+	clk = clk_get_sys(dp_num ? "dpaux1" : "dpaux", NULL);
 #endif
 	if (IS_ERR_OR_NULL(clk)) {
 		dev_err(&dc->ndev->dev, "dp: dc clock %s.edp unavailable\n",
@@ -2428,7 +2428,7 @@ void tegra_dc_dp_enable_link(struct tegra_dc_dp_data *dp)
 static void tegra_dc_dp_destroy(struct tegra_dc *dc)
 {
 	struct device_node *np_dp =
-		(dc->ndev->id) ? of_find_node_by_path(DPAUX1_NODE) :
+		tegra_dc_which_sor(dc) ? of_find_node_by_path(DPAUX1_NODE) :
 		of_find_node_by_path(DPAUX_NODE);
 	struct tegra_dc_dp_data *dp = tegra_dc_get_outdata(dc);
 

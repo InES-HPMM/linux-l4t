@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/sor.c
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -226,7 +226,7 @@ static int dbg_sor_show(struct seq_file *s, void *unused)
 	if (tegra_platform_is_linsim())
 		DUMP_REG(NV_SOR_FPGA_HDMI_HEAD_SEL);
 #endif
-	if (sor->dc->ndev->id == 1) { /* sor1 */
+	if (sor->instance) { /* sor1 */
 		DUMP_REG(NV_SOR_DP_AUDIO_CTRL);
 		DUMP_REG(NV_SOR_DP_AUDIO_HBLANK_SYMBOLS);
 		DUMP_REG(NV_SOR_DP_AUDIO_VBLANK_SYMBOLS);
@@ -507,22 +507,18 @@ struct tegra_dc_sor_data *tegra_dc_sor_init(struct tegra_dc *dc,
 	struct clk *brick_clk = NULL;
 	struct clk *src_clk = NULL;
 	struct device_node *np = dc->ndev->dev.of_node;
+	int sor_num = tegra_dc_which_sor(dc);
 	struct device_node *np_sor =
-		dc->ndev->id ? of_find_node_by_path(SOR1_NODE) :
+		sor_num ? of_find_node_by_path(SOR1_NODE) :
 		of_find_node_by_path(SOR_NODE);
-	const char *res_name = dc->ndev->id ? "sor1" : "sor0";
-
-	if (dc->out->type == TEGRA_DC_OUT_HDMI) {
-		of_node_put(np_sor);
-		np_sor = of_find_node_by_path(SOR1_NODE);
-		res_name = "sor1";
-	}
+	const char *res_name = sor_num ? "sor1" : "sor0";
 
 	sor = devm_kzalloc(&dc->ndev->dev, sizeof(*sor), GFP_KERNEL);
 	if (!sor) {
 		err = -ENOMEM;
 		goto err_allocate;
 	}
+	sor->instance = sor_num;
 
 	if (np) {
 		if (np_sor && (of_device_is_available(np_sor) ||
@@ -685,7 +681,7 @@ int tegra_dc_sor_set_power_state(struct tegra_dc_sor_data *sor, int pu_pd)
 
 void tegra_dc_sor_destroy(struct tegra_dc_sor_data *sor)
 {
-	struct device_node *np_sor = (sor->dc->ndev->id) ?
+	struct device_node *np_sor = sor->instance ?
 		of_find_node_by_path(SOR1_NODE) :
 		of_find_node_by_path(SOR_NODE);
 
@@ -1498,15 +1494,16 @@ void tegra_dc_sor_enable_dp(struct tegra_dc_sor_data *sor)
 static void tegra_dc_sor_enable_sor(struct tegra_dc_sor_data *sor, bool enable)
 {
 	struct tegra_dc *dc = sor->dc;
+	int sor_num = sor->instance;
 	u32 reg_val = tegra_dc_readl(sor->dc, DC_DISP_DISP_WIN_OPTIONS);
-	u32 enb = dc->ndev->id ? SOR1_ENABLE : SOR_ENABLE;
+	u32 enb = sor_num ? SOR1_ENABLE : SOR_ENABLE;
 
 	/* Do not disable SOR during seamless boot */
 	if (sor->dc->initialized && !enable)
 		return;
 
 	if (sor->dc->out->type == TEGRA_DC_OUT_HDMI)
-		enb = SOR1_ENABLE;
+		enb = sor_num ? SOR1_ENABLE : SOR_ENABLE;
 
 	if (dc->out->type == TEGRA_DC_OUT_HDMI)
 		enb |= SOR1_TIMING_CYA;

@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2015, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2016, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -523,6 +523,16 @@ void tegra_dc_clk_disable(struct tegra_dc *dc)
 {
 	tegra_disp_clk_disable_unprepare(dc->clk);
 	tegra_dvfs_set_rate(dc->clk, 0);
+}
+
+static void tegra_dc_set_sor_instance(struct tegra_dc *dc, int out_type)
+{
+	/* Fake DP should always be on SOR0. */
+	if (!strcmp(dc_or_node_names[dc->ndev->id], "/host1x/sor") ||
+		out_type == TEGRA_DC_OUT_FAKE_DP)
+		dc->sor_instance = 0;
+	else
+		dc->sor_instance = 1;
 }
 
 void tegra_dc_get(struct tegra_dc *dc)
@@ -2527,6 +2537,8 @@ static int tegra_dc_set_out(struct tegra_dc *dc, struct tegra_dc_out *out)
 
 	dc->out = out;
 
+	tegra_dc_set_sor_instance(dc, dc->out->type);
+
 	if (dc->out->type == TEGRA_DC_OUT_HDMI &&
 			tegra_is_bl_display_initialized(dc->ndev->id)) {
 		/*
@@ -3827,17 +3839,18 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 		return false;
 	}
 
-#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	if (dc->out->type != TEGRA_DC_OUT_DP) {
+#if !defined(CONFIG_ARCH_TEGRA_21x_SOC)
+		int sor_num = tegra_dc_which_sor(dc);
 		np_dpaux = of_find_node_by_path(
-				dc->ndev->id ? DPAUX1_NODE : DPAUX_NODE);
+				sor_num ? DPAUX1_NODE : DPAUX_NODE);
 		if (np_dpaux || !dc->ndev->dev.of_node)
 			tegra_dpaux_pad_power(dc,
-			dc->ndev->id ? TEGRA_DPAUX_INSTANCE_1 :
+			sor_num ? TEGRA_DPAUX_INSTANCE_1 :
 			TEGRA_DPAUX_INSTANCE_0, false);
 		of_node_put(np_dpaux);
-	}
 #endif
+	}
 
 	if (dc->out_ops && dc->out_ops->enable)
 		dc->out_ops->enable(dc);

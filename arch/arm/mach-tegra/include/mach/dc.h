@@ -6,7 +6,7 @@
  * Author:
  *	Erik Gilling <konkers@google.com>
  *
- * Copyright (c) 2010-2015, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2016, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -61,6 +61,8 @@
 extern atomic_t sd_brightness;
 
 extern struct fb_videomode tegra_dc_vga_mode;
+
+extern char dc_or_node_names[][13];
 
 enum {
 	TEGRA_HPD_STATE_FORCE_DEASSERT = -1,
@@ -1130,6 +1132,8 @@ int tegra_dc_get_panel_sync_rate(void);
 
 int tegra_dc_get_head(const struct tegra_dc *dc);
 int tegra_dc_get_out(const struct tegra_dc *dc);
+
+struct device_node *tegra_dc_get_hdmi_node(int id);
 
 struct device_node *tegra_primary_panel_get_dt_node(
 				struct tegra_dc_platform_data *pdata);

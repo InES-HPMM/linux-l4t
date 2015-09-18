@@ -27,6 +27,10 @@ NVIDIA Tegra210 Display Controller
  - avdd_hdmi_pll-supply: phandle to the regulator device tree node for HDMI pll supply.
  - vdd_hdmi_5v0-supply: phandle to the regulator device tree node for HDMI 5V source.
 
+ Optional properties:
+ - nvidia,dc-or-node: Specifies which OR this DC is connected to. Can be either "/host1x/sor" or
+   "/host1x/sor1".
+
 Example
 
 	host1x {

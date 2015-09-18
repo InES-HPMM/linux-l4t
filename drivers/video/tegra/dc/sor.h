@@ -2,7 +2,7 @@
 /*
  * drivers/video/tegra/dc/sor.h
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -92,6 +92,7 @@ struct tegra_dc_sor_data {
 	struct tegra_dc	*dc;
 
 	void __iomem	*base;
+	int instance; /* SOR0 or SOR1 */
 	struct resource	*res;
 	struct resource	*base_res;
 	struct clk	*sor_clk;
