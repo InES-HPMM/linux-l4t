@@ -48,6 +48,11 @@
 #define TEGRA_DC_TS_MAX_DELAY_US 1000000
 #define TEGRA_DC_TS_SLACK_US 100
 
+#define TEGRA_DC_SMOOTHING_CR_PC 75
+#define TEGRA_DC_SMOOTHING_MAX_APC_US 64000
+#define TEGRA_DC_SMOOTHING_LATENCY_US 4000
+#define TEGRA_DC_SMOOTHING_SLACK_US 50
+
 #ifdef CONFIG_COMPAT
 /* compat versions that happen to be the same size as the uapi version. */
 
@@ -620,6 +625,46 @@ static void tegra_dc_ext_unpin_handles(struct tegra_dc_dmabuf *unpin_handles[],
 	}
 }
 
+static void tegra_dc_ext_smooth_apc(struct tegra_vrr *vrr)
+{
+	/* Smooth actual present cadence when vrr is enabled
+	 */
+	if (vrr && vrr->enable) {
+		s32 sleep_us = TEGRA_DC_SMOOTHING_LATENCY_US;
+
+		if (vrr->flip_interval_us > 0 &&
+			vrr->flip_interval_us < TEGRA_DC_SMOOTHING_MAX_APC_US) {
+			struct timespec tm;
+			s64 now_us = 0;
+			s64 next_desired_present = 0;
+
+			getnstimeofday(&tm);
+			now_us = (s64)tm.tv_sec * 1000000 + tm.tv_nsec / 1000;
+
+			next_desired_present = vrr->last_flip_us +
+				vrr->flip_interval_us;
+			sleep_us = next_desired_present - now_us;
+
+			/* Smooth our sleep time towards 4ms.  This is required
+			 * to smoothly move us back to 4ms of latency added
+			 * when framerate is changing.
+			 */
+			sleep_us = sleep_us * TEGRA_DC_SMOOTHING_CR_PC / 100 +
+				TEGRA_DC_SMOOTHING_LATENCY_US *
+				(100 - TEGRA_DC_SMOOTHING_CR_PC) / 100;
+
+			if (sleep_us < 0)
+				sleep_us = 0;
+			if (sleep_us > TEGRA_DC_SMOOTHING_LATENCY_US * 2)
+				sleep_us = TEGRA_DC_SMOOTHING_LATENCY_US * 2;
+		}
+
+		// TRACE_NAME_BEGIN(smooth_wait);
+		usleep_range(sleep_us, sleep_us + TEGRA_DC_SMOOTHING_SLACK_US);
+		// TRACE_NAME_END(smooth_wait);
+	}
+}
+
 static void tegra_dc_ext_flip_worker(struct kthread_work *work)
 {
 	struct tegra_dc_ext_flip_data *data =
@@ -632,6 +677,7 @@ static void tegra_dc_ext_flip_worker(struct kthread_work *work)
 					       TEGRA_DC_NUM_PLANES];
 	struct tegra_dc_dmabuf *old_handle;
 	struct tegra_dc *dc = ext->dc;
+	struct tegra_vrr *vrr = ext->dc->out->vrr;
 	int i, nr_unpin = 0, nr_win = 0;
 	bool skip_flip = false;
 	bool wait_for_vblank = false;
@@ -758,6 +804,8 @@ static void tegra_dc_ext_flip_worker(struct kthread_work *work)
 			wins[nr_win++] = win;
 		}
 	}
+
+	tegra_dc_ext_smooth_apc(vrr);
 
 	/* YUV packing consumes only one window, thus there must have been
 	 * free window which can host background pattern.
