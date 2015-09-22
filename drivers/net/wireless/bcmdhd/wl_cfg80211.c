@@ -3,6 +3,9 @@
  *
  * Copyright (C) 1999-2015, Broadcom Corporation
  * 
+ * Portions contributed by Nvidia
+ * Copyright (C) 2015 NVIDIA Corporation. All rights reserved.
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -1394,7 +1397,7 @@ if (bcmdhd_prop_txstatus_vsdb) {
 
 	if (wl_get_drv_status(cfg, CONNECTING, primary_ndev)) {
 		WL_ERR(("Already AP connection going on\n"));
-		return -EBUSY;
+		return ERR_PTR(-EBUSY);
 	}
 
 	WL_DBG(("if name: %s, type: %d\n", name, type));

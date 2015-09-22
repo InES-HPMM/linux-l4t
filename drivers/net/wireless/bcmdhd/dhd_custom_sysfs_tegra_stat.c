@@ -3,7 +3,7 @@
  *
  * NVIDIA Tegra Sysfs for BCMDHD driver
  *
- * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -60,6 +60,8 @@ stat_work_func(struct work_struct *work)
 	char *netif = net ? net->name : "";
 	wl_cnt_t *cnt;
 	int i;
+
+	UNUSED_PARAMETER(dwork);
 
 //	pr_info("%s\n", __func__);
 

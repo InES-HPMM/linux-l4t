@@ -1,6 +1,9 @@
 /*
 * Customer code to add GPIO control during WLAN start/stop
 * Copyright (C) 1999-2015, Broadcom Corporation
+*
+* Nvidia-specific country code customization
+* Copyright (C) 2015 NVIDIA Corporation. All rights reserved.
 * 
 *      Unless you and Broadcom execute a separate written software license
 * agreement governing use of this software, this software is licensed to you
@@ -411,13 +414,14 @@ void get_customized_country_code(void *adapter, char *country_iso_code, wl_count
 	return;
 #else
 	int size, i;
-
+#ifdef NV_COUNTRY_CODE
+	wifi_adapter_info_t *wifi_adapter = (wifi_adapter_info_t *)adapter;
+#endif
 
 	if (cspec == 0)
 		 return;
 
 #ifdef NV_COUNTRY_CODE
-	wifi_adapter_info_t *wifi_adapter = (wifi_adapter_info_t *)adapter;
 	if (wifi_adapter->n_country == 0)
 		 return;
 
