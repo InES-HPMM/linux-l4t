@@ -3,6 +3,9 @@
  *
  * Copyright (C) 1999-2015, Broadcom Corporation
  * 
+ * Portions contributed by Nvidia
+ * Copyright (C) 2015 NVIDIA Corporation. All rights reserved.
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -384,7 +387,7 @@ static int wifi_platform_get_country_code_map(struct device_node *node,
 	int n_country;
 	int ret;
 	int i;
-	char *strptr;
+	const char *strptr;
 
 	np_country = of_get_child_by_name(node, "country_code_map");
 	if (!np_country) {
@@ -403,7 +406,7 @@ static int wifi_platform_get_country_code_map(struct device_node *node,
 		DHD_ERROR(("%s: fail to allocate memory\n", __func__));
 		return -1;
 	}
-	memset(country, 0, sizeof(country));
+	memset(country, 0, n_country * sizeof(struct cntry_locales_custom));
 
 	i = 0;
 	for_each_child_of_node(np_country, child) {
@@ -600,7 +603,8 @@ static int wifi_platdev_match(struct device *dev, void *data)
 static int wifi_ctrlfunc_register_drv(void)
 {
 	int err = 0;
-	struct device *dev1, *dev2, *dt_node;
+	struct device *dev1, *dev2;
+	struct device_node *dt_node;
 	wifi_adapter_info_t *adapter;
 
 	dev1 = bus_find_device(&platform_bus_type, NULL, WIFI_PLAT_NAME, wifi_platdev_match);
@@ -660,7 +664,8 @@ static int wifi_ctrlfunc_register_drv(void)
 void wifi_ctrlfunc_unregister_drv(void)
 {
 
-	struct device *dev1, *dev2, *dt_node;
+	struct device *dev1, *dev2;
+	struct device_node *dt_node;
 	dev1 = bus_find_device(&platform_bus_type, NULL, WIFI_PLAT_NAME, wifi_platdev_match);
 	dev2 = bus_find_device(&platform_bus_type, NULL, WIFI_PLAT_NAME2, wifi_platdev_match);
 	if (!dts_enabled)

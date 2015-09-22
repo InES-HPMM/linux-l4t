@@ -24,6 +24,7 @@ int wifi_scan_policy_index = -1;
 struct wifi_scan_policy wifi_scan_policy_list[WIFI_SCAN_POLICY_MAX];
 
 static DEFINE_SEMAPHORE(wifi_scan_lock);
+static DEFINE_SEMAPHORE(wifi_scan_read_lock);
 
 static int
 wifi_scan_rule__add(const char **bufptr, size_t *countptr,
@@ -1556,15 +1557,23 @@ ssize_t
 tegra_debugfs_histogram_scan_read(struct file *filp,
 	char __user *buff, size_t count, loff_t *offp)
 {
+	static char buf[PAGE_SIZE];
 	struct device *dev = NULL;
 	struct device_attribute *attr = NULL;
-	char buf[PAGE_SIZE];
 	ssize_t size, chunk;
 
 //	pr_info("%s\n", __func__);
 
+	/* lock read semaphore */
+	if (down_interruptible(&wifi_scan_read_lock) < 0) {
+		WIFI_SCAN_DEBUG("%s: cannot lock read semaphore\n",
+			__func__);
+		return 0;
+	}
+
 	if (offp && (*offp != 0) &&
 		(tegra_sysfs_histogram_scan_show_pointer == -1)) {
+		up(&wifi_scan_read_lock);
 		return 0;
 	}
 
@@ -1583,6 +1592,9 @@ tegra_debugfs_histogram_scan_read(struct file *filp,
 			break;
 		}
 	}
+
+	/* unlock read semaphore */
+	up(&wifi_scan_read_lock);
 
 	return size;
 }

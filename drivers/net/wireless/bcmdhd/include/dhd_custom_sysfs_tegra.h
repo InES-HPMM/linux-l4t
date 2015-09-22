@@ -3,7 +3,7 @@
  *
  * NVIDIA Tegra Sysfs for BCMDHD driver
  *
- * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -26,6 +26,10 @@
 #include <linux/stat.h>
 #include <linux/debugfs.h>
 #include <linux/fs.h>
+
+#ifndef UNUSED_PARAMETER
+#define UNUSED_PARAMETER(x)	(void)(x)
+#endif
 
 /* initialization */
 
@@ -95,14 +99,14 @@ tegra_sysfs_histogram_rssi_store(struct device *dev,
 	{\
 		char *netif = netdev ? netdev->name : "";\
 		tcpdump_pkt_save('X', netif, __func__, __LINE__,\
-			(unsigned char *) request, request_size, 0);\
+			(const unsigned char *) request, request_size, 0);\
 	}\
 
 #define TEGRA_SYSFS_HISTOGRAM_SCAN_RESULTS(netdev, results, results_size)\
 	{\
 		char *netif = netdev ? netdev->name : "";\
 		tcpdump_pkt_save('x', netif, __func__, __LINE__,\
-			(unsigned char *) results, results_size, 0);\
+			(const unsigned char *) results, results_size, 0);\
 	}\
 
 void
@@ -154,7 +158,7 @@ tegra_sysfs_histogram_stat_store(struct device *dev,
 
 void
 tcpdump_pkt_save(char tag, const char *netif, const char *func, int line,
-	unsigned char *data,
+	const unsigned char *data,
 	unsigned int data_nonpaged_len,
 	unsigned int data_paged_len);
 

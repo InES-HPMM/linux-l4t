@@ -3,6 +3,9 @@
  *
  * Copyright (C) 1999-2015, Broadcom Corporation
  * 
+ * Portions contributed by Nvidia
+ * Copyright (C) 2015 NVIDIA Corporation. All rights reserved.
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -2105,7 +2108,7 @@ static int wl_android_get_iovar(struct net_device *dev, char *command,
 		return BCME_BADARG;
 	}
 
-	DHD_INFO(("%s: command buffer %s command length:%d\n",
+	DHD_INFO(("%s: command buffer %s command length:%zd\n",
 			__func__, (command + skip), strlen(command + skip)));
 
 	/* Initiate get_iovar command */
@@ -2122,7 +2125,7 @@ static int wl_android_get_iovar(struct net_device *dev, char *command,
 		snprintf(command, total_len, iovbuf);
 		bytes_written = snprintf(command, total_len,
 					"%d:%s", dtoh32(param), iovbuf);
-		DHD_INFO(("%s: param:%d iovbuf:%s strlen(iovbuf):%d"
+		DHD_INFO(("%s: param:%d iovbuf:%s strlen(iovbuf):%zd"
 				" bytes_written:%d\n", __func__, param, iovbuf,
 				strlen(iovbuf), bytes_written));
 	}
@@ -2145,7 +2148,7 @@ static int wl_android_set_iovar(struct net_device *dev, char *command,
 		return BCME_BADARG;
 	}
 
-	DHD_INFO(("%s: command buffer:%s command length:%d\n",
+	DHD_INFO(("%s: command buffer:%s command length:%zd\n",
 			__func__, (command + skip), strlen(command + skip)));
 
 	/* Parse command and get iovbuf and param values */
@@ -2156,7 +2159,7 @@ static int wl_android_set_iovar(struct net_device *dev, char *command,
 		DHD_ERROR(("%s: Failed to get Parameter %d\n", __func__, ret));
 		return BCME_BADARG;
 	}
-	DHD_INFO(("%s: iovar:%s param:%d iovbuf:%s strlen(iovbuf):%d\n", __func__,
+	DHD_INFO(("%s: iovar:%s param:%d iovbuf:%s strlen(iovbuf):%zd\n", __func__,
 			iovar, param, iovbuf, strlen(iovbuf)));
 
 	bytes_written = wldev_iovar_setbuf(dev, iovar, &param,

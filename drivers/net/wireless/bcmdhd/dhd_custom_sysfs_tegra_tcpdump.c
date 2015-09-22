@@ -3,7 +3,7 @@
  *
  * NVIDIA Tegra Sysfs for BCMDHD driver
  *
- * Copyright (C) 2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -65,6 +65,8 @@ typedef struct {
 
 DEFINE_SPINLOCK(tcpdump_lock);
 
+static DEFINE_SEMAPHORE(tcpdump_read_lock);
+
 extern int lp0_logs_enable;
 int tcpdump_head;
 int tcpdump_tail;
@@ -100,7 +102,7 @@ tcpdump_set_maxpkt(int maxpkt)
 
 void
 tcpdump_pkt_save(char tag, const char *netif, const char *func, int line,
-	unsigned char *data,
+	const unsigned char *data,
 	unsigned int data_nonpaged_len,
 	unsigned int data_paged_len)
 {
@@ -373,7 +375,7 @@ tegra_sysfs_histogram_tcpdump_store(struct device *dev,
 			return count;
 		} else if (maxpkt > sizeof(tcpdump_pkt)
 			/ sizeof(tcpdump_pkt[0])) {
-			pr_info("%s: limit maxpkt from %d to %d\n",
+			pr_info("%s: limit maxpkt from %d to %ld\n",
 				__func__,
 				maxpkt,
 				sizeof(tcpdump_pkt) / sizeof(tcpdump_pkt[0]));
@@ -389,12 +391,19 @@ ssize_t
 tegra_debugfs_histogram_tcpdump_read(struct file *filp,
 	char __user *buff, size_t count, loff_t *offp)
 {
+	static char buf[PAGE_SIZE];
 	struct device *dev = NULL;
 	struct device_attribute *attr = NULL;
-	char buf[PAGE_SIZE];
 	ssize_t size, chunk;
 
 //	pr_info("%s\n", __func__);
+
+	/* lock read semaphore */
+	if (down_interruptible(&tcpdump_read_lock) < 0) {
+		pr_err("%s: cannot lock read semaphore\n",
+			__func__);
+		return 0;
+	}
 
 	for (size = 0; size + PAGE_SIZE <= count; size += chunk) {
 		chunk = tegra_sysfs_histogram_tcpdump_show(dev, attr, buf);
@@ -405,6 +414,9 @@ tegra_debugfs_histogram_tcpdump_read(struct file *filp,
 			break;
 		}
 	}
+
+	/* unlock read semaphore */
+	up(&tcpdump_read_lock);
 
 	return size;
 }

@@ -4,6 +4,9 @@
  *
  * Copyright (C) 1999-2015, Broadcom Corporation
  * 
+ * Portions contributed by Nvidia
+ * Copyright (C) 2015 NVIDIA Corporation. All rights reserved.
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
@@ -3268,6 +3271,9 @@ dhd_txcomplete(dhd_pub_t *dhdp, void *txp, bool success)
 	dhd_info_t *dhd = (dhd_info_t *)(dhdp->info);
 	struct ether_header *eh;
 	uint16 type;
+#ifdef PROP_TXSTATUS
+	dhd_if_t *ifp = dhd->iflist[DHD_PKTTAG_IF(PKTTAG(txp))];
+#endif
 
 	dhd_prot_hdrpull(dhdp, NULL, txp, NULL, NULL);
 
@@ -3278,7 +3284,6 @@ dhd_txcomplete(dhd_pub_t *dhdp, void *txp, bool success)
 		atomic_dec(&dhd->pend_8021x_cnt);
 
 #ifdef PROP_TXSTATUS
-	dhd_if_t *ifp = dhd->iflist[DHD_PKTTAG_IF(PKTTAG(txp))];
 	ASSERT(ifp);
 	if ( (ifp != NULL) && dhdp->wlfc_state && (dhdp->proptxstatus_mode != WLFC_FCMODE_NONE)) {
 		uint datalen  = PKTLEN(dhd->pub.osh, txp);
@@ -5987,15 +5992,15 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #ifdef CUSTOM_PSPRETEND_THR
 	uint32 pspretend_thr = CUSTOM_PSPRETEND_THR;
 #endif
+#ifdef RXCB
+	uint32 rxcb = 1;
+#endif
 #ifdef PKT_FILTER_SUPPORT
 	dhd_pkt_filter_enable = TRUE;
 #endif /* PKT_FILTER_SUPPORT */
 #ifdef WLTDLS
 	dhd->tdls_enable = FALSE;
 #endif /* WLTDLS */
-#ifdef RXCB
-	uint32 rxcb = 1;
-#endif
 	dhd->suspend_bcn_li_dtim = CUSTOM_SUSPEND_BCN_LI_DTIM;
 	DHD_TRACE(("Enter %s\n", __FUNCTION__));
 	dhd->op_mode = 0;

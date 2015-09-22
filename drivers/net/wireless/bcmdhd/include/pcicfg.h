@@ -172,6 +172,10 @@ typedef struct _pcie_enhanced_caphdr {
 #define PCI_DEV_STAT_CTRL2	0xd4	/* PCI device status control 2 register */
 #define PCIE_LTR_MAX_SNOOP	0x1b4	/* PCIE LTRMaxSnoopLatency */
 #define PCI_L1SS_CTRL		0x248	/* The L1 PM Substates Control register */
+#undef PCI_L1SS_CTRL2			/* avoid incompatible user-mode
+					 * definition from
+					 * uapi/linux/pci_regs.h
+					 */
 #define	PCI_L1SS_CTRL2		0x24c	/* The L1 PM Substates Control 2 register */
 
 /* Private Registers */
