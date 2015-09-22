@@ -6000,6 +6000,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	sdhci_tegra_misc_debugfs(host);
 	device_create_file(&pdev->dev, &dev_attr_cmd_state);
 
+	/* Enable async suspend/resume to reduce LP0 latency */
+	device_enable_async_suspend(&pdev->dev);
+
 	if (plat->power_off_rail) {
 		tegra_host->reboot_notify.notifier_call =
 			tegra_sdhci_reboot_notify;
