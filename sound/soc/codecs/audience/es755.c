@@ -2638,6 +2638,19 @@ int es755_core_probe(struct device *dev)
 		dev_info(dev, "Platform data from device tree\n");
 		pdata = es755_populate_dt_pdata(dev);
 		dev->platform_data = pdata;
+
+		if (of_property_read_string(dev->of_node, "adnc,fw_filename",
+					(const char **)&fw_filename)) {
+			dev_err(escore_priv.dev,
+					"Property adnc,fw_filename missing or invalid, using default\n");
+		}
+
+		if (of_property_read_string(dev->of_node, "adnc,vs_filename",
+					(const char **)&vs_filename)) {
+			dev_err(escore_priv.dev,
+					"Property adnc,vs_filename missing or invalid, using default\n");
+		}
+
 	} else {
 		dev_info(dev, "Platform data from board file\n");
 		pdata = dev->platform_data;

@@ -141,6 +141,10 @@
 			/* Button Control 4 */
 			adnc,valid_levels = <31>;
 			adnc,impd_det_timer = <0>;
+
+			/* FW name */
+			adnc,fw_filename = "audience/es755/audience-es755-fw_loki.bin";
+			adnc,vs_filename = "audience/es755/audience-es755-vs_loki.bin";
 		};
 	};
 

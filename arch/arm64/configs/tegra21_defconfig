@@ -200,7 +200,7 @@ CONFIG_RFKILL=y
 CONFIG_DEVTMPFS=y
 CONFIG_DEVTMPFS_MOUNT=y
 # CONFIG_FIRMWARE_IN_KERNEL is not set
-CONFIG_EXTRA_FIRMWARE="audience/es755/audience-es755-fw.bin audience/es755/audience-es755-vs.bin audience/cvqmodels/adnc_cvq_detection_bkg_w_hdrs.bin"
+CONFIG_EXTRA_FIRMWARE="audience/es755/audience-es755-fw.bin audience/es755/audience-es755-fw_loki.bin audience/es755/audience-es755-vs.bin audience/es755/audience-es755-vs_loki.bin audience/cvqmodels/adnc_cvq_detection_bkg_w_hdrs.bin"
 CONFIG_PLATFORM_ENABLE_IOMMU=y
 CONFIG_PROC_DEVICETREE=y
 CONFIG_ZRAM=y
