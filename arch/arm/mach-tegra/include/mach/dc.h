@@ -829,6 +829,13 @@ struct tegra_dc_cmu {
 };
 #endif
 
+struct tegra_dc_hdr {
+	bool		enabled;
+	u32		eotf;
+	u32		static_metadata_id;
+	u8		static_metadata[24];
+};
+
 struct tegra_dc_win {
 	u8			idx;
 	u8			ppflags; /* see TEGRA_WIN_PPFLAG* */
