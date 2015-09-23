@@ -177,3 +177,5 @@ obj-$(CONFIG_TEGRA_WDT_RECOVERY)        += wdt-recovery.o
 obj-y					+= tegra_prod.o
 
 obj-y					+= reboot.o
+
+obj-$(CONFIG_TEGRA_PANEL_CY8C) += panel-cy8c.o

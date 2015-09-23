@@ -1,0 +1,23 @@
+CY8C microcontroller driven panel power sequence driver
+
+Required properties:
+- compatible : should be "nvidia,cy8c_panel".
+
+Sub-node properties:
+- reg : i2c regmap address (app firmware)
+- enable-gpio : gpio used to enable uC operations.
+	This gpio must remain high for as long as the
+	panel is enabled. It may be deasserted after
+	the panel is disabled.
+
+Examples:
+	i2c@7000c000 {
+		cy8c_panel@09 {
+			compatible = "nvidia,cy8c_panel";
+			reg = <0x09>;
+			enable-gpio = <&gpio TEGRA_GPIO(K, 1) 0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+	};
+};

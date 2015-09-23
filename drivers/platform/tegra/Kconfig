@@ -175,4 +175,11 @@ config TEGRA_IVC
 	  Enable the Tegra IVC library, which implements a lockless, shared-
 	  memory queue.
 
+config TEGRA_PANEL_CY8C
+	bool "CY8C microcontroller-based panel power sequence driver"
+	default n
+	help
+	  Enable support for CY8C microcontroller-based panel power
+	  sequence.
+
 trysource "../kernel-t18x/drivers/platform/tegra/Kconfig"
