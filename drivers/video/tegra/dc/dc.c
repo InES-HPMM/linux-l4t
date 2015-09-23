@@ -691,7 +691,7 @@ static void _dump_regs(struct tegra_dc *dc, void *data,
 	DUMP_REG(DC_DISP_CURSOR_BACKGROUND);
 	DUMP_REG(DC_DISP_CURSOR_START_ADDR);
 	DUMP_REG(DC_DISP_CURSOR_START_ADDR_NS);
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	DUMP_REG(DC_DISP_CURSOR_START_ADDR_HI);
 	DUMP_REG(DC_DISP_CURSOR_START_ADDR_HI_NS);
 #endif
@@ -3712,7 +3712,7 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 	/* initialize cursor to defaults, as driver depends on HW state */
 	tegra_dc_writel(dc, 0, DC_DISP_CURSOR_START_ADDR);
 	tegra_dc_writel(dc, 0, DC_DISP_CURSOR_START_ADDR_NS);
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	tegra_dc_writel(dc, 0, DC_DISP_CURSOR_START_ADDR_HI);
 	tegra_dc_writel(dc, 0, DC_DISP_CURSOR_START_ADDR_HI_NS);
 #endif
@@ -3724,6 +3724,13 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 
 	trace_display_enable(dc);
 
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && \
+!defined(CONFIG_ARCH_TEGRA_3x_SOC) && \
+!defined(CONFIG_ARCH_TEGRA_11x_SOC) && \
+!defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	tegra_dc_writel(dc, CURSOR_UPDATE, DC_CMD_STATE_CONTROL);
+	tegra_dc_writel(dc, CURSOR_ACT_REQ, DC_CMD_STATE_CONTROL);
+#endif
 	tegra_dc_writel(dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
 
 	if (dc->out->postpoweron)
