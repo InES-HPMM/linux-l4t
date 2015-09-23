@@ -15,7 +15,7 @@
  */
 
 #include "tegra210-jetson-cv-p2597-2180-a00.dts"
-#include "tegra210-platforms/tegra210-jetson-cv-super-module-e2614-a00.dtsi"
+#include "tegra210-platforms/tegra210-jetson-cv-super-module-e2614-b00.dtsi"
 
 / {
 	nvidia,dtsfilename = __FILE__;
