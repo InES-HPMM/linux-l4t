@@ -494,8 +494,9 @@ static struct device_node *available_internal_panel_select(
 		np_sor = of_find_node_by_path(dc_or_node_names[DC0_ID]);
 		if (np_sor) {
 			for_each_available_child_of_node(np_sor, np_panel) {
-				if (np_panel)
-					break;
+				if (np_panel && of_get_child_by_name(
+					np_panel, "disp-default-out"))
+						break;
 			}
 		}
 	}
