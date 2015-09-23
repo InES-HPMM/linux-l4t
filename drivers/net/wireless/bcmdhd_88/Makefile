@@ -18,6 +18,7 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER                 \
 	-Idrivers/net/wireless/bcmdhd_88/include
 
 DHDCFLAGS += -DWL_CFG80211 -DWL_CFG80211_STA_EVENT
+DHDCFLAGS += -DWL_VENDOR_EXT_SUPPORT
 # for < K3.8
 #DHDCFLAGS += -DWL_ENABLE_P2P_IF -DWL_IFACE_COMB_NUM_CHANNELS
 # for >= K3.8
@@ -117,7 +118,7 @@ DHDOFILES = bcmsdh.o bcmsdh_linux.o bcmsdh_sdmmc.o bcmsdh_sdmmc_linux.o \
 	dhd_linux.o dhd_linux_sched.o dhd_pno.o dhd_sdio.o dhd_wlfc.o       \
 	aiutils.o bcmevent.o bcmutils.o bcmwifi_channels.o hndpmu.o         \
 	linux_osl.o sbutils.o siutils.o wldev_common.o wl_android.o         \
-	wl_cfg80211.o wl_cfgp2p.o wl_linux_mon.o
+	wl_cfg80211.o wl_cfgp2p.o wl_linux_mon.o wl_cfgvendor.o
 
 ifneq ($(findstring QMONITOR, $(DHDCFLAGS)),)
  DHDOFILES += dhd_qmon.o

@@ -59,6 +59,42 @@
 #define SCAN_END_MARKER "####\n"
 #define AP_END_MARKER "====\n"
 
+#define GSCAN_MAX_CH_BUCKETS			 8
+#define GSCAN_MAX_CHANNELS_IN_BUCKET	 32
+#define GSCAN_MAX_AP_CACHE_PER_SCAN		 32
+#define GSCAN_MAX_AP_CACHE				 320
+#define GSCAN_BG_BAND_MASK			   (1 << 0)
+#define GSCAN_A_BAND_MASK			   (1 << 1)
+#define GSCAN_DFS_MASK				   (1 << 2)
+#define GSCAN_ABG_BAND_MASK			   (GSCAN_A_BAND_MASK | GSCAN_BG_BAND_MASK)
+#define GSCAN_BAND_MASK				   (GSCAN_ABG_BAND_MASK | GSCAN_DFS_MASK)
+
+#define GSCAN_FLUSH_HOTLIST_CFG		 (1 << 0)
+#define GSCAN_FLUSH_SIGNIFICANT_CFG  (1 << 1)
+#define GSCAN_FLUSH_SCAN_CFG		 (1 << 2)
+#define GSCAN_FLUSH_EPNO_CFG		 (1 << 3)
+#define GSCAN_FLUSH_ALL_CFG		(GSCAN_FLUSH_SCAN_CFG | \
+																GSCAN_FLUSH_SIGNIFICANT_CFG | \
+																GSCAN_FLUSH_HOTLIST_CFG  | \
+																GSCAN_FLUSH_EPNO_CFG)
+#define DHD_EPNO_HIDDEN_SSID		  (1 << 0)
+#define DHD_EPNO_A_BAND_TRIG		  (1 << 1)
+#define DHD_EPNO_BG_BAND_TRIG		  (1 << 2)
+#define DHD_EPNO_STRICT_MATCH		  (1 << 3)
+#define DHD_PNO_USE_SSID			  (DHD_EPNO_HIDDEN_SSID | DHD_EPNO_STRICT_MATCH)
+
+/* Do not change GSCAN_BATCH_RETRIEVAL_COMPLETE */
+#define GSCAN_BATCH_RETRIEVAL_COMPLETE		0
+#define GSCAN_BATCH_RETRIEVAL_IN_PROGRESS	1
+#define GSCAN_BATCH_NO_THR_SET				101
+#define GSCAN_LOST_AP_WINDOW_DEFAULT		4
+#define GSCAN_MIN_BSSID_TIMEOUT				90
+#define GSCAN_BATCH_GET_MAX_WAIT			500
+
+#define CHANNEL_BUCKET_EMPTY_INDEX						0xFFFF
+#define GSCAN_RETRY_THRESHOLD			   3
+#define MAX_EPNO_SSID_NUM					32
+
 enum scan_status {
 	/* SCAN ABORT by other scan */
 	PNO_STATUS_ABORT,
@@ -81,8 +117,10 @@ enum index_mode {
 	INDEX_OF_LEGACY_PARAMS,
 	INDEX_OF_BATCH_PARAMS,
 	INDEX_OF_HOTLIST_PARAMS,
+	INDEX_OF_GSCAN_PARAMS = INDEX_OF_HOTLIST_PARAMS,
 	INDEX_MODE_MAX
 };
+
 enum dhd_pno_status {
 	DHD_PNO_DISABLED,
 	DHD_PNO_ENABLED,
@@ -201,6 +239,43 @@ typedef struct dhd_pno_status_info {
 	struct list_head head_list;
 } dhd_pno_status_info_t;
 
+typedef enum dhd_pno_gscan_cmd_cfg {
+	DHD_PNO_BATCH_SCAN_CFG_ID,
+	DHD_PNO_GEOFENCE_SCAN_CFG_ID,
+	DHD_PNO_SIGNIFICANT_SCAN_CFG_ID,
+	DHD_PNO_SCAN_CFG_ID,
+	DHD_PNO_GET_CAPABILITIES,
+	DHD_PNO_GET_BATCH_RESULTS,
+	DHD_PNO_GET_CHANNEL_LIST,
+	DHD_PNO_GET_EPNO_SSID_ELEM,
+	DHD_PNO_EPNO_CFG_ID,
+	DHD_PNO_GET_AUTOJOIN_CAPABILITIES
+} dhd_pno_gscan_cmd_cfg_t;
+
+typedef struct dhd_pno_gscan_capabilities {
+	int max_scan_cache_size;
+	int max_scan_buckets;
+	int max_ap_cache_per_scan;
+	int max_rssi_sample_size;
+	int max_scan_reporting_threshold;
+	int max_hotlist_aps;
+	int max_significant_wifi_change_aps;
+	int max_epno_ssid_crc32;
+	int max_epno_hidden_ssid;
+	int max_white_list_ssid;
+} dhd_pno_gscan_capabilities_t;
+
+typedef struct dhd_epno_params {
+	uint8 ssid[DOT11_MAX_SSID_LEN];
+	uint8 ssid_len;
+	int8 rssi_thresh;
+	uint8 flags;
+	uint8 auth;
+	/* index required only for visble ssid */
+	uint32 index;
+	struct list_head list;
+} dhd_epno_params_t;
+
 /* wrapper functions */
 extern int
 dhd_dev_pno_enable(struct net_device *dev, int enable);
@@ -230,7 +305,7 @@ dhd_dev_pno_set_for_hotlist(struct net_device *dev, wl_pfn_bssid_t *p_pfn_bssid,
 extern int dhd_pno_stop_for_ssid(dhd_pub_t *dhd);
 extern int dhd_pno_enable(dhd_pub_t *dhd, int enable);
 extern int dhd_pno_set_for_ssid(dhd_pub_t *dhd, wlc_ssid_t* ssid_list, int nssid,
-	uint16  scan_fr, int pno_repeat, int pno_freq_expo_max, uint16 *channel_list, int nchan);
+	uint16 scan_fr, int pno_repeat, int pno_freq_expo_max, uint16 *channel_list, int nchan);
 
 extern int dhd_pno_set_for_batch(dhd_pub_t *dhd, struct dhd_pno_batch_params *batch_params);
 
@@ -243,6 +318,11 @@ extern int dhd_pno_set_for_hotlist(dhd_pub_t *dhd, wl_pfn_bssid_t *p_pfn_bssid,
 	struct dhd_pno_hotlist_params *hotlist_params);
 
 extern int dhd_pno_stop_for_hotlist(dhd_pub_t *dhd);
+extern void * dhd_pno_get_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type, void *info,
+			uint32 *len);
+extern void *
+dhd_dev_pno_get_gscan(struct net_device *dev, dhd_pno_gscan_cmd_cfg_t type, void *info,
+		uint32 *len);
 
 extern int dhd_pno_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data);
 extern int dhd_pno_init(dhd_pub_t *dhd);
