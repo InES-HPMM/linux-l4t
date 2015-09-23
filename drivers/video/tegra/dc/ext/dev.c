@@ -1104,11 +1104,21 @@ static void tegra_dc_ext_unpin_window(struct tegra_dc_ext_win *win)
 	tegra_dc_ext_unpin_handles(unpin_handles, nr_unpin);
 }
 
+static void tegra_dc_ext_read_user_data(struct tegra_dc_ext_flip_data *data,
+			struct tegra_dc_ext_flip_user_data *flip_user_data,
+			int nr_user_data)
+{
+	/*Add support for reading user data (HDR data for intance) here*/
+}
+
+
 static int tegra_dc_ext_flip(struct tegra_dc_ext_user *user,
 			     struct tegra_dc_ext_flip_windowattr *win,
 			     int win_num,
 			     __u32 *syncpt_id, __u32 *syncpt_val,
-			     int *syncpt_fd, __u16 *dirty_rect, u8 flip_flags)
+			     int *syncpt_fd, __u16 *dirty_rect, u8 flip_flags,
+			     struct tegra_dc_ext_flip_user_data *flip_user_data,
+			     int nr_user_data)
 {
 	struct tegra_dc_ext *ext = user->ext;
 	struct tegra_dc_ext_flip_data *data;
@@ -1153,6 +1163,8 @@ static int tegra_dc_ext_flip(struct tegra_dc_ext_user *user,
 		ret = -ENXIO;
 		goto unlock;
 	}
+
+	tegra_dc_ext_read_user_data(data, flip_user_data, nr_user_data);
 
 	BUG_ON(win_num > DC_N_WINDOWS);
 	for (i = 0; i < win_num; i++) {
@@ -1730,7 +1742,7 @@ static long tegra_dc_ioctl(struct file *filp, unsigned int cmd,
 		ret = tegra_dc_ext_flip(user, args.win,
 			TEGRA_DC_EXT_FLIP_N_WINDOWS,
 			&args.post_syncpt_id, &args.post_syncpt_val, NULL,
-			NULL, 0);
+			NULL, 0, NULL, 0);
 
 		if (copy_to_user(user_arg, &args, sizeof(args)))
 			return -EFAULT;
@@ -1760,7 +1772,7 @@ static long tegra_dc_ioctl(struct file *filp, unsigned int cmd,
 
 		ret = tegra_dc_ext_flip(user, win, win_num,
 			&args.post_syncpt_id, &args.post_syncpt_val, NULL,
-			args.dirty_rect, 0);
+			args.dirty_rect, 0, NULL, 0);
 
 		if (copy_to_user(compat_ptr(args.win), win,
 			sizeof(*win) * win_num) ||
@@ -1794,7 +1806,7 @@ static long tegra_dc_ioctl(struct file *filp, unsigned int cmd,
 
 		ret = tegra_dc_ext_flip(user, win, win_num,
 			&args.post_syncpt_id, &args.post_syncpt_val, NULL,
-			args.dirty_rect, 0);
+			args.dirty_rect, 0, NULL, 0);
 
 		if (copy_to_user(args.win, win, sizeof(*win) * win_num) ||
 			copy_to_user(user_arg, &args, sizeof(args))) {
@@ -1835,7 +1847,7 @@ static long tegra_dc_ioctl(struct file *filp, unsigned int cmd,
 
 		ret = tegra_dc_ext_flip(user, win, win_num,
 			NULL, NULL, &args.post_syncpt_fd, args.dirty_rect,
-			args.flags);
+			args.flags, NULL, 0);
 
 		if (copy_to_user((void __user *)(uintptr_t)args.win, win,
 				 sizeof(*win) * win_num) ||
@@ -1847,6 +1859,64 @@ static long tegra_dc_ioctl(struct file *filp, unsigned int cmd,
 		kfree(win);
 		return ret;
 	}
+	case TEGRA_DC_EXT_FLIP4:
+	{
+		int ret;
+		int win_num;
+		int nr_user_data;
+		struct tegra_dc_ext_flip_4 args;
+		struct tegra_dc_ext_flip_windowattr *win;
+		struct tegra_dc_ext_flip_user_data *flip_user_data;
+		bool bypass;
+
+		if (copy_from_user(&args, user_arg, sizeof(args)))
+			return -EFAULT;
+
+		bypass = !!(args.flags & TEGRA_DC_EXT_FLIP_HEAD_FLAG_YUVBYPASS);
+
+		if (!!(user->ext->dc->mode.vmode & FB_VMODE_YUV_MASK) !=
+		    bypass)
+			return -EINVAL;
+
+		user->ext->dc->yuv_bypass = bypass;
+		win_num = args.win_num;
+		win = kzalloc(sizeof(*win) * win_num, GFP_KERNEL);
+
+		if (copy_from_user(win,  (void __user *) (uintptr_t)args.win,
+				   sizeof(*win) * win_num)) {
+			kfree(win);
+			return -EFAULT;
+		}
+
+		nr_user_data = args.nr_elements;
+		flip_user_data = kzalloc(sizeof(*flip_user_data)
+					* nr_user_data, GFP_KERNEL);
+		if (nr_user_data > 0) {
+			if (copy_from_user(flip_user_data,
+				(void __user *) (uintptr_t)args.data,
+				sizeof(*flip_user_data) * nr_user_data)) {
+				kfree(win);
+				return -EFAULT;
+			}
+		}
+		ret = tegra_dc_ext_flip(user, win, win_num,
+			NULL, NULL, &args.post_syncpt_fd, args.dirty_rect,
+			args.flags, flip_user_data, nr_user_data);
+
+		if (nr_user_data > 0)
+			kfree(flip_user_data);
+
+		if (copy_to_user((void __user *)(uintptr_t)args.win, win,
+				 sizeof(*win) * win_num) ||
+			copy_to_user(user_arg, &args, sizeof(args))) {
+			kfree(win);
+			return -EFAULT;
+		}
+
+		kfree(win);
+		return ret;
+	}
+
 #ifdef CONFIG_TEGRA_ISOMGR
 #ifdef CONFIG_COMPAT
 	case TEGRA_DC_EXT_SET_PROPOSED_BW32:
