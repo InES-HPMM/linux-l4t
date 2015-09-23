@@ -56,7 +56,8 @@ static void set_dirty_state(uint32_t state)
 static int nvdumper_reboot_cb(struct notifier_block *nb,
 		unsigned long event, void *unused)
 {
-	pr_info("nvdumper: rebooting cleanly.\n");
+	pr_info("nvdumper: %s cleanly.\n",
+		(event == SYS_RESTART) ? "rebooting" : "shutting down");
 	set_dirty_state(NVDUMPER_CLEAN);
 	return NOTIFY_DONE;
 }
