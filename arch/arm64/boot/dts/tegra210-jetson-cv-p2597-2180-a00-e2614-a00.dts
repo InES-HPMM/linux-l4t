@@ -1,5 +1,5 @@
 /*
- * Jetson-CV A00 Super Module peripherals
+ * arch/arm64/boot/dts/tegra210-jetson-cv-p2597-2180-a00-e2614-a00.dts
  *
  * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -14,20 +14,9 @@
  *
  */
 
-#include "tegra210-jetson-cv-super-module-e2614-base.dtsi"
+#include "tegra210-jetson-cv-p2597-2180-a00.dts"
+#include "tegra210-platforms/tegra210-jetson-cv-super-module-e2614-a00.dtsi"
 
 / {
-	i2c@7000c000 {
-		rt5658: rt5659.0-001a@1a {
-			compatible = "realtek,rt5658";
-			reg = <0x1a>;
-		};
-	};
-
-	/* extended sound node for superIO */
-	sound {
-		nvidia,dai-link-1 {
-			codec-dai = <&rt5658>;
-		};
-	};
+	nvidia,dtsfilename = __FILE__;
 };
