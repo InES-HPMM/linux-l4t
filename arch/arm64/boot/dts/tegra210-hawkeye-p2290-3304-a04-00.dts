@@ -27,4 +27,25 @@
 	nvidia,dtsfilename = __FILE__;
 	nvidia,boardids = "2290:3304:A04";
 	nvidia,proc-boardid = "2290:3304:A04";
+
+	i2c@7000c000 {
+		cy8c_panel@09 {
+			compatible = "nvidia,cy8c_panel";
+			reg = <0x09>;
+			enable-gpio = <&gpio TEGRA_GPIO(K, 1) 0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+	};
+
+	/* On A04 the cy8c microcontroller is used to enabled
+	* the panel. This is done in part by by using the GPIO
+	* that was formerly used to enable the vdd_lcd_1v8
+	* regulator. Disable this regulator now, so that there's
+	* no contention for the GPIO */
+	regulators {
+		vdd_lcd_1v8: regulator@5 {
+			status = "disabled";
+		};
+	};
 };

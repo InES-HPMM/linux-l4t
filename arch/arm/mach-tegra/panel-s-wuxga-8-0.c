@@ -20,6 +20,7 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
+#include <linux/platform/tegra/panel-cy8c.h>
 #include "board.h"
 #include "board-panel.h"
 #include "devices.h"
@@ -82,6 +83,16 @@ fail:
 static int dsi_s_wuxga_8_0_enable(struct device *dev)
 {
 	int err = 0;
+
+	err = cy8c_panel_set_state(true);
+	if (!err)
+		goto success;
+	else if (err == -ENODEV)
+		err = 0; /* no cy8c, enable rails normally */
+	else {
+		pr_err("cy8c detected but panel enable failed\n");
+		goto fail;
+	}
 
 	err = dsi_s_wuxga_8_0_regulator_get(dev);
 	if (err < 0) {
@@ -164,6 +175,7 @@ static int dsi_s_wuxga_8_0_enable(struct device *dev)
 		}
 	}
 #endif
+success:
 	dc_dev = dev;
 	return 0;
 fail:
@@ -172,6 +184,18 @@ fail:
 
 static int dsi_s_wuxga_8_0_disable(struct device *dev)
 {
+	int err;
+
+	err = cy8c_panel_set_state(false);
+	if (!err)
+		goto end;
+	else if (err == -ENODEV)
+		err = 0; /* no cy8c, disable rails normally */
+	else {
+		pr_err("cy8c detected but panel disable failed\n");
+		goto end;
+	}
+
 	if (gpio_is_valid(en_panel_rst)) {
 		/* Wait for 50ms before triggering panel reset */
 		msleep(50);
@@ -202,8 +226,9 @@ static int dsi_s_wuxga_8_0_disable(struct device *dev)
 	 * the panel on too soon after power off */
 	msleep(140);
 
+end:
 	dc_dev = NULL;
-	return 0;
+	return err;
 }
 
 static int dsi_s_wuxga_8_0_postsuspend(void)
