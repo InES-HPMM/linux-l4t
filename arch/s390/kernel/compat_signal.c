@@ -301,16 +301,6 @@ get_sigframe(struct k_sigaction *ka, struct pt_regs * regs, size_t frame_size)
 	return (void __user *)((sp - frame_size) & -8ul);
 }
 
-static inline int map_signal(int sig)
-{
-	if (current_thread_info()->exec_domain
-	    && current_thread_info()->exec_domain->signal_invmap
-	    && sig < 32)
-		return current_thread_info()->exec_domain->signal_invmap[sig];
-        else
-		return sig;
-}
-
 static int setup_frame32(int sig, struct k_sigaction *ka,
 			sigset_t *set, struct pt_regs * regs)
 {
@@ -352,7 +342,7 @@ static int setup_frame32(int sig, struct k_sigaction *ka,
 		(regs->psw.mask & ~PSW_MASK_ASC);
 	regs->psw.addr = (__force __u64) ka->sa.sa_handler;
 
-	regs->gprs[2] = map_signal(sig);
+	regs->gprs[2] = sig;
 	regs->gprs[3] = (__force __u64) &frame->sc;
 
 	/* We forgot to include these in the sigcontext.
@@ -419,7 +409,7 @@ static int setup_rt_frame32(int sig, struct k_sigaction *ka, siginfo_t *info,
 		(regs->psw.mask & ~PSW_MASK_ASC);
 	regs->psw.addr = (__u64) ka->sa.sa_handler;
 
-	regs->gprs[2] = map_signal(sig);
+	regs->gprs[2] = sig;
 	regs->gprs[3] = (__force __u64) &frame->info;
 	regs->gprs[4] = (__force __u64) &frame->uc;
 	regs->gprs[5] = task_thread_info(current)->last_break;

@@ -160,12 +160,7 @@ setup_rt_frame(int sig, struct k_sigaction *ka, siginfo_t * info,
 
 	frame = get_sigframe(ka, regs, sizeof(*frame));
 
-	err |= __put_user((current_thread_info()->exec_domain
-			   && current_thread_info()->exec_domain->signal_invmap
-			   && sig < 32
-			   ? current_thread_info()->exec_domain->
-			   signal_invmap[sig] : sig), &frame->sig);
-
+	err |= __put_user(sig->sig, &frame->sig);
 	err |= __put_user(&frame->info, &frame->pinfo);
 	err |= __put_user(&frame->uc, &frame->puc);
 	err |= copy_siginfo_to_user(&frame->info, info);

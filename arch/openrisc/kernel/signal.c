@@ -206,8 +206,6 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka, siginfo_t *info,
 	if (err)
 		goto give_sigsegv;
 
-	/* TODO what is the current->exec_domain stuff and invmap ? */
-
 	/* Set up registers for signal handler */
 	regs->pc = (unsigned long)ka->sa.sa_handler; /* what we enter NOW */
 	regs->gpr[9] = (unsigned long)return_ip;     /* what we enter LATER */

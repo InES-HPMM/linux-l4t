@@ -178,20 +178,13 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka, siginfo_t *info,
 {
 	struct rt_sigframe __user *frame;
 	int err = 0;
-	int signal;
 
 	frame = get_sigframe(ka, regs->spu, sizeof(*frame));
 
 	if (!access_ok(VERIFY_WRITE, frame, sizeof(*frame)))
 		goto give_sigsegv;
 
-	signal = current_thread_info()->exec_domain
-		&& current_thread_info()->exec_domain->signal_invmap
-		&& sig < 32
-		? current_thread_info()->exec_domain->signal_invmap[sig]
-		: sig;
-
-	err |= __put_user(signal, &frame->sig);
+	err |= __put_user(sig, &frame->sig);
 	if (err)
 		goto give_sigsegv;
 
@@ -215,7 +208,7 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka, siginfo_t *info,
 
 	/* Set up registers for signal handler */
 	regs->spu = (unsigned long)frame;
-	regs->r0 = signal;	/* Arg for signal handler */
+	regs->r0 = sig;	/* Arg for signal handler */
 	regs->r1 = (unsigned long)&frame->info;
 	regs->r2 = (unsigned long)&frame->uc;
 	regs->bpc = (unsigned long)ka->sa.sa_handler;
