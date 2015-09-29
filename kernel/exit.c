@@ -819,9 +819,8 @@ void do_exit(long code)
 
 	cgroup_exit(tsk, 1);
 
-	module_put(task_thread_info(tsk)->exec_domain->module);
-
 	proc_exit_connector(tsk);
+
 	/*
 	 * FIXME: do that only when needed, using sched_exit tracepoint
 	 */

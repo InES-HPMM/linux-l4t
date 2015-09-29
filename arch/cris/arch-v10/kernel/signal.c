@@ -331,8 +331,6 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka, siginfo_t *info,
 	if (err)
 		goto give_sigsegv;
 
-	/* TODO what is the current->exec_domain stuff and invmap ? */
-
 	/* Set up registers for signal handler */
 
 	/* What we enter NOW   */
