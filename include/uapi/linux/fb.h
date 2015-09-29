@@ -155,8 +155,10 @@
 #define FB_CAP_Y420_DC_30	2	/* YCbCr 4:2:0 deep color 30bpp */
 #define FB_CAP_Y420_DC_36	4	/* YCbCr 4:2:0 deep color 36bpp */
 #define FB_CAP_Y420_DC_48	8	/* YCbCr 4:2:0 deep color 48bpp */
+#define FB_CAP_HDR		16	/* Device supports HDR*/
 #define FB_CAP_DC_MASK		(FB_CAP_Y420_DC_30 | \
-				FB_CAP_Y420_DC_36 | FB_CAP_Y420_DC_48)
+				FB_CAP_Y420_DC_36 | FB_CAP_Y420_DC_48 | \
+				FB_CAP_HDR)
 
 #define FB_COL_XVYCC601		0x1
 #define FB_COL_XVYCC709		0x2
