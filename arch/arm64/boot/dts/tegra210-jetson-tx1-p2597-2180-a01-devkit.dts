@@ -24,6 +24,12 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
+	chosen {
+		bootloader {
+			nvidia,skip-display-init;
+		};
+	};
+
 	host1x {
 		dc@54200000 {
 			status = "disabled";
