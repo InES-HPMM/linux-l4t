@@ -529,14 +529,17 @@ static int mdm_request_irq(struct tegra_usb_modem *modem,
 static struct platform_device *tegra_usb_host_register(
 				const struct tegra_usb_modem *modem)
 {
-	const struct platform_device *hc_device =
-	    modem->pdata->tegra_ehci_device;
 	struct platform_device *pdev;
-	int val;
 
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	struct property *status_prop;
+#else
+	const struct platform_device *hc_device =
+	    modem->pdata->tegra_ehci_device;
+	int val;
+#endif
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	/* we're registering EHCI through DT here */
 
 	/* If ehci node is unavailable, we're unable to register it later.
@@ -562,7 +565,7 @@ static struct platform_device *tegra_usb_host_register(
 	}
 
 	return pdev;
-#endif
+#else
 
 	pdev = platform_device_alloc(hc_device->name, hc_device->id);
 	if (!pdev)
@@ -591,6 +594,7 @@ error:
 	pr_err("%s: err %d\n", __func__, val);
 	platform_device_put(pdev);
 	return NULL;
+#endif
 }
 
 /* unload USB host controller */
