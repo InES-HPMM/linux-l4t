@@ -93,7 +93,7 @@ static struct dvfs_rail tegra21_dvfs_rail_vdd_cpu = {
 	.stats = {
 		.bin_uV = 6250, /* 6.25mV */
 	},
-	.version = "p4v50_p4Av05",
+	.version = "p4v54_p4Av05",
 };
 
 static struct dvfs_rail tegra21_dvfs_rail_vdd_core = {
@@ -144,25 +144,25 @@ static struct dvfs_rail *tegra21_dvfs_rails[] = {
 	.voltage_scale = 1000,	\
 	.cvb_table = {		\
 		/* f	  dfll:    c0,       c1,       c2    pll:    c0,       c1,       c2 */   \
-		{  204000, {     1607,    80055,    -2323 }, {        0,        0,        0 } }, \
-		{  306000, {    39154,    78855,    -2323 }, {        0,        0,        0 } }, \
-		{  408000, {    78621,    77665,    -2323 }, {        0,        0,        0 } }, \
-		{  510000, {   120010,    76475,    -2323 }, {        0,        0,        0 } }, \
-		{  612000, {   163319,    75285,    -2323 }, {        0,        0,        0 } }, \
-		{  714000, {   208550,    74085,    -2323 }, {        0,        0,        0 } }, \
-		{  816000, {   255701,    72895,    -2323 }, {        0,        0,        0 } }, \
-		{  918000, {   304773,    71705,    -2323 }, {        0,        0,        0 } }, \
-		{ 1020000, {   355766,    70515,    -2323 }, { -2875621,   358099,    -8585 } }, \
-		{ 1122000, {   408680,    69315,    -2323 }, {   -52225,   104159,    -2816 } }, \
-		{ 1224000, {   463515,    68125,    -2323 }, {  1076868,     8356,     -727 } }, \
-		{ 1326000, {   520271,    66935,    -2323 }, {  2208191,   -84659,     1240 } }, \
-		{ 1428000, {   578948,    65745,    -2323 }, {  2519460,  -105063,     1611 } }, \
-		{ 1530000, {   639546,    64545,    -2323 }, {  2639809,  -108729,     1626 } }, \
-		{ 1632000, {   702064,    63355,    -2323 }, {  2889664,  -122173,     1834 } }, \
-		{ 1734000, {   766504,    62165,    -2323 }, {  3386160,  -154021,     2393 } }, \
-		{ 1836000, {   832865,    60975,    -2323 }, {  5100873,  -279186,     4747 } }, \
-		{ 1912500, {  2161472,   -55805,      395 }, {  5100873,  -279186,     4747 } }, \
-		{ 2014500, {  2236898,   -57155,      395 }, {  5100873,  -279186,     4747 } }, \
+		{  204000, {  1007452,   -23865,      370 }, {        0,        0,        0 } }, \
+		{  306000, {  1052709,   -24875,      370 }, {        0,        0,        0 } }, \
+		{  408000, {  1099069,   -25895,      370 }, {        0,        0,        0 } }, \
+		{  510000, {  1146534,   -26905,      370 }, {        0,        0,        0 } }, \
+		{  612000, {  1195102,   -27915,      370 }, {        0,        0,        0 } }, \
+		{  714000, {  1244773,   -28925,      370 }, {        0,        0,        0 } }, \
+		{  816000, {  1295549,   -29935,      370 }, {        0,        0,        0 } }, \
+		{  918000, {  1347428,   -30955,      370 }, {        0,        0,        0 } }, \
+		{ 1020000, {  1400411,   -31965,      370 }, { -2875621,   358099,    -8585 } }, \
+		{ 1122000, {  1454497,   -32975,      370 }, {   -52225,   104159,    -2816 } }, \
+		{ 1224000, {  1509687,   -33985,      370 }, {  1076868,     8356,     -727 } }, \
+		{ 1326000, {  1565981,   -35005,      370 }, {  2208191,   -84659,     1240 } }, \
+		{ 1428000, {  1623379,   -36015,      370 }, {  2519460,  -105063,     1611 } }, \
+		{ 1530000, {  1681880,   -37025,      370 }, {  2639809,  -108729,     1626 } }, \
+		{ 1632000, {  1741485,   -38035,      370 }, {  2889664,  -122173,     1834 } }, \
+		{ 1734000, {  1802194,   -39055,      370 }, {  3386160,  -154021,     2393 } }, \
+		{ 1836000, {  1864006,   -40065,      370 }, {  5100873,  -279186,     4747 } }, \
+		{ 1912500, {  1910780,   -40815,      370 }, {  5100873,  -279186,     4747 } }, \
+		{ 2014500, {  1974518,   -41825,      370 }, {  5100873,  -279186,     4747 } }, \
 		{ 2218500, {  1227000,        0,        0 }, {  5100873,  -279186,     4747 } }, \
 		{ 0,	   { }, { }, }, \
 	}
@@ -193,6 +193,43 @@ static struct dvfs_rail *tegra21_dvfs_rails[] = {
 	}
 
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
+	{
+		.speedo_id = 5,
+		.process_id = 0,
+		.dfll_tune_data  = {
+			.tune0		= 0xFFEAD0FF,
+			.tune0_high_mv	= 0xFFEAD0FF,
+			.tune_high_min_millivolts = 864,
+			.tune1		= 0x020091D9,
+			.droop_rate_min = 1000000,
+			.min_millivolts = 818,
+		},
+		.pll_tune_data = {
+			.min_millivolts = 950,
+		},
+		.max_mv = 1227,
+		.max_freq = 1912500,
+		CPU_CVB_TABLE,
+	},
+	{
+		.speedo_id = 5,
+		.process_id = 1,
+		.dfll_tune_data  = {
+			.tune0		= 0xFFEAD0FF,
+			.tune0_high_mv	= 0xFFEAD0FF,
+			.tune_high_min_millivolts = 864,
+			.tune1		= 0x025501D0,
+			.droop_rate_min = 1000000,
+			.min_millivolts = 818,
+		},
+		.pll_tune_data = {
+			.min_millivolts = 950,
+		},
+		.max_mv = 1227,
+		.max_freq = 1912500,
+		CPU_CVB_TABLE,
+	},
+
 	{
 		.speedo_id = 4,
 		.process_id = 0,
@@ -235,12 +272,12 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune_high_min_millivolts = 864,
 			.tune1		= 0x020091D9,
 			.droop_rate_min = 1000000,
-			.min_millivolts = 804,
+			.min_millivolts = 822,
 		},
 		.pll_tune_data = {
 			.min_millivolts = 950,
 		},
-		.max_mv = 1170,
+		.max_mv = 1227,
 		.max_freq = 1912500,
 		CPU_CVB_TABLE,
 	},
@@ -253,12 +290,12 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune_high_min_millivolts = 864,
 			.tune1		= 0x025501D0,
 			.droop_rate_min = 1000000,
-			.min_millivolts = 804,
+			.min_millivolts = 822,
 		},
 		.pll_tune_data = {
 			.min_millivolts = 950,
 		},
-		.max_mv = 1170,
+		.max_mv = 1227,
 		.max_freq = 1912500,
 		CPU_CVB_TABLE,
 	},
@@ -305,12 +342,12 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune_high_min_millivolts = 864,
 			.tune1		= 0x020091D9,
 			.droop_rate_min = 1000000,
-			.min_millivolts = 818,
+			.min_millivolts = 837,
 		},
 		.pll_tune_data = {
 			.min_millivolts = 950,
 		},
-		.max_mv = 1170,
+		.max_mv = 1227,
 		.max_freq = 1912500,
 		CPU_CVB_TABLE,
 	},
@@ -323,12 +360,12 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune_high_min_millivolts = 864,
 			.tune1		= 0x025501D0,
 			.droop_rate_min = 1000000,
-			.min_millivolts = 818,
+			.min_millivolts = 837,
 		},
 		.pll_tune_data = {
 			.min_millivolts = 950,
 		},
-		.max_mv = 1170,
+		.max_mv = 1227,
 		.max_freq = 1912500,
 		CPU_CVB_TABLE,
 	},
@@ -423,6 +460,16 @@ static struct dvfs cpu_dvfs = {
 
 static struct cpu_cvb_dvfs cpu_lp_cvb_dvfs_table[] = {
 	{
+		.speedo_id = 5,
+		.process_id = -1,
+		.pll_tune_data = {
+			.min_millivolts = 818,
+		},
+		.max_mv = 1227,
+		.max_freq = 1132800,
+		CPU_LP_CVB_TABLE,
+	},
+	{
 		.speedo_id = 4,
 		.process_id = -1,
 		.pll_tune_data = {
@@ -436,9 +483,9 @@ static struct cpu_cvb_dvfs cpu_lp_cvb_dvfs_table[] = {
 		.speedo_id = 3,
 		.process_id = -1,
 		.pll_tune_data = {
-			.min_millivolts = 804,
+			.min_millivolts = 822,
 		},
-		.max_mv = 1170,
+		.max_mv = 1227,
 		.max_freq = 1132800,
 		CPU_LP_CVB_TABLE,
 	},
@@ -446,9 +493,9 @@ static struct cpu_cvb_dvfs cpu_lp_cvb_dvfs_table[] = {
 		.speedo_id = 1,
 		.process_id = -1,
 		.pll_tune_data = {
-			.min_millivolts = 818,
+			.min_millivolts = 837,
 		},
-		.max_mv = 1170,
+		.max_mv = 1227,
 		.max_freq = 1132800,
 		CPU_LP_CVB_TABLE,
 	},
