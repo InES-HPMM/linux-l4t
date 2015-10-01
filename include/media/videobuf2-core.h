@@ -353,7 +353,10 @@ struct vb2_queue {
 	unsigned int			plane_sizes[VIDEO_MAX_PLANES];
 
 	unsigned int			streaming:1;
-	unsigned int			waiting_for_buffers:1;
+	unsigned int                    start_streaming_called:1;
+	unsigned int                    error:1;
+	unsigned int                    waiting_for_buffers:1;
+	unsigned int                    last_buffer_dequeued:1;
 
 	struct vb2_fileio_data		*fileio;
 };
@@ -462,6 +465,24 @@ vb2_plane_size(struct vb2_buffer *vb, unsigned int plane_no)
 	if (plane_no < vb->num_planes)
 		return vb->v4l2_planes[plane_no].length;
 	return 0;
+}
+
+/**
+ * vb2_start_streaming_called() - return streaming status of driver
+ * @q:          videobuf queue
+ */
+static inline bool vb2_start_streaming_called(struct vb2_queue *q)
+{
+	return q->start_streaming_called;
+}
+
+/**
+ * vb2_clear_last_buffer_dequeued() - clear last buffer dequeued flag of queue
+ * @q:          videobuf queue
+ */
+static inline void vb2_clear_last_buffer_dequeued(struct vb2_queue *q)
+{
+	q->last_buffer_dequeued = false;
 }
 
 /*

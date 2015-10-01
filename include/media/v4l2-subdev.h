@@ -24,6 +24,7 @@
 #include <linux/types.h>
 #include <linux/v4l2-subdev.h>
 #include <media/media-entity.h>
+#include <media/v4l2-async.h>
 #include <media/v4l2-common.h>
 #include <media/v4l2-dev.h>
 #include <media/v4l2-fh.h>
@@ -38,6 +39,8 @@
 
 #define V4L2_SUBDEV_IR_TX_NOTIFY		_IOW('v', 1, u32)
 #define V4L2_SUBDEV_IR_TX_FIFO_SERVICE_REQ	0x00000001
+
+#define	V4L2_DEVICE_NOTIFY_EVENT		_IOW('v', 2, struct v4l2_event)
 
 struct v4l2_device;
 struct v4l2_ctrl_handler;
@@ -163,6 +166,10 @@ struct v4l2_subdev_core_ops {
 	int (*g_std)(struct v4l2_subdev *sd, v4l2_std_id *norm);
 	int (*s_std)(struct v4l2_subdev *sd, v4l2_std_id norm);
 	long (*ioctl)(struct v4l2_subdev *sd, unsigned int cmd, void *arg);
+#ifdef CONFIG_COMPAT
+	long (*compat_ioctl32)(struct v4l2_subdev *sd, unsigned int cmd,
+			       unsigned long arg);
+#endif
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 	int (*g_register)(struct v4l2_subdev *sd, struct v4l2_dbg_register *reg);
 	int (*s_register)(struct v4l2_subdev *sd, const struct v4l2_dbg_register *reg);
@@ -193,6 +200,7 @@ struct v4l2_subdev_tuner_ops {
 	int (*s_radio)(struct v4l2_subdev *sd);
 	int (*s_frequency)(struct v4l2_subdev *sd, const struct v4l2_frequency *freq);
 	int (*g_frequency)(struct v4l2_subdev *sd, struct v4l2_frequency *freq);
+	int (*enum_freq_bands)(struct v4l2_subdev *sd, struct v4l2_frequency_band *band);
 	int (*g_tuner)(struct v4l2_subdev *sd, struct v4l2_tuner *vt);
 	int (*s_tuner)(struct v4l2_subdev *sd, const struct v4l2_tuner *vt);
 	int (*g_modulator)(struct v4l2_subdev *sd, struct v4l2_modulator *vm);
@@ -230,15 +238,18 @@ struct v4l2_subdev_audio_ops {
 
 /* Indicates the @length field specifies maximum data length. */
 #define V4L2_MBUS_FRAME_DESC_FL_LEN_MAX		(1U << 0)
-/* Indicates user defined data format, i.e. non standard frame format. */
+/*
+ * Indicates that the format does not have line offsets, i.e. the
+ * receiver should use 1D DMA.
+ */
 #define V4L2_MBUS_FRAME_DESC_FL_BLOB		(1U << 1)
 
 /**
  * struct v4l2_mbus_frame_desc_entry - media bus frame description structure
  * @flags: V4L2_MBUS_FRAME_DESC_FL_* flags
  * @pixelcode: media bus pixel code, valid if FRAME_DESC_FL_BLOB is not set
- * @length: number of octets per frame, valid for compressed or unspecified
- *          formats
+ * @length: number of octets per frame, valid if V4L2_MBUS_FRAME_DESC_FL_BLOB
+ *	    is set
  */
 struct v4l2_mbus_frame_desc_entry {
 	u16 flags;
@@ -265,8 +276,11 @@ struct v4l2_mbus_frame_desc {
    g_std_output: get current standard for video OUTPUT devices. This is ignored
 	by video input devices.
 
-   g_tvnorms_output: get v4l2_std_id with all standards supported by video
-	OUTPUT device. This is ignored by video input devices.
+   g_tvnorms: get v4l2_std_id with all standards supported by the video
+	CAPTURE device. This is ignored by video output devices.
+
+   g_tvnorms_output: get v4l2_std_id with all standards supported by the video
+	OUTPUT device. This is ignored by video capture devices.
 
    s_crystal_freq: sets the frequency of the crystal used to generate the
 	clocks in Hz. An extra flags field allows device specific configuration
@@ -306,9 +320,12 @@ struct v4l2_mbus_frame_desc {
 struct v4l2_subdev_video_ops {
 	int (*s_routing)(struct v4l2_subdev *sd, u32 input, u32 output, u32 config);
 	int (*s_crystal_freq)(struct v4l2_subdev *sd, u32 freq, u32 flags);
+	int (*g_std)(struct v4l2_subdev *sd, v4l2_std_id *norm);
+	int (*s_std)(struct v4l2_subdev *sd, v4l2_std_id norm);
 	int (*s_std_output)(struct v4l2_subdev *sd, v4l2_std_id std);
 	int (*g_std_output)(struct v4l2_subdev *sd, v4l2_std_id *std);
 	int (*querystd)(struct v4l2_subdev *sd, v4l2_std_id *std);
+	int (*g_tvnorms)(struct v4l2_subdev *sd, v4l2_std_id *std);
 	int (*g_tvnorms_output)(struct v4l2_subdev *sd, v4l2_std_id *std);
 	int (*g_input_status)(struct v4l2_subdev *sd, u32 *status);
 	int (*s_stream)(struct v4l2_subdev *sd, int enable);
@@ -477,6 +494,18 @@ struct v4l2_subdev_ir_ops {
 				struct v4l2_subdev_ir_parameters *params);
 };
 
+/*
+ * Used for storing subdev pad information. This structure only needs
+ * to be passed to the pad op if the 'which' field of the main argument
+ * is set to V4L2_SUBDEV_FORMAT_TRY. For V4L2_SUBDEV_FORMAT_ACTIVE it is
+ * safe to pass NULL.
+ */
+struct v4l2_subdev_pad_config {
+	struct v4l2_mbus_framefmt try_fmt;
+	struct v4l2_rect try_crop;
+	struct v4l2_rect try_compose;
+};
+
 /**
  * struct v4l2_subdev_pad_ops - v4l2-subdev pad level operations
  * @get_frame_desc: get the current low level media bus frame parameters.
@@ -504,8 +533,12 @@ struct v4l2_subdev_pad_ops {
 			     struct v4l2_subdev_selection *sel);
 	int (*set_selection)(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
 			     struct v4l2_subdev_selection *sel);
-	int (*get_edid)(struct v4l2_subdev *sd, struct v4l2_subdev_edid *edid);
-	int (*set_edid)(struct v4l2_subdev *sd, struct v4l2_subdev_edid *edid);
+	int (*get_edid)(struct v4l2_subdev *sd, struct v4l2_edid *edid);
+	int (*set_edid)(struct v4l2_subdev *sd, struct v4l2_edid *edid);
+	int (*dv_timings_cap)(struct v4l2_subdev *sd,
+			      struct v4l2_dv_timings_cap *cap);
+	int (*enum_dv_timings)(struct v4l2_subdev *sd,
+			       struct v4l2_enum_dv_timings *timings);
 #ifdef CONFIG_MEDIA_CONTROLLER
 	int (*link_validate)(struct v4l2_subdev *sd, struct media_link *link,
 			     struct v4l2_subdev_format *source_fmt,
@@ -560,6 +593,17 @@ struct v4l2_subdev_internal_ops {
 /* Set this flag if this subdev generates events. */
 #define V4L2_SUBDEV_FL_HAS_EVENTS		(1U << 3)
 
+struct regulator_bulk_data;
+
+struct v4l2_subdev_platform_data {
+	/* Optional regulators uset to power on/off the subdevice */
+	struct regulator_bulk_data *regulators;
+	int num_regulators;
+
+	/* Per-subdevice data, specific for a certain video host device */
+	void *host_priv;
+};
+
 /* Each instance of a subdev driver should create this struct, either
    stand-alone or embedded in a larger struct.
  */
@@ -569,6 +613,7 @@ struct v4l2_subdev {
 #endif
 	struct list_head list;
 	struct module *owner;
+	bool owner_v4l2_dev;
 	u32 flags;
 	struct v4l2_device *v4l2_dev;
 	const struct v4l2_subdev_ops *ops;
@@ -585,6 +630,18 @@ struct v4l2_subdev {
 	void *host_priv;
 	/* subdev device node */
 	struct video_device *devnode;
+	/* pointer to the physical device, if any */
+	struct device *dev;
+	/* The device_node of the subdev, usually the same as dev->of_node. */
+	struct device_node *of_node;
+	/* Links this subdev to a global subdev_list or @notifier->done list. */
+	struct list_head async_list;
+	/* Pointer to respective struct v4l2_async_subdev. */
+	struct v4l2_async_subdev *asd;
+	/* Pointer to the managing notifier. */
+	struct v4l2_async_notifier *notifier;
+	/* common part of subdevice platform data */
+	struct v4l2_subdev_platform_data *pdata;
 };
 
 #define media_entity_to_v4l2_subdev(ent) \
