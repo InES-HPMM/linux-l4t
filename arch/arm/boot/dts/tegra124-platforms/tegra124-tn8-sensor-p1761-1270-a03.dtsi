@@ -39,12 +39,9 @@
 		};
 
 		cm3217@10 {
-			compatible = "capella,cm3217-siio";
+			compatible = "capella,cm3217";
 			reg = <0x10>;
 			vdd-supply = <&palmas_smps9>;
-			illuminance,resolution = "8740";
-			illuminance,max-range  = "681613.7";
-			illuminance,power-consumed = "0.09";
 			light_uncalibrated_lo = <0>;
 			light_calibrated_lo = <16>;
 			light_uncalibrated_hi = <12>;
@@ -52,7 +49,7 @@
 		};
 
 		ltr659@23 {
-			compatible = "lite-on,ltr659";
+			compatible = "liteon,ltrX5X";
 			reg = <0x23>;
 			threshold = <125>;
 			vdd-supply = <&palmas_smps9>;

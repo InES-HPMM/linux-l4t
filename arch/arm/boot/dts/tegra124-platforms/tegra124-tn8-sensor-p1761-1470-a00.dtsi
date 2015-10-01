@@ -39,7 +39,7 @@
 		};
 
 		max44006@44 {
-			compatible = "maxim,max44006-siio";
+			compatible = "maxim,max44006";
 			reg = <0x44>;
 			vcc-supply = <&palmas_smps8>;
 		};
