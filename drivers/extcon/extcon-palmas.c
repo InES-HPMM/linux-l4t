@@ -218,6 +218,12 @@ static irqreturn_t palmas_vbus_irq_handler(int irq, void *_palmas_usb)
 			palmas_usb->vbus_linkstat = PALMAS_USB_STATE_VBUS;
 			extcon_set_cable_state(&palmas_usb->edev, "USB", true);
 			dev_info(palmas_usb->dev, "USB cable is attached\n");
+			if (palmas_usb->enable_id_detect_on_vbus) {
+				schedule_delayed_work(
+					&palmas_usb->cable_update_wq,
+					 msecs_to_jiffies(
+					  palmas_usb->cable_debounce_time));
+		    }
 		} else {
 			dev_info(palmas_usb->dev,
 				"Spurious connect event detected\n");
@@ -305,6 +311,8 @@ static int palmas_usb_probe(struct platform_device *pdev)
 						"ti,enable-id-detection");
 		palmas_usb->enable_vbus_detection = of_property_read_bool(node,
 						"ti,enable-vbus-detection");
+		palmas_usb->enable_id_detect_on_vbus = of_property_read_bool(
+				       node, "ti,enable-id-detect-on-vbus");
 		status = of_property_read_string(node, "extcon-name", &ext_name);
 		if (status < 0)
 			ext_name = NULL;
@@ -312,6 +320,7 @@ static int palmas_usb_probe(struct platform_device *pdev)
 		palmas_usb->wakeup = true;
 		palmas_usb->enable_id_detection = true;
 		palmas_usb->enable_vbus_detection = true;
+		palmas_usb->enable_id_detect_on_vbus = false;
 
 		if (epdata) {
 			palmas_usb->wakeup = epdata->wakeup;
@@ -350,16 +359,22 @@ static int palmas_usb_probe(struct platform_device *pdev)
 	}
 
 	if (palmas_usb->enable_id_detection) {
-		status = devm_request_threaded_irq(palmas_usb->dev,
-				palmas_usb->id_irq,
-				NULL, palmas_id_irq_handler,
-				IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING |
-				IRQF_ONESHOT | IRQF_EARLY_RESUME,
-				"palmas_usb_id", palmas_usb);
-		if (status < 0) {
-			dev_err(&pdev->dev, "can't get IRQ %d, err %d\n",
+		if (!palmas_usb->enable_id_detect_on_vbus) {
+			status = devm_request_threaded_irq(
+					palmas_usb->dev,
+					palmas_usb->id_irq,
+					NULL, palmas_id_irq_handler,
+					IRQF_TRIGGER_FALLING |
+					IRQF_TRIGGER_RISING |
+					IRQF_ONESHOT |
+					IRQF_EARLY_RESUME,
+					"palmas_usb_id", palmas_usb);
+			if (status < 0) {
+				dev_err(&pdev->dev,
+					"can't get IRQ %d, err %d\n",
 					palmas_usb->id_irq, status);
-			goto fail_extcon;
+				goto fail_extcon;
+			}
 		}
 		status = devm_request_threaded_irq(palmas_usb->dev,
 				palmas_usb->id_otg_irq,
