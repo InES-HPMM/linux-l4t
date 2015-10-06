@@ -122,7 +122,7 @@
 			onsemi,kernel-maximum-soc = <88>;
 			io-channels = <&ina3221x INA3221_CHAN_INDEX(0, CURRENT, NORMAL)>;
 			io-channel-names = "battery-current";
-			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+			dt-override-status-odm-data = <0x00400000 0x00400000>;
 		};
 
 		battery-charger@6b {
@@ -134,7 +134,7 @@
 				ti,soc-range = <56 68 79 91 97 101>;
 				ti,input-voltage-soc-limit = <4200 4280 4360 4440 4520 4600>;
 				ti,charge-term-current-limit-milliamp = <1>;
-				dt-override-status-odm-data = <0x00C00000 0x00400000>;
+				dt-override-status-odm-data = <0x00400000 0x00400000>;
 			};
 		};
 	};
@@ -178,7 +178,7 @@
 
 		Battery {
 			thermal-sensors = <&fg_lc709203f>;
-			dt-override-status-odm-data = <0x00C00000 0x00400000>;
+			dt-override-status-odm-data = <0x00400000 0x00400000>;
 		};
 	};
 
