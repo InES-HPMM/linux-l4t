@@ -16,7 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define DEBUG
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/gpio.h>
@@ -435,7 +434,8 @@ static int imx230_s_stream(struct v4l2_subdev *sd, int enable)
 	struct v4l2_control control;
 	int err;
 
-	dev_dbg(&client->dev, "%s++ enable %d\n", __func__, enable);
+	dev_dbg(&client->dev, "%s++ enable %d mode %d\n",
+		__func__, enable, s_data->mode);
 
 	if (!enable)
 		return imx230_write_table(priv,
