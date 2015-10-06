@@ -488,7 +488,7 @@ static int gk20a_init_cde_required_class(struct gk20a_cde_ctx *cde_ctx,
 	alloc_obj_ctx.flags = 0;
 
 	/* CDE enabled */
-	cde_ctx->ch->cde = 1;
+	cde_ctx->ch->cde = true;
 
 	err = gk20a_alloc_obj_ctx(cde_ctx->ch, &alloc_obj_ctx);
 	if (err) {

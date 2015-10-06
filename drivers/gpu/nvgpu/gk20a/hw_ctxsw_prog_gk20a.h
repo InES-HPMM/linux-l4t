@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -57,22 +57,6 @@ static inline u32 ctxsw_prog_fecs_header_v(void)
 static inline u32 ctxsw_prog_main_image_num_gpcs_o(void)
 {
 	return 0x00000008;
-}
-static inline u32 ctxsw_prog_main_image_ctl_o(void)
-{
-	return 0x0000000c;
-}
-static inline u32 ctxsw_prog_main_image_ctl_cde_v(u32 r)
-{
-	return (r >> 10) & 0x1;
-}
-static inline u32 ctxsw_prog_main_image_ctl_cde_enabled_f(void)
-{
-	return 0x400;
-}
-static inline u32 ctxsw_prog_main_image_ctl_cde_disabled_f(void)
-{
-	return 0x0;
 }
 static inline u32 ctxsw_prog_main_image_patch_count_o(void)
 {

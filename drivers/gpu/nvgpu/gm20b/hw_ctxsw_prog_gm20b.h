@@ -62,10 +62,6 @@ static inline u32 ctxsw_prog_main_image_ctl_o(void)
 {
 	return 0x0000000c;
 }
-static inline u32 ctxsw_prog_main_image_ctl_cde_v(u32 r)
-{
-	return (r >> 10) & 0x1;
-}
 static inline u32 ctxsw_prog_main_image_ctl_cde_enabled_f(void)
 {
 	return 0x400;
