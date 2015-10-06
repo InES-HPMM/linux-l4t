@@ -531,11 +531,6 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 	if (ret < 0)
 		dev_err(bq2419x->dev, "TIME_CTRL update failed: %d\n", ret);
 
-	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_MISC_OPER_REG,
-			BQ2419X_JEITA_VSET_MASK, BQ2419X_JEITA_VSET_42V);
-	if (ret < 0)
-		dev_err(bq2419x->dev, "JEITA_VSET update failed: %d\n", ret);
-
 	/* disable safety timer */
 	bq2419x_safetytimer_disable(bq2419x);
 
@@ -732,6 +727,12 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 		bq2419x->chg_status = BATTERY_DISCHARGING;
 		battery_charger_thermal_stop_monitoring(
 				bq2419x->bc_dev);
+		/* Clear JEITA_VSET bit if cable disconnected */
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_MISC_OPER_REG,
+					BQ2419X_JEITA_VSET_MASK, 0);
+		if (ret < 0)
+			dev_err(bq2419x->dev, "JEITA_VSET update failed: %d\n",
+					ret);
 	} else if ((val & BQ2419x_CHRG_STATE_MASK) ==
 				BQ2419x_CHRG_STATE_CHARGE_DONE) {
 		dev_info(bq2419x->dev, "Charging completed\n");
@@ -746,6 +747,12 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 		bq2419x->chg_status = BATTERY_CHARGING;
 		battery_charger_thermal_start_monitoring(
 				bq2419x->bc_dev);
+		/* Set JEITA_VSET bit if charger cable connected */
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_MISC_OPER_REG,
+			BQ2419X_JEITA_VSET_MASK, BQ2419X_JEITA_VSET_42V);
+		if (ret < 0)
+			dev_err(bq2419x->dev, "JEITA_VSET update failed: %d\n",
+				ret);
 	}
 	if (bq2419x->wake_lock_released)
 		in_current_limit = 500;
@@ -2254,6 +2261,12 @@ static void bq2419x_shutdown(struct i2c_client *client)
 
 	if (!bq2419x->cable_connected)
 		goto end;
+
+	/* Clear JEITA_VSET bit if cable connected while device off */
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_MISC_OPER_REG,
+					BQ2419X_JEITA_VSET_MASK, 0);
+	if (ret < 0)
+		dev_err(bq2419x->dev, "JEITA_VSET update failed: %d\n", ret);
 
 	battery_charger_thermal_stop_monitoring(bq2419x->bc_dev);
 
