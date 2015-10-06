@@ -88,6 +88,7 @@
 #define CMD_SETBAND		"SETBAND"
 #define CMD_GETBAND		"GETBAND"
 #define CMD_COUNTRY		"COUNTRY"
+#define CMD_NV_COUNTRY         "NV_COUNTRY"
 #define CMD_P2P_SET_NOA		"P2P_SET_NOA"
 #if !defined WL_ENABLE_P2P_IF
 #define CMD_P2P_GET_NOA			"P2P_GET_NOA"
@@ -2534,13 +2535,13 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 #ifdef WL_CFG80211
 	/* CUSTOMER_SET_COUNTRY feature is define for only GGSM model */
 	else if (strnicmp(command, CMD_COUNTRY, strlen(CMD_COUNTRY)) == 0) {
-		char *country_code = command + strlen(CMD_COUNTRY) + 1;
-#ifdef CUSTOMER_HW5
-		/* Customer_hw5 want to keep connections */
+		/* We use only NV_COUNTRY command to set the country code
+		 * Do not allow default COUNTRY command as third party apps
+		 * can manipulate WiFi country code */
+		bytes_written = 0;
+	} else if (strnicmp(command, CMD_NV_COUNTRY, strlen(CMD_NV_COUNTRY)) == 0) {
+		char *country_code = command + strlen(CMD_NV_COUNTRY) + 1;
 		bytes_written = wldev_set_country(net, country_code, true, false);
-#else
-		bytes_written = wldev_set_country(net, country_code, true, true);
-#endif
 	}
 #endif /* WL_CFG80211 */
 	else if (strnicmp(command, CMD_SET_CSA, strlen(CMD_SET_CSA)) == 0) {
