@@ -189,6 +189,26 @@ Optinal properties:
 			to nearest lower side if other than above is configured.
 	-maxim,backup-battery-output-resister: Output resistor on Ohm.
 			Device supports 100/1000/3000/6000 Ohms.
+Low-Battery Monitor:
+==================
+This sub-node configure low battery monitor configuration registers. Device has
+support for low-battery monitor configuration through child DT node
+"low-battery-monitor".
+
+Optinal properties:
+	- maxim,low-battery-dac-enable: Enable low battery DAC.
+	- maxim,low-battery-dac-disable: Disable low battery DAC.
+	- maxim,low-battery-shutdown-enable: Enable low battery shutdown.
+	- maxim,low-battery-shutdown-disable: Disable low battery shutdown.
+	- maxim,low-battery-reset-enable: Enable low battery reset.
+	- maxim,low-battery-reset-disable: Disable low battery reset.
+Watchdog:
+==============
+This sub-node configure watchdog timer of the device. Device has watchdog
+for monitoring system health. If WDT expire, system get reset.
+
+Optinal properties:
+	-maxim,wdt-timeout: Watchdog timeout.
 Watchdog:
 ==============
 This sub-node configure watchdog timer of the device. Device has watchdog
