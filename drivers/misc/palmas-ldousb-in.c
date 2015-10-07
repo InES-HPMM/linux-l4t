@@ -1,7 +1,7 @@
 /*
  * palmas-ldousb-in.c : Dynamically select ldousb input based on inputs voltage.
  *
- * Copyright (c) 2014, NVIDIA Corporation.
+ * Copyright (c) 2014-2015, NVIDIA Corporation.
  *
  * Author: Mallikarjun Kasoju <mkasoju@nvidia.com>
  *         Laxman Dewangan <ldewangan@nvidia.com>
@@ -208,6 +208,14 @@ static int palmas_ldousb_in_probe(struct platform_device *pdev)
 					LDOUSB_INPUT1 : LDOUSB_INPUT2;
 	ldousb_info->current_switching_voltage =
 				ldousb_info->ldousb_in_threshold_voltage;
+
+	ret = regulator_enable(ldousb_info->input_reg[
+					ldousb_info->current_input]);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "regulator enable for input %d failed: %d\n",
+			ldousb_info->current_input, ret);
+		return ret;
+	}
 
 	INIT_DEFERRABLE_WORK(&ldousb_info->work, palmas_ldousb_in_sel_work);
 	schedule_delayed_work(&ldousb_info->work,
