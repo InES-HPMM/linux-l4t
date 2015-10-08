@@ -5,6 +5,7 @@
 GCOV_PROFILE := y
 
 omap2cam-objs	:=	omap24xxcam.o omap24xxcam-dma.o
+tegra-vi2-objs	:=	tegra_vi2.o tegra_vidq.o tegra_tpg.o
 
 obj-$(CONFIG_VIDEO_VINO) += indycam.o
 obj-$(CONFIG_VIDEO_VINO) += vino.o
@@ -39,6 +40,8 @@ obj-$(CONFIG_VIDEO_SAMSUNG_S5P_TV)	+= s5p-tv/
 
 obj-$(CONFIG_VIDEO_SAMSUNG_S5P_G2D)	+= s5p-g2d/
 obj-$(CONFIG_VIDEO_SAMSUNG_EXYNOS_GSC)	+= exynos-gsc/
+
+obj-$(CONFIG_VIDEO_TEGRA_VI2)		+= tegra-vi2.o
 
 obj-$(CONFIG_BLACKFIN)                  += blackfin/
 

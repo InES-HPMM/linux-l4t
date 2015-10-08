@@ -23,6 +23,13 @@ config VIDEO_VIA_CAMERA
 	   Chrome9 chipsets.  Currently only tested on OLPC xo-1.5 systems
 	   with ov7670 sensors.
 
+config VIDEO_TEGRA_VI2
+	tristate "Tegra VI2 driver"
+	depends on VIDEO_DEV && VIDEO_V4L2
+	select VIDEOBUF2_DMA_CONTIG
+	help
+	  This is a v4l2 driver for the VI2 of Tegra SoCs.
+
 #
 # Platform multimedia device configuration
 #
