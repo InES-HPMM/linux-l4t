@@ -31,6 +31,8 @@ static const int status_reg_table[] = {
 #ifdef TEGRA_21X_OR_HIGHER_CONFIG
 	VI_CSI_2_ERROR_STATUS,
 	VI_CSI_3_ERROR_STATUS,
+	VI_CSI_4_ERROR_STATUS,
+	VI_CSI_5_ERROR_STATUS,
 	CSI1_CSI_PIXEL_PARSER_A_STATUS_0,
 	CSI1_CSI_PIXEL_PARSER_B_STATUS_0,
 	CSI2_CSI_PIXEL_PARSER_A_STATUS_0,
@@ -52,6 +54,10 @@ static const int mask_reg_table[] = {
 	VI_CSI_3_WD_CTRL,
 	VI_CSI_2_ERROR_INT_MASK_0,
 	VI_CSI_3_ERROR_INT_MASK_0,
+	VI_CSI_4_WD_CTRL,
+	VI_CSI_5_WD_CTRL,
+	VI_CSI_4_ERROR_INT_MASK_0,
+	VI_CSI_5_ERROR_INT_MASK_0,
 	CSI1_CSI_PIXEL_PARSER_A_INTERRUPT_MASK_0,
 	CSI1_CSI_PIXEL_PARSER_B_INTERRUPT_MASK_0,
 	CSI2_CSI_PIXEL_PARSER_A_INTERRUPT_MASK_0,
@@ -124,6 +130,14 @@ static irqreturn_t vi_checkwd(struct vi *tegra_vi, int stream)
 	case 3:
 		err_addr = VI_CSI_3_ERROR_STATUS;
 		wd_addr = VI_CSI_3_WD_CTRL;
+		break;
+	case 4:
+		err_addr = VI_CSI_4_ERROR_STATUS;
+		wd_addr = VI_CSI_4_WD_CTRL;
+		break;
+	case 5:
+		err_addr = VI_CSI_5_ERROR_STATUS;
+		wd_addr = VI_CSI_5_WD_CTRL;
 		break;
 #endif
 	default:
