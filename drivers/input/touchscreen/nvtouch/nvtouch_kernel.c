@@ -883,7 +883,7 @@ void nvtouch_kernel_init(int sensor_w, int sensor_h, int screen_w,
 
 	init_waitqueue_head(&g_state_kernel.sample_gpfifo.data_waitqueue);
 
-	g_state_kernel.driver_mode = NVTOUCH_DRIVER_CONFIG_MODE_NVTOUCH_ONLY;
+	g_state_kernel.driver_mode = NVTOUCH_DRIVER_CONFIG_MODE_VENDOR_ONLY;
 
 	g_state_kernel.dual_mode_enable_nvtouch_events = 1;
 	g_state_kernel.dual_mode_enable_vendor_events = 1;
