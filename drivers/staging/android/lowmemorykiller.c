@@ -61,15 +61,27 @@ static int lowmem_minfree[6] = {
 static int lowmem_minfree_size = 4;
 
 static unsigned long lowmem_deathpending_timeout;
+#define lowmem_print(level, ts, x...)				\
+	do {							\
+		unsigned long start_jiffies = jiffies;		\
+		if (lowmem_debug_level >= (level))		\
+			pr_info(x);				\
+		ts = ts + jiffies - start_jiffies;		\
+	} while (0)
 
-#define lowmem_print(level, x...)			\
-	do {						\
-		if (lowmem_debug_level >= (level))	\
-			pr_info(x);			\
+#define lowmem_send_sig(selected, ts)				\
+	do {							\
+		unsigned long start_jiffies = jiffies;		\
+		set_tsk_thread_flag(selected, TIF_MEMDIE);	\
+		send_sig(SIGKILL, selected, 0);			\
+                ts = ts + jiffies - start_jiffies; 		\
 	} while (0)
 
 static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 {
+	unsigned long jiffies_sigkill_ts = 0;
+	unsigned long jiffies_lowmem_ts = 0;
+
 	struct task_struct *tsk;
 	struct task_struct *selected = NULL;
 	int rem = 0;
@@ -107,7 +119,8 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		}
 	}
 	if (sc->nr_to_scan > 0)
-		lowmem_print(3, "lowmem_shrink %lu, %x, ofree %d %d, ma %hd\n",
+		lowmem_print(3, jiffies_lowmem_ts,
+				"lowmem_shrink %lu, %x, ofree %d %d, ma %hd\n",
 				sc->nr_to_scan, sc->gfp_mask, other_free,
 				other_file, min_score_adj);
 	rem = global_page_state(NR_ACTIVE_ANON) +
@@ -115,8 +128,9 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		global_page_state(NR_INACTIVE_ANON) +
 		global_page_state(NR_INACTIVE_FILE);
 	if (sc->nr_to_scan <= 0 || min_score_adj == OOM_SCORE_ADJ_MAX + 1) {
-		lowmem_print(5, "lowmem_shrink %lu, %x, return %d\n",
-			     sc->nr_to_scan, sc->gfp_mask, rem);
+		lowmem_print(5, jiffies_lowmem_ts,
+				"lowmem_shrink %lu, %x, return %d\n",
+				sc->nr_to_scan, sc->gfp_mask, rem);
 		return rem;
 	}
 	selected_oom_score_adj = min_score_adj;
@@ -158,11 +172,13 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		selected = p;
 		selected_tasksize = tasksize;
 		selected_oom_score_adj = oom_score_adj;
-		lowmem_print(2, "select '%s' (%d), adj %hd, size %d, to kill\n",
-			     p->comm, p->pid, oom_score_adj, tasksize);
+		lowmem_print(2, jiffies_lowmem_ts,
+				"select '%s' (%d), adj %hd, size %d, to kill\n",
+				p->comm, p->pid, oom_score_adj, tasksize);
 	}
 	if (selected) {
-		lowmem_print(1, "Killing '%s' (%d), adj %hd,\n" \
+		lowmem_print(1, jiffies_lowmem_ts,
+				"Killing '%s' (%d), adj %hd,\n" \
 				"   to free %ldkB on behalf of '%s' (%d) because\n" \
 				"   cache %ldkB is below limit %ldkB for oom_score_adj %hd\n" \
 				"   Free memory is %ldkB above reserved\n",
@@ -175,12 +191,13 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			     min_score_adj,
 			     other_free * (long)(PAGE_SIZE / 1024));
 		lowmem_deathpending_timeout = jiffies + HZ;
-		send_sig(SIGKILL, selected, 0);
+		lowmem_send_sig(selected, jiffies_sigkill_ts);
 		set_tsk_thread_flag(selected, TIF_MEMDIE);
 		rem -= selected_tasksize;
 	}
-	lowmem_print(4, "lowmem_shrink %lu, %x, return %d\n",
-		     sc->nr_to_scan, sc->gfp_mask, rem);
+	lowmem_print(4, jiffies_lowmem_ts,
+			"lowmem_shrink %lu, %x, return %d\n",
+			sc->nr_to_scan, sc->gfp_mask, rem);
 	rcu_read_unlock();
 	return rem;
 }
@@ -216,6 +233,7 @@ static void lowmem_autodetect_oom_adj_values(void)
 	short oom_adj;
 	short oom_score_adj;
 	int array_size = ARRAY_SIZE(lowmem_adj);
+	unsigned long jiffies_lowmem_ts = 0;
 
 	if (lowmem_adj_size < array_size)
 		array_size = lowmem_adj_size;
@@ -231,13 +249,15 @@ static void lowmem_autodetect_oom_adj_values(void)
 	if (oom_score_adj <= OOM_ADJUST_MAX)
 		return;
 
-	lowmem_print(1, "lowmem_shrink: convert oom_adj to oom_score_adj:\n");
+	lowmem_print(1, jiffies_lowmem_ts,
+		"lowmem_shrink: convert oom_adj to oom_score_adj:\n");
 	for (i = 0; i < array_size; i++) {
 		oom_adj = lowmem_adj[i];
 		oom_score_adj = lowmem_oom_adj_to_oom_score_adj(oom_adj);
 		lowmem_adj[i] = oom_score_adj;
-		lowmem_print(1, "oom_adj %d => oom_score_adj %d\n",
-			     oom_adj, oom_score_adj);
+		lowmem_print(1, jiffies_lowmem_ts,
+			"oom_adj %d => oom_score_adj %d\n",
+			oom_adj, oom_score_adj);
 	}
 }
 
