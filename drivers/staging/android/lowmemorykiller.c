@@ -44,6 +44,9 @@
 #include <linux/nvmap.h>
 #endif
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/lowmemorykiller.h>
+
 static uint32_t lowmem_debug_level = 1;
 static short lowmem_adj[6] = {
 	0,
@@ -80,6 +83,7 @@ static unsigned long lowmem_deathpending_timeout;
 static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 {
 	unsigned long jiffies_sigkill_ts = 0;
+	unsigned int task_count = 0;
 	unsigned long jiffies_lowmem_ts = 0;
 
 	struct task_struct *tsk;
@@ -138,6 +142,7 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	rcu_read_lock();
 	for_each_process(tsk) {
 		struct task_struct *p;
+		task_count += 1;
 		short oom_score_adj;
 
 		if (tsk->flags & PF_KTHREAD)
@@ -199,6 +204,12 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			"lowmem_shrink %lu, %x, return %d\n",
 			sc->nr_to_scan, sc->gfp_mask, rem);
 	rcu_read_unlock();
+
+	trace_lowmem_shrink(jiffies_lowmem_ts,
+				other_free * (long)(PAGE_SIZE / 1024),
+				other_file * (long)(PAGE_SIZE / 1024),
+				jiffies_sigkill_ts,
+				task_count);
 	return rem;
 }
 
