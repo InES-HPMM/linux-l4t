@@ -1107,7 +1107,8 @@ static int tegra_vi_channel_set_format(
 
 	/* Return the effective settings */
 	v4l2_fill_pix_format(pf, &framefmt);
-	pf->sizeimage = 0;
+	// DIRTY WORKAROUND
+	pf->sizeimage = 2*1920*1080;
 
 	/* And store them to allow get */
 	chan->pixfmt = *pf;
