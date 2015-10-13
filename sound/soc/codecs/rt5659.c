@@ -1285,15 +1285,40 @@ static int rt5659_clk_sel_put(struct snd_kcontrol *kcontrol,
 	return snd_soc_put_enum_double(kcontrol, ucontrol);
 }
 
+/**
+ * manage_dapm_pin - enable or disable dapm pin
+ * @codec: SoC audio codec device.
+ * @pin_name: dapm widget name
+ * @enable: enable when true, disable otherwise
+ *
+ */
+
+static void manage_dapm_pin(struct snd_soc_codec *codec, const char *pin_name,
+	bool enable)
+{
+	char prefixed_ctl[80];
+	if (!codec->name_prefix) {
+		snprintf(prefixed_ctl, sizeof(prefixed_ctl), "%s",
+			pin_name);
+	} else {
+		snprintf(prefixed_ctl, sizeof(prefixed_ctl), "%s %s",
+			codec->name_prefix, pin_name);
+	}
+
+	if (enable)
+		snd_soc_dapm_force_enable_pin(&codec->dapm, prefixed_ctl);
+	else
+		snd_soc_dapm_disable_pin(&codec->dapm, prefixed_ctl);
+}
+
 static void rt5659_enable_push_button_irq(struct snd_soc_codec *codec,
 	bool enable)
 {
 	if (enable) {
 		/* MICBIAS1 and Mic Det Power for button detect*/
 		if (codec->card->instantiated) {
-			snd_soc_dapm_force_enable_pin(&codec->dapm, "MICBIAS1");
-			snd_soc_dapm_force_enable_pin(&codec->dapm,
-				"Mic Det Power");
+			manage_dapm_pin(codec, "MICBIAS1", true);
+			manage_dapm_pin(codec, "Mic Det Power", true);
 			snd_soc_dapm_sync(&codec->dapm);
 		} else {
 			snd_soc_update_bits(codec, RT5659_PWR_ANLG_2,
@@ -1308,8 +1333,8 @@ static void rt5659_enable_push_button_irq(struct snd_soc_codec *codec,
 		snd_soc_update_bits(codec, RT5659_4BTN_IL_CMD_2, 0x8000, 0x0);
 		snd_soc_update_bits(codec, RT5659_IRQ_CTRL_2, 0x8, 0x0);
 		/* MICBIAS1 and Mic Det Power for button detect*/
-		snd_soc_dapm_disable_pin(&codec->dapm, "MICBIAS1");
-		snd_soc_dapm_disable_pin(&codec->dapm, "Mic Det Power");
+		manage_dapm_pin(codec, "MICBIAS1", false);
+		manage_dapm_pin(codec, "Mic Det Power", false);
 		snd_soc_dapm_sync(&codec->dapm);
 	}
 }
@@ -1332,6 +1357,12 @@ int rt5659_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 	struct rt5659_priv *rt5659 = snd_soc_codec_get_drvdata(codec);
 
 	if (jack_insert) {
+		/* fix headset-mic detecton */
+		manage_dapm_pin(codec, "LDO2", true);
+		manage_dapm_pin(codec, "MICBIAS1", true);
+		snd_soc_dapm_sync(&codec->dapm);
+		snd_soc_write(codec, RT5659_EJD_CTRL_1, 0xa8c0);
+
 		reg_63 = snd_soc_read(codec, RT5659_PWR_ANLG_1);
 
 		snd_soc_update_bits(codec, RT5659_PWR_ANLG_1, RT5659_PWR_VREF2 |
@@ -1363,6 +1394,9 @@ int rt5659_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		default:
 			snd_soc_write(codec, RT5659_PWR_ANLG_1, reg_63);
 			rt5659->jack_type = SND_JACK_HEADPHONE;
+			manage_dapm_pin(codec, "LDO2", false);
+			manage_dapm_pin(codec, "MICBIAS1", false);
+			snd_soc_dapm_sync(&codec->dapm);
 			break;
 		}
 	} else {
@@ -1370,6 +1404,10 @@ int rt5659_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		if (rt5659->jack_type == SND_JACK_HEADSET)
 			rt5659_enable_push_button_irq(codec, false);*/
 		rt5659->jack_type = 0;
+
+		manage_dapm_pin(codec, "LDO2", false);
+		manage_dapm_pin(codec, "MICBIAS1", false);
+		snd_soc_dapm_sync(&codec->dapm);
 	}
 
 	pr_debug("jack_type = %d\n", rt5659->jack_type);
