@@ -559,7 +559,7 @@ extern void dhd_netdev_free(struct net_device *ndev);
 #endif /* WL_CFG80211 */
 
 /* Error bits */
-module_param(dhd_msg_level, int, 0);
+module_param(dhd_msg_level, int, 0644);
 
 #ifdef ARP_OFFLOAD_SUPPORT
 /* ARP offload enable */
