@@ -66,25 +66,27 @@ static int __init update_target_node_from_overlay(
 			!strcmp(prop->name, "phandle") ||
 			!strcmp(prop->name, "linux,phandle"))
 				continue;
+
+		new_prop = __of_copy_property(prop, GFP_KERNEL);
+		if (!new_prop) {
+			pr_err("Prop %s can not be duplicated\n",
+				prop->name);
+			return -EINVAL;
+		}
+
 		tprop = of_find_property(target, prop->name, &lenp);
 		if (!tprop) {
-			ret = of_add_property(target, prop);
+			ret = of_add_property(target, new_prop);
 			if (ret < 0) {
 				pr_err("Prop %s can not be added on node %s\n",
-					prop->name, target->full_name);
+					new_prop->name, target->full_name);
 				return ret;
 			}
 		} else {
-			new_prop = __of_copy_property(prop, GFP_KERNEL);
-			if (!new_prop) {
-				pr_err("Prop %s can not be duplicated\n",
-					prop->name);
-				return -EINVAL;
-			}
 			ret = of_update_property(target, new_prop);
 			if (ret < 0) {
 				pr_err("Prop %s can not be updated on node %s\n",
-					prop->name, target->full_name);
+					new_prop->name, target->full_name);
 				return ret;
 			}
 		}
