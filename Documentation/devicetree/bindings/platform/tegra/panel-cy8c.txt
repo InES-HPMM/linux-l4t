@@ -9,6 +9,8 @@ Sub-node properties:
 	This gpio must remain high for as long as the
 	panel is enabled. It may be deasserted after
 	the panel is disabled.
+- max-xfer-size : minimum of maximum Tegra and maximum
+	cy8c I2C transfer chunk sizes
 
 Examples:
 	i2c@7000c000 {
@@ -16,6 +18,7 @@ Examples:
 			compatible = "nvidia,cy8c_panel";
 			reg = <0x09>;
 			enable-gpio = <&gpio TEGRA_GPIO(K, 1) 0>;
+			max-xfer-sz = <64>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 		};
