@@ -473,7 +473,7 @@ config ARCH_NR_GPIO
 	  If unsure, leave the default value.
 
 config HZ
-	int
+	int "Timer frequency"
 	default 100
 
 config ARCH_HAS_HOLES_MEMORYMODEL
