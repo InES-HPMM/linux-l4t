@@ -638,8 +638,14 @@ static int nvdec_probe(struct platform_device *dev)
 
 	dev->dev.platform_data = NULL;
 
+	if (of_machine_is_compatible("nvidia,foster-e"))
+		pdata->can_powergate = false;
+
 	/* get the module clocks to sane state */
 	nvhost_module_init(dev);
+
+	if (of_machine_is_compatible("nvidia,foster-e"))
+		nvhost_module_enable_clk(&dev->dev);
 
 #ifdef CONFIG_PM_GENERIC_DOMAINS
 #ifndef CONFIG_PM_GENERIC_DOMAINS_OF

@@ -949,6 +949,9 @@ static int nvhost_probe(struct platform_device *dev)
 	if (err)
 		goto fail;
 
+	if (of_machine_is_compatible("nvidia,foster-e"))
+		pdata->can_powergate = false;
+
 	err = nvhost_module_init(dev);
 	if (err)
 		goto fail;
