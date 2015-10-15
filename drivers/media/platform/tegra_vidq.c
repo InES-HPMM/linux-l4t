@@ -167,7 +167,7 @@ static int tegra_vi_videobuf_start_streaming(struct vb2_queue *q,
 		if (err && err != -ENOIOCTLCMD) {
 			dev_err(&vdev->dev, "Failed to start sensor\n");
 			tegra_vi_input_disable(vi2, chan->input);
-			return err;
+			goto exit_with_err;
 		}
 
 		/* Calibrate the input */
@@ -176,7 +176,7 @@ static int tegra_vi_videobuf_start_streaming(struct vb2_queue *q,
 			dev_err(&vdev->dev, "Failed to calibrate input\n");
 			v4l2_subdev_call(chan->input->sensor, video, s_stream, 0);
 			tegra_vi_input_disable(vi2, chan->input);
-			return err;
+			goto exit_with_err;
 		}
 
 	}
@@ -191,6 +191,12 @@ static int tegra_vi_videobuf_start_streaming(struct vb2_queue *q,
 	mutex_unlock(&chan->lock);
 
 	return 0;
+
+exit_with_err:
+	mutex_unlock(&chan->input->lock);
+	mutex_unlock(&chan->lock);
+
+	return err;
 }
 
 static int tegra_vi_videobuf_stop_streaming(struct vb2_queue *q)
@@ -216,6 +222,7 @@ static int tegra_vi_videobuf_stop_streaming(struct vb2_queue *q)
 		err = v4l2_subdev_call(chan->input->sensor, video, s_stream, 0);
 		if (err) {
 			mutex_unlock(&chan->lock);
+			mutex_unlock(&chan->input->lock);
 			return err;
 		}
 
