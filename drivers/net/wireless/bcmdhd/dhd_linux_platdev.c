@@ -443,6 +443,15 @@ fail:
 	adapter->n_country = 0;
 	return -1;
 }
+
+static void wifi_platform_free_country_code_map(wifi_adapter_info_t *adapter)
+{
+	if (adapter->country_code_map) {
+		kfree(adapter->country_code_map);
+		adapter->country_code_map = NULL;
+	}
+	adapter->n_country = 0;
+}
 #endif
 
 static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
@@ -521,6 +530,9 @@ static int wifi_plat_dev_drv_remove(struct platform_device *pdev)
 #endif /* BCMPCIE */
 	}
 
+#ifdef NV_COUNTRY_CODE
+	wifi_platform_free_country_code_map(adapter);
+#endif
 	sysedp_free_consumer(adapter->sysedpc);
 	adapter->sysedpc = NULL;
 
