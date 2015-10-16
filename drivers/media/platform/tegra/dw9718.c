@@ -1,7 +1,7 @@
 /*
  * dw9718.c - dw9718 focuser driver
  *
- * Copyright (c) 2013-2015, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2013-2016, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -93,11 +93,12 @@
 #include <linux/gpio.h>
 #include <linux/module.h>
 
-#include "t124/t124.h"
 #include <media/dw9718.h>
 #include <media/camera.h>
 
+#include "t124/t124.h"
 #include "camera_platform.h"
+#include "tegra_camera_dev_mfi.h"
 
 #define ENABLE_DEBUGFS_INTERFACE
 
@@ -120,7 +121,7 @@
 struct dw9718_info {
 	struct i2c_client *i2c_client;
 	struct regmap *regmap;
-	struct camera_sync_dev *csync_dev;
+	struct camera_mfi_dev *cmfi_dev;
 	struct dw9718_platform_data *pdata;
 	struct miscdevice miscdev;
 	struct list_head list;
@@ -229,12 +230,10 @@ static int dw9718_position_wr(struct dw9718_info *info, s32 position)
 	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, position);
 	position &= dw9718_POS_CLAMP;
 	if (info->active_features|CAMDEV_USE_MFI) {
-#ifdef TEGRA_12X_OR_HIGHER_CONFIG
-		err = camera_dev_sync_clear(info->csync_dev);
-		err = camera_dev_sync_wr_add(info->csync_dev,
+		err = tegra_camera_dev_mfi_clear(info->cmfi_dev);
+		err = tegra_camera_dev_mfi_wr_add(info->cmfi_dev,
 					DW9718_VCM_CODE_MSB, position);
 		info->cur_pos = position;
-#endif
 	} else {
 		err = dw9718_i2c_wr16(info, DW9718_VCM_CODE_MSB, position);
 		if (!err)
@@ -993,14 +992,16 @@ static int dw9718_probe(
 		return -ENODEV;
 	}
 
-#ifdef TEGRA_12X_OR_HIGHER_CONFIG
-	err = camera_dev_add_regmap(&info->csync_dev, "dw9718", info->regmap);
+	err = tegra_camera_dev_mfi_add_regmap(&info->cmfi_dev,
+						"dw9718", info->regmap);
 	if (err < 0) {
-		dev_err(&client->dev, "%s unable i2c frame sync\n", __func__);
+		dev_err(&client->dev,
+			"%s unable to add to mfi regmap\n",
+			__func__);
 		dw9718_del(info);
 		return -ENODEV;
 	}
-#endif
+
 	info->active_features = 0;
 	info->supported_features = 0;
 	info->supported_features |=

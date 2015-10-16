@@ -1,7 +1,7 @@
 /*
  * dw9714.c - dw9714 focuser driver
  *
- * Copyright (c) 2014-2015, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2014-2016, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -93,12 +93,13 @@
 #include <linux/module.h>
 #include <linux/of_gpio.h>
 
-#include "t124/t124.h"
 #include <media/dw9714.h>
 #include <media/camera.h>
 
+#include "t124/t124.h"
 #include "nvc_utilities.h"
 #include "camera_platform.h"
+#include "tegra_camera_dev_mfi.h"
 
 #define ENABLE_DEBUGFS_INTERFACE
 
@@ -119,7 +120,7 @@
 
 struct dw9714_info {
 	struct i2c_client *i2c_client;
-	struct camera_sync_dev *csync_dev;
+	struct camera_mfi_dev *cmfi_dev;
 	struct dw9714_platform_data *pdata;
 	struct miscdevice miscdev;
 	struct list_head list;
@@ -196,14 +197,10 @@ static int dw9714_i2c_wr16(struct dw9714_info *info, u16 val, bool mfi)
 	msg.len = 2;
 	msg.buf = &buf[0];
 
-	if (mfi && info->active_features|CAMDEV_USE_MFI) {
-#ifdef TEGRA_12X_OR_HIGHER_CONFIG
-		return camera_dev_sync_wr_add_i2c(info->csync_dev, &msg, 1);
-#endif
-	} else {
-		if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
-			return -EIO;
-	}
+	if (mfi && info->active_features|CAMDEV_USE_MFI)
+		return tegra_camera_dev_mfi_wr_add_i2c(info->cmfi_dev, &msg, 1);
+	else if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
+		return -EIO;
 
 	return 0;
 }
@@ -215,10 +212,8 @@ static int dw9714_position_wr(struct dw9714_info *info, s32 position)
 
 	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, position);
 
-#ifdef TEGRA_12X_OR_HIGHER_CONFIG
 	if (info->active_features|CAMDEV_USE_MFI)
-		err = camera_dev_sync_clear(info->csync_dev);
-#endif
+		err = tegra_camera_dev_mfi_clear(info->cmfi_dev);
 
 	err = dw9714_i2c_wr16(info, 0xECA3, true);
 	if (err)
@@ -1053,15 +1048,16 @@ static int dw9714_probe(
 		return -ENODEV;
 	}
 
-#ifdef TEGRA_12X_OR_HIGHER_CONFIG
-	err = camera_dev_add_i2cclient(&info->csync_dev,
+	err = tegra_camera_dev_mfi_add_i2cclient(&info->cmfi_dev,
 						"dw9714", info->i2c_client);
 	if (err < 0) {
-		dev_err(&client->dev, "%s unable i2c frame sync\n", __func__);
+		dev_err(&client->dev,
+			"%s unable to add to mfi i2c\n",
+			__func__);
 		dw9714_del(info);
 		return -ENODEV;
 	}
-#endif
+
 	info->active_features = 0;
 	info->supported_features = 0;
 	info->supported_features |=

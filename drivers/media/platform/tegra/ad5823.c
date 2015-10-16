@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -28,10 +28,12 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 
-#include "t124/t124.h"
 #include <media/ad5823.h>
 #include <media/camera.h>
+
+#include "t124/t124.h"
 #include "camera_platform.h"
+#include "tegra_camera_dev_mfi.h"
 
 #define AD5823_ACTUATOR_RANGE	1023
 #define AD5823_POS_LOW_DEFAULT	(0)
@@ -56,7 +58,7 @@ struct ad5823_info {
 	struct ad5823_platform_data *pdata;
 	struct miscdevice miscdev;
 	struct regmap *regmap;
-	struct camera_sync_dev *csync_dev;
+	struct camera_mfi_dev *cmfi_dev;
 	u32 active_features;
 	u32 supported_features;
 };
@@ -64,7 +66,6 @@ struct ad5823_info {
 static int ad5823_set_position(struct ad5823_info *info, u32 position)
 {
 	int ret = 0;
-
 	if (position < info->config.pos_actual_low ||
 		position > info->config.pos_actual_high) {
 		dev_err(&info->i2c_client->dev,
@@ -78,21 +79,19 @@ static int ad5823_set_position(struct ad5823_info *info, u32 position)
 	}
 
 	if (info->active_features|CAMDEV_USE_MFI) {
-#ifdef TEGRA_12X_OR_HIGHER_CONFIG
-		ret = camera_dev_sync_clear(info->csync_dev);
-		ret |= camera_dev_sync_wr_add(info->csync_dev,
+		ret = tegra_camera_dev_mfi_clear(info->cmfi_dev);
+		ret |= tegra_camera_dev_mfi_wr_add(info->cmfi_dev,
 				AD5823_VCM_MOVE_TIME,
 				AD5823_MOVE_TIME_VALUE);
-		ret |= camera_dev_sync_wr_add(info->csync_dev,
+		ret |= tegra_camera_dev_mfi_wr_add(info->cmfi_dev,
 				AD5823_MODE,
 				0);
-		ret |= camera_dev_sync_wr_add(info->csync_dev,
+		ret |= tegra_camera_dev_mfi_wr_add(info->cmfi_dev,
 				AD5823_VCM_CODE_MSB,
 				((position >> 8) & 0x3) | (1 << 2));
-		ret |= camera_dev_sync_wr_add(info->csync_dev,
+		ret |= tegra_camera_dev_mfi_wr_add(info->cmfi_dev,
 				AD5823_VCM_CODE_LSB,
 				position & 0xFF);
-#endif
 	} else {
 		ret |= regmap_write(info->regmap, AD5823_VCM_MOVE_TIME,
 					AD5823_MOVE_TIME_VALUE);
@@ -356,13 +355,14 @@ static int ad5823_probe(struct i2c_client *client,
 		goto ERROR_RET;
 	}
 
-#ifdef TEGRA_12X_OR_HIGHER_CONFIG
-	err = camera_dev_add_regmap(&info->csync_dev, "ad5823", info->regmap);
+	err = tegra_camera_dev_mfi_add_regmap(&info->cmfi_dev,
+						"ad5823", info->regmap);
 	if (err < 0) {
-		dev_err(&client->dev, "%s unable i2c frame sync\n", __func__);
+		dev_err(&client->dev,
+			"%s unable to add to mfi regmap\n",
+			__func__);
 		goto ERROR_RET;
 	}
-#endif
 
 	if (info->regulator)
 		regulator_disable(info->regulator);

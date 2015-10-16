@@ -1,7 +1,7 @@
 /*
  * camera.c - generic camera device driver
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * Contributors:
  *	Charlie Huang <chahuang@nvidia.com>
@@ -1212,9 +1212,6 @@ static int camera_remove(struct platform_device *dev)
 		camera_remove_device(cdev);
 	}
 
-#ifdef TEGRA_12X_OR_HIGHER_CONFIG
-	tegra_vi_unregister_mfi_cb();
-#endif
 	camera_debugfs_remove();
 
 	kfree(cam_desc.layout);
@@ -1253,10 +1250,6 @@ static int camera_probe(struct platform_device *dev)
 	strcpy(cam_desc.dname, "camera.pcl");
 	dev_set_drvdata(&dev->dev, &cam_desc);
 
-#ifdef TEGRA_12X_OR_HIGHER_CONFIG
-	camera_dev_sync_init();
-	tegra_vi_register_mfi_cb(camera_dev_sync_cb, NULL);
-#endif
 	of_camera_init(&cam_desc);
 
 	cam_desc.miscdev.name = cam_desc.dname;
