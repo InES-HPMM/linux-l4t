@@ -42,18 +42,21 @@
 			compatible = "capella,cm3217";
 			reg = <0x10>;
 			vdd-supply = <&palmas_smps9>;
-			light_uncalibrated_lo = <0>;
-			light_calibrated_lo = <16>;
-			light_uncalibrated_hi = <12>;
-			light_calibrated_hi = <1636>;
+			light_threshold_lo = <4>;
+			light_threshold_hi = <4>;
+			light_uncalibrated_lo = <20>;
+			light_calibrated_lo = <100>;
+			light_uncalibrated_hi = <130000>;
+			light_calibrated_hi = <1821000>;
 		};
 
 		ltr659@23 {
 			compatible = "liteon,ltrX5X";
 			reg = <0x23>;
-			threshold = <125>;
 			vdd-supply = <&palmas_smps9>;
 			vled-supply = <&palmas_smps8>;
+			proximity_threshold_lo = <120>;
+			proximity_threshold_hi = <130>;
 		};
 	};
 
