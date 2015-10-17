@@ -211,6 +211,9 @@
 		vi {
 			avdd_dsi_csi-supply = <&max77620_gpio7>;
 		};
+		i2c@546c0000 {
+			bus-pullup-supply = <&en_vdd_cam>;
+		};
 	};
 
 	i2c@7000c000 {
@@ -245,10 +248,6 @@
 		iqs253@44 {
 			vddhi-supply = <&vdd_3v3>;
 		};
-	};
-
-	i2c@546c0000 {
-		bus-pullup-supply = <&en_vdd_cam>;
 	};
 
 	xusb@70090000 {

@@ -349,6 +349,16 @@
 				};
 			};
 		};
+
+		i2c@546c0000 {
+			status = "okay";
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
+		};
+
+		vi {
+			status = "okay";
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
+		};
 	};
 
 	spi@7000da00 {
@@ -602,10 +612,6 @@
 			compatible = "realtek,rt5639";
 			reg = <0x1c>;
 		};
-	};
-
-	i2c@546c0000 {
-		avdd_dsi_csi-supply = <&max77620_gpio7>;
 	};
 
 	sysedp {

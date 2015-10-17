@@ -98,10 +98,6 @@
 		};
 	};
 
-	i2c@546c0000 {
-		avdd_dsi_csi-supply = <&max77620_gpio7>;
-	};
-
 	spi@7000d400 {
 		status = "okay";
 		earSmart: earSmart-codec@0 {
@@ -713,5 +709,12 @@
 
 	serial@70006300 {
 		dma-names = "tx";
+	};
+
+	host1x {
+		i2c@546c0000 {
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
+			status = "okay";
+		};
 	};
 };

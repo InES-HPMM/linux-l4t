@@ -140,10 +140,6 @@
 		};
 	};
 
-	i2c@546c0000 {
-		avdd_dsi_csi-supply = <&mipi_1v2>;
-	};
-
 	i2c@7000c400 {
 		status = "okay";
 		lp8557-backlight-a-wuxga-8-0@2c {
@@ -1262,6 +1258,10 @@
 			hdmi-display {
 				nvidia,hdmi-vrr-caps = <1>;
 			};
+		};
+		i2c@546c0000 {
+			avdd_dsi_csi-supply = <&mipi_1v2>;
+			status = "okay";
 		};
 	};
 

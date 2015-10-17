@@ -210,24 +210,29 @@
 				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
 			};
 		};
-        sor {
-            status = "okay";
-            nvidia,hpd-gpio = <&gpio 230 0>; /*PCC6*/
-            panel-a-edp-1080p-14-0 {
+		sor {
+			status = "okay";
+			nvidia,hpd-gpio = <&gpio 230 0>; /*PCC6*/
+			panel-a-edp-1080p-14-0 {
 				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
-            };
-        };
-        dpaux {
-            status = "okay";
-        };
-        sor1 {
-            status = "okay";
-        };
-        dpaux1 {
-            status = "okay";
-        };
-	};
+			};
+		};
+		dpaux {
+			status = "okay";
+		};
+		sor1 {
+			status = "okay";
+		};
+		dpaux1 {
+			status = "okay";
+		};
 
+		vi {
+			status = "okay";
+
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
+		};
+	};
 
 	spi@7000d400 {
 		status = "okay";
@@ -290,10 +295,6 @@
 				};
 			};
 		};
-	};
-
-	i2c@546c0000 {
-		avdd_dsi_csi-supply = <&max77620_gpio7>;
 	};
 
 	i2c@7000c500 {
@@ -862,50 +863,40 @@
 		status = "disabled";
 	};
 
-	i2c@546c0000 {
-		tca9548@6_0077 {
-			compatible = "nxp,pca9548";
-			reg = <0x77>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			vcc-supply = <&en_vdd_cam>;
-			skip_mux_detect;
-			force_bus_start = <T210_CAMERA_I2C_MUX_BUS(0)>;
-			i2c@0 {
-				reg = <0>;
-				i2c-mux,deselect-on-exit;
+	host1x {
+		i2c@546c0000 {
+			tca9548@6_0077 {
+				compatible = "nxp,pca9548";
+				reg = <0x77>;
 				#address-cells = <1>;
 				#size-cells = <0>;
-			};
-			i2c@1 {
-				reg = <1>;
-				i2c-mux,deselect-on-exit;
-				#address-cells = <1>;
-				#size-cells = <0>;
-			};
-			i2c@2 {
-				reg = <2>;
-				i2c-mux,deselect-on-exit;
-				#address-cells = <1>;
-				#size-cells = <0>;
-			};
-			i2c@3 {
-				reg = <3>;
-				i2c-mux,deselect-on-exit;
-				#address-cells = <1>;
-				#size-cells = <0>;
-			};
-			i2c@4 {
-				reg = <4>;
-				i2c-mux,deselect-on-exit;
-				#address-cells = <1>;
-				#size-cells = <0>;
-			};
-			i2c@5 {
-				reg = <5>;
-				i2c-mux,deselect-on-exit;
-				#address-cells = <1>;
-				#size-cells = <0>;
+				vcc-supply = <&en_vdd_cam>;
+				skip_mux_detect;
+				force_bus_start = <T210_CAMERA_I2C_MUX_BUS(0)>;
+				i2c@0 {
+					reg = <0>;
+					i2c-mux,deselect-on-exit;
+				};
+				i2c@1 {
+					reg = <1>;
+					i2c-mux,deselect-on-exit;
+				};
+				i2c@2 {
+					reg = <2>;
+					i2c-mux,deselect-on-exit;
+				};
+				i2c@3 {
+					reg = <3>;
+					i2c-mux,deselect-on-exit;
+				};
+				i2c@4 {
+					reg = <4>;
+					i2c-mux,deselect-on-exit;
+				};
+				i2c@5 {
+					reg = <5>;
+					i2c-mux,deselect-on-exit;
+				};
 			};
 		};
 	};
