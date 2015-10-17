@@ -93,7 +93,7 @@ ssize_t camera_common_debugfs_write(
 	char buffer[MAX_BUFFER_SIZE];
 	u32 address;
 	u32 data;
-	u8 readback;
+	u8 readback = 0;
 
 	dev_dbg(&client->dev, "%s: ++\n", __func__);
 
@@ -349,7 +349,7 @@ static int camera_common_mclk_enable(struct camera_common_data *s_data)
 
 int camera_common_s_power(struct v4l2_subdev *sd, int on)
 {
-	int err;
+	int err = 0;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct camera_common_data *s_data = to_camera_common_data(client);
 
@@ -359,13 +359,12 @@ int camera_common_s_power(struct v4l2_subdev *sd, int on)
 			err = call_s_op(s_data, power_on);
 		if (err)
 			camera_common_mclk_disable(s_data);
-		return err;
-	} else if (!on) {
+	} else {
 		call_s_op(s_data, power_off);
 		camera_common_mclk_disable(s_data);
-		return 0;
-	} else
-		return -EINVAL;
+	}
+
+	return err;
 }
 
 int camera_common_g_mbus_config(struct v4l2_subdev *sd,

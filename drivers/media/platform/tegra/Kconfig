@@ -270,9 +270,14 @@ config VIDEO_ISC
 
 config VIDEO_TEGRA_VI
 	depends on TEGRA_GRHOST
+        depends on VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API && OF
+        select VIDEOBUF2_DMA_CONTIG
 	tristate "Tegra video input host1x client driver"
 	default y
 	help
-	  Driver for the Tegra video input hardware.
+	  Driver for the Tegra video input hardware based on
+	  media controller framework and interact with host1x
+	  apis to support both user space as well as kernel
+	  programming of VI hardware registers
 	  To compile this driver as a module, choose M here:
-	  the  module will be called nvhost-vi.
+	  the module will be called nvhost-vi.
