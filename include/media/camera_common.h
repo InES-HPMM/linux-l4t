@@ -82,6 +82,7 @@ struct camera_common_pdata {
 	unsigned int pwdn_gpio;
 	unsigned int reset_gpio;
 	unsigned int af_gpio;
+	unsigned int eeprom_base_addr;
 	bool ext_reg;
 	int (*power_on)(struct camera_common_power_rail *pw);
 	int (*power_off)(struct camera_common_power_rail *pw);

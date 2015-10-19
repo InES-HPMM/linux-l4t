@@ -116,6 +116,12 @@ config SOC_CAMERA_OV9740
 	help
 	  This is a ov9740 camera driver
 
+config SOC_CAMERA_OV13860
+	tristate "ov13860 sensor support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is a V4L2 camera driver for the OmniVision OV13860 sensor
+
 config SOC_CAMERA_RJ54N1
 	tristate "rj54n1cb0c support"
 	depends on SOC_CAMERA && I2C
