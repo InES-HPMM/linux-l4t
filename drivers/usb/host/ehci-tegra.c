@@ -595,6 +595,8 @@ static struct tegra_usb_platform_data *tegra_ehci_dt_parse_pdata(
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 	if (instance == 1) {
 		pdata->phy_intf = TEGRA_USB_PHY_INTF_HSIC;
+		pdata->u_data.host.skip_resume =
+			of_property_read_bool(np, "nvidia,skip_resume");
 		tegra_set_wake_source(42, INT_USB2);
 	}
 #elif defined(CONFIG_ARCH_TEGRA_13x_SOC)
