@@ -978,7 +978,6 @@ struct tegra_fb_data {
 	int		xres;
 	int		yres;
 	int		bits_per_pixel; /* -1 means autodetect */
-	size_t		fbmem_size;
 
 	unsigned long	flags;
 };
