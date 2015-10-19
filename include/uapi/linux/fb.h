@@ -176,9 +176,6 @@
 #define FB_CAP_DC_RGB_MASK		(FB_CAP_RGB_DC_30 | \
 				FB_CAP_RGB_DC_36 | FB_CAP_RGB_DC_48)
 
-#define FB_CAP_DC_MASK		(FB_CAP_DC_Y420_MASK | FB_CAP_DC_Y422_MASK | \
-				FB_CAP_DC_Y444_MASK | FB_CAP_DC_RGB_MASK)
-
 #define FB_CAP_Y422		0x2000	/* YCbCr 4:2:2 support */
 #define FB_CAP_Y444		0x4000	/* YCbCr 4:4:4 support */
 #define FB_CAP_HDR		0x8000	/* Device supports HDR*/
@@ -186,6 +183,11 @@
 #define FB_CAP_RGB_QUANT_SELECTABLE		0x10000
 /* Device supports selectable YUV range */
 #define FB_CAP_YUV_QUANT_SELECTABLE		0x20000
+
+#define FB_CAP_DC_MASK		(FB_CAP_DC_Y420_MASK | FB_CAP_DC_Y422_MASK | \
+				FB_CAP_DC_Y444_MASK | FB_CAP_DC_RGB_MASK | \
+				FB_CAP_HDR | FB_CAP_RGB_QUANT_SELECTABLE | \
+				FB_CAP_YUV_QUANT_SELECTABLE)
 
 #define FB_COL_XVYCC601		0x1
 #define FB_COL_XVYCC709		0x2
