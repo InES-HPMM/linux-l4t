@@ -275,7 +275,7 @@ static const u16 rt5639_reg[RT5639_VENDOR_ID2 + 1] = {
 	[RT5639_VENDOR_ID2] = 0x6231,
 };
 
-static int rt5639_reset(struct snd_soc_codec *codec)
+int rt5639_reset(struct snd_soc_codec *codec)
 {
 	int ret;
 	int ret_mclk;
@@ -291,6 +291,7 @@ static int rt5639_reset(struct snd_soc_codec *codec)
 	}
 	return ret;
 }
+EXPORT_SYMBOL(rt5639_reset);
 
 /**
  * rt5639_index_write - Write private register.

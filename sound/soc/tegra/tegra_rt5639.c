@@ -1532,6 +1532,56 @@ err_free_machine:
 	return ret;
 }
 
+void disable_rt5639_regulators(struct tegra_rt5639 *machine)
+{
+	if (machine->digital_reg) {
+		regulator_disable(machine->digital_reg);
+		regulator_put(machine->digital_reg);
+	}
+	if (machine->analog_reg) {
+		regulator_disable(machine->analog_reg);
+		regulator_put(machine->analog_reg);
+	}
+	if (machine->spk_reg)
+		regulator_put(machine->spk_reg);
+
+	if (machine->dmic_reg)
+		regulator_put(machine->dmic_reg);
+
+	if (machine->codec_reg) {
+		regulator_disable(machine->codec_reg);
+		regulator_put(machine->codec_reg);
+	}
+
+	return;
+}
+
+void tegra_rt5639_driver_shutdown(struct platform_device *pdev)
+{
+	struct snd_soc_card *card = platform_get_drvdata(pdev);
+	struct snd_soc_codec *codec;
+	struct tegra_rt5639 *machine = snd_soc_card_get_drvdata(card);
+	struct tegra_asoc_platform_data *pdata = machine->pdata;
+
+	if (machine->gpio_requested & GPIO_HP_DET)
+			snd_soc_jack_free_gpios(&tegra_rt5639_hp_jack,
+						1,
+						&tegra_rt5639_hp_jack_gpio);
+
+	codec = card->rtd[DAI_LINK_HIFI].codec;
+	rt5639_reset(codec);
+
+	if (gpio_is_valid(pdata->gpio_ldo1_en)) {
+		gpio_set_value(pdata->gpio_ldo1_en, 0);
+		gpio_free(pdata->gpio_ldo1_en);
+	}
+
+	disable_rt5639_regulators(machine);
+	kfree(machine);
+
+	return;
+}
+
 static int tegra_rt5639_driver_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
@@ -1551,24 +1601,7 @@ static int tegra_rt5639_driver_remove(struct platform_device *pdev)
 					1,
 					&tegra_rt5639_hp_jack_gpio);
 
-	if (machine->digital_reg) {
-		regulator_disable(machine->digital_reg);
-		regulator_put(machine->digital_reg);
-	}
-	if (machine->analog_reg) {
-		regulator_disable(machine->analog_reg);
-		regulator_put(machine->analog_reg);
-	}
-	if (machine->spk_reg)
-		regulator_put(machine->spk_reg);
-
-	if (machine->dmic_reg)
-		regulator_put(machine->dmic_reg);
-	if (machine->codec_reg) {
-		regulator_disable(machine->codec_reg);
-		regulator_put(machine->codec_reg);
-	}
-
+	disable_rt5639_regulators(machine);
 
 	tegra_asoc_utils_fini(&machine->util_data);
 
@@ -1599,6 +1632,7 @@ static struct platform_driver tegra_rt5639_driver = {
 	},
 	.probe = tegra_rt5639_driver_probe,
 	.remove = tegra_rt5639_driver_remove,
+	.shutdown = tegra_rt5639_driver_shutdown,
 };
 
 static int __init tegra_rt5639_modinit(void)
