@@ -44,7 +44,7 @@
 #include <linux/alarmtimer.h>
 #include <linux/power/battery-charger-gauge-comm.h>
 #include <linux/workqueue.h>
-
+#include "../../../arch/arm/mach-tegra/board.h"
 #define MAX_STR_PRINT 50
 
 #define bq_chg_err(bq, fmt, ...)			\
@@ -1503,6 +1503,15 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 		const char *status_str;
 		struct bq2419x_charger_platform_data *bcharger_pdata;
 		u32 pval;
+		struct device_node *child = NULL;
+		int battery_id = tegra_get_board_battery_id();
+
+		dev_info(&client->dev, "Battery_id %d\n", battery_id);
+
+		if (battery_id == 0)
+			child = of_get_child_by_name(batt_reg_node, "battery0");
+		else if (battery_id == 1)
+			child = of_get_child_by_name(batt_reg_node, "battery1");
 
 		status_str = of_get_property(batt_reg_node, "status", NULL);
 		if (status_str && !(!strcmp(status_str, "okay"))) {
@@ -1523,60 +1532,89 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 		if (!batt_init_data)
 			return ERR_PTR(-EINVAL);
 
-		ret = of_property_read_u32(batt_reg_node,
+		pval = 0;
+		ret = of_property_read_u32(child,
 				"ti,input-voltage-limit-millivolt", &pval);
-		if (!ret)
-			bcharger_pdata->input_voltage_limit_mV = pval;
+		if (ret < 0)
+			ret = of_property_read_u32(batt_reg_node,
+				"ti,input-voltage-limit-millivolt", &pval);
+		bcharger_pdata->input_voltage_limit_mV = pval;
 
-		ret = of_property_read_u32(batt_reg_node,
+		pval = 0;
+		ret = of_property_read_u32(child,
 				"ti,fast-charge-current-limit-milliamp", &pval);
-		if (!ret)
-			bcharger_pdata->fast_charge_current_limit_mA =
-							pval;
+		if (ret < 0)
+			ret = of_property_read_u32(batt_reg_node,
+					"ti,fast-charge-current-limit-milliamp", &pval);
+		bcharger_pdata->fast_charge_current_limit_mA = pval;
 
-		ret = of_property_read_u32(batt_reg_node,
+		pval = 0;
+		ret = of_property_read_u32(child,
 				"ti,pre-charge-current-limit-milliamp", &pval);
-		if (!ret)
-			bcharger_pdata->pre_charge_current_limit_mA = pval;
+		if (ret < 0)
+			ret = of_property_read_u32(batt_reg_node,
+					"ti,pre-charge-current-limit-milliamp", &pval);
+		bcharger_pdata->pre_charge_current_limit_mA = pval;
 
 		ret = of_property_read_u32(batt_reg_node,
 				"ti,charge-term-current-limit-milliamp", &pval);
 		if (!ret)
 			bcharger_pdata->termination_current_limit_mA = pval;
 
-		ret = of_property_read_u32(batt_reg_node,
+		pval = 0;
+		ret = of_property_read_u32(child,
 				"ti,ir-comp-resister-ohm", &pval);
-		if (!ret)
-			bcharger_pdata->ir_compensation_resister_ohm = pval;
+		if (ret < 0)
+			ret = of_property_read_u32(batt_reg_node,
+					"ti,ir-comp-resister-ohm", &pval);
+		bcharger_pdata->ir_compensation_resister_ohm = pval;
 
-		ret = of_property_read_u32(batt_reg_node,
+		pval = 0;
+		ret = of_property_read_u32(child,
 				"ti,ir-comp-voltage-millivolt", &pval);
-		if (!ret)
-			bcharger_pdata->ir_compensation_voltage_mV = pval;
+		if (ret < 0)
+			ret = of_property_read_u32(batt_reg_node,
+					"ti,ir-comp-voltage-millivolt", &pval);
+		bcharger_pdata->ir_compensation_voltage_mV = pval;
 
-		ret = of_property_read_u32(batt_reg_node,
+		pval = 0;
+		ret = of_property_read_u32(child,
 				"ti,thermal-regulation-threshold-degc", &pval);
-		if (!ret)
-			bcharger_pdata->thermal_regulation_threshold_degC =
+		if (ret < 0)
+			ret = of_property_read_u32(batt_reg_node,
+					"ti,thermal-regulation-threshold-degc", &pval);
+		bcharger_pdata->thermal_regulation_threshold_degC =
 						pval;
 
-		ret = of_property_read_u32(batt_reg_node,
+		ret = of_property_read_u32(child,
 				"ti,charge-voltage-limit-millivolt", &pval);
 		if (!ret)
 			pdata->bcharger_pdata->charge_voltage_limit_mV = pval;
 
 		pdata->bcharger_pdata->disable_suspend_during_charging =
+				of_property_read_bool(child,
+				"ti,disbale-suspend-during-charging");
+		if(!pdata->bcharger_pdata->disable_suspend_during_charging)
+			pdata->bcharger_pdata->disable_suspend_during_charging =
 				of_property_read_bool(batt_reg_node,
 				"ti,disbale-suspend-during-charging");
 
-		ret = of_property_read_u32(batt_reg_node,
+		wdt_timeout = 0;
+		ret = of_property_read_u32(child,
 				"ti,watchdog-timeout", &wdt_timeout);
-		if (!ret)
-			pdata->bcharger_pdata->wdt_timeout = wdt_timeout;
+		if (ret < 0)
+			ret = of_property_read_u32(batt_reg_node,
+				"ti,watchdog-timeout", &wdt_timeout);
+		pdata->bcharger_pdata->wdt_timeout = wdt_timeout;
 
-		ret = of_property_read_u32(batt_reg_node,
+		auto_recharge_time_power_off = 0;
+		ret = of_property_read_u32(child,
 			"ti,auto-recharge-time-power-off",
 			&auto_recharge_time_power_off);
+		if (ret < 0)
+			ret = of_property_read_u32(batt_reg_node,
+				"ti,auto-recharge-time-power-off",
+				&auto_recharge_time_power_off);
 		if (!ret)
 			pdata->bcharger_pdata->auto_recharge_time_power_off =
 					auto_recharge_time_power_off;
@@ -1584,13 +1622,21 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 			pdata->bcharger_pdata->auto_recharge_time_power_off =
 					3600;
 
-		ret = of_property_read_u32(batt_reg_node,
+		chg_restart_time = 0;
+		ret = of_property_read_u32(child,
 				"ti,auto-recharge-time", &chg_restart_time);
-		if (!ret)
-			pdata->bcharger_pdata->chg_restart_time =
+		if (ret < 0)
+			ret = of_property_read_u32(batt_reg_node,
+				"ti,auto-recharge-time", &chg_restart_time);
+		pdata->bcharger_pdata->chg_restart_time =
 							chg_restart_time;
 
-		ret = of_property_read_u32(batt_reg_node,
+		chg_restart_time = 0;
+		ret = of_property_read_u32(child,
+				"ti,auto-recharge-time-suspend",
+				&chg_restart_time);
+		if(ret < 0)
+			ret = of_property_read_u32(batt_reg_node,
 				"ti,auto-recharge-time-suspend",
 				&chg_restart_time);
 		if (!ret)
@@ -1600,13 +1646,16 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 			pdata->bcharger_pdata->auto_recharge_time_supend =
 					3600;
 
-		ret = of_property_read_u32(batt_reg_node,
+		temp_polling_time = 0;
+		ret = of_property_read_u32(child,
 			"ti,temp-polling-time-sec", &temp_polling_time);
-		if (!ret)
-			bcharger_pdata->temp_polling_time_sec =
+		if (ret < 0)
+			ret = of_property_read_u32(batt_reg_node,
+			"ti,temp-polling-time-sec", &temp_polling_time);
+		bcharger_pdata->temp_polling_time_sec =
 						temp_polling_time;
 
-		count = of_property_count_u32(batt_reg_node, "ti,soc-range");
+		count = of_property_count_u32(child, "ti,soc-range");
 		soc_range_len = (count > 0) ? count : 0;
 
 		if (soc_range_len) {
@@ -1616,13 +1665,13 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 			if (!chg_pdata->soc_range)
 				return ERR_PTR(-ENOMEM);
 
-			ret = of_property_read_u32_array(batt_reg_node,
+			ret = of_property_read_u32_array(child,
 					"ti,soc-range",
 					chg_pdata->soc_range, soc_range_len);
 			if (ret < 0)
 				return ERR_PTR(ret);
 
-			count =  of_property_count_u32(batt_reg_node,
+			count =  of_property_count_u32(child,
 					"ti,input-voltage-soc-limit");
 			inut_volt_lim_len = (count > 0) ? count : 0;
 		}
@@ -1635,7 +1684,7 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 			if (!chg_pdata->input_voltage_soc_limit)
 				return ERR_PTR(-ENOMEM);
 
-			ret = of_property_read_u32_array(batt_reg_node,
+			ret = of_property_read_u32_array(child,
 					"ti,input-voltage-soc-limit",
 					chg_pdata->input_voltage_soc_limit,
 					inut_volt_lim_len);
@@ -1643,7 +1692,10 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 				return ERR_PTR(ret);
 		}
 
-		chg_pdata->tz_name = of_get_property(batt_reg_node,
+		chg_pdata->tz_name = of_get_property(child,
+						"ti,thermal-zone", NULL);
+		if (!chg_pdata->tz_name)
+			chg_pdata->tz_name = of_get_property(batt_reg_node,
 						"ti,thermal-zone", NULL);
 
 		count = of_property_count_u32(batt_reg_node, "ti,temp-range");
@@ -1651,12 +1703,16 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 
 		count = of_property_count_u32(batt_reg_node,
 					"ti,charge-current-limit");
-		if (count <= 0)
-			count = of_property_count_u32(batt_reg_node,
+		if (count <= 0) {
+			count = of_property_count_u32(child,
 					"ti,charge-thermal-current-limit");
+			if (count < 0)
+				count = of_property_count_u32(batt_reg_node,
+						"ti,charge-thermal-current-limit");
+		}
 		chg_current_lim_len = (count > 0) ? count : 0;
 
-		count = of_property_count_u32(batt_reg_node,
+		count = of_property_count_u32(child,
 					"ti,charge-thermal-voltage-limit");
 		chg_voltage_lim_len = (count > 0) ? count : 0;
 
@@ -1694,11 +1750,17 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 				"ti,charge-current-limit",
 				chg_pdata->chg_current_limit,
 				temp_range_len);
-		if (ret < 0)
-			ret = of_property_read_u32_array(batt_reg_node,
+		if (ret < 0) {
+			ret = of_property_read_u32_array(child,
 				"ti,charge-thermal-current-limit",
 					chg_pdata->chg_current_limit,
 					temp_range_len);
+			if (ret < 0)
+				ret = of_property_read_u32_array(batt_reg_node,
+					"ti,charge-thermal-current-limit",
+						chg_pdata->chg_current_limit,
+						temp_range_len);
+		}
 		if (ret < 0)
 			return ERR_PTR(ret);
 
@@ -1712,7 +1774,7 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 		if (!chg_pdata->chg_thermal_voltage_limit)
 			return ERR_PTR(-ENOMEM);
 
-		ret = of_property_read_u32_array(batt_reg_node,
+		ret = of_property_read_u32_array(child,
 				"ti,charge-thermal-voltage-limit",
 				chg_pdata->chg_thermal_voltage_limit,
 				temp_range_len);
