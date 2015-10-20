@@ -477,6 +477,8 @@ void tegra_hda_set_data(void *data, int sink)
 	hda->null_sample_inject = false;
 	tegra_dc_hda_get_clocks();
 	tegra_dc_hda_enable_clocks();
+
+	tegra_hdmi_setup_hda_presence();
 }
 
 void tegra_hda_reset_data(void)
