@@ -69,6 +69,7 @@
 #include <linux/tegra_nvadsp.h>
 #include <linux/tegra-pm.h>
 #include <linux/regulator/machine.h>
+#include <linux/of_fdt.h>
 
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
@@ -392,7 +393,9 @@ static void __init tegra_t210ref_reserve(void)
 	ulong fb2_size = SZ_4M;
 #endif
 	ulong fb1_size = SZ_64M + SZ_8M;
-	ulong vpr_size = 186 * SZ_1M;
+	ulong vpr_size = 364 * SZ_1M;
+	if (of_flat_dt_is_compatible(of_get_flat_dt_root(), "nvidia,foster-e"))
+		vpr_size = 672 * SZ_1M;
 
 #ifdef CONFIG_FRAMEBUFFER_CONSOLE
 	/* support FBcon on 4K monitors */
