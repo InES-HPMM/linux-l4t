@@ -3681,7 +3681,7 @@ static int tegra21_plle_clk_enable(struct clk *c)
 
 	val = clk_readl(PLLE_AUX);
 	if (val & PLLE_AUX_SEQ_ENABLE) {
-		pr_warn("%s: pll_e hw sequencer is already on\n", __func__);
+		pr_info("%s: pll_e hw sequencer is already on\n", __func__);
 		return 0;
 	}
 
