@@ -34,6 +34,12 @@
 				ldo2 {
 					regulator-name = "vddio-sdmmc1";
 				};
+				ldo6 {
+					/delete-property/ regulator-always-on;
+					/delete-property/ regulator-boot-on;
+					regulator-boot-off;
+					maxim,fps-source = <FPS_SRC_NONE>;
+				};
 			};
 		};
 	};
