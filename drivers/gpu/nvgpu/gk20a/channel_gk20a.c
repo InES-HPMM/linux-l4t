@@ -325,10 +325,13 @@ void channel_gk20a_unbind(struct channel_gk20a *ch_gk20a)
 	 * resource at this point
 	 * if not, then it will be destroyed at channel_free()
 	 */
+	mutex_lock(&ch_gk20a->sync_lock);
 	if (ch_gk20a->sync && platform->aggressive_sync_destroy) {
+
 		ch_gk20a->sync->destroy(ch_gk20a->sync);
 		ch_gk20a->sync = NULL;
 	}
+	mutex_unlock(&ch_gk20a->sync_lock);
 }
 
 int channel_gk20a_alloc_inst(struct gk20a *g, struct channel_gk20a *ch)
@@ -391,10 +394,10 @@ void gk20a_channel_abort(struct channel_gk20a *ch, bool channel_preempt)
 		gk20a_fifo_preempt(ch->g, ch);
 
 	/* ensure no fences are pending */
-	mutex_lock(&ch->submit_lock);
+	mutex_lock(&ch->sync_lock);
 	if (ch->sync)
 		ch->sync->set_min_eq_max(ch->sync);
-	mutex_unlock(&ch->submit_lock);
+	mutex_unlock(&ch->sync_lock);
 
 	/* release all job semaphores (applies only to jobs that use
 	   semaphore synchronization) */
@@ -808,10 +811,12 @@ static void gk20a_free_channel(struct channel_gk20a *ch)
 	channel_gk20a_free_priv_cmdbuf(ch);
 
 	/* sync must be destroyed before releasing channel vm */
+	mutex_lock(&ch->sync_lock);
 	if (ch->sync) {
 		ch->sync->destroy(ch->sync);
 		ch->sync = NULL;
 	}
+	mutex_unlock(&ch->sync_lock);
 
 	/* release channel binding to the as_share */
 	if (ch_vm->as_share)
@@ -1634,11 +1639,13 @@ static void gk20a_channel_clean_up_jobs(struct work_struct *work)
 	 * the sync resource
 	 */
 	if (list_empty(&c->jobs)) {
+		mutex_lock(&c->sync_lock);
 		if (c->sync && platform->aggressive_sync_destroy &&
 			  gk20a_fence_is_expired(c->last_submit.post_fence)) {
 			c->sync->destroy(c->sync);
 			c->sync = NULL;
 		}
+		mutex_unlock(&c->sync_lock);
 	}
 	mutex_unlock(&c->jobs_lock);
 	mutex_unlock(&c->submit_lock);
@@ -1781,6 +1788,7 @@ int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 
 	mutex_lock(&c->submit_lock);
 
+	mutex_lock(&c->sync_lock);
 	if (!c->sync) {
 		c->sync = gk20a_channel_sync_create(c);
 		if (!c->sync) {
@@ -1793,6 +1801,7 @@ int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 		if (err)
 			return err;
 	}
+	mutex_unlock(&c->sync_lock);
 
 	/*
 	 * optionally insert syncpt wait in the beginning of gpfifo submission
@@ -1999,6 +2008,7 @@ int gk20a_init_channel_support(struct gk20a *g, u32 chid)
 	mutex_init(&c->submit_lock);
 	INIT_DELAYED_WORK(&c->clean_up.wq, gk20a_channel_clean_up_jobs);
 	mutex_init(&c->clean_up.lock);
+	mutex_init(&c->sync_lock);
 	INIT_LIST_HEAD(&c->jobs);
 #if defined(CONFIG_GK20A_CYCLE_STATS)
 	mutex_init(&c->cyclestate.cyclestate_buffer_mutex);
