@@ -7,6 +7,9 @@ GCOV_PROFILE := y
 ccflags-y += -Werror
 obj-$(CONFIG_AK8975) += ak8975.o
 obj-$(CONFIG_NVI_AK89XX) += nvi-ak89xx.o
+ifdef CONFIG_NVI_MPU
+	CFLAGS_nvi_ak89xx.o += -DAKM_NVI_MPU_SUPPORT=1
+endif
 nvi-ak89xx-objs += nvi_ak89xx.o
 obj-$(CONFIG_HID_SENSOR_MAGNETOMETER_3D) += hid-sensor-magn-3d.o
 

@@ -23,7 +23,6 @@
 #include <linux/fs.h>
 #include <asm/uaccess.h>
 #include <linux/delay.h>
-#include <linux/ktime.h>
 #include <linux/string.h>
 #include <linux/regulator/consumer.h>
 #include <linux/workqueue.h>
@@ -108,13 +107,6 @@ struct bh1730_state {
 	int always_on;
 };
 
-static s64 bh1730_get_time_ns(void)
-{
-	struct timespec ts;
-
-	ktime_get_ts(&ts);
-	return timespec_to_ns(&ts);
-}
 
 static int bh1730_i2c_wr(struct bh1730_state *st, u8 reg, u8 val)
 {
@@ -281,7 +273,7 @@ static int bh1730_rd(struct bh1730_state *st)
 	if (ret)
 		return ret;
 
-	ts = bh1730_get_time_ns();
+	ts = nvs_timestamp();
 	nl->hw = bh1730_get_lux(st, hw);
 	nl->timestamp = ts;
 	nvs_light_read(nl);
