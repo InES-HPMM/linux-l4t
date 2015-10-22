@@ -67,7 +67,7 @@
 	pmc@7000e400 {
 		status = "okay";
 		nvidia,invert-interrupt;
-		nvidia,cpu-suspend-freq = <204000>;
+		nvidia,cpu-suspend-freq = <1044000>;
 	};
 
 	xusb@70090000 {
