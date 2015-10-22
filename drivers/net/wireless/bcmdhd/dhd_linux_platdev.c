@@ -216,7 +216,7 @@ int wifi_platform_bus_enumerate(wifi_adapter_info_t *adapter, bool device_presen
 
 }
 
-#define ARDBEG_WIFI_MAC_ADDR_FILE	"/mnt/factory/wifi/wifi_mac.txt"
+#define ARDBEG_WIFI_MAC_ADDR_FILE	"/factory/fct/wifi/wifi_mac.txt"
 static int _wifi_get_mac_addr_file(unsigned char *buf)
 {
 	struct file *fp;

@@ -1763,7 +1763,7 @@ int wifi_set_power(int on, unsigned long msec)
 	return ret;
 }
 
-#define ARDBEG_WIFI_MAC_ADDR_FILE	"/mnt/factory/wifi/wifi_mac.txt"
+#define ARDBEG_WIFI_MAC_ADDR_FILE	"/factory/fct/wifi/wifi_mac.txt"
 static int _wifi_get_mac_addr_file(unsigned char *buf)
 {
 	struct file *fp;
