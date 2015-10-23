@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Colin Cross <ccross@android.com>
  *
- * Copyright (C) 2010-2014 NVIDIA Corporation.  All rights reserved.
+ * Copyright (C) 2010-2015 NVIDIA Corporation.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1851,7 +1851,7 @@ static void tegra_i2c_shutdown(struct platform_device *pdev)
 {
 	struct tegra_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
 
-	dev_info(i2c_dev->dev, "Bus is shutdown down..\n");
+	dev_info(i2c_dev->dev, "Shutting down\n");
 	i2c_shutdown_adapter(&i2c_dev->adapter);
 	i2c_dev->is_shutdown = true;
 }
