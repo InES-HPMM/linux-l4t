@@ -42,6 +42,8 @@
 
 #define NVMAP_HANDLE_PARAM_SIZE 1
 
+#define NVGPU_BEGIN_AGGRESSIVE_SYNC_DESTROY_LIMIT	64	/* channels */
+
 static struct channel_gk20a *allocate_channel(struct fifo_gk20a *f);
 static void free_channel(struct fifo_gk20a *f, struct channel_gk20a *c);
 
@@ -65,6 +67,7 @@ static void gk20a_free_error_notifiers(struct channel_gk20a *ch);
 static struct channel_gk20a *allocate_channel(struct fifo_gk20a *f)
 {
 	struct channel_gk20a *ch = NULL;
+	struct gk20a_platform *platform = gk20a_get_platform(f->g->dev);
 
 	mutex_lock(&f->free_chs_mutex);
 	if (!list_empty(&f->free_chs)) {
@@ -73,8 +76,12 @@ static struct channel_gk20a *allocate_channel(struct fifo_gk20a *f)
 		list_del(&ch->free_chs);
 		WARN_ON(atomic_read(&ch->ref_count));
 		WARN_ON(ch->referenceable);
+		f->used_channels++;
 	}
 	mutex_unlock(&f->free_chs_mutex);
+
+	if (f->used_channels > NVGPU_BEGIN_AGGRESSIVE_SYNC_DESTROY_LIMIT)
+		platform->aggressive_sync_destroy = true;
 
 	return ch;
 }
@@ -82,12 +89,18 @@ static struct channel_gk20a *allocate_channel(struct fifo_gk20a *f)
 static void free_channel(struct fifo_gk20a *f,
 		struct channel_gk20a *ch)
 {
+	struct gk20a_platform *platform = gk20a_get_platform(f->g->dev);
+
 	trace_gk20a_release_used_channel(ch->hw_chid);
 	/* refcount is zero here and channel is in a freed/dead state */
 	mutex_lock(&f->free_chs_mutex);
 	/* add to head to increase visibility of timing-related bugs */
 	list_add(&ch->free_chs, &f->free_chs);
+	f->used_channels--;
 	mutex_unlock(&f->free_chs_mutex);
+
+	if (f->used_channels < NVGPU_BEGIN_AGGRESSIVE_SYNC_DESTROY_LIMIT)
+		platform->aggressive_sync_destroy = false;
 }
 
 int channel_gk20a_commit_va(struct channel_gk20a *c)
@@ -295,6 +308,7 @@ static void channel_gk20a_bind(struct channel_gk20a *ch_gk20a)
 void channel_gk20a_unbind(struct channel_gk20a *ch_gk20a)
 {
 	struct gk20a *g = ch_gk20a->g;
+	struct gk20a_platform *platform = gk20a_get_platform(g->dev);
 
 	gk20a_dbg_fn("");
 
@@ -310,7 +324,7 @@ void channel_gk20a_unbind(struct channel_gk20a *ch_gk20a)
 	 * resource at this point
 	 * if not, then it will be destroyed at channel_free()
 	 */
-	if (ch_gk20a->sync && ch_gk20a->sync->aggressive_destroy) {
+	if (ch_gk20a->sync && platform->aggressive_sync_destroy) {
 		ch_gk20a->sync->destroy(ch_gk20a->sync);
 		ch_gk20a->sync = NULL;
 	}
@@ -1603,6 +1617,7 @@ void gk20a_channel_update(struct channel_gk20a *c, int nr_completed)
 {
 	struct vm_gk20a *vm = c->vm;
 	struct channel_gk20a_job *job, *n;
+	struct gk20a_platform *platform = gk20a_get_platform(c->g->dev);
 
 	trace_gk20a_channel_update(c->hw_chid);
 
@@ -1646,7 +1661,7 @@ void gk20a_channel_update(struct channel_gk20a *c, int nr_completed)
 	 * the sync resource
 	 */
 	if (list_empty(&c->jobs)) {
-		if (c->sync && c->sync->aggressive_destroy &&
+		if (c->sync && platform->aggressive_sync_destroy &&
 			  gk20a_fence_is_expired(c->last_submit.post_fence)) {
 			c->sync->destroy(c->sync);
 			c->sync = NULL;
