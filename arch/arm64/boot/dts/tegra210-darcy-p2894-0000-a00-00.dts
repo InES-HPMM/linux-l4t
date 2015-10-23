@@ -63,4 +63,8 @@
 	wifi-tuning {
 		sku = "darcy_a00";
 	};
+
+	chosen {
+		nvidia,tegra-darcy-sku;
+	};
 };
