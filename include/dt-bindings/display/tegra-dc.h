@@ -54,6 +54,11 @@
 /* Makes hotplug GPIO a LP0 wakeup source */
 #define TEGRA_DC_OUT_HOTPLUG_WAKE_LP0		(1 << 7)
 
+/* bots for tegra_dc_out.hdcp_policy */
+#define TEGRA_DC_HDCP_POLICY_ALWAYS_ON	0
+#define TEGRA_DC_HDCP_POLICY_ON_DEMAND	1
+#define TEGRA_DC_HDCP_POLICY_ALWAYS_OFF	2
+
 /* tegra_dc_out.align */
 #define TEGRA_DC_ALIGN_MSB		0
 #define TEGRA_DC_ALIGN_LSB		1

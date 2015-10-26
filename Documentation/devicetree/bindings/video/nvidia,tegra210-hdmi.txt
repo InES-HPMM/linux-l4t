@@ -74,6 +74,8 @@ NVIDIA TEGRA210 High Definition Multimedia Interface
    TEGRA_DC_OUT_N_SHOT_MODE, TEGRA_DC_OUT_ONE_SHOT_LP_MODE,
    TEGRA_DC_OUT_INITIALIZED_MODE and TEGRA_DC_OUT_HOTPLUG_WAKE_LP0.
    If several items are written, bitwise OR is operated for them, internally.
+ - nvidia,out-hdcp-policy: One of TEGRA_DC_OUT_HDCP_POLICY_ALWAYS_ON,
+   TEGRA_DC_OUT_HDCP_POLICY_ALWAYS_OFF
  - nvidia,out-parent-clk: Parent clk for display controller.
  - nvidia,out-max-pixclk: Maximum pixel clock in pico-seconds.
  - nvidia,dither: Dither option. Should be TEGRA_DC_UNDEFINED_DITHER or

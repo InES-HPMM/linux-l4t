@@ -674,6 +674,7 @@ struct tegra_vrr {
 struct tegra_dc_out {
 	int				type;
 	unsigned			flags;
+	unsigned			hdcp_policy;
 
 	/* size in mm */
 	unsigned			h_size;
@@ -741,6 +742,10 @@ struct tegra_dc_out {
 /* Makes hotplug GPIO a LP0 wakeup source */
 #define TEGRA_DC_OUT_HOTPLUG_WAKE_LP0		(1 << 7)
 #define TEGRA_DC_OUT_NVSR_MODE			(1 << 8)
+
+#define TEGRA_DC_HDCP_POLICY_ALWAYS_ON	0
+#define TEGRA_DC_HDCP_POLICY_ON_DEMAND	1
+#define TEGRA_DC_HDCP_POLICY_ALWAYS_OFF	2
 
 #define TEGRA_DC_ALIGN_MSB		0
 #define TEGRA_DC_ALIGN_LSB		1

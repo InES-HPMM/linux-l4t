@@ -84,6 +84,7 @@ struct tegra_nvhdcp_packet {
 /* parameters to TEGRAIO_NVHDCP_SET_POLICY */
 #define TEGRA_NVHDCP_POLICY_ON_DEMAND	0
 #define TEGRA_NVHDCP_POLICY_ALWAYS_ON	1
+#define TEGRA_NVHDCP_POLICY_ALWAYS_OFF	2
 
 /* ioctls */
 #define TEGRAIO_NVHDCP_ON		_IO('F', 0x70)
