@@ -390,4 +390,24 @@
 	serial@70006300 {
 		dma-names = "tx";
 	};
+
+	i2c@7000c400 {
+		ina3221x: ina3221x@40 {
+			channel@0 {
+				reg = <0x0>;
+				ti,rail-name = "VDD_NOOP";
+				ti,shunt-resistor-mohm = <5>;
+			};
+			channel@1 {
+				reg = <0x1>;
+				ti,rail-name = "VDD_IO";
+				ti,shunt-resistor-mohm = <5>;
+			};
+			channel@2 {
+				reg = <0x2>;
+				ti,rail-name = "VDD_SYS";
+				ti,shunt-resistor-mohm = <5>;
+			};
+		};
+	};
 };
