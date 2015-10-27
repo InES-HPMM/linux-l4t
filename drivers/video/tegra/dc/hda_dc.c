@@ -385,6 +385,7 @@ static void tegra_dc_hda_get_clocks(void)
 		}
 		clk_set_parent(hda->maud_clk, hda->pll_p_clk);
 	}
+	return;
 
 err_get_clk:
 	if (!IS_ERR_OR_NULL(hda->hda_clk))
