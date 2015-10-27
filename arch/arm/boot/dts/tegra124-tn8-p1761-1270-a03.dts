@@ -191,6 +191,7 @@
 			 *  /backlight/panel-a-wuxga-8-0-bl.
 			 */
 			default-brightness = <125>;
+			default-charge-brightness = <53>;
 		};
 	};
 
