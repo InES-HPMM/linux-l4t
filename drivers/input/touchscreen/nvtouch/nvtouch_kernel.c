@@ -297,7 +297,8 @@ static ssize_t sysfs_driver_mode_set(struct device *dev,
 
 	/* send last data frame to userspace to notify about
 	 * driver mode changes */
-	if (nvtouch_gpfifo_empty(&g_state_kernel.sample_gpfifo)) {
+	if (g_state_kernel.is_initialized &&
+		nvtouch_gpfifo_empty(&g_state_kernel.sample_gpfifo)) {
 		g_state_kernel.sample_gpfifo.getp--;
 		wake_up(&g_state_kernel.sample_gpfifo.data_waitqueue);
 	}
