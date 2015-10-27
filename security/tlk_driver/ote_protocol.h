@@ -52,6 +52,13 @@ extern void tlk_fiq_glue_aarch64(void);
 uint32_t send_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2);
 uint32_t _tlk_generic_smc(uint32_t arg0, uintptr_t arg1, uintptr_t arg2);
 void tlk_irq_handler(void);
+struct te_oper_param *te_get_free_params(struct tlk_device *dev,
+	unsigned int nparams);
+void te_put_free_params(struct tlk_device *dev,
+	struct te_oper_param *params, uint32_t nparams);
+struct te_cmd_req_desc *te_get_free_cmd_desc(struct tlk_device *dev);
+void te_put_used_cmd_desc(struct tlk_device *dev,
+	struct te_cmd_req_desc *cmd_desc);
 
 /* errors returned by secure world in reponse to SMC calls */
 enum {
@@ -141,6 +148,11 @@ enum {
 	TE_PARAM_TYPE_PERSIST_MEM_RW	= 0x101,
 };
 
+enum {
+       TE_MEM_TYPE_NS_USER	= 0x0,
+       TE_MEM_TYPE_NS_KERNEL	= 0x1,
+};
+
 struct te_oper_param {
 	uint32_t index;
 	uint32_t type;
@@ -151,6 +163,7 @@ struct te_oper_param {
 		struct {
 			uint64_t base;
 			uint32_t len;
+			uint32_t type;
 		} Mem;
 	} u;
 	uint64_t next_ptr_user;
