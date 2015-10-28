@@ -133,6 +133,14 @@ tegra_sysfs_histogram_scan_store(struct device *dev,
 	struct device_attribute *attr,
 	const char *buf, size_t count);
 
+ssize_t
+tegra_debugfs_histogram_scan_read(struct file *filp,
+	char __user *buff, size_t count, loff_t *offp);
+
+ssize_t
+tegra_debugfs_histogram_scan_write(struct file *filp,
+	const char __user *buff, size_t count, loff_t *offp);
+
 /* stat histogram */
 
 void

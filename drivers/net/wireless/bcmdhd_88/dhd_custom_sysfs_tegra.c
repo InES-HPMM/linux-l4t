@@ -63,6 +63,11 @@ static struct attribute_group tegra_sysfs_group_histogram = {
 
 static struct dentry *tegra_debugfs_root;
 
+static struct file_operations tegra_debugfs_histogram_scan_fops = {
+	.read = tegra_debugfs_histogram_scan_read,
+	.write = tegra_debugfs_histogram_scan_write,
+};
+
 static struct file_operations tegra_debugfs_histogram_tcpdump_fops = {
 	.read = tegra_debugfs_histogram_tcpdump_read,
 	.write = tegra_debugfs_histogram_tcpdump_write,
@@ -86,6 +91,9 @@ tegra_sysfs_register(struct device *dev)
 	/* create debugfs */
 	tegra_debugfs_root = debugfs_create_dir("bcmdhd_histogram", NULL);
 	if (tegra_debugfs_root) {
+		debugfs_create_file("scan", S_IRUGO | S_IWUGO,
+			tegra_debugfs_root, (void *) 0,
+			&tegra_debugfs_histogram_scan_fops);
 		debugfs_create_file("tcpdump", S_IRUGO | S_IWUGO,
 			tegra_debugfs_root, (void *) 0,
 			&tegra_debugfs_histogram_tcpdump_fops);
