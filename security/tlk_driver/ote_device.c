@@ -104,7 +104,7 @@ error:
 	return ret;
 }
 
-static struct te_oper_param *te_get_free_params(struct tlk_device *dev,
+struct te_oper_param *te_get_free_params(struct tlk_device *dev,
 	unsigned int nparams)
 {
 	struct te_oper_param *params = NULL;
@@ -120,7 +120,7 @@ static struct te_oper_param *te_get_free_params(struct tlk_device *dev,
 	return params;
 }
 
-static void te_put_free_params(struct tlk_device *dev,
+void te_put_free_params(struct tlk_device *dev,
 	struct te_oper_param *params, uint32_t nparams)
 {
 	int idx, nbits;
@@ -130,7 +130,7 @@ static void te_put_free_params(struct tlk_device *dev,
 	bitmap_release_region(dev->param_bitmap, idx, nbits);
 }
 
-static struct te_cmd_req_desc *te_get_free_cmd_desc(struct tlk_device *dev)
+struct te_cmd_req_desc *te_get_free_cmd_desc(struct tlk_device *dev)
 {
 	struct te_cmd_req_desc *cmd_desc = NULL;
 
@@ -143,7 +143,7 @@ static struct te_cmd_req_desc *te_get_free_cmd_desc(struct tlk_device *dev)
 	return cmd_desc;
 }
 
-static void te_put_used_cmd_desc(struct tlk_device *dev,
+void te_put_used_cmd_desc(struct tlk_device *dev,
 	struct te_cmd_req_desc *cmd_desc)
 {
 	struct te_cmd_req_desc *param_desc, *tmp_param_desc;
