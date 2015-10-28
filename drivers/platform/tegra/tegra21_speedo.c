@@ -104,6 +104,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 {
 	bool shield_sku = false;
 	bool vcm31_sku = false;
+	bool darcy_sku = false;
 	bool a02 = rev == TEGRA_REVISION_A02;
 
 #ifdef CONFIG_OF
@@ -111,6 +112,10 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 					   "nvidia,tegra-shield-sku");
 	vcm31_sku = of_property_read_bool(of_chosen,
 					       "nvidia,t210-vcm31-sku");
+	darcy_sku = of_property_read_bool(of_chosen,
+						"nvidia,tegra-darcy-sku");
+	if (darcy_sku)
+		sku = 0x87;
 #endif
 	switch (sku) {
 	case 0x13:
@@ -127,7 +132,6 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 	case 0x01: /* Engg sku */
 	case 0x07:
 	case 0x17:
-	case 0x87:
 		if (!vcm31_sku || (sku != 0x17)) {
 			if (a02) {
 				cpu_speedo_id = shield_sku ? 2 : 1;
@@ -158,6 +162,16 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 			cpu_speedo_id = 3;
 			soc_speedo_id = 0;
 			gpu_speedo_id = 3;
+			threshold_index = 0;
+			core_min_mv = 800;
+			break;
+		}
+		/* fall thru for a01 part and Darcy*/
+	case 0x87:
+		if (a02) {
+			cpu_speedo_id = 6;
+			soc_speedo_id = 0;
+			gpu_speedo_id = 2;
 			threshold_index = 0;
 			core_min_mv = 800;
 			break;

@@ -194,6 +194,38 @@ static struct dvfs_rail *tegra21_dvfs_rails[] = {
 
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	{
+		.speedo_id = 6,
+		.process_id = 0,
+		.dfll_tune_data  = {
+			.tune0		= 0xFFEAD0FF,
+			.tune1		= 0x020091D9,
+			.droop_rate_min = 1000000,
+			.min_millivolts = 870,
+		},
+		.pll_tune_data = {
+			.min_millivolts = 950,
+		},
+		.max_mv = 1150,
+		.max_freq = 2014500,
+		CPU_CVB_TABLE,
+	},
+	{
+		.speedo_id = 6,
+		.process_id = 1,
+		.dfll_tune_data  = {
+			.tune0		= 0xFFEAD0FF,
+			.tune1		= 0x025501D0,
+			.droop_rate_min = 1000000,
+			.min_millivolts = 870,
+		},
+		.pll_tune_data = {
+			.min_millivolts = 950,
+		},
+		.max_mv = 1150,
+		.max_freq = 2014500,
+		CPU_CVB_TABLE,
+	},
+	{
 		.speedo_id = 5,
 		.process_id = 0,
 		.dfll_tune_data  = {
