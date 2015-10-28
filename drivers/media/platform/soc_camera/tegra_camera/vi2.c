@@ -15,7 +15,9 @@
  */
 
 #include <linux/delay.h>
+#include <linux/freezer.h>
 #include <linux/kernel.h>
+#include <linux/kthread.h>
 #include <linux/platform_device.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -364,8 +366,8 @@ struct vi2_channel {
 	struct list_head		capture;
 	struct vb2_buffer		*active;
 
-	struct work_struct		work;
-	struct mutex			work_mutex;
+	struct task_struct		*kthread_capture;
+	wait_queue_head_t		wait;
 
 	int				port;
 	int				lanes;
@@ -603,32 +605,36 @@ static u32 vi2_cal_regs_base(u32 regs_base, int port)
 
 static int vi2_capture_frame(struct vi2_channel *chan);
 
-static void vi2_channel_work(struct work_struct *work)
+static int vi2_channel_kthread_capture(void *data)
 {
-	struct vi2_channel *chan =
-		container_of(work, struct vi2_channel, work);
+	struct vi2_channel *chan = data;
 	struct tegra_camera_buffer *buf;
 
 	while (1) {
-		mutex_lock(&chan->work_mutex);
+		try_to_freeze();
 
-		spin_lock_irq(&chan->videobuf_queue_lock);
+		wait_event_interruptible(chan->wait,
+				!list_empty(&chan->capture) ||
+				kthread_should_stop());
+		if (kthread_should_stop())
+			break;
+
+		spin_lock(&chan->videobuf_queue_lock);
 		if (list_empty(&chan->capture)) {
 			chan->active = NULL;
-			spin_unlock_irq(&chan->videobuf_queue_lock);
-			mutex_unlock(&chan->work_mutex);
-			return;
+			spin_unlock(&chan->videobuf_queue_lock);
+			continue;
 		}
 
 		buf = list_entry(chan->capture.next, struct tegra_camera_buffer,
 				queue);
 		chan->active = &buf->vb;
-		spin_unlock_irq(&chan->videobuf_queue_lock);
+		spin_unlock(&chan->videobuf_queue_lock);
 
 		vi2_capture_frame(chan);
-
-		mutex_unlock(&chan->work_mutex);
 	}
+
+	return 0;
 }
 
 static s32 vi2_bytes_per_line(u32 width, const struct soc_mbus_pixelfmt *mf);
@@ -641,9 +647,8 @@ static int vi2_channel_init(struct vi2_camera *vi2_cam,
 	struct chan_regs_config *regs = &chan->regs;
 
 	INIT_LIST_HEAD(&chan->capture);
-	INIT_WORK(&chan->work, vi2_channel_work);
 	spin_lock_init(&chan->videobuf_queue_lock);
-	mutex_init(&chan->work_mutex);
+	init_waitqueue_head(&chan->wait);
 
 	chan->dpd = &vi2_io_dpd[port];
 	chan->vi2_cam = vi2_cam;
@@ -724,7 +729,6 @@ static void vi2_channel_deinit(struct vi2_camera *vi2_cam,
 	chan->sof = 0;
 	tegra_io_dpd_enable(chan->dpd);
 	vi2_clock_stop(chan->clks, chan->num_clks);
-	cancel_work_sync(&chan->work);
 }
 
 static int vi2_camera_activate(struct vi2_camera *vi2_cam)
@@ -916,12 +920,12 @@ static void vi2_videobuf_queue(struct tegra_camera *cam,
 		chan->height = icd->user_height;
 	}
 
-	spin_lock_irq(&chan->videobuf_queue_lock);
+	spin_lock(&chan->videobuf_queue_lock);
 	list_add_tail(&buf->queue, &chan->capture);
-	spin_unlock_irq(&chan->videobuf_queue_lock);
+	spin_unlock(&chan->videobuf_queue_lock);
 
-	if (vb2_is_streaming(buf->vb.vb2_queue))
-		schedule_work(&chan->work);
+	/* Wait up kthread for capture */
+	wake_up_interruptible(&chan->wait);
 }
 
 static void vi2_videobuf_release(struct tegra_camera *cam,
@@ -932,9 +936,7 @@ static void vi2_videobuf_release(struct tegra_camera *cam,
 	int port = icd_to_port(icd);
 	struct vi2_channel *chan = &vi2_cam->channels[port];
 
-	mutex_lock(&chan->work_mutex);
-
-	spin_lock_irq(&chan->videobuf_queue_lock);
+	spin_lock(&chan->videobuf_queue_lock);
 
 	if (chan->active == &buf->vb)
 		chan->active = NULL;
@@ -946,9 +948,7 @@ static void vi2_videobuf_release(struct tegra_camera *cam,
 	if (buf->queue.next)
 		list_del_init(&buf->queue);
 
-	spin_unlock_irq(&chan->videobuf_queue_lock);
-
-	mutex_unlock(&chan->work_mutex);
+	spin_unlock(&chan->videobuf_queue_lock);
 }
 
 static int vi2_start_streaming(struct tegra_camera *cam,
@@ -959,7 +959,9 @@ static int vi2_start_streaming(struct tegra_camera *cam,
 	int port = icd_to_port(icd);
 	struct vi2_channel *chan = &vi2_cam->channels[port];
 
-	schedule_work(&chan->work);
+	/* Start kthread to capture data to buffer */
+	chan->kthread_capture = kthread_run(vi2_channel_kthread_capture, chan,
+					    "vi2_channel:%d", port);
 
 	return 0;
 }
@@ -974,7 +976,10 @@ static int vi2_stop_streaming(struct tegra_camera *cam,
 	u32 val;
 	int err = 0;
 
-	mutex_lock(&chan->work_mutex);
+	/* Stop the kthread for capture */
+	kthread_stop(chan->kthread_capture);
+	chan->kthread_capture = NULL;
+
 	if (!nvhost_syncpt_read_ext_check(cam->pdev, chan->syncpt_id, &val))
 		chan->syncpt_thresh = nvhost_syncpt_incr_max_ext(cam->pdev,
 					chan->syncpt_id, 1);
@@ -999,7 +1004,6 @@ static int vi2_stop_streaming(struct tegra_camera *cam,
 			NULL);
 	csi_pp_regs_write(vi2_cam, chan, TEGRA_CSI_PIXEL_STREAM_PP_COMMAND,
 			  0xf002);
-	mutex_unlock(&chan->work_mutex);
 
 	return err;
 }
@@ -1391,7 +1395,7 @@ static int vi2_capture_frame(struct vi2_channel *chan)
 		vi2_camera_activate(vi2_cam);
 	}
 
-	spin_lock_irq(&chan->videobuf_queue_lock);
+	spin_lock(&chan->videobuf_queue_lock);
 
 	do_gettimeofday(&vb->v4l2_buf.timestamp);
 	vb->v4l2_buf.sequence = chan->sequence++;
@@ -1399,7 +1403,7 @@ static int vi2_capture_frame(struct vi2_channel *chan)
 
 	list_del_init(&buf->queue);
 
-	spin_unlock_irq(&chan->videobuf_queue_lock);
+	spin_unlock(&chan->videobuf_queue_lock);
 
 	return err;
 }
