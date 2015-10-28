@@ -57,6 +57,7 @@ static int __init update_target_node_from_overlay(
 	struct property *prop;
 	struct property *tprop;
 	struct property *new_prop;
+	const char *pval;
 	int lenp = 0;
 	int ret;
 
@@ -66,6 +67,17 @@ static int __init update_target_node_from_overlay(
 			!strcmp(prop->name, "phandle") ||
 			!strcmp(prop->name, "linux,phandle"))
 				continue;
+		if (!strcmp(prop->name, "delete-target-property")) {
+			if (prop->length <= 0)
+				continue;
+			pval = (const char *)prop->value;
+			pr_info("Removing Prop %s from target %s\n",
+				pval, target->full_name);
+			tprop = of_find_property(target, pval, &lenp);
+			if (tprop)
+				of_remove_property(target, tprop);
+			continue;
+		}
 
 		new_prop = __of_copy_property(prop, GFP_KERNEL);
 		if (!new_prop) {
