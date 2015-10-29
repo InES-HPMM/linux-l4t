@@ -116,6 +116,11 @@ static void of_get_regulation_constraints(struct device_node *np,
 	if (constraints->min_uA != constraints->max_uA)
 		constraints->valid_ops_mask |= REGULATOR_CHANGE_CURRENT;
 
+	constraints->enable_active_discharge = of_property_read_bool(np,
+					"regulator-enable-active-discharge");
+	constraints->disable_active_discharge = of_property_read_bool(np,
+					"regulator-disable-active-discharge");
+
 	if (of_find_property(np, "regulator-boot-on", NULL))
 		constraints->boot_on = true;
 

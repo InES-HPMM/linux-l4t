@@ -21,6 +21,11 @@ Optional properties:
 -regulator-disable-on-shutdown: Disable regulator on system shutdown.
 -regulator-disable-on-suspend: Disable regulator on system suspend. This is
  applicable for always ON rail.
+-regulator-enable-active-discharge: Boolean, to enable active discharge.
+-regulator-disable-active-discharge: Boolean, to disable active discharge.
+ Both active discharge enable and disable can not be possible together.
+ Also absence of these properties will leave the configuration as POR default.
+
 
 Deprecated properties:
 - regulator-compatible: If a regulator chip contains multiple

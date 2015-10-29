@@ -87,6 +87,12 @@ struct regulator_state {
  *           started.  If the regulator is not enabled by the hardware or
  *           bootloader then it will be enabled when the constraints are
  *           applied.
+ * @enable_active_discharge: Enable active discharge.
+ * @disable_active_discharge: Disable active discharge.
+ *	    Both enable_active_discharge and disable_active_discharge can not
+ *	    be set together. if both are flase then POR default will be the
+ *	    option.
+ *
  * @apply_uV: Apply the voltage constraint when initialising.
  *
  * @input_uV: Input voltage for regulator when supplied by another regulator.
@@ -159,6 +165,8 @@ struct regulation_constraints {
 	unsigned disable_parent_after_enable:1; /* SW based overcurrent protection */
 	unsigned disable_on_suspend:1; /* Disable rail on suspend */
 	unsigned disable_on_shutdown:1; /* Disable rail on shutdown */
+	unsigned enable_active_discharge:1;
+	unsigned disable_active_discharge:1;
 };
 
 /**
