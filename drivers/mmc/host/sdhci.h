@@ -395,6 +395,7 @@ struct sdhci_ops {
 	int	(*get_max_tuning_loop_counter)(struct sdhci_host *sdhci);
 	void	(*config_tap_delay)(struct sdhci_host *host, u8 option);
 	bool	(*is_tuning_done)(struct sdhci_host *sdhci);
+	bool	(*skip_register_dump)(struct sdhci_host *sdhci);
 	int	(*validate_sd2_0)(struct sdhci_host *sdhci);
 	void	(*get_max_pio_transfer_limits)(struct sdhci_host *sdhci);
 };

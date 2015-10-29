@@ -5140,6 +5140,44 @@ static void tegra_sdhci_set_max_pio_transfer_limits(struct sdhci_host *sdhci)
 	}
 }
 
+static bool sdhci_tegra_skip_register_dump(struct sdhci_host *host)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
+	unsigned int arg;
+	unsigned short cmd;
+	int i;
+	const unsigned short kso_cmd52_pattern = 0x341a;
+	const unsigned int arg_kso_patterns[] = {
+		0x92003e01,
+		0x12003e00
+	};
+
+	/*
+	 * Case: "bcm_sdio_suppress_kso_dump"
+	 * For KSO sleep mode error pattern in host register dump corresponding
+	 * to CMD52 case would be either of the following:
+		1)
+			Argument: 0x92003e01 (Write)
+			Cmd:     0x0000341a (CMD52 indicated by 0x34)
+		2)
+			Argument: 0x12003e00 (Read)
+			Cmd:     0x0000341a (CMD52 indicated by 0x34)
+	 *
+	 */
+	if (plat->bcm_sdio_suppress_kso_dump) {
+		arg = sdhci_readl(host, SDHCI_ARGUMENT);
+		cmd = sdhci_readw(host, SDHCI_COMMAND);
+		if (cmd == kso_cmd52_pattern) {
+			for (i = 0; i < ARRAY_SIZE(arg_kso_patterns); i++)
+				if (arg_kso_patterns[i] == arg)
+					return true;
+		}
+	}
+	return false;
+}
+
 static const struct sdhci_ops tegra_sdhci_ops = {
 	.get_ro     = tegra_sdhci_get_ro,
 	.get_cd     = tegra_sdhci_get_cd,
@@ -5173,6 +5211,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.config_tap_delay	= tegra_sdhci_config_tap,
 	.is_tuning_done		= tegra_sdhci_is_tuning_done,
 	.get_max_pio_transfer_limits = tegra_sdhci_set_max_pio_transfer_limits,
+	.skip_register_dump	= sdhci_tegra_skip_register_dump,
 };
 
 static struct sdhci_pltfm_data sdhci_tegra11_pdata = {
@@ -5438,6 +5477,9 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 			plat->gpios[i].label = label;
 		}
 	}
+	plat->bcm_sdio_suppress_kso_dump =
+		of_property_read_bool(np, "nvidia,bcm-sdio-suppress-kso-dump");
+
 	return plat;
 }
 

@@ -3264,6 +3264,8 @@ static void sdhci_tuning_timer(unsigned long data)
 
 static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask)
 {
+	bool skip_dump = false;
+
 	BUG_ON(intmask == 0);
 
 	if (!host->cmd) {
@@ -3279,6 +3281,13 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask)
 	} else if (intmask & (SDHCI_INT_CRC | SDHCI_INT_END_BIT |
 			SDHCI_INT_INDEX)) {
 		host->cmd->error = -EILSEQ;
+
+		if (host->ops->skip_register_dump)
+			skip_dump = host->ops->skip_register_dump(host);
+		if (skip_dump &&
+			(intmask & SDHCI_INT_INDEX))
+			goto lbl_suppress_dump;
+
 		sdhci_dumpregs(host);
 		if (intmask & SDHCI_INT_INDEX)
 			pr_err("%s: Command INDEX error, intmask: %x Interface clock = %uHz\n",
@@ -3291,6 +3300,7 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask)
 			mmc_hostname(host->mmc), intmask, host->max_clk);
 	}
 
+lbl_suppress_dump:
 	if (host->cmd->error) {
 		if (MMC_CHECK_CMDQ_MODE(host))
 			tasklet_schedule(&host->finish_cmd_tasklet);
