@@ -362,12 +362,15 @@ struct vi2_channel {
 
 	struct chan_regs_config		regs;
 
-	spinlock_t			videobuf_queue_lock;
 	struct list_head		capture;
-	struct vb2_buffer		*active;
+	spinlock_t			start_lock;
+	struct list_head		done;
+	spinlock_t			done_lock;
 
-	struct task_struct		*kthread_capture;
-	wait_queue_head_t		wait;
+	struct task_struct		*kthread_capture_start;
+	wait_queue_head_t		start_wait;
+	struct task_struct		*kthread_capture_done;
+	wait_queue_head_t		done_wait;
 
 	int				port;
 	int				lanes;
@@ -603,35 +606,71 @@ static u32 vi2_cal_regs_base(u32 regs_base, int port)
 	return regs_base + (port / 2 * 0x800) + (port & 1) * 0x34;
 }
 
-static int vi2_capture_frame(struct vi2_channel *chan);
+static int vi2_channel_capture_frame(struct vi2_channel *chan,
+				     struct tegra_camera_buffer *buf);
 
-static int vi2_channel_kthread_capture(void *data)
+static int vi2_channel_kthread_capture_start(void *data)
 {
 	struct vi2_channel *chan = data;
 	struct tegra_camera_buffer *buf;
 
+	set_freezable();
+
 	while (1) {
 		try_to_freeze();
-
-		wait_event_interruptible(chan->wait,
+		wait_event_interruptible(chan->start_wait,
 				!list_empty(&chan->capture) ||
 				kthread_should_stop());
 		if (kthread_should_stop())
 			break;
 
-		spin_lock(&chan->videobuf_queue_lock);
+		spin_lock(&chan->start_lock);
 		if (list_empty(&chan->capture)) {
-			chan->active = NULL;
-			spin_unlock(&chan->videobuf_queue_lock);
+			spin_unlock(&chan->start_lock);
 			continue;
 		}
 
 		buf = list_entry(chan->capture.next, struct tegra_camera_buffer,
-				queue);
-		chan->active = &buf->vb;
-		spin_unlock(&chan->videobuf_queue_lock);
+				 queue);
+		list_del_init(&buf->queue);
+		spin_unlock(&chan->start_lock);
 
-		vi2_capture_frame(chan);
+		vi2_channel_capture_frame(chan, buf);
+	}
+
+	return 0;
+}
+
+static int vi2_channel_capture_done(struct vi2_channel *chan,
+				    struct tegra_camera_buffer *buf);
+
+static int vi2_channel_kthread_capture_done(void *data)
+{
+	struct vi2_channel *chan = data;
+	struct tegra_camera_buffer *buf;
+
+	set_freezable();
+
+	while (1) {
+		try_to_freeze();
+		wait_event_interruptible(chan->done_wait,
+				!list_empty(&chan->done) ||
+				kthread_should_stop());
+		if (kthread_should_stop() && list_empty(&chan->done))
+			break;
+
+		spin_lock(&chan->done_lock);
+		if (list_empty(&chan->done)) {
+			spin_unlock(&chan->done_lock);
+			continue;
+		}
+
+		buf = list_entry(chan->done.next, struct tegra_camera_buffer,
+				queue);
+		list_del_init(&buf->queue);
+		spin_unlock(&chan->done_lock);
+
+		vi2_channel_capture_done(chan, buf);
 	}
 
 	return 0;
@@ -647,8 +686,11 @@ static int vi2_channel_init(struct vi2_camera *vi2_cam,
 	struct chan_regs_config *regs = &chan->regs;
 
 	INIT_LIST_HEAD(&chan->capture);
-	spin_lock_init(&chan->videobuf_queue_lock);
-	init_waitqueue_head(&chan->wait);
+	INIT_LIST_HEAD(&chan->done);
+	spin_lock_init(&chan->start_lock);
+	spin_lock_init(&chan->done_lock);
+	init_waitqueue_head(&chan->start_wait);
+	init_waitqueue_head(&chan->done_wait);
 
 	chan->dpd = &vi2_io_dpd[port];
 	chan->vi2_cam = vi2_cam;
@@ -920,35 +962,12 @@ static void vi2_videobuf_queue(struct tegra_camera *cam,
 		chan->height = icd->user_height;
 	}
 
-	spin_lock(&chan->videobuf_queue_lock);
+	spin_lock(&chan->start_lock);
 	list_add_tail(&buf->queue, &chan->capture);
-	spin_unlock(&chan->videobuf_queue_lock);
+	spin_unlock(&chan->start_lock);
 
 	/* Wait up kthread for capture */
-	wake_up_interruptible(&chan->wait);
-}
-
-static void vi2_videobuf_release(struct tegra_camera *cam,
-			       struct soc_camera_device *icd,
-			       struct tegra_camera_buffer *buf)
-{
-	struct vi2_camera *vi2_cam = (struct vi2_camera *)cam;
-	int port = icd_to_port(icd);
-	struct vi2_channel *chan = &vi2_cam->channels[port];
-
-	spin_lock(&chan->videobuf_queue_lock);
-
-	if (chan->active == &buf->vb)
-		chan->active = NULL;
-
-	/*
-	 * Doesn't hurt also if the list is empty, but it hurts, if queuing the
-	 * buffer failed, and .buf_init() hasn't been called
-	 */
-	if (buf->queue.next)
-		list_del_init(&buf->queue);
-
-	spin_unlock(&chan->videobuf_queue_lock);
+	wake_up_interruptible(&chan->start_wait);
 }
 
 static int vi2_start_streaming(struct tegra_camera *cam,
@@ -960,8 +979,23 @@ static int vi2_start_streaming(struct tegra_camera *cam,
 	struct vi2_channel *chan = &vi2_cam->channels[port];
 
 	/* Start kthread to capture data to buffer */
-	chan->kthread_capture = kthread_run(vi2_channel_kthread_capture, chan,
-					    "vi2_channel:%d", port);
+	chan->kthread_capture_start = kthread_run(
+					vi2_channel_kthread_capture_start, chan,
+					"vi2_channel:%d_0", port);
+	if (IS_ERR(chan->kthread_capture_start)) {
+		dev_err(&vi2_cam->cam.pdev->dev,
+			"failed to run kthread for capture start!\n");
+		return PTR_ERR(chan->kthread_capture_start);
+	}
+
+	chan->kthread_capture_done = kthread_run(
+					vi2_channel_kthread_capture_done, chan,
+					"vi2_channel:%d_1", port);
+	if (IS_ERR(chan->kthread_capture_done)) {
+		dev_err(&vi2_cam->cam.pdev->dev,
+			"failed to run kthread for capture done!\n");
+		return PTR_ERR(chan->kthread_capture_done);
+	}
 
 	return 0;
 }
@@ -973,39 +1007,13 @@ static int vi2_stop_streaming(struct tegra_camera *cam,
 	int port = icd_to_port(icd);
 	struct vi2_channel *chan = &vi2_cam->channels[port];
 
-	u32 val;
-	int err = 0;
-
 	/* Stop the kthread for capture */
-	kthread_stop(chan->kthread_capture);
-	chan->kthread_capture = NULL;
+	kthread_stop(chan->kthread_capture_start);
+	chan->kthread_capture_start = NULL;
+	kthread_stop(chan->kthread_capture_done);
+	chan->kthread_capture_done = NULL;
 
-	if (!nvhost_syncpt_read_ext_check(cam->pdev, chan->syncpt_id, &val))
-		chan->syncpt_thresh = nvhost_syncpt_incr_max_ext(cam->pdev,
-					chan->syncpt_id, 1);
-
-	/*
-	 * Make sure recieve VI_MW_ACK_DONE of the last frame before
-	 * stop and dequeue buffer, otherwise MC error will shows up
-	 * for the last frame.
-	 */
-	TC_VI_REG_WT(vi2_cam, TEGRA_VI_CFG_VI_INCR_SYNCPT,
-		     vi2_syncpt_cond(VI_MW_ACK_DONE,  chan->port) |
-		     chan->syncpt_id);
-
-	/*
-	 * Ignore error here and just stop pixel parser after waiting,
-	 * even if it's timeout
-	 */
-	err = nvhost_syncpt_wait_timeout_ext(cam->pdev,
-			chan->syncpt_id, chan->syncpt_thresh,
-			TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
-			NULL,
-			NULL);
-	csi_pp_regs_write(vi2_cam, chan, TEGRA_CSI_PIXEL_STREAM_PP_COMMAND,
-			  0xf002);
-
-	return err;
+	return 0;
 }
 
 #define TEGRA_CSI_CILA_PAD_CONFIG0	0x92c
@@ -1100,7 +1108,7 @@ static void vi2_capture_setup_cil_phy_t124(struct vi2_camera *vi2_cam,
 	}
 }
 
-static int vi2_capture_setup(struct vi2_channel *chan)
+static int vi2_channel_capture_setup(struct vi2_channel *chan)
 {
 	struct vi2_camera *vi2_cam = chan->vi2_cam;
 	int port = chan->port;
@@ -1261,11 +1269,10 @@ static int vi2_capture_setup(struct vi2_channel *chan)
 	return 0;
 }
 
-static int vi2_capture_buffer_setup(struct vi2_channel *chan)
+static int vi2_capture_buffer_setup(struct vi2_channel *chan,
+				    struct tegra_camera_buffer *buf)
 {
 	struct vi2_camera *vi2_cam = chan->vi2_cam;
-	struct vb2_buffer *vb = chan->active;
-	struct tegra_camera_buffer *buf = to_tegra_vb(vb);
 
 	switch (chan->fourcc) {
 	case V4L2_PIX_FMT_YUV420:
@@ -1332,14 +1339,13 @@ static void vi2_capture_error_status(struct vi2_channel *chan, int err)
 		"TEGRA_VI_CSI_ERROR_STATUS 0x%08x\n", val);
 }
 
-static int vi2_capture_start(struct vi2_channel *chan)
+static int vi2_channel_capture_start(struct vi2_channel *chan,
+			     struct tegra_camera_buffer *buf)
 {
 	struct vi2_camera *vi2_cam = chan->vi2_cam;
-	struct tegra_camera *cam = &vi2_cam->cam;
 	int err;
-	u32 val;
 
-	err = vi2_capture_buffer_setup(chan);
+	err = vi2_capture_buffer_setup(chan, buf);
 	if (err < 0)
 		return err;
 
@@ -1347,6 +1353,17 @@ static int vi2_capture_start(struct vi2_channel *chan)
 		     vi2_syncpt_cond(VI_FRAME_START,  chan->port) |
 		     chan->syncpt_id);
 	csi_regs_write(vi2_cam, chan, TEGRA_VI_CSI_SINGLE_SHOT, 0x1);
+
+	return err;
+}
+
+
+static int vi2_channel_capture_wait(struct vi2_channel *chan)
+{
+	struct vi2_camera *vi2_cam = chan->vi2_cam;
+	struct tegra_camera *cam = &vi2_cam->cam;
+	int err;
+	u32 val;
 
 	if (!nvhost_syncpt_read_ext_check(cam->pdev, chan->syncpt_id, &val))
 		chan->syncpt_thresh = nvhost_syncpt_incr_max_ext(cam->pdev,
@@ -1368,42 +1385,70 @@ static int vi2_capture_start(struct vi2_channel *chan)
 	return err;
 }
 
-static int vi2_capture_frame(struct vi2_channel *chan)
+static int vi2_channel_capture_frame(struct vi2_channel *chan,
+				     struct tegra_camera_buffer *buf)
+{
+	/* Setup capture registers */
+	vi2_channel_capture_setup(chan);
+
+	/* Start capture */
+	vi2_channel_capture_start(chan, buf);
+
+	/* Move buffer to capture done queue */
+	spin_lock(&chan->done_lock);
+	list_add_tail(&buf->queue, &chan->done);
+	spin_unlock(&chan->done_lock);
+
+	/* Wait up kthread for capture done */
+	wake_up_interruptible(&chan->done_wait);
+
+	return vi2_channel_capture_wait(chan);
+}
+
+
+static int vi2_channel_capture_done(struct vi2_channel *chan,
+				    struct tegra_camera_buffer *buf)
 {
 	struct vi2_camera *vi2_cam = chan->vi2_cam;
-	struct vb2_buffer *vb = chan->active;
-	struct tegra_camera_buffer *buf = to_tegra_vb(vb);
-	int retry = TEGRA_SYNCPT_RETRY_COUNT;
-	int err;
+	struct tegra_camera *cam = &vi2_cam->cam;
+	struct vb2_buffer *vb = &buf->vb;
+	u32 val;
+	int err = 0;
 
-	/* Setup capture registers */
-	vi2_capture_setup(chan);
+	if (!nvhost_syncpt_read_ext_check(cam->pdev, chan->syncpt_id, &val))
+		chan->syncpt_thresh = nvhost_syncpt_incr_max_ext(cam->pdev,
+					chan->syncpt_id, 1);
 
-	while (retry) {
-		err = vi2_capture_start(chan);
-		if (err) {
-			retry--;
-			continue;
-		}
-		break;
-	}
+	/*
+	 * Make sure recieve VI_MW_ACK_DONE of the last frame before
+	 * stop and dequeue buffer, otherwise MC error will shows up
+	 * for the last frame.
+	 */
+	TC_VI_REG_WT(vi2_cam, TEGRA_VI_CFG_VI_INCR_SYNCPT,
+		     vi2_syncpt_cond(VI_MW_ACK_DONE,  chan->port) |
+		     chan->syncpt_id);
 
-	/* Reset hardware for too many errors */
-	if (!retry) {
-		vi2_camera_deactivate(vi2_cam);
-		mdelay(5);
-		vi2_camera_activate(vi2_cam);
-	}
+	/*
+	 * Ignore error here and just stop pixel parser after waiting,
+	 * even if it's timeout
+	 */
+	err = nvhost_syncpt_wait_timeout_ext(cam->pdev,
+			chan->syncpt_id, chan->syncpt_thresh,
+			TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
+			NULL,
+			NULL);
+	if (err)
+		dev_err(&vi2_cam->cam.pdev->dev,
+			"MW_ACK_DONE syncpoint time out!\n");
 
-	spin_lock(&chan->videobuf_queue_lock);
+	csi_pp_regs_write(vi2_cam, chan, TEGRA_CSI_PIXEL_STREAM_PP_COMMAND,
+			  0xf002);
 
+	/* Captured one frame */
 	do_gettimeofday(&vb->v4l2_buf.timestamp);
 	vb->v4l2_buf.sequence = chan->sequence++;
+	vb->v4l2_buf.field = V4L2_FIELD_NONE;
 	vb2_buffer_done(vb, err < 0 ? VB2_BUF_STATE_ERROR : VB2_BUF_STATE_DONE);
-
-	list_del_init(&buf->queue);
-
-	spin_unlock(&chan->videobuf_queue_lock);
 
 	return err;
 }
@@ -1418,7 +1463,6 @@ struct tegra_camera_ops vi2_ops = {
 	.try_mbus_fmt		= vi2_try_mbus_fmt,
 	.s_mbus_fmt		= vi2_s_mbus_fmt,
 	.videobuf_queue		= vi2_videobuf_queue,
-	.videobuf_release	= vi2_videobuf_release,
 	.start_streaming	= vi2_start_streaming,
 	.stop_streaming		= vi2_stop_streaming,
 };
