@@ -101,6 +101,7 @@
 	sdhci@700b0200 { /* SDMMC2 for Wifi */
 		uhs-mask = <0x8>;
 		power-off-rail;
+		nvidia,bcm-sdio-supress-kso-dump;
 		status = "okay";
 	};
 
