@@ -639,6 +639,27 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 		return ret;
 	}
 
+	if (ridata->constraints.enable_active_discharge ||
+		ridata->constraints.disable_active_discharge) {
+		val = 0;
+		if (rinfo->type == MAX77620_REGULATOR_TYPE_SD) {
+			mask = MAX77620_SD_CFG1_ADE_MASK;
+			if (ridata->constraints.enable_active_discharge)
+				val = MAX77620_SD_CFG1_ADE_ENABLE;
+		} else {
+			mask = MAX77620_LDO_CFG2_ADE_MASK;
+			if (ridata->constraints.enable_active_discharge)
+				val = MAX77620_LDO_CFG2_ADE_ENABLE;
+		}
+		ret = max77620_reg_update(parent, MAX77620_PWR_SLAVE,
+				rinfo->cfg_addr, mask, val);
+		if (ret < 0) {
+			dev_err(reg->dev, "Reg 0x%02x update failed: %d\n",
+				rinfo->cfg_addr, ret);
+			return ret;
+		}
+	}
+
 	if (rinfo->type == MAX77620_REGULATOR_TYPE_SD) {
 		int slew_rate;
 		u8 val_u8;
