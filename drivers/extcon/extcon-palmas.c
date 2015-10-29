@@ -359,8 +359,7 @@ static int palmas_usb_probe(struct platform_device *pdev)
 	}
 
 	if (palmas_usb->enable_id_detection) {
-		if (!palmas_usb->enable_id_detect_on_vbus) {
-			status = devm_request_threaded_irq(
+		status = devm_request_threaded_irq(
 					palmas_usb->dev,
 					palmas_usb->id_irq,
 					NULL, palmas_id_irq_handler,
@@ -369,12 +368,11 @@ static int palmas_usb_probe(struct platform_device *pdev)
 					IRQF_ONESHOT |
 					IRQF_EARLY_RESUME,
 					"palmas_usb_id", palmas_usb);
-			if (status < 0) {
-				dev_err(&pdev->dev,
+		if (status < 0) {
+			dev_err(&pdev->dev,
 					"can't get IRQ %d, err %d\n",
 					palmas_usb->id_irq, status);
-				goto fail_extcon;
-			}
+			goto fail_extcon;
 		}
 		status = devm_request_threaded_irq(palmas_usb->dev,
 				palmas_usb->id_otg_irq,
