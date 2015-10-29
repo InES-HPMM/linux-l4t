@@ -1503,20 +1503,24 @@ static void trace_write_pushbuffer_range(struct channel_gk20a *c,
 
 static int gk20a_channel_add_job(struct channel_gk20a *c,
 				 struct gk20a_fence *pre_fence,
-				 struct gk20a_fence *post_fence)
+				 struct gk20a_fence *post_fence,
+				 int skip_buffer_refcounting)
 {
 	struct vm_gk20a *vm = c->vm;
 	struct channel_gk20a_job *job = NULL;
 	struct mapped_buffer_node **mapped_buffers = NULL;
-	int err = 0, num_mapped_buffers;
+	int err = 0, num_mapped_buffers = 0;
 
 	/* job needs reference to this vm (released in channel_update) */
 	gk20a_vm_get(vm);
 
-	err = gk20a_vm_get_buffers(vm, &mapped_buffers, &num_mapped_buffers);
-	if (err) {
-		gk20a_vm_put(vm);
-		return err;
+	if (!skip_buffer_refcounting) {
+		err = gk20a_vm_get_buffers(vm, &mapped_buffers,
+					&num_mapped_buffers);
+		if (err) {
+			gk20a_vm_put(vm);
+			return err;
+		}
 	}
 
 	job = kzalloc(sizeof(*job), GFP_KERNEL);
@@ -1566,7 +1570,8 @@ void gk20a_channel_update(struct channel_gk20a *c, int nr_completed)
 		if (c->sync)
 			c->sync->signal_timeline(c->sync);
 
-		gk20a_vm_put_buffers(vm, job->mapped_buffers,
+		if (job->num_mapped_buffers)
+			gk20a_vm_put_buffers(vm, job->mapped_buffers,
 				job->num_mapped_buffers);
 
 		/* Close the fences (this will unref the semaphores and release
@@ -1625,6 +1630,8 @@ int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 	 * and one for post fence. */
 	const int extra_entries = 2;
 	bool need_wfi = !(flags & NVGPU_SUBMIT_GPFIFO_FLAGS_SUPPRESS_WFI);
+	bool skip_buffer_refcounting = (flags &
+			NVGPU_SUBMIT_GPFIFO_FLAGS_SKIP_BUFFER_REFCOUNTING);
 
 	if (c->has_timedout)
 		return -ETIMEDOUT;
@@ -1820,7 +1827,8 @@ int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 		*fence_out = gk20a_fence_get(post_fence);
 
 	/* TODO! Check for errors... */
-	gk20a_channel_add_job(c, pre_fence, post_fence);
+	gk20a_channel_add_job(c, pre_fence, post_fence,
+				skip_buffer_refcounting);
 
 	c->cmds_pending = true;
 	gk20a_bar1_writel(g,
