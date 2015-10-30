@@ -85,6 +85,7 @@
 					regulator-disable-ramp-delay = <610>;
 					regulator-ramp-delay = <100000>;
 					regulator-ramp-delay-scale = <200>;
+					regulator-disable-active-discharge;
 				};
 
 				ldo5 {
