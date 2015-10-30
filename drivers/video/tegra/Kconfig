@@ -5,15 +5,6 @@ config TEGRA_GRHOST
 	help
 	  Driver for the Tegra graphics host hardware.
 
-config TEGRA_GRHOST_VI
-	depends on TEGRA_GRHOST
-	tristate "Tegra video input host1x client driver"
-	default y
-	help
-	  Driver for the Tegra video input hardware.
-	  To compile this driver as a module, choose M here:
-	  the  module will be called nvhost-vi.
-
 config TEGRA_GRHOST_VII2C
 	depends on TEGRA_GRHOST
 	tristate "Tegra vii2c host1x client driver"

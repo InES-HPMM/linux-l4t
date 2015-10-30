@@ -267,3 +267,12 @@ config VIDEO_ISC
           This is a driver for the ISC
           for controlling power, interrupt and registering
           i2c clients related to image sensor.
+
+config VIDEO_TEGRA_VI
+	depends on TEGRA_GRHOST
+	tristate "Tegra video input host1x client driver"
+	default y
+	help
+	  Driver for the Tegra video input hardware.
+	  To compile this driver as a module, choose M here:
+	  the  module will be called nvhost-vi.

@@ -5,9 +5,11 @@ subdir-ccflags-$(CONFIG_ARM) := -Werror
 # Makefile for the video capture/playback device drivers.
 #
 obj-y				+= cam_dev/
+obj-y				+= vi/
 ccflags-y	+= -Idrivers/video/tegra/camera
 ccflags-y	+= -Idrivers/video/tegra/host
-ccflags-y	+= -Idrivers/video/tegra/host/vi
+ccflags-y	+= -Idrivers/video/tegra/host/isp
+ccflags-y	+= -Idrivers/media/platform/tegra/vi
 ccflags-y	+= -Idrivers/platform/tegra/include
 obj-$(CONFIG_TEGRA_NVAVP)	+= nvavp/
 obj-$(CONFIG_TEGRA_NVAVP_VIRT)	+= nvavp-virt/
