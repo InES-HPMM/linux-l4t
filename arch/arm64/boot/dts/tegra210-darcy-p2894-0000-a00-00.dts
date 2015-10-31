@@ -45,11 +45,6 @@
 		status = "okay";
 	};
 
-        pwm-leds {
-                compatible = "pwm-leds";
-                status = "disabled";
-        };
-
         thermal-zones {
                 AO-therm {
                         status = "okay";
