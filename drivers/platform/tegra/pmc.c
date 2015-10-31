@@ -658,7 +658,7 @@ static int __init tegra_pmc_init(void)
 		prod_list = tegra_prod_get(&tegra_pmc_dev, NULL);
 		if (IS_ERR(prod_list)) {
 			ret = PTR_ERR(prod_list);
-			dev_info(&tegra_pmc_dev, "prod list not found: %d\n",
+			dev_dbg(&tegra_pmc_dev, "prod list not found: %d\n",
 				ret);
 			prod_list = NULL;
 		} else {
