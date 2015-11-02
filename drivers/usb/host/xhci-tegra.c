@@ -4134,8 +4134,8 @@ static int tegra_xhci_hub_control(struct usb_hcd *hcd, u16 type_req,
 
 	ret = xhci_hub_control(hcd, type_req, value, index, buf, length);
 
-	/* power off after port suspend */
 	if ((hcd->speed == HCD_USB2) && (ret == 0)) {
+		/* power off after port suspend */
 		if ((type_req == SetPortFeature) &&
 			(value == USB_PORT_FEAT_SUSPEND))
 			/* We dont suspend the PAD while HNP role swap happens
@@ -4146,6 +4146,26 @@ static int tegra_xhci_hub_control(struct usb_hcd *hcd, u16 type_req,
 			    hcd->self.otg_quick_hnp))) {
 				xusb_utmi_pad_driver_power(port, false);
 			}
+
+		/* power on/off after CSC clear for connect/disconnect event */
+		if ((type_req == ClearPortFeature) &&
+			(value == USB_PORT_FEAT_C_CONNECTION)) {
+			struct xhci_hcd *xhci = hcd_to_xhci(hcd);
+			u32 portsc = xhci_readl(xhci, xhci->usb2_ports[port]);
+
+			if (portsc & PORT_CONNECT)
+				xusb_utmi_pad_driver_power(port, true);
+			else {
+				/* We dont suspend the PAD while HNP
+				 * role swap happens on the OTG port
+				 */
+				if (!((hcd->self.otg_port == (port + 1))
+					&& (hcd->self.b_hnp_enable ||
+					hcd->self.otg_quick_hnp)))
+					xusb_utmi_pad_driver_power(
+							port, false);
+			}
+		}
 	}
 
 	return ret;
@@ -4166,22 +4186,6 @@ static int tegra_xhci_hub_status_data(struct usb_hcd *hcd, char *buf)
 			/* power on for remote wakeup event */
 			if ((portsc & PORT_PLS_MASK) == XDEV_RESUME)
 				xusb_utmi_pad_driver_power(port, true);
-
-			/* power on/off for connect/disconnect event */
-			if (portsc & PORT_CSC) {
-				if (portsc & PORT_CONNECT)
-					xusb_utmi_pad_driver_power(port, true);
-				else {
-					/* We dont suspend the PAD while HNP
-					 * role swap happens on the OTG port
-					 */
-					if (!((hcd->self.otg_port == (port + 1))
-						&& (hcd->self.b_hnp_enable ||
-						hcd->self.otg_quick_hnp)))
-						xusb_utmi_pad_driver_power(
-								port, false);
-				}
-			}
 		}
 	}
 
