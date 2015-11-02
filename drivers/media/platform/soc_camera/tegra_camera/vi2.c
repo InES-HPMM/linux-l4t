@@ -1339,35 +1339,39 @@ static void vi2_capture_error_status(struct vi2_channel *chan, int err)
 		"TEGRA_VI_CSI_ERROR_STATUS 0x%08x\n", val);
 }
 
-static int vi2_channel_capture_start(struct vi2_channel *chan,
-			     struct tegra_camera_buffer *buf)
+static int vi2_channel_capture_frame(struct vi2_channel *chan,
+				     struct tegra_camera_buffer *buf)
 {
 	struct vi2_camera *vi2_cam = chan->vi2_cam;
+	struct tegra_camera *cam = &vi2_cam->cam;
+	u32 val;
 	int err;
 
+	/* Setup capture registers */
+	vi2_channel_capture_setup(chan);
+
+	/* Start capture */
 	err = vi2_capture_buffer_setup(chan, buf);
 	if (err < 0)
 		return err;
 
+	chan->syncpt_thresh = nvhost_syncpt_incr_max_ext(cam->pdev,
+			chan->syncpt_id, 1);
+
 	TC_VI_REG_WT(vi2_cam, TEGRA_VI_CFG_VI_INCR_SYNCPT,
 		     vi2_syncpt_cond(VI_FRAME_START,  chan->port) |
 		     chan->syncpt_id);
+
 	csi_regs_write(vi2_cam, chan, TEGRA_VI_CSI_SINGLE_SHOT, 0x1);
 
-	return err;
-}
+	/* Move buffer to capture done queue */
+	spin_lock(&chan->done_lock);
+	list_add_tail(&buf->queue, &chan->done);
+	spin_unlock(&chan->done_lock);
 
+	/* Wait up kthread for capture done */
+	wake_up_interruptible(&chan->done_wait);
 
-static int vi2_channel_capture_wait(struct vi2_channel *chan)
-{
-	struct vi2_camera *vi2_cam = chan->vi2_cam;
-	struct tegra_camera *cam = &vi2_cam->cam;
-	int err;
-	u32 val;
-
-	if (!nvhost_syncpt_read_ext_check(cam->pdev, chan->syncpt_id, &val))
-		chan->syncpt_thresh = nvhost_syncpt_incr_max_ext(cam->pdev,
-					chan->syncpt_id, 1);
 	err = nvhost_syncpt_wait_timeout_ext(cam->pdev,
 			chan->syncpt_id, chan->syncpt_thresh,
 			TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
@@ -1385,26 +1389,6 @@ static int vi2_channel_capture_wait(struct vi2_channel *chan)
 	return err;
 }
 
-static int vi2_channel_capture_frame(struct vi2_channel *chan,
-				     struct tegra_camera_buffer *buf)
-{
-	/* Setup capture registers */
-	vi2_channel_capture_setup(chan);
-
-	/* Start capture */
-	vi2_channel_capture_start(chan, buf);
-
-	/* Move buffer to capture done queue */
-	spin_lock(&chan->done_lock);
-	list_add_tail(&buf->queue, &chan->done);
-	spin_unlock(&chan->done_lock);
-
-	/* Wait up kthread for capture done */
-	wake_up_interruptible(&chan->done_wait);
-
-	return vi2_channel_capture_wait(chan);
-}
-
 
 static int vi2_channel_capture_done(struct vi2_channel *chan,
 				    struct tegra_camera_buffer *buf)
@@ -1412,12 +1396,10 @@ static int vi2_channel_capture_done(struct vi2_channel *chan,
 	struct vi2_camera *vi2_cam = chan->vi2_cam;
 	struct tegra_camera *cam = &vi2_cam->cam;
 	struct vb2_buffer *vb = &buf->vb;
-	u32 val;
 	int err = 0;
 
-	if (!nvhost_syncpt_read_ext_check(cam->pdev, chan->syncpt_id, &val))
-		chan->syncpt_thresh = nvhost_syncpt_incr_max_ext(cam->pdev,
-					chan->syncpt_id, 1);
+	chan->syncpt_thresh = nvhost_syncpt_incr_max_ext(cam->pdev,
+				chan->syncpt_id, 1);
 
 	/*
 	 * Make sure recieve VI_MW_ACK_DONE of the last frame before
