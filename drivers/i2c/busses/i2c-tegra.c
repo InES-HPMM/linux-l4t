@@ -137,6 +137,9 @@
 #define I2C_SLV_CONFIG_LOAD			(1 << 1)
 #define I2C_TIMEOUT_CONFIG_LOAD			(1 << 2)
 
+#define I2C_CLKEN_OVERRIDE			0x090
+#define I2C_MST_CORE_CLKEN_OVR			(1 << 0)
+
 #define SL_ADDR1(addr) (addr & 0xff)
 #define SL_ADDR2(addr) ((addr >> 8) & 0xff)
 
@@ -168,6 +171,7 @@ struct tegra_i2c_chipdata {
 	int clk_multiplier_hs_mode;
 	bool has_config_load_reg;
 	bool has_multi_master_en_bit;
+	bool has_clk_override_reg;
 };
 
 /**
@@ -240,6 +244,7 @@ struct tegra_i2c_dev {
 	bool is_shutdown;
 	struct notifier_block pm_nb;
 	struct tegra_prod_list *prod_list;
+	bool is_multimaster_mode;
 };
 
 static void dvc_writel(struct tegra_i2c_dev *i2c_dev, u32 val, unsigned long reg)
@@ -729,6 +734,9 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 
 	if (tegra_i2c_flush_fifos(i2c_dev))
 		err = -ETIMEDOUT;
+
+	if (i2c_dev->is_multimaster_mode && i2c_dev->chipdata->has_clk_override_reg)
+		i2c_writel(i2c_dev, I2C_MST_CORE_CLKEN_OVR, I2C_CLKEN_OVERRIDE);
 
 	if (i2c_dev->chipdata->has_config_load_reg) {
 		i2c_writel(i2c_dev, I2C_MSTR_CONFIG_LOAD, I2C_CONFIG_LOAD);
@@ -1480,6 +1488,12 @@ static struct tegra_i2c_platform_data *parse_i2c_tegra_dt(
 	pdata->sda_gpio = of_get_named_gpio(np, "sda-gpio", 0);
 	pdata->is_dvc = of_device_is_compatible(np, "nvidia,tegra20-i2c-dvc");
 
+	pdata->is_multimaster_mode = of_property_read_bool(np,
+			"nvidia,multimaster-mode");
+
+	if (pdata->is_multimaster_mode)
+		pdata->is_clkon_always = true;
+
 	/* Default configuration for device tree initiated driver */
 	pdata->slave_addr = 0xFC;
 	return pdata;
@@ -1497,6 +1511,7 @@ static struct tegra_i2c_chipdata tegra20_i2c_chipdata = {
 	.clk_multiplier_hs_mode = 12,
 	.has_config_load_reg = false,
 	.has_multi_master_en_bit = false,
+	.has_clk_override_reg = false,
 };
 
 static struct tegra_i2c_chipdata tegra30_i2c_chipdata = {
@@ -1511,6 +1526,7 @@ static struct tegra_i2c_chipdata tegra30_i2c_chipdata = {
 	.clk_multiplier_hs_mode = 12,
 	.has_config_load_reg = false,
 	.has_multi_master_en_bit = false,
+	.has_clk_override_reg = false,
 };
 
 static struct tegra_i2c_chipdata tegra114_i2c_chipdata = {
@@ -1526,6 +1542,7 @@ static struct tegra_i2c_chipdata tegra114_i2c_chipdata = {
 	.clk_multiplier_hs_mode = 3,
 	.has_config_load_reg = false,
 	.has_multi_master_en_bit = false,
+	.has_clk_override_reg = false,
 };
 
 static struct tegra_i2c_chipdata tegra148_i2c_chipdata = {
@@ -1541,6 +1558,7 @@ static struct tegra_i2c_chipdata tegra148_i2c_chipdata = {
 	.clk_multiplier_hs_mode = 13,
 	.has_config_load_reg = true,
 	.has_multi_master_en_bit = false,
+	.has_clk_override_reg = true,
 };
 
 static struct tegra_i2c_chipdata tegra124_i2c_chipdata = {
@@ -1556,6 +1574,7 @@ static struct tegra_i2c_chipdata tegra124_i2c_chipdata = {
 	.clk_multiplier_hs_mode = 13,
 	.has_config_load_reg = true,
 	.has_multi_master_en_bit = false,
+	.has_clk_override_reg = true,
 };
 
 static struct tegra_i2c_chipdata tegra210_i2c_chipdata = {
@@ -1571,6 +1590,7 @@ static struct tegra_i2c_chipdata tegra210_i2c_chipdata = {
 	.clk_multiplier_hs_mode = 13,
 	.has_config_load_reg = true,
 	.has_multi_master_en_bit = true,
+	.has_clk_override_reg = true,
 };
 
 /* Match table for of_platform binding */
@@ -1739,6 +1759,7 @@ skip_pinctrl:
 	i2c_dev->irq = irq;
 	i2c_dev->dev = &pdev->dev;
 	i2c_dev->is_clkon_always = pdata->is_clkon_always;
+	i2c_dev->is_multimaster_mode = pdata->is_multimaster_mode;
 	i2c_dev->bus_clk_rate = pdata->bus_clk_rate ? pdata->bus_clk_rate: 100000;
 	i2c_dev->is_high_speed_enable = pdata->is_high_speed_enable;
 	i2c_dev->clk_divisor_non_hs_mode =
