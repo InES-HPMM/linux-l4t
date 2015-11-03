@@ -324,6 +324,7 @@ struct gk20a_ctxsw_ucode_segments {
 /* sums over the ucode files as sequences of u32, computed to the
  * boot_signature field in the structure above */
 
+#define FALCON_UCODE_SIG_T21X_FECS_WITH_DMEM_SIZE	0x9121ab5c
 #define FALCON_UCODE_SIG_T21X_FECS_WITH_RESERVED	0x9125ab5c
 #define FALCON_UCODE_SIG_T12X_FECS_WITH_RESERVED	0x8a621f78
 #define FALCON_UCODE_SIG_T12X_FECS_WITHOUT_RESERVED	0x67e5344b
