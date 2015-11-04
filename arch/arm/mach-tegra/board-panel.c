@@ -34,9 +34,6 @@
 #include <linux/platform/tegra/dvfs.h>
 #include <linux/platform_data/lp855x.h>
 
-#define DC0_ID			0
-#define DC1_ID			1
-
 #define PRISM_THRESHOLD		50
 #define HYST_VAL		25
 
@@ -491,7 +488,7 @@ static struct device_node *available_internal_panel_select(
 	}
 
 	if (!np_panel) {
-		np_sor = of_find_node_by_path(dc_or_node_names[DC0_ID]);
+		np_sor = of_find_node_by_path(SOR_NODE);
 		if (np_sor) {
 			for_each_available_child_of_node(np_sor, np_panel) {
 				if (np_panel && of_get_child_by_name(
@@ -748,7 +745,8 @@ struct device_node *tegra_primary_panel_get_dt_node(
 {
 	struct device_node *np_panel = NULL;
 	struct tegra_dc_out *dc_out = NULL;
-	struct device_node *np_hdmi = tegra_dc_get_hdmi_node(DC0_ID);
+	struct device_node *np_hdmi =
+		of_find_node_by_path(HDMI_NODE);
 
 	if (pdata)
 		dc_out = pdata->default_out;
@@ -804,7 +802,7 @@ struct device_node *tegra_secondary_panel_get_dt_node(
 				tegra_panel_register_ops(dc_out,
 					fixed_secondary_panel_ops);
 	} else {
-		np_display = of_find_node_by_path(dc_or_node_names[DC1_ID]);
+		np_display = of_find_node_by_path(SOR1_NODE);
 		if (!of_property_read_string(np_display,
 			"nvidia,sor1-output-type", &sor1_output_type)) {
 			if (strcmp(sor1_output_type, "dp") == 0) {
@@ -816,7 +814,7 @@ struct device_node *tegra_secondary_panel_get_dt_node(
 	}
 
 	of_node_put(np_display);
-	np_display = tegra_dc_get_hdmi_node(DC1_ID);
+	np_display = of_find_node_by_path(HDMI_NODE);
 	np_panel = of_get_child_by_name(np_display, "hdmi-display");
 
 success:

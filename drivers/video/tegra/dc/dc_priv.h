@@ -156,11 +156,6 @@ static inline int tegra_dc_fmt_byteorder(int fmt)
 		TEGRA_DC_EXT_FMT_BYTEORDER_SHIFT;
 }
 
-static inline int tegra_dc_which_sor(struct tegra_dc *dc)
-{
-	return dc->sor_instance;
-}
-
 static inline int tegra_dc_fmt_bpp(int fmt)
 {
 	switch (tegra_dc_fmt(fmt)) {

@@ -173,7 +173,6 @@ struct tegra_dc {
 	struct tegra_dc_shift_clk_div	shift_clk_div;
 
 	u32				powergate_id;
-	int				sor_instance;
 
 	bool				connected;
 	bool				enabled;
