@@ -166,6 +166,12 @@ static int dsi_a_1200_1920_8_0_bl_notify(struct device *dev, int brightness)
 	bl = (struct backlight_device *)dev_get_drvdata(dev);
 	pb = (struct pwm_bl_data *)dev_get_drvdata(&bl->dev);
 
+	/* apply the non-linear curve adjustment */
+	if (brightness > 255)
+		pr_info("Error: Brightness > 255!\n");
+	else if (pb->bl_nonlinear)
+		brightness = pb->bl_nonlinear[brightness];
+
 	if (dc_dev)
 		nvsd_check_prism_thresh(dc_dev, brightness);
 

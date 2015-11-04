@@ -7,6 +7,7 @@ For pwm-backlight bindings
   - lth-brightness: low threshold brightness to retain the linearity of the graph when the intensity
     of backlight goes to zero(OFF) when the value in not zero almost nearing to zero(some x%)
   - pwm-gpio: specifies a GPIO used for pwm pin if there is.
+  - bl-nonlinear: Arrays for backlight calibration, which is usually for nonlinear to linear backlight response.
   - bl-measured: Arrays for backlight calibration, which is usually for linear backlight response.
   - brightness-levels: Array of distinct brightness levels. Typically these
       are in the range from 0 to 255, but any range starting at 0 will do.
@@ -33,7 +34,7 @@ For pwm-backlight bindings
 
  It is possible for backlight node to have child backlight node.
   - Child node represents one of multiple backlight settings nodes, which are pwm-backlight based.
-    In this case, "lth-brightness", "pwm-gpio", "bl-measured", "brightness-levels",
+    In this case, "lth-brightness", "pwm-gpio", "bl-nonlinear", "bl-measured", "brightness-levels",
     "default-brightness-level", "max-brightness" and "default-brightness" properties
     need to be prepared underneath each child node, instead of backlight parent node.
 

@@ -113,6 +113,7 @@ static int pwm_backlight_parse_dt(struct device *dev,
 	int length;
 	u32 value;
 	int ret = 0;
+	int n_bl_nonlinear = 0;
 	int n_bl_measured = 0;
 
 	if (!node)
@@ -214,6 +215,23 @@ static int pwm_backlight_parse_dt(struct device *dev,
 	data->lth_brightness = (unsigned int)value;
 
 	data->pwm_gpio = of_get_named_gpio(bl_node, "pwm-gpio", 0);
+
+	of_property_for_each_u32(bl_node, "bl-nonlinear", prop, p, u)
+		n_bl_nonlinear++;
+	if (n_bl_nonlinear > 0) {
+		data->bl_nonlinear = devm_kzalloc(dev,
+			sizeof(*data->bl_nonlinear) * n_bl_nonlinear,
+			GFP_KERNEL);
+		if (!data->bl_nonlinear) {
+			pr_err("bl_nonlinear memory allocation failed\n");
+			ret = -ENOMEM;
+			goto fail_parse_dt;
+		}
+		n_bl_nonlinear = 0;
+		of_property_for_each_u32(bl_node,
+			"bl-nonlinear", prop, p, u)
+			data->bl_nonlinear[n_bl_nonlinear++] = u;
+	}
 
 	of_property_for_each_u32(bl_node, "bl-measured", prop, p, u)
 		n_bl_measured++;
@@ -317,6 +335,7 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 
 	pb->notify = data->notify;
 	pb->notify_after = data->notify_after;
+	pb->bl_nonlinear = data->bl_nonlinear;
 	pb->bl_measured = data->bl_measured;
 	pb->check_fb = data->check_fb;
 	pb->exit = data->exit;
