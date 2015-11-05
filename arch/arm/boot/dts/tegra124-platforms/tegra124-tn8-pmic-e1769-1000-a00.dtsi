@@ -87,7 +87,6 @@
 				ti,wakeup;
 				ti,enable-id-detection;
 				ti,enable-vbus-detection;
-				ti,enable-id-detect-on-vbus;
 			};
 
 			power_pm {
