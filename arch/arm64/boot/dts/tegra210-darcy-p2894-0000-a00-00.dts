@@ -20,7 +20,6 @@
 
 #include "tegra210-darcy-p2894-common.dtsi"
 #include "tegra210-platforms/tegra210-darcy-pinmux-p2894-0000-a00.dtsi"
-#include "tegra210-platforms/tegra210-darcy-gpio-p2894-0000-a00.dtsi"
 #include "tegra210-platforms/tegra210-darcy-extcon-p2894-0000-a00.dtsi"
 #include "tegra210-platforms/tegra210-foster-powermon-p2530-0930-e01.dtsi"
 #include "tegra210-platforms/tegra210-foster-e-led-p1961-b00.dtsi"
