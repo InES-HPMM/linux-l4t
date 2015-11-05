@@ -426,6 +426,9 @@ struct max77620_chip {
 	bool enable_global_lpm;
 	bool avoid_rtc_bulk_write;
 
+	int active_fps_period[3];
+	int suspend_fps_period[3];
+
 	int es_minor_version;
 	int es_major_version;
 

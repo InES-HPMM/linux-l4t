@@ -290,6 +290,11 @@ static int max77620_initialise_fps(struct max77620_chip *chip,
 	if (!node)
 		return 0;
 
+	for (reg = 0; reg < 3; ++reg) {
+		chip->active_fps_period[reg] = -1;
+		chip->suspend_fps_period[reg] = -1;
+	}
+
 	for_each_child_of_node(node, child) {
 		ret = of_property_read_u32(child, "reg", &reg);
 		if (ret) {
@@ -305,10 +310,19 @@ static int max77620_initialise_fps(struct max77620_chip *chip,
 		mask = 0;
 		ret = of_property_read_u32(child, "maxim,fps-time-period",
 						&pval);
+		if (ret < 0)
+			ret = of_property_read_u32(child,
+					"maxim,active-fps-time-period", &pval);
 		if (!ret) {
 			time_period = min(pval, 5120U);
 			mask |= MAX77620_FPS_TIME_PERIOD_MASK;
+			chip->active_fps_period[reg] = time_period;
 		}
+
+		ret = of_property_read_u32(child,
+					"maxim,suspend-fps-time-period", &pval);
+		if (!ret)
+			chip->suspend_fps_period[reg] = min(pval, 5120U);
 
 		ret = of_property_read_u32(child, "maxim,fps-enable-input",
 						&pval);
@@ -741,11 +755,48 @@ static void max77620_shutdown(struct i2c_client *i2c)
 }
 
 #ifdef CONFIG_PM_SLEEP
+static int max77620_set_fps_period(struct max77620_chip *chip,
+	int fps_id, int time_period)
+{
+	unsigned int config;
+	struct device *dev = chip->dev;
+	int base_fps_time = 40;
+	int ret;
+	int i;
+
+	for (i = 0; i < 0x7; ++i) {
+		int x = base_fps_time * BIT(i);
+		if (x >= time_period)
+			break;
+	}
+	config = (i & 0x7) << MAX77620_FPS_TIME_PERIOD_SHIFT;
+	ret = max77620_reg_update(dev, MAX77620_PWR_SLAVE,
+			MAX77620_REG_FPS_CFG0 + fps_id,
+			MAX77620_FPS_TIME_PERIOD_MASK, config);
+	if (ret < 0) {
+		dev_err(dev, "Reg 0x%02x write failed, %d\n",
+			MAX77620_REG_FPS_CFG0 + fps_id, ret);
+		return ret;
+	}
+	return 0;
+}
+
 static int max77620_i2c_suspend(struct device *dev)
 {
 	struct max77620_chip *chip = dev_get_drvdata(dev);
 	unsigned int config;
+	int fps;
 	int ret;
+
+	for (fps = 0; fps < 2; ++fps) {
+		if (chip->suspend_fps_period[fps] < 0)
+			continue;
+
+		ret = max77620_set_fps_period(chip, fps,
+				chip->suspend_fps_period[fps]);
+		if (ret < 0)
+			dev_err(dev, "FPS%d config failed\n", fps);
+	}
 
 	config = (chip->sleep_enable) ? MAX77620_ONOFFCNFG1_SLPEN : 0;
 	ret = max77620_reg_update(chip->dev, MAX77620_PWR_SLAVE,
@@ -776,6 +827,17 @@ static int max77620_i2c_resume(struct device *dev)
 {
 	struct max77620_chip *chip = dev_get_drvdata(dev);
 	int ret;
+	int fps;
+
+	for (fps = 0; fps < 2; ++fps) {
+		if (chip->active_fps_period[fps] < 0)
+			continue;
+
+		ret = max77620_set_fps_period(chip, fps,
+				chip->active_fps_period[fps]);
+		if (ret < 0)
+			dev_err(dev, "FPS%d config failed\n", fps);
+	}
 
 	/* Enable WK_EN0 */
 	ret = max77620_reg_update(chip->dev, MAX77620_PWR_SLAVE,
