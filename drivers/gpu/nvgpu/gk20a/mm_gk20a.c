@@ -529,7 +529,8 @@ void free_gmmu_pages(struct vm_gk20a *vm,
 	DEFINE_DMA_ATTRS(attrs);
 
 	gk20a_dbg_fn("");
-	BUG_ON(entry->sgt == NULL);
+	if (!entry->sgt)
+		return;
 
 	if (tegra_platform_is_linsim()) {
 		free_gmmu_phys_pages(vm, entry);
