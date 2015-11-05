@@ -5,6 +5,8 @@
  *    Yadwinder Singh (yadi.brar01@gmail.com)
  *    Jaswinder Singh (jaswinder.singh@linaro.org)
  *
+ * Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -462,6 +464,12 @@ static int snd_uac2_remove(struct platform_device *pdev)
 	return 0;
 }
 
+/* Adding a dummy release function */
+static void snd_uac2_dev_release(struct device *dev)
+{
+	return;
+}
+
 static int alsa_uac2_init(struct audio_dev *agdev)
 {
 	struct snd_uac2_chip *uac2 = &agdev->uac2;
@@ -481,8 +489,12 @@ static int alsa_uac2_init(struct audio_dev *agdev)
 
 	/* Register snd_uac2 device */
 	err = platform_device_register(&uac2->pdev);
-	if (err)
+	if (err) {
 		platform_driver_unregister(&uac2->pdrv);
+		return err;
+	}
+
+	uac2->pdev.dev.release = snd_uac2_dev_release;
 
 	return err;
 }
