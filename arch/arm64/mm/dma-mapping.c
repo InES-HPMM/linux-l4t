@@ -542,7 +542,7 @@ static void *__alloc_from_pool(size_t size, struct page **ret_page)
 {
 	struct dma_pool *pool = &atomic_pool;
 	unsigned int count = PAGE_ALIGN(size) >> PAGE_SHIFT;
-	unsigned int pageno;
+	size_t pageno;
 	unsigned long flags;
 	void *ptr = NULL;
 	unsigned long align_mask;
@@ -1309,14 +1309,14 @@ static size_t arm_iommu_iova_get_free_total(struct device *dev)
 	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
 	unsigned long flags;
 	size_t size = 0;
-	unsigned long start = 0;
+	size_t start = 0;
 
 	BUG_ON(!dev);
 	BUG_ON(!mapping);
 
 	spin_lock_irqsave(&mapping->lock, flags);
 	while (1) {
-		unsigned long end;
+		size_t end;
 
 		start = bitmap_find_next_zero_area(mapping->bitmap,
 						   mapping->bits, start, 1, 0);
@@ -1336,11 +1336,11 @@ static size_t arm_iommu_iova_get_free_max(struct device *dev)
 	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
 	unsigned long flags;
 	size_t max_free = 0;
-	unsigned long start = 0;
+	size_t start = 0;
 
 	spin_lock_irqsave(&mapping->lock, flags);
 	while (1) {
-		unsigned long end;
+		size_t end;
 
 		start = bitmap_find_next_zero_area(mapping->bitmap,
 						   mapping->bits, start, 1, 0);
@@ -1360,8 +1360,9 @@ static inline dma_addr_t __alloc_iova(struct dma_iommu_mapping *mapping,
 {
 	unsigned int order = get_order(size);
 	unsigned int align = 0;
-	unsigned int count, start;
+	unsigned int count;
 	unsigned long flags;
+	size_t start;
 
 	if (mapping->alignment && order > get_order(mapping->alignment))
 		order = get_order(mapping->alignment);
@@ -1393,8 +1394,9 @@ static dma_addr_t __alloc_iova_at(struct dma_iommu_mapping *mapping,
 				  dma_addr_t *iova, size_t size,
 				  struct dma_attrs *attrs)
 {
-	unsigned int count, start, orig;
+	unsigned int count, orig;
 	unsigned long flags;
+	size_t start;
 	size_t bytes;
 
 	count = ((PAGE_ALIGN(size) >> PAGE_SHIFT) +
@@ -1451,8 +1453,8 @@ static inline void __free_iova(struct dma_iommu_mapping *mapping,
 			       dma_addr_t addr, size_t size,
 			       struct dma_attrs *attrs)
 {
-	unsigned int start = (addr - mapping->base) >>
-			     (mapping->order + PAGE_SHIFT);
+	size_t start = (addr - mapping->base) >>
+		       (mapping->order + PAGE_SHIFT);
 	unsigned int count = ((size >> PAGE_SHIFT) +
 			      (1 << mapping->order) - 1) >> mapping->order;
 	unsigned long flags;
