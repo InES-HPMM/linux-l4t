@@ -313,6 +313,16 @@ void tegra_pmc_write_bootrom_command(u32 command_offset, unsigned long val)
 }
 EXPORT_SYMBOL(tegra_pmc_write_bootrom_command);
 
+void tegra_pmc_reset_system(void)
+{
+	u32 val;
+
+	val = readl_relaxed(tegra_pmc_base);
+	val |= 0x10;
+	writel_relaxed(val, tegra_pmc_base);
+}
+EXPORT_SYMBOL(tegra_pmc_reset_system);
+
 void tegra_pmc_pwr_detect_update(unsigned long mask, unsigned long val)
 {
 	unsigned long flags;

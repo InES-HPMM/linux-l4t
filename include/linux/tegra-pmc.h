@@ -49,6 +49,8 @@ extern void tegra_pmc_iopower_enable(int reg, u32 bit_mask);
 extern void tegra_pmc_iopower_disable(int reg, u32 bit_mask);
 extern int tegra_pmc_iopower_get_status(int reg, u32 bit_mask);
 
+extern void tegra_pmc_reset_system(void);
+
 extern bool tegra_is_dpd_mode;
 
 struct pmc_pm_data {
