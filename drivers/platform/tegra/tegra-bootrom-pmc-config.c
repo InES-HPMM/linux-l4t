@@ -20,6 +20,7 @@
 #include <linux/of.h>
 #include <linux/slab.h>
 #include <linux/tegra-pmc.h>
+#include <linux/power/reset/system-pmic.h>
 
 #define PMC_REG_8bit_MASK			0xFF
 #define PMC_REG_16bit_MASK			0xFFFF
@@ -56,11 +57,13 @@ struct tegra_bootrom_commands {
 	int nblocks;
 };
 
-static int tegra_bootrom_get_commands_from_dt(struct device *dev,
-		struct tegra_bootrom_commands **br_commands)
+static struct tegra_bootrom_commands *br_rst_commands;
+static struct tegra_bootrom_commands *br_off_commands;
+
+static int tegra_bootrom_get_commands_from_node(struct device *dev,
+	struct device_node *np, struct tegra_bootrom_commands **br_commands)
 {
-	struct device_node *np = dev->of_node;
-	struct device_node *br_np, *child;
+	struct device_node *child;
 	struct tegra_bootrom_commands *bcommands;
 	int *command_ptr;
 	struct tegra_bootrom_block *block;
@@ -71,25 +74,14 @@ static int tegra_bootrom_get_commands_from_dt(struct device *dev,
 	int ret;
 	int sz_bcommand, sz_blocks;
 
-	if (!np) {
-		dev_err(dev, "No device node pointer\n");
-		return -EINVAL;
-	}
-
-	br_np = of_find_node_by_name(np, "bootrom-commands");
-	if (!br_np) {
-		dev_info(dev, "Bootrom commmands not found\n");
-		return -ENOENT;
-	}
-
-	nblocks = of_get_child_count(br_np);
+	nblocks = of_get_child_count(np);
 	if (!nblocks) {
 		dev_err(dev, "Bootrom I2C Command block not found\n");
 		return -ENOENT;
 	}
 
 	count = 0;
-	for_each_child_of_node(br_np, child) {
+	for_each_child_of_node(np, child) {
 		if (!of_device_is_available(child))
 			continue;
 
@@ -113,15 +105,15 @@ static int tegra_bootrom_get_commands_from_dt(struct device *dev,
 	bcommands->blocks = (void *)bcommands + sz_bcommand;
 	command_ptr = (void *)bcommands->blocks + nblocks * sz_blocks;
 
-	of_property_read_u32(br_np, "nvidia,command-retries-count",
+	of_property_read_u32(np, "nvidia,command-retries-count",
 			&bcommands->command_retry_count);
-	of_property_read_u32(br_np, "nvidia,delay-between-commands-us",
+	of_property_read_u32(np, "nvidia,delay-between-commands-us",
 			&bcommands->delay_between_commands);
-	of_property_read_u32(br_np, "nvidia,wait-before-start-bus-clear-us",
+	of_property_read_u32(np, "nvidia,wait-before-start-bus-clear-us",
 			&bcommands->wait_before_bus_clear);
 
 	nblock = 0;
-	for_each_child_of_node(br_np, child) {
+	for_each_child_of_node(np, child) {
 		if (!of_device_is_available(child))
 			continue;
 
@@ -163,6 +155,61 @@ static int tegra_bootrom_get_commands_from_dt(struct device *dev,
 		nblock++;
 	}
 	*br_commands = bcommands;
+	return 0;
+}
+
+static int tegra_bootrom_get_commands_from_dt(struct device *dev,
+		struct tegra_bootrom_commands **br_rst_commands,
+		struct tegra_bootrom_commands **br_off_commands)
+{
+	struct device_node *np = dev->of_node;
+	struct device_node *br_np, *rst_np, *off_np;
+	int ret;
+
+	*br_rst_commands = NULL;
+	*br_off_commands = NULL;
+
+	if (!np) {
+		dev_err(dev, "No device node pointer\n");
+		return -EINVAL;
+	}
+
+	br_np = of_find_node_by_name(np, "bootrom-commands");
+	if (!br_np) {
+		dev_info(dev, "Bootrom commmands not found\n");
+		return -ENOENT;
+	}
+
+	rst_np = of_find_node_by_name(br_np, "reset-commands");
+	if (!rst_np) {
+		dev_info(dev, "bootrom-commands used for reset commands\n");
+		rst_np = br_np;
+	}
+
+	ret = tegra_bootrom_get_commands_from_node(dev, rst_np,
+				br_rst_commands);
+	if (ret < 0) {
+		dev_err(dev, "Parsing in bootrom-reset-command failed: %d\n",
+			ret);
+		return ret;
+	}
+
+	if (rst_np == br_np)
+		return 0;
+
+	off_np = of_find_node_by_name(br_np, "power-off-commands");
+	if (!off_np) {
+		dev_info(dev, "bootrom-commands used for poweroff commands\n");
+		return 0;
+	}
+
+	ret = tegra_bootrom_get_commands_from_node(dev, off_np,
+				br_off_commands);
+	if (ret < 0) {
+		dev_err(dev, "Parsing in bootrom-power-off-command failed %d\n",
+			ret);
+		return ret;
+	}
 	return 0;
 }
 
@@ -234,12 +281,36 @@ reg_update:
 	return 0;
 }
 
-int tegra210_boorom_pmc_init(struct device *dev)
+static int tegra210_boorom_pmc_power_off_commands_init(struct device *dev)
 {
-	struct tegra_bootrom_commands *br_commands = NULL;
 	int ret;
 
-	ret = tegra_bootrom_get_commands_from_dt(dev, &br_commands);
+	if (!br_off_commands) {
+		pr_info("T210 pmc config for power off not available\n");
+		return 0;
+	}
+
+	ret = tegra210_configure_pmc_scratch(NULL, br_off_commands);
+	if (ret < 0) {
+		pr_err("T210 pmc config for power off failed, %d\n", ret);
+		return ret;
+	}
+	pr_info("T210 pmc config for power off passed\n");
+	return 0;
+}
+
+static void tegra210_soc_power_off(void)
+{
+	tegra210_boorom_pmc_power_off_commands_init(NULL);
+	tegra_pmc_reset_system();
+}
+
+int tegra210_boorom_pmc_init(struct device *dev)
+{
+	int ret;
+
+	ret = tegra_bootrom_get_commands_from_dt(dev, &br_rst_commands,
+				&br_off_commands);
 	if (ret < 0) {
 		if (ret == -ENOENT)
 			ret = 0;
@@ -247,7 +318,11 @@ int tegra210_boorom_pmc_init(struct device *dev)
 			pr_info("T210 pmc config for bootrom command failed\n");
 		return ret;
 	}
-	ret = tegra210_configure_pmc_scratch(dev, br_commands);
+
+	if (br_off_commands)
+		soc_specific_power_off = tegra210_soc_power_off;
+
+	ret = tegra210_configure_pmc_scratch(dev, br_rst_commands);
 	if (ret < 0) {
 		pr_info("T210 pmc config for bootrom command failed\n");
 		return ret;
