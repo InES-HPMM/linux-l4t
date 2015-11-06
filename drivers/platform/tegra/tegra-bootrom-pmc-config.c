@@ -203,15 +203,15 @@ static int tegra210_configure_pmc_scratch(struct device *dev,
 		reg_data_mask = (command_pw == 1) ? 0xFFFF : 0xFFFFFFFFUL;
 		csum = 0;
 
-		for (j = 0; j < block->ncommands; j += command_pw) {
+		for (j = 0; j < block->ncommands; j++) {
 			command = block->commands[j] & reg_data_mask;
 			if (command_pw == 2) {
 				j++;
 				if (j == block->ncommands)
 					goto reg_update;
+				command |= (block->commands[j] &
+							reg_data_mask) << 16;
 			}
-
-			command |= (block->commands[j] & reg_data_mask) << 16;
 reg_update:
 			tegra_pmc_write_bootrom_command(reg_offset * 4,
 						command);
