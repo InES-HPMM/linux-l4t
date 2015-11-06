@@ -4,11 +4,11 @@
 	nvidia,dtsfilename = __FILE__;
 
 	i2c@7000c400 {
-		lc709203f@0b {
+		battery-gauge@0b {
 			onsemi,kernel-maximum-soc = <99>;
 		};
 
-		hpa2163@6b {
+		battery-charger@6b {
 			charger {
 				ti,charge-voltage-limit-millivolt = <4352>;
 				ti,temp-range = <10 15 25 45 50 60>;
