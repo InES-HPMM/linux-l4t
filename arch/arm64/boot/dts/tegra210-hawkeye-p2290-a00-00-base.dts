@@ -49,7 +49,7 @@
 		capacity_axis = <100 80 60 40 20 0>;
 		power_supply = "battery";
 		r_const = <40000>;
-		vsys_min = <3000000>;
+		vsys_min = <2800000>;
 		update_interval = <30000>;
 	};
 
