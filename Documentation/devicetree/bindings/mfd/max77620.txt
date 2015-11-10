@@ -61,6 +61,16 @@ Optinal properties:
 	-maxim,enable-global-lpm: Enable global LPM when the external control goes from
 			HIGH to LOW.
 
+RTC:
+====
+Device support RTC. The driver displaysthe alarm time in suspend and current
+time in resume. The option is provided through DT to avoid this prints.
+Optional properties:
+	- maxim,disable-time-print-suspend-resume: Disable time display
+		in suspend and resume in RTC driver. This will reduce the
+		suspend/resume delay as RTC register read is 16ms delay by
+		HW.
+
 Pinmux and GPIO:
 ===============
 Device has 8 GPIO pins which can be configured as GPIO as well as the special IO

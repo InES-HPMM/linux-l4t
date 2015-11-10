@@ -19,6 +19,8 @@
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/rtc.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/mfd/max77620.h>
 
 #define MAX77620_RTC60S_MASK		(1 << 0)
@@ -74,6 +76,7 @@ struct max77620_rtc {
 	struct mutex io_lock;
 	int irq;
 	u8 irq_mask;
+	bool disable_time_display_in_suspend;
 };
 
 static inline struct device *_to_parent(struct max77620_rtc *rtc)
@@ -492,9 +495,50 @@ static int max77620_rtc_preinit(struct max77620_rtc *rtc)
 	return 0;
 }
 
+
+static ssize_t max77620_rtc_set_time_display_suspend(struct device *dev,
+		struct device_attribute *attr,
+		 const char *buf, size_t count)
+{
+	struct max77620_rtc *rtc = dev_get_drvdata(dev);
+
+	if (sysfs_streq(buf, "enabled\n") || sysfs_streq(buf, "1"))
+		rtc->disable_time_display_in_suspend = false;
+	else if (sysfs_streq(buf, "disabled\n") || sysfs_streq(buf, "0"))
+		rtc->disable_time_display_in_suspend = true;
+	else
+		dev_err(dev, "Configuring invalid mode\n");
+	return count;
+}
+
+static ssize_t max77620_rtc_show_time_display_suspend(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct max77620_rtc *rtc = dev_get_drvdata(dev);
+
+	if (rtc->disable_time_display_in_suspend)
+		return sprintf(buf, "disabled\n");
+	return sprintf(buf, "enabled\n");
+}
+
+static DEVICE_ATTR(time_display_suspend, 0444,
+		max77620_rtc_show_time_display_suspend,
+		max77620_rtc_set_time_display_suspend);
+
+static struct attribute *max77620_rtc_attributes[] = {
+	&dev_attr_time_display_suspend.attr,
+	NULL,
+};
+
+static const struct attribute_group max77620_rtc_attr_group = {
+	.attrs  = max77620_rtc_attributes,
+};
+
 static int max77620_rtc_probe(struct platform_device *pdev)
 {
 	static struct max77620_rtc *rtc;
+	struct device_node *np = pdev->dev.parent->of_node;
+
 	int ret = 0;
 
 	rtc = devm_kzalloc(&pdev->dev, sizeof(*rtc), GFP_KERNEL);
@@ -506,6 +550,15 @@ static int max77620_rtc_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, rtc);
 	rtc->dev = &pdev->dev;
 	mutex_init(&rtc->io_lock);
+
+	rtc->disable_time_display_in_suspend = of_property_read_bool(np,
+				"maxim,disable-time-print-suspend-resume");
+
+	ret = sysfs_create_group(&pdev->dev.kobj, &max77620_rtc_attr_group);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "probe: Failed to create sysfs\n");
+		return ret;
+	}
 
 	ret = max77620_rtc_preinit(rtc);
 	if (ret) {
@@ -562,6 +615,9 @@ static int max77620_rtc_suspend(struct device *dev)
 		struct rtc_wkalrm alm;
 
 		enable_irq_wake(max77620_rtc->irq);
+		if (max77620_rtc->disable_time_display_in_suspend)
+			return 0;
+
 		ret = max77620_rtc_read_alarm(dev, &alm);
 		if (!ret)
 			dev_info(dev, "%s() alrm %d time %d %d %d %d %d %d\n",
@@ -583,6 +639,10 @@ static int max77620_rtc_resume(struct device *dev)
 		int ret;
 
 		disable_irq_wake(max77620_rtc->irq);
+
+		if (max77620_rtc->disable_time_display_in_suspend)
+			return 0;
+
 		ret = max77620_rtc_read_time(dev, &tm);
 		if (!ret)
 			dev_info(dev, "%s() %d %d %d %d %d %d\n",
