@@ -246,7 +246,7 @@ read_source(struct power_clk_source *s, int cpu)
 
 	case QUADD_POWER_CLK_GPU:
 		/* update gpu frequency */
-		s->clkp = clk_get_sys("3d", NULL);
+		s->clkp = clk_get_sys("gm20b", "gbus");
 		if (!IS_ERR_OR_NULL(s->clkp)) {
 			s->data[0].value =
 				clk_get_rate(s->clkp) / 1000;
@@ -477,7 +477,7 @@ int quadd_power_clk_start(void)
 
 	/* setup gpu frequency */
 	s = &power_ctx.gpu;
-	s->clkp = clk_get_sys("3d", NULL);
+	s->clkp = clk_get_sys("gm20b", "gbus");
 	if (!IS_ERR_OR_NULL(s->clkp)) {
 #ifdef CONFIG_COMMON_CLK
 		status = clk_notifier_register(s->clkp, s->nb);
