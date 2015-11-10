@@ -548,13 +548,19 @@ void nvhost_intr_put_ref(struct nvhost_intr *intr, u32 id, void *ref)
 int nvhost_intr_init(struct nvhost_intr *intr, u32 irq_gen, u32 irq_sync)
 {
 	unsigned int id, i;
+	struct sched_param sparm = { .sched_priority = 1 };
 	struct nvhost_intr_syncpt *syncpt;
 	struct nvhost_master *host = intr_to_dev(intr);
 	u32 nb_pts = nvhost_syncpt_nb_hw_pts(&host->syncpt);
 
 	mutex_init(&intr->mutex);
 	intr->syncpt_irq = irq_sync;
-	intr->wq = alloc_workqueue("host_syncpt", WQ_MEM_RECLAIM | WQ_HIGHPRI, 4);
+	init_kthread_worker(&intr->wq_worker);
+	intr->wq_kthread = kthread_run(&kthread_worker_fn, &intr->wq_worker, "host_syncpt");
+	if (PTR_ERR(intr->wq_kthread) == -ENOMEM)
+	    return -ENOMEM;
+
+	sched_setscheduler(intr->wq_kthread, SCHED_FIFO, &sparm);
 	intr->general_irq = irq_gen;
 
 	for (id = 0, syncpt = intr->syncpt;
@@ -579,7 +585,8 @@ int nvhost_intr_init(struct nvhost_intr *intr, u32 irq_gen, u32 irq_sync)
 void nvhost_intr_deinit(struct nvhost_intr *intr)
 {
 	nvhost_intr_stop(intr);
-	destroy_workqueue(intr->wq);
+	flush_kthread_worker(&intr->wq_worker);
+	kthread_stop(intr->wq_kthread);
 }
 
 void nvhost_intr_start(struct nvhost_intr *intr, u32 hz)

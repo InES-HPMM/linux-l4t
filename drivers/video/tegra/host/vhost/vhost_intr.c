@@ -29,7 +29,7 @@
 /* Spacing between sync registers */
 #define REGISTER_STRIDE 4
 
-static void syncpt_thresh_cascade_fn(struct work_struct *work)
+static void syncpt_thresh_cascade_fn(struct kthread_work *work)
 {
 	struct nvhost_intr_syncpt *sp =
 		container_of(work, struct nvhost_intr_syncpt, work);
@@ -65,7 +65,7 @@ static void syncpt_thresh_cascade_handler(struct nvhost_master *dev,
 			 __func__, graphics_host_sp);
 		nvhost_syncpt_patch_check(&dev->syncpt);
 	} else
-		queue_work(intr->wq, &sp->work);
+		queue_kthread_work(&intr->wq_worker, &sp->work);
 
 }
 
@@ -136,7 +136,7 @@ static void vhost_intr_init_host_sync(struct nvhost_intr *intr)
 	intr_op().disable_all_syncpt_intrs(intr);
 
 	for (i = 0; i < nvhost_syncpt_nb_hw_pts(&dev->syncpt); i++)
-		INIT_WORK(&intr->syncpt[i].work, syncpt_thresh_cascade_fn);
+		init_kthread_work(&intr->syncpt[i].work, &syncpt_thresh_cascade_fn);
 
 	ctx->syncpt_handler =
 		kthread_run(vhost_intr_handler, dev, "vhost_intr");
@@ -220,7 +220,8 @@ static int vhost_free_syncpt_irq(struct nvhost_intr *intr)
 				&msg, sizeof(msg));
 	WARN_ON(err);
 	kthread_stop(ctx->syncpt_handler);
-	flush_workqueue(intr->wq);
+	flush_kthread_worker(&intr->wq_worker);
+	kthread_stop(intr->wq_kthread);
 	return 0;
 }
 

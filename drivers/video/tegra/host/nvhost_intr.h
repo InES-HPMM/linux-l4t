@@ -83,7 +83,7 @@ struct nvhost_intr_syncpt {
 	struct mutex lock;
 	struct list_head wait_head;
 	char thresh_irq_name[12];
-	struct work_struct work;
+	struct kthread_work work;
 	struct timespec isr_recv;
 	struct work_struct low_prio_work;
 	struct list_head low_prio_handlers[NVHOST_INTR_LOW_PRIO_COUNT];
@@ -94,7 +94,8 @@ struct nvhost_intr {
 	struct mutex mutex;
 	int general_irq;
 	int syncpt_irq;
-	struct workqueue_struct *wq;
+	struct task_struct *wq_kthread;
+	struct kthread_worker wq_worker;
 	u32 intstatus;
 	void (*host_isr[32])(u32, void*);
 	void *host_isr_priv[32];
