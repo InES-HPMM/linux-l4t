@@ -106,7 +106,7 @@ static int __init update_target_node_from_overlay(
 	return 0;
 }
 
-static int update_target_node(struct device_node *target,
+static int __init update_target_node(struct device_node *target,
 	struct device_node *overlay)
 {
 	struct device_node *tchild, *ochild;
