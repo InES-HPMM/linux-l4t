@@ -551,6 +551,25 @@ fail:
 	return err;
 }
 
+int imx230_to_gain(u32 rep, int shift)
+{
+	int gain;
+	int gain_int;
+	int gain_dec;
+	int min_int = (1 << shift);
+	int denom;
+
+	/* last 4 bit of rep is
+	 * decimal representation of gain */
+	gain_int = (int)(rep >> shift);
+	gain_dec = (int)(rep & ~(0xffff << shift));
+
+	denom = gain_int * min_int + gain_dec;
+	gain = 512 - ((512 * min_int + (denom - 1)) / denom);
+
+	return gain;
+}
+
 static int imx230_set_gain(struct imx230 *priv, s32 val)
 {
 	imx230_reg reg_list[2];
@@ -560,7 +579,7 @@ static int imx230_set_gain(struct imx230 *priv, s32 val)
 	int i = 0;
 
 	/* translate value */
-	gain = (u16)camera_common_to_gain(val, IMX230_GAIN_SHIFT);
+	gain = (u16)imx230_to_gain(val, IMX230_GAIN_SHIFT);
 
 	dev_dbg(&priv->i2c_client->dev,
 		 "%s: val: %d gain: %x\n", __func__, val, gain);
