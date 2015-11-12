@@ -21,6 +21,7 @@
 	pcie-controller {
 		nvidia,wake-gpio = <&gpio TEGRA_GPIO(A, 2) 0>;
 		nvidia,lane-map = <0x14>;
+		nvidia,boot-detect-delay = <10000>;
 		dvdd-pex-pll-supply = <&max77620_ldo1>;
 		l0-dvddio-pex-supply = <&max77620_ldo1>;
 		l1-dvddio-pex-supply = <&max77620_ldo1>;

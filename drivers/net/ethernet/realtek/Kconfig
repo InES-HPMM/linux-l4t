@@ -16,23 +16,9 @@ config NET_VENDOR_REALTEK
 	  the questions about Realtek devices. If you say Y, you will be asked for
 	  your specific card in the following questions.
 
-config NET_VENDOR_REALTEK_R8168
-	bool "Realtek devices"
-	default y
-	depends on PCI || (PARPORT && X86)
-	---help---
-	  If you have a network (Ethernet) card belonging to this class, say Y
-	  and read the Ethernet-HOWTO, available from
-	  <http://www.tldp.org/docs.html#howto>.
-
-	  Note that the answer to this question doesn't directly affect the
-	  kernel: saying N will just cause the configurator to skip all
-	  the questions about Realtek devices. If you say Y, you will be asked for
-	  your specific card in the following questions.
-
 config R8168
 	tristate "Realtek 8168 gigabit ethernet support"
-	depends on PCI && NET_VENDOR_REALTEK_R8168
+	depends on PCI && NET_VENDOR_REALTEK
 	---help---
 	  Say Y here if you have a Realtek 8168 PCI Gigabit Ethernet adapter.
 
@@ -42,28 +28,28 @@ config R8168
 config R8168_NAPI
     bool "Realtek 8168 NAPI"
     default y
-    depends on PCI && NET_VENDOR_REALTEK_R8168
+    depends on PCI && NET_VENDOR_REALTEK
     ---help---
       Say Y here if you have a Realtek 8168 PCI Gigabit Ethernet adapter.
 
 config R8168_VLAN
     bool "Realtek 8168 VLAN"
     default y
-    depends on PCI && NET_VENDOR_REALTEK_R8168
+    depends on PCI && NET_VENDOR_REALTEK
     ---help---
       Say Y here if you have a Realtek 8168 PCI Gigabit Ethernet adapter.
 
 config R8168_ASPM
     bool "Realtek 8168 ASPM"
     default y
-    depends on PCI && NET_VENDOR_REALTEK_R8168
+    depends on PCI && NET_VENDOR_REALTEK
     ---help---
       Say Y here if you have a Realtek 8168 PCI Gigabit Ethernet adapter.
 
 config R8168_S5WOL
     bool "Realtek 8168 S5WOL"
     default y
-    depends on PCI && NET_VENDOR_REALTEK_R8168
+    depends on PCI && NET_VENDOR_REALTEK
     ---help---
       Say Y here if you have a Realtek 8168 PCI Gigabit Ethernet adapter.
 

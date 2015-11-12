@@ -1,5 +1,5 @@
 /*
- * arch/arm64/boot/dts/tegra210-darcy-hdd-p2892-0030-a00-00.dts
+ * arch/arm64/boot/dts/tegra210-proto-darcy-hdd-p2892-0030-a00-00.dts
  *
  * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -19,7 +19,7 @@
  */
 #include <dt-bindings/gpio/tegra-gpio.h>
 
-#include "tegra210-darcy-p2892-common.dtsi"
+#include "tegra210-proto-darcy-p2892-common.dtsi"
 #include "tegra210-platforms/tegra210-foster-e-cpc-p1963.dtsi"
 
 / {

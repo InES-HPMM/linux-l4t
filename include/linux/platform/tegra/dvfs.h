@@ -431,6 +431,8 @@ static inline int tegra_dvfs_rail_get_override_floor(struct dvfs_rail *rail)
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 int tegra_dvfs_rail_disable_prepare(struct dvfs_rail *rail);
 int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail);
+int tegra_dvfs_set_rail_relations_dfll_vmin(struct clk *dfll_clk,
+							int external_vmin);
 #else
 static inline int tegra_dvfs_rail_disable_prepare(struct dvfs_rail *rail)
 { return 0; }

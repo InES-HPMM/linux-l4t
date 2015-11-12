@@ -132,6 +132,8 @@ static struct dvfs_rail *tegra21_dvfs_rails[] = {
 	&tegra21_dvfs_rail_vdd_gpu,
 };
 
+static struct clk *dfll_clk;
+
 /* FIXME: Remove after bringup */
 #define BRINGUP_CVB_V_MARGIN	25
 #define BRINGUP_CVB_V_MARGIN_EX	5
@@ -192,7 +194,65 @@ static struct dvfs_rail *tegra21_dvfs_rails[] = {
 		{ 0,	   { }, { }, }, \
 	}
 
+/*
+ * This function solves the relationship between CPU and GPU Vmin
+ * and sets the new Vmin in cl_dvfs.
+ */
+static int tegra21_dvfs_rel_vdd_gpu_vdd_cpu(struct dvfs_rail *vdd_gpu,
+				struct dvfs_rail *vdd_cpu)
+{
+	int new_cl_dvfs_mv;
+
+	new_cl_dvfs_mv = max(vdd_gpu->millivolts, vdd_gpu->new_millivolts);
+
+	tegra_dvfs_set_rail_relations_dfll_vmin(dfll_clk, new_cl_dvfs_mv);
+
+	return max(vdd_cpu->new_millivolts, new_cl_dvfs_mv);
+}
+
+
+static struct dvfs_relationship tegra21_dvfs_relationships[] = {
+	{
+		.from = &tegra21_dvfs_rail_vdd_gpu,
+		.to = &tegra21_dvfs_rail_vdd_cpu,
+		.solve = tegra21_dvfs_rel_vdd_gpu_vdd_cpu,
+		.solved_at_nominal = true,
+	},
+};
+
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
+	{
+		.speedo_id = 6,
+		.process_id = 0,
+		.dfll_tune_data  = {
+			.tune0		= 0xFFEAD0FF,
+			.tune1		= 0x020091D9,
+			.droop_rate_min = 1000000,
+			.min_millivolts = 870,
+		},
+		.pll_tune_data = {
+			.min_millivolts = 950,
+		},
+		.max_mv = 1150,
+		.max_freq = 2014500,
+		CPU_CVB_TABLE,
+	},
+	{
+		.speedo_id = 6,
+		.process_id = 1,
+		.dfll_tune_data  = {
+			.tune0		= 0xFFEAD0FF,
+			.tune1		= 0x025501D0,
+			.droop_rate_min = 1000000,
+			.min_millivolts = 870,
+		},
+		.pll_tune_data = {
+			.min_millivolts = 950,
+		},
+		.max_mv = 1150,
+		.max_freq = 2014500,
+		CPU_CVB_TABLE,
+	},
 	{
 		.speedo_id = 5,
 		.process_id = 0,
@@ -1984,7 +2044,11 @@ void __init tegra21x_init_dvfs(void)
 	int gpu_max_freq_index = 0;
 	int cpu_max_freq_index = 0;
 	int cpu_lp_max_freq_index = 0;
+	bool darcy_sku = false;
 
+#ifdef CONFIG_OF
+	darcy_sku = of_machine_is_compatible("nvidia,darcy");
+#endif
 #ifndef CONFIG_TEGRA_CORE_DVFS
 	tegra_dvfs_core_disabled = true;
 #endif
@@ -2040,6 +2104,20 @@ void __init tegra21x_init_dvfs(void)
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra21_dvfs_rails,
 		ARRAY_SIZE(tegra21_dvfs_rails));
+
+	if (darcy_sku) {
+		pr_info("tegra_dvfs: CPU-GPU realtionship for Darcy SKU\n");
+		/* Add DVFS relationships */
+		tegra_dvfs_add_relationships(tegra21_dvfs_relationships,
+				ARRAY_SIZE(tegra21_dvfs_relationships));
+
+		/* Get handle for dfll clock that will be used for
+		 * solving the relationship and setting new Vmin
+		 * of CL DVFS */
+		dfll_clk = tegra_get_clock_by_name("dfll_cpu");
+		if (!dfll_clk)
+			pr_err("DVFS:%s: dfll cpu clock is NULL!", __func__);
+	}
 
 	/* Search core dvfs table for speedo/process matching entries and
 	   initialize dvfs-ed clocks */

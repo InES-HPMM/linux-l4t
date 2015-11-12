@@ -1,0 +1,45 @@
+/* arch/arm64/boot/dts/tegra210-proto-darcy-p2892-common.dtsi
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+#include "tegra210-foster-e-p2530-common.dtsi"
+#include "tegra210-platforms/tegra210-darcy-pinmux-p2892-0130-a00.dtsi"
+#include "tegra210-platforms/tegra210-darcy-extra-pinmux.dtsi"
+#include "tegra210-platforms/tegra210-foster-e-extcon-p2530-0930-e01.dtsi"
+#include "tegra210-platforms/tegra210-foster-powermon-p2530-0930-e01.dtsi"
+#include "tegra210-platforms/tegra210-foster-e-led-p1961-b00.dtsi"
+#include "tegra210-platforms/tegra210-darcy-p2892-emc-a00.dtsi"
+#include "tegra210-platforms/tegra210-darcy-pcie.dtsi"
+#include "tegra210-platforms/tegra210-darcy-prods.dtsi"
+
+/ {
+        pwm-leds {
+                compatible = "pwm-leds";
+                status = "disabled";
+        };
+
+        thermal-zones {
+                AO-therm {
+                        status = "okay";
+                };
+        };
+
+        tegra-aotag {
+                status = "okay";
+        };
+};

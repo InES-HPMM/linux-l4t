@@ -1,0 +1,39 @@
+/*
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "tegra210-foster-e-power-tree-p2530-0932-e00.dtsi"
+
+/ {
+
+	regulators {
+		usb_vbus1: regulator@14 {
+			gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
+		};
+
+		usb_vbus2: regulator@15 {
+			gpio = <&gpio TEGRA_GPIO(CC, 4) 0>;
+		};
+	};
+
+	otg@7d000000 {
+		usb_vbus-supply = <&usb_vbus1>;
+	};
+
+	xusb@70090000 {
+		usb_vbus1-supply = <&battery_reg>;
+	};
+};
