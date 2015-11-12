@@ -2272,7 +2272,7 @@ static void lr388k7_init_ts(void)
 	lr388k7_init_parameter();
 	memset(&g_st_state, 0, sizeof(struct lr388k7_ts_parameter));
 
-	g_st_state.st_wq_k7 = alloc_workqueue("lr388k7_work", WQ_HIGHPRI, 1);
+	g_st_state.st_wq_k7 = create_singlethread_workqueue("lr388k7_work");
 	INIT_WORK(&g_st_state.st_work_k7, lr388k7_work_handler);
 }
 
