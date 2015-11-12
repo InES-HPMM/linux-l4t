@@ -456,7 +456,7 @@ void escore_pm_enable(void)
 
 	dev_dbg(escore->dev, "%s()\n", __func__);
 
-	if(escore->pm_enable) {
+	if (escore->pm_enable) {
 		pr_err("%s(): Already Enabled\n", __func__);
 		return;
 	}
@@ -469,9 +469,9 @@ void escore_pm_enable(void)
 	pm_runtime_use_autosuspend(escore->dev);
 	pm_runtime_enable(escore->dev);
 	device_init_wakeup(escore->dev, true);
-	if(pm_runtime_get_sync(escore->dev) >= 0) {
+	if (pm_runtime_get_sync(escore->dev) >= 0) {
 		ret = pm_runtime_put_sync_autosuspend(escore->dev);
-		if (ret < 0){
+		if (ret < 0) {
 			dev_err(escore->dev,
 				"%s() escore PM put failed ret = %d\n",
 				__func__, ret);

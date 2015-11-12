@@ -179,8 +179,8 @@ config SND_SOC_ES705_UART_WAKEUP
 config SND_SOC_ES705_EXTCLK_OVER_GPIO
 	bool "Enable External Clock Control Over GPIO"
 	---help---
-	  This will enable external clock ON/OFF over 
-	  GPIO
+	  This will enable support of external clock ON/OFF
+	  over GPIO
 
 # Options for escore infrastructure
 

@@ -276,8 +276,8 @@ static const char *const mic1_pga_mux_names[] = {
 };
 
 static const struct soc_enum mic1_pga_mux_enum =
-       SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(mic1_pga_mux_names),
-                       mic1_pga_mux_names);
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(mic1_pga_mux_names),
+			mic1_pga_mux_names);
 
 static const struct snd_kcontrol_new mic1_pga_mux_controls =
 	SOC_DAPM_ENUM_VIRT("Switch", mic1_pga_mux_enum);
@@ -351,8 +351,8 @@ const struct snd_soc_dapm_widget es_codec_dapm_widgets[] = {
 	SND_SOC_DAPM_VIRT_MUX("MIC0 PGA Mux", SND_SOC_NOPM, 0, 0,
 		&mic0_pga_mux_controls),
 
-       SND_SOC_DAPM_VIRT_MUX("MIC1 PGA Mux", SND_SOC_NOPM, 0, 0,
-               &mic1_pga_mux_controls),
+	SND_SOC_DAPM_VIRT_MUX("MIC1 PGA Mux", SND_SOC_NOPM, 0, 0,
+		&mic1_pga_mux_controls),
 	/* ADC */
 	SND_SOC_DAPM_ADC("ADC0", NULL, ES_ADC0_ON, ES_ADC0_ON_SHIFT, 0),
 	SND_SOC_DAPM_MUX("ADC1 MUX", SND_SOC_NOPM, 0, 0, &adc1_mux),
@@ -423,9 +423,9 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MIC0 PGA Mux", "MIC-HS", "MICHS"},
 	{"MIC0 PGA", NULL, "MIC0 PGA Mux"},
 
-       {"MIC1 PGA Mux", "MIC-1", "MIC1"},
-       {"MIC1 PGA Mux", "MIC-HS", "MICHS"},
-       {"MIC1 PGA", NULL, "MIC1 PGA Mux"},
+	{"MIC1 PGA Mux", "MIC-1", "MIC1"},
+	{"MIC1 PGA Mux", "MIC-HS", "MICHS"},
+	{"MIC1 PGA", NULL, "MIC1 PGA Mux"},
 
 	{"MIC2 PGA", NULL, "MIC2"},
 

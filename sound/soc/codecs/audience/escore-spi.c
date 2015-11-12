@@ -541,7 +541,7 @@ int escore_spi_boot_finish(struct escore_priv *escore)
 		pr_debug("%s(): write ES_SYNC_CMD = 0x%08x\n",
 				__func__, sync_cmd);
 		rc = escore_spi_cmd(escore, sync_cmd, &sync_ack);
-		pr_debug("%s(): rc=%d, sync_ack = 0x%08x\n", __func__, rc, \
+		pr_debug("%s(): rc=%d, sync_ack = 0x%08x\n", __func__, rc,
 			sync_ack);
 		if (rc < 0) {
 			pr_err("%s(): firmware load failed sync write %d\n",

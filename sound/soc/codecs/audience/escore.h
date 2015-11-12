@@ -246,7 +246,8 @@ enum {
 #define ES_PS_NORMAL (ES_GET_POWER_STATE << 16 | ES_SET_POWER_STATE_NORMAL)
 #define ES_PS_OVERLAY (ES_GET_POWER_STATE << 16 | ES_SET_POWER_STATE_VS_OVERLAY)
 
-#define ES_DIGITAL_GAIN_MAX_NUM 48 /* Maximum number of digital gain allowed, equal to ES300_PASSOUT4+1 */
+/* Maximum number of digital gain allowed, equal to ES300_PASSOUT4+1 */
+#define ES_DIGITAL_GAIN_MAX_NUM 48
 
 enum {
 	SBL,
@@ -587,7 +588,8 @@ struct escore_priv {
 	u16 algo_preset_two;
 /* endif 705 */
 
-	int selected_endpoint; /* Selected endpoint(pathID) for following digital gain setting */
+	/* Selected endpoint(pathID) for following digital gain setting */
+	int selected_endpoint;
 	u32 digital_gain[ES_DIGITAL_GAIN_MAX_NUM];
 
 	struct mutex pm_mutex;

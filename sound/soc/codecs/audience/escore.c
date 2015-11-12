@@ -342,7 +342,7 @@ int escore_reconfig_intr(struct escore_priv *escore)
 		}
 	} else {
 		/* Setup the Event response */
-		cmd = (ES_SET_EVENT_RESP << 16) | \
+		cmd = (ES_SET_EVENT_RESP << 16) |
 						escore->pdata->gpio_b_irq_type;
 		rc = escore_cmd_nopm(escore, cmd, &resp);
 		if (rc < 0) {
@@ -837,9 +837,6 @@ int escore_wakeup(struct escore_priv *escore)
 		msleep(ES_PM_CLOCK_STABILIZATION);
 	}
 
-	//if (escore->pri_intf == ES_SPI_INTF)
-	//	msleep(ES_WAKEUP_TIME);
-
 	do {
 		/* Set flag to Wait for API Interrupt */
 		escore_set_api_intr_wait(escore);
@@ -875,24 +872,6 @@ int escore_wakeup(struct escore_priv *escore)
 			else
 				msleep(escore->delay.wakeup_to_normal);
 
-/*
-			if (escore->pri_intf == ES_SPI_INTF) {
-				if (escore->pdata->gpioa_gpio == -1)
-					msleep(ES_WAKEUP_TIME);
-				rc = escore_cmd_nopm(escore, p_cmd, &rsp);
-				if (rc < 0) {
-					pr_err("%s(): get power state failed" \
-						" rc = %d\n", __func__, rc);
-					continue;
-				}
-				if ((rsp != ES_PS_NORMAL) &&
-					(rsp != ES_PS_OVERLAY)) {
-					rc = -1;
-					continue;
-				}
-			}
-*/
-
 			/* Send sync command to verify device is active */
 			rc = escore_cmd_nopm(escore, cmd, &rsp);
 			if (rc < 0) {
@@ -920,9 +899,6 @@ int escore_wakeup(struct escore_priv *escore)
 		}
 	} while (rc && --retry);
 
-	/* Hack to avoid flase interrupts coming after deep sleep */
-	//msleep(350);
-
 	/* Set the Smooth Mute rate to Zero */
 	cmd = ES_SET_SMOOTH_MUTE << 16 | ES_SMOOTH_MUTE_ZERO;
 	rc = escore_cmd_nopm(escore, cmd, &rsp);
@@ -931,7 +907,6 @@ int escore_wakeup(struct escore_priv *escore)
 			__func__, rc);
 		goto escore_wakeup_exit;
 	}
-
 escore_wakeup_exit:
 	return rc;
 }

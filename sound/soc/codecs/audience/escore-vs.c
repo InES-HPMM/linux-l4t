@@ -62,7 +62,8 @@ static int escore_vs_sleep(struct escore_priv *escore)
 		skip_vs_seq = 1;
 		skip_vs_load = 1;
 		goto vs_set_low_power;
-	} else if (escore->escore_power_state == ES_SET_POWER_STATE_VS_OVERLAY) {
+	} else if (escore->escore_power_state ==
+				ES_SET_POWER_STATE_VS_OVERLAY) {
 		skip_vs_load = 1;
 		dev_dbg(escore->dev, "%s() already in VS overlay mode\n",
 								__func__);
@@ -135,7 +136,7 @@ static int escore_vs_sleep(struct escore_priv *escore)
 		pr_debug("%s() VS firmware is already downloaded", __func__);
 
 		/* Setup the Event response */
-		cmd = (ES_SET_EVENT_RESP << 16) | \
+		cmd = (ES_SET_EVENT_RESP << 16) |
 						escore->pdata->gpio_b_irq_type;
 		rc = escore_cmd_nopm(escore, cmd, &rsp);
 		if (rc < 0) {
@@ -269,7 +270,7 @@ vs_sleep_err:
 	if (!skip_vs_load) {
 		vs_load_time = (timespec_sub(vs_load_end, vs_load_start));
 		dev_info(escore->dev, "VS firmware load time = %lu.%03lu sec\n",
-				vs_load_time.tv_sec, (vs_load_time.tv_nsec)/1000000);
+			vs_load_time.tv_sec, (vs_load_time.tv_nsec)/1000000);
 	}
 	if (!skip_vs_seq) {
 		wdb_time = (timespec_sub(wdb_end, wdb_start));

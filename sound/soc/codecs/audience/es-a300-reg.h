@@ -1,14 +1,13 @@
-//***********************************************************************************
-// SCRIPT GENERATED FILE - DO NOT EDIT
-//
-// es-a300-reg.h
-//
-// This file contains the addresses for the codec hardware fields.  Addresses
-// are automatically extracted by script from the codec register spreadsheets.
-//
-// This file generated on 5/22/2015 at 10:58:03 AM
-//
-//***********************************************************************************
+/*
+ * SCRIPT GENERATED FILE - DO NOT EDIT
+ *
+ * es-a300-reg.h
+ *
+ * This file contains the addresses for the codec hardware fields.  Addresses
+ * are automatically extracted by script from the codec register spreadsheets.
+ *
+ * This file generated on 5/22/2015 at 10:58:03 AM
+ */
 
 #ifndef __ES_A300_REG_H__
 #define __ES_A300_REG_H__

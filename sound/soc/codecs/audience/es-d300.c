@@ -232,7 +232,6 @@ static int _es_set_switch(int id)
 
 	switch_value = es_d300_switch[id].value;
 	cmd = es_d300_switch[id].value_cmd[switch_value];
-	cmd = cmd | (1 << ES_SC_BIT);
 
 	/*
 	 * The delay is required to make sure the route is active.
@@ -283,10 +282,6 @@ int _es_stop_route(struct escore_priv *escore, u8 stream_type)
 			escore->algo_type_off = PASSTHRU_VP;
 	}
 
-
-	pr_debug("%s **** Stop route Algo type %d for stream type %d ******* \n", __func__,escore->algo_type_off, stream_type);
-
-
 	/* Stop the route first, except when stopping DHWPT use cases */
 	if (escore->algo_type_off != DHWPT) {
 		if (escore->algo_type_off == PASSTHRU_VP &&
@@ -302,7 +297,8 @@ int _es_stop_route(struct escore_priv *escore, u8 stream_type)
 				return ret;
 			}
 
-			/* Require 1ms delay between stop route and DHWPT to avoid noise */
+			/* Require 1ms delay between stop route
+			   and DHWPT to avoid noise */
 			usleep_range(5000, 5005);
 		}
 
@@ -310,8 +306,8 @@ int _es_stop_route(struct escore_priv *escore, u8 stream_type)
 		if (escore->base_route_setup) {
 			ret = escore_cmd(escore, stop_route_cmd, &resp);
 			if (ret) {
-				pr_err("%s: Route stop failed, ret = %d\n", __func__,
-						ret);
+				pr_err("%s: Route stop failed, ret = %d\n",
+					__func__, ret);
 				return ret;
 			}
 
@@ -320,11 +316,14 @@ int _es_stop_route(struct escore_priv *escore, u8 stream_type)
 
 		/* When stopping capture route and DHWPT playback is running,
 		 * restore chip to MP_Sleep mode */
-		if (escore->algo_type_off == PASSTHRU_VP && escore->dhwpt_capture_on)
+		if (escore->algo_type_off == PASSTHRU_VP &&
+						escore->dhwpt_capture_on)
 			escore->dhwpt_capture_on = 0;
 
-		if (escore->mp_sleep_requested && escore->dhwpt_mode && !escore->dhwpt_capture_on) {
-			pr_debug("%s(): Put chip back into mp_sleep\n", __func__);
+		if (escore->mp_sleep_requested && escore->dhwpt_mode &&
+						!escore->dhwpt_capture_on) {
+			pr_debug("%s(): Put chip back into mp_sleep\n",
+							__func__);
 			ret = es755_enter_mp_sleep();
 			if (ret) {
 				pr_err("%s: es755_enter_mp_sleep failed = %d\n",
@@ -339,11 +338,14 @@ int _es_stop_route(struct escore_priv *escore, u8 stream_type)
 
 			if (!escore->dhwpt_capture_on) {
 
-				/* Disable DHWPT if enabled, or when stopping DHWPT use cases */
+				/* Disable DHWPT if enabled or
+				   when stopping DHWPT use cases
+				*/
 				u32 cmd = escore->dhwpt_cmd & 0xFFFF0000;
 
-				/* Bring the chip from MP Sleep mode to Normal mode before
-				 * sending any commands */
+				/* Bring the chip from MP Sleep mode to Normal
+				    mode before sending any commands
+				*/
 				ret = es755_exit_mp_sleep();
 				if (ret) {
 					pr_err("%s(): es755_exit_mp_sleep() fail %d\n",
@@ -358,23 +360,15 @@ int _es_stop_route(struct escore_priv *escore, u8 stream_type)
 					return ret;
 				}
 			} else {
-
-				pr_debug("%s(): Seems DHWPT capture is on. Skip disabling DHWPT\n", __func__);
+				pr_debug("%s(): %s\n",
+					"DHWPT capture is on.Skip disabling DHWPT",
+					__func__);
 			}
 
 			escore->dhwpt_mode = 0;
 		}
 	}
-
-
 	escore->current_preset = 0;
-	/* Reset algo_preset so that it is not accidently set for a
-	* diffeent route, UCM is responsible to set this algo preset
-	* for every use case
-	*/
-	escore->algo_preset_one = 0;
-	escore->algo_preset_two = 0;
-	//escore->algo_type_off = ALGO_NONE;
 
 	return ret;
 }
@@ -389,7 +383,6 @@ static void update_chan_id(u32 *msg, int chan_id)
 
 static int setup_dhwpt_msg(u32 *msg, int mux)
 {
-	pr_debug("****** %s() *********:\n", __func__);
 	switch (mux) {
 	case ES_PASSIN1_MUX:
 		msg[0] = 0xB05A3FF3;
@@ -575,14 +568,6 @@ static int add_algo_base_route(struct escore_priv *escore)
 	escore->current_preset =  msg & 0xFFFF;
 	rc = escore_queue_msg_to_list(escore, (char *)&msg, sizeof(msg));
 
-/*
-	if (!rc && escore->dhwpt_enabled) {
-		msg = escore->dhwpt_cmd;
-		rc = escore_queue_msg_to_list(escore,
-				(char *)&msg, sizeof(msg));
-	}
-*/
-
 	/* Configure command completion mode */
 	if (escore->cmd_compl_mode == ES_CMD_COMP_INTR) {
 		cmd |= escore->pdata->gpio_a_irq_type;
@@ -675,7 +660,8 @@ static int _es_set_digital_gain(struct escore_priv *escore)
 			}
 
 			/* Set digital output gain */
-			cmd = (ES_SET_DIGITAL_GAIN<<16) | escore->digital_gain[i];
+			cmd = (ES_SET_DIGITAL_GAIN<<16) |
+				escore->digital_gain[i];
 			rc = escore_cmd(escore, cmd, &resp);
 			if (rc) {
 				dev_err(escore_priv.dev,
@@ -827,19 +813,27 @@ static int _es_set_final_route(struct escore_priv *escore)
 	/* DHWPT playback case */
 	if (escore->algo_type == DHWPT) {
 		if (escore->dhwpt_capture_on)
-			pr_debug("%s(): ****** Seem capture is present. DHWPT is already sent **********\n",__func__);
+			pr_debug("%s():Capture is present. DHWPT is already sent.\n",
+							__func__);
 		else {
-			/* Before setting DHWPT configurations, ensure that normal route setup is inactive. */
+			/* Before setting DHWPT configurations,
+			   ensure that normal route setup is inactive.
+			*/
 			if (atomic_read(&escore->active_streams)) {
-				pr_debug("%s(): ** Stop route before sending DHWPT ****\n",__func__);
+				pr_debug("%s():Stop route before sending DHWPT\n",
+							__func__);
 				_es_stop_route(escore, ES_TYPE_NONE);
-				/* Require 1ms delay between stop route and DHWPT to avoid noise */
+
+				/* Require 1ms delay between stop route
+				   and DHWPT to avoid noise
+				*/
 				usleep_range(5000, 5005);
 			}
 
 			rc = escore_cmd(escore, escore->dhwpt_cmd, &resp);
 			if (rc < 0) {
-				pr_err("%s(): Error %d in sending DHWPT command\n",__func__, rc);
+				pr_err("%s(): Error %d in sending DHWPT command\n",
+							__func__, rc);
 				return rc;
 			}
 		}
@@ -851,7 +845,7 @@ static int _es_set_final_route(struct escore_priv *escore)
 	rc =  es_change_power_state_normal(escore);
 	if (rc) {
 		pr_err("%s(): Power state transition failed %d\n",
-			__func__, rc);
+				__func__, rc);
 		return rc;
 	}
 
@@ -886,12 +880,16 @@ static int _es_set_final_route(struct escore_priv *escore)
 	 * firmware after stopping the current route. The stream count will
 	 * anyway be decremented when the HAL layer stops the PCM stream
 	 * of previous use-case. */
-	else if (unlikely(atomic_read(&escore->active_streams)) && !escore->dhwpt_mode)
+	else if (unlikely(atomic_read(&escore->active_streams)) &&
+						!escore->dhwpt_mode)
 		_es_stop_route(escore, ES_TYPE_NONE);
 
-	if (escore->algo_type == PASSTHRU_VP && !escore->dhwpt_enabled && escore->dhwpt_mode) {
-		dev_err(escore_priv.dev, "%s(): **** WARNING: PT_VP route called even DHWPT playback is ON ****\n",__func__);
-		dev_err(escore_priv.dev, "%s(): **** Forcibly stopping DHWPT playback ****\n",__func__);
+	if (escore->algo_type == PASSTHRU_VP && !escore->dhwpt_enabled &&
+						escore->dhwpt_mode) {
+		dev_err(escore_priv.dev, "%s(): %s\n", __func__,
+			"WARNING: PT_VP route called even DHWPT playback is ON");
+		dev_err(escore_priv.dev, "%s(): %s\n", __func__,
+			"Forcibly stopping DHWPT playback");
 		/* Disable DHWPT if enabled, or when stopping DHWPT use cases */
 		msg = escore->dhwpt_cmd & 0xFFFF0000;
 		rc = escore_cmd(escore, msg, &resp);
@@ -959,7 +957,8 @@ static int _es_set_final_route(struct escore_priv *escore)
 	}
 
 	/* Setup AEC if enabled */
-	if (escore->algo_type == PASSTHRU_VP && escore->vp_aec && !escore->dhwpt_enabled) {
+	if (escore->algo_type == PASSTHRU_VP && escore->vp_aec &&
+						!escore->dhwpt_enabled) {
 		escore_queue_msg_to_list(escore, (char *)pt_vp_aec_msgblk,
 				sizeof(pt_vp_aec_msgblk));
 	}
@@ -972,8 +971,8 @@ static int _es_set_final_route(struct escore_priv *escore)
 			 &resp);
 
 		if (rc)
-			pr_warn("%s(): Error %d setting Power Saving Level" \
-				" resp = 0x%x\n", __func__, rc, resp);
+			pr_warn("%s(): Error %d %s resp = 0x%x\n",
+			__func__, rc, "setting Power Saving Level", resp);
 	}
 
 	/* add umbrella base route */
@@ -1044,8 +1043,8 @@ static int _es_set_final_route(struct escore_priv *escore)
 				&resp);
 
 		if (rc) {
-			pr_warn("%s(): Error %d selecting HPF mode" \
-					" resp = 0x%x\n", __func__, rc, resp);
+			pr_warn("%s(): Error %d %s resp = 0x%x\n", __func__,
+				rc, "selecting HPF mode", resp);
 			goto exit;
 		}
 	}
@@ -1276,8 +1275,10 @@ static int es300_codec_enable_i2srx(struct snd_soc_dapm_widget *w,
 			}
 		}
 
-		pr_debug("%s: START RX PMU Active channels Act %d Total %d\n", __func__,
-				escore->i2s_dai_data[dai_id].rx_ch_act, escore->i2s_dai_data[dai_id].rx_ch_tot);
+		pr_debug("%s: START RX PMU Active channels Act %d Total %d\n",
+				__func__,
+				escore->i2s_dai_data[dai_id].rx_ch_act,
+				escore->i2s_dai_data[dai_id].rx_ch_tot);
 		if (escore->i2s_dai_data[dai_id].rx_ch_act ==
 				escore->i2s_dai_data[dai_id].rx_ch_tot) {
 
@@ -1287,8 +1288,10 @@ static int es300_codec_enable_i2srx(struct snd_soc_dapm_widget *w,
 
 			atomic_inc(&escore->active_streams);
 		}
-		pr_debug("%s: END RX PMU Active channels %d Active streams %d\n", __func__,
-			escore->i2s_dai_data[dai_id].rx_ch_act, escore->active_streams);
+		pr_debug("%s: END RX PMU Active channels %d Active streams %d\n",
+			__func__,
+			escore->i2s_dai_data[dai_id].rx_ch_act,
+			escore->active_streams);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		for (j = 0; j < escore->dai_nr; j++) {
@@ -1300,18 +1303,12 @@ static int es300_codec_enable_i2srx(struct snd_soc_dapm_widget *w,
 			}
 		}
 
-		pr_debug("%s: BEGIN RX PMD Active channels %d Active streams %d\n", __func__,
-			escore->i2s_dai_data[dai_id].rx_ch_act, escore->active_streams);
+		pr_debug("%s: BEGIN RX PMD Active channels %d Active streams %d\n",
+			__func__,
+			escore->i2s_dai_data[dai_id].rx_ch_act,
+			escore->active_streams);
 		if (!escore->i2s_dai_data[dai_id].rx_ch_act) {
 
-/*
-			if (atomic_read(&escore->active_streams) &&
-				atomic_dec_and_test(&escore->active_streams)) {
-				mutex_lock(&escore->access_lock);
-				ret = _es_stop_route(escore,ES_TYPE_PB);
-				mutex_unlock(&escore->access_lock);
-			}
-*/
 			/* Decrease active streams count if non-zero */
 			if (atomic_read(&escore->active_streams)) {
 				atomic_dec(&escore->active_streams);
@@ -1322,14 +1319,16 @@ static int es300_codec_enable_i2srx(struct snd_soc_dapm_widget *w,
 				    (atomic_read(&escore->active_streams) == 1
 				     && escore->dhwpt_mode)) {
 					mutex_lock(&escore->access_lock);
-					ret = _es_stop_route(escore,ES_TYPE_PB);
+					ret = _es_stop_route(escore,
+								ES_TYPE_PB);
 					mutex_unlock(&escore->access_lock);
 				}
 			}
 
 		}
-		pr_debug("%s: END RX PMD Active channels %d Active streams %d\n", __func__,
-			escore->i2s_dai_data[dai_id].rx_ch_act, escore->active_streams);
+		pr_debug("%s: END RX PMD Active channels %d Streams %d\n",
+			__func__, escore->i2s_dai_data[dai_id].rx_ch_act,
+			escore->active_streams);
 		break;
 	}
 	mutex_unlock(&codec->mutex);
@@ -1358,8 +1357,9 @@ static int es300_codec_enable_i2stx(struct snd_soc_dapm_widget *w,
 			}
 		}
 
-		pr_debug("%s: BEGIN TX PMU Active channels %d Active streams %d\n", __func__,
-			escore->i2s_dai_data[dai_id].tx_ch_act, escore->active_streams);
+		pr_debug("%s: BEGIN TX PMU Active channels %d Streams %d\n",
+			 __func__, escore->i2s_dai_data[dai_id].tx_ch_act,
+			escore->active_streams);
 		if (escore->i2s_dai_data[dai_id].tx_ch_act ==
 				escore->i2s_dai_data[dai_id].tx_ch_tot) {
 
@@ -1369,8 +1369,9 @@ static int es300_codec_enable_i2stx(struct snd_soc_dapm_widget *w,
 
 			atomic_inc(&escore->active_streams);
 		}
-		pr_debug("%s: END TX PMU Active channels %d Active streams %d\n", __func__,
-			escore->i2s_dai_data[dai_id].tx_ch_act, escore->active_streams);
+		pr_debug("%s: END TX PMU Active channels %d Streams %d\n",
+			__func__, escore->i2s_dai_data[dai_id].tx_ch_act,
+			escore->active_streams);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		for (j = 0; j < escore->dai_nr; j++) {
@@ -1382,8 +1383,9 @@ static int es300_codec_enable_i2stx(struct snd_soc_dapm_widget *w,
 			}
 		}
 
-		pr_debug("%s: BEGIN TX PMD Active channels %d Active streams %d DHWPT mode %d\n", __func__,
-			escore->i2s_dai_data[dai_id].tx_ch_act, escore->active_streams,escore->dhwpt_mode);
+		pr_debug("%s: BEGIN TX PMD Active channels %d Streams %d\n",
+			__func__, escore->i2s_dai_data[dai_id].tx_ch_act,
+			escore->active_streams, escore->dhwpt_mode);
 
 		if (!escore->i2s_dai_data[dai_id].tx_ch_act) {
 			/* Decrease active streams count if non-zero */
@@ -1396,13 +1398,15 @@ static int es300_codec_enable_i2stx(struct snd_soc_dapm_widget *w,
 				    (atomic_read(&escore->active_streams) == 1
 				     && escore->dhwpt_mode)) {
 					mutex_lock(&escore->access_lock);
-					ret = _es_stop_route(escore,ES_TYPE_CAP);
+					ret = _es_stop_route(escore,
+								ES_TYPE_CAP);
 					mutex_unlock(&escore->access_lock);
 				}
 			}
 		}
-		pr_debug("%s: END TX PMD Active channels %d Active streams %d\n", __func__,
-			escore->i2s_dai_data[dai_id].tx_ch_act, escore->active_streams);
+		pr_debug("%s: END TX PMD Active channels %d Streams %d\n",
+			__func__, escore->i2s_dai_data[dai_id].tx_ch_act,
+			escore->active_streams);
 		break;
 	}
 	mutex_unlock(&codec->mutex);
@@ -1665,7 +1669,8 @@ static int es300_put_algo_state(struct snd_kcontrol *kcontrol,
 		algo_type = DHWPT;
 		break;
 	default:
-		pr_err("%s(): Algo type not implemented: %s\n", __func__, kcontrol->id.name);
+		pr_err("%s(): Algo type not implemented: %s\n", __func__,
+						kcontrol->id.name);
 		ret = -EINVAL;
 		break;
 	}
@@ -1777,7 +1782,7 @@ static int put_input_route_value(struct snd_kcontrol *kcontrol,
 #endif
 
 exit:
-	pr_debug("put input control %s (%d) val %s\n", kcontrol->id.name,reg,
+	pr_debug("put input control %s (%d) val %s\n", kcontrol->id.name, reg,
 				proc_block_input_texts[mux]);
 	mutex_unlock(&codec->mutex);
 
@@ -1799,7 +1804,7 @@ static int get_input_route_value(struct snd_kcontrol *kcontrol,
 	/* TBD: translation */
 	/* value = escore_read(NULL, reg); */
 	ucontrol->value.enumerated.item[0] = value;
-	pr_debug("get input control %s (%d)  val %s\n", kcontrol->id.name,reg,
+	pr_debug("get input control %s (%d)  val %s\n", kcontrol->id.name, reg,
 				proc_block_input_texts[value]);
 
 	return 0;
@@ -1862,7 +1867,7 @@ static int put_output_route_value(struct snd_kcontrol *kcontrol,
 #endif
 
 exit:
-	pr_debug("put output control %s (%d) val %s\n", kcontrol->id.name,reg,
+	pr_debug("put output control %s (%d) val %s\n", kcontrol->id.name, reg,
 				proc_block_output_texts[mux]);
 	mutex_unlock(&codec->mutex);
 	return rc;
@@ -1883,7 +1888,7 @@ static int get_output_route_value(struct snd_kcontrol *kcontrol,
 	/* TBD: translation */
 	/* value = escore_read(NULL, reg); */
 	ucontrol->value.enumerated.item[0] = value;
-	pr_debug("get output control %s (%d) val %s\n", kcontrol->id.name,reg,
+	pr_debug("get output control %s (%d) val %s\n", kcontrol->id.name, reg,
 				proc_block_output_texts[value]);
 
 	return 0;
@@ -2412,7 +2417,7 @@ static int put_preset_value_one(struct snd_kcontrol *kcontrol,
 	/* Ignore Preset ID 0 and don't send command to device,
 	 * but reset algo_preset value so that next preset value
 	 * can be set properly. */
-	if(!escore->algo_preset_one) {
+	if (!escore->algo_preset_one) {
 		dev_dbg(escore_priv.dev,
 			"%s(): Preset ID %d is not supported\n",
 			__func__, value);
@@ -2420,12 +2425,13 @@ static int put_preset_value_one(struct snd_kcontrol *kcontrol,
 		return rc;
 	}
 
-	if (atomic_read(&escore->active_streams) && !escore->dhwpt_mode) {
+	if (escore->base_route_setup) {
 		/* Set the preset immediately */
 		usleep_range(5000, 5005);
 		pr_debug("%s:add algo preset one: %d", __func__,
 				escore->algo_preset_one);
-		rc = escore_write_locked(NULL, ES_PRESET, escore->algo_preset_one);
+		rc = escore_write_locked(NULL, ES_PRESET,
+				escore->algo_preset_one);
 		if (rc)
 			dev_err(escore_priv.dev, "%s(): Set Preset one failed:%d\n",
 				__func__, rc);
@@ -2461,7 +2467,7 @@ static int put_preset_value_two(struct snd_kcontrol *kcontrol,
 	/* Ignore Preset ID 0 and don't send command to device,
 	 * but reset algo_preset value so that next preset value
 	 * can be set properly. */
-	if(!escore->algo_preset_two) {
+	if (!escore->algo_preset_two) {
 		dev_dbg(escore_priv.dev,
 			"%s(): Preset ID %d is not supported\n",
 			__func__, value);
@@ -2469,12 +2475,13 @@ static int put_preset_value_two(struct snd_kcontrol *kcontrol,
 		return rc;
 	}
 
-	if (atomic_read(&escore->active_streams) && !escore->dhwpt_mode) {
+	if (escore->base_route_setup) {
 		/* Set the preset immediately */
 		usleep_range(5000, 5005);
 		pr_debug("%s:add algo preset two: %d", __func__,
 				escore->algo_preset_two);
-		rc = escore_write_locked(NULL, ES_PRESET, escore->algo_preset_two);
+		rc = escore_write_locked(NULL, ES_PRESET,
+				escore->algo_preset_two);
 		if (rc)
 			dev_err(escore_priv.dev, "%s(): Set Preset two failed:%d\n",
 				__func__, rc);
@@ -2533,7 +2540,7 @@ static int put_vp_meters(struct snd_kcontrol *kcontrol,
 }
 
 static int get_hpf_mode(struct snd_kcontrol *kcontrol,
-                struct snd_ctl_elem_value *ucontrol)
+		struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct escore_priv *escore = snd_soc_codec_get_drvdata(codec);
@@ -2545,7 +2552,7 @@ static int get_hpf_mode(struct snd_kcontrol *kcontrol,
 }
 
 static int put_hpf_mode(struct snd_kcontrol *kcontrol,
-                struct snd_ctl_elem_value *ucontrol)
+		struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct escore_priv *escore = snd_soc_codec_get_drvdata(codec);
