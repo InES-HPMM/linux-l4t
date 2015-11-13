@@ -21,37 +21,6 @@
 / {
 	host1x {
 		vi {
-			ports {
-				port@6 {
-					reg = <6>;
-
-					vi_in6: endpoint {
-						remote-endpoint = <&lc898212_out0>;
-					};
-				};
-				port@7 {
-					reg = <7>;
-
-					vi_in7: endpoint {
-						remote-endpoint = <&lc898212_out1>;
-					};
-				};
-			};
-			csia@54080838 {
-				ports {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					port@0 {
-						reg = <0>;
-						csi_in0: endpoint@0 {
-							bus-width = <4>;
-							remote-endpoint = <&ov23850_out0>;
-						};
-					};
-				};
-			};
-
 			csic@54081038 {
 				ports {
 					#address-cells = <1>;
@@ -59,9 +28,9 @@
 
 					port@0 {
 						reg = <0>;
-						csi_in2: endpoint@2 {
-							bus-width = <4>;
-							remote-endpoint = <&ov23850_out2>;
+						csi_in0: endpoint@0 {
+							bus-width = <2>;
+							remote-endpoint = <&ov5693_out0>;
 						};
 					};
 				};
@@ -69,21 +38,27 @@
 		};
 
 		i2c@546c0000 {
-			ov23850_a@10 {
-				compatible = "nvidia,ov23850";
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
 
-				reg = <0x10>;
+			status = "okay";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			ov5693_c@36 {
+				compatible = "nvidia,ov5693";
+				/* I2C device address */
+				reg = <0x36>;
+
+				/* V4L2 device node location */
+				devnode = "video2";
+
 				/* Physical dimensions of sensor */
-				physical_w = "7.3998";
-				physical_h = "5.5998";
+				physical_w = "3.674";
+				physical_h = "2.738";
 
 				/* Define any required hw resources needed by driver */
 				/* ie. clocks, io pins, power sources */
 				avdd-reg = "vana";
-				dvdd-reg = "vdig";
 				iovdd-reg = "vif";
-				vcmvdd-reg = "vvcm";
-				devnode = "video0";
 
 				/**
 				* Generic formula to calculate different parameters.
@@ -174,205 +149,130 @@
 				* min_framerate = "";
 				* max_framerate = "";
 				* Framerate limits for mode (fps)
-				*
 				*/
-
-				mode0 { // OV23850_MODE_5632X4224
+				mode0 { // OV5693_MODE_2592X1944
 					mclk_khz = "24000";
-					num_lanes = "4";
-					tegra_sinterface = "serial_a";
+					num_lanes = "2";
+					tegra_sinterface = "serial_c";
 					discontinuous_clk = "no";
 					dpcm_enable = "false";
 					cil_settletime = "0";
 
-					active_w = "5632";
-					active_h = "4224";
+					active_w = "2592";
+					active_h = "1944";
 					pixel_t = "bayer_bggr";
-					readout_orientation = "270";
-					line_length = "7200";
+					readout_orientation = "90";
+					line_length = "2688";
 					inherent_gain = "1";
-					mclk_multiplier = "31.25";
-					pix_clk_hz = "750000000";
+					mclk_multiplier = "6.67";
+					pix_clk_hz = "160000000";
 
 					min_gain_val = "1.0";
-					max_gain_val = "15.5";
+					max_gain_val = "16";
 					min_hdr_ratio = "1";
 					max_hdr_ratio = "64";
-					min_framerate = "3.179011";
-					max_framerate = "21";
-					min_exp_time = "20";
-					max_exp_time = "314256";
-				};
-
-				mode1 { // OV23850_MODE_5632X3168
-					mclk_khz = "24000";
-					num_lanes = "4";
-					tegra_sinterface = "serial_a";
-					discontinuous_clk = "no";
-					dpcm_enable = "false";
-					cil_settletime = "0";
-
-					active_w = "5632";
-					active_h = "3168";
-					pixel_t = "bayer_bggr";
-					readout_orientation = "270";
-					line_length = "7108";
-					inherent_gain = "1";
-					mclk_multiplier = "31.25";
-					pix_clk_hz = "750000000";
-
-					min_gain_val = "1.0";
-					max_gain_val = "15.5";
-					min_hdr_ratio = "1";
-					max_hdr_ratio = "64";
-					min_framerate = "3.220157";
+					min_framerate = "1.816577";
 					max_framerate = "30";
-					min_exp_time = "19";
-					max_exp_time = "310241";
+					min_exp_time = "34";
+					max_exp_time = "550385";
 				};
+
+				mode1 { //OV5693_MODE_2592X1458
+					mclk_khz = "24000";
+					num_lanes = "2";
+					tegra_sinterface = "serial_c";
+					discontinuous_clk = "no";
+					dpcm_enable = "false";
+					cil_settletime = "0";
+
+					active_w = "2592";
+					active_h = "1458";
+					pixel_t = "bayer_bggr";
+					readout_orientation = "90";
+					line_length = "2688";
+					inherent_gain = "1";
+					mclk_multiplier = "6.67";
+					pix_clk_hz = "160000000";
+
+					min_gain_val = "1.0";
+					max_gain_val = "16";
+					min_hdr_ratio = "1";
+					max_hdr_ratio = "64";
+					min_framerate = "1.816577";
+					max_framerate = "30";
+					min_exp_time = "34";
+					max_exp_time = "550385";
+				};
+
+				mode2 { //OV5693_MODE_1280X720
+					mclk_khz = "24000";
+					num_lanes = "2";
+					tegra_sinterface = "serial_c";
+					discontinuous_clk = "no";
+					dpcm_enable = "false";
+					cil_settletime = "0";
+
+					active_w = "1280";
+					active_h = "720";
+					pixel_t = "bayer_bggr";
+					readout_orientation = "90";
+					line_length = "1752";
+					inherent_gain = "1";
+					mclk_multiplier = "6.67";
+					pix_clk_hz = "160000000";
+
+					min_gain_val = "1.0";
+					max_gain_val = "16";
+					min_hdr_ratio = "1";
+					max_hdr_ratio = "64";
+					min_framerate = "2.787078";
+					max_framerate = "120";
+					min_exp_time = "22";
+					max_exp_time = "358733";
+				};
+
+				// HDR Modes
+				mode3 { //OV5693_MODE_2592X1944_HDR
+					mclk_khz = "24000";
+					num_lanes = "2";
+					tegra_sinterface = "serial_c";
+					discontinuous_clk = "no";
+					dpcm_enable = "false";
+					cil_settletime = "0";
+
+					active_w = "2592";
+					active_h = "1944";
+					pixel_t = "hdr_bggr";
+					readout_orientation = "90";
+					line_length = "3696";
+					inherent_gain = "1";
+					mclk_multiplier = "7.33";
+					pix_clk_hz = "176000000";
+
+					min_gain_val = "1.0";
+					max_gain_val = "16";
+					min_hdr_ratio = "1";
+					max_hdr_ratio = "64";
+					min_framerate = "1.453262";
+					max_framerate = "24";
+					min_exp_time = "42";
+					max_exp_time = "687981";
+				};
+
 				ports {
 					#address-cells = <1>;
 					#size-cells = <0>;
 
 					port@0 {
 						reg = <0>;
-						ov23850_out0: endpoint {
-							bus-width = <4>;
+						ov5693_out0: endpoint {
+							bus-width = <2>;
 							remote-endpoint = <&csi_in0>;
 						};
 					};
 				};
 			};
-			lc898212@6_0072 {
-				compatible = "nvidia,lc898212";
-				reg = <0x72>;
 
-				/* physical camera layer interface tags */
-				devnode = "video6";
-				/**
-				* Type specifies the control features supported by
-				* the focuser driver.
-				* default type means only position control setting
-				* supported by the focuser
-				*/
-				type = "default";
-
-				ports {
-					#address-cells = <1>;
-					#size-cells = <0>;
-					port@0 {
-						reg = <0>;
-						lc898212_out0: endpoint {
-							remote-endpoint = <&vi_in6>;
-						};
-					};
-				};
-			};
-		};
-	};
-
-	i2c@7000c000 {
-		ov23850_c@36 {
-			compatible = "nvidia,ov23850";
-
-			reg = <0x36>;
-			/* Physical dimensions of sensor */
-			physical_w = "7.3998";
-			physical_h = "5.5998";
-
-			/* Define any required hw resources needed by driver */
-			/* ie. clocks, io pins, power sources */
-			avdd-reg = "vana";
-			dvdd-reg = "vdig";
-			iovdd-reg = "vif";
-			vcmvdd-reg = "vvcm";
-			devnode = "video2";
-
-			mode0 { // OV23850_MODE_5632X4224
-				mclk_khz = "24000";
-				num_lanes = "4";
-				tegra_sinterface = "serial_c";
-				discontinuous_clk = "no";
-				dpcm_enable = "false";
-				cil_settletime = "0";
-
-				active_w = "5632";
-				active_h = "4224";
-				pixel_t = "bayer_bggr";
-				readout_orientation = "270";
-				line_length = "7200";
-				inherent_gain = "1";
-				mclk_multiplier = "31.25";
-				pix_clk_hz = "750000000";
-
-				min_gain_val = "1.0";
-				max_gain_val = "15.5";
-				min_hdr_ratio = "1";
-				max_hdr_ratio = "64";
-				min_framerate = "3.179011";
-				max_framerate = "20";
-				min_exp_time = "20";
-				max_exp_time = "314256";
-			};
-
-			mode1 { // OV23850_MODE_5632X3168
-				mclk_khz = "24000";
-				num_lanes = "4";
-				tegra_sinterface = "serial_c";
-				discontinuous_clk = "no";
-				dpcm_enable = "false";
-				cil_settletime = "0";
-
-				active_w = "5632";
-				active_h = "3168";
-				pixel_t = "bayer_bggr";
-				readout_orientation = "270";
-				line_length = "7108";
-				inherent_gain = "1";
-				mclk_multiplier = "31.25";
-				pix_clk_hz = "750000000";
-
-				min_gain_val = "1.0";
-				max_gain_val = "15.5";
-				min_hdr_ratio = "1";
-				max_hdr_ratio = "64";
-				min_framerate = "3.220157";
-				max_framerate = "30";
-				min_exp_time = "19";
-				max_exp_time = "310467";
-			};
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@0 {
-					reg = <0>;
-					ov23850_out2: endpoint {
-						bus-width = <4>;
-						remote-endpoint = <&csi_in2>;
-					};
-				};
-			};
-		};
-
-		lc898212@0_0072 {
-			compatible = "nvidia,lc898212";
-			reg = <0x72>;
-
-			/* physical camera layer interface tags */
-			devnode = "video7";
-			type = "default";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-				port@0 {
-					reg = <0>;
-					lc898212_out1: endpoint {
-						remote-endpoint = <&vi_in7>;
-					};
-				};
-			};
 		};
 	};
 
@@ -389,37 +289,18 @@
 		*/
 		modules {
 			module0 {
-				badge = "e3323_bottom_CH06P1";
-				position = "bottom";
-				orientation = "3";
+				badge = "e3326_front_P5V27C";
+				position = "rear";
+				orientation = "1";
 				drivernode0 {
 					/* Declare PCL support driver (classically known as guid)  */
 					pcl_id = "v4l2_sensor";
 					/* Declare the device-tree hierarchy to driver instance */
-					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/ov23850_a@10";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/ov5693_c@36";
 				};
 				drivernode1 {
 					/* Declare PCL support driver (classically known as guid)  */
-					pcl_id = "v4l2_focuser";
-					/* Declare the device-tree hierarchy to driver instance */
-					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/lc898212@6_0072";
-				};
-			};
-			module1 {
-				badge = "e3323_top_CH06P1";
-				position = "top";
-				orientation = "3";
-				drivernode0 {
-					/* Declare PCL support driver (classically known as guid)  */
-					pcl_id = "v4l2_sensor";
-					/* Declare the device-tree hierarchy to driver instance */
-					proc-device-tree = "/proc/device-tree/i2c@7000c000/ov23850_c@36";
-				};
-				drivernode1 {
-					/* Declare PCL support driver (classically known as guid)  */
-					pcl_id = "v4l2_focuser";
-					/* Declare the device-tree hierarchy to driver instance */
-					proc-device-tree = "/proc/device-tree/i2c@7000c000/lc898212@0_0072";
+					pcl_id = "v4l2_focuser_stub";
 				};
 			};
 		};
