@@ -1043,30 +1043,7 @@ static ssize_t trace_cycle_count_show(struct kobject *kobj,
 static ssize_t trace_config_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
-	u32 *data = (u32 *)buf;
-	struct tracectx *t = &tracer;
-	u32 id = raw_smp_processor_id();
-	int i = 0;
-
-	data[i++] = ptm_readl(t, id, TRCTRACEIDR);
-	data[i++] = ptm_readl(t, id, TRCCONFIGR);
-	data[i++] = ptm_readl(t, id, TRCACVR0);
-	data[i++] = ptm_readl(t, id, TRCACVR0 + 0x4);
-	data[i++] = ptm_readl(t, id, TRCACVR1);
-	data[i++] = ptm_readl(t, id, TRCACVR1 + 0x4);
-	data[i++] = ptm_readl(t, id, TRCACVR2);
-	data[i++] = ptm_readl(t, id, TRCACVR2 + 0x4);
-	data[i++] = ptm_readl(t, id, CXTMC_REGS_FFCR_0);
-	/* reserved for future use */
-	data[i++] = 0x00000000;
-	data[i++] = 0x00000000;
-	data[i++] = 0x00000000;
-	data[i++] = 0x00000000;
-	data[i++] = 0x00000000;
-	data[i++] = 0x00000000;
-	data[i++] = 0x00000000;
-
-	return 64;
+	return 0;
 }
 
 static ssize_t trace_config_store(struct kobject *kobj,
