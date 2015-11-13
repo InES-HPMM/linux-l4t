@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA Corporation.  All rights reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property
  * and proprietary rights in and to this software and related documentation
@@ -27,18 +27,22 @@
 #define IMX219_IOCTL_GET_FLASH_CAP	_IOR('o', 30, __u32)
 #define IMX219_IOCTL_SET_FLASH_MODE _IOW('o', 31, struct imx219_flash_control)
 
-struct imx219_gain {
-	__u16 again;
-	__u8 dgain_upper;
-	__u8 dgain_lower;
-};
+/* TODO: revisit these values for IMX219 */
+#define IMX219_FRAME_LENGTH_ADDR_MSB            0x0160
+#define IMX219_FRAME_LENGTH_ADDR_LSB            0x0161
+#define IMX219_COARSE_TIME_ADDR_MSB             0x015a
+#define IMX219_COARSE_TIME_ADDR_LSB             0x015b
+#define IMX219_GAIN_ADDR		                0x0157
+
+#define IMX219_FUSE_ID_SIZE		6
+#define IMX219_FUSE_ID_STR_SIZE	(IMX219_FUSE_ID_SIZE * 2)
 
 struct imx219_mode {
 	int xres;
 	int yres;
 	__u32 frame_length;
 	__u32 coarse_time;
-	struct imx219_gain gain;
+	__u32 gain;
 };
 
 struct imx219_ae {
@@ -46,7 +50,7 @@ struct imx219_ae {
 	__u8  frame_length_enable;
 	__u32 coarse_time;
 	__u8  coarse_time_enable;
-	struct imx219_gain gain;
+	__u32 gain;
 	__u8  gain_enable;
 };
 
