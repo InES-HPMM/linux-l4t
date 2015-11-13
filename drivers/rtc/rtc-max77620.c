@@ -521,7 +521,7 @@ static ssize_t max77620_rtc_show_time_display_suspend(struct device *dev,
 	return sprintf(buf, "enabled\n");
 }
 
-static DEVICE_ATTR(time_display_suspend, 0444,
+static DEVICE_ATTR(time_display_suspend, 0666,
 		max77620_rtc_show_time_display_suspend,
 		max77620_rtc_set_time_display_suspend);
 
